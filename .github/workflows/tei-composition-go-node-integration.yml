@@ -54,8 +54,34 @@ jobs:
             ./reference/application-composition \
             -run '^TestE15ActualGoImpactToE12ReadOnlyReview$' -v
 
-      - name: E22のNative構成候補を検証
+      - name: E22／E24／E26のNative構成・入力・記述量を検証
         shell: bash
         run: |
           set -euo pipefail
-          go test -count=1 ./reference/application-composition -run '^TestE22' -v
+          go test -count=1 ./reference/application-composition -run '^TestE(22|24|26)' -v
+
+      - name: E25のリポジトリ間変更影響を確認
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test reference/application-composition/e25_crossrepo_requalification.test.mjs
+
+      - name: E27の既存構成と残余選択を観測
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test reference/application-composition/e1-observe.test.mjs reference/application-composition/e27_residual_selection_audit.test.mjs
+          node reference/application-composition/e27_residual_selection_audit.mjs . > /dev/null
+
+      - name: E28の構成作業計測を未検証と区別
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test reference/application-composition/e28_workflow_measurement.test.mjs
+          node reference/application-composition/e28_workflow_measurement.mjs . > /dev/null
+
+      - name: E31の別リポジトリ版対応を照合
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test reference/application-composition/e31_paired_source_comparison.test.mjs

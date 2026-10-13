@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Run cross-lane smoke checks in a disposable detached worktree:
-# compose pinned Draft tips (historical mode), or check integrated current main.
+# compose pinned Draft tips (historical mode), check current main online, or
+# verify one operator-pinned complete local commit with NO remote refresh.
 # Never merge to main or alter owner refs.
 set -euo pipefail
 die() { printf 'cross-lane integration blocked: %s\n' "$*" >&2; exit 1; }
@@ -23,8 +24,8 @@ esac
 
 mode="${TEI_CP_COMPOSE_MODE:-draft-tips}"
 case "$mode" in
-  draft-tips|integrated-main) ;;
-  *) die "TEI_CP_COMPOSE_MODE must be draft-tips or integrated-main" ;;
+  draft-tips|integrated-main|integrated-pinned-offline) ;;
+  *) die "TEI_CP_COMPOSE_MODE must be draft-tips, integrated-main or integrated-pinned-offline" ;;
 esac
 expected_main="${TEI_CP_COMPOSE_MAIN:-}"
 expected_1119="${TEI_CP_COMPOSE_1119:-}"
@@ -40,7 +41,7 @@ if [[ "$mode" == draft-tips ]]; then
   done
 else
   [[ -z "$expected_1119$expected_1120$expected_1124$expected_1121" ]] ||
-    die "integrated-main mode refuses stale Draft branch pins"
+    die "integrated modes refuse stale Draft branch pins"
 fi
 clean() {
   local where="$1" status unusual
@@ -55,14 +56,31 @@ clean "$root"
 original_head="$(git rev-parse HEAD)"
 runner_blob="$(git hash-object "$root/tools/reference-critical-path-evidence-audit/compose-smoke.sh")" ||
   die "cannot identify exact smoke runner"
-git fetch --no-tags "$remote" --prune || die "fetch failed"
+if [[ "$mode" != integrated-pinned-offline ]]; then
+  git fetch --no-tags "$remote" --prune || die "fetch failed"
+fi
 check_tip() {
   local branch="$1" expected="$2" actual
   actual="$(git rev-parse "refs/remotes/$remote/$branch" 2>/dev/null)" ||
     die "remote branch not found: $branch"
   [[ "$actual" == "$expected" ]] || die "stale pin for $branch: $actual"
 }
-check_tip main "$expected_main"
+if [[ "$mode" == integrated-pinned-offline ]]; then
+  # Operator supplies a reviewed exact commit. Local SHA equality is NOT
+  # evidence of current origin/main; any remote freshness check is deliberately
+  # impossible without network. Do not silently adopt local origin/main.
+  [[ "$(git rev-parse --is-shallow-repository)" == false ]] ||
+    die "offline mode requires a complete, non-shallow Git checkout"
+  [[ "$(git config --get --bool "remote.$remote.promisor" || :)" != true &&
+     -z "$(git config --get extensions.partialclone || :)" ]] ||
+    die "offline mode refuses partial/promisor checkout that could fetch missing objects"
+  [[ "$original_head" == "$expected_main" ]] ||
+    die "offline mode requires the checkout HEAD to equal TEI_CP_COMPOSE_MAIN"
+  [[ "$(git cat-file -t "$expected_main")" == commit ]] ||
+    die "offline mode requires an existing commit object"
+else
+  check_tip main "$expected_main"
+fi
 if [[ "$mode" == draft-tips ]]; then
   check_tip work/issue-1119-critical-path-product-gate "$expected_1119"
   check_tip issue-1120-typed-reference-contract "$expected_1120"
@@ -100,6 +118,11 @@ printf 'CROSS_LANE_SMOKE_BEGIN mode=%s main=%s tested-head=%s tree=%s\n' \
 (
   cd "$wt"
   export GOENV=off GOWORK=off GOFLAGS=
+  if [[ "$mode" == integrated-pinned-offline ]]; then
+    # A local checkout must have its Go modules/toolchain prepared in advance;
+    # missing dependencies are explicit failure, never an implicit download.
+    export GOPROXY=off GOSUMDB=off GOTOOLCHAIN=local
+  fi
   export TEI_CP_ORIGINAL_REPOSITORY_ROOT="$root"
   export TEI_CP_INTEGRATION_TEMP_DIR="$scratch"
   node --check tools/reference-critical-path-evidence-audit/live-r1-smoke.mjs
@@ -119,8 +142,10 @@ printf 'CROSS_LANE_SMOKE_BEGIN mode=%s main=%s tested-head=%s tree=%s\n' \
 clean "$wt"
 [[ "$(git -C "$wt" rev-parse HEAD)" == "$integration_head" ]] ||
   die "temporary merged HEAD moved"
-git fetch --no-tags "$remote" --prune || die "post-test fetch failed"
-check_tip main "$expected_main"
+if [[ "$mode" != integrated-pinned-offline ]]; then
+  git fetch --no-tags "$remote" --prune || die "post-test fetch failed"
+  check_tip main "$expected_main"
+fi
 if [[ "$mode" == draft-tips ]]; then
   check_tip work/issue-1119-critical-path-product-gate "$expected_1119"
   check_tip issue-1120-typed-reference-contract "$expected_1120"
@@ -132,7 +157,9 @@ fi
 [[ "$(git hash-object "$root/tools/reference-critical-path-evidence-audit/compose-smoke.sh")" == "$runner_blob" ]] ||
   die "smoke runner changed during testing"
 clean "$root"
-if [[ "$mode" == integrated-main ]]; then
+if [[ "$mode" == integrated-pinned-offline ]]; then
+  printf 'PINNED_OFFLINE_CROSS_LANE_SMOKE_ONLY_NO_REMOTE_FRESHNESS_NO_PRODUCT_GATE\n'
+elif [[ "$mode" == integrated-main ]]; then
   printf 'CURRENT_MAIN_CROSS_LANE_SMOKE_ONLY_NO_PRODUCT_GATE\n'
 else
   printf 'CROSS_LANE_CANDIDATE_SMOKE_ONLY_NO_PRODUCT_GATE\n'
@@ -143,3 +170,6 @@ printf 'runnerBlob=%s\nhealthRunnerBlob=%s\n' "$runner_blob" \
   "$(git -C "$wt" hash-object tools/repository-health-check.sh)"
 printf 'goVersion=%s\nnodeVersion=%s\n' "$(go version)" "$(node --version)"
 printf 'limits=NOT_OWNER_PR_QUALIFICATION_NOT_EXTERNAL_DB_NOT_INDEPENDENT_READ_NOT_HUMAN_APPROVAL\n'
+if [[ "$mode" == integrated-pinned-offline ]]; then
+  printf 'remoteFreshness=NOT_CHECKED_offline_operator_pinned\n'
+fi

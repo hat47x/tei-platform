@@ -13,6 +13,7 @@ NAME = "main：PR経由の変更と履歴保全"
 DEFINITION = Path(__file__).with_name("main-pr-only.json")
 RULE_TYPES = {"pull_request", "non_fast_forward", "deletion"}
 REVIEW_PARAMETERS = {
+    "allowed_merge_methods": ["merge", "squash", "rebase"],
     "dismiss_stale_reviews_on_push": False,
     "require_code_owner_review": False,
     "require_last_push_approval": False,
@@ -53,7 +54,14 @@ def violations(value):
     else:
         parameters = pr.get("parameters") or {}
         for key, expected in REVIEW_PARAMETERS.items():
-            if parameters.get(key) != expected:
+            actual = parameters.get(key)
+            if key == "allowed_merge_methods":
+                match = (isinstance(actual, list)
+                         and len(actual) == len(expected)
+                         and set(actual) == set(expected))
+            else:
+                match = actual == expected
+            if not match:
                 errors.append("PR必須規則の値が異なります: " + key)
     return errors
 
@@ -104,6 +112,15 @@ def self_test():
     tests.append(changed)
     changed = copy.deepcopy(baseline)
     changed["rules"][0]["parameters"]["required_approving_review_count"] = 1
+    tests.append(changed)
+    changed = copy.deepcopy(baseline)
+    del changed["rules"][0]["parameters"]["allowed_merge_methods"]
+    tests.append(changed)
+    changed = copy.deepcopy(baseline)
+    changed["rules"][0]["parameters"]["allowed_merge_methods"] = ["merge"]
+    tests.append(changed)
+    changed = copy.deepcopy(baseline)
+    changed["rules"][0]["parameters"]["allowed_merge_methods"] = ["octopus"]
     tests.append(changed)
     changed = copy.deepcopy(baseline)
     changed["rules"].append({"type": "required_status_checks"})

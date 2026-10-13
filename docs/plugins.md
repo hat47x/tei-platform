@@ -54,13 +54,13 @@ TEIでは、プラグインを業務上の意味を表す最小単位とはせ�
 プラグインの自己構築では、次の経路を独立した構築契約として扱います。
 
 ```text
-Plugin / implementation Source
-  -> Build inputs
-  -> Builder
-  -> Build Evidence
-  -> Artifact
-  -> Plugin Lock
-  -> Runtime
+プラグイン / 実装のソース
+  -> 構築に必要な入力
+  -> 構築器（Builder）
+  -> 構築の検証根拠（Build Evidence）
+  -> 成果物
+  -> プラグインの実装固定情報（Plugin Lock）
+  -> 実行環境（Runtime）
 ```
 
 実行時に必要な依存関係と、構築時に必要な依存関係も分けます。コンパイラ、生成器、開発用の道具などを`requires plugin`に混ぜ、実行時に不要な依存関係まで残す設計にはしません。

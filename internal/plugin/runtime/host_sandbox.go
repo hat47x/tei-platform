@@ -159,6 +159,14 @@ type HostSandboxLauncher struct {
 	Now func() time.Time
 }
 
+// boundSandboxProcessImage exposes the actual held executable to Registry's
+// pre-lease verification check. A pathname runner provides no bound image.
+// Host configuration must remain stable throughout an invocation.
+func (h HostSandboxLauncher) boundSandboxProcessImage() processImageBound {
+	image, _ := h.Runner.(processImageBound)
+	return image
+}
+
 func (h HostSandboxLauncher) Invoke(ctx context.Context, spec SandboxSpec, req Request) (Response, error) {
 	if h.Runner == nil {
 		return Response{}, fmt.Errorf("host sandbox has no process runner")

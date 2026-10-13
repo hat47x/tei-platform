@@ -1915,8 +1915,20 @@ func (p *Parser) parseSemanticData(namespace core.CanonicalID) (semantic.Data, e
 				return d, err
 			}
 			d.Relations = append(d.Relations, semantic.Relation{ID: rid, Symbol: rSym.Text, Target: target, Cardinality: semantic.Cardinality(cardTok.Text), Keys: keys})
+		case "candidate-key":
+			key, err := p.parseSemanticCandidateKey(id)
+			if err != nil {
+				return d, err
+			}
+			d.CandidateKeys = append(d.CandidateKeys, key)
+		case "functional-dependency":
+			fd, err := p.parseSemanticFunctionalDependency(id)
+			if err != nil {
+				return d, err
+			}
+			d.FunctionalDependencies = append(d.FunctionalDependencies, fd)
 		default:
-			return d, p.errAt(t, "expected attribute or relation")
+			return d, p.errAt(t, "expected attribute, relation, candidate-key, or functional-dependency")
 		}
 	}
 	return d, nil

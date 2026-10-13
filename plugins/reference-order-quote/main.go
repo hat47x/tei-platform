@@ -120,9 +120,88 @@ func decodeExact(raw []byte, dst any) error {
 	return nil
 }
 
-func calculate(raw []byte) (quoteResult, error) {
+// strictQuoteFields validates the exact spelling, uniqueness and presence of
+// business JSON members. Go's DisallowUnknownFields still accepts case-folded
+// names and silently replaces earlier duplicate keys; neither behavior is
+// appropriate for a contract-bound business payload.
+func strictQuoteFields(raw []byte, required ...string) (map[string]json.RawMessage, error) {
+	dec := json.NewDecoder(strings.NewReader(string(raw)))
+	first, err := dec.Token()
+	if err != nil || first != json.Delim('{') {
+		return nil, errors.New("quote value must be an object")
+	}
+	allowed := make(map[string]bool, len(required))
+	for _, key := range required {
+		allowed[key] = true
+	}
+	found := make(map[string]json.RawMessage, len(required))
+	for dec.More() {
+		keyToken, err := dec.Token()
+		key, ok := keyToken.(string)
+		if err != nil || !ok || !allowed[key] {
+			return nil, errors.New("unknown quote member")
+		}
+		if _, duplicate := found[key]; duplicate {
+			return nil, errors.New("duplicate quote member")
+		}
+		var value json.RawMessage
+		if err := dec.Decode(&value); err != nil ||
+			strings.TrimSpace(string(value)) == "null" {
+			return nil, errors.New("invalid quote member")
+		}
+		found[key] = value
+	}
+	last, err := dec.Token()
+	if err != nil || last != json.Delim('}') {
+		return nil, errors.New("invalid quote object")
+	}
+	var trailing any
+	if err := dec.Decode(&trailing); !errors.Is(err, io.EOF) {
+		return nil, errors.New("trailing quote data")
+	}
+	if len(found) != len(allowed) {
+		return nil, errors.New("missing required quote member")
+	}
+	return found, nil
+}
+
+func decodeQuoteRequest(raw []byte) (quoteRequest, error) {
+	top, err := strictQuoteFields(raw, "currency", "lines")
+	if err != nil {
+		return quoteRequest{}, err
+	}
 	var request quoteRequest
-	if err := decodeExact(raw, &request); err != nil {
+	if err := json.Unmarshal(top["currency"], &request.Currency); err != nil {
+		return quoteRequest{}, errors.New("quote currency must be a string")
+	}
+	var lines []json.RawMessage
+	if err := json.Unmarshal(top["lines"], &lines); err != nil || lines == nil {
+		return quoteRequest{}, errors.New("quote lines must be an array")
+	}
+	request.Lines = make([]quoteLine, 0, len(lines))
+	for _, rawLine := range lines {
+		fields, err := strictQuoteFields(rawLine, "sku", "quantity", "unitPriceMinor")
+		if err != nil {
+			return quoteRequest{}, err
+		}
+		var line quoteLine
+		if err := json.Unmarshal(fields["sku"], &line.SKU); err != nil {
+			return quoteRequest{}, errors.New("quote SKU must be a string")
+		}
+		if err := json.Unmarshal(fields["quantity"], &line.Quantity); err != nil {
+			return quoteRequest{}, errors.New("quote quantity must be an integer")
+		}
+		if err := json.Unmarshal(fields["unitPriceMinor"], &line.UnitPriceMinor); err != nil {
+			return quoteRequest{}, errors.New("quote unit price must be an integer")
+		}
+		request.Lines = append(request.Lines, line)
+	}
+	return request, nil
+}
+
+func calculate(raw []byte) (quoteResult, error) {
+	request, err := decodeQuoteRequest(raw)
+	if err != nil {
 		return quoteResult{}, errors.New("invalid quote request")
 	}
 	if request.Currency != "JPY" || len(request.Lines) == 0 || len(request.Lines) > 50 {

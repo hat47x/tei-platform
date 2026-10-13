@@ -1,0 +1,18 @@
+{
+  "evidenceNature": "test-only-Go-overlay-Web-target",
+  "integrationHead": "466b1d10080460390d46b3b342d8bc9c19e09208",
+  "targetBuildRevisionLabel": "466b1d10080460390d46b3b342d8bc9c19e09208",
+  "loopbackAddress": "127.0.0.1:38033",
+  "targetProcessID": 5432,
+  "targetBinarySHA256": "95a753f733bbb3d9bb1812860df5fc8d6b259a1d5ed87618e1f8d76ad0717e53",
+  "sameBinaryAsPositive": false,
+  "acceptedSourceRevisionClaim": "sha256:b78d5a186b1227f2bc4863ba2063c4f7edb5640c1d38faebaf2864c0423e3c07",
+  "overlay": {
+    "sourceFile": "tools/reference-first-web-target/reference_order_contract_query_fixture.go",
+    "originalSHA256": "4c62e78459074faa09bd5fa4cd1530c515e46077c427fa31a72d2c589d470086",
+    "overlaySHA256": "159220d8f1912c7f5d6739526d6165e9d0cada080937636e74a8cacf1068fb01",
+    "override": "first synthetic line unit_price 4000.00 to 0 (selected order 1001)",
+    "authority": "test-only-build-overlay"
+  },
+  "runtimeAuthorityVerified": false
+}

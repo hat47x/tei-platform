@@ -106,6 +106,9 @@ type EnvironmentPlan struct {
 	RuntimePolicyFingerprint     string              `json:"runtimePolicyFingerprint"`
 	Plugins                      []PluginRuntime     `json:"plugins"`
 	Capabilities                 []CapabilityRuntime `json:"capabilities,omitempty"`
+	// ServiceBindings are host-selected, exact transport routes. They do not
+	// attest Contract/Provider conformance or issue runtime permissions.
+	ServiceBindings []ServiceCarrierBinding `json:"serviceBindings,omitempty"`
 }
 
 func BuildPlan(c plugin.Catalog, env environment.Environment, lock plugin.Lock) (EnvironmentPlan, error) {
@@ -233,17 +236,19 @@ func bindBuiltinRuntimeEngine(plan EnvironmentPlan, identity plugin.Identity, en
 
 func PolicyFingerprint(plan EnvironmentPlan) string {
 	payload := struct {
-		Environment                  core.CanonicalID    `json:"environment"`
-		PluginLockFingerprint        string              `json:"pluginLockFingerprint"`
-		RuntimeEngineLockFingerprint string              `json:"runtimeEngineLockFingerprint,omitempty"`
-		Plugins                      []PluginRuntime     `json:"plugins"`
-		Capabilities                 []CapabilityRuntime `json:"capabilities"`
+		Environment                  core.CanonicalID        `json:"environment"`
+		PluginLockFingerprint        string                  `json:"pluginLockFingerprint"`
+		RuntimeEngineLockFingerprint string                  `json:"runtimeEngineLockFingerprint,omitempty"`
+		Plugins                      []PluginRuntime         `json:"plugins"`
+		Capabilities                 []CapabilityRuntime     `json:"capabilities"`
+		ServiceBindings              []ServiceCarrierBinding `json:"serviceBindings,omitempty"`
 	}{
 		Environment:                  plan.Environment,
 		PluginLockFingerprint:        plan.PluginLockFingerprint,
 		RuntimeEngineLockFingerprint: plan.RuntimeEngineLockFingerprint,
 		Plugins:                      append([]PluginRuntime(nil), plan.Plugins...),
 		Capabilities:                 append([]CapabilityRuntime(nil), plan.Capabilities...),
+		ServiceBindings:              append([]ServiceCarrierBinding(nil), plan.ServiceBindings...),
 	}
 	raw, _ := json.Marshal(payload)
 	sum := sha256.Sum256(raw)
@@ -457,12 +462,64 @@ type Invocation struct {
 	Provenance InvocationProvenance `json:"provenance"`
 }
 
+// processImageBound identifies a process launcher whose verification evidence
+// applies only to the exact executable image it holds. This is an internal
+// marker, not a second public plugin contract or a sandbox guarantee.
+type processImageBound interface {
+	ArtifactVerifier
+	ProcessLauncher
+	boundProcessImage()
+}
+
+// sandboxProcessImageBound is implemented only by a Host-owned sandbox
+// launcher that exposes the exact image held by its selected process runner.
+// Third-party Sandboxes cannot assert a pinned-image binding by metadata alone.
+type sandboxProcessImageBound interface {
+	boundSandboxProcessImage() processImageBound
+}
+
+// validateProcessImageBinding prevents a verified pinned executable from being
+// silently replaced with a pathname-based process runner. When a sandbox is
+// selected, the Host must expose the actual runner's held image, and it must
+// be the very same instance that produced the verification evidence.
+// The check precedes acquisition of any resource lease.
+func (r Registry) validateProcessImageBinding(sandboxed, digestVerified bool) error {
+	verifiedImage, verifierBound := r.Verifier.(processImageBound)
+	launchedImage, launcherBound := r.Processes.(processImageBound)
+	var sandboxImage processImageBound
+	if sandboxed {
+		if bound, ok := r.Sandboxes.(sandboxProcessImageBound); ok {
+			sandboxImage = bound.boundSandboxProcessImage()
+		}
+	}
+	if !verifierBound && !launcherBound && sandboxImage == nil {
+		return nil
+	}
+	if !digestVerified {
+		return fmt.Errorf("pinned process image requires a verified artifact digest")
+	}
+	if sandboxed {
+		if !verifierBound || sandboxImage == nil || verifiedImage != sandboxImage ||
+			(launcherBound && launchedImage != verifiedImage) {
+			return fmt.Errorf("pinned process image: verifier and sandbox runner must hold the same image")
+		}
+		return nil
+	}
+	if !verifierBound || !launcherBound || verifiedImage != launchedImage {
+		return fmt.Errorf("pinned process artifact verifier and process launcher must be the same held image")
+	}
+	return nil
+}
+
+// ServiceAcceptance is a Host-owned source of current Service acceptance.
+// Plugin descriptors and invocation payloads cannot supply the reader.
 type Registry struct {
 	Builtins               map[string]Builtin
 	BuiltinRegistrations   map[string]BuiltinRegistration
 	Processes              ProcessLauncher
 	Sandboxes              SandboxLauncher
 	Verifier               ArtifactVerifier
+	ServiceAcceptance      ServiceAcceptanceReader
 	Resources              resource.Broker
 	SupervisorOwnerships   resource.SupervisorOwnershipStore
 	SupervisorOwnerID      string
@@ -649,6 +706,9 @@ func (r Registry) InvokeWithProvenance(ctx context.Context, plan EnvironmentPlan
 		if policy != plugin.SandboxRequired && r.Sandboxes == nil && r.Processes == nil {
 			return Invocation{}, fmt.Errorf("process plugin %s@%s has no host process or sandbox launcher", cr.Plugin.ID, cr.Plugin.Version)
 		}
+		if err := r.validateProcessImageBinding(r.Sandboxes != nil && (policy == plugin.SandboxRequired || policy == plugin.SandboxPreferred), prov.Verification != nil && prov.Verification.DigestVerified); err != nil {
+			return Invocation{}, fmt.Errorf("process plugin %s@%s: %w", cr.Plugin.ID, cr.Plugin.Version, err)
+		}
 	default:
 		return Invocation{}, fmt.Errorf("unsupported runtime boundary %s", cr.Boundary)
 	}
@@ -789,11 +849,25 @@ func (r Registry) InvokeWithProvenance(ctx context.Context, plan EnvironmentPlan
 	if resp.DescriptorFingerprint == "" {
 		resp.DescriptorFingerprint = pr.DescriptorFingerprint
 	}
+	identityMatches := resp.ProtocolVersion == ProtocolVersion && resp.RequestID == requestID && resp.Plugin == cr.Plugin && resp.CapabilityID == id && resp.DescriptorFingerprint == pr.DescriptorFingerprint
+	if cr.Boundary == BoundaryProcess {
+		// Process response metadata is untrusted. A plugin can accidentally or
+		// deliberately embed host-supplied secrets in the error field or in a
+		// failure/mismatched-identity payload. Do not promote either to a host
+		// error, Invocation evidence, or a caller-visible diagnostic.
+		resp.Error = ""
+		if resp.Status != ResponseOK || !identityMatches {
+			resp.Payload = nil
+		}
+	}
 	inv = Invocation{Response: resp, Provenance: prov}
-	if resp.ProtocolVersion != ProtocolVersion || resp.RequestID != requestID || resp.Plugin != cr.Plugin || resp.CapabilityID != id || resp.DescriptorFingerprint != pr.DescriptorFingerprint {
+	if !identityMatches {
 		return inv, fmt.Errorf("plugin runtime response identity mismatch for capability %s", id)
 	}
 	if resp.Status == ResponseError {
+		if cr.Boundary == BoundaryProcess {
+			return inv, fmt.Errorf("plugin capability %s failed (untrusted process error details suppressed)", id)
+		}
 		return inv, fmt.Errorf("plugin capability %s failed: %s", id, resp.Error)
 	}
 	if resp.Status != ResponseOK {

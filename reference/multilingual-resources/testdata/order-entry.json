@@ -1,0 +1,51 @@
+{
+  "model": {
+    "schema": "tei.modelref.v0",
+    "nodes": [
+      {
+        "key": {
+          "scope": "sales",
+          "subject": {
+            "kind": "function",
+            "id": "sales.order.submit"
+          }
+        }
+      }
+    ],
+    "edges": []
+  },
+  "resources": [
+    {
+      "key": {
+        "owner": "order-entry",
+        "target": {
+          "scope": "sales",
+          "subject": {
+            "kind": "function",
+            "id": "sales.order.submit"
+          }
+        },
+        "field": "action-label"
+      },
+      "source": {
+        "locale": "ja-JP",
+        "text": "受注を確定",
+        "revision": "source-12"
+      },
+      "translations": [
+        {
+          "locale": "en-US",
+          "text": "Confirm order",
+          "basedOn": "source-12",
+          "review": "confirmed"
+        },
+        {
+          "locale": "fr-FR",
+          "text": "Confirmer la commande",
+          "basedOn": "source-11",
+          "review": "needs-review"
+        }
+      ]
+    }
+  ]
+}

@@ -43,3 +43,32 @@ go run ./tools/reference-xead-cross-view \
 この追加の確認は、**呼び出し元から渡された資料が、提示された解析結果の生成元として整合していること**に限られます。資料が本当に元のシステムから得られたか、読み取り契約がすべての要素を正しく解釈したか、旧システムとTEIの意味や動作が同等か、誰がその意味を承認したかは保証しません。外部の非公開資料は安全な作業環境内にとどめ、集計だけを公開します。
 
 集計結果は設計資料を読み取った証拠であり、TEIの正本への受理や、元のX-TEA Driverで実行した結果を意味しません。実機での動作確認は別課題 [#940](https://github.com/hat47x/tei-platform/issues/940) が担当します。
+
+
+## 事前に確認した集計値との再照合
+
+非公開の参照モデル全体で件数を検証する場合は、元XMLを公開せず、まず手元で集計を出力し、別途取得した観測値と照合したうえで、公開可能な記録だけを保管します。
+
+```bash
+# 非公開の資料と、その版に適合する読み取り契約を指定する
+go run ./tools/reference-xead-cross-view \
+  -input /private/model.xead \
+  -contract /private/transcription-contract.json > /private/observed-accounting.json
+
+# 後日、同じ資料・同じ契約から再計算した結果を照合する
+go run ./tools/reference-xead-cross-view \
+  -input /private/model.xead \
+  -contract /private/transcription-contract.json \
+  -expect-accounting /private/observed-accounting.json > /private/verified-accounting.json
+
+# 個別の出典情報を保持する解析結果の照合と組み合わせることもできる
+go run ./tools/reference-xead-cross-view \
+  -input /private/model.xead \
+  -contract /private/transcription-contract.json \
+  -verify-projection /private/saved-local-projection.json \
+  -expect-accounting /private/observed-accounting.json
+```
+
+`-expect-accounting`は、**事前に保存した公開用JSONの全項目**を、資料から新たに求めた結果と比較します。業務手順・機能利用・表利用の件数だけでなく、元資料の指紋、読み取り契約、導出規則の版・指紋、未解決件数、根拠上の限界も一致する必要があります。項目の追加、重複したJSON項目、形式不正、旧集計へのすり替え、資料や契約の変更があれば失敗します。エラーの本文には旧識別子や元資料を含めません。
+
+**注意**：最初の集計結果をそのまま基準値にしただけでは、独立した検証にはなりません。元システムの設計者による確認や、別方式で観測した148件・407件・392件などの実測値との突合は、基準値の**採用前**に別途行います。数値の意味や対象版が違う場合は自動的に一致扱いしません。また、この方式で照合できても元資料の真正性、業務意味、旧システムの実行結果、人の承認権限までは確定しません。資料の指紋や集計結果自体の公開可否も利用者が確認し、非公開資料は作業環境内で保持してください。

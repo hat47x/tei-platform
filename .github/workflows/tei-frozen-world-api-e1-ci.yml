@@ -1,0 +1,118 @@
+name: TEI 固定Worldを使うBrowser/APIの設計時依存除外
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'tools/reference-first-web-frozen-world-generate/**'
+      - 'tools/reference-first-web-frozen-world-verify/**'
+      - 'tools/reference-first-web-two-unit-e1/**'
+      - 'tools/reference-first-web-target/**'
+      - '.github/workflows/tei-frozen-world-api-e1-ci.yml'
+      - 'reference/workspace/**'
+      - 'reference/legacy-auth/**'
+      - 'go.mod'
+      - 'go.sum'
+  push:
+    branches: [main]
+    paths:
+      - 'tools/reference-first-web-frozen-world-generate/**'
+      - 'tools/reference-first-web-frozen-world-verify/**'
+      - 'tools/reference-first-web-two-unit-e1/**'
+      - 'tools/reference-first-web-target/**'
+      - '.github/workflows/tei-frozen-world-api-e1-ci.yml'
+      - 'reference/workspace/**'
+      - 'reference/legacy-auth/**'
+      - 'go.mod'
+      - 'go.sum'
+permissions:
+  contents: read
+concurrency:
+  group: tei-frozen-world-e1-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  frozen-world-api:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    env:
+      GOENV: off
+      GOWORK: off
+      GOFLAGS: ''
+      GOTOOLCHAIN: local
+      CGO_ENABLED: '0'
+    steps:
+      - name: exact Sourceを取得
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Go版を合わせる
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: go.mod
+          cache: false
+      - name: build前の版と汚染を検査
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test -z "$(git status --porcelain=v1 --untracked-files=all --ignored=matching)"
+          test -z "$(git ls-files -v | awk '/^[a-zS]/ {print}')"
+      - name: Goの固定モデルローダーと既定系の局所検査
+        run: |
+          set -euo pipefail
+          test -z "$(gofmt -l tools/reference-first-web-frozen-world-generate/*.go tools/reference-first-web-frozen-world-verify/*.go tools/reference-first-web-target/single_application_*.go tools/reference-first-web-target/reference_*_listen*.go tools/reference-first-web-target/reference_*_build_revision*.go tools/reference-first-web-target/order_api_only_binding.go tools/reference-first-web-target/api_only_binding_test.go)"
+          go test -count=1 ./tools/reference-first-web-frozen-world-verify
+          go vet ./tools/reference-first-web-frozen-world-verify
+          go test -count=1 -tags=tei_order_only,tei_api_only,tei_frozen_world ./tools/reference-first-web-target
+          go vet -tags=tei_order_only,tei_api_only,tei_frozen_world ./tools/reference-first-web-target
+          go test -count=1 -tags=tei_order_only,tei_api_only ./tools/reference-first-web-target
+          go vet -tags=tei_order_only,tei_api_only ./tools/reference-first-web-target
+          bash -n tools/reference-first-web-two-unit-e1/build_frozen_json_api.sh
+          python3 -B -c "import ast; ast.parse(open('tools/reference-first-web-two-unit-e1/check_api_only_parity.py',encoding='utf8').read())"
+          python3 -B -m unittest discover -s tools/reference-first-web-two-unit-e1 -p test_frozen_source_lineage.py -v
+          python3 -B -m unittest discover -s tools/reference-first-web-two-unit-e1 -p test_inspect_frozen_api_build.py -v
+          python3 -B -m unittest discover -s tools/reference-first-web-two-unit-e1 -p test_verify_frozen_unit_pair.py -v
+          python3 -B -c "import ast, pathlib; [ast.parse(pathlib.Path(p).read_text(encoding='utf-8')) for p in ('tools/reference-first-web-two-unit-e1/verify_frozen_unit_pair.py', 'tools/reference-first-web-two-unit-e1/smoke_json_api.py')]"
+          node --check tools/reference-first-web-two-unit-e1/real_browser_replay.mjs
+          node --check tools/reference-first-web-two-unit-e1/browser-host.mjs
+          node --test tools/reference-first-web-two-unit-e1/browser-host-binding.test.mjs
+      - name: 実バイナリと固定Worldを構築し、HTTP同等性と依存除外を検証
+        run: |
+          set -euo pipefail
+          dest="$RUNNER_TEMP/tei-e1-frozen-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          bash tools/reference-first-web-two-unit-e1/build_frozen_json_api.sh \
+            "$dest" B e5231839a5dcc62cce1181a2731fcb7c70d16736
+          test -s "$dest/api/order-entry"
+          test -s "$dest/api/frozen-world.json"
+          test -s "$dest/source-lineage.json"
+          python3 tools/reference-first-web-two-unit-e1/verify_frozen_unit_pair.py "$dest"
+          python3 tools/reference-first-web-two-unit-e1/smoke_json_api.py "$dest"
+          grep -Fq '"frozenWorldPairPreflightVerified": true' "$dest/json-api-smoke.json"
+          grep -Fq '"originAndMediaTypeDenied": true' "$dest/json-api-smoke.json"
+          grep -Fq '"sourceAcceptanceAuthorityVerified": false' "$dest/measurement.json"
+          grep -Fq '"buildArtifactLockVerified": false' "$dest/measurement.json"
+          grep -Fq '"frozenAPISyntheticHTTPParityVerified": true' "$dest/measurement.json"
+          grep -Fq '"workspaceLoaderSourceClosureExcluded": true' "$dest/measurement.json"
+          python3 - "$dest/measurement.json" <<'PY'
+          import json, sys
+          m = json.load(open(sys.argv[1], encoding="utf-8"))
+          inputs = m["apiBuildInputObservation"]
+          if inputs["sourceCommit"] != m["browserAndApiSourceRevision"]:
+              raise SystemExit("API source commit mismatch")
+          if inputs["apiSHA256"] != m["apiSHA256"] or inputs["apiBytes"] != m["apiBytes"]:
+              raise SystemExit("API byte identity mismatch")
+          if inputs["go"]["buildTags"] != sorted(m["apiBuildTags"]):
+              raise SystemExit("API Go build tag identity mismatch")
+          if m["unitBuilderAuthorityVerified"] or inputs["buildArtifactLockVerified"]:
+              raise SystemExit("diagnostic observation incorrectly grants authority")
+          if inputs["goPackageCount"] < 1 or len(inputs["sourceGitTree"]) != 40:
+              raise SystemExit("missing Source/Go closure observation")
+          PY
+      - name: 実行後のexact版と作業領域を確認
+        if: always()
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test -z "$(git status --porcelain=v1 --untracked-files=all --ignored=matching)"
+          test -z "$(git ls-files -v | awk '/^[a-zS]/ {print}')"

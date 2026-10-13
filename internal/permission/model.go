@@ -3,6 +3,7 @@ package permission
 import (
 	"fmt"
 	"sort"
+	"strings"
 
 	"tei/internal/core"
 )
@@ -31,7 +32,7 @@ type Spec struct {
 }
 
 func (s Spec) Validate() error {
-	if s.Scope == "" {
+	if strings.TrimSpace(s.Scope) == "" {
 		return fmt.Errorf("permission scope is required")
 	}
 	switch s.Kind {

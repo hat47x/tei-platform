@@ -3,6 +3,7 @@ package legacyauth
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"tei/internal/core"
@@ -75,6 +76,10 @@ func (a Adapter) Invoke(ctx context.Context, capability core.CanonicalID, raw an
 	if !ok {
 		return capabilityinvoke.BusinessResult{}, fmt.Errorf("security.authenticateの入力型がlegacyauth.Inputではありません")
 	}
+	// 空の識別子を保存先へ渡さず、別の主体への暗黙の解決を防ぐ。
+	if strings.TrimSpace(input.LoginID) == "" {
+		return capabilityinvoke.BusinessResult{}, fmt.Errorf("security.authenticateにlogin identityがありません")
+	}
 	if a.Store == nil {
 		return capabilityinvoke.BusinessResult{}, fmt.Errorf("legacy authentication user storeが指定されていません")
 	}
@@ -93,6 +98,11 @@ func (a Adapter) Invoke(ctx context.Context, capability core.CanonicalID, raw an
 	}
 	if !found {
 		return denied("credential_mismatch"), nil
+	}
+	// 保存先が異なる利用者を返しても、その主体のcredentialや権限を評価しない。
+	// これは認証失敗ではなく、UserStoreの主体対応契約の障害である。
+	if user.LoginID != input.LoginID {
+		return capabilityinvoke.BusinessResult{}, fmt.Errorf("legacy user storeのlogin identityが要求と一致しません")
 	}
 	if user.SubjectID == "" {
 		return capabilityinvoke.BusinessResult{}, fmt.Errorf("legacy user %sにsubject identityがありません", input.LoginID)

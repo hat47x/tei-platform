@@ -210,12 +210,15 @@ func validateInvocationPayload(
 	case invocationJSONShapeFormat:
 		decoder := json.NewDecoder(bytes.NewReader(payload))
 		decoder.UseNumber()
-		var value any
-		if err := decoder.Decode(&value); err != nil {
+		// Decode() into a map silently accepts duplicate keys (last wins).
+		// Preserve object member identity before structural validation, so
+		// contracts do not accept a request/result that another decoder
+		// interprets differently.
+		value, err := decodeInvocationUniqueJSON(decoder, "$")
+		if err != nil {
 			return fmt.Errorf("decode JSON payload: %w", err)
 		}
-		var trailing any
-		if err := decoder.Decode(&trailing); err != io.EOF {
+		if _, err := decoder.Token(); err != io.EOF {
 			if err == nil {
 				return fmt.Errorf("trailing JSON value is not allowed")
 			}
@@ -224,6 +227,62 @@ func validateInvocationPayload(
 		return validateInvocationJSONValue(value, artifact.Root, "$")
 	default:
 		return fmt.Errorf("unsupported invocation shape format %q", artifact.Format)
+	}
+}
+
+// decodeInvocationUniqueJSON retains the decoded JSON property name exactly
+// once per object, including nested objects. Escaped spellings of the same
+// property (e.g. "name" and "n\\u0061me") are also duplicates. This is a
+// Reference-only wire-validation rule, not a new canonical JSON format.
+func decodeInvocationUniqueJSON(decoder *json.Decoder, path string) (any, error) {
+	token, err := decoder.Token()
+	if err != nil {
+		return nil, err
+	}
+	delim, composite := token.(json.Delim)
+	if !composite {
+		return token, nil
+	}
+	switch delim {
+	case '{':
+		object := make(map[string]any)
+		for decoder.More() {
+			keyToken, err := decoder.Token()
+			if err != nil {
+				return nil, err
+			}
+			key, ok := keyToken.(string)
+			if !ok {
+				return nil, fmt.Errorf("%s object member is not a JSON property name", path)
+			}
+			if _, duplicate := object[key]; duplicate {
+				return nil, fmt.Errorf("%s has duplicate JSON property %q", path, key)
+			}
+			value, err := decodeInvocationUniqueJSON(decoder, path+"."+key)
+			if err != nil {
+				return nil, err
+			}
+			object[key] = value
+		}
+		if closing, err := decoder.Token(); err != nil || closing != json.Delim('}') {
+			return nil, fmt.Errorf("%s object has invalid closing delimiter: %v", path, err)
+		}
+		return object, nil
+	case '[':
+		var elements []any
+		for decoder.More() {
+			value, err := decodeInvocationUniqueJSON(decoder, fmt.Sprintf("%s[%d]", path, len(elements)))
+			if err != nil {
+				return nil, err
+			}
+			elements = append(elements, value)
+		}
+		if closing, err := decoder.Token(); err != nil || closing != json.Delim(']') {
+			return nil, fmt.Errorf("%s array has invalid closing delimiter: %v", path, err)
+		}
+		return elements, nil
+	default:
+		return nil, fmt.Errorf("%s has unexpected JSON delimiter %q", path, delim)
 	}
 }
 

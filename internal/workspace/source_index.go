@@ -208,7 +208,7 @@ func exactSubjectRange(content []byte, subject sourceindex.Subject) (sourceindex
 
 func isSemanticSubjectKind(kind string) bool {
 	switch kind {
-	case "semantic", "semantic-type", "semantic-data", "semantic-attribute", "semantic-relation", "semantic-capability", "semantic-validation":
+	case "semantic", "semantic-type", "semantic-data", "semantic-attribute", "semantic-relation", "semantic-candidate-key", "semantic-functional-dependency", "semantic-capability", "semantic-validation":
 		return true
 	default:
 		return false

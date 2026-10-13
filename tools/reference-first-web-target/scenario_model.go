@@ -1,3 +1,5 @@
+//go:build !tei_frozen_world
+
 package main
 
 import (

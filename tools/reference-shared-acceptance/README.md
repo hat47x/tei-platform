@@ -347,3 +347,81 @@ go test ./tools/reference-shared-acceptance -count=1
 ```
 
 testはGate B / Gate Cのbaselineを変更せず、`reference/workspace`のscratch copyだけを使います。最初のtestは、scratch copyから得たCanonical Worldが`reference/world.json`とbyte単位で一致すること（実際のReferenceで試していること）を確認します。
+
+
+## 既存Dataへの候補キー・関数従属性の型付き追加（#1126）
+
+`add-candidate-key` と `add-functional-dependency` は、前段でSemantic DSLへ導入した**明示的な論理規則の追加**だけを、通常のShared Acceptance経路でPreview・Review・AcceptするためのReferenceです。既存DataのSource Indexに対応するauthoritative `.tei` ファイルを自動特定し、Dataの外側の閉じ括弧直前へ宣言を挿入します。規則内部に入れ子の波括弧があっても外側のDataを正確に識別し、元のソースの他のバイトを変更しません。
+
+```json
+{
+  "op": "add-candidate-key",
+  "addCandidateKey": {
+    "data": "sales.order_line",
+    "id": "sales.order_line.business_line",
+    "symbol": "businessLine",
+    "attributes": ["sales.order_line.order_line_id", "sales.order_line.line_number"]
+  }
+}
+```
+
+```json
+{
+  "op": "add-functional-dependency",
+  "addFunctionalDependency": {
+    "data": "sales.order_line",
+    "id": "sales.order_line.item_by_line",
+    "symbol": "itemByLine",
+    "determinants": ["sales.order_line.order_line_id", "sales.order_line.line_number"],
+    "dependents": ["sales.order_line.item_code"]
+  }
+}
+```
+
+上記は通常の`tei.reference.change-candidate/v0`における`delta`の要素であり、単独で受理できるJSONではありません。実行には`baseModelRevision`、`origin`、`intent`、現行Sourceに対応するEvidence、Review fingerprint、明示的Accept decision等の既存の条件が適用されます。
+
+- 未存在Data・属性、Data外の属性、重複属性、既存あるいは同じcandidate内で衝突する規則ID、識別子とsymbolの不一致、placementの偽装、混在したpayloadは拒否します。対象Dataの出所を解決できない場合にも、ほかのファイルへ恣意的に書き込まず停止します。
+- Previewは規則を`candidate-key:<id>`、`functional-dependency:<id>`として**異なるSemantic subject差分**に記録します。影響解析では対象Dataと使用属性の正確な参照を示し、`LOGICAL_BUSINESS_RULE_UNVERIFIED`で業務上の妥当性・候補キー最小性・物理PK/FK対応が未確認であることを残します。
+- 物理DBのPK/UNIQUE/FK/Index、Persistence Mapping、Migrationには変更を加えません。Canonicalな規則宣言が追加されることと、業務上の規則が実証・承認されることは別です。
+- 今回は**追加のみ**です。既存規則の変更・削除、ER図UI操作、実データ検証による保証、論理から物理へのmapping、自動DDL生成は未対応とし、無理に既存の`add-relation`や別操作で代用しません。
+
+
+## 新しいDataを追加する際の業務キーとFDの同時宣言（#1126）
+
+既存の`add-data`（新namespace / 新source fileを一つ作成）の`data` payloadに、任意の`candidateKeys`と`functionalDependencies`を追加できます。別々に`add-candidate-key`を後から適用する必要はなく、**属性を追加する同一候補の中で業務上の意味を明示**します。
+
+```json
+{
+  "op": "add-data",
+  "placement": "semantic/fulfillment/package_line.tei",
+  "data": {
+    "namespace": "fulfillment",
+    "id": "fulfillment.package_line",
+    "symbol": "PackageLine",
+    "attributes": [
+      {"id":"fulfillment.package_line.order_ref","symbol":"orderRef","type":"std.identifier"},
+      {"id":"fulfillment.package_line.line_no","symbol":"lineNo","type":"std.integer"},
+      {"id":"fulfillment.package_line.label","symbol":"label","type":"std.text"}
+    ],
+    "candidateKeys": [{
+      "data": "fulfillment.package_line",
+      "id": "fulfillment.package_line.business_line",
+      "symbol": "businessLine",
+      "attributes": ["fulfillment.package_line.order_ref","fulfillment.package_line.line_no"]
+    }],
+    "functionalDependencies": [{
+      "data": "fulfillment.package_line",
+      "id": "fulfillment.package_line.label_by_line",
+      "symbol": "labelByLine",
+      "determinants": ["fulfillment.package_line.order_ref","fulfillment.package_line.line_no"],
+      "dependents": ["fulfillment.package_line.label"]
+    }]
+  }
+}
+```
+
+このJSONは通常の`tei.reference.change-candidate/v0`の`delta`要素です。候補全体には引き続き`baseModelRevision`、`intent`、`origin`と正本Source Evidenceなどが必要で、実際のAcceptには既存のDecision条件が適用されます。
+
+宣言された論理規則の属性は、**同一`add-data`に明示されたAttributeに限る**ため、まだ存在しない別のDataや類似名から業務IDを推測しません。属性・Relation・key・FDの各IDの重複も拒否します。新しいDataの候補キー・FDは差分上も独立のsubjectになり、Source Indexには正確な宣言名の位置が入ります。候補キーやFDが空の場合は、従来の`add-data`と同じソースを出力します。
+
+これは**ソースへの宣言の受理**です。業務上の規則の検証や承認権限の真正性、物理PK/FK・Migrationの生成、ER図UI上の編集を意味しません。既存namespace内の新Data追加は従来どおり非対応であり、この拡張によって機能を増やしていません。

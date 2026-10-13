@@ -1,28 +1,28 @@
 # 製品要求と実証状況の照合
 
-- 監査の基準日: 2026-09-21（前回は2026-09-11）
-- 追加した要求の初期評価: 2026-10-03（RQ-031〜033）、2026-10-07（RQ-034）
-- 対象: RQ-001〜034
-- 現行の着手判断: [要件の優先順位と適用範囲 #982](https://github.com/hat47x/tei-platform/issues/982)
-- 横断的な受入条件: [クリティカルパス #1119](https://github.com/hat47x/tei-platform/issues/1119)
-- 上流の対応表: [要求と受入シナリオ](../UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md)
-- 品質に関する設計: [製品品質](../../docs/product-quality-architecture.md)
-- 品質の検証計画: [製品品質の検証計画](PRODUCT_QUALITY_EVIDENCE_PLAN_2026-09.md)
+- 監査の基準日：2026年9月21日（前回：2026年9月11日）
+- 追加した要求の初期評価：2026年10月3日（RQ-031〜033）、2026年10月7日（RQ-034）
+- 対象：RQ-001〜034
+- 現行の着手判断：[要件の優先順位と適用範囲 #982](https://github.com/hat47x/tei-platform/issues/982)
+- 横断的な受入条件：[クリティカルパス #1119](https://github.com/hat47x/tei-platform/issues/1119)
+- 上流の対応表：[要求と受入シナリオ](../UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md)
+- 品質に関する設計：[製品品質](../../docs/product-quality-architecture.md)
+- 品質の検証計画：[製品品質の検証計画](PRODUCT_QUALITY_EVIDENCE_PLAN_2026-09.md)
 
 ## この監査を現在の開発に利用するとき
 
-この文書に記載した要求別の評価区分や実測値は、上記の基準日に得た根拠によるものです。新たなコードが統合されたことだけを理由に、当時の「設計のみ」「部分的な根拠」を自動的に合格へ変更しません。現在の実装状況は[実装状況](../../docs/status.md)、着手順の評価は[#982](https://github.com/hat47x/tei-platform/issues/982)、実装間の依存関係と受入条件は[#1119](https://github.com/hat47x/tei-platform/issues/1119)を正とします。
+この文書の要求別評価と実測値は、記載した基準日に取得した根拠に基づきます。その後にコードが統合されても、当時の「設計のみ」「部分的な根拠」を自動的に合格へ変更することはありません。現在の実装状況は[実装状況](../../docs/status.md)、着手順は[#982](https://github.com/hat47x/tei-platform/issues/982)、実装間の依存関係と受入条件は[#1119](https://github.com/hat47x/tei-platform/issues/1119)を正本とします。
 
-2026年10月12日に公開リポジトリを再確認したところ、解析済みソースの整合、型付き参照、アプリケーション構成、段階的な実行変換、横断計画、最初のモデル変更の参照実装は、いずれも関連するプルリクエストが`main`へ統合されています。一方、次の製品上の成立条件は引き続き別の検証が必要です。
+2026年10月12日の公開リポジトリの再確認では、解析済みソースの整合・型付き参照・アプリケーション構成・段階的な実行変換・横断計画・最初のモデル変更の参照実装について、関連するプルリクエストが`main`へ統合済みでした。ただし、次の製品上の成立条件は別途検証が必要です。
 
-- 最初のモデル変更と診断・修復の追試は[#1161](https://github.com/hat47x/tei-platform/issues/1161)、初めて使う人とAIの実測は[#1168](https://github.com/hat47x/tei-platform/issues/1168)で確認します。テストコードの存在と初見利用者の成功を同一視しません。
-- データ定義から標準機能・保存・独立した再読込へ進む課題は[#1127](https://github.com/hat47x/tei-platform/issues/1127)、受理された一つの改訂を実行先・実際の結果まで結び付ける検証は[#1163](https://github.com/hat47x/tei-platform/issues/1163)で扱います。既存の[#1119](https://github.com/hat47x/tei-platform/issues/1119)の判定器を使い、別の証拠管理機構を作りません。
-- 業務・データ・機能の三視点を編集から正本への反映まで接続する課題は[#1124](https://github.com/hat47x/tei-platform/issues/1124)と各モデルの担当課題に残ります。コマンドラインと画面の機能を省略せず、同じ業務シナリオから試験を導く課題は[#1180](https://github.com/hat47x/tei-platform/issues/1180)が担当します。
-- 出所情報の読み取りと外部への開示は別の認可判断です。リポジトリの公開化によって保留を解除した[#1178](https://github.com/hat47x/tei-platform/issues/1178)で、既存の認可機構を再利用して検証します。
+- 最初のモデル変更と診断・修復の再試験は[#1161](https://github.com/hat47x/tei-platform/issues/1161)、初めて使う人とAIによる実測は[#1168](https://github.com/hat47x/tei-platform/issues/1168)で確認します。テストコードがあることと、初見の利用者が成功したことは区別します。
+- データ定義から標準機能・保存・独立した再読込みへ進む課題は[#1127](https://github.com/hat47x/tei-platform/issues/1127)、受理された一つの改訂と実行先で得た結果を結び付ける検証は[#1163](https://github.com/hat47x/tei-platform/issues/1163)で扱います。既存の[#1119](https://github.com/hat47x/tei-platform/issues/1119)の判定器を使用し、別の証拠管理機構は作りません。
+- 業務・データ・機能の三視点を、編集から正本への反映まで一貫して接続する課題は[#1124](https://github.com/hat47x/tei-platform/issues/1124)と各モデルの担当課題に残ります。コマンドラインと画面の機能を省略せず、同じ業務シナリオから試験を導く取組みは[#1180](https://github.com/hat47x/tei-platform/issues/1180)が担当します。
+- 出所情報の読取りと外部への開示は、別々の認可判断を必要とします。リポジトリの公開化に伴い保留を解除した[#1178](https://github.com/hat47x/tei-platform/issues/1178)で、既存の認可機構を再利用して検証します。
 
 ### 2026年10月12日の横断実証と残る接続点
 
-以下は当初の要求別評価を改定するものではなく、実行した版を固定して追跡する追補です。新しい受入判定の正本は[#1119](https://github.com/hat47x/tei-platform/issues/1119)と各担当課題にあります。
+以下は、当初の要求別評価を変更せず、実行した版を固定して追跡するための追補です。新たな受入判定は[#1119](https://github.com/hat47x/tei-platform/issues/1119)と各担当課題の記録を正本とします。
 
 | 段階 | 実際に確認できたこと | まだ成立していないこと |
 | --- | --- | --- |
@@ -32,30 +32,30 @@
 | 三視点・更新対象の照合 | [#1307](https://github.com/hat47x/tei-platform/pull/1307)は実際の参照用全体モデルに対し、更新候補の不正な推測、対象外更新、古い版を拒否する回帰試験を`main`へ統合した | その業務上の所有者や操作の宣言は試験用の合成候補。三視点から受理した同じ意味を、実行・保存の正本へ接続した証拠ではない |
 | データ定義から標準機能へ | [#1127のソース照合](https://github.com/hat47x/tei-platform/issues/1127#issuecomment-6120467798)で、最小の`data Request`が属性と利用先の宣言までであり、実行機能・提供元への結線がまだないことを確認 | 決定的な一覧・単票候補の派生と、明示した操作・保存先・権限からの実書込み・独立再読込は未実証 |
 
-**次の受入順序**は、最初のデータ定義を正本とした一覧・単票の決定的な派生、明示的な操作・保存先・権限の解決、実データへの書込みと独立再読込、同一受理版の実行・観測の突合せです。属性の型だけから更新権限や物理的な主キーを推測しません。検証できない段階は未実行・未対応として残し、別の判定器や第二の正本を設けません。
+**次の受入順序**は、最初のデータ定義を正本とする一覧・単票の決定論的な派生、操作・保存先・権限の明示的な解決、実データへの書込みと独立した再読込み、同じ受理版についての実行・観測結果の照合です。属性の型だけから更新権限や物理的な主キーを推測しません。検証できない段階は未実行・未対応として残し、新たな判定器や意味の第二の正本を設けません。
 
-なお、2026年10月12日の[main版 `f05c032d`に対する全体CI実行](https://github.com/hat47x/tei-platform/actions/runs/38236905037)は`gofmt`不一致で失敗しています（Go試験、静的解析、作業領域の検証は成功）。[CI担当 #1189](https://github.com/hat47x/tei-platform/issues/1189)が検査器の版差異を追跡しています。過去の成功を現行`main`の合格へ流用せず、またこの整形問題を業務機能の欠落として二重計上しません。
+なお、2026年10月12日の[main版 `f05c032d`に対する全体CI実行](https://github.com/hat47x/tei-platform/actions/runs/38236905037)は`gofmt`の不一致で失敗しました（Goの試験・静的解析・作業領域の検証は成功）。[CI担当 #1189](https://github.com/hat47x/tei-platform/issues/1189)が検査器の版差異を追跡しています。この実行記録について、過去の成功を現行`main`の合格とみなさず、整形上の問題を業務機能の不足として二重計上することもしません。
 
-従来の`plan/issue/`にあった個別作業文書は公開リポジトリから退避されています。この文書の過去の記述に残る同ディレクトリへの参照は、現行の作業場所を示しません。個別作業の状態と判断履歴はGitHubの課題で確認してください。
+従来の`plan/issue/`にあった個別作業文書は、公開リポジトリから退避されています。この文書の過去の記述に残る同ディレクトリへの参照は、現在の作業場所を示すものではありません。個別作業の状態と判断履歴はGitHubの課題を確認してください。
 
 ---
 
 ## 1. 目的
 
-この文書は、`requirements/TEI_PRODUCT_REQUIREMENTS.md`の各Requirementについて、現在のRepositoryにどのEvidenceがあり、どの不確実性が残っているかを逆マッピングするcurrent auditです。
+この文書は、`requirements/TEI_PRODUCT_REQUIREMENTS.md`の各製品要求について、監査時点のリポジトリに存在する検証根拠と残る不確実性を、要求ごとに逆引きして示す監査記録です。
 
-実装量、Issue close数、文書数ではなく、次を見ます。
+実装量・課題のクローズ数・文書数ではなく、次の事項を確認します。
 
-- semantic boundaryが成立しているか
-- authoritative sourceへ戻れるか
-- Reference / Conformanceで再現できるか
-- actual execution Evidenceが必要な場合に取得済みか
-- synthetic / generated / real-provider / actual-external / Target Evidenceを混同していないか
-- Provider / Target / Host / build条件を説明できるか
-- failure / degraded / unknownを成功へ読み替えていないか
-- unresolvedを成功へ丸めていないか
+- 意味を定める境界が成立しているか
+- 正本となる情報源へたどれるか
+- 参照事例と準拠確認で再現できるか
+- 実際の実行の検証根拠が必要な場合、それを取得済みか
+- 合成データ・生成成果物・実際の提供実装・実際の外部資産・実行先に関する検証根拠を混同していないか
+- 提供実装・実行先・ホスト・構築条件を説明できるか
+- 失敗・機能低下・不明を成功として扱っていないか
+- 未解決事項を成功として扱っていないか
 
-Product Qualityは新しいRequirement群として追加せず、既存RQを横断するEvidence観点として監査します。
+製品品質は新たな要求群として追加せず、既存のRQに共通する検証根拠の観点から監査します。
 
 ## 2. 評価区分
 
@@ -66,17 +66,17 @@ Product Qualityは新しいRequirement群として追加せず、既存RQを横�
 | **Design Only** | Requirement / Architecture / Planは具体化されているが、対応するReference実証はまだない |
 | **Not Started** | 対応する設計・Referenceがほぼない |
 
-`Design Only`を実装済み、`Partial Evidence`をProduct claim成立済みとは読み替えません。
+`Design Only`を実装済み、`Partial Evidence`を製品についての主張が成立した状態とは扱いません。
 
 ## 3. 監査時点の製品開発の主線
 
-Gate BとGate Cは2026-09-19にReadyへ到達しました（Gate Cの判定記録: [`GATE_C_READINESS_AUDIT.md`](../gate/GATE_C_READINESS_AUDIT.md)。Visual Fidelityは単一のAI評価者による評価）。最大の直列blockerは、Gate C後の並行lane（Studio / knowledge-first・AI / 第二Application・第二Target）の着手判断です。
+判定段階BとCは2026年9月19日にReadyへ到達しました（判定段階Cの記録：[`GATE_C_READINESS_AUDIT.md`](../gate/GATE_C_READINESS_AUDIT.md)。表示の忠実度は一人に相当するAI評価者のみで評価）。当時の直列作業で最大の阻害条件は、判定段階Cの後に並行する作業（Studio・既存知識を優先する探索とAI・第二アプリケーション・第二実行先）の着手判断でした。
 
-2026-09-21に、前回が別作業へ送っていたRQ別Evidence tierの再監査を行いました。同時に、2026-09-18のProduct再定義で追加されながらこの監査にも`UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md`のPAS mappingにも載っていなかったRQ-027〜RQ-030を対象へ入れました。以後の欠落は`tools/repository-plan-check`の`TestEveryRequirementIsMappedToAnAcceptanceScenario`がfail-closedで検出します。
+2026年9月21日、前回の監査で別作業へ委ねた要求別の検証根拠の区分を再監査しました。あわせて、9月18日の製品定義の見直しで追加されたにもかかわらず、この監査と`UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md`のPAS対応表に未掲載だったRQ-027〜RQ-030を追加しました。以後、`tools/repository-plan-check`の`TestEveryRequirementIsMappedToAnAcceptanceScenario`が欠落を検出し、安全側に停止します。
 
-2026-10-03には、意味体系を後付けで拡張・合成できることをProduct Valueへ明示したことに伴い、RQ-031〜RQ-033を追加しました。この3件は追加時点ではDesign Onlyです。Requirement追加と同じ変更でPAS mappingと本監査へ登録し、前回のように価値定義だけが検証マップより先へ進む状態を作らないようにします。
+2026年10月3日、意味体系を後から拡張・合成できることを製品価値へ明示した際に、RQ-031〜RQ-033を追加しました。この3件は追加時点でDesign Onlyです。要求の追加と同じ変更でPAS対応表と本監査へ登録し、製品価値の定義だけが検証の対応関係より先行しないようにしました。
 
-2026-10-07には、ChatGPT等のチャット実行環境、Codex、Claude Code、通常のIDE / CLI、CIからTEIを扱う開発経路を、特定Agent Runtimeへ従属させないRQ-034を追加しました。Git-nativeな開発とCLI / MCP利用を第一級に扱い、Agent Sessionや一般的な検証状態をTEIのProduct stateへ持ち込まない境界を定義します。追加時点ではDesign Onlyとし、独立した開発環境からのE2E Referenceを成立Evidenceには数えません。
+2026年10月7日、ChatGPTなどのチャット実行環境・Codex・Claude Code・一般的なIDEやCLI・CIからTEIを扱う開発経路を、特定のエージェント実行基盤に従属させないため、RQ-034を追加しました。Gitを基盤とする開発とCLI・MCPの利用を基本の経路として扱い、エージェントのセッションや一般的な検証状態をTEIの製品状態に持ち込まない境界を定義します。追加時点ではDesign Onlyであり、独立した開発環境から一連の処理を実行する参照事例を、成立した検証根拠には数えません。
 
 ```text
 Gate A — Ready
@@ -95,9 +95,9 @@ Gate C — PAS-04 — Ready
    └─ Second Target — PAS-04 / RQ-024
 ```
 
-Cross-cutting Product Qualityは新しいGateを挿入しません。
+横断的な製品品質の検証を理由に、新たな判定段階を追加することはしません。
 
-actual Oracle #214 / #371 / #376は重要なPAS-03 / external asset Evidenceとして継続しますが、Gate Bの第四Required laneではありません。
+実際のOracleに関する#214・#371・#376は、PAS-03と外部資産に関する重要な検証として継続します。ただし、判定段階Bの第四の必須検証経路には含めません。
 
 ## 4. Requirement別監査
 
@@ -185,19 +185,19 @@ actual Oracle #214 / #371 / #376は重要なPAS-03 / external asset Evidenceと�
 
 ### Not Started — 0
 
-2026-09-21の変更: RQ-012はFirst Web TargetでのDriver meaning再現が成立したためStrongへ、RQ-013は`T1` actual Evidenceが得られたためPartialへ移しました。RQ-027〜029をPartial、RQ-030をDesign Onlyとして新たに評価しました。tierを上げたのは、その行が挙げていたblocking Gapが記録されたEvidenceで閉じた場合だけです。
+2026年9月21日の変更：RQ-012は最初のウェブ実行先でドライバーの意味を再現できたためStrongへ、RQ-013は`T1`の実際の検証根拠が得られたためPartialへ変更しました。RQ-027〜029はPartial、RQ-030はDesign Onlyとして新たに評価しました。評価区分を上げたのは、各行の阻害条件が記録済みの検証根拠で解消された場合だけです。
 
-2026-10-03の追記: RQ-031〜RQ-033は追加時点でDesign Onlyとしました。既存のPlugin / Capability / cross-view / knowledge-firstの仕組みは関連する土台ですが、「意味体系そのものをCore変更なしで追加できる」「AI / Toolがその拡張を一般的に探索・合成できる」という新しいRequirementの成立Evidenceには数えません。
+2026年10月3日の追記：RQ-031〜RQ-033は追加時点でDesign Onlyとしました。既存のプラグイン・能力・複数の視点の照合・既存知識を優先する探索は関連する基盤ですが、「中核を変更せず意味体系を追加できる」「AIやツールが拡張を一般的に探索・合成できる」という新しい要求の成立根拠には数えません。
 
-2026-10-07の追記: RQ-034は追加時点でDesign Onlyです。既存のCLI、Git運用、Shared Acceptance、Knowledge Contextは部分的な構成要素ですが、特定Agent Adapterを使わず独立した開発環境で改修・実行・テストを完結し、そのGit成果を統合後にCanonicalへ再構築する一往復は、まだReferenceとして実証していません。
+2026年10月7日の追記：RQ-034は追加時点でDesign Onlyです。既存のCLI・Git運用・共通の受理・知識の参照機能は部分的な構成要素ですが、特定のエージェント接続部品を使わず、独立した開発環境で改修・実行・試験を終え、Gitで統合した成果から正本を再構築する一連の作業は、まだ参照事例として実証していません。
 
-2026-10-08にはrunnerをTEI Repository全体のlocal clone方式へ改めました。task clone内でCLI build / targeted test / direct file edit / ordinary commitを行い、別integration cloneで再build / test / reloadします。また`.tei/decisions`を除去したWorkspaceとのCanonical World一致を要求し、Decision ledgerを成立条件にしません。E2ではGit上は無競合でもSemantic上は同一Canonical IDが衝突するcaseを既存Validationで拒否します。Bash syntaxとdiagnostic codeのsource存在は確認しましたがactual Go / TEI executionは未確認のため、Evidence tierはDesign Onlyのままです。
+2026年10月8日には、実行器をTEIリポジトリ全体のローカル複製方式へ改めました。作業用の複製でCLIの構築・対象を絞った試験・ファイルの直接編集・通常のコミットを行い、別の統合用複製で再構築・試験・再読込みを行います。また`.tei/decisions`を除去した作業領域と正本のモデルが一致することを求め、判断記録を成立条件にはしません。E2では、Git上は競合がなくても同じ正本IDが意味上で衝突する場合、既存の検証規則で拒否します。Bashの構文と診断コードがソースに存在することは確認しましたが、実際のGoとTEIの実行は未確認のため、評価区分はDesign Onlyのままです。
 
 2026-10-04の追記: RQ-031〜RQ-033向けに`tools/reference-semantic-extension-catalog`のcandidate実装を追加した。Core未定義の意味kindをReference descriptorから既存Source Indexと同じcatalogへ載せ、compatible-major依存、subject conflict、namespace ownership conflictを決定論的に扱う。Core subject集合と正規化Extension意味をresolution identityへ結び、Source Index / descriptor provenanceはEvidence identityへ分離した。ただしfocused testとrepository healthを未実行のため、3件ともDesign Onlyを維持する。
 
 2026-10-04の敵対的評価では、現行candidateとPre-ADRへ12個の破壊ケースを適用した。特に、highest-compatibleを先に固定する現行resolverは、有効なlower compatible versionが存在してもtransitive conflictを返せる。加えて、Semantic Interfaceの自己申告、`std.*` namespaceのfirst claimant、root / policy / canonicalizationを欠くlock、EnvironmentごとのEvaluator選択、optional diagnosticからAcceptanceへの逆流を設計Gapとして確認した。`SEMANTIC_EXTENSION_ADVERSARIAL_REVIEW_2026-10.md`とISSUE-000077 E0-B / E0-C / E1へ反映したが、いずれも設計または未実証の段階であるためEvidence tierは上げない。
 
-2026-10-04の追記では、標準機能を広くPlugin / Semantic Extension化した場合の性能・storage・Target可搬性を追加監査した。logical Extension数をprocess数やWasm module数へ一対一対応させず、Target buildで実行artifactをprune / coalesce / deduplicate / lazy loadできる構造をRQ-024 / RQ-032、Pre-ADR、ISSUE-000077へ反映した。Web Targetではnative processを必須にせず、Target packaging差だけではSemantic Set fingerprintを変えない方針とした。actual size / startup / memory / browser Evidenceは未取得のためEvidence tierは変更しない。
+2026年10月4日の追記では、標準機能を広くプラグインや意味の拡張にした場合の性能・ストレージ・実行先への可搬性を追加監査しました。論理的な拡張の数をプロセスやWasmモジュールの数へ一対一に対応付けず、実行先の構築時に成果物を削除・統合・重複排除し、必要時に読み込める構造をRQ-024・RQ-032、Pre-ADR、ISSUE-000077へ反映しました。ウェブ実行先ではネイティブプロセスを必須とせず、配布形態の違いだけでは意味の集合の照合値を変えない方針としました。実際の容量・起動時間・メモリ・ブラウザでの検証根拠は未取得のため、評価区分は変更していません。
 
 2026-10-05のPR #927 candidateでは、AX-01のfalse conflictをReference codeへ反映した。compatible major内で高いversionを優先しつつ、推移依存またはversion固有cycleが全体制約と両立しない場合はlower compatible versionへbacktrackする。加えて、複数の完全解がある場合の選択規則を`resolutionPolicy`として明示し、そのidentityをSemantic resolution fingerprintへ含める。ただしrepository exact-head test / health gateを通していないため、Source Evidence候補以上には扱わず、RQ-032はDesign Onlyを維持する。
 
@@ -229,7 +229,7 @@ P2ではsynthetic loopback HTTPを第二transportとして追加し、processと
 P3ではprocessとHTTPのAuthority境界を揃えるため、`TransportDispatchPlan`を追加した。Planは上流で決まったgeneric Invocation identityとderived fingerprintを持ち、dispatch identityが一致しない場合はphysical transportへ進まない。成功receiptには同じPlan fingerprintを残す。Plan fingerprint自体をtrust proofにはせず、Capability Conformance / Runtime Authority / Canonical Acceptanceへ昇格させない。次のGapは#1116等の上流AuthorityからPlanを導出し、transport層が独自にidentityを作れないE2Eである。Evidence tierは変更しない。
 ## 6. Cross-cutting Product Quality監査
 
-Quality concernを新しいRequirementへ分割せず、既存RequirementのEvidence completenessとして監査します。
+品質上の観点ごとに新しい製品要求を設けるのではなく、既存の要求について検証根拠が揃っているかを監査します。
 
 | Quality concern | 現在の強み | 主な残Gap |
 | --- | --- | --- |
@@ -242,13 +242,13 @@ Quality concernを新しいRequirementへ分割せず、既存RequirementのEvid
 | Maintainability | monorepo、derived artifact非authority、deterministic generation | Studio / AI / quality docs追加後の管理負担 |
 | Business completeness | RQ-025 / 026、manual / external Action、cross-view Pressure | actual execution / second corpus |
 
-詳細は`docs/product-quality-architecture.md`を参照します。
+詳細は`docs/product-quality-architecture.md`を参照してください。
 
 ## 7. Product Gapの再統合
 
 ### Gap A — Gate B actual Evidence（2026-09-19解消）
 
-主にRQ-005 / 009 / 012 / 014 / 021。
+主な対象はRQ-005・009・012・014・021です。
 
 ```text
 actual full checkout preflight
@@ -262,15 +262,15 @@ same clean candidate R  ← e5231839a5dcc62cce1181a2731fcb7c70d16736
 #273 Gate B audit  ← Ready（artifactAuditPassed = true）
 ```
 
-Gate BはReadyへ到達し、Handover Baseline `B / R`も固定済みです（[`GATE_B_READINESS_AUDIT.md`](../gate/GATE_B_READINESS_AUDIT.md) / [`GATE_B_TO_C_HANDOVER_BASELINE_B.md`](../gate/GATE_B_TO_C_HANDOVER_BASELINE_B.md)）。RQ-005 / 009 / 014はGate B以外のPartial Evidence理由（multi-DB / actual migration / 複数Application再利用等）が残るため、引き続きPartial Evidenceのままです。
+判定段階BはReadyに到達し、引継ぎ基準版`B / R`も固定済みです（[`GATE_B_READINESS_AUDIT.md`](../gate/GATE_B_READINESS_AUDIT.md)／[`GATE_B_TO_C_HANDOVER_BASELINE_B.md`](../gate/GATE_B_TO_C_HANDOVER_BASELINE_B.md)）。RQ-005・009・014には、判定段階Bの外側に複数データベース・実際の移行・複数アプリケーションでの再利用などの未確認事項が残るため、評価区分はPartial Evidenceのままです。
 
-新しいquality laneを追加しません。
+品質確認のために、新たな必須検証経路を追加することはしません。
 
 ### Gap B — First Target
 
-主にRQ-011 / 013 / 018 / 021 / 024。
+主な対象はRQ-011・013・018・021・024です。
 
-Gate CではSemantic / Functional / Visual分離を維持しつつ、First TargetのReference Scenarioから:
+判定段階Cでは意味・機能・表示の検証根拠を区別し、最初の実行先の参照シナリオから次の事項を観測します。
 
 - operability / accessibility
 - failure / recovery
@@ -281,7 +281,7 @@ Gate CではSemantic / Functional / Visual分離を維持しつつ、First Targe
 
 ### Gap C — safe authoring
 
-主にRQ-002 / 003 / 010 / 011 / 017 / 021 / 023。
+主な対象はRQ-002・003・010・011・017・021・023です。
 
 ```text
 Select
@@ -293,11 +293,11 @@ Select
  -> reload / Conformance
 ```
 
-Studioは第二正本になりません。
+Studioを、意味についての第二の正本にはしません。
 
 ### Gap D — knowledge-first / AI / derived cognition
 
-主にRQ-014 / 015 / 016 / 017 / 021 / 023。
+主な対象はRQ-014・015・016・017・021・023です。
 
 ```text
 retrieval candidate
@@ -306,23 +306,23 @@ retrieval candidate
   != execution authority
 ```
 
-Derived Knowledge / index / trajectoryは削除・再生成可能に保ちます。
+派生した知識・索引・処理履歴は、削除しても再生成できる状態を保ちます。
 
-2026-10-02のresearch integrationでは、このGapを「より強いmodelを先に導入する」計画にはしません。[TECH_RESEARCH_INTEGRATION_2026-10.md](../research/TECH_RESEARCH_INTEGRATION_2026-10.md)に従い、exact / deterministic → lightweight associative / statistical → bounded local cognition → local model → external modelの段階昇格をReferenceで比較します。どの方式もcandidate generation / ranking / abstentionの範囲に留め、`applicable / incompatible / unknown`、Acceptance、write / runtime authorityは既存の決定論的境界へ戻します。
+2026年10月2日の技術調査の統合では、この不足を解消するために高性能なモデルを先に導入する方針は採りません。[TECH_RESEARCH_INTEGRATION_2026-10.md](../research/TECH_RESEARCH_INTEGRATION_2026-10.md)に従い、厳密で決定論的な方法から、軽量な連想・統計処理、範囲を限定したローカル認知、ローカルモデル、外部モデルへ進む段階的な方式を参照事例で比較します。どの方式も候補の生成・順位付け・判断保留に留め、`applicable / incompatible / unknown`、受理、書込みと実行時の権限は既存の決定論的な境界で判定します。
 
-この追記はplanning refinementであり、RQ-015 / 016等のEvidence tierを変更しません。
+この追記は計画の詳細化であり、RQ-015・016などの評価区分は変更していません。
 
 ### Gap E — Business / cross-view
 
-主にRQ-025 / 026。
+主な対象はRQ-025・026です。
 
-Data / Function / Businessの異なる視点を同型のCanonical objectへ増やすのではなく、realistic contentで矛盾を相互検査します。
+データ・機能・業務という異なる視点を、同じ形の正本オブジェクトとして増やすのではなく、現実的な内容の参照事例で矛盾を相互に検査します。
 
 ### Gap F — Provider / production breadth
 
-主にRQ-004 / 005 / 007 / 008 / 009 / 019 / 020 / 024。
+主な対象はRQ-004・005・007・008・009・019・020・024です。
 
-actual Oracle等のexternal Evidence、second Provider、production operational boundaryを必要な範囲で継続します。
+実際のOracleなど外部資産の検証根拠、二つ目の提供実装、本番運用の境界を、必要な範囲で検証し続けます。
 
 ## 8. 監査時点の優先順位
 
@@ -338,25 +338,25 @@ actual Oracle等のexternal Evidence、second Provider、production operational 
 
 ## 9. 維持コスト監査
 
-RQ-023の観点から、上流整理自体が過剰な管理負担にならないようにします。
+RQ-023の観点から、上位の計画や要求の整理自体が過剰な管理負担にならないようにします。
 
-- current snapshot文書へ履歴を無制限追記しない
-- 同じ意味のRequirementを重複追加しない
-- 実行手順の正本を複数作らない
-- Gate / PAS / Evidence laneを安易に増やさない
-- Quality characteristicごとに専用schema / tool / Issueを作らない
-- Evidence nature / failure modeが異なる場合だけartifactを分ける
+- 現行状態を表す文書へ過去の経緯を無制限に追記しない
+- 同じ意味を持つ要求を重複して追加しない
+- 実行手順について複数の正本を作らない
+- 判定段階・PAS・検証根拠の経路を安易に増やさない
+- 品質の特性ごとに専用のスキーマ・ツール・課題を作らない
+- 検証根拠の性質や失敗の形態が異なる場合だけ成果物を分ける
 
 ### 実測 — 2026-09-21
 
-RQ-023のGapをこれまで文章で述べていたので、`main b01aa01`で測りました。
+RQ-023の不足はそれまで文章で説明していましたが、`main b01aa01`で実測しました。
 
 ```text
 plan/**.md                     304 file    108,246 行
 production Go（_test.go以外）    —          44,784 行
 ```
 
-設計圧力が集中している`tools/reference-business-procedure-check`:
+設計上の検証が集中していたのは、`tools/reference-business-procedure-check`です。
 
 ```text
 package全体                    171 file     50,832 行   861 test関数
@@ -365,19 +365,19 @@ actor_context_*                 80 file     31,992 行   494 test関数
 うちTEI packageをimportしない    65 file     26,182 行（82%）
 ```
 
-TEI packageをimportしないtestは、file内で定義したprobe型に対する**設計仮説の圧力**です。Canonical schemaを早期に固定しないための正当な手段であり、それ自体は誤りではありません。実測が示すのは次の三点です。
+TEIのパッケージを取り込まない試験は、ファイル内で定義した検証用の型に対する**設計仮説の検証**です。正本のスキーマを早期に固定しないための正当な手段であり、それ自体に問題があるわけではありません。実測から次の三点が分かりました。
 
 1. 製品codeに接続しないprobe code（33,576行）が、Repository全体のproduction Go（44,784行）の75%に達している。
 2. `actor_context_*`の81 fileは2026-09-18〜19の2日間に作られ（20 file + 61 file）、`R3` → `R3A` → … → `R3BF`とアルファベットで伸びている。production codeを検証するのは`R0` / `R1` / `R2` / `R3` / `R3A` / `R3B` / `R3C`と`R3R` / `R3S` / `R3T`、R6系の一部で、長い後続はprobe型だけを対象にしている。
 3. 494あるactor_context test関数のうち、Gate A critical manifest（39件）に載るのは1件である。対応するplan文書も`ACTOR_CONTEXT_*`が63 file・16,981行あり、どの文書も**この連続をどこで終えるか（closure条件）を定義していない**。
 
-この連続が向かうRQ-030は、2026-09-21まで本監査にもPAS mappingにも載っていませんでした。つまり**閉じる対象が定義されていない状態で圧力だけが増えていた**ことになります。数を減らすこと自体は目的にしませんが、RQ-030のPAS（PAS-07）とEvidence tierが定まった以上、次のincrementでは「どの圧力がRQ-030のどの不確実性を減らすか」と「何が揃えば連続を終えられるか」を先に決めます。判断は`ISSUE-000053`が持ちます。
+この一連の検証が対象とするRQ-030は、2026年9月21日まで本監査にもPAS対応表にも掲載されていませんでした。つまり、**何をもって完了とするかを定義しないまま検証用のコードだけが増えていた**ことになります。数を減らすこと自体は目的ではありません。ただし、RQ-030のPAS（PAS-07）と評価区分が定まった以上、次の段階では「どの検証がRQ-030のどの不確実性を減らすか」「何が揃えば一連の検証を終えられるか」を先に定めます。判断は`ISSUE-000053`が担います。
 
 ## 10. 監査時点の結論
 
-現在のTEIは、Application / Driverの主要meaningをactual Evidenceで閉じ、明示Handoverを経てFirst TargetへProjectionする段階です。
+監査時点のTEIは、アプリケーションとドライバーの主要な意味を実際の検証根拠で確認し、明示した引継ぎを経て最初の実行先へ展開する段階にあります。
 
-Product Qualityはこの主線と競合する別workstreamではなく、**既存RequirementがTarget / Provider / Runtime / Studio / AIへ渡っても壊れないことをEvidenceで確認する横断軸**として扱います。
+製品品質は、主な開発の流れと競合する別の作業領域ではありません。**既存の要求が実行先・提供実装・実行環境・Studio・AIへ展開されても満たされることを、検証根拠で確かめる横断的な観点**として扱います。
 
 2026-09-21の再監査で分かった横断的な事実は、**Productの価値定義がその検証マップより先に進んでいた**ことです。2026-10-03のRQ-031〜RQ-033追加では、Requirement、PAS mapping、本監査を同時に更新し、このずれを繰り返さない形にしました。2026-09-18にTEIを「AI-native継続開発とAgent業務遂行の共通知識基盤」へ再定義してRQ-027〜030を追加した一方、PAS mappingと本監査は翌日以降に更新されてもRQ-026で止まり、4件は優先順位にも現れませんでした。その間に、RQ-030へ向かう設計圧力だけが2日で81 file・32K行増えました（§9）。4件のうちRQ-027〜029は現在も担当Issueを持たず、RQ-028とRQ-029はADRも持ちません。作業項目を持つのは`ISSUE-000053`があるRQ-030だけで、圧力が偏った先もそこです。
 

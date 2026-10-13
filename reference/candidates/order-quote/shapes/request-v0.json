@@ -1,0 +1,45 @@
+{
+  "schema": "tei.reference.invocation-shape/v0",
+  "canonicalization": "tei.reference.invocation-shape-canonicalization/v0",
+  "issuer": {
+    "id": "tei.reference.order-quote.candidate",
+    "version": "0.1.0"
+  },
+  "payloadCodec": "application/json",
+  "format": "tei.reference.json-shape/v0",
+  "id": "reference.order.quote-lines.request/candidate-v0",
+  "root": {
+    "kind": "object",
+    "required": [
+      "currency",
+      "lines"
+    ],
+    "properties": {
+      "currency": {
+        "kind": "string"
+      },
+      "lines": {
+        "kind": "array",
+        "items": {
+          "kind": "object",
+          "required": [
+            "sku",
+            "quantity",
+            "unitPriceMinor"
+          ],
+          "properties": {
+            "sku": {
+              "kind": "string"
+            },
+            "quantity": {
+              "kind": "number"
+            },
+            "unitPriceMinor": {
+              "kind": "number"
+            }
+          }
+        }
+      }
+    }
+  }
+}

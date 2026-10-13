@@ -1,0 +1,18 @@
+{
+  "evidenceNature": "running-web-http-stale-source-R0-label-spoof-control",
+  "integrationHead": "466b1d10080460390d46b3b342d8bc9c19e09208",
+  "acceptedSourceRevisionClaim": "sha256:b78d5a186b1227f2bc4863ba2063c4f7edb5640c1d38faebaf2864c0423e3c07",
+  "actuallyLoadedWorkspaceSourceRevision": "sha256:f414e2b09d2f6ea5d0f5f282aea55612985c0e8155877ad8d310250633cf3fd2",
+  "suppliedBaselineRevisionLabel": "e5231839a5dcc62cce1181a2731fcb7c70d16736",
+  "suppliedTargetBuildRevisionLabel": "466b1d10080460390d46b3b342d8bc9c19e09208",
+  "applicationId": "order_entry",
+  "staleManifestSemanticSHA256": "c7bef6f2470d249394a176c0a53d8736b472df984007bcf8a7b355034804a186",
+  "acceptedManifestSemanticSHA256": "9f0986e2423c06988e143f1de0361d37af57bca641d227b221de973aad42edc4",
+  "sameTargetBinaryAsPositive": true,
+  "targetBinarySHA256": "5486c436caafbb4827b957946ea09e513bd3c361937e2b00ae589168f192ae05",
+  "acceptedR1RuleMissing": true,
+  "mismatchDetectedByExternalTestHarness": true,
+  "webServerRejectsMismatchedLabels": false,
+  "currentRuntimeVersionBindingEnforced": false,
+  "independentDatabaseRead": false
+}

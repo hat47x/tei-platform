@@ -1,0 +1,72 @@
+name: TEI E1合成証拠の原本保全検証
+
+# 当時のCI原本に対する検査。製品GateやHost/DB Authorityの審査ではない。
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, reopened, synchronize, ready_for_review]
+    paths:
+      - '.github/workflows/tei-e1-archive-ci.yml'
+      - 'plan/evidence/TEI_E1_SYNTHETIC_MANIFEST_20261012_38267656696.json'
+      - 'plan/evidence/tei-e1-synthetic-38267656696/**'
+      - 'tools/verify-critical-path-e1-archive.py'
+      - 'tools/test-critical-path-e1-archive.py'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/tei-e1-archive-ci.yml'
+      - 'plan/evidence/TEI_E1_SYNTHETIC_MANIFEST_20261012_38267656696.json'
+      - 'plan/evidence/tei-e1-synthetic-38267656696/**'
+      - 'tools/verify-critical-path-e1-archive.py'
+      - 'tools/test-critical-path-e1-archive.py'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tei-e1-archive-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  archived-synthetic-receipts:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: 原本を取得
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: 検証前のHEADと作業領域を確認
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          if [[ "$GITHUB_EVENT_NAME" == pull_request ]]; then
+            read -r merge base head extra < <(git rev-list --parents -n 1 HEAD)
+            test -z "${extra:-}"
+            test "$merge" = "$GITHUB_SHA"
+            test "$head" = "${{ github.event.pull_request.head.sha }}"
+            [[ "$base" =~ ^[0-9a-f]{40}$ ]]
+          fi
+          test -z "$(git ls-files -v | awk '/^[a-zS]/ {print}')"
+          test -z "$(git status --porcelain=v1 --untracked-files=all --ignored=matching)"
+
+      - name: 原本ハッシュ・R0/R1/R2・負例を検査
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 --version
+          # Tests import the verifier; avoid an untracked tools/__pycache__ in the clean checkout.
+          python3 -B tools/verify-critical-path-e1-archive.py
+          python3 -B tools/test-critical-path-e1-archive.py
+
+      - name: 検証後のHEADと作業領域を確認
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test -z "$(git ls-files -v | awk '/^[a-zS]/ {print}')"
+          test -z "$(git status --porcelain=v1 --untracked-files=all --ignored=matching)"

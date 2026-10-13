@@ -11,7 +11,6 @@ import (
 
 	"tei/internal/core"
 	"tei/internal/ir"
-	"tei/internal/workspace"
 )
 
 // singleApplicationConfig contains startup inputs, not a new declaration of
@@ -57,22 +56,27 @@ func runSingleApplicationTarget(application string, factory singleApplicationRun
 	if *baselineID == "" || *baselineRev == "" || *targetRev == "" {
 		return fmt.Errorf("-baseline-id, -baseline-revision and -target-revision are required")
 	}
+	// Reject non-loopback listeners before loading even synthetic fixtures.
+	// The E1 JSON API has not acquired production Identity/TLS/Host authority;
+	// existing presentation-bearing reference Targets keep their old contract.
+	if err := validateReferenceListenAddress(*listen); err != nil {
+		return err
+	}
+	// The diagnostic API must not describe a caller-invented Target build
+	// revision T as the revision of the actual executable. This comparison
+	// precedes Workspace/frozen-World or synthetic credential loading.
+	if err := validateReferenceBuildRevision(*targetRev); err != nil {
+		return err
+	}
 	appID, err := core.ParseCanonicalID(application)
 	if err != nil {
 		return err
 	}
-	loaded, err := workspace.Load(*workspacePath)
+	world, model, err := loadSingleApplicationSelection(*workspacePath, *baselineID, *baselineRev, *targetRev, *modelRevision)
 	if err != nil {
-		return fmt.Errorf("load reference Workspace: %w", err)
+		return fmt.Errorf("load reference Application model: %w", err)
 	}
-	var model *scenarioModel
-	if *modelRevision != "" {
-		model, err = bindScenarioModel(*workspacePath, loaded, *modelRevision)
-		if err != nil {
-			return err
-		}
-	}
-	projection, err := buildWebTargetProjection(loaded.World, projectionConfig{
+	projection, err := buildWebTargetProjection(world, projectionConfig{
 		HandoverBaselineID:         *baselineID,
 		BaselineRepositoryRevision: *baselineRev,
 		TargetBuildRevision:        *targetRev,
@@ -84,7 +88,7 @@ func runSingleApplicationTarget(application string, factory singleApplicationRun
 	if model != nil {
 		projection.ModelRevision = model.revision
 	}
-	read, command, options, err := factory(loaded.World, singleApplicationConfig{
+	read, command, options, err := factory(world, singleApplicationConfig{
 		LegacyUsers:          *legacyUsers,
 		LegacyAuthorization:  *legacyAuthorization,
 		CompositionScenarios: *composeScenarios,

@@ -1,0 +1,35 @@
+{
+  "evidenceNature": "test-only-managed-source-lineage",
+  "integrationHead": "466b1d10080460390d46b3b342d8bc9c19e09208",
+  "sourceBefore": "sha256:f414e2b09d2f6ea5d0f5f282aea55612985c0e8155877ad8d310250633cf3fd2",
+  "sourceAfter": "sha256:b78d5a186b1227f2bc4863ba2063c4f7edb5640c1d38faebaf2864c0423e3c07",
+  "observedBeforeLaunch": true,
+  "observedAfterHttp": true,
+  "changedManagedSourceFiles": [
+    "applications/order-entry/application.tei",
+    "semantic/sales/validation.tei"
+  ],
+  "changedSourceDigests": [
+    {
+      "path": "applications/order-entry/application.tei",
+      "beforeSHA256": "42e74678bc22bbbe8f85333f96f8c83859f0e144b2d3dfc68c555c9dca981e5f",
+      "afterSHA256": "63be3693d6cf409efcb4038b328996c7c80ff7ad319f16089be07422de36eb42"
+    },
+    {
+      "path": "semantic/sales/validation.tei",
+      "beforeSHA256": "396c37c4cace1d91b8f6e35fd31d69eb1d45e7ff525ade5e97d808189024de40",
+      "afterSHA256": "64ce7200fe1fda21ec3cceb9e710769024079d3ad16a27528abc33fdc14b9946"
+    }
+  ],
+  "candidateFingerprint": "sha256:c1a605298667afe470b5133692614f8b648713d424e35010981c9ba49e8bde17",
+  "reviewFingerprint": "sha256:8c4e92cb59e98e0668d5b0b54abbc5ec0f51620471d47490d6cfc40350727b08",
+  "reviewCandidateFingerprint": "sha256:c1a605298667afe470b5133692614f8b648713d424e35010981c9ba49e8bde17",
+  "decisionCandidateFingerprint": "sha256:c1a605298667afe470b5133692614f8b648713d424e35010981c9ba49e8bde17",
+  "decisionReviewFingerprint": "sha256:8c4e92cb59e98e0668d5b0b54abbc5ec0f51620471d47490d6cfc40350727b08",
+  "decisionModelRevisionAfter": "sha256:b78d5a186b1227f2bc4863ba2063c4f7edb5640c1d38faebaf2864c0423e3c07",
+  "decisionDerivedWorldSHA256": "sha256:da19c3880739e13ede5457c8cb1db47d67551fa4542ca7ad72c943acaa8845da",
+  "independentlyReloadedWorldSHA256": "sha256:da19c3880739e13ede5457c8cb1db47d67551fa4542ca7ad72c943acaa8845da",
+  "decision": "automated-scratch-test-only",
+  "humanApproval": false,
+  "expiresWithScratchWorkspace": true
+}

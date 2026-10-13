@@ -17,6 +17,7 @@ import (
 
 	"tei/internal/core"
 	pruntime "tei/internal/plugin/runtime"
+	"tei/tools/internal/gobuilder"
 )
 
 const (
@@ -27,10 +28,7 @@ const (
 	engineContract = "tei.runtime-engine/deterministic-transform-v1"
 )
 
-type sourceMember struct {
-	Path   string `json:"path"`
-	Digest string `json:"digest"`
-}
+type sourceMember = gobuilder.SourceMember
 
 type goBuilderEvidence struct {
 	Version         string `json:"version"`
@@ -60,29 +58,9 @@ type buildEvidence struct {
 	EvidenceFingerprint  string                          `json:"evidenceFingerprint"`
 }
 
-type goListModule struct {
-	Path string
-	Dir  string
-}
+type goListModule = gobuilder.GoListModule
 
-type goListPackage struct {
-	Dir          string
-	ImportPath   string
-	Standard     bool
-	Module       *goListModule
-	GoFiles      []string
-	CgoFiles     []string
-	CFiles       []string
-	CXXFiles     []string
-	MFiles       []string
-	HFiles       []string
-	FFiles       []string
-	SFiles       []string
-	SwigFiles    []string
-	SwigCXXFiles []string
-	SysoFiles    []string
-	EmbedFiles   []string
-}
+type goListPackage = gobuilder.GoListPackage
 
 func main() {
 	repo := flag.String("repo", ".", "path to a clean TEI repository checkout")
@@ -225,26 +203,7 @@ func run(repo, artifactOut, goExecutable string) (buildEvidence, error) {
 }
 
 func selectGoExecutable(explicit string) (string, error) {
-	path := strings.TrimSpace(explicit)
-	if path == "" {
-		path = filepath.Join(runtime.GOROOT(), "bin", executableName("go"))
-	}
-	absolute, err := filepath.Abs(path)
-	if err != nil {
-		return "", err
-	}
-	resolved, err := filepath.EvalSymlinks(absolute)
-	if err != nil {
-		return "", fmt.Errorf("resolve Go executable: %w", err)
-	}
-	info, err := os.Stat(resolved)
-	if err != nil {
-		return "", fmt.Errorf("stat Go executable: %w", err)
-	}
-	if !info.Mode().IsRegular() {
-		return "", fmt.Errorf("Go executable is not a regular file: %s", resolved)
-	}
-	return resolved, nil
+	return gobuilder.SelectExecutable(explicit, runtime.GOROOT(), runtime.GOOS)
 }
 
 func identifyGoToolchain(repo, goPath string) (version, goRoot, binaryDigest, toolchainDigest string, err error) {
@@ -289,124 +248,11 @@ func identifyGoToolchain(repo, goPath string) (version, goRoot, binaryDigest, to
 }
 
 func collectModuleSourceClosure(repo, goPath, packagePath, stateDir string) ([]sourceMember, string, error) {
-	cmd := exec.Command(
-		goPath,
-		"list",
-		"-deps",
-		"-json",
-		"-mod=readonly",
-		packagePath,
-	)
-	cmd.Dir = repo
-	env, err := buildEnvironment(os.Environ(), stateDir)
-	if err != nil {
-		return nil, "", err
-	}
-	cmd.Env = env
-	raw, err := cmd.Output()
-	if err != nil {
-		var exitErr *exec.ExitError
-		if errors.As(err, &exitErr) {
-			return nil, "", fmt.Errorf("resolve Go source closure: %w: %s", err, strings.TrimSpace(string(exitErr.Stderr)))
-		}
-		return nil, "", fmt.Errorf("resolve Go source closure: %w", err)
-	}
-
-	rootClean, err := filepath.EvalSymlinks(repo)
-	if err != nil {
-		rootClean = filepath.Clean(repo)
-	}
-	tracked, err := gitTrackedPaths(repo)
-	if err != nil {
-		return nil, "", err
-	}
-	paths := map[string]struct{}{"go.mod": {}}
-	decoder := json.NewDecoder(strings.NewReader(string(raw)))
-	for {
-		var pkg goListPackage
-		if err := decoder.Decode(&pkg); err != nil {
-			if errors.Is(err, io.EOF) {
-				break
-			}
-			return nil, "", fmt.Errorf("decode Go dependency closure: %w", err)
-		}
-		if pkg.Standard {
-			continue
-		}
-		if pkg.Module == nil {
-			return nil, "", fmt.Errorf("Go dependency %s has no module identity", pkg.ImportPath)
-		}
-		moduleDir, err := filepath.EvalSymlinks(pkg.Module.Dir)
-		if err != nil {
-			moduleDir = filepath.Clean(pkg.Module.Dir)
-		}
-		if moduleDir != rootClean {
-			return nil, "", fmt.Errorf(
-				"transform Runtime Engine has external module dependency %s from %s",
-				pkg.Module.Path,
-				pkg.Module.Dir,
-			)
-		}
-		for _, name := range packageBuildFiles(pkg) {
-			full := filepath.Join(pkg.Dir, name)
-			rel, err := filepath.Rel(repo, full)
-			if err != nil {
-				return nil, "", err
-			}
-			rel = filepath.ToSlash(rel)
-			if rel == ".." || strings.HasPrefix(rel, "../") {
-				return nil, "", fmt.Errorf("Go build source escapes repository: %s", full)
-			}
-			paths[rel] = struct{}{}
-		}
-	}
-
-	ordered := make([]string, 0, len(paths))
-	for path := range paths {
-		ordered = append(ordered, path)
-	}
-	sort.Strings(ordered)
-	members := make([]sourceMember, 0, len(ordered))
-	for _, rel := range ordered {
-		if _, ok := tracked[rel]; !ok {
-			return nil, "", fmt.Errorf("Go source closure member is not Git-tracked: %s", rel)
-		}
-		info, err := os.Lstat(filepath.Join(repo, filepath.FromSlash(rel)))
-		if err != nil {
-			return nil, "", err
-		}
-		if info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular() {
-			return nil, "", fmt.Errorf("Go source closure member is not a regular file: %s", rel)
-		}
-		digest, err := hashFile(filepath.Join(repo, filepath.FromSlash(rel)))
-		if err != nil {
-			return nil, "", err
-		}
-		members = append(members, sourceMember{Path: rel, Digest: digest})
-	}
-	return members, sourceClosureFingerprint(members), nil
+	return gobuilder.ResolveSourceClosure(repo, goPath, packagePath, stateDir)
 }
 
 func packageBuildFiles(pkg goListPackage) []string {
-	var out []string
-	for _, files := range [][]string{
-		pkg.GoFiles,
-		pkg.CgoFiles,
-		pkg.CFiles,
-		pkg.CXXFiles,
-		pkg.MFiles,
-		pkg.HFiles,
-		pkg.FFiles,
-		pkg.SFiles,
-		pkg.SwigFiles,
-		pkg.SwigCXXFiles,
-		pkg.SysoFiles,
-		pkg.EmbedFiles,
-	} {
-		out = append(out, files...)
-	}
-	sort.Strings(out)
-	return out
+	return gobuilder.PackageBuildFiles(pkg)
 }
 
 func exactRuntimeEngineIdentity(artifactDigest, target string) (pruntime.RuntimeEngineIdentity, error) {
@@ -424,20 +270,11 @@ func exactRuntimeEngineIdentity(artifactDigest, target string) (pruntime.Runtime
 }
 
 func resolveReproducibility(firstDigest, secondDigest string) (bool, string) {
-	if firstDigest != secondDigest {
-		return false, ""
-	}
-	return true, firstDigest
+	return gobuilder.ResolveReproducibility(firstDigest, secondDigest)
 }
 
 func sourceClosureFingerprint(members []sourceMember) string {
-	ordered := append([]sourceMember(nil), members...)
-	sort.Slice(ordered, func(i, j int) bool { return ordered[i].Path < ordered[j].Path })
-	sum := sha256.New()
-	for _, member := range ordered {
-		fmt.Fprintf(sum, "%s\x00%s\n", member.Path, member.Digest)
-	}
-	return "sha256:" + hex.EncodeToString(sum.Sum(nil))
+	return gobuilder.SourceClosureDigest(members)
 }
 
 func evidenceFingerprint(e buildEvidence) (string, error) {
@@ -451,45 +288,11 @@ func evidenceFingerprint(e buildEvidence) (string, error) {
 }
 
 func buildGoPackage(repo, goPath, packagePath, output, stateDir string) error {
-	cmd := exec.Command(
-		goPath,
-		"build",
-		"-trimpath",
-		"-buildvcs=false",
-		"-mod=readonly",
-		"-o",
-		output,
-		packagePath,
-	)
-	cmd.Dir = repo
-	env, err := buildEnvironment(os.Environ(), stateDir)
-	if err != nil {
-		return err
-	}
-	cmd.Env = env
-	combined, err := cmd.CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("go build %s: %w: %s", packagePath, err, strings.TrimSpace(string(combined)))
-	}
-	return nil
+	return gobuilder.BuildPackage(repo, goPath, packagePath, output, stateDir)
 }
 
 func fixedGoBuildSettings() []string {
-	settings := []string{
-		"CGO_ENABLED=0",
-		"GOARCH=" + runtime.GOARCH,
-		"GOENV=off",
-		"GOEXPERIMENT=",
-		"GOFLAGS=",
-		"GOOS=" + runtime.GOOS,
-		"GOPROXY=off",
-		"GOSUMDB=off",
-		"GOTOOLCHAIN=local",
-		"GOVCS=*:off",
-		"GOWORK=off",
-	}
-	sort.Strings(settings)
-	return settings
+	return gobuilder.FixedSettings(runtime.GOOS, runtime.GOARCH)
 }
 
 func recordedBuildSettings() []string {
@@ -507,142 +310,15 @@ func allowedHostEnvironment(base []string) ([]string, error) {
 }
 
 func allowedHostEnvironmentForOS(base []string, goos string) ([]string, error) {
-	allowed := map[string]struct{}{}
-	if goos == "windows" {
-		for _, key := range []string{"COMSPEC", "PATHEXT", "SYSTEMROOT", "WINDIR"} {
-			allowed[key] = struct{}{}
-		}
-	}
-	values := map[string]string{}
-	for _, entry := range base {
-		key, value, ok := strings.Cut(entry, "=")
-		if !ok {
-			continue
-		}
-		upper := strings.ToUpper(key)
-		if _, ok := allowed[upper]; !ok {
-			continue
-		}
-		normalized := upper + "=" + value
-		if existing, exists := values[upper]; exists && existing != normalized {
-			return nil, fmt.Errorf("conflicting inherited Host environment for %s", upper)
-		}
-		values[upper] = normalized
-	}
-	out := make([]string, 0, len(values))
-	for _, entry := range values {
-		out = append(out, entry)
-	}
-	sort.Strings(out)
-	return out, nil
+	return gobuilder.AllowedHostEnvironment(base, goos)
 }
 
 func buildEnvironment(base []string, stateDir string) ([]string, error) {
-	host, err := allowedHostEnvironment(base)
-	if err != nil {
-		return nil, err
-	}
-	out := append([]string(nil), host...)
-	out = append(out, fixedGoBuildSettings()...)
-	if stateDir != "" {
-		if err := os.MkdirAll(stateDir, 0o755); err != nil {
-			return nil, fmt.Errorf("create isolated build state: %w", err)
-		}
-		home := filepath.Join(stateDir, "home")
-		temp := filepath.Join(stateDir, "tmp")
-		for _, dir := range []string{home, temp} {
-			if err := os.MkdirAll(dir, 0o755); err != nil {
-				return nil, fmt.Errorf("create isolated build directory: %w", err)
-			}
-		}
-		out = append(out,
-			"GOCACHE="+filepath.Join(stateDir, "cache"),
-			"GOMODCACHE="+filepath.Join(stateDir, "modcache"),
-			"GOPATH="+filepath.Join(stateDir, "gopath"),
-			"HOME="+home,
-			"USERPROFILE="+home,
-			"TMPDIR="+temp,
-			"TMP="+temp,
-			"TEMP="+temp,
-		)
-	}
-	sort.Strings(out)
-	return out, nil
+	return gobuilder.Environment(base, stateDir, runtime.GOOS, runtime.GOARCH)
 }
 
 func hashGoToolchain(goRoot string) (string, error) {
-	if strings.TrimSpace(goRoot) == "" {
-		return "", fmt.Errorf("Go toolchain root is empty")
-	}
-	paths := []string{
-		filepath.Join(goRoot, "VERSION"),
-		filepath.Join(goRoot, "bin", executableName("go")),
-		filepath.Join(goRoot, "pkg", "tool", runtime.GOOS+"_"+runtime.GOARCH),
-		filepath.Join(goRoot, "src"),
-	}
-	sum := sha256.New()
-	for _, root := range paths {
-		info, err := os.Lstat(root)
-		if err != nil {
-			return "", err
-		}
-		if !info.IsDir() {
-			if err := hashToolchainEntry(sum, goRoot, root, info); err != nil {
-				return "", err
-			}
-			continue
-		}
-		if err := filepath.WalkDir(root, func(path string, entry os.DirEntry, walkErr error) error {
-			if walkErr != nil {
-				return walkErr
-			}
-			if entry.IsDir() {
-				return nil
-			}
-			info, err := entry.Info()
-			if err != nil {
-				return err
-			}
-			return hashToolchainEntry(sum, goRoot, path, info)
-		}); err != nil {
-			return "", err
-		}
-	}
-	return "sha256:" + hex.EncodeToString(sum.Sum(nil)), nil
-}
-
-func hashToolchainEntry(sum io.Writer, goRoot, path string, info os.FileInfo) error {
-	rel, err := filepath.Rel(goRoot, path)
-	if err != nil {
-		return err
-	}
-	rel = filepath.ToSlash(rel)
-	if _, err := fmt.Fprintf(sum, "%s\x00%o\x00", rel, info.Mode()); err != nil {
-		return err
-	}
-	if info.Mode()&os.ModeSymlink != 0 {
-		return fmt.Errorf("Go toolchain symlink is not supported in this Reference: %s", rel)
-	}
-	if !info.Mode().IsRegular() {
-		_, err := fmt.Fprint(sum, "special\n")
-		return err
-	}
-	if _, err := fmt.Fprint(sum, "file\x00"); err != nil {
-		return err
-	}
-	file, err := os.Open(path)
-	if err != nil {
-		return err
-	}
-	if _, err := io.Copy(sum, file); err != nil {
-		file.Close()
-		return err
-	}
-	if err := file.Close(); err != nil {
-		return err
-	}
-	_, err = fmt.Fprint(sum, "\n")
-	return err
+	return gobuilder.HashToolchain(goRoot, runtime.GOOS, runtime.GOARCH)
 }
 
 func copyVerifiedArtifactOutsideRepository(repo, source, destination, expectedDigest string) error {
@@ -731,23 +407,6 @@ func executableName(name string) string {
 		return name + ".exe"
 	}
 	return name
-}
-
-func gitTrackedPaths(repo string) (map[string]struct{}, error) {
-	all := []string{"-C", repo, "ls-files", "-z"}
-	cmd := exec.Command("git", all...)
-	raw, err := cmd.Output()
-	if err != nil {
-		return nil, fmt.Errorf("git ls-files: %w", err)
-	}
-	out := map[string]struct{}{}
-	for _, path := range strings.Split(string(raw), "\x00") {
-		if path == "" {
-			continue
-		}
-		out[filepath.ToSlash(path)] = struct{}{}
-	}
-	return out, nil
 }
 
 func requireCleanRepository(repo string) error {

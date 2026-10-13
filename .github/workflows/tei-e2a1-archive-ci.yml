@@ -1,0 +1,67 @@
+name: TEI E2a-1実PostgreSQL先行証拠の原本保全
+
+# Archived PostgreSQL fixture receipt only; this does not rerun a DB or grant Product E2.
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, reopened, synchronize, ready_for_review]
+    paths:
+      - '.github/workflows/tei-e2a1-archive-ci.yml'
+      - 'plan/evidence/TEI_E2A1_REAL_POSTGRES_RECEIPT_38311557882.json'
+      - 'plan/evidence/TEI_E2A1_REAL_POSTGRES_ARCHIVE_20261013.md'
+      - 'tools/verify-e2a1-postgres-archive.py'
+      - 'tools/test-e2a1-postgres-archive.py'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/tei-e2a1-archive-ci.yml'
+      - 'plan/evidence/TEI_E2A1_REAL_POSTGRES_RECEIPT_38311557882.json'
+      - 'plan/evidence/TEI_E2A1_REAL_POSTGRES_ARCHIVE_20261013.md'
+      - 'tools/verify-e2a1-postgres-archive.py'
+      - 'tools/test-e2a1-postgres-archive.py'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tei-e2a1-archive-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  immutable-receipt:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: exactなGit checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: 実行前の版とclean
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          if [[ "$GITHUB_EVENT_NAME" == pull_request ]]; then
+            read -r merge base head extra < <(git rev-list --parents -n 1 HEAD)
+            test -z "${extra:-}"
+            test "$merge" = "$GITHUB_SHA"
+            test "$head" = "${{ github.event.pull_request.head.sha }}"
+            [[ "$base" =~ ^[0-9a-f]{40}$ ]]
+          fi
+          test -z "$(git ls-files -v | awk '/^[a-zS]/ {print}')"
+          test -z "$(git status --porcelain=v1 --untracked-files=all --ignored=matching)"
+      - name: receipt原本SHAと未資格、改ざん拒否の回帰試験
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -B tools/verify-e2a1-postgres-archive.py
+          python3 -B tools/test-e2a1-postgres-archive.py
+      - name: 実行後の版とclean
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test -z "$(git ls-files -v | awk '/^[a-zS]/ {print}')"
+          test -z "$(git status --porcelain=v1 --untracked-files=all --ignored=matching)"

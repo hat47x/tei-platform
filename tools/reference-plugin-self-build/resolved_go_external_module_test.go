@@ -53,7 +53,11 @@ func TestResolvedGoSourceClosureRejectsLocalReplaceOutsideRepository(t *testing.
 	// otherwise allow an ordinary "go list" error to masquerade as denial.
 	goList := exec.Command(goPath, "list", "-deps", "-mod=readonly", "./cmd/demo")
 	goList.Dir = repo
-	goList.Env = buildEnvironment(os.Environ(), t.TempDir())
+	goListEnv, err := buildEnvironment(os.Environ(), t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	goList.Env = goListEnv
 	out, err := goList.CombinedOutput()
 	if err != nil {
 		t.Fatalf("test setup cannot resolve external module: %v\n%s", err, out)

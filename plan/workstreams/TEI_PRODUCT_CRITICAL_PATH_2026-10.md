@@ -938,3 +938,109 @@ E1-Bの`validation-not-satisfied`は**業務上の拒否**でありHTTP 200と�
 このE2は新しいDB Provider・第二のSchema Authority・第二の受理機構を作る指示ではない。既存のDB runtime、Web Driver、Shared Acceptance、#1163の検査を**一つの実験でつなぐ**。既存toolの個別成功を足して一往復の成功へ換算しない。
 
 **親Gate判定**：E1-Aの技術的実証は**済**。E1-B＋N11の隔離実Web実証も**PR #1262内では済**だがmainに未反映であり、異なる合成バイナリの範囲に限定。G1の正式なAuthority接続、G2のE2実DB＋独立read、G3第二Target、G4 self-buildの横断的な資格はなお未合格。#1119のIssueはopen。
+
+## 29. E1保存結果とSource版拘束の横断判定（2026-10-12、追補）
+
+この節は§28の後に実測された版別結果を補う。**当時の成功・失敗を後のmainや別のPRに遡及適用しない**。合成fixtureのCI成功、受理済みSourceとの真正な結合、製品Gate通過はそれぞれ異なる。
+
+| 確認事項 | 実際に確認した版・証拠 | ここからは言えないこと |
+| --- | --- | --- |
+| E1-Aのmain事後検査と証拠保存 | [PR #1331](https://github.com/hat47x/tei-platform/pull/1331) merge `4b390208acbea4c22b2fb688174f6f41c22d6b0d`、[main E1 run #38239334884](https://github.com/hat47x/tei-platform/actions/runs/38239334884)／[Health #38239334982](https://github.com/hat47x/tei-platform/actions/runs/38239334982)はSUCCESS。実Artifact `11741926281`のZIPと3 JSONのSHA-256照合を確認 | これだけでは単価0、N11、R2、実DB、人的受理は未検証 |
+| E1-A／E1-B／N11とSource R0・R1・R2の観測 | [#1163 Draft PR #1262](https://github.com/hat47x/tei-platform/pull/1262) head `ef0ea673a988536558970cae86f00672f0599b8a`、仮統合 `dd8f7524062dcff18c15c9c356c03746461a1913`、[E1 run #38243337087](https://github.com/hat47x/tei-platform/actions/runs/38243337087)・[Health #38243337100](https://github.com/hat47x/tei-platform/actions/runs/38243337100)は双方SUCCESS。Artifact `11744141694`の8 JSON原本が目録内SHA-256と全件一致 | PRはmain未統合。受理は試験用、正常・負例は異なる合成Webバイナリ、Host Authorityと実DB書込みは未実証 |
+| 8件の証拠契約へSource R2差異の検査を組込む | [PR #1395](https://github.com/hat47x/tei-platform/pull/1395) head `0954be7d5e49d26572dcb73b1b54c6d9cf1c81b3`、[E1 #38246643033](https://github.com/hat47x/tei-platform/actions/runs/38246643033)・[Health #38246643056](https://github.com/hat47x/tei-platform/actions/runs/38246643056)はSUCCESS、merge `9b385961ab0c7744184e742d95aff91931985091` | この二つのCIは**正常系3件モード**。#1395の変更後のワークフローで**8件モードを実行したPASSは未取得** |
+
+### 製品上の反例は二つあり、同じ試験ではない
+
+- **旧R0の意味不一致**：受理済みR1というラベルを与えながら実際にはR0をWebへ読み込ませると、新単価規則の欠落とManifestの意味差分を外部ハーネスが見つける。ただし実Webは自ら拒否していない。
+- **R2の意味同値・Source不一致**：R1のSourceへ空行を加えたR2は、元のSource bytesとrevisionが異なるにもかかわらず、派生Worldと実HTTP Manifestの意味SHAがR1と同一。**意味指紋一致・B/R/Tのラベル一致は、実際に読み込んだAccepted Source bytesの同一性を保証しない**。
+
+両者をE1で記録する際、外部照合で差を検知できた事実をTarget内部の事前拒否へ読み替えない。R1の実バイトを呼出し・起動・Command発行の正しい時点で拘束する実装責任は[#1121](https://github.com/hat47x/tei-platform/issues/1121)とSource Readerの既存契約にあり、#1119が第二のSource正本や認可判定器を作らない。
+
+### 次に取るべき実測と役割
+
+1. **#1163／#1119のE1資格照合**：#1395の修正を含むワークフローを用い、#1262の8件生成を**新しいGitHub仮統合版**で実行する。新旧のrun ID、PR head、仮統合SHA、Artifact IDを固定する。ZIP実体を再取得し、GitHub記載のZIP SHA-256、目録、全8 JSONのraw byte SHA-256、R0≠R1≠R2とR1/R2のWorld・Manifest同値、Runtime未拒否という否定フラグを照合する。旧run #38243337087の成功を新workflowの成功へ転記しない。
+2. **#1121の実拘束**：Web/Driver自身が、実際に開いたManaged Source bytesを明示受理されたexact R1と照合し、不一致ならCommand前にfail closedする。R0の意味差分とR2の意味同値を双方負例に含める。受理した当事者・権限・改訂の真正性は別途証明する。
+3. **#1127の実DB、#1163の一改訂Evidence**：[Draft #1399](https://github.com/hat47x/tei-platform/pull/1399)の手書きoverlay→PostgreSQL write／別接続readは独立した先行試験であり、#1119のAccepted R1から通常Web Commandへつながった証拠ではない。[#1406](https://github.com/hat47x/tei-platform/pull/1406)の保存宣言の静的照合も書込み権限・実Providerの成功ではない。これらを既存契約内で収束させ、実DB write→別invocation read、S02/S05拒否、N11の未観測を区別する。
+
+**資格判定**：G0はOwner間の正式なConsumer受入を一部未確認。G1はRuntime側の受理済みSource版拘束が欠け、G2は同じR1からの実Web→実DB→独立readが未取得。G3第二Target、G4自己構築・横断受入も未完了。E1の合成証拠は進展したが、製品Gateは **UNQUALIFIED**、[#1119](https://github.com/hat47x/tei-platform/issues/1119)はopenを維持する。短期Artifactは7日で失効するため、期限後に現物の再取得が必要なら同一版の証拠を再生成し、再実行版を記録する。
+
+## 30. 変更集中と影響範囲による優先順位の更新（2026-10-12）
+
+§9のP0/P1仮説を、現在確認できる変更履歴と製品上の失敗例で再評価する。ここでの優先順位は**契約が下流を止める危険性**であり、担当者の成果や実装行数の順位ではない。§29の版別実証が根拠であり、既に閉じた#1120や#1132を再起票しない。
+
+### 観測に用いた変更頻度と限界
+
+GitHubの既定ブランチについて、`2026-10-10T00:00:00Z`〜`2026-10-12T14:33:00Z`の`commits?path=...`結果を数えた。作業時点のmain参照値は`9478b5fac91b24d4620f8fcddb933052d5c44ad2`。ディレクトリの値は配下全体であり、**コミット数は契約の破壊件数でも、変更が失敗した回数でもない**。同一コミットは複数行に重複する。Draft PRの未統合変更はここに入らない。マージ後のmainが進めば、これらは固定時点の参考値となる。
+
+| 観測した領域 | 対象期間のmain上の該当コミット数 | 読み方 |
+| --- | ---: | --- |
+| `internal/modelref/`（C0） | 69 | 下流の意味参照に波及し得るが、現行#1120の完了判定を取り消さない |
+| `tools/reference-shared-acceptance/`・`reference/studio-authoring/`（C1） | 65・58 | 受理と編集の接合面は変更が多く、実Consumerでの照合が必要 |
+| `tools/reference-first-web-target/`（C3/Web） | 182 | もっとも変更が集中。Source版を実Webが拒否しないという実測が優先度の主根拠 |
+| `tools/reference-critical-path-evidence-audit/`・`tei-critical-path-e1-ci.yml`（E1証拠） | 52・6 | 検査の変更と製品本体の修正を同一視しない |
+| `internal/plugin/`・`tools/reference-standard-function-candidates/`（構成・Data-first） | 43・3 | Plugin変更は広く波及し得るが、標準機能の現行不足は静的候補だけでは埋まらない |
+| `tools/reference-data-first-persistence/`（実DBの先行試験） | 0 | **Draft #1399の実装不存在という意味ではない**。main未統合のため、計数対象外 |
+| `tools/reference-subsystem-cud/`・`internal/sourceindex/`（C2・出所索引） | 36・3 | 独立した出所照合が進展。正式Accepted Businessの根拠とは区別 |
+
+`reference-first-web-target`はAPIの100件上限を越えたため2ページ目82件を加算した。ほかは初回ページで100件未満。対象範囲はGitHubのpath条件に依存し、開発者の実作業時間、変更の重大度、並行する作業ブランチの進捗は測っていない。
+
+### 優先順位：変更頻度よりも、依存と安全な代替可否を重く見る
+
+| 順位 | 重点課題と担当 | 下流・逆方向依存の評価 | 代替可能性と停止条件 |
+| --- | --- | --- | --- |
+| **P0-1** | **受理済みSource R1を実Web自身が拘束**。#1121・#1017、検証#1163 | C1受理→C3実行の境界。#1124・#1127・#1163が下流。B/R/TやWorldの値を呼出元が指定するだけでは受理の根拠が逆流する | **安全な代替なし**。R0と意味同値R2の両方で実行前に拒否し、R1正常系を維持するまでG1未合格 |
+| **P0-2** | **同じ受理済みR1から実Web Command→実DB write→別接続・別invocation read**。#1127・#1163 | C3、Provider/DB、Host Authority、Observationを接ぐG2の最終阻害。静的Persistence候補だけで実行権限を逆流させてはならない | **安全な代替なし**。実DB先行試験や合成Observationは部分証拠。S02/S05とN11を含む一連の実験までG2未合格 |
+| **P0-3** | **#1395後の8件E1証拠保存を現行PR仮統合版で再実測**。#1163、保存契約#1119 | E1監査はC1/C3のConsumer検査であり、製品本体のAuthorityではない。#1262のDraftを直接変更しない | 旧Artifactは回帰の参考にはなるが**新workflow版の実行証拠の代替にならない**。PR head、仮統合版、原本のハッシュを一対一で固定 |
+| **P0-4** | **三視点のAccepted Sourceへの接合・正式Consumer確認**。#1124・#1125・#1126、参照#1120、C2 #1132 | C0の識別・出所からC1の変更受理、業務・Data・FunctionのConsumerへ扇状に依存。Scope/Kindや候補と正式受理の混同を避ける | Read-only図や合成CUD候補は部分代替。業務手順の正式受理、再投影、権限のConsumer負例を取得するまで「三視点完成」は未認定 |
+| **P0-維持** | **Plugin/Capabilityの構成・禁止依存**。#951・#1016・#980・#1019 | CP-2は多数Targetへの影響を持つ。ただし具体的な禁止importは既存#980の検査が主担当で、#1119から第二検査器を作らない | 当面は既存Capability/Driver契約でP0業務一往復を進める。新たな逆方向依存が実際に検出されたら上記P0との衝突を再判定 |
+| **P1（並走）** | 第二Target、自己構築、取消・通知・帳票・シナリオ（#1129〜#1131ほか） | G3/G4と製品拡張には必要だが、最初の一つの実Web/DB一往復を直列に止めない | 代替できるという意味ではない。別のGate・ケースで固有の実証を維持 |
+
+優先順位を上げる条件は、**同一版・同一主体・同一実行対象**で矛盾が再現すること、または既存の禁止依存検査が具体的な違反を報告すること。件数だけでCore化、Enum追加、全体再構築、第二のOwnerによる重複実装を認めない。
+
+### 次の最小受入と責務
+
+1. **最初に#1163**は、#1395統合後のworkflowと#1262の8件生成を同じPR仮統合版で動かした実行ID・Artifactを報告する。未取得なら`NOT_RUN`を維持。合成試験の合格をG1/G2へ昇格しない。
+2. **#1121**は、受理Decisionの実revisionと実際に開いたManaged Sourceを突合し、R0/R2のCommand前拒否とR1成功の正負試験を担当する。#1119ではWeb Loaderを改造しない。
+3. **#1127**は、Provider/DB/Hostの実態と権限を読み戻したうえで、正常Command→独立readの同一R1相関を実証する。#1163が証拠の版と由来を監査する。
+4. **#980/#1019**が既存の依存検査と拡張シナリオを維持し、#1119は具体的な違反・改修がP0製品ループへ及ぼす影響だけを確認する。
+
+**判定**：最初の作業一覧にあったP0/P1評価について、変更集中・下流・逆依存・代替可否を実測可能な範囲で整理した。これは優先順位の評価を進めたという意味であり、正式Consumer資格、G1〜G4の製品GateやCIの新たなPASSではない。
+
+## 31. G0の実Consumer検証と実PostgreSQL先行実証を踏まえた接合順（2026-10-13）
+
+この節は§30以後の**実行済み個別証拠**と、まだ未取得の**一つの製品横断証拠**を分離する。旧節の時点別判定は遡及変更しない。#1119のG0〜G4、#1163の一改訂Evidence、Shared Acceptanceの判断権限、#1127の実行責務は既存のまま。
+
+### 統合・検証の現在地点
+
+| 接合点 | 実測と根拠 | 残る未保証 |
+| --- | --- | --- |
+| Studio → Shared Acceptance（G0 Consumer） | 現行mainだけではRelation編集候補のflatな`add-relation`がGoの`addRelation`構造に合わず`decode=fail`。修正を含む[Draft #1273](https://github.com/hat47x/tei-platform/pull/1273)を組み込んだ[検証専用PR #1558](https://github.com/hat47x/tei-platform/pull/1558)の[実Go/Node横断試験 #38315568392](https://github.com/hat47x/tei-platform/actions/runs/38315568392)は成功 | #1273本体のmain統合、正式な人的受理、Businessを含む三視点の同一Accepted版 |
+| Web R1正常系・R0/R2負例 | [E1合成Web原本と来歴](https://github.com/hat47x/tei-platform/issues/1119#issuecomment-6133338346)を保存。R0では意味が異なり、R2ではSource bytesが異なる一方でWorld/Manifestの意味は同値 | 差異を検出したのは外部ハーネス。Web自身による起動／dispatch前拒否は未実証 |
+| 実DB保存・別接続読取 | 手書き`intake.request` overlay/SQLによるPostgreSQL16のwrite→同一プロセス別Poolのreadが[実CI #38311557882](https://github.com/hat47x/tei-platform/actions/runs/38311557882)で成功。原本は[PR #1549](https://github.com/hat47x/tei-platform/pull/1549)でmainに保全 | 正式Accepted `order_entry` R1・通常Web・実Host権限・別invocation read・Data-first生成CRUD |
+| 証拠誤結合の拒否 | [PR #1555](https://github.com/hat47x/tei-platform/pull/1555)は上記二つの旧原本を`UNJOINABLE_HISTORICAL_EVIDENCE`と判定する | 新たな同一改訂・同一業務操作によるG2のProduct証拠は未取得 |
+
+G0に関して、**仮統合版の正常系成功**を**main単独の統合完了**と表記しない。現時点のG1〜G4は`UNQUALIFIED`。
+
+### 最小依存関係と並列実装の境界
+
+1. **G0: #1124**は、Draft #1273の候補→Shared Acceptance Consumerの変換を、最新mainとの合流と正負テストで確認して統合判断する。#1119はその修正を複製しない。Scratch用自動受理と人間の権限ある受理は別の証拠。
+2. **G1: #1121（#1017と連携）**は、`tools/reference-first-web-target/main.go`の`workspace.Load`で**実際に開いた**管理対象Sourceのmembership・相対path・fingerprintを、信頼できる既存Shared Acceptanceが承認した**exact R1**と起動／Command前に照合する。呼出元のB/R/Tラベル、Decision JSONの`accepted`文字列、World/Manifestの意味DigestからAuthorityを生成しない。R1を正常に通し、R0と意味同値R2をWeb自身が拒否する。既存Source Indexと受理側の版算法を再利用し、第二の版正本を作らない。Source読込のTOCTOU、起動後の変更、実Host権限は別の安全境界。[具体的な受渡し条件](https://github.com/hat47x/tei-platform/issues/1121#issuecomment-6133639725)を参照。
+3. **G2: #1127**は、#1406の保存先静的照合（`executable=false`）と#1399の手書きDB先行試験を、そのまま書込み権限や生成済みCRUDとみなさない。既存Web/DriverとProvider/Schema/Host認可の実態を、同じ正式Accepted `order_entry` R1から一本の保存Operationへ接続し、**別の実行プロセス／invocation**から実業務rowを読んで結果を確認する。
+4. **一改訂Packet: #1163**は、Source membershipと版、受理根拠、業務SubjectとOperation、実Web build、Host認可主体／policy版、DB instance／Schema、Command ID／保存key、別invocation Observationを**同じ新しい試験**から記録する。#1555は旧原本の保全照合であり、将来の正式なG2判定器に再用途化しない。
+
+G0/G1/G2は**全面的な直列開発を要求しない**。DB fixtureとProvider事前検証はStudio/Source拘束と並列に進められる。ただし正式Accepted R1→通常Web→実PostgreSQL→別invocation読取を製品資格とするのは、同じ実行でG1とHost権限を確認した後に限る。第二Target・完全なPlugin dependency solver・self-buildをこの一本の前提へ追加しない。
+
+### #1163へ引き渡す最小受入マトリクス
+
+| ケース | 確認すべき事実 | 判定の境界 |
+| --- | --- | --- |
+| R1正常保存 | Accepted managed Source集合、Webの実読取版、現在のHost認可、Command、実DB row、別invocation readの相関 | 同じApplication/Subject/Operation/key/revisionを実証できた範囲のみ`observed` |
+| R0未受理 | CallerのR1ラベルに対しWeb LoaderがR0を読んだ | Web自身がdispatch前拒否。外部ハーネスだけの不一致検出は未合格 |
+| R2意味同値 | Source bytesと版だけR1と異なり、World/Manifest意味Digestは同じ | exact R1を要求したWeb自身がdispatch前拒否 |
+| S02 | Source revision不一致と物理Schema/Contract不一致を別々に記録 | 原因を混同せず、該当する不一致を実行前に拒否 |
+| S05 | Caller/subject/policy/current effective authority、失効時dispatch0 | Hostの現在の認可で拒否。モデル宣言は実権限でない |
+| N11 | Commandが実DBを更新しても後続readが失敗・不一致 | Command完了とObservation成功を分離し、`observed`を返さない |
+
+この行列は第二のEvidence Schemaではなく#1163既存Packetの実験入力。Source/Accepted/Target/Provider/Authority/Command/Observationの個別証拠と、実行版・run URL・原本checksum・未実行理由を保持する。実行していない列は`unresolved`／`not-executed`、Secret・生の接続文字列は保存しない。
+
+**停止線**：この節の追加は実装・CI・正式人的受理・G1〜G4の新規PASSを意味しない。対象変更の範囲とexact headに応じて現行`AGENTS.md`の検証規則を適用し、全PRへの全体健全性確認の一律義務化を避ける。

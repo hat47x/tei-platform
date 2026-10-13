@@ -84,6 +84,11 @@ export function composeRequestPlan(plan){
   for(const guard of hostPolicy.requiredGuards){
     if(!standardGuardEvidence.has(guard)) throw new Error("required guard has no declared evidence contract: "+guard);
   }
+  // "invoke" is the Action execution point in the E1 reference graph.
+  // A public callback or other non-Action route must not inherit an
+  // executable business Action simply by omitting route.actionId.
+  if(!route.actionId && steps.some(p=>p.id==="invoke"))
+    throw new Error("Action invocation requires an explicit Action route");
   for(const p of steps){
     if(!p.id || ids.has(p.id) || p.scope!=="server") throw new Error("step identity is duplicated or scope is not server");
     ids.set(p.id,p);
