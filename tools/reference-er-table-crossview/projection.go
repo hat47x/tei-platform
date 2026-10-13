@@ -42,17 +42,20 @@ type AttributeView struct {
 
 type LogicalKey struct {
 	ID         string   `json:"id"`
+	Symbol     string   `json:"symbol"`
 	Attributes []string `json:"attributes"`
 }
 
 type Dependency struct {
 	ID           string   `json:"id"`
+	Symbol       string   `json:"symbol"`
 	Determinants []string `json:"determinants"`
 	Dependents   []string `json:"dependents"`
 }
 
 type RelationView struct {
 	ID          string        `json:"id"`
+	Symbol      string        `json:"symbol"`
 	SourceData  string        `json:"sourceData"`
 	TargetData  string        `json:"targetData"`
 	Cardinality string        `json:"cardinality"`
@@ -150,17 +153,17 @@ func Project(world ir.World) (Projection, error) {
 			attrByData[id] = attrs
 			for _, k := range data.CandidateKeys {
 				d.CandidateKeys = append(d.CandidateKeys, LogicalKey{
-					ID: string(k.ID), Attributes: stringsOf(k.Attributes),
+					ID: string(k.ID), Symbol: k.Symbol, Attributes: stringsOf(k.Attributes),
 				})
 			}
 			for _, f := range data.FunctionalDependencies {
 				d.Dependencies = append(d.Dependencies, Dependency{
-					ID: string(f.ID), Determinants: stringsOf(f.Determinants),
+					ID: string(f.ID), Symbol: f.Symbol, Determinants: stringsOf(f.Determinants),
 					Dependents: stringsOf(f.Dependents),
 				})
 			}
 			for _, r := range data.Relations {
-				rel := RelationView{ID: string(r.ID), SourceData: id,
+				rel := RelationView{ID: string(r.ID), Symbol: r.Symbol, SourceData: id,
 					TargetData: string(r.Target), Cardinality: string(r.Cardinality), Keys: []RelationKey{}}
 				for _, k := range r.Keys {
 					rel.Keys = append(rel.Keys, RelationKey{
