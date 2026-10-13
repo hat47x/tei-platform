@@ -30,9 +30,9 @@ func (v *serviceHandoffVerifier) Verify(_ context.Context, _ plugin.Identity, _ 
 }
 
 type serviceHandoffAcceptance struct {
-	calls	int
-	revoked	bool
-	selection	pruntime.ServiceProviderSelection
+	calls     int
+	revoked   bool
+	selection pruntime.ServiceProviderSelection
 }
 
 func (a *serviceHandoffAcceptance) ReadCurrentAcceptedService(_ context.Context, selected pruntime.ServiceProviderSelection) (pruntime.ServiceAcceptanceRecord, error) {
@@ -71,7 +71,7 @@ func TestProtectedActionSelectsProductServiceCarrierWithoutBorrowingApproval(t *
 		if !hostAllowed || actual != binding {
 			return errors.New("test Host guard denied")
 		}
-		return	nil
+		return nil
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -82,7 +82,7 @@ func TestProtectedActionSelectsProductServiceCarrierWithoutBorrowingApproval(t *
 	serviceSelection := pruntime.ServiceProviderSelection{
 		ContractID: serviceID, ContractVersion: service.Version,
 		ContractFingerprint: "sha256:" + strings.Repeat("b", 64),
-		Scope: "application-runtime", Provider: provider,
+		Scope:               "application-runtime", Provider: provider,
 		ImplementationID: "quote-bridge-v1", ArtifactDigest: digest,
 	}
 	plan := pruntime.EnvironmentPlan{
@@ -99,7 +99,7 @@ func TestProtectedActionSelectsProductServiceCarrierWithoutBorrowingApproval(t *
 		}},
 		ServiceBindings: []pruntime.ServiceCarrierBinding{{
 			ServiceProviderSelection: serviceSelection,
-			CarrierKind: plugin.CapabilityContractQueryExecutor, CarrierID: carrierID, Operation: "quote",
+			CarrierKind:              plugin.CapabilityContractQueryExecutor, CarrierID: carrierID, Operation: "quote",
 		}},
 	}
 	plan.RuntimePolicyFingerprint = pruntime.PolicyFingerprint(plan)
@@ -122,7 +122,8 @@ func TestProtectedActionSelectsProductServiceCarrierWithoutBorrowingApproval(t *
 				result, callErr := runtimeHost.InvokeSelectedServiceCarrier(r.Context(), plan, serviceSelection,
 					"host-action-quote", json.RawMessage(`{"quantity":2,"unitPrice":100}`))
 				if callErr != nil {
-					http.Error(w, "service unavailable", http.StatusServiceUnavailable); return
+					http.Error(w, "service unavailable", http.StatusServiceUnavailable)
+					return
 				}
 				if result.Selection != serviceSelection || result.Runtime.Provenance.Artifact.Digest != digest {
 					t.Error("Service / Runtime provenance lost")
@@ -138,17 +139,19 @@ func TestProtectedActionSelectsProductServiceCarrierWithoutBorrowingApproval(t *
 	sessionOK, csrfOK, actionOK := true, true, true
 	host, err := NewHost(Policy{Path: "/protected/quote", Method: http.MethodPost, ActionID: actionID,
 		Providers: map[string]string{"corporate": principal.Issuer}}, Dependencies{
-			VerifySession: func(*http.Request) (Principal, error) {
-				if !sessionOK { return Principal{}, errors.New("session revoked") }
-				return principal, nil
-			},
-			VerifyCSRF: func(*http.Request, Principal) bool { return csrfOK },
-			Authorize: func(_ context.Context, _ Principal, action string) (bool, error) {
-				return actionOK && action == actionID, nil
-			},
-			Invoke: serviceHandler,
-			Audit: func(AuditRecord) {},
-		})
+		VerifySession: func(*http.Request) (Principal, error) {
+			if !sessionOK {
+				return Principal{}, errors.New("session revoked")
+			}
+			return principal, nil
+		},
+		VerifyCSRF: func(*http.Request, Principal) bool { return csrfOK },
+		Authorize: func(_ context.Context, _ Principal, action string) (bool, error) {
+			return actionOK && action == actionID, nil
+		},
+		Invoke: serviceHandler,
+		Audit:  func(AuditRecord) {},
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -160,7 +163,7 @@ func TestProtectedActionSelectsProductServiceCarrierWithoutBorrowingApproval(t *
 		req.Header.Set("X-Action-ID", "another.action")
 		response := httptest.NewRecorder()
 		h.ServeHTTP(response, req)
-		return	response.Code
+		return response.Code
 	}
 	assertCalls := func(expected int) {
 		t.Helper()
