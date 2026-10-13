@@ -1,6 +1,6 @@
 // Opt-in real-Go E2E: build cmd/tei, invoke the unchanged Node research runner.
 // This test runs only in a trusted checkout with Go >= go.mod requirement.
-// No Canonical writes, model training, cross-application disclosure or network calls by this test.
+// No Canonical writes, model training or cross-application disclosure. Go build may fetch modules.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {mkdtemp, rm} from 'node:fs/promises';
