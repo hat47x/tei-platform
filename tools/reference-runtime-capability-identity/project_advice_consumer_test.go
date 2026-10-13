@@ -102,8 +102,8 @@ func TestProjectAdviceGenericRuntimeNeedsExplicitEnvironmentAuthority(t *testing
 	dual := authority
 	dual.LegacyClaims = []LegacyAuthorityClaim{{
 		RuntimeCapabilityFingerprint: ref.Fingerprint,
-		CapabilityKind: "legacy-project-advice",
-		CapabilityID: core.MustCanonicalID("legacy.project_advice"),
+		CapabilityKind:               "legacy-project-advice",
+		CapabilityID:                 core.MustCanonicalID("legacy.project_advice"),
 	}}
 	if _, err := buildRuntimeEnvironmentPlan(ref, profile, dual); err == nil {
 		t.Fatal("project advisory received independent legacy and generic Authority")
@@ -131,8 +131,12 @@ func TestProjectAdviceRuntimeAuthorityDoesNotFollowArtifactOrContractDrift(t *te
 		change func(*AcceptedRuntimeCandidate)
 	}{
 		{"artifact", func(c *AcceptedRuntimeCandidate) { c.ArtifactDigest = "sha256:" + strings.Repeat("b", 64) }},
-		{"contract", func(c *AcceptedRuntimeCandidate) { c.ContractFingerprint = fingerprint("different-project-advice-contract-shape") }},
-		{"resolution-lock", func(c *AcceptedRuntimeCandidate) { c.CapabilityResolutionLockFingerprint = fingerprint("different-project-advice-resolution-lock") }},
+		{"contract", func(c *AcceptedRuntimeCandidate) {
+			c.ContractFingerprint = fingerprint("different-project-advice-contract-shape")
+		}},
+		{"resolution-lock", func(c *AcceptedRuntimeCandidate) {
+			c.CapabilityResolutionLockFingerprint = fingerprint("different-project-advice-resolution-lock")
+		}},
 		{"provider", func(c *AcceptedRuntimeCandidate) { c.Plugin.ID = core.MustCanonicalID("tei.reference.other_project") }},
 	}
 	for _, tc := range cases {
