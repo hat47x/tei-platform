@@ -10,7 +10,7 @@ import (
 
 func TestWorkspaceSubjectHasVerifiedCurrentSourceButNoBusinessRuleAuthority(t *testing.T) {
 	root := filepath.Join("..", "..", "reference", "workspace")
-	first, err := InspectWorkspace(root, "application-pattern", "order_entry.customer_reference")
+	first, err := InspectWorkspace(root, "order_entry", "application-pattern", "order_entry.customer_reference")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -28,7 +28,7 @@ func TestWorkspaceSubjectHasVerifiedCurrentSourceButNoBusinessRuleAuthority(t *t
 			t.Fatalf("incomplete Source Index evidence: %+v", witness)
 		}
 	}
-	second, err := InspectWorkspace(root, "application-pattern", "order_entry.customer_reference")
+	second, err := InspectWorkspace(root, "order_entry", "application-pattern", "order_entry.customer_reference")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -39,7 +39,7 @@ func TestWorkspaceSubjectHasVerifiedCurrentSourceButNoBusinessRuleAuthority(t *t
 
 func TestWorkspaceSourceDoesNotInventMissingPattern(t *testing.T) {
 	root := filepath.Join("..", "..", "reference", "workspace")
-	got, err := InspectWorkspace(root, "application-pattern", "order_entry.nonexistent_action")
+	got, err := InspectWorkspace(root, "order_entry", "application-pattern", "order_entry.nonexistent_action")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -53,8 +53,8 @@ func TestWorkspaceSourceDoesNotInventMissingPattern(t *testing.T) {
 
 func TestWorkspaceModeRejectsUnknownScopeAndMixedInputs(t *testing.T) {
 	for _, args := range [][]string{
-		{"-workspace", "../../reference/workspace", "-subject-kind", "semantic-data", "-subject-id", "sales.order"},
-		{"-input", "fixture.json", "-workspace", "../../reference/workspace", "-subject-kind", "application-pattern", "-subject-id", "order_entry.customer_reference"},
+		{"-workspace", "../../reference/workspace", "-application", "order_entry", "-subject-kind", "semantic-data", "-subject-id", "sales.order"},
+		{"-input", "fixture.json", "-workspace", "../../reference/workspace", "-application", "order_entry", "-subject-kind", "application-pattern", "-subject-id", "order_entry.customer_reference"},
 		{"-workspace", "../../reference/workspace", "-subject-kind", "application-pattern"},
 	} {
 		var output bytes.Buffer
