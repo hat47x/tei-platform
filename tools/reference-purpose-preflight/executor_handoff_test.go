@@ -56,15 +56,15 @@ func sampleQueryExecutorWorld() ir.World {
 		ID: "tei.database.oracle", Version: "1.0.0",
 		Runtime: plugin.Runtime{Kind: plugin.RuntimeBuiltin},
 		Provides: []plugin.Capability{{
-			Kind: plugin.CapabilityContractQueryExecutor,
-			ID: "database.query.oracle",
+			Kind:              plugin.CapabilityContractQueryExecutor,
+			ID:                "database.query.oracle",
 			DatabaseProviders: []environment.DatabaseProvider{environment.ProviderOracle},
 		}},
 	}}
 	world.Environments[0].Plugins = []environment.ExtensionRequirement{{ID: "tei.database.oracle", CompatibleMajor: 1}}
 	world.ContractQueryExecutorBindings = []realization.ContractQueryExecutorBinding{{
 		Environment: "development",
-		Instance: "master_data.dev",
+		Instance:    "master_data.dev",
 		Target: realization.ContractQueryTarget{
 			Database: "master_data", Contract: "master_data.customer", Query: "find_by_id",
 		},
