@@ -6,7 +6,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"tei/internal/sourceindex"
 )
@@ -58,26 +57,17 @@ func readSourceForLoad(root string, result *Result, filename string) ([]byte, er
 	return content, nil
 }
 
-// readWorkspaceFile applies the same best-effort physical containment check
-// to native sources read by loaders and by standalone Source Index callers.
-// EvalSymlinks and Open remain separate operations: this is NOT race-free
-// against an attacker concurrently rewriting symlinks or parent directories.
+// readWorkspaceFile reads from a directory-handle-relative, symlink-denying
+// boundary. On targets without a race-free implementation it fails closed.
+// This deliberately disallows even symlinks resolving inside the Workspace.
 func readWorkspaceFile(rootReal, rawPath string) ([]byte, error) {
 	path, err := sourceindex.NormalizeWorkspacePath(rawPath)
 	if err != nil {
 		return nil, err
 	}
-	physical, err := filepath.EvalSymlinks(filepath.Join(rootReal, filepath.FromSlash(path)))
+	file, err := openRootedSource(rootReal, path)
 	if err != nil {
-		return nil, fmt.Errorf("resolve source %q: %w", path, err)
-	}
-	rel, err := filepath.Rel(rootReal, physical)
-	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(os.PathSeparator)) {
-		return nil, fmt.Errorf("source %q resolves outside Workspace", path)
-	}
-	file, err := os.Open(physical)
-	if err != nil {
-		return nil, fmt.Errorf("open source %q: %w", path, err)
+		return nil, err
 	}
 	info, err := file.Stat()
 	if err != nil {
