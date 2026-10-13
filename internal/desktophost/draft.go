@@ -61,23 +61,42 @@ func EncodeDraftMarker(m DraftMarker) ([]byte, error) {
 // observation. It performs no side effects, invokes no proposal acceptance,
 // and never resumes an unknown external command.
 func RecoverDraftMarker(raw []byte, authorizedWorkspaceRoot string, observe func(string) (SourceObservation, error)) (Recovery, error) {
-	if len(raw) == 0 || len(raw) > 1<<20 || observe == nil || authorizedWorkspaceRoot == "" {
+	if observe == nil || authorizedWorkspaceRoot == "" {
 		return Recovery{}, ErrInvalidDraftMarker
+	}
+	marker, err := decodeDraftMarker(raw)
+	if err != nil {
+		return Recovery{}, err
+	}
+	return classifyDraftMarker(marker, authorizedWorkspaceRoot, observe)
+}
+
+// decodeDraftMarker validates only the persisted metadata. Store-backed
+// recovery must do this before invoking ObserveSource, so that an invalid
+// file-to-marker identity cannot trigger even an authorized Workspace read.
+func decodeDraftMarker(raw []byte) (DraftMarker, error) {
+	if len(raw) == 0 || len(raw) > 1<<20 {
+		return DraftMarker{}, ErrInvalidDraftMarker
 	}
 	var marker DraftMarker
 	decoder := json.NewDecoder(bytes.NewReader(raw))
 	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(&marker); err != nil {
-		return Recovery{}, fmt.Errorf("decode Desktop Draft marker: %w", ErrInvalidDraftMarker)
+		return DraftMarker{}, fmt.Errorf("decode Desktop Draft marker: %w", ErrInvalidDraftMarker)
 	}
 	if err := decoder.Decode(&struct{}{}); !errors.Is(err, io.EOF) {
-		return Recovery{}, ErrInvalidDraftMarker
+		return DraftMarker{}, ErrInvalidDraftMarker
 	}
 	if err := validateMarker(marker); err != nil {
-		return Recovery{}, err
+		return DraftMarker{}, err
 	}
-	// The persisted path is untrusted metadata, not permission to open a Workspace.
-	if marker.Baseline.WorkspaceRoot != authorizedWorkspaceRoot {
+	return marker, nil
+}
+
+// classifyDraftMarker never accepts a Draft or replays side effects. The Host
+// must authorize the Workspace independently of persisted marker metadata.
+func classifyDraftMarker(marker DraftMarker, authorizedWorkspaceRoot string, observe func(string) (SourceObservation, error)) (Recovery, error) {
+	if observe == nil || authorizedWorkspaceRoot == "" || marker.Baseline.WorkspaceRoot != authorizedWorkspaceRoot {
 		return Recovery{}, ErrInvalidDraftMarker
 	}
 	current, err := observe(authorizedWorkspaceRoot)
