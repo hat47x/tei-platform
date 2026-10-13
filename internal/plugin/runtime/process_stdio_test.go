@@ -115,12 +115,12 @@ func runProcessHelper(mode string) int {
 			missing := strings.HasPrefix(mode, "wire-missing-")
 			name := strings.TrimPrefix(strings.TrimPrefix(mode, "wire-missing-"), "wire-empty-")
 			field := map[string]string{
-				"protocol": "protocolVersion",
-				"request": "requestId",
-				"plugin": "plugin",
-				"capability": "capabilityId",
+				"protocol":    "protocolVersion",
+				"request":     "requestId",
+				"plugin":      "plugin",
+				"capability":  "capabilityId",
 				"fingerprint": "descriptorFingerprint",
-				"status": "status",
+				"status":      "status",
 			}[name]
 			if strings.HasPrefix(name, "plugin-") {
 				field = "plugin"
