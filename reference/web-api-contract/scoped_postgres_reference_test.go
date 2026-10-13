@@ -13,8 +13,6 @@ import (
 	"time"
 
 	"tei/internal/application"
-	"tei/internal/core"
-	"tei/internal/driver"
 	"tei/internal/environment"
 	"tei/internal/query"
 )
