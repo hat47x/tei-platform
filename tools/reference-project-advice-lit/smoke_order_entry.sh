@@ -16,8 +16,8 @@ trap cleanup EXIT
 api="http://127.0.0.1:18977"
 host="http://127.0.0.1:8787"
 
-go build -tags=tei_order_only,tei_api_only -o "$tmp/order-entry" ./tools/reference-first-web-target
-go build -o "$tmp/advice-host" ./tools/reference-project-advice-lit
+go build -trimpath -tags=tei_order_only,tei_api_only -o "$tmp/order-entry" ./tools/reference-first-web-target
+go build -trimpath -o "$tmp/advice-host" ./tools/reference-project-advice-lit
 
 "$tmp/order-entry" \
   -workspace "$repo/reference/workspace" \
