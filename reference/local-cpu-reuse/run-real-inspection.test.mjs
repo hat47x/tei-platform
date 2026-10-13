@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {runReferenceInspection} from './run-real-inspection.mjs';
+import {runReferenceInspection,summarizeInspectionEvidence} from './run-real-inspection.mjs';
 import {InspectBridgeError} from './inspect-cli-bridge.mjs';
 
 const fixtureCanonical={
@@ -60,4 +60,14 @@ test('unknown Canonical fields degrade links instead of claiming accepted reuse'
   });
   assert.equal(result.links.applicationPattern.status,'unknown');
   assert.equal(result.links.applicationPattern.accepted,false);
+});
+
+test('default CLI evidence summary excludes business Canonical bodies and raw source fingerprints',async()=>{
+  const batch=await runReferenceInspection('binary','workspace',async(_b,_w,s)=>report(s));
+  const output=JSON.stringify(summarizeInspectionEvidence(batch));
+  assert.equal(output.includes('customer.customer.customer_id'),false);
+  assert.equal(output.includes('sha256:example'),false);
+  assert.equal(output.includes('world:example'),false);
+  assert.equal(output.includes('source:example'),false);
+  assert.equal(JSON.parse(output).subjectCount,5);
 });
