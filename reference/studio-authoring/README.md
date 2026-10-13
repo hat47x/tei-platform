@@ -256,3 +256,10 @@ node reference/studio-authoring/cli.mjs inspect \
 - `tei trace` はStudioとは別のGo呼出しでWorkspaceを読み直します。読取前後にShared AcceptanceのSource revisionを照合しますが、ファイルシステムの排他ロックや一時的な変更・復元（ABA）検出は提供しません。
 - 型付き参照は `candidate-read-only` として別領域に表示し、元の表・ER・機能・非Canonical業務DFDの権限を変更しません。Sourceが未解決、参照が不正・曖昧、TraceのJSONが不完全なら権限を補完せず拒否または未解決にします。
 - 本オプションは実Workspaceでの `inspect` に限定します。独立JSON入力、`step:ID`（参照専用Business Step）、編集・受理のコマンドには適用しません。
+
+
+### 外部Business DFDの観測証跡（#1125 → #1124）
+
+`inspect -business-dfd FILE` は、#1125の非Canonical DFDを読み取る時点で実ファイルのSHA-256とバイト長を記録し、投影処理の後に再読込して変化を拒否します。`relation:ID` 等の逆引きと `step:ID` の正引きの双方に `businessObservation` を追加します。ファイル自体は正本ではなく、`sourceRevisionBinding=not-established`、`acceptedBusinessProcedure=false`、`authority=noncanonical-reference` を明示します。
+
+この照合は外部DFDファイルの読取り前後の同一性だけを扱います。WorkspaceのrevisionとDFD producerの入力snapshotが同じであること、外部手順が正式に受理済みであること、ABA型の一時変更や書込み競合の不存在を証明しません。シンボリックリンクと通常ファイル以外は拒否します。受理済みBusinessの同一revision四視点連携は引き続き未実装です。
