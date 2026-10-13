@@ -70,12 +70,8 @@ func classifyWorkspaceImpact(report WorkspaceChangeReport, graph modelref.Graph)
 		RuntimeChecks:    []string{"runtime-authority-must-be-evaluated-separately"},
 		ExecutionAllowed: false,
 	}
-	switch {
-	case !report.Impact.GraphValid:
+	if !report.Impact.GraphValid {
 		decision.Action, decision.ReasonCodes = "unresolved", []string{"typed-graph-or-change-invalid"}
-		return decision
-	case len(report.ProjectionUnresolved) > 0:
-		decision.Action, decision.ReasonCodes = "unresolved", []string{"workspace-projection-unresolved"}
 		return decision
 	}
 	found := false
@@ -98,6 +94,13 @@ func classifyWorkspaceImpact(report WorkspaceChangeReport, graph modelref.Graph)
 			decision.Action, decision.ReasonCodes = "recheck", []string{"typed-reference-impact-candidate"}
 			return decision
 		}
+	}
+	// An incomplete projection cannot prove the ABSENCE of impact. A
+	// positive candidate from a valid typed graph still warrants a recheck;
+	// it never grants evidence reuse or execution.
+	if len(report.ProjectionUnresolved) > 0 {
+		decision.Action, decision.ReasonCodes = "unresolved", []string{"workspace-projection-unresolved", "no-bound-receipt-or-proven-dependency-closure"}
+		return decision
 	}
 	decision.Action, decision.ReasonCodes = "unresolved", []string{"no-bound-receipt-or-proven-dependency-closure"}
 	return decision
