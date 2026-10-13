@@ -68,7 +68,7 @@ go vet ./reference/web-api-contract
 
 `scoped_driver_bridge.go`は、既存`driver.Resolver.ExecuteBrowseQuery`の**実際のCanonical Query解決・Result Column Mapping**を再利用する参照Bridge。従来の`BrowseQueryExecutor`をそのままWeb公開に流用するのではなく、`ScopedCanonicalExecutor`を明示的に要求し、信頼済み`ReadPlan`（Principal、Row Scope、Policy Revision、Filter、Sort、Limit、投影）をProviderへ渡す。対応しないExecutorは渡せず、Provider不在、Query/Scope不一致、動的操作の能力欠如は呼出前に拒否する。
 
-実Driverが保持するraw SQL列・未公開属性・Provider Payloadを外部応答へ返さず、Canonical Attribute IDの結果mappingを使って**許可された投影列のみ**`PublishedReadResult`へ移す。対応する`scoped_driver_bridge_test.go`は実Workspaceの`order_entry.recent_orders`のResolver/Mapping経路を通り、合成ProviderへのPlan引継ぎとraw `total_amount`等の非公開を検証する。Providerが不完全なraw列を返した場合は公開結果を返さない。
+Provider呼出前に実ResolverでCanonical Query/Dataの同一性を再照合し、別Query/別Dataを実行しない。また公開項目の認可済みスナップショットを固定し、Providerが受取Planの配列やポインタを書き換えても公開投影を拡張できないようにする。実Driverが保持するraw SQL列・未公開属性・Provider Payloadを外部応答へ返さず、Canonical Attribute IDの結果mappingを使って**許可された投影列のみ**`PublishedReadResult`へ移す。対応する`scoped_driver_bridge_test.go`は実Workspaceの`order_entry.recent_orders`のResolver/Mapping経路を通り、合成ProviderへのPlan引継ぎとraw `total_amount`等の非公開を検証する。Providerが不完全なraw列を返した場合は公開結果を返さない。
 
 **このBridgeが強制するのは実行境界の型・照合・公開射影であり、実DBの行権限そのものではない。** 合成Providerがプランを無視する場合、実施証拠を真とする根拠はない。E6のFixtureによる物理的なスコープ適用と、E7の既存Driver経路検証は別々の証拠である。安全な本番実装ではQuery Provider自身の権限スコープ強制と回帰試験がさらに必要。
 
