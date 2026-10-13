@@ -33,7 +33,7 @@ go run ./tools/reference-purpose-preflight \
 
 この入口では、正本の `Application Pattern` が一意に宣言されていること、入力元索引に照合値付きの定義元があることを確認する。実際の検査は既存の `workspace.Load`、`workspace.BuildSourceIndex`、`knowledgecontext.Build` と `knowledgecontext.QualifyWithSources` を利用する。結果の `sourceStatus=traceable-source-declaration` は、**入力元へ追跡できるという限定された主張**である。
 
-この作業領域で `order_entry.customer_reference` が定義されていても、「50万円以上は承認必須」という規則が受理された根拠にはならない。そのため `ruleMeaning=not-established`、`executionAllowed=false` を維持する。未定義の機能を指定すると `sourceStatus=unresolved` とし、代わりの機能や意味を推測しない。
+この作業領域で `order_entry.customer_reference` が定義されていても、「50万円以上は承認必須」という規則が受理された根拠にはならない。 同じく `order_entry.submit_order` は実際に存在する操作機能だが、その機能の存在から出荷承認規則を推定しない。追加の負例では、この実操作の入力元が追跡できても `ruleMeaning=not-established` を維持する。そのため `ruleMeaning=not-established`、`executionAllowed=false` を維持する。未定義の機能を指定すると `sourceStatus=unresolved` とし、代わりの機能や意味を推測しない。
 
 検査できる対象は、現時点では `application-pattern` のみであり、業務手順の正式な正本、受理した変更記録、適用時点、認可、実際の外部処理まで結合したものではない。こうした要素は、それぞれの既存機構と後続の接続実証で確認する。
 
