@@ -152,6 +152,10 @@ func TestCandidateQuoteShapeConformanceAndRealRuntimeProcessOneInvocation(t *tes
 	launcher := &quoteChainLauncher{}
 	host := pruntime.Registry{Processes: launcher, Verifier: verifier}
 	var provenance pruntime.InvocationProvenance
+	// Faults are injected AFTER the real child has returned. They exercise
+	// consumer-side proof boundaries, not the child process implementation.
+	var corruptTransportIdentity bool
+	var alterBusinessResult func([]byte) []byte
 	sequence := 0
 	impl.Invoke = func(ctx context.Context, quote []byte) ([]byte, error) {
 		sequence++
@@ -191,8 +195,14 @@ func TestCandidateQuoteShapeConformanceAndRealRuntimeProcessOneInvocation(t *tes
 		expected.Payload = nil
 		out := response.Payload
 		response.Payload = nil
+		if corruptTransportIdentity {
+			response.ContractFingerprint = quoteChainDigest([]byte("forged-transport-contract"))
+		}
 		if !reflect.DeepEqual(expected, response) {
 			return nil, errors.New("real process transport identity drifted")
+		}
+		if alterBusinessResult != nil {
+			return alterBusinessResult(out), nil
 		}
 		return out, nil
 	}
@@ -280,6 +290,59 @@ func TestCandidateQuoteShapeConformanceAndRealRuntimeProcessOneInvocation(t *tes
 			plan.Plugins[0].SandboxPolicy = plugin.SandboxRequired
 			plan.RuntimePolicyFingerprint = pruntime.PolicyFingerprint(plan)
 		})
+	})
+
+	// A process can execute successfully while returning a response that is
+	// unacceptable to the selected contract. The outer InvocationRegistry
+	// must reject the result instead of treating Runtime launch success as
+	// proof of business-conformant output. No completed InvocationExecution
+	// (and therefore no success provenance) may escape.
+	t.Run("tampered transport identity rejected after real child execution", func(t *testing.T) {
+		before := launcher.calls
+		corruptTransportIdentity = true
+		defer func() { corruptTransportIdentity = false }()
+		got, err := generic.ResolveAndInvoke(ctx, input, payload)
+		if err == nil || !strings.Contains(err.Error(), "real process transport identity drifted") ||
+			launcher.calls != before+1 || !reflect.DeepEqual(got, InvocationExecution{}) {
+			t.Fatalf("invalid transport identity was accepted: err=%v launches=%d result=%+v",
+				err, launcher.calls-before, got)
+		}
+	})
+	for _, tc := range []struct {
+		name   string
+		result string
+	}{
+		{"wrong subtotal type", `{"currency":"JPY","lineCount":2,"subtotalMinor":"1550"}`},
+		{"missing currency", `{"lineCount":2,"subtotalMinor":1550}`},
+		{"unknown submitted effect", `{"currency":"JPY","lineCount":2,"subtotalMinor":1550,"submitted":true}`},
+	} {
+		t.Run("real process response rejected: "+tc.name, func(t *testing.T) {
+			before := launcher.calls
+			alterBusinessResult = func([]byte) []byte { return []byte(tc.result) }
+			defer func() { alterBusinessResult = nil }()
+			got, err := generic.ResolveAndInvoke(ctx, input, payload)
+			if err == nil || !strings.Contains(err.Error(), "result does not conform") ||
+				launcher.calls != before+1 || !reflect.DeepEqual(got, InvocationExecution{}) {
+				t.Fatalf("invalid business response was accepted: err=%v launches=%d result=%+v",
+					err, launcher.calls-before, got)
+			}
+		})
+	}
+	// A structurally valid response may still contain a wrong subtotal.
+	// The current shape is only structural; this test MUST NOT claim that
+	// provider conformance verifies arithmetic or result business semantics.
+	t.Run("structural shape alone cannot prove correct subtotal", func(t *testing.T) {
+		before := launcher.calls
+		alterBusinessResult = func([]byte) []byte {
+			return []byte(`{"currency":"JPY","lineCount":2,"subtotalMinor":1}`)
+		}
+		defer func() { alterBusinessResult = nil }()
+		got, err := generic.ResolveAndInvoke(ctx, input, payload)
+		if err != nil || launcher.calls != before+1 ||
+			!strings.Contains(string(got.ResultPayload), `"subtotalMinor":1`) {
+			t.Fatalf("shape unexpectedly proved business arithmetic: err=%v launches=%d result=%+v",
+				err, launcher.calls-before, got)
+		}
 	})
 
 	t.Run("synthetic outer evidence plus real Runtime yields actual quote", func(t *testing.T) {
