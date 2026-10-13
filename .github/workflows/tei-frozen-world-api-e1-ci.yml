@@ -100,6 +100,8 @@ jobs:
           inputs = m["apiBuildInputObservation"]
           if inputs["sourceCommit"] != m["browserAndApiSourceRevision"]:
               raise SystemExit("API source commit mismatch")
+          if inputs["goVCS"] != {"revision": m["browserAndApiSourceRevision"], "modified": False}:
+              raise SystemExit("Go compiler VCS witness differs from build Source")
           if inputs["apiSHA256"] != m["apiSHA256"] or inputs["apiBytes"] != m["apiBytes"]:
               raise SystemExit("API byte identity mismatch")
           if inputs["go"]["buildTags"] != sorted(m["apiBuildTags"]):
