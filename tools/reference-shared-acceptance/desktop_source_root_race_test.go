@@ -182,3 +182,51 @@ func TestAcceptedSourcePublicationIsCreateOnlyAcrossGoroutines(t *testing.T) {
 		t.Fatalf("published file was not from one complete writer: %q", contentsNow)
 	}
 }
+
+func TestDesktopNamedWorkspaceRootSwapRefusesBeforeSourceWrite(t *testing.T) {
+	root := scratchWorkspace(t)
+	candidate := mustJSON(t, unitPriceCandidate(revisionOfDir(t, root)))
+	ev, err := evaluate(root, candidate)
+	if err != nil || !ev.preview.Acceptable {
+		t.Fatalf("initial shared Preview failed: %+v %v", ev.preview, err)
+	}
+	review := buildReviewProjection(ev).ReviewFingerprint
+	outside := t.TempDir()
+	original, err := os.ReadFile(filepath.Join(root, "semantic", "sales", "validation.tei"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(outside, "semantic", "sales"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	outsideFile := filepath.Join(outside, "semantic", "sales", "validation.tei")
+	if err := os.WriteFile(outsideFile, original, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	didSwap := false
+	beforeEachWriteHook = func(index int, edit SourceEdit) {
+		if index != 0 {
+			return
+		}
+		if err := os.Rename(root, root+"-detached"); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Symlink(outside, root); err != nil {
+			t.Skipf("Workspace root symlink unavailable: %v", err)
+		}
+		didSwap = true
+	}
+	defer func() { beforeEachWriteHook = nil }()
+	decision, err := accept(root, candidate, acceptOptions{ExpectedReviewFingerprint: review})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !didSwap || decision.Decision != "refused" || decision.SourceChanged ||
+		!hasCode(refusalCodes(decision), "SOURCE_WORKSPACE_REPLACED") {
+		t.Fatalf("replaced Workspace identity was not rejected: %+v", decision)
+	}
+	now, err := os.ReadFile(outsideFile)
+	if err != nil || !bytes.Equal(now, original) {
+		t.Fatalf("outside replacement Workspace was modified: %v", err)
+	}
+}
