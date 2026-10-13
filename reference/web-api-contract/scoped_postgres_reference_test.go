@@ -418,3 +418,51 @@ func TestScopedPostgresRefusesTypedNilTenantAuthority(t *testing.T) {
 		t.Fatalf("typed-nil scope authority unexpectedly invoked: %v trace=%+v", err, trace)
 	}
 }
+
+func TestScopedPostgresBridgePreservesAuthorizationFailureClassification(t *testing.T) {
+	from := time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC)
+	pub := scopedPublication(t)
+	plan := postgresReadPlan(t)
+	for _, tc := range []struct {
+		name string
+		modify func(*postgresScopedAuthority)
+		want error
+	}{
+		{
+			name: "authorization backend unavailable",
+			modify: func(a *postgresScopedAuthority) {
+				a.err = errors.New("private policy database details")
+			},
+			want: ErrAuthorizationUnavailable,
+		},
+		{
+			name: "malformed authority grant",
+			modify: func(a *postgresScopedAuthority) {
+				a.tenant = ""
+			},
+			want: ErrAuthorizationContract,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			trace := &postgresScopedTrace{}
+			authority := &postgresScopedAuthority{tenant: "tenant-a"}
+			tc.modify(authority)
+			out, err := ExecuteScopedCanonicalRead(context.Background(), bridgeWorld(t),
+				pub, plan, scopedSupport(pub, plan),
+				ScopedPostgresOrdersReference{
+					DB: postgresScopedDB(t, trace),
+					Authority: authority,
+					Database: "sales_core",
+				},
+				map[string]any{"from": from},
+			)
+			if !errors.Is(err, tc.want) || trace.calls != 0 ||
+				len(out.Rows) != 0 || len(out.Columns) != 0 {
+				t.Fatalf("authorization failure was lost or escaped: result=%+v err=%v want=%v", out, err, tc.want)
+			}
+			if err != tc.want {
+				t.Fatalf("backend diagnostics leaked through bridge: %v", err)
+			}
+		})
+	}
+}
