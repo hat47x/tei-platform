@@ -67,6 +67,10 @@ func TestOrderEntryContextRejectsUnexpectedReadResponses(t *testing.T) {
 		{"wrong-application", `{"targetBuildRevision":"T","result":{"applicationId":"other","scenarioId":"s"}}`, "application/json", 200},
 		{"missing-revision", `{"result":{"applicationId":"order_entry","scenarioId":"s"}}`, "application/json", 200},
 		{"missing-scenario", `{"targetBuildRevision":"T","result":{"applicationId":"order_entry"}}`, "application/json", 200},
+		{"missing-row-index", `{"targetBuildRevision":"T","result":{"applicationId":"order_entry","scenarioId":"s"}}`, "application/json", 200},
+		{"null-row-index", `{"targetBuildRevision":"T","result":{"applicationId":"order_entry","scenarioId":"s","selectedRowIndex":null}}`, "application/json", 200},
+		{"negative-row-index", `{"targetBuildRevision":"T","result":{"applicationId":"order_entry","scenarioId":"s","selectedRowIndex":-1}}`, "application/json", 200},
+		
 		{"trailing", `{"targetBuildRevision":"T","result":{"applicationId":"order_entry","scenarioId":"s"}}{}`, "application/json", 200},
 		{"non-json", "<html>ok</html>", "text/html", 200},
 		{"upstream-error", "unavailable", "application/json", 503},
@@ -114,5 +118,26 @@ func TestOrderEntryContextDoesNotCreateAWriteRoute(t *testing.T) {
 	handler().ServeHTTP(none, httptest.NewRequest(http.MethodGet, "/project/order-entry-context", nil))
 	if none.Code != http.StatusNotFound {
 		t.Fatalf("unconfigured route=%d", none.Code)
+	}
+}
+
+func TestOrderEntryContextExplicitZeroRowIndex(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"targetBuildRevision":"T","result":{"applicationId":"order_entry","scenarioId":"s","selectedRowIndex":0}}`))
+	}))
+	defer upstream.Close()
+	handler, err := newOrderEntryContextHandler(upstream.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp := httptest.NewRecorder()
+	handler.ServeHTTP(resp, httptest.NewRequest(http.MethodGet, "/project/order-entry-context", nil))
+	if resp.Code != http.StatusOK {
+		t.Fatalf("explicit row 0 must remain valid: status %d: %s", resp.Code, resp.Body.String())
+	}
+	var got orderEntryContext
+	if err := json.Unmarshal(resp.Body.Bytes(), &got); err != nil || got.SelectedRowIndex != 0 || got.Schema != "tei.reference.order-entry-context/v0" {
+		t.Fatalf("invalid explicit-zero projection: %+v, %v", got, err)
 	}
 }
