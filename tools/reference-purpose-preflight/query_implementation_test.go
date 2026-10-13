@@ -11,7 +11,6 @@ import (
 	"tei/internal/ir"
 	"tei/internal/query"
 	"tei/internal/realization"
-	"tei/internal/workspace"
 )
 
 func TestActualOracleContractSignatureDoesNotEstablishProvider(t *testing.T) {
@@ -46,12 +45,12 @@ func queryImplementationWorld() (use DeclaredContractQuery, binding EnvironmentB
 	world.Databases = []database.Database{{
 		ID: "master_data",
 		Contracts: []database.Contract{{
-			ID: "master_data.customer",
+			ID:      "master_data.customer",
 			Version: database.ContractVersion{Major: 2, Minor: 4},
 			Queries: []database.QueryContract{{
-				Name: "find_by_id",
-				Inputs: []database.QueryInput{{Name: "id", Type: "customer.customer_id"}},
-				Result: "customer.customer",
+				Name:              "find_by_id",
+				Inputs:            []database.QueryInput{{Name: "id", Type: "customer.customer_id"}},
+				Result:            "customer.customer",
 				ResultCardinality: database.QueryResultZeroOrOne,
 			}},
 		}},
@@ -67,9 +66,9 @@ func TestExactSQLRealizationDeclarationIsStillNotProviderConformance(t *testing.
 		Target: realization.ContractQueryTarget{
 			Database: "master_data", Contract: "master_data.customer", Query: "find_by_id",
 		},
-		Provider: environment.ProviderOracle,
-		Source: "select customer_id from customer where customer_id = :id",
-		Inputs: []realization.ContractQueryInputParameterMapping{{Input: "id", Parameter: "id"}},
+		Provider:      environment.ProviderOracle,
+		Source:        "select customer_id from customer where customer_id = :id",
+		Inputs:        []realization.ContractQueryInputParameterMapping{{Input: "id", Parameter: "id"}},
 		ResultColumns: []query.ResultColumnMapping{{Column: "customer_id", Attribute: "customer.customer_id"}},
 	}}
 	observed := ObserveQueryImplementation(world, &use, &binding)
@@ -77,7 +76,7 @@ func TestExactSQLRealizationDeclarationIsStillNotProviderConformance(t *testing.
 		t.Fatalf("valid explicit native SQL declaration not observed: %+v", observed)
 	}
 	assessment := WorkspaceAssessment{
-		SubjectKind:         "application-pattern", SubjectID: "example.customer_reference",
+		SubjectKind: "application-pattern", SubjectID: "example.customer_reference",
 		QueryImplementation: &observed,
 	}
 	projected, err := ProjectForPurpose(assessment, "execute-preflight")

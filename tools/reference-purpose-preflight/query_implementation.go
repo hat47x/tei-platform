@@ -12,14 +12,14 @@ import (
 // A SQL source declaration or a matching Contract signature never establishes
 // Runtime Host Authority, provider conformance, or live database connectivity.
 type QueryImplementationObservation struct {
-	Status         string `json:"status"`
-	Reason         string `json:"reason"`
-	Database       string `json:"database,omitempty"`
-	Contract       string `json:"contract,omitempty"`
-	Query          string `json:"query,omitempty"`
-	Provider       string `json:"provider,omitempty"`
-	ContractMajor  int    `json:"contractMajor,omitempty"`
-	ContractMinor  int    `json:"contractMinor,omitempty"`
+	Status        string `json:"status"`
+	Reason        string `json:"reason"`
+	Database      string `json:"database,omitempty"`
+	Contract      string `json:"contract,omitempty"`
+	Query         string `json:"query,omitempty"`
+	Provider      string `json:"provider,omitempty"`
+	ContractMajor int    `json:"contractMajor,omitempty"`
+	ContractMinor int    `json:"contractMinor,omitempty"`
 }
 
 func ObserveQueryImplementation(world ir.World, use *DeclaredContractQuery, binding *EnvironmentBindingObservation) QueryImplementationObservation {
