@@ -93,19 +93,9 @@ jobs:
           # two REAL historical/current builder executables from independent
           # Git revisions. Both must build the SAME current clean source.
           # They must agree on artifact bytes and the full Evidence schema.
-          go test -count=1 -timeout 35m -v -run '^TestHistoricalRuntimeEngineRunnerParity
-          if ($LASTEXITCODE -ne 0 -or $after -ne $actual -or $dirtyAfter.Count -ne 0) {
-            throw "Windows verification changed source revision or checkout: $after $dirtyAfter"
-          }
-          Write-Output "windows-real-go-artifact-parity=success"
- ./tools/reference-transform-runtime-engine-build
+          go test -count=1 -timeout 35m -v -run '^TestHistoricalRuntimeEngineRunnerParity$' ./tools/reference-transform-runtime-engine-build
           if ($LASTEXITCODE -ne 0) { throw 'Windows historical Engine builder parity failed' }
-          go test -count=1 -timeout 35m -v -run '^TestHistoricalProcessPluginRunnerEvidenceParity
-          if ($LASTEXITCODE -ne 0 -or $after -ne $actual -or $dirtyAfter.Count -ne 0) {
-            throw "Windows verification changed source revision or checkout: $after $dirtyAfter"
-          }
-          Write-Output "windows-real-go-artifact-parity=success"
- ./tools/reference-plugin-self-build
+          go test -count=1 -timeout 35m -v -run '^TestHistoricalProcessPluginRunnerEvidenceParity$' ./tools/reference-plugin-self-build
           if ($LASTEXITCODE -ne 0) { throw 'Windows historical Plugin builder parity failed' }
 
           $after = (git rev-parse HEAD).Trim()
