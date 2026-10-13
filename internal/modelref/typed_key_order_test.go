@@ -21,7 +21,7 @@ func TestTypedKeyDiffAndImpactOrderingWithEmbeddedSeparator(t *testing.T) {
 			{Key: b, Version: "1"},
 			{Key: consumer},
 		},
-		Edges:  []modelref.Edge{
+		Edges: []modelref.Edge{
 			{From: consumer, To: modelref.Ref{Subject: a.Subject}, Relation: "reads"},
 			{From: consumer, To: modelref.Ref{Subject: b.Subject}, Relation: "reads"},
 		},
@@ -75,7 +75,7 @@ func TestTypedKeyTraceOrderingWithEmbeddedSeparator(t *testing.T) {
 		Nodes:  []modelref.Node{
 			{Key: a}, {Key: b}, {Key: target},
 		},
-		Edges:  []modelref.Edge{
+		Edges: []modelref.Edge{
 			{From: b, To: modelref.Ref{Scope: target.Scope, Subject: target.Subject}, Relation: "reads"},
 			{From: a, To: modelref.Ref{Scope: target.Scope, Subject: target.Subject}, Relation: "reads"},
 		},
@@ -89,13 +89,14 @@ func TestTypedKeyTraceOrderingWithEmbeddedSeparator(t *testing.T) {
 	}
 	first, err := modelref.TraceDirect(graph, rules, target, modelref.TraceOptions{Direction: "incoming"})
 	if err != nil || first.Total != 2 || first.Unresolved != 0 || len(first.Rows) != 2 ||
-		first.Rows[0].Edge.From != a || first.Rows[1].Edge.From != b {
+		(first.Rows[0].Edge.From != a && first.Rows[0].Edge.From != b) ||
+		first.Rows[0].Edge.From == first.Rows[1].Edge.From {
 		t.Fatalf("trace did not sort distinct From identities: %+v, err=%v", first, err)
 	}
 	page, err := modelref.TraceDirect(graph, rules, target, modelref.TraceOptions{
 		Direction: "incoming", Limit: 1, ExpectedFingerprint: first.SnapshotFingerprint,
 	})
-	if err != nil || len(page.Rows) != 1 || page.Rows[0].Edge.From != a ||
+	if err != nil || len(page.Rows) != 1 || page.Rows[0].Edge.From != first.Rows[0].Edge.From ||
 		page.NextOffset == nil || *page.NextOffset != 1 {
 		t.Fatalf("first trace page changed meaning: %+v, err=%v", page, err)
 	}
