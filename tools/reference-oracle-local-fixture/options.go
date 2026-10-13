@@ -17,11 +17,12 @@ const confirmFlag = "confirm-shared-database-fixture"
 const evidenceOutNameMark = "oracle-local-fixture"
 
 type options struct {
-	Workspace   string
-	EvidenceOut string
-	CleanupRun  string
-	Timeout     time.Duration
-	Confirmed   bool
+	Workspace        string
+	EvidenceOut      string
+	CleanupRun       string
+	Timeout          time.Duration
+	Confirmed        bool
+	SkipTimeoutCheck bool
 }
 
 // parseOptionsは、コマンド行を解析して確認flagなどの必須条件を検査する。DB接続より前に呼ぶ。
@@ -34,6 +35,7 @@ func parseOptions(args []string, output io.Writer) (options, error) {
 	set.StringVar(&opts.CleanupRun, "cleanup", "", "実行IDを指定すると、その実行が作成した専用ユーザーだけを削除する（中断後の後始末用）")
 	set.DurationVar(&opts.Timeout, "timeout", 10*time.Minute, "全体のタイムアウト")
 	set.BoolVar(&opts.Confirmed, confirmFlag, false, "接続先が別用途の既存Oracleでも、このtoolが専用ユーザーと検証用の表を一時的に作成・削除してよいことを確認する（必須）")
+	set.BoolVar(&opts.SkipTimeoutCheck, "skip-timeout-check", false, "待機中の問合せを時間切れと取消しで中断する確認を実施しない（この確認は共有データベースへ1〜2秒のCPU負荷をかける）")
 	if err := set.Parse(args); err != nil {
 		return options{}, err
 	}

@@ -39,3 +39,13 @@ func TestParseOptionsEvidenceOutNameAndRunID(t *testing.T) {
 		t.Fatal("余分な引数が受理されました")
 	}
 }
+
+func TestParseOptionsSkipTimeoutCheckIsOptIn(t *testing.T) {
+	confirm := "-" + confirmFlag
+	if got, err := parseOptions([]string{confirm}, io.Discard); err != nil || got.SkipTimeoutCheck {
+		t.Fatalf("既定では時間切れの確認を実施するべきです: %v", err)
+	}
+	if got, err := parseOptions([]string{confirm, "-skip-timeout-check"}, io.Discard); err != nil || !got.SkipTimeoutCheck {
+		t.Fatalf("-skip-timeout-checkが反映されません: %v", err)
+	}
+}

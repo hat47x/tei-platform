@@ -106,7 +106,7 @@ func main() {
 	defer stopSignals()
 	ctx, cancel := context.WithTimeout(signalCtx, opts.Timeout)
 	defer cancel()
-	result, err := run(ctx, opts.Workspace, opts.EvidenceOut)
+	result, err := run(ctx, opts)
 	if err != nil {
 		result.Error = err.Error()
 	}
@@ -167,7 +167,8 @@ func driverInfo() driverFacts {
 	return facts
 }
 
-func run(ctx context.Context, workspacePath, evidenceOut string) (receipt, error) {
+func run(ctx context.Context, opts options) (receipt, error) {
+	workspacePath, evidenceOut := opts.Workspace, opts.EvidenceOut
 	result := newReceipt()
 
 	source, err := repositoryevidence.InspectStart()
@@ -238,6 +239,7 @@ func run(ctx context.Context, workspacePath, evidenceOut string) (receipt, error
 		def:      authoredRealization(fx.qualifiedTable()),
 		notes:    &provisionNotes{},
 	}
+	s.skipTimeoutCheck = opts.SkipTimeoutCheck
 
 	// panicなどで通常の後始末へ到達しなかった場合も、作成済みのユーザーを新しいcontextで削除する。
 	tornDown := false

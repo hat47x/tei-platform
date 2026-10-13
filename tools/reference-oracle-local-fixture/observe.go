@@ -48,6 +48,8 @@ type session struct {
 	contract database.QueryContract
 	def      realization.ContractQuerySQLRealization
 	notes    *provisionNotes
+	// skipTimeoutCheckは、共有データベースへCPU負荷をかける時間切れの確認を実施しないときに真にする。
+	skipTimeoutCheck bool
 
 	checks []check
 
@@ -825,14 +827,19 @@ func okOr(err error) string {
 
 // ---- timeout / cancel ----
 
-// waitQueryは、CPUと入出力をほとんど使わずに待機する問合せである。共有している既存Oracleへ負荷をかけずに、
-// 実行中の問合せをcontextの期限と取消しで中断できるかを確認するために使う。
-// DBMS_PIPE.RECEIVE_MESSAGEは、メッセージが来ない名前付きパイプを指定秒数だけ待つ。パイプ名は実行IDを含む。
+// waitQueryは、取消しまでCPUを使い続ける、実表を読まない問合せである。実行中の問合せをcontextの期限と
+// 取消しで中断できるかを確認するために使う。CPU負荷は取消しまでの1〜2秒に限られる。
+// 共有しているデータベースでこの負荷を避けるときは、-skip-timeout-checkで実施しない。
+// DBMS_PIPEやDBMS_LOCKは、作成したばかりの読取り専用ユーザーに実行権限がないため使わない。
 func (s *session) waitQuery() string {
-	return fmt.Sprintf("SELECT DBMS_PIPE.RECEIVE_MESSAGE('TEI_REF_%s_WAIT', 30) FROM dual", s.fx.RunID)
+	return "SELECT COUNT(*) FROM (SELECT LEVEL FROM dual CONNECT BY LEVEL <= 20000) a, (SELECT LEVEL FROM dual CONNECT BY LEVEL <= 20000) b"
 }
 
 func (s *session) observeTimeoutAndCancel(roDB *sql.DB) {
+	if s.skipTimeoutCheck {
+		s.observed("timeout.skipped", layerTimeout, "時間切れと取消しの確認", "-skip-timeout-checkの指定により実施しなかった")
+		return
+	}
 	runner := oraclequery.Runner{DB: roDB}
 
 	timeoutCtx, cancel := context.WithTimeout(s.ctx, 2*time.Second)
@@ -843,7 +850,7 @@ func (s *session) observeTimeoutAndCancel(roDB *sql.DB) {
 	cancel()
 	// ドライバーのerrorがcontext errorを包まない場合があるため、呼び出し側がctx.Err()でも原因を判別できることを併せて記録する。
 	s.record("timeout.deadline", layerTimeout, "context deadline(2秒)で長時間queryが中断され、Execution Errorとして返る",
-		err != nil && elapsed < 15*time.Second,
+		err != nil && contextErr != nil && oraCode(err) == "ORA-01013" && elapsed < 15*time.Second,
 		fmt.Sprintf("elapsedMs=%d errorWrapsDeadlineExceeded=%t contextErrAfterReturn=%v code=%s", elapsed.Milliseconds(), errors.Is(err, context.DeadlineExceeded), contextErr, firstNonEmpty(oraCode(err), "none")))
 
 	// 中断後のconnection poolが以降のqueryに使えること。
@@ -860,7 +867,7 @@ func (s *session) observeTimeoutAndCancel(roDB *sql.DB) {
 	timer.Stop()
 	cancelNow()
 	s.record("cancel.explicit", layerTimeout, "contextの明示cancel(1秒後)で長時間queryが中断され、Execution Errorとして返る",
-		err != nil && elapsed < 15*time.Second,
+		err != nil && contextErr != nil && oraCode(err) == "ORA-01013" && elapsed < 15*time.Second,
 		fmt.Sprintf("elapsedMs=%d errorWrapsCanceled=%t contextErrAfterReturn=%v code=%s", elapsed.Milliseconds(), errors.Is(err, context.Canceled), contextErr, firstNonEmpty(oraCode(err), "none")))
 	recovered, err = s.executor(s.def, roDB).ExecuteContractQuery(s.ctx, fixtureTarget, s.contract, map[string]any{"id": idJapanese})
 	s.record("cancel.recovers", layerTimeout, "cancel後も同じ*sql.DBで通常のContract Queryを実行できる",
