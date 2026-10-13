@@ -86,19 +86,21 @@ func TestScopedTenantPostgresAgainstIsolatedDatabase(t *testing.T) {
 	t.Logf("real tenant SQL evidence: database=%s server_version=%s", actualDB, version)
 
 	// This checked-in, reference-only fixture is not a production migration.
-	// It contains exactly a CREATE and INSERT statement. The simple split
-	// is intentionally restricted to this trusted fixed fixture.
+	// Split only at the reviewed CREATE/INSERT boundary. A comment in this
+	// fixture contains a semicolon, so naive strings.Split(data, ";") is unsafe.
 	data, err := os.ReadFile(filepath.Join("fixtures", "postgres_scoped_orders.sql"))
 	if err != nil {
 		t.Fatal("cannot read the committed tenant fixture")
 	}
-	statements := strings.Split(string(data), ";")
-	if len(statements) != 3 || strings.TrimSpace(statements[2]) != "" {
+	createSQL, insertTail, ok := strings.Cut(string(data), ";\n\nINSERT INTO")
+	if !ok || !strings.HasSuffix(strings.TrimSpace(insertTail), ";") ||
+		!strings.Contains(createSQL, "CREATE TABLE public.tei_web_scoped_orders_reference") {
 		t.Fatal("tenant fixture shape changed; refuse unexpected SQL")
 	}
+	insertSQL := "INSERT INTO" + strings.TrimSuffix(strings.TrimSpace(insertTail), ";")
 	// Register cleanup immediately after creating the relation so a failed
 	// INSERT does not leave behind fixture data.
-	if _, err := db.ExecContext(ctx, strings.TrimSpace(statements[0])); err != nil {
+	if _, err := db.ExecContext(ctx, strings.TrimSpace(createSQL)); err != nil {
 		t.Fatal("cannot create the isolated tenant fixture")
 	}
 	defer func() {
@@ -108,7 +110,7 @@ func TestScopedTenantPostgresAgainstIsolatedDatabase(t *testing.T) {
 			t.Errorf("failed to remove isolated tenant fixture: %v", err)
 		}
 	}()
-	if _, err := db.ExecContext(ctx, strings.TrimSpace(statements[1])); err != nil {
+	if _, err := db.ExecContext(ctx, insertSQL); err != nil {
 		t.Fatal("cannot insert the isolated tenant fixture")
 	}
 
@@ -130,10 +132,10 @@ func TestScopedTenantPostgresAgainstIsolatedDatabase(t *testing.T) {
 		tenantB: "tenant-b",
 	}}
 	tests := []struct {
-		name string
-		scope SQLTenantScopeRequest
-		options url.Values
-		want [][]any
+		name        string
+		scope       SQLTenantScopeRequest
+		options     url.Values
+		want        [][]any
 		wantColumns []string
 	}{
 		{
