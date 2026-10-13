@@ -21,12 +21,12 @@ var ErrLinuxSignerOperationReservationUnavailable = errors.New("Host signer oper
 // The key fingerprint binds an allow request's content without including
 // the Ed25519 public key bytes; revoke operations use an empty fingerprint.
 type LinuxSignerOperationReservation struct {
-	HostID       string
-	OperationID  string
-	Principal    string
-	SignerRef    string
-	Action       string
-	KeySHA256    string
+	HostID      string
+	OperationID string
+	Principal   string
+	SignerRef   string
+	Action      string
+	KeySHA256   string
 }
 
 // LinuxSignerOperationLedger must atomically and durably reserve the unique
