@@ -80,9 +80,23 @@ func ExecuteScopedCanonicalRead(
 	if err := CheckReadDispatch(publication, plan, support); err != nil {
 		return PublishedReadResult{}, err
 	}
+	// Freeze the authorized publication separately from the object delivered
+	// to a Provider. A Provider must not be able to widen the selected fields
+	// by mutating a shared slice or pointer after authorization.
+	selected := append([]string(nil), plan.Selected...)
+	forwarded := plan
+	forwarded.Selected = append([]string(nil), plan.Selected...)
+	if plan.Filter != nil {
+		filter := *plan.Filter
+		forwarded.Filter = &filter
+	}
+	if plan.Order != nil {
+		order := *plan.Order
+		forwarded.Order = &order
+	}
 	execution, err := resolver.ExecuteBrowseQuery(
 		ctx, publication.ApplicationID, publication.PatternID,
-		scopedDriverAdapter{queryID: publication.QueryID, plan: plan, provider: provider},
+		scopedDriverAdapter{queryID: publication.QueryID, plan: forwarded, provider: provider},
 		parameters,
 	)
 	if err != nil {
@@ -114,9 +128,9 @@ func ExecuteScopedCanonicalRead(
 		}
 		published[field.Name] = field.AttributeID
 	}
-	result := PublishedReadResult{Columns: append([]string(nil), plan.Selected...)}
-	selectedIndex := make([]int, len(plan.Selected))
-	for i, name := range plan.Selected {
+	result := PublishedReadResult{Columns: selected}
+	selectedIndex := make([]int, len(selected))
+	for i, name := range selected {
 		attribute, exists := published[name]
 		if !exists {
 			return PublishedReadResult{}, ErrScopedQueryContract
