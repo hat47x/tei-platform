@@ -239,7 +239,7 @@ func TestScopedPostgresRejectsInvalidPlansBeforeDatabaseAccess(t *testing.T) {
 		{"changed canonical SQL", func(q *query.EmbeddedSQL, _ *application.DatabaseRequirement, _ *ReadPlan, _ *map[string]any) {
 			q.Source += " UNION SELECT * FROM somewhere_else"
 		}},
-		
+
 		{"wrong datasource target", func(_ *query.EmbeddedSQL, ds *application.DatabaseRequirement, _ *ReadPlan, _ *map[string]any) {
 			ds.TargetDatabase = "different_db"
 		}},
@@ -424,9 +424,9 @@ func TestScopedPostgresBridgePreservesAuthorizationFailureClassification(t *test
 	pub := scopedPublication(t)
 	plan := postgresReadPlan(t)
 	for _, tc := range []struct {
-		name string
+		name   string
 		modify func(*postgresScopedAuthority)
-		want error
+		want   error
 	}{
 		{
 			name: "authorization backend unavailable",
@@ -450,9 +450,9 @@ func TestScopedPostgresBridgePreservesAuthorizationFailureClassification(t *test
 			out, err := ExecuteScopedCanonicalRead(context.Background(), bridgeWorld(t),
 				pub, plan, scopedSupport(pub, plan),
 				ScopedPostgresOrdersReference{
-					DB: postgresScopedDB(t, trace),
+					DB:        postgresScopedDB(t, trace),
 					Authority: authority,
-					Database: "sales_core",
+					Database:  "sales_core",
 				},
 				map[string]any{"from": from},
 			)
