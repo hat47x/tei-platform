@@ -2,6 +2,8 @@
 
 状態：**独立Go試作**。主題は[ADR-0032](../../plan/adr/0032-composition-kernel-replacement.md)と[Issue #1223](https://github.com/hat47x/tei-platform/issues/1223)。Production Runtimeにはまだ接続していません。
 
+移行の判定条件と実行手順は[合成Kernelの移行判定](../../plan/gate/COMPOSITION_KERNEL_MIGRATION_GATE_2026-10.md)にまとめています。以下のE0〜E15の局所結果は取得時点の記録であり、最新headの資格や本番での無停止性を示すものではありません。
+
 ## なぜ旧プラグイン機構と独立させたか
 
 旧`CapabilityKind`、`builtin/process`分類、Plugin Package IDを依存単位とする旧Resolverを設計上の前提にすると、新しい合成Kernelの妥当性を公平に評価できない。そのため`internal/composition/`を**Go標準ライブラリのみの実装**として先に作り、旧Plugin/Runtimeのimportを行わない。
