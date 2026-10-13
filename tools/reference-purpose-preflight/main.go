@@ -1,5 +1,5 @@
 // Command reference-purpose-preflight demonstrates read-only business guard
-// preflight with synthetic fixtures. It cannot grant execution permission.
+// preflight with synthetic fixtures or source inspections. It cannot grant execution permission.
 package main
 
 import (
@@ -43,20 +43,41 @@ func run(reader io.Reader, writer io.Writer) error {
 	return encoder.Encode(report)
 }
 
+func runCLI(args []string, output io.Writer) error {
+	flags := flag.NewFlagSet("reference-purpose-preflight", flag.ContinueOnError)
+	flags.SetOutput(io.Discard)
+	input := flags.String("input", "", "synthetic JSON fixture file (read-only)")
+	root := flags.String("workspace", "", "real TEI Workspace (read-only source inspection)")
+	kind := flags.String("subject-kind", "", "typed subject kind for Workspace inspection")
+	id := flags.String("subject-id", "", "typed subject ID for Workspace inspection")
+	if err := flags.Parse(args); err != nil {
+		return err
+	}
+	if flags.NArg() != 0 {
+		return fmt.Errorf("positional arguments are not supported")
+	}
+	if *input != "" && *root == "" && *kind == "" && *id == "" {
+		file, err := os.Open(*input)
+		if err != nil {
+			return err
+		}
+		defer file.Close()
+		return run(file, output)
+	}
+	if *input == "" && *root != "" && *kind != "" && *id != "" {
+		assessment, err := InspectWorkspace(*root, *kind, *id)
+		if err != nil {
+			return err
+		}
+		encoder := json.NewEncoder(output)
+		encoder.SetIndent("", "  ")
+		return encoder.Encode(assessment)
+	}
+	return fmt.Errorf("usage: reference-purpose-preflight -input <fixture.json> OR -workspace <path> -subject-kind application-pattern -subject-id <id>")
+}
+
 func main() {
-	input := flag.String("input", "", "synthetic JSON fixture file (read-only)")
-	flag.Parse()
-	if *input == "" || flag.NArg() != 0 {
-		fmt.Fprintln(os.Stderr, "usage: reference-purpose-preflight -input <fixture.json>")
-		os.Exit(2)
-	}
-	file, err := os.Open(*input)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-	defer file.Close()
-	if err := run(file, os.Stdout); err != nil {
+	if err := runCLI(os.Args[1:], os.Stdout); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
