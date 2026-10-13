@@ -30,8 +30,8 @@ const (
 
 // authoredRealizationは、このtoolの作者が明示的に書いたContract Query SQL realizationである。
 //
-// これは使い捨てfixture tableに対する実装であり、external-observedな実際のmaster_data資産の
-// physical objectやcolumnを観測して生成したものではない。観測Evidenceから生成する経路は持たない。
+// これは一時的な検証用の表に対する実装であり、external-observedな実際のmaster_data資産の
+// physical objectやcolumnを観測して生成したものではない。観測検証根拠から生成する経路は持たない。
 func authoredRealization(qualifiedTable string) realization.ContractQuerySQLRealization {
 	return realization.ContractQuerySQLRealization{
 		Target:   fixtureTarget,
@@ -75,7 +75,7 @@ func findQueryContract(w ir.World, target realization.ContractQueryTarget) (data
 }
 
 // findAuthoredRealizationは、target + providerに完全一致する明示realizationを返す。
-// 存在しなければEvidenceから補完せず停止する。
+// 存在しなければ検証根拠から補完せず停止する。
 func findAuthoredRealization(definitions []realization.ContractQuerySQLRealization, target realization.ContractQueryTarget, provider environment.DatabaseProvider) (realization.ContractQuerySQLRealization, error) {
 	var found realization.ContractQuerySQLRealization
 	count := 0
@@ -87,7 +87,7 @@ func findAuthoredRealization(definitions []realization.ContractQuerySQLRealizati
 	}
 	switch count {
 	case 0:
-		return realization.ContractQuerySQLRealization{}, fmt.Errorf("Contract Query %s / provider=%sに対応する明示SQL realizationがありません。Evidenceからrealizationを生成・補完しません", target.Identity(), provider)
+		return realization.ContractQuerySQLRealization{}, fmt.Errorf("Contract Query %s / provider=%sに対応する明示SQL realizationがありません。検証根拠からrealizationを生成・補完しません", target.Identity(), provider)
 	case 1:
 		return found, nil
 	default:
@@ -95,7 +95,7 @@ func findAuthoredRealization(definitions []realization.ContractQuerySQLRealizati
 	}
 }
 
-// observedFactsは、Evidenceへ写すために実際に観測した事実だけを保持する。
+// observedFactsは、検証根拠へ写すために実際に観測した事実だけを保持する。
 type observedFacts struct {
 	RunID           string
 	ObservedAt      time.Time
@@ -117,11 +117,11 @@ type observedColumn struct {
 	Nullable     *bool
 }
 
-// buildEvidenceは、観測事実とauthoring済みrealizationから、外部Evidence intake用のEvidenceを組み立てる。
+// buildEvidenceは、観測事実とauthoring済みrealizationから、外部検証根拠 intake用の検証根拠を組み立てる。
 //
 // Contract inputとraw列に対するSemantic attributeの対応はrealizationが明示している値を使う。
 // 観測側は「実際にそのparameter名・raw列名が使われ、返った」ことの確認に限る。
-// Evidenceに基づいてrealizationを補完する経路はない。
+// 検証根拠に基づいてrealizationを補完する経路はない。
 func buildEvidence(def realization.ContractQuerySQLRealization, facts observedFacts) (externalqueryevidence.Evidence, error) {
 	observedColumns := make(map[string]observedColumn, len(facts.RawColumns))
 	for _, column := range facts.RawColumns {
@@ -185,12 +185,12 @@ type intakeResult struct {
 	Error                       string `json:"error,omitempty"`
 }
 
-// intakeEvidenceは、Evidenceを既存の厳格loaderで読み直し、Workspaceとauthoring済みrealizationとの照合を行う。
+// intakeEvidenceは、検証根拠を既存の厳格loaderで読み直し、Workspaceとauthoring済みrealizationとの照合を行う。
 // 検査自体は既存のexternalqueryevidence.ValidateAgainstに委譲し、このtool側で緩めない。
 func intakeEvidence(w ir.World, definitions []realization.ContractQuerySQLRealization, evidence externalqueryevidence.Evidence) (intakeResult, []byte, error) {
 	raw, err := json.MarshalIndent(evidence, "", "  ")
 	if err != nil {
-		return intakeResult{}, nil, fmt.Errorf("Evidence JSONを作成できません: %w", err)
+		return intakeResult{}, nil, fmt.Errorf("検証根拠 JSONを作成できません: %w", err)
 	}
 	sum := sha256.Sum256(raw)
 	result := intakeResult{

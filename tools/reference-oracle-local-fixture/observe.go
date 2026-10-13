@@ -17,7 +17,7 @@ import (
 	"tei/internal/realization"
 )
 
-// checkは、使い捨てfixtureに対して実行した確認一件の結果である。
+// checkは、一時的な検証用データに対して実行した確認一件の結果である。
 // Outcomeは"pass" / "fail" / "observed"のいずれかで、observedは合否基準を置かず事実だけを記録する。
 type check struct {
 	ID          string `json:"id"`
@@ -88,7 +88,7 @@ func (s *session) errText(err error) string {
 	return s.fx.aliasText(s.red.describeError(err))
 }
 
-// rootMessageは、wrapされたerrorの最も内側（driverが返した本文）を診断用に返す。
+// rootMessageは、包まれたerrorの最も内側（ドライバーが返した本文）を診断用に返す。
 func (s *session) rootMessage(err error) string {
 	if err == nil {
 		return ""
@@ -232,10 +232,10 @@ func (s *session) observeContractQueryPath(roDB *sql.DB) {
 	exec := s.executor(s.def, roDB)
 
 	if err := roDB.PingContext(s.ctx); err != nil {
-		s.record("driver.ping", layerDriver, "read-only principalのTCP接続でPingできる", false, s.errText(err))
+		s.record("driver.ping", layerDriver, "読取り専用ユーザーのTCP接続でPingできる", false, s.errText(err))
 		return
 	}
-	s.record("driver.ping", layerDriver, "read-only principalのTCP接続でPingできる", true, "")
+	s.record("driver.ping", layerDriver, "読取り専用ユーザーのTCP接続でPingできる", true, "")
 
 	result, err := exec.ExecuteContractQuery(s.ctx, fixtureTarget, s.contract, map[string]any{"id": idJapanese})
 	if err != nil {
@@ -348,7 +348,7 @@ func (s *session) observeDatatypes(roDB *sql.DB) {
 		}
 		s.Datatypes = append(s.Datatypes, obs)
 	}
-	s.record("datatype.probe", layerDatatype, "全列を取得し、driverが提供したcolumn metadataとGo型を記録できる", true,
+	s.record("datatype.probe", layerDatatype, "全列を取得し、ドライバーが提供したcolumn metadataとGo型を記録できる", true,
 		fmt.Sprintf("columns=%d", len(s.Datatypes)))
 	s.record("datatype.null-as-nil", layerDatatype, "SQL NULLが別値へ変換されずnilとして保持される", nullsAreNil, "")
 }
@@ -406,7 +406,7 @@ func firstValue(raw sqlquery.RawExecution) any {
 // ---- grant evidence ----
 
 type privilegeEvidence struct {
-	// ReadOnlyPrincipalSession は、read-only principal自身から見えるsession中の権限である。
+	// ReadOnlyPrincipalSession は、読取り専用ユーザー自身から見えるsession中の権限である。
 	SessionPrivileges   []string `json:"sessionPrivileges"`
 	SessionRoles        []string `json:"sessionRoles"`
 	UserSystemPrivs     []string `json:"userSystemPrivileges"`
@@ -459,8 +459,8 @@ func (s *session) observeGrants(admin *sql.DB) {
 	only := func(values []string, want ...string) bool { return equalStrings(values, want) }
 	readOnlyAlias := s.fx.aliasText(s.fx.ReadOnly)
 	s.record("grant.session-privs-create-session-only", layerGrant,
-		"read-only principalのsession権限がCREATE SESSIONだけである", only(p.SessionPrivileges, "CREATE SESSION"), "")
-	s.record("grant.no-enabled-roles", layerGrant, "read-only principalに有効なroleがない",
+		"読取り専用ユーザーのsession権限がCREATE SESSIONだけである", only(p.SessionPrivileges, "CREATE SESSION"), "")
+	s.record("grant.no-enabled-roles", layerGrant, "読取り専用ユーザーに有効なroleがない",
 		len(p.SessionRoles) == 0 && len(p.DBARolePrivs) == 0, "")
 	var readOnlyGrants []string
 	for _, grant := range p.DBAObjectPrivsOnObj {
@@ -469,18 +469,18 @@ func (s *session) observeGrants(admin *sql.DB) {
 		}
 	}
 	s.record("grant.object-read-only", layerGrant,
-		"fixture tableに対するread-only principalのobject privilegeがREADだけである（DBA viewで確認。SELECTや他の権限がない）",
+		"検証用の表に対する読取り専用ユーザーのobject privilegeがREADだけである（DBA viewで確認。SELECTや他の権限がない）",
 		only(readOnlyGrants, readOnlyAlias+":READ"), "")
-	// user_tab_privsにはOracleが既定で付ける自分自身へのINHERIT PRIVILEGESも現れるため、fixture tableの行だけを見る。
+	// user_tab_privsにはOracleが既定で付ける自分自身へのINHERIT PRIVILEGESも現れるため、検証用の表の行だけを見る。
 	var tableGrants []string
 	for _, grant := range p.UserObjectPrivs {
 		if strings.HasPrefix(grant, "CUSTOMER:") {
 			tableGrants = append(tableGrants, grant)
 		}
 	}
-	s.record("grant.read-visible-to-principal", layerGrant, "read-only principal自身のuser_tab_privsでfixture tableへの権限がREADだけに見える",
+	s.record("grant.read-visible-to-principal", layerGrant, "読取り専用ユーザー自身のuser_tab_privsで検証用の表への権限がREADだけに見える",
 		only(tableGrants, "CUSTOMER:READ:grantable=NO"), "INHERIT PRIVILEGES（自分自身のuserに対する既定の付与）はuser_tab_privsに別行として現れる")
-	s.record("grant.no-public-dml", layerGrant, "PUBLICにfixture tableへのobject privilegeやDML / ANY系system privilegeがない",
+	s.record("grant.no-public-dml", layerGrant, "PUBLICに検証用の表へのobject privilegeやDML / ANY系system privilegeがない",
 		!p.PublicHasWriteOrWide && !containsGrantee(p.DBAObjectPrivsOnObj, "PUBLIC"), "")
 
 	// 全権限が仮にDBA側から追加されても分かるよう、READ privilege対応をdictionaryでも確認する。
@@ -515,7 +515,7 @@ func (s *session) observeDictionary() {
 		`SELECT column_name, data_type, NVL(TO_CHAR(data_precision),''), NVL(TO_CHAR(data_scale),''), NVL(TO_CHAR(char_length),''), nullable
 		 FROM all_tab_columns WHERE owner = :o AND table_name = 'CUSTOMER' ORDER BY column_id`, sql.Named("o", s.fx.Owner))
 	if err != nil {
-		s.record("dictionary.columns", layerGrant, "READ privilegeだけのprincipalからall_tab_columnsでfixture tableの列を観測できる", false, s.errText(err))
+		s.record("dictionary.columns", layerGrant, "READ privilegeだけのユーザーからall_tab_columnsで検証用の表の列を観測できる", false, s.errText(err))
 		return
 	}
 	// Oracleは空文字列をNULLとして返すため、NULL表記は「値なし」として空文字列へ正規化する。
@@ -528,13 +528,13 @@ func (s *session) observeDictionary() {
 	for _, row := range rows {
 		s.Dictionary = append(s.Dictionary, dictionaryColumn{Column: row[0], Type: row[1], Precision: blank(row[2]), Scale: blank(row[3]), CharLen: blank(row[4]), Nullable: row[5]})
 	}
-	s.record("dictionary.columns", layerGrant, "READ privilegeだけのprincipalからall_tab_columnsでfixture tableの列を観測できる", len(s.Dictionary) == 6, fmt.Sprintf("columns=%d", len(s.Dictionary)))
+	s.record("dictionary.columns", layerGrant, "READ privilegeだけのユーザーからall_tab_columnsで検証用の表の列を観測できる", len(s.Dictionary) == 6, fmt.Sprintf("columns=%d", len(s.Dictionary)))
 
 	objects, err := queryStrings(s.ctx, roPlain, `SELECT object_type FROM all_objects WHERE owner = :o AND object_name = 'CUSTOMER'`, sql.Named("o", s.fx.Owner))
 	if err == nil && len(objects) == 1 {
 		s.objectType = objects[0][0]
 	}
-	s.record("dictionary.object-type", layerGrant, "READ privilegeだけのprincipalからall_objectsでfixture objectの種類を観測できる", s.objectType == "TABLE", "type="+s.objectType)
+	s.record("dictionary.object-type", layerGrant, "READ privilegeだけのユーザーからall_objectsで検証用の対象の種類を観測できる", s.objectType == "TABLE", "type="+s.objectType)
 }
 
 // physicalTypeは、dictionaryから観測した列の型を一つの文字列にする。
@@ -689,7 +689,7 @@ func (s *session) observeMatrix() {
 	for _, principal := range principals {
 		for _, connection := range []string{connPlain, connReadOnlyTx} {
 			if principal.role == roleOwner && connection == connPlain {
-				// 書込み可能なownerをplain接続でprobeしてもfixtureを書き換えるだけで、確認になるのは
+				// 書込み可能なownerをplain接続でprobeしても検証用データを書き換えるだけで、確認になるのは
 				// read-only transaction側である。plain側は実行しない。
 				continue
 			}
@@ -714,14 +714,14 @@ func (s *session) observeMatrix() {
 		}
 	}
 	s.record("matrix.expectations", layerGrant,
-		"read-only principal(READのみ)はSELECT以外を全て拒否され、SELECT付与の対照principalはFOR UPDATE / LOCK TABLEが通り、ownerはread-only transaction内でDMLがORA-01456になる",
+		"読取り専用ユーザー(READのみ)はSELECT以外を全て拒否され、SELECT付与の対照ユーザーはFOR UPDATE / LOCK TABLEが通り、ownerはread-only transaction内でDMLがORA-01456になる",
 		allMet, "セルごとの結果はstatementMatrixを参照")
 
 	// 試験用のwrite文が実際には何も残していないことを、ownerから再確認する。
 	owner := newDB(s.fx.dsn(s.fx.Owner), false)
 	defer owner.Close()
 	rows, err := queryStrings(s.ctx, owner, fmt.Sprintf("SELECT COUNT(*) FROM CUSTOMER WHERE CUSTOMER_ID IN (%d, %d, %d)", idProbeInsert, idProbeAutocmt, idProbeFirstSQL))
-	s.record("matrix.no-residual-rows", layerGrant, "probe用のwrite文がfixture tableへrowを残していない",
+	s.record("matrix.no-residual-rows", layerGrant, "probe用のwrite文が検証用の表へrowを残していない",
 		err == nil && len(rows) == 1 && rows[0][0] == "0", "")
 }
 
@@ -825,21 +825,23 @@ func okOr(err error) string {
 
 // ---- timeout / cancel ----
 
-const longRunningQuery = `SELECT COUNT(*) FROM
-  (SELECT LEVEL FROM dual CONNECT BY LEVEL <= 3000) a,
-  (SELECT LEVEL FROM dual CONNECT BY LEVEL <= 3000) b,
-  (SELECT LEVEL FROM dual CONNECT BY LEVEL <= 3000) c`
+// waitQueryは、CPUと入出力をほとんど使わずに待機する問合せである。共有している既存Oracleへ負荷をかけずに、
+// 実行中の問合せをcontextの期限と取消しで中断できるかを確認するために使う。
+// DBMS_PIPE.RECEIVE_MESSAGEは、メッセージが来ない名前付きパイプを指定秒数だけ待つ。パイプ名は実行IDを含む。
+func (s *session) waitQuery() string {
+	return fmt.Sprintf("SELECT DBMS_PIPE.RECEIVE_MESSAGE('TEI_REF_%s_WAIT', 30) FROM dual", s.fx.RunID)
+}
 
 func (s *session) observeTimeoutAndCancel(roDB *sql.DB) {
 	runner := oraclequery.Runner{DB: roDB}
 
 	timeoutCtx, cancel := context.WithTimeout(s.ctx, 2*time.Second)
 	started := time.Now()
-	_, err := runner.ExecuteSQL(timeoutCtx, longRunningQuery, nil)
+	_, err := runner.ExecuteSQL(timeoutCtx, s.waitQuery(), nil)
 	elapsed := time.Since(started)
 	contextErr := timeoutCtx.Err()
 	cancel()
-	// driverのerrorがcontext errorをwrapしない場合があるため、呼び出し側がctx.Err()でも原因を判別できることを併せて記録する。
+	// ドライバーのerrorがcontext errorを包まない場合があるため、呼び出し側がctx.Err()でも原因を判別できることを併せて記録する。
 	s.record("timeout.deadline", layerTimeout, "context deadline(2秒)で長時間queryが中断され、Execution Errorとして返る",
 		err != nil && elapsed < 15*time.Second,
 		fmt.Sprintf("elapsedMs=%d errorWrapsDeadlineExceeded=%t contextErrAfterReturn=%v code=%s", elapsed.Milliseconds(), errors.Is(err, context.DeadlineExceeded), contextErr, firstNonEmpty(oraCode(err), "none")))
@@ -852,7 +854,7 @@ func (s *session) observeTimeoutAndCancel(roDB *sql.DB) {
 	cancelCtx, cancelNow := context.WithCancel(s.ctx)
 	timer := time.AfterFunc(time.Second, cancelNow)
 	started = time.Now()
-	_, err = runner.ExecuteSQL(cancelCtx, longRunningQuery, nil)
+	_, err = runner.ExecuteSQL(cancelCtx, s.waitQuery(), nil)
 	elapsed = time.Since(started)
 	contextErr = cancelCtx.Err()
 	timer.Stop()

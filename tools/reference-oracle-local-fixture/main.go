@@ -1,18 +1,20 @@
-// reference-oracle-local-fixtureは、手元の使い捨てOracle fixtureに対して、Oracle driver、
-// named bind、datatype、層別のread-only確認、Evidence intakeを実行し、secretを含まないJSON receiptを出す。
+// reference-oracle-local-fixtureは、別用途の既存Oracleに専用ユーザーと検証用の表だけを一時的に作成し、
+// Oracleドライバー、名前付きバインド、型、層別の読取り専用確認、検証根拠の受入れを実行して、
+// 秘密を含まないJSONの実行記録を出す。実行の最後に、作成した専用ユーザーだけを削除する。
 //
-// これはexternal-observedな実際のmaster_data資産のEvidenceではない。
+// これは外部で観測した実際のmaster_data資産の検証根拠ではない。
 package main
 
 import (
 	"context"
 	"database/sql"
 	"encoding/json"
-	"flag"
 	"fmt"
 	"os"
+	"os/signal"
 	"runtime"
 	"runtime/debug"
+	"syscall"
 	"time"
 
 	"tei/internal/database/externalqueryevidence"
@@ -23,7 +25,7 @@ import (
 	"tei/tools/internal/repositoryevidence"
 )
 
-// evidenceNatureは、このreceiptの種類を示す。external-observedではない。
+// evidenceNatureは、この実行記録の種類を示す。外部で観測した資産の検証根拠ではない。
 const evidenceNature = "local-ephemeral-oracle-fixture"
 
 type driverFacts struct {
@@ -32,6 +34,7 @@ type driverFacts struct {
 	RegisteredAs string `json:"registeredAs"`
 	GoVersion    string `json:"goVersion"`
 	Isolation    string `json:"isolation"`
+	Decision     string `json:"decision"`
 }
 
 type connectionFacts struct {
@@ -42,9 +45,17 @@ type connectionFacts struct {
 	Note      string `json:"note"`
 }
 
+// databaseFactsは、接続先が使い捨てではなく別用途の既存Oracleであることと、このtoolが触れた範囲を示す。
+type databaseFacts struct {
+	Usage                      string `json:"usage"`
+	ConfirmedSharedDatabaseUse bool   `json:"confirmedSharedDatabaseFixture"`
+	Note                       string `json:"note"`
+}
+
 type receipt struct {
 	EvidenceNature       string                     `json:"evidenceNature"`
 	ExternalObserved     bool                       `json:"externalObserved"`
+	RunID                string                     `json:"runId"`
 	Completed            bool                       `json:"completed"`
 	AllChecksPassed      bool                       `json:"allChecksPassed"`
 	FailedChecks         []string                   `json:"failedChecks"`
@@ -54,6 +65,7 @@ type receipt struct {
 	ReproducibleRevision bool                       `json:"reproducibleRevision"`
 	PostRunRepository    repositoryevidence.PostRun `json:"postRunRepository"`
 	Driver               driverFacts                `json:"driver"`
+	Database             databaseFacts              `json:"database"`
 	Oracle               *instanceFacts             `json:"oracle,omitempty"`
 	Connection           connectionFacts            `json:"connection"`
 	Principals           map[string]string          `json:"principals"`
@@ -68,36 +80,39 @@ type receipt struct {
 	NotProven            []string                   `json:"notProven"`
 }
 
-// notProvenは、このreceiptが証明しないことを常に明示する。
+// notProvenは、この実行記録が証明しないことを常に明示する。
 var notProven = []string{
-	"external-observedな実際のmaster_data資産（実Oracle）のphysical facts、型、NULL扱い、native realizationは観測していない",
-	"実資産のprovenance・加工履歴、実資産に対するread-only principalのgrant構成は取得していない",
-	"TCPS / Wallet / 認証方式は未確認（このrunはloopbackのTCP平文、password認証だけ）",
-	"本番principalのgrantではない。使い捨てprincipalに対するgrantの観測であり、実外部assetのEvidenceへ読み替えない",
-	"候補revision Rでの最終actual readではない。fixtureはこのrunのために作成して破棄した",
-	"read-only transactionをpoolでどう運用するかの方針は決めていない。接続単位で持続させる方式はsnapshotが接続開始時点に固定される",
+	"外部で観測した実際のmaster_data資産（実Oracle）の物理的な事実、型、NULL扱い、native SQLは観測していない",
+	"実資産の由来・加工履歴、実資産に対する読取り専用ユーザーの権限構成は取得していない",
+	"TCPS、Wallet、認証方式は未確認（この実行はloopbackのTCP平文とパスワード認証だけ）",
+	"本番のユーザー権限ではない。このtoolが一時的に作った専用ユーザーに対する権限の観測であり、実外部資産の検証根拠へ読み替えない",
+	"候補の版Rでの最終的な実読取りではない。検証用データはこの実行のために作成して削除した",
+	"読取り専用トランザクションを接続プールでどう運用するかの方針は決めていない。接続単位で持続させる方式では、スナップショットが接続開始時点に固定される",
+	"go-ora/v2は検証用の暫定依存であり、#371のドライバー決定ではない",
 }
 
 func main() {
-	workspacePath := flag.String("workspace", "reference/workspace", "Contract Queryを解決するWorkspace directory")
-	evidenceOut := flag.String("evidence-out", "", "受入れたexternal Evidence JSONを書き出すpath（Repository外を指定すること）")
-	cleanupRunID := flag.String("cleanup", "", "run idを指定すると、そのrunが作成したfixture userだけを削除する（中断後の後始末用）")
-	timeout := flag.Duration("timeout", 10*time.Minute, "全体のtimeout")
-	flag.Parse()
-
-	if *cleanupRunID != "" {
-		os.Exit(runCleanup(*cleanupRunID))
+	opts, err := parseOptions(os.Args[1:], os.Stderr)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(2)
+	}
+	if opts.CleanupRun != "" {
+		os.Exit(runCleanup(opts.CleanupRun))
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), *timeout)
+	// SIGINTとSIGTERMで実行を中断する。後始末はこのcontextではなく、新しいcontextで行う。
+	signalCtx, stopSignals := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stopSignals()
+	ctx, cancel := context.WithTimeout(signalCtx, opts.Timeout)
 	defer cancel()
-	result, err := run(ctx, *workspacePath, *evidenceOut)
+	result, err := run(ctx, opts.Workspace, opts.EvidenceOut)
 	if err != nil {
 		result.Error = err.Error()
 	}
 	encoded, marshalErr := json.MarshalIndent(result, "", "  ")
 	if marshalErr != nil {
-		fmt.Fprintln(os.Stderr, "receiptを出力できません")
+		fmt.Fprintln(os.Stderr, "実行記録を出力できません")
 		os.Exit(1)
 	}
 	fmt.Println(string(encoded))
@@ -114,16 +129,21 @@ func newReceipt() receipt {
 		Checks:           []check{},
 		NotProven:        notProven,
 		Principals: map[string]string{
-			"fixture-owner":            "使い捨てfixture tableの所有者。CREATE SESSIONとCREATE TABLEだけ",
-			"read-only-principal":      "fixture tableへのREAD object privilegeとCREATE SESSIONだけ",
-			"select-control-principal": "READとの対照用。fixture tableへのSELECT object privilegeとCREATE SESSIONだけ",
+			"fixture-owner":            "検証用の表の所有者。CREATE SESSIONとCREATE TABLEだけ",
+			"read-only-principal":      "検証用の表へのREAD object privilegeとCREATE SESSIONだけ",
+			"select-control-principal": "READとの対照用。検証用の表へのSELECT object privilegeとCREATE SESSIONだけ",
 		},
 		Connection: connectionFacts{
 			Transport: "TCP",
 			TLS:       false,
 			Wallet:    false,
 			Loopback:  true,
-			Note:      "loopbackのTCP平文とpassword認証だけを確認した。TCPS / Wallet / 他の認証方式は未確認",
+			Note:      "loopbackのTCP平文とパスワード認証だけを確認した。TCPS、Wallet、他の認証方式は未確認",
+		},
+		Database: databaseFacts{
+			Usage:                      "shared-existing-oracle-temporary-fixture",
+			ConfirmedSharedDatabaseUse: true,
+			Note:                       "別用途の既存Oracle 19cに、このtoolが専用ユーザーと検証用の表だけを一時的に作成・削除した。Oracleそのものは使い捨てではなく、既存のオブジェクトとデータは読み書きしていない",
 		},
 		Driver: driverInfo(),
 	}
@@ -134,7 +154,8 @@ func driverInfo() driverFacts {
 		Module:       "github.com/sijms/go-ora/v2",
 		RegisteredAs: "oracle",
 		GoVersion:    runtime.Version(),
-		Isolation:    "driverのimportはこのtool packageだけ。internal/配下のCoreとOracle Provider / QueryRuntimeはdriverを知らない",
+		Isolation:    "ドライバーのimportはこのtoolのpackageだけ。internal/配下の中核とOracleの提供元・問合せ実行環境はドライバーを知らない",
+		Decision:     "検証用の暫定依存であり、#371のドライバー決定ではない",
 	}
 	if info, ok := debug.ReadBuildInfo(); ok {
 		for _, dep := range info.Deps {
@@ -156,7 +177,7 @@ func run(ctx context.Context, workspacePath, evidenceOut string) (receipt, error
 	result.RepositoryRevision = source.RepositoryRevision
 	result.WorkingTreeClean = source.WorkingTreeClean
 	if !source.WorkingTreeClean {
-		return result, fmt.Errorf("receiptをclean revisionへ固定するため、working treeに未commit差分がある状態では実行しません")
+		return result, fmt.Errorf("実行記録をclean revisionへ固定するため、working treeに未commit差分がある状態では実行しません")
 	}
 
 	dsn, err := loadAdminDSN(os.LookupEnv, os.ReadFile)
@@ -176,11 +197,11 @@ func run(ctx context.Context, workspacePath, evidenceOut string) (receipt, error
 
 	loaded, err := workspace.Load(workspacePath)
 	if err != nil {
-		return result, fmt.Errorf("Workspace %sを読み込めません", workspacePath)
+		return result, fmt.Errorf("作業領域 %sを読み込めません", workspacePath)
 	}
 	for _, diagnostic := range validation.Validate(loaded.World) {
 		if diagnostic.Severity == validation.Error {
-			return result, fmt.Errorf("Workspaceにvalidation errorがあります: %s", diagnostic.Code)
+			return result, fmt.Errorf("作業領域に検証エラーがあります: %s", diagnostic.Code)
 		}
 	}
 	contract, err := findQueryContract(loaded.World, fixtureTarget)
@@ -192,6 +213,11 @@ func run(ctx context.Context, workspacePath, evidenceOut string) (receipt, error
 	if err != nil {
 		return result, err
 	}
+	// 実行IDは、ユーザーを作成する前に標準エラーへ出す。強制終了後でも-cleanupで後始末できるようにするためである。
+	result.RunID = runID
+	fmt.Fprintf(os.Stderr, "runId=%s\n", runID)
+	fmt.Fprintf(os.Stderr, "中断された場合の後始末: -cleanup %s -%s（管理DSNは同じ方法で渡す）\n", runID, confirmFlag)
+
 	fx, err := newFixture(target, runID)
 	if err != nil {
 		return result, err
@@ -213,12 +239,25 @@ func run(ctx context.Context, workspacePath, evidenceOut string) (receipt, error
 		notes:    &provisionNotes{},
 	}
 
+	// panicなどで通常の後始末へ到達しなかった場合も、作成済みのユーザーを新しいcontextで削除する。
+	tornDown := false
+	defer func() {
+		if tornDown {
+			return
+		}
+		panicCtx, cancelPanic := context.WithTimeout(context.Background(), 2*time.Minute)
+		defer cancelPanic()
+		cleanup := fx.teardown(panicCtx, admin, red)
+		fmt.Fprintf(os.Stderr, "異常終了のため専用ユーザーを削除しました: verified=%t\n", cleanup.Verified)
+	}()
+
 	runErr := s.execute(admin, evidenceOut, &result)
 
-	// 失敗や中断の場合も、作成した使い捨てuserを必ず削除して結果を再確認する。
+	// 失敗や中断（取り消されたcontextを含む）の場合も、この実行が作成した専用ユーザーを新しいcontextで必ず削除し、結果を再確認する。
 	cleanupCtx, cancelCleanup := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancelCleanup()
 	cleanup := fx.teardown(cleanupCtx, admin, red)
+	tornDown = true
 	result.Cleanup = &cleanup
 
 	result.Checks = s.checks
@@ -243,7 +282,7 @@ func run(ctx context.Context, workspacePath, evidenceOut string) (receipt, error
 	result.Completed = runErr == nil && cleanup.Verified && result.ReproducibleRevision
 	result.AllChecksPassed = result.Completed && len(result.FailedChecks) == 0 && result.Intake != nil && result.Intake.Accepted
 	if runErr == nil && !cleanup.Verified {
-		runErr = fmt.Errorf("使い捨てfixtureの削除を確認できませんでした")
+		runErr = fmt.Errorf("作成した専用ユーザーの削除を確認できませんでした")
 	}
 	if runErr == nil && !result.ReproducibleRevision {
 		runErr = fmt.Errorf("実行中にrepositoryのrevisionまたはworking treeが変化したため、単一のclean revisionへ固定できません")
@@ -251,7 +290,7 @@ func run(ctx context.Context, workspacePath, evidenceOut string) (receipt, error
 	return result, runErr
 }
 
-// executeは、使い捨てfixtureの作成から各確認、Evidence intakeまでを行う。teardownは呼び出し側が行う。
+// executeは、専用ユーザーと検証用の表の作成から各確認、検証根拠の受入れまでを行う。後始末は呼び出し側が行う。
 func (s *session) execute(admin *sql.DB, evidenceOut string, result *receipt) error {
 	if err := s.observeInstance(admin); err != nil {
 		return err
@@ -262,7 +301,7 @@ func (s *session) execute(admin *sql.DB, evidenceOut string, result *receipt) er
 	if err := s.fx.provision(s.ctx, admin, s.red, s.notes); err != nil {
 		return err
 	}
-	s.record("provision.read-privilege-grantable", layerGrant, "fixture ownerがread-only principalへREAD object privilegeをgrantできた（Oracle 12.1.0.2以降の機能）", true, "")
+	s.record("provision.read-privilege-grantable", layerGrant, "検証用の表の所有者が、読取り専用ユーザーへREAD object privilegeを付与できた（Oracle 12.1.0.2以降の機能）", true, "")
 
 	s.observeDictionary()
 	s.waitForReadOnlySnapshot()
@@ -282,12 +321,12 @@ func (s *session) execute(admin *sql.DB, evidenceOut string, result *receipt) er
 func (s *session) intake(evidenceOut string, result *receipt) error {
 	facts, err := s.collectEvidenceFacts()
 	if err != nil {
-		s.record("intake.facts", layerIntake, "観測した事実をEvidenceへ写せる", false, err.Error())
+		s.record("intake.facts", layerIntake, "観測した事実を検証根拠へ写せる", false, err.Error())
 		return nil
 	}
 	evidence, err := buildEvidence(s.def, facts)
 	if err != nil {
-		s.record("intake.build", layerIntake, "観測した事実とauthoring済みrealizationからEvidenceを組み立てられる", false, err.Error())
+		s.record("intake.build", layerIntake, "観測した事実と作者が明示したSQL実現から検証根拠を組み立てられる", false, err.Error())
 		return nil
 	}
 	definitions := []realization.ContractQuerySQLRealization{s.def}
@@ -296,30 +335,30 @@ func (s *session) intake(evidenceOut string, result *receipt) error {
 		return err
 	}
 	result.Intake = &intake
-	s.record("intake.accepted", layerIntake, "既存のexternalqueryevidenceの厳格loaderとValidateAgainstがEvidenceを受理する", intake.Accepted, intake.Error)
+	s.record("intake.accepted", layerIntake, "既存のexternalqueryevidenceの厳格な読込みとValidateAgainstが検証根拠を受理する", intake.Accepted, intake.Error)
 
-	// SQL realizationがないtarget / providerは、Evidenceから補完せず停止する（既存tool・既存規則と同じ境界）。
+	// SQL実現がない対象と提供元は、検証根拠から補完せず停止する（既存のtoolと既存の規則と同じ境界）。
 	_, stopErr := findAuthoredRealization(nil, evidence.Target, evidence.Provider)
-	s.record("intake.stops-without-realization", layerIntake, "authoring済みrealizationがない場合はEvidenceから補完せず停止する", stopErr != nil, "")
+	s.record("intake.stops-without-realization", layerIntake, "作者が明示したSQL実現がない場合は検証根拠から補完せず停止する", stopErr != nil, "")
 
-	// providerが異なるrealizationしかない場合も補完しない。
+	// 提供元が異なるSQL実現しかない場合も補完しない。
 	other := s.def
 	other.Provider = environment.ProviderPostgres
 	_, stopErr = findAuthoredRealization([]realization.ContractQuerySQLRealization{other}, evidence.Target, evidence.Provider)
-	s.record("intake.provider-must-match", layerIntake, "provider違いのrealizationを選ばない", stopErr != nil, "")
+	s.record("intake.provider-must-match", layerIntake, "提供元が違うSQL実現を選ばない", stopErr != nil, "")
 
-	// native sourceのfingerprintが違えばstaleとして拒否する。
+	// native SQLの照合値が違えば古い検証根拠として拒否する。
 	stale := evidence
 	stale.NativeSource.Fingerprint = "sha256:" + fmt.Sprintf("%064d", 0)
 	if err := externalqueryevidence.ValidateAgainst(s.world, s.def, stale); err != nil {
-		s.record("intake.rejects-stale-fingerprint", layerIntake, "native source fingerprintが違うEvidenceを拒否する", true, "")
+		s.record("intake.rejects-stale-fingerprint", layerIntake, "native SQLの照合値が違う検証根拠を拒否する", true, "")
 	} else {
-		s.record("intake.rejects-stale-fingerprint", layerIntake, "native source fingerprintが違うEvidenceを拒否する", false, "")
+		s.record("intake.rejects-stale-fingerprint", layerIntake, "native SQLの照合値が違う検証根拠を拒否する", false, "")
 	}
 
 	if evidenceOut != "" && intake.Accepted {
 		if err := os.WriteFile(evidenceOut, append(raw, '\n'), 0o600); err != nil {
-			return fmt.Errorf("Evidence JSONを書き出せません")
+			return fmt.Errorf("検証根拠のJSONを書き出せません")
 		}
 	}
 	return nil
@@ -334,20 +373,20 @@ func (s *session) collectEvidenceFacts() (observedFacts, error) {
 		InputParameter:  "id",
 		NativeSourceRef: "local-ephemeral-oracle-fixture:" + s.fx.RunID + "/authored-source",
 		SourceRef:       "local-ephemeral-oracle-fixture:" + s.fx.RunID + "/data-dictionary-and-driver-metadata",
-		ProcessingNote:  "このtoolが作成した使い捨てfixture tableのdata dictionaryとdriver metadataを観測した。external-observedな実資産の観測ではなく、実資産のEvidenceへ読み替えない",
-		ReadOnlyMech:    "READ object privilegeだけのprincipal、SET TRANSACTION READ ONLY(connector)、QueryContextだけのRunnerの多層。使い捨てfixtureでの観測",
+		ProcessingNote:  "このtoolが一時的に作成した検証用の表について、データ辞書とドライバーのメタデータを観測した。外部で観測した実資産の観測ではなく、実資産の検証根拠へ読み替えない",
+		ReadOnlyMech:    "READ object privilegeだけの専用ユーザー、接続時のSET TRANSACTION READ ONLY、QueryContextだけを使う実行部の多層。一時的な検証用データでの観測",
 		ReadOnlyRef:     "local-ephemeral-oracle-fixture:" + s.fx.RunID + "/receipt#grant,transaction,statementMatrix",
 	}
 	if facts.ObjectKind == "" {
-		return facts, fmt.Errorf("fixture objectの種類をdictionaryから観測できていません")
+		return facts, fmt.Errorf("検証用の対象の種類をデータ辞書から観測できていません")
 	}
 	idColumn, ok := s.dictionaryColumn("CUSTOMER_ID")
 	if !ok {
-		return facts, fmt.Errorf("CUSTOMER_ID列をdictionaryから観測できていません")
+		return facts, fmt.Errorf("CUSTOMER_ID列をデータ辞書から観測できていません")
 	}
 	facts.InputPhysical = idColumn.physicalType()
 	if len(s.Metadata) == 0 {
-		return facts, fmt.Errorf("actual readでraw列metadataを観測できていません")
+		return facts, fmt.Errorf("実読取りで結果列のメタデータを観測できていません")
 	}
 	for _, meta := range s.Metadata {
 		column := observedColumn{Name: meta.Name, Nullable: meta.Nullable}
@@ -359,6 +398,8 @@ func (s *session) collectEvidenceFacts() (observedFacts, error) {
 	return facts, nil
 }
 
+// runCleanupは、実行IDを指定して、その実行が作成した専用ユーザーだけを削除する。
+// 実行IDから決まる三つの名前のうち、現に存在するものだけを対象とする。
 func runCleanup(runID string) int {
 	dsn, err := loadAdminDSN(os.LookupEnv, os.ReadFile)
 	if err == nil {
@@ -384,6 +425,10 @@ func runCleanup(runID string) int {
 	defer admin.Close()
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
+	if err := fx.adoptExistingForCleanup(ctx, admin, red); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 2
+	}
 	result := fx.teardown(ctx, admin, red)
 	encoded, _ := json.MarshalIndent(result, "", "  ")
 	fmt.Println(string(encoded))

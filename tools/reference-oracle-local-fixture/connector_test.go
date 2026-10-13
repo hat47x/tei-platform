@@ -40,7 +40,7 @@ func TestReadOnlyConnectorIssuesSetTransactionAsTheOnlyFirstSQL(t *testing.T) {
 		t.Fatal(err)
 	}
 	if got != driver.Conn(conn) {
-		t.Fatal("物理接続をwrapせず、そのまま返す必要があります（driverのinterface検出を保つため）")
+		t.Fatal("物理接続を包むせず、そのまま返す必要があります（ドライバーのinterface検出を保つため）")
 	}
 	if strings.Join(calls, "|") != "exec:SET TRANSACTION READ ONLY" {
 		t.Fatalf("接続直後の呼び出し=%v。SET TRANSACTION READ ONLYだけを最初のSQLとして発行する必要があります", calls)
@@ -58,7 +58,7 @@ func TestReadOnlyConnectorClosesConnectionWhenReadOnlyCannotBeEstablished(t *tes
 	}
 }
 
-// ADR-0007: driver選択はHost / Reference assemblyだけが行う。internal/配下のCoreがdriverをimportしないことを確認する。
+// ADR-0007: ドライバー選択はHost / Reference assemblyだけが行う。internal/配下のCoreがドライバーをimportしないことを確認する。
 func TestOracleDriverIsImportedOnlyByThisToolNotByInternalCore(t *testing.T) {
 	const driverPath = "github.com/sijms/go-ora"
 	root := filepath.Join("..", "..", "internal")
@@ -73,7 +73,7 @@ func TestOracleDriverIsImportedOnlyByThisToolNotByInternalCore(t *testing.T) {
 		}
 		for _, spec := range file.Imports {
 			if strings.Contains(spec.Path.Value, driverPath) {
-				t.Errorf("internal/配下の%sがOracle driverをimportしています", path)
+				t.Errorf("internal/配下の%sがOracle ドライバーをimportしています", path)
 			}
 		}
 		return nil
@@ -84,7 +84,7 @@ func TestOracleDriverIsImportedOnlyByThisToolNotByInternalCore(t *testing.T) {
 }
 
 // 既存のOracle Runnerは読取り専用経路でありQueryContextだけを使う（#376）。
-// Exec系・Begin系・Prepare系へ変更された場合に、このfixtureの前提が崩れることを検出する。
+// Exec系・Begin系・Prepare系へ変更された場合に、この検証用データの前提が崩れることを検出する。
 func TestExistingOracleRunnerUsesQueryContextOnly(t *testing.T) {
 	path := filepath.Join("..", "..", "internal", "driver", "queryruntime", "oracle", "runner.go")
 	source, err := os.ReadFile(path)

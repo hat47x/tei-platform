@@ -10,8 +10,8 @@ import (
 	"strings"
 )
 
-// adminDSNEnvとadminDSNFileEnvは、使い捨てprincipalを作成できる管理接続のHost側入力である。
-// どちらか一方だけを指定し、値はRepository、receipt、標準出力、標準エラーへ出さない。
+// adminDSNEnvとadminDSNFileEnvは、一時的な専用ユーザーを作成できる管理接続のHost側入力である。
+// どちらか一方だけを指定し、値はRepository、実行記録、標準出力、標準エラーへ出さない。
 const (
 	adminDSNEnv     = "TEI_ORACLE_FIXTURE_ADMIN_DSN"
 	adminDSNFileEnv = "TEI_ORACLE_FIXTURE_ADMIN_DSN_FILE"
@@ -98,7 +98,7 @@ func parseAdminDSN(dsn string) (adminTarget, error) {
 		return adminTarget{}, fmt.Errorf("管理DSNのschemeはoracleでなければなりません")
 	}
 	if parsed.RawQuery != "" {
-		return adminTarget{}, fmt.Errorf("管理DSNにquery optionは指定できません。local fixtureはTCP平文のloopback接続だけを扱います")
+		return adminTarget{}, fmt.Errorf("管理DSNにquery optionは指定できません。local 検証用データはTCP平文のloopback接続だけを扱います")
 	}
 	if parsed.User == nil {
 		return adminTarget{}, fmt.Errorf("管理DSNにuserとpasswordが必要です")

@@ -9,7 +9,7 @@ import (
 )
 
 // redactorは、このprocessが扱うsecret文字列を診断から取り除く。
-// driver errorが接続情報やDDL本文を含む可能性を考慮し、外へ出す文字列は必ずここを通す。
+// ドライバー errorが接続情報やDDL本文を含む可能性を考慮し、外へ出す文字列は必ずここを通す。
 type redactor struct {
 	secrets []string
 }
@@ -55,7 +55,7 @@ func (r *redactor) describeError(err error) string {
 
 const passwordAlphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 
-// generatePasswordは、使い捨てprincipal用のrandom passwordを作る。
+// generatePasswordは、一時的な専用ユーザー用のrandom passwordを作る。
 // 先頭は英字、記号を含まないため、引用符付き識別子としてDDLへ埋め込んでも構文を壊さない。
 func generatePassword() (string, error) {
 	const length = 24
@@ -84,7 +84,7 @@ func newRunID() (string, error) {
 	return strings.ToUpper(fmt.Sprintf("%x", buf)), nil
 }
 
-// 使い捨てprincipalのrole接尾辞。
+// 一時的な専用ユーザーのrole接尾辞。
 const (
 	roleOwner         = "OWN"
 	roleReadOnly      = "RO"
@@ -99,7 +99,7 @@ func fixtureUserName(runID, role string) (string, error) {
 	}
 	name := "TEI_REF_" + runID + "_" + role
 	if !fixtureUserPattern.MatchString(name) {
-		return "", fmt.Errorf("fixture user名が規則に合いません")
+		return "", fmt.Errorf("専用ユーザー名が規則に合いません")
 	}
 	return name, nil
 }

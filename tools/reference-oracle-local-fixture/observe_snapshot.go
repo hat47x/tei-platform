@@ -9,7 +9,7 @@ func (s *session) snapshotProbeSQL() string {
 	return fmt.Sprintf("SELECT CUSTOMER_ID FROM %s WHERE CUSTOMER_ID = %d", s.fx.qualifiedTable(), idJapanese)
 }
 
-// waitForReadOnlySnapshotは、fixtureのDDL / GRANT直後にread-only transactionを開始すると
+// waitForReadOnlySnapshotは、検証用データのDDL / GRANT直後にread-only transactionを開始すると
 // ORA-01466（table definition has changed）で読めないことがあるため、読めるようになるまで待つ。
 // 待った事実自体を観測として残す。
 func (s *session) waitForReadOnlySnapshot() {
@@ -31,18 +31,18 @@ func (s *session) waitForReadOnlySnapshot() {
 		}
 		if code != "ORA-01466" || time.Since(started) > limit || s.ctx.Err() != nil {
 			s.record("tx.readable-after-ddl-settles", layerTransaction,
-				"fixture作成直後でも、待てばread-only transactionでfixture tableを読める", false, "last="+firstNonEmpty(code, s.errText(err)))
+				"検証用データ作成直後でも、待てばread-only transactionで検証用の表を読める", false, "last="+firstNonEmpty(code, s.errText(err)))
 			return
 		}
 		time.Sleep(time.Second)
 	}
 	s.record("tx.readable-after-ddl-settles", layerTransaction,
-		"fixture作成直後でも、待てばread-only transactionでfixture tableを読める", true,
+		"検証用データ作成直後でも、待てばread-only transactionで検証用の表を読める", true,
 		fmt.Sprintf("attempts=%d waitedMs=%d firstErrorCode=%s", attempts, time.Since(started).Milliseconds(), firstNonEmpty(firstCode, "none")))
 }
 
-// observeDDLAfterSnapshotは、read-only transactionを持つ長寿命接続がある間にfixture tableへDDLが入った場合の挙動を観測する。
-// 他のread-only確認がfixtureのDDL時刻に影響されないよう、最後に実行する。
+// observeDDLAfterSnapshotは、read-only transactionを持つ長寿命接続がある間に検証用の表へDDLが入った場合の挙動を観測する。
+// 他のread-only確認が検証用データのDDL時刻に影響されないよう、最後に実行する。
 func (s *session) observeDDLAfterSnapshot() {
 	reader := newDB(s.fx.dsn(s.fx.ReadOnly), true)
 	reader.SetMaxOpenConns(1)
@@ -72,7 +72,7 @@ func (s *session) observeDDLAfterSnapshot() {
 		time.Sleep(time.Second)
 	}
 	s.observed("tx.ddl-after-snapshot", layerTransaction,
-		"read-only transactionを持つ長寿命接続の途中でfixture tableにDDL(COMMENT ON TABLE、続けてALTER TABLE ADD COLUMN)が入った場合の読取り",
+		"read-only transactionを持つ長寿命接続の途中で検証用の表にDDL(COMMENT ON TABLE、続けてALTER TABLE ADD COLUMN)が入った場合の読取り",
 		fmt.Sprintf("firstQuery=%s commentDdl=%s sameConnectionAfterComment=%s alterDdl=%s sameConnectionAfterAlter=%s freshConnectionRecovered=%t afterMs=%d",
 			firstNonEmpty(oraCode(before), okOr(before)), okOr(commentErr), firstNonEmpty(oraCode(afterComment), okOr(afterComment)),
 			okOr(alterErr), firstNonEmpty(oraCode(sameConn), okOr(sameConn)), recovered, time.Since(started).Milliseconds()))
