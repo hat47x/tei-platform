@@ -167,3 +167,44 @@ func TestO3BundleDigestDetectsMutationButIsNotAuthority(t *testing.T) {
 		t.Fatalf("duplicate locales accepted: %v", err)
 	}
 }
+
+func TestO3BundleChecksCurrentEnvironmentLock(t *testing.T) {
+	c, env, lock, graph, surfaces, packs, grants, req, err := ReferenceOrderCase()
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, err := BuildLockedLocaleBundle(c, env, lock, graph, surfaces, packs, grants, nil,
+		LocaleBundleRequest{Target: req.Target, Keys: []resources.Key{req.Key},
+			Locales: []string{"en-US"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := CheckLocaleBundleAgainstLock(b, c, env, lock); err != nil {
+		t.Fatalf("current bundle rejected: %v", err)
+	}
+	b.LockFingerprint = strings.Repeat("0", 64)
+	for i := range b.Displays {
+		b.Displays[i].LockFingerprint = b.LockFingerprint
+	}
+	b.Digest, _ = localeBundleDigest(b)
+	if err := CheckLocaleBundleAgainstLock(b, c, env, lock); err == nil ||
+		!strings.Contains(err.Error(), "environment-lock-mismatch") {
+		t.Fatalf("foreign lock accepted with recomputed self-digest: %v", err)
+	}
+	b, _ = orderLocaleBundle(t)
+	b.Target.Version = "9.9.9"
+	for i := range b.Displays {
+		b.Displays[i].Target.Version = b.Target.Version
+	}
+	b.Digest, _ = localeBundleDigest(b)
+	if err := CheckLocaleBundleAgainstLock(b, c, env, lock); err == nil ||
+		!strings.Contains(err.Error(), "target-not-in-current-lock") {
+		t.Fatalf("unselected target version accepted: %v", err)
+	}
+	b, _ = orderLocaleBundle(t)
+	c.Plugins[0].Runtime.Kind = plugin.RuntimeProcess
+	if err := CheckLocaleBundleAgainstLock(b, c, env, lock); err == nil ||
+		!strings.Contains(err.Error(), "plugin-lock") {
+		t.Fatalf("modified plugin definition accepted: %v", err)
+	}
+}
