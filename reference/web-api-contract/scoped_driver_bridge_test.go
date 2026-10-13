@@ -200,7 +200,7 @@ func TestScopedProviderCannotMutateAuthorizedResponseProjection(t *testing.T) {
 		forwarded.Order.FieldID = "customerId"
 		return driver.BrowseQueryResult{Raw: queryresult.RawResult{
 			Columns: []string{"total_amount", "status", "ordered_at", "customer_id", "order_id"},
-			Rows: [][]any{{int64(120000), "READY", "2026-10-01", int64(99), int64(7)}},
+			Rows:    [][]any{{int64(120000), "READY", "2026-10-01", int64(99), int64(7)}},
 		}}, nil
 	})
 	out, err := ExecuteScopedCanonicalRead(context.Background(), bridgeWorld(t), pub, plan,
