@@ -62,7 +62,7 @@ if grep -Exq 'tei/internal/(workspace|syntax)' "$scratch/frozen-packages.txt"; t
   echo "frozen API still links build-only Workspace/syntax packages" >&2
   exit 1
 fi
-go build -trimpath \
+go build -trimpath -buildvcs=true \
   -tags=tei_order_only,tei_api_only,tei_frozen_world \
   -ldflags="-buildid= -X main.frozenWorldSHA256=$digest -X main.referenceAPISourceRevision=$source_sha" \
   -o "$scratch/derived/api/order-entry" ./tools/reference-first-web-target
