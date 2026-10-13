@@ -87,6 +87,7 @@ func (s *webTargetServer) Handler() http.Handler {
 	registerCombinedScenarioRoutes(mux, s)
 	// API-only diagnostic route guards the same business Runner at dispatch.
 	mux.HandleFunc(apiBoundCommandPath, s.handleBoundCommandScenario)
+	mux.HandleFunc(apiBoundReadPath, s.handleBoundReadScenario)
 	return mux
 }
 
