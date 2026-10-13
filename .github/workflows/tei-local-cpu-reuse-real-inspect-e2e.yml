@@ -50,4 +50,5 @@ jobs:
           set -euo pipefail
           go version
           node --version
+          node --test reference/local-cpu-reuse/compare-two-application-references.test.mjs
           node --test reference/local-cpu-reuse/real-go-inspection.e2e.test.mjs
