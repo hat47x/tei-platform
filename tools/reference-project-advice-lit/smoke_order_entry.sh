@@ -16,7 +16,12 @@ trap cleanup EXIT
 api="http://127.0.0.1:18977"
 host="http://127.0.0.1:8787"
 
-go build -trimpath -tags=tei_order_only,tei_api_only -o "$tmp/order-entry" ./tools/reference-first-web-target
+build_revision="$(git rev-parse HEAD)"
+# The existing E1 API builder pins T into the executable. Passing only
+# -target-revision at runtime is insufficient on merged main.
+go build -trimpath \
+  -ldflags="-buildid= -X main.referenceAPISourceRevision=$build_revision" \
+  -tags=tei_order_only,tei_api_only -o "$tmp/order-entry" ./tools/reference-first-web-target
 go build -trimpath -o "$tmp/advice-host" ./tools/reference-project-advice-lit
 
 "$tmp/order-entry" \
@@ -26,7 +31,7 @@ go build -trimpath -o "$tmp/advice-host" ./tools/reference-project-advice-lit
   -application order_entry \
   -baseline-id B \
   -baseline-revision e5231839a5dcc62cce1181a2731fcb7c70d16736 \
-  -target-revision "$(git rev-parse HEAD)" \
+  -target-revision "$build_revision" \
   -listen 127.0.0.1:18977 >"$tmp/api.log" 2>&1 &
 api_pid=$!
 
