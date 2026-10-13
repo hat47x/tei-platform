@@ -1336,8 +1336,12 @@
                       "from": {
                         "op": "replace-field",
                         "from": {
-                          "op": "input",
-                          "name": "pluginDefinition"
+                          "op": "omit-empty-array-field",
+                          "from": {
+                            "op": "input",
+                            "name": "pluginDefinition"
+                          },
+                          "field": "provides"
                         },
                         "field": "provides",
                         "value": {
@@ -1635,8 +1639,12 @@
                   "from": {
                     "op": "replace-field",
                     "from": {
-                      "op": "input",
-                      "name": "pluginDefinition"
+                      "op": "omit-empty-array-field",
+                      "from": {
+                        "op": "input",
+                        "name": "pluginDefinition"
+                      },
+                      "field": "provides"
                     },
                     "field": "provides",
                     "value": {
