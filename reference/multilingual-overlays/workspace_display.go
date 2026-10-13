@@ -210,7 +210,9 @@ func buildLoadedWorkspaceDisplay(root string, loaded workspace.Result, lock plug
 	// A caller cannot mistake a matching digest for acceptance.
 	if err := gate(ReviewRequest{
 		Environment: env.ID, Source: witness, Surface: surface,
-		Packs: packs, Grants: grants, Overrides: overrides, Requested: request,
+		Packs: append([]Pack(nil), packs...),
+		Grants: append([]Grant(nil), grants...),
+		Overrides: append([]Override(nil), overrides...), Requested: request,
 	}); err != nil {
 		return reject("review-denied: " + err.Error())
 	}
