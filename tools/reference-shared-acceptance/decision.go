@@ -116,6 +116,13 @@ func decisionFrom(p Preview, kind string) Decision {
 // 派生物を決定論的に再生成できるかを確認し、一つでも満たさなければ元のsourceへ戻す
 // （追記したfileは元の内容へ、作成したfileと、そのために作ったdirectoryは削除する）。
 func accept(root string, data []byte, opts acceptOptions) (Decision, error) {
+	// Keep the original Workspace directory handle across evaluation and
+	// mutation: replacing the caller's path must never redirect a write.
+	files, err := os.OpenRoot(root)
+	if err != nil {
+		return Decision{}, fmt.Errorf("open Acceptance Workspace root: %w", err)
+	}
+	defer files.Close()
 	ev, err := evaluate(root, data)
 	if err != nil {
 		return Decision{}, err
@@ -157,32 +164,21 @@ func accept(root string, data []byte, opts acceptOptions) (Decision, error) {
 		var incomplete []string
 		for i := len(written) - 1; i >= 0; i-- {
 			e := written[i]
-			target := filepath.Join(root, filepath.FromSlash(e.Path))
-			current, err := os.ReadFile(target)
+			current, err := sourceReadWithinRoot(files, e.Path)
 			if err != nil || sourceindex.Fingerprint(current) != e.AfterFingerprint {
 				incomplete = append(incomplete, e.Path)
 				continue
 			}
 			if e.Created {
-				err = os.Remove(target)
+				err = sourceRemoveWithinRoot(files, e.Path)
 			} else {
-				err = writeFileAtomic(target, e.before)
+				err = sourceWriteWithinRoot(files, e.Path, e.before, false)
 			}
 			if err != nil {
 				incomplete = append(incomplete, e.Path)
 			}
 		}
-		for i := len(createdDirs) - 1; i >= 0; i-- {
-			if err := os.Remove(createdDirs[i]); err != nil && !os.IsNotExist(err) {
-				// Another actor may have created a file in a directory that
-				// Acceptance originally created. Preserve that file and its
-				// parent: only the Source edits we wrote belong to rollback.
-				if entries, readErr := os.ReadDir(createdDirs[i]); readErr == nil && len(entries) > 0 {
-					continue
-				}
-				incomplete = append(incomplete, createdDirs[i])
-			}
-		}
+		incomplete = append(incomplete, sourceRemoveDirsIfEmpty(files, createdDirs)...)
 		return incomplete
 	}
 	refuse := func(code, message string) Decision {
@@ -204,18 +200,28 @@ func accept(root string, data []byte, opts acceptOptions) (Decision, error) {
 		if beforeEachWriteHook != nil {
 			beforeEachWriteHook(i, e)
 		}
-		target := filepath.Join(root, filepath.FromSlash(e.Path))
+		if err := checkAcceptedWorkspaceIdentity(root, files); err != nil {
+			return refuse("SOURCE_WORKSPACE_REPLACED", err.Error()), nil
+		}
 		if e.Created {
-			if _, err := os.Stat(target); err == nil {
+			name, err := acceptedSourcePath(e.Path)
+			if err != nil {
+				return refuse("SOURCE_WRITE_FAILED", err.Error()), nil
+			}
+			_, err = files.Lstat(name)
+			if err == nil {
 				return refuse("SOURCE_CHANGED_DURING_ACCEPT", fmt.Sprintf("作成先 %s がPreviewの後に作られました", e.Path)), nil
 			}
-			dirs, err := makeDirs(filepath.Dir(target))
+			if !os.IsNotExist(err) {
+				return refuse("SOURCE_UNREADABLE", err.Error()), nil
+			}
+			dirs, err := sourceMakeDirs(files, filepath.Dir(name))
 			createdDirs = append(createdDirs, dirs...)
 			if err != nil {
 				return refuse("SOURCE_WRITE_FAILED", err.Error()), nil
 			}
 		} else {
-			current, err := os.ReadFile(target)
+			current, err := sourceReadWithinRoot(files, e.Path)
 			if err != nil {
 				return refuse("SOURCE_UNREADABLE", err.Error()), nil
 			}
@@ -223,7 +229,10 @@ func accept(root string, data []byte, opts acceptOptions) (Decision, error) {
 				return refuse("SOURCE_CHANGED_DURING_ACCEPT", fmt.Sprintf("%s がPreviewの後に変更されました", e.Path)), nil
 			}
 		}
-		if err := writeFileAtomic(target, e.after); err != nil {
+		if err := sourceWriteWithinRoot(files, e.Path, e.after, e.Created); err != nil {
+			if e.Created && os.IsExist(err) {
+				return refuse("SOURCE_CHANGED_DURING_ACCEPT", fmt.Sprintf("作成先 %s が書込み前に作られました", e.Path)), nil
+			}
 			return refuse("SOURCE_WRITE_FAILED", err.Error()), nil
 		}
 		written = append(written, e)
@@ -302,26 +311,6 @@ func accept(root string, data []byte, opts acceptOptions) (Decision, error) {
 	decision.Evidence = ev.candidate.Evidence
 	decision.Unresolved = ev.preview.Unresolved
 	return decision, nil
-}
-
-// makeDirsは、directoryを作り、そのために新しく作ったdirectory（外側から内側の順）を返す。
-func makeDirs(dir string) ([]string, error) {
-	var missing []string
-	for d := dir; ; d = filepath.Dir(d) {
-		if _, err := os.Stat(d); err == nil {
-			break
-		}
-		missing = append([]string{d}, missing...)
-		if filepath.Dir(d) == d {
-			break
-		}
-	}
-	for _, d := range missing {
-		if err := os.Mkdir(d, 0o755); err != nil {
-			return missing, err
-		}
-	}
-	return missing, nil
 }
 
 // rejectは、candidateを退け、authoritative sourceを変更しないことを記録する。
