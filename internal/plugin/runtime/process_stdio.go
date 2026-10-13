@@ -53,6 +53,13 @@ type StdioProcessLauncher struct {
 	MaxExecutionDuration time.Duration
 }
 
+func (l StdioProcessLauncher) executionDuration() time.Duration {
+	if l.MaxExecutionDuration > 0 {
+		return l.MaxExecutionDuration
+	}
+	return defaultProcessExecutionLimit
+}
+
 var _ ProcessLauncher = StdioProcessLauncher{}
 var _ SandboxedProcessRunner = StdioProcessLauncher{}
 
