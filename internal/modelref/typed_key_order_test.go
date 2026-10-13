@@ -16,7 +16,7 @@ func TestTypedKeyDiffAndImpactOrderingWithEmbeddedSeparator(t *testing.T) {
 	consumer := modelref.Key{Scope: "orders", Subject: subject.Subject{Kind: "function", ID: "processor"}}
 	before := modelref.Graph{
 		Schema: "tei.modelref.v0",
-		Nodes:  []modelref.Node{
+		Nodes: []modelref.Node{
 			{Key: a, Version: "1"},
 			{Key: b, Version: "1"},
 			{Key: consumer},
@@ -72,7 +72,7 @@ func TestTypedKeyTraceOrderingWithEmbeddedSeparator(t *testing.T) {
 	target := modelref.Key{Scope: "orders", Subject: subject.Subject{Kind: "data", ID: "record"}}
 	graph := modelref.Graph{
 		Schema: "tei.modelref.v0",
-		Nodes:  []modelref.Node{
+		Nodes: []modelref.Node{
 			{Key: a}, {Key: b}, {Key: target},
 		},
 		Edges: []modelref.Edge{
