@@ -8,8 +8,8 @@ import (
 )
 
 func TestRootedSourceRejectsOutsideSymlinksAndNestedAliases(t *testing.T) {
-	if runtime.GOOS != "linux" {
-		t.Skip("non-Linux targets fail closed")
+	if runtime.GOOS == "js" || runtime.GOOS == "wasip1" || runtime.GOOS == "plan9" {
+		t.Skip("target lacks a traversal-resistant rooted reader")
 	}
 	root := t.TempDir()
 	if err := os.Mkdir(filepath.Join(root, "semantic"), 0700); err != nil {
@@ -33,6 +33,21 @@ func TestRootedSourceRejectsOutsideSymlinksAndNestedAliases(t *testing.T) {
 			t.Fatalf("escaped source %q: %q", p, got)
 		}
 	}
+	if err := os.Symlink("model.tei", filepath.Join(root, "semantic", "local.tei")); err != nil {
+		t.Skipf("local symlinks unavailable: %v", err)
+	}
+	if err := os.Mkdir(filepath.Join(root, "nested"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink("../semantic", filepath.Join(root, "nested", "target")); err != nil {
+		t.Skipf("nested symlinks unavailable: %v", err)
+	}
+	for _, p := range []string{"semantic/local.tei", "nested/target/model.tei"} {
+		inside, err := readWorkspaceFile(root, p)
+		if err != nil || string(inside) != "safe" {
+			t.Fatalf("safe internal link %q was rejected: %q, %v", p, inside, err)
+		}
+	}
 	got, err := readWorkspaceFile(root, "semantic/model.tei")
 	if err != nil || string(got) != "safe" {
 		t.Fatalf("legitimate source: %q, %v", got, err)
@@ -40,8 +55,8 @@ func TestRootedSourceRejectsOutsideSymlinksAndNestedAliases(t *testing.T) {
 }
 
 func TestRootedSourcePinsOpenedFileAcrossRename(t *testing.T) {
-	if runtime.GOOS != "linux" {
-		t.Skip("Linux handle-relative implementation")
+	if runtime.GOOS != "linux" && runtime.GOOS != "darwin" {
+		t.Skip("opened-file rename differs on this target")
 	}
 	root := t.TempDir()
 	if err := os.WriteFile(filepath.Join(root, "model.tei"), []byte("before"), 0600); err != nil {

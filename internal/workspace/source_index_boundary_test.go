@@ -123,7 +123,7 @@ func TestSourceIndexRejectsSiblingWorkspacePrefix(t *testing.T) {
 	}
 }
 
-func TestSourceIndexRejectsLocalSymlinkToRegularFile(t *testing.T) {
+func TestSourceIndexAllowsLocalSymlinkToRegularFile(t *testing.T) {
 	root := t.TempDir()
 	if err := os.WriteFile(filepath.Join(root, "native.md"), []byte("local"), 0600); err != nil {
 		t.Fatal(err)
@@ -131,11 +131,14 @@ func TestSourceIndexRejectsLocalSymlinkToRegularFile(t *testing.T) {
 	if err := os.Symlink("native.md", filepath.Join(root, "alias.md")); err != nil {
 		t.Skipf("symlink unavailable: %v", err)
 	}
-	_, err := workspace.BuildSourceIndex(root, workspace.Result{
+	index, err := workspace.BuildSourceIndex(root, workspace.Result{
 		ManagedFiles: []workspace.ManagedFile{{Path: "alias.md", SourceRoot: "custom"}},
 	})
-	if err == nil {
-		t.Fatal("rooted Source Index accepted a local symlink")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(index.Artifacts) != 1 || index.Artifacts[0].Path != "alias.md" {
+		t.Fatalf("in-root symlink did not retain indexed source identity: %+v", index.Artifacts)
 	}
 }
 

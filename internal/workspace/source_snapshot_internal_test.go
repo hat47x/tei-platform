@@ -25,7 +25,7 @@ func TestCheckedReaderRejectsExternalSymlink(t *testing.T) {
 	}
 }
 
-func TestCheckedReaderRejectsLocalSymlinkToRegularFile(t *testing.T) {
+func TestCheckedReaderAllowsLocalSymlinkToRegularFile(t *testing.T) {
 	root := t.TempDir()
 	if err := os.WriteFile(filepath.Join(root, "real.tei"), []byte("trusted bytes"), 0600); err != nil {
 		t.Fatal(err)
@@ -37,8 +37,9 @@ func TestCheckedReaderRejectsLocalSymlinkToRegularFile(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := readWorkspaceFile(physicalRoot, "alias.tei"); err == nil {
-		t.Fatal("rooted Source reader accepted a local symlink")
+	got, err := readWorkspaceFile(physicalRoot, "alias.tei")
+	if err != nil || string(got) != "trusted bytes" {
+		t.Fatalf("in-root symlink was not resolved safely: %q, %v", got, err)
 	}
 }
 

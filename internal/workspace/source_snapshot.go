@@ -24,8 +24,9 @@ func canonicalWorkspaceRoot(root string) (string, error) {
 }
 
 // readSourceForLoad retains exactly the bytes consumed by a domain loader.
-// It does not provide an open-time containment guarantee: the shared
-// race-free Source Reader remains tracked by issue #1017.
+// Native supported targets open each source within a traversal-resistant root.
+// Separate reads still resolve the Workspace root by path; one Load has not
+// yet pinned a single directory handle across all of its source reads.
 func readSourceForLoad(root string, result *Result, filename string) ([]byte, error) {
 	relative, err := filepath.Rel(root, filename)
 	if err != nil {
@@ -56,9 +57,10 @@ func readSourceForLoad(root string, result *Result, filename string) ([]byte, er
 	return content, nil
 }
 
-// readWorkspaceFile reads from a directory-handle-relative, symlink-denying
-// boundary. On targets without a race-free implementation it fails closed.
-// This deliberately disallows even symlinks resolving inside the Workspace.
+// readWorkspaceFile opens a source through a traversal-resistant root.
+// Relative symlinks that remain inside the root are supported; escapes are
+// rejected. Targets without a trustworthy rooted-open implementation fail
+// closed rather than downgrading to EvalSymlinks followed by os.Open.
 func readWorkspaceFile(rootReal, rawPath string) ([]byte, error) {
 	path, err := sourceindex.NormalizeWorkspacePath(rawPath)
 	if err != nil {
