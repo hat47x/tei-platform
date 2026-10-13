@@ -81,6 +81,18 @@ func TestHistoricalProcessPluginRunnerEvidenceParity(t *testing.T) {
 	}
 
 	temp := t.TempDir()
+	if runtime.GOOS == "windows" {
+		// Legacy builder output export uses filepath.Rel(root, out) and
+		// requires both paths to be on the same Windows volume. The hosted
+		// runner normally puts t.TempDir on C: but checks out source on D:.
+		// Keep all comparison artifacts OUTSIDE the Git checkout while using
+		// its drive, without modifying the pinned historical Runner.
+		temp, err = os.MkdirTemp(filepath.Dir(repo), "tei-historical-runner-")
+		if err != nil {
+			t.Fatalf("allocate isolated same-volume comparison directory: %v", err)
+		}
+		t.Cleanup(func() { os.RemoveAll(temp) })
+	}
 	historicalTree := filepath.Join(temp, "historic-worktree")
 	add := exec.Command("git", "-C", repo, "worktree", "add", "--detach", historicalTree, historicalPluginGoBuildRunnerRevision)
 	if out, err := add.CombinedOutput(); err != nil {
