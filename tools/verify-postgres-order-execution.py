@@ -26,8 +26,11 @@ def main():
     parser.add_argument('--output', required=True, help='Evidence directory outside the repository')
     parser.add_argument('--source-loop', action='store_true', help='Also verify scratch Shared Acceptance -> selected model -> PostgreSQL execution')
     parser.add_argument('--non-screen', action='store_true', help='Also verify CLI reports and bounded batch processing')
+    parser.add_argument('--batch-crash', action='store_true', help='With --non-screen, kill an owned CLI during a blocked second transaction and observe recovery state')
     parser.add_argument('--frozen-api', action='store_true', help='Use the digest-bound frozen World JSON API with the same actual PostgreSQL checks')
     args = parser.parse_args()
+    if args.batch_crash and not args.non_screen:
+        parser.error('--batch-crash requires --non-screen')
     if args.frozen_api and args.source_loop:
         parser.error('--frozen-api does not support live Source changes')
     root = Path(__file__).resolve().parent.parent
@@ -166,7 +169,8 @@ def main():
             import sys
             sys.dont_write_bytecode = True
             from reference_non_screen import verify_non_screen
-            report['nonScreen'] = verify_non_screen(root, output, binary, head, digest, dsn_file, sql, workspace)
+            report['nonScreen'] = verify_non_screen(root, output, binary, head, digest, dsn_file, sql, workspace,
+                                                   owned_container=container if args.batch_crash else None)
             assert report['nonScreen']['passed']
         sql("UPDATE public.tei_reference_execution_grants SET revoked=false;")
         assert request(read_path)[0] == 200

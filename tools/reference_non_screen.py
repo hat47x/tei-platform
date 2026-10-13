@@ -3,9 +3,10 @@ import csv
 import hashlib
 import json
 import subprocess
+import time
 
 
-def verify_non_screen(root, output, binary, head, digest, dsn_file, sql, workspace='reference/workspace'):
+def verify_non_screen(root, output, binary, head, digest, dsn_file, sql, workspace='reference/workspace', owned_container=None):
     checks = []
     common = [str(binary), '-composition-scenarios', '-postgres-dsn-file', str(dsn_file),
               '-postgres-fencing-token', '1', '-workspace', workspace,
@@ -85,8 +86,93 @@ def verify_non_screen(root, output, binary, head, digest, dsn_file, sql, workspa
         receipt = invoke('batch-remainder', batch + ['-rows', '2'])
         assert receipt['stage'] == 'completed' and sql('SELECT status FROM public.orders WHERE order_id=1003;') == 'submitted'
         checks.append('real CLI partial success, business failure, replay rejection and explicit remainder; independent SQL')
+        crash = None
+        if owned_container is not None:
+            crash = verify_batch_crash(root, output, common, batch, sql, invoke, owned_container, digest)
+            checks.append('real CLI force-killed during blocked second transaction; saved first commit and uncertain start; fresh external observation without retry')
     finally:
         private.unlink(missing_ok=True)
         sql("UPDATE public.orders SET status='draft'; UPDATE public.tei_reference_execution_grants SET revoked=false, model_revision='';")
     return {'passed': True, 'checks': checks, 'cancellationEvidence': 'deterministic real-database Go test cancels after first observed commit',
+            'crashRecovery': crash,
             'limits': ['no durable request-key deduplication or automatic resume', 'no PDF, browser or human-value validation']}
+
+
+def verify_batch_crash(root, output, common, batch, sql, invoke, container, digest):
+    """The container, blocker session and CLI are all owned by this verifier."""
+    sql("UPDATE public.orders SET status='draft';")
+    journal = output / 'crashed-batch-progress.jsonl'
+    blocker = host = None
+    blocker_pid = None
+    with (output / 'crash-blocker.log').open('w') as blocker_log, \
+            (output / 'crash-host.stdout.log').open('w') as host_out, \
+            (output / 'crash-host.stderr.log').open('w') as host_err:
+        try:
+            # Wait on server state, not psql output buffering. The owned session
+            # has locked only 1003 when it enters pg_sleep; 1001 can commit.
+            blocker = subprocess.Popen(['docker', 'exec', '-e', 'PGAPPNAME=tei_batch_crash_blocker', container,
+                                        'psql', '-X', '-U', 'postgres', '-d', 'tei_reference', '-v', 'ON_ERROR_STOP=1',
+                                        '-c', 'BEGIN; SELECT order_id FROM public.orders WHERE order_id=1003 FOR UPDATE; SELECT pg_sleep(30); ROLLBACK;'],
+                                       stdout=blocker_log, stderr=blocker_log)
+            deadline = time.monotonic() + 8
+            while time.monotonic() < deadline:
+                active = sql("SELECT pid FROM pg_stat_activity WHERE application_name='tei_batch_crash_blocker' AND wait_event='PgSleep';")
+                if active:
+                    blocker_pid = int(active)
+                    break
+                if blocker.poll() is not None:
+                    raise RuntimeError('Owned database blocker exited before locking the row')
+                time.sleep(.05)
+            else:
+                raise RuntimeError('Owned row blocker was not ready')
+            host = subprocess.Popen(common + batch + ['-rows', '0,2', '-batch-journal', str(journal)],
+                                    cwd=root, stdout=host_out, stderr=host_err)
+            deadline = time.monotonic() + 8
+            while time.monotonic() < deadline:
+                if host.poll() is not None:
+                    raise RuntimeError('Batch host exited before the intended crash boundary')
+                events = []
+                if journal.exists():
+                    # A partially written final line is never a successful event.
+                    for line in journal.read_bytes().splitlines(keepends=True):
+                        if line.endswith(b'\n'):
+                            events.append(json.loads(line))
+                started = len(events) == 4 and events[-1].get('kind') == 'starting' and events[-1].get('orderId') == 1003
+                blocked = sql(f'SELECT count(*) FROM pg_stat_activity WHERE {blocker_pid} = ANY(pg_blocking_pids(pid));')
+                if started and int(blocked) > 0:
+                    break
+                time.sleep(.05)
+            else:
+                raise RuntimeError('Batch did not reach the blocked second transaction')
+            host.kill()
+            host.wait(timeout=5)
+            assert host.returncode != 0
+            # Only terminate the exact owned blocker in the disposable DB.
+            sql(f"SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE pid={blocker_pid} AND application_name='tei_batch_crash_blocker';")
+            blocker.wait(timeout=5)
+            events = [json.loads(line) for line in journal.read_text().splitlines()]
+            assert [e['kind'] for e in events] == ['planned', 'starting', 'result', 'starting']
+            assert [e['sequence'] for e in events] == [1, 2, 3, 4]
+            assert events[0]['planned'] == [1001, 1003] and events[0]['composition']['artifactDigest'] == digest
+            assert events[2]['item']['orderId'] == 1001 and events[2]['item']['result']['stage'] == 'completed'
+            assert sql('SELECT status FROM public.orders WHERE order_id=1001;') == 'submitted'
+            assert sql('SELECT status FROM public.orders WHERE order_id=1003;') == 'draft'
+            observed = invoke('batch-observe-after-crash', ['-non-screen', 'batch-observe', '-order-ids', '1001,1003'])
+            assert [i['observation']['result'] for i in observed['items']] == ['submitted', 'draft']
+            assert all(i['observation']['nature'] == 'external-observed' for i in observed['items'])
+            assert 'editor-secret' not in journal.read_text() + (output / 'crash-host.stderr.log').read_text()
+            return {'passed': True, 'boundary': 'first commit observed; second transaction blocked before mutation',
+                    'journalKinds': [e['kind'] for e in events], 'observedStates': ['submitted', 'draft'],
+                    'limits': ['starting alone does not prove rollback', 'no lost commit acknowledgement or power-loss proof', 'no automatic retry or resume']}
+        finally:
+            if host is not None and host.poll() is None:
+                host.kill()
+                host.wait(timeout=5)
+            if blocker_pid is not None and blocker is not None and blocker.poll() is None:
+                sql(f"SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE pid={blocker_pid} AND application_name='tei_batch_crash_blocker';")
+            if blocker is not None:
+                try:
+                    blocker.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    blocker.kill()
+                    blocker.wait(timeout=5)

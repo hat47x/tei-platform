@@ -14,6 +14,8 @@ python3 tools/verify-postgres-order-execution.py --output /absolute/path/outside
 
 この参照例は、実際のPostgreSQLエンジンを使った合成業務データの検証である。本番のデータ、Oracle接続、実際の認証提供元、人による操作、表示品質、可用性の根拠にはしない。
 
+`--non-screen --batch-crash`では、検証器のCLIを後続件のDBロック待ちで強制終了し、保存ログと新しい読取り専用プロセスの観測を照合する。[実行手順と確認できる範囲](../../tools/reference-first-web-target/NON_SCREEN.md#実プロセスの強制終了から診断まで)を参照する。`--batch-crash`には`--non-screen`が必要である。
+
 構築時にWorldを固定した受注専用JSON APIも、同じDBアダプターへ接続できる。次の指定で、既存の固定World構築手順による実行物に対し、同じ実DB試験とHTTP・独立SQL照合を実施する。
 
 ```sh

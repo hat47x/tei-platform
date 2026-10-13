@@ -55,3 +55,15 @@ python3 tools/verify-postgres-order-execution.py --frozen-api --non-screen --out
 ```
 
 この指定は、固定WorldのHTTP試験と同じ実行物・使い捨てDBを使い、実プロセスによるCSV／JSONの生成、許可失効、部分成功、重複確定拒否、明示的な残件処理を確かめます。取消は別に実DB回帰試験で調べます。要求IDによる永続的な再開には引き続き対応していません。
+
+## 実プロセスの強制終了から診断まで
+
+`--non-screen`に`--batch-crash`を加えると、検証器が所有するDB接続で後続受注の行をロックします。先頭件の確定・観測と保存が完了し、後続件の開始記録が保存され、そのトランザクションがロック待ちになったことをDBで確認してから、検証器が起動したCLIだけを強制終了させます。
+
+```sh
+python3 tools/verify-postgres-order-execution.py --frozen-api --non-screen --batch-crash --output /absolute/new/batch-crash-evidence
+```
+
+検証器はログにplanned・starting・result・startingが残り、endedがないことを確認します。独立SQLと新しく起動した`batch-observe`で、先頭件がsubmitted、後続件がdraftであることを照合します。DBのロック用接続とCLIは検証器の所有物に限定し、終了後に解放します。
+
+この試験は、後続件の更新前に停止した一つの条件を確認します。開始記録だけから不成立を判断できるという意味ではありません。確定応答の喪失、確定直後の強制終了、電源断、本番の自動復旧は未検証です。ログと現在状態を照合しても自動再試行や再開の権限は得られません。
