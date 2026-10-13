@@ -59,6 +59,26 @@ largeの`BuildSourceIndex`は113,802 msから1,177 msに、確保量は8,508 MiB
 
 残る費用は、largeで`Load`約0.16〜0.5秒、`index.Build`と`derivedbridge`約0.3〜0.4秒、`TraceDirect`約0.3〜0.6秒、`BuildSourceIndex`約1.2〜1.6秒（行・列位置を数え直す`PositionAt`の走査が中心と見られます）、`NewResolver`約0.4〜0.9秒（Source Indexの検証を2回目に行う）です。これらは別の候補として未着手です。
 
+## 位置の計算の改善（#1177の続き）
+
+CPUプロファイル（largeの`full`を繰り返し実行、`go test -bench`）では、`sourceindex.PositionAt`が単独で全サンプルの約29%（3.96秒／13.6秒）を占めていました。`PositionAt`は呼出しのたびにファイルの先頭からoffsetまでを1バイトずつ数えており、`exactSubjectRange`・`RangeFromOffsets`・`Range.Validate`から多数回呼ばれるため、1ファイルに多数のSubjectがあると費用が二乗になります。
+
+行を`bytes.Count`、列を`bytes.LastIndexByte`で求める形に変えました。結果は1バイトずつ数える従来の定義と同一です。`internal/sourceindex/position_test.go`が、あらゆるoffsetで素朴な実装と照合し、`OffsetAt`との往復も確かめます。出力byte数と件数は変わっていません。
+
+変更前（main `36169dd6`）と変更後（`703e3845`）を、同じWSL2・Go 1.26.9・同じ生成Workspaceで測りました（largeの3回の中央値）。
+
+| 処理 | 変更前 | 変更後 |
+| --- | ---: | ---: |
+| summary | 1,935 ms | 823 ms |
+| full | 1,741 ms | 1,070 ms |
+| full -limit 1 | 2,059 ms | 1,034 ms |
+| leaf-summary | 2,361 ms | 739 ms |
+| leaf-full | 2,267 ms | 719 ms |
+
+段別（1回）では、`BuildSourceIndex`が1,109 msから255 ms、`NewResolver`が386 msから57 msになりました。他の段は変わっていません（`Load`・`index.Build`・`TraceDirect`の差は計測の揺れの範囲です）。
+
+変更後に残る主な費用は、`TraceDirect`の`full`で行キーを作る文字列整形（約0.4秒）、`index.Build`と`derivedbridge`（約0.2秒）、`Load`（約0.13秒）、およびメモリの確保に伴う回収です。これらは未着手です。
+
 ## 出力が変わらないことの確認
 
 `golden_test.go`は、変更前の実装で出力した次のSHA-256を`testdata/golden.json`に固定し、変更後も一致することを調べます。small・mediumの両方で、5種の処理（`TraceWorkspace`の完全なJSON出力）、`BuildSourceIndex`の結果、ページ継続（700件ずつ取得して連結した行が一括`full`と一致）を含みます。あわせて、古い継続tokenとWorkspace更新後の継続tokenが`STALE_SNAPSHOT`で拒否されることを確認します。largeは変更前の実装で約2分かかるため、goldenには含めず手動計測に限ります。
