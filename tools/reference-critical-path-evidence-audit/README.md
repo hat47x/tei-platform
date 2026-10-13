@@ -48,36 +48,40 @@ bash tools/reference-critical-path-evidence-audit/qualify.sh
 
 成功出力は`CRITICAL_PATH_LOCAL_SOURCE_QUALIFIED_ONLY`であり、**Product Gate PASSではない**。これは他Draft（#1124/#1121）の未統合Sourceをtestするものではなく、R0→R1を使用した実running Webの新単価負例、実DB保存、独立read、人間の受入を検証しない。またリモート取得・Go/Node等が使えない環境では実行できない。作業済みの単独Go試験を、これらのtrusted full checkout資格と取り違えない。
 
-## 並走Draftの一時統合とR1の実Web正常系
+## 最新mainと#1163候補の一時結合・Web正常系と異常系
 
-`compose-smoke.sh` は #1119/#1120/#1124/#1121 の**正確なDraft branch tip**をcurrent mainへ一時統合してconsumerを試す手動Reference。各branch/PR/mainは**一切書き換えず**、専用のdetached temporary Git worktree内でだけmerge commitを作り、終了時に消去する。#1127・#1126の実装やBusiness ProcedureのAccepted authorityをこのスクリプトで捏造しない。
+旧来の4本の並走ブランチ（#1119・#1120・#1124・#1121）はmainに統合されました。親計画#1119が管理する共通`compose-smoke.sh`には現在`integrated-main`モードが追加されています。**親のスクリプトは変更せず**、#1163固有の`compose-issue-1163-smoke.sh`を別途設けて、**最新mainと本PR #1262の正確な先端だけ**を一時作業領域で結合して検査します。元のリポジトリ・各ブランチ・mainへマージしません。
 
-完全cleanなリポジトリrootで、**その時点でGitHubから確認したSHA40**を入力する。
+正規GitHubへ接続できる完全にクリーンな**PR #1262のチェックアウト**で、その時点のGitHub上のmainとPR先端の40桁SHAを取得して指定します。
 
 ```bash
 TEI_CP_COMPOSE_MAIN=<current-origin-main-SHA40> \
-TEI_CP_COMPOSE_1119=<PR-1135-HEAD-SHA40> \
-TEI_CP_COMPOSE_1120=<PR-1139-HEAD-SHA40> \
-TEI_CP_COMPOSE_1124=<PR-1137-HEAD-SHA40> \
-TEI_CP_COMPOSE_1121=<PR-1141-HEAD-SHA40> \
-bash tools/reference-critical-path-evidence-audit/compose-smoke.sh
+TEI_CP_COMPOSE_1163=<exact-PR-1262-HEAD-SHA40> \
+bash tools/reference-critical-path-evidence-audit/compose-issue-1163-smoke.sh
 ```
 
-- canonical GitHub remote/current mainと各branch tipの一致、cleanと非標準indexを確認し、競合があればfail-closed。merge結果はdetachedの**一時的な合成HEAD**であり、単体PRのexact HEAD試験とは区別。
-- #1124のNode test/scratch E2E、#1120 scoped modelref、#1121 lowering、既存mainの受注明細Web Goテスト、親#1119 preflight、full repository-health-checkを実行する。
-- さらに `TEI_CP_LIVE_R1_SMOKE=1 node tools/reference-critical-path-evidence-audit/live-r1-smoke.mjs` を一時統合worktree内で実行する。Scratchの`reference/workspace` copyを作り、**Studioの一候補2操作→Shared Acceptance Preview/Review/test-only Accept→R1→既存Web Targetを実起動→loopback HTTP submit**を通す。Webへ変更後のApplication Validation 4件が届き、全件satisfied、Commandと**synthetic** Observationを報告する。受理時に管理対象Source2ファイルのみ変更されたこと、起動前後のscratch R1一致も検査。
-- 正常系の出力 `E1_A_LIVE_HTTP_SYNTHETIC_PROVIDER_ONLY` は**限定的な実験**。人間の受理ではなく、単価0がlive serverで拒否されるE1-Bも含まない。実DB、current Host Authority、独立DB read、S02/S05、G1四視点、第二Target、製品Gateの証拠ではない。
-- cross-branch compositionそのものは正式なPR mergeでもrelease候補でもない。合成環境が成功しても、各PRの正確なHEADとlatest main上での個別資格試験、独立Reviewは必要である。
+- 正規GitHubのremote URL、実際のmain/PR branch先端、作業元HEADと入力SHA、実行前後の完全cleanと非標準indexを照合します。途中でmainやPRが進んだ場合は失敗します。
+- detachedの一時worktree上だけでmainにPRを結合し、コンフリクトや証跡検査器・Web試験の入力ソースがPRと異なる場合は拒否します。
+- StudioのNode・E2E、型付き参照とWorkspace、Lowering、既存Webと資格検査器のGo test、リポジトリ全体の健全性検査を実行します。選択対象が0件の`go test -run`だけで全体合格を宣言しません。
+- `TEI_CP_LIVE_R1_SMOKE=1 node tools/reference-critical-path-evidence-audit/live-r1-smoke.mjs`により、隔離scratchにStudio候補→Shared Acceptance Preview/Review→試験用のAccept→受理後R1を作ります。別CLIによるWorldの再読込と受理記録のWorld指紋一致を要求し、元Sourceの変更を監視します。
+- Web正常系は標準の合成注文を実行し、4件のValidation成立、Commandと**synthetic** Observationを確認します。単価異常系は`go build -overlay`で注文1001の合成単価を0にした**別バイナリ**を起動し、単価規則だけが不成立でCommand・Observationが未実行になることを確認します。さらにN11負例では、**三つ目の隔離バイナリ**でCommand実行後の合成Observation readだけを失敗させ、HTTP 422・Command結果あり・Observation結果なしを検査します。正常・単価0・N11の3ケースでは同じscratch R1を指定し、元Sourceは変更しません。加えて**同じ正常系Webバイナリを古いSource R0で起動し、正しいR1やTarget版を名乗る引数を与えても、実Manifestに新規単価規則がなく受理後R1と一致しない**負例を追加します。この時点でTarget自身は誤ったラベルを拒否しないため、**現行RuntimeにR1の強制拘束があるとは主張しません**。さらに受理後R1を複製し、管理対象`application.tei`へ空行だけを加えたR2を作ってWebを起動します。R2のSource fingerprintがR1と異なる一方、独立CLIの派生Worldと実HTTP ManifestがR1と同じになることを検査します。**Manifestの意味が一致してもSourceの実バイトが同じとは限らない**負例です。各Webサーバの`/manifest.json`から実際に表示されたApplicationのValidation・Pattern等を取り出し、別CLIで読み直した受理後Worldと、3サーバ相互の意味を照合します。これはTargetに渡したB/R/T文字列やSourceの原子的読み込みを証明するものではありません。
+- 上記はtest-onlyの受理と**異なる3つの合成バイナリ**による限定検証です。N11の異常系を合成read failureとして再現するもので、製品環境でのread不能や永続DBの障害を証明しません。製品バイナリの実DB/Authority/独立Observation、S02・S05・第二Target、G1〜G4や製品Gateを証明しません。`ISSUE_1163_CANDIDATE_SMOKE_ONLY_NO_PRODUCT_GATE`が出ても本PRの独立レビューと元候補HEADでの資格確認は別途必要です。
 
-**任意の限定証跡保存**: 実行前に `TEI_CP_EVIDENCE_DIR=/absolute/path/to/new-directory` を指定すると、Node実験は検証完了後に次の3つのJSONを**リポジトリ外の新規ディレクトリ**へ保存する。保存先は実行前に存在していてはならず、親ディレクトリは存在が必要。symlink/相対pathを悪用してrootやscratch内へ保存する指定は拒否する。書込みは新規ファイル限定、credentialや注文内容の生HTTP応答は保存しない。
+**任意の限定証跡保存**: 実行前に `TEI_CP_EVIDENCE_DIR=/absolute/path/to/new-directory` を指定すると、Node実験は検証完了後に次の8つのJSONを**リポジトリ外の新規ディレクトリ**へ保存する。保存先は実行前に存在していてはならず、親ディレクトリは存在が必要。symlink/相対pathを悪用してrootやscratch内へ保存する指定は拒否する。書込みは新規ファイル限定、credentialや注文内容の生HTTP応答は保存しない。
 
-- `workspace-r1.json`：R0→test-only Accept→R1、Preview/Review fingerprint、変更Sourceの相対pathと実行前後の管理対象差分を記録。Human Approvalと主張しない。
-- `target-launch.json`：起動WebバイナリのSHA256、合成integration HEAD、B/R/T、loopback endpoint・process・health OKを記録。Host権限の確認ではない。
+- `workspace-r1.json`：R0→test-only Accept→R1、Preview/ReviewとDecisionの指紋、変更Sourceの相対pathと実行前後の管理対象差分を記録。さらに`cmd/tei world -workspace`を**別のCLI呼び出し**で再実行し、実際のJSONバイト列のSHA-256が受理時の`Decision.DerivedWorldSHA256`と一致するか検査する。Human Approvalと主張しない。
+- `target-launch.json`：正常系WebバイナリのSHA256、合成integration HEAD、B/R/T、loopback endpoint・process・health OKを記録。同じ証跡内に、単価負例とN11用の**二つの別バイナリ**の指紋・起動先・差替Source指紋、実HTTP Manifestの意味内容の指紋も併記し、三つの起動を一つの実行成果物と偽らない。さらに空行だけ異なるR2の`equivalentSourceControl`をこのファイルに保存し、R1と違うSource revision・同じWorld／Manifest・同じバイナリとB/R/T申告を記録する。旧R0を使った負例は、親#1119の最新CI契約に従い別の`stale-source-control.json`で保存する。いずれも外部テストによる検出であり、Targetの起動拒否機構ではない。Host権限の確認ではない。
 - `web-positive.json`：HTTP正常系のValidation ID/結果4件、Command観測とsynthetic Observation。認証情報、実DBの値・注文個人情報は含めない。
+- `target-negative-launch.json`：テスト専用Go Overlayによる別バイナリの指紋、元fixtureと差替fixtureの指紋、起動先、同じR1申告を記録。通常Targetと同一バイナリとはみなさない。
+- `web-negative-unit-price.json`：実行中の別Webサーバに対して単価0で`not-satisfied`を得て、CommandとObservationが未実行であることを記録。合成データによる負例であり、実DBの独立観測ではない。
+- `target-n11-launch.json`：Observation readだけを失敗させる隔離Go Overlayバイナリと起動プロセス・SHA-256を記録。通常バイナリの性質へ一般化しない。
+- `n11-unobserved-control.json`：Command結果は存在するが合成Observation readが失敗し、HTTP 422・Observation結果なしとなった実サーバの負例を記録。実DBや外部readの障害証跡ではない。
+- `stale-source-control.json`：**同じ正常系Webバイナリ**に旧R0を与え、B/R/Tの申告ラベルは正常系と同一のまま実HTTP ManifestでR1新規規則が欠落することを示す負例。Targetではなく外部テストハーネスによる不一致検出。
 
-この3ファイルは同じtest harness由来の**別段階の生存receipt**であり、第三者の独立署名や外部Authorityの証明ではない。実行自体が失敗して途中ファイルが残っても全体成功と見なさず、標準出力の正常終了・Go/Node/full Healthの実結果も併記する。現段階では新規単価0のlive Web負例とN11がないため、`tei.critical-path-evidence/v0`でE1完全packetとして提出してはならない。
 
-**実行状況**: このスクリプトとNode smokeのコードを追加しただけ。現ChatGPT環境から正規GitHubを`git fetch`できないため、ここではfull checkout統合実行・live Web HTTP実測・full Healthは**NOT RUN**。両方のscriptが成功出力を返すことを今回の成果として報告してはならない。mainや並走ブランチが更新されればSHAを再取得して再実行する。
+この8ファイルは同じtest harness由来の**別段階の限定的なreceipt**であり、第三者の独立署名や外部Authorityの証明ではない。各Web応答のSHA-256とManifestの意味内容のSHA-256を記録し、保存した8ファイルのSHA-256もCIの標準エラー出力に記録する。旧R0負例は独立した`stale-source-control.json`、空行だけ異なるR2負例は`target-launch.json`の`equivalentSourceControl`として保存する。#1119のGitHub Actionsは8ファイルを厳格に照合し、SHA-256目録付きの短期（7日）Artifactとして保存する。CIログと保存ファイルを後から照合できるが、**Source・権限・外部効果の独立証明にはならない**。実行失敗時の断片を完全証拠として扱わない。実行自体が失敗して途中ファイルが残っても全体成功と見なさず、標準出力の正常終了・Go/Node/full Healthの実結果も併記する。単価0とN11 read失敗の実Web負例は**合成Overlay別ビルドの試験コード**であり、実行前は結果未取得、実行後も外部Authorityや実際の独立DB Observationなどは未解消のため、`tei.critical-path-evidence/v0`でE1完全packetとして提出してはならない。
+
+**実行済みの範囲**: [旧版のE1 Web検査 #38238866937](https://github.com/hat47x/tei-platform/actions/runs/38238866937)と[正規全体健全性 #38238866923](https://github.com/hat47x/tei-platform/actions/runs/38238866923)は、受理後R1を使う3種の合成Web実行と、同じバイナリで旧R0を使う負例を含め成功している。空行だけ異なるR2の負例は、この過去のrunにはまだ含まれない。その後、親#1119のArtifact保存契約は当初7ファイルから**旧R0負例を含む8ファイル**へ拡張された。空行だけ異なるR2の検証も新たに追加している。最新のPR先端については、E1 Actionsの試験と8ファイルの保存の両方を確認する。実DB／独立Observation／人による受理は未実証であり、過去版のPASSを新しいコミットへ流用しない。
 
 ## GitHub Actions・GitHub接続なしの固定コミット検査（オフライン）
 
@@ -101,8 +105,9 @@ bash tools/reference-critical-path-evidence-audit/compose-smoke.sh
 - `claim` は `E0`、`E1`、`E2`（計画文書§16参照）。これは提出者の**申告区分**であって実証済み能力ではない。
 - 全区分で exact candidate `head` / reviewed `main`、full Repository Health PASS、実行前後clean、検証receiptの**申告**を要求する。この条件はあくまで提出に必要な情報で、受領側がcheckoutとreceiptを検証する必要がある。
 - `E0` でもProducer/Consumerの実装箇所、正負のテスト名、証拠の性質（`source-only`、`synthetic-tested`、`actual-observed`）が必要。単なるCase名では不足とする。**E1/E2で `evidenceClass=source-only` または `synthetic-tested` を指定すると、他の欄がそろっていても `E1_E2_ACTUAL_EXECUTION_CLASS_REQUIRED` で拒否する。** WebのProviderがsyntheticでも、E1では *Webサーバの実行* が必要という意味である。
-- `E1` は `R0 != R1`、Candidate/Review fingerprint、Decision、R1再読込、`add-validation` と `add-application-validation-use` の同時受理、R1の `order_entry` が `sales.order_line.unit_price_positive` を選択した実Web正負試験、N11 controlを要求する。WebのProviderは合成でもよいが、`web.runMode=running-server` と**実Web操作receipt**が必要。さらに `web.negativeValidation` は**新しい単価規則そのもの**、`web.negativeEvidenceMode` は `running-server` であることを申告させる。併せて `web.workspaceRevisionReceipt`（実際にWebが使用したWorkspaceのmanaged-source R1再観測）と `web.targetLaunchReceipt`（実際のTarget起動先・build revision・起動前後の記録、認証情報は含めない）を**互いに別のreceipt**として要求する。既存Web JSONの `baselineRepositoryRevision` / `targetBuildRevision` はGit revisionであって、Accepted Sourceの `modelRevision` を証明しない。従来の数量0による正常な拒否や、Goの `httptest` による単価0の負例だけでは、実行中Webサーバが新しい単価規則を拒否した証拠にならない。`handler-only` / `httptest` はE0の有用な証跡だが、このE1の実サーバ操作要件を満たさない。
+- `E1` は `R0 != R1`、Candidate/Reviewの**それぞれ独立した指紋**とReviewが参照するCandidateの指紋、Decision、R1再読込、`add-validation` と `add-application-validation-use` の同時受理、R1の `order_entry` が `sales.order_line.unit_price_positive` を選択した実Web正負試験、N11 controlを要求する。WebのProviderは合成でもよいが、`web.runMode=running-server` と**実Web操作receipt**が必要。さらに `web.negativeValidation` は**新しい単価規則そのもの**、`web.negativeEvidenceMode` は `running-server` であることを申告させる。併せて `web.workspaceRevisionReceipt`（実際にWebが使用したWorkspaceのmanaged-source R1再観測）と `web.targetLaunchReceipt`（実際のTarget起動先・build revision・起動前後の記録、認証情報は含めない）を**互いに別のreceipt**として要求する。既存Web JSONの `baselineRepositoryRevision` / `targetBuildRevision` はGit revisionであって、Accepted Sourceの `modelRevision` を証明しない。従来の数量0による正常な拒否や、Goの `httptest` による単価0の負例だけでは、実行中Webサーバが新しい単価規則を拒否した証拠にならない。`handler-only` / `httptest` はE0の有用な証跡だが、このE1の実サーバ操作要件を満たさない。
 - `E2` はE1に加え `actual-db` Provider、R1に対するDatasource/schema互換性証跡、current Host Authority、Commandと独立readの**別receipt**、同一record、S02/S05の拒否試験を要求する。Web synthetic Providerを `E2` として提出すると拒否する。
+- N11（Command後のObservation readが結果を返せない条件）は、正負のWeb応答、Workspace版の証跡、Target起動記録、E2のCommand・独立readとは**別の証跡**で確認する。空白だけのlocatorや別段階の記録をN11に流用した申告は`N11_UNOBSERVED_CONTROL_MISSING`とする。これはlocatorの形式検査であり、実際にreadが未実施だったことを証明しない。E2のCommand/独立readについても空白だけのlocatorは拒否する。
 - Source、Target、DB schema、Git revisionを値の一致だけで同一視しない。DB schemaとApplicationは別のライフサイクルであり、`schemaCompatibility=compatible` は**提出された判定結果の表明**に過ぎない。Providerの実状態・readの独立性・記録時点はreviewerが確認する。
 - `E0` のフォーム検査が通っても、C0/Studio/Business/Loweringの本当のproducer-consumer接続や製品上の動作を証明しない。
 
@@ -122,7 +127,8 @@ bash tools/reference-critical-path-evidence-audit/compose-smoke.sh
   },
   "acceptance": {
     "r0": "", "r1": "", "candidateFingerprint": "",
-    "reviewFingerprint": "", "decisionReceipt": "", "reloadReceipt": "",
+    "reviewFingerprint": "", "reviewCandidateFingerprint": "",
+    "decisionReceipt": "", "reloadReceipt": "",
     "delta": ["add-validation", "add-application-validation-use"]
   },
   "web": {
@@ -137,6 +143,8 @@ bash tools/reference-critical-path-evidence-audit/compose-smoke.sh
   "physical": {}
 }
 ```
+
+**ReviewとCandidateの結び付き**: Shared Acceptanceの`normalizeCandidate`が算出する`candidateFingerprint`と、`fingerprintReviewProjection`が算出する`reviewFingerprint`は別の内容の指紋であり、通常は一致しない。`acceptance.reviewCandidateFingerprint`にはReview Projection内の`candidateFingerprint`を記録し、Candidate自身の指紋と比較する。Reviewの指紋はそれとは独立して保持する。これは提出者が記載した対応関係の形式検査であり、実際のReview、Decisionの内容とその作成元が一致するかは別途確認する。`decisionReceipt`のパスがあるだけで受理を立証しない。
 
 本Referenceは実際の証拠ファイルを自動取得・検証しないため、`receipt`にパスを記述しただけでは検証済みにはならない。提出物にはsecret、credentials、個人情報を含めない。
 
