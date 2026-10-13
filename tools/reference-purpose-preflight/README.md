@@ -19,6 +19,27 @@ go test ./tools/reference-purpose-preflight -count=1
 
 この実装が読む `order-approval.json` の金額は、円の整数として扱う。対象は税込受注総額のみで、契約上の通貨・算定基準が一致しない場合は結果を判断不能とする。実際の会計処理、消費税計算、複数通貨、制度上の取引規則を一般化したものではない。
 
+## 実際のTEI作業領域を参照する（第2段階）
+
+試験用フラグ `meaning=accepted` から独立した入口として、既存の作業領域・入力元索引・知識の適用条件検査を**読取り専用で再利用**する。
+
+```sh
+go run ./tools/reference-purpose-preflight \
+  -workspace reference/workspace \
+  -subject-kind application-pattern \
+  -subject-id order_entry.customer_reference
+```
+
+この入口では、正本の `Application Pattern` が一意に宣言されていること、入力元索引に照合値付きの定義元があることを確認する。実際の検査は既存の `workspace.Load`、`workspace.BuildSourceIndex`、`knowledgecontext.Build` と `knowledgecontext.QualifyWithSources` を利用する。結果の `sourceStatus=traceable-source-declaration` は、**入力元へ追跡できるという限定された主張**である。
+
+この作業領域で `order_entry.customer_reference` が定義されていても、「50万円以上は承認必須」という規則が受理された根拠にはならない。そのため `ruleMeaning=not-established`、`executionAllowed=false` を維持する。未定義の機能を指定すると `sourceStatus=unresolved` とし、代わりの機能や意味を推測しない。
+
+検査できる対象は、現時点では `application-pattern` のみであり、業務手順の正式な正本、受理した変更記録、適用時点、認可、実際の外部処理まで結合したものではない。こうした要素は、それぞれの既存機構と後続の接続実証で確認する。
+
+```sh
+go test ./tools/reference-purpose-preflight -count=1
+```
+
 ## 結果の読み方
 
 | `status` | この参照実装が示すもの |
