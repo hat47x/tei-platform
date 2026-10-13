@@ -10,8 +10,8 @@ import (
 )
 
 var (
-	ErrServiceCarrierGenerationInvalid = errors.New("service generation invocation requires Host coordinator and route source")
-	ErrServiceCarrierGenerationMismatch = errors.New("selected service differs from pinned Host generation")
+	ErrServiceCarrierGenerationInvalid     = errors.New("service generation invocation requires Host coordinator and route source")
+	ErrServiceCarrierGenerationMismatch    = errors.New("selected service differs from pinned Host generation")
 	ErrServiceCarrierGenerationUnavailable = errors.New("Host generation service route unavailable")
 )
 

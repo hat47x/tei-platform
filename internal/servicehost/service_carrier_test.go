@@ -74,7 +74,7 @@ func (a *generationCarrierAcceptance) ReadCurrentAcceptedService(
 	return pruntime.ServiceAcceptanceRecord{
 		Selection: selected, ContractAcceptanceRef: "test-contract-publisher",
 		ProviderConformanceRef: "test-provider-conformance",
-		AuthorityRevision: "test-current-revision",
+		AuthorityRevision:      "test-current-revision",
 	}, nil
 }
 
@@ -92,7 +92,7 @@ func generationCarrierRoute(binding composition.Binding, pluginID string) Select
 	}
 	carrierID := core.MustCanonicalID("reference.quote.carrier")
 	plan := pruntime.EnvironmentPlan{
-		Environment: core.MustCanonicalID("development"),
+		Environment:           core.MustCanonicalID("development"),
 		PluginLockFingerprint: "test-host-lock",
 		Plugins: []pruntime.PluginRuntime{{
 			Plugin: identity, DescriptorFingerprint: "test-descriptor",
@@ -128,15 +128,15 @@ func generationCarrierFixture(t *testing.T) (
 	t.Helper()
 	first := composition.Binding{
 		ContractID: "sales.quote-lines", ContractVersion: "1.0.0",
-		ProviderID: "logical-quote-A",
+		ProviderID:     "logical-quote-A",
 		ArtifactDigest: "sha256:" + strings.Repeat("a", 64),
-		Generation: 1,
+		Generation:     1,
 	}
 	second := composition.Binding{
 		ContractID: first.ContractID, ContractVersion: first.ContractVersion,
-		ProviderID: "logical-quote-B",
+		ProviderID:     "logical-quote-B",
 		ArtifactDigest: "sha256:" + strings.Repeat("c", 64),
-		Generation: 2,
+		Generation:     2,
 	}
 	router, err := composition.NewRouter(first, composition.NewScope())
 	if err != nil {
@@ -192,7 +192,7 @@ func TestSelectedServiceCarrierPinsGenerationAcrossCutover(t *testing.T) {
 		context.Background(), first.Generation, second,
 		composition.Lifecycle{
 			Prepare: func(context.Context, *composition.Scope) error { return nil },
-			Ready: func(context.Context, composition.Binding) error { return nil },
+			Ready:   func(context.Context, composition.Binding) error { return nil },
 		},
 	); err != nil {
 		t.Fatal(err)
@@ -233,23 +233,23 @@ func TestSelectedServiceCarrierRejectsWrongGenerationRouteBeforeHostExecution(t 
 		mutate func(*SelectedServiceCarrierRoute)
 	}{
 		{
-			name: "different generation",
+			name:   "different generation",
 			mutate: func(r *SelectedServiceCarrierRoute) { r.Binding.Generation++ },
 		},
 		{
-			name: "different logical provider",
+			name:   "different logical provider",
 			mutate: func(r *SelectedServiceCarrierRoute) { r.Binding.ProviderID = "other-logical-provider" },
 		},
 		{
-			name: "different Contract",
+			name:   "different Contract",
 			mutate: func(r *SelectedServiceCarrierRoute) { r.Selection.ContractID = "sales.other-contract" },
 		},
 		{
-			name: "different Contract version",
+			name:   "different Contract version",
 			mutate: func(r *SelectedServiceCarrierRoute) { r.Selection.ContractVersion = "2.0.0" },
 		},
 		{
-			name: "different physical artifact",
+			name:   "different physical artifact",
 			mutate: func(r *SelectedServiceCarrierRoute) { r.Selection.ArtifactDigest = "sha256:" + strings.Repeat("e", 64) },
 		},
 	} {
