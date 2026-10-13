@@ -29,8 +29,8 @@ func (p *authorizationProbe) Invoke(_ context.Context, capability core.Canonical
 func allowedProbe() *authorizationProbe {
 	return &authorizationProbe{result: capabilityinvoke.BusinessResult{
 		Capability: legacyauthorization.AuthorizationCapability,
-		Mode: capabilityinvoke.ResultOutcome,
-		Outcome: "allowed",
+		Mode:       capabilityinvoke.ResultOutcome,
+		Outcome:    "allowed",
 		Payload: legacyauthorization.AuthorizationGrant{
 			SubjectID: "staff-1", Action: "browse", Resource: "order_entry.recent_orders",
 		},
