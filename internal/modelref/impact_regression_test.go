@@ -70,10 +70,10 @@ func TestUnscopedImpactUsesDistinctSubjectFields(t *testing.T) {
 	consumer := modelref.Key{Scope: "orders", Subject: subject.Subject{Kind: "function", ID: "processor"}}
 	graph := modelref.Graph{
 		Schema: "tei.modelref.v0",
-		Nodes: []modelref.Node{{Key: target}, {Key: other}, {Key: consumer}},
+		Nodes:  []modelref.Node{{Key: target}, {Key: other}, {Key: consumer}},
 		Edges: []modelref.Edge{{
-			From: consumer,
-			To: modelref.Ref{Subject: target.Subject}, // intentionally omit Scope
+			From:     consumer,
+			To:       modelref.Ref{Subject: target.Subject}, // intentionally omit Scope
 			Relation: "reads",
 		}},
 	}
