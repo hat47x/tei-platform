@@ -3,7 +3,7 @@
 // A test harness Accept is NOT a human Acceptance or production authority.
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { cpSync, lstatSync, mkdtempSync, readFileSync, readdirSync,
+import { cpSync, lstatSync, mkdtempSync, mkdirSync, readFileSync, readdirSync,
   rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, relative, resolve } from "node:path";
@@ -586,6 +586,66 @@ function testReferenceBusinessNavigation() {
   ], false);
   checked(incomplete.stderr.includes("INVALID_INPUT"),
     "business: partially supplied Go producer input is rejected");
+  // A future Business source root may contain authored files even before a
+  // canonical Business schema exists. Observe physical Source Index membership
+  // without upgrading any Procedure/Step to accepted semantic authority.
+  const managedWorkspace = newWorkspace("business-managed-observation");
+  const businessRoot = join(managedWorkspace, "business");
+  mkdirSync(businessRoot, { recursive: true });
+  const fixtures = [
+    "order-entry-business-procedure.json",
+    "order-entry-dfd-review-proposal.json",
+    "order-entry-procedure-reference-set.json"
+  ];
+  for (const file of fixtures) cpSync(
+    join(root, "reference/business-system-design", file),
+    join(businessRoot, file));
+  const manifest = join(managedWorkspace, "tei.workspace.yaml");
+  const originalManifest = readFileSync(manifest, "utf8");
+  writeFileSync(manifest, originalManifest + "  - business" + String.fromCharCode(10));
+  const managedIndex = sourceIndex(managedWorkspace);
+  checked(fixtures.every(file => managedIndex.artifacts.some(a =>
+    a.path === "business/" + file && /^sha256:[a-f0-9]{64}$/.test(a.fingerprint))),
+    "business: declared Business root is visible as three actual managed Source Index artifacts");
+  const managedGoInputs = [
+    "-business-procedure", join(businessRoot, fixtures[0]),
+    "-business-review", join(businessRoot, fixtures[1]),
+    "-business-set", join(businessRoot, fixtures[2])
+  ];
+  const managedRevision = revision(managedWorkspace);
+  const managedView = JSON.parse(command(process.execPath, [
+    join(root, "reference/studio-authoring/cli.mjs"), "inspect",
+    "-workspace", managedWorkspace, "-focus", focus, ...managedGoInputs
+  ]).stdout);
+  checked(managedView.modelRevision === managedRevision &&
+    managedView.businessObservation?.workspaceRevisionObserved === managedRevision &&
+    managedView.businessObservation?.sourceSetStatus === "all-input-artifacts-managed" &&
+    managedView.businessObservation?.sources.length === 3 &&
+    managedView.businessObservation.sources.every(x =>
+      x.sourceMembership === "managed-source-artifact-verified" &&
+      x.managedArtifactPath.startsWith("business/")) &&
+    managedView.businessObservation.acceptedBusinessProcedure === false &&
+    managedView.businessObservation.sourceRevisionBinding === "not-established",
+    "business: managed Source artifacts are observed without accepting Procedure semantics");
+  const sourceBytes = fixtures.map(file => createHash("sha256")
+    .update(readFileSync(join(businessRoot, file))).digest("hex"));
+  writeFileSync(manifest, originalManifest);
+  const unlistedIndex = sourceIndex(managedWorkspace);
+  checked(fixtures.every(file => !unlistedIndex.artifacts.some(a =>
+    a.path === "business/" + file)),
+    "business: withdrawing the Source root removes physical membership");
+  const unlistedView = JSON.parse(command(process.execPath, [
+    join(root, "reference/studio-authoring/cli.mjs"), "inspect",
+    "-workspace", managedWorkspace, "-focus", focus, ...managedGoInputs
+  ]).stdout);
+  checked(unlistedView.businessObservation.sourceSetStatus ===
+      "contains-nonmanaged-reference-inputs" &&
+    unlistedView.businessObservation.sources.every(x =>
+      x.sourceMembership === "external-reference-not-managed") &&
+    unlistedView.businessObservation.acceptedBusinessProcedure === false &&
+    fixtures.every((file, i) => createHash("sha256")
+      .update(readFileSync(join(businessRoot, file))).digest("hex") === sourceBytes[i]),
+    "business: same bytes become external Evidence when Source-root membership is withdrawn");
   checked(JSON.stringify(managedDigests(workspace)) === JSON.stringify(before),
     "business: DFD production and both navigation directions leave Source unchanged");
   checked(revision(workspace) === r0,

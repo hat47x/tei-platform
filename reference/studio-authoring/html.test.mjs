@@ -307,9 +307,12 @@ test("Go DFD evidence remains separate from accepted model and is escaped in bot
     workspaceRevisionObserved: revision,
     workspaceRevisionStatus: "checked-around-separate-process-not-atomic",
     sourceRevisionBinding: "not-established",
+    sourceSetStatus: "all-input-artifacts-managed",
     acceptedBusinessProcedure: false, authority: "noncanonical-reference",
     sources: [{ role: "procedure", path: '<img src=x onerror="alert(1)">',
-      fingerprint: "sha256:" + "d".repeat(64), byteLength: 10 }]
+      fingerprint: "sha256:" + "d".repeat(64), byteLength: 10,
+      sourceMembership: "managed-source-artifact-verified",
+      managedArtifactPath: "business/order-procedure.json" }]
   };
   const report = { ...structuredClone(projection), businessObservation: observed };
   const html = renderStudioHTML(report);
@@ -317,6 +320,9 @@ test("Go DFD evidence remains separate from accepted model and is escaped in bot
   assert.match(html, /go-derived-reference-observed/);
   assert.match(html, /not-established/);
   assert.match(html, /checked-around-separate-process-not-atomic/);
+  assert.match(html, /managed-source-artifact-verified/);
+  assert.match(html, /all-input-artifacts-managed/);
+  assert.match(html, /business\/order-procedure\.json/);
   assert.match(html, /&lt;img src=x onerror=/);
   assert.doesNotMatch(html, /<img|onclick=|<script/i);
   const reverse = renderStudioHTML({
