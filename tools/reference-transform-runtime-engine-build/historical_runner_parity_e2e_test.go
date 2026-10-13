@@ -30,9 +30,6 @@ const preSharedGoBuildRunnerRevision = "5726a3475d8930e49f41c907ecfd352c9936192f
 // the historical *runner implementation*, not merely a hand-copied Go recipe.
 // It does not compare artifacts from two different application source trees.
 func TestHistoricalRuntimeEngineRunnerParity(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("Git worktree + historical CLI cross-version E2E needs separate Windows runner qualification")
-	}
 	goPath, err := exec.LookPath("go")
 	if err != nil {
 		t.Skipf("Go unavailable: %v", err)
@@ -41,9 +38,12 @@ func TestHistoricalRuntimeEngineRunnerParity(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	goPath, err = filepath.EvalSymlinks(goPath)
-	if err != nil {
-		t.Fatal(err)
+	// Windows hosted Go toolcache may contain directory junctions. The
+	// absolute executable selected by LookPath is sufficient; resolving
+	// junctions via EvalSymlinks is not portable across Windows agents.
+	goInfo, err := os.Stat(goPath)
+	if err != nil || !goInfo.Mode().IsRegular() {
+		t.Fatalf("selected Go executable is not a regular file: %q (%v)", goPath, err)
 	}
 	if _, err := exec.LookPath("git"); err != nil {
 		t.Skipf("Git unavailable: %v", err)
