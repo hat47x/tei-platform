@@ -29,6 +29,10 @@ func TestBusinessGuardCases(t *testing.T) {
 		{"at-threshold", Case{ID: "d", Subject: "order.confirm-shipment", Purpose: "execute-preflight", Rule: accepted(), Order: order(500000)}, "evaluated", "true"},
 		{"missing-currency", Case{ID: "e", Subject: "order.confirm-shipment", Purpose: "execute-preflight", Rule: accepted(), Order: OrderFixture{AmountMinor: i64(500000), Revision: "O2", ExpectedRevision: "O2"}}, "indeterminate", ""},
 		{"stale-order", Case{ID: "f", Subject: "order.confirm-shipment", Purpose: "execute-preflight", Rule: accepted(), Order: OrderFixture{AmountMinor: i64(500000), Basis: "tax-included-order-total", Currency: "JPY", Revision: "O3", ExpectedRevision: "O2"}}, "blocked", ""},
+		{"known-wrong-currency-before-amount", Case{ID: "h", Subject: "order.confirm-shipment", Purpose: "execute-preflight", Rule: accepted(), Order: OrderFixture{Currency: "USD"}}, "indeterminate", ""},
+		{"known-wrong-basis-before-amount", Case{ID: "i", Subject: "order.confirm-shipment", Purpose: "execute-preflight", Rule: accepted(), Order: OrderFixture{Basis: "tax-excluded-order-total"}}, "indeterminate", ""},
+		{"stale-revision-before-amount", Case{ID: "j", Subject: "order.confirm-shipment", Purpose: "execute-preflight", Rule: accepted(), Order: OrderFixture{Revision: "O3", ExpectedRevision: "O2"}}, "blocked", ""},
+		{"known-context-awaiting-amount", Case{ID: "k", Subject: "order.confirm-shipment", Purpose: "execute-preflight", Rule: accepted(), Order: OrderFixture{Currency: "JPY", Basis: "tax-included-order-total", Revision: "O2", ExpectedRevision: "O2"}}, "deferred-to-runtime", ""},
 		{"meaning-missing-basis", Case{ID: "g", Subject: "order.confirm-shipment", Purpose: "execute-preflight", Rule: RuleFixture{Meaning: "accepted", MeaningRef: "order.approval-required", SourceRevision: "R1", Currency: "JPY", ThresholdMinor: i64(500000)}}, "semantic-unresolved", ""},
 	}
 	for _, tc := range cases {
