@@ -2,6 +2,8 @@
 
 状態：**独立Go試作**。主題は[ADR-0032](../../plan/adr/0032-composition-kernel-replacement.md)と[Issue #1223](https://github.com/hat47x/tei-platform/issues/1223)。Production Runtimeにはまだ接続していません。
 
+移行の判定条件と実行手順は[合成Kernelの移行判定](../../plan/gate/COMPOSITION_KERNEL_MIGRATION_GATE_2026-10.md)にまとめています。以下のE0〜E15の局所結果は取得時点の記録であり、最新headの資格や本番での無停止性を示すものではありません。
+
 ## なぜ旧プラグイン機構と独立させたか
 
 旧`CapabilityKind`、`builtin/process`分類、Plugin Package IDを依存単位とする旧Resolverを設計上の前提にすると、新しい合成Kernelの妥当性を公平に評価できない。そのため`internal/composition/`を**Go標準ライブラリのみの実装**として先に作り、旧Plugin/Runtimeのimportを行わない。
@@ -149,3 +151,151 @@ Go 1.23.2を用いた独立モジュール`/mnt/data/tei-composition-test`に、
 5. Epochの正本と選択・配置の粒度は今後の本番Consumerで再評価する。特に一つのProvider宣言が複数の実行インスタンス／Targetを持つ場合、Provider EpochだけではReplica/Artifact差を表せない。実成果物identityとRuntime AuthorityはHostに持たせる。
 
 次の実装Gateは、現在の仮`guard`を**実際のArtifact検証済みAuthorityへのAdapter**に置き換え、Process/Wasm Providerで新旧世代の並行稼働とDrainingを計測すること。既存Runtimeの固定enum維持は受入条件にしない。
+
+
+## E5：生成AIが参照する構成案の充足判定（設計時の参照実装）
+
+プラグインを追加すること自体よりも、**既存の実装で要求を満たせる範囲を増やすこと**を重視する。そのため、`internal/composition/proposal.go`に`Registry.InspectWiring`を追加した。
+
+- 入力は「必要な契約」「適用範囲」「任意の明示Provider ID」。別個のAI専用プラグイン台帳を作らず、既存Registryの登録済みProviderと依存判定をそのまま参照する。
+- **候補**：一致する契約、範囲、依存を持つProviderが明示的に選ばれた、または一意に存在する。ただし適合証拠・実Artifactの信頼・Host Authorityを示すものではない。
+- **競合**：同じ契約に複数Providerが存在し、選択が曖昧。または同じ範囲にある明示Providerの契約が不一致。
+- **未判定**：入力が不完全、対象Providerが登録されていない、依存が満たされていない等。**登録されていないことだけを、新規実装が不可避である証拠にはしない。**
+- 範囲外のProviderは、存在していても未知Providerと同じ結果にする。設計時の候補探索にあたっては、さらに呼出し元の閲覧権限を別途適用しなければならない。
+- 提案結果には現時点のProvider Epochと選択された依存を含む。AIが返す構成案をHostがそのまま承認することはできず、切替時に既存`Selection`の再検証を行う。
+
+### 意図的に実装していないこと
+
+- 「不足」の断定。全Providerカタログを取得・検索できたという信頼可能な根拠が必要で、局所Registryに候補がないだけでは断定しない。
+- 既存の#951に属する契約の意味的互換性、第三者の適合証拠や失効評価、#943のBuild Artifact受理、現在のHost Permission／Lease／Fencing。
+- 複数サービス構成案全体の採用、アプリケーション生成、Target最適化、独立した第二Resolver。
+- AIが閲覧した設計情報を権限管理の代わりに使うこと。閲覧・提案・受理・実行は別の権限として扱う。
+
+### 試験と証拠の範囲
+
+`proposal_test.go`には、局所カタログの欠落を「不足」と誤断定しない試験、同じ契約の候補競合、明示Provider選択、他Tenantの存在秘匿、同一範囲の契約不一致、依存先不在・復帰、返却結果の防御的複製、Provider撤去・同名再登録によるEpoch更新、無関係な並行更新下の選択維持を収録した。
+
+ネットワーク制約により公開GitHubからの`git clone`は現実行環境でDNS失敗する。このため今回実施したのは、**GitHubへ追加した二つの新規ファイルと同一bytes**、および既存RegistryのAPIを模した**ローカル試験用実装**による単体動作確認である。Go 1.23.2、`go test -race -count=100 ./internal/composition`、`go vet ./...`がPASS。GitHub上の`proposal.go`と`proposal_test.go`のBlob SHAとローカル`git hash-object`を照合した。
+
+**重要**：ここでのPASSは既存`registry.go`・`selection.go`を含む完全なTEIパッケージによるPASSではない。試験用実装は本PRにコミットしていない。PR exact-headの`tools/repository-health-check.sh`、Production Host統合、実Targetの検証は未実施。コードをmainへ統合する資格確認には、AGENTS.mdの信頼できるclean checkoutと全体Healthを別途要する。
+
+設計上の正本は[AI向け最小プラグイン規約の検討](../../plan/design/AI_NATIVE_PLUGIN_COMPOSITION_DESIGN_2026-10.md)に置き、この節は参照実装の説明と限界に限定する。
+
+
+## E6：複数契約の構成案を同じ版で検査する
+
+E5の単一要求検査に続き、`internal/composition/proposal.go`へ`InspectWiringSet`を追加した。目的は、AIが複数サービスを個別に検索する間に登録簿が更新され、**異なる時点のProviderを混在させた構成案を作ることを防ぐ**ことである。
+
+- 一件または複数の要求を、一つの`Registry`ロック区間で検査し、観測した`Revision`を返す。単一要求用の`InspectWiring`も同じ経路を使う。
+- 要求ごとの`candidate`／`conflict`／`unknown`と理由を失わず、集約結果も返す。競合と未判定が同時にある場合、集約結果は競合、各要求の結果は個別に保持する。
+- 異なる`Scope`を混ぜた一括検査は`mixed-scopes`として未判定にし、候補の一覧を返さない。別Tenantの要求を一つのAI提案によって自動的に合成・承認しない。
+- 要求が空なら「すべて充足」とはしない。無効なContractも未判定とし、欠落を根拠なく「新実装が必要」と決めない。
+- 各`Selection`が含む`Revision`と`Provider Epoch`は診断時点の識別子であり、実行時の権限や後続のProvider状態を確約しない。
+
+**新たな否定試験**：複数要求を同一Revisionで評価すること、依存先の選択を失わないこと、混在したScopeを拒否すること、空の要求から成功を主張しないこと、未知と競合を混同しないこと、Registryの撤去・再登録が同時進行しても、一つの検査内で異なるEpochを混ぜないこと。
+
+検証したのは、GitHub上の`proposal.go`、`proposal_test.go`と**バイト単位で一致するファイル**と、以前から用意してあるRegistryのAPI互換の試験用実装を組み合わせた独立Go 1.23.2モジュール。具体的に`go test -race -count=100 -timeout=90s ./internal/composition`、`go vet ./...`、`gofmt -l`を実行してPASS。GitHubの二つのBlob SHA（`f17f2e7c9605b39c4571ba640432a2708aba5af2`、`3d2b9f7d96be40ce8c38b21d51aaa1a54723c865`）とローカルの`git hash-object`が一致した。
+
+**限界**：実際の`registry.go`と`selection.go`を同じチェックアウトで試験した結果ではなく、PR exact-headの全Repository Healthも未実行である。さらに、一括検査結果が同じ時点のものでも、実際に同時配備可能か、契約の意味・適合・権限が妥当かは別途検証する。Host Authorityを既存登録簿の診断結果から推定しない。
+
+
+## E6：推移的な依存先の変更も世代選択に反映する
+
+前段の`Selection`は、対象Provider自身の世代と、直接依存するProviderの**識別子**を保持していた。ここには、依存先Providerの実装が変わっても、利用側の契約とProvider IDが変わらなければ、古い選択が再利用されるという抜けがあった。
+
+`selection.go`の`ProviderEpoch`と`Selection.DependencyEpochs`により、利用側から到達できる全依存先の宣言世代を、重複のない並びとして固定する。選択の受理時には、対象Provider自身の世代に加え、依存関係を辿った各Providerの世代も照合する。
+
+- 例えば「画面 → 読取サービス → DB Provider」でDB Providerの実装宣言や依存条件が変わった場合、画面自身の契約・宣言が不変でも、以前の`Selection`を**失効**させる。
+- 無関係なTenantや独立したProviderの登録変更だけで、選択を失効させない。
+- 構成案検査`InspectWiringSet`も、通常の`Registry.Select`と同じ選択生成処理を使う。AI向け検査だけ異なる条件で合格しない。
+- 非同期の準備・初回起動で、呼出し側から渡された依存世代一覧をコピーし、後から書き換えられないようにする。既存`Coordinator`と`NewSelectedCoordinator`の検証経路に反映する。
+
+### 実証の内容と限界
+
+`selection_closure_test.go`では、推移的な依存先の変更、無関係な更新で選択が維持されること、世代情報の書換え拒否、構成案とRegistryの選択結果の一致を試験する。
+
+この部分について、GitHubの`registry.go`・`selection.go`・`proposal.go`・`proposal_test.go`・`selection_closure_test.go`を**同一のソースbytes**で独立したGo 1.23.2モジュールに置き、`go test -race -count=100 ./internal/composition`と`go vet ./...`をPASS。各ソースのGit Blob SHAとの一致も確認済み。Routerの`Binding`型は、この局所試験のために最小限の仮定義を使用した。
+
+これは本物のRegistryとSelectionの選択・再検証を用いた局所試験であり、Router・Coordinator・実Provider・信頼できるHost Authorityを含む全体試験ではない。PR exact-headのクリーンな全Repository Healthも未実施。Scope終了や旧処理Drainの成功、実Artifactの意味・署名・認可も保証しない。
+
+### 性能と次の実証
+
+今回の実装は簡素な参照形で、呼出しのたびにRegistryの依存関係を走査する。依存数が多いアプリでは、世代確認の読取経路へ追加の計算・Lock競合が生じるため、**本番向けの性能として採用する前に測定が必要**である。契約・依存世代・権限の不変なスナップショットをHostで保持し、安全な版の切替時だけ再計算する方式を比較する。
+
+また、宣言世代の固定は実行インスタンスの世代を固定することではない。依存先のArtifact、現在のAuthority、fencing、更新中の実際のResource Lifetimeは、別のHost証拠として扱う。安全な宣言選択を、そのまま運用上の無停止更新や実現済み適合性へ昇格させない。
+
+
+## E7：接続箇所ごとの指定矛盾を検出する
+
+E5・E6の一括診断は、同じ登録簿の状態から複数のサービス要求を調べる。その一方で、**一つの接続箇所に互いに異なる提供者を指定しても、各要求だけを見ると候補として成立する**場合があった。
+
+これを防ぐため、`WiringRequirement.SlotID`を追加した。これは利用側が要求するサービスの**接続箇所**を表す設計時の識別子であり、プラグインの配布IDや実行インスタンスのIDではない。
+
+- 同じ接続箇所に異なる契約、または異なる提供者を指定した場合、一括診断は`inconsistent-slot`を返し、該当する要求から個別の選択候補を取り除く。
+- 異なる接続箇所では、同じ契約を別々の提供者で実現できる。例えば表示用の主データと比較データを別の保存先から読み取れる。
+- 同じ接続箇所で一つの要求だけが提供者を明示し、他の要求が未指定なら、その接続箇所に限って明示した選択を共有する。別の接続箇所へは選択を推測して適用しない。
+- `SlotID`を省略すると、同じ完全な契約を要求する行は同一の接続箇所として扱う。区別が必要な利用者は明示的に別の接続箇所を宣言する。
+- この規則は**構成案の宣言内の矛盾検出**に限定する。下位依存を含めた全アプリケーションの原子的な切替、実際の適合証拠や業務上の正当性まで確認したものではない。
+
+### 追加した否定試験
+
+`proposal_test.go`で、同じ契約に合う二つの提供者が両方とも登録されていても、同じ接続箇所に同時に指定すれば拒否することを確認した。異なる契約を同じ接続箇所へ指定する場合も拒否する。一方、接続箇所が独立していれば、同じ契約へ別の提供者を選べることを確認した。
+
+Go 1.23.2の独立した局所モジュールで、実`registry.go`・`selection.go`・`proposal.go`・`proposal_test.go`・`selection_closure_test.go`をGitHub上のBlob SHAと一致する内容で使用。`go test -race -count=100 -timeout=90s ./internal/composition`、`go vet ./...`、`gofmt -l`を確認した。Routerの`Binding`型は試験用の仮定義である。
+
+**この試験は構成案検査とRegistry選択の局所証拠であり、全Compositionパッケージ・本番Host・全Repository Healthの結果ではない。** 本番へ昇格させるには実際のConsumerが何を「同じ接続箇所」とみなすか、契約の意味、閲覧権限、現在のHost権限を別途検証する。
+
+
+## E8：構成候補から独立した適合性検証へ渡す対象を特定する
+
+`InspectWiring`と`InspectWiringSet`が返す`WiringFinding.VerificationTargets`は、構造上の候補となるProviderと、直接・間接に依存するProviderを列挙する。各対象は、Provider ID、適用範囲、Service Contract（ID・版・形状）、Registry上の宣言世代を持つ。
+
+例えば「画面 → 読取サービス → DB提供者」では、画面だけでなく読取サービス・DB提供者も検証対象となる。無関係な別TenantのProviderは含まない。候補が不明または競合する場合、適合済みと誤解される検証対象を返さない。返した値を呼出し側が改変してもRegistry本体へ影響しない。
+
+**重要：これは検証対象の一覧であり、検証済みの証拠ではない。** `Contract.Shape`の一致やProviderの登録、宣言世代が新しいという事実だけで契約の意味、実装の適合、実成果物の信頼、現在の実行権限を認めない。
+
+### #951との接続で不足している情報
+
+既存の[Capability Contract Reference](../../tools/reference-plugin-capability-contract/README.md)は、適合証拠を契約の正確な指紋と、Plugin ID・Plugin版・Implementation ID・Artifact Digest・適合試験群・証拠指紋へ結び付ける。
+
+一方、現在のComposition RegistryのProviderには、実装・成果物・証拠の全情報は含まれていない。この差を黙って補ったり、AIが見つけた資料を適合済みの証拠に格上げしたりしない。
+
+次の接続では、#951が提供する既存の正本へ`VerificationTarget`から辿り、**対象の識別が一致するか**を検査する。その後、現在の契約定義権限、適合性証拠の発行権限、失効状態、#943の成果物証拠を各担当機構で検証する。さらにHostの現在のPermission・Resource・Lease・Fencingは実行時に判定する。構成案の検査器がこれらを自前で承認しない。
+
+### 試験と性能上の留保
+
+`proposal_test.go`に、3段階の依存関係の検証対象の完全性、適用範囲の分離、結果の防御的複製、欠落・競合・同一接続箇所の矛盾時に検証済みと見なせる対象を返さない負例を追加した。
+
+Go 1.23.2の独立した局所モジュールで、GitHubとBlob SHAが一致する実`registry.go`・`selection.go`・`proposal.go`・`proposal_test.go`を使用。局所的なBinding型の仮定義と既存`selection_closure_test.go`を組み合わせ、`go test -race -count=100 -timeout=120s ./internal/composition`および`go vet ./...`が成功した。
+
+本試験は宣言上の選択と検証対象の抽出に限定する。正式な#951の適合性検証器、実Build Artifact、Hostの実行権限、Coordinatorを含む全Composition package、PR exact-head全リポジトリの健全性検査は未実施である。検証対象を列挙する処理も依存閉包の走査コストを持つため、大規模構成での性能は今後計測する。
+
+
+## E9：契約適合証拠への参照の照合はKernel外に置く
+
+E8の検証対象一覧だけでは、外部の適合性検証が対象とする実装・契約・成果物と正確に対応しているかが分からない。一方、その照合のために通常の実行KernelへConformanceのResolverや証拠保管機構を追加することは、責務の重複と不要な実行時負荷を生む。
+
+そのため、任意で利用する[契約適合証拠との照合用参照実装](../composition-evidence-handoff/README.md)を別Packageとして追加した。`handoff.Reconcile`は、構造上の候補と依存閉包の検証対象をまとめ、#951のResolution／ConformanceEvidenceに対応する外部の参照情報と照合する。
+
+結果は「参照あり（未検証）」「参照なし」「宣言世代のずれ」「契約対象の不一致」「参照情報が不完全」「参照が複数で曖昧」に分ける。複数Consumerに共通する依存先は一つにまとめる。構成案自身が競合・未判定なら照合を開始せず、結果を停止扱いとする。
+
+**「参照あり（未検証）」を「適合済み」と呼ばない**。`Contract.Shape`と#951の契約全体の指紋は同義ではなく、適合試験、発行者の現在権限、成果物の真正性、失効状態は正式な別担当の検証を要する。現在のHostの実行権限も当然付与しない。
+
+新Packageは`internal/composition`からは参照されず、静的Targetの実行物への組込みを求めない。局所試験の成功条件・限界・新規ソースのHash一致は参照実装のREADMEへ記録した。
+
+
+## E15：推移的な依存関係の探索を、同じ評価結果から効率よく行う
+
+構成案と実行時の選択が共用する`Registry.dependencyEpochsLocked`は、選択対象から直接・間接に依存するProviderを辿り、その宣言世代を固定する。以前は各Providerに進むたび、評価一覧`Snapshot.Providers`から該当Providerを線形探索していた。依存階層が深くなるほど同じ評価一覧を繰り返し読む問題がある。
+
+E15では、**一回の依存閉包計算の内部だけ**でProvider IDから評価結果を引く索引を構築し、既存の依存関係・適格性・世代検査の規則を維持したまま探索する。新たな永続的な索引や変更管理上の正本は設けないため、`Registry.Apply`との同期責務も増やさない。これまでどおりRegistryのロックの内側で処理し、選択結果は防御的に複製する。
+
+96段階の依存関係を用いた試験では、閉包の網羅性と順序、選択時の再検査、無関係な別テナントの更新、最深部の宣言変更後に古い選択を拒否することを確認する。さらに16・64・128 Providerの依存チェーンについて`BenchmarkSelectDeepDependencyClosure`を追加した。
+
+```sh
+go test -run '^$' -bench '^BenchmarkSelectDeepDependencyClosure$' -benchmem -benchtime=2s -count=5 ./internal/composition
+```
+
+索引の構築には評価結果の件数に応じたメモリが必要になる。実装は依存閉包を1回調べる間だけ保持し、呼出し間で共有しない。**ベンチマークを実際に実行していない段階では、速度の改善率や全体的な実行性能を保証しない**。深い依存グラフと小さな選択での差を、同じ環境と同じRevisionのソースで比較する必要がある。
+
+E15も宣言上の選択と鮮度を扱うものであり、実Artifact、適合証拠の真正性、Hostの現在権限を証明しない。

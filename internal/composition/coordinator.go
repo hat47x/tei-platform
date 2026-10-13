@@ -105,6 +105,7 @@ func (c *Coordinator) stage(ctx context.Context, expected uint64, next Binding, 
 	}
 	if registry != nil {
 		selected.Dependencies = append([]Edge(nil), selected.Dependencies...)
+		selected.DependencyEpochs = append([]ProviderEpoch(nil), selected.DependencyEpochs...)
 		if !selected.Contract.valid() || selected.Scope == "" || selected.Revision == 0 || selected.Epoch == 0 ||
 			selected.ProviderID != next.ProviderID ||
 			selected.Contract.ID != next.ContractID ||

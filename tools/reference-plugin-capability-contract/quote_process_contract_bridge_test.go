@@ -255,14 +255,14 @@ func TestQuoteCandidateContractInvokesIndependentBusinessProcess(t *testing.T) {
 		}
 	}
 	// A changed executable must be rejected BEFORE a new child starts.
-	file, err := os.OpenFile(binary, os.O_APPEND|os.O_WRONLY, 0600)
-	if err != nil {
+	// Replace the path instead of writing an executed inode in place. The
+	// negative control is artifact drift, not the OS's executable write lock.
+	replacement := binary + ".replacement"
+	changed := append(append([]byte(nil), raw...), []byte("untrusted byte")...)
+	if err := os.WriteFile(replacement, changed, 0700); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := file.Write([]byte("untrusted byte")); err != nil {
-		t.Fatal(err)
-	}
-	if err := file.Close(); err != nil {
+	if err := os.Rename(replacement, binary); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := registry.ResolveAndInvoke(ctx, resolve, payload); err == nil ||
