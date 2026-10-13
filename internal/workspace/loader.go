@@ -3,6 +3,7 @@ package workspace
 import (
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path"
 	"path/filepath"
@@ -104,7 +105,7 @@ func loadWithStack(root string, visiting map[string]bool) (Result, error) {
 	}
 	// Inventory and verify the physical boundary before any domain loader can
 	// read a Source file or parse a symlink to an outside target.
-	managedFiles, err := scanManagedFiles(root, roots)
+	managedFiles, err := scanManagedFiles(sourceRoot, roots)
 	if err != nil {
 		return Result{}, err
 	}
@@ -219,39 +220,46 @@ func validateWorkspaceSourceRoots(roots []string) error {
 // authority. Missing optional roots remain forward-compatible; unreadable,
 // escaped, broken-linked or non-regular source entries fail instead of being
 // silently omitted or introduced as Workspace-managed artifacts.
-func scanManagedFiles(root string, roots []string) ([]ManagedFile, error) {
-	rootReal, err := filepath.EvalSymlinks(root)
-	if err != nil {
-		return nil, fmt.Errorf("resolve Workspace root: %w", err)
-	}
+// scanManagedFiles inventories managed files through the same pinned root
+// used by Load's manifest and source reads. Never use filepath.WalkDir or
+// EvalSymlinks here: their independent pathname lookups may be redirected
+// when the Workspace directory or an ancestor is renamed.
+//
+// This is not an atomic multi-file snapshot. Entries and contents may change
+// in place during Load; the individual rooted source read remains authoritative
+// for the actual bytes parsed and captured by the Source Index.
+func scanManagedFiles(rootHandle *os.Root, roots []string) ([]ManagedFile, error) {
 	var out []ManagedFile
-	seenPhysicalSources := make(map[string]string)
+	type seenSource struct {
+		path string
+		info os.FileInfo
+	}
+	var seen []seenSource
 	for _, sourceRoot := range roots {
 		if err := validateWorkspaceSourceRoot(sourceRoot); err != nil {
 			return nil, fmt.Errorf("workspace source root %q: %w", sourceRoot, err)
 		}
-		base := root
+		prefix := ""
 		missingOptionalRoot := false
-		// Resolve every path component before treating an absent nested source
-		// root as optional. An existing but broken/escaping symlink ancestor
-		// must fail closed instead of being mistaken for a missing root.
+		// Distinguish a genuinely missing optional root from an existing
+		// broken or escaping link. Keep source roots as directories; file
+		// symlinks within those directories remain valid managed assets.
 		for _, component := range strings.Split(sourceRoot, "/") {
-			base = filepath.Join(base, component)
-			info, err := os.Lstat(base)
-			if os.IsNotExist(err) {
+			if prefix == "" {
+				prefix = component
+			} else {
+				prefix += "/" + component
+			}
+			info, err := rootHandle.Lstat(prefix)
+			if errors.Is(err, os.ErrNotExist) {
 				missingOptionalRoot = true
 				break
 			}
 			if err != nil {
-				return nil, fmt.Errorf("stat workspace source root %q at %s: %w", sourceRoot, base, err)
+				return nil, fmt.Errorf("stat workspace source root %q at %s: %w", sourceRoot, prefix, err)
 			}
-			real, err := filepath.EvalSymlinks(base)
-			if err != nil {
-				return nil, fmt.Errorf("resolve workspace source root %q at %s: %w", sourceRoot, base, err)
-			}
-			rel, err := filepath.Rel(rootReal, real)
-			if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(os.PathSeparator)) {
-				return nil, fmt.Errorf("workspace source root %q resolves outside the Workspace", sourceRoot)
+			if _, err := rootHandle.Stat(prefix); err != nil {
+				return nil, fmt.Errorf("resolve workspace source root %q at %s outside the Workspace or inaccessible: %w", sourceRoot, prefix, err)
 			}
 			if !info.IsDir() {
 				return nil, fmt.Errorf("workspace source root %q must be a directory", sourceRoot)
@@ -260,34 +268,36 @@ func scanManagedFiles(root string, roots []string) ([]ManagedFile, error) {
 		if missingOptionalRoot {
 			continue
 		}
-		err = filepath.WalkDir(base, func(path string, d os.DirEntry, walkErr error) error {
+		// fs.WalkDir uses Root.FS to resolve every traversal within the
+		// pinned directory handle. The callback re-stats each leaf through
+		// that handle; even a swapped symlink cannot redirect it outside.
+		err := fs.WalkDir(rootHandle.FS(), sourceRoot, func(logicalPath string, d fs.DirEntry, walkErr error) error {
 			if walkErr != nil {
-				return fmt.Errorf("scan managed source %s: %w", path, walkErr)
+				return fmt.Errorf("scan managed source %s outside the Workspace or inaccessible: %w", logicalPath, walkErr)
 			}
 			if d.IsDir() {
 				return nil
 			}
-			realPath, err := filepath.EvalSymlinks(path)
+			info, err := rootHandle.Stat(logicalPath)
 			if err != nil {
-				return fmt.Errorf("resolve managed source %s: %w", path, err)
-			}
-			rel, err := filepath.Rel(rootReal, realPath)
-			if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(os.PathSeparator)) {
-				return fmt.Errorf("managed source %s resolves outside the Workspace", path)
-			}
-			info, err := os.Stat(realPath)
-			if err != nil {
-				return fmt.Errorf("stat managed source %s: %w", path, err)
+				return fmt.Errorf("managed source %s resolves outside the Workspace or is inaccessible: %w", logicalPath, err)
 			}
 			if !info.Mode().IsRegular() {
-				return fmt.Errorf("managed source %s is not a regular file", path)
+				return fmt.Errorf("managed source %s is not a regular file", logicalPath)
 			}
-			logicalPath := relPath(root, path)
-			if previous, exists := seenPhysicalSources[realPath]; exists {
-				return fmt.Errorf("managed sources %q and %q resolve to the same physical file", previous, logicalPath)
+			// Compare actual file identity, not just the textual path:
+			// hard links and in-Workspace symlink aliases must not produce
+			// multiple canonical Source Index artifacts for one file.
+			for _, previous := range seen {
+				if os.SameFile(previous.info, info) {
+					return fmt.Errorf("managed sources %q and %q resolve to the same physical file", previous.path, logicalPath)
+				}
 			}
-			seenPhysicalSources[realPath] = logicalPath
-			out = append(out, ManagedFile{Path: logicalPath, SourceRoot: sourceRoot, Extension: strings.ToLower(filepath.Ext(d.Name()))})
+			seen = append(seen, seenSource{path: logicalPath, info: info})
+			out = append(out, ManagedFile{
+				Path: logicalPath, SourceRoot: sourceRoot,
+				Extension: strings.ToLower(filepath.Ext(d.Name())),
+			})
 			return nil
 		})
 		if err != nil {
