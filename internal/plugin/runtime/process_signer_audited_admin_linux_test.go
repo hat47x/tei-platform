@@ -31,7 +31,7 @@ func newAuditedSignerFixture(sink *recordingLinuxSignerSink, permitted bool) (*L
 	trust := NewLinuxHostSignerTrust()
 	return &LinuxSignerAuditedAdmin{
 		Admin: LinuxSignerAdmin{Trust: trust, Authorizer: &testSignerAuthorizer{allow: permitted}},
-		Sink: sink, HostID: "host/reference",
+		Sink:  sink, HostID: "host/reference",
 	}, trust
 }
 
@@ -89,6 +89,15 @@ func TestLinuxSignerAuditedAdminRejectsWithoutDurablePreparation(t *testing.T) {
 	other, _ := newAuditedSignerFixture(nil, true)
 	if err := other.Allow(context.Background(), "host-admin", "op-missing-sink", req); err == nil {
 		t.Fatal("missing audit sink authorized trust change")
+	}
+	var nilAuthorizer *testSignerAuthorizer
+	adminWithMissingAuthorizer := &LinuxSignerAuditedAdmin{
+		Admin:  LinuxSignerAdmin{Trust: trust, Authorizer: nilAuthorizer},
+		Sink:   &recordingLinuxSignerSink{},
+		HostID: "host/reference",
+	}
+	if err := adminWithMissingAuthorizer.Allow(context.Background(), "host-admin", "op-nil-authorizer", req); err == nil {
+		t.Fatal("typed-nil Host authorizer was allowed to dispatch")
 	}
 	if err := admin.Allow(context.Background(), "host-admin", "", req); err == nil {
 		t.Fatal("blank operation identifier was authorized")
