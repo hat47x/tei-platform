@@ -11,7 +11,7 @@ import (
 const (
 	// PackageInputBindingSchema identifies observational input-binding evidence.
 	// It grants neither build execution authority nor artifact acceptance.
-	PackageInputBindingSchema = "tei.plugin-package-input-binding/v1"
+	PackageInputBindingSchema      = "tei.plugin-package-input-binding/v1"
 	PackageOutputObservationSchema = "tei.plugin-package-output-observation/v1"
 )
 
@@ -89,18 +89,18 @@ func PreparePluginPackageInputs(selection BuildInputSelection, source transform.
 	}
 	return PreparedPackageInputs{
 		Inputs: map[string]transform.Value{
-			"buildPlan": planValue,
+			"buildPlan":        planValue,
 			"pluginDefinition": definitionValue,
 		},
 		Evidence: BuildInputEvidence{
-			Schema: PackageInputBindingSchema,
-			Profile: selection.Profile,
-			SourceFingerprint: ingress.SourceFingerprint,
-			BuildPlanFingerprint: planFingerprint,
-			Plugin: plan.Plugin,
+			Schema:                      PackageInputBindingSchema,
+			Profile:                     selection.Profile,
+			SourceFingerprint:           ingress.SourceFingerprint,
+			BuildPlanFingerprint:        planFingerprint,
+			Plugin:                      plan.Plugin,
 			PluginDefinitionFingerprint: definitionFingerprint,
-			OriginalInputDigest: ingress.OriginalInputDigest,
-			CanonicalInputDigest: ingress.CanonicalInputDigest,
+			OriginalInputDigest:         ingress.OriginalInputDigest,
+			CanonicalInputDigest:        ingress.CanonicalInputDigest,
 		},
 	}, nil
 }
@@ -143,9 +143,9 @@ func ObservePackageOutput(binding BuildInputEvidence, result transform.Evaluatio
 		return PackageOutputObservation{}, fmt.Errorf("Plugin package output does not match admitted input fingerprints")
 	}
 	return PackageOutputObservation{
-		Schema: PackageOutputObservationSchema,
-		Input: binding,
+		Schema:       PackageOutputObservationSchema,
+		Input:        binding,
 		OutputDigest: plugin.BuildOutputDigest(result.Output.Bytes),
-		Steps: result.Steps,
+		Steps:        result.Steps,
 	}, nil
 }
