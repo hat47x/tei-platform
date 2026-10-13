@@ -308,26 +308,57 @@ func scanManagedFiles(rootHandle *os.Root, roots []string) ([]ManagedFile, error
 	return out, nil
 }
 
-func loadPlugins(root string, r *Result) error {
-	base := filepath.Join(root, "plugins")
-	var files []string
-	err := filepath.WalkDir(base, func(path string, d os.DirEntry, err error) error {
+// listPinnedDomainSources enumerates files through the same Root used for
+// Source reads, rather than through independently resolved Workspace paths.
+// Direct per-domain loader tests may not have a Load root; those calls open a
+// temporary rooted handle instead. This inventories names, not an atomic
+// snapshot of file contents: the later pinned read remains authoritative.
+func listPinnedDomainSources(root string, r *Result, directory string, keep func(string) bool) ([]string, error) {
+	rootHandle := r.sourceReadRoot
+	if rootHandle == nil {
+		var err error
+		rootHandle, err = os.OpenRoot(root)
 		if err != nil {
-			if os.IsNotExist(err) {
-				return nil
-			}
-			return err
+			return nil, fmt.Errorf("open Workspace root for %s listing: %w", directory, err)
 		}
-		if d.IsDir() || d.Name() != "plugin.tei" {
+		defer rootHandle.Close()
+	}
+	var files []string
+	err := fs.WalkDir(rootHandle.FS(), directory, func(logical string, d fs.DirEntry, walkErr error) error {
+		if errors.Is(walkErr, os.ErrNotExist) && logical == directory {
+			return nil // Optional absent domain root.
+		}
+		if walkErr != nil {
+			return fmt.Errorf("list Workspace source %s: %w", logical, walkErr)
+		}
+		if d.IsDir() || !keep(d.Name()) {
 			return nil
 		}
-		files = append(files, path)
+		info, err := rootHandle.Stat(logical)
+		if err != nil {
+			return fmt.Errorf("resolve Workspace source %s: %w", logical, err)
+		}
+		if !info.Mode().IsRegular() {
+			return fmt.Errorf("Workspace source %s is not a regular file", logical)
+		}
+		files = append(files, filepath.Join(root, filepath.FromSlash(logical)))
 		return nil
 	})
-	if err != nil && !os.IsNotExist(err) {
-		return err
+	if err != nil {
+		return nil, err
 	}
 	sort.Strings(files)
+	return files, nil
+}
+
+func loadPlugins(root string, r *Result) error {
+	files, err := listPinnedDomainSources(root, r, "plugins", func(name string) bool {
+		return name != "plugin.tei"
+	})
+	if err != nil {
+		return err
+	}
+
 	for _, path := range files {
 		src, err := readSourceForLoad(root, r, path)
 		if err != nil {
@@ -344,25 +375,13 @@ func loadPlugins(root string, r *Result) error {
 }
 
 func loadBundles(root string, r *Result) error {
-	base := filepath.Join(root, "bundles")
-	var files []string
-	err := filepath.WalkDir(base, func(path string, d os.DirEntry, err error) error {
-		if err != nil {
-			if os.IsNotExist(err) {
-				return nil
-			}
-			return err
-		}
-		if d.IsDir() || d.Name() != "bundle.tei" {
-			return nil
-		}
-		files = append(files, path)
-		return nil
+	files, err := listPinnedDomainSources(root, r, "bundles", func(name string) bool {
+		return name != "bundle.tei"
 	})
-	if err != nil && !os.IsNotExist(err) {
+	if err != nil {
 		return err
 	}
-	sort.Strings(files)
+
 	for _, path := range files {
 		src, err := readSourceForLoad(root, r, path)
 		if err != nil {
@@ -379,25 +398,13 @@ func loadBundles(root string, r *Result) error {
 }
 
 func loadSemantics(root string, r *Result) error {
-	base := filepath.Join(root, "semantic")
-	var files []string
-	err := filepath.WalkDir(base, func(path string, d os.DirEntry, err error) error {
-		if err != nil {
-			if os.IsNotExist(err) {
-				return nil
-			}
-			return err
-		}
-		if d.IsDir() || !strings.HasSuffix(d.Name(), ".tei") {
-			return nil
-		}
-		files = append(files, path)
-		return nil
+	files, err := listPinnedDomainSources(root, r, "semantic", func(name string) bool {
+		return !strings.HasSuffix(name, ".tei")
 	})
-	if err != nil && !os.IsNotExist(err) {
+	if err != nil {
 		return err
 	}
-	sort.Strings(files)
+
 	byNamespace := map[core.CanonicalID]int{}
 	for _, path := range files {
 		src, err := readSourceForLoad(root, r, path)
