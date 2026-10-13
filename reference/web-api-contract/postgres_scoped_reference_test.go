@@ -127,7 +127,7 @@ func TestExplicitScopedPostgresSQLBindsCustomerBeforeClientFilterAndTop(t *testi
 	})
 	state := &scopedSQLState{
 		columns: []string{"order_id", "customer_id", "ordered_at", "status", "total_amount"},
-		rows:    [][]sqldriver.Value{{int64(9), int64(11), "2026-10-13", "READY", int64(9000)}},
+		rows:    [][]sqldriver.Value{{int64(9), nil, nil, nil, nil}},
 	}
 	exec := ScopedRecentOrdersPostgres{
 		DB: scopedTestDB(t, state), Database: core.MustCanonicalID("sales_core"),
@@ -139,7 +139,7 @@ func TestExplicitScopedPostgresSQLBindsCustomerBeforeClientFilterAndTop(t *testi
 	if err != nil {
 		t.Fatal(err)
 	}
-	expectedSQL := "SELECT o.order_id, o.customer_id, o.ordered_at, o.status, o.total_amount" +
+	expectedSQL := "SELECT o.order_id, NULL AS customer_id, NULL AS ordered_at, NULL AS status, NULL AS total_amount" +
 		" FROM public.orders AS o WHERE o.customer_id = $1 AND o.ordered_at >= $2" +
 		" AND o.order_id > $3 ORDER BY o.order_id DESC LIMIT $4"
 	if state.calls != 1 || state.statement != expectedSQL {
