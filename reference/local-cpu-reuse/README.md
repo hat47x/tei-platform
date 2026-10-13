@@ -115,3 +115,11 @@ node --test reference/local-cpu-reuse/run-real-inspection.test.mjs
 Evidence obtained so far: **12/12 CLI-envelope / batch tests** and **4/4 runner orchestration tests** passed in an isolated JavaScript evaluator with *synthetic* Go-shaped CLI JSON; the runner tests inject a fake read function. The **actual** `go build`, `tei inspect` subprocess execution, Node ESM execution from the Git checkout, and full Repository-health remain **NOT_PROVEN**. This is a runnable verification route, not a claim that the target E2E has been observed.
 
 The next measured step is to execute this exact command at an identified checked-out revision, record the binary's source commit and `tei cli inspect` schema, inspect all five results and their source fingerprints, and keep them separate from an Approval / Acceptance evidence packet. Only after that should a second explicitly authorized Application be considered for cross-Application candidate retrieval.
+
+## E2E execution availability check (2026-10-13)
+
+The working runtime has Go, Node.js and Git, but **does not have a checked-out TEI repository**. An attempt to resolve the remote Git origin failed with `Could not resolve host: github.com`. GitHub connector access permits reading/editing individual files, not a trusted full checkout for building the actual TEI binary. Therefore the previously documented end-to-end command **has not been executed**; do not record a passing real-World inspection, CPU benchmark or Repository-health status.
+
+To make this an actionable gate for a future authorized checkout: first record the checkout commit SHA and `git status --porcelain`, then run the two CLI bridge test files under Node, build the Go CLI, execute the five-subject runner, and attach only sanitized subject IDs, observed source/world fingerprint equality, error codes and elapsed-time measurements. Avoid uploading Canonical source bodies or full CLI JSON containing business data. Recheck the checkout commit SHA after the run and discard evidence if it changed. If any of the five exact subjects is absent, report a bounded `SUBJECT_NOT_FOUND` result rather than fabricating a replacement ID.
+
+**No Go integration, mainline rebase or PR merge is claimed.**
