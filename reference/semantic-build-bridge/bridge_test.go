@@ -66,8 +66,8 @@ func exportedNamespace(t *testing.T, provider string) semantic.Namespace {
 
 func planFixture(packageID plugin.Identity, sourceDigest string) plugin.BuildPlan {
 	return plugin.BuildPlan{
-		FormatVersion: plugin.BuildPlanFormatVersion,
-		Plugin:        packageID,
+		FormatVersion:               plugin.BuildPlanFormatVersion,
+		Plugin:                      packageID,
 		PluginDefinitionFingerprint: plugin.BuildDefinitionFingerprint(plugin.Definition{
 			ID: packageID.ID, Version: packageID.Version,
 		}),
@@ -79,7 +79,7 @@ func planFixture(packageID plugin.Identity, sourceDigest string) plugin.BuildPla
 			ID: "tei.builders.semantic_export_reference", Version: "1.0.0",
 			ContractVersion: "reference.v1", ArtifactDigest: "sha256:" + strings.Repeat("1", 64),
 		},
-		Recipe: plugin.BuildRecipe{Kind: "semantic-export-reference", Entrypoint: "os"},
+		Recipe:     plugin.BuildRecipe{Kind: "semantic-export-reference", Entrypoint: "os"},
 		OutputKind: ReferenceOutputKind,
 		Target:     ReferenceTarget,
 	}
@@ -108,8 +108,8 @@ func lockedReference(t *testing.T, ns semantic.Namespace) ([]byte, plugin.BuildP
 		t.Fatal(err)
 	}
 	expected := semanticdistribution.Expectation{
-		Package: semanticdistribution.Identity{PackageID: string(p.ID), Version: p.Version},
-		NamespaceID: "os",
+		Package:        semanticdistribution.Identity{PackageID: string(p.ID), Version: p.Version},
+		NamespaceID:    "os",
 		ArtifactDigest: plugin.BuildOutputDigest(payload),
 		SemanticDigest: sourceindex.Fingerprint(semanticBytes),
 	}
