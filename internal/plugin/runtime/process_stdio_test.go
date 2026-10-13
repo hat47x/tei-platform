@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"strings"
 	"testing"
 	"time"
@@ -31,6 +32,25 @@ func TestMain(m *testing.M) {
 func runProcessHelper(mode string) int {
 	if mode == "wait" {
 		time.Sleep(30 * time.Second)
+		return 0
+	}
+	if mode == "hold-stdio-pipes" {
+		time.Sleep(8 * time.Second)
+		return 0
+	}
+	if mode == "exit-with-inherited-pipes" {
+		// Return without waiting. The descendant keeps the parent's stdout
+		// and stderr pipe descriptors open after the direct process exits.
+		child := exec.Command(os.Args[0])
+		child.Env = []string{processHelperModeEnv + "=hold-stdio-pipes"}
+		child.Stdout = os.Stdout
+		child.Stderr = os.Stderr
+		if err := child.Start(); err != nil {
+			return 7
+		}
+		if err := child.Process.Release(); err != nil {
+			return 7
+		}
 		return 0
 	}
 	if mode == "malformed" {
