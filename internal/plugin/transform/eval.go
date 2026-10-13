@@ -330,25 +330,6 @@ func (e *evaluator) eval(expr Expr, env *evalEnv, depth int) (Value, error) {
 		out.Object[index].Value = replacement
 		return out, nil
 
-	case OpOmitEmptyArrayField:
-		source, err := e.eval(*expr.From, env, depth+1)
-		if err != nil {
-			return Value{}, err
-		}
-		if source.Kind != ValueObject {
-			return Value{}, fmt.Errorf("omit-empty-array-field requires object, got %s", source.Kind)
-		}
-		index, exists, err := e.findObjectField(source, expr.Field)
-		if err != nil {
-			return Value{}, err
-		}
-		if !exists || source.Object[index].Value.Kind != ValueArray || len(source.Object[index].Value.Array) != 0 {
-			return source, nil
-		}
-		out := Value{Kind: ValueObject, Object: make([]Field, 0, len(source.Object)-1)}
-		out.Object = append(out.Object, source.Object[:index]...)
-		out.Object = append(out.Object, source.Object[index+1:]...)
-		return out, nil
 	case OpOmitField:
 		source, err := e.eval(*expr.From, env, depth+1)
 		if err != nil {
