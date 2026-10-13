@@ -25,7 +25,8 @@ type Binding struct {
 	Generation      uint64
 }
 
-func (b Binding) valid() bool {
+// Valid checks the binding structure; it is not an authorization decision.
+func (b Binding) Valid() bool {
 	if b.ContractID == "" || b.ContractVersion == "" || b.ProviderID == "" || b.Generation == 0 || !strings.HasPrefix(b.ArtifactDigest, "sha256:") {
 		return false
 	}
@@ -59,7 +60,7 @@ type Router struct {
 }
 
 func NewRouter(first Binding, scope *effect.Scope) (*Router, error) {
-	if !first.valid() || scope == nil {
+	if !first.Valid() || scope == nil {
 		return nil, errors.New("initial binding and scope are required")
 	}
 	return &Router{current: &generation{binding: first, scope: scope, drained: make(chan struct{})}, last: first, lastScope: scope}, nil
@@ -112,7 +113,7 @@ func (r *Router) Publish(expected uint64, next Binding, scope *effect.Scope, gua
 	if guard == nil {
 		return nil, ErrGuardRequired
 	}
-	if !next.valid() || scope == nil {
+	if !next.Valid() || scope == nil {
 		return nil, errors.New("next binding and scope are required")
 	}
 	r.mu.Lock()
@@ -139,7 +140,7 @@ func (r *Router) Activate(expected uint64, next Binding, scope *effect.Scope, gu
 	if guard == nil {
 		return ErrGuardRequired
 	}
-	if !next.valid() || scope == nil {
+	if !next.Valid() || scope == nil {
 		return errors.New("next binding and scope are required")
 	}
 	r.mu.Lock()
