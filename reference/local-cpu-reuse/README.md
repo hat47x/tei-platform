@@ -261,3 +261,22 @@ TEI_REAL_CLI_E2E=1 node --test reference/local-cpu-reuse/real-go-inspection.e2e.
 ```
 
 Both commands are read-only with respect to the Reference models, but `go build` may download Go modules. Results are trustworthy only after recording the exact PR head and CI result; they do not certify a live Oracle environment. The in-memory World and observation objects may reveal project metadata and must not be dumped to unrestricted logs.
+
+## Go-native executor resolution: real routes, synthetic explicit Capability (2026-10-14)
+
+The previously qualified read-only Reference observation showed that the two Applications' local aliases target the same `master_data` instance in development. The existing *production Go* `realization.ResolveContractQueryExecutor` is the authoritative **typed declaration resolver** for explicit Environment/Database instance/Contract Query/Plugin Capability bindings. It does not infer an executor from matching Oracle providers alone. There is no need to create a second JavaScript executor-selection algorithm or impose mandatory contracts on uninstalled project-specific plugins.
+
+The new [go_executor_resolution_reference_test.go](go_executor_resolution_reference_test.go) calls that **unchanged** Go resolver with the loaded, actual `reference/workspace` for both `development` and `production`. It verifies both Applications' independently named `master` / `customer_master` bindings resolve to the same declared Oracle Database instance, and the actual `master_data.customer` Contract **v2.4** declares the expected `find_by_id(id:customer.customer_id) → customer.customer` / `zero-or-one` signature. It then exercises two deliberately different evidence cases:
+
+- **No explicit executor binding** despite a synthetic provider-compatible Capability: Go resolver must return an unresolved error. Such absence is a *normal research observation*, not a new plugin author validation failure.
+- **One deliberately synthetic explicit binding and synthetic resolved Capability** for the observed instance: Go resolver returns the uniquely typed `ResolvedContractQueryExecutor`. Only its **selection semantics** are tested; the Capability does not exist as a deployed provider and no runtime invocation is authorized. Negative cases reject a foreign Environment, duplicate binding, unsupported provider, wrong Capability kind, wrong instance and wrong target.
+
+This strengthens the join between the two Application routes and the Go resolver while keeping the evidence hierarchy explicit: **observed real Reference routing → synthetic explicitly authored binding → Go typed resolver result → NOT a live Provider**. No Plugin Catalog resolution, Plugin artifact installation, Oracle connection, credentials, resource grants, SQL execution, actual user authorization, Provider result conformance or Acceptance are asserted. The Go Core and production executor resolver are not changed.
+
+Only the existing focused local-CPU CI workflow is extended with the command:
+
+```sh
+go test -count=1 ./reference/local-cpu-reuse -run '^TestGoReference' -v
+```
+
+The workflow uses the exact PR head, Go version from `go.mod` and no full-repository health gate. Runtime/semantic acceptance, #267, #843/#876 and issue-gated training boundaries remain unchanged. The first successful exact-head CI must be recorded separately from previous PR evidence.
