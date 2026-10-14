@@ -66,8 +66,8 @@ jobs:
           go mod tidy
           grep -F 'github.com/wailsapp/wails/v3 v3.0.0-beta.29' go.mod
           test -s go.sum
-          go build -tags server -o "$RUNNER_TEMP/tei-studio-server" .
-          go vet -tags server ./...
+          CGO_ENABLED=0 go build -tags server -o "$RUNNER_TEMP/tei-studio-server" .
+          CGO_ENABLED=0 go vet -tags server ./...
 
       - name: loopback HTTPの実起動・埋込みasset smoke
         working-directory: cmd/tei-studio
