@@ -33,7 +33,7 @@ func TestReferenceHostTwoConnectionsAndRevokedSession(t *testing.T) {
 
 	host, err := webcomposition.NewHost(webcomposition.Policy{
 		Path: "/studio/reference-read", Method: http.MethodPost,
-		ActionID: "studio.reference-read",
+		ActionID:  "studio.reference-read",
 		Providers: map[string]string{"test": issuer},
 	}, webcomposition.Dependencies{
 		VerifySession: func(r *http.Request) (webcomposition.Principal, error) {
@@ -49,15 +49,15 @@ func TestReferenceHostTwoConnectionsAndRevokedSession(t *testing.T) {
 			}
 			return p, nil
 		},
-		VerifyCSRF: func(r *http.Request, _ webcomposition.Principal) bool {
+		VerifyCSRF:    func(r *http.Request, _ webcomposition.Principal) bool {
 			return r.Header.Get("X-Synthetic-CSRF") == "valid"
 		},
-		Authorize: func(_ context.Context, p webcomposition.Principal, action string) (bool, error) {
+		Authorize:     func(_ context.Context, p webcomposition.Principal, action string) (bool, error) {
 			// This test only admits the fixed read-only Action; real resource
 			// scope must be enforced by the actual Host/Operation integration.
 			return action == "studio.reference-read" && privateResults[p.PrincipalID] != "", nil
 		},
-		Invoke: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		Invoke:        http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			p, ok := webcomposition.PrincipalFromContext(r.Context())
 			if !ok {
 				http.Error(w, "missing verified principal", http.StatusInternalServerError)
@@ -69,7 +69,7 @@ func TestReferenceHostTwoConnectionsAndRevokedSession(t *testing.T) {
 			w.WriteHeader(http.StatusOK)
 			_, _ = io.WriteString(w, privateResults[p.PrincipalID])
 		}),
-		Audit: func(webcomposition.AuditRecord) {},
+		Audit:         func(webcomposition.AuditRecord) {},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -107,7 +107,7 @@ func TestReferenceHostTwoConnectionsAndRevokedSession(t *testing.T) {
 	failures := make(chan error, 24)
 	for i := 0; i < 12; i++ {
 		for _, c := range []struct {
-			client *http.Client
+			client                    *http.Client
 			token, spoof, want, other string
 		}{
 			{clientA, "synthetic-a", b.PrincipalID, privateResults[a.PrincipalID], privateResults[b.PrincipalID]},
@@ -115,7 +115,7 @@ func TestReferenceHostTwoConnectionsAndRevokedSession(t *testing.T) {
 		} {
 			wg.Add(1)
 			go func(c struct {
-				client *http.Client
+				client                    *http.Client
 				token, spoof, want, other string
 			}) {
 				defer wg.Done()
@@ -177,19 +177,19 @@ func TestReferenceHostLeavesWorkspaceScopeToOperation(t *testing.T) {
 	seenWorkspace := ""
 	host, err := webcomposition.NewHost(webcomposition.Policy{
 		Path: "/studio/reference-read", Method: http.MethodPost,
-		ActionID: "studio.reference-read",
+		ActionID:  "studio.reference-read",
 		Providers: map[string]string{"fixture": issuer},
 	}, webcomposition.Dependencies{
 		VerifySession: func(*http.Request) (webcomposition.Principal, error) {
 			return webcomposition.Principal{ProviderID: "fixture", Issuer: issuer, Subject: "a", PrincipalID: "p"}, nil
 		},
-		VerifyCSRF: func(*http.Request, webcomposition.Principal) bool { return true },
-		Authorize: func(context.Context, webcomposition.Principal, string) (bool, error) { return true, nil },
-		Invoke: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		VerifyCSRF:    func(*http.Request, webcomposition.Principal) bool { return true },
+		Authorize:     func(context.Context, webcomposition.Principal, string) (bool, error) { return true, nil },
+		Invoke:        http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			seenWorkspace = r.Header.Get("X-Workspace")
 			w.WriteHeader(http.StatusAccepted)
 		}),
-		Audit: func(webcomposition.AuditRecord) {},
+		Audit:         func(webcomposition.AuditRecord) {},
 	})
 	if err != nil {
 		t.Fatal(err)
