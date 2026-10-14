@@ -119,6 +119,16 @@ export function mountReadonlyGraph(
     el.setAttribute(name, String(value));
   const holder = doc.createElement("div");
   holder.setAttribute("data-graph-reference", "read-only");
+  // Keep this viewport inside narrow grid/flex panels. The graph can scroll
+  // horizontally instead of shrinking its labels down to unreadable text.
+  holder.style.width = "100%";
+  holder.style.maxWidth = "100%";
+  holder.style.minWidth = "0";
+  holder.style.overflowX = "auto";
+  holder.style.overflowY = "hidden";
+  holder.setAttribute("tabindex", "0");
+  holder.setAttribute("role", "region");
+  holder.setAttribute("aria-label", "グラフ表示（左右にスクロール可能）");
   let active: BuiltGraph | null = null;
   let revision = 0;
   let selected: string | null = null;
@@ -142,6 +152,13 @@ export function mountReadonlyGraph(
     attribute(svg, "role", "group");
     attribute(svg, "aria-label", "読取り専用グラフ");
     attribute(svg, "width", "100%");
+    // 1 viewBox unit is at least 1 CSS pixel. A 480-unit graph in a 240px
+    // panel remains >=480px wide and is scrolled within holder, not scaled 50%.
+    // Wider panels may scale up; no automatic graph layout is performed.
+    svg.style.minWidth = `${graph.width}px`;
+    svg.style.maxWidth = "none";
+    svg.style.height = "auto";
+    svg.style.display = "block";
     const groups = new Map<string, NodeVisual>();
     const byId = new Map(graph.nodes.map(n => [n.id, n]));
 
