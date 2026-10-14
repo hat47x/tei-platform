@@ -36,10 +36,10 @@ func projectAdviceObservedBuild(t *testing.T) (
 		t.Fatal(err)
 	}
 	definition := plugin.Definition{
-		ID: core.MustCanonicalID("tei.reference.project_customer_advice"),
+		ID:      core.MustCanonicalID("tei.reference.project_customer_advice"),
 		Version: "1.0.0",
 		Runtime: plugin.Runtime{
-			Kind: plugin.RuntimeProcess,
+			Kind:    plugin.RuntimeProcess,
 			Command: "reference-project-advice-process",
 			Sandbox: plugin.SandboxRequired,
 		},
@@ -64,18 +64,18 @@ func projectAdviceObservedBuild(t *testing.T) (
 		PluginDefinitionFingerprint: plugin.BuildDefinitionFingerprint(definition),
 		Sources:                     sources,
 		Builder: plugin.BuilderIdentity{
-			ID: core.MustCanonicalID("tei.builder.go"),
-			Version: runtime.Version(),
+			ID:              core.MustCanonicalID("tei.builder.go"),
+			Version:         runtime.Version(),
 			ContractVersion: "tei.reference.go-process-build/v0",
-			ArtifactDigest: builderDigest,
+			ArtifactDigest:  builderDigest,
 		},
 		Recipe: plugin.BuildRecipe{
-			Kind: "go-package",
+			Kind:       "go-package",
 			Entrypoint: "./plugins/reference-project-customer-advice/cmd/reference-project-advice-process",
 		},
 		OutputKind: plugin.BuildOutputRuntimeArtifact,
-		Target: "linux-amd64",
-		Profile: "reference",
+		Target:     "linux-amd64",
+		Profile:    "reference",
 		Parameters: []plugin.BuildParameter{
 			{Name: "buildvcs", Value: "false"},
 			{Name: "cgo", Value: "0"},
@@ -91,10 +91,10 @@ func projectAdviceObservedBuild(t *testing.T) (
 		t.Fatal(err)
 	}
 	runtimeEntry := plugin.LockedPlugin{
-		ID: derived.ID,
-		Version: derived.Version,
-		Fingerprint: plugin.DefinitionFingerprint(derived),
-		ArtifactDigest: digest,
+		ID:                   derived.ID,
+		Version:              derived.Version,
+		Fingerprint:          plugin.DefinitionFingerprint(derived),
+		ArtifactDigest:       digest,
 		BuildPlanFingerprint: locked.PlanFingerprint,
 	}
 	return path, derived, plan, locked, runtimeEntry
@@ -107,7 +107,7 @@ func TestProjectAdviceBuiltArtifactIsTracedThroughExistingTEIBuildLock(t *testin
 	}
 	buildLock := plugin.BuildArtifactLock{
 		FormatVersion: plugin.BuildArtifactLockFormatVersion,
-		Builds: []plugin.LockedBuild{output},
+		Builds:        []plugin.LockedBuild{output},
 	}
 	if _, err := plugin.BuildArtifactLockFingerprint(buildLock); err != nil {
 		t.Fatal(err)
