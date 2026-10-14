@@ -44,7 +44,7 @@ func fixtureSelection() Selection {
 		ApplicationID:              "order_entry",
 		HandoverBaselineID:         "B",
 		BaselineRepositoryRevision: r,
-		Units:                      []Unit{
+		Units: []Unit{
 			{ID: BrowserUnit, TargetBuildRevision: tBrowser, ArtifactDigest: hashBrowser, ArtifactBytes: 250},
 			{ID: APIUnit, TargetBuildRevision: tAPI, ArtifactDigest: hashAPI, ArtifactBytes: 75000},
 		},
@@ -57,13 +57,13 @@ func fixtureHostSource() *fixtureHost {
 		Selection:           s,
 		SourceAccepted:      true,
 		SourceAcceptanceRef: "host-source-acceptance-from-current-store",
-		Builds:              []BuildAcceptance{
+		Builds: []BuildAcceptance{
 			{UnitID: BrowserUnit, ArtifactDigest: hashBrowser, Accepted: true, EvidenceRef: "current-browser-build-record"},
 			{UnitID: APIUnit, ArtifactDigest: hashAPI, Accepted: true, EvidenceRef: "current-api-build-record"},
 		},
-		DeploymentAccepted:  true,
-		DeploymentRef:       "current-host-deployment-decision",
-		AuthorityRevision:   "current-authority-v1",
+		DeploymentAccepted: true,
+		DeploymentRef:      "current-host-deployment-decision",
+		AuthorityRevision:  "current-authority-v1",
 	}}
 }
 
