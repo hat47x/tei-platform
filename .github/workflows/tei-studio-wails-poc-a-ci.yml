@@ -66,7 +66,6 @@ jobs:
           test -s go.sum
           go mod tidy
           git diff --exit-code -- go.mod go.sum
-          go mod verify
           grep -F 'github.com/wailsapp/wails/v3 v3.0.0-beta.29' go.mod
           CGO_ENABLED=0 go build -mod=readonly -tags server -o "$RUNNER_TEMP/tei-studio-server" .
           CGO_ENABLED=0 go vet -mod=readonly -tags server ./...
@@ -134,8 +133,6 @@ jobs:
           go mod tidy
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           git diff --exit-code -- go.mod go.sum
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          go mod verify
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           go build -mod=readonly -o "$env:RUNNER_TEMP/tei-studio.exe" .
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

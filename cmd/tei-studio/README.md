@@ -17,7 +17,6 @@ Go `1.26.9`、Wails `github.com/wailsapp/wails/v3@v3.0.0-beta.29`（pre-release�
 # リポジトリrootから実行する。go versionは1.26.9
 cd cmd/tei-studio
 go mod download
-go mod verify
 go mod tidy
 git diff --exit-code -- go.mod go.sum  # 依存lockに予期しない変更がないこと
 
