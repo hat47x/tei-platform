@@ -29,7 +29,7 @@ func buildIndependentProjectAdviceBinary(t *testing.T) string {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, "go", "build", "-trimpath", "-o", path,
-		"./plugins/reference-project-customer-advice/cmd/reference-advice-process")
+		"./plugins/reference-project-customer-advice/cmd/reference-project-advice-process")
 	cmd.Dir = filepath.Join("..", "..")
 	cmd.Env = append(os.Environ(), "GOWORK=off", "CGO_ENABLED=0")
 	out, err := cmd.CombinedOutput()
@@ -56,15 +56,11 @@ func independentProjectAdviceFixture(t *testing.T, path string) (
 	if err != nil {
 		t.Fatal(err)
 	}
-	// Ensure the separately compiled program's fixed fixture dispatch matches
-	// the existing generic Host derivation, not a newly invented resolver.
+	// The adapter accepts only a dispatch ID explicitly supplied by the Host
+	// at launch, derived from the same Runtime Ref used for Authority.
 	dispatchID, err := genericProcessDispatchID(ref)
 	if err != nil {
 		t.Fatal(err)
-	}
-	if dispatchID != core.CanonicalID(
-		"runtime_dispatch.d_ce048e07732d7e7aa5d21453c66a94d1d5fadd94e033e3fcd8a1eaec8438af56") {
-		t.Fatalf("project process and generic Host dispatch diverged: %s", dispatchID)
 	}
 	authority := referenceAuthority(ref, nil)
 	plan, err := buildRuntimeEnvironmentPlan(ref, profile, authority)
@@ -80,7 +76,7 @@ func independentProjectAdviceFixture(t *testing.T, path string) (
 		RuntimeCapabilityFingerprint: ref.Fingerprint,
 		Plugin:                       candidate.Plugin,
 		Artifact:                     plugin.Artifact{Digest: digest},
-		Command:                      pruntime.ProcessCommand{Executable: path},
+		Command:                      pruntime.ProcessCommand{Executable: path, Args: []string{"--tei-expected-dispatch=" + string(dispatchID)}},
 	}
 	return plan, realization, host, &projectAdviceTestBinaryVerifier{path: path},
 		profile, authority
@@ -178,6 +174,23 @@ func TestIndependentProjectAdviceBinaryRejectsUnboundDispatchAndInput(t *testing
 	if err != nil {
 		t.Fatal(err)
 	}
+	// A standalone binary must not trust the caller's dispatch string
+	// without the Host-supplied exact launch binding.
+	t.Run("missing-host-launch-binding", func(t *testing.T) {
+		req := pruntime.Request{
+			ProtocolVersion: pruntime.ProtocolVersion,
+			RequestID: "missing-binding",
+			Plugin: realization.Plugin,
+			CapabilityKind: plugin.CapabilityKind(genericProcessDispatchKind),
+			CapabilityID: originalDispatch,
+			Operation: "evaluate-advice",
+			Payload: json.RawMessage(`{"customerCode":"VIP-123"}`),
+		}
+		if _, err := launcher.Invoke(context.Background(),
+			pruntime.ProcessCommand{Executable: path}, req); err == nil {
+			t.Fatal("project process ran without an explicit Host dispatch binding")
+		}
+	})
 	for _, tc := range []struct {
 		name string
 		req  pruntime.Request
