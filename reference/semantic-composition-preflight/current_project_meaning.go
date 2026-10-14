@@ -33,7 +33,7 @@ type ProjectMeaningRequest struct {
 	Resource modelref.Ref `json:"resource"`
 }
 
- // CurrentProjectMeaning is ONE Host-owned decision snapshot. Source and
+// CurrentProjectMeaning is ONE Host-owned decision snapshot. Source and
 // Selected must be read together from the same current acceptance decision;
 // two independent reads would not prove their common revision or provenance.
 // The receipt must not be constructed from a CLI parameter, imported manifest,
