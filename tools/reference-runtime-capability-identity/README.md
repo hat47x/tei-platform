@@ -148,9 +148,3 @@ codeを含むため、exact-headのfull `tools/repository-health-check.sh` PASS�
 **このBuildPlanはテスト用観測記録であり、正式なBuilder発行結果ではありません。** 特に列挙したソースは、案件Goファイルと`go.mod`の代表例だけです。Go標準ライブラリ、間接依存、ビルドタグ、全環境変数、Goツールチェーン全体の**完全なSource Closureではなく**、Builderの署名・契約発行権限・再現性・信頼根拠も証明しません。また旧`plugin.Definition`はここでは試験用のProcess形だけで、案件Service Contract／ConformanceのAccepted証跡ではありません。従ってBuildPlan/Artifact Lockの整合だけを根拠に実行権限を付与してはなりません。
 
 本番移行では、既存セルフビルドのSource Closureと正式Builder受理、現行HostのContract/Provider Acceptance Reader、既存Execution Authorityを同一exact artifactへ接続することが必要です。二重Builder・Resolver・Authorityは追加しません。
-
-## 共通Go Builderの選択ソース閉包・ツールチェーン実指紋（#976 次段）
-
-`project_advice_shared_go_closure_linux_test.go`は、前段#1815の代表3ソース観測から進め、TEIセルフビルドと共有する`tools/internal/gobuilder`の`ResolveSourceClosure`・`BuildPackage`・`HashToolchain`を**そのまま再利用**します。実`go list -deps -json`が選んだ全リポジトリ内Go入力と`go.mod`をGit追跡・通常ファイル検査後にハッシュし、標準ライブラリを含む選択Goツールチェーン木も独立にハッシュします。外部Module・未追跡入力・symlinkは共有Resolver側で拒否します。ビルド時は共有Go Builderの固定オフライン環境を使用し、Source Closure／Toolchain Closure／Go実バイナリ／固定ビルド設定／完成Artifactを既存BuildPlan・BuildArtifactLock・Runtime Plugin Lockに結び付けて、既存PinnedLinuxProcessから実案件Go処理を試します。選択案件GoソースとBuilder指紋が変わった場合の旧Lock流用も拒否します。
-
-この検証はソース閉包を**手書きの3ファイルから、実Go選択入力の追跡へ変更した**ことを意味します。一方、Hostが信頼するBuilderの署名・発行権限、依存キャッシュ/OS環境の外部監査、再現可能な二重独立ビルドの受理、Contract Publisher／Provider Conformanceの現行Trust、Execution Grant、実OS隔離を証明しません。Artifact指紋とLockの一致はあくまで必要条件です。前段#1815の限定的な観測fixtureは旧負例を保持するため、そのまま並存します。
