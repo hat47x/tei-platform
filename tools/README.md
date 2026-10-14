@@ -45,7 +45,7 @@
 | --- | --- |
 | [`reference-build-artifact-store/`](reference-build-artifact-store/) | ビルド成果物の保管と識別 |
 | [`reference-build-attempt-evidence/`](reference-build-attempt-evidence/) | ビルド失敗を含む実行記録の保管 |
-| [`reference-build-authoring-intent/`](reference-build-authoring-intent/) | 人・生成AIが書くBuild Intentからexact BuildPlanを導出する境界の確認 |
+| [`reference-build-authoring-intent/`](reference-build-authoring-intent/) | 人・生成AIが書くビルド宣言から、確定したビルド計画を導出する境界の確認 |
 | [`reference-build-execution-binding/`](reference-build-execution-binding/) | ビルド実行と主体・対象の結び付け |
 | [`reference-builder-contract-resolution/`](reference-builder-contract-resolution/) | Builder契約の解決と適用 |
 | [`reference-deployment-attempt/`](reference-deployment-attempt/) | 配備試行の参照用起動点 |

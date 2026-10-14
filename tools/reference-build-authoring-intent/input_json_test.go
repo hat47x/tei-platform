@@ -34,6 +34,7 @@ func TestIntentAndCatalogRejectAmbiguousInputJSON(t *testing.T) {
 			}
 			inject := func(field string) string { return "{" + field + "," + base[1:] }
 			cases := map[string]string{
+				"single case variant":  strings.Replace(base, `"formatVersion":1`, `"FORMATVERSION":1`, 1),
 				"duplicate root field": inject(`"formatVersion":99`),
 				"escaped alias":        inject(`"format\u0056ersion":99`),
 				"case folded alias":    inject(`"FORMATVERSION":99`),

@@ -9,6 +9,8 @@ import (
 	"io"
 	"io/fs"
 	"os"
+	"path"
+	"reflect"
 	"sort"
 	"strings"
 
@@ -16,10 +18,15 @@ import (
 	"tei/internal/plugin"
 )
 
-// DirSourceResolver は実ファイルを読むReference用のSource解決である。
-// 言語固有のclosure解決（#1096）の代替ではなく、refが指すファイルまたは
+// DirSourceResolver は実ファイルを読むReference用のソース解決である。
+// 言語固有のclosure解決（#1096）の代替ではなく、参照先のファイル、または
 // ディレクトリ配下の全通常ファイルの内容をdigestへ固定するだけである。
-// symlink、root外へ出る経路、特殊ファイルは拒否する。
+// 次を拒否する。
+//   - 参照の途中・末尾にあるsymlink
+//   - 綴りが実在の名前と大文字小文字まで一致しない参照
+//   - root外へ出る経路
+//   - 通常ファイル以外のメンバー
+//   - ファイルを一つも含まないディレクトリ
 type DirSourceResolver struct {
 	Root string
 }
@@ -28,45 +35,48 @@ func (r DirSourceResolver) open() (*os.Root, error) {
 	return os.OpenRoot(r.Root)
 }
 
-// ReadFile はroot内の通常ファイルを読む。
-func (r DirSourceResolver) ReadFile(ref string) ([]byte, error) {
-	if err := validateSourceRef(ref); err != nil {
-		return nil, err
+// exactEntry は参照の各要素を親ディレクトリの一覧と綴りまで照合し、
+// symlinkを経由しないことを確かめる。
+func exactEntry(root *os.Root, ref string) (fs.DirEntry, error) {
+	dir := "."
+	var entry fs.DirEntry
+	for _, part := range strings.Split(ref, "/") {
+		entries, err := fs.ReadDir(root.FS(), dir)
+		if err != nil {
+			return nil, err
+		}
+		entry = nil
+		for _, e := range entries {
+			if e.Name() == part {
+				entry = e
+				break
+			}
+		}
+		if entry == nil {
+			return nil, fmt.Errorf("source path component %q does not exist with exactly this spelling (case differences are rejected)", part)
+		}
+		if entry.Type()&fs.ModeSymlink != 0 {
+			return nil, fmt.Errorf("source path %q passes through a symlink at %q", ref, part)
+		}
+		dir = path.Join(dir, part)
 	}
-	root, err := r.open()
-	if err != nil {
-		return nil, err
-	}
-	defer root.Close()
-	info, err := root.Lstat(ref)
-	if err != nil {
-		return nil, err
-	}
-	if !info.Mode().IsRegular() {
-		return nil, fmt.Errorf("source %q is not a regular file", ref)
-	}
-	f, err := root.Open(ref)
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
-	return io.ReadAll(f)
+	return entry, nil
 }
 
-// Resolve はrefが指す内容からexactなBuildSourceを導出する。
+// Resolve は参照先の内容からexactなBuildSourceを導出する。
 // digestは相対member pathと内容だけから決まり、Host上のrootの場所に依存しない。
-func (r DirSourceResolver) Resolve(src IntentSource) (plugin.BuildSource, error) {
+func (r DirSourceResolver) Resolve(src IntentSource) (ResolvedSource, error) {
 	if err := validateSourceRef(src.Ref); err != nil {
-		return plugin.BuildSource{}, err
+		return ResolvedSource{}, err
 	}
 	root, err := r.open()
 	if err != nil {
-		return plugin.BuildSource{}, err
+		return ResolvedSource{}, err
 	}
 	defer root.Close()
-	info, err := root.Lstat(src.Ref)
+	entry, err := exactEntry(root, src.Ref)
 	if err != nil {
-		return plugin.BuildSource{}, err
+		return ResolvedSource{}, err
 	}
 	type member struct {
 		rel  string
@@ -74,9 +84,9 @@ func (r DirSourceResolver) Resolve(src IntentSource) (plugin.BuildSource, error)
 	}
 	var members []member
 	switch {
-	case info.Mode().IsRegular():
+	case entry.Type().IsRegular():
 		members = append(members, member{rel: ".", full: src.Ref})
-	case info.IsDir():
+	case entry.IsDir():
 		walkErr := fs.WalkDir(root.FS(), src.Ref, func(p string, d fs.DirEntry, err error) error {
 			if err != nil {
 				return err
@@ -91,31 +101,39 @@ func (r DirSourceResolver) Resolve(src IntentSource) (plugin.BuildSource, error)
 			return nil
 		})
 		if walkErr != nil {
-			return plugin.BuildSource{}, walkErr
+			return ResolvedSource{}, walkErr
+		}
+		if len(members) == 0 {
+			return ResolvedSource{}, fmt.Errorf("source %q contains no files", src.Ref)
 		}
 	default:
-		return plugin.BuildSource{}, fmt.Errorf("source %q is neither a regular file nor a directory", src.Ref)
+		return ResolvedSource{}, fmt.Errorf("source %q is neither a regular file nor a directory", src.Ref)
 	}
 	sort.Slice(members, func(i, j int) bool { return members[i].rel < members[j].rel })
 	h := sha256.New()
+	files := make(map[string][]byte, len(members))
 	for _, m := range members {
 		f, err := root.Open(m.full)
 		if err != nil {
-			return plugin.BuildSource{}, err
+			return ResolvedSource{}, err
 		}
 		data, readErr := io.ReadAll(f)
 		f.Close()
 		if readErr != nil {
-			return plugin.BuildSource{}, readErr
+			return ResolvedSource{}, readErr
 		}
+		files[m.rel] = data
 		fmt.Fprintf(h, "%d:%s\n%d\n", len(m.rel), m.rel, len(data))
 		h.Write(data)
 	}
-	return plugin.BuildSource{
-		Kind:    src.Kind,
-		ID:      src.ID,
-		Locator: src.Ref,
-		Digest:  "sha256:" + hex.EncodeToString(h.Sum(nil)),
+	return ResolvedSource{
+		Source: plugin.BuildSource{
+			Kind:    src.Kind,
+			ID:      src.ID,
+			Locator: src.Ref,
+			Digest:  "sha256:" + hex.EncodeToString(h.Sum(nil)),
+		},
+		Files: files,
 	}, nil
 }
 
@@ -159,6 +177,13 @@ func ParseFixtureCatalog(raw []byte) (FixtureCatalog, error) {
 	if err := validateInputJSON(raw); err != nil {
 		return FixtureCatalog{}, fmt.Errorf("fixture catalog: %w", err)
 	}
+	var generic any
+	if err := json.Unmarshal(raw, &generic); err != nil {
+		return FixtureCatalog{}, fmt.Errorf("fixture catalog: %w", err)
+	}
+	if err := rejectKeyCaseVariants(generic, reflect.TypeOf(FixtureCatalog{}), "$catalog"); err != nil {
+		return FixtureCatalog{}, err
+	}
 	var c FixtureCatalog
 	dec := json.NewDecoder(bytes.NewReader(raw))
 	dec.DisallowUnknownFields()
@@ -168,7 +193,40 @@ func ParseFixtureCatalog(raw []byte) (FixtureCatalog, error) {
 	if c.FormatVersion != 1 {
 		return FixtureCatalog{}, fmt.Errorf("unsupported fixture catalog format %d", c.FormatVersion)
 	}
+	if err := c.rejectDuplicates(); err != nil {
+		return FixtureCatalog{}, err
+	}
 	return c, nil
+}
+
+// rejectDuplicates は同じ対象の重複宣言を拒否する。重複を許すと、
+// 列挙順に依存して意味が変わる余地が生じる。
+func (c FixtureCatalog) rejectDuplicates() error {
+	seen := map[string]struct{}{}
+	add := func(kind, key string) error {
+		k := kind + "|" + key
+		if _, dup := seen[k]; dup {
+			return fmt.Errorf("fixture catalog declares %s more than once: %s", kind, key)
+		}
+		seen[k] = struct{}{}
+		return nil
+	}
+	for _, p := range c.Providers {
+		if err := add("provider", strings.Join([]string{string(p.Plugin), p.Version, p.Implementation, p.ArtifactDigest}, "|")); err != nil {
+			return err
+		}
+	}
+	for _, d := range c.Dependencies {
+		if err := add("dependency", strings.Join([]string{d.Kind, d.ID, d.Version}, "|")); err != nil {
+			return err
+		}
+	}
+	for _, t := range c.Targets {
+		if err := add("target", t.Target); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func contains(list []string, want string) bool {
@@ -269,7 +327,7 @@ func (c FixtureCatalog) CheckTarget(target, profile string) error {
 	return fmt.Errorf("target %q is not defined", target)
 }
 
-// 以下は列挙順を除いたCatalog fingerprintである。
+// 以下は列挙順を除いたカタログの照合値である。
 
 func (c FixtureCatalog) builderFingerprint() (string, error) {
 	providers := append([]FixtureProvider(nil), c.Providers...)
@@ -278,35 +336,31 @@ func (c FixtureCatalog) builderFingerprint() (string, error) {
 		providers[i].Targets = sortedCopy(providers[i].Targets)
 		providers[i].Profiles = sortedCopy(providers[i].Profiles)
 	}
-	sort.Slice(providers, func(i, j int) bool {
-		a, b := providers[i], providers[j]
-		if a.Plugin != b.Plugin {
-			return a.Plugin < b.Plugin
-		}
-		if a.Implementation != b.Implementation {
-			return a.Implementation < b.Implementation
-		}
-		if a.Version != b.Version {
-			return a.Version < b.Version
-		}
-		return a.ArtifactDigest < b.ArtifactDigest
-	})
-	return fingerprintJSON(providers)
+	return fingerprintJSON(sortByRecord(providers))
+}
+
+// sortByRecord は各要素の完全なJSON表現の辞書順で整列する。同順位が生じない。
+func sortByRecord[T any](in []T) []T {
+	type keyed struct {
+		key string
+		v   T
+	}
+	items := make([]keyed, len(in))
+	for i, v := range in {
+		raw, _ := json.Marshal(v)
+		items[i] = keyed{key: string(raw), v: v}
+	}
+	sort.Slice(items, func(i, j int) bool { return items[i].key < items[j].key })
+	out := make([]T, len(in))
+	for i, it := range items {
+		out[i] = it.v
+	}
+	return out
 }
 
 func (c FixtureCatalog) dependencyFingerprint() (string, error) {
 	deps := append([]FixtureDependency(nil), c.Dependencies...)
-	sort.Slice(deps, func(i, j int) bool {
-		a, b := deps[i], deps[j]
-		if a.Kind != b.Kind {
-			return a.Kind < b.Kind
-		}
-		if a.ID != b.ID {
-			return a.ID < b.ID
-		}
-		return a.Version < b.Version
-	})
-	return fingerprintJSON(deps)
+	return fingerprintJSON(sortByRecord(deps))
 }
 
 func (c FixtureCatalog) targetFingerprint() (string, error) {
@@ -314,8 +368,7 @@ func (c FixtureCatalog) targetFingerprint() (string, error) {
 	for i := range targets {
 		targets[i].Profiles = sortedCopy(targets[i].Profiles)
 	}
-	sort.Slice(targets, func(i, j int) bool { return targets[i].Target < targets[j].Target })
-	return fingerprintJSON(targets)
+	return fingerprintJSON(sortByRecord(targets))
 }
 
 func sortedCopy(in []string) []string {

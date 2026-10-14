@@ -15,8 +15,15 @@ const ReceiptFormatVersion = 1
 // SourceResolver は論理Source参照からexactなBuildSourceを導出する入口である。
 // 言語固有のSource closure解決（#1096）はここへ接続する。
 type SourceResolver interface {
-	Resolve(IntentSource) (plugin.BuildSource, error)
-	ReadFile(ref string) ([]byte, error)
+	Resolve(IntentSource) (ResolvedSource, error)
+}
+
+// ResolvedSource は導出したBuildSourceと、digestの計算に使った同じバイト列である。
+// Files のkeyは参照先からの相対pathで、単一ファイルの参照は"."である。
+// 定義の解析にも同じバイト列を使い、digest用と解析用の二度読みによる食い違いを避ける。
+type ResolvedSource struct {
+	Source plugin.BuildSource
+	Files  map[string][]byte
 }
 
 // BuilderRequest はBuilder Contract解決（#1101）への入力である。
@@ -108,15 +115,19 @@ func Resolve(intent BuildIntent, ctx ResolutionContext) (ResolvedBuildReceipt, e
 	n := NormalizeIntent(intent)
 
 	sources := make([]plugin.BuildSource, 0, len(n.Sources))
-	var definitionRef string
+	var definitionRaw []byte
 	for _, s := range n.Sources {
 		resolved, err := ctx.Sources.Resolve(s)
 		if err != nil {
 			return ResolvedBuildReceipt{}, fmt.Errorf("resolve source %q: %w", s.ID, err)
 		}
-		sources = append(sources, resolved)
+		sources = append(sources, resolved.Source)
 		if s.ID == n.Subject.DefinitionSource {
-			definitionRef = s.Ref
+			data, ok := resolved.Files["."]
+			if !ok || len(resolved.Files) != 1 {
+				return ResolvedBuildReceipt{}, fmt.Errorf("plugin definition source %q must be a single file", s.ID)
+			}
+			definitionRaw = data
 		}
 	}
 	// Source closureの観測値は、Source自体のidentity（Kind/ID/Locator/Digest）である。
@@ -125,10 +136,6 @@ func Resolve(intent BuildIntent, ctx ResolutionContext) (ResolvedBuildReceipt, e
 		return ResolvedBuildReceipt{}, err
 	}
 
-	definitionRaw, err := ctx.Sources.ReadFile(definitionRef)
-	if err != nil {
-		return ResolvedBuildReceipt{}, fmt.Errorf("read plugin definition: %w", err)
-	}
 	definition, err := syntax.NewParser(string(definitionRaw)).ParsePlugin()
 	if err != nil {
 		return ResolvedBuildReceipt{}, fmt.Errorf("parse plugin definition: %w", err)
@@ -245,18 +252,16 @@ func VerifyDerivedReceipt(intent BuildIntent, ctx ResolutionContext, stored []by
 	if err != nil {
 		return err
 	}
-	var parsed ResolvedBuildReceipt
-	dec := json.NewDecoder(bytes.NewReader(stored))
-	dec.DisallowUnknownFields()
-	if err := dec.Decode(&parsed); err != nil {
-		return fmt.Errorf("stored derived receipt is not a receipt: %w", err)
-	}
-	got, err := MarshalReceipt(parsed)
-	if err != nil {
-		return err
-	}
-	if !bytes.Equal(got, want) {
+	// 保存したバイト列そのものを比べる。復号して整形し直すと、重複key、
+	// 大文字小文字違いのkey、末尾の余分なJSONが同じ値に見えてしまう。
+	// 正規化するのは改行（CRLFとファイル末尾の改行）だけである。
+	if !bytes.Equal(normalizeNewlines(stored), normalizeNewlines(want)) {
 		return fmt.Errorf("stored derived receipt diverges from the intent resolution; edit the build intent and re-derive, never the derived receipt")
 	}
 	return nil
+}
+
+func normalizeNewlines(raw []byte) []byte {
+	out := bytes.ReplaceAll(raw, []byte("\r\n"), []byte("\n"))
+	return bytes.TrimRight(out, "\n")
 }

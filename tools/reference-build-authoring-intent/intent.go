@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"path"
+	"reflect"
 	"regexp"
 	"sort"
 	"strings"
@@ -138,6 +139,9 @@ func ParseIntent(raw []byte) (BuildIntent, error) {
 	if err := rejectDerivedKeys(generic, nil); err != nil {
 		return BuildIntent{}, err
 	}
+	if err := rejectKeyCaseVariants(generic, reflect.TypeOf(BuildIntent{}), "$"); err != nil {
+		return BuildIntent{}, err
+	}
 	var intent BuildIntent
 	strict := json.NewDecoder(bytes.NewReader(raw))
 	strict.DisallowUnknownFields()
@@ -175,6 +179,47 @@ func rejectDerivedKeys(v any, trail []string) error {
 			if err := rejectDerivedKeys(item, append(append([]string(nil), trail...), "[]")); err != nil {
 				return err
 			}
+		}
+	}
+	return nil
+}
+
+// rejectKeyCaseVariants は構造体のjson名と大文字小文字まで一致しないkeyを拒否する。
+// 標準のdecodeは大文字小文字を区別せずに受け取るため、別綴りの同名keyが通る。
+func rejectKeyCaseVariants(v any, t reflect.Type, path string) error {
+	switch t.Kind() {
+	case reflect.Pointer:
+		return rejectKeyCaseVariants(v, t.Elem(), path)
+	case reflect.Slice:
+		list, ok := v.([]any)
+		if !ok {
+			return nil
+		}
+		for i, item := range list {
+			if err := rejectKeyCaseVariants(item, t.Elem(), fmt.Sprintf("%s[%d]", path, i)); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	node, ok := v.(map[string]any)
+	if !ok || t.Kind() != reflect.Struct {
+		return nil
+	}
+	fields := map[string]reflect.Type{}
+	for i := 0; i < t.NumField(); i++ {
+		name := strings.Split(t.Field(i).Tag.Get("json"), ",")[0]
+		if name != "" && name != "-" {
+			fields[name] = t.Field(i).Type
+		}
+	}
+	for key, child := range node {
+		ft, exact := fields[key]
+		if !exact {
+			return fmt.Errorf("input JSON key %q at %s does not match a field name exactly (case variants and unknown keys are rejected)", key, path)
+		}
+		if err := rejectKeyCaseVariants(child, ft, path+"."+key); err != nil {
+			return err
 		}
 	}
 	return nil
@@ -284,6 +329,16 @@ func validateSourceRef(ref string) error {
 	}
 	if strings.Contains(ref, `\`) || strings.HasPrefix(ref, "/") {
 		return fmt.Errorf("source ref %q must be a relative slash path", ref)
+	}
+	// ボリューム名（C:/、c:）と代替データ流を避けるため、':'は使わせない。
+	// 制御文字（NULを含む）もHostごとに解釈が分かれるため拒否する。
+	for _, r := range ref {
+		if r == ':' {
+			return fmt.Errorf("source ref %q must not contain ':' (volume names are not allowed)", ref)
+		}
+		if r < 0x20 || r == 0x7f {
+			return fmt.Errorf("source ref %q must not contain control characters", ref)
+		}
 	}
 	if path.Clean(ref) != ref || ref == "." || ref == ".." || strings.HasPrefix(ref, "../") {
 		return fmt.Errorf("source ref %q must be a clean path inside the source root", ref)
