@@ -25,7 +25,7 @@ const view = mountReadonlyGraph(document.getElementById("graph")!, buildPipeline
 // 破棄時: view.dispose();
 ```
 
-入力の `nodes` は `{id,label,x,y}`、`edges` は `{id,source,target,label?}`、全体は `{width,height,nodes,edges}`。表示位置`x,y`はSVG viewBox内の座標であり、**Studioも別consumerも自分で用意**します。IDは画面用の厳密一致キーで、Canonial Subject、Workspace path、権限を意味しません。
+入力の `nodes` は `{id,label,x,y}`、`edges` は `{id,source,target,label?}`、全体は `{width,height,nodes,edges}`。表示位置`x,y`はSVG viewBox内の座標であり、**Studioも別consumerも自分で用意**します。IDは画面用の厳密一致キーで、Canonical Subject、Workspace path、権限を意味しません。
 
 ## 自動配置を実装しない理由
 
