@@ -124,3 +124,19 @@ codeを含むため、exact-headのfull `tools/repository-health-check.sh` PASS�
 **注意**：合成Candidateの`1.0.0`、fingerprint、artifact digest、Authority Evidenceはテスト材料であり、実案件プラグインが`v1`として受理された証拠でも実成果物の署名・照合結果でもありません。テストでは本番の`Registry.Invoke`、Resource Brokerの現行leaseやHost Sandboxによる案件Go実行、業務`order_entry` Actionの委譲を実行しません。今後は既存#951の契約受理・Conformanceと#976のRuntime Authorityへ、同一のexact Candidate/Lockを接続する必要があります。
 
 局所試験は `go test -count=1 ./tools/reference-runtime-capability-identity ./plugins/reference-project-customer-advice` を実行します。専用Workflowも同じ2パッケージをPR正確HEADで検証します。
+
+## 案件Goロジックの実子プロセスpressure（#976、後続）
+
+`project_advice_real_process_test.go` は、統合済み `plugins/reference-project-customer-advice` の実際の `Evaluate` をGoテスト実行ファイルへリンクし、**別OSプロセス**で実行します。既存 `StdioProcessLauncher`、`HostSandboxLauncher`、`invokeWithExistingHostBoundary` の経路を用い、案件補助提案とエラーを通信します。テストでは `os.Executable()` の実bytesからSHA-256を取り、Host側の検査者が実ファイルと宣言Digestを照合します。Digest不一致時にポリシー適用器・子プロセス呼出しへ到達しないことも確認します。
+
+**受理範囲は限定的**です。このバイナリはテストプロセス自身であり、実際に配布・署名された案件Plugin成果物ではありません。Contract `1.0.0`、Conformance／Resolution Lock、Environment Execution Grantは依然として**合成候補**です。また使用するネットワーク／ファイルシステムPolicy Enforcerは既存のテスト用記録器であり、OS隔離は行っていません。検査したファイルを同じFDから起動する実行ファイル固定、署名／発行者の信頼、Permission Brokerの実Lease・fencing、運用時のPrincipal/Action認可、Accepted業務処理の委譲も証明しません。従って、実子プロセスの成功をProduction Host Authority成立の証拠にしてはなりません。
+
+現在の主目的は、**案件Goロジックの呼出し経路を既存generic Runtime機構へ接続できること**と、**未検証artifactを実行前に拒否する順序**を試験することです。正式化は#976/#951等の既存Authority／受理機構から進めます。
+
+## 独立Go実行体のBuild・Linux固定実行（#976、追加pressure）
+
+`project_advice_built_pinned_linux_test.go` は、案件の既存Goパッケージから`cmd/reference-project-advice-process`を**独立したOS実行ファイルとして`go build`**し、`os.Executable()`を再利用した前段より実配備に近い境界を試します。既存`PinLinuxProcess`を**ArtifactVerifier兼実行器**に使い、実行バイナリの内容から計算したSHA-256と宣言Digestの一致をホスト側で確認し、同一保持FDを介して子プロセスを起動します。実行前のDigest不一致は固定処理で拒否し、固定後に元のパスを別ファイルへ置き換えても、保持した内容で案件の実Go補助ロジックを実行できることを検証します。
+
+プロセスの入口は既存のProcess Request/Responseの必要項目だけを解釈する**案件所有の薄いアダプター**であり、Runtimeの権限系・Contract Resolver・Business Actionを複製しません。ホストが導出したdispatch IDは、ホスト設定である起動引数から照合する限定的な仕組みです。引数の存在は**Contract Acceptanceを証明しません**。
+
+**未成立**：Contract / Conformance / Resolution Lock / Execution Grantはテスト用合成Evidenceのまま。Pluginの正式Builder・Plugin Lock・署名・発行者、Runtimeのproduction`Registry.Invoke`、実Permission Broker／Lease・fencing、OSのネットワーク／ファイルシステム隔離、業務Action認可は結合していません。Network/Filesystem Enforcerはテスト用記録器です。Linuxの保持FDはTOCTOU低減のみを示し、署名・実OS隔離・完全な本番Admissionを意味しません。

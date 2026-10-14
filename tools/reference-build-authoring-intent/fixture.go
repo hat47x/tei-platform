@@ -10,6 +10,7 @@ import (
 	"io/fs"
 	"os"
 	"path"
+	"reflect"
 	"sort"
 	"strings"
 
@@ -173,6 +174,16 @@ type FixtureTargetEntry struct {
 
 // ParseFixtureCatalog はCatalog JSONを厳密に読む。
 func ParseFixtureCatalog(raw []byte) (FixtureCatalog, error) {
+	if err := validateInputJSON(raw); err != nil {
+		return FixtureCatalog{}, fmt.Errorf("fixture catalog: %w", err)
+	}
+	var generic any
+	if err := json.Unmarshal(raw, &generic); err != nil {
+		return FixtureCatalog{}, fmt.Errorf("fixture catalog: %w", err)
+	}
+	if err := rejectKeyCaseVariants(generic, reflect.TypeOf(FixtureCatalog{}), "$catalog"); err != nil {
+		return FixtureCatalog{}, err
+	}
 	var c FixtureCatalog
 	dec := json.NewDecoder(bytes.NewReader(raw))
 	dec.DisallowUnknownFields()

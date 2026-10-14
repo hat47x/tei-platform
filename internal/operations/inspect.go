@@ -96,7 +96,9 @@ func InspectSubject(root string, subject sourceindex.Subject) (SubjectInspection
 
 func supportedInspectionKind(kind string) bool {
 	switch kind {
-	case "semantic-data", "semantic-relation", "application", "application-pattern", "query":
+	case "semantic", "semantic-type", "semantic-data", "semantic-attribute", "semantic-relation",
+		"semantic-candidate-key", "semantic-functional-dependency", "semantic-capability", "semantic-validation",
+		"application", "application-pattern", "query":
 		return true
 	default:
 		return false
@@ -109,11 +111,72 @@ func supportedInspectionKind(kind string) bool {
 func inspectCanonical(world ir.World, subject sourceindex.Subject) (json.RawMessage, error) {
 	var matches []any
 	switch subject.Kind {
+	case "semantic":
+		for _, item := range world.Semantics {
+			if string(item.ID) == subject.ID {
+				matches = append(matches, item)
+			}
+		}
+	case "semantic-type":
+		for _, namespace := range world.Semantics {
+			for _, item := range namespace.Types {
+				if string(item.ID) == subject.ID {
+					matches = append(matches, item)
+				}
+			}
+		}
+	case "semantic-capability":
+		for _, namespace := range world.Semantics {
+			for _, item := range namespace.Capabilities {
+				if string(item.ID) == subject.ID {
+					matches = append(matches, item)
+				}
+			}
+		}
+	case "semantic-validation":
+		for _, namespace := range world.Semantics {
+			for _, item := range namespace.Validations {
+				if string(item.ID) == subject.ID {
+					matches = append(matches, item)
+				}
+			}
+		}
+	case "semantic-candidate-key":
+		for _, namespace := range world.Semantics {
+			for _, data := range namespace.Data {
+				for _, item := range data.CandidateKeys {
+					if string(item.ID) == subject.ID {
+						matches = append(matches, item)
+					}
+				}
+			}
+		}
+	case "semantic-functional-dependency":
+		for _, namespace := range world.Semantics {
+			for _, data := range namespace.Data {
+				for _, item := range data.FunctionalDependencies {
+					if string(item.ID) == subject.ID {
+						matches = append(matches, item)
+					}
+				}
+			}
+		}
+
 	case "semantic-data":
 		for _, namespace := range world.Semantics {
 			for _, item := range namespace.Data {
 				if string(item.ID) == subject.ID {
 					matches = append(matches, item)
+				}
+			}
+		}
+	case "semantic-attribute":
+		for _, namespace := range world.Semantics {
+			for _, data := range namespace.Data {
+				for _, item := range data.Attributes {
+					if string(item.ID) == subject.ID {
+						matches = append(matches, item)
+					}
 				}
 			}
 		}

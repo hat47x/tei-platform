@@ -125,6 +125,9 @@ var sha256Digest = regexp.MustCompile(`^sha256:[0-9a-f]{64}$`)
 // ParseIntent はauthoring JSONを厳密に読む。未知のfield、導出値の手書き、
 // 末尾の余分なJSONを拒否する。field順は結果に影響しない。
 func ParseIntent(raw []byte) (BuildIntent, error) {
+	if err := validateInputJSON(raw); err != nil {
+		return BuildIntent{}, fmt.Errorf("build intent: %w", err)
+	}
 	var generic any
 	dec := json.NewDecoder(bytes.NewReader(raw))
 	if err := dec.Decode(&generic); err != nil {
@@ -134,9 +137,6 @@ func ParseIntent(raw []byte) (BuildIntent, error) {
 		return BuildIntent{}, fmt.Errorf("build intent has trailing data")
 	}
 	if err := rejectDerivedKeys(generic, nil); err != nil {
-		return BuildIntent{}, err
-	}
-	if err := rejectDuplicateKeys(raw); err != nil {
 		return BuildIntent{}, err
 	}
 	if err := rejectKeyCaseVariants(generic, reflect.TypeOf(BuildIntent{}), "$"); err != nil {
@@ -184,50 +184,6 @@ func rejectDerivedKeys(v any, trail []string) error {
 	return nil
 }
 
-// rejectDuplicateKeys は同じobject内の重複keyを拒否する。標準のdecodeは
-// 後勝ちで、人が見ている値と読まれる値が食い違うため。
-func rejectDuplicateKeys(raw []byte) error {
-	dec := json.NewDecoder(bytes.NewReader(raw))
-	var walk func(path string) error
-	walk = func(path string) error {
-		tok, err := dec.Token()
-		if err != nil {
-			return err
-		}
-		delim, ok := tok.(json.Delim)
-		if !ok {
-			return nil
-		}
-		switch delim {
-		case '{':
-			seen := map[string]struct{}{}
-			for dec.More() {
-				keyTok, err := dec.Token()
-				if err != nil {
-					return err
-				}
-				key := keyTok.(string)
-				if _, dup := seen[key]; dup {
-					return fmt.Errorf("build intent declares key %q more than once (at %s)", key, path)
-				}
-				seen[key] = struct{}{}
-				if err := walk(path + "." + key); err != nil {
-					return err
-				}
-			}
-		case '[':
-			for i := 0; dec.More(); i++ {
-				if err := walk(fmt.Sprintf("%s[%d]", path, i)); err != nil {
-					return err
-				}
-			}
-		}
-		_, err = dec.Token() // 閉じ括弧
-		return err
-	}
-	return walk("$")
-}
-
 // rejectKeyCaseVariants は構造体のjson名と大文字小文字まで一致しないkeyを拒否する。
 // 標準のdecodeは大文字小文字を区別せずに受け取るため、別綴りの同名keyが通る。
 func rejectKeyCaseVariants(v any, t reflect.Type, path string) error {
@@ -260,7 +216,7 @@ func rejectKeyCaseVariants(v any, t reflect.Type, path string) error {
 	for key, child := range node {
 		ft, exact := fields[key]
 		if !exact {
-			return fmt.Errorf("build intent key %q at %s does not match a field name exactly (case variants and unknown keys are rejected)", key, path)
+			return fmt.Errorf("input JSON key %q at %s does not match a field name exactly (case variants and unknown keys are rejected)", key, path)
 		}
 		if err := rejectKeyCaseVariants(child, ft, path+"."+key); err != nil {
 			return err

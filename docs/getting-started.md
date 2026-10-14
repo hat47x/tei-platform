@@ -38,7 +38,16 @@ go run ./cmd/tei validate \\
 
 終了コードは`0`が検証成功（警告を含む）、`1`が検証不成立、`2`が入力・読込みなどの実行失敗です。`-json`で返す結果を利用するときも終了コードを確認してください。`commands`はすべてのコマンドや拡張機能を列挙する完全な登録簿ではありません。詳細とウェブやデスクトップへの接続方針は[コマンドライン優先のインターフェース設計](../plan/design/CLI_FIRST_INTERFACE_DESIGN.md)を参照してください。
 
-正規化された業務モデルから特定の要素だけを確認するには、`inspect`を使います。現在対応するのは`semantic-data`、`semantic-relation`、`application`、`application-pattern`、`query`の5種類です。対象の種類と正本の識別子を、完全一致で指定します。
+作業領域のモデル要素を一覧で確認するには、`model catalog`を使います。返された`entries[].subject.kind`と`entries[].subject.id`をそのまま`inspect`へ渡せます。`ambiguous=true`の項目は重複宣言があるため、詳細取得を拒否します。
+
+```bash
+go run ./cmd/tei model catalog -workspace reference/workspace
+go run ./cmd/tei model catalog -workspace reference/workspace -namespace sales
+```
+
+一覧と詳細は読取り専用です。元ファイルを変更する権限や、変更を受理した証拠は与えません。一覧の取得と詳細の取得は別の処理なので、同じ版かどうかは返された`worldFingerprint`と`sourceIndexFingerprint`を比較します。
+
+正規化された業務モデルから特定の要素だけを確認するには、`inspect`を使います。現在対応するのは`semantic`、`semantic-type`、`semantic-data`、`semantic-attribute`、`semantic-relation`、`semantic-candidate-key`、`semantic-functional-dependency`、`semantic-capability`、`semantic-validation`、`application`、`application-pattern`、`query`の12種類です。対象の種類と正本の識別子を、完全一致で指定します。
 
 ```bash
 go run ./cmd/tei inspect \

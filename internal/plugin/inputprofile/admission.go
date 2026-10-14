@@ -1,6 +1,7 @@
 package inputprofile
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 
@@ -131,9 +132,26 @@ func ObservePackageOutput(binding BuildInputEvidence, result transform.Evaluatio
 	if result.Output.Kind != transform.ValueBytes || result.Steps < 1 {
 		return PackageOutputObservation{}, fmt.Errorf("Plugin package evaluation did not return verified output bytes")
 	}
+	// Evidence must bind the actual canonical SB-1 package bytes. A typed
+	// json.Unmarshal alone accepts duplicate keys, ignored fields and changed
+	// member order, which would let a noncanonical output masquerade as the
+	// exact package under the otherwise matching manifest fingerprints.
+	if _, err := transform.ParseJSON(result.Output.Bytes); err != nil {
+		return PackageOutputObservation{}, fmt.Errorf("Plugin package output JSON is ambiguous or invalid: %w", err)
+	}
 	var manifest plugin.PluginPackageManifest
 	if err := json.Unmarshal(result.Output.Bytes, &manifest); err != nil {
 		return PackageOutputObservation{}, fmt.Errorf("Plugin package output manifest: %w", err)
+	}
+	canonical, err := json.Marshal(manifest)
+	if err != nil {
+		return PackageOutputObservation{}, fmt.Errorf("encode canonical Plugin package output: %w", err)
+	}
+	// SB-1 MaterializePluginPackage deliberately appends one trailing LF
+	// after encoding/json's struct-order representation.
+	canonical = append(canonical, '\n')
+	if !bytes.Equal(result.Output.Bytes, canonical) {
+		return PackageOutputObservation{}, fmt.Errorf("Plugin package output is not canonical SB-1 manifest bytes")
 	}
 	if manifest.FormatVersion != plugin.PluginPackageFormatVersion ||
 		manifest.Plugin != binding.Plugin ||
