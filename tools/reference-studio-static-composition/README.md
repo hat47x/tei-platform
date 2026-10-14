@@ -10,10 +10,10 @@
 
 ## 作成手順
 
-リポジトリルートから実行します。出力先は新規の一時ディレクトリを指定してください。実行前に `go.mod` の要求するGo版を満たす必要があります。
+リポジトリルートから実行します。生成UIの相対importは下記の固定配置を前提にしているため、出力先は専用の `generated/` ディレクトリを指定してください。生成物はPoCのローカル派生物であり、現段階では正本としてcommitしません。実行前に `go.mod` の要求するGo版を満たす必要があります。
 
 ```sh
-OUT="$(mktemp -d)"
+OUT="tools/reference-studio-static-composition/generated"
 go test -count=1 ./tools/reference-studio-static-composition
 node --test tools/reference-studio-static-composition/compose-ui.test.mjs
 
