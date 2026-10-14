@@ -52,6 +52,8 @@ export function composeUI(raw) {
     evidence.push({ slot, implementation, sourcePath: entry.path,
       kit: steps[0].kit, version: steps[0].version });
   }
+  if (new Set(evidence.map(entry => entry.implementation)).size !== 2)
+    throw new Error('duplicate_ui_component');
   lines.push('export const studioUIContributions = Object.freeze([');
   for (let i = 0; i < slots.length; i++) {
     lines.push('  Object.freeze({ slot: ' + JSON.stringify(slots[i]) +
