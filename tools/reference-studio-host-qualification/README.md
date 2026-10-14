@@ -1,57 +1,56 @@
-# TEI Studio PoC A：Host境界の独立検査（#1824／開発#6）
+# TEI Studio #6：CLI・Go共通操作・Host結果の意味比較
 
-状態：**検査基線の追加段階**。ここにあるGoの自動試験は、既存の読み取り専用操作が複数の独立した作業領域を読む場合の回帰試験です。Webの認証・権限・イベント隔離、Desktopのリソース制限、Wails実WebView、通常ブラウザーの動作を実証するものではありません。
+状態：**基線のテスト実装あり、実行検証は未確認**。PoC Aの共有Go OperationとCLIプロセスの差異を、独立した呼出しで調べるための限定的な検査です。[#1824の担当割当](https://github.com/hat47x/tei-platform/issues/1824#issuecomment-6166730568)と[#6の訂正](https://github.com/hat47x/tei-platform/issues/1824#issuecomment-6166773569)に従います。この文書は新しい製品要求・正本・Gateではありません。
 
-PoC Aの要求・受入条件とWeb/Desktop分離の判断基準は[協調Issue #1824](https://github.com/hat47x/tei-platform/issues/1824)にあります。ここへ新しい製品要求、意味の正本、Host権限機構、受理経路、Gateを定義しません。既存の`internal/operations`（#1158）、`internal/desktophost`（#1529）、Host保護（#1043）、UI構成（#997）の責務を維持します。
+## 所有範囲と既存機構
 
-## 先行できるGo操作の基線
+- **#6**: 正常、構文診断、意味診断、Workspace load失敗、Source Index失敗、subject成功/拒否のCLI／Go Operation比較。PoC AのHost実装後は**実Host結果**を同じ意味単位に正規化して3者比較します。
+- **#2**: Wails Web/Desktop Host／bindingの実装。Host/API仕様を#6が仮定・複製しません。
+- **#10**: Web session・broadcast・再接続、Desktopのworkspace root／symlink／ファイル資源拒否。#6でHostの信頼境界を重複検査しません。
+- **#8**: A/B/C横断の再現手順とEvidence。[Draft PR #1825](https://github.com/hat47x/tei-platform/pull/1825)を参照。#6は独立した横断runbookを新設しません。
 
-`readonly_baseline_test.go` は本番Hostを模擬しません。次の狭い事実だけを検査します。
+意味実装の正本は `internal/operations` (#1158)、コマンド入口は `cmd/tei` です。どちらも本変更では編集していません。
 
-- 2つの独立した一時Workspaceを交互・並行に `operations.CatalogWorkspace` へ渡し、互いの意味名前空間が出力に混ざらないこと。
-- 一方のWorkspaceで構文エラーを発生させ、`operations.ValidateWorkspace` が直接の構文診断と正常Workspaceの結果を混同しないこと。
-- 読取り専用の投影を、受理権限や書込み権限と取り違えないこと（テストが書込みAPIを呼ばないという範囲）。
+## 実装した試験（検証結果と区別）
 
-基線試験の実行例（**実行結果を伴わない手順**）：
+`readonly_baseline_test.go`:
+- 2つの異なる一時WorkspaceをGo Operationで並行に一覧化したときに、他のWorkspaceの意味識別子が交ざらないこと
+- 正常Workspaceと構文不正WorkspaceのGo Operation診断が交ざらないこと
+
+**これはHostのsession隔離試験ではありません**。Hostが使うrequest/session/workspace contextの保証には転用しません。
+
+`cli_operation_parity_test.go`:
+- `go build`で実CLIバイナリを作成し、別プロセスとして起動する。in-processのCLIヘルパーは呼ばない。
+- 同じWorkspaceで **CLIプロセス** と **`operations.ValidateWorkspace`、`CatalogWorkspace`、`InspectSubject` を独立実行**して照合する。
+- validationは成功/構文/意味診断の成否、コード、重要度、subject、出典ファイルの開始位置を順序に依存せず比較する。自由記述メッセージと表示順を意味同等性へ含めない。
+- catalog、inspectの成功はJSON表現へ正規化した結果を比較し、subject/provenance/fingerprintを取り落とさない。
+- 存在しないWorkspace、欠落・未対応・不正なsubjectのCLI失敗分類を、Go操作の型付きError/Stageと比較する。正常実行失敗を「期待した拒否」と誤判定しない。
+- 失敗コード、exit code、JSON単一Documentを別途確認する。
+
+CLIの機械可読な正常／失敗応答は現行の `validate -json`、`model catalog`、`inspect` を使用します。期待値はCLIの実装コピーから生成せず、既存Go Operationを別に実行して得ます。一方で、CLIとGoが同じ意味実装を共有するため、共通実装そのものの誤りは**独立の仕様準拠証明にはなりません**。
+
+### 試験コマンド
+
+ルートから実行する場合:
 
 ```sh
-go version
+go version  # go.mod は Go 1.26.9
 go test -count=1 ./tools/reference-studio-host-qualification/...
 go test -race -count=1 ./tools/reference-studio-host-qualification/...
-go test -count=1 ./internal/operations/...
-go run ./cmd/tei validate -workspace reference/workspace
+go vet ./tools/reference-studio-host-qualification/...
 ```
 
-Goの要求版はルートの`go.mod`で確認します。Go試験の成功は「共有意味操作のread-only基線」に限られ、Hostの2クライアント分離の証明ではありません。
+該当検査の成功を記録する際はexact commit、Go/OS版、実際の終了コードとログを残します。作成時の環境では対象リポジトリをローカル取得できておらず、**実際のテスト結果は未確認**です。
 
-## PoC A Host実装と結合後に実測する行列
+## 保留／未実施
 
-以下の行は現時点ですべて **未実施** です。Host担当が最小Operation／UI、起動手順、HTTPまたはWails Bindingの入出力を公開した後、同一版を固定してWeb・Desktop・CLIで比較します。空欄をPASSへ読み替えません。
+| 検査 | 状態 | 要因 |
+| --- | --- | --- |
+| 正常・構文診断・意味診断のCLI/Go比較 | コード追加・未実行 | 対象版のGo環境での試験待ち |
+| load失敗、subject欠落/未対応/不正 | コード追加・未実行 | 同上 |
+| Source Index構築失敗 | **未実装／blocked** | `workspace.Load`が成功し、`BuildSourceIndex`だけが失敗する再現可能fixtureをまだ確定できていない。模擬エラーを業務エラーとして数えない |
+| 実Host結果との3者比較 | **blocked** | #2のread-only API、実起動方法、version、Host拒否の契約が未提示 |
+| Webの2 session・Desktopリソース境界 | #10担当 | #6の合否へ包含しない |
+| ブラウザー・WebView・利用者確認 | **未実施** | Host・画面が未統合 |
 
-| ID | 手順・入力 | 合格条件 | 現時点 |
-| --- | --- | --- | --- |
-| A-01 | 同じ正常WorkspaceをCLI、Go Operation、Web、Desktopから検証 | 診断・識別子・失敗分類が意味上一致。表示差分は別に記録 | 未実施 |
-| A-02 | 不正な構文／存在しないWorkspace／Source Index失敗を各Hostへ入力 | 構文診断とload/source-index失敗を区別し、Host起動失敗を業務拒否に計上しない | 未実施 |
-| A-03 | Webの独立クライアントA/Bで異なるWorkspaceを開き交互操作 | 選択、パス、結果、診断が混ざらない。認証済み利用者との区別を記録 | 未実施 |
-| A-04 | Aで検証後にBへイベントを配信、切断・再接続・セッション失効を実施 | 機微payloadの全体配信や再接続後の越境参照が起きない。グローバルイベントに機微情報を含めない | 未実施 |
-| A-05 | Desktopでroot外／親ディレクトリ／symlink／作業中のパス差替えを試行 | Hostで拒否。入力パスやfile dialogの値だけで権限を与えない | 未実施 |
-| A-06 | Desktopの2ウィンドウ／WebView再起動／Source外部変更 | Draftや選択状態が無断で別窓・別Workspaceへ移らず、古いrevisionを受理扱いしない | 未実施 |
-| A-07 | 同じGo操作とTypeScript UIでWeb・Desktopの実画面を操作 | 実ブラウザー・実WebViewの両方で操作を観測し、対象版と画面証跡を残す | 未実施 |
-
-初期の許容範囲はloopback・単一利用者・read-onlyです。それでも二つのクライアントでの取り違えを検査します。認証、CSRF、HTTP/WebSocketセッション認可、購読隔離が未実装の段階で公開ネットワークに対応したとは主張しません。Wailsの汎用イベントbroadcastには機微情報を載せません。
-
-## 証拠の記録条件
-
-判定ごとに **対象コミットSHA、ブランチ、Go／Node／Wailsの実際の版、OS、WebView、ブラウザー、Workspace入力版、起動・試験コマンド、期待と実測の結果、失敗時のHost拒否と業務診断の区別** を記録します。結果は `pass`／`fail`／`blocked`／`not-run` を使い分けます。テストログに秘密情報や実利用者のパス・内容を残しません。
-
-- Go単体試験と静的解析
-- 実Goサービス呼出し
-- 実ブラウザー操作
-- Desktop実WebView操作
-- 人による価値確認
-
-以上を独立して記録します。机上確認、合成Workspace、モックでの成功を、実Hostの動作成功へ昇格しません。セッションとファイル選択の境界をHostに安全に持たせられない場合、Aは未合格として#1824へ報告し、Server Buildの代替を含めて再設計します。
-
-## 担当境界
-
-本ディレクトリはPoC Aの**外側からの検査**のみを担当します。Wails起動、Web/Desktop adapter、TypeScript UI、TEI宣言合成、Editor/Graph、Authn/Authz、Sourceへの反映は実装しません。PoC B（#1）、C、#1158、#1529、#997の担当が決まっている部分を再実装せず、実Hostとの結合が可能になった時点でこの行列を自動・手動の試験へ具体化します。
+Hostの応答と比較できるようになった場合も、CLIのtransport envelope（`tei.cli.*/v0`）をHostのAPI仕様として強制せず、**成功/診断/失敗の意味情報**を比較します。権限拒否・transport失敗と意味診断を一つの結果に畳まないでください。Source Index失敗のfixtureが得られない限り、そのケースは未合格として記録します。
