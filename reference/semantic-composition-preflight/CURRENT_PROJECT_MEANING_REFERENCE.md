@@ -26,13 +26,13 @@ Hostは判断の発行元・権限・取消し、同一時点の一貫性を独�
 
 ## 読取り専用の検査
 
-`InspectCurrentProjectMeaning(ctx, reader, applicationID, workspaceRoot)`は以下を行う。
+`InspectCurrentProjectMeaning(ctx, reader, applicationID, workspaceRoot, requested)`は以下を行う。
 
-1. 既存`workspace.Load`でPath Importを含むWorkspaceを**一度だけ**読み込む。
+1. 利用側があらかじめ**明示した**`requested []ProjectMeaningRequest`（Aliasと型付き論理ResourceRef）を入力として受ける。Hostの受理記録からこの要求を逆算しない。既存`workspace.Load`でPath Importを含むWorkspaceを**一度だけ**読み込む。
 2. 同じLoadから`workspace.BuildSourceIndex`を構築し、既存`validation.Validate`を確認。
 3. Host Readerを一度呼び、同じ受理判断のSourceとExternal選択を取得。
 4. 既存`sourceacceptance.VerifyCurrent`にSource照合を委譲。検証した`Record`のみ使用。
-5. すべての`ResolvedImport`についてAlias・`modelref.Ref.Subject.Kind/ID`・正確なSemanticDigestがHostの選択と一対一に一致するか確認。余分・不足・曖昧な選択は拒否。
+5. すべての`ResolvedImport`について、利用側の明示要求とHostの受理選択がAlias・**論理Scopeを含む**`modelref.Ref`で正確に一致し、Namespace IDとSemanticDigestが実際のLoadに一致するか一対一照合。余分・不足・曖昧な選択は拒否。
 6. 不一致の場合、WorkspaceのWorldや受理記録を呼出側へ返さない。
 
 `modelref.Ref.Scope`は論理参照Scopeであり、Composition ServiceのScopeではない。
@@ -55,7 +55,7 @@ Hostは判断の発行元・権限・取消し、同一時点の一貫性を独�
 
 - Host Reader不在・拒否・取消し
 - Accepted Sourceの対象Application・Source revision・証拠が不一致
-- Hostが未受理のNamespace、余分なNamespace、Alias誤り、空Alias、型・ID・Scope・Versionの不整合
+- Hostが未受理のNamespace、余分なNamespace、Alias誤り、空Alias、利用側の明示ScopeとHost判断の相違、型・ID・Versionの不整合
 - 一致しないSemantic Digest、参照先の型・意味Validationエラー
 
 検証コマンド（対象パッケージと既存受理部分のみ）：
@@ -74,7 +74,7 @@ go vet ./reference/semantic-composition-preflight
 - 複数Workspaceの完全な原子的Snapshot、検査後の改訂・差替えの防止。
   取得中のProvider内容変更や実行時現在権限は別途Hostが再評価する。
 - 有効な`sourceacceptance.Record`からの独立した外部意味受理の**推論**。
-  外部意味の受理はその判断に明記されていなければ成立しない。
+  外部意味の受理はその判断に明記されていなければ成立しない。なお、`requested`は利用側が明示的に選んだ論理参照であり、Hostから返ってきた受理候補をそのままコピーして作ってはならない。
 - ResourceRef Kindの正式採用、Production Profile Schema、別のRegistry・Resolver・Lock。
 
 次段階は#267のShared Acceptanceで、同じ案件受理判断に外部Namespaceの
