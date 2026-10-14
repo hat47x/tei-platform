@@ -50,7 +50,7 @@ func TestProjectAdviceSignedImageAndCurrentEnvironmentAreIndependentGates(t *tes
 	}
 	proof := pruntime.LinuxPinnedSignatureProof{
 		SignatureRef: signatureRef,
-		Signature: ed25519.Sign(private, message),
+		Signature:    ed25519.Sign(private, message),
 	}
 	transport := pruntime.StdioProcessLauncher{Env: []string{}}
 	pin := func(t *testing.T) *pruntime.PinnedLinuxProcess {
@@ -71,14 +71,14 @@ func TestProjectAdviceSignedImageAndCurrentEnvironmentAreIndependentGates(t *tes
 	pinned := pin(t)
 	realization := RuntimeProcessRealization{
 		RuntimeCapabilityFingerprint: ref.Fingerprint,
-		Plugin: candidate.Plugin,
+		Plugin:                       candidate.Plugin,
 		Artifact: plugin.Artifact{
-			Digest: digest,
+			Digest:       digest,
 			SignatureRef: signatureRef,
 		},
 		Command: pruntime.ProcessCommand{
 			Executable: path,
-			Args: []string{"--tei-expected-dispatch=" + string(dispatch)},
+			Args:       []string{"--tei-expected-dispatch=" + string(dispatch)},
 		},
 	}
 	grantA := referenceAuthority(ref, nil)
@@ -111,9 +111,9 @@ func TestProjectAdviceSignedImageAndCurrentEnvironmentAreIndependentGates(t *tes
 	}
 	makeHost := func(p *pruntime.PinnedLinuxProcess) pruntime.HostSandboxLauncher {
 		return pruntime.HostSandboxLauncher{
-			Network: &recordingNetworkEnforcer{},
+			Network:    &recordingNetworkEnforcer{},
 			Filesystem: &recordingFilesystemEnforcer{},
-			Runner: p,
+			Runner:     p,
 		}
 	}
 	invoke := func(env core.CanonicalID, plan RuntimeEnvironmentPlan, p *pruntime.PinnedLinuxProcess, id string) (GenericInvocation, error) {
@@ -195,7 +195,7 @@ func TestProjectAdviceSignedImageRejectsUntrustedOrMismatchedProof(t *testing.T)
 	}
 	proof := pruntime.LinuxPinnedSignatureProof{
 		SignatureRef: ref,
-		Signature: ed25519.Sign(private, message),
+		Signature:    ed25519.Sign(private, message),
 	}
 	pin := func(identity plugin.Identity, evidence pruntime.LinuxPinnedSignatureProof) error {
 		p, err := pruntime.PinSignedLinuxProcess(
@@ -223,7 +223,7 @@ func TestProjectAdviceSignedImageRejectsUntrustedOrMismatchedProof(t *testing.T)
 		t.Fatalf("modified signature was accepted: %v", err)
 	}
 	foreign := plugin.Identity{
-		ID: core.MustCanonicalID("tei.reference.other_project"),
+		ID:      core.MustCanonicalID("tei.reference.other_project"),
 		Version: candidate.Plugin.Version,
 	}
 	if err := pin(foreign, proof); err == nil ||
