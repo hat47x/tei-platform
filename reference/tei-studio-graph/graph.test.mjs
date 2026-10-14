@@ -12,6 +12,7 @@ class FakeElement {
     this.children = [];
     this.attributes = new Map();
     this.listeners = new Map();
+    this.style = {};
     this.textContent = "";
   }
   setAttribute(name, value) { this.attributes.set(name, String(value)); }
@@ -162,5 +163,38 @@ test("invalid mount is rejected before DOM mutation", () => {
   fails("missing_endpoint", () => mountReadonlyGraph(root, {
     ...buildPipelineGraph, edges: [{id: "bad", source: "source", target: "none"}],
   }));
+  assert.equal(root.children.length, 0);
+});
+
+test("narrow 240px panel scrolls the full-size 480px graph without shrinking labels", () => {
+  const root = container();
+  root.style.width = "240px"; // simulated host layout, not a layout engine
+  const picked = [];
+  const view = mountReadonlyGraph(root, buildPipelineGraph, {
+    onSelect: id => picked.push(id),
+  });
+  const viewport = root.children[0];
+  const svg = all(root, "svg")[0];
+  assert.equal(viewport.getAttribute("data-graph-reference"), "read-only");
+  assert.equal(viewport.style.overflowX, "auto");
+  assert.equal(viewport.style.maxWidth, "100%");
+  assert.equal(viewport.style.minWidth, "0");
+  assert.equal(viewport.getAttribute("tabindex"), "0");
+  assert.equal(svg.getAttribute("viewBox"), "0 0 480 160");
+  assert.equal(svg.style.minWidth, "480px");
+  assert.equal(svg.style.maxWidth, "none");
+  assert.equal(svg.style.height, "auto");
+
+  // Presentation-only selection remains intact even when the graphic is wide.
+  all(root, "g")[2].dispatch("click");
+  assert.deepEqual(picked, ["publish"]);
+  assert.equal(view.getSelectedNode(), "publish");
+
+  view.update({...buildPipelineGraph, width: 620});
+  const replacement = all(root, "svg")[0];
+  assert.equal(replacement.style.minWidth, "620px");
+  assert.equal(replacement.getAttribute("viewBox"), "0 0 620 160");
+  assert.equal(view.getSelectedNode(), "publish");
+  view.dispose();
   assert.equal(root.children.length, 0);
 });
