@@ -212,7 +212,7 @@ func onlyFields(op Operation, allowed ...string) error {
 		"data": op.Data != nil, "addRelation": op.AddRelation != nil,
 		"addCandidateKey": op.AddCandidateKey != nil, "addFunctionalDependency": op.AddFunctionalDependency != nil,
 		"removeBusinessRule": op.RemoveBusinessRule != nil,
-		"application": op.Application != nil, "pattern": op.Pattern != nil,
+		"application":        op.Application != nil, "pattern": op.Pattern != nil,
 	}
 	for _, name := range allowed {
 		delete(present, name)
