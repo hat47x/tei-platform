@@ -114,16 +114,36 @@ func TestArchivedWitnessMismatchedClaimsNeverQualify(t *testing.T) {
 		edit func(map[string]map[string]any)
 		want string
 	}{
-		{"lineage changed", func(v map[string]map[string]any) { v["workspace-r1.json"]["sourceAfter"] = "sha256:wrong" }, "LINEAGE_SOURCE_REVISION_MISMATCH"},
-		{"target loaded stale", func(v map[string]map[string]any) { v["target-launch.json"]["workspaceSourceRevisionBeforeLaunch"] = v["workspace-r1.json"]["sourceBefore"] }, "TARGET_LAUNCH_SOURCE_OR_BUILD_MISMATCH"},
-		{"target revision mismatched", func(v map[string]map[string]any) { v["target-launch.json"]["targetBuildRevision"] = strings.Repeat("b", 40) }, "TARGET_LAUNCH_SOURCE_OR_BUILD_MISMATCH"},
-		{"web accepted stale", func(v map[string]map[string]any) { v["web-positive.json"]["acceptedSourceRevisionClaim"] = v["workspace-r1.json"]["sourceBefore"] }, "WEB_AND_OBSERVATION_R1_CLAIMS_MISMATCH"},
-		{"N11 actually observed", func(v map[string]map[string]any) { v["n11-unobserved-control.json"]["observationResultRecorded"] = true }, "N11_UNOBSERVED_CONTROL_INCOMPLETE"},
-		{"N11 claims real database", func(v map[string]map[string]any) { v["n11-unobserved-control.json"]["independentDatabaseRead"] = true }, "SYNTHETIC_OR_AUTHORITY_LIMITS_NOT_EXPLICIT"},
-		{"stale control lies", func(v map[string]map[string]any) { v["stale-source-control.json"]["actuallyLoadedWorkspaceSourceRevision"] = v["workspace-r1.json"]["sourceAfter"] }, "STALE_SOURCE_CONTROL_NOT_SEPARATELY_OBSERVED"},
-		{"integration head differs", func(v map[string]map[string]any) { v["web-positive.json"]["integrationHead"] = strings.Repeat("b", 40) }, "INTEGRATION_HEAD_DIFFERS:web-positive.json"},
-		{"wrong witness kind", func(v map[string]map[string]any) { v["web-positive.json"]["evidenceNature"] = "actual-independent-db" }, "UNEXPECTED_WITNESS_NATURE:web-positive.json"},
-		{"false human approval", func(v map[string]map[string]any) { v["workspace-r1.json"]["humanApproval"] = true }, "SYNTHETIC_OR_AUTHORITY_LIMITS_NOT_EXPLICIT"},
+		{"lineage changed", func(v map[string]map[string]any) {
+			v["workspace-r1.json"]["sourceAfter"] = "sha256:wrong"
+		}, "LINEAGE_SOURCE_REVISION_MISMATCH"},
+		{"target loaded stale", func(v map[string]map[string]any) {
+			v["target-launch.json"]["workspaceSourceRevisionBeforeLaunch"] = v["workspace-r1.json"]["sourceBefore"]
+		}, "TARGET_LAUNCH_SOURCE_OR_BUILD_MISMATCH"},
+		{"target revision mismatched", func(v map[string]map[string]any) {
+			v["target-launch.json"]["targetBuildRevision"] = strings.Repeat("b", 40)
+		}, "TARGET_LAUNCH_SOURCE_OR_BUILD_MISMATCH"},
+		{"web accepted stale", func(v map[string]map[string]any) {
+			v["web-positive.json"]["acceptedSourceRevisionClaim"] = v["workspace-r1.json"]["sourceBefore"]
+		}, "WEB_AND_OBSERVATION_R1_CLAIMS_MISMATCH"},
+		{"N11 actually observed", func(v map[string]map[string]any) {
+			v["n11-unobserved-control.json"]["observationResultRecorded"] = true
+		}, "N11_UNOBSERVED_CONTROL_INCOMPLETE"},
+		{"N11 claims real database", func(v map[string]map[string]any) {
+			v["n11-unobserved-control.json"]["independentDatabaseRead"] = true
+		}, "SYNTHETIC_OR_AUTHORITY_LIMITS_NOT_EXPLICIT"},
+		{"stale control lies", func(v map[string]map[string]any) {
+			v["stale-source-control.json"]["actuallyLoadedWorkspaceSourceRevision"] = v["workspace-r1.json"]["sourceAfter"]
+		}, "STALE_SOURCE_CONTROL_NOT_SEPARATELY_OBSERVED"},
+		{"integration head differs", func(v map[string]map[string]any) {
+			v["web-positive.json"]["integrationHead"] = strings.Repeat("b", 40)
+		}, "INTEGRATION_HEAD_DIFFERS:web-positive.json"},
+		{"wrong witness kind", func(v map[string]map[string]any) {
+			v["web-positive.json"]["evidenceNature"] = "actual-independent-db"
+		}, "UNEXPECTED_WITNESS_NATURE:web-positive.json"},
+		{"false human approval", func(v map[string]map[string]any) {
+			v["workspace-r1.json"]["humanApproval"] = true
+		}, "SYNTHETIC_OR_AUTHORITY_LIMITS_NOT_EXPLICIT"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
