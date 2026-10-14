@@ -33,6 +33,16 @@ const view = mountReadonlyGraph(document.getElementById("graph")!, buildPipeline
 
 Host/Operation、TEIのSource Index、Go/Wails、Reactなどには依存しません。HTMLを組み立てる文字列を入力から生成せず、ノード名/辺名は`textContent`へ代入します。選択callbackを呼ぶ以外に副作用はなく、workspace読取り、shell、ファイル書込み、編集・受理を公開しません。型付き入力でも実行時の検証を省略しません。
 
+## 幅240px前後のパネルでの可読性
+
+#8のReading Journal（`reference/tei-studio-independent-consumer/`）は3列の表示領域が約240pxになるケースがある一方、`journalGraph()`の入力座標は`width: 480, height: 170`です。#Workが実ブラウザーで確認した初期実装では、SVGの`width=100%`が**480座標を240pxへ縮め、ラベルも約半分へ縮小**していました。ノード選択→picker・本文更新は確認済みでしたが、文字がほぼ読めない問題が残りました。
+
+**このReferenceの表示方針**: SVGは`width:100%; min-width:<graph.width>px; max-width:none; height:auto`とし、グラフの座標1単位を**最低1 CSSピクセル**として扱います。ラベルの既定フォントサイズは14pxです。部品自身の親`div[data-graph-reference]`を`width:100%; max-width:100%; min-width:0; overflow-x:auto`のスクロール領域にし、Tabでフォーカス可能にします。**240pxの領域には480pxのGraphを縮小せず、横スクロールで閲覧**できます。480pxより広い領域では横幅に合わせて拡大できます。表示位置/辺ルーティングの再計算はしません。
+
+- **#3 / Studio**: Graphの親パネルにグラフ全幅を収めるための`transform:scale()`や強制的な外側縮小をかけないでください。狭幅では部品のスクロール領域を使用し、実際のStudio画面で横スクロールと選択追従、マウス・キーボード操作を確認してください。
+- **#8 / Reading Journal**: `journalGraph()`の480幅と3列レイアウトは変更不要です。約240pxのGraph slotでラベルの可読性、スクロール到達、選択後のpicker/本文連携、ページ破棄を実ブラウザーで再検証してください。Graph更新による再ビルドが必要です。実ブラウザーでの**修正版**表示確認は#9の単体試験だけでは証明されません。
+- 入力の`width`が実際のノード・ラベルに対して短すぎる場合の表示領域や長文の重なりは**consumerが座標・幅を決めて解決**します。選択IDの設定は表示状態の更新であり、スクロール位置への自動移動はしません。
+
 ## 検証
 
 Node.js 22系（TypeScript型除去を明示）とTypeScript CLIが利用できる場合:
