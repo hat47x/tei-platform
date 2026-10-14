@@ -24,7 +24,16 @@ type ProjectMeaningSelection struct {
 	SemanticDigest string       `json:"semanticDigest"`
 }
 
-// CurrentProjectMeaning is ONE Host-owned decision snapshot. Source and
+// ProjectMeaningRequest is a caller-declared explicit logical selection.
+// It is not an Acceptance decision or provider authorization. An E4d/Path
+// consumer must supply the intended alias and logical resource scope; the
+// Host's accepted selection must match it exactly.
+type ProjectMeaningRequest struct {
+	Alias    string       `json:"alias"`
+	Resource modelref.Ref `json:"resource"`
+}
+
+ // CurrentProjectMeaning is ONE Host-owned decision snapshot. Source and
 // Selected must be read together from the same current acceptance decision;
 // two independent reads would not prove their common revision or provenance.
 // The receipt must not be constructed from a CLI parameter, imported manifest,
@@ -71,6 +80,7 @@ func InspectCurrentProjectMeaning(
 	ctx context.Context,
 	reader CurrentProjectMeaningReader,
 	applicationID, root string,
+	requested []ProjectMeaningRequest,
 ) (VerifiedProjectMeaning, error) {
 	if reader == nil {
 		return VerifiedProjectMeaning{}, errors.New("PROJECT_MEANING_READER_REQUIRED")
@@ -105,6 +115,9 @@ func InspectCurrentProjectMeaning(
 	if len(loaded.Imports) != len(receipt.Selected) {
 		return VerifiedProjectMeaning{}, errors.New("PROJECT_MEANING_SELECTION_SET_MISMATCH")
 	}
+	if len(loaded.Imports) != len(requested) {
+		return VerifiedProjectMeaning{}, errors.New("PROJECT_MEANING_REQUEST_SET_MISMATCH")
+	}
 
 	// Workspace Load has already rejected duplicate import aliases and logical
 	// namespaces. The Host receipt must match that explicit set exactly;
@@ -112,6 +125,19 @@ func InspectCurrentProjectMeaning(
 	byAlias := make(map[string]workspace.ResolvedImport, len(loaded.Imports))
 	for _, imported := range loaded.Imports {
 		byAlias[imported.Alias] = imported
+	}
+	requestedByAlias := make(map[string]modelref.Ref, len(requested))
+	for _, item := range requested {
+		if item.Alias == "" {
+			return VerifiedProjectMeaning{}, errors.New("PROJECT_MEANING_REQUEST_AMBIGUOUS")
+		}
+		if _, duplicate := requestedByAlias[item.Alias]; duplicate {
+			return VerifiedProjectMeaning{}, errors.New("PROJECT_MEANING_REQUEST_AMBIGUOUS")
+		}
+		if _, declared := byAlias[item.Alias]; !declared {
+			return VerifiedProjectMeaning{}, fmt.Errorf("PROJECT_MEANING_REQUEST_UNDECLARED: %q", item.Alias)
+		}
+		requestedByAlias[item.Alias] = item.Resource
 	}
 	seen := make(map[string]bool, len(receipt.Selected))
 	for _, selected := range receipt.Selected {
@@ -124,7 +150,8 @@ func InspectCurrentProjectMeaning(
 			return VerifiedProjectMeaning{}, fmt.Errorf("PROJECT_MEANING_SELECTION_UNDECLARED: %q", selected.Alias)
 		}
 		ref := selected.Resource
-		if strings.TrimSpace(ref.Scope) == "" || ref.Scope != strings.TrimSpace(ref.Scope) ||
+		if ref != requestedByAlias[selected.Alias] ||
+			strings.TrimSpace(ref.Scope) == "" || ref.Scope != strings.TrimSpace(ref.Scope) ||
 			strings.ContainsAny(ref.Scope, "\n\r\t") || ref.Subject.Kind != "semantic-namespace" ||
 			ref.Subject.ID != imported.Namespace || ref.Version != "" {
 			return VerifiedProjectMeaning{}, fmt.Errorf("PROJECT_MEANING_RESOURCE_MISMATCH: %q", selected.Alias)
