@@ -93,7 +93,7 @@ func TestIndependentQuoteWASIP1AgainstCandidateSemanticVectors(t *testing.T) {
 	native := filepath.Join(t.TempDir(), "order-quote-native")
 	nativeBuild := exec.CommandContext(ctx, "go", "build", "-o", native, ".")
 	nativeBuild.Dir = work
-	nativeBuild.Env = append(os.Environ(), "GOOS=" + runtime.GOOS, "GOARCH=" + runtime.GOARCH, "GOENV=off", "GOWORK=off", "GOFLAGS=", "GOTOOLCHAIN=local", "GOPROXY=off", "GOSUMDB=off")
+	nativeBuild.Env = append(os.Environ(), "GOOS="+runtime.GOOS, "GOARCH="+runtime.GOARCH, "GOENV=off", "GOWORK=off", "GOFLAGS=", "GOTOOLCHAIN=local", "GOPROXY=off", "GOSUMDB=off")
 	if output, err := nativeBuild.CombinedOutput(); err != nil {
 		t.Fatalf("independent Native build: %v\n%s", err, output)
 	}
