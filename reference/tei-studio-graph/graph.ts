@@ -33,8 +33,10 @@ export interface MountedGraph {
 }
 
 export class GraphViewError extends Error {
-  constructor(readonly code: string) {
+  readonly code: string;
+  constructor(code: string) {
     super(code);
+    this.code = code;
     this.name = "GraphViewError";
   }
 }
