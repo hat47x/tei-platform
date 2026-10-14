@@ -1,10 +1,10 @@
 # TEI Studio #6：CLI・Go共通操作・Host結果の意味比較
 
-状態：**基線のテスト実装あり、実行検証は未確認**。PoC Aの共有Go OperationとCLIプロセスの差異を、独立した呼出しで調べるための限定的な検査です。[#1824の担当割当](https://github.com/hat47x/tei-platform/issues/1824#issuecomment-6166730568)と[#6の訂正](https://github.com/hat47x/tei-platform/issues/1824#issuecomment-6166773569)に従います。この文書は新しい製品要求・正本・Gateではありません。
+状態：**旧固定headでのCLI/Go基線検査は#WorkによるPASS報告あり／今回のGo Host接続検査は未実行**。PoC Aの共有Go OperationとCLIプロセスの差異を、独立した呼出しで調べるための限定的な検査です。[#1824の担当割当](https://github.com/hat47x/tei-platform/issues/1824#issuecomment-6166730568)と[#6の訂正](https://github.com/hat47x/tei-platform/issues/1824#issuecomment-6166773569)に従います。この文書は新しい製品要求・正本・Gateではありません。
 
 ## 所有範囲と既存機構
 
-- **#6**: 正常、構文診断、意味診断、Workspace load失敗、Source Index失敗、subject成功/拒否のCLI／Go Operation比較。PoC AのHost実装後は**実Host結果**を同じ意味単位に正規化して3者比較します。
+- **#6**: 正常、構文診断、意味診断、Workspace load失敗、Source Index失敗、subject成功/拒否のCLI／Go Operation比較。PoC AのGo Host Bridge実装を検証snapshotに取り込んだ場合は、実Bridge呼出し結果を同じ意味単位に正規化して3者比較します。Wails IPC自体とは別です。
 - **#2**: Wails Web/Desktop Host／bindingの実装。Host/API仕様を#6が仮定・複製しません。
 - **#10**: Web session・broadcast・再接続、Desktopのworkspace root／symlink／ファイル資源拒否。#6でHostの信頼境界を重複検査しません。
 - **#8**: A/B/C横断の再現手順とEvidence。[Draft PR #1825](https://github.com/hat47x/tei-platform/pull/1825)を参照。#6は独立した横断runbookを新設しません。
@@ -40,17 +40,52 @@ go test -race -count=1 ./tools/reference-studio-host-qualification/...
 go vet ./tools/reference-studio-host-qualification/...
 ```
 
-該当検査の成功を記録する際はexact commit、Go/OS版、実際の終了コードとログを残します。作成時の環境では対象リポジトリをローカル取得できておらず、**実際のテスト結果は未確認**です。
+該当検査の成功を記録する際はexact commit、Go/OS版、実際の終了コードとログを残します。以下に示す旧固定headでの検証は#WorkからPASSが報告されました。**その後に追加したHost比較テストの実行結果は未確認**です。
+
+
+## 固定版・独立実行の結果（#Workからの報告）
+
+2026-10-14、#Workは通常mergeなしの検証専用snapshotを作成して、以下の固定版を検査しました。
+
+| 役割 | exact SHA | 対象 |
+| --- | --- | --- |
+| main | 128429482e02d96afe0123ee7da023256094dfca | 基準 |
+| #1826 | 126924b6b8d140675dc3d37895e22d1107cfc0b7 | tools/reference-studio-host-qualification/ |
+| #1827 | c41ea85729c3a73d11827d16ebb797555026cba6 | tools/reference-studio-host-boundary/ |
+
+実行環境は WSL Ubuntu、Linux-native /tmp/tei-studio-verification-sPkOXK、Go 1.26.9です。次の実行がともに exit 0 と報告されました。
+
+~~~sh
+go test -count=1 -v ./tools/reference-studio-host-qualification ./tools/reference-studio-host-boundary
+go vet ./tools/reference-studio-host-qualification ./tools/reference-studio-host-boundary
+~~~
+
+**報告されたPASS範囲:** #6のCLI比較10 subcases＋read-only baseline 2件、#10のHost境界4件です。**これらは上述の固定ファイル組合せに対する結果だけ**です。#1043は合成Session、#1529はDraft markerであり、Wails、実IdP、実ブラウザー・実Desktop WebView、PoC A本体の合格ではありません。#6の今回の追加headはこの検査対象に含まれていません。
+
+## #1832のGo Host Bridgeとの3者比較（新規・未実行）
+
+#2のDraft PR #1832（exact fb52692dd518d930d696464e46962d8382969d7c）が提供する internal/studiohost.ReadOnly を利用する、studiohost_parity_test.go を追加しています。このテストにはビルドタグ studiohost_parity を付け、**依存するPR #1832が未統合の通常mainで既存テストを壊さない**ようにしました。
+
+比較方法は、実CLIをGo buildした別プロセスとして実行し、別途呼んだ既存Go Operationと、実際のReadOnly Go Bridgeを3経路で照合します。固定allowlistのWorkspace IDを明示的に設定し、正常・構文/意味診断・load失敗、catalog成功/失敗、subject成功/欠落/不正/未対応を扱います。Hostの ok=true と WorkspaceのValidを混同せず、失敗codeとstage、成功時のfingerprint・出典・診断を比較します。期待値はCLIやHost実装をコピーせず、既存Go Operationを独立に実行して得ます。
+
+**検証対象と手順（まだ実行していません）:** #8の横断runbookに従い、main 128429482e02d96afe0123ee7da023256094dfca の検証専用checkoutへ、現在の#1826から tools/reference-studio-host-qualification/、#1832 exact fb52692dd518d930d696464e46962d8382969d7c から internal/studiohost/ のみを取り出します。参照した両headのSHAと変更pathを記録し、原branchやmain、他担当の原本へ書き込みません。**Draft PRのmerge操作はしません。**
+
+~~~sh
+go test -count=1 -v -tags studiohost_parity ./tools/reference-studio-host-qualification
+go vet -tags studiohost_parity ./tools/reference-studio-host-qualification
+~~~
+
+上記はWails Go moduleやGUI・Wails service bindingを呼びません。証明可能なのは、Go Host Bridgeの直接呼出しとCLI／Operation間の結果一致です。実Wails IPC、JS port、ブラウザー、Desktop WebViewの比較は別の検証が必要です。
 
 ## 保留／未実施
 
-| 検査 | 状態 | 要因 |
+| 対象 | 状態 | 制約 |
 | --- | --- | --- |
-| 正常・構文診断・意味診断のCLI/Go比較 | コード追加・未実行 | 対象版のGo環境での試験待ち |
-| load失敗、subject欠落/未対応/不正 | コード追加・未実行 | 同上 |
-| Source Index構築失敗 | **未実装／blocked** | `workspace.Load`が成功し、`BuildSourceIndex`だけが失敗する再現可能fixtureをまだ確定できていない。模擬エラーを業務エラーとして数えない |
-| 実Host結果との3者比較 | **blocked** | #2のread-only API、実起動方法、version、Host拒否の契約が未提示 |
-| Webの2 session・Desktopリソース境界 | #10担当 | #6の合否へ包含しない |
-| ブラウザー・WebView・利用者確認 | **未実施** | Host・画面が未統合 |
+| CLI/Go基線 | **旧固定headでPASS（#Work報告）** | main 1284294 + #1826 126924b6 + #1827 c41ea857、Go1.26.9 |
+| CLI/Go/Go Host Bridgeの3者比較 | **コード追加・未実行** | #1826新head + #1832 exactの固定snapshot検証待ち |
+| Source Index専用失敗 | **blocked** | Load成功・BuildSourceIndex失敗の再現可能なfixtureをまだ確定していない |
+| Wails実通信/JS/Browser/Desktop | **not-run** | Go Bridge直接呼出しとは別。#2/#Workで実Hostビルド・起動を検査 |
+| Web session/イベント/Desktop path境界 | **#10担当** | #6では第二の認証/認可やresource判定を作らない |
+| 利用者確認 | **not-run** | 人が操作した価値の判断は別Evidence |
 
-Hostの応答と比較できるようになった場合も、CLIのtransport envelope（`tei.cli.*/v0`）をHostのAPI仕様として強制せず、**成功/診断/失敗の意味情報**を比較します。権限拒否・transport失敗と意味診断を一つの結果に畳まないでください。Source Index失敗のfixtureが得られない限り、そのケースは未合格として記録します。
+Hostの失敗には WORKSPACE_LOAD_FAILED（load）、SOURCE_INDEX_FAILED（source-index）、subject失敗、OPERATION_FAILED 等があります。WORKSPACE_NOT_ALLOWED等の権限境界は#10担当です。HostやCLIの輸送Envelope、内部の説明メッセージを新しい共通規格として固定しません。
