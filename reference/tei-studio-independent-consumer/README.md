@@ -14,7 +14,7 @@
 | #1825 / consumer | 最新headをPRから再取得 | `reference/tei-studio-independent-consumer/`, `plan/evidence/TEI_STUDIO_POC_EVIDENCE_RUNBOOK_20261014.md` |
 | #1828 / Graph | `36799dba33fe0e19db3f7b56e7af1e18da134a71` | `reference/tei-studio-graph/` |
 | #1829 / Command | `26f47772ed49f5c4a9e1c50026c335783bc5e153` | `reference/tei-studio-command/` |
-| #1830 / Editor | `4970921e613c68e6da29fb603536f2e71fc2d462` | `reference/tei-studio-editor/` |
+| #1830 / Editor | `a7084fe1711cc48eff56fd20e3dc81c508f520a3` | `reference/tei-studio-editor/` |
 
 `git restore --source=<exact-sha> -- <専用path>` のように対象ファイルを取り出す。対象コミットのオブジェクトがローカルにない場合は事前にfetchしてから行う。これは実装のmerge・mainの統合・正式な採用証拠ではない。
 
@@ -50,3 +50,5 @@ python3 browser-e2e.py        # Playwright Python + 実Chromiumがある環境�
 `npm test`中のEditor Port単体試験は、#1830の `editor.ts` が固定snapshotに存在するときだけ実行し、`setDocument`、同一versionで別内容の拒否、`destroy`冪等を確認する。#1830が無い単独#1825 checkoutでは明示SKIPとなる。`browser-e2e.py`は**ビルドした実共通部品**でCodeMirror read-only、ノート切替、Graph横スクロール/ノードクリック、Command success/denied、EditorとGraph/Commandの破棄を検査する。ブラウザー試験が未実行ならPASSと記さない。Desktop WebView、認証、利用者価値、PoC C全体資格はこのconsumerのテストから推定しない。
 
 以前の#Work固定snapshot（main + #1825旧head + #1828旧head + #1829 + #1830）ではWindows Node24.21.0、25中24 PASS・audit URL→パス変換で1 FAIL。この問題は#1825で `fileURLToPath` に修正済みだが、**修正後Windowsで再実行した結果**と区別する。経緯は既存横断手順§9を参照。
+
+#4 Editorは旧head `4970921e…` に対する#Work実CodeMirror検証でCRLF座標ずれが判明し、#4が `a7084fe1…` へ修正済み。snapshotは修正後の `codemirror-coordinates.ts` を含む **`reference/tei-studio-editor/` 全体**を取り出すこと。新headでの実ブラウザー再確認は未実施と区別する。
