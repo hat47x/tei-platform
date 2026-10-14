@@ -124,7 +124,9 @@ func TestTypedRuleRetractionRejectsAbsentStaleOrForgedTargets(t *testing.T) {
 		name string
 		edit func(*Candidate)
 	}{
-		{"stale source", func(c *Candidate) { c.Delta[0].RemoveBusinessRule.SourceFingerprint = "sha256:" + strings.Repeat("0", 64) }},
+		{"stale source", func(c *Candidate) {
+			c.Delta[0].RemoveBusinessRule.SourceFingerprint = "sha256:" + strings.Repeat("0", 64)
+		}},
 		{"missing rule", func(c *Candidate) {
 			c.Delta[0].RemoveBusinessRule.ID = "sales.order_line.unseen"
 			c.Delta[0].RemoveBusinessRule.Symbol = "unseen"
@@ -133,16 +135,28 @@ func TestTypedRuleRetractionRejectsAbsentStaleOrForgedTargets(t *testing.T) {
 			c.Delta[0].Op = opRemoveFunctionalDependency
 			c.Delta[1].Op = opRemoveCandidateKey
 		}},
-		{"wrong symbol", func(c *Candidate) { c.Delta[0].RemoveBusinessRule.Symbol = "wrong" }},
+		{"wrong symbol", func(c *Candidate) {
+			c.Delta[0].RemoveBusinessRule.Symbol = "wrong"
+		}},
 		{"foreign Data", func(c *Candidate) {
 			c.Delta[0].RemoveBusinessRule.Data = "sales.other"
 			c.Delta[0].RemoveBusinessRule.ID = "sales.other.business_line"
 		}},
-		{"bad fingerprint", func(c *Candidate) { c.Delta[0].RemoveBusinessRule.SourceFingerprint = "unguarded" }},
-		{"forged placement", func(c *Candidate) { c.Delta[0].Placement = "../danger" }},
-		{"extra payload", func(c *Candidate) { c.Delta[0].AddRelation = &AddRelationSpec{} }},
-		{"duplicate retraction", func(c *Candidate) { c.Delta[1] = c.Delta[0] }},
-		{"stale revision", func(c *Candidate) { c.BaseModelRevision = "sha256:" + strings.Repeat("f", 64) }},
+		{"bad fingerprint", func(c *Candidate) {
+			c.Delta[0].RemoveBusinessRule.SourceFingerprint = "unguarded"
+		}},
+		{"forged placement", func(c *Candidate) {
+			c.Delta[0].Placement = "../danger"
+		}},
+		{"extra payload", func(c *Candidate) {
+			c.Delta[0].AddRelation = &AddRelationSpec{}
+		}},
+		{"duplicate retraction", func(c *Candidate) {
+			c.Delta[1] = c.Delta[0]
+		}},
+		{"stale revision", func(c *Candidate) {
+			c.BaseModelRevision = "sha256:" + strings.Repeat("f", 64)
+		}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
