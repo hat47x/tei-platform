@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"os"
 	"strings"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
@@ -47,6 +48,11 @@ func main() {
 	flag.Var(&paths, "workspace", "read-only allowed workspace directory (repeatable)")
 	flag.IntVar(&port, "port", 43123, "loopback HTTP port for server build")
 	flag.Parse()
+	// Wails server mode honors WAILS_SERVER_HOST over ServerOptions.Host.
+	// Do not let inherited environment turn this local-only PoC into a public listener.
+	if host, set := os.LookupEnv("WAILS_SERVER_HOST"); set && host != "127.0.0.1" {
+		log.Fatal("WAILS_SERVER_HOST must be unset or exactly 127.0.0.1 for this read-only PoC")
+	}
 	if port < 1 || port > 65535 {
 		log.Fatal("port must be between 1 and 65535")
 	}
