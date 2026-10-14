@@ -46,14 +46,14 @@ type Selection struct {
 // Host acceptance, trusted Builder proof or a newly minted Artifact Lock.
 // The present E1 builder uses one common source T for both physical units.
 type MeasuredE1Pair struct {
-	ApplicationID              string
-	HandoverBaselineID         string
-	BaselineRepositoryRevision string
+	ApplicationID               string
+	HandoverBaselineID          string
+	BaselineRepositoryRevision  string
 	BrowserAndAPISourceRevision string
-	BrowserSHA256              string
-	BrowserBytes               int64
-	APISHA256                  string
-	APIBytes                   int64
+	BrowserSHA256               string
+	BrowserBytes                int64
+	APISHA256                   string
+	APIBytes                    int64
 }
 
 // FromMeasuredE1Pair adapts the currently generated two-unit observation to
