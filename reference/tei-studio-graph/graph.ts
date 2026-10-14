@@ -103,7 +103,8 @@ export function mountReadonlyGraph(
   input: unknown,
   options: GraphOptions = {},
 ): MountedGraph {
-  if (!container || typeof container.appendChild !== "function" ||
+  if (!container || !options || typeof options !== "object" ||
+      typeof container.appendChild !== "function" ||
       !container.ownerDocument ||
       typeof container.ownerDocument.createElementNS !== "function" ||
       (options.onSelect !== undefined && typeof options.onSelect !== "function")) {
