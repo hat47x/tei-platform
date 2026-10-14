@@ -2,16 +2,22 @@
 import { EditorState } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import { lintGutter, setDiagnostics } from "@codemirror/lint";
+import { CodeMirrorCoordinates } from "./codemirror-coordinates.ts";
 import type { RendererFactory, EditorRenderer, EditorSnapshot, OffsetRange } from "./editor.ts";
 
 /** Injectable renderer used in a browser or Desktop WebView with the same UI assets. */
 export const codeMirrorRenderer: RendererFactory<HTMLElement> = {
   mount(parent, initial, onSelection): EditorRenderer {
     if (!parent) throw new Error("EDITOR_PARENT_REQUIRED");
+    // All public snapshots/selection notifications use the ORIGINAL Source's
+    // UTF-16 offsets. Only the renderer sees CodeMirror's LF-normalized text.
+    let coordinates = new CodeMirrorCoordinates(initial.text);
+    let disposed = false;
+    let programmaticDispatch = false;
     const view = new EditorView({
       parent,
       state: EditorState.create({
-        doc: initial.text,
+        doc: coordinates.text,
         extensions: [
           EditorState.readOnly.of(true),
           EditorView.editable.of(false),
@@ -19,40 +25,54 @@ export const codeMirrorRenderer: RendererFactory<HTMLElement> = {
           EditorView.contentAttributes.of({ "aria-label": "Read-only source text" }),
           lintGutter(),
           EditorView.updateListener.of(update => {
-            if (!update.selectionSet || update.docChanged) return;
+            if (disposed || programmaticDispatch || !update.selectionSet || update.docChanged) return;
             const main = update.state.selection.main;
-            onSelection({ from: main.from, to: main.to });
+            onSelection(coordinates.rangeToSource({ from: main.from, to: main.to }));
           })
         ]
       })
     });
-    let disposed = false;
     function check(): void { if (disposed) throw new Error("EDITOR_RENDERER_DISPOSED"); }
     function render(snapshot: EditorSnapshot): void {
       check();
+      // Validate all positions against the next Source BEFORE dispatching any
+      // UI mutation. Rebuild even when a CRLF->LF change leaves view text equal.
+      const next = new CodeMirrorCoordinates(snapshot.text);
+      const selected = next.rangeToView(snapshot.selection);
+      const diagnostics = snapshot.diagnostics.map(({ from, to, message, severity }) => ({
+        ...next.rangeToView({ from, to }), message, severity
+      }));
       const before = view.state.doc.toString();
-      if (before !== snapshot.text) {
-        view.dispatch({ changes: { from: 0, to: before.length, insert: snapshot.text },
-          selection: { anchor: snapshot.selection.from, head: snapshot.selection.to } });
-      } else {
-        const main = view.state.selection.main;
-        if (main.from !== snapshot.selection.from || main.to !== snapshot.selection.to) {
-          view.dispatch({ selection: {
-            anchor: snapshot.selection.from, head: snapshot.selection.to
-          } });
+      programmaticDispatch = true;
+      try {
+        if (before !== next.text) {
+          view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: next.text },
+            selection: { anchor: selected.from, head: selected.to } });
+        } else {
+          const main = view.state.selection.main;
+          if (main.from !== selected.from || main.to !== selected.to) {
+            view.dispatch({ selection: { anchor: selected.from, head: selected.to } });
+          }
         }
+        coordinates = next;
+        view.dispatch(setDiagnostics(view.state, diagnostics));
+      } finally {
+        programmaticDispatch = false;
       }
-      view.dispatch(setDiagnostics(view.state,
-        snapshot.diagnostics.map(({ from, to, message, severity }) => ({
-          from, to, message, severity
-        }))));
     }
     render(initial);
     return {
       render,
       select(range: OffsetRange) {
         check();
-        view.dispatch({ selection: { anchor: range.from, head: range.to }, scrollIntoView: true });
+        const selection = coordinates.rangeToView(range);
+        programmaticDispatch = true;
+        try {
+          view.dispatch({ selection: { anchor: selection.from, head: selection.to },
+            scrollIntoView: true });
+        } finally {
+          programmaticDispatch = false;
+        }
       },
       focus() { check(); view.focus(); },
       dispose() { if (disposed) return; disposed = true; view.destroy(); }
