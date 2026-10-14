@@ -1,26 +1,29 @@
 import { notes } from './notes.mjs';
 import { journalGraph } from './journal-graph.mjs';
+import { mountReadonlyGraph } from '../tei-studio-graph/graph.ts';
 
-// This consumer uses the exact export documented by #9, not an imitation.
-// .generated/graph.mjs is built locally from #9's graph.ts, never vendored.
+// Same exact #9 Graph module used by Studio; esbuild resolves and compiles
+// the original TypeScript. No copied renderer or raw .ts browser request.
 const slot = document.getElementById('graph-slot');
 const picker = document.getElementById('note-picker');
-try {
-  const { mountReadonlyGraph } = await import('./.generated/graph.mjs');
-  if (typeof mountReadonlyGraph !== 'function') throw new Error('missing_export');
-  slot.replaceChildren();
-  const graph = mountReadonlyGraph(slot, journalGraph(), {
-    onSelect(noteId) {
-      if (!notes.some(note => note.id === noteId)) return;
-      picker.value = noteId;
-      picker.dispatchEvent(new Event('change'));
-    },
-  });
-  graph.setSelectedNode(picker.value);
-  picker.addEventListener('change', () => graph.setSelectedNode(picker.value));
-  window.addEventListener('pagehide', () => graph.dispose(), { once: true });
-} catch (error) {
-  // An unavailable / unbuildable provider must remain BLOCKED, not a fake renderer.
-  slot.textContent = 'BLOCKED: shared Graph source/build not available; see README.';
-  console.warn('Shared Graph not connected:', error);
+slot.replaceChildren();
+const graph = mountReadonlyGraph(slot, journalGraph(), {
+  onSelect(noteId) {
+    if (!notes.some(note => note.id === noteId)) return;
+    picker.value = noteId;
+    picker.dispatchEvent(new Event('change'));
+  },
+});
+slot.dataset.lifecycle = 'mounted';
+graph.setSelectedNode(picker.value);
+function syncSelection() { graph.setSelectedNode(picker.value); }
+picker.addEventListener('change', syncSelection);
+let released = false;
+function release() {
+  if (released) return;
+  released = true;
+  picker.removeEventListener('change', syncSelection);
+  graph.dispose();
+  slot.dataset.lifecycle = 'disposed';
 }
+window.addEventListener('pagehide', release, { once: true });
