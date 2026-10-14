@@ -149,12 +149,12 @@ func referenceQuery(t *testing.T, w ir.World) database.QueryContract {
 // authoring. It is not obtained from the Reference Plugin catalog or installed.
 func syntheticOracleResolvedSet(envID core.CanonicalID) plugin.ResolvedSet {
 	return plugin.ResolvedSet{
-		Environment: envID,
+		Environment:  envID,
 		Capabilities: []plugin.ResolvedCapability{{
-			Plugin: plugin.Identity{ID: "research.synthetic.oracle", Version: "1.0.0"},
+			Plugin:     plugin.Identity{ID: "research.synthetic.oracle", Version: "1.0.0"},
 			Capability: plugin.Capability{
-				Kind: plugin.CapabilityContractQueryExecutor,
-				ID: "research.synthetic.customer.query",
+				Kind:              plugin.CapabilityContractQueryExecutor,
+				ID:                "research.synthetic.customer.query",
 				DatabaseProviders: []environment.DatabaseProvider{environment.ProviderOracle},
 			},
 		}},
@@ -164,9 +164,9 @@ func syntheticOracleResolvedSet(envID core.CanonicalID) plugin.ResolvedSet {
 func syntheticBinding(envID, instanceID core.CanonicalID) realization.ContractQueryExecutorBinding {
 	return realization.ContractQueryExecutorBinding{
 		Environment: envID,
-		Instance: instanceID,
-		Target: customerTarget,
-		Executor: "research.synthetic.customer.query",
+		Instance:    instanceID,
+		Target:      customerTarget,
+		Executor:    "research.synthetic.customer.query",
 	}
 }
 
@@ -229,11 +229,11 @@ func TestGoReferenceExecutorNegativeBoundaries(t *testing.T) {
 	instance := referenceInstance(t, env, "order_entry", "master")
 	baseBinding := syntheticBinding(env.ID, instance.ID)
 	type testCase struct {
-		name string
+		name     string
 		bindings []realization.ContractQueryExecutorBinding
-		plugins plugin.ResolvedSet
+		plugins  plugin.ResolvedSet
 		instance core.CanonicalID
-		target realization.ContractQueryTarget
+		target   realization.ContractQueryTarget
 	}
 	badProvider := syntheticOracleResolvedSet(env.ID)
 	badProvider.Capabilities[0].Capability.DatabaseProviders =
@@ -243,13 +243,13 @@ func TestGoReferenceExecutorNegativeBoundaries(t *testing.T) {
 	foreign := baseBinding
 	foreign.Environment = "production"
 	tests := []testCase{
-		{name:"missing", plugins:syntheticOracleResolvedSet(env.ID), instance:instance.ID, target:customerTarget},
-		{name:"foreign_environment", bindings:[]realization.ContractQueryExecutorBinding{foreign}, plugins:syntheticOracleResolvedSet(env.ID), instance:instance.ID, target:customerTarget},
-		{name:"duplicate", bindings:[]realization.ContractQueryExecutorBinding{baseBinding,baseBinding}, plugins:syntheticOracleResolvedSet(env.ID), instance:instance.ID, target:customerTarget},
-		{name:"wrong_provider", bindings:[]realization.ContractQueryExecutorBinding{baseBinding}, plugins:badProvider, instance:instance.ID, target:customerTarget},
-		{name:"wrong_capability_kind", bindings:[]realization.ContractQueryExecutorBinding{baseBinding}, plugins:badKind, instance:instance.ID, target:customerTarget},
-		{name:"wrong_instance", bindings:[]realization.ContractQueryExecutorBinding{baseBinding}, plugins:syntheticOracleResolvedSet(env.ID), instance:"sales_core.dev", target:customerTarget},
-		{name:"wrong_target", bindings:[]realization.ContractQueryExecutorBinding{baseBinding}, plugins:syntheticOracleResolvedSet(env.ID), instance:instance.ID, target:realization.ContractQueryTarget{Database:"master_data",Contract:"master_data.customer",Query:"other"}},
+		{name: "missing", plugins: syntheticOracleResolvedSet(env.ID), instance: instance.ID, target: customerTarget},
+		{name: "foreign_environment", bindings: []realization.ContractQueryExecutorBinding{foreign}, plugins: syntheticOracleResolvedSet(env.ID), instance: instance.ID, target: customerTarget},
+		{name: "duplicate", bindings: []realization.ContractQueryExecutorBinding{baseBinding, baseBinding}, plugins: syntheticOracleResolvedSet(env.ID), instance: instance.ID, target: customerTarget},
+		{name: "wrong_provider", bindings: []realization.ContractQueryExecutorBinding{baseBinding}, plugins: badProvider, instance: instance.ID, target: customerTarget},
+		{name: "wrong_capability_kind", bindings: []realization.ContractQueryExecutorBinding{baseBinding}, plugins: badKind, instance: instance.ID, target: customerTarget},
+		{name: "wrong_instance", bindings: []realization.ContractQueryExecutorBinding{baseBinding}, plugins: syntheticOracleResolvedSet(env.ID), instance: "sales_core.dev", target: customerTarget},
+		{name: "wrong_target", bindings: []realization.ContractQueryExecutorBinding{baseBinding}, plugins: syntheticOracleResolvedSet(env.ID), instance: instance.ID, target: realization.ContractQueryTarget{Database: "master_data",Contract: "master_data.customer",Query: "other"}},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
