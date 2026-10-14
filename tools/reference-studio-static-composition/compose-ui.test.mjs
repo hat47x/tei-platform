@@ -36,6 +36,11 @@ test('duplicate or undeclared visual slot is rejected by existing Kit resolver',
   assert.throws(() => composeUI(unknown), error => error.code === 'unknown_extension_point');
 });
 
+test('two slots cannot silently resolve to the same component', () => {
+  const duplicate = modified(p => { p.uiKit.changes[1].implementation = 'studio.graph'; });
+  assert.throws(() => composeUI(duplicate), /duplicate_ui_component/);
+});
+
 test('framework and version mismatch are not silently recovered', () => {
   const wrongFramework = modified(p => { p.uiKit.framework.major = 2; });
   assert.throws(() => composeUI(wrongFramework), error => error.code === 'framework_mismatch');
