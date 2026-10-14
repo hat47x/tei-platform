@@ -76,7 +76,10 @@ func independentProjectAdviceFixture(t *testing.T, path string) (
 		RuntimeCapabilityFingerprint: ref.Fingerprint,
 		Plugin:                       candidate.Plugin,
 		Artifact:                     plugin.Artifact{Digest: digest},
-		Command:                      pruntime.ProcessCommand{Executable: path, Args: []string{"--tei-expected-dispatch=" + string(dispatchID)}},
+		Command: pruntime.ProcessCommand{
+			Executable: path,
+			Args:       []string{"--tei-expected-dispatch=" + string(dispatchID)},
+		},
 	}
 	return plan, realization, host, &projectAdviceTestBinaryVerifier{path: path},
 		profile, authority
@@ -179,12 +182,12 @@ func TestIndependentProjectAdviceBinaryRejectsUnboundDispatchAndInput(t *testing
 	t.Run("missing-host-launch-binding", func(t *testing.T) {
 		req := pruntime.Request{
 			ProtocolVersion: pruntime.ProtocolVersion,
-			RequestID: "missing-binding",
-			Plugin: realization.Plugin,
-			CapabilityKind: plugin.CapabilityKind(genericProcessDispatchKind),
-			CapabilityID: originalDispatch,
-			Operation: "evaluate-advice",
-			Payload: json.RawMessage(`{"customerCode":"VIP-123"}`),
+			RequestID:       "missing-binding",
+			Plugin:          realization.Plugin,
+			CapabilityKind:  plugin.CapabilityKind(genericProcessDispatchKind),
+			CapabilityID:    originalDispatch,
+			Operation:       "evaluate-advice",
+			Payload:         json.RawMessage(`{"customerCode":"VIP-123"}`),
 		}
 		if _, err := launcher.Invoke(context.Background(),
 			pruntime.ProcessCommand{Executable: path}, req); err == nil {
