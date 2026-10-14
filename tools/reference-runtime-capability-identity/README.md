@@ -140,3 +140,11 @@ codeを含むため、exact-headのfull `tools/repository-health-check.sh` PASS�
 プロセスの入口は既存のProcess Request/Responseの必要項目だけを解釈する**案件所有の薄いアダプター**であり、Runtimeの権限系・Contract Resolver・Business Actionを複製しません。ホストが導出したdispatch IDは、ホスト設定である起動引数から照合する限定的な仕組みです。引数の存在は**Contract Acceptanceを証明しません**。
 
 **未成立**：Contract / Conformance / Resolution Lock / Execution Grantはテスト用合成Evidenceのまま。Pluginの正式Builder・Plugin Lock・署名・発行者、Runtimeのproduction`Registry.Invoke`、実Permission Broker／Lease・fencing、OSのネットワーク／ファイルシステム隔離、業務Action認可は結合していません。Network/Filesystem Enforcerはテスト用記録器です。Linuxの保持FDはTOCTOU低減のみを示し、署名・実OS隔離・完全な本番Admissionを意味しません。
+
+## 既存TEI BuildPlan・BuildArtifactLockとの参照接続（#976）
+
+`project_advice_build_lock_linux_test.go` は、独立して`go build`した案件Go実行体と、既存`plugin.BuildPlan`／`LockBuildOutput`／`VerifyRuntimePluginBuild`を接続します。実ファイル由来のArtifact SHA-256、Go実行コマンドのSHA-256、代表的な案件ソース・`go.mod`のSHA-256をBuildPlanに保持し、実行体のdigestとRuntime Plugin Lock、Generic Runtime Refが一致することをテストします。加えて、選択したソースのdigest、builder、build契約、Target、Artifact、Runtime Provider／Plugin Lockが変わった場合に旧BuildPlan／Lockの再利用が拒否されることを確認します。既存`PinLinuxProcess`による実ファイル検査・子プロセス実行も同じ試験で通します。
+
+**このBuildPlanはテスト用観測記録であり、正式なBuilder発行結果ではありません。** 特に列挙したソースは、案件Goファイルと`go.mod`の代表例だけです。Go標準ライブラリ、間接依存、ビルドタグ、全環境変数、Goツールチェーン全体の**完全なSource Closureではなく**、Builderの署名・契約発行権限・再現性・信頼根拠も証明しません。また旧`plugin.Definition`はここでは試験用のProcess形だけで、案件Service Contract／ConformanceのAccepted証跡ではありません。従ってBuildPlan/Artifact Lockの整合だけを根拠に実行権限を付与してはなりません。
+
+本番移行では、既存セルフビルドのSource Closureと正式Builder受理、現行HostのContract/Provider Acceptance Reader、既存Execution Authorityを同一exact artifactへ接続することが必要です。二重Builder・Resolver・Authorityは追加しません。
