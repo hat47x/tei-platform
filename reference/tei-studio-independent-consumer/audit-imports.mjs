@@ -5,11 +5,11 @@ import { extname, dirname, resolve, relative, isAbsolute } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const forbidden = [
-  /(^|[/@])tei(?:-platform)?(?:\\/|$)/i,
-  /(?:^|\\/)internal\\/(?:operations|desktophost|servicehost)(?:\\/|$)/i,
-  /(?:^|\\/)(?:workspace|acceptance|semantic-subject)(?:\\/|$)/i,
+  /(^|[/@])tei(?:-platform)?(?:\/|$)/i,
+  /(?:^|\/)internal\/(?:operations|desktophost|servicehost)(?:\/|$)/i,
+  /(?:^|\/)(?:workspace|acceptance|semantic-subject)(?:\/|$)/i,
 ];
-const importPattern = /\\b(?:import|export)\\s+(?:[^'"`\\n]*?\\s+from\\s*)?['"]([^'"\\n]+)['"]|\\bimport\\s*\\(\\s*['"]([^'"\\n]+)['"]\\s*\\)/g;
+const importPattern = /\b(?:import|export)\s+(?:[^'"`\n]*?\s+from\s*)?['"]([^'"\n]+)['"]|\bimport\s*\(\s*['"]([^'"\n]+)['"]\s*\)/g;
 const extensions = ['', '.mjs', '.js', '.ts', '.mts', '/index.mjs', '/index.js'];
 
 export function auditImportGraph(entryFiles, root) {
@@ -27,7 +27,7 @@ export function auditImportGraph(entryFiles, root) {
     if (visited.has(physical)) return;
     visited.add(physical);
     const source = readFileSync(physical, 'utf8');
-    if (/\\bimport\\s*\\(\\s*(?!['"])/.test(source)) errors.push(`computed dynamic import: ${physical}`);
+    if (/\bimport\s*\(\s*(?!['"])/.test(source)) errors.push(`computed dynamic import: ${physical}`);
     for (const match of source.matchAll(importPattern)) {
       const specifier = match[1] ?? match[2];
       if (forbidden.some(re => re.test(specifier))) {
