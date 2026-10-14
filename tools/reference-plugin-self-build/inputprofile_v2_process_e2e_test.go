@@ -144,17 +144,68 @@ func TestOptInV2InputWithExactV1ProcessEngine(t *testing.T) {
 				!strings.HasPrefix(evidence.CanonicalInputDigest, "sha256:") {
 				t.Fatalf("missing exact ingress provenance: %+v", evidence)
 			}
+			// Bind the same explicit Host-selected v2 profile and exact locks
+			// through the published input admission API before launching the
+			// actual process. The supplied values are a reference fixture,
+			// not independently verified Production Host authorization.
+			planFingerprint, err := plugin.BuildPlanFingerprint(plan)
+			if err != nil {
+				t.Fatal(err)
+			}
+			selection := inputprofile.BuildInputSelection{
+				Profile:                    inputprofile.PluginDefinitionJSONV2,
+				LockedSourceFingerprint:    lockedSourceFingerprint,
+				LockedBuildPlanFingerprint: planFingerprint,
+			}
+			prepared, err := inputprofile.PreparePluginPackageInputs(selection, source, plan, []byte(tc.raw))
+			if err != nil {
+				t.Fatalf("exact Host input binding rejected v2 fixture: %v", err)
+			}
+			canonicalInput, err := canonical.JSON()
+			if err != nil {
+				t.Fatal(err)
+			}
+			preparedInput, err := prepared.Inputs["pluginDefinition"].JSON()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !bytes.Equal(preparedInput, canonicalInput) {
+				t.Fatal("Host-bound input differs from the independently canonicalized v2 input")
+			}
+			if prepared.Evidence.OriginalInputDigest != evidence.OriginalInputDigest ||
+				prepared.Evidence.CanonicalInputDigest != evidence.CanonicalInputDigest ||
+				prepared.Evidence.SourceFingerprint != lockedSourceFingerprint ||
+				prepared.Evidence.BuildPlanFingerprint != planFingerprint ||
+				prepared.Evidence.PluginDefinitionFingerprint != plan.PluginDefinitionFingerprint {
+				t.Fatalf("exact Host-bound ingress lost input provenance: %+v", prepared.Evidence)
+			}
+			wrongPlan := selection
+			wrongPlan.LockedBuildPlanFingerprint = "unapproved-plan"
+			if _, err := inputprofile.PreparePluginPackageInputs(wrongPlan, source, plan, []byte(tc.raw)); err == nil {
+				t.Fatal("unapproved BuildPlan reached process input preparation")
+			}
+			withoutProfile := selection
+			withoutProfile.Profile = ""
+			if _, err := inputprofile.PreparePluginPackageInputs(withoutProfile, source, plan, []byte(tc.raw)); err == nil {
+				t.Fatal("missing explicit v2 selection reached process input preparation")
+			}
 			var previous []byte
 			for run := 0; run < 2; run++ {
-				got, err := evaluateWithExactEngine(engineExecutable, engineDigest, sourcePath, source, map[string]transform.Value{
-					"buildPlan":        planValue,
-					"pluginDefinition": canonical,
-				})
+				got, err := evaluateWithExactEngine(engineExecutable, engineDigest, sourcePath, source, prepared.Inputs)
 				if err != nil {
 					t.Fatalf("exact v1 process with v2 ingress failed (run %d): %v", run+1, err)
 				}
 				if got.Output.Kind != transform.ValueBytes || !bytes.Equal(got.Output.Bytes, oracle) {
 					t.Fatalf("exact process SB-1 output differed from Go oracle (run %d)", run+1)
+				}
+				observed, err := inputprofile.ObservePackageOutput(prepared.Evidence, got)
+				if err != nil {
+					t.Fatalf("exact process output was not observed as the admitted SB-1 package (run %d): %v", run+1, err)
+				}
+				if observed.Input != prepared.Evidence ||
+					observed.OutputDigest != plugin.BuildOutputDigest(oracle) ||
+					observed.Steps != got.Steps {
+					t.Fatalf("exact process result lost input/output evidence (run %d): %+v", run+1, observed)
 				}
 				if previous != nil && !bytes.Equal(previous, got.Output.Bytes) {
 					t.Fatal("repeated exact process execution changed bytes")
@@ -164,10 +215,6 @@ func TestOptInV2InputWithExactV1ProcessEngine(t *testing.T) {
 			var manifest plugin.PluginPackageManifest
 			if err := json.Unmarshal(previous, &manifest); err != nil {
 				t.Fatalf("exact process emitted invalid SB-1 manifest: %v", err)
-			}
-			planFingerprint, err := plugin.BuildPlanFingerprint(plan)
-			if err != nil {
-				t.Fatal(err)
 			}
 			if manifest.BuildPlanFingerprint != planFingerprint ||
 				manifest.PluginDefinitionFingerprint != plan.PluginDefinitionFingerprint {
