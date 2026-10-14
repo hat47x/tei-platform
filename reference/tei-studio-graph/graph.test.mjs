@@ -41,8 +41,10 @@ class FakeElement {
   }
   dispatch(name, key) {
     let prevented = false;
-    for (const listener of this.listeners.get(name) ?? []) {
-      listener({key, preventDefault() { prevented = true; }});
+    const event = {key, preventDefault() { prevented = true; }};
+    // SVG click/key events bubble from a circle/text child to the <g> button.
+    for (let current = this; current; current = current.parentNode) {
+      for (const listener of current.listeners.get(name) ?? []) listener(event);
     }
     return prevented;
   }
@@ -198,4 +200,30 @@ test("narrow 240px panel scrolls the full-size 480px graph without shrinking lab
   assert.equal(view.getSelectedNode(), "publish");
   view.dispose();
   assert.equal(root.children.length, 0);
+});
+
+test("transparent node centers are pointer targets and click bubbles to the selector", () => {
+  const root = container();
+  const selected = [];
+  const view = mountReadonlyGraph(root, buildPipelineGraph, {onSelect: id => selected.push(id)});
+  const groups = all(root, "g");
+  const circle = groups[1].children.find(child => child.tagName === "circle");
+  assert.ok(circle);
+  assert.equal(circle.getAttribute("fill"), "transparent");
+  assert.equal(circle.getAttribute("pointer-events"), "all");
+  assert.equal(circle.getAttribute("stroke"), "currentColor");
+  assert.equal(circle.getAttribute("r"), "12");
+
+  // The actual pointer target is the circle, not the parent <g>.
+  circle.dispatch("click");
+  assert.deepEqual(selected, ["check"]);
+  assert.equal(view.getSelectedNode(), "check");
+  assert.equal(groups[1].getAttribute("aria-pressed"), "true");
+
+  // The keyboard listener remains on <g> and supports both activation keys.
+  assert.equal(groups[2].dispatch("keydown", "Enter"), true);
+  assert.equal(groups[0].dispatch("keydown", " "), true);
+  assert.deepEqual(selected, ["check", "publish", "source"]);
+  assert.equal(view.getSelectedNode(), "source");
+  view.dispose();
 });
