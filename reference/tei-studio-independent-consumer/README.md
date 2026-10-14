@@ -33,7 +33,7 @@ node check-components.mjs           # 既定では BLOCKED / exit 2
 ## 検証の区別
 
 - 本リポジトリで確認可能: 読書ノートの純粋な選択処理、別アプリ入口、自己完結するimport graph、未提供部品へのBLOCKED表示。
-- まだ未確認: 共通Editor/Commandのimport、Graph原本の同一checkoutへの統合と実描画、Studioと同一の部品実体を使った2 consumer実証、イベント・権限拒否・lifecycle、実ブラウザーやWebViewでの描画、人による利用評価。
+- まだ未確認: 共通Editorの接続、Graph/Command原本の同一checkoutへの統合と実描画、Studioと同一の部品実体を使った2 consumer実証、イベント・権限拒否・lifecycle、実ブラウザーやWebViewでの描画、人による利用評価。
 - [UI Composition Kit #997](https://github.com/hat47x/tei-platform/issues/997) と [Issue #1824](https://github.com/hat47x/tei-platform/issues/1824) が共通化の設計境界。TEIのstdデータ型や標準PluginをこのReferenceから新規定義しない。
 
 ## #9 Graphへの具体的接続（作業中）
@@ -50,3 +50,17 @@ node audit-imports.mjs main.mjs journal-graph.mjs graph-entry.mjs
 ```
 
 生成した `.generated/graph.mjs` はgit管理せず、#9のSourceのSHA-256を生成物冒頭へ記録する。Graphの元コードを別consumerへ複製しない。#9のbranch上にGraphが存在していても、**#8 branchにはまだ含まれない**ので、上記ビルドは現在BLOCKED（exit 2）。#9がmainへ統合されるか、統合ブランチを正規に用意してから再検証する。実ブラウザー描画の実施証拠は現時点で未取得。
+
+## #5 Commandへの具体的接続（作業中）
+
+#5の `reference/tei-studio-command/command.ts` にある実export `mountCommandPanel(target, options)` を `command-entry.mjs` から呼ぶ。読書ノートの関連項目を数えるコマンドはconsumer側の `invoke` が明示成功を返し、削除要求はconsumerが拒否する。部品に権限判定を委ねない。ページ破棄時は `dispose()` を呼ぶ。
+
+同一checkoutに#5の原本が揃った場合のみ:
+
+```bash
+cd reference/tei-studio-independent-consumer
+node build-command.mjs # Node.js >=22.16; ../tei-studio-command/command.tsを型除去
+node audit-imports.mjs main.mjs graph-entry.mjs command-entry.mjs
+```
+
+`.generated/command.mjs` は管理対象から除外し、原本のSHA-256を先頭に記録する。#5が別ブランチで提供済みでも#8のcheckoutには未統合であり、現在の実呼出し・実DOM表示はBLOCKED。GraphとCommandを用いる完全な検査はそれぞれの提供元が一つのcheckoutに揃った時点で実施する。
