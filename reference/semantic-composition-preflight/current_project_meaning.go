@@ -30,7 +30,7 @@ type ProjectMeaningSelection struct {
 // The receipt must not be constructed from a CLI parameter, imported manifest,
 // self-attested JSON, or the preflight's signature verification result.
 type CurrentProjectMeaning struct {
-	Source   sourceacceptance.Record  `json:"source"`
+	Source   sourceacceptance.Record   `json:"source"`
 	Selected []ProjectMeaningSelection `json:"selected"`
 }
 
