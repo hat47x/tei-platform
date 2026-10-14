@@ -17,6 +17,8 @@ const (
 	opAddRelation                 = "add-relation"
 	opAddCandidateKey             = "add-candidate-key"
 	opAddFunctionalDependency     = "add-functional-dependency"
+	opRemoveCandidateKey          = "remove-candidate-key"
+	opRemoveFunctionalDependency  = "remove-functional-dependency"
 	opAddEnvironmentBinding       = "add-environment-binding"
 	opAddApplication              = "add-application"
 	opAddReferencePattern         = "add-reference-pattern"
@@ -39,6 +41,7 @@ type Operation struct {
 	AddRelation             *AddRelationSpec             `json:"addRelation,omitempty"`
 	AddCandidateKey         *AddCandidateKeySpec         `json:"addCandidateKey,omitempty"`
 	AddFunctionalDependency *AddFunctionalDependencySpec `json:"addFunctionalDependency,omitempty"`
+	RemoveBusinessRule      *RemoveBusinessRuleSpec      `json:"removeBusinessRule,omitempty"`
 	Application             *ApplicationSpec             `json:"application,omitempty"`
 	Pattern                 *PatternSpec                 `json:"pattern,omitempty"`
 
@@ -123,6 +126,16 @@ type AddFunctionalDependencySpec struct {
 	Dependents   []string `json:"dependents"`
 }
 
+// RemoveBusinessRuleSpec names an existing logical assertion to retract.
+// sourceFingerprint pins the complete current canonical source file;
+// baseModelRevision and the normal review/accept boundary remain mandatory.
+type RemoveBusinessRuleSpec struct {
+	Data              string `json:"data"`
+	ID                string `json:"id"`
+	Symbol            string `json:"symbol"`
+	SourceFingerprint string `json:"sourceFingerprint"`
+}
+
 // ApplicationSpecは、Environment bindingを含まないApplication定義の意味を表す。
 // usesSemanticとdatabasesの順序は、authoredされたsourceの順序としてそのまま保つ。
 type ApplicationSpec struct {
@@ -198,6 +211,7 @@ func onlyFields(op Operation, allowed ...string) error {
 		"attribute": op.Attribute != "", "relation": op.Relation != "",
 		"data": op.Data != nil, "addRelation": op.AddRelation != nil,
 		"addCandidateKey": op.AddCandidateKey != nil, "addFunctionalDependency": op.AddFunctionalDependency != nil,
+		"removeBusinessRule": op.RemoveBusinessRule != nil,
 		"application": op.Application != nil, "pattern": op.Pattern != nil,
 	}
 	for _, name := range allowed {
@@ -224,6 +238,8 @@ func normalizeOperation(op Operation) (Operation, error) {
 		return normalizeAddCandidateKey(op)
 	case opAddFunctionalDependency:
 		return normalizeAddFunctionalDependency(op)
+	case opRemoveCandidateKey, opRemoveFunctionalDependency:
+		return normalizeRemoveBusinessRule(op)
 	case opAddEnvironmentBinding:
 		return normalizeAddEnvironmentBinding(op)
 	case opAddApplicationValidationUse:
@@ -233,7 +249,7 @@ func normalizeOperation(op Operation) (Operation, error) {
 	case opAddReferencePattern:
 		return normalizeAddReferencePattern(op)
 	default:
-		return op, fmt.Errorf("operation %q は未対応です（add-validation / add-data / add-relation / add-candidate-key / add-functional-dependency / add-application / add-reference-pattern / add-environment-binding / add-application-validation-use）", op.Op)
+		return op, fmt.Errorf("operation %q は未対応です（add-validation / add-data / add-relation / add-candidate-key / add-functional-dependency / remove-candidate-key / remove-functional-dependency / add-application / add-reference-pattern / add-environment-binding / add-application-validation-use）", op.Op)
 	}
 }
 
@@ -640,6 +656,10 @@ func operationKey(op Operation) string {
 		return "candidate-key:" + op.AddCandidateKey.ID
 	case opAddFunctionalDependency:
 		return "functional-dependency:" + op.AddFunctionalDependency.ID
+	case opRemoveCandidateKey:
+		return "candidate-key:" + op.RemoveBusinessRule.ID
+	case opRemoveFunctionalDependency:
+		return "functional-dependency:" + op.RemoveBusinessRule.ID
 	case opAddEnvironmentBinding:
 		b := op.EnvironmentBinding
 		return "environment-binding:" + b.Environment + "/" + b.Application + "." + b.Alias
