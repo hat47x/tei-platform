@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Reading Journal — independent consumer fixture</title>
+  <style>
+    :root { color-scheme: light dark; font: 16px/1.5 system-ui, sans-serif; }
+    body { max-width: 60rem; margin: 2rem auto; padding: 0 1rem; }
+    header { border-bottom: 1px solid #8888; margin-bottom: 1rem; }
+    .overview { padding: .75rem 1rem; border: 1px solid #8888; border-radius: .4rem; }
+    .components { display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); gap: 1rem; margin-top: 1rem; }
+    .component { padding: 1rem; border: 1px dashed #8888; border-radius: .4rem; }
+    .pending { font-size: .9rem; }
+    select { font: inherit; padding: .4rem; max-width: 100%; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Reading Journal</h1>
+    <p>Independent sample application. No TEI Workspace, Source, or acceptance semantics.</p>
+  </header>
+  <main>
+    <label for="note-picker">Entry</label>
+    <select id="note-picker"></select>
+    <section class="overview" aria-live="polite">
+      <h2 id="note-title"></h2>
+      <p id="note-body"></p>
+      <p>Related entries: <span id="note-links"></span></p>
+    </section>
+    <div class="components">
+      <section class="component" aria-labelledby="editor-title">
+        <h2 id="editor-title">Shared Editor</h2>
+        <div id="editor-slot"><p class="pending">BLOCKED: no provider module has been delivered or imported.</p></div>
+      </section>
+      <section class="component" aria-labelledby="command-title">
+        <h2 id="command-title">Shared Command / Diagnostics</h2>
+        <div id="command-slot"><p class="pending">BLOCKED: no provider module has been delivered or imported.</p></div>
+      </section>
+      <section class="component" aria-labelledby="graph-title">
+        <h2 id="graph-title">Shared Graph</h2>
+        <div id="graph-slot"><p class="pending">BLOCKED: no provider module has been delivered or imported.</p></div>
+      </section>
+    </div>
+  </main>
+  <script type="module" src="./main.mjs"></script>
+</body>
+</html>
