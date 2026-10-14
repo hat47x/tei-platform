@@ -20,23 +20,23 @@ import (
 // subprocessResult is the real tei CLI transport envelope, not a substituted
 // call to a CLI helper. Shared Go operations are called separately in tests.
 type subprocessResult struct {
-	SchemaVersion	string          `json:"schemaVersion"`
-	OK	bool            `json:"ok"`
-	Result	json.RawMessage `json:"result"`
+	SchemaVersion string          `json:"schemaVersion"`
+	OK            bool            `json:"ok"`
+	Result        json.RawMessage `json:"result"`
 	Diagnostics   []struct {
-		Diagnostic	struct {
-			Code	string          `json:"code"`
-			Severity	string          `json:"severity"`
-			Subject	json.RawMessage `json:"subject"`
+		Diagnostic struct {
+			Code     string          `json:"code"`
+			Severity string          `json:"severity"`
+			Subject  json.RawMessage `json:"subject"`
 		} `json:"diagnostic"`
 		Sources []struct {
-			ArtifactPath	string            `json:"artifactPath"`
-			Range	sourceindex.Range `json:"range"`
+			ArtifactPath string            `json:"artifactPath"`
+			Range        sourceindex.Range `json:"range"`
 		} `json:"sources"`
 	} `json:"diagnostics"`
-	Error	*struct {
-		Code	string `json:"code"`
-		Message	string `json:"message"`
+	Error *struct {
+		Code    string `json:"code"`
+		Message string `json:"message"`
 	} `json:"error"`
 }
 
@@ -183,10 +183,10 @@ func TestCLIProcessVersusReadOnlyOperations(t *testing.T) {
 	}
 
 	for _, tc := range []struct {
-		name	string
-		root string
-		exit int
-		errorCode	string
+		name      string
+		root      string
+		exit      int
+		errorCode string
 	}{
 		{name: "valid", root: normal, exit: 0},
 		{name: "syntax-diagnostic", root: syntax, exit: 1},
@@ -237,10 +237,10 @@ func TestCLIProcessVersusReadOnlyOperations(t *testing.T) {
 		}
 	})
 	for _, tc := range []struct {
-		name	string
-		subject sourceindex.Subject
-		exit int
-		errorCode	string
+		name      string
+		subject   sourceindex.Subject
+		exit      int
+		errorCode string
 	}{
 		{name: "subject-success", subject: sourceindex.Subject{Kind: "semantic-data", ID: "sales.order"}},
 		{name: "subject-missing", subject: sourceindex.Subject{Kind: "semantic-data", ID: "sales.no_such_data"}, exit: 1, errorCode: operations.InspectionNotFound},
