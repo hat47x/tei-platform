@@ -99,7 +99,7 @@ func TestCurrentHostAdmissionRejectsDriftRevocationAndIncompleteEvidence(t *test
 		name   string
 		change func(*Snapshot)
 		want   string
-	} {
+	}{
 		{"other-Application", func(s *Snapshot) { s.Selection.ApplicationID = "other" }, "Application B/R"},
 		{"different-Handover-B", func(s *Snapshot) { s.Selection.HandoverBaselineID = "different" }, "Application B/R"},
 		{"different-Handover-R", func(s *Snapshot) { s.Selection.BaselineRepositoryRevision = strings.Repeat("f", 40) }, "Application B/R"},
@@ -144,7 +144,7 @@ func TestCurrentHostAdmissionFailClosedForSourceFailuresAndInvalidSelections(t *
 	for _, tc := range []struct {
 		name   string
 		change func(*Selection)
-	} {
+	}{
 		{"empty-B", func(s *Selection) { s.HandoverBaselineID = "" }},
 		{"invalid-R", func(s *Selection) { s.BaselineRepositoryRevision = "rev" }},
 		{"missing-API", func(s *Selection) { s.Units = s.Units[:1] }},
