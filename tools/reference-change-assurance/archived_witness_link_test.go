@@ -124,7 +124,7 @@ func TestArchivedWitnessMismatchedClaimsNeverQualify(t *testing.T) {
 		{"integration head differs", func(v map[string]map[string]any) { v["web-positive.json"]["integrationHead"] = strings.Repeat("b", 40) }, "INTEGRATION_HEAD_DIFFERS:web-positive.json"},
 		{"wrong witness kind", func(v map[string]map[string]any) { v["web-positive.json"]["evidenceNature"] = "actual-independent-db" }, "UNEXPECTED_WITNESS_NATURE:web-positive.json"},
 		{"false human approval", func(v map[string]map[string]any) { v["workspace-r1.json"]["humanApproval"] = true }, "SYNTHETIC_OR_AUTHORITY_LIMITS_NOT_EXPLICIT"},
-	} 
+	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			before, after, dir, records := setupSyntheticArchivedWitness(t)
