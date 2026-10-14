@@ -158,6 +158,7 @@ export function mountReadonlyGraph(
     svg.style.minWidth = `${graph.width}px`;
     svg.style.maxWidth = "none";
     svg.style.height = "auto";
+    svg.style.fontSize = "14px";
     svg.style.display = "block";
     const groups = new Map<string, NodeVisual>();
     const byId = new Map(graph.nodes.map(n => [n.id, n]));
