@@ -71,7 +71,7 @@ func (p *pathList) Set(v string) error {
 
 func main() {
 	flag.Usage = func() {
-		fmt.Fprintln(os.Stderr, "usage: tei <scenario|commands|inspect|trace|workspace-files|source-index|knowledge-review-plan|knowledge-review-handoff|knowledge-review-disclose|knowledge-data-design-candidate-review|knowledge-context|knowledge-qualify|validate|index|plugin-lock|plugin-resolve|plugin-runtime-plan|observed-index|workbench-model|world|requirements|normalize-postgres-plan|desired-schema|schema-diff|plan-migration|migration-fingerprint|database-reconcile|database-compatibility|application-release-compatibility|release-graph|solution-release-graph|consumer-impact|deployment-simulate|deployment-start|deployment-ready-commands|deployment-record-attempt|deployment-retry|deployment-pause|deployment-resume|deployment-abort|deployment-recovery|deployment-start-recovery|deployment-provider-plan|deployment-reconcile> [options]")
+		fmt.Fprintln(os.Stderr, "usage: tei <scenario|commands|model|inspect|trace|workspace-files|source-index|knowledge-review-plan|knowledge-review-handoff|knowledge-review-disclose|knowledge-data-design-candidate-review|knowledge-context|knowledge-qualify|validate|index|plugin-lock|plugin-resolve|plugin-runtime-plan|observed-index|workbench-model|world|requirements|normalize-postgres-plan|desired-schema|schema-diff|plan-migration|migration-fingerprint|database-reconcile|database-compatibility|application-release-compatibility|release-graph|solution-release-graph|consumer-impact|deployment-simulate|deployment-start|deployment-ready-commands|deployment-record-attempt|deployment-retry|deployment-pause|deployment-resume|deployment-abort|deployment-recovery|deployment-start-recovery|deployment-provider-plan|deployment-reconcile> [options]")
 	}
 	if len(os.Args) < 2 {
 		flag.Usage()
@@ -85,6 +85,16 @@ func main() {
 		}
 		return
 	}
+	if command == "model" {
+		code, err := runModelCommand(os.Args[2:], os.Stdout)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+		}
+		if code != 0 {
+			os.Exit(code)
+		}
+		return
+	}
 	if command == "commands" {
 		if len(os.Args) != 2 {
 			fmt.Fprintln(os.Stderr, "commands does not accept arguments")
@@ -93,8 +103,9 @@ func main() {
 		writeJSON(commandCatalog())
 		return
 	}
+	jsonValidationRequested := command == "validate" && wantsJSONValidation(os.Args[2:])
 	parseMode := flag.ExitOnError
-	if command == "inspect" || command == "trace" {
+	if command == "inspect" || command == "trace" || jsonValidationRequested {
 		parseMode = flag.ContinueOnError
 	}
 	fs := flag.NewFlagSet(command, parseMode)
@@ -163,6 +174,25 @@ func main() {
 		}
 		if parseErr != nil {
 			code, writeErr := selectedReadOnlyFlagError(os.Stdout, command, parseErr)
+			if writeErr != nil {
+				fmt.Fprintln(os.Stderr, writeErr)
+			}
+			os.Exit(code)
+		}
+	}
+	if command == "validate" && jsonValidationRequested {
+		if parseErr == nil {
+			parseErr = validateJSONValidationFlags(fs)
+		}
+		if parseErr != nil {
+			code, writeErr := invalidJSONValidationParse(os.Stdout, parseErr)
+			if writeErr != nil {
+				fmt.Fprintln(os.Stderr, writeErr)
+			}
+			os.Exit(code)
+		}
+		if !*jsonValidation {
+			code, writeErr := invalidJSONValidationArguments(os.Stdout)
 			if writeErr != nil {
 				fmt.Fprintln(os.Stderr, writeErr)
 			}

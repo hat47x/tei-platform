@@ -1,0 +1,157 @@
+name: TEI 固定コミットの実Go・Nodeオフライン横断Smoke
+
+# #1119 のオフライン手順を、Go/Nodeスタブなしで一回実行する狭い検査。
+# このActionsは依存物の事前準備にのみネットワークを使い、Smokeは
+# GOPROXY=off / GOSUMDB=off・git fetch禁止の固定Gitコミットに限定する。
+# CI内での成功は、Actionsなしの任意の現場PCでの成功や製品Gate PASSではない。
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    types: [opened, reopened, synchronize, ready_for_review]
+    paths:
+      - '.github/workflows/tei-critical-path-offline-real-ci.yml'
+      - 'tools/reference-critical-path-evidence-audit/compose-smoke.sh'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/tei-critical-path-offline-real-ci.yml'
+      - 'tools/reference-critical-path-evidence-audit/compose-smoke.sh'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tei-offline-real-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  real-go-node-pinned:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      GOENV: off
+      GOWORK: off
+      GOFLAGS: ''
+      GOTOOLCHAIN: local
+    steps:
+      - name: 完全履歴と固定HEADを取得
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Smoke前のコミットと作業領域を検査
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$(git rev-parse --is-shallow-repository)" = false
+          test -z "$(git config --get extensions.partialclone || :)"
+          case "$(git remote get-url origin)" in
+            https://github.com/hat47x/tei-platform|https://github.com/hat47x/tei-platform.git) ;;
+            *) echo "unexpected origin URL" >&2; exit 1 ;;
+          esac
+          if [[ "$GITHUB_EVENT_NAME" == pull_request ]]; then
+            [[ "$GITHUB_REF" =~ ^refs/pull/[0-9]+/merge$ ]]
+            read -r merge base head extra < <(git rev-list --parents -n 1 HEAD)
+            test -z "${extra:-}"
+            test "$merge" = "$GITHUB_SHA"
+            test "$head" = "${{ github.event.pull_request.head.sha }}"
+            [[ "$base" =~ ^[0-9a-f]{40}$ ]]
+          fi
+          test -z "$(git ls-files -v | awk '/^[a-zS]/ {print}')"
+          test -z "$(git status --porcelain=v1 --untracked-files=all --ignored=matching)"
+
+      - name: go.mod指定版のGoを用意
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: go.mod
+          check-latest: false
+          cache: false
+
+      - name: オフライン実行前にGo依存を取得
+        shell: bash
+        run: |
+          set -euo pipefail
+          go version
+          node --version
+          go mod download
+          test -z "$(git status --porcelain=v1 --untracked-files=all --ignored=matching)"
+
+      # Optional diagnostic: reproduce the first Studio->Shared Acceptance
+      # preview from the same source WITHOUT modifying the Studio owner's code.
+      - name: 受理SourceへのStudio候補を単独診断
+        shell: bash
+        run: |
+          set -euo pipefail
+          GOPROXY=off GOSUMDB=off GOTOOLCHAIN=local node --input-type=module <<'NODE'
+          import { spawnSync } from "node:child_process";
+          import { mkdtempSync, cpSync, rmSync, writeFileSync } from "node:fs";
+          import { tmpdir } from "node:os";
+          import { join } from "node:path";
+          import { candidateFromEdit } from "./reference/studio-authoring/bridge.mjs";
+          const tmp = mkdtempSync(join(tmpdir(), "tei-cp-diagnostic-"));
+          const ws = join(tmp, "workspace");
+          const go = (args) => {
+            const r = spawnSync("go", ["run", ...args], { encoding: "utf8" });
+            if (r.error) throw r.error;
+            return r;
+          };
+          try {
+            cpSync("reference/workspace", ws, { recursive: true });
+            const rev = go(["./tools/reference-shared-acceptance", "revision", "-workspace", ws]);
+            const world = go(["./cmd/tei", "world", "-workspace", ws]);
+            if (rev.status !== 0 || world.status !== 0) {
+              throw new Error("base read failed: " + rev.stderr + " / " + world.stderr);
+            }
+            const edit = {
+              schema: "tei.reference.studio-edit/v0", id: "e2e-relation",
+              origin: "studio", intent: "明細から受注へ戻るRelationを追加する",
+              view: "er", subject: "data:sales.order_line",
+              operation: "add-relation", relationID: "sales.order_line.order",
+              symbol: "order", targetData: "sales.order", cardinality: "one"
+            };
+            const candidate = candidateFromEdit(JSON.parse(world.stdout), JSON.parse(rev.stdout).modelRevision, edit);
+            const candidatePath = join(tmp, "candidate.json");
+            writeFileSync(candidatePath, JSON.stringify(candidate) + "\n");
+            const preview = go(["./tools/reference-shared-acceptance", "preview", "-workspace", ws, "-candidate", candidatePath]);
+            let result;
+            try { result = JSON.parse(preview.stdout); } catch { result = {}; }
+            console.log(JSON.stringify({
+              diagnosticOnly: true, productGate: "UNQUALIFIED",
+              previewExitCode: preview.status, previewAcceptable: result.acceptable,
+              stages: (result.stages || []).filter(s => s.status !== "pass").map(s => ({name:s.name,status:s.status})),
+              diagnostics: (result.diagnostics || []).map(d => ({code:d.code,message:d.message})),
+              stderr: preview.stderr
+            }, null, 2));
+          } finally {
+            rmSync(tmp, { recursive:true, force:true });
+          }
+          NODE
+
+      - name: 同一checkoutの実Go・Node横断Smokeを実行
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf 'requestedExactCommit=%s\n' "$GITHUB_SHA"
+          printf 'runnerBlob=%s\n' "$(git rev-parse HEAD:tools/reference-critical-path-evidence-audit/compose-smoke.sh)"
+          log="$RUNNER_TEMP/tei-pinned-offline-real.log"
+          TEI_CP_COMPOSE_MODE=integrated-pinned-offline \
+            TEI_CP_COMPOSE_MAIN="$GITHUB_SHA" \
+            GOPROXY=off GOSUMDB=off GOTOOLCHAIN=local \
+            bash tools/reference-critical-path-evidence-audit/compose-smoke.sh | tee "$log"
+          grep -Fqx 'PINNED_OFFLINE_CROSS_LANE_SMOKE_ONLY_NO_REMOTE_FRESHNESS_NO_PRODUCT_GATE' "$log"
+          grep -Fqx 'remoteFreshness=NOT_CHECKED_offline_operator_pinned' "$log"
+          grep -Fqx "integrationHead=$GITHUB_SHA" "$log"
+          grep -Fqx "main=$GITHUB_SHA" "$log"
+          printf 'VERIFIED_ACTUAL_GO_NODE_LOCAL_PINNED_SMOKE_ONLY_NO_PRODUCT_GATE\n'
+
+      - name: Smoke後の版と作業領域を検査
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test -z "$(git ls-files -v | awk '/^[a-zS]/ {print}')"
+          test -z "$(git status --porcelain=v1 --untracked-files=all --ignored=matching)"

@@ -26,6 +26,7 @@ import (
 	pruntime "tei/internal/plugin/runtime"
 	"tei/internal/validation"
 	"tei/internal/workspace"
+	"tei/tools/internal/gobuilder"
 )
 
 const (
@@ -99,55 +100,77 @@ type evidence struct {
 	RuntimeDefinitionFingerprint       string                         `json:"runtimeDefinitionFingerprint"`
 	RuntimePluginLockFingerprint       string                         `json:"runtimePluginLockFingerprint"`
 	RuntimePluginLock                  plugin.Lock                    `json:"runtimePluginLock"`
+
+	Stage2EngineLockFingerprint       string `json:"stage2EngineLockFingerprint,omitempty"`
+	Stage2HostRegistrationFingerprint string `json:"stage2HostRegistrationFingerprint,omitempty"`
+	Stage2HostApprovalFingerprint     string `json:"stage2HostApprovalFingerprint,omitempty"`
+	Stage2RuntimePolicyFingerprint    string `json:"stage2RuntimePolicyFingerprint,omitempty"`
 }
 
-type goSourceMember struct {
-	Path   string `json:"path"`
-	Digest string `json:"digest"`
-}
+type goSourceMember = gobuilder.SourceMember
 
-type goListModule struct {
-	Path string
-	Dir  string
-}
+type goListModule = gobuilder.GoListModule
 
-type goListPackage struct {
-	Dir          string
-	ImportPath   string
-	Standard     bool
-	Module       *goListModule
-	GoFiles      []string
-	CgoFiles     []string
-	CFiles       []string
-	CXXFiles     []string
-	MFiles       []string
-	HFiles       []string
-	FFiles       []string
-	SFiles       []string
-	SwigFiles    []string
-	SwigCXXFiles []string
-	SysoFiles    []string
-	EmbedFiles   []string
-}
+type goListPackage = gobuilder.GoListPackage
 
 func main() {
 	repo := flag.String("repo", ".", "path to a clean TEI repository checkout")
+	goExecutable := flag.String("go", "", "exact Go executable path; required when the runner has no embedded Go root")
+	exactEngine := flag.String("exact-runtime-engine", "", "verified external transform engine executable")
+	engineEvidence := flag.String("engine-build-evidence", "", "independent exact transform engine build Evidence JSON")
+	stage2Lock := flag.String("stage2-engine-lock", "", "Host-approved Reference stage2 engine lock")
+	hostRegistration := flag.String("stage2-host-registration", "", "explicit Host registration for Reference stage2")
+	hostSignature := flag.String("stage2-host-signature", "", "detached Ed25519 signature of the Host registration")
+	trustedHostKey := flag.String("stage2-trusted-host-key", "", "independently provisioned Host Ed25519 public key (PKIX PEM)")
+	trustedHostID := flag.String("stage2-trusted-host-id", "", "pinned canonical Host ID")
 	flag.Parse()
 
-	out, err := run(*repo)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-	enc := json.NewEncoder(os.Stdout)
-	enc.SetIndent("", "  ")
-	if err := enc.Encode(out); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+	out, err := runWithExactEngine(*repo, exactEngineOptions{
+		GoExecutable:         *goExecutable,
+		Executable:           *exactEngine,
+		BuildEvidence:        *engineEvidence,
+		Stage2Lock:           *stage2Lock,
+		HostRegistration:     *hostRegistration,
+		HostSignature:        *hostSignature,
+		TrustedHostPublicKey: *trustedHostKey,
+		TrustedHostID:        *trustedHostID,
+	})
+	if exitCode := writeSelfBuildCLIResult(os.Stdout, os.Stderr, out, err); exitCode != 0 {
+		os.Exit(exitCode)
 	}
 }
 
+// Keep the CLI's output and exit-code decision testable without a test-only
+// switch in the production command. A mismatch is JSON evidence, not success.
+func writeSelfBuildCLIResult(stdout, stderr io.Writer, out evidence, err error) int {
+	if err != nil {
+		if _, reportErr := emitSelfBuildMismatchEvidence(stdout, err); reportErr != nil {
+			fmt.Fprintln(stderr, reportErr)
+		}
+		fmt.Fprintln(stderr, err)
+		return 1
+	}
+	enc := json.NewEncoder(stdout)
+	enc.SetIndent("", "  ")
+	if err := enc.Encode(out); err != nil {
+		fmt.Fprintln(stderr, err)
+		return 1
+	}
+	return 0
+}
+
 func run(repo string) (evidence, error) {
+	return runWithExactEngine(repo, exactEngineOptions{})
+}
+
+func runWithExactEngine(repo string, options exactEngineOptions) (evidence, error) {
+	if (options.Executable == "") != (options.BuildEvidence == "") {
+		return evidence{}, fmt.Errorf("exact Runtime Engine requires executable and build Evidence together")
+	}
+	if options.Executable == "" && (options.Stage2Lock != "" || options.HostRegistration != "" ||
+		options.HostSignature != "" || options.TrustedHostPublicKey != "" || options.TrustedHostID != "") {
+		return evidence{}, fmt.Errorf("stage2 Host authority requires the exact Runtime Engine executable and build Evidence")
+	}
 	root, err := filepath.Abs(repo)
 	if err != nil {
 		return evidence{}, err
@@ -159,6 +182,17 @@ func run(repo string) (evidence, error) {
 	revision, err := gitOutput(root, "rev-parse", "HEAD")
 	if err != nil {
 		return evidence{}, err
+	}
+	var acceptedStage2 referenceStage2Acceptance
+	if options.Executable != "" {
+		verified, _, err := verifyExactEngine(root, revision, options)
+		if err != nil {
+			return evidence{}, fmt.Errorf("stage2 exact Runtime Engine build evidence: %w", err)
+		}
+		acceptedStage2, err = acceptReferenceStage2Engine(options, verified)
+		if err != nil {
+			return evidence{}, fmt.Errorf("stage2 Host acceptance before invocation: %w", err)
+		}
 	}
 	treeDigest, err := hashRepositorySnapshotTree(root)
 	if err != nil {
@@ -187,26 +221,27 @@ func run(repo string) (evidence, error) {
 	if err != nil {
 		return evidence{}, err
 	}
-	goPath, err := exec.LookPath("go")
+	goPath, err := selectReferenceGoExecutable(options.GoExecutable)
 	if err != nil {
-		return evidence{}, fmt.Errorf("locate Go builder: %w", err)
-	}
-	if resolved, resolveErr := filepath.EvalSymlinks(goPath); resolveErr == nil {
-		goPath = resolved
+		return evidence{}, fmt.Errorf("select Go builder: %w", err)
 	}
 	goBinaryDigest, err := hashFile(goPath)
 	if err != nil {
 		return evidence{}, fmt.Errorf("hash Go builder binary: %w", err)
 	}
+	toolchainEnv, err := buildEnvironment(os.Environ(), "")
+	if err != nil {
+		return evidence{}, fmt.Errorf("prepare Go toolchain environment: %w", err)
+	}
 	goVersionCmd := exec.Command(goPath, "version")
-	goVersionCmd.Env = buildEnvironment(os.Environ(), "")
+	goVersionCmd.Env = toolchainEnv
 	goVersionBytes, err := goVersionCmd.Output()
 	if err != nil {
 		return evidence{}, fmt.Errorf("read Go builder version: %w", err)
 	}
 	goVersion := strings.TrimSpace(string(goVersionBytes))
 	goRootCmd := exec.Command(goPath, "env", "GOROOT")
-	goRootCmd.Env = buildEnvironment(os.Environ(), "")
+	goRootCmd.Env = toolchainEnv
 	goRootBytes, err := goRootCmd.Output()
 	if err != nil {
 		return evidence{}, fmt.Errorf("resolve Go toolchain root: %w", err)
@@ -229,12 +264,16 @@ func run(repo string) (evidence, error) {
 	if err != nil {
 		return evidence{}, fmt.Errorf("hash TEI-native runtime engine source closure: %w", err)
 	}
-	nativeRuntimeEngine := pruntime.RuntimeEngineIdentity{
-		ID:                   core.MustCanonicalID("tei.runtime.engine.static_response.reference"),
-		Version:              revision,
-		ContractVersion:      "tei.runtime-engine/static-response-v1",
-		ImplementationDigest: sha256Digest([]byte(nativeRuntimeEngineSourceDigest + "\n" + goToolchainDigest + "\n")),
-		Target:               "host/" + runtime.GOOS + "/" + runtime.GOARCH,
+	nativeRuntimeEngine, err := referenceRuntimeEngineIdentity(
+		core.MustCanonicalID("tei.runtime.engine.static_response.reference"),
+		nativeRuntimeEngineVersion,
+		"tei.runtime-engine/static-response-v1",
+		nativeRuntimeEngineSourceDigest,
+		goToolchainDigest,
+		"host/"+runtime.GOOS+"/"+runtime.GOARCH,
+	)
+	if err != nil {
+		return evidence{}, fmt.Errorf("static response Runtime Engine identity: %w", err)
 	}
 	nativeRuntimeEngineFingerprint, err := pruntime.RuntimeEngineIdentityFingerprint(nativeRuntimeEngine)
 	if err != nil {
@@ -306,20 +345,11 @@ func run(repo string) (evidence, error) {
 	); err != nil {
 		return evidence{}, fmt.Errorf("build second Plugin package builder: %w", err)
 	}
-	packageBuilderFirstDigest, err := hashFile(packageBuilderFirstPath)
+	packageBuilderFirstDigest, packageBuilderSecondDigest, err := compareSelfBuildFileDigests(
+		"package-builder-binary", packageBuilderFirstPath, packageBuilderSecondPath,
+	)
 	if err != nil {
 		return evidence{}, err
-	}
-	packageBuilderSecondDigest, err := hashFile(packageBuilderSecondPath)
-	if err != nil {
-		return evidence{}, err
-	}
-	if packageBuilderFirstDigest != packageBuilderSecondDigest {
-		return evidence{}, fmt.Errorf(
-			"Plugin package builder is not reproducible: %s != %s",
-			packageBuilderFirstDigest,
-			packageBuilderSecondDigest,
-		)
 	}
 
 	packagePlan := plugin.BuildPlan{
@@ -376,11 +406,7 @@ func run(repo string) (evidence, error) {
 		return evidence{}, err
 	}
 	if string(packageFirstBytes) != string(packageSecondBytes) || packageFirstArtifactDigest != packageSecondArtifactDigest {
-		return evidence{}, fmt.Errorf(
-			"standard plugin package build is not reproducible: %s != %s",
-			packageFirstArtifactDigest,
-			packageSecondArtifactDigest,
-		)
+		return evidence{}, nonReproducibleSelfBuild("plugin-package-artifact", packageFirstArtifactDigest, packageSecondArtifactDigest)
 	}
 	packageLockedBuild, err := plugin.LockBuildOutput(packagePlan, packageFirstArtifactDigest)
 	if err != nil {
@@ -402,9 +428,21 @@ func run(repo string) (evidence, error) {
 		revision,
 		packageDefinition,
 		packagePlan,
+		options,
 	)
 	if err != nil {
 		return evidence{}, fmt.Errorf("TEI-native transform bootstrap: %w", err)
+	}
+	var stage2PolicyFingerprint string
+	if options.Executable != "" {
+		if transformBootstrap.RuntimeEngine != acceptedStage2.Engine ||
+			transformBootstrap.ExactRuntimeEngineBuildFingerprint == "" {
+			return evidence{}, fmt.Errorf("stage2 execution does not match accepted Runtime Engine")
+		}
+		stage2PolicyFingerprint, err = acceptedStage2.PolicyFingerprint(transformBootstrap.Stage2Plan)
+		if err != nil {
+			return evidence{}, fmt.Errorf("stage2 Runtime Policy: %w", err)
+		}
 	}
 
 	nativeDefinition, err := exactPlugin(loaded.World.Plugins, nativePluginID, nativePluginVersion)
@@ -460,20 +498,11 @@ func run(repo string) (evidence, error) {
 	); err != nil {
 		return evidence{}, fmt.Errorf("build second native Plugin builder: %w", err)
 	}
-	nativeBuilderFirstDigest, err := hashFile(nativeBuilderFirstPath)
+	nativeBuilderFirstDigest, nativeBuilderSecondDigest, err := compareSelfBuildFileDigests(
+		"native-plugin-builder-binary", nativeBuilderFirstPath, nativeBuilderSecondPath,
+	)
 	if err != nil {
 		return evidence{}, err
-	}
-	nativeBuilderSecondDigest, err := hashFile(nativeBuilderSecondPath)
-	if err != nil {
-		return evidence{}, err
-	}
-	if nativeBuilderFirstDigest != nativeBuilderSecondDigest {
-		return evidence{}, fmt.Errorf(
-			"TEI-native Plugin builder is not reproducible: %s != %s",
-			nativeBuilderFirstDigest,
-			nativeBuilderSecondDigest,
-		)
 	}
 
 	nativePlan := plugin.BuildPlan{
@@ -529,11 +558,7 @@ func run(repo string) (evidence, error) {
 		return evidence{}, err
 	}
 	if string(nativeFirstBytes) != string(nativeSecondBytes) || nativeFirstArtifactDigest != nativeSecondArtifactDigest {
-		return evidence{}, fmt.Errorf(
-			"TEI-native builtin realization is not reproducible: %s != %s",
-			nativeFirstArtifactDigest,
-			nativeSecondArtifactDigest,
-		)
+		return evidence{}, nonReproducibleSelfBuild("native-plugin-realization", nativeFirstArtifactDigest, nativeSecondArtifactDigest)
 	}
 	nativeLockedBuild, err := plugin.LockBuildOutput(nativePlan, nativeFirstArtifactDigest)
 	if err != nil {
@@ -624,16 +649,11 @@ func run(repo string) (evidence, error) {
 	if err := buildReferencePlugin(root, goPath, secondPath, secondState); err != nil {
 		return evidence{}, err
 	}
-	firstDigest, err := hashFile(firstPath)
+	firstDigest, secondDigest, err := compareSelfBuildFileDigests(
+		"process-plugin-binary", firstPath, secondPath,
+	)
 	if err != nil {
 		return evidence{}, err
-	}
-	secondDigest, err := hashFile(secondPath)
-	if err != nil {
-		return evidence{}, err
-	}
-	if firstDigest != secondDigest {
-		return evidence{}, fmt.Errorf("reference plugin build is not reproducible: %s != %s", firstDigest, secondDigest)
 	}
 
 	lockedBuild, err := plugin.LockBuildOutput(plan, firstDigest)
@@ -830,7 +850,18 @@ func run(repo string) (evidence, error) {
 		RuntimeDefinitionFingerprint:       plugin.DefinitionFingerprint(realized),
 		RuntimePluginLockFingerprint:       runtimePluginLockFingerprint,
 		RuntimePluginLock:                  runtimeLock,
+
+		Stage2EngineLockFingerprint:       acceptedStage2.LockFingerprint,
+		Stage2HostRegistrationFingerprint: acceptedStage2.HostRegistrationFingerprint,
+		Stage2HostApprovalFingerprint:     acceptedStage2.HostApprovalFingerprint,
+		Stage2RuntimePolicyFingerprint:    stage2PolicyFingerprint,
 	}, nil
+}
+
+// The builder is either explicitly pinned by its path or selected from the
+// Go toolchain embedded in the running binary. PATH is not a fallback.
+func selectReferenceGoExecutable(explicit string) (string, error) {
+	return gobuilder.SelectExecutable(explicit, runtime.GOROOT(), runtime.GOOS)
 }
 
 func requireValidWorld(label string, world ir.World) error {
@@ -979,155 +1010,16 @@ func processPlanSources(
 	}
 }
 
-func resolveGoPackageSourceClosure(
-	repo, goPath, packagePath, stateDir string,
-) ([]goSourceMember, string, error) {
-	cmd := exec.Command(
-		goPath,
-		"list",
-		"-deps",
-		"-json",
-		"-mod=readonly",
-		packagePath,
-	)
-	cmd.Dir = repo
-	cmd.Env = buildEnvironment(os.Environ(), stateDir)
-	raw, err := cmd.Output()
-	if err != nil {
-		var exitErr *exec.ExitError
-		if errors.As(err, &exitErr) {
-			return nil, "", fmt.Errorf(
-				"resolve Go package source closure: %w: %s",
-				err,
-				strings.TrimSpace(string(exitErr.Stderr)),
-			)
-		}
-		return nil, "", fmt.Errorf("resolve Go package source closure: %w", err)
-	}
-
-	root, err := filepath.EvalSymlinks(repo)
-	if err != nil {
-		root = filepath.Clean(repo)
-	}
-	tracked, err := trackedSourcePaths(repo)
-	if err != nil {
-		return nil, "", err
-	}
-	paths := map[string]struct{}{"go.mod": {}}
-	decoder := json.NewDecoder(strings.NewReader(string(raw)))
-	for {
-		var pkg goListPackage
-		if err := decoder.Decode(&pkg); err != nil {
-			if errors.Is(err, io.EOF) {
-				break
-			}
-			return nil, "", fmt.Errorf("decode Go package source closure: %w", err)
-		}
-		if pkg.Standard {
-			continue
-		}
-		if pkg.Module == nil {
-			return nil, "", fmt.Errorf("Go dependency %s has no module identity", pkg.ImportPath)
-		}
-		moduleDir, err := filepath.EvalSymlinks(pkg.Module.Dir)
-		if err != nil {
-			moduleDir = filepath.Clean(pkg.Module.Dir)
-		}
-		if moduleDir != root {
-			return nil, "", fmt.Errorf(
-				"Go package source closure contains external module %s from %s",
-				pkg.Module.Path,
-				pkg.Module.Dir,
-			)
-		}
-		for _, name := range goPackageBuildFiles(pkg) {
-			full := filepath.Join(pkg.Dir, name)
-			rel, err := filepath.Rel(repo, full)
-			if err != nil {
-				return nil, "", err
-			}
-			rel = filepath.ToSlash(rel)
-			if rel == ".." || strings.HasPrefix(rel, "../") {
-				return nil, "", fmt.Errorf("Go package source escapes repository: %s", full)
-			}
-			paths[rel] = struct{}{}
-		}
-	}
-
-	ordered := make([]string, 0, len(paths))
-	for path := range paths {
-		ordered = append(ordered, path)
-	}
-	sort.Strings(ordered)
-	members := make([]goSourceMember, 0, len(ordered))
-	for _, rel := range ordered {
-		if _, ok := tracked[rel]; !ok {
-			return nil, "", fmt.Errorf("Go package source closure member is not Git-tracked: %s", rel)
-		}
-		path := filepath.Join(repo, filepath.FromSlash(rel))
-		info, err := os.Lstat(path)
-		if err != nil {
-			return nil, "", err
-		}
-		if info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular() {
-			return nil, "", fmt.Errorf("Go package source closure member is not a regular file: %s", rel)
-		}
-		digest, err := hashFile(path)
-		if err != nil {
-			return nil, "", err
-		}
-		members = append(members, goSourceMember{Path: rel, Digest: digest})
-	}
-	return members, goSourceClosureDigest(members), nil
+func resolveGoPackageSourceClosure(repo, goPath, packagePath, stateDir string) ([]goSourceMember, string, error) {
+	return gobuilder.ResolveSourceClosure(repo, goPath, packagePath, stateDir)
 }
 
 func goPackageBuildFiles(pkg goListPackage) []string {
-	var out []string
-	for _, files := range [][]string{
-		pkg.GoFiles,
-		pkg.CgoFiles,
-		pkg.CFiles,
-		pkg.CXXFiles,
-		pkg.MFiles,
-		pkg.HFiles,
-		pkg.FFiles,
-		pkg.SFiles,
-		pkg.SwigFiles,
-		pkg.SwigCXXFiles,
-		pkg.SysoFiles,
-		pkg.EmbedFiles,
-	} {
-		out = append(out, files...)
-	}
-	sort.Strings(out)
-	return out
+	return gobuilder.PackageBuildFiles(pkg)
 }
 
 func goSourceClosureDigest(members []goSourceMember) string {
-	ordered := append([]goSourceMember(nil), members...)
-	sort.Slice(ordered, func(i, j int) bool {
-		return ordered[i].Path < ordered[j].Path
-	})
-	sum := sha256.New()
-	for _, member := range ordered {
-		fmt.Fprintf(sum, "%s\x00%s\n", member.Path, member.Digest)
-	}
-	return "sha256:" + hex.EncodeToString(sum.Sum(nil))
-}
-
-func trackedSourcePaths(repo string) (map[string]struct{}, error) {
-	raw, err := gitOutputBytes(repo, "ls-files", "-z")
-	if err != nil {
-		return nil, err
-	}
-	out := map[string]struct{}{}
-	for _, path := range strings.Split(string(raw), "\x00") {
-		if path == "" {
-			continue
-		}
-		out[filepath.ToSlash(path)] = struct{}{}
-	}
-	return out, nil
+	return gobuilder.SourceClosureDigest(members)
 }
 
 func requireNoExternalModules(repo, goPath string, packages ...string) error {
@@ -1150,7 +1042,11 @@ func requireNoExternalModules(repo, goPath string, packages ...string) error {
 	args = append(args, packages...)
 	cmd := exec.Command(goPath, args...)
 	cmd.Dir = repo
-	cmd.Env = buildEnvironment(os.Environ(), stateDir)
+	env, err := buildEnvironment(os.Environ(), stateDir)
+	if err != nil {
+		return fmt.Errorf("prepare Go dependency environment: %w", err)
+	}
+	cmd.Env = env
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("resolve Reference Go dependency closure: %w: %s", err, strings.TrimSpace(string(out)))
@@ -1169,80 +1065,7 @@ func requireNoExternalModules(repo, goPath string, packages ...string) error {
 }
 
 func hashGoToolchain(goRoot string) (string, error) {
-	if strings.TrimSpace(goRoot) == "" {
-		return "", fmt.Errorf("Go toolchain root is empty")
-	}
-	paths := []string{
-		filepath.Join(goRoot, "VERSION"),
-		filepath.Join(goRoot, "bin", executableName("go")),
-		filepath.Join(goRoot, "pkg", "tool", runtime.GOOS+"_"+runtime.GOARCH),
-		filepath.Join(goRoot, "src"),
-	}
-	sum := sha256.New()
-	for _, root := range paths {
-		info, err := os.Lstat(root)
-		if err != nil {
-			return "", err
-		}
-		if !info.IsDir() {
-			if err := hashToolchainEntry(sum, goRoot, root, info); err != nil {
-				return "", err
-			}
-			continue
-		}
-		if err := filepath.WalkDir(root, func(path string, entry os.DirEntry, walkErr error) error {
-			if walkErr != nil {
-				return walkErr
-			}
-			if entry.IsDir() {
-				return nil
-			}
-			info, err := entry.Info()
-			if err != nil {
-				return err
-			}
-			return hashToolchainEntry(sum, goRoot, path, info)
-		}); err != nil {
-			return "", err
-		}
-	}
-	return "sha256:" + hex.EncodeToString(sum.Sum(nil)), nil
-}
-
-func hashToolchainEntry(sum interface {
-	Write([]byte) (int, error)
-}, goRoot, path string, info os.FileInfo) error {
-	rel, err := filepath.Rel(goRoot, path)
-	if err != nil {
-		return err
-	}
-	rel = filepath.ToSlash(rel)
-	if _, err := fmt.Fprintf(sum, "%s\x00%o\x00", rel, info.Mode()); err != nil {
-		return err
-	}
-	if info.Mode()&os.ModeSymlink != 0 {
-		return fmt.Errorf("Go toolchain symlink is not supported in the first self-build reference: %s", rel)
-	}
-	if !info.Mode().IsRegular() {
-		_, err := fmt.Fprint(sum, "special\n")
-		return err
-	}
-	if _, err := fmt.Fprint(sum, "file\x00"); err != nil {
-		return err
-	}
-	f, err := os.Open(path)
-	if err != nil {
-		return err
-	}
-	if _, err := io.Copy(sum, f); err != nil {
-		f.Close()
-		return err
-	}
-	if err := f.Close(); err != nil {
-		return err
-	}
-	_, err = fmt.Fprint(sum, "\n")
-	return err
+	return gobuilder.HashToolchain(goRoot, runtime.GOOS, runtime.GOARCH)
 }
 
 func executableName(name string) string {
@@ -1260,23 +1083,7 @@ func buildReferencePlugin(repo, goPath, output, stateDir string) error {
 }
 
 func buildGoPackage(repo, goPath, packagePath, output, stateDir string) error {
-	cmd := exec.Command(
-		goPath,
-		"build",
-		"-trimpath",
-		"-buildvcs=false",
-		"-mod=readonly",
-		"-o",
-		output,
-		packagePath,
-	)
-	cmd.Dir = repo
-	cmd.Env = buildEnvironment(os.Environ(), stateDir)
-	combined, err := cmd.CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("go build %s: %w: %s", packagePath, err, strings.TrimSpace(string(combined)))
-	}
-	return nil
+	return gobuilder.BuildPackage(repo, goPath, packagePath, output, stateDir)
 }
 
 func runPluginPackageBuilder(repo, builderPath, planPath, output string) error {
@@ -1317,40 +1124,14 @@ func runNativePluginBuilder(repo, builderPath, output string) error {
 	return nil
 }
 
-func buildEnvironment(base []string, stateDir string) []string {
-	out := make([]string, 0, len(base)+12)
-	for _, entry := range base {
-		key := entry
-		if i := strings.IndexByte(entry, '='); i >= 0 {
-			key = entry[:i]
-		}
-		if strings.HasPrefix(key, "GO") || key == "CGO_ENABLED" {
-			continue
-		}
-		out = append(out, entry)
-	}
-	out = append(out,
-		"CGO_ENABLED=0",
-		"GOARCH="+runtime.GOARCH,
-		"GOENV=off",
-		"GOEXPERIMENT=",
-		"GOFLAGS=",
-		"GOOS="+runtime.GOOS,
-		"GOPROXY=off",
-		"GOSUMDB=off",
-		"GOTOOLCHAIN=local",
-		"GOVCS=*:off",
-		"GOWORK=off",
-	)
-	if stateDir != "" {
-		out = append(out,
-			"GOCACHE="+filepath.Join(stateDir, "cache"),
-			"GOMODCACHE="+filepath.Join(stateDir, "modcache"),
-			"GOPATH="+filepath.Join(stateDir, "gopath"),
-		)
-	}
-	sort.Strings(out)
-	return out
+// The Go-specific policy is shared with the exact Runtime Engine builder.
+// Keeping this narrow adapter boundary preserves existing Reference callers.
+func allowedHostEnvironmentForOS(base []string, goos string) ([]string, error) {
+	return gobuilder.AllowedHostEnvironment(base, goos)
+}
+
+func buildEnvironment(base []string, stateDir string) ([]string, error) {
+	return gobuilder.Environment(base, stateDir, runtime.GOOS, runtime.GOARCH)
 }
 
 func requireCleanRepository(repo string) error {

@@ -73,7 +73,8 @@ type Diagnostic struct {
 }
 
 func validKey(k Key) bool {
-	return strings.TrimSpace(k.Scope) != "" && strings.TrimSpace(k.Subject.Kind) != "" &&
+	scope := strings.TrimSpace(k.Scope)
+	return scope != "" && scope == k.Scope && strings.TrimSpace(k.Subject.Kind) != "" &&
 		strings.TrimSpace(k.Subject.ID) != "" && !strings.ContainsAny(k.Scope, "\n\r\t")
 }
 
@@ -199,8 +200,20 @@ func Validate(g Graph, rules []Rule) []Diagnostic {
 	return out
 }
 
+// keyLess compares logical identities by their separate components.
+// Concatenating user-authored Kind and ID with a delimiter is not injective.
+func keyLess(a, b Key) bool {
+	if a.Scope != b.Scope {
+		return a.Scope < b.Scope
+	}
+	if a.Subject.Kind != b.Subject.Kind {
+		return a.Subject.Kind < b.Subject.Kind
+	}
+	return a.Subject.ID < b.Subject.ID
+}
+
 func sortKeys(ks []Key) {
-	sort.Slice(ks, func(i, j int) bool { return keyString(ks[i]) < keyString(ks[j]) })
+	sort.Slice(ks, func(i, j int) bool { return keyLess(ks[i], ks[j]) })
 }
 func keyString(k Key) string { return k.Scope + "\x00" + k.Subject.Kind + "\x00" + k.Subject.ID }
 
@@ -340,7 +353,7 @@ func Diff(before, after Graph) []Change {
 	}
 	sort.Slice(out, func(i, j int) bool {
 		if out[i].Key != out[j].Key {
-			return keyString(out[i].Key) < keyString(out[j].Key)
+			return keyLess(out[i].Key, out[j].Key)
 		}
 		return out[i].Kind < out[j].Kind
 	})
@@ -375,26 +388,52 @@ func Impact(before Graph, changes []Change, rules []Rule) []Affected {
 		rule Rule
 	}
 	nodes := make(map[Key]Node, len(before.Nodes))
-	bySubject := make(map[string][]Key, len(before.Nodes))
+	nodeCounts := make(map[Key]int, len(before.Nodes))
+	bySubject := make(map[subject.Subject][]Key, len(before.Nodes))
 	for _, node := range before.Nodes {
 		nodes[node.Key] = node
-		refKey := node.Key.Subject.Kind + "\x00" + node.Key.Subject.ID
-		bySubject[refKey] = append(bySubject[refKey], node.Key)
+		nodeCounts[node.Key]++
+		// Index the structured identity, not a delimiter-joined string:
+		// valid author-defined identifiers may themselves contain delimiters.
+		bySubject[node.Key.Subject] = append(bySubject[node.Key.Subject], node.Key)
+	}
+	// Conflicting extension rules are not ordered fallbacks. A consumer
+	// may call Impact without Validate; never allow the order of rules to
+	// manufacture a dependency that Validate would reject.
+	type ruleKey struct{ relation, fromKind, toKind string }
+	type selectedRule struct {
+		value    Rule
+		conflict bool
+	}
+	policies := make(map[ruleKey]selectedRule, len(rules))
+	for _, rule := range rules {
+		if strings.TrimSpace(rule.Relation) == "" || strings.TrimSpace(rule.FromKind) == "" ||
+			strings.TrimSpace(rule.ToKind) == "" {
+			continue
+		}
+		k := ruleKey{rule.Relation, rule.FromKind, rule.ToKind}
+		previous, exists := policies[k]
+		if exists {
+			previous.conflict = previous.conflict || previous.value != rule
+			policies[k] = previous
+		} else {
+			policies[k] = selectedRule{value: rule}
+		}
 	}
 	incoming := make(map[Key][]incomingEdge)
 	for _, edge := range before.Edges {
-		if _, ok := nodes[edge.From]; !ok {
+		if nodeCounts[edge.From] != 1 || len(evidenceDiagnostics("", edge.Evidence)) > 0 {
 			continue
 		}
 		var target Key
 		if edge.To.Scope != "" {
 			target = Key{Scope: edge.To.Scope, Subject: edge.To.Subject}
-			if _, ok := nodes[target]; !ok {
+			if nodeCounts[target] != 1 {
 				continue
 			}
 		} else {
-			keys := bySubject[edge.To.Subject.Kind+"\x00"+edge.To.Subject.ID]
-			if len(keys) != 1 {
+			keys := bySubject[edge.To.Subject]
+			if len(keys) != 1 || nodeCounts[keys[0]] != 1 {
 				continue
 			}
 			target = keys[0]
@@ -402,11 +441,11 @@ func Impact(before Graph, changes []Change, rules []Rule) []Affected {
 		if edge.To.Version != "" && nodes[target].Version != edge.To.Version {
 			continue
 		}
-		for _, rule := range rules {
-			if rule.Relation == edge.Relation && rule.FromKind == edge.From.Subject.Kind && rule.ToKind == target.Subject.Kind {
-				incoming[target] = append(incoming[target], incomingEdge{from: edge.From, rule: rule})
-			}
+		policy, exists := policies[ruleKey{edge.Relation, edge.From.Subject.Kind, target.Subject.Kind}]
+		if !exists || policy.conflict {
+			continue
 		}
+		incoming[target] = append(incoming[target], incomingEdge{from: edge.From, rule: policy.value})
 	}
 	var out []Affected
 	for _, change := range changes {
@@ -434,10 +473,10 @@ func Impact(before Graph, changes []Change, rules []Rule) []Affected {
 	sort.Slice(out, func(i, j int) bool {
 		a, b := out[i], out[j]
 		if a.Changed != b.Changed {
-			return keyString(a.Changed) < keyString(b.Changed)
+			return keyLess(a.Changed, b.Changed)
 		}
 		if a.Consumer != b.Consumer {
-			return keyString(a.Consumer) < keyString(b.Consumer)
+			return keyLess(a.Consumer, b.Consumer)
 		}
 		return a.Reason < b.Reason
 	})

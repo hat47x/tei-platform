@@ -6,8 +6,11 @@ import (
 	"encoding/hex"
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 	"unicode/utf8"
+
+	"tei/internal/core"
 )
 
 type EvaluationResult struct {
@@ -237,6 +240,69 @@ func (e *evaluator) eval(expr Expr, env *evalEnv, depth int) (Value, error) {
 			out[i] = items[i].value
 		}
 		return arrayShared(out), nil
+	case OpAssertEach:
+		source, err := e.eval(*expr.From, env, depth+1)
+		if err != nil {
+			return Value{}, err
+		}
+		if source.Kind == ValueNull && expr.Optional {
+			return source, nil
+		}
+		if source.Kind != ValueArray {
+			return Value{}, fmt.Errorf("assert-each requires array, got %s", source.Kind)
+		}
+		if len(source.Array) > e.limits.MaxCollection {
+			return Value{}, fmt.Errorf("assert-each collection exceeds maxCollection")
+		}
+		for i, item := range source.Array {
+			if err := e.consume(1); err != nil {
+				return Value{}, err
+			}
+			local := evalEnv{parent: env, bindingName: expr.Item, bindingValue: item, hasBinding: true}
+			if _, err := e.eval(*expr.Body, &local, depth+1); err != nil {
+				return Value{}, fmt.Errorf("assert-each item %d: %w", i, err)
+			}
+		}
+		return source, nil
+	case OpAssertUniqueBy:
+		source, err := e.eval(*expr.From, env, depth+1)
+		if err != nil {
+			return Value{}, err
+		}
+		// Go omits empty requirement slices from JSON. An explicitly optional
+		// collection treats absence (and JSON null) as zero elements.
+		if source.Kind == ValueNull && expr.Optional {
+			return source, nil
+		}
+		if source.Kind != ValueArray {
+			return Value{}, fmt.Errorf("assert-unique-by requires array, got %s", source.Kind)
+		}
+		if len(source.Array) > e.limits.MaxCollection {
+			return Value{}, fmt.Errorf("assert-unique-by collection exceeds maxCollection")
+		}
+		seen := make(map[string]struct{}, len(source.Array))
+		for i, item := range source.Array {
+			if err := e.consume(1); err != nil {
+				return Value{}, err
+			}
+			local := evalEnv{parent: env, bindingName: expr.Item, bindingValue: item, hasBinding: true}
+			key, err := e.eval(expr.Keys[0], &local, depth+1)
+			if err != nil {
+				return Value{}, fmt.Errorf("assert-unique-by item %d: %w", i, err)
+			}
+			if key.Kind != ValueString {
+				return Value{}, fmt.Errorf("assert-unique-by key must be string, got %s", key.Kind)
+			}
+			// Hashing a key is byte-linear work, not only one collection step.
+			if err := e.consumeByteWork(len(key.String)); err != nil {
+				return Value{}, err
+			}
+			if _, exists := seen[key.String]; exists {
+				return Value{}, fmt.Errorf("assert-unique-by failed: duplicate key")
+			}
+			seen[key.String] = struct{}{}
+		}
+		return source, nil
 	case OpReplaceField:
 		source, err := e.eval(*expr.From, env, depth+1)
 		if err != nil {
@@ -318,6 +384,50 @@ func (e *evaluator) eval(expr Expr, env *evalEnv, depth int) (Value, error) {
 			}
 		}
 		return Value{}, fmt.Errorf("assert-enum failed")
+	case OpAssertNonBlank:
+		value, err := e.eval(*expr.From, env, depth+1)
+		if err != nil {
+			return Value{}, err
+		}
+		if value.Kind != ValueString {
+			return Value{}, fmt.Errorf("assert-nonblank requires string, got %s", value.Kind)
+		}
+		if strings.TrimSpace(value.String) == "" {
+			return Value{}, fmt.Errorf("assert-nonblank failed: string is empty or whitespace")
+		}
+		return value, nil
+	case OpAssertCanonicalID:
+		value, err := e.eval(*expr.From, env, depth+1)
+		if err != nil {
+			return Value{}, err
+		}
+		if value.Kind != ValueString {
+			return Value{}, fmt.Errorf("assert-canonical-id requires string, got %s", value.Kind)
+		}
+		if err := e.consumeByteWork(len(value.String)); err != nil {
+			return Value{}, err
+		}
+		id, err := core.ParseCanonicalID(value.String)
+		if err != nil || string(id) != value.String {
+			return Value{}, fmt.Errorf("assert-canonical-id failed: invalid canonical id %q", value.String)
+		}
+		return value, nil
+	case OpAssertPositiveInteger:
+		value, err := e.eval(*expr.From, env, depth+1)
+		if err != nil {
+			return Value{}, err
+		}
+		if value.Kind != ValueNumber {
+			return Value{}, fmt.Errorf("assert-positive-integer requires number, got %s", value.Kind)
+		}
+		if err := e.consumeByteWork(len(value.Number)); err != nil {
+			return Value{}, err
+		}
+		n, err := strconv.Atoi(value.Number)
+		if err != nil || n < 1 {
+			return Value{}, fmt.Errorf("assert-positive-integer failed: invalid positive integer %q", value.Number)
+		}
+		return value, nil
 	case OpCanonicalJSON:
 		source, err := e.eval(*expr.From, env, depth+1)
 		if err != nil {

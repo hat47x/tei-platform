@@ -11,6 +11,12 @@ import (
 	"tei/internal/plugin/transform"
 )
 
+func repositoryMetaBuilderSource(t *testing.T) transform.Source {
+	t.Helper()
+	source, _ := referenceTransformSource(t, "transform-source-realizer-v1.transform.json")
+	return source
+}
+
 func TestPluginPackageTransformRejectsAuthorityAndIdentityMismatch(t *testing.T) {
 	tests := []struct {
 		name string
@@ -34,7 +40,7 @@ func TestPluginPackageTransformRejectsAuthorityAndIdentityMismatch(t *testing.T)
 		t.Run(tt.name, func(t *testing.T) {
 			definition, plan := transformPackageFixture()
 			tt.edit(&definition, &plan)
-			_, err := transform.Evaluate(transform.PluginPackageSourceV1(), map[string]transform.Value{
+			_, err := transform.Evaluate(referencePluginPackageTransformSource(t), map[string]transform.Value{
 				"buildPlan":        valueFromGoJSON(t, plan),
 				"pluginDefinition": valueFromGoJSON(t, definition),
 			})
@@ -46,7 +52,7 @@ func TestPluginPackageTransformRejectsAuthorityAndIdentityMismatch(t *testing.T)
 }
 
 func TestTransformRejectsUndeclaredInputAndBudgetExhaustion(t *testing.T) {
-	source := transform.PluginPackageSourceV1()
+	source := referencePluginPackageTransformSource(t)
 	definition, plan := transformPackageFixture()
 	inputs := map[string]transform.Value{
 		"buildPlan":        valueFromGoJSON(t, plan),
@@ -82,8 +88,8 @@ func TestOrderedValuePreservesFieldOrderAndRejectsDuplicateKeys(t *testing.T) {
 }
 
 func TestTransformSourceFingerprintCanonicalizesLiteralJSON(t *testing.T) {
-	a := transform.PluginPackageSourceV1()
-	b := transform.PluginPackageSourceV1()
+	a := referencePluginPackageTransformSource(t)
+	b := referencePluginPackageTransformSource(t)
 	b.Program.Assertions[0].Expected.Literal = json.RawMessage(" 1 ")
 
 	aFP, err := transform.SourceFingerprint(a)
@@ -100,7 +106,7 @@ func TestTransformSourceFingerprintCanonicalizesLiteralJSON(t *testing.T) {
 }
 
 func TestTransformSourceMaterializationIsDeterministic(t *testing.T) {
-	source := transform.PluginPackageSourceV1()
+	source := referencePluginPackageTransformSource(t)
 	first, firstDigest, err := transform.MaterializeSource(source)
 	if err != nil {
 		t.Fatal(err)
@@ -119,14 +125,14 @@ func TestTransformSourceMaterializationIsDeterministic(t *testing.T) {
 
 func TestTransformSourceRejectsUndeclaredAndShadowedBindings(t *testing.T) {
 	t.Run("undeclared input", func(t *testing.T) {
-		source := transform.TransformSourceRealizerV1()
+		source := repositoryMetaBuilderSource(t)
 		source.Program.Output = transform.Expr{Op: transform.OpInput, Name: "missing"}
 		if err := source.Validate(); err == nil {
 			t.Fatal("expected undeclared input binding to fail")
 		}
 	})
 	t.Run("local shadows input", func(t *testing.T) {
-		source := transform.TransformSourceRealizerV1()
+		source := repositoryMetaBuilderSource(t)
 		from := transform.Expr{Op: transform.OpInput, Name: "transformSource"}
 		body := transform.Expr{Op: transform.OpInput, Name: "transformSource"}
 		source.Program.Output = transform.Expr{
@@ -142,7 +148,7 @@ func TestTransformSourceRejectsUndeclaredAndShadowedBindings(t *testing.T) {
 }
 
 func TestTransformSourceRejectsIgnoredExpressionFields(t *testing.T) {
-	source := transform.TransformSourceRealizerV1()
+	source := repositoryMetaBuilderSource(t)
 	source.Program.Output = transform.Expr{
 		Op:     transform.OpInput,
 		Name:   "transformSource",
@@ -175,7 +181,7 @@ func TestTransformRejectsInputResourceBudgetOverflow(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			source := transform.PluginPackageSourceV1()
+			source := referencePluginPackageTransformSource(t)
 			tt.edit(&source)
 			if _, err := transform.Evaluate(source, inputs); err == nil {
 				t.Fatal("expected input resource budget overflow")
@@ -242,8 +248,8 @@ func TestOrderedValueRejectsInvalidManuallyConstructedNumber(t *testing.T) {
 }
 
 func TestTransformSourceFingerprintIgnoresInputDeclarationOrder(t *testing.T) {
-	a := transform.PluginPackageSourceV1()
-	b := transform.PluginPackageSourceV1()
+	a := referencePluginPackageTransformSource(t)
+	b := referencePluginPackageTransformSource(t)
 	b.Inputs[0], b.Inputs[1] = b.Inputs[1], b.Inputs[0]
 
 	aFP, err := transform.SourceFingerprint(a)
@@ -266,7 +272,7 @@ func TestOrderedValueRejectsInvalidUTF8(t *testing.T) {
 }
 
 func TestTransformSourceRejectsASTBeyondDeclaredNesting(t *testing.T) {
-	source := transform.TransformSourceRealizerV1()
+	source := repositoryMetaBuilderSource(t)
 	source.Limits.MaxNestingDepth = 1
 	if err := source.Validate(); err == nil {
 		t.Fatal("expected Source AST deeper than maxNestingDepth to fail")
@@ -274,9 +280,9 @@ func TestTransformSourceRejectsASTBeyondDeclaredNesting(t *testing.T) {
 }
 
 func TestTransformRejectsOutputByteBudget(t *testing.T) {
-	source := transform.TransformSourceRealizerV1()
+	source := repositoryMetaBuilderSource(t)
 	source.Limits.MaxOutputBytes = 1
-	value, err := transform.SourceValue(transform.TransformSourceRealizerV1())
+	value, err := transform.SourceValue(repositoryMetaBuilderSource(t))
 	if err != nil {
 		t.Fatal(err)
 	}

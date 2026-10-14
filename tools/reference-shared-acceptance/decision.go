@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -116,6 +117,44 @@ func decisionFrom(p Preview, kind string) Decision {
 // 派生物を決定論的に再生成できるかを確認し、一つでも満たさなければ元のsourceへ戻す
 // （追記したfileは元の内容へ、作成したfileと、そのために作ったdirectoryは削除する）。
 func accept(root string, data []byte, opts acceptOptions) (Decision, error) {
+	// Pin the named Workspace before any read; concurrent Shared Acceptance
+	// operations must use the SAME create-only lock, including Preview,
+	// mutation, conformance reload, and rollback. Uncooperative external
+	// writers are NOT serialized by this Reference.
+	files, err := os.OpenRoot(root)
+	if err != nil {
+		return Decision{}, fmt.Errorf("open Acceptance Workspace root: %w", err)
+	}
+	defer files.Close()
+
+	guard, err := acquireSourceAcceptLock(files)
+	if errors.Is(err, errSourceAcceptBusy) {
+		return Decision{
+			Schema:        decisionSchema,
+			Decision:      "refused",
+			SourceChanged: false,
+			Refusals: []Diagnostic{{
+				Code:    "SOURCE_ACCEPT_BUSY",
+				Message: "別の受理操作または未確認の古いlockが存在します。処理を再送せず、現在のSourceとlockを確認してください",
+			}},
+		}, nil
+	}
+	if err != nil {
+		return Decision{}, fmt.Errorf("acquire Workspace Acceptance lock: %w", err)
+	}
+	decision, acceptErr := acceptWithPinnedRoot(root, files, data, opts)
+	releaseErr := guard.release()
+	if releaseErr != nil {
+		return decision, errors.Join(acceptErr, fmt.Errorf(
+			"Acceptance outcome may have changed Source, but lock cleanup could not be confirmed: %w", releaseErr))
+	}
+	return decision, acceptErr
+}
+
+// acceptWithPinnedRoot runs only while the caller owns the cooperative lock.
+// This is still the SAME shared Acceptance implementation, not a new entry
+// point for Studio or AI. Call accept, never this helper, from adapters.
+func acceptWithPinnedRoot(root string, files *os.Root, data []byte, opts acceptOptions) (Decision, error) {
 	ev, err := evaluate(root, data)
 	if err != nil {
 		return Decision{}, err
@@ -149,43 +188,78 @@ func accept(root string, data []byte, opts acceptOptions) (Decision, error) {
 
 	var written []SourceEdit
 	var createdDirs []string
-	rollback := func() {
-		for _, e := range written {
-			target := filepath.Join(root, filepath.FromSlash(e.Path))
+	// Rollback must not blindly overwrite a file another process modified
+	// after our write. This is a best-effort byte guard, NOT an atomic
+	// compare-and-swap: path replacement between read and restore remains
+	// unresolved until the common Source Authority owns the write fence.
+	rollback := func() []string {
+		var incomplete []string
+		for i := len(written) - 1; i >= 0; i-- {
+			e := written[i]
+			current, err := sourceReadWithinRoot(files, e.Path)
+			if err != nil || sourceindex.Fingerprint(current) != e.AfterFingerprint {
+				incomplete = append(incomplete, e.Path)
+				continue
+			}
 			if e.Created {
-				_ = os.Remove(target)
+				err = sourceRemoveWithinRoot(files, e.Path)
 			} else {
-				_ = writeFileAtomic(target, e.before)
+				err = sourceWriteWithinRoot(files, e.Path, e.before, false)
+			}
+			if err != nil {
+				incomplete = append(incomplete, e.Path)
 			}
 		}
-		for i := len(createdDirs) - 1; i >= 0; i-- {
-			_ = os.Remove(createdDirs[i])
-		}
+		incomplete = append(incomplete, sourceRemoveDirsIfEmpty(files, createdDirs)...)
+		return incomplete
 	}
 	refuse := func(code, message string) Decision {
-		rollback()
+		incomplete := rollback()
 		decision.Decision = "refused"
-		decision.SourceChanged = false
+		decision.SourceChanged = len(incomplete) > 0
 		decision.Refusals = append(decision.Refusals, Diagnostic{Code: code, Message: message})
+		if len(incomplete) > 0 {
+			sort.Strings(incomplete)
+			decision.Refusals = append(decision.Refusals, Diagnostic{
+				Code:    "ROLLBACK_INCOMPLETE",
+				Message: fmt.Sprintf("並行変更または書込み失敗により元のSourceへ完全に戻せません: %s。再読込と明示的な競合解消が必要です", strings.Join(incomplete, ", ")),
+			})
+		}
 		return decision
 	}
 
+	if err := checkAcceptanceManifest(files, ev.before.manifest); err != nil {
+		return refuse("SOURCE_MANIFEST_CHANGED_DURING_ACCEPT", err.Error()), nil
+	}
 	for i, e := range ev.edits {
 		if beforeEachWriteHook != nil {
 			beforeEachWriteHook(i, e)
 		}
-		target := filepath.Join(root, filepath.FromSlash(e.Path))
+		if err := checkAcceptedWorkspaceIdentity(root, files); err != nil {
+			return refuse("SOURCE_WORKSPACE_REPLACED", err.Error()), nil
+		}
+		if err := checkAcceptanceManifest(files, ev.before.manifest); err != nil {
+			return refuse("SOURCE_MANIFEST_CHANGED_DURING_ACCEPT", err.Error()), nil
+		}
 		if e.Created {
-			if _, err := os.Stat(target); err == nil {
+			name, err := acceptedSourcePath(e.Path)
+			if err != nil {
+				return refuse("SOURCE_WRITE_FAILED", err.Error()), nil
+			}
+			_, err = files.Lstat(name)
+			if err == nil {
 				return refuse("SOURCE_CHANGED_DURING_ACCEPT", fmt.Sprintf("作成先 %s がPreviewの後に作られました", e.Path)), nil
 			}
-			dirs, err := makeDirs(filepath.Dir(target))
+			if !os.IsNotExist(err) {
+				return refuse("SOURCE_UNREADABLE", err.Error()), nil
+			}
+			dirs, err := sourceMakeDirs(files, filepath.Dir(name))
 			createdDirs = append(createdDirs, dirs...)
 			if err != nil {
 				return refuse("SOURCE_WRITE_FAILED", err.Error()), nil
 			}
 		} else {
-			current, err := os.ReadFile(target)
+			current, err := sourceReadWithinRoot(files, e.Path)
 			if err != nil {
 				return refuse("SOURCE_UNREADABLE", err.Error()), nil
 			}
@@ -193,7 +267,10 @@ func accept(root string, data []byte, opts acceptOptions) (Decision, error) {
 				return refuse("SOURCE_CHANGED_DURING_ACCEPT", fmt.Sprintf("%s がPreviewの後に変更されました", e.Path)), nil
 			}
 		}
-		if err := writeFileAtomic(target, e.after); err != nil {
+		if err := sourceWriteWithinRoot(files, e.Path, e.after, e.Created); err != nil {
+			if e.Created && os.IsExist(err) {
+				return refuse("SOURCE_CHANGED_DURING_ACCEPT", fmt.Sprintf("作成先 %s が書込み前に作られました", e.Path)), nil
+			}
 			return refuse("SOURCE_WRITE_FAILED", err.Error()), nil
 		}
 		written = append(written, e)
@@ -202,9 +279,15 @@ func accept(root string, data []byte, opts acceptOptions) (Decision, error) {
 	if afterWritesHook != nil {
 		afterWritesHook(root)
 	}
+	if err := checkAcceptanceManifest(files, ev.before.manifest); err != nil {
+		return refuse("SOURCE_MANIFEST_CHANGED_DURING_ACCEPT", err.Error()), nil
+	}
 	post, err := takeSnapshot(root)
 	if err != nil {
 		return refuse("POST_ACCEPT_RELOAD_FAILED", err.Error()), nil
+	}
+	if post.manifest != ev.before.manifest {
+		return refuse("SOURCE_MANIFEST_CHANGED_DURING_ACCEPT", "Workspace manifest changed during post-Accept reload"), nil
 	}
 	postSemantic, err := changeanalysis.Diff(ev.before.loaded.World, post.loaded.World)
 	if err != nil {
@@ -260,6 +343,9 @@ func accept(root string, data []byte, opts acceptOptions) (Decision, error) {
 		}
 	}
 
+	if err := checkAcceptanceManifest(files, ev.before.manifest); err != nil {
+		return refuse("SOURCE_MANIFEST_CHANGED_DURING_ACCEPT", err.Error()), nil
+	}
 	decision.SourceChanged = true
 	decision.ModelRevisionAfter = post.revision
 	decision.SourceEdits = ev.edits
@@ -272,26 +358,6 @@ func accept(root string, data []byte, opts acceptOptions) (Decision, error) {
 	decision.Evidence = ev.candidate.Evidence
 	decision.Unresolved = ev.preview.Unresolved
 	return decision, nil
-}
-
-// makeDirsは、directoryを作り、そのために新しく作ったdirectory（外側から内側の順）を返す。
-func makeDirs(dir string) ([]string, error) {
-	var missing []string
-	for d := dir; ; d = filepath.Dir(d) {
-		if _, err := os.Stat(d); err == nil {
-			break
-		}
-		missing = append([]string{d}, missing...)
-		if filepath.Dir(d) == d {
-			break
-		}
-	}
-	for _, d := range missing {
-		if err := os.Mkdir(d, 0o755); err != nil {
-			return missing, err
-		}
-	}
-	return missing, nil
 }
 
 // rejectは、candidateを退け、authoritative sourceを変更しないことを記録する。

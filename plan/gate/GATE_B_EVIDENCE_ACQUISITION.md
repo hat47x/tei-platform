@@ -2,25 +2,25 @@
 
 ## 目的
 
-この文書は、Gate Bで**何のEvidenceが必要か、各Evidenceが何を証明し、何を証明しないか**を定めます。
+この文書は、判定段階Bで**どの検証根拠が必要か、それぞれが何を証明し、何を証明しないか**を定めます。
 
-- 具体的なcommand / 実行順 / fail-closed停止条件: [`GATE_B_EVIDENCE_RUNBOOK.md`](GATE_B_EVIDENCE_RUNBOOK.md)
-- Ready / Not Ready判定: [`GATE_B_READINESS_AUDIT.md`](GATE_B_READINESS_AUDIT.md)
-- Gate B → C引渡し: [`GATE_B_TO_C_HANDOVER_CONTRACT.md`](GATE_B_TO_C_HANDOVER_CONTRACT.md)
+- 具体的な命令・実行順序・安全側に停止する条件： [`GATE_B_EVIDENCE_RUNBOOK.md`](GATE_B_EVIDENCE_RUNBOOK.md)
+- 合格・不合格の判定： [`GATE_B_READINESS_AUDIT.md`](GATE_B_READINESS_AUDIT.md)
+- 判定段階BからCへの引継ぎ： [`GATE_B_TO_C_HANDOVER_CONTRACT.md`](GATE_B_TO_C_HANDOVER_CONTRACT.md)
 
-Runbook以外へ第二の実行正本を作りません。本書はEvidence nature、証明範囲、provenance、完了条件を扱います。
+実行手順書とは別に、第二の実行手順の正本は作りません。この文書では、検証根拠の種類、証明する範囲、来歴、完了条件を扱います。
 
-Upstream traceではPAS-02をprimary、PAS-03をsecondaryとして扱います。
+上位要求との追跡では、PAS-02を主な対象、PAS-03を副次的な対象として扱います。
 
 ## 現行Gate B scope
 
-Gate B Readyへ必須のsource-dependent Evidenceは次の三つです。
+判定段階Bの合格に必須となる、ソースの版に依存した検証根拠は次の三つです。
 
-1. #310 deterministic Repository Evidence
-2. #255 generated artifact reproducibility Evidence
-3. #308 real PostgreSQL Provider + ephemeral fixture Evidence
+1. #310 リポジトリの決定論的な検証根拠
+2. #255 生成成果物の再現性に関する検証根拠
+3. #308 実際のPostgreSQL提供実装と一時的な試験用環境の検証根拠
 
-三つを同じclean candidate revision `R`へ揃えます。
+三つとも、同じ変更のない候補版`R`を対象に取得します。
 
 ```text
 #310 ─┐
@@ -38,13 +38,13 @@ Gate B Readiness Audit for R
 Handover Baseline B / revision R
 ```
 
-actual external asset / Oracle Evidenceは重要なEvidence natureとして継続しますが、第四Required laneではありません。取得済みならHandoverへverified external Evidenceとして参照し、未完了なら`unresolved`として渡します。
+実際の外部資産やOracleに関する検証根拠は引き続き重要ですが、第四の必須経路にはしません。確認済みであれば検証済みの外部資産の根拠として引き継ぎ、未完了なら`unresolved`として渡します。
 
-actual execution Evidenceが揃ったため、Gate Bは**Ready**です（candidate revision `R = e5231839a5dcc62cce1181a2731fcb7c70d16736`、判定日2026-09-19）。判定の詳細は[`GATE_B_READINESS_AUDIT.md`](GATE_B_READINESS_AUDIT.md)が正本です。
+実際に実行して得た検証根拠が揃ったため、判定段階Bは**合格**しています（候補版`R = e5231839a5dcc62cce1181a2731fcb7c70d16736`、判定日2026年9月19日）。判定の詳細は[`GATE_B_READINESS_AUDIT.md`](GATE_B_READINESS_AUDIT.md)を正本とします。
 
 ## Evidence natureを相互代替しない
 
-Gate B周辺では少なくとも次のEvidence natureを区別します。
+判定段階Bでは、少なくとも次の種類の検証根拠を区別します。
 
 | Evidence nature | 代表例 | 主に証明するもの |
 | --- | --- | --- |
@@ -55,34 +55,34 @@ Gate B周辺では少なくとも次のEvidence natureを区別します。
 
 次を読み替えません。
 
-- deterministic / synthetic成功 → actual external asset成功
-- generated artifact一致 → Driver Scenario成功
-- PostgreSQL ephemeral fixture成功 → production既存Database事実
-- PostgreSQL成功 → actual Oracle成功
-- acceptance receipt成功 → actual external read成功
-- CI green → Product Evidence取得済み
+- 決定論的な検証や合成データでの成功 → 実際の外部資産での成功
+- 生成成果物の一致 → ドライバーのシナリオの成功
+- PostgreSQLの一時的な試験用環境での成功 → 本番の既存データベースに関する事実
+- PostgreSQLでの成功 → 実際のOracleでの成功
+- 受理記録の成功 → 実際の外部データの読取りの成功
+- 自動検査の成功 → 製品の検証根拠を取得済み
 
-Business Result / Execution Error / Observation / Diagnosticも相互に読み替えません。
+業務上の結果、実行時エラー、観測、診断結果も互いに読み替えません。
 
 ## 共通Evidence原則
 
 ### source-dependent Evidenceはclean revisionへ固定する
 
-Gate B Required Evidenceは開始時だけでなく、各runnerが要求する終了時まで同じclean Repository revisionへ固定します。
+判定段階Bで必須の検証根拠は、開始時だけでなく、各実行器が要求する終了時まで、同じ変更のないリポジトリの版に固定します。
 
 少なくとも次を追跡します。
 
 - `repositoryRevision`
 - `reproducibleRevision`
-- working tree / index clean
+- 作業ツリーと索引に変更がないこと
 - post-run source確認
-- revision stability
+- 実行中に版が変わらないこと
 
-異なるrevisionの成功を寄せ集めません。
+異なる版で得た成功結果を寄せ集めません。
 
-candidate `R`の途中でsourceまたはgenerated artifact修復が必要になった場合はcycleを停止します。変更を意味確認してcommitし、新しいclean revision `R'`で#310 / #255 / #308 / #387を最初から取り直します。
+候補版`R`の検証中にソースや生成成果物の修復が必要になった場合は、その一連の検証を停止します。変更の意味を確認してコミットし、新しい変更のない版`R'`で#310・#255・#308・#387を初めから実行し直します。
 
-mainが先へ進んでも、candidateを暗黙に最新mainへ移しません。
+mainが更新されても、検証対象の候補版を暗黙のうちに最新mainへ切り替えません。
 
 ### EvidenceはCanonical authorityではない
 
@@ -94,18 +94,18 @@ Validation / execution / observation
 Evidence artifact
 ```
 
-Evidence artifactからCanonicalへ暗黙に逆書きしません。external EvidenceもCanonical Worldへ取り込みません。
+検証成果物から意味の正本へ暗黙のうちに書き戻しません。外部の検証根拠も、意味の正本へ取り込みません。
 
 ### secret / private runtime materialを通常Evidenceへ保存しない
 
-少なくとも次を通常Evidenceへ保存しません。
+少なくとも次の情報を、通常の検証根拠には保存しません。
 
 - DSN
-- credential / secret
-- original secret file path
-- temporary handoff file path
-- runtime parameter value
-- 実Database名
+- 認証情報や秘密情報
+- 元の秘密情報ファイルのパス
+- 一時的な引継ぎファイルのパス
+- 実行時の引数の値
+- 実際のデータベース名
 - 不要な実データ
 
 ## Required Evidence A — deterministic Repository / #310
@@ -114,22 +114,22 @@ Evidence artifactからCanonicalへ暗黙に逆書きしません。external Evi
 
 ### 目的
 
-Repository checkoutと通常Go runnerから、Application Driverの主要意味境界とexternal Evidence intake Conformanceを再現できることを示します。
+リポジトリを取得し、通常のGo実行器を用いて、アプリケーションのドライバーに関する主要な意味の境界と、外部の検証根拠を取り込む際の準拠確認を再現できることを示します。
 
-正規runnerは `tools/reference-gate-b-repository-evidence` です。具体commandはRunbookを正とします。
+正規の実行器は`tools/reference-gate-b-repository-evidence`です。具体的な命令は実行手順書を正本とします。
 
 ### 必要なEvidence
 
-一つのsource-fixed Evidenceへ少なくとも次を束ねます。
+一つのソースの版を固定した検証根拠に、少なくとも次をまとめます。
 
-- Canonical Workspace Validation
-- final UI-less Scenario
-- external Evidence intake boundary Conformance
-- Repository source observation Conformance
-- Go toolchain identity
-- run前後のRepository source
+- 正本となる作業領域の検証
+- 画面を使わない最終シナリオ
+- 外部の検証根拠を取り込む際の境界の準拠確認
+- リポジトリのソースを観測する際の準拠確認
+- Goの開発・構築ツール一式の識別情報
+- 実行前後のリポジトリのソース
 
-final UI-less Scenarioは少なくとも次を接続します。
+画面を使わない最終シナリオでは、少なくとも次をつなぎます。
 
 ```text
 Authentication
@@ -145,27 +145,27 @@ Authentication
 
 ### source / Workspace identity
 
-Gate B Evidence専用full checkoutを使用し、tracked / untracked / ignored local stateを許容しません。tracked index entryは通常`H`だけを許容し、`assume-unchanged` / `skip-worktree` / sparse checkout等の非標準index stateを成功Evidenceへ持ち込みません。
+判定段階Bの検証根拠を取得するため、リポジトリ全体を専用に取得します。追跡対象・追跡対象外・無視対象のいずれにもローカルの変更状態を許容しません。追跡対象の索引項目は通常の`H`だけを許容し、`assume-unchanged`・`skip-worktree`・部分取得などの非標準の索引状態を成功の根拠に含めません。
 
-Workspace identityは `reference/workspace` を正規contractへexact bindingします。
+作業領域の識別情報は、`reference/workspace`を正式な契約に厳密に対応付けます。
 
 ### 完了条件
 
-Gate Bへ採用する#310 Evidenceには少なくとも次を要求します。
+判定段階Bに採用する#310の検証根拠には、少なくとも次を要求します。
 
 - `evidenceNature = deterministic-repository`
 - `repositoryRevision = R`
 - `reproducibleRevision = true`
-- Workspace Validation成功
-- final UI-less Scenario成功
-- external Evidence intake成功
-- Repository source-boundary Conformance成功
-- producer checkの`name / command / passed`が正規contractと一致
-- post-run source確認済み
+- 作業領域の検証が成功
+- 画面を使わない最終シナリオが成功
+- 外部の検証根拠の取込みが成功
+- リポジトリのソースの境界の準拠確認が成功
+- 検証根拠の生成元を確認する`name / command / passed`が正式な契約と一致
+- 実行後のソースを確認済み
 - 実行前後HEAD同一
-- 終了時clean source / index state
+- 終了時にソースと索引に変更がないこと
 
-synthetic Evidenceをactual external Evidenceへ格上げしません。
+合成データから得た検証根拠を、実際の外部資産についての検証根拠へ格上げしません。
 
 ## Required Evidence B — generated artifact reproducibility / #255
 
@@ -173,7 +173,7 @@ synthetic Evidenceをactual external Evidenceへ格上げしません。
 
 ### 目的
 
-Canonical Workspace等の正規入力から、保存generated artifactを同じclean revisionで再生成・照合できることを示します。
+正本となる作業領域などの正式な入力から、保存済みの生成成果物を、同じ変更のない版で再生成し、照合できることを示します。
 
 対象:
 
@@ -181,26 +181,26 @@ Canonical Workspace等の正規入力から、保存generated artifactを同じc
 - `reference/workspace/.tei/plugin-lock.json`
 - `reference/order_rollout.durable-run.m0.21.start.json`
 
-正本はauthoring sourceです。generated artifactを正本としてCanonicalへ逆書きしません。
+正本は記述した入力元です。生成成果物を新たな正本としたり、意味の正本へ書き戻したりしません。
 
 ### checkとrepairを分ける
 
-Gate B最終Evidence入口はcheck-onlyの `tools/reference-generated-artifact-evidence` です。
+判定段階Bで最終的な検証根拠を得る入口は、変更を加えずに確認する`tools/reference-generated-artifact-evidence`です。
 
-staleの場合だけ正規generatorを修復操作として使い、diffを意味上確認してcommitします。`-write`直後のdirty treeやsafe-replace成功は完了Evidenceではありません。
+生成成果物が古い場合に限り、正式な生成器を使って修復します。差分を意味の観点から確認してコミットします。`-write`の直後に作業ツリーへ変更が残っている状態や、安全な置換処理の成功だけでは完了の検証根拠になりません。
 
 ### 完了条件
 
 少なくとも次を要求します。
 
-- World / Plugin Lock golden一致
-- Durable Run golden一致
-- producer checkの`name / command / passed`が正規contractと一致
+- 意味の正本とプラグインの実装固定情報が期待出力と一致
+- 永続的な実行記録が期待出力と一致
+- 検証根拠の生成元を確認する`name / command / passed`が正式な契約と一致
 - `repositoryRevision = R`
 - `reproducibleRevision = true`
-- post-run source確認済み
+- 実行後のソースを確認済み
 - 実行前後HEAD同一
-- 終了時clean source / index state
+- 終了時にソースと索引に変更がないこと
 
 ## Required Evidence C — real PostgreSQL ephemeral fixture / #308
 
@@ -208,57 +208,57 @@ staleの場合だけ正規generatorを修復操作として使い、diffを意�
 
 ### 目的
 
-`Order -> OrderLine[]`について、成立済みSemantic Relation、Relation Storage、Contract Query realization、Driver runtimeが**実PostgreSQL engine**上でも同じ意味境界を保つことを示します。
+`Order -> OrderLine[]`について、確認済みの意味上の関係、関係の保存方法、契約に基づく問い合わせの実現、ドライバーの実行が、**実際のPostgreSQLの実行環境**でも同じ意味上の境界を保つことを示します。
 
-これはproduction既存PostgreSQL Databaseの事実を観測するEvidenceではありません。
+これは、本番にある既存のPostgreSQLデータベースの状態を観測した検証根拠ではありません。
 
 ### Evidence専用Database
 
-#308はtool-owned ephemeral fixtureを使います。fixture作成前に少なくとも次をfail closedで確認します。
+#308では、検証用ツールが管理する一時的な試験用環境を使います。準備を始める前に少なくとも次を確認し、条件を満たさなければ安全側に停止します。
 
-- Canonical Workspace Validation成功
-- default Databaseではない
-- user relation 0件
+- 正本となる作業領域の検証成功
+- 既定のデータベースではない
+- 利用者が定義した関係が0件
 - Event Trigger 0件
-- fixture object不在
+- 試験用の構成要素が存在しない
 
-既存relationやEvent Triggerを削除・無効化してEvidence用Databaseへ転用しません。
+既存の関係やイベントトリガーを削除・無効化し、検証用のデータベースに転用することはしません。
 
 ### DB-side fixture ownership / cleanup
 
-fixture作成時にDB側ownership markerを付与します。
+試験用の構成要素を作成するとき、データベース側に所有者を示す印を付けます。
 
-cleanupではtableをlockし、DB上markerが作成時markerとexact matchしたobjectだけをDROPします。同名objectが別主体へ置換された疑いがある場合、名前だけを根拠に削除しません。
+後片付けでは表をロックし、データベース側の印が作成時の印と厳密に一致する構成要素だけを削除します。同名の構成要素が別の主体によって置き換えられた疑いがある場合は、名前だけを根拠に削除しません。
 
-cleanup不能でtool fixtureが残る可能性は、他主体のobjectを誤削除することより安全側として許容します。そのDatabaseは次回empty-DB guardを通りません。
+後片付けができず、検証ツールの試験用構成要素が残る可能性は許容します。別の主体の構成要素を誤って削除するより安全なためです。そのデータベースは、次回の空のデータベースであることを求める安全確認には通りません。
 
 ### runtime Evidence
 
-同じrunで少なくとも次を確認します。
+同じ実行で少なくとも次を確認します。
 
 - 2件取得
 - 正常0件
-- missing-tableをExecution Errorとして扱う
-- explicit raw result → Semantic mapping
-- support column非露出
-- parameter nameを追跡し、valueを通常Evidenceへ保存しない
+- 表が存在しない場合を実行時エラーとして扱う
+- 元の実行結果から意味上の表現への明示的な対応付け
+- 補助列を外部へ露出しないこと
+- 引数名を追跡し、値を通常の検証根拠へ保存しないこと
 
 ### 完了条件
 
-Gate Bへ採用する#308 Evidenceには少なくとも次を要求します。
+判定段階Bに採用する#308の検証根拠には、少なくとも次を要求します。
 
 - `evidenceNature = real-postgres-ephemeral-fixture`
 - `repositoryRevision = R`
 - `reproducibleRevision = true`
 - Canonical target identity / parameter / deterministic Semantic attributesが正規contractと一致
 - `fixtureDatabaseSafety.guardPassed = true`
-- DB-side ownership marker exact一致
+- データベース側の所有者を示す印が厳密に一致
 - `fixtureCleanupSafety.verified = true`
-- cleanup後user relation 0 / Event Trigger 0 / fixture不在
-- post-run source確認済み
+- 後片付け後、利用者が定義した関係0件・イベントトリガー0件・試験用構成要素なし
+- 実行後のソースを確認済み
 - 実行前後HEAD同一
-- 終了時clean source / index state
-- DSN / credential / parameter値 / 実Database名非保存
+- 終了時にソースと索引に変更がないこと
+- DSN・認証情報・引数の値・実際のデータベース名を保存しないこと
 
 ## Final convergence Evidence / #387
 
@@ -266,9 +266,9 @@ Gate Bへ採用する#308 Evidenceには少なくとも次を要求します。
 
 ### 目的
 
-三つのRequired Evidenceが個別に再現可能なだけでなく、**同じcandidate revision R**へ収束したことを示します。
+三つの必須の検証根拠が個別に再現できるだけでなく、**同じ候補版R**で成立したことを示します。
 
-final runnerは `tools/reference-gate-b-final-evidence` です。具体起動条件はRunbookを正とします。
+最終確認の実行器は`tools/reference-gate-b-final-evidence`です。具体的な起動条件は実行手順書を正本とします。
 
 ### lane順序
 
@@ -282,11 +282,11 @@ final runnerは `tools/reference-gate-b-final-evidence` です。具体起動条
 final source check
 ```
 
-#310または#255が失敗した場合、不要なPostgreSQL fixture操作へ進みません。
+#310または#255が失敗した場合、不要なPostgreSQLの試験用構成要素の操作には進みません。
 
 ### final success
 
-final成功には少なくとも次を要求します。
+最終確認の成功には、少なくとも次を要求します。
 
 ```text
 evidenceNature = gate-b-three-lane-final-convergence
@@ -300,7 +300,7 @@ postRunRepository.revisionStable = true
 postRunRepository.workingTreeClean = true
 ```
 
-各laneには少なくとも:
+各検証経路には、少なくとも次を要求します。
 
 - `passed = true`
 - `repositoryRevision = R`
@@ -310,13 +310,13 @@ postRunRepository.workingTreeClean = true
 
 を要求します。
 
-final runnerが実際に読んだchild stdout exact bytesをRepository外へ保持し、そのSHA-256を`evidenceArtifactFingerprint`として記録します。fingerprintだけでEvidence本文や合否を代替しません。
+最終確認の実行器が実際に読み取った子処理の標準出力を、バイト列のままリポジトリの外に保存します。そのSHA-256を`evidenceArtifactFingerprint`として記録します。照合値だけで検証根拠の本文や合否を代わりに示すことはできません。
 
 ## Final runのexecution Evidence境界
 
 ### Repository source observation
 
-共有source observationは概念上次を同じHEAD観測窓で取得します。
+共通のソース状態の観測では、概念上、次の情報を同じHEADの観測期間内に取得します。
 
 ```text
 HEAD before
@@ -328,22 +328,22 @@ git ls-files -v -z
 HEAD after
 ```
 
-少なくとも次をfail closedで要求します。
+少なくとも次の条件を要求し、満たせなければ安全側に停止します。
 
-- HEAD stable
-- tracked / untracked / ignored local stateなし
-- tracked index entryが通常`H`のみ
-- full checkout
-- Repository / work tree / common dir / index / object store / namespace等のGit identity overrideなし
-- command-scope Git config injectionなし
+- HEADが変わらないこと
+- 追跡対象・追跡対象外・無視対象のローカル変更状態がないこと
+- 追跡対象の索引項目が通常の`H`だけであること
+- リポジトリ全体を取得していること
+- リポジトリ・作業ツリー・共通ディレクトリ・索引・オブジェクト保存先・名前空間など、Gitの識別情報の上書きがないこと
+- 命令単位でGitの設定を差し込んでいないこと
 
-source observation不能、HEAD drift、ignored local state、非標準index stateを成功Evidenceへ持ち込みません。
+ソースの状態を観測できない場合、HEADが変化した場合、無視対象のローカル状態や非標準の索引状態がある場合は、その結果を成功の検証根拠に含めません。
 
 ### Go environment
 
-final runnerのcompile前からRepository外のGo environment / workspace / flagsを暗黙入力へしません。
+最終確認の実行器では、コンパイルの前から、リポジトリ外のGoの環境設定・作業領域・フラグを暗黙の入力として使いません。
 
-actual final JSONでは少なくとも:
+実際の最終確認のJSONでは、少なくとも次を確認します。
 
 ```text
 goEnvironment.externalWorkspaceActive = false
@@ -355,9 +355,9 @@ goEnvironment.goEnvDisabled = true
 
 ### PostgreSQL secret exposure
 
-final launch environmentへdirect `TEI_TEST_POSTGRES_DSN`を置きません。
+最終確認を起動する環境へ`TEI_TEST_POSTGRES_DSN`を直接設定しません。
 
-Repository外の一行secret fileを指定し、final runnerはsecret-free clean-source preflight成功後にoriginal secret fileをstable single-openします。normalized DSN本文はmemoryに保持したうえで、Repository外owner-only temporary handoff fileへ複製します。
+リポジトリ外にある一行の秘密情報ファイルを指定します。最終確認の実行器は、秘密情報を使わないソースの事前確認に成功した後で、元の秘密情報ファイルを安定した形で一度だけ開きます。正規化したDSNの内容をメモリに保持し、所有者だけがアクセスできるリポジトリ外の一時的な引継ぎファイルへ複製します。
 
 ```text
 outer go run / compiler / linker
@@ -380,21 +380,21 @@ Go / Git probe / #310 / #255
   -> 以後DSN本文はmemoryのみ
 ```
 
-normal final runner return時にtemporary handoff directoryをcleanupします。process強制killやhost停止に対するOS-level完全消去までは保証せず、Repository外owner-only temporary scopeへ限定します。
+最終確認の実行器が通常終了した際には、一時的な引継ぎ用ディレクトリを後片付けします。プロセスの強制終了やホストの停止に対して、OSレベルで完全に消去できるとは保証しません。保存場所はリポジトリ外に限定し、所有者だけがアクセスできる一時領域を使います。
 
-DSN本文、credential、original secret path、handoff pathを通常Evidenceへ保存しません。
+DSNの内容、認証情報、元の秘密情報ファイルのパス、引継ぎファイルのパスを通常の検証根拠には保存しません。
 
-これらのenvironment / secret境界はEvidence natureを増やすものではなく、Required Evidence取得の再現性・least exposure条件です。
+これらの実行環境と秘密情報の境界は、検証根拠の種類を増やすものではありません。必須の検証根拠を再現でき、秘密情報への接触を最小限に抑えるための条件です。
 
 ## Same-run child exact artifact independent audit
 
-final convergence成功だけでGate B Readyにはしません。
+三つの検証経路が同じ版で成立しただけでは、判定段階Bを合格にはしません。
 
-#387が実際に保持したsame-run child exact artifactsを、read-only補助tool `tools/reference-gate-b-readiness-artifact-audit` で独立に再監査します。具体command / 順序はRunbookを正とします。
+#387が同じ実行で取得・保存した子処理の成果物を、内容を変更しない補助ツール`tools/reference-gate-b-readiness-artifact-audit`で独立して再監査します。具体的な命令と実行順序は実行手順書を正本とします。
 
-このartifact auditは第四Required laneではありません。`artifactAuditPassed = true`だけでReadyを宣言しません。
+この成果物の監査は第四の必須検証経路ではありません。`artifactAuditPassed = true`だけでは合格を宣言しません。
 
-独立監査では少なくとも次を確認します。
+独立した監査では、少なくとも次を確認します。
 
 - fixed 3 lane / fixed artifact filename
 - final `artifactFile`との対応
@@ -408,7 +408,7 @@ final convergence成功だけでGate B Readyにはしません。
 - post-run clean source
 - secret / credential / DSN / physical identity等の禁止field非保存
 
-同じRで後から再実行した別artifactを、final convergenceが読んだsame-run artifactへ読み替えません。
+同じ版Rで後から実行して得た別の成果物を、最終確認で実際に読み取った同一実行内の成果物として扱いません。
 
 ## Optional / unresolved Evidence — actual external asset / Oracle
 
@@ -420,28 +420,28 @@ final convergence成功だけでGate B Readyにはしません。
 
 ### 性質
 
-これは**actual external asset Evidence**です。
+これは**実際の外部資産についての検証根拠**です。
 
-TEIが所有していない既存Oracle資産について、実際に観測したphysical facts、provenance、effective read-only、concrete driver behavior、actual readを扱います。
+TEIが所有しない既存のOracle資産について、実際に観測した物理的な事実、来歴、実効的な読取り専用の制約、具体的なドライバーの動作、実際の読取り結果を扱います。
 
-Evidence natureとして重要ですが、Gate B Readyの第四Required laneではありません。
+検証根拠の種類として重要ですが、判定段階Bの合格に必要な第四の検証経路ではありません。
 
 ### 未観測事実を補完しない
 
-少なくとも次を観測前に推測しません。
+少なくとも次の項目を、観測前に推測しません。
 
-- physical object kind / identity
-- physical parameter / raw columns
-- physical type / NULL semantics
-- native Oracle SQL
-- concrete driver constraints
-- effective read-only mechanism
+- 物理的な構成要素の種類と識別情報
+- 物理的な引数と元の列
+- 物理的な型とNULLの意味
+- Oracle固有のSQLの直接記述
+- 具体的なドライバーの制約
+- 実効的な読取り専用の仕組み
 
 ### Evidence intakeとactual readを分ける
 
-external Evidence artifactは非Canonicalのまま、明示authoring済みrealizationと照合します。
+外部の検証成果物は正本とは区別したまま、明示的に記述・受理した実現方式と照合します。
 
-acceptance receiptが成功してもactual read成功にはしません。
+受理記録が成功しても、実際のデータの読取りが成功したとは扱いません。
 
 ```text
 external observed artifact
@@ -455,17 +455,17 @@ raw result observation
 explicit Semantic mapping
 ```
 
-external observed artifact自体の`observedAt`がcandidate Rの時点である必要はありません。ただし、そのartifactをRに対するverified claimとしてHandoverへ載せる場合は、Rとのacceptance / runtime / actual read provenanceを明示します。
+外部から観測した成果物そのものの`observedAt`は、候補版Rの時点である必要はありません。ただし、その成果物をRについて検証済みの主張として引き継ぐ場合は、Rとの受理・実行・実際の読取りの来歴を明示します。
 
-旧revisionのacceptanceやactual readをRへ黙ってcarry-forwardしません。
+旧版での受理や実際の読取り結果を、候補版Rへ暗黙のうちに引き継ぎません。
 
 ### Gate B通過時の扱い
 
-actual Oracle Evidenceが取得済みでRに対するverified claimとして十分なら、Handoverから追加のverified external asset Evidenceとして参照できます。
+実際のOracleで得た検証根拠があり、Rについて検証済みの主張を支えるのに十分であれば、引継ぎ記録から追加の外部資産の検証根拠として参照できます。
 
-未取得、actual read未完了、またはRへの結び付きが不足する場合は、未検証範囲を`unresolved`としてHandoverします。
+未取得の場合、実際の読取りが未完了の場合、またはRとの結び付きが不十分な場合は、未検証の範囲を`unresolved`として引き継ぎます。
 
-第一Web Target側で不足Oracle factsを補完しません。
+最初のウェブ実行先側で、不足しているOracleの事実を推測して補いません。
 
 ## Gate B Required Evidence Acquisitionの完了条件
 
@@ -489,11 +489,11 @@ actual Oracle Evidenceが取得済みでRに対するverified claimとして十�
 - [ ] Evidence natureを相互代替していない
 - [ ] secret / credential / DSN本文 / original secret path / handoff path / 実Database名を通常Evidenceへ保存していない
 
-これらを取得した後、`GATE_B_READINESS_AUDIT.md`がRをReady / Not Ready判定します。一つでも成立しなければNot Readyです。
+これらを取得した後、`GATE_B_READINESS_AUDIT.md`でRの合格・不合格を判定します。一つでも成立しなければ不合格です。
 
 ## Handoverとの関係
 
-Gate BがRについてReadyになった場合、同じRを`GATE_B_TO_C_HANDOVER_CONTRACT.md`へ渡します。
+判定段階BがRについて合格した場合、同じRを`GATE_B_TO_C_HANDOVER_CONTRACT.md`へ引き継ぎます。
 
 ```text
 Handover Baseline R
@@ -511,7 +511,7 @@ Handover Baseline R
        └─ unresolved
 ```
 
-Handover recordは第二のCanonical authorityではありません。
+引継ぎ記録は、意味の正本とは別の管理権限を持つ第二の正本ではありません。
 
 ## 非目標
 
@@ -522,7 +522,7 @@ Handover recordは第二のCanonical authorityではありません。
 - synthetic / generated / provider fixture / actual external Evidenceを相互代替すること
 - external EvidenceからCanonical realizationを自動生成すること
 - generated artifactを手編集すること
-- credential / secretをEvidenceへ保存すること
+- 認証情報や秘密情報をEvidenceへ保存すること
 - Runbook以外に実行commandの第二正本を作ること
 - CIをProduct Evidenceへ読み替えること
 

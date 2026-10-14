@@ -1,39 +1,39 @@
 # M0.25 別プロセスの実行形式と引数の準拠確認
 
-M0.25では、process Pluginの実行指定をshell-likeな1本のcommand lineではなく、単一executableと順序付きargvへ分離します。
+M0.25では、別プロセスで動くプラグインの起動時に、シェル命令のような一つの文字列を使いません。実行ファイルと、順序を持つ引数を分けて指定します。
 
-この文書は、ADR-0006の判断がauthoringからactual child processまでどこで固定されているかを整理します。
+この文書では、ADR-0006の方針が、定義の記述から子プロセスの起動まで、どのように保たれるかを説明します。
 
 ## 不変条件
 
-process runtimeは概念上、次の組として扱います。
+別プロセスの起動には、次の二つの情報を指定します。
 
 ```text
 executable: string
 args: []string
 ```
 
-TEI Core / Reference Hostは、command文字列に対して空白split、shell quote再解釈、glob展開、environment expansion、`sh -c`等への暗黙委譲を行いません。
+TEIの中核部分と参照用ホストでは、命令文字列を空白で分割して引数を推測しません。また、シェルの引用符、ワイルドカード、環境変数を解釈せず、`sh -c`などへの実行の委任も暗黙には行いません。
 
-`Runtime.Command`というfield名は互換性のため維持しますが、意味は単一executable名/pathです。引数は`Runtime.Args`に順序付きで保持します。
+既存の定義との互換性のため、`Runtime.Command`という項目名は残します。ただし、その値は実行ファイル名かパスに限ります。引数は指定した順序で`Runtime.Args`に保持します。
 
 ## 記述文法
 
-明示的なargsを次のように記述できます。
+引数は、次のように一つずつ明示します。
 
 ```tei
 runtime process "python3" args "-m" "worker module" "--flag=a b" sandbox required
 ```
 
-空白を含む各quoted argumentは一つのargv elementのまま保持されます。
+引用符で囲った文字列は、途中に空白があっても全体を一つの引数として扱います。
 
-旧来の次の記述を、自動splitして互換化しません。
+一方、従来の次の記述は、空白で自動分割して有効な形式とはみなしません。
 
 ```tei
 runtime process "python3 -m worker" sandbox required
 ```
 
-この形は明示argsへの移行を要求するerrorになります。
+この記述はエラーになります。引数を明示する形式への修正が必要です。
 
 主な検証は次のとおりです。
 
@@ -42,51 +42,51 @@ runtime process "python3 -m worker" sandbox required
 
 ## 実行対象の識別
 
-argvは実行内容を変えるため、Host-local optionではなくPlugin execution identityの一部です。
+引数によって実行内容が変わるため、ホストの設定だけでは管理しません。プラグインの実行対象を識別する情報にも引数を含めます。
 
-同じexecutableでもargsが異なれば、次が変化します。
+実行ファイルが同じでも、引数を変更すると次の照合値が変わります。
 
-- Plugin Definition fingerprint
-- Environment Plugin Lock fingerprint
-- Runtime Policy fingerprint
+- プラグイン定義の照合値
+- 実行環境で固定したプラグイン構成の照合値
+- 実行時の方針の照合値
 
 主な検証は次のとおりです。
 
 - `internal/plugin/process_args_conformance_test.go`
 - `internal/plugin/runtime/process_args_policy_test.go`
 
-これにより、descriptor上では同じPlugin versionなのにHost側だけ別argvを使う、といった差異をsilentに扱いません。
+これにより、プラグインの定義上は同じ版でも、ホストが異なる引数で起動した場合の違いを検出できるようにします。
 
 ## 実行時の境界
 
-`PluginRuntime`は`Command`と`Args`を保持し、Process / Sandbox境界では`ProcessCommand{Executable, Args}`へ構造化したまま渡します。
+`PluginRuntime`は`Command`と`Args`を保持します。別プロセスや隔離環境で実行する部分には、実行ファイルと引数を分けたまま`ProcessCommand{Executable, Args}`として渡します。
 
-Reference `StdioProcessLauncher`は次の形でchild processを起動します。
+参照実装の`StdioProcessLauncher`では、次の形で子プロセスを起動します。
 
 ```text
 exec.CommandContext(ctx, executable, args...)
 ```
 
-executableとargsを一度command line文字列へ連結しません。
+実行ファイル名と引数を連結して、一つの命令文字列に戻すことはしません。
 
-この変更はM0.24で固定した次の境界を変更しません。
+引数の指定方法が変わっても、M0.24で定めた次の制約は変わりません。
 
-- plain process transportはOS sandboxではない
-- `sandbox required`はHost Sandbox / policy enforcerを必要とする
-- local child PIDをDurable Runtime Handleとはみなさない
-- missing / unknown時のno-auto-replay原則を弱めない
+- 通常のプロセス間通信だけでは、OSの隔離環境にはならない
+- `sandbox required`を満たすには、ホスト側で隔離環境と利用方針を強制する仕組みが必要
+- ローカルで起動した子プロセスの識別子は、永続的な実行識別情報とはみなさない
+- 実行が見つからない場合や状態が不明な場合も、自動的には再実行しない
 
 ## 実際の子プロセスで引数を確認する
 
-`tools/reference-process-plugin`は、Reference marker
+`tools/reference-process-plugin`では、検証に使う次の識別文字列が
 
 ```text
 --tei-reference-marker=argv value preserved
 ```
 
-が**空白を含む一つのargv element**として届いた場合だけ成功Responseを返します。
+**空白を含む一つの引数**として渡された場合に限って、成功を示す応答を返します。
 
-`examples/process-plugin`は同じmarkerを`PluginRuntime.Args`に設定し、次の縦経路を通します。
+`examples/process-plugin`は同じ識別文字列を`PluginRuntime.Args`に設定し、次の経路で実際の子プロセスへ渡します。
 
 ```text
 DeploymentExecutor
@@ -99,25 +99,25 @@ DeploymentExecutor
   → JSON Response
 ```
 
-常設CIではReference helperをbuildし、この例を実際に実行して`accepted` responseとargv markerを確認します。
+継続的な自動検査では、参照用プログラムをビルドして起動し、`accepted`という応答と、引数として渡した識別文字列を確認します。
 
 ## 参照用の試験データ
 
-Reference Workspace内で実際にargsを持つprocess descriptorを一つ保持します。WorkspaceからPlugin Lock / World / Durable Runを再生成し、一致することをCIで確認します。
+参照用作業領域には、引数を指定した別プロセス型プラグインの定義を一つ置きます。その定義からプラグインの固定情報、全体モデル、保存する実行記録を再生成し、保存済みの記録との一致を自動検査で確かめます。
 
-したがって、argv導入は単体testだけでなく、Workspace authoring、descriptor fingerprint、Plugin Lock、normalized World、Durable execution fixtureまで一続きで再現されます。
+つまり、単体テストだけでなく、作業領域の定義から照合値、固定情報、全体モデル、保存済みの実行記録に至るまで、引数を含めた同じ内容を再現できるか確かめます。
 
 ## 非目標
 
-M0.25は次を導入しません。
+M0.25では、次の機能は追加しません。
 
-- shell pipeline / redirect
-- shell variable expansion
-- command substitution
-- working directory / environment authoringの一般化
-- production-grade PATH resolution policy
-- OSごとのshell abstraction
-- production-grade sandbox
-- cross-host process reattach
+- シェルによるパイプ処理や入出力の転送
+- シェルによる変数の展開
+- 命令の実行結果による文字列の置換
+- 作業ディレクトリと環境変数の記述方法の一般化
+- 本番運用向けの実行ファイル探索方針
+- OSごとのシェルの違いを吸収する仕組み
+- 本番運用向けの隔離環境
+- 別のホストからプロセスへ再接続すること
 
-必要なshell semanticsがある場合、shell executableとそのargvをdescriptorへ明示し、その選択自体をexecution identityとして扱います。
+シェル特有の処理が必要な場合は、使用するシェルの実行ファイルと引数を定義に明示し、その指定も実行対象の識別に含めます。

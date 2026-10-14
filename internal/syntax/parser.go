@@ -1915,8 +1915,20 @@ func (p *Parser) parseSemanticData(namespace core.CanonicalID) (semantic.Data, e
 				return d, err
 			}
 			d.Relations = append(d.Relations, semantic.Relation{ID: rid, Symbol: rSym.Text, Target: target, Cardinality: semantic.Cardinality(cardTok.Text), Keys: keys})
+		case "candidate-key":
+			key, err := p.parseSemanticCandidateKey(id)
+			if err != nil {
+				return d, err
+			}
+			d.CandidateKeys = append(d.CandidateKeys, key)
+		case "functional-dependency":
+			fd, err := p.parseSemanticFunctionalDependency(id)
+			if err != nil {
+				return d, err
+			}
+			d.FunctionalDependencies = append(d.FunctionalDependencies, fd)
 		default:
-			return d, p.errAt(t, "expected attribute or relation")
+			return d, p.errAt(t, "expected attribute, relation, candidate-key, or functional-dependency")
 		}
 	}
 	return d, nil
@@ -1961,6 +1973,28 @@ func (p *Parser) parseSemanticCapability(namespace core.CanonicalID) (semantic.C
 			break
 		}
 		switch t.Text {
+		case "effect":
+			if c.Effect != nil {
+				return c, p.errAt(t, "capability data effect is declared more than once")
+			}
+			_, _ = p.next()
+			kindTok, err := p.expect(TokenIdent)
+			if err != nil {
+				return c, err
+			}
+			kind := semantic.DataEffectKind(kindTok.Text)
+			if !kind.Valid() {
+				return c, p.errAt(kindTok, fmt.Sprintf("unsupported data effect kind %q", kindTok.Text))
+			}
+			dataTok, err := p.expect(TokenIdent)
+			if err != nil {
+				return c, err
+			}
+			data, err := core.ParseCanonicalID(dataTok.Text)
+			if err != nil {
+				return c, p.errAt(dataTok, err.Error())
+			}
+			c.Effect = &semantic.DataEffect{Kind: kind, Data: data}
 		case "input":
 			_, _ = p.next()
 			nameTok, err := p.expect(TokenIdent)
@@ -2010,7 +2044,7 @@ func (p *Parser) parseSemanticCapability(namespace core.CanonicalID) (semantic.C
 			}
 			c.Outcomes = append(c.Outcomes, semantic.Outcome{Name: name, Payload: payload})
 		default:
-			return c, p.errAt(t, "expected input, output, or outcome")
+			return c, p.errAt(t, "expected input, output, outcome, or effect")
 		}
 	}
 	return c, nil

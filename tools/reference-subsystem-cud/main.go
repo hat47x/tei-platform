@@ -10,6 +10,8 @@ import (
 	"os"
 	"sort"
 	"strings"
+
+	"tei/internal/sourceindex"
 )
 
 const factsSchema = "subsystem-cud-candidate-v1"
@@ -54,11 +56,12 @@ type ProcedureStep struct {
 }
 
 type Facts struct {
-	SchemaVersion        string          `json:"schemaVersion"`
-	WorldJSONFingerprint string          `json:"worldJSONFingerprint,omitempty"`
-	Owners               []Owner         `json:"owners"`
-	FunctionIO           []FunctionIO    `json:"functionIO"`
-	ProcedureSteps       []ProcedureStep `json:"procedureSteps"`
+	SchemaVersion            string          `json:"schemaVersion"`
+	WorldJSONFingerprint     string          `json:"worldJSONFingerprint,omitempty"`
+	ProcedureJSONFingerprint string          `json:"procedureJSONFingerprint,omitempty"`
+	Owners                   []Owner         `json:"owners"`
+	FunctionIO               []FunctionIO    `json:"functionIO"`
+	ProcedureSteps           []ProcedureStep `json:"procedureSteps"`
 }
 
 type Diagnostic struct {
@@ -79,17 +82,19 @@ type Coverage struct {
 
 // InputFingerprints identify exact caller-supplied bytes, not acceptance.
 type InputFingerprints struct {
-	WorldJSON string `json:"worldJSON"`
-	FactsJSON string `json:"factsJSON"`
+	WorldJSON     string `json:"worldJSON"`
+	FactsJSON     string `json:"factsJSON"`
+	ProcedureJSON string `json:"procedureJSON,omitempty"`
 }
 
 type Report struct {
-	SchemaVersion     string             `json:"schemaVersion"`
-	AuthorityLimit    string             `json:"authorityLimit"`
-	Status            string             `json:"status"`
-	Coverage          Coverage           `json:"coverage"`
-	InputFingerprints *InputFingerprints `json:"inputFingerprints,omitempty"`
-	Diagnostics       []Diagnostic       `json:"diagnostics"`
+	SchemaVersion     string                    `json:"schemaVersion"`
+	AuthorityLimit    string                    `json:"authorityLimit"`
+	Status            string                    `json:"status"`
+	Coverage          Coverage                  `json:"coverage"`
+	InputFingerprints *InputFingerprints        `json:"inputFingerprints,omitempty"`
+	IndexedProcedure  *IndexedProcedureEvidence `json:"indexedProcedure,omitempty"`
+	Diagnostics       []Diagnostic              `json:"diagnostics"`
 }
 
 func Inspect(w World, f Facts) Report {
@@ -149,6 +154,27 @@ func Inspect(w World, f Facts) Report {
 			add("AMBIGUOUS_DATA_OWNER", "unresolved", id, "", "multiple owner declarations are not silently collapsed, even if they agree")
 		}
 	}
+	// A Pattern has one candidate execution Subsystem in this v1 contract.
+	// Conflicting claims make the writer identity unresolved; treating one
+	// claim as a confirmed foreign writer would manufacture a CUD finding.
+	patternSubsystems := map[string]map[string]bool{}
+	for _, op := range f.FunctionIO {
+		if op.Pattern == "" || op.Subsystem == "" || op.Data == "" || op.Source == "" {
+			continue
+		}
+		if op.Operation != "C" && op.Operation != "R" && op.Operation != "U" && op.Operation != "D" {
+			continue
+		}
+		if patternSubsystems[op.Pattern] == nil {
+			patternSubsystems[op.Pattern] = map[string]bool{}
+		}
+		patternSubsystems[op.Pattern][op.Subsystem] = true
+	}
+	for pattern, subsystems := range patternSubsystems {
+		if len(subsystems) > 1 {
+			add("IO_PATTERN_SUBSYSTEM_CONFLICT", "unresolved", pattern, "", "candidate Function I/O assigns one Pattern to multiple Subsystems; writer identity and ownership findings cannot be inferred")
+		}
+	}
 	for _, op := range f.FunctionIO {
 		subject := op.Pattern + " -> " + op.Data
 		if op.Source == "" || op.Subsystem == "" || op.Pattern == "" || op.Data == "" {
@@ -169,6 +195,11 @@ func Inspect(w World, f Facts) Report {
 		}
 		// A missing or ambiguous writer is not evidence for a CUD violation.
 		if !patternResolved || !dataResolved {
+			continue
+		}
+		// Contradictory candidate Subsystem claims do not establish an actor.
+		// Diagnose the conflict once per Pattern, not once per declared effect.
+		if len(patternSubsystems[op.Pattern]) > 1 {
 			continue
 		}
 		matches := owners[op.Data]
@@ -229,9 +260,29 @@ func Inspect(w World, f Facts) Report {
 	return r
 }
 
-// InspectSnapshot adds exact input binding to the pure, candidate-only
-// consistency check. A matching digest never confers accepted-source authority.
+// InspectSnapshot binds the exact World and candidate-facts input bytes.
+// A procedure pin without a corresponding source file fails unresolved.
 func InspectSnapshot(worldBytes, factsBytes []byte) (Report, error) {
+	return inspectSnapshot(worldBytes, nil, factsBytes, false)
+}
+
+// InspectBoundProcedureSnapshot also binds the bytes of a caller-supplied
+// Business Procedure source. It checks explicit Step/Pattern correspondence,
+// but does not confer acceptance authority or infer runtime effects.
+func InspectBoundProcedureSnapshot(worldBytes, procedureBytes, factsBytes []byte) (Report, error) {
+	return inspectSnapshot(worldBytes, procedureBytes, factsBytes, true)
+}
+
+func inspectSnapshot(worldBytes, procedureBytes, factsBytes []byte, hasProcedure bool) (Report, error) {
+	if hasProcedure {
+		var sourceObject map[string]json.RawMessage
+		if err := json.Unmarshal(procedureBytes, &sourceObject); err != nil {
+			return Report{}, fmt.Errorf("decode Procedure JSON: %w", err)
+		}
+		if sourceObject == nil {
+			return Report{}, fmt.Errorf("Procedure JSON must be an object")
+		}
+	}
 	var w World
 	if err := json.Unmarshal(worldBytes, &w); err != nil {
 		return Report{}, fmt.Errorf("decode World JSON: %w", err)
@@ -242,6 +293,9 @@ func InspectSnapshot(worldBytes, factsBytes []byte) (Report, error) {
 	}
 	r := Inspect(w, f)
 	r.InputFingerprints = &InputFingerprints{WorldJSON: snapshotDigest(worldBytes), FactsJSON: snapshotDigest(factsBytes)}
+	if hasProcedure {
+		r.InputFingerprints.ProcedureJSON = snapshotDigest(procedureBytes)
+	}
 	switch {
 	case f.WorldJSONFingerprint == "":
 		r.Diagnostics = append(r.Diagnostics, Diagnostic{Code: "WORLD_SNAPSHOT_UNBOUND", Severity: "unresolved", Subject: "world", Explanation: "candidate facts must bind the exact supplied World JSON byte digest"})
@@ -249,6 +303,24 @@ func InspectSnapshot(worldBytes, factsBytes []byte) (Report, error) {
 	case f.WorldJSONFingerprint != r.InputFingerprints.WorldJSON:
 		r.Diagnostics = append(r.Diagnostics, Diagnostic{Code: "WORLD_SNAPSHOT_STALE", Severity: "unresolved", Subject: "world", Explanation: "facts were prepared for a different World JSON byte snapshot"})
 		r.Status = "unresolved"
+	}
+	switch {
+	case !hasProcedure && f.ProcedureJSONFingerprint != "":
+		r.Diagnostics = append(r.Diagnostics, Diagnostic{Code: "PROCEDURE_SNAPSHOT_UNAVAILABLE", Severity: "unresolved", Subject: "procedure", Explanation: "candidate facts pin a Procedure JSON but no Procedure bytes were supplied"})
+		r.Status = "unresolved"
+	case hasProcedure && f.ProcedureJSONFingerprint == "":
+		r.Diagnostics = append(r.Diagnostics, Diagnostic{Code: "PROCEDURE_SNAPSHOT_UNBOUND", Severity: "unresolved", Subject: "procedure", Explanation: "candidate facts must bind the exact supplied Procedure JSON byte digest"})
+		r.Status = "unresolved"
+	case hasProcedure && f.ProcedureJSONFingerprint != r.InputFingerprints.ProcedureJSON:
+		r.Diagnostics = append(r.Diagnostics, Diagnostic{Code: "PROCEDURE_SNAPSHOT_STALE", Severity: "unresolved", Subject: "procedure", Explanation: "candidate facts were prepared for a different Procedure JSON byte snapshot"})
+		r.Status = "unresolved"
+	case hasProcedure:
+		// Only compare explicit claims for the exact candidate-bound source.
+		// Neither this step comparison nor a matching digest grants Acceptance.
+		if claims := verifyProcedureClaims(procedureBytes, f); len(claims) != 0 {
+			r.Diagnostics = append(r.Diagnostics, claims...)
+			r.Status = "unresolved"
+		}
 	}
 	sort.Slice(r.Diagnostics, func(i, j int) bool {
 		a, b := r.Diagnostics[i], r.Diagnostics[j]
@@ -266,9 +338,18 @@ func InspectSnapshot(worldBytes, factsBytes []byte) (Report, error) {
 func main() {
 	worldPath := flag.String("world", "", "path to tei world JSON (read-only)")
 	factsPath := flag.String("facts", "", "path to candidate declared cross-view facts JSON")
+	procedurePath := flag.String("procedure", "", "optional Procedure JSON source for exact candidate snapshot binding")
+	sourceIndexPath := flag.String("source-index", "", "optional existing Source Index JSON for Procedure source location")
+	sourceRoot := flag.String("source-root", "", "root directory for validating indexed source bytes")
+	procedureSourcePath := flag.String("procedure-source-path", "", "workspace-relative path of the indexed Procedure source")
 	flag.Parse()
 	if strings.TrimSpace(*worldPath) == "" || strings.TrimSpace(*factsPath) == "" {
 		fmt.Fprintln(os.Stderr, "both -world and -facts are required")
+		os.Exit(2)
+	}
+	indexMode := *sourceIndexPath != "" || *sourceRoot != "" || *procedureSourcePath != ""
+	if indexMode && (*sourceIndexPath == "" || *sourceRoot == "" || *procedureSourcePath == "" || *procedurePath == "") {
+		fmt.Fprintln(os.Stderr, "Source Index checks require -source-index, -source-root, -procedure-source-path, and -procedure together")
 		os.Exit(2)
 	}
 	worldBytes, err := os.ReadFile(*worldPath)
@@ -279,7 +360,32 @@ func main() {
 	if err != nil {
 		fail(err)
 	}
-	out, err := InspectSnapshot(worldBytes, factsBytes)
+	var out Report
+	if strings.TrimSpace(*procedurePath) == "" {
+		out, err = InspectSnapshot(worldBytes, factsBytes)
+	} else {
+		procedureBytes, readErr := os.ReadFile(*procedurePath)
+		if readErr != nil {
+			fail(readErr)
+		}
+		if !indexMode {
+			out, err = InspectBoundProcedureSnapshot(worldBytes, procedureBytes, factsBytes)
+		} else {
+			idxBytes, readErr := os.ReadFile(*sourceIndexPath)
+			if readErr != nil {
+				fail(readErr)
+			}
+			var idx sourceindex.Index
+			if err := json.Unmarshal(idxBytes, &idx); err != nil {
+				fail(fmt.Errorf("decode Source Index JSON: %w", err))
+			}
+			reader, readErr := indexedSourceReader(*sourceRoot)
+			if readErr != nil {
+				fail(readErr)
+			}
+			out, err = InspectIndexedProcedureSnapshot(worldBytes, procedureBytes, factsBytes, idx, *procedureSourcePath, reader)
+		}
+	}
 	if err != nil {
 		fail(err)
 	}

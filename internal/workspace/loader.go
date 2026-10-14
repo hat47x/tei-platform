@@ -3,6 +3,7 @@ package workspace
 import (
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path"
 	"path/filepath"
@@ -38,6 +39,7 @@ type SourceContribution struct {
 }
 
 type Result struct {
+	Imports                     []ResolvedImport `json:"imports,omitempty"`
 	World                       ir.World
 	PluginImplementations       []implementation.Source
 	PluginImplementationSources map[string]SourceLocation
@@ -49,19 +51,47 @@ type Result struct {
 	// serialized Source Index; only Load may populate this snapshot.
 	sourceSnapshotRoot string
 	sourceSnapshot     map[string][]byte
+
+	// Only populated during Load. One pinned directory handle protects all
+	// domain Source reads from a Workspace root pathname being replaced.
+	// Never retain an open OS handle in the returned Result.
+	sourceReadRoot *os.Root
 }
 
 func Load(root string) (Result, error) {
+	return loadWithStack(root, map[string]bool{})
+}
+
+func loadWithStack(root string, visiting map[string]bool) (Result, error) {
+	// Canonicalize once, then pin the directory before reading the manifest.
+	// Otherwise a rename between manifest and domain-source reads could
+	// silently redirect the second read to an unrelated Workspace.
+	rootReal, err := canonicalWorkspaceRoot(root)
+	if err != nil {
+		return Result{}, err
+	}
+	if visiting[rootReal] {
+		return Result{}, fmt.Errorf("cyclic Workspace import at %s", root)
+	}
+	sourceRoot, err := openWorkspaceRoot(rootReal)
+	if err != nil {
+		return Result{}, err
+	}
+	defer sourceRoot.Close()
+	visiting[rootReal] = true
+	defer delete(visiting, rootReal)
+
 	manifestYAML := filepath.Join(root, "tei.workspace.yaml")
 	manifestTEI := filepath.Join(root, "tei.workspace.tei")
 	var roots []string
-	if src, err := os.ReadFile(manifestYAML); err == nil {
-		var parseErr error
-		roots, parseErr = parseWorkspaceYAML(string(src))
+	var imports []WorkspaceImport
+	if src, err := readPinnedWorkspaceFile(sourceRoot, "tei.workspace.yaml"); err == nil {
+		manifest, parseErr := parseWorkspaceManifestYAML(string(src))
 		if parseErr != nil {
 			return Result{}, fmt.Errorf("%s: %w", manifestYAML, parseErr)
 		}
-	} else if src, legacyErr := os.ReadFile(manifestTEI); legacyErr == nil {
+		roots, imports = manifest.Sources, manifest.Imports
+	} else if src, legacyErr := readPinnedWorkspaceFile(sourceRoot, "tei.workspace.tei"); legacyErr == nil {
 		var parseErr error
 		roots, parseErr = syntax.NewParser(string(src)).ParseWorkspace()
 		if parseErr != nil {
@@ -73,14 +103,9 @@ func Load(root string) (Result, error) {
 	if err := validateWorkspaceSourceRoots(roots); err != nil {
 		return Result{}, err
 	}
-	// Bind retained loader bytes to the physical Workspace identity.
-	rootReal, err := canonicalWorkspaceRoot(root)
-	if err != nil {
-		return Result{}, err
-	}
 	// Inventory and verify the physical boundary before any domain loader can
 	// read a Source file or parse a symlink to an outside target.
-	managedFiles, err := scanManagedFiles(root, roots)
+	managedFiles, err := scanManagedFiles(sourceRoot, roots)
 	if err != nil {
 		return Result{}, err
 	}
@@ -90,6 +115,7 @@ func Load(root string) (Result, error) {
 		ManagedFiles:                managedFiles,
 		sourceSnapshotRoot:          rootReal,
 		sourceSnapshot:              make(map[string][]byte),
+		sourceReadRoot:              sourceRoot,
 	}
 	// TEI standard semantic types are a library prelude, not Micro Kernel kinds.
 	r.World.Semantics = append(r.World.Semantics, stdlib.SemanticNamespace())
@@ -145,39 +171,20 @@ func Load(root string) (Result, error) {
 	if err := validatePluginImplementationDefinitions(&r); err != nil {
 		return Result{}, err
 	}
+	if err := loadWorkspaceImports(root, imports, &r, visiting); err != nil {
+		return Result{}, err
+	}
 	Normalize(&r.World)
+	// The loader snapshot stays available, but an OS handle must not escape
+	// the Load lifetime. Imports close their own pinned roots independently.
+	r.sourceReadRoot = nil
 	return r, nil
 }
 
+// parseWorkspaceYAML is retained for existing callers of the source-root-only API.
 func parseWorkspaceYAML(src string) ([]string, error) {
-	var roots []string
-	inSources := false
-	for n, raw := range strings.Split(src, "\n") {
-		line := strings.TrimSpace(strings.SplitN(raw, "#", 2)[0])
-		if line == "" {
-			continue
-		}
-		if strings.HasPrefix(line, "workspace:") {
-			continue
-		}
-		if line == "sources:" {
-			inSources = true
-			continue
-		}
-		if inSources && strings.HasPrefix(line, "-") {
-			v := strings.TrimSpace(strings.TrimPrefix(line, "-"))
-			if v == "" {
-				return nil, fmt.Errorf("line %d: empty source root", n+1)
-			}
-			roots = append(roots, v)
-			continue
-		}
-		return nil, fmt.Errorf("line %d: unsupported workspace manifest entry %q", n+1, line)
-	}
-	if len(roots) == 0 {
-		return nil, fmt.Errorf("sources must contain at least one source root")
-	}
-	return roots, nil
+	manifest, err := parseWorkspaceManifestYAML(src)
+	return manifest.Sources, err
 }
 
 // Source roots are portable Workspace-relative directory names. In particular,
@@ -213,39 +220,46 @@ func validateWorkspaceSourceRoots(roots []string) error {
 // authority. Missing optional roots remain forward-compatible; unreadable,
 // escaped, broken-linked or non-regular source entries fail instead of being
 // silently omitted or introduced as Workspace-managed artifacts.
-func scanManagedFiles(root string, roots []string) ([]ManagedFile, error) {
-	rootReal, err := filepath.EvalSymlinks(root)
-	if err != nil {
-		return nil, fmt.Errorf("resolve Workspace root: %w", err)
-	}
+// scanManagedFiles inventories managed files through the same pinned root
+// used by Load's manifest and source reads. Never use filepath.WalkDir or
+// EvalSymlinks here: their independent pathname lookups may be redirected
+// when the Workspace directory or an ancestor is renamed.
+//
+// This is not an atomic multi-file snapshot. Entries and contents may change
+// in place during Load; the individual rooted source read remains authoritative
+// for the actual bytes parsed and captured by the Source Index.
+func scanManagedFiles(rootHandle *os.Root, roots []string) ([]ManagedFile, error) {
 	var out []ManagedFile
-	seenPhysicalSources := make(map[string]string)
+	type seenSource struct {
+		path string
+		info os.FileInfo
+	}
+	var seen []seenSource
 	for _, sourceRoot := range roots {
 		if err := validateWorkspaceSourceRoot(sourceRoot); err != nil {
 			return nil, fmt.Errorf("workspace source root %q: %w", sourceRoot, err)
 		}
-		base := root
+		prefix := ""
 		missingOptionalRoot := false
-		// Resolve every path component before treating an absent nested source
-		// root as optional. An existing but broken/escaping symlink ancestor
-		// must fail closed instead of being mistaken for a missing root.
+		// Distinguish a genuinely missing optional root from an existing
+		// broken or escaping link. Keep source roots as directories; file
+		// symlinks within those directories remain valid managed assets.
 		for _, component := range strings.Split(sourceRoot, "/") {
-			base = filepath.Join(base, component)
-			info, err := os.Lstat(base)
-			if os.IsNotExist(err) {
+			if prefix == "" {
+				prefix = component
+			} else {
+				prefix += "/" + component
+			}
+			info, err := rootHandle.Lstat(prefix)
+			if errors.Is(err, os.ErrNotExist) {
 				missingOptionalRoot = true
 				break
 			}
 			if err != nil {
-				return nil, fmt.Errorf("stat workspace source root %q at %s: %w", sourceRoot, base, err)
+				return nil, fmt.Errorf("stat workspace source root %q at %s: %w", sourceRoot, prefix, err)
 			}
-			real, err := filepath.EvalSymlinks(base)
-			if err != nil {
-				return nil, fmt.Errorf("resolve workspace source root %q at %s: %w", sourceRoot, base, err)
-			}
-			rel, err := filepath.Rel(rootReal, real)
-			if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(os.PathSeparator)) {
-				return nil, fmt.Errorf("workspace source root %q resolves outside the Workspace", sourceRoot)
+			if _, err := rootHandle.Stat(prefix); err != nil {
+				return nil, fmt.Errorf("resolve workspace source root %q at %s outside the Workspace or inaccessible: %w", sourceRoot, prefix, err)
 			}
 			if !info.IsDir() {
 				return nil, fmt.Errorf("workspace source root %q must be a directory", sourceRoot)
@@ -254,34 +268,36 @@ func scanManagedFiles(root string, roots []string) ([]ManagedFile, error) {
 		if missingOptionalRoot {
 			continue
 		}
-		err = filepath.WalkDir(base, func(path string, d os.DirEntry, walkErr error) error {
+		// fs.WalkDir uses Root.FS to resolve every traversal within the
+		// pinned directory handle. The callback re-stats each leaf through
+		// that handle; even a swapped symlink cannot redirect it outside.
+		err := fs.WalkDir(rootHandle.FS(), sourceRoot, func(logicalPath string, d fs.DirEntry, walkErr error) error {
 			if walkErr != nil {
-				return fmt.Errorf("scan managed source %s: %w", path, walkErr)
+				return fmt.Errorf("scan managed source %s outside the Workspace or inaccessible: %w", logicalPath, walkErr)
 			}
 			if d.IsDir() {
 				return nil
 			}
-			realPath, err := filepath.EvalSymlinks(path)
+			info, err := rootHandle.Stat(logicalPath)
 			if err != nil {
-				return fmt.Errorf("resolve managed source %s: %w", path, err)
-			}
-			rel, err := filepath.Rel(rootReal, realPath)
-			if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(os.PathSeparator)) {
-				return fmt.Errorf("managed source %s resolves outside the Workspace", path)
-			}
-			info, err := os.Stat(realPath)
-			if err != nil {
-				return fmt.Errorf("stat managed source %s: %w", path, err)
+				return fmt.Errorf("managed source %s resolves outside the Workspace or is inaccessible: %w", logicalPath, err)
 			}
 			if !info.Mode().IsRegular() {
-				return fmt.Errorf("managed source %s is not a regular file", path)
+				return fmt.Errorf("managed source %s is not a regular file", logicalPath)
 			}
-			logicalPath := relPath(root, path)
-			if previous, exists := seenPhysicalSources[realPath]; exists {
-				return fmt.Errorf("managed sources %q and %q resolve to the same physical file", previous, logicalPath)
+			// Compare actual file identity, not just the textual path:
+			// hard links and in-Workspace symlink aliases must not produce
+			// multiple canonical Source Index artifacts for one file.
+			for _, previous := range seen {
+				if os.SameFile(previous.info, info) {
+					return fmt.Errorf("managed sources %q and %q resolve to the same physical file", previous.path, logicalPath)
+				}
 			}
-			seenPhysicalSources[realPath] = logicalPath
-			out = append(out, ManagedFile{Path: logicalPath, SourceRoot: sourceRoot, Extension: strings.ToLower(filepath.Ext(d.Name()))})
+			seen = append(seen, seenSource{path: logicalPath, info: info})
+			out = append(out, ManagedFile{
+				Path: logicalPath, SourceRoot: sourceRoot,
+				Extension: strings.ToLower(filepath.Ext(d.Name())),
+			})
 			return nil
 		})
 		if err != nil {
@@ -292,26 +308,57 @@ func scanManagedFiles(root string, roots []string) ([]ManagedFile, error) {
 	return out, nil
 }
 
-func loadPlugins(root string, r *Result) error {
-	base := filepath.Join(root, "plugins")
-	var files []string
-	err := filepath.WalkDir(base, func(path string, d os.DirEntry, err error) error {
+// listPinnedDomainSources enumerates files through the same Root used for
+// Source reads, rather than through independently resolved Workspace paths.
+// Direct per-domain loader tests may not have a Load root; those calls open a
+// temporary rooted handle instead. This inventories names, not an atomic
+// snapshot of file contents: the later pinned read remains authoritative.
+func listPinnedDomainSources(root string, r *Result, directory string, keep func(string) bool) ([]string, error) {
+	rootHandle := r.sourceReadRoot
+	if rootHandle == nil {
+		var err error
+		rootHandle, err = os.OpenRoot(root)
 		if err != nil {
-			if os.IsNotExist(err) {
-				return nil
-			}
-			return err
+			return nil, fmt.Errorf("open Workspace root for %s listing: %w", directory, err)
 		}
-		if d.IsDir() || d.Name() != "plugin.tei" {
+		defer rootHandle.Close()
+	}
+	var files []string
+	err := fs.WalkDir(rootHandle.FS(), directory, func(logical string, d fs.DirEntry, walkErr error) error {
+		if errors.Is(walkErr, os.ErrNotExist) && logical == directory {
+			return nil // Optional absent domain root.
+		}
+		if walkErr != nil {
+			return fmt.Errorf("list Workspace source %s: %w", logical, walkErr)
+		}
+		if d.IsDir() || !keep(d.Name()) {
 			return nil
 		}
-		files = append(files, path)
+		info, err := rootHandle.Stat(logical)
+		if err != nil {
+			return fmt.Errorf("resolve Workspace source %s: %w", logical, err)
+		}
+		if !info.Mode().IsRegular() {
+			return fmt.Errorf("Workspace source %s is not a regular file", logical)
+		}
+		files = append(files, filepath.Join(root, filepath.FromSlash(logical)))
 		return nil
 	})
-	if err != nil && !os.IsNotExist(err) {
-		return err
+	if err != nil {
+		return nil, err
 	}
 	sort.Strings(files)
+	return files, nil
+}
+
+func loadPlugins(root string, r *Result) error {
+	files, err := listPinnedDomainSources(root, r, "plugins", func(name string) bool {
+		return name == "plugin.tei"
+	})
+	if err != nil {
+		return err
+	}
+
 	for _, path := range files {
 		src, err := readSourceForLoad(root, r, path)
 		if err != nil {
@@ -328,25 +375,13 @@ func loadPlugins(root string, r *Result) error {
 }
 
 func loadBundles(root string, r *Result) error {
-	base := filepath.Join(root, "bundles")
-	var files []string
-	err := filepath.WalkDir(base, func(path string, d os.DirEntry, err error) error {
-		if err != nil {
-			if os.IsNotExist(err) {
-				return nil
-			}
-			return err
-		}
-		if d.IsDir() || d.Name() != "bundle.tei" {
-			return nil
-		}
-		files = append(files, path)
-		return nil
+	files, err := listPinnedDomainSources(root, r, "bundles", func(name string) bool {
+		return name == "bundle.tei"
 	})
-	if err != nil && !os.IsNotExist(err) {
+	if err != nil {
 		return err
 	}
-	sort.Strings(files)
+
 	for _, path := range files {
 		src, err := readSourceForLoad(root, r, path)
 		if err != nil {
@@ -363,25 +398,13 @@ func loadBundles(root string, r *Result) error {
 }
 
 func loadSemantics(root string, r *Result) error {
-	base := filepath.Join(root, "semantic")
-	var files []string
-	err := filepath.WalkDir(base, func(path string, d os.DirEntry, err error) error {
-		if err != nil {
-			if os.IsNotExist(err) {
-				return nil
-			}
-			return err
-		}
-		if d.IsDir() || !strings.HasSuffix(d.Name(), ".tei") {
-			return nil
-		}
-		files = append(files, path)
-		return nil
+	files, err := listPinnedDomainSources(root, r, "semantic", func(name string) bool {
+		return strings.HasSuffix(name, ".tei")
 	})
-	if err != nil && !os.IsNotExist(err) {
+	if err != nil {
 		return err
 	}
-	sort.Strings(files)
+
 	byNamespace := map[core.CanonicalID]int{}
 	for _, path := range files {
 		src, err := readSourceForLoad(root, r, path)
@@ -413,6 +436,12 @@ func loadSemantics(root string, r *Result) error {
 			}
 			for _, relation := range d.Relations {
 				r.Sources["semantic-relation:"+string(relation.ID)] = SourceLocation{File: relPath(root, path), Line: 1, Column: 1}
+			}
+			for _, key := range d.CandidateKeys {
+				r.Sources["semantic-candidate-key:"+string(key.ID)] = SourceLocation{File: relPath(root, path), Line: 1, Column: 1}
+			}
+			for _, fd := range d.FunctionalDependencies {
+				r.Sources["semantic-functional-dependency:"+string(fd.ID)] = SourceLocation{File: relPath(root, path), Line: 1, Column: 1}
 			}
 		}
 		for _, c := range ns.Capabilities {

@@ -1,6 +1,7 @@
 package sourceindex
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
@@ -87,21 +88,39 @@ func Fingerprint(content []byte) string {
 	return "sha256:" + hex.EncodeToString(sum[:])
 }
 
+// ModelRevision derives the exact managed Source (path, byte fingerprint)
+// revision used by Shared Acceptance. It grants neither acceptance nor
+// authorization and does not imply an atomic multi-file filesystem read.
+func ModelRevision(index Index) string {
+	artifacts := append([]Artifact(nil), index.Artifacts...)
+	sort.Slice(artifacts, func(i, j int) bool { return artifacts[i].Path < artifacts[j].Path })
+	hash := sha256.New()
+	for _, artifact := range artifacts {
+		fmt.Fprintf(hash, "%s\x00%s\n", artifact.Path, artifact.Fingerprint)
+	}
+	return "sha256:" + hex.EncodeToString(hash.Sum(nil))
+}
+
+// PositionAtは、offset位置の1始まりの行と列を返す。
+// 列は、直前の改行（LF）の次のバイトを1とするバイト数で数える。
+//
+// 呼出しごとにcontentの先頭から1バイトずつ数え直すと、1ファイルに多数のSubjectを持つ
+// Workspaceで二乗の費用になる。改行の数え上げと最後の改行位置の検索を、標準ライブラリの
+// 実装に任せる。結果は、1バイトずつ数える素朴な実装と同一である。
 func PositionAt(content []byte, offset int) (Position, error) {
 	if offset < 0 || offset > len(content) {
 		return Position{}, fmt.Errorf("source offset %d is outside [0,%d]", offset, len(content))
 	}
-	line, column := 1, 1
-	for i := 0; i < offset; i++ {
-		if content[i] == '\n' {
-			line++
-			column = 1
-		} else {
-			column++
-		}
+	prefix := content[:offset]
+	line := 1 + bytes.Count(prefix, newlineByte)
+	column := offset + 1
+	if last := bytes.LastIndexByte(prefix, '\n'); last >= 0 {
+		column = offset - last
 	}
 	return Position{Offset: offset, Line: line, Column: column}, nil
 }
+
+var newlineByte = []byte{'\n'}
 
 func OffsetAt(content []byte, line, column int) (int, error) {
 	if line < 1 || column < 1 {

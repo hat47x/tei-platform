@@ -105,16 +105,48 @@ require_source order read_scenario.go
 require_source repair main_repair_only.go
 require_source repair customer_lookup_scenario.go
 require_source repair repair_scenario_http.go
-for name in customer_lookup_scenario.go repair_scenario_http.go main_repair_only.go; do
-  reject_source order "$name"
+# Prevent recurrence of order_entry's verified-session Command being
+# compiled into repair_intake despite its ordinary test suite passing.
+for source_file in session_command_route.go session_command_scenario.go; do
+  require_source combined "$source_file"
+  require_source order "$source_file"
+  reject_source repair "$source_file"
 done
-for name in command_scenario.go read_scenario.go custom_ui.go order_scenario_http.go main_order_only.go reference_order_contract_query_fixture.go; do
-  reject_source repair "$name"
+require_source repair session_command_repair_stub.go
+reject_source combined session_command_repair_stub.go
+reject_source order session_command_repair_stub.go
+for source_file in customer_lookup_scenario.go repair_scenario_http.go main_repair_only.go; do
+  reject_source order "$source_file"
+done
+for source_file in command_scenario.go read_scenario.go custom_ui.go order_scenario_http.go main_order_only.go reference_order_contract_query_fixture.go; do
+  reject_source repair "$source_file"
 done
 for mode in order repair; do
   reject_source "$mode" main.go
   reject_source "$mode" combined_scenario_routes.go
   reject_source "$mode" combined_scenario_templates.go
+done
+
+# Excluding same-package GoFiles is not enough: shared code could
+# accidentally import the order-only legacy authentication/authorization
+# adapters into the repair binary. Inspect the real E0 main-module closure.
+# Also require them in order/combined so this is not a vacuous exclusion check.
+require_closure_package() {
+  if ! grep -Fq "\"importPath\": \"tei/internal/security/$2\"" "$temp/$1.e0.json"; then
+    echo "missing expected main-module package in $1: $2" >&2
+    exit 1
+  fi
+}
+reject_closure_package() {
+  if grep -Fq "\"importPath\": \"tei/internal/security/$2\"" "$temp/$1.e0.json"; then
+    echo "forbidden main-module package in $1: $2" >&2
+    exit 1
+  fi
+}
+for package in legacyauth legacyauthorization; do
+  require_closure_package combined "$package"
+  require_closure_package order "$package"
+  reject_closure_package repair "$package"
 done
 
 # A linked business Runner symbol in an excluded Application is a hard fail.
@@ -126,6 +158,12 @@ if grep -E 'main[.](\(\*referenceCustomerLookupScenarioRunner\)|newReferenceCust
 fi
 if grep -E 'main[.](\(\*referenceCommandScenarioRunner\)|newReferenceCommandScenarioRunner|newReferenceReadScenarioRunner)' "$temp/repair.nm" >/dev/null; then
   echo "repair-only binary retained an order_entry business Runner symbol" >&2
+  exit 1
+fi
+# Symbol inspection is corroborating evidence, not a substitute for the
+# package-closure assertion: inlining can make names disappear.
+if grep -E 'tei/internal/security/(legacyauth|legacyauthorization)[.]' "$temp/repair.nm" >/dev/null; then
+  echo "repair-only binary linked a legacy order authentication/authorization symbol" >&2
   exit 1
 fi
 

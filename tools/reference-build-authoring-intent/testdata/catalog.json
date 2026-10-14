@@ -1,0 +1,41 @@
+{
+  "formatVersion": 1,
+  "providers": [
+    {
+      "plugin": "tei.builder.go",
+      "version": "1.2.0",
+      "implementation": "go.builder",
+      "contract": "tei.plugin-build",
+      "contractMajor": 1,
+      "authorityScope": "build-tool",
+      "artifactDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+      "recipeKinds": ["go-package"],
+      "targets": ["host/linux/amd64"],
+      "profiles": ["release"]
+    },
+    {
+      "plugin": "tei.builder.go_windows",
+      "version": "1.2.0",
+      "implementation": "go.builder",
+      "contract": "tei.plugin-build",
+      "contractMajor": 1,
+      "authorityScope": "build-tool",
+      "artifactDigest": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+      "recipeKinds": ["go-package"],
+      "targets": ["host/windows/amd64"],
+      "profiles": ["release"]
+    }
+  ],
+  "dependencies": [
+    {
+      "kind": "build-artifact",
+      "id": "tei.support.codec",
+      "version": "1.4.0",
+      "artifactDigest": "sha256:3333333333333333333333333333333333333333333333333333333333333333"
+    }
+  ],
+  "targets": [
+    {"target": "host/linux/amd64", "profiles": ["release", "debug"]},
+    {"target": "host/windows/amd64", "profiles": ["release"]}
+  ]
+}

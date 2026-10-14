@@ -10,11 +10,19 @@ import (
 	"fmt"
 	"hash"
 	"io"
+	"os"
 	"os/exec"
+	"path/filepath"
+	"runtime"
 	"strings"
+	"time"
 )
 
-const defaultProcessResponseLimit = 8 << 20 // 8 MiB
+const (
+	defaultProcessResponseLimit  = 8 << 20 // 8 MiB
+	defaultProcessStderrLimit    = 8 << 20 // 8 MiB
+	defaultProcessExecutionLimit = 30 * time.Minute
+)
 
 // StdioProcessLauncher is the smallest real OS-process implementation of
 // ProcessLauncher. Executable and argv are kept separate exactly as supplied.
@@ -24,8 +32,9 @@ const defaultProcessResponseLimit = 8 << 20 // 8 MiB
 // not claim that an OS PID is a durable runtime handle and does not provide
 // host-restart or cross-host reattach semantics.
 type StdioProcessLauncher struct {
-	// Env, when non-nil, replaces the child environment in the same way as
-	// exec.Cmd.Env. Leave nil to inherit the host process environment.
+	// Env is the complete host-approved child environment. Nil and empty both
+	// mean no application-supplied variables: never inherit host credentials.
+	// OS-required variables may still be added by the platform (e.g. Windows).
 	Env []string
 	// Dir, when non-empty, sets the child working directory. It is host
 	// configuration and is not derived from plugin request payloads.
@@ -33,6 +42,22 @@ type StdioProcessLauncher struct {
 	// MaxResponseBytes bounds stdout captured from an untrusted process. Zero
 	// uses a conservative Reference default rather than disabling the limit.
 	MaxResponseBytes int
+	// MaxStderrBytes bounds the bytes hashed from the child diagnostic stream.
+	// A process that exceeds it is stopped, even when stdout is within limits.
+	// Zero uses the conservative default; this is separate from the stdout
+	// response limit because stderr is not part of the plugin wire protocol.
+	MaxStderrBytes int
+	// MaxExecutionDuration bounds an otherwise silent one-shot plugin.
+	// Zero uses 30 minutes; a negative value is rejected before launch.
+	// The trusted Host may increase it for legitimate long-running tasks.
+	MaxExecutionDuration time.Duration
+}
+
+func (l StdioProcessLauncher) executionDuration() time.Duration {
+	if l.MaxExecutionDuration > 0 {
+		return l.MaxExecutionDuration
+	}
+	return defaultProcessExecutionLimit
 }
 
 var _ ProcessLauncher = StdioProcessLauncher{}
@@ -46,6 +71,20 @@ func (l StdioProcessLauncher) InvokeSandboxed(ctx context.Context, command Proce
 }
 
 func (l StdioProcessLauncher) Invoke(ctx context.Context, command ProcessCommand, req Request) (Response, error) {
+	return l.invokeExecutable(ctx, command, req, command.Executable, nil)
+}
+
+// invokeExecutableは通常のパス起動とLinuxの検証済みFD起動で、同じ
+// 入出力・応答サイズ・診断処理を用いる。実行対象の固定は呼出し元が担う。
+func (l StdioProcessLauncher) invokeExecutable(ctx context.Context, command ProcessCommand, req Request, executable string, extraFiles []*os.File) (Response, error) {
+	return l.invokeExecutableWithStartGate(ctx, command, req, executable, extraFiles, nil)
+}
+
+// processStartGateはホストが保持する実行権限を確認しながらOSへ起動要求を渡す。
+// Startが戻った時点で権限ロックを解放し、子プロセス終了と鍵の失効は独立に扱う。
+type processStartGate func(start func() error) error
+
+func (l StdioProcessLauncher) invokeExecutableWithStartGate(ctx context.Context, command ProcessCommand, req Request, executable string, extraFiles []*os.File, gate processStartGate) (Response, error) {
 	if ctx == nil {
 		return Response{}, fmt.Errorf("process plugin invocation requires context")
 	}
@@ -54,6 +93,17 @@ func (l StdioProcessLauncher) Invoke(ctx context.Context, command ProcessCommand
 	}
 	if strings.ContainsAny(command.Executable, " \t\r\n") {
 		return Response{}, fmt.Errorf("process plugin executable must be a single name/path; use argv for arguments")
+	}
+
+	if l.MaxExecutionDuration < 0 {
+		return Response{}, fmt.Errorf("process plugin execution limit must not be negative")
+	}
+
+	// Reject ambiguous or malformed host-approved variables before executable
+	// lookup or process creation. In particular, PATH must have one meaning for
+	// our resolver and the operating system's child environment.
+	if err := validateProcessEnvironment(l.Env); err != nil {
+		return Response{}, err
 	}
 
 	input, err := json.Marshal(req)
@@ -66,33 +116,99 @@ func (l StdioProcessLauncher) Invoke(ctx context.Context, command ProcessCommand
 	if limit <= 0 {
 		limit = defaultProcessResponseLimit
 	}
-	stdout := &boundedCapture{limit: limit}
-	stderr := newDigestWriter()
-	cmd := exec.CommandContext(ctx, command.Executable, command.Args...)
+	// The capture limit is also a running-process limit. A child that emits
+	// more than the approved response size must be stopped immediately rather
+	// than allowed to keep consuming CPU or hold a resource lease indefinitely.
+	// Use a child-specific context so that a size violation cannot cancel the
+	// caller's context or any sibling invocation.
+	runCtx, stop := context.WithTimeout(ctx, l.executionDuration())
+	defer stop()
+	stdout := &boundedCapture{limit: limit, onOverflow: stop}
+	stderrLimit := l.MaxStderrBytes
+	if stderrLimit <= 0 {
+		stderrLimit = defaultProcessStderrLimit
+	}
+	stderr := newDigestWriter(stderrLimit, stop)
+	// exec.CommandContext resolves unqualified names using the ambient Host
+	// PATH, even when cmd.Env is explicitly empty. Resolve from the explicit
+	// child PATH instead, before constructing the command.
+	resolved, err := resolveProcessExecutable(executable, l.Env)
+	if err != nil {
+		return Response{}, err
+	}
+	cmd := exec.CommandContext(runCtx, resolved, command.Args...)
+	// Do not wait indefinitely for descendants that inherited the stdio pipes
+	// after the direct child exits or the Host cancels its execution context.
+	// WaitDelay closes the pipes; it does NOT terminate the descendant tree.
+	cmd.WaitDelay = 2 * time.Second
+	cmd.ExtraFiles = extraFiles
 	cmd.Stdin = bytes.NewReader(input)
 	cmd.Stdout = stdout
 	cmd.Stderr = stderr
-	if l.Env != nil {
-		cmd.Env = append([]string(nil), l.Env...)
-	}
+	// exec.Cmd.Env == nil inherits the entire parent environment. Always pass
+	// a non-nil slice, including when Env is omitted, to prevent leaking host
+	// credentials and configuration into independently executed plugins.
+	cmd.Env = append([]string{}, l.Env...)
 	if l.Dir != "" {
 		cmd.Dir = l.Dir
 	}
 
-	if err := cmd.Run(); err != nil {
+	// 通常の起動方式は従来どおりRunを使う。署名済みの固定実行方式に限り
+	// Startをホスト側の権限ロックで保護し、終了待ちではロックを保持しない。
+	// 起動前の権限確認と実際のStartの間にできる競合窓を閉じる。
+	run := func() error {
+		if gate == nil {
+			return cmd.Run()
+		}
+		if err := gate(cmd.Start); err != nil {
+			return err
+		}
+		return cmd.Wait()
+	}
+	if err := run(); err != nil {
 		if ctxErr := ctx.Err(); ctxErr != nil {
 			return Response{}, fmt.Errorf("process plugin executable %q canceled: %w", command.Executable, ctxErr)
+		}
+		if stdout.overflow {
+			return Response{}, fmt.Errorf("process plugin executable %q response exceeds %d bytes", command.Executable, limit)
+		}
+		if stderr.overflow {
+			return Response{}, fmt.Errorf("process plugin executable %q stderr exceeds %d bytes", command.Executable, stderrLimit)
+		}
+		if errors.Is(runCtx.Err(), context.DeadlineExceeded) {
+			return Response{}, fmt.Errorf("process plugin execution time limit exceeded: %w", context.DeadlineExceeded)
 		}
 		return Response{}, processExecutionError(command.Executable, err, stderr)
 	}
 	if stdout.overflow {
 		return Response{}, fmt.Errorf("process plugin executable %q response exceeds %d bytes", command.Executable, limit)
 	}
+	if stderr.overflow {
+		return Response{}, fmt.Errorf("process plugin executable %q stderr exceeds %d bytes", command.Executable, stderrLimit)
+	}
 
+	// Reject ambiguous or unexpected transport fields before Go's permissive
+	// struct decoding can silently overwrite duplicates or case-fold names.
+	// Only the carrier envelope and plugin identity are inspected here:
+	// payload remains opaque for the selected Service Contract to validate.
+	if err := validateProcessResponseEnvelope(stdout.buf.Bytes()); err != nil {
+		return Response{}, fmt.Errorf("decode process plugin response from executable %q: %w", command.Executable, err)
+	}
 	dec := json.NewDecoder(bytes.NewReader(stdout.buf.Bytes()))
 	var resp Response
 	if err := dec.Decode(&resp); err != nil {
 		return Response{}, fmt.Errorf("decode process plugin response from executable %q: %w", command.Executable, err)
+	}
+	// Registry accepts legacy in-process and mock responses that omit carrier
+	// identity, but a real Process plugin must independently echo all of the
+	// identity fields. If missing/zero values reached Registry, its legacy
+	// defaulting could turn an unbound process response into an apparent match.
+	// Keep the error fixed; no untrusted field values enter host diagnostics.
+	if resp.ProtocolVersion == 0 || resp.RequestID == "" ||
+		resp.Plugin.ID == "" || resp.Plugin.Version == "" ||
+		resp.CapabilityID == "" || resp.Status == "" ||
+		(resp.DescriptorFingerprint == "" && req.DescriptorFingerprint != "") {
+		return Response{}, fmt.Errorf("process plugin response is missing required carrier identity or status")
 	}
 	var trailing any
 	if err := dec.Decode(&trailing); !errors.Is(err, io.EOF) {
@@ -104,10 +220,157 @@ func (l StdioProcessLauncher) Invoke(ctx context.Context, command ProcessCommand
 	return resp, nil
 }
 
+// validateProcessResponseEnvelope protects the production process carrier's
+// identity/status metadata. json.Decoder.Decode into a struct silently accepts
+// duplicate and case-folded property names, which can create parser confusion.
+// The opaque payload is intentionally NOT parsed as a Service Contract here.
+func validateProcessResponseEnvelope(raw []byte) error {
+	decoder := json.NewDecoder(bytes.NewReader(raw))
+	if err := validateProcessResponseObject(decoder, false); err != nil {
+		return err
+	}
+	if _, err := decoder.Token(); err != io.EOF {
+		if err == nil {
+			return fmt.Errorf("process response contains more than one JSON value")
+		}
+		return fmt.Errorf("invalid trailing process response JSON: %w", err)
+	}
+	return nil
+}
+
+// Process header and plugin identity property names must match their JSON
+// protocol tags exactly. Never include attacker-controlled member names in
+// error messages (they may contain credentials or terminal escape sequences).
+func validateProcessResponseObject(decoder *json.Decoder, pluginIdentity bool) error {
+	start, err := decoder.Token()
+	if err != nil {
+		return fmt.Errorf("read process response object: %w", err)
+	}
+	if start != json.Delim('{') {
+		return fmt.Errorf("process response object is required")
+	}
+	seen := map[string]struct{}{}
+	for decoder.More() {
+		fieldToken, err := decoder.Token()
+		if err != nil {
+			return fmt.Errorf("read process response field: %w", err)
+		}
+		field, ok := fieldToken.(string)
+		if !ok {
+			return fmt.Errorf("process response field name is invalid")
+		}
+		if _, duplicate := seen[field]; duplicate {
+			return fmt.Errorf("duplicate process response field")
+		}
+		seen[field] = struct{}{}
+		if pluginIdentity {
+			if field != "id" && field != "version" {
+				return fmt.Errorf("undeclared process response plugin identity field")
+			}
+		} else {
+			switch field {
+			case "protocolVersion", "requestId", "plugin", "capabilityId",
+				"descriptorFingerprint", "status", "payload", "error":
+			default:
+				return fmt.Errorf("undeclared process response envelope field")
+			}
+		}
+		if field == "plugin" && !pluginIdentity {
+			if err := validateProcessResponseObject(decoder, true); err != nil {
+				return err
+			}
+			continue
+		}
+		// Preserve selected payload semantics: duplicate keys within a raw
+		// business payload are for the Service Contract, not this carrier.
+		var value json.RawMessage
+		if err := decoder.Decode(&value); err != nil {
+			return fmt.Errorf("read process response field value: %w", err)
+		}
+	}
+	end, err := decoder.Token()
+	if err != nil {
+		return fmt.Errorf("read process response closing delimiter: %w", err)
+	}
+	if end != json.Delim('}') {
+		return fmt.Errorf("invalid process response object closing delimiter")
+	}
+	return nil
+}
+
+// validateProcessEnvironment validates the complete host-approved environment.
+// Duplicate keys have platform-dependent meanings and could make the explicit
+// PATH used for executable lookup differ from the launched child's PATH.
+// Do not include values (which may be secrets) in any error or diagnostic.
+func validateProcessEnvironment(env []string) error {
+	seen := make(map[string]struct{}, len(env))
+	for _, entry := range env {
+		equal := strings.IndexByte(entry, '=')
+		if equal <= 0 || strings.IndexByte(entry, 0) >= 0 {
+			return fmt.Errorf("process plugin environment contains malformed entry")
+		}
+		name := entry[:equal]
+		// Reject names that cannot be represented unambiguously by ordinary
+		// shell/runtime environment lookups, without restricting values.
+		if strings.TrimSpace(name) != name || strings.ContainsAny(name, " \t\r\n") {
+			return fmt.Errorf("process plugin environment contains invalid variable name")
+		}
+		identity := name
+		if runtime.GOOS == "windows" {
+			identity = strings.ToUpper(name)
+		}
+		if _, exists := seen[identity]; exists {
+			return fmt.Errorf("process plugin environment contains duplicate variable name")
+		}
+		seen[identity] = struct{}{}
+	}
+	return nil
+}
+
+// resolveProcessExecutable prevents os/exec from consulting the ambient Host
+// PATH when the plugin command is a bare executable name. The caller may use
+// an explicit path directly, or select an absolute search directory through
+// the host-approved child PATH. Empty/relative PATH entries are ignored to
+// avoid implicit working-directory execution. This does not pin executable
+// bytes; hosts requiring that guarantee must use a bound artifact launcher.
+func resolveProcessExecutable(executable string, env []string) (string, error) {
+	if filepath.IsAbs(executable) || strings.ContainsRune(executable, os.PathSeparator) ||
+		(runtime.GOOS == "windows" && strings.ContainsRune(executable, '/')) {
+		return executable, nil
+	}
+	// Windows file extensions and PATHEXT differ from POSIX executable bits.
+	// Until the Host supplies an OS-specific resolver, require an explicit
+	// path on Windows instead of silently using the parent PATH.
+	if runtime.GOOS == "windows" {
+		return "", fmt.Errorf("process plugin requires an explicit executable path on Windows")
+	}
+	var pathValue string
+	for _, item := range env {
+		if strings.HasPrefix(item, "PATH=") {
+			pathValue = strings.TrimPrefix(item, "PATH=")
+		}
+	}
+	if pathValue == "" {
+		return "", fmt.Errorf("process plugin executable lookup requires an explicit PATH")
+	}
+	for _, directory := range filepath.SplitList(pathValue) {
+		if !filepath.IsAbs(directory) {
+			continue
+		}
+		candidate := filepath.Join(directory, executable)
+		info, err := os.Stat(candidate)
+		if err == nil && info.Mode().IsRegular() && info.Mode()&0111 != 0 {
+			return candidate, nil
+		}
+	}
+	return "", fmt.Errorf("process plugin executable was not found in the explicitly configured PATH")
+}
+
 type boundedCapture struct {
-	limit    int
-	buf      bytes.Buffer
-	overflow bool
+	limit      int
+	buf        bytes.Buffer
+	overflow   bool
+	onOverflow func()
 }
 
 func (w *boundedCapture) Write(p []byte) (int, error) {
@@ -120,21 +383,48 @@ func (w *boundedCapture) Write(p []byte) (int, error) {
 		}
 		_, _ = w.buf.Write(p[:take])
 	}
-	if n > remaining {
+	if n > remaining && !w.overflow {
 		w.overflow = true
+		if w.onOverflow != nil {
+			w.onOverflow()
+		}
 	}
 	return n, nil
 }
 
 type digestWriter struct {
-	n int64
-	h hash.Hash
+	n          int64
+	hashed     int64
+	limit      int64
+	h          hash.Hash
+	overflow   bool
+	onOverflow func()
 }
 
-func newDigestWriter() *digestWriter { return &digestWriter{h: sha256.New()} }
+func newDigestWriter(limit int, onOverflow func()) *digestWriter {
+	return &digestWriter{h: sha256.New(), limit: int64(limit), onOverflow: onOverflow}
+}
 func (w *digestWriter) Write(p []byte) (int, error) {
-	w.n += int64(len(p))
-	return w.h.Write(p)
+	n := len(p)
+	w.n += int64(n)
+	// Hash only the approved diagnostic prefix. Never buffer untrusted
+	// stderr, and request child termination at the first limit violation.
+	remaining := w.limit - w.hashed
+	if remaining > 0 {
+		take := n
+		if int64(take) > remaining {
+			take = int(remaining)
+		}
+		_, _ = w.h.Write(p[:take])
+		w.hashed += int64(take)
+	}
+	if w.n > w.limit && !w.overflow {
+		w.overflow = true
+		if w.onOverflow != nil {
+			w.onOverflow()
+		}
+	}
+	return n, nil
 }
 func (w *digestWriter) hex() string { return hex.EncodeToString(w.h.Sum(nil)) }
 

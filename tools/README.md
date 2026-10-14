@@ -4,6 +4,8 @@
 
 表には、この階層の全ディレクトリと直下の実行用ファイルを載せています。各ツールの固有の使い方や判定条件は、そのディレクトリ内のREADME・実装・Issueを正とします。
 
+独立した参照プラグインの検査入口は [`check-reference-plugin-isolation.sh`](check-reference-plugin-isolation.sh) です。`plugins/`配下の参照実装を一時Goモジュールへ複製してオフラインで検証します。
+
 ## リポジトリ検査と共通部品
 
 | 場所 | 役割 |
@@ -13,6 +15,7 @@
 | [`repository-dependency-report/`](repository-dependency-report/) | Goの直接依存関係の一覧作成 |
 | [`repository-plan-check/`](repository-plan-check/) | ADR・Issueの番号や要求と検証表の対応確認 |
 | [`repositoryqualification/`](repositoryqualification/) | リポジトリ検証条件の共通処理 |
+| [`reference-cli-trace-benchmark/`](reference-cli-trace-benchmark/) | 合成Workspaceによるtraceの処理段別の時間・メモリ計測と出力不変の確認 |
 
 ## 設計、業務知識、受入れ
 
@@ -31,7 +34,9 @@
 | [`reference-epistemic-knowledge/`](reference-epistemic-knowledge/) | 文脈ごとの知識状態と根拠の確認 |
 | [`reference-external-coordination/`](reference-external-coordination/) | 外部担当との引継ぎ・協調境界の確認 |
 | [`reference-shared-acceptance/`](reference-shared-acceptance/) | 人・画面・AIに共通する変更受入れ処理の参照実装 |
+| [`reference-standard-function-candidates/`](reference-standard-function-candidates/) | データ定義から実行前の標準機能候補と不足する契約を提示 |
 | [`reference-spec-review/`](reference-spec-review/) | 仕様書の不足・曖昧さ・矛盾の検討支援 |
+| [`reference-purpose-preflight/`](reference-purpose-preflight/) | 開発目的に対する業務規則の未確定・実行時値待ちを合成データで区別 |
 | [`reference-tool-neutral-development/`](reference-tool-neutral-development/) | 特定の開発道具に依存しない作業経路の確認 |
 
 ## ビルド、配布、実行
@@ -40,6 +45,7 @@
 | --- | --- |
 | [`reference-build-artifact-store/`](reference-build-artifact-store/) | ビルド成果物の保管と識別 |
 | [`reference-build-attempt-evidence/`](reference-build-attempt-evidence/) | ビルド失敗を含む実行記録の保管 |
+| [`reference-build-authoring-intent/`](reference-build-authoring-intent/) | 人・生成AIが書くビルド宣言から、確定したビルド計画を導出する境界の確認 |
 | [`reference-build-execution-binding/`](reference-build-execution-binding/) | ビルド実行と主体・対象の結び付け |
 | [`reference-builder-contract-resolution/`](reference-builder-contract-resolution/) | Builder契約の解決と適用 |
 | [`reference-deployment-attempt/`](reference-deployment-attempt/) | 配備試行の参照用起動点 |
@@ -50,6 +56,7 @@
 | [`reference-plugin-package-builder/`](reference-plugin-package-builder/) | Plugin配布物の組立て例 |
 | [`reference-plugin-self-build/`](reference-plugin-self-build/) | Plugin自身が構築手順を提供する場合の確認 |
 | [`reference-process-plugin/`](reference-process-plugin/) | 別プロセスで動くPluginの参照用起動点 |
+| [`reference-composition-process-bridge/`](reference-composition-process-bridge/) | 合成基盤と従来・独立プロセスプラグインの接続試験 |
 | [`reference-resource/`](reference-resource/) | 実行資源の参照用起動点 |
 | [`reference-runtime-capability-identity/`](reference-runtime-capability-identity/) | 実行時Capabilityの識別方法の確認 |
 | [`reference-runtime-snapshot/`](reference-runtime-snapshot/) | 生成時と実行時の投影境界の確認 |
@@ -83,8 +90,10 @@
 
 | 場所 | 役割 |
 | --- | --- |
+| [`reference-data-first-persistence/`](reference-data-first-persistence/) | Dataに手書きの宣言を重ね、実PostgreSQLで実行前の確認・書込み・別接続の再読込を一巡する確認（生成・認可・製品E2は対象外） |
 | [`reference-driver-postgres-query/`](reference-driver-postgres-query/) | DriverからPostgreSQL問合せを実行する参照用起動点 |
 | [`reference-external-query-evidence/`](reference-external-query-evidence/) | 外部問合せの実行根拠を確認 |
+| [`reference-oracle-local-fixture/`](reference-oracle-local-fixture/) | 別用途の既存Oracleに一時的な検証用データを作り、ドライバー・名前付きバインド・読取り専用の効き方・検証根拠の受入れを確認 |
 | [`reference-postgres-header-detail-runtime/`](reference-postgres-header-detail-runtime/) | PostgreSQL上の親子明細処理の参照実装 |
 | [`reference-postgres-integration/`](reference-postgres-integration/) | PostgreSQL接続の統合確認 |
 | [`reference-postgres-migration-rendering/`](reference-postgres-migration-rendering/) | PostgreSQL向け移行SQLの生成確認 |
@@ -113,6 +122,11 @@
 
 | ファイル | 役割 |
 | --- | --- |
+| [`ci-workflows-test.py`](ci-workflows-test.py) | 手動CIの版ずれ・作業領域検査と、自動健全性CIの公開PR境界・mainへのpush経路（コミットごとの同時実行集合、検査手順のシェル）を、隔離したGit環境で再現する回帰試験（`python3 tools/ci-workflows-test.py`）。本物のCIの実行、実際のpushイベントの挙動、TEI全体検証は扱わない |
+| [`verify-critical-path-e1-archive.py`](verify-critical-path-e1-archive.py) | E1合成証拠の8件原本と固定SHA目録、R0/R1/R2・未資格状態を照合する（製品Gateの検査ではない） |
+| [`test-critical-path-e1-archive.py`](test-critical-path-e1-archive.py) | E1保全検査の改ざん・欠落・偽資格の回帰試験 |
+| [`check-core-isolation.sh`](check-core-isolation.sh) | 合成基盤の隔離試験と別モジュールからの公開API試験 |
+| [`verify-composition-reference.sh`](verify-composition-reference.sh) | 固定したクリーンな版で合成基盤・項目対応・実Process・中核独立性を検査し、結果を標準出力へ返す。全体健全性と本番移行の判定は別に行い、申し送りは[#1223](https://github.com/hat47x/tei-platform/issues/1223)へ記載する |
 | [`repository-health-check.sh`](repository-health-check.sh) | 形式、静的検査、全Goテスト、参照Workspaceの検証 |
 | [`run-business-procedure-gate-a.sh`](run-business-procedure-gate-a.sh) | 業務手順Gate Aの検証 |
 | [`run-first-web-target-gate-c-evidence.sh`](run-first-web-target-gate-c-evidence.sh) | Gate C用のウェブ実行根拠の取得 |

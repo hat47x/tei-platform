@@ -1,272 +1,272 @@
-# TEI 技術リサーチ統合方針 — 2026-10
+# TEIの技術調査を設計へ反映する方針 — 2026年10月
 
-Status: **current research-integration plan**  
-Last updated: **2026-10-09**
+状態：**現行の技術調査の反映計画**  
+最終更新：**2026-10-09**
 
 ## 1. 位置づけ
 
-この文書は、2026-09末〜10月初頭の技術リサーチを、TEIのProduct Value / Requirements / existing Issueへ翻訳する現在の計画正本です。
+この文書は、2026年9月末から10月初頭までの技術調査を、TEIの製品価値、要求、既存の課題へ反映するための現行計画です。
 
-外部研究、軽量認知方式、LLM、Wasm、Desktop framework等をTEIの仕様根拠そのものにはしません。取り込むのは、TEIの中心価値に対する不確実性を減らす境界・比較軸・Reference pressureです。
+外部の研究、軽量な認知方式、大規模言語モデル、Wasm、デスクトップ向け開発基盤などを、そのままTEIの仕様の根拠にはしません。製品の中心となる価値について不確実性を減らすために、設計上の境界、比較する観点、参照事例による検証課題を取り入れます。
 
 順序は維持します。
 
 ~~~text
-research / implementation evidence
+調査・実装から得られた根拠
         ↓
-Product Valueとの照合
+製品価値との照合
         ↓
-existing Requirement / Issueへ割当
+既存の要求・課題への割当て
         ↓
-small Reference / pressure
+小さな参照事例で検証
         ↓
-TEI自身のEvidence
+TEI自身で得た検証根拠
         ↓
-ADR / Requirement / Milestoneを更新
+設計判断記録・要求・マイルストーンを更新
 ~~~
 
-研究を読んだこと自体でEvidence tierを上げません。
+研究を読んだだけで、検証根拠の達成段階を引き上げません。
 
-## 2. Product Valueとの対応
+## 2. 製品価値との対応
 
-直近の知見は、新しいProduct Valueを追加するより、既存価値を次の方向へ具体化します。
+直近の調査結果は、新しい製品価値を追加するよりも、既存の価値を具体化するために利用します。
 
-| Product Value上の価値 | 今回の統合方針 |
+| 製品が提供する価値 | 今回の反映方針 |
 | --- | --- |
-| 業務の意味を一つのSSOTへ保つ | AI / cognition / model outputはProposal・candidate・derived knowledgeに限定し、Canonical authorityへ直接昇格させない |
-| 人の確認を実質的にする | whole regenerationよりminimum semantic delta、impact、unresolved、provenanceを優先し、決定論的検査でreview対象を狭める |
-| 技術選択の自由を保つ | Wails / WebView / Wasm / native / model runtimeをHost・Adapter・execution profileへ隔離し、meaningと分離する |
-| AI活用の上限を上げる | exact / deterministicで解ける仕事をAIへ送らず、曖昧さが残る場合だけ軽量認知→local model→external modelへ段階昇格する |
-| 再利用と再入場を容易にする | candidate生成根拠、accepted Decision、contract / implementation / config / policyのrevisionを再現可能なEvidenceへ結び付ける |
-| 説明責任を保つ | Proposal、Decision、execution authority、Command acknowledgement、Observationを別状態として追跡する |
-| 一人でも維持可能にする | provider / modelごとの専用subsystemを増やさず、同一のcandidate / qualification / acceptance contractへ収束させる |
+| 業務の意味を一つの正本で扱う | AIや認知処理の出力は、提案・候補・派生情報として扱う。意味を決定する権限を自動的には与えない |
+| 人が実質的に確認できるようにする | 全体の再生成よりも、最小限の意味変更、その影響、未解決事項、出所を明示する。決定的な検査で確認対象を絞る |
+| 技術選択の自由を保つ | Wails、WebView、Wasm、ネイティブ実行、大規模言語モデルの実行機構を、ホスト・接続部品・実行条件に分けて業務上の意味から切り離す |
+| AIを必要な部分へ活用する | 正確な照合や決定的な処理で解ける問題はAIに委ねず、未解決の場合に限って軽量認知、ローカルのモデル、外部のモデルへ段階的に進む |
+| 再利用と作業の再開を容易にする | 候補を作った根拠、受理した判断、契約・実装・設定・方針の版を、再現可能な検証根拠へ結び付ける |
+| 説明責任を保つ | 提案、判断、実行権限、命令の受付、観測結果を別々に追跡する |
+| 一人でも維持できるようにする | 提供元やモデルごとの専用機構を増やさず、候補の提示・適格性の確認・受理を共通の契約で扱う |
 
-## 3. 直近リサーチから固定する設計仮説
+## 3. 直近の調査結果から定める設計仮説
 
 ### 3.1 認知方式は段階昇格する
 
-Knowledge / AI laneの標準順序を次の仮説でPressureします。
+知識探索とAI支援の作業領域では、次の順序を仮説として検証します。
 
 ~~~text
-M0  explicit / exact structure
-      ↓ unresolved only
-M1  deterministic inference / graph / rule
-      ↓ unresolved only
-M2  lightweight associative / sparse / statistical candidate generation
-      ↓ unresolved only
-M3  bounded local cognitive model
-      ↓ unresolved only
-M4  local SLM / LLM
-      ↓ unresolved only
-M5  external LLM
+M0  明示された定義と正確な構造
+      ↓ 未解決の場合だけ
+M1  決定的な推論・関係図・規則
+      ↓ 未解決の場合だけ
+M2  軽量な連想・疎な表現・統計による候補生成
+      ↓ 未解決の場合だけ
+M3  用途を限定したローカルの認知モデル
+      ↓ 未解決の場合だけ
+M4  ローカルの小規模・大規模言語モデル
+      ↓ 未解決の場合だけ
+M5  外部の大規模言語モデル
 ~~~
 
-M2〜M5は候補生成・ranking・novelty・abstention等へ利用できますが、Semantic applicability、Acceptance、write authority、Runtime authorityを所有しません。
+M2～M5は候補の生成、順位付け、新規性の検出、判断の保留などに使えます。ただし、意味上の適用可能性、受理、書込み権限、実行時の権限を決める主体にはしません。
 
-段階を上げる理由と、下位段階で解けなかったunresolvedをEvidenceへ残します。
+上位の方式へ進めた理由と、下位の方式では解決できなかった事項を検証根拠に残します。
 
-### 3.2 epistemic stateとmechanismを分ける
+### 3.2 情報の確かさと取得方法を分ける
 
-「何を知っているか」と「どの方式で得たか」を一つのconfidence値へ畳みません。
+「何が分かっているか」と「どの方式で情報を得たか」を、単一の確信度にまとめません。
 
 候補として次を直交させます。
 
 ~~~text
-epistemic state
-  observed / inferred / confirmed / abstained
+情報の確かさに関する状態
+  観測済み・推論によるもの・確認済み・判断を保留
 
-mechanism
-  deterministic / statistical / provider-dependent
+情報を得た方式
+  決定的な処理・統計的な処理・提供実装への依存
 ~~~
 
-名称やproduction schemaはReference後に判断します。重要なのは、model confidenceやsimilarity scoreをauthorityへ短絡しないことです。
+正式な名称や本番用のスキーマは、参照事例で検証した後に判断します。大切なのは、モデルの確信度や類似度の点数をそのまま判断権限へ結び付けないことです。
 
-### 3.3 軽量認知はbounded decision layerとして扱う
+### 3.3 軽量な認知処理の役割を限定する
 
-Jev系、FlyHash / sparse associative方式、embedding、LightGBM等は、LLM代替の万能reasonerではなく、次の限定用途で比較します。
+Jev系、FlyHashなどの疎な連想方式、埋め込み表現、LightGBMなどを、言語モデルに代わる万能の推論機構とはみなしません。次の限られた用途で比較します。
 
-- candidate shortlist
-- ranking
-- novelty / mismatch detection
-- known false-positive suppression
-- escalation / abstention signal
-- local routing
+- 候補の絞り込み
+- 候補の順位付け
+- 新規性や不一致の検出
+- 既知の誤検出の抑制
+- 上位方式への移行や判断保留の手掛かり
+- 局所的な処理先の振分け
 
-その結果は必ずcurrent Source / Canonical / Evidenceへ戻してdeterministic qualificationします。
+その結果は必ず現在の情報源、意味の正本、検証根拠と照合し、決定的な方法で適格性を確認します。
 
-### 3.4 Local model runtimeは任意Providerとして扱う
+### 3.4 ローカルの言語モデル実行機構は任意の提供実装とする
 
-Ollama、LM Studio等の既存local runtimeを利用できる場合は再利用候補にしますが、TEI Coreの必須依存にはしません。
+OllamaやLM Studioなど既存のローカル実行機構は、利用できる場合に再利用を検討します。ただし、TEIの中核に必須の依存先とはしません。
 
-model asset、runtime、revision、configはmeaningと分離し、再現性が必要なEvidenceでは利用したprovider / model / revision / configを記録します。
+モデルのデータ、実行機構、版、設定は業務上の意味から分けます。再現性が必要な検証では、利用した提供実装、モデル、版、設定を記録します。
 
-model bytesやruntimeが無くても、Canonical Worldと決定論的なValidation / Acceptanceが成立することを維持します。
+モデルのデータや実行機構がなくても、意味の正本全体と、決定的な方法による検証・受理の仕組みが成立する構造を保ちます。
 
-### 3.5 portable executionはTargetと同一視しない
+### 3.5 実行物の可搬性とアプリケーションの実行先を区別する
 
-WasmはWeb等のPresentation Targetそのものではありません。
+Wasmは、Webなどの画面や操作を提供する実行先そのものではありません。
 
 ~~~text
-Canonical / Semantic Operation
+正本の定義と意味上の操作
         ↓
-deterministic typed realization
+型を明示した決定的な実現方法
         ↓
-native / Wasm / external process 等
+ネイティブ実行・Wasm・外部プロセスなど
         ↓
-Target / Host Adapter
+実行先・ホストの接続部品
         ↓
-Execution / Observation
+実行・観測
 ~~~
 
-Hikeのような極小Wasm系実装は「小さいportable execution artifact」のpressure sourceとして扱いますが、TEIのGo Coreを置換する前提にはしません。Go / TinyGo / Hike-like subset等を固定標準にせず、artifact form / ABI / host imports / resource conditionを比較可能にします。
+Hikeのような極小のWasm向け実装は、小さく持ち運べる実行物を検証するための比較対象とします。ただし、TEIのGo製中核を置き換える前提にはしません。Go、TinyGo、Hikeに似た言語の一部分などを標準として固定せず、実行物の形式、ABI、ホストが提供する機能、資源の条件を比較できるようにします。
 
-### 3.6 Hostは意味を所有しない
+### 3.6 ホストは業務上の意味を決めない
 
-Wails / WebView / browser / desktop lifecycleのreadiness、renderer recovery、request cancellation等はHost / Adapterの責務です。
+Wails、WebView、ブラウザー、デスクトップアプリケーションの起動状態、画面の復旧、要求の取消しなどは、ホストと接続部品の責務です。
 
-これらの失敗をBusiness Outcomeへ短絡せず、Host observation / diagnosticとして保持します。Studio Wails HostとGenerated Desktop Targetも引き続き分離します。
+こうした失敗を業務上の結果と取り違えず、ホスト側の観測・診断結果として保持します。編集環境のWailsホストと、生成したデスクトップアプリケーションの実行先も区別します。
 
-### 3.7 実行可能性はcontractとcurrent authorityへbindする
+### 3.7 実行できるかどうかは契約と現在の権限で判断する
 
-AI / Rule / Humanのどのpolicyから来ても、effectful invocationは同じvalidated semantic actionへ収束させます。
+AI、規則、人のどの方針から始まった場合でも、外部に影響を及ぼす呼出しは、検証済みの同じ意味上の操作を通して扱います。
 
-再現・監査が必要なReferenceでは、少なくとも次を別々に識別できるかPressureします。
+再現や監査が必要な参照事例では、少なくとも次を個別に識別できるか検証します。
 
-- semantic operation / contract revision
-- implementation revision / digest
-- config / binding revision
-- current policy / authority snapshot
-- Resource resolution
-- execution result
-- Observation / Evidence
+- 意味上の操作と契約の版
+- 実装の版と照合値
+- 設定と対応付けの版
+- 現在の方針と権限の記録
+- 資源の特定結果
+- 実行結果
+- 観測結果と検証根拠
 
-過去のacceptanceやmodel memoryだけをfuture authorityにしません。
+過去の受理結果やモデルの記憶だけを、将来の実行権限の根拠にはしません。
 
-## 4. Existing Issueへの割当
+## 4. 既存の課題への割当て
 
-### ISSUE-000047 — knowledge-first Semantic exploration
+### ISSUE-000047 — 既存知識を優先する意味の探索
 
-最優先で、read-only explorationに段階昇格を適用します。
+最優先では、読み取り専用の探索に段階的な認知処理を適用します。
 
-1. exact identity / Source / graph neighborhoodをbaselineにする
-2. deterministic inferenceで候補を増やす
-3. lightweight associative / statistical方式をcandidate generatorとして比較する
-4. local / external modelは、下位方式でunresolvedが残るcaseだけへ利用する
-5. 最終的な applicable / incompatible / unknown はdeterministic qualificationで決める
+1. 正確な識別子、情報源、関係図の近傍を基準にする
+2. 決定的な推論によって候補を増やす
+3. 軽量な連想方式や統計方式を候補の生成手段として比較する
+4. ローカルや外部のモデルは、下位の方式で未解決事項が残る場合だけ使う
+5. 最後に、適用可能・不適合・未確定のいずれかを、決定的な方法で確認する
 
-評価では単純なtop-k精度だけでなく、次を分けます。
+評価では上位候補の的中率だけでなく、次の点を分けて確認します。
 
-- useful candidate discovery
-- false positive / incompatible
-- unknown / abstention
-- additional confirmation cost
-- stale / provenance failure
-- model / provider依存性
-- latency / artifact size / runtime dependency
+- 役立つ候補を発見できたか
+- 誤検出や不適合な候補があるか
+- 未確定事項を判断保留できるか
+- 追加の確認に必要な負担
+- 古い版や出所の追跡に関する失敗
+- モデルや提供元への依存
+- 応答時間、実行物の大きさ、実行時の依存先
 
-### ISSUE-000027 — AI Proposal / Shared Acceptance
+### ISSUE-000027 — AIによる変更提案と共通の受理境界
 
-Proposal生成方式をauthorityから分離したまま、上記の段階昇格からcandidateを受け取れるようにします。
+変更提案の生成方法と判断権限を分けたまま、先ほどの各段階で作られた候補を受け取れるようにします。
 
-ReferenceではProposalに、少なくとも次を追跡できるか確認します。
+参照事例では、変更提案から少なくとも次の情報へたどれることを確かめます。
 
-- candidate origin / mechanism class
-- baseModelRevision
-- exact target identity
-- minimum semantic delta
-- supporting Source / Evidence
-- unresolved / abstained
-- model / provider情報（利用した場合）
-- acceptance前後のdeterministic Validation / Conformance
+- 候補の出所と生成方式の種類
+- `baseModelRevision`
+- 変更対象を正確に示す識別情報
+- 最小限の意味変更
+- 根拠となる情報源と検証結果
+- 未解決事項と判断保留
+- 利用したモデルや提供元の情報
+- 受理の前後に行った決定的な検証と準拠性の確認
 
-confidenceやmodel scoreからAcceptを自動導出しません。
+確信度やモデルの評価点だけから、受理という判断を自動的には導きません。
 
-### ISSUE-000026 — Second Target / portable execution pressure
+### ISSUE-000026 — 二つ目の実行先と実行物の可搬性の検証
 
-第二Target選定では、Target Capabilityだけでなく、同じSemantic Operationを異なるexecution artifact / Hostへ落としたときの差を観測します。
+二つ目の実行先を選ぶ際には、利用できる機能だけでなく、同じ意味上の操作を異なる実行物やホストで動かした場合の違いを観測します。
 
-第二TargetをWasmに固定はしません。選定時に次を比較軸へ含めます。
+二つ目の実行先をWasmに限定しません。選定時には、次の点も比較します。
 
-- native / portable artifactの交換可能性
-- ABI / Host import差
-- startup / recovery / resource condition
-- semantic result / Observationの一致
-- Target固有差をCanonicalへ逆流させないこと
+- ネイティブの実行物と可搬性のある実行物を交換できるか
+- ABIとホストが提供する機能の違い
+- 起動、復旧、資源の条件
+- 意味上の結果と観測結果の一致
+- 実行先に固有の事情を意味の正本へ逆流させないこと
 
-### ISSUE-000053 — AI-native re-entry / Operational Knowledge
+### ISSUE-000053 — AIを用いた作業の再開と運用上の知識
 
-Builder / Agentが再入場するとき、chat historyやprovider memoryではなく、current accepted meaningとEvidenceから必要contextを再構成できるかをPressureします。
+開発者やエージェントが作業を再開するときには、チャット履歴や提供元が保持する記憶に頼らず、現在受理されている意味と検証根拠から必要な文脈を再構成できるかを検証します。
 
 特に、実行候補について次を区別します。
 
 ~~~text
-known operation
-  != currently applicable
-  != currently authorized
-  != resource-ready
-  != invoked
-  != observed complete
+知られている操作
+  ≠ 現在も適用可能
+  ≠ 現在の実行権限がある
+  ≠ 必要な資源が利用可能
+  ≠ 実際に呼び出した
+  ≠ 完了を観測した
 ~~~
 
-context packetへmodel固有stateを必須化せず、contract / implementation / config / policyのrevisionを追えることを優先します。
+作業再開時に渡す文脈情報にモデル固有の状態を必須とはせず、契約、実装、設定、方針の版をたどれることを優先します。
 
-## 5. Studio / Human Reviewへの含意
+## 5. 編集環境での人による確認への影響
 
-RQ-010 / RQ-028では、AIの自然言語要約だけをreview surfaceにしません。
+RQ-010とRQ-028では、AIが作った自然言語の要約だけを、人の確認に用いる画面にはしません。
 
-高密度Projectionで少なくとも次を分けて表示できることを今後のReference条件へ入れます。
+情報を集約した表示で、少なくとも次の項目を区別できることを、今後の参照事例で検証する条件に加えます。
 
-- authoritative / observed fact
-- inferred candidate
-- confirmed / accepted Decision
-- unresolved / abstained
-- source / evidence / impact drill-down
-- provider / model由来の補助情報
+- 正本に記述された事実と観測した事実
+- 推論によって作られた候補
+- 確認済み・受理済みの判断
+- 未解決事項・判断保留
+- 情報源、検証根拠、影響の詳細への参照
+- 提供元やモデルから得た補助情報
 
-人間はscoreそのものを承認するのではなく、意味差分と根拠を承認します。
+人は評価点そのものではなく、意味の差分とその根拠を確認して受理します。
 
 ## 6. 実装順
 
-新しい横断subsystemやGateは追加しません。既存Issueを次の順で深めます。
+新しい横断的な専用機構や判定段階は追加せず、既存の課題を次の順に詳しく検証します。
 
-1. ISSUE-000047でexact / deterministic baselineと段階昇格のReference条件を固定する
-2. lightweight cognitionをcandidate generationへ限定して比較する
-3. ISSUE-000027でcandidateからminimum semantic delta Proposalへ接続し、Shared Acceptanceを通す
-4. ISSUE-000026でportable artifact / Host差を第二Target比較へ含める
-5. ISSUE-000053でre-entry / operational contextへexecution provenanceを接続する
-6. Studio / RQ-028で人が意味差分・unknown・provenanceを理解できるかactual Evidenceを取る
+1. ISSUE-000047で正確な照合と決定的な処理を基準とし、上位方式へ進める条件を参照事例で定める
+2. 軽量認知を候補生成に限定して比較する
+3. ISSUE-000027で候補から最小限の意味変更を提案し、共通の受理境界を通す
+4. ISSUE-000026で実行物の可搬性とホストの違いを、二つ目の実行先の比較に加える
+5. ISSUE-000053で作業再開時の文脈と、実行の出所の追跡を結び付ける
+6. 編集環境とRQ-028で、意味の差分、未確定事項、出所を人が理解できるか、実際の検証根拠を得る
 
-この順序は完全な直列ではありません。1〜3と第二Target pressureは並行できますが、上位方式の採用を下位方式のbaselineより先に固定しません。
+この順序は厳密な直列ではありません。1～3と二つ目の実行先の検証は並行できます。ただし、下位の方式で基準となる結果を確認する前に、上位の方式の採用を固定しません。
 
 ## 7. 非目標
 
-- Jev、FlyHash、embedding、LightGBM、特定LLMをTEI標準reasonerにすること
-- Ollama / LM Studioを必須Runtimeにすること
-- Hike / TinyGo / WasmをTEI Coreの必須実装にすること
-- model confidenceをSemantic Evidence / Acceptance / authorityにすること
-- Studio / Agent専用の第二Canonical Storeを作ること
-- providerごとに別Acceptance / Permission semanticsを作ること
-- research benchmarkのscoreをTEIの固定KPIへ輸入すること
-- 研究だけを根拠にRQのEvidence tierを上げること
+- Jev、FlyHash、埋め込み表現、LightGBM、特定の言語モデルをTEIの標準的な推論機構にすること
+- OllamaやLM Studioを必須の実行機構にすること
+- Hike、TinyGo、WasmをTEIの中核の必須実装にすること
+- モデルの確信度を意味の検証根拠や受理・権限の判断に使うこと
+- 編集環境やエージェントのための第二の正本を作ること
+- 提供元ごとに異なる受理規則や利用許可の意味を設けること
+- 研究の評価点をTEIの固定的な成果指標として使うこと
+- 研究だけを根拠に製品要求の検証段階を引き上げること
 
 ## 8. 完了条件
 
-この研究統合は、文書作成だけでは完了扱いにしません。
+この技術調査の反映作業は、文書を作成しただけでは完了とみなしません。
 
-少なくとも既存IssueのReferenceから次を説明できる状態を目指します。
+少なくとも、既存の課題に対応する参照事例で、次のことを説明できる状態を目指します。
 
-- deterministicで解けるcaseが上位modelへ不要に送られない
-- lightweight cognition / modelが候補生成へ寄与してもauthorityを持たない
-- unknown / abstentionが成功へ丸められない
-- Proposalがminimum semantic deltaとしてShared Acceptanceへ入る
-- model / providerを交換・削除してもCanonical meaningが変わらない
-- execution artifact / Hostを交換してもSemantic Operationを追跡できる
-- current authority / Resource / Observationが過去のProposalやmodel memoryと分離される
-- Human reviewでmeaning / inference / unknown / provenanceを区別できる
+- 決定的な方法で解ける問題を上位のモデルへ不必要に送らない
+- 軽量な認知処理やモデルが候補生成に役立っても、判断権限は与えない
+- 未確定事項や判断保留を成功として扱わない
+- 提案を最小限の意味変更として共通の受理境界へ渡す
+- モデルや提供元を交換・削除しても意味の正本は変わらない
+- 実行物やホストを交換しても意味上の操作を追跡できる
+- 現在の権限、資源、観測結果を過去の提案やモデルの記憶と分ける
+- 人による確認で、意味、推論、未確定事項、出所を区別できる
 
-各Evidence tierの更新は、それぞれのRequirement auditでactual Reference成立後に行います。
+検証根拠の達成段階は、各要求の監査において、実際の参照事例が成立したことを確認してから更新します。
 
-## 9. 2026-10-09 追加調査 — 実用上の価値へ結び付ける
+## 9. 2026年10月9日の追加調査 — 実用上の価値につなぐ
 
 この追補は**採用前の設計・実証候補**である。外部研究の成績をTEIの達成度に読み替えず、上記の統合方針、既存Requirement、受入境界を変更しない。まず、利用者が「何を安心して変更できるか」「何が本当に動くか」を確かめるための小さな比較を追加する。
 
@@ -276,40 +276,40 @@ RQ-010 / RQ-028では、AIの自然言語要約だけをreview surfaceにしま�
 
 [RADIANT（2026-07）](https://arxiv.org/abs/2607.16708)は、要求から複数のモデルを生成し、要素単位の追跡関係と変更影響の計算を接続する研究である。構文上の妥当性と意味の正しさが同じではない点も重要である。形式検証の方式自体をTEIへ輸入するのではなく、異なる設計視点を通した**反証可能な変更影響**に注目する。
 
-TEIへの翻訳:
+TEIの設計へ反映する観点：
 
-- RQ-026のData、Function / Interaction、Business Procedureの相互参照から、要求の欠落・矛盾・不明点を実装前に提示する。
-- RQ-028では、レビュー対象を生成コードの一覧ではなく、影響を受ける規則・操作・データ・利用者権限・未解決点として提示する。
-- 既存の #982、#998、ISSUE-000075、#915、#267へ割り当てる。正本は要求・業務意味・受理されたSourceに保ち、AIが見つけた問題は確認候補として扱う。
+- RQ-026のデータ、機能・操作、業務手順の相互参照から、要求の欠落、矛盾、不明点を実装前に示す。
+- RQ-028では、生成したコードの一覧よりも、影響を受ける規則、操作、データ、利用者の権限、未解決事項を人が確認できるように示す。
+- 既存の#982、#998、ISSUE-000075、#915、#267へ割り当てる。要求、業務上の意味、受理済みの情報源を正本とし、AIが発見した問題は確認が必要な候補として扱う。
 
-**REF-SPEC-01（候補）:** order_entryの既存Customer参照規則を題材に、欠落（必要な参照先がない）、曖昧（更新できるかが不明）、不整合（read-onlyと更新要求の衝突）、古い前提（基準revision変更）の四ケースを用意する。同じ変更案を、(a)通常のSource探索、(b)TEIの依存・差分・未解決表示の二条件でレビューする。重要な不足の見落とし、誤警報、人が開いたSource数、説明可能な影響範囲、確認時間を分けて測る。#915の既存Referenceにない事実や権限は推測で補完しない。
+**REF-SPEC-01（候補）：** `order_entry`にある顧客の参照規則を題材に、欠落（必要な参照先がない）、曖昧さ（更新できるか分からない）、不整合（読み取り専用なのに更新が要求される）、古い前提（基準版が変更された）の四つを用意する。同じ変更案を、(a)通常の情報源の探索と、(b)TEIによる依存関係・差分・未解決事項の表示で比較する。重要な不足の見落とし、誤警報、人が開いた情報源の数、説明できる影響範囲、確認時間を別々に測る。#915の既存の参照事例にない事実や権限は推測で補わない。
 
 ### 9.2 見た目ではなく「操作が働く」価値
 
 [VISTA（2026-09-29改訂）](https://arxiv.org/abs/2605.26144)は、画面を描画できたことと、必要な部品を見つけて実際に操作できることを別々に測る。TEIでも既存Gate Cの視覚評価を、機能や人による承認の代替にはできない。
 
-TEIへの翻訳:
+TEIの設計へ反映する観点：
 
-- RQ-013、RQ-010、RQ-021の評価では、部品が存在すること、操作が正しいBusiness Actionへつながること、拒否されるべき操作が拒否されること、実世界の状態を観測できることを別々に検証する。
-- #997、#1000、#1001、#259、ISSUE-000046の既存UI・Target検証へ戻す。画面の見た目が一致しても、Business ResultやObservationが一致しなければ成功にしない。
+- RQ-013、RQ-010、RQ-021の評価では、画面の部品が存在すること、操作が正しい業務上の行為につながること、拒否すべき操作が拒否されること、現実の状態を観測できることを別々に検証する。
+- #997、#1000、#1001、#259、ISSUE-000046の画面・実行先に関する検証へ戻す。画面の見た目が一致しても、業務上の結果や観測結果が一致しなければ成功とは判断しない。
 
-**REF-INTERACTION-01（候補）:** 第一Web Target上で、顧客参照、入力検証、許可された更新操作、許可されない更新要求のうち、既存Referenceで実行可能な一連の操作を選ぶ。各操作についてUI部品→イベント→意味上の操作→Driver結果→Observationへの対応を記録する。キーボード操作・エラー通知はUI固有の評価として加える。視覚評価、人の操作確認、決定論的な操作結果を独立して記録し、人による検証を実施していない場合は「未実施」と明記する。
+**REF-INTERACTION-01（候補）：** 最初のWeb向け実行先で、顧客の参照、入力の検証、許可された更新、許可されない更新要求のうち、既存の参照事例で実行できる一連の操作を選ぶ。各操作について、画面の部品→イベント→意味上の操作→実行・検証環境の結果→観測結果の対応を記録する。キーボード操作とエラー通知は画面固有の評価として加える。見た目の評価、人による操作の確認、決定的な方法で確認した操作結果は別々に記録し、人による検証を行っていない場合は「未実施」と明記する。
 
 ### 9.3 小さな実行物を、標準機能のプラグイン化と接続する価値
 
-[WASI 0.3（2026-06-11公開、0.3.1は同年08-11）](https://github.com/bytecodealliance/wasi.dev/blob/main/docs/releases/wasi-p3.md)ではComponent Modelに非同期のfuture、stream等が導入された。一方、Runtimeと各言語のtoolchainは同じ速度で対応していない。WASI 0.3が標準化されたことは、TEIのGo製Sourceをそのまま全Hostへ移せることを意味しない。
+[WASI 0.3（2026-06-11公開、0.3.1は同年08-11）](https://github.com/bytecodealliance/wasi.dev/blob/main/docs/releases/wasi-p3.md)では、部品を組み合わせる仕組みに、非同期処理のfutureやstreamなどが導入された。一方、実行基盤と各言語の開発ツールが同じ速度で対応するとは限らない。WASI 0.3が標準化されたからといって、TEIのGo製ソースをそのまますべてのホストで動かせるわけではない。
 
-[Wails v3（2026-08時点でBeta、2026-10時点でもBeta）](https://v3.wails.io/status/)は、GoとWebViewを組み合わせたDesktop候補として、Hostのライフサイクル・マルチウィンドウ・bindingを調べる材料になる。ただし、Studio Host、生成された業務Application Target、Plugin Runtimeは別の責務である。
+[Wails v3（2026-08時点でBeta、2026-10時点でもBeta）](https://v3.wails.io/status/)は、GoとWebViewを組み合わせるデスクトップ向けの候補として、ホストの起動と終了、複数ウィンドウ、対応付けを調べる材料になる。ただし、編集環境のホスト、生成した業務アプリケーションの実行先、プラグインの実行基盤はそれぞれ別の責務を持つ。
 
-[TinyGo](https://github.com/tinygo-org/tinygo)はGo SourceをWasm/WASIへコンパイルする候補である。[Hike](https://github.com/kanryu/hike-lang)はGo風の構文を持つ**別言語**であり、一般のGo SourceをそのままHikeでコンパイルできるという前提を置かない。小さい実行物の比較では、この違いを明記する。
+[TinyGo](https://github.com/tinygo-org/tinygo)はGoのソースをWasmやWASI向けにコンパイルする候補である。[Hike](https://github.com/kanryu/hike-lang)はGoに似た構文を持つ**別の言語**であり、一般的なGoのソースをそのままHikeでコンパイルできるとは想定しない。小さな実行物を比較する際も、この違いを明記する。
 
-TEIへの翻訳:
+TEIの設計へ反映する観点：
 
-- #259の第二Target比較に「実行物の形式」「Hostが提供するimport」「ABIと呼出規約」「同期・非同期」「権限と資源」「起動・回復」「実行物の大きさ」「可搬性」を加える。
-- #943、#973、#976、#1016では、標準機能を含むプラグインの意味契約・依存解決・Build Artifact Lockを先に保ち、Wasm形式やコンパイラ名をPlugin identityへ混入させない。
-- Wasmの採用そのものを第二Application Target達成の証拠とみなさない。Web/スマートフォンのUI実装とも分ける。
+- #259の二つ目の実行先の比較に、実行物の形式、ホストが提供する機能、ABIと呼出規約、同期と非同期、権限と資源、起動と復旧、実行物の大きさ、可搬性を加える。
+- #943、#973、#976、#1016では、標準機能を含むプラグインの意味上の契約、依存関係の解決、ビルド成果物の固定情報を先に保つ。Wasm形式やコンパイラ名をプラグインの識別子に混ぜない。
+- Wasmの採用だけで二つ目のアプリケーション実行先が成立したとは判断しない。Webやスマートフォンの画面の実装とも区別する。
 
-**REF-PORTABLE-01（候補）:** 副作用のない小さな意味上の変換を同一入力・期待出力で定義し、利用可能なGo native / TinyGo Wasm等で比較する。Hikeは別Sourceへの移植コストも記録できる場合に限り候補に加える。生成物digest、依存、Host imports、ABI、失敗・取消、CPU・メモリ、初回起動時間、結果の一致を記録する。WASI 0.2と0.3はtoolchain/Hostの対応状況を確認して別条件とし、片方の成功をもう片方へ一般化しない。実行Hostのpermission、resource、leaseは既存のAuthority境界へ束縛し、契約の読み込みだけで実行権限を付与しない。
+**REF-PORTABLE-01（候補）：** 外部に影響を及ぼさない小さな意味上の変換を、同じ入力と期待する出力で定義し、利用できるGoのネイティブ実行やTinyGoによるWasmなどで比較する。Hikeは別言語のソースへの移植費用も記録できる場合に限って候補に加える。生成物の照合値、依存先、ホストが提供する機能、ABI、失敗・取消し、CPUとメモリ、初回起動時間、結果の一致を記録する。WASI 0.2と0.3は開発ツールとホストの対応状況を確認して別の条件で扱い、一方の成功をもう一方へ一般化しない。実行ホストの許可、資源、リースは既存の権限の境界に従って扱い、契約を読み込んだだけで実行権限を与えない。
 
 ### 9.4 優先度と着手条件
 
@@ -317,32 +317,32 @@ TEIへの翻訳:
 | --- | --- | --- | --- |
 | 1 | 小さい業務変更で、見落としや矛盾を人が判断できる | ISSUE-000075 / #982 / #998 / #267 | REF-SPEC-01を既存Sourceと受理境界で示せるか。広い仕様生成や新規基盤が必須なら見送る |
 | 2 | 画面の各操作が業務上の結果につながる | #997 / #1000 / #259 | REF-INTERACTION-01で機能・視覚・観測を別々に測れるか |
-| 3 | 実行環境を替えても、同じ意味と権限条件を保てる | #259 / #943 / #973 / #976 | REF-PORTABLE-01でexact Host/ABIを記録し、既存権限機構を再利用できるか |
+| 3 | 実行環境を替えても、同じ意味と権限条件を保てる | #259 / #943 / #973 / #976 | REF-PORTABLE-01で実際のホストとABIを記録し、既存の権限機構を再利用できるか |
 
-この順番は既存Issueの着手承認・統合手順・実装優先順位を上書きしない。ISSUE-000075の候補Bでは、2026-10-08に業務規則の変更が受理されている。ただし、Web画面まで含めた一周の実証や全明細への規則適用を完了したわけではない。REF-SPEC-01はこの受理をやり直す作業ではなく、受理済みの意味と別の設計視点に残る差を読み取り専用で検査する候補である。
+この順番によって、既存の課題の着手承認、統合手順、実装の優先順位を変更することはない。ISSUE-000075の候補Bでは、2026-10-08に業務規則の変更が受理されている。ただし、Web画面まで含めた一周の実証や全明細への規則適用を完了したわけではない。REF-SPEC-01は、この受理をやり直すための作業ではない。受理済みの意味と別の設計視点に残る違いを、読み取り専用で検査する候補である。
 
-**完了の扱い:** この文書の更新は研究の計画への反映にとどまる。REFの実装、比較実験、利用者レビュー、性能測定、適合性の判定は未実施である。どの候補でも、baseline revision、Source、実行環境、期待結果、実測値、反例を残せたときに初めて対応RequirementのEvidence更新を検討する。
+**完了の扱い：** この文書の更新は、研究を計画へ反映した段階にとどまる。参照事例の実装、比較実験、利用者による確認、性能測定、適合性の判定は実施していない。どの候補も、基準版、情報源、実行環境、期待する結果、実測値、反例を記録した段階で初めて、対応する要求の検証根拠を更新するか検討する。
 
 ### 9.5 REF-SPEC-01の最初の実施手順（静的確認済み／コマンド実行未確認）
 
-第一段階では、新しい仕様生成器を作らない。既存の受注ReferenceとBusiness Procedure checkerを使い、**確認できる問題と、まだ判定できない問題**を分ける。2026-10-09にリポジトリのSourceを読み取り、次の境界を確認した。以下のコマンドの実行結果や時間計測は取得していない。
+最初の段階では新しい仕様生成器を作らない。既存の受注の参照事例と業務手順の検査器を使い、**確認できる問題と、まだ判断できない問題**を分ける。2026-10-09にリポジトリのソースを読み取り、次の境界を確認した。以下のコマンドについては、実行結果も所要時間も記録していない。
 
-| 確認対象 | Source上で確認できる事実 | 実行時に確かめること |
+| 確認対象 | ソースに記述されている事実 | 実行時に確かめること |
 | --- | --- | --- |
-| 明示された規則 | 受注ProcedureのBP-05には数量の正値と行番号の一意性という二つのValidation参照がある | 現行checkerがどの参照を解決し、どの参照を未解決として返すか |
-| 反する更新要求 | Customer参照のBP-02に対する編集要求のprobeはread-only datasourceにread-writeを求める | 期待するアクセス衝突だけを検出し、更新権限を推測で作らないか |
-| 三視点間の差 | 2026-10-08に受理した行番号の正値規則はApplication側の三つ目のValidationである。一方、Business ProcedureのBP-05は二つの参照のままである | 意図した独立性か変更影響の見落としかを人が判断できるか。checkerが必ず不整合判定するとは仮定しない |
-| 古い基準版の提案 | 候補Bの保存済みcandidateは受理前のbaseModelRevisionを指す | 現行版へ黙って適用しないか。旧Reviewを現在の受理根拠に流用しないか |
-| Source上の不在 | Source検索で記述が見つからないだけでは、禁止・不存在を証明できない | 必須参照先の契約違反と未発見を区別できるか |
+| 明示された規則 | 受注の業務手順BP-05には、数量が正であることと行番号が一意であることを検証する、二つの規則への参照がある | 現在の検査器がどの参照を解決し、どれを未解決として返すか |
+| 反する更新要求 | 顧客参照のBP-02を編集しようとする検証では、読み取り専用のデータソースに書込みも求めている | 想定した利用条件の衝突だけを検出し、更新権限を推測で作らないか |
+| 三つの視点の違い | 2026-10-08に受理した行番号の正値規則は、アプリケーション側で三つ目の検証規則となった。一方、業務手順BP-05は二つの規則への参照を保持している | 意図的に独立させているのか、変更の影響を見落としたのか、人が判断できるか。検査器が必ず不整合と判定するとは仮定しない |
+| 古い基準版の提案 | 候補Bとして保存した提案は、受理前の`baseModelRevision`を指す | 現行版へ確認なく適用しないか。過去の確認結果を現在の受理の根拠に流用しないか |
+| ソースで見つからない事項 | ソースの検索で記述が見つからないだけでは、禁止されていることや存在しないことは証明できない | 必要な参照先の契約違反と、単に見つけられていない状態を区別できるか |
 
-読み取り専用の再現入口:
+読み取り専用で確認するためのコマンド：
 
     go run ./tools/reference-business-procedure-check
 
     go run ./tools/reference-business-procedure-check -probe reference/business-system-design/order-entry-customer-edit-conflict.json -expect-diagnostic BUSINESS_FUNCTION_DATASOURCE_ACCESS_CONFLICT
 
-既存の説明は [Business-system design Reference](../../reference/business-system-design/README.md)、受理履歴は ISSUE-000075を参照する。過去のcandidate／preview／reviewファイルは**当時の基準版に対する証拠**であり、現在のWorldへ再受理可能という証明ではない。
+既存の説明は[業務システム設計の参照事例](../../reference/business-system-design/README.md)、受理の履歴はISSUE-000075を参照する。過去の提案・事前確認・確認記録のファイルは、**当時の基準版についての根拠**であり、現在の全体モデルでも受理できるという証明ではない。
 
-最初に作る読取結果は、(1) exact Source・意味identity・衝突根拠から**判定できた事項**、(2) 不在・古い前提・Procedure固有の意図など**人の判断が残る事項**、(3) 実Provider・画面・未実行のDriverなど**根拠が届かない事項**、(4) 変更を提案するか保留・追加調査するかという**人が選ぶ事項**を分ける。
+最初に作る読取り結果では、(1) 正確な情報源・意味上の識別子・衝突の根拠から**判断できた事項**、(2) 記述の不在・古い前提・業務手順固有の意図など**人の判断が残る事項**、(3) 実際の提供実装・画面・未実行の実行検証など**根拠が届かない事項**、(4) 変更の提案、保留、追加調査から**人が選ぶ事項**を分ける。
 
-**停止条件:** Customer編集の衝突を既存checkerで再現できない場合、または別視点の差を示すために受理済み業務定義を勝手に書き換える必要がある場合は、実装を増やさず原因を既存Issueへ返す。成功を記録する際は、exact revision、実行環境、コマンド、診断、実行前後のSource不変を残す。今回の静的Source確認だけでは成功扱いにしない。
+**停止条件：** 顧客の編集に関する衝突を既存の検査器で再現できない場合や、異なる視点の違いを示すために受理済みの業務定義を無断で書き換える必要がある場合は、実装を増やさず、原因を既存の課題へ戻す。成功を記録する際には、正確な対象版、実行環境、コマンド、診断、実行前後にソースが変わっていないことを記録する。今回のソースの静的な確認だけでは成功とは判断しない。

@@ -147,6 +147,9 @@ func ParseJSON(raw []byte) (Value, error) {
 	if !utf8.Valid(raw) {
 		return Value{}, fmt.Errorf("JSON is not valid UTF-8")
 	}
+	if err := rejectUnpairedJSONSurrogates(raw); err != nil {
+		return Value{}, err
+	}
 	decoder := json.NewDecoder(bytes.NewReader(raw))
 	decoder.UseNumber()
 	value, err := decodeJSONValue(decoder, 0)

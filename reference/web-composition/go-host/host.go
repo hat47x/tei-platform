@@ -6,7 +6,9 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"net/url"
 	"strings"
+	"sync/atomic"
 )
 
 // Principal is returned by a trusted, explicitly supplied session verifier.
@@ -16,6 +18,20 @@ type Principal struct {
 	Issuer      string
 	Subject     string
 	PrincipalID string
+}
+
+// authorizedActionContextKey is written only after the Host's current
+// route, session, origin and Action authorization checks have succeeded.
+// It is a request-scoped handoff marker, not a portable Authority grant.
+// No browser header, JSON member or standalone selected Handler can create it.
+type authorizedActionContextKey struct{}
+
+// The marker expires when the originating protected handler returns. Keeping
+// a prior request's Context cannot authorize a later dispatch. This local
+// marker is not a remotely verifiable grant and is not an effect-time lease.
+type authorizedActionApproval struct {
+	actionID string
+	live     atomic.Bool
 }
 
 // principalContextKey is private to the trusted host. Headers, query
@@ -65,8 +81,22 @@ type Dependencies struct {
 // NewHost creates a single protected Action endpoint. Security steps belong to the
 // host, not to interchangeable middleware that may declare its own guards.
 func NewHost(p Policy, d Dependencies) (http.Handler, error) {
-	if p.Path == "" || p.Path[0] != '/' || strings.ContainsAny(p.Path, "?#%\\\\") || strings.Contains(p.Path, "//") || strings.Contains(p.Path, "/./") || strings.Contains(p.Path, "/../") || strings.HasSuffix(p.Path, "/.") || strings.HasSuffix(p.Path, "/..") || p.Method != http.MethodPost || p.ActionID == "" || len(p.Providers) == 0 {
+	if p.Path == "" || p.Path[0] != '/' || strings.ContainsAny(p.Path, "?#%\\\\") || strings.Contains(p.Path, "//") || strings.Contains(p.Path, "/./") || strings.Contains(p.Path, "/../") || strings.HasSuffix(p.Path, "/.") || strings.HasSuffix(p.Path, "/..") || p.Method != http.MethodPost || strings.TrimSpace(p.ActionID) == "" || len(p.Providers) == 0 {
 		return nil, errors.New("protected route needs exact POST path, action and providers")
+	}
+	// E1's exact protected Action route must also be representable by this Go
+	// Host: a space, control character or non-ASCII rune may be normalized or
+	// percent-encoded before the request reaches net/http. Reject these route
+	// definitions rather than accepting a path the E1 planner cannot attest.
+	if strings.IndexFunc(p.Path, func(r rune) bool { return r < '!' || r > '~' }) >= 0 {
+		return nil, errors.New("protected route needs an exact printable ASCII path")
+	}
+	// NewHost compares incoming EscapedPath against the compiled Policy.Path.
+	// Any path that net/url would percent-encode can never satisfy that
+	// comparison. Reject it during composition instead of accepting a route
+	// that no legitimate request could reach.
+	if (&url.URL{Path: p.Path}).EscapedPath() != p.Path {
+		return nil, errors.New("protected route path must match its canonical URL escaping")
 	}
 	for id, issuer := range p.Providers {
 		if id == "" || issuer == "" {
@@ -142,7 +172,12 @@ func NewHost(p Policy, d Dependencies) (http.Handler, error) {
 			http.Error(tw, "access denied", http.StatusForbidden)
 			return
 		}
-		d.Invoke.ServeHTTP(tw, r.WithContext(context.WithValue(r.Context(), principalContextKey{}, subject)))
+		approval := &authorizedActionApproval{actionID: p.ActionID}
+		approval.live.Store(true)
+		defer approval.live.Store(false)
+		verified := context.WithValue(r.Context(), principalContextKey{}, subject)
+		verified = context.WithValue(verified, authorizedActionContextKey{}, approval)
+		d.Invoke.ServeHTTP(tw, r.WithContext(verified))
 		stage = "completed"
 	}), nil
 }

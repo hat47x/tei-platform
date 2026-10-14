@@ -200,3 +200,96 @@ test('the same external identity cannot change application PrincipalID', () => {
   p.subjectLinks.push({...p.subjectLinks[0],principalId:'attacker-principal'});
   assert.throws(()=>validateAuthenticationPlan(p),/conflicting principal mapping/);
 });
+
+
+test('protected Action rejects HTTP route aliases the Go Host cannot safely match', () => {
+  for(const path of [
+    '/scenario/%73ubmit',
+    '/scenario//submit',
+    '/scenario/./submit',
+    '/scenario/../submit',
+    '/scenario/submit/.',
+    '/scenario/submit/..',
+    '/scenario/submit?role=admin',
+    '/scenario/submit#fragment',
+    '/scenario/submit\\\\admin',
+    '/scenario/sub mit',
+    '/scenario/受注',
+    '//scenario/submit'
+  ]){
+    const p=clone(base);
+    p.route.path=path;
+    assert.throws(()=>composeRequestPlan(p),/exact unambiguous path/,path);
+  }
+});
+
+test('protected Action requires the exact POST method and explicit protected exposure', () => {
+  for(const method of ['GET','get','post','POST ','PUT','OPTIONS']){
+    const p=clone(base);
+    p.route.method=method;
+    assert.throws(()=>composeRequestPlan(p),/uppercase HTTP token|protected Action reference/,method);
+  }
+  for(const exposure of [undefined,'public','interactive-session','protected-typo']){
+    const p=clone(base);
+    p.route.exposure=exposure;
+    assert.throws(()=>composeRequestPlan(p),exposure==='public' ? /public/ : /protected exposure/,String(exposure));
+  }
+  for(const invalid of [null,0,{},[],true,' ',undefined]){
+    const p=clone(base);
+    p.route.actionId=invalid;
+    assert.throws(()=>composeRequestPlan(p),/action identity must be a nonempty string/,String(invalid));
+  }
+});
+
+test('non-Action route cannot keep the business Action invocation step', () => {
+  for(const exposure of ['public','protected']){
+    const p=clone(base);
+    p.route={id:'corporate.callback',method:'GET',path:'/login/callback/corporate',exposure};
+    assert.throws(()=>composeRequestPlan(p),/Action invocation requires an explicit Action route/,exposure);
+  }
+});
+
+test('public callback without an Action remains a distinct GET route', () => {
+  const p=clone(base);
+  p.route={id:'corporate.callback',method:'GET',path:'/login/callback/corporate',exposure:'public'};
+  p.hostPolicy.requiredGuards=[];
+  p.hostContracts=[];
+  p.steps=[
+    {id:'context',scope:'server',provides:['request.context']},
+    {id:'callback-validation',scope:'server',requires:['request.context'],provides:['callback.validated']},
+    {id:'audit',scope:'server',requires:['request.context'],onTerminal:['completed','rejected','error']}
+  ];
+  const composed=composeRequestPlan(p);
+  assert.equal(composed.routeId,'corporate.callback');
+  assert.ok(composed.order.includes('callback-validation'));
+  assert.ok(!composed.order.includes('invoke'));
+});
+
+
+test('protected Action route must be byte-exact after Go net/url EscapedPath', () => {
+  for(const path of [
+    '/scenario/a!b',
+    '/scenario/a"b',
+    "/scenario/a'b",
+    '/scenario/a*b',
+    '/scenario/a(b)',
+    '/scenario/a[b]',
+    '/scenario/a{b}',
+    '/scenario/a<b>',
+    '/scenario/a|b',
+    '/scenario/a^b',
+    '/scenario/a\`b'
+  ]){
+    const p=clone(base);
+    p.route.path=path;
+    assert.throws(()=>composeRequestPlan(p),/exact unambiguous path/,path);
+  }
+});
+
+test('protected Action retains Go URL paths that do not need escaping', () => {
+  for(const path of ['/scenario/submit','/scenario/+@;,$','/scenario/a:bc&def=2']){
+    const p=clone(base);
+    p.route.path=path;
+    assert.equal(composeRequestPlan(p).routeId,'sales.submit');
+  }
+});

@@ -65,8 +65,26 @@ function validate(base, procedure) {
   const parties = uniqueIds(list(base.externalParties,"externalParties"), "externalParties");
   const stores = uniqueIds(list(base.stores,"stores"), "stores");
   const info = uniqueIds(list(base.informationFlows,"informationFlows"), "informationFlows");
+  // This reference contract contains business meanings, not permission rules,
+  // scheduled jobs, database writes or executable runtime bindings.
+  // Reject unrecognized nested attributes; otherwise a harmless-looking
+  // label edit could silently carry unauthorized meaning into its preview.
+  for (const role of list(base.businessRoles,"businessRoles")) {
+    keys(role, ["id","label"], "business role");
+    exact(role.label, "business role label");
+  }
+  for (const party of list(base.externalParties,"externalParties")) {
+    keys(party, ["id","label"], "external party");
+    exact(party.label, "external party label");
+  }
+  for (const store of list(base.stores,"stores")) {
+    keys(store, ["id","label","semanticData"], "conceptual store");
+    exact(store.label, "conceptual store label");
+    if (store.semanticData !== undefined) exact(store.semanticData,"conceptual store semantic data");
+  }
   const responsibilityKeys = new Set();
   for (const r of list(base.responsibilities,"responsibilities")) {
+    keys(r, ["step","role"], "business responsibility");
     const step = exact(r.step, "responsibility.step");
     const role = exact(r.role, "responsibility.role");
     if (!steps.has(step) || !roles.has(role)) throw new Error("UNRESOLVED_RESPONSIBILITY");
@@ -76,17 +94,20 @@ function validate(base, procedure) {
   }
   const transitionKeys = new Set();
   for (const f of list(base.flows, "flows")) {
+    keys(f, ["from","to","kind","condition"], "control transition");
     if (!steps.has(exact(f.from,"control.from")) ||
         !steps.has(exact(f.to,"control.to")) ||
         !FLOW_KINDS.has(f.kind)) throw new Error("UNRESOLVED_CONTROL_FLOW");
-    if (["branch","exception"].includes(f.kind) && !exact(f.condition,"control.condition")) {
-      throw new Error("MISSING_CONTROL_CONDITION");
+    if (f.kind === "sequence" && f.condition !== undefined) {
+      throw new Error("SEQUENCE_CANNOT_CLAIM_CONDITION");
     }
+    if (["branch","exception"].includes(f.kind)) exact(f.condition,"control.condition");
     const key=JSON.stringify([f.from,f.to,f.kind,f.condition || ""]);
     if (transitionKeys.has(key)) throw new Error("DUPLICATE_CONTROL_FLOW");
     transitionKeys.add(key);
   }
   for (const t of list(base.triggers,"triggers")) {
+    keys(t, ["id","kind","targetStep","label"], "business trigger");
     if (!["human","event","schedule"].includes(t.kind) ||
         !steps.has(exact(t.targetStep,"trigger.targetStep"))) {
       throw new Error("UNRESOLVED_TRIGGER");
@@ -94,6 +115,7 @@ function validate(base, procedure) {
     exact(t.label,"trigger.label");
   }
   for (const f of list(base.informationFlows,"informationFlows")) {
+    keys(f, ["id","from","to","payload"], "information flow");
     const from = endpoint(f.from, steps, parties, stores);
     const to = endpoint(f.to, steps, parties, stores);
     if (from.kind !== "step" && to.kind !== "step") {
