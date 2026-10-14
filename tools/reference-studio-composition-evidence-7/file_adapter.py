@@ -13,6 +13,12 @@ import tempfile
 from pathlib import Path
 
 PR_HEAD = '1af4bf08c9afcc650ac74def3b0aad6728a5f58d'
+NEW_HEAD = 'd560bddf289df68d896a651ecc6bfad61088f18e'
+NEW_PIN_DIFF = {
+    'main.go': '8d6eca235264f00a44e43484b757bd60fc00c270',
+    'main_test.go': '7c8b9d651f545250b5091d79fb35a4212426dc49',
+    'compose-ui.test.mjs': '77a168349cd004bc8b871f5ae406e189b11d9f71',
+}
 BASE = 'tools/reference-studio-static-composition'
 PINNED = {
     'README.md': '78fcc2210adb2f92f8fd690474c68bd29c2f754b',
@@ -47,10 +53,11 @@ def require(cond, message):
         raise Failed(message)
 
 
-def prepare(root, lanes):
+def prepare(root, lanes, head):
     base = root / BASE
-    selected = PINNED if set(lanes) == {'go', 'ui'} else {
-        k: v for k, v in PINNED.items() if k == 'fixture.json' or
+    pins = {**PINNED, **(NEW_PIN_DIFF if head == NEW_HEAD else {})}
+    selected = pins if set(lanes) == {'go', 'ui'} else {
+        k: v for k, v in pins.items() if k == 'fixture.json' or
         (k in ('main.go', 'main_test.go') if 'go' in lanes else
          k in ('compose-ui.mjs', 'compose-ui.test.mjs'))
     }
@@ -58,7 +65,7 @@ def prepare(root, lanes):
         path = base / name
         if not path.is_file():
             raise Blocked(f'missing #1833 exact source: {path}')
-        require(git_blob(path.read_bytes()) == expected, f'#1833 source differs from {PR_HEAD}: {name}')
+        require(git_blob(path.read_bytes()) == expected, f'#1833 source differs from {head}: {name}')
     if 'ui' in lanes:
         resolved = root / 'reference/ui-customization/composition/resolve-ui-kit.mjs'
         if not resolved.is_file():
@@ -131,7 +138,7 @@ def assert_success(result, kind, raw):
             'fixtureSha256': sha(raw), 'details': meta, 'imports': result['imports']}
 
 
-def cases(fixture):
+def cases(fixture, ui_version_error=b'invalid_manifest'):
     def change(edit):
         value = copy.deepcopy(fixture)
         edit(value)
@@ -148,7 +155,7 @@ def cases(fixture):
         'ui.unknown_slot': (change(lambda p: p['uiKit']['changes'][1].update(slot='unknown')), b'unknown_extension_point'),
         'ui.duplicate_component': (change(lambda p: p['uiKit']['changes'][1].update(implementation='studio.graph')), b'duplicate_ui_component'),
         'ui.framework': (change(lambda p: p['uiKit']['framework'].update(major=2)), b'framework_mismatch'),
-        'ui.version': (change(lambda p: p['uiKit'].update(version='latest')), b'invalid_manifest'),
+        'ui.version': (change(lambda p: p['uiKit'].update(version='latest')), ui_version_error),
     }
 
 
@@ -161,9 +168,10 @@ def go_toolchain_ready(root):
     return p.returncode == 0 and bool(m) and tuple(map(int, m.groups())) >= (1, 26, 9)
 
 
-def probe(root, timeout=60, lanes=('go', 'ui')):
-    base, raw, fixture = prepare(root, lanes)
-    result = {'referenceHead': PR_HEAD, 'inputGitBlobs': PINNED,
+def probe(root, timeout=60, lanes=('go', 'ui'), head=PR_HEAD):
+    base, raw, fixture = prepare(root, lanes, head)
+    pins = {**PINNED, **(NEW_PIN_DIFF if head == NEW_HEAD else {})}
+    result = {'referenceHead': head, 'inputGitBlobs': pins,
               'generation': {}, 'rejection': {}, 'blocked': {}, 'limits': {}}
     for kind in lanes:
         if kind == 'go' and not go_toolchain_ready(root):
@@ -188,7 +196,7 @@ def probe(root, timeout=60, lanes=('go', 'ui')):
             result['generation'][kind] = {'status': 'BLOCKED', 'reason': str(err)}
         except (Failed, OSError, json.JSONDecodeError) as err:
             result['generation'][kind] = {'status': 'FAIL', 'reason': str(err)}
-    for label, (mutated, error) in cases(fixture).items():
+    for label, (mutated, error) in cases(fixture, b'invalid_request' if head == NEW_HEAD else b'invalid_manifest').items():
         kind, _ = label.split('.', 1)
         if kind not in lanes:
             continue
@@ -228,9 +236,10 @@ def main(argv=None):
     parser.add_argument('--repo', required=True, type=Path, help='main + exact #1833 files checkout/snapshot')
     parser.add_argument('--timeout', type=int, default=60)
     parser.add_argument('--lane', choices=('all', 'go', 'ui'), default='all')
+    parser.add_argument('--pocb-head', choices=(PR_HEAD, NEW_HEAD), default=PR_HEAD)
     args = parser.parse_args(argv)
     try:
-        result = probe(args.repo.resolve(), args.timeout, ('go', 'ui') if args.lane == 'all' else (args.lane,))
+        result = probe(args.repo.resolve(), args.timeout, ('go', 'ui') if args.lane == 'all' else (args.lane,), args.pocb_head)
         print(json.dumps(result, sort_keys=True, ensure_ascii=False, indent=2))
         return 1 if result['status'] == 'FAIL' else 2
     except (Failed, OSError, ValueError, json.JSONDecodeError) as err:
