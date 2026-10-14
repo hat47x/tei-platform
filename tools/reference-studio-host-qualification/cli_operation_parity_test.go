@@ -266,4 +266,3 @@ func TestCLIProcessVersusReadOnlyOperations(t *testing.T) {
 		})
 	}
 }
-
