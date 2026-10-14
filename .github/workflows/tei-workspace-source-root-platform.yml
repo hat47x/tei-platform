@@ -12,6 +12,7 @@ on:
       - internal/workspace/source_snapshot.go
       - internal/workspace/source_snapshot_internal_test.go
       - internal/workspace/source_pinned_root_test.go
+      - internal/workspace/source_pinned_inventory_test.go
       - internal/workspace/loader.go
       - internal/workspace/source_index.go
       - internal/workspace/indexed_loaded_snapshot.go
@@ -59,7 +60,7 @@ jobs:
           if ((go env GOOS).Trim() -ne 'windows') {
             throw 'Not running native Windows Go'
           }
-          go test -v -count=1 -timeout 10m -run '^(TestRootedSourceRejectsOutsideSymlinksAndNestedAliases|TestRootedSourceBasicPathBoundaryOnNativeTargets|TestPinnedWorkspaceRootSurvivesSymlinkAliasRetarget|TestLoadRejectsManifestSymlinkLeavingWorkspace|TestLoadAcceptsInternalManifestLinkAndReleasesRootHandle|TestReadSourceForLoadFallsBackToCheckedRootForDirectLoader|TestCheckedReaderRejectsExternalSymlink|TestCheckedReaderAllowsLocalSymlinkToRegularFile|TestCheckedReaderPreservesMissingPathError|TestSourceIndexRejectsExternalSymlinkFromForgedResult|TestSourceIndexRejectsExternalSymlinkViaNestedDirectory|TestSourceIndexAllowsLocalSymlinkToRegularFile|TestSourceIndexRejectsBrokenSymlink|TestSourceIndexRejectsNonregularSource)$' ./internal/workspace
+          go test -v -count=1 -timeout 10m -run '^(TestRootedSourceRejectsOutsideSymlinksAndNestedAliases|TestRootedSourceBasicPathBoundaryOnNativeTargets|TestManagedInventoryStaysWithPinnedRootAfterWorkspaceAliasRetarget|TestManagedInventoryRejectsAliasesWithSamePhysicalIdentity|TestManagedInventoryAllowsMissingRootAndRejectsEscapingEntries|TestManagedInventoryRejectsAbsoluteSymlinkWithinWorkspace|TestPinnedWorkspaceRootSurvivesSymlinkAliasRetarget|TestLoadRejectsManifestSymlinkLeavingWorkspace|TestLoadAcceptsInternalManifestLinkAndReleasesRootHandle|TestReadSourceForLoadFallsBackToCheckedRootForDirectLoader|TestCheckedReaderRejectsExternalSymlink|TestCheckedReaderAllowsLocalSymlinkToRegularFile|TestCheckedReaderPreservesMissingPathError|TestSourceIndexRejectsExternalSymlinkFromForgedResult|TestSourceIndexRejectsExternalSymlinkViaNestedDirectory|TestSourceIndexAllowsLocalSymlinkToRegularFile|TestSourceIndexRejectsBrokenSymlink|TestSourceIndexRejectsNonregularSource)$' ./internal/workspace
           if ($LASTEXITCODE -ne 0) {
             throw 'Windows Workspace Source boundary tests failed'
           }

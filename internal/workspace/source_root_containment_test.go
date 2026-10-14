@@ -270,7 +270,9 @@ func TestOnePhysicalSourceCannotHaveMultipleManagedAliases(t *testing.T) {
 	if err := os.WriteFile(original, []byte("one source"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.Symlink(original, filepath.Join(dir, "alias.md")); err != nil {
+	// os.Root accepts relative links contained by the Workspace; absolute
+	// symlink targets are rejected even if their current path is inside it.
+	if err := os.Symlink("original.md", filepath.Join(dir, "alias.md")); err != nil {
 		t.Skipf("symlink unavailable: %v", err)
 	}
 	if _, err := workspace.Load(root); err == nil || !strings.Contains(err.Error(), "same physical file") {

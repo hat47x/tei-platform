@@ -113,7 +113,19 @@ func ExecuteScopedCanonicalRead(
 		parameters,
 	)
 	if err != nil {
-		return PublishedReadResult{}, ErrScopedQueryUnavailable
+		// The real Driver preserves Provider errors with %w. Keep internal
+		// authorization failure categories distinct from SQL/backend outages,
+		// while never returning provider-supplied diagnostic strings.
+		switch {
+		case errors.Is(err, ErrAuthorizationUnavailable):
+			return PublishedReadResult{}, ErrAuthorizationUnavailable
+		case errors.Is(err, ErrAuthorizationContract):
+			return PublishedReadResult{}, ErrAuthorizationContract
+		case errors.Is(err, ErrRejected):
+			return PublishedReadResult{}, ErrRejected
+		default:
+			return PublishedReadResult{}, ErrScopedQueryUnavailable
+		}
 	}
 	if execution.Resolution.Query == nil || execution.Resolution.Data == nil ||
 		execution.Resolution.Query.ID != publication.QueryID ||

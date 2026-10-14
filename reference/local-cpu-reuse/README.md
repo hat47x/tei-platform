@@ -163,3 +163,101 @@ node --test reference/local-cpu-reuse/inspect-cli-process-success.test.mjs refer
 ```
 
 **Local evidence:** Node.js 22.16.0 on Linux, **13/13 PASS** (six newly committed subprocess cases plus seven previously committed summary cases). The staged source modules `run-real-inspection.mjs`, `inspect-cli-bridge.mjs`, `project-inspection-v0.mjs`, `inspection-evidence-summary.mjs`, both new tests and the fixture were verified against their exact GitHub blob SHAs. This was a **targeted staging directory test**, not a full checkout test or CI run. No TEI Go binary was built or executed. Therefore real Workspace Load, `go build`, genuine `tei inspect` end-to-end behavior, two authorized Applications, actual source authenticity, and Acceptance remain **NOT_PROVEN**. The synthetic fixture is not a substitute for the TEI executable and must never be used for Canonical decision-making or production inspection.
+
+## Opt-in genuine Go CLI → Node feature projection integration gate (2026-10-14)
+
+[real-go-inspection.e2e.test.mjs](real-go-inspection.e2e.test.mjs) extends the earlier fake-process transport test with a *genuine Go CLI binary* built from the checkout being tested. It is intentionally **opt-in**; normal Node test discovery reports a skip rather than a synthetic PASS. It never substitutes the previous fake `tei.cli.inspect/v0` emitter for this gate.
+
+From a trusted checkout with the Go version required by `go.mod`, Node 22+ and permission to read the checked-in `reference/workspace`, run:
+
+```sh
+TEI_REAL_CLI_E2E=1 node --test reference/local-cpu-reuse/real-go-inspection.e2e.test.mjs
+```
+
+The test creates a disposable temporary binary with `go build -o <temp> ./cmd/tei`, with `GOTOOLCHAIN=local` (no transparent Go toolchain upgrade), and then executes the existing `run-real-inspection.mjs` against exactly the five fixed subjects in `reference/workspace`. It checks that the Go→CLI JSON→Node derived observation→redacted summary chain yields the expected subject kinds, shared snapshot, explicit declared membership/relation, `not_asserted` Acceptance and no raw Subject IDs, Canonical bodies, World/Source Index fingerprints, Contract Query or Source paths in stdout. It also calls the *real* binary for a missing Semantic Data subject and checks the structured `SUBJECT_NOT_FOUND` failure envelope. Only a **successful opt-in run** may be cited as real CLI E2E evidence. Its build may download Go module dependencies if not cached; the test itself does not send inspection results over the network.
+
+This does **not** prove trusted source identity, tenant/project authorization, real two-Application comparison, full Contract semantics, performance, or #267 Acceptance. It is one explicitly chosen **single Reference Workspace**, with read-only inspection of multiple subjects. The normal fake executable tests remain useful transport regressions, but are a different evidence tier.
+
+As of this addition the local execution environment has **Go 1.23.2** while the current `go.mod` requires **1.26.9**. Consequently the opt-in real-Go test cannot be qualified locally: new test code is committed for execution in a suitable trusted checkout, **not claimed PASS**. Its default skipped path can be syntax-smoke-tested independently. This is a targeted gate, not a request to run the full repository health suite or to enable TEI-LD training.
+
+## Two actual Reference Applications: shared customer Query, different Application context (2026-10-14)
+
+`order_entry.customer_reference` and `repair_intake.customer_reference` are distinct actual TEI Patterns in the **same checked-in Reference Workspace**. Both declare Database Contract `master_data.customer`, Query `find_by_id`, input binding `customer.customer.customer_id -> id`, target Database `master_data`, read-only access and compatible major `2`. Their Pattern Relations and Application-local datasource aliases differ (`sales.order.customer` / `repair_intake.intake.customer`, and `master` / `customer_master`). Their names and common contract do **not** prove UI-implementation or business-rule equivalence.
+
+The small read-only [compare-two-application-references.mjs](compare-two-application-references.mjs) consumes exactly four caller-authorized `tei.cli.inspect/v0` reports (Application and customer-reference Pattern from each). It uses the existing typed inspection projection to verify exact subjects, same World/Source Index snapshot, indexed Source, completeness and declared Application→Pattern membership. It additionally checks the original typed Go Application database routing/required-major metadata and exact Reference Pattern contract-query bindings. Any unknown or unsupported semantics, non-read datasource, missing/ambiguous contract route, incomplete Source, or snapshot drift **abstains or fails closed**, never implies direct reuse. This is an intentionally fixed public Reference case, not a general cross-tenant query API or second TEI parser.
+
+Its output `shared_query_invocation_declared` means the two **declarations** target an identical Query invocation under the observed World. The result **always** reports `reuseDecision:needs_semantic_review`, `acceptance:not_asserted` and `contractConformance:not_verified`. It does not feed raw CLI metadata into the synthetic `comparePair` as a verified contract fingerprint. The in-memory comparison contains publicly checked-in identifiers and Source snapshot hashes, so it must **not** be automatically printed or exported for customer workspaces.
+
+Targeted tests:
+
+```sh
+node --test reference/local-cpu-reuse/compare-two-application-references.test.mjs
+TEI_REAL_CLI_E2E=1 node --test reference/local-cpu-reuse/real-go-inspection.e2e.test.mjs
+```
+
+The first suite uses synthetic `inspect/v0` JSON to stress changed Query, compatible major, binding, datasource, unknown policy, membership and snapshot drift. The opt-in E2E builds the genuine `tei` Go CLI and inspects the **four actual Subjects**, then checks shared Query metadata and distinct Application context. Neither exercise establishes an Accepted Contract implementation, renderer interoperability, real project-to-project authorization, transitive license rights or the cost/benefit of component extraction. Both Applications are in the **same Reference Workspace**, not independent production customers. Real two-project Source trust, review time, CPU cost and maintainability gain remain future research gates.
+
+## Read-only Query-invocation adapter boundary proposal (2026-10-14)
+
+After the **real Go** two-Application observation qualified in the previous PR, `proposeReferenceQueryAdapter(reports)` extends the narrow fixed-Reference comparison into an **in-memory design candidate**, not an executable adapter. It reuses `compareTwoReferenceApplications` and therefore preserves the original exact Subject, read-only Source Index, snapshot, Application membership, route, Contract requirement, Query and input-binding checks. There is no new DSL parser, new authorization system, generated runtime code, read query execution, or modification of TEI Go Canonical types.
+
+Its `tei.research.query-invocation-adapter-proposal/v0` response deliberately separates:
+
+| Layer | Fields | Meaning |
+| --- | --- | --- |
+| Shared *declaration candidate* | `databaseTarget`, `contract`, `compatibleMajor`, `query`, `bindings` | The two public Reference Applications explicitly declared the same read-Query invocation. No Contract implementation or Query output signature was verified. |
+| Application wiring | `application`, `pattern`, `relation`, `datasourceAlias` for each Application | Relation and alias remain owned by each Application. A future adapter must receive these through Application-specific binding; it cannot infer or overwrite them. |
+| Unresolved gates | `contract_semantics`, `query_result_signature`, `caller_authorization`, `runtime_binding`, `acceptance` | Explicit omissions, **not** automatically satisfied by identifier or signature coincidence. |
+
+Status is `candidate_requires_semantic_review` only when the two *observed declarations* match. Contract/query/input drift leads to `not_shareable_from_declarations` and `commonInvocation:null`; malformed, incomplete, unindexed or out-of-snapshot Canonical observations still fail closed. Even in the matching case `executionPermitted:false`, `implementationSelected:false`, `accepted:false`, `acceptance:not_asserted` and all semantic/authorization verifier fields remain false. It does **not** call the existing `comparePair` with a fabricated Contract fingerprint or assign semantic authority.
+
+The intended eventual shape is **Application binding → parameterized shared Query-call logic → already-authorized Database Contract runtime**. This is an architectural decomposition only; runtime provider APIs, mandatory security requirements, query result shape, UI rendering, identity mapping and caching remain for concrete requirements and qualification. In particular, the Application-local `datasourceAlias` must never become a cross-Application routing instruction, and a compatible-major declaration must not be treated as verified runtime compatibility.
+
+Both fixed cases live in the checked-in `reference/workspace`. The returned in-memory object contains domain identifiers and an observation snapshot; it is *not* a general JSON export format. Disclosure and authorization remain the caller's duty before `tei inspect`, including for future customer Workspaces.
+
+Focused tests add nine new cases to the existing 15-case suite, for declaration/context split, differing Query/major/input, unresolved alias, unexpected write access, snapshot/unknown semantic policy rejection, and detached output copies. The opt-in [real-go-inspection.e2e.test.mjs](real-go-inspection.e2e.test.mjs) also asserts the boundary against the actual Go CLI's four Reference observations:
+
+```sh
+node --test reference/local-cpu-reuse/compare-two-application-references.test.mjs
+TEI_REAL_CLI_E2E=1 node --test reference/local-cpu-reuse/real-go-inspection.e2e.test.mjs
+```
+
+Execution status belongs to the *corresponding exact-head CI result*; source changes alone do not count as a pass. No #843 training, #876 automatic qualification, or #267 Acceptance is initiated.
+
+## M0 Database Contract Query typed-signature observation (2026-10-14)
+
+The checked-in Go-normalized `reference/workspace` includes Contract `master_data.customer` **v2.4** with `find_by_id(input id: customer.customer_id) → customer.customer`, result cardinality **`zero-or-one`**. Both `order_entry` and `repair_intake` require compatible major `2`, bind `customer.customer.customer_id -> id`, and use read-only, distinct Application-local datasource aliases. The typed input, output and result cardinality come from the **owning Database Contract**: do not infer them from identical Pattern names or customer-facing UI.
+
+The research-only [qualify-query-signature.mjs](qualify-query-signature.mjs) consumes the four authorized `tei.cli.inspect/v0` reports and the normalized `tei world -workspace reference/workspace` JSON. It first reuses the existing four-subject application comparison (exact identities, Source/World Index fingerprints within inspect, declared read-only route, membership and matching Query invocation). It checks both Application and Pattern Canonical JSON **against the independently read normalized World** before looking up exactly one Database, Contract and Query. It checks Contract major, complete typed Query input binding, resolves the bound Semantic attribute to its declared type, and verifies the result Semantic Data identity and the declared result cardinality. It rejects unknown fields at the Database/Contract/Query-signature boundary, ambiguous identities, mismatches and incomplete declarations rather than guessing.
+
+Its `declared_signature_matched` outcome means **all of these declarations agree** for this fixed Reference input, and records input `customer.customer_id`, result Semantic Data `customer.customer` and `zero-or-one` cardinality. It does **not** mean the external-observed `master_data` provider is live, returns that shape, implements the expected Query, or allows a real caller to access customer data. The independent `world` and `inspect` reads are not an atomic transaction: matching the two Application subtrees reduces observable drift but **cannot prove unchanged Database Contract data, Source authenticity or a consistent revision**. Therefore `verified.providerImplementation`, `resultRuntimeShape`, `authorization`, `sourceAuthenticity` and `atomicWorkspaceSnapshot` remain false; `executionPermitted:false`, `implementationSelected:false` and `accepted:false`.
+
+The `tei world` command returns an entire normalized World, potentially containing sensitive material. This fixed public Reference E2E parses it **in memory only** and does not log or export it. Never use the research adapter as a broad tenant data export or bypass authorized Workspace disclosure controls. Neither the Reference result nor a compatible-major declaration establishes an accepted common runtime plugin.
+
+Focused qualification commands:
+
+```sh
+node --test reference/local-cpu-reuse/qualify-query-signature.test.mjs
+TEI_REAL_CLI_E2E=1 node --test reference/local-cpu-reuse/real-go-inspection.e2e.test.mjs
+```
+
+The test suite covers declared v2.4 input, type and cardinality, Contract version drift, missing/extra inputs, invalid result shape, duplicate identities, unsupported policy and mismatches between the World and exact CLI observations. CI evidence must be recorded for the *exact PR head*, not inferred from previous successful versions. No Go Core, Canonical model, production runtime, or TEI-LD training is changed.
+
+## Optional Provider routing observation without executor authority (2026-10-14)
+
+The existing Go models already separate `environment.DatabaseInstance`, `ApplicationDatabaseBinding`, and `realization.ContractQueryExecutorBinding`. They deliberately do **not** infer a Contract Query executor from a matching database provider: Go's `ResolveContractQueryExecutor` requires an explicit, unambiguous binding and a resolved Plugin Capability supporting the instance provider. Project-specific implementations should remain easy to supply rather than being blocked by speculative test, benchmark or certification obligations.
+
+[observe-provider-routing.mjs](observe-provider-routing.mjs) extends the fixed *public Reference only*, read-only Go `tei world` + four `tei inspect` observations. It first checks the typed Contract signature via the existing [qualify-query-signature.mjs](qualify-query-signature.mjs), then follows each Application's distinct local datasource alias to its exact Environment `bindings` entry and Database instance. For the current `development` Reference, both `order_entry.master` and `repair_intake.customer_master` declare a route to the **same** `master_data.dev` instance, whose definition is `master_data` and whose provider is `oracle`. This is a *declaration of routing*, not a connection attempt or permission.
+
+The optional `contractQueryExecutorBindings` array is inspected for a matching Environment, instance and exact Database/Contract/Query target. Its absence is reported as `executor:not_observed`; it is **not an error imposed on plugin developers**. Even when present, a binding yields only `explicit_binding_declared_unverified`: this research code does **not** resolve Plugin capabilities, inspect secrets, execute queries, or call an external provider. Absent Application routing is reported as `application_binding_not_declared`, with no invented instance. Duplicate/malformed targeted routes, wrong Database definition, unknown provider or duplicate executor selections fail closed rather than choosing an arbitrary entry.
+
+The research response permanently retains `executionPermitted:false`, `implementationSelected:false`, `accepted:false`, and verifier flags `pluginExecutorResolution:false`, `providerHealth:false`, `callerAuthorization:false`, `providerResultConformance:false`. A common declared instance is **not** a shared permission or verified runtime. Runtime grants, resource lease policy, Provider implementation conformance and Accepted reuse remain governed by their existing TEI layers. No changes to Go runtime, typed DSL, deployed provider, SQL Source, credential, or standard Plugin requirement are introduced.
+
+A narrowly scoped positive/negative synthetic suite and the existing opt-in real-Go E2E cover this observation:
+
+```sh
+node --test reference/local-cpu-reuse/observe-provider-routing.test.mjs
+TEI_REAL_CLI_E2E=1 node --test reference/local-cpu-reuse/real-go-inspection.e2e.test.mjs
+```
+
+Both commands are read-only with respect to the Reference models, but `go build` may download Go modules. Results are trustworthy only after recording the exact PR head and CI result; they do not certify a live Oracle environment. The in-memory World and observation objects may reveal project metadata and must not be dumped to unrestricted logs.

@@ -1,0 +1,48 @@
+name: TEI 案件補助・Runtime Authority境界参照検証
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "tools/reference-runtime-capability-identity/**"
+      - "plugins/reference-project-customer-advice/**"
+      - "tools/reference-project-advice-lit/contract_bridge.go"
+      - ".github/workflows/tei-project-advice-authority-ci.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tei-project-advice-authority-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  project-runtime-authority:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      GOENV: off
+      GOWORK: off
+      GOTOOLCHAIN: local
+      CGO_ENABLED: "0"
+      PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+    steps:
+      - name: 検証するPR正確HEADを取得
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Goを用意
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: go.mod
+          cache: false
+      - name: 案件Goとgeneric Runtime Authorityを局所検証
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$PR_HEAD_SHA"
+          gofmt -d tools/reference-runtime-capability-identity/*.go plugins/reference-project-customer-advice/*.go plugins/reference-project-customer-advice/cmd/reference-advice-process/*.go
+          test -z "$(gofmt -l tools/reference-runtime-capability-identity/*.go plugins/reference-project-customer-advice/*.go plugins/reference-project-customer-advice/cmd/reference-advice-process/*.go)"
+          go test -count=1 ./tools/reference-runtime-capability-identity ./plugins/reference-project-customer-advice
+          test "$(git rev-parse HEAD)" = "$PR_HEAD_SHA"

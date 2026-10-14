@@ -32,6 +32,16 @@
 - Gate C Functional Evidence
 - Gate C Visual Evidence
 
+## 起動前の受理済みSource照合（#1119 / #1121）
+
+通常の複合Web Targetの起動関数 `runCombinedWebTarget(ctx, reader, args)` は、Hostから渡された `sourceacceptance.Reader` を `LoadVerifiedWorkspace` に渡し、成功した **同じ `Loaded.World`** でProjectionとRunnerを構築します。Reader欠落、受理失効、Application不一致、管理対象ファイルの追加・欠落やbyte fingerprint不一致は、HTTP HandlerとRunnerの生成より前に拒否します。B/R/Tのラベルはこの照合の代わりになりません。Readerを渡した経路では診断フラグとの併用も拒否します。
+
+**現時点のCLIは正式なHost受理元へ未接続です。** フラグを省略した通常起動は `SOURCE_ACCEPTANCE_READER_REQUIRED` で終了します。`.tei/decisions/` の記録や呼出元JSONから受理権限を生成しません。以下の既存合成fixture手順には `-diagnostic-unaccepted-source` を明示し、起動ログに `SOURCE_ACCEPTANCE_NOT_VERIFIED` を残します。この診断経路は製品G1の証拠に数えません。
+
+`tei_order_only` / `tei_repair_only` と凍結Worldの別実行ファイルは既存の診断Referenceのままで、今回のReader注入経路の対象外です。これらも正式な受理済みSourceを検証したTargetとは扱いません。
+
+回帰試験 `TestCombinedWebTargetSourceGateLiveProcesses` は、実Shared Acceptance CLIのscratch R1から合成Readerを作り、別OSプロセスで同じWeb起動コードを動かします。R1のHTTP 200・4 Validation・Command・合成Observation、旧R0、意味同一の空行R2、Reader欠落・失効・読取障害の起動拒否を検査します。これは**試験実行ファイルへの合成Reader注入**であり、配布CLIへの真正なHost Readerの接続、人的受理、実DB保存、dispatch時のHost Grant、起動後の失効、跨ファイルの原子的読込みは未実証です。G1/G2は未合格を維持します。
+
 ## 実行
 
 Target build revisionは実際に実行するcheckoutから取得します。
@@ -40,6 +50,7 @@ Target build revisionは実際に実行するcheckoutから取得します。
 TARGET_REVISION="$(git rev-parse HEAD)"
 
 go run ./tools/reference-first-web-target \
+  -diagnostic-unaccepted-source \
   -workspace reference/workspace \
   -application order_entry \
   -baseline-id B \
@@ -80,6 +91,7 @@ curl -sS -X POST http://127.0.0.1:8080/scenario/submit \
 
 ```bash
 go run ./tools/reference-first-web-target \
+  -diagnostic-unaccepted-source \
   -workspace reference/workspace -application repair_intake \
   -baseline-id B -baseline-revision e5231839a5dcc62cce1181a2731fcb7c70d16736 \
   -target-revision "$(git rev-parse HEAD)" -listen 127.0.0.1:8080
@@ -204,6 +216,7 @@ Semantic / Functional runner単独ではVisual Fidelity Evidenceを取得しま�
 
 ```sh
 go run ./tools/reference-first-web-target \
+  -diagnostic-unaccepted-source \
   -workspace reference/workspace \
   -application order_entry \
   -baseline-id B \

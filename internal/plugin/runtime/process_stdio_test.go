@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"strings"
 	"testing"
 	"time"
@@ -33,6 +34,25 @@ func runProcessHelper(mode string) int {
 		time.Sleep(30 * time.Second)
 		return 0
 	}
+	if mode == "hold-stdio-pipes" {
+		time.Sleep(8 * time.Second)
+		return 0
+	}
+	if mode == "exit-with-inherited-pipes" {
+		// Return without waiting. The descendant keeps the parent's stdout
+		// and stderr pipe descriptors open after the direct process exits.
+		child := exec.Command(os.Args[0])
+		child.Env = []string{processHelperModeEnv + "=hold-stdio-pipes"}
+		child.Stdout = os.Stdout
+		child.Stderr = os.Stderr
+		if err := child.Start(); err != nil {
+			return 7
+		}
+		if err := child.Process.Release(); err != nil {
+			return 7
+		}
+		return 0
+	}
 	if mode == "malformed" {
 		_, _ = fmt.Fprint(os.Stdout, "{")
 		return 0
@@ -46,6 +66,13 @@ func runProcessHelper(mode string) int {
 		// A bounded capture alone cannot prevent this form of resource exhaustion.
 		_, _ = fmt.Fprint(os.Stdout, strings.Repeat("x", 4096))
 		time.Sleep(30 * time.Second)
+		return 0
+	}
+	if mode == "stderr-large" || mode == "stderr-large-then-wait" {
+		_, _ = fmt.Fprint(os.Stderr, "TEI_PROCESS_STDERR_SECRET_CANARY"+strings.Repeat("x", 4096))
+		if mode == "stderr-large-then-wait" {
+			time.Sleep(30 * time.Second)
+		}
 		return 0
 	}
 	if mode == "exit" {
@@ -380,6 +407,39 @@ func TestStdioProcessLauncherKillsChildOnStdoutOverflow(t *testing.T) {
 	}
 	if elapsed := time.Since(started); elapsed > 4*time.Second {
 		t.Fatalf("oversized child was not stopped promptly: %s", elapsed)
+	}
+}
+
+// A child that floods stderr must not retain a Host invocation indefinitely
+// after its output exceeds the independent diagnostic budget. A successful
+// exit after excessive stderr must also be rejected, rather than accepted as
+// if the protocol exchange had been normal.
+func TestStdioProcessLauncherRejectsAndTerminatesExcessiveStderr(t *testing.T) {
+	for _, mode := range []string{"stderr-large", "stderr-large-then-wait"} {
+		t.Run(mode, func(t *testing.T) {
+			launcher, command := helperLauncher(t, mode)
+			launcher.MaxStderrBytes = 128
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			started := time.Now()
+			resp, err := launcher.Invoke(ctx, command, processRequest())
+			if err == nil || !strings.Contains(err.Error(), "stderr exceeds 128 bytes") {
+				t.Fatalf("excessive diagnostic output accepted: %v", err)
+			}
+			if strings.Contains(err.Error(), "TEI_PROCESS_STDERR_SECRET_CANARY") ||
+				strings.Contains(err.Error(), "stderrSHA256=") {
+				t.Fatal("rejected diagnostic stream escaped into Host error")
+			}
+			if resp.Status != "" || len(resp.Payload) != 0 {
+				t.Fatal("failed Process invocation returned an untrusted response")
+			}
+			if ctx.Err() != nil {
+				t.Fatalf("stderr overflow unexpectedly canceled parent context: %v", ctx.Err())
+			}
+			if elapsed := time.Since(started); elapsed > 4*time.Second {
+				t.Fatalf("child emitting excessive stderr was not stopped promptly: %s", elapsed)
+			}
+		})
 	}
 }
 
