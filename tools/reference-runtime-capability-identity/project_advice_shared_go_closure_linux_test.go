@@ -94,7 +94,7 @@ func TestProjectAdviceSharedGoBuilderClosureBindsExactRuntimeArtifact(t *testing
 			ContractVersion: "tei.reference.go-process-build/v0",
 			ArtifactDigest:  goDigest,
 		},
-		Recipe: plugin.BuildRecipe{Kind: "go-package", Entrypoint: entrypoint},
+		Recipe:     plugin.BuildRecipe{Kind: "go-package", Entrypoint: entrypoint},
 		OutputKind: plugin.BuildOutputRuntimeArtifact,
 		Target:     "linux-amd64",
 		Profile:    "reference",
