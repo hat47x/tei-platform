@@ -60,6 +60,12 @@ go vet -tags tei_studio_host_integration ./tools/reference-studio-host-boundary
 
 **実行結果（この追加タグ付き試験）: NOT RUN**。#Workの旧固定snapshotのPASSを流用しない。#1832 Wailsのserver build結果は#Work/#2が別途取得する。
 
+### 追跡：#1832の追加更新
+
+2026-10-14の確認後、#1832は `fb52692dd518d930d696464e46962d8382969d7c` から `2ad4f43c46375a76a421227ed5e084a55e6aacb8` へ進んだ。GitHubの両SHA比較で変更対象はWails CI定義追加、`cmd/tei-studio/main.go`、`cmd/tei-studio/README.md`のみ。`internal/studiohost/readonly.go`のblob SHAは両版とも `f1bd33f0e48a63bf9997f74285a23f8870fa32ae` で**不変**。このタグ付きGo検査の入力は継続利用できるが、新しいheadについて**実行PASSとはまだ言わない**。
+
+新しいWails側の`main.go`は `WAILS_SERVER_HOST` を未設定または厳密な `127.0.0.1` に制限するfail-closedを追加。`#1832` の専用CIはこれとCGO無効Server build、loopback HTTP smoke、Windows Desktop binary buildを別レーンで検証する。これらは#10のGo-only結合テストの代替ではない。WebSocket接続の利用者別認証・資源権限や実WebViewは引き続き未実証。
+
 ## 対応関係と未実証
 
 | #10観点 | この段階の確認範囲 | 実Studioでの判定 |
