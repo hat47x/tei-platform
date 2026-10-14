@@ -156,3 +156,11 @@ codeを含むため、exact-headのfull `tools/repository-health-check.sh` PASS�
 Linux限定の `project_advice_current_host_environment_linux_test.go` は、同じ実案件Goバイナリ／同一Generic Runtime Refを二つのEnvironmentで共有し、AのExecution Grant撤去後は古いA Planによる再起動を拒否しながら、Bの実プロセス実行を維持します。Authority Evidenceの世代変更、Reader障害、別Environment、重複Grant、Reader欠落、キャンセルは、**Artifact検査・Sandbox/Process起動前**に拒否します。これは新しいGrant Store/Resolver/Permission Keyの実装ではありません。
 
 **重要な未達**：本参照Readerはテスト内の合成Sourceであり、実Hostの認証済みApplication／Environment正本やIssuer Trustへまだ接続していません。照合完了から実起動までのAuthority失効は競合可能であり、これだけではAtomic fencing／運用Leaseの証明になりません。実OS隔離・正式なContract/Conformance受理・署名Artifact・業務Action認可にも昇格しません。本番側では#1370など既存の実行開始Gateと正本の世代管理を流用し、追加の権限体系を作らず詰める必要があります。
+
+## 署名済み独立案件Go実行体と現在のHost Authorityの交差検証（#976）
+
+`project_advice_signed_current_host_linux_test.go` は、案件所有 `cmd/reference-project-advice-process` を独立ビルドし、既存の `PinSignedLinuxProcess`、`LinuxHostSignerTrust`、`invokeWithCurrentHostEnvironment`、`HostSandboxLauncher` を**改造せず**組み合わせるLinux限定試験です。Hostを模した試験コードが一時的にEd25519鍵を作り、案件Go実行体の正確なDigest／Plugin ID／Version／署名参照に対して署名します。公開鍵の信頼は、Plugin申告ではなく独立した試験Hostの信頼集合へ登録します。
+
+同じ固定済み実行体で二つのEnvironmentを処理し、Environment AだけのGrant失効後もBの実行は継続する一方、**共通署名参照の失効はBの次回呼出しも拒否**することを検証します。署名参照へ同じ公開鍵を再登録しても、旧世代に固定した実行体は復権せず、新しい固定・検証が必要です。未知の署名者、署名改変、異なるPlugin IDによる署名使い回しも拒否します。異なる失効の単位を同じResolver／権限Storeへ混ぜません。
+
+これは署名と現行Environment照合の**組合せ試験**であり、テスト鍵は現実の受理済み発行者ではありません。現在のEnvironment readerも試験用の合成値で、正式なService Contract、Provider Conformance、Build/Source ClosureのIssuer受理、運用時Principal／Action Grant、実Resource Lease／OS Sandboxは未成立です。署名者世代の起動Gateも一Host上の範囲であり、Environment Grantの失効と実行開始の原子的な順序付けや分散Host間の失効伝播を証明しません。#1370の並行PRを変更するものでもありません。
