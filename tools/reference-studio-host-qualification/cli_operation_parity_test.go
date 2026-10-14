@@ -15,7 +15,6 @@ import (
 
 	"tei/internal/operations"
 	"tei/internal/sourceindex"
-	"tei/internal/workspace"
 )
 
 // subprocessResult is the real tei CLI transport envelope, not a substituted
@@ -268,13 +267,3 @@ func TestCLIProcessVersusReadOnlyOperations(t *testing.T) {
 	}
 }
 
-// Keep an explicit non-passing placeholder for Source Index failure: a real
-// Workspace fixture must first be proven to Load successfully and fail
-// BuildSourceIndex reproducibly, without mocking either implementation.
-func TestSourceIndexFailureFixtureNotYetEstablished(t *testing.T) {
-	t.Skip("blocked: no independently reproducible Load-success/SourceIndex-failure fixture yet")
-}
-
-// Prevent accidental references to the Workspace loader as a replacement for
-// the real typed read-only operations in the comparisons above.
-var _ = workspace.Result{}
