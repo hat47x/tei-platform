@@ -148,3 +148,11 @@ codeを含むため、exact-headのfull `tools/repository-health-check.sh` PASS�
 **このBuildPlanはテスト用観測記録であり、正式なBuilder発行結果ではありません。** 特に列挙したソースは、案件Goファイルと`go.mod`の代表例だけです。Go標準ライブラリ、間接依存、ビルドタグ、全環境変数、Goツールチェーン全体の**完全なSource Closureではなく**、Builderの署名・契約発行権限・再現性・信頼根拠も証明しません。また旧`plugin.Definition`はここでは試験用のProcess形だけで、案件Service Contract／ConformanceのAccepted証跡ではありません。従ってBuildPlan/Artifact Lockの整合だけを根拠に実行権限を付与してはなりません。
 
 本番移行では、既存セルフビルドのSource Closureと正式Builder受理、現行HostのContract/Provider Acceptance Reader、既存Execution Authorityを同一exact artifactへ接続することが必要です。二重Builder・Resolver・Authorityは追加しません。
+
+## 呼出し時のHost Environment Authority再照合（#976、限定参照）
+
+`current_host_environment.go` の `invokeWithCurrentHostEnvironment` は、**Hostに固定されたEnvironment ID**と、Host所有の既存Authority正本を読む関数を受け取る薄い参照用アダプターです。前回のPlan生成時点のGrantをそのまま再利用せず、各呼出しで現在のEnvironment Authorityを取得し、既存 `verifyRuntimeEnvironmentPlan` で同一Generic Runtime Ref／権限世代を照合してから、既存のArtifact Verifier／Resource Broker／Host Sandbox経路へ渡します。ReaderはPlugin自身やブラウザー要求に任せません。
+
+Linux限定の `project_advice_current_host_environment_linux_test.go` は、同じ実案件Goバイナリ／同一Generic Runtime Refを二つのEnvironmentで共有し、AのExecution Grant撤去後は古いA Planによる再起動を拒否しながら、Bの実プロセス実行を維持します。Authority Evidenceの世代変更、Reader障害、別Environment、重複Grant、Reader欠落、キャンセルは、**Artifact検査・Sandbox/Process起動前**に拒否します。これは新しいGrant Store/Resolver/Permission Keyの実装ではありません。
+
+**重要な未達**：本参照Readerはテスト内の合成Sourceであり、実Hostの認証済みApplication／Environment正本やIssuer Trustへまだ接続していません。照合完了から実起動までのAuthority失効は競合可能であり、これだけではAtomic fencing／運用Leaseの証明になりません。実OS隔離・正式なContract/Conformance受理・署名Artifact・業務Action認可にも昇格しません。本番側では#1370など既存の実行開始Gateと正本の世代管理を流用し、追加の権限体系を作らず詰める必要があります。
