@@ -34,6 +34,13 @@ export const codeMirrorRenderer: RendererFactory<HTMLElement> = {
       if (before !== snapshot.text) {
         view.dispatch({ changes: { from: 0, to: before.length, insert: snapshot.text },
           selection: { anchor: snapshot.selection.from, head: snapshot.selection.to } });
+      } else {
+        const main = view.state.selection.main;
+        if (main.from !== snapshot.selection.from || main.to !== snapshot.selection.to) {
+          view.dispatch({ selection: {
+            anchor: snapshot.selection.from, head: snapshot.selection.to
+          } });
+        }
       }
       view.dispatch(setDiagnostics(view.state,
         snapshot.diagnostics.map(({ from, to, message, severity }) => ({
