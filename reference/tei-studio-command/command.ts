@@ -161,7 +161,7 @@ export function createCommandPort(options: CommandOptions): CommandPort {
       ensureActive();
       if (typeof listener !== "function") throw new TypeError("listener is required");
       listeners.add(listener);
-      listener(snapshot());
+      try { listener(snapshot()); } catch { /* caller owns listener errors */ }
       return () => { listeners.delete(listener); };
     },
     dispose() {
