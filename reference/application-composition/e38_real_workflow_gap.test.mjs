@@ -29,7 +29,7 @@ test('E38 refuses missing, duplicated, forged or added-as-edited files',()=>{
  const omitted=clone();omitted.files.pop();
  assert.throws(()=>submitE38SourceOnly(audit,omitted),/invalid_e38_source/);
  const forged=clone();forged.files[1].path='internal/composition/registry.go';
- assert.throws(()=>submitE38SourceOnly(audit,forged),/invalid_e38_diff_path/);
+ assert.throws(()=>submitE38SourceOnly(audit,forged),/incomplete_e38_diff/);
  const added=clone();added.files.find(f=>f.status==='added').beforeBlob='a'.repeat(40);
  assert.throws(()=>submitE38SourceOnly(audit,added),/invalid_e38_addition/);
 });
