@@ -47,3 +47,11 @@
 | SB1-H08 | 同一出力を二回独立Buildと自己申告 | actual Attempt二件の証拠がなければ再現性認定不可 | 未実証 |
 
 実装時は、既存のHost/Build Attempt/Trust契約の所有者と変更パスを先に確認する。全体のFramework化や案件別プラグインを阻む強制Profile追加は行わない。**未実証のHost受理条件を満たすまでは Issue #1739をCloseしない。**
+
+## 5. 現行Hostの選択読み取りに関する追加Reference（#1739）
+
+`internal/plugin/inputprofile/current_host.go` は、呼出し側が保持する既存HostのCurrent selection readerを利用し、**呼出しのたびに** Application/Environmentに一致する明示Profileと固定済み指紋を取得する薄いアダプター。読み取りに成功した場合だけ既存 `PreparePluginPackageInputs` へ委譲する。Contextキャンセル、Hostが拒否した場合、Scope相違、未設定Profile、Source/Plan不一致は入力準備を拒否する。Host由来の失敗理由は呼出し側へ展開しない。
+
+ここで提供するのは既存のHost-owned選択元を接続するための**受け口**だけであり、独立したHost選択元・権限管理・失効確認の実装ではない。単にCallbackを与えただけで真正なHostと認めてはならず、入力Profile／Lockに関する証拠も署名済みAttestationにはならない。読み取りから実行までの競合を防ぐ排他・Leaseも未実装のため、Production受入では同じ選択を実行中に保持する既存Host側の仕組みが必要になる。
+
+`internal/plugin/transform/plugin_current_host_selection_test.go` の偽Readerで現在値の再読込み、失効エラー、別Application/Environment、要求文脈による偽Scope、Profile省略、不一致Lock、実行前キャンセルを試験する。ただし偽Readerの成功は本番の独立Current Authority検証とは区別する。外部Hostへ未接続の間は前章のSB1-H04/H05を受入済みに変更しない。
