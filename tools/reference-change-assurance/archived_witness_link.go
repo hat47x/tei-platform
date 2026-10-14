@@ -19,14 +19,14 @@ import (
 // artifacts. This tool does not create another Evidence Packet schema or
 // interpret the official #1119 preflight's Product Gate.
 var witnessNatures = map[string]string{
-	"workspace-r1.json":          "test-only-managed-source-lineage",
-	"target-launch.json":         "running-first-web-target-with-synthetic-provider",
-	"web-positive.json":          "running-web-http-positive-synthetic-provider",
-	"target-negative-launch.json": "test-only-Go-overlay-Web-target",
+	"workspace-r1.json":            "test-only-managed-source-lineage",
+	"target-launch.json":           "running-first-web-target-with-synthetic-provider",
+	"web-positive.json":            "running-web-http-positive-synthetic-provider",
+	"target-negative-launch.json":  "test-only-Go-overlay-Web-target",
 	"web-negative-unit-price.json": "running-web-http-negative-synthetic-fixture-overlay",
-	"target-n11-launch.json":     "test-only-Go-overlay-Web-target-N11",
-	"n11-unobserved-control.json": "running-web-http-synthetic-Observation-read-failure",
-	"stale-source-control.json":  "running-web-http-stale-source-R0-label-spoof-control",
+	"target-n11-launch.json":       "test-only-Go-overlay-Web-target-N11",
+	"n11-unobserved-control.json":  "running-web-http-synthetic-Observation-read-failure",
+	"stale-source-control.json":    "running-web-http-stale-source-R0-label-spoof-control",
 }
 
 var gitRevision40 = regexp.MustCompile("^[0-9a-f]{40}$")
@@ -40,16 +40,16 @@ type WitnessFile struct {
 // archived receipts against independently indexed before/after Workspace
 // Source bytes. It is never an attestation of execution or receipt origin.
 type ArchivedWitnessLinkReport struct {
-	SchemaVersion     string              `json:"schemaVersion"`
-	Authority         string              `json:"authority"`
-	Diff              WorkspaceDiffReport `json:"diff"`
-	IntegrationHead   string              `json:"integrationHead"`
-	Files             []WitnessFile       `json:"files"`
-	LinkStatus        string              `json:"linkStatus"`
-	Diagnostics       []string            `json:"diagnostics"`
-	Qualification     string              `json:"qualification"`
-	ExecutionAllowed  bool                `json:"executionAllowed"`
-	AuthorityLimits   []string            `json:"authorityLimits"`
+	SchemaVersion    string              `json:"schemaVersion"`
+	Authority        string              `json:"authority"`
+	Diff             WorkspaceDiffReport `json:"diff"`
+	IntegrationHead  string              `json:"integrationHead"`
+	Files            []WitnessFile       `json:"files"`
+	LinkStatus       string              `json:"linkStatus"`
+	Diagnostics      []string            `json:"diagnostics"`
+	Qualification    string              `json:"qualification"`
+	ExecutionAllowed bool                `json:"executionAllowed"`
+	AuthorityLimits  []string            `json:"authorityLimits"`
 }
 
 // Only small, regular, rooted files may be considered. A Source or receipt
