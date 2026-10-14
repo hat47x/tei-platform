@@ -75,7 +75,7 @@ func composeServices(raw []byte) ([]byte, goProvenance, error) {
 		return nil, goProvenance{}, err
 	}
 	if p.FixtureVersion != "tei-studio-poc-b-reference-v0" || p.Scope != "studio.local" ||
-		len(p.UIKit) == 0 || len(p.Services) != 2 {
+		(len(p.UIKit) == 0 || string(p.UIKit) == "null") || len(p.Services) != 2 {
 		return nil, goProvenance{}, errors.New("unsupported or incomplete PoC B fixture")
 	}
 	known := make(map[string]serviceSpec, len(serviceCatalog))
