@@ -5,8 +5,21 @@
   "type": "module",
   "scripts": {
     "test": "node --test *.test.mjs",
-    "audit:imports": "node audit-imports.mjs main.mjs notes.mjs",
-    "check:components": "node check-components.mjs"
+    "audit:imports": "node audit-imports.mjs main.mjs notes.mjs journal-graph.mjs",
+    "check:components": "node check-components.mjs",
+    "build": "node bundle.mjs",
+    "build:graph-legacy": "node build-graph.mjs",
+    "build:command-legacy": "node build-command.mjs"
   },
-  "engines": { "node": ">=20" }
+  "dependencies": {
+    "@codemirror/lint": "6.9.7",
+    "@codemirror/state": "6.7.6",
+    "@codemirror/view": "6.43.14"
+  },
+  "devDependencies": {
+    "esbuild": "0.25.12"
+  },
+  "engines": {
+    "node": ">=22.16.0"
+  }
 }
