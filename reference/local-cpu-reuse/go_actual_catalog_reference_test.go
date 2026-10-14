@@ -51,7 +51,7 @@ func actualCatalogTestBinding(envID, instanceID core.CanonicalID) realization.Co
     }
 }
 
-func TestGoReferenceActualCatalogResolvesOracleCapabilityButNotAnExecutor(t *testing.T) {
+func TestGoReferenceActualCatalogHonorsRealDevelopmentBindingAndProductionGap(t *testing.T) {
     w := referenceWorld(t)
     _ = referenceQuery(t, w)
     for _, id := range []core.CanonicalID{"development", "production"} {
@@ -64,17 +64,38 @@ func TestGoReferenceActualCatalogResolvesOracleCapabilityButNotAnExecutor(t *tes
             if order.ID != repair.ID || order.Provider != environment.ProviderOracle {
                 t.Fatalf("Reference routes drifted for %s: %+v %+v", id, order, repair)
             }
-            // Real Reference only: no explicit executor Binding declared for target.
-            // A resolved provider-compatible Capability must not be auto-selected.
+            // Reference now explicitly binds development's customer query; production
+            // deliberately has no such declaration. Never infer one from the provider.
+            var matches []realization.ContractQueryExecutorBinding
             for _, b := range w.ContractQueryExecutorBindings {
                 if b.Environment == env.ID && b.Instance == order.ID && b.Target == customerTarget {
-                    t.Fatalf("Reference has gained a real executor binding; update research evidence before selecting: %+v", b)
+                    matches = append(matches, b)
                 }
             }
-            _, err := realization.ResolveContractQueryExecutor(
-                env, plugins, w.ContractQueryExecutorBindings, order.ID, customerTarget)
-            if err == nil {
-                t.Fatal("Go resolver selected actual Catalog Capability without an explicit executor Binding")
+            switch id {
+            case "development":
+                if len(matches) != 1 || matches[0].Executor != referenceOracleQueryExecutor {
+                    t.Fatalf("development requires exactly its checked-in Oracle executor Binding; got %+v", matches)
+                }
+                resolved, err := realization.ResolveContractQueryExecutor(
+                    env, plugins, w.ContractQueryExecutorBindings, order.ID, customerTarget)
+                if err != nil {
+                    t.Fatalf("actual Reference development Binding must resolve: %v", err)
+                }
+                if resolved.Binding != matches[0] ||
+                    resolved.Instance.ID != order.ID ||
+                    resolved.Capability.Plugin.ID != "tei.database.oracle" ||
+                    resolved.Capability.Capability.ID != referenceOracleQueryExecutor {
+                    t.Fatalf("real declared Binding selected wrong Go Capability: %+v", resolved)
+                }
+            case "production":
+                if len(matches) != 0 {
+                    t.Fatalf("Reference production acquired an executor Binding: %+v", matches)
+                }
+                if _, err := realization.ResolveContractQueryExecutor(
+                    env, plugins, w.ContractQueryExecutorBindings, order.ID, customerTarget); err == nil {
+                    t.Fatal("production Catalog Capability was selected without an explicit Binding")
+                }
             }
         })
     }
