@@ -58,9 +58,9 @@ func TestProjectAdviceCurrentHostEnvironmentSeparatesIndependentGrants(t *testin
 	}
 
 	for _, tc := range []struct {
-		env core.CanonicalID
+		env  core.CanonicalID
 		plan RuntimeEnvironmentPlan
-		id string
+		id   string
 	}{
 		{envA, planA, "project-a"},
 		{envB, planB, "project-b"},
@@ -133,11 +133,11 @@ func TestProjectAdviceCurrentHostEnvironmentFailsClosedBeforeArtifactDispatch(t 
 	wrong.Environment = other
 
 	cases := []struct {
-		name string
+		name    string
 		hostEnv core.CanonicalID
-		plan RuntimeEnvironmentPlan
-		reader currentRuntimeEnvironmentAuthorityReader
-		want string
+		plan    RuntimeEnvironmentPlan
+		reader  currentRuntimeEnvironmentAuthorityReader
+		want    string
 	}{
 		{"wrong-host-environment", other, plan, reader, "trusted Host Environment"},
 		{"reader-absent", env, plan, nil, "reader is missing"},
