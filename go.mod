@@ -4,6 +4,7 @@ go 1.26.9
 
 require (
 	github.com/jackc/pgx/v5 v5.9.2
+	github.com/wailsapp/wails/v3 v3.0.0-beta.29
 	golang.org/x/text v0.41.0
 )
 

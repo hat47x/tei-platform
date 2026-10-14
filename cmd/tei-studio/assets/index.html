@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TEI Studio — read-only PoC A</title>
+  <style>
+    :root{font-family:system-ui,sans-serif;color-scheme:light dark}
+    body{max-width:1000px;margin:2rem auto;padding:0 1rem}
+    .controls{display:flex;gap:.65rem;align-items:center;flex-wrap:wrap;margin:1rem 0}
+    select,input,button{font:inherit;padding:.45rem}
+    button{cursor:pointer}
+    pre{padding:1.1rem;border:1px solid #8886;border-radius:.5rem;white-space:pre-wrap;overflow-wrap:anywhere;max-height:60vh;overflow:auto}
+    #state{min-height:1.5rem}
+  </style>
+</head>
+<body>
+  <h1>TEI Studio — PoC A</h1>
+  <p>読取り専用の検証画面です。Sourceの編集・保存・受理・任意コマンド実行はありません。</p>
+  <div class="controls">
+    <label for="workspace">Workspace</label>
+    <select id="workspace" aria-label="Workspace"></select>
+    <button id="catalog" disabled>一覧</button>
+    <button id="validate" disabled>検証</button>
+  </div>
+  <div class="controls">
+    <label for="kind">Subject kind</label><input id="kind" placeholder="semantic" autocomplete="off">
+    <label for="subject-id">Subject ID</label><input id="subject-id" placeholder="exact canonical ID" autocomplete="off">
+    <button id="inspect" disabled>参照</button>
+  </div>
+  <div id="state" role="status" aria-live="polite"></div>
+  <pre id="output" aria-label="Operation result"></pre>
+  <script type="module" src="./main.js"></script>
+</body>
+</html>
