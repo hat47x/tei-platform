@@ -97,6 +97,11 @@ func decodeArchivedWitness(data []byte) (map[string]json.RawMessage, error) {
 		if !ok {
 			return nil, fmt.Errorf("non-string archived witness key")
 		}
+		// Only a bounded set of top-level receipt claims is expected.
+		// Avoid an unbounded quadratic case-fold scan on untrusted JSON.
+		if len(seen) >= 128 {
+			return nil, fmt.Errorf("archived witness has too many top-level fields")
+		}
 		for prev := range seen {
 			if strings.EqualFold(prev, key) {
 				return nil, fmt.Errorf("duplicate archived witness key %q", key)
