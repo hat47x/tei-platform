@@ -33,8 +33,8 @@ func TestIndependentReadOnlyCatalogsDoNotExchangeSubjects(t *testing.T) {
 	beta := fixtureWorkspace(t, "studio_beta", "namespace studio_beta\n")
 
 	type observation struct {
-		namespace	string
-		catalog	operations.ModelCatalog
+		namespace string
+		catalog   operations.ModelCatalog
 		err       error
 	}
 	got := make(chan observation, 16)
@@ -92,9 +92,9 @@ func TestSyntaxFindingRemainsScopedToItsWorkspace(t *testing.T) {
 		"namespace studio_broken\n\ndata Broken {\n    attribute invalid type }\n}\n")
 
 	type observation struct {
-		root string
+		root   string
 		result operations.WorkspaceValidation
-		err error
+		err    error
 	}
 	got := make(chan observation, 2)
 	var wg sync.WaitGroup
