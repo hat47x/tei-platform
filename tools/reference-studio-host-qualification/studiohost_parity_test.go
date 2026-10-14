@@ -71,9 +71,19 @@ func TestRealStudioHostCLIAndGoOperationParity(t *testing.T) {
 				cli.Error != nil || cli.OK != !goValue.HasErrors() {
 				t.Fatalf("validation status differs: CLI=%+v Go=%+v error=%v Host=%+v", cli, goValue, goErr, hostResponse)
 			}
+			cliDiagnostics := cliFindings(cli)
+			goDiagnostics := typedFindings(t, goValue)
+			hostDiagnostics := typedFindings(t, *hostResponse.Value)
+			// A diagnostic fixture must not silently turn into an empty baseline.
+			if tc.exit == 1 && (len(cliDiagnostics) == 0 || len(goDiagnostics) == 0 || len(hostDiagnostics) == 0) {
+				t.Fatalf("diagnostic fixture %q produced no findings: CLI=%v Go=%v Host=%v",
+					tc.name, cliDiagnostics, goDiagnostics, hostDiagnostics)
+			}
 			if !reflect.DeepEqual(normalizedJSON(t, *hostResponse.Value), normalizedJSON(t, goValue)) ||
-				!reflect.DeepEqual(cliFindings(cli), typedFindings(t, *hostResponse.Value)) {
-				t.Fatalf("validation semantics differ: CLI=%v Go=%+v Host=%+v", cliFindings(cli), goValue, hostResponse.Value)
+				!reflect.DeepEqual(cliDiagnostics, goDiagnostics) ||
+				!reflect.DeepEqual(cliDiagnostics, hostDiagnostics) {
+				t.Fatalf("validation semantics differ: CLI=%v Go=%v Host=%v",
+					cliDiagnostics, goDiagnostics, hostDiagnostics)
 			}
 		})
 	}
