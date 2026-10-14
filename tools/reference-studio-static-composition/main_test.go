@@ -11,9 +11,13 @@ const goodFixture = "{\"fixtureVersion\":\"tei-studio-poc-b-reference-v0\",\"sco
 
 func TestComposeTwoServicesStableAndStatic(t *testing.T) {
 	a, evidence, err := composeServices([]byte(goodFixture))
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	b, repeated, err := composeServices([]byte(goodFixture))
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	if !bytes.Equal(a, b) || evidence.GeneratedSHA256 != repeated.GeneratedSHA256 {
 		t.Fatal("generation is not deterministic")
 	}
@@ -33,7 +37,7 @@ func TestComposeTwoServicesStableAndStatic(t *testing.T) {
 }
 
 func TestComposeRejectsUnknownDuplicateAndWrongVersion(t *testing.T) {
-	cases := []struct{name, before, after, reason string}{
+	cases := []struct{ name, before, after, reason string }{
 		{"unknown", "\"studio.catalog\"", "\"unknown.module\"", "unknown service"},
 		{"duplicate", "\"studio.validate\"", "\"studio.catalog\"", "duplicate service"},
 		{"version", "\"0.1.0\"", "\"9.0.0\"", "incompatible version"},
@@ -59,9 +63,13 @@ func TestComposeRejectsMalformedAndIncomplete(t *testing.T) {
 
 func TestProvenanceSerialization(t *testing.T) {
 	_, evidence, err := composeServices([]byte(goodFixture))
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	b, err := json.Marshal(evidence)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	if !bytes.Contains(b, []byte("fixtureSha256")) ||
 		!bytes.Contains(b, []byte("generatedSha256")) ||
 		!bytes.Contains(b, []byte("authorityLimitations")) {
