@@ -193,3 +193,30 @@ func TestCurrentHostAdmissionContextAndQueryIsolation(t *testing.T) {
 		}
 	})
 }
+
+func TestExistingE1TwoUnitMeasurementMapsToSeparateHostSelection(t *testing.T) {
+	pair := MeasuredE1Pair{
+		ApplicationID: "order_entry",
+		HandoverBaselineID: "B",
+		BaselineRepositoryRevision: r,
+		BrowserAndAPISourceRevision: tAPI,
+		BrowserSHA256: strings.TrimPrefix(hashBrowser, "sha256:"),
+		BrowserBytes: 250,
+		APISHA256: strings.TrimPrefix(hashAPI, "sha256:"),
+		APIBytes: 75000,
+	}
+	got, err := FromMeasuredE1Pair(pair)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got.Units) != 2 || got.Units[0].TargetBuildRevision != tAPI ||
+		got.Units[1].TargetBuildRevision != tAPI ||
+		got.Units[0].ArtifactDigest != hashBrowser ||
+		got.Units[1].ArtifactDigest != hashAPI {
+		t.Fatalf("existing measured E1 pair was not mapped to exact Host query: %+v", got)
+	}
+	pair.APISHA256 = "other-digest"
+	if _, err := FromMeasuredE1Pair(pair); err == nil {
+		t.Fatal("invalid diagnostic measurement produced Host query")
+	}
+}
