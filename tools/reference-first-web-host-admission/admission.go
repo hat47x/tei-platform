@@ -61,8 +61,8 @@ type MeasuredE1Pair struct {
 // and provenance; this transformation cannot authenticate a measurement.
 func FromMeasuredE1Pair(m MeasuredE1Pair) (Selection, error) {
 	selected := Selection{
-		ApplicationID: m.ApplicationID,
-		HandoverBaselineID: m.HandoverBaselineID,
+		ApplicationID:              m.ApplicationID,
+		HandoverBaselineID:         m.HandoverBaselineID,
 		BaselineRepositoryRevision: m.BaselineRepositoryRevision,
 		Units: []Unit{
 			{ID: BrowserUnit, TargetBuildRevision: m.BrowserAndAPISourceRevision,
