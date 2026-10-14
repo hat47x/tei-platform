@@ -40,11 +40,11 @@ func (f *fixtureHost) ReadCurrentHostAcceptance(
 }
 
 func fixtureSelection() Selection {
-	return Selection {
+	return Selection{
 		ApplicationID:              "order_entry",
 		HandoverBaselineID:         "B",
 		BaselineRepositoryRevision: r,
-		Units: []Unit {
+		Units: []Unit{
 			{ID: BrowserUnit, TargetBuildRevision: tBrowser, ArtifactDigest: hashBrowser, ArtifactBytes: 250},
 			{ID: APIUnit, TargetBuildRevision: tAPI, ArtifactDigest: hashAPI, ArtifactBytes: 75000},
 		},
@@ -53,11 +53,11 @@ func fixtureSelection() Selection {
 
 func fixtureHostSource() *fixtureHost {
 	s := fixtureSelection()
-	return &fixtureHost{snapshot: Snapshot {
+	return &fixtureHost{snapshot: Snapshot{
 		Selection:           s,
 		SourceAccepted:      true,
 		SourceAcceptanceRef: "host-source-acceptance-from-current-store",
-		Builds: []BuildAcceptance {
+		Builds: []BuildAcceptance{
 			{UnitID: BrowserUnit, ArtifactDigest: hashBrowser, Accepted: true, EvidenceRef: "current-browser-build-record"},
 			{UnitID: APIUnit, ArtifactDigest: hashAPI, Accepted: true, EvidenceRef: "current-api-build-record"},
 		},
@@ -158,8 +158,8 @@ func TestCurrentHostAdmissionFailClosedForSourceFailuresAndInvalidSelections(t *
 			selected := fixtureSelection()
 			tc.change(&selected)
 			f := fixtureHostSource()
-			if _, err := CheckCurrent(context.Background(), f, selected);err == nil || f.reads != 0 {
-				t.Fatalf("invalid user selection reached Host read: err = %v reads = %d", err, f.reads)
+			if _, err := CheckCurrent(context.Background(), f, selected); err == nil || f.reads != 0 {
+				t.Fatalf("invalid user selection reached Host read: err=%v reads=%d", err, f.reads)
 			}
 		})
 	}
@@ -170,8 +170,8 @@ func TestCurrentHostAdmissionContextAndQueryIsolation(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		cancel()
 		source := fixtureHostSource()
-		if _, err := CheckCurrent(ctx, source, fixtureSelection());!errors.Is(err, context.Canceled) || source.reads != 0 {
-			t.Fatalf("cancelled context reached Host: err = %v reads = %d", err, source.reads)
+		if _, err := CheckCurrent(ctx, source, fixtureSelection()); !errors.Is(err, context.Canceled) || source.reads != 0 {
+			t.Fatalf("cancelled context reached Host: err=%v reads=%d", err, source.reads)
 		}
 	})
 	t.Run("after-read", func(t *testing.T) {
@@ -179,8 +179,8 @@ func TestCurrentHostAdmissionContextAndQueryIsolation(t *testing.T) {
 		defer cancel()
 		source := fixtureHostSource()
 		source.cancel = cancel
-		if _, err := CheckCurrent(ctx, source, fixtureSelection());!errors.Is(err, context.Canceled) || source.reads != 1 {
-			t.Fatalf("cancelled current Host read admitted: err = %v reads = %d", err, source.reads)
+		if _, err := CheckCurrent(ctx, source, fixtureSelection()); !errors.Is(err, context.Canceled) || source.reads != 1 {
+			t.Fatalf("cancelled current Host read admitted: err=%v reads=%d", err, source.reads)
 		}
 	})
 	t.Run("Host-cannot-mutate-selection", func(t *testing.T) {
@@ -195,7 +195,7 @@ func TestCurrentHostAdmissionContextAndQueryIsolation(t *testing.T) {
 }
 
 func TestExistingE1TwoUnitMeasurementMapsToSeparateHostSelection(t *testing.T) {
-	pair := MeasuredE1Pair {
+	pair := MeasuredE1Pair{
 		ApplicationID:               "order_entry",
 		HandoverBaselineID:          "B",
 		BaselineRepositoryRevision:  r,
