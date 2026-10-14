@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { once } from "node:events";
 import { createServer } from "node:http";
 import { mkdtemp, mkdir, rm, symlink, unlink, writeFile } from "node:fs/promises";
@@ -455,5 +455,43 @@ test("non-JSON diagnostic evidence refuses Host startup", async t => {
   f.changeManifestWireMode("wrong-media");
   await assert.rejects(f.start(), /API manifest is not a JSON observation/);
   assert.equal(f.reads, 0);
+  assert.equal(f.count, 0);
+});
+
+test("oversized static Browser HTML is rejected before parsing or listening", async t => {
+  const f = await setup(t);
+  await writeFile(join(f.browser, "index.html"), Buffer.alloc(8 * 1024 * 1024 + 1, 32));
+  await assert.rejects(f.start(), /artifact file exceeds diagnostic size boundary/);
+  assert.equal(f.count, 0);
+});
+
+test("oversized Browser JavaScript and receipt are bounded before reading", async t => {
+  const f = await setup(t);
+  const js = join(f.browser, "browser-command.js");
+  await writeFile(js, Buffer.alloc(4 * 1024 * 1024 + 1, 32));
+  await assert.rejects(f.start(), /artifact file exceeds diagnostic size boundary/);
+  await writeFile(js, f.js);
+  await writeFile(f.measurement, Buffer.alloc(1024 * 1024 + 1, 32));
+  await assert.rejects(f.start(), /artifact file exceeds diagnostic size boundary/);
+  assert.equal(f.count, 0);
+});
+
+test("Browser HTML symlink to streaming device is refused before any read", async t => {
+  const f = await setup(t);
+  const page = join(f.browser, "index.html");
+  await unlink(page);
+  await symlink("/dev/zero", page);
+  await assert.rejects(f.start(), /Browser HTML must be a real file/);
+  assert.equal(f.count, 0);
+});
+
+test("Browser script FIFO never blocks Host startup before file-type check", async t => {
+  if (process.platform !== "linux") return t.skip("Linux FIFO boundary test");
+  const f = await setup(t);
+  const js = join(f.browser, "browser-command.js");
+  await unlink(js);
+  const created = spawnSync("mkfifo", [js], { encoding: "utf8" });
+  if (created.status !== 0) return t.skip("mkfifo is not installed");
+  await assert.rejects(f.start(), /Browser script must be a real file/);
   assert.equal(f.count, 0);
 });
