@@ -112,10 +112,42 @@ PoC A の**通常ビルド**を比較元とし、宣言合成の Builder は既�
 | 別consumerの独立入口 | 実装あり、ブラウザー未確認 | TEIモデルを持たない読書ノート3件を選択・参照する `index.html`/`main.mjs`、共通部品領域は未提供時にBLOCKEDと表示 |
 | データ変換と静的検査 | **単体検査PASS（7件）** | Node.js 22.16.0で `node --test *.test.mjs` および全 `.mjs` に `node --check` を実施。読書ノート選択・Graph入力変換・依存解析の正負例を検証（ローカル同内容複製） |
 | TEI専用import | **限定した静的検査PASS** | `node audit-imports.mjs main.mjs notes.mjs journal-graph.mjs`。対象3モジュールのimport graphで該当依存なし。未生成のGraphモジュールや実際のbundleまでは監査していない |
-| #9 Graph APIへの接続 | **コード接続準備あり、動作BLOCKED** | #9 `graph.ts` の実公開 `mountReadonlyGraph` に合わせて `graph-entry.mjs` を作成。ただし本PR headには#9ソースがないため `node build-graph.mjs` はBLOCKED（exit 2）。Graph実描画は未実行 |
-| #5 Command APIへの接続 | **コード準備あり、動作BLOCKED** | #5の実export `mountCommandPanel` へ `command-entry.mjs` で接続し、consumer側に読取り結果success／削除拒否deniedを置いた。原本は別branchで、本PR headでは `node build-command.mjs` がBLOCKED（exit 2）。実DOM呼出し未実行 |\n| #4 Editor | **BLOCKED** | CodeMirror依存の確定・ビルド・実DOM接続未実施。代用部品・仮想APIを作らない |
+| #9 Graph APIへの接続 | **コード接続準備あり、動作BLOCKED** | #9 `graph.ts` の実公開 `mountReadonlyGraph` に合わせて `graph-entry.mjs` を作成。ただしこの単体PR headには#9ソースがないため `node build-graph.mjs` はBLOCKED（exit 2）。Graph実描画は未実行 |
+| #5 Command APIへの接続 | **コード準備あり、動作BLOCKED** | #5の実export `mountCommandPanel` へ `command-entry.mjs` で接続し、consumer側に読取り結果success／削除拒否deniedを置いた。原本は別branchで、本PR headでは `node build-command.mjs` がBLOCKED（exit 2）。実DOM呼出し未実行 |
+| #4 Editor | **BLOCKED** | CodeMirror依存の確定・ビルド・実DOM接続未実施。代用部品・仮想APIを作らない |
 | C-05 / C-06 の正式再利用判定 | **NOT RUN** | Studioでの同一共通部品実利用、別consumer実ブラウザー描画、差替え・拒否・unmount等の独立検証を実施していない |
 
-#9 Graphの確認元: `feat/tei-studio-poc-c-graph-reference`（確認時head `e652a1b655c6dd5f3e52afde9390f1f6cd0771dd`）。そのbranchでのProviderの存在と、このPR headでの利用成立を混同しない。#9が統合または正規の統合ブランチに揃ったら同一SHA・同一checkoutでSource/build/ブラウザー操作を再実行する。ここでPoC Cの合格・再利用成立を宣言しない。
+#9 Graphの確認元: `feat/tei-studio-poc-c-graph-reference`（確認時head `e652a1b655c6dd5f3e52afde9390f1f6cd0771dd`）。そのbranchでのProviderの存在と、このPR headでの利用成立を混同しない。Draft PRに対してmerge操作を行わず、各依存PRのexact headから専用pathだけを検証専用checkoutへ取り出して固定snapshotを作る。各SHAと取得pathを記録してからSource/build/ブラウザー操作を再実行する。ここでPoC Cの合格・再利用成立を宣言しない。
 
-#5 Commandの確認元: `feat/tei-studio-poc-c-command-diagnostics`（実exportは `mountCommandPanel`）。#4 Editorは `feat/tei-studio-poc-c-editor` に原本あり、CodeMirror依存の別途固定・ビルドが必要。今回の #8 checkout上で本体が利用可能とは扱わない。
+#5 Commandの確認元: `feat/tei-studio-poc-c-command-diagnostics`（実exportは `mountCommandPanel`）。#4 Editorは `feat/tei-studio-poc-c-editor` に原本あり、CodeMirror依存の別途固定・ビルドが必要。#8単体のheadでは本体が利用可能とは扱わず、固定snapshotで検証する。
+
+## 9. Windows固定snapshotの失敗と#8側修正（2026-10-14）
+
+**検証の同一性を区別:** #WorkがWindowsで実行した**修正前**の固定入力は次のとおり。各Draft PRへのmerge操作は行っていない。対象の専用pathだけを検証用checkoutへ取り出す方式であり、元PRやmainの統合状態を変えない。
+
+| 入力 | exact head |
+| --- | --- |
+| `main` | `128429482e02d96afe0123ee7da023256094dfca` |
+| #1825 consumer（修正前） | `7714c79e7e28b335e6706af642efc9e7e285bfff` |
+| #1828 Graph | `e652a1b655c6dd5f3e52afde9390f1f6cd0771dd` |
+| #1829 Command | `26f47772ed49f5c4a9e1c50026c335783bc5e153` |
+| #1830 Editor | `4970921e613c68e6da29fb603536f2e71fc2d462` |
+
+### #Workが報告したWindows観測（修正前）
+
+- 環境: Windows / Node v24.21.0。固定snapshotで **25 tests中24 PASS、1 FAIL**。
+- 失敗: `audit-imports.test.mjs` の「sample imports contain no TEI-specific modules」。`auditImportGraph` が `ENOENT lstat 'C:\\C:'`。ファイルURLの `pathname` をWindows FS pathとして渡したことに起因。
+- 同じsnapshotでは `build-graph.mjs` と `build-command.mjs` は共に成功（#Work報告）。これは実DOM操作・実ブラウザー・二つのconsumerの成立を証明しない。
+- Windows実行結果は#Workからの報告であり、#8側では同じWindows環境を直接再実行していない。
+
+### #8側で変更した原本とローカル再検証
+
+- `audit-imports.test.mjs` の `repoRoot` を `fileURLToPath(new URL('.', import.meta.url))` 経由に変更し、Windows URL形式のドライブパス変換の負例を追加。
+- 同種のWindows問題があった `check-components.mjs` のCLI実行判定も `fileURLToPath(import.meta.url)` に変更。CLIのBLOCKED終了コード2とimport CLI起動の回帰テストを追加。
+- 検証環境: **Linux、Node v22.16.0**。同じ内容のローカル作業用コピーで `node --test *.test.mjs` **10/10 PASS**、`node audit-imports.mjs main.mjs notes.mjs` PASS、`node check-components.mjs` **exit 2（想定どおりBLOCKED）**。
+- WindowsドライブURLの模擬変換（`fileURLToPath('file:///C:/...', {windows:true})`）はLinux上のNodeでもPASS。ただし**Windows OS上での回帰検査PASSを意味しない**。
+- 修正した二つのファイルのGit blob SHAを、ローカル試験コピーとGitHub #1825の原本で照合し一致を確認。#1828/#1829/#1830とmainは変更していない。
+
+### 未確認と次の検査
+
+#Workの**修正後Windows v24.21.0での再実行はNOT RUN**（#8が確認した範囲）。次の固定snapshotでは#1825の修正後exact headへ差し替え、他の3PRのheadは固定したまま、`node --test *.test.mjs` とCLI起動・Graph/Command build・実DOM・実ブラウザーを段階的に検査する。結果の再取得前にPoC C合格や本番対応を宣言しない。
