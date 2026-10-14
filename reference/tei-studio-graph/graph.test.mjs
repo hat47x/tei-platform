@@ -184,6 +184,7 @@ test("narrow 240px panel scrolls the full-size 480px graph without shrinking lab
   assert.equal(svg.style.minWidth, "480px");
   assert.equal(svg.style.maxWidth, "none");
   assert.equal(svg.style.height, "auto");
+  assert.equal(svg.style.fontSize, "14px");
 
   // Presentation-only selection remains intact even when the graphic is wide.
   all(root, "g")[2].dispatch("click");
