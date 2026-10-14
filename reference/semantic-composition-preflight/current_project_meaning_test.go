@@ -70,14 +70,22 @@ func currentProjectMeaningFixture(t *testing.T) (string, string, workspace.Resul
 	return consumer, provider, loaded, index, reader
 }
 
-func expectedProjectMeaningRequests(reader *currentProjectMeaningTestReader) []ProjectMeaningRequest {
-	selected := reader.snapshot.Selected[0]
-	return []ProjectMeaningRequest{{Alias: selected.Alias, Resource: selected.Resource}}
+// A caller chooses this logical identity independently of the Host receipt.
+// It must never manufacture its expected reference by copying the returned
+// "accepted" selection, or a wrong Host scope would always compare equal.
+func expectedProjectMeaningRequests() []ProjectMeaningRequest {
+	return []ProjectMeaningRequest{{
+		Alias: "os",
+		Resource: modelref.Ref{
+			Scope:   "provider-domain:os",
+			Subject: subject.Subject{Kind: "semantic-namespace", ID: "os"},
+		},
+	}}
 }
 
 func TestCurrentProjectMeaningBindsConsumerSourceAndExternalSemanticInOneHostSnapshot(t *testing.T) {
 	consumer, provider, before, beforeIndex, reader := currentProjectMeaningFixture(t)
-	requested := expectedProjectMeaningRequests(reader)
+	requested := expectedProjectMeaningRequests()
 	verified, err := InspectCurrentProjectMeaning(context.Background(), reader, "monitoring", consumer, requested)
 	if err != nil {
 		t.Fatalf("coherent synthetic Host snapshot was refused: %v", err)
@@ -150,7 +158,7 @@ func TestCurrentProjectMeaningRejectsMissingAmbiguousAndForgedSelections(t *test
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			consumer, _, _, _, reader := currentProjectMeaningFixture(t)
-			requested := expectedProjectMeaningRequests(reader)
+			requested := expectedProjectMeaningRequests()
 			tc.edit(&reader.snapshot)
 			out, err := InspectCurrentProjectMeaning(context.Background(), reader, "monitoring", consumer, requested)
 			if err == nil || !strings.Contains(err.Error(), tc.want) {
@@ -165,7 +173,7 @@ func TestCurrentProjectMeaningRejectsMissingAmbiguousAndForgedSelections(t *test
 
 func TestCurrentProjectMeaningRejectsStaleLocalSourceAndMissingHostReader(t *testing.T) {
 	consumer, _, _, _, reader := currentProjectMeaningFixture(t)
-	requested := expectedProjectMeaningRequests(reader)
+	requested := expectedProjectMeaningRequests()
 	writeSemanticFixture(t, filepath.Join(consumer, "semantic", "watch.tei"),
 		"namespace monitoring\n\ndata Watch {\n    attribute process type os.process_id\n}\n\n")
 	if out, err := InspectCurrentProjectMeaning(context.Background(), reader, "monitoring", consumer, requested); err == nil ||
