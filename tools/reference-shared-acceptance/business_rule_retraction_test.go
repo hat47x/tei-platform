@@ -33,12 +33,12 @@ func authoredRuleRetractionFixture(t *testing.T) (string, []byte, []byte) {
 	return root, before, after
 }
 
-func retractionCandidate(root string, source []byte) Candidate {
+func retractionCandidate(revision string, source []byte) Candidate {
 	fp := sourceindex.Fingerprint(source)
 	return Candidate{
 		Schema:            candidateSchema,
 		ID:                "cand-retract-two-business-rules",
-		BaseModelRevision: revisionOfDirMust(root),
+		BaseModelRevision: revision,
 		Origin:            Origin{Kind: "studio", Actor: "reviewer-test"},
 		Intent:            "既存の論理規則を明示的に撤回し、旧参照への影響を確認する",
 		Evidence:          []Evidence{{Source: orderFile, SourceFingerprint: fp}},
@@ -55,18 +55,10 @@ func retractionCandidate(root string, source []byte) Candidate {
 	}
 }
 
-func revisionOfDirMust(root string) string {
-	s, err := loadSnapshot(root)
-	if err != nil {
-		panic(err)
-	}
-	return s.revision
-}
-
 func TestTypedRuleRetractionReportsHistoricalImpactAndDeletesOnlyOwnBlocks(t *testing.T) {
 	root, original, authored := authoredRuleRetractionFixture(t)
 	before := treeDigest(t, root)
-	c := retractionCandidate(root, authored)
+	c := retractionCandidate(revisionOfDir(t, root), authored)
 	raw := mustJSON(t, c)
 	ev, err := evaluate(root, raw)
 	if err != nil {
@@ -156,7 +148,7 @@ func TestTypedRuleRetractionRejectsAbsentStaleOrForgedTargets(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			root, _, authored := authoredRuleRetractionFixture(t)
 			baseline := treeDigest(t, root)
-			c := retractionCandidate(root, authored)
+			c := retractionCandidate(revisionOfDir(t, root), authored)
 			tc.edit(&c)
 			raw := mustJSON(t, c)
 			ev, err := evaluate(root, raw)
