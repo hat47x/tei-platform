@@ -1,4 +1,4 @@
-import { notes, selectNote } from './notes.mjs';
+import { journalEditorDocument } from './journal-editor.mjs';
 import { createReadOnlyTextEditor } from '../tei-studio-editor/editor.ts';
 import { codeMirrorRenderer } from '../tei-studio-editor/codemirror.ts';
 
@@ -8,27 +8,16 @@ const picker = document.getElementById('note-picker');
 const slot = document.getElementById('editor-slot');
 const disposeButton = document.getElementById('dispose-editor');
 
-function noteDocument(noteId) {
-  const note = selectNote(noteId);
-  if (!note) throw new Error('Unknown reading journal entry');
-  return {
-    id: `journal:${note.id}`,
-    version: 'fixture-v1',
-    text: `${note.title}\n\n${note.body}`,
-    diagnostics: [],
-  };
-}
-
 slot.replaceChildren();
 const editor = createReadOnlyTextEditor(
-  slot, codeMirrorRenderer, noteDocument(picker.value),
+  slot, codeMirrorRenderer, journalEditorDocument(picker.value),
 );
 slot.dataset.lifecycle = 'mounted';
 slot.dataset.documentId = editor.snapshot().documentId;
 
 function changeNote() {
   if (released) return;
-  editor.setDocument(noteDocument(picker.value));
+  editor.setDocument(journalEditorDocument(picker.value));
   slot.dataset.documentId = editor.snapshot().documentId;
 }
 let released = false;
