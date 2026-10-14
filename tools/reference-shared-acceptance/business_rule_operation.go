@@ -116,3 +116,36 @@ func businessRuleOperationSubject(op Operation) (data, id string, attributes []s
 	}
 	return "", "", nil
 }
+
+func normalizeRemoveBusinessRule(op Operation) (Operation, error) {
+	if err := onlyFields(op, "removeBusinessRule"); err != nil {
+		return op, err
+	}
+	if op.Placement != "" {
+		return op, fmt.Errorf("%s derives placement exclusively from the existing rule's exact canonical source", op.Op)
+	}
+	if op.RemoveBusinessRule == nil {
+		return op, fmt.Errorf("%s requires removeBusinessRule", op.Op)
+	}
+	spec := *op.RemoveBusinessRule
+	data, id, symbol, err := normalizeBusinessRuleIdentity("removeBusinessRule", spec.Data, spec.ID, spec.Symbol)
+	if err != nil {
+		return op, err
+	}
+	if !revisionPattern.MatchString(spec.SourceFingerprint) {
+		return op, fmt.Errorf("removeBusinessRule.sourceFingerprint must be a complete sha256 fingerprint of the existing source")
+	}
+	return Operation{Op: op.Op, RemoveBusinessRule: &RemoveBusinessRuleSpec{
+		Data: data, ID: id, Symbol: symbol, SourceFingerprint: spec.SourceFingerprint,
+	}}, nil
+}
+
+func businessRuleRetractionKind(op Operation) string {
+	switch op.Op {
+	case opRemoveCandidateKey:
+		return "candidate-key"
+	case opRemoveFunctionalDependency:
+		return "functional-dependency"
+	}
+	return ""
+}
