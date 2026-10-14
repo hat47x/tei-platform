@@ -45,7 +45,9 @@ test('framework and version mismatch are not silently recovered', () => {
   const wrongFramework = modified(p => { p.uiKit.framework.major = 2; });
   assert.throws(() => composeUI(wrongFramework), error => error.code === 'framework_mismatch');
   const wrongVersion = modified(p => { p.uiKit.version = 'latest'; });
-  assert.throws(() => composeUI(wrongVersion), error => error.code === 'invalid_manifest');
+  // composeUI also uses kit.version as selected.version: the existing resolver
+  // rejects that request before inspecting the catalog manifest.
+  assert.throws(() => composeUI(wrongVersion), error => error.code === 'invalid_request');
 });
 
 test('unsupported UI slots and empty fixture are rejected', () => {
