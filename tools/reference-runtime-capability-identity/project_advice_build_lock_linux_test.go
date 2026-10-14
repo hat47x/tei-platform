@@ -111,6 +111,34 @@ func TestProjectAdviceBuiltArtifactIsTracedThroughExistingTEIBuildLock(t *testin
 	if _, err := plugin.BuildArtifactLockFingerprint(buildLock); err != nil {
 		t.Fatal(err)
 	}
+	// Bind the observed build to the EXISTING Runtime Plugin Lock format.
+	// A build trace is not itself an Environment execution grant.
+	legacy := plugin.Lock{
+		FormatVersion: plugin.LockFormatVersion,
+		Environments: []plugin.EnvironmentLock{{
+			Environment: core.MustCanonicalID("reference_runtime"),
+			Plugins: []plugin.LockedPlugin{{
+				ID: entry.ID, Version: entry.Version,
+				Fingerprint: entry.Fingerprint, ArtifactDigest: entry.ArtifactDigest,
+			}},
+		}},
+	}
+	withBuild, err := plugin.BindRuntimeBuild(legacy, core.MustCanonicalID("reference_runtime"), output)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if withBuild.FormatVersion != plugin.BuildTraceLockFormatVersion ||
+		len(withBuild.Environments) != 1 || len(withBuild.Environments[0].Plugins) != 1 {
+		t.Fatalf("unexpected upgraded Runtime Plugin Lock: %+v", withBuild)
+	}
+	boundEntry := withBuild.Environments[0].Plugins[0]
+	if boundEntry.BuildPlanFingerprint != output.PlanFingerprint ||
+		boundEntry.ArtifactDigest != output.ArtifactDigest {
+		t.Fatalf("Runtime Plugin Lock lost exact BuildPlan/artifact binding: %+v", boundEntry)
+	}
+	if err := plugin.VerifyRuntimePluginBuild(plan, output, definition, boundEntry); err != nil {
+		t.Fatal(err)
+	}
 	// A tracked build is still not an accepted provider/Contract. Its digest
 	// only becomes an input to the existing generic Runtime candidate.
 	profile := referenceExecutionProfile(t, "linux-amd64", nil)
