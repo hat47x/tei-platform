@@ -13,6 +13,16 @@
 - `TransportDispatchPlan`と`GenericDispatch`の検証、結果の構造照合、要求・結果のdigestは既存のGo Referenceを再利用する。WASMを理由に第二Resolverや権限機構を作らない。
 - Node.js HostではGuestへの環境変数、ファイルシステムのpreopen、独自Host functionを渡さない。これはGuestに対する制約であり、Node自身の権限・実行時の隔離保証ではない。
 
+## NativeとWASIの直接比較
+
+同じ23件の候補業務ベクトルに対し、**一回の試験でNative Go実行ファイルとWASI Guestを別々に構築・実行**する。両方とも`plugins/reference-order-quote/`の同一ソース一式から構築し、同じContract ID、入出力Shape、Payloadを受け取る。物理的な成果物指紋は別々に固定し、異なる配備先で同じArtifactを使ったかのように見せない。
+
+- 正常な8件：それぞれ独立した期待値と一致し、Native/WASI間で結果の生バイト列と要求・結果の指紋が一致することを確認する。正しい金額でも出力表現が異なる場合は、**バイト互換の失敗**として検出する。
+- 拒否する15件：両Providerから実際に`status=error`という**業務上の拒否応答**が返ることを確認する。Node Hostの起動失敗、WASIロード失敗、タイムアウト等による呼出しエラーを、業務入力拒否の成功とは数えない。
+- Transport Plan：TargetとContractは共通だが、ProviderのArtifact Digestが異なるため、実現方式ごとに独立した固定Planを使う。Hostへ返されるPlan Fingerprint自体の一致は要求しない。
+
+この比較は、同じGoソースを二種類のコンパイル対象へ展開する際の回帰を示す。**異なる言語で書いたProvider同士の相互運用やWIT/Component Modelとの適合を意味しない**。また、Nodeの起動ファイルとGuestの検証済みバイト列の原子的な結合は引き続き未実装であり、署名・実権限・本番用隔離の証拠ではない。
+
 ## 試験
 
 GoとNode.jsが使えるPOSIX Hostで：
