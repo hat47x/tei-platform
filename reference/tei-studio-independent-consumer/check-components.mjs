@@ -1,6 +1,7 @@
 // Reports availability only. A present file is not proof of UI integration.
 import { existsSync, statSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 export function availability(args = []) {
   const found = [];
@@ -19,7 +20,7 @@ export function availability(args = []) {
   return { found, missing, reusable: false };
 }
 
-if (process.argv[1] && resolve(process.argv[1]) === resolve(new URL(import.meta.url).pathname)) {
+if (process.argv[1] && resolve(process.argv[1]) === resolve(fileURLToPath(import.meta.url))) {
   const result = availability(process.argv.slice(2));
   for (const message of result.found) console.log(`CANDIDATE ${message}`);
   for (const message of result.missing) console.log(`BLOCKED ${message}`);
