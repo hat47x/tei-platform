@@ -23,7 +23,7 @@ go build -o tei-studio .
 ./tei-studio -workspace ../../reference/workspace
 
 # Browser：loopbackの単一利用者参照検証だけ（GUIなし）
-go build -tags server -o tei-studio-server .
+CGO_ENABLED=0 go build -tags server -o tei-studio-server .
 ./tei-studio-server -workspace ../../reference/workspace -port 43123
 # http://127.0.0.1:43123/
 ```
