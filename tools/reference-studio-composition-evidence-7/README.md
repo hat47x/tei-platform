@@ -79,3 +79,11 @@ Linux / Node v22.16.0 / Python 3.13.5、Go 1.23.2（Go 1.26.9未達）。#1833�
 - 注：#1の新しいhead `d560bddf289df68d896a651ecc6bfad61088f18e` では上記versionテスト期待が修正されています。この記録を新headの実行PASSへ流用しません。現在のadapterのpinは**依頼された旧exact**のままです。
 
 観測結果は[#8横断Evidence](https://github.com/hat47x/tei-platform/pull/1825)と[#1への申し送り](https://github.com/hat47x/tei-platform/pull/1833#issuecomment-6170273039)へ共有してください。必要な新しいexact headが決まれば、pinと期待値を別の固定検証として更新します。
+
+### #1修正headでの追加照合
+
+#1 PR #1833の新head `d560bddf289df68d896a651ecc6bfad61088f18e` に対して、`file_adapter.py --pocb-head d560bddf289df68d896a651ecc6bfad61088f18e --lane ui` で**修正された3つのGit blob pin**（`main.go`, `main_test.go`, `compose-ui.test.mjs`）を使えます。旧headを黙って置き換えず、実行対象を引数で明示します。
+
+新headの`compose-ui.test.mjs`はGit blob `77a168349cd004bc8b871f5ae406e189b11d9f71` に一致する原本で再実行し、**Node 6/6 PASS**。新headを指定したUIファイルadapterでは**生成2回の決定性PASS、UI負例8/8 PASS**。`status=BLOCKED`は正常です（Go、通常手登録対照、実asset/bundle、Lock/build成果物が未実証のまま）。この局所UI検査を新head全体のGoビルド・PoC B総合受入PASSとは数えません。
+
+なお実行した新headのNode/fixture/Resolverファイルは、旧headから変わっていない`compose-ui.mjs`等のblobと修正版テストblobを固定して組み合わせた局所snapshotです。新headでのGoソース、Goテスト、Host実行は今回のNode実行には含まれません。
