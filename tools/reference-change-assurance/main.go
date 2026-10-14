@@ -38,6 +38,7 @@ func main() {
 	afterRoot := flag.String("after-workspace", "", "path to read-only Workspace after the change")
 	scenarioPath := flag.String("scenario", "", "existing Driver Scenario source for two-Workspace binding")
 	planPath := flag.String("plan", "", "persisted CLI Scenario Plan from tei scenario generate")
+	witnessDir := flag.String("archived-witness-dir", "", "directory containing the eight existing synthetic #1163 E1 receipts")
 	scope := flag.String("scope", "", "existing modelref scope for Workspace review")
 	changeSubjectKind := flag.String("change-subject-kind", "", "existing changed subject kind")
 	changeSubjectID := flag.String("change-subject-id", "", "existing changed logical ID")
@@ -54,8 +55,8 @@ func main() {
 		if *beforeRoot == "" || *afterRoot == "" || *workspaceRoot != "" || *input != "" ||
 			*scope == "" || *consumerKind == "" || *consumerID == "" ||
 			*changeSubjectKind != "" || *changeSubjectID != "" || *changeKind != "" ||
-			((*scenarioPath == "") != (*planPath == "")) {
-			fmt.Fprintln(os.Stderr, "usage: reference-change-assurance -before-workspace <dir> -after-workspace <dir> -scope <scope> -consumer-kind <kind> -consumer-id <id> [-scenario <scenario.json> -plan <generated-plan.json>]")
+			((*scenarioPath == "") != (*planPath == "")) || (*witnessDir != "" && (*scenarioPath != "" || *planPath != "")) {
+			fmt.Fprintln(os.Stderr, "usage: reference-change-assurance -before-workspace <dir> -after-workspace <dir> -scope <scope> -consumer-kind <kind> -consumer-id <id> [-scenario <scenario.json> -plan <generated-plan.json> | -archived-witness-dir <dir>]")
 			os.Exit(2)
 		}
 		consumer := modelref.Key{Scope: *scope, Subject: subject.Subject{Kind: *consumerKind, ID: *consumerID}}
@@ -63,6 +64,8 @@ func main() {
 		var err error
 		if *scenarioPath != "" {
 			report, err = reviewScenarioPlanDiff(*beforeRoot, *afterRoot, *scope, consumer, *scenarioPath, *planPath)
+		} else if *witnessDir != "" {
+			report, err = reviewArchivedWitnessLink(*beforeRoot, *afterRoot, *scope, consumer, *witnessDir)
 		} else {
 			report, err = reviewWorkspaceDiff(*beforeRoot, *afterRoot, *scope, consumer)
 		}
@@ -79,7 +82,7 @@ func main() {
 		return
 	}
 	if *workspaceRoot != "" {
-		if *scenarioPath != "" || *planPath != "" || *input != "" || *scope == "" || *changeSubjectKind == "" || *changeSubjectID == "" ||
+		if *scenarioPath != "" || *planPath != "" || *witnessDir != "" || *input != "" || *scope == "" || *changeSubjectKind == "" || *changeSubjectID == "" ||
 			*changeKind == "" || *consumerKind == "" || *consumerID == "" {
 			fmt.Fprintln(os.Stderr, "usage: reference-change-assurance -workspace <dir> -scope <scope> -change-subject-kind <kind> -change-subject-id <id> -change-kind <kind> -consumer-kind <kind> -consumer-id <id>")
 			os.Exit(2)
@@ -99,7 +102,7 @@ func main() {
 		}
 		return
 	}
-	if *input == "" || *scenarioPath != "" || *planPath != "" || *scope != "" || *changeSubjectKind != "" || *changeSubjectID != "" ||
+	if *input == "" || *scenarioPath != "" || *planPath != "" || *witnessDir != "" || *scope != "" || *changeSubjectKind != "" || *changeSubjectID != "" ||
 		*changeKind != "" || *consumerKind != "" || *consumerID != "" {
 		fmt.Fprintln(os.Stderr, "usage: reference-change-assurance -input <fixture.json>")
 		os.Exit(2)
