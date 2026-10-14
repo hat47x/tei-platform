@@ -27,7 +27,8 @@ type ScenarioPlanBindingReport struct {
 	ScenarioID                string              `json:"scenarioId"`
 	ScenarioSHA256            string              `json:"scenarioSha256"`
 	FixtureSHA256             map[string]string   `json:"fixtureSha256"`
-	BoundAfterSourceRevision  string              `json:"boundAfterSourceRevision"`
+	ObservedAfterSourceRevision string             `json:"observedAfterSourceRevision"`
+\tPlanPinsSourceRevision     bool               `json:"planPinsSourceRevision"`
 	PlanMatches               bool                `json:"planMatches"`
 	ScenarioStepCount         int                 `json:"scenarioStepCount"`
 	SyntheticFixtureStepCount int                 `json:"syntheticFixtureStepCount"`
@@ -204,12 +205,13 @@ func reviewScenarioPlanDiff(beforeRoot, afterRoot, scope string, consumer modelr
 		ScenarioID:                scenario.ID,
 		ScenarioSHA256:            expected.ScenarioSHA256,
 		FixtureSHA256:             fixtures,
-		BoundAfterSourceRevision:  currentRevision,
+		ObservedAfterSourceRevision: currentRevision,
+\t\tPlanPinsSourceRevision:     false,
 		PlanMatches:               true,
 		ScenarioStepCount:         len(scenario.Steps),
 		SyntheticFixtureStepCount: len(fixtures),
 		Qualification:             "unresolved",
-		ReasonCodes:               []string{"no-independent-oracle-provenance", "no-execution-or-evidence-packet", "no-runtime-authority"},
+		ReasonCodes:               []string{"cli-plan-has-no-source-revision-pin", "no-independent-oracle-provenance", "no-execution-or-evidence-packet", "no-runtime-authority"},
 		ExecutionAllowed:          false,
 		AuthorityLimits: []string{
 			"separate-loads-are-not-atomic-workspace-snapshots",
