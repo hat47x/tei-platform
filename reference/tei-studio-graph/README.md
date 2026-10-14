@@ -43,6 +43,14 @@ Host/Operation、TEIのSource Index、Go/Wails、Reactなどには依存しま�
 - **#8 / Reading Journal**: `journalGraph()`の480幅と3列レイアウトは変更不要です。約240pxのGraph slotでラベルの可読性、スクロール到達、選択後のpicker/本文連携、ページ破棄を実ブラウザーで再検証してください。Graph更新による再ビルドが必要です。実ブラウザーでの**修正版**表示確認は#9の単体試験だけでは証明されません。
 - 入力の`width`が実際のノード・ラベルに対して短すぎる場合の表示領域や長文の重なりは**consumerが座標・幅を決めて解決**します。選択IDの設定は表示状態の更新であり、スクロール位置への自動移動はしません。
 
+## 読取り専用ノードのクリック領域
+
+#Workの実ブラウザー試験では、幅対応後の `2d7148c3` で`clientWidth=225 / scrollWidth=480 / svgWidth=480 / labelFont=14px` を観測し、縮小問題の改善とEnterキーによるノード選択・picker/本文反映が確認されました。一方、**ポインターによるノード中央のクリックでは選択が変わらない**不具合を確認したため、これを別の未合格項目として扱います。
+
+原因: SVGの`<g role="button">`自身には描画されたヒット領域がなく、`circle fill="none"`の場合、円内部はポインターイベントのターゲットになりません。このReferenceでは**輪郭はそのまま、`circle fill="transparent" pointer-events="all"`**とし、中心クリックから親`g`の既存`click`ハンドラーへイベントを伝播させます。`keydown`のEnter/Space、`onSelect`、選択状態・破棄の契約は変えません。透明塗りによるノード中央のクリック可能化は権限付与やTEI operationの実行ではありません。
+
+追加した小DOM試験ではcircle属性、子から親へのclick伝播、Enter/Space選択を確認します。ただし**実際のSVGヒットテストやスクリーンリーダー対応の合格証明ではない**ため、#Workには修正後exact headを再取得して実ブラウザーでノード中央クリック・ロールbuttonクリック・選択/picker反映を改めて確認してもらいます。#3のStudio側の実画面再利用も別途未確認です。
+
 ## 検証
 
 Node.js 22系（TypeScript型除去を明示）とTypeScript CLIが利用できる場合:
