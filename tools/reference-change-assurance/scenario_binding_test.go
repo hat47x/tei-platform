@@ -215,15 +215,11 @@ func TestScenarioPlanRejectsStalePluginLock(t *testing.T) {
 	}
 }
 
-// Verify the case used by #1445: a Source body change is not covered by
-// an unchanged World/Plugin Lock/Scenario/Fixture Plan fingerprint.
-func TestScenarioPlanPinsDoNotCoverSQLSourceFingerprint(t *testing.T) {
+// The existing CLI Plan World fingerprint protects native SQL parsed into
+// Canonical World. It must not be described as an unpinned SQL edit.
+func TestScenarioPlanWorldPinRejectsChangedSQL(t *testing.T) {
 	beforeRoot, afterRoot, scenarioPath, planPath := prepareScenarioPlanBinding(t, false)
-	consumer := modelref.Key{Scope: "order-entry-reference", Subject: workspaceKey("application", "order_entry").Subject}
-	before, err := reviewScenarioPlanDiff(beforeRoot, afterRoot, "order-entry-reference", consumer, scenarioPath, planPath)
-	if err != nil {
-		t.Fatal(err)
-	}
+	consumer := workspaceKey("application", "order_entry")
 	path := filepath.Join(afterRoot, "applications", "order-entry", "queries", "recent_orders.sql")
 	raw, err := os.ReadFile(path)
 	if err != nil {
@@ -236,14 +232,39 @@ func TestScenarioPlanPinsDoNotCoverSQLSourceFingerprint(t *testing.T) {
 	if err := os.WriteFile(path, []byte(altered), 0600); err != nil {
 		t.Fatal(err)
 	}
+	_, err = reviewScenarioPlanDiff(beforeRoot, afterRoot, "order-entry-reference", consumer, scenarioPath, planPath)
+	if err == nil || !strings.Contains(err.Error(), "stale or modified") {
+		t.Fatalf("existing World pin failed to reject changed SQL: %v", err)
+	}
+}
+
+// The generated CLI Plan does not pin sourceindex.ModelRevision itself.
+// A pure whitespace edit in a managed semantic source should change the
+// Source Index revision without changing the parsed World or typed Graph.
+func TestScenarioPlanDoesNotPinWhitespaceOnlySourceRevision(t *testing.T) {
+	beforeRoot, afterRoot, scenarioPath, planPath := prepareScenarioPlanBinding(t, false)
+	consumer := modelref.Key{Scope: "order-entry-reference", Subject: workspaceKey("application", "order_entry").Subject}
+	before, err := reviewScenarioPlanDiff(beforeRoot, afterRoot, "order-entry-reference", consumer, scenarioPath, planPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(afterRoot, "semantic", "sales", "order.tei")
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, append(raw, '\n'), 0600); err != nil {
+		t.Fatal(err)
+	}
 	after, err := reviewScenarioPlanDiff(beforeRoot, afterRoot, "order-entry-reference", consumer, scenarioPath, planPath)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if !after.PlanMatches || before.ScenarioSHA256 != after.ScenarioSHA256 ||
 		before.ObservedAfterSourceRevision == after.ObservedAfterSourceRevision ||
+		len(after.Diff.SourceChanges) != 1 || len(after.Diff.Impact.Changes) != 0 ||
 		after.Diff.Decision.Action != "unresolved" || after.PlanPinsSourceRevision ||
-		after.Qualification != "unresolved" {
-		t.Fatalf("Plan pins overclaimed unchanged native SQL Source: before=%+v after=%+v", before, after)
+		after.Qualification != "unresolved" || after.ExecutionAllowed {
+		t.Fatalf("Plan match incorrectly proved exact Source revision: before=%+v after=%+v", before, after)
 	}
 }
