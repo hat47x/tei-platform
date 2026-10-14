@@ -12,7 +12,7 @@
 | --- | --- | --- |
 | main | `128429482e02d96afe0123ee7da023256094dfca` | ベース |
 | #1825 / consumer | 最新headをPRから再取得 | `reference/tei-studio-independent-consumer/`, `plan/evidence/TEI_STUDIO_POC_EVIDENCE_RUNBOOK_20261014.md` |
-| #1828 / Graph | `2d7148c3ad07c3f89ae19250cd8654a55e0c6474` | `reference/tei-studio-graph/` |
+| #1828 / Graph | `36799dba33fe0e19db3f7b56e7af1e18da134a71` | `reference/tei-studio-graph/` |
 | #1829 / Command | `26f47772ed49f5c4a9e1c50026c335783bc5e153` | `reference/tei-studio-command/` |
 | #1830 / Editor | `4970921e613c68e6da29fb603536f2e71fc2d462` | `reference/tei-studio-editor/` |
 
@@ -41,7 +41,7 @@ python3 browser-e2e.py        # Playwright Python + 実Chromiumがある環境�
 ## 部品の扱い
 
 - **Editor**: `editor-entry.mjs`が実#4の `createReadOnlyTextEditor` + `codeMirrorRenderer` をimportする。`journalEditorDocument`は `journal:<id>` / `fixture-v1` とテキストを作るだけ。ノート変更時に `setDocument`、`Unmount Editor`押下または `pagehide`で `destroy`（冪等）。`EditorState.readOnly` / `EditorView.editable(false)`は#4側で設定。保存権限は付与しない。
-- **Graph**: `graph-entry.mjs`が実#9 `mountReadonlyGraph`をimport、選択ノードIDをノートpickerへ反映。#9新headでは480幅Graphを約240pxパネルで縮めず、内部横スクロールで14pxのラベルを保つ。実ブラウザーの幅/スクロール測定が必要。旧 `build-graph.mjs` は**同一snapshotのGraph原本SHAの比較**用に残すが、ブラウザ配布物の生成はesbuildを使う。
+- **Graph**: `graph-entry.mjs`が実#9 `mountReadonlyGraph`をimport、選択ノードIDをノートpickerへ反映。#9新headでは480幅Graphを約240pxパネルで縮めず、内部横スクロールで14pxのラベルを保つ。実ブラウザーの幅/スクロール測定が必要。旧 `build-graph.mjs` は**同一snapshotのGraph原本SHAの比較**用に残すが、ブラウザ配布物の生成はesbuildを使う。#Workが旧可読性修正head `2d7148c3…` で計測した結果は `clientWidth=225 / scrollWidth=480 / svgWidth=480 / fontSize=14px`。同headにはノード円中心のポインタークリックが選択を更新しない既知FAILがあり、#9は後続head `36799dba…` で修正を提出した。**新headでの実ポインター操作は再検証待ち**。
 - **Command**: `command-entry.mjs`が実#5 `mountCommandPanel`をimport。consumer側 `invoke`から関連ノート数の成功、削除の拒否を明示する。権限判定やshellを部品へ委譲しない。
 - **Source依存検査**: `npm run audit:imports` は限定された相対import検査、esbuildのmetafileは実際にbundleした全入力を検査し、Editor/Graph/Command原本とCodeMirror依存を確認してTEI意味/Host専用module混入を拒否する。ただし形式名だけから完全な意味分離まで証明するものではない。
 
