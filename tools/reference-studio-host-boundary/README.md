@@ -32,13 +32,41 @@ go test -race -count=1 ./tools/reference-studio-host-boundary
 - private storeの相対パス、symlink root、`../`を含むMarker locatorは拒否する。
 - **重要な限界の実例**: `DiscoverKeys`はHost-private Storeの全Markerを返す。Workspace別UIへ安全に列挙した結果ではないので、Hostが許可したWorkspaceとの照合なしにWebViewへ返さない。
 
+## #Workによる独立検証結果（2026-10-14、追加変更前の固定snapshot）
+
+以下は**#Workから通知された独立実行の結果**である。#10の実行環境による再実行を意味せず、PR #1827単体やmain統合、#1832を加えた結合の合格ともみなさない。
+
+- 固定入力: `main 128429482e02d96afe0123ee7da023256094dfca` に、**mergeをせず** #1826 exact `126924b6b8d140675dc3d37895e22d1107cfc0b7` の `tools/reference-studio-host-qualification/` と、#1827 exact `c41ea85729c3a73d11827d16ebb797555026cba6` の `tools/reference-studio-host-boundary/` を取り出した検証専用snapshot。
+- 環境: WSL Ubuntu、Linux-nativeの一時作業領域 `/tmp/tei-studio-verification-sPkOXK`、**Go 1.26.9**。
+- コマンド: `go test -count=1 -v ./tools/reference-studio-host-qualification ./tools/reference-studio-host-boundary` と `go vet ./tools/reference-studio-host-qualification ./tools/reference-studio-host-boundary`。**両方終了コード0**。報告内ではCLI比較10 subcases + baseline2件、Host境界4件がPASS。
+- #1043のSessionは**合成**、#1529の対象は**Draft marker**。実Wails、実IdP、実ブラウザー、実WebView、Host別セッション認可やOSのWorkspaceリソース操作は対象外。
+- 下記の`studiohost_integration_test.go`は、この検証snapshot **作成後に追加された**。上のPASS件数へ含めない。
+
+## #1832 PoC A Hostへの最小接続（依存のexact head固定）
+
+[Draft PR #1832](https://github.com/hat47x/tei-platform/pull/1832) のHost-neutral `internal/studiohost/readonly.go`（初回確認 head `fb52692dd518d930d696464e46962d8382969d7c`）を、別担当のコードへ書き込まず独立に検査する。`#1832` はDraftでmain未統合のため、`studiohost_integration_test.go` に **`//go:build tei_studio_host_integration`** を付けた。通常の `go test ./tools/reference-studio-host-boundary` は新しいGo importに依存しない。
+
+検証用snapshotには次の**固定入力をファイル単位**で組み合わせる（mergeせず、各SHA・pathとdiffを記録）：main上の共通Operation、#1827の専用test群、#1832 exact headから`internal/studiohost/{readonly.go,readonly_test.go}`、必要に応じて別担当のPoC A起動資産。root Go moduleのテストはWails nested module不要。#1826 CLI比較は#6の責務であり、この結合検査では重複して所有しない。
+
+```sh
+# 必須: Go 1.26.9 / 固定snapshotのルートから実行
+go test -tags tei_studio_host_integration -count=1 -v ./tools/reference-studio-host-boundary
+go vet -tags tei_studio_host_integration ./tools/reference-studio-host-boundary
+```
+
+タグ付き3テストは (1) 異なるWorkspace IDの**Host-neutral**同時呼出しに選択状態が混ざらないこと、(2) 許可外・パス風Workspace IDが拒否されること、(3) 外部公開メソッドがread-onlyの4種類だけであることを確認する。同時に、**どの呼出し元も同じ起動時固定allowlistへアクセスできる**ことを明示的に観測する。これは仕様上の単一利用者PoC境界であり、利用者別隔離のPASSではない。
+
+`#1832` のWeb版は `127.0.0.1`固定で公開APIは Wails `main.StudioBridge` の4つのみ。**Host APIへWS sessionや認証文脈は渡っておらず、別clientのread-only選択を分けるcache/state自体は持たない**。WailsのWebSocket Event分離・二つの実ブラウザーと失効、Desktopの任意Sourceファイルアクセス・path逸脱・symlink置換は、このGo-onlyテストでは **NOT RUN/BLOCKED**。#1529のDraft復元もWails Host本体と未接続であり、実起動後のDraft非昇格を証明できない。
+
+**実行結果（この追加タグ付き試験）: NOT RUN**。#Workの旧固定snapshotのPASSを流用しない。#1832 Wailsのserver build結果は#Work/#2が別途取得する。
+
 ## 対応関係と未実証
 
 | #10観点 | この段階の確認範囲 | 実Studioでの判定 |
 | --- | --- | --- |
 | 二接続の情報混入 | 合成Session＋既存#1043 HTTP Hostで、requestごとのPrincipal/結果と失効を確認 | Wails Server Build複数ブラウザーは **NOT RUN** |
 | 機微イベント | #1043はWails Event配信を提供しない | Broadcast漏洩・WS購読/再接続失効は **BLOCKED** |
-| Workspace権限 | `NewHost`がWorkspaceを選択・認可しない境界を具体化 | #2 Host/共通Operationとの接続後に再検証、現時点 **BLOCKED** |
+| Workspace権限 | #1043の`NewHost`はAction単位、#1832はHost共通の起動時固定allowlist。接続別のWorkspace権限はない | #1832のGo Host-neutral結合はタグ付き追加試験で再確認 **NOT RUN**、実2ブラウザーは **BLOCKED** |
 | Desktop復旧 | #1529 Markerの2 Workspace・再オープン・別root拒否 | 実WebView再起動は **NOT RUN** |
 | Desktop root逸脱 | #1529のprivate marker storeのみのroot/locator拒否 | 実Workspace内Resourceの`../`、symlink差替え、TOCTOU、Wails dialog入力は **BLOCKED** |
 | Acceptance | #1529が復元時に返す3種の未受理状態を確認 | 実Source受理とOS側の副作用禁止は **NOT RUN** |
