@@ -149,9 +149,9 @@ func referenceQuery(t *testing.T, w ir.World) database.QueryContract {
 // authoring. It is not obtained from the Reference Plugin catalog or installed.
 func syntheticOracleResolvedSet(envID core.CanonicalID) plugin.ResolvedSet {
 	return plugin.ResolvedSet{
-		Environment:  envID,
+		Environment: envID,
 		Capabilities: []plugin.ResolvedCapability{{
-			Plugin:     plugin.Identity{ID: "research.synthetic.oracle", Version: "1.0.0"},
+			Plugin: plugin.Identity{ID: "research.synthetic.oracle", Version: "1.0.0"},
 			Capability: plugin.Capability{
 				Kind:              plugin.CapabilityContractQueryExecutor,
 				ID:                "research.synthetic.customer.query",
@@ -249,7 +249,7 @@ func TestGoReferenceExecutorNegativeBoundaries(t *testing.T) {
 		{name: "wrong_provider", bindings: []realization.ContractQueryExecutorBinding{baseBinding}, plugins: badProvider, instance: instance.ID, target: customerTarget},
 		{name: "wrong_capability_kind", bindings: []realization.ContractQueryExecutorBinding{baseBinding}, plugins: badKind, instance: instance.ID, target: customerTarget},
 		{name: "wrong_instance", bindings: []realization.ContractQueryExecutorBinding{baseBinding}, plugins: syntheticOracleResolvedSet(env.ID), instance: "sales_core.dev", target: customerTarget},
-		{name: "wrong_target", bindings: []realization.ContractQueryExecutorBinding{baseBinding}, plugins: syntheticOracleResolvedSet(env.ID), instance: instance.ID, target: realization.ContractQueryTarget{Database: "master_data",Contract: "master_data.customer",Query: "other"}},
+		{name: "wrong_target", bindings: []realization.ContractQueryExecutorBinding{baseBinding}, plugins: syntheticOracleResolvedSet(env.ID), instance: instance.ID, target: realization.ContractQueryTarget{Database: "master_data", Contract: "master_data.customer", Query: "other"}},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
