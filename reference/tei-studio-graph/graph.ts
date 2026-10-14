@@ -189,7 +189,11 @@ export function mountReadonlyGraph(
       attribute(group, "aria-label", node.label || node.id);
       const circle = svgElement("circle");
       for (const [key, value] of Object.entries({
-        cx: node.x, cy: node.y, r: 12, fill: "none", stroke: "currentColor",
+        // A transparent *painted* fill preserves the outlined appearance but
+        // makes the circle interior a pointer target. With fill="none" only
+        // the stroke was hittable; the g element has no painted hit area.
+        cx: node.x, cy: node.y, r: 12, fill: "transparent",
+        "pointer-events": "all", stroke: "currentColor",
       })) attribute(circle, key, value);
       group.appendChild(circle);
       const label = svgElement("text");
