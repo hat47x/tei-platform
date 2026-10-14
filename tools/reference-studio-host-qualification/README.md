@@ -60,11 +60,13 @@ go test -count=1 -v ./tools/reference-studio-host-qualification ./tools/referenc
 go vet ./tools/reference-studio-host-qualification ./tools/reference-studio-host-boundary
 ~~~
 
+注記：#1826の旧head 126924b6 に対するGitHub Actions run 38554136335 は、Go 1.26.9 の go vet ./...、go test ./...、Workspace validate が成功した一方、cli_operation_parity_test.go の gofmt drift により全体ステータスはFAILでした。#6ブランチで末尾余分空行を修正（commit 82868e385024880cc8d23b5fe6b4204280e6eacc）。**修正後のgofmtとCI完了は未確認**であり、独立snapshotの対象PASSとCI全体PASSは区別します。
+
 **報告されたPASS範囲:** #6のCLI比較10 subcases＋read-only baseline 2件、#10のHost境界4件です。**これらは上述の固定ファイル組合せに対する結果だけ**です。#1043は合成Session、#1529はDraft markerであり、Wails、実IdP、実ブラウザー・実Desktop WebView、PoC A本体の合格ではありません。#6の今回の追加headはこの検査対象に含まれていません。
 
 ## #1832のGo Host Bridgeとの3者比較（新規・未実行）
 
-#2のDraft PR #1832（exact fb52692dd518d930d696464e46962d8382969d7c）が提供する internal/studiohost.ReadOnly を利用する、studiohost_parity_test.go を追加しています。このテストにはビルドタグ studiohost_parity を付け、**依存するPR #1832が未統合の通常mainで既存テストを壊さない**ようにしました。
+#2のDraft PR #1832（検査元として固定したexact fb52692dd518d930d696464e46962d8382969d7c）が提供する internal/studiohost.ReadOnly を利用する、studiohost_parity_test.go を追加しています。#1832のその後のhead 2ad4f43c46375a76a421227ed5e084a55e6aacb8 でも readonly.go の Git blob SHA は f1bd33f0e48a63bf9997f74285a23f8870fa32ae で一致し、**Go Bridge原本の内容は同じ**です。これだけで最新版#1832のbuild/testが通ったとはみなしません。このテストにはビルドタグ studiohost_parity を付け、**依存するPR #1832が未統合の通常mainで既存テストを壊さない**ようにしました。
 
 比較方法は、実CLIをGo buildした別プロセスとして実行し、別途呼んだ既存Go Operationと、実際のReadOnly Go Bridgeを3経路で照合します。固定allowlistのWorkspace IDを明示的に設定し、正常・構文/意味診断・load失敗、catalog成功/失敗、subject成功/欠落/不正/未対応を扱います。Hostの ok=true と WorkspaceのValidを混同せず、失敗codeとstage、成功時のfingerprint・出典・診断を比較します。期待値はCLIやHost実装をコピーせず、既存Go Operationを独立に実行して得ます。
 
