@@ -98,7 +98,7 @@ go run ./tools/reference-change-assurance \
 
 出力は`scenarioId`/`scenarioSha256`/`fixtureSha256`/`planMatches`と、POC-9の`diff.beforeSourceRevision`/`diff.afterSourceRevision`を並置し、同じ読取り時点で観測したSource Revisionを`observedAfterSourceRevision`として表示します。
 
-**重要**：現行の生成CLI Planは**Source Indexの`ModelRevision`をpinしていません**。`planPinsSourceRevision=false`を明示し、PlanとScenarioが一致しても、未変化のWorld・Plugin Lockに隠れたSQL本文変更を検出・拒否する根拠にはなりません。本ツールはそのSource変更を別の`diff`として残します。これは暗号学的なSource→Scenarioの受理済み紐付けや、#1163の正式Evidence Packet資格の証明ではありません。
+**重要**：現行の生成CLI Planは**Source Indexの`ModelRevision`そのものをpinしていません**。一方、`WorldSHA256`は保持するため、Canonical Worldに取り込まれるSQL本文の`DESC → ASC`変更は既存Planをstaleとして拒否できます。逆に、管理対象Semantic Source末尾の空行追加など、**Byte指紋とModelRevisionは変わってもWorld表現が変化しない編集**についてはPlan指紋が一致したままです。`planPinsSourceRevision=false`を明示し、この違いを`diff`の指紋変化とともに残します。Plan照合の合格を「受理済みSource Revisionへの暗号学的な束縛」とみなしてはいけません。
 
 `qualification=unresolved`、`executionAllowed=false`で固定し、Scenarioに明示した期待値と合成Fixtureの存在を**独立Oracle認定・本番Provider観測・実行済みTest PASS**へ自動昇格させません。Scenario定義・Fixture、Planが一致しても、実TargetのEffect/Permissionと業務意味・受理済みSource、Scenarioの網羅性は未証明です。#1180のCLI/Web生成と#1163の正式Evidence Packetは既存の担当機構のまま保持します。
 
