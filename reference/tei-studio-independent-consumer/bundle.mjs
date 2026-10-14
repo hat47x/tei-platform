@@ -3,7 +3,7 @@
 // Never copies / rewrites the #4/#5/#9 source modules.
 import { build } from 'esbuild';
 import { readFileSync, writeFileSync, mkdirSync, copyFileSync, statSync } from 'node:fs';
-import { dirname, resolve, relative, sep } from 'node:path';
+import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
 
