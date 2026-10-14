@@ -56,11 +56,11 @@ var serviceCatalog = []serviceSpec{
 }
 
 type goProvenance struct {
-	Reference          string   `json:"reference"`
-	FixtureSHA256       string   `json:"fixtureSha256"`
-	GeneratedSHA256     string   `json:"generatedSha256"`
-	RegistryRevision    uint64   `json:"registryRevision"`
-	ServiceOrder        []string `json:"serviceOrder"`
+	Reference            string   `json:"reference"`
+	FixtureSHA256        string   `json:"fixtureSha256"`
+	GeneratedSHA256      string   `json:"generatedSha256"`
+	RegistryRevision     uint64   `json:"registryRevision"`
+	ServiceOrder         []string `json:"serviceOrder"`
 	AuthorityLimitations []string `json:"authorityLimitations"`
 }
 
@@ -147,7 +147,7 @@ func composeServices(raw []byte) ([]byte, goProvenance, error) {
 		return nil, goProvenance{}, err
 	}
 	return formatted, goProvenance{
-		Reference: "tei-studio-poc-b-reference-v0",
+		Reference:     "tei-studio-poc-b-reference-v0",
 		FixtureSHA256: digest(raw), GeneratedSHA256: digest(formatted),
 		RegistryRevision: snapshot.Revision, ServiceOrder: order,
 		AuthorityLimitations: []string{
