@@ -4,7 +4,6 @@ package main
 
 import (
 	"context"
-	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
