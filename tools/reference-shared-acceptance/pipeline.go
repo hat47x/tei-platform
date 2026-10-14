@@ -381,6 +381,10 @@ func expectedChanges(ops []Operation) []changeanalysis.SubjectChange {
 			add("candidate-key", op.AddCandidateKey.ID)
 		case opAddFunctionalDependency:
 			add("functional-dependency", op.AddFunctionalDependency.ID)
+		case opRemoveCandidateKey:
+			out = append(out, changeanalysis.SubjectChange{Kind: "candidate-key", ID: op.RemoveBusinessRule.ID, Change: "removed"})
+		case opRemoveFunctionalDependency:
+			out = append(out, changeanalysis.SubjectChange{Kind: "functional-dependency", ID: op.RemoveBusinessRule.ID, Change: "removed"})
 		case opAddApplication:
 			add("application", op.Application.ID)
 		case opAddReferencePattern:
@@ -406,7 +410,7 @@ func expectedCollections(ops []Operation) []string {
 	set := map[string]bool{}
 	for _, op := range ops {
 		switch op.Op {
-		case opAddValidation, opAddData, opAddRelation, opAddCandidateKey, opAddFunctionalDependency:
+		case opAddValidation, opAddData, opAddRelation, opAddCandidateKey, opAddFunctionalDependency, opRemoveCandidateKey, opRemoveFunctionalDependency:
 			set["semantics"] = true
 		case opAddApplication, opAddReferencePattern, opAddApplicationValidationUse:
 			set["applications"] = true
