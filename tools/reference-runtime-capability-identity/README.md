@@ -164,3 +164,18 @@ Linux限定の `project_advice_current_host_environment_linux_test.go` は、同
 同じ固定済み実行体で二つのEnvironmentを処理し、Environment AだけのGrant失効後もBの実行は継続する一方、**共通署名参照の失効はBの次回呼出しも拒否**することを検証します。署名参照へ同じ公開鍵を再登録しても、旧世代に固定した実行体は復権せず、新しい固定・検証が必要です。未知の署名者、署名改変、異なるPlugin IDによる署名使い回しも拒否します。異なる失効の単位を同じResolver／権限Storeへ混ぜません。
 
 これは署名と現行Environment照合の**組合せ試験**であり、テスト鍵は現実の受理済み発行者ではありません。現在のEnvironment readerも試験用の合成値で、正式なService Contract、Provider Conformance、Build/Source ClosureのIssuer受理、運用時Principal／Action Grant、実Resource Lease／OS Sandboxは未成立です。署名者世代の起動Gateも一Host上の範囲であり、Environment Grantの失効と実行開始の原子的な順序付けや分散Host間の失効伝播を証明しません。#1370の並行PRを変更するものでもありません。
+
+## Grantを読む時点とOS起動時点の競合の再現（#976、E39）
+
+`project_advice_authority_start_gap_linux_test.go` は、**既知の未閉塞境界を成功する回帰診断として固定する**Linux専用試験です。既存の`invokeWithCurrentHostEnvironment` が現在のExecution Grantを読んだ後、既存の`PinnedLinuxProcess.Verify`へ進む直前に、テストHostでそのGrantを撤回します。単一スレッドの検証フックで順序を固定するため、スリープ時間や並行Map書込みに依存しません。
+
+現行参照実装では、**撤回後でも最初の要求の実Go子プロセスが起動し、補助処理の成功応答を返します**。次の要求は、Readerが撤回を検出してArtifact Verifier／実行へ進まず拒否されます。このテストのPASSは、権限競合が*解消されたことではなく、実際に残っていること*の証拠です。Host signerの既存Start Gateによる署名者失効制御は、EnvironmentごとのGrantの失効制御とは別の対象です。
+
+### 本番への最小接続条件
+
+- Host管理の正本だけが、Environment・Runtime Capability Ref・実行世代に対する新規入場可否を決める。ブラウザー、案件Plugin、旧Runtime Planの提示を新規Authorityとみなさない。
+- 「正本からの読込み → Verify → 実行開始」を一つの**既存Hostの入場／世代境界**で扱い、失効が完了した後に旧世代で新規Startを許さない。必要なら既存Process Launcherの開始Hook／Resource Leaseのstart admissionに結び付ける。署名者用のGateとは独立のGrant Storeを作らず、同じRuntime Capability Refを用いる。
+- 新規入場拒否、先に入場済みの実行の扱い、失効完了時点、子プロセスの継続・中断、運用Auditを明示する。署名者失効とEnvironment利用拒否とArtifact全体の失効を混同しない。
+- まず同一Linux Hostで、失効とStartをチャネル同期した正例・負例を確認する。別Host／Wasm／遠隔実行への保証を暗黙に拡張しない。
+
+この節は本番用の新しい権限APIや実装の採用を意味しません。テスト用のEnvironment Grant、Contract/Provider/Conformance/Issuer、OS隔離等の未達は引き続き維持します。
