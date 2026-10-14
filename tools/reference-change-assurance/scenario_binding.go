@@ -28,7 +28,7 @@ type ScenarioPlanBindingReport struct {
 	ScenarioSHA256            string              `json:"scenarioSha256"`
 	FixtureSHA256             map[string]string   `json:"fixtureSha256"`
 	ObservedAfterSourceRevision string             `json:"observedAfterSourceRevision"`
-\tPlanPinsSourceRevision     bool               `json:"planPinsSourceRevision"`
+	PlanPinsSourceRevision     bool               `json:"planPinsSourceRevision"`
 	PlanMatches               bool                `json:"planMatches"`
 	ScenarioStepCount         int                 `json:"scenarioStepCount"`
 	SyntheticFixtureStepCount int                 `json:"syntheticFixtureStepCount"`
@@ -206,7 +206,7 @@ func reviewScenarioPlanDiff(beforeRoot, afterRoot, scope string, consumer modelr
 		ScenarioSHA256:            expected.ScenarioSHA256,
 		FixtureSHA256:             fixtures,
 		ObservedAfterSourceRevision: currentRevision,
-\t\tPlanPinsSourceRevision:     false,
+		PlanPinsSourceRevision:     false,
 		PlanMatches:               true,
 		ScenarioStepCount:         len(scenario.Steps),
 		SyntheticFixtureStepCount: len(fixtures),
