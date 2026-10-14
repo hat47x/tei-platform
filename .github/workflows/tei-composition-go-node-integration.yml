@@ -106,3 +106,10 @@ jobs:
           set -euo pipefail
           node --test reference/application-composition/e35_reference_ci_review.test.mjs
           node reference/application-composition/e35_reference_ci_review.mjs > /dev/null
+
+      - name: E38の実案件Source作業と未計測の区別を確認
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test reference/application-composition/e38_real_workflow_gap.test.mjs
+          node reference/application-composition/e38_real_workflow_gap.mjs . > /dev/null
