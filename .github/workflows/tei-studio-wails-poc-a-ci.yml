@@ -63,11 +63,13 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          go mod tidy
-          grep -F 'github.com/wailsapp/wails/v3 v3.0.0-beta.29' go.mod
           test -s go.sum
-          CGO_ENABLED=0 go build -tags server -o "$RUNNER_TEMP/tei-studio-server" .
-          CGO_ENABLED=0 go vet -tags server ./...
+          go mod tidy
+          git diff --exit-code -- go.mod go.sum
+          go mod verify
+          grep -F 'github.com/wailsapp/wails/v3 v3.0.0-beta.29' go.mod
+          CGO_ENABLED=0 go build -mod=readonly -tags server -o "$RUNNER_TEMP/tei-studio-server" .
+          CGO_ENABLED=0 go vet -mod=readonly -tags server ./...
 
       - name: loopback HTTPの実起動・埋込みasset smoke
         working-directory: cmd/tei-studio
@@ -78,6 +80,7 @@ jobs:
             echo "unexpected public-listener override accepted" >&2
             exit 1
           fi
+          grep -Fq 'WAILS_SERVER_HOST must be unset or exactly 127.0.0.1' "$RUNNER_TEMP/studio-env-refused.log"
           "$RUNNER_TEMP/tei-studio-server" -workspace ../../reference/workspace -port 43123 > "$RUNNER_TEMP/tei-studio-server.log" 2>&1 &
           server_pid=$!
           trap 'kill "$server_pid" 2>/dev/null || true' EXIT
@@ -127,8 +130,13 @@ jobs:
         working-directory: cmd/tei-studio
         run: |
           $ErrorActionPreference = 'Stop'
+          if (-not (Test-Path "go.sum")) { exit 1 }
           go mod tidy
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          go build -o "$env:RUNNER_TEMP/tei-studio.exe" .
+          git diff --exit-code -- go.mod go.sum
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          go mod verify
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          go build -mod=readonly -o "$env:RUNNER_TEMP/tei-studio.exe" .
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           if (-not (Test-Path "$env:RUNNER_TEMP/tei-studio.exe")) { exit 1 }
