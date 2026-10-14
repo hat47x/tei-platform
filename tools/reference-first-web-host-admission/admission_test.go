@@ -12,7 +12,7 @@ const (
 	tBrowser    = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
 	tAPI        = "cccccccccccccccccccccccccccccccccccccccc"
 	hashBrowser = "sha256:" + "d" + "ddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
-	hashAPI = "sha256:" + "e" + "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+	hashAPI     = "sha256:" + "e" + "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
 )
 
 type fixtureHost struct {
@@ -100,25 +100,25 @@ func TestCurrentHostAdmissionRejectsDriftRevocationAndIncompleteEvidence(t *test
 		change func(*Snapshot)
 		want   string
 	} {
-		{"other-Application", func(s *Snapshot) { s.Selection.ApplicationID = "other"}, "Application B/R"},
-		{"different-Handover-B", func(s *Snapshot) { s.Selection.HandoverBaselineID = "different"}, "Application B/R"},
-		{"different-Handover-R", func(s *Snapshot) { s.Selection.BaselineRepositoryRevision = strings.Repeat("f", 40)}, "Application B/R"},
-		{"different-Browser-T", func(s *Snapshot) { s.Selection.Units[0].TargetBuildRevision = tAPI}, "exact T/digest/bytes"},
-		{"different-API-T", func(s *Snapshot) { s.Selection.Units[1].TargetBuildRevision = tBrowser}, "exact T/digest/bytes"},
-		{"different-API-bytes", func(s *Snapshot) { s.Selection.Units[1].ArtifactBytes++}, "exact T/digest/bytes"},
-		{"different-Browser-digest", func(s *Snapshot) { s.Selection.Units[0].ArtifactDigest = hashAPI}, "exact T/digest/bytes"},
-		{"extra-Host-unit", func(s *Snapshot) { s.Selection.Units = append(s.Selection.Units, s.Selection.Units[0])}, "unit selection invalid"},
-		{"missing-Host-unit", func(s *Snapshot) { s.Selection.Units = s.Selection.Units[:1]}, "unit selection invalid"},
-		{"source-revoked", func(s *Snapshot) { s.SourceAccepted = false}, "Source acceptance"},
-		{"source-ref-missing", func(s *Snapshot) { s.SourceAcceptanceRef = ""}, "Source acceptance"},
-		{"build-api-revoked", func(s *Snapshot) { s.Builds[1].Accepted = false}, "Builder acceptance"},
-		{"build-browser-mismatched", func(s *Snapshot) { s.Builds[0].ArtifactDigest = hashAPI}, "Builder acceptance"},
-		{"build-evidence-missing", func(s *Snapshot) { s.Builds[0].EvidenceRef = ""}, "Builder acceptance"},
-		{"build-duplicate", func(s *Snapshot) { s.Builds[1].UnitID = BrowserUnit}, "duplicate unit"},
-		{"build-missing", func(s *Snapshot) { s.Builds = s.Builds[:1]}, "both exact unit builds"},
-		{"deployment-revoked", func(s *Snapshot) { s.DeploymentAccepted = false}, "deployment acceptance"},
-		{"deployment-ref-missing", func(s *Snapshot) { s.DeploymentRef = ""}, "deployment acceptance"},
-		{"authority-revision-missing", func(s *Snapshot) { s.AuthorityRevision = ""}, "authority revision"},
+		{"other-Application", func(s *Snapshot) { s.Selection.ApplicationID = "other" }, "Application B/R"},
+		{"different-Handover-B", func(s *Snapshot) { s.Selection.HandoverBaselineID = "different" }, "Application B/R"},
+		{"different-Handover-R", func(s *Snapshot) { s.Selection.BaselineRepositoryRevision = strings.Repeat("f", 40) }, "Application B/R"},
+		{"different-Browser-T", func(s *Snapshot) { s.Selection.Units[0].TargetBuildRevision = tAPI }, "exact T/digest/bytes"},
+		{"different-API-T", func(s *Snapshot) { s.Selection.Units[1].TargetBuildRevision = tBrowser }, "exact T/digest/bytes"},
+		{"different-API-bytes", func(s *Snapshot) { s.Selection.Units[1].ArtifactBytes++ }, "exact T/digest/bytes"},
+		{"different-Browser-digest", func(s *Snapshot) { s.Selection.Units[0].ArtifactDigest = hashAPI }, "exact T/digest/bytes"},
+		{"extra-Host-unit", func(s *Snapshot) { s.Selection.Units = append(s.Selection.Units, s.Selection.Units[0]) }, "unit selection invalid"},
+		{"missing-Host-unit", func(s *Snapshot) { s.Selection.Units = s.Selection.Units[:1] }, "unit selection invalid"},
+		{"source-revoked", func(s *Snapshot) { s.SourceAccepted = false }, "Source acceptance"},
+		{"source-ref-missing", func(s *Snapshot) { s.SourceAcceptanceRef = "" }, "Source acceptance"},
+		{"build-api-revoked", func(s *Snapshot) { s.Builds[1].Accepted = false }, "Builder acceptance"},
+		{"build-browser-mismatched", func(s *Snapshot) { s.Builds[0].ArtifactDigest = hashAPI }, "Builder acceptance"},
+		{"build-evidence-missing", func(s *Snapshot) { s.Builds[0].EvidenceRef = "" }, "Builder acceptance"},
+		{"build-duplicate", func(s *Snapshot) { s.Builds[1].UnitID = BrowserUnit }, "duplicate unit"},
+		{"build-missing", func(s *Snapshot) { s.Builds = s.Builds[:1] }, "both exact unit builds"},
+		{"deployment-revoked", func(s *Snapshot) { s.DeploymentAccepted = false }, "deployment acceptance"},
+		{"deployment-ref-missing", func(s *Snapshot) { s.DeploymentRef = "" }, "deployment acceptance"},
+		{"authority-revision-missing", func(s *Snapshot) { s.AuthorityRevision = "" }, "authority revision"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			source := fixtureHostSource()
@@ -145,14 +145,14 @@ func TestCurrentHostAdmissionFailClosedForSourceFailuresAndInvalidSelections(t *
 		name   string
 		change func(*Selection)
 	} {
-		{"empty-B", func(s *Selection) { s.HandoverBaselineID = ""}},
-		{"invalid-R", func(s *Selection) { s.BaselineRepositoryRevision = "rev"}},
-		{"missing-API", func(s *Selection) { s.Units = s.Units[:1]}},
-		{"duplicate-API", func(s *Selection) { s.Units[0] = s.Units[1]}},
-		{"unknown-unit", func(s *Selection) { s.Units[1].ID = "desktop"}},
-		{"unbound-T", func(s *Selection) { s.Units[1].TargetBuildRevision = "T"}},
-		{"incorrect-digest", func(s *Selection) { s.Units[0].ArtifactDigest = "not-a-digest"}},
-		{"zero-bytes", func(s *Selection) { s.Units[0].ArtifactBytes = 0}},
+		{"empty-B", func(s *Selection) { s.HandoverBaselineID = "" }},
+		{"invalid-R", func(s *Selection) { s.BaselineRepositoryRevision = "rev" }},
+		{"missing-API", func(s *Selection) { s.Units = s.Units[:1] }},
+		{"duplicate-API", func(s *Selection) { s.Units[0] = s.Units[1] }},
+		{"unknown-unit", func(s *Selection) { s.Units[1].ID = "desktop" }},
+		{"unbound-T", func(s *Selection) { s.Units[1].TargetBuildRevision = "T" }},
+		{"incorrect-digest", func(s *Selection) { s.Units[0].ArtifactDigest = "not-a-digest" }},
+		{"zero-bytes", func(s *Selection) { s.Units[0].ArtifactBytes = 0 }},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			selected := fixtureSelection()
