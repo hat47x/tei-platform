@@ -102,3 +102,18 @@ PoC A の**通常ビルド**を比較元とし、宣言合成の Builder は既�
 - [共通 Operation #1158](https://github.com/hat47x/tei-platform/issues/1158)、[Draftと復旧 #1529](https://github.com/hat47x/tei-platform/issues/1529)、[三視点編集 #1124](https://github.com/hat47x/tei-platform/issues/1124)。
 - [UI Composition Kit #997](https://github.com/hat47x/tei-platform/issues/997)、[Contract/Provider移行 #951](https://github.com/hat47x/tei-platform/issues/951)、[Application Composition #1016](https://github.com/hat47x/tei-platform/issues/1016)。
 - [生成Desktop Target #259](https://github.com/hat47x/tei-platform/issues/259)、[参照実装の現状](../../docs/status.md)。
+
+## 8. #8 別consumer初回検証結果（2026-10-14、PoC Cの一部のみ）
+
+**対象**: `reference/tei-studio-independent-consumer/`、[Draft PR #1825](https://github.com/hat47x/tei-platform/pull/1825)。以下の実行結果はローカル作業用複製でのNode試験とGitHub上のファイル再取得による照合であり、実ブラウザー/WebView、TEI Studio画面の受入証拠ではない。
+
+| ケース/検査 | 結果 | 実行・観測 |
+| --- | --- | --- |
+| 別consumerの独立入口 | 実装あり、ブラウザー未確認 | TEIモデルを持たない読書ノート3件を選択・参照する `index.html`/`main.mjs`、共通部品領域は未提供時にBLOCKEDと表示 |
+| データ変換と静的検査 | **単体検査PASS（7件）** | Node.js 22.16.0で `node --test *.test.mjs`。読書ノート選択・Graph入力変換・依存解析の正負例を検証（ローカル同内容複製） |
+| TEI専用import | **限定した静的検査PASS** | `node audit-imports.mjs main.mjs notes.mjs journal-graph.mjs`。対象3モジュールのimport graphで該当依存なし。未生成のGraphモジュールや実際のbundleまでは監査していない |
+| #9 Graph APIへの接続 | **コード接続準備あり、動作BLOCKED** | #9 `graph.ts` の実公開 `mountReadonlyGraph` に合わせて `graph-entry.mjs` を作成。ただし本PR headには#9ソースがないため `node build-graph.mjs` はBLOCKED（exit 2）。Graph実描画は未実行 |
+| #4 Editor / #5 Command | **BLOCKED** | 対象コミットの実exportが未確認。代用部品・仮想APIを作らない |
+| C-05 / C-06 の正式再利用判定 | **NOT RUN** | Studioでの同一共通部品実利用、別consumer実ブラウザー描画、差替え・拒否・unmount等の独立検証を実施していない |
+
+#9 Graphの確認元: `feat/tei-studio-poc-c-graph-reference`（確認時head `e652a1b655c6dd5f3e52afde9390f1f6cd0771dd`）。そのbranchでのProviderの存在と、このPR headでの利用成立を混同しない。#9が統合または正規の統合ブランチに揃ったら同一SHA・同一checkoutでSource/build/ブラウザー操作を再実行する。ここでPoC Cの合格・再利用成立を宣言しない。
