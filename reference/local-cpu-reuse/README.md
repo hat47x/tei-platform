@@ -298,3 +298,21 @@ go test -count=1 ./reference/local-cpu-reuse -run '^TestGoReference' -v
 ```
 
 This test file is evidence about **Catalog and Binding declarations**, not a new executable runtime service. No Oracle database connection, query execution, plugin process, physical SQL, secrets, customer-data export, automated acceptance or model training is involved. Exact-head CI results are recorded on the PR after execution.
+
+## Real Reference through the existing runtime Registry (2026-10-14)
+
+The **existing** `driver.Resolver.ExecuteReferenceContractQueryInEnvironment` already crosses the Application → Contract Query → Environment → actual Catalog → explicit executor Binding → `ContractQueryExecutorRegistry` boundary. Its `ContractQueryExecutorRuntimeKey` retains all three identities: Environment, Database instance and Capability. Provider-specific executors may optionally expose `DatabaseProviderBoundContractQueryExecutor`; the Driver checks a declared provider match before invoking that executor. It also checks result `zero-or-one` cardinality and Semantic attribute identity **after** a Query returns. We should not implement a second executor Host or impose new mandatory tests on project-specific Plugins.
+
+The new [go_reference_runtime_registry_test.go](go_reference_runtime_registry_test.go) exercises this **unchanged Go production Driver** using the real checked-in `reference/workspace` definitions for **both** `order_entry.customer_reference` (source key `sales.order.customer_id`) and `repair_intake.customer_reference` (source key `repair_intake.intake.customer_id`). Input values and `ContractQueryExecutor` are **in-memory test doubles only**, not user records or a live Database.
+
+Coverage includes exact Environment/instance/Capability runtime Registry lookup (empty, wrong Environment, wrong instance or wrong Capability all rejected), the real development Contract Query executor declaration, Parameter `id` propagation, 0 and 1 Semantic rows under `zero-or-one`, and deliberate rejection of a provider mismatch *before* the fake is invoked, two rows, a foreign Semantic attribute, and an injected executor error. The production environment has no relevant explicit executor Binding, so even a registered fake from development cannot execute there.
+
+Passing such tests establishes the Go Driver's **composition and validation behavior against actual Reference declarations**, not the authenticity of an external Provider, physical SQL, actual runtime Plugin registration, end-user permission, availability, performance or accepted cross-project reuse. In particular, a supplied test-double registry is not a deployment artifact or permission grant. The tests neither start Plugin runtime nor contact Oracle. No new Go Core/DSL/Canonical/Plugin runtime interfaces were introduced.
+
+The same focused CI command automatically includes these tests:
+
+```sh
+go test -count=1 ./reference/local-cpu-reuse -run '^TestGoReference' -v
+```
+
+An exact-head CI run is required before this integration evidence is marked verified.
