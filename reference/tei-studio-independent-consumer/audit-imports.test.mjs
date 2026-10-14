@@ -3,10 +3,11 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { auditImportGraph } from './audit-imports.mjs';
 import { availability } from './check-components.mjs';
 
-const repoRoot = resolve(new URL('.', import.meta.url).pathname, '../../');
+const repoRoot = resolve(fileURLToPath(new URL('.', import.meta.url)), '../../');
 
 test('sample imports contain no TEI-specific modules', () => {
   const result = auditImportGraph(['reference/tei-studio-independent-consumer/main.mjs'], repoRoot);
