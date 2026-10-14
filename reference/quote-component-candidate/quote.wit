@@ -1,0 +1,36 @@
+package tei:quote-preview-candidate@0.1.0;
+
+// Candidate adapter interface for the independent, read-only quote preview.
+// This is not the canonical TEI Service Contract or a production plugin ABI.
+interface quote-preview {
+    record quote-line {
+        sku: string,
+        quantity: u64,
+        unit-price-minor: u64,
+    }
+
+    record quote-request {
+        currency: string,
+        lines: list<quote-line>,
+    }
+
+    record quote-result {
+        currency: string,
+        line-count: u32,
+        subtotal-minor: u64,
+    }
+
+    // The existing candidate returns a generic business rejection.
+    // Host failures and authorization denials are NOT this rejection.
+    enum quote-rejection {
+        rejected,
+    }
+
+    preview: func(request: quote-request) -> result<quote-result, quote-rejection>;
+}
+
+// Import-free world: network, files, principal, secrets, and clocks cannot
+// be inferred as available. Host must still authorize the actual invocation.
+world quote-preview-pure {
+    export quote-preview;
+}
