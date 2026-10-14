@@ -16,7 +16,7 @@ GitHub #1109の読取り専用Referenceです。人や生成AIが書く`BuildInt
 
 ## 導出の規則
 
-1. `ParseIntent`は未知のfieldと、導出値（digest、fingerprint、locator、plan等）の手書きを拒否します。人が意図して書けるexact指定は、`builder.pin.artifactDigest`だけです。
+1. `ParseIntent`と`ParseFixtureCatalog`は既存の厳格なJSON読込み処理を通し、重複キー（エスケープ表記や大文字小文字の別名を含む）、不正なUTF-8、対応しないサロゲート、末尾の別JSONを拒否します。`ParseIntent`は未知のfieldと、導出値（digest、fingerprint、locator、plan等）の手書きを拒否します。人が意図して書けるexact指定は、`builder.pin.artifactDigest`だけです。
 2. Source参照は`DirSourceResolver`が実ファイルの内容から`BuildSource`のdigestを導出します。digestは相対pathと内容だけで決まり、rootのHost上の場所には依存しません。symlinkやroot外への経路は拒否します。
 3. `subject.definitionSource`が指す`.tei`のPlugin定義を実際のparserで読み、Subjectと一致しなければ停止し、`PluginDefinitionFingerprint`を導出します。
 4. Builderは契約、`build-tool`の権限範囲、Recipe、Target、Profileに適合するProviderを列挙し、明示指定（`provider`、`pin`）で絞ります。複数残る場合は列挙順で選ばず停止します。
@@ -58,5 +58,4 @@ go run ./tools/reference-build-authoring-intent \
 - Goなど特定言語のclosure（`_GOOS`付きファイル、`go.mod`、外部module）。
 - `.tei`のbuild構文、Host parser、Core modelへの追加、Editor表示。
 - 実際のBuild実行とBuild Lockの作成。
-- JSONの重複keyの検出（現状は後勝ちの標準decode）。
 - Subject種別はPluginのみ。Runtime Engine、Builder等の自己構築対象は扱いません。

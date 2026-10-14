@@ -156,6 +156,9 @@ type FixtureTargetEntry struct {
 
 // ParseFixtureCatalog はCatalog JSONを厳密に読む。
 func ParseFixtureCatalog(raw []byte) (FixtureCatalog, error) {
+	if err := validateInputJSON(raw); err != nil {
+		return FixtureCatalog{}, fmt.Errorf("fixture catalog: %w", err)
+	}
 	var c FixtureCatalog
 	dec := json.NewDecoder(bytes.NewReader(raw))
 	dec.DisallowUnknownFields()
