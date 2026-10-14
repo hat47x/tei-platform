@@ -41,6 +41,42 @@ type Selection struct {
 	Units                      []Unit
 }
 
+// MeasuredE1Pair is a read-only selection extracted from the EXISTING E1
+// two-unit measurement after byte/build preflight. Its plain hashes are not
+// Host acceptance, trusted Builder proof or a newly minted Artifact Lock.
+// The present E1 builder uses one common source T for both physical units.
+type MeasuredE1Pair struct {
+	ApplicationID              string
+	HandoverBaselineID         string
+	BaselineRepositoryRevision string
+	BrowserAndAPISourceRevision string
+	BrowserSHA256              string
+	BrowserBytes               int64
+	APISHA256                  string
+	APIBytes                   int64
+}
+
+// FromMeasuredE1Pair adapts the currently generated two-unit observation to
+// an exact Host query. The caller must have independently verified its bytes
+// and provenance; this transformation cannot authenticate a measurement.
+func FromMeasuredE1Pair(m MeasuredE1Pair) (Selection, error) {
+	selected := Selection{
+		ApplicationID: m.ApplicationID,
+		HandoverBaselineID: m.HandoverBaselineID,
+		BaselineRepositoryRevision: m.BaselineRepositoryRevision,
+		Units: []Unit{
+			{ID: BrowserUnit, TargetBuildRevision: m.BrowserAndAPISourceRevision,
+				ArtifactDigest: "sha256:" + m.BrowserSHA256, ArtifactBytes: m.BrowserBytes},
+			{ID: APIUnit, TargetBuildRevision: m.BrowserAndAPISourceRevision,
+				ArtifactDigest: "sha256:" + m.APISHA256, ArtifactBytes: m.APIBytes},
+		},
+	}
+	if err := validateSelection(selected); err != nil {
+		return Selection{}, err
+	}
+	return selected, nil
+}
+
 // BuildAcceptance is one Host-returned CURRENT Builder acceptance. The
 // EvidenceRef has no authority unless the Host authenticates its source.
 type BuildAcceptance struct {
