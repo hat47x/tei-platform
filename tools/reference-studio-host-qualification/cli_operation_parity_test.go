@@ -133,7 +133,9 @@ func cliFindings(report subprocessResult) []string {
 
 func typedFindings(t *testing.T, result operations.WorkspaceValidation) []string {
 	t.Helper()
-	var out []string
+	// Absence of diagnostics is one semantic state: a non-nil empty slice.
+	// cliFindings already returns a non-nil empty slice for the same state.
+	out := make([]string, 0, len(result.Diagnostics)+1)
 	if result.Direct != nil {
 		d := result.Direct
 		out = append(out, findingSignature(d.Code, string(d.Severity), nil, []string{
@@ -161,6 +163,16 @@ func typedFindings(t *testing.T, result operations.WorkspaceValidation) []string
 	}
 	sort.Strings(out)
 	return out
+}
+
+// Ensure a nil Go diagnostics field and an empty CLI diagnostics array have
+// identical meaning without weakening comparisons for actual diagnostics.
+func TestEmptyDiagnosticSignatureParity(t *testing.T) {
+	cli := cliFindings(subprocessResult{})
+	typed := typedFindings(t, operations.WorkspaceValidation{})
+	if !reflect.DeepEqual(cli, typed) {
+		t.Fatalf("empty findings differ: CLI=%#v Go=%#v", cli, typed)
+	}
 }
 
 func TestCLIProcessVersusReadOnlyOperations(t *testing.T) {
@@ -210,7 +222,10 @@ func TestCLIProcessVersusReadOnlyOperations(t *testing.T) {
 			}
 			want := typedFindings(t, typed)
 			got := cliFindings(cli)
-			if !reflect.DeepEqual(got, want) && !(len(got) == 0 && len(want) == 0) {
+			if tc.exit == 1 && (len(got) == 0 || len(want) == 0) {
+				t.Fatalf("diagnostic fixture %q produced no findings: cli=%v go=%v", tc.name, got, want)
+			}
+			if !reflect.DeepEqual(got, want) {
 				t.Fatalf("CLI and Go findings differ: cli=%v go=%v", got, want)
 			}
 		})
