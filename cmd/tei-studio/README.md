@@ -15,19 +15,20 @@ Issue [#1824](https://github.com/hat47x/tei-platform/issues/1824)、担当#2。�
 
 ```sh
 # 依存取得可能な Go 1.26.9 開発環境で依存チェックサムを生成し、go.sum差分をレビュー
+cd cmd/tei-studio
 go mod tidy
 
-# Desktop（OSのWebView開発依存が必要）
-go build -o tei-studio ./cmd/tei-studio
-./tei-studio -workspace ./reference/workspace
+# Desktop（OSのWebView開発依存が必要、repository rootからの相対Workspace）
+go build -o tei-studio .
+./tei-studio -workspace ../../reference/workspace
 
 # Browser：loopbackの単一利用者参照検証だけ（GUIなし）
-go build -tags server -o tei-studio-server ./cmd/tei-studio
-./tei-studio-server -workspace ./reference/workspace -port 43123
+go build -tags server -o tei-studio-server .
+./tei-studio-server -workspace ../../reference/workspace -port 43123
 # http://127.0.0.1:43123/
 ```
 
-`go test ./internal/studiohost` と `node --test cmd/tei-studio/test/client.test.mjs` は小さな自動検査です。Wails CLIと版を一致させる場合の指定は `go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.29`。最初の表示は生成bindingを使用せず、公式の`Call.ByName`を直接呼ぶbootstrapです。#3のTypeScript UIが整い次第、同じ`StudioBridge`4操作から公式生成bindingへ移します。
+`go test ./internal/studiohost` と `node --test cmd/tei-studio/test/client.test.mjs` は小さな自動検査です。Wails CLIと版を一致させる場合の指定は `go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.29`。PoCだけをnested Go moduleに隔離し、rootの全体CIでCGO/OS WebView依存を無条件に増やしません（ADR-0033の恒久的なsubproject構成決定ではありません）。最初の表示は生成bindingを使用せず、公式の`Call.ByName`を直接呼ぶbootstrapです。#3のTypeScript UIが整い次第、同じ`StudioBridge`4操作から公式生成bindingへ移します。
 
 ## #3/#6/#10への固定でない接続申し送り
 
