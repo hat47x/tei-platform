@@ -68,7 +68,6 @@ def main():
                 assert "Tea tasting" in editor.inner_text()
 
                 page.get_by_role("button", name="Count related entries").click()
-                page.get_by_role("status").filter(has_text="success").count()  # outcome locale-specific
                 page.wait_for_function("""() => {
                     const s = document.querySelector('#command-slot [role=status]');
                     return s && s.textContent.includes('2 related entries');
