@@ -50,3 +50,20 @@ tsc --noEmit --strict --target ES2022 --module ESNext --moduleResolution bundler
 ```
 
 部品単独fixtureはTEI構文でない `a😀x\r\nsecond` を使う。CodeMirrorの実DOM操作、アクセシビリティ、キーボード、長い文書の性能、サービスからの安全な文書供給、Wails/Web実機は別途確認する。受入条件は#1824と#997が正本であり、本書は新しい製品APIやGateを定めない。
+
+## CodeMirrorのCRLF座標補正（2026-10-14、#Work実ブラウザーの失敗から追加）
+
+`editor.ts`のPortは**元Sourceの改行文字を保持**し、UTF-16絶対offset・1始まりの行/列をSourceに対して計算する。CodeMirrorの内部`Text`はCRLFを単一LFへ正規化するため、`codemirror.ts`が`codemirror-coordinates.ts`の双方向変換を通して、表示側の診断/選択をCodeMirror offsetへ、ユーザー選択通知を元Source offsetへ戻す。Portの`snapshot().text`・診断入力を正規化してはならない。
+
+再現入力 `a😀x\r\nsecond` の2行目1〜7列（`utf16-unit`）はSource offset `6..12`だが、CodeMirror内では`5..11`。「先頭sを除いたecond」や`Selection points outside of document`は不合格。改行区切りがCRLF→LFに変わった場合、表示文字列が同じでも変換表を再構築する。CRLF内部の中間位置と単独CR改行は、元Portに一貫した対応がないため**明示拒否**（無音の丸め込みなし）。LFとCRLFの混在、末尾改行、UTF-8/UTF-16の座標を追加試験する。
+
+```sh
+node --experimental-strip-types --test \
+  reference/tei-studio-editor/editor.test.mjs \
+  reference/tei-studio-editor/codemirror-coordinates.test.mjs
+tsc --noEmit --strict --target es2022 --module esnext --moduleResolution bundler \
+  --lib es2022,dom reference/tei-studio-editor/editor.ts \
+  reference/tei-studio-editor/codemirror-coordinates.ts
+```
+
+**現状のEvidence**: Node v22.16.0でport 4件 + 座標変換5件 = **9/9 PASS**、上記2 TypeScript fileのstrict型検査PASS。更新前PR head `4970921`について#Workが行ったCodeMirror依存込み型検査PASSは、**今回の修正headに自動継承しない**。修正済み`codemirror.ts`の依存込み型検査、CodeMirror実DOMでの診断/selection通知、ブラウザー/Studio/別consumer/WebViewは#Work/#3/#8による再検証待ち。原本manifest/lockは変更しない。
