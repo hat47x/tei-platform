@@ -21,21 +21,21 @@ import (
 // generated CLI Plan to a two-Workspace Source revision review. This is a
 // read-only, static candidate; it never produces a qualification receipt.
 type ScenarioPlanBindingReport struct {
-	SchemaVersion             string              `json:"schemaVersion"`
-	Authority                 string              `json:"authority"`
-	Diff                      WorkspaceDiffReport `json:"diff"`
-	ScenarioID                string              `json:"scenarioId"`
-	ScenarioSHA256            string              `json:"scenarioSha256"`
-	FixtureSHA256             map[string]string   `json:"fixtureSha256"`
-	ObservedAfterSourceRevision string             `json:"observedAfterSourceRevision"`
-	PlanPinsSourceRevision     bool               `json:"planPinsSourceRevision"`
-	PlanMatches               bool                `json:"planMatches"`
-	ScenarioStepCount         int                 `json:"scenarioStepCount"`
-	SyntheticFixtureStepCount int                 `json:"syntheticFixtureStepCount"`
-	Qualification             string              `json:"qualification"`
-	ReasonCodes               []string            `json:"reasonCodes"`
-	ExecutionAllowed          bool                `json:"executionAllowed"`
-	AuthorityLimits           []string            `json:"authorityLimits"`
+	SchemaVersion               string              `json:"schemaVersion"`
+	Authority                   string              `json:"authority"`
+	Diff                        WorkspaceDiffReport `json:"diff"`
+	ScenarioID                  string              `json:"scenarioId"`
+	ScenarioSHA256              string              `json:"scenarioSha256"`
+	FixtureSHA256               map[string]string   `json:"fixtureSha256"`
+	ObservedAfterSourceRevision string              `json:"observedAfterSourceRevision"`
+	PlanPinsSourceRevision      bool                `json:"planPinsSourceRevision"`
+	PlanMatches                 bool                `json:"planMatches"`
+	ScenarioStepCount           int                 `json:"scenarioStepCount"`
+	SyntheticFixtureStepCount   int                 `json:"syntheticFixtureStepCount"`
+	Qualification               string              `json:"qualification"`
+	ReasonCodes                 []string            `json:"reasonCodes"`
+	ExecutionAllowed            bool                `json:"executionAllowed"`
+	AuthorityLimits             []string            `json:"authorityLimits"`
 }
 
 func sha256Hex(content []byte) string {
@@ -199,20 +199,20 @@ func reviewScenarioPlanDiff(beforeRoot, afterRoot, scope string, consumer modelr
 		fixtures[step] = digest
 	}
 	return ScenarioPlanBindingReport{
-		SchemaVersion:             "tei.reference.scenario-source-binding/v0",
-		Authority:                 "read-only-scenario-plan-pins-no-evidence-qualification",
-		Diff:                      diff,
-		ScenarioID:                scenario.ID,
-		ScenarioSHA256:            expected.ScenarioSHA256,
-		FixtureSHA256:             fixtures,
+		SchemaVersion:               "tei.reference.scenario-source-binding/v0",
+		Authority:                   "read-only-scenario-plan-pins-no-evidence-qualification",
+		Diff:                        diff,
+		ScenarioID:                  scenario.ID,
+		ScenarioSHA256:              expected.ScenarioSHA256,
+		FixtureSHA256:               fixtures,
 		ObservedAfterSourceRevision: currentRevision,
-		PlanPinsSourceRevision:     false,
-		PlanMatches:               true,
-		ScenarioStepCount:         len(scenario.Steps),
-		SyntheticFixtureStepCount: len(fixtures),
-		Qualification:             "unresolved",
-		ReasonCodes:               []string{"cli-plan-has-no-source-revision-pin", "no-independent-oracle-provenance", "no-execution-or-evidence-packet", "no-runtime-authority"},
-		ExecutionAllowed:          false,
+		PlanPinsSourceRevision:      false,
+		PlanMatches:                 true,
+		ScenarioStepCount:           len(scenario.Steps),
+		SyntheticFixtureStepCount:   len(fixtures),
+		Qualification:               "unresolved",
+		ReasonCodes:                 []string{"cli-plan-has-no-source-revision-pin", "no-independent-oracle-provenance", "no-execution-or-evidence-packet", "no-runtime-authority"},
+		ExecutionAllowed:            false,
 		AuthorityLimits: []string{
 			"separate-loads-are-not-atomic-workspace-snapshots",
 			"cli-plan-matching-is-not-executed-scenario-evidence",
