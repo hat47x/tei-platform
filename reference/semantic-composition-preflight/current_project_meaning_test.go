@@ -70,9 +70,15 @@ func currentProjectMeaningFixture(t *testing.T) (string, string, workspace.Resul
 	return consumer, provider, loaded, index, reader
 }
 
+func expectedProjectMeaningRequests(reader *currentProjectMeaningTestReader) []ProjectMeaningRequest {
+	selected := reader.snapshot.Selected[0]
+	return []ProjectMeaningRequest{{Alias: selected.Alias, Resource: selected.Resource}}
+}
+
 func TestCurrentProjectMeaningBindsConsumerSourceAndExternalSemanticInOneHostSnapshot(t *testing.T) {
 	consumer, provider, before, beforeIndex, reader := currentProjectMeaningFixture(t)
-	verified, err := InspectCurrentProjectMeaning(context.Background(), reader, "monitoring", consumer)
+	requested := expectedProjectMeaningRequests(reader)
+	verified, err := InspectCurrentProjectMeaning(context.Background(), reader, "monitoring", consumer, requested)
 	if err != nil {
 		t.Fatalf("coherent synthetic Host snapshot was refused: %v", err)
 	}
@@ -97,7 +103,7 @@ func TestCurrentProjectMeaningBindsConsumerSourceAndExternalSemanticInOneHostSna
 		before.Imports[0].SemanticDigest == changed.Imports[0].SemanticDigest {
 		t.Fatal("fixture did not isolate external Semantic drift from unchanged consumer Source")
 	}
-	refused, err := InspectCurrentProjectMeaning(context.Background(), reader, "monitoring", consumer)
+	refused, err := InspectCurrentProjectMeaning(context.Background(), reader, "monitoring", consumer, requested)
 	if err == nil || !strings.Contains(err.Error(), "PROJECT_MEANING_SEMANTIC_DIGEST_MISMATCH") {
 		t.Fatalf("old Host decision must refuse changed provider meaning: %v", err)
 	}
@@ -110,7 +116,7 @@ func TestCurrentProjectMeaningBindsConsumerSourceAndExternalSemanticInOneHostSna
 	reader.snapshot.Source.DecisionRef = "synthetic://replacement-host-decision"
 	reader.snapshot.Source.AuthorityRevision = "synthetic-new-current"
 	reader.snapshot.Selected[0].SemanticDigest = changed.Imports[0].SemanticDigest
-	if _, err := InspectCurrentProjectMeaning(context.Background(), reader, "monitoring", consumer); err != nil {
+	if _, err := InspectCurrentProjectMeaning(context.Background(), reader, "monitoring", consumer, requested); err != nil {
 		t.Fatalf("replacement synthetic current decision was refused: %v", err)
 	}
 }
@@ -130,6 +136,7 @@ func TestCurrentProjectMeaningRejectsMissingAmbiguousAndForgedSelections(t *test
 		{"wrong-kind", func(c *CurrentProjectMeaning) { c.Selected[0].Resource.Subject.Kind = "semantic-data" }, "PROJECT_MEANING_RESOURCE_MISMATCH"},
 		{"wrong-id", func(c *CurrentProjectMeaning) { c.Selected[0].Resource.Subject.ID = "other" }, "PROJECT_MEANING_RESOURCE_MISMATCH"},
 		{"blank-scope", func(c *CurrentProjectMeaning) { c.Selected[0].Resource.Scope = "" }, "PROJECT_MEANING_RESOURCE_MISMATCH"},
+		{"wrong-scope", func(c *CurrentProjectMeaning) { c.Selected[0].Resource.Scope = "provider-domain:other" }, "PROJECT_MEANING_RESOURCE_MISMATCH"},
 		{"unverifiable-version", func(c *CurrentProjectMeaning) { c.Selected[0].Resource.Version = "1.0" }, "PROJECT_MEANING_RESOURCE_MISMATCH"},
 		{"forged-digest", func(c *CurrentProjectMeaning) {
 			c.Selected[0].SemanticDigest = "sha256:" + strings.Repeat("0", 64)
@@ -143,8 +150,9 @@ func TestCurrentProjectMeaningRejectsMissingAmbiguousAndForgedSelections(t *test
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			consumer, _, _, _, reader := currentProjectMeaningFixture(t)
+			requested := expectedProjectMeaningRequests(reader)
 			tc.edit(&reader.snapshot)
-			out, err := InspectCurrentProjectMeaning(context.Background(), reader, "monitoring", consumer)
+			out, err := InspectCurrentProjectMeaning(context.Background(), reader, "monitoring", consumer, requested)
 			if err == nil || !strings.Contains(err.Error(), tc.want) {
 				t.Fatalf("expected %s; got %v", tc.want, err)
 			}
@@ -157,20 +165,21 @@ func TestCurrentProjectMeaningRejectsMissingAmbiguousAndForgedSelections(t *test
 
 func TestCurrentProjectMeaningRejectsStaleLocalSourceAndMissingHostReader(t *testing.T) {
 	consumer, _, _, _, reader := currentProjectMeaningFixture(t)
+	requested := expectedProjectMeaningRequests(reader)
 	writeSemanticFixture(t, filepath.Join(consumer, "semantic", "watch.tei"),
 		"namespace monitoring\n\ndata Watch {\n    attribute process type os.process_id\n}\n\n")
-	if out, err := InspectCurrentProjectMeaning(context.Background(), reader, "monitoring", consumer); err == nil ||
+	if out, err := InspectCurrentProjectMeaning(context.Background(), reader, "monitoring", consumer, requested); err == nil ||
 		!strings.Contains(err.Error(), "PROJECT_MEANING_SOURCE_NOT_ACCEPTED") ||
 		!reflect.DeepEqual(out, VerifiedProjectMeaning{}) {
 		t.Fatalf("unchanged semantics but changed managed bytes must be refused: %v", err)
 	}
-	if out, err := InspectCurrentProjectMeaning(context.Background(), nil, "monitoring", consumer); err == nil ||
+	if out, err := InspectCurrentProjectMeaning(context.Background(), nil, "monitoring", consumer, requested); err == nil ||
 		!strings.Contains(err.Error(), "PROJECT_MEANING_READER_REQUIRED") ||
 		!reflect.DeepEqual(out, VerifiedProjectMeaning{}) {
 		t.Fatalf("absent trusted Reader must fail closed: %v", err)
 	}
 	reader.err = errors.New("synthetic Host revocation")
-	if out, err := InspectCurrentProjectMeaning(context.Background(), reader, "monitoring", consumer); err == nil ||
+	if out, err := InspectCurrentProjectMeaning(context.Background(), reader, "monitoring", consumer, requested); err == nil ||
 		!strings.Contains(err.Error(), "PROJECT_MEANING_CURRENT_UNAVAILABLE") ||
 		!reflect.DeepEqual(out, VerifiedProjectMeaning{}) {
 		t.Fatalf("revoked Host decision must fail closed: %v", err)
