@@ -151,3 +151,41 @@ PoC A の**通常ビルド**を比較元とし、宣言合成の Builder は既�
 ### 未確認と次の検査
 
 #Workの**修正後Windows v24.21.0での再実行はNOT RUN**（#8が確認した範囲）。次の固定snapshotでは#1825の修正後exact headへ差し替え、他の3PRのheadは固定したまま、`node --test *.test.mjs` とCLI起動・Graph/Command build・実DOM・実ブラウザーを段階的に検査する。結果の再取得前にPoC C合格や本番対応を宣言しない。
+
+## 10. #8 別consumerのCodeMirror実接続・bundle準備（2026-10-14）
+
+この項は**新しいGateではなくC-05/C-06に対する途中結果**。報告した元コードと、実行した環境・未実行を区別する。
+
+### 非merge検証snapshotの現在の固定入力
+
+| 対象 | exact SHA | 取得対象 |
+| --- | --- | --- |
+| main baseline | `128429482e02d96afe0123ee7da023256094dfca` | base |
+| #1825 consumer | **このPRの検証時最新head**（次のコメント/PRにexact SHAを記録） | `reference/tei-studio-independent-consumer/` と本手順 |
+| #1828 Graph | `36799dba33fe0e19db3f7b56e7af1e18da134a71` | `reference/tei-studio-graph/` |
+| #1829 Command | `26f47772ed49f5c4a9e1c50026c335783bc5e153` | `reference/tei-studio-command/` |
+| #1830 Editor | `a7084fe1711cc48eff56fd20e3dc81c508f520a3` | `reference/tei-studio-editor/` |
+
+すべてのDraft PR原本は保持し、通常mergeは実施しない。Graphは修正前 `2d7148c3…` からポインター中心クリックを直したheadへ、Editorは修正前 `4970921e…` からCRLF座標変換を直したheadへ更新した。両旧headの失敗を新headのPASSに置き換えない。
+
+### 今回#8が変更したconsumer
+
+- `editor-entry.mjs`: #4の**実ソース** `createReadOnlyTextEditor` + `codeMirrorRenderer`をimport。`journal-editor.mjs` がノートIDから `{id,version,text,diagnostics}` を作る。初期表示後、picker切替で `setDocument`、ボタン/ページ破棄で `destroy`。書込みAPIは供給しない。
+- `graph-entry.mjs` / `command-entry.mjs`: #9/#5の実TypeScriptをstatic importし、**バンドル後のブラウザー**から使用する。既存の型除去 `build-graph.mjs` / `build-command.mjs` は同一snapshotでのsource digest確認用に保持。
+- `package.json`: consumer配下だけで `esbuild@0.25.12` とCodeMirror直接依存3件（state `6.7.6`、view `6.43.14`、lint `6.9.7`）をexact指定。frontend root manifest/lockには変更なし。
+- `bundle.mjs`: esbuildの実bundling（`nodePaths`でconsumer専用 `node_modules` のbare imports解決）。Editor/CodeMirror/Graph/Commandを実入力として含めたかmetafileで確認し、TEI意味・Host専用importを拒否。生成物 `dist/index.html` / JS / `build-provenance.json` を作成し、元ソースSHA-256を記録。
+- `journal-editor.test.mjs`: document projectionの正常/拒否。#1830の実 `editor.ts` が同一snapshotにある時だけPortの `setDocument`、同一版別本文拒否、`destroy`冪等を検査。
+- `browser-e2e.py`: 実Chromium+Playwrightで、CodeMirror編集不可・本文切替・Graph内幅480と14pxラベル/横スクロール・ノードclick→picker/Editor・Command success/denied・destroy/disposeを検査する**実行可能な手順**。モック部品は使用しない。
+
+### 実測と未実施
+
+| 検査 | 観測 | 結果の区分 |
+| --- | --- | --- |
+| ローカル簡易document projection | Linux Node v22.16.0でノート `map` / `sketch` のID/本文と不明ID拒否を直接検査、3アサーション成功 | **限定したローカルPASS**。共通Editor実描画ではない |
+| offline lockfile試行 | Linux npm v10.9.2で `npm install --package-lock-only --offline --ignore-scripts --no-audit --no-fund` → `ENOTCACHED`（`@codemirror/lint` metadataがcacheにない） | **BLOCKED**。lockfile未生成、推移依存は未固定 |
+| esbuild実bundle | 同一snapshotでnpm依存が未導入のため `npm run build` を完走できない | **NOT RUN**。sourceコード追加だけでbuilt assetsの成立を主張しない |
+| 実Chromium / CodeMirror接続 | `browser-e2e.py`を用意したが、上記bundle未生成 | **NOT RUN**。実DOM合格ではない |
+| Graph旧幅対応 `2d7148c3…` | #Work独立ブラウザーで `clientWidth=225 / scrollWidth=480 / svgWidth=480 / fontSize=14px`、キーボード選択連携を確認。ノード中心のポインター選択はFAIL | **#Work報告の旧headの結果**。#9新 `36799dba…` の再検証待ち |
+| Editor旧 `4970921…` | #Work実CodeMirrorではCRLF診断と選択オフセット不整合が再現。#4が `a7084fe1…` で修正を提出 | **旧headのFAIL**。新head未再検証 |
+
+**次の検証実行**: 固定snapshotのconsumer配下で `npm install` →生成lock内容・依存版/版のdigest採取→ `npm test` → `npm run build` → `python3 browser-e2e.py`。Node版、npm版、Playwright/ブラウザー版、実出力、DOMスクリーンショット、入力SHAを保存する。依存が揃った時点でのみC-05/C-06を判定し、Studio側の共通部品利用の実証がなければ2 consumer成立を主張しない。
