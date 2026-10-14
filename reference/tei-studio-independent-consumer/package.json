@@ -1,0 +1,12 @@
+{
+  "name": "tei-studio-independent-consumer-reference",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test *.test.mjs",
+    "audit:imports": "node audit-imports.mjs main.mjs notes.mjs",
+    "check:components": "node check-components.mjs"
+  },
+  "engines": { "node": ">=20" }
+}
