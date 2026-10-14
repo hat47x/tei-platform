@@ -74,6 +74,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          if WAILS_SERVER_HOST=0.0.0.0 "$RUNNER_TEMP/tei-studio-server" -workspace ../../reference/workspace -port 43123 > "$RUNNER_TEMP/studio-env-refused.log" 2>&1; then
+            echo "unexpected public-listener override accepted" >&2
+            exit 1
+          fi
           "$RUNNER_TEMP/tei-studio-server" -workspace ../../reference/workspace -port 43123 > "$RUNNER_TEMP/tei-studio-server.log" 2>&1 &
           server_pid=$!
           trap 'kill "$server_pid" 2>/dev/null || true' EXIT
