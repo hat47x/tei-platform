@@ -3,7 +3,7 @@
 // The Browser asset and Go API remain two separately built physical units.
 import { createHash } from "node:crypto";
 import { createServer, request as httpRequest } from "node:http";
-import { lstatSync, readFileSync, realpathSync } from "node:fs";
+import { closeSync, constants as fsConstants, fstatSync, openSync, readSync, realpathSync } from "node:fs";
 import { basename, dirname, resolve } from "node:path";
 
 const [assetDir, apiOrigin, measurementPath] = process.argv.slice(2);
@@ -15,13 +15,53 @@ const apiPort = Number(api.port);
 if (!Number.isSafeInteger(apiPort) || apiPort > 65535) {
   throw new Error("invalid loopback API port");
 }
-const html = readFileSync(resolve(assetDir, "index.html"));
+// Snapshot the exact regular file opened with O_NOFOLLOW. In particular,
+// never call readFileSync(path) before rejecting symlinks, FIFOs, devices or
+// oversized objects: those can allocate or block before later path checks.
+// The same file descriptor is checked and read. Its bytes are immutable for
+// this diagnostic Host's lifetime even if the pathname is later replaced.
+const readPinnedArtifact = (path, invalidMessage, limit) => {
+  let fd;
+  try {
+    fd = openSync(path, fsConstants.O_RDONLY | fsConstants.O_NOFOLLOW |
+      fsConstants.O_NONBLOCK | fsConstants.O_CLOEXEC);
+  } catch (error) {
+    if (error?.code === "ELOOP") throw new Error(invalidMessage);
+    throw error;
+  }
+  try {
+    const info = fstatSync(fd);
+    if (!info.isFile()) throw new Error(invalidMessage);
+    if (!Number.isSafeInteger(info.size) || info.size < 1 || info.size > limit) {
+      throw new Error("artifact file exceeds diagnostic size boundary or is empty");
+    }
+    const bytes = Buffer.alloc(info.size);
+    let read = 0;
+    while (read < bytes.length) {
+      const count = readSync(fd, bytes, read, bytes.length - read, null);
+      if (count === 0) throw new Error("artifact changed during diagnostic snapshot");
+      read += count;
+    }
+    // Catch an append between fstat and read, without reading unbounded data.
+    if (readSync(fd, Buffer.alloc(1), 0, 1, null) !== 0) {
+      throw new Error("artifact changed during diagnostic snapshot");
+    }
+    return bytes;
+  } finally {
+    closeSync(fd);
+  }
+};
+
+const assetRoot = resolve(assetDir);
+const html = readPinnedArtifact(resolve(assetRoot, "index.html"),
+  "Browser HTML must be a real file in the Browser unit", 8 * 1024 * 1024);
 const legacyForm = html.includes('<form method="post" action="/custom-submit"');
 const jsonForm = html.includes('<form id="json-command" method="post" action="/scenario/submit"');
 if (legacyForm === jsonForm) {
   throw new Error("static asset must declare exactly one supported form transport");
 }
-const browserScript = jsonForm ? readFileSync(resolve(assetDir, "browser-command.js")) : null;
+const browserScript = jsonForm ? readPinnedArtifact(resolve(assetRoot, "browser-command.js"),
+  "Browser script must be a real file in the Browser unit", 4 * 1024 * 1024) : null;
 if (jsonForm && !html.includes('src="/browser-command.js"')) {
   throw new Error("JSON form transport script is missing");
 }
@@ -39,13 +79,6 @@ if (jsonForm && !measurementPath) {
 // All verified bytes are held in memory, so later path changes cannot alter
 // what this diagnostic Host publishes during its lifetime.
 const sha256 = bytes => createHash("sha256").update(bytes).digest("hex");
-const realRegular = (path, label) => {
-  if (realpathSync(path) !== path || !lstatSync(path).isFile()) {
-    throw new Error(label + " is not a real regular artifact file");
-  }
-  return readFileSync(path);
-};
-const assetRoot = resolve(assetDir);
 const measurementFile = measurementPath ? resolve(measurementPath) : null;
 if (jsonForm && (
   basename(assetRoot) !== "browser" ||
@@ -55,9 +88,8 @@ if (jsonForm && (
   throw new Error("JSON Browser measurement must belong to the same artifact root");
 }
 const measurement = measurementFile ?
-  JSON.parse(jsonForm ?
-    realRegular(measurementFile, "measurement").toString("utf8") :
-    readFileSync(measurementFile, "utf8")) : null;
+  JSON.parse(readPinnedArtifact(measurementFile,
+    "measurement is not a real regular artifact file", 1024 * 1024).toString("utf8")) : null;
 if (jsonForm) {
   const checks = [
     { name: "Browser HTML", bytes: html, file: resolve(assetRoot, "index.html"),
@@ -66,9 +98,6 @@ if (jsonForm) {
       hash: "browserScriptSHA256", size: "browserScriptBytes" },
   ];
   for (const check of checks) {
-    if (realpathSync(check.file) !== check.file || !lstatSync(check.file).isFile()) {
-      throw new Error(check.name + " must be a real file in the Browser unit");
-    }
     const claimed = measurement[check.hash];
     if (typeof claimed !== "string" || !/^[0-9a-f]{64}$/.test(claimed) ||
         !Number.isSafeInteger(measurement[check.size]) || measurement[check.size] <= 0 ||
