@@ -277,7 +277,6 @@ func TestSenderCannotDuplicateWhileInFlightAndMayReenter(t *testing.T) {
 	}
 }
 
-
 func TestCancelUnknownOutcomeLookupRecovery(t *testing.T) {
 	ctx := context.Background()
 	s, submit := fixture(t)
