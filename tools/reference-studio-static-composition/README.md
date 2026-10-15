@@ -1,5 +1,27 @@
 # TEI Studio PoC B — 静的合成の最小参照実装
 
+
+## 最新の固定snapshot実証（2026-10-15）
+
+#Workの実測：[Issue #1824 #6181914721](https://github.com/hat47x/tei-platform/issues/1824#issuecomment-6181914721)。下記は**別Draftの所有pathをexact SHAで抽出した隔離snapshot**の実証であり、#1833単独checkoutの実行やmainへの統合、製品受入を意味しない。
+
+| 固定入力 | exact revision |
+| --- | --- |
+| #1 静的生成器 / Draft #1833 | `fe8e37b1c735dc138c36cb2d37db94ee44424b9e` |
+| #2 Host / Draft #1832（`studio_generated,server`） | `4bc437c72e63a3b5d578b1efe2c60be510a9f8a9` |
+| Workbench / Draft #1849 | `c55ad2285268533f5f1c90fbc9fe766bae57f009` |
+| Editor / Draft #1830 | `a7084fe1711cc48eff56fd20e3dc81c508f520a3` |
+| Graph / Draft #1828 | `786d8d82e19e8b08690aceadf9d180374e211448` |
+| Command / Draft #1829 | `01f5022240fd86c6ac38c1107310e299a1615b48` |
+
+- **実物の一致**：生成`services.generated.go` SHA-256 `867501c5a98d71337178d8bd7995e2e4eb6d276accd25151a2c18d8cb5adee50`、生成Workbench bundle SHA-256 `1166d9489c76028ba21c9eaf44d25c6f36f98d5845d1f5a0599ea51bdfb1f1ee`。#2の生成Factoryは既存Hostが許可したrootだけを受け取り、追加Registryや生成サービスの直接Wails登録を行わない。
+- **PASS（#Work、WSL Linux / Go 1.26.9 / Wails v3 beta.29）**：生成モードのGo `test`・`vet`・Server `build`。IABの実ブラウザーで `127.0.0.1:43130` の生成Wails Serverを操作し、workspace-1 Catalog **72件**／Validate **警告3件**、workspace-2 Catalog **19件**／警告0件（旧診断残留なし）。workspace-1に戻り、Graphの`customerId`選択から`sales.order.customer_id` の実InspectSubject取得と親Orderとの2ノード関係を確認。配信bundleのSHA照合もPASS。
+- **PASS（別CI）**：[#38662384542](https://github.com/hat47x/tei-platform/actions/runs/38662384542) は#2 exact `4bc437c7` に対し、Windows Desktopの通常・生成モード**バイナリビルド**を成功。GUI実起動の証拠ではない。
+- **NOT RUN / 未実証**：#WorkのWSL Linuxで`-race`は`pkg-config`不在により開始不可。実Desktopのnative WebView起動・終了、Windows Desktop実画面、接続別認証/Session隔離、完全Source Closure／署名／Plugin・Build Lock、全OS資源境界およびPoC全体の正式合格は未確認。
+
+この記録は下記の設計時点の未検証事項を**当該固定snapshotについてのみ更新**する。過去headのFAIL/SKIP、異なるGraph/Editor版、`studio_generated`なしの通常HostでのUI検証結果へ転用しない。すべてのDraftは未mergeのまま維持する。
+
+
 対応: [Issue #1824](https://github.com/hat47x/tei-platform/issues/1824)、Goの構造的合成 [ADR-0032](../../plan/adr/0032-composition-kernel-replacement.md)、UI構成キット [#997](../../reference/ui-customization/composition/README.md)。
 
 ## 対象と非目標
@@ -28,13 +50,13 @@ ls "$OUT"
 
 生成Goファイルのpackageは `staticservices` です。#2のHostは、生成ファイルをGoパッケージに配置したうえで `Services(trustedWorkspaceRoot)` の静的構成リストを受け取れます。ただし渡すrootの選択とアクセス制御は必ずHost側で行い、ブラウザーが任意のrootを指定できるAPIとして公開してはいけません。既存の共通Operation呼出しを直接Wails Binderの認可代わりにしません。
 
-生成UIファイルは `studioUIContributions` の **名前付き2要素の配列**です。別のRuntime RegistryやEvent Busではなく、#3が所有するcomposition rootへ渡すための静的import一覧です。現状のimport先 `reference/tei-studio-graph/graph.ts` と `reference/tei-studio-command/command.ts` は並行するDraft PR #1828 / #1829 の資産であり、対象コミットと依存版を固定し同じbuild内へ取り込むまでは **UI生成結果のimport・起動を確認できません**。#3と登録入口が決まるまでは手書きのcomposition rootを変更しません。
+生成UIファイルは `studioUIContributions` の **名前付き2要素の配列**です。別のRuntime RegistryやEvent Busではなく、#3が所有するcomposition rootへ渡すための静的import一覧です。現状のimport先 `reference/tei-studio-graph/graph.ts` と `reference/tei-studio-command/command.ts` は並行するDraft PR #1828 / #1829 の資産であり、通常の単独branchでは実装が揃っていません。**上記のexact snapshotでは生成import・bundle・実ブラウザー起動が検証済み**ですが、別revisionや正式なビルド構成への一般的適合までは保証しません。#3と登録入口が決まるまでは手書きのcomposition rootを変更しません。
 
 ## 拒否と不成立条件
 
 Go側は未知のサービス、重複選択、互換しないexact version、異なるscope、不完全なfixtureを拒否します。構造的な契約依存の適格性は既存Registryが担当し、選択結果だけで実行権限を得たとは扱いません。UI側は既存Kit Resolverの未知implementation・重複/未知slot・version/framework不一致を利用して拒否します。ファイル列挙順や曖昧なfallbackで順序を決定しません。
 
-現時点でこの独立Referenceが**証明しないもの**は、#2の通常ビルドとの実サービス結果の一致、#3の画面との配線、2 UIモジュールを含む実Bundlerの成功、Wails Web/Desktop実機、Browser session隔離、任意プロセスロード、完全なArtifact/Build Lock来歴、製品用TEI宣言の一般解決です。これらは「未実施・依存待ち」とし、PoC B全体の合格とはしません。
+この**独立Reference単体では**、Hostの認可・Wailsでの動作・製品用Artifact/Build Lockを証明しません。ただし上記固定snapshotについては#Workが**生成GoのHost内部使用、UI生成import・実bundle、実Wails Serverブラウザー操作**を独立に実測しています。異なるsnapshot、実Desktop WebView、Browser session隔離、任意プロセスロード、完全なArtifact/Build Lock来歴、製品用TEI宣言の一般解決は依然として未実証です。したがってPoC B全体の合格とはしません。
 
 #7の独立黒箱検査は、本Referenceで使うfixtureと生成結果の内容・拒否/来歴を参照できますが、#7固有の検査器・負例fixture自体は#7の担当のままです。
 
