@@ -285,6 +285,8 @@ PoC A の**通常ビルド**を比較元とし、宣言合成の Builder は既�
 
 **実行環境とGo検証（実行主体：#Work）**: WSL Linux、Go **1.26.9**、Wails **v3 beta.29**。CGO無効の `go test -count=1 -v -tags 'studio_generated,server' .` における **`TestGeneratedGoServicesRunThroughRealHost` PASS**、`go vet` PASS、生成モードServer build **PASS**。ただし **`-race` 試験はNOT RUN / BLOCKED**：実行環境に `pkg-config` がなく開始できなかったためであり、race検査PASSともrace由来の欠陥とも扱わない。
 
+**標準Host経路の追加検証（#Work続報 [#6181937969](https://github.com/hat47x/tei-platform/issues/1824#issuecomment-6181937969)）**: 同じ後続固定snapshot（Host `4bc437c72e63a3b5d578b1efe2c60be510a9f8a9`、composer `fe8e37b1c735dc138c36cb2d37db94ee44424b9e`）に対し、生成タグ付き実Host試験とは**別に**、`CGO_ENABLED=0 go test -count=1 ./internal/studiohost/...` および `go vet ./internal/studiohost/...` を実行し、**いずれもexit 0 / PASS**。allowlist・Factory・読取りHostのpackage suiteを含む。**Wails本体を含む `cmd/tei-studio` の `-race` 試験は `pkg-config` 不足でローカル未実施**、非race版PASSとの区別を維持する。これはWeb Server版のHost検証であり、Desktopの実起動・終了確認を補完した証拠ではない。
+
 **実Wails Server＋実ブラウザー（IAB・`127.0.0.1:43130`）**: 生成タグを使用するServerへ接続した固定UIについて、以下を**実DOM操作PASS**として受領した。
 
 - workspace-1 の生成Catalog **72件**、Validate成功、警告 **3件**を表示。
