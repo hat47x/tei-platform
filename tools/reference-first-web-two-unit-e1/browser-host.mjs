@@ -5,6 +5,7 @@ import { createHash } from "node:crypto";
 import { createServer, request as httpRequest } from "node:http";
 import { closeSync, constants as fsConstants, fstatSync, openSync, readSync, realpathSync } from "node:fs";
 import { basename, dirname, resolve } from "node:path";
+import { parseStrictDiagnosticJSON } from "./strict-diagnostic-json.mjs";
 
 const [assetDir, apiOrigin, measurementPath] = process.argv.slice(2);
 if (!assetDir || !apiOrigin || !/^http:\/\/127\.0\.0\.1:[1-9][0-9]*$/.test(apiOrigin)) {
@@ -88,7 +89,7 @@ if (jsonForm && (
   throw new Error("JSON Browser measurement must belong to the same artifact root");
 }
 const measurement = measurementFile ?
-  JSON.parse(readPinnedArtifact(measurementFile,
+  parseStrictDiagnosticJSON(readPinnedArtifact(measurementFile,
     "measurement is not a real regular artifact file", 1024 * 1024).toString("utf8")) : null;
 if (jsonForm) {
   const checks = [
@@ -159,7 +160,7 @@ const readBoundedAPIEvidence = async (path, maxBytes, label) => {
     parts.push(Buffer.from(part));
   }
   if (size === 0) throw new Error(label + " is empty");
-  return JSON.parse(Buffer.concat(parts, size).toString("utf8"));
+  return parseStrictDiagnosticJSON(Buffer.concat(parts, size).toString("utf8"));
 };
 
 const checkAPIBinding = async () => {
