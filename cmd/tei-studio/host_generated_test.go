@@ -13,25 +13,35 @@ import (
 func TestGeneratedGoServicesRunThroughRealHost(t *testing.T) {
 	root := filepath.Join("..", "..", "reference", "workspace")
 	h, err := newStudioHost([]string{root})
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	bridge := &StudioBridge{host: h}
 	bridgeType := reflect.TypeOf(bridge)
-	if bridgeType.NumMethod() != 4 { t.Fatalf("unexpected Wails exports: %d", bridgeType.NumMethod()) }
+	if bridgeType.NumMethod() != 4 {
+		t.Fatalf("unexpected Wails exports: %d", bridgeType.NumMethod())
+	}
 	for i, method := range []string{"CatalogWorkspace", "InspectSubject", "ListWorkspaces", "ValidateWorkspace"} {
-		if bridgeType.Method(i).Name != method { t.Fatalf("unexpected Wails service method %d: %s", i, bridgeType.Method(i).Name) }
+		if bridgeType.Method(i).Name != method {
+			t.Fatalf("unexpected Wails service method %d: %s", i, bridgeType.Method(i).Name)
+		}
 	}
 	if refs := bridge.ListWorkspaces(); !refs.OK || len(refs.Value) != 1 || refs.Value[0].ID != "workspace-1" {
 		t.Fatalf("allowlist lost: %+v", refs)
 	}
 	catalog := bridge.CatalogWorkspace("workspace-1", "")
 	wantCatalog, err := operations.CatalogWorkspace(root, "")
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	if !catalog.OK || !reflect.DeepEqual(catalog.Value, &wantCatalog) {
 		t.Fatalf("generated catalog does not match: %+v", catalog)
 	}
 	validation := bridge.ValidateWorkspace("workspace-1")
 	wantValidation, err := operations.ValidateWorkspace(root)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	if !validation.OK || !reflect.DeepEqual(validation.Value, &wantValidation) {
 		t.Fatalf("generated validation differs, including diagnostics: %+v", validation)
 	}
@@ -49,6 +59,8 @@ func TestGeneratedGoServicesRunThroughRealHost(t *testing.T) {
 	if len(wantCatalog.Entries) > 0 {
 		subject := wantCatalog.Entries[0].Subject
 		actual := bridge.InspectSubject("workspace-1", subject.Kind, subject.ID)
-		if !actual.OK || actual.Value == nil { t.Fatalf("unchanged inspect failed: %+v", actual) }
+		if !actual.OK || actual.Value == nil {
+			t.Fatalf("unchanged inspect failed: %+v", actual)
+		}
 	}
 }
