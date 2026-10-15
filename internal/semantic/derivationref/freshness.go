@@ -141,7 +141,10 @@ func QualifyCache(ctx context.Context, witness CacheWitness, policy CachePolicy,
 		return "", fmt.Errorf("%w: invalid age bound", ErrCacheEvidence)
 	}
 	if err := verifier.VerifyCurrent(ctx, witness); err != nil {
-		return "", fmt.Errorf("%w: %v", ErrCacheDenied, err)
+		// Preserve only the generic denial at this consumer boundary;
+		// Provider-specific source IDs, current versions and policy errors
+		// must not be exposed through a cache result.
+		return "", fmt.Errorf("%w: current witness not verified", ErrCacheDenied)
 	}
 	if policy.RequireAligned && len(witness.Sources) > 1 {
 		for _, source := range witness.Sources {
