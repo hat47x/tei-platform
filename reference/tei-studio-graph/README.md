@@ -41,7 +41,7 @@ Host/Operation、TEIのSource Index、Go/Wails、Reactなどには依存しま�
 
 - **#3 / Studio**: Graphの親パネルにグラフ全幅を収めるための`transform:scale()`や強制的な外側縮小をかけないでください。狭幅では部品のスクロール領域を使用し、実際のStudio画面で横スクロールと選択追従、マウス・キーボード操作を確認してください。
 - **#8 / Reading Journal**: `journalGraph()`の480幅と3列レイアウトは変更不要です。約240pxのGraph slotでラベルの可読性、スクロール到達、選択後のpicker/本文連携、ページ破棄を実ブラウザーで再検証してください。Graph更新による再ビルドが必要です。実ブラウザーでの**修正版**表示確認は#9の単体試験だけでは証明されません。
-- 入力の`width`が実際のノード・ラベルに対して短すぎる場合の表示領域や長文の重なりは**consumerが座標・幅を決めて解決**します。選択IDの設定は表示状態の更新であり、スクロール位置への自動移動はしません。
+- 入力の`width`・位置・エッジ配置はconsumerが決めます。長い**ノード**ラベルの表示省略と全文アクセスはこのReferenceが扱いますが、エッジラベルの長文、極端な座標端・極小viewBox、ラベル間の重なりは未解決です。選択IDの設定は表示状態の更新であり、スクロール位置への自動移動はしません。
 
 ## 読取り専用ノードのクリック領域
 
@@ -50,6 +50,15 @@ Host/Operation、TEIのSource Index、Go/Wails、Reactなどには依存しま�
 原因: SVGの`<g role="button">`自身には描画されたヒット領域がなく、`circle fill="none"`の場合、円内部はポインターイベントのターゲットになりません。このReferenceでは**輪郭はそのまま、`circle fill="transparent" pointer-events="all"`**とし、中心クリックから親`g`の既存`click`ハンドラーへイベントを伝播させます。`keydown`のEnter/Space、`onSelect`、選択状態・破棄の契約は変えません。透明塗りによるノード中央のクリック可能化は権限付与やTEI operationの実行ではありません。
 
 追加した小DOM試験ではcircle属性、子から親へのclick伝播、Enter/Space選択を確認します。ただし**実際のSVGヒットテストやスクリーンリーダー対応の合格証明ではない**ため、#Workには修正後exact headを再取得して実ブラウザーでノード中央クリック・ロールbuttonクリック・選択/picker反映を改めて確認してもらいます。#3のStudio側の実画面再利用も別途未確認です。
+
+## 長いノードラベルの表示方針
+
+#9独立検証で、480pxのSVGに実測3037pxの長いノード名を入れると描画領域からはみ出し、横スクロールでも全文を読めない問題を再現しました（[Issue #1824](https://github.com/hat47x/tei-platform/issues/1824#issuecomment-6181365204)）。
+
+- **表示**: ノードの横位置と入力幅から表示できる文字列を安全側に近似し、省略時だけ末尾を`…`にします。文字列は`textContent`で代入し、`x/y`・直線エッジ・レイアウトは変更しません。文字幅近似であり、あらゆるフォント・言語で表示領域内に厳密に収まる保証ではありません。
+- **全文**: ノードの`aria-label`とSVG `<title>`には省略しない元ラベルを保持します。省略があるノードへキーボードでフォーカスするか選択すると、Graph領域内の`data-graph-full-label`へ全文を折り返して表示します。通常の短いラベルでは補足欄を表示しません。テキストは`innerHTML`に渡しません。
+- **選択契約**: `node.id`、`getSelectedNode()`、クリック・Enter・Spaceで通知する`onSelect(nodeId)`は不変です。見た目のラベルを縮めてもsubject IDを変更しません。古いイベント・dispose後の通知抑止も不変です。
+- **確認範囲**: TypeScript strict、Node DOM代替8件、Chromiumで狭幅225px・480px SVG・ノード長文の枠内表示・全文フォーカス・円中央クリック・Enter/Spaceの同一subject IDを確認。実Host接続画面、全フォント・スクリーンリーダー・Desktop WebViewは別の資格です。
 
 ## 検証
 
