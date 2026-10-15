@@ -124,6 +124,9 @@ export function createCommandPort(options: CommandOptions): CommandPort {
   });
   const notify = (): void => {
     for (const listener of [...listeners]) {
+      // Disposal or unsubscription may occur synchronously inside another listener.
+      if (disposed) break;
+      if (!listeners.has(listener)) continue;
       // A presentation listener cannot turn a Host outcome into a failure.
       try { listener(snapshot()); } catch { /* caller owns listener errors */ }
     }
