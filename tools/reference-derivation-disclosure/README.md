@@ -16,6 +16,7 @@
 | --- | --- | --- | --- |
 | 行の使用 | caller | `derive.row.include` | 選択された行すべて、計算・件数・集約前 |
 | 規則の呼出 | caller | `derive.rule.execute` | 規則ごと |
+| 集約Providerのコード実行 | Host選択のProvider自身 | `derive.provider.execute` | callerの規則実行・集約開示およびProvider内部読取とは独立 |
 | 明細入力の読取 | caller | `derive.input.read` | 入力属性ごと |
 | 非公開集約入力 | 選択されたProvider自身 | `derive.input.internal` | callerへraw入力を渡さない |
 | 明細/集約結果の公開 | caller | `derive.detail.disclose` / `derive.aggregate.disclose` | 結果Targetごと |
@@ -28,10 +29,11 @@
 
 1. 管理者：数量2×非公開原価300→金額600、全段階を個別に許可した場合のみ公開。
 2. 一般利用者：結果`amount`の表示権限があるだけでも、`cost`の読取権限がなければ明細600を非開示。単なる表示列除外では読取境界を迂回しません。
-3. 一般利用者の部門集約：一般利用者には原価読取を与えず、Hostに選択された内部Provider自身だけが `derive.input.internal` を持ち、行・規則実行・集約結果・`group`の公開権限が揃ったときだけ集約900を返す。集約許可は明細600の公開許可へ転用できません。
-4. `select/filter/sort/count/group/page/metadata/trace` のいずれの権限も欠ければEvaluatorを呼ばない。
-5. Tenant T1のQueryにT2行が含まれた場合、権限テーブルを見る前に不完全なPlanとして拒否。さらに選択行単位の許可も別に必要。
-6. 実行後のGrant失効、保存済み結果の再読取時の失効、認可Adapterエラー、Evaluatorエラー、別主体の偽装Grantを拒否し、secretをError文字列に載せない。
+3. 一般利用者の部門集約：一般利用者には原価読取を与えず、Hostに選択された内部Provider自身だけが `derive.provider.execute` と `derive.input.internal` を持ち、行・規則実行・集約結果・`group`の公開権限が揃ったときだけ集約900を返す。集約許可は明細600の公開許可へ転用できません。
+4. Providerの内部入力Read権限・callerの集約実行・集約結果開示が全て有効でも、Provider自身の `derive.provider.execute` がなければEvaluatorを呼び出さずに拒否する。許可した場合は同じ既存Authorityで成功する。
+5. `select/filter/sort/count/group/page/metadata/trace` のいずれの権限も欠ければEvaluatorを呼ばない。
+6. Tenant T1のQueryにT2行が含まれた場合、権限テーブルを見る前に不完全なPlanとして拒否。さらに選択行単位の許可も別に必要。
+7. 実行後のGrant失効、保存済み結果の再読取時の失効、認可Adapterエラー、Evaluatorエラー、別主体の偽装Grantを拒否し、secretをError文字列に載せない。
 
 ## 境界と未証明事項
 
