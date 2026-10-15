@@ -314,3 +314,78 @@ func TestPublishExactMembersFromActualGoBuild(t *testing.T) {
 		}
 	}
 }
+
+// A member disappearing after publication does not change the set's expected
+// content identities. Adoption of an explicitly rebuilt member is separate
+// from authorizing or running a Builder, and cannot silently update the lock.
+func TestPublishedSetMissRebuildKeepsPinnedMemberDigest(t *testing.T) {
+	store := openTestStore(t, 1<<20)
+	executable := []byte("deterministically rebuilt executable")
+	lockedDigest := digestBytes(executable)
+	manifest := []byte("executable=" + lockedDigest + "\n")
+	expected := []artifactMemberRequest{
+		{Role: "executable", Digest: lockedDigest},
+		{Role: "manifest", Digest: digestBytes(manifest)},
+	}
+	if _, err := store.publishExactMembers(expected, map[string][]byte{
+		"executable": executable,
+		"manifest":   manifest,
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	// Simulate eviction of only the executable from an already published set.
+	// The manifest and its original reference remain available.
+	path, err := store.pathForDigest(lockedDigest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(path); err != nil {
+		t.Fatal(err)
+	}
+	missing, err := store.getMembers(expected)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if missing.Available() ||
+		memberByRole(t, missing, "executable").Status != artifactMemberMissing ||
+		memberByRole(t, missing, "manifest").Status != artifactMemberAvailable {
+		t.Fatalf("set was available despite a missing locked member: %+v", missing)
+	}
+
+	// A different rebuild result must never replace the locked digest or
+	// become a separately available fallback in the Artifact Store.
+	different := bytes.Clone(executable)
+	different[0] ^= 1
+	if _, err := store.adoptRebuilt(lockedDigest, different); !errors.Is(err, errRebuildDigestMismatch) {
+		t.Fatalf("different rebuild was accepted under the pinned digest: %v", err)
+	}
+	if _, _, err := store.GetBytes(digestBytes(different)); !errors.Is(err, errArtifactNotFound) {
+		t.Fatalf("rejected rebuild was published as a new identity: %v", err)
+	}
+	stillMissing, err := store.getMembers(expected)
+	if err != nil || stillMissing.Available() ||
+		memberByRole(t, stillMissing, "executable").Status != artifactMemberMissing {
+		t.Fatalf("rejected rebuild silently restored set availability: %+v err=%v", stillMissing, err)
+	}
+
+	// Only the exact original bytes can be adopted. The consumer must still
+	// re-fetch every pinned member to establish the set's current availability.
+	receipt, err := store.adoptRebuilt(lockedDigest, bytes.Clone(executable))
+	if err != nil || receipt.Operation != "put" || receipt.Digest != lockedDigest {
+		t.Fatalf("exact rebuild adoption lost locked identity: %+v err=%v", receipt, err)
+	}
+	reopened, err := openLocalArtifactStore(store.root, 1<<20)
+	if err != nil {
+		t.Fatal(err)
+	}
+	verified, err := reopened.getMembers(expected)
+	if err != nil || !verified.Available() {
+		t.Fatalf("exact rebuild did not restore complete set availability: %+v err=%v", verified, err)
+	}
+	if !bytes.Equal(memberByRole(t, verified, "executable").Bytes, executable) ||
+		!bytes.Equal(memberByRole(t, verified, "manifest").Bytes, manifest) ||
+		expected[0].Digest != lockedDigest {
+		t.Fatalf("rebuild changed the locked members: %+v", verified)
+	}
+}
