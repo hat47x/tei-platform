@@ -24,6 +24,10 @@ var schemaName = regexp.MustCompile(`^[a-z][a-z0-9_]{0,62}$`)
 type Provider struct {
 	Pool   *pgxpool.Pool
 	Schema string
+
+	// trustedOwnerRoutine is enabled only by trusted host composition, never
+	// from untrusted Plugin/Binding input.
+	trustedOwnerRoutine bool
 }
 
 func New(pool *pgxpool.Pool, schema string) (Provider, error) {
@@ -31,6 +35,24 @@ func New(pool *pgxpool.Pool, schema string) (Provider, error) {
 		return Provider{}, fmt.Errorf("PostgreSQLの接続または固定スキーマ名が不正です")
 	}
 	return Provider{Pool: pool, Schema: schema}, nil
+}
+
+// NewWithTrustedOwnerRoutine opts into a deployment-owned, fixed-name
+// apply_owner_effect(text,text,bigint,bytea,text) function in the fixed schema.
+// The function must enforce resource CAS and owner-side effects in the caller's
+// PostgreSQL transaction: positive = next resource version, 0 = resource
+// version conflict, -1 = Owner business denial, -2 = invalid Owner input.
+// Other negative values are contract violations (execution errors).
+// It must not commit, publish externally, or be controlled by a Plugin request.
+// DB ownership, EXECUTE grants, and all authority mutation paths require
+// independent deployment verification.
+func NewWithTrustedOwnerRoutine(pool *pgxpool.Pool, schema string) (Provider, error) {
+	p, err := New(pool, schema)
+	if err != nil {
+		return Provider{}, err
+	}
+	p.trustedOwnerRoutine = true
+	return p, nil
 }
 
 func (p Provider) Begin(ctx context.Context) (effectcommit.Transaction, error) {
@@ -41,12 +63,13 @@ func (p Provider) Begin(ctx context.Context) (effectcommit.Transaction, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &transaction{tx: tx, schema: `"` + p.Schema + `"`}, nil
+	return &transaction{tx: tx, schema: `"` + p.Schema + `"`, trustedOwnerRoutine: p.trustedOwnerRoutine}, nil
 }
 
 type transaction struct {
-	tx     pgx.Tx
-	schema string
+	tx                  pgx.Tx
+	schema              string
+	trustedOwnerRoutine bool
 }
 
 func (t *transaction) table(name string) string { return t.schema + `."` + name + `"` }
@@ -97,16 +120,36 @@ func (t *transaction) WriteResource(ctx context.Context, req effectcommit.Reques
 	if req.ExpectedVersion >= math.MaxInt64 {
 		return 0, effectcommit.ErrResourceConflict
 	}
-	q := "UPDATE " + t.table("objects") +
-		" SET value=$3, version=version+1 WHERE application=$1 AND resource=$2 AND version=$4 RETURNING version"
 	var next int64
-	err := t.tx.QueryRow(ctx, q, req.Scope.Application, req.Scope.Resource,
-		req.Payload, int64(req.ExpectedVersion)).Scan(&next)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return 0, effectcommit.ErrResourceConflict
-	}
-	if err != nil {
-		return 0, err
+	if t.trustedOwnerRoutine {
+		// The name is fixed, never supplied by request/Plugin. This call runs
+		// under the SAME pgx.Tx and authority lock as SaveReceipt and Commit.
+		// The trusted DB owner controls the routine body and its privileges.
+		q := "SELECT " + t.table("apply_owner_effect") + "($1,$2,$3,$4,$5)"
+		err := t.tx.QueryRow(ctx, q, req.Scope.Application, req.Scope.Resource,
+			int64(req.ExpectedVersion), req.Payload, req.OperationID).Scan(&next)
+		if err != nil {
+			return 0, err // missing routine, DB failure: fail closed, rollback
+		}
+		switch next {
+		case 0:
+			return 0, effectcommit.ErrResourceConflict
+		case -1:
+			return 0, effectcommit.ErrBusinessDenied
+		case -2:
+			return 0, effectcommit.ErrInvalidRequest
+		}
+	} else {
+		q := "UPDATE " + t.table("objects") +
+			" SET value=$3, version=version+1 WHERE application=$1 AND resource=$2 AND version=$4 RETURNING version"
+		err := t.tx.QueryRow(ctx, q, req.Scope.Application, req.Scope.Resource,
+			req.Payload, int64(req.ExpectedVersion)).Scan(&next)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return 0, effectcommit.ErrResourceConflict
+		}
+		if err != nil {
+			return 0, err
+		}
 	}
 	if next <= 0 {
 		return 0, fmt.Errorf("PostgreSQLの対象版が不正です")

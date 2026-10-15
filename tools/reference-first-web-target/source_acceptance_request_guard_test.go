@@ -20,10 +20,14 @@ type requestSourceReader struct {
 	record sourceacceptance.Record
 	err    error
 	calls  int
+	onRead func()
 }
 
 func (s *requestSourceReader) ReadCurrentAcceptedSource(_ context.Context, _ string) (sourceacceptance.Record, error) {
 	s.calls++
+	if s.onRead != nil {
+		s.onRead()
+	}
 	return s.record, s.err
 }
 
@@ -45,7 +49,7 @@ func TestCurrentAcceptedSourceHTTPRequestGuard(t *testing.T) {
 		dispatches++
 		w.WriteHeader(http.StatusNoContent)
 	})
-	handler := guardCurrentAcceptedSource(next, reader, "order_entry", index, startup)
+	handler := guardCurrentAcceptedSource(context.Background(), next, reader, "order_entry", index, startup)
 	request := func() *httptest.ResponseRecorder {
 		t.Helper()
 		response := httptest.NewRecorder()
@@ -108,19 +112,43 @@ func TestCurrentAcceptedSourceHTTPRequestGuardMissingReaderAndCancellation(t *te
 	}
 	calls := 0
 	next := http.HandlerFunc(func(http.ResponseWriter, *http.Request) { calls++ })
-	noReader := guardCurrentAcceptedSource(next, nil, "order_entry", index, startup)
+	noReader := guardCurrentAcceptedSource(context.Background(), next, nil, "order_entry", index, startup)
 	response := httptest.NewRecorder()
 	noReader.ServeHTTP(response, httptest.NewRequest(http.MethodGet, "/healthz", nil))
 	if response.Code != http.StatusServiceUnavailable || calls != 0 {
 		t.Fatal("missing current Reader reached HTTP dispatch")
 	}
 	reader := &requestSourceReader{record: startup}
-	handler := guardCurrentAcceptedSource(next, reader, "order_entry", index, startup)
+	handler := guardCurrentAcceptedSource(context.Background(), next, reader, "order_entry", index, startup)
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 	response = httptest.NewRecorder()
 	handler.ServeHTTP(response, httptest.NewRequest(http.MethodPost, "/scenario/submit", nil).WithContext(ctx))
 	if response.Code != http.StatusServiceUnavailable || calls != 0 || reader.calls != 0 {
 		t.Fatal("cancelled request reached Host or Command dispatch")
+	}
+
+	// An embedding Host may terminate without revoking the Reader first.
+	// The Host context is a separate fail-closed gate, independent of an
+	// otherwise valid Accepted Source witness and HTTP request context.
+	hostCtx, stopHost := context.WithCancel(context.Background())
+	handler = guardCurrentAcceptedSource(hostCtx, next, reader, "order_entry", index, startup)
+	stopHost()
+	response = httptest.NewRecorder()
+	handler.ServeHTTP(response, httptest.NewRequest(http.MethodPost, "/scenario/submit", nil))
+	if response.Code != http.StatusServiceUnavailable || calls != 0 || reader.calls != 0 {
+		t.Fatal("terminated Host allowed HTTP dispatch or queried Source Reader")
+	}
+
+	// The Host can also stop while a current-acceptance read is in flight.
+	// Even if the Reader returns a valid record, no Command may run.
+	hostCtx, stopHost = context.WithCancel(context.Background())
+	reader.onRead = stopHost
+	handler = guardCurrentAcceptedSource(hostCtx, next, reader, "order_entry", index, startup)
+	response = httptest.NewRecorder()
+	handler.ServeHTTP(response, httptest.NewRequest(http.MethodPost, "/scenario/submit", nil))
+	if response.Code != http.StatusServiceUnavailable || calls != 0 || reader.calls != 1 ||
+		response.Header().Get("Cache-Control") != "no-store" {
+		t.Fatal("Host termination during accepted Source read reached Command")
 	}
 }

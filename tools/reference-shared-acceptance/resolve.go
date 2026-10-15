@@ -235,6 +235,9 @@ func resolveCandidate(s snapshot, c Candidate) []Diagnostic {
 				diag("DATA_SOURCE_NOT_FOUND", "no authoritative source identifies Data %s", data)
 			}
 
+		case opRemoveCandidateKey, opRemoveFunctionalDependency:
+			out = append(out, resolveBusinessRuleRetraction(s, op)...)
+
 		case opAddApplication:
 			if _, exists := idx.applications[core.CanonicalID(op.Application.ID)]; exists {
 				diag("APPLICATION_ALREADY_EXISTS", "application %s は既に存在します", op.Application.ID)

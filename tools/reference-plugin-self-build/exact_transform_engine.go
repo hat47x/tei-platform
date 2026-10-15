@@ -234,7 +234,19 @@ func exactEngineWire(v transform.Value, depth int) (exactEngineWireValue, error)
 	return w, nil
 }
 
+// evaluateWithExactEngine retains the historical reference invocation for
+// callers with no Host Start admission. It must not be used as evidence that
+// a prepared package input remained authorized until physical OS Start.
 func evaluateWithExactEngine(executable, expectedDigest, sourcePath string, source transform.Source, inputs map[string]transform.Value) (transform.EvaluationResult, error) {
+	return evaluateWithExactEngineAtStart(executable, expectedDigest, sourcePath, source, inputs, nil)
+}
+
+// evaluateWithExactEngineAtStart is a REFERENCE transport hook, not a Host
+// Authority or independent grant resolver. If a trusted Host provides a
+// callback, it must serialize its CURRENT admission decision and cmd.Start
+// against revocation. The product's Linux pinned process uses its own
+// HostAdmittedPinnedLinuxProcess Start boundary, not this test hook.
+func evaluateWithExactEngineAtStart(executable, expectedDigest, sourcePath string, source transform.Source, inputs map[string]transform.Value, admitStart func(context.Context, func() error) error) (transform.EvaluationResult, error) {
 	digest, err := hashFile(executable)
 	if err != nil {
 		return transform.EvaluationResult{}, err
@@ -274,7 +286,33 @@ func evaluateWithExactEngine(executable, expectedDigest, sourcePath string, sour
 	cmd := exec.CommandContext(ctx, executable, "-source", sourcePath)
 	cmd.Stdin = bytes.NewReader(request)
 	cmd.Env = []string{}
-	stdout, err := cmd.Output()
+	var stdout []byte
+	if admitStart == nil {
+		// Keep old reference callers byte- and behavior-compatible.
+		stdout, err = cmd.Output()
+	} else {
+		var output bytes.Buffer
+		cmd.Stdout = &output
+		started := false
+		err = admitStart(ctx, func() error {
+			if started {
+				return fmt.Errorf("exact Runtime Engine physical Start requested more than once")
+			}
+			started = true
+			return cmd.Start()
+		})
+		if started && cmd.Process != nil {
+			// Even when an untrusted or buggy callback returns an error after
+			// starting, reap the child. This does not authorize that Start.
+			waitErr := cmd.Wait()
+			if err == nil {
+				err = waitErr
+			}
+		} else if err == nil {
+			err = fmt.Errorf("Host Start admission returned without invoking physical Start")
+		}
+		stdout = output.Bytes()
+	}
 	if err != nil {
 		return transform.EvaluationResult{}, fmt.Errorf("exact Runtime Engine execution failed: %w", err)
 	}

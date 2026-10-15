@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>TEI Studio — 読み取り専用ワークベンチ</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">鼎</span>
+        <div>
+          <strong>TEI Studio</strong
+          ><small>モデルを読む・関係をたどる・検証する</small>
+        </div>
+      </div>
+      <div class="header-actions">
+        <span class="readonly">読み取り専用</span
+        ><span id="connection" role="status">接続中</span
+        ><button id="validate" class="primary">作業領域を検証</button>
+      </div>
+    </header>
+    <main class="workbench">
+      <aside class="sidebar">
+        <label class="eyebrow" for="workspace">作業領域</label
+        ><select id="workspace" disabled aria-label="作業領域"></select>
+        <div class="sidebar-title">
+          <h2>モデル一覧</h2>
+          <span id="count">0 件</span>
+        </div>
+        <label class="sr-only" for="search">モデルを検索</label
+        ><input
+          type="search"
+          id="search"
+          placeholder="名前・種類で絞り込み"
+          autocomplete="off"
+        />
+        <nav id="subjects" aria-label="モデル一覧"></nav>
+      </aside>
+      <section class="center">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">モデル投影</p>
+            <h1 id="subject-title">作業領域に接続中</h1>
+          </div>
+          <span id="source-status" class="tag">未取得</span>
+        </div>
+        <p class="hint">
+          Go操作が返したモデルのJSONです。ソース本文の編集・保存・受理は行いません。
+        </p>
+        <div id="editor" class="editor"></div>
+        <div class="graph-head">
+          <h2>親子関係</h2>
+          <span class="tag">表示・選択のみ</span>
+        </div>
+        <p id="graph-note" class="hint">
+          モデルを選ぶと、一覧に含まれる直接の関係を表示します。
+        </p>
+        <div id="graph" class="graph"></div>
+      </section>
+      <aside class="inspector">
+        <p class="eyebrow">操作と診断</p>
+        <h2>作業領域の状態</h2>
+        <p id="diagnostic-summary" class="summary">未検証</p>
+        <div id="commands"></div>
+        <details class="revision">
+          <summary>観測したモデルの版</summary>
+          <code id="revision">未取得</code>
+          <p>この値は参照結果の同定用です。書込みや受理の権限を示しません。</p>
+        </details>
+      </aside>
+    </main>
+    <footer>
+      <span class="live-dot" aria-hidden="true"></span>
+      <p id="notice" role="status">Hostへの接続を開始しています。</p>
+      <span>Studio Reference · Web</span>
+    </footer>
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>

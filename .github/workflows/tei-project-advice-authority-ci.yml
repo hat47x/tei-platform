@@ -5,7 +5,9 @@ on:
     branches: [main]
     paths:
       - "tools/reference-runtime-capability-identity/**"
+      - "internal/plugin/runtime/process_host_start_admission*.go"
       - "plugins/reference-project-customer-advice/**"
+      - "tools/check-reference-project-plugin-isolation.sh"
       - "tools/reference-project-advice-lit/contract_bridge.go"
       - ".github/workflows/tei-project-advice-authority-ci.yml"
 
@@ -42,7 +44,13 @@ jobs:
         run: |
           set -euo pipefail
           test "$(git rev-parse HEAD)" = "$PR_HEAD_SHA"
-          gofmt -d tools/reference-runtime-capability-identity/*.go plugins/reference-project-customer-advice/*.go plugins/reference-project-customer-advice/cmd/reference-project-advice-process/*.go
-          test -z "$(gofmt -l tools/reference-runtime-capability-identity/*.go plugins/reference-project-customer-advice/*.go plugins/reference-project-customer-advice/cmd/reference-project-advice-process/*.go)"
-          go test -count=1 ./tools/reference-runtime-capability-identity ./plugins/reference-project-customer-advice ./plugins/reference-project-customer-advice/cmd/reference-project-advice-process
+          gofmt -d tools/reference-runtime-capability-identity/*.go plugins/reference-project-customer-advice/*.go plugins/reference-project-customer-advice/cmd/reference-project-advice-process/*.go internal/plugin/runtime/process_host_start_admission*.go
+          test -z "$(gofmt -l tools/reference-runtime-capability-identity/*.go plugins/reference-project-customer-advice/*.go plugins/reference-project-customer-advice/cmd/reference-project-advice-process/*.go internal/plugin/runtime/process_host_start_admission*.go)"
+          go test -count=1 ./tools/reference-runtime-capability-identity ./plugins/reference-project-customer-advice ./plugins/reference-project-customer-advice/cmd/reference-project-advice-process ./internal/plugin/runtime
           test "$(git rev-parse HEAD)" = "$PR_HEAD_SHA"
+      - name: 案件Go参照Pluginの本体非依存な隔離構築と試験
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$PR_HEAD_SHA"
+          bash tools/check-reference-project-plugin-isolation.sh
