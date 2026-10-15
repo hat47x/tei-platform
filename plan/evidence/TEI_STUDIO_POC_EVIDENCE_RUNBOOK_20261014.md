@@ -225,3 +225,47 @@ PoC A の**通常ビルド**を比較元とし、宣言合成の Builder は既�
 **実行**: `node --test journal-command.test.mjs` → **2/2 PASS、fail 0、skip 0、exit 0**。ノートtea→sketchに応じた `2 related entries`→`0 related entries` の変化、表示上 `enabled=true` でも削除が `denied`、未知commandの拒否を実測。これは**#8独立実行のconsumer側入力/拒否試験**であり、実Command DOM/権限Hostの検証ではない。
 
 **新規で追加したが未実行の範囲**: `shared-ports.test.mjs`の#1828/#1829実ソースを使ったGraph最小入力・click/Enter・dispose/remountとCommand Portの成功/拒否、更新後`browser-e2e.py`の3部品のUnmount/Remount連鎖。これらはProviderのexact pathを抽出した検証snapshotと実依存/Chromiumが必要で、#Workの旧固定版12/12 PASSへ含めない。次の独立実行でPASS/FAILを更新する。
+
+### 11.5 #Work独立実行：新版Graph/Commandと別用途アプリの三部品再表示（2026-10-15）
+
+**受領元**: [Issue #1824 / #Work実行報告 #6181785625](https://github.com/hat47x/tei-platform/issues/1824#issuecomment-6181785625)。以下は**#Workによる固定snapshotの独立実測**であり、#8が別環境で実行した成績ではない。§11.3/§11.4の「未実行」はそれぞれ当時の状態・#8自身による実行の範囲を示すもので、以下の後続#Work検証とは区別する。**Draft PRをmergeせず、各固定原本のGit blob生バイトを検証専用snapshotへ抽出**。元branchと他担当原本は変更しない。
+
+#### 11.5.1 Reading Journal / 別用途の固定入力と環境
+
+| 依存元 | exact revision |
+| --- | --- |
+| consumer / Draft PR #1825 | `78f7cb55f3fdf23c720379f937feba1c4a328cd9` |
+| Editor / Draft PR #1830 | `a7084fe1711cc48eff56fd20e3dc81c508f520a3` |
+| Graph / Draft PR #1828 | `786d8d82e19e8b08690aceadf9d180374e211448` |
+| Command / Draft PR #1829 | `01f5022240fd86c6ac38c1107310e299a1615b48` |
+
+**環境**: Windows、Node.js **24.21.0**、consumer専用lockfileを使った `npm ci`、esbuild **0.25.12**、CodeMirror `@codemirror/state@6.7.6` / `@codemirror/view@6.43.14` / `@codemirror/lint@6.9.7`。実ブラウザーは#WorkのIAB操作環境で、loopback **`127.0.0.1:4177`** の生成済みdistを開いた。**`browser-e2e.py`自体は未実行**。
+
+| 検査 | #Workの観測と判定 |
+| --- | --- |
+| 依存取得と固定 | **PASS**: lockを使用した `npm ci` |
+| consumer自動試験 | **17/17 PASS**: 実Graph/Commandの最小契約と、dispose後の古い選択イベント拒否を含む |
+| consumer実バンドル | **PASS**: 実Editor / Graph / Commandを含む最新版dist |
+| 3部品のUnmount | **PASS（実DOM）**: Editorの `.cm-editor`、Graph group、Command regionがそれぞれ0 |
+| Unmount中のノート切替とRemount | **PASS（実DOM）**: EntryをTea tastingに変更後、三部品を再表示。Editor本文とGraph選択が現在ノートを反映 |
+| Commandの成功 | **PASS（実DOM）**: Countで `成功: 2 related entries` |
+| Graphキーボード選択 | **PASS（実DOM）**: Window sketchでEnter→Entry・見出し・Editor本文が同期。省略ノード補足欄に `ラベル全文: Window sketch` を表示 |
+| Commandの拒否 | **PASS（実DOM）**: Deleteで `拒否: The reading journal does not permit deletion.` |
+| 自動Chromium E2Eスクリプト | **NOT RUN**: #Workはブラウザー操作ツールを使用。Python `browser-e2e.py`のPASSとは呼ばない |
+
+#Workの画面証拠: `outputs/reading-journal-lifecycle-20261015.jpg`（#Work実行環境内）。これは**Reader用途での同一共通部品再利用**の根拠であり、StudioのSource/Acceptance/実Host契約、Desktop WebView、全フォント・スクリーンリーダー・アクセシビリティ、完全なメモリリーク検査、利用者価値の合格を意味しない。#8側でこの画像を再取得・独立撮影したものではない。
+
+**再現入口**: 上表のexact SHAの各所有pathだけを非mergeで新しいsnapshotへ抽出後、`cd reference/tei-studio-independent-consumer && npm ci --no-audit --no-fund && npm test && npm run build`。生成したdistをloopback配信し、三部品Unmount→ノートTea tastingへ切替→Remount→Count→Graph Window sketch Enter→Deleteを順に検査する。自動E2Eの別実行をする場合は `python3 browser-e2e.py` の結果を区別して記録する。
+
+#### 11.5.2 Studio実Host / 新版Graphは別snapshotで未確認部分あり
+
+#WorkはStudio側の**別固定snapshot**でもGraph新版 `786d8d82e19e8b08690aceadf9d180374e211448` を試験した。入力: Workbench #1849 `c55ad228`、静的合成 #1833 `fe8e37b1`、Command `01f5022240fd86c6ac38c1107310e299a1615b48`、Host #1832 `d520689cfb0a2e2919aa86b0beeba54802b31465`（各短縮SHAは#Work報告の表記。検証再現時は対象の完全SHAを再取得して固定する）。
+
+- **PASS**: Graph **8/8 tests**、生成入口strict型検査、実bundle、Go **1.26.9** / Wails **beta29** / `CGO_ENABLED=0` / server / readonly build。
+- **PASS（配信資産）**: loopback `127.0.0.1:43129` でServer起動ログとPID `27615`を観測。配信 `main.js` とdistのSHA-256一致：`1166d9489c76028ba21c9eaf44d25c6f36f98d5845d1f5a0599ea51bdfb1f1ee`。
+- **NOT VERIFIED（Studio新版Graphの実画面）**: 既存tabのnavigationと後続CDP読取りがtimeout。**ブラウザー操作timeoutはServer停止やGraph失敗の証明ではない**。#WorkはServerを再起動せず、同Server/tabでのGraph選択・更新UI確認を保留。
+- **別件の実行手順上の失敗を分離**: シェル起動用ファイルを誤ってCRLF保存して最初の起動手順が失敗したが、LFへ修正後に実行成功。原本実装や成果物のFAILではない。
+
+**結論の境界**: 新版Graphの**Reading Journalでのブラウザー実操作はPASS**。同じGraphを組み込んだ**Studio新版Graphの実ブラウザーは未確認**。過去の#1849 Studio実Hostブラウザー成功（別Graph revision）の証拠も消さず、今回の新版GraphがStudioで動いた証拠として流用しない。#2/#1の生成Go実Host内部接続とDesktop実WebViewは残課題であり、PoC全体は未完了。
+
+本節は独立検証の受領記録であり、新しいADR/GateやStudio外のIssue対応を発生させない。Studio側の残件は既存担当が継続する。
