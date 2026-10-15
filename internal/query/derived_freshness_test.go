@@ -17,6 +17,7 @@ type d3QueryVerifier struct {
 	currentCalls int
 	alignedCalls int
 	deny         bool
+	denyAligned  bool
 }
 
 func (v *d3QueryVerifier) VerifyCurrent(_ context.Context, _ derivationref.CacheWitness) error {
@@ -29,6 +30,9 @@ func (v *d3QueryVerifier) VerifyCurrent(_ context.Context, _ derivationref.Cache
 
 func (v *d3QueryVerifier) VerifyAligned(_ context.Context, _ derivationref.CacheWitness) error {
 	v.alignedCalls++
+	if v.denyAligned {
+		return errors.New("snapshot alignment not attested")
+	}
 	return nil
 }
 
@@ -589,5 +593,59 @@ func TestD3MemoNoCacheExplicitSourceAgeAndAlignmentAreVerified(t *testing.T) {
 	if _, hit, err := memo.Resolve(context.Background(), q, plan, proof, w,
 		policy, now, v, allow, load); err != nil || hit || calls != 3 || v.alignedCalls != 2 {
 		t.Fatalf("attested no-cache snapshot not evaluated: hit=%v loads=%d aligned=%d err=%v", hit, calls, v.alignedCalls, err)
+	}
+}
+
+func TestD3MemoAlignmentOnlyZeroClockStillChecksTrustedTwoSourceSnapshot(t *testing.T) {
+	q, plan, proof, rows := d2Fixture()
+	w := d3QueryWitness()
+	second := w.Sources[0]
+	second.SourceID = "pricing"
+	second.Revision = "price-v1"
+	w.Sources[0].SnapshotRef = "provider-attested-batch"
+	second.SnapshotRef = "provider-attested-batch"
+	w.Sources = append(w.Sources, second)
+
+	// A matching claimed snapshot is not sufficient: both the current Host
+	// and a distinct Provider read must attest the two sources.
+	provider := &d3MemoSourceReader{sources: map[string]derivationref.SourceObservation{
+		"inventory": w.Sources[0],
+		"pricing":   w.Sources[1],
+	}}
+	host := &d3QueryVerifier{}
+	verifier := derivationref.SourceBoundVerifier{Current: host, Sources: provider}
+	policy := derivationref.CachePolicy{RequireAligned: true}
+	allow := func(core.CanonicalID) bool { return true }
+	loads := 0
+	load := func(context.Context, int) ([]query.DerivedRow, bool, error) {
+		loads++
+		return rows, true, nil
+	}
+	var memo query.DerivedMemo
+
+	result, hit, err := memo.Resolve(context.Background(), q, plan, proof, w,
+		policy, time.Time{}, verifier, allow, load)
+	if err != nil || hit || result.Count != 5 || loads != 1 ||
+		provider.reads != 4 || host.currentCalls != 2 || host.alignedCalls != 2 {
+		t.Fatalf("zero-clock aligned source rejected or skipped checks: result=%#v hit=%v err=%v loads=%d sourceReads=%d current=%d aligned=%d",
+			result, hit, err, loads, provider.reads, host.currentCalls, host.alignedCalls)
+	}
+
+	// Matching snapshot refs cannot override an explicit Host rejection.
+	host.denyAligned = true
+	_, hit, err = memo.Resolve(context.Background(), q, plan, proof, w,
+		policy, time.Time{}, verifier, allow, load)
+	if !errors.Is(err, derivationref.ErrNotCoherent) || hit || loads != 1 ||
+		provider.reads != 6 || host.currentCalls != 3 || host.alignedCalls != 3 {
+		t.Fatalf("unattested zero-clock snapshot reached Provider load: hit=%v err=%v loads=%d sourceReads=%d current=%d aligned=%d",
+			hit, err, loads, provider.reads, host.currentCalls, host.alignedCalls)
+	}
+
+	// Disabling clock checks never makes an invalid policy acceptable.
+	_, hit, err = memo.Resolve(context.Background(), q, plan, proof, w,
+		derivationref.CachePolicy{MaxSourceAge: -time.Second, RequireAligned: true},
+		time.Time{}, verifier, allow, load)
+	if !errors.Is(err, derivationref.ErrCacheEvidence) || hit || loads != 1 {
+		t.Fatalf("invalid age policy reached Provider load: hit=%v err=%v loads=%d", hit, err, loads)
 	}
 }
