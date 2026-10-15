@@ -57,10 +57,11 @@ func (m *DerivedMemo) Resolve(
 	if !witnessMatchesPlan(q, plan, witness) {
 		return DerivedSelectResult{}, false, fmt.Errorf("%w: witness does not match D2 plan", derivationref.ErrCacheEvidence)
 	}
-	for _, source := range witness.Sources {
-		if source.ObservedAt.After(now) {
-			return DerivedSelectResult{}, false, fmt.Errorf("%w: future source observation", derivationref.ErrCacheEvidence)
-		}
+	// Memo TTL only measures time since evaluation. A consumer may
+	// independently require the underlying SourceAsOf to be recent.
+	// Fail before cache hits AND before loading another stale full source.
+	if err := derivationref.CheckSourceFreshAt(witness, policy, now); err != nil {
+		return DerivedSelectResult{}, false, err
 	}
 	witnessKey, err := derivationref.QualifyCache(ctx, witness, policy, verifier)
 	if err != nil {
