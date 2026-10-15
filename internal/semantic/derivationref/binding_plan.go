@@ -6,6 +6,8 @@ import (
 	"strings"
 
 	"tei/internal/core"
+	"tei/internal/environment"
+	"tei/internal/plugin"
 	"tei/internal/modelref"
 	"tei/internal/semantic"
 	"tei/internal/subject"
@@ -55,9 +57,18 @@ type AcceptedChoice struct {
 type SelectedRealization struct {
 	Rule           modelref.Ref
 	PluginID       string
+	PluginVersion  string
 	Implementation string
 	OutputType     core.CanonicalID
 	NullPolicy     string
+}
+
+// LockedPluginView delegates plugin existence/version and manifest checks to
+// the existing #951 resolver and Runtime Plugin Lock, never to a D4 registry.
+type LockedPluginView struct {
+	Catalog     plugin.Catalog
+	Environment environment.Environment
+	Lock        plugin.Lock
 }
 
 type AcceptedBindingSnapshot struct {
@@ -73,6 +84,7 @@ type BindingRequest struct {
 	Accepted         AcceptedBindingSnapshot
 	ProposedBindings []AcceptedBinding
 	Targets          []TypedTarget
+	LockedPlugins    *LockedPluginView
 }
 
 type ResolvedBinding struct {
@@ -82,6 +94,7 @@ type ResolvedBinding struct {
 	Scope          string
 	OutputType     core.CanonicalID
 	PluginID       string
+	PluginVersion  string
 	Implementation string
 }
 
@@ -285,6 +298,24 @@ func ResolveBindings(request BindingRequest) BindingPlan {
 		}
 		choices[key] = choice.BindingID
 	}
+	// Resolve through the existing Plugin catalog/Runtime Lock; an ID listed
+	// in a D4 selection does not itself register or authorize a plugin.
+	locked := make(map[plugin.Identity]bool)
+	if len(request.Accepted.Realizations) != 0 {
+		if request.LockedPlugins == nil {
+			diag("plugin-lock-required", "locked-plugins")
+		} else {
+			view := request.LockedPlugins
+			resolved, err := view.Catalog.ResolveEnvironmentWithLock(view.Environment, view.Lock)
+			if err != nil {
+				diag("plugin-lock-unresolved", "locked-plugins")
+			} else {
+				for _, ident := range resolved.Plugins {
+					locked[ident] = true
+				}
+			}
+		}
+	}
 	realizations := make(map[modelref.Key]SelectedRealization)
 	for i, selected := range request.Accepted.Realizations {
 		at := fmt.Sprintf("accepted/realizations/%d", i)
@@ -297,8 +328,12 @@ func ResolveBindings(request BindingRequest) BindingPlan {
 			diag("unaccepted-realization-rule", at)
 			continue
 		}
-		if selected.PluginID == "" || selected.Implementation == "" {
+		if selected.PluginID == "" || selected.PluginVersion == "" || selected.Implementation == "" {
 			diag("invalid-realization", at)
+			continue
+		}
+		if !locked[plugin.Identity{ID: core.CanonicalID(selected.PluginID), Version: selected.PluginVersion}] {
+			diag("unregistered-or-unlocked-plugin", at)
 			continue
 		}
 		if selected.OutputType != rule.OutputType || selected.NullPolicy != rule.NullPolicy {
@@ -348,6 +383,7 @@ func ResolveBindings(request BindingRequest) BindingPlan {
 		entry := group[selected].entry
 		if implementation, ok := realizations[entry.Rule]; ok {
 			entry.PluginID = implementation.PluginID
+			entry.PluginVersion = implementation.PluginVersion
 			entry.Implementation = implementation.Implementation
 		}
 		plan.Bindings = append(plan.Bindings, entry)
