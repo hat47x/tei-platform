@@ -50,6 +50,24 @@ Goの資格試験では未知Workspace、警告3件を維持するCLI/Go/Host比
 
 **未確認／別の検査**：現在のmainへの適合、実Wails IPC/生成bindingを経る同一fixture照合、Desktop実WebView、公開Webの認証とIdP、Source Indexだけが失敗するfixture、成果物の統合資格。#1849の新しいheadの画面成功や#10のHost境界PASSをこれらの合格には転用しません。
 
+## 2026-10-15 入力ファイル欠落のCLI/Host応答比較（**Host実行未確認**）
+
+既存の`internal/workspace/source_index_boundary_test.go::TestSourceIndexRejectsBrokenSymlink`と**同じbroken-symlink fixture手法**を再利用し、`sources: custom`の一時Workspaceで`custom/missing.tei -> not-present.tei`を作成。CLIとHostの両方に**同一の欠落状態のWorkspace**を渡す（本体Host/CLI/Loaderの変更なし）。
+
+- **最初の失敗段階**：`workspace.Load -> scanManagedFiles`は存在するsource root内の壊れたシンボリックリンクを`rootHandle.Stat`で検出し、`workspace.BuildSourceIndex`に到達する前に停止する。これは`SOURCE_INDEX_FAILED`ではなく`WORKSPACE_LOAD_FAILED`となるはずで、上記の重複index名による**真のStageSourceIndex fixtureとは異なる**。
+- **共通する意味分類**：CLI JSONの `ok:false, error.code=WORKSPACE_LOAD_FAILED, diagnostics=[]`、Go Operationの `ValidationFailure.StageLoad`、Hostの `ok:false, failure.code=WORKSPACE_LOAD_FAILED, failure.stage=load`。Source Index未構築なのでsource line/column診断の一致は比較不能。
+- **最初の応答差**：CLIのerror messageは `opErr.Error()`をそのまま返すため`custom/missing.tei`という欠落位置を含む。Host `operationFailure(StageLoad)`は `workspace loading failed`へマスクして**パスを返さない**。すなわち**エラー分類は一致するが、詳細メッセージ・出典ファイル位置は一致しない**。これは情報露出を抑える既存境界であり、HostをCLI同様にパス公開する変更は不適切。
+- **#6最小変更**：`cli_operation_parity_test.go`に同fixture生成helperと`TestMissingSourceIndexInputStopsAtWorkspaceLoad`を追加し、実CLI/Goでの段階・ファイル名・空診断を照合（ビルドタグなし）。`studiohost_source_index_failure_test.go`に`TestMissingSourceIndexInputCLIHostErrorLocation`を追加し、実Go Hostのstage/codeとメッセージ秘匿の意図的な差を照合（`studiohost_parity`タグあり）。
+- **試験したとはまだ主張しない**：コード変更のexact headは`19c6aa01e2a39e12b5de9030c04fc5458c8e6c26`。この段階でLinux Go1.26.9のCIは処理待ち／実行中、タグ付きGo Host比較は未実行。現在の作業環境はGo1.23.2で、要求Go1.26.9と固定Host snapshotがないため、ここでの実行は不可。CIは通常タグなし経路を走るが、**Host parity taggedテストの実行証拠にはならない**。
+
+**最小再現（#Work / Go1.26.9固定snapshot）**: main`128429482e02d96afe0123ee7da023256094dfca`に上記#6の資格ディレクトリと#1832`d520689cfb0a2e2919aa86b0beeba54802b31465`の`internal/studiohost/`をパス別抽出し、Draft mergeなしで実行する。
+
+~~~sh
+go test -race -count=1 -v ./tools/reference-studio-host-qualification -run TestMissingSourceIndexInputStopsAtWorkspaceLoad
+go test -race -count=1 -v -tags studiohost_parity ./tools/reference-studio-host-qualification -run TestMissingSourceIndexInputCLIHostErrorLocation
+go vet -tags studiohost_parity ./tools/reference-studio-host-qualification
+~~~
+
 ## 2026-10-15 Source Index専用失敗の実fixture候補（**追加・未実行**）
 
 従来blockedだった「`workspace.Load`成功後に`workspace.BuildSourceIndex`だけが失敗する」区分の再現fixtureを、既存コードから構成しました。**実行PASSは未確認**です。
