@@ -263,6 +263,61 @@ func TestD4IdenticalChoiceDeclarationsRejectWithoutPartialPlan(t *testing.T) {
 	}
 }
 
+// Two typed attributes may have identical Kind and ID while belonging to
+// different scopes. A Choice for one cannot resolve a conflict in the other.
+func TestD4SameAttributeIDAcrossScopesDoesNotShareChoice(t *testing.T) {
+	req := d4Fixture(t)
+	peer := req.Targets[0] // retain the existing Semantic Attribute type
+	peer.Ref.Scope = "partner"
+	req.Targets = append(req.Targets, peer)
+	req.Graph.Nodes = append(req.Graph.Nodes, d4Node(peer.Ref, "Amount"))
+	req.Accepted.Bindings = append(req.Accepted.Bindings, AcceptedBinding{
+		ID: "partner.line_attribute", Rule: req.Accepted.Bindings[0].Rule,
+		Target: peer.Ref, Scope: SemanticAttributeScope,
+	})
+	d4SecondRule(&req) // creates a collision only in the "sales" scope
+
+	if peer.Ref.Subject != req.Targets[0].Ref.Subject || peer.Ref.Scope == req.Targets[0].Ref.Scope {
+		t.Fatal("fixture must share typed Subject but differ in scope")
+	}
+
+	// With no Choice, the sales collision rejects even though partner and
+	// Query-local targets can be resolved independently.
+	rejected := ResolveBindings(req)
+	if !d4HasCode(rejected, "ambiguous-target") || len(rejected.Bindings) != 0 {
+		t.Fatalf("cross-scope fixture must fail closed without Choice: %+v", rejected)
+	}
+
+	// Choosing only the sales collision must not replace the partner Binding.
+	req.Accepted.Choices = []AcceptedChoice{{
+		Target: req.Targets[0].Ref, BindingID: "sales.alternative_attribute",
+	}}
+	allowed := ResolveBindings(req)
+	if len(allowed.Diagnostics) != 0 || len(allowed.Bindings) != 3 {
+		t.Fatalf("scope-qualified Choice should preserve three distinct targets: %+v", allowed)
+	}
+	bound := make(map[modelref.Key]string)
+	for _, entry := range allowed.Bindings {
+		bound[entry.Target] = entry.BindingID
+	}
+	salesKey := modelref.Key{Scope: req.Targets[0].Ref.Scope, Subject: peer.Ref.Subject}
+	partnerKey := modelref.Key{Scope: peer.Ref.Scope, Subject: peer.Ref.Subject}
+	if bound[salesKey] != "sales.alternative_attribute" ||
+		bound[partnerKey] != "partner.line_attribute" || len(bound) != 3 {
+		t.Fatalf("cross-scope Choice leaked or same-ID targets were collapsed: %+v", bound)
+	}
+
+	// Negative: the SAME Binding ID chosen at the partner scope cannot
+	// select a sales Binding. The unresolved sales collision still blocks all.
+	req.Accepted.Choices[0].Target = peer.Ref
+	wrongScope := ResolveBindings(req)
+	if !d4HasCode(wrongScope, "choice-not-applicable") ||
+		!d4HasCode(wrongScope, "ambiguous-target") ||
+		len(wrongScope.Bindings) != 0 {
+		t.Fatalf("Choice from another scope must not authorize sales target: %+v", wrongScope)
+	}
+}
+
 func TestD4FailuresAreFailClosed(t *testing.T) {
 	cases := []struct {
 		name string
