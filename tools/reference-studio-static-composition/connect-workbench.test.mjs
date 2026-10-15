@@ -92,24 +92,19 @@ test('generated module, declaration and trace digests must agree', async () => {
     /generated_mount_export_missing/);
 });
 
-// #1849 is a separate Draft. When its exact source is present in a non-merge
-// snapshot, assert actual blob identity; do not silently test a different head.
-test('fixed #1849 real old/new source is accepted when staged', async t => {
-  const pathname = new URL('../../reference/tei-studio-workbench/main.ts', import.meta.url);
-  let source;
-  try { source = await readFile(pathname, 'utf8'); }
-  catch (error) {
-    if (error.code !== 'ENOENT') throw error;
-    t.skip('neither fixed #1849 main.ts is staged on this isolated #1833 branch');
-    return;
-  }
+// The checkout may contain a different Workbench revision. Use only this
+// explicitly pinned fixture instead of inferring a snapshot from the caller.
+test('fixed #1849 Workbench fixture and its dependencies match exact blobs', async () => {
+  const snapshot = new URL('./testdata/poc-b-workbench-snapshot/', import.meta.url);
+  const source = await readFile(
+    new URL('reference/tei-studio-workbench/main.ts', snapshot), 'utf8');
   const matched = pinnedWorkbenchRevision(source);
-  assert.ok(WORKBENCH_PINS.includes(matched));
+  assert.equal(matched.head, WORKBENCH_CURRENT_HEAD);
   assert.equal(gitBlobSHA(source), matched.mainBlob);
   const commandSource = await readFile(
-    new URL('../../reference/tei-studio-command/command.ts', import.meta.url), 'utf8');
+    new URL('reference/tei-studio-command/command.ts', snapshot), 'utf8');
   const responsesSource = matched.responsesBlob
-    ? await readFile(new URL('../../reference/tei-studio-workbench/responses.ts', import.meta.url), 'utf8')
+    ? await readFile(new URL('reference/tei-studio-workbench/responses.ts', snapshot), 'utf8')
     : undefined;
   assert.equal(inspectPinnedDependencies(matched, commandSource, responsesSource), true);
   assert.throws(() => inspectPinnedDependencies(matched, commandSource + '\\n', responsesSource),
