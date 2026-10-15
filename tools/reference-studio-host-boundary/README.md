@@ -169,3 +169,23 @@ node --test tools/reference-studio-host-boundary/client_boundary.test.mjs
 - **レスポンスの検査範囲**：未知ID等のHost failure envelopeとClient transport例外から**Host内部の絶対rootを出さない**ことが対象。意図的な`WorkspaceRef.Label`（rootのbasename）、Catalog/Inspectのモデル内容やSource Index由来の相対path、caller自身が送信した文字列が表示されることまで「機密漏洩ゼロ」と判定しない。#1832のinspect errorは不正subjectの文字列を説明に含める場合があり、その値の扱いは呼出元・UI描画方式と切り分ける。
 - **セキュリティ資格の限界**：`createReadOnlyClient`を介さずWails Runtimeへ直接要求する呼出元も想定し、**Go `StudioBridge`側で厳密な公開メソッド制限**が必要。JSのObject.freeze、loopbackバインド、UIの非編集状態をAuthorityとはみなさない。Host-authorized root内のファイルをLoaderが安全に開くこと、symlink/junction差替え耐性、別利用者のSession認可、機微Wails Eventの配信隔離は未検証。
 - **Desktop**：#1832でWindowsバイナリbuildが成功してもWebView2実起動は未確認。Linux native GTK/WebKitGTK GUI、macOS WKWebView、Desktop再起動/OS資源も引き続きNOT RUN。上の追加Go/Node否定試験のPASSをDesktopのPASSに転用しない。
+
+
+## 2026-10-15: #Work独立再実行（#1827 c807bd1a）
+
+**根拠**：[Issue #1824 / #Work実測コメント 6181458555](https://github.com/hat47x/tei-platform/issues/1824#issuecomment-6181458555)。以下は**報告された独立実行**の採録であり、以前の`NOT RUN`記録を消さず**対象版の進行に応じて更新**する。#10のこの会話が再度Go1.26.9で実行したという意味ではない。
+
+| 軸 | 厳密な入力と結果 |
+| --- | --- |
+| 固定Git入力 | main `128429482e02d96afe0123ee7da023256094dfca`、#1832 Host `d520689cfb0a2e2919aa86b0beeba54802b31465`、#1826 qualification `08fc5b3a39ed0005f625a2597a042f79b6e1c0cf`、**#1827 boundary `c807bd1a14ea5c9b6cdff0ad0ee18c1db511c1a4`**。各Draftの対象pathのみを検証専用Linux-native snapshotへ抽出。mergeしていない |
+| Go環境 | Go **1.26.9**、Linux-native。WailsのDesktop実WebViewではなく、Go packageテスト/静的検査 |
+| Go実行 | `go test -race -count=1 -v -tags studiohost_parity,tei_studio_host_integration` を、`./tools/reference-studio-host-qualification`、`./tools/reference-studio-host-boundary`、`./tools/reference-studio-static-composition` の**3 package**へ適用。対象`go vet`とともに**終了コード0／PASS** |
+| 境界で観測したケース | 未知・パス風Workspace ID、Host root（検査用sentinel）の応答非表示、Host中立read-only APIの4メソッド、Wails Bridge `main.go` **ASTでの公開4メソッド**。その他旧Referenceの合成Sessionと#1529 Draft Store境界も同パッケージの対象 |
+| Node環境と結果 | **Windows Node 24.21.0**、上記の固定されたqualification/boundaryの**2 path**で実client importを含むNode試験 **計7/7 PASS**。本#10の`client_boundary.test.mjs`3ケースの独立実行成功も含まれるが、7件全部を#10だけの件数とはしない |
+| Workbenchの別の固定版 | #1849はこの時点で新head `c55ad2285268533f5f1c90fbc9fe766bae57f009`、Command #1829 `01f5022240fd86c6ac38c1107310e299a1615b48`。旧応答排除と状態クリアを#Workが独立検証した**別snapshot**であり、#1827のHost境界Go試験やDesktopの資格と混同しない |
+
+**判定の更新**：この節に明記した **#1827 `c807bd1a...`** のタグ付きGo追加試験は、上記固定snapshotで **PASS（#Work独立実行）**。前節の「追加Goタグ付きテスト：NOT RUN」は追加直後の履歴であり、**同じexact headに対しては本節の実行実績が後続記録**となる。一方、これ以降に変更された#1827のheadへPASSを転用してはならない。
+
+**限界は不変**：Host private rootのsentinelが列挙・いくつかのfailureに出ないことは、全モデル投影・UIの表示・Source Index・ログ・Wails Event・Service IPCを含む**全情報非漏洩の証明ではない**。4メソッドのAST/API検査は実際のWails Serviceの接続ごとの認可、CSRF、WebSocket購読、Session失効を証明しない。Wails Desktop実ウィンドウ/WebViewの起動、OSファイル権限、Workspace symlink/junction/TOCTOU、配布・署名、#259生成Application Targetの適合は**依然NOT RUN/BLOCKED**。#1043のSessionは合成、#1529はprivate Draft Marker領域に限る。
+
+**次の#10独立課題**：#2がDesktop実起動のexact binary/source/OS/WebView証拠を取得したら、起動時許可Workspaceを元に未知ID、許可外path、メソッド公開面、応答failure、再起動時の失効・Draft非昇格を、`-tags server`のWeb証拠から分けて確認する。Host未提供の操作（Accepted Sourceへのwrite、任意file open、実ユーザー認証等）は実装・検証済みとしない。生成対象製品への昇格判定は#259/#1182に委ねる。
