@@ -192,3 +192,19 @@ Host権限、案件による業務意味の受理は**未検証**。
 入れ替えるbytesは元と同じにしてあり、digestの照合だけでは検出できないため、open時の同一性検査と読出し後の再確認を個別に確かめられます。
 
 固定できていない範囲は次のとおりです。差込み点は上の三か所だけで、読出しの途中でbytesを書き換える競合や、`algorithm`ディレクトリの入替え時点の網羅は、既存の試験が個別に確かめる範囲にとどまります。悪意のあるfilesystem管理者への耐性は主張しません。
+
+
+## Build出力集合の公開と再確認（#1105・PoC補完）
+
+`publishExactMembers(expected, built)` は既存CASの `PutBytes` と `getMembers` を再利用する、Host/build側からStore側への **明示的な公開操作** です。新しいArtifact Resolver、Artifact Set ID、Trust権限は作りません。
+
+1. 期待するRoleと正確なSHA-256 digest、および実際にBuildが返したRole→bytesの集合を別入力として受け取る。
+2. Role欠落・余剰・重複・不正digestを拒否し、**全Role**について実bytesのdigestが期待に一致するまでCASへ一件も書かない。バイト列は公開前にPrivate Snapshotへコピーする。
+3. 検査済みのRole順で、既存`PutBytes`のno-clobber・冪等CAS公開を行う。
+4. 公開後、全Roleを既存`getMembers`で再取得してdigestを再検証し、全件availableだったときだけ`artifactSetPublication`を返す。返すのはRoleごとのputとgetのReceiptであり、Acceptanceや署名を含まない。
+
+**失敗時の区別**：事前検査が失敗した場合は公開ゼロ。途中のディスク故障・既存破損などの公開失敗後には、最初の一部RoleがすでにCASへ残っていることがある。CASをロールバック可能なトランザクションとして偽装せず、**集合の公開成功結果は返さない**。後続Consumerは`getMembers`を再実行して全memberの現在の可用性を確認する。既存の不正なdigest pathは自動修復しない。
+
+`go test ./tools/reference-build-artifact-store` は、二件の完全公開・順序非依存・冪等再公開、Role欠落・余剰・後段digest不一致の公開ゼロ、破損二件目での部分公開失敗、ゼロ長artifactの正確な取得を検証する。
+
+**未成立**：実Builderからの`ArtifactSet`生成と権限あるPublishの経路、複数CASオブジェクトの原子的Commit、別Host間での可用性、本番署名・Build AttestationのTrust、Deployment/Runtime Acceptance、失効、GC。従来の`buildReferenceEvidence`は固定digestの合成Referenceであるため、この公開経路へ接続しただけでは実Build end-to-endの成立としません。
