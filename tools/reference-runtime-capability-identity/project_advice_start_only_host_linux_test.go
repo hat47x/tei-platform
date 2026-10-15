@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 
 	"tei/internal/core"
@@ -22,7 +23,7 @@ type projectStartOnlyHost struct {
 	mu          sync.RWMutex
 	environment core.CanonicalID
 	authority   RuntimeEnvironmentAuthority
-	starts      int
+	starts      atomic.Int32
 }
 
 func (h *projectStartOnlyHost) current(
@@ -55,7 +56,7 @@ func (h *projectStartOnlyHost) startAdmission(
 		); err != nil {
 			return fmt.Errorf("Host OS Start admission rejected current Environment Grant: %w", err)
 		}
-		h.starts++
+		h.starts.Add(1)
 		return start()
 	}
 }
@@ -128,7 +129,7 @@ func TestProjectAdviceHostStartOnlyAdmissionClosesOldReadVerifyGap(t *testing.T)
 	if err := json.Unmarshal(initial.Response.Payload, &advice); err != nil {
 		t.Fatal(err)
 	}
-	if advice.Kind != "review_suggested" || a.starts != 1 ||
+	if advice.Kind != "review_suggested" || a.starts.Load() != 1 ||
 		initial.Provenance.ArtifactVerification == nil ||
 		!initial.Provenance.ArtifactVerification.DigestVerified {
 		t.Fatalf("independent project Go executable was not admitted: %+v / %+v", advice, initial.Provenance)
@@ -147,8 +148,8 @@ func TestProjectAdviceHostStartOnlyAdmissionClosesOldReadVerifyGap(t *testing.T)
 		!strings.Contains(err.Error(), "OS Start admission rejected") {
 		t.Fatalf("physical Start accepted stale A Grant: %v", err)
 	}
-	if hooked.calls != 1 || a.starts != 1 {
-		t.Fatalf("stale Plan reached OS Start: verifier calls=%d starts=%d", hooked.calls, a.starts)
+	if hooked.calls != 1 || a.starts.Load() != 1 {
+		t.Fatalf("stale Plan reached OS Start: verifier calls=%d starts=%d", hooked.calls, a.starts.Load())
 	}
 
 	// B's separate Environment has the SAME signed/unsigned binary image
@@ -157,21 +158,21 @@ func TestProjectAdviceHostStartOnlyAdmissionClosesOldReadVerifyGap(t *testing.T)
 	if err != nil {
 		t.Fatalf("unrelated Host Environment B lost its Grant: %v", err)
 	}
-	if surviving.Provenance.Environment != envB || b.starts != 1 {
+	if surviving.Provenance.Environment != envB || b.starts.Load() != 1 {
 		t.Fatalf("independent Environment B did not pass its OWN start gate: %+v", surviving.Provenance)
 	}
 
 	// The next A call fails at current-plan read, even earlier than Start.
-	before := a.starts
+	before := a.starts.Load()
 	if _, err := invoke(a, planA, runnerA, sandboxA, "start-only-a-next"); err == nil ||
-		!strings.Contains(err.Error(), "Execution Grant") || a.starts != before {
+		!strings.Contains(err.Error(), "Execution Grant") || a.starts.Load() != before {
 		t.Fatalf("revoked A unexpectedly reached Start: %v", err)
 	}
 	a.restore(grantA)
 	if _, err := invoke(a, planA, runnerA, sandboxA, "start-only-a-grant-restored"); err != nil {
 		t.Fatalf("explicit Host Grant restoration failed: %v", err)
 	}
-	if a.starts != before+1 {
+	if a.starts.Load() != before+1 {
 		t.Fatal("restored Host Grant did not enter OS Start")
 	}
 }
