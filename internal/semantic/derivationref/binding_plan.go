@@ -7,8 +7,8 @@ import (
 
 	"tei/internal/core"
 	"tei/internal/environment"
-	"tei/internal/plugin"
 	"tei/internal/modelref"
+	"tei/internal/plugin"
 	"tei/internal/semantic"
 	"tei/internal/subject"
 )
