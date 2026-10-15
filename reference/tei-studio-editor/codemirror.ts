@@ -22,7 +22,8 @@ export const codeMirrorRenderer: RendererFactory<HTMLElement> = {
           EditorState.readOnly.of(true),
           EditorView.editable.of(false),
           EditorView.lineWrapping,
-          EditorView.contentAttributes.of({ "aria-label": "Read-only source text" }),
+          // A non-editable .cm-content is otherwise not keyboard-focusable.
+          EditorView.contentAttributes.of({ "aria-label": "Read-only source text", tabindex: "0" }),
           lintGutter(),
           EditorView.updateListener.of(update => {
             if (disposed || programmaticDispatch || !update.selectionSet || update.docChanged) return;
