@@ -74,3 +74,19 @@ Production Hostへの最小要求を次のように限定する。
 | SB1-H10 | 過去の適正出力は一致、実行時点の権限が無効 | バイト一致とHost受入を混同しない | 出力観測APIは認可を付与しない。受入は未実証 |
 
 本Referenceは診断試験であり、本番で競合を防止する実装は未着手。SB1-H04/H05/H06/H08/H09/H10の受理を宣言しない。
+
+## 7. 実Start Gateとの対照実証（Reference。Production未接続）
+
+`tools/reference-plugin-self-build/exact_transform_engine.go`の**参照用**実行関数に、物理プロセスの`cmd.Start`だけを包むHost所有の任意Callbackを受ける検証入口を追加。通常の実Process Engine実行は従来のままにする。
+
+`inputprofile_v2_process_e2e_test.go`では、同じSB-1入力を使い、次の結果を区別する。
+
+1. 有効時点で作成された`PreparedPackageInputs`は、失効後に旧来のStart入口へ渡すと起動可能（前章の未閉塞診断）。
+2. 同じ入力に対して、実Start時点にHostが失効を拒否するCallbackを適用すれば、`cmd.Start`は呼ばれない。
+3. Hostが明示的に許可を回復した後でのみ、同じ実v1 Process Engineが起動し、正規SB-1出力とGo比較対象の一致が得られる。
+
+このCallbackは**試験用Hostの疑似判断**であり、真正なProduction HostのGrant元・失効の直列化・署名・Leaseを実装した証拠ではない。単一スレッドの順序試験では、読み取りとStartの並行失効に対する原子性も実証できない。
+
+Linuxの製品Runtimeに存在する`internal/plugin/runtime.HostAdmittedPinnedLinuxProcess`と`LinuxHostStartAdmission`が、Host側の現在Authorityと`cmd.Start`を直列化する具体例である。しかし当該APIはPlugin Runtime向けのTarget固有実装であり、SB-1の変換Engineには接続されていない。一般化する場合は、Host側の既存Authority所有者が同じ世代／Plan／Scopeを束縛し、Build HostのStartへ適用する。**SB-1用の第二のAuthority・新Grant Storeは設けない。**
+
+この段階のReference成功を、SB1-H09のProduction受入済みへ変更しない。実行開始後の失効・遠隔Host・Attestation・Artifact Acceptanceも引き続き独立した未完了条件とする。
