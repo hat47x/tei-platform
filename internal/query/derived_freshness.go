@@ -150,9 +150,3 @@ func copyDerivedResult(in DerivedSelectResult) DerivedSelectResult {
 	}
 	return out
 }
-
-// IsNonCacheable documents a disabled opt-in without treating expiry as
-// successful authority qualification. Value computation remains D1/D2.
-func IsNonCacheable(policy derivationref.CachePolicy) bool {
-	return policy.MaxAge == 0
-}
