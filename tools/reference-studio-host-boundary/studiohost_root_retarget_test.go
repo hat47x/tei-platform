@@ -119,6 +119,6 @@ func TestStudioHostResolvedRootReplacementNeverReadsOutsideWorkspace(t *testing.
 		t.Fatal(err)
 	}
 	if bytes.Equal(raw, foreign) || bytes.Contains(raw, []byte("secret")) {
-		t.Fatalf("SECURITY: a previously allowlisted Workspace ID now reads the outside Workspace after root path replacement; original=%s foreign=%s actual=%s", original, foreign, raw)
+		t.Fatalf("SECURITY: allowlisted Workspace ID followed the replaced physical root into the outside Workspace (foreign_catalog=%t, outside_namespace_visible=%t)", bytes.Equal(raw, foreign), bytes.Contains(raw, []byte("secret")))
 	}
 }
