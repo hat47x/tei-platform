@@ -761,3 +761,91 @@ func TestCancelStaleVersionRetryWithSameOperationID(t *testing.T) {
 		t.Fatalf("refreshed receipt not recoverable: %+v found=%t err=%v", result, found, err)
 	}
 }
+
+func TestConcurrentCancelAtMostOneRefund(t *testing.T) {
+	ctx := context.Background()
+	s, submit := fixture(t)
+	if result, err := s.Execute(ctx, submit, allowAll); err != nil || result.Outcome != Submitted || !result.Committed {
+		t.Fatalf("submit setup: %+v err=%v", result, err)
+	}
+
+	// Distinct idempotency identities race against the same old row version.
+	// Cancellation must refund the reservation and publish at most once.
+	type attempt struct {
+		request Cancel
+		result  Result
+		err     error
+	}
+	start := make(chan struct{})
+	done := make(chan attempt, 2)
+	for _, id := range []string{"cancel-concurrent-a", "cancel-concurrent-b"} {
+		request := Cancel{
+			OperationID:     id,
+			SubjectID:       submit.SubjectID,
+			OrderID:         submit.OrderID,
+			ExpectedVersion: submit.ExpectedVersion + 1,
+		}
+		go func(c Cancel) {
+			<-start
+			result, err := s.ExecuteCancel(ctx, c, allowAll)
+			done <- attempt{request: c, result: result, err: err}
+		}(request)
+	}
+	close(start)
+
+	var winner, loser Cancel
+	successes, conflicts := 0, 0
+	for i := 0; i < 2; i++ {
+		a := <-done
+		if a.err != nil {
+			t.Fatalf("concurrent cancellation %s: %v", a.request.OperationID, a.err)
+		}
+		switch a.result.Outcome {
+		case "cancelled":
+			if !a.result.Committed {
+				t.Fatalf("cancelled without commit: %+v", a.result)
+			}
+			winner = a.request
+			successes++
+		case NotSubmitted:
+			if a.result.Committed || len(a.result.Trace) != 3 || a.result.Trace[2] != PhaseRead {
+				t.Fatalf("losing cancellation reached mutation: %+v", a.result)
+			}
+			loser = a.request
+			conflicts++
+		default:
+			t.Fatalf("unexpected cancellation result: %+v", a.result)
+		}
+	}
+	if successes != 1 || conflicts != 1 {
+		t.Fatalf("cancellation successes=%d conflicts=%d", successes, conflicts)
+	}
+
+	snap, exists := s.Inspect(submit.OrderID)
+	if !exists || snap.Order.State != "cancelled" || snap.Order.Version != submit.ExpectedVersion+2 ||
+		snap.Available != 20 || snap.Reserved != 0 || len(snap.History) != 2 || len(snap.Notices) != 2 ||
+		snap.History[1] != "cancelled:"+winner.OperationID {
+		t.Fatalf("duplicate refund or history: %+v exists=%t", snap, exists)
+	}
+	s.mu.Lock()
+	receipts, outbox := len(s.state.receipts), len(s.state.pending)
+	winningReceipt, winnerReceiptFound := s.state.receipts[winner.OperationID]
+	winningNotice, winnerNoticeFound := s.state.pending[winner.OperationID]
+	_, loserReceiptFound := s.state.receipts[loser.OperationID]
+	_, loserNoticeFound := s.state.pending[loser.OperationID]
+	s.mu.Unlock()
+	if receipts != 2 || outbox != 2 || !winnerReceiptFound || !winnerNoticeFound ||
+		loserReceiptFound || loserNoticeFound ||
+		winningReceipt.Request != winner || winningReceipt.Result.Outcome != "cancelled" ||
+		winningNotice.Kind != "order.cancelled" || winningNotice.OperationID != winner.OperationID {
+		t.Fatalf("cancel effect boundary: receipts=%d outbox=%d winner=%+v notice=%+v loser=%t/%t",
+			receipts, outbox, winningReceipt, winningNotice, loserReceiptFound, loserNoticeFound)
+	}
+	if result, found, err := s.LookupCancel(ctx, loser, allowAll); err != nil || found || result.Committed {
+		t.Fatalf("losing cancellation has receipt: %+v found=%t err=%v", result, found, err)
+	}
+	if result, found, err := s.LookupCancel(ctx, winner, allowAll); err != nil || !found ||
+		result.Outcome != "cancelled" || !result.Committed {
+		t.Fatalf("winning cancellation receipt missing: %+v found=%t err=%v", result, found, err)
+	}
+}
