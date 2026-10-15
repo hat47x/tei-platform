@@ -289,6 +289,43 @@ func (s *Store) Lookup(ctx context.Context, c Submit, auth Authorizer) (Result, 
 	return cloneResult(r.Result), true, nil
 }
 
+// LookupCancel reauthorizes before revealing a cancellation receipt. It is
+// the recovery path after ExecuteCancel returned Unknown (lost acknowledgement).
+// A missing receipt does not establish that an external side effect is absent.
+// As with Lookup, this is only the synthetic Store's authorization boundary,
+// not an atomic commit-time authorization fence.
+func (s *Store) LookupCancel(ctx context.Context, c Cancel, auth Authorizer) (Result, bool, error) {
+	if c.OperationID == "" || c.SubjectID == "" || c.OrderID == "" {
+		return Result{}, false, errors.New("invalid cancel identity")
+	}
+	if auth == nil {
+		return Result{}, false, errors.New("authorization capability missing")
+	}
+	if err := ctx.Err(); err != nil {
+		return Result{}, false, err
+	}
+	allowed, err := auth.Allow(ctx, c.SubjectID, c.OrderID)
+	if err != nil {
+		return Result{}, false, fmt.Errorf("authorization unavailable: %w", err)
+	}
+	if !allowed {
+		return Result{Outcome: Denied}, false, nil
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if err := ctx.Err(); err != nil {
+		return Result{}, false, err
+	}
+	r, found := s.state.receipts[c.OperationID]
+	if !found {
+		return Result{}, false, nil
+	}
+	if r.Request != c {
+		return Result{}, false, errors.New("receipt identity conflicts with request")
+	}
+	return cloneResult(r.Result), true, nil
+}
+
 // SendPending uses the same idempotency identity as the commit receipt. The
 // sender must implement receiver-side deduplication. A returned error may mean
 // the remote service received the notice; the outbox therefore retains it.
