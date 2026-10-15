@@ -17,7 +17,7 @@ var (
 func newStudioHost(paths []string) (*studiohost.ReadOnly, error) {
 	return studiohost.NewReadOnlyWithFactory(paths, func(trustedRoot string) (studiohost.RootServices, error) {
 		return studiohost.RootServices{
-			Catalog: staticservices.NewCatalogService(trustedRoot),
+			Catalog:    staticservices.NewCatalogService(trustedRoot),
 			Validation: staticservices.NewValidateService(trustedRoot),
 		}, nil
 	})
