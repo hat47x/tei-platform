@@ -87,8 +87,23 @@ class E1ArchiveBridgeTest(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "metadata digest"):
                 bridge.inspect(path, digest)
 
+    def archived_source_changes(self):
+        lineage = canonical.decode_unique(
+            (canonical.RECEIPTS / "workspace-r1.json").read_bytes(),
+            "workspace-r1.json",
+        )
+        return [
+            {
+                "path": item["path"],
+                "kind": "content-changed",
+                "beforeFingerprint": "sha256:" + item["beforeSHA256"],
+                "afterFingerprint": "sha256:" + item["afterSHA256"],
+            }
+            for item in lineage["changedSourceDigests"]
+        ]
+
     def mock_source_runner(self, before, after, head, *, status="declared-links-consistent",
-                           qualification="unresolved", allowed=False):
+                           qualification="unresolved", allowed=False, changes=None):
         def run(argv, **kwargs):
             self.assertEqual(argv[0:3], ["go", "run", "./tools/reference-change-assurance"])
             self.assertEqual(kwargs["cwd"], ROOT)
@@ -99,7 +114,10 @@ class E1ArchiveBridgeTest(unittest.TestCase):
                 "linkStatus": status,
                 "qualification": qualification,
                 "executionAllowed": allowed,
-                "diff": {"beforeSourceRevision": before, "afterSourceRevision": after},
+                "diff": {
+                    "beforeSourceRevision": before, "afterSourceRevision": after,
+                    "sourceChanges": self.archived_source_changes() if changes is None else changes,
+                },
             }))
         return run
 
@@ -110,7 +128,8 @@ class E1ArchiveBridgeTest(unittest.TestCase):
         ok = bridge.inspect(before="/historical/r0", after="/historical/r1",
                             runner=self.mock_source_runner(before, after, head))
         self.assertEqual(ok["sourceSnapshots"]["status"],
-                         "supplied-snapshot-revisions-match-archived-claims-only")
+                         "supplied-snapshot-source-and-file-digests-match-archived-claims-only")
+        self.assertEqual(ok["sourceSnapshots"]["changedManagedFilesVerified"], 2)
         self.assertIs(ok["sourceSnapshots"]["independentlyAuthenticated"], False)
         self.assertIs(ok["executionAllowed"], False)
         self.assertEqual(ok["qualification"], "unresolved")
@@ -127,6 +146,42 @@ class E1ArchiveBridgeTest(unittest.TestCase):
                     ValueError, "do not match"):
                 bridge.inspect(before="/historical/r0", after="/historical/r1",
                                runner=runner)
+
+    def test_changed_file_fingerprints_are_bound_to_archived_receipt(self):
+        manifest = canonical.decode_unique(canonical.MANIFEST.read_bytes(), "manifest")
+        before, after, head = (manifest["sourceBefore"],
+                               manifest["sourceAfter"], manifest["exactCheckoutHead"])
+        existing = self.archived_source_changes()
+        def change_first(**overrides):
+            return [dict(existing[0], **overrides), *existing[1:]]
+        cases = [
+            existing[1:],
+            [*existing, dict(existing[0], path="semantic/sales/order.tei")],
+            change_first(path="semantic/sales/order.tei"),
+            change_first(beforeFingerprint="sha256:" + "a" * 64),
+            change_first(afterFingerprint="sha256:" + "b" * 64),
+            change_first(kind="added"),
+            [existing[0], existing[0]],
+            [],
+        ]
+        for changed in cases:
+            with self.subTest(changed=changed), self.assertRaisesRegex(
+                    ValueError, "Source"):
+                bridge.inspect(before="/historical/r0", after="/historical/r1",
+                               runner=self.mock_source_runner(
+                                   before, after, head, changes=changed))
+
+    def test_changed_file_order_does_not_change_result(self):
+        manifest = canonical.decode_unique(canonical.MANIFEST.read_bytes(), "manifest")
+        before, after, head = (manifest["sourceBefore"],
+                               manifest["sourceAfter"], manifest["exactCheckoutHead"])
+        report = bridge.inspect(
+            before="/historical/r0", after="/historical/r1",
+            runner=self.mock_source_runner(
+                before, after, head, changes=list(reversed(self.archived_source_changes()))),
+        )
+        self.assertEqual(report["sourceSnapshots"]["changedManagedFilesVerified"], 2)
+        self.assertIs(report["executionAllowed"], False)
 
     def test_source_pair_is_required(self):
         with self.assertRaisesRegex(ValueError, "together"):

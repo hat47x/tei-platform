@@ -1,9 +1,96 @@
 package studiohost
 
 import (
+	"os"
 	"path/filepath"
 	"testing"
 )
+
+func rootReplacementPair(t *testing.T) (string, string) {
+	t.Helper()
+	tmp := t.TempDir()
+	root := filepath.Join(tmp, "workspace-a")
+	replacement := filepath.Join(tmp, "workspace-b")
+	if err := os.Mkdir(root, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(replacement, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	originalInfo, err := os.Stat(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	replacementInfo, err := os.Stat(replacement)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if os.SameFile(originalInfo, replacementInfo) {
+		t.Fatal("replacement fixture must have a distinct directory identity")
+	}
+	return root, replacement
+}
+
+func replaceWorkspaceRoot(t *testing.T, root, replacement string) {
+	t.Helper()
+	moved := root + "-original"
+	if err := os.Rename(root, moved); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Rename(replacement, root); err != nil {
+		t.Fatal(err)
+	}
+	originalInfo, err := os.Stat(moved)
+	if err != nil {
+		t.Fatal(err)
+	}
+	replacementInfo, err := os.Stat(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if os.SameFile(originalInfo, replacementInfo) {
+		t.Fatal("replacement path still identifies the original directory")
+	}
+}
+
+func TestReadOnlyRejectsRootReplacement(t *testing.T) {
+	root, replacement := rootReplacementPair(t)
+	h, err := NewReadOnly([]string{root})
+	if err != nil {
+		t.Fatal(err)
+	}
+	replaceWorkspaceRoot(t, root, replacement)
+
+	if got := h.ValidateWorkspace("workspace-1"); got.OK || got.Failure == nil || got.Failure.Code != "WORKSPACE_ROOT_CHANGED" {
+		t.Fatalf("validation did not reject replacement root: %+v", got)
+	}
+	if got := h.CatalogWorkspace("workspace-1", ""); got.OK || got.Failure == nil || got.Failure.Code != "WORKSPACE_ROOT_CHANGED" {
+		t.Fatalf("catalog did not reject replacement root: %+v", got)
+	}
+}
+
+func TestFactoryIsNotCalledForReplacedWorkspaceRoot(t *testing.T) {
+	root, replacement := rootReplacementPair(t)
+	factoryCalls := 0
+	h, err := NewReadOnlyWithFactory([]string{root}, func(string) (RootServices, error) {
+		factoryCalls++
+		return RootServices{}, nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	replaceWorkspaceRoot(t, root, replacement)
+
+	if got := h.ValidateWorkspace("workspace-1"); got.OK || got.Failure == nil || got.Failure.Code != "WORKSPACE_ROOT_CHANGED" {
+		t.Fatalf("factory validation did not reject replacement root: %+v", got)
+	}
+	if got := h.CatalogWorkspace("workspace-1", ""); got.OK || got.Failure == nil || got.Failure.Code != "WORKSPACE_ROOT_CHANGED" {
+		t.Fatalf("factory catalog did not reject replacement root: %+v", got)
+	}
+	if factoryCalls != 0 {
+		t.Fatalf("factory was called for replaced root %d times", factoryCalls)
+	}
+}
 
 func TestReadOnlyRejectsUnauthorizedIDs(t *testing.T) {
 	h, err := NewReadOnly([]string{filepath.Join("..", "..", "reference", "workspace")})
