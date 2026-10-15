@@ -608,3 +608,84 @@ func TestDeletePendingRejectsPendingOrderWithReservation(t *testing.T) {
 		t.Fatalf("refused delete published a notice: dispatched=%t err=%v", dispatched, err)
 	}
 }
+
+func TestConcurrentDeletePendingAtMostOneCommit(t *testing.T) {
+	// Two independently authorized deletes race against the same pending row
+	// and old version. Only one may leave a tombstone, receipt and outbox item.
+	s, submit := fixture(t)
+	type attempt struct {
+		request DeletePendingRequest
+		result  Result
+		err     error
+	}
+	start := make(chan struct{})
+	done := make(chan attempt, 2)
+	for _, id := range []string{"delete-a", "delete-b"} {
+		request := DeletePendingRequest{
+			OperationID:     id,
+			SubjectID:       submit.SubjectID,
+			OrderID:         submit.OrderID,
+			ExpectedVersion: submit.ExpectedVersion,
+		}
+		go func(c DeletePendingRequest) {
+			<-start
+			result, err := s.DeletePending(context.Background(), c, allowAll)
+			done <- attempt{request: c, result: result, err: err}
+		}(request)
+	}
+	close(start)
+
+	var committed, rejected DeletePendingRequest
+	successes, conflicts := 0, 0
+	for i := 0; i < 2; i++ {
+		a := <-done
+		if a.err != nil {
+			t.Fatalf("concurrent delete %s: %v", a.request.OperationID, a.err)
+		}
+		switch a.result.Outcome {
+		case Deleted:
+			if !a.result.Committed {
+				t.Fatalf("successful deletion has no commit: %+v", a.result)
+			}
+			committed = a.request
+			successes++
+		case NotDeleted:
+			if a.result.Committed || len(a.result.Trace) != 3 || a.result.Trace[2] != PhaseRead {
+				t.Fatalf("refused deletion committed or reached consequence: %+v", a.result)
+			}
+			rejected = a.request
+			conflicts++
+		default:
+			t.Fatalf("unexpected delete outcome: %+v", a.result)
+		}
+	}
+	if successes != 1 || conflicts != 1 {
+		t.Fatalf("delete commits=%d conflicts=%d", successes, conflicts)
+	}
+	if _, exists := s.Inspect(submit.OrderID); exists {
+		t.Fatal("successfully deleted row remains readable")
+	}
+
+	s.mu.Lock()
+	available := s.state.available
+	history := append([]string(nil), s.state.history[submit.OrderID]...)
+	receipts, outbox := len(s.state.receipts), len(s.state.pending)
+	_, reserved := s.state.reservations[submit.OrderID]
+	winnerReceipt, hasReceipt := s.state.receipts[committed.OperationID]
+	winnerNotice, hasNotice := s.state.pending[committed.OperationID]
+	_, losingReceipt := s.state.receipts[rejected.OperationID]
+	_, losingNotice := s.state.pending[rejected.OperationID]
+	s.mu.Unlock()
+	if available != 20 || reserved || len(history) != 1 || history[0] != "deleted:"+committed.OperationID {
+		t.Fatalf("duplicated owner effect: available=%d reserved=%t history=%v", available, reserved, history)
+	}
+	if receipts != 1 || outbox != 1 || !hasReceipt || !hasNotice || losingReceipt || losingNotice ||
+		winnerReceipt.Request != committed || winnerReceipt.Result.Outcome != Deleted ||
+		winnerNotice.Kind != "order.deleted" || winnerNotice.OperationID != committed.OperationID {
+		t.Fatalf("invalid commit boundary: receipts=%d outbox=%d winner=%+v notice=%+v losing=%t/%t",
+			receipts, outbox, winnerReceipt, winnerNotice, losingReceipt, losingNotice)
+	}
+	if result, found, err := s.LookupDelete(context.Background(), rejected, allowAll); err != nil || found || result.Committed {
+		t.Fatalf("rejected concurrent operation has a receipt: %+v found=%t err=%v", result, found, err)
+	}
+}
