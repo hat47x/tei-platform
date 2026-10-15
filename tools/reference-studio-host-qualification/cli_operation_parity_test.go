@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -78,8 +79,8 @@ func observeCLI(t *testing.T, binary string, expectedExit int, args ...string) s
 		t.Fatalf("CLI %q did not return JSON: %v", args, err)
 	}
 	var extra json.RawMessage
-	if err := decoder.Decode(&extra); err == nil {
-		t.Fatalf("CLI %q returned multiple JSON documents", args)
+	if err := decoder.Decode(&extra); err != io.EOF {
+		t.Fatalf("CLI %q returned an extra or malformed trailing JSON document: %v", args, err)
 	}
 	return response
 }
