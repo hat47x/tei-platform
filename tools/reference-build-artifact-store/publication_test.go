@@ -389,3 +389,74 @@ func TestPublishedSetMissRebuildKeepsPinnedMemberDigest(t *testing.T) {
 		t.Fatalf("rebuild changed the locked members: %+v", verified)
 	}
 }
+
+
+// A successful Put receipt is not evidence that a member remains available
+// while later members are being published. The final getMembers pass must
+// reject an object disappearing after its Put, and a subsequent explicit
+// retry may only restore the exact expected content identities.
+func TestPublishExactMembersRejectsLateMissingMemberAndAllowsRetry(t *testing.T) {
+	store := openTestStore(t, 1<<20)
+	first := []byte("member a can disappear after its Put")
+	second := []byte("member z survives the failed set")
+	expected := []artifactMemberRequest{
+		{Role: "a", Digest: digestBytes(first)},
+		{Role: "z", Digest: digestBytes(second)},
+	}
+	built := map[string][]byte{"a": first, "z": second}
+	firstPath, err := store.pathForDigest(digestBytes(first))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	linkCount := 0
+	removed := false
+	setTestHook(t, func(stage string) {
+		if stage != hookBeforeLink {
+			return
+		}
+		linkCount++
+		if linkCount == 2 {
+			// The a object exists after its Put; remove it just before z
+			// is linked, leaving z valid but the expected set incomplete.
+			if err := os.Remove(firstPath); err != nil {
+				t.Fatal(err)
+			}
+			removed = true
+		}
+	})
+	failed, err := store.publishExactMembers(expected, built)
+	if !removed || linkCount != 2 {
+		t.Fatalf("late disappearance did not occur after first Put: removed=%v links=%d", removed, linkCount)
+	}
+	if err == nil || !strings.Contains(err.Error(), "incomplete after reverification") || len(failed.Members) != 0 {
+		t.Fatalf("missing earlier member yielded publication evidence: %+v err=%v", failed, err)
+	}
+	members, err := store.getMembers(expected)
+	if err != nil || members.Available() ||
+		memberByRole(t, members, "a").Status != artifactMemberMissing ||
+		memberByRole(t, members, "z").Status != artifactMemberAvailable {
+		t.Fatalf("partial CAS publication lost missing/available distinction: %+v err=%v", members, err)
+	}
+
+	// Retry only the original expected digest set. The existing z object
+	// must be reused without clobbering, and a must be restored exactly.
+	again, err := store.publishExactMembers(expected, built)
+	if err != nil || len(again.Members) != 2 {
+		t.Fatalf("retry after missing member failed: %+v err=%v", again, err)
+	}
+	if again.Members[0].Role != "a" || again.Members[0].Published.Operation != "put" ||
+		again.Members[1].Role != "z" || again.Members[1].Published.Operation != "put-existing" {
+		t.Fatalf("retry changed CAS publication identities: %+v", again)
+	}
+	for _, member := range again.Members {
+		if member.Reverified.Operation != "get" || member.Published.Digest != member.Digest ||
+			member.Reverified.Digest != member.Digest {
+			t.Fatalf("retry lacked exact digest reverification: %+v", member)
+		}
+		got, _, err := store.GetBytes(member.Digest)
+		if err != nil || !bytes.Equal(got, built[member.Role]) {
+			t.Fatalf("retry failed to recover pinned role %q: %v", member.Role, err)
+		}
+	}
+}
