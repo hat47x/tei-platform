@@ -33,3 +33,16 @@ go vet ./reference/table-lifecycle
 - Provider実装の前に権限版照合、外部通知の宛先、Transaction境界、durable receipt、二重送信防止を契約に明示し、独立した実DB・実ランタイム試験を必要とする。
 
 本書は`#1129`のInsert/Update/Delete・Consequence残存責務を扱う最初の縦切りであり、全ユースケースをカバーした完了宣言ではない。
+
+
+## X-TEAのsource-derived Evidenceとの対応（2026-10-15、#W1）
+
+根拠: [#940 archive照合](https://github.com/hat47x/tei-platform/issues/940#issuecomment-6181920689)。この節は**旧実行系のソースから追える事実と未検証境界**を記録するだけであり、本Referenceのtransaction phaseが旧製品と同等だという宣言ではない。
+
+- Driverの `XFTableEvaluator.select()` はBRを主SELECTの前に呼び、取得した行へAR/BR/ARを順次適用する（source locator: `XFTableEvaluator.java:434-493`）。Queryでの導出・Filter/Sort/Limit順序を保証する情報ではないため、D2 #1640へ委譲する。
+- DriverのInsertはBC→参照値・キー等の確認→SQL実行→row count 1ならAC、UpdateはBU→参照値・入力検査→SQL→AU、DeleteはBD→参照値・検査→SQL→ADのsource path（同 `511-565`, `580-625`, `636-680`）。これらをTEIの公開Script hookとして採用せず、ここではowner側で段階的な書込みを行う合成Referenceに限る。
+- **DeleteにはDriver/Serverソース間の条件差がある。** Driverの `delete()` は `delete(false)` を呼ぶ一方、SQL実行条件に `isCheckOnly` が現れ、Serverでは `!isCheckOnly` である。旧実行系で削除される／されないことは未確認。TEI側へその分岐を移植しない。
+- `XF100/XF290/XF390` は一部の通常終了で `RETURN_CODE != 99` を条件にcommitする。対して `cancelWithMessage` はRETURN_CODEの設定のみで自動rollbackではない。Script exceptionではrollback経路が重複して呼ばれ得る。実DB・呼出元・Server経路の効果は未観測。ここでのcontext取消／業務取消と旧製品のcancelを同等視しない。
+- アーカイブと#940に記載されたinstallerのSHA-256は異なる。ソースのDriver/Server HEADやarchive内jarと、#940で要求する実行baselineは同一とは扱えない。実Provider/旧Runtimeの証拠取得前に対象artifactの固定が必要。
+
+したがって、このReferenceの `PhaseBefore`・`PhaseConsequence`・`PhaseCommit` は*TEI側の合成実行契約候補*であり、X-TEAのBC/AC等イベントを忠実に再現した保証ではない。DB実操作、例外、キャンセル、旧Runtimeの結果コードについてはsourceとactualの比較結果が得られるまでopenとする。
