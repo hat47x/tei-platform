@@ -63,6 +63,62 @@ def verify_supplied_zip(zip_path, expected_digest, archived):
     return {"status": "bytes-match", "sha256": actual, "receiptCount": len(archived.NAMES)}
 
 
+def match_source_file_digests(diff, archived):
+    """Bind each actual managed Source change to the retained #1163 R0/R1
+    per-file byte digests. Revision hash equality alone is not enough to
+    claim that the two specific source edits were independently reproduced.
+    """
+    lineage = archived.decode_unique(
+        (archived.RECEIPTS / "workspace-r1.json").read_bytes(),
+        "workspace-r1.json",
+    )
+    named = lineage["changedManagedSourceFiles"]
+    claimed = lineage["changedSourceDigests"]
+    changes = diff.get("sourceChanges")
+    if (not isinstance(named, list) or not isinstance(claimed, list)
+            or not isinstance(changes, list) or not named or not claimed):
+        raise ValueError("managed Source change inventory is absent or malformed")
+
+    def from_claim(item):
+        if not isinstance(item, dict):
+            raise ValueError("invalid archived Source change digest entry")
+        path = item.get("path")
+        before = item.get("beforeSHA256")
+        after = item.get("afterSHA256")
+        if (not isinstance(path, str) or not path
+                or not isinstance(before, str) or not isinstance(after, str)
+                or not re.fullmatch(r"[0-9a-f]{64}", before)
+                or not re.fullmatch(r"[0-9a-f]{64}", after)):
+            raise ValueError("invalid archived Source change SHA-256")
+        return (path, "content-changed", "sha256:" + before, "sha256:" + after)
+
+    def from_index(item):
+        if not isinstance(item, dict):
+            raise ValueError("invalid indexed Source change entry")
+        path = item.get("path")
+        kind = item.get("kind")
+        before = item.get("beforeFingerprint")
+        after = item.get("afterFingerprint")
+        if (not isinstance(path, str) or not path
+                or kind != "content-changed"
+                or not GITHUB_DIGEST.fullmatch(before or "")
+                or not GITHUB_DIGEST.fullmatch(after or "")):
+            raise ValueError("invalid indexed Source change fingerprints")
+        return (path, kind, before, after)
+
+    receipt_entries = [from_claim(item) for item in claimed]
+    index_entries = [from_index(item) for item in changes]
+    receipt_paths = [item[0] for item in receipt_entries]
+    index_paths = [item[0] for item in index_entries]
+    if (len(set(named)) != len(named)
+            or len(set(receipt_paths)) != len(receipt_paths)
+            or len(set(index_paths)) != len(index_paths)
+            or set(named) != set(receipt_paths)
+            or sorted(receipt_entries) != sorted(index_entries)):
+        raise ValueError("indexed changed managed Source files/digests do not match the archived R0/R1 receipt")
+    return len(index_entries)
+
+
 def review_supplied_source_snapshots(before, after, archived, manifest, runner):
     """Use POC-11's existing Go read-only binding, not a second Source Index."""
     command = [
@@ -83,10 +139,12 @@ def review_supplied_source_snapshots(before, after, archived, manifest, runner):
             bound["qualification"] != "unresolved" or
             bound["executionAllowed"] is not False):
         raise ValueError("supplied Source snapshots do not match the archived E1 receipt claims")
+    changed_file_count = match_source_file_digests(diff, archived)
     return {
-        "status": "supplied-snapshot-revisions-match-archived-claims-only",
+        "status": "supplied-snapshot-source-and-file-digests-match-archived-claims-only",
         "beforeRevision": diff["beforeSourceRevision"],
         "afterRevision": diff["afterSourceRevision"],
+        "changedManagedFilesVerified": changed_file_count,
         "witnessClaimStatus": bound["linkStatus"],
         "independentlyAuthenticated": False,
     }

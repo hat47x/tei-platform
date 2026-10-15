@@ -1,0 +1,2 @@
+# Keep exact Git-blob fixtures stable in Windows checkouts.
+*.ts text eol=lf
