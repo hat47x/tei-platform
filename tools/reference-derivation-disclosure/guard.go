@@ -7,7 +7,6 @@ import (
 	"context"
 	"errors"
 	"math/big"
-	"reflect"
 	"strings"
 
 	"tei/internal/core"
@@ -263,8 +262,5 @@ func check(ctx context.Context, authority Authority, p permissionCheck) error {
 	}
 	// Epochs are optional in the legacy Adapter. The D5 gate does not
 	// manufacture a version guarantee or turn this into a grant for effects.
-	if grant.Epochs != nil && reflect.ValueOf(grant.Epochs).IsNil() {
-		return ErrAuthorityFailure
-	}
 	return nil
 }
