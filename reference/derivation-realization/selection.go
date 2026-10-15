@@ -30,14 +30,17 @@ type Invocation struct {
 }
 
 // GoRealization is an explicitly supplied reference implementation selected
-// by the Host. Run is invoked only after all independent pins match. It is not
+// by the Host. ArtifactDigest must match the existing pinned descriptor;
+// this is only a declaration check, not byte-level attestation. Run is invoked
+// only after all independent pins match. It is not
 // obtained from an untrusted Plugin descriptor, and this function does not
 // itself authorize code execution or verify arbitrary AI-generated code.
 type GoRealization struct {
-	Plugin   plugin.Identity
-	Operator languagereference.OperatorContract
-	Target   string
-	Run      func(derivationref.Input, derivationref.Input) (derivationref.Input, error)
+	Plugin         plugin.Identity
+	Operator       languagereference.OperatorContract
+	ArtifactDigest string
+	Target         string
+	Run            func(derivationref.Input, derivationref.Input) (derivationref.Input, error)
 }
 
 // HostSelection consumes existing environment-scoped Plugin resolution and
@@ -116,7 +119,8 @@ func (h HostSelection) Evaluate(
 		return derivationref.Input{}, fmt.Errorf("%w: invalid Plugin artifact pin", ErrUnproven)
 	}
 	if realization.Plugin != request.PluginPin || realization.Target != request.Target ||
-		realization.Operator != request.OperatorPin || realization.Run == nil {
+		realization.Operator != request.OperatorPin || realization.ArtifactDigest != request.ArtifactDigest ||
+		realization.Run == nil {
 		return derivationref.Input{}, fmt.Errorf("%w: requested Go realization is unavailable", ErrUnproven)
 	}
 	return realization.Run(left, right)
