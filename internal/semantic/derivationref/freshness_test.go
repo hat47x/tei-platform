@@ -232,3 +232,74 @@ func TestD3ConfirmedValueIsNotRecomputedOrRewritten(t *testing.T) {
 		t.Fatalf("unproven persisted fact accepted: %v", err)
 	}
 }
+
+func TestD3ConsumerSourceAgeIsIndependentOfMemoTTL(t *testing.T) {
+	now := time.Date(2026, 10, 15, 1, 0, 0, 0, time.UTC)
+	w := d3Witness()
+	w.Sources[0].ObservedAt = now.Add(-10 * time.Second)
+	w.Sources[0].SourceAsOf = now.Add(-30 * time.Second)
+	policy := derivationref.CachePolicy{MaxAge: time.Hour, MaxSourceAge: time.Minute}
+	if err := derivationref.CheckSourceFreshAt(w, policy, now); err != nil {
+		t.Fatalf("30-second-old source should satisfy one-minute bound: %v", err)
+	}
+	w.Sources[0].SourceAsOf = now.Add(-time.Minute)
+	if err := derivationref.CheckSourceFreshAt(w, policy, now); err != nil {
+		t.Fatalf("inclusive source-age boundary rejected: %v", err)
+	}
+	w.Sources[0].SourceAsOf = now.Add(-2 * time.Minute)
+	if err := derivationref.CheckSourceFreshAt(w, policy, now); !errors.Is(err, derivationref.ErrCacheStale) {
+		t.Fatalf("two-minute-old source was incorrectly fresh: %v", err)
+	}
+	// The default has no source age bound; this is a conscious consumer
+	// choice, not proof that a stale source is new.
+	if err := derivationref.CheckSourceFreshAt(w, derivationref.CachePolicy{MaxAge: time.Hour}, now); err != nil {
+		t.Fatalf("optional bound became mandatory: %v", err)
+	}
+	// With multiple sources, the freshness of one cannot cover the other.
+	other := w.Sources[0]
+	other.SourceID = "pricing"
+	other.SourceAsOf = now.Add(-10 * time.Second)
+	w.Sources = append(w.Sources, other)
+	if err := derivationref.CheckSourceFreshAt(w, policy, now); !errors.Is(err, derivationref.ErrCacheStale) {
+		t.Fatalf("one stale dependency was masked by newer provider: %v", err)
+	}
+	w.Sources[0].SourceAsOf = now.Add(-30 * time.Second)
+	if err := derivationref.CheckSourceFreshAt(w, policy, now); err != nil {
+		t.Fatalf("both providers fresh should be permitted: %v", err)
+	}
+	// Attestation of an aligned cross-provider snapshot is a separate
+	// requirement from the ages checked here.
+	if _, err := derivationref.QualifyCache(context.Background(), w,
+		derivationref.CachePolicy{MaxAge: time.Hour, RequireAligned: true},
+		&d3WitnessVerifier{}); !errors.Is(err, derivationref.ErrNotCoherent) {
+		t.Fatalf("source freshness incorrectly established atomicity: %v", err)
+	}
+}
+
+func TestD3ConsumerSourceAgeRejectsFutureOrInvalidEvidence(t *testing.T) {
+	now := time.Date(2026, 10, 15, 1, 0, 0, 0, time.UTC)
+	for _, tc := range []struct {
+		name string
+		edit func(*derivationref.CacheWitness)
+	}{
+		{"future observation", func(w *derivationref.CacheWitness) { w.Sources[0].ObservedAt = now.Add(time.Second); w.Sources[0].SourceAsOf = now.Add(-time.Second) }},
+		{"future source as-of", func(w *derivationref.CacheWitness) { w.Sources[0].ObservedAt = now.Add(time.Second); w.Sources[0].SourceAsOf = now.Add(time.Second) }},
+		{"missing source as-of", func(w *derivationref.CacheWitness) { w.Sources[0].SourceAsOf = time.Time{} }},
+		{"source as-of after observation", func(w *derivationref.CacheWitness) { w.Sources[0].ObservedAt = now.Add(-time.Minute); w.Sources[0].SourceAsOf = now }},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			w := d3Witness()
+			tc.edit(&w)
+			if err := derivationref.CheckSourceFreshAt(w, derivationref.CachePolicy{}, now); !errors.Is(err, derivationref.ErrCacheEvidence) {
+				t.Fatalf("chronology was accepted: %v", err)
+			}
+		})
+	}
+	if err := derivationref.CheckSourceFreshAt(d3Witness(),
+		derivationref.CachePolicy{MaxSourceAge: -time.Second}, now); !errors.Is(err, derivationref.ErrCacheEvidence) {
+		t.Fatalf("negative source age accepted: %v", err)
+	}
+	if err := derivationref.CheckSourceFreshAt(d3Witness(), derivationref.CachePolicy{}, time.Time{}); !errors.Is(err, derivationref.ErrCacheEvidence) {
+		t.Fatalf("untrusted zero evaluation time accepted: %v", err)
+	}
+}
