@@ -29,6 +29,10 @@ class FakeElement {
     this.style = {};
     this.textContent = '';
   }
+  focus() {
+    this.ownerDocument.activeElement = this;
+    this.dispatch('focus');
+  }
   setAttribute(key, value) { this.attributes.set(key, String(value)); }
   getAttribute(key) { return this.attributes.get(key) ?? null; }
   addEventListener(key, listener) {
@@ -63,6 +67,7 @@ class FakeElement {
 }
 function fakeRoot() {
   const doc = {
+    activeElement: null,
     createElement(tag) { return new FakeElement(tag, doc); },
     createElementNS(_ns, tag) { return new FakeElement(tag, doc); },
   };
@@ -115,6 +120,44 @@ test('actual Graph emits note IDs via pointer/keyboard and remains fresh after r
   assert.deepEqual(received, ['tea', 'sketch', 'map']);
   second.dispose();
   assert.equal(root.children.length, 0);
+});
+
+test('journal selection remains keyboard-operable when the actual Graph is synchronously re-rendered', {
+  skip: !existsSync(graphSource) && 'extract exact #1828 graph.ts into the fixed snapshot',
+}, async () => {
+  const { mountReadonlyGraph } = await loadActualPort(graphSource);
+  const root = fakeRoot(), events = [];
+  let graph;
+  // Exercise the reusable Graph callback contract with *journal IDs*, not TEI
+  // subjects. The callback intentionally re-renders as the Studio consumer does.
+  graph = mountReadonlyGraph(root, journalGraph(), {
+    onSelect(id) {
+      events.push(id);
+      graph.update(journalGraph());
+      graph.setSelectedNode(id);
+    },
+  });
+  const first = descendants(root, 'g').find(x => x.getAttribute('aria-label') === 'Tea tasting');
+  first.focus();
+  assert.equal(root.ownerDocument.activeElement, first);
+  assert.equal(first.dispatch('keydown', 'Enter'), true);
+  const successor = descendants(root, 'g').find(x => x.getAttribute('aria-label') === 'Tea tasting');
+  assert.notEqual(successor, first, 'update must replace the SVG node');
+  assert.equal(root.ownerDocument.activeElement, successor,
+    'the next keyboard action must remain on the selected journal note');
+  assert.equal(graph.getSelectedNode(), 'tea');
+  assert.equal(successor.dispatch('keydown', ' '), true);
+  assert.deepEqual(events, ['tea', 'tea']);
+  const afterSpace = descendants(root, 'g').find(x => x.getAttribute('aria-label') === 'Tea tasting');
+  assert.equal(root.ownerDocument.activeElement, afterSpace);
+  first.dispatch('click');
+  assert.deepEqual(events, ['tea', 'tea'], 'a stale SVG must not publish a new note selection');
+  const outside = root.ownerDocument.createElement('button');
+  outside.focus();
+  graph.update(journalGraph());
+  assert.equal(root.ownerDocument.activeElement, outside,
+    'unrelated controls must not lose focus to a background graph refresh');
+  graph.dispose();
 });
 
 test('actual Command port keeps journal authorization outside shared panel after remount', {
