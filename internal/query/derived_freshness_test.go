@@ -326,7 +326,7 @@ func TestD3MemoProviderProvenancePreventsForgedCacheHitAndRecomputes(t *testing.
 	forged := d3QueryWitness()
 	forged.Sources[0].SourceAsOf = forged.Sources[0].SourceAsOf.Add(30 * time.Second)
 	if _, hit, err := memo.Resolve(context.Background(), q, plan, proof, forged,
-		policy, now, v, allow, nil); !errors.Is(err, derivationref.ErrCacheStale) || hit {
+		policy, now, v, allow, nil); !errors.Is(err, derivationref.ErrCacheDenied) || hit {
 		t.Fatalf("fabricated source timestamp bypassed verifier: hit=%v err=%v", hit, err)
 	}
 	updated := d3QueryWitness()
@@ -336,7 +336,7 @@ func TestD3MemoProviderProvenancePreventsForgedCacheHitAndRecomputes(t *testing.
 	updated.Inputs[0].Revision = "revision-2"
 	provider.sources["inventory"] = updated.Sources[0]
 	if _, hit, err := memo.Resolve(context.Background(), q, plan, proof, w,
-		policy, now, v, allow, nil); !errors.Is(err, derivationref.ErrCacheStale) || hit {
+		policy, now, v, allow, nil); !errors.Is(err, derivationref.ErrCacheDenied) || hit {
 		t.Fatalf("changed provider revision bypassed current verification: hit=%v err=%v", hit, err)
 	}
 	rows[0].Values["product.reserved"] = derivationref.Input{State: derivationref.Present, Decimal: "10"}
@@ -367,7 +367,7 @@ func TestD3MemoProviderChangeDuringLoadDoesNotStoreStaleResult(t *testing.T) {
 		return rows, true, nil
 	}
 	if _, hit, err := memo.Resolve(context.Background(), q, plan, proof, w,
-		policy, now, v, allow, load); !errors.Is(err, derivationref.ErrCacheStale) || hit {
+		policy, now, v, allow, load); !errors.Is(err, derivationref.ErrCacheDenied) || hit {
 		t.Fatalf("source changed during read but value returned: hit=%v err=%v", hit, err)
 	}
 	provider.sources["inventory"] = w.Sources[0]
