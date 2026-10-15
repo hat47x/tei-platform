@@ -40,6 +40,7 @@
 | [`reference-procedure-formalization/`](reference-procedure-formalization/) | 業務手順の文章から、形式化を妨げる不足と矛盾を根拠付きの質問として示す読取り専用の参照 |
 | [`reference-purpose-preflight/`](reference-purpose-preflight/) | 開発目的に対する業務規則の未確定・実行時値待ちを合成データで区別 |
 | [`reference-rule-candidate-discovery/`](reference-rule-candidate-discovery/) | 入出力例から複数の規則仮説を提示し、境界例で割れる点を示す読取り専用の参照 |
+| [`reference-runtime-change-instruction/`](reference-runtime-change-instruction/) | 動作中の画面からの変更指示を設計対象へ結び付け、見た目・業務規則・認可の変更を分ける参照 |
 | [`reference-tool-neutral-development/`](reference-tool-neutral-development/) | 特定の開発道具に依存しない作業経路の確認 |
 
 ## ビルド、配布、実行
