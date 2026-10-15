@@ -379,7 +379,9 @@ func TestD3MemoProviderChangeDuringLoadDoesNotStoreStaleResult(t *testing.T) {
 
 func TestD3MemoDisabledDoesNotRequireCacheWitness(t *testing.T) {
 	q, plan, proof, rows := d2Fixture()
-	now := time.Date(2026, 10, 15, 1, 0, 10, 0, time.UTC)
+	// A calculation with no cache, source-age or alignment requirement must
+	// not require any trusted clock or temporal witness.
+	now := time.Time{}
 	// No cache/freshness/snapshot request: neither a source timestamp nor
 	// a cache witness or cache verifier should be necessary to evaluate D2.
 	policy := derivationref.CachePolicy{}
@@ -426,6 +428,15 @@ func TestD3MemoDisabledRetainsD2AuthorizationAndCompleteness(t *testing.T) {
 		derivationref.CacheWitness{}, derivationref.CachePolicy{}, now, nil,
 		denyStock, load); !errors.Is(err, query.ErrDerivedUnauthorized) || hit || calls != 0 {
 		t.Fatalf("unprivileged raw read dispatched: hit=%v calls=%d err=%v", hit, calls, err)
+	}
+
+	// The derived output target is independently protected; allowing every
+	// raw source field does not authorize disclosure of the computed value.
+	denyTarget := func(id core.CanonicalID) bool { return id != "product.available" }
+	if _, hit, err := memo.Resolve(context.Background(), q, plan, proof,
+		derivationref.CacheWitness{}, derivationref.CachePolicy{}, time.Time{}, nil,
+		denyTarget, load); !errors.Is(err, query.ErrDerivedUnauthorized) || hit || calls != 0 {
+		t.Fatalf("unprivileged derived target dispatched: hit=%v calls=%d err=%v", hit, calls, err)
 	}
 
 	// Recheck FieldRead after loading: an authorization revocation observed
@@ -497,6 +508,43 @@ func TestD3MemoExplicitFreshnessAndCacheStillRequireWitness(t *testing.T) {
 	}
 	if calls != 0 {
 		t.Fatalf("unverified cache/freshness path dispatched Provider: calls=%d", calls)
+	}
+}
+
+// A source-age promise or a TTL measurement needs an explicit trusted time,
+// even when all other witness fields have otherwise valid values. Rejection
+// must happen before any Provider dispatch.
+func TestD3MemoTemporalPoliciesRequireEvaluationTime(t *testing.T) {
+	q, plan, proof, rows := d2Fixture()
+	w := d3QueryWitness()
+	v := &d3QueryVerifier{}
+	var memo query.DerivedMemo
+	allow := func(core.CanonicalID) bool { return true }
+	calls := 0
+	load := func(context.Context, int) ([]query.DerivedRow, bool, error) {
+		calls++
+		return rows, true, nil
+	}
+	tests := []struct {
+		name   string
+		policy derivationref.CachePolicy
+	}{
+		{"memo TTL", derivationref.CachePolicy{MaxAge: time.Minute}},
+		{"source age without cache", derivationref.CachePolicy{MaxSourceAge: time.Minute}},
+		{"memo TTL and source age", derivationref.CachePolicy{MaxAge: time.Minute, MaxSourceAge: time.Minute}},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			_, hit, err := memo.Resolve(context.Background(), q, plan, proof,
+				w, tc.policy, time.Time{}, v, allow, load)
+			if !errors.Is(err, derivationref.ErrCacheEvidence) || hit {
+				t.Fatalf("zero trusted evaluation time accepted: hit=%v err=%v", hit, err)
+			}
+		})
+	}
+	if calls != 0 || v.currentCalls != 0 || v.alignedCalls != 0 {
+		t.Fatalf("untrusted evaluation time reached Provider/verifier: loads=%d current=%d aligned=%d",
+			calls, v.currentCalls, v.alignedCalls)
 	}
 }
 
