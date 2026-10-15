@@ -24,8 +24,8 @@ func TestHostProcessEnvironmentProfileIsExplicitAndDeterministic(t *testing.T) {
 	home := filepath.Join(root, "home")
 	tmp := filepath.Join(root, "tmp")
 	profile := pruntime.HostProcessEnvironmentProfile{
-		SearchDirectories: []string{search},
-		HomeDirectory:     home,
+		SearchDirectories:  []string{search},
+		HomeDirectory:      home,
 		TemporaryDirectory: tmp,
 		Additional: map[string]string{
 			"TEI_PROFILE_Z": "last=with-equals",
