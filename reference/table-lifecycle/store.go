@@ -281,6 +281,9 @@ func (s *Store) Lookup(ctx context.Context, c Submit, auth Authorizer) (Result, 
 	if auth == nil {
 		return Result{}, false, errors.New("authorization capability missing")
 	}
+	if err := ctx.Err(); err != nil {
+		return Result{}, false, err
+	}
 	allowed, err := auth.Allow(ctx, c.SubjectID, c.OrderID)
 	if err != nil {
 		return Result{}, false, err
@@ -290,6 +293,9 @@ func (s *Store) Lookup(ctx context.Context, c Submit, auth Authorizer) (Result, 
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if err := ctx.Err(); err != nil {
+		return Result{}, false, err
+	}
 	r, ok := s.state.receipts[c.OperationID]
 	if !ok {
 		return Result{}, false, nil
