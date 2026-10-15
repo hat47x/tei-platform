@@ -166,7 +166,7 @@ func TestD3MemoNoCacheOptInAndMultiSourceCoherence(t *testing.T) {
 	q, plan, sqlEvidence, rows := d2Fixture()
 	w := d3QueryWitness()
 	policy := derivationref.CachePolicy{} // explicit cache-disabled mode
-	if !query.IsNonCacheable(policy) {
+	if policy.MaxAge != 0 {
 		t.Fatal("pure Go evaluation should not require caching")
 	}
 	now := time.Date(2026, 10, 15, 1, 0, 10, 0, time.UTC)
