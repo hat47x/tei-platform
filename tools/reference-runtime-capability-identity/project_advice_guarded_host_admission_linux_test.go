@@ -118,7 +118,7 @@ func TestProjectAdviceGuardedHostRevocationCannotCompleteBeforeRealProcess(t *te
 	}
 
 	paused := &admissionPauseVerifier{
-		held: pinned,
+		held:    pinned,
 		entered: make(chan struct{}),
 		release: make(chan struct{}),
 	}
