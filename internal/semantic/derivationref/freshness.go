@@ -77,6 +77,56 @@ type CurrentWitnessVerifier interface {
 	VerifyAligned(context.Context, CacheWitness) error
 }
 
+// CurrentSourceReader is a trusted Provider-side read of current source
+// provenance. It must not return caller-supplied metadata as its own result.
+// The actual adapter and its transactional consistency are Provider concerns.
+type CurrentSourceReader interface {
+	ReadCurrentSource(context.Context, string) (SourceObservation, error)
+}
+
+// SourceBoundVerifier composes the existing Host/Authority verifier with a
+// Provider-side provenance check. It can be passed to QualifyCache or the D2
+// DerivedMemo without defining a second authorization or caching policy.
+// Reading metadata before and after D2 evaluation catches observed revisions
+// that change during loading. This is not an atomic source snapshot proof.
+type SourceBoundVerifier struct {
+	Current CurrentWitnessVerifier
+	Sources CurrentSourceReader
+}
+
+func (v SourceBoundVerifier) VerifyCurrent(ctx context.Context, witness CacheWitness) error {
+	if v.Current == nil || v.Sources == nil {
+		return ErrCacheDenied
+	}
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if err := v.Current.VerifyCurrent(ctx, witness); err != nil {
+		return fmt.Errorf("%w: current context unavailable: %v", ErrCacheDenied, err)
+	}
+	for _, claimed := range witness.Sources {
+		actual, err := v.Sources.ReadCurrentSource(ctx, claimed.SourceID)
+		if err != nil {
+			return fmt.Errorf("%w: source %s unavailable: %v", ErrCacheEvidence, claimed.SourceID, err)
+		}
+		if actual.SourceID != claimed.SourceID ||
+			actual.Revision != claimed.Revision ||
+			!actual.SourceAsOf.Equal(claimed.SourceAsOf) ||
+			!actual.ObservedAt.Equal(claimed.ObservedAt) ||
+			actual.SnapshotRef != claimed.SnapshotRef {
+			return fmt.Errorf("%w: source %s provenance mismatch", ErrCacheStale, claimed.SourceID)
+		}
+	}
+	return nil
+}
+
+func (v SourceBoundVerifier) VerifyAligned(ctx context.Context, witness CacheWitness) error {
+	if v.Current == nil || v.Sources == nil {
+		return ErrNotCoherent
+	}
+	return v.Current.VerifyAligned(ctx, witness)
+}
+
 // QualifyCache checks shape and current evidence on *every* read/write.
 // A coherent cross-provider snapshot requires external Provider verification.
 // Equal strings or timestamp proximity alone never establish coherence.
