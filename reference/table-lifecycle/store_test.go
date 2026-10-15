@@ -689,3 +689,75 @@ func TestConcurrentDeletePendingAtMostOneCommit(t *testing.T) {
 		t.Fatalf("rejected concurrent operation has a receipt: %+v found=%t err=%v", result, found, err)
 	}
 }
+
+func TestCancelStaleVersionRetryWithSameOperationID(t *testing.T) {
+	ctx := context.Background()
+	s, submit := fixture(t)
+	if submitted, err := s.Execute(ctx, submit, allowAll); err != nil || submitted.Outcome != Submitted {
+		t.Fatalf("setup submit: %+v err=%v", submitted, err)
+	}
+	stale := Cancel{
+		OperationID:     "cancel-after-refresh",
+		SubjectID:       submit.SubjectID,
+		OrderID:         submit.OrderID,
+		ExpectedVersion: submit.ExpectedVersion,
+	}
+	rejected, err := s.ExecuteCancel(ctx, stale, allowAll)
+	if err != nil || rejected.Outcome != NotSubmitted || rejected.Committed {
+		t.Fatalf("stale cancellation accepted: %+v err=%v", rejected, err)
+	}
+	want := []Phase{PhaseValidate, PhaseAuthorize, PhaseRead}
+	if len(rejected.Trace) != len(want) {
+		t.Fatalf("stale cancellation reached mutation phase: %v", rejected.Trace)
+	}
+	for i, phase := range want {
+		if rejected.Trace[i] != phase {
+			t.Fatalf("stale cancellation phase %d: got %s want %s", i, rejected.Trace[i], phase)
+		}
+	}
+	snap, exists := s.Inspect(submit.OrderID)
+	if !exists || snap.Order.State != Submitted || snap.Order.Version != submit.ExpectedVersion+1 ||
+		snap.Available != 17 || snap.Reserved != submit.Units || len(snap.History) != 1 || len(snap.Notices) != 1 {
+		t.Fatalf("stale cancellation changed owner state: %+v exists=%t", snap, exists)
+	}
+	s.mu.Lock()
+	receipts, pending := len(s.state.receipts), len(s.state.pending)
+	_, staleReceipt := s.state.receipts[stale.OperationID]
+	_, staleNotice := s.state.pending[stale.OperationID]
+	s.mu.Unlock()
+	if receipts != 1 || pending != 1 || staleReceipt || staleNotice {
+		t.Fatalf("stale cancellation left effects: receipts=%d pending=%d stale=%t/%t",
+			receipts, pending, staleReceipt, staleNotice)
+	}
+	if result, found, err := s.LookupCancel(ctx, stale, allowAll); err != nil || found || result.Committed {
+		t.Fatalf("stale cancellation acquired receipt: %+v found=%t err=%v", result, found, err)
+	}
+
+	// A failed optimistic version check must not consume the idempotency key:
+	// retrying after refreshing the expected version can commit exactly once.
+	refreshed := stale
+	refreshed.ExpectedVersion = submit.ExpectedVersion + 1
+	committed, err := s.ExecuteCancel(ctx, refreshed, allowAll)
+	if err != nil || committed.Outcome != "cancelled" || !committed.Committed {
+		t.Fatalf("refreshed cancellation failed: %+v err=%v", committed, err)
+	}
+	retried, err := s.ExecuteCancel(ctx, refreshed, allowAll)
+	if err != nil || retried.Outcome != "cancelled" || !retried.Committed {
+		t.Fatalf("idempotent refreshed retry: %+v err=%v", retried, err)
+	}
+	snap, exists = s.Inspect(submit.OrderID)
+	if !exists || snap.Order.State != "cancelled" || snap.Order.Version != submit.ExpectedVersion+2 ||
+		snap.Available != 20 || snap.Reserved != 0 || len(snap.History) != 2 || len(snap.Notices) != 2 {
+		t.Fatalf("refreshed retry duplicated owner effects: %+v exists=%t", snap, exists)
+	}
+	s.mu.Lock()
+	receipts, pending = len(s.state.receipts), len(s.state.pending)
+	s.mu.Unlock()
+	if receipts != 2 || pending != 2 {
+		t.Fatalf("refreshed retry duplicated receipts or outbox: receipts=%d pending=%d", receipts, pending)
+	}
+	if result, found, err := s.LookupCancel(ctx, refreshed, allowAll); err != nil || !found ||
+		result.Outcome != "cancelled" || !result.Committed {
+		t.Fatalf("refreshed receipt not recoverable: %+v found=%t err=%v", result, found, err)
+	}
+}
