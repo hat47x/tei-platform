@@ -29,7 +29,7 @@ func TestHostProcessEnvironmentProfileIsExplicitAndDeterministic(t *testing.T) {
 		SearchDirectories:  []string{search},
 		HomeDirectory:      home,
 		TemporaryDirectory: tmp,
-		Additional:         map[string]string{
+		Additional: map[string]string{
 			"TEI_PROFILE_Z": "last=with-equals",
 			"TEI_PROFILE_A": "first",
 		},
