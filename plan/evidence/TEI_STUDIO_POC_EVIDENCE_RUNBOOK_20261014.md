@@ -268,4 +268,34 @@ PoC A の**通常ビルド**を比較元とし、宣言合成の Builder は既�
 
 **結論の境界**: 新版Graphの**Reading Journalでのブラウザー実操作はPASS**。同じGraphを組み込んだ**Studio新版Graphの実ブラウザーは未確認**。過去の#1849 Studio実Hostブラウザー成功（別Graph revision）の証拠も消さず、今回の新版GraphがStudioで動いた証拠として流用しない。#2/#1の生成Go実Host内部接続とDesktop実WebViewは残課題であり、PoC全体は未完了。
 
+##### 後続の別固定snapshot：生成Go Host経由の新版Graph実画面を確認（#Work / 2026-10-15）
+
+**受領元**: [Issue #1824の#Work報告 #6181914721](https://github.com/hat47x/tei-platform/issues/1824#issuecomment-6181914721)。**この段落は先行する `d520689…` Host・`127.0.0.1:43129`・CDP timeoutの「NOT VERIFIED」を上書きしない後続の独立snapshot**である。#8自身の再実行ではない。各Draftの所有pathを隔離snapshotへ抽出し、mergeしていない。
+
+| 後続snapshotの入力 | exact revision |
+| --- | --- |
+| Host #1832 | `4bc437c72e63a3b5d578b1efe2c60be510a9f8a9` |
+| Static composer #1833 | `fe8e37b1c735dc138c36cb2d37db94ee44424b9e` |
+| Workbench #1849 | `c55ad2285268533f5f1c90fbc9fe766bae57f009` |
+| Editor #1830 | `a7084fe1711cc48eff56fd20e3dc81c508f520a3` |
+| Graph #1828 | `786d8d82e19e8b08690aceadf9d180374e211448` |
+| Command #1829 | `01f5022240fd86c6ac38c1107310e299a1615b48` |
+
+**固定生成物**: composer生成 `services.generated.go` のSHA-256は **`867501c5a98d71337178d8bd7995e2e4eb6d276accd25151a2c18d8cb5adee50`** で、#2 CI報告のものと一致。Workbench生成UI bundleのSHA-256は **`1166d9489c76028ba21c9eaf44d25c6f36f98d5845d1f5a0599ea51bdfb1f1ee`**。生成モードWails Serverから配信されたbundle SHAも後者と一致した。
+
+**実行環境とGo検証（実行主体：#Work）**: WSL Linux、Go **1.26.9**、Wails **v3 beta.29**。CGO無効の `go test -count=1 -v -tags 'studio_generated,server' .` における **`TestGeneratedGoServicesRunThroughRealHost` PASS**、`go vet` PASS、生成モードServer build **PASS**。ただし **`-race` 試験はNOT RUN / BLOCKED**：実行環境に `pkg-config` がなく開始できなかったためであり、race検査PASSともrace由来の欠陥とも扱わない。
+
+**実Wails Server＋実ブラウザー（IAB・`127.0.0.1:43130`）**: 生成タグを使用するServerへ接続した固定UIについて、以下を**実DOM操作PASS**として受領した。
+
+- workspace-1 の生成Catalog **72件**、Validate成功、警告 **3件**を表示。
+- workspace-2 へ切替後、Catalog **19件**、Validate成功、警告 **0件**。workspace-1の診断を残留表示しない。
+- workspace-1へ戻り、新版Graphの **customerId** ノードを選択。実Go Hostから **`sales.order.customer_id`** の投影を取得し、Graphが直接親 **Order** との**2ノード関係**に更新されることを確認。
+- 実配信bundleのSHA-256が上記固定UI bundleと一致。
+
+画面証跡は#Workローカル `outputs/tei-studio-generated-host-20261015.png`。この後続snapshotは**新版GraphのStudio生成モードWeb Server実画面成功**と、生成GoのCatalog/Validateを実Hostから実UI経由で呼べた範囲を証明する。一方、旧 `d520…` / port 43129のブラウザーtimeoutは**その時点の未確認として記録を維持**する。結果を異なる入力・環境・ブラウザー操作間で合算しない。
+
+**Desktop / OS境界**: Windows Desktopバイナリの通常・生成モードbuildは独立CI [#38662384542](https://github.com/hat47x/tei-platform/actions/runs/38662384542)で**PASS（buildのみ）**。**native WebViewの実起動・自然終了はNOT VERIFIED**であり、IABのWeb Server版の画面結果はDesktop UI・OS統合の資格ではない。全PoCの完成・Source本文取得/受理等を示すものでもない。
+
+**再現方法と次の依存**: 表のexact revisionから各所有pathだけを新しいsnapshotに抽出。生成した `services.generated.go` と配信UI bundleを上記SHA-256で照合し、WSL Linux/Go1.26.9/Wails v3 beta.29で `go test -count=1 -v -tags 'studio_generated,server' .`、`go vet`、CGO無効の生成モードServer buildを実施。loopbackの生成モードServerでworkspace切替、Catalog/Validate、Graph customerId選択後の投影・直接親2ノード更新を確認する。`-race`の実施には `pkg-config` を含む必要なrace/cgo環境が別途必要。Desktop実WebViewは#2/#10側の独立確認とする。
+
 本節は独立検証の受領記録であり、新しいADR/GateやStudio外のIssue対応を発生させない。Studio側の残件は既存担当が継続する。
