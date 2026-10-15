@@ -174,9 +174,9 @@ func TestSB1HostGenerationAdmissionSerializesPhysicalStart(t *testing.T) {
 		Builder: plugin.BuilderIdentity{
 			ID: core.MustCanonicalID("tei.builder.plugin_package"), Version: "1.0.0",
 			ContractVersion: "tei.plugin-transform/v1",
-			ArtifactDigest: "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+			ArtifactDigest:  "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
 		},
-		Recipe: plugin.BuildRecipe{Kind: "tei-plugin-package", Entrypoint: "definition.tei"},
+		Recipe:     plugin.BuildRecipe{Kind: "tei-plugin-package", Entrypoint: "definition.tei"},
 		OutputKind: plugin.BuildOutputPluginPackage, Target: "plugin-package", Profile: "reference",
 	}
 	planFP, err := plugin.BuildPlanFingerprint(plan)
@@ -192,8 +192,8 @@ func TestSB1HostGenerationAdmissionSerializesPhysicalStart(t *testing.T) {
 		application: core.MustCanonicalID("order_entry"),
 		environment: core.MustCanonicalID("development"),
 		selection: inputprofile.BuildInputSelection{
-			Profile: inputprofile.PluginDefinitionJSONV2,
-			LockedSourceFingerprint: sourceFP,
+			Profile:                    inputprofile.PluginDefinitionJSONV2,
+			LockedSourceFingerprint:    sourceFP,
 			LockedBuildPlanFingerprint: planFP,
 		},
 		generation: 1, allowed: true,
@@ -234,7 +234,7 @@ func TestSB1HostGenerationAdmissionSerializesPhysicalStart(t *testing.T) {
 	release := make(chan struct{})
 	type processResult struct {
 		output transform.EvaluationResult
-		err error
+		err    error
 	}
 	run := make(chan processResult, 1)
 	go func() {
