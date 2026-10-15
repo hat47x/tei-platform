@@ -10,7 +10,9 @@ import (
 	"strings"
 	"testing"
 
+	"tei/internal/core"
 	pruntime "tei/internal/plugin/runtime"
+	"tei/internal/resource"
 )
 
 func TestHostProcessEnvironmentProfileIsExplicitAndDeterministic(t *testing.T) {
@@ -161,4 +163,42 @@ func TestHostProcessEnvironmentProfileControlsBareExecutableResolution(t *testin
 	if actual.HostSecretPresent || actual.Explicit != "allowed-through-path" {
 		t.Fatal("process profile did not constrain the actual child process")
 	}
+}
+
+func TestHostProcessEnvironmentProfileThroughSandboxRunner(t *testing.T) {
+	t.Setenv("TEI_PROCESS_HOST_SECRET_CANARY", "parent-only-profile-secret")
+	executable, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	launcher, err := pruntime.NewStdioProcessLauncherForHostProfile(pruntime.HostProcessEnvironmentProfile{
+		Additional: map[string]string{"TEI_PROCESS_EXPLICIT_ALLOWLIST": "sandbox-approved"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	network, filesystem, secrets := &netEnforcer{}, &fsEnforcer{}, &secretInjector{}
+	host := pruntime.HostSandboxLauncher{
+		Network: network, Filesystem: filesystem, Secrets: secrets, Runner: launcher,
+	}
+	resp, err := host.Invoke(context.Background(), pruntime.SandboxSpec{
+		Command: pruntime.ProcessCommand{Executable: executable, Args: []string{"--tei-process-env-probe"}},
+		Profile: pruntime.SandboxProfile{
+			DenyNetworkByDefault: true, DenyFilesystemByDefault: true,
+			SecretInjections: []pruntime.SecretInjection{{
+				Scope: "credential", ResourceID: core.MustCanonicalID("prod.secret"),
+				Handle: "vault://opaque", Delivery: resource.SecretDeliveryEnvironment,
+				Target: "TEI_DATABASE_CREDENTIAL",
+			}},
+		},
+	}, processRequest())
+	if err != nil {
+		t.Fatal(err)
+	}
+	checkProcessEnvProbe(t, resp, "sandbox-approved")
+	if !network.called || !network.cleaned || !filesystem.called || !filesystem.cleaned || !secrets.called || !secrets.cleaned {
+		t.Fatal("Host sandbox lifecycle did not complete")
+	}
+	// The adapters above are test doubles. No OS sandbox or secret delivery
+	// is proven by this test; it verifies profile + Host transport wiring.
 }
