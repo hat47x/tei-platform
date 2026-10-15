@@ -199,8 +199,8 @@ func TestD5AggregateProviderExecuteGrantIsIndependent(t *testing.T) {
 	host, plan, policy, authority := newFixture(t, Aggregate, "staff.public", Group)
 	grantAll(policy, host, plan)
 	execute := permissionCheck{
-		subject: host.ProviderSubjectID,
-		action: "derive.provider.execute",
+		subject:  host.ProviderSubjectID,
+		action:   "derive.provider.execute",
 		resource: "tenant/tenant.t1/purpose/sales.order/rule/sales.line_amount",
 	}
 	if !policy.allowed[execute] {
