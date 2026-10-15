@@ -58,7 +58,7 @@ wasm-tools component wit reference/quote-component-candidate/quote.wit
 
 ## 実Componentを二つのJavaScript Hostで実行する候補実験（#1861）
 
-実行スクリプト：[`e2e/run.sh`](e2e/run.sh)。この検証は上の`quote_boundary_test.go`とは別で、外部npmと実Chromiumを用いるため**通常のGo全体試験には組み込まない**。`node`、`npm`、`sha256sum`および環境変数`TEI_BROWSER_EXECUTABLE`で指定した実Chrome/Chromiumが必須。
+実行スクリプト：[`e2e/run.sh`](e2e/run.sh)。この検証は上の`quote_boundary_test.go`とは別で、外部npmと実Chromiumを用いるため**通常のGo全体試験には組み込まない**。`node`、`npm`、`sha256sum`、`wasmtime`（検証版49.0.3）および環境変数`TEI_BROWSER_EXECUTABLE`で指定した実Chrome/Chromiumが必須。
 
 ```sh
 export TEI_BROWSER_EXECUTABLE="$(command -v google-chrome)"
@@ -70,3 +70,17 @@ bash reference/quote-component-candidate/e2e/run.sh
 この比較は**NodeとBrowserという二つの異なるJavaScript実行環境**の動作であり、Wasmtimeなど異なるNative Component Hostとの同一バイナリの直接実行を証明しない。さらに`jco transpile`は実Componentバイナリから別の実行可能成果物を生成するため、BrowserがComponent形式のバイナリを直接実行したとも主張しない。両Hostが共通のビルド入力Componentを持つという限定的な証拠である。
 
 Guestの純計算に`import`を宣言しないことは、製品としての起動権限、Artifact Load時の真正性、配備先の信頼、OS隔離、生成世代の保持を意味しない。独立したHostの比較、機能面以外の費用測定、正式な受理／採用判断は残る。実験のCIが未完了または失敗した時点では、この段落を実行成功の証拠にしてはならない。
+
+
+## 独立Native Hostによる同一Componentの直接実行（#1861、PR #1878）
+
+この実験は、**先行#1877のJco由来のNode／Chromium Host実証から独立したComponent Host**の比較である。`e2e/run.sh`は、ひとつの`quote.component.wasm`を生成し、Node／実Chromiumに同じ変換成果物を渡した後、**未変換の当該Componentバイナリを直接Wasmtime CLIへ渡す**。CLIの`run --invoke 'preview(...)'`へWAVEで型付き値を渡し、`ok(...)`と`err(rejected)`を区別する。Hostの起動・ロード・型解釈・実行失敗を業務拒否として数えない。
+
+- [専用GitHub Actions #38746502755](https://github.com/hat47x/tei-platform/actions/runs/38746502755) は**成功**。実行したPR先端（README追記前）は`7a3b65d228937d2df56b11afe0ed1fbc4b5936ea`。Wasmtime 49.0.3、Jco 1.37.0、Node.js 22.23.3、実Google Chrome 154.0.8037.97。
+- 当該実験でのComponent SHA-256：`fd3d5d1a8d0b9752f5b60734e49aaf726e55df8e950efc70de9809b319871419`（このCIビルドの証跡であり、再ビルドのdigest一致を保証しない）。
+- 各Host（Node、Chromium、Wasmtime）で**正常8件、入力検証段階拒否7件、Guest内部の業務拒否8件**が固定の未受理候補Oracleに一致。したがってComponentの実呼出しは各Hostで16件。入力段階拒否7件はGuestを呼んでいない。
+- `jco transpile`後のCore Wasm **約11.4MiB**、生成JavaScript **約94.1KiB**は今回の検証でも観測。これは性能評価や最適化済み製品のサイズではなく、候補の配布費用の具体例。
+
+Wasmtimeによる直接Component呼出しとJco変換成果物の二Host呼出しが成立したことは、**この特定の未受理見積もりContract候補と有限のベクトル集合に限る**。別の言語で実装したComponent、WebView固有Host、実サーバーRuntime Engine、署名の有効性、現在の実行権限、成果物読み込み原子性、生成世代の保持、ユーザーの正式受理を証明しない。
+
+特に、簡単な純計算でもComponentのビルド／変換と実行時依存が発生している。WIT/Componentをプラグイン開発の必須前提にはせず、同じ成果物を複数Hostに展開する具体要望と、Go／JavaScript／軽量Core Wasmの代替方式に対する費用差をもって採否を決める。
