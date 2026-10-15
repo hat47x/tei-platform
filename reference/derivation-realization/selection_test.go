@@ -19,11 +19,11 @@ func fixture(t *testing.T) (HostSelection, Invocation, GoRealization) {
 	id := core.MustCanonicalID("project.line_amount")
 	def := plugin.Definition{
 		ID: id, Version: "1.0.0",
-		Runtime: plugin.Runtime{Kind: plugin.RuntimeBuiltin},
+		Runtime:  plugin.Runtime{Kind: plugin.RuntimeBuiltin},
 		Artifact: plugin.Artifact{Digest: pinnedArtifact},
 	}
 	env := environment.Environment{
-		ID: core.MustCanonicalID("project.test"),
+		ID:      core.MustCanonicalID("project.test"),
 		Plugins: []environment.ExtensionRequirement{{ID: id, CompatibleMajor: 1}},
 	}
 	catalog := plugin.Catalog{Plugins: []plugin.Definition{def}}
@@ -56,10 +56,10 @@ func fixture(t *testing.T) (HostSelection, Invocation, GoRealization) {
 func TestSelectedGoCalculationPreservesD1OracleAndInputStates(t *testing.T) {
 	host, in, implementation := fixture(t)
 	cases := []struct {
-		name string
-		a, b derivationref.Input
-		state derivationref.InputState
-		value string
+		name    string
+		a, b    derivationref.Input
+		state   derivationref.InputState
+		value   string
 		wantErr error
 	}{
 		{"2x300", derivationref.Input{State: derivationref.Present, Decimal: "2"}, derivationref.Input{State: derivationref.Present, Decimal: "300"}, derivationref.Present, "600", nil},
