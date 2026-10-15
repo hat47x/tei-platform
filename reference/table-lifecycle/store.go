@@ -40,6 +40,15 @@ type Submit struct {
 	Units           int
 }
 
+// Cancel requests a distinct version-checked business cancellation. It is not
+// the same as cancellation of the Go request context.
+type Cancel struct {
+	OperationID     string
+	SubjectID       string
+	OrderID         string
+	ExpectedVersion uint64
+}
+
 // Authorizer represents an existing authorization capability at the boundary;
 // this reference never reimplements its policy or asserts a commit-time fence.
 type Authorizer interface {
