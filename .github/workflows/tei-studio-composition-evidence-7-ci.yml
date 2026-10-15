@@ -25,7 +25,7 @@ jobs:
       GOWORK: off
       GENERATOR_SHA: fe8e37b1c735dc138c36cb2d37db94ee44424b9e
       HOST_SHA: 4bc437c72e63a3b5d578b1efe2c60be510a9f8a9
-      PROBE_SHA: 993cbd3baa7d9a2397cf57ca036441ce19c1d957
+      PROBE_SHA: 960d14b448ad1b18545f327c2e6e2dae3ce07cc0
     steps:
       - name: Checkout only the #7-owned test branch
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -77,7 +77,7 @@ jobs:
         working-directory: ${{ env.SNAPSHOT }}/cmd/tei-studio
         run: |
           set -euo pipefail
-          CGO_ENABLED=0 go test -mod=readonly -count=1 -v             -tags 'studio_generated,server,tei_wails_multi_probe'             -run '^TestWails(TwoGeneratedServicesRetainBothMethodsAndRejectDuplicate|IdenticallyNamedMethodsOfDifferentServiceTypesDoNotConflict)$' .
+          CGO_ENABLED=0 go test -mod=readonly -count=1 -v             -tags 'studio_generated,server,tei_wails_multi_probe'             -run '^TestWails(TwoGeneratedServicesRetainBothMethodsAndRejectDuplicate|IdenticallyNamedMethodsOfDifferentServiceTypesDoNotConflict|BindingIDCollisionRejectsWithoutClobbering)$' .
           CGO_ENABLED=0 go vet -mod=readonly             -tags 'studio_generated,server,tei_wails_multi_probe' .
 
       - name: Check the #2 protected Host contract still passes
