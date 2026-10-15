@@ -319,3 +319,33 @@ PoC A の**通常ビルド**を比較元とし、宣言合成の Builder は既�
 **再現**: mainの同一基線から各Draftの所有pathだけを検証用snapshotへ抽出（Draft mergeなし）。consumerを本検証head、Graphを `87ab7cdc4277ee70aebe535d92dca55fcbecb36f`、Commandを `837e81d5d71d51aed484003dd4978da3c7cbe9b4`、Editorを `1009e5f3407c985e00b3a3257b3cc5eee89db2ba` に固定し、`cd reference/tei-studio-independent-consumer && npm ci --no-audit --no-fund && npm test && npm run build` を実行。`shared-ports.test.mjs`でGraph sourceが欠落した場合は該当テストがSKIPされるので、**PASS件数だけでなくskip=0とGraph provider pathの存在**を確認。Python `browser-e2e.py`と実生成Studio Host画面は別試験として扱う。
 
 **依存と境界**: #9の新Graphは単体/隔離実Chromiumでフォーカス修復PASS、生成モードStudio実Hostでの新head Enter→Space連続操作は未確認。#2の別Desktop固定bootstrap native起動/終了証拠（[Issue報告](https://github.com/hat47x/tei-platform/issues/1824#issuecomment-6182081215)）もWorkBench Graphを載せたDesktopの資格とは別。PoC外のADR/Issue追加引継ぎなし。
+
+### 12.1 固定Providerの合成Node/Chromium独立CI（2026-10-15）
+
+**実行主体と固定入力**: #8が自己所有の新しい隔離検証workflow `.github/workflows/tei-studio-journal-evidence-8-ci.yml` をDraft #1825に追加し、GitHub Actions [run #38686075764](https://github.com/hat47x/tei-platform/actions/runs/38686075764)、job `116261107211` **completed / success**。これは前節の一時V8型注釈除去試行とも、#Workの旧consumer 17件PASSとも**独立した正式Node24/実Chromium実行**である。作業snapshotには以下の**各Draftの所有pathだけ**を取り出した（`git archive`でファイルのみ、Git mergeなし、他担当原本への書込みなし）。
+
+| 資産 | 実行したexact SHA / 検査blob |
+| --- | --- |
+| consumer Draft #1825 | `c780696bfa5bf8a5c8ed6f9b5497ab6be9beac41`（Workflow自体もこのheadに含む） |
+| Graph Draft #1828 | `de9ef8f0ac40b164d60ad5d43637ba3afc585c5e` / `graph.ts=436c7d07c56802dbbc6d1dfeb1251470fca75cf6` |
+| Command Draft #1829 | `63f7ce3af1e6e5a27124aa4aa8ae1331d405f83c` / `command.ts=bb56f3dba6387f7d9bf9604de9b519fb68feb50d` |
+| Editor Draft #1830 | `472c5d90b0b196f44b203e710c88ff05821d74fa` / `codemirror.ts=eddc3c3e9320b9f61a6b99d970224072528500a0` |
+
+**実行環境**: GitHub Actions Ubuntu **24.04**、Node **24.21.0**、consumer `package-lock.json`に対する`npm ci --no-audit --no-fund`、esbuild **0.25.12**、CodeMirror state **6.7.6** / view **6.43.14** / lint **6.9.7**。Python Playwright **1.57.0**でインストールした実Chromium **143.0.7499.4**（headless）。生成配布物はループバックの一時HTTP Serverから配信した。
+
+| 実コマンド／操作 | 実測結果 |
+| --- | --- |
+| 各PR固定pathの `git archive` 抽出 + `git hash-object`（Graph/Command/Editor） | **PASS**：全3 providerのGit blobが固定値に一致 |
+| `npm ci --no-audit --no-fund` | **PASS**：依存をlockに従い導入 |
+| `npm test`（`node --test *.test.mjs`） | **18/18 PASS、FAIL 0、SKIP 0**。新規 `journal selection remains keyboard-operable when the actual Graph is synchronously re-rendered` もPASS。実Graph/Command/Editor Portを読み込む試験がSKIPされていない |
+| `npm run audit:imports` | **PASS（静的指定ファイル範囲）**。全依存の意味分離証明ではない |
+| `npm run build` | **PASS**：実Editor/CodeMirror/Graph/Commandを含むbrowser bundle。 `dist/build-provenance.json`内のlock digestが **`7cb7257ef6e71def71ddf5d24414be596832d6c1f3aef36015f51b340d1f18c1`** |
+| `python browser-e2e.py` | **PASS（実Chromium）**：CodeMirrorの`contenteditable=false`、ノート切替とEditor反映、Graph選択と狭幅表示、Command成功/拒否、3部品それぞれのUnmount/Remount、Graph Enter選択、pagehideで最終破棄、ページJSエラーなし |
+
+**実ブラウザーレイアウト値**: Graph `width=480`、viewport `clientWidth=245`、`scrollWidth=480`、`fontSize=14px`。幅を半分に縮めずに横スクロールで表示した。Chromium出力は `{"result":"PASS","browser":"143.0.7499.4"}`。
+
+**重要な証拠境界**: 新たに追加した正式なGraph Port回帰は**合成Fake DOMの自動Node試験**であり、`browser-e2e.py`が実ブラウザーで確認したのはGraphのEnter選択と部品再表示などである。**実ブラウザーでフォーカス中のノードをGraph自身が同期再描画し、その直後のSpaceで2回目選択通知まで到達する経路はこのE2Eには含まれない**。#9の独立Chromiumフォーカス再描画成功（別実行）と区別する。
+
+これはTEIと独立したReading Journal用途で共通3部品がNode24・Chromiumに接続できることの**固定snapshot資格**であり、正式製品採用・全a11y・メモリリーク完全否定・保存/認可・Studio実Wails Host・native Desktop操作の資格には転用しない。特に[Windows native #2の別固定実測](https://github.com/hat47x/tei-platform/issues/1824#issuecomment-6183933605)でWorkbenchの起動/画面/自然終了・マウスInspect投影が確認されたが、それはReading JournalのDesktop確認ではなく、さらにcross-OS esbuild bundle digest不一致も報告されている。後者のビルド再現性とADR-0032の整理は#2が既に#1824へ**PoC非ブロッカーとして引継ぎ理由と必要対応を記録**しており、#8で同一ADR対応を重複して開始しない。
+
+**再現**: PR #1825の `.github/workflows/tei-studio-journal-evidence-8-ci.yml` を上表の4固定SHAで実行。各providerのsource blobを照合後、consumer dirで `npm ci --no-audit --no-fund && npm test && npm run audit:imports && npm run build`、Playwright+Chromium導入後に `python browser-e2e.py`。PRへの通常マージは不要。Nodeと実Chromium両試験の出力をGitHub Actions runに保存している。
