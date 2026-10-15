@@ -38,4 +38,4 @@ Hostは、既存Generic Runtime Capability Refから導出したdispatch IDを `
 bash tools/check-reference-project-plugin-isolation.sh
 ```
 
-この検査は案件所有のGo実装と単一のProcess Adapterだけを一時Goモジュールへ複製し、外部モジュール取得を禁止して、単体試験・Vet・独立バイナリの構築と正常／dispatch不一致／Host引数欠落の簡易試験を実施します。Core・Host・既存Runtimeのソースを一緒に複製しないことがポイントです。既存の本番接続・権限検査の試験を置き換えず、新しい正式なService Contract受理、OS隔離や実行等価性を実証するものではありません。案件別プラグインすべてに標準ライブラリ限定を強制する意図もありません。
+この検査は案件所有のGo実装と単一のProcess Adapterだけを一時Goモジュールの**ルート**へ複製し、従来と同じインポートパス `tei/plugins/reference-project-customer-advice` を維持したまま、TEI本体のルートモジュールが存在しない条件で構築します。さらに別の一時Goモジュールから公開関数 `Evaluate` を呼び出します。外部モジュール取得を禁止して、単体試験・Vet・独立バイナリの構築と正常／dispatch不一致／Host引数欠落の簡易試験を実施します。Core・Host・既存Runtimeのソースを一緒に複製しないことがポイントです。既存の本番接続・権限検査の試験を置き換えず、新しい正式なService Contract受理、OS隔離や実行等価性を実証するものではありません。案件別プラグインすべてに標準ライブラリ限定を強制する意図もありません。
