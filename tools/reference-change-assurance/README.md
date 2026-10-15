@@ -128,6 +128,36 @@ go run ./tools/reference-change-assurance \
 
 既存`-scenario/-plan`モードとの同時指定は禁止します。#1180のCLI Scenarioと#1163のWeb合成試験を、同じScenario ID・同一実行だと誤認しないためです。前後Workspace・証跡の収集時点の原子的整合も保証しません。#1163の実receipt 8件はアーカイブされる短期成果物であり、現行リポジトリに保存されているわけではありません。
 
+## 旧E1合成証拠の保存済み原本と任意のSource再現を接続（POC-12）
+
+#1163/#1119が実施した[GitHub Actions #38267656696](https://github.com/hat47x/tei-platform/actions/runs/38267656696)（2026-10-12、成功）には`tei-e1-synthetic-38267656696-1`という8 receipt+manifestのArtifactが存在します。GitHubが2026-10-15時点で返した当該Artifact IDは`11755671316`、ZIP digestは`sha256:8519e0bb06377f1943a97bb4b7f839f46df339ec12690df3f465630902ad235a`、期限は**2026-10-19 15:05:57 UTC**です。これらは取得時のGitHubメタデータの申告であり、本ReferenceがGitHub上の実行者を独立に認証したわけではありません。PR head `ef0ea673...`と受理当時のGitHub Actions PR merge checkout `466b1d100...`は**異なるコミット**であり、manifestの`exactCheckoutHead`は後者です。
+
+8件のバイト原本とmanifestはすでに`plan/evidence/tei-e1-synthetic-38267656696/`と`plan/evidence/TEI_E1_SYNTHETIC_MANIFEST_20261012_38267656696.json`へ保全されています。既存の`tools/verify-critical-path-e1-archive.py`が固定manifest SHA-256、全8ファイルのSHA-256、R0/R1/R2と合成実行の申告を検査します。**この検査を本ツールで再実装しません。**
+
+```sh
+# 読取りのみ：#1119既存の原本検査を再利用する
+python3 -B tools/reference-change-assurance/e1_archive_reconcile.py
+
+# 任意：GitHub Actionsから期限内に取得済みの元ZIPがある場合
+python3 -B tools/reference-change-assurance/e1_archive_reconcile.py \
+  --artifact-zip /path/to/tei-e1-synthetic-38267656696-1.zip \
+  --artifact-digest sha256:8519e0bb06377f1943a97bb4b7f839f46df339ec12690df3f465630902ad235a
+
+# 任意：**実際の当時の**R0/R1 Workspace全体のスナップショットを取得・復元できた場合のみ
+python3 -B tools/reference-change-assurance/e1_archive_reconcile.py \
+  --before-workspace /path/to/historical-r0 \
+  --after-workspace /path/to/historical-r1
+
+# オフライン負例を含む回帰テスト
+python3 -B tools/reference-change-assurance/test_e1_archive_reconcile.py
+```
+
+ZIP照合は**呼出元が別に確認したGitHub ArtifactのSHA-256**を必須とし、ダウンロードしたZIPの全9エントリが保全済みmanifest/8件とバイト一致するか確認します。余分なエントリ、同名重複、外部へのパス、Symlink、過大ファイル、差替えを拒否します。GitHub APIからの取得や資格情報の取扱いは行いません。
+
+Source照合は両方のディレクトリが指定された場合に限り、**既存**`go run ./tools/reference-change-assurance -before-workspace ... -after-workspace ... -archived-witness-dir ...`を起動し、その出力と保全manifest内の`sourceBefore/sourceAfter/exactCheckoutHead`を突き合わせます。現在のmainを当時の受理R1とみなすことや、receiptからSource全体を復元したと偽ることはありません。
+
+どちらも入力されなければ`artifactZip.status=not-supplied`、`sourceSnapshots.status=not-supplied`を明示します。古い8件のreceiptは**一時R0/R1 Source全体のコピーではありません**。Source版を突き合わせるためには、その時点の管理対象Sourceを含むWorkspaceスナップショットが別に必要です。整合しても試験用の履歴記録に過ぎず、常に`qualification=unresolved`、`executionAllowed=false`、`productGate=UNQUALIFIED`を返します。RuntimeでのVersion拘束・実DB独立Observation・人の受理・#1180 Scenarioとの同一実行を認定しません。
+
 ## 収録する反例
 
 - 表示名だけの変更：業務規則の検証は再利用候補、Web表示の検証は再確認。
