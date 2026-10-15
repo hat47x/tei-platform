@@ -54,3 +54,19 @@ wasm-tools component wit reference/quote-component-candidate/quote.wit
 - WebAssembly Component Modelの[WIT仕様](https://github.com/WebAssembly/component-model/blob/main/design/mvp/WIT.md)
 - Bytecode Allianceの[JavaScript／Component Model](https://component-model.bytecodealliance.org/language-support/building-a-simple-component/javascript.html)
 - Bytecode Allianceの[wasm-tools](https://github.com/bytecodealliance/wasm-tools/blob/main/README.md)
+
+
+## 実Componentを二つのJavaScript Hostで実行する候補実験（#1861）
+
+実行スクリプト：[`e2e/run.sh`](e2e/run.sh)。この検証は上の`quote_boundary_test.go`とは別で、外部npmと実Chromiumを用いるため**通常のGo全体試験には組み込まない**。`node`、`npm`、`sha256sum`および環境変数`TEI_BROWSER_EXECUTABLE`で指定した実Chrome/Chromiumが必須。
+
+```sh
+export TEI_BROWSER_EXECUTABLE="$(command -v google-chrome)"
+bash reference/quote-component-candidate/e2e/run.sh
+```
+
+`jco`を一時領域へ取得し、`quote.wit`を実解析して`guest.mjs`から**Componentバイナリ**を作る。`jco wit`で実際のimportsを確認し、`jco transpile`によって得た同じ成果物由来のCore WasmとJS AdapterをNodeと実Chromium（Playwrightで起動）で検証する。未受理の固定候補23件について、受理8件、拒否15件の期待結果を保持する。ただし**入力がWITへ表現できず変換前に拒否される例**と、**Guestが業務拒否する例**は分離して数える。Host起動・成果物ロード・実行が失敗した場合を「業務拒否成功」とみなさない。
+
+この比較は**NodeとBrowserという二つの異なるJavaScript実行環境**の動作であり、Wasmtimeなど異なるNative Component Hostとの同一バイナリの直接実行を証明しない。さらに`jco transpile`は実Componentバイナリから別の実行可能成果物を生成するため、BrowserがComponent形式のバイナリを直接実行したとも主張しない。両Hostが共通のビルド入力Componentを持つという限定的な証拠である。
+
+Guestの純計算に`import`を宣言しないことは、製品としての起動権限、Artifact Load時の真正性、配備先の信頼、OS隔離、生成世代の保持を意味しない。独立したHostの比較、機能面以外の費用測定、正式な受理／採用判断は残る。実験のCIが未完了または失敗した時点では、この段落を実行成功の証拠にしてはならない。
