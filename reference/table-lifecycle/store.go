@@ -26,6 +26,8 @@ const (
 const (
 	Submitted    = "submitted"
 	NotSubmitted = "not_submitted"
+	Deleted      = "deleted"
+	NotDeleted   = "not_deleted"
 	Denied       = "denied"
 	Unknown      = "unknown"
 )
@@ -43,6 +45,15 @@ type Submit struct {
 // Cancel requests a distinct version-checked business cancellation. It is not
 // the same as cancellation of the Go request context.
 type Cancel struct {
+	OperationID     string
+	SubjectID       string
+	OrderID         string
+	ExpectedVersion uint64
+}
+
+// DeletePendingRequest identifies a version-checked deletion of a pending
+// order. It never represents the legacy X-TEA delete(checkOnly) behavior.
+type DeletePendingRequest struct {
 	OperationID     string
 	SubjectID       string
 	OrderID         string
@@ -429,6 +440,107 @@ func (s *Store) ExecuteCancel(ctx context.Context, c Cancel, auth Authorizer) (R
 		return Result{Outcome: Unknown, Trace: trace}, nil
 	}
 	return result, nil
+}
+
+// DeletePending removes only an unsubmitted order with no existing reservation.
+// The old-version/owner check, tombstone history, receipt, and outbox are
+// atomically staged in the same synthetic Store boundary. This method does not
+// implement or infer legacy X-TEA's checkOnly semantics.
+func (s *Store) DeletePending(ctx context.Context, c DeletePendingRequest, auth Authorizer) (Result, error) {
+	trace := []Phase{PhaseValidate}
+	if c.OperationID == "" || c.SubjectID == "" || c.OrderID == "" {
+		return Result{}, errors.New("invalid delete identity")
+	}
+	if auth == nil {
+		return Result{}, errors.New("authorization capability missing")
+	}
+	if err := ctx.Err(); err != nil {
+		return Result{}, err
+	}
+	trace = append(trace, PhaseAuthorize)
+	allowed, err := auth.Allow(ctx, c.SubjectID, c.OrderID)
+	if err != nil {
+		return Result{}, fmt.Errorf("authorization unavailable: %w", err)
+	}
+	if !allowed {
+		return Result{Outcome: Denied, Trace: trace}, nil
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if err := ctx.Err(); err != nil {
+		return Result{}, err
+	}
+	trace = append(trace, PhaseRead)
+	if r, found := s.state.receipts[c.OperationID]; found {
+		if r.Request != c {
+			return Result{}, errors.New("idempotency identity conflicts with a different request")
+		}
+		return cloneResult(r.Result), nil
+	}
+	current, present := s.state.orders[c.OrderID]
+	_, hasReservation := s.state.reservations[c.OrderID]
+	if !present || current.State != "pending" || current.Version != c.ExpectedVersion || hasReservation {
+		return Result{Outcome: NotDeleted, Trace: trace}, nil
+	}
+
+	trace = append(trace, PhaseBefore)
+	staged := s.state.copy()
+	delete(staged.orders, c.OrderID)
+	trace = append(trace, PhaseConsequence)
+	// This history is an owner-side tombstone, not an externally triggered
+	// arbitrary after-delete Script; neither inventory nor committed fact
+	// changes when a pending, unreserved order is deleted.
+	staged.history[c.OrderID] = append(staged.history[c.OrderID], "deleted:"+c.OperationID)
+	if s.failBeforeCommit {
+		return Result{}, errors.New("injected pre-commit transaction failure")
+	}
+	if err := ctx.Err(); err != nil {
+		return Result{}, err
+	}
+	trace = append(trace, PhaseCommit, PhasePostCommit)
+	committed := Result{Outcome: Deleted, Committed: true, Trace: append([]Phase(nil), trace...)}
+	staged.receipts[c.OperationID] = receipt{Request: c, Result: committed}
+	staged.pending[c.OperationID] = Notice{OperationID: c.OperationID, OrderID: c.OrderID, Kind: "order.deleted"}
+	s.state = staged
+	if s.loseAcknowledgement {
+		return Result{Outcome: Unknown, Trace: append([]Phase(nil), trace...)}, nil
+	}
+	return committed, nil
+}
+
+// LookupDelete reauthorizes before disclosing a tombstone receipt after an
+// acknowledgement loss. A missing receipt is not evidence about remote effects.
+func (s *Store) LookupDelete(ctx context.Context, c DeletePendingRequest, auth Authorizer) (Result, bool, error) {
+	if c.OperationID == "" || c.SubjectID == "" || c.OrderID == "" {
+		return Result{}, false, errors.New("invalid delete identity")
+	}
+	if auth == nil {
+		return Result{}, false, errors.New("authorization capability missing")
+	}
+	if err := ctx.Err(); err != nil {
+		return Result{}, false, err
+	}
+	allowed, err := auth.Allow(ctx, c.SubjectID, c.OrderID)
+	if err != nil {
+		return Result{}, false, fmt.Errorf("authorization unavailable: %w", err)
+	}
+	if !allowed {
+		return Result{Outcome: Denied}, false, nil
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if err := ctx.Err(); err != nil {
+		return Result{}, false, err
+	}
+	r, found := s.state.receipts[c.OperationID]
+	if !found {
+		return Result{}, false, nil
+	}
+	if r.Request != c {
+		return Result{}, false, errors.New("receipt identity conflicts with request")
+	}
+	return cloneResult(r.Result), true, nil
 }
 
 // Inspect is a synthetic test-only observer, not an authorized public API.
