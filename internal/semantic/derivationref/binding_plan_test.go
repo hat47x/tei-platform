@@ -24,7 +24,7 @@ func d4Ref(scope, kind, id, version string) modelref.Ref {
 
 func d4Node(ref modelref.Ref, display string) modelref.Node {
 	return modelref.Node{
-		Key: modelref.Key{Scope: ref.Scope, Subject: ref.Subject},
+		Key:     modelref.Key{Scope: ref.Scope, Subject: ref.Subject},
 		Version: ref.Version, DisplayName: display,
 	}
 }
@@ -166,9 +166,9 @@ func TestD4SameTargetConflictRejectsUnlessAcceptedChoice(t *testing.T) {
 
 func TestD4FailuresAreFailClosed(t *testing.T) {
 	cases := []struct {
-		name   string
-		edit   func(*BindingRequest)
-		code   string
+		name string
+		edit func(*BindingRequest)
+		code string
 	}{
 		{"unaccepted-binding", func(r *BindingRequest) {
 			r.ProposedBindings = []AcceptedBinding{r.Accepted.Bindings[0]}

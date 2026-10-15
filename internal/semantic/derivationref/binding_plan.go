@@ -132,7 +132,7 @@ func SemanticAttributeTarget(scope string, namespace semantic.Namespace, dataID,
 		return TypedTarget{}, fmt.Errorf("semantic attribute %q of data %q is missing, ambiguous or untyped", attributeID, dataID)
 	}
 	return TypedTarget{
-		Ref: modelref.Ref{Scope: scope, Subject: subject.Subject{Kind: "attribute", ID: string(attr.ID)}, Version: version},
+		Ref:        modelref.Ref{Scope: scope, Subject: subject.Subject{Kind: "attribute", ID: string(attr.ID)}, Version: version},
 		OutputType: attr.TypeRef,
 	}, nil
 }
