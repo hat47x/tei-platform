@@ -178,3 +178,28 @@ python3 tools/reference-studio-composition-evidence-7/file_adapter.py \
 **別担当から受領した結果（#7独立実行とは区別）**：#Workがこのfixed snapshotでNode14件/Go-race/vet/strict TSと実bundleのPASSを報告。#7の新版追加試験・file adapter再実行はローカルGo1.23.2、GitHub clone DNS不達・固定複合checkout不足により**未確認**で、#Workの結果を自分のPASSへ転記しない。
 
 **Studioの依存**：生成Goサービスの実Host経由接続は#2が所有（[Issue #1824 comment #6181598991](https://github.com/hat47x/tei-platform/issues/1824#issuecomment-6181598991)）。#7は#2が接続後、allowlist ID → trusted root、読み取り専用4メソッド・`{ok,value|failure}`・警告保持・任意パス拒否の独立試験を担当。#2の原本には書き込まない。PoC B全体のHost認可と完全Artifact Lock/asset/build来歴はまだ未実証。
+
+## 2026-10-15 複数Wailsサービスの登録衝突：一点検証
+
+**実装入力:** #1 Generated Go `fe8e37b1c735dc138c36cb2d37db94ee44424b9e`、#2 Host `4bc437c72e63a3b5d578b1efe2c60be510a9f8a9`、Wails `v3.0.0-beta.29`。既存`TestGeneratedGoServicesRunThroughRealHost`はCatalog/ValidateとBridge4メソッドの確認だが、**Wailsへ2個のサービスを別々に登録し、重複methodを拒否する検査ではない**。
+
+Wails beta29 実ソース `v3/pkg/application/bindings.go`（Git blob `ae2140f9050bc3ea878e614af220cb8d3eae47b2`）をexact tagから取得し、`Bindings.Add`が`boundMethods`の**FQN**で重複を拒否し、`boundByID`も衝突時にerrorを返し、検証後にだけ2マップへ書き込むことを確認。異なる型の**同じ短いメソッド名は衝突ではなく**、同じ完全修飾メソッド名の重複が拒否対象。
+
+**独立試験コード**：`wails_multi_service_test.go`（`studio_generated && server && tei_wails_multi_probe`）を#7専用pathに追加。生成`CatalogService`/ `ValidateService`をそれぞれ`application.NewService`で**実`application.NewBindings.Add`**に登録し、両メソッドが名前/IDで残り、実`BoundMethod.Call`で操作結果が正しいことを確認。その後同じCatalog型を二重登録し、**`bound method '...CatalogService.Catalog' is already registered`**の意図したerrorと既存2メソッド保持を確認。別型で`Status`という同じ短い名前のメソッド2本を登録して、FQNごとに両方呼べることも検査。Hostのallowlistを迂回する製品構成を提案する試験ではない。
+
+実行対象はWails nested module `cmd/tei-studio` のため、**Draftをmergeせず組み立てた固定snapshotのみに**試験をコピーする。通常の`StudioBridge`公開経路は一切変更しない。
+
+```sh
+# fixed #1833 headのGo生成を済ませた非merge snapshotのrepository root
+# go version = 1.26.9; Host = 4bc437c7; generator = fe8e37b1
+# internal/studiohost/staticservices/services.generated.go が存在すること
+cp tools/reference-studio-composition-evidence-7/wails_multi_service_test.go \\
+   cmd/tei-studio/wails_multi_service_test.go
+cd cmd/tei-studio
+CGO_ENABLED=0 go test -mod=readonly -count=1 -v \\
+  -tags 'studio_generated,server,tei_wails_multi_probe' \\
+  -run 'TestWails(TwoGeneratedServicesRetainBothMethodsAndRejectDuplicate|IdenticallyNamedMethodsOfDifferentServiceTypesDoNotConflict)$' .
+rm wails_multi_service_test.go # 検証snapshot内だけ
+```
+
+**判定を分離**：Wails beta29の登録実装のGit blobソース検査＝**SOURCE PASS**。#7から投入した上記2 Goテスト＝**NOT RUN**（このチャットのGo1.23.2は必要な1.26.9未満、各Draftの非merge統合snapshotなし）。#2の現行`TestGeneratedGoServicesRunThroughRealHost`をWails複数サービス登録のPASSと見なさない。#2生成Goを実Host内部注入する現行構成のWails公開サービスは従来どおり**単一`StudioBridge`**である。
