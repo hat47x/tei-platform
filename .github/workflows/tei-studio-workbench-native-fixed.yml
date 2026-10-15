@@ -156,7 +156,7 @@ jobs:
               [DllImport("user32.dll")]public static extern bool SetCursorPos(int x,int y);
               [DllImport("user32.dll")]public static extern void mouse_event(uint flags,uint dx,uint dy,uint data,UIntPtr extra);
             }
-            '@
+          '@
             [NativeStudioInput]::SetForegroundWindow($win) | Out-Null
             $clickX=[int]($rect.L+85);$clickY=[int]($rect.T+345)
             if(-not [NativeStudioInput]::SetCursorPos($clickX,$clickY)){throw "NATIVE_CURSOR_FAILED"}
