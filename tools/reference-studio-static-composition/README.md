@@ -78,3 +78,14 @@ node --input-type=module -e 'import {build} from "esbuild"; import {resolve} fro
 **負例と再生成**：Go側の不足サービス・重複・版/スコープ不一致は既存 `composeServices` で拒否し、fixtureサービスの並びを反転しても生成Goソースのバイト列は一致させる。UI側は重複slot/implementation・未知impl・Kit版 `latest`（既存Resolverの `invalid_request`）・PoC固定 `0.1.0` 以外の正しいSemVerも拒否し、Kit slot/changesの並びに依存せずソース/型定義を一致させる。入力自体を変更したとき `fixtureSha256` は異なってよい。実物2回生成のファイルSHAと検証snapshotの結果は#7の検査対象。
 
 **Host受入との違い**：生成Go `Services(root)` の2サービスは `operations` の意味比較用であり、#2の実BridgeのWorkspace許可リスト、非任意path制約、`{ok:true,value}` / `{ok:false,failure}`、Host transport失敗処理を置換しない。実Wails Server/Browser/Desktop確認、完全な依存closure、署名、Build/Plugin Lock、生成Wails bindingの適合は単体・bundle検査と分けてIssueへ記録する。#1849/#1832/#7原本やmainをmerge/editしない。
+
+## #1849 workbench固定版の更新（2026-10-15）
+
+**旧pinを維持**：#1849 exact `9a290dc61f585dfbf292e9032e5c5bbbad04351a`、`main.ts` Git blob `2a65a9f70245068bf2455248d98d280b382b01e4`、Command #1829 `26f47772ed49f5c4a9e1c50026c335783bc5e153`。
+
+**新pinを追加**：#1849 exact `c55ad2285268533f5f1c90fbc9fe766bae57f009`、`main.ts` Git blob `cc2644e5a9167dbc3a0b5368ff270276a2ba1b67`、Command #1829 exact `01f5022240fd86c6ac38c1107310e299a1615b48`。この版は`reference/tei-studio-workbench/responses.ts`を使い、Commandの`beginContext`・`setDiagnosticsForContext`と併せて旧応答を破棄する。これらの関連ファイルを同じ固定snapshotへ取り出し、古いCommandの混入を避けること。Go Hostは従前の4操作・read-only envelope・起動時workspace allowlistを維持する。
+
+`connect-workbench.mjs`は**この2種類の実際のGit blob SHAだけ**を受理し、入力の内容から一致する固定版を自動識別する。`connectWorkbenchSource(source)`に`pin=false`を渡す経路は存在せず、第2引数を与えた呼出し自体を拒否する。実際のCLIは常にSHAを検証し、どちらのpinを使用したかログへ出す。検証用の純粋な`inspectWorkbenchImports(source)`はimportの重複・不足を調べるだけで、生成成果物の接続・保存は行わない。
+
+#7と共有する新固定snapshotは **#1833の本差分後exact head + #1849 `c55ad2285268533f5f1c90fbc9fe766bae57f009` + #1829 `01f5022240fd86c6ac38c1107310e299a1615b48`**。#Workによる旧版`11e80396...`の実bundle・Host検査と、新pin版の結果を混同しない。新pin版で`node --test`、生成moduleの実ファイル2回一致、`main.generated.ts`のstrict typecheckとbundle、Hostの実4操作、Command旧応答排除を独立に確認するまで新組合せのPASSとはしない。
+
