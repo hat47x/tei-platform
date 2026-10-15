@@ -80,7 +80,7 @@ func TestRoundExactTieNegativeCarryAndPrecision(t *testing.T) {
 		}
 	}
 	for _, tc := range []struct {
-		raw string
+		raw  string
 		p, s int
 	}{
 		{"1999.98", 5, 2}, // 6 digits in scaled integer, cannot fit
@@ -109,9 +109,9 @@ func TestRoundExactTieNegativeCarryAndPrecision(t *testing.T) {
 func TestDimensionCurrencyAndTypeFailClosed(t *testing.T) {
 	types, qty, price, target := fixture()
 	spec := DecimalSpec{Precision: 8, Scale: 2, Mode: HalfEven}
-	checkReject := func(label string, q, p Operand, t AmountTarget, ts []semantic.Type) {
+	checkReject := func(label string, q, p Operand, amountTarget AmountTarget, ts []semantic.Type) {
 		t.Helper()
-		_, err := MultiplyAmount(ts, q, p, t, spec)
+		_, err := MultiplyAmount(ts, q, p, amountTarget, spec)
 		if !errors.Is(err, ErrMeaning) {
 			t.Errorf("%s: expected meaning rejection, got %v", label, err)
 		}
