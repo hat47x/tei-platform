@@ -36,8 +36,8 @@ func TestCurrentAcceptedSourceHTTPRequestGuard(t *testing.T) {
 	startup := sourceacceptance.Record{
 		ApplicationID: "order_entry", DecisionRef: "test-only://decision/R1",
 		AuthorityRevision: "host-test-revision-1",
-		ModelRevision: sourceindex.ModelRevision(index),
-		Artifacts:     append([]sourceindex.Artifact(nil), index.Artifacts...),
+		ModelRevision:     sourceindex.ModelRevision(index),
+		Artifacts:         append([]sourceindex.Artifact(nil), index.Artifacts...),
 	}
 	reader := &requestSourceReader{record: startup}
 	dispatches := 0
