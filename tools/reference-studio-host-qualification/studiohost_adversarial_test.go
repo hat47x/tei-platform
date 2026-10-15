@@ -91,7 +91,8 @@ func TestRealStudioHostWarningNotEquivalentToSemanticValidOrTransportFailure(t *
 	goValue, goErr := operations.ValidateWorkspace(reference)
 	h := host.ValidateWorkspace("workspace-1")
 	doc := envelopeObject(t, h, true, "")
-	if goErr != nil || h.Value == nil || h.Failure != nil ||
+	if cli.SchemaVersion != "tei.cli.validate/v0" ||
+		goErr != nil || h.Value == nil || h.Failure != nil ||
 		!cli.OK || cli.Error != nil || goValue.HasErrors() || h.Value.HasErrors() {
 		t.Fatalf("warnings must not become operation/transport failure: CLI=%+v Go=%+v err=%v Host=%+v", cli, goValue, goErr, h)
 	}
@@ -178,6 +179,7 @@ func TestRealStudioHostSubjectRejectionsOnIdenticalCLIAndGoInputs(t *testing.T) 
 			envelopeObject(t, h, false, tc.code)
 			var typed *operations.InspectionError
 			if !errors.As(opErr, &typed) || typed.Code != tc.code ||
+				cli.SchemaVersion != "tei.cli.inspect/v0" ||
 				cli.OK || cli.Error == nil || cli.Error.Code != tc.code ||
 				h.OK || h.Value != nil || h.Failure == nil || h.Failure.Code != tc.code ||
 				h.Failure.Stage != "" {
@@ -193,12 +195,21 @@ func TestRealStudioHostInvalidFilterRetainsOperationFailure(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	binary := testCLIBinary(t)
+	cli := observeCLI(t, binary, 2,
+		"model", "catalog", "-workspace", reference, "-namespace", " sales")
 	_, goErr := operations.CatalogWorkspace(reference, " sales")
 	h := host.CatalogWorkspace("workspace-1", " sales")
 	envelopeObject(t, h, false, "OPERATION_FAILED")
-	if goErr == nil || h.OK || h.Value != nil || h.Failure == nil || h.Failure.Stage != "" {
-		t.Fatalf("invalid exact namespace unexpectedly accepted: Go=%v Host=%+v", goErr, h)
+	if cli.SchemaVersion != "tei.cli.model/v0" || cli.OK || cli.Error == nil ||
+		cli.Error.Code != "INVALID_ARGUMENT" || goErr == nil ||
+		h.OK || h.Value != nil || h.Failure == nil || h.Failure.Stage != "" {
+		t.Fatalf("invalid exact namespace incorrectly classified: CLI=%+v Go=%v Host=%+v", cli, goErr, h)
 	}
-	// CLI flag-validation envelope is not equivalent to the Host operation
-	// envelope, so we compare the shared semantic error, not transport bytes.
+	// Shared semantic rejection, but distinct transport-stage codes:
+	// CLI rejects an invalid flag before calling Go operations, whereas Host
+	// maps the unclassified operation error to OPERATION_FAILED.
+	if h.Failure.Code != "OPERATION_FAILED" {
+		t.Fatalf("expected classified Host operation error: %+v", h.Failure)
+	}
 }
