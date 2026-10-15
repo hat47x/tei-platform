@@ -61,6 +61,9 @@ func (s localArtifactStore) publishExactMembers(expected []artifactMemberRequest
 		if !present {
 			return artifactSetPublication{}, fmt.Errorf("artifact publication output role is missing")
 		}
+		if int64(len(value)) > s.maxBytes {
+			return artifactSetPublication{}, fmt.Errorf("artifact publication output exceeds store maxBytes")
+		}
 		// A nil slice with a present map key is a valid zero-byte artifact.
 		snapshot := bytes.Clone(value)
 		if digestBytes(snapshot) != digest {
