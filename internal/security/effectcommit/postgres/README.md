@@ -37,3 +37,13 @@ PostgreSQLの`SELECT ... FOR UPDATE`には対象表への更新権限が必要�
 **まだ保証していない点**：現時点の保存処理用DB利用者は、業務対象データの直接更新と確定記録表への直接挿入を行える権限を持ちます。これはアプリケーションが`effectcommit`を必ず通るよう制御する場合の**参照実装**であり、保存処理用のDB資格情報が侵害されても不正な副作用を防止する「DB単体の強制境界」ではありません。そこまで要求する運用構成では、対象データの更新と確定記録の書込みも、最小権限で公開する専用の保存手続きへ移す必要があります。関数所有者の権限、変更経路の網羅、スキーマの改変防止、監査記録、実際の利用者・所属・規則情報との対応も別途確認してください。
 
 今回のDB試験はテスト専用スキーマでの最小権限の**限定的な実証**であり、本番保証への昇格を意味しません。
+
+## 信頼済みOwner更新のopt-in同一Tx経路（#1174 / #1129）
+
+`NewWithTrustedOwnerRoutine(pool, schema)`は、DB所有者が管理し実行主体の権限で検証済みの固定ルーチン `schema.apply_owner_effect(TEXT,TEXT,BIGINT,BYTEA,TEXT) RETURNS BIGINT`を`WriteResource`から呼び出します。引数はApplication・Resource・ExpectedVersion・Payload・OperationIDの**型付き値のみ**で、SQL文や関数名を未信頼Pluginや要求が指定する仕組みはありません。`New`の既存単一`objects`更新は変更しません。
+
+ルーチンは対象版CASと信頼済みOwnerの複数表更新（必要なら同一DBのpending outbox）を**同じpgx.Tx**内で行い、成功時に新対象版、業務/版競合時に0を返します。戻り値0は`ErrResourceConflict`としてRunnerがRollbackし、関数欠落・DB異常はExecution ErrorとしてRollbackします。`CheckAuthority`のロック、`FindReceipt`、この呼出、`SaveReceipt`、`Commit`は既存の一トランザクションのままです。ルーチン内から独自COMMITや外部送信は行いません。
+
+**受入/配備制約**：このopt-inは信頼されたホスト構成だけが選択し、Pluginの任意SQL/Script APIに転用しない。DB関数の所有者、SQL本文、固定`search_path`、公開EXECUTE権限、書込対象、DBロールと認可正本の全更新経路を配備者が監査する必要があります。テスト用関数は`SECURITY INVOKER`であり、実運用向けのDB権限制約・不正な直接UPDATE防止まで証明しません。本番の強制フェンスや多DB/外部通知の原子性を主張しません。
+
+実PostgreSQL fixture `trusted_owner_integration_test.go`は共有在庫3を異なる二つのResourceが各3確保する競合の正負、receipt INSERT失敗時の全Owner効果のRollback、関数欠落時のfail-closedを検査します。これは**参照用の実DB試験であって#1129の製品Source/Plugin/Provider結線・旧Runtime適合ではありません**。
