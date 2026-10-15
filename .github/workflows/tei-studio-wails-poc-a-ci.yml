@@ -163,25 +163,40 @@ jobs:
       GOTOOLCHAIN: local
       GOWORK: off
       POC_B_GENERATOR_SHA: fe8e37b1c735dc138c36cb2d37db94ee44424b9e
+      POC_B_WORKBENCH_FIXTURE_SHA: b513e1e9332e8ddd6dc854cb12dd71ab89f6d5c6
     steps:
       - name: PoC AのPR headを正確にcheckout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
+          fetch-depth: 2
       - name: Go 1.26.9を固定
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         with:
           go-version-file: go.mod
           check-latest: false
           cache: false
-      - name: #1833の固定生成器のみ検証snapshotへ抽出
+      - name: Node 22を固定（生成UI試験）
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+          check-latest: false
+      - name: 固定生成器と固定Workbench試料を検証snapshotへ抽出
         shell: bash
         run: |
           set -euo pipefail
+          node --version
           git fetch --no-tags --depth=50 https://github.com/hat47x/tei-platform.git refs/pull/1833/head
           git cat-file -e "$POC_B_GENERATOR_SHA^{commit}"
+          if ! git cat-file -e "$POC_B_WORKBENCH_FIXTURE_SHA^{commit}" 2>/dev/null; then
+            git fetch --no-tags --depth=1 origin "$POC_B_WORKBENCH_FIXTURE_SHA"
+          fi
+          git cat-file -e "$POC_B_WORKBENCH_FIXTURE_SHA^{commit}"
           git archive "$POC_B_GENERATOR_SHA" tools/reference-studio-static-composition | tar -xf -
+          git archive "$POC_B_WORKBENCH_FIXTURE_SHA" \
+            tools/reference-studio-static-composition/connect-workbench.test.mjs \
+            tools/reference-studio-static-composition/testdata/poc-b-workbench-snapshot | tar -xf -
           go test -count=1 ./tools/reference-studio-static-composition
           go run ./tools/reference-studio-static-composition \
             -fixture tools/reference-studio-static-composition/fixture.json \
