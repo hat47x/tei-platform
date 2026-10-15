@@ -65,9 +65,10 @@ type RootServices struct {
 type ServiceFactory func(trustedRoot string) (RootServices, error)
 
 type ReadOnly struct {
-	roots    map[string]string
-	refs     []WorkspaceRef
-	services ServiceFactory
+	roots     map[string]string
+	rootInfos map[string]os.FileInfo
+	refs      []WorkspaceRef
+	services  ServiceFactory
 }
 
 func NewReadOnly(paths []string) (*ReadOnly, error) {
@@ -80,7 +81,11 @@ func NewReadOnlyWithFactory(paths []string, factory ServiceFactory) (*ReadOnly, 
 	if len(paths) == 0 {
 		return nil, errors.New("at least one -workspace is required")
 	}
-	host := &ReadOnly{roots: make(map[string]string, len(paths)), services: factory}
+	host := &ReadOnly{
+		roots:     make(map[string]string, len(paths)),
+		rootInfos: make(map[string]os.FileInfo, len(paths)),
+		services:  factory,
+	}
 	seen := map[string]bool{}
 	for i, path := range paths {
 		if path == "" {
@@ -98,12 +103,19 @@ func NewReadOnlyWithFactory(paths []string, factory ServiceFactory) (*ReadOnly, 
 		if err != nil || !stat.IsDir() {
 			return nil, fmt.Errorf("workspace %d must be an existing directory", i+1)
 		}
+		// Windows FileInfo resolves file IDs lazily from its pathname when
+		// os.SameFile is first called. Resolve that identity now, before the
+		// pathname could later be replaced.
+		if !os.SameFile(stat, stat) {
+			return nil, fmt.Errorf("workspace %d identity could not be established", i+1)
+		}
 		if seen[resolved] {
 			return nil, fmt.Errorf("workspace %d duplicates an earlier root", i+1)
 		}
 		seen[resolved] = true
 		id := fmt.Sprintf("workspace-%d", i+1)
 		host.roots[id] = resolved
+		host.rootInfos[id] = stat
 		host.refs = append(host.refs, WorkspaceRef{ID: id, Label: filepath.Base(resolved)})
 	}
 	return host, nil
@@ -119,6 +131,10 @@ func (h *ReadOnly) workspace(id string) (string, *Failure) {
 	root, ok := h.roots[id]
 	if !ok {
 		return "", &Failure{Code: "WORKSPACE_NOT_ALLOWED", Message: "workspace ID is not in this host's allowlist"}
+	}
+	current, err := os.Stat(root)
+	if err != nil || !os.SameFile(h.rootInfos[id], current) {
+		return "", &Failure{Code: "WORKSPACE_ROOT_CHANGED", Message: "workspace root identity changed after host startup"}
 	}
 	return root, nil
 }
