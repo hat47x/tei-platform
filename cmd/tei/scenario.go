@@ -300,6 +300,9 @@ func runScenarioCommand(args []string, output io.Writer) error {
 		if err != nil {
 			return err
 		}
+		if err := scenariotest.RejectDuplicateJSONMembers(saved); err != nil {
+			return fmt.Errorf("invalid generated CLI plan: %w", err)
+		}
 		var old scenariotest.Plan
 		d := json.NewDecoder(bytes.NewReader(saved))
 		d.DisallowUnknownFields()
