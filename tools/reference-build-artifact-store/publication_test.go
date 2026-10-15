@@ -519,3 +519,64 @@ func TestPublishExactMembersRejectsSameBytesObjectReplacementDuringReverify(t *t
 		}
 	}
 }
+
+// An object must remain at the verified CAS path through the final Lstat.
+// Replacing it with another inode AFTER its bytes have been read is distinct
+// from replacement between the initial Lstat and Open.
+func TestPublishExactMembersRejectsSameBytesPathReplacementAfterRead(t *testing.T) {
+	store := openTestStore(t, 1<<20)
+	first := []byte("bytes remain exact even when the CAS path moves after read")
+	second := []byte("independently available second member")
+	expected := []artifactMemberRequest{
+		{Role: "a", Digest: digestBytes(first)},
+		{Role: "z", Digest: digestBytes(second)},
+	}
+	built := map[string][]byte{"a": first, "z": second}
+	firstPath, err := store.pathForDigest(expected[0].Digest)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	finalChecks := 0
+	replaced := false
+	setTestHook(t, func(stage string) {
+		if stage != hookBeforeFinalStat {
+			return
+		}
+		finalChecks++
+		// Each of the two fresh Puts checks its temp path and linked path.
+		// Call 5 is role a's final getMembers read, after the bytes/hash
+		// are verified but before its last path-to-open-file identity check.
+		if finalChecks == 5 {
+			replaceWithSameBytes(t, firstPath, first)
+			replaced = true
+		}
+	})
+	failed, err := store.publishExactMembers(expected, built)
+	// getMembers records the first member as corrupt, then checks role z.
+	if !replaced || finalChecks != 6 {
+		t.Fatalf("fixture missed the post-read path replacement: swapped=%v checks=%d", replaced, finalChecks)
+	}
+	if err == nil || !strings.Contains(err.Error(), "incomplete after reverification") || len(failed.Members) != 0 {
+		t.Fatalf("post-read same-byte replacement produced set evidence: %+v err=%v", failed, err)
+	}
+
+	// This is not a digest mismatch or proof that the CAS bytes disappeared.
+	// With the path stable, an explicit retry must verify both exact roles.
+	got, _, err := store.GetBytes(expected[0].Digest)
+	if err != nil || !bytes.Equal(got, first) {
+		t.Fatalf("stable replacement object is not retrievable by digest: %v", err)
+	}
+	retried, err := store.publishExactMembers(expected, built)
+	if err != nil || len(retried.Members) != len(expected) {
+		t.Fatalf("stable retry of original expected set failed: %+v err=%v", retried, err)
+	}
+	for _, member := range retried.Members {
+		if member.Published.Operation != "put-existing" ||
+			member.Reverified.Operation != "get" ||
+			member.Published.Digest != member.Digest ||
+			member.Reverified.Digest != member.Digest {
+			t.Fatalf("stable retry did not reverify existing CAS member: %+v", member)
+		}
+	}
+}
