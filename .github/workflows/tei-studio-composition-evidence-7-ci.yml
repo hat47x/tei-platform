@@ -1,0 +1,88 @@
+name: TEI Studio #7 - Wails multi-service isolated evidence
+
+on:
+  push:
+    branches:
+      - test/tei-studio-composition-evidence-7
+    paths:
+      - .github/workflows/tei-studio-composition-evidence-7-ci.yml
+      - tools/reference-studio-composition-evidence-7/**
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tei-studio-evidence-7-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  wails-multi-service:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      GOTOOLCHAIN: local
+      GOWORK: off
+      GENERATOR_SHA: fe8e37b1c735dc138c36cb2d37db94ee44424b9e
+      HOST_SHA: 4bc437c72e63a3b5d578b1efe2c60be510a9f8a9
+      PROBE_SHA: 993cbd3baa7d9a2397cf57ca036441ce19c1d957
+    steps:
+      - name: Checkout only the #7-owned test branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Use root-required Go 1.26.9
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: go.mod
+          check-latest: false
+          cache: false
+
+      - name: Materialize only the fixed Generator and Host into a disposable worktree
+        shell: bash
+        run: |
+          set -euo pipefail
+          go version
+          test "$(git hash-object tools/reference-studio-composition-evidence-7/wails_multi_service_test.go)" = "$PROBE_SHA"
+          git fetch --no-tags origin refs/pull/1832/head
+          git fetch --no-tags origin refs/pull/1833/head
+          git cat-file -e "$HOST_SHA^{commit}"
+          git cat-file -e "$GENERATOR_SHA^{commit}"
+          snapshot="$RUNNER_TEMP/tei-studio-7-fixed"
+          git worktree add --detach "$snapshot" "$HOST_SHA"
+          test "$(git -C "$snapshot" rev-parse HEAD)" = "$HOST_SHA"
+          (cd "$snapshot" && git archive "$GENERATOR_SHA" tools/reference-studio-static-composition | tar -xf -)
+          cp tools/reference-studio-composition-evidence-7/wails_multi_service_test.go             "$snapshot/cmd/tei-studio/wails_multi_service_test.go"
+          test "$(git hash-object "$snapshot/cmd/tei-studio/wails_multi_service_test.go")" = "$PROBE_SHA"
+          test -z "$(gofmt -l "$snapshot/cmd/tei-studio/wails_multi_service_test.go")"
+          echo "FIXED_HOST=$HOST_SHA"
+          echo "FIXED_GENERATOR=$GENERATOR_SHA"
+          echo "PROBE_BLOB=$PROBE_SHA"
+          echo "SNAPSHOT=$snapshot" >> "$GITHUB_ENV"
+
+      - name: Generate the real two Go services from the exact #1833 source
+        shell: bash
+        working-directory: ${{ env.SNAPSHOT }}
+        run: |
+          set -euo pipefail
+          go run ./tools/reference-studio-static-composition             -fixture tools/reference-studio-static-composition/fixture.json             -out internal/studiohost/staticservices
+          grep -Fq 'func NewCatalogService' internal/studiohost/staticservices/services.generated.go
+          grep -Fq 'func NewValidateService' internal/studiohost/staticservices/services.generated.go
+          sha256sum internal/studiohost/staticservices/services.generated.go
+
+      - name: Independently call both Wails bindings and assert duplicate error
+        shell: bash
+        working-directory: ${{ env.SNAPSHOT }}/cmd/tei-studio
+        run: |
+          set -euo pipefail
+          CGO_ENABLED=0 go test -mod=readonly -count=1 -v             -tags 'studio_generated,server,tei_wails_multi_probe'             -run '^TestWails(TwoGeneratedServicesRetainBothMethodsAndRejectDuplicate|IdenticallyNamedMethodsOfDifferentServiceTypesDoNotConflict)$' .
+          CGO_ENABLED=0 go vet -mod=readonly             -tags 'studio_generated,server,tei_wails_multi_probe' .
+
+      - name: Check the #2 protected Host contract still passes
+        shell: bash
+        working-directory: ${{ env.SNAPSHOT }}/cmd/tei-studio
+        run: |
+          set -euo pipefail
+          CGO_ENABLED=0 go test -mod=readonly -count=1 -v -tags 'studio_generated,server'             -run '^TestGeneratedGoServicesRunThroughRealHost$' .
