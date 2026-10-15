@@ -301,3 +301,21 @@ PoC A の**通常ビルド**を比較元とし、宣言合成の Builder は既�
 **再現方法と次の依存**: 表のexact revisionから各所有pathだけを新しいsnapshotに抽出。生成した `services.generated.go` と配信UI bundleを上記SHA-256で照合し、WSL Linux/Go1.26.9/Wails v3 beta.29で `go test -count=1 -v -tags 'studio_generated,server' .`、`go vet`、CGO無効の生成モードServer buildを実施。loopbackの生成モードServerでworkspace切替、Catalog/Validate、Graph customerId選択後の投影・直接親2ノード更新を確認する。`-race`の実施には `pkg-config` を含む必要なrace/cgo環境が別途必要。Desktop実WebViewは#2/#10側の独立確認とする。
 
 本節は独立検証の受領記録であり、新しいADR/GateやStudio外のIssue対応を発生させない。Studio側の残件は既存担当が継続する。
+
+## 12. Reading Journalの独立Graphフォーカス再描画検証（#8 / 2026-10-15）
+
+この項目は既存のC-05/C-06に対する**追加の契約回帰**であり、新Gateではない。前節の#Work固定証拠（Graph `786d8d82…`）と今回の#8検証入力（Graph `87ab7cdc…`）を同一実行として扱わない。
+
+**固定ソース**: consumer #1825の変更前head `178e8406f9bcb64f5432cd64e5baeb4198a78a27`（新規test差分は後続のheadで管理）、Graph #1828 `87ab7cdc4277ee70aebe535d92dca55fcbecb36f`（`graph.ts` Git blob `4048d35e7c4e1c76774a8b64eb7b0613d17ca0ff`）。Command #1829 `837e81d5d71d51aed484003dd4978da3c7cbe9b4` とEditor #1830 `1009e5f3407c985e00b3a3257b3cc5eee89db2ba` は後続の追加テストを含むが、既存Journalでimportする実装ソースについて今回の機能変更・独立Node全件再実行を主張しない。
+
+**不足を見つけた場所**: Reading Journalの既存 `shared-ports.test.mjs` はGraphのclick/Enter・dispose/remountを確認していたが、選択通知内で `graph.update()` が同期的に走る場合の**フォーカス継続→次のSpace**を検査していなかった。#9は旧Graph `786d8d82…` でfocus落ちを実Chromium再現し、新 `87ab7cdc…` に修正済み（[担当の独立報告](https://github.com/hat47x/tei-platform/issues/1824#issuecomment-6182036391)）。この契約をJournal自身のノートIDでも保持するか追加確認する。
+
+**#8変更**: 所有 `reference/tei-studio-independent-consumer/shared-ports.test.mjs` **1ファイルのみ**に、Fake DOMの`focus()`/activeElement追跡と、`journalGraph()`の実Graph Portを用いて`onSelect(id)`が同一journalグラフを同期`update`する回帰を1件追加。teaノードのEnter→DOM再描画→同IDの新ノードへフォーカス復元→Spaceで2回目通知、旧ノードからの遅延click不採用、外部buttonフォーカス中のbackground updateはフォーカスを奪わない、dispose後root空を検査する。新規意味モデル、TEI Subject、権限判断、Graph原本変更はない。
+
+**#8自身の確認（今回の範囲）**: GitHub固定Graph `graph.ts` blobを取得し、**型注釈を一時除去したコードを単発V8 isolateで評価する縮小再現**では、`tea`のEnter→`graph.update`→新SVGのfocus復元、続くSpace通知（`events=['tea','tea']`）、旧SVGのイベント無効、外部フォーカス保持、disposeのDOM除去がいずれも期待どおりだった。これは**一時type-erasureしたロジックでの限定PASS**であり、正式なNode `npm test`、tsc、esbuild、実CodeMirror DOM、Playwright/Chromium、Wails/Go HostおよびDesktop WebViewのPASSとは区別する。旧Graph版でのREDは今回#8自身は再実行していない。
+
+**正式試験の状態**: 新規 `shared-ports.test.mjs` を含む固定consumer snapshotでのNodeテスト全件と実Chromiumの再実行は **NOT RUN**（#8ローカルに元のGraph/Command/Editorソースを揃えた依存snapshotおよびnpm依存がない）。先行#Workが報告した **17/17 PASS** はconsumer `78f7cb55…` + Graph `786d8d82…` + Command `01f50222…` に限定し、今回の追加1件や新Graphへ転用しない。
+
+**再現**: mainの同一基線から各Draftの所有pathだけを検証用snapshotへ抽出（Draft mergeなし）。consumerを本検証head、Graphを `87ab7cdc4277ee70aebe535d92dca55fcbecb36f`、Commandを `837e81d5d71d51aed484003dd4978da3c7cbe9b4`、Editorを `1009e5f3407c985e00b3a3257b3cc5eee89db2ba` に固定し、`cd reference/tei-studio-independent-consumer && npm ci --no-audit --no-fund && npm test && npm run build` を実行。`shared-ports.test.mjs`でGraph sourceが欠落した場合は該当テストがSKIPされるので、**PASS件数だけでなくskip=0とGraph provider pathの存在**を確認。Python `browser-e2e.py`と実生成Studio Host画面は別試験として扱う。
+
+**依存と境界**: #9の新Graphは単体/隔離実Chromiumでフォーカス修復PASS、生成モードStudio実Hostでの新head Enter→Space連続操作は未確認。#2の別Desktop固定bootstrap native起動/終了証拠（[Issue報告](https://github.com/hat47x/tei-platform/issues/1824#issuecomment-6182081215)）もWorkBench Graphを載せたDesktopの資格とは別。PoC外のADR/Issue追加引継ぎなし。
