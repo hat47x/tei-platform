@@ -87,3 +87,45 @@ func TestSourceIndexFailureAfterSuccessfulLoadAcrossCLIAndHost(t *testing.T) {
 		}
 	})
 }
+
+// Missing file at an indexed source input and a missing parsed source are NOT
+// the same fixture. This is the existing broken-link boundary fixture run
+// through real Load/CLI/Go/ReadOnly Host with one unchanged filesystem state.
+func TestMissingSourceIndexInputCLIHostErrorLocation(t *testing.T) {
+	root, missingPath := missingSourceIndexInputFixture(t)
+	binary := testCLIBinary(t)
+	cli := observeCLI(t, binary, 2, "validate", "-workspace", root, "-json")
+	_, opErr := operations.ValidateWorkspace(root)
+	host, err := studiohost.NewReadOnly([]string{root})
+	if err != nil {
+		t.Fatal(err)
+	}
+	response := host.ValidateWorkspace("workspace-1")
+	envelopeObject(t, response, false, "WORKSPACE_LOAD_FAILED")
+
+	var stage *operations.ValidationFailure
+	if !errors.As(opErr, &stage) || stage.Stage != operations.StageLoad {
+		t.Fatalf("Go operation did not stop at the Load inventory: %v", opErr)
+	}
+	if cli.SchemaVersion != "tei.cli.validate/v0" || cli.OK || cli.Error == nil ||
+		cli.Error.Code != "WORKSPACE_LOAD_FAILED" ||
+		len(cli.Diagnostics) != 0 || response.OK || response.Value != nil ||
+		response.Failure == nil || response.Failure.Stage != "load" {
+		t.Fatalf("CLI/Host disagree on first error stage: CLI=%+v Go=%v Host=%+v", cli, opErr, response)
+	}
+
+	// Neither transport has line/column diagnostics for a file that could not
+	// be loaded. The CLI retains the originating source path in its error text;
+	// the Host deliberately redacts it, so message/location equality is NOT a
+	// valid interoperability requirement for this boundary.
+	if !strings.Contains(filepath.ToSlash(cli.Error.Message), missingPath) ||
+		cli.Error.Message != opErr.Error() {
+		t.Fatalf("CLI did not retain original Load error location: cli=%q go=%v", cli.Error.Message, opErr)
+	}
+	if response.Failure.Message != "workspace loading failed" ||
+		cli.Error.Message == response.Failure.Message ||
+		strings.Contains(response.Failure.Message, missingPath) {
+		t.Fatalf("Host must use a redacted Load failure, not CLI source path: cli=%q host=%+v",
+			cli.Error.Message, response.Failure)
+	}
+}
