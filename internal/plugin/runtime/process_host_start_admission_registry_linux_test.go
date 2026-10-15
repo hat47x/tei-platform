@@ -73,22 +73,22 @@ func TestRegistryHostStartAdmissionBindsExactVerifierAndRunner(t *testing.T) {
 		t.Fatal(err)
 	}
 	plan := pruntime.EnvironmentPlan{
-		Environment: core.MustCanonicalID("reference"),
+		Environment:           core.MustCanonicalID("reference"),
 		PluginLockFingerprint: req.PluginLockFingerprint,
 		Plugins: []pruntime.PluginRuntime{{
-			Plugin: req.Plugin,
+			Plugin:                req.Plugin,
 			DescriptorFingerprint: req.DescriptorFingerprint,
-			Boundary: pruntime.BoundaryProcess,
-			Trust: pruntime.TrustExternalProcess,
-			Artifact: plugin.Artifact{Digest: digest},
-			Command: command.Executable,
-			Args: command.Args,
-			SandboxPolicy: plugin.SandboxRequired,
+			Boundary:              pruntime.BoundaryProcess,
+			Trust:                 pruntime.TrustExternalProcess,
+			Artifact:              plugin.Artifact{Digest: digest},
+			Command:               command.Executable,
+			Args:                  command.Args,
+			SandboxPolicy:         plugin.SandboxRequired,
 		}},
 		Capabilities: []pruntime.CapabilityRuntime{{
-			Plugin: req.Plugin,
+			Plugin:     req.Plugin,
 			Capability: plugin.Capability{Kind: req.CapabilityKind, ID: req.CapabilityID},
-			Boundary: pruntime.BoundaryProcess,
+			Boundary:   pruntime.BoundaryProcess,
 		}},
 	}
 	invoke := func(reg pruntime.Registry, p pruntime.EnvironmentPlan) (pruntime.Invocation, error) {
@@ -102,7 +102,7 @@ func TestRegistryHostStartAdmissionBindsExactVerifierAndRunner(t *testing.T) {
 	}
 	net, fs := &netEnforcer{}, &fsEnforcer{}
 	selected := pruntime.Registry{
-		Verifier: protected,
+		Verifier:  protected,
 		Sandboxes: makeHost(protected, net, fs),
 	}
 	result, err := invoke(selected, plan)
@@ -140,27 +140,27 @@ func TestRegistryHostStartAdmissionBindsExactVerifierAndRunner(t *testing.T) {
 		policy   plugin.SandboxPolicy
 	}{
 		{
-			name: "unprotected verifier with protected runner",
+			name:     "unprotected verifier with protected runner",
 			verifier: pinned, runner: protected,
 			policy: plugin.SandboxRequired,
 		},
 		{
-			name: "protected verifier with unprotected runner",
+			name:     "protected verifier with unprotected runner",
 			verifier: protected, runner: pinned,
 			policy: plugin.SandboxRequired,
 		},
 		{
-			name: "protected verifier with separately admitted runner using same image",
+			name:     "protected verifier with separately admitted runner using same image",
 			verifier: protected, runner: other,
 			policy: plugin.SandboxRequired,
 		},
 		{
-			name: "protected sandbox runner but separate unprotected process handle",
+			name:     "protected sandbox runner but separate unprotected process handle",
 			verifier: protected, runner: protected, process: pinned,
 			policy: plugin.SandboxPreferred,
 		},
 		{
-			name: "protected verifier with unprotected unsandboxed process",
+			name:     "protected verifier with unprotected unsandboxed process",
 			verifier: protected, process: pinned,
 			policy: plugin.SandboxNone,
 		},
