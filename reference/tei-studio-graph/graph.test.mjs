@@ -13,6 +13,7 @@ class FakeElement {
     this.attributes = new Map();
     this.listeners = new Map();
     this.style = {};
+    this.hidden = false;
     this.textContent = "";
   }
   setAttribute(name, value) { this.attributes.set(name, String(value)); }
@@ -97,7 +98,9 @@ test("mount renders text without HTML interpretation and allows an empty graph",
   assert.equal(root.children.length, 1);
   assert.equal(all(root, "svg").length, 1);
   assert.equal(all(root, "line").length, 2);
-  assert.ok(all(root, "text").some(e => e.textContent === maliciousLabel));
+  assert.ok(all(root, "text").some(e => e.textContent.includes("…")));
+  assert.ok(all(root, "title").some(e => e.textContent === maliciousLabel));
+  assert.equal(all(root, "g")[0].getAttribute("aria-label"), maliciousLabel);
   assert.equal(all(root, "img").length, 0);
   view.update({width: 100, height: 80, nodes: [], edges: []});
   assert.equal(all(root, "g").length, 0);
@@ -226,4 +229,36 @@ test("transparent node centers are pointer targets and click bubbles to the sele
   assert.deepEqual(selected, ["check", "publish", "source"]);
   assert.equal(view.getSelectedNode(), "source");
   view.dispose();
+});
+
+test("very long node labels are abbreviated but recoverable on focus and selection", () => {
+  const root = container();
+  const id = '["semantic-data","sales.order.customer_id"]';
+  const longLabel = "SUPER_LONG_LABEL_" + "LONG_SEGMENT_".repeat(25);
+  const chosen = [];
+  const view = mountReadonlyGraph(root, {
+    width: 480, height: 170, nodes: [{id, label: longLabel, x: 240, y: 70}], edges: [],
+  }, {onSelect: id => chosen.push(id)});
+  const group = all(root, "g")[0];
+  const visible = all(group, "text")[0];
+  const full = all(root, "div").find(e => e.getAttribute("data-graph-full-label") === "");
+  assert.ok(full);
+  assert.equal(full.hidden, true);
+  assert.equal(group.getAttribute("aria-label"), longLabel);
+  assert.equal(all(group, "title")[0].textContent, longLabel);
+  assert.ok(visible.textContent.endsWith("…"));
+  assert.ok(visible.textContent.length < longLabel.length);
+  group.dispatch("focus");
+  assert.equal(full.hidden, false);
+  assert.equal(full.textContent, `ラベル全文: ${longLabel}`);
+  const circle = all(group, "circle")[0];
+  circle.dispatch("click");
+  assert.deepEqual(chosen, [id]);
+  assert.equal(view.getSelectedNode(), id);
+  assert.equal(group.dispatch("keydown", "Enter"), true);
+  assert.deepEqual(chosen, [id, id]);
+  view.setSelectedNode(null);
+  assert.equal(full.hidden, true);
+  view.dispose();
+  assert.equal(root.children.length, 0);
 });
