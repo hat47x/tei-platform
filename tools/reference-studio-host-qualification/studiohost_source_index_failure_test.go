@@ -4,7 +4,6 @@ package hostqualification
 
 import (
 	"errors"
-	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -18,28 +17,7 @@ import (
 // synthesizing a ValidationFailure. The loader's persistence parser retains
 // both index declarations; BuildSourceIndex rejects duplicate source identity.
 func TestSourceIndexFailureAfterSuccessfulLoadAcrossCLIAndHost(t *testing.T) {
-	root := t.TempDir()
-	writeFixtureFile := func(path, content string) {
-		t.Helper()
-		full := filepath.Join(root, filepath.FromSlash(path))
-		if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
-			t.Fatal(err)
-		}
-		if err := os.WriteFile(full, []byte(content), 0o644); err != nil {
-			t.Fatal(err)
-		}
-	}
-	writeFixtureFile("tei.workspace.yaml", "workspace: index_only_failure\nsources:\n  - databases\n")
-	writeFixtureFile("databases/sales-core/database.tei",
-		"database sales_core {\n    kind relational\n    ownership managed-here\n    uses semantic sales\n}\n")
-	writeFixtureFile("databases/sales-core/persistence/order.tei",
-		"persist sales_core.order {\n"+
-			"    database sales_core\n"+
-			"    semantic sales.order\n"+
-			"    table public.orders\n"+
-			"    index duplicate_idx on sales.order.id\n"+
-			"    index duplicate_idx on sales.order.id\n"+
-			"}\n")
+	root := sourceIndexDuplicateIndexFixture(t)
 
 	loaded, err := workspace.Load(root)
 	if err != nil {
