@@ -59,6 +59,35 @@ class FileProbeTests(unittest.TestCase):
                 result = probe.assert_success(observed(kind, self.raw), kind, self.raw)
                 self.assertEqual(result['fixtureSha256'], hashlib.sha256(self.raw).hexdigest())
 
+    def test_connected_head_requires_declaration_provenance_and_exports(self):
+        result = observed('ui', self.raw)
+        source = (result['data']['ui.generated.mjs'] +
+                  b'export const mountCommandPanel = ui0;\n'
+                  b'export const mountReadonlyGraph = ui1;\n')
+        declaration = (b'export { mountCommandPanel } from "command.ts";\n'
+                       b'export { mountReadonlyGraph } from "graph.ts";\n')
+        result['files'] = list(probe.CONNECTED_UI_FILES)
+        result['data']['ui.generated.mjs'] = source
+        result['data']['ui.generated.d.mts'] = declaration
+        meta = json.loads(result['data']['ui.provenance.json'])
+        meta['generatedSha256'] = probe.sha(source)
+        meta['declarationsSha256'] = probe.sha(declaration)
+        result['data']['ui.provenance.json'] = json.dumps(meta).encode()
+        evidence = probe.assert_success(result, 'ui', self.raw, probe.CONNECTED_HEAD)
+        self.assertEqual(evidence['sourceSha256'], probe.sha(source))
+        result['data']['ui.generated.d.mts'] = b'tampered'
+        with self.assertRaisesRegex(probe.Failed, 'declaration provenance fingerprint differs'):
+            probe.assert_success(result, 'ui', self.raw, probe.CONNECTED_HEAD)
+
+    def test_connected_head_keeps_exact_three_outputs_and_pins(self):
+        self.assertEqual(probe.ui_files_for(probe.CONNECTED_HEAD),
+                         ('ui.generated.mjs', 'ui.generated.d.mts', 'ui.provenance.json'))
+        self.assertEqual(probe.ui_files_for(probe.NEW_HEAD), probe.UI_FILES)
+        self.assertEqual(probe.pins_for(probe.CONNECTED_HEAD)['connect-workbench.mjs'],
+                         '29249c44d02af687103eff5124db95e5bea88c00')
+        self.assertEqual(probe.pins_for(probe.CONNECTED_HEAD)['compose-ui.mjs'],
+                         '6e20b723ff7f0a3abf2ddce9267c879feeff3599')
+
     def test_stdout_is_not_an_implicit_json_result(self):
         result = observed('ui', self.raw)
         result['stdout'] = b'{}'
