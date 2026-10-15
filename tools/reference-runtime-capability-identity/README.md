@@ -208,3 +208,11 @@ Linux限定の `project_advice_current_host_environment_linux_test.go` は、同
 - 署名者が復権しても、Aの失効済みEnvironment Grantが暗黙に復活することはありません。
 
 この試験で実際に使う鍵・Host current Grantはテスト用合成値です。**既存Start Gateを組み合わせた限定Consumerの確認**であり、正式Issuer／Provider Conformance／Production Host Authority Source、実Resource Lease／OS隔離、分散Host失効を証明しません。既存の無保護Runtime経路を本番向けに無効化する変更でもありません。複数の独立Grant StoreやResolver、Core権限enumを追加しません。
+
+## E43: Production Registryの入場アダプター同一性検証（#976）
+
+`internal/plugin/runtime/process_host_start_admission_registry_linux_test.go` は、E41の選択式 `HostAdmittedPinnedLinuxProcess` を、従来のgeneric Reference直結経路だけでなく、**既存 `runtime.Registry.InvokeWithProvenance`** に登録して確認するLinux試験です。保持FDを使って実Goテスト実行体を起動し、`Registry` の検証済みArtifact・Host Sandbox・応答Provenanceの接続を検査します。
+
+Hostが入場を失効すると、同一Plan/Artifact Digestでも **物理OS Startより前に拒否** します。VerifierとSandbox runnerの一方だけを無保護の`PinnedLinuxProcess`へ差し替えた構成、同じFDを包む別のHost admissionアダプターへ差し替えた構成、Sandbox経路に別のProcess launcherを混ぜた構成、保護されたVerifierから無保護の非Sandbox launcherへ迂回した構成は、いずれも既存`Registry.validateProcessImageBinding`でHost Sandbox適用前に拒否されます。
+
+この試験は**Runtime Registryの選択・固定の整合確認**であり、現在のRegistryがすべてのProcess実行にE41を**強制**している証明ではありません。Hostが無保護のVerifierと無保護のRunnerの両方を選べる従来方式は残っています。合成Host入場を本物の認証済みAuthority Source、Plugin/Provider Conformance、実際のOS Sandbox/Resource Leaseや持続的失効へ昇格させません。並行#1370の署名者実装には手を加えず、今後Production Hostへ接続する際は、Host側の唯一の選択入口で必要な境界にアダプターを必須化します。新しい権限Store/ResolverやCore enumの追加は不要です。
