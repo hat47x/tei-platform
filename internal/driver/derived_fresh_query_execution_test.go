@@ -98,7 +98,7 @@ func TestD3DriverOptInMappingCacheHitAndCurrentAuthorization(t *testing.T) {
 		}
 		return driver.BrowseQueryResult{Raw: queryresult.RawResult{
 			Columns: []string{"reserved", "product_id", "stock"},
-			Rows: d3DriverRawRows(),
+			Rows:    d3DriverRawRows(),
 		}}, true, nil
 	})
 	denied := core.CanonicalID("")
@@ -162,7 +162,7 @@ func TestD3DriverOptInRejectsSQLSourceAndFieldReadChanges(t *testing.T) {
 		denyField = denyAfterLoad
 		return driver.BrowseQueryResult{Raw: queryresult.RawResult{
 			Columns: []string{"reserved", "product_id", "stock"},
-			Rows: rows,
+			Rows:    rows,
 		}}, complete, nil
 	})
 	authority := d2Authority(func(_ context.Context, id core.CanonicalID) bool {
