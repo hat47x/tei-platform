@@ -56,7 +56,7 @@ func main() {
 	if port < 1 || port > 65535 {
 		log.Fatal("port must be between 1 and 65535")
 	}
-	host, err := studiohost.NewReadOnly(paths)
+	host, err := newStudioHost(paths)
 	if err != nil {
 		log.Fatal(err)
 	}

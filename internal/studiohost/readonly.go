@@ -47,16 +47,39 @@ type InspectionResponse struct {
 
 // ReadOnly has no per-browser or selected-workspace state. The host supplies
 // and fixes the workspace allowlist on startup; browser calls supply IDs only.
+// CatalogService and ValidationService expose the generated services' concrete,
+// typed operations. They do not accept renderer-controlled filesystem paths.
+type CatalogService interface {
+	Catalog(namespace string) (operations.ModelCatalog, error)
+}
+type ValidationService interface {
+	Validate() (operations.WorkspaceValidation, error)
+}
+type RootServices struct {
+	Catalog    CatalogService
+	Validation ValidationService
+}
+// ServiceFactory is called only after the host has resolved an allowlisted ID.
+// It is never registered as a Wails service or exposed to the renderer.
+type ServiceFactory func(trustedRoot string) (RootServices, error)
+
 type ReadOnly struct {
-	roots map[string]string
-	refs  []WorkspaceRef
+	roots    map[string]string
+	refs     []WorkspaceRef
+	services ServiceFactory
 }
 
 func NewReadOnly(paths []string) (*ReadOnly, error) {
+	return NewReadOnlyWithFactory(paths, nil)
+}
+
+// NewReadOnlyWithFactory preserves the normal Operation path when factory is
+// nil. A non-nil factory receives only roots selected from the startup allowlist.
+func NewReadOnlyWithFactory(paths []string, factory ServiceFactory) (*ReadOnly, error) {
 	if len(paths) == 0 {
 		return nil, errors.New("at least one -workspace is required")
 	}
-	host := &ReadOnly{roots: make(map[string]string, len(paths))}
+	host := &ReadOnly{roots: make(map[string]string, len(paths)), services: factory}
 	seen := map[string]bool{}
 	for i, path := range paths {
 		if path == "" {
@@ -104,7 +127,20 @@ func (h *ReadOnly) ValidateWorkspace(id string) ValidationResponse {
 	if denied != nil {
 		return ValidationResponse{Failure: denied}
 	}
-	value, err := operations.ValidateWorkspace(root)
+	var value operations.WorkspaceValidation
+	var err error
+	if h.services == nil {
+		value, err = operations.ValidateWorkspace(root)
+	} else {
+		var services RootServices
+		services, err = h.services(root)
+		if err == nil && services.Validation == nil {
+			err = errors.New("validation service is missing")
+		}
+		if err == nil {
+			value, err = services.Validation.Validate()
+		}
+	}
 	if err != nil {
 		return ValidationResponse{Failure: operationFailure(err)}
 	}
@@ -116,7 +152,20 @@ func (h *ReadOnly) CatalogWorkspace(id, namespace string) CatalogResponse {
 	if denied != nil {
 		return CatalogResponse{Failure: denied}
 	}
-	value, err := operations.CatalogWorkspace(root, namespace)
+	var value operations.ModelCatalog
+	var err error
+	if h.services == nil {
+		value, err = operations.CatalogWorkspace(root, namespace)
+	} else {
+		var services RootServices
+		services, err = h.services(root)
+		if err == nil && services.Catalog == nil {
+			err = errors.New("catalog service is missing")
+		}
+		if err == nil {
+			value, err = services.Catalog.Catalog(namespace)
+		}
+	}
 	if err != nil {
 		return CatalogResponse{Failure: operationFailure(err)}
 	}
