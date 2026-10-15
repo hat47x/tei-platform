@@ -193,6 +193,49 @@ func TestD5PublicAggregateUsesTrustedProviderPrivateInputOnly(t *testing.T) {
 	}
 }
 
+// Input access is NOT authority to execute a provider realization. Both
+// checks go through the existing security.authorize adapter, not a D5 rule.
+func TestD5AggregateProviderExecuteGrantIsIndependent(t *testing.T) {
+	host, plan, policy, authority := newFixture(t, Aggregate, "staff.public", Group)
+	grantAll(policy, host, plan)
+	execute := permissionCheck{
+		subject: host.ProviderSubjectID,
+		action: "derive.provider.execute",
+		resource: "tenant/tenant.t1/purpose/sales.order/rule/sales.line_amount",
+	}
+	if !policy.allowed[execute] {
+		t.Fatal("aggregate plan did not require provider execution authorization")
+	}
+	delete(policy.allowed, execute)
+	called := false
+	result, err := Evaluate(context.Background(), host, plan, authority, func(context.Context) (derivationref.Input, error) {
+		called = true
+		return decimal("600"), nil
+	})
+	if !errors.Is(err, ErrDenied) || called || result != (derivationref.Input{}) {
+		t.Fatalf("internal read + caller aggregate permission bypassed provider execution denial: %+v %v", result, err)
+	}
+	if len(policy.seen) == 0 || policy.seen[len(policy.seen)-1] != execute {
+		t.Fatalf("denial must come from existing Authority on the selected provider identity: %+v", policy.seen)
+	}
+	// The same caller may receive an authorized aggregate without acquiring
+	// any private input-read grant for itself.
+	policy.seen = nil
+	policy.allowed[execute] = true
+	result, err = Evaluate(context.Background(), host, plan, authority, itemAmount)
+	if err != nil || result.State != derivationref.Present || result.Decimal != "600" {
+		t.Fatalf("existing Authority approved provider execution but result was blocked: %+v %v", result, err)
+	}
+	for _, check := range policy.seen {
+		if check.subject == host.SubjectID && check.action == "derive.input.read" {
+			t.Fatal("aggregate provider authorization leaked raw input permission to the caller")
+		}
+	}
+	if len(policy.seen) != 2*len(requiredPermissions(host, plan)) {
+		t.Fatalf("expected separate pre/post execution authorization checks: %+v", policy.seen)
+	}
+}
+
 func TestD5UntrustedAggregateExecutorCannotReadPrivateInputs(t *testing.T) {
 	host, plan, policy, authority := newFixture(t, Aggregate, "staff.public", Group)
 	grantAll(policy, host, plan)
