@@ -138,6 +138,23 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           if (-not (Test-Path "$env:RUNNER_TEMP/tei-studio.exe")) { exit 1 }
 
+      - name: 固定生成Goを使ったWindows Desktop Build（実WebView非実行）
+        shell: bash
+        env:
+          POC_B_GENERATOR_SHA: fe8e37b1c735dc138c36cb2d37db94ee44424b9e
+        run: |
+          set -euo pipefail
+          git fetch --no-tags --depth=50 https://github.com/hat47x/tei-platform.git refs/pull/1833/head
+          git cat-file -e "$POC_B_GENERATOR_SHA^{commit}"
+          git archive "$POC_B_GENERATOR_SHA" tools/reference-studio-static-composition | tar -xf -
+          go run ./tools/reference-studio-static-composition \
+            -fixture tools/reference-studio-static-composition/fixture.json \
+            -out internal/studiohost/staticservices
+          cd cmd/tei-studio
+          test -s go.sum
+          go build -mod=readonly -tags studio_generated -o tei-studio-generated.exe .
+          test -s tei-studio-generated.exe
+
   generated-host-server:
     # Deliberately separate from the ordinary Host. Never merge #1833.
     runs-on: ubuntu-24.04
