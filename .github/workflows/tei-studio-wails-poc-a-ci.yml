@@ -162,9 +162,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          git fetch --no-tags --depth=1 https://github.com/hat47x/tei-platform.git refs/pull/1833/head
-          test "$(git rev-parse FETCH_HEAD)" = "$POC_B_GENERATOR_SHA"
-          git archive FETCH_HEAD tools/reference-studio-static-composition | tar -xf -
+          git fetch --no-tags --depth=50 https://github.com/hat47x/tei-platform.git refs/pull/1833/head
+          git cat-file -e "$POC_B_GENERATOR_SHA^{commit}"
+          git archive "$POC_B_GENERATOR_SHA" tools/reference-studio-static-composition | tar -xf -
           go test -count=1 ./tools/reference-studio-static-composition
           go run ./tools/reference-studio-static-composition \
             -fixture tools/reference-studio-static-composition/fixture.json \
