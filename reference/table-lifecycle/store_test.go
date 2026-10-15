@@ -557,3 +557,54 @@ func TestDeletePendingUncertainOutcomeReceiptAndIdentity(t *testing.T) {
 		t.Fatalf("duplicate deletion history count=%d", count)
 	}
 }
+
+func TestDeletePendingRejectsPendingOrderWithReservation(t *testing.T) {
+	// This deliberately inconsistent owner state is an independent negative
+	// fixture: the row still says pending, but inventory already has a
+	// reservation. Neither the order nor owner-side data may be deleted.
+	s, submit := fixture(t)
+	s.mu.Lock()
+	s.state.available = 17
+	s.state.reservations[submit.OrderID] = submit.Units
+	s.mu.Unlock()
+
+	request := DeletePendingRequest{
+		OperationID:     "delete-reserved",
+		SubjectID:       submit.SubjectID,
+		OrderID:         submit.OrderID,
+		ExpectedVersion: submit.ExpectedVersion,
+	}
+	result, err := s.DeletePending(context.Background(), request, allowAll)
+	if err != nil || result.Outcome != NotDeleted || result.Committed {
+		t.Fatalf("reserved pending row deleted: result=%+v err=%v", result, err)
+	}
+	expected := []Phase{PhaseValidate, PhaseAuthorize, PhaseRead}
+	if len(result.Trace) != len(expected) {
+		t.Fatalf("consequence phases ran for refused delete: %v", result.Trace)
+	}
+	for i, phase := range expected {
+		if result.Trace[i] != phase {
+			t.Fatalf("trace[%d]=%s, want %s", i, result.Trace[i], phase)
+		}
+	}
+	snap, exists := s.Inspect(submit.OrderID)
+	if !exists || snap.Order.State != "pending" || snap.Order.Version != 7 ||
+		snap.Available != 17 || snap.Reserved != 3 || len(snap.History) != 0 || len(snap.Notices) != 0 {
+		t.Fatalf("refused delete mutated owner state: %+v exists=%t", snap, exists)
+	}
+	s.mu.Lock()
+	receipts, notices := len(s.state.receipts), len(s.state.pending)
+	s.mu.Unlock()
+	if receipts != 0 || notices != 0 {
+		t.Fatalf("refused delete committed side effects: receipts=%d notices=%d", receipts, notices)
+	}
+	if receipt, found, err := s.LookupDelete(context.Background(), request, allowAll); err != nil || found || receipt.Committed {
+		t.Fatalf("refused delete created a receipt: %+v found=%t err=%v", receipt, found, err)
+	}
+	if dispatched, err := s.SendPending(context.Background(), request.OperationID, func(context.Context, Notice) error {
+		t.Fatal("external delivery ran for refused deletion")
+		return nil
+	}); err != nil || dispatched {
+		t.Fatalf("refused delete published a notice: dispatched=%t err=%v", dispatched, err)
+	}
+}
