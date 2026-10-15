@@ -2,6 +2,36 @@
 
 状態：**#Workの固定Linux-native snapshotで、#1826修正head `b816f10015491333a122bf18ce29fd94dbe8a5d7` のGo Host 3者比較10 subcases・空診断回帰・関連境界/B Go試験・対象Go vetがPASSと報告済み**。PoC Aの共有Go OperationとCLIプロセスの差異を、独立した呼出しで調べるための限定的な検査です。[#1824の担当割当](https://github.com/hat47x/tei-platform/issues/1824#issuecomment-6166730568)と[#6の訂正](https://github.com/hat47x/tei-platform/issues/1824#issuecomment-6166773569)に従います。この文書は新しい製品要求・正本・Gateではありません。
 
+## 2026-10-15 先行追加：異常入力・警告・応答形式を含む意味比較（**新規試験未実行**）
+
+ユーザー指示の**基準ワークベンチ**は [Draft PR #1849](https://github.com/hat47x/tei-platform/pull/1849) exact **`9a290dc61f585dfbf292e9032e5c5bbbad04351a`**、[Issueの実ブラウザー報告](https://github.com/hat47x/tei-platform/issues/1824#issuecomment-6181206457)。#1849で使用されたHostは [#1832](https://github.com/hat47x/tei-platform/pull/1832) exact **`d520689cfb0a2e2919aa86b0beeba54802b31465`**。その`internal/studiohost/readonly.go`の原本はblob **`f1bd33f0e48a63bf9997f74285a23f8870fa32ae`** で、#6の旧3者比較でも利用したGo Host-neutral ReadOnlyです。
+
+**本変更で追加したもの（#6所有pathのみ）**
+
+- `studiohost_adversarial_test.go`（`studiohost_parity`ビルドタグ）：Hostの固定allowlistの未知ID・空ID・path形式・空白付きIDをValidate/Catalog/Inspectそれぞれで拒否し、JSONを`{ok:false,failure:{code,message}}`に保ち、`value`を付けない。**CLIとGo OperationにはRenderer側Workspace IDの概念がない**ので、任意pathと対応付ける偽の「3者同一エラー」を作らない。
+- 同じ`reference/workspace`の入力で、実CLIプロセス／共通Go Operation／実Go Host Bridgeの警告を**コード・severity・subject・source座標まで照合**し、**固定warning3件**を落とさない。`Host.ok=true`、`CLI.ok=true`、`HasErrors()==false`でも **diagnostics=3**（「警告ゼロ」ではない）。
+- 同じ構文不正fixtureでは `CLI exit=1, CLI.ok=false`、`Go.HasErrors()==true` と、**Host `ok=true` / `Value.HasErrors()==true`** を明示的に検査する。`ok=true`はtransport/Operationの応答成功であり、semantic validation合格ではない。
+- 同じ`reference/workspace`とkind/id入力で、未知Subject、未対応kind、空kind、空ID、前置空白IDの CLI / Go / Host失敗コードを比較する。Host成功/失敗envelopeのJSON形状も検査。実CLIのmachine-readable `schemaVersion` を確認する。
+- namespace=`" sales"` はGo Operationで拒否、Hostでは `OPERATION_FAILED`、CLIのflag層では `INVALID_ARGUMENT` と**分類が異なること自体をassert**。輸送層の差を「意味が不一致」と誤判定しない。
+- `client_transport_contract.test.mjs`：**#1832の実JS `createReadOnlyClient`をimport**し、同じWorkspace ID/Subjectの呼出引数で模擬したHost結果・不正envelope・呼出し例外を検査。Host拒否コード、`INVALID_HOST_RESPONSE`、`HOST_TRANSPORT_FAILURE`を混同せず、例外中のprivate pathを漏らさない。ただし`callByName`はモックであり**実Wails IPCではない**。JS Portは最小envelopeだけを検査し、`{ok:true,value:{}}`は受理する。その後の`#1849` `readValidation`などのpayload検査とは別契約。
+- `observeCLI`が**余剰JSONだけでなく不正な後続バイト**も拒否するよう、second Decodeの戻りを`io.EOF`と厳密比較した。CLI実装自体は変更なし。
+
+**検証時の固定入力例（Draftはmergeしない）**
+
+1. 新しい**検証専用checkout**を、過去に実証済みの基準main `128429482e02d96afe0123ee7da023256094dfca`から作る。現行mainの資格確認は別の検証として扱う。
+2. **今回の#1826 exact head**から `tools/reference-studio-host-qualification/` のみ、#1832 exact `d520689cfb0a2e2919aa86b0beeba54802b31465` から `internal/studiohost/` およびNode試験に必要な `cmd/tei-studio/assets/client.mjs` のみを取り出す。#1849自体をmergeしない。必要なら#1849 `presentation.ts`の現在の期待形状を**読取り**照合する。
+3. Go1.26.9/Linux-native、Node版、取得したpath blobを記録して以下を実行する（本追補の作成環境では実行していない）。
+
+~~~sh
+go test -race -count=1 -v -tags studiohost_parity,tei_studio_host_integration ./tools/reference-studio-host-qualification
+go vet -tags studiohost_parity,tei_studio_host_integration ./tools/reference-studio-host-qualification
+node --test tools/reference-studio-host-qualification/client_transport_contract.test.mjs
+~~~
+
+**結果区分**: #Work報告の旧head `b816f10015491333a122bf18ce29fd94dbe8a5d7` の10 subcases・空診断回帰PASSは維持。この追補の**追加Go試験/Node試験・拡張後head・現行mainとの組合せは未実行／未確認**。このチャットには同じ固定checkoutのGo1.26.9実行ログがなく、コード追加を実測PASSとは扱わない。GitHubの通常PR healthが成功しても、タグ付きHostテスト・JS Portテスト・実ブラウザーIPC検証を実行した証拠にはならない。
+
+**次の依存**: #Workの固定snapshotで上記3コマンドを実行し、`reference/workspace`が警告3件を維持すること、CLIの無効引数とHostの別failure分類、実JS Portの結果を確認する。#3は#1849のPresenter側で不正な`value`を拒否する投影を継続検査し、#2/#10は実IPC・Desktop/利用者境界を別に検証する。Source Indexだけの失敗fixtureは引き続きblocked。
+
 ## 所有範囲と既存機構
 
 - **#6**: 正常、構文診断、意味診断、Workspace load失敗、Source Index失敗、subject成功/拒否のCLI／Go Operation比較。PoC AのGo Host Bridge実装を検証snapshotに取り込んだ場合は、実Bridge呼出し結果を同じ意味単位に正規化して3者比較します。Wails IPC自体とは別です。
