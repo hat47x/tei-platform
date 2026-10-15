@@ -300,6 +300,9 @@ func runScenarioCommand(args []string, output io.Writer) error {
 		if err != nil {
 			return err
 		}
+		if err := scenariotest.RejectDuplicateJSONMembers(saved); err != nil {
+			return fmt.Errorf("invalid generated CLI plan: %w", err)
+		}
 		var old scenariotest.Plan
 		d := json.NewDecoder(bytes.NewReader(saved))
 		d.DisallowUnknownFields()
@@ -308,6 +311,11 @@ func runScenarioCommand(args []string, output io.Writer) error {
 		}
 		if d.Decode(new(any)) != io.EOF {
 			return fmt.Errorf("invalid trailing plan content")
+		}
+		for _, command := range old.Commands {
+			if err := scenariotest.ValidateStdinPlan(command.Stdin); err != nil {
+				return fmt.Errorf("step %s: %w", command.StepID, err)
+			}
 		}
 		if !reflect.DeepEqual(old, plan) {
 			return fmt.Errorf("stale or modified CLI plan: regenerate from Scenario")

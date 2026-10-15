@@ -109,10 +109,12 @@ func TestProjectionSeparatesLogicalCandidateKeyFromPhysicalPrimaryKey(t *testing
 			t.Fatalf("semantic join relation was lost: %+v", edge)
 		}
 	}
-	if len(view.Unresolved) != 1 ||
-		view.Unresolved[0].Code != "NO_EXPLICIT_PHYSICAL_MAPPING" ||
-		view.Unresolved[0].Subject != "sales.order" {
-		t.Fatalf("absence of order mapping was falsely inferred away: %+v", view.Unresolved)
+	if len(view.Unresolved) != 2 ||
+		view.Unresolved[0].Code != "FK_REFERENCED_MAPPING_NOT_PRESENT" ||
+		view.Unresolved[0].Subject != "store.sales_line:fk_parent->store.sales_order" ||
+		view.Unresolved[1].Code != "NO_EXPLICIT_PHYSICAL_MAPPING" ||
+		view.Unresolved[1].Subject != "sales.order" {
+		t.Fatalf("unmapped Data or missing FK target was falsely inferred away: %+v", view.Unresolved)
 	}
 	after, err := json.Marshal(world)
 	if err != nil {

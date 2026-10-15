@@ -121,9 +121,26 @@ func ParseBrowseFixture(source []byte) (BrowseFixture, error) {
 	return fixture, nil
 }
 
+// StdinPlan makes the CLI transport input explicit. Existing read-only
+// Scenario operations consume persisted fixtures, not process stdin.
+type StdinPlan struct {
+	Mode string `json:"mode"`
+	Data string `json:"data,omitempty"`
+}
+
+// ValidateStdinPlan fails closed until an actual CLI stdin-consuming operation
+// exists. An absent or invented transport cannot be presented as qualified.
+func ValidateStdinPlan(input StdinPlan) error {
+	if input.Mode != "none" || input.Data != "" {
+		return fmt.Errorf("unsupported CLI stdin plan: require explicit none")
+	}
+	return nil
+}
+
 type Command struct {
-	StepID string   `json:"stepId"`
-	Argv   []string `json:"argv"`
+	StepID string    `json:"stepId"`
+	Argv   []string  `json:"argv"`
+	Stdin  StdinPlan `json:"stdin"`
 }
 
 type Plan struct {
@@ -136,7 +153,68 @@ type Plan struct {
 	Commands         []Command         `json:"commands"`
 }
 
+// RejectDuplicateJSONMembers rejects repeated keys at every object depth.
+// encoding/json otherwise silently overwrites an earlier value. This is
+// shared by persisted Scenario sources and their generated CLI plan artifacts.
+func RejectDuplicateJSONMembers(source []byte) error {
+	decoder := json.NewDecoder(bytes.NewReader(source))
+	if err := scanScenarioJSONValue(decoder); err != nil {
+		return err
+	}
+	if _, err := decoder.Token(); err != io.EOF {
+		return fmt.Errorf("trailing or malformed JSON content")
+	}
+	return nil
+}
+
+func scanScenarioJSONValue(decoder *json.Decoder) error {
+	token, err := decoder.Token()
+	if err != nil {
+		return err
+	}
+	delim, ok := token.(json.Delim)
+	if !ok {
+		return nil
+	}
+	switch delim {
+	case '{':
+		seen := make(map[string]bool)
+		for decoder.More() {
+			next, err := decoder.Token()
+			if err != nil {
+				return err
+			}
+			key, ok := next.(string)
+			if !ok {
+				return fmt.Errorf("invalid JSON object key")
+			}
+			if seen[key] {
+				return fmt.Errorf("duplicate JSON member %q", key)
+			}
+			seen[key] = true
+			if err := scanScenarioJSONValue(decoder); err != nil {
+				return err
+			}
+		}
+		_, err := decoder.Token()
+		return err
+	case '[':
+		for decoder.More() {
+			if err := scanScenarioJSONValue(decoder); err != nil {
+				return err
+			}
+		}
+		_, err := decoder.Token()
+		return err
+	default:
+		return fmt.Errorf("unexpected JSON delimiter %q", delim)
+	}
+}
+
 func Parse(source []byte) (Scenario, error) {
+	if err := RejectDuplicateJSONMembers(source); err != nil {
+		return Scenario{}, fmt.Errorf("decode Driver Scenario: %w", err)
+	}
 	var s Scenario
 	decoder := json.NewDecoder(bytes.NewReader(source))
 	decoder.DisallowUnknownFields()
@@ -246,7 +324,7 @@ func Generate(s Scenario, source []byte, scenarioPath, workspacePath string) (Pl
 	digest := sha256.Sum256(source)
 	plan := Plan{SchemaVersion: PlanVersion, ScenarioID: parsed.ID, ScenarioSHA256: hex.EncodeToString(digest[:]), Commands: make([]Command, 0, len(parsed.Steps))}
 	for _, step := range parsed.Steps {
-		plan.Commands = append(plan.Commands, Command{StepID: step.ID, Argv: []string{"tei", "scenario", "run", "-scenario", scenarioPath, "-workspace", workspacePath, "-step", step.ID, "-scenario-sha256", plan.ScenarioSHA256}})
+		plan.Commands = append(plan.Commands, Command{StepID: step.ID, Argv: []string{"tei", "scenario", "run", "-scenario", scenarioPath, "-workspace", workspacePath, "-step", step.ID, "-scenario-sha256", plan.ScenarioSHA256}, Stdin: StdinPlan{Mode: "none"}})
 	}
 	return plan, nil
 }

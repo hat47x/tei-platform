@@ -43,6 +43,267 @@ func runScenarioCheckForTest(path, workspace, plan string) (string, error) {
 	return out.String(), err
 }
 
+// TestRegenerateScenarioArgvAndStdinPlan exercises every generated command from
+// the persisted six-step Scenario. It never substitutes a hand-authored
+// "scenario run" shortcut for argv generation or claims real provider input.
+func TestRegenerateScenarioArgvAndStdinPlan(t *testing.T) {
+	reference := filepath.Join("..", "..", "reference", "driver-scenarios", "order-entry-pattern-smoke.json")
+	workspace := filepath.Join("..", "..", "reference", "workspace")
+	scenarioPath, _ := scenarioFixtureCopy(t, reference)
+	fixtureDir := filepath.Dir(reference)
+	readStdin := func(name string) scenariotest.StdinPlan {
+		t.Helper()
+		source, err := os.ReadFile(filepath.Join(fixtureDir, "fixtures", name))
+		if err != nil {
+			t.Fatal(err)
+		}
+		var stdin scenariotest.StdinPlan
+		if err := json.Unmarshal(source, &stdin); err != nil {
+			t.Fatal(err)
+		}
+		return stdin
+	}
+	positiveStdin := readStdin("cli_stdin_none.json")
+	negativeStdin := readStdin("cli_stdin_unsupported.json")
+	if err := scenariotest.ValidateStdinPlan(positiveStdin); err != nil {
+		t.Fatalf("positive transport fixture invalid: %v", err)
+	}
+	if err := scenariotest.ValidateStdinPlan(negativeStdin); err == nil {
+		t.Fatal("unsupported stdin fixture was accepted")
+	}
+
+	run := func(action string, extra ...string) (string, error) {
+		var output bytes.Buffer
+		args := append([]string{action, "-scenario", scenarioPath, "-workspace", workspace}, extra...)
+		err := runScenarioCommand(args, &output)
+		return output.String(), err
+	}
+	firstJSON, err := run("generate")
+	if err != nil {
+		t.Fatal(err)
+	}
+	secondJSON, err := run("generate")
+	if err != nil || firstJSON != secondJSON {
+		t.Fatalf("same Scenario did not regenerate deterministic CLI plan: %v", err)
+	}
+	var plan scenariotest.Plan
+	if err := json.Unmarshal([]byte(firstJSON), &plan); err != nil {
+		t.Fatal(err)
+	}
+	persistedSource, err := os.ReadFile(scenarioPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	scenario, err := scenariotest.Parse(persistedSource)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(plan.Commands) != len(scenario.Steps) || len(plan.Commands) != 6 {
+		t.Fatalf("Scenario steps missing in generated argv/stdin plan: %#v", plan.Commands)
+	}
+	for i, command := range plan.Commands {
+		if command.StepID != scenario.Steps[i].ID || command.Stdin != positiveStdin {
+			t.Fatalf("generated Step %d has wrong binding or stdin: %#v", i, command)
+		}
+		if len(command.Argv) < 3 || command.Argv[0] != "tei" || command.Argv[1] != "scenario" {
+			t.Fatalf("CLI argv was not generated for Step %s: %q", command.StepID, command.Argv)
+		}
+		if err := scenariotest.ValidateStdinPlan(command.Stdin); err != nil {
+			t.Fatal(err)
+		}
+		var output bytes.Buffer
+		if err := runScenarioCommand(command.Argv[2:], &output); err != nil {
+			t.Fatalf("generated argv for Step %s not executable: %v", command.StepID, err)
+		}
+		var result struct {
+			ExecutionMode string `json:"executionMode"`
+			Evidence      []struct {
+				StepID   string `json:"stepId"`
+				Verified bool   `json:"verified"`
+			} `json:"evidence"`
+		}
+		if err := json.Unmarshal(output.Bytes(), &result); err != nil {
+			t.Fatal(err)
+		}
+		if result.ExecutionMode != "generated-pinned" || len(result.Evidence) != 1 ||
+			result.Evidence[0].StepID != command.StepID || !result.Evidence[0].Verified {
+			t.Fatalf("generated command Step %s did not verify: %s", command.StepID, output.String())
+		}
+	}
+
+	planPath := filepath.Join(t.TempDir(), "generated-cli-plan.json")
+	savePlan := func(p scenariotest.Plan) {
+		t.Helper()
+		data, err := json.Marshal(p)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(planPath, data, 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	savePlan(plan)
+	if _, err := run("check", "-plan", planPath); err != nil {
+		t.Fatalf("generated CLI plan did not pass provenance check: %v", err)
+	}
+
+	// One negative fixture changes only the declared input transport.
+	// A CLI run cannot silently claim that arbitrary stdin was consumed.
+	invalid := plan
+	invalid.Commands = append([]scenariotest.Command(nil), plan.Commands...)
+	invalid.Commands[2].Stdin = negativeStdin
+	savePlan(invalid)
+	if _, err := run("check", "-plan", planPath); err == nil ||
+		!strings.Contains(err.Error(), "unsupported CLI stdin plan") {
+		t.Fatalf("unimplemented inline stdin was accepted: %v", err)
+	}
+	savePlan(plan)
+
+	// Revision changes must invalidate the previous generated argv and plan.
+	changed := strings.Replace(string(persistedSource),
+		"order-entry-browse-pattern-smoke", "order-entry-browse-pattern-smoke-revised", 1)
+	if changed == string(persistedSource) {
+		t.Fatal("Scenario identity mutation missed fixture")
+	}
+	if err := os.WriteFile(scenarioPath, []byte(changed), 0600); err != nil {
+		t.Fatal(err)
+	}
+	var staleOutput bytes.Buffer
+	if err := runScenarioCommand(plan.Commands[2].Argv[2:], &staleOutput); err == nil ||
+		!strings.Contains(err.Error(), "Scenario fingerprint differs") {
+		t.Fatalf("old generated argv accepted against updated Scenario: %v", err)
+	}
+	if _, err := run("check", "-plan", planPath); err == nil {
+		t.Fatal("old generated argv/stdin plan accepted after Scenario changed")
+	}
+	regenerated, err := run("generate")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var newPlan scenariotest.Plan
+	if err := json.Unmarshal([]byte(regenerated), &newPlan); err != nil {
+		t.Fatal(err)
+	}
+	if newPlan.ScenarioSHA256 == plan.ScenarioSHA256 ||
+		len(newPlan.Commands) != len(plan.Commands) ||
+		newPlan.Commands[2].Stdin != positiveStdin {
+		t.Fatal("Scenario change was not reflected in regenerated argv/stdin")
+	}
+	savePlan(newPlan)
+	if _, err := run("check", "-plan", planPath); err != nil {
+		t.Fatalf("new generated argv/stdin plan failed: %v", err)
+	}
+}
+
+// TestScenarioCLIRejectsShadowedUnsupportedOperation enforces the saved
+// Scenario as an unambiguous source before any CLI plan or Driver execution.
+// encoding/json otherwise silently lets the final duplicate key win.
+func TestScenarioCLIRejectsShadowedUnsupportedOperation(t *testing.T) {
+	root := filepath.Join("..", "..", "reference", "driver-scenarios")
+	workspace := filepath.Join("..", "..", "reference", "workspace")
+	accepted := filepath.Join(root, "order-entry-pattern-smoke.json")
+	ambiguous := filepath.Join(root, "fixtures", "scenario_duplicate_step_operation.json")
+
+	var positive bytes.Buffer
+	if err := runScenarioCommand([]string{
+		"generate", "-scenario", accepted, "-workspace", workspace,
+	}, &positive); err != nil {
+		t.Fatalf("existing unambiguous Scenario failed to generate: %v", err)
+	}
+	var plan scenariotest.Plan
+	if err := json.Unmarshal(positive.Bytes(), &plan); err != nil {
+		t.Fatal(err)
+	}
+	if len(plan.Commands) != 6 {
+		t.Fatalf("positive Scenario lost generated Steps: %d", len(plan.Commands))
+	}
+
+	source, err := os.ReadFile(ambiguous)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := scenariotest.Parse(source); err == nil ||
+		!strings.Contains(err.Error(), "duplicate JSON member") {
+		t.Fatalf("ambiguous persisted Scenario was accepted by parser: %v", err)
+	}
+	for _, action := range []string{"verify", "generate", "run"} {
+		t.Run(action, func(t *testing.T) {
+			args := []string{action, "-scenario", ambiguous, "-workspace", workspace}
+			if action == "run" {
+				args = append(args, "-step", "browse-pattern")
+			}
+			var output bytes.Buffer
+			if err := runScenarioCommand(args, &output); err == nil ||
+				!strings.Contains(err.Error(), "duplicate JSON member") {
+				t.Fatalf("%s accepted shadowed unsupported operation: %v", action, err)
+			}
+			if output.Len() != 0 {
+				t.Fatalf("%s emitted a success artifact from ambiguous Scenario: %s", action, output.String())
+			}
+		})
+	}
+}
+
+// TestScenarioCheckRejectsShadowedGeneratedPlanMembers checks the boundary
+// between a freshly generated CLI plan and a separately saved derived JSON.
+// The last of duplicate JSON keys would otherwise win in encoding/json,
+// potentially making an edited artifact pass the semantic DeepEqual check.
+func TestScenarioCheckRejectsShadowedGeneratedPlanMembers(t *testing.T) {
+	reference := filepath.Join("..", "..", "reference", "driver-scenarios", "order-entry-pattern-smoke.json")
+	workspace := filepath.Join("..", "..", "reference", "workspace")
+	var generated bytes.Buffer
+	if err := runScenarioCommand([]string{
+		"generate", "-scenario", reference, "-workspace", workspace,
+	}, &generated); err != nil {
+		t.Fatal(err)
+	}
+	var parsed scenariotest.Plan
+	if err := json.Unmarshal(generated.Bytes(), &parsed); err != nil {
+		t.Fatal(err)
+	}
+	if len(parsed.Commands) != 6 || parsed.ScenarioID == "" {
+		t.Fatalf("generated CLI plan is incomplete: %#v", parsed)
+	}
+
+	planPath := filepath.Join(t.TempDir(), "cli-plan.json")
+	check := func(content []byte) (string, error) {
+		t.Helper()
+		if err := os.WriteFile(planPath, content, 0600); err != nil {
+			t.Fatal(err)
+		}
+		return runScenarioCheckForTest(reference, workspace, planPath)
+	}
+
+	if output, err := check(generated.Bytes()); err != nil ||
+		!strings.Contains(output, `"planMatches":true`) {
+		t.Fatalf("unchanged derived CLI plan was rejected: %v output=%s", err, output)
+	}
+
+	// An earlier spoofed scenarioId must not be ignored just because the
+	// original generator-issued scenarioId occurs later in the object.
+	spoofed := []byte(`{"scenarioId":"spoofed",` +
+		strings.TrimPrefix(strings.TrimSpace(generated.String()), "{"))
+	if output, err := check(spoofed); err == nil ||
+		!strings.Contains(err.Error(), `duplicate JSON member "scenarioId"`) ||
+		output != "" {
+		t.Fatalf("duplicate top-level Scenario identity accepted: %v output=%s", err, output)
+	}
+
+	// The same rule also applies inside generated command objects, e.g. an
+	// earlier forged stdin mode shadowed by the normal explicit none mode.
+	original := `"stdin":{"mode":"none"}`
+	replacement := `"stdin":{"mode":"inline","mode":"none"}`
+	if !strings.Contains(generated.String(), original) {
+		t.Fatalf("missing expected generated stdin plan: %s", generated.String())
+	}
+	nested := []byte(strings.Replace(generated.String(), original, replacement, 1))
+	if output, err := check(nested); err == nil ||
+		!strings.Contains(err.Error(), `duplicate JSON member "mode"`) ||
+		output != "" {
+		t.Fatalf("duplicate command stdin transport accepted: %v output=%s", err, output)
+	}
+}
+
 func TestScenarioCLIReferenceRoundTrip(t *testing.T) {
 	scenarioPath := filepath.Join("..", "..", "reference", "driver-scenarios", "order-entry-pattern-smoke.json")
 	workspacePath := filepath.Join("..", "..", "reference", "workspace")
