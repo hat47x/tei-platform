@@ -148,9 +148,13 @@ func TestBrowseFixtureRejectsAmbiguousColumns(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
+			row := make([]Value, len(tc.columns))
+			for i := range row {
+				row[i] = Value{Kind: "string", Data: "synthetic"}
+			}
 			fixture := BrowseFixture{
 				Query: "order_query", DatasourceAlias: "orders", TargetDatabase: "scratch",
-				Columns: tc.columns, Rows: [][]Value{},
+				Columns: tc.columns, Rows: [][]Value{row},
 			}
 			data, err := json.Marshal(fixture)
 			if err != nil {
