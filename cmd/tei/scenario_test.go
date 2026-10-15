@@ -191,6 +191,65 @@ func TestScenarioCLIRejectsStaleFixtureAndWrongBusinessResult(t *testing.T) {
 	}
 }
 
+// TestScenarioCLIRejectsAmbiguousBrowseBeforeGeneration proves that a duplicate
+// synthetic raw column cannot be reported as a verified/generatable Scenario.
+// The pre-#1857 parser accepted this fixture at verify/generate time; the
+// downstream Driver mapper only rejected it when the Query was actually run.
+func TestScenarioCLIRejectsAmbiguousBrowseBeforeGeneration(t *testing.T) {
+	reference := filepath.Join("..", "..", "reference", "driver-scenarios", "order-entry-pattern-smoke.json")
+	workspace := filepath.Join("..", "..", "reference", "workspace")
+	scenarioPath, fixturePath := scenarioFixtureCopy(t, reference)
+	run := func(action string, extra ...string) (string, error) {
+		var output bytes.Buffer
+		args := append([]string{action, "-scenario", scenarioPath, "-workspace", workspace}, extra...)
+		err := runScenarioCommand(args, &output)
+		return output.String(), err
+	}
+
+	// Positive control: the original fixture has distinct columns and the
+	// same persisted Scenario can be verified, generated and executed.
+	if _, err := run("verify"); err != nil {
+		t.Fatalf("valid synthetic Browse verification failed: %v", err)
+	}
+	if _, err := run("generate"); err != nil {
+		t.Fatalf("valid synthetic Browse generation failed: %v", err)
+	}
+	validOutput, err := run("run", "-step", "browse-synthetic")
+	if err != nil || !strings.Contains(validOutput, "synthetic-browse-query-executed") {
+		t.Fatalf("valid synthetic Browse execution failed: %v: %s", err, validOutput)
+	}
+
+	// Single negative fixture: two columns are now both called "status".
+	// The final raw value still comes from order_id, so accepting this alias
+	// would be ambiguous rather than a harmless duplicate spelling.
+	rawSource, err := os.ReadFile(fixturePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fixture, err := scenariotest.ParseBrowseFixture(rawSource)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fixture.Columns[len(fixture.Columns)-1] = "status"
+	ambiguousSource, err := json.Marshal(fixture)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(fixturePath, ambiguousSource, 0600); err != nil {
+		t.Fatal(err)
+	}
+	for _, action := range []string{"verify", "generate", "run"} {
+		extra := []string{}
+		if action == "run" {
+			extra = []string{"-step", "browse-synthetic"}
+		}
+		_, err := run(action, extra...)
+		if err == nil || !strings.Contains(err.Error(), "duplicate column") {
+			t.Fatalf("%s accepted ambiguous Browse column reference or returned wrong reason: %v", action, err)
+		}
+	}
+}
+
 func TestScenarioCLIRejectsFixtureTraversal(t *testing.T) {
 	for _, name := range []string{"../outside.json", "/etc/passwd"} {
 		if _, err := scenarioFixturePath("scenario.json", name); err == nil {
