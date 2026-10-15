@@ -83,11 +83,14 @@ func (m *DerivedMemo) Resolve(
 	if !witnessMatchesPlan(q, plan, witness) {
 		return DerivedSelectResult{}, false, fmt.Errorf("%w: witness does not match D2 plan", derivationref.ErrCacheEvidence)
 	}
-	// Memo TTL only measures time since evaluation. A consumer may
-	// independently require the underlying SourceAsOf to be recent.
-	// Fail before cache hits AND before loading another stale full source.
-	if err := derivationref.CheckSourceFreshAt(witness, policy, now); err != nil {
-		return DerivedSelectResult{}, false, err
+	// An alignment-only request proves a coherent snapshot through current
+	// Host/Provider verification; it makes no promise about source age or
+	// evaluation time. Temporal checks apply only to explicit age policies.
+	// Fail before cache hits AND before loading a stale full source.
+	if policy.MaxAge > 0 || policy.MaxSourceAge > 0 {
+		if err := derivationref.CheckSourceFreshAt(witness, policy, now); err != nil {
+			return DerivedSelectResult{}, false, err
+		}
 	}
 	witnessKey, err := derivationref.QualifyCache(ctx, witness, policy, verifier)
 	if err != nil {
