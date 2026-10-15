@@ -137,3 +137,77 @@ jobs:
           go build -mod=readonly -o "$env:RUNNER_TEMP/tei-studio.exe" .
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           if (-not (Test-Path "$env:RUNNER_TEMP/tei-studio.exe")) { exit 1 }
+
+  generated-host-server:
+    # Deliberately separate from the ordinary Host. Never merge #1833.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      GOTOOLCHAIN: local
+      GOWORK: off
+      POC_B_GENERATOR_SHA: fe8e37b1c735dc138c36cb2d37db94ee44424b9e
+    steps:
+      - name: PoC AのPR headを正確にcheckout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Go 1.26.9を固定
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: go.mod
+          check-latest: false
+          cache: false
+      - name: #1833の固定生成器のみ検証snapshotへ抽出
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --no-tags --depth=1 https://github.com/hat47x/tei-platform.git refs/pull/1833/head
+          test "$(git rev-parse FETCH_HEAD)" = "$POC_B_GENERATOR_SHA"
+          git archive FETCH_HEAD tools/reference-studio-static-composition | tar -xf -
+          go test -count=1 ./tools/reference-studio-static-composition
+          go run ./tools/reference-studio-static-composition \
+            -fixture tools/reference-studio-static-composition/fixture.json \
+            -out internal/studiohost/staticservices
+          test -s internal/studiohost/staticservices/services.generated.go
+          grep -q 'func NewCatalogService' internal/studiohost/staticservices/services.generated.go
+          grep -q 'func NewValidateService' internal/studiohost/staticservices/services.generated.go
+          sha256sum internal/studiohost/staticservices/services.generated.go
+      - name: 生成2サービスのtyped Host経路・拒否・診断を実行
+        shell: bash
+        run: |
+          set -euo pipefail
+          go test -count=1 -v ./internal/studiohost/...
+          go vet ./internal/studiohost/...
+          cd cmd/tei-studio
+          test -s go.sum
+          go mod tidy
+          git diff --exit-code -- go.mod go.sum
+          CGO_ENABLED=0 go test -mod=readonly -count=1 -v -tags 'studio_generated,server' .
+          CGO_ENABLED=0 go vet -mod=readonly -tags 'studio_generated,server' ./...
+          CGO_ENABLED=0 go build -mod=readonly -tags 'studio_generated,server' -o "$RUNNER_TEMP/tei-studio-generated-server" .
+      - name: 生成Hostの同一Wails Serverをloopback起動
+        working-directory: cmd/tei-studio
+        shell: bash
+        run: |
+          set -euo pipefail
+          if WAILS_SERVER_HOST=0.0.0.0 "$RUNNER_TEMP/tei-studio-generated-server" -workspace ../../reference/workspace -port 43128 > "$RUNNER_TEMP/generated-env-refused.log" 2>&1; then
+            echo 'generated Host accepted public listener' >&2
+            exit 1
+          fi
+          grep -Fq 'WAILS_SERVER_HOST must be unset or exactly 127.0.0.1' "$RUNNER_TEMP/generated-env-refused.log"
+          "$RUNNER_TEMP/tei-studio-generated-server" -workspace ../../reference/workspace -port 43128 > "$RUNNER_TEMP/generated-host.log" 2>&1 &
+          pid=$!
+          trap 'kill "$pid" 2>/dev/null || true' EXIT
+          healthy=0
+          for _ in {1..30}; do
+            if curl -fsS --max-time 2 http://127.0.0.1:43128/health > "$RUNNER_TEMP/generated-health.json"; then
+              healthy=1
+              break
+            fi
+            sleep 1
+          done
+          test "$healthy" = 1
+          grep -q '"status":"ok"' "$RUNNER_TEMP/generated-health.json"
+          curl -fsS --max-time 5 http://127.0.0.1:43128/ > "$RUNNER_TEMP/generated-index.html"
+          grep -q 'TEI Studio' "$RUNNER_TEMP/generated-index.html"

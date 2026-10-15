@@ -62,3 +62,32 @@ Wails JavaScript service名（初期bootstrap）：`main.StudioBridge`。公開�
 Go1.26.9で生成した依存lockは原本へ反映しました。以前のhead `d070d76457f4140cf61f8c1c1357baf99a5530aa`では[専用CI #38575429096](https://github.com/hat47x/tei-platform/actions/runs/38575429096)のGo read-only・JS・CGO無効Serverビルド・loopback HTTP・公開listen拒否・Windows DesktopバイナリビルドがPASSしています。**原本lock反映後のheadへ過去のCI結果を自動転用しません**。#Workの実ブラウザー操作は過去head `fb52692dd518d930d696464e46962d8382969d7c`で確認されたもので、最新headでは未確認です。Desktop実WebView、Studio統合画面、2ブラウザー/Session隔離、OS配布/署名、CLI/Go/Wails実通信の意味照合、人的受入は未確認です。
 
 Wails Server BuildはEvent broadcastとService singletonを持ちます。本PoCはユーザー別状態・副作用・イベントを持たず、HTTPをloopbackに限定しますが、それだけで通信主体の認証やWorkspace内容の機密保護は保証されません。Webを公開ネットワークへ出したり複数ユーザーへ提供したりしないでください。Workspace内部のシンボリックリンク、ファイル置換、OS境界はここで証明していません。検査は#10、意味比較は#6、PoC B builderは#1、PoC C画面構成は#3が担当します。
+
+
+## PoC B生成GoサービスをHost内部で利用する固定実装（#1833連携）
+
+通常の `go build` は従前の `NewReadOnly` → `operations` 呼出しを維持する。`studio_generated` ビルドタグ指定時だけ、`host_generated.go` が #1833の出力した `staticservices.NewCatalogService` / `NewValidateService` をコンパイル時の型検査付きでHostの `ServiceFactory` に注入する。Wailsのサービス登録は従来どおり `StudioBridge` の4操作のみ。生成サービスをWailsへ登録しない。
+
+`internal/studiohost.ReadOnly` がRendererのWorkspace IDを起動時allowlistに照合し、許可済みrootを確定させてからだけFactoryへ渡す。生成サービスは `Catalog(namespace)` / `Validate()` のみ担当し、List/Inspectは従来どおり。通常経路はFactory=nilで直接Operation呼出し。Factory構築失敗、サービス欠落、Operation失敗は従来のHost failure envelopeへ変換し、非分類の内部エラー/絶対パスは公開しない。
+
+生成器・fixtureの固定版は [#1833 `fe8e37b1c735dc138c36cb2d37db94ee44424b9e`](https://github.com/hat47x/tei-platform/pull/1833)。**生成Goファイルを手書き模倣してcommitしない**。未統合の#1833から該当ディレクトリだけを検証用snapshotに抽出して生成する。
+
+```sh
+# 専用snapshotのrepo root（#1832をベースにした検証用checkout）。PRをmergeしない
+B=fe8e37b1c735dc138c36cb2d37db94ee44424b9e
+git fetch --no-tags --depth=1 https://github.com/hat47x/tei-platform.git refs/pull/1833/head
+test "$(git rev-parse FETCH_HEAD)" = "$B"
+git archive FETCH_HEAD tools/reference-studio-static-composition | tar -xf -
+go run ./tools/reference-studio-static-composition \
+  -fixture tools/reference-studio-static-composition/fixture.json \
+  -out internal/studiohost/staticservices
+go test -count=1 ./internal/studiohost/...
+cd cmd/tei-studio
+CGO_ENABLED=0 go test -mod=readonly -count=1 -tags 'studio_generated,server' .
+CGO_ENABLED=0 go build -mod=readonly -tags 'studio_generated,server' -o tei-studio-generated-server .
+./tei-studio-generated-server -workspace ../../reference/workspace -port 43128
+```
+
+検証項目：型付きコンストラクタの実Goコンパイルと生成サービスを経由したHostメソッド実行、通常Hostの4操作/回帰、未知Workspace ID拒否、許可済みroot以外をFactoryに渡さないこと、内部例外のメッセージ抑止、警告・診断を含む結果一致、Wails Serverのloopback起動・非loopback環境変数拒否。これらは `studio_generated,server` タグと #1833出力の両方を含む **固定snapshotでの実行結果** と分けて記録する。HTTP health成功だけでWails IPCや実Desktop画面での生成Operation呼出し成功は主張しない。
+
+検証済みの通常Host head/Browser/Windows Desktop binary結果を、この生成構成の実Desktop稼働やWeb認証/Session隔離の合格へ転用しない。生成型追加と既存`Services(root) []any`の一般化については#1との境界に留め、二重Registry/Renderer指定のrootは作らない。
