@@ -56,8 +56,11 @@ func (h *projectStartOnlyHost) startAdmission(
 		); err != nil {
 			return fmt.Errorf("Host OS Start admission rejected current Environment Grant: %w", err)
 		}
-		h.starts.Add(1)
-		return start()
+		if err := start(); err != nil {
+			return err
+		}
+		h.starts.Add(1) // Count actual successful OS starts, not admissions.
+		return nil
 	}
 }
 
