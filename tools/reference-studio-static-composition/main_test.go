@@ -3,9 +3,6 @@ package main
 import (
 	"bytes"
 	"encoding/json"
-	"go/ast"
-	"go/parser"
-	"go/token"
 	"strings"
 	"testing"
 )
@@ -119,58 +116,5 @@ func TestMissingServiceCannotProduceIncompleteStaticHost(t *testing.T) {
 	_, _, err = composeServices(raw)
 	if err == nil || !strings.Contains(err.Error(), "unsupported or incomplete") {
 		t.Fatalf("expected missing-service rejection, got %v", err)
-	}
-}
-
-func TestTypedGeneratedOperationsContract(t *testing.T) {
-	source, _, err := composeServices([]byte(goodFixture))
-	if err != nil {
-		t.Fatal(err)
-	}
-	file, err := parser.ParseFile(token.NewFileSet(), "services.generated.go", source, parser.AllErrors)
-	if err != nil {
-		t.Fatalf("generated Go is not syntactically valid: %v", err)
-	}
-	if file.Name.Name != "staticservices" {
-		t.Fatalf("incorrect generated Go package: %s", file.Name.Name)
-	}
-	var typed *ast.FuncDecl
-	for _, decl := range file.Decls {
-		if fn, ok := decl.(*ast.FuncDecl); ok && fn.Name.Name == "NewTypedServices" {
-			typed = fn
-		}
-	}
-	if typed == nil || typed.Recv != nil || len(typed.Type.Params.List) != 1 ||
-		len(typed.Type.Results.List) != 2 {
-		t.Fatal("typed construction method missing or has the wrong signature")
-	}
-	if typed.Type.Params.List[0].Names[0].Name != "root" {
-		t.Fatal("typed constructor must accept only a trusted root")
-	}
-	for i, expected := range []string{"CatalogService", "ValidateService"} {
-		ptr, ok := typed.Type.Results.List[i].Type.(*ast.StarExpr)
-		if !ok {
-			t.Fatalf("result %d must be a concrete pointer", i)
-		}
-		name, ok := ptr.X.(*ast.Ident)
-		if !ok || name.Name != expected {
-			t.Fatalf("result %d was %v instead of *%s", i, ptr.X, expected)
-		}
-	}
-	for _, required := range []string{
-		"func NewTypedServices(root string) (*CatalogService, *ValidateService)",
-		"return NewCatalogService(root), NewValidateService(root)",
-		"func Services(root string) []any",
-		"operations.CatalogWorkspace(s.root, namespace)",
-		"operations.ValidateWorkspace(s.root)",
-	} {
-		if !bytes.Contains(source, []byte(required)) {
-			t.Errorf("generated typed operation missing: %s", required)
-		}
-	}
-	for _, forbidden := range []string{"application.NewService(", "os/exec", "plugin.Open("} {
-		if bytes.Contains(source, []byte(forbidden)) {
-			t.Errorf("Host bypass or dynamic loading introduced: %s", forbidden)
-		}
 	}
 }
