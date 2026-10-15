@@ -229,3 +229,57 @@ func TestD3MemoHasBoundedMemoryAndEvictsOldest(t *testing.T) {
 		t.Fatalf("oldest entry survived bounded cache: hit=%v loads=%d err=%v", hit, loads, err)
 	}
 }
+
+func TestD3MemoRejectsStaleSourceEvenInsideComputedTTL(t *testing.T) {
+	q, plan, proof, rows := d2Fixture()
+	w := d3QueryWitness()
+	policy := derivationref.CachePolicy{
+		MaxAge: 10 * time.Minute, MaxSourceAge: 2 * time.Minute,
+	}
+	now := time.Date(2026, 10, 15, 1, 0, 10, 0, time.UTC)
+	v := &d3QueryVerifier{}
+	allow := func(core.CanonicalID) bool { return true }
+	var memo query.DerivedMemo
+	loads := 0
+	load := func(context.Context, int) ([]query.DerivedRow, bool, error) {
+		loads++
+		return rows, true, nil
+	}
+	// SourceAsOf=00:59, but the calculation is freshly evaluated at 01:00:10.
+	// Both source and memo are within their independent age limits.
+	if _, hit, err := memo.Resolve(context.Background(), q, plan, proof, w, policy,
+		now, v, allow, load); err != nil || hit || loads != 1 {
+		t.Fatalf("fresh source miss failed: hit=%v loads=%d err=%v", hit, loads, err)
+	}
+	if _, hit, err := memo.Resolve(context.Background(), q, plan, proof, w, policy,
+		now.Add(20*time.Second), v, allow, nil); err != nil || !hit || loads != 1 {
+		t.Fatalf("fresh source hit failed: hit=%v loads=%d err=%v", hit, loads, err)
+	}
+	// At 01:01:01 source is 2m01s old, though the computed result is only
+	// 51s old (within its ten-minute TTL). Neither a hit nor a re-evaluation
+	// over the exact same stale SourceAsOf can satisfy the consumer.
+	if _, hit, err := memo.Resolve(context.Background(), q, plan, proof, w, policy,
+		now.Add(51*time.Second), v, allow, load); !errors.Is(err, derivationref.ErrCacheStale) ||
+		hit || loads != 1 {
+		t.Fatalf("stale provider data passed through TTL: hit=%v loads=%d err=%v", hit, loads, err)
+	}
+	// A new source observation, backed by a current verifier and a new
+	// revision, must miss the old key and compute over the revised source.
+	fresh := d3QueryWitness()
+	fresh.Sources[0].Revision = "source-2"
+	fresh.Sources[0].SourceAsOf = now.Add(20 * time.Second)
+	fresh.Sources[0].ObservedAt = now.Add(30 * time.Second)
+	fresh.Inputs[0].Revision = "revision-2"
+	if _, hit, err := memo.Resolve(context.Background(), q, plan, proof, fresh, policy,
+		now.Add(51*time.Second), v, allow, load); err != nil || hit || loads != 2 {
+		t.Fatalf("newer observed source failed to recompute: hit=%v loads=%d err=%v", hit, loads, err)
+	}
+	// Without the optional source-age policy, the old source is not
+	// automatically declared current, but the existing contract permits it
+	// with its still-attested revisions.
+	if _, hit, err := memo.Resolve(context.Background(), q, plan, proof, w,
+		derivationref.CachePolicy{MaxAge: 10 * time.Minute},
+		now.Add(51*time.Second), v, allow, nil); err != nil || !hit || loads != 2 {
+		t.Fatalf("source-age opt-in incorrectly changed default: hit=%v loads=%d err=%v", hit, loads, err)
+	}
+}
