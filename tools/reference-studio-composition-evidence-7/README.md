@@ -87,3 +87,41 @@ Linux / Node v22.16.0 / Python 3.13.5、Go 1.23.2（Go 1.26.9未達）。#1833�
 新headの`compose-ui.test.mjs`はGit blob `77a168349cd004bc8b871f5ae406e189b11d9f71` に一致する原本で再実行し、**Node 6/6 PASS**。新headを指定したUIファイルadapterでは**生成2回の決定性PASS、UI負例8/8 PASS**。`status=BLOCKED`は正常です（Go、通常手登録対照、実asset/bundle、Lock/build成果物が未実証のまま）。この局所UI検査を新head全体のGoビルド・PoC B総合受入PASSとは数えません。
 
 なお実行した新headのNode/fixture/Resolverファイルは、旧headから変わっていない`compose-ui.mjs`等のblobと修正版テストblobを固定して組み合わせた局所snapshotです。新headでのGoソース、Goテスト、Host実行は今回のNode実行には含まれません。
+
+## #1849ワークベンチ合成後のHost境界独立検査（2026-10-15）
+
+### 固定実装revision（他PRをmergeしない）
+- ワークベンチ #1849: `9a290dc61f585dfbf292e9032e5c5bbbad04351a`
+- Go/JS Host #1832: `d520689cfb0a2e2919aa86b0beeba54802b31465`
+- 静的合成 #1833: `d560bddf289df68d896a651ecc6bfad61088f18e`
+- 共通基準: #1849コメント `#6181206457` で明示されたEditor `cc57052f23b69582fc0d3800ab92b2210a28bb4f` / Graph `36799dba33fe0e19db3f7b56e7af1e18da134a71` / Command `26f47772ed49f5c4a9e1c50026c335783bc5e153`。
+- #7検証版はDraft PR #1831のhead SHAをIssue #1824に記録。**どのPRもmainへmergeしない。**
+
+### 固定入力で今回確認した事実
+
+- #1832 `internal/studiohost/readonly.go` の`NewReadOnly(paths)`は起動時許可rootを`workspace-1`等のIDへ格納、Symlink解決と重複root拒否を経由する。`CatalogWorkspace`/`ValidateWorkspace`/`InspectSubject`は全て`h.workspace(id)`の拒否を経て、未知IDでは `{ok:false,failure:{code:"WORKSPACE_NOT_ALLOWED",...}}` へ変換する。実際の返却操作は`internal/operations`へ委譲する。
+- #1832 `cmd/tei-studio/main.go` は`application.NewService(&StudioBridge{host:host})`のみを登録し、4メソッド全てがHostを委譲する。#1849 `main.ts`は`createReadOnlyClient`をimportし、`runtime.Call.ByName`へ渡す。新たな書込み操作、第二Host権限、生成Goサービスの直接Wails登録は現在の固定ソースに存在しない（GitHub原本の**ソース固定比較12項目PASS**。ランタイム認可試験とは区別）。
+- #1833の生成元`main.go`は`operations.CatalogWorkspace(root,namespace)`/`ValidateWorkspace(root)`を直接呼ぶ`Services(root)`を生成する。これは**生のGo Operation結果**であり、Workspace IDのallowlistや`studiohost.*Response`の`ok/value/failure` envelopeは持たない。**これをWailsへ直接登録した場合、既存Host境界の維持は確認できない**。#1にはHost内のみにサービスを保持し公開4操作を維持する配線を依頼する。
+
+### 新しい独立試験
+
+- `client_boundary.test.mjs`: #1832実`cmd/tei-studio/assets/client.mjs`を**Git blob `1afec5762a96bf34eead768a9fc7de4b7eced564`**へ照合して起動。4メソッドのみ公開、RPC名と引数の正確さ、Host拒否の透過、不正envelopeのfail-closed、診断保持、transport例外のpath非漏洩、計6件。**Linux / Node v22.16.0にて6/6 PASS**。#7 test本体Git blob一致確認済み。注：差し込んだHost応答は検査用のcallByNameスタブであり、**Go Host認可の動的実行証明ではない**。
+- `host_boundary_integration_test.go`（`//go:build tei_studio_composition_boundary`）は**本物の`staticservices.Services(root)`と本物の`studiohost.ReadOnly`**を同じ`reference/workspace`で起動するための独立Go資格試験。Catalog/Validate結果の`reflect.DeepEqual`、警告を含む意味結果、未知/絶対path/相対path等のWorkspace ID拒否、JSON envelopeでの`value`非漏洩とfailure code、read-only effect、公開`StudioBridge`のASTメソッド集合と生成Goサービス直接公開の禁止を確認する。
+
+Go資格試験は**固定snapshotの`tools/reference-studio-static-composition/generated/services.generated.go`が実際に生成された後**、依存のGo1.26.9環境で以下により実行します（これは指示であり、本チャットでの実行結果ではありません）。
+
+```sh
+go run ./tools/reference-studio-static-composition \
+  -fixture tools/reference-studio-static-composition/fixture.json \
+  -out tools/reference-studio-static-composition/generated
+go test -count=1 -tags tei_studio_composition_boundary ./tools/reference-studio-composition-evidence-7
+node --test tools/reference-studio-composition-evidence-7/client_boundary.test.mjs
+```
+
+ローカル実行環境Go1.23.2は必要版Go1.26.9未満、GitHubへのDNS疎通も不可であり、**上記Go結合試験は未実施/BLOCKED**。Browserの実Wails bindingやDesktop実WebViewも本検査の範囲では未実施。
+
+### 継続検証の判定
+- **PASS（ソース）**: 実装固定版のHost許可ID入口、Wails4操作への委譲、workbench既存Client経由、直接サービス公開なし（12項目の読み取り照合）。
+- **PASS（JS実行）**: #1832の実Clientを使用した6件（拒否/応答形保持を含む）。
+- **前回固定版のEvidence**: #1833 `d560bddf...` Node静的UI生成決定性2回・拒否8件PASS。今回のHost接続後の動的検証へ流用しない。
+- **未確認/BLOCKED**: #1新しい生成UI一覧を#1849ワークベンチへ繋ぐ変更後の実バンドル、生成GoサービスからHostを通ったWails実IPCでのallowlist/response、今回のGo結合試験、Workspace境界のOS実機資格、Plugin/Build Lock・実asset/binary来歴。将来の修正差分はそのexact source/verification revisionを取り直して検証する。総合PoC BをPASSへ昇格しない。
