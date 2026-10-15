@@ -114,7 +114,10 @@ class E1ArchiveBridgeTest(unittest.TestCase):
                 "linkStatus": status,
                 "qualification": qualification,
                 "executionAllowed": allowed,
-                "diff": {"beforeSourceRevision": before, "afterSourceRevision": after},
+                "diff": {
+                    "beforeSourceRevision": before, "afterSourceRevision": after,
+                    "sourceChanges": self.archived_source_changes() if changes is None else changes,
+                },
             }))
         return run
 
@@ -125,7 +128,8 @@ class E1ArchiveBridgeTest(unittest.TestCase):
         ok = bridge.inspect(before="/historical/r0", after="/historical/r1",
                             runner=self.mock_source_runner(before, after, head))
         self.assertEqual(ok["sourceSnapshots"]["status"],
-                         "supplied-snapshot-revisions-match-archived-claims-only")
+                         "supplied-snapshot-source-and-file-digests-match-archived-claims-only")
+        self.assertEqual(ok["sourceSnapshots"]["changedManagedFilesVerified"], 2)
         self.assertIs(ok["sourceSnapshots"]["independentlyAuthenticated"], False)
         self.assertIs(ok["executionAllowed"], False)
         self.assertEqual(ok["qualification"], "unresolved")
