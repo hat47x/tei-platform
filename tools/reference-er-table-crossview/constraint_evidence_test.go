@@ -101,8 +101,9 @@ func TestCrossviewForeignKeyOnlyLinksExplicitValidMappingTargets(t *testing.T) {
 		}
 	}
 	if len(valid.Tables) != 2 ||
-		len(valid.Tables[1].ForeignKeys) != 1 ||
-		valid.Tables[1].ForeignKeys[0].ReferencedMapping != "store.sales_order" {
+		valid.Tables[0].MappingID != "store.sales_line" ||
+		len(valid.Tables[0].ForeignKeys) != 1 ||
+		valid.Tables[0].ForeignKeys[0].ReferencedMapping != "store.sales_order" {
 		t.Fatalf("FK was fabricated or lost when mapping became available: %+v", valid.Tables)
 	}
 
