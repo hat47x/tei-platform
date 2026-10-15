@@ -69,17 +69,9 @@ func (r Resolver) ExecuteDerivedBrowseQuery(
 		return DerivedBrowseQueryExecution{}, fmt.Errorf("derived Query %s result mapping failed: %w", resolved.Query.ID, err)
 	}
 	observed.Mapped = mapped
-	rows := make([]query.DerivedRow, 0, len(mapped.Rows))
-	for _, rawRow := range mapped.Rows {
-		values := make(map[core.CanonicalID]derivationref.Input, len(rawRow))
-		for i, raw := range rawRow {
-			val, err := exactDerivedInput(raw)
-			if err != nil {
-				return DerivedBrowseQueryExecution{}, fmt.Errorf("%w: unsupported raw value for %s: %v", query.ErrDerivedUnsupported, mapped.Columns[i].Attribute, err)
-			}
-			values[mapped.Columns[i].Attribute] = val
-		}
-		rows = append(rows, query.DerivedRow{Values: values})
+	rows, err := derivedRowsFromMappedResult(mapped)
+	if err != nil {
+		return DerivedBrowseQueryExecution{}, err
 	}
 	selected, err := query.EvaluateDerivedSelect(plan, rows, complete)
 	if err != nil {
@@ -89,6 +81,24 @@ func (r Resolver) ExecuteDerivedBrowseQuery(
 		Browse:  BrowseQueryExecution{Resolution: resolved, Result: observed},
 		Derived: selected,
 	}, nil
+}
+
+// derivedRowsFromMappedResult preserves D2's explicit Query result mapping and
+// lossless decimal conversion for both direct D2 and opt-in D3 execution.
+func derivedRowsFromMappedResult(mapped queryresult.MappedResult) ([]query.DerivedRow, error) {
+	rows := make([]query.DerivedRow, 0, len(mapped.Rows))
+	for _, rawRow := range mapped.Rows {
+		values := make(map[core.CanonicalID]derivationref.Input, len(rawRow))
+		for i, raw := range rawRow {
+			val, err := exactDerivedInput(raw)
+			if err != nil {
+				return nil, fmt.Errorf("%w: unsupported raw value for %s: %v", query.ErrDerivedUnsupported, mapped.Columns[i].Attribute, err)
+			}
+			values[mapped.Columns[i].Attribute] = val
+		}
+		rows = append(rows, query.DerivedRow{Values: values})
+	}
+	return rows, nil
 }
 
 func exactDerivedInput(raw any) (derivationref.Input, error) {
