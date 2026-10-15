@@ -235,6 +235,34 @@ func TestD4AcceptedChoiceIsTargetScopedAndRegistrationOrderInvariant(t *testing.
 	}
 }
 
+// Identical declarations do not become idempotent accepted decisions.
+// A duplicated Choice for the same typed Target is still ambiguous input,
+// even if it chooses exactly the same Binding and Rule.
+func TestD4IdenticalChoiceDeclarationsRejectWithoutPartialPlan(t *testing.T) {
+	req := d4Fixture(t)
+	d4SecondRule(&req)
+	choice := AcceptedChoice{
+		Target:    req.Targets[0].Ref,
+		BindingID: "sales.alternative_attribute",
+	}
+
+	// Positive: one explicit accepted declaration resolves the Attribute
+	// conflict and preserves the independent Query-local Binding.
+	req.Accepted.Choices = []AcceptedChoice{choice}
+	allowed := ResolveBindings(req)
+	if len(allowed.Diagnostics) != 0 || len(allowed.Bindings) != 2 {
+		t.Fatalf("single accepted Choice should resolve both typed targets: %+v", allowed)
+	}
+
+	// Negative: the exact same Choice repeated must be rejected, rather
+	// than deduplicated or silently accepted based on registration order.
+	req.Accepted.Choices = []AcceptedChoice{choice, choice}
+	duplicate := ResolveBindings(req)
+	if !d4HasCode(duplicate, "conflicting-choice") || len(duplicate.Bindings) != 0 {
+		t.Fatalf("identical Choice duplication must fail closed: %+v", duplicate)
+	}
+}
+
 func TestD4FailuresAreFailClosed(t *testing.T) {
 	cases := []struct {
 		name string
