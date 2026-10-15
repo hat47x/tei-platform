@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"errors"
 	"os"
+	"os/exec"
+	"path/filepath"
 	"sort"
 	"strings"
 	"testing"
@@ -233,5 +235,82 @@ func TestPublishExactMembersRechecksEarlierMemberAfterLaterPut(t *testing.T) {
 		memberByRole(t, members, "a").Status != artifactMemberCorrupt ||
 		memberByRole(t, members, "z").Status != artifactMemberAvailable {
 		t.Fatalf("late corruption lost member-specific status: %+v", members)
+	}
+}
+
+// A real compiler output is distinct from the synthetic byte fixtures above.
+// This tests the Build -> exact output bytes -> CAS set publication and
+// reopened retrieval path, but does not claim TEI Builder integration or
+// independent provenance/Host authorization of the expected digest.
+func TestPublishExactMembersFromActualGoBuild(t *testing.T) {
+	source := filepath.Join(t.TempDir(), "main.go")
+	if err := os.WriteFile(source, []byte("package main\nfunc main() {}\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	binaryPath := filepath.Join(t.TempDir(), "reference-executable")
+	cmd := exec.Command("go", "build", "-trimpath", "-buildvcs=false", "-o", binaryPath, source)
+	if output, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("actual Go build failed: %v\n%s", err, output)
+	}
+	executable, err := os.ReadFile(binaryPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(executable) == 0 {
+		t.Fatal("actual build produced empty executable")
+	}
+
+	manifest := []byte("executable=" + digestBytes(executable) + "\n")
+	expected := []artifactMemberRequest{
+		{Role: "executable", Digest: digestBytes(executable)},
+		{Role: "manifest", Digest: digestBytes(manifest)},
+	}
+	store := openTestStore(t, 16<<20)
+
+	// A modified compiled output must not be published under the expected
+	// Build digest. No member may be left available after this preflight error.
+	modified := bytes.Clone(executable)
+	modified[0] ^= 1
+	bad, err := store.publishExactMembers(expected, map[string][]byte{
+		"executable": modified,
+		"manifest":   manifest,
+	})
+	if err == nil || len(bad.Members) != 0 {
+		t.Fatalf("modified compiler output was published: %+v err=%v", bad, err)
+	}
+	for _, member := range expected {
+		if _, _, err := store.GetBytes(member.Digest); !errors.Is(err, errArtifactNotFound) {
+			t.Fatalf("preflight published a member after output mismatch: role=%s err=%v", member.Role, err)
+		}
+	}
+
+	published, err := store.publishExactMembers(expected, map[string][]byte{
+		"executable": executable,
+		"manifest":   manifest,
+	})
+	if err != nil || len(published.Members) != len(expected) {
+		t.Fatalf("actual Build output set publication failed: %+v err=%v", published, err)
+	}
+	reopened, err := openLocalArtifactStore(store.root, 16<<20)
+	if err != nil {
+		t.Fatal(err)
+	}
+	verified, err := reopened.getMembers(expected)
+	if err != nil || !verified.Available() {
+		t.Fatalf("reopened CAS cannot reverify compiler output set: %+v err=%v", verified, err)
+	}
+	for _, member := range verified.Members {
+		var want []byte
+		switch member.Role {
+		case "executable":
+			want = executable
+		case "manifest":
+			want = manifest
+		default:
+			t.Fatalf("unexpected artifact role: %q", member.Role)
+		}
+		if !bytes.Equal(member.Bytes, want) || member.Receipt.Digest != member.Digest {
+			t.Fatalf("actual compiler output changed during CAS round trip: role=%s", member.Role)
+		}
 	}
 }
