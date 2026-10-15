@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"reflect"
+	"strconv"
 	"testing"
 	"time"
 
@@ -195,5 +196,36 @@ func TestD3MemoNoCacheOptInAndMultiSourceCoherence(t *testing.T) {
 	}
 	if calls != 2 {
 		t.Fatal("unverified cross-source query reached provider")
+	}
+}
+
+func TestD3MemoHasBoundedMemoryAndEvictsOldest(t *testing.T) {
+	q, plan, proof, rows := d2Fixture()
+	var memo query.DerivedMemo
+	v := &d3QueryVerifier{}
+	allow := func(core.CanonicalID) bool { return true }
+	at := time.Date(2026, 10, 15, 1, 0, 10, 0, time.UTC)
+	policy := derivationref.CachePolicy{MaxAge: time.Hour}
+	loads := 0
+	load := func(context.Context, int) ([]query.DerivedRow, bool, error) {
+		loads++
+		return rows, true, nil
+	}
+	for i := 0; i < 65; i++ {
+		w := d3QueryWitness()
+		w.Inputs[0].Revision = strconv.Itoa(i)
+		w.Sources[0].Revision = strconv.Itoa(i)
+		if _, hit, err := memo.Resolve(context.Background(), q, plan, proof, w, policy, at.Add(time.Duration(i)*time.Second), v, allow, load); err != nil || hit {
+			t.Fatalf("memo entry %d unexpectedly hit or failed: %v %v", i, hit, err)
+		}
+	}
+	if loads != 65 {
+		t.Fatalf("expected distinct bounded entries: %d", loads)
+	}
+	first := d3QueryWitness()
+	first.Inputs[0].Revision = "0"
+	first.Sources[0].Revision = "0"
+	if _, hit, err := memo.Resolve(context.Background(), q, plan, proof, first, policy, at.Add(65*time.Second), v, allow, load); err != nil || hit || loads != 66 {
+		t.Fatalf("oldest entry survived bounded cache: hit=%v loads=%d err=%v", hit, loads, err)
 	}
 }
