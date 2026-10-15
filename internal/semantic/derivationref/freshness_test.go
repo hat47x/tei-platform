@@ -204,10 +204,10 @@ func (a d3FactAuthority) CanReadConfirmed(_ context.Context, _ derivationref.Con
 func TestD3ConfirmedValueIsNotRecomputedOrRewritten(t *testing.T) {
 	now := time.Date(2026, 10, 15, 1, 0, 0, 0, time.UTC)
 	stored := derivationref.ConfirmedFact{
-		FactID:            "order-123.amount",
-		TargetID:          "order.amount",
-		Value:             derivationref.Input{State: derivationref.Present, Decimal: "600"},
-		SourceRuleID:      "amount", SourceRuleRevision: "v1",
+		FactID:       "order-123.amount",
+		TargetID:     "order.amount",
+		Value:        derivationref.Input{State: derivationref.Present, Decimal: "600"},
+		SourceRuleID: "amount", SourceRuleRevision: "v1",
 		ConfirmedAt:       now.Add(-24 * time.Hour),
 		CommandID:         "order-123.confirm",
 		PersistedRevision: "order-123-v1",
