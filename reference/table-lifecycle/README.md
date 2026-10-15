@@ -10,7 +10,7 @@
 
 - 同一Store内のmutexが、old row/version照合と新row・関連データ・receipt・outboxのcommitを同一境界にする。
 - 期待版／from状態不一致は `not_submitted`。認可拒否は `denied`。Provider障害・契約違反はGo error。commit後ack喪失は `unknown` であり、「何もしなかった」を意味しない。
-- `OperationID` の同一要求再送は確定済みreceiptを返し、別要求やSubmitとCancelでのID再利用は拒否する。receipt取得も再認可する。
+- `OperationID` の同一要求再送は確定済みreceiptを返し、別要求やSubmitとCancelでのID再利用は拒否する。Submitは `Lookup`、業務取消は `LookupCancel` で応答喪失後に確定結果を回復する。いずれもreceipt取得には再認可を必須とし、要求全体の一致がなければ結果を開示しない。対象の正式な業務Action権限やcommit時の認可版保証はこの合成Storeでは成立しない。
 - 在庫のEntity跨ぎ変更は `applyReservation` のowner内業務Actionで実行し、外部Scriptを直接任意実行する公開hookを設けない。
 - 通知outbox送信はcommit後のみ。同一プロセスでの並行・再入送信は阻止する。**リモート送信に失敗した場合は結果が不明**であり、同一 `OperationID` での再送に対する受信側重複排除が必要。外部通知のexactly-onceは保証しない。
 - 派生値は純粋計算としてのみ扱い、このReferenceから保存値更新を自動実行する規則は設けない。
