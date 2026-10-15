@@ -87,8 +87,23 @@ class E1ArchiveBridgeTest(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "metadata digest"):
                 bridge.inspect(path, digest)
 
+    def archived_source_changes(self):
+        lineage = canonical.decode_unique(
+            (canonical.RECEIPTS / "workspace-r1.json").read_bytes(),
+            "workspace-r1.json",
+        )
+        return [
+            {
+                "path": item["path"],
+                "kind": "content-changed",
+                "beforeFingerprint": "sha256:" + item["beforeSHA256"],
+                "afterFingerprint": "sha256:" + item["afterSHA256"],
+            }
+            for item in lineage["changedSourceDigests"]
+        ]
+
     def mock_source_runner(self, before, after, head, *, status="declared-links-consistent",
-                           qualification="unresolved", allowed=False):
+                           qualification="unresolved", allowed=False, changes=None):
         def run(argv, **kwargs):
             self.assertEqual(argv[0:3], ["go", "run", "./tools/reference-change-assurance"])
             self.assertEqual(kwargs["cwd"], ROOT)
