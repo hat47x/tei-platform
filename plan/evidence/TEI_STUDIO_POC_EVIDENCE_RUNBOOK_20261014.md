@@ -189,3 +189,31 @@ PoC A の**通常ビルド**を比較元とし、宣言合成の Builder は既�
 | Editor旧 `4970921…` | #Work実CodeMirrorではCRLF診断と選択オフセット不整合が再現。#4が `a7084fe1…` で修正を提出 | **旧headのFAIL**。新head未再検証 |
 
 **次の検証実行**: 固定snapshotのconsumer配下で `npm install` →生成lock内容・依存版/版のdigest採取→ `npm test` → `npm run build` → `python3 browser-e2e.py`。Node版、npm版、Playwright/ブラウザー版、実出力、DOMスクリーンショット、入力SHAを保存する。依存が揃った時点でのみC-05/C-06を判定し、Studio側の共通部品利用の実証がなければ2 consumer成立を主張しない。
+
+## 11. StudioとReading Journalの同一共通部品を用いた別用途検証（2026-10-15）
+
+**位置づけ**: この節は既存PoC C-05/C-06の実装・証拠更新であり、新たな受入Gateではない。§10の「consumer lock未生成」は**当時の状態**であり、下記のWindows取得と#1825原本への反映で解消した。Draft PRのmerge・main統合・他担当原本変更は実施していない。
+
+### 11.1 各snapshot・主体の分離
+
+| 証拠 | 固定入力 | 環境・実行主体 | 観測 |
+| --- | --- | --- | --- |
+| Studio実Host+ブラウザー | Workbench #1849 `9a290dc61f585dfbf292e9032e5c5bbbad04351a`; Host #1832 `d520689cfb0a2e2919aa86b0beeba54802b31465`; Editor #1830 `cc57052f23b69582fc0d3800ab92b2210a28bb4f`; Graph #1828 `36799dba33fe0e19db3f7b56e7af1e18da134a71`; Command #1829 `26f47772ed49f5c4a9e1c50026c335783bc5e153` | **#Work** / Windows Node24.21.0、Go1.26.9 Linux-native Wails Server、実ブラウザー | 実Host接続、一覧/検索/Workspace切替、Graph選択→InspectSubject、Command成功を確認。<https://github.com/hat47x/tei-platform/issues/1824#issuecomment-6181206457> |
+| Reading Journal別consumer実ブラウザー | Consumer #1825 `8cb42899ca2799c4ac4082db51412a8d45a3d6a1`; Editor #1830 `a7084fe1711cc48eff56fd20e3dc81c508f520a3`; Graph #1828 `36799dba33fe0e19db3f7b56e7af1e18da134a71`; Command #1829 `26f47772ed49f5c4a9e1c50026c335783bc5e153` | **#Work** / Windows Node24.21.0、esbuild0.25.12、CodeMirror state6.7.6/view6.43.14/lint6.9.7、実ブラウザー | `npm test` **12/12 PASS**、`npm run build` **PASS**。Tea tasting切替→CodeMirror本文連動、Graph click/Enter→picker/本文/Editor連動、Command成功・拒否、Editor unmount→reload後表示を観測。<https://github.com/hat47x/tei-platform/issues/1824#issuecomment-6181303406> |
+| #8自身の原本検査 | #1825 `test/tei-studio-poc-evidence`（現行headはIssue追記時に明示） | **#8** / GitHub原本取得・構造検査 | Editor source 3ファイルのGit blob SHAがStudio/Journal両snapshotで一致、GraphとCommandの固定headも一致。lockのSHA-256を共有本文と照合後、原本へ登録。**#8による新E2E実行ではない**。 |
+
+実際のEditor source 3ファイルのGit blob: `editor.ts=146c4fb631a55913a3f0e0aeb82043096f5b118e`、`codemirror.ts=194daf0d7354cf46163d28b3e2382abf4a227575`、`codemirror-coordinates.ts=686a54a685e0078975623e2ed130b2c33f33bc89`。#1830のsnapshot commit SHA（`cc570…` / `a708…`）は異なるが、**実際にimportする同じEditor実装source**である。証拠の異なる2つのconsumer/Hostを「同一実行」とは呼ばない。
+
+### 11.2 #8 consumer原本に反映した独立検査と依存
+
+- **再利用の最小入力**: Editor は `{id,version,text,diagnostics:[]}`、Graph は `{width,height,nodes:[{id,label,x,y}],edges:[{id,source,target}]}`、Command は `{commands,diagnostics,invoke(commandId,signal)}`。Graphの選択callbackは読書ノートIDのみを返し、pickerの `change` を介してEditorの `setDocument` を動かす。Commandの結果意味と拒否はconsumer固有の `journal-command.mjs` で判断する。共通部品にTEI Workspace/Source/Acceptanceや書込み/Host権限を追加していない。
+- **明示破棄と再表示**: #1825内 `editor-entry.mjs`、`graph-entry.mjs`、`command-entry.mjs` にそれぞれUnmount/Remount操作を追加。旧インスタンスの `destroy/dispose` とイベント解除、現在選択中ノートに基づく再生成、`pagehide`での最終破棄を接続。独立 `shared-ports.test.mjs` は実Graph/Command sourceをNodeで読み、最小データ・選択通知・破棄後抑止/再マウント・Command成功/拒否を検査する。ただし提供元source未取得の単体#1825では明示SKIPとなる。
+- **実DOM自動検査**: `browser-e2e.py`へEditor/Graph/Command各自のUnmount/RemountとGraph Enter選択を追加。#Workが確認した旧consumerのページreloadとは**異なる新操作**なので、その旧実画面PASSを本新コードのPASSへ転用しない。
+- **lock原本反映**: #Workが実npm導入で生成したconsumer用`package-lock.json`全文を <https://github.com/hat47x/tei-platform/pull/1825#issuecomment-6181305849> から取得。CRLFと末尾改行を維持してSHA-256 **`7cb7257ef6e71def71ddf5d24414be596832d6c1f3aef36015f51b340d1f18c1`** が一致することを#8が確認し、#1825の`reference/tei-studio-independent-consumer/package-lock.json`としてcommitした。lockfileVersion 3・35 packagesで、consumer `package.json` と依存/Node要件が一致。frontend root manifest/lockには変更なし。
+- **ビルド来歴**: `bundle.mjs`でlock内のCodeMirror/esbuild exact版一致を検査し、`dist/build-provenance.json`へlock SHA-256と提供元TypeScript SHA-256を保存する。実esbuildでの新変更版の成否は未検査。
+
+### 11.3 再現・未確認
+
+固定入力snapshot（各PRの専用pathのみ、mergeなし）でconsumerのディレクトリへ移動し、`npm ci --no-audit --no-fund && npm test && npm run audit:imports && npm run build`。実Chromium/Playwrightを準備した環境で `python3 browser-e2e.py`。stdout/stderr、Node/npm/esbuild/Chromium版、`dist/build-provenance.json`、画面観測を保存する。
+
+**#8の追加remount/Command分離/lock来歴検査を含む最新consumer headでのnpm ci・Node全件・実ブラウザーE2E: NOT RUN**（#8実行環境ではnpm依存をキャッシュ・レジストリから取得できない）。#Workの先行 **12/12 PASS・bundle PASS・実ブラウザー観測** は上記旧consumer固定版に限定。#8は新実DOMの合格、Desktop WebView、公開Web認証、保存権限、アクセシビリティ全般、PoC C全条件、製品採用を主張しない。引き続き#Work等の独立実行結果をexact revision付きで追加する。
