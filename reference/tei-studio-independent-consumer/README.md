@@ -25,30 +25,38 @@ consumerディレクトリだけに依存を置く。#3のfrontend root package/
 ```sh
 cd reference/tei-studio-independent-consumer
 node --version                # Node 22.16+（Node 24でも可）
-npm install --no-audit --no-fund
+npm ci --no-audit --no-fund
 npm test
 npm run audit:imports
 npm run build                 # esbuild: 実#4/#5/#9 TypeScript + CodeMirrorをbundle
 python3 browser-e2e.py        # Playwright Python + 実Chromiumがある環境のみ
 ```
 
-`index.html`の参照先は `main.mjs`、`graph-entry.mjs`、`command-entry.mjs`、`editor-entry.mjs`。esbuild `bundle.mjs` が各入口と実TypeScriptを変換し、CodeMirrorの `@codemirror/*` bare importをconsumer側 `node_modules` から解決して `dist/*.mjs` を作る。`dist/index.html`を生成し、`dist/build-provenance.json`へ各提供元ソースのSHA-256と入力modulesを記録。**raw `index.html` をPython HTTPで開いても `.ts` とbare importは動かない。必ず `dist/` を配信する。**
+`index.html`の参照先は `main.mjs`、`graph-entry.mjs`、`command-entry.mjs`、`editor-entry.mjs`。esbuild `bundle.mjs` が各入口と実TypeScriptを変換し、CodeMirrorの `@codemirror/*` bare importをconsumer側 `node_modules` から解決して `dist/*.mjs` を作る。`dist/index.html`を生成し、`dist/build-provenance.json`へ各提供元ソースのSHA-256、npm lock SHA-256と入力modulesを記録。**raw `index.html` をPython HTTPで開いても `.ts` とbare importは動かない。必ず `dist/` を配信する。**
 
 配信だけなら `python3 -m http.server 4173 --bind 127.0.0.1 --directory dist`。インターネットへ公開しない。`browser-e2e.py`はloopbackの一時サーバーを自動起動し、実Chromiumで検査する。必要なら `TEI_STUDIO_CHROMIUM`にChromium実行ファイルを指定する。
 
-直接依存の版は `@codemirror/state@6.7.6`, `@codemirror/view@6.43.14`, `@codemirror/lint@6.9.7`, `esbuild@0.25.12`。現状、本担当の実行環境はnpmレジストリ到達不可のため**consumerのlockfile生成と実npm installは未実施**。固定入力snapshotのnpm利用可能な実行環境で `npm install --package-lock-only` によりlock生成・一致検査をし、**lock未固定を残課題として扱う**。直接依存のexact pinだけでは推移依存の完全固定を主張しない。
+直接依存の版は `@codemirror/state@6.7.6`, `@codemirror/view@6.43.14`, `@codemirror/lint@6.9.7`, `esbuild@0.25.12`。**consumer専用 `package-lock.json`（lockfileVersion 3）を固定済み**。Windows Node 24.21.0で#Workが生成・共有した35 package分のlock本文について、GitHubコメントの原本とSHA-256 `7cb7257ef6e71def71ddf5d24414be596832d6c1f3aef36015f51b340d1f18c1` の一致を#8側で検証し原本へ登録した。以降は `npm ci` でlockどおりに導入する。ローカル#8実行環境のレジストリ/cache制約で **#8自身の実npm ci・bundle再実行は未確認**。
 
 ## 部品の扱い
 
-- **Editor**: `editor-entry.mjs`が実#4の `createReadOnlyTextEditor` + `codeMirrorRenderer` をimportする。`journalEditorDocument`は `journal:<id>` / `fixture-v1` とテキストを作るだけ。ノート変更時に `setDocument`、`Unmount Editor`押下または `pagehide`で `destroy`（冪等）。`EditorState.readOnly` / `EditorView.editable(false)`は#4側で設定。保存権限は付与しない。
-- **Graph**: `graph-entry.mjs`が実#9 `mountReadonlyGraph`をimport、選択ノードIDをノートpickerへ反映。#9新headでは480幅Graphを約240pxパネルで縮めず、内部横スクロールで14pxのラベルを保つ。実ブラウザーの幅/スクロール測定が必要。旧 `build-graph.mjs` は**同一snapshotのGraph原本SHAの比較**用に残すが、ブラウザ配布物の生成はesbuildを使う。#Workが旧可読性修正head `2d7148c3…` で計測した結果は `clientWidth=225 / scrollWidth=480 / svgWidth=480 / fontSize=14px`。同headにはノード円中心のポインタークリックが選択を更新しない既知FAILがあり、#9は後続head `36799dba…` で修正を提出した。**新headでの実ポインター操作は再検証待ち**。
+- **Editor**: `editor-entry.mjs`が実#4の `createReadOnlyTextEditor` + `codeMirrorRenderer` をimportする。`journalEditorDocument`は `journal:<id>` / `fixture-v1` とテキストを作るだけ。ノート変更時に `setDocument`、`Unmount Editor`押下または `pagehide`で `destroy`（冪等）。さらに別の `Remount Editor` で新しいインスタンスを生成し、現在選択中のノート文書を表示する。`EditorState.readOnly` / `EditorView.editable(false)`は#4側で設定。保存権限は付与しない。
+- **Graph**: `graph-entry.mjs`が実#9 `mountReadonlyGraph`をimport、選択ノードIDをノートpickerへ反映。#9新headでは480幅Graphを約240pxパネルで縮めず、内部横スクロールで14pxのラベルを保つ。実ブラウザーの幅/スクロール測定が必要。旧 `build-graph.mjs` は**同一snapshotのGraph原本SHAの比較**用に残すが、ブラウザ配布物の生成はesbuildを使う。#Workが旧可読性修正head `2d7148c3…` で計測した結果は `clientWidth=225 / scrollWidth=480 / svgWidth=480 / fontSize=14px`。同headにはノード円中心のポインタークリックが選択を更新しない既知FAILがあり、#9は後続head `36799dba…` で修正を提出した。#Workの固定consumer旧head+Graph `36799dba…` のWindows実ブラウザーでWindow sketchクリックとNeighborhood walk Enter→picker・見出し・Editor更新を確認済み（Issue #1824 コメント #6181303406）。#8がこの新しいremount実装で再実行した結果ではない。
 - **Command**: `command-entry.mjs`が実#5 `mountCommandPanel`をimport。consumer側 `invoke`から関連ノート数の成功、削除の拒否を明示する。権限判定やshellを部品へ委譲しない。
 - **Source依存検査**: `npm run audit:imports` は限定された相対import検査、esbuildのmetafileは実際にbundleした全入力を検査し、Editor/Graph/Command原本とCodeMirror依存を確認してTEI意味/Host専用module混入を拒否する。ただし形式名だけから完全な意味分離まで証明するものではない。
 
 ## 実行証拠の範囲
 
-`npm test`中のEditor Port単体試験は、#1830の `editor.ts` が固定snapshotに存在するときだけ実行し、`setDocument`、同一versionで別内容の拒否、`destroy`冪等を確認する。#1830が無い単独#1825 checkoutでは明示SKIPとなる。`browser-e2e.py`は**ビルドした実共通部品**でCodeMirror read-only、ノート切替、Graph横スクロール/ノードクリック、Command success/denied、EditorとGraph/Commandの破棄を検査する。ブラウザー試験が未実行ならPASSと記さない。Desktop WebView、認証、利用者価値、PoC C全体資格はこのconsumerのテストから推定しない。
+`npm test`中のEditor Port単体試験は、#1830の `editor.ts` が固定snapshotに存在するときだけ実行し、`setDocument`、同一versionで別内容の拒否、`destroy`冪等を確認する。#1830が無い単独#1825 checkoutでは明示SKIPとなる。`browser-e2e.py`は**ビルドした実共通部品**でCodeMirror read-only、ノート切替、Graph横スクロール/クリック・Enter選択、Command success/denied、Editor/Graph/Commandの破棄・個別再表示・pagehide最終破棄を検査する。ブラウザー試験が未実行ならPASSと記さない。Desktop WebView、認証、利用者価値、PoC C全体資格はこのconsumerのテストから推定しない。
 
 以前の#Work固定snapshot（main + #1825旧head + #1828旧head + #1829 + #1830）ではWindows Node24.21.0、25中24 PASS・audit URL→パス変換で1 FAIL。この問題は#1825で `fileURLToPath` に修正済みだが、**修正後Windowsで再実行した結果**と区別する。経緯は既存横断手順§9を参照。
 
 #4 Editorは旧head `4970921e…` に対する#Work実CodeMirror検証でCRLF座標ずれが判明し、#4が `a7084fe1…` へ修正済み。snapshotは修正後の `codemirror-coordinates.ts` を含む **`reference/tei-studio-editor/` 全体**を取り出すこと。新headでの実ブラウザー再確認は未実施と区別する。
+
+## Studioとは独立した別用途の検証記録（2026-10-15）
+
+#Workの[Reading Journal独立観測](https://github.com/hat47x/tei-platform/issues/1824#issuecomment-6181303406)は、consumer **#1825 `8cb42899ca2799c4ac4082db51412a8d45a3d6a1`**、Editor **`a7084fe1711cc48eff56fd20e3dc81c508f520a3`**、Graph **`36799dba33fe0e19db3f7b56e7af1e18da134a71`**、Command **`26f47772ed49f5c4a9e1c50026c335783bc5e153`** の専用pathを抽出した**非merge検証snapshot**。Windows Node24.21.0で `npm test` 12/12 PASS、`npm run build` PASS、実ブラウザーでEditorノート変更、Graphクリック/Enter、Command成功/拒否、Editor unmount→reload後再表示を確認済み。観測主体は**#Work**であり、#8の独立実行とは数えない。
+
+[Studio側Draft #1849](https://github.com/hat47x/tei-platform/pull/1849)の実Host接続・実ブラウザーは別snapshot（head `9a290dc61f585dfbf292e9032e5c5bbbad04351a`）。StudioのEditor依存入力 `cc57052f23b69582fc0d3800ab92b2210a28bb4f` とReading Journalの `a7084fe1…` はcommit SHAが異なるが、双方の `editor.ts` / `codemirror.ts` / `codemirror-coordinates.ts` のGit blob SHAはそれぞれ**一致**する。GraphとCommandの入力headも一致する。したがって**同一の共通実装コード**を別の意味モデル（TEIのモデルJSONと読書ノート）に適用した範囲の根拠がある。ただしStudioとconsumerではHost/authorityを共有せず、実OS・UI操作条件も個別の結果である。
+
+新たに#8が追加した **Unmount/Remount Editor・Graph・Command** と、それらを連続する `browser-e2e.py` の自動試験は、上記#Workの旧consumer固定入力には存在しない。新headの実ブラウザー実行が必要で、PASSと呼ばない。#WorkのブラウザーはPython E2Eスクリプト実行ではなく実ブラウザーUIの直接観測だったことも区別する。
