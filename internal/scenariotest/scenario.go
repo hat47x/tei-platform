@@ -105,6 +105,18 @@ func ParseBrowseFixture(source []byte) (BrowseFixture, error) {
 	if fixture.Query == "" || fixture.DatasourceAlias == "" || fixture.TargetDatabase == "" || len(fixture.Columns) == 0 {
 		return BrowseFixture{}, fmt.Errorf("Browse Fixture missing Query, datasource or columns")
 	}
+	// Column names are the raw Query-result keys used by the Driver mapper.
+	// Reject ambiguity here instead of letting a later map silently overwrite it.
+	seenColumns := make(map[string]struct{}, len(fixture.Columns))
+	for _, column := range fixture.Columns {
+		if strings.TrimSpace(column) == "" {
+			return BrowseFixture{}, fmt.Errorf("Browse Fixture has an empty column name")
+		}
+		if _, exists := seenColumns[column]; exists {
+			return BrowseFixture{}, fmt.Errorf("Browse Fixture has duplicate column %q", column)
+		}
+		seenColumns[column] = struct{}{}
+	}
 	if err := ValidateValues(fixture.Parameters); err != nil {
 		return BrowseFixture{}, err
 	}
