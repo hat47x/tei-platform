@@ -6,13 +6,67 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
 
 	"tei/internal/core"
 	"tei/internal/scenariotest"
+	"tei/internal/workspace"
 )
+
+// qualifyCLIPlanForTest supplies the real checkout's Workspace and fixture
+// hashes to the existing scenariotest.Generate argv. This mirrors the
+// existing CLI pin order but is not a replacement for CLI scenario check.
+func qualifyCLIPlanForTest(t *testing.T, scenarioSource []byte, cli scenariotest.Plan) scenariotest.Plan {
+	t.Helper()
+	scenario, err := scenariotest.Parse(scenarioSource)
+	if err != nil {
+		t.Fatal(err)
+	}
+	loaded, err := workspace.Load("../workspace")
+	if err != nil {
+		t.Fatal(err)
+	}
+	worldSource, err := json.Marshal(loaded.World)
+	if err != nil {
+		t.Fatal(err)
+	}
+	worldDigest := sha256.Sum256(worldSource)
+	cli.WorldSHA256 = hex.EncodeToString(worldDigest[:])
+	lockSource, err := os.ReadFile("../workspace/.tei/plugin-lock.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	lockDigest := sha256.Sum256(lockSource)
+	cli.PluginLockSHA256 = hex.EncodeToString(lockDigest[:])
+	cli.FixtureSHA256 = make(map[string]string)
+	for _, step := range scenario.Steps {
+		if step.Fixture == "" {
+			continue
+		}
+		if filepath.IsAbs(step.Fixture) {
+			t.Fatalf("test Scenario has absolute fixture path: %s", step.Fixture)
+		}
+		raw, err := os.ReadFile(step.Fixture)
+		if err != nil {
+			t.Fatal(err)
+		}
+		digest := sha256.Sum256(raw)
+		cli.FixtureSHA256[step.ID] = hex.EncodeToString(digest[:])
+	}
+	for i := range cli.Commands {
+		command := &cli.Commands[i]
+		command.Argv = append(command.Argv,
+			"-world-sha256", cli.WorldSHA256,
+			"-plugin-lock-sha256", cli.PluginLockSHA256)
+		if fixtureSHA, ok := cli.FixtureSHA256[command.StepID]; ok {
+			command.Argv = append(command.Argv, "-fixture-sha256", fixtureSHA)
+		}
+	}
+	return cli
+}
 
 func revisedBrowseInputs(t *testing.T) ([]byte, []byte, scenariotest.Plan) {
 	t.Helper()
@@ -34,8 +88,7 @@ func revisedBrowseInputs(t *testing.T) ([]byte, []byte, scenariotest.Plan) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	digest := sha256.Sum256(fixtureSource)
-	cli.FixtureSHA256 = map[string]string{"browse-synthetic": hex.EncodeToString(digest[:])}
+	cli = qualifyCLIPlanForTest(t, scenarioSource, cli)
 	return scenarioSource, fixtureSource, cli
 }
 
@@ -54,6 +107,7 @@ func persistedWebCase(t *testing.T, current WebBrowseCase) WebBrowseCase {
 
 func TestScenarioRevisionRejectsOldCLIAndWebDerivedCase(t *testing.T) {
 	oldSource, oldFixture, oldCLI, resolver, binding := webCaseInputs(t)
+	oldCLI = qualifyCLIPlanForTest(t, oldSource, oldCLI)
 	oldWeb, err := GenerateWebBrowseCase(oldSource, oldFixture, oldCLI, resolver, binding)
 	if err != nil {
 		t.Fatal(err)
@@ -146,6 +200,7 @@ func TestScenarioRevisionRejectsOldCLIAndWebDerivedCase(t *testing.T) {
 
 func TestScenarioDerivedPairRejectsTamperOrMissingFixture(t *testing.T) {
 	source, fixture, cli, resolver, binding := webCaseInputs(t)
+	cli = qualifyCLIPlanForTest(t, source, cli)
 	web, err := GenerateWebBrowseCase(source, fixture, cli, resolver, binding)
 	if err != nil {
 		t.Fatal(err)
@@ -192,7 +247,14 @@ func TestScenarioDerivedPairRejectsTamperOrMissingFixture(t *testing.T) {
 		t.Fatalf("old Web route accepted after target mapping update: %v", err)
 	}
 	changedCLI := cli
-	changedCLI.FixtureSHA256 = map[string]string{"browse-synthetic": strings.Repeat("0", 64)}
+	changedCLI.FixtureSHA256 = make(map[string]string, len(cli.FixtureSHA256))
+	for key, value := range cli.FixtureSHA256 {
+		changedCLI.FixtureSHA256[key] = value
+	}
+	changedCLI.FixtureSHA256["browse-synthetic"] = strings.Repeat("0", 64)
+	changedCLI.Commands = append([]scenariotest.Command(nil), cli.Commands...)
+	changedCLI.Commands[2].Argv = append([]string(nil), cli.Commands[2].Argv...)
+	changedCLI.Commands[2].Argv[len(changedCLI.Commands[2].Argv)-1] = strings.Repeat("0", 64)
 	if err := runCheck(changedCLI, web, binding); err == nil ||
 		!strings.Contains(err.Error(), "stale or missing Browse fixture pin") {
 		t.Fatalf("tampered synthetic fixture digest accepted: %v", err)
