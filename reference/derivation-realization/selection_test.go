@@ -45,7 +45,7 @@ func fixture(t *testing.T) (HostSelection, Invocation, GoRealization) {
 	}
 	realization := GoRealization{
 		Plugin: invocation.PluginPin, Operator: operator, Target: "go/reference",
-		Run: GoMultiply,
+		Run: GoMultiply, ArtifactDigest: pinnedArtifact,
 	}
 	return HostSelection{
 		Catalog: catalog, Environment: env, Lock: lock,
@@ -131,6 +131,12 @@ func TestSelectionRejectsMismatchBeforeCallingImplementation(t *testing.T) {
 			h.OperatorCatalog = append(h.OperatorCatalog, h.OperatorCatalog[0])
 		}},
 		{"operator revision differs", func(_ *HostSelection, i *Invocation, _ *GoRealization) { i.OperatorPin.Version = "1.0.1" }},
+		{"realization artifact digest differs", func(_ *HostSelection, _ *Invocation, r *GoRealization) {
+			r.ArtifactDigest = "sha256:" + strings.Repeat("c", 64)
+		}},
+		{"realization artifact digest absent", func(_ *HostSelection, _ *Invocation, r *GoRealization) {
+			r.ArtifactDigest = ""
+		}},
 		{"realization mismatched plugin", func(_ *HostSelection, _ *Invocation, r *GoRealization) { r.Plugin.Version = "2.0.0" }},
 		{"realization mismatched operator", func(_ *HostSelection, _ *Invocation, r *GoRealization) {
 			r.Operator.Fingerprint = strings.Repeat("c", 64)
