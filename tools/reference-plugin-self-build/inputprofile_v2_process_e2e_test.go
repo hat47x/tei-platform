@@ -2,7 +2,9 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
+	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -144,30 +146,144 @@ func TestOptInV2InputWithExactV1ProcessEngine(t *testing.T) {
 				!strings.HasPrefix(evidence.CanonicalInputDigest, "sha256:") {
 				t.Fatalf("missing exact ingress provenance: %+v", evidence)
 			}
+			// Bind the same explicit Host-selected v2 profile and exact locks
+			// through the published input admission API before launching the
+			// actual process. The supplied values are a reference fixture,
+			// not independently verified Production Host authorization.
+			planFingerprint, err := plugin.BuildPlanFingerprint(plan)
+			if err != nil {
+				t.Fatal(err)
+			}
+			selection := inputprofile.BuildInputSelection{
+				Profile:                    inputprofile.PluginDefinitionJSONV2,
+				LockedSourceFingerprint:    lockedSourceFingerprint,
+				LockedBuildPlanFingerprint: planFingerprint,
+			}
+			app, env := core.MustCanonicalID("order_entry"), core.MustCanonicalID("development")
+			currentSelection := selection
+			revoked := false
+			hostReads := 0
+			hostRead := func(_ context.Context, application, environment core.CanonicalID) (inputprofile.CurrentPackageBuildBinding, error) {
+				hostReads++
+				if revoked {
+					return inputprofile.CurrentPackageBuildBinding{}, errors.New("revoked by current Host")
+				}
+				return inputprofile.CurrentPackageBuildBinding{
+					Application: app, Environment: env, Selection: currentSelection,
+				}, nil
+			}
+			admit := func() (inputprofile.PreparedPackageInputs, error) {
+				return inputprofile.PrepareCurrentHostPackageInputs(
+					context.Background(), app, env, hostRead, source, plan, []byte(tc.raw),
+				)
+			}
+			prepared, err := admit()
+			if err != nil {
+				t.Fatalf("current Host input binding rejected v2 fixture: %v", err)
+			}
+			canonicalInput, err := canonical.JSON()
+			if err != nil {
+				t.Fatal(err)
+			}
+			preparedInput, err := prepared.Inputs["pluginDefinition"].JSON()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !bytes.Equal(preparedInput, canonicalInput) {
+				t.Fatal("Host-bound input differs from the independently canonicalized v2 input")
+			}
+			if prepared.Evidence.OriginalInputDigest != evidence.OriginalInputDigest ||
+				prepared.Evidence.CanonicalInputDigest != evidence.CanonicalInputDigest ||
+				prepared.Evidence.SourceFingerprint != lockedSourceFingerprint ||
+				prepared.Evidence.BuildPlanFingerprint != planFingerprint ||
+				prepared.Evidence.PluginDefinitionFingerprint != plan.PluginDefinitionFingerprint {
+				t.Fatalf("exact Host-bound ingress lost input provenance: %+v", prepared.Evidence)
+			}
+			currentSelection.LockedBuildPlanFingerprint = "unapproved-plan"
+			if _, err := admit(); err == nil {
+				t.Fatal("unapproved BuildPlan reached process input preparation")
+			}
+			currentSelection = selection
+			currentSelection.Profile = ""
+			if _, err := admit(); err == nil {
+				t.Fatal("missing explicit v2 selection reached process input preparation")
+			}
+			currentSelection = selection
 			var previous []byte
 			for run := 0; run < 2; run++ {
-				got, err := evaluateWithExactEngine(engineExecutable, engineDigest, sourcePath, source, map[string]transform.Value{
-					"buildPlan":        planValue,
-					"pluginDefinition": canonical,
-				})
+				if run == 1 {
+					// A prior allowed build does not cache future Host approval.
+					// This is a pre-invocation refusal, NOT a revocation
+					// guard over an already running process.
+					revoked = true
+					if _, err := admit(); !errors.Is(err, inputprofile.ErrCurrentPackageSelectionUnavailable) {
+						t.Fatalf("revoked Host selection was not rejected before next process invocation: %v", err)
+					}
+					revoked = false
+				}
+				attemptInputs, err := admit()
+				if err != nil {
+					t.Fatalf("current Host selection failed for run %d: %v", run+1, err)
+				}
+				if attemptInputs.Evidence != prepared.Evidence {
+					t.Fatalf("fresh Host selection changed admitted inputs for run %d", run+1)
+				}
+				got, err := evaluateWithExactEngine(engineExecutable, engineDigest, sourcePath, source, attemptInputs.Inputs)
 				if err != nil {
 					t.Fatalf("exact v1 process with v2 ingress failed (run %d): %v", run+1, err)
 				}
 				if got.Output.Kind != transform.ValueBytes || !bytes.Equal(got.Output.Bytes, oracle) {
 					t.Fatalf("exact process SB-1 output differed from Go oracle (run %d)", run+1)
 				}
+				observed, err := inputprofile.ObservePackageOutput(attemptInputs.Evidence, got)
+				if err != nil {
+					t.Fatalf("exact process output was not observed as the admitted SB-1 package (run %d): %v", run+1, err)
+				}
+				if observed.Input != attemptInputs.Evidence ||
+					observed.OutputDigest != plugin.BuildOutputDigest(oracle) ||
+					observed.Steps != got.Steps {
+					t.Fatalf("exact process result lost input/output evidence (run %d): %+v", run+1, observed)
+				}
 				if previous != nil && !bytes.Equal(previous, got.Output.Bytes) {
 					t.Fatal("repeated exact process execution changed bytes")
 				}
 				previous = got.Output.Bytes
 			}
+			if hostReads != 6 {
+				t.Fatalf("each admission must consult current Host selection; got %d reads, want 6", hostReads)
+			}
+
+			// Diagnostic of a KNOWN OPEN read/start gap (see #1845, #976).
+			// Once inputs have been prepared, nothing in this adapter keeps
+			// the Host generation valid until the physical process starts.
+			// A passing test demonstrates the gap, NOT safe revocation.
+			pendingStart, err := admit()
+			if err != nil {
+				t.Fatal(err)
+			}
+			revoked = true
+			if _, err := admit(); !errors.Is(err, inputprofile.ErrCurrentPackageSelectionUnavailable) {
+				t.Fatalf("a fresh Host read did not detect pre-start revocation: %v", err)
+			}
+			afterRevocation, err := evaluateWithExactEngine(
+				engineExecutable, engineDigest, sourcePath, source, pendingStart.Inputs,
+			)
+			if err != nil {
+				t.Fatalf("the expected known read/start gap was not reproducible: %v", err)
+			}
+			if !bytes.Equal(afterRevocation.Output.Bytes, oracle) {
+				t.Fatal("post-revocation process did not reproduce the exact old admitted output")
+			}
+			if _, err := inputprofile.ObservePackageOutput(pendingStart.Evidence, afterRevocation); err != nil {
+				t.Fatalf("output observation rejected valid bytes (but cannot authorize the revoked run): %v", err)
+			}
+			if hostReads != 8 {
+				t.Fatalf("pre-start diagnostic must read the Host exactly twice more; got %d", hostReads)
+			}
+
 			var manifest plugin.PluginPackageManifest
 			if err := json.Unmarshal(previous, &manifest); err != nil {
 				t.Fatalf("exact process emitted invalid SB-1 manifest: %v", err)
-			}
-			planFingerprint, err := plugin.BuildPlanFingerprint(plan)
-			if err != nil {
-				t.Fatal(err)
 			}
 			if manifest.BuildPlanFingerprint != planFingerprint ||
 				manifest.PluginDefinitionFingerprint != plan.PluginDefinitionFingerprint {

@@ -76,6 +76,58 @@ go run ./tools/reference-change-assurance \
 
 次段階では、#1180/#1163の受入根拠と`Source Revision + Scenario/Oracle + Target/Provider`を照合し、未管理Sourceの扱いを導入します。Graph投影の欠落を推測で補う実装や新たな品質Gateは作りません。
 
+## Driver Scenarioと生成CLI PlanのSource Revisionへの読取り接続（POC-10）
+
+既存の`tei scenario generate`（#1180）が保存する`tei.cli-scenario-plan/v0`を、今回の検証ツールが**読取りだけ**で照合します。二つのWorkspaceの`Source Revision`差分と、既存のScenario/Fixture/World/Plugin Lockを参照した同一Planの現行性を、一つの出力に並べます。ScenarioやCLI Planの新しい正本、第二のDriver、実行機構は作りません。
+
+```sh
+go run ./cmd/tei scenario generate \
+  -scenario reference/driver-scenarios/order-entry-pattern-smoke.json \
+  -workspace /path/to/after-workspace > /tmp/order-entry-plan.json
+
+go run ./tools/reference-change-assurance \
+  -before-workspace /path/to/before-workspace \
+  -after-workspace /path/to/after-workspace \
+  -scope order-entry-reference \
+  -consumer-kind application -consumer-id order_entry \
+  -scenario reference/driver-scenarios/order-entry-pattern-smoke.json \
+  -plan /tmp/order-entry-plan.json
+```
+
+`-scenario`と`-plan`は対で指定します。`-plan`は既存CLIで生成・保存したPlanの**完全一致**を求め、Scenarioの原文SHA-256、すべてのFixture原文SHA-256、解析済みWorldのSHA-256、Plugin LockのSHA-256、Step数・順序・CLI argvを照合します。編集済みPlan、staleなScenario、Fixture、World、Plugin Lockや外部ディレクトリを指すFixtureは受け付けません。Fixtureを持つStepは既存`scenariotest`の厳格なParserで読みます。
+
+出力は`scenarioId`/`scenarioSha256`/`fixtureSha256`/`planMatches`と、POC-9の`diff.beforeSourceRevision`/`diff.afterSourceRevision`を並置し、同じ読取り時点で観測したSource Revisionを`observedAfterSourceRevision`として表示します。
+
+**重要**：現行の生成CLI Planは**Source Indexの`ModelRevision`そのものをpinしていません**。一方、`WorldSHA256`は保持するため、Canonical Worldに取り込まれるSQL本文の`DESC → ASC`変更は既存Planをstaleとして拒否できます。逆に、管理対象Semantic Source末尾の空行追加など、**Byte指紋とModelRevisionは変わってもWorld表現が変化しない編集**についてはPlan指紋が一致したままです。`planPinsSourceRevision=false`を明示し、この違いを`diff`の指紋変化とともに残します。Plan照合の合格を「受理済みSource Revisionへの暗号学的な束縛」とみなしてはいけません。
+
+`qualification=unresolved`、`executionAllowed=false`で固定し、Scenarioに明示した期待値と合成Fixtureの存在を**独立Oracle認定・本番Provider観測・実行済みTest PASS**へ自動昇格させません。Scenario定義・Fixture、Planが一致しても、実TargetのEffect/Permissionと業務意味・受理済みSource、Scenarioの網羅性は未証明です。#1180のCLI/Web生成と#1163の正式Evidence Packetは既存の担当機構のまま保持します。
+
+次は、既存のAccepted Source RevisionとExecution Receiptから**実際に照合可能な証明項目だけ**を追加し、証拠が欠ける場合は引き続き`unresolved`へ留めます。
+
+## #1163の既存8件の合成Web receiptとSource Revisionの照合（POC-11）
+
+#1163 / #1119の既存`tools/reference-critical-path-evidence-audit`はEvidence Packetの**形式・申告欄の整合**を検査しますが、指定されたreceiptの実バイト列を読んでSource Revisionと照合する機能ではありません。本モードは**正式なEvidence Packetの代替ではなく**、既存の`live-r1-smoke.mjs`がリポジトリ外に保存する8個の合成専用receiptを、変更前後の実Workspaceと**読取りだけで**照合します。
+
+```sh
+go run ./tools/reference-change-assurance \
+  -before-workspace /path/to/test-only/r0-workspace \
+  -after-workspace /path/to/test-only/r1-workspace \
+  -scope order-entry-reference \
+  -consumer-kind application -consumer-id order_entry \
+  -archived-witness-dir /path/to/unpacked/existing-eight-e1-receipts
+```
+
+8件の元の名前・`evidenceNature`・`integrationHead`と各ファイルのバイトSHA-256を記録したうえで、主に下記の**receipt内の主張**を照合します。
+
+- `workspace-r1.json` のR0/R1と`decisionModelRevisionAfter`を、二つの`BuildSourceIndex`から計算した`ModelRevision`と比較する。
+- `target-launch.json` のTarget build revision、application、起動前に観測したSource R1、`web-positive.json`と`web-negative-unit-price.json`のR1申告を照合する。
+- `n11-unobserved-control.json`のCommand完了・Observation read試行・read結果未記録、および`stale-source-control.json`が異なるR0を実際に読んだと**申告しているか**を調べる。
+- 8件が別々のファイルとして存在すること、予期しない種類・ヘッド相違・Source版相違・読めないファイルを診断・拒否する。ファイルのSHA-256は証拠の真正性や独立採取の保証ではありません。
+
+出力の`linkStatus=declared-links-consistent`は**試験ハーネスが出した申告の文字列同士が整合する候補**でしかありません。`qualification=unresolved`・`executionAllowed=false`は固定です。独立DB観測、人間の受理、Targetが実際にR1版を強制したこと、現行Runtime権限、第三者の署名・artifact真正性、#1180のScenarioそのものがこの#1163 Web試験で実行されたことは**一切認定しません**。既存Evidence preflightのE1/E2資格判定や#1119のGateも呼び出しません。証拠の回帰テストは合成receiptを用いるもので、本番実行の実証ではありません。
+
+既存`-scenario/-plan`モードとの同時指定は禁止します。#1180のCLI Scenarioと#1163のWeb合成試験を、同じScenario ID・同一実行だと誤認しないためです。前後Workspace・証跡の収集時点の原子的整合も保証しません。#1163の実receipt 8件はアーカイブされる短期成果物であり、現行リポジトリに保存されているわけではありません。
+
 ## 収録する反例
 
 - 表示名だけの変更：業務規則の検証は再利用候補、Web表示の検証は再確認。

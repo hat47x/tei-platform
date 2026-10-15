@@ -1,6 +1,7 @@
 package capabilitytransport
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"os"
@@ -16,6 +17,23 @@ import (
 	"tei/internal/plugin"
 	pruntime "tei/internal/plugin/runtime"
 )
+
+// quoteRealizationStatusLauncher records the actual process response before
+// transport validation. A rejected business vector must return Status=error,
+// not merely fail because the host could not start a guest.
+type quoteRealizationStatusLauncher struct {
+	calls       int
+	status      pruntime.ResponseStatus
+	launchError error
+}
+
+func (l *quoteRealizationStatusLauncher) Invoke(ctx context.Context, command pruntime.ProcessCommand, request pruntime.Request) (pruntime.Response, error) {
+	l.calls++
+	response, err := (pruntime.StdioProcessLauncher{}).Invoke(ctx, command, request)
+	l.status = response.Status
+	l.launchError = err
+	return response, err
+}
 
 // This tests a second physical realization (WASI Guest), not a second wire
 // transport: the outer test still uses the existing process-stdio carrier.
@@ -70,6 +88,23 @@ func TestIndependentQuoteWASIP1AgainstCandidateSemanticVectors(t *testing.T) {
 		t.Fatal(err)
 	}
 	artifactDigest := digestBytes(rawWasm)
+	// Both builds consume precisely the same copied Go source. Each result is
+	// an independent physical artifact with a different exact digest.
+	native := filepath.Join(t.TempDir(), "order-quote-native")
+	nativeBuild := exec.CommandContext(ctx, "go", "build", "-o", native, ".")
+	nativeBuild.Dir = work
+	nativeBuild.Env = append(os.Environ(), "GOOS="+runtime.GOOS, "GOARCH="+runtime.GOARCH, "GOENV=off", "GOWORK=off", "GOFLAGS=", "GOTOOLCHAIN=local", "GOPROXY=off", "GOSUMDB=off")
+	if output, err := nativeBuild.CombinedOutput(); err != nil {
+		t.Fatalf("independent Native build: %v\n%s", err, output)
+	}
+	nativeBytes, err := os.ReadFile(native)
+	if err != nil {
+		t.Fatal(err)
+	}
+	nativeDigest := digestBytes(nativeBytes)
+	if nativeDigest == artifactDigest {
+		t.Fatal("different target artifacts unexpectedly have the same digest")
+	}
 	runner, err := filepath.Abs("quote_wasip1_runner.mjs")
 	if err != nil {
 		t.Fatal(err)
@@ -105,6 +140,14 @@ func TestIndependentQuoteWASIP1AgainstCandidateSemanticVectors(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	nativeProvider := provider
+	nativeProvider.ArtifactDigest = nativeDigest
+	nativeDispatch := dispatch
+	nativeDispatch.Provider = nativeProvider
+	nativePlan, err := buildTransportDispatchPlan(genericDispatchIdentity(nativeDispatch))
+	if err != nil {
+		t.Fatal(err)
+	}
 	carrier := LegacyCarrier{
 		Plugin:                plugin.Identity{ID: core.MustCanonicalID(provider.PluginID), Version: provider.PluginVersion},
 		CapabilityKind:        plugin.CapabilityContractQueryExecutor,
@@ -115,7 +158,9 @@ func TestIndependentQuoteWASIP1AgainstCandidateSemanticVectors(t *testing.T) {
 	// The fixed artifact digest names the Guest, not the Node runtime/script.
 	// This local read check does not close the executable path TOCTOU window.
 	command := pruntime.ProcessCommand{Executable: node, Args: []string{runner, wasm}}
-	launcher := &businessProcessLauncher{}
+	launcher := &quoteRealizationStatusLauncher{}
+	nativeLauncher := &quoteRealizationStatusLauncher{}
+	nativeCommand := pruntime.ProcessCommand{Executable: native}
 	seen := map[string]bool{}
 	positive, negative := 0, 0
 	var base, reordered, split string
@@ -131,21 +176,45 @@ func TestIndependentQuoteWASIP1AgainstCandidateSemanticVectors(t *testing.T) {
 			}
 			request := dispatch
 			request.Payload = []byte(vector.Request)
+			nativeRequest := nativeDispatch
+			nativeRequest.Payload = request.Payload
+			currentNative, err := os.ReadFile(native)
+			if err != nil || digestBytes(currentNative) != nativeDigest {
+				t.Fatal("Native artifact drifted")
+			}
 			before := launcher.calls
 			result, err := invokePlannedOverProcessTransport(ctx, launcher, command, plan, carrier, "quote-wasip1-"+strconv.Itoa(i), request)
 			if launcher.calls != before+1 {
 				t.Fatal("WASI Guest was not invoked exactly once")
 			}
+			nativeBefore := nativeLauncher.calls
+			nativeResult, nativeErr := invokePlannedOverProcessTransport(ctx, nativeLauncher, nativeCommand, nativePlan, carrier, "quote-native-"+strconv.Itoa(i), nativeRequest)
+			if nativeLauncher.calls != nativeBefore+1 {
+				t.Fatal("Native Provider was not invoked exactly once")
+			}
 			if vector.Reject {
 				negative++
-				if err == nil {
-					t.Fatal("invalid business request accepted by WASI Guest")
+				if err == nil || nativeErr == nil {
+					t.Fatalf("invalid business input accepted: WASI=%v Native=%v", err, nativeErr)
+				}
+				if launcher.launchError != nil || nativeLauncher.launchError != nil ||
+					launcher.status != pruntime.ResponseError || nativeLauncher.status != pruntime.ResponseError {
+					t.Fatalf("expected business-level rejection, not host failure: WASI=(%s,%v), Native=(%s,%v)", launcher.status, launcher.launchError, nativeLauncher.status, nativeLauncher.launchError)
 				}
 				return
 			}
 			positive++
-			if err != nil {
-				t.Fatal(err)
+			if err != nil || nativeErr != nil {
+				t.Fatalf("valid quote rejected: WASI=%v Native=%v", err, nativeErr)
+			}
+			if launcher.launchError != nil || nativeLauncher.launchError != nil ||
+				launcher.status != pruntime.ResponseOK || nativeLauncher.status != pruntime.ResponseOK {
+				t.Fatalf("unexpected host or business status: WASI=(%s,%v), Native=(%s,%v)", launcher.status, launcher.launchError, nativeLauncher.status, nativeLauncher.launchError)
+			}
+			if !bytes.Equal(result.ResultPayload, nativeResult.ResultPayload) ||
+				result.Receipt.RequestDigest != nativeResult.Receipt.RequestDigest ||
+				result.Receipt.ResultDigest != nativeResult.Receipt.ResultDigest {
+				t.Fatalf("Native and WASI differ: Native=%s WASI=%s", nativeResult.ResultPayload, result.ResultPayload)
 			}
 			var actual quoteSemanticResult
 			if err := decodeJSONExact(result.ResultPayload, &actual); err != nil {
