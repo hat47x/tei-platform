@@ -26,6 +26,7 @@ func (v *d3QueryVerifier) VerifyCurrent(_ context.Context, _ derivationref.Cache
 	}
 	return nil
 }
+
 func (v *d3QueryVerifier) VerifyAligned(_ context.Context, _ derivationref.CacheWitness) error {
 	v.alignedCalls++
 	return nil
@@ -34,26 +35,26 @@ func (v *d3QueryVerifier) VerifyAligned(_ context.Context, _ derivationref.Cache
 func d3QueryWitness() derivationref.CacheWitness {
 	observed := time.Date(2026, 10, 15, 1, 0, 0, 0, time.UTC)
 	return derivationref.CacheWitness{
-		RuleID: "available-rule",
-		RuleRevision: "v1",
-		TargetID: "product.available",
-		SemanticRevision: "semantic-1",
+		RuleID:             "available-rule",
+		RuleRevision:       "v1",
+		TargetID:           "product.available",
+		SemanticRevision:   "semantic-1",
 		AcceptanceRevision: "accepted-1",
-		ProviderRevision: "provider-1",
+		ProviderRevision:   "provider-1",
 		Inputs: []derivationref.Revision{
 			{ID: "product.reserved", Revision: "revision-1"},
 			{ID: "product.stock", Revision: "revision-1"},
 		},
 		Sources: []derivationref.SourceObservation{{
-			SourceID: "inventory",
-			Revision: "source-1",
+			SourceID:   "inventory",
+			Revision:   "source-1",
 			SourceAsOf: observed.Add(-time.Minute),
 			ObservedAt: observed,
 		}},
 		Scope: derivationref.CacheScope{
-			Environment: "test",
-			Tenant: "tenant-1",
-			Subject: "user-1",
+			Environment:     "test",
+			Tenant:          "tenant-1",
+			Subject:         "user-1",
 			PermissionEpoch: "policy-1",
 		},
 	}
@@ -89,22 +90,22 @@ func TestD3MemoReusesD2OnlyUnderSameCurrentWitness(t *testing.T) {
 	changed := d3QueryWitness()
 	changed.Inputs[0].Revision = "revision-2"
 	changed.Sources[0].Revision = "source-2"
-	updated, hit, err := memo.Resolve(context.Background(), q, plan, sqlEvidence, changed, policy, now.Add(2*time.Second), verifier, allowed, load)
+	updated, hit, err := memo.Resolve(context.Background(), q, plan, sqlEvidence, changed, policy, now.Add(2 * time.Second), verifier, allowed, load)
 	if err != nil || hit || loaded != 2 ||
 		!reflect.DeepEqual(d2IDs(updated.Rows), []string{"A", "B", "C", "D", "E"}) ||
 		updated.Rows[0].Values["product.available"].Decimal != "110" {
 		t.Fatalf("stale 20 reused after allocation update: %#v hit=%v err=%v", updated, hit, err)
 	}
 	changed.RuleRevision = "v2"
-	if _, hit, err := memo.Resolve(context.Background(), q, plan, sqlEvidence, changed, policy, now.Add(3*time.Second), verifier, allowed, load); err != nil || hit || loaded != 3 {
+	if _, hit, err := memo.Resolve(context.Background(), q, plan, sqlEvidence, changed, policy, now.Add(3 * time.Second), verifier, allowed, load); err != nil || hit || loaded != 3 {
 		t.Fatalf("rule revision reused cached value: hit=%v calls=%d err=%v", hit, loaded, err)
 	}
 	changed.Scope.Tenant = "tenant-2"
-	if _, hit, err := memo.Resolve(context.Background(), q, plan, sqlEvidence, changed, policy, now.Add(4*time.Second), verifier, allowed, load); err != nil || hit || loaded != 4 {
+	if _, hit, err := memo.Resolve(context.Background(), q, plan, sqlEvidence, changed, policy, now.Add(4 * time.Second), verifier, allowed, load); err != nil || hit || loaded != 4 {
 		t.Fatalf("tenant-scoped result leaked: hit=%v calls=%d err=%v", hit, loaded, err)
 	}
 	changed.Scope.PermissionEpoch = "policy-2"
-	if _, hit, err := memo.Resolve(context.Background(), q, plan, sqlEvidence, changed, policy, now.Add(5*time.Second), verifier, allowed, load); err != nil || hit || loaded != 5 {
+	if _, hit, err := memo.Resolve(context.Background(), q, plan, sqlEvidence, changed, policy, now.Add(5 * time.Second), verifier, allowed, load); err != nil || hit || loaded != 5 {
 		t.Fatalf("authorization epoch reused: hit=%v calls=%d err=%v", hit, loaded, err)
 	}
 	if verifier.currentCalls < 7 {
@@ -137,12 +138,12 @@ func TestD3MemoAuthorityExpiryQueryShapeAndCompleteness(t *testing.T) {
 		t.Fatalf("revoked Host witness cached: %v", err)
 	}
 	v.deny = false
-	if _, hit, err := memo.Resolve(context.Background(), q, plan, sqlEvidence, w, policy, now.Add(2*time.Minute), v, allow, load); err != nil || hit || loadCount != 2 {
+	if _, hit, err := memo.Resolve(context.Background(), q, plan, sqlEvidence, w, policy, now.Add(2 * time.Minute), v, allow, load); err != nil || hit || loadCount != 2 {
 		t.Fatalf("expired TTL reused: hit=%v calls=%d err=%v", hit, loadCount, err)
 	}
 	// Different D2 window or filter must not reuse an earlier result.
 	plan.Where = &query.DerivedWhere{Op: ">=", Decimal: "50"}
-	if got, hit, err := memo.Resolve(context.Background(), q, plan, sqlEvidence, w, policy, now.Add(2*time.Minute), v, allow, load); err != nil || hit || got.Count != 3 {
+	if got, hit, err := memo.Resolve(context.Background(), q, plan, sqlEvidence, w, policy, now.Add(2 * time.Minute), v, allow, load); err != nil || hit || got.Count != 3 {
 		t.Fatalf("predicate reused cache: %#v hit=%v err=%v", got, hit, err)
 	}
 	// A false "complete" flag is a failure, never an empty cache entry.
@@ -215,7 +216,7 @@ func TestD3MemoHasBoundedMemoryAndEvictsOldest(t *testing.T) {
 		w := d3QueryWitness()
 		w.Inputs[0].Revision = strconv.Itoa(i)
 		w.Sources[0].Revision = strconv.Itoa(i)
-		if _, hit, err := memo.Resolve(context.Background(), q, plan, proof, w, policy, at.Add(time.Duration(i)*time.Second), v, allow, load); err != nil || hit {
+		if _, hit, err := memo.Resolve(context.Background(), q, plan, proof, w, policy, at.Add(time.Duration(i) * time.Second), v, allow, load); err != nil || hit {
 			t.Fatalf("memo entry %d unexpectedly hit or failed: %v %v", i, hit, err)
 		}
 	}
@@ -225,7 +226,7 @@ func TestD3MemoHasBoundedMemoryAndEvictsOldest(t *testing.T) {
 	first := d3QueryWitness()
 	first.Inputs[0].Revision = "0"
 	first.Sources[0].Revision = "0"
-	if _, hit, err := memo.Resolve(context.Background(), q, plan, proof, first, policy, at.Add(65*time.Second), v, allow, load); err != nil || hit || loads != 66 {
+	if _, hit, err := memo.Resolve(context.Background(), q, plan, proof, first, policy, at.Add(65 * time.Second), v, allow, load); err != nil || hit || loads != 66 {
 		t.Fatalf("oldest entry survived bounded cache: hit=%v loads=%d err=%v", hit, loads, err)
 	}
 }
@@ -252,14 +253,14 @@ func TestD3MemoRejectsStaleSourceEvenInsideComputedTTL(t *testing.T) {
 		t.Fatalf("fresh source miss failed: hit=%v loads=%d err=%v", hit, loads, err)
 	}
 	if _, hit, err := memo.Resolve(context.Background(), q, plan, proof, w, policy,
-		now.Add(20*time.Second), v, allow, nil); err != nil || !hit || loads != 1 {
+		now.Add(20 * time.Second), v, allow, nil); err != nil || !hit || loads != 1 {
 		t.Fatalf("fresh source hit failed: hit=%v loads=%d err=%v", hit, loads, err)
 	}
 	// At 01:01:01 source is 2m01s old, though the computed result is only
 	// 51s old (within its ten-minute TTL). Neither a hit nor a re-evaluation
 	// over the exact same stale SourceAsOf can satisfy the consumer.
 	if _, hit, err := memo.Resolve(context.Background(), q, plan, proof, w, policy,
-		now.Add(51*time.Second), v, allow, load); !errors.Is(err, derivationref.ErrCacheStale) ||
+		now.Add(51 * time.Second), v, allow, load); !errors.Is(err, derivationref.ErrCacheStale) ||
 		hit || loads != 1 {
 		t.Fatalf("stale provider data passed through TTL: hit=%v loads=%d err=%v", hit, loads, err)
 	}
@@ -271,7 +272,7 @@ func TestD3MemoRejectsStaleSourceEvenInsideComputedTTL(t *testing.T) {
 	fresh.Sources[0].ObservedAt = now.Add(30 * time.Second)
 	fresh.Inputs[0].Revision = "revision-2"
 	if _, hit, err := memo.Resolve(context.Background(), q, plan, proof, fresh, policy,
-		now.Add(51*time.Second), v, allow, load); err != nil || hit || loads != 2 {
+		now.Add(51 * time.Second), v, allow, load); err != nil || hit || loads != 2 {
 		t.Fatalf("newer observed source failed to recompute: hit=%v loads=%d err=%v", hit, loads, err)
 	}
 	// Without the optional source-age policy, the old source is not
@@ -279,7 +280,7 @@ func TestD3MemoRejectsStaleSourceEvenInsideComputedTTL(t *testing.T) {
 	// with its still-attested revisions.
 	if _, hit, err := memo.Resolve(context.Background(), q, plan, proof, w,
 		derivationref.CachePolicy{MaxAge: 10 * time.Minute},
-		now.Add(51*time.Second), v, allow, nil); err != nil || !hit || loads != 2 {
+		now.Add(51 * time.Second), v, allow, nil); err != nil || !hit || loads != 2 {
 		t.Fatalf("source-age opt-in incorrectly changed default: hit=%v loads=%d err=%v", hit, loads, err)
 	}
 }
