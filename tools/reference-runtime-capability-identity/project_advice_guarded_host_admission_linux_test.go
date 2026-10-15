@@ -112,6 +112,10 @@ func TestProjectAdviceGuardedHostRevocationCannotCompleteBeforeRealProcess(t *te
 		authority:   referenceAuthority(plan.RuntimeCapability, nil),
 	}
 	scopeB.authority.Environment = scopeB.environment
+	planB, err := buildRuntimeEnvironmentPlan(plan.RuntimeCapability, profile, scopeB.authority)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	paused := &admissionPauseVerifier{
 		held: pinned,
@@ -150,6 +154,10 @@ func TestProjectAdviceGuardedHostRevocationCannotCompleteBeforeRealProcess(t *te
 		close(scopeBRevoked)
 	}()
 	awaitProjectAdmission(t, "independent Environment B revocation", scopeBRevoked)
+	if _, err := scopeB.invoke(ctx, planB, profile, realization, pinned, host, "revoked-scope-b"); err == nil ||
+		!strings.Contains(err.Error(), "Execution Grant") {
+		t.Fatalf("Environment B revocation was not independent: %v", err)
+	}
 	if _, err := scopeB.invoke(ctx, plan, profile, realization, pinned, host, "wrong-host-scope"); err == nil ||
 		!strings.Contains(err.Error(), "trusted Host Environment") {
 		t.Fatalf("foreign Environment unexpectedly reused A Plan: %v", err)
@@ -178,13 +186,12 @@ func TestProjectAdviceGuardedHostRevocationCannotCompleteBeforeRealProcess(t *te
 	awaitProjectAdmission(t, "Environment A revocation completion", revocationDone)
 
 	// Any request after completed revocation fails BEFORE Artifact/Process.
-	reachedVerifier := false
 	denied := &projectAdviceTestBinaryVerifier{path: path}
 	_, err := scopeA.invoke(ctx, plan, profile, realization, denied, host, "after-revocation")
 	if err == nil || !strings.Contains(err.Error(), "Execution Grant") {
 		t.Fatalf("old Grant was accepted after revocation completed: %v", err)
 	}
-	if denied.calls != 0 || reachedVerifier {
+	if denied.calls != 0 {
 		t.Fatal("revoked request reached Artifact Verifier")
 	}
 }
