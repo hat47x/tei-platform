@@ -60,6 +60,16 @@ Host/Operation、TEIのSource Index、Go/Wails、Reactなどには依存しま�
 - **選択契約**: `node.id`、`getSelectedNode()`、クリック・Enter・Spaceで通知する`onSelect(nodeId)`は不変です。見た目のラベルを縮めてもsubject IDを変更しません。古いイベント・dispose後の通知抑止も不変です。
 - **確認範囲**: TypeScript strict、Node DOM代替8件、Chromiumで狭幅225px・480px SVG・ノード長文の枠内表示・全文フォーカス・円中央クリック・Enter/Spaceの同一subject IDを確認。実Host接続画面、全フォント・スクリーンリーダー・Desktop WebViewは別の資格です。
 
+## キーボード操作・アクセシブル名と再描画時のフォーカス
+
+ノードはSVGの `<g role="button" tabindex="0">` として公開し、`aria-label`に省略前の `node.label`（空の場合は`node.id`）を設定します。選択状態は`aria-pressed`、Enter/Spaceの操作は既存`onSelect(node.id)`へ通知します。表示名の省略とsubject IDの選択を混同しません。
+
+**再描画時の注意:** #1849 Workbenchはノードを選ぶと同期的に`graph.update(related.input)`を行います。旧実装はその時点でフォーカス中のSVG `<g>` を削除しており、選択後にフォーカスが`body`へ抜け、次のSpaceキーが効きませんでした。更新前にフォーカス中のノードIDを取得し、更新後の同じIDへフォーカスを復元します。更新後にそのノードがない場合はスクロール領域へ復元します。別の入力へフォーカスがある場合は奪いません。
+
+- **自動試験:** Node小DOM代替試験に`onSelect → update → setSelectedNode`の後も、Enterに続くSpaceが同じノードを選択し、消えたノードのフォーカスがスクロール領域へ戻る回帰を追加しました。
+- **独立実Chromium DOM試験:** role=button、アクセシブル名、focusable、aria-pressedをChromiumのアクセシビリティツリーで確認し、Tab/Enter/Space/円中央クリックが同じIDを返すこと、再描画の前後でフォーカスが維持されることを確認します。
+- **生成モード実画面の受入:** #1832 Host + #1833生成Go + #1849 Workbench + 本Graphのexact headを固定snapshotへ抽出して、実Wails ServerでGraphをTab選択、Enterによる`InspectSubject`表示後もフォーカスを保持し、Spaceで再選択できるかを別途確認してください。独立Chromium試験と生成モードの実Host画面は別の証拠であり、全a11yやスクリーンリーダー合格を意味しません。
+
 ## 検証
 
 Node.js 22系（TypeScript型除去を明示）とTypeScript CLIが利用できる場合:
