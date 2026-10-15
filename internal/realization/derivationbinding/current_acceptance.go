@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"tei/internal/modelref"
+	"tei/internal/semantic/derivationref"
 )
 
 // CurrentAcceptedBindings is a read-only Host-owned projection of a CURRENT
@@ -25,6 +26,10 @@ type CurrentAcceptedBindings struct {
 // each time; no implementation of that Host-owned reader is supplied here.
 type CurrentBindingReader interface {
 	ReadCurrentAcceptedBindings(context.Context, string) (CurrentAcceptedBindings, error)
+	// The Host must compare the supplied definition with its CURRENT accepted
+	// meaning at this exact decision/revision, including Inputs and Operator.
+	// Returning true from a caller-owned hash or an old receipt is not valid.
+	VerifyCurrentAcceptedRuleMeaning(context.Context, CurrentAcceptedBindings, RuleContract, derivationref.Definition) (bool, error)
 }
 
 // ResolveCurrentBindings supplies the D4 planner ONLY with the Host reader's
@@ -62,6 +67,30 @@ func ResolveCurrentBindings(ctx context.Context, reader CurrentBindingReader, ap
 		strings.TrimSpace(current.DecisionRef) == "" ||
 		strings.TrimSpace(current.AuthorityRevision) == "" {
 		return deny("current-acceptance-mismatch")
+	}
+	// Keep the Canonical comparison with the owning Acceptance Host. D4
+	// neither hashes Rule source nor invents an independent meaning registry.
+	// Check every accepted Rule before exposing ANY resolved target, even when
+	// the same Rule has multiple Binding entries.
+	for _, rule := range current.Snapshot.Rules {
+		var definition derivationref.Definition
+		count := 0
+		for _, candidate := range request.Definitions {
+			if candidate.ID == rule.DefinitionID {
+				definition = candidate
+				count++
+			}
+		}
+		if count != 1 {
+			return deny("rule-meaning-change-reaccept")
+		}
+		matches, err := reader.VerifyCurrentAcceptedRuleMeaning(ctx, current, rule, definition)
+		if err != nil || ctx.Err() != nil {
+			return deny("current-acceptance-unavailable")
+		}
+		if !matches {
+			return deny("rule-meaning-change-reaccept")
+		}
 	}
 	request.Accepted = current.Snapshot
 	plan := ResolveBindings(request)
