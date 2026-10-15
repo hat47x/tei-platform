@@ -12,10 +12,12 @@ import (
 	"reflect"
 	"runtime"
 	"sort"
+	"strings"
 	"testing"
 
 	"tei/internal/operations"
 	"tei/internal/sourceindex"
+	"tei/internal/workspace"
 )
 
 // subprocessResult is the real tei CLI transport envelope, not a substituted
@@ -173,6 +175,48 @@ func TestEmptyDiagnosticSignatureParity(t *testing.T) {
 	typed := typedFindings(t, operations.WorkspaceValidation{})
 	if !reflect.DeepEqual(cli, typed) {
 		t.Fatalf("empty findings differ: CLI=%#v Go=%#v", cli, typed)
+	}
+}
+
+// missingSourceIndexInputFixture mirrors the missing-target managed source in
+// workspace.TestSourceIndexRejectsBrokenSymlink. The manifest makes the source
+// root active, so the full Load pipeline gets the same missing input.
+func missingSourceIndexInputFixture(t *testing.T) (string, string) {
+	t.Helper()
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, "tei.workspace.yaml"),
+		[]byte("workspace: missing_source_input\nsources:\n  - custom\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(root, "custom"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	relative := "custom/missing.tei"
+	if err := os.Symlink("not-present.tei", filepath.Join(root, "custom", "missing.tei")); err != nil {
+		t.Skipf("broken-link fixture requires symlink support: %v", err)
+	}
+	return root, relative
+}
+
+// A dangling input fails the source-root inventory in Load, BEFORE
+// BuildSourceIndex can produce source locations or diagnostic findings.
+// The shared Go operation and real CLI must agree on this first stage.
+func TestMissingSourceIndexInputStopsAtWorkspaceLoad(t *testing.T) {
+	root, missingPath := missingSourceIndexInputFixture(t)
+	_, loadErr := workspace.Load(root)
+	if loadErr == nil || !strings.Contains(filepath.ToSlash(loadErr.Error()), missingPath) {
+		t.Fatalf("missing source was not reported at Load with its path: %v", loadErr)
+	}
+	_, opErr := operations.ValidateWorkspace(root)
+	var stage *operations.ValidationFailure
+	if !errors.As(opErr, &stage) || stage.Stage != operations.StageLoad {
+		t.Fatalf("missing input must fail before Source Index: %v", opErr)
+	}
+	cli := observeCLI(t, testCLIBinary(t), 2, "validate", "-workspace", root, "-json")
+	if cli.SchemaVersion != "tei.cli.validate/v0" || cli.OK || cli.Error == nil ||
+		cli.Error.Code != "WORKSPACE_LOAD_FAILED" || len(cli.Diagnostics) != 0 ||
+		!strings.Contains(filepath.ToSlash(cli.Error.Message), missingPath) {
+		t.Fatalf("CLI must classify the missing input at Load, with no source-index diagnostics: %+v", cli)
 	}
 }
 
