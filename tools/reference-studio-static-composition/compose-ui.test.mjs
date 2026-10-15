@@ -87,6 +87,10 @@ test('the PoC rejects an otherwise valid but unaudited Kit identity/version', ()
 test('missing service and duplicate import contribution cannot pass', () => {
   const missing = modified(p => { p.services.pop(); });
   assert.throws(() => composeUI(missing), /invalid_poc_fixture/);
+  const duplicateService = modified(p => { p.services[1] = {...p.services[0]}; });
+  assert.throws(() => composeUI(duplicateService), /invalid_poc_fixture_services/);
+  const wrongServiceVersion = modified(p => { p.services[0].version = '0.2.0'; });
+  assert.throws(() => composeUI(wrongServiceVersion), /invalid_poc_fixture_services/);
   const duplicate = modified(p => { p.uiKit.changes[1].implementation = 'studio.graph'; });
   assert.throws(() => composeUI(duplicate), /duplicate_ui_component/);
 });
