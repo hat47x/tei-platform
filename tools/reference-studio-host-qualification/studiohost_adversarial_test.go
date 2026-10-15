@@ -129,7 +129,7 @@ func TestRealStudioHostWarningNotEquivalentToSemanticValidOrTransportFailure(t *
 // Semantic errors are findings inside a successful Go Host invocation.
 // CLI reports exit=1, while Host ok=true: these are NOT contradictory results.
 func TestRealStudioHostTransportSuccessWithSemanticErrors(t *testing.T) {
-	broken := fixtureWorkspace(t, "hostsemanticinvalid", "namespace hostsemanticinvalid\\n\\ndata Broken {\\n    attribute invalid type }\\n}\\n")
+	broken := fixtureWorkspace(t, "hostsemanticinvalid", "namespace hostsemanticinvalid\n\ndata Broken {\n    attribute invalid type }\n}\n")
 	host, err := studiohost.NewReadOnly([]string{broken})
 	if err != nil {
 		t.Fatal(err)
