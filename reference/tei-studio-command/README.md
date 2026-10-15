@@ -38,3 +38,25 @@ Host/共通Operation（#1158）は要求ごとにWorkspace・権限・Source rev
 - Wails Desktop WebView、Web/複数セッション、画面アクセシビリティ、負荷、パッケージ/ライセンスの総合評価は未実証。
 
 この文書はPoCの利用方法と制限であり、TEIの正式Schema/Core Capability/標準UI契約ではありません。
+
+
+## 非同期検証と作業領域切替（#1824 先行検証）
+
+初期契約の`setDiagnostics(items)`は同期・同じ画面文脈の更新用として維持しますが、**古い非同期応答を識別しません**。作業領域切替・再読み込みのように以前の応答を無効にするときは、新設の世代トークンを利用してください。
+
+```ts
+// 新しいWorkspace／再読み込みの開始時に、一度だけ呼ぶ。
+const token = panel.beginContext(); // 旧statusと診断を消し、旧Signalをabort
+
+// 非同期検証を始める前に現在のtokenを保持しておく。
+const reply = await host.validateWorkspace(workspaceId);
+const findings = decodeValidatedResponse(reply); // 呼び出し元の責務
+const accepted = panel.setDiagnosticsForContext(token, findings);
+if (!accepted) return; // 古い応答なのでUIを更新しない
+```
+
+`beginContext()`は元操作の副作用の停止・Host上の取消しを保証しません。`setDiagnosticsForContext`は古いtokenで`false`を返し、UIを変更しません。呼び出し元の`notice`、`diagnostic-summary`、独立Host要求にも**同じ世代検査が必要**です。この部品のトークンだけでStudio全体が安全になるわけではありません。Workspaceを変更しない場合も、旧検証より新しい検証を優先したいときは新しい世代を開始してください。
+
+`execute(id)`の`true`は表示側が呼出しを受け付けたことを示すだけで、意味検証の成功ではありません。`ok:true`のTransport/Operation envelopeから意味上の合格を自動判定しないでください。Host/Operationが診断のerrorを調べて明示した`failure`を返すか、warningを保持して`success`を返した結果を表示します。UI側でTEIのValidation意味を再計算しません。
+
+対象回帰テスト: `node --experimental-strip-types --test reference/tei-studio-command/command.test.mjs reference/tei-studio-command/command.concurrent.test.mjs`。新規6件は検証連打、途中の文脈切替、拒否・失敗後の再実行、古い診断拒否、結果と意味検証の区別、購読通知時の再入切替です。実Wails/Browser接続は#1849側で別途検証します。
