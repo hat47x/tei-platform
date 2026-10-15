@@ -187,7 +187,7 @@ func TestProjectAdviceGuardedHostRevocationCannotCompleteBeforeRealProcess(t *te
 
 	// Any request after completed revocation fails BEFORE Artifact/Process.
 	denied := &projectAdviceTestBinaryVerifier{path: path}
-	_, err := scopeA.invoke(ctx, plan, profile, realization, denied, host, "after-revocation")
+	_, err = scopeA.invoke(ctx, plan, profile, realization, denied, host, "after-revocation")
 	if err == nil || !strings.Contains(err.Error(), "Execution Grant") {
 		t.Fatalf("old Grant was accepted after revocation completed: %v", err)
 	}
