@@ -189,3 +189,39 @@ node --test tools/reference-studio-host-boundary/client_boundary.test.mjs
 **限界は不変**：Host private rootのsentinelが列挙・いくつかのfailureに出ないことは、全モデル投影・UIの表示・Source Index・ログ・Wails Event・Service IPCを含む**全情報非漏洩の証明ではない**。4メソッドのAST/API検査は実際のWails Serviceの接続ごとの認可、CSRF、WebSocket購読、Session失効を証明しない。Wails Desktop実ウィンドウ/WebViewの起動、OSファイル権限、Workspace symlink/junction/TOCTOU、配布・署名、#259生成Application Targetの適合は**依然NOT RUN/BLOCKED**。#1043のSessionは合成、#1529はprivate Draft Marker領域に限る。
 
 **次の#10独立課題**：#2がDesktop実起動のexact binary/source/OS/WebView証拠を取得したら、起動時許可Workspaceを元に未知ID、許可外path、メソッド公開面、応答failure、再起動時の失効・Draft非昇格を、`-tags server`のWeb証拠から分けて確認する。Host未提供の操作（Accepted Sourceへのwrite、任意file open、実ユーザー認証等）は実装・検証済みとしない。生成対象製品への昇格判定は#259/#1182に委ねる。
+
+
+## 2026-10-15: #1832固定Host 4bc437c7 のServer公開境界
+
+**固定対象**：#1832 exact `4bc437c72e63a3b5d578b1efe2c60be510a9f8a9`、Wails `v3.0.0-beta.29`、Go `1.26.9`、#1833生成器 exact `fe8e37b1c735dc138c36cb2d37db94ee44424b9e`。この節は**特定のPoC A Server公開面**だけを確認し、Desktopや公開Webの認証適格性を扱わない。
+
+### すでにCIでPASSと確認した項目（変更不要）
+
+[固定Hostの専用CI #38662384542](https://github.com/hat47x/tei-platform/actions/runs/38662384542) は **3 jobsすべてsuccess**（`server-build`／`generated-host-server`／`desktop-windows-build`）。次はGo/CIコードとの突合せによりPASS範囲を確認したもの。
+
+| 境界 | 既存の実装・テスト | 確認結果 |
+| --- | --- | --- |
+| 通常Serverの非loopback bind指定 | `cmd/tei-studio/main.go`は`ServerOptions.Host="127.0.0.1"`固定、`WAILS_SERVER_HOST`が設定済みかつ値が`127.0.0.1`と異なれば`app.Run()`前にfatal。CI step **「loopback HTTPの実起動・埋込みasset smoke」**は`WAILS_SERVER_HOST=0.0.0.0`の**非ゼロ終了＋拒否メッセージ一致**、続く`127.0.0.1:43123` health200/assetを実測 | **PASS（指定例）**。他のhost文字列も同一の厳密比較式で拒否する構造は**SOURCE PASS**、個々の文字列ごとの独立プロセス実行ではない |
+| 生成Serverの非loopback bind指定 | CI step **「生成Hostの同一Wails Serverをloopback起動」**。`studio_generated,server`バイナリで`WAILS_SERVER_HOST=0.0.0.0`の非ゼロ終了＋拒否メッセージ一致、`127.0.0.1:43128` health200/asset | **PASS（指定例）** |
+| Renderer入力の任意ファイルパスをHostへ渡さない | `cmd/tei-studio/main.go`が**`application.NewService(&StudioBridge{host: host})` 1個のみ**登録。Bridgeは`ListWorkspaces/CatalogWorkspace/ValidateWorkspace/InspectSubject`の4メソッドで、引数はWorkspace ID、namespace、canonical subjectのkind/ID。任意OSファイル名を読み取るAPIはない。公開画面は`AssetFileServerFS(assets)`の**埋込みファイル系**から配信。生成サービスは`host_generated.go`から**許可root確定後**のServiceFactoryへ渡され、Wailsへ登録されない | **SOURCE PASS（アプリ固有の要求経路の列挙）**。Wailsランタイム一般の全到達パス・脆弱性不在の証明ではない |
+| 不正Workspace ID/OS絶対pathを拒否 | Go `TestReadOnlyRejectsUnauthorizedIDs`、`TestInjectedOperationsOnlyReceiveAllowlistedResolvedRoot`、`TestGeneratedGoServicesRunThroughRealHost`を固定版CIが実行。生成モードの後者は`StudioBridge`公開4操作のreflectと`/tmp/arbitrary`、相対path、未知IDの`WORKSPACE_NOT_ALLOWED`を検査 | **PASS（固定HostのGoテスト/CI）**。許可済みroot内のLoaderのsymlink/TOCTOUまで保証しない |
+| private rootを例外から返さない | Go `TestInjectedFailureEnvelopeDoesNotExposePrivateRoot` が生成サービス内部の例外メッセージをHostの`OPERATION_FAILED`に変換して返すことを検査 | **PASS（その失敗経路限定）**。画面・ログ・Eventの全情報非漏洩ではない |
+
+**CIで未保証だった一点**：通常/生成ServerのAssetFileServerがHTTPリクエストのpath/query（`../`、URLエンコード、`?file=`、`?path=`等）を受けても、**埋込み資産の外にある任意ローカルファイルの中身を返さない**という、実HTTPの否定試行。CIは`/`と`/health`の正常経路を確認しているが、そのような負例の実HTTP試験はない。
+
+### この未保証部分だけの最小追加：#10専用HTTP資産経路プローブ
+
+新規 `server_asset_boundary_probe.mjs`（Node標準ライブラリのみ）は、**すでに起動済み**の固定版Wails Serverを対象に、一時領域に試験用sentinelファイルを生成し、資産風GET要求7通り（path/query、`../`、パーセントエンコード、runtime.jsへのquery）で**ファイル内容が一切返らないことだけ**を検査する。未知pathがSPA indexを返す実装はあり得るため、HTTP 404を必須にはしない。対象URLを`http://127.0.0.1:<port>/`のみに制限し、終了時は試験用ファイルを削除する。**一般的な全パス非漏洩・OSアクセス制御・実Wails RPC認可を保証するテストではない**。
+
+```sh
+# #1832 4bc437c7 の固定checkoutまたは完全に版を追跡した検証snapshot
+cd cmd/tei-studio
+CGO_ENABLED=0 go build -mod=readonly -tags server -o ./tei-studio-server .
+./tei-studio-server -workspace ../../reference/workspace -port 43123
+# 別terminal／同じsnapshotのrootから
+TEI_STUDIO_BOUNDARY_URL=http://127.0.0.1:43123 \
+  node --test tools/reference-studio-host-boundary/server_asset_boundary_probe.mjs
+# 生成モードでは#1833の生成ファイルを固定入力で取得し、起動portを43128へ変更して同じprobeを反復
+```
+
+**新HTTPプローブ：NOT RUN**。この会話からは固定Wails Serverの実プロセスへ接続していない。実行前のコード/staticレビューのみ。前述のCI PASSを新規HTTP負例のPASSへ読み替えない。プローブを実行するときはNode版、Go版、Serverバイナリの生成元commit、mode（通常/生成）、listening host/port、各subtestのPASS/FAILをIssueへ記録する。#2のHost/CI/生成器原本は**変更しない**。
