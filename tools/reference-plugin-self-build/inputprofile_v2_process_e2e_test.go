@@ -281,6 +281,47 @@ func TestOptInV2InputWithExactV1ProcessEngine(t *testing.T) {
 				t.Fatalf("pre-start diagnostic must read the Host exactly twice more; got %d", hostReads)
 			}
 
+			// Reference contrast: the SAME old prepared inputs cannot start
+			// if the current Host's admission is held across cmd.Start. This
+			// callback is owned by this test fixture, not a production
+			// Authority, issuer, lease, or current Trust implementation.
+			gateCalls, allowedStarts := 0, 0
+			hostStart := func(ctx context.Context, start func() error) error {
+				gateCalls++
+				if err := ctx.Err(); err != nil {
+					return err
+				}
+				if revoked {
+					return errors.New("current SB-1 Host Start admission revoked")
+				}
+				allowedStarts++
+				return start()
+			}
+			if _, err := evaluateWithExactEngineAtStart(
+				engineExecutable, engineDigest, sourcePath, source, pendingStart.Inputs, hostStart,
+			); err == nil || !strings.Contains(err.Error(), "Host Start admission revoked") {
+				t.Fatalf("physical SB-1 Start did not reject revoked selection: %v", err)
+			}
+			if gateCalls != 1 || allowedStarts != 0 {
+				t.Fatalf("revoked Host reached cmd.Start: gates=%d starts=%d", gateCalls, allowedStarts)
+			}
+			// The reference Host explicitly restores admission; the old
+			// input bytes were unchanged. Authorization and content parity
+			// remain separate facts even when a later Start succeeds.
+			revoked = false
+			afterRestore, err := evaluateWithExactEngineAtStart(
+				engineExecutable, engineDigest, sourcePath, source, pendingStart.Inputs, hostStart,
+			)
+			if err != nil || !bytes.Equal(afterRestore.Output.Bytes, oracle) {
+				t.Fatalf("restored Host did not start exact SB-1 process: %v", err)
+			}
+			if gateCalls != 2 || allowedStarts != 1 {
+				t.Fatalf("physical Start was not called once after restoration: gates=%d starts=%d", gateCalls, allowedStarts)
+			}
+			if _, err := inputprofile.ObservePackageOutput(pendingStart.Evidence, afterRestore); err != nil {
+				t.Fatalf("restored Host produced invalid canonical output: %v", err)
+			}
+
 			var manifest plugin.PluginPackageManifest
 			if err := json.Unmarshal(previous, &manifest); err != nil {
 				t.Fatalf("exact process emitted invalid SB-1 manifest: %v", err)
