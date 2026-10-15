@@ -92,6 +92,27 @@ const measurement = measurementFile ?
   parseStrictDiagnosticJSON(readPinnedArtifact(measurementFile,
     "measurement is not a real regular artifact file", 1024 * 1024).toString("utf8")) : null;
 if (jsonForm) {
+  // Diagnostic byte/build agreement cannot stand in for independently owned
+  // Source, Builder/BuildArtifactLock or current Host deployment acceptance.
+  // Keep the existing builder's non-authority claims explicit at this ingress.
+  const requireFalse = (doc, field) => {
+    if (doc?.[field] !== false) {
+      throw new Error("unverified authority was asserted or omitted: " + field);
+    }
+  };
+  for (const field of ["productionAuthorizationVerified", "artifactAuthority",
+    "fullE1BrowserAPIPackagingVerified"]) requireFalse(measurement, field);
+  const frozen = measurement.apiWorldMode === "digest-bound-frozen-world";
+  for (const field of ["sourceAcceptanceAuthorityVerified", "unitBuilderAuthorityVerified",
+    "buildArtifactLockVerified", "runtimeModelAcceptanceAuthority"]) {
+    if (frozen || Object.hasOwn(measurement, field)) requireFalse(measurement, field);
+  }
+  if (frozen || Object.hasOwn(measurement, "apiBuildInputObservation")) {
+    for (const field of ["builderArtifactAuthorityVerified", "buildArtifactLockVerified",
+      "hermeticBuildVerified", "reproducibleBinaryVerified"]) {
+      requireFalse(measurement.apiBuildInputObservation, field);
+    }
+  }
   const checks = [
     { name: "Browser HTML", bytes: html, file: resolve(assetRoot, "index.html"),
       hash: "browserSHA256", size: "browserBytes" },
