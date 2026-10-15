@@ -1,8 +1,8 @@
 # TEI Studio #6：CLI・Go共通操作・Host結果の意味比較
 
-状態：**#Workの固定Linux-native snapshotで、#1826修正head `b816f10015491333a122bf18ce29fd94dbe8a5d7` のGo Host 3者比較10 subcases・空診断回帰・関連境界/B Go試験・対象Go vetがPASSと報告済み**。PoC Aの共有Go OperationとCLIプロセスの差異を、独立した呼出しで調べるための限定的な検査です。[#1824の担当割当](https://github.com/hat47x/tei-platform/issues/1824#issuecomment-6166730568)と[#6の訂正](https://github.com/hat47x/tei-platform/issues/1824#issuecomment-6166773569)に従います。この文書は新しい製品要求・正本・Gateではありません。
+状態：**#Workの固定snapshotで#1826 `08fc5b3a39ed0005f625a2597a042f79b6e1c0cf` の追加Go Host意味比較・境界/B試験（Linux-native/Go1.26.9/-race）とNode Client試験がPASSと報告済み**。PoC Aの共有Go OperationとCLIプロセスの差異を、独立した呼出しで調べるための限定的な検査です。[#1824の担当割当](https://github.com/hat47x/tei-platform/issues/1824#issuecomment-6166730568)と[#6の訂正](https://github.com/hat47x/tei-platform/issues/1824#issuecomment-6166773569)に従います。この文書は新しい製品要求・正本・Gateではありません。
 
-## 2026-10-15 先行追加：異常入力・警告・応答形式を含む意味比較（**新規試験未実行**）
+## 2026-10-15 先行追加：異常入力・警告・応答形式を含む意味比較（**#Work固定snapshotでPASS**）
 
 ユーザー指示の**基準ワークベンチ**は [Draft PR #1849](https://github.com/hat47x/tei-platform/pull/1849) exact **`9a290dc61f585dfbf292e9032e5c5bbbad04351a`**、[Issueの実ブラウザー報告](https://github.com/hat47x/tei-platform/issues/1824#issuecomment-6181206457)。#1849で使用されたHostは [#1832](https://github.com/hat47x/tei-platform/pull/1832) exact **`d520689cfb0a2e2919aa86b0beeba54802b31465`**。その`internal/studiohost/readonly.go`の原本はblob **`f1bd33f0e48a63bf9997f74285a23f8870fa32ae`** で、#6の旧3者比較でも利用したGo Host-neutral ReadOnlyです。
 
@@ -20,7 +20,7 @@
 
 1. 新しい**検証専用checkout**を、過去に実証済みの基準main `128429482e02d96afe0123ee7da023256094dfca`から作る。現行mainの資格確認は別の検証として扱う。
 2. **今回の#1826 exact head**から `tools/reference-studio-host-qualification/` のみ、#1832 exact `d520689cfb0a2e2919aa86b0beeba54802b31465` から `internal/studiohost/` およびNode試験に必要な `cmd/tei-studio/assets/client.mjs` のみを取り出す。#1849自体をmergeしない。必要なら#1849 `presentation.ts`の現在の期待形状を**読取り**照合する。
-3. Go1.26.9/Linux-native、Node版、取得したpath blobを記録して以下を実行する（本追補の作成環境では実行していない）。
+3. Go1.26.9/Linux-native、Node版、取得したpath blobを記録して以下を実行する。#Workから当該固定snapshotでの終了コード0が報告済み。本READMEの編集担当が独立再実行した証拠ではない。
 
 ~~~sh
 go test -race -count=1 -v -tags studiohost_parity,tei_studio_host_integration ./tools/reference-studio-host-qualification
@@ -28,9 +28,27 @@ go vet -tags studiohost_parity,tei_studio_host_integration ./tools/reference-stu
 node --test tools/reference-studio-host-qualification/client_transport_contract.test.mjs
 ~~~
 
-**結果区分**: #Work報告の旧head `b816f10015491333a122bf18ce29fd94dbe8a5d7` の10 subcases・空診断回帰PASSは維持。この追補の**追加Go試験/Node試験・拡張後head・現行mainとの組合せは未実行／未確認**。このチャットには同じ固定checkoutのGo1.26.9実行ログがなく、コード追加を実測PASSとは扱わない。GitHubの通常PR healthが成功しても、タグ付きHostテスト・JS Portテスト・実ブラウザーIPC検証を実行した証拠にはならない。
+**結果区分**: 旧head `b816f10015491333a122bf18ce29fd94dbe8a5d7` の10 subcases・空診断回帰PASSと、追加head `08fc5b3a39ed0005f625a2597a042f79b6e1c0cf` の**Go/-race/vet・Node追加試験PASS**をそれぞれの固定入力に紐付ける。実行は#Workによる独立検証であり、このチャットでの再実行ではない。現行mainとの組合せ、実Wails IPC/Browser/Desktopは未確認。一般のPR health成功をこれらの証拠の代わりにはしない。
 
-**次の依存**: #Workの固定snapshotで上記3コマンドを実行し、`reference/workspace`が警告3件を維持すること、CLIの無効引数とHostの別failure分類、実JS Portの結果を確認する。#3は#1849のPresenter側で不正な`value`を拒否する投影を継続検査し、#2/#10は実IPC・Desktop/利用者境界を別に検証する。Source Indexだけの失敗fixtureは引き続きblocked。
+**次の依存**: 固定snapshotの上記3コマンドは#Workが完了。次は現行mainへ基線を切り替えた資格確認と、実Wails IPCを通した同一入力の結果照合を別試験として行う。#3は#1849のPresenter側で不正な`value`を拒否する投影を継続検査し、#2/#10は実IPC・Desktop/利用者境界を別に検証する。Source Indexだけの失敗fixtureは引き続きblocked。
+
+## #Work独立検証結果の受領（2026-10-15、固定headのみに適用）
+
+[Issue #1824 の実行記録](https://github.com/hat47x/tei-platform/issues/1824#issuecomment-6181458555) から確認した結果。**Draftはmergeしておらず、各対象pathのみ固定版から抽出**されています。
+
+| 区分 | 固定版・環境・結果 |
+| --- | --- |
+| 基準main | `128429482e02d96afe0123ee7da023256094dfca` |
+| #6 資格試験 | **`08fc5b3a39ed0005f625a2597a042f79b6e1c0cf`**（本README更新前のexact試験対象） |
+| #2 Host | #1832 **`d520689cfb0a2e2919aa86b0beeba54802b31465`** |
+| #10 境界試験 | #1827 **`c807bd1a14ea5c9b6cdff0ad0ee18c1db511c1a4`** |
+| Go試験 | **PASS** — Go1.26.9、Linux-native、`-race`、`-tags studiohost_parity,tei_studio_host_integration`、qualification/boundary/static-compositionの3 package、終了コード0 |
+| Go vet | **PASS** — 同じ検証snapshot、上記3 package、終了コード0 |
+| Node試験 | **PASS** — Windows Node24.21.0、#6と#10の実client import検査、合計7/7 |
+
+Goの資格試験では未知Workspace、警告3件を維持するCLI/Go/Host比較、**Operation呼出し成功と意味検証不合格の共存**、未知・不正Subject、無効namespaceのCLI/Host分類差を実行済み。Node側は**実`createReadOnlyClient`をimport**しますが、`callByName`は合成dispatchであり、Wails IPC成功を意味しません。
+
+**未確認／別の検査**：現在のmainへの適合、実Wails IPC/生成bindingを経る同一fixture照合、Desktop実WebView、公開Webの認証とIdP、Source Indexだけが失敗するfixture、成果物の統合資格。#1849の新しいheadの画面成功や#10のHost境界PASSをこれらの合格には転用しません。
 
 ## 所有範囲と既存機構
 
