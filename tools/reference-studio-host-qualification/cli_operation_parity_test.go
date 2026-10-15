@@ -193,7 +193,10 @@ func missingSourceIndexInputFixture(t *testing.T) (string, string) {
 	}
 	relative := "custom/missing.tei"
 	if err := os.Symlink("not-present.tei", filepath.Join(root, "custom", "missing.tei")); err != nil {
-		t.Skipf("broken-link fixture requires symlink support: %v", err)
+		if runtime.GOOS == "windows" {
+			t.Skipf("broken-link fixture requires symlink support on Windows: %v", err)
+		}
+		t.Fatalf("Linux broken-link fixture must not silently skip: %v", err)
 	}
 	return root, relative
 }
