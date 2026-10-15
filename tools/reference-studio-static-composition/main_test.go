@@ -76,3 +76,30 @@ func TestProvenanceSerialization(t *testing.T) {
 		t.Fatalf("incomplete provenance: %s", b)
 	}
 }
+
+func TestServiceSelectionOrderDoesNotChangeGeneratedSource(t *testing.T) {
+  original, originalEvidence, err := composeServices([]byte(goodFixture))
+  if err != nil { t.Fatal(err) }
+  reordered := strings.Replace(goodFixture,
+    "{\\\"id\\\":\\\"studio.validate\\\",\\\"version\\\":\\\"0.1.0\\\"},{\\\"id\\\":\\\"studio.catalog\\\",\\\"version\\\":\\\"0.1.0\\\"}",
+    "{\\\"id\\\":\\\"studio.catalog\\\",\\\"version\\\":\\\"0.1.0\\\"},{\\\"id\\\":\\\"studio.validate\\\",\\\"version\\\":\\\"0.1.0\\\"}", 1)
+  if reordered == goodFixture { t.Fatal("the service order was not changed") }
+  actual, evidence, err := composeServices([]byte(reordered))
+  if err != nil { t.Fatal(err) }
+  if !bytes.Equal(original, actual) || evidence.GeneratedSHA256 != originalEvidence.GeneratedSHA256 {
+    t.Fatal("generated Go changes with fixture service selection order")
+  }
+  if evidence.FixtureSHA256 == originalEvidence.FixtureSHA256 {
+    t.Fatal("input fingerprint must distinguish reordered raw fixture")
+  }
+}
+
+func TestMissingServiceCannotProduceIncompleteStaticHost(t *testing.T) {
+  raw := strings.Replace(goodFixture,
+    "{\\\"id\\\":\\\"studio.validate\\\",\\\"version\\\":\\\"0.1.0\\\"},", "", 1)
+  if raw == goodFixture { t.Fatal("service missing-fixture construction failed") }
+  _, _, err := composeServices([]byte(raw))
+  if err == nil || !strings.Contains(err.Error(), "unsupported or incomplete") {
+    t.Fatalf("expected missing-service rejection, got %v", err)
+  }
+}
