@@ -16,10 +16,10 @@ import (
 )
 
 var (
-	ErrInvalidPlan        = errors.New("invalid derivation disclosure plan")
-	ErrDenied             = errors.New("derivation disclosure denied")
+	ErrInvalidPlan       = errors.New("invalid derivation disclosure plan")
+	ErrDenied            = errors.New("derivation disclosure denied")
 	ErrAuthorityFailure   = errors.New("derivation authorization unavailable")
-	ErrEvaluationFailure  = errors.New("derivation evaluation unavailable")
+	ErrEvaluationFailure = errors.New("derivation evaluation unavailable")
 )
 
 type Mode string
