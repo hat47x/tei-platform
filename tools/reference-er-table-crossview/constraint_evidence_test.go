@@ -86,8 +86,7 @@ func TestCrossviewForeignKeyOnlyLinksExplicitValidMappingTargets(t *testing.T) {
 	world.Persistence = append(world.Persistence, persistence.Mapping{
 		ID: "store.sales_order", Database: "store", SemanticData: "sales.order", Table: "orders",
 		Columns: []persistence.ColumnMapping{{
-			Attribute: "sales.order.order_number", Column: "order_no",
-			Storage: persistence.StorageVarchar, Nullability: persistence.Required,
+			Attribute: "sales.order.order_number", Column: "order_no", Storage: persistence.StorageVarchar, Nullability: persistence.Required,
 		}},
 	})
 	valid, err := Project(world)
@@ -124,12 +123,10 @@ func TestCrossviewForeignKeyOnlyLinksExplicitValidMappingTargets(t *testing.T) {
 func TestCrossviewDetectsLocalFKMissingAndAmbiguousAttributePairs(t *testing.T) {
 	world := sampleWorld()
 	world.Persistence[0].ForeignKeys = []persistence.ForeignKeyMapping{{
-		Name: "malformed",
-		Attributes: []core.CanonicalID{
+		Name: "malformed", Attributes: []core.CanonicalID{
 			"sales.order_line.missing", "sales.order_line.missing",
 		},
-		ReferencedMapping: "store.sales_order",
-		ReferencedAttributes: []core.CanonicalID{"sales.order.order_number"},
+		ReferencedMapping: "store.sales_order", ReferencedAttributes: []core.CanonicalID{"sales.order.order_number"},
 	}}
 	out, err := Project(world)
 	if err != nil {
