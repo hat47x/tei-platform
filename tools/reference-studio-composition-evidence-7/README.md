@@ -125,3 +125,27 @@ node --test tools/reference-studio-composition-evidence-7/client_boundary.test.m
 - **PASS（JS実行）**: #1832の実Clientを使用した6件（拒否/応答形保持を含む）。
 - **前回固定版のEvidence**: #1833 `d560bddf...` Node静的UI生成決定性2回・拒否8件PASS。今回のHost接続後の動的検証へ流用しない。
 - **未確認/BLOCKED**: #1新しい生成UI一覧を#1849ワークベンチへ繋ぐ変更後の実バンドル、生成GoサービスからHostを通ったWails実IPCでのallowlist/response、今回のGo結合試験、Workspace境界のOS実機資格、Plugin/Build Lock・実asset/binary来歴。将来の修正差分はそのexact source/verification revisionを取り直して検証する。総合PoC BをPASSへ昇格しない。
+
+### #1合成接続の更新headを受けた追加検証（2026-10-15）
+
+#1のDraft PR #1833 は `059260521770e6b69eed0294287483dd60753587` へ進み、`tools/reference-studio-static-composition/connect-workbench.mjs` を追加した。これは #1849 exact `9a290dc61f585dfbf292e9032e5c5bbbad04351a` の`main.ts`（Git blob `2a65a9f70245068bf2455248d98d280b382b01e4`）をpinし、GraphとCommandの2 import行だけを生成UI aliasへ差し替え、他の編集はしない固定版の派生物`main.generated.ts`を作る。#1849の原本もHost/Go共通操作も変更しない。
+
+#7は当該3つの実ソースファイルをGitHubからexact SHAで読み取り、独立に差分を検査：元の2行が各1回存在し、置換結果は**除去2行・追加1行のみ**で、`createReadOnlyClient`、4 read-only RPC、`workspaceEpoch`/`inspectionEpoch`が不変であることを確認した。Host `ReadOnly`/Wails Bridgeの固定ソース検査も12項目において期待に一致。**これは静的ソース検証であり、生成後の実Wails IPCや実ブラウザー実行ではない。**
+
+この版専用の追加テスト：
+- `connection_boundary.test.mjs`：本物の#1 `composeUI` と`connectWorkbenchSource`を使い、**実#1849 headのバイトpin**、import最小置換、UI alias/型定義の2回生成決定性、宣言順入替時のソース不変、欠落/重複/未知/版不一致/親循環12件、生成ソースと型・来歴の改ざん拒否、Wails Bridgeの4操作境界を判定する。対象のexact sourceを揃えたsnapshotで実行するための**追加試験コード**。このチャットでは未実行。
+- `file_adapter.py --pocb-head 059260521770e6b69eed0294287483dd60753587`：実Node/Go builderのファイル出力を検査。新たな`ui.generated.d.mts`を含む3ファイル、`declarationsSha256`、mount aliasを検証。これまでの旧版2ファイル検査は維持し、版別pinを明示。追加した`test_file_adapter.py`の回帰2件もGitHub提出済み、今回の実行は未確認。
+- `client_boundary.test.mjs`：固定 #1832 の実 client（Git blob `1afec5762a96bf34eead768a9fc7de4b7eced564`）を局所再現し、**Node v22.16.0で6/6 PASS**。この試験ではHost応答を明示スタブで注入しているので、Go認可を証明するものではない。
+
+実行する場合はrootに必要なDraft pathを固定して取得し、**mergeせず**次を実行する。現地環境のGo1.23.2とGitHub DNS不達により#7自身の完全なGo/JS複合snapshot資格試験はBLOCKED。
+
+```sh
+node --test tools/reference-studio-composition-evidence-7/client_boundary.test.mjs
+node --test tools/reference-studio-composition-evidence-7/connection_boundary.test.mjs
+python3 tools/reference-studio-composition-evidence-7/file_adapter.py \
+  --repo "$PWD" --lane ui --pocb-head 059260521770e6b69eed0294287483dd60753587
+# Go1.26.9で実services.generated.goを生成した場合のみ
+go test -count=1 -tags tei_studio_composition_boundary ./tools/reference-studio-composition-evidence-7
+```
+
+**合成後に保護されたHostを通る実Go/Wails RPC**の検査は、生成UIのimport接続とは別の資格条件。公開Bridgeのメソッド集合/allowlist/`{ok,value|failure}`が維持されたことを実IPCで確かめるまでは総合PASSにしない。#1生成2サービスをWailsへ直接registerしない。Lock/asset/buildの真正性・Desktop実WebViewも未実証。
