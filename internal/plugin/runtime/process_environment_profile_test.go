@@ -77,6 +77,8 @@ func TestHostProcessEnvironmentProfileRejectsInvalidDirectoriesAndOverrides(t *t
 		{"relative temp", pruntime.HostProcessEnvironmentProfile{TemporaryDirectory: "tmp"}},
 		{"NUL search", pruntime.HostProcessEnvironmentProfile{SearchDirectories: []string{root + "\x00secret"}}},
 		{"reserved PATH", pruntime.HostProcessEnvironmentProfile{Additional: map[string]string{"PATH": "/secret"}}},
+		{"key disguises reserved PATH", pruntime.HostProcessEnvironmentProfile{Additional: map[string]string{"PATH=forged": "secret"}}},
+		{"key embeds equals", pruntime.HostProcessEnvironmentProfile{Additional: map[string]string{"TEI_A=forged": "secret"}}},
 		{"reserved HOME", pruntime.HostProcessEnvironmentProfile{Additional: map[string]string{"HOME": "/secret"}}},
 		{"reserved TMPDIR", pruntime.HostProcessEnvironmentProfile{Additional: map[string]string{"TMPDIR": "/secret"}}},
 		{"reserved TEMP", pruntime.HostProcessEnvironmentProfile{Additional: map[string]string{"TEMP": "/secret"}}},
