@@ -107,12 +107,12 @@ func TestD3CacheWitnessVersionsScopeAndSourceTime(t *testing.T) {
 		})
 	}
 	if derivationref.ReusableAt(time.Time{}, time.Now(), policy) ||
-		derivationref.ReusableAt(time.Now(), time.Now().Add(2*time.Minute), policy) ||
+		derivationref.ReusableAt(time.Now(), time.Now().Add(2 * time.Minute), policy) ||
 		derivationref.ReusableAt(time.Now().Add(time.Minute), time.Now(), policy) {
 		t.Fatal("unbounded/future/expired cache accepted")
 	}
 	observed := time.Date(2026, 10, 15, 1, 0, 0, 0, time.UTC)
-	if !derivationref.ReusableAt(observed, observed.Add(30*time.Second), policy) {
+	if !derivationref.ReusableAt(observed, observed.Add(30 * time.Second), policy) {
 		t.Fatal("fresh bounded result incorrectly rejected")
 	}
 }
@@ -183,14 +183,17 @@ func TestD3MultipleSourcesNeverInferAtomicAlignment(t *testing.T) {
 }
 
 type d3FactReader struct {
-	fact derivationref.ConfirmedFact
+	fact  derivationref.ConfirmedFact
 	calls int
 }
+
 func (r *d3FactReader) ReadConfirmed(_ context.Context, _ string) (derivationref.ConfirmedFact, error) {
 	r.calls++
 	return r.fact, nil
 }
-type d3FactAuthority struct { deny bool }
+
+type d3FactAuthority struct{ deny bool }
+
 func (a d3FactAuthority) CanReadConfirmed(_ context.Context, _ derivationref.ConfirmedFact) error {
 	if a.deny {
 		return errors.New("denied")
@@ -201,12 +204,12 @@ func (a d3FactAuthority) CanReadConfirmed(_ context.Context, _ derivationref.Con
 func TestD3ConfirmedValueIsNotRecomputedOrRewritten(t *testing.T) {
 	now := time.Date(2026, 10, 15, 1, 0, 0, 0, time.UTC)
 	stored := derivationref.ConfirmedFact{
-		FactID: "order-123.amount",
-		TargetID: "order.amount",
-		Value: derivationref.Input{State: derivationref.Present, Decimal: "600"},
+		FactID:       "order-123.amount",
+		TargetID:     "order.amount",
+		Value:        derivationref.Input{State: derivationref.Present, Decimal: "600"},
 		SourceRuleID: "amount", SourceRuleRevision: "v1",
-		ConfirmedAt: now.Add(-24*time.Hour),
-		CommandID: "order-123.confirm",
+		ConfirmedAt:       now.Add(-24 * time.Hour),
+		CommandID:         "order-123.confirm",
 		PersistedRevision: "order-123-v1",
 	}
 	reader := &d3FactReader{fact: stored}
@@ -283,10 +286,19 @@ func TestD3ConsumerSourceAgeRejectsFutureOrInvalidEvidence(t *testing.T) {
 		name string
 		edit func(*derivationref.CacheWitness)
 	}{
-		{"future observation", func(w *derivationref.CacheWitness) { w.Sources[0].ObservedAt = now.Add(time.Second); w.Sources[0].SourceAsOf = now.Add(-time.Second) }},
-		{"future source as-of", func(w *derivationref.CacheWitness) { w.Sources[0].ObservedAt = now.Add(time.Second); w.Sources[0].SourceAsOf = now.Add(time.Second) }},
+		{"future observation", func(w *derivationref.CacheWitness) {
+			w.Sources[0].ObservedAt = now.Add(time.Second)
+			w.Sources[0].SourceAsOf = now.Add(-time.Second)
+		}},
+		{"future source as-of", func(w *derivationref.CacheWitness) {
+			w.Sources[0].ObservedAt = now.Add(time.Second)
+			w.Sources[0].SourceAsOf = now.Add(time.Second)
+		}},
 		{"missing source as-of", func(w *derivationref.CacheWitness) { w.Sources[0].SourceAsOf = time.Time{} }},
-		{"source as-of after observation", func(w *derivationref.CacheWitness) { w.Sources[0].ObservedAt = now.Add(-time.Minute); w.Sources[0].SourceAsOf = now }},
+		{"source as-of after observation", func(w *derivationref.CacheWitness) {
+			w.Sources[0].ObservedAt = now.Add(-time.Minute)
+			w.Sources[0].SourceAsOf = now
+		}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			w := d3Witness()
