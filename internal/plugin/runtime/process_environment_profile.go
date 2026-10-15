@@ -73,6 +73,11 @@ func (p HostProcessEnvironmentProfile) Environment() ([]string, error) {
 	}
 	sort.Strings(keys)
 	for _, key := range keys {
+		// A key containing '=' would be interpreted as a different variable
+		// by exec.Cmd even though the map key is not a reserved name.
+		if key == "" || strings.ContainsRune(key, '=') {
+			return nil, fmt.Errorf("process environment profile contains an invalid variable name")
+		}
 		if isReservedHostProcessEnvironmentKey(key) {
 			return nil, fmt.Errorf("process environment profile cannot override a managed directory variable")
 		}
