@@ -65,7 +65,7 @@ func TestD4CurrentHostAcceptanceGatesRulesBindingsAndChoices(t *testing.T) {
 		// decision does NOT include a Choice. No order-based fallback.
 		expectDenied(t, ResolveCurrentBindings(context.Background(), reader, app, revision, req), "ambiguous-target")
 		reader.record.Snapshot.Choices = []AcceptedChoice{{
-			Target: reader.record.Snapshot.Bindings[0].Target,
+			Target:    reader.record.Snapshot.Bindings[0].Target,
 			BindingID: "sales.alternative_attribute",
 		}}
 		got := ResolveCurrentBindings(context.Background(), reader, app, revision, req)
