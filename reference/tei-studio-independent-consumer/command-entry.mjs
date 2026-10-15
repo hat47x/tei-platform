@@ -1,4 +1,4 @@
-import { linkedNotes } from './notes.mjs';
+import { journalCommandOptions } from './journal-command.mjs';
 import { mountCommandPanel } from '../tei-studio-command/command.ts';
 
 // The journal's invoke adapter owns success/denial; the panel grants no rights.
@@ -8,19 +8,7 @@ const unmount = document.getElementById('dispose-command');
 const remount = document.getElementById('remount-command');
 let panel = null;
 let pageDisposed = false;
-const options = {
-  commands: [
-    { id: 'count-links', label: 'Count related entries', enabled: true },
-    { id: 'delete-entry', label: 'Delete entry (denied)', enabled: true },
-  ],
-  diagnostics: [{ id: 'readonly', severity: 'info', message: 'This journal is read-only.' }],
-  async invoke(id) {
-    if (id === 'count-links') {
-      return { kind: 'success', message: `${linkedNotes(picker.value).length} related entries` };
-    }
-    return { kind: 'denied', message: 'The reading journal does not permit deletion.' };
-  },
-};
+const options = journalCommandOptions(() => picker.value);
 function mount() {
   if (pageDisposed || panel) return;
   slot.replaceChildren();
