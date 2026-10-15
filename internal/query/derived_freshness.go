@@ -54,6 +54,28 @@ func (m *DerivedMemo) Resolve(
 	if err := ValidateDerivedSelect(q, plan, sqlEvidence, canRead); err != nil {
 		return DerivedSelectResult{}, false, err
 	}
+	// A purely computed result does not opt into caching, source-age
+	// promises or cross-source alignment. It needs no cache-specific
+	// witness/epoch/verifier, but still requires D2 SQL preflight, bounded
+	// complete retrieval and current field-read authorization before AND
+	// after source evaluation. The Host must supply a trusted canRead.
+	if policy.MaxAge == 0 && policy.MaxSourceAge == 0 && !policy.RequireAligned {
+		if load == nil {
+			return DerivedSelectResult{}, false, ErrDerivedIncomplete
+		}
+		rows, complete, err := load(ctx, plan.MaxRows)
+		if err != nil {
+			return DerivedSelectResult{}, false, err
+		}
+		result, err := EvaluateDerivedSelect(plan, rows, complete)
+		if err != nil {
+			return DerivedSelectResult{}, false, err
+		}
+		if err := ValidateDerivedSelect(q, plan, sqlEvidence, canRead); err != nil {
+			return DerivedSelectResult{}, false, err
+		}
+		return result, false, nil
+	}
 	if !witnessMatchesPlan(q, plan, witness) {
 		return DerivedSelectResult{}, false, fmt.Errorf("%w: witness does not match D2 plan", derivationref.ErrCacheEvidence)
 	}
