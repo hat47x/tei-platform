@@ -145,3 +145,97 @@ func TestPublishLockedRealBuilderOutputUsesPinnedDigest(t *testing.T) {
 		t.Fatalf("reopened CAS did not retain pinned real Builder bytes: %+v err=%v", receipt, err)
 	}
 }
+
+// TestPublishLockedBuilderOutputReadBudget exercises the bridge's own byte
+// limit, separately from publishExactMembers's whole-set preflight. The
+// after-Lstat growth case must not cause an unbounded ReadFile allocation.
+func TestPublishLockedBuilderOutputReadBudget(t *testing.T) {
+	const maxBytes int64 = 5
+	t.Run("exact limit remains publishable", func(t *testing.T) {
+		store := openTestStore(t, maxBytes)
+		value := []byte("12345")
+		path := filepath.Join(t.TempDir(), "builder-output")
+		if err := os.WriteFile(path, value, 0o600); err != nil {
+			t.Fatal(err)
+		}
+		locked := plugin.LockedBuild{ArtifactDigest: digestBytes(value)}
+		published, err := store.publishLockedBuilderOutput(locked, path)
+		if err != nil || len(published.Members) != 1 {
+			t.Fatalf("output at exact maxBytes was not published: %+v err=%v", published, err)
+		}
+		member := published.Members[0]
+		if member.Digest != locked.ArtifactDigest ||
+			member.Published.Digest != locked.ArtifactDigest ||
+			member.Reverified.Digest != locked.ArtifactDigest ||
+			member.Reverified.Operation != "get" {
+			t.Fatalf("exact-boundary output lost fixed Lock identity: %+v", member)
+		}
+		got, _, err := store.GetBytes(locked.ArtifactDigest)
+		if err != nil || !bytes.Equal(got, value) {
+			t.Fatalf("exact-boundary CAS bytes mismatch: %v", err)
+		}
+	})
+
+	t.Run("growth after Lstat rejected before publication", func(t *testing.T) {
+		store := openTestStore(t, maxBytes)
+		initial := []byte("abcde")
+		path := filepath.Join(t.TempDir(), "builder-output")
+		if err := os.WriteFile(path, initial, 0o600); err != nil {
+			t.Fatal(err)
+		}
+		locked := plugin.LockedBuild{ArtifactDigest: digestBytes(initial)}
+		var appended bool
+		setTestHook(t, func(stage string) {
+			if stage != hookAfterLstat || appended {
+				return
+			}
+			appended = true
+			file, err := os.OpenFile(path, os.O_WRONLY|os.O_APPEND, 0)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, err := file.Write([]byte("!")); err != nil {
+				file.Close()
+				t.Fatal(err)
+			}
+			if err := file.Close(); err != nil {
+				t.Fatal(err)
+			}
+		})
+		published, err := store.publishLockedBuilderOutput(locked, path)
+		if !appended {
+			t.Fatal("did not enlarge Builder output after the bridge Lstat")
+		}
+		if err == nil || !strings.Contains(err.Error(), "exceeds store maxBytes") || len(published.Members) != 0 {
+			t.Fatalf("post-Lstat growth was accepted: %+v err=%v", published, err)
+		}
+		info, err := os.Stat(path)
+		if err != nil || info.Size() != maxBytes+1 {
+			t.Fatalf("negative fixture is not exactly maxBytes+1: %v info=%v", err, info)
+		}
+		for _, digest := range []string{locked.ArtifactDigest, digestBytes([]byte("abcde!"))} {
+			if _, _, err := store.GetBytes(digest); !errors.Is(err, errArtifactNotFound) {
+				t.Fatalf("rejected output appeared in CAS (%s): %v", digest, err)
+			}
+		}
+		if locked.ArtifactDigest != digestBytes(initial) {
+			t.Fatal("failure rewrote the expected LockedBuild digest")
+		}
+	})
+
+	t.Run("nonregular input never published", func(t *testing.T) {
+		store := openTestStore(t, maxBytes)
+		locked := plugin.LockedBuild{ArtifactDigest: digestBytes([]byte("abcde"))}
+		directory := filepath.Join(t.TempDir(), "not-a-regular-output")
+		if err := os.Mkdir(directory, 0o700); err != nil {
+			t.Fatal(err)
+		}
+		published, err := store.publishLockedBuilderOutput(locked, directory)
+		if err == nil || !strings.Contains(err.Error(), "must be a regular file") || len(published.Members) != 0 {
+			t.Fatalf("nonregular Builder output accepted: %+v err=%v", published, err)
+		}
+		if _, _, err := store.GetBytes(locked.ArtifactDigest); !errors.Is(err, errArtifactNotFound) {
+			t.Fatalf("nonregular output was published: %v", err)
+		}
+	})
+}
