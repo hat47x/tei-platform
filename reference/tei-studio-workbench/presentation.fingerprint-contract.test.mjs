@@ -1,10 +1,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readCatalog, readInspection, relatedGraph } from './presentation.ts';
+import { readFileSync } from 'node:fs';
+import {
+  readCatalog, readInspection, relatedGraph, summarizeFindings,
+} from './presentation.ts';
 import { createResponseScope } from './responses.ts';
 
-// P0 contract fixture. Runs the exact current Presenter projection functions and
-// response gate. This is an in-memory Presenter-state probe, not a browser E2E.
+// Deterministic, host-neutral Presenter regression against the actual modules.
+// It does not assert browser or Wails runtime integration.
 const selected = { kind: 'semantic-data', id: 'sales.order' };
 function deferred() {
   let resolve;
@@ -30,71 +33,98 @@ function inspection(fingerprint) {
   };
 }
 
-// Mirrors main.ts: catalog is projected to entries/revision, then Graph is
-// prepared from catalog while the deferred InspectSubject response is pending.
-// The publish callback uses readInspection() as main.ts does: no comparison
-// against the catalog's raw fingerprints is currently available.
-async function simulatePresenter(catalogFingerprint, inspectFingerprint) {
+async function simulatePresenter(catalogFingerprint, rawInspection) {
   const scope = createResponseScope();
   const held = deferred();
   const state = {
     graph: null, modelRevision: null, catalogProjection: null,
-    editorText: null, inspectionVersion: null,
-    validationInvoked: false,
-    diagnosticSummary: '未検証',
+    editorText: null, inspectionVersion: null, inspectionPublished: false,
+    failure: null, validationInvoked: false, diagnosticSummary: null,
   };
-  const catalogPublished = await scope.run('catalog', async () => catalog(catalogFingerprint), (raw) => {
+  await scope.run('catalog', async () => catalog(catalogFingerprint), (raw) => {
     const projection = readCatalog(raw);
     state.catalogProjection = projection;
     state.graph = relatedGraph(projection.entries, selected).input;
     state.modelRevision = projection.modelRevision;
   }, (error) => { throw error; });
-  assert.equal(catalogPublished, true);
 
-  // loadWorkspace() calls setFindings([]) *before* its first ValidateWorkspace.
-  // setFindings([]) uses the zero counters even though no validation ran yet.
-  state.diagnosticSummary = 'エラー 0・警告 0';
+  // Current main.ts resets the Command diagnostics and presentation summary
+  // without claiming ValidateWorkspace has completed.
+  state.diagnosticSummary = summarizeFindings(null).text;
 
-  const pendingInspection = scope.run('inspection', () => held.promise, (raw) => {
-    const projection = readInspection(raw, selected);
-    state.editorText = projection.text;
-    state.inspectionVersion = projection.version;
-  }, (error) => { throw error; });
-  assert.equal(state.editorText, null, 'Inspect has not completed before deferred delivery');
-  held.resolve(inspection(inspectFingerprint));
-  assert.equal(await pendingInspection, true);
+  const pending = scope.run('inspection', () => held.promise, (raw) => {
+    const view = readInspection(raw, selected, state.catalogProjection);
+    state.editorText = view.text;
+    state.inspectionVersion = view.version;
+    state.inspectionPublished = true;
+  }, (error) => {
+    state.failure = error instanceof Error ? error.message : 'OPERATION_FAILED';
+    if (state.failure === 'STALE_MODEL_PROJECTION') state.graph = null;
+  });
+
+  assert.equal(state.editorText, null, 'Inspect is unresolved before delivery');
+  held.resolve(rawInspection);
+  assert.equal(await pending, true, 'current request was handled, even when rejected');
   scope.dispose();
   return state;
 }
 
-test('same-version A Catalog + A deferred Inspect is displayed', async () => {
-  const state = await simulatePresenter('A', 'A');
+test('matching A Catalog and deferred A Inspect are accepted', async () => {
+  const state = await simulatePresenter('A', inspection('A'));
   assert.equal(state.modelRevision, 'rev-A');
   assert.equal(state.graph.nodes.length, 1);
+  assert.equal(state.inspectionPublished, true);
+  assert.equal(state.failure, null);
   assert.deepEqual(JSON.parse(state.editorText), { version: 'A', id: 'sales.order' });
   assert.equal(state.inspectionVersion, 'world-A:source-A');
+  assert.equal(state.catalogProjection.worldFingerprint, 'world-A');
+  assert.equal(state.catalogProjection.sourceIndexFingerprint, 'source-A');
 });
 
-test('current-head counterexample: A graph and deferred B inspector are both published', async () => {
-  const state = await simulatePresenter('A', 'B');
+test('A Catalog + deferred B Inspect rejects mixed-version model and graph', async () => {
+  const state = await simulatePresenter('A', inspection('B'));
   assert.equal(state.modelRevision, 'rev-A');
-  assert.equal(state.graph.nodes.length, 1);
-  assert.deepEqual(JSON.parse(state.editorText), { version: 'B', id: 'sales.order' });
-  assert.equal(state.inspectionVersion, 'world-B:source-B');
-  assert.equal(state.catalogProjection.worldFingerprint, undefined);
-  assert.equal(state.catalogProjection.sourceIndexFingerprint, undefined);
+  assert.equal(state.inspectionPublished, false);
+  assert.equal(state.editorText, null);
+  assert.equal(state.graph, null);
+  assert.equal(state.failure, 'STALE_MODEL_PROJECTION');
 });
 
-test('P0 RED: A Catalog + B deferred Inspect must reject mixed-version display', async () => {
-  const state = await simulatePresenter('A', 'B');
-  assert.equal(state.modelRevision, 'rev-A');
-  assert.equal(state.graph.nodes.length, 1);
-  assert.equal(state.editorText, null, 'stale B Inspect must not be shown alongside A Catalog graph');
+test('World fingerprint mismatch alone is rejected', async () => {
+  const raw = inspection('A');
+  raw.worldFingerprint = 'world-B';
+  const state = await simulatePresenter('A', raw);
+  assert.equal(state.failure, 'STALE_MODEL_PROJECTION');
+  assert.equal(state.editorText, null);
 });
 
-test('P0 RED: unrun Validate must be presented as unverified, not 0 findings', async () => {
-  const state = await simulatePresenter('A', 'A');
+test('Source Index fingerprint mismatch alone is rejected', async () => {
+  const raw = inspection('A');
+  raw.sourceIndexFingerprint = 'source-B';
+  const state = await simulatePresenter('A', raw);
+  assert.equal(state.failure, 'STALE_MODEL_PROJECTION');
+  assert.equal(state.editorText, null);
+});
+
+test('unrun Validate has unverified summary, not zero findings', async () => {
+  const state = await simulatePresenter('A', inspection('A'));
   assert.equal(state.validationInvoked, false);
-  assert.equal(state.diagnosticSummary, '未検証',
-    'a zero-finding summary requires a completed successful ValidateWorkspace');
+  assert.equal(state.diagnosticSummary, '未検証');
+  assert.notEqual(state.diagnosticSummary, 'エラー 0・警告 0');
+});
+
+test('only completed Validate results display zero or warning counts', () => {
+  assert.equal(summarizeFindings([]).text, 'エラー 0・警告 0');
+  assert.equal(summarizeFindings([{id:'w',message:'warn',severity:'warning'}]).text,
+    'エラー 0・警告 1');
+  assert.equal(summarizeFindings(null).verified, false);
+  assert.equal(summarizeFindings([]).verified, true);
+});
+
+test('Workbench wires snapshot matching and unverified state before painting', () => {
+  const main = readFileSync(new URL('./main.ts', import.meta.url), 'utf8');
+  assert.match(main, /readInspection\(unwrap\(reply\), subject, catalogSnapshot!\)/);
+  assert.match(main, /catalogSnapshot = catalog;/);
+  assert.match(main, /setFindings\(null\);/);
+  assert.match(main, /context === workspaceEpoch\) await validate\(\);/);
 });
