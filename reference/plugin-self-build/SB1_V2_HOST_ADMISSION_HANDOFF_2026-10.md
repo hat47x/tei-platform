@@ -90,3 +90,16 @@ Production Hostへの最小要求を次のように限定する。
 Linuxの製品Runtimeに存在する`internal/plugin/runtime.HostAdmittedPinnedLinuxProcess`と`LinuxHostStartAdmission`が、Host側の現在Authorityと`cmd.Start`を直列化する具体例である。しかし当該APIはPlugin Runtime向けのTarget固有実装であり、SB-1の変換Engineには接続されていない。一般化する場合は、Host側の既存Authority所有者が同じ世代／Plan／Scopeを束縛し、Build HostのStartへ適用する。**SB-1用の第二のAuthority・新Grant Storeは設けない。**
 
 この段階のReference成功を、SB1-H09のProduction受入済みへ変更しない。実行開始後の失効・遠隔Host・Attestation・Artifact Acceptanceも引き続き独立した未完了条件とする。
+
+## 8. Host世代とOS Startの並行競合（テスト限定の直列化Reference）
+
+`tools/reference-plugin-self-build/inputprofile_host_start_generation_test.go`は、`sync.RWMutex`で単一の試験Hostの**現在選択、許可、世代、物理Start**を保護し、個別にビルドした旧v1 Process Engineで次を検証する。
+
+- 有効な選択で入力を準備しても、`Start`前に失効した場合は旧世代を拒否する。
+- **同じProfile・Source・Planに復旧しても新しい世代が必要**であり、古い入力束縛／世代をそのまま許可しない（ABA防止）。
+- HostのStart側が読み取りロックを保持している間、並行する失効の書込みロックは完了できない。OS Start後はロックを解放し、子プロセスの終了までHostの失効を待たせない。
+- 同じ旧世代による失効完了後の再Startは拒否する。開始済みプロセスの出力観測は、**失効後の新規Build受入**とは区別する。
+
+これらは**テスト用Hostと局所実Process Engine**での順序実証である。真のBuild Hostが現在Source/PlanとProfileを解決している証明、分散Host・OS別Targetでの起動線形化、Host署名・Build Attempt・Attestation・Artifact Acceptanceにはならない。追加のIssuer／Grant Storeは導入していない。
+
+製品の採用経路では、既存のHost所有世代／Authorityと物理開始機構を同じ線形化点に束縛し、対象Source・BuildPlan・Engine・実Artifactを固定する必要がある。なお、同時失効に対して「Startが先に成立した要求を後から強制停止する」意味は採用しておらず、実行中の取消しは別設計とする。**SB1-H09はProduction未達のまま。**
