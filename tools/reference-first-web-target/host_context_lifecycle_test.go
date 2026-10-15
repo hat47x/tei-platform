@@ -32,7 +32,7 @@ func TestCombinedWebHostLifetimeStopsListener(t *testing.T) {
 	accepted := sourceacceptance.Record{
 		ApplicationID: "order_entry", DecisionRef: "test-only-host-runtime",
 		AuthorityRevision: "test-only-host-lifetime",
-		ModelRevision: sourceindex.ModelRevision(index), Artifacts: index.Artifacts,
+		ModelRevision:     sourceindex.ModelRevision(index), Artifacts: index.Artifacts,
 	}
 	reader := &requestSourceReader{record: accepted}
 	reservation, err := net.Listen("tcp4", "127.0.0.1:0")
