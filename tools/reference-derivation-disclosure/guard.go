@@ -141,7 +141,7 @@ func validate(t TrustedContext, p QueryPlan) error {
 	if strings.TrimSpace(t.SubjectID) == "" || t.SubjectID != strings.TrimSpace(t.SubjectID) ||
 		!canonical(t.Tenant) || !canonical(t.Purpose) ||
 		strings.TrimSpace(t.PolicyPartition) == "" || !canonical(p.Target) ||
-		p.Definition.ID == "" || len(p.Definition.Inputs) == 0 ||
+		!canonical(core.CanonicalID(p.Definition.ID)) || len(p.Definition.Inputs) == 0 ||
 		derivationref.ValidateGraph([]derivationref.Definition{p.Definition}, nil) != nil {
 		return ErrInvalidPlan
 	}
@@ -212,6 +212,12 @@ func requiredPermissions(t TrustedContext, p QueryPlan) []permissionCheck {
 		checks = append(checks, add(t.SubjectID, "derive.row.include", "row/"+string(row.ID)))
 	}
 	checks = append(checks, add(t.SubjectID, "derive.rule.execute", "rule/"+p.Definition.ID))
+	if p.Mode == Aggregate {
+		// Caller execution/disclosure does not authorize the selected
+		// provider to run code. Consult the same existing Authority for
+		// this exact provider and rule before any evaluator invocation.
+		checks = append(checks, add(t.ProviderSubjectID, "derive.provider.execute", "rule/"+p.Definition.ID))
+	}
 	for _, input := range p.Definition.Inputs {
 		if p.Mode == Detail {
 			checks = append(checks, add(t.SubjectID, "derive.input.read", "input/"+input))
