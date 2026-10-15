@@ -68,8 +68,8 @@ func newFixture(t *testing.T, mode Mode, who string, surfaces ...Surface) (Trust
 	rule := &fixtureRule{allowed: map[permissionCheck]bool{}}
 	adapter := legacyauthorization.Adapter{
 		Store: fixtureStore{users: map[string]legacyauth.User{
-			"staff.admin": {SubjectID: "staff.admin", OrganizationCode: "sales", RoleCode: "admin"},
-			"staff.public": {SubjectID: "staff.public", OrganizationCode: "sales", RoleCode: "public"},
+			"staff.admin":               {SubjectID: "staff.admin", OrganizationCode: "sales", RoleCode: "admin"},
+			"staff.public":              {SubjectID: "staff.public", OrganizationCode: "sales", RoleCode: "public"},
 			"trusted.aggregate.service": {SubjectID: "trusted.aggregate.service", OrganizationCode: "system", RoleCode: "provider"},
 		}},
 		Rule: rule,
@@ -384,7 +384,8 @@ func TestD5InvalidPlansFailBeforeAuthorityAndEvaluation(t *testing.T) {
 		{"duplicate-rows", func(_ *TrustedContext, p *QueryPlan) { p.Rows = append(p.Rows, p.Rows[0]) }},
 		{"aggregate-no-provider", func(h *TrustedContext, p *QueryPlan) { p.Mode = Aggregate; p.Surfaces = []Surface{Group} }},
 		{"aggregate-disguised-select", func(h *TrustedContext, p *QueryPlan) {
-			p.Mode = Aggregate; h.ProviderSubjectID = "trusted.aggregate.service"
+			p.Mode = Aggregate
+			h.ProviderSubjectID = "trusted.aggregate.service"
 		}},
 		{"detail-internal-provider", func(h *TrustedContext, _ *QueryPlan) { h.ProviderSubjectID = "trusted.aggregate.service" }},
 	} {
