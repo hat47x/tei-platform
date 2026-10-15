@@ -11,7 +11,19 @@ export type Finding = {
   severity: "info" | "warning" | "error";
   message: string;
 };
-export type Catalog = { entries: Entry[]; modelRevision: string };
+export type Catalog = {
+  entries: Entry[];
+  modelRevision: string;
+  worldFingerprint: string;
+  sourceIndexFingerprint: string;
+};
+export function summarizeFindings(findings: readonly Finding[] | null) {
+  if (findings === null)
+    return { verified: false, errors: 0, warnings: 0, text: "未検証" };
+  const errors = findings.filter((d) => d.severity === "error").length;
+  const warnings = findings.filter((d) => d.severity === "warning").length;
+  return { verified: true, errors, warnings, text: `エラー ${errors}・警告 ${warnings}` };
+}
 function record(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== "object" || Array.isArray(value))
     throw Error("INVALID_MODEL_RESPONSE");
@@ -34,7 +46,9 @@ export function readCatalog(raw: unknown): Catalog {
   if (
     v.effect !== "read-only" ||
     !Array.isArray(v.entries) ||
-    typeof v.modelRevision !== "string"
+    typeof v.modelRevision !== "string" ||
+    typeof v.worldFingerprint !== "string" ||
+    typeof v.sourceIndexFingerprint !== "string"
   )
     throw Error("INVALID_CATALOG_RESPONSE");
   const seen = new Set<string>();
@@ -52,7 +66,12 @@ export function readCatalog(raw: unknown): Catalog {
       ...(typeof e.symbol === "string" ? { symbol: e.symbol } : {}),
     };
   });
-  return { entries, modelRevision: v.modelRevision };
+  return {
+    entries,
+    modelRevision: v.modelRevision,
+    worldFingerprint: v.worldFingerprint,
+    sourceIndexFingerprint: v.sourceIndexFingerprint,
+  };
 }
 export function readValidation(raw: unknown): Finding[] {
   const v = record(raw);
@@ -81,7 +100,7 @@ export function readValidation(raw: unknown): Finding[] {
     };
   });
 }
-export function readInspection(raw: unknown, expected: Subject) {
+export function readInspection(raw: unknown, expected: Subject, catalog: Catalog) {
   const v = record(raw);
   if (
     v.effect !== "read-only" ||
@@ -91,10 +110,16 @@ export function readInspection(raw: unknown, expected: Subject) {
     typeof v.sourceIndexFingerprint !== "string"
   )
     throw Error("INVALID_INSPECTION_RESPONSE");
+  if (!catalog ||
+      v.worldFingerprint !== catalog.worldFingerprint ||
+      v.sourceIndexFingerprint !== catalog.sourceIndexFingerprint)
+    throw Error("STALE_MODEL_PROJECTION");
   return {
     text: JSON.stringify(v.canonical, null, 2),
     version: `${v.worldFingerprint}:${v.sourceIndexFingerprint}`,
     sourceStatus: String(v.sourceStatus ?? "unknown"),
+    worldFingerprint: v.worldFingerprint,
+    sourceIndexFingerprint: v.sourceIndexFingerprint,
   };
 }
 export function relatedGraph(entries: readonly Entry[], selected: Subject) {
