@@ -90,3 +90,51 @@ go vet -tags tei_studio_host_integration ./tools/reference-studio-host-boundary
 ## Evidenceの記録
 
 結果報告では、main/PR headの**exact SHA**、対象Go版、OS、コマンド、`PASS`/`FAIL`/`NOT RUN`/`BLOCKED`、実Host/ブラウザー/WebViewと合成試験を区別してIssue #1824に記す。ブラウザー/WebView未実行時は合成試験結果を移用しない。
+
+
+## 2026-10-15: #1849 Web実証からDesktop独立資格確認への引継ぎ
+
+この節は #1824 の[固定入力・観測記録](https://github.com/hat47x/tei-platform/issues/1824#issuecomment-6181206457)、#2の[Draft PR #1832](https://github.com/hat47x/tei-platform/pull/1832)、#Workの[Draft PR #1849](https://github.com/hat47x/tei-platform/pull/1849)に対する**境界検証の申し送り**である。新たな要件・OS適合宣言・独立Gateは作らない。
+
+### 固定入力と実施済み範囲
+
+- **UI workbench**：#1849 `9a290dc61f585dfbf292e9032e5c5bbbad04351a`、提出時base `ad4c77d47ca03f8de1a07d6f89139b3d6bb45e5a`。検証snapshotには#1832 Host `d520689cfb0a2e2919aa86b0beeba54802b31465`、#1830 Editor `cc57052f23b69582fc0d3800ab92b2210a28bb4f`、#1828 Graph `36799dba33fe0e19db3f7b56e7af1e18da134a71`、#1829 Command `26f47772ed49f5c4a9e1c50026c335783bc5e153` の各所有pathのみ抽出（**Draft同士のmergeではない**）。
+- **Web側PASS（#Work報告を採録）**：Windows/Node 24.21.0/TypeScript 5.8.3/CodeMirror state 6.7.6・view 6.43.14・lint 6.9.7/esbuild 0.25.12でUI対象4試験、型検査、ビルド成功。Go 1.26.9/Wails v3.0.0-beta.29/Linux-nativeで `CGO_ENABLED=0 go build -mod=readonly -tags server` により、固定UI資産を組み込んだ127.0.0.1 Serverを起動。health=200、index/JS/CSS/OSSライセンスの配信SHA-256一致。**実ブラウザー**でHost4操作に基づく一覧72件、Graph選択→再Inspect、検索9件、別Workspace19件/警告0、復帰後警告3件を保持した検証まで確認。Editorのキー入力試行は操作ツールのpress失敗であり、入力不可・全キーボード/a11yのPASSには数えない。
+- **本#10の独立境界**：#1827の合成Session (#1043)、#1529 Draft Store、タグ付き#1832 `ReadOnly` Go testは**実IdP認証・実Wails WebSocket隔離・Desktop実WebViewの証拠ではない**。#Workが別のmain1284294固定snapshotで #1827 `751fb56a...` の境界テストをGo1.26.9の`-race`/対象tagとvetで終了0と報告した事実は、そのsnapshotだけに結び付ける。#1849 UI snapshotで同じ境界試験を実行したとは主張しない。
+- **OS/Desktopに関する現在のPASS**：#1832 `d520689...`専用CI（Ubuntu 24.04/Windows Server 2022/Go1.26.9・Node22）でGo/JS、CGO-free Linux Server build/loopback health、公開listen環境変数拒否、**Windows Desktop実行ファイルのbuild** が成功。**Desktopの実ウィンドウ・OS WebView・同一workbench画面は未起動・未観測**。これは#1849のWeb実ブラウザーと別証拠である。
+
+### OSごとの未確認条件（#2 Desktop検証準備）
+
+| OS/経路 | 既存の証拠 | Desktop実環境で確認する条件 | 現在の状態 |
+| --- | --- | --- | --- |
+| **Windows**（amd64。arm64は別対象） | Windows Server 2022上の#1832 Wails Desktopバイナリ**ビルドPASS**。#1849のブラウザー試験はWindows上の**Webブラウザー**であってWebView2ではない | 実対象Windows版・arch、WebView2 Runtime版と配布条件、アプリ起動→native window表示→実`main.StudioBridge`呼出し、Graph/Editor/Commandの実操作、再読み込み/ウィンドウ終了、パスのドライブ/UNC/ジャンクション・シンボリックリンクの拒否が必要な箇所、OSアクセス権、DPI/日本語IME/キー入力を観測。署名・インストーラー・更新は別検証 | **WebView2起動・操作 NOT RUN**。Windows buildだけPASS |
+| **macOS**（Intel/Apple Siliconは区別） | #1832/#1849の**macOSネイティブ**ビルド・実GUI試験報告なし | OSとCPUを固定、Xcode Command Line Tools・system WebKit、Wails Desktopビルド/アプリbundle、WKWebView実起動・Bridge/診断/部品操作、ファイル許可・symlink・sandbox/TCC等の適用条件、再起動/失効を確認。codesign/notarization/Gatekeeperでの配布資格はGUI smokeと分離 | **Build・実WebView・配布すべて NOT RUN** |
+| **Linux Desktop**（distribution・arch・display stackを固定） | WSL Ubuntu/Linux-nativeの**CGO無効Server**起動と実ブラウザーのみ。これはLinux DesktopのCGO＋native WebViewの証拠ではない | 対象distribution、GTK4/WebKitGTK 6.0（旧環境で必要な場合の`gtk3`オプションは別条件）、CGOありのDesktop buildと実WebKitGTK window、X11/Wayland表示・フォーカス・クリップボード・文字入力、実Host4操作、symlink/権限・ウィンドウ終了/再起動。headless/WSLで表示環境を使っていないテストはDesktop実行に数えない | **Native GUI build・WebKitGTK実起動 NOT RUN**。ServerのみPASS |
+| **Wails Server + Web Browser**（比較対照） | #1849固定snapshotのloopback 1利用者 read-only 実ブラウザー結果はPASS | 複数の独立した信頼済みsession、WS接続/再接続・失効、イベントbroadcastの機微payload漏洩、Origin/CSRF/認証/Workspaceスコープ。現Hostはこれらの本番権限機構を持たない | **単一利用者loopbackの固定操作のみPASS**。公開Web・マルチ利用者認可は未成立 |
+
+Wails公式におけるDesktopのOS依存とServer/GUI差の参照先：<https://v3.wails.io/quick-start/installation/>、<https://v3.wails.io/guides/server-build/>。実装の適合可否は**使用中のWails beta.29、OS、ライブラリ/Runtime実版と再現ログ**で判定し、公式の一般的な対応表をPoCの実証に変換しない。
+
+### Desktopを実機で観測する最小手順（#2所有の起動に合わせる）
+
+1. **対象を固定**：#2の実build source head、#1849 UI head、4部品/Hostの各exact SHA、`go.mod/go.sum`と最終asset digest、Go/Wails/OS/architecture/native WebView Runtime、ビルドと起動コマンド、環境変数、利用許可済みWorkspace root（物理パス）を記録。元Draftを書き換えず、対象pathを取り出した検証snapshotで行う。
+2. **DesktopをDesktopとして起動**：`-tags server`を使わずにCGOとOSのGUI依存を満たしてビルドし、native window/WebViewを実際に開く。ウィンドウ内の資産版と実Wails service呼出しを確認。バイナリbuild成功・health=200・Webブラウザー画面・画面キャプチャだけでIPC成功としない。
+3. **read-only実動作**：固定された4操作`ListWorkspaces/CatalogWorkspace/ValidateWorkspace/InspectSubject`で許可Workspace・別Workspace・未知ID/相対パス風ID・存在しないsubjectを操作。Workspace切替や応答遅延後に旧選択/検索/JSON/診断が混入しないことを確認。`ok:true`とValidation diagnosticが0件であることを別に判断し、実Source本文や編集機能と混同しない。
+4. **ライフサイクル・保護**：window close/reopenとHost process再起動、切断・再接続、同時window可否を確認。現PoCはDraft保存/RecoverをWails Bridgeへ公開していないため、#1529のStore単体復元テストを**実Desktop再起動後のDraft非昇格合格とは呼ばない**。Sourceの書換え・OSダイアログ・任意ファイルアクセスは**API未提供**であり、既存UIで試行してPASSを作らない。将来のOS resource adapter提供時にpath越境・symlink交換・権限変化・TOCTOUをHost側で検査する。
+5. **判定を分離**：Go/Node単体、OS native build、native WebView起動、WebView内のService/操作、OS resource境界、再起動/多窓、配布/署名、人的レビューを別項目でPASS/FAIL/NOT RUN/BLOCKED。ビルド対象と実行対象のSHA・成果物digestが不一致なら合格にしない。
+
+### read-only Hostの保証範囲とまだない権限
+
+- #1832`internal/studiohost.ReadOnly`は起動時にHostが指定する**共通のWorkspace allowlist**を保持する。RendererはWorkspace **IDのみ**を指定し、パスそのもの・書込み・Accept・Shell・任意OSダイアログを要求できない。公開Wails Bridgeは4メソッドで、値/失敗を別のenvelopeで返す。この制限は本PoCの**操作面の縮小**であり、権限済み利用者の本人確認やpath読取りの完全安全性ではない。
+- 起動時に許可されたWorkspaceの内容は、同じWails serviceにアクセスした全callerから読める。許可IDは**ユーザー別・Web session別にスコープ化されていない**。Webの`127.0.0.1`固定や公開listen環境変数拒否はネットワーク公開を狭めるが、認証・CSRF・WebSocket購読認可を追加するものではない。
+- Serviceの結果は**正規化モデルのJSON**。Editorへ表示した内容をAccepted Sourceの生テキストとはしない。現HostからはSource本文取得・編集・受理のAPIがない。#1529のprivate Draft StoreとAccepted Sourceは独立で、実Studioへ統合されていない状態ではDraft再起動非昇格をPoC全体の合格に数えない。
+- `filepath.EvalSymlinks`による起動root固定は、操作時のファイル差替えやWorkspace Loaderのrace-free閉じ込めを保証しない。#1017等の未解決境界は残る。OS単位の所有者/ACL、シンボリックリンク/junction/ディスク入替え、秘密情報のUI・イベント露出を別に確認する。
+- Wails Server BuildではGo→ブラウザーEventが全ブラウザーにbroadcastされ得る（公式のServer Build説明）。現PoCの非機微/read-only固定操作によるWeb実証から、将来の機微Eventや公開多利用者構成の安全性を導けない。
+
+### Studio Hostと生成対象Application Targetは別の資格
+
+- **Studio PoC A/C**（#1824, #1832, #1849）：開発者向けのTEI Workspace閲覧・モデル検査ツールのWeb/Desktop Hostと共通UI部品が目的。固定Workspaceのread-only操作、実UI表示、Web/Desktop adapter・ライフサイクルが評価対象。
+- **生成対象製品の第二Application Target**（[#259](https://github.com/hat47x/tei-platform/issues/259)）：`order_entry`等の**受理済み業務Application meaning**をHandover baseline `B/R` として保持し、第一Web Targetのbuild `T1` と第二Desktop等のbuild `T2` を別identityで取得し、Target Capability、Runtime Binding、Execution/Trust、Authorization/Resource、Business Result/Execution Error/Observation、Semantic/Functional/Visual、性能を比較する。**Studio自身のWailsビルドやGUI起動はT2へ算入しない**。
+- **生成Browser/APIの物理分割**（[#1182](https://github.com/hat47x/tei-platform/issues/1182)）：同一の受理済みApplicationからBrowser assetとLinux/API実行成果物を**別配備単位**として生成し、サーバー専用実装・secret非混入、Origin/TLS/Identity/CSRF、業務結果/拒否、成果物digest/来歴を検証する。#1849のStatic Workbench bundleとread-only Studio Hostの配信成功は、この生成Browser/APIの安全分割の証拠でもない。
+- Wailsは候補Runtimeであり、Studioの結果からTEI全体の標準Runtime・生成Desktop Target・Target Capability schemaの採用決定へ自動昇格しない。
+
+**2026-10-15時点の資格**：#1849の固定Web実ブラウザー一巡は観測済み。#1832のWindows Desktopバイナリbuildは観測済み。**Desktop実WebView（Windows/macOS/Linux）、OS資源境界、生成Application Targetの適格性は未確認**。この節は#Work報告と既存実装・公式要件の整理であり、本変更で新しいDesktop実機テストを行ったわけではない。Draft PRはいずれも未統合。
