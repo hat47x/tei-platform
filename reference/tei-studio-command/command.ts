@@ -46,6 +46,14 @@ export interface CommandOptions {
 export interface CommandPort {
   setCommands(commands: readonly CommandDefinition[]): void;
   setDiagnostics(diagnostics: readonly Diagnostic[]): void;
+  /**
+   * Start a new presentation context (e.g. another Workspace or refresh).
+   * Discards displayed diagnostics, resets command status, and invalidates
+   * pending UI results. Aborting a request does not undo Host side effects.
+   */
+  beginContext(): number;
+  /** Apply asynchronous diagnostics only if their originating token is live. */
+  setDiagnosticsForContext(token: number, diagnostics: readonly Diagnostic[]): boolean;
   snapshot(): CommandSnapshot;
   /** true = a dispatch was accepted, NOT a claim of successful execution. */
   execute(commandId: string): Promise<boolean>;
@@ -105,6 +113,7 @@ export function createCommandPort(options: CommandOptions): CommandPort {
   let diagnostics = normalizeDiagnostics(options.diagnostics ?? []);
   let status: CommandStatus = { phase: "idle" };
   let disposed = false;
+  let contextToken = 0;
   let active: AbortController | undefined;
   const listeners = new Set<(snapshot: CommandSnapshot) => void>();
 
@@ -134,6 +143,24 @@ export function createCommandPort(options: CommandOptions): CommandPort {
       diagnostics = normalizeDiagnostics(value);
       notify();
     },
+    beginContext() {
+      ensureActive();
+      contextToken++;
+      active?.abort();
+      active = undefined;
+      status = { phase: "idle" };
+      diagnostics = [];
+      notify();
+      return contextToken;
+    },
+    setDiagnosticsForContext(token, value) {
+      ensureActive();
+      if (!Number.isSafeInteger(token) || token !== contextToken) return false;
+      const next = normalizeDiagnostics(value);
+      diagnostics = next;
+      notify();
+      return true;
+    },
     snapshot,
     async execute(commandId) {
       if (disposed || status.phase === "running" ||
@@ -144,6 +171,7 @@ export function createCommandPort(options: CommandOptions): CommandPort {
       active = controller;
       status = { phase: "running", commandId };
       notify();
+      if (disposed || active !== controller) return false;
       let outcome: CommandOutcome;
       try {
         outcome = normalizeOutcome(await options.invoke(commandId, controller.signal));
@@ -273,6 +301,8 @@ export function mountCommandPanel(target: HTMLElement, options: CommandOptions):
     element: root,
     setCommands: model.setCommands,
     setDiagnostics: model.setDiagnostics,
+    beginContext: model.beginContext,
+    setDiagnosticsForContext: model.setDiagnosticsForContext,
     snapshot: model.snapshot,
     execute: model.execute,
     subscribe: model.subscribe,
