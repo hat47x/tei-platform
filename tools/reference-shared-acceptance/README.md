@@ -455,3 +455,28 @@ testはGate B / Gate Cのbaselineを変更せず、`reference/workspace`のscrat
 規則の`removed`／`changed`ごとに`LOGICAL_RULE_RETRACTION_REQUIRES_REVIEW`を残し、下流の業務規則、候補キーの最小性、物理PK/FK等の影響を推測で「なし」にしません。宣言されていたはずの過去規則を旧Worldから見つけられない場合も`LOGICAL_RULE_PREVIOUS_DECLARATION_MISSING`で未確認を明示します。通常の追加は従来の影響解析と同じで、過去に存在しないリンクを合成しません。
 
 **この段階で撤回・更新の操作は解放していません。** 書き戻しに必要な規則本文の厳密な範囲、変更前ソース指紋の固定、旧規則の参照元への説明、権限ある意思決定の記録を確認してから別の型付き操作として導入します。今回の変更は差分と影響の読み取り境界に留まり、Source、実DB、DDL、Provider、Runtime authorityを変更しません。
+
+
+## 論理候補キー・関数従属性の撤回（#1126）
+
+既存Dataに明示された論理規則を撤回する型付き操作`remove-candidate-key`と`remove-functional-dependency`を追加しました。追加操作と同じ通常のShared Acceptanceで`Preview → Review → Accept`を行い、権限を省略する別ルートは設けません。
+
+```json
+{
+  "op": "remove-candidate-key",
+  "removeBusinessRule": {
+    "data": "sales.order_line",
+    "id": "sales.order_line.business_line",
+    "symbol": "businessLine",
+    "sourceFingerprint": "sha256:<current-source-file-fingerprint>"
+  }
+}
+```
+
+`remove-functional-dependency`も同じ`removeBusinessRule`オブジェクトを使います。`sourceFingerprint`は**対象Dataの現在の正本ソースファイル全体**から計算した実指紋が必要です。元Worldの`baseModelRevision`も従来どおり必須です。対象規則の実在、kind・Data・symbolの一致、Source Indexで一意の`definition`位置、Data所有元ファイルとの一致、ファイル指紋を確認してから編集候補を作ります。
+
+編集対象は正本Semanticソース中の、規則名トークンで厳密に同定された宣言ブロック１件のみです。行の途中の宣言、閉じ括弧後に別の内容がある場合、現行ソースと食い違う場合は曖昧な削除をせず拒否します。Previewの`SourceEdits[].removedText`は削除されるソース断片を示します。
+
+差分は`removed candidate-key:<id>`または`removed functional-dependency:<id>`として独立したsubjectに記録します。`ImpactWithBefore`を用いて撤回前のData/Attribute参照を`previous.*`の辺として保持し、`LOGICAL_RULE_RETRACTION_REQUIRES_REVIEW`で影響の再確認を要求します。規則を撤回しても、**物理PK、UNIQUE、FK、Index、Migrationが自動的に削除されるわけではありません**。
+
+このReferenceが成立させるのはソースの意図的な撤回と監査用の差分です。実業務で規則の撤回が妥当か、権限を持つ者が決定したか、既存DBの整合性がどう変わるかは別途確認が必要です。今回は同じ規則IDの改名・属性集合の変更・別kindへの変換は扱いません。

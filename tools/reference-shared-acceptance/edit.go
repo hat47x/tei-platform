@@ -27,6 +27,7 @@ type SourceEdit struct {
 	BeforeFingerprint string `json:"beforeFingerprint,omitempty"`
 	AfterFingerprint  string `json:"afterFingerprint"`
 	InsertedText      string `json:"insertedText"`
+	RemovedText       string `json:"removedText,omitempty"`
 
 	before []byte
 	after  []byte
@@ -325,6 +326,13 @@ func planEdits(s snapshot, ops []Operation) ([]SourceEdit, []Diagnostic) {
 				continue
 			}
 			path = location.File
+		case opRemoveCandidateKey, opRemoveFunctionalDependency:
+			location, ok := s.loaded.Sources["semantic-data:"+op.RemoveBusinessRule.Data]
+			if !ok {
+				diagnostics = append(diagnostics, Diagnostic{Code: "PLACEMENT_UNRESOLVED", Message: fmt.Sprintf("no canonical source declares Data %s", op.RemoveBusinessRule.Data), Subject: key})
+				continue
+			}
+			path = location.File
 		case opAddCandidateKey, opAddFunctionalDependency:
 			data, _, _ := businessRuleOperationSubject(op)
 			location, ok := s.loaded.Sources["semantic-data:"+data]
@@ -369,8 +377,17 @@ func planEdits(s snapshot, ops []Operation) ([]SourceEdit, []Diagnostic) {
 			return nil, []Diagnostic{{Code: "SOURCE_UNREADABLE", Message: err.Error(), Subject: "file:" + path}}
 		}
 		content := before
-		var inserted strings.Builder
+		var inserted, removed strings.Builder
 		for _, op := range group {
+			if op.Op == opRemoveCandidateKey || op.Op == opRemoveFunctionalDependency {
+				var removedText string
+				content, removedText, err = removeExactBusinessRuleBlock(content, op)
+				if err != nil {
+					return nil, []Diagnostic{{Code: "BUSINESS_RULE_REMOVAL_FAILED", Message: err.Error(), Subject: operationKey(op)}}
+				}
+				removed.WriteString(removedText)
+				continue
+			}
 			if op.Op == opAddEnvironmentBinding {
 				var text string
 				content, text, err = insertIntoEnvironmentBlock(content, op.EnvironmentBinding.Environment, *op.EnvironmentBinding)
@@ -432,6 +449,7 @@ func planEdits(s snapshot, ops []Operation) ([]SourceEdit, []Diagnostic) {
 			BeforeFingerprint: sourceindex.Fingerprint(before),
 			AfterFingerprint:  sourceindex.Fingerprint(content),
 			InsertedText:      inserted.String(),
+			RemovedText:       removed.String(),
 			before:            before,
 			after:             content,
 		})
