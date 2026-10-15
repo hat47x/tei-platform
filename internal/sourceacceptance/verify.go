@@ -25,6 +25,12 @@ type Record struct {
 	Artifacts         []sourceindex.Artifact `json:"artifacts"`
 }
 
+// ErrCurrentAcceptanceUnavailable is the public, deliberately opaque failure
+// for a Host CURRENT acceptance read. Host errors may include credentials,
+// private paths or issuer policy; never return them or wrap their error chain.
+// The Host can keep its own diagnostic in private telemetry.
+var ErrCurrentAcceptanceUnavailable = errors.New("SOURCE_ACCEPTANCE_CURRENT_UNAVAILABLE")
+
 // Reader is implemented by a trusted Host. Implementations must check current
 // acceptance and revocation on each call rather than trusting a stale receipt.
 type Reader interface {
@@ -48,7 +54,9 @@ func VerifyCurrent(ctx context.Context, reader Reader, applicationID string, loa
 	}
 	record, err := reader.ReadCurrentAcceptedSource(ctx, applicationID)
 	if err != nil {
-		return Record{}, fmt.Errorf("SOURCE_ACCEPTANCE_CURRENT_UNAVAILABLE: %w", err)
+		// Never pass through the untrusted Reader's raw error or its
+		// unwrap chain: startup CLI errors must not disclose Host secrets.
+		return Record{}, ErrCurrentAcceptanceUnavailable
 	}
 	if err := ctx.Err(); err != nil {
 		return Record{}, fmt.Errorf("SOURCE_ACCEPTANCE_CURRENT_UNAVAILABLE: %w", err)
@@ -64,7 +72,9 @@ func VerifyCurrent(ctx context.Context, reader Reader, applicationID string, loa
 	}
 	expected, err := artifactMap(record.Artifacts)
 	if err != nil || len(expected) == 0 {
-		return Record{}, fmt.Errorf("SOURCE_ACCEPTANCE_WITNESS_INVALID: managed source membership: %v", err)
+		// A malformed Host witness may carry a secret or a private path.
+		// Do not echo it into Web startup diagnostics or HTTP errors.
+		return Record{}, errors.New("SOURCE_ACCEPTANCE_WITNESS_INVALID: managed source membership is missing or malformed")
 	}
 	if sourceindex.ModelRevision(sourceindex.Index{Artifacts: record.Artifacts}) != record.ModelRevision {
 		return Record{}, errors.New("SOURCE_ACCEPTANCE_WITNESS_INVALID: revision does not match witnessed members")

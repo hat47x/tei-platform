@@ -261,6 +261,39 @@ func TestCombinedWebTargetSourceGateLiveProcesses(t *testing.T) {
 			if !foundPriceRule {
 				t.Fatal("Runner used a World other than the verified R1")
 			}
+			if tc.name == "R1" {
+				// This is an actual running HTTP process. The synthetic Host
+				// publication disappears AFTER startup, before the next Command.
+				// The child must refuse the new request instead of dispatching.
+				if err := os.Remove(publication); err != nil {
+					t.Fatal(err)
+				}
+				t.Cleanup(func() { _ = os.WriteFile(publication, raw, 0o600) })
+				blocked, err := client.Post(base+"/scenario/submit", "application/json",
+					strings.NewReader(`{"loginId":"legacy-order-editor","credential":"editor-secret","from":"2026-09-18T08:30:00Z","row":0}`))
+				if err != nil {
+					t.Fatal(err)
+				}
+				blockedBody, readErr := io.ReadAll(io.LimitReader(blocked.Body, 1024))
+				closeErr := blocked.Body.Close()
+				if readErr != nil || closeErr != nil || blocked.StatusCode != http.StatusServiceUnavailable ||
+					!bytes.Contains(blockedBody, []byte("SOURCE_ACCEPTANCE_CURRENT_UNAVAILABLE")) ||
+					bytes.Contains(blockedBody, []byte("editor-secret")) {
+					t.Fatalf("revoked current Host was not refused before running Command: status=%d body=%q read=%v close=%v",
+						blocked.StatusCode, blockedBody, readErr, closeErr)
+				}
+				if err := os.WriteFile(publication, raw, 0o600); err != nil {
+					t.Fatal(err)
+				}
+				restored, err := client.Get(base + "/healthz")
+				if err != nil {
+					t.Fatal(err)
+				}
+				restored.Body.Close()
+				if restored.StatusCode != http.StatusOK {
+					t.Fatalf("restored current Host acceptance was refused: %d", restored.StatusCode)
+				}
+			}
 		})
 	}
 }

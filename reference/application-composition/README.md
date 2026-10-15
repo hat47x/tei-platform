@@ -49,6 +49,7 @@ TEIの既存資産を案件単位で組み合わせる際、どの情報を再�
 - [E36：統合済み案件Pluginと実行Authorityの引き渡し条件](E36_POSTMERGE_RUNTIME_AUTHORITY_HANDOFF.md) — #1567・#1781・#1789・#1691で成立した参照経路と、正式Contract／実Artifact／現在のHost権限／受注Actionの残課題を切り分ける。新しいProfileやResolverは追加しない。
 - [E37：統合済み案件Goを複数Projectで再利用する構成選択とScope隔離](E37_REAL_PROJECT_SCOPE_CHOICES.md)／[Go回帰試験](e37_real_project_scope_choice_test.go) — 同じ実Go助言を2案件で利用し、Providerの競合・明示選択・案件間失効隔離を既存Registryで確認。追加Profile不要な部分と案件固有の選択を区別する。
 - [E38：実案件差分から既存E28へ、未計測を保持して接続](E38_REAL_WORKFLOW_GAP.md)／[集計器](e38_real_workflow_gap.mjs)／[Node回帰試験](e38_real_workflow_gap.test.mjs) — 実PRに存在する更新2件と新規2件を区別し、AI質問・人手・工数を推定しない。
+- [E41：実案件Lit UIを既存UI Kitで選択するときのFramework/更新競合](E41_REAL_LIT_UI_KIT_CHOICE.md)／[Node.js回帰試験](e41_real_lit_ui_kit_choice.test.mjs) — #1567の実UI Blobと#997の既存Kit Resolverを参照し、Web/React↔Litの暗黙継承、親更新時の無音上書き、権限Slotの捏造を拒否する。
 - [生成AI向けの要件整理](requirements-prompt.md) — 既存の定義を参照し、案件固有の判断を抽出する。
 
 これらは、案件構成をTEIの受理済み意味や実行権限へ昇格させないための小規模検証です。実行確認の範囲と未実施事項は各資料に明記しています。

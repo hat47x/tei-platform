@@ -110,10 +110,11 @@ func TestLoadVerifiedWorkspaceR1AndSemanticEquivalentR2(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "SOURCE_FINGERPRINT_MISMATCH") {
 		t.Fatalf("earlier Source R0 must be refused, regardless of caller's revision labels: %v", err)
 	}
-	reader.err = errors.New("synthetic Host revoked acceptance")
+	reader.err = errors.New("synthetic Host revoked acceptance; private token=secret-not-for-startup")
 	_, err = LoadVerifiedWorkspace(context.Background(), reader, "order_entry", root)
-	if err == nil || !strings.Contains(err.Error(), "SOURCE_ACCEPTANCE_CURRENT_UNAVAILABLE") {
-		t.Fatalf("revoked current Reader must refuse before returning Source: %v", err)
+	if err == nil || !errors.Is(err, ErrCurrentAcceptanceUnavailable) ||
+		strings.Contains(err.Error(), "secret-not-for-startup") {
+		t.Fatalf("revoked current Reader must refuse with no private Host details: %v", err)
 	}
 }
 

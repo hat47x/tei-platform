@@ -5,6 +5,7 @@ import { createHash } from "node:crypto";
 import { createServer, request as httpRequest } from "node:http";
 import { closeSync, constants as fsConstants, fstatSync, openSync, readSync, realpathSync } from "node:fs";
 import { basename, dirname, resolve } from "node:path";
+import { parseStrictDiagnosticJSON } from "./strict-diagnostic-json.mjs";
 
 const [assetDir, apiOrigin, measurementPath] = process.argv.slice(2);
 if (!assetDir || !apiOrigin || !/^http:\/\/127\.0\.0\.1:[1-9][0-9]*$/.test(apiOrigin)) {
@@ -88,9 +89,30 @@ if (jsonForm && (
   throw new Error("JSON Browser measurement must belong to the same artifact root");
 }
 const measurement = measurementFile ?
-  JSON.parse(readPinnedArtifact(measurementFile,
+  parseStrictDiagnosticJSON(readPinnedArtifact(measurementFile,
     "measurement is not a real regular artifact file", 1024 * 1024).toString("utf8")) : null;
 if (jsonForm) {
+  // Diagnostic byte/build agreement cannot stand in for independently owned
+  // Source, Builder/BuildArtifactLock or current Host deployment acceptance.
+  // Keep the existing builder's non-authority claims explicit at this ingress.
+  const requireFalse = (doc, field) => {
+    if (doc?.[field] !== false) {
+      throw new Error("unverified authority was asserted or omitted: " + field);
+    }
+  };
+  for (const field of ["productionAuthorizationVerified", "artifactAuthority",
+    "fullE1BrowserAPIPackagingVerified"]) requireFalse(measurement, field);
+  const frozen = measurement.apiWorldMode === "digest-bound-frozen-world";
+  for (const field of ["sourceAcceptanceAuthorityVerified", "unitBuilderAuthorityVerified",
+    "buildArtifactLockVerified", "runtimeModelAcceptanceAuthority"]) {
+    if (frozen || Object.hasOwn(measurement, field)) requireFalse(measurement, field);
+  }
+  if (frozen || Object.hasOwn(measurement, "apiBuildInputObservation")) {
+    for (const field of ["builderArtifactAuthorityVerified", "buildArtifactLockVerified",
+      "hermeticBuildVerified", "reproducibleBinaryVerified"]) {
+      requireFalse(measurement.apiBuildInputObservation, field);
+    }
+  }
   const checks = [
     { name: "Browser HTML", bytes: html, file: resolve(assetRoot, "index.html"),
       hash: "browserSHA256", size: "browserBytes" },
@@ -159,7 +181,7 @@ const readBoundedAPIEvidence = async (path, maxBytes, label) => {
     parts.push(Buffer.from(part));
   }
   if (size === 0) throw new Error(label + " is empty");
-  return JSON.parse(Buffer.concat(parts, size).toString("utf8"));
+  return parseStrictDiagnosticJSON(Buffer.concat(parts, size).toString("utf8"));
 };
 
 const checkAPIBinding = async () => {

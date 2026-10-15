@@ -60,6 +60,7 @@ func runCombinedWebTarget(ctx context.Context, reader sourceacceptance.Reader, a
 		return err
 	}
 	var loaded workspace.Result
+	var acceptedWorkspace sourceacceptance.VerifiedWorkspace
 	if *diagnostic {
 		if reader != nil {
 			return fmt.Errorf("SOURCE_ACCEPTANCE_DIAGNOSTIC_CONFLICT: Host Reader cannot be bypassed")
@@ -67,9 +68,8 @@ func runCombinedWebTarget(ctx context.Context, reader sourceacceptance.Reader, a
 		log.Print("SOURCE_ACCEPTANCE_NOT_VERIFIED: explicit diagnostic-unaccepted-source")
 		loaded, err = workspace.Load(*workspacePath)
 	} else {
-		var verified sourceacceptance.VerifiedWorkspace
-		verified, err = sourceacceptance.LoadVerifiedWorkspace(ctx, reader, string(appID), *workspacePath)
-		loaded = verified.Loaded
+		acceptedWorkspace, err = sourceacceptance.LoadVerifiedWorkspace(ctx, reader, string(appID), *workspacePath)
+		loaded = acceptedWorkspace.Loaded
 	}
 	if err != nil {
 		return err
@@ -122,6 +122,13 @@ func runCombinedWebTarget(ctx context.Context, reader sourceacceptance.Reader, a
 			return err
 		}
 	}
+	if !*diagnostic {
+		// The Host decision used at startup must still be current before
+		// every HTTP dispatch. A replacement decision requires a restart;
+		// the compiled World is never implicitly upgraded.
+		handler = guardCurrentAcceptedSource(ctx, handler, reader, string(appID),
+			acceptedWorkspace.SourceIndex, acceptedWorkspace.Acceptance)
+	}
 	server := &http.Server{
 		Addr:    *listen,
 		Handler: handler,
@@ -134,8 +141,23 @@ func runCombinedWebTarget(ctx context.Context, reader sourceacceptance.Reader, a
 		*baselineRev,
 		*targetRev,
 	)
+	// The Host owns the lifetime of this HTTP endpoint. Do not leave a
+	// previously verified Target serving requests when that Host exits.
+	// Close promptly rather than waiting for new HTTP traffic to notice.
+	stopped := make(chan struct{})
+	defer close(stopped)
+	go func() {
+		select {
+		case <-ctx.Done():
+			_ = server.Close()
+		case <-stopped:
+		}
+	}()
 	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		return err
+	}
+	if err := ctx.Err(); err != nil {
+		return fmt.Errorf("WEB_TARGET_HOST_CONTEXT_UNAVAILABLE: %w", err)
 	}
 	return nil
 }
