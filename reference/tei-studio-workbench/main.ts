@@ -10,8 +10,9 @@ import {
   readInspection,
   relatedGraph,
   subjectKey,
+  summarizeFindings,
 } from "./presentation.ts";
-import type { Entry, Subject, Finding } from "./presentation.ts";
+import type { Entry, Subject, Finding, Catalog } from "./presentation.ts";
 
 type Reply =
   | { ok: true; value: unknown }
@@ -31,7 +32,8 @@ const notice = element<HTMLParagraphElement>("notice");
 const title = element<HTMLHeadingElement>("subject-title");
 let client: Client | null = null,
   entries: Entry[] = [],
-  selected: Subject | null = null;
+  selected: Subject | null = null,
+  catalogSnapshot: Catalog | null = null;
 let workspaceEpoch = 0,
   inspectionEpoch = 0,
   disposed = false;
@@ -62,14 +64,12 @@ function showFailure(error: unknown) {
   notice.textContent = `操作を完了できませんでした：${code}`;
   notice.dataset.state = "error";
 }
-function setFindings(findings: Finding[]) {
-  if (!panel.setDiagnosticsForContext(commandContext, findings))
+function setFindings(findings: Finding[] | null) {
+  if (!panel.setDiagnosticsForContext(commandContext, findings ?? []))
     throw Error("SELECTION_CHANGED");
-  const errors = findings.filter((d) => d.severity === "error").length;
-  const warnings = findings.filter((d) => d.severity === "warning").length;
-  element("diagnostic-summary").textContent =
-    `エラー ${errors}・警告 ${warnings}`;
-  return { errors, warnings };
+  const summary = summarizeFindings(findings);
+  element("diagnostic-summary").textContent = summary.text;
+  return summary;
 }
 function renderList() {
   const query = search.value.trim().toLocaleLowerCase();
@@ -128,7 +128,7 @@ async function inspect(subject: Subject) {
     ? `親子関係のうち8件を表示（ほか${related.hidden}件）`
     : "選択要素と、一覧に含まれる直接の親子関係";
   return responses.run("inspection", () => client!.inspectSubject(id, subject.kind, subject.id), (reply) => {
-    const view = readInspection(unwrap(reply), subject);
+    const view = readInspection(unwrap(reply), subject, catalogSnapshot!);
     editor.setDocument({
       id: `${id}/${subjectKey(subject)}`,
       version: view.version,
@@ -143,6 +143,11 @@ async function inspect(subject: Subject) {
       version: `${context}:${request}`,
       text: "この要素の投影は取得できませんでした。",
     });
+    if (error instanceof Error && error.message === "STALE_MODEL_PROJECTION") {
+      graph.update({ width: 680, height: 240, nodes: [], edges: [] });
+      element("graph-note").textContent =
+        "参照中にモデルの更新を検出しました。一覧を再読み込みしてください。";
+    }
     element("source-status").textContent = "未取得";
     throw error;
   });
@@ -177,8 +182,9 @@ async function loadWorkspace() {
   ++inspectionEpoch;
   selected = null;
   entries = [];
+  catalogSnapshot = null;
   renderList();
-  setFindings([]);
+  setFindings(null);
   title.textContent = "モデルを読み込み中";
   element("source-status").textContent = "未取得";
   element("revision").textContent = "未取得";
@@ -195,6 +201,7 @@ async function loadWorkspace() {
   if (!reply) return;
   if (disposed || context !== workspaceEpoch) return;
   const catalog = readCatalog(unwrap(reply));
+  catalogSnapshot = catalog;
   entries = catalog.entries;
   element("revision").textContent = catalog.modelRevision;
   renderList();
@@ -203,8 +210,14 @@ async function loadWorkspace() {
       (e) =>
         e.subject.kind === "semantic-data" && e.subject.id === "sales.order",
     ) ?? entries[0];
-  if (initial) await inspect(initial.subject);
-  else {
+  if (initial) {
+    // Failure to Inspect must not prevent independent workspace validation.
+    try {
+      await inspect(initial.subject);
+    } catch (error) {
+      if (!disposed && context === workspaceEpoch) showFailure(error);
+    }
+  } else {
     title.textContent = "モデルはありません";
     editor.setDocument({
       id: "empty",
