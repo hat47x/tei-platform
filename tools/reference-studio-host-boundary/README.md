@@ -225,3 +225,19 @@ TEI_STUDIO_BOUNDARY_URL=http://127.0.0.1:43123 \
 ```
 
 **新HTTPプローブ：NOT RUN**。この会話からは固定Wails Serverの実プロセスへ接続していない。実行前のコード/staticレビューのみ。前述のCI PASSを新規HTTP負例のPASSへ読み替えない。プローブを実行するときはNode版、Go版、Serverバイナリの生成元commit、mode（通常/生成）、listening host/port、各subtestのPASS/FAILをIssueへ記録する。#2のHost/CI/生成器原本は**変更しない**。
+
+
+## 2026-10-15: 実HTTP否定試験の独立CI結果（固定Host 4bc437c7）
+
+先の節で **NOT RUN** とした`server_asset_boundary_probe.mjs`は、後続の **#10専用実CI** により、**通常／生成の両ServerでPASSへ更新**された。先行時点のNOT RUN記録は履歴として保持する。
+
+- **実行したテスト/CI source exact**：#1827 `71eab74c76fa87973048cc71c567fe0156e1516a`（このREADME追補より前の検証版）。CI workflow `.github/workflows/tei-studio-host-asset-negative-ci.yml`と`tools/reference-studio-host-boundary/server_asset_boundary_probe.mjs`を含む。
+- **固定でoverlayしたHost**：#1832 `4bc437c72e63a3b5d578b1efe2c60be510a9f8a9` の`cmd/tei-studio/`と`internal/studiohost/`を`git archive`により検証専用checkoutへ抽出。**固定Generator**：#1833 `fe8e37b1c735dc138c36cb2d37db94ee44424b9e` の`tools/reference-studio-static-composition/`だけを抽出し、実Goソースを生成。ベースは本PRの固定main `128429482e02d96afe0123ee7da023256094dfca`。**Draft同士のmergeではない**。
+- **環境**：GitHub Actions **Ubuntu 24.04**、Go **1.26.9**、Node **22**。Wails v3.0.0-beta.29（Host側の固定nested module）。CGO無効、実Wails **Server** ビルドであり、Desktop native WebViewではない。
+- **再現/実行**：[Actions run #38677224679](https://github.com/hat47x/tei-platform/actions/runs/38677224679)、job `pinned-server-asset-negative` は **completed / success**。ステップ`Extract exact Host and generated service tool into disposable snapshot`、`Build fixed ordinary Server and fixed generated Server`、`Probe unembedded private-file HTTP requests on both real Servers`はいずれも**success**。
+- **通常Server**：`CGO_ENABLED=0 go build -mod=readonly -tags server`の実バイナリを `127.0.0.1:43123` で起動し`/health`を確認。`TEI_STUDIO_BOUNDARY_URL=http://127.0.0.1:43123 node --test tools/reference-studio-host-boundary/server_asset_boundary_probe.mjs`で、**path/queryの7負例がPASS**。
+- **生成Server**：固定Generatorの出力を使い`CGO_ENABLED=0 go build -mod=readonly -tags 'studio_generated,server'`で実ビルド。`127.0.0.1:43128`の`/health`確認後、同Node試験の**7負例がPASS**。合計14個のpath/query試行で、テスト生成した未埋込みファイルの本文sentinelのHTTP応答露出を観測しない。未知pathのHTTP statusには404を要求しない。
+- **非loopback bindの実拒否**は今回の追加CIで**再実行していない**。固定Hostの[既存CI #38662384542](https://github.com/hat47x/tei-platform/actions/runs/38662384542)における通常／生成の `WAILS_SERVER_HOST=0.0.0.0` 拒否（各実起動ステップPASS）を**別証拠**として参照する。Host公開4メソッドとWorkspace allowlist否定は同固定HostのGo試験・ソース確認による。
+- **結果の射程**：HTTP asset風GET 7パターン×2モード、未埋込み一時ファイル内容の非返却 **PASS**。任意の全URL/HTTP手法、Wailsランタイム内部の任意ReadFile、全ログ/レスポンス/イベントの機密性、CSRF/Origin/本人確認、接続別Workspace認可、symlink/TOCTOU、Desktop WebViewは**未実証**。固定HostのReadOnly／Workspace投影を認証済み利用者別資源境界へ格上げしない。
+
+**この結果を取得した検証exact headと、このREADME追補後のheadは別**。追補は #10 自身のREADMEのみであり、他担当のHost／Generator／UI／CI原本やmainを変更せず、#1827はDraftのまま。
