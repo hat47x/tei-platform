@@ -177,10 +177,16 @@ jobs:
           go-version-file: go.mod
           check-latest: false
           cache: false
+      - name: Node 22を固定（生成UI試験）
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+          check-latest: false
       - name: 固定生成器と固定Workbench試料を検証snapshotへ抽出
         shell: bash
         run: |
           set -euo pipefail
+          node --version
           git fetch --no-tags --depth=50 https://github.com/hat47x/tei-platform.git refs/pull/1833/head
           git cat-file -e "$POC_B_GENERATOR_SHA^{commit}"
           if ! git cat-file -e "$POC_B_WORKBENCH_FIXTURE_SHA^{commit}" 2>/dev/null; then
