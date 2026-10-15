@@ -5,7 +5,7 @@ import { createHash } from 'node:crypto';
 import { composeUI } from './compose-ui.mjs';
 import {
   connectWorkbenchSource, gitBlobSHA, inspectGeneratedAssets,
-  inspectWorkbenchImports, pinnedWorkbenchRevision, WORKBENCH_PINS,
+  inspectWorkbenchImports, inspectPinnedDependencies, pinnedWorkbenchRevision, WORKBENCH_PINS,
   WORKBENCH_HEAD, WORKBENCH_MAIN_BLOB,
   WORKBENCH_CURRENT_HEAD, WORKBENCH_CURRENT_MAIN_BLOB,
 } from './connect-workbench.mjs';
@@ -33,6 +33,12 @@ test('both exact #1849 workbench pins are retained without any bypass', () => {
     '26f47772ed49f5c4a9e1c50026c335783bc5e153',
     '01f5022240fd86c6ac38c1107310e299a1615b48',
   ]);
+  assert.deepEqual(WORKBENCH_PINS.map(pin => pin.commandBlob), [
+    '4e0d5484f82944d5b7d3b0b8431f3a9a1eaa7081',
+    '6c6ee81288c9857ca2f1c282639ba49f059f5535',
+  ]);
+  assert.equal(WORKBENCH_PINS[1].responsesBlob,
+    '9fa305e227bee96b66002362121db3878e92327d');
   assert.equal(WORKBENCH_HEAD, WORKBENCH_PINS[0].head);
   assert.equal(WORKBENCH_MAIN_BLOB, WORKBENCH_PINS[0].mainBlob);
   assert.equal(WORKBENCH_CURRENT_HEAD, WORKBENCH_PINS[1].head);
@@ -46,6 +52,15 @@ test('both exact #1849 workbench pins are retained without any bypass', () => {
     /workbench_pin_override_forbidden/);
   assert.throws(() => connectWorkbenchSource(workbench, {pin: true}),
     /workbench_pin_override_forbidden/);
+});
+
+test('Command revision and current response-scope are mandatory source pins', () => {
+  assert.throws(() => inspectPinnedDependencies({...WORKBENCH_PINS[0]}, 'fake'),
+    /workbench_revision_mismatch/);
+  assert.throws(() => inspectPinnedDependencies(WORKBENCH_PINS[0], 'fake'),
+    /command_revision_mismatch/);
+  assert.throws(() => inspectPinnedDependencies(WORKBENCH_PINS[1], 'fake'),
+    /command_revision_mismatch/);
 });
 
 test('untrusted duplicate, missing or already-generated imports fail shape validation', () => {
@@ -91,6 +106,18 @@ test('fixed #1849 real old/new source is accepted when staged', async t => {
   const matched = pinnedWorkbenchRevision(source);
   assert.ok(WORKBENCH_PINS.includes(matched));
   assert.equal(gitBlobSHA(source), matched.mainBlob);
+  const commandSource = await readFile(
+    new URL('../../reference/tei-studio-command/command.ts', import.meta.url), 'utf8');
+  const responsesSource = matched.responsesBlob
+    ? await readFile(new URL('../../reference/tei-studio-workbench/responses.ts', import.meta.url), 'utf8')
+    : undefined;
+  assert.equal(inspectPinnedDependencies(matched, commandSource, responsesSource), true);
+  assert.throws(() => inspectPinnedDependencies(matched, commandSource + '\\n', responsesSource),
+    /command_revision_mismatch/);
+  if (matched.responsesBlob) {
+    assert.throws(() => inspectPinnedDependencies(matched, commandSource, 'stale response adapter'),
+      /responses_revision_mismatch/);
+  }
   const output = connectWorkbenchSource(source);
   const generated = 'import { mountReadonlyGraph, mountCommandPanel } from ' +
     '"../../tools/reference-studio-static-composition/generated/ui.generated.mjs";\n';
