@@ -189,3 +189,22 @@ Linux限定の `project_advice_current_host_environment_linux_test.go` は、同
 **採用上の留保**：これはテストHost内の順序づけを示すだけで、製品の新しいGrant Storeや権限APIではありません。読取りロックを実プロセス終了まで保持するため、長時間処理に対して**失効を長時間待たせる**方式です。本番の推奨実装とはせず、既存 `StdioProcessLauncher` のOS Start境界／Hostの現在のAuthority世代を用い、**失効完了後に旧世代Start不可**を保証しつつStart後すぐ入場ロックを解放する設計を別途検証します。入場済み子プロセスを止めるべきかは別のPolicyです。なお、E39が検出した**無防備な経路は引き続き存在**し、E40のPASSは製品修正の成立を意味しません。
 
 正式Contract/Provider Conformance、Hostの認証済み実Authority Source、Resource Brokerの実Lease・fencing、署名Issuer、本物のOS Sandbox、複数Hostの失効同期には未接続です。
+
+## E41: Environment Grant入場の保護をOS Startまでに限定する（#976）
+
+`project_advice_start_only_host_linux_test.go` は、E39（無保護時に撤去後起動が可能）とE40（入場ロックを**子プロセス終了まで**保持する比較正例）に対する、**Start境界だけを保護する選択式の参照経路**です。Linux固有の小さなアダプター `internal/plugin/runtime/process_host_start_admission_linux.go` が、既存 `PinnedLinuxProcess` の同一保持FD／`StdioProcessLauncher.invokeExecutableWithStartGate` に、Host所有の `LinuxHostStartAdmission` を追加します。HostはEnvとexact Generic Runtime Refに対応する**現在のAuthority**を、`cmd.Start`を呼ぶ直前に再検査し、失効の確定操作と順序づけます。署名済みプロセスの場合は既存の署名者世代確認 `startIfCurrent` を同じStart内に入れ子で維持します。
+
+実案件Goの独立実行体を用いて、まず許可済みAを起動し、次に**現在のReaderを通過後／Artifact Verify中**にAのGrantを撤去します。E39とは異なり、Start地点の再検査で旧Grantの実行開始を拒否することを確認します。同じ保持済みGo実行体でも、独立Environment Bの有効Grantによる実行は維持し、Aの次回要求はReader段階で拒否。Aが明示再承認されると新しいStartが可能です。これはE40の処理終了までロックを保持する方式を使用しません。
+
+**実装範囲と留保**：新アダプターはHost専用の選択式Linux接続であり、製品の全Invocationを自動的に置き換えるものではありません。Hostのstart-admissionコールバックが実際のcurrent Authority正本・失効トランザクションを同一世代で扱う必要がありますが、この試験は合成Authorityを`sync.RWMutex`で保護します。既存のE39無保護経路は依然利用可能なため、Production Gateの強制・不要経路の廃止、実Issuer/Contract/Provider受理、Resource Brokerの実Lease/fencing、実OS隔離、Host再起動・他Hostの失効伝播は**未成立**。追加のGrant Store／Resolver／Core enumは設けず、既存Pluginの開発手順へ必須検査負担を増やしません。
+
+## E42: 署名済み案件GoにおけるEnvironment／Signer二重Startゲート（#976）
+
+`project_advice_signed_host_start_linux_test.go` は、E41の選択式 `HostAdmittedPinnedLinuxProcess` と既存 `PinSignedLinuxProcess`／`LinuxHostSignerTrust` を、**同じ独立ビルドされた案件Go子プロセス**で組み合わせる回帰試験です。Host所有のEnvironment A/B用現行Grantを起動直前に照合し、内部の署名者世代ゲートも同じ`cmd.Start`に適用します。試験中、OS Start成功件数は「Start入場の試行回数」と分けて記録します。
+
+- A/Bの両方が有効なときは、同じ署名付き保持FD実行体をそれぞれ呼び出せます。
+- Aの現在Grantを**Artifact署名検証が成功した後、OS Startの直前**に失効させるとAのStartだけを拒否し、Bは実行できます。
+- Bの現在Grantが有効でも、共有署名者の信頼を**Artifact署名検証が成功した後、OS Startの直前**に失効させるとBのStartを拒否します。署名者の再登録だけでは旧世代実行体は復権せず、新しい署名検証済みの保持FDを作り直す必要があります。
+- 署名者が復権しても、Aの失効済みEnvironment Grantが暗黙に復活することはありません。
+
+この試験で実際に使う鍵・Host current Grantはテスト用合成値です。**既存Start Gateを組み合わせた限定Consumerの確認**であり、正式Issuer／Provider Conformance／Production Host Authority Source、実Resource Lease／OS隔離、分散Host失効を証明しません。既存の無保護Runtime経路を本番向けに無効化する変更でもありません。複数の独立Grant StoreやResolver、Core権限enumを追加しません。

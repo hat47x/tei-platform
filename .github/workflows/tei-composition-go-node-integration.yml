@@ -113,3 +113,9 @@ jobs:
           set -euo pipefail
           node --test reference/application-composition/e38_real_workflow_gap.test.mjs
           node reference/application-composition/e38_real_workflow_gap.mjs . > /dev/null
+
+      - name: E41の案件Litを既存UI Kit Framework/親版境界へ照合
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test reference/application-composition/e41_real_lit_ui_kit_choice.test.mjs

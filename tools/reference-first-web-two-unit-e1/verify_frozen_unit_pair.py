@@ -30,6 +30,7 @@ REQUIRED_FILES = {
 KNOWN_DIAGNOSTIC_FILES = {"json-api-smoke.json"}
 FLAGS_NOT_AUTHORIZED = (
     "sourceAcceptanceAuthorityVerified",
+    "unitBuilderAuthorityVerified",
     "buildArtifactLockVerified",
     "runtimeModelAcceptanceAuthority",
     "productionAuthorizationVerified",
@@ -224,6 +225,7 @@ def preflight(root, build_info=None, world_digest=None):
         "packageCount": build["goPackageCount"],
         "byteAndBuildConsistencyVerified": True,
         "sourceAcceptanceAuthorityVerified": False,
+        "unitBuilderAuthorityVerified": False,
         "buildArtifactLockVerified": False,
         "productionAuthorizationVerified": False,
         "artifactAuthority": False,
