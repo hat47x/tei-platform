@@ -179,3 +179,13 @@ Linux限定の `project_advice_current_host_environment_linux_test.go` は、同
 - まず同一Linux Hostで、失効とStartをチャネル同期した正例・負例を確認する。別Host／Wasm／遠隔実行への保証を暗黙に拡張しない。
 
 この節は本番用の新しい権限APIや実装の採用を意味しません。テスト用のEnvironment Grant、Contract/Provider/Conformance/Issuer、OS隔離等の未達は引き続き維持します。
+
+## E40: Grant失効と実プロセス入場の順序づけを試験Hostで実証（#976）
+
+`project_advice_guarded_host_admission_linux_test.go` は、E39（#1845）の既知競合に対する**保守的な比較用の正例**です。既存の `invokeWithCurrentHostEnvironment`、独立Go案件実行体、`PinnedLinuxProcess`、`HostSandboxLauncher` は変更しません。テスト専用のHost正本がEnvironmentごとに `sync.RWMutex` を持ち、読取り側が **Grantの現在確認から実プロセス終了まで** 入場を保持します。撤去側は書込みロックを取得してGrantを撤去します。
+
+試験では、AのGrant読取り後／Artifact検証前に同期用Barrierで止め、同時にAのGrant失効を要求します。この時点では失効は完了できず、既に入場したAが実Goプロセスを終えた後で完了します。その後のAの再実行はArtifact検査前に拒否されます。Aの実行が停止している間でも別Environment BのGrant撤去は独立して完了し、Bの次回実行は拒否されます。
+
+**採用上の留保**：これはテストHost内の順序づけを示すだけで、製品の新しいGrant Storeや権限APIではありません。読取りロックを実プロセス終了まで保持するため、長時間処理に対して**失効を長時間待たせる**方式です。本番の推奨実装とはせず、既存 `StdioProcessLauncher` のOS Start境界／Hostの現在のAuthority世代を用い、**失効完了後に旧世代Start不可**を保証しつつStart後すぐ入場ロックを解放する設計を別途検証します。入場済み子プロセスを止めるべきかは別のPolicyです。なお、E39が検出した**無防備な経路は引き続き存在**し、E40のPASSは製品修正の成立を意味しません。
+
+正式Contract/Provider Conformance、Hostの認証済み実Authority Source、Resource Brokerの実Lease・fencing、署名Issuer、本物のOS Sandbox、複数Hostの失効同期には未接続です。
