@@ -195,6 +195,55 @@ func TestRegenerateScenarioArgvAndStdinPlan(t *testing.T) {
 	}
 }
 
+// TestScenarioCLIRejectsShadowedUnsupportedOperation enforces the saved
+// Scenario as an unambiguous source before any CLI plan or Driver execution.
+// encoding/json otherwise silently lets the final duplicate key win.
+func TestScenarioCLIRejectsShadowedUnsupportedOperation(t *testing.T) {
+	root := filepath.Join("..", "..", "reference", "driver-scenarios")
+	workspace := filepath.Join("..", "..", "reference", "workspace")
+	accepted := filepath.Join(root, "order-entry-pattern-smoke.json")
+	ambiguous := filepath.Join(root, "fixtures", "scenario_duplicate_step_operation.json")
+
+	var positive bytes.Buffer
+	if err := runScenarioCommand([]string{
+		"generate", "-scenario", accepted, "-workspace", workspace,
+	}, &positive); err != nil {
+		t.Fatalf("existing unambiguous Scenario failed to generate: %v", err)
+	}
+	var plan scenariotest.Plan
+	if err := json.Unmarshal(positive.Bytes(), &plan); err != nil {
+		t.Fatal(err)
+	}
+	if len(plan.Commands) != 6 {
+		t.Fatalf("positive Scenario lost generated Steps: %d", len(plan.Commands))
+	}
+
+	source, err := os.ReadFile(ambiguous)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := scenariotest.Parse(source); err == nil ||
+		!strings.Contains(err.Error(), "duplicate Scenario JSON member") {
+		t.Fatalf("ambiguous persisted Scenario was accepted by parser: %v", err)
+	}
+	for _, action := range []string{"verify", "generate", "run"} {
+		t.Run(action, func(t *testing.T) {
+			args := []string{action, "-scenario", ambiguous, "-workspace", workspace}
+			if action == "run" {
+				args = append(args, "-step", "browse-pattern")
+			}
+			var output bytes.Buffer
+			if err := runScenarioCommand(args, &output); err == nil ||
+				!strings.Contains(err.Error(), "duplicate Scenario JSON member") {
+				t.Fatalf("%s accepted shadowed unsupported operation: %v", action, err)
+			}
+			if output.Len() != 0 {
+				t.Fatalf("%s emitted a success artifact from ambiguous Scenario: %s", action, output.String())
+			}
+		})
+	}
+}
+
 func TestScenarioCLIReferenceRoundTrip(t *testing.T) {
 	scenarioPath := filepath.Join("..", "..", "reference", "driver-scenarios", "order-entry-pattern-smoke.json")
 	workspacePath := filepath.Join("..", "..", "reference", "workspace")
