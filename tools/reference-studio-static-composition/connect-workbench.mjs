@@ -14,9 +14,12 @@ export const WORKBENCH_CURRENT_HEAD = 'c55ad2285268533f5f1c90fbc9fe766bae57f009'
 export const WORKBENCH_CURRENT_MAIN_BLOB = 'cc2644e5a9167dbc3a0b5368ff270276a2ba1b67';
 export const WORKBENCH_PINS = Object.freeze([
   Object.freeze({head: WORKBENCH_HEAD, mainBlob: WORKBENCH_MAIN_BLOB,
-    commandHead: '26f47772ed49f5c4a9e1c50026c335783bc5e153'}),
+    commandHead: '26f47772ed49f5c4a9e1c50026c335783bc5e153',
+    commandBlob: '4e0d5484f82944d5b7d3b0b8431f3a9a1eaa7081'}),
   Object.freeze({head: WORKBENCH_CURRENT_HEAD, mainBlob: WORKBENCH_CURRENT_MAIN_BLOB,
-    commandHead: '01f5022240fd86c6ac38c1107310e299a1615b48'}),
+    commandHead: '01f5022240fd86c6ac38c1107310e299a1615b48',
+    commandBlob: '6c6ee81288c9857ca2f1c282639ba49f059f5535',
+    responsesBlob: '9fa305e227bee96b66002362121db3878e92327d'}),
 ]);
 const graphImport = 'import { mountReadonlyGraph } from "../tei-studio-graph/graph.ts";\n';
 const commandImport = 'import { mountCommandPanel } from "../tei-studio-command/command.ts";\n';
@@ -38,6 +41,16 @@ export function pinnedWorkbenchRevision(source) {
   const matched = WORKBENCH_PINS.find(pin => pin.mainBlob === blob);
   if (!matched) throw new Error('workbench_revision_mismatch');
   return matched;
+}
+// Verify actual source assets in the snapshot, not only their documented
+// commit labels. The new Workbench requires Command's context-aware API.
+export function inspectPinnedDependencies(pin, commandSource, responsesSource) {
+  if (!WORKBENCH_PINS.includes(pin)) throw new Error('workbench_revision_mismatch');
+  if (gitBlobSHA(commandSource) !== pin.commandBlob)
+    throw new Error('command_revision_mismatch');
+  if (pin.responsesBlob && gitBlobSHA(responsesSource ?? '') !== pin.responsesBlob)
+    throw new Error('responses_revision_mismatch');
+  return true;
 }
 export function connectWorkbenchSource(source) {
   // Do not accept pin:false or any other request to skip source validation.
@@ -78,6 +91,13 @@ async function main() {
     readFile(join(generatedDir, 'ui.generated.d.mts'), 'utf8'),
     readFile(join(generatedDir, 'ui.provenance.json'), 'utf8'),
   ]);
+  const pin = pinnedWorkbenchRevision(original);
+  const commandSource = await readFile(
+    resolve(dirname(sourcePath), '../tei-studio-command/command.ts'), 'utf8');
+  const responsesSource = pin.responsesBlob
+    ? await readFile(join(dirname(sourcePath), 'responses.ts'), 'utf8')
+    : undefined;
+  inspectPinnedDependencies(pin, commandSource, responsesSource);
   inspectGeneratedAssets(moduleSource, declarations, JSON.parse(rawMeta));
   const connected = connectWorkbenchSource(original);
   let existing;
@@ -86,7 +106,7 @@ async function main() {
   if (existing !== undefined && existing !== connected)
     throw new Error('derived_workbench_output_conflict');
   if (existing === undefined) await writeFile(outputPath, connected, { flag: 'wx' });
-  console.log('workbench_adapter_pass', pinnedWorkbenchRevision(original).head, hash(connected));
+  console.log('workbench_adapter_pass', pin.head, hash(connected));
 }
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   main().catch(error => { console.error(error); process.exitCode = 1; });
