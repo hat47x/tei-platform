@@ -357,3 +357,48 @@ func TestD4FixtureAllCanonicalIdentities(t *testing.T) {
 		check(string(entry.ID))
 	}
 }
+
+func TestD4SemanticAttributeTypeDriftWithoutIDChangeRequiresReview(t *testing.T) {
+	req := d4Fixture(t)
+	ns := semantic.Namespace{Data: []semantic.Data{{
+		ID: "sales.order_line",
+		Attributes: []semantic.Attribute{{
+			ID: d4AmountID, Symbol: "Amount", TypeRef: "std.decimal",
+		}},
+	}}}
+	project := func() TypedTarget {
+		t.Helper()
+		target, err := SemanticAttributeTarget("sales", ns, "sales.order_line", d4AmountID, "1")
+		if err != nil {
+			t.Fatal(err)
+		}
+		return target
+	}
+	original := project()
+	req.Targets[0] = original
+	if initial := ResolveBindings(req); len(initial.Diagnostics) != 0 || len(initial.Bindings) != 2 {
+		t.Fatalf("same typed Semantic Attribute should resolve: %+v", initial)
+	}
+
+	// A current Semantic Attribute can change its type while the modelref
+	// identity, version, and display symbol remain stable. Always re-project
+	// from the current Semantic snapshot instead of trusting a stale type.
+	ns.Data[0].Attributes[0].TypeRef = "std.string"
+	changed := project()
+	if changed.Ref != original.Ref || changed.OutputType == original.OutputType {
+		t.Fatalf("fixture must retain identity and change only type: old=%+v new=%+v", original, changed)
+	}
+	req.Targets[0] = changed
+	blocked := ResolveBindings(req)
+	if !d4HasCode(blocked, "target-type-mismatch") || len(blocked.Bindings) != 0 {
+		t.Fatalf("type drift silently retained accepted Binding or emitted a partial plan: %+v", blocked)
+	}
+
+	// Repairing the current projection to the externally accepted contract
+	// restores the read-only plan; the D4 resolver itself grants no acceptance.
+	ns.Data[0].Attributes[0].TypeRef = "std.decimal"
+	req.Targets[0] = project()
+	if restored := ResolveBindings(req); len(restored.Diagnostics) != 0 || len(restored.Bindings) != 2 {
+		t.Fatalf("matching current type should resolve again: %+v", restored)
+	}
+}
