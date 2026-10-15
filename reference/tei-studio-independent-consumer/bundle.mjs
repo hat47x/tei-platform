@@ -14,6 +14,19 @@ const providers = {
   graph: '../tei-studio-graph/graph.ts',
   command: '../tei-studio-command/command.ts',
 };
+const lockBytes = readFileSync(resolve(here, 'package-lock.json'));
+const npmLock = JSON.parse(lockBytes.toString('utf8'));
+const exactPackages = {
+  '@codemirror/state': '6.7.6',
+  '@codemirror/view': '6.43.14',
+  '@codemirror/lint': '6.9.7',
+  esbuild: '0.25.12',
+};
+for (const [name, version] of Object.entries(exactPackages)) {
+  if (npmLock.packages?.['node_modules/' + name]?.version !== version)
+    throw new Error(`LOCK_PACKAGE_MISMATCH: ${name}@${version}`);
+}
+const lockSha256 = createHash('sha256').update(lockBytes).digest('hex');
 const hashes = {};
 for (const [name, path] of Object.entries(providers)) {
   const file = resolve(here, path);
@@ -61,7 +74,8 @@ if (inputs.some(x => /(?:^|\/)(?:internal\/(?:operations|desktophost|servicehost
 mkdirSync(dist, { recursive: true });
 copyFileSync(resolve(here, 'index.html'), resolve(dist, 'index.html'));
 const provenance = { providerSourceSha256: hashes, entryPoints: Object.keys(entries),
-  inputModules: inputs.sort(), bundler: 'esbuild@0.25.12', browser: 'esm' };
+  inputModules: inputs.sort(), npmLockSha256: lockSha256,
+  bundler: 'esbuild@0.25.12', browser: 'esm' };
 writeFileSync(resolve(dist, 'build-provenance.json'), JSON.stringify(provenance, null, 2) + '\n');
 console.log(`PASS bundle: ${Object.keys(entries).join(', ')}; actual Editor/Graph/Command and CodeMirror linked`);
 console.log('OUTPUT dist/index.html (serve dist/ on loopback; no raw TypeScript imports)');
