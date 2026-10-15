@@ -301,7 +301,9 @@ export function mountReadonlyGraph(
       // continuation point. Programmatic updates outside Graph do not steal
       // focus from other controls.
       const destination = nextFocused ?? holder;
-      destination.focus({preventScroll: true});
+      // A retained node may move beyond the narrow viewport after update.
+      // Native focus scrolling reveals it instead of leaving invisible focus.
+      destination.focus();
     }
   };
 
