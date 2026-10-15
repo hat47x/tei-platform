@@ -21,6 +21,8 @@ test("catalog rejects mutation projections and duplicate subjects", () => {
         effect: "read-only",
         entries: [data, data],
         modelRevision: "r",
+        worldFingerprint: "world-r",
+        sourceIndexFingerprint: "source-r",
       }),
     /INVALID_CATALOG_ENTRY/,
   );
