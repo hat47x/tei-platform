@@ -175,7 +175,8 @@ func TestRegistryHostStartAdmissionBindsExactVerifierAndRunner(t *testing.T) {
 				reg.Sandboxes = makeHost(tc.runner, net, fs)
 			}
 			if _, err := invoke(reg, p); err == nil ||
-				!strings.Contains(err.Error(), "must hold the same image") {
+				(!strings.Contains(err.Error(), "must hold the same image") &&
+					!strings.Contains(err.Error(), "same held image")) {
 				t.Fatalf("Registry did not reject mismatched admitted image: %v", err)
 			}
 			if net.called || fs.called || starts.Load() != before {
