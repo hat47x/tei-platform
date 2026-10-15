@@ -96,9 +96,9 @@ func (m *DerivedMemo) Resolve(
 	// Key includes the full D2 plan and exact native SQL digest. Changing
 	// predicate, order, offset/limit or source prevents cross-plan reuse.
 	b, err := json.Marshal(struct {
-		Query string
-		SQL string
-		Plan DerivedSelect
+		Query   string
+		SQL     string
+		Plan    DerivedSelect
 		Witness string
 	}{Query: string(q.ID), SQL: DigestNativeSQL(q.Source), Plan: plan, Witness: witnessKey})
 	if err != nil {
