@@ -56,7 +56,7 @@ func newFixture(t *testing.T, mode Mode, who string, surfaces ...Surface) (Trust
 			Inputs: []string{"sales.order_line.quantity", "sales.order_line.cost"},
 		},
 		Target: "sales.order_line.amount", Mode: mode,
-		Rows: []AuthorizedRow{{ID: "sales.row_a", Tenant: "tenant.t1"}},
+		Rows:     []AuthorizedRow{{ID: "sales.row_a", Tenant: "tenant.t1"}},
 		Surfaces: surfaces,
 	}
 	if len(surfaces) == 0 {
@@ -352,7 +352,7 @@ func (forgedAuthority) Invoke(_ context.Context, _ core.CanonicalID, raw any) (c
 	r := raw.(legacyauthorization.Input)
 	return capabilityinvoke.BusinessResult{
 		Capability: legacyauthorization.AuthorizationCapability,
-		Mode: capabilityinvoke.ResultOutcome, Outcome: "allowed",
+		Mode:       capabilityinvoke.ResultOutcome, Outcome: "allowed",
 		Payload: legacyauthorization.AuthorizationGrant{
 			SubjectID: "other.principal", Action: r.Action, Resource: r.Resource,
 		},
