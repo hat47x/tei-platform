@@ -65,6 +65,18 @@ python3 browser-e2e.py        # Playwright Python + 実Chromiumがある環境�
 
 - `node --test journal-command.test.mjs` はconsumerだけで実行できる。#8がNode v22.16.0で **2/2 PASS**（GitHub原本とGit blob SHA一致のローカル複製）。ノート選択の結果値、削除拒否の判断が部品から独立していることを検査する。
 - `node --test shared-ports.test.mjs` は #1828 `graph.ts` と #1829 `command.ts` の固定Sourceを専用pathに取り出した**同一snapshotで**実行する。Graphの最小入力、クリック・Enter選択ID、旧インスタンス破棄後の通知抑止と再マウント、Commandの成功・拒否・新しいPort生成を検査。Providerのない単独checkoutでは明示的にSKIPするため、SKIPをPASSと誤読しない。
-- `python3 browser-e2e.py` は実esbuild/CodeMirrorを配信したChromiumで、UIの各Unmount/Remountと選択連動を検査する。**この新規連鎖試験は未実行**。#Workが旧consumer `8cb42899…` で確認したEditor unmount→reload表示とは別テストである。
+- `python3 browser-e2e.py` は実esbuild/CodeMirrorを配信したChromiumで、UIの各Unmount/Remountと選択連動を検査する。**この追加時点では未実行だった**。後続の固定CIで実行してPASS（下記）。#Workが旧consumer `8cb42899…` で確認したEditor unmount→reload表示とは別テストである。
 
 再利用のため必要なのは独立したEditor文書、Graphのノード/辺と選択通知、Commandの候補と`invoke`だけ。共有部品にTEI固有のSubject/Acceptance等を渡さず、読書ノートのIDと処理結果はconsumer側に保持する。
+
+## 固定4原本の独立CI完走（2026-10-15）
+
+[GitHub Actions #38686075764](https://github.com/hat47x/tei-platform/actions/runs/38686075764) のjob `fixed-provider-journal`は**completed/success**。`test/tei-studio-poc-evidence`のconsumer exact `c780696bfa5bf8a5c8ed6f9b5497ab6be9beac41`と以下の3部品を、各Draftの所有pathだけ`git archive`で一時worktreeに抽出した（**mergeなし**）。
+
+- Graph #1828 `de9ef8f0ac40b164d60ad5d43637ba3afc585c5e` (`graph.ts` blob `436c7d07c56802dbbc6d1dfeb1251470fca75cf6`)
+- Command #1829 `63f7ce3af1e6e5a27124aa4aa8ae1331d405f83c` (`command.ts` blob `bb56f3dba6387f7d9bf9604de9b519fb68feb50d`)
+- Editor #1830 `472c5d90b0b196f44b203e710c88ff05821d74fa` (`codemirror.ts` blob `eddc3c3e9320b9f61a6b99d970224072528500a0`)
+
+Ubuntu24.04 / Node24.21.0で`npm ci`、`npm test` **18/18 PASS・skip 0**、`npm run audit:imports` PASS、`npm run build` PASS。Python Playwright1.57.0 / Chromium143.0.7499.4の`python browser-e2e.py`も**PASS**。ノート切替、Graph狭幅（480pxの図/245pxのviewport、14pxラベル）、クリック/Enter、Command成功/拒否、Editor/Graph/Commandの個別Unmount/Remountとpagehide破棄を実DOMで確認。新規「選択→Graph同期再描画→Enter/Spaceフォーカス継続」のNode/FakeDOM回帰も18件に含む。**その同期再描画＋連続Spaceの組合せ自体をブラウザーE2Eで実行したわけではない**。
+
+詳細は[既存runbook §12.1](../../plan/evidence/TEI_STUDIO_POC_EVIDENCE_RUNBOOK_20261014.md)を参照。固定4ソースのブラウザーPoCがPASSした範囲であり、実Wails Host、Desktop WebView、全a11y、公開Web認可、メモリリーク完全不在や製品資格は主張しない。
