@@ -21,8 +21,8 @@ test('two UI imports are deterministic and preserve existing UI Kit trace', () =
   assert.match(a.source, /studioUIContributions/);
   assert.match(a.source, /export const mountCommandPanel = ui0;/);
   assert.match(a.source, /export const mountReadonlyGraph = ui1;/);
-  assert.match(a.declarations, /export \\{ mountCommandPanel \\} from/);
-  assert.match(a.declarations, /export \\{ mountReadonlyGraph \\} from/);
+  assert.match(a.declarations, /export \{ mountCommandPanel \} from/);
+  assert.match(a.declarations, /export \{ mountReadonlyGraph \} from/);
   assert.ok(!a.source.includes('eval('));
   assert.match(a.provenance.fixtureSha256, /^[a-f0-9]{64}$/);
   assert.match(a.provenance.generatedSha256, /^[a-f0-9]{64}$/);
