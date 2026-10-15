@@ -217,3 +217,11 @@ PoC A の**通常ビルド**を比較元とし、宣言合成の Builder は既�
 固定入力snapshot（各PRの専用pathのみ、mergeなし）でconsumerのディレクトリへ移動し、`npm ci --no-audit --no-fund && npm test && npm run audit:imports && npm run build`。実Chromium/Playwrightを準備した環境で `python3 browser-e2e.py`。stdout/stderr、Node/npm/esbuild/Chromium版、`dist/build-provenance.json`、画面観測を保存する。
 
 **#8の追加remount/Command分離/lock来歴検査を含む最新consumer headでのnpm ci・Node全件・実ブラウザーE2E: NOT RUN**（#8実行環境ではnpm依存をキャッシュ・レジストリから取得できない）。#Workの先行 **12/12 PASS・bundle PASS・実ブラウザー観測** は上記旧consumer固定版に限定。#8は新実DOMの合格、Desktop WebView、公開Web認証、保存権限、アクセシビリティ全般、PoC C全条件、製品採用を主張しない。引き続き#Work等の独立実行結果をexact revision付きで追加する。
+
+### 11.4 #8自身の最小入力検証（2026-10-15）
+
+**環境**: Linux container / Node.js `v22.16.0`。GitHub #1825原本の `notes.mjs`（Git blob `243ea07c9584f385271ed665f7fd6290baddc931`）、`journal-command.mjs`（`c98909154ba2e8f6d8abcbc798dd5ac613105fcb`）、`journal-command.test.mjs`（`ee756285b958a48e4379e89da39b6f280b33ffd4`）を隔離ローカルディレクトリへ同内容コピーし、`git hash-object`で各blob SHAがGitHub原本と一致することを照合した。
+
+**実行**: `node --test journal-command.test.mjs` → **2/2 PASS、fail 0、skip 0、exit 0**。ノートtea→sketchに応じた `2 related entries`→`0 related entries` の変化、表示上 `enabled=true` でも削除が `denied`、未知commandの拒否を実測。これは**#8独立実行のconsumer側入力/拒否試験**であり、実Command DOM/権限Hostの検証ではない。
+
+**新規で追加したが未実行の範囲**: `shared-ports.test.mjs`の#1828/#1829実ソースを使ったGraph最小入力・click/Enter・dispose/remountとCommand Portの成功/拒否、更新後`browser-e2e.py`の3部品のUnmount/Remount連鎖。これらはProviderのexact pathを抽出した検証snapshotと実依存/Chromiumが必要で、#Workの旧固定版12/12 PASSへ含めない。次の独立実行でPASS/FAILを更新する。
