@@ -29,20 +29,20 @@ type WebBrowseBinding struct {
 // WebBrowseCase is a derived Web HTTP test case. It explicitly enumerates
 // Scenario steps it cannot qualify rather than claiming complete E2E coverage.
 type WebBrowseCase struct {
-	SchemaVersion  string                         `json:"schemaVersion"`
-	ScenarioID     string                         `json:"scenarioId"`
-	ScenarioSHA256 string                         `json:"scenarioSha256"`
-	FixtureSHA256  string                         `json:"fixtureSha256"`
-	StepID         string                         `json:"stepId"`
-	Operation      string                         `json:"operation"`
-	PatternID      string                         `json:"patternId"`
-	QueryID        string                         `json:"queryId"`
-	Method         string                         `json:"method"`
-	Route          string                         `json:"route"`
-	ResponseFields map[string]string              `json:"responseFields"`
+	SchemaVersion  string                          `json:"schemaVersion"`
+	ScenarioID     string                          `json:"scenarioId"`
+	ScenarioSHA256 string                          `json:"scenarioSha256"`
+	FixtureSHA256  string                          `json:"fixtureSha256"`
+	StepID         string                          `json:"stepId"`
+	Operation      string                          `json:"operation"`
+	PatternID      string                          `json:"patternId"`
+	QueryID        string                          `json:"queryId"`
+	Method         string                          `json:"method"`
+	Route          string                          `json:"route"`
+	ResponseFields map[string]string               `json:"responseFields"`
 	ExpectedRows   []map[string]scenariotest.Value `json:"expectedRows"`
-	UncoveredSteps []string                       `json:"uncoveredSteps"`
-	EvidenceNature string                         `json:"evidenceNature"`
+	UncoveredSteps []string                        `json:"uncoveredSteps"`
+	EvidenceNature string                          `json:"evidenceNature"`
 }
 
 // GenerateWebBrowseCase connects an existing Scenario and its CLI command plan
