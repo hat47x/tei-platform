@@ -26,9 +26,12 @@ type derivedMemoEntry struct {
 // DerivedMemo is an optional, in-process D3 reference for the D2 Go plan.
 // This is not a distributed or persistent cache, and has no authority of its
 // own. A current external verifier and D2 field read checks are mandatory.
+const maxDerivedMemoEntries = 64
+
 type DerivedMemo struct {
 	mu      sync.RWMutex
 	entries map[string]derivedMemoEntry
+	order   []string
 }
 
 // Resolve returns a qualified cached result or evaluates the complete source.
@@ -108,6 +111,13 @@ func (m *DerivedMemo) Resolve(
 		m.mu.Lock()
 		if m.entries == nil {
 			m.entries = map[string]derivedMemoEntry{}
+		}
+		if _, exists := m.entries[key]; !exists {
+			if len(m.entries) >= maxDerivedMemoEntries {
+				delete(m.entries, m.order[0])
+				m.order = m.order[1:]
+			}
+			m.order = append(m.order, key)
 		}
 		m.entries[key] = derivedMemoEntry{result: copyDerivedResult(result), evaluatedAt: now}
 		m.mu.Unlock()
