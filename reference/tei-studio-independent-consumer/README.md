@@ -60,3 +60,11 @@ python3 browser-e2e.py        # Playwright Python + 実Chromiumがある環境�
 [Studio側Draft #1849](https://github.com/hat47x/tei-platform/pull/1849)の実Host接続・実ブラウザーは別snapshot（head `9a290dc61f585dfbf292e9032e5c5bbbad04351a`）。StudioのEditor依存入力 `cc57052f23b69582fc0d3800ab92b2210a28bb4f` とReading Journalの `a7084fe1…` はcommit SHAが異なるが、双方の `editor.ts` / `codemirror.ts` / `codemirror-coordinates.ts` のGit blob SHAはそれぞれ**一致**する。GraphとCommandの入力headも一致する。したがって**同一の共通実装コード**を別の意味モデル（TEIのモデルJSONと読書ノート）に適用した範囲の根拠がある。ただしStudioとconsumerではHost/authorityを共有せず、実OS・UI操作条件も個別の結果である。
 
 新たに#8が追加した **Unmount/Remount Editor・Graph・Command** と、それらを連続する `browser-e2e.py` の自動試験は、上記#Workの旧consumer固定入力には存在しない。新headの実ブラウザー実行が必要で、PASSと呼ばない。#WorkのブラウザーはPython E2Eスクリプト実行ではなく実ブラウザーUIの直接観測だったことも区別する。
+
+## 最小入力・選択通知・破棄再表示の試験入口
+
+- `node --test journal-command.test.mjs` はconsumerだけで実行できる。#8がNode v22.16.0で **2/2 PASS**（GitHub原本とGit blob SHA一致のローカル複製）。ノート選択の結果値、削除拒否の判断が部品から独立していることを検査する。
+- `node --test shared-ports.test.mjs` は #1828 `graph.ts` と #1829 `command.ts` の固定Sourceを専用pathに取り出した**同一snapshotで**実行する。Graphの最小入力、クリック・Enter選択ID、旧インスタンス破棄後の通知抑止と再マウント、Commandの成功・拒否・新しいPort生成を検査。Providerのない単独checkoutでは明示的にSKIPするため、SKIPをPASSと誤読しない。
+- `python3 browser-e2e.py` は実esbuild/CodeMirrorを配信したChromiumで、UIの各Unmount/Remountと選択連動を検査する。**この新規連鎖試験は未実行**。#Workが旧consumer `8cb42899…` で確認したEditor unmount→reload表示とは別テストである。
+
+再利用のため必要なのは独立したEditor文書、Graphのノード/辺と選択通知、Commandの候補と`invoke`だけ。共有部品にTEI固有のSubject/Acceptance等を渡さず、読書ノートのIDと処理結果はconsumer側に保持する。
