@@ -16,7 +16,6 @@ import (
 	"testing"
 
 	"tei/internal/operations"
-	"tei/internal/sourceindex"
 	"tei/internal/studiohost"
 	staticservices "tei/tools/reference-studio-static-composition/generated"
 )
@@ -110,7 +109,6 @@ func TestHostOnlyAllowsConfiguredWorkspaceAndDoesNotLeakPathInFailure(t *testing
 	if !catalog.OK || catalog.Value == nil || catalog.Value.Effect != "read-only" { t.Fatalf("catalog not read-only: %+v", catalog) }
 	if len(catalog.Value.Entries) > 0 {
 		s := catalog.Value.Entries[0].Subject
-		var _ sourceindex.Subject = s
 		insp := h.InspectSubject(allowedID, s.Kind, s.ID)
 		if !insp.OK || insp.Value == nil || insp.Value.Effect != "read-only" { t.Fatalf("inspection not read-only: %+v", insp) }
 	}
