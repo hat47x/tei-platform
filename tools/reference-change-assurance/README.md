@@ -154,9 +154,9 @@ python3 -B tools/reference-change-assurance/test_e1_archive_reconcile.py
 
 ZIP照合は**呼出元が別に確認したGitHub ArtifactのSHA-256**を必須とし、ダウンロードしたZIPの全9エントリが保全済みmanifest/8件とバイト一致するか確認します。余分なエントリ、同名重複、外部へのパス、Symlink、過大ファイル、差替えを拒否します。GitHub APIからの取得や資格情報の取扱いは行いません。
 
-Source照合は両方のディレクトリが指定された場合に限り、**既存**`go run ./tools/reference-change-assurance -before-workspace ... -after-workspace ... -archived-witness-dir ...`を起動し、その出力と保全manifest内の`sourceBefore/sourceAfter/exactCheckoutHead`を突き合わせます。現在のmainを当時の受理R1とみなすことや、receiptからSource全体を復元したと偽ることはありません。
+Source照合は両方のディレクトリが指定された場合に限り、**既存**`go run ./tools/reference-change-assurance -before-workspace ... -after-workspace ... -archived-witness-dir ...`を起動し、その出力と保全manifest内の`sourceBefore/sourceAfter/exactCheckoutHead`を突き合わせます。さらに`workspace-r1.json`に保全された**変更対象2ファイル**（`applications/order-entry/application.tei`、`semantic/sales/validation.tei`）について、`changedManagedSourceFiles`と`changedSourceDigests`の変更前後SHA-256を、既存Source Indexから得た`sourceChanges`のpath・種別・前後指紋と**完全一致**比較します。Revision文字列だけ一致しても、変更ファイル一覧が欠落・増減・差替えされていれば拒否します。照合済みの管理対象ファイル数を`changedManagedFilesVerified`に表示します。現在のmainを当時の受理R1とみなすことや、receiptからSource全体を復元したと偽ることはありません。
 
-どちらも入力されなければ`artifactZip.status=not-supplied`、`sourceSnapshots.status=not-supplied`を明示します。古い8件のreceiptは**一時R0/R1 Source全体のコピーではありません**。Source版を突き合わせるためには、その時点の管理対象Sourceを含むWorkspaceスナップショットが別に必要です。整合しても試験用の履歴記録に過ぎず、常に`qualification=unresolved`、`executionAllowed=false`、`productGate=UNQUALIFIED`を返します。RuntimeでのVersion拘束・実DB独立Observation・人の受理・#1180 Scenarioとの同一実行を認定しません。
+どちらも入力されなければ`artifactZip.status=not-supplied`、`sourceSnapshots.status=not-supplied`を明示します。この追加照合は同一の保存済み合成receiptと、呼出元が提供したWorkspace内容の対応を厳密化するもので、receiptの発行元・Sourceの取得来歴・原子的時点・管理対象外のファイルを認証するものではありません。古い8件のreceiptは**一時R0/R1 Source全体のコピーではありません**。Source版を突き合わせるためには、その時点の管理対象Sourceを含むWorkspaceスナップショットが別に必要です。整合しても試験用の履歴記録に過ぎず、常に`qualification=unresolved`、`executionAllowed=false`、`productGate=UNQUALIFIED`を返します。RuntimeでのVersion拘束・実DB独立Observation・人の受理・#1180 Scenarioとの同一実行を認定しません。
 
 ## 収録する反例
 
