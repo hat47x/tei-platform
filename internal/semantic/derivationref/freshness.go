@@ -59,10 +59,13 @@ type CacheWitness struct {
 	Scope              CacheScope          `json:"scope"`
 }
 
-// CachePolicy applies only when a consumer opts into caching. MaxAge is a
-// consumer requirement, not a promised lifetime of an external source.
+// CachePolicy applies only when a consumer opts into caching. MaxAge is
+// the age of the computed result; MaxSourceAge independently limits the age
+// of source data as-of the consumer's evaluation time. A zero bound disables
+// that specific age check, not the current-revision/authority verification.
 type CachePolicy struct {
 	MaxAge         time.Duration
+	MaxSourceAge   time.Duration
 	RequireAligned bool
 }
 
@@ -84,8 +87,8 @@ func QualifyCache(ctx context.Context, witness CacheWitness, policy CachePolicy,
 	if verifier == nil {
 		return "", ErrCacheDenied
 	}
-	if policy.MaxAge < 0 {
-		return "", fmt.Errorf("%w: invalid max age", ErrCacheEvidence)
+	if policy.MaxAge < 0 || policy.MaxSourceAge < 0 {
+		return "", fmt.Errorf("%w: invalid age bound", ErrCacheEvidence)
 	}
 	if err := verifier.VerifyCurrent(ctx, witness); err != nil {
 		return "", fmt.Errorf("%w: %v", ErrCacheDenied, err)
@@ -146,6 +149,28 @@ func validateWitness(w CacheWitness) error {
 		return w.Sources[i].SourceID < w.Sources[j].SourceID
 	}) {
 		return fmt.Errorf("%w: sources are not canonical ordered", ErrCacheEvidence)
+	}
+	return nil
+}
+
+// CheckSourceFreshAt evaluates optional consumer source staleness against
+// the trusted evaluation time, not against when this result entered the memo.
+// It rejects impossible/future observations even without an age bound.
+// Every source must satisfy the bound; newer data from another source cannot
+// conceal one stale dependency. Source timestamps still require the
+// CurrentWitnessVerifier to attest their provenance independently.
+func CheckSourceFreshAt(witness CacheWitness, policy CachePolicy, now time.Time) error {
+	if now.IsZero() || policy.MaxSourceAge < 0 {
+		return fmt.Errorf("%w: missing evaluation time or invalid source age bound", ErrCacheEvidence)
+	}
+	for _, source := range witness.Sources {
+		if source.SourceAsOf.IsZero() || source.ObservedAt.IsZero() ||
+			source.SourceAsOf.After(source.ObservedAt) || source.ObservedAt.After(now) {
+			return fmt.Errorf("%w: source %s has invalid chronology", ErrCacheEvidence, source.SourceID)
+		}
+		if policy.MaxSourceAge > 0 && now.Sub(source.SourceAsOf) > policy.MaxSourceAge {
+			return fmt.Errorf("%w: source %s is older than consumer bound", ErrCacheStale, source.SourceID)
+		}
 	}
 	return nil
 }
