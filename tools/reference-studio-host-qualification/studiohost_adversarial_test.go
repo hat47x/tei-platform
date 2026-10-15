@@ -114,11 +114,43 @@ func TestRealStudioHostWarningNotEquivalentToSemanticValidOrTransportFailure(t *
 			t.Fatalf("Host warning unexpectedly changed severity: %+v", finding)
 		}
 	}
-	if doc["value"] == nil {
-		t.Fatal("transport success must contain validation data, including warnings")
+	value, ok := doc["value"].(map[string]any)
+	if !ok || value["Direct"] != nil {
+		t.Fatalf("Host validation value must retain Direct and Diagnostics: %+v", doc)
+	}
+	diagnostics, ok := value["Diagnostics"].([]any)
+	if !ok || len(diagnostics) != 3 {
+		t.Fatalf("Host JSON must retain all three warning projections: %+v", doc)
 	}
 	// The status has separate dimensions: Host OK=true, semantic HasErrors=false,
 	// diagnostics nonempty. Empty diagnostics is not synonymous with valid.
+}
+
+// Semantic errors are findings inside a successful Go Host invocation.
+// CLI reports exit=1, while Host ok=true: these are NOT contradictory results.
+func TestRealStudioHostTransportSuccessWithSemanticErrors(t *testing.T) {
+	broken := fixtureWorkspace(t, "hostsemanticinvalid", "namespace hostsemanticinvalid\\n\\ndata Broken {\\n    attribute invalid type }\\n}\\n")
+	host, err := studiohost.NewReadOnly([]string{broken})
+	if err != nil {
+		t.Fatal(err)
+	}
+	binary := testCLIBinary(t)
+	cli := observeCLI(t, binary, 1, "validate", "-workspace", broken, "-json")
+	goValue, goErr := operations.ValidateWorkspace(broken)
+	response := host.ValidateWorkspace("workspace-1")
+	doc := envelopeObject(t, response, true, "")
+	if goErr != nil || response.Value == nil || !response.OK || response.Failure != nil ||
+		cli.OK || cli.Error != nil || !goValue.HasErrors() || !response.Value.HasErrors() {
+		t.Fatalf("Host invocation success must not erase semantic errors: CLI=%+v Go=%+v err=%v Host=%+v",
+			cli, goValue, goErr, response)
+	}
+	c, g, h := cliFindings(cli), typedFindings(t, goValue), typedFindings(t, *response.Value)
+	if len(c) == 0 || !reflect.DeepEqual(c, g) || !reflect.DeepEqual(g, h) {
+		t.Fatalf("semantic errors must be preserved by all three paths: CLI=%v Go=%v Host=%v", c, g, h)
+	}
+	if doc["failure"] != nil {
+		t.Fatalf("semantic errors must be reported as value, not transport failure: %+v", doc)
+	}
 }
 
 func TestRealStudioHostSubjectRejectionsOnIdenticalCLIAndGoInputs(t *testing.T) {
