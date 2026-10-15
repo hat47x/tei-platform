@@ -2,7 +2,9 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
+	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -157,9 +159,27 @@ func TestOptInV2InputWithExactV1ProcessEngine(t *testing.T) {
 				LockedSourceFingerprint:    lockedSourceFingerprint,
 				LockedBuildPlanFingerprint: planFingerprint,
 			}
-			prepared, err := inputprofile.PreparePluginPackageInputs(selection, source, plan, []byte(tc.raw))
+			app, env := core.MustCanonicalID("order_entry"), core.MustCanonicalID("development")
+			currentSelection := selection
+			revoked := false
+			hostReads := 0
+			hostRead := func(_ context.Context, application, environment core.CanonicalID) (inputprofile.CurrentPackageBuildBinding, error) {
+				hostReads++
+				if revoked {
+					return inputprofile.CurrentPackageBuildBinding{}, errors.New("revoked by current Host")
+				}
+				return inputprofile.CurrentPackageBuildBinding{
+					Application: app, Environment: env, Selection: currentSelection,
+				}, nil
+			}
+			admit := func() (inputprofile.PreparedPackageInputs, error) {
+				return inputprofile.PrepareCurrentHostPackageInputs(
+					context.Background(), app, env, hostRead, source, plan, []byte(tc.raw),
+				)
+			}
+			prepared, err := admit()
 			if err != nil {
-				t.Fatalf("exact Host input binding rejected v2 fixture: %v", err)
+				t.Fatalf("current Host input binding rejected v2 fixture: %v", err)
 			}
 			canonicalInput, err := canonical.JSON()
 			if err != nil {
@@ -179,30 +199,47 @@ func TestOptInV2InputWithExactV1ProcessEngine(t *testing.T) {
 				prepared.Evidence.PluginDefinitionFingerprint != plan.PluginDefinitionFingerprint {
 				t.Fatalf("exact Host-bound ingress lost input provenance: %+v", prepared.Evidence)
 			}
-			wrongPlan := selection
-			wrongPlan.LockedBuildPlanFingerprint = "unapproved-plan"
-			if _, err := inputprofile.PreparePluginPackageInputs(wrongPlan, source, plan, []byte(tc.raw)); err == nil {
+			currentSelection.LockedBuildPlanFingerprint = "unapproved-plan"
+			if _, err := admit(); err == nil {
 				t.Fatal("unapproved BuildPlan reached process input preparation")
 			}
-			withoutProfile := selection
-			withoutProfile.Profile = ""
-			if _, err := inputprofile.PreparePluginPackageInputs(withoutProfile, source, plan, []byte(tc.raw)); err == nil {
+			currentSelection = selection
+			currentSelection.Profile = ""
+			if _, err := admit(); err == nil {
 				t.Fatal("missing explicit v2 selection reached process input preparation")
 			}
+			currentSelection = selection
 			var previous []byte
 			for run := 0; run < 2; run++ {
-				got, err := evaluateWithExactEngine(engineExecutable, engineDigest, sourcePath, source, prepared.Inputs)
+				if run == 1 {
+					// A prior allowed build does not cache future Host approval.
+					// This is a pre-invocation refusal, NOT a revocation
+					// guard over an already running process.
+					revoked = true
+					if _, err := admit(); !errors.Is(err, inputprofile.ErrCurrentPackageSelectionUnavailable) {
+						t.Fatalf("revoked Host selection was not rejected before next process invocation: %v", err)
+					}
+					revoked = false
+				}
+				attemptInputs, err := admit()
+				if err != nil {
+					t.Fatalf("current Host selection failed for run %d: %v", run+1, err)
+				}
+				if attemptInputs.Evidence != prepared.Evidence {
+					t.Fatalf("fresh Host selection changed admitted inputs for run %d", run+1)
+				}
+				got, err := evaluateWithExactEngine(engineExecutable, engineDigest, sourcePath, source, attemptInputs.Inputs)
 				if err != nil {
 					t.Fatalf("exact v1 process with v2 ingress failed (run %d): %v", run+1, err)
 				}
 				if got.Output.Kind != transform.ValueBytes || !bytes.Equal(got.Output.Bytes, oracle) {
 					t.Fatalf("exact process SB-1 output differed from Go oracle (run %d)", run+1)
 				}
-				observed, err := inputprofile.ObservePackageOutput(prepared.Evidence, got)
+				observed, err := inputprofile.ObservePackageOutput(attemptInputs.Evidence, got)
 				if err != nil {
 					t.Fatalf("exact process output was not observed as the admitted SB-1 package (run %d): %v", run+1, err)
 				}
-				if observed.Input != prepared.Evidence ||
+				if observed.Input != attemptInputs.Evidence ||
 					observed.OutputDigest != plugin.BuildOutputDigest(oracle) ||
 					observed.Steps != got.Steps {
 					t.Fatalf("exact process result lost input/output evidence (run %d): %+v", run+1, observed)
@@ -211,6 +248,9 @@ func TestOptInV2InputWithExactV1ProcessEngine(t *testing.T) {
 					t.Fatal("repeated exact process execution changed bytes")
 				}
 				previous = got.Output.Bytes
+			}
+			if hostReads != 6 {
+				t.Fatalf("each admission must consult current Host selection; got %d reads, want 6", hostReads)
 			}
 			var manifest plugin.PluginPackageManifest
 			if err := json.Unmarshal(previous, &manifest); err != nil {
