@@ -276,3 +276,101 @@ func TestSenderCannotDuplicateWhileInFlightAndMayReenter(t *testing.T) {
 		t.Fatalf("second delivery %v %v", didSend, err)
 	}
 }
+
+
+func TestCancelUnknownOutcomeLookupRecovery(t *testing.T) {
+	ctx := context.Background()
+	s, submit := fixture(t)
+	if result, err := s.Execute(ctx, submit, allowAll); err != nil || result.Outcome != Submitted {
+		t.Fatalf("setup: result=%+v err=%v", result, err)
+	}
+	cancel := Cancel{OperationID: "cancel-1", SubjectID: "alice", OrderID: "o1", ExpectedVersion: 8}
+
+	// Before commit, no receipt is visible; absence is not a conclusion about
+	// external systems, only this synthetic Store.
+	if result, found, err := s.LookupCancel(ctx, cancel, allowAll); err != nil || found || result.Committed {
+		t.Fatalf("unexpected uncommitted receipt: %+v found=%t err=%v", result, found, err)
+	}
+
+	s.loseAcknowledgement = true
+	result, err := s.ExecuteCancel(ctx, cancel, allowAll)
+	if err != nil || result.Outcome != Unknown || result.Committed {
+		t.Fatalf("lost acknowledgement: %+v err=%v", result, err)
+	}
+	snap, _ := s.Inspect("o1")
+	if snap.Order.State != "cancelled" || snap.Available != 20 || snap.Reserved != 0 || len(snap.History) != 2 || len(snap.Notices) != 2 {
+		t.Fatalf("cancel was not atomically committed: %+v", snap)
+	}
+
+	receipt, found, err := s.LookupCancel(ctx, cancel, allowAll)
+	if err != nil || !found || receipt.Outcome != "cancelled" || !receipt.Committed {
+		t.Fatalf("cancel receipt: %+v found=%t err=%v", receipt, found, err)
+	}
+	// A caller may inspect their own receipt but cannot mutate the stored
+	// receipt's trace through the returned slice.
+	if len(receipt.Trace) == 0 {
+		t.Fatal("receipt trace missing")
+	}
+	receipt.Trace[0] = "mutated-by-caller"
+	reloaded, found, err := s.LookupCancel(ctx, cancel, allowAll)
+	if err != nil || !found || reloaded.Trace[0] != PhaseValidate {
+		t.Fatalf("receipt unexpectedly mutated: %+v %v %v", reloaded, found, err)
+	}
+	retry, err := s.ExecuteCancel(ctx, cancel, allowAll)
+	if err != nil || retry.Outcome != "cancelled" || !retry.Committed {
+		t.Fatalf("retry should recover the committed result: %+v %v", retry, err)
+	}
+	snap, _ = s.Inspect("o1")
+	if len(snap.History) != 2 || len(snap.Notices) != 2 {
+		t.Fatalf("duplicated cancel effects: %+v", snap)
+	}
+}
+
+func TestLookupCancelAuthorizationIdentityAndFailure(t *testing.T) {
+	ctx := context.Background()
+	s, submit := fixture(t)
+	if _, err := s.Execute(ctx, submit, allowAll); err != nil {
+		t.Fatal(err)
+	}
+	cancel := Cancel{OperationID: "cancel-1", SubjectID: "alice", OrderID: "o1", ExpectedVersion: 8}
+	if _, err := s.ExecuteCancel(ctx, cancel, allowAll); err != nil {
+		t.Fatal(err)
+	}
+	revoked := AuthorizeFunc(func(context.Context, string, string) (bool, error) { return false, nil })
+	if receipt, found, err := s.LookupCancel(ctx, cancel, revoked); err != nil || found || receipt.Outcome != Denied {
+		t.Fatalf("revoked caller saw receipt: %+v %t %v", receipt, found, err)
+	}
+	if _, found, err := s.LookupCancel(ctx, cancel, nil); err == nil || found {
+		t.Fatalf("missing authorization accepted: %t %v", found, err)
+	}
+	outage := AuthorizeFunc(func(context.Context, string, string) (bool, error) {
+		return false, errors.New("authorization provider failure")
+	})
+	if result, found, err := s.LookupCancel(ctx, cancel, outage); err == nil || found || result.Outcome == Denied {
+		t.Fatalf("provider failure converted to denial: %+v %t %v", result, found, err)
+	}
+	for _, altered := range []Cancel{
+		{OperationID: cancel.OperationID, SubjectID: "bob", OrderID: cancel.OrderID, ExpectedVersion: cancel.ExpectedVersion},
+		{OperationID: cancel.OperationID, SubjectID: cancel.SubjectID, OrderID: "o2", ExpectedVersion: cancel.ExpectedVersion},
+		{OperationID: cancel.OperationID, SubjectID: cancel.SubjectID, OrderID: cancel.OrderID, ExpectedVersion: 9},
+		{OperationID: submit.OperationID, SubjectID: cancel.SubjectID, OrderID: cancel.OrderID, ExpectedVersion: cancel.ExpectedVersion},
+	} {
+		if result, found, err := s.LookupCancel(ctx, altered, allowAll); err == nil || found || result.Committed {
+			t.Fatalf("mismatched identity exposed a receipt: %+v %t %v", result, found, err)
+		}
+	}
+	for _, bad := range []Cancel{
+		{SubjectID: "alice", OrderID: "o1"},
+		{OperationID: "x", OrderID: "o1"},
+		{OperationID: "x", SubjectID: "alice"},
+	} {
+		if _, found, err := s.LookupCancel(ctx, bad, allowAll); err == nil || found {
+			t.Fatalf("invalid cancel identity accepted: %+v", bad)
+		}
+	}
+	aborted, stop := context.WithCancel(ctx)
+	stop()
+	if _, found, err := s.LookupCancel(aborted, cancel, allowAll); !errors.Is(err, context.Canceled) || found {
+		t.Fatalf("cancelled context exposed receipt: %t %v", found, err)
+	}
+}
