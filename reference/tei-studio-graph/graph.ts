@@ -282,6 +282,12 @@ export function mountReadonlyGraph(
   };
 
   const replace = (graph: GraphInput) => {
+    // The Studio consumer updates the graph synchronously after onSelect.
+    // Replacing a focused SVG <g> would otherwise drop keyboard focus to
+    // <body>, so Space / the next Tab no longer continue from that node.
+    const focusedNode = [...(active?.groups ?? [])].find(
+      ([, {group}]) => doc.activeElement === group,
+    )?.[0];
     const nextRevision = revision + 1;
     const next = build(graph, nextRevision);
     holder.replaceChildren(next.svg, next.fullLabel);
@@ -289,6 +295,14 @@ export function mountReadonlyGraph(
     revision = nextRevision;
     if (selected !== null && !next.groups.has(selected)) selected = null;
     setSelectedNode(selected);
+    if (focusedNode !== undefined) {
+      const nextFocused = next.groups.get(focusedNode)?.group;
+      // If the old node was removed, the scrollable region is a safe
+      // continuation point. Programmatic updates outside Graph do not steal
+      // focus from other controls.
+      const destination = nextFocused ?? holder;
+      destination.focus({preventScroll: true});
+    }
   };
 
   replace(initial);
