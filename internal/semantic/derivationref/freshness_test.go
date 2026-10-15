@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -369,6 +370,8 @@ func TestD3SourceBoundVerifierRejectsForgedOrChangedSourceProvenance(t *testing.
 	source.fail = true
 	if _, err := derivationref.QualifyCache(ctx, w, policy, v); !errors.Is(err, derivationref.ErrCacheDenied) {
 		t.Fatalf("unavailable provider metadata treated as valid: %v", err)
+	} else if strings.Contains(err.Error(), "inventory") || strings.Contains(err.Error(), "provider metadata read failed") {
+		t.Fatalf("provider metadata details escaped cache denial: %v", err)
 	}
 	source.fail = false
 	// The public qualification boundary intentionally reports only
