@@ -16,7 +16,8 @@ class FakeElement {
     this.hidden = false;
     this.textContent = "";
   }
-  focus() {
+  focus(options) {
+    this.lastFocusOptions = options;
     this.ownerDocument.activeElement = this;
     this.dispatch("focus");
   }
@@ -294,5 +295,32 @@ test("keyboard focus survives consumer graph.update and returns to viewport when
   // keyboard focus until the user chooses another node.
   view.update({width: 480, height: 160, nodes: [], edges: []});
   assert.strictEqual(root.ownerDocument.activeElement, root.children[0]);
+  view.dispose();
+});
+
+test("moved focused node is revealed, while external focus is not stolen", () => {
+  const root = container();
+  const view = mountReadonlyGraph(root, buildPipelineGraph);
+  const source = all(root, "g")[0];
+  source.focus();
+  // In a real narrow panel this moves the node from x=70 to x=410:
+  // focus({preventScroll:true}) preserves focus but leaves it offscreen.
+  const moved = {
+    ...buildPipelineGraph,
+    nodes: buildPipelineGraph.nodes.map(node =>
+      node.id === "source" ? {...node, x: 410} : node),
+  };
+  view.update(moved);
+  const replacement = all(root, "g")[0];
+  assert.notStrictEqual(replacement, source);
+  assert.strictEqual(root.ownerDocument.activeElement, replacement);
+  assert.notEqual(replacement.lastFocusOptions?.preventScroll, true);
+  assert.equal(replacement.getAttribute("aria-label"), "Source");
+
+  const outside = root.ownerDocument.createElement("button");
+  root.appendChild(outside);
+  outside.focus();
+  view.update(buildPipelineGraph);
+  assert.strictEqual(root.ownerDocument.activeElement, outside);
   view.dispose();
 });
