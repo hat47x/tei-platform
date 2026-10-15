@@ -183,3 +183,56 @@ func TestPublishExactMembersRejectsLateOversizeBeforeAnyStoreWrite(t *testing.T)
 		t.Fatalf("an earlier valid member was published before the late size rejection: %v", err)
 	}
 }
+
+
+// The first Put's successful receipt is not enough to claim that the complete
+// set is available. A prior member can become corrupt while a later Put is
+// publishing; the final getMembers pass must then reject the entire set.
+func TestPublishExactMembersRechecksEarlierMemberAfterLaterPut(t *testing.T) {
+	store := openTestStore(t, 1<<20)
+	first := []byte("first artifact before late corruption")
+	second := []byte("second artifact remains valid")
+	path, err := store.pathForDigest(digestBytes(first))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	publishLinks := 0
+	setTestHook(t, func(stage string) {
+		if stage != hookBeforeLink {
+			return
+		}
+		publishLinks++
+		if publishLinks != 2 {
+			return
+		}
+		// First member has already been published; now change its bytes
+		// just before the second member becomes visible in the CAS.
+		if err := os.Chmod(path, 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte("tampered after first Put"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	})
+	requests := []artifactMemberRequest{
+		{Role: "a", Digest: digestBytes(first)},
+		{Role: "z", Digest: digestBytes(second)},
+	}
+	published, err := store.publishExactMembers(requests, map[string][]byte{"a": first, "z": second})
+	if err == nil || !strings.Contains(err.Error(), "incomplete after reverification") || len(published.Members) != 0 {
+		t.Fatalf("late corruption yielded successful set publication: %+v err=%v", published, err)
+	}
+	if publishLinks != 2 {
+		t.Fatalf("late corruption fixture did not pass both Put boundaries: %d", publishLinks)
+	}
+	members, err := store.getMembers(requests)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if members.Available() ||
+		memberByRole(t, members, "a").Status != artifactMemberCorrupt ||
+		memberByRole(t, members, "z").Status != artifactMemberAvailable {
+		t.Fatalf("late corruption lost member-specific status: %+v", members)
+	}
+}
