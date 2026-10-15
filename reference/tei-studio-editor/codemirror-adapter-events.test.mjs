@@ -89,6 +89,8 @@ test("actual adapter under CM stubs: Host 6..15 -> view 5..14 -> notification 6.
     cm.state.extensions.filter(x=>x.kind==="readOnly"||x.kind==="editable"),
     [{kind:"readOnly",value:true},{kind:"editable",value:false}]
   );
+  assert.deepEqual(cm.state.extensions.find(x=>x.kind==="contentAttributes").value,
+    { "aria-label": "Read-only source text", tabindex: "0" });
   editor.select(span(1,10));
   assert.deepEqual(cm.state.selection.main,{from:5,to:14});
   assert.deepEqual(editor.snapshot().selection,{from:6,to:15});
