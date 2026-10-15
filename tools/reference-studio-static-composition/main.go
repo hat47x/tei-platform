@@ -140,8 +140,13 @@ func composeServices(raw []byte) ([]byte, goProvenance, error) {
 	if len(order) != 2 {
 		return nil, goProvenance{}, errors.New("resolved service set is incomplete")
 	}
-	output.WriteString("// Services returns an explicit, statically linked list. A trusted Host owns root and admission.\n")
-	output.WriteString("func Services(root string) []any { return []any{" + strings.Join(construction, ", ") + "} }\n")
+	// NewTypedServices is the build-time bridge for #2's private Host
+	// injection. The caller must resolve an allowlisted workspace ID to a
+	// trusted root before calling this constructor. Never expose it on Wails.
+	output.WriteString("// NewTypedServices constructs two fixed read-only operations from a Host-selected root.\\n")
+	output.WriteString("func NewTypedServices(root string) (*CatalogService, *ValidateService) { return NewCatalogService(root), NewValidateService(root) }\\n")
+	output.WriteString("// Services retains the existing static list for independent qualification.\\n")
+	output.WriteString("func Services(root string) []any { return []any{" + strings.Join(construction, ", ") + "} }\\n")
 	formatted, err := format.Source([]byte(output.String()))
 	if err != nil {
 		return nil, goProvenance{}, err
