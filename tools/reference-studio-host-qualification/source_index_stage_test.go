@@ -59,22 +59,22 @@ func TestSourceIndexStageFailureCLIAndGoOperations(t *testing.T) {
 
 	binary := testCLIBinary(t)
 	for _, tc := range []struct {
-		name string
-		args []string
+		name   string
+		args   []string
 		schema string
-		run func() error
+		run    func() error
 	}{
 		{
-			name: "validate",
-			args: []string{"validate", "-workspace", root, "-json"},
+			name:   "validate",
+			args:   []string{"validate", "-workspace", root, "-json"},
 			schema: "tei.cli.validate/v0",
-			run: func() error { _, err := operations.ValidateWorkspace(root); return err },
+			run:    func() error { _, err := operations.ValidateWorkspace(root); return err },
 		},
 		{
-			name: "catalog",
-			args: []string{"model", "catalog", "-workspace", root},
+			name:   "catalog",
+			args:   []string{"model", "catalog", "-workspace", root},
 			schema: "tei.cli.model/v0",
-			run: func() error { _, err := operations.CatalogWorkspace(root, ""); return err },
+			run:    func() error { _, err := operations.CatalogWorkspace(root, ""); return err },
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
