@@ -64,7 +64,7 @@ Host/Operation、TEIのSource Index、Go/Wails、Reactなどには依存しま�
 
 ノードはSVGの `<g role="button" tabindex="0">` として公開し、`aria-label`に省略前の `node.label`（空の場合は`node.id`）を設定します。選択状態は`aria-pressed`、Enter/Spaceの操作は既存`onSelect(node.id)`へ通知します。表示名の省略とsubject IDの選択を混同しません。
 
-**再描画時の注意:** #1849 Workbenchはノードを選ぶと同期的に`graph.update(related.input)`を行います。旧実装はその時点でフォーカス中のSVG `<g>` を削除しており、選択後にフォーカスが`body`へ抜け、次のSpaceキーが効きませんでした。更新前にフォーカス中のノードIDを取得し、更新後の同じIDへフォーカスを復元します。更新後にそのノードがない場合はスクロール領域へ復元します。別の入力へフォーカスがある場合は奪いません。
+**再描画時の注意:** #1849 Workbenchはノードを選ぶと同期的に`graph.update(related.input)`を行います。旧実装はその時点でフォーカス中のSVG `<g>` を削除しており、選択後にフォーカスが`body`へ抜け、次のSpaceキーが効きませんでした。更新前にフォーカス中のノードIDを取得し、更新後の同じIDへフォーカスを復元します。**再描画でノード座標が画面外へ移った場合も、フォーカスしたノードが見えるよう通常のブラウザースクロールを許可**します（`preventScroll:true`は指定しません）。更新後にそのノードがない場合はスクロール領域へ復元します。別の入力へフォーカスがある場合は奪いません。
 
 - **自動試験:** Node小DOM代替試験に`onSelect → update → setSelectedNode`の後も、Enterに続くSpaceが同じノードを選択し、消えたノードのフォーカスがスクロール領域へ戻る回帰を追加しました。
 - **独立実Chromium DOM試験:** role=button、アクセシブル名、focusable、aria-pressedをChromiumのアクセシビリティツリーで確認し、Tab/Enter/Space/円中央クリックが同じIDを返すこと、再描画の前後でフォーカスが維持されることを確認します。
