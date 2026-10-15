@@ -96,7 +96,32 @@ export function normalizeGraph(input: unknown): GraphInput {
 }
 
 type NodeVisual = {group: SVGGElement; circle: SVGCircleElement};
-type BuiltGraph = {svg: SVGSVGElement; groups: Map<string, NodeVisual>};
+type BuiltGraph = {
+  svg: SVGSVGElement;
+  groups: Map<string, NodeVisual>;
+  fullLabel: HTMLDivElement;
+  truncatedLabels: Map<string, string>;
+};
+
+// Display-only approximation. Reserve space for an ellipsis at the node's
+// horizontal position. Full names are preserved in aria-label and the detail.
+function shortLabel(label: string, x: number, width: number): string {
+  const budget = Math.max(0, Math.min(x, width - x) * 2 - 28);
+  if (budget === 0) return label ? "…" : "";
+  let used = 0;
+  let displayed = "";
+  let consumed = 0;
+  for (const codepoint of label) {
+    const advance = codepoint.codePointAt(0)! < 128
+      ? (/[WM@]/.test(codepoint) ? 14 : /[A-Z]/.test(codepoint) ? 12 : 9)
+      : 18;
+    if (used + advance + 14 > budget) break;
+    displayed += codepoint;
+    consumed += codepoint.length;
+    used += advance;
+  }
+  return consumed === label.length ? label : displayed + "…";
+}
 
 export function mountReadonlyGraph(
   container: HTMLElement,
@@ -135,10 +160,18 @@ export function mountReadonlyGraph(
   let disposed = false;
 
   const requireLive = () => { if (disposed) fail("disposed"); };
+  const showFullLabel = (id: string | null) => {
+    const view = active;
+    if (!view) return;
+    const full = id === null ? undefined : view.truncatedLabels.get(id);
+    view.fullLabel.textContent = full === undefined ? "" : `ラベル全文: ${full}`;
+    view.fullLabel.hidden = full === undefined;
+  };
   const setSelectedNode = (nodeId: string | null) => {
     requireLive();
     if (nodeId !== null && !active?.groups.has(nodeId)) fail("selection_not_found");
     selected = nodeId;
+    showFullLabel(selected);
     for (const [id, {group, circle}] of active?.groups ?? []) {
       attribute(group, "aria-pressed", id === selected ? "true" : "false");
       attribute(group, "data-selected", id === selected ? "true" : "false");
@@ -161,6 +194,17 @@ export function mountReadonlyGraph(
     svg.style.fontSize = "14px";
     svg.style.display = "block";
     const groups = new Map<string, NodeVisual>();
+    const truncatedLabels = new Map<string, string>();
+    const fullLabel = doc.createElement("div");
+    fullLabel.setAttribute("data-graph-full-label", "");
+    fullLabel.style.width = "100%";
+    fullLabel.style.maxWidth = "100%";
+    fullLabel.style.overflowWrap = "anywhere";
+    fullLabel.style.whiteSpace = "normal";
+    fullLabel.style.fontSize = "14px";
+    fullLabel.style.position = "sticky";
+    fullLabel.style.left = "0";
+    fullLabel.hidden = true;
     const byId = new Map(graph.nodes.map(n => [n.id, n]));
 
     for (const edge of graph.edges) {
@@ -187,6 +231,9 @@ export function mountReadonlyGraph(
       attribute(group, "role", "button");
       attribute(group, "tabindex", "0");
       attribute(group, "aria-label", node.label || node.id);
+      const tooltip = svgElement("title");
+      tooltip.textContent = node.label || node.id;
+      group.appendChild(tooltip);
       const circle = svgElement("circle");
       for (const [key, value] of Object.entries({
         // A transparent *painted* fill preserves the outlined appearance but
@@ -200,8 +247,14 @@ export function mountReadonlyGraph(
       attribute(label, "x", node.x);
       attribute(label, "y", node.y + 29);
       attribute(label, "text-anchor", "middle");
-      label.textContent = node.label; // text, never innerHTML
+      const preview = shortLabel(node.label, node.x, graph.width);
+      label.textContent = preview; // text, never innerHTML
       group.appendChild(label);
+      if (preview !== node.label) truncatedLabels.set(node.id, node.label);
+      group.addEventListener("focus", () => {
+        if (disposed || generation !== revision) return;
+        showFullLabel(node.id);
+      });
       const notify = () => {
         if (disposed || generation !== revision) return;
         setSelectedNode(node.id);
@@ -225,13 +278,13 @@ export function mountReadonlyGraph(
       empty.textContent = "表示するノードがありません";
       svg.appendChild(empty);
     }
-    return {svg, groups};
+    return {svg, groups, fullLabel, truncatedLabels};
   };
 
   const replace = (graph: GraphInput) => {
     const nextRevision = revision + 1;
     const next = build(graph, nextRevision);
-    holder.replaceChildren(next.svg);
+    holder.replaceChildren(next.svg, next.fullLabel);
     active = next;
     revision = nextRevision;
     if (selected !== null && !next.groups.has(selected)) selected = null;
