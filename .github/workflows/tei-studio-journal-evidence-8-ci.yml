@@ -1,0 +1,98 @@
+name: TEI Studio #8 - independent Reading Journal fixed-component evidence
+
+on:
+  push:
+    branches:
+      - test/tei-studio-poc-evidence
+    paths:
+      - .github/workflows/tei-studio-journal-evidence-8-ci.yml
+      - reference/tei-studio-independent-consumer/**
+      - plan/evidence/TEI_STUDIO_POC_EVIDENCE_RUNBOOK_20261014.md
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tei-studio-journal-8-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  fixed-provider-journal:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      GRAPH_SHA: de9ef8f0ac40b164d60ad5d43637ba3afc585c5e
+      COMMAND_SHA: 63f7ce3af1e6e5a27124aa4aa8ae1331d405f83c
+      EDITOR_SHA: 472c5d90b0b196f44b203e710c88ff05821d74fa
+      GRAPH_BLOB: 436c7d07c56802dbbc6d1dfeb1251470fca75cf6
+      COMMAND_BLOB: bb56f3dba6387f7d9bf9604de9b519fb68feb50d
+      EDITOR_BLOB: eddc3c3e9320b9f61a6b99d970224072528500a0
+
+    steps:
+      - name: Checkout only #8 Draft source (no merge)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Use Node 24.21.0
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24.21.0
+
+      - name: Materialize fixed provider paths into disposable snapshot
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --version
+          git fetch --no-tags origin refs/pull/1828/head refs/pull/1829/head refs/pull/1830/head
+          for sha in "$GRAPH_SHA" "$COMMAND_SHA" "$EDITOR_SHA"; do
+            git cat-file -e "$sha^{commit}"
+          done
+
+          snapshot="$RUNNER_TEMP/tei-studio-reading-journal-8"
+          git worktree add --detach "$snapshot" "$GITHUB_SHA"
+          test "$(git -C "$snapshot" rev-parse HEAD)" = "$GITHUB_SHA"
+          (
+            cd "$snapshot"
+            git archive "$GRAPH_SHA" reference/tei-studio-graph | tar -xf -
+            git archive "$COMMAND_SHA" reference/tei-studio-command | tar -xf -
+            git archive "$EDITOR_SHA" reference/tei-studio-editor | tar -xf -
+            test "$(git hash-object reference/tei-studio-graph/graph.ts)" = "$GRAPH_BLOB"
+            test "$(git hash-object reference/tei-studio-command/command.ts)" = "$COMMAND_BLOB"
+            test "$(git hash-object reference/tei-studio-editor/codemirror.ts)" = "$EDITOR_BLOB"
+            echo "CONSUMER=$GITHUB_SHA"
+            echo "GRAPH=$GRAPH_SHA / $GRAPH_BLOB"
+            echo "COMMAND=$COMMAND_SHA / $COMMAND_BLOB"
+            echo "EDITOR=$EDITOR_SHA / $EDITOR_BLOB"
+            git diff --name-only "$GITHUB_SHA" -- reference/tei-studio-independent-consumer
+          )
+          echo "JOURNAL_SNAPSHOT=$snapshot" >> "$GITHUB_ENV"
+
+      - name: Locked install and exact shared-port tests
+        working-directory: ${{ env.JOURNAL_SNAPSHOT }}/reference/tei-studio-independent-consumer
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm ci --no-audit --no-fund
+          npm test
+          npm run audit:imports
+          npm run build
+          test -s dist/build-provenance.json
+          node -e 'const p=require("./dist/build-provenance.json"); if (!p.npmLockSha256) process.exit(1); console.log("LOCK_SHA256="+p.npmLockSha256)'
+
+      - name: Install isolated Python Playwright and Chromium
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m venv "$RUNNER_TEMP/journal-playwright"
+          "$RUNNER_TEMP/journal-playwright/bin/pip" install --disable-pip-version-check playwright==1.57.0
+          "$RUNNER_TEMP/journal-playwright/bin/python" -m playwright install --with-deps chromium
+
+      - name: Real Chromium independently exercises shared Editor Graph Command
+        working-directory: ${{ env.JOURNAL_SNAPSHOT }}/reference/tei-studio-independent-consumer
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$RUNNER_TEMP/journal-playwright/bin/python" browser-e2e.py
