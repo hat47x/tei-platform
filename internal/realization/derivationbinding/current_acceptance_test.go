@@ -39,11 +39,13 @@ func TestD4CurrentHostAcceptanceGatesRulesBindingsAndChoices(t *testing.T) {
 	newRequest := func(t *testing.T) (BindingRequest, *d4CurrentReader) {
 		t.Helper()
 		request := d4Fixture(t)
+		acceptedMeaning := request.Definitions[0]
+		acceptedMeaning.Inputs = append([]string(nil), acceptedMeaning.Inputs...) // independent Host test store
 		reader := &d4CurrentReader{record: CurrentAcceptedBindings{
 			ApplicationID: app, ModelRevision: revision,
 			DecisionRef: "decision.current", AuthorityRevision: "authority.2",
 			Snapshot: request.Accepted,
-		}, meaning: map[string]derivationref.Definition{request.Definitions[0].ID: request.Definitions[0]}}
+		}, meaning: map[string]derivationref.Definition{acceptedMeaning.ID: acceptedMeaning}}
 		request.Accepted = AcceptedBindingSnapshot{} // never client-supplied
 		return request, reader
 	}
