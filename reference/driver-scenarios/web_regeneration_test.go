@@ -162,7 +162,7 @@ func TestScenarioDerivedPairRejectsTamperOrMissingFixture(t *testing.T) {
 	modifiedCLI := cli
 	modifiedCLI.Commands = append([]scenariotest.Command(nil), cli.Commands...)
 	modifiedCLI.Commands[2].Argv = append([]string(nil), cli.Commands[2].Argv...)
-	modifiedCLI.Commands[2].Argv[7] = "record-pattern"
+	modifiedCLI.Commands[2].Argv[8] = "record-pattern"
 	if err := runCheck(modifiedCLI, web, binding); err == nil ||
 		!strings.Contains(err.Error(), "stale or modified CLI argv") {
 		t.Fatalf("edited derived CLI argv accepted: %v", err)
