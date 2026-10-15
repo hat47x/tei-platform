@@ -24,6 +24,11 @@ export function composeUI(raw) {
   if (profile.fixtureVersion !== 'tei-studio-poc-b-reference-v0' ||
       profile.scope !== 'studio.local' || profile.services?.length !== 2 ||
       !profile.uiKit) throw new Error('invalid_poc_fixture');
+  // UI-only generation must not accept a service selection that the Go
+  // fixture would reject. This is a PoC consistency check, not a Resolver.
+  const selectedServices = profile.services.map(s => s?.id + '@' + s?.version).sort();
+  if (selectedServices.join(',') !== 'studio.catalog@0.1.0,studio.validate@0.1.0')
+    throw new Error('invalid_poc_fixture_services');
   const kit = profile.uiKit;
   const implementations = Object.fromEntries(
     Object.keys(imports).map(id => [id, () => undefined]),
