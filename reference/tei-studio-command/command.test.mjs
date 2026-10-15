@@ -202,3 +202,66 @@ test("keyboard arrows focus available commands; disposed panel refuses commands"
   panel.dispose();
   assert.equal(await panel.execute("inspect"), false);
 });
+
+test("Abort via beginContext suppresses a late Host success in rendered UI", async () => {
+  const target = fakeTarget();
+  let finish;
+  let signal;
+  const panel = mountCommandPanel(target, {
+    commands,
+    invoke: (_id, currentSignal) => {
+      signal = currentSignal;
+      return new Promise(resolve => { finish = resolve; });
+    },
+  });
+  const events = [];
+  panel.subscribe(snapshot => events.push(snapshot.status.phase));
+  const context = panel.beginContext();
+  panel.setDiagnosticsForContext(context, [{ id: "old", severity: "warning", message: "old warning" }]);
+  const pending = panel.execute("inspect");
+  const [, , statusNode, diagnosticList] = panel.element.children;
+  assert.equal(statusNode.textContent, "実行中…");
+  assert.equal(diagnosticList.children.length, 1);
+
+  panel.beginContext(); // UI has switched context while Host is still pending.
+  assert.equal(signal.aborted, true);
+  assert.equal(statusNode.textContent, "");
+  assert.equal(diagnosticList.children.length, 0);
+  const state = panel.snapshot();
+  const eventCount = events.length;
+  finish({ kind: "success", message: "LATE_OLD_WORKSPACE_SUCCESS" }); // Host did not cancel.
+  assert.equal(await pending, false);
+  assert.deepEqual(panel.snapshot(), state);
+  assert.equal(events.length, eventCount, "late Host success must not notify the UI");
+  assert.equal(statusNode.textContent, "");
+  assert.equal(diagnosticList.children.length, 0);
+  panel.dispose();
+});
+
+test("dispose suppresses a late rejected Host result and never remounts UI", async () => {
+  const target = fakeTarget();
+  let fail;
+  let signal;
+  const panel = mountCommandPanel(target, {
+    commands,
+    invoke: (_id, currentSignal) => {
+      signal = currentSignal;
+      return new Promise((_resolve, reject) => { fail = reject; });
+    },
+  });
+  const phases = [];
+  panel.subscribe(snapshot => phases.push(snapshot.status.phase));
+  const pending = panel.execute("inspect");
+  assert.equal(panel.element.children[2].textContent, "実行中…");
+  panel.dispose();
+  assert.equal(signal.aborted, true);
+  assert.equal(target.children.length, 0);
+  const snapshotAfterDispose = panel.snapshot();
+  const count = phases.length;
+  fail(new Error("SECRET_OLD_HOST_FAILURE")); // The Host can still settle its Promise.
+  assert.equal(await pending, false);
+  assert.deepEqual(panel.snapshot(), snapshotAfterDispose);
+  assert.equal(phases.length, count, "late failure must not notify disposed subscribers");
+  assert.equal(target.children.length, 0);
+  assert.equal(JSON.stringify(panel.snapshot()).includes("SECRET_OLD_HOST_FAILURE"), false);
+});
