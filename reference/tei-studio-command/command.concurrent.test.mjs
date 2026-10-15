@@ -179,3 +179,36 @@ test('C5-09: rejected stale diagnostics do not validate payload or send a notifi
   port.dispose();
   assert.throws(() => port.beginContext(), /disposed/);
 });
+
+test('C5-10: dispose from a notification skips subscribers not yet called', async () => {
+  const observations = [];
+  let invoked = 0;
+  const port = createCommandPort({
+    commands,
+    invoke: async () => { invoked++; return { kind: 'success' }; },
+  });
+  port.subscribe(s => {
+    if (s.status.phase === 'running') port.dispose();
+  });
+  port.subscribe(s => { observations.push(s.status.phase); });
+  assert.equal(await port.execute('validate'), false);
+  assert.equal(invoked, 0, 'Host invoke never starts after disposal in running notification');
+  assert.deepEqual(observations, ['idle'], 'second subscriber must not run after dispose');
+});
+
+test('C5-11: unsubscribe inside notification skips removed subscriber immediately', async () => {
+  const observations = [];
+  const port = createCommandPort({
+    commands,
+    invoke: async () => ({ kind: 'success' }),
+  });
+  let unsubscribe = () => {};
+  port.subscribe(s => {
+    if (s.status.phase === 'running') unsubscribe();
+  });
+  unsubscribe = port.subscribe(s => { observations.push(s.status.phase); });
+  assert.equal(await port.execute('validate'), true);
+  assert.deepEqual(observations, ['idle'], 'removed observer must not see running or success');
+  assert.equal(port.snapshot().status.phase, 'success');
+  port.dispose();
+});
