@@ -85,7 +85,7 @@ node --input-type=module -e 'import {build} from "esbuild"; import {resolve} fro
 
 **新pinを追加**：#1849 exact `c55ad2285268533f5f1c90fbc9fe766bae57f009`、`main.ts` Git blob `cc2644e5a9167dbc3a0b5368ff270276a2ba1b67`、Command #1829 exact `01f5022240fd86c6ac38c1107310e299a1615b48`。この版は`reference/tei-studio-workbench/responses.ts`を使い、Commandの`beginContext`・`setDiagnosticsForContext`と併せて旧応答を破棄する。これらの関連ファイルを同じ固定snapshotへ取り出し、古いCommandの混入を避けること。Go Hostは従前の4操作・read-only envelope・起動時workspace allowlistを維持する。
 
-`connect-workbench.mjs`は**この2種類の実際のGit blob SHAだけ**を受理し、入力の内容から一致する固定版を自動識別する。`connectWorkbenchSource(source)`に`pin=false`を渡す経路は存在せず、第2引数を与えた呼出し自体を拒否する。実際のCLIは常にSHAを検証し、どちらのpinを使用したかログへ出す。検証用の純粋な`inspectWorkbenchImports(source)`はimportの重複・不足を調べるだけで、生成成果物の接続・保存は行わない。
+`connect-workbench.mjs`は**この2種類の実際のGit blob SHAだけ**を受理し、入力の内容から一致する固定版を自動識別する。 さらに snapshot 内のCommand `command.ts`のGit blob（旧 `4e0d5484f82944d5b7d3b0b8431f3a9a1eaa7081`／新 `6c6ee81288c9857ca2f1c282639ba49f059f5535`）を検証し、新headでは `responses.ts` のGit blob `9fa305e227bee96b66002362121db3878e92327d` も要求する。旧・新のソース混在を `command_revision_mismatch`／`responses_revision_mismatch` で拒否する。`connectWorkbenchSource(source)`に`pin=false`を渡す経路は存在せず、第2引数を与えた呼出し自体を拒否する。実際のCLIは常にSHAを検証し、どちらのpinを使用したかログへ出す。検証用の純粋な`inspectWorkbenchImports(source)`はimportの重複・不足を調べるだけで、生成成果物の接続・保存は行わない。
 
 #7と共有する新固定snapshotは **#1833の本差分後exact head + #1849 `c55ad2285268533f5f1c90fbc9fe766bae57f009` + #1829 `01f5022240fd86c6ac38c1107310e299a1615b48`**。#Workによる旧版`11e80396...`の実bundle・Host検査と、新pin版の結果を混同しない。新pin版で`node --test`、生成moduleの実ファイル2回一致、`main.generated.ts`のstrict typecheckとbundle、Hostの実4操作、Command旧応答排除を独立に確認するまで新組合せのPASSとはしない。
 
