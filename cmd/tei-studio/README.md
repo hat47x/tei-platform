@@ -75,9 +75,9 @@ Wails Server BuildはEvent broadcastとService singletonを持ちます。本PoC
 ```sh
 # 専用snapshotのrepo root（#1832をベースにした検証用checkout）。PRをmergeしない
 B=fe8e37b1c735dc138c36cb2d37db94ee44424b9e
-git fetch --no-tags --depth=1 https://github.com/hat47x/tei-platform.git refs/pull/1833/head
-test "$(git rev-parse FETCH_HEAD)" = "$B"
-git archive FETCH_HEAD tools/reference-studio-static-composition | tar -xf -
+git fetch --no-tags --depth=50 https://github.com/hat47x/tei-platform.git refs/pull/1833/head
+git cat-file -e "$B^{commit}"  # fixed historical SHA must be locally available
+git archive "$B" tools/reference-studio-static-composition | tar -xf -
 go run ./tools/reference-studio-static-composition \
   -fixture tools/reference-studio-static-composition/fixture.json \
   -out internal/studiohost/staticservices
