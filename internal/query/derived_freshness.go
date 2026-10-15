@@ -49,7 +49,10 @@ func (m *DerivedMemo) Resolve(
 	canRead func(core.CanonicalID) bool,
 	load CompleteDerivedSource,
 ) (DerivedSelectResult, bool, error) {
-	if now.IsZero() {
+	// Source-age policies and memo TTL depend on a trusted evaluation time.
+	// A pure D2 calculation without caching, freshness or alignment has no
+	// temporal contract and must not require a time declaration.
+	if (policy.MaxAge > 0 || policy.MaxSourceAge > 0) && now.IsZero() {
 		return DerivedSelectResult{}, false, fmt.Errorf("%w: missing trusted evaluation time", derivationref.ErrCacheEvidence)
 	}
 	if err := ValidateDerivedSelect(q, plan, sqlEvidence, canRead); err != nil {
