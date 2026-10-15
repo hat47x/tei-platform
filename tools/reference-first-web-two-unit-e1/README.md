@@ -291,3 +291,14 @@ E1診断Browser Hostは、API側の`/manifest.json`に含まれるB/R/Tと、`/d
 変更後は両方の証跡について、受信ストリームから読み込む各チャンクの**実バイト長を積算しながら**、Manifestは64 KiB・実行イメージ観測は4 KiBで即座に拒否する。宣言された`Content-Length`が不正・上限超過のときは読み込み開始前に拒否する。JSON以外のMedia Type、空応答、HTTP失敗も拒否し、`Content-Length`のない**正常な小型chunked JSON**は受理する。起動前・起動後の転送前とも同じ読み込み境界を通す。読取・書込Runnerへフォールバックしない。
 
 これは**APIが誤設定されたり、過大な診断証跡を返したりした場合のHostのメモリ境界**を守る対策であり、応答が信用できるという証明ではない。特に実行イメージSHAはAPIプロセスの自己申告で、悪意あるプロセスによる偽装は防げない。Trusted Builder、正式なBuildArtifactLock、Source Acceptanceの承認主体、Host配備権限・TLS/IdP/Providerの受入は引き続き別契約に委ねる。
+
+
+### 実測二成果物とHostの「現在の受理」を照合する読取り専用Port
+
+**B（Handover Baseline＝業務モデルの引き渡し基準）**と**R（Baseline Repository Revision＝その基準に対応するリポジトリ改訂）**は業務モデルの意味の引き渡しを追跡する。**T（Target Build Revision＝Target成果物を構築したソース改訂）**はWeb/API/Desktop等、各物理成果物のビルド版を追跡する。同じB/RでもTargetごとに異なるTを持てる。現行E1はBrowserとAPIに共通のソースTを用いるが、両実行単位のDigestとByte長は独立である。
+
+`tools/reference-first-web-host-admission`に、**既存のE1測定値から二単位の正確なHost照会を作る読取り専用アダプタ**を追加した。現在のE1測定フィールド（Application、B/R、共通T、Browser/APIのSHA-256とバイト長）から`Selection`を導出でき、一般の照会では各単位に別々のTを指定できる。`Source.ReadCurrentHostAcceptance(context, selection)`は**実際のHost自身が所有する現在のSource受理・単位ごとのBuilder受理・配備受理**を読み出すためのPortであり、Application内の測定JSON・HTTPクライアント・プラグインからその記録を受け取らない。参照アダプタは各単位のT/Digest/Bytes、受理記録の種類と参照、現時点の承認状態、authority revisionを厳密比較する。
+
+検証は呼出しのたびにHostへ再照会し、前回の肯定結果をCapability Tokenとしてキャッシュしない。Host側で承認が失効した場合や、片方だけ異なるAPI、Build証跡の重複・欠落、別Application/B/R、証跡Source不達、取消済みcontextは拒否する。参照テストでは、独立したBrowser T1とAPI T2の正常例・失効後の再照会・片方のビルド差替え・欠落・権限状態の独立性を検証する。ユーザー指定のArtifact計測値だけで承認を生成する機能はない。
+
+**ここから先は未完了**：このPortのReader実体としてHostが認証した正本Source/Builder/Deployment受理ストア、失効照会・トラストルートを接続する作業は未実装である。テストのHostは合成fixtureであり、これだけで実Host承認が成立するわけではない。現行の`plugin.BuildPlan`/`plugin.BuildArtifactLock`はPluginのビルド計画と生成物の契約なので、Application二単位に架空のPlugin IDを付与したり、二つ目のBuildArtifactLockを発行したりしない。正式Host署名・署名済みSource、Provider、TLS/IdP、実運用のAuthorizationにも未接続。E1の診断Browser Hostは引き続き配備許可を行わず、#1182はOpenのままとする。
