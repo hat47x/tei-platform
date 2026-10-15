@@ -55,7 +55,7 @@ test('untrusted duplicate, missing or already-generated imports fail shape valid
   assert.throws(() => inspectWorkbenchImports(workbench.replace(command, command + command)),
     /workbench_import_missing_or_duplicate/);
   const generated = 'import { mountReadonlyGraph, mountCommandPanel } from ' +
-    '"../../tools/reference-studio-static-composition/generated/ui.generated.mjs";\\n';
+    '"../../tools/reference-studio-static-composition/generated/ui.generated.mjs";\n';
   assert.throws(() => inspectWorkbenchImports(workbench.replace(graph, generated).replace(command, '')),
     /workbench_already_connected/);
 });
@@ -93,7 +93,7 @@ test('fixed #1849 real old/new source is accepted when staged', async t => {
   assert.equal(gitBlobSHA(source), matched.mainBlob);
   const output = connectWorkbenchSource(source);
   const generated = 'import { mountReadonlyGraph, mountCommandPanel } from ' +
-    '"../../tools/reference-studio-static-composition/generated/ui.generated.mjs";\\n';
+    '"../../tools/reference-studio-static-composition/generated/ui.generated.mjs";\n';
   assert.equal(output, source.replace(graph, generated).replace(command, ''));
   assert.equal((output.match(/ui.generated.mjs/g) ?? []).length, 1);
   for (const symbol of ['createReadOnlyClient', 'listWorkspaces', 'catalogWorkspace',
