@@ -79,6 +79,24 @@ go vet -tags studiohost_parity ./tools/reference-studio-host-qualification
 
 既存のPASS確定対象は上記 #1826 `08fc5b3a39ed0005f625a2597a042f79b6e1c0cf` までです。Source Index fixture追加後の#6 headのPASSとは区別してください。検証用snapshotに新headの`tools/reference-studio-host-qualification/`と#1832 exactの`internal/studiohost/`を固定抽出し、先述の`-race`付きGo/vet（`studiohost_parity,tei_studio_host_integration`両タグ）を再実行する必要があります。Wails IPCの検証ではありません。
 
+## 2026-10-15 #6継続：Source Index専用失敗の非タグ化とLinux symlink回帰の強制実行
+
+直前の [GitHub Actions #38664022135](https://github.com/hat47x/tei-platform/actions/runs/38664022135) で**既存のタグなしGo検査はPASS**。今回さらに、`studiohost_parity`を付けない標準CIでも「`Load`成功→`BuildSourceIndex`単独失敗」を検査できるよう拡張した。**下記追加差分のGo実行結果は新headのCIを確認するまで未判定**。
+
+- 新規`source_index_stage_test.go`：重複persistence index名を持つ**実ファイル3件**を作成する `sourceIndexDuplicateIndexFixture` と、`TestSourceIndexStageFailureCLIAndGoOperations`。まずLoader成功・2件のindex保持・`BuildSourceIndex`で`duplicate index name`拒否を確かめ、同一Workspaceを実CLI別プロセスの`validate -json` / `model catalog`と実Go Operationsへ投入する。両操作について CLI exit2/`SOURCE_INDEX_FAILED`、Go typed `StageSourceIndex`、診断が空・元のエラー内容が一致することを検査。HostなしでもSourceIndex-only条件が本当に作れているかを判定する。
+- 既存のタグ付き`studiohost_source_index_failure_test.go`は同じfixture生成helperを利用。**Host経路のPASSは引き続き別の固定snapshotが必要**。
+- 欠落ファイル`TestMissingSourceIndexInputStopsAtWorkspaceLoad`のfixtureは、Windows symlink権限不足時のみSKIPを許容し、**LinuxではSymlink作成失敗をFAIL**とする。これによりLinuxの通常CI PASSから欠落ファイル負例がSKIPされていた可能性を排除する。
+- 変更は`tools/reference-studio-host-qualification/`のみ。`cmd/tei`、`internal/workspace`、`internal/operations`、`internal/studiohost`など他担当原本は一切変更しない。既存証拠と新追加headの合否を混同しない。
+
+**Linux/Go1.26.9の再現**（パス抽出Snapshotが不要なタグなし経路）:
+
+~~~sh
+go test -count=1 -v ./tools/reference-studio-host-qualification -run 'TestMissingSourceIndexInputStopsAtWorkspaceLoad|TestSourceIndexStageFailureCLIAndGoOperations'
+go vet ./tools/reference-studio-host-qualification
+~~~
+
+**残り**：#1832固定Hostを抽出したGo1.26.9/Linux-nativeの`-race -tags studiohost_parity,tei_studio_host_integration`で、`TestMissingSourceIndexInputCLIHostErrorLocation`と`TestSourceIndexFailureAfterSuccessfulLoadAcrossCLIAndHost`の両ケースを直接実行。現行main、実Wails IPC、Desktopは依然として別検証であり、通常CI結果から合格としない。
+
 ## 所有範囲と既存機構
 
 - **#6**: 正常、構文診断、意味診断、Workspace load失敗、Source Index失敗、subject成功/拒否のCLI／Go Operation比較。PoC AのGo Host Bridge実装を検証snapshotに取り込んだ場合は、実Bridge呼出し結果を同じ意味単位に正規化して3者比較します。Wails IPC自体とは別です。
