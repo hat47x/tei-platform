@@ -107,6 +107,7 @@
 | [`reference-example-slide/`](reference-example-slide/) | 例から関係図を組み立てる参照資料 |
 | [`reference-table-definition-document/`](reference-table-definition-document/) | 受理済みの意味から表定義書を導出する参照（#1803） |
 | [`reference-list-roundtrip/`](reference-list-roundtrip/) | 意味の要素の一覧を出力し、編集後の一覧を変更案へ戻す読取り専用の参照（#1807） |
+| [`reference-type-reorg-impact/`](reference-type-reorg-impact/) | 意味の型の統合案が及ぼす影響を一覧する読取り専用の参照（#1806） |
 | [`reference-semantic-extension-catalog/`](reference-semantic-extension-catalog/) | 意味拡張の登録・解決・検証 |
 | [`reference-subsystem-cud/`](reference-subsystem-cud/) | 部分システムの登録・参照・更新・削除の境界確認 |
 | [`reference-sui-action-boundary/`](reference-sui-action-boundary/) | SUIの操作とTEI Actionの接続例 |
