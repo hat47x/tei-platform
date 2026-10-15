@@ -105,25 +105,41 @@ func TestSelectionRejectsMismatchBeforeCallingImplementation(t *testing.T) {
 	}{
 		{"target unsupported", func(_ *HostSelection, i *Invocation, _ *GoRealization) { i.Target = "sql/postgres" }},
 		{"unregistered version", func(_ *HostSelection, i *Invocation, _ *GoRealization) { i.PluginPin.Version = "1.2.0" }},
-		{"unlocked plugin", func(_ *HostSelection, i *Invocation, _ *GoRealization) { i.PluginPin.ID = core.MustCanonicalID("project.not_selected") }},
-		{"artifact mismatch", func(_ *HostSelection, i *Invocation, _ *GoRealization) { i.ArtifactDigest = "sha256:" + strings.Repeat("c", 64) }},
-		{"definition mutated after locking", func(h *HostSelection, _ *Invocation, _ *GoRealization) { h.Catalog.Plugins[0].Artifact.Digest = "sha256:" + strings.Repeat("c", 64) }},
-		{"environment not locked", func(h *HostSelection, _ *Invocation, _ *GoRealization) { h.Environment.ID = core.MustCanonicalID("project.other") }},
+		{"unlocked plugin", func(_ *HostSelection, i *Invocation, _ *GoRealization) {
+			i.PluginPin.ID = core.MustCanonicalID("project.not_selected")
+		}},
+		{"artifact mismatch", func(_ *HostSelection, i *Invocation, _ *GoRealization) {
+			i.ArtifactDigest = "sha256:" + strings.Repeat("c", 64)
+		}},
+		{"definition mutated after locking", func(h *HostSelection, _ *Invocation, _ *GoRealization) {
+			h.Catalog.Plugins[0].Artifact.Digest = "sha256:" + strings.Repeat("c", 64)
+		}},
+		{"environment not locked", func(h *HostSelection, _ *Invocation, _ *GoRealization) {
+			h.Environment.ID = core.MustCanonicalID("project.other")
+		}},
 		{"missing pinned plugin", func(h *HostSelection, _ *Invocation, _ *GoRealization) { h.Catalog.Plugins = nil }},
-		{"duplicate exact plugin", func(h *HostSelection, _ *Invocation, _ *GoRealization) { h.Catalog.Plugins = append(h.Catalog.Plugins, h.Catalog.Plugins[0]) }},
+		{"duplicate exact plugin", func(h *HostSelection, _ *Invocation, _ *GoRealization) {
+			h.Catalog.Plugins = append(h.Catalog.Plugins, h.Catalog.Plugins[0])
+		}},
 		{"impure rule", func(_ *HostSelection, i *Invocation, _ *GoRealization) { i.Rule.Pure = false }},
 		{"unknown rule operator", func(_ *HostSelection, i *Invocation, _ *GoRealization) { i.Rule.Operator = "unknown" }},
 		{"duplicate rule input", func(_ *HostSelection, i *Invocation, _ *GoRealization) { i.Rule.Inputs[1] = i.Rule.Inputs[0] }},
 		{"unsupported nullable contract", func(_ *HostSelection, i *Invocation, _ *GoRealization) { i.OperatorPin.OutputType = "decimal-nonnull" }},
 		{"operator effect escalation", func(_ *HostSelection, i *Invocation, _ *GoRealization) { i.OperatorPin.Effect = "writes" }},
 		{"operator missing from catalog", func(h *HostSelection, _ *Invocation, _ *GoRealization) { h.OperatorCatalog = nil }},
-		{"operator ambiguous", func(h *HostSelection, _ *Invocation, _ *GoRealization) { h.OperatorCatalog = append(h.OperatorCatalog, h.OperatorCatalog[0]) }},
+		{"operator ambiguous", func(h *HostSelection, _ *Invocation, _ *GoRealization) {
+			h.OperatorCatalog = append(h.OperatorCatalog, h.OperatorCatalog[0])
+		}},
 		{"operator revision differs", func(_ *HostSelection, i *Invocation, _ *GoRealization) { i.OperatorPin.Version = "1.0.1" }},
 		{"realization mismatched plugin", func(_ *HostSelection, _ *Invocation, r *GoRealization) { r.Plugin.Version = "2.0.0" }},
-		{"realization mismatched operator", func(_ *HostSelection, _ *Invocation, r *GoRealization) { r.Operator.Fingerprint = strings.Repeat("c", 64) }},
+		{"realization mismatched operator", func(_ *HostSelection, _ *Invocation, r *GoRealization) {
+			r.Operator.Fingerprint = strings.Repeat("c", 64)
+		}},
 		{"realization mismatched target", func(_ *HostSelection, _ *Invocation, r *GoRealization) { r.Target = "sql/postgres" }},
 		{"realization unavailable", func(_ *HostSelection, _ *Invocation, r *GoRealization) { r.Run = nil }},
-		{"process runtime is not this builtin realization", func(h *HostSelection, _ *Invocation, _ *GoRealization) { h.Catalog.Plugins[0].Runtime = plugin.Runtime{Kind: plugin.RuntimeProcess, Command: "unknown"} }},
+		{"process runtime is not this builtin realization", func(h *HostSelection, _ *Invocation, _ *GoRealization) {
+			h.Catalog.Plugins[0].Runtime = plugin.Runtime{Kind: plugin.RuntimeProcess, Command: "unknown"}
+		}},
 		{"pinned artifact absent", func(_ *HostSelection, i *Invocation, _ *GoRealization) { i.ArtifactDigest = "" }},
 	}
 	for _, tc := range cases {
