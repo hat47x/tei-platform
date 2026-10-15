@@ -373,3 +373,187 @@ func TestLookupCancelAuthorizationIdentityAndFailure(t *testing.T) {
 		t.Fatalf("cancelled context exposed receipt: %t %v", found, err)
 	}
 }
+
+func TestDeletePendingAtomicAndIdempotent(t *testing.T) {
+	ctx := context.Background()
+	s, submit := fixture(t)
+	req := DeletePendingRequest{OperationID: "delete-1", SubjectID: submit.SubjectID, OrderID: submit.OrderID, ExpectedVersion: submit.ExpectedVersion}
+
+	before, found, err := s.LookupDelete(ctx, req, allowAll)
+	if err != nil || found || before.Committed {
+		t.Fatalf("unexpected pre-commit receipt: %+v found=%t err=%v", before, found, err)
+	}
+	if dispatched, err := s.SendPending(ctx, req.OperationID, func(context.Context, Notice) error { t.Fatal("sent before commit"); return nil }); err != nil || dispatched {
+		t.Fatalf("notice before commit: dispatched=%t err=%v", dispatched, err)
+	}
+
+	result, err := s.DeletePending(ctx, req, allowAll)
+	if err != nil || result.Outcome != Deleted || !result.Committed {
+		t.Fatalf("delete: %+v err=%v", result, err)
+	}
+	if _, exists := s.Inspect(req.OrderID); exists {
+		t.Fatal("deleted order remains in store")
+	}
+	s.mu.Lock()
+	available := s.state.available
+	history := append([]string(nil), s.state.history[req.OrderID]...)
+	notice, noticeExists := s.state.pending[req.OperationID]
+	_, reservationExists := s.state.reservations[req.OrderID]
+	s.mu.Unlock()
+	if available != 20 || reservationExists || len(history) != 1 || history[0] != "deleted:"+req.OperationID ||
+		!noticeExists || notice.Kind != "order.deleted" {
+		t.Fatalf("atomic delete effects available=%d reservation=%t history=%v notice=%+v exists=%t",
+			available, reservationExists, history, notice, noticeExists)
+	}
+	receipt, found, err := s.LookupDelete(ctx, req, allowAll)
+	if err != nil || !found || receipt.Outcome != Deleted || !receipt.Committed {
+		t.Fatalf("receipt: %+v found=%t err=%v", receipt, found, err)
+	}
+	duplicate, err := s.DeletePending(ctx, req, allowAll)
+	if err != nil || duplicate.Outcome != Deleted || !duplicate.Committed {
+		t.Fatalf("idempotent retry: %+v err=%v", duplicate, err)
+	}
+	s.mu.Lock()
+	historyCount, noticeCount, inventory := len(s.state.history[req.OrderID]), len(s.state.pending), s.state.available
+	s.mu.Unlock()
+	if historyCount != 1 || noticeCount != 1 || inventory != 20 {
+		t.Fatalf("duplicate consequences history=%d notices=%d inventory=%d", historyCount, noticeCount, inventory)
+	}
+	sends := 0
+	for i := 0; i < 2; i++ {
+		ok, err := s.SendPending(ctx, req.OperationID, func(_ context.Context, n Notice) error {
+			if n.Kind != "order.deleted" {
+				t.Errorf("wrong notice %+v", n)
+			}
+			sends++
+			return nil
+		})
+		if err != nil || ok != (i == 0) {
+			t.Fatalf("send %d: %t %v", i, ok, err)
+		}
+	}
+	if sends != 1 {
+		t.Fatalf("sent %d times", sends)
+	}
+}
+
+func TestDeletePendingFailsClosedAndRollsBack(t *testing.T) {
+	ctx := context.Background()
+	s, submit := fixture(t)
+	req := DeletePendingRequest{OperationID: "delete-1", SubjectID: submit.SubjectID, OrderID: submit.OrderID, ExpectedVersion: submit.ExpectedVersion}
+
+	checkUnchanged := func() {
+		t.Helper()
+		assertNoChange(t, s)
+		s.mu.Lock()
+		receipts, pending := len(s.state.receipts), len(s.state.pending)
+		s.mu.Unlock()
+		if receipts != 0 || pending != 0 {
+			t.Fatalf("uncommitted delete left receipts=%d pending=%d", receipts, pending)
+		}
+	}
+	s.failBeforeCommit = true
+	if _, err := s.DeletePending(ctx, req, allowAll); err == nil {
+		t.Fatal("delete succeeded despite transaction failure")
+	}
+	checkUnchanged()
+	s.failBeforeCommit = false
+
+	stale := req
+	stale.ExpectedVersion--
+	if result, err := s.DeletePending(ctx, stale, allowAll); err != nil || result.Outcome != NotDeleted {
+		t.Fatalf("stale old version: %+v %v", result, err)
+	}
+	missing := req
+	missing.OrderID = "absent"
+	if result, err := s.DeletePending(ctx, missing, allowAll); err != nil || result.Outcome != NotDeleted {
+		t.Fatalf("missing order: %+v %v", result, err)
+	}
+	checkUnchanged()
+
+	denied := AuthorizeFunc(func(context.Context, string, string) (bool, error) { return false, nil })
+	if result, err := s.DeletePending(ctx, req, denied); err != nil || result.Outcome != Denied {
+		t.Fatalf("denial: %+v %v", result, err)
+	}
+	failedAuth := AuthorizeFunc(func(context.Context, string, string) (bool, error) {
+		return false, errors.New("authority unreachable")
+	})
+	if result, err := s.DeletePending(ctx, req, failedAuth); err == nil || result.Outcome == Denied {
+		t.Fatalf("authority outage changed to denial: %+v %v", result, err)
+	}
+	aborted, stop := context.WithCancel(ctx)
+	stop()
+	if _, err := s.DeletePending(aborted, req, allowAll); !errors.Is(err, context.Canceled) {
+		t.Fatalf("cancelled context: %v", err)
+	}
+	checkUnchanged()
+
+	// A submitted order owns a reservation and can only be cancelled by the
+	// separate owner Action; deleting it must never leak inventory or history.
+	if _, err := s.Execute(ctx, submit, allowAll); err != nil {
+		t.Fatal(err)
+	}
+	if result, err := s.DeletePending(ctx, req, allowAll); err != nil || result.Outcome != NotDeleted {
+		t.Fatalf("submitted order deleted: %+v %v", result, err)
+	}
+	snap, exists := s.Inspect(req.OrderID)
+	if !exists || snap.Order.State != Submitted || snap.Reserved != 3 || snap.Available != 17 || len(snap.History) != 1 {
+		t.Fatalf("submitted order effects changed: %+v exists=%t", snap, exists)
+	}
+}
+
+func TestDeletePendingUncertainOutcomeReceiptAndIdentity(t *testing.T) {
+	ctx := context.Background()
+	s, submit := fixture(t)
+	req := DeletePendingRequest{OperationID: "delete-1", SubjectID: submit.SubjectID, OrderID: submit.OrderID, ExpectedVersion: submit.ExpectedVersion}
+	s.loseAcknowledgement = true
+	result, err := s.DeletePending(ctx, req, allowAll)
+	if err != nil || result.Outcome != Unknown || result.Committed {
+		t.Fatalf("lost acknowledgement: %+v %v", result, err)
+	}
+	if _, exists := s.Inspect(req.OrderID); exists {
+		t.Fatal("lost acknowledgement rolled back a committed delete")
+	}
+	recovered, found, err := s.LookupDelete(ctx, req, allowAll)
+	if err != nil || !found || recovered.Outcome != Deleted || !recovered.Committed {
+		t.Fatalf("lookup: %+v %t %v", recovered, found, err)
+	}
+	mutated := recovered
+	mutated.Trace[0] = "tampered"
+	recovered, found, err = s.LookupDelete(ctx, req, allowAll)
+	if err != nil || !found || recovered.Trace[0] != PhaseValidate {
+		t.Fatalf("mutable receipt escaped: %+v %t %v", recovered, found, err)
+	}
+	revoked := AuthorizeFunc(func(context.Context, string, string) (bool, error) { return false, nil })
+	if value, found, err := s.LookupDelete(ctx, req, revoked); err != nil || found || value.Outcome != Denied {
+		t.Fatalf("unauthorized receipt: %+v %t %v", value, found, err)
+	}
+	down := AuthorizeFunc(func(context.Context, string, string) (bool, error) {
+		return false, errors.New("authority failure")
+	})
+	if _, found, err := s.LookupDelete(ctx, req, down); err == nil || found {
+		t.Fatalf("provider failure leaked receipt: %t %v", found, err)
+	}
+	for _, altered := range []DeletePendingRequest{
+		{OperationID: req.OperationID, SubjectID: "bob", OrderID: req.OrderID, ExpectedVersion: req.ExpectedVersion},
+		{OperationID: req.OperationID, SubjectID: req.SubjectID, OrderID: "other", ExpectedVersion: req.ExpectedVersion},
+		{OperationID: req.OperationID, SubjectID: req.SubjectID, OrderID: req.OrderID, ExpectedVersion: req.ExpectedVersion + 1},
+	} {
+		if _, found, err := s.LookupDelete(ctx, altered, allowAll); err == nil || found {
+			t.Fatalf("mismatched identity accepted: %+v %t %v", altered, found, err)
+		}
+		if _, err := s.DeletePending(ctx, altered, allowAll); err == nil {
+			t.Fatalf("operation identity reused for another request: %+v", altered)
+		}
+	}
+	retry, err := s.DeletePending(ctx, req, allowAll)
+	if err != nil || retry.Outcome != Deleted {
+		t.Fatalf("retry lost committed identity: %+v %v", retry, err)
+	}
+	s.mu.Lock()
+	count := len(s.state.history[req.OrderID])
+	s.mu.Unlock()
+	if count != 1 {
+		t.Fatalf("duplicate deletion history count=%d", count)
+	}
+}
