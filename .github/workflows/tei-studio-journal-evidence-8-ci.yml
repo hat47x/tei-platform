@@ -8,6 +8,11 @@ on:
       - .github/workflows/tei-studio-journal-evidence-8-ci.yml
       - reference/tei-studio-independent-consumer/**
       - plan/evidence/TEI_STUDIO_POC_EVIDENCE_RUNBOOK_20261014.md
+  pull_request:
+    paths:
+      - .github/workflows/tei-studio-journal-evidence-8-ci.yml
+      - reference/tei-studio-independent-consumer/**
+      - plan/evidence/TEI_STUDIO_POC_EVIDENCE_RUNBOOK_20261014.md
   workflow_dispatch:
 
 permissions:
