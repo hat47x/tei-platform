@@ -90,42 +90,35 @@ node --input-type=module -e 'import {build} from "esbuild"; import {resolve} fro
 #7と共有する新固定snapshotは **#1833の本差分後exact head + #1849 `c55ad2285268533f5f1c90fbc9fe766bae57f009` + #1829 `01f5022240fd86c6ac38c1107310e299a1615b48`**。#Workによる旧版`11e80396...`の実bundle・Host検査と、新pin版の結果を混同しない。新pin版で`node --test`、生成moduleの実ファイル2回一致、`main.generated.ts`のstrict typecheckとbundle、Hostの実4操作、Command旧応答排除を独立に確認するまで新組合せのPASSとはしない。
 
 
-## #2との生成Goサービス内部接続（Issue #1824 / #6181598991）
+## #2の実Host内部注入との接続（Issue #1824 / #6181598991）
 
-#2は [Draft PR #1832](https://github.com/hat47x/tei-platform/pull/1832) の**Host所有パス**で、型付きOperation注入とbuild tag切替を実装している。#1の生成Goを直接Wailsに登録するのではなく、`StudioBridge`の4メソッドと`studiohost.ReadOnly.workspace(id)`を維持して利用する。#1はこの#2原本へ書き込まない。
-
-### #1が実生成する型付きOperation
+#2は [Draft PR #1832](https://github.com/hat47x/tei-platform/pull/1832) のHost所有パスに型付きOperation注入を実装した。#1の**既存**Go生成器が実際に出力する次の二つのconstructor/methodだけで、#2のtyped interfaceへ適合する。不要な`NewTypedServices`や第二Factory/Registryは設けない。
 
 ```go
-// package staticservices
+// package staticservices（PoC Bの実生成結果）
 func NewCatalogService(root string) *CatalogService
 func (s *CatalogService) Catalog(namespace string) (operations.ModelCatalog, error)
-
 func NewValidateService(root string) *ValidateService
 func (s *ValidateService) Validate() (operations.WorkspaceValidation, error)
-
-// 新たに提供した補助API。既存コンストラクタ・Services([]any)は残す。
-func NewTypedServices(root string) (*CatalogService, *ValidateService)
 ```
 
-`NewTypedServices`は#2の実装が必須とするものではない。既存コンストラクタが、すでに#2の型付きinterface（`studiohost.CatalogService` / `studiohost.ValidationService`）をstructural typingで満たしている。rootは#2 Hostの**allowlistでIDを解決したあとにだけ**渡し、この生成パッケージから認可権限やWails公開サービスを追加しない。
+**対象Git blobを保持**：#1 `main.go`は `8d6eca235264f00a44e43484b757bd60fc00c270`、`main_test.go`は `458cea39a4dbad2f3fd0322b2b61f8ecd8ed9756`。これは#2の固定CIで実際に使用した#1833 `fe8e37b1c735dc138c36cb2d37db94ee44424b9e`と同じ生成器・試験コードであり、未証明の追加APIは採用しなかった。
 
-### #2実装の正しい固定契約（#2所有）
+### #2が実装・検証したHost契約
 
-- 基準原本：#1832 `d520689cfb0a2e2919aa86b0beeba54802b31465`、#2の注入実装を含むhead `b0d51895dd4d527070fbec8c9413ab94e911549c` を閲覧して整合確認した。実検証には各テストで使用した**exact revisionを別途記録**する。
-- `internal/studiohost/readonly.go` の `type ServiceFactory func(trustedRoot string) (RootServices, error)`、`NewReadOnlyWithFactory(paths, factory)`。既定の `NewReadOnly(paths)` はfactory=nilで従前の直接Operation呼出し。
-- `cmd/tei-studio/host_default.go` は `//go:build !studio_generated`、`host_generated.go` は `//go:build studio_generated`。**正しいtagは `studio_generated`**（旧提案の `studio_poc_b_generated` ではない）。#2の実装は `NewCatalogService` / `NewValidateService` をcompile-time interface assertion付きで `RootServices` に注入する。
-- #2の実際の生成先は `internal/studiohost/staticservices/`。検証snapshotのrootで `go run ./tools/reference-studio-static-composition -fixture tools/reference-studio-static-composition/fixture.json -out internal/studiohost/staticservices` を実行して、原本を手書き模倣せず本当の生成ファイルを使う。
-- **未知/パス風workspace IDはfactoryへ到達前に拒否**。許可済みroot以外をfactoryへ渡さず、Catalog/Validateエラーを既存`operationFailure`へ戻す。List/Inspectと公開Bridge4メソッドは変更しない。
+- #2実装head: `9a0c195e38861bf64ad7cdd7100558ea65513d75`。通常 `NewReadOnly(paths)` の場合factory=nilで通常Operationを利用。生成モードは `NewReadOnlyWithFactory(paths, factory)`、`type ServiceFactory func(trustedRoot string) (RootServices,error)` を利用する。
+- `ReadOnly.workspace(workspaceID)` で**起動時allowlistを先に検証**。許可されたrootのみ`ServiceFactory`へ渡し、Catalog/Validateを生成typed serviceへ委譲する。未知・パス風のIDは拒否。失敗は従来の`operationFailure(err)`でコード・stage・公開メッセージに変換する。List/Inspectは従来のOperationのまま。
+- 通常build tag `!studio_generated` は既定動作、生成mode tag `studio_generated` は `cmd/tei-studio/host_generated.go`で静的生成constructorを使い、**Wailsには引き続き既存 `StudioBridge` 4メソッドだけ登録**。以前検討した`studio_poc_b_generated`とは異なるため誤用しない。
+- 生成ソースは検証専用snapshotで `internal/studiohost/staticservices/` へ出力する。#2の`host_generated.go`が `tei/internal/studiohost/staticservices` をimport。元の#1832や#1833ブランチへ出力ファイルをcommitしない。
 
-### 同一固定snapshotの再現コマンド
+### 固定snapshotの再現
 
 ```sh
-# #1/#2それぞれのexact headから、所有pathだけを抽出した検証checkout
+# #2 head 9a0c195e + #1 generator exact fe8e37b1 のpathだけ抽出（Draft非merge）
 go run ./tools/reference-studio-static-composition \
   -fixture tools/reference-studio-static-composition/fixture.json \
   -out internal/studiohost/staticservices
-go test -race -count=1 ./internal/studiohost/... ./tools/reference-studio-static-composition
+go test -count=1 ./internal/studiohost/... ./tools/reference-studio-static-composition
 go vet ./internal/studiohost/... ./tools/reference-studio-static-composition
 cd cmd/tei-studio
 CGO_ENABLED=0 go test -mod=readonly -count=1 -tags 'studio_generated,server' .
@@ -133,6 +126,6 @@ CGO_ENABLED=0 go build -mod=readonly -tags 'studio_generated,server' -o tei-stud
 ./tei-studio-generated-server -workspace ../../reference/workspace -port 43128
 ```
 
-**実証条件**：通常buildの回帰、生成tagでHost内部のfactoryが許可済みrootから生成Catalog/Validateへ到達したこと（stubではない実生成ファイル・型一致とspy/call-count）、通常Operationとの`reflect.DeepEqual`一致、警告3件維持、未知ID/任意path拒否、failure `code/stage/message`維持・private root非漏洩、Bridge公開4メソッド固定。Server実Wails IPC/DOM・Desktop実WebViewはそれぞれ別に検証する。CIでcompile/testがPASSしても、実WebView動作やPoC B全体の合格に読み替えない。
+**#2の独立CI証拠**：[run #38661488708](https://github.com/hat47x/tei-platform/actions/runs/38661488708)、Go1.26.9、Wails beta29。生成ファイルSHA-256 `867501c5a98d71337178d8bd7995e2e4eb6d276accd25151a2c18d8cb5adee50`、`TestGeneratedGoServicesRunThroughRealHost` PASS、許可済みroot factory・エラー非漏洩・通常Host回帰PASS、生成Server実build/loopback health・配信smoke PASS、Windows通常Desktop binary build PASS。旧#2のCI失敗は固定PR HEADを移動先からfetchしてsha照合できなかった競合であり、後続CIはpinしたcommitからsource抽出して解消した。
 
-**現在の証拠区分**：#1の型付き追加はこのPR上のコード実装であり、#2の新headと組み合わせた生成tagのCI結果は確認・記録するまで未実証。既存UI合成PASSとHost内部生成Operation接続PASSは別証拠。製品用Contract/Artifact Lock一般化はStudioをブロックしないので既存ADR/Issue担当へ引き継ぐ。
+このCIは実生成Go packageの**Host内での使用**を試験しているが、HTTP healthが成功したことからWailsの実ブラウザーIPCで生成serviceへのCatalog/Validate要求を観測したとは推論しない。生成Serverのブラウザー操作、Desktop実WebView、実セッション認可/全秘密非漏洩/完成したSource Closure/Lockは別Gate。旧#1849生成UI版の実ブラウザーPASSとも混ぜない。
