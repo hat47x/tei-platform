@@ -121,9 +121,26 @@ func ParseBrowseFixture(source []byte) (BrowseFixture, error) {
 	return fixture, nil
 }
 
+// StdinPlan makes the CLI transport input explicit. Existing read-only
+// Scenario operations consume persisted fixtures, not process stdin.
+type StdinPlan struct {
+	Mode string `json:"mode"`
+	Data string `json:"data,omitempty"`
+}
+
+// ValidateStdinPlan fails closed until an actual CLI stdin-consuming operation
+// exists. An absent or invented transport cannot be presented as qualified.
+func ValidateStdinPlan(input StdinPlan) error {
+	if input.Mode != "none" || input.Data != "" {
+		return fmt.Errorf("unsupported CLI stdin plan: require explicit none")
+	}
+	return nil
+}
+
 type Command struct {
-	StepID string   `json:"stepId"`
-	Argv   []string `json:"argv"`
+	StepID string    `json:"stepId"`
+	Argv   []string  `json:"argv"`
+	Stdin  StdinPlan `json:"stdin"`
 }
 
 type Plan struct {
@@ -246,7 +263,7 @@ func Generate(s Scenario, source []byte, scenarioPath, workspacePath string) (Pl
 	digest := sha256.Sum256(source)
 	plan := Plan{SchemaVersion: PlanVersion, ScenarioID: parsed.ID, ScenarioSHA256: hex.EncodeToString(digest[:]), Commands: make([]Command, 0, len(parsed.Steps))}
 	for _, step := range parsed.Steps {
-		plan.Commands = append(plan.Commands, Command{StepID: step.ID, Argv: []string{"tei", "scenario", "run", "-scenario", scenarioPath, "-workspace", workspacePath, "-step", step.ID, "-scenario-sha256", plan.ScenarioSHA256}})
+		plan.Commands = append(plan.Commands, Command{StepID: step.ID, Argv: []string{"tei", "scenario", "run", "-scenario", scenarioPath, "-workspace", workspacePath, "-step", step.ID, "-scenario-sha256", plan.ScenarioSHA256}, Stdin: StdinPlan{Mode: "none"}})
 	}
 	return plan, nil
 }
