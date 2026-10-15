@@ -101,6 +101,36 @@ func TestFailClosedForMissingOrRevokedHost(t *testing.T) {
 	}
 }
 
+func TestHostCurrentReaderErrorIsRedacted(t *testing.T) {
+	reader, index := fixture()
+	// A real Host may include issuer policy, private paths or credentials
+	// in its internal error. Neither startup errors nor errors.Is/Unwrap
+	// may let that diagnostic escape to an untrusted consumer.
+	privateError := errors.New("host-secret-token=example-internal-value path=/private/authority.json")
+	reader.err = privateError
+	record, err := VerifyCurrent(context.Background(), reader, "order_entry", index)
+	if err == nil || !errors.Is(err, ErrCurrentAcceptanceUnavailable) ||
+		errors.Is(err, privateError) || strings.Contains(err.Error(), "host-secret-token") ||
+		strings.Contains(err.Error(), "/private/authority.json") {
+		t.Fatalf("Host error must fail closed with opaque public cause: %v", err)
+	}
+	if record.ApplicationID != "" || record.DecisionRef != "" || record.ModelRevision != "" || len(record.Artifacts) != 0 {
+		t.Fatal("Host read error returned a purported accepted record")
+	}
+	if reader.calls != 1 {
+		t.Fatal("current Host authority was not consulted")
+	}
+
+	// A Host error is distinct from an invalid but successfully read
+	// witness. The latter should still use the existing witness diagnostics.
+	reader, index = fixture()
+	reader.record.DecisionRef = ""
+	_, err = VerifyCurrent(context.Background(), reader, "order_entry", index)
+	if err == nil || !strings.Contains(err.Error(), "SOURCE_ACCEPTANCE_WITNESS_INVALID") {
+		t.Fatalf("incomplete public witness diagnostics changed: %v", err)
+	}
+}
+
 func TestHostRevocationIsConsultedAgain(t *testing.T) {
 	r, index := fixture()
 	if _, err := VerifyCurrent(context.Background(), r, "order_entry", index); err != nil {
