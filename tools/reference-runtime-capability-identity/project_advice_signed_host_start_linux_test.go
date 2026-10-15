@@ -48,7 +48,7 @@ func TestProjectAdviceSignedStartAdmissionSeparatesEnvironmentAndSignerRevocatio
 	}
 	proof := pruntime.LinuxPinnedSignatureProof{
 		SignatureRef: signerRef,
-		Signature: ed25519.Sign(private, message),
+		Signature:    ed25519.Sign(private, message),
 	}
 	pin := func() *pruntime.PinnedLinuxProcess {
 		t.Helper()
@@ -69,14 +69,14 @@ func TestProjectAdviceSignedStartAdmissionSeparatesEnvironmentAndSignerRevocatio
 	held := pin()
 	realization := RuntimeProcessRealization{
 		RuntimeCapabilityFingerprint: ref.Fingerprint,
-		Plugin: candidate.Plugin,
+		Plugin:                       candidate.Plugin,
 		Artifact: plugin.Artifact{
-			Digest: digest,
+			Digest:       digest,
 			SignatureRef: signerRef,
 		},
 		Command: pruntime.ProcessCommand{
 			Executable: path,
-			Args: []string{"--tei-expected-dispatch=" + string(dispatch)},
+			Args:       []string{"--tei-expected-dispatch=" + string(dispatch)},
 		},
 	}
 	grantA := referenceAuthority(ref, nil)
@@ -115,8 +115,8 @@ func TestProjectAdviceSignedStartAdmissionSeparatesEnvironmentAndSignerRevocatio
 		return admittedRunner{
 			process: process,
 			sandbox: pruntime.HostSandboxLauncher{
-				Runner: process,
-				Network: &recordingNetworkEnforcer{},
+				Runner:     process,
+				Network:    &recordingNetworkEnforcer{},
 				Filesystem: &recordingFilesystemEnforcer{},
 			},
 		}
