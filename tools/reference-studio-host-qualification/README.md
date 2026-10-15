@@ -30,7 +30,7 @@ node --test tools/reference-studio-host-qualification/client_transport_contract.
 
 **結果区分**: 旧head `b816f10015491333a122bf18ce29fd94dbe8a5d7` の10 subcases・空診断回帰PASSと、追加head `08fc5b3a39ed0005f625a2597a042f79b6e1c0cf` の**Go/-race/vet・Node追加試験PASS**をそれぞれの固定入力に紐付ける。実行は#Workによる独立検証であり、このチャットでの再実行ではない。現行mainとの組合せ、実Wails IPC/Browser/Desktopは未確認。一般のPR health成功をこれらの証拠の代わりにはしない。
 
-**次の依存**: 固定snapshotの上記3コマンドは#Workが完了。次は現行mainへ基線を切り替えた資格確認と、実Wails IPCを通した同一入力の結果照合を別試験として行う。#3は#1849のPresenter側で不正な`value`を拒否する投影を継続検査し、#2/#10は実IPC・Desktop/利用者境界を別に検証する。Source Indexだけの失敗fixtureは引き続きblocked。
+**次の依存**: 固定snapshotの上記3コマンドは#Workが完了。次は現行mainへ基線を切り替えた資格確認と、実Wails IPCを通した同一入力の結果照合を別試験として行う。#3は#1849のPresenter側で不正な`value`を拒否する投影を継続検査し、#2/#10は実IPC・Desktop/利用者境界を別に検証する。Source Index単独失敗の候補fixtureは本README後続節に追加済みで、実行未確認。
 
 ## #Work独立検証結果の受領（2026-10-15、固定headのみに適用）
 
@@ -49,6 +49,17 @@ node --test tools/reference-studio-host-qualification/client_transport_contract.
 Goの資格試験では未知Workspace、警告3件を維持するCLI/Go/Host比較、**Operation呼出し成功と意味検証不合格の共存**、未知・不正Subject、無効namespaceのCLI/Host分類差を実行済み。Node側は**実`createReadOnlyClient`をimport**しますが、`callByName`は合成dispatchであり、Wails IPC成功を意味しません。
 
 **未確認／別の検査**：現在のmainへの適合、実Wails IPC/生成bindingを経る同一fixture照合、Desktop実WebView、公開Webの認証とIdP、Source Indexだけが失敗するfixture、成果物の統合資格。#1849の新しいheadの画面成功や#10のHost境界PASSをこれらの合格には転用しません。
+
+## 2026-10-15 Source Index専用失敗の実fixture候補（**追加・未実行**）
+
+従来blockedだった「`workspace.Load`成功後に`workspace.BuildSourceIndex`だけが失敗する」区分の再現fixtureを、既存コードから構成しました。**実行PASSは未確認**です。
+
+- 新規`studiohost_source_index_failure_test.go`（`studiohost_parity`付き）。一時Workspaceの `tei.workspace.yaml` を `sources: databases` とし、`database.tei`と`persistence/order.tei`に単一マッピング内で同名の`index duplicate_idx`宣言を2件用意。
+- 実`workspace.Load(root)`が成功して2つのindexを保持することを先に確認。実`workspace.BuildSourceIndex(root,loaded)`では `source_index.go` の明示的な `duplicate index name` 拒否を要求。**Load失敗をSource Index失敗として偽装しない**。
+- 同じfixtureを実CLIプロセス `validate -json` / `model catalog`、Go `operations.ValidateWorkspace` / `CatalogWorkspace`、実Go Hostの `ValidateWorkspace` / `CatalogWorkspace` へ与え、CLI `SOURCE_INDEX_FAILED`（exit 2）、Goのtyped `StageSourceIndex`、Hostの `{ok:false,failure:{code:"SOURCE_INDEX_FAILED",stage:"source-index"}}`を照合。Hostに成功`value`やvalidation findingを捏造しない。
+- **実行状態**：静的なコード照合とDraft上へのfixture追加のみ。Go1.26.9/Linux-nativeではまだ実行していない。Loader/Parserの版が異なれば失敗する可能性があるため、#Workは厳密なSource blob/headを記録して再実行する。
+
+既存のPASS確定対象は上記 #1826 `08fc5b3a39ed0005f625a2597a042f79b6e1c0cf` までです。Source Index fixture追加後の#6 headのPASSとは区別してください。検証用snapshotに新headの`tools/reference-studio-host-qualification/`と#1832 exactの`internal/studiohost/`を固定抽出し、先述の`-race`付きGo/vet（`studiohost_parity,tei_studio_host_integration`両タグ）を再実行する必要があります。Wails IPCの検証ではありません。
 
 ## 所有範囲と既存機構
 
@@ -156,7 +167,7 @@ go vet -tags studiohost_parity ./tools/reference-studio-host-qualification
 | --- | --- | --- |
 | CLI/Go基線 | **旧固定headでPASS（#Work報告）** | main 1284294 + #1826 126924b6 + #1827 c41ea857、Go1.26.9 |
 | CLI/Go/Go Host Bridgeの3者比較 | **旧9be4b815で9 PASS/1 FAIL → 修正b816f100の固定snapshotは10 subcases＋空診断回帰PASS（#Work報告）** | main1284294・readonly.go固定blob・Go1.26.9・-race・両tag。現行main未資格確認 |
-| Source Index専用失敗 | **blocked** | Load成功・BuildSourceIndex失敗の再現可能なfixtureをまだ確定していない |
+| Source Index専用失敗 | **fixture候補追加・未実行** | 重複persistence index名でLoad成功→BuildSourceIndex拒否を期待。Go1.26.9実証待ち |
 | Wails実通信/JS/Browser/Desktop | **not-run** | Go Bridge直接呼出しとは別。#2/#Workで実Hostビルド・起動を検査 |
 | Web session/イベント/Desktop path境界 | **#10担当** | #6では第二の認証/認可やresource判定を作らない |
 | 利用者確認 | **not-run** | 人が操作した価値の判断は別Evidence |
