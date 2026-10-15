@@ -41,6 +41,9 @@ func (b *StudioBridge) ValidateWorkspace(workspaceID string) studiohost.Validati
 func (b *StudioBridge) InspectSubject(workspaceID, kind, subjectID string) studiohost.InspectionResponse {
 	return b.host.InspectSubject(workspaceID, kind, subjectID)
 }
+func (b *StudioBridge) ObserveXead(workspaceID, relativePath string) studiohost.XeadObservationResponse {
+	return b.host.ObserveXead(workspaceID, relativePath)
+}
 
 func main() {
 	var paths workspaces
