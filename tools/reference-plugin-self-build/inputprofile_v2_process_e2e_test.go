@@ -252,6 +252,35 @@ func TestOptInV2InputWithExactV1ProcessEngine(t *testing.T) {
 			if hostReads != 6 {
 				t.Fatalf("each admission must consult current Host selection; got %d reads, want 6", hostReads)
 			}
+
+			// Diagnostic of a KNOWN OPEN read/start gap (see #1845, #976).
+			// Once inputs have been prepared, nothing in this adapter keeps
+			// the Host generation valid until the physical process starts.
+			// A passing test demonstrates the gap, NOT safe revocation.
+			pendingStart, err := admit()
+			if err != nil {
+				t.Fatal(err)
+			}
+			revoked = true
+			if _, err := admit(); !errors.Is(err, inputprofile.ErrCurrentPackageSelectionUnavailable) {
+				t.Fatalf("a fresh Host read did not detect pre-start revocation: %v", err)
+			}
+			afterRevocation, err := evaluateWithExactEngine(
+				engineExecutable, engineDigest, sourcePath, source, pendingStart.Inputs,
+			)
+			if err != nil {
+				t.Fatalf("the expected known read/start gap was not reproducible: %v", err)
+			}
+			if !bytes.Equal(afterRevocation.Output.Bytes, oracle) {
+				t.Fatal("post-revocation process did not reproduce the exact old admitted output")
+			}
+			if _, err := inputprofile.ObservePackageOutput(pendingStart.Evidence, afterRevocation); err != nil {
+				t.Fatalf("output observation rejected valid bytes (but cannot authorize the revoked run): %v", err)
+			}
+			if hostReads != 8 {
+				t.Fatalf("pre-start diagnostic must read the Host exactly twice more; got %d", hostReads)
+			}
+
 			var manifest plugin.PluginPackageManifest
 			if err := json.Unmarshal(previous, &manifest); err != nil {
 				t.Fatalf("exact process emitted invalid SB-1 manifest: %v", err)
