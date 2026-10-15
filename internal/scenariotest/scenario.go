@@ -153,16 +153,16 @@ type Plan struct {
 	Commands         []Command         `json:"commands"`
 }
 
-// rejectDuplicateScenarioMembers rejects JSON objects with repeated member
-// names at any nesting depth. encoding/json otherwise keeps the last value,
-// which could silently hide an unsupported Step operation or assertion.
-func rejectDuplicateScenarioMembers(source []byte) error {
+// RejectDuplicateJSONMembers rejects repeated keys at every object depth.
+// encoding/json otherwise silently overwrites an earlier value. This is
+// shared by persisted Scenario sources and their generated CLI plan artifacts.
+func RejectDuplicateJSONMembers(source []byte) error {
 	decoder := json.NewDecoder(bytes.NewReader(source))
 	if err := scanScenarioJSONValue(decoder); err != nil {
 		return err
 	}
 	if _, err := decoder.Token(); err != io.EOF {
-		return fmt.Errorf("trailing or malformed Scenario JSON content")
+		return fmt.Errorf("trailing or malformed JSON content")
 	}
 	return nil
 }
@@ -186,10 +186,10 @@ func scanScenarioJSONValue(decoder *json.Decoder) error {
 			}
 			key, ok := next.(string)
 			if !ok {
-				return fmt.Errorf("invalid Scenario JSON object key")
+				return fmt.Errorf("invalid JSON object key")
 			}
 			if seen[key] {
-				return fmt.Errorf("duplicate Scenario JSON member %q", key)
+				return fmt.Errorf("duplicate JSON member %q", key)
 			}
 			seen[key] = true
 			if err := scanScenarioJSONValue(decoder); err != nil {
@@ -207,12 +207,12 @@ func scanScenarioJSONValue(decoder *json.Decoder) error {
 		_, err := decoder.Token()
 		return err
 	default:
-		return fmt.Errorf("unexpected Scenario JSON delimiter %q", delim)
+		return fmt.Errorf("unexpected JSON delimiter %q", delim)
 	}
 }
 
 func Parse(source []byte) (Scenario, error) {
-	if err := rejectDuplicateScenarioMembers(source); err != nil {
+	if err := RejectDuplicateJSONMembers(source); err != nil {
 		return Scenario{}, fmt.Errorf("decode Driver Scenario: %w", err)
 	}
 	var s Scenario
