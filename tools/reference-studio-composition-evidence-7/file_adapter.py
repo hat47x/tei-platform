@@ -15,6 +15,14 @@ from pathlib import Path
 PR_HEAD = '1af4bf08c9afcc650ac74def3b0aad6728a5f58d'
 NEW_HEAD = 'd560bddf289df68d896a651ecc6bfad61088f18e'
 CONNECTED_HEAD = '059260521770e6b69eed0294287483dd60753587'
+CURRENT_HEAD = 'fe8e37b1c735dc138c36cb2d37db94ee44424b9e'
+WORKBENCH_CURRENT_HEAD = 'c55ad2285268533f5f1c90fbc9fe766bae57f009'
+COMMAND_CURRENT_HEAD = '01f5022240fd86c6ac38c1107310e299a1615b48'
+CURRENT_WORKBENCH_PINS = {
+    'reference/tei-studio-workbench/main.ts': 'cc2644e5a9167dbc3a0b5368ff270276a2ba1b67',
+    'reference/tei-studio-workbench/responses.ts': '9fa305e227bee96b66002362121db3878e92327d',
+    'reference/tei-studio-command/command.ts': '6c6ee81288c9857ca2f1c282639ba49f059f5535',
+}
 NEW_PIN_DIFF = {
     'main.go': '8d6eca235264f00a44e43484b757bd60fc00c270',
     'main_test.go': '7c8b9d651f545250b5091d79fb35a4212426dc49',
@@ -27,6 +35,15 @@ CONNECTED_PIN_DIFF = {
     'connect-workbench.mjs': '29249c44d02af687103eff5124db95e5bea88c00',
     'connect-workbench.test.mjs': 'f587d7f3bde970bf16a6f6eb5c93bd948aec6714',
     'main_test.go': '074f34cd64168a2ec915ffb797e5d8c9b3a571cf',
+}
+CURRENT_PIN_DIFF = {
+    'README.md': '9d7fbbbcd7279dea464d76b5260d28c084a367db',
+    'main_test.go': '458cea39a4dbad2f3fd0322b2b61f8ecd8ed9756',
+    'compose-ui.mjs': '012137687eb188369d13fa00377cec3e500c72c8',
+    'compose-ui.test.mjs': '2419f271a79285b46fcd94f772351303b07f93fa',
+    'connect-workbench.mjs': '63b9cefd3f4edfe52605ab3c0ed81a60eedef8d5',
+    'connect-workbench.test.mjs': '9ce790caf81e1fd9c21ef25a641c5d95ad94f76b',
+    'node_integration_test.go': '6692e019de116a6c49c3210b11ed61b18d0a7776',
 }
 BASE = 'tools/reference-studio-static-composition'
 PINNED = {
@@ -41,10 +58,11 @@ GO_FILES = ('services.generated.go', 'services.provenance.json')
 UI_FILES = ('ui.generated.mjs', 'ui.provenance.json')
 CONNECTED_UI_FILES = ('ui.generated.mjs', 'ui.generated.d.mts', 'ui.provenance.json')
 def pins_for(head):
-    return {**PINNED, **(NEW_PIN_DIFF if head in (NEW_HEAD, CONNECTED_HEAD) else {}),
-            **(CONNECTED_PIN_DIFF if head == CONNECTED_HEAD else {})}
+    return {**PINNED, **(NEW_PIN_DIFF if head in (NEW_HEAD, CONNECTED_HEAD, CURRENT_HEAD) else {}),
+            **(CONNECTED_PIN_DIFF if head in (CONNECTED_HEAD, CURRENT_HEAD) else {}),
+            **(CURRENT_PIN_DIFF if head == CURRENT_HEAD else {})}
 def ui_files_for(head):
-    return CONNECTED_UI_FILES if head == CONNECTED_HEAD else UI_FILES
+    return CONNECTED_UI_FILES if head in (CONNECTED_HEAD, CURRENT_HEAD) else UI_FILES
 
 
 class Blocked(Exception):
@@ -74,7 +92,7 @@ def prepare(root, lanes, head):
     selected = pins if set(lanes) == {'go', 'ui'} else {
         k: v for k, v in pins.items() if k == 'fixture.json' or
         (k in ('main.go', 'main_test.go') if 'go' in lanes else
-         k in ('compose-ui.mjs', 'compose-ui.test.mjs', 'connect-workbench.mjs', 'connect-workbench.test.mjs'))
+         k in ('compose-ui.mjs', 'compose-ui.test.mjs', 'connect-workbench.mjs', 'connect-workbench.test.mjs', 'node_integration_test.go'))
     }
     for name, expected in selected.items():
         path = base / name
@@ -87,6 +105,13 @@ def prepare(root, lanes, head):
             raise Blocked('missing existing #997 UI Kit resolver')
         require(git_blob(resolved.read_bytes()) == 'a852de9751e596ac0460215aa389a1d3f404c267',
                 'UI Kit resolver differs from main 1284294 reference')
+    if head == CURRENT_HEAD:
+        for relative, expected in CURRENT_WORKBENCH_PINS.items():
+            path = root / relative
+            if not path.is_file():
+                raise Blocked(f'missing current fixed workbench dependency: {relative}')
+            require(git_blob(path.read_bytes()) == expected,
+                    f'current Workbench/Command/responses revision differs: {relative}')
     raw = (base / 'fixture.json').read_bytes()
     return base, raw, json.loads(raw)
 
@@ -148,7 +173,7 @@ def assert_success(result, kind, raw, head=PR_HEAD):
                 'ui: incorrect resolved Kit trace')
         for v in refs:
             require(v['sourcePath'] in text, f'ui: generated import not linked to trace {v["slot"]}')
-        if head == CONNECTED_HEAD:
+        if head in (CONNECTED_HEAD, CURRENT_HEAD):
             declarations = result['data'].get('ui.generated.d.mts')
             require(declarations is not None, 'ui: generated type declarations missing')
             require(meta.get('declarationsSha256') == sha(declarations),
@@ -221,7 +246,21 @@ def probe(root, timeout=60, lanes=('go', 'ui'), head=PR_HEAD):
             result['generation'][kind] = {'status': 'BLOCKED', 'reason': str(err)}
         except (Failed, OSError, json.JSONDecodeError) as err:
             result['generation'][kind] = {'status': 'FAIL', 'reason': str(err)}
-    for label, (mutated, error) in cases(fixture, b'invalid_request' if head != PR_HEAD else b'invalid_manifest').items():
+    negative_cases = cases(fixture, b'invalid_request' if head != PR_HEAD else b'invalid_manifest')
+    if head == CURRENT_HEAD:
+        def invalid_selection(edit):
+            value = copy.deepcopy(fixture)
+            edit(value)
+            return json.dumps(value, ensure_ascii=False, separators=(',', ':')).encode()
+        negative_cases.update({
+            'ui.unknown_service': (invalid_selection(
+                lambda p: p['services'][0].update(id='studio.unknown')), b'invalid_poc_fixture_services'),
+            'ui.duplicate_service': (invalid_selection(
+                lambda p: p['services'][1].update(id=p['services'][0]['id'])), b'invalid_poc_fixture_services'),
+            'ui.incompatible_service_version': (invalid_selection(
+                lambda p: p['services'][0].update(version='99.0.0')), b'invalid_poc_fixture_services'),
+        })
+    for label, (mutated, error) in negative_cases.items():
         kind, _ = label.split('.', 1)
         if kind not in lanes:
             continue
@@ -261,7 +300,7 @@ def main(argv=None):
     parser.add_argument('--repo', required=True, type=Path, help='main + exact #1833 files checkout/snapshot')
     parser.add_argument('--timeout', type=int, default=60)
     parser.add_argument('--lane', choices=('all', 'go', 'ui'), default='all')
-    parser.add_argument('--pocb-head', choices=(PR_HEAD, NEW_HEAD, CONNECTED_HEAD), default=PR_HEAD)
+    parser.add_argument('--pocb-head', choices=(PR_HEAD, NEW_HEAD, CONNECTED_HEAD, CURRENT_HEAD), default=PR_HEAD)
     args = parser.parse_args(argv)
     try:
         result = probe(args.repo.resolve(), args.timeout, ('go', 'ui') if args.lane == 'all' else (args.lane,), args.pocb_head)
