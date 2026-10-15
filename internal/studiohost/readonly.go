@@ -59,6 +59,7 @@ type RootServices struct {
 	Catalog    CatalogService
 	Validation ValidationService
 }
+
 // ServiceFactory is called only after the host has resolved an allowlisted ID.
 // It is never registered as a Wails service or exposed to the renderer.
 type ServiceFactory func(trustedRoot string) (RootServices, error)
