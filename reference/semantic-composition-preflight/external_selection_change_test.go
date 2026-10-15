@@ -52,7 +52,7 @@ func TestExternalSelectionChangeHasMeaningBearingDeterministicFingerprint(t *tes
 	extra := ProjectMeaningSelection{
 		Alias: "other",
 		Resource: modelref.Ref{
-			Scope: "provider-domain:other",
+			Scope:   "provider-domain:other",
 			Subject: subject.Subject{Kind: "semantic-namespace", ID: "other"},
 		},
 		SemanticDigest: "sha256:" + strings.Repeat("3", 64),
