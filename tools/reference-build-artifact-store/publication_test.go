@@ -167,3 +167,19 @@ func TestPublishExactMembersReceiptOrderIndependentOfInput(t *testing.T) {
 		t.Fatalf("unstable member publication order: %v", names)
 	}
 }
+
+func TestPublishExactMembersRejectsLateOversizeBeforeAnyStoreWrite(t *testing.T) {
+	store := openTestStore(t, 8)
+	small := []byte("small")
+	large := []byte("oversized")
+	result, err := store.publishExactMembers([]artifactMemberRequest{
+		{Role: "a", Digest: digestBytes(small)},
+		{Role: "z", Digest: digestBytes(large)},
+	}, map[string][]byte{"a": small, "z": large})
+	if err == nil || len(result.Members) != 0 {
+		t.Fatalf("oversized later member yielded publication evidence: %+v err=%v", result, err)
+	}
+	if _, _, err := store.GetBytes(digestBytes(small)); !errors.Is(err, errArtifactNotFound) {
+		t.Fatalf("an earlier valid member was published before the late size rejection: %v", err)
+	}
+}
