@@ -15,6 +15,12 @@
 - 通知outbox送信はcommit後のみ。同一プロセスでの並行・再入送信は阻止する。**リモート送信に失敗した場合は結果が不明**であり、同一 `OperationID` での再送に対する受信側重複排除が必要。外部通知のexactly-onceは保証しない。
 - 派生値は純粋計算としてのみ扱い、このReferenceから保存値更新を自動実行する規則は設けない。
 
+## 独立Delete最小経路（合成Reference）
+
+`DeletePending(ctx, DeletePendingRequest, Authorizer)` は、**pendingかつ既存Reservationなし**の受注だけを期待版一致時に削除する。対象rowの削除、owner側のtombstone履歴、確定receipt、commit後Outboxを単一の合成staged transactionに保持する。認可拒否・未存在・版不一致・submitted・reservation有り・commit前失敗・context中止では削除しない。commit後ack不明の場合は `LookupDelete` から再認可・同一要求一致で確定結果を取得し、同じ操作の再送は重複したtombstone／通知を生成しない。
+
+これは #1129 に残る **TEI側の独立Delete経路の合成PoC**。旧X-TEA `delete(false)` / `delete(true)` の実際の動作やtransactionルールを模写しない。`#940` のInstaller baseline／source/runtime不一致が解消されるまでは製品・互換仕様ではない。実DBでの削除、Durable outbox、認可版commit fence、Source宣言／Plugin選択の実装資格は別途必要。
+
 ## 検証
 
 ```sh
