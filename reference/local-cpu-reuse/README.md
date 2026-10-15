@@ -261,3 +261,58 @@ TEI_REAL_CLI_E2E=1 node --test reference/local-cpu-reuse/real-go-inspection.e2e.
 ```
 
 Both commands are read-only with respect to the Reference models, but `go build` may download Go modules. Results are trustworthy only after recording the exact PR head and CI result; they do not certify a live Oracle environment. The in-memory World and observation objects may reveal project metadata and must not be dumped to unrestricted logs.
+
+## Go-native executor resolution: real routes, synthetic explicit Capability (2026-10-14)
+
+The previously qualified read-only Reference observation showed that the two Applications' local aliases target the same `master_data` instance in development. The existing *production Go* `realization.ResolveContractQueryExecutor` is the authoritative **typed declaration resolver** for explicit Environment/Database instance/Contract Query/Plugin Capability bindings. It does not infer an executor from matching Oracle providers alone. There is no need to create a second JavaScript executor-selection algorithm or impose mandatory contracts on uninstalled project-specific plugins.
+
+The new [go_executor_resolution_reference_test.go](go_executor_resolution_reference_test.go) calls that **unchanged** Go resolver with the loaded, actual `reference/workspace` for both `development` and `production`. It verifies both Applications' independently named `master` / `customer_master` bindings resolve to the same declared Oracle Database instance, and the actual `master_data.customer` Contract **v2.4** declares the expected `find_by_id(id:customer.customer_id) → customer.customer` / `zero-or-one` signature. It then exercises two deliberately different evidence cases:
+
+- **No explicit executor binding** despite a synthetic provider-compatible Capability: Go resolver must return an unresolved error. Such absence is a *normal research observation*, not a new plugin author validation failure.
+- **One deliberately synthetic explicit binding and synthetic resolved Capability** for the observed instance: Go resolver returns the uniquely typed `ResolvedContractQueryExecutor`. Only its **selection semantics** are tested; the Capability does not exist as a deployed provider and no runtime invocation is authorized. Negative cases reject a foreign Environment, duplicate binding, unsupported provider, wrong Capability kind, wrong instance and wrong target.
+
+This strengthens the join between the two Application routes and the Go resolver while keeping the evidence hierarchy explicit: **observed real Reference routing → synthetic explicitly authored binding → Go typed resolver result → NOT a live Provider**. No Plugin Catalog resolution, Plugin artifact installation, Oracle connection, credentials, resource grants, SQL execution, actual user authorization, Provider result conformance or Acceptance are asserted. The Go Core and production executor resolver are not changed.
+
+Only the existing focused local-CPU CI workflow is extended with the command:
+
+```sh
+go test -count=1 ./reference/local-cpu-reuse -run '^TestGoReference' -v
+```
+
+The workflow uses the exact PR head, Go version from `go.mod` and no full-repository health gate. Runtime/semantic acceptance, #267, #843/#876 and issue-gated training boundaries remain unchanged. The first successful exact-head CI must be recorded separately from previous PR evidence.
+
+## Actual checked-in Plugin Catalog + explicit test-only executor selection (2026-10-14)
+
+The Reference Plugin `tei.database.oracle` **v1.0.0** already declares both `database-provider database.oracle` and `contract-query-executor database.query.oracle` for Oracle. The checked-in Bundle `tei.reference.providers` v1.0.0 selects that Plugin; `development` and `production` select the Bundle. This is authoritative **declaration data**, not an installed or running Oracle executor.
+
+[go_actual_catalog_reference_test.go](go_actual_catalog_reference_test.go) loads the *actual* `reference/workspace` Go World and uses the **existing** `plugin.Catalog.ResolveEnvironment` for both environments. It confirms that the resolved `contract-query-executor/database.query.oracle` is owned by `tei.database.oracle` v1.0.0 and declares the Oracle provider. The checked-in **development** Reference already includes a separate `contract-query-executor-binding` file at `reference/workspace/environments/development/contract-query-executors/customer-find-by-id.tei`: it selects `database.query.oracle` for `master_data.dev/master_data.customer/find_by_id`. The **production** Reference has no corresponding executor Binding. The unmodified `realization.ResolveContractQueryExecutor` must therefore resolve the explicitly selected development executor from the **actual Go Catalog**, while refusing to infer one in production even though Oracle capability is available.
+
+An additional positive Go resolver exercise constructs a **test-only Binding** in memory (using the real Catalog-resolved Capability) for either Environment. It does not write that Binding into a Reference Environment, Bundle, Plugin or Canonical Model. This proves that the declaration-side Plugin Catalog can satisfy the Go resolver's selection rule **when an explicit Binding is supplied**, whether checked in (development) or hypothetical (production test). Neither case proves that the Plugin is installed, that a provider instance is reachable, that credentials or end-user authorization exist, or that `find_by_id` returns the declared data/cardinality. Absence in production is a normal *not selected* observation, not a mandatory certification failure for project-specific plugins.
+
+Negative Go test cases deliberately reject a missing executor, accidentally using a `database-provider` Capability as a Query executor, duplicated identical Capabilities, a Provider mismatch and an unknown executor ID. Both applications still retain separate `master` and `customer_master` aliases; they share an instance only by the observed Environment declarations.
+
+Run only the narrowly scoped test gate with the Go toolchain from `go.mod`:
+
+```sh
+go test -count=1 ./reference/local-cpu-reuse -run '^TestGoReference' -v
+```
+
+This test file is evidence about **Catalog and Binding declarations**, not a new executable runtime service. No Oracle database connection, query execution, plugin process, physical SQL, secrets, customer-data export, automated acceptance or model training is involved. Exact-head CI results are recorded on the PR after execution.
+
+## Real Reference through the existing runtime Registry (2026-10-14)
+
+The **existing** `driver.Resolver.ExecuteReferenceContractQueryInEnvironment` already crosses the Application → Contract Query → Environment → actual Catalog → explicit executor Binding → `ContractQueryExecutorRegistry` boundary. Its `ContractQueryExecutorRuntimeKey` retains all three identities: Environment, Database instance and Capability. Provider-specific executors may optionally expose `DatabaseProviderBoundContractQueryExecutor`; the Driver checks a declared provider match before invoking that executor. It also checks result `zero-or-one` cardinality and Semantic attribute identity **after** a Query returns. We should not implement a second executor Host or impose new mandatory tests on project-specific Plugins.
+
+The new [go_reference_runtime_registry_test.go](go_reference_runtime_registry_test.go) exercises this **unchanged Go production Driver** using the real checked-in `reference/workspace` definitions for **both** `order_entry.customer_reference` (source key `sales.order.customer_id`) and `repair_intake.customer_reference` (source key `repair_intake.intake.customer_id`). Input values and `ContractQueryExecutor` are **in-memory test doubles only**, not user records or a live Database.
+
+Coverage includes exact Environment/instance/Capability runtime Registry lookup (empty, wrong Environment, wrong instance or wrong Capability all rejected), the real development Contract Query executor declaration, Parameter `id` propagation, 0 and 1 Semantic rows under `zero-or-one`, and deliberate rejection of a provider mismatch *before* the fake is invoked, two rows, a foreign Semantic attribute, and an injected executor error. The production environment has no relevant explicit executor Binding, so even a registered fake from development cannot execute there.
+
+Passing such tests establishes the Go Driver's **composition and validation behavior against actual Reference declarations**, not the authenticity of an external Provider, physical SQL, actual runtime Plugin registration, end-user permission, availability, performance or accepted cross-project reuse. In particular, a supplied test-double registry is not a deployment artifact or permission grant. The tests neither start Plugin runtime nor contact Oracle. No new Go Core/DSL/Canonical/Plugin runtime interfaces were introduced.
+
+The same focused CI command automatically includes these tests:
+
+```sh
+go test -count=1 ./reference/local-cpu-reuse -run '^TestGoReference' -v
+```
+
+An exact-head CI run is required before this integration evidence is marked verified.
