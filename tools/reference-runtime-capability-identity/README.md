@@ -140,3 +140,71 @@ codeを含むため、exact-headのfull `tools/repository-health-check.sh` PASS�
 プロセスの入口は既存のProcess Request/Responseの必要項目だけを解釈する**案件所有の薄いアダプター**であり、Runtimeの権限系・Contract Resolver・Business Actionを複製しません。ホストが導出したdispatch IDは、ホスト設定である起動引数から照合する限定的な仕組みです。引数の存在は**Contract Acceptanceを証明しません**。
 
 **未成立**：Contract / Conformance / Resolution Lock / Execution Grantはテスト用合成Evidenceのまま。Pluginの正式Builder・Plugin Lock・署名・発行者、Runtimeのproduction`Registry.Invoke`、実Permission Broker／Lease・fencing、OSのネットワーク／ファイルシステム隔離、業務Action認可は結合していません。Network/Filesystem Enforcerはテスト用記録器です。Linuxの保持FDはTOCTOU低減のみを示し、署名・実OS隔離・完全な本番Admissionを意味しません。
+
+## 既存TEI BuildPlan・BuildArtifactLockとの参照接続（#976）
+
+`project_advice_build_lock_linux_test.go` は、独立して`go build`した案件Go実行体と、既存`plugin.BuildPlan`／`LockBuildOutput`／`VerifyRuntimePluginBuild`を接続します。実ファイル由来のArtifact SHA-256、Go実行コマンドのSHA-256、代表的な案件ソース・`go.mod`のSHA-256をBuildPlanに保持し、実行体のdigestとRuntime Plugin Lock、Generic Runtime Refが一致することをテストします。加えて、選択したソースのdigest、builder、build契約、Target、Artifact、Runtime Provider／Plugin Lockが変わった場合に旧BuildPlan／Lockの再利用が拒否されることを確認します。既存`PinLinuxProcess`による実ファイル検査・子プロセス実行も同じ試験で通します。
+
+**このBuildPlanはテスト用観測記録であり、正式なBuilder発行結果ではありません。** 特に列挙したソースは、案件Goファイルと`go.mod`の代表例だけです。Go標準ライブラリ、間接依存、ビルドタグ、全環境変数、Goツールチェーン全体の**完全なSource Closureではなく**、Builderの署名・契約発行権限・再現性・信頼根拠も証明しません。また旧`plugin.Definition`はここでは試験用のProcess形だけで、案件Service Contract／ConformanceのAccepted証跡ではありません。従ってBuildPlan/Artifact Lockの整合だけを根拠に実行権限を付与してはなりません。
+
+本番移行では、既存セルフビルドのSource Closureと正式Builder受理、現行HostのContract/Provider Acceptance Reader、既存Execution Authorityを同一exact artifactへ接続することが必要です。二重Builder・Resolver・Authorityは追加しません。
+
+## 呼出し時のHost Environment Authority再照合（#976、限定参照）
+
+`current_host_environment.go` の `invokeWithCurrentHostEnvironment` は、**Hostに固定されたEnvironment ID**と、Host所有の既存Authority正本を読む関数を受け取る薄い参照用アダプターです。前回のPlan生成時点のGrantをそのまま再利用せず、各呼出しで現在のEnvironment Authorityを取得し、既存 `verifyRuntimeEnvironmentPlan` で同一Generic Runtime Ref／権限世代を照合してから、既存のArtifact Verifier／Resource Broker／Host Sandbox経路へ渡します。ReaderはPlugin自身やブラウザー要求に任せません。
+
+Linux限定の `project_advice_current_host_environment_linux_test.go` は、同じ実案件Goバイナリ／同一Generic Runtime Refを二つのEnvironmentで共有し、AのExecution Grant撤去後は古いA Planによる再起動を拒否しながら、Bの実プロセス実行を維持します。Authority Evidenceの世代変更、Reader障害、別Environment、重複Grant、Reader欠落、キャンセルは、**Artifact検査・Sandbox/Process起動前**に拒否します。これは新しいGrant Store/Resolver/Permission Keyの実装ではありません。
+
+**重要な未達**：本参照Readerはテスト内の合成Sourceであり、実Hostの認証済みApplication／Environment正本やIssuer Trustへまだ接続していません。照合完了から実起動までのAuthority失効は競合可能であり、これだけではAtomic fencing／運用Leaseの証明になりません。実OS隔離・正式なContract/Conformance受理・署名Artifact・業務Action認可にも昇格しません。本番側では#1370など既存の実行開始Gateと正本の世代管理を流用し、追加の権限体系を作らず詰める必要があります。
+
+## 署名済み独立案件Go実行体と現在のHost Authorityの交差検証（#976）
+
+`project_advice_signed_current_host_linux_test.go` は、案件所有 `cmd/reference-project-advice-process` を独立ビルドし、既存の `PinSignedLinuxProcess`、`LinuxHostSignerTrust`、`invokeWithCurrentHostEnvironment`、`HostSandboxLauncher` を**改造せず**組み合わせるLinux限定試験です。Hostを模した試験コードが一時的にEd25519鍵を作り、案件Go実行体の正確なDigest／Plugin ID／Version／署名参照に対して署名します。公開鍵の信頼は、Plugin申告ではなく独立した試験Hostの信頼集合へ登録します。
+
+同じ固定済み実行体で二つのEnvironmentを処理し、Environment AだけのGrant失効後もBの実行は継続する一方、**共通署名参照の失効はBの次回呼出しも拒否**することを検証します。署名参照へ同じ公開鍵を再登録しても、旧世代に固定した実行体は復権せず、新しい固定・検証が必要です。未知の署名者、署名改変、異なるPlugin IDによる署名使い回しも拒否します。異なる失効の単位を同じResolver／権限Storeへ混ぜません。
+
+これは署名と現行Environment照合の**組合せ試験**であり、テスト鍵は現実の受理済み発行者ではありません。現在のEnvironment readerも試験用の合成値で、正式なService Contract、Provider Conformance、Build/Source ClosureのIssuer受理、運用時Principal／Action Grant、実Resource Lease／OS Sandboxは未成立です。署名者世代の起動Gateも一Host上の範囲であり、Environment Grantの失効と実行開始の原子的な順序付けや分散Host間の失効伝播を証明しません。#1370の並行PRを変更するものでもありません。
+
+## Grantを読む時点とOS起動時点の競合の再現（#976、E39）
+
+`project_advice_authority_start_gap_linux_test.go` は、**既知の未閉塞境界を成功する回帰診断として固定する**Linux専用試験です。既存の`invokeWithCurrentHostEnvironment` が現在のExecution Grantを読んだ後、既存の`PinnedLinuxProcess.Verify`へ進む直前に、テストHostでそのGrantを撤回します。単一スレッドの検証フックで順序を固定するため、スリープ時間や並行Map書込みに依存しません。
+
+現行参照実装では、**撤回後でも最初の要求の実Go子プロセスが起動し、補助処理の成功応答を返します**。次の要求は、Readerが撤回を検出してArtifact Verifier／実行へ進まず拒否されます。このテストのPASSは、権限競合が*解消されたことではなく、実際に残っていること*の証拠です。Host signerの既存Start Gateによる署名者失効制御は、EnvironmentごとのGrantの失効制御とは別の対象です。
+
+### 本番への最小接続条件
+
+- Host管理の正本だけが、Environment・Runtime Capability Ref・実行世代に対する新規入場可否を決める。ブラウザー、案件Plugin、旧Runtime Planの提示を新規Authorityとみなさない。
+- 「正本からの読込み → Verify → 実行開始」を一つの**既存Hostの入場／世代境界**で扱い、失効が完了した後に旧世代で新規Startを許さない。必要なら既存Process Launcherの開始Hook／Resource Leaseのstart admissionに結び付ける。署名者用のGateとは独立のGrant Storeを作らず、同じRuntime Capability Refを用いる。
+- 新規入場拒否、先に入場済みの実行の扱い、失効完了時点、子プロセスの継続・中断、運用Auditを明示する。署名者失効とEnvironment利用拒否とArtifact全体の失効を混同しない。
+- まず同一Linux Hostで、失効とStartをチャネル同期した正例・負例を確認する。別Host／Wasm／遠隔実行への保証を暗黙に拡張しない。
+
+この節は本番用の新しい権限APIや実装の採用を意味しません。テスト用のEnvironment Grant、Contract/Provider/Conformance/Issuer、OS隔離等の未達は引き続き維持します。
+
+## E40: Grant失効と実プロセス入場の順序づけを試験Hostで実証（#976）
+
+`project_advice_guarded_host_admission_linux_test.go` は、E39（#1845）の既知競合に対する**保守的な比較用の正例**です。既存の `invokeWithCurrentHostEnvironment`、独立Go案件実行体、`PinnedLinuxProcess`、`HostSandboxLauncher` は変更しません。テスト専用のHost正本がEnvironmentごとに `sync.RWMutex` を持ち、読取り側が **Grantの現在確認から実プロセス終了まで** 入場を保持します。撤去側は書込みロックを取得してGrantを撤去します。
+
+試験では、AのGrant読取り後／Artifact検証前に同期用Barrierで止め、同時にAのGrant失効を要求します。この時点では失効は完了できず、既に入場したAが実Goプロセスを終えた後で完了します。その後のAの再実行はArtifact検査前に拒否されます。Aの実行が停止している間でも別Environment BのGrant撤去は独立して完了し、Bの次回実行は拒否されます。
+
+**採用上の留保**：これはテストHost内の順序づけを示すだけで、製品の新しいGrant Storeや権限APIではありません。読取りロックを実プロセス終了まで保持するため、長時間処理に対して**失効を長時間待たせる**方式です。本番の推奨実装とはせず、既存 `StdioProcessLauncher` のOS Start境界／Hostの現在のAuthority世代を用い、**失効完了後に旧世代Start不可**を保証しつつStart後すぐ入場ロックを解放する設計を別途検証します。入場済み子プロセスを止めるべきかは別のPolicyです。なお、E39が検出した**無防備な経路は引き続き存在**し、E40のPASSは製品修正の成立を意味しません。
+
+正式Contract/Provider Conformance、Hostの認証済み実Authority Source、Resource Brokerの実Lease・fencing、署名Issuer、本物のOS Sandbox、複数Hostの失効同期には未接続です。
+
+## E41: Environment Grant入場の保護をOS Startまでに限定する（#976）
+
+`project_advice_start_only_host_linux_test.go` は、E39（無保護時に撤去後起動が可能）とE40（入場ロックを**子プロセス終了まで**保持する比較正例）に対する、**Start境界だけを保護する選択式の参照経路**です。Linux固有の小さなアダプター `internal/plugin/runtime/process_host_start_admission_linux.go` が、既存 `PinnedLinuxProcess` の同一保持FD／`StdioProcessLauncher.invokeExecutableWithStartGate` に、Host所有の `LinuxHostStartAdmission` を追加します。HostはEnvとexact Generic Runtime Refに対応する**現在のAuthority**を、`cmd.Start`を呼ぶ直前に再検査し、失効の確定操作と順序づけます。署名済みプロセスの場合は既存の署名者世代確認 `startIfCurrent` を同じStart内に入れ子で維持します。
+
+実案件Goの独立実行体を用いて、まず許可済みAを起動し、次に**現在のReaderを通過後／Artifact Verify中**にAのGrantを撤去します。E39とは異なり、Start地点の再検査で旧Grantの実行開始を拒否することを確認します。同じ保持済みGo実行体でも、独立Environment Bの有効Grantによる実行は維持し、Aの次回要求はReader段階で拒否。Aが明示再承認されると新しいStartが可能です。これはE40の処理終了までロックを保持する方式を使用しません。
+
+**実装範囲と留保**：新アダプターはHost専用の選択式Linux接続であり、製品の全Invocationを自動的に置き換えるものではありません。Hostのstart-admissionコールバックが実際のcurrent Authority正本・失効トランザクションを同一世代で扱う必要がありますが、この試験は合成Authorityを`sync.RWMutex`で保護します。既存のE39無保護経路は依然利用可能なため、Production Gateの強制・不要経路の廃止、実Issuer/Contract/Provider受理、Resource Brokerの実Lease/fencing、実OS隔離、Host再起動・他Hostの失効伝播は**未成立**。追加のGrant Store／Resolver／Core enumは設けず、既存Pluginの開発手順へ必須検査負担を増やしません。
+
+## E42: 署名済み案件GoにおけるEnvironment／Signer二重Startゲート（#976）
+
+`project_advice_signed_host_start_linux_test.go` は、E41の選択式 `HostAdmittedPinnedLinuxProcess` と既存 `PinSignedLinuxProcess`／`LinuxHostSignerTrust` を、**同じ独立ビルドされた案件Go子プロセス**で組み合わせる回帰試験です。Host所有のEnvironment A/B用現行Grantを起動直前に照合し、内部の署名者世代ゲートも同じ`cmd.Start`に適用します。試験中、OS Start成功件数は「Start入場の試行回数」と分けて記録します。
+
+- A/Bの両方が有効なときは、同じ署名付き保持FD実行体をそれぞれ呼び出せます。
+- Aの現在Grantを**Artifact署名検証が成功した後、OS Startの直前**に失効させるとAのStartだけを拒否し、Bは実行できます。
+- Bの現在Grantが有効でも、共有署名者の信頼を**Artifact署名検証が成功した後、OS Startの直前**に失効させるとBのStartを拒否します。署名者の再登録だけでは旧世代実行体は復権せず、新しい署名検証済みの保持FDを作り直す必要があります。
+- 署名者が復権しても、Aの失効済みEnvironment Grantが暗黙に復活することはありません。
+
+この試験で実際に使う鍵・Host current Grantはテスト用合成値です。**既存Start Gateを組み合わせた限定Consumerの確認**であり、正式Issuer／Provider Conformance／Production Host Authority Source、実Resource Lease／OS隔離、分散Host失効を証明しません。既存の無保護Runtime経路を本番向けに無効化する変更でもありません。複数の独立Grant StoreやResolver、Core権限enumを追加しません。

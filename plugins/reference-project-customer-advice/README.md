@@ -12,21 +12,22 @@ go test ./plugins/reference-project-customer-advice
 
 UIとHTTP Hostは [参照実装](../../tools/reference-project-advice-lit/README.md)を参照してください。これは製品Runtimeで登録された正式Service Providerではありません。正式な受注可否、Runtime Authority、Conformance、第三者向け配布品質は保証しません。
 
-## 独立した実行ファイルの検証（#976）
+## 独立Goプロセスの唯一の参照入口（#976）
 
-`cmd/reference-advice-process/` は、同じ案件Go補助処理から**単独のOS実行ファイル**を構築する参照用入口です。現在のGoテスト実行ファイルを子プロセスとして流用する方式とは別に、配布候補となる独立成果物のbytesをSHA-256で検査します。
+`cmd/reference-project-advice-process/` を、案件所有の `Evaluate` を既存TEI Process Request/Responseへ写す**唯一の独立実行アダプター**とします。以前の `cmd/reference-advice-process/` は、別のPRで同時期に追加された重複入口のため廃止しました。案件本体の業務ロジックを二重実装しません。
 
 ```sh
-go build -trimpath -o /tmp/reference-advice-process ./plugins/reference-project-customer-advice/cmd/reference-advice-process
+go build -trimpath -buildvcs=false -o /tmp/reference-project-advice-process ./plugins/reference-project-customer-advice/cmd/reference-project-advice-process
 go test -count=1 ./tools/reference-runtime-capability-identity ./plugins/reference-project-customer-advice
 ```
 
-テストでは、既存のGeneric Runtime Capability Refから導出される**合成の固定dispatch ID**だけを受け付け、想定外の操作・入力を拒否します。既存の`StdioProcessLauncher`／`HostSandboxLauncher`を通して別プロセスを呼びます。変更された実行ファイルは、実行前のDigest照合で拒否します。Linuxでの参照試験であり、ほかのTargetへ自動的に適用しません。
+Hostは、既存Generic Runtime Capability Refから導出したdispatch IDを `--tei-expected-dispatch=<ID>` という起動引数で渡します。これは契約の受理や権限の付与ではなく、**要求のdispatch先が起動時のHost選択と一致すること**を試験するための境界です。
 
-**制限**：固定dispatch IDの元となるContract `1.0.0`、Provider、Resolution Lock、Environment Grantは依然として**仮定した試験材料**です。コンパイルとSHA-256照合は署名・発行主体の信頼、正式なContract/Conformance受理、起動FDの固定、実OS Sandbox、運用中のGrant／Leaseの再検証、受注Actionの認可を証明しません。製品用の第二ResolverやAuthorityを導入するものでもありません。
+検証は次の二方式で同じアダプターを使用します。
 
-## 案件所有の独立Goプロセス用アダプター
+- `project_advice_independent_binary_test.go`：単独でビルドした実行ファイルのSHA-256を起動前に照合し、通常の `StdioProcessLauncher` で起動する。改ざん、偽のdispatch、未知の操作、不正な入力、Hostの起動引数欠落を拒否する。
+- `project_advice_built_pinned_linux_test.go`：既存の `PinLinuxProcess` が保持するLinux FDから実行し、検査後のパス置換が実行内容を変えないことを確認する。
 
-`cmd/reference-project-advice-process` は、このパッケージの`Evaluate`を既存TEIプロセス通信へ写す薄い参照用実行体です。ホストが導出するdispatch IDを起動引数として照合しますが、アダプター自身はそのIDの受理や実行権限を判断しません。検証例は`tools/reference-runtime-capability-identity/project_advice_built_pinned_linux_test.go`にあります。
+二つはTransport・Artifact固定方式の異なる試験であり、プラグイン作者に二つの実行入口を要求するものではありません。
 
-独立したGo実行体として構築・実行できることと、**正式なプラグインの受理、署名、権限付与、業務Actionへの登録は別**です。既存`Plugin Lock`や`Host Authority`を置き換えません。
+**非達成**：Contract version/fingerprint、Provider、Resolution Lock、Execution Grantは試験用の合成候補であり、正式なContract/Conformance受理ではありません。署名・発行者の信頼、OS Sandbox適用、運用時のPrincipal/Action認可、実Resource Lease、本番RegistryのGeneric Capability統合は証明されません。独立したResolver、Permission Store、Composition Profileを追加せず、これらは既存の#951/#976の担当境界に残します。
