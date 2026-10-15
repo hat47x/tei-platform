@@ -78,31 +78,43 @@ func TestProvenanceSerialization(t *testing.T) {
 }
 
 func TestServiceSelectionOrderDoesNotChangeGeneratedSource(t *testing.T) {
-  original, originalEvidence, err := composeServices([]byte(goodFixture))
-  if err != nil { t.Fatal(err) }
-  var p profile
-  if err := json.Unmarshal([]byte(goodFixture), &p); err != nil { t.Fatal(err) }
-  p.Services[0], p.Services[1] = p.Services[1], p.Services[0]
-  reordered, err := json.Marshal(p)
-  if err != nil { t.Fatal(err) }
-  actual, evidence, err := composeServices(reordered)
-  if err != nil { t.Fatal(err) }
-  if !bytes.Equal(original, actual) || evidence.GeneratedSHA256 != originalEvidence.GeneratedSHA256 {
-    t.Fatal("generated Go changes with fixture service selection order")
-  }
-  if evidence.FixtureSHA256 == originalEvidence.FixtureSHA256 {
-    t.Fatal("input fingerprint must distinguish reordered raw fixture")
-  }
+	original, originalEvidence, err := composeServices([]byte(goodFixture))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var p profile
+	if err := json.Unmarshal([]byte(goodFixture), &p); err != nil {
+		t.Fatal(err)
+	}
+	p.Services[0], p.Services[1] = p.Services[1], p.Services[0]
+	reordered, err := json.Marshal(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	actual, evidence, err := composeServices(reordered)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(original, actual) || evidence.GeneratedSHA256 != originalEvidence.GeneratedSHA256 {
+		t.Fatal("generated Go changes with fixture service selection order")
+	}
+	if evidence.FixtureSHA256 == originalEvidence.FixtureSHA256 {
+		t.Fatal("input fingerprint must distinguish reordered raw fixture")
+	}
 }
 
 func TestMissingServiceCannotProduceIncompleteStaticHost(t *testing.T) {
-  var p profile
-  if err := json.Unmarshal([]byte(goodFixture), &p); err != nil { t.Fatal(err) }
-  p.Services = p.Services[:1]
-  raw, err := json.Marshal(p)
-  if err != nil { t.Fatal(err) }
-  _, _, err = composeServices(raw)
-  if err == nil || !strings.Contains(err.Error(), "unsupported or incomplete") {
-    t.Fatalf("expected missing-service rejection, got %v", err)
-  }
+	var p profile
+	if err := json.Unmarshal([]byte(goodFixture), &p); err != nil {
+		t.Fatal(err)
+	}
+	p.Services = p.Services[:1]
+	raw, err := json.Marshal(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, _, err = composeServices(raw)
+	if err == nil || !strings.Contains(err.Error(), "unsupported or incomplete") {
+		t.Fatalf("expected missing-service rejection, got %v", err)
+	}
 }
