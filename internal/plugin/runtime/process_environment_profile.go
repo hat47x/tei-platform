@@ -20,16 +20,16 @@ type HostProcessEnvironmentProfile struct {
 	// SearchDirectories form the child's PATH in the given order. Every entry
 	// must be absolute; empty, relative and path-list-containing entries fail.
 	// Omit this field when only explicit executable paths are permitted.
-	SearchDirectories  []string
+	SearchDirectories []string
 	// HomeDirectory sets HOME on Unix and USERPROFILE on Windows, if provided.
-	HomeDirectory      string
+	HomeDirectory string
 	// TemporaryDirectory sets TMPDIR on Unix and TEMP/TMP on Windows, if given.
 	TemporaryDirectory string
 	// Additional holds Host-approved, non-standard variables, not inherited
 	// Host os.Environ values. PATH/HOME/TMPDIR/TEMP/TMP/USERPROFILE cannot be
 	// overridden through this field. Secret delivery requires separate Host
 	// authority and must not be configured from plugin-supplied values.
-	Additional         map[string]string
+	Additional map[string]string
 }
 
 // Environment returns a deterministic complete child environment. An empty
