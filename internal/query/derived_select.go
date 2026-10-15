@@ -16,15 +16,15 @@ import (
 // DerivedSelect is a deliberately narrow, target-neutral D2 execution contract.
 // It does not replace native SQL, the accepted semantic model, or authorization.
 type DerivedSelect struct {
-	Rule       derivationref.Definition
-	Binding    derivationref.Binding
-	Inputs     map[string]core.CanonicalID // rule input name -> explicitly mapped semantic attribute
-	Where      *DerivedWhere
-	Order      []DerivedOrder
-	Limit      int
-	HasLimit   bool
-	Offset     int
-	MaxRows    int // mandatory upper bound on a complete, unpaginated source
+	Rule     derivationref.Definition
+	Binding  derivationref.Binding
+	Inputs   map[string]core.CanonicalID // rule input name -> explicitly mapped semantic attribute
+	Where    *DerivedWhere
+	Order    []DerivedOrder
+	Limit    int
+	HasLimit bool
+	Offset   int
+	MaxRows  int // mandatory upper bound on a complete, unpaginated source
 }
 
 type DerivedWhere struct {
@@ -33,9 +33,9 @@ type DerivedWhere struct {
 }
 
 type DerivedOrder struct {
-	Attribute core.CanonicalID
+	Attribute  core.CanonicalID
 	Descending bool
-	Kind string // decimal or text; explicit, never inferred from an identifier
+	Kind       string // decimal or text; explicit, never inferred from an identifier
 }
 
 type DerivedRow struct {
@@ -269,7 +269,7 @@ type selectedRow struct {
 	keys []derivedKey
 }
 type derivedKey struct {
-	text string
+	text   string
 	number *big.Rat
 }
 

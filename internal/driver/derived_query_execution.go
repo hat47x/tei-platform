@@ -25,7 +25,7 @@ type FieldReadAuthorization interface {
 }
 
 type DerivedBrowseQueryExecution struct {
-	Browse BrowseQueryExecution
+	Browse  BrowseQueryExecution
 	Derived query.DerivedSelectResult
 }
 
@@ -86,7 +86,7 @@ func (r Resolver) ExecuteDerivedBrowseQuery(
 		return DerivedBrowseQueryExecution{}, err
 	}
 	return DerivedBrowseQueryExecution{
-		Browse: BrowseQueryExecution{Resolution: resolved, Result: observed},
+		Browse:  BrowseQueryExecution{Resolution: resolved, Result: observed},
 		Derived: selected,
 	}, nil
 }

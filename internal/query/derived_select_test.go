@@ -20,9 +20,9 @@ func d2Fixture() (query.EmbeddedSQL, query.DerivedSelect, query.CompleteSourceEv
 		},
 	}
 	p := query.DerivedSelect{
-		Rule: derivationref.Definition{ID: "available-rule", Inputs: []string{"stock", "reserved"}, Operator: "subtract", Pure: true},
+		Rule:    derivationref.Definition{ID: "available-rule", Inputs: []string{"stock", "reserved"}, Operator: "subtract", Pure: true},
 		Binding: derivationref.Binding{RuleID: "available-rule", TargetID: "product.available", Scope: "query"},
-		Inputs: map[string]core.CanonicalID{"stock": "product.stock", "reserved": "product.reserved"},
+		Inputs:  map[string]core.CanonicalID{"stock": "product.stock", "reserved": "product.reserved"},
 		Order: []query.DerivedOrder{
 			{Attribute: "product.available", Descending: true, Kind: "decimal"},
 			{Attribute: "product.id", Kind: "text"},
@@ -32,7 +32,7 @@ func d2Fixture() (query.EmbeddedSQL, query.DerivedSelect, query.CompleteSourceEv
 	e := query.CompleteSourceEvidence{
 		SQLSHA256: query.DigestNativeSQL(q.Source),
 		IR: query.DerivedIR{
-			Query: q.ID,
+			Query:    q.ID,
 			Coverage: query.AnalysisCoverage{Parse: query.CoverageFull, Lowering: query.CoverageFull},
 			Relational: query.RelationalIR{
 				Nodes: []query.RelNode{
@@ -45,8 +45,8 @@ func d2Fixture() (query.EmbeddedSQL, query.DerivedSelect, query.CompleteSourceEv
 	}
 	record := func(id, stock, reserved string) query.DerivedRow {
 		return query.DerivedRow{Values: map[core.CanonicalID]derivationref.Input{
-			"product.id": {State: derivationref.Present, Decimal: id},
-			"product.stock": {State: derivationref.Present, Decimal: stock},
+			"product.id":       {State: derivationref.Present, Decimal: id},
+			"product.stock":    {State: derivationref.Present, Decimal: stock},
 			"product.reserved": {State: derivationref.Present, Decimal: reserved},
 		}}
 	}
@@ -96,22 +96,22 @@ func TestD2DerivedFilterSortCountAndPage(t *testing.T) {
 func TestD2PreflightRejectsWrongPhysicalOrderAndUnauthorizedFields(t *testing.T) {
 	q, p, evidence, _ := d2Fixture()
 	allow := func(core.CanonicalID) bool { return true }
-	tests := []struct{
-		name string
+	tests := []struct {
+		name   string
 		mutate func(*query.EmbeddedSQL, *query.DerivedSelect, *query.CompleteSourceEvidence)
 	}{
 		{"pre-limit", func(_ *query.EmbeddedSQL, _ *query.DerivedSelect, e *query.CompleteSourceEvidence) {
-			e.IR.Relational.Nodes = append(e.IR.Relational.Nodes, query.RelNode{ID:"limited",Kind:query.RelLimit,Inputs:[]string{"projection"}})
+			e.IR.Relational.Nodes = append(e.IR.Relational.Nodes, query.RelNode{ID: "limited", Kind: query.RelLimit, Inputs: []string{"projection"}})
 			e.IR.Relational.Root = "limited"
 		}},
 		{"pre-filter", func(_ *query.EmbeddedSQL, _ *query.DerivedSelect, e *query.CompleteSourceEvidence) {
-			e.IR.Relational.Nodes = append(e.IR.Relational.Nodes, query.RelNode{ID:"filtered",Kind:query.RelFilter})
+			e.IR.Relational.Nodes = append(e.IR.Relational.Nodes, query.RelNode{ID: "filtered", Kind: query.RelFilter})
 		}},
 		{"pre-aggregate", func(_ *query.EmbeddedSQL, _ *query.DerivedSelect, e *query.CompleteSourceEvidence) {
-			e.IR.Relational.Nodes = append(e.IR.Relational.Nodes, query.RelNode{ID:"aggregate",Kind:query.RelAggregate})
+			e.IR.Relational.Nodes = append(e.IR.Relational.Nodes, query.RelNode{ID: "aggregate", Kind: query.RelAggregate})
 		}},
 		{"join duplicates", func(_ *query.EmbeddedSQL, _ *query.DerivedSelect, e *query.CompleteSourceEvidence) {
-			e.IR.Relational.Nodes = append(e.IR.Relational.Nodes, query.RelNode{ID:"join",Kind:query.RelJoin})
+			e.IR.Relational.Nodes = append(e.IR.Relational.Nodes, query.RelNode{ID: "join", Kind: query.RelJoin})
 		}},
 		{"stale SQL", func(q *query.EmbeddedSQL, _ *query.DerivedSelect, _ *query.CompleteSourceEvidence) {
 			q.Source += " LIMIT 1"
@@ -129,7 +129,9 @@ func TestD2PreflightRejectsWrongPhysicalOrderAndUnauthorizedFields(t *testing.T)
 			p.Inputs["stock"] = "secret.stock"
 		}},
 		{"missing stable order", func(_ *query.EmbeddedSQL, p *query.DerivedSelect, _ *query.CompleteSourceEvidence) {
-			p.Order = nil; p.HasLimit = true; p.Limit = 1
+			p.Order = nil
+			p.HasLimit = true
+			p.Limit = 1
 		}},
 	}
 	for _, tc := range tests {
@@ -171,10 +173,10 @@ func TestD2RejectsIncompleteUnstableAndBadCardinality(t *testing.T) {
 	if _, err := query.EvaluateDerivedSelect(p, rows, true); !errors.Is(err, query.ErrDerivedUnsupported) {
 		t.Fatalf("unstable page accepted: %v", err)
 	}
-	p.Order = append(p.Order, query.DerivedOrder{Attribute:"product.id",Kind:"text"})
+	p.Order = append(p.Order, query.DerivedOrder{Attribute: "product.id", Kind: "text"})
 	for _, state := range []derivationref.InputState{derivationref.Missing, derivationref.AbsentRelation, derivationref.MultipleRelations} {
 		_, _, _, fresh := d2Fixture()
-		fresh[0].Values["product.stock"] = derivationref.Input{State:state}
+		fresh[0].Values["product.stock"] = derivationref.Input{State: state}
 		if _, err := query.EvaluateDerivedSelect(p, fresh, true); !errors.Is(err, query.ErrDerivedUnsupported) {
 			t.Fatalf("state %s unexpectedly accepted: %v", state, err)
 		}
@@ -183,8 +185,8 @@ func TestD2RejectsIncompleteUnstableAndBadCardinality(t *testing.T) {
 
 func TestD2NullEmptyAndExactDecimals(t *testing.T) {
 	_, p, _, rows := d2Fixture()
-	p.Where = &query.DerivedWhere{Op:">=",Decimal:"50"}
-	rows[0].Values["product.stock"] = derivationref.Input{State:derivationref.Null}
+	p.Where = &query.DerivedWhere{Op: ">=", Decimal: "50"}
+	rows[0].Values["product.stock"] = derivationref.Input{State: derivationref.Null}
 	got, err := query.EvaluateDerivedSelect(p, rows, true)
 	if err != nil || got.Count != 3 {
 		t.Fatalf("NULL should be UNKNOWN and filtered: %#v %v", got, err)
@@ -194,8 +196,8 @@ func TestD2NullEmptyAndExactDecimals(t *testing.T) {
 		t.Fatalf("empty set: %#v %v", empty, err)
 	}
 	_, p, _, rows = d2Fixture()
-	rows[0].Values["product.stock"] = derivationref.Input{State:derivationref.Present,Decimal:"1.10"}
-	rows[0].Values["product.reserved"] = derivationref.Input{State:derivationref.Present,Decimal:"0.25"}
+	rows[0].Values["product.stock"] = derivationref.Input{State: derivationref.Present, Decimal: "1.10"}
+	rows[0].Values["product.reserved"] = derivationref.Input{State: derivationref.Present, Decimal: "0.25"}
 	got, err = query.EvaluateDerivedSelect(p, rows[:1], true)
 	if err != nil || got.Rows[0].Values["product.available"].Decimal != "0.85" {
 		t.Fatalf("exact decimal subtract: %#v %v", got, err)
