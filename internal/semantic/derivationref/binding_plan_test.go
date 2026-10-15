@@ -39,7 +39,7 @@ func d4Fixture(t *testing.T) BindingRequest {
 		Attributes: []semantic.Attribute{
 			{ID: d4AmountID, Symbol: "Amount", TypeRef: "std.decimal"},
 			{ID: "sales.order_line.quantity", Symbol: "Quantity", TypeRef: "std.decimal"},
-			{ID: "sales.order_line.unit-price", Symbol: "UnitPrice", TypeRef: "std.decimal"},
+			{ID: "sales.order_line.unit_price", Symbol: "UnitPrice", TypeRef: "std.decimal"},
 		},
 	}}}
 	realAttribute, err := SemanticAttributeTarget("sales", ns, "sales.order_line", d4AmountID, "1")
@@ -70,7 +70,7 @@ func d4Fixture(t *testing.T) BindingRequest {
 			d4Node(queryRef, "Amount"),
 		}},
 		Definitions: []Definition{{ID: d4RuleID, Inputs: []string{
-			"sales.order_line.quantity", "sales.order_line.unit-price",
+			"sales.order_line.quantity", "sales.order_line.unit_price",
 		}, Operator: "multiply", Pure: true}},
 		Targets: []TypedTarget{
 			realAttribute,
@@ -207,7 +207,7 @@ func TestD4FailuresAreFailClosed(t *testing.T) {
 		{"duplicate-target-type", func(r *BindingRequest) {
 			r.Targets = append(r.Targets, r.Targets[0])
 		}, "duplicate-target-contract"},
-		{"example.missing_plugin-lock", func(r *BindingRequest) {
+		{"missing-plugin-lock", func(r *BindingRequest) {
 			r.LockedPlugins = nil
 		}, "plugin-lock-required"},
 		{"unregistered-plugin", func(r *BindingRequest) {
