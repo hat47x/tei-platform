@@ -113,6 +113,7 @@ func parse(format Format, source []byte, limits *ParseLimits) (Document, error) 
 	type parseFrame struct {
 		node         Node
 		childOrdinal int
+		text         []byte
 	}
 	var root *Node
 	stack := []parseFrame{}
@@ -184,7 +185,8 @@ func parse(format Format, source []byte, limits *ParseLimits) (Document, error) 
 
 		case xml.CharData:
 			if len(stack) > 0 {
-				stack[len(stack)-1].node.Text += string(t)
+				frame := &stack[len(stack)-1]
+				frame.text = append(frame.text, t...)
 				continue
 			}
 			if strings.TrimSpace(string(t)) != "" {
@@ -200,7 +202,7 @@ func parse(format Format, source []byte, limits *ParseLimits) (Document, error) 
 			}
 			last := len(stack) - 1
 			completed := stack[last].node
-			completed.Text = strings.TrimSpace(completed.Text)
+			completed.Text = strings.TrimSpace(string(stack[last].text))
 			stack = stack[:last]
 
 			if len(stack) == 0 {
