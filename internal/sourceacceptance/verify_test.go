@@ -124,6 +124,14 @@ func TestHostCurrentReaderErrorIsRedacted(t *testing.T) {
 	// A Host error is distinct from an invalid but successfully read
 	// witness. The latter should still use the existing witness diagnostics.
 	reader, index = fixture()
+	reader.record.Artifacts[0].Path = "/private/issuer/policy=secret-host-file.tei"
+	_, err = VerifyCurrent(context.Background(), reader, "order_entry", index)
+	if err == nil || !strings.Contains(err.Error(), "SOURCE_ACCEPTANCE_WITNESS_INVALID") ||
+		strings.Contains(err.Error(), "/private/issuer/") || strings.Contains(err.Error(), "secret-host-file") {
+		t.Fatalf("malformed Host witness path must not leak into public error: %v", err)
+	}
+
+	reader, index = fixture()
 	reader.record.DecisionRef = ""
 	_, err = VerifyCurrent(context.Background(), reader, "order_entry", index)
 	if err == nil || !strings.Contains(err.Error(), "SOURCE_ACCEPTANCE_WITNESS_INVALID") {
