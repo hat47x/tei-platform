@@ -19,7 +19,10 @@ import (
 var (
 	ErrInvalidRequest   = errors.New("副作用の要求または認可根拠が不正です")
 	ErrResourceConflict = errors.New("更新対象の版が一致しません")
-	ErrMissingProvider  = errors.New("確定境界を持つ保存先がありません")
+	// ErrBusinessDenied signals a trusted Owner-side non-commit condition,
+	// distinct from optimistic resource-version conflict or execution failure.
+	ErrBusinessDenied  = errors.New("業務上の確定条件を満たしません")
+	ErrMissingProvider = errors.New("確定境界を持つ保存先がありません")
 )
 
 // CommitUncertainError は確定要求の応答を確認できないことを示す。
@@ -182,6 +185,9 @@ func (r Runner) Execute(ctx context.Context, req Request, grant legacyauthorizat
 	next, err := tx.WriteResource(ctx, cloneRequest(req))
 	if errors.Is(err, ErrResourceConflict) {
 		return Result{Status: StatusConflict}, nil
+	}
+	if errors.Is(err, ErrBusinessDenied) {
+		return Result{Status: StatusDenied}, nil
 	}
 	if err != nil {
 		return Result{}, err
