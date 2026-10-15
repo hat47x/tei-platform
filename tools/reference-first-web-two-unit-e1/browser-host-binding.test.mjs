@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import { spawn, spawnSync } from "node:child_process";
 import { once } from "node:events";
 import { createServer } from "node:http";
-import { mkdtemp, mkdir, rm, symlink, unlink, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, rm, symlink, unlink, writeFile, readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
@@ -82,6 +82,14 @@ async function setup(t) {
         "content-length": String(maxBytes + 1),
       });
       res.end(Buffer.alloc(maxBytes + 1, 32));
+      return;
+    }
+    if (mode === "duplicate-key") {
+      res.writeHead(200, { "content-type": "application/json" });
+      // The duplicate key is unrelated to B/R/T and occurs before the
+      // legitimate observation; JSON.parse alone would silently accept it.
+      res.end('{"diagnosticDuplicate":1,"diagnosticDuplicate":2,' +
+        JSON.stringify(value).slice(1));
       return;
     }
     if (mode === "chunked-valid") {
@@ -494,4 +502,37 @@ test("Browser script FIFO never blocks Host startup before file-type check", asy
   if (created.status !== 0) return t.skip("mkfifo is not installed");
   await assert.rejects(f.start(), /Browser script must be a real file/);
   assert.equal(f.count, 0);
+});
+
+test("diagnostic Host rejects duplicate receipt keys instead of accepting last-wins", async t => {
+  const f = await setup(t);
+  const original = await readFile(f.measurement, "utf8");
+  await writeFile(f.measurement,
+    '{"apiSHA256":"' + "0".repeat(64) + '",' + original.slice(1));
+  // The final apiSHA256 is correct; native JSON.parse would accept the Host.
+  await assert.rejects(f.start(), /duplicate diagnostic JSON key: apiSHA256/);
+  assert.equal(f.count, 0);
+});
+
+test("diagnostic Host rejects API manifest duplicate keys even when B/R/T match", async t => {
+  const f = await setup(t);
+  f.changeManifestWireMode("duplicate-key");
+  await assert.rejects(f.start(), /duplicate diagnostic JSON key: diagnosticDuplicate/);
+  assert.equal(f.reads, 0);
+  assert.equal(f.count, 0);
+});
+
+test("diagnostic Host refuses duplicate live image evidence after startup", async t => {
+  const f = await setup(t);
+  const origin = await f.start();
+  f.changeImageWireMode("duplicate-key");
+  assert.equal((await fetch(origin + "/scenario/read")).status, 502);
+  assert.equal(await submit(origin), 502);
+  assert.equal(f.reads, 0);
+  assert.equal(f.count, 0);
+  f.changeImageWireMode("normal");
+  assert.equal((await fetch(origin + "/scenario/read")).status, 200);
+  assert.equal(await submit(origin), 200);
+  assert.equal(f.reads, 1);
+  assert.equal(f.count, 1);
 });
