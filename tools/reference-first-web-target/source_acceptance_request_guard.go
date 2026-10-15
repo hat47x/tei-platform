@@ -3,6 +3,7 @@
 package main
 
 import (
+	"context"
 	"net/http"
 
 	"tei/internal/sourceacceptance"
@@ -16,14 +17,24 @@ import (
 // This is a request-boundary Source identity check, NOT a Host effect grant.
 // The Host owns the Reader's authenticity and revocation source. Revocation
 // during an already-running Command and filesystem changes after startup are
-// not closed by this reference middleware.
-func guardCurrentAcceptedSource(next http.Handler, reader sourceacceptance.Reader, applicationID string, index sourceindex.Index, accepted sourceacceptance.Record) http.Handler {
+// not closed by this reference middleware. The embedding Host cancels hostCtx
+// when its runtime lifetime ends; this is independent of Reader revocation.
+func guardCurrentAcceptedSource(hostCtx context.Context, next http.Handler, reader sourceacceptance.Reader, applicationID string, index sourceindex.Index, accepted sourceacceptance.Record) http.Handler {
 	// Retain the exact startup Source membership. The runtime never upgrades
 	// its World automatically when a new Host Decision appears.
 	startup := sourceindex.Index{Artifacts: append([]sourceindex.Artifact(nil), index.Artifacts...)}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// The Host's lifetime is independent from the individual HTTP
+		// request. A revoked/terminated Host must not dispatch new work even
+		// if a previously accepted Reader still returns the same witness.
+		if hostCtx.Err() != nil {
+			w.Header().Set("Cache-Control", "no-store")
+			http.Error(w, "SOURCE_ACCEPTANCE_CURRENT_UNAVAILABLE", http.StatusServiceUnavailable)
+			return
+		}
 		current, err := sourceacceptance.VerifyCurrent(r.Context(), reader, applicationID, startup)
-		if err != nil || current.DecisionRef != accepted.DecisionRef ||
+		if err != nil || hostCtx.Err() != nil ||
+			current.DecisionRef != accepted.DecisionRef ||
 			current.AuthorityRevision != accepted.AuthorityRevision ||
 			current.ModelRevision != accepted.ModelRevision {
 			// Avoid exposing Host provenance or the actual authorization error

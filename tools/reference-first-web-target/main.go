@@ -126,7 +126,7 @@ func runCombinedWebTarget(ctx context.Context, reader sourceacceptance.Reader, a
 		// The Host decision used at startup must still be current before
 		// every HTTP dispatch. A replacement decision requires a restart;
 		// the compiled World is never implicitly upgraded.
-		handler = guardCurrentAcceptedSource(handler, reader, string(appID),
+		handler = guardCurrentAcceptedSource(ctx, handler, reader, string(appID),
 			acceptedWorkspace.SourceIndex, acceptedWorkspace.Acceptance)
 	}
 	server := &http.Server{
@@ -141,8 +141,23 @@ func runCombinedWebTarget(ctx context.Context, reader sourceacceptance.Reader, a
 		*baselineRev,
 		*targetRev,
 	)
+	// The Host owns the lifetime of this HTTP endpoint. Do not leave a
+	// previously verified Target serving requests when that Host exits.
+	// Close promptly rather than waiting for new HTTP traffic to notice.
+	stopped := make(chan struct{})
+	defer close(stopped)
+	go func() {
+		select {
+		case <-ctx.Done():
+			_ = server.Close()
+		case <-stopped:
+		}
+	}()
 	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		return err
+	}
+	if err := ctx.Err(); err != nil {
+		return fmt.Errorf("WEB_TARGET_HOST_CONTEXT_UNAVAILABLE: %w", err)
 	}
 	return nil
 }
