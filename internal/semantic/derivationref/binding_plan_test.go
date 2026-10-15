@@ -4,6 +4,7 @@ import (
 	"reflect"
 	"testing"
 
+	"tei/internal/core"
 	"tei/internal/environment"
 	"tei/internal/modelref"
 	"tei/internal/plugin"
@@ -12,9 +13,9 @@ import (
 )
 
 const (
-	d4RuleID   = "sales.line-amount"
-	d4AmountID = "sales.order-line.amount"
-	d4QueryID  = "query.order-list.line-total"
+	d4RuleID   = "sales.line_amount"
+	d4AmountID = "sales.order_line.amount"
+	d4QueryID  = "query.order_list.line_total"
 )
 
 func d4Ref(scope, kind, id, version string) modelref.Ref {
@@ -32,16 +33,16 @@ func d4Fixture(t *testing.T) BindingRequest {
 	t.Helper()
 	ruleRef := d4Ref("sales", "derivation-rule", d4RuleID, "1")
 	amountRef := d4Ref("sales", "attribute", d4AmountID, "1")
-	queryRef := d4Ref("order-list", "query-local-result", d4QueryID, "1")
+	queryRef := d4Ref("order_list", "query-local-result", d4QueryID, "1")
 	ns := semantic.Namespace{Data: []semantic.Data{{
-		ID: "sales.order-line",
+		ID: "sales.order_line",
 		Attributes: []semantic.Attribute{
 			{ID: d4AmountID, Symbol: "Amount", TypeRef: "std.decimal"},
-			{ID: "sales.order-line.quantity", Symbol: "Quantity", TypeRef: "std.decimal"},
-			{ID: "sales.order-line.unit-price", Symbol: "UnitPrice", TypeRef: "std.decimal"},
+			{ID: "sales.order_line.quantity", Symbol: "Quantity", TypeRef: "std.decimal"},
+			{ID: "sales.order_line.unit-price", Symbol: "UnitPrice", TypeRef: "std.decimal"},
 		},
 	}}}
-	realAttribute, err := SemanticAttributeTarget("sales", ns, "sales.order-line", d4AmountID, "1")
+	realAttribute, err := SemanticAttributeTarget("sales", ns, "sales.order_line", d4AmountID, "1")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -51,15 +52,17 @@ func d4Fixture(t *testing.T) BindingRequest {
 	// Both implementations are real entries in the existing test-only
 	// plugin catalog and Runtime Plugin Lock. The lock is not a permission.
 	catalog := plugin.Catalog{Plugins: []plugin.Definition{
-		{ID: "example-go", Version: "1.0.0", Runtime: plugin.Runtime{Kind: plugin.RuntimeBuiltin}},
-		{ID: "example-wasm", Version: "1.0.0", Runtime: plugin.Runtime{Kind: plugin.RuntimeBuiltin}},
+		{ID: "example.go", Version: "1.0.0", Runtime: plugin.Runtime{Kind: plugin.RuntimeBuiltin}},
+		{ID: "example.wasm", Version: "1.0.0", Runtime: plugin.Runtime{Kind: plugin.RuntimeBuiltin}},
 	}}
-	env := environment.Environment{ID: "test-sales", Plugins: []environment.ExtensionRequirement{
-		{ID: "example-go", CompatibleMajor: 1},
-		{ID: "example-wasm", CompatibleMajor: 1},
+	env := environment.Environment{ID: "test.sales", Plugins: []environment.ExtensionRequirement{
+		{ID: "example.go", CompatibleMajor: 1},
+		{ID: "example.wasm", CompatibleMajor: 1},
 	}}
 	lock, err := plugin.BuildLock(catalog, []environment.Environment{env})
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	return BindingRequest{
 		LockedPlugins: &LockedPluginView{Catalog: catalog, Environment: env, Lock: lock},
 		Graph: modelref.Graph{Schema: "tei.modelref.v0", Nodes: []modelref.Node{
@@ -67,7 +70,7 @@ func d4Fixture(t *testing.T) BindingRequest {
 			d4Node(queryRef, "Amount"),
 		}},
 		Definitions: []Definition{{ID: d4RuleID, Inputs: []string{
-			"sales.order-line.quantity", "sales.order-line.unit-price",
+			"sales.order_line.quantity", "sales.order_line.unit-price",
 		}, Operator: "multiply", Pure: true}},
 		Targets: []TypedTarget{
 			realAttribute,
@@ -79,11 +82,11 @@ func d4Fixture(t *testing.T) BindingRequest {
 			Rules: []RuleContract{{Ref: ruleRef, DefinitionID: d4RuleID,
 				OutputType: "std.decimal", NullPolicy: "propagate"}},
 			Bindings: []AcceptedBinding{
-				{ID: "line-attribute", Rule: ruleRef, Target: amountRef, Scope: SemanticAttributeScope},
-				{ID: "query-result", Rule: ruleRef, Target: queryRef, Scope: QueryLocalScope},
+				{ID: "sales.line_attribute", Rule: ruleRef, Target: amountRef, Scope: SemanticAttributeScope},
+				{ID: "sales.query_result", Rule: ruleRef, Target: queryRef, Scope: QueryLocalScope},
 			},
 			Realizations: []SelectedRealization{{
-				Rule: ruleRef, PluginID: "example-go", PluginVersion: "1.0.0", Implementation: "go:line-amount",
+				Rule: ruleRef, PluginID: "example.go", PluginVersion: "1.0.0", Implementation: "go:line-amount",
 				OutputType: "std.decimal", NullPolicy: "propagate",
 			}},
 		},
@@ -110,7 +113,7 @@ func TestD4TwoTargetsReuseOneAcceptedRuleAndRealSemanticAttribute(t *testing.T) 
 		t.Fatalf("Rule body copied or targets conflated: %+v", got.Bindings)
 	}
 	for _, b := range got.Bindings {
-		if b.OutputType != "std.decimal" || b.PluginID != "example-go" {
+		if b.OutputType != "std.decimal" || b.PluginID != "example.go" {
 			t.Fatalf("typed plan differs: %+v", b)
 		}
 	}
@@ -123,14 +126,14 @@ func TestD4TwoTargetsReuseOneAcceptedRuleAndRealSemanticAttribute(t *testing.T) 
 }
 
 func d4SecondRule(req *BindingRequest) {
-	second := d4Ref("sales", "derivation-rule", "sales.alternative-amount", "1")
+	second := d4Ref("sales", "derivation-rule", "sales.alternative_amount", "1")
 	req.Graph.Nodes = append(req.Graph.Nodes, d4Node(second, "Amount"))
 	req.Definitions = append(req.Definitions, Definition{ID: second.Subject.ID, Operator: "multiply", Pure: true})
 	req.Accepted.Rules = append(req.Accepted.Rules, RuleContract{
 		Ref: second, DefinitionID: second.Subject.ID, OutputType: "std.decimal", NullPolicy: "propagate",
 	})
 	req.Accepted.Bindings = append(req.Accepted.Bindings, AcceptedBinding{
-		ID: "alternative-attribute", Rule: second, Target: req.Accepted.Bindings[0].Target,
+		ID: "sales.alternative_attribute", Rule: second, Target: req.Accepted.Bindings[0].Target,
 		Scope: SemanticAttributeScope,
 	})
 }
@@ -143,18 +146,18 @@ func TestD4SameTargetConflictRejectsUnlessAcceptedChoice(t *testing.T) {
 		t.Fatalf("collision must fail closed: %+v", conflict)
 	}
 	req.Accepted.Choices = []AcceptedChoice{{
-		Target: req.Accepted.Bindings[0].Target, BindingID: "alternative-attribute",
+		Target: req.Accepted.Bindings[0].Target, BindingID: "sales.alternative_attribute",
 	}}
 	selected := ResolveBindings(req)
 	if len(selected.Diagnostics) != 0 || len(selected.Bindings) != 2 {
 		t.Fatalf("accepted choice not applied: %+v", selected)
 	}
-	if selected.Bindings[1].BindingID != "alternative-attribute" &&
-		selected.Bindings[0].BindingID != "alternative-attribute" {
+	if selected.Bindings[1].BindingID != "sales.alternative_attribute" &&
+		selected.Bindings[0].BindingID != "sales.alternative_attribute" {
 		t.Fatalf("chosen binding missing: %+v", selected)
 	}
 	req.Accepted.Choices = append(req.Accepted.Choices, AcceptedChoice{
-		Target: req.Accepted.Bindings[0].Target, BindingID: "line-attribute",
+		Target: req.Accepted.Bindings[0].Target, BindingID: "sales.line_attribute",
 	})
 	if !d4HasCode(ResolveBindings(req), "conflicting-choice") {
 		t.Fatal("two choices for one target accepted")
@@ -171,11 +174,11 @@ func TestD4FailuresAreFailClosed(t *testing.T) {
 			r.ProposedBindings = []AcceptedBinding{r.Accepted.Bindings[0]}
 		}, "unaccepted-binding"},
 		{"unknown-target-id-same-name", func(r *BindingRequest) {
-			r.Accepted.Bindings[0].Target.Subject.ID = "sales.other-amount"
-			r.Graph.Nodes = append(r.Graph.Nodes, d4Node(d4Ref("sales", "attribute", "sales.other-amount", "1"), "Amount"))
+			r.Accepted.Bindings[0].Target.Subject.ID = "sales.other_amount"
+			r.Graph.Nodes = append(r.Graph.Nodes, d4Node(d4Ref("sales", "attribute", "sales.other_amount", "1"), "Amount"))
 		}, "target-contract-missing"},
 		{"missing-target", func(r *BindingRequest) {
-			r.Accepted.Bindings[0].Target.Subject.ID = "does-not-exist"
+			r.Accepted.Bindings[0].Target.Subject.ID = "sales.does_not_exist"
 		}, "missing-reference"},
 		{"wrong-kind", func(r *BindingRequest) {
 			r.Accepted.Bindings[0].Target.Subject.Kind = "data"
@@ -204,11 +207,11 @@ func TestD4FailuresAreFailClosed(t *testing.T) {
 		{"duplicate-target-type", func(r *BindingRequest) {
 			r.Targets = append(r.Targets, r.Targets[0])
 		}, "duplicate-target-contract"},
-		{"missing-plugin-lock", func(r *BindingRequest) {
+		{"example.missing_plugin-lock", func(r *BindingRequest) {
 			r.LockedPlugins = nil
 		}, "plugin-lock-required"},
 		{"unregistered-plugin", func(r *BindingRequest) {
-			r.Accepted.Realizations[0].PluginID = "missing-plugin"
+			r.Accepted.Realizations[0].PluginID = "example.missing_plugin"
 		}, "unregistered-or-unlocked-plugin"},
 		{"plugin-version-mismatch", func(r *BindingRequest) {
 			r.Accepted.Realizations[0].PluginVersion = "2.0.0"
@@ -217,11 +220,11 @@ func TestD4FailuresAreFailClosed(t *testing.T) {
 			r.Accepted.Rules = append(r.Accepted.Rules, r.Accepted.Rules[0])
 		}, "duplicate-rule-contract"},
 		{"invalid-selection", func(r *BindingRequest) {
-			r.Accepted.Choices = []AcceptedChoice{{Target: r.Accepted.Bindings[0].Target, BindingID: "no-binding"}}
+			r.Accepted.Choices = []AcceptedChoice{{Target: r.Accepted.Bindings[0].Target, BindingID: "sales.no_binding"}}
 		}, "choice-not-applicable"},
 		{"rule-identity-not-symbol", func(r *BindingRequest) {
-			r.Accepted.Bindings[0].Rule.Subject.ID = "sales.other-rule"
-			r.Graph.Nodes = append(r.Graph.Nodes, d4Node(d4Ref("sales", "derivation-rule", "sales.other-rule", "1"), d4RuleID))
+			r.Accepted.Bindings[0].Rule.Subject.ID = "sales.other_rule"
+			r.Graph.Nodes = append(r.Graph.Nodes, d4Node(d4Ref("sales", "derivation-rule", "sales.other_rule", "1"), d4RuleID))
 		}, "unaccepted-rule"},
 	}
 	for _, tc := range cases {
@@ -242,7 +245,7 @@ func TestD4RealizationReplacementOnlyWithoutMeaningChange(t *testing.T) {
 	if len(before.Diagnostics) != 0 {
 		t.Fatal(before.Diagnostics)
 	}
-	r.Accepted.Realizations[0].PluginID = "example-wasm"
+	r.Accepted.Realizations[0].PluginID = "example.wasm"
 	r.Accepted.Realizations[0].Implementation = "wasm:line-amount"
 	after := ResolveBindings(r)
 	if len(after.Diagnostics) != 0 || len(after.Bindings) != 2 {
@@ -251,7 +254,7 @@ func TestD4RealizationReplacementOnlyWithoutMeaningChange(t *testing.T) {
 	for i := range before.Bindings {
 		old, next := before.Bindings[i], after.Bindings[i]
 		if old.Rule != next.Rule || old.Target != next.Target || old.OutputType != next.OutputType ||
-			next.PluginID != "example-wasm" {
+			next.PluginID != "example.wasm" {
 			t.Fatalf("realization incorrectly changed meaning: old=%+v new=%+v", old, next)
 		}
 	}
@@ -296,11 +299,60 @@ func TestD4SemanticAttributeProjectionRejectsMissingAndAmbiguity(t *testing.T) {
 			{ID: "orders.total", Symbol: "Total", TypeRef: "std.decimal"},
 		},
 	}}}
-	if _, err := SemanticAttributeTarget("sales", ns, "orders", "no-id", "1"); err == nil {
+	if _, err := SemanticAttributeTarget("sales", ns, "orders", "orders.missing_attribute", "1"); err == nil {
 		t.Fatal("missing ID was inferred from display symbol")
 	}
 	ns.Data[0].Attributes = append(ns.Data[0].Attributes, ns.Data[0].Attributes[0])
 	if _, err := SemanticAttributeTarget("sales", ns, "orders", "orders.total", "1"); err == nil {
 		t.Fatal("duplicate Semantic Attribute was silently selected")
+	}
+}
+
+// Fixture identifiers are checked against the existing Core identity parser,
+// including the synthetic case's names. No D4-specific naming grammar.
+func TestD4FixtureAllCanonicalIdentities(t *testing.T) {
+	r := d4Fixture(t)
+	check := func(id string) {
+		t.Helper()
+		if _, err := core.ParseCanonicalID(id); err != nil {
+			t.Fatalf("fixture contains invalid canonical identity %q: %v", id, err)
+		}
+	}
+	for _, definition := range r.Definitions {
+		check(definition.ID)
+		for _, input := range definition.Inputs {
+			check(input)
+		}
+	}
+	for _, node := range r.Graph.Nodes {
+		check(node.Key.Subject.ID)
+	}
+	for _, target := range r.Targets {
+		check(target.Ref.Subject.ID)
+		check(string(target.OutputType))
+	}
+	for _, rule := range r.Accepted.Rules {
+		check(rule.DefinitionID)
+		check(rule.Ref.Subject.ID)
+		check(string(rule.OutputType))
+	}
+	for _, binding := range r.Accepted.Bindings {
+		check(binding.ID)
+		check(binding.Rule.Subject.ID)
+		check(binding.Target.Subject.ID)
+	}
+	for _, realization := range r.Accepted.Realizations {
+		check(realization.PluginID)
+		check(realization.Rule.Subject.ID)
+	}
+	if r.LockedPlugins == nil {
+		t.Fatal("missing test-only LockedPluginView")
+	}
+	check(string(r.LockedPlugins.Environment.ID))
+	for _, entry := range r.LockedPlugins.Environment.Plugins {
+		check(string(entry.ID))
+	}
+	for _, entry := range r.LockedPlugins.Catalog.Plugins {
+		check(string(entry.ID))
 	}
 }
