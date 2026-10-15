@@ -21,7 +21,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
-          fetch-depth: 2 # pin HEAD^ = exact Host source commit
+          fetch-depth: 10 # retain fixed host ancestor, even as probe commits advance
       - name: Pin Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         with:
@@ -32,7 +32,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD^)" = "$HOST_SOURCE_SHA"
+          git cat-file -e "$HOST_SOURCE_SHA^{commit}"
+          git merge-base --is-ancestor "$HOST_SOURCE_SHA" HEAD
+          git diff --exit-code "$HOST_SOURCE_SHA" HEAD -- internal/studiohost cmd/tei-studio reference/workspace
           test "$(go version | awk '{print $3}')" = go1.26.9
           git fetch --no-tags --depth=50 https://github.com/hat47x/tei-platform.git refs/pull/1833/head
           git cat-file -e "$GENERATOR_SOURCE_SHA^{commit}"
