@@ -849,3 +849,75 @@ func TestConcurrentCancelAtMostOneRefund(t *testing.T) {
 		t.Fatalf("winning cancellation receipt missing: %+v found=%t err=%v", result, found, err)
 	}
 }
+
+func TestCancelRejectsMismatchedOwnerReservation(t *testing.T) {
+	// A submitted row's Units and the inventory owner's reservation must
+	// agree before cancellation refunds the held quantity. A positive
+	// reservation alone is insufficient to authorize an owner-side refund.
+	for _, tc := range []struct {
+		name        string
+		reservation int
+		allowCancel bool
+	}{
+		{name: "under-reserved", reservation: 2},
+		{name: "matched", reservation: 3, allowCancel: true},
+		{name: "over-reserved", reservation: 4},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
+			s, submit := fixture(t)
+			if result, err := s.Execute(ctx, submit, allowAll); err != nil || result.Outcome != Submitted || !result.Committed {
+				t.Fatalf("submit setup: %+v err=%v", result, err)
+			}
+
+			// Reconstruct an owner reservation that may have drifted
+			// independently of the submitted order (synthetic fault fixture).
+			s.mu.Lock()
+			s.state.reservations[submit.OrderID] = tc.reservation
+			s.state.available = 20 - tc.reservation
+			s.mu.Unlock()
+			cancel := Cancel{
+				OperationID:     "cancel-reservation-check",
+				SubjectID:       submit.SubjectID,
+				OrderID:         submit.OrderID,
+				ExpectedVersion: submit.ExpectedVersion + 1,
+			}
+			result, err := s.ExecuteCancel(ctx, cancel, allowAll)
+			if err != nil {
+				t.Fatalf("cancel result=%+v err=%v", result, err)
+			}
+			snap, exists := s.Inspect(submit.OrderID)
+			if !exists {
+				t.Fatal("cancellation unexpectedly removed the order")
+			}
+			s.mu.Lock()
+			receipts, outbox := len(s.state.receipts), len(s.state.pending)
+			_, cancelReceipt := s.state.receipts[cancel.OperationID]
+			_, cancelNotice := s.state.pending[cancel.OperationID]
+			s.mu.Unlock()
+			if tc.allowCancel {
+				if result.Outcome != "cancelled" || !result.Committed ||
+					snap.Order.State != "cancelled" || snap.Order.Version != 9 ||
+					snap.Available != 20 || snap.Reserved != 0 ||
+					len(snap.History) != 2 || len(snap.Notices) != 2 ||
+					receipts != 2 || outbox != 2 || !cancelReceipt || !cancelNotice {
+					t.Fatalf("matching reservation not committed exactly once: result=%+v snap=%+v receipts=%d outbox=%d",
+						result, snap, receipts, outbox)
+				}
+				return
+			}
+			if result.Outcome != NotSubmitted || result.Committed ||
+				len(result.Trace) != 3 || result.Trace[2] != PhaseRead ||
+				snap.Order.State != Submitted || snap.Order.Version != 8 ||
+				snap.Available != 20-tc.reservation || snap.Reserved != tc.reservation ||
+				len(snap.History) != 1 || len(snap.Notices) != 1 ||
+				receipts != 1 || outbox != 1 || cancelReceipt || cancelNotice {
+				t.Fatalf("mismatched reservation mutated owner: result=%+v snap=%+v receipts=%d outbox=%d receipt=%t notice=%t",
+					result, snap, receipts, outbox, cancelReceipt, cancelNotice)
+			}
+			if receipt, found, lookupErr := s.LookupCancel(ctx, cancel, allowAll); lookupErr != nil || found || receipt.Committed {
+				t.Fatalf("rejected mismatch left a cancel receipt: %+v found=%t err=%v", receipt, found, lookupErr)
+			}
+		})
+	}
+}
