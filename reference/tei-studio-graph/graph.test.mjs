@@ -16,6 +16,10 @@ class FakeElement {
     this.hidden = false;
     this.textContent = "";
   }
+  focus() {
+    this.ownerDocument.activeElement = this;
+    this.dispatch("focus");
+  }
   setAttribute(name, value) { this.attributes.set(name, String(value)); }
   getAttribute(name) { return this.attributes.get(name) ?? null; }
   addEventListener(name, listener) {
@@ -52,6 +56,7 @@ class FakeElement {
 }
 function container() {
   const doc = {
+    activeElement: null,
     createElement(tag) { return new FakeElement(tag, doc); },
     createElementNS(_ns, tag) { return new FakeElement(tag, doc); },
   };
@@ -261,4 +266,33 @@ test("very long node labels are abbreviated but recoverable on focus and selecti
   assert.equal(full.hidden, true);
   view.dispose();
   assert.equal(root.children.length, 0);
+});
+
+test("keyboard focus survives consumer graph.update and returns to viewport when node disappears", () => {
+  const root = container();
+  const calls = [];
+  const view = mountReadonlyGraph(root, buildPipelineGraph, {
+    onSelect(id) {
+      calls.push(id);
+      // Mirrors the Studio consumer's onSelect -> inspect -> graph.update.
+      view.update(buildPipelineGraph);
+      view.setSelectedNode(id);
+    },
+  });
+  const check = all(root, "g")[1];
+  check.focus();
+  assert.strictEqual(root.ownerDocument.activeElement, check);
+  assert.equal(check.dispatch("keydown", "Enter"), true);
+  const replacement = all(root, "g")[1];
+  assert.notStrictEqual(replacement, check);
+  assert.strictEqual(root.ownerDocument.activeElement, replacement);
+  assert.equal(replacement.dispatch("keydown", " "), true);
+  assert.deepEqual(calls, ["check", "check"]);
+  assert.equal(view.getSelectedNode(), "check");
+
+  // The removed focused node cannot remain active. The scroll region owns
+  // keyboard focus until the user chooses another node.
+  view.update({width: 480, height: 160, nodes: [], edges: []});
+  assert.strictEqual(root.ownerDocument.activeElement, root.children[0]);
+  view.dispose();
 });
