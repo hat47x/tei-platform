@@ -55,3 +55,22 @@
 ここで提供するのは既存のHost-owned選択元を接続するための**受け口**だけであり、独立したHost選択元・権限管理・失効確認の実装ではない。単にCallbackを与えただけで真正なHostと認めてはならず、入力Profile／Lockに関する証拠も署名済みAttestationにはならない。読み取りから実行までの競合を防ぐ排他・Leaseも未実装のため、Production受入では同じ選択を実行中に保持する既存Host側の仕組みが必要になる。
 
 `internal/plugin/transform/plugin_current_host_selection_test.go` の偽Readerで現在値の再読込み、失効エラー、別Application/Environment、要求文脈による偽Scope、Profile省略、不一致Lock、実行前キャンセルを試験する。ただし偽Readerの成功は本番の独立Current Authority検証とは区別する。外部Hostへ未接続の間は前章のSB1-H04/H05を受入済みに変更しない。
+
+## 6. 読取りからProcess Startまでの失効競合（診断・未閉塞）
+
+[Issue #976 のPR #1845](https://github.com/hat47x/tei-platform/pull/1845)は、案件Runtimeで「現在のEnvironment Grantを読み取った直後に失効しても、固定Planの実プロセスが起動できる」既知の競合を、Linux実バイナリで再現した。**この問題とSB-1の入力Profile選択は別の採用判断だが、読取結果の有効期間がStartに固定されていないという構造的な弱点は共通**する。
+
+`tools/reference-plugin-self-build/inputprofile_v2_process_e2e_test.go` に、Host Readerを模擬して、(1) v2入力を有効な現在選択で準備、(2) 選択を失効、(3) 次の選択読取が拒否されることを確認、(4) **失効前に準備済みの同じ入力を旧v1物理Engineに渡すと実行される**ことを確認する診断を追加した。この試験が成功することは、「入力アダプターだけではStart前失効を防げない」という**既知の不足の実証**であり、安全な失効機能の合格ではない。`ObservePackageOutput`が古い入力から生成された正規バイトを確認できても、最新Host認可と実行開始の許可を証明しない。
+
+Production Hostへの最小要求を次のように限定する。
+
+- Application/Environmentの既存Authorityが発行した選択世代を、**実行開始を認める線形化点**まで検証／保護する。読取りとStartの間に失効またはScope変更が完了した場合、古い世代による新規Startを拒否する。
+- 一度開始した処理の継続可否、実行中の取消し／Drain、既に生成された出力の受入は別途明示する。単なる再読込みだけで実行中取消しまで合格としない。
+- 既存のHost Generation/Start Gate/Authorityの所有者と統合する。SB-1専用の第二のIssuer、Grant Store、署名方式、Resolverを作らない。案件プラグイン一般に強制する新Profileも設けない。
+
+| ID | 検証対象 | 期待する製品受入 | Referenceの状態 |
+| --- | --- | --- | --- |
+| SB1-H09 | 有効なHost読取り直後、実Start直前に失効 | 失効が先に成立したなら旧世代の新規実行は拒否 | 実Processで**未閉塞の競合を再現**。Production Gate未達 |
+| SB1-H10 | 過去の適正出力は一致、実行時点の権限が無効 | バイト一致とHost受入を混同しない | 出力観測APIは認可を付与しない。受入は未実証 |
+
+本Referenceは診断試験であり、本番で競合を防止する実装は未着手。SB1-H04/H05/H06/H08/H09/H10の受理を宣言しない。
