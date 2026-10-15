@@ -283,3 +283,96 @@ func TestD3MemoRejectsStaleSourceEvenInsideComputedTTL(t *testing.T) {
 		t.Fatalf("source-age opt-in incorrectly changed default: hit=%v loads=%d err=%v", hit, loads, err)
 	}
 }
+
+type d3MemoSourceReader struct {
+	sources map[string]derivationref.SourceObservation
+	reads   int
+	err     error
+}
+
+func (r *d3MemoSourceReader) ReadCurrentSource(_ context.Context, id string) (derivationref.SourceObservation, error) {
+	r.reads++
+	if r.err != nil {
+		return derivationref.SourceObservation{}, r.err
+	}
+	if obs, ok := r.sources[id]; ok {
+		return obs, nil
+	}
+	return derivationref.SourceObservation{}, errors.New("unknown Provider source")
+}
+
+func TestD3MemoProviderProvenancePreventsForgedCacheHitAndRecomputes(t *testing.T) {
+	q, plan, proof, rows := d2Fixture()
+	w := d3QueryWitness()
+	now := time.Date(2026, 10, 15, 1, 0, 10, 0, time.UTC)
+	provider := &d3MemoSourceReader{sources: map[string]derivationref.SourceObservation{
+		"inventory": w.Sources[0],
+	}}
+	v := derivationref.SourceBoundVerifier{Current: &d3QueryVerifier{}, Sources: provider}
+	allow := func(core.CanonicalID) bool { return true }
+	policy := derivationref.CachePolicy{MaxAge: time.Minute, MaxSourceAge: 2 * time.Minute}
+	var memo query.DerivedMemo
+	loads := 0
+	load := func(context.Context, int) ([]query.DerivedRow, bool, error) {
+		loads++
+		return rows, true, nil
+	}
+	if _, hit, err := memo.Resolve(context.Background(), q, plan, proof, w,
+		policy, now, v, allow, load); err != nil || hit || loads != 1 || provider.reads != 2 {
+		t.Fatalf("verified D2 cache fill failed: hit=%v loads=%d reads=%d err=%v", hit, loads, provider.reads, err)
+	}
+	// A forged as-of that looks newer with the same revision must not enter
+	// a fresh memo key or return a value based on user-supplied evidence.
+	forged := d3QueryWitness()
+	forged.Sources[0].SourceAsOf = forged.Sources[0].SourceAsOf.Add(30 * time.Second)
+	if _, hit, err := memo.Resolve(context.Background(), q, plan, proof, forged,
+		policy, now, v, allow, nil); !errors.Is(err, derivationref.ErrCacheStale) || hit {
+		t.Fatalf("fabricated source timestamp bypassed verifier: hit=%v err=%v", hit, err)
+	}
+	updated := d3QueryWitness()
+	updated.Sources[0].Revision = "source-2"
+	updated.Sources[0].SourceAsOf = now.Add(-5 * time.Second)
+	updated.Sources[0].ObservedAt = now.Add(-2 * time.Second)
+	updated.Inputs[0].Revision = "revision-2"
+	provider.sources["inventory"] = updated.Sources[0]
+	if _, hit, err := memo.Resolve(context.Background(), q, plan, proof, w,
+		policy, now, v, allow, nil); !errors.Is(err, derivationref.ErrCacheStale) || hit {
+		t.Fatalf("changed provider revision bypassed current verification: hit=%v err=%v", hit, err)
+	}
+	rows[0].Values["product.reserved"] = derivationref.Input{State: derivationref.Present, Decimal: "10"}
+	result, hit, err := memo.Resolve(context.Background(), q, plan, proof, updated,
+		policy, now, v, allow, load)
+	if err != nil || hit || loads != 2 || result.Rows[0].Values["product.available"].Decimal != "110" {
+		t.Fatalf("trusted revised source did not recompute D2 result: hit=%v loads=%d result=%#v err=%v", hit, loads, result, err)
+	}
+}
+
+func TestD3MemoProviderChangeDuringLoadDoesNotStoreStaleResult(t *testing.T) {
+	q, plan, proof, rows := d2Fixture()
+	w := d3QueryWitness()
+	now := time.Date(2026, 10, 15, 1, 0, 10, 0, time.UTC)
+	provider := &d3MemoSourceReader{sources: map[string]derivationref.SourceObservation{
+		"inventory": w.Sources[0],
+	}}
+	v := derivationref.SourceBoundVerifier{Current: &d3QueryVerifier{}, Sources: provider}
+	allow := func(core.CanonicalID) bool { return true }
+	var memo query.DerivedMemo
+	policy := derivationref.CachePolicy{MaxAge: time.Minute}
+	// The source changes between pre-read qualification and D2's post-load
+	// qualification. No stale computed result may become a memo entry.
+	load := func(context.Context, int) ([]query.DerivedRow, bool, error) {
+		changed := w.Sources[0]
+		changed.Revision = "source-2"
+		provider.sources["inventory"] = changed
+		return rows, true, nil
+	}
+	if _, hit, err := memo.Resolve(context.Background(), q, plan, proof, w,
+		policy, now, v, allow, load); !errors.Is(err, derivationref.ErrCacheStale) || hit {
+		t.Fatalf("source changed during read but value returned: hit=%v err=%v", hit, err)
+	}
+	provider.sources["inventory"] = w.Sources[0]
+	if _, hit, err := memo.Resolve(context.Background(), q, plan, proof, w,
+		policy, now, v, allow, nil); !errors.Is(err, query.ErrDerivedIncomplete) || hit {
+		t.Fatalf("result from invalidated load was stored: hit=%v err=%v", hit, err)
+	}
+}
