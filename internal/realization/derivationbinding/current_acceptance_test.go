@@ -3,18 +3,35 @@ package derivationbinding
 import (
 	"context"
 	"errors"
+	"reflect"
 	"testing"
+
+	"tei/internal/semantic/derivationref"
 )
 
 type d4CurrentReader struct {
 	record CurrentAcceptedBindings
-	err    error
-	calls  int
+	err          error
+	calls        int
+	meaning      map[string]derivationref.Definition
+	meaningErr   error
+	meaningCalls int
 }
 
 func (r *d4CurrentReader) ReadCurrentAcceptedBindings(_ context.Context, _ string) (CurrentAcceptedBindings, error) {
 	r.calls++
 	return r.record, r.err
+}
+
+// This synthetic store only models the trusted Host comparison. The real
+// Accepted meaning and its fingerprint remain with #1121/#267, never D4.
+func (r *d4CurrentReader) VerifyCurrentAcceptedRuleMeaning(_ context.Context, _ CurrentAcceptedBindings, rule RuleContract, actual derivationref.Definition) (bool, error) {
+	r.meaningCalls++
+	if r.meaningErr != nil {
+		return false, r.meaningErr
+	}
+	accepted, exists := r.meaning[rule.DefinitionID]
+	return exists && reflect.DeepEqual(accepted, actual), nil
 }
 
 func TestD4CurrentHostAcceptanceGatesRulesBindingsAndChoices(t *testing.T) {
@@ -26,7 +43,7 @@ func TestD4CurrentHostAcceptanceGatesRulesBindingsAndChoices(t *testing.T) {
 			ApplicationID: app, ModelRevision: revision,
 			DecisionRef: "decision.current", AuthorityRevision: "authority.2",
 			Snapshot: request.Accepted,
-		}}
+		}, meaning: map[string]derivationref.Definition{request.Definitions[0].ID: request.Definitions[0]}}
 		request.Accepted = AcceptedBindingSnapshot{} // never client-supplied
 		return request, reader
 	}
@@ -59,6 +76,9 @@ func TestD4CurrentHostAcceptanceGatesRulesBindingsAndChoices(t *testing.T) {
 		reader := &d4CurrentReader{record: CurrentAcceptedBindings{
 			ApplicationID: app, ModelRevision: revision, DecisionRef: "decision.current",
 			AuthorityRevision: "authority.3", Snapshot: req.Accepted,
+		}, meaning: map[string]derivationref.Definition{
+			req.Definitions[0].ID: req.Definitions[0],
+			req.Definitions[1].ID: req.Definitions[1],
 		}}
 		req.Accepted = AcceptedBindingSnapshot{}
 		// Two accepted Rules reach one target, but the current Host
@@ -108,6 +128,50 @@ func TestD4CurrentHostAcceptanceGatesRulesBindingsAndChoices(t *testing.T) {
 		for _, diag := range got.Diagnostics {
 			if diag.Code == reader.err.Error() || diag.At == reader.err.Error() {
 				t.Fatalf("private Host error leaked: %+v", got)
+			}
+		}
+	})
+
+	t.Run("same-rule-id-version-changed-operator-denied", func(t *testing.T) {
+		req, reader := newRequest(t)
+		req.Definitions[0].Operator = "add"
+		got := ResolveCurrentBindings(context.Background(), reader, app, revision, req)
+		expectDenied(t, got, "rule-meaning-change-reaccept")
+		if reader.meaningCalls != 1 {
+			t.Fatalf("Host must compare accepted meaning before planning: calls=%d", reader.meaningCalls)
+		}
+	})
+
+	t.Run("same-rule-id-version-changed-input-denied", func(t *testing.T) {
+		req, reader := newRequest(t)
+		req.Definitions[0].Inputs[1] = "sales.order_line.discount_price"
+		got := ResolveCurrentBindings(context.Background(), reader, app, revision, req)
+		expectDenied(t, got, "rule-meaning-change-reaccept")
+	})
+
+	t.Run("unchanged-meaning-new-realization-allowed", func(t *testing.T) {
+		req, reader := newRequest(t)
+		reader.record.Snapshot.Realizations[0].PluginID = "example.wasm"
+		reader.record.Snapshot.Realizations[0].Implementation = "wasm:line-amount"
+		got := ResolveCurrentBindings(context.Background(), reader, app, revision, req)
+		if len(got.Diagnostics) != 0 || len(got.Bindings) != 2 || reader.meaningCalls != 1 {
+			t.Fatalf("same canonical Rule must allow new locked realization for both targets: %+v calls=%d", got, reader.meaningCalls)
+		}
+		for _, b := range got.Bindings {
+			if b.PluginID != "example.wasm" {
+				t.Fatalf("unexpected implementation selected: %+v", b)
+			}
+		}
+	})
+
+	t.Run("meaning-reader-error-not-disclosed", func(t *testing.T) {
+		req, reader := newRequest(t)
+		reader.meaningErr = errors.New("private accepted meaning fingerprint")
+		got := ResolveCurrentBindings(context.Background(), reader, app, revision, req)
+		expectDenied(t, got, "current-acceptance-unavailable")
+		for _, diag := range got.Diagnostics {
+			if diag.Code == reader.meaningErr.Error() || diag.At == reader.meaningErr.Error() {
+				t.Fatalf("Host meaning details leaked: %+v", got)
 			}
 		}
 	})
