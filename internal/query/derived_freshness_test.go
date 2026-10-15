@@ -376,3 +376,126 @@ func TestD3MemoProviderChangeDuringLoadDoesNotStoreStaleResult(t *testing.T) {
 		t.Fatalf("result from invalidated load was stored: hit=%v err=%v", hit, err)
 	}
 }
+
+func TestD3MemoDisabledDoesNotRequireCacheWitness(t *testing.T) {
+	q, plan, proof, rows := d2Fixture()
+	now := time.Date(2026, 10, 15, 1, 0, 10, 0, time.UTC)
+	// No cache/freshness/snapshot request: neither a source timestamp nor
+	// a cache witness or cache verifier should be necessary to evaluate D2.
+	policy := derivationref.CachePolicy{}
+	allow := func(core.CanonicalID) bool { return true }
+	var memo query.DerivedMemo
+	calls := 0
+	load := func(context.Context, int) ([]query.DerivedRow, bool, error) {
+		calls++
+		return rows, true, nil
+	}
+	for i := 0; i < 2; i++ {
+		result, hit, err := memo.Resolve(context.Background(), q, plan, proof,
+			derivationref.CacheWitness{}, policy, now, nil, allow, load)
+		if err != nil || hit || result.Count != 5 ||
+			!reflect.DeepEqual(d2IDs(result.Rows), []string{"B", "C", "D", "A", "E"}) {
+			t.Fatalf("uncached D2 evaluation %d: hit=%v result=%#v err=%v", i, hit, result, err)
+		}
+	}
+	if calls != 2 {
+		t.Fatalf("uncached evaluation incorrectly reused a result: calls=%d", calls)
+	}
+	// Neither cache storage nor even the memo object is needed for pure
+	// evaluation, while complete retrieval and D2 authorization still apply.
+	var nilMemo *query.DerivedMemo
+	if _, hit, err := nilMemo.Resolve(context.Background(), q, plan, proof,
+		derivationref.CacheWitness{}, policy, now, nil, allow, load); err != nil || hit || calls != 3 {
+		t.Fatalf("nil memo should be optional for pure evaluation: hit=%v calls=%d err=%v", hit, calls, err)
+	}
+}
+
+func TestD3MemoDisabledRetainsD2AuthorizationAndCompleteness(t *testing.T) {
+	q, plan, proof, rows := d2Fixture()
+	now := time.Date(2026, 10, 15, 1, 0, 10, 0, time.UTC)
+	var memo query.DerivedMemo
+	calls := 0
+	load := func(context.Context, int) ([]query.DerivedRow, bool, error) {
+		calls++
+		return rows, true, nil
+	}
+	// The absence of a cache witness is never a bypass of D2's raw column
+	// read authorization. Refuse before asking the Provider for data.
+	denyStock := func(id core.CanonicalID) bool { return id != "product.stock" }
+	if _, hit, err := memo.Resolve(context.Background(), q, plan, proof,
+		derivationref.CacheWitness{}, derivationref.CachePolicy{}, now, nil,
+		denyStock, load); !errors.Is(err, query.ErrDerivedUnauthorized) || hit || calls != 0 {
+		t.Fatalf("unprivileged raw read dispatched: hit=%v calls=%d err=%v", hit, calls, err)
+	}
+
+	// Recheck FieldRead after loading: an authorization revocation observed
+	// during Provider access must prevent result disclosure even without memo.
+	allowed := true
+	canRead := func(core.CanonicalID) bool { return allowed }
+	revokeDuringLoad := func(context.Context, int) ([]query.DerivedRow, bool, error) {
+		calls++
+		allowed = false
+		return rows, true, nil
+	}
+	if _, hit, err := memo.Resolve(context.Background(), q, plan, proof,
+		derivationref.CacheWitness{}, derivationref.CachePolicy{}, now, nil,
+		canRead, revokeDuringLoad); !errors.Is(err, query.ErrDerivedUnauthorized) || hit || calls != 1 {
+		t.Fatalf("read revocation at disclosure was bypassed: hit=%v calls=%d err=%v", hit, calls, err)
+	}
+
+	// The full unpaginated source requirement remains intact in cache-off
+	// mode; returning a physical page is not equivalent to D2 completeness.
+	incomplete := func(context.Context, int) ([]query.DerivedRow, bool, error) {
+		calls++
+		return rows[:1], false, nil
+	}
+	allow := func(core.CanonicalID) bool { return true }
+	if _, hit, err := memo.Resolve(context.Background(), q, plan, proof,
+		derivationref.CacheWitness{}, derivationref.CachePolicy{}, now, nil,
+		allow, incomplete); !errors.Is(err, query.ErrDerivedIncomplete) || hit || calls != 2 {
+		t.Fatalf("partial physical row source was accepted: hit=%v calls=%d err=%v", hit, calls, err)
+	}
+	q.Source += " LIMIT 1"
+	if _, hit, err := memo.Resolve(context.Background(), q, plan, proof,
+		derivationref.CacheWitness{}, derivationref.CachePolicy{}, now, nil,
+		allow, load); !errors.Is(err, query.ErrDerivedUnsupported) || hit || calls != 2 {
+		t.Fatalf("changed native SQL bypassed D2 validation: hit=%v calls=%d err=%v", hit, calls, err)
+	}
+}
+
+func TestD3MemoExplicitFreshnessAndCacheStillRequireWitness(t *testing.T) {
+	q, plan, proof, rows := d2Fixture()
+	now := time.Date(2026, 10, 15, 1, 0, 10, 0, time.UTC)
+	var memo query.DerivedMemo
+	allow := func(core.CanonicalID) bool { return true }
+	calls := 0
+	load := func(context.Context, int) ([]query.DerivedRow, bool, error) {
+		calls++
+		return rows, true, nil
+	}
+	cases := []struct {
+		name   string
+		policy derivationref.CachePolicy
+	}{
+		{"enabled memo", derivationref.CachePolicy{MaxAge: time.Minute}},
+		{"source age despite disabled memo", derivationref.CachePolicy{MaxSourceAge: 2 * time.Minute}},
+		{"snapshot alignment despite disabled memo", derivationref.CachePolicy{RequireAligned: true}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Missing cache evidence must be rejected even when memo writes
+			// are disabled but a source-age/alignment guarantee was requested.
+			if _, hit, err := memo.Resolve(context.Background(), q, plan, proof,
+				derivationref.CacheWitness{}, tc.policy, now, nil, allow, load); !errors.Is(err, derivationref.ErrCacheEvidence) || hit {
+				t.Fatalf("missing witness accepted: hit=%v err=%v", hit, err)
+			}
+			if _, hit, err := memo.Resolve(context.Background(), q, plan, proof,
+				d3QueryWitness(), tc.policy, now, nil, allow, load); !errors.Is(err, derivationref.ErrCacheDenied) || hit {
+				t.Fatalf("missing verifier accepted: hit=%v err=%v", hit, err)
+			}
+		})
+	}
+	if calls != 0 {
+		t.Fatalf("unverified cache/freshness path dispatched Provider: calls=%d", calls)
+	}
+}
