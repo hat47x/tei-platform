@@ -138,3 +138,34 @@ Wails公式におけるDesktopのOS依存とServer/GUI差の参照先：<https:/
 - Wailsは候補Runtimeであり、Studioの結果からTEI全体の標準Runtime・生成Desktop Target・Target Capability schemaの採用決定へ自動昇格しない。
 
 **2026-10-15時点の資格**：#1849の固定Web実ブラウザー一巡は観測済み。#1832のWindows Desktopバイナリbuildは観測済み。**Desktop実WebView（Windows/macOS/Linux）、OS資源境界、生成Application Targetの適格性は未確認**。この節は#Work報告と既存実装・公式要件の整理であり、本変更で新しいDesktop実機テストを行ったわけではない。Draft PRはいずれも未統合。
+
+
+## 2026-10-15: Host公開面の追加否定ケース
+
+ユーザーからの追加指示（未知Workspace、許可外パス、変更操作未公開、loopback設定、内部情報露出を先行検査）に従い、**#2のHostソースも#Workのworkbenchも変更せず、#10専用ディレクトリだけ**に追加した。
+
+### 追加テストと固定依存
+
+- **Go／Host中立＋Wails公開面（タグ付き）**：`studiohost_integration_test.go`に `TestStudioReadOnlyResponsesDoNotExposeHostRoot` と `TestWailsBridgePublishesOnlyFourReadOnlyMethods` を追加。前者は Host-selected root 内の実絶対パスをsentinelとして、未知ID、物理rootをIDに偽装した入力、空の許可Workspaceに対するload失敗、Workspace一覧の**JSONにrootの親ディレクトリを露出しない**ことを検査する。後者は#1832 `cmd/tei-studio/main.go`の**実Go AST**をparseし、実`StudioBridge`の公開メソッドが厳密に `ListWorkspaces/CatalogWorkspace/ValidateWorkspace/InspectSubject` の4種であることを検査する。Go-neutral `ReadOnly`のreflect API検査だけをWails IPC面の資格に転用しない。
+- **Node／Host client実import（#1832専用資産を取り出す）**：`client_boundary.test.mjs` 3件。実 `cmd/tei-studio/assets/client.mjs` をimportして、公開4操作と凍結、未知Workspaceに対する**合成Host拒否の保持**、Wails transportのthrowに含まれるprivate path sentinelがUI failure応答へ漏れないことを検査する。これはmock `Call.ByName` を注入したClient単体であり、実IdP・WebSocket・OS経路・Host実認可の試験ではない。
+- **固定Host**：#1832 `d520689cfb0a2e2919aa86b0beeba54802b31465`。Host-neutral `internal/studiohost/readonly.go` blob `f1bd33f0e48a63bf9997f74285a23f8870fa32ae`、JS `cmd/tei-studio/assets/client.mjs` blob `1afec5762a96bf34eead768a9fc7de4b7eced564`。#Work UIの検証入力は #1849 `9a290dc61f585dfbf292e9032e5c5bbbad04351a`。本否定ケースはStudio workbench UIそのものを直接試験してはいない。
+
+**追加Goタグ付きテスト実行：NOT RUN**。この会話のコンテナは `go version go1.23.2 linux/amd64`、root `go.mod`は1.26.9を要求し、`os.Root`実装にも1.26以降の環境が必要。再現には **main+新しい#1827の専用path+#1832の `internal/studiohost/{readonly.go,readonly_test.go}`、`cmd/tei-studio/main.go`** を固定snapshotへ取得し、次を実行する。Wails nested moduleのDesktop buildはこのGo packageテストへ不要（main.goはAST入力としてのみ読む）。
+
+```sh
+# snapshot root / Go 1.26.9
+go test -race -count=1 -v -tags tei_studio_host_integration ./tools/reference-studio-host-boundary
+go vet -tags tei_studio_host_integration ./tools/reference-studio-host-boundary
+
+# #1832の実JS clientを同snapshotへ配置 / Node 22+
+node --test tools/reference-studio-host-boundary/client_boundary.test.mjs
+```
+
+**追加Nodeテスト：PASS 3/3（独立実行）**。2026-10-15、Linuxコンテナ、Node `v22.16.0`。`/tmp/studio-boundary-node/` の一時階層に上記2ファイルを配置して実行。GitHubから取得したtextを同パスへ再現し、`git hash-object`でClient `1afec5762a96bf34eead768a9fc7de4b7eced564`、test `29697cb5a65c32c2f97f7b75d48f9426e2514ba3`と完全一致を確認した上で、`node --test tools/reference-studio-host-boundary/client_boundary.test.mjs` は終了0、3/3 PASS。**GitHub clone / 全repository clean checkoutの証拠ではない**。同一のJSのbyte identityと対象単体テストのみを実証。
+
+### loopbackと機微応答の残る区別
+
+- **#1832の公開listen拒否は既存CIの別証拠**：#1832 head `d520689cfb0a2e2919aa86b0beeba54802b31465` の[専用CI #38577282659](https://github.com/hat47x/tei-platform/actions/runs/38577282659)はLinux Server実バイナリの `WAILS_SERVER_HOST=0.0.0.0` を非ゼロで拒否し、127.0.0.1 HTTP health/asset smokeが成功と#2報告。#10コンテナでのWails実server起動ではなく、CGO-free Server buildの限定的証拠。localhostに接続できる他プロセス/他ブラウザーからの認証済みアクセスを制限するものではない。
+- **レスポンスの検査範囲**：未知ID等のHost failure envelopeとClient transport例外から**Host内部の絶対rootを出さない**ことが対象。意図的な`WorkspaceRef.Label`（rootのbasename）、Catalog/Inspectのモデル内容やSource Index由来の相対path、caller自身が送信した文字列が表示されることまで「機密漏洩ゼロ」と判定しない。#1832のinspect errorは不正subjectの文字列を説明に含める場合があり、その値の扱いは呼出元・UI描画方式と切り分ける。
+- **セキュリティ資格の限界**：`createReadOnlyClient`を介さずWails Runtimeへ直接要求する呼出元も想定し、**Go `StudioBridge`側で厳密な公開メソッド制限**が必要。JSのObject.freeze、loopbackバインド、UIの非編集状態をAuthorityとはみなさない。Host-authorized root内のファイルをLoaderが安全に開くこと、symlink/junction差替え耐性、別利用者のSession認可、機微Wails Eventの配信隔離は未検証。
+- **Desktop**：#1832でWindowsバイナリbuildが成功してもWebView2実起動は未確認。Linux native GTK/WebKitGTK GUI、macOS WKWebView、Desktop再起動/OS資源も引き続きNOT RUN。上の追加Go/Node否定試験のPASSをDesktopのPASSに転用しない。
