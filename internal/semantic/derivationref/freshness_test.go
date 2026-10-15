@@ -355,7 +355,7 @@ func TestD3SourceBoundVerifierRejectsForgedOrChangedSourceProvenance(t *testing.
 		t.Run(tc.name, func(t *testing.T) {
 			forged := d3Witness()
 			tc.edit(&forged)
-			if _, err := derivationref.QualifyCache(ctx, forged, policy, v); !errors.Is(err, derivationref.ErrCacheStale) {
+			if _, err := derivationref.QualifyCache(ctx, forged, policy, v); !errors.Is(err, derivationref.ErrCacheDenied) {
 				t.Fatalf("self-reported provenance accepted: %v", err)
 			}
 		})
@@ -363,14 +363,20 @@ func TestD3SourceBoundVerifierRejectsForgedOrChangedSourceProvenance(t *testing.
 	updated := w.Sources[0]
 	updated.Revision = "source-2"
 	source.observations["inventory"] = updated
-	if _, err := derivationref.QualifyCache(ctx, w, policy, v); !errors.Is(err, derivationref.ErrCacheStale) {
+	if _, err := derivationref.QualifyCache(ctx, w, policy, v); !errors.Is(err, derivationref.ErrCacheDenied) {
 		t.Fatalf("source revision advance reused cache evidence: %v", err)
 	}
 	source.fail = true
-	if _, err := derivationref.QualifyCache(ctx, w, policy, v); !errors.Is(err, derivationref.ErrCacheEvidence) {
+	if _, err := derivationref.QualifyCache(ctx, w, policy, v); !errors.Is(err, derivationref.ErrCacheDenied) {
 		t.Fatalf("unavailable provider metadata treated as valid: %v", err)
 	}
 	source.fail = false
+	// The public qualification boundary intentionally reports only
+	// ErrCacheDenied for verifier failures, to avoid leaking Provider details.
+	// The internal adapter retains the precise stale/evidence reason.
+	if err := v.VerifyCurrent(ctx, w); !errors.Is(err, derivationref.ErrCacheStale) {
+		t.Fatalf("internal verifier lost source mismatch diagnosis: %v", err)
+	}
 	if _, err := derivationref.QualifyCache(ctx, w, policy,
 		derivationref.SourceBoundVerifier{Current: host}); !errors.Is(err, derivationref.ErrCacheDenied) {
 		t.Fatalf("no source provider accepted: %v", err)
@@ -398,7 +404,7 @@ func TestD3SourceBoundVerifierEveryProviderAndAlignmentAreSeparate(t *testing.T)
 	}
 	second.Revision = "price-v2"
 	source.observations["pricing"] = second
-	if _, err := derivationref.QualifyCache(context.Background(), w, policy, v); !errors.Is(err, derivationref.ErrCacheStale) {
+	if _, err := derivationref.QualifyCache(context.Background(), w, policy, v); !errors.Is(err, derivationref.ErrCacheDenied) {
 		t.Fatalf("one stale dependency was incorrectly accepted: %v", err)
 	}
 	// Even matching snapshots do not prove cross-provider atomicity; the
