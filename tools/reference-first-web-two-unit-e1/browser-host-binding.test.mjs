@@ -46,6 +46,9 @@ async function setup(t) {
     browserScriptBytes: js.length,
     apiSHA256: image().sha256,
     apiBytes: image().bytes,
+    productionAuthorizationVerified: false,
+    artifactAuthority: false,
+    fullE1BrowserAPIPackagingVerified: false,
   };
   await writeFile(measurement, JSON.stringify(initialReceipt));
   let exposed = manifest();
@@ -232,6 +235,75 @@ test("mismatched API manifest denies Host startup before Browser is exposed", as
   f.changeManifest({ ...manifest(), targetBuildRevision: "c".repeat(40) });
   await assert.rejects(f.start(), /API binding differs: targetBuildRevision/);
   assert.equal(f.count, 0);
+});
+
+test("diagnostic measurement cannot claim Source, Builder, Lock or deployment authority", async t => {
+  for (const field of ["sourceAcceptanceAuthorityVerified", "unitBuilderAuthorityVerified",
+    "buildArtifactLockVerified", "runtimeModelAcceptanceAuthority",
+    "productionAuthorizationVerified", "artifactAuthority", "fullE1BrowserAPIPackagingVerified"]) {
+    await t.test(field, async t => {
+      const f = await setup(t);
+      await f.overwriteReceipt({ [field]: true });
+      await assert.rejects(f.start(), new RegExp("unverified authority.*" + field));
+      assert.equal(f.count, 0);
+      assert.equal(f.reads, 0);
+    });
+  }
+});
+
+test("diagnostic authority must be explicit false, not missing or a false-like value", async t => {
+  for (const value of [undefined, null, 0, "false"]) {
+    await t.test(String(value), async t => {
+      const f = await setup(t);
+      await f.overwriteReceipt({ artifactAuthority: value });
+      await assert.rejects(f.start(), /unverified authority.*artifactAuthority/);
+      assert.equal(f.count, 0);
+    });
+  }
+});
+
+const frozenNonAuthority = () => ({
+  apiWorldMode: "digest-bound-frozen-world",
+  sourceAcceptanceAuthorityVerified: false,
+  unitBuilderAuthorityVerified: false,
+  buildArtifactLockVerified: false,
+  runtimeModelAcceptanceAuthority: false,
+  apiBuildInputObservation: {
+    builderArtifactAuthorityVerified: false,
+    buildArtifactLockVerified: false,
+    hermeticBuildVerified: false,
+    reproducibleBinaryVerified: false,
+  },
+});
+
+test("frozen diagnostic accepts explicit non-authority and rejects missing unit Builder status", async t => {
+  const f = await setup(t);
+  await f.overwriteReceipt({ ...frozenNonAuthority(), unitBuilderAuthorityVerified: undefined });
+  await assert.rejects(f.start(), /unverified authority.*unitBuilderAuthorityVerified/);
+  await f.overwriteReceipt(frozenNonAuthority());
+  const origin = await f.start();
+  assert.equal(await submit(origin), 200);
+  assert.equal(f.count, 1);
+});
+
+test("API build observations cannot promote diagnostic consistency to Builder trust", async t => {
+  for (const field of ["builderArtifactAuthorityVerified", "buildArtifactLockVerified",
+    "hermeticBuildVerified", "reproducibleBinaryVerified"]) {
+    await t.test(field, async t => {
+      const f = await setup(t);
+      const receipt = frozenNonAuthority();
+      receipt.apiBuildInputObservation[field] = true;
+      await f.overwriteReceipt(receipt);
+      await assert.rejects(f.start(), new RegExp("unverified authority.*" + field));
+      assert.equal(f.count, 0);
+    });
+  }
+  await t.test("missing build observation", async t => {
+    const f = await setup(t);
+    await f.overwriteReceipt({ ...frozenNonAuthority(), apiBuildInputObservation: undefined });
+    await assert.rejects(f.start(), /unverified authority.*builderArtifactAuthorityVerified/);
+    assert.equal(f.count, 0);
+  });
 });
 
 test("API swap after startup denies POST without sending a command", async t => {

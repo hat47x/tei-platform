@@ -91,6 +91,7 @@ class UnitPairPreflightTests(unittest.TestCase):
             "buildArtifactLockVerified": False,
             "runtimeModelAcceptanceAuthority": False,
             "productionAuthorizationVerified": False,
+            "unitBuilderAuthorityVerified": False,
             "artifactAuthority": False,
             "fullE1BrowserAPIPackagingVerified": False,
         }
@@ -133,6 +134,7 @@ class UnitPairPreflightTests(unittest.TestCase):
         self.assertEqual(result["sourceRevision"], SOURCE)
         self.assertEqual(result["packageCount"], 227)
         self.assertFalse(result["buildArtifactLockVerified"])
+        self.assertIs(result["unitBuilderAuthorityVerified"], False)
         self.assertFalse(result["productionAuthorizationVerified"])
 
     def test_any_modified_unit_byte_rejected(self):
@@ -230,6 +232,7 @@ class UnitPairPreflightTests(unittest.TestCase):
         for section, key in (
             (self.m, "artifactAuthority"),
             (self.m, "sourceAcceptanceAuthorityVerified"),
+            (self.m, "unitBuilderAuthorityVerified"),
             (self.m["apiBuildInputObservation"], "buildArtifactLockVerified"),
             (self.lineage, "artifactAuthority"),
         ):
@@ -239,6 +242,18 @@ class UnitPairPreflightTests(unittest.TestCase):
                 self.check()
             section[key] = False
         self.save()
+
+    def test_unit_builder_authority_requires_explicit_false(self):
+        for value in (None, 0, "false", [], {}):
+            with self.subTest(value=value):
+                self.m["unitBuilderAuthorityVerified"] = value
+                self.save()
+                with self.assertRaisesRegex(ValueError, "unitBuilderAuthorityVerified"):
+                    self.check()
+        del self.m["unitBuilderAuthorityVerified"]
+        self.save()
+        with self.assertRaisesRegex(ValueError, "unitBuilderAuthorityVerified"):
+            self.check()
 
     def test_unknown_file_source_map_and_missing_unit_rejected(self):
         extra = self.root / "browser/browser-command.js.map"
