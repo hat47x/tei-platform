@@ -17,7 +17,10 @@ import (
 // It normalizes absolute output paths away, but includes the filename and
 // content SHA-256 of every emitted asset in the ordered manifest digest.
 func TestPoCBTwoEmptyDirectoriesHaveIdenticalAssetManifest(t *testing.T) {
-	node := nodeForPoCTest(t)
+	node, err := exec.LookPath("node")
+	if err != nil {
+		t.Fatalf("Node.js is required for the combined Go/UI reproducibility test: %v", err)
+	}
 	dirs := []string{t.TempDir(), t.TempDir()}
 	const expectedGeneratedGoSHA = "867501c5a98d71337178d8bd7995e2e4eb6d276accd25151a2c18d8cb5adee50"
 	var manifests []map[string]string
