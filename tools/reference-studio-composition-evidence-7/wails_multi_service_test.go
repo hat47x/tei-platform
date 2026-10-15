@@ -131,3 +131,36 @@ func TestWailsIdenticallyNamedMethodsOfDifferentServiceTypesDoNotConflict(t *tes
 		}
 	}
 }
+
+func TestWailsBindingIDCollisionRejectsWithoutClobbering(t *testing.T) {
+	const collisionID uint32 = 4000001234
+	application.RegisterBindingMethodID((*sameShortNameA).Status, collisionID)
+	application.RegisterBindingMethodID((*sameShortNameB).Status, collisionID)
+	t.Cleanup(func() {
+		application.UnregisterBindingMethodID((*sameShortNameA).Status)
+		application.UnregisterBindingMethodID((*sameShortNameB).Status)
+	})
+	_ = application.New(application.Options{})
+	bindings := application.NewBindings(nil, nil)
+	first, second := &sameShortNameA{}, &sameShortNameB{}
+	if err := bindings.Add(application.NewService(first)); err != nil {
+		t.Fatal(err)
+	}
+	firstName := generatedMethodName(first, "Status")
+	secondName := generatedMethodName(second, "Status")
+	retained := bindings.Get(&application.CallOptions{MethodName: firstName})
+	if retained == nil || retained.ID != collisionID || bindings.GetByID(collisionID) != retained {
+		t.Fatalf("first method not bound under explicit ID: %v", retained)
+	}
+	err := bindings.Add(application.NewService(second))
+	if err == nil || !strings.Contains(err.Error(), "hash collision was detected") || !strings.Contains(err.Error(), firstName) || !strings.Contains(err.Error(), secondName) {
+		t.Fatalf("expected explicit duplicate ID error, got %v", err)
+	}
+	if bindings.Get(&application.CallOptions{MethodName: secondName}) != nil || bindings.Get(&application.CallOptions{MethodName: firstName}) != retained || bindings.GetByID(collisionID) != retained {
+		t.Fatal("second registration overwrote first binding after method-ID collision")
+	}
+	result, err := retained.Call(context.Background(), nil)
+	if err != nil || result != "a" {
+		t.Fatalf("original bound method broken after collision: result=%v err=%v", result, err)
+	}
+}
