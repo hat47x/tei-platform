@@ -37,3 +37,44 @@ Go側は未知のサービス、重複選択、互換しないexact version、�
 現時点でこの独立Referenceが**証明しないもの**は、#2の通常ビルドとの実サービス結果の一致、#3の画面との配線、2 UIモジュールを含む実Bundlerの成功、Wails Web/Desktop実機、Browser session隔離、任意プロセスロード、完全なArtifact/Build Lock来歴、製品用TEI宣言の一般解決です。これらは「未実施・依存待ち」とし、PoC B全体の合格とはしません。
 
 #7の独立黒箱検査は、本Referenceで使うfixtureと生成結果の内容・拒否/来歴を参照できますが、#7固有の検査器・負例fixture自体は#7の担当のままです。
+
+## #1849 固定workbenchとの最小接続（mergeしない検証snapshot）
+
+対象は #Workの [Draft PR #1849](https://github.com/hat47x/tei-platform/pull/1849) **exact head `9a290dc61f585dfbf292e9032e5c5bbbad04351a`** の `reference/tei-studio-workbench/main.ts`（Git blob `2a65a9f70245068bf2455248d98d280b382b01e4`）。#7とこのWork headを共通にする。#2 Host `d520689cfb0a2e2919aa86b0beeba54802b31465`、#4 Editor `cc57052f23b69582fc0d3800ab92b2210a28bb4f`、#9 Graph `36799dba33fe0e19db3f7b56e7af1e18da134a71`、#5 Command `26f47772ed49f5c4a9e1c50026c335783bc5e153` を#Workの基準入力として用いる。Go/Node builderの原本headも実行時に固定し記録する。
+
+`compose-ui.mjs`は従来の `studioUIContributions` を引き続き出力し、同一静的importから **`mountReadonlyGraph`、`mountCommandPanel` の名前付きalias** と型情報 `ui.generated.d.mts` を追加する。新たなResolver/Registryはない。出力ディレクトリは上記 `generated/` に固定する。既存workbenchの2 importだけを次へ差し替える。
+
+```diff
+-import { mountReadonlyGraph } from "../tei-studio-graph/graph.ts";
+-import { mountCommandPanel } from "../tei-studio-command/command.ts";
++import { mountReadonlyGraph, mountCommandPanel } from "../../tools/reference-studio-static-composition/generated/ui.generated.mjs";
+```
+
+この差分は#Workの原本へ直接適用しない。**#1849 exactのファイルを取り出した検証専用checkout**で、以下を実行して `main.generated.ts` を隣に生成する（元の `main.ts` は不変）。アダプターは対象原本Git blobが不一致なら `workbench_revision_mismatch` で拒否し、出力に同名異内容がある場合も上書きしない。Goサービスの生成は別の操作であり、Wails Hostへ生成Goサービスを直接登録しない。
+
+```sh
+# リポジトリroot／#1849等の固定ソースをpath別に置いた専用snapshotで実行
+OUT=tools/reference-studio-static-composition/generated
+go test -count=1 ./tools/reference-studio-static-composition
+node --test tools/reference-studio-static-composition/*.test.mjs
+
+go run ./tools/reference-studio-static-composition \
+  -fixture tools/reference-studio-static-composition/fixture.json -out "$OUT"
+node tools/reference-studio-static-composition/compose-ui.mjs \
+  tools/reference-studio-static-composition/fixture.json "$OUT"
+node tools/reference-studio-static-composition/connect-workbench.mjs \
+  reference/tei-studio-workbench/main.ts
+
+cd reference/tei-studio-workbench
+npm ci
+npm test
+npm run typecheck
+# 本体main.tsには書き込まず、接続後main.generated.tsを実bundle化
+node --input-type=module -e 'import {build} from "esbuild"; import {resolve} from "node:path"; await build({absWorkingDir:process.cwd(),entryPoints:["main.generated.ts"],outfile:"dist/main.generated.js",bundle:true,platform:"browser",format:"esm",target:"es2022",nodePaths:[resolve("node_modules")]});'
+```
+
+`connect-workbench.test.mjs`は差し替え2行以外のHost呼出しが不変であること、重複/欠落importと未固定のworkbench SHAを拒否すること、生成ソース/型定義/来歴のSHAを確認する。#1849実原本がsnapshotに存在する場合のみ実ファイルblob検査を実行し、#1833単独branchでは **SKIP（PASSではない）**。Graph/Commandのimport名は型付きaliasへ静的に結び付き、#1849の既存のEditor、Presenter、workspace選択、Commandのinvoke、`createReadOnlyClient` と四操作 `ListWorkspaces/CatalogWorkspace/ValidateWorkspace/InspectSubject` を変更しない。Graph/CommandをHost権限として解釈しない。
+
+**負例と再生成**：Go側の不足サービス・重複・版/スコープ不一致は既存 `composeServices` で拒否し、fixtureサービスの並びを反転しても生成Goソースのバイト列は一致させる。UI側は重複slot/implementation・未知impl・Kit版 `latest`（既存Resolverの `invalid_request`）・PoC固定 `0.1.0` 以外の正しいSemVerも拒否し、Kit slot/changesの並びに依存せずソース/型定義を一致させる。入力自体を変更したとき `fixtureSha256` は異なってよい。実物2回生成のファイルSHAと検証snapshotの結果は#7の検査対象。
+
+**Host受入との違い**：生成Go `Services(root)` の2サービスは `operations` の意味比較用であり、#2の実BridgeのWorkspace許可リスト、非任意path制約、`{ok:true,value}` / `{ok:false,failure}`、Host transport失敗処理を置換しない。実Wails Server/Browser/Desktop確認、完全な依存closure、署名、Build/Plugin Lock、生成Wails bindingの適合は単体・bundle検査と分けてIssueへ記録する。#1849/#1832/#7原本やmainをmerge/editしない。
