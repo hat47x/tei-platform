@@ -1,0 +1,171 @@
+name: TEI Studio Workbench native fixed smoke
+on:
+  push:
+    branches: [test/studio-workbench-native-fixed-20261015]
+permissions:
+  contents: read
+jobs:
+  native:
+    runs-on: windows-2022
+    timeout-minutes: 35
+    env:
+      GOTOOLCHAIN: local
+      GOWORK: off
+      HOST_SHA: 4bc437c72e63a3b5d578b1efe2c60be510a9f8a9
+      GEN_SHA: fe8e37b1c735dc138c36cb2d37db94ee44424b9e
+      UI_SHA: c55ad2285268533f5f1c90fbc9fe766bae57f009
+      EDITOR_SHA: a7084fe1711cc48eff56fd20e3dc81c508f520a3
+      GRAPH_SHA: 786d8d82e19e8b08690aceadf9d180374e211448
+      COMMAND_SHA: 01f5022240fd86c6ac38c1107310e299a1615b48
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+          fetch-depth: 2
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: go.mod
+          check-latest: false
+          cache: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24'
+          check-latest: false
+      - name: Assemble pinned generated Go and Workbench
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD^)" = "$HOST_SHA"
+          git diff --exit-code "$HOST_SHA" HEAD -- internal/studiohost cmd/tei-studio reference/workspace
+          test "$(go version | awk '{print $3}')" = go1.26.9
+          for pair in \
+            "1833 $GEN_SHA tools/reference-studio-static-composition" \
+            "1849 $UI_SHA reference/tei-studio-workbench" \
+            "1830 $EDITOR_SHA reference/tei-studio-editor" \
+            "1828 $GRAPH_SHA reference/tei-studio-graph" \
+            "1829 $COMMAND_SHA reference/tei-studio-command"; do
+              read -r pr sha path <<< "$pair"
+              git fetch --no-tags --depth=100 https://github.com/hat47x/tei-platform.git "refs/pull/$pr/head"
+              git cat-file -e "$sha^{commit}"
+              git archive "$sha" "$path" | tar -xf -
+          done
+          go run ./tools/reference-studio-static-composition \
+            -fixture tools/reference-studio-static-composition/fixture.json \
+            -out internal/studiohost/staticservices
+          test "$(sha256sum internal/studiohost/staticservices/services.generated.go | cut -d' ' -f1)" = 867501c5a98d71337178d8bd7995e2e4eb6d276accd25151a2c18d8cb5adee50
+          cd reference/tei-studio-workbench
+          npm ci --no-audit --no-fund
+          npm test
+          npm run typecheck
+          npm run build
+          sha256sum dist/main.js
+          test "$(sha256sum dist/main.js | cut -d' ' -f1)" = 1166d9489c76028ba21c9eaf44d25c6f36f98d5845d1f5a0599ea51bdfb1f1ee
+          cp dist/index.html dist/main.js dist/style.css dist/THIRD_PARTY_NOTICES.txt dist/dependencies.json ../../cmd/tei-studio/assets/
+          for f in index.html main.js style.css THIRD_PARTY_NOTICES.txt dependencies.json; do
+            cmp "dist/$f" "../../cmd/tei-studio/assets/$f"
+          done
+          cd ../../cmd/tei-studio
+          go mod tidy
+          git diff --exit-code -- go.mod go.sum
+          go build -mod=readonly -tags studio_generated -o "$RUNNER_TEMP/tei-studio-generated-workbench.exe" .
+          sha256sum "$RUNNER_TEMP/tei-studio-generated-workbench.exe"
+      - name: Real native Workbench render and normal close
+        shell: pwsh
+        working-directory: cmd/tei-studio
+        run: |
+          $ErrorActionPreference='Stop'
+          $exe=Join-Path $env:RUNNER_TEMP 'tei-studio-generated-workbench.exe'
+          $env:WAILS_SERVER_HOST='127.0.0.1'
+          $env:WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS='--remote-debugging-port=43139'
+          $obs=[System.Collections.Generic.List[string]]::new()
+          $obs.Add("HOST_SHA=$env:HOST_SHA")
+          $obs.Add("GEN_SHA=$env:GEN_SHA")
+          $obs.Add("UI_SHA=$env:UI_SHA")
+          $obs.Add("EDITOR_SHA=$env:EDITOR_SHA")
+          $obs.Add("GRAPH_SHA=$env:GRAPH_SHA")
+          $obs.Add("COMMAND_SHA=$env:COMMAND_SHA")
+          $obs.Add("GO_VERSION=$(go version)")
+          $obs.Add("NODE_VERSION=$(node --version)")
+          $obs.Add("OS=$([System.Environment]::OSVersion.VersionString)")
+          $obs.Add("EXE_SHA256=$((Get-FileHash $exe -Algorithm SHA256).Hash)")
+          Add-Type -AssemblyName System.Drawing
+          Add-Type -TypeDefinition @'
+          using System;using System.Text;using System.Runtime.InteropServices;
+          public static class NativeStudio {
+            delegate bool Callback(IntPtr w,IntPtr p);
+            [StructLayout(LayoutKind.Sequential)]public struct Rect{public int L,T,R,B;}
+            [DllImport("user32.dll")]static extern bool EnumWindows(Callback cb,IntPtr p);
+            [DllImport("user32.dll")]static extern uint GetWindowThreadProcessId(IntPtr w,out uint pid);
+            [DllImport("user32.dll",CharSet=CharSet.Unicode)]static extern int GetWindowText(IntPtr w,StringBuilder s,int max);
+            [DllImport("user32.dll")]static extern bool IsWindowVisible(IntPtr w);
+            [DllImport("user32.dll")]static extern bool GetWindowRect(IntPtr w,out Rect r);
+            [DllImport("user32.dll")]public static extern bool PrintWindow(IntPtr w,IntPtr dc,uint flags);
+            [DllImport("user32.dll")]public static extern bool PostMessage(IntPtr w,uint msg,IntPtr p1,IntPtr p2);
+            public static IntPtr Find(uint pid){
+              IntPtr found=IntPtr.Zero;
+              EnumWindows((w,p)=>{
+                uint owner;GetWindowThreadProcessId(w,out owner);
+                var s=new StringBuilder(256);GetWindowText(w,s,s.Capacity);
+                if(owner==pid&&IsWindowVisible(w)&&s.ToString().Contains("TEI Studio")){found=w;return false;}
+                return true;
+              },IntPtr.Zero);return found;
+            }
+            public static Rect Bounds(IntPtr w){Rect r;if(!GetWindowRect(w,out r))throw new Exception("GetWindowRect");return r;}
+          }
+          '@
+          $proc=$null
+          try {
+            $proc=Start-Process -FilePath $exe -ArgumentList @('-workspace','../../reference/workspace','-port','43135') -WorkingDirectory (Get-Location).Path -PassThru
+            $obs.Add("PID=$($proc.Id)")
+            $win=[IntPtr]::Zero
+            for($i=0;$i -lt 45;$i++){
+              Start-Sleep -Seconds 1;$proc.Refresh();if($proc.HasExited){break}
+              $win=[NativeStudio]::Find([uint32]$proc.Id)
+              if($win -ne [IntPtr]::Zero){break}
+            }
+            if($win -eq [IntPtr]::Zero){throw "NATIVE_WINDOW_NOT_FOUND"}
+            $rect=[NativeStudio]::Bounds($win)
+            $width=$rect.R-$rect.L;$height=$rect.B-$rect.T
+            $obs.Add("WINDOW_FOUND=YES")
+            $obs.Add("WINDOW_SIZE=$width,$height")
+            if($width -lt 400 -or $height -lt 250){throw "INVALID_WINDOW_SIZE"}
+            Start-Sleep -Seconds 8
+            $img=[System.Drawing.Bitmap]::new($width,$height)
+            $graphics=[System.Drawing.Graphics]::FromImage($img)
+            try{
+              $dc=$graphics.GetHdc()
+              try{$printed=[NativeStudio]::PrintWindow($win,$dc,2)}
+              finally{$graphics.ReleaseHdc($dc)}
+              $img.Save((Join-Path $env:RUNNER_TEMP 'tei-studio-workbench-native.png'),[System.Drawing.Imaging.ImageFormat]::Png)
+              $obs.Add("PRINTWINDOW=$printed")
+            }finally{$graphics.Dispose();$img.Dispose()}
+            $edge=@(Get-CimInstance Win32_Process -Filter "Name='msedgewebview2.exe'" -ErrorAction SilentlyContinue)
+            $obs.Add("WEBVIEW2_SYSTEM_COUNT=$($edge.Count)")
+            try{
+              $targets=Invoke-RestMethod -Uri 'http://127.0.0.1:43139/json/list' -TimeoutSec 3
+              $targets|ConvertTo-Json -Depth 4|Set-Content (Join-Path $env:RUNNER_TEMP 'tei-studio-workbench-cdp-targets.json') -Encoding utf8
+              $obs.Add("WEBVIEW2_CDP_TARGETS=$(@($targets).Count)")
+            }catch{$obs.Add("WEBVIEW2_CDP_TARGETS=NOT_AVAILABLE")}
+            if(-not [NativeStudio]::PostMessage($win,16,[IntPtr]::Zero,[IntPtr]::Zero)){throw "CLOSE_MESSAGE_FAILED"}
+            if(-not $proc.WaitForExit(20000)){throw "NATURAL_EXIT_TIMEOUT"}
+            $obs.Add("NATURAL_EXIT=PASS")
+            $obs.Add("EXIT_CODE=$($proc.ExitCode)")
+            if($proc.ExitCode -ne 0){throw "EXIT_NONZERO"}
+          }finally{
+            if($null -ne $proc){$proc.Refresh();if(-not $proc.HasExited){
+              $obs.Add("FORCED_CLEANUP_NOT_NORMAL_EXIT")
+              Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
+            }}
+            $obs|Set-Content (Join-Path $env:RUNNER_TEMP 'tei-studio-workbench-native.txt') -Encoding utf8
+            $obs|ForEach-Object {Write-Host $_}
+          }
+      - name: Upload native screen and observations
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: tei-studio-workbench-native-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/tei-studio-workbench-native.*
+            ${{ runner.temp }}/tei-studio-workbench-cdp-targets.json
+          retention-days: 7
+          if-no-files-found: ignore
