@@ -10,7 +10,7 @@ import (
 )
 
 type d4CurrentReader struct {
-	record CurrentAcceptedBindings
+	record       CurrentAcceptedBindings
 	err          error
 	calls        int
 	meaning      map[string]derivationref.Definition
