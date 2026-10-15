@@ -390,7 +390,6 @@ func TestPublishedSetMissRebuildKeepsPinnedMemberDigest(t *testing.T) {
 	}
 }
 
-
 // A successful Put receipt is not evidence that a member remains available
 // while later members are being published. The final getMembers pass must
 // reject an object disappearing after its Put, and a subsequent explicit
