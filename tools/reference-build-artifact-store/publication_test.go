@@ -486,16 +486,17 @@ func TestPublishExactMembersRejectsSameBytesObjectReplacementDuringReverify(t *t
 		afterLstat++
 		// Both PutBytes calls verify a temp object and the linked object:
 		// calls 1-4. Call 5 is the first final getMembers read (role a).
+		// getMembers marks that role corrupt, then still reads z at call 6.
 		if afterLstat == 5 {
 			replaceWithSameBytes(t, firstPath, first)
 			replaced = true
 		}
 	})
 	failed, err := store.publishExactMembers(expected, built)
-	if !replaced || afterLstat != 5 {
+	if !replaced || afterLstat != 6 {
 		t.Fatalf("fixture did not swap an object during final reverify: replaced=%v checks=%d", replaced, afterLstat)
 	}
-	if !errors.Is(err, errArtifactCorrupt) || len(failed.Members) != 0 {
+	if err == nil || !strings.Contains(err.Error(), "incomplete after reverification") || len(failed.Members) != 0 {
 		t.Fatalf("same-byte inode replacement yielded set publication evidence: %+v err=%v", failed, err)
 	}
 
