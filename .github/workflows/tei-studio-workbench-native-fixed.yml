@@ -58,8 +58,16 @@ jobs:
           npm test
           npm run typecheck
           npm run build
-          sha256sum dist/main.js
-          test "$(sha256sum dist/main.js | cut -d' ' -f1)" = 1166d9489c76028ba21c9eaf44d25c6f36f98d5845d1f5a0599ea51bdfb1f1ee
+          sha256sum dist/main.js | tee "$RUNNER_TEMP/tei-studio-workbench-windows-bundle-hash.txt"
+          first="$(sha256sum dist/main.js | cut -d' ' -f1)"
+          npm run build
+          second="$(sha256sum dist/main.js | cut -d' ' -f1)"
+          test "$first" = "$second"
+          if test "$first" = 1166d9489c76028ba21c9eaf44d25c6f36f98d5845d1f5a0599ea51bdfb1f1ee; then
+            echo 'CROSS_OS_BUNDLE_MATCH=YES'
+          else
+            echo "CROSS_OS_BUNDLE_MATCH=NO windows=$first linux=1166d9489c76028ba21c9eaf44d25c6f36f98d5845d1f5a0599ea51bdfb1f1ee"
+          fi
           cp dist/index.html dist/main.js dist/style.css dist/THIRD_PARTY_NOTICES.txt dist/dependencies.json ../../cmd/tei-studio/assets/
           for f in index.html main.js style.css THIRD_PARTY_NOTICES.txt dependencies.json; do
             cmp "dist/$f" "../../cmd/tei-studio/assets/$f"
@@ -167,5 +175,6 @@ jobs:
           path: |
             ${{ runner.temp }}/tei-studio-workbench-native.*
             ${{ runner.temp }}/tei-studio-workbench-cdp-targets.json
+            ${{ runner.temp }}/tei-studio-workbench-windows-bundle-hash.txt
           retention-days: 7
           if-no-files-found: ignore
