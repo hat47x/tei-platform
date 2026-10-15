@@ -134,6 +134,39 @@ func TestRejectMalformedTypedBrowseData(t *testing.T) {
 	}
 }
 
+func TestBrowseFixtureRejectsAmbiguousColumns(t *testing.T) {
+	cases := []struct {
+		name      string
+		columns   []string
+		wantError bool
+	}{
+		{name: "distinct", columns: []string{"order_id", "amount"}},
+		{name: "case-distinct", columns: []string{"ID", "id"}},
+		{name: "duplicate", columns: []string{"order_id", "order_id"}, wantError: true},
+		{name: "empty", columns: []string{""}, wantError: true},
+		{name: "whitespace-only", columns: []string{" \\t "}, wantError: true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			fixture := BrowseFixture{
+				Query: "order_query", DatasourceAlias: "orders", TargetDatabase: "scratch",
+				Columns: tc.columns, Rows: [][]Value{},
+			}
+			data, err := json.Marshal(fixture)
+			if err != nil {
+				t.Fatal(err)
+			}
+			parsed, err := ParseBrowseFixture(data)
+			if (err != nil) != tc.wantError {
+				t.Fatalf("ParseBrowseFixture error=%v, wantError=%v", err, tc.wantError)
+			}
+			if err == nil && !reflect.DeepEqual(parsed.Columns, tc.columns) {
+				t.Fatalf("columns changed during parsing: got=%q want=%q", parsed.Columns, tc.columns)
+			}
+		})
+	}
+}
+
 func TestCanonicalValidationScenarioFixtureContracts(t *testing.T) {
 	valid := `{"numbers":{"quantity":"2.5"},"relationKeys":[{"relation":"r","attribute":"a","keys":["1","2"]}]}`
 	if _, err := ParseValidationFixture([]byte(valid)); err != nil {
