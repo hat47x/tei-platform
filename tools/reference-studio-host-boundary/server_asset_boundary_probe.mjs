@@ -75,8 +75,8 @@ test("pinned Wails Server cannot serve an unrelated private file via asset-like 
     "/" + encoded,
     "/wails/runtime.js?file=" + encoded,
   ];
-  for (const path of paths) {
-    await t.test("GET " + path.split("?")[0], async () => {
+  for (const [index, path] of paths.entries()) {
+    await t.test("private-file-probe-" + (index + 1), async () => {
       const response = await getRaw(port, path);
       // A SPA may intentionally return the index for unknown paths.
       // Do not require 404; require that it never responds with private bytes.
