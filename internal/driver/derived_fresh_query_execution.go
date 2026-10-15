@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"tei/internal/application"
 	"tei/internal/core"
 	"tei/internal/driver/queryresult"
 	"tei/internal/query"
@@ -34,7 +35,7 @@ func (r Resolver) ExecuteFreshDerivedBrowseQuery(
 	if err != nil {
 		return query.DerivedSelectResult{}, false, err
 	}
-	if resolved.Pattern.Kind != "browse" || resolved.Query == nil || resolved.Datasource == nil {
+	if resolved.Pattern.Kind != application.PatternBrowse || resolved.Query == nil || resolved.Datasource == nil {
 		return query.DerivedSelectResult{}, false, fmt.Errorf("%w: unresolved browse Query or Datasource", query.ErrDerivedUnsupported)
 	}
 	if executor == nil || authority == nil {
