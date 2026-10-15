@@ -22,6 +22,7 @@
 | 場所 | 役割 |
 | --- | --- |
 | [`first-value-ux-audit/`](first-value-ux-audit/) | 初回利用時の操作上のつまずきの確認 |
+| [`reference-authoring-auxiliary/`](reference-authoring-auxiliary/) | 設計の補助情報（用語・改訂履歴・注記・区分）の置き場所と意味の版の境界の確認 |
 | [`reference-authoring-witness-openssh/`](reference-authoring-witness-openssh/) | OpenSSHを使った記述作業の参照確認 |
 | [`reference-authority-evidence-trust/`](reference-authority-evidence-trust/) | 情報源の権威と検証根拠の信頼境界の確認 |
 | [`reference-business-dfd/`](reference-business-dfd/) | 業務データフロー図の読取り専用参照 |
