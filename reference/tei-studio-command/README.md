@@ -59,4 +59,4 @@ if (!accepted) return; // 古い応答なのでUIを更新しない
 
 `execute(id)`の`true`は表示側が呼出しを受け付けたことを示すだけで、意味検証の成功ではありません。`ok:true`のTransport/Operation envelopeから意味上の合格を自動判定しないでください。Host/Operationが診断のerrorを調べて明示した`failure`を返すか、warningを保持して`success`を返した結果を表示します。UI側でTEIのValidation意味を再計算しません。
 
-対象回帰テスト: `node --experimental-strip-types --test reference/tei-studio-command/command.test.mjs reference/tei-studio-command/command.concurrent.test.mjs`。新規9件は検証連打、途中の文脈切替、拒否・失敗後の再実行、古い診断拒否、結果と意味検証の区別、購読通知時の再入切替、旧Host例外の遅延到着、切替前後の連打、古い不正診断の通知防止を確認します。実Wails/Browser接続の固定版観測は#1824の#Work報告を参照し、本部品のNode試験とは区別します。
+対象回帰テスト: `node --experimental-strip-types --test reference/tei-studio-command/command.test.mjs reference/tei-studio-command/command.concurrent.test.mjs`。競合系の新規11件は検証連打、作業領域切替、再実行、古い診断拒否、意味結果区別、購読通知時の再入切替、旧Host例外の遅延到着、切替前後の連打、古い不正診断の通知防止、通知中のdisposeとunsubscribeを確認します。実Wails/Browser接続の固定版観測は#1824の#Work報告を参照し、本部品のNode試験とは区別します。
