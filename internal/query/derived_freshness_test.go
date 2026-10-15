@@ -499,3 +499,46 @@ func TestD3MemoExplicitFreshnessAndCacheStillRequireWitness(t *testing.T) {
 		t.Fatalf("unverified cache/freshness path dispatched Provider: calls=%d", calls)
 	}
 }
+
+func TestD3MemoNoCacheExplicitSourceAgeAndAlignmentAreVerified(t *testing.T) {
+	q, plan, proof, rows := d2Fixture()
+	w := d3QueryWitness()
+	now := time.Date(2026, 10, 15, 1, 0, 10, 0, time.UTC)
+	v := &d3QueryVerifier{}
+	allow := func(core.CanonicalID) bool { return true }
+	calls := 0
+	load := func(context.Context, int) ([]query.DerivedRow, bool, error) {
+		calls++
+		return rows, true, nil
+	}
+	var memo query.DerivedMemo
+	// Disabling memo storage must not disable a consumer-requested source
+	// freshness guarantee or current witness revalidation.
+	policy := derivationref.CachePolicy{MaxSourceAge: 2 * time.Minute}
+	for i := 0; i < 2; i++ {
+		result, hit, err := memo.Resolve(context.Background(), q, plan, proof, w,
+			policy, now, v, allow, load)
+		if err != nil || hit || result.Count != 5 {
+			t.Fatalf("source freshness with memo OFF %d: hit=%v count=%d err=%v", i, hit, result.Count, err)
+		}
+	}
+	if calls != 2 || v.currentCalls != 4 {
+		t.Fatalf("memo off skipped current witness pre/post: loads=%d verifies=%d", calls, v.currentCalls)
+	}
+	// Strong alignment is independent of whether any result is cached.
+	second := w.Sources[0]
+	second.SourceID = "pricing"
+	w.Sources = append(w.Sources, second)
+	policy = derivationref.CachePolicy{RequireAligned: true}
+	if _, hit, err := memo.Resolve(context.Background(), q, plan, proof, w,
+		policy, now, v, allow, load); !errors.Is(err, derivationref.ErrNotCoherent) || hit || calls != 2 {
+		t.Fatalf("unattested cross-source snapshot accepted: hit=%v loads=%d err=%v", hit, calls, err)
+	}
+	for i := range w.Sources {
+		w.Sources[i].SnapshotRef = "provider-attested-batch"
+	}
+	if _, hit, err := memo.Resolve(context.Background(), q, plan, proof, w,
+		policy, now, v, allow, load); err != nil || hit || calls != 3 || v.alignedCalls != 2 {
+		t.Fatalf("attested no-cache snapshot not evaluated: hit=%v loads=%d aligned=%d err=%v", hit, calls, v.alignedCalls, err)
+	}
+}
