@@ -138,17 +138,20 @@ async function inspect(subject: Subject) {
     notice.textContent = "選択したモデルの投影を表示しています。";
     notice.dataset.state = "ready";
   }, (error) => {
+    const stale = error instanceof Error && error.message === "STALE_MODEL_PROJECTION";
     editor.setDocument({
       id: "unavailable",
       version: `${context}:${request}`,
-      text: "この要素の投影は取得できませんでした。",
+      text: stale
+        ? "CatalogとInspectの版が一致しません。一覧を再読み込みしてください。"
+        : "この要素の投影は取得できませんでした。",
     });
-    if (error instanceof Error && error.message === "STALE_MODEL_PROJECTION") {
+    if (stale) {
       graph.update({ width: 680, height: 240, nodes: [], edges: [] });
       element("graph-note").textContent =
         "参照中にモデルの更新を検出しました。一覧を再読み込みしてください。";
     }
-    element("source-status").textContent = "未取得";
+    element("source-status").textContent = stale ? "版不一致" : "未取得";
     throw error;
   });
 }
