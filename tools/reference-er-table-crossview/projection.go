@@ -241,6 +241,7 @@ func Project(world ir.World) (Projection, error) {
 		}
 	}
 	sort.Slice(out.Tables, func(i, j int) bool { return out.Tables[i].MappingID < out.Tables[j].MappingID })
+	out.Unresolved = append(out.Unresolved, physicalConstraintFindings(out.Tables)...)
 	for i := range out.Data {
 		sort.Strings(out.Data[i].PhysicalMappingIDs)
 		if len(out.Data[i].PhysicalMappingIDs) == 0 {
@@ -257,7 +258,11 @@ func Project(world ir.World) (Projection, error) {
 		for _, k := range owner.CandidateKeys {
 			add := func(kind, name string, attrs []string) {
 				status := "distinct-attribute-set"
-				if sameSet(k.Attributes, attrs) {
+				if !constraintHasMappedColumns(table, attrs) {
+					// The physical declaration refers to absent or duplicate
+					// columns, so even a textual set match is inconclusive.
+					status = "unresolved-physical-constraint"
+				} else if sameSet(k.Attributes, attrs) {
 					status = "same-attribute-set"
 				}
 				out.KeyComparisons = append(out.KeyComparisons, KeyComparison{
