@@ -92,31 +92,47 @@ node --input-type=module -e 'import {build} from "esbuild"; import {resolve} fro
 
 ## #2との生成Goサービス内部接続（Issue #1824 / #6181598991）
 
-この段階で#1は**生成された型付きread-onlyオペレーションを公開するところまで**を担当する。#2が所有する`internal/studiohost/`、`cmd/tei-studio/`には変更を加えない。従来の`Services(root) []any`は独立検証用に維持し、新たに次の**固定2サービス**を生成する。
+#2は [Draft PR #1832](https://github.com/hat47x/tei-platform/pull/1832) の**Host所有パス**で、型付きOperation注入とbuild tag切替を実装している。#1の生成Goを直接Wailsに登録するのではなく、`StudioBridge`の4メソッドと`studiohost.ReadOnly.workspace(id)`を維持して利用する。#1はこの#2原本へ書き込まない。
+
+### #1が実生成する型付きOperation
 
 ```go
-// 実際の生成Go packageは staticservices。
-// rootは起動時に#2 Hostが許可したworkspace rootのみ。Rendererから渡さない。
-func NewTypedServices(root string) (*CatalogService, *ValidateService) {
-    return NewCatalogService(root), NewValidateService(root)
-}
-// (*CatalogService).Catalog(namespace string) (operations.ModelCatalog, error)
-// (*ValidateService).Validate() (operations.WorkspaceValidation, error)
+// package staticservices
+func NewCatalogService(root string) *CatalogService
+func (s *CatalogService) Catalog(namespace string) (operations.ModelCatalog, error)
+
+func NewValidateService(root string) *ValidateService
+func (s *ValidateService) Validate() (operations.WorkspaceValidation, error)
+
+// 新たに提供した補助API。既存コンストラクタ・Services([]any)は残す。
+func NewTypedServices(root string) (*CatalogService, *ValidateService)
 ```
 
-**#2との接続案（#2担当ファイルで実装し、#1は編集しない）**：
+`NewTypedServices`は#2の実装が必須とするものではない。既存コンストラクタが、すでに#2の型付きinterface（`studiohost.CatalogService` / `studiohost.ValidationService`）をstructural typingで満たしている。rootは#2 Hostの**allowlistでIDを解決したあとにだけ**渡し、この生成パッケージから認可権限やWails公開サービスを追加しない。
 
-1. `internal/studiohost.ReadOnly`の既存`workspace(workspaceID)`と`operationFailure(err)`、既存`ListWorkspaces`／`InspectSubject`を変えずに、`Catalog(string) (operations.ModelCatalog,error)`と`Validate() (operations.WorkspaceValidation,error)`を満たす**型付きプライベートinterface**と`func(root string) (CatalogReader, ValidateReader)`を受けるfactory注入を追加する。既存`NewReadOnly(paths)`の既定呼出しは引き続き通常`operations.CatalogWorkspace`／`operations.ValidateWorkspace`へ委譲する。
-2. Catalog／Validateは**必ず `workspace(workspaceID)` による拒否の後**、許可済み`root`だけでfactoryを呼ぶ。失敗は既存の`operationFailure(err)`に入れ、`CatalogResponse`/`ValidationResponse`（`{ok,value}`／`{ok:false,failure}`）へ閉じ込める。直接`Wails.NewService`に生成サービスを追加しない。
-3. `cmd/tei-studio/`の通常ビルドで生成パッケージが未存在でも動くように、**生成サービス導入は明示的なbuild tag** `studio_poc_b_generated` で分離する。通常経路には従来`NewReadOnly`、生成経路には`NewReadOnlyWithFactory`等と、同一の`StudioBridge{host}`だけを使う。例えば生成経路のfactoryはこの形式（#2が実際のinterface名に合わせる）：
-   ```go
-   func(root string) (studiohost.CatalogReader, studiohost.ValidateReader) {
-       catalog, validate := staticservices.NewTypedServices(root)
-       return catalog, validate
-   }
-   ```
-4. 生成パッケージは**root側Go module**内の `tools/reference-studio-static-composition/generated/`へ実生成し、#2 nested moduleの `replace tei => ../..` から参照する。build tagなしで生成パッケージに依存しない。正式な生成物の配置/依存closure/Lock導入へ過度に拡張しない。
+### #2実装の正しい固定契約（#2所有）
 
-**受入テスト**：通常ビルドのread-only回帰を先に確認。生成tagビルドで**同じHost Bridgeの4公開メソッドだけ**を確認し、許可WorkspaceでCatalog/Validateが実際に生成インスタンスを経由したことをspy factory/call-countで示し、未知ID・パス風IDを渡してもfactory call-countが0であること、Inspect/List既存経路、`reflect.DeepEqual`による通常Operationと結果一致、診断警告3件保持、失敗時`WORKSPACE_LOAD_FAILED`等の既存stage/envelope維持、絶対rootやprivate pathがレスポンス/ログに漏れないことを確認する。実Wails Server・Desktopはタグ付きbinaryを別々に検証し、Serverの実Host/画面試験をDesktop実WebViewへ転用しない。
+- 基準原本：#1832 `d520689cfb0a2e2919aa86b0beeba54802b31465`、#2の注入実装を含むhead `b0d51895dd4d527070fbec8c9413ab94e911549c` を閲覧して整合確認した。実検証には各テストで使用した**exact revisionを別途記録**する。
+- `internal/studiohost/readonly.go` の `type ServiceFactory func(trustedRoot string) (RootServices, error)`、`NewReadOnlyWithFactory(paths, factory)`。既定の `NewReadOnly(paths)` はfactory=nilで従前の直接Operation呼出し。
+- `cmd/tei-studio/host_default.go` は `//go:build !studio_generated`、`host_generated.go` は `//go:build studio_generated`。**正しいtagは `studio_generated`**（旧提案の `studio_poc_b_generated` ではない）。#2の実装は `NewCatalogService` / `NewValidateService` をcompile-time interface assertion付きで `RootServices` に注入する。
+- #2の実際の生成先は `internal/studiohost/staticservices/`。検証snapshotのrootで `go run ./tools/reference-studio-static-composition -fixture tools/reference-studio-static-composition/fixture.json -out internal/studiohost/staticservices` を実行して、原本を手書き模倣せず本当の生成ファイルを使う。
+- **未知/パス風workspace IDはfactoryへ到達前に拒否**。許可済みroot以外をfactoryへ渡さず、Catalog/Validateエラーを既存`operationFailure`へ戻す。List/Inspectと公開Bridge4メソッドは変更しない。
 
-これは#1の**型付き生成コンストラクタと具体的な#2への接続提案**であり、このREADME自体は生成サービスが実Wails経路で使用された証拠ではない。#2側変更が完成するまで**実Host内部接続は未完／未実証**とする。
+### 同一固定snapshotの再現コマンド
+
+```sh
+# #1/#2それぞれのexact headから、所有pathだけを抽出した検証checkout
+go run ./tools/reference-studio-static-composition \
+  -fixture tools/reference-studio-static-composition/fixture.json \
+  -out internal/studiohost/staticservices
+go test -race -count=1 ./internal/studiohost/... ./tools/reference-studio-static-composition
+go vet ./internal/studiohost/... ./tools/reference-studio-static-composition
+cd cmd/tei-studio
+CGO_ENABLED=0 go test -mod=readonly -count=1 -tags 'studio_generated,server' .
+CGO_ENABLED=0 go build -mod=readonly -tags 'studio_generated,server' -o tei-studio-generated-server .
+./tei-studio-generated-server -workspace ../../reference/workspace -port 43128
+```
+
+**実証条件**：通常buildの回帰、生成tagでHost内部のfactoryが許可済みrootから生成Catalog/Validateへ到達したこと（stubではない実生成ファイル・型一致とspy/call-count）、通常Operationとの`reflect.DeepEqual`一致、警告3件維持、未知ID/任意path拒否、failure `code/stage/message`維持・private root非漏洩、Bridge公開4メソッド固定。Server実Wails IPC/DOM・Desktop実WebViewはそれぞれ別に検証する。CIでcompile/testがPASSしても、実WebView動作やPoC B全体の合格に読み替えない。
+
+**現在の証拠区分**：#1の型付き追加はこのPR上のコード実装であり、#2の新headと組み合わせた生成tagのCI結果は確認・記録するまで未実証。既存UI合成PASSとHost内部生成Operation接続PASSは別証拠。製品用Contract/Artifact Lock一般化はStudioをブロックしないので既存ADR/Issue担当へ引き継ぐ。
