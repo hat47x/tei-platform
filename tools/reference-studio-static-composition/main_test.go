@@ -80,11 +80,12 @@ func TestProvenanceSerialization(t *testing.T) {
 func TestServiceSelectionOrderDoesNotChangeGeneratedSource(t *testing.T) {
   original, originalEvidence, err := composeServices([]byte(goodFixture))
   if err != nil { t.Fatal(err) }
-  reordered := strings.Replace(goodFixture,
-    "{\\\"id\\\":\\\"studio.validate\\\",\\\"version\\\":\\\"0.1.0\\\"},{\\\"id\\\":\\\"studio.catalog\\\",\\\"version\\\":\\\"0.1.0\\\"}",
-    "{\\\"id\\\":\\\"studio.catalog\\\",\\\"version\\\":\\\"0.1.0\\\"},{\\\"id\\\":\\\"studio.validate\\\",\\\"version\\\":\\\"0.1.0\\\"}", 1)
-  if reordered == goodFixture { t.Fatal("the service order was not changed") }
-  actual, evidence, err := composeServices([]byte(reordered))
+  var p profile
+  if err := json.Unmarshal([]byte(goodFixture), &p); err != nil { t.Fatal(err) }
+  p.Services[0], p.Services[1] = p.Services[1], p.Services[0]
+  reordered, err := json.Marshal(p)
+  if err != nil { t.Fatal(err) }
+  actual, evidence, err := composeServices(reordered)
   if err != nil { t.Fatal(err) }
   if !bytes.Equal(original, actual) || evidence.GeneratedSHA256 != originalEvidence.GeneratedSHA256 {
     t.Fatal("generated Go changes with fixture service selection order")
@@ -95,10 +96,12 @@ func TestServiceSelectionOrderDoesNotChangeGeneratedSource(t *testing.T) {
 }
 
 func TestMissingServiceCannotProduceIncompleteStaticHost(t *testing.T) {
-  raw := strings.Replace(goodFixture,
-    "{\\\"id\\\":\\\"studio.validate\\\",\\\"version\\\":\\\"0.1.0\\\"},", "", 1)
-  if raw == goodFixture { t.Fatal("service missing-fixture construction failed") }
-  _, _, err := composeServices([]byte(raw))
+  var p profile
+  if err := json.Unmarshal([]byte(goodFixture), &p); err != nil { t.Fatal(err) }
+  p.Services = p.Services[:1]
+  raw, err := json.Marshal(p)
+  if err != nil { t.Fatal(err) }
+  _, _, err = composeServices(raw)
   if err == nil || !strings.Contains(err.Error(), "unsupported or incomplete") {
     t.Fatalf("expected missing-service rejection, got %v", err)
   }
