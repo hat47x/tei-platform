@@ -303,3 +303,120 @@ func TestD3ConsumerSourceAgeRejectsFutureOrInvalidEvidence(t *testing.T) {
 		t.Fatalf("untrusted zero evaluation time accepted: %v", err)
 	}
 }
+
+type d3CurrentSourceReader struct {
+	observations map[string]derivationref.SourceObservation
+	fail         bool
+	reads        int
+}
+
+func (r *d3CurrentSourceReader) ReadCurrentSource(_ context.Context, id string) (derivationref.SourceObservation, error) {
+	r.reads++
+	if r.fail {
+		return derivationref.SourceObservation{}, errors.New("provider metadata read failed")
+	}
+	observed, ok := r.observations[id]
+	if !ok {
+		return derivationref.SourceObservation{}, errors.New("unknown source")
+	}
+	return observed, nil
+}
+
+func TestD3SourceBoundVerifierRejectsForgedOrChangedSourceProvenance(t *testing.T) {
+	ctx := context.Background()
+	w := d3Witness()
+	host := &d3WitnessVerifier{}
+	source := &d3CurrentSourceReader{observations: map[string]derivationref.SourceObservation{
+		"inventory": w.Sources[0],
+	}}
+	v := derivationref.SourceBoundVerifier{Current: host, Sources: source}
+	policy := derivationref.CachePolicy{MaxAge: time.Minute, MaxSourceAge: 2 * time.Minute}
+	key, err := derivationref.QualifyCache(ctx, w, policy, v)
+	if err != nil || key == "" || host.currentCalls != 1 || source.reads != 1 {
+		t.Fatalf("trusted observation did not qualify: key=%q err=%v host=%d provider=%d", key, err, host.currentCalls, source.reads)
+	}
+	for _, tc := range []struct {
+		name string
+		edit func(*derivationref.CacheWitness)
+	}{
+		{"forged newer as-of with unchanged source revision", func(w *derivationref.CacheWitness) {
+			w.Sources[0].SourceAsOf = w.Sources[0].SourceAsOf.Add(30 * time.Second)
+		}},
+		{"forged observed-at with unchanged source revision", func(w *derivationref.CacheWitness) {
+			w.Sources[0].ObservedAt = w.Sources[0].ObservedAt.Add(30 * time.Second)
+		}},
+		{"invented source revision", func(w *derivationref.CacheWitness) {
+			w.Sources[0].Revision = "source-unobserved"
+		}},
+		{"invented snapshot reference", func(w *derivationref.CacheWitness) {
+			w.Sources[0].SnapshotRef = "snapshot-forged"
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			forged := d3Witness()
+			tc.edit(&forged)
+			if _, err := derivationref.QualifyCache(ctx, forged, policy, v); !errors.Is(err, derivationref.ErrCacheStale) {
+				t.Fatalf("self-reported provenance accepted: %v", err)
+			}
+		})
+	}
+	updated := w.Sources[0]
+	updated.Revision = "source-2"
+	source.observations["inventory"] = updated
+	if _, err := derivationref.QualifyCache(ctx, w, policy, v); !errors.Is(err, derivationref.ErrCacheStale) {
+		t.Fatalf("source revision advance reused cache evidence: %v", err)
+	}
+	source.fail = true
+	if _, err := derivationref.QualifyCache(ctx, w, policy, v); !errors.Is(err, derivationref.ErrCacheEvidence) {
+		t.Fatalf("unavailable provider metadata treated as valid: %v", err)
+	}
+	source.fail = false
+	if _, err := derivationref.QualifyCache(ctx, w, policy,
+		derivationref.SourceBoundVerifier{Current: host}); !errors.Is(err, derivationref.ErrCacheDenied) {
+		t.Fatalf("no source provider accepted: %v", err)
+	}
+	if _, err := derivationref.QualifyCache(ctx, w, policy,
+		derivationref.SourceBoundVerifier{Sources: source}); !errors.Is(err, derivationref.ErrCacheDenied) {
+		t.Fatalf("no host verification accepted: %v", err)
+	}
+}
+
+func TestD3SourceBoundVerifierEveryProviderAndAlignmentAreSeparate(t *testing.T) {
+	w := d3Witness()
+	second := w.Sources[0]
+	second.SourceID = "pricing"
+	second.Revision = "price-v1"
+	w.Sources = append(w.Sources, second)
+	source := &d3CurrentSourceReader{observations: map[string]derivationref.SourceObservation{
+		"inventory": w.Sources[0], "pricing": second,
+	}}
+	host := &d3WitnessVerifier{}
+	v := derivationref.SourceBoundVerifier{Current: host, Sources: source}
+	policy := derivationref.CachePolicy{MaxAge: time.Minute}
+	if _, err := derivationref.QualifyCache(context.Background(), w, policy, v); err != nil || source.reads != 2 {
+		t.Fatalf("all source metadata must be checked: reads=%d err=%v", source.reads, err)
+	}
+	second.Revision = "price-v2"
+	source.observations["pricing"] = second
+	if _, err := derivationref.QualifyCache(context.Background(), w, policy, v); !errors.Is(err, derivationref.ErrCacheStale) {
+		t.Fatalf("one stale dependency was incorrectly accepted: %v", err)
+	}
+	// Even matching snapshots do not prove cross-provider atomicity; the
+	// separate existing alignment verifier must attest it explicitly.
+	source.observations["pricing"] = w.Sources[1]
+	for i := range w.Sources {
+		w.Sources[i].SnapshotRef = "batch-1"
+		actual := source.observations[w.Sources[i].SourceID]
+		actual.SnapshotRef = "batch-1"
+		source.observations[w.Sources[i].SourceID] = actual
+	}
+	host.denyAligned = true
+	policy.RequireAligned = true
+	if _, err := derivationref.QualifyCache(context.Background(), w, policy, v); !errors.Is(err, derivationref.ErrNotCoherent) {
+		t.Fatalf("aligned snapshot falsely inferred from matching ref: %v", err)
+	}
+	host.denyAligned = false
+	if _, err := derivationref.QualifyCache(context.Background(), w, policy, v); err != nil {
+		t.Fatalf("provider metadata and independent snapshot approval: %v", err)
+	}
+}
