@@ -165,6 +165,76 @@ func TestD4SameTargetConflictRejectsUnlessAcceptedChoice(t *testing.T) {
 	}
 }
 
+// A Choice names a Binding for ONE typed target, not a preferred global Rule.
+// It must remain deterministic when the accepted catalog or Binding list is
+// registered in a different order; an ID for another target cannot be reused.
+func TestD4AcceptedChoiceIsTargetScopedAndRegistrationOrderInvariant(t *testing.T) {
+	build := func(reverse bool) BindingRequest {
+		t.Helper()
+		req := d4Fixture(t)
+		d4SecondRule(&req)
+		if reverse {
+			// Reorder the competing Bindings as well as the Rule catalog.
+			// A map iteration or first-registration-wins implementation
+			// must not change the explicitly chosen Binding.
+			for i, j := 0, len(req.Accepted.Bindings)-1; i < j; i, j = i+1, j-1 {
+				req.Accepted.Bindings[i], req.Accepted.Bindings[j] = req.Accepted.Bindings[j], req.Accepted.Bindings[i]
+			}
+			req.Accepted.Rules[0], req.Accepted.Rules[1] = req.Accepted.Rules[1], req.Accepted.Rules[0]
+			req.Definitions[0], req.Definitions[1] = req.Definitions[1], req.Definitions[0]
+		}
+		return req
+	}
+	var expected BindingPlan
+	for _, reverse := range []bool{false, true} {
+		req := build(reverse)
+		target := req.Targets[0].Ref
+
+		// Without a Choice, two accepted Rules for the same typed target
+		// must reject the entire plan, including the unrelated Query target.
+		noChoice := ResolveBindings(req)
+		if !d4HasCode(noChoice, "ambiguous-target") || len(noChoice.Bindings) != 0 {
+			t.Fatalf("reverse=%t must fail closed without choice: %+v", reverse, noChoice)
+		}
+
+		req.Accepted.Choices = []AcceptedChoice{{
+			Target: target, BindingID: "sales.alternative_attribute",
+		}}
+		chosen := ResolveBindings(req)
+		if len(chosen.Diagnostics) != 0 || len(chosen.Bindings) != 2 {
+			t.Fatalf("reverse=%t accepted Choice did not resolve two targets: %+v", reverse, chosen)
+		}
+		found := false
+		for _, binding := range chosen.Bindings {
+			if binding.Target == (modelref.Key{Scope: target.Scope, Subject: target.Subject}) {
+				found = true
+				if binding.BindingID != "sales.alternative_attribute" ||
+					binding.Rule.Subject.ID != "sales.alternative_amount" {
+					t.Fatalf("reverse=%t selected wrong Rule for typed target: %+v", reverse, binding)
+				}
+			}
+		}
+		if !found {
+			t.Fatalf("reverse=%t typed target missing: %+v", reverse, chosen.Bindings)
+		}
+		if !reverse {
+			expected = chosen
+		} else if !reflect.DeepEqual(expected, chosen) {
+			t.Fatalf("explicit Choice depends on registration order: normal=%+v reversed=%+v", expected, chosen)
+		}
+
+		// This Binding ID exists, but is bound to a DIFFERENT typed target.
+		// It cannot select any of the colliding attribute Bindings.
+		req.Accepted.Choices[0].BindingID = "sales.query_result"
+		wrongTarget := ResolveBindings(req)
+		if !d4HasCode(wrongTarget, "choice-not-applicable") ||
+			!d4HasCode(wrongTarget, "ambiguous-target") ||
+			len(wrongTarget.Bindings) != 0 {
+			t.Fatalf("reverse=%t foreign-target Choice must fail closed: %+v", reverse, wrongTarget)
+		}
+	}
+}
+
 func TestD4FailuresAreFailClosed(t *testing.T) {
 	cases := []struct {
 		name string
