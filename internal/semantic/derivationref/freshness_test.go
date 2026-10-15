@@ -93,8 +93,12 @@ func TestD3CacheWitnessVersionsScopeAndSourceTime(t *testing.T) {
 		{"subject", func(w *derivationref.CacheWitness) { w.Scope.Subject = "subject-b" }},
 		{"permission epoch", func(w *derivationref.CacheWitness) { w.Scope.PermissionEpoch = "policy-2" }},
 		{"source revision", func(w *derivationref.CacheWitness) { w.Sources[0].Revision = "source-2" }},
-		{"source observed time", func(w *derivationref.CacheWitness) { w.Sources[0].ObservedAt = w.Sources[0].ObservedAt.Add(time.Minute) }},
-		{"source as-of time", func(w *derivationref.CacheWitness) { w.Sources[0].SourceAsOf = w.Sources[0].SourceAsOf.Add(time.Minute) }},
+		{"source observed time", func(w *derivationref.CacheWitness) {
+			w.Sources[0].ObservedAt = w.Sources[0].ObservedAt.Add(time.Minute)
+		}},
+		{"source as-of time", func(w *derivationref.CacheWitness) {
+			w.Sources[0].SourceAsOf = w.Sources[0].SourceAsOf.Add(time.Minute)
+		}},
 	}
 	for _, tc := range modifications {
 		t.Run(tc.name, func(t *testing.T) {
@@ -107,12 +111,12 @@ func TestD3CacheWitnessVersionsScopeAndSourceTime(t *testing.T) {
 		})
 	}
 	if derivationref.ReusableAt(time.Time{}, time.Now(), policy) ||
-		derivationref.ReusableAt(time.Now(), time.Now().Add(2 * time.Minute), policy) ||
+		derivationref.ReusableAt(time.Now(), time.Now().Add(2*time.Minute), policy) ||
 		derivationref.ReusableAt(time.Now().Add(time.Minute), time.Now(), policy) {
 		t.Fatal("unbounded/future/expired cache accepted")
 	}
 	observed := time.Date(2026, 10, 15, 1, 0, 0, 0, time.UTC)
-	if !derivationref.ReusableAt(observed, observed.Add(30 * time.Second), policy) {
+	if !derivationref.ReusableAt(observed, observed.Add(30*time.Second), policy) {
 		t.Fatal("fresh bounded result incorrectly rejected")
 	}
 }
