@@ -95,7 +95,7 @@ npm run typecheck
 node --input-type=module -e 'import {build} from "esbuild"; import {resolve} from "node:path"; await build({absWorkingDir:process.cwd(),entryPoints:["main.generated.ts"],outfile:"dist/main.generated.js",bundle:true,platform:"browser",format:"esm",target:"es2022",nodePaths:[resolve("node_modules")]});'
 ```
 
-`connect-workbench.test.mjs`は差し替え2行以外のHost呼出しが不変であること、重複/欠落importと未固定のworkbench SHAを拒否すること、生成ソース/型定義/来歴のSHAを確認する。#1849実原本がsnapshotに存在する場合のみ実ファイルblob検査を実行し、#1833単独branchでは **SKIP（PASSではない）**。Graph/Commandのimport名は型付きaliasへ静的に結び付き、#1849の既存のEditor、Presenter、workspace選択、Commandのinvoke、`createReadOnlyClient` と四操作 `ListWorkspaces/CatalogWorkspace/ValidateWorkspace/InspectSubject` を変更しない。Graph/CommandをHost権限として解釈しない。
+`connect-workbench.test.mjs`は差し替え2行以外のHost呼出しが不変であること、重複/欠落importと未固定のworkbench SHAを拒否すること、生成ソース/型定義/来歴のSHAを確認する。実Workbenchの照合には`testdata/poc-b-workbench-snapshot/`の固定試料を明示的に使い、実行時checkoutにある`reference/tei-studio-workbench`や`reference/tei-studio-command`の内容を暗黙に読みません。試料は新pinのexact head `c55ad2285268533f5f1c90fbc9fe766bae57f009`とCommand exact head `01f5022240fd86c6ac38c1107310e299a1615b48`から取得し、各Git blob SHAを既存pinと照合します。Graph/Commandのimport名は型付きaliasへ静的に結び付き、#1849の既存のEditor、Presenter、workspace選択、Commandのinvoke、`createReadOnlyClient` と四操作 `ListWorkspaces/CatalogWorkspace/ValidateWorkspace/InspectSubject` を変更しません。Graph/CommandをHost権限として解釈しません。
 
 **負例と再生成**：Go側の不足サービス・重複・版/スコープ不一致は既存 `composeServices` で拒否し、fixtureサービスの並びを反転しても生成Goソースのバイト列は一致させる。UI側は重複slot/implementation・未知impl・Kit版 `latest`（既存Resolverの `invalid_request`）・PoC固定 `0.1.0` 以外の正しいSemVerも拒否し、Kit slot/changesの並びに依存せずソース/型定義を一致させる。入力自体を変更したとき `fixtureSha256` は異なってよい。実物2回生成のファイルSHAと検証snapshotの結果は#7の検査対象。
 
