@@ -149,3 +149,32 @@ go test -count=1 -tags tei_studio_composition_boundary ./tools/reference-studio-
 ```
 
 **合成後に保護されたHostを通る実Go/Wails RPC**の検査は、生成UIのimport接続とは別の資格条件。公開Bridgeのメソッド集合/allowlist/`{ok,value|failure}`が維持されたことを実IPCで確かめるまでは総合PASSにしない。#1生成2サービスをWailsへ直接registerしない。Lock/asset/buildの真正性・Desktop実WebViewも未実証。
+
+## 2026-10-15 最新固定版を独立検証する（旧pinを保全）
+
+ユーザー指定の固定snapshot:
+
+| 依存PR | 実装 exact revision | 追加で固定する実体 |
+| --- | --- | --- |
+| #1833 PoC B | `fe8e37b1c735dc138c36cb2d37db94ee44424b9e` | `connect-workbench.mjs` Git blob `63b9cefd3f4edfe52605ab3c0ed81a60eedef8d5`、`compose-ui.mjs` `012137687eb188369d13fa00377cec3e500c72c8` |
+| #1849 Workbench | `c55ad2285268533f5f1c90fbc9fe766bae57f009` | `main.ts` `cc2644e5a9167dbc3a0b5368ff270276a2ba1b67`、`responses.ts` `9fa305e227bee96b66002362121db3878e92327d` |
+| #1829 Command | `01f5022240fd86c6ac38c1107310e299a1615b48` | `command.ts` `6c6ee81288c9857ca2f1c282639ba49f059f5535` |
+| #1832 Host基準 | `d520689cfb0a2e2919aa86b0beeba54802b31465` | `StudioBridge`の既存read-only公開入口（4操作） |
+
+- **旧版の検査記録・pinは削除していない**。 `file_adapter.py`の`--pocb-head`には従来の`1af4bf08...`、`d560bddf...`、`059260...`に加え、最新`fe8e37b1...`を追加した。最新版では#1のGo/Node生成器原本に加え、Workbench `main.ts`・`responses.ts`とCommand `command.ts`を**実ファイルのGit blob**で照合し、ずれを`FAIL`、未存在を`BLOCKED`として区別する。
+- 新版の`ui.generated.mjs`・`ui.generated.d.mts`・`ui.provenance.json`を実プロセスから採取し、2回の独立生成・全ファイルのバイト一致、fixture/source/declarations SHA256、生成mountの固定alias、拒否時の非ゼロexit/stderr/ファイル未生成を検査する。`ui.unknown_service`/`ui.duplicate_service`/`ui.incompatible_service_version`の3負例を**最新head限定**で追加。既存Kit/Host拒否と混同しない。
+- 新規`connection_boundary_latest.test.mjs` は#1**最新**の実`composeUI`と`connectWorkbenchSource`をimportして走らせる**10ケース**。新旧pin併存、新版Work/Command/responses全点照合、`pin:false`やpinをすり抜ける引数の拒否、再接続/欠落/重複、**import2行以外の内容不変**、応答世代`createResponseScope`/`responses.reset`/Command context/4 Host操作が残ること、2回生成・宣言順変更時の決定性、サービス欠落・重複・版不整合、Kit不正・親循環、生成source/declaration/traceの改ざんを検査する。結果は**本チャット内で未実行**、新規試験ファイルを登録した事実とPASS資格を分離する。
+- `test_file_adapter.py`には最新pinの追加性・改ざん拒否を確認する**回帰2ケース**を増設。これも実snapshot上のbuilder実行PASSとみなさない。
+
+```sh
+# exact refごとのpathを取り出し、Draftをmergeせず固定snapshotへ配置
+node --test tools/reference-studio-composition-evidence-7/connection_boundary_latest.test.mjs
+python3 -m unittest -v tools/reference-studio-composition-evidence-7/test_file_adapter.py
+python3 tools/reference-studio-composition-evidence-7/file_adapter.py \
+  --repo "$PWD" --lane ui --pocb-head fe8e37b1c735dc138c36cb2d37db94ee44424b9e
+# Go1.26.9環境で生成GoとHostを揃えた後、#2のHost統合試験へ進む
+```
+
+**別担当から受領した結果（#7独立実行とは区別）**：#Workがこのfixed snapshotでNode14件/Go-race/vet/strict TSと実bundleのPASSを報告。#7の新版追加試験・file adapter再実行はローカルGo1.23.2、GitHub clone DNS不達・固定複合checkout不足により**未確認**で、#Workの結果を自分のPASSへ転記しない。
+
+**Studioの依存**：生成Goサービスの実Host経由接続は#2が所有（[Issue #1824 comment #6181598991](https://github.com/hat47x/tei-platform/issues/1824#issuecomment-6181598991)）。#7は#2が接続後、allowlist ID → trusted root、読み取り専用4メソッド・`{ok,value|failure}`・警告保持・任意パス拒否の独立試験を担当。#2の原本には書き込まない。PoC B全体のHost認可と完全Artifact Lock/asset/build来歴はまだ未実証。
