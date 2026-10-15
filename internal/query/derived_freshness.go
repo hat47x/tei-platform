@@ -24,8 +24,9 @@ type derivedMemoEntry struct {
 }
 
 // DerivedMemo is an optional, in-process D3 reference for the D2 Go plan.
-// This is not a distributed or persistent cache, and has no authority of its
-// own. A current external verifier and D2 field read checks are mandatory.
+// This is not a distributed or persistent cache and has no authority of its
+// own. D2 field-read authorization is always required. Cache/current witness
+// verification applies only when caching or freshness/alignment is requested.
 const maxDerivedMemoEntries = 64
 
 type DerivedMemo struct {
