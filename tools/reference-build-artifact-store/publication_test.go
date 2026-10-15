@@ -184,7 +184,6 @@ func TestPublishExactMembersRejectsLateOversizeBeforeAnyStoreWrite(t *testing.T)
 	}
 }
 
-
 // The first Put's successful receipt is not enough to claim that the complete
 // set is available. A prior member can become corrupt while a later Put is
 // publishing; the final getMembers pass must then reject the entire set.
