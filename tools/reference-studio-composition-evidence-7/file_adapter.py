@@ -123,7 +123,7 @@ def run_builder(root, base, raw, kind, timeout, head=PR_HEAD):
 
 
 def assert_success(result, kind, raw, head=PR_HEAD):
-    expected = GO_FILES if kind == 'go' else UI_FILES
+    expected = GO_FILES if kind == 'go' else ui_files_for(head)
     require(result['code'] == 0, f'{kind}: unexpectedly rejected valid fixture, stderr={result["stderr"][:300]!r}')
     require(result['stdout'] == b'', f'{kind}: unexpected stdout; expected actual generated files')
     require(set(result['files']) == set(expected), f'{kind}: file outputs mismatch: {result["files"]}')
@@ -195,7 +195,7 @@ def go_toolchain_ready(root):
 
 def probe(root, timeout=60, lanes=('go', 'ui'), head=PR_HEAD):
     base, raw, fixture = prepare(root, lanes, head)
-    pins = {**PINNED, **(NEW_PIN_DIFF if head == NEW_HEAD else {})}
+    pins = pins_for(head)
     result = {'referenceHead': head, 'inputGitBlobs': pins,
               'generation': {}, 'rejection': {}, 'blocked': {}, 'limits': {}}
     for kind in lanes:
