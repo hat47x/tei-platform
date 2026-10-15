@@ -19,7 +19,7 @@ var (
 	ErrCacheDenied   = errors.New("derivation cache reuse is not authorized")
 	ErrCacheStale    = errors.New("derivation cache is stale")
 	ErrNotCoherent   = errors.New("source snapshot alignment is unproven")
-	ErrConfirmed    = errors.New("confirmed fact cannot be verified")
+	ErrConfirmed     = errors.New("confirmed fact cannot be verified")
 )
 
 type Revision struct {
@@ -38,9 +38,9 @@ type SourceObservation struct {
 // CacheScope values must originate from current Host context; a request's
 // self-reported tenant, subject or grant is not authorization evidence.
 type CacheScope struct {
-	Environment    string `json:"environment"`
-	Tenant         string `json:"tenant"`
-	Subject        string `json:"subject"`
+	Environment     string `json:"environment"`
+	Tenant          string `json:"tenant"`
+	Subject         string `json:"subject"`
 	PermissionEpoch string `json:"permissionEpoch"`
 }
 
