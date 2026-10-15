@@ -14,16 +14,22 @@ func TestGeneratedGoServicesRunThroughRealHost(t *testing.T) {
 	root := filepath.Join("..", "..", "reference", "workspace")
 	h, err := newStudioHost([]string{root})
 	if err != nil { t.Fatal(err) }
-	if refs := h.ListWorkspaces(); !refs.OK || len(refs.Value) != 1 || refs.Value[0].ID != "workspace-1" {
+	bridge := &StudioBridge{host: h}
+	bridgeType := reflect.TypeOf(bridge)
+	if bridgeType.NumMethod() != 4 { t.Fatalf("unexpected Wails exports: %d", bridgeType.NumMethod()) }
+	for i, method := range []string{"CatalogWorkspace", "InspectSubject", "ListWorkspaces", "ValidateWorkspace"} {
+		if bridgeType.Method(i).Name != method { t.Fatalf("unexpected Wails service method %d: %s", i, bridgeType.Method(i).Name) }
+	}
+	if refs := bridge.ListWorkspaces(); !refs.OK || len(refs.Value) != 1 || refs.Value[0].ID != "workspace-1" {
 		t.Fatalf("allowlist lost: %+v", refs)
 	}
-	catalog := h.CatalogWorkspace("workspace-1", "")
+	catalog := bridge.CatalogWorkspace("workspace-1", "")
 	wantCatalog, err := operations.CatalogWorkspace(root, "")
 	if err != nil { t.Fatal(err) }
 	if !catalog.OK || !reflect.DeepEqual(catalog.Value, &wantCatalog) {
 		t.Fatalf("generated catalog does not match: %+v", catalog)
 	}
-	validation := h.ValidateWorkspace("workspace-1")
+	validation := bridge.ValidateWorkspace("workspace-1")
 	wantValidation, err := operations.ValidateWorkspace(root)
 	if err != nil { t.Fatal(err) }
 	if !validation.OK || !reflect.DeepEqual(validation.Value, &wantValidation) {
@@ -33,16 +39,16 @@ func TestGeneratedGoServicesRunThroughRealHost(t *testing.T) {
 		t.Fatal("reference diagnostics were silently discarded")
 	}
 	for _, id := range []string{"", "../reference/workspace", "workspace-2", "/tmp/arbitrary", " workspace-1"} {
-		if res := h.CatalogWorkspace(id, ""); res.OK || res.Failure == nil || res.Failure.Code != "WORKSPACE_NOT_ALLOWED" {
+		if res := bridge.CatalogWorkspace(id, ""); res.OK || res.Failure == nil || res.Failure.Code != "WORKSPACE_NOT_ALLOWED" {
 			t.Fatalf("generated catalog admits %q: %+v", id, res)
 		}
-		if res := h.ValidateWorkspace(id); res.OK || res.Failure == nil || res.Failure.Code != "WORKSPACE_NOT_ALLOWED" {
+		if res := bridge.ValidateWorkspace(id); res.OK || res.Failure == nil || res.Failure.Code != "WORKSPACE_NOT_ALLOWED" {
 			t.Fatalf("generated validation admits %q: %+v", id, res)
 		}
 	}
 	if len(wantCatalog.Entries) > 0 {
 		subject := wantCatalog.Entries[0].Subject
-		actual := h.InspectSubject("workspace-1", subject.Kind, subject.ID)
+		actual := bridge.InspectSubject("workspace-1", subject.Kind, subject.ID)
 		if !actual.OK || actual.Value == nil { t.Fatalf("unchanged inspect failed: %+v", actual) }
 	}
 }
