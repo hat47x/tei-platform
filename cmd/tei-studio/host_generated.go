@@ -10,7 +10,7 @@ import (
 // Compile-time checked bindings to #1833's generated Go constructors.
 // Only the host selects trustedRoot; no generated service is registered with Wails.
 var (
-	_ studiohost.CatalogService = (*staticservices.CatalogService)(nil)
+	_ studiohost.CatalogService    = (*staticservices.CatalogService)(nil)
 	_ studiohost.ValidationService = (*staticservices.ValidateService)(nil)
 )
 
