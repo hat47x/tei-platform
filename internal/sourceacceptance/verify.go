@@ -72,7 +72,9 @@ func VerifyCurrent(ctx context.Context, reader Reader, applicationID string, loa
 	}
 	expected, err := artifactMap(record.Artifacts)
 	if err != nil || len(expected) == 0 {
-		return Record{}, fmt.Errorf("SOURCE_ACCEPTANCE_WITNESS_INVALID: managed source membership: %v", err)
+		// A malformed Host witness may carry a secret or a private path.
+		// Do not echo it into Web startup diagnostics or HTTP errors.
+		return Record{}, errors.New("SOURCE_ACCEPTANCE_WITNESS_INVALID: managed source membership is missing or malformed")
 	}
 	if sourceindex.ModelRevision(sourceindex.Index{Artifacts: record.Artifacts}) != record.ModelRevision {
 		return Record{}, errors.New("SOURCE_ACCEPTANCE_WITNESS_INVALID: revision does not match witnessed members")
