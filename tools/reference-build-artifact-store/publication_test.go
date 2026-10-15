@@ -459,3 +459,62 @@ func TestPublishExactMembersRejectsLateMissingMemberAndAllowsRetry(t *testing.T)
 		}
 	}
 }
+
+// Identical bytes are not enough to prove a stable publication read. Even if
+// both Put receipts succeeded, replacing a member's inode between Lstat and
+// Open during the final getMembers pass must not produce a set receipt.
+func TestPublishExactMembersRejectsSameBytesObjectReplacementDuringReverify(t *testing.T) {
+	store := openTestStore(t, 1<<20)
+	first := []byte("stable content, unstable CAS object")
+	second := []byte("another exact artifact")
+	expected := []artifactMemberRequest{
+		{Role: "a", Digest: digestBytes(first)},
+		{Role: "z", Digest: digestBytes(second)},
+	}
+	built := map[string][]byte{"a": first, "z": second}
+	firstPath, err := store.pathForDigest(expected[0].Digest)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	afterLstat := 0
+	replaced := false
+	setTestHook(t, func(stage string) {
+		if stage != hookAfterLstat {
+			return
+		}
+		afterLstat++
+		// Both PutBytes calls verify a temp object and the linked object:
+		// calls 1-4. Call 5 is the first final getMembers read (role a).
+		if afterLstat == 5 {
+			replaceWithSameBytes(t, firstPath, first)
+			replaced = true
+		}
+	})
+	failed, err := store.publishExactMembers(expected, built)
+	if !replaced || afterLstat != 5 {
+		t.Fatalf("fixture did not swap an object during final reverify: replaced=%v checks=%d", replaced, afterLstat)
+	}
+	if !errors.Is(err, errArtifactCorrupt) || len(failed.Members) != 0 {
+		t.Fatalf("same-byte inode replacement yielded set publication evidence: %+v err=%v", failed, err)
+	}
+
+	// The replacement itself has the right digest. A subsequent explicit
+	// attempt may succeed, but no success receipt is issued for the race.
+	got, _, err := store.GetBytes(expected[0].Digest)
+	if err != nil || !bytes.Equal(got, first) {
+		t.Fatalf("same-byte replacement was not independently retrievable: %v", err)
+	}
+	retried, err := store.publishExactMembers(expected, built)
+	if err != nil || len(retried.Members) != 2 {
+		t.Fatalf("stable retry failed: %+v err=%v", retried, err)
+	}
+	for _, member := range retried.Members {
+		if member.Published.Operation != "put-existing" ||
+			member.Reverified.Operation != "get" ||
+			member.Published.Digest != member.Digest ||
+			member.Reverified.Digest != member.Digest {
+			t.Fatalf("retry did not reverify both existing objects: %+v", member)
+		}
+	}
+}
