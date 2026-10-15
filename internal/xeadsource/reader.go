@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/xml"
+	"errors"
 	"fmt"
 	"io"
 	"sort"
@@ -12,6 +13,19 @@ import (
 )
 
 type Format string
+
+// ParseLimits bounds source size and XML tree complexity for callers that
+// process input outside a trusted repository fixture.
+type ParseLimits struct {
+	MaxBytes    int64
+	MaxDepth    int
+	MaxElements int
+}
+
+var (
+	ErrSourceLimitExceeded = errors.New("xead-source-limit-exceeded")
+	ErrInvalidParseLimits  = errors.New("invalid-xead-parse-limits")
+)
 
 const (
 	FormatXead Format = "xead"
@@ -73,6 +87,23 @@ func set(names ...string) map[string]struct{} {
 }
 
 func Parse(format Format, source []byte) (Document, error) {
+	return parse(format, source, nil)
+}
+
+// ParseWithLimits parses with explicit positive byte, nesting-depth, and
+// element-count budgets. The byte budget is checked before the XML decoder is
+// created; depth and element budgets are checked before constructing a node.
+func ParseWithLimits(format Format, source []byte, limits ParseLimits) (Document, error) {
+	if limits.MaxBytes <= 0 || limits.MaxDepth <= 0 || limits.MaxElements <= 0 {
+		return Document{}, ErrInvalidParseLimits
+	}
+	if int64(len(source)) > limits.MaxBytes {
+		return Document{}, ErrSourceLimitExceeded
+	}
+	return parse(format, source, &limits)
+}
+
+func parse(format Format, source []byte, limits *ParseLimits) (Document, error) {
 	knownNames, ok := known[format]
 	if !ok {
 		return Document{}, fmt.Errorf("unsupported X-TEA source format %q", format)
@@ -82,11 +113,13 @@ func Parse(format Format, source []byte) (Document, error) {
 	type parseFrame struct {
 		node         Node
 		childOrdinal int
+		text         []byte
 	}
 	var root *Node
 	stack := []parseFrame{}
 	counts := map[string]int{}
 	unknown := map[string]struct{}{}
+	elementCount := 0
 
 	for {
 		token, err := decoder.Token()
@@ -98,6 +131,10 @@ func Parse(format Format, source []byte) (Document, error) {
 		}
 		switch t := token.(type) {
 		case xml.StartElement:
+			if limits != nil && (len(stack)+1 > limits.MaxDepth || elementCount >= limits.MaxElements) {
+				return Document{}, ErrSourceLimitExceeded
+			}
+			elementCount++
 			name := qualifiedName(t.Name)
 			_, isKnown := knownNames[t.Name.Local]
 			// A foreign namespace is not the same source construct as an
@@ -148,7 +185,8 @@ func Parse(format Format, source []byte) (Document, error) {
 
 		case xml.CharData:
 			if len(stack) > 0 {
-				stack[len(stack)-1].node.Text += string(t)
+				frame := &stack[len(stack)-1]
+				frame.text = append(frame.text, t...)
 				continue
 			}
 			if strings.TrimSpace(string(t)) != "" {
@@ -164,7 +202,7 @@ func Parse(format Format, source []byte) (Document, error) {
 			}
 			last := len(stack) - 1
 			completed := stack[last].node
-			completed.Text = strings.TrimSpace(completed.Text)
+			completed.Text = strings.TrimSpace(string(stack[last].text))
 			stack = stack[:last]
 
 			if len(stack) == 0 {
