@@ -33,6 +33,10 @@ export function composeUI(raw) {
     selected: { id: kit.id, version: kit.version },
     target: 'web', framework: { id: 'vanilla-dom', major: 1 },
   });
+  // The general-purpose #997 Kit resolver accepts any exact SemVer. This
+  // PoC fixture, unlike a generic Kit, pins the one audited identity/version.
+  if (kit.id !== 'studio.readonly' || kit.version !== '0.1.0')
+    throw new Error('unsupported_ui_kit_identity_or_version');
   const slots = Object.keys(resolved.slots).sort();
   if (slots.join(',') !== 'commands,graph') throw new Error('unsupported_ui_slots');
   const lines = [
