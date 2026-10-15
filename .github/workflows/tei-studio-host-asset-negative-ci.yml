@@ -1,0 +1,110 @@
+name: TEI Studio #10 fixed Host HTTP negative
+
+# A standalone qualification workflow for the unmerged #1827 test script.
+# Do not merge #1832 or #1833 or modify another owner's tracked source.
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, reopened, synchronize, ready_for_review]
+    paths:
+      - .github/workflows/tei-studio-host-asset-negative-ci.yml
+      - tools/reference-studio-host-boundary/**
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pinned-server-asset-negative:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      GOTOOLCHAIN: local
+      GOWORK: off
+      HOST_SHA: 4bc437c72e63a3b5d578b1efe2c60be510a9f8a9
+      GENERATOR_SHA: fe8e37b1c735dc138c36cb2d37db94ee44424b9e
+    steps:
+      - name: Checkout only the #10 test branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - name: Set up Go 1.26.9
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version: '1.26.9'
+          cache: false
+      - name: Set up Node 22
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+          check-latest: false
+
+      - name: Extract exact Host and generated service tool into disposable snapshot
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "base=$(git rev-parse HEAD)"
+          git fetch --no-tags --depth=90 origin refs/pull/1832/head
+          git cat-file -e "${HOST_SHA}^{commit}"
+          git archive "${HOST_SHA}" cmd/tei-studio internal/studiohost | tar -xf -
+          echo "fixed Host source: ${HOST_SHA}"
+          git fetch --no-tags --depth=90 origin refs/pull/1833/head
+          git cat-file -e "${GENERATOR_SHA}^{commit}"
+          git archive "${GENERATOR_SHA}" tools/reference-studio-static-composition | tar -xf -
+          echo "fixed Generator source: ${GENERATOR_SHA}"
+          go version
+          node --version
+          test -s tools/reference-studio-host-boundary/server_asset_boundary_probe.mjs
+
+      - name: Build fixed ordinary Server and fixed generated Server
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd cmd/tei-studio
+          test -s go.sum
+          CGO_ENABLED=0 go build -mod=readonly -tags server -o "$RUNNER_TEMP/studio-ordinary-server" .
+          cd ../..
+          go run ./tools/reference-studio-static-composition \
+            -fixture tools/reference-studio-static-composition/fixture.json \
+            -out internal/studiohost/staticservices
+          test -s internal/studiohost/staticservices/services.generated.go
+          cd cmd/tei-studio
+          CGO_ENABLED=0 go build -mod=readonly -tags 'studio_generated,server' \
+            -o "$RUNNER_TEMP/studio-generated-server" .
+
+      - name: Probe unembedded private-file HTTP requests on both real Servers
+        shell: bash
+        run: |
+          set -euo pipefail
+          for mode in ordinary generated; do
+            if [[ "$mode" == ordinary ]]; then
+              port=43123
+            else
+              port=43128
+            fi
+            binary="$RUNNER_TEMP/studio-${mode}-server"
+            "$binary" -workspace reference/workspace -port "$port" > "$RUNNER_TEMP/${mode}-host.log" 2>&1 &
+            pid=$!
+            cleanup() {
+              kill "$pid" 2>/dev/null || true
+              wait "$pid" 2>/dev/null || true
+            }
+            trap cleanup EXIT
+            ready=0
+            for i in {1..30}; do
+              if curl -fsS --max-time 2 "http://127.0.0.1:$port/health" >/dev/null; then
+                ready=1
+                break
+              fi
+              sleep 1
+            done
+            if [[ $ready -ne 1 ]]; then
+              cat "$RUNNER_TEMP/${mode}-host.log"
+              exit 1
+            fi
+            echo "PROBING_MODE=$mode HOST_SHA=$HOST_SHA PORT=$port"
+            TEI_STUDIO_BOUNDARY_URL="http://127.0.0.1:$port" \
+              node --test tools/reference-studio-host-boundary/server_asset_boundary_probe.mjs
+            cleanup
+            trap - EXIT
+          done
