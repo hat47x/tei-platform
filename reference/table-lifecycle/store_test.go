@@ -921,3 +921,56 @@ func TestCancelRejectsMismatchedOwnerReservation(t *testing.T) {
 		})
 	}
 }
+
+func TestSubmitLookupCancelledContextDoesNotDiscloseReceipt(t *testing.T) {
+	s, request := fixture(t)
+	ctx := context.Background()
+	if result, err := s.Execute(ctx, request, allowAll); err != nil || result.Outcome != Submitted || !result.Committed {
+		t.Fatalf("submit setup: %+v err=%v", result, err)
+	}
+	// Negative: a request cancelled before authorization cannot invoke the
+	// authority or reveal the stored receipt, even if that authority ignores ctx.
+	cancelled, cancel := context.WithCancel(ctx)
+	cancel()
+	authCalls := 0
+	countingAuth := AuthorizeFunc(func(context.Context, string, string) (bool, error) {
+		authCalls++
+		return true, nil
+	})
+	if receipt, found, err := s.Lookup(cancelled, request, countingAuth); !errors.Is(err, context.Canceled) ||
+		found || receipt.Committed || authCalls != 0 {
+		t.Fatalf("pre-cancelled lookup disclosed receipt: %+v found=%t err=%v authCalls=%d",
+			receipt, found, err, authCalls)
+	}
+	// Negative: authorization succeeds, but cancellation before the store
+	// read must prevent a receipt from escaping.
+	duringAuth, stop := context.WithCancel(ctx)
+	authCalls = 0
+	cancelFromAuth := AuthorizeFunc(func(context.Context, string, string) (bool, error) {
+		authCalls++
+		stop()
+		return true, nil
+	})
+	if receipt, found, err := s.Lookup(duringAuth, request, cancelFromAuth); !errors.Is(err, context.Canceled) ||
+		found || receipt.Committed || authCalls != 1 {
+		t.Fatalf("mid-authorization cancellation disclosed receipt: %+v found=%t err=%v authCalls=%d",
+			receipt, found, err, authCalls)
+	}
+	// Positive: a live, authorized lookup can still recover the committed
+	// operation, with no additional order, inventory, or outbox effects.
+	recovered, found, err := s.Lookup(ctx, request, allowAll)
+	if err != nil || !found || recovered.Outcome != Submitted || !recovered.Committed {
+		t.Fatalf("valid lookup failed: %+v found=%t err=%v", recovered, found, err)
+	}
+	snap, exists := s.Inspect(request.OrderID)
+	if !exists || snap.Order.State != Submitted || snap.Order.Version != 8 ||
+		snap.Available != 17 || snap.Reserved != 3 || len(snap.History) != 1 || len(snap.Notices) != 1 {
+		t.Fatalf("lookup changed committed owner state: %+v exists=%t", snap, exists)
+	}
+	s.mu.Lock()
+	receipts, outbox := len(s.state.receipts), len(s.state.pending)
+	s.mu.Unlock()
+	if receipts != 1 || outbox != 1 {
+		t.Fatalf("lookup duplicated effects: receipts=%d outbox=%d", receipts, outbox)
+	}
+}
