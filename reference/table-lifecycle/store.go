@@ -412,7 +412,7 @@ func (s *Store) ExecuteCancel(ctx context.Context, c Cancel, auth Authorizer) (R
 	}
 	current, ok := s.state.orders[c.OrderID]
 	units := s.state.reservations[c.OrderID]
-	if !ok || current.State != Submitted || current.Version != c.ExpectedVersion || units <= 0 {
+	if !ok || current.State != Submitted || current.Version != c.ExpectedVersion || units <= 0 || units != current.Units {
 		return Result{Outcome: NotSubmitted, Trace: trace}, nil
 	}
 	trace = append(trace, PhaseBefore)
