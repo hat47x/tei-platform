@@ -144,7 +144,7 @@ func TestBrowseFixtureRejectsAmbiguousColumns(t *testing.T) {
 		{name: "case-distinct", columns: []string{"ID", "id"}},
 		{name: "duplicate", columns: []string{"order_id", "order_id"}, wantError: true},
 		{name: "empty", columns: []string{""}, wantError: true},
-		{name: "whitespace-only", columns: []string{" \\t "}, wantError: true},
+		{name: "whitespace-only", columns: []string{" \t "}, wantError: true},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
