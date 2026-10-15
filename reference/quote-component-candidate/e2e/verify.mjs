@@ -6,10 +6,11 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
+import { spawnSync } from 'node:child_process';
 
 const [mode, moduleFile, corpusFile, playwrightPath] = process.argv.slice(2);
-if (!['node', 'browser'].includes(mode) || !moduleFile || !corpusFile) {
-  throw Error('usage: node verify.mjs node|browser transpiled.js vectors.json [playwright-package]');
+if (!['node', 'browser', 'wasmtime'].includes(mode) || !moduleFile || !corpusFile) {
+  throw Error('usage: node verify.mjs node|browser|wasmtime provider.js|component.wasm vectors.json [playwright-package]');
 }
 
 function parseExact(raw) {
@@ -136,6 +137,31 @@ try {
         if (isBusinessRejection(err)) return { kind: 'business-reject' };
         throw err; // Host failure is never a business rejection.
       }
+    };
+  } else if (mode === 'wasmtime') {
+    // Wasmtime directly instantiates the *Component binary*, without the
+    // Jco transpiled JS+Core Wasm host adapter. WAVE preserves typed u64.
+    const waveString = value => JSON.stringify(value);
+    run = async req => {
+      const record = '{currency:' + waveString(req.currency) + ',lines:[' +
+        req.lines.map(line =>
+          '{sku:' + waveString(line.sku) + ',quantity:' + line.quantity +
+          ',unit-price-minor:' + line.unitPriceMinor + '}').join(',') + ']}';
+      const call = 'preview(' + record + ')';
+      const proc = spawnSync('wasmtime', ['run', '--invoke', call, path.resolve(moduleFile)], {
+        encoding: 'utf8', timeout: 90000, maxBuffer: 1024 * 1024,
+      });
+      if (proc.error || proc.status !== 0) {
+        throw Error('Native Component Host invocation failed, NOT a business rejection: ' +
+          String(proc.error ?? proc.stderr ?? proc.status).slice(0, 1200));
+      }
+      const wave = proc.stdout.trim();
+      if (wave === 'err(rejected)') return { kind: 'business-reject' };
+      const match = /^ok\(\{\s*currency:\s*("(?:[^"\\]|\\.)*")\s*,\s*line-count:\s*([0-9]+)\s*,\s*subtotal-minor:\s*([0-9]+)\s*\}\)$/.exec(wave);
+      if (!match) throw Error('unexpected WAVE component result: ' + wave.slice(0, 400));
+      return { kind: 'ok', value: {
+        currency: JSON.parse(match[1]), lineCount: Number(match[2]), subtotalMinor: match[3],
+      } };
     };
   } else {
     if (!playwrightPath || !process.env.TEI_BROWSER_EXECUTABLE) {
