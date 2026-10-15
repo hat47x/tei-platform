@@ -114,7 +114,14 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          go test -count=1 -v -tags tei_studio_host_integration \
-            -run '^TestStudioHost(ConfiguredAliasReplacementKeepsPinnedRealRoot|ResolvedRootReplacementNeverReadsOutsideWorkspace)$' \
+          # Execute vet even if the regression deliberately finds the boundary bug.
+          # Keep the test FAIL visible as the job result, never mark it xfail.
+          set +e
+          go test -race -count=1 -v -tags tei_studio_host_integration \
+            -run '^TestStudioHost(ConfiguredAliasReplacementKeepsPinnedRealRoot|ResolvedRootReplacementNeverReadsOutsideWorkspace)
+ \
             ./tools/reference-studio-host-boundary
+          test_result=$?
+          set -e
           go vet -tags tei_studio_host_integration ./tools/reference-studio-host-boundary
+          exit "$test_result"
