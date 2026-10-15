@@ -4,7 +4,9 @@ import (
 	"reflect"
 	"testing"
 
+	"tei/internal/environment"
 	"tei/internal/modelref"
+	"tei/internal/plugin"
 	"tei/internal/semantic"
 	"tei/internal/subject"
 )
@@ -46,7 +48,20 @@ func d4Fixture(t *testing.T) BindingRequest {
 	if realAttribute.Ref != amountRef || realAttribute.OutputType != "std.decimal" {
 		t.Fatalf("real Semantic attribute not projected exactly: %+v", realAttribute)
 	}
+	// Both implementations are real entries in the existing test-only
+	// plugin catalog and Runtime Plugin Lock. The lock is not a permission.
+	catalog := plugin.Catalog{Plugins: []plugin.Definition{
+		{ID: "example-go", Version: "1.0.0", Runtime: plugin.Runtime{Kind: plugin.RuntimeBuiltin}},
+		{ID: "example-wasm", Version: "1.0.0", Runtime: plugin.Runtime{Kind: plugin.RuntimeBuiltin}},
+	}}
+	env := environment.Environment{ID: "test-sales", Plugins: []environment.ExtensionRequirement{
+		{ID: "example-go", CompatibleMajor: 1},
+		{ID: "example-wasm", CompatibleMajor: 1},
+	}}
+	lock, err := plugin.BuildLock(catalog, []environment.Environment{env})
+	if err != nil { t.Fatal(err) }
 	return BindingRequest{
+		LockedPlugins: &LockedPluginView{Catalog: catalog, Environment: env, Lock: lock},
 		Graph: modelref.Graph{Schema: "tei.modelref.v0", Nodes: []modelref.Node{
 			d4Node(ruleRef, "line-amount"), d4Node(amountRef, "Amount"),
 			d4Node(queryRef, "Amount"),
@@ -68,7 +83,7 @@ func d4Fixture(t *testing.T) BindingRequest {
 				{ID: "query-result", Rule: ruleRef, Target: queryRef, Scope: QueryLocalScope},
 			},
 			Realizations: []SelectedRealization{{
-				Rule: ruleRef, PluginID: "example-go", Implementation: "go:line-amount",
+				Rule: ruleRef, PluginID: "example-go", PluginVersion: "1.0.0", Implementation: "go:line-amount",
 				OutputType: "std.decimal", NullPolicy: "propagate",
 			}},
 		},
@@ -189,6 +204,15 @@ func TestD4FailuresAreFailClosed(t *testing.T) {
 		{"duplicate-target-type", func(r *BindingRequest) {
 			r.Targets = append(r.Targets, r.Targets[0])
 		}, "duplicate-target-contract"},
+		{"missing-plugin-lock", func(r *BindingRequest) {
+			r.LockedPlugins = nil
+		}, "plugin-lock-required"},
+		{"unregistered-plugin", func(r *BindingRequest) {
+			r.Accepted.Realizations[0].PluginID = "missing-plugin"
+		}, "unregistered-or-unlocked-plugin"},
+		{"plugin-version-mismatch", func(r *BindingRequest) {
+			r.Accepted.Realizations[0].PluginVersion = "2.0.0"
+		}, "unregistered-or-unlocked-plugin"},
 		{"duplicated-rule-catalog", func(r *BindingRequest) {
 			r.Accepted.Rules = append(r.Accepted.Rules, r.Accepted.Rules[0])
 		}, "duplicate-rule-contract"},
