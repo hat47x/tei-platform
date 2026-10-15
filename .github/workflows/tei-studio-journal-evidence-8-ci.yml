@@ -38,6 +38,8 @@ jobs:
       - name: Checkout only #8 Draft source (no merge)
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
+          # PR builds must qualify the Draft HEAD, not GitHub's synthetic merge ref.
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
           persist-credentials: false
 
@@ -57,8 +59,9 @@ jobs:
           done
 
           snapshot="$RUNNER_TEMP/tei-studio-reading-journal-8"
-          git worktree add --detach "$snapshot" "$GITHUB_SHA"
-          test "$(git -C "$snapshot" rev-parse HEAD)" = "$GITHUB_SHA"
+          consumer_sha="$(git rev-parse HEAD)"
+          git worktree add --detach "$snapshot" "$consumer_sha"
+          test "$(git -C "$snapshot" rev-parse HEAD)" = "$consumer_sha"
           (
             cd "$snapshot"
             git archive "$GRAPH_SHA" reference/tei-studio-graph | tar -xf -
@@ -67,11 +70,11 @@ jobs:
             test "$(git hash-object reference/tei-studio-graph/graph.ts)" = "$GRAPH_BLOB"
             test "$(git hash-object reference/tei-studio-command/command.ts)" = "$COMMAND_BLOB"
             test "$(git hash-object reference/tei-studio-editor/codemirror.ts)" = "$EDITOR_BLOB"
-            echo "CONSUMER=$GITHUB_SHA"
+            echo "CONSUMER=$consumer_sha"
             echo "GRAPH=$GRAPH_SHA / $GRAPH_BLOB"
             echo "COMMAND=$COMMAND_SHA / $COMMAND_BLOB"
             echo "EDITOR=$EDITOR_SHA / $EDITOR_BLOB"
-            git diff --name-only "$GITHUB_SHA" -- reference/tei-studio-independent-consumer
+            git diff --name-only "$consumer_sha" -- reference/tei-studio-independent-consumer
           )
           echo "JOURNAL_SNAPSHOT=$snapshot" >> "$GITHUB_ENV"
 
