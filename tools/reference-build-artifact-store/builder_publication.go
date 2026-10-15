@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"os"
 
 	"tei/internal/plugin"
@@ -27,9 +28,23 @@ func (s localArtifactStore) publishLockedBuilderOutput(
 	if info.Size() > s.maxBytes {
 		return artifactSetPublication{}, fmt.Errorf("locked Builder output exceeds store maxBytes")
 	}
-	value, err := os.ReadFile(outputPath)
+
+	// The Lstat size is only an early rejection. Enforce the same read-side
+	// budget as readVerified: at most maxBytes+1 bytes to detect growth.
+	if testHook != nil {
+		testHook(hookAfterLstat)
+	}
+	file, err := os.Open(outputPath)
+	if err != nil {
+		return artifactSetPublication{}, fmt.Errorf("open locked Builder output: %w", err)
+	}
+	defer file.Close()
+	value, err := io.ReadAll(io.LimitReader(file, s.maxBytes+1))
 	if err != nil {
 		return artifactSetPublication{}, fmt.Errorf("read locked Builder output: %w", err)
+	}
+	if int64(len(value)) > s.maxBytes {
+		return artifactSetPublication{}, fmt.Errorf("locked Builder output exceeds store maxBytes")
 	}
 	return s.publishExactMembers(
 		[]artifactMemberRequest{{Role: "executable", Digest: locked.ArtifactDigest}},
