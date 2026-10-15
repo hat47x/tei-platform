@@ -9,7 +9,7 @@
   "scripts": {
     "build": "node build.mjs",
     "typecheck": "tsc -p tsconfig.json",
-    "test": "node --test presentation.test.mjs"
+    "test": "node --test presentation.test.mjs responses.test.mjs"
   },
   "dependencies": {
     "@codemirror/state": "6.7.6",

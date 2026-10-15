@@ -10,6 +10,8 @@ Graphは選択要素を含む最大8件を表示する。省略件数を画面�
 
 `ok:true`でも検証診断にerrorがあれば操作結果を失敗として表示し、warningを消さない。通信失敗をモックの成功へ置き換えない。作業領域や選択の変更後に届いた古い参照応答は採用しない。
 
+作業領域の切替・再読込ではCommandの`beginContext()`を呼び、旧コマンドの状態と診断を消去する。参照・一覧・検証の応答を別々に管理し、同じ種類の要求は最新の応答だけを表示する。旧要求の失敗も新しい画面へ表示しない。これは表示上の処理であり、Hostの処理中止や副作用の取消しを保証しない。再読込コマンドは自身の表示状態も初期化するため、完了は更新後のモデルと検証結果で確認する。
+
 ## 依存する実装
 
 この変更単独のmainには下記の並行開発部品が存在しない場合がある。Draft PRをmergeせず、各対象pathを固定版から取り出した検証用checkoutで確認する。元ブランチは変更しない。
@@ -17,7 +19,7 @@ Graphは選択要素を含む最大8件を表示する。省略件数を画面�
 - #1832: `cmd/tei-studio/`と`internal/studiohost/`。既存の`createReadOnlyClient`と4操作を利用。
 - #1830: `reference/tei-studio-editor/`の`createReadOnlyTextEditor`、`codeMirrorRenderer`。
 - #1828: `reference/tei-studio-graph/`の`mountReadonlyGraph`。
-- #1829: `reference/tei-studio-command/`の`mountCommandPanel`。
+- #1829: `reference/tei-studio-command/`の`mountCommandPanel`、`beginContext`、`setDiagnosticsForContext`。世代管理APIを追加した版が必要。
 
 部品の実装をこのディレクトリへ複製しない。依存の固定版、実際の試験結果、未確認事項は本PRと#1824のコメントへ記録する。
 

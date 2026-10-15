@@ -3,6 +3,7 @@ import { codeMirrorRenderer } from "../tei-studio-editor/codemirror.ts";
 import { mountReadonlyGraph } from "../tei-studio-graph/graph.ts";
 import { mountCommandPanel } from "../tei-studio-command/command.ts";
 import { createReadOnlyClient } from "../../cmd/tei-studio/assets/client.mjs";
+import { createResponseScope } from "./responses.ts";
 import {
   readCatalog,
   readValidation,
@@ -34,6 +35,8 @@ let client: Client | null = null,
 let workspaceEpoch = 0,
   inspectionEpoch = 0,
   disposed = false;
+const responses = createResponseScope();
+let commandContext = 0;
 const editor = createReadOnlyTextEditor(element("editor"), codeMirrorRenderer, {
   id: "empty",
   version: "0",
@@ -60,7 +63,8 @@ function showFailure(error: unknown) {
   notice.dataset.state = "error";
 }
 function setFindings(findings: Finding[]) {
-  panel.setDiagnostics(findings);
+  if (!panel.setDiagnosticsForContext(commandContext, findings))
+    throw Error("SELECTION_CHANGED");
   const errors = findings.filter((d) => d.severity === "error").length;
   const warnings = findings.filter((d) => d.severity === "warning").length;
   element("diagnostic-summary").textContent =
@@ -123,10 +127,7 @@ async function inspect(subject: Subject) {
   element("graph-note").textContent = related.hidden
     ? `親子関係のうち8件を表示（ほか${related.hidden}件）`
     : "選択要素と、一覧に含まれる直接の親子関係";
-  const reply = await client.inspectSubject(id, subject.kind, subject.id);
-  if (disposed || context !== workspaceEpoch || request !== inspectionEpoch)
-    return;
-  try {
+  return responses.run("inspection", () => client!.inspectSubject(id, subject.kind, subject.id), (reply) => {
     const view = readInspection(unwrap(reply), subject);
     editor.setDocument({
       id: `${id}/${subjectKey(subject)}`,
@@ -136,7 +137,7 @@ async function inspect(subject: Subject) {
     element("source-status").textContent = `参照情報：${view.sourceStatus}`;
     notice.textContent = "選択したモデルの投影を表示しています。";
     notice.dataset.state = "ready";
-  } catch (error) {
+  }, (error) => {
     editor.setDocument({
       id: "unavailable",
       version: `${context}:${request}`,
@@ -144,31 +145,35 @@ async function inspect(subject: Subject) {
     });
     element("source-status").textContent = "未取得";
     throw error;
-  }
+  });
 }
 async function validate(signal?: AbortSignal) {
   if (!client || !workspace.value) throw Error("HOST_NOT_CONNECTED");
   const context = workspaceEpoch,
     id = workspace.value;
-  const reply = await client.validateWorkspace(id);
-  if (disposed || signal?.aborted || context !== workspaceEpoch)
-    throw Error("SELECTION_CHANGED");
+  let outcome: { kind: "success" | "failure"; message: string } | undefined;
+  await responses.run("validation", () => client!.validateWorkspace(id), (reply) => {
+  if (signal?.aborted || context !== workspaceEpoch) return;
   const { errors, warnings } = setFindings(readValidation(unwrap(reply)));
   notice.textContent = errors
     ? `検証で${errors}件のエラーが見つかりました。`
     : `検証結果：エラーなし、警告${warnings}件。`;
   notice.dataset.state = errors ? "error" : "ready";
-  return errors
+  outcome = errors
     ? {
         kind: "failure" as const,
         message: `検証エラー ${errors}件。診断を確認してください。`,
       }
     : { kind: "success" as const, message: `検証完了。警告 ${warnings}件。` };
+  }, (error) => { throw error; });
+  return outcome ?? { kind: "denied" as const, message: "表示対象が変わったため結果を破棄しました。" };
 }
 async function loadWorkspace() {
   if (!client || !workspace.value || disposed) return;
   const context = ++workspaceEpoch,
     id = workspace.value;
+  responses.reset();
+  commandContext = panel.beginContext();
   ++inspectionEpoch;
   selected = null;
   entries = [];
@@ -183,8 +188,11 @@ async function loadWorkspace() {
     text: "作業領域を読み込んでいます。",
   });
   graph.update({ width: 680, height: 240, nodes: [], edges: [] });
+  element("graph-note").textContent = "作業領域を読み込み中";
   notice.textContent = "一覧を取得しています。";
-  const reply = await client.catalogWorkspace(id, "");
+  let reply: Reply | undefined;
+  await responses.run("catalog", () => client!.catalogWorkspace(id, ""), (value) => { reply = value; }, (error) => { throw error; });
+  if (!reply) return;
   if (disposed || context !== workspaceEpoch) return;
   const catalog = readCatalog(unwrap(reply));
   entries = catalog.entries;
@@ -225,6 +233,8 @@ const panel = mountCommandPanel(element("commands"), {
     },
   ],
   async invoke(id, signal) {
+    const context = workspaceEpoch;
+    const selection = inspectionEpoch;
     try {
       if (!client || !workspace.value)
         return { kind: "denied", message: "Hostに接続していません。" };
@@ -234,12 +244,14 @@ const panel = mountCommandPanel(element("commands"), {
         return { kind: "success", message: "一覧を再取得しました。" };
       }
       if (id === "inspect" && selected) {
-        await inspect(selected);
+        const accepted = await inspect(selected);
+        if (!accepted || signal.aborted || selection + 1 !== inspectionEpoch)
+          return { kind: "denied", message: "選択が変わったため結果を破棄しました。" };
         return { kind: "success", message: "投影を再取得しました。" };
       }
       return { kind: "denied", message: "参照する要素を選択してください。" };
     } catch (error) {
-      showFailure(error);
+      if (!signal.aborted && context === workspaceEpoch) showFailure(error);
       return {
         kind: "failure",
         message: error instanceof Error ? error.message : "OPERATION_FAILED",
@@ -260,6 +272,7 @@ window.addEventListener(
   "pagehide",
   () => {
     disposed = true;
+    responses.dispose();
     ++workspaceEpoch;
     ++inspectionEpoch;
     panel.dispose();
