@@ -108,3 +108,13 @@ jobs:
             cleanup
             trap - EXIT
           done
+
+
+      - name: Check fixed Host Workspace root replacement
+        shell: bash
+        run: |
+          set -euo pipefail
+          go test -count=1 -v -tags tei_studio_host_integration \
+            -run '^TestStudioHost(ConfiguredAliasReplacementKeepsPinnedRealRoot|ResolvedRootReplacementNeverReadsOutsideWorkspace)$' \
+            ./tools/reference-studio-host-boundary
+          go vet -tags tei_studio_host_integration ./tools/reference-studio-host-boundary
