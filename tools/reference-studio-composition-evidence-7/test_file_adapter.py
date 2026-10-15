@@ -88,6 +88,51 @@ class FileProbeTests(unittest.TestCase):
         self.assertEqual(probe.pins_for(probe.CONNECTED_HEAD)['compose-ui.mjs'],
                          '6e20b723ff7f0a3abf2ddce9267c879feeff3599')
 
+    def test_current_head_pins_are_additive_and_preserve_prior_revisions(self):
+        self.assertEqual(probe.PR_HEAD, '1af4bf08c9afcc650ac74def3b0aad6728a5f58d')
+        self.assertEqual(probe.CONNECTED_HEAD, '059260521770e6b69eed0294287483dd60753587')
+        self.assertEqual(probe.CURRENT_HEAD, 'fe8e37b1c735dc138c36cb2d37db94ee44424b9e')
+        latest = probe.pins_for(probe.CURRENT_HEAD)
+        self.assertEqual(latest['compose-ui.mjs'], '012137687eb188369d13fa00377cec3e500c72c8')
+        self.assertEqual(latest['connect-workbench.mjs'], '63b9cefd3f4edfe52605ab3c0ed81a60eedef8d5')
+        self.assertEqual(latest['connect-workbench.test.mjs'], '9ce790caf81e1fd9c21ef25a641c5d95ad94f76b')
+        self.assertEqual(latest['fixture.json'], probe.PINNED['fixture.json'])
+        self.assertEqual(probe.pins_for(probe.CONNECTED_HEAD)['connect-workbench.mjs'],
+                         '29249c44d02af687103eff5124db95e5bea88c00')
+        self.assertEqual(probe.ui_files_for(probe.CURRENT_HEAD), probe.CONNECTED_UI_FILES)
+
+    def test_current_workbench_command_response_pins_checked_independently(self):
+        import unittest.mock
+        latest = probe.pins_for(probe.CURRENT_HEAD)
+        mappings = {}
+        for rel, expected in latest.items():
+            file = self.root / probe.BASE / rel
+            file.parent.mkdir(parents=True, exist_ok=True)
+            payload = json.dumps(GOOD).encode() if rel == 'fixture.json' else rel.encode()
+            file.write_bytes(payload)
+            mappings[payload] = expected
+        resolver = self.root / 'reference/ui-customization/composition/resolve-ui-kit.mjs'
+        resolver.parent.mkdir(parents=True, exist_ok=True)
+        resolver.write_bytes(b'existing-ui-kit-resolver')
+        mappings[b'existing-ui-kit-resolver'] = 'a852de9751e596ac0460215aa389a1d3f404c267'
+        for rel, expected in probe.CURRENT_WORKBENCH_PINS.items():
+            file = self.root / rel
+            file.parent.mkdir(parents=True, exist_ok=True)
+            file.write_bytes(rel.encode())
+            mappings[rel.encode()] = expected
+        with unittest.mock.patch.object(probe, 'git_blob', side_effect=lambda data: mappings.get(data, 'bad')):
+            base, raw, manifest = probe.prepare(self.root, ('go', 'ui'), probe.CURRENT_HEAD)
+            self.assertEqual(base, self.root / probe.BASE)
+            self.assertEqual(manifest['fixtureVersion'], GOOD['fixtureVersion'])
+            (self.root / 'reference/tei-studio-command/command.ts').write_bytes(b'stale')
+            with self.assertRaisesRegex(probe.Failed, 'Command/responses revision differs'):
+                probe.prepare(self.root, ('go', 'ui'), probe.CURRENT_HEAD)
+            (self.root / 'reference/tei-studio-command/command.ts').write_bytes(
+                b'reference/tei-studio-command/command.ts')
+            (self.root / 'reference/tei-studio-workbench/responses.ts').write_bytes(b'stale')
+            with self.assertRaisesRegex(probe.Failed, 'Command/responses revision differs'):
+                probe.prepare(self.root, ('go', 'ui'), probe.CURRENT_HEAD)
+
     def test_stdout_is_not_an_implicit_json_result(self):
         result = observed('ui', self.raw)
         result['stdout'] = b'{}'
