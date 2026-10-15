@@ -7,7 +7,7 @@ if [[ "$PWD" != "$root" ]]; then
   echo 'Run from TEI repository root' >&2
   exit 2
 fi
-for tool in node npm sha256sum; do
+for tool in node npm sha256sum wasmtime; do
   if ! command -v "$tool" >/dev/null; then
     echo "Required host tool absent: $tool" >&2
     exit 2
@@ -34,6 +34,7 @@ fi
 echo "Node: $(node --version)"
 echo "Jco: $("$jco" --version)"
 echo "Browser: $("$TEI_BROWSER_EXECUTABLE" --version)"
+echo "Wasmtime: $(wasmtime --version)"
 node --check "$here/e2e/guest.mjs"
 node --check "$here/e2e/verify.mjs"
 
@@ -67,4 +68,6 @@ node "$here/e2e/verify.mjs" node "${entries[0]}" \
 node "$here/e2e/verify.mjs" browser "${entries[0]}" \
   "$root/reference/candidates/order-quote/semantic-vectors-v0.json" \
   "$tmp/tools/node_modules/playwright-core"
-echo 'PASS: actual Component binary, typed WIT, Node and Chromium hosts (same source digest)'
+node "$here/e2e/verify.mjs" wasmtime "$tmp/quote.component.wasm" \
+  "$root/reference/candidates/order-quote/semantic-vectors-v0.json"
+echo 'PASS: actual Component binary, typed WIT, Node, Chromium, and direct Wasmtime Native Host (same component digest)'
