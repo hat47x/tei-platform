@@ -11,7 +11,6 @@ import (
 	"testing"
 
 	"tei/internal/core"
-	"tei/internal/plugin"
 	pruntime "tei/internal/plugin/runtime"
 	customeradvice "tei/plugins/reference-project-customer-advice"
 )
