@@ -40,7 +40,9 @@ func New(pool *pgxpool.Pool, schema string) (Provider, error) {
 // NewWithTrustedOwnerRoutine opts into a deployment-owned, fixed-name
 // apply_owner_effect(text,text,bigint,bytea,text) function in the fixed schema.
 // The function must enforce resource CAS and owner-side effects in the caller's
-// PostgreSQL transaction, returning the new resource version (0 on conflict).
+// PostgreSQL transaction: positive = next resource version, 0 = resource
+// version conflict, -1 = Owner business denial, -2 = invalid Owner input.
+// Other negative values are contract violations (execution errors).
 // It must not commit, publish externally, or be controlled by a Plugin request.
 // DB ownership, EXECUTE grants, and all authority mutation paths require
 // independent deployment verification.
@@ -129,8 +131,13 @@ func (t *transaction) WriteResource(ctx context.Context, req effectcommit.Reques
 		if err != nil {
 			return 0, err // missing routine, DB failure: fail closed, rollback
 		}
-		if next == 0 {
+		switch next {
+		case 0:
 			return 0, effectcommit.ErrResourceConflict
+		case -1:
+			return 0, effectcommit.ErrBusinessDenied
+		case -2:
+			return 0, effectcommit.ErrInvalidRequest
 		}
 	} else {
 		q := "UPDATE " + t.table("objects") +

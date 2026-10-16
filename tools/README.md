@@ -22,6 +22,7 @@
 | 場所 | 役割 |
 | --- | --- |
 | [`first-value-ux-audit/`](first-value-ux-audit/) | 初回利用時の操作上のつまずきの確認 |
+| [`reference-authoring-auxiliary/`](reference-authoring-auxiliary/) | 設計の補助情報（用語・改訂履歴・注記・区分）の置き場所と意味の版の境界の確認 |
 | [`reference-authoring-witness-openssh/`](reference-authoring-witness-openssh/) | OpenSSHを使った記述作業の参照確認 |
 | [`reference-authority-evidence-trust/`](reference-authority-evidence-trust/) | 情報源の権威と検証根拠の信頼境界の確認 |
 | [`reference-business-dfd/`](reference-business-dfd/) | 業務データフロー図の読取り専用参照 |
@@ -33,10 +34,14 @@
 | [`reference-critical-lowering/`](reference-critical-lowering/) | 意味定義から実行形式への変換条件の確認 |
 | [`reference-epistemic-knowledge/`](reference-epistemic-knowledge/) | 文脈ごとの知識状態と根拠の確認 |
 | [`reference-external-coordination/`](reference-external-coordination/) | 外部担当との引継ぎ・協調境界の確認 |
+| [`reference-generated-code-connection/`](reference-generated-code-connection/) | 生成コードをTEIの契約境界へ接続できるかの判定と、部分的なモデル化と保持の参照 |
 | [`reference-shared-acceptance/`](reference-shared-acceptance/) | 人・画面・AIに共通する変更受入れ処理の参照実装 |
 | [`reference-standard-function-candidates/`](reference-standard-function-candidates/) | データ定義から実行前の標準機能候補と不足する契約を提示 |
 | [`reference-spec-review/`](reference-spec-review/) | 仕様書の不足・曖昧さ・矛盾の検討支援 |
+| [`reference-procedure-formalization/`](reference-procedure-formalization/) | 業務手順の文章から、形式化を妨げる不足と矛盾を根拠付きの質問として示す読取り専用の参照 |
 | [`reference-purpose-preflight/`](reference-purpose-preflight/) | 開発目的に対する業務規則の未確定・実行時値待ちを合成データで区別 |
+| [`reference-rule-candidate-discovery/`](reference-rule-candidate-discovery/) | 入出力例から複数の規則仮説を提示し、境界例で割れる点を示す読取り専用の参照 |
+| [`reference-runtime-change-instruction/`](reference-runtime-change-instruction/) | 動作中の画面からの変更指示を設計対象へ結び付け、見た目・業務規則・認可の変更を分ける参照 |
 | [`reference-tool-neutral-development/`](reference-tool-neutral-development/) | 特定の開発道具に依存しない作業経路の確認 |
 
 ## ビルド、配布、実行
@@ -106,6 +111,7 @@
 | 場所 | 役割 |
 | --- | --- |
 | [`reference-example-slide/`](reference-example-slide/) | 例から関係図を組み立てる参照資料 |
+| [`reference-partial-import-plan/`](reference-partial-import-plan/) | 別Workspaceから選んだData定義の取込み結果を分類する読取り専用の参照（#1805） |
 | [`reference-table-definition-document/`](reference-table-definition-document/) | 受理済みの意味から表定義書を導出する参照（#1803） |
 | [`reference-list-roundtrip/`](reference-list-roundtrip/) | 意味の要素の一覧を出力し、編集後の一覧を変更案へ戻す読取り専用の参照（#1807） |
 | [`reference-type-reorg-impact/`](reference-type-reorg-impact/) | 意味の型の統合案が及ぼす影響を一覧する読取り専用の参照（#1806） |

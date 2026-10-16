@@ -42,8 +42,8 @@ PostgreSQLの`SELECT ... FOR UPDATE`には対象表への更新権限が必要�
 
 `NewWithTrustedOwnerRoutine(pool, schema)`は、DB所有者が管理し実行主体の権限で検証済みの固定ルーチン `schema.apply_owner_effect(TEXT,TEXT,BIGINT,BYTEA,TEXT) RETURNS BIGINT`を`WriteResource`から呼び出します。引数はApplication・Resource・ExpectedVersion・Payload・OperationIDの**型付き値のみ**で、SQL文や関数名を未信頼Pluginや要求が指定する仕組みはありません。`New`の既存単一`objects`更新は変更しません。
 
-ルーチンは対象版CASと信頼済みOwnerの複数表更新（必要なら同一DBのpending outbox）を**同じpgx.Tx**内で行い、成功時に新対象版、業務/版競合時に0を返します。戻り値0は`ErrResourceConflict`としてRunnerがRollbackし、関数欠落・DB異常はExecution ErrorとしてRollbackします。`CheckAuthority`のロック、`FindReceipt`、この呼出、`SaveReceipt`、`Commit`は既存の一トランザクションのままです。ルーチン内から独自COMMITや外部送信は行いません。
+ルーチンは対象版CASと信頼済みOwnerの複数表更新（必要なら同一DBのpending outbox）を**同じpgx.Tx**内で行います。固定署名の`BIGINT`戻り値は **正数=更新後の対象版、`0`=対象版CAS不一致、`-1`=Owner側の業務拒否（在庫不足等）、`-2`=Owner入力不正** とします。`0`は既存`ErrResourceConflict`→`StatusConflict`、`-1`は既存`StatusDenied`、`-2`は既存`ErrInvalidRequest`による実行エラー（未確定/無作用）、その他の負数は契約違反の実行エラーです。対象版は一致しているが在庫だけ不足する場合を「対象版が古い」と扱わず、CAS再試行が安全だと自動判定しません。すべての無確定経路はRunnerのRollbackにより、対象版更新を含む部分効果を残しません。関数欠落・DB異常もExecution ErrorとしてRollbackします。`CheckAuthority`のロック、`FindReceipt`、この呼出、`SaveReceipt`、`Commit`は既存の一トランザクションのままです。ルーチン内から独自COMMITや外部送信は行いません。
 
 **受入/配備制約**：このopt-inは信頼されたホスト構成だけが選択し、Pluginの任意SQL/Script APIに転用しない。DB関数の所有者、SQL本文、固定`search_path`、公開EXECUTE権限、書込対象、DBロールと認可正本の全更新経路を配備者が監査する必要があります。テスト用関数は`SECURITY INVOKER`であり、実運用向けのDB権限制約・不正な直接UPDATE防止まで証明しません。本番の強制フェンスや多DB/外部通知の原子性を主張しません。
 
-実PostgreSQL fixture `trusted_owner_integration_test.go`は共有在庫3を異なる二つのResourceが各3確保する競合の正負、receipt INSERT失敗時の全Owner効果のRollback、関数欠落時のfail-closedを検査します。これは**参照用の実DB試験であって#1129の製品Source/Plugin/Provider結線・旧Runtime適合ではありません**。
+実PostgreSQL fixture `trusted_owner_integration_test.go`は共有在庫3を異なる二つのResourceが各3確保する競合の正負（在庫不足は`StatusDenied`）、対象版一致/在庫のみ不足、版不一致/在庫十分、入力数量不正の分類、receipt INSERT失敗時の全Owner効果のRollback、関数欠落時のfail-closedを検査します。これは**参照用の実DB試験であって#1129の製品Source/Plugin/Provider結線・旧Runtime適合ではありません**。

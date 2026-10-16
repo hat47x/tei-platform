@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"testing"
@@ -35,14 +36,14 @@ func installTrustedOwnerFixture(t *testing.T, f *postgresFixture) {
 		DECLARE v_version BIGINT; v_units INTEGER;
 		BEGIN
 			v_units := convert_from(p_payload, 'UTF8')::INTEGER;
-			IF v_units <= 0 THEN RETURN 0; END IF;
+			IF v_units <= 0 THEN RETURN -2; END IF;
 			UPDATE %[1]s.objects SET value=p_payload, version=version+1
 				WHERE application=p_application AND resource=p_resource AND version=p_expected
 				RETURNING version INTO v_version;
 			IF NOT FOUND THEN RETURN 0; END IF;
 			UPDATE %[1]s.shared_inventory SET available=available-v_units
 				WHERE bucket='shared' AND available >= v_units;
-			IF NOT FOUND THEN RETURN 0; END IF;
+			IF NOT FOUND THEN RETURN -1; END IF;
 			INSERT INTO %[1]s.owner_reservations(resource,units) VALUES (p_resource,v_units);
 			INSERT INTO %[1]s.owner_history(operation_id,resource) VALUES (p_operation,p_resource);
 			INSERT INTO %[1]s.owner_outbox(operation_id,resource) VALUES (p_operation,p_resource);
@@ -133,7 +134,7 @@ func TestTrustedOwnerRoutineConcurrentSharedInventory(t *testing.T) {
 	close(begin)
 	wg.Wait()
 	close(results)
-	committed, conflict := 0, 0
+	committed, denied := 0, 0
 	for x := range results {
 		if x.err != nil {
 			t.Fatalf("concurrent transaction error: %v", x.err)
@@ -141,14 +142,14 @@ func TestTrustedOwnerRoutineConcurrentSharedInventory(t *testing.T) {
 		switch x.result.Status {
 		case effectcommit.StatusCommitted:
 			committed++
-		case effectcommit.StatusConflict:
-			conflict++
+		case effectcommit.StatusDenied:
+			denied++
 		default:
 			t.Fatalf("unexpected outcome: %+v", x.result)
 		}
 	}
-	if committed != 1 || conflict != 1 {
-		t.Fatalf("owner oversubscribed: committed=%d conflict=%d", committed, conflict)
+	if committed != 1 || denied != 1 {
+		t.Fatalf("owner oversubscribed: committed=%d denied=%d", committed, denied)
 	}
 	a, reservations, history, outbox, receipts := ownerCounts(t, f)
 	if a != 0 || reservations != 1 || history != 1 || outbox != 1 || receipts != 1 {
@@ -208,5 +209,65 @@ func TestTrustedOwnerRoutineReceiptFailureRollsBackAndMissingRoutineFailsClosed(
 	a, reservations, history, outbox, receipts = ownerCounts(t, f)
 	if a != 3 || reservations != 0 || history != 0 || outbox != 0 || receipts != 0 {
 		t.Fatalf("missing routine mutated owner: %d %d %d %d %d", a, reservations, history, outbox, receipts)
+	}
+}
+
+func TestTrustedOwnerRoutineDistinguishesVersionConflictOwnerDenialAndInvalidInput(t *testing.T) {
+	for _, tc := range []struct {
+		name            string
+		expectedVersion uint64
+		units           string
+		available       int
+		wantStatus      effectcommit.Status
+		wantInvalid     bool
+		wantCommitted   bool
+	}{
+		{name: "matching-version-stock-shortage", expectedVersion: 0, units: "3", available: 0, wantStatus: effectcommit.StatusDenied},
+		{name: "stale-version-stock-available", expectedVersion: 1, units: "3", available: 3, wantStatus: effectcommit.StatusConflict},
+		{name: "matching-version-invalid-units", expectedVersion: 0, units: "0", available: 3, wantInvalid: true},
+		{name: "matching-version-stock-available", expectedVersion: 0, units: "3", available: 3, wantStatus: effectcommit.StatusCommitted, wantCommitted: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			f := openFixture(t)
+			installTrustedOwnerFixture(t, f)
+			ctx := context.Background()
+			if _, err := f.pool.Exec(ctx, "UPDATE "+f.schema+".shared_inventory SET available=$1 WHERE bucket='shared'", tc.available); err != nil {
+				t.Fatal(err)
+			}
+			req := f.req
+			req.ExpectedVersion = tc.expectedVersion
+			req.Payload = []byte(tc.units)
+			grant := f.grant(t)
+			provider, err := NewWithTrustedOwnerRoutine(f.pool, f.schema)
+			if err != nil {
+				t.Fatal(err)
+			}
+			got, err := (effectcommit.Runner{Provider: provider}).Execute(ctx, req, grant)
+			if tc.wantInvalid {
+				if !errors.Is(err, effectcommit.ErrInvalidRequest) || got != (effectcommit.Result{}) {
+					t.Fatalf("invalid owner input wrongly mapped to conflict or denial: %+v err=%v", got, err)
+				}
+			} else if err != nil || got.Status != tc.wantStatus {
+				t.Fatalf("unexpected classification for version=%d available=%d units=%s: %+v err=%v",
+					tc.expectedVersion, tc.available, tc.units, got, err)
+			}
+			available, reservations, history, outbox, receipts := ownerCounts(t, f)
+			value, version := f.readObject(t)
+			if tc.wantCommitted {
+				if got.Receipt.ResourceVersion != 1 || available != 0 ||
+					reservations != 1 || history != 1 || outbox != 1 || receipts != 1 ||
+					value != "3" || version != 1 {
+					t.Fatalf("normal commit lost effects: result=%+v, inventory=%d, owner=%d/%d/%d, receipts=%d, object=%q version=%d",
+						got, available, reservations, history, outbox, receipts, value, version)
+				}
+				return
+			}
+			if got.Receipt != (effectcommit.Receipt{}) || available != tc.available ||
+				reservations != 0 || history != 0 || outbox != 0 || receipts != 0 ||
+				value != "original" || version != 0 {
+				t.Fatalf("non-commit changed DB: result=%+v, inventory=%d, owner=%d/%d/%d, receipts=%d, object=%q version=%d",
+					got, available, reservations, history, outbox, receipts, value, version)
+			}
+		})
 	}
 }
