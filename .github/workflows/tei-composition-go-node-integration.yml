@@ -80,6 +80,12 @@ jobs:
           node --test reference/application-composition/e28_workflow_measurement.test.mjs
           node reference/application-composition/e28_workflow_measurement.mjs . > /dev/null
 
+      - name: E28の任意作業記録と未計測を検証
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test reference/application-composition/e28_attested_work_measure.test.mjs
+
       - name: E31の別リポジトリ版対応を照合
         shell: bash
         run: |

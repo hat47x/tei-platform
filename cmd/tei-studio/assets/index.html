@@ -12,6 +12,9 @@
     button{cursor:pointer}
     pre{padding:1.1rem;border:1px solid #8886;border-radius:.5rem;white-space:pre-wrap;overflow-wrap:anywhere;max-height:60vh;overflow:auto}
     #state{min-height:1.5rem}
+    .preview{margin-top:2rem;padding:1rem;border:1px solid #8886;border-radius:.5rem}
+    .preview table{border-collapse:collapse;width:100%;margin:1rem 0}
+    .preview th,.preview td{text-align:left;border:1px solid #8886;padding:.4rem}
   </style>
 </head>
 <body>
@@ -30,6 +33,17 @@
   </div>
   <div id="state" role="status" aria-live="polite"></div>
   <pre id="output" aria-label="Operation result"></pre>
+  <section class="preview" aria-labelledby="preview-title">
+    <h2 id="preview-title">XEAD限定観察</h2>
+    <p>限定観察 / 読取専用 / 非Canonical / 未対応構造あり得る</p>
+    <div class="controls">
+      <label for="xead-path">Workspace相対パス</label>
+      <input id="xead-path" autocomplete="off" placeholder="model.xead">
+      <button id="observe" disabled>読取</button>
+    </div>
+    <div id="preview-state" role="status" aria-live="polite"></div>
+    <div id="preview-result"></div>
+  </section>
   <script type="module" src="./main.js"></script>
 </body>
 </html>
