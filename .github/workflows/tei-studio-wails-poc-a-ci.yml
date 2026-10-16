@@ -9,7 +9,9 @@ on:
       - cmd/tei-studio/**
       - go.mod
       - go.sum
-      - internal/**
+      - internal/consumerimpact/**
+      - internal/index/**
+      - internal/modelref/**
       - tools/reference-studio-static-composition/**
       - reference/tei-studio-*/**
       - reference/ui-customization/composition/**
@@ -22,7 +24,9 @@ on:
       - cmd/tei-studio/**
       - go.mod
       - go.sum
-      - internal/**
+      - internal/consumerimpact/**
+      - internal/index/**
+      - internal/modelref/**
       - tools/reference-studio-static-composition/**
       - reference/tei-studio-*/**
       - reference/ui-customization/composition/**
