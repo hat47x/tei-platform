@@ -20,7 +20,13 @@ on:
     paths:
       - .github/workflows/tei-studio-wails-poc-a-ci.yml
       - cmd/tei-studio/**
-      - internal/studiohost/**
+      - go.mod
+      - go.sum
+      - internal/**
+      - tools/reference-studio-static-composition/**
+      - reference/tei-studio-*/**
+      - reference/ui-customization/composition/**
+      - reference/workspace/**
   workflow_dispatch:
 
 permissions:
