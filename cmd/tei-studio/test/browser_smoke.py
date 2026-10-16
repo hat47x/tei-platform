@@ -94,6 +94,7 @@ def smoke_bootstrap(browser, base_url):
     assert "Operation応答" in page.locator("#state").inner_text()
     displayed = json.loads(page.locator("#output").inner_text())
     assert displayed == envelope, displayed
+    print("Bootstrap browser smoke: ListWorkspaces args=[]; workspace-1 returned")
     page.close()
 
 
@@ -184,6 +185,22 @@ def smoke_workbench(browser, base_url):
     assert editor.get_attribute("contenteditable") == "false"
     assert page.locator('#graph svg[aria-label="読取り専用グラフ"]').count() == 1
     assert page.locator("#graph g[role='button']").count() > 1
+    initial_subject = {"kind": "semantic-data", "id": "sales.order"}
+    catalog_value = envelopes["main.StudioBridge.CatalogWorkspace"]["value"]
+    catalog_entries = catalog_value.get("entries")
+    assert isinstance(catalog_entries, list), catalog_value
+    target_entries = [
+        entry
+        for entry in catalog_entries
+        if entry.get("parent") == initial_subject and entry.get("symbol") == "orderId"
+    ]
+    assert len(target_entries) == 1, target_entries
+    target_entry = target_entries[0]
+    target_subject = target_entry["subject"]
+    target_node = page.get_by_role(
+        "button", name=target_entry["symbol"], exact=True
+    )
+    assert target_node.count() == 1, "graph does not expose the orderId child node"
     command_ids = page.locator("#commands [data-command-id]").evaluate_all(
         "(nodes) => nodes.map((node) => node.dataset.commandId).sort()"
     )
@@ -195,18 +212,16 @@ def smoke_workbench(browser, base_url):
         ),
         timeout=10_000,
     ) as graph_inspection:
-        page.locator("#graph g[role='button']").nth(1).click()
+        target_node.click()
     graph_call = runtime_call(graph_inspection.value.request)
     assert graph_call is not None, graph_call
     graph_args = graph_call[1]
-    assert isinstance(graph_args, list) and len(graph_args) == 3, graph_args
-    assert graph_args[0] == "workspace-1", graph_call
-    assert graph_args[2] != "sales.order", graph_call
-    initial_subject = {"kind": "semantic-data", "id": "sales.order"}
+    assert graph_args == [
+        "workspace-1",
+        target_subject["kind"],
+        target_subject["id"],
+    ], graph_call
     graph_subject = {"kind": graph_args[1], "id": graph_args[2]}
-    catalog_value = envelopes["main.StudioBridge.CatalogWorkspace"]["value"]
-    catalog_entries = catalog_value.get("entries")
-    assert isinstance(catalog_entries, list), catalog_value
     is_direct_parent_or_child = any(
         (entry.get("subject") == graph_subject and entry.get("parent") == initial_subject)
         or (
@@ -225,7 +240,19 @@ def smoke_workbench(browser, base_url):
         """(subjectId) =>
           document.querySelector('#subject-title')?.textContent === subjectId
           && document.querySelector('#source-status')?.textContent?.startsWith('参照情報：')""",
-        graph_args[2],
+        arg=graph_args[2],
+        timeout=10_000,
+    )
+    page.wait_for_function(
+        """(expected) => {
+          const text = document.querySelector('#editor .cm-content')?.innerText;
+          try {
+            return JSON.stringify(JSON.parse(text)) === JSON.stringify(expected);
+          } catch {
+            return false;
+          }
+        }""",
+        arg=graph_value.get("canonical"),
         timeout=10_000,
     )
     displayed_graph_projection = json.loads(editor.inner_text())
@@ -254,6 +281,18 @@ def smoke_workbench(browser, base_url):
         validate_button.click()
     validation_envelope = successful_response(validation.value)
     assert validation_counts(validation_envelope) == counts, validation_envelope
+    print(
+        "Workbench browser smoke: "
+        f"Catalog parent={initial_subject['kind']}:{initial_subject['id']} "
+        f"child={target_subject['kind']}:{target_subject['id']} "
+        f"symbol={target_entry['symbol']}; "
+        f"Inspect args={graph_args!r} effect={graph_value['effect']} "
+        f"canonical={graph_value['subject']['kind']}:{graph_value['subject']['id']} "
+        "matched editor; "
+        f"Validate ok={validation_envelope['ok']} "
+        f"errors={counts['error']} warnings={counts['warning']} "
+        f"summary={page.locator('#diagnostic-summary').inner_text()!r}"
+    )
     page.close()
 
 
