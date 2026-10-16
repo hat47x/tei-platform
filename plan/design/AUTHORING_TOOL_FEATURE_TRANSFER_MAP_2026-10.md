@@ -174,7 +174,7 @@ Editorは、Modelerの機能定義から実行用の機能定義を作り込み�
 | 物理表の照合は値を保つ移行である | XeadEditor M34の表照合は、DB方言別比較で型が非互換なら列をdrop/add候補にする。型が同等でも特定の桁差は同じ候補に加え、主キーがある場合に旧値の退避・変換・復元を試みる。Field ID変更は旧列dropと新列addの候補になり、両者の値を対応付ける経路はない。変更処理はDDL/DMLを順次発行するが、同一transactionでの原子性は明示保証していない（接続設定・DBMS実動作は未確認） | 値を失う可能性と変換条件を示し、差分を段階的な移行へ渡す（[意味の変更に伴う既存データの移行設計](SEMANTIC_CHANGE_DATA_EVOLUTION_DESIGN_2026-10.md)） |
 | 楽観ロック列の有無は表属性で制御する | Editor M34では`Table@UpdateCounter`を参照し、未指定なら既定の`UPDCOUNTER`列をField一覧とは別にDDLへ追加する。`*NONE`なら追加せず、別名も指定できる。Driver M34では有効時に旧counter値をUPDATE/DELETE条件へ含める | 同時更新の検出方式と、更新件数が0件のときの業務結果を宣言する（[#1129](https://github.com/hat47x/tei-platform/issues/1129)） |
 
-表の最後の4行は、2026-10-15の追加調査で原ソースの該当処理を読んで加えた（ModelerとEditorは2章の版、実行系はXeadDriver `6c077773b74c6d7dbcc253835cf8d347e4ffb1ef`）。いずれもソースの静的な読解であり、旧Runtimeでの動作は確認していない（[#940](https://github.com/hat47x/tei-platform/issues/940)）。
+表の最後の4行は原ソースの静的読解から加えた（Modeler M49、Editor M34、実行系はXeadDriver `6c077773b74c6d7dbcc253835cf8d347e4ffb1ef`）。保存配布物はModeler M50のJARとEditor/Driver M36のJARで、同名クラスが含まれる箇所も原ソースと同じ実装かは確認していない。したがってM50/M36配布版の同等性や旧Runtimeの実動作は未確認である（[#940](https://github.com/hat47x/tei-platform/issues/940)）。
 
 ## 7. 移植しないもの
 
