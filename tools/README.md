@@ -34,6 +34,7 @@
 | [`reference-critical-lowering/`](reference-critical-lowering/) | 意味定義から実行形式への変換条件の確認 |
 | [`reference-epistemic-knowledge/`](reference-epistemic-knowledge/) | 文脈ごとの知識状態と根拠の確認 |
 | [`reference-external-coordination/`](reference-external-coordination/) | 外部担当との引継ぎ・協調境界の確認 |
+| [`reference-format-version-migration/`](reference-format-version-migration/) | 定義形式の版と変換規則を一か所に置き、読取り手ごとの旧形式対応をなくす参照 |
 | [`reference-generated-code-connection/`](reference-generated-code-connection/) | 生成コードをTEIの契約境界へ接続できるかの判定と、部分的なモデル化と保持の参照 |
 | [`reference-shared-acceptance/`](reference-shared-acceptance/) | 人・画面・AIに共通する変更受入れ処理の参照実装 |
 | [`reference-standard-function-candidates/`](reference-standard-function-candidates/) | データ定義から実行前の標準機能候補と不足する契約を提示 |
@@ -43,6 +44,7 @@
 | [`reference-rule-candidate-discovery/`](reference-rule-candidate-discovery/) | 入出力例から複数の規則仮説を提示し、境界例で割れる点を示す読取り専用の参照 |
 | [`reference-runtime-change-instruction/`](reference-runtime-change-instruction/) | 動作中の画面からの変更指示を設計対象へ結び付け、見た目・業務規則・認可の変更を分ける参照 |
 | [`reference-scenario-state-diff/`](reference-scenario-state-diff/) | 型付きDataset/Snapshotの検証と、Scenario期待値・観測の差の読取り専用参照 |
+| [`reference-scoped-query-preflight/`](reference-scoped-query-preflight/) | 認可済み行スコープを物理SQLへ適用できるかを実行前に判定する参照 |
 | [`reference-tool-neutral-development/`](reference-tool-neutral-development/) | 特定の開発道具に依存しない作業経路の確認 |
 
 ## ビルド、配布、実行
