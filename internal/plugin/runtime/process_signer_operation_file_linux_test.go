@@ -78,6 +78,9 @@ func TestLinuxFileSignerOperationLedgerPersistsAcrossReopen(t *testing.T) {
 	}
 	var found bool
 	for _, entry := range entries {
+		if strings.Contains(entry.Name(), request.OperationID) {
+			t.Fatalf("operation identifier leaked into the reservation filename: %q", entry.Name())
+		}
 		info, err := entry.Info()
 		if err != nil {
 			t.Fatal(err)
@@ -268,5 +271,22 @@ func TestLinuxFileSignerOperationLedgerRejectsInvalidOperationBeforeWriting(t *t
 	entries, err := os.ReadDir(directory)
 	if err != nil || len(entries) != 0 {
 		t.Fatalf("invalid requests unexpectedly left reservation files: entries=%d err=%v", len(entries), err)
+	}
+}
+
+func TestLinuxFileSignerOperationLedgerRefusesCanceledReservation(t *testing.T) {
+	directory, ledger := linuxFileOperationFixture(t)
+	request := linuxFileOperationRequest()
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if created, err := ledger.ReserveSignerOperation(ctx, request); created || !errors.Is(err, context.Canceled) {
+		t.Fatalf("canceled reservation was accepted: created=%v err=%v", created, err)
+	}
+	if created, err := ledger.ReserveSignerOperation(context.Background(), request); err != nil || !created {
+		t.Fatalf("canceled attempt wrongly reserved the operation ID: created=%v err=%v", created, err)
+	}
+	entries, err := os.ReadDir(directory)
+	if err != nil || len(entries) != 1 {
+		t.Fatalf("canceled attempt changed reservation files: entries=%d err=%v", len(entries), err)
 	}
 }
