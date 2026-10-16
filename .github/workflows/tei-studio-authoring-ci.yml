@@ -13,7 +13,29 @@ on:
       - reference/business-system-design/order-entry-business-procedure.json
       - tools/reference-shared-acceptance/**
       - cmd/tei/**
+      - internal/application/**
+      - internal/core/**
+      - internal/database/**
+      - internal/deployment/**
+      - internal/environment/**
+      - internal/ir/**
+      - internal/operations/**
+      - internal/permission/**
+      - internal/plugin/**
+      - internal/query/**
+      - internal/realization/**
+      - internal/releaseplan/**
+      - internal/resource/**
+      - internal/semantic/**
+      - internal/studiohost/**
+      - internal/stdlib/**
       - internal/sourceindex/**
+      - internal/subject/**
+      - internal/syntax/**
+      - internal/validation/**
+      - internal/workspace/**
+      - go.mod
+      - go.sum
   push:
     branches: [main]
     paths:
@@ -24,7 +46,29 @@ on:
       - reference/business-system-design/order-entry-business-procedure.json
       - tools/reference-shared-acceptance/**
       - cmd/tei/**
+      - internal/application/**
+      - internal/core/**
+      - internal/database/**
+      - internal/deployment/**
+      - internal/environment/**
+      - internal/ir/**
+      - internal/operations/**
+      - internal/permission/**
+      - internal/plugin/**
+      - internal/query/**
+      - internal/realization/**
+      - internal/releaseplan/**
+      - internal/resource/**
+      - internal/semantic/**
+      - internal/studiohost/**
+      - internal/stdlib/**
       - internal/sourceindex/**
+      - internal/subject/**
+      - internal/syntax/**
+      - internal/validation/**
+      - internal/workspace/**
+      - go.mod
+      - go.sum
   workflow_dispatch:
 
 permissions:
@@ -73,6 +117,16 @@ jobs:
           go-version-file: go.mod
           check-latest: false
           cache: false
+
+      - name: CLIとStudio HostのCatalog結果・失敗分類を比較
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -z "$(gofmt -l cmd/tei/cli_inprocess_parity_test.go)"
+          go test -count=1 ./cmd/tei \
+            -run '^(TestStudioCatalogMatchesCLI(ResultSemantics|DuplicateIdentitySemantics)|TestStudioCatalogMatchesCLILoadFailureClassification)$'
+          go test -count=1 ./internal/operations \
+            -run '^(TestCatalogWorldEnumeratesTypedSemanticAndApplicationSubjects|TestCatalogWorldDoesNotDiscardDuplicateIdentities|TestCatalogNamespaceFilterPreservesGlobalIdentityAmbiguity)$'
 
       - name: Node.jsの版を固定
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4

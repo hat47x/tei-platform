@@ -1,0 +1,106 @@
+name: "TEI Studio #8 - independent consumer against exact main source"
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, reopened, synchronize, ready_for_review]
+    paths:
+      - .github/workflows/tei-studio-independent-consumer-main-source-ci.yml
+      - reference/tei-studio-independent-consumer/**
+      - reference/tei-studio-workbench/**
+      - reference/tei-studio-editor/**
+      - reference/tei-studio-graph/**
+      - reference/tei-studio-command/**
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tei-studio-independent-consumer-main-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  exact-main-independent-consumer:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      STUDIO_MAIN_SOURCE_SHA: e379918aab1fb71a7ccbee5af39ecc273c32f7be
+      STUDIO_SOURCE_ROOT: ${{ github.workspace }}/tei-studio-main
+
+    steps:
+      - name: Checkout the PR head as the checker
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          path: checker
+          persist-credentials: false
+
+      - name: Checkout exact main source snapshot
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: e379918aab1fb71a7ccbee5af39ecc273c32f7be
+          path: tei-studio-main
+          persist-credentials: false
+
+      - name: Verify the pinned source and PR base
+        shell: bash
+        env:
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          test "$(git -C "$STUDIO_SOURCE_ROOT" rev-parse HEAD)" = "$STUDIO_MAIN_SOURCE_SHA"
+          if [ -n "$PR_BASE_SHA" ]; then
+            test "$PR_BASE_SHA" = "$STUDIO_MAIN_SOURCE_SHA"
+            test "$(git -C checker rev-parse HEAD)" = "$PR_HEAD_SHA"
+          fi
+          echo "EXACT_MAIN_SOURCE=$STUDIO_MAIN_SOURCE_SHA"
+          echo "CHECKER_HEAD=$(git -C checker rev-parse HEAD)"
+
+      - name: Use Node 24.21.0
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24.21.0
+          check-latest: false
+
+      - name: Test the source identity audit
+        working-directory: checker/reference/tei-studio-independent-consumer
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test audit-workbench-reuse.test.mjs
+          npm run audit:workbench-reuse -- "$STUDIO_SOURCE_ROOT" "$STUDIO_MAIN_SOURCE_SHA"
+
+      - name: Install locked dependencies and build the exact main consumer
+        working-directory: tei-studio-main/reference/tei-studio-independent-consumer
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --version
+          npm ci --no-audit --no-fund
+          npm test
+          npm run audit:imports
+          npm run build
+
+      - name: Verify actual shared bundle inputs against exact main
+        working-directory: checker/reference/tei-studio-independent-consumer
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run audit:workbench-reuse -- "$STUDIO_SOURCE_ROOT" "$STUDIO_MAIN_SOURCE_SHA" --require-bundle
+
+      - name: Install isolated Python Playwright and Chromium
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m venv "$RUNNER_TEMP/studio-consumer-playwright"
+          "$RUNNER_TEMP/studio-consumer-playwright/bin/pip" install --disable-pip-version-check playwright==1.57.0
+          "$RUNNER_TEMP/studio-consumer-playwright/bin/python" -m playwright install --with-deps chromium
+
+      - name: Exercise the exact main consumer in real Chromium
+        working-directory: tei-studio-main/reference/tei-studio-independent-consumer
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$RUNNER_TEMP/studio-consumer-playwright/bin/python" browser-e2e.py
