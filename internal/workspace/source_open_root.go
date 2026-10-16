@@ -24,12 +24,16 @@ func openWorkspaceRoot(root string) (*os.Root, error) {
 }
 
 func openRootedSource(root, path string) (*os.File, error) {
+	return openRootedSourceWithFlags(root, path, os.O_RDONLY)
+}
+
+func openRootedSourceWithFlags(root, path string, flags int) (*os.File, error) {
 	directory, err := openWorkspaceRoot(root)
 	if err != nil {
 		return nil, err
 	}
 	defer directory.Close()
-	file, err := directory.Open(filepath.FromSlash(path))
+	file, err := directory.OpenFile(filepath.FromSlash(path), flags, 0)
 	if err != nil {
 		return nil, fmt.Errorf("open source %q in Workspace root: %w", path, err)
 	}

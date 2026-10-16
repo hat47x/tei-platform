@@ -12,11 +12,13 @@ test("each call carries explicit workspace ID without per-tab global selection",
   await client.catalogWorkspace("workspace-2", "ns");
   await client.validateWorkspace("workspace-1");
   await client.inspectSubject("workspace-2", "semantic", "x");
+  await client.observeXead("workspace-1", "model.xead");
   assert.deepEqual(seen, [
     ["main.StudioBridge.ListWorkspaces"],
     ["main.StudioBridge.CatalogWorkspace", "workspace-2", "ns"],
     ["main.StudioBridge.ValidateWorkspace", "workspace-1"],
     ["main.StudioBridge.InspectSubject", "workspace-2", "semantic", "x"],
+    ["main.StudioBridge.ObserveXead", "workspace-1", "model.xead"],
   ]);
 });
 test("operation denial is not converted into transport success", async () => {

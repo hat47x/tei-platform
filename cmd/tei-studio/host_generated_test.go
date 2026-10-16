@@ -18,10 +18,10 @@ func TestGeneratedGoServicesRunThroughRealHost(t *testing.T) {
 	}
 	bridge := &StudioBridge{host: h}
 	bridgeType := reflect.TypeOf(bridge)
-	if bridgeType.NumMethod() != 4 {
+	if bridgeType.NumMethod() != 5 {
 		t.Fatalf("unexpected Wails exports: %d", bridgeType.NumMethod())
 	}
-	for i, method := range []string{"CatalogWorkspace", "InspectSubject", "ListWorkspaces", "ValidateWorkspace"} {
+	for i, method := range []string{"CatalogWorkspace", "InspectSubject", "ListWorkspaces", "ObserveXead", "ValidateWorkspace"} {
 		if bridgeType.Method(i).Name != method {
 			t.Fatalf("unexpected Wails service method %d: %s", i, bridgeType.Method(i).Name)
 		}
