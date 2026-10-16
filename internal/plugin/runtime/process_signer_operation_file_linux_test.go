@@ -290,3 +290,13 @@ func TestLinuxFileSignerOperationLedgerRefusesCanceledReservation(t *testing.T) 
 		t.Fatalf("canceled attempt changed reservation files: entries=%d err=%v", len(entries), err)
 	}
 }
+
+func TestLinuxFileSignerOperationLedgerRejectsDirectoryWidenedAfterOpen(t *testing.T) {
+	directory, ledger := linuxFileOperationFixture(t)
+	if err := os.Chmod(directory, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if created, err := ledger.ReserveSignerOperation(context.Background(), linuxFileOperationRequest()); created || err == nil {
+		t.Fatalf("reservation succeeded after the held directory became accessible: created=%v err=%v", created, err)
+	}
+}
