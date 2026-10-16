@@ -34,7 +34,7 @@ go build -mod=readonly -o tei-studio .
 ./tei-studio -workspace ../../reference/workspace
 ```
 
-Go検査はリポジトリrootで`go test -count=1 ./internal/workspace ./internal/operations ./internal/studiohost`、JS検査は`node --test cmd/tei-studio/test/client.test.mjs`を実行します。`cmd/tei-studio`はnested Go moduleのため、rootのGoテストはrootへ戻してから実行してください。Wails CLIと版を一致させる場合の指定は `go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.29`。PoCだけをnested Go moduleに隔離し、rootの全体CIでCGO/OS WebView依存を無条件に増やしません（ADR-0033の恒久的なsubproject構成決定ではありません）。最初の表示は生成bindingを使用せず、公式の`Call.ByName`を直接呼ぶbootstrapです。#3のTypeScript UIが整い次第、同じ`StudioBridge`5操作から公式生成bindingへ移します。
+Go検査はリポジトリrootで`go test -count=1 ./internal/workspace ./internal/operations ./internal/studiohost`、JS検査は`node --test cmd/tei-studio/test/*.test.mjs`を実行します。`cmd/tei-studio`はnested Go moduleのため、rootのGoテストはrootへ戻してから実行してください。Wails CLIと版を一致させる場合の指定は `go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.29`。PoCだけをnested Go moduleに隔離し、rootの全体CIでCGO/OS WebView依存を無条件に増やしません（ADR-0033の恒久的なsubproject構成決定ではありません）。最初の表示は生成bindingを使用せず、公式の`Call.ByName`を直接呼ぶbootstrapです。#3のTypeScript UIが整い次第、同じ`StudioBridge`5操作から公式生成bindingへ移します。
 
 ## #3への引継ぎ：bootstrapと正式UIの交換点
 

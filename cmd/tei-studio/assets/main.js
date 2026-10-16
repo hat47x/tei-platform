@@ -32,6 +32,7 @@ function text(parent, tag, value) {
 function renderObservation(value) {
   const observation = value?.observation;
   if (!observation || typeof observation !== "object") {
+    previewResult.replaceChildren();
     previewState.textContent = "失敗: INVALID_HOST_RESPONSE";
     return;
   }
