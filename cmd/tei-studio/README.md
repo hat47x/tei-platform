@@ -56,7 +56,7 @@ Wails JavaScript service名（初期bootstrap）：`main.StudioBridge`。公開�
 | `InspectSubject(workspaceID, kind, subjectID)` | 登録済みID、exact canonical subject | 既存`operations.SubjectInspection` |
 | `ObserveXead(workspaceID, relativePath)` | 登録済みID、Workspace相対`.xead` path | 読取り・深さ・要素数の上限を適用した`operations.XeadObservation`。正規化・保存・書込みは行わない |
 
-戻りは`{ok:true,value:T}`または`{ok:false,failure:{code,stage?,message}}`。`WORKSPACE_NOT_ALLOWED`、`WORKSPACE_LOAD_FAILED`（stage=load）、`SOURCE_INDEX_FAILED`（stage=source-index）、`INVALID_SUBJECT`、`UNSUPPORTED_SUBJECT_KIND`、`SUBJECT_NOT_FOUND`、`SUBJECT_AMBIGUOUS`、`OPERATION_FAILED`を区別。JS側は`HOST_TRANSPORT_FAILURE`・`INVALID_HOST_RESPONSE`を加えます。このenvelopeはPoC Hostからの表示用で、CLI形式や新しい標準Contractを定義しません。
+戻りは`{ok:true,value:T}`または`{ok:false,failure:{code,stage?,message}}`。`WORKSPACE_NOT_ALLOWED`、`WORKSPACE_ROOT_CHANGED`、`WORKSPACE_LOAD_FAILED`（stage=load）、`SOURCE_INDEX_FAILED`（stage=source-index）、`INVALID_SUBJECT`、`UNSUPPORTED_SUBJECT_KIND`、`SUBJECT_NOT_FOUND`、`SUBJECT_AMBIGUOUS`、`OPERATION_FAILED`を区別します。`ObserveXead`は`XEAD_SOURCE_READ_FAILED`、`XEAD_SOURCE_TOO_LARGE`、`XEAD_UNSUPPORTED_FORMAT`、`XEAD_PARSE_FAILED`、`XEAD_PROJECTION_FAILED`を返します。JS側は`HOST_TRANSPORT_FAILURE`・`INVALID_HOST_RESPONSE`を加えます。このenvelopeはPoC Hostからの表示用で、CLI形式や新しい標準Contractを定義しません。
 
 ## 非目標・未検証
 

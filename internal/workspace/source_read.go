@@ -28,7 +28,7 @@ func ReadSource(root, relativePath string, maxBytes int64) ([]byte, error) {
 	if path != relativePath {
 		return nil, errors.New("Workspace source path is not normalized")
 	}
-	file, err := openRootedSource(root, path)
+	file, err := openRootedSourceForRead(root, path)
 	if err != nil {
 		return nil, fmt.Errorf("open Workspace source: %w", err)
 	}
