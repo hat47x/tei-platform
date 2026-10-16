@@ -18,6 +18,9 @@ export type Catalog = {
   sourceIndexFingerprint: string;
 };
 export type XeadObservation = {
+  totalTables: number;
+  totalFields: number;
+  totalDiagnostics: number;
   tables: Array<{
     source: { kind: string; id: string };
     name: string;
@@ -34,6 +37,9 @@ export type XeadObservation = {
     occurrences: number;
   }>;
 };
+const MAX_XEAD_TABLES = 200;
+const MAX_XEAD_FIELDS = 2000;
+const MAX_XEAD_DIAGNOSTICS = 500;
 export function summarizeFindings(findings: readonly Finding[] | null) {
   if (findings === null)
     return { verified: false, errors: 0, warnings: 0, text: "未検証" };
@@ -86,37 +92,48 @@ export function readXeadObservation(raw: unknown): XeadObservation {
   const diagnostics = observation.diagnostics === undefined ? [] : observation.diagnostics;
   if (!Array.isArray(tables) || !Array.isArray(diagnostics))
     throw Error("INVALID_XEAD_RESPONSE");
-  return {
-    tables: tables.map((rawTable) => {
-      const table = record(rawTable);
-      const fields = table.fields === undefined ? [] : table.fields;
-      if (!Array.isArray(fields)) throw Error("INVALID_XEAD_RESPONSE");
-      return {
-        source: sourceRef(table.source),
-        name: optionalString(table.name),
-        fields: fields.map((rawField) => {
-          const field = record(rawField);
-          return {
-            source: sourceRef(field.source),
-            name: optionalString(field.name),
-            ...(field.dataType === undefined ? {} : { dataType: sourceRef(field.dataType) }),
-          };
-        }),
-      };
-    }),
-    diagnostics: diagnostics.map((rawDiagnostic) => {
-      const diagnostic = record(rawDiagnostic);
-      if (typeof diagnostic.code !== "string" || typeof diagnostic.element !== "string" ||
-          !Number.isSafeInteger(diagnostic.occurrences) || (diagnostic.occurrences as number) < 0 ||
-          (diagnostic.attribute !== undefined && typeof diagnostic.attribute !== "string"))
-        throw Error("INVALID_XEAD_RESPONSE");
-      return {
+  const visibleTables: XeadObservation["tables"] = [];
+  let totalFields = 0, visibleFields = 0;
+  for (const [tableIndex, rawTable] of tables.entries()) {
+    const table = record(rawTable);
+    const fields = table.fields === undefined ? [] : table.fields;
+    if (!Array.isArray(fields)) throw Error("INVALID_XEAD_RESPONSE");
+    totalFields += fields.length;
+    const visibleTableFields: XeadObservation["tables"][number]["fields"] = [];
+    for (const rawField of fields) {
+      const field = record(rawField);
+      const source = sourceRef(field.source), name = optionalString(field.name);
+      const dataType = field.dataType === undefined ? undefined : sourceRef(field.dataType);
+      if (tableIndex < MAX_XEAD_TABLES && visibleFields < MAX_XEAD_FIELDS) {
+        visibleTableFields.push({ source, name, ...(dataType === undefined ? {} : { dataType }) });
+        visibleFields++;
+      }
+    }
+    const source = sourceRef(table.source), name = optionalString(table.name);
+    if (tableIndex < MAX_XEAD_TABLES) visibleTables.push({ source, name, fields: visibleTableFields });
+  }
+  const visibleDiagnostics: XeadObservation["diagnostics"] = [];
+  for (const [index, rawDiagnostic] of diagnostics.entries()) {
+    const diagnostic = record(rawDiagnostic);
+    if (typeof diagnostic.code !== "string" || typeof diagnostic.element !== "string" ||
+        !Number.isSafeInteger(diagnostic.occurrences) || (diagnostic.occurrences as number) < 0 ||
+        (diagnostic.attribute !== undefined && typeof diagnostic.attribute !== "string"))
+      throw Error("INVALID_XEAD_RESPONSE");
+    if (index < MAX_XEAD_DIAGNOSTICS) {
+      visibleDiagnostics.push({
         code: diagnostic.code,
         element: diagnostic.element,
         attribute: optionalString(diagnostic.attribute),
         occurrences: diagnostic.occurrences as number,
-      };
-    }),
+      });
+    }
+  }
+  return {
+    totalTables: tables.length,
+    totalFields,
+    totalDiagnostics: diagnostics.length,
+    tables: visibleTables,
+    diagnostics: visibleDiagnostics,
   };
 }
 export const subjectKey = (s: Subject) => JSON.stringify([s.kind, s.id]);

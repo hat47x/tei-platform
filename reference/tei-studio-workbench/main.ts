@@ -103,8 +103,18 @@ function renderXead(raw: unknown) {
     empty.textContent = "表示できるテーブルまたは診断はありません。";
     sections.push(empty);
   }
+  const displayedFields = view.tables.reduce((count, table) => count + table.fields.length, 0);
+  const omittedTables = view.totalTables - view.tables.length;
+  const omittedFields = view.totalFields - displayedFields;
+  const omittedDiagnostics = view.totalDiagnostics - view.diagnostics.length;
+  if (omittedTables || omittedFields || omittedDiagnostics) {
+    const clipped = document.createElement("p");
+    clipped.className = "hint";
+    clipped.textContent = `描画件数を制限しています。未表示：テーブル ${omittedTables}件、項目 ${omittedFields}件、診断 ${omittedDiagnostics}件。`;
+    sections.unshift(clipped);
+  }
   result.replaceChildren(...sections);
-  element("xead-status").textContent = `観察完了：テーブル ${view.tables.length}件、診断 ${view.diagnostics.length}件`;
+  element("xead-status").textContent = `観察完了：テーブル ${view.totalTables}件、項目 ${view.totalFields}件、診断 ${view.totalDiagnostics}件`;
 }
 const xeadFailureCodes = new Set([
   "WORKSPACE_NOT_ALLOWED", "WORKSPACE_ROOT_CHANGED", "WORKSPACE_LOAD_FAILED",
