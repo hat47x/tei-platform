@@ -5,18 +5,20 @@ from __future__ import annotations
 import base64
 import ctypes
 import hashlib
+import io
 import json
 import os
 import re
-import shutil
 import socket
 import subprocess
 import sys
 import time
 import traceback
 import urllib.error
+import urllib.parse
 import urllib.request
 import winreg
+import zipfile
 from pathlib import Path
 from typing import Any
 
@@ -51,23 +53,31 @@ def query_runtime_versions() -> list[dict[str, str]]:
     return found
 
 
-def find_driver() -> Path:
-    candidates: list[Path] = []
-    for name in ("msedgedriver.exe", "msedgedriver"):
-        located = shutil.which(name)
-        if located:
-            candidates.append(Path(located))
-    candidates.extend(
-        Path(path)
-        for path in (
-            r"C:\SeleniumWebDrivers\EdgeDriver\msedgedriver.exe",
-            r"C:\Program Files (x86)\Microsoft\EdgeWebDriver\Application\msedgedriver.exe",
-        )
-    )
-    for candidate in candidates:
-        if candidate.is_file():
-            return candidate.resolve()
-    raise RuntimeError("Microsoft Edge WebDriver (msedgedriver.exe) was not found on the runner")
+def download_compatible_driver(runtime_version: str, evidence_dir: Path, facts: dict[str, Any]) -> Path:
+    version = urllib.parse.quote(runtime_version, safe=".")
+    url = f"https://msedgedriver.microsoft.com/{version}/edgedriver_win64.zip"
+    facts["webdriver_download_url"] = url
+    request = urllib.request.Request(url, headers={"User-Agent": "TEI-Studio-WebView2-Smoke/1.0"})
+    try:
+        with urllib.request.urlopen(request, timeout=60) as response:
+            archive_bytes = response.read()
+            facts["webdriver_archive_http_status"] = response.status
+            facts["webdriver_archive_bytes"] = len(archive_bytes)
+    except Exception as exc:
+        raise RuntimeError(f"Could not download Microsoft Edge WebDriver for WebView2 Runtime {runtime_version}: {type(exc).__name__}: {exc}") from exc
+    facts["webdriver_archive_sha256"] = hashlib.sha256(archive_bytes).hexdigest()
+    target_dir = evidence_dir.parent / "tei-studio-webdriver"
+    target_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        with zipfile.ZipFile(io.BytesIO(archive_bytes)) as archive:
+            driver_entries = [item for item in archive.infolist() if Path(item.filename).name.lower() == "msedgedriver.exe"]
+            if len(driver_entries) != 1:
+                raise RuntimeError(f"Expected one msedgedriver.exe in the Microsoft archive, found {len(driver_entries)}")
+            driver_path = target_dir / "msedgedriver.exe"
+            driver_path.write_bytes(archive.read(driver_entries[0]))
+    except (zipfile.BadZipFile, OSError) as exc:
+        raise RuntimeError(f"Could not extract the Microsoft Edge WebDriver archive: {type(exc).__name__}: {exc}") from exc
+    return driver_path.resolve()
 
 
 def version_prefix(version: str) -> tuple[str, str, str]:
@@ -221,7 +231,7 @@ def main() -> int:
         facts["webview2_runtime_version"] = runtime_version
         record("webview2-runtime-detected", versions=runtime_versions)
 
-        driver_path = find_driver()
+        driver_path = download_compatible_driver(runtime_version, evidence_dir, facts)
         facts["webdriver_path"] = str(driver_path)
         version_result = subprocess.run([str(driver_path), "--version"], check=True, capture_output=True, text=True, timeout=15)
         version_output = (version_result.stdout + version_result.stderr).strip()
