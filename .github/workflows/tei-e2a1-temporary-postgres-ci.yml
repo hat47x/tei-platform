@@ -1,0 +1,120 @@
+name: TEI E2a-1実PostgreSQL先行契約（検証専用）
+
+# #1119が#1127 Draftの実DB証拠を検証するための一時CI。
+# 合成入力・手書きSQLであり、本番E2・人間受理・Host Authorityは証明しない。
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, reopened, synchronize]
+    paths:
+      - '.github/workflows/tei-e2a1-temporary-postgres-ci.yml'
+      - 'tools/reference-data-first-persistence/**'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tei-e2a1-temporary-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  isolated-postgres-e2a1:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: tei_fixture
+          POSTGRES_PASSWORD: local_fixture_only
+          POSTGRES_DB: tei_fixture
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U tei_fixture -d tei_fixture"
+          --health-interval 3s
+          --health-timeout 3s
+          --health-retries 20
+    env:
+      GOENV: off
+      GOWORK: off
+      GOFLAGS: ''
+      GOTOOLCHAIN: local
+    steps:
+      - name: GitHub仮統合HEADを完全取得
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: 実行前のhead・branchとcleanを照合
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          [[ "$GITHUB_REF" =~ ^refs/pull/[0-9]+/merge$ ]]
+          read -r merge base head extra < <(git rev-list --parents -n 1 HEAD)
+          test -z "${extra:-}"
+          test "$merge" = "$GITHUB_SHA"
+          test "$head" = "${{ github.event.pull_request.head.sha }}"
+          [[ "$base" =~ ^[0-9a-f]{40}$ ]]
+          test "$(git rev-parse --is-shallow-repository)" = false
+          test -z "$(git ls-files -v | awk '/^[a-zS]/ {print}')"
+          test -z "$(git status --porcelain=v1 --untracked-files=all --ignored=matching)"
+      - name: Go版を確定
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: go.mod
+          check-latest: false
+          cache: false
+      - name: #1127 DraftのGo対象試験
+        shell: bash
+        run: |
+          set -euo pipefail
+          go test -count=1 ./tools/reference-data-first-persistence
+      - name: 専用の空PostgreSQL16に対して実際の書込みと別pool read
+        shell: bash
+        env:
+          TEI_TEST_POSTGRES_DSN: postgres://tei_fixture:local_fixture_only@127.0.0.1:5432/tei_fixture?sslmode=disable
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/tei-e2a1-${GITHUB_RUN_ID}"
+          go run ./tools/reference-data-first-persistence > "$RUNNER_TEMP/tei-e2a1-${GITHUB_RUN_ID}/receipt.json"
+          python3 - "$RUNNER_TEMP/tei-e2a1-${GITHUB_RUN_ID}/receipt.json" "$GITHUB_SHA" <<'PY'
+          import json, pathlib, sys
+          receipt = json.loads(pathlib.Path(sys.argv[1]).read_bytes())
+          def ensure(cond, what):
+              if not cond: raise SystemExit("E2a-1 receipt mismatch: "+what)
+          ensure(receipt["evidenceNature"]=="real-postgres-ephemeral-fixture", "real DB evidence nature")
+          ensure(receipt["repositoryRevision"]==sys.argv[2] and receipt["workingTreeClean"] is True, "exact revision and clean")
+          ensure(receipt["scope"]["productE2"] is False and receipt["scope"]["handWrittenOverlay"] is True, "test-only scope")
+          ensure(receipt["scope"]["generatedRoundTrip"] is False, "generated CRUD wrongly claimed")
+          ensure(receipt["fixtureDatabaseSafety"]["guardPassed"] is True, "unsafe database")
+          ensure(receipt["fixtureCleanupSafety"]["verified"] is True, "fixture cleanup")
+          pos=receipt["positive"]
+          ensure(pos["observationStatus"]=="observed", "independent read")
+          ensure(pos["rowMatchesSubmission"] is True and pos["rowsRead"]==1, "stored row mismatch")
+          ensure(pos["backendPidsDiffer"] is True, "different backend PIDs")
+          ensure(pos["observedCommandId"]==pos["commandId"], "operation ID correlation")
+          ensure(pos["databaseProvider"]=="postgres", "actual postgres target")
+          ensure(receipt["n08MissingBinding"]["commandRefusedByGate"] is True, "N08")
+          for k in ("s02AnalogueRelationAbsent","s02AnalogueColumnMissing"):
+              ensure(receipt[k]["commandRefusedByGate"] is True, k)
+          for k in ("n11ClosedReadPool","n11DroppedTable"):
+              ensure(receipt[k]["commandCommitted"] is True and receipt[k]["observationErrorSeen"] is True and receipt[k]["neverReportedAsObserved"] is True, k)
+          print(json.dumps({"head":sys.argv[2], "evidenceNature":receipt["evidenceNature"], "scope":"E2a-1 test-only, not product E2", "differentBackendPIDs":pos["backendPidsDiffer"], "independentlyReadMatchingRow":pos["rowMatchesSubmission"], "N08": "refused", "S02-analogues":"refused", "N11": "unobserved"},sort_keys=True))
+          PY
+      - name: 検証用原本receiptを短期間保全
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: tei-e2a1-real-postgres-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/tei-e2a1-${{ github.run_id }}/receipt.json
+          retention-days: 7
+          if-no-files-found: error
+      - name: 実行後のhead・checkoutを再検証
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test -z "$(git ls-files -v | awk '/^[a-zS]/ {print}')"
+          test -z "$(git status --porcelain=v1 --untracked-files=all --ignored=matching)"
