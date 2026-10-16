@@ -94,13 +94,13 @@ jobs:
           ensure(pos["observationStatus"]=="observed", "independent read")
           ensure(pos["rowMatchesSubmission"] is True and pos["rowsRead"]==1, "stored row mismatch")
           ensure(pos["backendPidsDiffer"] is True, "different backend PIDs")
-          ensure(pos["observedCommandId"]==pos["commandId"], "operation ID correlation")
+          ensure(pos["commandId"]==pos["submittedCommandId"], "operation ID correlation")
           ensure(pos["databaseProvider"]=="postgres", "actual postgres target")
           ensure(receipt["n08MissingBinding"]["commandRefusedByGate"] is True, "N08")
           for k in ("s02AnalogueRelationAbsent","s02AnalogueColumnMissing"):
               ensure(receipt[k]["commandRefusedByGate"] is True, k)
           for k in ("n11ClosedReadPool","n11DroppedTable"):
-              ensure(receipt[k]["commandCommitted"] is True and receipt[k]["observationErrorSeen"] is True and receipt[k]["neverReportedAsObserved"] is True, k)
+              ensure(receipt[k]["commandDispatched"] is True and receipt[k]["observationErrorSeen"] is True and receipt[k]["neverReportedAsObserved"] is True, k)
           print(json.dumps({"head":sys.argv[2], "evidenceNature":receipt["evidenceNature"], "scope":"E2a-1 test-only, not product E2", "differentBackendPIDs":pos["backendPidsDiffer"], "independentlyReadMatchingRow":pos["rowMatchesSubmission"], "N08": "refused", "S02-analogues":"refused", "N11": "unobserved"},sort_keys=True))
           PY
       - name: 検証用原本receiptを短期間保全
