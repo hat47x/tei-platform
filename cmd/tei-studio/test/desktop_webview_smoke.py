@@ -174,6 +174,44 @@ def close_process_handle(handle: int) -> None:
     kernel32.CloseHandle(handle)
 
 
+def request_window_close(pid: int) -> list[str]:
+    user32 = ctypes.WinDLL("user32", use_last_error=True)
+    enum_windows = user32.EnumWindows
+    enum_windows.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+    enum_windows.restype = ctypes.c_int
+    get_window_pid = user32.GetWindowThreadProcessId
+    get_window_pid.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_ulong)]
+    get_window_pid.restype = ctypes.c_ulong
+    is_visible = user32.IsWindowVisible
+    is_visible.argtypes = [ctypes.c_void_p]
+    is_visible.restype = ctypes.c_int
+    post_message = user32.PostMessageW
+    post_message.argtypes = [ctypes.c_void_p, ctypes.c_uint, ctypes.c_size_t, ctypes.c_ssize_t]
+    post_message.restype = ctypes.c_int
+    windows: list[str] = []
+    errors: list[int] = []
+    callback_type = ctypes.WINFUNCTYPE(ctypes.c_int, ctypes.c_void_p, ctypes.c_void_p)
+
+    def visit(hwnd: int, _parameter: int) -> int:
+        window_pid = ctypes.c_ulong()
+        get_window_pid(hwnd, ctypes.byref(window_pid))
+        if window_pid.value == pid and is_visible(hwnd):
+            if not post_message(hwnd, 0x0010, 0, 0):  # WM_CLOSE
+                errors.append(ctypes.get_last_error())
+            else:
+                windows.append(hex(int(hwnd)))
+        return 1
+
+    callback = callback_type(visit)
+    if not enum_windows(callback, 0):
+        raise ctypes.WinError(ctypes.get_last_error())
+    if errors:
+        raise ctypes.WinError(errors[0])
+    if not windows:
+        raise RuntimeError(f"No visible top-level window was found for Wails process {pid}")
+    return windows
+
+
 def main() -> int:
     if len(sys.argv) != 3:
         print("usage: desktop_webview_smoke.py <desktop-exe> <evidence-dir>", file=sys.stderr)
@@ -193,12 +231,17 @@ def main() -> int:
         "pr_base_sha": os.environ.get("PR_BASE_SHA"),
         "runner_os": os.environ.get("ImageOS"),
         "runner_image_version": os.environ.get("ImageVersion"),
+        "session_delete_attempted": False,
+        "session_deleted": False,
         "events": [],
     }
     facts_path = evidence_dir / "summary.json"
     driver_stdout = (evidence_dir / "msedgedriver.stdout.log").open("w", encoding="utf-8", errors="replace")
     driver_stderr = (evidence_dir / "msedgedriver.stderr.log").open("w", encoding="utf-8", errors="replace")
+    app_stdout = (evidence_dir / "wails-app.stdout.log").open("w", encoding="utf-8", errors="replace")
+    app_stderr = (evidence_dir / "wails-app.stderr.log").open("w", encoding="utf-8", errors="replace")
     driver_process: subprocess.Popen[str] | None = None
+    app_process: subprocess.Popen[str] | None = None
     driver_session: str | None = None
     app_handle: int | None = None
     app_pid: int | None = None
@@ -265,13 +308,69 @@ def main() -> int:
         baseline_pids = {int(item["ProcessId"]) for item in webview_baseline}
         facts["preexisting_webview2_count"] = len(baseline_pids)
 
+        webview_debug_port = free_loopback_port()
+        facts["webview_debugger_address"] = f"127.0.0.1:{webview_debug_port}"
+        app_env = os.environ.copy()
+        inherited_server_host = app_env.pop("WAILS_SERVER_HOST", None)
+        facts["inherited_wails_server_host_cleared"] = inherited_server_host is not None
+        existing_browser_args = app_env.get("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS", "").strip()
+        remote_debug_arg = f"--remote-debugging-port={webview_debug_port}"
+        app_env["WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS"] = " ".join(part for part in (existing_browser_args, remote_debug_arg) if part)
+        facts["webview2_additional_browser_arguments_set"] = True
+        app_process = subprocess.Popen(
+            [str(app_path), f"--workspace={workspace_root}"],
+            stdout=app_stdout,
+            stderr=app_stderr,
+            env=app_env,
+            text=True,
+        )
+        app_pid = app_process.pid
+        app_handle = open_process_handle(app_pid)
+        facts["app_pid"] = app_pid
+        record("wails-process-launched", pid=app_pid)
+
+        webview_deadline = time.monotonic() + 30
+        webview_processes: list[dict[str, Any]] = []
+        while time.monotonic() < webview_deadline:
+            if app_process.poll() is not None:
+                raise RuntimeError(f"Wails Desktop exited during WebView2 startup with code {app_process.returncode}")
+            webview_processes = find_processes("msedgewebview2.exe")
+            new_webview_pids = sorted(
+                int(item["ProcessId"])
+                for item in webview_processes
+                if int(item["ProcessId"]) not in baseline_pids
+                and (int(item["ParentProcessId"]) == app_pid or item.get("AppMarker") is True)
+            )
+            if new_webview_pids:
+                break
+            time.sleep(0.25)
+        else:
+            raise RuntimeError("No new msedgewebview2.exe process was observed after Wails WebView launch")
+        facts["webview2_processes_during_session"] = webview_processes
+        facts["new_webview2_pids"] = new_webview_pids
+        record("webview2-process-observed", new_pids=new_webview_pids)
+
+        webview_debug_url = f"http://127.0.0.1:{webview_debug_port}"
+        facts["webview_debugger_url"] = webview_debug_url
+        webview_debug_deadline = time.monotonic() + 30
+        while time.monotonic() < webview_debug_deadline:
+            try:
+                debugger_version = webdriver_request(webview_debug_url, "GET", "/json/version")
+                if debugger_version.get("webSocketDebuggerUrl"):
+                    facts["webview_debugger_version"] = debugger_version
+                    break
+            except Exception:
+                pass
+            time.sleep(0.25)
+        else:
+            raise RuntimeError("WebView2 remote debugging endpoint did not become ready")
+        record("webview2-debugger-ready", version=debugger_version)
+
         port = free_loopback_port()
         base_url = f"http://127.0.0.1:{port}"
         facts["webdriver_url"] = base_url
         driver_env = os.environ.copy()
         driver_env["MSEDGEDRIVER_TELEMETRY_OPTOUT"] = "1"
-        inherited_server_host = driver_env.pop("WAILS_SERVER_HOST", None)
-        facts["inherited_wails_server_host_cleared"] = inherited_server_host is not None
         driver_process = subprocess.Popen(
             [str(driver_path), "--verbose", f"--port={port}"],
             stdout=driver_stdout,
@@ -299,8 +398,7 @@ def main() -> int:
         capabilities = {
             "browserName": "webview2",
             "ms:edgeOptions": {
-                "binary": str(app_path),
-                "args": [f"--workspace={workspace_root}"],
+                "debuggerAddress": f"127.0.0.1:{webview_debug_port}",
             },
         }
         session_response = webdriver_request(
@@ -308,7 +406,7 @@ def main() -> int:
             "POST",
             "/session",
             {"capabilities": {"alwaysMatch": capabilities}},
-            timeout_seconds=60,
+            timeout_seconds=30,
         )
         value = session_response.get("value", {})
         driver_session = session_response.get("sessionId") or value.get("sessionId")
@@ -317,32 +415,8 @@ def main() -> int:
         facts["webdriver_session_capabilities"] = value.get("capabilities", {})
         record("wails-webview-session-created", session_id=driver_session, capabilities=facts["webdriver_session_capabilities"])
 
-        app_deadline = time.monotonic() + 20
-        app_processes: list[dict[str, Any]] = []
-        while time.monotonic() < app_deadline:
-            app_processes = find_processes(APP_IMAGE)
-            if app_processes:
-                break
-            time.sleep(0.25)
-        if not app_processes:
-            raise RuntimeError("Edge WebDriver created a session but the Wails executable process was not observable")
-        app_pid = int(app_processes[0]["ProcessId"])
-        app_handle = open_process_handle(app_pid)
-        facts["app_process"] = app_processes[0]
-        record("wails-process-observed", app_process=app_processes[0])
-
-        webview_processes = find_processes("msedgewebview2.exe")
-        facts["webview2_processes_during_session"] = webview_processes
-        new_webview_pids = sorted(
-            int(item["ProcessId"])
-            for item in webview_processes
-            if int(item["ProcessId"]) not in baseline_pids
-            and (int(item["ParentProcessId"]) == app_pid or item.get("AppMarker") is True)
-        )
-        facts["new_webview2_pids"] = new_webview_pids
-        if not new_webview_pids:
-            raise RuntimeError("No new msedgewebview2.exe process was observed after Wails WebView launch")
-        record("webview2-process-observed", new_pids=new_webview_pids)
+        facts["app_process"] = {"ProcessId": app_pid, "ExecutablePath": str(app_path)}
+        record("wails-webview-session-attached", session_id=driver_session, app_pid=app_pid)
 
         inspect_script = """
 return {
@@ -395,14 +469,26 @@ return {
         (evidence_dir / "failure.txt").write_text(traceback.format_exc(), encoding="utf-8")
         record("smoke-failed", reason=failure)
     finally:
-        if driver_session and driver_process and driver_process.poll() is None:
+        if driver_session:
+            facts["session_delete_attempted"] = True
             try:
                 response = webdriver_request(f"http://127.0.0.1:{facts['webdriver_url'].rsplit(':', 1)[1]}", "DELETE", f"/session/{driver_session}")
                 facts["webdriver_delete_session_response"] = response
+                facts["session_deleted"] = True
                 record("webdriver-session-closed", response=response)
             except Exception as exc:
                 facts["webdriver_delete_session_error"] = f"{type(exc).__name__}: {exc}"
                 failure = failure or facts["webdriver_delete_session_error"]
+
+        if app_pid is not None and app_process is not None and app_process.poll() is None:
+            try:
+                closed_windows = request_window_close(app_pid)
+                facts["app_window_close_requested"] = True
+                facts["app_windows_closed_by_wm_close"] = closed_windows
+                record("wails-window-close-requested", pid=app_pid, windows=closed_windows)
+            except Exception as exc:
+                facts["app_window_close_error"] = f"{type(exc).__name__}: {exc}"
+                failure = failure or facts["app_window_close_error"]
 
         if app_handle is not None:
             try:
@@ -417,6 +503,9 @@ return {
                 elif exit_code != 0:
                     facts["normal_exit"] = "FAIL_NONZERO"
                     failure = failure or f"Wails Desktop exited with code {exit_code}"
+                elif not facts["session_deleted"]:
+                    facts["normal_exit"] = "FAIL_SESSION_NOT_DELETED"
+                    failure = failure or "Wails Desktop exited without successful WebDriver session deletion evidence"
                 else:
                     facts["normal_exit"] = "PASS"
                 record("wails-process-exit", exit_code=exit_code, result=facts["normal_exit"])
@@ -459,6 +548,8 @@ return {
                 failure = failure or facts["webdriver_process_cleanup_error"]
         driver_stdout.close()
         driver_stderr.close()
+        app_stdout.close()
+        app_stderr.close()
 
         facts["result"] = "FAIL" if failure else "PASS_NATIVE_WEBVIEW_STARTUP_ONLY"
         if failure:
