@@ -28,10 +28,17 @@ func main() {
 	}
 }
 
-// runCombinedWebTarget checks the Host witness before constructing any runner
-// or HTTP handler. The Reader's provenance and current effect grants remain
-// the embedding Host's responsibility; this checks startup Source identity.
+// runCombinedWebTarget remains the existing embedding entry point. A Source
+// Reader alone is never sufficient to authorize an accepted Command effect.
 func runCombinedWebTarget(ctx context.Context, reader sourceacceptance.Reader, args []string) error {
+	return runCombinedWebTargetWithEffectGrant(ctx, reader, nil, args)
+}
+
+// runCombinedWebTargetWithEffectGrant checks the Host's current Source before
+// publishing HTTP, and independently requires current subject/action-specific
+// Host effect admission immediately before a Command changes state. The Host
+// must inject both authentic Readers; the CLI cannot manufacture either one.
+func runCombinedWebTargetWithEffectGrant(ctx context.Context, reader sourceacceptance.Reader, effectReader HostEffectGrantReader, args []string) error {
 	flags := flag.NewFlagSet("first-web-target", flag.ContinueOnError)
 	var (
 		workspacePath = flags.String("workspace", "reference/workspace", "TEI workspace directory")
@@ -62,8 +69,8 @@ func runCombinedWebTarget(ctx context.Context, reader sourceacceptance.Reader, a
 	var loaded workspace.Result
 	var acceptedWorkspace sourceacceptance.VerifiedWorkspace
 	if *diagnostic {
-		if reader != nil {
-			return fmt.Errorf("SOURCE_ACCEPTANCE_DIAGNOSTIC_CONFLICT: Host Reader cannot be bypassed")
+		if reader != nil || effectReader != nil {
+			return fmt.Errorf("SOURCE_ACCEPTANCE_DIAGNOSTIC_CONFLICT: Host Readers cannot be bypassed")
 		}
 		log.Print("SOURCE_ACCEPTANCE_NOT_VERIFIED: explicit diagnostic-unaccepted-source")
 		loaded, err = workspace.Load(*workspacePath)
@@ -100,6 +107,20 @@ func runCombinedWebTarget(ctx context.Context, reader sourceacceptance.Reader, a
 		)
 		if err != nil {
 			return err
+		}
+		if !*diagnostic {
+			command.hostEffect = func(effectCtx context.Context, subjectID string) error {
+				if ctx.Err() != nil {
+					return errHostEffectGrantUnavailable
+				}
+				err := requireCurrentHostEffectGrant(effectCtx, reader, effectReader,
+					string(appID), subjectID, "order_entry.submit_order",
+					acceptedWorkspace.SourceIndex, acceptedWorkspace.Acceptance)
+				if err != nil || ctx.Err() != nil {
+					return errHostEffectGrantUnavailable
+				}
+				return nil
+			}
 		}
 		commandScenario = command
 	case core.MustCanonicalID("repair_intake"):
