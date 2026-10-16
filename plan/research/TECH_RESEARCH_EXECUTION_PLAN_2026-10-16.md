@@ -61,6 +61,8 @@ Requirement / original Source
 
 **出口**：ケースごとにExact Source／Target／権限主体／Command／Observationが`supported / unsupported / unresolved / not-evaluated`で示され、未取得の証拠に具体的な担当と再実行方法があること。**Gate合格自体はこの計画で決めない**。
 
+**Phase Aの具体的な受渡しと現存証拠の差異**：[一改訂の実行・観測証拠の受渡し（2026-10-16）](../workstreams/TEI_RESEARCH_PHASE_A_EVIDENCE_HANDOFF_2026-10-16.md)に、#1121の現行Web Host拘束、合成E1と別系統の実PostgreSQL E2a-1の不一致、8未達条件のOwner、既存検証入口を整理した。**正式なHost Current Accepted Sourceの正本提供と、同一order_entry実行のPostgreSQL→別invocation読取りが最初の未解決接合点**である。既存の歴史的receiptを製品G2の根拠へ合算しない。
+
 ### B. 10/23〜10/30：仕様の欠落・設計構造・局所修正の比較【高】
 
 担当既存Issue：#982、#998、#1120、#1124、#1803、#1805、#1445。候補：既存REF-SPEC-01。
