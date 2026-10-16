@@ -42,3 +42,9 @@ go run ./cmd/tei validate -workspace reference/workspace
 ```
 
 詳しくは[使い始める](docs/getting-started.md)をご覧ください。
+
+## Studio PoC の読み取り機能
+
+Studio Host は、許可された Workspace 内の `.xead` ファイルを読み取り、テーブルと項目の概要を返す `ObserveXead` を提供します。入力は4 MiB、XML深度は128、要素数は100,000までに制限されます。返却値は読み取り専用の観察結果であり、Canonical World、編集権限、実行権限を与えません。未対応の構造は未解決のまま扱います。
+
+応答の代表的な失敗コードは `WORKSPACE_ROOT_CHANGED`、`XEAD_SOURCE_READ_FAILED`、`XEAD_SOURCE_TOO_LARGE`、`XEAD_UNSUPPORTED_FORMAT`、`XEAD_PARSE_FAILED`、`XEAD_PROJECTION_FAILED` です。エラー応答には入力パスやXML本文を含めません。
