@@ -1188,11 +1188,6 @@ func runtimeFingerprintsForEnvironment(w ir.World, path string, environmentID co
 	return plan.PluginLockFingerprint, plan.RuntimePolicyFingerprint, nil
 }
 
-func pluginLockFingerprintForEnvironment(w ir.World, path string, environmentID core.CanonicalID) (string, error) {
-	lockFP, _, err := runtimeFingerprintsForEnvironment(w, path, environmentID)
-	return lockFP, err
-}
-
 func mustRuntimeFingerprints(w ir.World, path string, environmentID core.CanonicalID) (string, string) {
 	lockFP, policyFP, err := runtimeFingerprintsForEnvironment(w, path, environmentID)
 	if err != nil {
@@ -1200,11 +1195,6 @@ func mustRuntimeFingerprints(w ir.World, path string, environmentID core.Canonic
 		os.Exit(1)
 	}
 	return lockFP, policyFP
-}
-
-func mustPluginLockFingerprint(w ir.World, path string, environmentID core.CanonicalID) string {
-	lockFP, _ := mustRuntimeFingerprints(w, path, environmentID)
-	return lockFP
 }
 
 func loadObservations(analysisPaths, schemaPaths, planPaths []string) ([]analyzer.Result, []physical.SchemaSnapshot, []plan.IR, error) {
