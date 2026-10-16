@@ -6,5 +6,5 @@ import "tei/internal/studiohost"
 
 // Ordinary builds keep the existing hand-written, read-only Operation route.
 func newStudioHost(paths []string) (*studiohost.ReadOnly, error) {
-	return studiohost.NewReadOnly(paths)
+	return studiohost.NewReadOnlyWithXeadObserver(paths, studioXeadObserver{})
 }
