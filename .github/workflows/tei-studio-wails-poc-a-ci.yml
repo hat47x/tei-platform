@@ -2,6 +2,18 @@ name: TEI Studio PoC A Wails Host
 
 # #1824 PoC A専用。既存全体CI・Gateを置き換えない。
 on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/tei-studio-wails-poc-a-ci.yml
+      - cmd/tei-studio/**
+      - go.mod
+      - go.sum
+      - internal/**
+      - tools/reference-studio-static-composition/**
+      - reference/tei-studio-*/**
+      - reference/ui-customization/composition/**
+      - reference/workspace/**
   pull_request:
     branches: [main]
     types: [opened, reopened, synchronize, ready_for_review]
@@ -50,6 +62,13 @@ jobs:
           set -euo pipefail
           go version
           go test -count=1 ./internal/studiohost/...
+
+      - name: 通常HostのServer Go試験
+        working-directory: cmd/tei-studio
+        shell: bash
+        run: |
+          set -euo pipefail
+          CGO_ENABLED=0 go test -mod=readonly -count=1 -tags server .
 
       - name: JS Bridgeの試験
         shell: bash
