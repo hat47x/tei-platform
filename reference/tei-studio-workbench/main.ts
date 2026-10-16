@@ -4,6 +4,7 @@ import { mountReadonlyGraph } from "../tei-studio-graph/graph.ts";
 import { mountCommandPanel } from "../tei-studio-command/command.ts";
 import { createReadOnlyClient } from "../../cmd/tei-studio/assets/client.mjs";
 import { createResponseScope } from "./responses.ts";
+import { handleXeadPathKeydown } from "./keyboard.ts";
 import {
   readCatalog,
   readValidation,
@@ -11,6 +12,7 @@ import {
   relatedGraph,
   subjectKey,
   summarizeFindings,
+  readXeadObservation,
 } from "./presentation.ts";
 import type { Entry, Subject, Finding, Catalog } from "./presentation.ts";
 
@@ -22,6 +24,7 @@ type Client = {
   catalogWorkspace(id: string, namespace?: string): Promise<Reply>;
   validateWorkspace(id: string): Promise<Reply>;
   inspectSubject(id: string, kind: string, subject: string): Promise<Reply>;
+  observeXead(id: string, relativePath: string): Promise<Reply>;
 };
 const element = <T extends HTMLElement>(id: string) =>
   document.getElementById(id) as T;
@@ -63,6 +66,96 @@ function showFailure(error: unknown) {
   const code = error instanceof Error ? error.message : "OPERATION_FAILED";
   notice.textContent = `操作を完了できませんでした：${code}`;
   notice.dataset.state = "error";
+}
+function renderXead(raw: unknown) {
+  const view = readXeadObservation(raw), result = element<HTMLDivElement>("xead-result");
+  const sections = view.tables.map((table) => {
+    const section = document.createElement("section");
+    section.className = "xead-table";
+    const heading = document.createElement("h3");
+    heading.textContent = `${table.name || "名称なし"} · 元ID ${table.source.kind}:${table.source.id}`;
+    const fields = document.createElement("ul");
+    for (const field of table.fields) {
+      const item = document.createElement("li");
+      const type = field.dataType ? ` · 型参照ID ${field.dataType.kind}:${field.dataType.id}` : "";
+      item.textContent = `${field.name || "名称なし"} · 元ID ${field.source.kind}:${field.source.id}${type}`;
+      fields.append(item);
+    }
+    section.append(heading, fields);
+    return section;
+  });
+  if (view.diagnostics.length) {
+    const details = document.createElement("ul");
+    details.className = "xead-diagnostics";
+    for (const diagnostic of view.diagnostics) {
+      const item = document.createElement("li");
+      item.textContent = `コード ${diagnostic.code} · 要素 ${diagnostic.element}${diagnostic.attribute ? ` · 属性 ${diagnostic.attribute}` : ""} · 該当 ${diagnostic.occurrences}件`;
+      details.append(item);
+    }
+    const section = document.createElement("section");
+    section.className = "xead-table";
+    const heading = document.createElement("h3");
+    heading.textContent = "観察診断";
+    section.append(heading, details);
+    sections.push(section);
+  }
+  if (!sections.length) {
+    const empty = document.createElement("p");
+    empty.textContent = "表示できるテーブルまたは診断はありません。";
+    sections.push(empty);
+  }
+  const displayedFields = view.tables.reduce((count, table) => count + table.fields.length, 0);
+  const omittedTables = view.totalTables - view.tables.length;
+  const omittedFields = view.totalFields - displayedFields;
+  const omittedDiagnostics = view.totalDiagnostics - view.diagnostics.length;
+  if (omittedTables || omittedFields || omittedDiagnostics) {
+    const clipped = document.createElement("p");
+    clipped.className = "hint";
+    clipped.textContent = `描画件数を制限しています。未表示：テーブル ${omittedTables}件、項目 ${omittedFields}件、診断分類 ${omittedDiagnostics}件。`;
+    sections.unshift(clipped);
+  }
+  result.replaceChildren(...sections);
+  element("xead-status").textContent = `観察完了：テーブル ${view.totalTables}件、項目 ${view.totalFields}件、診断分類 ${view.totalDiagnostics}件`;
+}
+const xeadFailureCodes = new Set([
+  "WORKSPACE_NOT_ALLOWED", "WORKSPACE_ROOT_CHANGED", "WORKSPACE_LOAD_FAILED",
+  "SOURCE_INDEX_FAILED", "INVALID_SUBJECT", "UNSUPPORTED_SUBJECT_KIND",
+  "SUBJECT_NOT_FOUND", "SUBJECT_AMBIGUOUS", "OPERATION_FAILED",
+  "XEAD_SOURCE_READ_FAILED", "XEAD_SOURCE_TOO_LARGE", "XEAD_UNSUPPORTED_FORMAT",
+  "XEAD_PARSE_FAILED", "XEAD_PROJECTION_FAILED", "HOST_TRANSPORT_FAILURE",
+  "INVALID_HOST_RESPONSE", "INVALID_XEAD_RESPONSE",
+]);
+function xeadFailureMessage(error: unknown): string {
+  const code = error instanceof Error && xeadFailureCodes.has(error.message)
+    ? error.message
+    : "OPERATION_FAILED";
+  return `観察できませんでした：${code}`;
+}
+async function observeXead() {
+  if (disposed) return;
+  if (!client) {
+    element("xead-status").textContent = "Hostに接続してから観察してください。";
+    return;
+  }
+  if (!workspace.value) {
+    element("xead-status").textContent = "作業領域を選択してから観察してください。";
+    return;
+  }
+  const id = workspace.value, path = element<HTMLInputElement>("xead-path").value.trim();
+  const result = element<HTMLDivElement>("xead-result");
+  responses.invalidate("xead");
+  result.replaceChildren();
+  if (!path) {
+    element("xead-status").textContent = "作業領域相対の .xead パスを入力してください。";
+    return;
+  }
+  element("xead-status").textContent = "観察中…";
+  await responses.run("xead", () => client!.observeXead(id, path), (reply) => {
+    renderXead(unwrap(reply));
+  }, (error) => {
+    result.replaceChildren();
+    element("xead-status").textContent = xeadFailureMessage(error);
+  });
 }
 function setFindings(findings: Finding[] | null) {
   if (!panel.setDiagnosticsForContext(commandContext, findings ?? []))
@@ -181,6 +274,8 @@ async function loadWorkspace() {
   const context = ++workspaceEpoch,
     id = workspace.value;
   responses.reset();
+  element("xead-result").replaceChildren();
+  element("xead-status").textContent = "未取得";
   commandContext = panel.beginContext();
   ++inspectionEpoch;
   selected = null;
@@ -278,6 +373,15 @@ const panel = mountCommandPanel(element("commands"), {
 workspace.addEventListener("change", () => {
   search.value = "";
   void loadWorkspace().catch(showFailure);
+});
+element("xead-path").addEventListener("input", () => {
+  responses.invalidate("xead");
+  element("xead-result").replaceChildren();
+  element("xead-status").textContent = "パスが変更されました。未取得";
+});
+element("observe-xead").addEventListener("click", () => void observeXead());
+element("xead-path").addEventListener("keydown", (event) => {
+  handleXeadPathKeydown(event, () => void observeXead());
 });
 search.addEventListener("input", renderList);
 element("validate").addEventListener(
