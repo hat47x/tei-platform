@@ -91,8 +91,32 @@ def find_processes(image_name: str) -> list[dict[str, Any]]:
     script = (
         f"$name = '{image_name}'; "
         "$items = @(Get-CimInstance Win32_Process | Where-Object { $_.Name -eq $name } | "
-        "Select-Object ProcessId,ParentProcessId,ExecutablePath,@{Name='AppMarker';Expression={$_.CommandLine -like '*tei-studio-desktop-webview-smoke.exe*'}}); "
+        "Select-Object ProcessId,ParentProcessId,ExecutablePath,@{Name='AppMarker';Expression={$_.CommandLine -like '*tei-studio-desktop-webview-smoke.exe*'}},@{Name='RemoteDebugPort';Expression={if ($_.CommandLine -match '--remote-debugging-port=(\\d+)') {$Matches[1]} else {$null}}}); "
         "ConvertTo-Json -InputObject $items -Compress -Depth 4"
+    )
+    result = subprocess.run(
+        ["powershell.exe", "-NoProfile", "-NonInteractive", "-Command", script],
+        check=True,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        timeout=15,
+    )
+    decoded = json.loads(result.stdout.strip() or "[]")
+    if decoded is None:
+        return []
+    if isinstance(decoded, dict):
+        decoded = [decoded]
+    return decoded
+
+
+def query_listening_sockets(port: int) -> list[dict[str, Any]]:
+    script = (
+        f"$port = {port}; "
+        "$items = @(Get-NetTCPConnection -State Listen -LocalPort $port -ErrorAction SilentlyContinue | "
+        "Select-Object LocalAddress,LocalPort,OwningProcess); "
+        "ConvertTo-Json -InputObject $items -Compress -Depth 3"
     )
     result = subprocess.run(
         ["powershell.exe", "-NoProfile", "-NonInteractive", "-Command", script],
@@ -350,8 +374,9 @@ def main() -> int:
         facts["new_webview2_pids"] = new_webview_pids
         record("webview2-process-observed", new_pids=new_webview_pids)
 
-        webview_debug_url = f"http://127.0.0.1:{webview_debug_port}"
+        webview_debug_url = f"http://localhost:{webview_debug_port}"
         facts["webview_debugger_url"] = webview_debug_url
+        debugger_last_error: str | None = None
         webview_debug_deadline = time.monotonic() + 30
         while time.monotonic() < webview_debug_deadline:
             try:
@@ -359,12 +384,26 @@ def main() -> int:
                 if debugger_version.get("webSocketDebuggerUrl"):
                     facts["webview_debugger_version"] = debugger_version
                     break
-            except Exception:
-                pass
+                debugger_last_error = f"No webSocketDebuggerUrl in response: {debugger_version!r}"
+            except Exception as exc:
+                debugger_last_error = f"{type(exc).__name__}: {exc}"
             time.sleep(0.25)
         else:
-            raise RuntimeError("WebView2 remote debugging endpoint did not become ready")
+            facts["webview_debugger_last_error"] = debugger_last_error
+            facts["webview2_processes_at_debugger_timeout"] = find_processes("msedgewebview2.exe")
+            raise RuntimeError(f"WebView2 remote debugging endpoint did not become ready: {debugger_last_error}")
+        debugger_bindings = query_listening_sockets(webview_debug_port)
+        facts["webview_debugger_bindings"] = debugger_bindings
+        loopback_addresses = {"127.0.0.1", "::1", "::ffff:127.0.0.1"}
+        if not debugger_bindings:
+            raise RuntimeError("WebView2 debugger endpoint responded but no listening TCP binding was observable")
+        exposed_addresses = sorted(
+            {str(item.get("LocalAddress")) for item in debugger_bindings if str(item.get("LocalAddress")) not in loopback_addresses}
+        )
+        if exposed_addresses:
+            raise RuntimeError(f"WebView2 debugger endpoint is not loopback-only: {exposed_addresses}")
         record("webview2-debugger-ready", version=debugger_version)
+        record("webview2-debugger-loopback-only", bindings=debugger_bindings)
 
         port = free_loopback_port()
         base_url = f"http://127.0.0.1:{port}"
@@ -398,7 +437,7 @@ def main() -> int:
         capabilities = {
             "browserName": "webview2",
             "ms:edgeOptions": {
-                "debuggerAddress": f"127.0.0.1:{webview_debug_port}",
+                "debuggerAddress": f"localhost:{webview_debug_port}",
             },
         }
         session_response = webdriver_request(
