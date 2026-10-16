@@ -294,7 +294,7 @@ def main() -> int:
             "browserName": "webview2",
             "ms:edgeOptions": {
                 "binary": str(app_path),
-                "args": ["-workspace", str(workspace_root)],
+                "args": [f"--workspace={workspace_root}"],
             },
         }
         session_response = webdriver_request(
