@@ -34,7 +34,7 @@ def successful_response(response):
     return envelope
 
 
-def validation_counts(envelope):
+def validation_findings(envelope):
     value = envelope.get("value")
     assert isinstance(value, dict), value
     assert "Direct" in value and "Diagnostics" in value, value
@@ -50,14 +50,53 @@ def validation_counts(envelope):
         ), item
         diagnostics.append(item["diagnostic"])
 
-    counts = {"error": 0, "warning": 0}
+    findings = []
     for diagnostic in diagnostics:
         assert isinstance(diagnostic, dict), diagnostic
         severity = diagnostic.get("severity")
         assert severity in ("info", "warning", "error"), diagnostic
-        if severity in counts:
-            counts[severity] += 1
-    return counts
+        code = diagnostic.get("code")
+        message = diagnostic.get("message")
+        assert isinstance(code, str) and isinstance(message, str), diagnostic
+        findings.append({"severity": severity, "message": f"{code}: {message}"})
+    return findings
+
+
+def validation_counts(findings):
+    return {
+        severity: sum(finding["severity"] == severity for finding in findings)
+        for severity in ("error", "warning")
+    }
+
+
+def assert_displayed_findings(page, findings):
+    expected = [
+        {
+            "severity": finding["severity"],
+            "text": f"{finding['severity']}: {finding['message']}",
+        }
+        for finding in findings
+    ]
+    page.wait_for_function(
+        """(expected) => {
+          const actual = Array.from(
+            document.querySelectorAll(
+              '#commands [aria-label="診断一覧"] li[data-severity]'
+            ),
+            (node) => ({ severity: node.dataset.severity, text: node.textContent })
+          );
+          return JSON.stringify(actual) === JSON.stringify(expected);
+        }""",
+        arg=expected,
+        timeout=10_000,
+    )
+    displayed = page.locator(
+        '#commands [aria-label="診断一覧"] li[data-severity]'
+    ).evaluate_all(
+        "(nodes) => nodes.map((node) => ({ severity: node.dataset.severity, text: node.textContent }))"
+    )
+    assert displayed == expected, displayed
+    return displayed
 
 
 def smoke_bootstrap(browser, base_url):
@@ -170,7 +209,11 @@ def smoke_workbench(browser, base_url):
     )
     assert displayed_canonical == initial_inspection["canonical"], displayed_canonical
 
-    counts = validation_counts(envelopes["main.StudioBridge.ValidateWorkspace"])
+    findings = validation_findings(
+        envelopes["main.StudioBridge.ValidateWorkspace"]
+    )
+    counts = validation_counts(findings)
+    displayed_findings = assert_displayed_findings(page, findings)
     expected_summary = f"エラー {counts['error']}・警告 {counts['warning']}"
     assert page.locator("#diagnostic-summary").inner_text() == expected_summary
     expected_notice = (
@@ -280,7 +323,10 @@ def smoke_workbench(browser, base_url):
     ) as validation:
         validate_button.click()
     validation_envelope = successful_response(validation.value)
-    assert validation_counts(validation_envelope) == counts, validation_envelope
+    repeated_findings = validation_findings(validation_envelope)
+    assert repeated_findings == findings, validation_envelope
+    assert validation_counts(repeated_findings) == counts, validation_envelope
+    assert_displayed_findings(page, repeated_findings) == displayed_findings
     print(
         "Workbench browser smoke: "
         f"Catalog parent={initial_subject['kind']}:{initial_subject['id']} "
@@ -291,6 +337,7 @@ def smoke_workbench(browser, base_url):
         "matched editor; "
         f"Validate ok={validation_envelope['ok']} "
         f"errors={counts['error']} warnings={counts['warning']} "
+        f"diagnostics={displayed_findings!r} "
         f"summary={page.locator('#diagnostic-summary').inner_text()!r}"
     )
     page.close()
