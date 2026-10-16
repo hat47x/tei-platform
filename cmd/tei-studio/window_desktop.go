@@ -11,3 +11,7 @@ func setupWindow(app *application.App) {
 		Height: 750,
 	})
 }
+
+func validateBuildConfiguration() error { return nil }
+
+func studioAssetMiddleware(int) application.Middleware { return nil }

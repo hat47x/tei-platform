@@ -59,6 +59,9 @@ func main() {
 	if port < 1 || port > 65535 {
 		log.Fatal("port must be between 1 and 65535")
 	}
+	if err := validateBuildConfiguration(); err != nil {
+		log.Fatal(err)
+	}
 	host, err := newStudioHost(paths)
 	if err != nil {
 		log.Fatal(err)
@@ -73,7 +76,8 @@ func main() {
 			application.NewService(&StudioBridge{host: host}),
 		},
 		Assets: application.AssetOptions{
-			Handler: application.AssetFileServerFS(assets),
+			Handler:    application.AssetFileServerFS(assets),
+			Middleware: studioAssetMiddleware(port),
 		},
 	})
 	setupWindow(app)
