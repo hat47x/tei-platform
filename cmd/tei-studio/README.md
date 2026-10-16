@@ -10,6 +10,14 @@ Issue [#1824](https://github.com/hat47x/tei-platform/issues/1824)、担当#2。�
 - `cmd/tei-studio/xead_observer.go`: `internal/xeadsource`を使うStudio専用の読取り・投影adapter。nested moduleの外へこのadapter依存を広げず、`internal/operations`から分離します。
 - `cmd/tei-studio/assets`: Go側へ埋め込む単純な初期画面。`frontend`の正式なUI/manifest/lock/登録箇所は#3が所有します。これは#3が差し替えるまでの確認用bootstrapです。
 
+### Server HTTP呼出しの境界
+
+Serverビルドでは、<code>/wails/runtime</code>へのHTTP RPC要求について、OriginをHTTPループバックURL、Hostを127.0.0.1と起動portから作る固定値にそれぞれ照合します。HTTPの標準port 80はブラウザーの直列化で省略されるため、期待値にも含めません。別portでは指定portを必須とします。<code>WAILS_SERVER_PORT</code>が定義されていれば空値や同じ値でも起動を拒否し、portは<code>-port</code>で指定します。初期ページや静的資産はOriginなしで取得できます。
+
+このOrigin/Host確認は<code>/wails/runtime</code>のHTTP RPC呼出しだけに適用されます。<code>/health</code>、<code>/wails/custom.js</code>、<code>/wails/events</code>、<code>/wails/stream/ws</code>はWails側の別経路で、このMiddlewareの対象外です。WebSocket Origin検査はWails側の別設定です。現在のStudioはイベント購読・stream登録を使用していません。Origin/Host確認は接続者認証、業務操作の認可、利用者間の分離を提供しません。
+
+追加試験はAssetOptions.Middlewareに呼出し計数用handlerを接続し、後段からStudioBridge.ListWorkspacesを直接実行します。Wails HTTPTransportの実dispatch、実listenerを通るHost解析、Serverの初回GETと実資産配信、実ブラウザーのRPCは確認していません。
+
 ## バージョン・起動
 
 Go `1.26.9`、Wails `github.com/wailsapp/wails/v3@v3.0.0-beta.29`（pre-release）。基準mainは`128429482e02d96afe0123ee7da023256094dfca`です。`cmd/tei-studio/go.mod`・`go.sum`は、[#1824の実生成記録](https://github.com/hat47x/tei-platform/issues/1824#issuecomment-6167299922)と[Go1.26.9のCI実生成artifact](https://github.com/hat47x/tei-platform/actions/runs/38575429096)の内容と一致したものを採用しています。
