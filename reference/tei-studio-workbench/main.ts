@@ -4,6 +4,7 @@ import { mountReadonlyGraph } from "../tei-studio-graph/graph.ts";
 import { mountCommandPanel } from "../tei-studio-command/command.ts";
 import { createReadOnlyClient } from "../../cmd/tei-studio/assets/client.mjs";
 import { createResponseScope } from "./responses.ts";
+import { handleXeadPathKeydown } from "./keyboard.ts";
 import {
   readCatalog,
   readValidation,
@@ -72,12 +73,12 @@ function renderXead(raw: unknown) {
     const section = document.createElement("section");
     section.className = "xead-table";
     const heading = document.createElement("h3");
-    heading.textContent = `${table.name || "名称なし"} · ${table.source.kind}:${table.source.id}`;
+    heading.textContent = `${table.name || "名称なし"} · 元ID ${table.source.kind}:${table.source.id}`;
     const fields = document.createElement("ul");
     for (const field of table.fields) {
       const item = document.createElement("li");
-      const type = field.dataType ? ` · 型 ${field.dataType.kind}:${field.dataType.id}` : "";
-      item.textContent = `${field.name || "名称なし"} · ${field.source.kind}:${field.source.id}${type}`;
+      const type = field.dataType ? ` · 型参照ID ${field.dataType.kind}:${field.dataType.id}` : "";
+      item.textContent = `${field.name || "名称なし"} · 元ID ${field.source.kind}:${field.source.id}${type}`;
       fields.append(item);
     }
     section.append(heading, fields);
@@ -88,7 +89,7 @@ function renderXead(raw: unknown) {
     details.className = "xead-diagnostics";
     for (const diagnostic of view.diagnostics) {
       const item = document.createElement("li");
-      item.textContent = `${diagnostic.code} · ${diagnostic.element}${diagnostic.attribute ? ` · ${diagnostic.attribute}` : ""} · ${diagnostic.occurrences}件`;
+      item.textContent = `コード ${diagnostic.code} · 要素 ${diagnostic.element}${diagnostic.attribute ? ` · 属性 ${diagnostic.attribute}` : ""} · 該当 ${diagnostic.occurrences}件`;
       details.append(item);
     }
     const section = document.createElement("section");
@@ -110,11 +111,11 @@ function renderXead(raw: unknown) {
   if (omittedTables || omittedFields || omittedDiagnostics) {
     const clipped = document.createElement("p");
     clipped.className = "hint";
-    clipped.textContent = `描画件数を制限しています。未表示：テーブル ${omittedTables}件、項目 ${omittedFields}件、診断 ${omittedDiagnostics}件。`;
+    clipped.textContent = `描画件数を制限しています。未表示：テーブル ${omittedTables}件、項目 ${omittedFields}件、診断分類 ${omittedDiagnostics}件。`;
     sections.unshift(clipped);
   }
   result.replaceChildren(...sections);
-  element("xead-status").textContent = `観察完了：テーブル ${view.totalTables}件、項目 ${view.totalFields}件、診断 ${view.totalDiagnostics}件`;
+  element("xead-status").textContent = `観察完了：テーブル ${view.totalTables}件、項目 ${view.totalFields}件、診断分類 ${view.totalDiagnostics}件`;
 }
 const xeadFailureCodes = new Set([
   "WORKSPACE_NOT_ALLOWED", "WORKSPACE_ROOT_CHANGED", "WORKSPACE_LOAD_FAILED",
@@ -131,7 +132,15 @@ function xeadFailureMessage(error: unknown): string {
   return `観察できませんでした：${code}`;
 }
 async function observeXead() {
-  if (!client || !workspace.value || disposed) return;
+  if (disposed) return;
+  if (!client) {
+    element("xead-status").textContent = "Hostに接続してから観察してください。";
+    return;
+  }
+  if (!workspace.value) {
+    element("xead-status").textContent = "作業領域を選択してから観察してください。";
+    return;
+  }
   const id = workspace.value, path = element<HTMLInputElement>("xead-path").value.trim();
   const result = element<HTMLDivElement>("xead-result");
   responses.invalidate("xead");
@@ -371,6 +380,9 @@ element("xead-path").addEventListener("input", () => {
   element("xead-status").textContent = "パスが変更されました。未取得";
 });
 element("observe-xead").addEventListener("click", () => void observeXead());
+element("xead-path").addEventListener("keydown", (event) => {
+  handleXeadPathKeydown(event, () => void observeXead());
+});
 search.addEventListener("input", renderList);
 element("validate").addEventListener(
   "click",
