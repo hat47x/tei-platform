@@ -63,7 +63,7 @@ func TestStudioXeadObserverUsesStableFailuresAndReadBudget(t *testing.T) {
 	for _, tc := range []struct{ path, code string }{
 		{"../secret.xead", studiohost.XeadSourceReadFailed}, {filepath.Join(root, "malformed.xead"), studiohost.XeadSourceReadFailed},
 		{"missing.xead", studiohost.XeadSourceReadFailed}, {"large.xead", studiohost.XeadSourceTooLarge},
-		{"malformed.xead", xeadParseFailed}, {"wrong-root.xead", xeadProjectionFailed},
+		{"malformed.xead", studiohost.XeadParseFailed}, {"wrong-root.xead", studiohost.XeadProjectionFailed},
 		{"model.xml", studiohost.XeadUnsupportedFormat},
 	} {
 		t.Run(tc.path, func(t *testing.T) {
@@ -89,7 +89,7 @@ func TestStudioXeadObserverEnforcesParserBudgets(t *testing.T) {
 	}
 	for _, sourcePath := range []string{"deep.xead", "elements.xead"} {
 		got := host.ObserveXead("workspace-1", sourcePath)
-		if got.OK || got.Failure == nil || got.Failure.Code != xeadParseFailed {
+		if got.OK || got.Failure == nil || got.Failure.Code != studiohost.XeadParseFailed {
 			t.Fatalf("over-budget source %q response=%+v", sourcePath, got)
 		}
 	}

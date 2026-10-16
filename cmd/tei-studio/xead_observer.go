@@ -5,11 +5,6 @@ import (
 	"tei/internal/xeadsource"
 )
 
-const (
-	xeadParseFailed      = "XEAD_PARSE_FAILED"
-	xeadProjectionFailed = "XEAD_PROJECTION_FAILED"
-)
-
 // studioXeadObserver is the only product-facing consumer of the RMT parser.
 // It belongs to this nested Studio module and returns a bounded display DTO.
 type studioXeadObserver struct{}
@@ -19,11 +14,11 @@ func (studioXeadObserver) Observe(content []byte) (studiohost.XeadObservation, e
 		MaxBytes: studiohost.XeadObservationInputLimitBytes, MaxDepth: 128, MaxElements: 100000,
 	})
 	if err != nil {
-		return studiohost.XeadObservation{}, &studiohost.XeadObservationError{Code: xeadParseFailed}
+		return studiohost.XeadObservation{}, &studiohost.XeadObservationError{Code: studiohost.XeadParseFailed}
 	}
 	projection, err := xeadsource.ProjectStudioObservation(document)
 	if err != nil {
-		return studiohost.XeadObservation{}, &studiohost.XeadObservationError{Code: xeadProjectionFailed}
+		return studiohost.XeadObservation{}, &studiohost.XeadObservationError{Code: studiohost.XeadProjectionFailed}
 	}
 	result := studiohost.XeadObservation{
 		SchemaVersion: "tei.operations.xead-observation/v0",

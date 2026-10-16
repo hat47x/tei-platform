@@ -15,6 +15,8 @@ const (
 	XeadSourceReadFailed  = "XEAD_SOURCE_READ_FAILED"
 	XeadSourceTooLarge    = "XEAD_SOURCE_TOO_LARGE"
 	XeadUnsupportedFormat = "XEAD_UNSUPPORTED_FORMAT"
+	XeadParseFailed       = "XEAD_PARSE_FAILED"
+	XeadProjectionFailed  = "XEAD_PROJECTION_FAILED"
 )
 
 // XeadObservation is a Studio-only source projection. Its identifiers are
@@ -102,7 +104,7 @@ func (h *ReadOnly) ObserveXead(workspaceID, relativePath string) XeadObservation
 	value, err := h.xeadObserver.Observe(content)
 	if err != nil {
 		var observationErr *XeadObservationError
-		if errors.As(err, &observationErr) {
+		if errors.As(err, &observationErr) && (observationErr.Code == XeadParseFailed || observationErr.Code == XeadProjectionFailed) {
 			return XeadObservationResponse{Failure: &Failure{Code: observationErr.Code, Message: "X-TEA source observation failed"}}
 		}
 		return XeadObservationResponse{Failure: &Failure{Code: "OPERATION_FAILED", Message: "workspace operation failed"}}

@@ -1,8 +1,10 @@
 package studiohost
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -48,19 +50,56 @@ func TestObserveXeadRunsOnlyAfterAllowlistAndRootIdentityChecks(t *testing.T) {
 
 func TestObserveXeadFailureDoesNotExposeObserverError(t *testing.T) {
 	root := t.TempDir()
-	observer := observerFailure{}
-	host, err := NewReadOnlyWithXeadObserver([]string{root}, observer)
+	const source = `<System Secret="synthetic-source-secret"/>`
+	if err := os.WriteFile(filepath.Join(root, "model.xead"), []byte(source), 0600); err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		name        string
+		err         error
+		code        string
+		failureText string
+	}{
+		{name: "typed parser error", err: &XeadObservationError{Code: XeadParseFailed}, code: XeadParseFailed, failureText: "X-TEA source observation failed"},
+		{name: "unknown typed error", err: &XeadObservationError{Code: "private-path-secret"}, code: "OPERATION_FAILED", failureText: "workspace operation failed"},
+		{name: "untyped error", err: errors.New("private-path-secret"), code: "OPERATION_FAILED", failureText: "workspace operation failed"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			observer := &observerFailure{err: tc.err}
+			host, err := NewReadOnlyWithXeadObserver([]string{root}, observer)
+			if err != nil {
+				t.Fatal(err)
+			}
+			got := host.ObserveXead("workspace-1", "model.xead")
+			if !observer.called || observer.content != source {
+				t.Fatalf("observer was not called with allowed source bytes: %+v", observer)
+			}
+			if got.OK || got.Failure == nil || got.Failure.Code != tc.code || got.Failure.Message != tc.failureText {
+				t.Fatalf("failure was not mapped safely: %+v", got)
+			}
+			if strings.Contains(got.Failure.Message, "private-path-secret") || strings.Contains(got.Failure.Message, "synthetic-source-secret") {
+				t.Fatalf("failure leaked private content: %+v", got.Failure)
+			}
+		})
+	}
+
+	host, err := NewReadOnlyWithXeadObserver([]string{root}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	got := host.ObserveXead("workspace-1", filepath.Join(root, "private.xead"))
-	if got.OK || got.Failure == nil || got.Failure.Code != "XEAD_SOURCE_READ_FAILED" || got.Failure.Message != "X-TEA source observation failed" {
-		t.Fatalf("unsafe failure: %+v", got)
+	got := host.ObserveXead("workspace-1", "model.xead")
+	if got.OK || got.Failure == nil || got.Failure.Code != "OPERATION_FAILED" || got.Failure.Message != "workspace operation failed" {
+		t.Fatalf("nil observer failure was not stable: %+v", got)
 	}
 }
 
-type observerFailure struct{}
+type observerFailure struct {
+	err     error
+	called  bool
+	content string
+}
 
-func (observerFailure) Observe([]byte) (XeadObservation, error) {
-	return XeadObservation{}, &XeadObservationError{Code: "XEAD_SOURCE_READ_FAILED"}
+func (o *observerFailure) Observe(content []byte) (XeadObservation, error) {
+	o.called, o.content = true, string(content)
+	return XeadObservation{}, o.err
 }
