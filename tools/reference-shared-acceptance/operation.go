@@ -23,6 +23,7 @@ const (
 	opAddApplication              = "add-application"
 	opAddReferencePattern         = "add-reference-pattern"
 	opAddApplicationValidationUse = "add-application-validation-use"
+	opSetSymbol                   = "set-symbol"
 )
 
 // Operationは、型付きの最小semantic deltaの一単位である。
@@ -36,6 +37,8 @@ type Operation struct {
 	Attribute string `json:"attribute,omitempty"`
 	Relation  string `json:"relation,omitempty"`
 	Placement string `json:"placement,omitempty"`
+	// Symbolは、set-symbolが既存subjectへ設定する表示名である。Canonical IDは変えない。
+	Symbol string `json:"symbol,omitempty"`
 
 	Data                    *DataSpec                    `json:"data,omitempty"`
 	AddRelation             *AddRelationSpec             `json:"addRelation,omitempty"`
@@ -209,7 +212,8 @@ func onlyFields(op Operation, allowed ...string) error {
 	present := map[string]bool{
 		"namespace": op.Namespace != "", "id": op.ID != "", "kind": op.Kind != "",
 		"attribute": op.Attribute != "", "relation": op.Relation != "",
-		"data": op.Data != nil, "addRelation": op.AddRelation != nil,
+		"symbol": op.Symbol != "",
+		"data":   op.Data != nil, "addRelation": op.AddRelation != nil,
 		"addCandidateKey": op.AddCandidateKey != nil, "addFunctionalDependency": op.AddFunctionalDependency != nil,
 		"removeBusinessRule": op.RemoveBusinessRule != nil,
 		"application":        op.Application != nil, "pattern": op.Pattern != nil,
@@ -248,8 +252,10 @@ func normalizeOperation(op Operation) (Operation, error) {
 		return normalizeAddApplication(op)
 	case opAddReferencePattern:
 		return normalizeAddReferencePattern(op)
+	case opSetSymbol:
+		return normalizeSetSymbol(op)
 	default:
-		return op, fmt.Errorf("operation %q は未対応です（add-validation / add-data / add-relation / add-candidate-key / add-functional-dependency / remove-candidate-key / remove-functional-dependency / add-application / add-reference-pattern / add-environment-binding / add-application-validation-use）", op.Op)
+		return op, fmt.Errorf("operation %q は未対応です（add-validation / add-data / add-relation / add-candidate-key / add-functional-dependency / remove-candidate-key / remove-functional-dependency / add-application / add-reference-pattern / add-environment-binding / add-application-validation-use / set-symbol）", op.Op)
 	}
 }
 
@@ -670,6 +676,8 @@ func operationKey(op Operation) string {
 		return "application:" + op.Application.ID
 	case opAddReferencePattern:
 		return "application-pattern:" + op.Pattern.ID
+	case opSetSymbol:
+		return op.Kind + ":" + op.ID
 	}
 	return op.Op
 }
