@@ -265,6 +265,8 @@ async function loadWorkspace() {
   const context = ++workspaceEpoch,
     id = workspace.value;
   responses.reset();
+  element("xead-result").replaceChildren();
+  element("xead-status").textContent = "未取得";
   commandContext = panel.beginContext();
   ++inspectionEpoch;
   selected = null;
@@ -361,8 +363,6 @@ const panel = mountCommandPanel(element("commands"), {
 });
 workspace.addEventListener("change", () => {
   search.value = "";
-  element("xead-result").replaceChildren();
-  element("xead-status").textContent = "作業領域を切り替えました。未取得";
   void loadWorkspace().catch(showFailure);
 });
 element("xead-path").addEventListener("input", () => {
