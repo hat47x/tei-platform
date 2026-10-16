@@ -117,7 +117,13 @@ def free_loopback_port() -> int:
         return int(sock.getsockname()[1])
 
 
-def webdriver_request(base_url: str, method: str, path: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
+def webdriver_request(
+    base_url: str,
+    method: str,
+    path: str,
+    payload: dict[str, Any] | None = None,
+    timeout_seconds: float = 10,
+) -> dict[str, Any]:
     body = None if payload is None else json.dumps(payload, ensure_ascii=False).encode("utf-8")
     request = urllib.request.Request(
         f"{base_url}{path}",
@@ -126,7 +132,7 @@ def webdriver_request(base_url: str, method: str, path: str, payload: dict[str, 
         headers={} if body is None else {"Content-Type": "application/json; charset=utf-8"},
     )
     try:
-        with urllib.request.urlopen(request, timeout=10) as response:
+        with urllib.request.urlopen(request, timeout=timeout_seconds) as response:
             text = response.read().decode("utf-8", errors="replace")
             return json.loads(text) if text else {}
     except urllib.error.HTTPError as exc:
@@ -302,6 +308,7 @@ def main() -> int:
             "POST",
             "/session",
             {"capabilities": {"alwaysMatch": capabilities}},
+            timeout_seconds=60,
         )
         value = session_response.get("value", {})
         driver_session = session_response.get("sessionId") or value.get("sessionId")
