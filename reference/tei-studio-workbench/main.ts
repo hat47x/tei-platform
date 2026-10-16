@@ -11,6 +11,7 @@ import {
   relatedGraph,
   subjectKey,
   summarizeFindings,
+  readXeadObservation,
 } from "./presentation.ts";
 import type { Entry, Subject, Finding, Catalog } from "./presentation.ts";
 
@@ -22,6 +23,7 @@ type Client = {
   catalogWorkspace(id: string, namespace?: string): Promise<Reply>;
   validateWorkspace(id: string): Promise<Reply>;
   inspectSubject(id: string, kind: string, subject: string): Promise<Reply>;
+  observeXead(id: string, relativePath: string): Promise<Reply>;
 };
 const element = <T extends HTMLElement>(id: string) =>
   document.getElementById(id) as T;
@@ -63,6 +65,78 @@ function showFailure(error: unknown) {
   const code = error instanceof Error ? error.message : "OPERATION_FAILED";
   notice.textContent = `操作を完了できませんでした：${code}`;
   notice.dataset.state = "error";
+}
+function renderXead(raw: unknown) {
+  const view = readXeadObservation(raw), result = element<HTMLDivElement>("xead-result");
+  const sections = view.tables.map((table) => {
+    const section = document.createElement("section");
+    section.className = "xead-table";
+    const heading = document.createElement("h3");
+    heading.textContent = `${table.name || "名称なし"} · ${table.source.kind}:${table.source.id}`;
+    const fields = document.createElement("ul");
+    for (const field of table.fields) {
+      const item = document.createElement("li");
+      const type = field.dataType ? ` · 型 ${field.dataType.kind}:${field.dataType.id}` : "";
+      item.textContent = `${field.name || "名称なし"} · ${field.source.kind}:${field.source.id}${type}`;
+      fields.append(item);
+    }
+    section.append(heading, fields);
+    return section;
+  });
+  if (view.diagnostics.length) {
+    const details = document.createElement("ul");
+    details.className = "xead-diagnostics";
+    for (const diagnostic of view.diagnostics) {
+      const item = document.createElement("li");
+      item.textContent = `${diagnostic.code} · ${diagnostic.element}${diagnostic.attribute ? ` · ${diagnostic.attribute}` : ""} · ${diagnostic.occurrences}件`;
+      details.append(item);
+    }
+    const section = document.createElement("section");
+    section.className = "xead-table";
+    const heading = document.createElement("h3");
+    heading.textContent = "観察診断";
+    section.append(heading, details);
+    sections.push(section);
+  }
+  if (!sections.length) {
+    const empty = document.createElement("p");
+    empty.textContent = "表示できるテーブルまたは診断はありません。";
+    sections.push(empty);
+  }
+  result.replaceChildren(...sections);
+  element("xead-status").textContent = `観察完了：テーブル ${view.tables.length}件、診断 ${view.diagnostics.length}件`;
+}
+const xeadFailureCodes = new Set([
+  "WORKSPACE_NOT_ALLOWED", "WORKSPACE_ROOT_CHANGED", "WORKSPACE_LOAD_FAILED",
+  "SOURCE_INDEX_FAILED", "INVALID_SUBJECT", "UNSUPPORTED_SUBJECT_KIND",
+  "SUBJECT_NOT_FOUND", "SUBJECT_AMBIGUOUS", "OPERATION_FAILED",
+  "XEAD_SOURCE_READ_FAILED", "XEAD_SOURCE_TOO_LARGE", "XEAD_UNSUPPORTED_FORMAT",
+  "XEAD_PARSE_FAILED", "XEAD_PROJECTION_FAILED", "HOST_TRANSPORT_FAILURE",
+  "INVALID_HOST_RESPONSE", "INVALID_XEAD_RESPONSE",
+]);
+function xeadFailureMessage(error: unknown): string {
+  const code = error instanceof Error && xeadFailureCodes.has(error.message)
+    ? error.message
+    : "OPERATION_FAILED";
+  return `観察できませんでした：${code}`;
+}
+async function observeXead() {
+  if (!client || !workspace.value || disposed) return;
+  const id = workspace.value, path = element<HTMLInputElement>("xead-path").value.trim();
+  const result = element<HTMLDivElement>("xead-result");
+  responses.invalidate("xead");
+  result.replaceChildren();
+  if (!path) {
+    element("xead-status").textContent = "作業領域相対の .xead パスを入力してください。";
+    return;
+  }
+  element("xead-status").textContent = "観察中…";
+  await responses.run("xead", () => client!.observeXead(id, path), (reply) => {
+    renderXead(unwrap(reply));
+  }, (error) => {
+    result.replaceChildren();
+    element("xead-status").textContent = xeadFailureMessage(error);
+  });
 }
 function setFindings(findings: Finding[] | null) {
   if (!panel.setDiagnosticsForContext(commandContext, findings ?? []))
@@ -277,8 +351,16 @@ const panel = mountCommandPanel(element("commands"), {
 });
 workspace.addEventListener("change", () => {
   search.value = "";
+  element("xead-result").replaceChildren();
+  element("xead-status").textContent = "作業領域を切り替えました。未取得";
   void loadWorkspace().catch(showFailure);
 });
+element("xead-path").addEventListener("input", () => {
+  responses.invalidate("xead");
+  element("xead-result").replaceChildren();
+  element("xead-status").textContent = "パスが変更されました。未取得";
+});
+element("observe-xead").addEventListener("click", () => void observeXead());
 search.addEventListener("input", renderList);
 element("validate").addEventListener(
   "click",

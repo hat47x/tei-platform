@@ -17,6 +17,23 @@ export type Catalog = {
   worldFingerprint: string;
   sourceIndexFingerprint: string;
 };
+export type XeadObservation = {
+  tables: Array<{
+    source: { kind: string; id: string };
+    name: string;
+    fields: Array<{
+      source: { kind: string; id: string };
+      name: string;
+      dataType?: { kind: string; id: string };
+    }>;
+  }>;
+  diagnostics: Array<{
+    code: string;
+    element: string;
+    attribute: string;
+    occurrences: number;
+  }>;
+};
 export function summarizeFindings(findings: readonly Finding[] | null) {
   if (findings === null)
     return { verified: false, errors: 0, warnings: 0, text: "未検証" };
@@ -39,6 +56,68 @@ function subject(value: unknown): Subject {
   )
     throw Error("INVALID_SUBJECT_RESPONSE");
   return { kind: v.kind, id: v.id };
+}
+function optionalString(value: unknown): string {
+  if (value === undefined) return "";
+  if (typeof value !== "string") throw Error("INVALID_XEAD_RESPONSE");
+  return value;
+}
+function sourceRef(value: unknown): { kind: string; id: string } {
+  const v = record(value);
+  if (typeof v.sourceKind !== "string" || typeof v.sourceID !== "string")
+    throw Error("INVALID_XEAD_RESPONSE");
+  return { kind: v.sourceKind, id: v.sourceID };
+}
+/** Keeps only source metadata approved for the read-only Workbench view. */
+export function readXeadObservation(raw: unknown): XeadObservation {
+  const value = record(raw), observation = record(value.observation);
+  const limits = value.authorityLimits;
+  const requiredLimits = [
+    "xead-observation-is-not-canonical-meaning",
+    "xead-source-identifiers-are-not-canonical-identities",
+    "xead-observation-does-not-authorize-edits-or-execution",
+    "unsupported-source-constructs-remain-unresolved",
+  ];
+  if (value.effect !== "read-only" || value.schemaVersion !== "tei.operations.xead-observation/v0" ||
+      !Array.isArray(limits) || !limits.every((limit) => typeof limit === "string") ||
+      !requiredLimits.every((limit) => limits.includes(limit)))
+    throw Error("INVALID_XEAD_RESPONSE");
+  const tables = observation.tables === undefined ? [] : observation.tables;
+  const diagnostics = observation.diagnostics === undefined ? [] : observation.diagnostics;
+  if (!Array.isArray(tables) || !Array.isArray(diagnostics))
+    throw Error("INVALID_XEAD_RESPONSE");
+  return {
+    tables: tables.map((rawTable) => {
+      const table = record(rawTable);
+      const fields = table.fields === undefined ? [] : table.fields;
+      if (!Array.isArray(fields)) throw Error("INVALID_XEAD_RESPONSE");
+      return {
+        source: sourceRef(table.source),
+        name: optionalString(table.name),
+        fields: fields.map((rawField) => {
+          const field = record(rawField);
+          return {
+            source: sourceRef(field.source),
+            name: optionalString(field.name),
+            ...(field.dataType === undefined ? {} : { dataType: sourceRef(field.dataType) }),
+          };
+        }),
+      };
+    }),
+    diagnostics: diagnostics.map((rawDiagnostic) => {
+      const diagnostic = record(rawDiagnostic);
+      if (typeof diagnostic.code !== "string" || typeof diagnostic.element !== "string" ||
+          !Number.isSafeInteger(diagnostic.occurrences) || (diagnostic.occurrences as number) < 0 ||
+          (diagnostic.attribute !== undefined && typeof diagnostic.attribute !== "string"))
+        throw Error("INVALID_XEAD_RESPONSE");
+      return {
+        code: diagnostic.code,
+        element: diagnostic.element,
+        attribute: optionalString(diagnostic.attribute),
+        occurrences: diagnostic.occurrences as number,
+      };
+    }),
+  };
 }
 export const subjectKey = (s: Subject) => JSON.stringify([s.kind, s.id]);
 export function readCatalog(raw: unknown): Catalog {

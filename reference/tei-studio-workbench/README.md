@@ -4,19 +4,19 @@
 
 ## できることと表示の意味
 
-Hostが起動時に許可した作業領域を選び、モデル一覧の検索、要素の参照、カタログに含まれる直接の親子関係の選択、検証結果の確認を行う。Editorへ渡すのは`InspectSubject`の`canonical`をJSONにした投影であり、ソース本文ではない。要素種別により既存操作が未対応なら、その失敗を表示する。
+Hostが起動時に許可した作業領域を選び、モデル一覧の検索、要素の参照、カタログに含まれる直接の親子関係の選択、検証結果の確認を行う。Editorへ渡すのは`InspectSubject`の`canonical`をJSONにした投影であり、ソース本文ではない。別枠で相対パスを指定した`.xead`の`ObserveXead` read-only projectionを表示するが、許可範囲内のメタデータ（Table/Field名・source ID・型ID・診断コード等）のみで、属性値やXML本文は表示しない。名前や識別子が業務スキーマを示す可能性は残る。要素種別により既存操作が未対応なら、その失敗を表示する。
 
 Graphは選択要素を含む最大8件を表示する。省略件数を画面に示し、実在しない関係を補わない。画面の選択は権限にならない。`modelRevision`や指紋は参照結果の識別用であり、書込みの許可として利用しない。保存・受理・任意コマンド・イベント配信は提供しない。
 
 `ok:true`でも検証診断にerrorがあれば操作結果を失敗として表示し、warningを消さない。通信失敗をモックの成功へ置き換えない。作業領域や選択の変更後に届いた古い参照応答は採用しない。
 
-作業領域の切替・再読込ではCommandの`beginContext()`を呼び、旧コマンドの状態と診断を消去する。参照・一覧・検証の応答を別々に管理し、同じ種類の要求は最新の応答だけを表示する。旧要求の失敗も新しい画面へ表示しない。これは表示上の処理であり、Hostの処理中止や副作用の取消しを保証しない。再読込コマンドは自身の表示状態も初期化するため、完了は更新後のモデルと検証結果で確認する。
+作業領域の切替・再読込ではCommandの`beginContext()`を呼び、旧コマンドの状態と診断を消去する。参照・一覧・検証・XEAD観察の応答を別々に管理し、同じ種類の要求は最新の応答だけを表示する。XEADのパス変更時も保留中の応答を無効化する。旧要求の失敗も新しい画面へ表示しない。これは表示上の処理であり、Hostの処理中止や副作用の取消しを保証しない。再読込コマンドは自身の表示状態も初期化するため、完了は更新後のモデルと検証結果で確認する。
 
 ## 依存する実装
 
 この変更単独のmainには下記の並行開発部品が存在しない場合がある。Draft PRをmergeせず、各対象pathを固定版から取り出した検証用checkoutで確認する。元ブランチは変更しない。
 
-- #1832: `cmd/tei-studio/`と`internal/studiohost/`。既存の`createReadOnlyClient`と4操作を利用。
+- #1832: `cmd/tei-studio/`と`internal/studiohost/`。既存の`createReadOnlyClient`と5操作を利用。
 - #1830: `reference/tei-studio-editor/`の`createReadOnlyTextEditor`、`codeMirrorRenderer`。
 - #1828: `reference/tei-studio-graph/`の`mountReadonlyGraph`。
 - #1829: `reference/tei-studio-command/`の`mountCommandPanel`、`beginContext`、`setDiagnosticsForContext`。世代管理APIを追加した版が必要。

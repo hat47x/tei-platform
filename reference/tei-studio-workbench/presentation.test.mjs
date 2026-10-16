@@ -5,6 +5,7 @@ import {
   readValidation,
   readInspection,
   relatedGraph,
+  readXeadObservation,
 } from "./presentation.ts";
 const data = {
   subject: { kind: "semantic-data", id: "sales.order" },
@@ -67,4 +68,35 @@ test("graph contains actual catalog relations and reports clipped neighbours", (
   assert.ok(
     graph.input.edges.every((e) => keys.has(e.source) && keys.has(e.target)),
   );
+});
+test("XEAD presenter treats omitted collections as empty and exposes metadata only", () => {
+  const source = { sourceKind: "table", sourceID: "T1" };
+  const view = readXeadObservation({
+    schemaVersion: "tei.operations.xead-observation/v0",
+    effect: "read-only",
+    authorityLimits: [
+      "xead-observation-is-not-canonical-meaning",
+      "xead-source-identifiers-are-not-canonical-identities",
+      "xead-observation-does-not-authorize-edits-or-execution",
+      "unsupported-source-constructs-remain-unresolved",
+    ],
+    observation: { tables: [{ source, name: "Orders", fields: [{ source: { sourceKind: "field", sourceID: "F1" }, name: "Number", dataType: { sourceKind: "type", sourceID: "string" }, value: "SECRET" }] }] },
+  });
+  assert.deepEqual(view, {
+    tables: [{ source: { kind: "table", id: "T1" }, name: "Orders", fields: [{ source: { kind: "field", id: "F1" }, name: "Number", dataType: { kind: "type", id: "string" } }] }],
+    diagnostics: [],
+  });
+  assert.throws(() => readXeadObservation({ effect: "read-only", schemaVersion: "v0", observation: { tables: null } }), /INVALID_XEAD/);
+  assert.throws(() => readXeadObservation({ effect: "write", schemaVersion: "tei.operations.xead-observation/v0", authorityLimits: [], observation: {} }), /INVALID_XEAD/);
+  assert.throws(() => readXeadObservation({ effect: "read-only", schemaVersion: "tei.operations.xead-observation/v1", authorityLimits: [], observation: {} }), /INVALID_XEAD/);
+  assert.throws(() => readXeadObservation({ effect: "read-only", schemaVersion: "tei.operations.xead-observation/v0", observation: {} }), /INVALID_XEAD/);
+  assert.throws(() => readXeadObservation({
+    effect: "read-only", schemaVersion: "tei.operations.xead-observation/v0",
+    authorityLimits: ["xead-observation-is-not-canonical-meaning"], observation: {},
+  }), /INVALID_XEAD/);
+  assert.throws(() => readXeadObservation({
+    effect: "read-only", schemaVersion: "tei.operations.xead-observation/v0",
+    authorityLimits: ["xead-observation-is-not-canonical-meaning", "xead-source-identifiers-are-not-canonical-identities", "xead-observation-does-not-authorize-edits-or-execution", "unsupported-source-constructs-remain-unresolved"],
+    observation: { tables: [{ source, name: 5 }] },
+  }), /INVALID_XEAD/);
 });
