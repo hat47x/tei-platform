@@ -337,12 +337,9 @@ def main() -> int:
         app_env = os.environ.copy()
         inherited_server_host = app_env.pop("WAILS_SERVER_HOST", None)
         facts["inherited_wails_server_host_cleared"] = inherited_server_host is not None
-        existing_browser_args = app_env.get("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS", "").strip()
-        remote_debug_arg = f"--remote-debugging-port={webview_debug_port}"
-        app_env["WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS"] = " ".join(part for part in (existing_browser_args, remote_debug_arg) if part)
-        facts["webview2_additional_browser_arguments_set"] = True
+        facts["webview_debug_port_argument"] = f"--webview-debug-port={webview_debug_port}"
         app_process = subprocess.Popen(
-            [str(app_path), f"--workspace={workspace_root}"],
+            [str(app_path), f"--workspace={workspace_root}", f"--webview-debug-port={webview_debug_port}"],
             stdout=app_stdout,
             stderr=app_stderr,
             env=app_env,
@@ -392,6 +389,15 @@ def main() -> int:
             facts["webview_debugger_last_error"] = debugger_last_error
             facts["webview2_processes_at_debugger_timeout"] = find_processes("msedgewebview2.exe")
             raise RuntimeError(f"WebView2 remote debugging endpoint did not become ready: {debugger_last_error}")
+        webview_processes = find_processes("msedgewebview2.exe")
+        new_webview_pids = sorted(
+            int(item["ProcessId"])
+            for item in webview_processes
+            if int(item["ProcessId"]) not in baseline_pids
+            and (int(item["ParentProcessId"]) == app_pid or item.get("AppMarker") is True)
+        )
+        facts["webview2_processes_during_session"] = webview_processes
+        facts["new_webview2_pids"] = new_webview_pids
         debugger_bindings = query_listening_sockets(webview_debug_port)
         facts["webview_debugger_bindings"] = debugger_bindings
         loopback_addresses = {"127.0.0.1", "::1", "::ffff:127.0.0.1"}
@@ -402,8 +408,25 @@ def main() -> int:
         )
         if exposed_addresses:
             raise RuntimeError(f"WebView2 debugger endpoint is not loopback-only: {exposed_addresses}")
+        webview_process_by_pid = {int(item["ProcessId"]): item for item in webview_processes}
+        new_webview_pid_set = set(new_webview_pids)
+        listener_owner_pids = {int(item["OwningProcess"]) for item in debugger_bindings}
+        if not listener_owner_pids or not listener_owner_pids.issubset(new_webview_pid_set):
+            raise RuntimeError(
+                f"WebView2 debugger listener owner is outside the observed new WebView2 process set: "
+                f"owners={sorted(listener_owner_pids)}, webview_pids={new_webview_pids}"
+            )
+        listener_owner_processes = [webview_process_by_pid.get(pid) for pid in sorted(listener_owner_pids)]
+        if any(item is None or str(item.get("RemoteDebugPort")) != str(webview_debug_port) for item in listener_owner_processes):
+            raise RuntimeError(
+                f"WebView2 debugger listener owner command line does not contain the chosen port "
+                f"{webview_debug_port}: {listener_owner_processes!r}"
+            )
+        facts["webview_debugger_listener_owner_pids"] = sorted(listener_owner_pids)
+        facts["webview_debugger_listener_owner_processes"] = listener_owner_processes
         record("webview2-debugger-ready", version=debugger_version)
         record("webview2-debugger-loopback-only", bindings=debugger_bindings)
+        record("webview2-debugger-owned-by-matching-process", owner_pids=sorted(listener_owner_pids), port=webview_debug_port)
 
         port = free_loopback_port()
         base_url = f"http://127.0.0.1:{port}"
