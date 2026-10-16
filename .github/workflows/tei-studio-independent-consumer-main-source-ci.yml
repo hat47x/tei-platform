@@ -25,7 +25,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     env:
-      STUDIO_MAIN_SOURCE_SHA: e379918aab1fb71a7ccbee5af39ecc273c32f7be
+      STUDIO_MAIN_SOURCE_SHA: 4ca68d5d0114af239d0309a4e9870ee3ec3cbcfa
       STUDIO_SOURCE_ROOT: ${{ github.workspace }}/tei-studio-main
 
     steps:
@@ -39,7 +39,7 @@ jobs:
       - name: Checkout exact main source snapshot
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
-          ref: e379918aab1fb71a7ccbee5af39ecc273c32f7be
+          ref: 4ca68d5d0114af239d0309a4e9870ee3ec3cbcfa
           path: tei-studio-main
           persist-credentials: false
 
