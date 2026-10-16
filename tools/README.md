@@ -34,6 +34,7 @@
 | [`reference-critical-lowering/`](reference-critical-lowering/) | 意味定義から実行形式への変換条件の確認 |
 | [`reference-epistemic-knowledge/`](reference-epistemic-knowledge/) | 文脈ごとの知識状態と根拠の確認 |
 | [`reference-external-coordination/`](reference-external-coordination/) | 外部担当との引継ぎ・協調境界の確認 |
+| [`reference-format-version-migration/`](reference-format-version-migration/) | 定義形式の版と変換規則を一か所に置き、読取り手ごとの旧形式対応をなくす参照 |
 | [`reference-generated-code-connection/`](reference-generated-code-connection/) | 生成コードをTEIの契約境界へ接続できるかの判定と、部分的なモデル化と保持の参照 |
 | [`reference-shared-acceptance/`](reference-shared-acceptance/) | 人・画面・AIに共通する変更受入れ処理の参照実装 |
 | [`reference-standard-function-candidates/`](reference-standard-function-candidates/) | データ定義から実行前の標準機能候補と不足する契約を提示 |
