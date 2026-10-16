@@ -237,10 +237,8 @@ def request_window_close(pid: int) -> list[str]:
 
 
 def main() -> int:
-    if hasattr(sys.stdout, "reconfigure"):
-        sys.stdout.reconfigure(encoding="utf-8", errors="backslashreplace")
-    if hasattr(sys.stderr, "reconfigure"):
-        sys.stderr.reconfigure(encoding="utf-8", errors="backslashreplace")
+    sys.stdout.reconfigure(encoding="utf-8", errors="strict")
+    sys.stderr.reconfigure(encoding="utf-8", errors="strict")
     if len(sys.argv) != 3:
         print("usage: desktop_webview_smoke.py <desktop-exe> <evidence-dir>", file=sys.stderr)
         return 2
