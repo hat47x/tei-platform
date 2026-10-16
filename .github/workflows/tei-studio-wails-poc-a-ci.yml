@@ -56,7 +56,7 @@ jobs:
         run: |
           set -euo pipefail
           node --version
-          node --test cmd/tei-studio/test/client.test.mjs
+          node --test cmd/tei-studio/test/*.test.mjs
 
       - name: 固定Wails版を解決してServer Build
         working-directory: cmd/tei-studio
