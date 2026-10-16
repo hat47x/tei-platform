@@ -13,12 +13,12 @@ func projectProcessRequest(t *testing.T) []byte {
 	t.Helper()
 	raw, err := json.Marshal(request{
 		ProtocolVersion: 1,
-		RequestID: "bounded-request",
-		Plugin: json.RawMessage(`{"id":"tei.reference.project_customer_advice","version":"1.0.0"}`),
-		CapabilityKind: "generic-runtime-dispatch",
-		CapabilityID: testDispatch,
-		Operation: "evaluate-advice",
-		Payload: json.RawMessage(`{"customerCode":"VIP-123","note":""}`),
+		RequestID:       "bounded-request",
+		Plugin:          json.RawMessage(`{"id":"tei.reference.project_customer_advice","version":"1.0.0"}`),
+		CapabilityKind:  "generic-runtime-dispatch",
+		CapabilityID:    testDispatch,
+		Operation:       "evaluate-advice",
+		Payload:         json.RawMessage(`{"customerCode":"VIP-123","note":""}`),
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -33,9 +33,9 @@ func TestProjectProcessEnforcesWholeInputBound(t *testing.T) {
 	oversize := append(append([]byte(nil), valid...),
 		bytes.Repeat([]byte(" "), (64<<10)+1-len(valid))...)
 	for _, tc := range []struct {
-		name string
+		name  string
 		input []byte
-		ok bool
+		ok    bool
 	}{
 		{"valid", valid, true},
 		{"valid newline", append(append([]byte(nil), valid...), '\n'), true},
