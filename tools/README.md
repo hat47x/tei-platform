@@ -33,6 +33,9 @@
 | [`reference-capability-transport/`](reference-capability-transport/) | Capabilityの伝送形式と境界の確認 |
 | [`reference-chat-cli-host/`](reference-chat-cli-host/) | 信頼された開発用Hostの事前診断 |
 | [`reference-critical-lowering/`](reference-critical-lowering/) | 意味定義から実行形式への変換条件の確認 |
+| [`reference-derivation-evidence/`](reference-derivation-evidence/) | 導出値の設計由来・評価根拠・診断と、要求者ごとの開示境界を合成入力で判定する読取り専用の参照（#1696） |
+| [`reference-derivation-projection/`](reference-derivation-projection/) | 導出項目の表示・一時プレビュー・編集不可・確定保存の意味境界を合成入力で判定する読取り専用の参照（#1707） |
+| [`reference-derived-validation/`](reference-derived-validation/) | 導出値を用いる業務Validationの評価順と、未取得・実行失敗・正常な不成立の境界を合成入力で判定する読取り専用の参照（#1729） |
 | [`reference-epistemic-knowledge/`](reference-epistemic-knowledge/) | 文脈ごとの知識状態と根拠の確認 |
 | [`reference-exploratory-prototyping/`](reference-exploratory-prototyping/) | 探索的試作の反復記録と部分採用を、仮説の昇格なしに確認する参照 |
 | [`reference-external-coordination/`](reference-external-coordination/) | 外部担当との引継ぎ・協調境界の確認 |
@@ -45,6 +48,8 @@
 | [`reference-procedure-formalization/`](reference-procedure-formalization/) | 業務手順の文章から、形式化を妨げる不足と矛盾を根拠付きの質問として示す読取り専用の参照 |
 | [`reference-purpose-preflight/`](reference-purpose-preflight/) | 開発目的に対する業務規則の未確定・実行時値待ちを合成データで区別 |
 | [`reference-quantity-arith/`](reference-quantity-arith/) | 数量・単価・金額の単位・通貨・丸めの意味注釈を合成入力で検査する読取り専用の参照（#1705） |
+| [`reference-relation-aggregate/`](reference-relation-aggregate/) | Relation集合の重複計上・空集合・NULL要素・不完全取得の意味境界を合成入力で判定する読取り専用の参照（#1706） |
+| [`reference-rule-binding/`](reference-rule-binding/) | 導出規則の適用先解決・競合・案件上書きを合成入力で判定する読取り専用の参照（#1692） |
 | [`reference-rule-candidate-discovery/`](reference-rule-candidate-discovery/) | 入出力例から複数の規則仮説を提示し、境界例で割れる点を示す読取り専用の参照 |
 | [`reference-runtime-change-instruction/`](reference-runtime-change-instruction/) | 動作中の画面からの変更指示を設計対象へ結び付け、見た目・業務規則・認可の変更を分ける参照 |
 | [`reference-scenario-state-diff/`](reference-scenario-state-diff/) | 型付きDataset/Snapshotの検証と、Scenario期待値・観測の差の読取り専用参照 |
