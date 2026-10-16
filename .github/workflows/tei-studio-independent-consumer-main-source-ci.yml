@@ -63,7 +63,6 @@ jobs:
         with:
           node-version: 24.21.0
           check-latest: false
-          cache: false
 
       - name: Test the source identity audit
         working-directory: checker/reference/tei-studio-independent-consumer
