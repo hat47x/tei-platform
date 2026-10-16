@@ -3,7 +3,6 @@ package inputprofile
 import (
 	"context"
 	"errors"
-	"strings"
 
 	"tei/internal/core"
 	"tei/internal/plugin"
@@ -46,9 +45,20 @@ func PrepareCurrentHostPackageInputs(
 	plan plugin.BuildPlan,
 	rawDefinition []byte,
 ) (PreparedPackageInputs, error) {
-	if ctx == nil || strings.TrimSpace(string(application)) == "" ||
-		strings.TrimSpace(string(environment)) == "" || current == nil {
+	if ctx == nil || current == nil {
 		return PreparedPackageInputs{}, ErrCurrentPackageSelectionInvalid
+	}
+	if err := ctx.Err(); err != nil {
+		return PreparedPackageInputs{}, err
+	}
+	// CanonicalID is a Go string alias, so callers can supply arbitrary or
+	// whitespace-padded values without using core.ParseCanonicalID. Do not
+	// pass malformed Host scope identifiers into the trusted Host callback.
+	for _, id := range []core.CanonicalID{application, environment} {
+		parsed, err := core.ParseCanonicalID(string(id))
+		if err != nil || parsed != id {
+			return PreparedPackageInputs{}, ErrCurrentPackageSelectionInvalid
+		}
 	}
 	if err := ctx.Err(); err != nil {
 		return PreparedPackageInputs{}, err
