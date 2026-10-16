@@ -14,9 +14,11 @@ Issue [#1824](https://github.com/hat47x/tei-platform/issues/1824)、担当#2。�
 
 Serverビルドでは、<code>/wails/runtime</code>へのHTTP RPC要求について、OriginをHTTPループバックURL、Hostを127.0.0.1と起動portから作る固定値にそれぞれ照合します。HTTPの標準port 80はブラウザーの直列化で省略されるため、期待値にも含めません。別portでは指定portを必須とします。<code>WAILS_SERVER_PORT</code>が定義されていれば空値や同じ値でも起動を拒否し、portは<code>-port</code>で指定します。初期ページや静的資産はOriginなしで取得できます。
 
-このOrigin/Host確認は<code>/wails/runtime</code>のHTTP RPC呼出しだけに適用されます。<code>/health</code>、<code>/wails/custom.js</code>、<code>/wails/events</code>、<code>/wails/stream/ws</code>はWails側の別経路で、このMiddlewareの対象外です。WebSocket Origin検査はWails側の別設定です。現在のStudioはイベント購読・stream登録を使用していません。Origin/Host確認は接続者認証、業務操作の認可、利用者間の分離を提供しません。
+このOrigin/Host確認は<code>/wails/runtime</code>のHTTP RPC呼出しだけに適用されます。<code>/health</code>、<code>/wails/custom.js</code>、<code>/wails/events</code>、<code>/wails/stream/ws</code>はWails側の別経路で、このMiddlewareの対象外です。現在のStudioはイベント購読・業務イベントの発行・独自stream handler登録を使用していません。Origin/Host確認は接続者認証、業務操作の認可、利用者間の分離を提供しません。
 
-追加試験はAssetOptions.Middlewareに呼出し計数用handlerを接続し、後段からStudioBridge.ListWorkspacesを直接実行します。Wails HTTPTransportの実dispatch、実listenerを通るHost解析、Serverの初回GETと実資産配信、実ブラウザーのRPCは確認していません。
+Wails `v3.0.0-beta.29`はWebSocketの許可設定を`WebSocketOriginPatterns`から作り、実装コメントでは使用するcoder/websocketが要求Hostと同じOriginを既定で許可すると説明しています（[固定版の実装](https://github.com/wailsapp/wails/blob/v3.0.0-beta.29/v3/pkg/application/websocket_server.go)）。これは本アプリの`127.0.0.1`固定照合とは別です。そのため、loopbackへ解決されるDNS別名をOriginとHostの両方に使えばhandshakeが通る可能性がありますが、これは実装からの推測であり、StudioでDNS別名やDNS rebindingを使った試験はしていません。現時点でStudioの業務イベント漏えいや操作実行が起きることは確認されていません。ブラウザースモークもWebSocket経路を確認しません。
+
+AssetOptions.Middlewareへ呼出し計数用handlerを接続し、後段からStudioBridge.ListWorkspacesを直接実行する単体試験もあります。専用CIでは別に、Server実listenerを通るWails RPC、初期画面の資産配信、実ブラウザーからの`ListWorkspaces`呼出しを検証します。
 
 ## バージョン・起動
 
@@ -70,7 +72,9 @@ Wails JavaScript service名（初期bootstrap）：`main.StudioBridge`。公開�
 
 ## 非目標・未検証
 
-Go1.26.9で生成した依存lockは原本へ反映しました。以前のhead `d070d76457f4140cf61f8c1c1357baf99a5530aa`では[専用CI #38575429096](https://github.com/hat47x/tei-platform/actions/runs/38575429096)のGo read-only・JS・CGO無効Serverビルド・loopback HTTP・公開listen拒否・Windows DesktopバイナリビルドがPASSしています。**原本lock反映後のheadへ過去のCI結果を自動転用しません**。#Workの実ブラウザー操作は過去head `fb52692dd518d930d696464e46962d8382969d7c`で確認されたもので、最新headでは未確認です。Desktop実WebView、Studio統合画面、2ブラウザー/Session隔離、OS配布/署名、CLI/Go/Wails実通信の意味照合、人的受入は未確認です。
+PoC A CIのブラウザースモークは、埋込みの初期画面をChromiumで開き、`/wails/runtime.js`の読込み、`Call.ByName`から`main.StudioBridge.ListWorkspaces`への実HTTP呼出し、応答に基づくWorkspace選択肢と画面表示までを確かめます。これはServer版のブラウザー経路に限る証拠です。Desktop WebView、認証・業務認可、複数利用者の分離、CLIとの意味同等性、WebSocket経路、人的受入は確認しません。Origin/Host拒否は従来どおりcurlで検証し、このブラウザースモークは拒否動作を追加で証明しません。
+
+Go1.26.9で生成した依存lockは原本へ反映しました。以前のhead `d070d76457f4140cf61f8c1c1357baf99a5530aa`では[専用CI #38575429096](https://github.com/hat47x/tei-platform/actions/runs/38575429096)のGo read-only・JS・CGO無効Serverビルド・loopback HTTP・公開listen拒否・Windows DesktopバイナリビルドがPASSしています。**過去のCI結果を後続headへ自動転用しません**。#Workの実ブラウザー操作は過去head `fb52692dd518d930d696464e46962d8382969d7c`で行われました。今回のブラウザースモークも対象headのCI結果で判定します。Desktop実WebView、Studio統合画面、2ブラウザー/Session隔離、OS配布/署名、CLI/Go/Wails実通信の意味照合、人的受入は未確認です。
 
 Wails Server BuildはEvent broadcastとService singletonを持ちます。本PoCはユーザー別状態・副作用・イベントを持たず、HTTPをloopbackに限定しますが、それだけで通信主体の認証やWorkspace内容の機密保護は保証されません。Webを公開ネットワークへ出したり複数ユーザーへ提供したりしないでください。Workspace内部のシンボリックリンク、ファイル置換、OS境界はここで証明していません。検査は#10、意味比較は#6、PoC B builderは#1、PoC C画面構成は#3が担当します。
 

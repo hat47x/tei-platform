@@ -95,6 +95,14 @@ jobs:
           CGO_ENABLED=0 go build -mod=readonly -tags server -o "$RUNNER_TEMP/tei-studio-server" .
           CGO_ENABLED=0 go vet -mod=readonly -tags server ./...
 
+      - name: 実ブラウザー用Playwrightを準備
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m venv "$RUNNER_TEMP/tei-studio-playwright"
+          "$RUNNER_TEMP/tei-studio-playwright/bin/python" -m pip install --disable-pip-version-check --no-cache-dir 'playwright==1.57.0'
+          "$RUNNER_TEMP/tei-studio-playwright/bin/python" -m playwright install --with-deps --only-shell chromium
+
       - name: loopback HTTPの実起動・埋込みasset smoke
         working-directory: cmd/tei-studio
         shell: bash
@@ -120,6 +128,8 @@ jobs:
           grep -q '"status":"ok"' "$RUNNER_TEMP/studio-health.json"
           curl -fsS --max-time 5 http://127.0.0.1:43123/ > "$RUNNER_TEMP/studio-index.html"
           grep -q 'TEI Studio' "$RUNNER_TEMP/studio-index.html"
+
+          "$RUNNER_TEMP/tei-studio-playwright/bin/python" test/browser_smoke.py http://127.0.0.1:43123/
 
           runtime_url=http://127.0.0.1:43123/wails/runtime
           runtime_call='{"object":0,"method":0,"args":{"call-id":"studio-ci-list-workspaces","methodName":"main.StudioBridge.ListWorkspaces","args":[]}}'
