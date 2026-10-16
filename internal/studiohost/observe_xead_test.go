@@ -61,6 +61,7 @@ func TestObserveXeadFailureDoesNotExposeObserverError(t *testing.T) {
 		failureText string
 	}{
 		{name: "typed parser error", err: &XeadObservationError{Code: XeadParseFailed}, code: XeadParseFailed, failureText: "X-TEA source observation failed"},
+		{name: "typed projection error", err: &XeadObservationError{Code: XeadProjectionFailed}, code: XeadProjectionFailed, failureText: "X-TEA source observation failed"},
 		{name: "unknown typed error", err: &XeadObservationError{Code: "private-path-secret"}, code: "OPERATION_FAILED", failureText: "workspace operation failed"},
 		{name: "untyped error", err: errors.New("private-path-secret"), code: "OPERATION_FAILED", failureText: "workspace operation failed"},
 	} {
