@@ -291,10 +291,9 @@ def main() -> int:
         record("webdriver-ready", pid=driver_process.pid, status=facts["webdriver_status"])
 
         capabilities = {
-            "browserName": "MicrosoftEdge",
+            "browserName": "webview2",
             "ms:edgeOptions": {
                 "binary": str(app_path),
-                "useWebView": True,
                 "args": ["-workspace", str(workspace_root)],
             },
         }
