@@ -65,26 +65,38 @@ type RootServices struct {
 type ServiceFactory func(trustedRoot string) (RootServices, error)
 
 type ReadOnly struct {
-	roots     map[string]string
-	rootInfos map[string]os.FileInfo
-	refs      []WorkspaceRef
-	services  ServiceFactory
+	roots        map[string]string
+	rootInfos    map[string]os.FileInfo
+	refs         []WorkspaceRef
+	services     ServiceFactory
+	xeadObserver XeadObservationObserver
 }
 
 func NewReadOnly(paths []string) (*ReadOnly, error) {
-	return NewReadOnlyWithFactory(paths, nil)
+	return NewReadOnlyWithFactoryAndObserver(paths, nil, nil)
+}
+
+func NewReadOnlyWithXeadObserver(paths []string, observer XeadObservationObserver) (*ReadOnly, error) {
+	return NewReadOnlyWithFactoryAndObserver(paths, nil, observer)
 }
 
 // NewReadOnlyWithFactory preserves the normal Operation path when factory is
 // nil. A non-nil factory receives only roots selected from the startup allowlist.
 func NewReadOnlyWithFactory(paths []string, factory ServiceFactory) (*ReadOnly, error) {
+	return NewReadOnlyWithFactoryAndObserver(paths, factory, nil)
+}
+
+// NewReadOnlyWithFactoryAndObserver retains the same allowlist boundary for
+// normal operations, generated services, and the Studio-only source observer.
+func NewReadOnlyWithFactoryAndObserver(paths []string, factory ServiceFactory, observer XeadObservationObserver) (*ReadOnly, error) {
 	if len(paths) == 0 {
 		return nil, errors.New("at least one -workspace is required")
 	}
 	host := &ReadOnly{
-		roots:     make(map[string]string, len(paths)),
-		rootInfos: make(map[string]os.FileInfo, len(paths)),
-		services:  factory,
+		roots:        make(map[string]string, len(paths)),
+		rootInfos:    make(map[string]os.FileInfo, len(paths)),
+		services:     factory,
+		xeadObserver: observer,
 	}
 	seen := map[string]bool{}
 	for i, path := range paths {
