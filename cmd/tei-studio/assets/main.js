@@ -73,6 +73,7 @@ observeButton.addEventListener("click", async () => {
   const id = selectedID();
   const relativePath = xeadPath.value.trim();
   if (!id || !relativePath) return;
+  clearPreview();
   previewState.textContent = "観察中…";
   await previewScope.run(() => api.observeXead(id, relativePath), (response) => {
     if (!response?.ok) {
