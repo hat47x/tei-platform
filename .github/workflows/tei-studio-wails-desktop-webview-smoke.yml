@@ -90,8 +90,8 @@ jobs:
       GOWORK: off
       CANDIDATE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
       PR_BASE_SHA: ${{ github.event.pull_request.base.sha || '' }}
-      STUDIO_DESKTOP_EXE: ${{ runner.temp }}\tei-studio-desktop-webview-smoke.exe
-      STUDIO_SMOKE_EVIDENCE_DIR: ${{ runner.temp }}\tei-studio-desktop-webview2-smoke
+      STUDIO_DESKTOP_EXE: ${{ github.workspace }}\tei-studio-desktop-webview-smoke.exe
+      STUDIO_SMOKE_EVIDENCE_DIR: ${{ github.workspace }}\tei-studio-desktop-webview2-smoke
     steps:
       - name: Checkout exact candidate
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -157,6 +157,7 @@ jobs:
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: tei-studio-desktop-webview2-smoke-${{ github.run_id }}-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/tei-studio-desktop-webview2-smoke/**
+          path: ${{ github.workspace }}/tei-studio-desktop-webview2-smoke/**
           retention-days: 7
           if-no-files-found: warn
+
