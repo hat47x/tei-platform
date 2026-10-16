@@ -25,6 +25,7 @@
 | [`reference-authoring-auxiliary/`](reference-authoring-auxiliary/) | 設計の補助情報（用語・改訂履歴・注記・区分）の置き場所と意味の版の境界の確認 |
 | [`reference-authoring-witness-openssh/`](reference-authoring-witness-openssh/) | OpenSSHを使った記述作業の参照確認 |
 | [`reference-authority-evidence-trust/`](reference-authority-evidence-trust/) | 情報源の権威と検証根拠の信頼境界の確認 |
+| [`reference-batch-completeness/`](reference-batch-completeness/) | 一括導出の行別失敗と集合演算の結果完全性を、NULL・未取得・評価失敗を区別して判定する読取り専用の参照（#1724） |
 | [`reference-business-dfd/`](reference-business-dfd/) | 業務データフロー図の読取り専用参照 |
 | [`reference-business-procedure-check/`](reference-business-procedure-check/) | 業務手順と担当・機能・データの整合確認 |
 | [`reference-capability-invocation-context/`](reference-capability-invocation-context/) | Capability実行時の文脈境界の確認 |
