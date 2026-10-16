@@ -385,7 +385,7 @@ Conformanceは`docs/conformance/business-lifecycle-v1.md`へまとめ、少な�
   - 機械的に保証する範囲を「状態値が新しい定義で正当であること」までとし、飛ばした工程の出力など業務上の前提は保証しないと明記する。
   - 時間や外部イベントを待つ遷移を扱う段階では、遷移がどの定義の版の下で起きたかを記録する。遷移履歴の保持方法と合わせて判断する。
 
-  参考: kintoneは、該当する記録がある状態の削除や、ある記録で実行できる操作が無くなる変更を拒否する（[公式ヘルプ](https://jp.kintone.help/k/ja/app/process/change_processsettings.html)）。Camunda 8は進行中の業務を既定では開始時の版で完了させ、別の版へ移す場合は要素の対応を明示させて構造を検査するが、移行後の業務上の前提は保証しないと明記している（[移行の説明](https://docs.camunda.io/docs/components/concepts/process-instance-migration/)）。
+  参考: kintoneは、該当する記録がある状態の削除や、ある記録で実行できる操作が無くなる変更を拒否する（[公式ヘルプ](https://jp.kintone.help/k/ja/app/process/change_processsettings.html)）。Camunda 8は進行中の業務を既定では開始時の版で完了させ、別の版へ移す場合は要素の対応を明示させて構造を検査するが、移行時には要素対応と構造上の制約が検証される。業務上の前提が満たされるかは別途受入条件で確認する（後半はTEI側の設計上の整理）（[移行の説明](https://docs.camunda.io/docs/components/concepts/process-instance-migration/)）。
 
 ## 関連文書
 
