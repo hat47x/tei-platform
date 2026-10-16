@@ -43,6 +43,7 @@
 | [`reference-purpose-preflight/`](reference-purpose-preflight/) | 開発目的に対する業務規則の未確定・実行時値待ちを合成データで区別 |
 | [`reference-rule-candidate-discovery/`](reference-rule-candidate-discovery/) | 入出力例から複数の規則仮説を提示し、境界例で割れる点を示す読取り専用の参照 |
 | [`reference-runtime-change-instruction/`](reference-runtime-change-instruction/) | 動作中の画面からの変更指示を設計対象へ結び付け、見た目・業務規則・認可の変更を分ける参照 |
+| [`reference-scenario-state-diff/`](reference-scenario-state-diff/) | 型付きDataset/Snapshotの検証と、Scenario期待値・観測の差の読取り専用参照 |
 | [`reference-scoped-query-preflight/`](reference-scoped-query-preflight/) | 認可済み行スコープを物理SQLへ適用できるかを実行前に判定する参照 |
 | [`reference-tool-neutral-development/`](reference-tool-neutral-development/) | 特定の開発道具に依存しない作業経路の確認 |
 
