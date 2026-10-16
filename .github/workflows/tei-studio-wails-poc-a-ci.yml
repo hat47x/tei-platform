@@ -121,6 +121,52 @@ jobs:
           curl -fsS --max-time 5 http://127.0.0.1:43123/ > "$RUNNER_TEMP/studio-index.html"
           grep -q 'TEI Studio' "$RUNNER_TEMP/studio-index.html"
 
+          runtime_url=http://127.0.0.1:43123/wails/runtime
+          runtime_call='{"object":0,"method":0,"args":{"call-id":"studio-ci-list-workspaces","methodName":"main.StudioBridge.ListWorkspaces","args":[]}}'
+          runtime_status=$(curl -sS --max-time 5 -o "$RUNNER_TEMP/studio-runtime-success.json" -w '%{http_code}' -X POST "$runtime_url" \
+            -H 'Host: 127.0.0.1:43123' \
+            -H 'Origin: http://127.0.0.1:43123' \
+            -H 'Content-Type: application/json' \
+            --data "$runtime_call")
+          if [ "$runtime_status" != 200 ]; then
+            echo "successful runtime RPC returned HTTP $runtime_status, expected 200" >&2
+            cat "$RUNNER_TEMP/studio-runtime-success.json" >&2
+            exit 1
+          fi
+          python3 - "$RUNNER_TEMP/studio-runtime-success.json" <<'PY'
+          import json
+          import sys
+
+          with open(sys.argv[1], encoding="utf-8") as response_file:
+              response = json.load(response_file)
+          assert response.get("ok") is True, response
+          assert response.get("value") == [{"id": "workspace-1", "label": "workspace"}], response
+          PY
+
+          assert_runtime_denied() {
+            local name="$1"
+            local url="$2"
+            local origin="$3"
+            local host="$4"
+            local resolve_args=("${@:5}")
+            local status
+            status=$(curl -sS --max-time 5 "${resolve_args[@]}" -o "$RUNNER_TEMP/studio-runtime-${name}.json" \
+              -w '%{http_code}' -X POST "$url" \
+              -H "Host: $host" \
+              -H "Origin: $origin" \
+              -H 'Content-Type: application/json' \
+              --data "{\"object\":0,\"method\":0,\"args\":{\"call-id\":\"studio-ci-${name}\",\"methodName\":\"main.StudioBridge.ListWorkspaces\",\"args\":[]}}")
+            if [ "$status" != 403 ]; then
+              echo "runtime ${name} boundary returned HTTP $status, expected 403" >&2
+              cat "$RUNNER_TEMP/studio-runtime-${name}.json" >&2
+              return 1
+            fi
+          }
+
+          assert_runtime_denied origin http://127.0.0.1:43123/wails/runtime http://attacker.example:43123 127.0.0.1:43123
+          assert_runtime_denied host http://127.0.0.1:43123/wails/runtime http://127.0.0.1:43123 attacker.example:43123
+          assert_runtime_denied host-origin http://attacker.example:43123/wails/runtime http://attacker.example:43123 attacker.example:43123 --resolve attacker.example:43123:127.0.0.1
+
       - name: 依存checksum証拠を保持（ソースには自動反映しない）
         if: success()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
