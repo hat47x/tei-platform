@@ -56,6 +56,12 @@ jobs:
           check-latest: false
           cache: false
 
+      - name: CLI実行ファイルを作成
+        shell: bash
+        run: |
+          set -euo pipefail
+          go build -mod=readonly -o "$RUNNER_TEMP/tei-cli" ./cmd/tei
+
       - name: Node 22を固定
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
@@ -130,6 +136,12 @@ jobs:
           grep -q 'TEI Studio' "$RUNNER_TEMP/studio-index.html"
 
           "$RUNNER_TEMP/tei-studio-playwright/bin/python" test/browser_smoke.py http://127.0.0.1:43123/
+
+          python3 test/cli_catalog_parity.py \
+            --cli "$RUNNER_TEMP/tei-cli" \
+            --server "$RUNNER_TEMP/tei-studio-server" \
+            --workspace ../../reference/workspace \
+            --base-url http://127.0.0.1:43123
 
           runtime_url=http://127.0.0.1:43123/wails/runtime
           runtime_call='{"object":0,"method":0,"args":{"call-id":"studio-ci-list-workspaces","methodName":"main.StudioBridge.ListWorkspaces","args":[]}}'
