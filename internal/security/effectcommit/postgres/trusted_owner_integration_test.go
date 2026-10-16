@@ -4,8 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"sync"
 	"testing"
+
+	"github.com/jackc/pgx/v5/pgxpool"
 
 	"tei/internal/security/effectcommit"
 	"tei/internal/security/legacyauthorization"
@@ -270,4 +273,76 @@ func TestTrustedOwnerRoutineDistinguishesVersionConflictOwnerDenialAndInvalidInp
 			}
 		})
 	}
+}
+
+func TestTrustedOwnerRoutineAckLossReconnectedReplay(t *testing.T) {
+	f := openFixture(t)
+	installTrustedOwnerFixture(t, f)
+	ctx := context.Background()
+	req := f.req
+	req.Payload = []byte("3")
+	grant := f.grant(t)
+	owner, err := NewWithTrustedOwnerRoutine(f.pool, f.schema)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// The existing uncertainProvider commits to the real PostgreSQL server
+	// and loses only its acknowledgement. It is not a synthetic database.
+	initial, err := (effectcommit.Runner{Provider: uncertainProvider{inner: owner}}).Execute(ctx, req, grant)
+	var uncertain *effectcommit.CommitUncertainError
+	if initial != (effectcommit.Result{}) || !errors.As(err, &uncertain) {
+		t.Fatalf("lost commit acknowledgement was not uncertain: %+v err=%v", initial, err)
+	}
+	assertOneOwnerCommit := func(t *testing.T, fixture *postgresFixture) {
+		t.Helper()
+		available, reservations, history, outbox, receipts := ownerCounts(t, fixture)
+		value, version := fixture.readObject(t)
+		if available != 0 || reservations != 1 || history != 1 || outbox != 1 ||
+			receipts != 1 || value != "3" || version != 1 {
+			t.Fatalf("missing/duplicated durable owner effects: stock=%d reservations=%d history=%d outbox=%d receipts=%d object=%q version=%d",
+				available, reservations, history, outbox, receipts, value, version)
+		}
+	}
+	assertOneOwnerCommit(t, f)
+
+	// Recreate the Provider and authorization reader on an independent DB
+	// connection pool, not using a process-local receipt/permission cache.
+	reconnectedPool, err := pgxpool.New(ctx, os.Getenv("TEI_EFFECT_POSTGRES_DSN"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer reconnectedPool.Close()
+	if err := reconnectedPool.Ping(ctx); err != nil {
+		t.Fatal(err)
+	}
+	fresh := *f
+	fresh.pool = reconnectedPool
+	freshGrant := fresh.grant(t) // security.authorize again on the new pool
+	reconnected, err := NewWithTrustedOwnerRoutine(reconnectedPool, f.schema)
+	if err != nil {
+		t.Fatal(err)
+	}
+	runner := effectcommit.Runner{Provider: reconnected}
+	lookup, err := runner.Lookup(ctx, req, freshGrant)
+	if err != nil || lookup.Status != effectcommit.StatusReplayed ||
+		lookup.Receipt.OperationID != req.OperationID || lookup.Receipt.ResourceVersion != 1 {
+		t.Fatalf("fresh-pool receipt lookup: %+v err=%v", lookup, err)
+	}
+	retry, err := runner.Execute(ctx, req, freshGrant)
+	if err != nil || retry.Status != effectcommit.StatusReplayed || retry.Receipt != lookup.Receipt {
+		t.Fatalf("identical operation retried after ack loss: %+v err=%v", retry, err)
+	}
+	assertOneOwnerCommit(t, &fresh)
+
+	// An identical OperationID must not disclose its receipt or perform
+	// another owner action when bound to different request contents.
+	different := req
+	different.Payload = []byte("2")
+	conflict, err := runner.Execute(ctx, different, freshGrant)
+	if err != nil || conflict.Status != effectcommit.StatusConflict ||
+		conflict.Receipt != (effectcommit.Receipt{}) {
+		t.Fatalf("operation identity collision was not rejected: %+v err=%v", conflict, err)
+	}
+	assertOneOwnerCommit(t, &fresh)
 }

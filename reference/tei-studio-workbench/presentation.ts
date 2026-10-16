@@ -17,6 +17,29 @@ export type Catalog = {
   worldFingerprint: string;
   sourceIndexFingerprint: string;
 };
+export type XeadObservation = {
+  totalTables: number;
+  totalFields: number;
+  totalDiagnostics: number;
+  tables: Array<{
+    source: { kind: string; id: string };
+    name: string;
+    fields: Array<{
+      source: { kind: string; id: string };
+      name: string;
+      dataType?: { kind: string; id: string };
+    }>;
+  }>;
+  diagnostics: Array<{
+    code: string;
+    element: string;
+    attribute: string;
+    occurrences: number;
+  }>;
+};
+const MAX_XEAD_TABLES = 200;
+const MAX_XEAD_FIELDS = 2000;
+const MAX_XEAD_DIAGNOSTICS = 500;
 export function summarizeFindings(findings: readonly Finding[] | null) {
   if (findings === null)
     return { verified: false, errors: 0, warnings: 0, text: "未検証" };
@@ -39,6 +62,79 @@ function subject(value: unknown): Subject {
   )
     throw Error("INVALID_SUBJECT_RESPONSE");
   return { kind: v.kind, id: v.id };
+}
+function optionalString(value: unknown): string {
+  if (value === undefined) return "";
+  if (typeof value !== "string") throw Error("INVALID_XEAD_RESPONSE");
+  return value;
+}
+function sourceRef(value: unknown): { kind: string; id: string } {
+  const v = record(value);
+  if (typeof v.sourceKind !== "string" || typeof v.sourceID !== "string")
+    throw Error("INVALID_XEAD_RESPONSE");
+  return { kind: v.sourceKind, id: v.sourceID };
+}
+/** Keeps only source metadata approved for the read-only Workbench view. */
+export function readXeadObservation(raw: unknown): XeadObservation {
+  const value = record(raw), observation = record(value.observation);
+  const limits = value.authorityLimits;
+  const requiredLimits = [
+    "xead-observation-is-not-canonical-meaning",
+    "xead-source-identifiers-are-not-canonical-identities",
+    "xead-observation-does-not-authorize-edits-or-execution",
+    "unsupported-source-constructs-remain-unresolved",
+  ];
+  if (value.effect !== "read-only" || value.schemaVersion !== "tei.operations.xead-observation/v0" ||
+      !Array.isArray(limits) || !limits.every((limit) => typeof limit === "string") ||
+      !requiredLimits.every((limit) => limits.includes(limit)))
+    throw Error("INVALID_XEAD_RESPONSE");
+  const tables = observation.tables === undefined ? [] : observation.tables;
+  const diagnostics = observation.diagnostics === undefined ? [] : observation.diagnostics;
+  if (!Array.isArray(tables) || !Array.isArray(diagnostics))
+    throw Error("INVALID_XEAD_RESPONSE");
+  const visibleTables: XeadObservation["tables"] = [];
+  let totalFields = 0, visibleFields = 0;
+  for (const [tableIndex, rawTable] of tables.entries()) {
+    const table = record(rawTable);
+    const fields = table.fields === undefined ? [] : table.fields;
+    if (!Array.isArray(fields)) throw Error("INVALID_XEAD_RESPONSE");
+    totalFields += fields.length;
+    const visibleTableFields: XeadObservation["tables"][number]["fields"] = [];
+    for (const rawField of fields) {
+      const field = record(rawField);
+      const source = sourceRef(field.source), name = optionalString(field.name);
+      const dataType = field.dataType === undefined ? undefined : sourceRef(field.dataType);
+      if (tableIndex < MAX_XEAD_TABLES && visibleFields < MAX_XEAD_FIELDS) {
+        visibleTableFields.push({ source, name, ...(dataType === undefined ? {} : { dataType }) });
+        visibleFields++;
+      }
+    }
+    const source = sourceRef(table.source), name = optionalString(table.name);
+    if (tableIndex < MAX_XEAD_TABLES) visibleTables.push({ source, name, fields: visibleTableFields });
+  }
+  const visibleDiagnostics: XeadObservation["diagnostics"] = [];
+  for (const [index, rawDiagnostic] of diagnostics.entries()) {
+    const diagnostic = record(rawDiagnostic);
+    if (typeof diagnostic.code !== "string" || typeof diagnostic.element !== "string" ||
+        !Number.isSafeInteger(diagnostic.occurrences) || (diagnostic.occurrences as number) < 0 ||
+        (diagnostic.attribute !== undefined && typeof diagnostic.attribute !== "string"))
+      throw Error("INVALID_XEAD_RESPONSE");
+    if (index < MAX_XEAD_DIAGNOSTICS) {
+      visibleDiagnostics.push({
+        code: diagnostic.code,
+        element: diagnostic.element,
+        attribute: optionalString(diagnostic.attribute),
+        occurrences: diagnostic.occurrences as number,
+      });
+    }
+  }
+  return {
+    totalTables: tables.length,
+    totalFields,
+    totalDiagnostics: diagnostics.length,
+    tables: visibleTables,
+    diagnostics: visibleDiagnostics,
+  };
 }
 export const subjectKey = (s: Subject) => JSON.stringify([s.kind, s.id]);
 export function readCatalog(raw: unknown): Catalog {

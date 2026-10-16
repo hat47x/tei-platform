@@ -36,11 +36,12 @@ TEIの既存資産を案件単位で組み合わせる際、どの情報を再�
 - [E21：二つの利用先で既存の構成機構と残余判断を照合](E21_DUAL_CONSUMER_COMPOSITION_GAP.md) — SUIとTEIの実ソースを固定改訂で比較。共通Actionの再利用、未接続の本人委譲・実保存、Target／UI Kitの採用、別リポジトリの版対応を切り分ける。構成プロファイルの正式採用は未決定。
 - [E22：Nativeアプリケーションの最小Source候補を既存Driverで解決](E22_NATIVE_APPLICATION_CANDIDATE.md)／[Go回帰試験](e22_native_application_candidate_test.go) — 実SUI Stage 0を隔離コピーし、試験中だけApplication／Command／Capabilityを追加。欠落・重複・認可なしを拒否し、SUIの受理済み意味や実保存とは区別する。
 - [E23：構成選択と実行時認可からHTTPS委譲までの一要求接続](E23_SELECTED_HTTPS_ACTION_EVIDENCE.md)／[Go回帰試験](e23_selected_upstream_test.go) — 既存Host、選択提供者、共通Action、合成TLS受信先を接続。実SUIの権限・保存は未確認。
-- [E24：Native操作の型宣言と入力検証の境界](E24_NATIVE_INPUT_CONTRACT_BOUNDARY.md)／[Go回帰試験](e24_native_input_contract_boundary_test.go)
-- [E25：別リポジトリの更新影響を既存変更判定器で限定](E25_CROSS_REPOSITORY_REQUALIFICATION.md)／[Node.js回帰試験](e25_crossrepo_requalification.test.mjs) — 固定したSUIの実Git改訂1回の変更を、実装と試験・CIの出典別に再検証。二つ目のLockは作らない。 — 仮のSUI操作入力を既存の意味定義で記述し、型参照の欠落、アプリ側復号処理の欠落を個別に拒否。SUIの保存・認可には触れない。
+- [E24：Native操作の型宣言と入力検証の境界](E24_NATIVE_INPUT_CONTRACT_BOUNDARY.md)／[Go回帰試験](e24_native_input_contract_boundary_test.go) — 仮のSUI操作入力を既存の意味定義で記述し、型参照の欠落、アプリ側復号処理の欠落を個別に拒否。SUIの保存・認可には触れない。
+- [E25：別リポジトリの更新影響を既存変更判定器で限定](E25_CROSS_REPOSITORY_REQUALIFICATION.md)／[Node.js回帰試験](e25_crossrepo_requalification.test.mjs) — 固定したSUIの実Git改訂1回の変更を、実装と試験・CIの出典別に再検証。二つ目のLockは作らない。
 - [E26：受注明細とSUI候補の構成記述量を再現可能な数値で測定](E26_COMPOSITION_COST_BASELINE.md)／[Go回帰試験](e26_composition_cost_baseline_test.go) — 既存Web5ファイル、隔離SUI候補3ファイルの宣言・行数を測り、実導入作業と未測定項目を混同しない。
 - [E27：既存構成と残余選択をSource観測から区分](E27_RESIDUAL_SELECTION_AUDIT.md)／[監査器](e27_residual_selection_audit.mjs)／[Node.js回帰試験](e27_residual_selection_audit.test.mjs) — 実TEI SourceのE1既知14観測点を再利用し、既存4項目・Stage 0 1項目・別判断3項目・実行時検証2項目を区別。実際の工数とAI質問数は未計測。
 - [E28：構成作業の申告・質問・改修件数を未検証のまま分離](E28_WORKFLOW_MEASUREMENT.md)／[読み取り専用集計器](e28_workflow_measurement.mjs)／[Node.js回帰試験](e28_workflow_measurement.test.mjs) — E27のSource観測を再利用。比較する実案件の人手・AI質問数は推測せず、申告イベントと検証済み結果を区別する。
+- [E28：実作業とAIへの質問を未計測と区別して記録](E28_ATTESTED_WORK_MEASUREMENT.md)／[読取り計数器](e28_attested_work_measure.mjs)／[Node回帰試験](e28_attested_work_measure.test.mjs) — E27の判断IDを再利用し、範囲未記録の値はnull、比較不能な案件を無理に比較しない。
 - [E31：SUIとTEIの二つのGit基点を照合する作業比較](E31_PAIRED_SOURCE_BASELINE.md)／[読取り比較器](e31_paired_source_comparison.mjs)／[Node回帰試験](e31_paired_source_comparison.test.mjs) — 既存E28比較を再利用し、SUI改訂が異なる二方式の申告件数を同条件比較へ昇格させない。
 - [E32：実案件Go＋Lit試作PRの変更範囲を計測](E32_REAL_PROJECT_PLUGIN_FOOTPRINT.md)／[固定PR出典](e32_project_plugin_pr1567_snapshot.json)／[読取り集計器](e32_plugin_pr_footprint.mjs)／[Node回帰試験](e32_plugin_pr_footprint.test.mjs) — #1567の20ファイル・追加1,267行を機能・試験・配布物に分離し、正式Provider採用や生成AIとの往復数と混同しない。
 - [E33：Go＋Lit案件Pluginと既存Composition Provider・#951証拠の境界](E33_PROJECT_PLUGIN_WIRING_BOUNDARY.md)／[Go回帰試験](e33_project_plugin_wiring_boundary_test.go) — #1567の固定Sourceから正式Providerを捏造せず、既存Registryの候補・曖昧さ・証拠欠落・鮮度を検証。実業務Authorityは未成立。

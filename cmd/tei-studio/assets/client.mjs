@@ -5,6 +5,7 @@ const names = Object.freeze({
   catalog: "main.StudioBridge.CatalogWorkspace",
   validate: "main.StudioBridge.ValidateWorkspace",
   inspect: "main.StudioBridge.InspectSubject",
+  observeXead: "main.StudioBridge.ObserveXead",
 });
 
 export function createReadOnlyClient(callByName) {
@@ -29,5 +30,6 @@ export function createReadOnlyClient(callByName) {
     catalogWorkspace: (workspaceID, namespace = "") => call("catalog", workspaceID, namespace),
     validateWorkspace: (workspaceID) => call("validate", workspaceID),
     inspectSubject: (workspaceID, kind, subjectID) => call("inspect", workspaceID, kind, subjectID),
+    observeXead: (workspaceID, relativePath) => call("observeXead", workspaceID, relativePath),
   });
 }

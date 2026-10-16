@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"tei/internal/composition"
+	"tei/internal/core"
 )
 
 type Multiplicity string
@@ -21,7 +22,14 @@ const (
 
 // Type uses deliberately small nominal metadata, not a production type system.
 // Unit must be explicit, including "none" for dimensionless fields.
-type Type struct{ Name, Unit, IdentityDomain string }
+// SemanticRef is the exact canonical identity of an already selected semantic
+// type definition. This reference does not resolve or authenticate definitions;
+// the caller must obtain it from the Host's validated semantic set. In particular,
+// aliases with the same underlying representation remain distinct.
+type Type struct {
+	Name, Unit, IdentityDomain string
+	SemanticRef                core.CanonicalID
+}
 type Field struct {
 	ID             string
 	Type           Type
@@ -89,6 +97,23 @@ func Compare(from, to Field) Compatibility {
 	if !complete(from) || !complete(to) {
 		return Unknown
 	}
+	// Ref-backed and legacy nominal fields are not interchangeable. A shared
+	// primitive representation does not make two semantic aliases compatible.
+	// This checks declared identities only; it does not assert that either
+	// definition was issued by an authorized namespace owner.
+	if from.Type.SemanticRef != "" || to.Type.SemanticRef != "" {
+		if from.Type.SemanticRef == "" || to.Type.SemanticRef == "" {
+			return Unknown
+		}
+		if from.Type.SemanticRef != to.Type.SemanticRef {
+			return Incompatible
+		}
+		// Contradictory representation claims require a verified type
+		// projection. Do not infer a numeric conversion from the type name.
+		if from.Type.Name != to.Type.Name {
+			return Unknown
+		}
+	}
 	if from.Type.Unit != to.Type.Unit || from.Type.IdentityDomain != to.Type.IdentityDomain {
 		return Incompatible
 	}
@@ -124,6 +149,11 @@ func Compare(from, to Field) Compatibility {
 func complete(f Field) bool {
 	if f.ID == "" || f.Type.Name == "" || f.Type.Unit == "" {
 		return false
+	}
+	if f.Type.SemanticRef != "" {
+		if _, err := core.ParseCanonicalID(string(f.Type.SemanticRef)); err != nil {
+			return false
+		}
 	}
 	if f.Type.Name == "identity" && f.Type.IdentityDomain == "" {
 		return false

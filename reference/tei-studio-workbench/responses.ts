@@ -4,6 +4,7 @@ export function createResponseScope() {
   const lanes = new Map<string, number>();
   return {
     reset() { context++; lanes.clear(); },
+    invalidate(lane: string) { lanes.set(lane, (lanes.get(lane) ?? 0) + 1); },
     dispose() { disposed = true; context++; lanes.clear(); },
     async run<T>(lane: string, operation: () => Promise<T>, publish: (value: T) => void,
       failure: (error: unknown) => void): Promise<boolean> {
