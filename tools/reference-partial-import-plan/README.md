@@ -24,9 +24,25 @@ go run ./tools/reference-partial-import-plan/cmd/tei-partial-import-plan \
 - `importable`は、競合と未解決がない場合だけ`true`です。`applied`は常に`false`です。
 - 取込み元の選択に存在しないIDは`not-in-source`として残します。
 
+## 受理境界への接続
+
+`importable`で、すべてが`new`の計画は、Shared Acceptance（`tools/reference-shared-acceptance`）が受け付ける変更候補（`add-data`）へ変換できます。
+
+~~~text
+REV=$(go run ./tools/reference-shared-acceptance revision -workspace <取込み先> | grep -o 'sha256:[0-9a-f]\{64\}')
+go run ./tools/reference-partial-import-plan/cmd/tei-partial-import-plan   -source <取込み元> -target <取込み先> -data <Data ID,...>   -candidate-out candidate.json -base-revision "$REV"
+go run ./tools/reference-shared-acceptance preview -workspace <取込み先> -candidate candidate.json
+~~~
+
+- 候補は、出力先が既にあれば作りません。受理（`accept`）はこのツールでは行いません。
+- 現在の受理境界は追加の演算（`add-*`）だけを受け付けます。`update`と`identical`は候補にせず、拒否します。近い別の演算へ読み替えません。
+- 取込み元にしかない型（`type-only-in-source`）は`unresolved`のため、候補を作りません。型の取込みは未対応です。
+- 取込み元の2つのWorkspaceで、標準型だけを使うDataを追加する候補が、`preview`の全11段階を通ることを手元で確認しました。
+
 ## 未実装
 
-- 取込みの受理（#267）と、取込み先への反映
+- `update`の取込み（受理境界に該当する演算がありません）
+- 型の取込み
 - 型、機能、業務手順など、Data以外の定義
 - 取込み元が別の所有境界にある場合の診断（#1132）
 - 取込み記録の保存
