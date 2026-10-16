@@ -54,7 +54,18 @@ func serve(in io.Reader, out io.Writer, argv []string) error {
 	if expected == "" {
 		return errors.New("empty reference dispatch binding")
 	}
-	decoder := json.NewDecoder(io.LimitReader(in, 64<<10))
+	// Read one byte beyond the configured limit. Limiting the decoder's
+	// reader directly would turn an oversized request into a false EOF after
+	// a valid JSON object and silently ignore the untrusted suffix.
+	const maxRequestBytes = 64 << 10
+	raw, err := io.ReadAll(io.LimitReader(in, maxRequestBytes+1))
+	if err != nil {
+		return err
+	}
+	if len(raw) > maxRequestBytes {
+		return errors.New("project advisory process request exceeds size limit")
+	}
+	decoder := json.NewDecoder(strings.NewReader(string(raw)))
 	var req request
 	if err := decoder.Decode(&req); err != nil {
 		return err
