@@ -122,12 +122,17 @@ jobs:
           grep -q 'TEI Studio' "$RUNNER_TEMP/studio-index.html"
 
           runtime_url=http://127.0.0.1:43123/wails/runtime
-          runtime_call='{"object":0,"method":0,"args":{"call-id":"studio-ci-list-workspaces","methodName":"tei/cmd/tei-studio.StudioBridge.ListWorkspaces","args":[]}}'
-          curl -fsS --max-time 5 -X POST "$runtime_url" \
+          runtime_call='{"object":0,"method":0,"args":{"call-id":"studio-ci-list-workspaces","methodName":"main.StudioBridge.ListWorkspaces","args":[]}}'
+          runtime_status=$(curl -sS --max-time 5 -o "$RUNNER_TEMP/studio-runtime-success.json" -w '%{http_code}' -X POST "$runtime_url" \
             -H 'Host: 127.0.0.1:43123' \
             -H 'Origin: http://127.0.0.1:43123' \
             -H 'Content-Type: application/json' \
-            --data "$runtime_call" > "$RUNNER_TEMP/studio-runtime-success.json"
+            --data "$runtime_call")
+          if [ "$runtime_status" != 200 ]; then
+            echo "successful runtime RPC returned HTTP $runtime_status, expected 200" >&2
+            cat "$RUNNER_TEMP/studio-runtime-success.json" >&2
+            exit 1
+          fi
           python3 - "$RUNNER_TEMP/studio-runtime-success.json" <<'PY'
           import json
           import sys
@@ -150,7 +155,7 @@ jobs:
               -H "Host: $host" \
               -H "Origin: $origin" \
               -H 'Content-Type: application/json' \
-              --data "{\"object\":0,\"method\":0,\"args\":{\"call-id\":\"studio-ci-${name}\",\"methodName\":\"tei/cmd/tei-studio.StudioBridge.ListWorkspaces\",\"args\":[]}}")
+              --data "{\"object\":0,\"method\":0,\"args\":{\"call-id\":\"studio-ci-${name}\",\"methodName\":\"main.StudioBridge.ListWorkspaces\",\"args\":[]}}")
             if [ "$status" != 403 ]; then
               echo "runtime ${name} boundary returned HTTP $status, expected 403" >&2
               cat "$RUNNER_TEMP/studio-runtime-${name}.json" >&2
