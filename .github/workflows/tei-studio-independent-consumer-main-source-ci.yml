@@ -1,4 +1,4 @@
-name: TEI Studio #8 - independent consumer against exact main source
+name: "TEI Studio #8 - independent consumer against exact main source"
 
 on:
   pull_request:
