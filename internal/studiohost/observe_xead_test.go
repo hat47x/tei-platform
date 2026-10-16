@@ -64,6 +64,7 @@ func TestObserveXeadFailureDoesNotExposeObserverError(t *testing.T) {
 		{name: "typed projection error", err: &XeadObservationError{Code: XeadProjectionFailed}, code: XeadProjectionFailed, failureText: "X-TEA source observation failed"},
 		{name: "unknown typed error", err: &XeadObservationError{Code: "private-path-secret"}, code: "OPERATION_FAILED", failureText: "workspace operation failed"},
 		{name: "untyped error", err: errors.New("private-path-secret"), code: "OPERATION_FAILED", failureText: "workspace operation failed"},
+		{name: "typed nil error", err: typedNilXeadObservationError(), code: "OPERATION_FAILED", failureText: "workspace operation failed"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			observer := &observerFailure{err: tc.err}
@@ -92,6 +93,11 @@ func TestObserveXeadFailureDoesNotExposeObserverError(t *testing.T) {
 	if got.OK || got.Failure == nil || got.Failure.Code != "OPERATION_FAILED" || got.Failure.Message != "workspace operation failed" {
 		t.Fatalf("nil observer failure was not stable: %+v", got)
 	}
+}
+
+func typedNilXeadObservationError() error {
+	var err *XeadObservationError
+	return err
 }
 
 type observerFailure struct {
