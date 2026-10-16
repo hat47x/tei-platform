@@ -26,6 +26,9 @@ type referenceCommandScenarioRunner struct {
 	read          readScenarioRunner
 	store         *legacyauth.FixtureStore
 	authorization *legacyauthorization.FixtureRule
+	// Host-specific, opt-in gate for the accepted Web entry point. The
+	// legacy diagnostic runner remains explicitly synthetic.
+	hostEffect    func(context.Context, string) error
 	now           time.Time
 }
 
@@ -283,6 +286,15 @@ func (r *referenceCommandScenarioRunner) runAuthenticatedSubjectCommandWithEffec
 				return capabilityinvoke.BusinessResult{}, fmt.Errorf("effect-time authorization returned unexpected outcome %q", final.Outcome)
 			}
 			result.Stage = "command"
+		}
+		// Source acceptance is not permission to update business state.
+		// Revalidate the Host's independent current effect Grant at the
+		// concrete Adapter boundary, after business authorization.
+		if r.hostEffect != nil {
+			if err := r.hostEffect(invokeCtx, subjectID); err != nil {
+				result.Stage = "host-effect-grant-denied"
+				return capabilityinvoke.BusinessResult{}, errors.New("HOST_EFFECT_GRANT_UNAVAILABLE")
+			}
 		}
 		state[actualOrderID] = "submitted"
 		return capabilityinvoke.BusinessResult{
