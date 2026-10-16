@@ -172,7 +172,7 @@ Editorは、Modelerの機能定義から実行用の機能定義を作り込み�
 | 形式の版の表示が内容の世代と一致する | 保存時に、内容を変換しないまま`FormatVersion`属性だけを現行の値へ書き換える。新しすぎる版を開くとアプリケーションを終了する | 形式の版の表示だけで世代を判定しない。変換を一か所に置き、変換に成功したときだけ版を上げる（[#1920](https://github.com/hat47x/tei-platform/issues/1920)） |
 | 外部キーの列の対応は生成時に決まる | 関連の列の対応を保存せず、DDLの生成時に型、次に名前の一致で推測する。決まらなければ`(?)`を出力する | 列の対応を関連の意味として明示し、推測した対応は候補として示す（[#1803](https://github.com/hat47x/tei-platform/issues/1803)） |
 | 物理表の同期で値を保てる | 型やIDを変えた列は削除して追加し直す。同期にトランザクションを使わない | 値を失う操作を差分から分け、段階的な移行へ渡す（[意味の変更に伴う既存データの移行設計](SEMANTIC_CHANGE_DATA_EVOLUTION_DESIGN_2026-10.md)） |
-| 同時更新の検出は定義の外にある | 表定義に書かなくても、DDLの生成が楽観的ロック用の列を加え、実行系がその列で更新を絞る | 同時更新の検出方式と、更新件数が0件のときの業務結果を宣言する（[#1129](https://github.com/hat47x/tei-platform/issues/1129)） |
+| 楽観ロック列の有無は表属性で制御する | Editor M34では`Table@UpdateCounter`を参照し、未指定なら既定の`UPDCOUNTER`列をField一覧とは別にDDLへ追加する。`*NONE`なら追加せず、別名も指定できる。Driver M34では有効時に旧counter値をUPDATE/DELETE条件へ含める | 同時更新の検出方式と、更新件数が0件のときの業務結果を宣言する（[#1129](https://github.com/hat47x/tei-platform/issues/1129)） |
 
 表の最後の4行は、2026-10-15の追加調査で原ソースの該当処理を読んで加えた（ModelerとEditorは2章の版、実行系はXeadDriver `6c077773b74c6d7dbcc253835cf8d347e4ffb1ef`）。いずれもソースの静的な読解であり、旧Runtimeでの動作は確認していない（[#940](https://github.com/hat47x/tei-platform/issues/940)）。
 
