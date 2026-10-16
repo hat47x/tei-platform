@@ -160,4 +160,3 @@ jobs:
           path: ${{ github.workspace }}/tei-studio-desktop-webview2-smoke/**
           retention-days: 7
           if-no-files-found: warn
-
