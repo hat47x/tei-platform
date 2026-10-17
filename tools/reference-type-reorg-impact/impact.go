@@ -34,6 +34,14 @@ type ValidationUse struct {
 	Type       string `json:"type"`
 }
 
+// CapabilityUse records a Capability whose input or output type uses a merged type.
+type CapabilityUse struct {
+	Capability string `json:"capability"`
+	Direction  string `json:"direction"`
+	Name       string `json:"name,omitempty"`
+	Type       string `json:"type"`
+}
+
 type KeyUse struct {
 	Kind   string   `json:"kind"`
 	ID     string   `json:"id"`
@@ -52,6 +60,7 @@ type Impact struct {
 	Merge             Merge           `json:"merge"`
 	Attributes        []Use           `json:"attributes"`
 	Validations       []ValidationUse `json:"validations"`
+	Capabilities      []CapabilityUse `json:"capabilities"`
 	AliasTypes        []string        `json:"aliasTypes"`
 	Keys              []KeyUse        `json:"keys"`
 	Diagnostics       []Diagnostic    `json:"diagnostics"`
@@ -73,7 +82,7 @@ func Analyze(world ir.World, m Merge) (Impact, error) {
 	}
 	out := Impact{
 		Schema: Schema, StructureRevision: fmt.Sprintf("sha256:%x", sha256.Sum256(raw)), Merge: m,
-		Attributes: []Use{}, Validations: []ValidationUse{}, AliasTypes: []string{}, Keys: []KeyUse{}, Diagnostics: []Diagnostic{},
+		Attributes: []Use{}, Validations: []ValidationUse{}, Capabilities: []CapabilityUse{}, AliasTypes: []string{}, Keys: []KeyUse{}, Diagnostics: []Diagnostic{},
 		ReviewRequired: true,
 	}
 	from := map[string]bool{}
@@ -142,6 +151,24 @@ func Analyze(world ir.World, m Merge) (Impact, error) {
 					Data:       attrData[string(v.Attribute)],
 					Attribute:  string(v.Attribute),
 					Type:       attrType[string(v.Attribute)],
+				})
+			}
+		}
+	}
+
+	// Capabilities whose input or output type uses a merged type are also impacted.
+	for _, ns := range world.Semantics {
+		for _, c := range ns.Capabilities {
+			for _, in := range c.Inputs {
+				if from[string(in.Type)] {
+					out.Capabilities = append(out.Capabilities, CapabilityUse{
+						Capability: string(c.ID), Direction: "input", Name: string(in.Name), Type: string(in.Type),
+					})
+				}
+			}
+			if from[string(c.Output)] {
+				out.Capabilities = append(out.Capabilities, CapabilityUse{
+					Capability: string(c.ID), Direction: "output", Type: string(c.Output),
 				})
 			}
 		}
@@ -238,6 +265,12 @@ func Analyze(world ir.World, m Merge) (Impact, error) {
 	})
 	sort.Slice(out.Validations, func(i, j int) bool {
 		return out.Validations[i].Validation < out.Validations[j].Validation
+	})
+	sort.Slice(out.Capabilities, func(i, j int) bool {
+		if out.Capabilities[i].Capability != out.Capabilities[j].Capability {
+			return out.Capabilities[i].Capability < out.Capabilities[j].Capability
+		}
+		return out.Capabilities[i].Direction < out.Capabilities[j].Direction
 	})
 	sort.Slice(out.Diagnostics, func(i, j int) bool {
 		if out.Diagnostics[i].Code != out.Diagnostics[j].Code {
