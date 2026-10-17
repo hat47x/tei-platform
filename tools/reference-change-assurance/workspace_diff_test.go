@@ -190,8 +190,6 @@ func TestWorkspaceDiffRuleDriftRetainsKnownConsumerImpact(t *testing.T) {
 	}
 
 	report.Consumer = consumer
-	report.Impact.Affected = []modelref.Affected{{Changed: changed, Consumer: consumer, Reason: "version-changed"}}
-
 	report.Impact.Affected = nil
 	got = classifyWorkspaceDiff(report, graph, graph, true)
 	if got.Action != "unresolved" || len(got.ReasonCodes) != 1 ||
