@@ -275,3 +275,74 @@ UnitBuildInput (概念上)
 - 動的更新と差分ファームウェアの共通化、全Target共通のサンドボックス契約。
 
 この文書から直ちにCanonical種別、固定Target列挙、第二のLock/Resolver、大規模なRuntime Frameworkを新設しない。#259の第二Target比較、#943のBuild根拠、#951のCapability解決、#1016の案件構成の実証で不足が判明した部分だけを、Owner側で採用判断する。
+
+## 13. 多言語・多方式の抽象化を支える構成原理（2026-10-17、評価候補）
+
+本節は、ネイティブ実行、.NETアセンブリ、Javaクラス/JAR、Wasm、および将来の実行方式に対して、**同じ構成原理を保てるか**を評価するための論点である。既存の[ADR-0032](../adr/0032-composition-kernel-replacement.md)の目標アーキテクチャに従うが、ここで公開API・共通ABI・Plugin記述構文・Runtimeの固定列挙を決定しない。製品Runtimeへの移行完了も意味しない。
+
+重要なのは、あらゆる実装を単一の`Invoke(JSON)`へ押し込むことではない。**提供・要求・明示的な接続・実行・結果・解放という共通する関係**を抽象化し、具体的な呼出し形式と配備形態を交換可能にすることである。
+
+### 13.1 独立させる軸
+
+| 対象 | 共通の構成で保持するもの | 特定方式に委ねるもの |
+| --- | --- | --- |
+| Service Contract | 識別、版、形、要求・結果・失敗・未確定、作用、Scope | 言語のクラス名・メソッド名・Wasm export名 |
+| Consumer requirement | 必要な契約、局所名、必須性、多重度、明示Binding | Plugin packageの読み込み順 |
+| Provider | 契約を実装する論理的な提供元と適合の根拠 | 個別の言語・ライブラリ実装 |
+| Artifact | exactな内容、構築条件、依存閉包、来歴 | DLL/JAR/実行バイナリ/Wasmの形式 |
+| Runtime Engine | 実行装置の識別、版、必要機能、Target適合 | CLR/JVM/Wasm Engine/OS loaderの実装 |
+| Hostと配置 | 現在権限、資源、隔離、fencing、通信境界 | 同一Process、独立Process、RPC等の選択 |
+| Generation・Effect Scope | 呼出し中の世代固定、準備、切替、後始末と失敗の識別 | 各Engineのインスタンス・ロード・解放 |
+
+Plugin、Provider、Artifact、Engine、Hostの同一性は、一対一とは限らない。同じDLL/JARやEngineを二つのProviderが利用しても、契約適合と現在権限はそれぞれの利用側・Scopeで評価する。一方、同一PluginからTarget別の複数Artifactを構築してよい。Runtime Engineの照合は、そのEngineが読み込むDLL/JARおよび推移的な依存の検証に代わらない。
+
+### 13.2 「接続」の三つの別の責務
+
+1. **意味上の対応付け**：業務・分野固有の属性とService Contract項目が何を意味するか。項目名・基本型が一致しても同等性や受理を推定しない。[入出力対応付けの設計候補](PLUGIN_DEPENDENCY_IO_MAPPING_DESIGN_2026-10.md)の候補・受理の区別を維持する。
+2. **Providerの選択**：どの契約・版・Scope・利用側をどの実装へ結ぶか。既存Composition、契約適合とLockを利用し、第二のResolver・Authorityを設けない。
+3. **物理的な呼出し**：選択された実装へ値を渡すためのC#引数、Javaメソッド、Wasm import/export、JSON/RPC等の符号化。Adapterは業務意味の受理を代行しない。
+
+Providerの準備時に決める構成パラメータ、要求ごとの入力、Hostが与える現在の実行文脈は別の寿命と所有者を持つ。主体・権限・秘密情報へのアクセスを、利用者やPluginが渡す通常の値から昇格させない。
+
+言語境界では、数値の精度・単位、日時、null・欠損・取得不能・未確定、多重度・機密区分、および**Business Result / Execution Error / Observation / Unknown**を区別する。例外や通信断を業務拒否や未実行へ暗黙変換しない。任意JSONを通せることは、型・意味の契約適合の証拠ではない。
+
+### 13.3 相互作用の差を失わない
+
+純粋な計算、長期間維持するデータ接続、イベント購読、UI部品の寄与は同じ呼出し方式ではない。単発`Invoke`へ強制すると、購読解除・参照の寿命・資源の所有・集合の意味を失う可能性がある。一方で、相互作用の種類をKernelの固定`CapabilityKind`へ際限なく追加することも避ける。
+
+共通化するのは**契約に対する提供・要求・選択・作用域・来歴の規律**であり、相互作用ごとの型付きの詳細はService ContractとProvider/Adapter側に残す。この考え方で異なる相互作用を十分に記述できるかは、具体例と負例で評価する。ここから新しい万能Interfaceや固定種別を採用しない。
+
+### 13.4 方式別に残す検証事項
+
+| 実行形態 | 最初の実証候補 | 未確認の差 |
+| --- | --- | --- |
+| Native | 静的結合または独立実行ファイル | 実Artifact、OS権限、更新単位 |
+| .NET | 独立した.NET HostでDLLをロード | Runtime版、DLL・依存閉包、ロード/解放、例外、隔離 |
+| JVM | 独立したJVM HostでJAR/クラスをロード | JVM版、依存JAR、ClassLoader、解放、例外 |
+| Wasm | 既存WASI参照実装と適合するEngine | Module/Component/WIT、Host import、資源制約 |
+| UI/イベント | Target固有のHost/Adapter | 単発呼出しではない相互作用、破棄/購読解除 |
+
+.NET/JVMの初期試験は、既存の[Process接続Reference](../../tools/reference-composition-process-bridge/README.md)で使用する選択・権限・Artifact照合の責務を再利用できるか調べる。ただし、そこで使われる**配備処理用の旧Process JSON carrier**を全言語・全Serviceに共通する公開ABIにしない。`dotnet`/`java`実行ファイルの指紋だけで、読み込むDLL/JARの指紋が確認済みとみなさない。
+
+### 13.5 汎用化を反証可能な形で評価する
+
+既存の[Composition Kernel](../../reference/composition-kernel/README.md)、[項目対応付け](../../reference/composition-io-mapping/README.md)、[実Process接続](../../tools/reference-composition-process-bridge/README.md)、[配備依存閉包](../../reference/runtime-packaging/README.md)のReferenceを使い、当初は業務意味の受理を要しない**副作用なしの独立した読み取り専用Contract**を用いる。以下は設計評価の順序であって、新しいGateではない。
+
+| 段階 | 比較対象 | 汎用性が成立しない兆候 |
+| --- | --- | --- |
+| A | 同じContractとConsumerで二つのProviderを明示的に切替 | 新ProviderごとにCore固定列挙や固有分岐が増える |
+| B | Nativeと別Process上の.NET/JVM候補による同じ要求・結果 | 実装言語のメソッド名が意味の正本に入る |
+| C | 欠損/null/Unknown、精度、Shape変更、Scope違い | 黙った値変換、旧受理の再利用、曖昧選択 |
+| D | Artifact・Runtimeだけ交換しHost権限失効と起動回数を照合 | 拒否後に子Process/Providerを起動する |
+| E | 購読または長寿命サービスへ相互作用を変える | 解放・多重度・寿命が一回呼出しに隠される |
+| F | 同じ論理的要求を静的Targetと動的Hostへ具体化 | 静的成果物にも不要なLoader/管理機構が残る |
+
+追加の負例候補は、非対応Runtime、異なるDLL/JAR、依存閉包の漏れ、応答の偽造、通信断の結果不明、世代切替、drain/cleanup失敗である。既存Referenceの合格と将来の.NET/JVM製品対応、正式Host権限、常駐サービスの無停止更新は別の証拠とする。
+
+採否では対応言語の数より、**新しい契約・実装・Runtime/Targetを追加しても意味の正本やKernelの抽象規律を変えずに済むか**を重視する。Core変更面積の分析には既存の[#1251](https://github.com/hat47x/tei-platform/issues/1251)の観点を再利用する。
+
+### 13.6 責務と未決を維持する
+
+Contract/Conformanceは[#951](https://github.com/hat47x/tei-platform/issues/951)、Composition/Generationは[#1223](https://github.com/hat47x/tei-platform/issues/1223)、Artifact/Buildは[#943](https://github.com/hat47x/tei-platform/issues/943)、Runtime/Target/Trustの差は[#259](https://github.com/hat47x/tei-platform/issues/259)に戻す。Providerの申告、契約の意味上の受理、Artifact検証、現在のHost権限を相互に代用しない。
+
+標準Adapter、CLR/JVM直接ホスティング、Wasm Component/WIT、製品用の項目対応付けの記述構文、相互作用ごとの型付き契約は**未決**である。これらを新しい固定種別、第二のLock、独立Resolver、公開仕様として先取りしない。
