@@ -341,6 +341,18 @@ func planEdits(s snapshot, ops []Operation) ([]SourceEdit, []Diagnostic) {
 				continue
 			}
 			path = location.File
+		case opSetSymbol:
+			_, owner, ok := symbolSubject(s, op.Kind, op.ID)
+			if !ok {
+				diagnostics = append(diagnostics, Diagnostic{Code: "SYMBOL_SUBJECT_NOT_FOUND", Message: fmt.Sprintf("%s %s は既存のCanonical Worldにありません", op.Kind, op.ID), Subject: key})
+				continue
+			}
+			location, ok := s.loaded.Sources["semantic-data:"+owner]
+			if !ok {
+				diagnostics = append(diagnostics, Diagnostic{Code: "SYMBOL_SOURCE_NOT_FOUND", Message: fmt.Sprintf("%s %s を宣言したsource fileを特定できません", op.Kind, op.ID), Subject: key})
+				continue
+			}
+			path = location.File
 		default:
 			path = op.Placement
 			if path == "" {
@@ -385,6 +397,16 @@ func planEdits(s snapshot, ops []Operation) ([]SourceEdit, []Diagnostic) {
 				if err != nil {
 					return nil, []Diagnostic{{Code: "BUSINESS_RULE_REMOVAL_FAILED", Message: err.Error(), Subject: operationKey(op)}}
 				}
+				removed.WriteString(removedText)
+				continue
+			}
+			if op.Op == opSetSymbol {
+				var removedText string
+				content, removedText, err = replaceSymbolToken(content, op)
+				if err != nil {
+					return nil, []Diagnostic{{Code: "SYMBOL_REPLACEMENT_FAILED", Message: err.Error(), Subject: operationKey(op)}}
+				}
+				inserted.WriteString(op.Symbol)
 				removed.WriteString(removedText)
 				continue
 			}

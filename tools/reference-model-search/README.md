@@ -22,5 +22,23 @@ go run ./tools/reference-model-search/cmd/tei-model-search \
 ## 未実装
 
 - 記述文、表示用の文言、スクリプト本体の検索（Workspaceの該当構造の確認後に追加します）
-- 変更案の受理（#267）と、置換後の再投影
+- 変更案の受理（#267）の実行と、受理後の再投影
 - 識別子（論理識別子）の変更案（意味の変更として別の扱いが必要です）
+
+## 受理境界への接続（#1935）
+
+置換案は、Shared Acceptance（`tools/reference-shared-acceptance`）の`set-symbol`演算の変更候補へ変換できます。
+
+~~~text
+REV=$(go run ./tools/reference-shared-acceptance revision -workspace <対象> | grep -o 'sha256:[0-9a-f]\{64\}')
+go run ./tools/reference-model-search/cmd/tei-model-search -workspace <対象> \
+  -text OrderLine -exact -kinds data -replace Order_Line \
+  -candidate-out candidate.json -base-revision "$REV"
+go run ./tools/reference-shared-acceptance preview -workspace <対象> -candidate candidate.json
+~~~
+
+- 候補は、出力先が既にあれば作りません。受理（`accept`）はこのツールでは行いません。
+- 新しい名称から導かれる識別子の末尾の部分が、対象の識別子と異なる改名は、識別子の変更になるため、候補にせず拒否します。
+- 衝突などの診断が残る置換案、適用済みの置換案、編集のない置換案は、候補にしません。
+- 置換案の構造の版（`baseRevision`）と、受理境界の`baseModelRevision`は別の値です。後者を`-base-revision`で渡します。
+- `OrderLine` → `Order_Line` の候補が、`preview`の全11段階を通ることを手元で確認しました（`accept`は実行していません）。

@@ -6,6 +6,7 @@
   "scripts": {
     "test": "node --test *.test.mjs",
     "audit:imports": "node audit-imports.mjs main.mjs notes.mjs journal-graph.mjs",
+    "audit:workbench-reuse": "node audit-workbench-reuse.mjs",
     "check:components": "node check-components.mjs",
     "build": "node bundle.mjs",
     "build:graph-legacy": "node build-graph.mjs",
