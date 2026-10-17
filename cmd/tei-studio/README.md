@@ -8,7 +8,7 @@ Issue [#1824](https://github.com/hat47x/tei-platform/issues/1824)、担当#2。�
 - `cmd/tei-studio/main.go`: `StudioBridge`の5つの読取り専用メソッドをWails serviceへ手登録する、PoC Aの通常ビルド入口。
 - `cmd/tei-studio/window_{desktop,server}.go`: 同じGo serviceをWeb（`-tags server`）とDesktopで使用。Webは`127.0.0.1`固定です。環境変数`WAILS_SERVER_HOST`が明示された場合、値が`127.0.0.1`以外なら起動を拒否します。
 - `cmd/tei-studio/xead_observer.go`: `internal/xeadsource`を使うStudio専用の読取り・投影adapter。nested moduleの外へこのadapter依存を広げず、`internal/operations`から分離します。
-- `cmd/tei-studio/assets`: Go側へ埋め込む単純な初期画面。`frontend`の正式なUI/manifest/lock/登録箇所は#3が所有します。これは#3が差し替えるまでの確認用bootstrapです。
+- `cmd/tei-studio/assets`: Go側へ埋め込むbootstrapとWorkbench画面。Desktopは`/workbench/`を初期表示し、Serverの既定ページは従来どおりbootstrapです。Workbenchは既存の読取り専用5操作を使うStudioの開発・作成Host画面であり、生成Desktop Application Targetや正式な業務アプリではありません。
 
 ### Server HTTP呼出しの境界
 
@@ -72,7 +72,7 @@ Wails JavaScript service名（初期bootstrap）：`main.StudioBridge`。公開�
 
 ## 非目標・未検証
 
-PoC A CIのブラウザースモークは、埋込みの初期画面をChromiumで開き、`/wails/runtime.js`の読込み、`Call.ByName`から`main.StudioBridge.ListWorkspaces`への実HTTP呼出し、応答に基づくWorkspace選択肢と画面表示までを確かめます。これはServer版のブラウザー経路に限る証拠です。Desktop WebView、認証・業務認可、複数利用者の分離、Catalog画面のブラウザー操作、WebSocket経路、人的受入は確認しません。Origin/Host拒否は従来どおりcurlで検証し、このブラウザースモークは拒否動作を追加で証明しません。
+Server版のブラウザースモークは、埋込みのbootstrapとWorkbenchをChromiumで開きます。Workbenchでは`/wails/runtime.js`経由のCatalog→Inspect→Validate、直接の子モデル選択、Host応答と画面のcanonical投影・診断一覧の一致を確認します。これはServer版のHTTPブラウザー経路です。Windows専用Desktopスモークは実Wails WebView2でWorkbenchを開き、埋込み資産の読込み、既存Host BridgeのCatalog→Inspect→Validate、読み取り専用のcanonical投影と診断一覧の一致、WebView2の正常終了を確認します。両スモークは固定Workspaceでの自動確認であり、認証・業務認可・Principal/Workspace分離、共有Web Host、OS配布・署名、人的受入は確認しません。Origin/Host拒否は従来どおり別のcurl検査で扱います。
 
 別のGo単体試験では、同じ参照Workspaceに対するCLIの`model catalog`結果とStudio `ReadOnly.CatalogWorkspace`結果を、`namespace=sales`と全namespaceの両方で比較します。CLIのJSON envelopeを除いた構造化結果を比較し、項目順と権限制約項目の順序は正規化しますが、同じSubjectの重複項目は保持して比較します。`sales.order`のindexed状態、`sales.order.customer`の親・詳細・indexed状態・非曖昧性、namespace指定時のapplication項目除外、全namespace指定時のapplication項目、Workspace読込失敗の分類と部分結果がないことを確認します。重複IDを持つ小さなWorkspaceでも、両経路が2件を保持し、どちらも曖昧として示すことを確認します。ModelCatalogには診断配列がないため、診断内容は比較対象に含みません。このGo単体試験だけでは、共通operationの独立した正しさ、CLI実行ファイルとWails HTTP/Bridge経路、認証・権限同等性は証明しません。
 
