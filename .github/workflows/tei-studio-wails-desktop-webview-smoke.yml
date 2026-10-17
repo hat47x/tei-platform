@@ -1,0 +1,162 @@
+name: TEI Studio Wails Desktop WebView smoke
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/tei-studio-wails-desktop-webview-smoke.yml
+      - cmd/tei-studio/**
+      - go.mod
+      - go.sum
+      # Exact Go production import closure from cmd/tei-studio, studiohost, operations and xeadsource.
+      - internal/application/**
+      - internal/consumerimpact/**
+      - internal/core/**
+      - internal/database/**
+      - internal/dependency/**
+      - internal/deployment/**
+      - internal/environment/**
+      - internal/index/**
+      - internal/ir/**
+      - internal/modelref/**
+      - internal/operations/**
+      - internal/permission/**
+      - internal/plugin/**
+      - internal/query/**
+      - internal/realization/**
+      - internal/releaseplan/**
+      - internal/resource/**
+      - internal/semantic/**
+      - internal/sourceindex/**
+      - internal/stdlib/**
+      - internal/studiohost/**
+      - internal/subject/**
+      - internal/syntax/**
+      - internal/validation/**
+      - internal/workspace/**
+      - internal/xeadsource/**
+      - reference/workspace/**
+  pull_request:
+    branches: [main]
+    types: [opened, reopened, synchronize, ready_for_review]
+    paths:
+      - .github/workflows/tei-studio-wails-desktop-webview-smoke.yml
+      - cmd/tei-studio/**
+      - go.mod
+      - go.sum
+      # Exact Go production import closure from cmd/tei-studio, studiohost, operations and xeadsource.
+      - internal/application/**
+      - internal/consumerimpact/**
+      - internal/core/**
+      - internal/database/**
+      - internal/dependency/**
+      - internal/deployment/**
+      - internal/environment/**
+      - internal/index/**
+      - internal/ir/**
+      - internal/modelref/**
+      - internal/operations/**
+      - internal/permission/**
+      - internal/plugin/**
+      - internal/query/**
+      - internal/realization/**
+      - internal/releaseplan/**
+      - internal/resource/**
+      - internal/semantic/**
+      - internal/sourceindex/**
+      - internal/stdlib/**
+      - internal/studiohost/**
+      - internal/subject/**
+      - internal/syntax/**
+      - internal/validation/**
+      - internal/workspace/**
+      - internal/xeadsource/**
+      - reference/workspace/**
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tei-studio-desktop-webview-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  desktop-webview2-smoke:
+    runs-on: windows-2022
+    timeout-minutes: 30
+    env:
+      GOTOOLCHAIN: local
+      GOWORK: off
+      CANDIDATE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      PR_BASE_SHA: ${{ github.event.pull_request.base.sha || '' }}
+      STUDIO_DESKTOP_EXE: ${{ github.workspace }}\tei-studio-desktop-webview-smoke.exe
+      STUDIO_SMOKE_EVIDENCE_DIR: ${{ github.workspace }}\tei-studio-desktop-webview2-smoke
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+
+      - name: Confirm exact candidate head
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $actual = (git rev-parse HEAD).Trim()
+          "CANDIDATE_HEAD_SHA=$env:CANDIDATE_HEAD_SHA"
+          "CHECKOUT_SHA=$actual"
+          if ($actual -ne $env:CANDIDATE_HEAD_SHA) { throw 'Checkout does not match the exact candidate head' }
+
+      - name: Pin Go 1.26.9
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: go.mod
+          check-latest: false
+          cache: false
+
+      - name: Prepare diagnostic artifact directory
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          New-Item -ItemType Directory -Force -Path $env:STUDIO_SMOKE_EVIDENCE_DIR | Out-Null
+          @(
+            "EVENT=RUNNER_SETUP"
+            "GITHUB_SHA=$env:GITHUB_SHA"
+            "GITHUB_RUN_ID=$env:GITHUB_RUN_ID"
+            "IMAGE_OS=$env:ImageOS"
+            "IMAGE_VERSION=$env:ImageVersion"
+            "OS=$([System.Environment]::OSVersion.VersionString)"
+          ) | Set-Content -Path (Join-Path $env:STUDIO_SMOKE_EVIDENCE_DIR 'workflow-setup.txt') -Encoding utf8
+
+      - name: Build ordinary Wails Desktop executable
+        shell: pwsh
+        working-directory: cmd/tei-studio
+        run: |
+          $ErrorActionPreference = 'Stop'
+          go version
+          if ((go version) -notmatch 'go1\.26\.9') { throw 'Go 1.26.9 is required' }
+          go mod tidy
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          git diff --exit-code -- go.mod go.sum
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          go build -mod=readonly -o $env:STUDIO_DESKTOP_EXE .
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (-not (Test-Path -LiteralPath $env:STUDIO_DESKTOP_EXE)) { throw 'Desktop executable was not created' }
+          Get-FileHash -Algorithm SHA256 -LiteralPath $env:STUDIO_DESKTOP_EXE | Format-List
+
+      - name: Launch Wails Desktop through WebView2 WebDriver
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          python cmd/tei-studio/test/desktop_webview_smoke.py $env:STUDIO_DESKTOP_EXE $env:STUDIO_SMOKE_EVIDENCE_DIR
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Upload WebView2 startup observations
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: tei-studio-desktop-webview2-smoke-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ github.workspace }}/tei-studio-desktop-webview2-smoke/**
+          retention-days: 7
+          if-no-files-found: warn

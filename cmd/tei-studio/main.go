@@ -48,8 +48,10 @@ func (b *StudioBridge) ObserveXead(workspaceID, relativePath string) studiohost.
 func main() {
 	var paths workspaces
 	var port int
+	var webviewDebugPort int
 	flag.Var(&paths, "workspace", "read-only allowed workspace directory (repeatable)")
 	flag.IntVar(&port, "port", 43123, "loopback HTTP port for server build")
+	flag.IntVar(&webviewDebugPort, "webview-debug-port", 0, "loopback WebView2 debugging port for desktop smoke checks")
 	flag.Parse()
 	// Wails server mode honors WAILS_SERVER_HOST over ServerOptions.Host.
 	// Do not let inherited environment turn this local-only PoC into a public listener.
@@ -59,12 +61,19 @@ func main() {
 	if port < 1 || port > 65535 {
 		log.Fatal("port must be between 1 and 65535")
 	}
+	if webviewDebugPort < 0 || webviewDebugPort > 65535 {
+		log.Fatal("webview-debug-port must be 0 (disabled) or between 1 and 65535")
+	}
 	if err := validateBuildConfiguration(); err != nil {
 		log.Fatal(err)
 	}
 	host, err := newStudioHost(paths)
 	if err != nil {
 		log.Fatal(err)
+	}
+	windowsOptions := application.WindowsOptions{}
+	if webviewDebugPort > 0 {
+		windowsOptions.AdditionalBrowserArgs = []string{fmt.Sprintf("--remote-debugging-port=%d", webviewDebugPort)}
 	}
 	app := application.New(application.Options{
 		Name: fmt.Sprintf("TEI Studio PoC A (%d workspace(s))", len(paths)),
@@ -79,6 +88,7 @@ func main() {
 			Handler:    application.AssetFileServerFS(assets),
 			Middleware: studioAssetMiddleware(port),
 		},
+		Windows: windowsOptions,
 	})
 	setupWindow(app)
 	if err := app.Run(); err != nil {
