@@ -95,3 +95,15 @@ go test -count=1 -run '^TestCanonicalAuthorizationGatesRealSelectedProcessReceip
 **重要な境界**：今回使う独立プラグインは既存の*配備処理の受領器*であり、受注を登録するプラグインではありません。プロセスとの接続は、既存の`DeploymentExecutor`が理解する合成された受領要求を用いているため、`order_entry.submit_order`という業務Actionの**実行契約と一致した物理プロセス実装になったと判定してはいけません**。HTTP 202は受領試験の成功であり、業務操作が完了した証拠ではありません。業務効果もDB変更も行いません。これは、認証・認可・提供者選択・プロセス境界の縦断的な接続と非漏洩を試す限定的な結合試験です。
 
 実際の別プロセスに業務Actionを委譲するには、業務Actionの意味契約・要求／結果形式と、物理的なプロセス呼出し形式を独立させる必要があります。旧式の配備機能分類を汎用業務Actionへ流用することや、HTTPで承認した利用者を外部プロセスにそのまま自称させることは認めません。実IdP、Cookie／CSRF、本番のLease・OS隔離・署名・実行結果の永続確認も対象外です。
+
+## 言語の異なる実現を同じ契約で比較する限定Reference（#1223）
+
+`neutral_multiruntime_test.go` は、同じ**合成の読み取り専用Contract**（ASCII小文字を大文字へ変換）に対して、Goのプロセス内実装と実JVM子プロセスを一つずつ接続する。Provider選択、現在のHostによるテスト用拒否、Generation保持と切替、終了時の解放には既存`internal/composition`を使い、別のResolverやAuthorityを設けない。JVM側は`testdata/java/NeutralAsciiUpperProvider.java`をJDKで一時構築する。Go側のArtifact照合値は**試験実行ファイル**のものであり、独立配布されたPluginの証拠ではない。
+
+```sh
+go test -count=1 -run '^TestNeutralContractSwitchesGoAndRealJVMWithoutKernelChanges$' ./tools/reference-composition-process-bridge -v
+```
+
+この試験にはGoプロジェクトの要求版と、JDKの`javac`・`java`が必要である。JDKがなければ明示的に**SKIP**し、Windowsも未適合のためSKIPする。GoのProcess内実装と実JVMで同じ合成値を返すこと、旧GenerationのLease、Host拒否後はJVMを起動しないこと、生成Classを変更したら起動前に拒否することを検査する。正本のContract発行・Provider適合・JVMや標準クラス群の真正性・実OS隔離・DLL/JARの依存閉包・製品Runtime受入・常駐無停止更新は**検証しない**。異言語の符号化比較用に使う一行ASCII通信は**試験専用**であり、旧DeploymentExecutorのJSON carrier、TEI公開ABI、正式なService Contract記述方式の代替ではない。
+
+設計の評価軸は[多言語・多方式の抽象化](../../plan/design/RUNTIME_TARGET_BINARY_COMPOSITION_DESIGN.md#13-多言語多方式の抽象化を支える構成原理2026-10-17評価候補)に従う。独立した.NET ProviderやWasm Component、複雑な項目対応付けは後段の比較対象として扱う。合成の試験成功を製品能力へ昇格させない。
