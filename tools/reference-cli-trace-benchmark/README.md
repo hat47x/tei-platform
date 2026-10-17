@@ -99,6 +99,40 @@ CPUプロファイル（largeの`full`を繰り返し実行、`go test -bench`�
 
 変更後に残る主な費用は、`BuildSourceIndex`（約0.25秒）、`index.Build`と`derivedbridge`（約0.19秒）、`Load`（約0.14秒）、`TraceDirect`の`summary`（約0.2秒）です。
 
+## 独立した処理の並行化（#1177の続き）
+
+ここまでの改善後に、largeの`TraceWorkspace`を処理の段ごとに壁時計で測ると（`summary`、9回の中央値）、各段は逐次に並び、合計は約810 msでした。
+
+| 段 | 時間 |
+| --- | ---: |
+| `workspace.Load` | 117 ms |
+| `index.Build`と`derivedbridge.FromIndex` | 98 ms |
+| `TraceDirect`の`summary`（グラフのスナップショット符号化を含む） | 224 ms |
+| `workspace.BuildSourceIndex` | 257 ms |
+| Worldの`json.Marshal` | 12 ms |
+| Source Indexの`json.Marshal` | 51 ms |
+| `sourcebridge.NewResolver` | 49 ms |
+
+`index.Build`が済んだ後は、(a)投影と`TraceDirect`、(b)`BuildSourceIndex`とSource Indexの直列化、(c)Worldの直列化は、互いの出力に依存せず、読み取りだけを行います。(a)と(b)は各約300 msです。そこで(b)と(c)を別のgoroutineで走らせ、(a)と並行にしました。goroutineは必ず合流してから戻り、エラーは従来の逐次処理と同じ優先順位（Trace、Source Index、reader、resolver、World直列化、Source Index直列化）で返します。出力と指紋は変わりません。
+
+`index.Build`はWorldを読み取り専用に扱いません。Environmentの解決が`plugin.NormalizeDefinition`を呼び、Worldのプラグイン定義の入れ子のスライスをその場で並べ替え、欄を再代入します。`Load`が既に正規化しているので内容は変わりませんが、並行する読取りとはデータ競合になります（`-race`が検出しました）。そのため、並行処理は`index.Build`の完了後に始めます。この順序を誤る欠陥は、内容の差ではなくデータ競合としてだけ現れるので、`.github/workflows/tei-studio-authoring-ci.yml`に`-race`つきの検査を加えました。
+
+確実に拒否される要求（direction・mode・offset・limitの誤り）は、`modelref.ValidateTraceRequest`で、何も構築する前に失敗させます。この検証が無いと、引数の誤りでも並行処理の完了を待つため、large（`mode`が不正）で約2.3〜2.5倍遅くなることを、独立した査読が測りました。`tei trace`を直接実行して測ると、変更前の224〜262 msに対して、変更後は124〜256 msでした（`Load`が支配的です）。
+
+変更前（main `af03b2c3`）と変更後（この変更のコード）を、同じ環境で交互に2回ずつ測りました（largeの5回の中央値、単位はms）。
+
+| 処理 | 変更前（1回目 / 2回目） | 変更後（1回目 / 2回目） |
+| --- | ---: | ---: |
+| summary | 879 / 662 | 532 / 509 |
+| full | 995 / 769 | 568 / 482 |
+| full -limit 1 | 1,077 / 732 | 503 / 505 |
+| leaf-summary | 882 / 760 | 458 / 588 |
+| leaf-full | 953 / 686 | 524 / 483 |
+
+出力byte数と件数は変わっていません。largeを`-race`つきで実行しても、競合は報告されませんでした。Windowsホストの負荷による揺れ（±10〜20%）があるため、数値は傾向として読んでください。
+
+代償は、ピーク常駐メモリが約125〜138 MiBから約154〜168 MiBへ、約25%増えることです。CPU時間の合計は変わらないか、`full`では増える傾向にあり（独立した査読の測定では、`full`のCPU時間が約2〜4割増えました）、短くなるのは壁時計です。コアが少ない環境では、短縮の幅は小さくなります。
+
 ## 出力が変わらないことの確認
 
 `golden_test.go`は、変更前の実装で出力した次のSHA-256を`testdata/golden.json`に固定し、変更後も一致することを調べます。small・mediumの両方で、5種の処理（`TraceWorkspace`の完全なJSON出力）、`BuildSourceIndex`の結果、ページ継続（700件ずつ取得して連結した行が一括`full`と一致）を含みます。あわせて、古い継続tokenとWorkspace更新後の継続tokenが`STALE_SNAPSHOT`で拒否されることを確認します。largeは変更前の実装で約2分かかるため、goldenには含めず手動計測に限ります。
@@ -121,9 +155,75 @@ largeの`TraceWorkspace`全体（5回の中央値）は、`summary`が826 / 815 
 
 変更後に残る主な費用は、`BuildSourceIndex`（約0.25秒）、`TraceDirect`の`summary`（約0.2秒）、`Load`（約0.14秒）、`index.Build`と`derivedbridge`（約0.1秒）です。
 
+## 識別子の検証の改善（#1177の続き）
+
+参照グラフ生成の改善後にlargeの`summary`を再度プロファイルすると、`core/identity.ParseCanonicalID`が`TraceWorkspace`全体の約9%（1.53秒／16.4秒）を占め、その大半は正規表現の照合（`regexp.MatchString`は約11%）でした。`workspace.Load`と、`BuildSourceIndex`内の再解析の双方が、属性ごとにこの検証を呼びます。
+
+`CanonicalID`（`^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)*$`）と`LocalName`（`^[a-z][a-z0-9_]*$`）の検証を、同じ言語を1回の走査で判定する形に変えました。周囲の空白を取り除く処理、エラー文言、`SymbolToSegment`の結果は変えていません。`core/identity/id_equivalence_test.go`が、正規表現を定義として保持し、英小文字・数字・`_`・`.`・大文字・空白・多バイト文字の全組合せ（長さ6まで）と乱数列20万件で、受理の可否・値・エラー文言の一致を照合します。
+
+1件の検証は約367 nsから約25 ns（確保はどちらも0回）になりました。
+
+変更前（main `af03b2c3`）と変更後（この変更のコード。試験ファイルの整形だけが計測後に加わりました）を、同じ環境で交互に2回ずつ測りました（largeの5回の中央値、単位はms。段別は1回）。
+
+| 処理 | 変更前（1回目 / 2回目） | 変更後（1回目 / 2回目） |
+| --- | ---: | ---: |
+| summary | 689 / 704 | 630 / 618 |
+| full | 754 / 855 | 660 / 665 |
+| full -limit 1 | 744 / 897 | 629 / 636 |
+| leaf-summary | 696 / 828 | 604 / 627 |
+| leaf-full | 671 / 720 | 617 / 609 |
+| 段 1 `workspace.Load` | 119 / 118 | 97 / 86 |
+| 段 4 `workspace.BuildSourceIndex` | 219 / 225 | 159 / 156 |
+
+出力byte数と件数は変わっていません。Windowsホストの負荷による揺れ（±10〜20%）があるため、全体の数値は傾向として読んでください。
+
 ## 実測していないこと
 
 - 実案件のWorkspaceは計測していません。合成Workspaceは1種類の構造（全attributeが1つのTypeを参照）で、実案件のファイルの大きさ、Subjectの種類、edgeの分布を代表しません。
 - WindowsやmacOSでの計測、ディスクが遅い環境、ネットワーク上のWorkspaceは計測していません。
 - `tei` CLI全体（プロセス起動、フラグ解析）は含めていません。`TraceWorkspace`とJSON符号化までです。
 - 全体テキスト生成後の外部ソート、オンディスクスプール、`limit`で行の並べ替えを省く方式、Revisionに束縛したキャッシュは、実装も評価もしていません。#1177の完了条件のうち、これらの評価とキャッシュ失効のfail-closed再現は未完了です。
+
+## 残る費用と、採用しなかった案（#1177）
+
+ここまでの改善で、largeの`TraceWorkspace`は変更前の約83秒から約0.4〜0.5秒になりました。残る各段は数十msで、一つを縮めても全体の1割に届きません。以下は、残る費用の内訳と、検討して採用しなかった案の記録です。同じ試みを繰り返さないために残します。数値は合成Workspaceでの実測で、Windowsホストの負荷による揺れがあります。
+
+### 段別の壁時計（main `af03b2c3`、`summary`、9回の中央値）
+
+| 段 | 時間 |
+| --- | ---: |
+| `workspace.Load` | 117 ms |
+| `index.Build`と`derivedbridge.FromIndex` | 98 ms |
+| `TraceDirect`（スナップショット符号化を含む） | 224 ms |
+| `workspace.BuildSourceIndex` | 257 ms |
+| Worldの`json.Marshal` | 12 ms |
+| Source Indexの`json.Marshal` | 51 ms |
+| `sourcebridge.NewResolver` | 49 ms |
+
+#1996の並行化では、投影と`TraceDirect`（約300 ms）と、`BuildSourceIndex`とSource Indexの直列化（約300 ms）が並び、全体の壁時計はこの長い方で決まります。
+
+### 内訳（main `a71de6d4`、CPUプロファイルと`go test -bench`）
+
+`BuildSourceIndex`単体は219 ms、確保36万回、72.8 MBでした。
+
+- `syntax.ParseSemanticFileAnchored`が約38%です。内訳は`ParseSemanticFile`が約23%、Subjectごとのanchorの探索（`semanticSubjectAnchors`）が約16.5%です。
+- 正規表現の照合（`regexp.MatchString`）が約19%です。`ParseCanonicalID`が約13.5%、`SymbolToSegment`が約8%です。後者のうち識別子の検証は#1992で解消します。
+- `Index.Normalize`が約8.5%、`Index.Validate`が約6.7%、`PositionAt`が約5%です。
+
+`TraceDirect`の`summary`単体は180 ms、確保31.7万回、105 MBでした。
+
+- `traceGraphSnapshotBytes`が約49%です。`json.Marshal`が約35.5%、文字列の整列が約7%です。
+- スナップショット全体のSHA-256が約15%です。指紋はこのバイト列の全体から求めるので、省略できません。
+
+### 採用しなかった案
+
+**スナップショットの符号化を手書きにする。** `traceGraphSnapshotBytes`は、nodeとedgeを1件ずつ`json.Marshal`し、整列して、文字列としてもう一度符号化しています。固定された形なので、同じバイト列を直接書き出す実装を試作しました。
+
+- 旧実装を定義として試験に残し、全256バイト、`U+3000`未満の全文字、乱数10万件、nodeとedge各3万件、300個のグラフで、バイト列が一致することを確かめました。
+- 速度は、node 4万件とedge 2万件のグラフで、約60 msから約39 ms（−35%）、確保は18万回から88回でした。一方、バッファが大きくなり、確保量は約45〜50 MBから約61 MBに増えました。
+- `TraceWorkspace`全体に対する短縮は約20 ms、割合にして約5%です。
+- 指紋の入力となるバイト列を自前の符号化で作る危険（Goの`encoding/json`の将来の変更との食い違い）に見合わないと判断し、採用しませんでした。
+
+**`BuildSourceIndex`をファイル単位で並列に解析する。** 解析は約38%を占め、ファイルは互いに独立なので、並列化の余地があります。単体では30%台の短縮が見込めます。ただし、`TraceWorkspace`では投影と`TraceDirect`の側も同じ長さなので、片方だけを縮めても全体の壁時計は変わりません。実装も計測もしていません。両方を縮めても全体の短縮は1割弱と見込まれ、並列化に伴うメモリの増加と複雑さに見合うかどうかを、実案件の計測を得てから判断するのが妥当です。
+
+**そのほか、評価していないもの。** `Load`と`BuildSourceIndex`の双方が同じファイルを解析します。`Load`が解析結果を保持して共有すれば、二重の解析を省けますが、`Load`だけを使う操作の負担が増えるため、設計の判断が要ります。
