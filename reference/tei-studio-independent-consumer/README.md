@@ -83,6 +83,6 @@ Ubuntu24.04 / Node24.21.0で`npm ci`、`npm test` **18/18 PASS・skip 0**、`npm
 
 ## mainのWorkbenchと同一ソースを使う独立確認
 
-追加CI `.github/workflows/tei-studio-independent-consumer-main-source-ci.yml` は、検証対象PRのbaseと同じ固定版 `4ca68d5d0114af239d0309a4e9870ee3ec3cbcfa` から専用checkoutを作り、同版のWorkbenchとReading Journal consumerがEditor・CodeMirror・Graph・Commandの同じソースファイルをimportすることを確認する。Git blobとSHA-256、consumerの依存グラフ、ビルド実績の入力module・lock hashを照合した後、固定版consumerの試験・build・実Chromium E2Eを実行する。workflow実行時にPR base SHAが固定版と異なれば失敗する（mainへのpushだけではこのPR workflowは自動起動しない）。固定版を更新するときは、workflow内のcheckout参照と環境変数、およびこの説明を同じ版に合わせる。
+追加CI `.github/workflows/tei-studio-independent-consumer-main-source-ci.yml` は、検証対象PRのbaseと同じ固定版 `eed6027003e10d36646469fc368ad0576e9e8641` から専用checkoutを作り、同版のWorkbenchとReading Journal consumerがEditor・CodeMirror・Graph・Commandの同じソースファイルをimportすることを確認する。Git blobとSHA-256、consumerの依存グラフ、ビルド実績の入力module・lock hashを照合した後、固定版consumerの試験・build・実Chromium E2Eを実行する。workflow実行時にPR base SHAが固定版と異なれば失敗する（mainへのpushだけではこのPR workflowは自動起動しない）。固定版を更新するときは、workflow内のcheckout参照と環境変数、およびこの説明を同じ版に合わせる。
 
 この確認はIssue #1824のPoC Cにおける「同じUI部品ソースをTEI Workspaceなしのconsumerで利用できる」という受入項目を支える。consumerのブラウザー動作とソース再利用を検査する範囲であり、Workbench自体のブラウザー起動、Wails Host/Desktop WebView、CLIとの同等性、Resolver統合、利用者価値、PoC C全体の受入完了は示さない。既存の固定Provider snapshot CIとWails PoC A CIは独立しており、このworkflowは両方を置き換えない。
