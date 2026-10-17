@@ -99,6 +99,40 @@ CPUプロファイル（largeの`full`を繰り返し実行、`go test -bench`�
 
 変更後に残る主な費用は、`BuildSourceIndex`（約0.25秒）、`index.Build`と`derivedbridge`（約0.19秒）、`Load`（約0.14秒）、`TraceDirect`の`summary`（約0.2秒）です。
 
+## 独立した処理の並行化（#1177の続き）
+
+ここまでの改善後に、largeの`TraceWorkspace`を処理の段ごとに壁時計で測ると（`summary`、9回の中央値）、各段は逐次に並び、合計は約810 msでした。
+
+| 段 | 時間 |
+| --- | ---: |
+| `workspace.Load` | 117 ms |
+| `index.Build`と`derivedbridge.FromIndex` | 98 ms |
+| `TraceDirect`の`summary`（グラフのスナップショット符号化を含む） | 224 ms |
+| `workspace.BuildSourceIndex` | 257 ms |
+| Worldの`json.Marshal` | 12 ms |
+| Source Indexの`json.Marshal` | 51 ms |
+| `sourcebridge.NewResolver` | 49 ms |
+
+`index.Build`が済んだ後は、(a)投影と`TraceDirect`、(b)`BuildSourceIndex`とSource Indexの直列化、(c)Worldの直列化は、互いの出力に依存せず、読み取りだけを行います。(a)と(b)は各約300 msです。そこで(b)と(c)を別のgoroutineで走らせ、(a)と並行にしました。goroutineは必ず合流してから戻り、エラーは従来の逐次処理と同じ優先順位（Trace、Source Index、reader、resolver、World直列化、Source Index直列化）で返します。出力と指紋は変わりません。
+
+`index.Build`はWorldを読み取り専用に扱いません。Environmentの解決が`plugin.NormalizeDefinition`を呼び、Worldのプラグイン定義の入れ子のスライスをその場で並べ替え、欄を再代入します。`Load`が既に正規化しているので内容は変わりませんが、並行する読取りとはデータ競合になります（`-race`が検出しました）。そのため、並行処理は`index.Build`の完了後に始めます。この順序を誤る欠陥は、内容の差ではなくデータ競合としてだけ現れるので、`.github/workflows/tei-studio-authoring-ci.yml`に`-race`つきの検査を加えました。
+
+確実に拒否される要求（direction・mode・offset・limitの誤り）は、`modelref.ValidateTraceRequest`で、何も構築する前に失敗させます。この検証が無いと、引数の誤りでも並行処理の完了を待つため、large（`mode`が不正）で約2.3〜2.5倍遅くなることを、独立した査読が測りました。`tei trace`を直接実行して測ると、変更前の224〜262 msに対して、変更後は124〜256 msでした（`Load`が支配的です）。
+
+変更前（main `af03b2c3`）と変更後（この変更のコード）を、同じ環境で交互に2回ずつ測りました（largeの5回の中央値、単位はms）。
+
+| 処理 | 変更前（1回目 / 2回目） | 変更後（1回目 / 2回目） |
+| --- | ---: | ---: |
+| summary | 879 / 662 | 532 / 509 |
+| full | 995 / 769 | 568 / 482 |
+| full -limit 1 | 1,077 / 732 | 503 / 505 |
+| leaf-summary | 882 / 760 | 458 / 588 |
+| leaf-full | 953 / 686 | 524 / 483 |
+
+出力byte数と件数は変わっていません。largeを`-race`つきで実行しても、競合は報告されませんでした。Windowsホストの負荷による揺れ（±10〜20%）があるため、数値は傾向として読んでください。
+
+代償は、ピーク常駐メモリが約125〜138 MiBから約154〜168 MiBへ、約25%増えることです。CPU時間の合計は変わらないか、`full`では増える傾向にあり（独立した査読の測定では、`full`のCPU時間が約2〜4割増えました）、短くなるのは壁時計です。コアが少ない環境では、短縮の幅は小さくなります。
+
 ## 出力が変わらないことの確認
 
 `golden_test.go`は、変更前の実装で出力した次のSHA-256を`testdata/golden.json`に固定し、変更後も一致することを調べます。small・mediumの両方で、5種の処理（`TraceWorkspace`の完全なJSON出力）、`BuildSourceIndex`の結果、ページ継続（700件ずつ取得して連結した行が一括`full`と一致）を含みます。あわせて、古い継続tokenとWorkspace更新後の継続tokenが`STALE_SNAPSHOT`で拒否されることを確認します。largeは変更前の実装で約2分かかるため、goldenには含めず手動計測に限ります。
