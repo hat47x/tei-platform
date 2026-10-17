@@ -22,8 +22,3 @@ type EmbeddedSQL struct {
 	Source        string                       `json:"source"`
 	ResultColumns []ResultColumnMapping        `json:"resultColumns,omitempty"`
 }
-
-type PhysicalReference struct {
-	Database core.CanonicalID `json:"database"`
-	Object   string           `json:"object"`
-}

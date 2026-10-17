@@ -8,7 +8,17 @@ Issue [#1824](https://github.com/hat47x/tei-platform/issues/1824)、担当#2。�
 - `cmd/tei-studio/main.go`: `StudioBridge`の5つの読取り専用メソッドをWails serviceへ手登録する、PoC Aの通常ビルド入口。
 - `cmd/tei-studio/window_{desktop,server}.go`: 同じGo serviceをWeb（`-tags server`）とDesktopで使用。Webは`127.0.0.1`固定です。環境変数`WAILS_SERVER_HOST`が明示された場合、値が`127.0.0.1`以外なら起動を拒否します。
 - `cmd/tei-studio/xead_observer.go`: `internal/xeadsource`を使うStudio専用の読取り・投影adapter。nested moduleの外へこのadapter依存を広げず、`internal/operations`から分離します。
-- `cmd/tei-studio/assets`: Go側へ埋め込む単純な初期画面。`frontend`の正式なUI/manifest/lock/登録箇所は#3が所有します。これは#3が差し替えるまでの確認用bootstrapです。
+- `cmd/tei-studio/assets`: Go側へ埋め込むbootstrapとWorkbench画面。Desktopは`/workbench/`を初期表示し、Serverの既定ページは従来どおりbootstrapです。Workbenchは既存の読取り専用5操作を使うStudioの開発・作成Host画面であり、生成Desktop Application Targetや正式な業務アプリではありません。
+
+### Server HTTP呼出しの境界
+
+Serverビルドでは、<code>/wails/runtime</code>へのHTTP RPC要求について、OriginをHTTPループバックURL、Hostを127.0.0.1と起動portから作る固定値にそれぞれ照合します。HTTPの標準port 80はブラウザーの直列化で省略されるため、期待値にも含めません。別portでは指定portを必須とします。<code>WAILS_SERVER_PORT</code>が定義されていれば空値や同じ値でも起動を拒否し、portは<code>-port</code>で指定します。初期ページや静的資産はOriginなしで取得できます。
+
+このOrigin/Host確認は<code>/wails/runtime</code>のHTTP RPC呼出しだけに適用されます。<code>/health</code>、<code>/wails/custom.js</code>、<code>/wails/events</code>、<code>/wails/stream/ws</code>はWails側の別経路で、このMiddlewareの対象外です。現在のStudioはイベント購読・業務イベントの発行・独自stream handler登録を使用していません。Origin/Host確認は接続者認証、業務操作の認可、利用者間の分離を提供しません。
+
+Wails `v3.0.0-beta.29`はWebSocketの許可設定を`WebSocketOriginPatterns`から作り、実装コメントでは使用するcoder/websocketが要求Hostと同じOriginを既定で許可すると説明しています（[固定版の実装](https://github.com/wailsapp/wails/blob/v3.0.0-beta.29/v3/pkg/application/websocket_server.go)）。これは本アプリの`127.0.0.1`固定照合とは別です。そのため、loopbackへ解決されるDNS別名をOriginとHostの両方に使えばhandshakeが通る可能性がありますが、これは実装からの推測であり、StudioでDNS別名やDNS rebindingを使った試験はしていません。現時点でStudioの業務イベント漏えいや操作実行が起きることは確認されていません。ブラウザースモークもWebSocket経路を確認しません。
+
+AssetOptions.Middlewareへ呼出し計数用handlerを接続し、後段からStudioBridge.ListWorkspacesを直接実行する単体試験もあります。専用CIでは別に、Server実listenerを通るWails RPC、初期画面の資産配信、実ブラウザーからの`ListWorkspaces`呼出しを検証します。
 
 ## バージョン・起動
 
@@ -62,7 +72,13 @@ Wails JavaScript service名（初期bootstrap）：`main.StudioBridge`。公開�
 
 ## 非目標・未検証
 
-Go1.26.9で生成した依存lockは原本へ反映しました。以前のhead `d070d76457f4140cf61f8c1c1357baf99a5530aa`では[専用CI #38575429096](https://github.com/hat47x/tei-platform/actions/runs/38575429096)のGo read-only・JS・CGO無効Serverビルド・loopback HTTP・公開listen拒否・Windows DesktopバイナリビルドがPASSしています。**原本lock反映後のheadへ過去のCI結果を自動転用しません**。#Workの実ブラウザー操作は過去head `fb52692dd518d930d696464e46962d8382969d7c`で確認されたもので、最新headでは未確認です。Desktop実WebView、Studio統合画面、2ブラウザー/Session隔離、OS配布/署名、CLI/Go/Wails実通信の意味照合、人的受入は未確認です。
+Server版のブラウザースモークは、埋込みのbootstrapとWorkbenchをChromiumで開きます。Workbenchでは`/wails/runtime.js`経由のCatalog→Inspect→Validate、直接の子モデル選択、Host応答と画面のcanonical投影・診断一覧の一致を確認します。これはServer版のHTTPブラウザー経路です。Windows専用Desktopスモークは実Wails WebView2でWorkbenchを開き、埋込み資産の読込み、既存Host BridgeのCatalog→Inspect→Validate、読み取り専用のcanonical投影と診断一覧の一致、WebView2の正常終了を確認します。両スモークは固定Workspaceでの自動確認であり、認証・業務認可・Principal/Workspace分離、共有Web Host、OS配布・署名、人的受入は確認しません。Origin/Host拒否は従来どおり別のcurl検査で扱います。
+
+別のGo単体試験では、同じ参照Workspaceに対するCLIの`model catalog`結果とStudio `ReadOnly.CatalogWorkspace`結果を、`namespace=sales`と全namespaceの両方で比較します。CLIのJSON envelopeを除いた構造化結果を比較し、項目順と権限制約項目の順序は正規化しますが、同じSubjectの重複項目は保持して比較します。`sales.order`のindexed状態、`sales.order.customer`の親・詳細・indexed状態・非曖昧性、namespace指定時のapplication項目除外、全namespace指定時のapplication項目、Workspace読込失敗の分類と部分結果がないことを確認します。重複IDを持つ小さなWorkspaceでも、両経路が2件を保持し、どちらも曖昧として示すことを確認します。ModelCatalogには診断配列がないため、診断内容は比較対象に含みません。このGo単体試験だけでは、共通operationの独立した正しさ、CLI実行ファイルとWails HTTP/Bridge経路、認証・権限同等性は証明しません。
+
+別のPoC A CI stepでは、root moduleから作成した実CLI実行ファイルと、実Listener上のWails `main.StudioBridge.CatalogWorkspace` HTTP RPCを同じ参照Workspaceで呼び、CLI stdoutの`result`とBridge responseの`value`全体を比較します。項目順を正規化して重複項目は保持し、`namespace=sales`、全namespace、空Workspaceのload failureを確認します。失敗時はCLI exit 2 / `WORKSPACE_LOAD_FAILED`と、HTTP 200 response内の`ok=false`、同一failure code・`stage=load`、値がないことを照合します。両経路が同じ`operations.CatalogWorkspace`を使うため、共通operation自体の独立した正しさは証明しません。loopbackでの自動HTTP試験であり、Catalog画面のブラウザー操作、認証・業務認可・Principal/Workspace分離、Desktop WebView、人的受入は未確認です。
+
+Go1.26.9で生成した依存lockは原本へ反映しました。以前のhead `d070d76457f4140cf61f8c1c1357baf99a5530aa`では[専用CI #38575429096](https://github.com/hat47x/tei-platform/actions/runs/38575429096)のGo read-only・JS・CGO無効Serverビルド・loopback HTTP・公開listen拒否・Windows DesktopバイナリビルドがPASSしています。**過去のCI結果を後続headへ自動転用しません**。#Workの実ブラウザー操作は過去head `fb52692dd518d930d696464e46962d8382969d7c`で行われました。今回のブラウザースモークも対象headのCI結果で判定します。Desktop実WebView、Studio統合画面、2ブラウザー/Session隔離、OS配布/署名、人的受入は未確認です。CLI実行ファイルとWails Server HTTP RPCのCatalog比較は上記の別stepで扱いますが、Desktop実WebViewの証拠にはなりません。
 
 Wails Server BuildはEvent broadcastとService singletonを持ちます。本PoCはユーザー別状態・副作用・イベントを持たず、HTTPをloopbackに限定しますが、それだけで通信主体の認証やWorkspace内容の機密保護は保証されません。Webを公開ネットワークへ出したり複数ユーザーへ提供したりしないでください。Workspace内部のシンボリックリンク、ファイル置換、OS境界はここで証明していません。検査は#10、意味比較は#6、PoC B builderは#1、PoC C画面構成は#3が担当します。
 

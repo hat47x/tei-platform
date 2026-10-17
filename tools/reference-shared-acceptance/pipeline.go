@@ -399,6 +399,9 @@ func expectedChanges(ops []Operation) []changeanalysis.SubjectChange {
 				changedApplications[op.ApplicationValidationUse.Application] = true
 				out = append(out, changeanalysis.SubjectChange{Kind: "application", ID: op.ApplicationValidationUse.Application, Change: "changed"})
 			}
+		case opSetSymbol:
+			// symbolだけの改名はCanonical IDを変えないため、同じsubjectのchangedになる。
+			out = append(out, changeanalysis.SubjectChange{Kind: op.Kind, ID: op.ID, Change: "changed"})
 		}
 	}
 	sortChanges(out)
@@ -410,7 +413,7 @@ func expectedCollections(ops []Operation) []string {
 	set := map[string]bool{}
 	for _, op := range ops {
 		switch op.Op {
-		case opAddValidation, opAddData, opAddRelation, opAddCandidateKey, opAddFunctionalDependency, opRemoveCandidateKey, opRemoveFunctionalDependency:
+		case opAddValidation, opAddData, opAddRelation, opAddCandidateKey, opAddFunctionalDependency, opRemoveCandidateKey, opRemoveFunctionalDependency, opSetSymbol:
 			set["semantics"] = true
 		case opAddApplication, opAddReferencePattern, opAddApplicationValidationUse:
 			set["applications"] = true

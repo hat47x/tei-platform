@@ -115,34 +115,6 @@ func (v Value) Field(name string) (Value, bool) {
 	return Value{}, false
 }
 
-func (v Value) ReplaceField(name string, replacement Value) (Value, bool, error) {
-	if v.Kind != ValueObject {
-		return Value{}, false, fmt.Errorf("replace-field requires object, got %s", v.Kind)
-	}
-	out := v.Clone()
-	for i := range out.Object {
-		if out.Object[i].Name == name {
-			out.Object[i].Value = replacement.Clone()
-			return out, true, nil
-		}
-	}
-	return out, false, nil
-}
-
-func (v Value) OmitField(name string) (Value, error) {
-	if v.Kind != ValueObject {
-		return Value{}, fmt.Errorf("omit-field requires object, got %s", v.Kind)
-	}
-	out := Value{Kind: ValueObject}
-	for _, field := range v.Object {
-		if field.Name == name {
-			continue
-		}
-		out.Object = append(out.Object, Field{Name: field.Name, Value: field.Value.Clone()})
-	}
-	return out, nil
-}
-
 func ParseJSON(raw []byte) (Value, error) {
 	if !utf8.Valid(raw) {
 		return Value{}, fmt.Errorf("JSON is not valid UTF-8")
