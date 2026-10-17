@@ -130,6 +130,7 @@
 | 場所 | 役割 |
 | --- | --- |
 | [`reference-example-slide/`](reference-example-slide/) | 例から関係図を組み立てる参照資料 |
+| [`reference-data-import-check/`](reference-data-import-check/) | 業務データ取込みの段階D0。タブ区切りの行の形をData定義に照らして検査する参照（#1807） |
 | [`reference-access-matrix/`](reference-access-matrix/) | Application × Dataの宣言された利用の対応表を導出する参照（#1803） |
 | [`reference-partial-import-plan/`](reference-partial-import-plan/) | 別Workspaceから選んだData定義の取込み結果を分類する読取り専用の参照（#1805） |
 | [`reference-table-definition-document/`](reference-table-definition-document/) | 受理済みの意味から表定義書を導出する参照（#1803） |
