@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
 
 	"tei/internal/index"
 	"tei/internal/modelref"
@@ -60,19 +61,58 @@ func TraceWorkspace(root string, key modelref.Key, options modelref.TraceOptions
 			return WorkspaceTrace{}, err
 		}
 	}
-	projection := derivedbridge.FromIndex(index.Build(loaded.World), key.Scope)
+	// A request that TraceDirect is certain to reject (direction, mode, offset
+	// or limit) fails here, before anything is built, as inspectCanonical's
+	// findings do. Otherwise it would wait for the Source Index side below.
+	if err := modelref.ValidateTraceRequest(key, options); err != nil {
+		return WorkspaceTrace{}, err
+	}
+	// index.Build is not read-only on the World: resolving an Environment calls
+	// plugin.NormalizeDefinition, which sorts the nested slices of the loaded
+	// plugin definitions in place and reassigns their fields. Load has already
+	// normalized them, so the content does not change, but the writes still
+	// race with any concurrent reader, and the World fingerprint has always
+	// been taken after them. Nothing else may read the World until Build has
+	// returned.
+	derived := index.Build(loaded.World)
+	// From here the World is only read. The Source Index side and the World
+	// serialization depend on neither the modelref projection nor the trace,
+	// and for a large Workspace each is as expensive as the trace itself, so
+	// they run beside it. Errors are still reported in the order the sequential
+	// steps used to fail: trace, Source Index, reader, resolver, World
+	// serialization, Source Index serialization. The goroutines do not recover:
+	// a panic in either ends the process, as it did on the caller's goroutine,
+	// but a caller that recovers cannot catch it.
+	var (
+		wg      sync.WaitGroup
+		side    sourceIndexSide
+		worldFP string
+		worldFE error
+	)
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		worldFP, worldFE = worldFingerprint(loaded.World)
+	}()
+	go func() {
+		defer wg.Done()
+		side = buildSourceIndexSide(root, loaded)
+	}()
+	projection := derivedbridge.FromIndex(derived, key.Scope)
 	// The operation-level expected fingerprint includes the Source Index and
 	// normalized World, unlike modelref's graph-only candidate token.
 	expected := options.ExpectedFingerprint
 	options.ExpectedFingerprint = ""
 	result, err := modelref.TraceDirect(projection.Graph, projection.Rules, key, options)
+	// Join before any return below, so that no goroutine outlives the call.
+	wg.Wait()
 	if err != nil {
 		return WorkspaceTrace{}, err
 	}
-	sources, err := workspace.BuildSourceIndex(root, loaded)
-	if err != nil {
-		return WorkspaceTrace{}, &ValidationFailure{Stage: StageSourceIndex, Err: err}
+	if side.buildErr != nil {
+		return WorkspaceTrace{}, &ValidationFailure{Stage: StageSourceIndex, Err: side.buildErr}
 	}
+	sources := side.sources
 	reader, err := readWorkspaceSource(root)
 	if err != nil {
 		return WorkspaceTrace{}, &ValidationFailure{Stage: StageSourceIndex, Err: err}
@@ -81,10 +121,13 @@ func TraceWorkspace(root string, key modelref.Key, options modelref.TraceOptions
 	if err != nil {
 		return WorkspaceTrace{}, &ValidationFailure{Stage: StageSourceIndex, Err: err}
 	}
-	worldFP, sourceFP, err := workspaceProjectionFingerprints(loaded.World, sources)
-	if err != nil {
-		return WorkspaceTrace{}, err
+	if worldFE != nil {
+		return WorkspaceTrace{}, worldFE
 	}
+	if side.fingerprintErr != nil {
+		return WorkspaceTrace{}, side.fingerprintErr
+	}
+	sourceFP := side.fingerprint
 	snapshotFP := workspaceTraceFingerprint(worldFP, sourceFP, result.SnapshotFingerprint)
 	if expected != "" && expected != snapshotFP {
 		return WorkspaceTrace{}, &modelref.TraceError{
@@ -136,6 +179,25 @@ func TraceWorkspace(root string, key modelref.Key, options modelref.TraceOptions
 		out.RelatedSources = append(out.RelatedSources, resolver.Locate(related))
 	}
 	return out, nil
+}
+
+// sourceIndexSide is the Source Index and its serialized fingerprint, built
+// from the loaded World and the Workspace files only.
+type sourceIndexSide struct {
+	sources        sourceindex.Index
+	fingerprint    string
+	buildErr       error
+	fingerprintErr error
+}
+
+func buildSourceIndexSide(root string, loaded workspace.Result) sourceIndexSide {
+	var side sourceIndexSide
+	side.sources, side.buildErr = workspace.BuildSourceIndex(root, loaded)
+	if side.buildErr != nil {
+		return side
+	}
+	side.fingerprint, side.fingerprintErr = sourceIndexFingerprint(side.sources)
+	return side
 }
 
 // Keep path normalization, symlink containment and regular-file checks at

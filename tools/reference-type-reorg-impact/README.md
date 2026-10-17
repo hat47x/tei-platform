@@ -25,6 +25,24 @@ go run ./tools/reference-type-reorg-impact/cmd/tei-type-reorg-impact \
 
 ## 未実装
 
-- 変更案の受理（#267）と再投影
+- 変更案の受理（#267）の実行と、受理後の再投影
 - 導出規則、Validationからの型の利用の追跡
 - 型の分割、置換
+
+## 受理境界への接続（#1935）
+
+統合案は、Shared Acceptanceの`set-attribute-type`演算の変更候補（統合元の型を使う属性ごとに一件）へ変換できます。
+
+~~~text
+REV=$(go run ./tools/reference-shared-acceptance revision -workspace <対象> | grep -o 'sha256:[0-9a-f]\{64\}')
+go run ./tools/reference-type-reorg-impact/cmd/tei-type-reorg-impact -workspace <対象> \
+  -from sales.order_line_id -into sales.order_id \
+  -candidate-out candidate.json -base-revision "$REV"
+go run ./tools/reference-shared-acceptance preview -workspace <対象> -candidate candidate.json
+~~~
+
+- 候補は、出力先が既にあれば作りません。受理（`accept`）はこのツールでは行いません。
+- 次の診断が一つでもある統合案は候補にしません: `underlying-representation-differs`、`physical-storage-differs`、`unknown-target-type`、`unknown-source-type`、`merge-into-itself`、`source-is-primitive`。統合元を基にした別名の型が残る統合、統合元を使う属性がない統合も拒否します。
+- `symbol-differs-meaning-unconfirmed`と、関連のキーの型に関する診断は、候補を妨げません。人が`Preview → Review → Accept`で判断します。
+- 影響の構造の版と、受理境界の`baseModelRevision`は別の値です。後者を`-base-revision`で渡します。
+- `sales.order_line_id`を`sales.order_id`へ統合する候補が、`preview`の全11段階を通ることを手元で確認しました（`accept`は実行していません）。基の表現が異なる統合は、候補を作る前に拒否されます。

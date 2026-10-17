@@ -47,6 +47,7 @@
 | [`SEMANTIC_CHANGE_DATA_EVOLUTION_DESIGN_2026-10.md`](SEMANTIC_CHANGE_DATA_EVOLUTION_DESIGN_2026-10.md) | 受理した意味の変更と既存の業務データの両立性の判定、影響の観測、段階的な移行。担当Issueは無く、評価待ち |
 | [`KNOWLEDGE_VARIATION_DESIGN_2026-10.md`](KNOWLEDGE_VARIATION_DESIGN_2026-10.md) | 再利用した知識の変動点、適用先での選択と分岐、再利用元の更新の扱い。RQ-027・RQ-029に対応する、評価待ちの設計 |
 | [`BUSINESS_DATA_IMPORT_DESIGN_2026-10.md`](BUSINESS_DATA_IMPORT_DESIGN_2026-10.md) | 人が用意した業務データと初期データの取込みを、通常のCapabilityの検証・認可・結果の分離を通して行うための段階案（[GitHub #1807](https://github.com/hat47x/tei-platform/issues/1807)） |
+| [`POSTGRES_CONSTRAINT_RENDERING_DESIGN_2026-10.md`](POSTGRES_CONSTRAINT_RENDERING_DESIGN_2026-10.md) | PostgreSQL提供元が主キー・一意制約・外部キーを出力できない現状と、制約の名前の決め方、段階的な解消案（[GitHub #1803](https://github.com/hat47x/tei-platform/issues/1803)） |
 | [`AUTHORING_TOOL_FEATURE_TRANSFER_MAP_2026-10.md`](AUTHORING_TOOL_FEATURE_TRANSFER_MAP_2026-10.md) | 既存の設計ツール（X-TEA ModelerとEditor）の機能を、担当Issue・新規Issue・移植しない機能へ仕分けた対応表（[GitHub #1802](https://github.com/hat47x/tei-platform/issues/1802)） |
 | [`AUXILIARY_DESIGN_INFORMATION_PLACEMENT_2026-10.md`](AUXILIARY_DESIGN_INFORMATION_PLACEMENT_2026-10.md) | 用語、改訂履歴、注記、区分などの補助情報を、意味の正本・導出・表示情報・運用の記録のどれに置くかの案（[GitHub #1808](https://github.com/hat47x/tei-platform/issues/1808)） |
 
