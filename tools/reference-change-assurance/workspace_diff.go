@@ -128,6 +128,22 @@ func reviewWorkspaceDiff(beforeRoot, afterRoot, scope string, consumer modelref.
 	return report, nil
 }
 
+// typedConsumerImpactReason preserves a known impact even if other projection
+// evidence prevents certification of the overall change scope.
+func typedConsumerImpactReason(impact modelref.ImpactReview, consumer modelref.Key) string {
+	for _, change := range impact.Changes {
+		if change.Key == consumer {
+			return "consumer-directly-changed"
+		}
+	}
+	for _, affected := range impact.Affected {
+		if affected.Consumer == consumer {
+			return "typed-reference-impact-candidate"
+		}
+	}
+	return ""
+}
+
 func graphHasConsumer(g modelref.Graph, consumer modelref.Key) bool {
 	for _, node := range g.Nodes {
 		if node.Key == consumer {
@@ -157,23 +173,20 @@ func classifyWorkspaceDiff(report WorkspaceDiffReport, before, after modelref.Gr
 	if !report.Impact.GraphValid {
 		return unresolved("typed-before-or-after-graph-invalid")
 	}
+	knownImpact := typedConsumerImpactReason(report.Impact, report.Consumer)
 	if report.BeforeRuleFingerprint != report.AfterRuleFingerprint {
-		return unresolved("typed-projection-rules-changed")
+		d = unresolved("typed-projection-rules-changed")
+		if knownImpact != "" {
+			d.ReasonCodes = append(d.ReasonCodes, knownImpact)
+		}
+		return d
 	}
 	if !graphHasConsumer(before, report.Consumer) && !graphHasConsumer(after, report.Consumer) {
 		return unresolved("consumer-not-in-either-typed-graph")
 	}
-	for _, change := range report.Impact.Changes {
-		if change.Key == report.Consumer {
-			d.Action, d.ReasonCodes = "recheck", []string{"consumer-directly-changed"}
-			return d
-		}
-	}
-	for _, affected := range report.Impact.Affected {
-		if affected.Consumer == report.Consumer {
-			d.Action, d.ReasonCodes = "recheck", []string{"typed-reference-impact-candidate"}
-			return d
-		}
+	if knownImpact != "" {
+		d.Action, d.ReasonCodes = "recheck", []string{knownImpact}
+		return d
 	}
 	if len(report.SourceChanges) > 0 {
 		if len(report.Impact.Changes) == 0 {
