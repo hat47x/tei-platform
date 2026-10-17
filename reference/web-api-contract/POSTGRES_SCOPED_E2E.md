@@ -55,6 +55,45 @@ go test -count=1 -run 'TestScoped.*AgainstIsolatedDatabase' -v ./reference/web-a
 
 **DSN未設定でのSKIPは実DB検証の成功ではない。** 実行したexact commit SHA、server_versionとGoバージョンを証拠に残す。
 
+## E11. 既定の並びは非公開列に従う（既知の限界の実証）
+
+`postgres_scoped_inference_integration_test.go`は、**公開していない項目の値が、公開項目だけを選んだ応答から推測できるか**を、実PostgreSQLで確かめる特性化試験である。この試験が固定するのは現在の参照実装の既知の限界であり、望ましい動作の証明ではない。
+
+### 経緯
+
+Issue #1769のコメントは、`NULL AS`による非選択列のマスクについて、「生値の物理取得は抑えるが、既定の`ORDER BY o.ordered_at DESC`が`orderedAt`を公開投影から外しても結果の並びに影響する」ことを未検証の懸念として挙げていた。
+
+この参照では、公開する項目は`orderId`（選択・絞込み・整列）と`customerId`（選択）だけで、`orderedAt`・`status`・`total`は公開していない。呼出し元は、公開していない項目を`$select`にも`$orderby`にも指定できない。
+
+### 実証した内容
+
+公開項目（`orderId`、`customerId`）が全く同じで、公開していない`orderedAt`の大小関係だけが異なる二つのデータセットに、同じ要求（`$select=orderId`）を送る。
+
+| 要求 | データセットA（9が最新） | データセットB（3が最新） |
+|---|---|---|
+| `$select=orderId`（`$orderby`なし） | `[9, 5, 3]` | `[3, 5, 9]` |
+| `$select=orderId&$top=1` | `[9]` | `[3]` |
+| `$select=orderId&$orderby=orderId asc` | `[3, 5, 9]` | `[3, 5, 9]` |
+
+- `$orderby`を指定しないと、応答の並びは、公開していない`orderedAt`の降順に従う。呼出し元は、公開項目だけで`orderedAt`の大小関係を知ることができる。`$top=1`だけでも、どの行が最も新しいかが分かる。
+- 公開項目で明示的に並べると、非公開項目の違いは応答に現れない。
+- 別顧客の行は、どの場合も応答に現れない（行スコープの隔離は破れていない）。
+
+### 実行の記録
+
+実行したexact commit、PostgreSQLのserver_version、Goのバージョンは、この変更のプルリクエストに記録する。DSN未設定ではSKIPし、実証したことにはならない。実行手順はE9-Bと同じ環境変数を使い、`-run TestScopedPostgresDefaultOrder`を指定する。
+
+### 扱い
+
+- 解消は未決である。選択肢は、既定の並びを公開項目に限る、並びに使う項目の権限を要求する、非公開項目に依存した並びを許す条件を契約に明記する、などで、既存のCanonical Queryの意味を変えるため、責務の分担を確認してから決める。
+- 解消する変更を入れたら、この試験は、その変更が意図したものであることを確かめたうえで更新する。試験の失敗メッセージにも、その旨を書いている。
+
+### この試験が確かめていないこと
+
+- Tenant用の参照（`scoped_postgres_reference.go`）も、コード上は同じ既定の`ORDER BY o.ordered_at DESC`を使うが、実DBでは確かめていない。
+- Queryパラメータ`from`は、`o.ordered_at >= $2`として非公開列への述語になる。この試験は`from`をHostが固定する値として扱う。呼出し元が`from`を指定できる経路があれば、`from`を変えながら応答の行の有無を見ることで、非公開列の値を推測できる可能性がある。
+- Count、Aggregate、Expand、複数列の並びなど、ほかの間接推測の経路。
+
 ## なお未実証
 
 - `PostgresCustomerScope` の顧客IDが、認証済み利用者の正本権限・Tenant所属・現在のPolicy Revisionから導出されたこと。このReferenceでは信頼済み**テスト入力**である。
