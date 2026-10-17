@@ -333,3 +333,75 @@ func TestSelectedServiceCarrierCurrentAcceptanceIsNotGenerationAuthorization(t *
 		t.Fatal("revoked Provider reached verifier or external process")
 	}
 }
+
+func TestSelectedServiceCarrierRedactsHostGenerationGuardError(t *testing.T) {
+	binding := composition.Binding{
+		ContractID: "sales.quote-lines", ContractVersion: "1.0.0",
+		ProviderID:     "logical-quote-A",
+		ArtifactDigest: "sha256:" + strings.Repeat("a", 64), Generation: 1,
+	}
+	router, err := composition.NewRouter(binding, composition.NewScope())
+	if err != nil {
+		t.Fatal(err)
+	}
+	const secret = "PRIVATE_GENERATION_GUARD_POLICY_PATH_AND_TOKEN"
+	privateErr := fmt.Errorf("/private/host/authority/%s", secret)
+	allow := true
+	coordinator, err := composition.NewCoordinator(router, func(composition.Binding) error {
+		if !allow {
+			return fmt.Errorf("Host guard rejected request: %w", privateErr)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	process := &generationCarrierProcess{}
+	verifier := &generationCarrierVerifier{}
+	accepted := &generationCarrierAcceptance{}
+	route := generationCarrierRoute(binding, "tei.quote.v1")
+	lookups := 0
+	invoker, err := NewSelectedServiceCarrierInvoker(
+		coordinator,
+		pruntime.Registry{Processes: process, Verifier: verifier, ServiceAcceptance: accepted},
+		func(context.Context, composition.Binding) (SelectedServiceCarrierRoute, error) {
+			lookups++
+			return route, nil
+		},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	payload := json.RawMessage(`{"quantity":2}`)
+	if _, err := invoker.Invoke(context.Background(), "guard-first-allow", payload); err != nil {
+		t.Fatalf("valid Host guard blocked Service: %v", err)
+	}
+	if lookups != 1 || accepted.reads != 1 || verifier.calls != 1 || process.count() != 1 {
+		t.Fatal("valid Host guard did not reach existing Runtime")
+	}
+	allow = false
+	_, err = invoker.Invoke(context.Background(), "guard-denied", payload)
+	if !errors.Is(err, ErrServiceCarrierGenerationUnavailable) ||
+		errors.Is(err, privateErr) ||
+		strings.Contains(err.Error(), secret) ||
+		strings.Contains(err.Error(), "/private/host/authority/") {
+		t.Fatalf("Host generation guard leaked private error: %v", err)
+	}
+	if lookups != 1 || accepted.reads != 1 || verifier.calls != 1 || process.count() != 1 {
+		t.Fatal("denied Host generation guard reached route/acceptance/Runtime")
+	}
+
+	// Withdrawal also fails closed without leaking the underlying Router's
+	// host-local lifecycle errors or touching current acceptance.
+	if err := coordinator.Withdraw(binding.Generation); err != nil {
+		t.Fatal(err)
+	}
+	_, err = invoker.Invoke(context.Background(), "generation-withdrawn", payload)
+	if !errors.Is(err, ErrServiceCarrierGenerationUnavailable) ||
+		lookups != 1 || accepted.reads != 1 || verifier.calls != 1 || process.count() != 1 {
+		t.Fatalf("withdrawn generation bypassed Host boundary: err=%v", err)
+	}
+	if err := coordinator.Reap(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+}

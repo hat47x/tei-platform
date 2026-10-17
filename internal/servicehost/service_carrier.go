@@ -80,7 +80,11 @@ func (i *SelectedServiceCarrierInvoker) Invoke(
 	}
 	lease, err := i.coordinator.Acquire()
 	if err != nil {
-		return SelectedServiceCarrierInvocation{}, err
+		// The Host's generation guard may include private deployment paths,
+		// policy details or credential identifiers. Neither its error text
+		// nor its unwrap chain belongs in the Service consumer response.
+		// A withdrawn/stale generation is unavailable to this invocation.
+		return SelectedServiceCarrierInvocation{}, ErrServiceCarrierGenerationUnavailable
 	}
 	defer lease.Release()
 	if err := ctx.Err(); err != nil {

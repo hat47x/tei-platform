@@ -141,6 +141,37 @@ func TestActualGoBuildAttemptsBindToReferenceResult(t *testing.T) {
 			observations[0], observations[1], comparison)
 	}
 
+	// Two observed Go commands with matching exact output can yield the
+	// same content identity. Pinning alone is not artifact Acceptance.
+	pinned, err := pinReproducibleArtifactSet(sets[0], sets[1])
+	if err != nil {
+		t.Fatalf("reproducible actual Go artifacts were not pinned: %v", err)
+	}
+	setIdentity, err := artifactSetFingerprint(sets[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	if pinned != setIdentity || pinned != comparison.FirstFingerprint {
+		t.Fatalf("pinned identity %q differs from the actual Go artifact set %q", pinned, setIdentity)
+	}
+
+	// A synthetically changed role on an observed output must be rejected
+	// rather than silently treating its matching bytes as the same Set.
+	tampered := sets[1]
+	tampered.Members = append([]ArtifactMember(nil), sets[1].Members...)
+	tampered.Members[0].Role = "unexpected-executable"
+	rejected, err := pinReproducibleArtifactSet(sets[0], tampered)
+	if err == nil || rejected != "" {
+		t.Fatalf("tampered actual Go Artifact Set was pinned: identity=%q err=%v", rejected, err)
+	}
+	drift, err := compareArtifactSets(sets[0], tampered)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if drift.Reproducible || len(drift.MissingFromSecond) != 1 || len(drift.ExtraInSecond) != 1 {
+		t.Fatalf("role tampering lost structured mismatch Evidence: %+v", drift)
+	}
+
 	// The same artifact bytes under a different recipe must NOT inherit the
 	// previously observed Result identity merely because its digest matches.
 	changedPlan := plan

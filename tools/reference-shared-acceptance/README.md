@@ -302,6 +302,7 @@ Evaluation artifactはcandidateの意味を変えないため、`candidateFinger
 | `add-application` | Environment bindingを含まないApplication（semantic利用・Database requirement）を追加する | 新しい`applications/<dir>/application.tei`（`placement`必須） |
 | `add-reference-pattern` | reference Patternを追加する | 新しい`applications/<dir>/patterns/<file>.tei`（`placement`必須） |
 | `add-application-validation-use` | **既存の**Applicationが評価するValidationを`uses validation`として一件宣言する。宣言順が評価順になる（ADR-0029） | 既存のApplication source fileの、最後の`uses`宣言の後ろへ一行挿入（`placement`は必須で、そのApplicationを宣言しているfileに限る）。同じApplicationへの複数の宣言は、candidateが指定した順序を保つ（この順序はfingerprintにも入る） |
+| `set-symbol` | **既存の**subject（`data` / `attribute` / `relation` / `candidate-key` / `functional-dependency`）の表示名symbolだけを変える。Canonical IDは変えない | 対象subjectを宣言した既存semantic fileの、該当symbolトークン一件を置換（`placement`は持たない） |
 
 - 一つのcandidate内で`add-validation`と、そのValidationを使う`add-application-validation-use`を同時に記述できます。参照先のIDは既存のCanonical Worldまたは**同じcandidateで宣言された追加**から決定論的に解決し、未知のIDを黙って認めません。重複するoperation identityは既存の`normalizeCandidate`で拒否します。この経路は、業務規則だけを追加してApplicationが評価しない状態を避けるためのReferenceです。実装・テストが含まれるDraft PR #985の資格確認が完了するまでは、動作確認済みとは扱いません。
 - 新しいfileを作るoperationのplacementは、意味を所有する層のprefix（semantic / applications）とloaderが読む形式に合い、まだ存在せず、他のoperationと重ならない必要があります。PatternはそのPatternを所有するApplicationのdirectoryに置きます（loaderはApplication manifestと同じdirectoryの`patterns/`をそのApplicationのものとして読みます）。
@@ -480,3 +481,46 @@ testはGate B / Gate Cのbaselineを変更せず、`reference/workspace`のscrat
 差分は`removed candidate-key:<id>`または`removed functional-dependency:<id>`として独立したsubjectに記録します。`ImpactWithBefore`を用いて撤回前のData/Attribute参照を`previous.*`の辺として保持し、`LOGICAL_RULE_RETRACTION_REQUIRES_REVIEW`で影響の再確認を要求します。規則を撤回しても、**物理PK、UNIQUE、FK、Index、Migrationが自動的に削除されるわけではありません**。
 
 このReferenceが成立させるのはソースの意図的な撤回と監査用の差分です。実業務で規則の撤回が妥当か、権限を持つ者が決定したか、既存DBの整合性がどう変わるかは別途確認が必要です。今回は同じ規則IDの改名・属性集合の変更・別kindへの変換は扱いません。
+
+
+## 既存subjectのsymbol改名（#1935）
+
+`set-symbol` は、既存subjectの表示名（source上のsymbol）だけを変更する型付き操作です。Canonical IDは変えません。対象はsymbolを持つ次のsubject kindです。
+
+- `data`（`data <symbol> { … }`）
+- `attribute`（`attribute <symbol> type …`）
+- `relation`（`relation <symbol> to …`）
+- `candidate-key`（`candidate-key <symbol> { … }`）
+- `functional-dependency`（`functional-dependency <symbol> { … }`）
+
+```json
+{
+  "op": "set-symbol",
+  "kind": "data",
+  "id": "sales.order_line",
+  "symbol": "Order_Line"
+}
+```
+
+- symbolから導かれるcanonical segmentがIDの最後のsegmentと一致する場合にだけ許可します。`OrderLine` → `Order_Line`、`customer` → `Customer`、`businessLine` → `BusinessLine` はいずれも同じsegment（`order_line` / `customer` / `business_line`）を導くため、改名しても同じsubjectのままです。
+- segmentが変わる改名（例: `sales.order_line` を `Item` にする）は、identifier（Canonical ID）を変えてsubjectを分裂させるため、normalizeで拒否します。存在しないsubject、`placement`の偽装、`data` payloadの混在、symbolが変わらない候補も拒否します。
+- 編集は、対象subjectを宣言した正本semantic file上の、そのsymbolトークン一件だけを置換します。Source Indexと同じ`semantic-<kind>`のdefinition anchorを厳密に一意で特定し、行の途中の類似名や同じsymbolを持つ別subjectは対象にしません。
+- 差分は`changed data:<id>`のように**同じsubjectのchanged**として現れます。追加・削除ではありません。変わるWorld collectionは`semantics`だけです。
+- 影響解析は、改名されたsubjectから宣言済みのexact identityを辿ります。Relationの改名では`semantic.relation.key.source` / `semantic.relation.key.target`でkeyのsource側・target側Attributeへの辺が、candidate-keyの改名では`semantic.candidate-key.field`でfield属性への辺が出ます。`ImpactWithBefore`により`previous.*`の辺と`RELATION_RETRACTION_REQUIRES_REVIEW` / `LOGICAL_RULE_RETRACTION_REQUIRES_REVIEW`も残り、旧宣言の再確認を要求します。
+- 論理規則（candidate-key / functional-dependency）の改名では、従来どおり`LOGICAL_BUSINESS_RULE_UNVERIFIED`が残ります。改名は宣言名を変えるだけで、業務上の妥当性・候補キー最小性・物理PK/FK対応を検証しません。
+- Previewはauthoritative sourceを変更しません。`Preview → Review → Accept`の通常経路だけを通り、権限を省略する別ルートは設けません。
+
+### #1804の名前置換Proposalからの変換
+
+#1804で導入されたsymbol付きidentityの名前置換Proposalは、`old` / `new`の表示名と対象subjectを持つ。これをこの候補へは、対象subjectのCanonical ID（`id`）と新しい表示名（`symbol`）を取り出し、`kind`をProposalが名指しするsubject種別へ対応させれば変換できる。生成器は設けず、対応は次のとおりである。
+
+| #1804のProposal | set-symbol |
+| --- | --- |
+| 対象subjectの種別（data / attribute / relation / candidate-key / functional-dependency） | `kind` |
+| 対象subjectのCanonical ID（不変） | `id` |
+| 新しい表示名 | `symbol` |
+
+たとえば、`sales.order_line` の表示名を `OrderLine` から `Order_Line` へ置き換えるProposalは、上記のJSON一件へ変換できる。変換後はbase revision、intent、正本Source Evidence、Review fingerprint、明示的Accept decisionなど、通常の`tei.reference.change-candidate/v0`の条件が適用される。Proposalの`old`表示名は候補には含めず、現行Canonical Worldのsymbolと突き合わせて改名かどうかを判定する（`SYMBOL_UNCHANGED`）。
+
+この境界が成立させるのは、**source上の表示名を変えることと監査用の差分**です。実行時の名称解決、外部キー名・列名・Generator契約への波及、rename migration、別fileへの移動やfile名の変更は扱いません。
+

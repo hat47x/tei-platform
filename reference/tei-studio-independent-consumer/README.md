@@ -80,3 +80,9 @@ python3 browser-e2e.py        # Playwright Python + 実Chromiumがある環境�
 Ubuntu24.04 / Node24.21.0で`npm ci`、`npm test` **18/18 PASS・skip 0**、`npm run audit:imports` PASS、`npm run build` PASS。Python Playwright1.57.0 / Chromium143.0.7499.4の`python browser-e2e.py`も**PASS**。ノート切替、Graph狭幅（480pxの図/245pxのviewport、14pxラベル）、クリック/Enter、Command成功/拒否、Editor/Graph/Commandの個別Unmount/Remountとpagehide破棄を実DOMで確認。新規「選択→Graph同期再描画→Enter/Spaceフォーカス継続」のNode/FakeDOM回帰も18件に含む。**その同期再描画＋連続Spaceの組合せ自体をブラウザーE2Eで実行したわけではない**。
 
 詳細は[既存runbook §12.1](../../plan/evidence/TEI_STUDIO_POC_EVIDENCE_RUNBOOK_20261014.md)を参照。固定4ソースのブラウザーPoCがPASSした範囲であり、実Wails Host、Desktop WebView、全a11y、公開Web認可、メモリリーク完全不在や製品資格は主張しない。
+
+## mainのWorkbenchと同一ソースを使う独立確認
+
+追加CI `.github/workflows/tei-studio-independent-consumer-main-source-ci.yml` は、検証対象PRのbaseと同じ固定版 `eed6027003e10d36646469fc368ad0576e9e8641` から専用checkoutを作り、同版のWorkbenchとReading Journal consumerがEditor・CodeMirror・Graph・Commandの同じソースファイルをimportすることを確認する。Git blobとSHA-256、consumerの依存グラフ、ビルド実績の入力module・lock hashを照合した後、固定版consumerの試験・build・実Chromium E2Eを実行する。workflow実行時にPR base SHAが固定版と異なれば失敗する（mainへのpushだけではこのPR workflowは自動起動しない）。固定版を更新するときは、workflow内のcheckout参照と環境変数、およびこの説明を同じ版に合わせる。
+
+この確認はIssue #1824のPoC Cにおける「同じUI部品ソースをTEI Workspaceなしのconsumerで利用できる」という受入項目を支える。consumerのブラウザー動作とソース再利用を検査する範囲であり、Workbench自体のブラウザー起動、Wails Host/Desktop WebView、CLIとの同等性、Resolver統合、利用者価値、PoC C全体の受入完了は示さない。既存の固定Provider snapshot CIとWails PoC A CIは独立しており、このworkflowは両方を置き換えない。
