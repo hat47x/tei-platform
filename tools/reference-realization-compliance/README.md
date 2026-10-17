@@ -1,6 +1,6 @@
 # Data Derivation D6：規則と実現の意味適合 Reference（#1694）
 
-本ディレクトリは **規則の宣言した業務意味と、指定された実現（実装）が適合するかを読取り専用で検査する小さな参照** であり、TEIの正式なOperator登録所、Plugin Lock權威、Build API、汎用式言語、受入済みAPIではありません。実装主体は `realizationcompliance.go`、受入は `realizationcompliance_test.go`、起動点は `cmd/tei-realization-compliance/` です。`正本`を書き換える経路はありません。
+本ディレクトリは **規則の宣言した業務意味と、指定された実現（実装）が適合するかを読取り専用で検査する小さな参照** であり、TEIの正式なOperator登録所、Plugin Lock権威、Build API、汎用式言語、受入済みAPIではありません。実装主体は `realizationcompliance.go`、受入は `realizationcompliance_test.go`、起動点は `cmd/tei-realization-compliance/` です。`正本`を書き換える経路はありません。
 
 ## 責務と分界
 
