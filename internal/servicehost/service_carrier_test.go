@@ -337,7 +337,7 @@ func TestSelectedServiceCarrierCurrentAcceptanceIsNotGenerationAuthorization(t *
 func TestSelectedServiceCarrierRedactsHostGenerationGuardError(t *testing.T) {
 	binding := composition.Binding{
 		ContractID: "sales.quote-lines", ContractVersion: "1.0.0",
-		ProviderID: "logical-quote-A",
+		ProviderID:     "logical-quote-A",
 		ArtifactDigest: "sha256:" + strings.Repeat("a", 64), Generation: 1,
 	}
 	router, err := composition.NewRouter(binding, composition.NewScope())
