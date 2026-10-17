@@ -187,3 +187,9 @@ generic InvocationがRuntime Authorityを代替するわけではありません
 [契約のみのProvider検証](contract_only_provider_test.go)では、SQLite読取り方言の**架空の契約例**について、Provider実装・適合証拠がゼロの状態でも論理契約そのものは版・指紋を維持して参照可能なことを検査します。一方、呼出し先の解決は`no provider implementation`で停止します。候補Providerの宣言を後から追加しても、適合根拠がなければ`no conformant provider`として区別し、明示wiringだけでは実行可能にしません。
 
 最後にSyntheticな適合証拠を渡してReference Resolver上のexact Contract→Provider bindingを検査しますが、**この証拠はテスト中の合成値です**。実SQLiteでの問い合わせ、独立した適合試験、生成AIによる実装、Hostの公開／適合受理、実行権限やWindows GUIを検証したものではありません。本試験は[PoC設計](../../plan/design/CONTRACT_ONLY_GENERATIVE_PROVIDER_POC_2026-10.md)のP0の一部に限定します。Core固定種別、新しいResolverやAuthorityは追加しません。
+
+### 実装ゼロのContractから案件内補完する実験（#1975）
+
+`contract_only_provider_test.go`は契約資産だけの状態とProvider不在のfail-closedを扱う。`testdata/sqlite_read_binding_oracle_v0.json`には、候補実装から独立して固定したSQLiteの識別子引用・パラメータ束縛に関する14ケースを保存した。根拠となるSQLite公式の識別子・束縛規則をfixtureに記載した。`sqlite_read_binding_candidate_test.go`はこの固定ケースに対して、使い捨ての手書きReference候補が一致することと、値のSQL直結、識別子の引用省略、NULL→空文字変換、未対応入力の成功化という**意図的な誤実装4種**を検出できることを試す。既存CoreやResolverにSQLite製品名の分岐を追加しない。
+
+**証拠の限界**：fixtureと候補試験はいずれも本Repository内のPoC成果物であり、第三者が管理した独立期待値とはまだ主張できない。ここでの一致はGoの純粋なSQL計画文字列と引数の比較であり、SQLiteエンジンのSQL実行、DB版、ドライバ、実際のパラメータ束縛、型復元、Host署名／Contract受理、本番適合性を証明しない。実DB上の独立観測とAI由来の候補の検証は後続PoCに残す。契約・SPI・実装を製品仕様として確定したものではない。
