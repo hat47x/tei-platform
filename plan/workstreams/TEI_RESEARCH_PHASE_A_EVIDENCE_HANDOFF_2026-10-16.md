@@ -13,7 +13,7 @@
 | 歴史的な合成Web E1 | [Actions #38267656696](https://github.com/hat47x/tei-platform/actions/runs/38267656696) の8件の保全済みreceipt＋[manifest](../evidence/TEI_E1_SYNTHETIC_MANIFEST_20261012_38267656696.json)。実HTTPの正例・負例・N11とハーネス側Source差分検知がある | Providerはsynthetic、manifestの`humanAcceptance=false`、`runtimeVersionBindingVerified=false`、`staleSourceRejectedByTarget=false`、`independentDatabaseRead=false`。当時のR0/R1全Workspaceは証拠ファイルだけからは復元不可 |
 | 歴史的な実PostgreSQL E2a-1 | [Actions #38311557882](https://github.com/hat47x/tei-platform/actions/runs/38311557882) の[保全済みreceipt](../evidence/TEI_E2A1_REAL_POSTGRES_RECEIPT_38311557882.json)。使い捨てPostgreSQL、`request_log/intake.request.submit`の手書きoverlay/SQLから実write→同一プロセスの別pool read、Schema不一致拒否、N11 read失敗を観測 | `order_entry`ではない、`authority=none`、`generatedRoundTrip=false`、同一プロセス別poolは**別invocationではない**。正式Accepted R1→通常Web→実業務rowを証明しない |
 
-既存の[歴史的E1/E2突合器](../../tools/verify-critical-path-e1-e2-join.py)を**新しいProduct判定器として使わない**。この突合器の記録は`UNJOINABLE_HISTORICAL_EVIDENCE`・`productGate=UNQUALIFIED`であり、下記の8つの未達条件は現行の担当・実証対象を理解するための分類である。元の2試験は業務主体・実行版・実Provider・Command識別が一致していない。研究で成功率を集計するときも、2つの個別PASSを1つのE2成功へ合算しない。
+既存の[歴史的E1/E2突合器](../../tools/verify-critical-path-e1-e2-join.py)を**新しいProduct判定器として使わない**。この突合器の記録は`UNJOINABLE_HISTORICAL_EVIDENCE`・`productGate=UNQUALIFIED`であり、下記の8つの未達条件は現行の担当・実証対象を理解するための分類である。元の2試験では、業務主体、実行版、実Provider、Commandの識別が一致していない。研究で成功率を集計するときも、2つの個別のPASSを、一つのE2成功として合算しない。
 
 ## 2. 最初に必要な受渡しと、並行できる作業
 
@@ -44,7 +44,7 @@
 
 ## 3. 既存の八つの未達条件と最小の担当実験
 
-既存`tools/verify-critical-path-e1-e2-join.py`内の`OBLIGATIONS`が条件の正本。下表はその**現行所有先と次の一つの反例**を示す作業用投影であり、検査器の条件を複製実装しない。
+八つの未達条件の正本は、既存`tools/verify-critical-path-e1-e2-join.py`内の`OBLIGATIONS`である。下表は各条件の**現行所有先と次の一つの反例**を示す作業用の投影である。検査器の条件を複製して実装するものではない。
 
 | 既存の未達コード | 実証で埋めること／最低限の負例 | 所有Issue |
 | --- | --- | --- |
@@ -57,11 +57,11 @@
 | `HUMAN_ACCEPTANCE_AUTHORITY` | 人の判断に紐づく実Accepted R1の発行・再取得・取消を検証。合成`accepted`フィールドや署名なしのDecision JSONでは不可 | #267、#1163 |
 | `DATA_FIRST_GENERATED_EXECUTION` | 対象の生成／宣言由来と手書きoverlayを区別。通常の実業務Actionが実Targetへ実現されることを証明し、手書きSQLの先行試験だけで済ませない | #1127、#1121 |
 
-**重要**：歴史的突合器はその2つの固定receiptに限る。新しい一改訂のProduct E2証拠が揃った後、その真偽は#1119／#1163の**既存の新証拠の検査経路**で判定する。上記historical E1/E2 verifierの閾値を書き換えて成功させない。
+**重要**：歴史的突合器はその2つの固定receiptに限る。新しい一改訂のProduct E2証拠が揃った後、その証拠が条件を満たすかどうかは、#1119／#1163の**既存の新証拠の検査経路**で判定する。上記historical E1/E2 verifierの閾値を書き換えて成功させない。
 
 ## 4. 一回の正式なE2候補実験で残す最小記録
 
-異なる成果物の段階・正本を混ぜず、少なくとも次を辿れることを確認する。形式やフィールド名は**#1163の既存Evidence契約が正**であり、新しいPacket schemaをこの文書から制定しない。
+段階や正本が異なる成果物を混在させず、少なくとも次の情報をたどれることを確認する。形式やフィールド名の正本は**#1163の既存Evidence契約**であり、この文書で新しいPacket schemaを制定しない。
 
 - **Source**：Applicationとtyped Subject、Managed Source membership/正規化パス/前後SHA・Source Revision、業務意味の受理版、元の受理DecisionとHost受理主体、取消・差替履歴への参照。
 - **Target／Provider**：実Web Buildと対応Artifact digest、実WorkspaceのLoader/Reader、固定したProvider／DB alias・物理schema／実接続先を識別できる非秘密情報、Hostの実Subject／Current Policy／Effect Grant。署名、Issuer trust、Builder Authority等を別々に判定する。
@@ -73,7 +73,7 @@
 
 ## 5. 実行できる既存の再確認入口
 
-新しい検査器・独立履歴DBは増やさず、既存の監査ツールへ案内する。
+新しい検査器や独立履歴DBは増やさず、既存の監査ツールを案内する。
 
 ```sh
 # 歴史的E1/E2a-1の固定原本を照合し、旧証拠が結合不能と示す
