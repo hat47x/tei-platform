@@ -156,6 +156,12 @@ func resolveCapability(input ResolveInput) (Resolution, error) {
 	if wiring != nil {
 		return Resolution{}, fmt.Errorf("wired provider %s@%s/%s is not conformant for contract %s", wiring.PluginID, wiring.PluginVersion, wiring.ImplementationID, input.Requirement.ContractID)
 	}
+	// Contract-only distribution is valid. Absence of any implementation is
+	// different from a declared Provider that failed scope/conformance checks.
+	// Neither condition authorizes auto-generation or invocation.
+	if len(input.Providers) == 0 {
+		return Resolution{}, fmt.Errorf("no provider implementation for contract %s in scope %s", input.Requirement.ContractID, input.Scope)
+	}
 	return Resolution{}, fmt.Errorf("no conformant provider for contract %s", input.Requirement.ContractID)
 }
 
