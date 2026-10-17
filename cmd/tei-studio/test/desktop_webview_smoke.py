@@ -578,7 +578,7 @@ const done = arguments[arguments.length - 1];
         click_script = """
 const node = document.querySelector('#graph g[role="button"][aria-label="orderId"]');
 if (!node) throw new Error('Catalog child graph node is missing');
-node.click();
+node.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
 return true;
 """
         webdriver_request(base_url, "POST", f"/session/{driver_session}/execute/sync", {"script": click_script, "args": []})
