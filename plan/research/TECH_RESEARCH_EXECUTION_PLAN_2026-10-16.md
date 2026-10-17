@@ -53,10 +53,10 @@ Requirement / original Source
 
 担当既存Issue：#1119、#1121、#1127、#1163、#1445、#1180、#267。
 
-- 既存の`Source Revision → Target build → Action → Observation`の各Ownerと証拠の接続先を一枚の読取り専用表へ整理。旧E1合成8receiptと実Provider／独立DBの検証を混同しない。
+- 既存の`Source Revision → Target build → Action → Observation`の各Ownerと証拠の接続先を一枚の読取り専用表に整理する。旧E1合成8receiptと実Provider／独立DBの検証を混同しない。
 - #1121で、受理済みR1を実Web自身が照合するR1正常／R0未受理／意味同値R2を**Web側で拒否**する試験へ接続。ラベル検査やハーネス検査は実Webの保証と別。
 - #1127/#1163で同一Accepted Source版・同一Operationの実DB write→別実行／別接続readと、read失敗のN11を照合。Provider/Authorityの担当実装は各Ownerのままにする。
-- #1445の既存POC-8〜13（Typed Impact、2-Workspace Source diff、Scenario、原本receipt SHA照合）を、**独立したテストとsource provenanceが届く範囲だけ**検証計画へ使う。
+- #1445の既存POC-8〜13（Typed Impact、2-Workspace Source diff、Scenario、原本receipt SHA照合）を、**独立したテストとsource provenanceが届く範囲でのみ**検証計画に使う。
 - #1163と協議して短命scratchのR0/R1全Sourceの保存範囲・個人情報除去・保持期間・checksumを決める。元のアーカイブからSource集合を推測復元しない。
 
 **出口**：ケースごとにExact Source／Target／権限主体／Command／Observationが`supported / unsupported / unresolved / not-evaluated`で示され、未取得の証拠に具体的な担当と再実行方法があること。**Gate合格自体はこの計画で決めない**。
@@ -67,18 +67,18 @@ Requirement / original Source
 
 担当既存Issue：#982、#998、#1120、#1124、#1803、#1805、#1445。候補：既存REF-SPEC-01。
 
-- 同じ`order_entry`事例について「欠落参照、曖昧な更新可否、矛盾する権限、古いRevision」をそれぞれ少なくとも1件作り、元Source・Typed Reference・未解決事項へ辿れることを確認。
-- 受理済み意味から生成する設計一覧の試作で、Data／Function／Business Procedure→Operation／実装の依存と責務を導出。Codeの表面や識別子が一致するだけで意味が同じとしない。
-- (a)従来のコード先行、(b)既存Sourceと型付き参照を用いる工程、(c)AI支援で根拠へ誘導する工程を、**同じ受入基準**で比較。変更対象外のファイルに触れないか、既存試験の再合格が維持されるか記録。
+- 同じ`order_entry`事例について「欠落参照、曖昧な更新可否、矛盾する権限、古いRevision」をそれぞれ少なくとも1件用意し、元Source・Typed Reference・未解決事項までたどれることを確認する。
+- 受理済み意味から生成する設計一覧の試作で、Data／Function／Business Procedure→Operation／実装の依存と責務を導出する。Codeの表面や識別子が一致するだけで意味が同じとしない。
+- (a)従来のコード先行、(b)既存Sourceと型付き参照を用いる工程、(c)AI支援で根拠へ誘導する工程を、**同じ受入基準**で比較する。変更対象外のファイルに触れないか、既存試験の再合格が維持されるかを記録する。
 - Code of Theseusから「設計構造も別に評価する」着想を採るが、TEIの唯一のモジュール構成への強制や過度な構造一致を求めない。
 
-**出口**：4種類の仕様上の問題、Sourceと依存の追跡、最低1件の局所修正と負例について、検出／見落とし／誤警報を同じ評価表で比較。構造上の改善だけを業務PASSと呼ばない。
+**出口**：4種類の仕様上の問題、Sourceと依存の追跡、最低1件の局所修正と負例について、検出／見落とし／誤警報を同じ評価表で比較する。構造上の改善だけを業務PASSと呼ばない。
 
 ### C. 10/30〜11/06：Human UI・Agent Interface・Studioの一貫性【高、Bと並行可能】
 
 担当既存Issue：#1824、#997、#1000、#951、#1180、#1168、#1441。候補：既存REF-INTERACTION-01。
 
-- TEIの一つの既存Operation/Capabilityについて、Human向けUIのボタン等と、AI向けの発見・引数Schema・呼出し・読み戻しを**同じ契約**から提示。Agent向けの独立した業務意味・実行Authorityを作らない。
+- TEIの一つの既存Operation/Capabilityについて、Human向けUIのボタン等と、AI向けの発見・引数Schema・呼出し・読み戻しを**同じ契約**から提示する。Agent向けの独立した業務意味・実行Authorityを作らない。
 - 各操作の`UI部品 → Event → Contract → Command → Observation`を正負両方で試す。変更後の画面を再描画できるだけでは成功扱いにしない。
 - Web標準＋Litを優先する共通部品、Goの共通操作、Web/ Wails v3 Desktop Host固有Adapterを区別する。既存React Web Referenceは当面の実測基準として保持。
 - Studio（編集用Host）のWebView起動成功と、**生成された業務アプリのDesktop Target**の適合試験を混同しない。Aに続く既存#1824のPoC A/B/Cを流用し、所有PRと競合させない。
@@ -93,7 +93,7 @@ Requirement / original Source
 - 既存#1861の受注明細の**読み取り専用見積もりプレビュー**（既存23ベクトル）を比較基準にし、Go Native／Node JS、TinyGo等のWasm候補、必要なら実WIT Component＋異なる2 Hostを比較する。WITの採用は目的ではない。
 - 同じ期待値を使い、正常値・業務拒否・Host import欠落・権限不足・Artifact不一致を区別する。ブラウザ動作はNode CLIの結果から推測しない。
 - 成果物サイズ、初回起動、レイテンシ、ピークメモリ、依存ツール、実際の移植作業量を測る。測定前に共通の数値上限を課さない。
-- HikeはGo製TEI CoreのコンパイラではなくGo似の別言語であり、費用を含めて比較できる場合のみ別候補とする。WASI 0.2/0.3とHost実装の対応も別々に確認。
+- HikeはGo製TEI CoreのコンパイラではなくGo似の別言語であり、費用を含めて比較できる場合のみ別候補とする。WASI 0.2/0.3とHost実装の対応も別々に確認する。
 - 実Consumerと二つの実Hostで明らかな価値がなければ、Go Native＋Host Adapterを継続し、共通Wasm ABIの標準化を保留する。
 
 **出口**：一つの固定入力集合、実Artifact SHA・ツール版・Host版・実行結果・資源使用量・対象外の記録をまとめ、`採用候補 / 継続調査 / 不採用`を決める。ただし正式標準化は該当Issue／ADRの判断による。
@@ -107,7 +107,7 @@ Requirement / original Source
 - エージェントが実行を提案した場合、現在の権限、対象、実行結果、独立Observationと作業再開情報を追跡する。過去のチャットやAIの記憶をOwnerにはしない。
 - TEIによるTEIのセルフビルドは、既存Build/Artifact/Plugin Lockの実契約で成立する範囲を伸ばし、全体の完成をA〜Dの前提にしない。
 
-**出口**：CPU基線との差が測れる候補だけ、既存Issueの次段階へ昇格。モデルサイズ・学習コスト・トークン数だけを成功指標としない。
+**出口**：CPU基線との差が測れる候補だけを、既存Issueの次段階へ昇格させる。モデルサイズ・学習コスト・トークン数だけを成功指標としない。
 
 ## 5. 検証方法と記録する値
 
@@ -138,8 +138,8 @@ Requirement / original Source
 1. **今週**：#1119/#1163で同一R1のProduct証拠と旧合成E1の不足一覧を再確認し、#1121/#1127のWeb版拘束・別readの実作業順をそろえる。#1445は既存差分・receipt照合のread-only表示に徹する。
 2. **次週**：#982/#998/#1120にREF-SPEC-01の4反例と手動／AI支援比較表を受け渡す。別の仕様正本ではなく、出所と診断を示す試験資料にする。
 3. **並行**：#1824で同一OperationをGoサービスとLitベースのWeb/Desktop共通UIから呼ぶ対象を一つに限定し、#997/#951でContractを再利用する。#1168で人の操作評価の収集方法を決める。
-4. **実Consumerの準備後**：#1861で実Wasm Componentと二Hostが本当に必要かを比較。Go/WASM/Host同値と認可境界の未検証を明示する。
-5. **毎週金曜**：新論文と前週の再現結果を見比べ、実証で減った不確実性だけ計画へ反映。論文の流行や新技術の数で優先順位を自動変更しない。
+4. **実Consumerの準備後**：#1861で実Wasm Componentと二Hostが本当に必要かを比較する。Go/WASM/Host同値と認可境界の未検証を明示する。
+5. **毎週金曜**：新論文と前週の再現結果を見比べ、実証で減った不確実性だけを計画に反映する。論文の流行や新技術の数で優先順位を自動変更しない。
 
 ## 8. 見直し条件
 
