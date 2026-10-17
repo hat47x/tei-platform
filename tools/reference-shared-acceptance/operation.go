@@ -37,6 +37,8 @@ type Operation struct {
 	Attribute string `json:"attribute,omitempty"`
 	Relation  string `json:"relation,omitempty"`
 	Placement string `json:"placement,omitempty"`
+	// AttributeTypeはset-attribute-typeの新しい型（完全なCanonical ID）。
+	AttributeType string `json:"attributeType,omitempty"`
 	// Symbolは、set-symbolが既存subjectへ設定する表示名である。Canonical IDは変えない。
 	Symbol string `json:"symbol,omitempty"`
 
@@ -211,7 +213,7 @@ func normalizePlacement(op Operation) (string, error) {
 func onlyFields(op Operation, allowed ...string) error {
 	present := map[string]bool{
 		"namespace": op.Namespace != "", "id": op.ID != "", "kind": op.Kind != "",
-		"attribute": op.Attribute != "", "relation": op.Relation != "",
+		"attribute": op.Attribute != "", "relation": op.Relation != "", "attributeType": op.AttributeType != "",
 		"symbol": op.Symbol != "",
 		"data":   op.Data != nil, "addRelation": op.AddRelation != nil,
 		"addCandidateKey": op.AddCandidateKey != nil, "addFunctionalDependency": op.AddFunctionalDependency != nil,
@@ -254,8 +256,10 @@ func normalizeOperation(op Operation) (Operation, error) {
 		return normalizeAddReferencePattern(op)
 	case opSetSymbol:
 		return normalizeSetSymbol(op)
+	case opSetAttributeType:
+		return normalizeSetAttributeType(op)
 	default:
-		return op, fmt.Errorf("operation %q は未対応です（add-validation / add-data / add-relation / add-candidate-key / add-functional-dependency / remove-candidate-key / remove-functional-dependency / add-application / add-reference-pattern / add-environment-binding / add-application-validation-use / set-symbol）", op.Op)
+		return op, fmt.Errorf("operation %q は未対応です（add-validation / add-data / add-relation / add-candidate-key / add-functional-dependency / remove-candidate-key / remove-functional-dependency / add-application / add-reference-pattern / add-environment-binding / add-application-validation-use / set-symbol / set-attribute-type）", op.Op)
 	}
 }
 
@@ -678,6 +682,8 @@ func operationKey(op Operation) string {
 		return "application-pattern:" + op.Pattern.ID
 	case opSetSymbol:
 		return op.Kind + ":" + op.ID
+	case opSetAttributeType:
+		return "attribute-type:" + op.ID
 	}
 	return op.Op
 }
