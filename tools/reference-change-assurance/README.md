@@ -68,7 +68,7 @@ go run ./tools/reference-change-assurance \
 
 このコマンドはWorkspaceを変更しません。出力には変更前後のモデルSource Revision、`sourceChanges`（追加/削除/指紋変化した管理対象ファイル）、型付き`impact`、投影で未解決の参照、判断理由を含めます。既存の`-input`と`-workspace`も維持します。
 
-Ruleの投影規則自体が変化して影響範囲の網羅性を保証できない場合、全体の判定は`unresolved`のままです。ただし、同時に型付き参照から対象Consumerへの直接変更や波及が**明確に観測されている場合**は、既存`reasonCodes`に`typed-projection-rules-changed`と`consumer-directly-changed`／`typed-reference-impact-candidate`の両方を残します。「既知の再確認対象」と「依然として未知の範囲」を一つの`action`へ押し込めないための診断であり、`recheck`を`PASS`へ変更したり、変更閉包の完全性、過去の証拠再利用、実行許可を認定したりするものではありません。
+型付き参照グラフの投影規則（`modelref.Rules`）自体が変化して影響範囲の網羅性を保証できない場合、全体の判定は`unresolved`のままです。ただし、同時に型付き参照から対象Consumerへの直接変更や波及が**明確に観測されている場合**は、既存`reasonCodes`に`typed-projection-rules-changed`と`consumer-directly-changed`／`typed-reference-impact-candidate`の両方を残します。「既知の再確認対象」と「依然として未知の範囲」を一つの`action`へ押し込めないための診断であり、`recheck`を`PASS`へ変更したり、変更閉包の完全性、過去の証拠再利用、実行許可を認定したりするものではありません。
 
 **重要な反例：** `reference/workspace` の `recent_orders.sql` で `ORDER BY ... DESC` を `ASC` へ変更すると、SQLの意味は変わりますが、現在の `derivedbridge.FromIndex` が投影する型付きグラフにはSQL本体の変更が現れません。この場合、`sourceChanges` とモデルRevisionの変更を保持し、`source-changed-without-typed-graph-diff`として `unresolved` にします。グラフ差分なしを「変更なし」「検証済み」とは解釈しません。
 
