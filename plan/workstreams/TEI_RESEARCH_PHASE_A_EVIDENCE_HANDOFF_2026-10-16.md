@@ -3,7 +3,7 @@
 状態：**現行mainとIssueを読んだ実施準備・未認定**  
 確認したmain：`ffc866790362e948f56ddd7c223a0470f6b0c110`（2026-10-16時点）。  
 親計画：[技術調査の実証計画](../research/TECH_RESEARCH_EXECUTION_PLAN_2026-10-16.md) Phase A、既存の[製品クリティカルパス](TEI_PRODUCT_CRITICAL_PATH_2026-10.md) §30–31。  
-**正本の所有者**：#1119（Product Gate）、#267（Shared Acceptance）、#1121（Source→Web）、#1127（業務Action/DB）、#1163（Evidence）、#1445（工程上の影響・再検証提案）。本書はこれらの実装・証拠を置き換えない読取り専用の受渡し表であり、新しいGate、Schema、Authority正本ではない。
+**正本の所有者**：#1119（Product Gate）、#267（Shared Acceptance）、#1121（Source→Web）、#1127（業務Action/DB）、#1163（Evidence）、#1445（工程上の影響・再検証提案）。本書は読取り専用の受渡し表であり、これらの実装・証拠を置き換えない。新しいGate、Schema、Authorityの正本でもない。
 
 ## 1. 比較した三つの事実群
 
@@ -38,7 +38,7 @@
 #1445: 変更影響・未取得Evidence・検証範囲をread-onlyで提案
 ```
 
-**最初の信頼境界**：#267からの**現行の真正なHost Current Accepted Source**。CLIが与えた`accepted=true`、Decision JSON、Source digest、実Webのsynthetic Readerだけでは、この部分を置き換えられない。#267の変更を#1121・#1163・#1445へ複製しない。
+**最初の信頼境界**は、#267からの**現行の真正なHost Current Accepted Source**である。CLIが与えた`accepted=true`、Decision JSON、Source digest、実Webのsynthetic Readerだけでは、この部分を置き換えられない。#267の変更を#1121・#1163・#1445へ複製しない。
 
 **並行可能**：#1127は正式Host Readerが利用可能になる前でも、既存の`order_entry`のOperationとPersistence Contractの対応、実Providerのfixture安全条件、別invocation読取用のread identityと業務行キーを決められる。#1163は収集項目とfail-closedな負例の組立てを先行できるが、いずれもProduct PASSとはしない。
 
@@ -90,14 +90,14 @@ go run ./tools/reference-change-assurance \
   -consumer-kind application -consumer-id order_entry
 ```
 
-**これらのコマンドは本書作成時点では再実行していない。** 過去のPASSや保存済みJSON内容を今回の実行結果と取り違えない。Sourceの完全スナップショットや正式Acceptanceの証拠が未提供なら、対応する列は`not-evaluated`のまま。既存#1445のPOC-8〜13はread-onlyでSource/Scenario/Evidenceの候補を照合するが、Runtime execution Authority・Product Gateを発行しない。
+**これらのコマンドは本書作成時点では再実行していない。** 過去のPASSや保存済みJSONの内容を、今回の実行結果と取り違えない。Sourceの完全スナップショットや正式Acceptanceの証拠が未提供なら、対応する列は`not-evaluated`のままとする。既存#1445のPOC-8〜13は、read-onlyでSource/Scenario/Evidenceの候補を照合する。ただし、Runtime execution Authority・Product Gateを発行しない。
 
 ## 6. 10月23日までの小さい担当間受渡し
 
-1. **#267 → #1121**：真正Host Current Accepted Source Readerの「発行・保存・更新・取消」を誰が保持するか、現在の状態で利用できるportと不足分を、一つのApplicationで提示。期待が固まるまでは合成Reader試験のまま。
+1. **#267 → #1121**：真正Host Current Accepted Source Readerの「発行・保存・更新・取消」を誰が保持するか、現在の状態で利用できるportと不足分を、一つのApplicationについて提示する。期待が固まるまでは合成Reader試験のまま。
 2. **#1121 → #1127**：通常Webの外部Effect実行入口で必要なSource R1とHost Authorityの入力・失敗と、R0/R2/S05時にdispatchへ進まない点を照合する。
-3. **#1127 → #1163**：同じ`order_entry` Operationで実PostgreSQLの業務rowを保存できる最小候補と、**別invocation read**の識別を提出。手書き別ApplicationのE2a-1からの流用不可能点を明記する。
-4. **#1163 → #1119**：実際に一つの新しい試験からSource/Host/Provider/Command/readが採れた場合のみProduct用Packet候補へ渡す。欠落部分・拒否・失敗は消さない。
+3. **#1127 → #1163**：同じ`order_entry` Operationで実PostgreSQLの業務rowを保存できる最小候補と、**別invocation read**の識別を提出する。手書き別ApplicationのE2a-1からの流用不可能点を明記する。
+4. **#1163 → #1119**：実際に一つの新しい試験からSource/Host/Provider/Command/readが採れた場合に限り、Product用Packet候補へ渡す。欠落部分・拒否・失敗は消さない。
 5. **#1445**：人とAIの工程比較に「何の証拠が無いときに判断を保留できたか」「根拠へ到達する操作数／時間」「影響外の不要な再試験数」を加える。目標数値は実測後に評価する。
 
 ## 7. 一段先へ進める条件
