@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { projectAnnotationEvidence, AUXILIARY_SCHEMA, EPISTEMIC_CONTRACT, EPISTEMIC_SCHEMA } from './annotation-evidence-list-projection.mjs';
@@ -124,4 +125,51 @@ test('未提供・未知の詳細状態を良好・対応受理へ昇格させ�
   assert.ok(got.detailRows.some(d => d.value === 'Referenceに値なし'));
   assert.ok(got.detailRows.some(d => d.value.includes('未対応の値')));
   assert.match(got.acceptance, /判定不可/);
+});
+
+
+test('HTML画面配線: 詳細はDOMテキスト、未知schema時は表示を消して拒否する（疑似DOM）', () => {
+  const html = readFileSync(new URL('./annotation-evidence-list-sketch.html', import.meta.url), 'utf8');
+  const script = html.match(/<script type="module">([\\s\\S]*?)<\\/script>/)?.[1];
+  assert.ok(script, '画面module scriptが存在する');
+  assert.doesNotMatch(script, /\\.innerHTML\\s*=/, '入力をHTMLへ評価しない');
+
+  class FakeElement {
+    constructor(tag) { this.tag = tag; this.children = []; this.handlers = {}; this._text = ''; this.value = ''; }
+    set textContent(v) { this._text = String(v); this.children = []; }
+    get textContent() { return this._text + this.children.map(c => c.textContent).join(''); }
+    append(...nodes) { this.children.push(...nodes); }
+    replaceChildren(...nodes) { this._text = ''; this.children = [...nodes]; }
+    addEventListener(name, callback) { this.handlers[name] = callback; }
+  }
+  const ids = new Map();
+  const document = {
+    getElementById(id) {
+      if (!ids.has(id)) ids.set(id, new FakeElement('id:' + id));
+      return ids.get(id);
+    },
+    createElement(tag) { return new FakeElement(tag); },
+  };
+  const moduleBody = script.split('\\n').filter(line => !line.startsWith('import ')).join('\\n');
+  new Function('document', 'projectAnnotationEvidence', moduleBody)(document, projectAnnotationEvidence);
+  const { auxiliary, epistemic } = fixture();
+  const escaped = '<svg/onload=alert(1)>';
+  epistemic.assessments = [{ ...completeAssessment(), reasons: [escaped], metadataState: 'partial' }];
+  document.getElementById('aux').value = JSON.stringify(auxiliary);
+  document.getElementById('epi').value = JSON.stringify(epistemic);
+  document.getElementById('display').handlers.click();
+
+  const rows = document.getElementById('assessments').children;
+  assert.equal(rows.length, 1);
+  const tds = rows[0].children;
+  assert.match(tds[6].textContent, /メタデータが不足/);
+  assert.match(tds[7].textContent, /評価理由/);
+  assert.match(tds[7].textContent, /<svg\\/onload=alert\\(1\\)>/);
+  assert.equal(tds[7].children[0].tag, 'details', '元データはDOMテキストで表示');
+
+  document.getElementById('epi').value = JSON.stringify({ ...epistemic, schema: 'unknown' });
+  document.getElementById('display').handlers.click();
+  assert.equal(document.getElementById('assessments').children.length, 0);
+  assert.equal(document.getElementById('notes').children.length, 0);
+  assert.match(document.getElementById('error').textContent, /未対応/);
 });
