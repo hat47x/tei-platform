@@ -130,9 +130,9 @@ test('未提供・未知の詳細状態を良好・対応受理へ昇格させ�
 
 test('HTML画面配線: 詳細はDOMテキスト、未知schema時は表示を消して拒否する（疑似DOM）', () => {
   const html = readFileSync(new URL('./annotation-evidence-list-sketch.html', import.meta.url), 'utf8');
-  const script = html.match(/<script type="module">([\\s\\S]*?)<\\/script>/)?.[1];
+  const script = html.match(/<script type="module">([\s\S]*?)<\/script>/)?.[1];
   assert.ok(script, '画面module scriptが存在する');
-  assert.doesNotMatch(script, /\\.innerHTML\\s*=/, '入力をHTMLへ評価しない');
+  assert.doesNotMatch(script, /\.innerHTML\s*=/, '入力をHTMLへ評価しない');
 
   class FakeElement {
     constructor(tag) { this.tag = tag; this.children = []; this.handlers = {}; this._text = ''; this.value = ''; }
@@ -150,7 +150,7 @@ test('HTML画面配線: 詳細はDOMテキスト、未知schema時は表示を�
     },
     createElement(tag) { return new FakeElement(tag); },
   };
-  const moduleBody = script.split('\\n').filter(line => !line.startsWith('import ')).join('\\n');
+  const moduleBody = script.split('\n').filter(line => !line.startsWith('import ')).join('\n');
   new Function('document', 'projectAnnotationEvidence', moduleBody)(document, projectAnnotationEvidence);
   const { auxiliary, epistemic } = fixture();
   const escaped = '<svg/onload=alert(1)>';
@@ -164,7 +164,7 @@ test('HTML画面配線: 詳細はDOMテキスト、未知schema時は表示を�
   const tds = rows[0].children;
   assert.match(tds[6].textContent, /メタデータが不足/);
   assert.match(tds[7].textContent, /評価理由/);
-  assert.match(tds[7].textContent, /<svg\\/onload=alert\\(1\\)>/);
+  assert.match(tds[7].textContent, /<svg\/onload=alert\(1\)>/);
   assert.equal(tds[7].children[0].tag, 'details', '元データはDOMテキストで表示');
 
   document.getElementById('epi').value = JSON.stringify({ ...epistemic, schema: 'unknown' });
