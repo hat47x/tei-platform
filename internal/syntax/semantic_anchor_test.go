@@ -32,14 +32,16 @@ capability sales.order.submit {
 	}
 
 	want := map[string]string{
-		"semantic:sales":                             "sales",
-		"semantic-type:sales.order_id":               "OrderId",
-		"semantic-type:sales.order_status":           "OrderStatus",
-		"semantic-data:sales.order":                  "Order",
-		"semantic-attribute:sales.order.order_id":    "orderId",
-		"semantic-attribute:sales.order.customer_id": "customerId",
-		"semantic-relation:sales.order.customer":     "customer",
-		"semantic-capability:sales.order.submit":     "sales.order.submit",
+		"semantic:sales":                                  "sales",
+		"semantic-type:sales.order_id":                    "OrderId",
+		"semantic-type:sales.order_status":                "OrderStatus",
+		"semantic-data:sales.order":                       "Order",
+		"semantic-attribute:sales.order.order_id":         "orderId",
+		"semantic-attribute:sales.order.customer_id":      "customerId",
+		"semantic-attribute-type:sales.order.order_id":    "sales.order_id",
+		"semantic-attribute-type:sales.order.customer_id": "customer.customer_id",
+		"semantic-relation:sales.order.customer":          "customer",
+		"semantic-capability:sales.order.submit":          "sales.order.submit",
 	}
 	seen := map[string]bool{}
 	for _, item := range got.Anchors {

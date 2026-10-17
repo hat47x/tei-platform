@@ -17,6 +17,8 @@ func main() {
 	root := flag.String("workspace", "", "source Workspace root to read")
 	from := flag.String("from", "", "comma-separated type IDs to merge away")
 	into := flag.String("into", "", "type ID to merge into")
+	candOut := flag.String("candidate-out", "", "new file for a set-attribute-type change candidate (needs -base-revision)")
+	base := flag.String("base-revision", "", "target model revision from the Shared Acceptance revision command")
 	flag.Parse()
 	if *root == "" || *from == "" || *into == "" {
 		fmt.Fprintln(os.Stderr, "-workspace, -from and -into are required")
@@ -31,6 +33,29 @@ func main() {
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
+	}
+	if *candOut != "" {
+		raw, err := typereorg.Candidate(impact, *base)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		f, err := os.OpenFile(*candOut, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "create candidate file:", err)
+			os.Exit(1)
+		}
+		if _, err := f.Write(append(raw, '\n')); err != nil {
+			f.Close()
+			os.Remove(*candOut)
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		if err := f.Close(); err != nil {
+			os.Remove(*candOut)
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
 	}
 	enc := json.NewEncoder(os.Stdout)
 	enc.SetIndent("", "  ")
