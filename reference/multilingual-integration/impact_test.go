@@ -11,10 +11,10 @@ import (
 	"tei/internal/modelref"
 	"tei/internal/plugin"
 	"tei/internal/subject"
+	localization "tei/reference/message-localization"
 	business "tei/reference/multilingual-business-data"
 	overlays "tei/reference/multilingual-overlays"
 	messages "tei/reference/standard-messages"
-	localization "tei/reference/message-localization"
 )
 
 type orderScene struct {
@@ -43,9 +43,9 @@ func newOrderScene(t *testing.T) orderScene {
 	owner := plugin.Identity{ID: "std.order_entry", Version: "1.2.0"}
 	locale := plugin.Identity{ID: "std.localization_ja", Version: "1.0.0"}
 	def := messages.Definition{
-		Ref: messages.Ref{Owner: owner, ID: core.CanonicalID("order.confirmed")},
+		Ref:          messages.Ref{Owner: owner, ID: core.CanonicalID("order.confirmed")},
 		SourceLocale: "en-US", Text: "Order {orderId} confirmed",
-		Format: messages.FormatNamedV0,
+		Format:       messages.FormatNamedV0,
 		Parameters: []messages.Parameter{{Name: "orderId", Kind: messages.ParameterText}},
 	}
 	mc := plugin.Catalog{Plugins: []plugin.Definition{
@@ -70,21 +70,21 @@ func newOrderScene(t *testing.T) orderScene {
 	message := localization.Input{
 		Plugins: mc, Environment: me, Lock: ml,
 		Messages: messages.Catalog{Definitions: []messages.Definition{def}},
-		Stores: []localization.StoreDeclaration{{Provider: locale, ID: "translations", Schema: localization.StoreSchema}},
+		Stores:   []localization.StoreDeclaration{{Provider: locale, ID: "translations", Schema: localization.StoreSchema}},
 		Bindings: []localization.ApplicationBinding{{
 			Environment: me.ID, Application: app, Provider: locale, StoreID: "translations",
 		}},
 		Records: []localization.TranslationRecord{{
 			Application: app, StoreID: "translations", Provider: locale, Target: owner,
 			MessageID: def.Ref.ID, Locale: "ja-JP",
-			Text: "注文 {orderId} を確定しました",
+			Text:    "注文 {orderId} を確定しました",
 			BasedOn: messages.Revision(def), Review: "confirmed",
 		}},
 		Grants: []localization.Grant{{
 			Environment: me.ID, Application: app, Provider: locale,
 			Target: owner, MessageID: def.Ref.ID, Locale: "ja-JP",
 		}},
-		Policy: localization.Policy{Locale: "ja-JP"},
+		Policy:  localization.Policy{Locale: "ja-JP"},
 		Request: localization.Request{Application: app, Message: def.Ref},
 		// Stub is NOT an actual Host acceptance, just a reference-test witness.
 		Review: func(localization.ReviewInput) error { return nil },
