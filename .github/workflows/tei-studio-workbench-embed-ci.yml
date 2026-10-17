@@ -1,0 +1,54 @@
+name: TEI Studio Workbench embedded bundle
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, reopened, synchronize, ready_for_review]
+    paths:
+      - .github/workflows/tei-studio-workbench-embed-ci.yml
+      - cmd/tei-studio/assets/workbench/**
+      - reference/tei-studio-workbench/**
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tei-studio-workbench-embed-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-match-embedded-bundle:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Setup Node 24
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24.21.0
+          check-latest: false
+
+      - name: Test and build Workbench
+        working-directory: reference/tei-studio-workbench
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --version
+          npm ci --no-audit --no-fund
+          npm test
+          npm run typecheck
+          npm run build
+
+      - name: Compare build output with Wails embedded files
+        shell: bash
+        run: |
+          set -euo pipefail
+          for file in index.html main.js style.css THIRD_PARTY_NOTICES.txt; do
+            cmp "reference/tei-studio-workbench/dist/$file" "cmd/tei-studio/assets/workbench/$file"
+          done
+          test ! -e cmd/tei-studio/assets/workbench/dependencies.json
