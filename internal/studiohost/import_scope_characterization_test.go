@@ -171,3 +171,43 @@ func TestStudioHostInspectRejectsPreOperationRootReplacement(t *testing.T) {
 		t.Fatalf("Inspect allowed replaced Workspace root: %+v", got)
 	}
 }
+
+// The semantic model visible to a consumer can remain exactly the same even
+// when the transitive provider reads and successfully parses changed source.
+// A semantic fingerprint is therefore not evidence of a confined read scope.
+// This test is read-only and does not decide an import authorization policy.
+func TestStudioHostUnexportedDependencyChangesReadButNotSemanticProjection(t *testing.T) {
+	consumer, provider, leaf := studioImportScopeFixture(t)
+	host, err := NewReadOnly([]string{consumer, provider, leaf})
+	if err != nil {
+		t.Fatal(err)
+	}
+	before := host.CatalogWorkspace("workspace-1", "provider")
+	if !before.OK || before.Value == nil {
+		t.Fatalf("baseline consumer catalog: %+v", before)
+	}
+	// Only the non-reexported leaf namespace changes. The imported provider
+	// namespace and the consumer's own source remain identical.
+	studioImportScopeWrite(t, filepath.Join(leaf, "semantic", "leaf.tei"),
+		"namespace leaf\n\ntype LeafId from std.identifier\ntype LeafExtraId from std.identifier\n")
+	after := host.CatalogWorkspace("workspace-1", "provider")
+	if !after.OK || after.Value == nil {
+		t.Fatalf("leaf change must remain a valid consumer load: %+v", after)
+	}
+	if before.Value.WorldFingerprint != after.Value.WorldFingerprint ||
+		before.Value.SourceIndexFingerprint != after.Value.SourceIndexFingerprint ||
+		before.Value.ModelRevision != after.Value.ModelRevision {
+		t.Fatalf("unexported leaf change altered consumer projection identity: before=%s/%s/%s after=%s/%s/%s",
+			before.Value.WorldFingerprint, before.Value.SourceIndexFingerprint, before.Value.ModelRevision,
+			after.Value.WorldFingerprint, after.Value.SourceIndexFingerprint, after.Value.ModelRevision)
+	}
+	// This same leaf remains in the runtime read closure: turning its source
+	// invalid must still reject the consumer's attempted read.
+	studioImportScopeWrite(t, filepath.Join(leaf, "semantic", "leaf.tei"),
+		"not a valid TEI declaration\n")
+	invalid := host.CatalogWorkspace("workspace-1", "provider")
+	if invalid.OK || invalid.Value != nil || invalid.Failure == nil ||
+		invalid.Failure.Code != "WORKSPACE_LOAD_FAILED" {
+		t.Fatalf("invalid unexported read dependency was not noticed: %+v", invalid)
+	}
+}
