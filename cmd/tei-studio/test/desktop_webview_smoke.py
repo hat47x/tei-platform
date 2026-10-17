@@ -679,9 +679,9 @@ import('/wails/runtime.js').then(async (runtime) => {
             raise RuntimeError(f"ObserveXead Host Bridge failed in native WebView: {observe_envelope!r}")
         observation = observe_envelope.get("value", {})
         expected_diagnostics = [
+            {"code": "unsupported-attribute", "element": "Instance", "attribute": "Text", "occurrences": 1},
             {"code": "unsupported-attribute", "element": "System", "attribute": "DatabasePassword", "occurrences": 1},
             {"code": "unsupported-attribute", "element": "TableField", "attribute": "Default", "occurrences": 1},
-            {"code": "unsupported-attribute", "element": "Instance", "attribute": "Text", "occurrences": 1},
             {"code": "unsupported-element", "element": "Instance", "occurrences": 1},
             {"code": "unsupported-element", "element": "PrivateValue", "occurrences": 1},
         ]
@@ -715,9 +715,9 @@ import('/wails/runtime.js').then(async (runtime) => {
         expected_sections = [
             {"heading": "Order · 元ID Table:T1", "items": ["OrderID · 元ID TableField:F1 · 型参照ID DataType:D1"]},
             {"heading": "観察診断", "items": [
+                "コード unsupported-attribute · 要素 Instance · 属性 Text · 該当 1件",
                 "コード unsupported-attribute · 要素 System · 属性 DatabasePassword · 該当 1件",
                 "コード unsupported-attribute · 要素 TableField · 属性 Default · 該当 1件",
-                "コード unsupported-attribute · 要素 Instance · 属性 Text · 該当 1件",
                 "コード unsupported-element · 要素 Instance · 該当 1件",
                 "コード unsupported-element · 要素 PrivateValue · 該当 1件",
             ]},
