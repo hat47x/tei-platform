@@ -38,6 +38,7 @@
 | [`reference-derivation-projection/`](reference-derivation-projection/) | 導出項目の表示・一時プレビュー・編集不可・確定保存の意味境界を合成入力で判定する読取り専用の参照（#1707） |
 | [`reference-derived-validation/`](reference-derived-validation/) | 導出値を用いる業務Validationの評価順と、未取得・実行失敗・正常な不成立の境界を合成入力で判定する読取り専用の参照（#1729） |
 | [`reference-epistemic-knowledge/`](reference-epistemic-knowledge/) | 文脈ごとの知識状態と根拠の確認 |
+| [`reference-evaluation-context/`](reference-evaluation-context/) | 評価文脈の明示入力・時計固定・決定的再評価を合成Fixtureで検査する読取り専用の参照（#1720） |
 | [`reference-exploratory-prototyping/`](reference-exploratory-prototyping/) | 探索的試作の反復記録と部分採用を、仮説の昇格なしに確認する参照 |
 | [`reference-external-coordination/`](reference-external-coordination/) | 外部担当との引継ぎ・協調境界の確認 |
 | [`reference-format-version-migration/`](reference-format-version-migration/) | 定義形式の版と変換規則を一か所に置き、読取り手ごとの旧形式対応をなくす参照 |
