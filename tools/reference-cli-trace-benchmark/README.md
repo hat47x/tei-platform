@@ -127,3 +127,47 @@ largeの`TraceWorkspace`全体（5回の中央値）は、`summary`が826 / 815 
 - WindowsやmacOSでの計測、ディスクが遅い環境、ネットワーク上のWorkspaceは計測していません。
 - `tei` CLI全体（プロセス起動、フラグ解析）は含めていません。`TraceWorkspace`とJSON符号化までです。
 - 全体テキスト生成後の外部ソート、オンディスクスプール、`limit`で行の並べ替えを省く方式、Revisionに束縛したキャッシュは、実装も評価もしていません。#1177の完了条件のうち、これらの評価とキャッシュ失効のfail-closed再現は未完了です。
+
+## 残る費用と、採用しなかった案（#1177）
+
+ここまでの改善で、largeの`TraceWorkspace`は変更前の約83秒から約0.4〜0.5秒になりました。残る各段は数十msで、一つを縮めても全体の1割に届きません。以下は、残る費用の内訳と、検討して採用しなかった案の記録です。同じ試みを繰り返さないために残します。数値は合成Workspaceでの実測で、Windowsホストの負荷による揺れがあります。
+
+### 段別の壁時計（main `af03b2c3`、`summary`、9回の中央値）
+
+| 段 | 時間 |
+| --- | ---: |
+| `workspace.Load` | 117 ms |
+| `index.Build`と`derivedbridge.FromIndex` | 98 ms |
+| `TraceDirect`（スナップショット符号化を含む） | 224 ms |
+| `workspace.BuildSourceIndex` | 257 ms |
+| Worldの`json.Marshal` | 12 ms |
+| Source Indexの`json.Marshal` | 51 ms |
+| `sourcebridge.NewResolver` | 49 ms |
+
+#1996の並行化では、投影と`TraceDirect`（約300 ms）と、`BuildSourceIndex`とSource Indexの直列化（約300 ms）が並び、全体の壁時計はこの長い方で決まります。
+
+### 内訳（main `a71de6d4`、CPUプロファイルと`go test -bench`）
+
+`BuildSourceIndex`単体は219 ms、確保36万回、72.8 MBでした。
+
+- `syntax.ParseSemanticFileAnchored`が約38%です。内訳は`ParseSemanticFile`が約23%、Subjectごとのanchorの探索（`semanticSubjectAnchors`）が約16.5%です。
+- 正規表現の照合（`regexp.MatchString`）が約19%です。`ParseCanonicalID`が約13.5%、`SymbolToSegment`が約8%です。後者のうち識別子の検証は#1992で解消します。
+- `Index.Normalize`が約8.5%、`Index.Validate`が約6.7%、`PositionAt`が約5%です。
+
+`TraceDirect`の`summary`単体は180 ms、確保31.7万回、105 MBでした。
+
+- `traceGraphSnapshotBytes`が約49%です。`json.Marshal`が約35.5%、文字列の整列が約7%です。
+- スナップショット全体のSHA-256が約15%です。指紋はこのバイト列の全体から求めるので、省略できません。
+
+### 採用しなかった案
+
+**スナップショットの符号化を手書きにする。** `traceGraphSnapshotBytes`は、nodeとedgeを1件ずつ`json.Marshal`し、整列して、文字列としてもう一度符号化しています。固定された形なので、同じバイト列を直接書き出す実装を試作しました。
+
+- 旧実装を定義として試験に残し、全256バイト、`U+3000`未満の全文字、乱数10万件、nodeとedge各3万件、300個のグラフで、バイト列が一致することを確かめました。
+- 速度は、node 4万件とedge 2万件のグラフで、約60 msから約39 ms（−35%）、確保は18万回から88回でした。一方、バッファが大きくなり、確保量は約45〜50 MBから約61 MBに増えました。
+- `TraceWorkspace`全体に対する短縮は約20 ms、割合にして約5%です。
+- 指紋の入力となるバイト列を自前の符号化で作る危険（Goの`encoding/json`の将来の変更との食い違い）に見合わないと判断し、採用しませんでした。
+
+**`BuildSourceIndex`をファイル単位で並列に解析する。** 解析は約38%を占め、ファイルは互いに独立なので、並列化の余地があります。単体では30%台の短縮が見込めます。ただし、`TraceWorkspace`では投影と`TraceDirect`の側も同じ長さなので、片方だけを縮めても全体の壁時計は変わりません。実装も計測もしていません。両方を縮めても全体の短縮は1割弱と見込まれ、並列化に伴うメモリの増加と複雑さに見合うかどうかを、実案件の計測を得てから判断するのが妥当です。
+
+**そのほか、評価していないもの。** `Load`と`BuildSourceIndex`の双方が同じファイルを解析します。`Load`が解析結果を保持して共有すれば、二重の解析を省けますが、`Load`だけを使う操作の負担が増えるため、設計の判断が要ります。
