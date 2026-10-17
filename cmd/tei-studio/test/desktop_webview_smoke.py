@@ -9,9 +9,11 @@ import io
 import json
 import os
 import re
+import shutil
 import socket
 import subprocess
 import sys
+import tempfile
 import time
 import traceback
 import urllib.error
@@ -248,7 +250,7 @@ def main() -> int:
     evidence_dir.mkdir(parents=True, exist_ok=True)
     facts: dict[str, Any] = {
         "result": "FAIL_NOT_COMPLETED",
-        "scope": "native Wails WebView2 Workbench Catalog, read-only Inspect projection, and Validate display for one fixed workspace",
+        "scope": "native Wails WebView2 Workbench Catalog, read-only Inspect projection, Validate display, and fixed-fixture ObserveXead UI flow",
         "app_path": str(app_path),
         "run_id": os.environ.get("GITHUB_RUN_ID"),
         "run_attempt": os.environ.get("GITHUB_RUN_ATTEMPT"),
@@ -271,6 +273,7 @@ def main() -> int:
     driver_session: str | None = None
     app_handle: int | None = None
     app_pid: int | None = None
+    scratch_workspace: tempfile.TemporaryDirectory[str] | None = None
     failure: str | None = None
 
     def record(event: str, **values: Any) -> None:
@@ -326,10 +329,24 @@ def main() -> int:
         if app_baseline:
             facts["preexisting_app_processes"] = app_baseline
             raise RuntimeError("A process with the smoke executable name existed before WebDriver launch")
-        workspace_root = Path(os.environ.get("GITHUB_WORKSPACE", Path.cwd())).resolve() / "reference" / "workspace"
-        if not workspace_root.is_dir():
-            raise RuntimeError(f"Fixed ListWorkspaces fixture is missing: {workspace_root}")
+        source_workspace = Path(os.environ.get("GITHUB_WORKSPACE", Path.cwd())).resolve() / "reference" / "workspace"
+        fixture_source = Path(__file__).resolve().parent / "fixtures" / "observe-xead" / "model.xead"
+        if not source_workspace.is_dir():
+            raise RuntimeError(f"Fixed ListWorkspaces fixture is missing: {source_workspace}")
+        if not fixture_source.is_file():
+            raise RuntimeError(f"Fixed ObserveXead fixture is missing: {fixture_source}")
+        scratch_workspace = tempfile.TemporaryDirectory(prefix="tei-studio-xead-smoke-")
+        scratch_root = Path(scratch_workspace.name)
+        workspace_root = scratch_root / "workspace"
+        shutil.copytree(source_workspace, workspace_root)
+        relative_xead_path = "tei-studio-smoke/observe.xead"
+        xead_path = workspace_root / relative_xead_path
+        xead_path.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(fixture_source, xead_path)
+        fixture_sha256_before = hashlib.sha256(xead_path.read_bytes()).hexdigest()
+        facts["source_workspace_root"] = str(source_workspace)
         facts["workspace_root"] = str(workspace_root)
+        facts["observe_xead_fixture"] = {"relative_path": relative_xead_path, "sha256_before": fixture_sha256_before, "scratch_workspace_copy": True, "source_workspace_modified": False}
         webview_baseline = find_processes("msedgewebview2.exe")
         baseline_pids = {int(item["ProcessId"]) for item in webview_baseline}
         facts["preexisting_webview2_count"] = len(baseline_pids)
@@ -499,6 +516,9 @@ return {
   graphLabel: document.querySelector('#graph svg')?.getAttribute('aria-label') ?? '',
   graphNodes: Array.from(document.querySelectorAll('#graph g[role="button"]')).map((item) => item.getAttribute('aria-label')),
   diagnosticRows: Array.from(document.querySelectorAll('#commands [aria-label="診断一覧"] li[data-severity]')).map((item) => ({severity:item.dataset.severity,text:item.textContent})),
+  xeadStatus: document.querySelector('#xead-status')?.textContent ?? '',
+  xeadResult: document.querySelector('#xead-result')?.innerText ?? '',
+  xeadSections: Array.from(document.querySelectorAll('#xead-result .xead-table')).map((section) => ({heading:section.querySelector('h3')?.textContent ?? '',items:Array.from(section.querySelectorAll('li')).map((item) => item.textContent)})),
   workspaceOptions: Array.from(document.querySelectorAll('#workspace option')).map((item) => ({value:item.value,label:item.textContent})),
   assets: performance.getEntriesByType('resource').map((item) => new URL(item.name).pathname),
   readyState: document.readyState
@@ -626,9 +646,107 @@ return true;
             time.sleep(0.2)
         if validate_state.get("diagnosticSummary") != expected_summary or validate_state.get("diagnosticRows") != validation_findings:
             raise RuntimeError(f"Workbench diagnostics differ from the Host Validate response: expected={validation_findings!r}, actual={validate_state.get('diagnosticRows')!r}")
-        page_state.update({"graphSelection": graph_state, "validationDisplay": validate_state, "bridgeEnvelopes": bridge_response, "graphInspectResponse": graph_response})
+
+        # Exercise the existing relative-path input and click handler in the
+        # actual Wails WebView using a fixture in a disposable workspace copy.
+        input_response = webdriver_request(base_url, "POST", f"/session/{driver_session}/element", {"using": "css selector", "value": "#xead-path"}).get("value", {})
+        button_response = webdriver_request(base_url, "POST", f"/session/{driver_session}/element", {"using": "css selector", "value": "#observe-xead"}).get("value", {})
+        input_id = input_response.get("element-6066-11e4-a52e-4f735466cecf")
+        button_id = button_response.get("element-6066-11e4-a52e-4f735466cecf")
+        if not input_id or not button_id:
+            raise RuntimeError(f"ObserveXead controls were not found: input={input_response!r}, button={button_response!r}")
+        webdriver_request(base_url, "POST", f"/session/{driver_session}/element/{input_id}/value", {"text": relative_xead_path, "value": list(relative_xead_path)})
+        webdriver_request(base_url, "POST", f"/session/{driver_session}/element/{button_id}/click", {})
+        xead_state: dict[str, Any] = {}
+        xead_deadline = time.monotonic() + 15
+        while time.monotonic() < xead_deadline:
+            xead_state = webdriver_request(base_url, "POST", f"/session/{driver_session}/execute/sync", {"script": inspect_script, "args": []}).get("value", {})
+            if xead_state.get("xeadStatus", "").startswith("観察完了："):
+                break
+            time.sleep(0.2)
+        if not xead_state.get("xeadStatus", "").startswith("観察完了："):
+            raise RuntimeError(f"ObserveXead UI did not complete: {xead_state.get('xeadStatus')!r}")
+
+        observe_script = """
+const done = arguments[arguments.length - 1];
+const [relativePath] = arguments;
+import('/wails/runtime.js').then(async (runtime) => {
+  done(await runtime.Call.ByName('main.StudioBridge.ObserveXead', 'workspace-1', relativePath));
+}).catch((error) => done({error: String(error)}));
+"""
+        observe_envelope = webdriver_request(base_url, "POST", f"/session/{driver_session}/execute/async", {"script": observe_script, "args": [relative_xead_path]}, timeout_seconds=30).get("value", {})
+        if observe_envelope.get("error") or observe_envelope.get("ok") is not True:
+            raise RuntimeError(f"ObserveXead Host Bridge failed in native WebView: {observe_envelope!r}")
+        observation = observe_envelope.get("value", {})
+        expected_diagnostics = [
+            {"code": "unsupported-attribute", "element": "Instance", "attribute": "Text", "occurrences": 1},
+            {"code": "unsupported-attribute", "element": "System", "attribute": "DatabasePassword", "occurrences": 1},
+            {"code": "unsupported-attribute", "element": "TableField", "attribute": "Default", "occurrences": 1},
+            {"code": "unsupported-element", "element": "Instance", "occurrences": 1},
+            {"code": "unsupported-element", "element": "PrivateValue", "occurrences": 1},
+        ]
+        expected_table = {
+            "source": {"sourceKind": "Table", "sourceID": "T1"},
+            "name": "Order",
+            "fields": [{"source": {"sourceKind": "TableField", "sourceID": "F1"}, "name": "OrderID", "dataType": {"sourceKind": "DataType", "sourceID": "D1"}}],
+        }
+        if set(observation) != {"schemaVersion", "effect", "observation", "authorityLimits"} or observation.get("schemaVersion") != "tei.operations.xead-observation/v0" or observation.get("effect") != "read-only":
+            raise RuntimeError(f"ObserveXead did not return the read-only observation contract: {observation!r}")
+        projected = observation.get("observation", {})
+        if projected.get("tables") != [expected_table] or projected.get("diagnostics") != expected_diagnostics:
+            raise RuntimeError(f"ObserveXead response differed from the fixed allowlisted projection: {observation!r}")
+        expected_authority_limits = {
+            "xead-observation-is-not-canonical-meaning",
+            "xead-source-identifiers-are-not-canonical-identities",
+            "xead-observation-does-not-authorize-edits-or-execution",
+            "unsupported-source-constructs-remain-unresolved",
+        }
+        if set(observation.get("authorityLimits", [])) != expected_authority_limits:
+            raise RuntimeError(f"ObserveXead authority limits differed: {observation.get('authorityLimits')!r}")
+        response_text = json.dumps(observe_envelope, ensure_ascii=False, sort_keys=True)
+        displayed_xead = str(xead_state.get("xeadResult", ""))
+        secrets = ("synthetic-system-secret", "synthetic-default-secret", "synthetic-instance-secret", "synthetic-unknown-secret")
+        for secret in secrets:
+            if secret in response_text or secret in displayed_xead or secret in str(xead_state.get("xeadStatus", "")):
+                raise RuntimeError(f"ObserveXead exposed a synthetic source value: {secret}")
+        for visible in ("Order", "T1", "OrderID", "F1", "D1", "unsupported-attribute", "unsupported-element", "Default", "Instance", "PrivateValue"):
+            if visible not in displayed_xead:
+                raise RuntimeError(f"ObserveXead did not display expected projection detail {visible!r}: {displayed_xead!r}")
+        expected_sections = [
+            {"heading": "Order · 元ID Table:T1", "items": ["OrderID · 元ID TableField:F1 · 型参照ID DataType:D1"]},
+            {"heading": "観察診断", "items": [
+                "コード unsupported-attribute · 要素 Instance · 属性 Text · 該当 1件",
+                "コード unsupported-attribute · 要素 System · 属性 DatabasePassword · 該当 1件",
+                "コード unsupported-attribute · 要素 TableField · 属性 Default · 該当 1件",
+                "コード unsupported-element · 要素 Instance · 該当 1件",
+                "コード unsupported-element · 要素 PrivateValue · 該当 1件",
+            ]},
+        ]
+        if xead_state.get("xeadSections") != expected_sections:
+            raise RuntimeError(f"ObserveXead UI projection differed from the Host DTO: {xead_state.get('xeadSections')!r}")
+        if "synthetic-" in response_text or "text" in observation:
+            raise RuntimeError(f"ObserveXead response contained an unapproved source value or field: {response_text}")
+        fixture_sha256_after = hashlib.sha256(xead_path.read_bytes()).hexdigest()
+        if fixture_sha256_after != fixture_sha256_before:
+            raise RuntimeError("ObserveXead changed the fixed fixture bytes")
+        facts["observe_xead"] = {
+            "workspace_id": "workspace-1", "relative_path": relative_xead_path,
+            "schema_version": observation["schemaVersion"], "effect": observation["effect"],
+            "table_count": len(projected.get("tables", [])),
+            "field_count": sum(len(table.get("fields", [])) for table in projected.get("tables", [])),
+            "diagnostic_count": len(projected.get("diagnostics", [])),
+            "synthetic_values_redacted": True,
+            "fixture_sha256_before": fixture_sha256_before, "fixture_sha256_after": fixture_sha256_after,
+        }
+        page_state.update({"graphSelection": graph_state, "validationDisplay": validate_state, "bridgeEnvelopes": bridge_response, "graphInspectResponse": graph_response, "observeXeadUi": xead_state, "observeXeadBridge": observe_envelope})
         write_json(evidence_dir / "page-state.json", page_state)
+        screenshot_response = webdriver_request(base_url, "GET", f"/session/{driver_session}/screenshot")
+        screenshot = screenshot_response.get("value")
+        if not screenshot:
+            raise RuntimeError("WebDriver screenshot response did not contain image data after ObserveXead")
+        (evidence_dir / "webview2-observe-xead-screen.png").write_bytes(base64.b64decode(screenshot))
         record("workbench-catalog-inspect-validate-verified", pathname=page_state["pathname"], catalog_entries=len(entries), initial_subject="sales.order", inspected_subject=child.get("id"), validation_summary=expected_summary, displayed_findings=len(validation_findings))
+        record("workbench-observe-xead-ui-and-bridge-verified", workspace_id="workspace-1", relative_path=relative_xead_path, effect="read-only", tables=1, fields=1, diagnostics=len(expected_diagnostics), synthetic_values_redacted=True, fixture_unchanged=True)
 
     except Exception as exc:  # Keep a failure artifact even when setup cannot reach the Wails app.
         failure = f"{type(exc).__name__}: {exc}"
@@ -713,12 +831,19 @@ return true;
             except Exception as exc:
                 facts["webdriver_process_cleanup_error"] = f"{type(exc).__name__}: {exc}"
                 failure = failure or facts["webdriver_process_cleanup_error"]
+        if scratch_workspace is not None:
+            try:
+                scratch_workspace.cleanup()
+                facts["scratch_workspace_removed"] = True
+            except Exception as exc:
+                facts["scratch_workspace_cleanup_error"] = f"{type(exc).__name__}: {exc}"
+                failure = failure or facts["scratch_workspace_cleanup_error"]
         driver_stdout.close()
         driver_stderr.close()
         app_stdout.close()
         app_stderr.close()
 
-        facts["result"] = "FAIL" if failure else "PASS_NATIVE_WEBVIEW_WORKBENCH_READ_ONLY"
+        facts["result"] = "FAIL" if failure else ("PASS_NATIVE_WEBVIEW_OBSERVEXEAD" if facts.get("observe_xead") else "PASS_NATIVE_WEBVIEW_WORKBENCH_READ_ONLY")
         if failure:
             facts["failure"] = failure
             if not (evidence_dir / "failure.txt").exists():
