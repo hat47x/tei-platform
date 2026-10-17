@@ -152,11 +152,11 @@ jobs:
           python cmd/tei-studio/test/desktop_webview_smoke.py $env:STUDIO_DESKTOP_EXE $env:STUDIO_SMOKE_EVIDENCE_DIR
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-      - name: Upload WebView2 startup observations
+      - name: Upload WebView2 Workbench observations
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: tei-studio-desktop-webview2-smoke-${{ github.run_id }}-${{ github.run_attempt }}
+          name: tei-studio-desktop-workbench-webview2-smoke-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ github.workspace }}/tei-studio-desktop-webview2-smoke/**
           retention-days: 7
           if-no-files-found: warn

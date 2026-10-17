@@ -248,7 +248,7 @@ def main() -> int:
     evidence_dir.mkdir(parents=True, exist_ok=True)
     facts: dict[str, Any] = {
         "result": "FAIL_NOT_COMPLETED",
-        "scope": "native Wails WebView2 startup and initial read-only ListWorkspaces rendering for one fixed workspace only",
+        "scope": "native Wails WebView2 Workbench Catalog, read-only Inspect projection, and Validate display for one fixed workspace",
         "app_path": str(app_path),
         "run_id": os.environ.get("GITHUB_RUN_ID"),
         "run_attempt": os.environ.get("GITHUB_RUN_ATTEMPT"),
@@ -339,6 +339,9 @@ def main() -> int:
         app_env = os.environ.copy()
         inherited_server_host = app_env.pop("WAILS_SERVER_HOST", None)
         facts["inherited_wails_server_host_cleared"] = inherited_server_host is not None
+        inherited_devserver_url = app_env.pop("FRONTEND_DEVSERVER_URL", None)
+        facts["frontend_devserver_url_unset"] = True
+        facts["inherited_frontend_devserver_url_cleared"] = inherited_devserver_url is not None
         facts["webview_debug_port_argument"] = f"--webview-debug-port={webview_debug_port}"
         app_process = subprocess.Popen(
             [str(app_path), f"--workspace={workspace_root}", f"--webview-debug-port={webview_debug_port}"],
@@ -485,10 +488,19 @@ def main() -> int:
         inspect_script = """
 return {
   title: document.title,
-  heading: document.querySelector('h1')?.innerText ?? '',
-  state: document.querySelector('#state')?.innerText ?? '',
-  output: document.querySelector('#output')?.innerText ?? '',
+  pathname: location.pathname,
+  connection: document.querySelector('#connection')?.textContent ?? '',
+  subjectTitle: document.querySelector('#subject-title')?.textContent ?? '',
+  sourceStatus: document.querySelector('#source-status')?.textContent ?? '',
+  notice: document.querySelector('#notice')?.textContent ?? '',
+  diagnosticSummary: document.querySelector('#diagnostic-summary')?.textContent ?? '',
+  editor: document.querySelector('#editor .cm-content')?.innerText ?? '',
+  editorEditable: document.querySelector('#editor .cm-content')?.getAttribute('contenteditable') ?? null,
+  graphLabel: document.querySelector('#graph svg')?.getAttribute('aria-label') ?? '',
+  graphNodes: Array.from(document.querySelectorAll('#graph g[role="button"]')).map((item) => item.getAttribute('aria-label')),
+  diagnosticRows: Array.from(document.querySelectorAll('#commands [aria-label="診断一覧"] li[data-severity]')).map((item) => ({severity:item.dataset.severity,text:item.textContent})),
   workspaceOptions: Array.from(document.querySelectorAll('#workspace option')).map((item) => ({value:item.value,label:item.textContent})),
+  assets: performance.getEntriesByType('resource').map((item) => new URL(item.name).pathname),
   readyState: document.readyState
 };
 """
@@ -502,7 +514,7 @@ return {
                 {"script": inspect_script, "args": []},
             )
             page_state = response.get("value", {})
-            if page_state.get("output") and "Operation応答" in page_state.get("state", ""):
+            if page_state.get("subjectTitle") == "sales.order" and page_state.get("sourceStatus", "").startswith("参照情報：") and page_state.get("diagnosticSummary") != "未検証":
                 break
             time.sleep(0.25)
         facts["page_state"] = page_state
@@ -511,21 +523,112 @@ return {
         screenshot = screenshot_response.get("value")
         if not screenshot:
             raise RuntimeError("WebDriver screenshot response did not contain image data")
-        (evidence_dir / "webview2-initial-screen.png").write_bytes(base64.b64decode(screenshot))
-        if not page_state.get("title", "").startswith("TEI Studio — read-only PoC A"):
-            raise RuntimeError(f"Unexpected Desktop page title: {page_state.get('title')!r}")
-        if "TEI Studio — PoC A" not in page_state.get("heading", ""):
-            raise RuntimeError(f"Expected Studio heading was not visible: {page_state.get('heading')!r}")
-        if "Operation応答" not in page_state.get("state", ""):
-            raise RuntimeError(f"Initial ListWorkspaces did not render an operation response: {page_state.get('state')!r}")
-        envelope = json.loads(page_state.get("output", ""))
-        expected_envelope = {"ok": True, "value": [{"id": "workspace-1", "label": "workspace"}]}
-        if envelope != expected_envelope:
-            raise RuntimeError(f"Initial ListWorkspaces result differed from the fixed fixture response: {envelope!r}")
+        (evidence_dir / "webview2-workbench-screen.png").write_bytes(base64.b64decode(screenshot))
+        if page_state.get("pathname") != "/workbench/":
+            raise RuntimeError(f"Desktop did not open the embedded Workbench route: {page_state.get('pathname')!r}")
+        if page_state.get("connection") != "実Hostに接続":
+            raise RuntimeError(f"Workbench did not connect to the real Host: {page_state.get('connection')!r}")
+        if page_state.get("subjectTitle") != "sales.order":
+            raise RuntimeError(f"Initial Catalog selection was not inspected: {page_state.get('subjectTitle')!r}")
         expected_options = [{"value": "workspace-1", "label": "workspace (workspace-1)"}]
         if page_state.get("workspaceOptions") != expected_options:
             raise RuntimeError(f"Initial workspace option was not rendered: {page_state.get('workspaceOptions')!r}")
-        record("initial-screen-and-listworkspaces-verified", title=page_state["title"], heading=page_state["heading"], state=page_state["state"], listworkspaces=envelope)
+        expected_assets = {"/workbench/main.js", "/workbench/style.css", "/wails/runtime.js"}
+        if not expected_assets.issubset(set(page_state.get("assets", []))):
+            raise RuntimeError(f"Workbench did not load all embedded runtime assets: {page_state.get('assets')!r}")
+        if page_state.get("editorEditable") != "false" or page_state.get("graphLabel") != "読取り専用グラフ":
+            raise RuntimeError("Workbench source or graph is not marked read-only")
+
+        # Invoke the same registered Host methods through Wails' runtime and compare
+        # their values with the actual WebView projection, rather than relying on a mock.
+        bridge_script = """
+const done = arguments[arguments.length - 1];
+(async () => {
+  const runtime = await import('/wails/runtime.js');
+  const catalog = await runtime.Call.ByName('main.StudioBridge.CatalogWorkspace', 'workspace-1', '');
+  const initialInspect = await runtime.Call.ByName('main.StudioBridge.InspectSubject', 'workspace-1', 'semantic-data', 'sales.order');
+  const validation = await runtime.Call.ByName('main.StudioBridge.ValidateWorkspace', 'workspace-1');
+  done({catalog, initialInspect, validation});
+})().catch((error) => done({error: String(error)}));
+"""
+        bridge_response = webdriver_request(base_url, "POST", f"/session/{driver_session}/execute/async", {"script": bridge_script, "args": []}, timeout_seconds=30).get("value", {})
+        if bridge_response.get("error"):
+            raise RuntimeError(f"Could not call the registered StudioBridge from the native WebView: {bridge_response['error']}")
+        catalog_envelope = bridge_response.get("catalog", {})
+        initial_envelope = bridge_response.get("initialInspect", {})
+        validation_envelope = bridge_response.get("validation", {})
+        for operation_name, envelope in (("CatalogWorkspace", catalog_envelope), ("InspectSubject", initial_envelope), ("ValidateWorkspace", validation_envelope)):
+            if envelope.get("ok") is not True:
+                raise RuntimeError(f"StudioBridge {operation_name} failed in the native WebView: {envelope!r}")
+        initial_value = initial_envelope.get("value", {})
+        if initial_value.get("effect") != "read-only" or initial_value.get("subject") != {"kind": "semantic-data", "id": "sales.order"}:
+            raise RuntimeError(f"Initial Inspect response was unexpected: {initial_value!r}")
+        displayed_canonical = json.loads(page_state.get("editor", "null"))
+        if displayed_canonical != initial_value.get("canonical"):
+            raise RuntimeError("Workbench canonical projection differs from the Host Inspect response")
+
+        catalog_value = catalog_envelope.get("value", {})
+        entries = catalog_value.get("entries", [])
+        direct_children = [entry for entry in entries if entry.get("parent") == {"kind": "semantic-data", "id": "sales.order"} and entry.get("symbol") == "orderId"]
+        if len(direct_children) != 1:
+            raise RuntimeError(f"Catalog did not return one direct orderId child: {direct_children!r}")
+        child = direct_children[0].get("subject", {})
+        if "orderId" not in page_state.get("graphNodes", []):
+            raise RuntimeError(f"Catalog child was not displayed as a selectable graph node: {page_state.get('graphNodes')!r}")
+        click_script = """
+const node = document.querySelector('#graph g[role="button"][aria-label="orderId"]');
+if (!node) throw new Error('Catalog child graph node is missing');
+node.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
+return true;
+"""
+        webdriver_request(base_url, "POST", f"/session/{driver_session}/execute/sync", {"script": click_script, "args": []})
+        graph_inspect_script = """
+const done = arguments[arguments.length - 1];
+const [kind, subjectId] = arguments;
+(async () => {
+ const runtime = await import('/wails/runtime.js');
+ done(await runtime.Call.ByName('main.StudioBridge.InspectSubject', 'workspace-1', kind, subjectId));
+})().catch((error) => done({error:String(error)}));
+"""
+        graph_response = webdriver_request(base_url, "POST", f"/session/{driver_session}/execute/async", {"script": graph_inspect_script, "args": [child.get("kind"), child.get("id")]}, timeout_seconds=30).get("value", {})
+        if graph_response.get("ok") is not True or graph_response.get("value", {}).get("effect") != "read-only":
+            raise RuntimeError(f"Graph Inspect did not return a read-only projection: {graph_response!r}")
+        graph_state = {}
+        graph_deadline = time.monotonic() + 10
+        while time.monotonic() < graph_deadline:
+            graph_state = webdriver_request(base_url, "POST", f"/session/{driver_session}/execute/sync", {"script": inspect_script, "args": []}).get("value", {})
+            if graph_state.get("subjectTitle") == child.get("id"):
+                break
+            time.sleep(0.2)
+        if graph_state.get("subjectTitle") != child.get("id") or json.loads(graph_state.get("editor", "null")) != graph_response.get("value", {}).get("canonical"):
+            raise RuntimeError("Graph selection did not render the Host Inspect canonical projection")
+
+        validate_click = """
+const button = document.querySelector('#commands button[data-command-id="validate"]');
+if (!button || button.disabled) throw new Error('Validate button is unavailable');
+button.click();
+return true;
+"""
+        webdriver_request(base_url, "POST", f"/session/{driver_session}/execute/sync", {"script": validate_click, "args": []})
+        validation_findings = []
+        value = validation_envelope.get("value", {})
+        diagnostics = ([] if value.get("Direct") is None else [value["Direct"]]) + [item["diagnostic"] for item in (value.get("Diagnostics") or [])]
+        for diagnostic in diagnostics:
+            validation_findings.append({"severity": diagnostic["severity"], "text": f"{diagnostic['severity']}: {diagnostic['code']}: {diagnostic['message']}"})
+        expected_counts = {severity: sum(item["severity"] == severity for item in validation_findings) for severity in ("error", "warning")}
+        expected_summary = f"エラー {expected_counts['error']}・警告 {expected_counts['warning']}"
+        validate_state = {}
+        validate_deadline = time.monotonic() + 12
+        while time.monotonic() < validate_deadline:
+            validate_state = webdriver_request(base_url, "POST", f"/session/{driver_session}/execute/sync", {"script": inspect_script, "args": []}).get("value", {})
+            if validate_state.get("diagnosticSummary") == expected_summary and validate_state.get("diagnosticRows") == validation_findings:
+                break
+            time.sleep(0.2)
+        if validate_state.get("diagnosticSummary") != expected_summary or validate_state.get("diagnosticRows") != validation_findings:
+            raise RuntimeError(f"Workbench diagnostics differ from the Host Validate response: expected={validation_findings!r}, actual={validate_state.get('diagnosticRows')!r}")
+        page_state.update({"graphSelection": graph_state, "validationDisplay": validate_state, "bridgeEnvelopes": bridge_response, "graphInspectResponse": graph_response})
+        write_json(evidence_dir / "page-state.json", page_state)
+        record("workbench-catalog-inspect-validate-verified", pathname=page_state["pathname"], catalog_entries=len(entries), initial_subject="sales.order", inspected_subject=child.get("id"), validation_summary=expected_summary, displayed_findings=len(validation_findings))
 
     except Exception as exc:  # Keep a failure artifact even when setup cannot reach the Wails app.
         failure = f"{type(exc).__name__}: {exc}"
@@ -615,7 +718,7 @@ return {
         app_stdout.close()
         app_stderr.close()
 
-        facts["result"] = "FAIL" if failure else "PASS_NATIVE_WEBVIEW_STARTUP_ONLY"
+        facts["result"] = "FAIL" if failure else "PASS_NATIVE_WEBVIEW_WORKBENCH_READ_ONLY"
         if failure:
             facts["failure"] = failure
             if not (evidence_dir / "failure.txt").exists():

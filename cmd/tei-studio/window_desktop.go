@@ -6,7 +6,8 @@ import "github.com/wailsapp/wails/v3/pkg/application"
 
 func setupWindow(app *application.App) {
 	app.Window.NewWithOptions(application.WebviewWindowOptions{
-		Title:  "TEI Studio — read-only PoC",
+		Title:  "TEI Studio — Workbench",
+		URL:    "/workbench/",
 		Width:  1100,
 		Height: 750,
 	})
