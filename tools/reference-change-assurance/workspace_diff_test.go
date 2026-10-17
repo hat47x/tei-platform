@@ -150,3 +150,45 @@ func TestWorkspaceDiffDecisionMaintainsEvidenceAndAuthorityBoundaries(t *testing
 	noChanges.SourceChanges = nil
 	assert("no changes no receipts", noChanges, "unresolved", "no-independent-receipt-or-proven-dependency-closure", true)
 }
+
+func TestWorkspaceDiffRuleDriftRetainsKnownConsumerImpact(t *testing.T) {
+	changed := workspaceKey("semantic-data", "sales.order")
+	consumer := workspaceKey("application-pattern", "order_entry.order_record")
+	graph := modelref.Graph{Nodes: []modelref.Node{{Key: changed}, {Key: consumer}}}
+	report := WorkspaceDiffReport{
+		Consumer:              consumer,
+		BeforeRuleFingerprint: "old-rules",
+		AfterRuleFingerprint:  "new-rules",
+		SourceChanges:         []SourceArtifactChange{{Path: "semantic/sales/order.tei", Kind: "content-changed"}},
+		Impact: modelref.ImpactReview{
+			GraphValid: true,
+			Changes:    []modelref.Change{{Key: changed, Kind: "version-changed"}},
+			Affected:   []modelref.Affected{{Changed: changed, Consumer: consumer, Reason: "version-changed"}},
+		},
+	}
+
+	got := classifyWorkspaceDiff(report, graph, graph, true)
+	if got.Action != "unresolved" || got.ExecutionAllowed ||
+		len(got.ReasonCodes) != 2 ||
+		got.ReasonCodes[0] != "typed-projection-rules-changed" ||
+		got.ReasonCodes[1] != "typed-reference-impact-candidate" {
+		t.Fatalf("known recheck impact must survive unresolved rule coverage: %+v", got)
+	}
+	if len(report.Impact.Affected) != 1 {
+		t.Fatalf("classifying assurance must not mutate typed impact evidence: %+v", report.Impact)
+	}
+
+	report.Impact.Affected = nil
+	got = classifyWorkspaceDiff(report, graph, graph, true)
+	if got.Action != "unresolved" || len(got.ReasonCodes) != 1 ||
+		got.ReasonCodes[0] != "typed-projection-rules-changed" {
+		t.Fatalf("unknown scope must not invent a known consumer impact: %+v", got)
+	}
+
+	report.Impact.Changes = []modelref.Change{{Key: consumer, Kind: "reference-changed"}}
+	got = classifyWorkspaceDiff(report, graph, graph, true)
+	if got.Action != "unresolved" || len(got.ReasonCodes) != 2 ||
+		got.ReasonCodes[1] != "consumer-directly-changed" {
+		t.Fatalf("direct impact must remain visible without claiming closure: %+v", got)
+	}
+}
