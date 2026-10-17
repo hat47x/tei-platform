@@ -181,3 +181,9 @@ generic InvocationがRuntime Authorityを代替するわけではありません
 検証対象は受理Sourceが無い場合、Contract定義の後出し変更、Provider/Artifact/Conformanceの取り違え、Publisher Namespaceの横取り、Provider Conformance IssuerのScope違い、受理削除、Grant取消・二重Grantです。同一のService選択とRuntime Planであっても、次の呼出しで現在のIssuer Grantが失効していれば子プロセス起動前に拒否します。[見積もり実プロセス縦断試験](quote_service_host_e2e_test.go)にもこのReaderを配線し、単に固定文字列を返すモックから置き換えました。
 
 **重要な限界**：これは未採用候補に基づく**Reference**です。Authority Grant自体は構造と指紋の整合検査しかできず、その発行元の認証・署名・秘匿保管を保証しません。試験ではGrantも受理情報もメモリ上で合成しています。Host Sourceが信頼済みの正本であり、Namespace所有・受理・現在性・撤回を認証済みの経路で取得していることは**別途必須**です。このReaderをそのまま正式な受理機構と宣言せず、新しいIssuer/Resolverを増やしません。案件内プラグインの作者に上記の証跡を一律に記述させる要件ではありません。
+
+### 実装を含まないContractだけを先に共有するReference（#1975）
+
+[契約のみのProvider検証](contract_only_provider_test.go)では、SQLite読取り方言の**架空の契約例**について、Provider実装・適合証拠がゼロの状態でも論理契約そのものは版・指紋を維持して参照可能なことを検査します。一方、呼出し先の解決は`no provider implementation`で停止します。候補Providerの宣言を後から追加しても、適合根拠がなければ`no conformant provider`として区別し、明示wiringだけでは実行可能にしません。
+
+最後にSyntheticな適合証拠を渡してReference Resolver上のexact Contract→Provider bindingを検査しますが、**この証拠はテスト中の合成値です**。実SQLiteでの問い合わせ、独立した適合試験、生成AIによる実装、Hostの公開／適合受理、実行権限やWindows GUIを検証したものではありません。本試験は[PoC設計](../../plan/design/CONTRACT_ONLY_GENERATIVE_PROVIDER_POC_2026-10.md)のP0の一部に限定します。Core固定種別、新しいResolverやAuthorityは追加しません。

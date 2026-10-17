@@ -250,6 +250,9 @@ func resolveCandidate(s snapshot, c Candidate) []Diagnostic {
 			}
 			out = append(out, checkNewFile(s, fingerprints, planned, key, op.Placement, layerApplication, patternFilePattern, "applications/<dir>/patterns/<file>.tei")...)
 			out = append(out, checkPatternOwner(key, op, idx, deltaApplications)...)
+
+		case opSetSymbol:
+			out = append(out, resolveSetSymbol(s, op)...)
 		}
 	}
 

@@ -163,15 +163,6 @@ type ForeignKeyMapping struct {
 	ReferencedAttributes []core.CanonicalID `json:"referencedAttributes"`
 }
 
-func (m Mapping) ColumnByAttribute(id core.CanonicalID) (ColumnMapping, bool) {
-	for _, c := range m.Columns {
-		if c.Attribute == id {
-			return c, true
-		}
-	}
-	return ColumnMapping{}, false
-}
-
 func (m Mapping) RelationStorageByRelation(id core.CanonicalID) (RelationStorageMapping, bool) {
 	for _, storage := range m.RelationStorage {
 		if storage.Relation == id {
