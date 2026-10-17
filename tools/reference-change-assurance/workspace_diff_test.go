@@ -178,6 +178,20 @@ func TestWorkspaceDiffRuleDriftRetainsKnownConsumerImpact(t *testing.T) {
 		t.Fatalf("classifying assurance must not mutate typed impact evidence: %+v", report.Impact)
 	}
 
+	// A purported impact for a consumer absent from both typed projections
+	// is not sufficient to claim that a known consumer was affected.
+	phantom := workspaceKey("application-pattern", "order_entry.unknown")
+	report.Consumer = phantom
+	report.Impact.Affected = []modelref.Affected{{Changed: changed, Consumer: phantom, Reason: "version-changed"}}
+	got = classifyWorkspaceDiff(report, graph, graph, true)
+	if got.Action != "unresolved" || len(got.ReasonCodes) != 1 ||
+		got.ReasonCodes[0] != "typed-projection-rules-changed" || got.ExecutionAllowed {
+		t.Fatalf("missing consumer must not be reported as a known typed impact: %+v", got)
+	}
+
+	report.Consumer = consumer
+	report.Impact.Affected = []modelref.Affected{{Changed: changed, Consumer: consumer, Reason: "version-changed"}}
+
 	report.Impact.Affected = nil
 	got = classifyWorkspaceDiff(report, graph, graph, true)
 	if got.Action != "unresolved" || len(got.ReasonCodes) != 1 ||
