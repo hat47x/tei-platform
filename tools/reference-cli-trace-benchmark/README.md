@@ -79,6 +79,26 @@ CPUプロファイル（largeの`full`を繰り返し実行、`go test -bench`�
 
 変更後に残る主な費用は、`TraceDirect`の`full`で行キーを作る文字列整形（約0.4秒）、`index.Build`と`derivedbridge`（約0.2秒）、`Load`（約0.13秒）、およびメモリの確保に伴う回収です。これらは未着手です。
 
+## 行キー生成の改善（#1177の続き）
+
+`PositionAt`の改善後も、largeの`full`と`full -limit 1`は`summary`より約0.3秒遅く、`TraceDirect`の`full`の段が約0.5秒かかっていました。CPUプロファイルでは`traceRowKey`が全体の約18%（1.99秒／11.1秒）、そのうち`fmt.Sprintf`が約1.2秒でした。原因は、並べ替えの比較関数の中で、比較のたびに両側の行キー（11個の欄を整形し、証拠をJSON符号化する）を作り直していたことです。n行の整列でO(n log n)回のキー生成が起きます。
+
+行キーを行ごとに一度だけ作り、行とキーを並べて整列する形に変えました（`sortTraceRows`）。あわせて、キー生成の`fmt.Sprintf`の連結を`strconv.AppendInt`とバイト列の追記へ置き換えました。キーの文字列と整列後の行は、書き換え前の定義と一致します（`internal/modelref/trace_sort_test.go`が、区切り文字を含むID・多バイト文字・空文字・重複行を混ぜた乱数列で照合します）。
+
+変更前（main `775f5c2c`）と変更後（`df45adb6`）を、同じ環境で交互に2回ずつ測りました（largeの5回の中央値、単位はms）。
+
+| 処理 | 変更前（1回目 / 2回目） | 変更後（1回目 / 2回目） |
+| --- | ---: | ---: |
+| summary | 823 / 738 | 725 / 722 |
+| full | 1,046 / 1,039 | 715 / 754 |
+| full -limit 1 | 1,101 / 989 | 735 / 754 |
+| leaf-summary | 779 / 706 | 722 / 752 |
+| leaf-full | 753 / 726 | 711 / 748 |
+
+`summary`と`leaf-*`は整列を通らないため、差は計測の揺れの範囲です。段別（1回）では、`TraceDirect`の`full`が494 msから196 ms、確保回数が380万回から36万回、確保量が248 MiBから130 MiBになりました。出力byte数（18,260,529 / 2,055）と件数（20,002）は変わっていません。
+
+変更後に残る主な費用は、`BuildSourceIndex`（約0.25秒）、`index.Build`と`derivedbridge`（約0.19秒）、`Load`（約0.14秒）、`TraceDirect`の`summary`（約0.2秒）です。
+
 ## 出力が変わらないことの確認
 
 `golden_test.go`は、変更前の実装で出力した次のSHA-256を`testdata/golden.json`に固定し、変更後も一致することを調べます。small・mediumの両方で、5種の処理（`TraceWorkspace`の完全なJSON出力）、`BuildSourceIndex`の結果、ページ継続（700件ずつ取得して連結した行が一括`full`と一致）を含みます。あわせて、古い継続tokenとWorkspace更新後の継続tokenが`STALE_SNAPSHOT`で拒否されることを確認します。largeは変更前の実装で約2分かかるため、goldenには含めず手動計測に限ります。

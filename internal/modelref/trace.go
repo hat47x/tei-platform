@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 )
 
@@ -201,9 +202,7 @@ func TraceDirect(graph Graph, rules []Rule, subject Key, options TraceOptions) (
 	if options.Mode == "full" {
 		// Sorting only applies to returned rows. Summary can count without
 		// constructing or sorting a potentially large result set.
-		sort.Slice(rows, func(i, j int) bool {
-			return traceRowKey(rows[i]) < traceRowKey(rows[j])
-		})
+		sortTraceRows(rows)
 	}
 	result := TraceResult{
 		SchemaVersion: "tei.modelref.trace/v0", Subject: subject,
@@ -231,18 +230,50 @@ func TraceDirect(graph Graph, rules []Rule, subject Key, options TraceOptions) (
 	return result, nil
 }
 
+// sortTraceRows orders rows by traceRowKey. Each key is built once per row;
+// building it inside the comparison costs O(n log n) key constructions, each
+// of which formats eleven fields and JSON-encodes the evidence.
+func sortTraceRows(rows []TraceRow) {
+	if len(rows) < 2 {
+		return
+	}
+	keys := make([]string, len(rows))
+	for i := range rows {
+		keys[i] = traceRowKey(rows[i])
+	}
+	sort.Sort(traceRowsByKey{rows: rows, keys: keys})
+}
+
+type traceRowsByKey struct {
+	rows []TraceRow
+	keys []string
+}
+
+func (s traceRowsByKey) Len() int           { return len(s.rows) }
+func (s traceRowsByKey) Less(i, j int) bool { return s.keys[i] < s.keys[j] }
+func (s traceRowsByKey) Swap(i, j int) {
+	s.rows[i], s.rows[j] = s.rows[j], s.rows[i]
+	s.keys[i], s.keys[j] = s.keys[j], s.keys[i]
+}
+
 func traceRowKey(row TraceRow) string {
 	to := row.Edge.To
 	// Length-prefixed fields prevent collisions when user-defined IDs contain
 	// separators (including hyphens, colons, and slashes).
-	fields := []string{
+	fields := [...]string{
 		row.Edge.From.Scope, row.Edge.From.Subject.Kind, row.Edge.From.Subject.ID,
 		to.Scope, to.Subject.Kind, to.Subject.ID,
 		to.Version, row.Edge.Relation, row.Status, row.Issue, evidenceKey(row.Edge.Evidence),
 	}
-	out := ""
+	size := 0
 	for _, field := range fields {
-		out += fmt.Sprintf("%d:%s", len(field), field)
+		size += len(field) + 8 // generous room for the decimal length and ':'
 	}
-	return out
+	out := make([]byte, 0, size)
+	for _, field := range fields {
+		out = strconv.AppendInt(out, int64(len(field)), 10)
+		out = append(out, ':')
+		out = append(out, field...)
+	}
+	return string(out)
 }
