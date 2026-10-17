@@ -1,0 +1,112 @@
+{
+  "schema": "tei.reference.sqlite.read-binding.oracle.v0",
+  "state": "fixed-reference-cases-not-third-party-or-production-conformance",
+  "upstreamRules": [
+    "https://www.sqlite.org/lang_keywords.html",
+    "https://www.sqlite.org/c3ref/bind_blob.html"
+  ],
+  "cases": [
+    {
+      "id": "ordinary-text",
+      "table": "customers",
+      "field": "id",
+      "value": "A42",
+      "expectedSQL": "SELECT \"id\" FROM \"customers\" WHERE \"id\" IS ?1"
+    },
+    {
+      "id": "reserved-words",
+      "table": "select",
+      "field": "order",
+      "value": "x",
+      "expectedSQL": "SELECT \"order\" FROM \"select\" WHERE \"order\" IS ?1"
+    },
+    {
+      "id": "embedded-identifier-quote",
+      "table": "team\"name",
+      "field": "a\"b",
+      "value": "x",
+      "expectedSQL": "SELECT \"a\"\"b\" FROM \"team\"\"name\" WHERE \"a\"\"b\" IS ?1"
+    },
+    {
+      "id": "untrusted-value-not-sql",
+      "table": "accounts",
+      "field": "login",
+      "value": "' OR 1=1 --",
+      "expectedSQL": "SELECT \"login\" FROM \"accounts\" WHERE \"login\" IS ?1"
+    },
+    {
+      "id": "untrusted-identifier-not-sql",
+      "table": "users\"; DROP TABLE private;--",
+      "field": "name",
+      "value": "x",
+      "expectedSQL": "SELECT \"name\" FROM \"users\"\"; DROP TABLE private;--\" WHERE \"name\" IS ?1"
+    },
+    {
+      "id": "preserve-null",
+      "table": "customer",
+      "field": "id",
+      "value": null,
+      "expectedSQL": "SELECT \"id\" FROM \"customer\" WHERE \"id\" IS ?1"
+    },
+    {
+      "id": "preserve-empty-string",
+      "table": "customer",
+      "field": "code",
+      "value": "",
+      "expectedSQL": "SELECT \"code\" FROM \"customer\" WHERE \"code\" IS ?1"
+    },
+    {
+      "id": "int64-boundary",
+      "table": "customer",
+      "field": "id",
+      "value": "9223372036854775807",
+      "valueKind": "int64",
+      "expectedSQL": "SELECT \"id\" FROM \"customer\" WHERE \"id\" IS ?1"
+    },
+    {
+      "id": "empty-table",
+      "table": "",
+      "field": "id",
+      "value": "A",
+      "wantError": true
+    },
+    {
+      "id": "empty-field",
+      "table": "customer",
+      "field": "",
+      "value": "A",
+      "wantError": true
+    },
+    {
+      "id": "nul-identifier",
+      "table": "customer\u0000shadow",
+      "field": "id",
+      "value": "A",
+      "wantError": true
+    },
+    {
+      "id": "unsupported-object",
+      "table": "customer",
+      "field": "id",
+      "value": {
+        "unexpected": "object"
+      },
+      "wantError": true
+    },
+    {
+      "id": "unsupported-boolean",
+      "table": "customer",
+      "field": "id",
+      "value": true,
+      "wantError": true
+    },
+    {
+      "id": "out-of-int64",
+      "table": "customer",
+      "field": "id",
+      "value": "9223372036854775808",
+      "valueKind": "int64",
+      "wantError": true
+    }
+  ]
+}
