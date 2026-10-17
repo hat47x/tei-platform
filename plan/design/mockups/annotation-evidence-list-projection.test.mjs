@@ -127,6 +127,46 @@ test('未提供・未知の詳細状態を良好・対応受理へ昇格させ�
   assert.match(got.acceptance, /判定不可/);
 });
 
+test('理由と推定文脈の型不正を未提供や理由なしと区別する', () => {
+  const { auxiliary, epistemic } = fixture();
+  const project = patch => {
+    const assessment = { ...completeAssessment(), ...patch };
+    if (patch.omitDetails) {
+      delete assessment.inferredContextUsed;
+      delete assessment.reasons;
+      delete assessment.omitDetails;
+    }
+    epistemic.assessments = [assessment];
+    return projectAnnotationEvidence(auxiliary, epistemic).assessments[0];
+  };
+  const reasonValue = got => got.detailRows.find(d => d.label.startsWith('評価理由')).value;
+  const inferredValue = got => got.detailRows.find(d => d.label === '推定した文脈の利用').value;
+
+  for (const reasons of [[42], [{}], ['有効な理由', 42], '理由']) {
+    const got = project({ reasons });
+    assert.match(reasonValue(got), /未対応の値/);
+    assert.ok(got.attention.some(s => s.includes('評価理由に未対応')));
+    assert.doesNotMatch(reasonValue(got), /^理由の記載なし$/);
+  }
+  assert.equal(reasonValue(project({ reasons: [] })), '理由の記載なし');
+  const nullReasons = project({ reasons: null });
+  assert.match(reasonValue(nullReasons), /未対応の値/);
+  assert.ok(nullReasons.attention.some(s => s.includes('評価理由に未対応')));
+
+  const malformedInference = project({ inferredContextUsed: 'false' });
+  assert.match(inferredValue(malformedInference), /未対応の値/);
+  assert.ok(malformedInference.attention.some(s => s.includes('推定した文脈の利用に未対応')));
+  assert.doesNotMatch(malformedInference.attentionSummary, /詳細情報の未提供：推定した文脈の利用/);
+  const nullInference = project({ inferredContextUsed: null });
+  assert.match(inferredValue(nullInference), /未対応の値/);
+  assert.ok(nullInference.attention.some(s => s.includes('推定した文脈の利用に未対応')));
+
+  const missing = project({ omitDetails: true });
+  assert.equal(inferredValue(missing), 'Referenceに値なし');
+  assert.equal(reasonValue(missing), 'Referenceに値なし');
+  assert.ok(missing.attention.some(s => s.includes('詳細情報の未提供')));
+});
+
 
 test('HTML画面配線: 詳細はDOMテキスト、未知schema時は表示を消して拒否する（疑似DOM）', () => {
   const html = readFileSync(new URL('./annotation-evidence-list-sketch.html', import.meta.url), 'utf8');

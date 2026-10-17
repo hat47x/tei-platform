@@ -58,13 +58,16 @@ function inspection(a) {
   detailRows.push({
     label: '推定した文脈の利用',
     value: typeof a.inferredContextUsed === 'boolean'
-      ? (a.inferredContextUsed ? 'あり' : 'なし') : 'Referenceに値なし',
+      ? (a.inferredContextUsed ? 'あり' : 'なし')
+      : (a.inferredContextUsed === undefined ? 'Referenceに値なし' : `未対応の値（${String(a.inferredContextUsed)}）`),
   });
   detailRows.push({
     label: '評価理由（Reference出力）',
     value: Array.isArray(a.reasons)
-      ? (a.reasons.filter(value => typeof value === 'string').join('／') || '理由の記載なし')
-      : 'Referenceに値なし',
+      ? (a.reasons.every(value => typeof value === 'string')
+        ? (a.reasons.join('／') || '理由の記載なし')
+        : `未対応の値を含む（${a.reasons.filter(value => typeof value === 'string').join('／') || '評価理由'}）`)
+      : (a.reasons === undefined ? 'Referenceに値なし' : `未対応の値（${String(a.reasons)}）`),
   });
 
   const attention = [];
@@ -85,9 +88,17 @@ function inspection(a) {
   const missing = axes
     .filter(([, key]) => a[key] == null || a[key] === '')
     .map(([label]) => label);
-  if (typeof a.inferredContextUsed !== 'boolean') missing.push('推定した文脈の利用');
-  if (!Array.isArray(a.reasons)) missing.push('評価理由');
+  if (a.inferredContextUsed === undefined) missing.push('推定した文脈の利用');
+  if (a.reasons === undefined) missing.push('評価理由');
   if (missing.length) attention.push('詳細情報の未提供：' + missing.join('、'));
+  if (a.inferredContextUsed !== undefined && typeof a.inferredContextUsed !== 'boolean') {
+    attention.push('推定した文脈の利用に未対応の状態値');
+  }
+  if (a.reasons !== undefined && !Array.isArray(a.reasons)) {
+    attention.push('評価理由に未対応の値');
+  } else if (Array.isArray(a.reasons) && !a.reasons.every(value => typeof value === 'string')) {
+    attention.push('評価理由に未対応の値');
+  }
   for (const [label, key, dictionary] of axes) {
     if (a[key] != null && a[key] !== '' && !Object.hasOwn(dictionary, a[key])) {
       attention.push(label + 'に未対応の状態値');
