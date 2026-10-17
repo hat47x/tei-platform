@@ -141,7 +141,7 @@ func TestStudioHostSymlinkImportScopeCharacterization(t *testing.T) {
 		t.Skipf("cannot create Workspace import symlink: %v", err)
 	}
 	studioImportScopeWrite(t, filepath.Join(consumer, "tei.workspace.yaml"),
-		"workspace: consumer\\nsources:\\n  - semantic\\nimports:\\n  - alias: provider\\n    path: ../provider-alias\\n    namespace: provider\\n")
+		"workspace: consumer\nsources:\n  - semantic\nimports:\n  - alias: provider\n    path: ../provider-alias\n    namespace: provider\n")
 	host, err := NewReadOnly([]string{consumer})
 	if err != nil {
 		t.Fatal(err)
