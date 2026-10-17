@@ -24,3 +24,20 @@ go run ./tools/reference-list-roundtrip/cmd/tei-list-roundtrip -workspace refere
 - 作業・表・機能など、Data・Attribute以外の一覧
 - 業務データ（タブ区切り、初期データ）の取込み。型・参照・制約・認可の検証を伴うため、別の単位で扱います
 - 変更案の受理（#267）と再投影
+
+## 受理境界への接続（#1935）
+
+編集後の一覧から作った変更案は、Shared Acceptanceの`set-symbol`演算の変更候補へ変換できます。
+
+~~~text
+REV=$(go run ./tools/reference-shared-acceptance revision -workspace <対象> | grep -o 'sha256:[0-9a-f]\{64\}')
+go run ./tools/reference-list-roundtrip/cmd/tei-list-roundtrip -workspace <対象> \
+  -propose list.csv -candidate-out candidate.json -base-revision "$REV"
+go run ./tools/reference-shared-acceptance preview -workspace <対象> -candidate candidate.json
+~~~
+
+- 候補は、出力先が既にあれば作りません。受理（`accept`）はこのツールでは行いません。
+- 新しい名称から導かれる識別子の末尾の部分が、対象の識別子と異なる改名は、識別子の変更になるため、候補にせず拒否します。
+- 診断が一つでも残る一覧（曖昧な名称、古い一覧など）は、候補にしません。
+- 一覧の版と、受理境界の`baseModelRevision`は別の値です。後者を`-base-revision`で渡します。
+- 一覧の出力、`Order_Line`への編集、変更案、候補、`preview`の全11段階passまで、手元で通しで確認しました（`accept`は実行していません）。

@@ -23,14 +23,21 @@ type Projection struct {
 // reported, never fabricated. Business Procedures are not in ir.World and are
 // deliberately not inferred from Application patterns or Function-level CRUD.
 func FromIndex(d index.Derived, scope string) Projection {
-	p := Projection{Graph: modelref.Graph{Schema: "tei.modelref.v0", Nodes: []modelref.Node{}, Edges: []modelref.Edge{}}, AuthorityLimits: []string{
+	// Capacities only avoid repeated growth; an empty projection still carries
+	// empty, non-nil Nodes and Edges.
+	nodeHint := len(d.SemanticElements) + 2*len(d.ApplicationPatterns) + len(d.Queries)
+	p := Projection{Graph: modelref.Graph{
+		Schema: "tei.modelref.v0",
+		Nodes:  make([]modelref.Node, 0, nodeHint),
+		Edges:  make([]modelref.Edge, 0, len(d.SemanticDependencies)+len(d.DeclaredDependencies)),
+	}, AuthorityLimits: []string{
 		"derived-index-is-not-authoritative-world", "business-procedure-not-in-current-world", "source-evidence-not-bound",
 	}}
 	if scope == "" {
 		p.Unresolved = append(p.Unresolved, "scope-required")
 		return p
 	}
-	nodes := make(map[modelref.Key]bool)
+	nodes := make(map[modelref.Key]bool, nodeHint)
 	semanticKindsByID := make(map[string][]string)
 	add := func(kind, id string) {
 		if id == "" {
@@ -102,28 +109,59 @@ func FromIndex(d index.Derived, scope string) Projection {
 	for rule := range ruleSet {
 		p.Rules = append(p.Rules, rule)
 	}
-	sort.Slice(p.Graph.Nodes, func(i, j int) bool {
-		a, b := p.Graph.Nodes[i].Key, p.Graph.Nodes[j].Key
-		return a.Subject.Kind+"/"+a.Subject.ID < b.Subject.Kind+"/"+b.Subject.ID
+	sortByKey(p.Graph.Nodes, func(n modelref.Node) string {
+		return n.Key.Subject.Kind + "/" + n.Key.Subject.ID
 	})
-	sort.Slice(p.Graph.Edges, func(i, j int) bool {
-		a, b := p.Graph.Edges[i], p.Graph.Edges[j]
-		return a.From.Subject.Kind+"/"+a.From.Subject.ID+"/"+a.Relation+"/"+a.To.Subject.Kind+"/"+a.To.Subject.ID < b.From.Subject.Kind+"/"+b.From.Subject.ID+"/"+b.Relation+"/"+b.To.Subject.Kind+"/"+b.To.Subject.ID
+	sortByKey(p.Graph.Edges, func(e modelref.Edge) string {
+		return e.From.Subject.Kind + "/" + e.From.Subject.ID + "/" + e.Relation + "/" + e.To.Subject.Kind + "/" + e.To.Subject.ID
 	})
-	sort.Slice(p.Rules, func(i, j int) bool {
-		a, b := p.Rules[i], p.Rules[j]
-		return a.FromKind+"/"+a.Relation+"/"+a.ToKind < b.FromKind+"/"+b.Relation+"/"+b.ToKind
+	sortByKey(p.Rules, func(r modelref.Rule) string {
+		return r.FromKind + "/" + r.Relation + "/" + r.ToKind
 	})
 	sort.Strings(p.Unresolved)
 	return p
+}
+
+// sortByKey orders items by a string key that is built once per item. Building
+// the key inside the comparison costs O(n log n) string concatenations, each of
+// which allocates. The key text, and therefore the resulting order including
+// the placement of items whose keys are equal, is exactly what a comparison of
+// the same keys through sort.Slice produces: the decorated slice goes through
+// the same sort.Slice with the same outcomes for every comparison.
+func sortByKey[T any](items []T, key func(T) string) {
+	if len(items) < 2 {
+		return
+	}
+	type keyed struct {
+		key  string
+		item T
+	}
+	decorated := make([]keyed, len(items))
+	for i, item := range items {
+		decorated[i] = keyed{key: key(item), item: item}
+	}
+	sort.Slice(decorated, func(i, j int) bool { return decorated[i].key < decorated[j].key })
+	for i := range decorated {
+		items[i] = decorated[i].item
+	}
 }
 
 func semanticKind(kind string) (string, bool) {
 	switch kind {
 	case "namespace":
 		return "semantic", true
-	case "type", "data", "attribute", "relation", "validation", "capability":
-		return "semantic-" + kind, true
+	case "type":
+		return "semantic-type", true
+	case "data":
+		return "semantic-data", true
+	case "attribute":
+		return "semantic-attribute", true
+	case "relation":
+		return "semantic-relation", true
+	case "validation":
+		return "semantic-validation", true
+	case "capability":
+		return "semantic-capability", true
 	default:
 		return "", false
 	}
