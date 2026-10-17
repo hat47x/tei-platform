@@ -45,7 +45,7 @@ func newOrderScene(t *testing.T) orderScene {
 	def := messages.Definition{
 		Ref:          messages.Ref{Owner: owner, ID: core.CanonicalID("order.confirmed")},
 		SourceLocale: "en-US", Text: "Order {orderId} confirmed",
-		Format:       messages.FormatNamedV0,
+		Format:     messages.FormatNamedV0,
 		Parameters: []messages.Parameter{{Name: "orderId", Kind: messages.ParameterText}},
 	}
 	mc := plugin.Catalog{Plugins: []plugin.Definition{
