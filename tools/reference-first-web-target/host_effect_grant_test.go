@@ -50,11 +50,11 @@ func TestCurrentHostEffectGrantRechecksSourceAndExactSubject(t *testing.T) {
 	}
 	index := sourceindex.Index{Artifacts: []sourceindex.Artifact{member}}
 	accepted := sourceacceptance.Record{
-		ApplicationID: "order_entry",
-		DecisionRef: "test-only-source-decision",
+		ApplicationID:     "order_entry",
+		DecisionRef:       "test-only-source-decision",
 		AuthorityRevision: "test-only-source-authority",
-		ModelRevision: sourceindex.ModelRevision(index),
-		Artifacts: index.Artifacts,
+		ModelRevision:     sourceindex.ModelRevision(index),
+		Artifacts:         index.Artifacts,
 	}
 	source := &requestSourceReader{record: accepted}
 	grants := &syntheticEffectReader{current: true}

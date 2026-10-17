@@ -28,8 +28,8 @@ type referenceCommandScenarioRunner struct {
 	authorization *legacyauthorization.FixtureRule
 	// Host-specific, opt-in gate for the accepted Web entry point. The
 	// legacy diagnostic runner remains explicitly synthetic.
-	hostEffect    func(context.Context, string) error
-	now           time.Time
+	hostEffect func(context.Context, string) error
+	now        time.Time
 }
 
 func newReferenceCommandScenarioRunner(

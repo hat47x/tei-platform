@@ -18,7 +18,7 @@ type HostEffectGrantQuery struct {
 	ApplicationID           string
 	SubjectID               string
 	ActionID                string
-	SourceDecisionRef        string
+	SourceDecisionRef       string
 	SourceAuthorityRevision string
 	ModelRevision           string
 }
@@ -75,7 +75,7 @@ func requireCurrentHostEffectGrant(
 		ApplicationID:           applicationID,
 		SubjectID:               subjectID,
 		ActionID:                actionID,
-		SourceDecisionRef:        current.DecisionRef,
+		SourceDecisionRef:       current.DecisionRef,
 		SourceAuthorityRevision: current.AuthorityRevision,
 		ModelRevision:           current.ModelRevision,
 	}
