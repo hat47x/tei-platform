@@ -8,8 +8,8 @@ import (
 	"tei/internal/environment"
 	"tei/internal/plugin"
 	localization "tei/reference/message-localization"
-	resources "tei/reference/multilingual-resources"
 	overlays "tei/reference/multilingual-overlays"
+	resources "tei/reference/multilingual-resources"
 )
 
 // These tests compare separate reference projections. They do not simulate
@@ -19,8 +19,8 @@ func displayBundleForScene(t *testing.T, s orderScene) overlays.LocaleBundle {
 	bundle, err := overlays.BuildLockedLocaleBundle(
 		s.catalog, s.env, s.lock, s.graph, s.surfaces, s.packs, s.grants,
 		nil, overlays.LocaleBundleRequest{
-			Target: s.lookup.Target,
-			Keys: []resources.Key{s.lookup.Key},
+			Target:  s.lookup.Target,
+			Keys:    []resources.Key{s.lookup.Key},
 			Locales: []string{"en-US"},
 		},
 	)
@@ -64,8 +64,8 @@ func TestCrossDomainPluginGenerationPinsDisplayButDoesNotAuthorizeRetiredGenerat
 	_, err = overlays.BuildLockedLocaleBundle(
 		nextCatalog, old.env, nextLock, old.graph, old.surfaces, old.packs,
 		old.grants, nil, overlays.LocaleBundleRequest{
-			Target: old.lookup.Target,
-			Keys: []resources.Key{old.lookup.Key},
+			Target:  old.lookup.Target,
+			Keys:    []resources.Key{old.lookup.Key},
 			Locales: []string{"en-US"},
 		},
 	)
