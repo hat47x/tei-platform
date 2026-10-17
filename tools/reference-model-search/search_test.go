@@ -46,6 +46,29 @@ func TestKindFilterAndExact(t *testing.T) {
 	}
 }
 
+func TestSearchDescriptions(t *testing.T) {
+	w := ir.World{Semantics: []semantic.Namespace{{ID: "sales", Data: []semantic.Data{
+		{ID: "sales.order", Symbol: "Order", Description: "受注を表す", Attributes: []semantic.Attribute{
+			{ID: "sales.order.no", Symbol: "orderNo", Description: "注文番号"},
+		}},
+	}}}}
+	res, err := Search(w, Query{Text: "受注"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(res.Hits) != 1 || res.Hits[0].Field != "description" || res.Hits[0].ID != "sales.order" {
+		t.Fatalf("hits = %+v", res.Hits)
+	}
+	// description hits are search-only: they must not become edits.
+	p, err := Propose(w, res, "受注済み", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(p.Edits) != 0 {
+		t.Fatalf("description hit became an edit: %+v", p.Edits)
+	}
+}
+
 func TestProposeDoesNotApplyAndKeepsIDs(t *testing.T) {
 	w := world()
 	res, _ := Search(w, Query{Text: "orderNo", Exact: true})

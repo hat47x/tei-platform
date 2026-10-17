@@ -34,6 +34,7 @@ type Type struct {
 type Data struct {
 	ID                     core.CanonicalID       `json:"id"`
 	Symbol                 string                 `json:"symbol"`
+	Description            string                 `json:"description,omitempty"`
 	Attributes             []Attribute            `json:"attributes,omitempty"`
 	Relations              []Relation             `json:"relations,omitempty"`
 	CandidateKeys          []CandidateKey         `json:"candidateKeys,omitempty"`
@@ -59,9 +60,10 @@ type FunctionalDependency struct {
 }
 
 type Attribute struct {
-	ID      core.CanonicalID `json:"id"`
-	Symbol  string           `json:"symbol"`
-	TypeRef core.CanonicalID `json:"type"`
+	ID          core.CanonicalID `json:"id"`
+	Symbol      string           `json:"symbol"`
+	Description string           `json:"description,omitempty"`
+	TypeRef     core.CanonicalID `json:"type"`
 }
 
 type Cardinality string
