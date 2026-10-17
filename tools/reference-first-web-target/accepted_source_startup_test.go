@@ -253,7 +253,7 @@ func TestCombinedWebTargetSourceGateLiveProcesses(t *testing.T) {
 				t.Fatal(err)
 			}
 			if tc.name == "R1-no-effect-grant" {
-				if response.StatusCode != http.StatusOK ||
+				if response.StatusCode != http.StatusUnprocessableEntity ||
 					!strings.Contains(observed.ExecutionError, "HOST_EFFECT_GRANT_UNAVAILABLE") ||
 					observed.Result.Command != nil || observed.Result.Observation != nil ||
 					bytes.Contains(body, []byte("editor-secret")) {
