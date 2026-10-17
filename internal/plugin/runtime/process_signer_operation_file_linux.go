@@ -118,6 +118,33 @@ func (l *LinuxFileSignerOperationLedger) ReserveSignerOperation(ctx context.Cont
 	if l.directory == nil {
 		return false, errors.New("Host operation ledger has been closed")
 	}
+	// The directory may have been made accessible to another principal
+	// after construction. Recheck the HELD directory, not the pathname:
+	// pathname replacement must not redirect an existing Host ledger.
+	var current syscall.Stat_t
+	if err := syscall.Fstat(int(l.directory.Fd()), &current); err != nil {
+		return false, fmt.Errorf("stat current Host operation ledger: %w", err)
+	}
+	if current.Mode&syscall.S_IFMT != syscall.S_IFDIR ||
+		current.Uid != uint32(os.Geteuid()) || current.Mode&0077 != 0 {
+		return false, errors.New("current Host operation ledger directory is not private")
+	}
+
+	// Earlier reference releases used SHA256(hostID + NUL + operationID)
+	// as the reservation filename, whereas this implementation uses the
+	// SHA256 of an exact JSON identity tuple. Refuse BOTH on-disk forms so
+	// upgrading a Host cannot replay a durable operation from the old form.
+	legacyHash := sha256.Sum256([]byte(r.HostID + "\x00" + r.OperationID))
+	legacyName := hex.EncodeToString(legacyHash[:]) + ".json"
+	oldFD, oldErr := syscall.Openat(int(l.directory.Fd()), legacyName,
+		syscall.O_RDONLY|syscall.O_NOFOLLOW|syscall.O_CLOEXEC, 0)
+	if oldErr == nil {
+		_ = syscall.Close(oldFD)
+		return false, nil
+	}
+	if !errors.Is(oldErr, syscall.ENOENT) {
+		return false, fmt.Errorf("inspect legacy Host operation reservation: %w", oldErr)
+	}
 
 	identity, err := json.Marshal(struct {
 		HostID      string

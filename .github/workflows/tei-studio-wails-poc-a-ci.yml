@@ -2,13 +2,35 @@ name: TEI Studio PoC A Wails Host
 
 # #1824 PoC A専用。既存全体CI・Gateを置き換えない。
 on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/tei-studio-wails-poc-a-ci.yml
+      - cmd/tei-studio/**
+      - go.mod
+      - go.sum
+      - internal/consumerimpact/**
+      - internal/index/**
+      - internal/modelref/**
+      - tools/reference-studio-static-composition/**
+      - reference/tei-studio-*/**
+      - reference/ui-customization/composition/**
+      - reference/workspace/**
   pull_request:
     branches: [main]
     types: [opened, reopened, synchronize, ready_for_review]
     paths:
       - .github/workflows/tei-studio-wails-poc-a-ci.yml
       - cmd/tei-studio/**
-      - internal/studiohost/**
+      - go.mod
+      - go.sum
+      - internal/consumerimpact/**
+      - internal/index/**
+      - internal/modelref/**
+      - tools/reference-studio-static-composition/**
+      - reference/tei-studio-*/**
+      - reference/ui-customization/composition/**
+      - reference/workspace/**
   workflow_dispatch:
 
 permissions:
@@ -38,6 +60,12 @@ jobs:
           check-latest: false
           cache: false
 
+      - name: CLI実行ファイルを作成
+        shell: bash
+        run: |
+          set -euo pipefail
+          go build -mod=readonly -o "$RUNNER_TEMP/tei-cli" ./cmd/tei
+
       - name: Node 22を固定
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
@@ -50,6 +78,13 @@ jobs:
           set -euo pipefail
           go version
           go test -count=1 ./internal/studiohost/...
+
+      - name: 通常HostのServer Go試験
+        working-directory: cmd/tei-studio
+        shell: bash
+        run: |
+          set -euo pipefail
+          CGO_ENABLED=0 go test -mod=readonly -count=1 -tags server .
 
       - name: JS Bridgeの試験
         shell: bash
@@ -69,6 +104,14 @@ jobs:
           grep -F 'github.com/wailsapp/wails/v3 v3.0.0-beta.29' go.mod
           CGO_ENABLED=0 go build -mod=readonly -tags server -o "$RUNNER_TEMP/tei-studio-server" .
           CGO_ENABLED=0 go vet -mod=readonly -tags server ./...
+
+      - name: 実ブラウザー用Playwrightを準備
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m venv "$RUNNER_TEMP/tei-studio-playwright"
+          "$RUNNER_TEMP/tei-studio-playwright/bin/python" -m pip install --disable-pip-version-check --no-cache-dir 'playwright==1.57.0'
+          "$RUNNER_TEMP/tei-studio-playwright/bin/python" -m playwright install --with-deps --only-shell chromium
 
       - name: loopback HTTPの実起動・埋込みasset smoke
         working-directory: cmd/tei-studio
@@ -95,6 +138,60 @@ jobs:
           grep -q '"status":"ok"' "$RUNNER_TEMP/studio-health.json"
           curl -fsS --max-time 5 http://127.0.0.1:43123/ > "$RUNNER_TEMP/studio-index.html"
           grep -q 'TEI Studio' "$RUNNER_TEMP/studio-index.html"
+
+          "$RUNNER_TEMP/tei-studio-playwright/bin/python" test/browser_smoke.py http://127.0.0.1:43123/
+
+          python3 test/cli_catalog_parity.py \
+            --cli "$RUNNER_TEMP/tei-cli" \
+            --server "$RUNNER_TEMP/tei-studio-server" \
+            --workspace ../../reference/workspace \
+            --base-url http://127.0.0.1:43123
+
+          runtime_url=http://127.0.0.1:43123/wails/runtime
+          runtime_call='{"object":0,"method":0,"args":{"call-id":"studio-ci-list-workspaces","methodName":"main.StudioBridge.ListWorkspaces","args":[]}}'
+          runtime_status=$(curl -sS --max-time 5 -o "$RUNNER_TEMP/studio-runtime-success.json" -w '%{http_code}' -X POST "$runtime_url" \
+            -H 'Host: 127.0.0.1:43123' \
+            -H 'Origin: http://127.0.0.1:43123' \
+            -H 'Content-Type: application/json' \
+            --data "$runtime_call")
+          if [ "$runtime_status" != 200 ]; then
+            echo "successful runtime RPC returned HTTP $runtime_status, expected 200" >&2
+            cat "$RUNNER_TEMP/studio-runtime-success.json" >&2
+            exit 1
+          fi
+          python3 - "$RUNNER_TEMP/studio-runtime-success.json" <<'PY'
+          import json
+          import sys
+
+          with open(sys.argv[1], encoding="utf-8") as response_file:
+              response = json.load(response_file)
+          assert response.get("ok") is True, response
+          assert response.get("value") == [{"id": "workspace-1", "label": "workspace"}], response
+          PY
+
+          assert_runtime_denied() {
+            local name="$1"
+            local url="$2"
+            local origin="$3"
+            local host="$4"
+            local resolve_args=("${@:5}")
+            local status
+            status=$(curl -sS --max-time 5 "${resolve_args[@]}" -o "$RUNNER_TEMP/studio-runtime-${name}.json" \
+              -w '%{http_code}' -X POST "$url" \
+              -H "Host: $host" \
+              -H "Origin: $origin" \
+              -H 'Content-Type: application/json' \
+              --data "{\"object\":0,\"method\":0,\"args\":{\"call-id\":\"studio-ci-${name}\",\"methodName\":\"main.StudioBridge.ListWorkspaces\",\"args\":[]}}")
+            if [ "$status" != 403 ]; then
+              echo "runtime ${name} boundary returned HTTP $status, expected 403" >&2
+              cat "$RUNNER_TEMP/studio-runtime-${name}.json" >&2
+              return 1
+            fi
+          }
+
+          assert_runtime_denied origin http://127.0.0.1:43123/wails/runtime http://attacker.example:43123 127.0.0.1:43123
+          assert_runtime_denied host http://127.0.0.1:43123/wails/runtime http://127.0.0.1:43123 attacker.example:43123
+          assert_runtime_denied host-origin http://attacker.example:43123/wails/runtime http://attacker.example:43123 attacker.example:43123 --resolve attacker.example:43123:127.0.0.1
 
       - name: 依存checksum証拠を保持（ソースには自動反映しない）
         if: success()

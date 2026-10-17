@@ -64,5 +64,11 @@ await build({
       .join("\n\n"),
   );
 });
+const mainPath = resolve(here, "dist/main.js");
+const mainJS = await readFile(mainPath, "utf8");
+const normalizedMainJS = mainJS.replace(/\/\*\*[\s\S]*?\*\//g, (comment) =>
+  comment.replace(/[ \t]+$/gm, ""),
+);
+if (normalizedMainJS !== mainJS) await writeFile(mainPath, normalizedMainJS);
 await copyFile(resolve(here, "index.html"), resolve(here, "dist/index.html"));
 await copyFile(resolve(here, "style.css"), resolve(here, "dist/style.css"));
