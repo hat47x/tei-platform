@@ -74,6 +74,12 @@ func Search(world ir.World, q Query) (Result, error) {
 		if e.Description != "" && matches(e.Description, q) {
 			out.Hits = append(out.Hits, Hit{Kind: e.Kind, ID: e.ID, Parent: e.Parent, Field: "description", Value: e.Description})
 		}
+		if e.Display != "" && matches(e.Display, q) {
+			out.Hits = append(out.Hits, Hit{Kind: e.Kind, ID: e.ID, Parent: e.Parent, Field: "display", Value: e.Display})
+		}
+		if e.Script != "" && matches(e.Script, q) {
+			out.Hits = append(out.Hits, Hit{Kind: e.Kind, ID: e.ID, Parent: e.Parent, Field: "script", Value: e.Script})
+		}
 	}
 	return out, nil
 }
@@ -162,6 +168,8 @@ type element struct {
 	Parent      string
 	Symbol      string
 	Description string
+	Display     string
+	Script      string
 }
 
 func elements(world ir.World) []element {
@@ -169,9 +177,9 @@ func elements(world ir.World) []element {
 	for _, ns := range world.Semantics {
 		for _, d := range ns.Data {
 			did := string(d.ID)
-			out = append(out, element{Kind: KindData, ID: did, Parent: string(ns.ID), Symbol: d.Symbol, Description: d.Description})
+			out = append(out, element{Kind: KindData, ID: did, Parent: string(ns.ID), Symbol: d.Symbol, Description: d.Description, Display: d.Display, Script: d.Script})
 			for _, a := range d.Attributes {
-				out = append(out, element{Kind: KindAttribute, ID: string(a.ID), Parent: did, Symbol: a.Symbol, Description: a.Description})
+				out = append(out, element{Kind: KindAttribute, ID: string(a.ID), Parent: did, Symbol: a.Symbol, Description: a.Description, Display: a.Display})
 			}
 			for _, r := range d.Relations {
 				out = append(out, element{Kind: KindRelation, ID: string(r.ID), Parent: did, Symbol: r.Symbol})

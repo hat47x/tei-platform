@@ -35,6 +35,8 @@ type Data struct {
 	ID                     core.CanonicalID       `json:"id"`
 	Symbol                 string                 `json:"symbol"`
 	Description            string                 `json:"description,omitempty"`
+	Display                string                 `json:"display,omitempty"`
+	Script                 string                 `json:"script,omitempty"`
 	Attributes             []Attribute            `json:"attributes,omitempty"`
 	Relations              []Relation             `json:"relations,omitempty"`
 	CandidateKeys          []CandidateKey         `json:"candidateKeys,omitempty"`
@@ -63,6 +65,7 @@ type Attribute struct {
 	ID          core.CanonicalID `json:"id"`
 	Symbol      string           `json:"symbol"`
 	Description string           `json:"description,omitempty"`
+	Display     string           `json:"display,omitempty"`
 	TypeRef     core.CanonicalID `json:"type"`
 }
 
