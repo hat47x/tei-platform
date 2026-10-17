@@ -253,6 +253,8 @@ func resolveCandidate(s snapshot, c Candidate) []Diagnostic {
 
 		case opSetSymbol:
 			out = append(out, resolveSetSymbol(s, op)...)
+		case opSetAttributeType:
+			out = append(out, resolveSetAttributeType(s, op)...)
 		}
 	}
 

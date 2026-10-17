@@ -303,6 +303,7 @@ Evaluation artifactはcandidateの意味を変えないため、`candidateFinger
 | `add-reference-pattern` | reference Patternを追加する | 新しい`applications/<dir>/patterns/<file>.tei`（`placement`必須） |
 | `add-application-validation-use` | **既存の**Applicationが評価するValidationを`uses validation`として一件宣言する。宣言順が評価順になる（ADR-0029） | 既存のApplication source fileの、最後の`uses`宣言の後ろへ一行挿入（`placement`は必須で、そのApplicationを宣言しているfileに限る）。同じApplicationへの複数の宣言は、candidateが指定した順序を保つ（この順序はfingerprintにも入る） |
 | `set-symbol` | **既存の**subject（`data` / `attribute` / `relation` / `candidate-key` / `functional-dependency`）の表示名symbolだけを変える。Canonical IDは変えない | 対象subjectを宣言した既存semantic fileの、該当symbolトークン一件を置換（`placement`は持たない） |
+| `set-attribute-type` | **既存の**属性が指す型を、同じ基の表現を持つ別の型へ付け替える。属性のCanonical IDは変えない | 対象属性を宣言した既存semantic fileの、型参照トークン一件を置換（`placement`は持たない） |
 
 - 一つのcandidate内で`add-validation`と、そのValidationを使う`add-application-validation-use`を同時に記述できます。参照先のIDは既存のCanonical Worldまたは**同じcandidateで宣言された追加**から決定論的に解決し、未知のIDを黙って認めません。重複するoperation identityは既存の`normalizeCandidate`で拒否します。この経路は、業務規則だけを追加してApplicationが評価しない状態を避けるためのReferenceです。実装・テストが含まれるDraft PR #985の資格確認が完了するまでは、動作確認済みとは扱いません。
 - 新しいfileを作るoperationのplacementは、意味を所有する層のprefix（semantic / applications）とloaderが読む形式に合い、まだ存在せず、他のoperationと重ならない必要があります。PatternはそのPatternを所有するApplicationのdirectoryに置きます（loaderはApplication manifestと同じdirectoryの`patterns/`をそのApplicationのものとして読みます）。
@@ -524,3 +525,28 @@ testはGate B / Gate Cのbaselineを変更せず、`reference/workspace`のscrat
 
 この境界が成立させるのは、**source上の表示名を変えることと監査用の差分**です。実行時の名称解決、外部キー名・列名・Generator契約への波及、rename migration、別fileへの移動やfile名の変更は扱いません。
 
+## 属性の型の付け替え（#1935）
+
+`set-attribute-type` は、既存の属性が指す型を、**基の表現が同一**の別の型へ付け替える型付き操作です。属性のCanonical IDは変えません。
+
+~~~json
+{
+  "op": "set-attribute-type",
+  "id": "sales.order_line.order_line_id",
+  "attributeType": "sales.order_id"
+}
+~~~
+
+- 型は完全なCanonical IDで指定します。source上の型参照も常に完全なCanonical IDです。
+- 基の表現とは、別名の型を`from`の連鎖でたどった終点です（`sales.order_id`も`sales.order_line_id`も`std.identifier`）。
+- 基の表現が異なる付け替えは`ATTRIBUTE_TYPE_REPRESENTATION_DIFFERS`でresolveが止めます。既存データの変換を伴うため、この操作では扱いません（意味の変更に伴う既存データの移行設計の「縮小」「再構成」）。
+- 宣言されていない型、存在しない属性、現在と同じ型、`placement`の指定、他のpayloadの混在も拒否します。
+- 編集は、対象属性を宣言した正本semantic file上の型参照トークン一件だけを置換します。位置は構文の`semantic-attribute-type`のanchorで厳密に一意に特定します。
+- 差分は`changed attribute:<id>`として現れます。変わるWorld collectionは`semantics`だけです。
+- 型の統合は意味の判断です。表現が同じでも自動では受理せず、`Preview → Review → Accept`の通常経路で人が受理します。
+
+### 確認していないこと
+
+- すでに型が異なっていた関連のキーが、付け替えで見えなくなる場合の警告は実装していません（#1806の影響一覧の診断で確認します）。
+- 既存データや物理スキーマの変更は扱いません。物理の格納型が同じ場合に限る前提です。この前提はこの操作では検査しません。
+- 実Workspaceでの`accept`後の再投影は未確認です。

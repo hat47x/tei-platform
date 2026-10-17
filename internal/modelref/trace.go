@@ -62,25 +62,9 @@ func TraceDirect(graph Graph, rules []Rule, subject Key, options TraceOptions) (
 	if graph.Schema != "tei.modelref.v0" {
 		return TraceResult{}, &TraceError{Code: "UNSUPPORTED_SCHEMA", Message: "unsupported model reference graph schema"}
 	}
-	if !validKey(subject) {
-		return TraceResult{}, &TraceError{Code: "INVALID_SUBJECT", Message: "scope, kind, and id are required"}
-	}
-	if options.Direction == "" {
-		options.Direction = "both"
-	}
-	if options.Mode == "" {
-		options.Mode = "full"
-	}
-	switch options.Direction {
-	case "outgoing", "incoming", "both":
-	default:
-		return TraceResult{}, &TraceError{Code: "INVALID_ARGUMENT", Message: "direction must be outgoing, incoming, or both"}
-	}
-	if options.Mode != "summary" && options.Mode != "full" {
-		return TraceResult{}, &TraceError{Code: "INVALID_ARGUMENT", Message: "mode must be summary or full"}
-	}
-	if options.Offset < 0 || options.Limit < 0 || options.Mode == "summary" && (options.Offset != 0 || options.Limit != 0) {
-		return TraceResult{}, &TraceError{Code: "INVALID_ARGUMENT", Message: "offset/limit require nonnegative values and full mode"}
+	options, requestErr := normalizeTraceRequest(subject, options)
+	if requestErr != nil {
+		return TraceResult{}, requestErr
 	}
 	// The token binds pages to normalized graph meaning, selector and extension policy.
 	// It is descriptive, not Shared Acceptance, nor an optimistic write token.
@@ -228,6 +212,42 @@ func TraceDirect(graph Graph, rules []Rule, subject Key, options TraceOptions) (
 		result.NextOffset = &next
 	}
 	return result, nil
+}
+
+// ValidateTraceRequest returns the *TraceError that TraceDirect reports for the
+// subject and options alone, before it looks at any graph, or nil. A caller that
+// would otherwise do expensive work for a request that is certain to be
+// rejected can use it to fail first. It never reports graph-dependent errors
+// such as UNSUPPORTED_SCHEMA, SUBJECT_NOT_FOUND or STALE_SNAPSHOT.
+func ValidateTraceRequest(subject Key, options TraceOptions) error {
+	_, err := normalizeTraceRequest(subject, options)
+	return err
+}
+
+// normalizeTraceRequest applies the defaults and the argument checks that do
+// not depend on the graph. The checks and their order are TraceDirect's.
+func normalizeTraceRequest(subject Key, options TraceOptions) (TraceOptions, error) {
+	if !validKey(subject) {
+		return options, &TraceError{Code: "INVALID_SUBJECT", Message: "scope, kind, and id are required"}
+	}
+	if options.Direction == "" {
+		options.Direction = "both"
+	}
+	if options.Mode == "" {
+		options.Mode = "full"
+	}
+	switch options.Direction {
+	case "outgoing", "incoming", "both":
+	default:
+		return options, &TraceError{Code: "INVALID_ARGUMENT", Message: "direction must be outgoing, incoming, or both"}
+	}
+	if options.Mode != "summary" && options.Mode != "full" {
+		return options, &TraceError{Code: "INVALID_ARGUMENT", Message: "mode must be summary or full"}
+	}
+	if options.Offset < 0 || options.Limit < 0 || options.Mode == "summary" && (options.Offset != 0 || options.Limit != 0) {
+		return options, &TraceError{Code: "INVALID_ARGUMENT", Message: "offset/limit require nonnegative values and full mode"}
+	}
+	return options, nil
 }
 
 // sortTraceRows orders rows by traceRowKey. Each key is built once per row;

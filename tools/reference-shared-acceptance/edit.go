@@ -353,6 +353,18 @@ func planEdits(s snapshot, ops []Operation) ([]SourceEdit, []Diagnostic) {
 				continue
 			}
 			path = location.File
+		case opSetAttributeType:
+			_, owner, ok := attributeOf(s, op.ID)
+			if !ok {
+				diagnostics = append(diagnostics, Diagnostic{Code: "ATTRIBUTE_NOT_FOUND", Message: fmt.Sprintf("属性 %s は既存のCanonical Worldにありません", op.ID), Subject: key})
+				continue
+			}
+			location, ok := s.loaded.Sources["semantic-data:"+owner]
+			if !ok {
+				diagnostics = append(diagnostics, Diagnostic{Code: "ATTRIBUTE_SOURCE_NOT_FOUND", Message: fmt.Sprintf("属性 %s を宣言したsource fileを特定できません", op.ID), Subject: key})
+				continue
+			}
+			path = location.File
 		default:
 			path = op.Placement
 			if path == "" {
@@ -407,6 +419,16 @@ func planEdits(s snapshot, ops []Operation) ([]SourceEdit, []Diagnostic) {
 					return nil, []Diagnostic{{Code: "SYMBOL_REPLACEMENT_FAILED", Message: err.Error(), Subject: operationKey(op)}}
 				}
 				inserted.WriteString(op.Symbol)
+				removed.WriteString(removedText)
+				continue
+			}
+			if op.Op == opSetAttributeType {
+				var removedText string
+				content, removedText, err = replaceAttributeTypeToken(content, op)
+				if err != nil {
+					return nil, []Diagnostic{{Code: "ATTRIBUTE_TYPE_REPLACEMENT_FAILED", Message: err.Error(), Subject: operationKey(op)}}
+				}
+				inserted.WriteString(op.AttributeType)
 				removed.WriteString(removedText)
 				continue
 			}

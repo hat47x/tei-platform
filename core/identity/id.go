@@ -2,7 +2,6 @@ package identity
 
 import (
 	"fmt"
-	"regexp"
 	"strings"
 )
 
@@ -20,12 +19,49 @@ const (
 	KindCapability  Kind = "capability"
 )
 
-var canonicalIDPattern = regexp.MustCompile(`^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)*$`)
-var localNamePattern = regexp.MustCompile(`^[a-z][a-z0-9_]*$`)
+// validCanonicalIDは、^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)*$ に一致するかを判定する。
+// 正規表現の照合は、Workspace全体の読込みや索引作成で数万回呼ばれると費用が目立つため、
+// 同じ言語を1回の走査で判定する。ASCII以外のバイトは、正規表現と同じく不一致である。
+func validCanonicalID(s string) bool {
+	segmentStart := true
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		switch {
+		case c >= 'a' && c <= 'z':
+			segmentStart = false
+		case c == '.':
+			if segmentStart {
+				return false // 先頭の"."、連続する"."は空の区間
+			}
+			segmentStart = true
+		case c >= '0' && c <= '9', c == '_':
+			if segmentStart {
+				return false // 区間は英小文字で始まる
+			}
+		default:
+			return false
+		}
+	}
+	return !segmentStart // 空文字と、末尾の"."は不一致
+}
+
+// validLocalNameは、^[a-z][a-z0-9_]*$ に一致するかを判定する。
+func validLocalName(s string) bool {
+	if s == "" || s[0] < 'a' || s[0] > 'z' {
+		return false
+	}
+	for i := 1; i < len(s); i++ {
+		c := s[i]
+		if !(c >= 'a' && c <= 'z' || c >= '0' && c <= '9' || c == '_') {
+			return false
+		}
+	}
+	return true
+}
 
 func ParseCanonicalID(s string) (CanonicalID, error) {
 	s = strings.TrimSpace(s)
-	if !canonicalIDPattern.MatchString(s) {
+	if !validCanonicalID(s) {
 		return "", fmt.Errorf("invalid canonical id %q", s)
 	}
 	return CanonicalID(s), nil
@@ -41,7 +77,7 @@ func MustCanonicalID(s string) CanonicalID {
 
 func ParseLocalName(s string) (LocalName, error) {
 	s = strings.TrimSpace(s)
-	if !localNamePattern.MatchString(s) {
+	if !validLocalName(s) {
 		return "", fmt.Errorf("invalid local name %q", s)
 	}
 	return LocalName(s), nil
@@ -112,7 +148,7 @@ func SymbolToSegment(symbol string) (string, error) {
 		return "", fmt.Errorf("invalid symbol %q", symbol)
 	}
 	seg := strings.Trim(b.String(), "_")
-	if !localNamePattern.MatchString(seg) {
+	if !validLocalName(seg) {
 		return "", fmt.Errorf("symbol %q cannot derive canonical segment", symbol)
 	}
 	return seg, nil

@@ -173,9 +173,13 @@ func semanticDataAnchors(lx *Lexer, dataID core.CanonicalID) ([]SubjectAnchor, e
 			if _, err := expectLexerText(lx, "type"); err != nil {
 				return nil, err
 			}
-			if _, err := expectLexerIdent(lx, "semantic attribute type"); err != nil {
+			typeTok, err := expectLexerIdent(lx, "semantic attribute type")
+			if err != nil {
 				return nil, err
 			}
+			// The type reference token is anchored under its own kind so a typed edit
+			// can replace exactly this token. Kind "semantic-attribute" stays the symbol.
+			anchors = append(anchors, SubjectAnchor{Kind: "semantic-attribute-type", ID: string(id), Anchor: tokenAnchor(typeTok)})
 		case "relation":
 			sym, err := expectLexerIdent(lx, "semantic relation symbol")
 			if err != nil {
