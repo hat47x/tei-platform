@@ -48,3 +48,25 @@ go vet ./reference/multilingual-integration
 表示名・メッセージ・業務文章が同じStorage/Grant/Policyを用いるとは仮定しない。特に、別言語で独立して作成・承認された契約や文章の改訂を、原文改訂に従属させない。
 
 **残る実務課題**：正式なHostの現在受理済みSource/Store/Grant/権限、業務Recordの正本とPublication、本番利用時の再検証、モデルからの翻訳対象自動抽出、MF2/複数形・数値/日付等の書式、認証されたWeb/Desktop配布、生成AIによる候補作成/機密送信承認。横断PoCだけで解消したとは扱わない。
+
+## Plugin世代と現在権限を分離する回帰検査（#1551 / #1223）
+
+`generation_test.go`は既存のO3a言語別バンドル、Plugin Lock、O2表示、`std.message`、業務データPublicationをそのまま呼び出す。新たなResolver・Authority・Storage・Gate・公開APIは設けない。
+
+| 比較する変化 | 参照実装で確認する境界 | この検査で証明しないこと |
+| --- | --- | --- |
+| 通常Pluginをv1.2.0からv1.3.0へ切り替えた合成世代 | 旧バンドルは新Lockと一致しない。旧版の表示対象は新世代へ暗黙移行しない | 二世代の実Host同時稼働、drain、切替の原子性 |
+| 合成環境から表示Grantを取り除く | 新しい表示合成は拒否される。一方、発行済みバンドルの整合性とLockだけの照合では現在のGrant失効を検出できない | 発行済みバンドルの利用許可、Hostの真正なGrant失効 |
+| 元の表示名を改訂する | 新しい表示合成では旧訳を失効と判定する。一方、発行済みバンドルとPlugin Lockだけでは現在のSource改訂を検出できない | 現在のAccepted Source確認、認証された配布やキャッシュ無効化 |
+| メッセージの試験用Reviewが拒否する | 当該メッセージは拒否され、表示名と独立した業務正式文章は変わらない | 実Host権限、業務文章の正式なPublication受理 |
+
+ここで重要なのは、**「バンドルが自己整合している」ことと「現在の環境で配布・表示してよい」ことは別**という観測である。古いバンドルが静的検査を通ることを、継続利用可能という保証に読み替えない。製品化時には既存のCurrent Accepted Source・Host Authority・配布経路から、利用時の判断根拠を取得する必要がある（#1551）。世代切替と旧呼出しの保持・解放はComposition Kernel側（#1223）の責務であり、ここに第二の世代管理器を設けない。
+
+この追加は**合成fixtureのGoテスト**である。実際の更新・再配布、Web/Desktop/Windows GUI、DB、実人間受理、AI翻訳、KouseiKanriと`order_entry.submit_order`の対応は検証しない。実行結果は対象commitとCI記録を確認するまで未確認として扱う。
+
+試験対象：
+
+```sh
+go test -count=1 ./reference/multilingual-integration
+go test -race -count=3 ./reference/multilingual-integration
+```
