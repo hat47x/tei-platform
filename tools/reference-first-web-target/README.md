@@ -42,6 +42,12 @@
 
 回帰試験 `TestCombinedWebTargetSourceGateLiveProcesses` は、実Shared Acceptance CLIのscratch R1から合成Readerを作り、別OSプロセスで同じWeb起動コードを動かします。R1のHTTP 200・4 Validation・Command・合成Observation、旧R0、意味同一の空行R2、Reader欠落・失効・読取障害の起動拒否を検査します。これは**試験実行ファイルへの合成Reader注入**であり、配布CLIへの真正なHost Readerの接続、人的受理、実DB保存、dispatch時のHost Grant、起動後の失効、跨ファイルの原子的読込みは未実証です。G1/G2は未合格を維持します。
 
+## 受理済みSourceと実行時Host Grantは別のAuthority（#1119）
+
+通常の複合WebのHost起動経路では、Source Readerに加えて、独立した`HostEffectGrantReader`を注入できます。`Source Acceptance`が正常でも、`order_entry.submit_order`のCommandはHostの現在のEffect Grantが無い限り実行しません。HTTP入口のSource再照合に加え、実行直前のCommand Adapterが現在Sourceを再照合し、**authenticated subject / Action / Source Decision・Authority Revision / Model Revision**を一組としたHost Grantを要求します。受理失効、別Subject/Action/Revision、Grant失効、Reader欠落、Context取消は`HOST_EFFECT_GRANT_UNAVAILABLE`で状態更新前に拒否します。Host内部エラーの本文は公開しません。
+
+これは第二のGrant台帳や発行機構ではありません。Host Readerの真正性、Grantの発行・保存・取消、ProviderとDB内の原子的な権限＋効果のCommitは**未実装**です。既存`runCombinedWebTarget(ctx, sourceReader, args)`のみを使う場合、Sourceは一致してもEffect Readerが無いためCommandを拒否します。既存の明示`-diagnostic-unaccepted-source`は合成Scenarioの継続検証用であり、正式Host受理・Grantの証明ではありません。受理済みR1を用いる子プロセスのCommand正例テストは、**test executableだけ**に異なる二つの合成Readerを注入します。
+
 ## 実行
 
 Target build revisionは実際に実行するcheckoutから取得します。

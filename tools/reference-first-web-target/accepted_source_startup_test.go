@@ -72,7 +72,13 @@ func TestCombinedWebTargetHostReaderChild(t *testing.T) {
 	if separator < 0 {
 		os.Exit(3)
 	}
-	if err := runCombinedWebTarget(context.Background(), reader, os.Args[separator+1:]); err != nil {
+	var effects HostEffectGrantReader
+	if mode == "current" {
+		// Test-only source acceptance and a *separate* synthetic Host Grant.
+		// A real shipping binary cannot obtain either from environment.
+		effects = &syntheticEffectReader{current: true}
+	}
+	if err := runCombinedWebTargetWithEffectGrant(context.Background(), reader, effects, os.Args[separator+1:]); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(2)
 	}
@@ -150,6 +156,7 @@ func TestCombinedWebTargetSourceGateLiveProcesses(t *testing.T) {
 		diagnostic                bool
 	}{
 		{name: "R1", root: r1, mode: "current"},
+		{name: "R1-no-effect-grant", root: r1, mode: "no-effect-grant"},
 		{name: "R0", root: r0, mode: "current", refusal: "SOURCE_FINGERPRINT_MISMATCH"},
 		{name: "meaning-equivalent-R2", root: r2, mode: "current", refusal: "SOURCE_FINGERPRINT_MISMATCH"},
 		{name: "revoked", root: r1, mode: "revoked", refusal: "SOURCE_ACCEPTANCE_CURRENT_UNAVAILABLE"},
@@ -244,6 +251,15 @@ func TestCombinedWebTargetSourceGateLiveProcesses(t *testing.T) {
 			}
 			if err := json.Unmarshal(body, &observed); err != nil {
 				t.Fatal(err)
+			}
+			if tc.name == "R1-no-effect-grant" {
+				if response.StatusCode != http.StatusUnprocessableEntity ||
+					!strings.Contains(observed.ExecutionError, "HOST_EFFECT_GRANT_UNAVAILABLE") ||
+					observed.Result.Command != nil || observed.Result.Observation != nil ||
+					bytes.Contains(body, []byte("editor-secret")) {
+					t.Fatalf("accepted Source without independent effect Grant dispatched Command: status=%d body=%s", response.StatusCode, body)
+				}
+				return
 			}
 			if response.StatusCode != http.StatusOK || observed.Result.Stage != "completed" ||
 				observed.Result.ApplicationID != "order_entry" || observed.Result.Command == nil ||
