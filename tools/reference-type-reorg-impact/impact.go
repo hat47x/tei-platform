@@ -26,6 +26,14 @@ type Use struct {
 	Type      string `json:"type"`
 }
 
+// ValidationUse records a Validation whose referenced attribute uses a merged type.
+type ValidationUse struct {
+	Validation string `json:"validation"`
+	Data       string `json:"data"`
+	Attribute  string `json:"attribute"`
+	Type       string `json:"type"`
+}
+
 type KeyUse struct {
 	Kind   string   `json:"kind"`
 	ID     string   `json:"id"`
@@ -39,13 +47,14 @@ type Diagnostic struct {
 }
 
 type Impact struct {
-	Schema            string       `json:"schema"`
-	StructureRevision string       `json:"structureRevision"`
-	Merge             Merge        `json:"merge"`
-	Attributes        []Use        `json:"attributes"`
-	AliasTypes        []string     `json:"aliasTypes"`
-	Keys              []KeyUse     `json:"keys"`
-	Diagnostics       []Diagnostic `json:"diagnostics"`
+	Schema            string          `json:"schema"`
+	StructureRevision string          `json:"structureRevision"`
+	Merge             Merge           `json:"merge"`
+	Attributes        []Use           `json:"attributes"`
+	Validations       []ValidationUse `json:"validations"`
+	AliasTypes        []string        `json:"aliasTypes"`
+	Keys              []KeyUse        `json:"keys"`
+	Diagnostics       []Diagnostic    `json:"diagnostics"`
 	// ReviewRequired is always true: a merge is a meaning decision that a
 	// matching representation never settles.
 	ReviewRequired bool `json:"reviewRequired"`
@@ -64,7 +73,7 @@ func Analyze(world ir.World, m Merge) (Impact, error) {
 	}
 	out := Impact{
 		Schema: Schema, StructureRevision: fmt.Sprintf("sha256:%x", sha256.Sum256(raw)), Merge: m,
-		Attributes: []Use{}, AliasTypes: []string{}, Keys: []KeyUse{}, Diagnostics: []Diagnostic{},
+		Attributes: []Use{}, Validations: []ValidationUse{}, AliasTypes: []string{}, Keys: []KeyUse{}, Diagnostics: []Diagnostic{},
 		ReviewRequired: true,
 	}
 	from := map[string]bool{}
@@ -123,6 +132,20 @@ func Analyze(world ir.World, m Merge) (Impact, error) {
 		}
 	}
 	sort.Strings(out.AliasTypes)
+
+	// Validations whose referenced attribute uses a merged type are also impacted.
+	for _, ns := range world.Semantics {
+		for _, v := range ns.Validations {
+			if from[attrType[string(v.Attribute)]] {
+				out.Validations = append(out.Validations, ValidationUse{
+					Validation: string(v.ID),
+					Data:       attrData[string(v.Attribute)],
+					Attribute:  string(v.Attribute),
+					Type:       attrType[string(v.Attribute)],
+				})
+			}
+		}
+	}
 
 	touched := func(ids []string) bool {
 		for _, id := range ids {
@@ -212,6 +235,9 @@ func Analyze(world ir.World, m Merge) (Impact, error) {
 			return out.Keys[i].Kind < out.Keys[j].Kind
 		}
 		return out.Keys[i].ID < out.Keys[j].ID
+	})
+	sort.Slice(out.Validations, func(i, j int) bool {
+		return out.Validations[i].Validation < out.Validations[j].Validation
 	})
 	sort.Slice(out.Diagnostics, func(i, j int) bool {
 		if out.Diagnostics[i].Code != out.Diagnostics[j].Code {
