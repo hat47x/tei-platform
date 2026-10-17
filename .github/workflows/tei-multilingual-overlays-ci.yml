@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'reference/multilingual-overlays/**'
+      - 'reference/multilingual-integration/**'
       - 'reference/multilingual-resources/**'
       - 'reference/ui-customization/web-react/**'
       - '.github/workflows/tei-multilingual-overlays-ci.yml'
@@ -14,6 +15,7 @@ on:
     branches: [main]
     paths:
       - 'reference/multilingual-overlays/**'
+      - 'reference/multilingual-integration/**'
       - 'reference/multilingual-resources/**'
       - 'reference/ui-customization/web-react/**'
       - '.github/workflows/tei-multilingual-overlays-ci.yml'
@@ -58,12 +60,12 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if test -n "$(gofmt -l reference/multilingual-overlays/*.go)"; then
-            gofmt -d reference/multilingual-overlays/*.go
+          if test -n "$(gofmt -l reference/multilingual-overlays/*.go reference/multilingual-integration/*.go)"; then
+            gofmt -d reference/multilingual-overlays/*.go reference/multilingual-integration/*.go
             exit 1
           fi
-          go vet ./reference/multilingual-overlays/... ./reference/multilingual-resources ./internal/sourceacceptance
-          go test -race -count=3 ./reference/multilingual-overlays/... ./reference/multilingual-resources ./internal/sourceacceptance
+          go vet ./reference/multilingual-overlays/... ./reference/multilingual-resources ./reference/multilingual-integration ./internal/sourceacceptance
+          go test -race -count=3 ./reference/multilingual-overlays/... ./reference/multilingual-resources ./reference/multilingual-integration ./internal/sourceacceptance
       - name: Go Plugin Lockで生成した表示情報をReact UIへ適用
         shell: bash
         run: |
