@@ -48,6 +48,7 @@
 | [`reference-procedure-formalization/`](reference-procedure-formalization/) | 業務手順の文章から、形式化を妨げる不足と矛盾を根拠付きの質問として示す読取り専用の参照 |
 | [`reference-purpose-preflight/`](reference-purpose-preflight/) | 開発目的に対する業務規則の未確定・実行時値待ちを合成データで区別 |
 | [`reference-quantity-arith/`](reference-quantity-arith/) | 数量・単価・金額の単位・通貨・丸めの意味注釈を合成入力で検査する読取り専用の参照（#1705） |
+| [`reference-read-consistency/`](reference-read-consistency/) | 一回の導出評価の入力読取り整合・Snapshot保証・競合時の失敗境界を合成入力で判定する読取り専用の参照（#1708） |
 | [`reference-relation-aggregate/`](reference-relation-aggregate/) | Relation集合の重複計上・空集合・NULL要素・不完全取得の意味境界を合成入力で判定する読取り専用の参照（#1706） |
 | [`reference-rule-binding/`](reference-rule-binding/) | 導出規則の適用先解決・競合・案件上書きを合成入力で判定する読取り専用の参照（#1692） |
 | [`reference-rule-candidate-discovery/`](reference-rule-candidate-discovery/) | 入出力例から複数の規則仮説を提示し、境界例で割れる点を示す読取り専用の参照 |
