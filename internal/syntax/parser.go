@@ -1878,12 +1878,28 @@ func (p *Parser) parseSemanticData(namespace core.CanonicalID) (semantic.Data, e
 			if err != nil {
 				return d, p.errAt(typeTok, err.Error())
 			}
+			desc := ""
+			if nt, _ := p.peek(); nt.Text == "description" {
+				_, _ = p.next()
+				descTok, err := p.expect(TokenString)
+				if err != nil {
+					return d, err
+				}
+				desc = descTok.Text
+			}
 			aseg, err := core.SymbolToSegment(aSym.Text)
 			if err != nil {
 				return d, p.errAt(aSym, err.Error())
 			}
 			aid, _ := core.ParseCanonicalID(string(id) + "." + aseg)
-			d.Attributes = append(d.Attributes, semantic.Attribute{ID: aid, Symbol: aSym.Text, TypeRef: typeRef})
+			d.Attributes = append(d.Attributes, semantic.Attribute{ID: aid, Symbol: aSym.Text, Description: desc, TypeRef: typeRef})
+		case "description":
+			_, _ = p.next()
+			descTok, err := p.expect(TokenString)
+			if err != nil {
+				return d, err
+			}
+			d.Description = descTok.Text
 		case "relation":
 			_, _ = p.next()
 			rSym, err := p.expect(TokenIdent)

@@ -71,6 +71,9 @@ func Search(world ir.World, q Query) (Result, error) {
 		if matches(e.Symbol, q) {
 			out.Hits = append(out.Hits, Hit{Kind: e.Kind, ID: e.ID, Parent: e.Parent, Field: "symbol", Value: e.Symbol})
 		}
+		if e.Description != "" && matches(e.Description, q) {
+			out.Hits = append(out.Hits, Hit{Kind: e.Kind, ID: e.ID, Parent: e.Parent, Field: "description", Value: e.Description})
+		}
 	}
 	return out, nil
 }
@@ -122,6 +125,12 @@ func Propose(world ir.World, res Result, replacement string, selected []string) 
 		if selected != nil && !pick[h.ID] {
 			continue
 		}
+		// Description hits are search-only in this increment: replacing a
+		// description is not a set-symbol operation and needs a different
+		// change kind. They are reported as hits but not turned into edits.
+		if h.Field != "symbol" {
+			continue
+		}
 		next := replace(h.Value, res.Query, replacement)
 		if next == h.Value {
 			continue
@@ -147,25 +156,31 @@ func Propose(world ir.World, res Result, replacement string, selected []string) 
 	return p, nil
 }
 
-type element struct{ Kind, ID, Parent, Symbol string }
+type element struct {
+	Kind        string
+	ID          string
+	Parent      string
+	Symbol      string
+	Description string
+}
 
 func elements(world ir.World) []element {
 	var out []element
 	for _, ns := range world.Semantics {
 		for _, d := range ns.Data {
 			did := string(d.ID)
-			out = append(out, element{KindData, did, string(ns.ID), d.Symbol})
+			out = append(out, element{Kind: KindData, ID: did, Parent: string(ns.ID), Symbol: d.Symbol, Description: d.Description})
 			for _, a := range d.Attributes {
-				out = append(out, element{KindAttribute, string(a.ID), did, a.Symbol})
+				out = append(out, element{Kind: KindAttribute, ID: string(a.ID), Parent: did, Symbol: a.Symbol, Description: a.Description})
 			}
 			for _, r := range d.Relations {
-				out = append(out, element{KindRelation, string(r.ID), did, r.Symbol})
+				out = append(out, element{Kind: KindRelation, ID: string(r.ID), Parent: did, Symbol: r.Symbol})
 			}
 			for _, k := range d.CandidateKeys {
-				out = append(out, element{KindCandidate, string(k.ID), did, k.Symbol})
+				out = append(out, element{Kind: KindCandidate, ID: string(k.ID), Parent: did, Symbol: k.Symbol})
 			}
 			for _, f := range d.FunctionalDependencies {
-				out = append(out, element{KindDependency, string(f.ID), did, f.Symbol})
+				out = append(out, element{Kind: KindDependency, ID: string(f.ID), Parent: did, Symbol: f.Symbol})
 			}
 		}
 	}
