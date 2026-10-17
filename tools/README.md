@@ -33,14 +33,18 @@
 | [`reference-capability-transport/`](reference-capability-transport/) | Capabilityの伝送形式と境界の確認 |
 | [`reference-chat-cli-host/`](reference-chat-cli-host/) | 信頼された開発用Hostの事前診断 |
 | [`reference-critical-lowering/`](reference-critical-lowering/) | 意味定義から実行形式への変換条件の確認 |
+| [`reference-derivation-cache/`](reference-derivation-cache/) | 導出値の鮮度・キャッシュ再利用条件・業務上の確定値の境界を合成入力で判定する読取り専用の参照（#1641） |
 | [`reference-derivation-evidence/`](reference-derivation-evidence/) | 導出値の設計由来・評価根拠・診断と、要求者ごとの開示境界を合成入力で判定する読取り専用の参照（#1696） |
+| [`reference-derivation-plan/`](reference-derivation-plan/) | 導出値を含む問い合わせ計画の依存順・整列・ページ分割の成立条件を合成fixtureで判定する読取り専用の参照（#1640） |
 | [`reference-derivation-projection/`](reference-derivation-projection/) | 導出項目の表示・一時プレビュー・編集不可・確定保存の意味境界を合成入力で判定する読取り専用の参照（#1707） |
 | [`reference-derived-validation/`](reference-derived-validation/) | 導出値を用いる業務Validationの評価順と、未取得・実行失敗・正常な不成立の境界を合成入力で判定する読取り専用の参照（#1729） |
 | [`reference-epistemic-knowledge/`](reference-epistemic-knowledge/) | 文脈ごとの知識状態と根拠の確認 |
+| [`reference-evaluation-context/`](reference-evaluation-context/) | 評価文脈の明示入力・時計固定・決定的再評価を合成Fixtureで検査する読取り専用の参照（#1720） |
 | [`reference-exploratory-prototyping/`](reference-exploratory-prototyping/) | 探索的試作の反復記録と部分採用を、仮説の昇格なしに確認する参照 |
 | [`reference-external-coordination/`](reference-external-coordination/) | 外部担当との引継ぎ・協調境界の確認 |
 | [`reference-format-version-migration/`](reference-format-version-migration/) | 定義形式の版と変換規則を一か所に置き、読取り手ごとの旧形式対応をなくす参照 |
 | [`reference-generated-code-connection/`](reference-generated-code-connection/) | 生成コードをTEIの契約境界へ接続できるかの判定と、部分的なモデル化と保持の参照 |
+| [`reference-generation-graph/`](reference-generation-graph/) | phase付き変換グラフのEffect漏れ・型契約・循環・未確定伝播を合成入力で判定する読取り専用の参照（#1063） |
 | [`reference-shared-acceptance/`](reference-shared-acceptance/) | 人・画面・AIに共通する変更受入れ処理の参照実装 |
 | [`reference-standard-function-candidates/`](reference-standard-function-candidates/) | データ定義から実行前の標準機能候補と不足する契約を提示 |
 | [`reference-spec-review/`](reference-spec-review/) | 仕様書の不足・曖昧さ・矛盾の検討支援 |
@@ -48,6 +52,8 @@
 | [`reference-procedure-formalization/`](reference-procedure-formalization/) | 業務手順の文章から、形式化を妨げる不足と矛盾を根拠付きの質問として示す読取り専用の参照 |
 | [`reference-purpose-preflight/`](reference-purpose-preflight/) | 開発目的に対する業務規則の未確定・実行時値待ちを合成データで区別 |
 | [`reference-quantity-arith/`](reference-quantity-arith/) | 数量・単価・金額の単位・通貨・丸めの意味注釈を合成入力で検査する読取り専用の参照（#1705） |
+| [`reference-read-consistency/`](reference-read-consistency/) | 一回の導出評価の入力読取り整合・Snapshot保証・競合時の失敗境界を合成入力で判定する読取り専用の参照（#1708） |
+| [`reference-realization-compliance/`](reference-realization-compliance/) | 規則が宣言する業務意味と実現の型・NULL方針・丸め・等価性の適合を合成fixtureで検査する読取り専用の参照（#1694） |
 | [`reference-relation-aggregate/`](reference-relation-aggregate/) | Relation集合の重複計上・空集合・NULL要素・不完全取得の意味境界を合成入力で判定する読取り専用の参照（#1706） |
 | [`reference-rule-binding/`](reference-rule-binding/) | 導出規則の適用先解決・競合・案件上書きを合成入力で判定する読取り専用の参照（#1692） |
 | [`reference-rule-candidate-discovery/`](reference-rule-candidate-discovery/) | 入出力例から複数の規則仮説を提示し、境界例で割れる点を示す読取り専用の参照 |
@@ -66,6 +72,7 @@
 | [`reference-build-execution-binding/`](reference-build-execution-binding/) | ビルド実行と主体・対象の結び付け |
 | [`reference-builder-contract-resolution/`](reference-builder-contract-resolution/) | Builder契約の解決と適用 |
 | [`reference-studio-composition-evidence-7/`](reference-studio-composition-evidence-7/) | TEI Studioの静的合成を実装外から検査する限定的な黒箱検査器（#1824 / #7） |
+| [`reference-host-draft-recovery/`](reference-host-draft-recovery/) | Hostの外部編集競合・Draft復旧・副作用再送しない境界を合成入力で判定する読取り専用の参照（#1529） |
 | [`reference-deployment-attempt/`](reference-deployment-attempt/) | 配備試行の参照用起動点 |
 | [`reference-durable-run-golden/`](reference-durable-run-golden/) | 永続実行記録の期待出力の再現 |
 | [`reference-lease-supervision/`](reference-lease-supervision/) | 実行権の貸出しと監督の確認 |
