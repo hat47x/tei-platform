@@ -1879,6 +1879,7 @@ func (p *Parser) parseSemanticData(namespace core.CanonicalID) (semantic.Data, e
 				return d, p.errAt(typeTok, err.Error())
 			}
 			desc := ""
+			disp := ""
 			if nt, _ := p.peek(); nt.Text == "description" {
 				_, _ = p.next()
 				descTok, err := p.expect(TokenString)
@@ -1887,12 +1888,20 @@ func (p *Parser) parseSemanticData(namespace core.CanonicalID) (semantic.Data, e
 				}
 				desc = descTok.Text
 			}
+			if nt, _ := p.peek(); nt.Text == "display" {
+				_, _ = p.next()
+				dispTok, err := p.expect(TokenString)
+				if err != nil {
+					return d, err
+				}
+				disp = dispTok.Text
+			}
 			aseg, err := core.SymbolToSegment(aSym.Text)
 			if err != nil {
 				return d, p.errAt(aSym, err.Error())
 			}
 			aid, _ := core.ParseCanonicalID(string(id) + "." + aseg)
-			d.Attributes = append(d.Attributes, semantic.Attribute{ID: aid, Symbol: aSym.Text, Description: desc, TypeRef: typeRef})
+			d.Attributes = append(d.Attributes, semantic.Attribute{ID: aid, Symbol: aSym.Text, Description: desc, Display: disp, TypeRef: typeRef})
 		case "description":
 			_, _ = p.next()
 			descTok, err := p.expect(TokenString)
@@ -1900,6 +1909,20 @@ func (p *Parser) parseSemanticData(namespace core.CanonicalID) (semantic.Data, e
 				return d, err
 			}
 			d.Description = descTok.Text
+		case "display":
+			_, _ = p.next()
+			dispTok, err := p.expect(TokenString)
+			if err != nil {
+				return d, err
+			}
+			d.Display = dispTok.Text
+		case "script":
+			_, _ = p.next()
+			scriptTok, err := p.expect(TokenString)
+			if err != nil {
+				return d, err
+			}
+			d.Script = scriptTok.Text
 		case "relation":
 			_, _ = p.next()
 			rSym, err := p.expect(TokenIdent)
