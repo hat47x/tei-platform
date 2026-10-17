@@ -176,7 +176,7 @@ func classifyWorkspaceDiff(report WorkspaceDiffReport, before, after modelref.Gr
 	knownImpact := typedConsumerImpactReason(report.Impact, report.Consumer)
 	if report.BeforeRuleFingerprint != report.AfterRuleFingerprint {
 		d = unresolved("typed-projection-rules-changed")
-		if knownImpact != "" {
+		if knownImpact != "" && (graphHasConsumer(before, report.Consumer) || graphHasConsumer(after, report.Consumer)) {
 			d.ReasonCodes = append(d.ReasonCodes, knownImpact)
 		}
 		return d
