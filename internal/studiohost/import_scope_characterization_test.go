@@ -131,6 +131,32 @@ func TestStudioHostTransitiveImportReadDependency(t *testing.T) {
 	t.Log("a provider's non-reexported dependency was read during consumer Load")
 }
 
+// Import paths themselves can point to symbolic links. This characterizes
+// the current Host+Loader behavior without deciding whether an unregistered
+// symbolic-link target ought to be authorized in a future multi-user Host.
+func TestStudioHostSymlinkImportScopeCharacterization(t *testing.T) {
+	consumer, provider, _ := studioImportScopeFixture(t)
+	alias := filepath.Join(filepath.Dir(consumer), "provider-alias")
+	if err := os.Symlink(provider, alias); err != nil {
+		t.Skipf("cannot create Workspace import symlink: %v", err)
+	}
+	studioImportScopeWrite(t, filepath.Join(consumer, "tei.workspace.yaml"),
+		"workspace: consumer\\nsources:\\n  - semantic\\nimports:\\n  - alias: provider\\n    path: ../provider-alias\\n    namespace: provider\\n")
+	host, err := NewReadOnly([]string{consumer})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := host.CatalogWorkspace("workspace-1", "provider")
+	t.Logf("unregistered import symlink: success=%t providerVisible=%t failure=%+v",
+		got.OK, studioImportScopeHasSubject(got, "semantic", "provider"), got.Failure)
+	if got.OK && !studioImportScopeHasSubject(got, "semantic", "provider") {
+		t.Fatalf("successful import-symlink catalog lacks provider: %+v", got)
+	}
+	if !got.OK && got.Value != nil {
+		t.Fatalf("rejected import-symlink catalog returned a value: %+v", got)
+	}
+}
+
 // Existing tests cover pre-operation root replacement for Catalog/Validate.
 // Inspect must use the same Host identity check, without returning a value.
 func TestStudioHostInspectRejectsPreOperationRootReplacement(t *testing.T) {
