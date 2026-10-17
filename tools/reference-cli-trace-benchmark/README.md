@@ -121,6 +121,28 @@ largeの`TraceWorkspace`全体（5回の中央値）は、`summary`が826 / 815 
 
 変更後に残る主な費用は、`BuildSourceIndex`（約0.25秒）、`TraceDirect`の`summary`（約0.2秒）、`Load`（約0.14秒）、`index.Build`と`derivedbridge`（約0.1秒）です。
 
+## 識別子の検証の改善（#1177の続き）
+
+参照グラフ生成の改善後にlargeの`summary`を再度プロファイルすると、`core/identity.ParseCanonicalID`が`TraceWorkspace`全体の約9%（1.53秒／16.4秒）を占め、その大半は正規表現の照合（`regexp.MatchString`は約11%）でした。`workspace.Load`と、`BuildSourceIndex`内の再解析の双方が、属性ごとにこの検証を呼びます。
+
+`CanonicalID`（`^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)*$`）と`LocalName`（`^[a-z][a-z0-9_]*$`）の検証を、同じ言語を1回の走査で判定する形に変えました。周囲の空白を取り除く処理、エラー文言、`SymbolToSegment`の結果は変えていません。`core/identity/id_equivalence_test.go`が、正規表現を定義として保持し、英小文字・数字・`_`・`.`・大文字・空白・多バイト文字の全組合せ（長さ6まで）と乱数列20万件で、受理の可否・値・エラー文言の一致を照合します。
+
+1件の検証は約367 nsから約25 ns（確保はどちらも0回）になりました。
+
+変更前（main `af03b2c3`）と変更後（この変更のコード。試験ファイルの整形だけが計測後に加わりました）を、同じ環境で交互に2回ずつ測りました（largeの5回の中央値、単位はms。段別は1回）。
+
+| 処理 | 変更前（1回目 / 2回目） | 変更後（1回目 / 2回目） |
+| --- | ---: | ---: |
+| summary | 689 / 704 | 630 / 618 |
+| full | 754 / 855 | 660 / 665 |
+| full -limit 1 | 744 / 897 | 629 / 636 |
+| leaf-summary | 696 / 828 | 604 / 627 |
+| leaf-full | 671 / 720 | 617 / 609 |
+| 段 1 `workspace.Load` | 119 / 118 | 97 / 86 |
+| 段 4 `workspace.BuildSourceIndex` | 219 / 225 | 159 / 156 |
+
+出力byte数と件数は変わっていません。Windowsホストの負荷による揺れ（±10〜20%）があるため、全体の数値は傾向として読んでください。
+
 ## 実測していないこと
 
 - 実案件のWorkspaceは計測していません。合成Workspaceは1種類の構造（全attributeが1つのTypeを参照）で、実案件のファイルの大きさ、Subjectの種類、edgeの分布を代表しません。
