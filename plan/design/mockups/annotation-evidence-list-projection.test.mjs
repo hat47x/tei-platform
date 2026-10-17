@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { projectAnnotationEvidence, AUXILIARY_SCHEMA, EPISTEMIC_CONTRACT, EPISTEMIC_SCHEMA } from './annotation-evidence-list-projection.mjs';
@@ -48,4 +49,167 @@ test('未知のcontract/schemaはfail closed、未知の状態値は受理へ昇
   const unknown = projectAnnotationEvidence({ ...auxiliary, annotations: [{ id: 'unknown', subject: '', kind: '??', state: 'accepted' }] }, epistemic);
   assert.match(unknown.notes[0].workState, /未対応の値/);
   assert.doesNotMatch(unknown.notes[0].workState, /注記：対応済み/);
+});
+
+
+const completeAssessment = () => ({
+  assertionId: 'e4', statementKind: 'hypothesis', confirmationState: 'confirmed',
+  useState: 'candidate-only', targetBinding: 'exact', reviewBinding: 'current',
+  metadataState: 'complete', contentOrigin: 'user', ingestedBy: 'user',
+  contextCompatibility: 'compatible', freshness: 'current',
+  lifecycleState: 'active', conflict: 'none', inferredContextUsed: false, reasons: [],
+});
+
+test('人が確認した仮説でも候補に留め、詳細の独立軸を保持する', () => {
+  const { auxiliary, epistemic } = fixture();
+  epistemic.assessments = [completeAssessment()];
+  const before = structuredClone(epistemic);
+  const got = projectAnnotationEvidence(auxiliary, epistemic).assessments[0];
+  assert.deepEqual(epistemic, before, 'read-only');
+  assert.match(got.confirmation, /人が確認/);
+  assert.match(got.useState, /候補のみ/);
+  assert.match(got.acceptance, /判定不可/);
+  assert.equal(got.detailRows.length, 10);
+  assert.ok(got.detailRows.some(d => d.label === '確認履歴の現在性' && /現在の対象に有効/.test(d.value)));
+  assert.equal(got.hasAttention, false);
+  assert.match(got.attentionSummary, /受理・全体健全性を意味しない/);
+});
+
+test('旧review・メタデータ欠落・AI由来と取込み主体を混同せず注意を分ける', () => {
+  const { auxiliary, epistemic } = fixture();
+  epistemic.assessments = [{
+    ...completeAssessment(), reviewBinding: 'stale', metadataState: 'partial',
+    contentOrigin: 'ai', ingestedBy: 'user',
+  }];
+  const got = projectAnnotationEvidence(auxiliary, epistemic).assessments[0];
+  assert.match(got.confirmation, /人が確認/, 'Referenceの元の表示値を勝手に書き換えない');
+  assert.match(got.useState, /候補のみ/);
+  assert.ok(got.attention.some(s => s.includes('過去の内容確認')));
+  assert.ok(got.attention.some(s => s.includes('メタデータが不足')));
+  assert.ok(got.attention.some(s => s.includes('AI生成情報')));
+  assert.ok(got.detailRows.some(d => d.label === '内容の由来' && /AI/.test(d.value)));
+  assert.ok(got.detailRows.some(d => d.label === '取込み主体' && /利用者/.test(d.value)));
+  assert.match(got.acceptance, /判定不可/);
+});
+
+test('文脈・鮮度・競合・置換・参照切れと評価理由を独立に表示する', () => {
+  const { auxiliary, epistemic } = fixture();
+  const reason = '<img src=x onerror=alert(1)>';
+  epistemic.assessments = [{
+    ...completeAssessment(), targetBinding: 'detached',
+    contextCompatibility: 'incompatible', freshness: 'stale', conflict: 'present',
+    lifecycleState: 'superseded', inferredContextUsed: true, reasons: [reason],
+  }];
+  const got = projectAnnotationEvidence(auxiliary, epistemic).assessments[0];
+  assert.equal(got.needsLocatorReview, true);
+  assert.ok(got.attention.some(s => s.includes('対象位置')));
+  assert.ok(got.attention.some(s => s.includes('文脈')));
+  assert.ok(got.attention.some(s => s.includes('鮮度')));
+  assert.ok(got.attention.some(s => s.includes('競合')));
+  assert.ok(got.attention.some(s => s.includes('置換')));
+  assert.ok(got.attention.some(s => s.includes('推定')));
+  assert.equal(got.detailRows.find(d => d.label.startsWith('評価理由')).value, reason,
+    '表示用文字列を保持し、DOM側でtextContentにより非HTMLとして出す');
+});
+
+test('未提供・未知の詳細状態を良好・対応受理へ昇格させない', () => {
+  const { auxiliary, epistemic } = fixture();
+  epistemic.assessments = [{ ...completeAssessment(),
+    metadataState: undefined, reviewBinding: 'unexpected', freshness: 'mystery',
+    conflict: undefined, reasons: undefined, inferredContextUsed: undefined,
+  }];
+  const got = projectAnnotationEvidence(auxiliary, epistemic).assessments[0];
+  assert.equal(got.hasAttention, true);
+  assert.ok(got.attention.some(s => s.includes('未提供')));
+  assert.ok(got.attention.some(s => s.includes('未対応の状態値')));
+  assert.ok(got.detailRows.some(d => d.value === 'Referenceに値なし'));
+  assert.ok(got.detailRows.some(d => d.value.includes('未対応の値')));
+  assert.match(got.acceptance, /判定不可/);
+});
+
+test('理由と推定文脈の型不正を未提供や理由なしと区別する', () => {
+  const { auxiliary, epistemic } = fixture();
+  const project = patch => {
+    const assessment = { ...completeAssessment(), ...patch };
+    if (patch.omitDetails) {
+      delete assessment.inferredContextUsed;
+      delete assessment.reasons;
+      delete assessment.omitDetails;
+    }
+    epistemic.assessments = [assessment];
+    return projectAnnotationEvidence(auxiliary, epistemic).assessments[0];
+  };
+  const reasonValue = got => got.detailRows.find(d => d.label.startsWith('評価理由')).value;
+  const inferredValue = got => got.detailRows.find(d => d.label === '推定した文脈の利用').value;
+
+  for (const reasons of [[42], [{}], ['有効な理由', 42], '理由']) {
+    const got = project({ reasons });
+    assert.match(reasonValue(got), /未対応の値/);
+    assert.ok(got.attention.some(s => s.includes('評価理由に未対応')));
+    assert.doesNotMatch(reasonValue(got), /^理由の記載なし$/);
+  }
+  assert.equal(reasonValue(project({ reasons: [] })), '理由の記載なし');
+  const nullReasons = project({ reasons: null });
+  assert.match(reasonValue(nullReasons), /未対応の値/);
+  assert.ok(nullReasons.attention.some(s => s.includes('評価理由に未対応')));
+
+  const malformedInference = project({ inferredContextUsed: 'false' });
+  assert.match(inferredValue(malformedInference), /未対応の値/);
+  assert.ok(malformedInference.attention.some(s => s.includes('推定した文脈の利用に未対応')));
+  assert.doesNotMatch(malformedInference.attentionSummary, /詳細情報の未提供：推定した文脈の利用/);
+  const nullInference = project({ inferredContextUsed: null });
+  assert.match(inferredValue(nullInference), /未対応の値/);
+  assert.ok(nullInference.attention.some(s => s.includes('推定した文脈の利用に未対応')));
+
+  const missing = project({ omitDetails: true });
+  assert.equal(inferredValue(missing), 'Referenceに値なし');
+  assert.equal(reasonValue(missing), 'Referenceに値なし');
+  assert.ok(missing.attention.some(s => s.includes('詳細情報の未提供')));
+});
+
+
+test('HTML画面配線: 詳細はDOMテキスト、未知schema時は表示を消して拒否する（疑似DOM）', () => {
+  const html = readFileSync(new URL('./annotation-evidence-list-sketch.html', import.meta.url), 'utf8');
+  const script = html.match(/<script type="module">([\s\S]*?)<\/script>/)?.[1];
+  assert.ok(script, '画面module scriptが存在する');
+  assert.doesNotMatch(script, /\.innerHTML\s*=/, '入力をHTMLへ評価しない');
+
+  class FakeElement {
+    constructor(tag) { this.tag = tag; this.children = []; this.handlers = {}; this._text = ''; this.value = ''; }
+    set textContent(v) { this._text = String(v); this.children = []; }
+    get textContent() { return this._text + this.children.map(c => c.textContent).join(''); }
+    append(...nodes) { this.children.push(...nodes); }
+    replaceChildren(...nodes) { this._text = ''; this.children = [...nodes]; }
+    addEventListener(name, callback) { this.handlers[name] = callback; }
+  }
+  const ids = new Map();
+  const document = {
+    getElementById(id) {
+      if (!ids.has(id)) ids.set(id, new FakeElement('id:' + id));
+      return ids.get(id);
+    },
+    createElement(tag) { return new FakeElement(tag); },
+  };
+  const moduleBody = script.split('\n').filter(line => !line.startsWith('import ')).join('\n');
+  new Function('document', 'projectAnnotationEvidence', moduleBody)(document, projectAnnotationEvidence);
+  const { auxiliary, epistemic } = fixture();
+  const escaped = '<svg/onload=alert(1)>';
+  epistemic.assessments = [{ ...completeAssessment(), reasons: [escaped], metadataState: 'partial' }];
+  document.getElementById('aux').value = JSON.stringify(auxiliary);
+  document.getElementById('epi').value = JSON.stringify(epistemic);
+  document.getElementById('display').handlers.click();
+
+  const rows = document.getElementById('assessments').children;
+  assert.equal(rows.length, 1);
+  const tds = rows[0].children;
+  assert.match(tds[6].textContent, /メタデータが不足/);
+  assert.match(tds[7].textContent, /評価理由/);
+  assert.match(tds[7].textContent, /<svg\/onload=alert\(1\)>/);
+  assert.equal(tds[7].children[0].tag, 'details', '元データはDOMテキストで表示');
+
+  document.getElementById('epi').value = JSON.stringify({ ...epistemic, schema: 'unknown' });
+  document.getElementById('display').handlers.click();
+  assert.equal(document.getElementById('assessments').children.length, 0);
+  assert.equal(document.getElementById('notes').children.length, 0);
+  assert.match(document.getElementById('error').textContent, /未対応/);
 });
