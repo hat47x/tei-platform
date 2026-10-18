@@ -16,6 +16,7 @@
 | [`repository-plan-check/`](repository-plan-check/) | ADR・Issueの番号や要求と検証表の対応確認 |
 | [`repositoryqualification/`](repositoryqualification/) | リポジトリ検証条件の共通処理 |
 | [`reference-cli-trace-benchmark/`](reference-cli-trace-benchmark/) | 合成Workspaceによるtraceの処理段別の時間・メモリ計測と出力不変の確認 |
+| [`reference-change-packet/`](reference-change-packet/) | 変更範囲・危険度・検証・停止条件をJSONで宣言し、範囲確認と検証実行・証拠記録を行う参照（#2017） |
 
 ## 設計、業務知識、受入れ
 
