@@ -77,7 +77,7 @@ func Record(opts RecordOptions, outDir string) (CandidateManifest, error) {
 		return CandidateManifest{}, err
 	}
 	manifest := CandidateManifest{
-		Schema: CandidateSchema, ID: opts.ID, Origin: origin,
+		Schema: CandidateSchema, ID: opts.ID, Version: "1", Origin: origin,
 		Source: "main.go", SourceDigest: digest(source), Note: opts.Note,
 		Generation: &GenerationProvenance{
 			Provider: opts.Provider, Model: opts.Model,
