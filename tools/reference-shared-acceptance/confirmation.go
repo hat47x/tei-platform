@@ -5,9 +5,9 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
@@ -166,13 +166,13 @@ var linkedDecisionPattern = regexp.MustCompile(`^` + regexp.QuoteMeta(decisionDi
 // rejectedLinkProblemは、退けた提案の記録のlinkedDecisionが、fingerprintの候補を退けた決定記録を指しているかを確かめる。
 // 問題が無ければ空を返す。決定記録が無いときはmissingとして返し、読む側はそれを問題にしない。
 // 決定記録は消せる派生物なので、その有無で確認の抑制を変えると、一件消しただけで全部の確認が止まるためである。
-func rejectedLinkProblem(root, linked, fingerprint string) (missing bool, problem string) {
+func rejectedLinkProblem(files *os.Root, linked, fingerprint string) (missing bool, problem string) {
 	if !linkedDecisionPattern.MatchString(linked) {
 		return false, fmt.Sprintf("linkedDecisionは%s/<64桁の16進>.json の形である必要があります", decisionDir)
 	}
-	raw, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(linked)))
+	raw, err := ledgerReadFile(files, linked)
 	if err != nil {
-		if os.IsNotExist(err) {
+		if errors.Is(err, os.ErrNotExist) {
 			return true, ""
 		}
 		return false, fmt.Sprintf("linkedDecision %q を読めません: %v", linked, err)
@@ -196,11 +196,11 @@ func rejectedLinkProblem(root, linked, fingerprint string) (missing bool, proble
 
 // storedRejectedProblemは、保存された退けた提案の記録を、書くときと同じ規則で読む側から確かめる。
 // 前提のsubjectが今は解決できないことは書いた後の変化なので、ここでは問題にしない（確認側でbasis-changedとして扱う）。
-func storedRejectedProblem(root string, rec ConfirmationRecord) string {
+func storedRejectedProblem(files *os.Root, rec ConfirmationRecord) string {
 	if !revisionPattern.MatchString(rec.Identity.Subject) {
 		return "identity.subjectがcandidateFingerprintの形ではありません"
 	}
-	_, problem := rejectedLinkProblem(root, rec.LinkedDecision, rec.Identity.Subject)
+	_, problem := rejectedLinkProblem(files, rec.LinkedDecision, rec.Identity.Subject)
 	return problem
 }
 
@@ -252,10 +252,18 @@ func validateRecordShape(rec ConfirmationRecord) error {
 // readConfirmationsは保存された記録を読む。読めない記録は、全体を止めずに列挙して返す。
 // 呼び出し側が、疑わしいときに確認を出す側へ倒すかどうかを決める。
 func readConfirmations(root string) ([]confirmationEntry, []UnreadableConfirmation, error) {
-	dir := filepath.Join(root, filepath.FromSlash(confirmationDir))
-	entries, err := os.ReadDir(dir)
+	files, err := os.OpenRoot(root)
 	if err != nil {
-		if os.IsNotExist(err) {
+		return nil, nil, fmt.Errorf("open Workspace root for Confirmation ledger: %w", err)
+	}
+	defer files.Close()
+	return readConfirmationsWithin(files)
+}
+
+func readConfirmationsWithin(files *os.Root) ([]confirmationEntry, []UnreadableConfirmation, error) {
+	entries, err := ledgerReadDir(files, confirmationDir)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
 			return nil, nil, nil
 		}
 		return nil, nil, err
@@ -272,7 +280,7 @@ func readConfirmations(root string) ([]confirmationEntry, []UnreadableConfirmati
 	var bad []UnreadableConfirmation
 	for _, name := range names {
 		rel := confirmationDir + "/" + name
-		content, err := os.ReadFile(filepath.Join(dir, name))
+		content, err := ledgerReadFile(files, rel)
 		if err != nil {
 			bad = append(bad, UnreadableConfirmation{Path: rel, Problem: err.Error()})
 			continue
@@ -294,7 +302,7 @@ func readConfirmations(root string) ([]confirmationEntry, []UnreadableConfirmati
 			continue
 		}
 		if rec.Outcome == outcomeRejectedProposal {
-			if problem := storedRejectedProblem(root, rec); problem != "" {
+			if problem := storedRejectedProblem(files, rec); problem != "" {
 				bad = append(bad, UnreadableConfirmation{Path: rel, Problem: problem})
 				continue
 			}
@@ -457,7 +465,12 @@ func recordConfirmation(root string, in ConfirmationInput) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	entries, unreadable, err := readConfirmations(root)
+	files, err := os.OpenRoot(root)
+	if err != nil {
+		return "", fmt.Errorf("open Workspace root for Confirmation ledger: %w", err)
+	}
+	defer files.Close()
+	entries, unreadable, err := readConfirmationsWithin(files)
 	if err != nil {
 		return "", err
 	}
@@ -488,14 +501,14 @@ func recordConfirmation(root string, in ConfirmationInput) (string, error) {
 		}
 		if in.Outcome == outcomeRejectedProposal {
 			// 退けた提案は、identity.subjectの候補を退けたreject決定へ結ぶ。
-			missing, problem := rejectedLinkProblem(root, in.LinkedDecision, in.Identity.Subject)
+			missing, problem := rejectedLinkProblem(files, in.LinkedDecision, in.Identity.Subject)
 			if missing {
 				return "", confirmationRefusal("LINKED_DECISION_NOT_FOUND", "linkedDecision %q が存在しません", in.LinkedDecision)
 			}
 			if problem != "" {
 				return "", confirmationRefusal("LINKED_DECISION_INVALID", "%s", problem)
 			}
-		} else if info, err := os.Stat(filepath.Join(root, filepath.FromSlash(in.LinkedDecision))); err != nil || !info.Mode().IsRegular() {
+		} else if err := checkLedgerFile(files, in.LinkedDecision, false); err != nil {
 			return "", confirmationRefusal("LINKED_DECISION_NOT_FOUND", "linkedDecision %q が存在しません", in.LinkedDecision)
 		}
 	}
@@ -520,11 +533,7 @@ func recordConfirmation(root string, in ConfirmationInput) (string, error) {
 	}
 	sum := sha256.Sum256(encoded)
 	rel := confirmationDir + "/" + hex.EncodeToString(sum[:]) + ".json"
-	target := filepath.Join(root, filepath.FromSlash(rel))
-	if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
-		return "", err
-	}
-	if err := writeFileAtomic(target, encoded); err != nil {
+	if err := ledgerWriteFile(files, rel, encoded); err != nil {
 		return "", err
 	}
 	return rel, nil

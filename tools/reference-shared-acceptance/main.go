@@ -397,7 +397,15 @@ func runCLI(args []string, stdout, stderr io.Writer) int {
 		}
 		path, err := recordDecision(*workspacePath, *d)
 		if err != nil {
+			// Sourceの受理・拒否の判定は既に成立している。ledgerを書けなかったことを
+			// 受理の撤回や「記録済み」の成功として扱わず、判定自体は出力したうえで
+			// 別のWarningと終了コードで知らせる。
 			fmt.Fprintln(stderr, err)
+			d.Warnings = append(d.Warnings, Diagnostic{
+				Code: "DECISION_RECORD_FAILED",
+				Message: "判定は成立しましたが、content-addressedなDecision記録を.tei/decisionsへ保存できませんでした。" +
+					"Sourceの受理状態は取り消していません。記録の永続化を前提にせず、ledgerのパスと権限を確認したうえでdecisionsを再確認してください。",
+			})
 			return false
 		}
 		d.RecordPath = path
@@ -472,11 +480,15 @@ func runCLI(args []string, stdout, stderr io.Writer) int {
 			fmt.Fprintln(stderr, err)
 			return 1
 		}
-		if decision.Decision == "accepted" && !record(&decision) {
-			return 1
+		recorded := true
+		if decision.Decision == "accepted" {
+			recorded = record(&decision)
 		}
 		if code := emit(decision); code != 0 {
 			return code
+		}
+		if !recorded {
+			return 1
 		}
 		if decision.Decision != "accepted" {
 			return 1
@@ -487,11 +499,15 @@ func runCLI(args []string, stdout, stderr io.Writer) int {
 			fmt.Fprintln(stderr, err)
 			return 1
 		}
-		if decision.Decision == "rejected" && !record(&decision) {
-			return 1
+		recorded := true
+		if decision.Decision == "rejected" {
+			recorded = record(&decision)
 		}
 		if code := emit(decision); code != 0 {
 			return code
+		}
+		if !recorded {
+			return 1
 		}
 		if decision.Decision != "rejected" {
 			return 1
