@@ -344,9 +344,19 @@ def main() -> int:
         xead_path.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(fixture_source, xead_path)
         fixture_sha256_before = hashlib.sha256(xead_path.read_bytes()).hexdigest()
+        relative_empty_xead_path = "tei-studio-smoke/empty.xead"
+        empty_xead_path = workspace_root / relative_empty_xead_path
+        empty_xead_path.write_text("<System/>\n", encoding="utf-8")
+        empty_fixture_sha256_before = hashlib.sha256(empty_xead_path.read_bytes()).hexdigest()
+        relative_missing_xead_path = "tei-studio-smoke/missing.xead"
+        missing_xead_path = workspace_root / relative_missing_xead_path
+        if missing_xead_path.exists():
+            raise RuntimeError("The synthetic missing-XEAD path unexpectedly exists")
         facts["source_workspace_root"] = str(source_workspace)
         facts["workspace_root"] = str(workspace_root)
         facts["observe_xead_fixture"] = {"relative_path": relative_xead_path, "sha256_before": fixture_sha256_before, "scratch_workspace_copy": True, "source_workspace_modified": False}
+        facts["observe_xead_empty_fixture"] = {"relative_path": relative_empty_xead_path, "sha256_before": empty_fixture_sha256_before, "scratch_workspace_copy": True}
+        facts["observe_xead_missing_fixture"] = {"relative_path": relative_missing_xead_path, "exists": False, "scratch_workspace_copy": True}
         webview_baseline = find_processes("msedgewebview2.exe")
         baseline_pids = {int(item["ProcessId"]) for item in webview_baseline}
         facts["preexisting_webview2_count"] = len(baseline_pids)
@@ -729,6 +739,96 @@ import('/wails/runtime.js').then(async (runtime) => {
         fixture_sha256_after = hashlib.sha256(xead_path.read_bytes()).hexdigest()
         if fixture_sha256_after != fixture_sha256_before:
             raise RuntimeError("ObserveXead changed the fixed fixture bytes")
+
+        def save_xead_screen(filename: str, description: str) -> None:
+            response = webdriver_request(base_url, "GET", f"/session/{driver_session}/screenshot")
+            encoded = response.get("value")
+            if not encoded:
+                raise RuntimeError(f"WebDriver screenshot response did not contain image data {description}")
+            (evidence_dir / filename).write_bytes(base64.b64decode(encoded))
+
+        def observe_ui_path(
+            relative_path: str, expected_status: str, screenshot_name: str
+        ) -> dict[str, Any]:
+            webdriver_request(base_url, "POST", f"/session/{driver_session}/element/{input_id}/clear", {})
+            webdriver_request(base_url, "POST", f"/session/{driver_session}/element/{input_id}/value", {"text": relative_path, "value": list(relative_path)})
+            webdriver_request(base_url, "POST", f"/session/{driver_session}/element/{button_id}/click", {})
+            deadline = time.monotonic() + 15
+            state: dict[str, Any] = {}
+            while time.monotonic() < deadline:
+                state = webdriver_request(base_url, "POST", f"/session/{driver_session}/execute/sync", {"script": inspect_script, "args": []}).get("value", {})
+                if state.get("xeadStatus") == expected_status:
+                    save_xead_screen(screenshot_name, f"after reaching {expected_status!r}")
+                    return state
+                time.sleep(0.2)
+            save_xead_screen(screenshot_name, f"while waiting for {expected_status!r}")
+            raise RuntimeError(f"ObserveXead UI did not reach {expected_status!r}: {state.get('xeadStatus')!r}")
+
+        def observe_host_path(relative_path: str) -> dict[str, Any]:
+            script = """
+const done = arguments[arguments.length - 1];
+const [relativePath] = arguments;
+import('/wails/runtime.js').then(async (runtime) => {
+  done(await runtime.Call.ByName('main.StudioBridge.ObserveXead', 'workspace-1', relativePath));
+}).catch((error) => done({error: String(error)}));
+"""
+            return webdriver_request(base_url, "POST", f"/session/{driver_session}/execute/async", {"script": script, "args": [relative_path]}, timeout_seconds=30).get("value", {})
+
+        save_xead_screen("webview2-observe-xead-screen.png", "after successful observation")
+        empty_status = "観察完了：テーブル 0件、項目 0件、診断分類 0件"
+        empty_state = observe_ui_path(
+            relative_empty_xead_path,
+            empty_status,
+            "webview2-observe-xead-empty-screen.png",
+        )
+        if empty_state.get("xeadResult") != "表示できるテーブルまたは診断はありません。" or empty_state.get("xeadSections"):
+            raise RuntimeError(f"Empty ObserveXead success did not render its empty state: {empty_state!r}")
+        empty_envelope = observe_host_path(relative_empty_xead_path)
+        empty_value = empty_envelope.get("value", {})
+        empty_projection = empty_value.get("observation", {}) if isinstance(empty_value, dict) else {}
+        if empty_envelope.get("error") or empty_envelope.get("ok") is not True or "failure" in empty_envelope:
+            raise RuntimeError(f"Empty ObserveXead was not a successful Host response: {empty_envelope!r}")
+        if (
+            not isinstance(empty_value, dict)
+            or empty_value.get("effect") != "read-only"
+            or not isinstance(empty_projection, dict)
+            or empty_projection.get("tables", []) != []
+            or empty_projection.get("diagnostics", []) != []
+        ):
+            raise RuntimeError(f"Empty ObserveXead Host projection was not empty and read-only: {empty_envelope!r}")
+        empty_fixture_sha256_after = hashlib.sha256(empty_xead_path.read_bytes()).hexdigest()
+        if empty_fixture_sha256_after != empty_fixture_sha256_before:
+            raise RuntimeError("ObserveXead changed the empty fixture bytes")
+
+        missing_status = "観察できませんでした：XEAD_SOURCE_READ_FAILED"
+        missing_state = observe_ui_path(
+            relative_missing_xead_path,
+            missing_status,
+            "webview2-observe-xead-read-failure-screen.png",
+        )
+        if missing_state.get("xeadResult") or missing_state.get("xeadSections"):
+            raise RuntimeError(f"ObserveXead read failure retained an earlier result: {missing_state!r}")
+        if (
+            relative_missing_xead_path in missing_state.get("xeadStatus", "")
+            or relative_missing_xead_path in missing_state.get("xeadResult", "")
+        ):
+            raise RuntimeError(f"ObserveXead UI echoed its relative input path in the failure: {missing_state!r}")
+        missing_envelope = observe_host_path(relative_missing_xead_path)
+        if missing_xead_path.exists():
+            raise RuntimeError("ObserveXead created the missing source path during UI and direct Host calls")
+        host_failure = missing_envelope.get("failure")
+        missing_response_text = json.dumps(missing_envelope, ensure_ascii=False, sort_keys=True)
+        if (
+            missing_envelope.get("error")
+            or missing_envelope.get("ok") is not False
+            or not isinstance(host_failure, dict)
+            or host_failure.get("code") != "XEAD_SOURCE_READ_FAILED"
+            or "value" in missing_envelope
+        ):
+            raise RuntimeError(f"Missing ObserveXead path did not return the expected Host failure: {missing_envelope!r}")
+        if relative_missing_xead_path in missing_response_text or str(workspace_root) in missing_response_text:
+            raise RuntimeError(f"ObserveXead Host failure echoed a source path: {missing_envelope!r}")
+
         facts["observe_xead"] = {
             "workspace_id": "workspace-1", "relative_path": relative_xead_path,
             "schema_version": observation["schemaVersion"], "effect": observation["effect"],
@@ -738,15 +838,22 @@ import('/wails/runtime.js').then(async (runtime) => {
             "synthetic_values_redacted": True,
             "fixture_sha256_before": fixture_sha256_before, "fixture_sha256_after": fixture_sha256_after,
         }
-        page_state.update({"graphSelection": graph_state, "validationDisplay": validate_state, "bridgeEnvelopes": bridge_response, "graphInspectResponse": graph_response, "observeXeadUi": xead_state, "observeXeadBridge": observe_envelope})
+        facts["observe_xead_empty"] = {
+            "relative_path": relative_empty_xead_path, "status": empty_state["xeadStatus"],
+            "tables": 0, "fields": 0, "diagnostics": 0,
+            "fixture_sha256_before": empty_fixture_sha256_before, "fixture_sha256_after": empty_fixture_sha256_after,
+        }
+        facts["observe_xead_read_failure"] = {
+            "relative_path": relative_missing_xead_path, "status": missing_state["xeadStatus"],
+            "failure_code": host_failure["code"], "relative_path_echoed": False,
+            "earlier_result_cleared": True,
+        }
+        page_state.update({"graphSelection": graph_state, "validationDisplay": validate_state, "bridgeEnvelopes": bridge_response, "graphInspectResponse": graph_response, "observeXeadUi": xead_state, "observeXeadBridge": observe_envelope, "observeXeadEmptyUi": empty_state, "observeXeadEmptyBridge": empty_envelope, "observeXeadMissingUi": missing_state, "observeXeadMissingBridge": missing_envelope})
         write_json(evidence_dir / "page-state.json", page_state)
-        screenshot_response = webdriver_request(base_url, "GET", f"/session/{driver_session}/screenshot")
-        screenshot = screenshot_response.get("value")
-        if not screenshot:
-            raise RuntimeError("WebDriver screenshot response did not contain image data after ObserveXead")
-        (evidence_dir / "webview2-observe-xead-screen.png").write_bytes(base64.b64decode(screenshot))
         record("workbench-catalog-inspect-validate-verified", pathname=page_state["pathname"], catalog_entries=len(entries), initial_subject="sales.order", inspected_subject=child.get("id"), validation_summary=expected_summary, displayed_findings=len(validation_findings))
         record("workbench-observe-xead-ui-and-bridge-verified", workspace_id="workspace-1", relative_path=relative_xead_path, effect="read-only", tables=1, fields=1, diagnostics=len(expected_diagnostics), synthetic_values_redacted=True, fixture_unchanged=True)
+        record("workbench-observe-xead-empty-success-verified", relative_path=relative_empty_xead_path, tables=0, fields=0, diagnostics=0, empty_state_rendered=True, fixture_unchanged=True)
+        record("workbench-observe-xead-missing-source-failure-verified", failure_code=host_failure["code"], relative_path_echoed=False, earlier_result_cleared=True)
 
     except Exception as exc:  # Keep a failure artifact even when setup cannot reach the Wails app.
         failure = f"{type(exc).__name__}: {exc}"
