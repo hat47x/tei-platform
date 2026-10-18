@@ -55,3 +55,5 @@ Issueでは「何を行うか」を管理し、ADRでは「なぜその方針を
 - [ADR-0030: 生成AIが扱う情報を文脈付きの認識状態として保持する](0030-context-scoped-epistemic-knowledge.md)
 - [ADR-0032: Cordis型の構成中核をTEIの新しいプラグイン基盤とする](0032-composition-kernel-replacement.md)（目標方針として採用。本番向け実装は移行中）
 - [ADR-0033: コアとプラグインをサブプロジェクトとして管理する](0033-core-and-plugin-subprojects.md)（目標構成として採用。ソース移動は未実施）
+- [ADR-0034: 生成器を受理済み意味から導出する版付き成果物として扱い、生成AIによる生成器生成を同じ適合境界に置く](0034-generator-as-derived-artifact.md)（提案中）
+- [ADR-0035: 自律開発を段階づけ、機械可読な作業票と変更範囲に応じた検証で人間の関与を減らす](0035-autonomy-levels-and-verification-packets.md)（提案中）
