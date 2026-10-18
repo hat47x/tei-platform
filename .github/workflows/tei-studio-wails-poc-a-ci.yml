@@ -294,7 +294,7 @@ jobs:
             -out internal/studiohost/staticservices
           test -s internal/studiohost/staticservices/services.generated.go
           cd cmd/tei-studio
-          go test -mod=readonly -count=1 -tags server .
+          CGO_ENABLED=0 go test -mod=readonly -count=1 -tags server .
           CGO_ENABLED=0 go build -mod=readonly -tags server -o "$RUNNER_TEMP/tei-studio-poc-b-paired-host/tei-studio-ordinary" .
           CGO_ENABLED=0 go test -mod=readonly -count=1 -tags 'studio_generated,server' .
           CGO_ENABLED=0 go build -mod=readonly -tags 'studio_generated,server' -o "$RUNNER_TEMP/tei-studio-poc-b-paired-host/tei-studio-generated" .
