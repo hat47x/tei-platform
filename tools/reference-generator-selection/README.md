@@ -56,6 +56,19 @@ go run ./tools/reference-generator-selection/cmd/tei-generator-model \
 
 `tei-generator-model`は、`TEI_PROMPT`、`TEI_CONTEXT`、`TEI_SOURCE`、`TEI_TMPDIR`、`TEI_PROVIDER`、`TEI_MODEL`を環境変数で渡し、コマンドが`TEI_SOURCE`へ書いたGo sourceを記録します。特定ベンダーのAPI・認証・課金・モデル版管理は埋め込みません。コマンドは信頼済みのものだけを指定し、秘密情報を出力しないでください。
 
+外部の**生成器**が候補sourceを生成する場合は、生成器を深さ1で実行して記録できます。
+
+```text
+go run ./tools/reference-generator-selection/cmd/tei-generator-meta \
+  -id meta-template -provider recorded-fixture -model meta-fixture-v0 \
+  -contract tools/reference-generator-selection/testdata/line-amount/contract.json \
+  -generator tools/reference-generator-selection/testdata/meta/generator.go \
+  -prompt /tmp/prompt.txt -context /tmp/context.json \
+  -out /tmp/meta-candidate
+```
+
+`tei-generator-meta`は、生成器をビルドし、`-contract`を渡して1回だけ実行し、その出力を候補sourceとして記録します。生成器のsourceとdigestは`lineage`へ残します。selectionは生成器を再ビルド・再実行し、候補sourceと一致することを確認します。深さ2以上のメタ生成は拒否します。
+
 `passed=true`は、少なくとも1つの候補が固定fixtureをすべて満たしたことだけを示します。意味の受理、生成器の採用、権限の付与、実Providerや本番環境の証明ではありません。
 
 ## 対象契約
@@ -111,6 +124,17 @@ go run ./tools/reference-generator-selection/cmd/tei-generator-model \
 
 `template`と`dangerous`の生成器は同じ契約パラメータ（通貨、scale、整数桁）を使いますが、実装方式と安全性は異なります。生成器の由来はreceiptへ残しますが、生成AIのモデル・prompt・文脈はまだ記録しません。
 
+## メタ生成（深さ1）
+
+生成器そのものを外部で生成し、その生成器が候補sourceを出す経路を、深さ1に限って扱います。
+
+- 生成器は`-contract FILE`を受け取り、Go sourceを標準出力へ書きます。
+- TEIは生成器をビルドし、1回だけ実行します。
+- 候補manifestの`lineage`へ、深さ、生成器sourceの相対path・digest・originを記録します。
+- 選抜は生成器を再ビルド・再実行し、候補sourceとのbyte一致を確認します。
+- `depth`が1以外の場合は拒否します。生成器が別の生成器を生成する再帰は、このPoCの対象外です。
+- `testdata/meta/generator.go`は固定fixtureで、実モデルが生成した生成器ではありません。
+
 ## 生成器registryと失効
 
 `testdata/registry.json`は、契約ごとに生成器のid・version・状態・source digestを記録します。
@@ -148,6 +172,6 @@ registryは選抜の制約であり、意味の受理・権限・本番配備の
 
 - 特定ベンダーのAPI呼出し・認証・課金・モデル版管理。外部コマンドへ委ねており、TEI内には実装していません。
 - `promptPath`・`contextPath`を省略した候補では、digestの形式だけを確認し、内容との対応は検証しません。
-- 生成器を生成する生成器（メタ生成）の停止条件、失効履歴・再生成の自動追跡。
+- 深さ2以上のメタ生成、失効履歴・再生成の自動追跡。
 - 実Provider・実Target・別言語（.NET/JVM/WASM）での比較。
 - 候補の署名、build provenance（#943 / #1370）。
