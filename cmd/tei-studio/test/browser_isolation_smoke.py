@@ -360,8 +360,19 @@ async def inspect_marker(
     subject_id: str,
 ) -> None:
     await page.locator("#search").fill(subject_id)
-    target = page.locator("#subjects button").filter(has_text=subject_id)
-    assert await target.count() == 1, subject_id
+    buttons = page.locator("#subjects button")
+    matching_indexes = await buttons.evaluate_all(
+        "(nodes, id) => nodes.flatMap((node, index) => "
+        "node.querySelector('small')?.textContent === `semantic-data · ${id}` "
+        "? [index] : [])",
+        subject_id,
+    )
+    assert len(matching_indexes) == 1, {
+        "subject_id": subject_id,
+        "matching_indexes": matching_indexes,
+        "visible_buttons": await buttons.all_text_contents(),
+    }
+    target = buttons.nth(matching_indexes[0])
     args = [workspace_id, "semantic-data", subject_id]
     record = await perform_and_wait(recorder, INSPECT, args, target.click)
     envelope = assert_success(record, INSPECT, args)
