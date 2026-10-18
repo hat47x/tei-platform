@@ -1,6 +1,6 @@
 # TEIの実装状況
 
-- 整理日: 2026-10-13
+- 整理日: 2026-10-18
 - 開発段階: **参照実装を使った実験と検証**
 - 品質に関する注意: **生成AIを用いて開発中であり、コード・設計・安全性の体系的な人的確認は未実施**です。本番利用を想定していません。
 
@@ -11,8 +11,9 @@ TEIは、分野固有の知識と実装技術を分けて管理するローコ�
 | 領域 | 状況 | 確認先 |
 | --- | --- | --- |
 | 初回の業務モデル変更 | 独立した小さな作業領域で定義・入力元索引・検証・修復を扱う参照事例と回帰試験を用意。**画面生成・保存・外部連携の実証ではありません** | [初回モデル変更の手順](../examples/first-workspace/README.md)、[課題 #1161](https://github.com/hat47x/tei-platform/issues/1161) |
-| GitHub Actionsによるコード検証 | 2026年10月12日に自動検査を再開。固定した`main`コミット`4fbcd92003f04254ef25882deec5549872a3c58e`で、コードの整形、静的解析、Goの全試験、参照用作業領域の検証がすべて成功。**製品の実行先や外部データベースの検証とは別** | [実行 #38221407786](https://github.com/hat47x/tei-platform/actions/runs/38221407786)、[CI整備の課題 #1189](https://github.com/hat47x/tei-platform/issues/1189) |
+| GitHub Actionsによるコード検証 | 2026年10月18日、PR #2012の統合コミット`0cc76fd992b0d25960ad0a6b27b96c569a9472b4`でRepository Healthが成功。確認時の`main`は`2c8c5bfe01e77a40ce1b1072f9d76dad82ef15d0`でこのコミットを含み、その後の差分は`tools/`配下とDesktop WebView smoke試験。**最新main SHAそのもののRepository Health再実行は未確認** | [Repository Health #39112031894](https://github.com/hat47x/tei-platform/actions/runs/39112031894)、[CI整備の課題 #1189](https://github.com/hat47x/tei-platform/issues/1189) |
 | Goのコマンドラインと作業領域 | `cmd/tei`に作業領域の読み込み、検証、入力元索引の作成などを実装。コマンドの例は導入手順に記載 | [使い始める](getting-started.md)、[参照用資料](../reference/README.md) |
+| TEI StudioのPoC A（Wails Web/Desktop Host） | 2026年10月18日、PR #2012の検証済み候補`c2d8866ba72bb877c4b74f444fe95b3b89368097`で二つのBrowserContext間のWorkspace選択・Catalog・Inspect・Validate・ObserveXeadと遅延応答の分離を確認し、統合コミット`0cc76fd992b0d25960ad0a6b27b96c569a9472b4`でもHost、Windows Desktop WebView2、Repository Healthが成功。後続PR #2014では空結果と読取失敗のDesktop表示も確認。**証拠は同一OS利用者・loopback Host内に限り、Workspace-ID認可、共有WebやPrincipal別の利用者分離、実利用者の価値を示しません。PoC A/B/C全体の完了も示しません** | [協調Issue #1824](https://github.com/hat47x/tei-platform/issues/1824)、[PR #2012](https://github.com/hat47x/tei-platform/pull/2012)、[PR #2014](https://github.com/hat47x/tei-platform/pull/2014)、[Wails Host #39112031888](https://github.com/hat47x/tei-platform/actions/runs/39112031888)、[Desktop WebView2 #39112031903](https://github.com/hat47x/tei-platform/actions/runs/39112031903)、[PR #2014 Desktop WebView2 #39113218123](https://github.com/hat47x/tei-platform/actions/runs/39113218123) |
 | アプリケーションとドライバー | `order_entry`で一覧表示、記録、参照、親子関係にある明細、操作などの意味上の境界を実証 | [全体構成](architecture.md)、[版1の計画](../plan/V1_REFERENCE_APPLICATION_PLAN.md) |
 | プラグイン合成基盤 | 契約と利用範囲による提供元の選択、推移的な依存宣言の鮮度、呼出しの世代保持、逆順解放を扱うReferenceを実装。構成案の一括診断と、未検証の適合証拠参照との照合も実装。対象コミットでの全体健全性とRace Detectorによる試験を確認 | [KernelのReference](../reference/composition-kernel/README.md)、[資格記録 #1233](https://github.com/hat47x/tei-platform/pull/1233)、[二Applicationの資格記録 #1622](https://github.com/hat47x/tei-platform/pull/1622) |
 | プラグイン間の項目対応 | 既存の登録簿を使い、局所名、型・単位・多重度、出力から入力への順序を検査する参照実装を追加。恒等のスカラー試料を投影し、空文字・null・欠損・取得不能・未確定を区別する。製品の入力形式や実行時の対応付けは未確定 | [項目対応の参照実装](../reference/composition-io-mapping/README.md)、[資格記録 #1667](https://github.com/hat47x/tei-platform/pull/1667) |
@@ -33,7 +34,7 @@ TEIは、分野固有の知識と実装技術を分けて管理するローコ�
 - **外部接続と実際の提供元**: 参照実装で使う合成試験データによる確認と、Oracleなどの実環境で認証・接続・操作が成立したことを区別します。未取得の検証根拠を成功として扱いません。
 - **実行先での再現可能な操作**: 判定段階Cの初回結果と、後続のR7再実行・反復確認は別の検証です。未実施の確認も残っています。
 - **安全性と品質**: 安全性、個人情報、第三者の素材の利用条件、権限設定に関する包括的な監査、体系的な人的確認、本番運用での耐久性・高可用性の確認は未完了です。
-- **開発用CIと製品上の受入**: GitHub Actionsによるコードの全体検証は再開し、上記の特定コミットで成功しました。一方、まだ確認していない改訂や別のプルリクエストまで、自動的に合格とはなりません。この自動検査には、初めて利用する人による一連の操作、三つの視点の編集と再反映、実際のウェブ操作、データベースへの保存、独立した読取りによる結果確認は含まれません。必要な製品実証は[要件の優先順位 #982](https://github.com/hat47x/tei-platform/issues/982)と[横断受入 #1119](https://github.com/hat47x/tei-platform/issues/1119)で追跡します。主ブランチの保護と必須チェックの設定も[課題 #1189](https://github.com/hat47x/tei-platform/issues/1189)で未完了です。
+- **開発用CIと製品上の受入**: GitHub Actionsでは固定した版ごとにコード検証とStudioのHost・実ブラウザー・Windows WebView2スモーク確認を実施しています。一方、まだ確認していない改訂や別のプルリクエストまで自動的に合格とはなりません。Studioの確認は、初めて利用する人による一連の操作、三つの視点の編集と再反映、データベースへの保存、独立した読取りによる結果確認、認可境界、実利用者の価値を示しません。PoC A/B/Cの完了判定と必要な製品実証は[協調Issue #1824](https://github.com/hat47x/tei-platform/issues/1824)、[要件の優先順位 #982](https://github.com/hat47x/tei-platform/issues/982)、[横断受入 #1119](https://github.com/hat47x/tei-platform/issues/1119)で追跡します。主ブランチの保護と必須チェックの設定も[課題 #1189](https://github.com/hat47x/tei-platform/issues/1189)で未完了です。
 
 検証済みの実装と、まだ確定していない設計を区別して開発を進めます。優先順位は[TEIの全体計画](../plan/MASTER_PLAN.md)、技術上の境界は[全体構成](architecture.md)、業務設計の考え方は[業務システム設計](business-system-design.md)を参照してください。
 
