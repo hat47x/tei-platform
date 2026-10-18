@@ -261,6 +261,67 @@ jobs:
           retention-days: 7
           if-no-files-found: error
 
+  paired-host-semantic-parity:
+    # Same source, fixture, runner, and invocation for both Host build modes.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      GOTOOLCHAIN: local
+      GOWORK: off
+    steps:
+      - name: ソースを固定
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+
+      - name: Go 1.26.9を固定
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: go.mod
+          check-latest: false
+          cache: false
+
+      - name: 通常Hostと生成Hostを同一ソースから作成
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/tei-studio-poc-b-paired-host"
+          go version
+          git rev-parse HEAD
+          go run ./tools/reference-studio-static-composition \
+            -fixture tools/reference-studio-static-composition/fixture.json \
+            -out internal/studiohost/staticservices
+          test -s internal/studiohost/staticservices/services.generated.go
+          cd cmd/tei-studio
+          CGO_ENABLED=0 go test -mod=readonly -count=1 -tags server .
+          CGO_ENABLED=0 go build -mod=readonly -tags server -o "$RUNNER_TEMP/tei-studio-poc-b-paired-host/tei-studio-ordinary" .
+          CGO_ENABLED=0 go test -mod=readonly -count=1 -tags 'studio_generated,server' .
+          CGO_ENABLED=0 go build -mod=readonly -tags 'studio_generated,server' -o "$RUNNER_TEMP/tei-studio-poc-b-paired-host/tei-studio-generated" .
+
+      - name: 同一WorkspaceのCatalog・Validate・allowlist拒否を比較
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 cmd/tei-studio/test/host_pair_parity.py \
+            --ordinary "$RUNNER_TEMP/tei-studio-poc-b-paired-host/tei-studio-ordinary" \
+            --generated "$RUNNER_TEMP/tei-studio-poc-b-paired-host/tei-studio-generated" \
+            --workspace reference/workspace \
+            --generator tools/reference-studio-static-composition/main.go \
+            --fixture tools/reference-studio-static-composition/fixture.json \
+            --generated-source internal/studiohost/staticservices/services.generated.go \
+            --source-sha "$(git rev-parse HEAD)" \
+            --output "$RUNNER_TEMP/tei-studio-poc-b-paired-host"
+
+      - name: 比較値と来歴を保存
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: tei-studio-poc-b-paired-host-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/tei-studio-poc-b-paired-host
+          retention-days: 7
+          if-no-files-found: warn
+
   desktop-windows-build:
     runs-on: windows-2022
     timeout-minutes: 25
