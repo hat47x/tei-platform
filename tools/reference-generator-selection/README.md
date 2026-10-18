@@ -18,6 +18,17 @@ go run ./tools/reference-generator-selection/cmd/tei-generator-build \
   -out /tmp/line-amount-candidates -all
 ```
 
+外部モデルが出したsourceは、promptとcontextとともに記録できます。
+
+```text
+go run ./tools/reference-generator-selection/cmd/tei-generator-record \
+  -id model-candidate -provider example-provider -model example-model-v1 \
+  -source /tmp/model-main.go -prompt /tmp/prompt.txt -context /tmp/context.json \
+  -out /tmp/recorded-candidate
+```
+
+`tei-generator-record`はモデルを呼び出しません。生成済みsourceをbyte単位で複製し、prompt・contextを同じdirectoryへ保存して、selectionがdigestを独立に確認できるようにします。
+
 `passed=true`は、少なくとも1つの候補が固定fixtureをすべて満たしたことだけを示します。意味の受理、生成器の採用、権限の付与、実Providerや本番環境の証明ではありません。
 
 ## 対象契約
@@ -50,8 +61,11 @@ go run ./tools/reference-generator-selection/cmd/tei-generator-build \
 - `provider`、`model`
 - `promptDigest`、`contextDigest`
 - `outputDigest`
+- `promptPath`、`contextPath`（任意。記録したprompt・contextの相対path）
 
-選抜は、`outputDigest`が候補sourceのdigestと一致することを確認します。`generation`のない`generated-ai`候補は拒否します。
+選抜は、`outputDigest`が候補sourceのdigestと一致することを確認します。`generation`のない`generated-ai`候補は拒否します。`promptPath`・`contextPath`がある場合は、そのfileを読み、digestが記録と一致することを確認します。pathは候補directory内の相対pathに限り、シンボリックリンクを拒否します。
+
+`tei-generator-record`は、外部モデルが出したsourceとprompt・contextを一つの候補directoryへ記録します。モデル呼出し自体は行いません。
 
 `testdata/candidates/dangerous`の`generation`は`recorded-fixture`で、実モデルを呼び出した記録ではありません。生成AIのprovenance境界を試験するための固定fixtureです。実モデル実行では、同じ項目へ実際のprovider・model・prompt・contextのdigestを入れる必要があります。
 
@@ -95,6 +109,7 @@ go run ./tools/reference-generator-selection/cmd/tei-generator-build \
 ## 未実装
 
 - 実モデルを呼び出して生成器sourceを作る処理。provenanceの項目と検証は追加したが、`recorded-fixture`は実モデル実行ではありません。
+- `promptPath`・`contextPath`を省略した候補では、digestの形式だけを確認し、内容との対応は検証しません。
 - 生成器を生成する生成器（メタ生成）の停止条件、生成器registry、失効・再生成の追跡。
 - 実Provider・実Target・別言語（.NET/JVM/WASM）での比較。
 - 候補の署名、build provenance（#943 / #1370）。
