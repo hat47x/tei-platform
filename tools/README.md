@@ -18,6 +18,7 @@
 | [`reference-cli-trace-benchmark/`](reference-cli-trace-benchmark/) | 合成Workspaceによるtraceの処理段別の時間・メモリ計測と出力不変の確認 |
 | [`reference-change-packet/`](reference-change-packet/) | 変更範囲・危険度・検証・停止条件をJSONで宣言し、範囲確認と検証実行・証拠記録を行う参照（#2017） |
 | [`reference-generator-selection/`](reference-generator-selection/) | 受理済み契約に対する生成器候補を固定fixtureで比較し、source/binary digestと結果をreceiptへ残す参照（#2016） |
+| [`reference-target-profile/`](reference-target-profile/) | 同じ契約・fixture・候補を複数のTarget Profileで実行し、宣言と実行結果を記録する参照（#2019） |
 
 ## 設計、業務知識、受入れ
 

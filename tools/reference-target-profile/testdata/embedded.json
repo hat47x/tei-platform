@@ -1,0 +1,13 @@
+{
+  "schema": "tei.reference.target-profile/v0",
+  "id": "embedded",
+  "version": "1",
+  "description": "one-shot offline profile for a small device",
+  "processModel": "oneshot",
+  "storage": "sqlite",
+  "network": "none",
+  "update": "replace",
+  "memoryLimitBytes": 16777216,
+  "observability": ["stdout", "exit-code"],
+  "unsupported": ["hard-realtime", "rolling-update"]
+}
