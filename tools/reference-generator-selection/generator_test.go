@@ -3,6 +3,7 @@ package generatorselection
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -114,6 +115,47 @@ func TestGeneratedCandidateWithAnotherContractIsRejected(t *testing.T) {
 		if candidate.Passed || !strings.Contains(candidate.RejectReason, "contract digest mismatch") {
 			t.Fatalf("candidate %s was not rejected for contract mismatch: %+v", candidate.ID, candidate)
 		}
+	}
+}
+
+func TestGeneratedCandidateWithAnotherStrategyIsRejected(t *testing.T) {
+	workspaceDir, contract, fixtures, _ := paths(t)
+	candidates := filepath.Join(t.TempDir(), "candidates")
+	if _, err := GenerateAll(contract, candidates); err != nil {
+		t.Fatal(err)
+	}
+	manifestPath := filepath.Join(candidates, "template", "candidate.json")
+	raw, err := os.ReadFile(manifestPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var manifest CandidateManifest
+	if err := json.Unmarshal(raw, &manifest); err != nil {
+		t.Fatal(err)
+	}
+	if manifest.Generator == nil {
+		t.Fatal("generated manifest has no generator provenance")
+	}
+	manifest.Generator.Strategy = "alternative"
+	changed, err := json.MarshalIndent(manifest, "", "  ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(manifestPath, append(changed, '\n'), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	receipt, err := Select(context.Background(), workspaceDir, contract, fixtures, candidates)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var template CandidateReceipt
+	for _, candidate := range receipt.Candidates {
+		if candidate.ID == "template" {
+			template = candidate
+		}
+	}
+	if template.Passed || !strings.Contains(template.RejectReason, "does not match the declared generator") {
+		t.Fatalf("candidate with a forged strategy was not rejected: %+v", template)
 	}
 }
 
