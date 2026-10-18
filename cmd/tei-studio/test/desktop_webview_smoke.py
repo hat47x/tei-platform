@@ -166,6 +166,43 @@ def webdriver_request(
         raise RuntimeError(f"WebDriver {method} {path} returned HTTP {exc.code}: {error_body}") from exc
 
 
+def webdriver_key_actions(base_url: str, session_id: str, events: list[dict[str, str]]) -> None:
+    webdriver_request(
+        base_url,
+        "POST",
+        f"/session/{session_id}/actions",
+        {"actions": [{"type": "key", "id": "tei-studio-keyboard", "actions": events}]},
+    )
+
+
+def workspace_snapshot(root: Path) -> dict[str, Any]:
+    digest = hashlib.sha256()
+    files = 0
+    items = sorted(root.rglob("*"), key=lambda item: item.relative_to(root).as_posix())
+    for path in items:
+        relative = path.relative_to(root).as_posix()
+        if path.is_dir():
+            item_type = "directory"
+            content_hash = ""
+        elif path.is_file():
+            item_type = "file"
+            content_hash = hashlib.sha256(path.read_bytes()).hexdigest()
+            files += 1
+        elif path.is_symlink():
+            item_type = "symlink"
+            content_hash = hashlib.sha256(os.readlink(path).encode("utf-8")).hexdigest()
+        else:
+            item_type = "other"
+            content_hash = ""
+        digest.update(item_type.encode("ascii"))
+        digest.update(b"\0")
+        digest.update(relative.encode("utf-8"))
+        digest.update(b"\0")
+        digest.update(content_hash.encode("ascii"))
+        digest.update(b"\n")
+    return {"entry_count": len(items), "file_count": files, "sha256": digest.hexdigest()}
+
+
 def open_process_handle(pid: int) -> int:
     kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
     kernel32.OpenProcess.argtypes = [ctypes.c_ulong, ctypes.c_int, ctypes.c_ulong]
@@ -250,7 +287,7 @@ def main() -> int:
     evidence_dir.mkdir(parents=True, exist_ok=True)
     facts: dict[str, Any] = {
         "result": "FAIL_NOT_COMPLETED",
-        "scope": "native Wails WebView2 Workbench Catalog, read-only Inspect projection, Validate display, and fixed-fixture ObserveXead UI flow",
+        "scope": "native Wails WebView2 Workbench Catalog, read-only Inspect projection, Validate display, native read-only Editor keyboard flow, and fixed-fixture ObserveXead UI flow",
         "app_path": str(app_path),
         "run_id": os.environ.get("GITHUB_RUN_ID"),
         "run_attempt": os.environ.get("GITHUB_RUN_ATTEMPT"),
@@ -513,6 +550,8 @@ def main() -> int:
         record("wails-webview-session-attached", session_id=driver_session, app_pid=app_pid)
 
         inspect_script = """
+const editor = document.querySelector('#editor .cm-content');
+const selection = window.getSelection();
 return {
   title: document.title,
   pathname: location.pathname,
@@ -521,8 +560,24 @@ return {
   sourceStatus: document.querySelector('#source-status')?.textContent ?? '',
   notice: document.querySelector('#notice')?.textContent ?? '',
   diagnosticSummary: document.querySelector('#diagnostic-summary')?.textContent ?? '',
-  editor: document.querySelector('#editor .cm-content')?.innerText ?? '',
-  editorEditable: document.querySelector('#editor .cm-content')?.getAttribute('contenteditable') ?? null,
+  editor: editor?.innerText ?? '',
+  editorEditable: editor?.getAttribute('contenteditable') ?? null,
+  editorFocused: !!editor && document.activeElement === editor,
+  activeElement: document.activeElement ? {
+    tagName: document.activeElement.tagName,
+    id: document.activeElement.id,
+    className: typeof document.activeElement.className === 'string' ? document.activeElement.className : '',
+    ariaLabel: document.activeElement.getAttribute('aria-label')
+  } : null,
+  editorSelection: selection && editor && (editor.contains(selection.anchorNode) || editor.contains(selection.focusNode)) ? selection.toString() : '',
+  lastSubjectButton: Array.from(document.querySelectorAll('#subjects button.subject')).at(-1)?.querySelector('small')?.textContent ?? '',
+  subjectButtonCount: document.querySelectorAll('#subjects button.subject').length,
+  subjectButtonFocused: !!document.activeElement?.matches?.('#subjects button.subject'),
+  focusedSubjectButton: document.activeElement?.matches?.('#subjects button.subject') ? document.activeElement.querySelector('small')?.textContent ?? '' : '',
+  rpcRecorder: window.__teiStudioRpcRecorder ? {
+    active: window.__teiStudioRpcRecorder.active,
+    calls: window.__teiStudioRpcRecorder.calls.slice()
+  } : null,
   graphLabel: document.querySelector('#graph svg')?.getAttribute('aria-label') ?? '',
   graphNodes: Array.from(document.querySelectorAll('#graph g[role="button"]')).map((item) => item.getAttribute('aria-label')),
   diagnosticRows: Array.from(document.querySelectorAll('#commands [aria-label="診断一覧"] li[data-severity]')).map((item) => ({severity:item.dataset.severity,text:item.textContent})),
@@ -656,6 +711,195 @@ return true;
             time.sleep(0.2)
         if validate_state.get("diagnosticSummary") != expected_summary or validate_state.get("diagnosticRows") != validation_findings:
             raise RuntimeError(f"Workbench diagnostics differ from the Host Validate response: expected={validation_findings!r}, actual={validate_state.get('diagnosticRows')!r}")
+
+        # Exercise the native WebView2 keyboard path against the read-only Editor.
+        # W3C key actions are used here instead of synthetic DOM KeyboardEvents.
+        last_subject = page_state.get("lastSubjectButton", "")
+        subject_ids = [entry.get("id") for entry in entries]
+        if not last_subject or not subject_ids or page_state.get("subjectButtonCount") != len(subject_ids):
+            raise RuntimeError("Workbench did not expose a last subject button for the native keyboard check")
+        expected_last_subject = last_subject.rsplit(" \u00b7 ", 1)[-1]
+        focus_last_subject_script = """
+const button = document.querySelector('#subjects button.subject:last-of-type');
+if (!button) throw new Error('Last subject button is missing');
+button.focus();
+return {focused:document.activeElement === button, label:button.querySelector('small')?.textContent ?? ''};
+"""
+        focused_subject = webdriver_request(
+            base_url,
+            "POST",
+            f"/session/{driver_session}/execute/sync",
+            {"script": focus_last_subject_script, "args": []},
+        ).get("value", {})
+        if focused_subject.get("focused") is not True or focused_subject.get("label") != last_subject:
+            raise RuntimeError(f"Could not focus the last subject button as the Tab starting point: {focused_subject!r}")
+        keyboard_baseline = webdriver_request(
+            base_url,
+            "POST",
+            f"/session/{driver_session}/execute/sync",
+            {"script": inspect_script, "args": []},
+        ).get("value", {})
+        if keyboard_baseline.get("subjectButtonFocused") is not True or keyboard_baseline.get("focusedSubjectButton") != last_subject:
+            raise RuntimeError(f"Last subject button focus was not observable before Tab: {keyboard_baseline!r}")
+        if keyboard_baseline.get("subjectButtonCount") != len(subject_ids):
+            raise RuntimeError(f"Displayed subject buttons do not match the Host catalog: {keyboard_baseline.get('subjectButtonCount')} != {len(subject_ids)}")
+        keyboard_editor_text = keyboard_baseline.get("editor", "")
+        if not keyboard_editor_text:
+            raise RuntimeError("The focused last subject has no Editor text to protect")
+
+        recorder_script = """
+const done = arguments[arguments.length - 1];
+(async () => {
+  const runtime = await import('/wails/runtime.js');
+  const call = runtime.Call;
+  const original = call?.ByName;
+  if (typeof original !== 'function') throw new Error('Wails runtime Call.ByName is unavailable');
+  const descriptor = Object.getOwnPropertyDescriptor(call, 'ByName');
+  if (!descriptor || (descriptor.writable !== true && typeof descriptor.set !== 'function'))
+    throw new Error('Wails runtime Call.ByName cannot be instrumented');
+  const recorder = {active:false, calls:[]};
+  const wrapped = function(name, ...args) {
+    if (recorder.active) recorder.calls.push(String(name));
+    return Reflect.apply(original, this, [name, ...args]);
+  };
+  call.ByName = wrapped;
+  if (call.ByName !== wrapped) throw new Error('Wails runtime Call.ByName instrumentation did not install');
+  recorder.active = true;
+  await call.ByName('main.StudioBridge.ListWorkspaces');
+  if (recorder.calls.length !== 1 || recorder.calls[0] !== 'main.StudioBridge.ListWorkspaces')
+    throw new Error('Wails runtime Call.ByName instrumentation did not capture its calibration call');
+  recorder.calls.length = 0;
+  window.__teiStudioRpcRecorder = recorder;
+  done({installed:true, calibrationMethod:'main.StudioBridge.ListWorkspaces', wrapped:true});
+})().catch((error) => done({error:String(error)}));
+"""
+        recorder_result = webdriver_request(
+            base_url,
+            "POST",
+            f"/session/{driver_session}/execute/async",
+            {"script": recorder_script, "args": []},
+            timeout_seconds=30,
+        ).get("value", {})
+        if recorder_result.get("installed") is not True or recorder_result.get("error"):
+            raise RuntimeError(f"Could not install and calibrate the Wails RPC recorder: {recorder_result!r}")
+
+        key_events = {
+            "tab": [{"type": "keyDown", "value": "\\uE004"}, {"type": "keyUp", "value": "\\uE004"}],
+            "home": [{"type": "keyDown", "value": "\\uE011"}, {"type": "keyUp", "value": "\\uE011"}],
+            "shift_end": [
+                {"type": "keyDown", "value": "\\uE008"},
+                {"type": "keyDown", "value": "\\uE007"},
+                {"type": "keyUp", "value": "\\uE007"},
+                {"type": "keyUp", "value": "\\uE008"},
+            ],
+            "type_x": [{"type": "keyDown", "value": "x"}, {"type": "keyUp", "value": "x"}],
+            "backspace": [{"type": "keyDown", "value": "\\uE003"}, {"type": "keyUp", "value": "\\uE003"}],
+            "delete": [{"type": "keyDown", "value": "\\uE017"}, {"type": "keyUp", "value": "\\uE017"}],
+        }
+        workspace_before_keys = workspace_snapshot(workspace_root)
+        xead_before_keys = hashlib.sha256(xead_path.read_bytes()).hexdigest()
+        empty_xead_before_keys = hashlib.sha256(empty_xead_path.read_bytes()).hexdigest()
+        keyboard_steps: list[dict[str, Any]] = []
+
+        def keyboard_state_after(step: str) -> dict[str, Any]:
+            state = webdriver_request(
+                base_url,
+                "POST",
+                f"/session/{driver_session}/execute/sync",
+                {"script": inspect_script, "args": []},
+            ).get("value", {})
+            recorder = state.get("rpcRecorder")
+            step_evidence = {
+                "step": step,
+                "editor_focused": state.get("editorFocused") is True,
+                "editor_text_sha256": hashlib.sha256(str(state.get("editor", "")).encode("utf-8")).hexdigest(),
+                "selected_text": state.get("editorSelection", ""),
+                "wails_rpc_calls": recorder.get("calls", []) if isinstance(recorder, dict) else None,
+                "route": state.get("pathname"),
+                "host_connection": state.get("connection"),
+                "active_element": state.get("activeElement"),
+            }
+            keyboard_steps.append(step_evidence)
+            facts["native_webview2_editor_keyboard"] = {"selected_subject": expected_last_subject, "steps": keyboard_steps}
+            page_state["nativeWebView2EditorKeyboard"] = facts["native_webview2_editor_keyboard"]
+            write_json(evidence_dir / "page-state.json", page_state)
+            if state.get("pathname") != "/workbench/" or state.get("connection") != "\u5b9fHost\u306b\u63a5\u7d9a":
+                raise RuntimeError(f"Workbench route or real Host connection changed after {step}: {state!r}")
+            if state.get("editor") != keyboard_editor_text or state.get("subjectTitle") != expected_last_subject:
+                raise RuntimeError(f"Read-only Editor projection changed after {step}")
+            if not state.get("editorFocused"):
+                raise RuntimeError(f"Native WebView2 Editor lost focus after {step}: {state.get('activeElement')!r}")
+            if not isinstance(recorder, dict) or recorder.get("active") is not True:
+                raise RuntimeError(f"Wails RPC recorder became unavailable after {step}")
+            if recorder.get("calls"):
+                raise RuntimeError(f"Workbench made a Wails RPC during the keyboard sequence after {step}: {recorder['calls']!r}")
+            return state
+
+        webdriver_key_actions(base_url, driver_session, key_events["tab"])
+        tab_state = keyboard_state_after("Tab-to-Editor focus")
+        if tab_state.get("editorEditable") != "false":
+            raise RuntimeError(f"Editor is not explicitly read-only before keyboard input: {tab_state.get('editorEditable')!r}")
+        if not tab_state.get("editorFocused"):
+            raise RuntimeError("Tab from the last subject button did not focus the Editor")
+
+        webdriver_key_actions(base_url, driver_session, key_events["home"])
+        home_state = keyboard_state_after("Home")
+        if home_state.get("editorSelection"):
+            raise RuntimeError("Home unexpectedly left a non-empty DOM selection")
+        webdriver_key_actions(base_url, driver_session, key_events["shift_end"])
+        selection_state = keyboard_state_after("Shift+End selection")
+        selected_text = selection_state.get("editorSelection", "")
+        if not selected_text:
+            raise RuntimeError("Home followed by Shift+End did not create an observable Editor selection")
+
+        final_keyboard_state: dict[str, Any] = selection_state
+        for step in ("type_x", "backspace", "delete"):
+            webdriver_key_actions(base_url, driver_session, key_events[step])
+            final_keyboard_state = keyboard_state_after(step)
+        time.sleep(0.6)
+        final_keyboard_state = keyboard_state_after("settled")
+
+        workspace_after_keys = workspace_snapshot(workspace_root)
+        xead_after_keys = hashlib.sha256(xead_path.read_bytes()).hexdigest()
+        empty_xead_after_keys = hashlib.sha256(empty_xead_path.read_bytes()).hexdigest()
+        if workspace_after_keys != workspace_before_keys:
+            raise RuntimeError(f"Scratch Workspace changed during the native keyboard sequence: before={workspace_before_keys!r}, after={workspace_after_keys!r}")
+        if xead_after_keys != xead_before_keys or empty_xead_after_keys != empty_xead_before_keys:
+            raise RuntimeError("An ObserveXead fixture changed during the native keyboard sequence")
+        facts["native_webview2_editor_keyboard"] = {
+            "route": "/workbench/",
+            "host_connection": "\u5b9fHost\u306b\u63a5\u7d9a",
+            "editor_read_only": True,
+            "editor_text_sha256_before": hashlib.sha256(keyboard_editor_text.encode("utf-8")).hexdigest(),
+            "editor_text_sha256_after": hashlib.sha256(final_keyboard_state["editor"].encode("utf-8")).hexdigest(),
+            "selected_text_sha256": hashlib.sha256(selected_text.encode("utf-8")).hexdigest(),
+            "selected_text_length": len(selected_text),
+            "steps": keyboard_steps,
+            "wails_rpc_calls": [],
+            "workspace_before": workspace_before_keys,
+            "workspace_after": workspace_after_keys,
+            "fixture_sha256_before": {"observe_xead": xead_before_keys, "observe_xead_empty": empty_xead_before_keys},
+            "fixture_sha256_after": {"observe_xead": xead_after_keys, "observe_xead_empty": empty_xead_after_keys},
+        }
+        if facts["native_webview2_editor_keyboard"]["editor_text_sha256_after"] != facts["native_webview2_editor_keyboard"]["editor_text_sha256_before"]:
+            raise RuntimeError("Read-only Editor text hash changed during the native keyboard sequence")
+        page_state["nativeWebView2EditorKeyboard"] = facts["native_webview2_editor_keyboard"]
+        write_json(evidence_dir / "page-state.json", page_state)
+        record(
+            "native-webview2-read-only-editor-keyboard-verified",
+            selected_subject=expected_last_subject,
+            editor_text_sha256=facts["native_webview2_editor_keyboard"]["editor_text_sha256_before"],
+            selected_text_sha256=facts["native_webview2_editor_keyboard"]["selected_text_sha256"],
+            workspace_sha256=workspace_before_keys["sha256"],
+            fixture_unchanged=True,
+            wails_rpc_calls=0,
+            steps=["Tab", "Home", "Shift+End", "type x", "Backspace", "Delete"],
+        )
+        save_keyboard_response = webdriver_request(base_url, "GET", f"/session/{driver_session}/screenshot")
+        save_keyboard_image = save_keyboard_response.get("value")
+        if not save_keyboard_image:
+            raise RuntimeError("WebDriver screenshot did not contain the native keyboard-check image")
+        (evidence_dir / "webview2-editor-keyboard-screen.png").write_bytes(base64.b64decode(save_keyboard_image))
 
         # Exercise the existing relative-path input and click handler in the
         # actual Wails WebView using a fixture in a disposable workspace copy.
@@ -950,7 +1194,11 @@ import('/wails/runtime.js').then(async (runtime) => {
         app_stdout.close()
         app_stderr.close()
 
-        facts["result"] = "FAIL" if failure else ("PASS_NATIVE_WEBVIEW_OBSERVEXEAD" if facts.get("observe_xead") else "PASS_NATIVE_WEBVIEW_WORKBENCH_READ_ONLY")
+        facts["result"] = "FAIL" if failure else (
+            "PASS_NATIVE_WEBVIEW2_EDITOR_KEYBOARD_AND_OBSERVEXEAD"
+            if facts.get("native_webview2_editor_keyboard") and facts.get("observe_xead")
+            else "PASS_NATIVE_WEBVIEW_WORKBENCH_READ_ONLY"
+        )
         if failure:
             facts["failure"] = failure
             if not (evidence_dir / "failure.txt").exists():
