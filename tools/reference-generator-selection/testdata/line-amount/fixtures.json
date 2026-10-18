@@ -1,0 +1,57 @@
+{
+  "schema": "tei.reference.generator-fixture/v0",
+  "contractId": "sales.line-amount",
+  "contractVersion": "1",
+  "cases": [
+    {
+      "id": "2x300",
+      "input": {"quantity": "2", "unitPrice": "300", "currency": "JPY", "unit": "piece", "perUnit": "piece"},
+      "want": {"state": "present", "amount": "600.00", "currency": "JPY"}
+    },
+    {
+      "id": "zero",
+      "input": {"quantity": "0", "unitPrice": "300", "currency": "JPY", "unit": "piece", "perUnit": "piece"},
+      "want": {"state": "present", "amount": "0.00", "currency": "JPY"}
+    },
+    {
+      "id": "fraction",
+      "input": {"quantity": "1.25", "unitPrice": "0.4", "currency": "JPY", "unit": "piece", "perUnit": "piece"},
+      "want": {"state": "present", "amount": "0.50", "currency": "JPY"}
+    },
+    {
+      "id": "half-up-tie",
+      "input": {"quantity": "1", "unitPrice": "1.005", "currency": "JPY", "unit": "piece", "perUnit": "piece"},
+      "want": {"state": "present", "amount": "1.01", "currency": "JPY"}
+    },
+    {
+      "id": "missing-quantity",
+      "input": {"unitPrice": "300", "currency": "JPY", "unit": "piece", "perUnit": "piece"},
+      "want": {"state": "missing"}
+    },
+    {
+      "id": "null-unit-price",
+      "input": {"quantity": "2", "unitPrice": null, "currency": "JPY", "unit": "piece", "perUnit": "piece"},
+      "want": {"state": "missing"}
+    },
+    {
+      "id": "currency-mismatch",
+      "input": {"quantity": "2", "unitPrice": "300", "currency": "USD", "unit": "piece", "perUnit": "piece"},
+      "want": {"state": "error", "code": "CURRENCY_MISMATCH"}
+    },
+    {
+      "id": "unit-mismatch",
+      "input": {"quantity": "2", "unitPrice": "300", "currency": "JPY", "unit": "kg", "perUnit": "piece"},
+      "want": {"state": "error", "code": "UNIT_MISMATCH"}
+    },
+    {
+      "id": "invalid-decimal",
+      "input": {"quantity": "abc", "unitPrice": "300", "currency": "JPY", "unit": "piece", "perUnit": "piece"},
+      "want": {"state": "error", "code": "DECIMAL_INVALID"}
+    },
+    {
+      "id": "precision-overflow",
+      "input": {"quantity": "999999.995", "unitPrice": "1", "currency": "JPY", "unit": "piece", "perUnit": "piece"},
+      "want": {"state": "error", "code": "PRECISION_OVERFLOW"}
+    }
+  ]
+}

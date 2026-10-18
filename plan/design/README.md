@@ -52,6 +52,7 @@
 | [`AUXILIARY_DESIGN_INFORMATION_PLACEMENT_2026-10.md`](AUXILIARY_DESIGN_INFORMATION_PLACEMENT_2026-10.md) | 用語、改訂履歴、注記、区分などの補助情報を、意味の正本・導出・表示情報・運用の記録のどれに置くかの案（[GitHub #1808](https://github.com/hat47x/tei-platform/issues/1808)） |
 | [`GENERATIVE_LOWCODE_PRODUCT_STRATEGY_2026-10.md`](GENERATIVE_LOWCODE_PRODUCT_STRATEGY_2026-10.md) | 生成AIネイティブなローコード開発基盤としての価値仮説、適用範囲、優先順位、測定と撤回条件（#2016〜#2021、未採用） |
 | [`DSH_DEVELOPMENT_PLUGIN_PROPOSAL_2026-10.md`](DSH_DEVELOPMENT_PLUGIN_PROPOSAL_2026-10.md) | DeepSeek HarnessをTEI開発の薄いAdapterとして使うためのプラグイン・スキル提案（未実装） |
+| [`PRODUCTIVITY_BENCHMARK_PROTOCOL_2026-10.md`](PRODUCTIVITY_BENCHMARK_PROTOCOL_2026-10.md) | 従来型コーディング・ローコード・TEIを同じ業務変更で比較する手順、指標、不確かさ、撤回条件（[GitHub #2018](https://github.com/hat47x/tei-platform/issues/2018)、未実施） |
 
 ## 関連する参照事例と評価
 
