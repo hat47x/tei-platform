@@ -50,6 +50,8 @@
 | [`POSTGRES_CONSTRAINT_RENDERING_DESIGN_2026-10.md`](POSTGRES_CONSTRAINT_RENDERING_DESIGN_2026-10.md) | PostgreSQL提供元が主キー・一意制約・外部キーを出力できない現状と、制約の名前の決め方、段階的な解消案（[GitHub #1803](https://github.com/hat47x/tei-platform/issues/1803)） |
 | [`AUTHORING_TOOL_FEATURE_TRANSFER_MAP_2026-10.md`](AUTHORING_TOOL_FEATURE_TRANSFER_MAP_2026-10.md) | 既存の設計ツール（X-TEA ModelerとEditor）の機能を、担当Issue・新規Issue・移植しない機能へ仕分けた対応表（[GitHub #1802](https://github.com/hat47x/tei-platform/issues/1802)） |
 | [`AUXILIARY_DESIGN_INFORMATION_PLACEMENT_2026-10.md`](AUXILIARY_DESIGN_INFORMATION_PLACEMENT_2026-10.md) | 用語、改訂履歴、注記、区分などの補助情報を、意味の正本・導出・表示情報・運用の記録のどれに置くかの案（[GitHub #1808](https://github.com/hat47x/tei-platform/issues/1808)） |
+| [`GENERATIVE_LOWCODE_PRODUCT_STRATEGY_2026-10.md`](GENERATIVE_LOWCODE_PRODUCT_STRATEGY_2026-10.md) | 生成AIネイティブなローコード開発基盤としての価値仮説、適用範囲、優先順位、測定と撤回条件（#2016〜#2021、未採用） |
+| [`DSH_DEVELOPMENT_PLUGIN_PROPOSAL_2026-10.md`](DSH_DEVELOPMENT_PLUGIN_PROPOSAL_2026-10.md) | DeepSeek HarnessをTEI開発の薄いAdapterとして使うためのプラグイン・スキル提案（未実装） |
 
 ## 関連する参照事例と評価
 
