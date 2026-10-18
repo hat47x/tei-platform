@@ -8,6 +8,7 @@ import {
   inspectWorkbenchImports, inspectPinnedDependencies, pinnedWorkbenchRevision, WORKBENCH_PINS,
   WORKBENCH_HEAD, WORKBENCH_MAIN_BLOB,
   WORKBENCH_CURRENT_HEAD, WORKBENCH_CURRENT_MAIN_BLOB,
+  WORKBENCH_MAIN_CONSUMER_HEAD, WORKBENCH_MAIN_CONSUMER_BLOB,
 } from './connect-workbench.mjs';
 
 const graph = 'import { mountReadonlyGraph } from "../tei-studio-graph/graph.ts";\n';
@@ -24,18 +25,22 @@ test('both exact #1849 workbench pins are retained without any bypass', () => {
   assert.deepEqual(WORKBENCH_PINS.map(pin => pin.head), [
     '9a290dc61f585dfbf292e9032e5c5bbbad04351a',
     'c55ad2285268533f5f1c90fbc9fe766bae57f009',
+    WORKBENCH_MAIN_CONSUMER_HEAD,
   ]);
   assert.deepEqual(WORKBENCH_PINS.map(pin => pin.mainBlob), [
     '2a65a9f70245068bf2455248d98d280b382b01e4',
     'cc2644e5a9167dbc3a0b5368ff270276a2ba1b67',
+    WORKBENCH_MAIN_CONSUMER_BLOB,
   ]);
   assert.deepEqual(WORKBENCH_PINS.map(pin => pin.commandHead), [
     '26f47772ed49f5c4a9e1c50026c335783bc5e153',
     '01f5022240fd86c6ac38c1107310e299a1615b48',
+    WORKBENCH_MAIN_CONSUMER_HEAD,
   ]);
   assert.deepEqual(WORKBENCH_PINS.map(pin => pin.commandBlob), [
     '4e0d5484f82944d5b7d3b0b8431f3a9a1eaa7081',
     '6c6ee81288c9857ca2f1c282639ba49f059f5535',
+    'bb56f3dba6387f7d9bf9604de9b519fb68feb50d',
   ]);
   assert.equal(WORKBENCH_PINS[1].responsesBlob,
     '9fa305e227bee96b66002362121db3878e92327d');
@@ -52,6 +57,25 @@ test('both exact #1849 workbench pins are retained without any bypass', () => {
     /workbench_pin_override_forbidden/);
   assert.throws(() => connectWorkbenchSource(workbench, {pin: true}),
     /workbench_pin_override_forbidden/);
+});
+
+test('current-main Workbench consumer pin binds its Command, responses and Graph assets', async () => {
+  const pin = WORKBENCH_PINS.find(value => value.head === WORKBENCH_MAIN_CONSUMER_HEAD);
+  assert.ok(pin);
+  assert.equal(pin.mainBlob, WORKBENCH_MAIN_CONSUMER_BLOB);
+  const root = new URL('../../', import.meta.url);
+  const source = await readFile(new URL('reference/tei-studio-workbench/main.ts', root), 'utf8');
+  const commandSource = await readFile(new URL('reference/tei-studio-command/command.ts', root), 'utf8');
+  const responsesSource = await readFile(new URL('reference/tei-studio-workbench/responses.ts', root), 'utf8');
+  const graphSource = await readFile(new URL('reference/tei-studio-graph/graph.ts', root), 'utf8');
+  assert.equal(pinnedWorkbenchRevision(source), pin);
+  assert.equal(inspectPinnedDependencies(pin, commandSource, responsesSource, graphSource), true);
+  assert.throws(() => inspectPinnedDependencies(pin, commandSource, responsesSource, graphSource + '\n'),
+    /graph_revision_mismatch/);
+  const connected = connectWorkbenchSource(source);
+  assert.equal((connected.match(/ui.generated.mjs/g) ?? []).length, 1);
+  assert.ok(connected.includes('mountCommandPanel('));
+  assert.ok(connected.includes('mountReadonlyGraph('));
 });
 
 test('Command revision and current response-scope are mandatory source pins', () => {

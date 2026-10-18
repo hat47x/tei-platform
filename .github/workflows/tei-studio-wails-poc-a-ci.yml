@@ -458,3 +458,118 @@ jobs:
           grep -q '"status":"ok"' "$RUNNER_TEMP/generated-health.json"
           curl -fsS --max-time 5 http://127.0.0.1:43128/ > "$RUNNER_TEMP/generated-index.html"
           grep -q 'TEI Studio' "$RUNNER_TEMP/generated-index.html"
+
+  generated-current-workbench-browser:
+    # Compose the current-main Workbench through PoC B and exercise it in the generated Host.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      GOTOOLCHAIN: local
+      GOWORK: off
+    steps:
+      - name: PR headを正確にcheckout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+          fetch-depth: 2
+      - name: Go 1.26.9を固定
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: go.mod
+          check-latest: false
+          cache: false
+      - name: Node 24を固定
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24'
+          check-latest: false
+      - name: 現行Workbenchの完全なpinを検証してUIを生成・接続
+        shell: bash
+        run: |
+          set -euo pipefail
+          go version
+          node --version
+          go test -count=1 ./tools/reference-studio-static-composition
+          go run ./tools/reference-studio-static-composition \
+            -fixture tools/reference-studio-static-composition/fixture.json \
+            -out internal/studiohost/staticservices
+          node tools/reference-studio-static-composition/compose-ui.mjs \
+            tools/reference-studio-static-composition/fixture.json \
+            tools/reference-studio-static-composition/generated
+          node tools/reference-studio-static-composition/connect-workbench.mjs \
+            reference/tei-studio-workbench/main.ts
+          cd reference/tei-studio-workbench
+          npm ci
+          npm test
+          npm run typecheck
+          node --input-type=module -e 'import { build } from "esbuild"; import { resolve } from "node:path"; await build({ absWorkingDir: process.cwd(), entryPoints: ["main.generated.ts"], outfile: resolve(process.cwd(), "../../cmd/tei-studio/assets/workbench/main.js"), bundle: true, format: "esm", platform: "browser", target: "es2022", nodePaths: [resolve(process.cwd(), "node_modules")] });'
+          cd ../..
+          {
+            printf 'head=%s\n' "$(git rev-parse HEAD)"
+            printf 'workbench_blob=%s\n' "$(git rev-parse HEAD:reference/tei-studio-workbench/main.ts)"
+            printf 'command_blob=%s\n' "$(git rev-parse HEAD:reference/tei-studio-command/command.ts)"
+            printf 'responses_blob=%s\n' "$(git rev-parse HEAD:reference/tei-studio-workbench/responses.ts)"
+            printf 'graph_blob=%s\n' "$(git rev-parse HEAD:reference/tei-studio-graph/graph.ts)"
+            printf 'fixture_sha256=%s\n' "$(sha256sum tools/reference-studio-static-composition/fixture.json | cut -d' ' -f1)"
+            printf 'generated_ui_sha256=%s\n' "$(sha256sum tools/reference-studio-static-composition/generated/ui.generated.mjs | cut -d' ' -f1)"
+            printf 'workbench_bundle_sha256=%s\n' "$(sha256sum cmd/tei-studio/assets/workbench/main.js | cut -d' ' -f1)"
+            printf 'generated_go_sha256=%s\n' "$(sha256sum internal/studiohost/staticservices/services.generated.go | cut -d' ' -f1)"
+          } | tee "$RUNNER_TEMP/composition-provenance.txt"
+      - name: 生成Hostの試験・静的解析・Server build
+        shell: bash
+        run: |
+          set -euo pipefail
+          go test -count=1 ./internal/studiohost/...
+          go vet ./internal/studiohost/...
+          cd cmd/tei-studio
+          CGO_ENABLED=0 go test -mod=readonly -count=1 -tags 'studio_generated,server' .
+          CGO_ENABLED=0 go vet -mod=readonly -tags 'studio_generated,server' ./...
+          CGO_ENABLED=0 go build -mod=readonly -tags 'studio_generated,server' \
+            -o "$RUNNER_TEMP/tei-studio-generated-current-workbench" .
+          sha256sum "$RUNNER_TEMP/tei-studio-generated-current-workbench" \
+            | tee "$RUNNER_TEMP/host-binary.sha256"
+      - name: Chromiumを用意
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m venv "$RUNNER_TEMP/tei-studio-current-browser"
+          "$RUNNER_TEMP/tei-studio-current-browser/bin/python" -m pip install \
+            --disable-pip-version-check --no-cache-dir 'playwright==1.57.0'
+          "$RUNNER_TEMP/tei-studio-current-browser/bin/python" -m playwright install \
+            --with-deps --only-shell chromium
+      - name: 生成UIを含むHostでGraph選択とCommand検証を実操作
+        shell: bash
+        working-directory: cmd/tei-studio
+        run: |
+          set -euo pipefail
+          "$RUNNER_TEMP/tei-studio-generated-current-workbench" \
+            -workspace ../../reference/workspace -port 43129 > "$RUNNER_TEMP/current-workbench-host.log" 2>&1 &
+          pid=$!
+          trap 'kill "$pid" 2>/dev/null || true' EXIT
+          healthy=0
+          for _ in {1..30}; do
+            if curl -fsS --max-time 2 http://127.0.0.1:43129/health > "$RUNNER_TEMP/current-workbench-health.json"; then
+              healthy=1
+              break
+            fi
+            sleep 1
+          done
+          test "$healthy" = 1
+          grep -q '"status":"ok"' "$RUNNER_TEMP/current-workbench-health.json"
+          "$RUNNER_TEMP/tei-studio-current-browser/bin/python" test/browser_smoke.py \
+            http://127.0.0.1:43129/ | tee "$RUNNER_TEMP/current-workbench-browser.log"
+      - name: 検証根拠を保存
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: generated-current-workbench-browser-evidence
+          path: |
+            ${{ runner.temp }}/composition-provenance.txt
+            ${{ runner.temp }}/host-binary.sha256
+            ${{ runner.temp }}/current-workbench-health.json
+            ${{ runner.temp }}/current-workbench-browser.log
+            ${{ runner.temp }}/current-workbench-host.log
+            tools/reference-studio-static-composition/generated/ui.provenance.json
+            internal/studiohost/staticservices/services.generated.go
+          if-no-files-found: warn
