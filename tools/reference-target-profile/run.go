@@ -46,7 +46,11 @@ func Run(ctx context.Context, opts RunOptions) (Receipt, error) {
 			_ = os.Unsetenv("GOMEMLIMIT")
 		}
 	}()
-	selection, err := generatorselection.Select(ctx, opts.WorkspaceDir, opts.ContractPath, opts.FixturePath, opts.CandidatesDir)
+	var allowed []string
+	if profile.GeneratorID != "" {
+		allowed = []string{profile.GeneratorID}
+	}
+	selection, err := generatorselection.SelectForTarget(ctx, opts.WorkspaceDir, opts.ContractPath, opts.FixturePath, opts.CandidatesDir, "", allowed)
 	if err != nil {
 		return Receipt{}, err
 	}

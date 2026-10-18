@@ -43,6 +43,7 @@ type Profile struct {
 	MemoryLimitBytes int64    `json:"memoryLimitBytes"`
 	Observability    []string `json:"observability"`
 	Unsupported      []string `json:"unsupported,omitempty"`
+	GeneratorID      string   `json:"generatorId,omitempty"`
 }
 
 func Load(path string) (Profile, error) {
