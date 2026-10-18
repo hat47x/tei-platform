@@ -29,6 +29,18 @@ go run ./tools/reference-generator-selection/cmd/tei-generator-record \
 
 `tei-generator-record`はモデルを呼び出しません。生成済みsourceをbyte単位で複製し、prompt・contextを同じdirectoryへ保存して、selectionがdigestを独立に確認できるようにします。
 
+外部の生成コマンドを呼び出し、その出力をそのまま記録することもできます。
+
+```text
+go run ./tools/reference-generator-selection/cmd/tei-generator-model \
+  -id model-candidate -provider example-provider -model example-model-v1 \
+  -prompt /tmp/prompt.txt -context /tmp/context.json \
+  -out /tmp/recorded-candidate \
+  -command 'your-model-cli ... "$TEI_PROMPT" "$TEI_CONTEXT" > "$TEI_SOURCE"'
+```
+
+`tei-generator-model`は、`TEI_PROMPT`、`TEI_CONTEXT`、`TEI_SOURCE`、`TEI_TMPDIR`、`TEI_PROVIDER`、`TEI_MODEL`を環境変数で渡し、コマンドが`TEI_SOURCE`へ書いたGo sourceを記録します。特定ベンダーのAPI・認証・課金・モデル版管理は埋め込みません。コマンドは信頼済みのものだけを指定し、秘密情報を出力しないでください。
+
 `passed=true`は、少なくとも1つの候補が固定fixtureをすべて満たしたことだけを示します。意味の受理、生成器の採用、権限の付与、実Providerや本番環境の証明ではありません。
 
 ## 対象契約
@@ -108,7 +120,7 @@ go run ./tools/reference-generator-selection/cmd/tei-generator-record \
 
 ## 未実装
 
-- 実モデルを呼び出して生成器sourceを作る処理。provenanceの項目と検証は追加したが、`recorded-fixture`は実モデル実行ではありません。
+- 特定ベンダーのAPI呼出し・認証・課金・モデル版管理。外部コマンドへ委ねており、TEI内には実装していません。
 - `promptPath`・`contextPath`を省略した候補では、digestの形式だけを確認し、内容との対応は検証しません。
 - 生成器を生成する生成器（メタ生成）の停止条件、生成器registry、失効・再生成の追跡。
 - 実Provider・実Target・別言語（.NET/JVM/WASM）での比較。
