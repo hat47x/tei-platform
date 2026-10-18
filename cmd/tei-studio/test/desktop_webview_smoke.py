@@ -552,6 +552,9 @@ def main() -> int:
         inspect_script = """
 const editor = document.querySelector('#editor .cm-content');
 const selection = window.getSelection();
+const wailsRpcRequests = performance.getEntriesByType('resource')
+  .filter((item) => new URL(item.name, location.href).pathname === '/wails/runtime')
+  .map((item) => ({path:'/wails/runtime', startTime:item.startTime, initiatorType:item.initiatorType}));
 return {
   title: document.title,
   pathname: location.pathname,
@@ -563,21 +566,21 @@ return {
   editor: editor?.innerText ?? '',
   editorEditable: editor?.getAttribute('contenteditable') ?? null,
   editorFocused: !!editor && document.activeElement === editor,
+  webviewDocumentFocused: document.hasFocus(),
   activeElement: document.activeElement ? {
     tagName: document.activeElement.tagName,
     id: document.activeElement.id,
     className: typeof document.activeElement.className === 'string' ? document.activeElement.className : '',
     ariaLabel: document.activeElement.getAttribute('aria-label')
   } : null,
-  editorSelection: selection && editor && (editor.contains(selection.anchorNode) || editor.contains(selection.focusNode)) ? selection.toString() : '',
+  editorSelectionWithinEditor: !!selection && !!editor && editor.contains(selection.anchorNode) && editor.contains(selection.focusNode),
+  editorSelection: selection && editor && editor.contains(selection.anchorNode) && editor.contains(selection.focusNode) ? selection.toString() : '',
   lastSubjectButton: Array.from(document.querySelectorAll('#subjects button.subject')).at(-1)?.querySelector('small')?.textContent ?? '',
   subjectButtonCount: document.querySelectorAll('#subjects button.subject').length,
   subjectButtonFocused: !!document.activeElement?.matches?.('#subjects button.subject'),
   focusedSubjectButton: document.activeElement?.matches?.('#subjects button.subject') ? document.activeElement.querySelector('small')?.textContent ?? '' : '',
-  rpcRecorder: window.__teiStudioRpcRecorder ? {
-    active: window.__teiStudioRpcRecorder.active,
-    calls: window.__teiStudioRpcRecorder.calls.slice()
-  } : null,
+  wailsRpcRequests,
+  nativeKeyEvents: window.__teiNativeKeyEvents ? window.__teiNativeKeyEvents.slice() : null,
   graphLabel: document.querySelector('#graph svg')?.getAttribute('aria-label') ?? '',
   graphNodes: Array.from(document.querySelectorAll('#graph g[role="button"]')).map((item) => item.getAttribute('aria-label')),
   diagnosticRows: Array.from(document.querySelectorAll('#commands [aria-label="診断一覧"] li[data-severity]')).map((item) => ({severity:item.dataset.severity,text:item.textContent})),
@@ -747,41 +750,102 @@ return {focused:document.activeElement === button, label:button.querySelector('s
         if not keyboard_editor_text:
             raise RuntimeError("The focused last subject has no Editor text to protect")
 
-        recorder_script = """
+        pre_rpc_deadline = time.monotonic() + 8
+        previous_rpc_requests: list[dict[str, Any]] | None = None
+        stable_rpc_samples = 0
+        pre_calibration_state: dict[str, Any] = {}
+        while time.monotonic() < pre_rpc_deadline:
+            pre_calibration_state = webdriver_request(
+                base_url,
+                "POST",
+                f"/session/{driver_session}/execute/sync",
+                {"script": inspect_script, "args": []},
+            ).get("value", {})
+            pre_calibration_requests = pre_calibration_state.get("wailsRpcRequests")
+            if not isinstance(pre_calibration_requests, list):
+                raise RuntimeError("WebView2 did not expose Wails runtime RPC Resource Timing entries before calibration")
+            if pre_calibration_requests == previous_rpc_requests:
+                stable_rpc_samples += 1
+            else:
+                previous_rpc_requests = pre_calibration_requests
+                stable_rpc_samples = 0
+            if stable_rpc_samples >= 3:
+                break
+            time.sleep(0.2)
+        if stable_rpc_samples < 3:
+            raise RuntimeError("Wails RPC Resource Timing entries did not settle before calibration")
+        pre_calibration_requests = pre_calibration_state["wailsRpcRequests"]
+
+        # The Wails runtime export is not writable in the packaged WebView2
+        # module. Calibrate Resource Timing with a known read-only Host call,
+        # then require the observed /wails/runtime request list to stay fixed.
+        calibration_script = """
 const done = arguments[arguments.length - 1];
-(async () => {
-  const runtime = await import('/wails/runtime.js');
-  const call = runtime.Call;
-  const original = call?.ByName;
-  if (typeof original !== 'function') throw new Error('Wails runtime Call.ByName is unavailable');
-  const descriptor = Object.getOwnPropertyDescriptor(call, 'ByName');
-  if (!descriptor || (descriptor.writable !== true && typeof descriptor.set !== 'function'))
-    throw new Error('Wails runtime Call.ByName cannot be instrumented');
-  const recorder = {active:false, calls:[]};
-  const wrapped = function(name, ...args) {
-    if (recorder.active) recorder.calls.push(String(name));
-    return Reflect.apply(original, this, [name, ...args]);
-  };
-  call.ByName = wrapped;
-  if (call.ByName !== wrapped) throw new Error('Wails runtime Call.ByName instrumentation did not install');
-  recorder.active = true;
-  await call.ByName('main.StudioBridge.ListWorkspaces');
-  if (recorder.calls.length !== 1 || recorder.calls[0] !== 'main.StudioBridge.ListWorkspaces')
-    throw new Error('Wails runtime Call.ByName instrumentation did not capture its calibration call');
-  recorder.calls.length = 0;
-  window.__teiStudioRpcRecorder = recorder;
-  done({installed:true, calibrationMethod:'main.StudioBridge.ListWorkspaces', wrapped:true});
-})().catch((error) => done({error:String(error)}));
+import('/wails/runtime.js').then(async (runtime) => {
+  await runtime.Call.ByName('main.StudioBridge.ListWorkspaces');
+  done(true);
+}).catch((error) => done({error:String(error)}));
 """
-        recorder_result = webdriver_request(
+        calibration_result = webdriver_request(
             base_url,
             "POST",
             f"/session/{driver_session}/execute/async",
-            {"script": recorder_script, "args": []},
+            {"script": calibration_script, "args": []},
             timeout_seconds=30,
         ).get("value", {})
-        if recorder_result.get("installed") is not True or recorder_result.get("error"):
-            raise RuntimeError(f"Could not install and calibrate the Wails RPC recorder: {recorder_result!r}")
+        if calibration_result is not True:
+            raise RuntimeError(f"Could not calibrate Wails RPC Resource Timing with a known read-only Host call: {calibration_result!r}")
+        stable_rpc_deadline = time.monotonic() + 8
+        previous_rpc_requests = None
+        stable_rpc_samples = 0
+        keyboard_baseline: dict[str, Any] = {}
+        while time.monotonic() < stable_rpc_deadline:
+            keyboard_baseline = webdriver_request(
+                base_url,
+                "POST",
+                f"/session/{driver_session}/execute/sync",
+                {"script": inspect_script, "args": []},
+            ).get("value", {})
+            rpc_requests = keyboard_baseline.get("wailsRpcRequests")
+            if not isinstance(rpc_requests, list):
+                raise RuntimeError("WebView2 did not expose Wails runtime RPC Resource Timing entries")
+            if rpc_requests == previous_rpc_requests:
+                stable_rpc_samples += 1
+            else:
+                previous_rpc_requests = rpc_requests
+                stable_rpc_samples = 0
+            if stable_rpc_samples >= 3:
+                break
+            time.sleep(0.2)
+        if stable_rpc_samples < 3:
+            raise RuntimeError("Wails RPC Resource Timing entries did not settle before the keyboard sequence")
+        baseline_rpc_requests = keyboard_baseline["wailsRpcRequests"]
+        if len(baseline_rpc_requests) <= len(pre_calibration_requests):
+            raise RuntimeError("Known read-only Host RPC did not appear in WebView2 Resource Timing")
+
+        key_event_listener_script = """
+const editor = document.querySelector('#editor .cm-content');
+if (!editor) throw new Error('Editor is missing before native key event observation');
+window.__teiNativeKeyEvents = [];
+document.addEventListener('keydown', (event) => {
+  const subject = event.target instanceof Element ? event.target.closest('#subjects button.subject') : null;
+  window.__teiNativeKeyEvents.push({
+    key:event.key,
+    trusted:event.isTrusted,
+    targetIsEditor:editor.contains(event.target),
+    targetSubject:subject?.querySelector('small')?.textContent ?? ''
+  });
+}, true);
+return true;
+"""
+        listener_ready = webdriver_request(
+            base_url,
+            "POST",
+            f"/session/{driver_session}/execute/sync",
+            {"script": key_event_listener_script, "args": []},
+        ).get("value")
+        if listener_ready is not True:
+            raise RuntimeError("Could not install the passive native key event observer")
 
         key_events = {
             "tab": [{"type": "keyDown", "value": "\\uE004"}, {"type": "keyUp", "value": "\\uE004"}],
@@ -800,21 +864,33 @@ const done = arguments[arguments.length - 1];
         xead_before_keys = hashlib.sha256(xead_path.read_bytes()).hexdigest()
         empty_xead_before_keys = hashlib.sha256(empty_xead_path.read_bytes()).hexdigest()
         keyboard_steps: list[dict[str, Any]] = []
+        observed_key_event_count = 0
+        expected_key_events = {
+            "Tab-to-Editor focus": {"Tab"},
+            "Home": {"Home"},
+            "Shift+End selection": {"Shift", "End"},
+            "type_x": {"x"},
+            "backspace": {"Backspace"},
+            "delete": {"Delete"},
+            "settled": set(),
+        }
 
         def keyboard_state_after(step: str) -> dict[str, Any]:
+            nonlocal observed_key_event_count
             state = webdriver_request(
                 base_url,
                 "POST",
                 f"/session/{driver_session}/execute/sync",
                 {"script": inspect_script, "args": []},
             ).get("value", {})
-            recorder = state.get("rpcRecorder")
             step_evidence = {
                 "step": step,
                 "editor_focused": state.get("editorFocused") is True,
+                "webview_document_focused": state.get("webviewDocumentFocused") is True,
                 "editor_text_sha256": hashlib.sha256(str(state.get("editor", "")).encode("utf-8")).hexdigest(),
                 "selected_text": state.get("editorSelection", ""),
-                "wails_rpc_calls": recorder.get("calls", []) if isinstance(recorder, dict) else None,
+                "wails_rpc_request_count": len(state.get("wailsRpcRequests", [])),
+                "native_key_events": state.get("nativeKeyEvents"),
                 "route": state.get("pathname"),
                 "host_connection": state.get("connection"),
                 "active_element": state.get("activeElement"),
@@ -829,10 +905,28 @@ const done = arguments[arguments.length - 1];
                 raise RuntimeError(f"Read-only Editor projection changed after {step}")
             if not state.get("editorFocused"):
                 raise RuntimeError(f"Native WebView2 Editor lost focus after {step}: {state.get('activeElement')!r}")
-            if not isinstance(recorder, dict) or recorder.get("active") is not True:
-                raise RuntimeError(f"Wails RPC recorder became unavailable after {step}")
-            if recorder.get("calls"):
-                raise RuntimeError(f"Workbench made a Wails RPC during the keyboard sequence after {step}: {recorder['calls']!r}")
+            if not state.get("webviewDocumentFocused"):
+                raise RuntimeError(f"Native WebView2 document lost focus after {step}")
+            rpc_requests = state.get("wailsRpcRequests")
+            if not isinstance(rpc_requests, list):
+                raise RuntimeError(f"Wails RPC Resource Timing entries became unavailable after {step}")
+            if rpc_requests != baseline_rpc_requests:
+                raise RuntimeError(f"Workbench made an additional Wails runtime RPC request during the keyboard sequence after {step}: {rpc_requests!r}")
+            key_events_seen = state.get("nativeKeyEvents")
+            if not isinstance(key_events_seen, list):
+                raise RuntimeError(f"Native WebView2 key event observations became unavailable after {step}")
+            new_key_events = key_events_seen[observed_key_event_count:]
+            observed_key_event_count = len(key_events_seen)
+            expected_events = expected_key_events.get(step)
+            if expected_events is not None:
+                delivered_keys = {item.get("key") for item in new_key_events if item.get("trusted") is True}
+                if not expected_events.issubset(delivered_keys):
+                    raise RuntimeError(f"Expected trusted key events were not delivered after {step}: expected={sorted(expected_events)!r}, observed={new_key_events!r}")
+                if step == "Tab-to-Editor focus":
+                    if any(item.get("targetSubject") != last_subject for item in new_key_events if item.get("key") == "Tab"):
+                        raise RuntimeError("Tab did not originate from the focused last subject button")
+                elif any(not item.get("targetIsEditor") for item in new_key_events if item.get("key") in expected_events):
+                    raise RuntimeError(f"Editor keyboard input was not delivered to the Editor DOM: {new_key_events!r}")
             return state
 
         webdriver_key_actions(base_url, driver_session, key_events["tab"])
@@ -849,7 +943,7 @@ const done = arguments[arguments.length - 1];
         webdriver_key_actions(base_url, driver_session, key_events["shift_end"])
         selection_state = keyboard_state_after("Shift+End selection")
         selected_text = selection_state.get("editorSelection", "")
-        if not selected_text:
+        if not selected_text or not selection_state.get("editorSelectionWithinEditor"):
             raise RuntimeError("Home followed by Shift+End did not create an observable Editor selection")
 
         final_keyboard_state: dict[str, Any] = selection_state
@@ -875,7 +969,9 @@ const done = arguments[arguments.length - 1];
             "selected_text_sha256": hashlib.sha256(selected_text.encode("utf-8")).hexdigest(),
             "selected_text_length": len(selected_text),
             "steps": keyboard_steps,
-            "wails_rpc_calls": [],
+            "wails_rpc_request_count_before": len(baseline_rpc_requests),
+            "wails_rpc_request_count_after": len(final_keyboard_state.get("wailsRpcRequests", [])),
+            "new_wails_rpc_requests": [],
             "workspace_before": workspace_before_keys,
             "workspace_after": workspace_after_keys,
             "fixture_sha256_before": {"observe_xead": xead_before_keys, "observe_xead_empty": empty_xead_before_keys},
@@ -892,7 +988,8 @@ const done = arguments[arguments.length - 1];
             selected_text_sha256=facts["native_webview2_editor_keyboard"]["selected_text_sha256"],
             workspace_sha256=workspace_before_keys["sha256"],
             fixture_unchanged=True,
-            wails_rpc_calls=0,
+            wails_rpc_request_count=len(baseline_rpc_requests),
+            new_wails_rpc_requests=0,
             steps=["Tab", "Home", "Shift+End", "type x", "Backspace", "Delete"],
         )
         save_keyboard_response = webdriver_request(base_url, "GET", f"/session/{driver_session}/screenshot")
