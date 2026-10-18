@@ -9,9 +9,33 @@ on:
       - cmd/tei-studio/**
       - go.mod
       - go.sum
+      # Exact Go production import closure from cmd/tei-studio, studiohost, operations and xeadsource.
+      - internal/application/**
       - internal/consumerimpact/**
+      - internal/core/**
+      - internal/database/**
+      - internal/dependency/**
+      - internal/deployment/**
+      - internal/environment/**
       - internal/index/**
+      - internal/ir/**
       - internal/modelref/**
+      - internal/operations/**
+      - internal/permission/**
+      - internal/plugin/**
+      - internal/query/**
+      - internal/realization/**
+      - internal/releaseplan/**
+      - internal/resource/**
+      - internal/semantic/**
+      - internal/sourceindex/**
+      - internal/stdlib/**
+      - internal/studiohost/**
+      - internal/subject/**
+      - internal/syntax/**
+      - internal/validation/**
+      - internal/workspace/**
+      - internal/xeadsource/**
       - tools/reference-studio-static-composition/**
       - reference/tei-studio-*/**
       - reference/ui-customization/composition/**
@@ -24,9 +48,33 @@ on:
       - cmd/tei-studio/**
       - go.mod
       - go.sum
+      # Exact Go production import closure from cmd/tei-studio, studiohost, operations and xeadsource.
+      - internal/application/**
       - internal/consumerimpact/**
+      - internal/core/**
+      - internal/database/**
+      - internal/dependency/**
+      - internal/deployment/**
+      - internal/environment/**
       - internal/index/**
+      - internal/ir/**
       - internal/modelref/**
+      - internal/operations/**
+      - internal/permission/**
+      - internal/plugin/**
+      - internal/query/**
+      - internal/realization/**
+      - internal/releaseplan/**
+      - internal/resource/**
+      - internal/semantic/**
+      - internal/sourceindex/**
+      - internal/stdlib/**
+      - internal/studiohost/**
+      - internal/subject/**
+      - internal/syntax/**
+      - internal/validation/**
+      - internal/workspace/**
+      - internal/xeadsource/**
       - tools/reference-studio-static-composition/**
       - reference/tei-studio-*/**
       - reference/ui-customization/composition/**
@@ -192,6 +240,15 @@ jobs:
           assert_runtime_denied origin http://127.0.0.1:43123/wails/runtime http://attacker.example:43123 127.0.0.1:43123
           assert_runtime_denied host http://127.0.0.1:43123/wails/runtime http://127.0.0.1:43123 attacker.example:43123
           assert_runtime_denied host-origin http://attacker.example:43123/wails/runtime http://attacker.example:43123 attacker.example:43123 --resolve attacker.example:43123:127.0.0.1
+
+      - name: 同一loopback Host上の二BrowserContextと遅延応答分離
+        working-directory: cmd/tei-studio
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$RUNNER_TEMP/tei-studio-playwright/bin/python" test/browser_isolation_smoke.py \
+            --server "$RUNNER_TEMP/tei-studio-server" \
+            --port 43124
 
       - name: 依存checksum証拠を保持（ソースには自動反映しない）
         if: success()
