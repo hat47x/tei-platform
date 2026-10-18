@@ -4,5 +4,12 @@
   "origin": "generated-ai",
   "source": "main.go",
   "sourceDigest": "sha256:9f9d3e51daccc9f1c4f327a082d3ae8b779f840935730dd2101054f7881d92b8",
-  "note": "危険な候補。float64、欠落の0化、通貨・単位無視、精度検査なし。負例として選抜で落とす。"
+  "note": "危険な候補。float64、欠落の0化、通貨・単位無視、精度検査なし。負例として選抜で落とす。生成provenanceは記録済みfixtureで、実モデル実行ではない。",
+  "generation": {
+    "provider": "recorded-fixture",
+    "model": "fixture-v0",
+    "promptDigest": "sha256:4307202f69a522bdcad9bc8b59dad3a1325b51c96e65ab5bbd9ff20b2c062cad",
+    "contextDigest": "sha256:ff3b9d8a667b0354baefbc4350ba265fa6da6518ee2cca2b9171d40d39938b22",
+    "outputDigest": "sha256:9f9d3e51daccc9f1c4f327a082d3ae8b779f840935730dd2101054f7881d92b8"
+  }
 }

@@ -43,6 +43,18 @@ go run ./tools/reference-generator-selection/cmd/tei-generator-build \
 
 候補は`candidate.json`で`id`、`origin`、source path、source digestを宣言します。選抜はsource digestを実byteで再計算し、一致しなければビルド前に拒否します。ビルドに成功したことや、候補の自己申告は合格の根拠にしません。
 
+## 生成AI候補のprovenance
+
+`origin: generated-ai`の候補は、`generation`を必須とします。
+
+- `provider`、`model`
+- `promptDigest`、`contextDigest`
+- `outputDigest`
+
+選抜は、`outputDigest`が候補sourceのdigestと一致することを確認します。`generation`のない`generated-ai`候補は拒否します。
+
+`testdata/candidates/dangerous`の`generation`は`recorded-fixture`で、実モデルを呼び出した記録ではありません。生成AIのprovenance境界を試験するための固定fixtureです。実モデル実行では、同じ項目へ実際のprovider・model・prompt・contextのdigestを入れる必要があります。
+
 ## 生成器sourceの生成
 
 `tei-generator-build`は、契約JSONと固定strategy（`template`、`alternative`、`dangerous`）から、Goの候補sourceを決定的に生成します。
@@ -65,7 +77,7 @@ go run ./tools/reference-generator-selection/cmd/tei-generator-build \
 - 契約のid・version・status
 - WorkspaceのSource Indexから求めた`workspaceRevision`
 - fixtureのdigestと、契約・fixtureを合わせた`suiteVersion`
-- 候補ごとの`sourceDigest`、`binaryDigest`、`generator`（あれば）、各caseの`got`/`want`、`passed`、`rejectReason`
+- 候補ごとの`sourceDigest`、`binaryDigest`、`generator`・`generation`（あれば）、各caseの`got`/`want`、`passed`、`rejectReason`
 - 合格した候補の`qualified`と、不合格の`rejected`
 - `grantsRuntimeAuthority: false`、`provesRealProvider: false`
 
@@ -82,7 +94,7 @@ go run ./tools/reference-generator-selection/cmd/tei-generator-build \
 
 ## 未実装
 
-- 生成AIによる生成器sourceの生成と、モデル・prompt・文脈の記録。現状の`generated-ai`候補は固定テンプレートから生成しており、AI生成ではありません。
+- 実モデルを呼び出して生成器sourceを作る処理。provenanceの項目と検証は追加したが、`recorded-fixture`は実モデル実行ではありません。
 - 生成器を生成する生成器（メタ生成）の停止条件、生成器registry、失効・再生成の追跡。
 - 実Provider・実Target・別言語（.NET/JVM/WASM）での比較。
 - 候補の署名、build provenance（#943 / #1370）。

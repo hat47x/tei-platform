@@ -16,6 +16,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
+	"regexp"
 	"sort"
 	"strings"
 	"time"
@@ -79,14 +80,23 @@ type Result struct {
 	Code     string `json:"code,omitempty"`
 }
 
+type GenerationProvenance struct {
+	Provider      string `json:"provider"`
+	Model         string `json:"model"`
+	PromptDigest  string `json:"promptDigest"`
+	ContextDigest string `json:"contextDigest"`
+	OutputDigest  string `json:"outputDigest"`
+}
+
 type CandidateManifest struct {
-	Schema       string               `json:"schema"`
-	ID           string               `json:"id"`
-	Origin       string               `json:"origin"`
-	Source       string               `json:"source"`
-	SourceDigest string               `json:"sourceDigest"`
-	Note         string               `json:"note,omitempty"`
-	Generator    *GeneratorProvenance `json:"generator,omitempty"`
+	Schema       string                `json:"schema"`
+	ID           string                `json:"id"`
+	Origin       string                `json:"origin"`
+	Source       string                `json:"source"`
+	SourceDigest string                `json:"sourceDigest"`
+	Note         string                `json:"note,omitempty"`
+	Generator    *GeneratorProvenance  `json:"generator,omitempty"`
+	Generation   *GenerationProvenance `json:"generation,omitempty"`
 }
 
 type CaseResult struct {
@@ -97,14 +107,15 @@ type CaseResult struct {
 }
 
 type CandidateReceipt struct {
-	ID           string               `json:"id"`
-	Origin       string               `json:"origin"`
-	SourceDigest string               `json:"sourceDigest"`
-	BinaryDigest string               `json:"binaryDigest,omitempty"`
-	Generator    *GeneratorProvenance `json:"generator,omitempty"`
-	Results      []CaseResult         `json:"results,omitempty"`
-	Passed       bool                 `json:"passed"`
-	RejectReason string               `json:"rejectReason,omitempty"`
+	ID           string                `json:"id"`
+	Origin       string                `json:"origin"`
+	SourceDigest string                `json:"sourceDigest"`
+	BinaryDigest string                `json:"binaryDigest,omitempty"`
+	Generator    *GeneratorProvenance  `json:"generator,omitempty"`
+	Generation   *GenerationProvenance `json:"generation,omitempty"`
+	Results      []CaseResult          `json:"results,omitempty"`
+	Passed       bool                  `json:"passed"`
+	RejectReason string                `json:"rejectReason,omitempty"`
 }
 
 type Receipt struct {
@@ -127,6 +138,22 @@ type Receipt struct {
 func digest(content []byte) string {
 	sum := sha256.Sum256(content)
 	return "sha256:" + hex.EncodeToString(sum[:])
+}
+
+var digestPattern = regexp.MustCompile(`^sha256:[0-9a-f]{64}$`)
+
+func validateGeneration(g *GenerationProvenance) error {
+	if strings.TrimSpace(g.Provider) == "" || strings.TrimSpace(g.Model) == "" {
+		return fmt.Errorf("generation provider and model are required")
+	}
+	for name, value := range map[string]string{
+		"promptDigest": g.PromptDigest, "contextDigest": g.ContextDigest, "outputDigest": g.OutputDigest,
+	} {
+		if !digestPattern.MatchString(value) {
+			return fmt.Errorf("generation %s is not a sha256 digest", name)
+		}
+	}
+	return nil
 }
 
 func readJSON(path string, into any) ([]byte, error) {
@@ -349,7 +376,7 @@ func evaluateCandidate(ctx context.Context, dir string, fixture Fixture, contrac
 	if _, err := readJSON(filepath.Join(dir, "candidate.json"), &manifest); err != nil {
 		return CandidateReceipt{}, err
 	}
-	receipt := CandidateReceipt{ID: manifest.ID, Origin: manifest.Origin, SourceDigest: manifest.SourceDigest, Generator: manifest.Generator}
+	receipt := CandidateReceipt{ID: manifest.ID, Origin: manifest.Origin, SourceDigest: manifest.SourceDigest, Generator: manifest.Generator, Generation: manifest.Generation}
 	reject := func(reason string) (CandidateReceipt, error) {
 		receipt.Passed = false
 		receipt.RejectReason = reason
@@ -369,6 +396,14 @@ func evaluateCandidate(ctx context.Context, dir string, fixture Fixture, contrac
 			return reject("generator contract digest mismatch")
 		}
 	}
+	if manifest.Origin == "generated-ai" && manifest.Generation == nil {
+		return reject("generated-ai candidate has no generation provenance")
+	}
+	if manifest.Generation != nil {
+		if err := validateGeneration(manifest.Generation); err != nil {
+			return reject(err.Error())
+		}
+	}
 	sourcePath := filepath.Join(dir, filepath.FromSlash(manifest.Source))
 	source, err := os.ReadFile(sourcePath)
 	if err != nil {
@@ -377,6 +412,9 @@ func evaluateCandidate(ctx context.Context, dir string, fixture Fixture, contrac
 	actualDigest := digest(source)
 	if actualDigest != manifest.SourceDigest {
 		return reject("source digest mismatch: declared " + manifest.SourceDigest + ", actual " + actualDigest)
+	}
+	if manifest.Generation != nil && manifest.Generation.OutputDigest != actualDigest {
+		return reject("generation output digest does not match the candidate source")
 	}
 	if manifest.Generator != nil {
 		rendered, err := renderCandidate(contractPath, manifest.Generator.Strategy)

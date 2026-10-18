@@ -1,0 +1,6 @@
+{
+  "contract": "sales.line-amount",
+  "contractVersion": "1",
+  "strategy": "dangerous",
+  "target": "standalone-go"
+}

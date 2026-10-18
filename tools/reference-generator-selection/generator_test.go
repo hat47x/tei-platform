@@ -118,6 +118,85 @@ func TestGeneratedCandidateWithAnotherContractIsRejected(t *testing.T) {
 	}
 }
 
+func TestGeneratedAICandidateWithoutGenerationProvenanceIsRejected(t *testing.T) {
+	workspaceDir, contract, fixtures, candidates := paths(t)
+	temp := t.TempDir()
+	if err := os.CopyFS(temp, os.DirFS(candidates)); err != nil {
+		t.Fatal(err)
+	}
+	manifestPath := filepath.Join(temp, "dangerous", "candidate.json")
+	raw, err := os.ReadFile(manifestPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var manifest CandidateManifest
+	if err := json.Unmarshal(raw, &manifest); err != nil {
+		t.Fatal(err)
+	}
+	manifest.Generation = nil
+	changed, err := json.MarshalIndent(manifest, "", "  ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(manifestPath, append(changed, '\n'), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	receipt, err := Select(context.Background(), workspaceDir, contract, fixtures, temp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var dangerous CandidateReceipt
+	for _, candidate := range receipt.Candidates {
+		if candidate.ID == "dangerous" {
+			dangerous = candidate
+		}
+	}
+	if dangerous.Passed || !strings.Contains(dangerous.RejectReason, "no generation provenance") {
+		t.Fatalf("generated-ai candidate without provenance was not rejected: %+v", dangerous)
+	}
+}
+
+func TestGenerationOutputDigestMismatchIsRejected(t *testing.T) {
+	workspaceDir, contract, fixtures, candidates := paths(t)
+	temp := t.TempDir()
+	if err := os.CopyFS(temp, os.DirFS(candidates)); err != nil {
+		t.Fatal(err)
+	}
+	manifestPath := filepath.Join(temp, "dangerous", "candidate.json")
+	raw, err := os.ReadFile(manifestPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var manifest CandidateManifest
+	if err := json.Unmarshal(raw, &manifest); err != nil {
+		t.Fatal(err)
+	}
+	if manifest.Generation == nil {
+		t.Fatal("dangerous candidate has no generation provenance")
+	}
+	manifest.Generation.OutputDigest = "sha256:" + strings.Repeat("0", 64)
+	changed, err := json.MarshalIndent(manifest, "", "  ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(manifestPath, append(changed, '\n'), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	receipt, err := Select(context.Background(), workspaceDir, contract, fixtures, temp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var dangerous CandidateReceipt
+	for _, candidate := range receipt.Candidates {
+		if candidate.ID == "dangerous" {
+			dangerous = candidate
+		}
+	}
+	if dangerous.Passed || !strings.Contains(dangerous.RejectReason, "output digest") {
+		t.Fatalf("candidate with a mismatched output digest was not rejected: %+v", dangerous)
+	}
+}
+
 func TestGeneratedCandidateWithAnotherStrategyIsRejected(t *testing.T) {
 	workspaceDir, contract, fixtures, _ := paths(t)
 	candidates := filepath.Join(t.TempDir(), "candidates")
