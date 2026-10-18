@@ -17,6 +17,7 @@ const providers = {
 const lockBytes = readFileSync(resolve(here, 'package-lock.json'));
 const npmLock = JSON.parse(lockBytes.toString('utf8'));
 const exactPackages = {
+  '@codemirror/commands': '6.11.1',
   '@codemirror/state': '6.7.6',
   '@codemirror/view': '6.43.14',
   '@codemirror/lint': '6.9.7',
@@ -63,7 +64,8 @@ for (const path of Object.values(providers)) {
     throw new Error(`REQUIRED_PROVIDER_NOT_BUNDLED: ${path}`);
   }
 }
-if (!inputs.some(x => x.includes('node_modules/@codemirror/state/')) ||
+if (!inputs.some(x => x.includes('node_modules/@codemirror/commands/')) ||
+    !inputs.some(x => x.includes('node_modules/@codemirror/state/')) ||
     !inputs.some(x => x.includes('node_modules/@codemirror/view/')) ||
     !inputs.some(x => x.includes('node_modules/@codemirror/lint/'))) {
   throw new Error('CODEMIRROR_BARE_IMPORTS_NOT_BUNDLED');

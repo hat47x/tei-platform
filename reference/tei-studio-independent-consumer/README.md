@@ -36,7 +36,7 @@ python3 browser-e2e.py        # Playwright Python + 実Chromiumがある環境�
 
 配信だけなら `python3 -m http.server 4173 --bind 127.0.0.1 --directory dist`。インターネットへ公開しない。`browser-e2e.py`はloopbackの一時サーバーを自動起動し、実Chromiumで検査する。必要なら `TEI_STUDIO_CHROMIUM`にChromium実行ファイルを指定する。
 
-直接依存の版は `@codemirror/state@6.7.6`, `@codemirror/view@6.43.14`, `@codemirror/lint@6.9.7`, `esbuild@0.25.12`。**consumer専用 `package-lock.json`（lockfileVersion 3）を固定済み**。Windows Node 24.21.0で#Workが生成・共有した35 package分のlock本文について、GitHubコメントの原本とSHA-256 `7cb7257ef6e71def71ddf5d24414be596832d6c1f3aef36015f51b340d1f18c1` の一致を#8側で検証し原本へ登録した。以降は `npm ci` でlockどおりに導入する。ローカル#8実行環境のレジストリ/cache制約で **#8自身の実npm ci・bundle再実行は未確認**。
+直接依存は `@codemirror/commands@6.11.1`、`@codemirror/lint@6.9.7`、`@codemirror/state@6.7.6`、`@codemirror/view@6.43.14`、`esbuild@0.25.12`。Editorの`standardKeymap`登録に伴い、consumerから共有Editorをbundleするためのcommands依存もconsumer専用manifestとlock（lockfileVersion 3）へ固定する。更新後の実行環境・lock hash・bundle結果はIssue #1824に記録する。
 
 ## 部品の扱い
 

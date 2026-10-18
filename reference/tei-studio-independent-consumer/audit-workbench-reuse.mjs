@@ -105,7 +105,13 @@ function verifyBundle(root, componentSources, errors) {
       errors.push(`built bundle does not include exact shared source: ${name} (${suffix})`);
     }
   }
-  for (const dependency of ['@codemirror/state', '@codemirror/view', '@codemirror/lint']) {
+  const editorPath = resolve(root, 'reference/tei-studio-editor/codemirror.ts');
+  const editorSource = readFileSync(editorPath, 'utf8');
+  const dependencies = new Set(
+    [...editorSource.matchAll(/\bfrom\s*['"](@codemirror\/[^'"]+)['"]/g)]
+      .map((match) => match[1]),
+  );
+  for (const dependency of dependencies) {
     if (!provenance.inputModules?.some(path => path.replaceAll('\\', '/').includes(`node_modules/${dependency}/`))) {
       errors.push(`built bundle does not include ${dependency}`);
     }
