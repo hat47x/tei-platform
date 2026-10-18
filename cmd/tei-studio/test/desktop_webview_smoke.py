@@ -752,6 +752,10 @@ return {focused:document.activeElement === button, label:button.querySelector('s
         keyboard_editor_text = keyboard_baseline.get("editor", "")
         if not keyboard_editor_text:
             raise RuntimeError("The focused last subject has no Editor text to protect")
+        keyboard_subject_title = keyboard_baseline.get("subjectTitle", "")
+        if not keyboard_subject_title:
+            raise RuntimeError("The read-only Editor has no inspected subject before keyboard input")
+        keyboard_editor_text_sha256 = hashlib.sha256(keyboard_editor_text.encode("utf-8")).hexdigest()
 
         resource_timing_setup_script = """
 window.__teiResourceTimingBufferFull = false;
@@ -869,6 +873,17 @@ return true;
         if listener_ready is not True:
             raise RuntimeError("Could not install the passive native key event observer")
 
+        facts["native_webview2_editor_keyboard"] = {
+            "editor_subject": keyboard_subject_title,
+            "tab_start_subject": expected_last_subject,
+            "editor_text_sha256_before": keyboard_editor_text_sha256,
+            "wails_rpc_requests_before": baseline_rpc_requests,
+            "resource_timing_entries_before": keyboard_baseline.get("resourceTimingEntries"),
+            "steps": [],
+        }
+        page_state["nativeWebView2EditorKeyboard"] = facts["native_webview2_editor_keyboard"]
+        write_json(evidence_dir / "page-state.json", page_state)
+
         key_events = {
             "tab": [{"type": "keyDown", "value": "\uE004"}, {"type": "keyUp", "value": "\uE004"}],
             "home": [{"type": "keyDown", "value": "\uE011"}, {"type": "keyUp", "value": "\uE011"}],
@@ -920,12 +935,18 @@ return true;
                 "active_element": state.get("activeElement"),
             }
             keyboard_steps.append(step_evidence)
-            facts["native_webview2_editor_keyboard"] = {"selected_subject": expected_last_subject, "steps": keyboard_steps}
+            facts["native_webview2_editor_keyboard"] = {
+                "editor_subject": keyboard_subject_title,
+                "tab_start_subject": expected_last_subject,
+                "editor_text_sha256_before": keyboard_editor_text_sha256,
+                "wails_rpc_requests_before": baseline_rpc_requests,
+                "steps": keyboard_steps,
+            }
             page_state["nativeWebView2EditorKeyboard"] = facts["native_webview2_editor_keyboard"]
             write_json(evidence_dir / "page-state.json", page_state)
             if state.get("pathname") != "/workbench/" or state.get("connection") != "\u5b9fHost\u306b\u63a5\u7d9a":
                 raise RuntimeError(f"Workbench route or real Host connection changed after {step}: {state!r}")
-            if state.get("editor") != keyboard_editor_text or state.get("subjectTitle") != expected_last_subject:
+            if state.get("editor") != keyboard_editor_text or state.get("subjectTitle") != keyboard_subject_title:
                 raise RuntimeError(f"Read-only Editor projection changed after {step}")
             if not state.get("editorFocused"):
                 raise RuntimeError(f"Native WebView2 Editor lost focus after {step}: {state.get('activeElement')!r}")
@@ -990,7 +1011,7 @@ return true;
             "route": "/workbench/",
             "host_connection": "\u5b9fHost\u306b\u63a5\u7d9a",
             "editor_read_only": True,
-            "editor_text_sha256_before": hashlib.sha256(keyboard_editor_text.encode("utf-8")).hexdigest(),
+            "editor_text_sha256_before": keyboard_editor_text_sha256,
             "editor_text_sha256_after": hashlib.sha256(final_keyboard_state["editor"].encode("utf-8")).hexdigest(),
             "selected_text_sha256": hashlib.sha256(selected_text.encode("utf-8")).hexdigest(),
             "selected_text_length": len(selected_text),
@@ -1014,7 +1035,8 @@ return true;
         write_json(evidence_dir / "page-state.json", page_state)
         record(
             "native-webview2-read-only-editor-keyboard-verified",
-            selected_subject=expected_last_subject,
+            editor_subject=keyboard_subject_title,
+            tab_start_subject=expected_last_subject,
             editor_text_sha256=facts["native_webview2_editor_keyboard"]["editor_text_sha256_before"],
             selected_text_sha256=facts["native_webview2_editor_keyboard"]["selected_text_sha256"],
             workspace_sha256=workspace_before_keys["sha256"],
