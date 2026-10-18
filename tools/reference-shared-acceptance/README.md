@@ -89,6 +89,10 @@ CLIから`accept`する場合、`-expected-review-fingerprint`は必須です。
 
 `accept`はauthoritative sourceを更新したあと、その受理を`.tei/decisions/<内容のSHA-256>.json`へ残します。`reject`もsourceを変更せず、退けたcandidateと理由を同じcontent-addressed Decision ledgerへ残します。数か月後や別sessionのAIが、会話履歴だけに頼らず「なぜこのsourceがあるのか」「なぜこのcandidateは採用されなかったのか」を機械的に辿るためです。
 
+Decision ledgerの書込み・読取りも、Sourceと同じ`os.OpenRoot(workspace)`のルートに固定します。`.tei/decisions`またはその親がWorkspace外を指すシンボリックリンクであれば、記録を作らず、`decisions`もそのledgerを読まずに失敗します。記録は内容でaddressingするため、同じ名前が同じ内容なら成功、違う内容なら上書きせず拒否します。
+
+`accept`のSource更新は既に成立しているため、その後のDecision記録に失敗してもSourceを巻き戻しません。この場合`accept`はSourceが変わったaccepted Decisionを`recordPath`なし・`warnings`の`DECISION_RECORD_FAILED`付きで出力し、終了コード1で終わります。受理の成否と、根拠記録の永続化は別の事実として扱います。`reject`でも同じく、判定は出力したうえで記録失敗を終了コード1で知らせます。
+
 accepted Decisionには、fingerprintへ入らない`intent`と`evidence`、候補の同一性（`candidateFingerprint`）、基準と受理後のrevision、書いたfileとその前後のfingerprint、Semantic / Application差分、受理後Conformance、残ったunresolvedが入ります。rejected Decisionは同じcandidate / Evidence identityと判断理由を持ちますが、`sourceChanged=false`、`sourceEdits=none`です。stale candidateをrejectした場合は、candidateの`baseModelRevision`と判断時のcurrent revision、およびstale時の明示的な選択肢も保存します。
 
 ```bash
@@ -117,7 +121,7 @@ go run ./tools/reference-shared-acceptance decisions -workspace DIR
 
 ### 確認の記録 — 一度答えた確認を繰り返さない
 
-確認とその答えを`.tei/confirmations/`へ派生物として記録し、同じ確認を理由なく繰り返さないための入口です（ISSUE-000074、RQ-016）。決定記録と同じく、managed sourceではなくmodel revisionに入らず、消しても意味は変わりません。消すと確認がもう一度出るだけです。
+確認とその答えを`.tei/confirmations/`へ派生物として記録し、同じ確認を理由なく繰り返さないための入口です（ISSUE-000074、RQ-016）。決定記録と同じく、managed sourceではなくmodel revisionに入らず、消しても意味は変わりません。消すと確認がもう一度出るだけです。Confirmation ledgerもWorkspace rootに固定し、`.tei/confirmations`がWorkspace外を指すシンボリックリンクなら記録・読取りを拒否します。
 
 ```bash
 go run ./tools/reference-shared-acceptance confirm-record -workspace DIR -input answer.json
@@ -334,7 +338,7 @@ Evaluation artifactはcandidateの意味を変えないため、`candidateFinger
 - Environment binding（`add-environment-binding`）をApplication意味の変更と分けて扱える。差分は`environmentDiff`へ出て意味の差分は空のまま、変わるcollectionは`environments`だけ、impactはEnvironment / Application / database instanceへexact identityで辿り、権限が付かないことを`RUNTIME_AUTHORITY_NOT_GRANTED`として残す（`environment_test.go`）
 - そのbindingでも、層をまたぐ正しさ（unknown alias / unknown instance / target mismatch）は境界が再実装せず、共有Validationのdiagnosticとして`validate` stageに現れる
 
-Shared Acceptanceでauthoritative Sourceを書き込む経路は、`os.OpenRoot(workspace)`で開いたWorkspaceルートに固定し、入力元の相対Sourceパスを一貫してそのルートから開きます。書込み前には親ディレクトリと終端ファイルのシンボリックリンクを拒否し、一時ファイル作成・実際の置換・失敗時復元を`os.Root`の相対操作で行います。新規Sourceは`Root.Link`のcreate-only公開により、並行プロセスが作成した同名ファイルを上書きしません。書込み途中でHostがWorkspaceの親ディレクトリをWorkspace外へのリンクに差し替えても、`Root`により外部のファイルは書き換えません（#1529）。
+Shared Acceptanceでauthoritative Sourceを書き込む経路は、`os.OpenRoot(workspace)`で開いたWorkspaceルートに固定し、入力元の相対Sourceパスを一貫してそのルートから開きます。書込み前には親ディレクトリと終端ファイルのシンボリックリンクを拒否し、一時ファイル作成・実際の置換・失敗時復元を`os.Root`の相対操作で行います。新規Sourceは`Root.Link`のcreate-only公開により、並行プロセスが作成した同名ファイルを上書きしません。書込み途中でHostがWorkspaceの親ディレクトリをWorkspace外へのリンクに差し替えても、`Root`により外部のファイルは書き換えません（#1529）。Decision / Confirmation ledgerの作成・公開・読取りも同じルート相対で行い、`.tei/decisions`・`.tei/confirmations`の外向きシンボリックリンクや、`linkedDecision`の終端シンボリックリンクを辿りません。
 
 ただし、この**書込み側のResource containment**は、Workspace読み込み時点のSource Reader（#1017）、review fingerprintと現権限の再確認、変更済みSourceの原子的Compare-and-Swap、複数Sourceの全体トランザクションを代替しません。また、`os.Root`はJS/WASM上でOSネイティブと同一の安全性を保証しません。実Wails Hostと、OS/ファイルシステム別の互換性は未検証です。
 

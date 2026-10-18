@@ -63,6 +63,9 @@ type Decision struct {
 	Evidence   []Evidence                  `json:"evidence,omitempty"`
 	Unresolved []changeanalysis.Unresolved `json:"unresolved,omitempty"`
 	RecordPath string                      `json:"recordPath,omitempty"`
+	// Warningsは、判定自体は成立したが、付随する記録・出力を残せなかったことを示す。
+	// Refusalsと違い、Sourceの受理状態を覆さない。現在はDecision ledgerの書込み失敗だけが入る。
+	Warnings []Diagnostic `json:"warnings,omitempty"`
 }
 
 // beforeEachWriteHookはtestが「Previewの後にsourceが変わる」状況を再現するための差し込み口である。
@@ -439,6 +442,8 @@ type DecisionIndex struct {
 // recordDecisionは、決定を派生物として保存し、保存先のworkspace相対pathを返す。
 // 内容でaddressingするため、同じ決定を二度保存しても増えない。
 // この記録はauthorityではない。消してもaccepted meaningもmodel revisionも変わらない。
+// 書き込みはWorkspace rootに固定したos.Rootの相対操作で行い、ledger directoryの
+// 外向きシンボリックリンクを辿らない。
 func recordDecision(root string, d Decision) (string, error) {
 	d.RecordPath = ""
 	encoded, err := encodeJSON(d)
@@ -447,11 +452,12 @@ func recordDecision(root string, d Decision) (string, error) {
 	}
 	sum := sha256.Sum256(encoded)
 	rel := decisionDir + "/" + hex.EncodeToString(sum[:]) + ".json"
-	target := filepath.Join(root, filepath.FromSlash(rel))
-	if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
-		return "", err
+	files, err := os.OpenRoot(root)
+	if err != nil {
+		return "", fmt.Errorf("open Workspace root for Decision ledger: %w", err)
 	}
-	if err := writeFileAtomic(target, encoded); err != nil {
+	defer files.Close()
+	if err := ledgerWriteFile(files, rel, encoded); err != nil {
 		return "", err
 	}
 	return rel, nil
@@ -467,10 +473,14 @@ func loadDecisionRecords(root string) (DecisionIndex, error) {
 	}
 	index.ModelRevision = s.revision
 
-	dir := filepath.Join(root, filepath.FromSlash(decisionDir))
-	entries, err := os.ReadDir(dir)
+	files, err := os.OpenRoot(root)
 	if err != nil {
-		if os.IsNotExist(err) {
+		return index, fmt.Errorf("open Workspace root for Decision ledger: %w", err)
+	}
+	defer files.Close()
+	entries, err := ledgerReadDir(files, decisionDir)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
 			return index, nil
 		}
 		return index, err
@@ -485,7 +495,7 @@ func loadDecisionRecords(root string) (DecisionIndex, error) {
 
 	for _, name := range names {
 		rel := decisionDir + "/" + name
-		content, err := os.ReadFile(filepath.Join(dir, name))
+		content, err := ledgerReadFile(files, rel)
 		if err != nil {
 			return index, err
 		}
@@ -524,7 +534,7 @@ func loadDecisionRecords(root string) (DecisionIndex, error) {
 		if len(d.SourceEdits) > 0 {
 			record.SourceEdits = "intact"
 			for _, e := range d.SourceEdits {
-				current, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(e.Path)))
+				current, err := sourceReadWithinRoot(files, e.Path)
 				if err != nil || sourceindex.Fingerprint(current) != e.AfterFingerprint {
 					record.SourceEdits = "diverged"
 					record.Diverged = append(record.Diverged, e.Path)

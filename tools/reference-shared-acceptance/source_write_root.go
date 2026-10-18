@@ -42,10 +42,19 @@ func acceptedSourcePath(path string) (string, error) {
 	return filepath.FromSlash(path), nil
 }
 
-// checkAcceptedSourcePath rejects symbolic links at EACH existing component,
-// not only at the final filename. os.Root confines operations even if a
-// component is replaced after this check; the check is not an atomic lock.
-func checkAcceptedSourcePath(files *os.Root, relative string, mayCreate bool) error {
+// rootedPathRule describes the final component a rooted path policy expects.
+// Every component is still checked for symbolic links and non-directory
+// parents; this only distinguishes a file from a directory at the leaf.
+type rootedPathRule struct {
+	label      string
+	mayCreate  bool
+	finalIsDir bool
+}
+
+// checkRootedPath rejects symbolic links at EACH existing component, not only
+// at the final filename. os.Root confines operations even if a component is
+// replaced after this check; the check is not an atomic lock.
+func checkRootedPath(files *os.Root, relative string, rule rootedPathRule) error {
 	name, err := acceptedSourcePath(relative)
 	if err != nil {
 		return err
@@ -54,23 +63,35 @@ func checkAcceptedSourcePath(files *os.Root, relative string, mayCreate bool) er
 	for i := range parts {
 		path := filepath.Join(parts[:i+1]...)
 		info, err := files.Lstat(path)
-		if errors.Is(err, os.ErrNotExist) && mayCreate {
+		if errors.Is(err, os.ErrNotExist) && rule.mayCreate {
 			continue
 		}
 		if err != nil {
-			return fmt.Errorf("inspect Source component %s: %w", path, err)
+			return fmt.Errorf("inspect %s component %s: %w", rule.label, path, err)
 		}
 		if info.Mode()&os.ModeSymlink != 0 {
-			return fmt.Errorf("Source path %s is a symbolic link", path)
+			return fmt.Errorf("%s path %s is a symbolic link", rule.label, path)
 		}
 		if i < len(parts)-1 && !info.IsDir() {
-			return fmt.Errorf("Source parent %s is not a directory", path)
+			return fmt.Errorf("%s parent %s is not a directory", rule.label, path)
 		}
-		if i == len(parts)-1 && !mayCreate && !info.Mode().IsRegular() {
-			return fmt.Errorf("Source %s is not a regular file", path)
+		if i == len(parts)-1 {
+			if rule.finalIsDir && !info.IsDir() {
+				return fmt.Errorf("%s %s is not a directory", rule.label, path)
+			}
+			if !rule.finalIsDir && !rule.mayCreate && !info.Mode().IsRegular() {
+				return fmt.Errorf("%s %s is not a regular file", rule.label, path)
+			}
 		}
 	}
 	return nil
+}
+
+func checkAcceptedSourcePath(files *os.Root, relative string, mayCreate bool) error {
+	return checkRootedPath(files, relative, rootedPathRule{
+		label:     "Source",
+		mayCreate: mayCreate,
+	})
 }
 
 // sourceReadWithinRoot opens only inside the Workspace's pinned root. This
@@ -87,9 +108,9 @@ func sourceReadWithinRoot(files *os.Root, relative string) ([]byte, error) {
 	return files.ReadFile(path)
 }
 
-// sourceMakeDirs creates only Source parents in the pinned root and returns
+// makeRootedDirs creates only the named parents in the pinned root and returns
 // their relative paths for a subsequent best-effort rollback.
-func sourceMakeDirs(files *os.Root, relativeParent string) ([]string, error) {
+func makeRootedDirs(files *os.Root, relativeParent, label string) ([]string, error) {
 	parts := strings.Split(relativeParent, string(filepath.Separator))
 	var created []string
 	for i := range parts {
@@ -100,19 +121,24 @@ func sourceMakeDirs(files *os.Root, relativeParent string) ([]string, error) {
 		info, err := files.Lstat(dir)
 		if err == nil {
 			if info.Mode()&os.ModeSymlink != 0 || !info.IsDir() {
-				return created, fmt.Errorf("Source parent %s is not a real directory", dir)
+				return created, fmt.Errorf("%s parent %s is not a real directory", label, dir)
 			}
 			continue
 		}
 		if !errors.Is(err, os.ErrNotExist) {
-			return created, fmt.Errorf("inspect Source parent %s: %w", dir, err)
+			return created, fmt.Errorf("inspect %s parent %s: %w", label, dir, err)
 		}
 		if err := files.Mkdir(dir, 0o755); err != nil {
-			return created, fmt.Errorf("create Source parent %s: %w", dir, err)
+			return created, fmt.Errorf("create %s parent %s: %w", label, dir, err)
 		}
 		created = append(created, dir)
 	}
 	return created, nil
+}
+
+// sourceMakeDirs creates only Source parents in the pinned root.
+func sourceMakeDirs(files *os.Root, relativeParent string) ([]string, error) {
+	return makeRootedDirs(files, relativeParent, "Source")
 }
 
 // sourceWriteWithinRoot publishes a completed Source file under the pinned
