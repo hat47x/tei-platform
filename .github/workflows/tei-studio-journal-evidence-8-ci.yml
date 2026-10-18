@@ -74,6 +74,15 @@ jobs:
             echo "GRAPH=$GRAPH_SHA / $GRAPH_BLOB"
             echo "COMMAND=$COMMAND_SHA / $COMMAND_BLOB"
             echo "EDITOR=$EDITOR_SHA / $EDITOR_BLOB"
+            # Materialize the pinned providers as a local-only test snapshot.
+            # This keeps source-identity checks exact without changing a branch or PR.
+            git add -- reference/tei-studio-graph reference/tei-studio-command reference/tei-studio-editor
+            git -c user.name='TEI fixed-provider snapshot' \
+                -c user.email='tei-fixed-provider-snapshot@example.invalid' \
+                commit --allow-empty -m 'test(studio): materialize fixed providers for journal evidence'
+            snapshot_sha="$(git rev-parse HEAD)"
+            test "$(git rev-parse "$snapshot_sha^")" = "$consumer_sha"
+            echo "PROVIDER_SNAPSHOT=$snapshot_sha (local-only child of consumer=$consumer_sha)"
             git diff --name-only "$consumer_sha" -- reference/tei-studio-independent-consumer
           )
           echo "JOURNAL_SNAPSHOT=$snapshot" >> "$GITHUB_ENV"

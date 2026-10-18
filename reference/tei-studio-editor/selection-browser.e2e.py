@@ -44,11 +44,22 @@ with sync_playwright() as p:
             unchanged: p.editor.snapshot().text === p.text,
             nativeText: window.getSelection()?.toString() ?? ''};
         }""")
-        print(json.dumps(result, ensure_ascii=False))
+        print(json.dumps(result, ensure_ascii=True))
         assert "End" in result["keys"], "Shift+End did not reach CodeMirror"
         assert result["events"], "No user-originated selection callback (NOT PASS)"
         assert result["events"][-1]["selection"] == {"from": 6, "to": 15}, result
         assert result["unchanged"], "Read-only editor text changed"
-        print("PASS: real CodeMirror keyboard selection callback roundtrip 6..15")
+        for label, trigger in (
+            ("text input", lambda: page.keyboard.type("x")),
+            ("Backspace", lambda: page.keyboard.press("Backspace")),
+            ("Delete", lambda: page.keyboard.press("Delete")),
+        ):
+            trigger()
+            unchanged = page.evaluate("""() => {
+              const p = window.__editorSelectionProbe;
+              return p.editor.snapshot().text === p.text;
+            }""")
+            assert unchanged, f"{label} changed read-only source"
+        print("PASS: real CodeMirror keyboard selection callback roundtrip 6..15; text input/deletion remain read-only")
     finally:
         browser.close()

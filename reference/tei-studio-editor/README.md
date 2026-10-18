@@ -1,11 +1,11 @@
 # Studio共通テキストエディター部品（PoC C / #1824 / #4）
 
-状態: **参照専用の部品Reference**。単体テストはHost不要で実行する。現時点ではTEI Studioの画面統合、Go Service、実DOMのCodeMirror表示、ブラウザー、Wails WebViewでの動作を確認していない。
+状態: **参照専用の部品Reference**。単体テストはHost不要で実行する。試験専用ページでは、実DOMのCodeMirror上で読み取り専用のキー選択と元文書のUTF-16オフセット往復をChromiumで確認する。TEI Studio画面統合、Go Host、Wails WebViewでの動作確認とは区別する。
 
 ## 目的と境界
 
 - `editor.ts` は TypeScriptのHost非依存な読取り専用Port。テキスト、選択、診断、文書交換、破棄だけを扱い、Workspaceのパス、Go / Wails、TEIの意味・Source Authority・Acceptanceに依存しない。
-- `codemirror.ts` はCodeMirror 6の表示Adapter。`EditorState.readOnly` と `EditorView.editable.of(false)` により閲覧専用で構成する。編集・保存・候補生成・受理・OSファイル操作・任意Command実行のAPIは公開しない。
+- `codemirror.ts` はCodeMirror 6の表示Adapter。`standardKeymap`で標準のカーソル移動と選択を扱い、`EditorState.readOnly` と `EditorView.editable.of(false)` により本文編集を抑止する。CodeMirrorの標準キー割当には編集操作も含まれるが、閲覧専用状態では適用されない。編集・保存・候補生成・受理・OSファイル操作・任意Command実行のAPIは公開しない。
 - `RendererFactory` は一つのHost要素と一つの文書投影を受け取る。Portから新しいUI Registry/Plugin Resolverを定義しない。#3のcomposition rootから必要に応じてこの部品を呼ぶ。
 - `EditorDocument.version` はHostが観測した文書の同一性比較用文字列であり、Accepted Source revisionや書込み権限の証拠ではない。Hostが別Workspaceや未許可文書を供給しない義務は独立して残る。
 - 診断は文書ID・版を照合し、古い版を拒否する。開始／終了は1始まりの行・列と `utf8-byte` / `utf16-unit` の**必須単位**で渡す。レンダラーに渡す際はUTF-16オフセットへ変換する。コードポイント分割・不正列・重複診断ID・逆転範囲は拒否。行はLFで数え、CRLFは1改行とする。診断メッセージはHTML化しない。
@@ -31,10 +31,11 @@ editor.destroy();
 
 本例はJS/DOM利用を説明するだけで、画面の実機動作を意味しない。別アプリ側は#8がこの同じ `editor.ts` と `codeMirrorRenderer` を利用して確認する。
 
-## OSSと依存（#3へ導入依頼）
+## OSSと依存
 
-[CodeMirror 6](https://codemirror.net/) はMITライセンス。検証時に次の **exact版候補** を依存解決とlockへ固定する必要がある。版の選定は2026-10-14時点のnpm公開情報による。依存の導入、root manifest/lock、ビルド環境の整備は#3担当であり、このReferenceでは変更しない。
+[CodeMirror 6](https://codemirror.net/) はMITライセンス。標準のキー操作を登録するため、`@codemirror/commands`も利用する。Workbenchの依存manifestとlockには次の版を固定する。
 
+- `@codemirror/commands@6.11.1`
 - `@codemirror/state@6.7.6`
 - `@codemirror/view@6.43.14`
 - `@codemirror/lint@6.9.7`
@@ -49,7 +50,7 @@ node --experimental-strip-types --test reference/tei-studio-editor/editor.test.m
 tsc --noEmit --strict --target ES2022 --module ESNext --moduleResolution bundler reference/tei-studio-editor/editor.ts
 ```
 
-部品単独fixtureはTEI構文でない `a😀x\r\nsecond` を使う。CodeMirrorの実DOM操作、アクセシビリティ、キーボード、長い文書の性能、サービスからの安全な文書供給、Wails/Web実機は別途確認する。受入条件は#1824と#997が正本であり、本書は新しい製品APIやGateを定めない。
+部品単独fixtureはTEI構文でない `a😀x\r\nsecond` を使う。試験専用ページと `selection-browser.e2e.py` は、実CodeMirror DOMへのキー操作、選択通知の元文書UTF-16オフセット往復、入力・削除後も本文が変わらないことを確認する。この試験はStudio画面の統合やWails/WebViewを対象にしない。アクセシビリティ全般、長い文書の性能、サービスからの安全な文書供給も別途確認する。受入条件は#1824と#997が正本であり、本書は新しい製品APIやGateを定めない。
 
 ## CodeMirrorのCRLF座標補正（2026-10-14、#Work実ブラウザーの失敗から追加）
 
@@ -66,4 +67,4 @@ tsc --noEmit --strict --target es2022 --module esnext --moduleResolution bundler
   reference/tei-studio-editor/codemirror-coordinates.ts
 ```
 
-**現状のEvidence**: Node v22.16.0でport 4件 + 座標変換5件 = **9/9 PASS**、上記2 TypeScript fileのstrict型検査PASS。更新前PR head `4970921`について#Workが行ったCodeMirror依存込み型検査PASSは、**今回の修正headに自動継承しない**。修正済み`codemirror.ts`の依存込み型検査、CodeMirror実DOMでの診断/selection通知、ブラウザー/Studio/別consumer/WebViewは#Work/#3/#8による再検証待ち。原本manifest/lockは変更しない。
+Node試験はPort、CRLF座標変換、Adapterへのキー割当登録を分けて確認する。ブラウザー試験の対象版・環境・実行結果はIssue #1824へ記録する。ここで確認するのは試験専用ページの読取り専用キー選択に限り、Studio画面、別consumer、Wails/WebViewでの動作へ合格範囲を広げない。

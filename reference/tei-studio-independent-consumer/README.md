@@ -36,7 +36,7 @@ python3 browser-e2e.py        # Playwright Python + 実Chromiumがある環境�
 
 配信だけなら `python3 -m http.server 4173 --bind 127.0.0.1 --directory dist`。インターネットへ公開しない。`browser-e2e.py`はloopbackの一時サーバーを自動起動し、実Chromiumで検査する。必要なら `TEI_STUDIO_CHROMIUM`にChromium実行ファイルを指定する。
 
-直接依存の版は `@codemirror/state@6.7.6`, `@codemirror/view@6.43.14`, `@codemirror/lint@6.9.7`, `esbuild@0.25.12`。**consumer専用 `package-lock.json`（lockfileVersion 3）を固定済み**。Windows Node 24.21.0で#Workが生成・共有した35 package分のlock本文について、GitHubコメントの原本とSHA-256 `7cb7257ef6e71def71ddf5d24414be596832d6c1f3aef36015f51b340d1f18c1` の一致を#8側で検証し原本へ登録した。以降は `npm ci` でlockどおりに導入する。ローカル#8実行環境のレジストリ/cache制約で **#8自身の実npm ci・bundle再実行は未確認**。
+直接依存は `@codemirror/commands@6.11.1`、`@codemirror/lint@6.9.7`、`@codemirror/state@6.7.6`、`@codemirror/view@6.43.14`、`esbuild@0.25.12`。Editorの`standardKeymap`登録に伴い、consumerから共有Editorをbundleするためのcommands依存もconsumer専用manifestとlock（lockfileVersion 3）へ固定する。更新後の実行環境・lock hash・bundle結果はIssue #1824に記録する。
 
 ## 部品の扱い
 
@@ -81,8 +81,10 @@ Ubuntu24.04 / Node24.21.0で`npm ci`、`npm test` **18/18 PASS・skip 0**、`npm
 
 詳細は[既存runbook §12.1](../../plan/evidence/TEI_STUDIO_POC_EVIDENCE_RUNBOOK_20261014.md)を参照。固定4ソースのブラウザーPoCがPASSした範囲であり、実Wails Host、Desktop WebView、全a11y、公開Web認可、メモリリーク完全不在や製品資格は主張しない。
 
+現在の`fixed-provider-journal` workflowは、PR consumer revisionを基点に、固定SHAから抽出したProvider pathを含む一時snapshot commitを作ってから検証する。これはworkflow runner内だけで使い、branchやPRを更新しない。上記の2026-10-15記録は当時の実行結果と固定SHAを示し、今回のworkflow手順変更で書き換えない。
+
 ## mainのWorkbenchと同一ソースを使う独立確認
 
-追加CI `.github/workflows/tei-studio-independent-consumer-main-source-ci.yml` は、検証対象PRのbaseと同じ固定版 `eed6027003e10d36646469fc368ad0576e9e8641` から専用checkoutを作り、同版のWorkbenchとReading Journal consumerがEditor・CodeMirror・Graph・Commandの同じソースファイルをimportすることを確認する。Git blobとSHA-256、consumerの依存グラフ、ビルド実績の入力module・lock hashを照合した後、固定版consumerの試験・build・実Chromium E2Eを実行する。workflow実行時にPR base SHAが固定版と異なれば失敗する（mainへのpushだけではこのPR workflowは自動起動しない）。固定版を更新するときは、workflow内のcheckout参照と環境変数、およびこの説明を同じ版に合わせる。
+追加CI `.github/workflows/tei-studio-independent-consumer-main-source-ci.yml` は、PRのbase SHAから専用checkoutを作り、その版のWorkbenchとReading Journal consumerがEditor・CodeMirror・Graph・Commandの同じソースファイルをimportすることを確認する。Git blobとSHA-256、consumerの依存グラフ、実際のbundle入力を照合し、base版consumerの依存導入・試験・build・実Chromium E2Eを実行する。続いてPR head側でも、同じ依存導入・試験・build・bundle監査・実Chromium E2Eを実行する。EditorのCodeMirror依存監査は、対象版の`codemirror.ts`がimportするpackageを確認する。`workflow_dispatch`では実行対象SHAを両checkoutに使う。mainへのpushだけではこのPR workflowは自動起動しない。
 
 この確認はIssue #1824のPoC Cにおける「同じUI部品ソースをTEI Workspaceなしのconsumerで利用できる」という受入項目を支える。consumerのブラウザー動作とソース再利用を検査する範囲であり、Workbench自体のブラウザー起動、Wails Host/Desktop WebView、CLIとの同等性、Resolver統合、利用者価値、PoC C全体の受入完了は示さない。既存の固定Provider snapshot CIとWails PoC A CIは独立しており、このworkflowは両方を置き換えない。

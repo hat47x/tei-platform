@@ -1,7 +1,8 @@
 /** CodeMirror 6-only rendering adapter. No TEI, filesystem or Host authority. */
 import { EditorState } from "@codemirror/state";
-import { EditorView } from "@codemirror/view";
+import { EditorView, keymap } from "@codemirror/view";
 import { lintGutter, setDiagnostics } from "@codemirror/lint";
+import { standardKeymap } from "@codemirror/commands";
 import { CodeMirrorCoordinates } from "./codemirror-coordinates.ts";
 import type { RendererFactory, EditorRenderer, EditorSnapshot, OffsetRange } from "./editor.ts";
 
@@ -22,6 +23,7 @@ export const codeMirrorRenderer: RendererFactory<HTMLElement> = {
           EditorState.readOnly.of(true),
           EditorView.editable.of(false),
           EditorView.lineWrapping,
+          keymap.of(standardKeymap),
           // A non-editable .cm-content is otherwise not keyboard-focusable.
           EditorView.contentAttributes.of({ "aria-label": "Read-only source text", tabindex: "0" }),
           lintGutter(),
