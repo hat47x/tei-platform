@@ -327,6 +327,54 @@ def smoke_workbench(browser, base_url):
     assert repeated_findings == findings, validation_envelope
     assert validation_counts(repeated_findings) == counts, validation_envelope
     assert_displayed_findings(page, repeated_findings) == displayed_findings
+
+    # Enter the integrated Editor through ordinary Tab navigation. Starting
+    # from the final subject-list button keeps the test independent of the
+    # number of catalog entries while still exercising the actual tab order.
+    text_before_keyboard = editor.inner_text()
+    last_subject = page.locator("#subjects button").last
+    assert last_subject.count() == 1, "Workbench subject list is empty"
+    last_subject.focus()
+    page.keyboard.press("Tab")
+    assert editor.evaluate("node => document.activeElement === node"), (
+        "Tab from the subject list did not focus the Editor"
+    )
+
+    page.keyboard.press("Home")
+    page.keyboard.press("Shift+End")
+    page.wait_for_function(
+        "Boolean(window.getSelection()?.toString())",
+        timeout=5_000,
+    )
+    selected_text = page.evaluate("window.getSelection()?.toString() ?? ''")
+    assert selected_text, "Shift+End did not create a browser text selection"
+    assert editor.evaluate("node => document.activeElement === node"), (
+        "Editor lost focus during Shift+End"
+    )
+    assert editor.inner_text() == text_before_keyboard, (
+        "Shift+End changed the read-only Editor text"
+    )
+
+    for label, key in (("text input", None), ("Backspace", "Backspace"), ("Delete", "Delete")):
+        if key is None:
+            page.keyboard.type("x")
+        else:
+            page.keyboard.press(key)
+        assert editor.inner_text() == text_before_keyboard, (
+            f"{label} changed the read-only Editor text"
+        )
+
+    readonly_methods = {
+        "main.StudioBridge.ListWorkspaces",
+        "main.StudioBridge.CatalogWorkspace",
+        "main.StudioBridge.ValidateWorkspace",
+        "main.StudioBridge.InspectSubject",
+        "main.StudioBridge.ObserveXead",
+    }
+    unexpected_methods = sorted({method for method, _args in calls} - readonly_methods)
+    assert not unexpected_methods, (
+        f"Workbench invoked a non-read-only or unexpected RPC: {unexpected_methods!r}"
+    )
     print(
         "Workbench browser smoke: "
         f"Catalog parent={initial_subject['kind']}:{initial_subject['id']} "
@@ -338,7 +386,8 @@ def smoke_workbench(browser, base_url):
         f"Validate ok={validation_envelope['ok']} "
         f"errors={counts['error']} warnings={counts['warning']} "
         f"diagnostics={displayed_findings!r} "
-        f"summary={page.locator('#diagnostic-summary').inner_text()!r}"
+        f"summary={page.locator('#diagnostic-summary').inner_text()!r}; "
+        "Tab-to-Editor focus and Shift+End selection retained read-only text"
     )
     page.close()
 
