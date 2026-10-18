@@ -1,0 +1,25 @@
+{
+  "schema": "tei.reference.generator-contract/v0",
+  "id": "sales.line-amount",
+  "version": "1",
+  "status": "reference-local",
+  "note": "受理済みの sales.order_line.quantity と sales.order_line.unit_price、std.money を使う参照用の契約です。複合規則そのものはCanonicalな受理済み規則ではありません。",
+  "inputs": [
+    {
+      "attribute": "sales.order_line.quantity",
+      "primitive": "std.decimal"
+    },
+    {
+      "attribute": "sales.order_line.unit_price",
+      "primitive": "std.money"
+    }
+  ],
+  "output": {
+    "primitive": "std.money"
+  },
+  "rounding": {
+    "precision": 8,
+    "scale": 2,
+    "mode": "half-up"
+  }
+}
