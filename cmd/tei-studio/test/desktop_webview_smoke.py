@@ -555,6 +555,7 @@ const selection = window.getSelection();
 const wailsRpcRequests = performance.getEntriesByType('resource')
   .filter((item) => new URL(item.name, location.href).pathname === '/wails/runtime')
   .map((item) => ({path:'/wails/runtime', startTime:item.startTime, initiatorType:item.initiatorType}));
+const resourceTimingEntries = performance.getEntriesByType('resource').length;
 return {
   title: document.title,
   pathname: location.pathname,
@@ -580,6 +581,8 @@ return {
   subjectButtonFocused: !!document.activeElement?.matches?.('#subjects button.subject'),
   focusedSubjectButton: document.activeElement?.matches?.('#subjects button.subject') ? document.activeElement.querySelector('small')?.textContent ?? '' : '',
   wailsRpcRequests,
+  resourceTimingEntries,
+  resourceTimingBufferFull: window.__teiResourceTimingBufferFull === true,
   nativeKeyEvents: window.__teiNativeKeyEvents ? window.__teiNativeKeyEvents.slice() : null,
   graphLabel: document.querySelector('#graph svg')?.getAttribute('aria-label') ?? '',
   graphNodes: Array.from(document.querySelectorAll('#graph g[role="button"]')).map((item) => item.getAttribute('aria-label')),
@@ -750,6 +753,21 @@ return {focused:document.activeElement === button, label:button.querySelector('s
         if not keyboard_editor_text:
             raise RuntimeError("The focused last subject has no Editor text to protect")
 
+        resource_timing_setup_script = """
+window.__teiResourceTimingBufferFull = false;
+performance.addEventListener('resourcetimingbufferfull', () => { window.__teiResourceTimingBufferFull = true; });
+performance.setResourceTimingBufferSize(1000);
+return performance.getEntriesByType('resource').length;
+"""
+        resource_timing_capacity = webdriver_request(
+            base_url,
+            "POST",
+            f"/session/{driver_session}/execute/sync",
+            {"script": resource_timing_setup_script, "args": []},
+        ).get("value")
+        if not isinstance(resource_timing_capacity, int) or resource_timing_capacity >= 1000:
+            raise RuntimeError(f"Could not provision a non-full WebView2 Resource Timing buffer: {resource_timing_capacity!r}")
+
         pre_rpc_deadline = time.monotonic() + 8
         previous_rpc_requests: list[dict[str, Any]] | None = None
         stable_rpc_samples = 0
@@ -764,6 +782,8 @@ return {focused:document.activeElement === button, label:button.querySelector('s
             pre_calibration_requests = pre_calibration_state.get("wailsRpcRequests")
             if not isinstance(pre_calibration_requests, list):
                 raise RuntimeError("WebView2 did not expose Wails runtime RPC Resource Timing entries before calibration")
+            if pre_calibration_state.get("resourceTimingBufferFull") is True or pre_calibration_state.get("resourceTimingEntries", 1000) >= 1000:
+                raise RuntimeError("WebView2 Resource Timing buffer filled before RPC calibration")
             if pre_calibration_requests == previous_rpc_requests:
                 stable_rpc_samples += 1
             else:
@@ -809,6 +829,8 @@ import('/wails/runtime.js').then(async (runtime) => {
             rpc_requests = keyboard_baseline.get("wailsRpcRequests")
             if not isinstance(rpc_requests, list):
                 raise RuntimeError("WebView2 did not expose Wails runtime RPC Resource Timing entries")
+            if keyboard_baseline.get("resourceTimingBufferFull") is True or keyboard_baseline.get("resourceTimingEntries", 1000) >= 1000:
+                raise RuntimeError("WebView2 Resource Timing buffer filled during RPC calibration")
             if rpc_requests == previous_rpc_requests:
                 stable_rpc_samples += 1
             else:
@@ -890,6 +912,8 @@ return true;
                 "editor_text_sha256": hashlib.sha256(str(state.get("editor", "")).encode("utf-8")).hexdigest(),
                 "selected_text": state.get("editorSelection", ""),
                 "wails_rpc_request_count": len(state.get("wailsRpcRequests", [])),
+                "resource_timing_entries": state.get("resourceTimingEntries"),
+                "resource_timing_buffer_full": state.get("resourceTimingBufferFull"),
                 "native_key_events": state.get("nativeKeyEvents"),
                 "route": state.get("pathname"),
                 "host_connection": state.get("connection"),
@@ -910,6 +934,8 @@ return true;
             rpc_requests = state.get("wailsRpcRequests")
             if not isinstance(rpc_requests, list):
                 raise RuntimeError(f"Wails RPC Resource Timing entries became unavailable after {step}")
+            if state.get("resourceTimingBufferFull") is True or state.get("resourceTimingEntries", 1000) >= 1000:
+                raise RuntimeError(f"WebView2 Resource Timing buffer filled during the keyboard sequence after {step}")
             if rpc_requests != baseline_rpc_requests:
                 raise RuntimeError(f"Workbench made an additional Wails runtime RPC request during the keyboard sequence after {step}: {rpc_requests!r}")
             key_events_seen = state.get("nativeKeyEvents")
@@ -971,7 +997,12 @@ return true;
             "steps": keyboard_steps,
             "wails_rpc_request_count_before": len(baseline_rpc_requests),
             "wails_rpc_request_count_after": len(final_keyboard_state.get("wailsRpcRequests", [])),
-            "new_wails_rpc_requests": [],
+            "wails_rpc_requests_before": baseline_rpc_requests,
+            "wails_rpc_requests_after": final_keyboard_state.get("wailsRpcRequests", []),
+            "new_wails_rpc_requests": [entry for entry in final_keyboard_state.get("wailsRpcRequests", []) if entry not in baseline_rpc_requests],
+            "resource_timing_entries_before": keyboard_baseline.get("resourceTimingEntries"),
+            "resource_timing_entries_after": final_keyboard_state.get("resourceTimingEntries"),
+            "resource_timing_buffer_full": final_keyboard_state.get("resourceTimingBufferFull"),
             "workspace_before": workspace_before_keys,
             "workspace_after": workspace_after_keys,
             "fixture_sha256_before": {"observe_xead": xead_before_keys, "observe_xead_empty": empty_xead_before_keys},
@@ -988,8 +1019,9 @@ return true;
             selected_text_sha256=facts["native_webview2_editor_keyboard"]["selected_text_sha256"],
             workspace_sha256=workspace_before_keys["sha256"],
             fixture_unchanged=True,
-            wails_rpc_request_count=len(baseline_rpc_requests),
-            new_wails_rpc_requests=0,
+            wails_rpc_request_count_before=len(baseline_rpc_requests),
+            wails_rpc_request_count_after=len(final_keyboard_state.get("wailsRpcRequests", [])),
+            new_wails_rpc_requests=len(facts["native_webview2_editor_keyboard"]["new_wails_rpc_requests"]),
             steps=["Tab", "Home", "Shift+End", "type x", "Backspace", "Delete"],
         )
         save_keyboard_response = webdriver_request(base_url, "GET", f"/session/{driver_session}/screenshot")
