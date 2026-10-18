@@ -343,8 +343,13 @@ def smoke_workbench(browser, base_url):
     page.keyboard.press("Home")
     page.keyboard.press("Shift+End")
     page.wait_for_function(
-        "document.querySelector('#editor .cm-selectionLayer .cm-selectionBackground') !== null",
+        "Boolean(window.getSelection()?.toString())",
         timeout=5_000,
+    )
+    selected_text = page.evaluate("window.getSelection()?.toString() ?? ''")
+    assert selected_text, "Shift+End did not create a browser text selection"
+    assert editor.evaluate("node => document.activeElement === node"), (
+        "Editor lost focus during Shift+End"
     )
     assert editor.inner_text() == text_before_keyboard, (
         "Shift+End changed the read-only Editor text"
