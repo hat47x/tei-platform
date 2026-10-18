@@ -52,7 +52,7 @@ go run ./tools/reference-generator-selection/cmd/tei-generator-build \
   - 生成器のid・version・strategy
   - 契約のdigest
   - テンプレートのdigest
-- 選抜は、`generator.contractDigest`が現在の契約のdigestと一致するかを確認します。別の契約から生成した候補を、現在の契約の証拠として使えません。
+- 選抜は、`generator.contractDigest`が現在の契約のdigestと一致するかを確認します。さらに、契約とstrategyからsourceを再生成し、候補のsourceとbyte一致することを確認します。別の契約・別のstrategyから生成した候補を、現在の契約の証拠として使えません。
 - 生成先は未存在のdirectoryに限ります。
 - 同じ契約・strategyからは、同じsourceと`sourceDigest`が得られます。
 
@@ -85,5 +85,4 @@ go run ./tools/reference-generator-selection/cmd/tei-generator-build \
 - 生成AIによる生成器sourceの生成と、モデル・prompt・文脈の記録。現状の`generated-ai`候補は固定テンプレートから生成しており、AI生成ではありません。
 - 生成器を生成する生成器（メタ生成）の停止条件、生成器registry、失効・再生成の追跡。
 - 実Provider・実Target・別言語（.NET/JVM/WASM）での比較。
-- テンプレートdigestの独立検証。receiptには記録しますが、テンプレート本文から再生成して一致を確認する処理は未実装です。
 - 候補の署名、build provenance（#943 / #1370）。

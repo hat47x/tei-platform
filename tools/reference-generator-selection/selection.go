@@ -325,7 +325,7 @@ func Select(ctx context.Context, workspaceDir, contractPath, fixturePath, candid
 	}
 	sort.Strings(directories)
 	for _, name := range directories {
-		candidate, err := evaluateCandidate(ctx, filepath.Join(candidatesDir, name), fixture, digest(contractRaw))
+		candidate, err := evaluateCandidate(ctx, filepath.Join(candidatesDir, name), fixture, contractPath, digest(contractRaw))
 		if err != nil {
 			return Receipt{}, err
 		}
@@ -344,7 +344,7 @@ func Select(ctx context.Context, workspaceDir, contractPath, fixturePath, candid
 	return receipt, nil
 }
 
-func evaluateCandidate(ctx context.Context, dir string, fixture Fixture, contractDigest string) (CandidateReceipt, error) {
+func evaluateCandidate(ctx context.Context, dir string, fixture Fixture, contractPath, contractDigest string) (CandidateReceipt, error) {
 	var manifest CandidateManifest
 	if _, err := readJSON(filepath.Join(dir, "candidate.json"), &manifest); err != nil {
 		return CandidateReceipt{}, err
@@ -377,6 +377,18 @@ func evaluateCandidate(ctx context.Context, dir string, fixture Fixture, contrac
 	actualDigest := digest(source)
 	if actualDigest != manifest.SourceDigest {
 		return reject("source digest mismatch: declared " + manifest.SourceDigest + ", actual " + actualDigest)
+	}
+	if manifest.Generator != nil {
+		rendered, err := renderCandidate(contractPath, manifest.Generator.Strategy)
+		if err != nil {
+			return reject("generator provenance cannot be reproduced: " + err.Error())
+		}
+		if !bytes.Equal(rendered.Source, source) {
+			return reject("source does not match the declared generator and contract")
+		}
+		if rendered.Manifest.Generator == nil || *rendered.Manifest.Generator != *manifest.Generator {
+			return reject("generator provenance does not match the current contract and template")
+		}
 	}
 	binaryDir, err := os.MkdirTemp("", "tei-generator-candidate-*")
 	if err != nil {

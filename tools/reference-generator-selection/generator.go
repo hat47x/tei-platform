@@ -56,32 +56,33 @@ type templateData struct {
 	ScalePow        int
 }
 
-// Generate renders one candidate source from the contract and a fixed
-// strategy. The generated source is gofmt'ed before it is written, and the
-// candidate manifest records the contract and template digests.
-func Generate(contractPath, strategy, outDir string) (Generated, error) {
+// renderCandidate renders one source and its provenance without touching the
+// filesystem. Generate writes the result; Select calls renderCandidate again to
+// verify that a generated candidate really came from the declared contract and
+// strategy.
+func renderCandidate(contractPath, strategy string) (renderedCandidate, error) {
 	tmpl, ok := generatorTemplates[strategy]
 	if !ok {
-		return Generated{}, fmt.Errorf("unknown generator strategy %q", strategy)
+		return renderedCandidate{}, fmt.Errorf("unknown generator strategy %q", strategy)
 	}
 	contractRaw, err := os.ReadFile(contractPath)
 	if err != nil {
-		return Generated{}, err
+		return renderedCandidate{}, err
 	}
 	var contract Contract
 	if _, err := readJSON(contractPath, &contract); err != nil {
-		return Generated{}, err
+		return renderedCandidate{}, err
 	}
 	if err := validateContract(contract); err != nil {
-		return Generated{}, err
+		return renderedCandidate{}, err
 	}
 	templateRaw, err := templateFiles.ReadFile(tmpl.file)
 	if err != nil {
-		return Generated{}, err
+		return renderedCandidate{}, err
 	}
 	parsed, err := template.New(tmpl.strategy).Parse(string(templateRaw))
 	if err != nil {
-		return Generated{}, err
+		return renderedCandidate{}, err
 	}
 	integerDigits := contract.Rounding.Precision - contract.Rounding.Scale
 	scalePow := 1
@@ -96,11 +97,35 @@ func Generate(contractPath, strategy, outDir string) (Generated, error) {
 	}
 	var rendered strings.Builder
 	if err := parsed.Execute(&rendered, data); err != nil {
-		return Generated{}, err
+		return renderedCandidate{}, err
 	}
 	formatted, err := format.Source([]byte(rendered.String()))
 	if err != nil {
-		return Generated{}, fmt.Errorf("generated source is not valid Go: %w", err)
+		return renderedCandidate{}, fmt.Errorf("generated source is not valid Go: %w", err)
+	}
+	manifest := CandidateManifest{
+		Schema: CandidateSchema, ID: tmpl.strategy, Origin: tmpl.origin,
+		Source: "main.go", SourceDigest: digest(formatted),
+		Generator: &GeneratorProvenance{
+			ID: tmpl.id, Version: "1", Strategy: tmpl.strategy,
+			ContractDigest: data.ContractDigest, TemplateDigest: digest(templateRaw),
+		},
+	}
+	return renderedCandidate{Source: formatted, Manifest: manifest}, nil
+}
+
+type renderedCandidate struct {
+	Source   []byte
+	Manifest CandidateManifest
+}
+
+// Generate renders one candidate source from the contract and a fixed
+// strategy. The generated source is gofmt'ed before it is written, and the
+// candidate manifest records the contract and template digests.
+func Generate(contractPath, strategy, outDir string) (Generated, error) {
+	rendered, err := renderCandidate(contractPath, strategy)
+	if err != nil {
+		return Generated{}, err
 	}
 	if _, err := os.Lstat(outDir); err == nil {
 		return Generated{}, fmt.Errorf("output directory already exists: %s", outDir)
@@ -115,19 +140,11 @@ func Generate(contractPath, strategy, outDir string) (Generated, error) {
 	}
 	cleanup := func() { _ = os.RemoveAll(outDir) }
 	sourcePath := filepath.Join(outDir, "main.go")
-	if err := os.WriteFile(sourcePath, formatted, 0o644); err != nil {
+	if err := os.WriteFile(sourcePath, rendered.Source, 0o644); err != nil {
 		cleanup()
 		return Generated{}, err
 	}
-	manifest := CandidateManifest{
-		Schema: CandidateSchema, ID: tmpl.strategy, Origin: tmpl.origin,
-		Source: "main.go", SourceDigest: digest(formatted),
-		Generator: &GeneratorProvenance{
-			ID: tmpl.id, Version: "1", Strategy: tmpl.strategy,
-			ContractDigest: data.ContractDigest, TemplateDigest: digest(templateRaw),
-		},
-	}
-	manifestRaw, err := json.MarshalIndent(manifest, "", "  ")
+	manifestRaw, err := json.MarshalIndent(rendered.Manifest, "", "  ")
 	if err != nil {
 		cleanup()
 		return Generated{}, err
@@ -137,7 +154,7 @@ func Generate(contractPath, strategy, outDir string) (Generated, error) {
 		cleanup()
 		return Generated{}, err
 	}
-	return Generated{Path: outDir, SourceDigest: manifest.SourceDigest, Manifest: manifest}, nil
+	return Generated{Path: outDir, SourceDigest: rendered.Manifest.SourceDigest, Manifest: rendered.Manifest}, nil
 }
 
 // GenerateAll renders the three fixed strategies under outRoot in a stable
