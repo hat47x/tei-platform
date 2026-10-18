@@ -889,8 +889,8 @@ return true;
             "home": [{"type": "keyDown", "value": "\uE011"}, {"type": "keyUp", "value": "\uE011"}],
             "shift_end": [
                 {"type": "keyDown", "value": "\uE008"},
-                {"type": "keyDown", "value": "\uE007"},
-                {"type": "keyUp", "value": "\uE007"},
+                {"type": "keyDown", "value": "\uE010"},
+                {"type": "keyUp", "value": "\uE010"},
                 {"type": "keyUp", "value": "\uE008"},
             ],
             "type_x": [{"type": "keyDown", "value": "x"}, {"type": "keyUp", "value": "x"}],
