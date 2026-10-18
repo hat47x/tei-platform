@@ -98,8 +98,16 @@ func TestRunAppliesProfilesAndKeepsSelection(t *testing.T) {
 		if !strings.Contains(receipt.Enforcement["memory"], "GOMEMLIMIT") {
 			t.Fatalf("%s: memory enforcement is not recorded: %+v", name, receipt.Enforcement)
 		}
-		if len(receipt.Selection.Qualified) != 2 {
-			t.Fatalf("%s: qualified=%v", name, receipt.Selection.Qualified)
+		if receipt.Profile.GeneratorID == "" {
+			t.Fatalf("%s: profile did not select a generator", name)
+		}
+		if len(receipt.Selection.Qualified) != 1 || receipt.Selection.Qualified[0] != receipt.Profile.GeneratorID {
+			t.Fatalf("%s: qualified=%v want %s", name, receipt.Selection.Qualified, receipt.Profile.GeneratorID)
+		}
+		for _, candidate := range receipt.Selection.Candidates {
+			if candidate.ID != receipt.Profile.GeneratorID && !strings.Contains(candidate.RejectReason, "not selected by target profile") {
+				t.Fatalf("%s: unselected candidate %s was not rejected by the profile: %+v", name, candidate.ID, candidate)
+			}
 		}
 	}
 }

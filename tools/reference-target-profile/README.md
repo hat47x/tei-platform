@@ -25,8 +25,9 @@ go run ./tools/reference-target-profile/cmd/tei-target-profile \
 | `memoryLimitBytes` | 正の整数 |
 | `observability` | 観測手段の一覧 |
 | `unsupported` | このprofileで扱わない機能 |
+| `generatorId` | このprofileで選ぶ生成器のid（任意） |
 
-`testdata/server.json`はlong-running・filesystem・network allowed・rolling update、`testdata/embedded.json`はone-shot・sqlite・network none・replace updateです。
+`testdata/server.json`はlong-running・filesystem・network allowed・rolling updateで`template`を選び、`testdata/embedded.json`はone-shot・sqlite・network none・replace updateで`alternative`を選びます。
 
 ## 実行とreceipt
 
@@ -43,6 +44,7 @@ memory limitは`GOMEMLIMIT`としてselectionのサブプロセスへ渡しま�
 ## 守っている境界
 
 - profileは意味を変えない。契約・fixture・候補は同じものを使う。
+- profileは`generatorId`で生成器を一つ選ぶ。選ばれなかった候補は`not selected by target profile`として拒否し、別の生成器へ暗黙にフォールバックしない。
 - `processModel`・`storage`・`network`・`update`・`observability`は**宣言**であり、このReferenceでは強制していない。receiptの`enforcement`に`declared-only`と記録する。
 - profileの合格は、実機・実OS・実Targetでの動作を証明しない。
 - 組込み固有のリアルタイム性・安全認証・電源断耐性は扱わない。
@@ -51,5 +53,4 @@ memory limitは`GOMEMLIMIT`としてselectionのサブプロセスへ渡しま�
 
 - OS・CPU・RTOS別の実行環境と、実機での資源測定。
 - `network`・`storage`・`update`の強制。
-- profileごとの生成器選択（現在は同じ候補を使う）。
 - 実Targetへの配備、ロールバック、長期運用。

@@ -9,5 +9,6 @@
   "update": "rolling",
   "memoryLimitBytes": 67108864,
   "observability": ["stdout", "exit-code", "audit-log"],
-  "unsupported": ["hard-realtime"]
+  "unsupported": ["hard-realtime"],
+  "generatorId": "template"
 }

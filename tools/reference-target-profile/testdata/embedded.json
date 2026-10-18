@@ -9,5 +9,6 @@
   "update": "replace",
   "memoryLimitBytes": 16777216,
   "observability": ["stdout", "exit-code"],
-  "unsupported": ["hard-realtime", "rolling-update"]
+  "unsupported": ["hard-realtime", "rolling-update"],
+  "generatorId": "alternative"
 }

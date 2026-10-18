@@ -404,7 +404,18 @@ func SelectWithRegistry(ctx context.Context, workspaceDir, contractPath, fixture
 	return selectWithRegistry(ctx, workspaceDir, contractPath, fixturePath, candidatesDir, registryPath)
 }
 
+// SelectForTarget restricts evaluation to the listed generator ids. Candidates
+// outside the list are reported as rejected, so a profile cannot silently fall
+// back to another generator.
+func SelectForTarget(ctx context.Context, workspaceDir, contractPath, fixturePath, candidatesDir, registryPath string, allowedIDs []string) (Receipt, error) {
+	return selectWithRegistryAndFilter(ctx, workspaceDir, contractPath, fixturePath, candidatesDir, registryPath, allowedIDs)
+}
+
 func selectWithRegistry(ctx context.Context, workspaceDir, contractPath, fixturePath, candidatesDir, registryPath string) (Receipt, error) {
+	return selectWithRegistryAndFilter(ctx, workspaceDir, contractPath, fixturePath, candidatesDir, registryPath, nil)
+}
+
+func selectWithRegistryAndFilter(ctx context.Context, workspaceDir, contractPath, fixturePath, candidatesDir, registryPath string, allowedIDs []string) (Receipt, error) {
 	loaded, err := workspace.Load(workspaceDir)
 	if err != nil {
 		return Receipt{}, fmt.Errorf("load Workspace: %w", err)
@@ -465,6 +476,10 @@ func selectWithRegistry(ctx context.Context, workspaceDir, contractPath, fixture
 		},
 	}
 	seen := map[string]bool{}
+	allowed := map[string]bool{}
+	for _, id := range allowedIDs {
+		allowed[id] = true
+	}
 	var directories []string
 	for _, entry := range entries {
 		if entry.IsDir() {
@@ -473,7 +488,7 @@ func selectWithRegistry(ctx context.Context, workspaceDir, contractPath, fixture
 	}
 	sort.Strings(directories)
 	for _, name := range directories {
-		candidate, err := evaluateCandidate(ctx, filepath.Join(candidatesDir, name), fixture, contractPath, digest(contractRaw), registry)
+		candidate, err := evaluateCandidate(ctx, filepath.Join(candidatesDir, name), fixture, contractPath, digest(contractRaw), registry, allowed)
 		if err != nil {
 			return Receipt{}, err
 		}
@@ -492,7 +507,7 @@ func selectWithRegistry(ctx context.Context, workspaceDir, contractPath, fixture
 	return receipt, nil
 }
 
-func evaluateCandidate(ctx context.Context, dir string, fixture Fixture, contractPath, contractDigest string, registry *Registry) (CandidateReceipt, error) {
+func evaluateCandidate(ctx context.Context, dir string, fixture Fixture, contractPath, contractDigest string, registry *Registry, allowed map[string]bool) (CandidateReceipt, error) {
 	var manifest CandidateManifest
 	if _, err := readJSON(filepath.Join(dir, "candidate.json"), &manifest); err != nil {
 		return CandidateReceipt{}, err
@@ -508,6 +523,9 @@ func evaluateCandidate(ctx context.Context, dir string, fixture Fixture, contrac
 	}
 	if manifest.ID == "" || manifest.Origin == "" || manifest.Source == "" || manifest.SourceDigest == "" {
 		return reject("candidate identity is incomplete")
+	}
+	if len(allowed) > 0 && !allowed[manifest.ID] {
+		return reject("not selected by target profile")
 	}
 	if registry != nil {
 		entry, err := ActiveEntry(*registry, manifest.ID)
