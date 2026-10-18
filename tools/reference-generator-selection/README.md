@@ -10,6 +10,14 @@ go run ./tools/reference-generator-selection/cmd/tei-generator-select \
   -candidates tools/reference-generator-selection/testdata/candidates
 ```
 
+候補sourceは、契約から固定strategyで生成できます。
+
+```text
+go run ./tools/reference-generator-selection/cmd/tei-generator-build \
+  -contract tools/reference-generator-selection/testdata/line-amount/contract.json \
+  -out /tmp/line-amount-candidates -all
+```
+
 `passed=true`は、少なくとも1つの候補が固定fixtureをすべて満たしたことだけを示します。意味の受理、生成器の採用、権限の付与、実Providerや本番環境の証明ではありません。
 
 ## 対象契約
@@ -35,6 +43,21 @@ go run ./tools/reference-generator-selection/cmd/tei-generator-select \
 
 候補は`candidate.json`で`id`、`origin`、source path、source digestを宣言します。選抜はsource digestを実byteで再計算し、一致しなければビルド前に拒否します。ビルドに成功したことや、候補の自己申告は合格の根拠にしません。
 
+## 生成器sourceの生成
+
+`tei-generator-build`は、契約JSONと固定strategy（`template`、`alternative`、`dangerous`）から、Goの候補sourceを決定的に生成します。
+
+- 生成したsourceは`go/format`で整形してから書き出します。
+- `candidate.json`には`generator`を記録します。
+  - 生成器のid・version・strategy
+  - 契約のdigest
+  - テンプレートのdigest
+- 選抜は、`generator.contractDigest`が現在の契約のdigestと一致するかを確認します。別の契約から生成した候補を、現在の契約の証拠として使えません。
+- 生成先は未存在のdirectoryに限ります。
+- 同じ契約・strategyからは、同じsourceと`sourceDigest`が得られます。
+
+`template`と`dangerous`の生成器は同じ契約パラメータ（通貨、scale、整数桁）を使いますが、実装方式と安全性は異なります。生成器の由来はreceiptへ残しますが、生成AIのモデル・prompt・文脈はまだ記録しません。
+
 ## receipt
 
 `tei-generator-select`は次を返します。
@@ -42,7 +65,7 @@ go run ./tools/reference-generator-selection/cmd/tei-generator-select \
 - 契約のid・version・status
 - WorkspaceのSource Indexから求めた`workspaceRevision`
 - fixtureのdigestと、契約・fixtureを合わせた`suiteVersion`
-- 候補ごとの`sourceDigest`、`binaryDigest`、各caseの`got`/`want`、`passed`、`rejectReason`
+- 候補ごとの`sourceDigest`、`binaryDigest`、`generator`（あれば）、各caseの`got`/`want`、`passed`、`rejectReason`
 - 合格した候補の`qualified`と、不合格の`rejected`
 - `grantsRuntimeAuthority: false`、`provesRealProvider: false`
 
@@ -59,8 +82,8 @@ go run ./tools/reference-generator-selection/cmd/tei-generator-select \
 
 ## 未実装
 
-- 契約からの生成器source自動生成（テンプレート生成、AI生成）。現状は生成済みの候補を比較する。`origin`は宣言であり、テンプレートから再生成して一致を確認していない。
-- メタ生成の停止条件、生成器registry、失効・再生成の追跡。
+- 生成AIによる生成器sourceの生成と、モデル・prompt・文脈の記録。現状の`generated-ai`候補は固定テンプレートから生成しており、AI生成ではありません。
+- 生成器を生成する生成器（メタ生成）の停止条件、生成器registry、失効・再生成の追跡。
 - 実Provider・実Target・別言語（.NET/JVM/WASM）での比較。
-- 生成AIのモデル・設定・文脈の記録。現状は`origin`の宣言だけ。
+- テンプレートdigestの独立検証。receiptには記録しますが、テンプレート本文から再生成して一致を確認する処理は未実装です。
 - 候補の署名、build provenance（#943 / #1370）。

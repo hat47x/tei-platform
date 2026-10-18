@@ -80,12 +80,13 @@ type Result struct {
 }
 
 type CandidateManifest struct {
-	Schema       string `json:"schema"`
-	ID           string `json:"id"`
-	Origin       string `json:"origin"`
-	Source       string `json:"source"`
-	SourceDigest string `json:"sourceDigest"`
-	Note         string `json:"note,omitempty"`
+	Schema       string               `json:"schema"`
+	ID           string               `json:"id"`
+	Origin       string               `json:"origin"`
+	Source       string               `json:"source"`
+	SourceDigest string               `json:"sourceDigest"`
+	Note         string               `json:"note,omitempty"`
+	Generator    *GeneratorProvenance `json:"generator,omitempty"`
 }
 
 type CaseResult struct {
@@ -96,13 +97,14 @@ type CaseResult struct {
 }
 
 type CandidateReceipt struct {
-	ID           string       `json:"id"`
-	Origin       string       `json:"origin"`
-	SourceDigest string       `json:"sourceDigest"`
-	BinaryDigest string       `json:"binaryDigest,omitempty"`
-	Results      []CaseResult `json:"results,omitempty"`
-	Passed       bool         `json:"passed"`
-	RejectReason string       `json:"rejectReason,omitempty"`
+	ID           string               `json:"id"`
+	Origin       string               `json:"origin"`
+	SourceDigest string               `json:"sourceDigest"`
+	BinaryDigest string               `json:"binaryDigest,omitempty"`
+	Generator    *GeneratorProvenance `json:"generator,omitempty"`
+	Results      []CaseResult         `json:"results,omitempty"`
+	Passed       bool                 `json:"passed"`
+	RejectReason string               `json:"rejectReason,omitempty"`
 }
 
 type Receipt struct {
@@ -323,7 +325,7 @@ func Select(ctx context.Context, workspaceDir, contractPath, fixturePath, candid
 	}
 	sort.Strings(directories)
 	for _, name := range directories {
-		candidate, err := evaluateCandidate(ctx, filepath.Join(candidatesDir, name), fixture)
+		candidate, err := evaluateCandidate(ctx, filepath.Join(candidatesDir, name), fixture, digest(contractRaw))
 		if err != nil {
 			return Receipt{}, err
 		}
@@ -342,12 +344,12 @@ func Select(ctx context.Context, workspaceDir, contractPath, fixturePath, candid
 	return receipt, nil
 }
 
-func evaluateCandidate(ctx context.Context, dir string, fixture Fixture) (CandidateReceipt, error) {
+func evaluateCandidate(ctx context.Context, dir string, fixture Fixture, contractDigest string) (CandidateReceipt, error) {
 	var manifest CandidateManifest
 	if _, err := readJSON(filepath.Join(dir, "candidate.json"), &manifest); err != nil {
 		return CandidateReceipt{}, err
 	}
-	receipt := CandidateReceipt{ID: manifest.ID, Origin: manifest.Origin, SourceDigest: manifest.SourceDigest}
+	receipt := CandidateReceipt{ID: manifest.ID, Origin: manifest.Origin, SourceDigest: manifest.SourceDigest, Generator: manifest.Generator}
 	reject := func(reason string) (CandidateReceipt, error) {
 		receipt.Passed = false
 		receipt.RejectReason = reason
@@ -358,6 +360,14 @@ func evaluateCandidate(ctx context.Context, dir string, fixture Fixture) (Candid
 	}
 	if manifest.ID == "" || manifest.Origin == "" || manifest.Source == "" || manifest.SourceDigest == "" {
 		return reject("candidate identity is incomplete")
+	}
+	if manifest.Generator != nil {
+		if manifest.Generator.ID == "" || manifest.Generator.Version == "" || manifest.Generator.Strategy == "" {
+			return reject("generator provenance is incomplete")
+		}
+		if manifest.Generator.ContractDigest != contractDigest {
+			return reject("generator contract digest mismatch")
+		}
 	}
 	sourcePath := filepath.Join(dir, filepath.FromSlash(manifest.Source))
 	source, err := os.ReadFile(sourcePath)
@@ -376,10 +386,8 @@ func evaluateCandidate(ctx context.Context, dir string, fixture Fixture) (Candid
 	binaryPath := filepath.Join(binaryDir, manifest.ID)
 	buildCtx, cancel := context.WithTimeout(ctx, 2*time.Minute)
 	defer cancel()
-	build := exec.CommandContext(buildCtx, "go", "build", "-o", binaryPath, ".")
-	build.Dir = dir
-	if out, err := build.CombinedOutput(); err != nil {
-		return reject("build failed: " + err.Error() + ": " + string(out))
+	if err := buildCandidate(buildCtx, dir, binaryPath); err != nil {
+		return reject("build failed: " + err.Error())
 	}
 	binary, err := os.ReadFile(binaryPath)
 	if err != nil {
@@ -408,6 +416,29 @@ func evaluateCandidate(ctx context.Context, dir string, fixture Fixture) (Candid
 		}
 	}
 	return receipt, nil
+}
+
+func buildCandidate(ctx context.Context, dir, binaryPath string) error {
+	build := exec.CommandContext(ctx, "go", "build", "-o", binaryPath, ".")
+	build.Dir = dir
+	out, err := build.CombinedOutput()
+	if err == nil {
+		return nil
+	}
+	// Generated candidates may live outside a Go module. Their sources use the
+	// standard library only, so retry in GOPATH mode instead of requiring a
+	// go.mod in a temporary directory.
+	if strings.Contains(string(out), "go.mod file not found") {
+		fallback := exec.CommandContext(ctx, "go", "build", "-o", binaryPath, "main.go")
+		fallback.Dir = dir
+		fallback.Env = append(os.Environ(), "GO111MODULE=off")
+		if fallbackOut, fallbackErr := fallback.CombinedOutput(); fallbackErr == nil {
+			return nil
+		} else {
+			return fmt.Errorf("%v: %s", fallbackErr, fallbackOut)
+		}
+	}
+	return fmt.Errorf("%v: %s", err, out)
 }
 
 func runCandidate(ctx context.Context, binary string, input json.RawMessage) (Result, error) {
