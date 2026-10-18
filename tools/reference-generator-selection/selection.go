@@ -91,6 +91,13 @@ type GenerationProvenance struct {
 	ContextPath   string `json:"contextPath,omitempty"`
 }
 
+type Lineage struct {
+	Depth                 int    `json:"depth"`
+	GeneratorSource       string `json:"generatorSource"`
+	GeneratorSourceDigest string `json:"generatorSourceDigest"`
+	GeneratorOrigin       string `json:"generatorOrigin,omitempty"`
+}
+
 type CandidateManifest struct {
 	Schema       string                `json:"schema"`
 	ID           string                `json:"id"`
@@ -101,6 +108,7 @@ type CandidateManifest struct {
 	Note         string                `json:"note,omitempty"`
 	Generator    *GeneratorProvenance  `json:"generator,omitempty"`
 	Generation   *GenerationProvenance `json:"generation,omitempty"`
+	Lineage      *Lineage              `json:"lineage,omitempty"`
 }
 
 type CaseResult struct {
@@ -117,6 +125,7 @@ type CandidateReceipt struct {
 	BinaryDigest string                `json:"binaryDigest,omitempty"`
 	Generator    *GeneratorProvenance  `json:"generator,omitempty"`
 	Generation   *GenerationProvenance `json:"generation,omitempty"`
+	Lineage      *Lineage              `json:"lineage,omitempty"`
 	Results      []CaseResult          `json:"results,omitempty"`
 	Passed       bool                  `json:"passed"`
 	RejectReason string                `json:"rejectReason,omitempty"`
@@ -208,6 +217,43 @@ func verifyGenerationFiles(dir string, g *GenerationProvenance) error {
 		if actual := digest(content); actual != check.want {
 			return fmt.Errorf("%s digest mismatch: declared %s, actual %s", check.name, check.want, actual)
 		}
+	}
+	return nil
+}
+
+func verifyLineage(ctx context.Context, dir, contractPath string, lineage *Lineage, source []byte) error {
+	if lineage.Depth != 1 {
+		return fmt.Errorf("generator lineage depth %d is not supported; only depth 1 is allowed", lineage.Depth)
+	}
+	relative, err := candidateRelativePath(lineage.GeneratorSource)
+	if err != nil {
+		return err
+	}
+	full := filepath.Join(dir, filepath.FromSlash(relative))
+	info, err := os.Lstat(full)
+	if err != nil {
+		return err
+	}
+	if info.Mode()&os.ModeSymlink != 0 {
+		return fmt.Errorf("generator source %s is a symbolic link", relative)
+	}
+	generatorSource, err := os.ReadFile(full)
+	if err != nil {
+		return err
+	}
+	if actual := digest(generatorSource); actual != lineage.GeneratorSourceDigest {
+		return fmt.Errorf("generator source digest mismatch: declared %s, actual %s", lineage.GeneratorSourceDigest, actual)
+	}
+	absoluteContract, err := filepath.Abs(contractPath)
+	if err != nil {
+		return err
+	}
+	generated, err := runMetaGenerator(ctx, generatorSource, absoluteContract, 2*time.Minute)
+	if err != nil {
+		return err
+	}
+	if !bytes.Equal(generated, source) {
+		return fmt.Errorf("candidate source does not match the recorded generator output")
 	}
 	return nil
 }
@@ -451,7 +497,7 @@ func evaluateCandidate(ctx context.Context, dir string, fixture Fixture, contrac
 	if _, err := readJSON(filepath.Join(dir, "candidate.json"), &manifest); err != nil {
 		return CandidateReceipt{}, err
 	}
-	receipt := CandidateReceipt{ID: manifest.ID, Origin: manifest.Origin, SourceDigest: manifest.SourceDigest, Generator: manifest.Generator, Generation: manifest.Generation}
+	receipt := CandidateReceipt{ID: manifest.ID, Origin: manifest.Origin, SourceDigest: manifest.SourceDigest, Generator: manifest.Generator, Generation: manifest.Generation, Lineage: manifest.Lineage}
 	reject := func(reason string) (CandidateReceipt, error) {
 		receipt.Passed = false
 		receipt.RejectReason = reason
@@ -506,6 +552,11 @@ func evaluateCandidate(ctx context.Context, dir string, fixture Fixture, contrac
 	if manifest.Generation != nil {
 		if err := verifyGenerationFiles(dir, manifest.Generation); err != nil {
 			return reject("generation file verification failed: " + err.Error())
+		}
+	}
+	if manifest.Lineage != nil {
+		if err := verifyLineage(ctx, dir, contractPath, manifest.Lineage, source); err != nil {
+			return reject("generator lineage verification failed: " + err.Error())
 		}
 	}
 	if manifest.Generator != nil {
