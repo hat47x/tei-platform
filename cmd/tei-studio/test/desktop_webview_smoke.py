@@ -900,6 +900,12 @@ return true;
         workspace_before_keys = workspace_snapshot(workspace_root)
         xead_before_keys = hashlib.sha256(xead_path.read_bytes()).hexdigest()
         empty_xead_before_keys = hashlib.sha256(empty_xead_path.read_bytes()).hexdigest()
+        facts["native_webview2_editor_keyboard"].update({
+            "workspace_before": workspace_before_keys,
+            "fixture_sha256_before": {"observe_xead": xead_before_keys, "observe_xead_empty": empty_xead_before_keys},
+        })
+        page_state["nativeWebView2EditorKeyboard"] = facts["native_webview2_editor_keyboard"]
+        write_json(evidence_dir / "page-state.json", page_state)
         keyboard_steps: list[dict[str, Any]] = []
         observed_key_event_count = 0
         expected_key_events = {
@@ -920,6 +926,9 @@ return true;
                 f"/session/{driver_session}/execute/sync",
                 {"script": inspect_script, "args": []},
             ).get("value", {})
+            workspace_after_step = workspace_snapshot(workspace_root)
+            xead_after_step = hashlib.sha256(xead_path.read_bytes()).hexdigest()
+            empty_xead_after_step = hashlib.sha256(empty_xead_path.read_bytes()).hexdigest()
             step_evidence = {
                 "step": step,
                 "editor_focused": state.get("editorFocused") is True,
@@ -929,6 +938,8 @@ return true;
                 "wails_rpc_request_count": len(state.get("wailsRpcRequests", [])),
                 "resource_timing_entries": state.get("resourceTimingEntries"),
                 "resource_timing_buffer_full": state.get("resourceTimingBufferFull"),
+                "workspace": workspace_after_step,
+                "fixture_sha256": {"observe_xead": xead_after_step, "observe_xead_empty": empty_xead_after_step},
                 "native_key_events": state.get("nativeKeyEvents"),
                 "route": state.get("pathname"),
                 "host_connection": state.get("connection"),
@@ -948,6 +959,10 @@ return true;
                 raise RuntimeError(f"Workbench route or real Host connection changed after {step}: {state!r}")
             if state.get("editor") != keyboard_editor_text or state.get("subjectTitle") != keyboard_subject_title:
                 raise RuntimeError(f"Read-only Editor projection changed after {step}")
+            if workspace_after_step != workspace_before_keys:
+                raise RuntimeError(f"Scratch Workspace changed after {step}: before={workspace_before_keys!r}, after={workspace_after_step!r}")
+            if xead_after_step != xead_before_keys or empty_xead_after_step != empty_xead_before_keys:
+                raise RuntimeError(f"ObserveXead fixture bytes changed after {step}")
             if not state.get("editorFocused"):
                 raise RuntimeError(f"Native WebView2 Editor lost focus after {step}: {state.get('activeElement')!r}")
             if not state.get("webviewDocumentFocused"):
