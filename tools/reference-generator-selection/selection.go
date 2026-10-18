@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"reflect"
 	"regexp"
@@ -86,6 +87,8 @@ type GenerationProvenance struct {
 	PromptDigest  string `json:"promptDigest"`
 	ContextDigest string `json:"contextDigest"`
 	OutputDigest  string `json:"outputDigest"`
+	PromptPath    string `json:"promptPath,omitempty"`
+	ContextPath   string `json:"contextPath,omitempty"`
 }
 
 type CandidateManifest struct {
@@ -151,6 +154,58 @@ func validateGeneration(g *GenerationProvenance) error {
 	} {
 		if !digestPattern.MatchString(value) {
 			return fmt.Errorf("generation %s is not a sha256 digest", name)
+		}
+	}
+	return nil
+}
+
+func candidateRelativePath(value string) (string, error) {
+	value = strings.TrimSpace(strings.ReplaceAll(value, "\\", "/"))
+	if value == "" || strings.HasPrefix(value, "/") || filepath.IsAbs(value) {
+		return "", fmt.Errorf("path %q must be relative", value)
+	}
+	for _, part := range strings.Split(value, "/") {
+		if part == ".." {
+			return "", fmt.Errorf("path %q must not contain ..", value)
+		}
+	}
+	clean := path.Clean(value)
+	if clean == "." || clean == ".." || strings.HasPrefix(clean, "../") {
+		return "", fmt.Errorf("path %q escapes the candidate", value)
+	}
+	return clean, nil
+}
+
+// verifyGenerationFiles checks prompt/context content when the candidate
+// carries their relative paths. A digest without the content is still
+// recorded, but it is not an independent verification of what the model saw.
+func verifyGenerationFiles(dir string, g *GenerationProvenance) error {
+	checks := []struct{ name, path, want string }{
+		{"prompt", g.PromptPath, g.PromptDigest},
+		{"context", g.ContextPath, g.ContextDigest},
+	}
+	for _, check := range checks {
+		if check.path == "" {
+			continue
+		}
+		relative, err := candidateRelativePath(check.path)
+		if err != nil {
+			return fmt.Errorf("%s: %w", check.name, err)
+		}
+		full := filepath.Join(dir, filepath.FromSlash(relative))
+		info, err := os.Lstat(full)
+		if err != nil {
+			return fmt.Errorf("%s: %w", check.name, err)
+		}
+		if info.Mode()&os.ModeSymlink != 0 {
+			return fmt.Errorf("%s %s is a symbolic link", check.name, relative)
+		}
+		content, err := os.ReadFile(full)
+		if err != nil {
+			return fmt.Errorf("%s: %w", check.name, err)
+		}
+		if actual := digest(content); actual != check.want {
+			return fmt.Errorf("%s digest mismatch: declared %s, actual %s", check.name, check.want, actual)
 		}
 	}
 	return nil
@@ -415,6 +470,11 @@ func evaluateCandidate(ctx context.Context, dir string, fixture Fixture, contrac
 	}
 	if manifest.Generation != nil && manifest.Generation.OutputDigest != actualDigest {
 		return reject("generation output digest does not match the candidate source")
+	}
+	if manifest.Generation != nil {
+		if err := verifyGenerationFiles(dir, manifest.Generation); err != nil {
+			return reject("generation file verification failed: " + err.Error())
+		}
 	}
 	if manifest.Generator != nil {
 		rendered, err := renderCandidate(contractPath, manifest.Generator.Strategy)
