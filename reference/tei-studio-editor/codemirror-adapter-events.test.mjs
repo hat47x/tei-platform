@@ -16,6 +16,7 @@ const mocks = {
     '}'
   ].join("\n"),
   "@codemirror/view": [
+    'export const keymap={of:bindings=>({kind:"keymap",bindings})};',
     'export class EditorView {',
     '  static editable={of:value=>({kind:"editable",value})};',
     '  static lineWrapping={kind:"wrap"};',
@@ -50,7 +51,8 @@ const mocks = {
   "@codemirror/lint": [
     'export const lintGutter=()=>({kind:"lintGutter"});',
     'export const setDiagnostics=(_state,diagnostics)=>({kind:"diagnostics",diagnostics});'
-  ].join("\n")
+  ].join("\n"),
+  "@codemirror/commands": 'export const standardKeymap=[{key:"End",run:()=>true,shift:()=>true}];'
 };
 
 globalThis.__fakeCMViews=[];
@@ -91,6 +93,9 @@ test("actual adapter under CM stubs: Host 6..15 -> view 5..14 -> notification 6.
   );
   assert.deepEqual(cm.state.extensions.find(x=>x.kind==="contentAttributes").value,
     { "aria-label": "Read-only source text", tabindex: "0" });
+  const keyboardBindings=cm.state.extensions.find(x=>x.kind==="keymap").bindings;
+  assert.ok(keyboardBindings.some(binding=>binding.key==="End"&&typeof binding.shift==="function"),
+    "the standard End/Shift+End selection binding must be installed");
   editor.select(span(1,10));
   assert.deepEqual(cm.state.selection.main,{from:5,to:14});
   assert.deepEqual(editor.snapshot().selection,{from:6,to:15});

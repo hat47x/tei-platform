@@ -1,4 +1,4 @@
-name: "TEI Studio #8 - independent consumer against exact main source"
+name: "TEI Studio #8 - independent consumer against exact source snapshots"
 
 on:
   pull_request:
@@ -25,8 +25,9 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     env:
-      STUDIO_MAIN_SOURCE_SHA: eed6027003e10d36646469fc368ad0576e9e8641
+      STUDIO_MAIN_SOURCE_SHA: ${{ github.event.pull_request.base.sha || github.sha }}
       STUDIO_SOURCE_ROOT: ${{ github.workspace }}/tei-studio-main
+      STUDIO_CHECKER_ROOT: ${{ github.workspace }}/checker
 
     steps:
       - name: Checkout the PR head as the checker
@@ -39,7 +40,7 @@ jobs:
       - name: Checkout exact main source snapshot
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
-          ref: eed6027003e10d36646469fc368ad0576e9e8641
+          ref: ${{ github.event.pull_request.base.sha || github.sha }}
           path: tei-studio-main
           persist-credentials: false
 
@@ -90,6 +91,25 @@ jobs:
           set -euo pipefail
           npm run audit:workbench-reuse -- "$STUDIO_SOURCE_ROOT" "$STUDIO_MAIN_SOURCE_SHA" --require-bundle
 
+      - name: Install locked dependencies and build the PR candidate consumer
+        working-directory: checker/reference/tei-studio-independent-consumer
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --version
+          npm ci --no-audit --no-fund
+          npm test
+          npm run audit:imports
+          npm run build
+
+      - name: Verify actual shared bundle inputs against the PR candidate
+        working-directory: checker/reference/tei-studio-independent-consumer
+        shell: bash
+        run: |
+          set -euo pipefail
+          CANDIDATE_SHA=$(git -C "$STUDIO_CHECKER_ROOT" rev-parse HEAD)
+          npm run audit:workbench-reuse -- "$STUDIO_CHECKER_ROOT" "$CANDIDATE_SHA" --require-bundle
+
       - name: Install isolated Python Playwright and Chromium
         shell: bash
         run: |
@@ -100,6 +120,13 @@ jobs:
 
       - name: Exercise the exact main consumer in real Chromium
         working-directory: tei-studio-main/reference/tei-studio-independent-consumer
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$RUNNER_TEMP/studio-consumer-playwright/bin/python" browser-e2e.py
+
+      - name: Exercise the PR candidate consumer in real Chromium
+        working-directory: checker/reference/tei-studio-independent-consumer
         shell: bash
         run: |
           set -euo pipefail
