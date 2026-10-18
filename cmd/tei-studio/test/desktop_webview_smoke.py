@@ -934,6 +934,7 @@ return true;
                 "editor_focused": state.get("editorFocused") is True,
                 "webview_document_focused": state.get("webviewDocumentFocused") is True,
                 "editor_text_sha256": hashlib.sha256(str(state.get("editor", "")).encode("utf-8")).hexdigest(),
+                "subject_title": state.get("subjectTitle"),
                 "selected_text": state.get("editorSelection", ""),
                 "wails_rpc_request_count": len(state.get("wailsRpcRequests", [])),
                 "resource_timing_entries": state.get("resourceTimingEntries"),
