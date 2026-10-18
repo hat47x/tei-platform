@@ -6,24 +6,53 @@
 <style>
 :root{font-family:system-ui,'Hiragino Sans',sans-serif;color:#222;background:#f6f7f8}body{max-width:1150px;margin:20px auto;padding:0 12px}
 h1{font-size:1.45rem}h2{font-size:1.15rem;margin-top:1.8rem}.note{border-left:4px solid #5d6570;background:white;padding:12px;margin:10px 0}label{display:block;font-weight:600}textarea{width:100%;min-height:95px;box-sizing:border-box;font:12px monospace}button{margin:12px 0;padding:7px 14px}table{border-collapse:collapse;width:100%;background:white;font-size:0.9rem}th,td{border:1px solid #c7cbd0;text-align:left;padding:7px;overflow-wrap:anywhere}th{background:#e8eaed}#error{color:#a11}td.warn{background:#fff1db}small{color:#555}
+
+details.inspection{min-width:160px}details.inspection summary{cursor:pointer;text-decoration:underline}
+dl{display:grid;grid-template-columns:minmax(7em,auto) 1fr;gap:5px 10px;min-width:260px;margin:10px 0}
+dt{font-weight:600}dd{margin:0;overflow-wrap:anywhere}
+@media(max-width:700px){body{margin:10px auto}section{overflow-x:auto}dl{grid-template-columns:1fr}dd{margin-bottom:8px}}
 </style>
 </head>
 <body>
 <h1>注釈と証拠状態の読取り専用一覧</h1>
-<p class="note">#1808 / #958 参照出力の<strong>表示試作（未採用）</strong>。注記の対応済み、人による確認、原典↔TEI対応のOwner受理、Canonical Acceptance、実行観測は別です。この画面はソースを読み書きせず、受理操作を提供しません。二つのReferenceのIDを推測で結合しません。</p>
+<p class="note">#1808 / #958 参照出力の<strong>表示試作（未採用）</strong>。注記の対応済み、人による確認、原典↔TEI対応のOwner受理、Canonical Acceptance、実行観測は別です。この画面はソースを読み書きせず、受理操作を提供しません。二つのReferenceのIDを推測で結合しません。注意情報と展開詳細は、既存Assessmentに存在する独立の信号だけを表示します。値が未提供でも良好とは補いません。</p>
 <details><summary>入力（既存Reference CLIのJSON結果を貼り付け）</summary>
 <label for="aux">補助情報の分析結果（authoring-auxiliary）</label><textarea id="aux" spellcheck="false" aria-label="補助情報ReferenceのJSON"></textarea>
 <label for="epi">知識の評価結果（epistemic-projection）</label><textarea id="epi" spellcheck="false" aria-label="知識評価ReferenceのJSON"></textarea>
 </details>
 <button id="display" type="button">読取り専用で表示</button><p id="error" role="alert"></p>
 <section><h2>注記の作業状態 <small>（原典・TEI対応の受理状態ではない）</small></h2><table><thead><tr><th>注記ID</th><th>意味上の参照</th><th>種別</th><th>作業状態</th><th>確認事項</th><th>対応受理</th></tr></thead><tbody id="notes"></tbody></table></section>
-<section><h2>情報の確認・参照先状態 <small>（Owner受理・実行証拠ではない）</small></h2><table><thead><tr><th>情報ID</th><th>文の種類</th><th>人の内容確認</th><th>利用状態</th><th>対象位置</th><th>対応受理／Canonical受理</th></tr></thead><tbody id="assessments"></tbody></table></section>
+<section><h2>情報の確認・参照先状態 <small>（Owner受理・実行証拠ではない）</small></h2><table><thead><tr><th>情報ID</th><th>文の種類</th><th>人の内容確認</th><th>利用状態</th><th>対象位置</th><th>対応受理／Canonical受理</th><th>注意情報</th><th>評価の詳細</th></tr></thead><tbody id="assessments"></tbody></table></section>
 <section><h2>判定しない範囲</h2><ul id="limits"></ul></section>
 <script type="module">
 import { projectAnnotationEvidence } from './annotation-evidence-list-projection.mjs';
 const get = id => document.getElementById(id);
 function cell(tr, value, warn=false){const td=document.createElement('td');td.textContent=String(value ?? '');if(warn)td.className='warn';tr.append(td);}
 function table(id, data, columns){const tbody=get(id);tbody.replaceChildren();for(const row of data){const tr=document.createElement('tr');for(const [key,warn] of columns)cell(tr,row[key],warn&&row[warn]);tbody.append(tr);}}
+
+function assessmentTable(rows){
+  const tbody=get('assessments');tbody.replaceChildren();
+  for(const row of rows){
+    const tr=document.createElement('tr');
+    for(const key of ['id','statementKind','confirmation','useState']){
+      cell(tr,row[key]);
+    }
+    cell(tr,row.targetBinding,row.needsLocatorReview);
+    cell(tr,row.acceptance);
+    cell(tr,row.attentionSummary,row.hasAttention);
+    const td=document.createElement('td');
+    const details=document.createElement('details');details.className='inspection';
+    const summary=document.createElement('summary');summary.textContent='独立した評価項目を表示';
+    const dl=document.createElement('dl');
+    for(const item of row.detailRows){
+      const dt=document.createElement('dt');dt.textContent=item.label;
+      const dd=document.createElement('dd');dd.textContent=item.value;
+      dl.append(dt,dd);
+    }
+    details.append(summary,dl);td.append(details);tr.append(td);tbody.append(tr);
+  }
+}
+
 get('display').addEventListener('click',()=>{
   get('error').textContent='';
   get('notes').replaceChildren();get('assessments').replaceChildren();get('limits').replaceChildren();
@@ -31,7 +60,7 @@ get('display').addEventListener('click',()=>{
     const view=projectAnnotationEvidence(JSON.parse(get('aux').value),JSON.parse(get('epi').value));
     const noteRows=view.notes.map(a=>({...a,findings:a.findings.join('、')||a.locator,warning:a.findings.length>0||!a.subject}));
     table('notes',noteRows,[['id'],['subject'],['kind'],['workState'],['findings','warning'],['acceptance']]);
-    table('assessments',view.assessments,[['id'],['statementKind'],['confirmation'],['useState'],['targetBinding','needsLocatorReview'],['acceptance']]);
+    assessmentTable(view.assessments);
     for(const limit of view.limitations){const li=document.createElement('li');li.textContent=limit;get('limits').append(li);}
   }catch(e){get('error').textContent=String(e.message||e);}
 });

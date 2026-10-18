@@ -39,3 +39,11 @@ node --test plan/design/mockups/annotation-evidence-list-projection.test.mjs
 表示は既存の`schema`/`contract`を確認します。異なる契約や未対応の表現は推測して受理せず、表示を拒否します。注記`open/done`、知識の`confirmed`、`targetBinding`を並列表示しますが、両ReferenceのIDや`subject`を推測で結び付けません。原典の事実確認、TEI対応候補、source/model Owner受理、Canonical Acceptance、実行観測を**これら二つのReferenceから導出することはできません**。対応受理は「判定不可」と表示します。
 
 効果仮説: 既存の注記の「対応済み」を、業務モデルの「受理済み」と混同する誤表示を、同じ画面上で避けられるか確かめます。限定テストは3件（読取り専用・混在、曖昧/参照切れ、未知schema/契約）。実GUI受入・原典/TEI対応の受理・実データでの有効性は未確認です。異なる投影を並べる実効性が無い場合は、本スケッチは撤回して既存Consumerの表示に寄せます。
+
+### 評価の詳細表示（追加PoC、採用前）
+
+情報評価の各行に「注意情報」と折り畳み式の「評価の詳細」を追加しました。既存`epistemic-assessment/v0`に含まれる`reviewBinding`、`metadataState`、`contentOrigin`、`ingestedBy`、`contextCompatibility`、`freshness`、`lifecycleState`、`conflict`、`inferredContextUsed`、`reasons`を**独立した表示項目**として扱います。未提供の値は「Referenceに値なし」、未知の値は「未対応の値」と表示し、正常・確認済み・受理済みを補完しません。
+
+注意情報には参照切れ、古い確認履歴、メタデータの欠落、文脈・鮮度不足、競合、置換などの**別々の理由**を併記します。詳細中の値や理由も`textContent`で挿入し、HTMLとして解釈しません。表示に必要なAssessment項目のみを使い、on-demand detailの取得や保存、本人確認・受理、別ReferenceとのID自動対応付けを行いません。
+
+追加の合成試験は、confirmed＋candidate-only、stale review＋partial metadata、AI由来＋user ingestion、文脈不適合・stale freshness・conflict、未提供／未知値、評価理由の非HTML化を対象とします。**一覧はproject-wide Healthやconsumer-specific freshnessの合格判定ではありません**。Nodeテストの実行、ブラウザーの正式module配信、Studioへの組込み、Windows GUI検証はそれぞれ異なる証拠として記録してください。
