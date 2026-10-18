@@ -18,11 +18,18 @@ func main() {
 	contractPath := flag.String("contract", "", "generator contract JSON")
 	fixturesPath := flag.String("fixtures", "", "fixed fixture JSON")
 	candidatesDir := flag.String("candidates", "", "directory containing candidate directories")
+	registryPath := flag.String("registry", "", "optional generator registry JSON")
 	flag.Parse()
 	if *contractPath == "" || *fixturesPath == "" || *candidatesDir == "" {
 		fail(fmt.Errorf("-contract, -fixtures, and -candidates are required"))
 	}
-	receipt, err := generatorselection.Select(context.Background(), *workspaceDir, *contractPath, *fixturesPath, *candidatesDir)
+	var receipt generatorselection.Receipt
+	var err error
+	if *registryPath != "" {
+		receipt, err = generatorselection.SelectWithRegistry(context.Background(), *workspaceDir, *contractPath, *fixturesPath, *candidatesDir, *registryPath)
+	} else {
+		receipt, err = generatorselection.Select(context.Background(), *workspaceDir, *contractPath, *fixturesPath, *candidatesDir)
+	}
 	if err != nil {
 		fail(err)
 	}
