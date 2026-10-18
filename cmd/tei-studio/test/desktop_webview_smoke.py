@@ -848,17 +848,17 @@ return true;
             raise RuntimeError("Could not install the passive native key event observer")
 
         key_events = {
-            "tab": [{"type": "keyDown", "value": "\\uE004"}, {"type": "keyUp", "value": "\\uE004"}],
-            "home": [{"type": "keyDown", "value": "\\uE011"}, {"type": "keyUp", "value": "\\uE011"}],
+            "tab": [{"type": "keyDown", "value": "\uE004"}, {"type": "keyUp", "value": "\uE004"}],
+            "home": [{"type": "keyDown", "value": "\uE011"}, {"type": "keyUp", "value": "\uE011"}],
             "shift_end": [
-                {"type": "keyDown", "value": "\\uE008"},
-                {"type": "keyDown", "value": "\\uE007"},
-                {"type": "keyUp", "value": "\\uE007"},
-                {"type": "keyUp", "value": "\\uE008"},
+                {"type": "keyDown", "value": "\uE008"},
+                {"type": "keyDown", "value": "\uE007"},
+                {"type": "keyUp", "value": "\uE007"},
+                {"type": "keyUp", "value": "\uE008"},
             ],
             "type_x": [{"type": "keyDown", "value": "x"}, {"type": "keyUp", "value": "x"}],
-            "backspace": [{"type": "keyDown", "value": "\\uE003"}, {"type": "keyUp", "value": "\\uE003"}],
-            "delete": [{"type": "keyDown", "value": "\\uE017"}, {"type": "keyUp", "value": "\\uE017"}],
+            "backspace": [{"type": "keyDown", "value": "\uE003"}, {"type": "keyUp", "value": "\uE003"}],
+            "delete": [{"type": "keyDown", "value": "\uE017"}, {"type": "keyUp", "value": "\uE017"}],
         }
         workspace_before_keys = workspace_snapshot(workspace_root)
         xead_before_keys = hashlib.sha256(xead_path.read_bytes()).hexdigest()
