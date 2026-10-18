@@ -94,6 +94,7 @@ type GenerationProvenance struct {
 type CandidateManifest struct {
 	Schema       string                `json:"schema"`
 	ID           string                `json:"id"`
+	Version      string                `json:"version,omitempty"`
 	Origin       string                `json:"origin"`
 	Source       string                `json:"source"`
 	SourceDigest string                `json:"sourceDigest"`
@@ -347,6 +348,17 @@ func validateFixture(fixture Fixture, contract Contract) error {
 // Select loads one accepted Workspace, one reference contract, one fixed
 // fixture, and every candidate directory under candidatesDir.
 func Select(ctx context.Context, workspaceDir, contractPath, fixturePath, candidatesDir string) (Receipt, error) {
+	return selectWithRegistry(ctx, workspaceDir, contractPath, fixturePath, candidatesDir, "")
+}
+
+// SelectWithRegistry additionally requires every candidate to be the active
+// registered version for its id. A registry constrains selection; it does not
+// grant authority.
+func SelectWithRegistry(ctx context.Context, workspaceDir, contractPath, fixturePath, candidatesDir, registryPath string) (Receipt, error) {
+	return selectWithRegistry(ctx, workspaceDir, contractPath, fixturePath, candidatesDir, registryPath)
+}
+
+func selectWithRegistry(ctx context.Context, workspaceDir, contractPath, fixturePath, candidatesDir, registryPath string) (Receipt, error) {
 	loaded, err := workspace.Load(workspaceDir)
 	if err != nil {
 		return Receipt{}, fmt.Errorf("load Workspace: %w", err)
@@ -368,6 +380,14 @@ func Select(ctx context.Context, workspaceDir, contractPath, fixturePath, candid
 	}
 	if err := validateAgainstWorkspace(contract, loaded.World); err != nil {
 		return Receipt{}, err
+	}
+	var registry *Registry
+	if registryPath != "" {
+		loadedRegistry, err := LoadRegistry(registryPath, contractPath)
+		if err != nil {
+			return Receipt{}, err
+		}
+		registry = &loadedRegistry
 	}
 	fixtureRaw, err := os.ReadFile(fixturePath)
 	if err != nil {
@@ -407,7 +427,7 @@ func Select(ctx context.Context, workspaceDir, contractPath, fixturePath, candid
 	}
 	sort.Strings(directories)
 	for _, name := range directories {
-		candidate, err := evaluateCandidate(ctx, filepath.Join(candidatesDir, name), fixture, contractPath, digest(contractRaw))
+		candidate, err := evaluateCandidate(ctx, filepath.Join(candidatesDir, name), fixture, contractPath, digest(contractRaw), registry)
 		if err != nil {
 			return Receipt{}, err
 		}
@@ -426,7 +446,7 @@ func Select(ctx context.Context, workspaceDir, contractPath, fixturePath, candid
 	return receipt, nil
 }
 
-func evaluateCandidate(ctx context.Context, dir string, fixture Fixture, contractPath, contractDigest string) (CandidateReceipt, error) {
+func evaluateCandidate(ctx context.Context, dir string, fixture Fixture, contractPath, contractDigest string, registry *Registry) (CandidateReceipt, error) {
 	var manifest CandidateManifest
 	if _, err := readJSON(filepath.Join(dir, "candidate.json"), &manifest); err != nil {
 		return CandidateReceipt{}, err
@@ -442,6 +462,18 @@ func evaluateCandidate(ctx context.Context, dir string, fixture Fixture, contrac
 	}
 	if manifest.ID == "" || manifest.Origin == "" || manifest.Source == "" || manifest.SourceDigest == "" {
 		return reject("candidate identity is incomplete")
+	}
+	if registry != nil {
+		entry, err := ActiveEntry(*registry, manifest.ID)
+		if err != nil {
+			return reject("registry: " + err.Error())
+		}
+		if entry.Version != candidateVersion(manifest) {
+			return reject("registry version mismatch: active " + entry.Version + ", candidate " + candidateVersion(manifest))
+		}
+		if entry.SourceDigest != manifest.SourceDigest {
+			return reject("registry source digest mismatch")
+		}
 	}
 	if manifest.Generator != nil {
 		if manifest.Generator.ID == "" || manifest.Generator.Version == "" || manifest.Generator.Strategy == "" {

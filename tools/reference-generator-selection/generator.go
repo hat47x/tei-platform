@@ -104,7 +104,7 @@ func renderCandidate(contractPath, strategy string) (renderedCandidate, error) {
 		return renderedCandidate{}, fmt.Errorf("generated source is not valid Go: %w", err)
 	}
 	manifest := CandidateManifest{
-		Schema: CandidateSchema, ID: tmpl.strategy, Origin: tmpl.origin,
+		Schema: CandidateSchema, ID: tmpl.strategy, Version: "1", Origin: tmpl.origin,
 		Source: "main.go", SourceDigest: digest(formatted),
 		Generator: &GeneratorProvenance{
 			ID: tmpl.id, Version: "1", Strategy: tmpl.strategy,
