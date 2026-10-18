@@ -81,6 +81,8 @@ Ubuntu24.04 / Node24.21.0で`npm ci`、`npm test` **18/18 PASS・skip 0**、`npm
 
 詳細は[既存runbook §12.1](../../plan/evidence/TEI_STUDIO_POC_EVIDENCE_RUNBOOK_20261014.md)を参照。固定4ソースのブラウザーPoCがPASSした範囲であり、実Wails Host、Desktop WebView、全a11y、公開Web認可、メモリリーク完全不在や製品資格は主張しない。
 
+現在の`fixed-provider-journal` workflowは、PR consumer revisionを基点に、固定SHAから抽出したProvider pathを含む一時snapshot commitを作ってから検証する。これはworkflow runner内だけで使い、branchやPRを更新しない。上記の2026-10-15記録は当時の実行結果と固定SHAを示し、今回のworkflow手順変更で書き換えない。
+
 ## mainのWorkbenchと同一ソースを使う独立確認
 
 追加CI `.github/workflows/tei-studio-independent-consumer-main-source-ci.yml` は、PRのbase SHAから専用checkoutを作り、その版のWorkbenchとReading Journal consumerがEditor・CodeMirror・Graph・Commandの同じソースファイルをimportすることを確認する。Git blobとSHA-256、consumerの依存グラフ、実際のbundle入力を照合し、base版consumerの依存導入・試験・build・実Chromium E2Eを実行する。続いてPR head側でも、同じ依存導入・試験・build・bundle監査・実Chromium E2Eを実行する。EditorのCodeMirror依存監査は、対象版の`codemirror.ts`がimportするpackageを確認する。`workflow_dispatch`では実行対象SHAを両checkoutに使う。mainへのpushだけではこのPR workflowは自動起動しない。

@@ -64,11 +64,15 @@ for (const path of Object.values(providers)) {
     throw new Error(`REQUIRED_PROVIDER_NOT_BUNDLED: ${path}`);
   }
 }
-if (!inputs.some(x => x.includes('node_modules/@codemirror/commands/')) ||
-    !inputs.some(x => x.includes('node_modules/@codemirror/state/')) ||
-    !inputs.some(x => x.includes('node_modules/@codemirror/view/')) ||
-    !inputs.some(x => x.includes('node_modules/@codemirror/lint/'))) {
-  throw new Error('CODEMIRROR_BARE_IMPORTS_NOT_BUNDLED');
+const editorSource = readFileSync(resolve(here, providers.codemirror), 'utf8');
+const codeMirrorDependencies = new Set(
+  [...editorSource.matchAll(/\bfrom\s*['"](@codemirror\/[^'"]+)['"]/g)]
+    .map((match) => match[1]),
+);
+for (const dependency of codeMirrorDependencies) {
+  if (!inputs.some(x => x.includes(`node_modules/${dependency}/`))) {
+    throw new Error(`CODEMIRROR_IMPORT_NOT_BUNDLED: ${dependency}`);
+  }
 }
 if (inputs.some(x => /(?:^|\/)(?:internal\/(?:operations|desktophost|servicehost)|workspace|acceptance|semantic-subject)(?:\/|$)/i.test(x))) {
   throw new Error('TEI_SPECIFIC_IMPLEMENTATION_IMPORTED');
