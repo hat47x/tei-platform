@@ -10,6 +10,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"tei/internal/index"
 	"tei/internal/modelref"
@@ -248,8 +249,19 @@ func TestTraceWorkspaceLeavesNoGoroutinesWhenTheTraceFails(t *testing.T) {
 		if !errors.As(err, &traceErr) || traceErr.Code != "SUBJECT_NOT_FOUND" {
 			t.Fatalf("expected SUBJECT_NOT_FOUND, got %v", err)
 		}
-		if after := runtime.NumGoroutine(); after > before {
-			t.Fatalf("run %d: %d goroutines before the call, %d after; the call returned before its goroutines finished", i, before, after)
+		// Runtime background goroutines can appear immediately after a call
+		// returns. Wait briefly for the count to settle before treating a
+		// transient increase as a leaked goroutine.
+		deadline := time.Now().Add(2 * time.Second)
+		for {
+			after := runtime.NumGoroutine()
+			if after <= before {
+				break
+			}
+			if time.Now().After(deadline) {
+				t.Fatalf("run %d: %d goroutines before the call, %d after; the call returned before its goroutines finished", i, before, after)
+			}
+			time.Sleep(10 * time.Millisecond)
 		}
 	}
 }
