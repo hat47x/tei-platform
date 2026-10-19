@@ -15,9 +15,9 @@
       "id": "template",
       "version": "2",
       "status": "active",
-      "sourceDigest": "sha256:ccb117f0c0658bc4f074f1efa0fa18ae1a75f793a17f02f0e79a75176ccdafd6",
+      "sourceDigest": "sha256:b88797f6b2ccba69b7a52e02fc200477eaf583912014836e010f989a55a6129a",
       "supersedes": "1",
-      "note": "現行版。sourceは同一で、生成器の版だけを更新"
+      "note": "現行版。現行templateから生成したsource digest"
     },
     {
       "id": "alternative",
