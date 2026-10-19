@@ -64,6 +64,8 @@ type Receipt struct {
 	ProvidedCapabilities []string          `json:"providedCapabilities"`
 	Missing              []string          `json:"missing"`
 	Conformance          []CapabilityCheck `json:"conformance,omitempty"`
+	LockVerified         bool              `json:"lockVerified,omitempty"`
+	LockDigest           string            `json:"lockDigest,omitempty"`
 	Passed               bool              `json:"passed"`
 	Notes                []string          `json:"notes"`
 }
@@ -177,7 +179,7 @@ func ValidateWithCatalog(profilePath, catalogDir string) (Receipt, error) {
 			if catalog == nil {
 				return Receipt{}, fmt.Errorf("plugin %s has no path; -catalog is required", ref.ID)
 			}
-			entry, err := catalog.Resolve(ref.ID, ref.Version)
+			entry, err := catalog.ResolveConstraint(ref.ID, ref.Version)
 			if err != nil {
 				return Receipt{}, err
 			}

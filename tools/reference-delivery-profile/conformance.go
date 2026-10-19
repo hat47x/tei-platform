@@ -87,6 +87,18 @@ func VerifyWithCatalog(profilePath, catalogDir string) (Receipt, error) {
 	if err != nil {
 		return Receipt{}, err
 	}
+	return runConformance(receipt), nil
+}
+
+func VerifyWithLock(profilePath, catalogDir, lockPath string) (Receipt, error) {
+	receipt, err := ValidateWithLock(profilePath, catalogDir, lockPath)
+	if err != nil {
+		return Receipt{}, err
+	}
+	return runConformance(receipt), nil
+}
+
+func runConformance(receipt Receipt) Receipt {
 	checked := map[string]bool{}
 	for _, plugin := range receipt.Plugins {
 		if !hasCapability(plugin.Capabilities, "tenant-isolation") {
@@ -114,5 +126,5 @@ func VerifyWithCatalog(profilePath, catalogDir string) (Receipt, error) {
 	}
 	receipt.Notes = append(receipt.Notes,
 		"verifyは、conformance testがある能力だけを実動作で確認する。ない能力はunverifiedとして残す。")
-	return receipt, nil
+	return receipt
 }
