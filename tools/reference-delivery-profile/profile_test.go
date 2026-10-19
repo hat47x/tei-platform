@@ -128,11 +128,8 @@ func TestVerifySaaSExercisesTenantIsolation(t *testing.T) {
 	for _, check := range receipt.Conformance {
 		status[check.Capability] = check.Status
 	}
-	if status["tenant-isolation"] != "verified" || status["audit"] != "verified" {
-		t.Fatalf("tenant-isolation or audit was not verified: %+v", receipt.Conformance)
-	}
-	if status["authentication"] != "unverified" {
-		t.Fatalf("unexpected authentication status: %+v", receipt.Conformance)
+	if status["tenant-isolation"] != "verified" || status["audit"] != "verified" || status["authentication"] != "verified" {
+		t.Fatalf("a SaaS capability was not verified: %+v", receipt.Conformance)
 	}
 }
 

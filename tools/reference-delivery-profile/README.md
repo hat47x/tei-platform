@@ -77,6 +77,7 @@ plugin descriptorは`requires`と`conflicts`を持てます。`requires`のplugi
 
 - `tenant-isolation`: 二つのテナントrootを作り、越境要求の拒否、`..`による参照の拒否、自テナントのread/write、別テナントrootへのsymlink越境の拒否を確認する。
 - `audit`: 追記専用logへ2件を書き、hash chainの検証、既存エントリの改ざん検出、改ざん後の追記拒否を確認する（[reference-audit-log](../reference-audit-log/README.md)）。
+- `authentication`: 有効なfixture credential、credential欠落、別tenantのprincipal、不完全なprincipalを確認する（[reference-authentication](../reference-authentication/README.md)）。
 - それ以外の能力: `unverified`として記録し、動作確認済みとは扱わない。
 - conformance testが失敗した場合は`passed=false`とする。
 
@@ -102,6 +103,6 @@ SaaSの`tenant-isolation`は[reference-tenant-isolation](../reference-tenant-iso
 ## 未実装
 
 - pluginの配布・取得・署名・失効、lockの署名、prerelease・build metadata付きversion。
-- `tenant-isolation`・`audit`以外の能力のconformance test。
+- `tenant-isolation`・`audit`・`authentication`以外の能力のconformance test。
 - 実Provider・実Targetでの確認。
 - 課金・契約・データ所在・監査保存期間。
