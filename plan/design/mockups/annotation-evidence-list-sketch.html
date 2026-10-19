@@ -19,13 +19,18 @@ dt{font-weight:600}dd{margin:0;overflow-wrap:anywhere}
 <details><summary>入力（既存Reference CLIのJSON結果を貼り付け）</summary>
 <label for="aux">補助情報の分析結果（authoring-auxiliary）</label><textarea id="aux" spellcheck="false" aria-label="補助情報ReferenceのJSON"></textarea>
 <label for="epi">知識の評価結果（epistemic-projection）</label><textarea id="epi" spellcheck="false" aria-label="知識評価ReferenceのJSON"></textarea>
+<label for="decisions">Decision履歴（Shared Acceptanceのdecisionsコマンド、任意）</label><textarea id="decisions" spellcheck="false" aria-label="Decision Index ReferenceのJSON（任意）"></textarea>
 </details>
 <button id="display" type="button">読取り専用で表示</button><p id="error" role="alert"></p>
 <section><h2>注記の作業状態 <small>（原典・TEI対応の受理状態ではない）</small></h2><table><thead><tr><th>注記ID</th><th>意味上の参照</th><th>種別</th><th>作業状態</th><th>確認事項</th><th>対応受理</th></tr></thead><tbody id="notes"></tbody></table></section>
 <section><h2>情報の確認・参照先状態 <small>（Owner受理・実行証拠ではない）</small></h2><table><thead><tr><th>情報ID</th><th>文の種類</th><th>人の内容確認</th><th>利用状態</th><th>対象位置</th><th>対応受理／Canonical受理</th><th>注意情報</th><th>評価の詳細</th></tr></thead><tbody id="assessments"></tbody></table></section>
+<section><h2>Decision履歴と現在のSource <small>（独立一覧。Owner受理や正式Host受理の証明ではない）</small></h2>
+<p id="decision-status" class="note">Decision Indexは未入力です。履歴がないとは判定しません。</p>
+<table><thead><tr><th>行</th><th>Decisionの結果</th><th>現在のSource版</th><th>記録されたSource編集</th><th>Review拘束</th><th>判断権限</th><th>注意情報</th><th>Owner／Host受理</th><th>評価の詳細</th></tr></thead><tbody id="decision-rows"></tbody></table></section>
 <section><h2>判定しない範囲</h2><ul id="limits"></ul></section>
 <script type="module">
 import { projectAnnotationEvidence } from './annotation-evidence-list-projection.mjs';
+import { projectDecisionIndex } from './annotation-decision-index-projection.mjs';
 const get = id => document.getElementById(id);
 function cell(tr, value, warn=false){const td=document.createElement('td');td.textContent=String(value ?? '');if(warn)td.className='warn';tr.append(td);}
 function table(id, data, columns){const tbody=get(id);tbody.replaceChildren();for(const row of data){const tr=document.createElement('tr');for(const [key,warn] of columns)cell(tr,row[key],warn&&row[warn]);tbody.append(tr);}}
@@ -53,15 +58,46 @@ function assessmentTable(rows){
   }
 }
 
+function decisionTable(rows){
+  const tbody=get('decision-rows');tbody.replaceChildren();
+  for(const row of rows){
+    const tr=document.createElement('tr');
+    for(const key of ['row','outcome','sourceRevision','sourceEdit','review','authority']){
+      cell(tr,row[key]);
+    }
+    cell(tr,row.warnings,row.hasWarnings);
+    cell(tr,row.acceptedMeaning);
+    const td=document.createElement('td');
+    const details=document.createElement('details');details.className='inspection';
+    const summary=document.createElement('summary');summary.textContent='独立項目を確認';
+    const dl=document.createElement('dl');
+    for(const detail of row.details){
+      const dt=document.createElement('dt');dt.textContent=detail.label;
+      const dd=document.createElement('dd');dd.textContent=detail.value;
+      dl.append(dt,dd);
+    }
+    details.append(summary,dl);td.append(details);tr.append(td);tbody.append(tr);
+  }
+}
+
 get('display').addEventListener('click',()=>{
   get('error').textContent='';
-  get('notes').replaceChildren();get('assessments').replaceChildren();get('limits').replaceChildren();
+  get('notes').replaceChildren();get('assessments').replaceChildren();get('decision-rows').replaceChildren();get('limits').replaceChildren();
+  get('decision-status').textContent='';
   try {
     const view=projectAnnotationEvidence(JSON.parse(get('aux').value),JSON.parse(get('epi').value));
+    const decisionInput=get('decisions').value.trim();
+    const decisionView=decisionInput ? projectDecisionIndex(JSON.parse(decisionInput)) : null;
     const noteRows=view.notes.map(a=>({...a,findings:a.findings.join('、')||a.locator,warning:a.findings.length>0||!a.subject}));
     table('notes',noteRows,[['id'],['subject'],['kind'],['workState'],['findings','warning'],['acceptance']]);
     assessmentTable(view.assessments);
-    for(const limit of view.limitations){const li=document.createElement('li');li.textContent=limit;get('limits').append(li);}
+    get('decision-status').textContent=decisionView ? decisionView.summary : 'Decision Indexは未入力です。履歴がないとは判定しません。';
+    if(decisionView) decisionTable(decisionView.records);
+    for(const limit of [...view.limitations, decisionView
+      ? decisionView.limitation
+      : 'Decision Index未入力。過去のAccept／Rejectの存在・不存在を判定しません。']){
+      const li=document.createElement('li');li.textContent=limit;get('limits').append(li);
+    }
   }catch(e){get('error').textContent=String(e.message||e);}
 });
 </script>
