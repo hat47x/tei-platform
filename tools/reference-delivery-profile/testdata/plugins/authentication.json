@@ -4,6 +4,7 @@
   "version": "1",
   "kind": "delivery-foundation",
   "capabilities": ["authentication"],
+  "requires": ["audit"],
   "entrypoints": ["auth.authenticate", "auth.current-subject"],
   "guarantees": ["explicit authentication boundary"],
   "notGuaranteed": ["authorization policy", "external identity provider equivalence"]

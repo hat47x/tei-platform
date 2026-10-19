@@ -36,11 +36,15 @@ go run ./tools/reference-delivery-profile/cmd/tei-delivery-profile \
 
 `path`はprofile fileからの相対path、または絶対pathです。plugin descriptorのid・versionがprofileの指定と一致しなければ拒否します。
 
+plugin descriptorは`requires`と`conflicts`を持てます。`requires`のpluginはprofileで明示的に選択されている必要があります。暗黙に追加しません。
+
 ## 検証
 
 - profile schema、id、version、必須能力、plugin一覧を検査する。
 - plugin descriptorのschema、id、version、能力を検査する。
 - 同じplugin idの重複を拒否する。
+- `requires`のpluginが選択されていない場合、`conflicts`のpluginが選択されている場合は拒否する。
+- 依存関係を解決し、`order`へ初期化順を記録する。循環依存は拒否する。
 - 必須能力が、選択したpluginの能力で満たされない場合は`missing`へ残し、`passed=false`にする。
 - 能力の欠落を、別のpluginや形態別実装で暗黙に補わない。
 
@@ -60,7 +64,7 @@ go run ./tools/reference-delivery-profile/cmd/tei-delivery-profile \
 | --- | --- | --- |
 | `saas` | tenant-isolation、audit、authentication | tenant-isolation、audit、authentication |
 | `individual` | offline-storage、single-user | offline-storage |
-| `sier` | export-package、authentication | export-package、authentication |
+| `sier` | export-package、authentication | export-package、authentication、audit（authenticationの依存） |
 
 SaaSの`tenant-isolation`は[reference-tenant-isolation](../reference-tenant-isolation/README.md)のplugin descriptorを使います。形態別のアプリケーションは追加していません。
 
@@ -73,8 +77,7 @@ SaaSの`tenant-isolation`は[reference-tenant-isolation](../reference-tenant-iso
 
 ## 未実装
 
-- pluginの配布・取得・署名・失効、バージョン解決。
-- plugin同士の依存関係、競合、初期化順序。
+- pluginの配布・取得・署名・失効、複数versionからの解決。
 - `tenant-isolation`以外の能力のconformance test。
 - 実Provider・実Targetでの確認。
 - 課金・契約・データ所在・監査保存期間。

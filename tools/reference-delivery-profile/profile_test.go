@@ -153,3 +153,74 @@ func TestVerifyIndividualReportsNoTenantIsolationCheck(t *testing.T) {
 		}
 	}
 }
+
+func TestMissingDependencyIsRejected(t *testing.T) {
+	profile := Profile{
+		Schema: ProfileSchema, ID: "missing-dependency", Version: "1",
+		RequiredCapabilities: []string{"authentication"},
+		Plugins:              []PluginRef{{ID: "authentication", Version: "1", Path: pluginPath(t, "authentication")}},
+	}
+	if _, err := Validate(writeProfile(t, profile)); err == nil {
+		t.Fatal("authentication without its audit dependency was accepted")
+	}
+}
+
+func TestConflictIsRejected(t *testing.T) {
+	profile := Profile{
+		Schema: ProfileSchema, ID: "conflict", Version: "1",
+		RequiredCapabilities: []string{"offline-storage", "tenant-isolation"},
+		Plugins: []PluginRef{
+			{ID: "offline-storage", Version: "1", Path: pluginPath(t, "offline-storage")},
+			{ID: "tenant-isolation", Version: "1", Path: filepath.Join(repoRoot(t), "tools", "reference-tenant-isolation", "plugin.json")},
+		},
+	}
+	if _, err := Validate(writeProfile(t, profile)); err == nil {
+		t.Fatal("conflicting plugins were accepted")
+	}
+}
+
+func TestDependencyOrderIsResolved(t *testing.T) {
+	receipt, err := Validate(filepath.Join(testdata(t), "profiles", "sier.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []string{"audit", "authentication", "export-package"}
+	if len(receipt.Order) != len(want) {
+		t.Fatalf("order=%v want %v", receipt.Order, want)
+	}
+	for i := range want {
+		if receipt.Order[i] != want[i] {
+			t.Fatalf("order=%v want %v", receipt.Order, want)
+		}
+	}
+}
+
+func TestDependencyCycleIsRejected(t *testing.T) {
+	dir := t.TempDir()
+	writePlugin := func(id string, requires []string) string {
+		plugin := Plugin{
+			Schema: PluginSchema, ID: id, Version: "1", Kind: "delivery-foundation",
+			Capabilities: []string{id}, Requires: requires,
+		}
+		raw, err := json.MarshalIndent(plugin, "", "  ")
+		if err != nil {
+			t.Fatal(err)
+		}
+		path := filepath.Join(dir, id+".json")
+		if err := os.WriteFile(path, append(raw, '\n'), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		return path
+	}
+	profile := Profile{
+		Schema: ProfileSchema, ID: "cycle", Version: "1",
+		RequiredCapabilities: []string{"a"},
+		Plugins: []PluginRef{
+			{ID: "a", Version: "1", Path: writePlugin("a", []string{"b"})},
+			{ID: "b", Version: "1", Path: writePlugin("b", []string{"a"})},
+		},
+	}
+	if _, err := Validate(writeProfile(t, profile)); err == nil {
+		t.Fatal("dependency cycle was accepted")
+	}
+}
