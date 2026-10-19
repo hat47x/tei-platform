@@ -13,7 +13,7 @@ import (
 // verifies its exact bytes. It does not install the bundle.
 func main() {
 	if len(os.Args) < 2 {
-		fmt.Fprintln(os.Stderr, "usage: tei-delivery-bundle <pack|verify|keygen|sign|verify-signature> [options]")
+		fmt.Fprintln(os.Stderr, "usage: tei-delivery-bundle <pack|verify|keygen|sign|verify-signature|install> [options]")
 		os.Exit(2)
 	}
 	command := os.Args[1]
@@ -41,6 +41,15 @@ func main() {
 			fail(fmt.Errorf("-bundle is required for verify"))
 		}
 		receipt, err := deliverybundle.Verify(*bundlePath)
+		if err != nil {
+			fail(err)
+		}
+		emit(receipt)
+	case "install":
+		if *bundlePath == "" || *signaturePath == "" || *publicKey == "" || *catalogDir == "" {
+			fail(fmt.Errorf("-bundle, -signature, -public, and -catalog are required for install"))
+		}
+		receipt, err := deliverybundle.Install(*bundlePath, *signaturePath, *publicKey, *catalogDir)
 		if err != nil {
 			fail(err)
 		}

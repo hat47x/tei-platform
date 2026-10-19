@@ -44,15 +44,32 @@ zipは次のentryを持ちます。
 - `verify`でパッケージのmanifestと、各plugin descriptorのdigestを確認する。
 - 同じplugin idの重複を拒否する。
 
+## インストール
+
+署名を検証したbundleから、plugin descriptorをローカルcatalogへ配置できます。
+
+```text
+go run ./tools/reference-delivery-bundle/cmd/tei-delivery-bundle \
+  install -bundle bundle.zip -signature bundle.sig -public public.pem \
+  -catalog ./plugin-catalog
+```
+
+- bundleの署名とパッケージを検証してから書き込む。
+- 書き込むのはplugin descriptorだけ。zip内の任意pathは展開しない。
+- 同じdigestの既存fileはskipし、異なるdigestの既存fileは上書きせず失敗する。
+- 書き込み後にcatalogを読み直し、重複や不正なdescriptorがないことを確認する。
+- 複数fileの書き込みはトランザクションではない。途中で失敗した場合、それまでのfileは残る。
+
 ## 守っている境界
 
 - bundleは選択済みの構成を固定するだけで、pluginの取得・信頼・権限を付与しない。
-- signatureはbundleの完全性だけを示す。署名者・公開鍵の信頼、配布経路の真正性、インストールは扱わない。
+- signatureはbundleの完全性だけを示す。署名者・公開鍵の信頼、配布経路の真正性は扱わない。
+- `install`はローカルcatalogへの配置だけを行う。サービスへの配備、起動、ロールバックは行わない。
 - catalogにないpluginを暗黙に追加しない。
 
 ## 未実装
 
 - 鍵管理、信頼の起点、署名者の認証。
-- 配布、インストール、ロールバック。
+- 配布、サービスへのインストール、ロールバック、トランザクション。
 - 部分bundle、差分更新。
 - 実SaaS・実顧客先での配備確認。
