@@ -41,6 +41,14 @@ go run ./tools/reference-generator-selection/cmd/tei-generator-build \
   -strategy template -version 2 -out /tmp/line-amount-template-v2
 ```
 
+同じ契約からPythonの参照候補も生成できます。
+
+```text
+go run ./tools/reference-generator-selection/cmd/tei-generator-build \
+  -contract tools/reference-generator-selection/testdata/line-amount/contract.json \
+  -strategy python-template -out /tmp/line-amount-python
+```
+
 外部モデルが出したsourceは、promptとcontextとともに記録できます。
 
 ```text
@@ -102,7 +110,7 @@ go run ./tools/reference-generator-selection/cmd/tei-generator-meta \
 | `alternative` | handwritten | 10進を整数へ変換し、最後に一度だけ丸める | 全fixture合格 |
 | `dangerous` | generated-ai | float64、欠落の0化、通貨・単位無視、精度検査なし | 負例で不合格 |
 
-候補は`candidate.json`で`id`、`origin`、source path、source digestを宣言します。選抜はsource digestを実byteで再計算し、一致しなければビルド前に拒否します。ビルドに成功したことや、候補の自己申告は合格の根拠にしません。
+`testdata/candidates/`の3候補はGoです。Python候補は`tei-generator-build -strategy python-template`で生成し、同じ`-candidates`directoryへ置いて選抜できます。候補は`candidate.json`で`id`、`language`、`origin`、source path、source digestを宣言します。選抜はsource digestを実byteで再計算し、一致しなければビルド前に拒否します。ビルドに成功したことや、候補の自己申告は合格の根拠にしません。
 
 ## 生成AI候補のprovenance
 
@@ -122,18 +130,31 @@ go run ./tools/reference-generator-selection/cmd/tei-generator-meta \
 
 ## 生成器sourceの生成
 
-`tei-generator-build`は、契約JSONと固定strategy（`template`、`alternative`、`dangerous`）から、Goの候補sourceを決定的に生成します。
+`tei-generator-build`は、契約JSONと固定strategy（`template`、`alternative`、`dangerous`、`python-template`）から、候補sourceを決定的に生成します。
 
-- 生成したsourceは`go/format`で整形してから書き出します。
-- `candidate.json`には`generator`を記録します。
-  - 生成器のid・version・strategy
+- Goのsourceは`go/format`で整形してから書き出します。Pythonのsourceは整形せず、生成したbyte列をそのまま使います。
+- `candidate.json`には`language`、`source`（`main.go`または`main.py`）、`generator`を記録します。
+  - 生成器のid・version・strategy・language
   - 契約のdigest
   - テンプレートのdigest
-- 選抜は、`generator.contractDigest`が現在の契約のdigestと一致するかを確認します。さらに、契約とstrategyからsourceを再生成し、候補のsourceとbyte一致することを確認します。別の契約・別のstrategyから生成した候補を、現在の契約の証拠として使えません。
+- 選抜は、`generator.contractDigest`が現在の契約のdigestと一致するかを確認します。さらに、契約・strategy・versionからsourceを再生成し、候補のsourceとbyte一致することを確認します。別の契約・別のstrategy・別の言語から生成した候補を、現在の契約の証拠として使えません。
 - 生成先は未存在のdirectoryに限ります。
 - 同じ契約・strategyからは、同じsourceと`sourceDigest`が得られます。
 
 `template`と`dangerous`の生成器は同じ契約パラメータ（通貨、scale、整数桁）を使いますが、実装方式と安全性は異なります。生成器の由来はreceiptへ残しますが、生成AIのモデル・prompt・文脈はまだ記録しません。
+
+## 別言語候補の実行
+
+`python-template`は、同じ契約パラメータからPythonの参照候補を生成します。候補manifestの`language`は`python`、sourceは`main.py`です。
+
+- Go候補は`go build`で実行ファイルを作り、`binaryDigest`を記録します。
+- Python候補はビルドせず、`python3`または`python`でsourceを実行します。`binaryDigest`は空です。
+- receiptの`runtime`へ、言語、起動方法、処理系のversion、利用可否を記録します。
+- 処理系が見つからない場合は`runtime unavailable`として拒否し、PASSや空の結果へ潰しません。
+- source拡張子が`language`と一致しない候補、未知の`language`を拒否します。
+- 同じfixtureでGo候補とPython候補の出力を比較する試験を持つ。これは同じ参照契約の範囲であり、すべての言語・Runtimeの同等性を証明しません。
+
+このPython参照は、別言語の候補を同じ選抜経路へ載せられることの確認であり、Python製品実装の採用や、実Targetでの処理系固定を意味しません。
 
 ## メタ生成（深さ1）
 
@@ -184,7 +205,7 @@ reconcileは候補をビルド・実行・選抜しません。再生成した�
 - 契約のid・version・status
 - WorkspaceのSource Indexから求めた`workspaceRevision`
 - fixtureのdigestと、契約・fixtureを合わせた`suiteVersion`
-- 候補ごとの`sourceDigest`、`binaryDigest`、`generator`・`generation`（あれば）、各caseの`got`/`want`、`passed`、`rejectReason`
+- 候補ごとの`language`、`sourceDigest`、`binaryDigest`、`runtime`、`generator`・`generation`（あれば）、各caseの`got`/`want`、`passed`、`rejectReason`
 - 合格した候補の`qualified`と、不合格の`rejected`
 - `grantsRuntimeAuthority: false`、`provesRealProvider: false`
 
@@ -198,6 +219,7 @@ reconcileは候補をビルド・実行・選抜しません。再生成した�
 - 候補の出力を独立に比較する。候補が「合格」と自己申告しても採用しない。
 - 危険な候補を、欠落・通貨・丸め・精度の負例で落とす。
 - 生成AI候補のgeneration provenanceを、現在の契約digestへ束縛する。
+- 候補の言語とsource拡張子を一致させ、処理系が無い場合は成功扱いにしない。
 - 生成器の選択を、意味の受理・権限・本番配備へ接続しない。
 
 ## 未実装
@@ -205,5 +227,6 @@ reconcileは候補をビルド・実行・選抜しません。再生成した�
 - 特定ベンダーのAPI呼出し・認証・課金・モデル版管理。外部コマンドへ委ねており、TEI内には実装していません。
 - `promptPath`・`contextPath`を省略した候補では、digestの形式だけを確認し、内容との対応は検証しません。
 - 深さ2以上のメタ生成、失効に伴う自動再生成・自動選抜・失効の承認。
-- 実Provider・実Target・別言語（.NET/JVM/WASM）での比較。
+- Python以外の言語（.NET/JVM/WASM等）と、実Targetでの処理系固定・依存解決。
+- 実Provider・実Targetでの比較。
 - 候補の署名、build provenance（#943 / #1370）。

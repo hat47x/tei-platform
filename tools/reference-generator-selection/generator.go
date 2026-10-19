@@ -20,6 +20,7 @@ type GeneratorProvenance struct {
 	ID             string `json:"id"`
 	Version        string `json:"version"`
 	Strategy       string `json:"strategy"`
+	Language       string `json:"language,omitempty"`
 	ContractDigest string `json:"contractDigest"`
 	TemplateDigest string `json:"templateDigest"`
 }
@@ -35,12 +36,15 @@ type generatorTemplate struct {
 	id       string
 	origin   string
 	strategy string
+	language string
+	source   string
 }
 
 var generatorTemplates = map[string]generatorTemplate{
-	"template":    {file: "templates/template.go.tmpl", id: "line-amount-template", origin: "template", strategy: "template"},
-	"alternative": {file: "templates/alternative.go.tmpl", id: "line-amount-alternative", origin: "handwritten", strategy: "alternative"},
-	"dangerous":   {file: "templates/dangerous.go.tmpl", id: "line-amount-dangerous", origin: "generated-ai", strategy: "dangerous"},
+	"template":        {file: "templates/template.go.tmpl", id: "line-amount-template", origin: "template", strategy: "template", language: LanguageGo, source: "main.go"},
+	"alternative":     {file: "templates/alternative.go.tmpl", id: "line-amount-alternative", origin: "handwritten", strategy: "alternative", language: LanguageGo, source: "main.go"},
+	"dangerous":       {file: "templates/dangerous.go.tmpl", id: "line-amount-dangerous", origin: "generated-ai", strategy: "dangerous", language: LanguageGo, source: "main.go"},
+	"python-template": {file: "templates/template.py.tmpl", id: "line-amount-python-template", origin: "template", strategy: "python-template", language: LanguagePython, source: "main.py"},
 }
 
 type templateData struct {
@@ -108,15 +112,18 @@ func renderCandidateVersion(contractPath, strategy, version string) (renderedCan
 	if err := parsed.Execute(&rendered, data); err != nil {
 		return renderedCandidate{}, err
 	}
-	formatted, err := format.Source([]byte(rendered.String()))
-	if err != nil {
-		return renderedCandidate{}, fmt.Errorf("generated source is not valid Go: %w", err)
+	formatted := []byte(rendered.String())
+	if tmpl.language == LanguageGo {
+		formatted, err = format.Source(formatted)
+		if err != nil {
+			return renderedCandidate{}, fmt.Errorf("generated source is not valid Go: %w", err)
+		}
 	}
 	manifest := CandidateManifest{
 		Schema: CandidateSchema, ID: tmpl.strategy, Version: version, Origin: tmpl.origin,
-		Source: "main.go", SourceDigest: digest(formatted),
+		Language: tmpl.language, Source: tmpl.source, SourceDigest: digest(formatted),
 		Generator: &GeneratorProvenance{
-			ID: tmpl.id, Version: version, Strategy: tmpl.strategy,
+			ID: tmpl.id, Version: version, Strategy: tmpl.strategy, Language: tmpl.language,
 			ContractDigest: data.ContractDigest, TemplateDigest: digest(templateRaw),
 		},
 	}
@@ -156,7 +163,7 @@ func GenerateVersion(contractPath, strategy, version, outDir string) (Generated,
 		return Generated{}, err
 	}
 	cleanup := func() { _ = os.RemoveAll(outDir) }
-	sourcePath := filepath.Join(outDir, "main.go")
+	sourcePath := filepath.Join(outDir, rendered.Manifest.Source)
 	if err := os.WriteFile(sourcePath, rendered.Source, 0o644); err != nil {
 		cleanup()
 		return Generated{}, err

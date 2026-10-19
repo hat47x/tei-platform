@@ -21,6 +21,7 @@ import (
 	"runtime"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"tei/internal/ir"
@@ -34,6 +35,11 @@ const (
 	FixtureSchema   = "tei.reference.generator-fixture/v0"
 	CandidateSchema = "tei.reference.generator-candidate/v0"
 	ReceiptSchema   = "tei.reference.generator-selection-receipt/v0"
+)
+
+const (
+	LanguageGo     = "go"
+	LanguagePython = "python"
 )
 
 type InputSpec struct {
@@ -104,6 +110,7 @@ type CandidateManifest struct {
 	Schema       string                `json:"schema"`
 	ID           string                `json:"id"`
 	Version      string                `json:"version,omitempty"`
+	Language     string                `json:"language,omitempty"`
 	Origin       string                `json:"origin"`
 	Source       string                `json:"source"`
 	SourceDigest string                `json:"sourceDigest"`
@@ -111,6 +118,15 @@ type CandidateManifest struct {
 	Generator    *GeneratorProvenance  `json:"generator,omitempty"`
 	Generation   *GenerationProvenance `json:"generation,omitempty"`
 	Lineage      *Lineage              `json:"lineage,omitempty"`
+}
+
+// RuntimeEvidence records which interpreter or build tool ran the candidate.
+// For Python there is no compiled artifact, so BinaryDigest is empty.
+type RuntimeEvidence struct {
+	Language  string `json:"language"`
+	Command   string `json:"command"`
+	Version   string `json:"version,omitempty"`
+	Available bool   `json:"available"`
 }
 
 type CaseResult struct {
@@ -122,9 +138,11 @@ type CaseResult struct {
 
 type CandidateReceipt struct {
 	ID           string                `json:"id"`
+	Language     string                `json:"language"`
 	Origin       string                `json:"origin"`
 	SourceDigest string                `json:"sourceDigest"`
 	BinaryDigest string                `json:"binaryDigest,omitempty"`
+	Runtime      *RuntimeEvidence      `json:"runtime,omitempty"`
 	Generator    *GeneratorProvenance  `json:"generator,omitempty"`
 	Generation   *GenerationProvenance `json:"generation,omitempty"`
 	Lineage      *Lineage              `json:"lineage,omitempty"`
@@ -515,7 +533,11 @@ func evaluateCandidate(ctx context.Context, dir string, fixture Fixture, contrac
 	if _, err := readJSON(filepath.Join(dir, "candidate.json"), &manifest); err != nil {
 		return CandidateReceipt{}, err
 	}
-	receipt := CandidateReceipt{ID: manifest.ID, Origin: manifest.Origin, SourceDigest: manifest.SourceDigest, Generator: manifest.Generator, Generation: manifest.Generation, Lineage: manifest.Lineage}
+	language := candidateLanguage(manifest)
+	receipt := CandidateReceipt{
+		ID: manifest.ID, Language: language, Origin: manifest.Origin, SourceDigest: manifest.SourceDigest,
+		Generator: manifest.Generator, Generation: manifest.Generation, Lineage: manifest.Lineage,
+	}
 	reject := func(reason string) (CandidateReceipt, error) {
 		receipt.Passed = false
 		receipt.RejectReason = reason
@@ -526,6 +548,16 @@ func evaluateCandidate(ctx context.Context, dir string, fixture Fixture, contrac
 	}
 	if manifest.ID == "" || manifest.Origin == "" || manifest.Source == "" || manifest.SourceDigest == "" {
 		return reject("candidate identity is incomplete")
+	}
+	if language != LanguageGo && language != LanguagePython {
+		return reject("unsupported candidate language: " + language)
+	}
+	expectedExtension := ".go"
+	if language == LanguagePython {
+		expectedExtension = ".py"
+	}
+	if strings.ToLower(filepath.Ext(manifest.Source)) != expectedExtension {
+		return reject("candidate source extension does not match language " + language)
 	}
 	if len(allowed) > 0 && !allowed[manifest.ID] {
 		return reject("not selected by target profile")
@@ -549,6 +581,9 @@ func evaluateCandidate(ctx context.Context, dir string, fixture Fixture, contrac
 		if entry.SourceDigest != manifest.SourceDigest {
 			return reject("registry source digest mismatch")
 		}
+		if entry.Language != "" && entry.Language != language {
+			return reject("registry language mismatch: active " + entry.Language + ", candidate " + language)
+		}
 	}
 	if manifest.Generator != nil {
 		if manifest.Generator.ID == "" || manifest.Generator.Version == "" || manifest.Generator.Strategy == "" {
@@ -556,6 +591,9 @@ func evaluateCandidate(ctx context.Context, dir string, fixture Fixture, contrac
 		}
 		if manifest.Generator.ContractDigest != contractDigest {
 			return reject("generator contract digest mismatch")
+		}
+		if manifest.Generator.Language != "" && manifest.Generator.Language != language {
+			return reject("generator language mismatch")
 		}
 	}
 	if manifest.Origin == "generated-ai" && manifest.Generation == nil {
@@ -592,36 +630,65 @@ func evaluateCandidate(ctx context.Context, dir string, fixture Fixture, contrac
 		}
 	}
 	if manifest.Generator != nil {
-		rendered, err := renderCandidate(contractPath, manifest.Generator.Strategy)
+		declared := *manifest.Generator
+		if declared.Language == "" {
+			declared.Language = language
+		}
+		rendered, err := renderCandidateVersion(contractPath, declared.Strategy, declared.Version)
 		if err != nil {
 			return reject("generator provenance cannot be reproduced: " + err.Error())
 		}
 		if !bytes.Equal(rendered.Source, source) {
 			return reject("source does not match the declared generator and contract")
 		}
-		if rendered.Manifest.Generator == nil || *rendered.Manifest.Generator != *manifest.Generator {
+		if rendered.Manifest.Generator == nil || *rendered.Manifest.Generator != declared {
 			return reject("generator provenance does not match the current contract and template")
 		}
 	}
-	binaryDir, err := os.MkdirTemp("", "tei-generator-candidate-*")
-	if err != nil {
-		return CandidateReceipt{}, err
+	var binaryPath, pythonPath string
+	switch language {
+	case LanguageGo:
+		binaryDir, err := os.MkdirTemp("", "tei-generator-candidate-*")
+		if err != nil {
+			return CandidateReceipt{}, err
+		}
+		defer os.RemoveAll(binaryDir)
+		binaryPath = candidateBinaryPath(filepath.Join(binaryDir, manifest.ID))
+		receipt.Runtime = &RuntimeEvidence{Language: LanguageGo, Command: "go build", Version: goRuntimeVersion(), Available: true}
+		buildCtx, cancel := context.WithTimeout(ctx, 2*time.Minute)
+		defer cancel()
+		if err := buildCandidate(buildCtx, dir, binaryPath); err != nil {
+			return reject("build failed: " + err.Error())
+		}
+		binary, err := os.ReadFile(binaryPath)
+		if err != nil {
+			return CandidateReceipt{}, err
+		}
+		receipt.BinaryDigest = digest(binary)
+	case LanguagePython:
+		var version string
+		var available bool
+		pythonPath, version, available = findPython()
+		command := "python <source>"
+		if pythonPath != "" {
+			command = pythonPath + " <source>"
+		}
+		receipt.Runtime = &RuntimeEvidence{
+			Language: LanguagePython, Command: command, Version: version, Available: available,
+		}
+		if !available {
+			return reject("runtime unavailable: python3/python was not found")
+		}
 	}
-	defer os.RemoveAll(binaryDir)
-	binaryPath := candidateBinaryPath(filepath.Join(binaryDir, manifest.ID))
-	buildCtx, cancel := context.WithTimeout(ctx, 2*time.Minute)
-	defer cancel()
-	if err := buildCandidate(buildCtx, dir, binaryPath); err != nil {
-		return reject("build failed: " + err.Error())
-	}
-	binary, err := os.ReadFile(binaryPath)
-	if err != nil {
-		return CandidateReceipt{}, err
-	}
-	receipt.BinaryDigest = digest(binary)
 
 	for _, tc := range fixture.Cases {
-		got, err := runCandidate(ctx, binaryPath, tc.Input)
+		var got Result
+		var err error
+		if language == LanguagePython {
+			got, err = runPythonCandidate(ctx, pythonPath, sourcePath, tc.Input)
+		} else {
+			got, err = runCandidate(ctx, binaryPath, tc.Input)
+		}
 		result := CaseResult{CaseID: tc.ID, Want: tc.Want, Got: got}
 		if err != nil {
 			result.Passed = false
@@ -641,6 +708,13 @@ func evaluateCandidate(ctx context.Context, dir string, fixture Fixture, contrac
 		}
 	}
 	return receipt, nil
+}
+
+func candidateLanguage(manifest CandidateManifest) string {
+	if manifest.Language == "" {
+		return LanguageGo
+	}
+	return manifest.Language
 }
 
 // candidateBinaryPath gives the built executable a platform-appropriate name.
@@ -675,10 +749,54 @@ func buildCandidate(ctx context.Context, dir, binaryPath string) error {
 	return fmt.Errorf("%v: %s", err, out)
 }
 
+var (
+	goVersionOnce  sync.Once
+	goVersionValue string
+)
+
+func goRuntimeVersion() string {
+	goVersionOnce.Do(func() {
+		out, err := exec.Command("go", "version").Output()
+		if err == nil {
+			goVersionValue = strings.TrimSpace(string(out))
+		}
+	})
+	return goVersionValue
+}
+
+func findPython() (path, version string, available bool) {
+	for _, name := range []string{"python3", "python"} {
+		found, err := exec.LookPath(name)
+		if err != nil {
+			continue
+		}
+		// Windows may provide a python3.exe app-execution alias that is not a
+		// working interpreter. Only accept a command that can report its version.
+		out, err := exec.Command(found, "--version").CombinedOutput()
+		if err != nil {
+			continue
+		}
+		return found, strings.TrimSpace(string(out)), true
+	}
+	return "", "", false
+}
+
+func runPythonCandidate(ctx context.Context, pythonPath, sourcePath string, input json.RawMessage) (Result, error) {
+	absolute, err := filepath.Abs(sourcePath)
+	if err != nil {
+		return Result{}, err
+	}
+	return runProgram(ctx, pythonPath, []string{absolute}, input)
+}
+
 func runCandidate(ctx context.Context, binary string, input json.RawMessage) (Result, error) {
+	return runProgram(ctx, binary, nil, input)
+}
+
+func runProgram(ctx context.Context, name string, args []string, input json.RawMessage) (Result, error) {
 	runCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
-	cmd := exec.CommandContext(runCtx, binary)
+	cmd := exec.CommandContext(runCtx, name, args...)
 	cmd.Stdin = bytes.NewReader(input)
 	out, err := cmd.Output()
 	if err != nil {
