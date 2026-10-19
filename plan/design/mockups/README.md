@@ -19,7 +19,7 @@
 | --- | --- |
 | [`tei-projection-design-sketch.html`](tei-projection-design-sketch.html) | 第一Web Target、Command / Observation、Editor、Studio、既存認証、Database Workbench、Gate Evidence、Runtime観測、CLI出力体裁、同時編集、キーボード操作、移行者向けの対照、1280幅の折り畳み、Coreとプラグインの拡張境界。前提と決定すべき論点もモック内に含みます |
 | [`scope-placement-editor-sketch.html`](scope-placement-editor-sketch.html) | 業務要件とインフラを分け、設定項目（Scope Placement Binding）でつなぐエディタ画面。評価待ち。[設計文書](../SUI_MIGRATION_EXTENSION_AND_SPLIT_DESIGN_2026-10.md)の5.5に対応。区分名・判定結果はサンプル |
-| [`annotation-evidence-list-sketch.html`](annotation-evidence-list-sketch.html) | #1808/#958の**未採用・読取り専用**表示スケッチ。既存Reference出力の注記作業状態と人の確認・対象位置を別一覧にし、Owner受理を判定しない。ローカル提供時のみ使用し、後述の起動方法を参照 |
+| [`annotation-evidence-list-sketch.html`](annotation-evidence-list-sketch.html) | #1808/#958の**未採用・読取り専用**表示スケッチ。注記・知識評価・Shared Acceptance Decision履歴を独立した一覧にし、Owner受理を判定しない。ローカル提供時のみ使用し、後述の起動方法を参照 |
 
 ## 注釈一覧の限定的な表示試作（#1808）
 
@@ -38,7 +38,7 @@ node --test plan/design/mockups/annotation-evidence-list-projection.test.mjs
 
 表示は既存の`schema`/`contract`を確認します。異なる契約や未対応の表現は推測して受理せず、表示を拒否します。注記`open/done`、知識の`confirmed`、`targetBinding`を並列表示しますが、両ReferenceのIDや`subject`を推測で結び付けません。原典の事実確認、TEI対応候補、source/model Owner受理、Canonical Acceptance、実行観測を**これら二つのReferenceから導出することはできません**。対応受理は「判定不可」と表示します。
 
-効果仮説: 既存の注記の「対応済み」を、業務モデルの「受理済み」と混同する誤表示を、同じ画面上で避けられるか確かめます。限定テストは3件（読取り専用・混在、曖昧/参照切れ、未知schema/契約）。実GUI受入・原典/TEI対応の受理・実データでの有効性は未確認です。異なる投影を並べる実効性が無い場合は、本スケッチは撤回して既存Consumerの表示に寄せます。
+効果仮説: 既存の注記の「対応済み」を、業務モデルの「受理済み」と混同する誤表示を、同じ画面上で避けられるか確かめます。既存投影の合成テストは9件です。今回のDecision履歴独立表示には別の合成テスト6件を追加しています。実GUI受入・原典/TEI対応の受理・実データでの有効性は未確認です。異なる投影を並べる実効性が無い場合は、本スケッチは撤回して既存Consumerの表示に寄せます。
 
 ### 評価の詳細表示（追加PoC、採用前）
 
