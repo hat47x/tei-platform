@@ -18,6 +18,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"regexp"
+	"runtime"
 	"sort"
 	"strings"
 	"time"
@@ -82,13 +83,14 @@ type Result struct {
 }
 
 type GenerationProvenance struct {
-	Provider      string `json:"provider"`
-	Model         string `json:"model"`
-	PromptDigest  string `json:"promptDigest"`
-	ContextDigest string `json:"contextDigest"`
-	OutputDigest  string `json:"outputDigest"`
-	PromptPath    string `json:"promptPath,omitempty"`
-	ContextPath   string `json:"contextPath,omitempty"`
+	Provider       string `json:"provider"`
+	Model          string `json:"model"`
+	ContractDigest string `json:"contractDigest"`
+	PromptDigest   string `json:"promptDigest"`
+	ContextDigest  string `json:"contextDigest"`
+	OutputDigest   string `json:"outputDigest"`
+	PromptPath     string `json:"promptPath,omitempty"`
+	ContextPath    string `json:"contextPath,omitempty"`
 }
 
 type Lineage struct {
@@ -160,7 +162,8 @@ func validateGeneration(g *GenerationProvenance) error {
 		return fmt.Errorf("generation provider and model are required")
 	}
 	for name, value := range map[string]string{
-		"promptDigest": g.PromptDigest, "contextDigest": g.ContextDigest, "outputDigest": g.OutputDigest,
+		"contractDigest": g.ContractDigest, "promptDigest": g.PromptDigest,
+		"contextDigest": g.ContextDigest, "outputDigest": g.OutputDigest,
 	} {
 		if !digestPattern.MatchString(value) {
 			return fmt.Errorf("generation %s is not a sha256 digest", name)
@@ -528,6 +531,14 @@ func evaluateCandidate(ctx context.Context, dir string, fixture Fixture, contrac
 		return reject("not selected by target profile")
 	}
 	if registry != nil {
+		if versionEntry, ok := Entry(*registry, manifest.ID, candidateVersion(manifest)); ok {
+			switch versionEntry.Status {
+			case RegistryRevoked:
+				return reject("registry: candidate version is revoked")
+			case RegistrySuperseded:
+				return reject("registry: candidate version is superseded")
+			}
+		}
 		entry, err := ActiveEntry(*registry, manifest.ID)
 		if err != nil {
 			return reject("registry: " + err.Error())
@@ -553,6 +564,9 @@ func evaluateCandidate(ctx context.Context, dir string, fixture Fixture, contrac
 	if manifest.Generation != nil {
 		if err := validateGeneration(manifest.Generation); err != nil {
 			return reject(err.Error())
+		}
+		if manifest.Generation.ContractDigest != contractDigest {
+			return reject("generation contract digest mismatch")
 		}
 	}
 	sourcePath := filepath.Join(dir, filepath.FromSlash(manifest.Source))
@@ -594,7 +608,7 @@ func evaluateCandidate(ctx context.Context, dir string, fixture Fixture, contrac
 		return CandidateReceipt{}, err
 	}
 	defer os.RemoveAll(binaryDir)
-	binaryPath := filepath.Join(binaryDir, manifest.ID)
+	binaryPath := candidateBinaryPath(filepath.Join(binaryDir, manifest.ID))
 	buildCtx, cancel := context.WithTimeout(ctx, 2*time.Minute)
 	defer cancel()
 	if err := buildCandidate(buildCtx, dir, binaryPath); err != nil {
@@ -627,6 +641,15 @@ func evaluateCandidate(ctx context.Context, dir string, fixture Fixture, contrac
 		}
 	}
 	return receipt, nil
+}
+
+// candidateBinaryPath gives the built executable a platform-appropriate name.
+// A Windows binary without .exe is not reliably executable through os/exec.
+func candidateBinaryPath(path string) string {
+	if runtime.GOOS == "windows" && !strings.HasSuffix(strings.ToLower(path), ".exe") {
+		return path + ".exe"
+	}
+	return path
 }
 
 func buildCandidate(ctx context.Context, dir, binaryPath string) error {

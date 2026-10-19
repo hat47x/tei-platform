@@ -15,11 +15,15 @@ import (
 func main() {
 	contractPath := flag.String("contract", "", "generator contract JSON")
 	outDir := flag.String("out", "", "new output directory")
-	all := flag.Bool("all", false, "generate all fixed strategies under -out")
+	all := flag.Bool("all", false, "generate all fixed strategies under -out at version 1")
 	strategy := flag.String("strategy", "", "one of template, alternative, dangerous")
+	version := flag.String("version", "1", "generator version recorded in the candidate manifest")
 	flag.Parse()
 	if *contractPath == "" || *outDir == "" {
 		fail(fmt.Errorf("-contract and -out are required"))
+	}
+	if *all && *version != "1" {
+		fail(fmt.Errorf("-version is only supported with one -strategy"))
 	}
 	var results []generatorselection.Generated
 	var err error
@@ -30,7 +34,7 @@ func main() {
 			fail(fmt.Errorf("-strategy or -all is required"))
 		}
 		var generated generatorselection.Generated
-		generated, err = generatorselection.Generate(*contractPath, *strategy, *outDir)
+		generated, err = generatorselection.GenerateVersion(*contractPath, *strategy, *version, *outDir)
 		results = append(results, generated)
 	}
 	if err != nil {

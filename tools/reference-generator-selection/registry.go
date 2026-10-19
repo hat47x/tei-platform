@@ -7,10 +7,26 @@ import (
 	"strings"
 )
 
-const RegistrySchema = "tei.reference.generator-registry/v0"
+const (
+	// RegistrySchemaV0 is the original registry shape. It understands only
+	// active and revoked entries and has no replacement history.
+	RegistrySchemaV0 = "tei.reference.generator-registry/v0"
+	// RegistrySchemaV1 adds superseded entries, replacement links, and reasons.
+	// A v1 registry is still only a project-local constraint, not an authority.
+	RegistrySchemaV1 = "tei.reference.generator-registry/v1"
+	// RegistrySchema is the schema written by new fixtures and tools.
+	RegistrySchema = RegistrySchemaV1
+)
 
 const (
-	RegistryActive  = "active"
+	// RegistryActive marks the one version a project currently treats as the
+	// usable generator for an id.
+	RegistryActive = "active"
+	// RegistrySuperseded marks a version replaced by a newer one. It must have
+	// exactly one successor in the same registry.
+	RegistrySuperseded = "superseded"
+	// RegistryRevoked marks a version that must not be used. A revoked version
+	// may or may not have a successor.
 	RegistryRevoked = "revoked"
 )
 
@@ -20,6 +36,7 @@ type RegistryEntry struct {
 	Status       string `json:"status"`
 	SourceDigest string `json:"sourceDigest"`
 	Supersedes   string `json:"supersedes,omitempty"`
+	Reason       string `json:"reason,omitempty"`
 	Note         string `json:"note,omitempty"`
 }
 
@@ -30,6 +47,11 @@ type Registry struct {
 	ContractDigest  string          `json:"contractDigest"`
 	Entries         []RegistryEntry `json:"entries"`
 	Note            string          `json:"note,omitempty"`
+}
+
+type registryKey struct {
+	id      string
+	version string
 }
 
 // LoadRegistry validates a registry against the contract it names. A registry
@@ -51,8 +73,9 @@ func LoadRegistry(registryPath, contractPath string) (Registry, error) {
 	if _, err := readJSON(registryPath, &registry); err != nil {
 		return Registry{}, err
 	}
-	if registry.Schema != RegistrySchema {
-		return Registry{}, fmt.Errorf("registry schema %q is not %q", registry.Schema, RegistrySchema)
+	if registry.Schema != RegistrySchemaV0 && registry.Schema != RegistrySchemaV1 {
+		return Registry{}, fmt.Errorf("registry schema %q is neither %q nor %q",
+			registry.Schema, RegistrySchemaV0, RegistrySchemaV1)
 	}
 	if registry.ContractID != contract.ID || registry.ContractVersion != contract.Version {
 		return Registry{}, fmt.Errorf("registry targets %s/%s, contract is %s/%s",
@@ -64,31 +87,116 @@ func LoadRegistry(registryPath, contractPath string) (Registry, error) {
 	if len(registry.Entries) == 0 {
 		return Registry{}, fmt.Errorf("registry has no entries")
 	}
-	seen := map[string]bool{}
-	for _, entry := range registry.Entries {
-		if strings.TrimSpace(entry.ID) == "" || strings.TrimSpace(entry.Version) == "" {
-			return Registry{}, fmt.Errorf("registry entry id and version are required")
-		}
-		if entry.Status != RegistryActive && entry.Status != RegistryRevoked {
-			return Registry{}, fmt.Errorf("registry entry %s@%s has unknown status %q", entry.ID, entry.Version, entry.Status)
-		}
-		if !digestPattern.MatchString(entry.SourceDigest) {
-			return Registry{}, fmt.Errorf("registry entry %s@%s has no source digest", entry.ID, entry.Version)
-		}
-		key := entry.ID + "\x00" + entry.Version
-		if seen[key] {
-			return Registry{}, fmt.Errorf("duplicate registry entry %s@%s", entry.ID, entry.Version)
-		}
-		seen[key] = true
+	if err := validateRegistryEntries(registry); err != nil {
+		return Registry{}, err
 	}
 	return registry, nil
 }
 
-// ActiveEntry returns the single active version for id. Revoked, missing, and
-// ambiguous entries fail closed.
+func validateRegistryEntries(registry Registry) error {
+	entries := map[registryKey]RegistryEntry{}
+	active := map[string]int{}
+	v1 := registry.Schema == RegistrySchemaV1
+	for _, entry := range registry.Entries {
+		if strings.TrimSpace(entry.ID) == "" || strings.TrimSpace(entry.Version) == "" {
+			return fmt.Errorf("registry entry id and version are required")
+		}
+		switch entry.Status {
+		case RegistryActive, RegistryRevoked:
+		case RegistrySuperseded:
+			if !v1 {
+				return fmt.Errorf("registry entry %s@%s uses status %q; it requires %s",
+					entry.ID, entry.Version, entry.Status, RegistrySchemaV1)
+			}
+		default:
+			return fmt.Errorf("registry entry %s@%s has unknown status %q", entry.ID, entry.Version, entry.Status)
+		}
+		if !digestPattern.MatchString(entry.SourceDigest) {
+			return fmt.Errorf("registry entry %s@%s has no source digest", entry.ID, entry.Version)
+		}
+		if !v1 && (entry.Supersedes != "" || entry.Reason != "") {
+			return fmt.Errorf("registry entry %s@%s uses replacement fields; they require %s",
+				entry.ID, entry.Version, RegistrySchemaV1)
+		}
+		if v1 && entry.Status == RegistryRevoked && strings.TrimSpace(entry.Reason) == "" {
+			return fmt.Errorf("revoked registry entry %s@%s must state a reason", entry.ID, entry.Version)
+		}
+		key := registryKey{id: entry.ID, version: entry.Version}
+		if _, ok := entries[key]; ok {
+			return fmt.Errorf("duplicate registry entry %s@%s", entry.ID, entry.Version)
+		}
+		entries[key] = entry
+		if entry.Status == RegistryActive {
+			active[entry.ID]++
+		}
+	}
+	for id, count := range active {
+		if count > 1 {
+			return fmt.Errorf("generator %s has multiple active versions", id)
+		}
+	}
+	if !v1 {
+		return nil
+	}
+	supersededBy := map[registryKey]registryKey{}
+	for _, entry := range registry.Entries {
+		if entry.Supersedes == "" {
+			continue
+		}
+		if entry.Supersedes == entry.Version {
+			return fmt.Errorf("registry entry %s@%s supersedes itself", entry.ID, entry.Version)
+		}
+		targetKey := registryKey{id: entry.ID, version: entry.Supersedes}
+		target, ok := entries[targetKey]
+		if !ok {
+			return fmt.Errorf("registry entry %s@%s supersedes missing version %s", entry.ID, entry.Version, entry.Supersedes)
+		}
+		if target.Status == RegistryActive {
+			return fmt.Errorf("active registry entry %s@%s cannot be superseded", target.ID, target.Version)
+		}
+		if existing, ok := supersededBy[targetKey]; ok {
+			return fmt.Errorf("registry entry %s@%s is superseded by both %s and %s",
+				target.ID, target.Version, existing.version, entry.Version)
+		}
+		supersededBy[targetKey] = registryKey{id: entry.ID, version: entry.Version}
+	}
+	for _, entry := range registry.Entries {
+		key := registryKey{id: entry.ID, version: entry.Version}
+		if entry.Status == RegistrySuperseded {
+			if _, ok := supersededBy[key]; !ok {
+				return fmt.Errorf("superseded registry entry %s@%s has no successor", entry.ID, entry.Version)
+			}
+		}
+	}
+	for _, entry := range registry.Entries {
+		seen := map[registryKey]bool{}
+		current := registryKey{id: entry.ID, version: entry.Version}
+		for {
+			if seen[current] {
+				return fmt.Errorf("registry replacement chain for %s@%s contains a cycle", entry.ID, entry.Version)
+			}
+			seen[current] = true
+			successor, ok := supersededBy[current]
+			if !ok {
+				if entries[current].Status == RegistrySuperseded {
+					return fmt.Errorf("registry replacement chain for %s@%s ends at a superseded entry",
+						entry.ID, entry.Version)
+				}
+				break
+			}
+			current = successor
+		}
+	}
+	return nil
+}
+
+// ActiveEntry returns the single active version for id. Revoked, superseded,
+// missing, and ambiguous entries fail closed and are distinguished so a caller
+// does not report every lifecycle state as the same failure.
 func ActiveEntry(registry Registry, id string) (RegistryEntry, error) {
 	var active []RegistryEntry
 	var revoked []RegistryEntry
+	var superseded []RegistryEntry
 	for _, entry := range registry.Entries {
 		if entry.ID != id {
 			continue
@@ -98,6 +206,8 @@ func ActiveEntry(registry Registry, id string) (RegistryEntry, error) {
 			active = append(active, entry)
 		case RegistryRevoked:
 			revoked = append(revoked, entry)
+		case RegistrySuperseded:
+			superseded = append(superseded, entry)
 		}
 	}
 	if len(active) > 1 {
@@ -108,9 +218,36 @@ func ActiveEntry(registry Registry, id string) (RegistryEntry, error) {
 		if len(revoked) > 0 {
 			return RegistryEntry{}, fmt.Errorf("generator %s is revoked", id)
 		}
+		if len(superseded) > 0 {
+			return RegistryEntry{}, fmt.Errorf("generator %s is superseded and has no active version", id)
+		}
 		return RegistryEntry{}, fmt.Errorf("generator %s is not registered", id)
 	}
 	return active[0], nil
+}
+
+// RegistryIDs returns the distinct generator ids in stable order.
+func RegistryIDs(registry Registry) []string {
+	seen := map[string]bool{}
+	var ids []string
+	for _, entry := range registry.Entries {
+		if !seen[entry.ID] {
+			seen[entry.ID] = true
+			ids = append(ids, entry.ID)
+		}
+	}
+	sort.Strings(ids)
+	return ids
+}
+
+// Entry returns the exact version entry for id, if present.
+func Entry(registry Registry, id, version string) (RegistryEntry, bool) {
+	for _, entry := range registry.Entries {
+		if entry.ID == id && entry.Version == version {
+			return entry, true
+		}
+	}
+	return RegistryEntry{}, false
 }
 
 func candidateVersion(manifest CandidateManifest) string {

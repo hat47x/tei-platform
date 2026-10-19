@@ -8,6 +8,7 @@
   "generation": {
     "provider": "recorded-fixture",
     "model": "fixture-v0",
+    "contractDigest": "sha256:1c1371a2c140a72ab85405ef933ed33411cd78c36035be2052afb038346ca971",
     "promptDigest": "sha256:4307202f69a522bdcad9bc8b59dad3a1325b51c96e65ab5bbd9ff20b2c062cad",
     "contextDigest": "sha256:ff3b9d8a667b0354baefbc4350ba265fa6da6518ee2cca2b9171d40d39938b22",
     "outputDigest": "sha256:9f9d3e51daccc9f1c4f327a082d3ae8b779f840935730dd2101054f7881d92b8"

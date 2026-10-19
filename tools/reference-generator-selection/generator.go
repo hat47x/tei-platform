@@ -61,9 +61,18 @@ type templateData struct {
 // verify that a generated candidate really came from the declared contract and
 // strategy.
 func renderCandidate(contractPath, strategy string) (renderedCandidate, error) {
+	return renderCandidateVersion(contractPath, strategy, "1")
+}
+
+// renderCandidateVersion renders a candidate at an explicit generator version.
+// The source is unchanged by the version; the manifest and provenance carry it.
+func renderCandidateVersion(contractPath, strategy, version string) (renderedCandidate, error) {
 	tmpl, ok := generatorTemplates[strategy]
 	if !ok {
 		return renderedCandidate{}, fmt.Errorf("unknown generator strategy %q", strategy)
+	}
+	if strings.TrimSpace(version) == "" {
+		return renderedCandidate{}, fmt.Errorf("generator version is required")
 	}
 	contractRaw, err := os.ReadFile(contractPath)
 	if err != nil {
@@ -104,10 +113,10 @@ func renderCandidate(contractPath, strategy string) (renderedCandidate, error) {
 		return renderedCandidate{}, fmt.Errorf("generated source is not valid Go: %w", err)
 	}
 	manifest := CandidateManifest{
-		Schema: CandidateSchema, ID: tmpl.strategy, Version: "1", Origin: tmpl.origin,
+		Schema: CandidateSchema, ID: tmpl.strategy, Version: version, Origin: tmpl.origin,
 		Source: "main.go", SourceDigest: digest(formatted),
 		Generator: &GeneratorProvenance{
-			ID: tmpl.id, Version: "1", Strategy: tmpl.strategy,
+			ID: tmpl.id, Version: version, Strategy: tmpl.strategy,
 			ContractDigest: data.ContractDigest, TemplateDigest: digest(templateRaw),
 		},
 	}
@@ -119,11 +128,19 @@ type renderedCandidate struct {
 	Manifest CandidateManifest
 }
 
-// Generate renders one candidate source from the contract and a fixed
-// strategy. The generated source is gofmt'ed before it is written, and the
-// candidate manifest records the contract and template digests.
+// Generate renders one candidate source at version 1 from the contract and a
+// fixed strategy.
 func Generate(contractPath, strategy, outDir string) (Generated, error) {
-	rendered, err := renderCandidate(contractPath, strategy)
+	return GenerateVersion(contractPath, strategy, "1", outDir)
+}
+
+// GenerateVersion renders one candidate source from the contract and a fixed
+// strategy. The generated source is gofmt'ed before it is written, and the
+// candidate manifest records the contract, template, and generator version.
+// The version is a declaration for lifecycle tracking; it does not grant
+// acceptance or execution authority.
+func GenerateVersion(contractPath, strategy, version, outDir string) (Generated, error) {
+	rendered, err := renderCandidateVersion(contractPath, strategy, version)
 	if err != nil {
 		return Generated{}, err
 	}
