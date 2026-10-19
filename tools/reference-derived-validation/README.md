@@ -23,7 +23,7 @@
 | 導出がNULLで方針未定義 | 0やnot satisfiedへ変換しない | `DERIVATION_NULL_UNSPECIFIED` |
 | 上限など他入力が未取得 | 評価しない | `LIMIT_UNAVAILABLE` |
 | 導出成功・金額>上限 | 正常な不成立 | `VALIDATION_NOT_SATISFIED` |
-| 導出成功・金額≤上限（保存時） | 成立（`saveGuaranteed=true`） | `VALIDATION_SATISFIED` |
+| 導出成功・金額≤上限（保存時相当の合成入力） | Validation成立のみ（`saveGuaranteed=false`）。実保存は未観測 | `VALIDATION_SATISFIED` |
 | 導出成功・金額≤上限（Preview） | 成立だが保存時点の確定ではない（`saveGuaranteed=false`） | `VALIDATION_SATISFIED` |
 
 ## 合成Fixture
@@ -33,7 +33,7 @@
 | 条件 | 本参照の結果 |
 | --- | --- |
 | 上限500・金額600 | `VALIDATION_NOT_SATISFIED` |
-| 上限700・金額600（保存） | `VALIDATION_SATISFIED`（`saveGuaranteed=true`） |
+| 上限700・金額600（保存時相当の合成入力） | `VALIDATION_SATISFIED`（`saveGuaranteed=false`、保存未実施） |
 | 単価NULLで方針未定義 | `DERIVATION_NULL_UNSPECIFIED`（0やnot satisfiedにしない） |
 | 単価未取得 | `DERIVATION_INPUT_UNAVAILABLE` |
 | 一時編集で数量1→金額300のPreview | `VALIDATION_SATISFIED`（`saveGuaranteed=false`。保存許可やCommit成立を意味しない） |
@@ -59,7 +59,7 @@ go run ./tools/reference-derived-validation/cmd/tei-derived-validation -input re
 }
 ```
 
-`derivation.state` は `present`、`null`、`input-unavailable`、`execution-failure`、`phase` は `preview`、`save` です。
+`derivation.state` は `present`、`null`、`input-unavailable`、`execution-failure`、`phase` は `preview`、`save` です。`phase=save` は**合成入力側の評価局面の指定**であり、HostやOwner Actionが保存・Commitを実行した証拠ではありません。`saveGuaranteed` は互換用の出力項目として保持しますが、本参照は実保存を観測できないため常に `false` です。
 
 ## 限界
 
