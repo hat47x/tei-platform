@@ -231,6 +231,25 @@ func TestReconcileReportsStaleVersionWhenRegistryOnlyNamesActive(t *testing.T) {
 	}
 }
 
+func TestReconcileReportsMissingRegisteredCandidate(t *testing.T) {
+	_, contract := loadLifecycleRegistry(t)
+	receipt, err := Reconcile(lifecycleRegistryPath(t), contract, t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if receipt.Passed {
+		t.Fatal("reconcile passed with no candidate directory")
+	}
+	if len(receipt.Generators) != 3 {
+		t.Fatalf("unexpected generator coverage: %+v", receipt.Generators)
+	}
+	for _, coverage := range receipt.Generators {
+		if coverage.HasCurrent || coverage.Reason == "" {
+			t.Fatalf("missing candidate was not reported: %+v", coverage)
+		}
+	}
+}
+
 func TestReconcilePassesAfterRegeneratingCurrentCandidates(t *testing.T) {
 	base, contract := loadLifecycleRegistry(t)
 	candidates := filepath.Join(t.TempDir(), "candidates")
