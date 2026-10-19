@@ -6,9 +6,11 @@ export const DECISION_INDEX_SCHEMA = 'tei.reference.decision-index/v0';
 const named = (value, known) => typeof value === 'string' && Object.hasOwn(known, value)
   ? known[value]
   : value == null || value === '' ? 'Referenceに値なし' : `未対応の値（${String(value)}）`;
-const codeList = list => Array.isArray(list) && list.every(a => a && typeof a.code === 'string')
-  ? (list.map(a => a.code).join('、') || 'なし')
-  : 'Referenceに値なし・形式未確認';
+const codeList = list => list === undefined
+  ? '診断コードなし（フィールド省略）'
+  : Array.isArray(list) && list.every(a => a && typeof a.code === 'string')
+    ? (list.map(a => a.code).join('、') || 'なし')
+    : '未対応の診断形式';
 
 const decisionName = { accepted: '参照実装の受理結果', rejected: '参照実装の却下結果' };
 const revisionName = {
@@ -25,6 +27,7 @@ const evidenceName = {
   recorded: '記録済みArtifact（現在の外部原典は未検証）',
   'current-with-recorded-artifacts': 'Source根拠は一致、Artifactは記録のみ',
   diverged: '根拠が不一致または不正',
+  invalid: 'Artifactの根拠が不正',
   none: '根拠記録なし',
 };
 const reviewName = {
@@ -93,8 +96,8 @@ export function projectDecisionIndex(index) {
   return {
     records,
     summary: records.length === 0
-      ? 'Decision履歴は0件。このledgerに記録がないことは、過去の受理操作がなかった証明ではありません。'
-      : `Decision履歴：${records.length}件。これは保存済み補助記録の一覧であり、正式な承認履歴の完全性を保証しません。`,
+      ? `Decision履歴は0件（Workspace modelRevision: ${index.modelRevision}）。このledgerに記録がないことは、過去の受理操作がなかった証明ではありません。`
+      : `Decision履歴：${records.length}件（Workspace modelRevision: ${index.modelRevision}）。これは保存済み補助記録の一覧であり、正式な承認履歴の完全性を保証しません。`,
     limitation: '操作直後の未保存Decision出力、Source復元失敗、Ownerの意味対応、人的承認資格、正式Host受理、実DB／Windows GUIはこの一覧から判定しません。',
   };
 }
