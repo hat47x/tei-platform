@@ -79,11 +79,14 @@ plugin descriptorは`requires`と`conflicts`を持てます。`requires`のplugi
 - `audit`: 追記専用logへ2件を書き、hash chainの検証、既存エントリの改ざん検出、改ざん後の追記拒否を確認する（[reference-audit-log](../reference-audit-log/README.md)）。
 - `authentication`: 有効なfixture credential、credential欠落、別tenantのprincipal、不完全なprincipalを確認する（[reference-authentication](../reference-authentication/README.md)）。
 - `offline-storage`: 自rootへのwrite/read、再オープン後のread、path traversalの拒否を確認する（[reference-offline-storage](../reference-offline-storage/README.md)）。
+- `single-user`: 既に開いているstoreの2回目のOpenを拒否し、close後に再オープンできることを確認する。
 - `export-package`: export、manifest digest、各ファイルのdigest、再読み込み後のverifyを確認する（[reference-export-package](../reference-export-package/README.md)）。
 - それ以外の能力: `unverified`として記録し、動作確認済みとは扱わない。
 - conformance testが失敗した場合は`passed=false`とする。
 
 `unverified`は失敗ではありませんが、保証の確認でもありません。実Provider・実Targetでの確認とは分けて扱います。
+
+`tenant-isolation`・`audit`・`authentication`・`offline-storage`・`single-user`・`export-package`の全能力にconformance testがあります。
 
 ## 提供形態の例
 
@@ -105,6 +108,5 @@ SaaSの`tenant-isolation`は[reference-tenant-isolation](../reference-tenant-iso
 ## 未実装
 
 - pluginの配布・取得・署名・失効、lockの署名、prerelease・build metadata付きversion。
-- `single-user`のconformance test。他の能力は`tenant-isolation`・`audit`・`authentication`・`offline-storage`・`export-package`で確認する。
 - 実Provider・実Targetでの確認。
 - 課金・契約・データ所在・監査保存期間。

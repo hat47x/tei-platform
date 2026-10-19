@@ -15,7 +15,8 @@ go run ./tools/reference-offline-storage/cmd/tei-offline-storage \
 - storage rootの外を読んだり書いたりしない。
 - 絶対key、`..`、root外へのシンボリックリンクを拒否する。
 - 同じkeyへの上書きと、再オープン後のreadをサポートする。
-- `single-user`を前提に、ネットワークサービスを使わない。
+- `single-user`として、rootごとに排他lockを取得する。既に開いている間の2回目の`Open`は`ErrInUse`で拒否する。
+- ネットワークサービスを使わない。
 
 ## 保証しないこと
 
@@ -23,6 +24,7 @@ go run ./tools/reference-offline-storage/cmd/tei-offline-storage \
 - 保存時の暗号化、バックアップ。
 - 複数writerの同時更新。
 - 電源断時の完全な原子性。書き込みは`O_TRUNC`で行い、クラッシュ時に部分的な内容が残る可能性がある。
+- プロセスクラッシュ後に残ったlock fileの自動回収。stale lockは手動で確認・削除する必要がある。
 
 ## plugin記述
 
@@ -31,8 +33,7 @@ go run ./tools/reference-offline-storage/cmd/tei-offline-storage \
 - 自rootへのwriteとread
 - 再オープン後のread
 - `..`によるpath traversalの拒否
-
-`single-user`には独立したconformance testがないため、`unverified`として残します。
+- `single-user`: 2回目の`Open`拒否と、close後の再オープン
 
 ## 未実装
 

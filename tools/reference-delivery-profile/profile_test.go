@@ -148,7 +148,7 @@ func TestVerifyIndividualReportsNoTenantIsolationCheck(t *testing.T) {
 	for _, check := range receipt.Conformance {
 		status[check.Capability] = check.Status
 	}
-	if status["offline-storage"] != "verified" || status["single-user"] != "unverified" {
+	if status["offline-storage"] != "verified" || status["single-user"] != "verified" {
 		t.Fatalf("unexpected conformance: %+v", receipt.Conformance)
 	}
 }

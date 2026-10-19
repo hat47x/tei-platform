@@ -1,6 +1,7 @@
 package offlinestorage
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -104,5 +105,40 @@ func TestSymlinkOutsideRootIsRejected(t *testing.T) {
 	}
 	if err := store.Put("link/written.txt", []byte("x")); err == nil {
 		t.Fatal("write through a symlink outside the root was accepted")
+	}
+}
+
+func TestSecondOpenIsRejectedForSingleUser(t *testing.T) {
+	root := t.TempDir()
+	first, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Open(root); !errors.Is(err, ErrInUse) {
+		t.Fatalf("want ErrInUse, got %v", err)
+	}
+	if err := first.Close(); err != nil {
+		t.Fatal(err)
+	}
+	second, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := second.Close(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestListDoesNotExposeTheLockFile(t *testing.T) {
+	store, _ := newStore(t)
+	if err := store.Put("a.txt", []byte("a")); err != nil {
+		t.Fatal(err)
+	}
+	keys, err := store.List()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Join(keys, ",") != "a.txt" {
+		t.Fatalf("keys=%v", keys)
 	}
 }
