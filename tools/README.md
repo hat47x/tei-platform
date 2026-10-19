@@ -21,6 +21,7 @@
 | [`reference-target-profile/`](reference-target-profile/) | 同じ契約・fixture・候補を複数のTarget Profileで実行し、宣言と実行結果を記録する参照（#2019） |
 | [`reference-tenant-isolation/`](reference-tenant-isolation/) | SaaS向けに、テナントrootの閉じ込めと越境拒否を提供する基盤pluginの参照（#2020） |
 | [`reference-audit-log/`](reference-audit-log/) | 追記専用のhash chainと改ざん検出を提供する監査ログ基盤pluginの参照（#2020） |
+| [`reference-authentication/`](reference-authentication/) | credentialを発行せず、principalとtenantの認証境界を検証する基盤pluginの参照（#2020） |
 | [`reference-delivery-profile/`](reference-delivery-profile/) | 提供形態ごとにpluginを選択し、必須能力が揃っているかを検証する参照（#2020） |
 
 ## 設計、業務知識、受入れ

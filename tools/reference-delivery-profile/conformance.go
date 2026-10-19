@@ -1,11 +1,14 @@
 package deliveryprofile
 
 import (
+	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
 
 	auditlog "tei/tools/reference-audit-log"
+	authn "tei/tools/reference-authentication"
 	tenantisolation "tei/tools/reference-tenant-isolation"
 )
 
@@ -105,6 +108,35 @@ func verifyAuditLog() (bool, string) {
 	return true, "append-only chain, reopen, and tamper detection were checked"
 }
 
+type conformanceVerifier struct {
+	principal authn.Principal
+}
+
+func (v conformanceVerifier) Verify(context.Context, string) (authn.Principal, error) {
+	return v.principal, nil
+}
+
+func verifyAuthentication() (bool, string) {
+	valid := conformanceVerifier{principal: authn.Principal{TenantID: "tenant-a", Subject: "user-1"}}
+	if principal, err := authn.Authenticate(context.Background(), valid, "fixture-token", "tenant-a"); err != nil || principal.Subject != "user-1" {
+		return false, "valid fixture credential was not authenticated"
+	}
+	if _, err := authn.Authenticate(context.Background(), valid, "", "tenant-a"); !errors.Is(err, authn.ErrUnauthenticated) {
+		return false, "missing credential was not rejected"
+	}
+	if _, err := authn.Authenticate(context.Background(), conformanceVerifier{
+		principal: authn.Principal{TenantID: "tenant-a", Subject: "user-1"},
+	}, "fixture-token", "tenant-b"); !errors.Is(err, authn.ErrTenantMismatch) {
+		return false, "principal from another tenant was not rejected"
+	}
+	if _, err := authn.Authenticate(context.Background(), conformanceVerifier{
+		principal: authn.Principal{TenantID: "tenant-a"},
+	}, "fixture-token", "tenant-a"); !errors.Is(err, authn.ErrInvalidPrincipal) {
+		return false, "incomplete principal was not rejected"
+	}
+	return true, "valid credential, missing credential, tenant mismatch, and incomplete principal were checked"
+}
+
 func hasCapability(capabilities []string, want string) bool {
 	for _, capability := range capabilities {
 		if capability == want {
@@ -139,7 +171,7 @@ func VerifyWithLock(profilePath, catalogDir, lockPath string) (Receipt, error) {
 
 func runConformance(receipt Receipt) Receipt {
 	checked := map[string]bool{}
-	for _, capability := range []string{"tenant-isolation", "audit"} {
+	for _, capability := range []string{"tenant-isolation", "audit", "authentication"} {
 		var selected *PluginSummary
 		for i := range receipt.Plugins {
 			plugin := &receipt.Plugins[i]
@@ -163,6 +195,8 @@ func runConformance(receipt Receipt) Receipt {
 			ok, detail = verifyTenantIsolation()
 		case "audit":
 			ok, detail = verifyAuditLog()
+		case "authentication":
+			ok, detail = verifyAuthentication()
 		}
 		status := "verified"
 		if !ok {

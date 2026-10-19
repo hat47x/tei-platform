@@ -17,7 +17,7 @@
     {
       "id": "authentication",
       "version": "1",
-      "path": "../plugins/authentication.json"
+      "path": "../../../reference-authentication/plugin.json"
     }
   ]
 }
