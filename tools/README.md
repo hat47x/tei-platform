@@ -41,6 +41,7 @@
 | [`reference-capability-mutation-protocol/`](reference-capability-mutation-protocol/) | 変更を伴うCapabilityの手順確認 |
 | [`reference-capability-transport/`](reference-capability-transport/) | Capabilityの伝送形式と境界の確認 |
 | [`reference-chat-cli-host/`](reference-chat-cli-host/) | 信頼された開発用Hostの事前診断 |
+| [`reference-cognition-port/`](reference-cognition-port/) | 軽量認知を提案ポートとして扱い、文脈・出所・能力限界・失敗状態を記録する参照。受理・権限・実行を決めない（#2021） |
 | [`reference-critical-lowering/`](reference-critical-lowering/) | 意味定義から実行形式への変換条件の確認 |
 | [`reference-derivation-cache/`](reference-derivation-cache/) | 導出値の鮮度・キャッシュ再利用条件・業務上の確定値の境界を合成入力で判定する読取り専用の参照（#1641） |
 | [`reference-derivation-evidence/`](reference-derivation-evidence/) | 導出値の設計由来・評価根拠・診断と、要求者ごとの開示境界を合成入力で判定する読取り専用の参照（#1696） |

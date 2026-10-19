@@ -1,0 +1,21 @@
+{
+  "schema": "tei.reference.cognition-provider/v0",
+  "id": "local-rules-a",
+  "model": "deterministic-rules",
+  "version": "1",
+  "execution": "local",
+  "network": "none",
+  "capabilities": [
+    "validation-candidate",
+    "diagnosis"
+  ],
+  "limits": {
+    "maxContextBytes": 65536,
+    "maxOutputBytes": 65536,
+    "timeoutSeconds": 10
+  },
+  "settings": {
+    "strategy": "first",
+    "note": "決定的な参照proposer。モデル実行ではない。"
+  }
+}

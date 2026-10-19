@@ -1,0 +1,28 @@
+{
+  "schema": "tei.reference.cognition-request/v0",
+  "id": "request-validation-1",
+  "kind": "validation-candidate",
+  "profile": "offline",
+  "context": {
+    "workspaceRevision": "synthetic-context-v0",
+    "acceptedReferences": [
+      "sales.order_line.quantity",
+      "sales.order_line.unit_price"
+    ],
+    "observations": [
+      {
+        "id": "obs-1",
+        "statement": "quantity may be negative in an imported line",
+        "reference": "sales.order_line.quantity"
+      },
+      {
+        "id": "obs-2",
+        "statement": "unit price is always provided",
+        "reference": "sales.order_line.unit_price"
+      }
+    ],
+    "constraints": [
+      "the provider must run without network access"
+    ]
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "schema": "tei.reference.cognition-proposal/v0",
+  "state": "proposed",
+  "candidates": [
+    {
+      "id": "candidate-obs-1",
+      "kind": "validation-candidate",
+      "subject": "sales.order_line.quantity",
+      "payload": {
+        "expression": "sales.order_line.quantity >= 0",
+        "severity": "error"
+      },
+      "basis": [
+        "observation:obs-1"
+      ],
+      "assumptions": [
+        "the accepted type is numeric"
+      ]
+    }
+  ]
+}
