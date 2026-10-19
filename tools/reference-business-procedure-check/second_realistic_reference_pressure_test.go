@@ -859,7 +859,12 @@ func TestSecondRealisticReferenceBaselineCheckerReportsNoDiagnostics(t *testing.
 func TestSecondRealisticReferenceDoesNotCopyExternalMaterial(t *testing.T) {
 	_, fixtures := loadSecondCorpus(t)
 	ledger := loadSeedLedger(t)
-	externalNames := []string{"TALON", "talon", "CONCEPTWARE", "XEAD", "Xead", "X-TEA", "http://", "https://"}
+	// External product and source names stay in the ledger (or in the private research record), never in
+	// the fixtures. Every ledger source id and title is denied in addition to the fixed names below.
+	externalNames := []string{"CONCEPTWARE", "XEAD", "Xead", "X-TEA", "http://", "https://"}
+	for _, source := range ledger.Sources {
+		externalNames = append(externalNames, source.ID, source.Title)
+	}
 	for id, f := range fixtures {
 		texts := []string{f.Procedure.Purpose, f.Procedure.Trigger.Text, f.Procedure.Actor.Label}
 		for _, s := range f.Steps {

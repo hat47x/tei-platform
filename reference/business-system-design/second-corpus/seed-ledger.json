@@ -23,22 +23,22 @@
   "sources": [
     {"id": "xtea-home", "title": "X-TEA HOME", "url": "https://dbc.in.coocan.jp/", "use": "design-pressure-only", "copied": false},
     {"id": "itmedia-2011", "title": "渡辺幸三「実行可能な仕様書のライブラリを知的社会資本に」@IT / ITmedia", "publication": "2011-09-28", "use": "design-pressure-only", "copied": false},
-    {"id": "talon-mfs", "title": "TALON「カスタマイズ放題生産管理」", "url": "https://talon.jp/products/businesspackage/businesspackage-mfs/", "use": "design-pressure-only", "copied": false},
-    {"id": "talon-mfs-manual", "title": "TALON「カスタマイズ放題生産管理システム Ver.1.3 マニュアル」", "url": "https://talon.jp/manual/10.TALON_MPS_Manual.pdf", "use": "design-pressure-only", "copied": false},
-    {"id": "talon-business-flow", "title": "TALON「想定業務フロー」", "url": "https://talon.jp/manual/20.TALON_MPS_BusinessFlow.pdf", "use": "design-pressure-only", "copied": false},
-    {"id": "talon-ims", "title": "TALON「カスタマイズ放題在庫管理」", "url": "https://talon.jp/products/businesspackage/businesspackage-ims/", "use": "design-pressure-only", "copied": false},
-    {"id": "talon-modeling-2015", "title": "TALON「モデリング分科会の発足」", "publication": "2015", "use": "design-pressure-only", "copied": false},
+    {"id": "ext-mfg-package", "title": "外部ローコード製品の生産管理業務パッケージ（製品名と出典は非公開の調査記録）", "use": "design-pressure-only", "copied": false},
+    {"id": "ext-mfg-manual", "title": "同パッケージの利用者マニュアル（製品名と出典は非公開の調査記録）", "use": "design-pressure-only", "copied": false},
+    {"id": "ext-mfg-business-flow", "title": "同パッケージの想定業務フロー（製品名と出典は非公開の調査記録）", "use": "design-pressure-only", "copied": false},
+    {"id": "ext-inventory-package", "title": "外部ローコード製品の在庫管理業務パッケージ（製品名と出典は非公開の調査記録）", "use": "design-pressure-only", "copied": false},
+    {"id": "ext-modeling-2015", "title": "外部ローコード製品の提供元によるモデリング分科会の発足（製品名と出典は非公開の調査記録）", "publication": "2015", "use": "design-pressure-only", "copied": false},
     {"id": "xeadmodeler-repo", "title": "XeadModeler GitHub repository", "use": "design-pressure-only", "copied": false, "licenseNote": "BSD-3-Clause applies to the Modeler source repository only; it is not assumed for CONCEPTWARE model artifacts"}
   ],
   "copiedArtifacts": [],
   "licenseAnalogyMade": false,
   "sourceBackedFacts": [
-    {"id": "SF-1", "text": "Manufacturing instruction, material issue, warehouse stock movement / stocktaking and shipment appear as cross-subsystem business concerns.", "sources": ["talon-mfs", "talon-mfs-manual", "talon-business-flow"], "confirmedBy": "LANE_B_REALISTIC_BUSINESS_CORPUS_PUBLIC_SOURCE_AUDIT_2026-09.md section 2"},
-    {"id": "SF-2", "text": "Material receipt and issue, manufacturing completion and shipment are physical / external-world pressures.", "sources": ["talon-mfs", "talon-mfs-manual", "talon-business-flow"], "confirmedBy": "LANE_B_REALISTIC_BUSINESS_CORPUS_PUBLIC_SOURCE_AUDIT_2026-09.md section 2"},
-    {"id": "SF-3", "text": "More than one responsibility context exists in such a business.", "sources": ["talon-mfs-manual", "xtea-home"], "confirmedBy": "LANE_B_REALISTIC_BUSINESS_CORPUS_PUBLIC_SOURCE_AUDIT_2026-09.md section 2"},
-    {"id": "SF-4", "text": "The instruction / entry stage and the actual change of stock or accounting are not necessarily simultaneous.", "sources": ["talon-mfs-manual", "talon-business-flow"], "confirmedBy": "ISSUE-000050 corpus selection (public manual / flow)"},
-    {"id": "SF-5", "text": "Manufacturing instruction, physical manufacturing / completion, recording the completion in the system, and shipment work do not necessarily fold into one system command.", "sources": ["talon-mfs-manual", "talon-business-flow"], "confirmedBy": "ISSUE-000050 corpus selection (public manual / flow)"},
-    {"id": "SF-6", "text": "Inventory distinguishes the actual movement (receipt / issue) from the history and stock state that follow it.", "sources": ["talon-ims", "talon-mfs-manual"], "confirmedBy": "ISSUE-000050 corpus selection (public manual / flow)"}
+    {"id": "SF-1", "text": "Manufacturing instruction, material issue, warehouse stock movement / stocktaking and shipment appear as cross-subsystem business concerns.", "sources": ["ext-mfg-package", "ext-mfg-manual", "ext-mfg-business-flow"], "confirmedBy": "LANE_B_REALISTIC_BUSINESS_CORPUS_PUBLIC_SOURCE_AUDIT_2026-09.md section 2"},
+    {"id": "SF-2", "text": "Material receipt and issue, manufacturing completion and shipment are physical / external-world pressures.", "sources": ["ext-mfg-package", "ext-mfg-manual", "ext-mfg-business-flow"], "confirmedBy": "LANE_B_REALISTIC_BUSINESS_CORPUS_PUBLIC_SOURCE_AUDIT_2026-09.md section 2"},
+    {"id": "SF-3", "text": "More than one responsibility context exists in such a business.", "sources": ["ext-mfg-manual", "xtea-home"], "confirmedBy": "LANE_B_REALISTIC_BUSINESS_CORPUS_PUBLIC_SOURCE_AUDIT_2026-09.md section 2"},
+    {"id": "SF-4", "text": "The instruction / entry stage and the actual change of stock or accounting are not necessarily simultaneous.", "sources": ["ext-mfg-manual", "ext-mfg-business-flow"], "confirmedBy": "ISSUE-000050 corpus selection (public manual / flow)"},
+    {"id": "SF-5", "text": "Manufacturing instruction, physical manufacturing / completion, recording the completion in the system, and shipment work do not necessarily fold into one system command.", "sources": ["ext-mfg-manual", "ext-mfg-business-flow"], "confirmedBy": "ISSUE-000050 corpus selection (public manual / flow)"},
+    {"id": "SF-6", "text": "Inventory distinguishes the actual movement (receipt / issue) from the history and stock state that follow it.", "sources": ["ext-inventory-package", "ext-mfg-manual"], "confirmedBy": "ISSUE-000050 corpus selection (public manual / flow)"}
   ],
   "teiOriginalDecisions": [
     {"id": "TD-1", "text": "The production run is one procedure with its own need: it must keep physical completion apart from the instruction and from the record, then end production control of the confirmed goods through an explicit terminal release that does not depend on any particular receiving procedure.", "refs": ["make-to-order.production-run", "make-to-order.production-run/PR-06"]},
