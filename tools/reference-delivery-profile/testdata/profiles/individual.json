@@ -7,7 +7,7 @@
     {
       "id": "offline-storage",
       "version": "1",
-      "path": "../plugins/offline-storage.json"
+      "path": "../../../reference-offline-storage/plugin.json"
     }
   ]
 }
