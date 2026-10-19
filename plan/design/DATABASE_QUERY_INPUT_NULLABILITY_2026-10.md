@@ -119,7 +119,7 @@ Providerごとの差は別に確認する。
 - 必須入力で明示nullを許可する組合せを許すか。
 - null allowedの入力を、SQLで`IS NULL`と`= ?`のどちらへ実現するか。Query realizationの表現と契約の関係。
 - PostgreSQL以外のProvider差を、どの実DB Evidenceで確認するか。
-- Semantic typeからruntime値への許容変換を、どこで・谁が行うか。
+- Semantic typeからruntime値への許容変換を、どこで・誰が行うか。
 - optional欠落をSQL文から省略する場合の、Query realizationとparameter mappingの表現。
 
 ## 9. 非目標
