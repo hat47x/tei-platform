@@ -1,0 +1,10 @@
+{
+  "schema": "tei.reference.delivery-plugin/v0",
+  "id": "export-package",
+  "version": "1",
+  "kind": "delivery-foundation",
+  "capabilities": ["export-package"],
+  "entrypoints": ["package.export"],
+  "guarantees": ["exports an explicit package manifest"],
+  "notGuaranteed": ["customer-specific licensing", "installation on an unknown host"]
+}
