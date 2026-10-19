@@ -12,7 +12,7 @@
     {
       "id": "audit",
       "version": "1",
-      "path": "../plugins/audit.json"
+      "path": "../../../reference-audit-log/plugin.json"
     },
     {
       "id": "authentication",
