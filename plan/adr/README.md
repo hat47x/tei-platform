@@ -57,3 +57,4 @@ Issueでは「何を行うか」を管理し、ADRでは「なぜその方針を
 - [ADR-0033: コアとプラグインをサブプロジェクトとして管理する](0033-core-and-plugin-subprojects.md)（目標構成として採用。ソース移動は未実施）
 - [ADR-0034: 生成器を受理済み意味から導出する版付き成果物として扱い、生成AIによる生成器生成を同じ適合境界に置く](0034-generator-as-derived-artifact.md)（提案中）
 - [ADR-0035: 自律開発を段階づけ、機械可読な作業票と変更範囲に応じた検証で人間の関与を減らす](0035-autonomy-levels-and-verification-packets.md)（提案中）
+- [ADR-0036: 提供形態の違いはプラグインの選択で実現し、形態別の実装を作らない](0036-delivery-forms-as-plugin-composition.md)（採用）
