@@ -12,6 +12,14 @@ go run ./tools/reference-target-profile/cmd/tei-target-profile \
   -contract tools/reference-generator-selection/testdata/line-amount/contract.json \
   -fixtures tools/reference-generator-selection/testdata/line-amount/fixtures.json \
   -candidates tools/reference-generator-selection/testdata/candidates
+
+go run ./tools/reference-target-profile/cmd/tei-target-profile \
+  compare \
+  -profiles tools/reference-target-profile/testdata/server.json,tools/reference-target-profile/testdata/embedded.json \
+  -workspace reference/workspace \
+  -contract tools/reference-generator-selection/testdata/line-amount/contract.json \
+  -fixtures tools/reference-generator-selection/testdata/line-amount/fixtures.json \
+  -candidates tools/reference-generator-selection/testdata/candidates
 ```
 
 ## Profileの項目
@@ -41,12 +49,23 @@ go run ./tools/reference-target-profile/cmd/tei-target-profile \
 
 memory limitは`GOMEMLIMIT`としてselectionのサブプロセスへ渡します。これはGo runtimeのsoft limitであり、OSや実機のメモリ制約を証明しません。
 
+## Profile間の意味比較
+
+`compare`は、複数のprofileを同じ契約・fixture・候補集合で順に実行し、各profileが選んだ生成器の**case別出力**を比較します。
+
+- 各caseの`state`・`amount`・`currency`・`code`・`passed`が全profileで一致する場合だけ`equal: true`。
+- あるprofileでcase結果が欠けた場合、またはprofileの実行が不合格の場合は`semanticsEqual: false`。
+- `passed`は、全profileの実行が合格し、かつ`semanticsEqual`がtrueの場合だけtrue。
+- profileの宣言差（processModel、storage、network、update、memoryLimitBytes）は`profileDifferences`へ記録し、意味の差と混同しない。
+- `unsupported`の差は`unsupportedDifferences`、強制方法の差は`enforcementDifferences`へ記録する。
+- 比較は宣言の強制・実機動作・本番同等性を証明しない。`grantsRuntimeAuthority`と`provesRealTarget`は常にfalse。
+
 ## 守っている境界
 
 - profileは意味を変えない。契約・fixture・候補は同じものを使う。
 - profileは`generatorId`で生成器を一つ選ぶ。選ばれなかった候補は`not selected by target profile`として拒否し、別の生成器へ暗黙にフォールバックしない。
 - `processModel`・`storage`・`network`・`update`・`observability`は**宣言**であり、このReferenceでは強制していない。receiptの`enforcement`に`declared-only`と記録する。
-- profileの合格は、実機・実OS・実Targetでの動作を証明しない。
+- profileの合格や`semanticsEqual`は、実機・実OS・実Targetでの動作を証明しない。
 - 組込み固有のリアルタイム性・安全認証・電源断耐性は扱わない。
 
 ## 未実装
@@ -54,3 +73,4 @@ memory limitは`GOMEMLIMIT`としてselectionのサブプロセスへ渡しま�
 - OS・CPU・RTOS別の実行環境と、実機での資源測定。
 - `network`・`storage`・`update`の強制。
 - 実Targetへの配備、ロールバック、長期運用。
+- 異なるfixture集合・異なる期待値でのprofile比較。現在は同じfixtureの範囲だけを比較する。

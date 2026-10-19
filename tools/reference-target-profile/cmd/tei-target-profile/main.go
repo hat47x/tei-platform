@@ -6,27 +6,30 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 
 	targetprofile "tei/tools/reference-target-profile"
 )
 
-// tei-target-profile validates a Target Profile or applies it to one generator
-// selection run. It does not deploy to a real target or enforce every declared
-// constraint.
+// tei-target-profile validates a Target Profile, applies it to one generator
+// selection run, or compares the per-case output of multiple profiles. It does
+// not deploy to a real target, enforce every declared constraint, or prove that
+// two targets are equivalent.
 func main() {
 	if len(os.Args) < 2 {
-		fmt.Fprintln(os.Stderr, "usage: tei-target-profile <validate|run> -profile FILE [options]")
+		fmt.Fprintln(os.Stderr, "usage: tei-target-profile <validate|run|compare> [-profile FILE] [-profiles FILE,...] [options]")
 		os.Exit(2)
 	}
 	command := os.Args[1]
 	fs := flag.NewFlagSet(command, flag.ExitOnError)
 	profilePath := fs.String("profile", "", "target profile JSON")
+	profilePaths := fs.String("profiles", "", "comma-separated target profile JSON files for compare")
 	workspaceDir := fs.String("workspace", "reference/workspace", "accepted Workspace root")
 	contractPath := fs.String("contract", "", "generator contract JSON")
 	fixturesPath := fs.String("fixtures", "", "fixed fixture JSON")
 	candidatesDir := fs.String("candidates", "", "directory containing candidate directories")
 	_ = fs.Parse(os.Args[2:])
-	if *profilePath == "" {
+	if command != "compare" && *profilePath == "" {
 		fail(fmt.Errorf("-profile is required"))
 	}
 	switch command {
@@ -43,6 +46,30 @@ func main() {
 		receipt, err := targetprofile.Run(context.Background(), targetprofile.RunOptions{
 			WorkspaceDir: *workspaceDir, ContractPath: *contractPath,
 			FixturePath: *fixturesPath, CandidatesDir: *candidatesDir, ProfilePath: *profilePath,
+		})
+		if err != nil {
+			fail(err)
+		}
+		emit(receipt)
+		if !receipt.Passed {
+			os.Exit(1)
+		}
+	case "compare":
+		if *contractPath == "" || *fixturesPath == "" || *candidatesDir == "" {
+			fail(fmt.Errorf("-contract, -fixtures, and -candidates are required for compare"))
+		}
+		var paths []string
+		for _, path := range strings.Split(*profilePaths, ",") {
+			if trimmed := strings.TrimSpace(path); trimmed != "" {
+				paths = append(paths, trimmed)
+			}
+		}
+		if len(paths) < 2 {
+			fail(fmt.Errorf("-profiles requires at least two profile files"))
+		}
+		receipt, err := targetprofile.Compare(context.Background(), targetprofile.CompareOptions{
+			WorkspaceDir: *workspaceDir, ContractPath: *contractPath,
+			FixturePath: *fixturesPath, CandidatesDir: *candidatesDir, ProfilePaths: paths,
 		})
 		if err != nil {
 			fail(err)
