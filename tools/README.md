@@ -18,6 +18,7 @@
 | [`reference-cli-trace-benchmark/`](reference-cli-trace-benchmark/) | 合成Workspaceによるtraceの処理段別の時間・メモリ計測と出力不変の確認 |
 | [`reference-change-packet/`](reference-change-packet/) | 変更範囲・危険度・検証・停止条件をJSONで宣言し、範囲確認と検証実行・証拠記録を行う参照（#2017） |
 | [`reference-generator-selection/`](reference-generator-selection/) | 受理済み契約に対する生成器候補を固定fixtureで比較し、source/binary digest、実行言語・runtimeと結果をreceiptへ残す参照。GoとPythonの候補、registryの版・置換・失効も確認する（#2016 / #2077） |
+| [`reference-generator-context/`](reference-generator-context/) | 受理済み契約・fixture・Workspace revisionから、生成モデル向けの上限付き文脈を作る参照（#2016 / #2021） |
 | [`reference-target-profile/`](reference-target-profile/) | 同じ契約・fixture・候補を複数のTarget Profileで実行し、宣言と実行結果、case別出力の意味一致を記録する参照（#2019） |
 | [`reference-productivity-benchmark/`](reference-productivity-benchmark/) | 生産性比較のrunを検証・記録し、3方法×3回の中央値と範囲を集計する参照（#2018） |
 | [`reference-tenant-isolation/`](reference-tenant-isolation/) | SaaS向けに、テナントrootの閉じ込めと越境拒否を提供する基盤pluginの参照（#2020） |
