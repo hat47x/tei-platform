@@ -9,6 +9,7 @@ import (
 
 	auditlog "tei/tools/reference-audit-log"
 	authn "tei/tools/reference-authentication"
+	exportpackage "tei/tools/reference-export-package"
 	offlinestorage "tei/tools/reference-offline-storage"
 	tenantisolation "tei/tools/reference-tenant-isolation"
 )
@@ -171,6 +172,34 @@ func verifyOfflineStorage() (bool, string) {
 	return true, "write, read, reopen, and path traversal rejection were checked"
 }
 
+func verifyExportPackage() (bool, string) {
+	base, err := os.MkdirTemp("", "tei-export-conformance-*")
+	if err != nil {
+		return false, err.Error()
+	}
+	defer os.RemoveAll(base)
+	root := filepath.Join(base, "source")
+	if err := os.MkdirAll(root, 0o755); err != nil {
+		return false, err.Error()
+	}
+	if err := os.WriteFile(filepath.Join(root, "app.txt"), []byte("app"), 0o600); err != nil {
+		return false, err.Error()
+	}
+	packagePath := filepath.Join(base, "package.zip")
+	manifest, err := exportpackage.Export(root, packagePath)
+	if err != nil {
+		return false, "export failed: " + err.Error()
+	}
+	verified, err := exportpackage.Verify(packagePath)
+	if err != nil {
+		return false, "verify failed: " + err.Error()
+	}
+	if len(manifest.Files) != 1 || verified.Digest != manifest.Digest {
+		return false, "manifest or digest did not round-trip"
+	}
+	return true, "export, manifest digest, file digest, and round-trip verification were checked"
+}
+
 func hasCapability(capabilities []string, want string) bool {
 	for _, capability := range capabilities {
 		if capability == want {
@@ -205,7 +234,7 @@ func VerifyWithLock(profilePath, catalogDir, lockPath string) (Receipt, error) {
 
 func runConformance(receipt Receipt) Receipt {
 	checked := map[string]bool{}
-	for _, capability := range []string{"tenant-isolation", "audit", "authentication", "offline-storage"} {
+	for _, capability := range []string{"tenant-isolation", "audit", "authentication", "offline-storage", "export-package"} {
 		var selected *PluginSummary
 		for i := range receipt.Plugins {
 			plugin := &receipt.Plugins[i]
@@ -233,6 +262,8 @@ func runConformance(receipt Receipt) Receipt {
 			ok, detail = verifyAuthentication()
 		case "offline-storage":
 			ok, detail = verifyOfflineStorage()
+		case "export-package":
+			ok, detail = verifyExportPackage()
 		}
 		status := "verified"
 		if !ok {

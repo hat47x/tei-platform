@@ -7,7 +7,7 @@
     {
       "id": "export-package",
       "version": "1",
-      "path": "../plugins/export-package.json"
+      "path": "../../../reference-export-package/plugin.json"
     },
     {
       "id": "authentication",
