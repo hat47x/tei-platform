@@ -36,6 +36,13 @@ go run ./tools/reference-delivery-profile/cmd/tei-delivery-profile \
 
 `path`はprofile fileからの相対path、または絶対pathです。plugin descriptorのid・versionがprofileの指定と一致しなければ拒否します。
 
+`path`を省略する場合は、`-catalog`でplugin descriptorのdirectoryを指定します。catalogはidとversionの組で解決し、同じ組が複数ある場合は拒否します。
+
+```text
+go run ./tools/reference-delivery-profile/cmd/tei-delivery-profile \
+  validate -profile PROFILE -catalog PLUGIN_DIR
+```
+
 plugin descriptorは`requires`と`conflicts`を持てます。`requires`のpluginはprofileで明示的に選択されている必要があります。暗黙に追加しません。
 
 ## 検証
@@ -43,6 +50,8 @@ plugin descriptorは`requires`と`conflicts`を持てます。`requires`のplugi
 - profile schema、id、version、必須能力、plugin一覧を検査する。
 - plugin descriptorのschema、id、version、能力を検査する。
 - 同じplugin idの重複を拒否する。
+- `path`がないplugin参照をcatalogから解決する。catalogにないid・versionは拒否する。
+- descriptorのdigestをreceiptへ記録する。
 - `requires`のpluginが選択されていない場合、`conflicts`のpluginが選択されている場合は拒否する。
 - 依存関係を解決し、`order`へ初期化順を記録する。循環依存は拒否する。
 - 必須能力が、選択したpluginの能力で満たされない場合は`missing`へ残し、`passed=false`にする。
@@ -77,7 +86,7 @@ SaaSの`tenant-isolation`は[reference-tenant-isolation](../reference-tenant-iso
 
 ## 未実装
 
-- pluginの配布・取得・署名・失効、複数versionからの解決。
+- pluginの配布・取得・署名・失効、version制約・範囲からの解決、lock file。
 - `tenant-isolation`以外の能力のconformance test。
 - 実Provider・実Targetでの確認。
 - 課金・契約・データ所在・監査保存期間。

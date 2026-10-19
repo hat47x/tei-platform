@@ -79,7 +79,11 @@ func hasCapability(capabilities []string, want string) bool {
 // conformance checks that exist for the selected capabilities. A capability
 // without a check remains "unverified"; it is not reported as passing.
 func Verify(profilePath string) (Receipt, error) {
-	receipt, err := Validate(profilePath)
+	return VerifyWithCatalog(profilePath, "")
+}
+
+func VerifyWithCatalog(profilePath, catalogDir string) (Receipt, error) {
+	receipt, err := ValidateWithCatalog(profilePath, catalogDir)
 	if err != nil {
 		return Receipt{}, err
 	}

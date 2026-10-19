@@ -21,6 +21,7 @@ func main() {
 	command := os.Args[1]
 	fs := flag.NewFlagSet(command, flag.ExitOnError)
 	profilePath := fs.String("profile", "", "delivery profile JSON")
+	catalogDir := fs.String("catalog", "", "optional plugin catalog directory for references without path")
 	_ = fs.Parse(os.Args[2:])
 	if *profilePath == "" {
 		fail(fmt.Errorf("-profile is required"))
@@ -28,9 +29,9 @@ func main() {
 	var receipt deliveryprofile.Receipt
 	var err error
 	if command == "verify" {
-		receipt, err = deliveryprofile.Verify(*profilePath)
+		receipt, err = deliveryprofile.VerifyWithCatalog(*profilePath, *catalogDir)
 	} else {
-		receipt, err = deliveryprofile.Validate(*profilePath)
+		receipt, err = deliveryprofile.ValidateWithCatalog(*profilePath, *catalogDir)
 	}
 	if err != nil {
 		fail(err)
