@@ -13,6 +13,11 @@
       "id": "authentication",
       "version": "1",
       "path": "../plugins/authentication.json"
+    },
+    {
+      "id": "audit",
+      "version": "1",
+      "path": "../plugins/audit.json"
     }
   ]
 }

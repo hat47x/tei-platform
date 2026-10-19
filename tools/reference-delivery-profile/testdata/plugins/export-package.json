@@ -4,6 +4,7 @@
   "version": "1",
   "kind": "delivery-foundation",
   "capabilities": ["export-package"],
+  "requires": ["authentication"],
   "entrypoints": ["package.export"],
   "guarantees": ["exports an explicit package manifest"],
   "notGuaranteed": ["customer-specific licensing", "installation on an unknown host"]

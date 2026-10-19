@@ -37,6 +37,8 @@ type Plugin struct {
 	Version       string   `json:"version"`
 	Kind          string   `json:"kind"`
 	Capabilities  []string `json:"capabilities"`
+	Requires      []string `json:"requires,omitempty"`
+	Conflicts     []string `json:"conflicts,omitempty"`
 	Entrypoints   []string `json:"entrypoints,omitempty"`
 	Guarantees    []string `json:"guarantees,omitempty"`
 	NotGuaranteed []string `json:"notGuaranteed,omitempty"`
@@ -47,6 +49,8 @@ type PluginSummary struct {
 	Version      string   `json:"version"`
 	Path         string   `json:"path"`
 	Capabilities []string `json:"capabilities"`
+	Requires     []string `json:"requires,omitempty"`
+	Conflicts    []string `json:"conflicts,omitempty"`
 }
 
 type Receipt struct {
@@ -55,6 +59,7 @@ type Receipt struct {
 	ProfileVersion       string            `json:"profileVersion"`
 	RequiredCapabilities []string          `json:"requiredCapabilities"`
 	Plugins              []PluginSummary   `json:"plugins"`
+	Order                []string          `json:"order"`
 	ProvidedCapabilities []string          `json:"providedCapabilities"`
 	Missing              []string          `json:"missing"`
 	Conformance          []CapabilityCheck `json:"conformance,omitempty"`
@@ -154,8 +159,30 @@ func Validate(profilePath string) (Receipt, error) {
 		provided = append(provided, capabilities...)
 		receipt.Plugins = append(receipt.Plugins, PluginSummary{
 			ID: ref.ID, Version: ref.Version, Path: ref.Path, Capabilities: capabilities,
+			Requires: uniqueSorted(plugin.Requires), Conflicts: uniqueSorted(plugin.Conflicts),
 		})
 	}
+	byID := map[string]PluginSummary{}
+	for _, plugin := range receipt.Plugins {
+		byID[plugin.ID] = plugin
+	}
+	for _, plugin := range receipt.Plugins {
+		for _, dependency := range plugin.Requires {
+			if _, ok := byID[dependency]; !ok {
+				return Receipt{}, fmt.Errorf("plugin %s requires %s, but %s is not selected", plugin.ID, dependency, dependency)
+			}
+		}
+		for _, conflict := range plugin.Conflicts {
+			if _, ok := byID[conflict]; ok {
+				return Receipt{}, fmt.Errorf("plugin %s conflicts with selected plugin %s", plugin.ID, conflict)
+			}
+		}
+	}
+	order, err := resolveOrder(receipt.Plugins)
+	if err != nil {
+		return Receipt{}, err
+	}
+	receipt.Order = order
 	receipt.ProvidedCapabilities = uniqueSorted(provided)
 	required := map[string]bool{}
 	for _, capability := range receipt.RequiredCapabilities {
@@ -170,4 +197,42 @@ func Validate(profilePath string) (Receipt, error) {
 	sort.Strings(receipt.Missing)
 	receipt.Passed = len(receipt.Missing) == 0
 	return receipt, nil
+}
+
+func resolveOrder(plugins []PluginSummary) ([]string, error) {
+	byID := map[string]PluginSummary{}
+	for _, plugin := range plugins {
+		byID[plugin.ID] = plugin
+	}
+	state := map[string]int{}
+	order := []string{}
+	var visit func(string) error
+	visit = func(id string) error {
+		switch state[id] {
+		case 2:
+			return nil
+		case 1:
+			return fmt.Errorf("plugin dependency cycle includes %s", id)
+		}
+		state[id] = 1
+		for _, dependency := range byID[id].Requires {
+			if err := visit(dependency); err != nil {
+				return err
+			}
+		}
+		state[id] = 2
+		order = append(order, id)
+		return nil
+	}
+	ids := make([]string, 0, len(byID))
+	for id := range byID {
+		ids = append(ids, id)
+	}
+	sort.Strings(ids)
+	for _, id := range ids {
+		if err := visit(id); err != nil {
+			return nil, err
+		}
+	}
+	return order, nil
 }
