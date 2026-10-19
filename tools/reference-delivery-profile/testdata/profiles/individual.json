@@ -1,0 +1,13 @@
+{
+  "schema": "tei.reference.delivery-profile/v0",
+  "id": "individual-local",
+  "version": "1",
+  "requiredCapabilities": ["offline-storage", "single-user"],
+  "plugins": [
+    {
+      "id": "offline-storage",
+      "version": "1",
+      "path": "../plugins/offline-storage.json"
+    }
+  ]
+}

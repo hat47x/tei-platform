@@ -1,0 +1,23 @@
+{
+  "schema": "tei.reference.delivery-profile/v0",
+  "id": "saas-default",
+  "version": "1",
+  "requiredCapabilities": ["tenant-isolation", "audit", "authentication"],
+  "plugins": [
+    {
+      "id": "tenant-isolation",
+      "version": "1",
+      "path": "../../../reference-tenant-isolation/plugin.json"
+    },
+    {
+      "id": "audit",
+      "version": "1",
+      "path": "../plugins/audit.json"
+    },
+    {
+      "id": "authentication",
+      "version": "1",
+      "path": "../plugins/authentication.json"
+    }
+  ]
+}
