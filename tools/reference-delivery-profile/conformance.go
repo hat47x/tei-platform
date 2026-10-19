@@ -3,7 +3,9 @@ package deliveryprofile
 import (
 	"os"
 	"path/filepath"
+	"strings"
 
+	auditlog "tei/tools/reference-audit-log"
 	tenantisolation "tei/tools/reference-tenant-isolation"
 )
 
@@ -66,6 +68,43 @@ func verifyTenantIsolation() (bool, string) {
 	return true, "cross-tenant request, path traversal, own-tenant read/write, and symlink escape were checked"
 }
 
+func verifyAuditLog() (bool, string) {
+	dir, err := os.MkdirTemp("", "tei-audit-conformance-*")
+	if err != nil {
+		return false, err.Error()
+	}
+	defer os.RemoveAll(dir)
+	path := filepath.Join(dir, "audit.jsonl")
+	log, err := auditlog.Open(path)
+	if err != nil {
+		return false, err.Error()
+	}
+	if _, err := log.Append("tenant-a", "conformance", "read", "order/1"); err != nil {
+		return false, err.Error()
+	}
+	if _, err := log.Append("tenant-a", "conformance", "write", "order/1"); err != nil {
+		return false, err.Error()
+	}
+	if err := log.Verify(); err != nil {
+		return false, "append-only chain did not verify: " + err.Error()
+	}
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return false, err.Error()
+	}
+	tampered := strings.Replace(string(raw), `"action":"read"`, `"action":"write"`, 1)
+	if tampered == string(raw) {
+		return false, "conformance could not find an entry to tamper"
+	}
+	if err := os.WriteFile(path, []byte(tampered), 0o600); err != nil {
+		return false, err.Error()
+	}
+	if err := log.Verify(); err == nil {
+		return false, "tampered audit entry was verified"
+	}
+	return true, "append-only chain, reopen, and tamper detection were checked"
+}
+
 func hasCapability(capabilities []string, want string) bool {
 	for _, capability := range capabilities {
 		if capability == want {
@@ -100,20 +139,40 @@ func VerifyWithLock(profilePath, catalogDir, lockPath string) (Receipt, error) {
 
 func runConformance(receipt Receipt) Receipt {
 	checked := map[string]bool{}
-	for _, plugin := range receipt.Plugins {
-		if !hasCapability(plugin.Capabilities, "tenant-isolation") {
+	for _, capability := range []string{"tenant-isolation", "audit"} {
+		var selected *PluginSummary
+		for i := range receipt.Plugins {
+			plugin := &receipt.Plugins[i]
+			if !hasCapability(plugin.Capabilities, capability) {
+				continue
+			}
+			if selected == nil || plugin.ID == capability {
+				selected = plugin
+				if plugin.ID == capability {
+					break
+				}
+			}
+		}
+		if selected == nil {
 			continue
 		}
-		ok, detail := verifyTenantIsolation()
+		var ok bool
+		var detail string
+		switch capability {
+		case "tenant-isolation":
+			ok, detail = verifyTenantIsolation()
+		case "audit":
+			ok, detail = verifyAuditLog()
+		}
 		status := "verified"
 		if !ok {
 			status = "failed"
 			receipt.Passed = false
 		}
 		receipt.Conformance = append(receipt.Conformance, CapabilityCheck{
-			Capability: "tenant-isolation", PluginID: plugin.ID, Status: status, Detail: detail,
+			Capability: capability, PluginID: selected.ID, Status: status, Detail: detail,
 		})
-		checked["tenant-isolation"] = true
+		checked[capability] = true
 	}
 	for _, capability := range receipt.RequiredCapabilities {
 		if checked[capability] {
