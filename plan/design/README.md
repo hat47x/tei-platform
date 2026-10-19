@@ -54,6 +54,7 @@
 | [`DSH_DEVELOPMENT_PLUGIN_PROPOSAL_2026-10.md`](DSH_DEVELOPMENT_PLUGIN_PROPOSAL_2026-10.md) | DeepSeek HarnessをTEI開発の薄いAdapterとして使うためのプラグイン・スキル提案（未実装） |
 | [`PRODUCTIVITY_BENCHMARK_PROTOCOL_2026-10.md`](PRODUCTIVITY_BENCHMARK_PROTOCOL_2026-10.md) | 従来型コーディング・ローコード・TEIを同じ業務変更で比較する手順、指標、不確かさ、撤回条件（[GitHub #2018](https://github.com/hat47x/tei-platform/issues/2018)、未実施） |
 | [`DELIVERY_PLUGIN_COMPOSITION_2026-10.md`](DELIVERY_PLUGIN_COMPOSITION_2026-10.md) | 個人・SIer・SaaSの提供形態を、形態別実装ではなくプラグインの選択で構成する設計案（[GitHub #2020](https://github.com/hat47x/tei-platform/issues/2020)、[ADR-0036](../adr/0036-delivery-forms-as-plugin-composition.md)） |
+| [`TECH_VALIDATION_SAMPLES_2026-10.md`](TECH_VALIDATION_SAMPLES_2026-10.md) | ピーキーな要件の目録と、それを一つの作業の流れで同時に起こす技術検証用サンプル(既存の検証用資産の再編と新設)の構成案(未採用) |
 
 ## 関連する参照事例と評価
 
