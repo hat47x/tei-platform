@@ -1,4 +1,6 @@
 import { test } from 'node:test';
+import { readFileSync } from 'node:fs';
+import { projectAnnotationEvidence, AUXILIARY_SCHEMA, EPISTEMIC_SCHEMA, EPISTEMIC_CONTRACT } from './annotation-evidence-list-projection.mjs';
 import assert from 'node:assert/strict';
 import { projectDecisionIndex, DECISION_INDEX_SCHEMA } from './annotation-decision-index-projection.mjs';
 
@@ -74,4 +76,52 @@ test('不整合、未知権限、警告コードと任意文字列を承認済�
   assert.equal(row.details.find(x => x.label.startsWith('Decision履歴の位置')).value, dangerous);
   assert.match(row.details.find(x => x.label === '記録時の警告コード').value, /DECISION_RECORD_FAILED/);
   assert.match(row.acceptedMeaning, /判定不可/);
+});
+
+
+test('HTMLの三つの独立一覧を表示し未知Decision schemaで全部消去する（合成DOM）', () => {
+  const html = readFileSync(new URL('./annotation-evidence-list-sketch.html', import.meta.url), 'utf8');
+  const script = html.match(/<script type="module">([\s\S]*?)<\/script>/)?.[1];
+  assert.ok(script);
+  assert.doesNotMatch(script, /\.innerHTML\s*=/);
+  class FakeElement {
+    constructor(tag) { this.tag=tag; this.children=[]; this.handlers={}; this._text=''; this.value=''; }
+    set textContent(v) { this._text=String(v); this.children=[]; }
+    get textContent() { return this._text+this.children.map(c=>c.textContent).join(''); }
+    append(...nodes) { this.children.push(...nodes); }
+    replaceChildren(...nodes) { this._text=''; this.children=[...nodes]; }
+    addEventListener(name,fn) { this.handlers[name]=fn; }
+  }
+  const ids=new Map();
+  const document={
+    getElementById(id){if(!ids.has(id))ids.set(id,new FakeElement('id:'+id));return ids.get(id);},
+    createElement(tag){return new FakeElement(tag);},
+  };
+  const scriptBody=script.split('\n').filter(s=>!s.startsWith('import ')).join('\n');
+  new Function('document','projectAnnotationEvidence','projectDecisionIndex',scriptBody)(
+    document,projectAnnotationEvidence,projectDecisionIndex);
+  const aux={schema:AUXILIARY_SCHEMA,annotations:[{id:'note-1',subject:'subject-1',kind:'note',state:'done'}],findings:[]};
+  const epi={schema:EPISTEMIC_SCHEMA,contract:EPISTEMIC_CONTRACT,assessments:[]};
+  document.getElementById('aux').value=JSON.stringify(aux);
+  document.getElementById('epi').value=JSON.stringify(epi);
+  document.getElementById('decisions').value=JSON.stringify(index([one({path:'<img onerror=alert(1)>'})]));
+  const click=()=>document.getElementById('display').handlers.click();
+  click();
+  assert.equal(document.getElementById('notes').children.length,1);
+  assert.equal(document.getElementById('decision-rows').children.length,1);
+  const cells=document.getElementById('decision-rows').children[0].children;
+  assert.match(cells[7].textContent,/判定不可/);
+  assert.match(cells[8].textContent,/<img onerror=alert\(1\)>/);
+  assert.equal(cells[8].children[0].tag,'details');
+  document.getElementById('decisions').value=JSON.stringify({...index([one()]),schema:'unexpected'});
+  click();
+  assert.equal(document.getElementById('notes').children.length,0);
+  assert.equal(document.getElementById('assessments').children.length,0);
+  assert.equal(document.getElementById('decision-rows').children.length,0);
+  assert.match(document.getElementById('error').textContent,/未対応/);
+  document.getElementById('decisions').value='';
+  click();
+  assert.equal(document.getElementById('decision-rows').children.length,0);
+  assert.match(document.getElementById('decision-status').textContent,/未入力/);
+  assert.match(document.getElementById('decision-status').textContent,/履歴がないとは判定しません/);
 });
