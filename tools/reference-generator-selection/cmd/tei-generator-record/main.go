@@ -17,17 +17,18 @@ func main() {
 	origin := flag.String("origin", "generated-ai", "candidate origin")
 	provider := flag.String("provider", "", "model provider")
 	model := flag.String("model", "", "model name or version")
+	contractPath := flag.String("contract", "", "generator contract JSON")
 	source := flag.String("source", "", "generated Go source file")
 	prompt := flag.String("prompt", "", "prompt file")
 	context := flag.String("context", "", "context JSON file")
 	out := flag.String("out", "", "new candidate directory")
 	note := flag.String("note", "", "optional note")
 	flag.Parse()
-	if *id == "" || *provider == "" || *model == "" || *source == "" || *prompt == "" || *context == "" || *out == "" {
-		fail(fmt.Errorf("-id, -provider, -model, -source, -prompt, -context, and -out are required"))
+	if *id == "" || *provider == "" || *model == "" || *contractPath == "" || *source == "" || *prompt == "" || *context == "" || *out == "" {
+		fail(fmt.Errorf("-id, -provider, -model, -contract, -source, -prompt, -context, and -out are required"))
 	}
 	manifest, err := generatorselection.Record(generatorselection.RecordOptions{
-		ID: *id, Origin: *origin, Provider: *provider, Model: *model,
+		ID: *id, Origin: *origin, Provider: *provider, Model: *model, ContractPath: *contractPath,
 		SourcePath: *source, PromptPath: *prompt, ContextPath: *context, Note: *note,
 	}, *out)
 	if err != nil {

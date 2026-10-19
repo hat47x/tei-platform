@@ -17,17 +17,18 @@ func main() {
 	id := flag.String("id", "", "candidate id")
 	provider := flag.String("provider", "", "model provider")
 	model := flag.String("model", "", "model name or version")
+	contractPath := flag.String("contract", "", "generator contract JSON")
 	prompt := flag.String("prompt", "", "prompt file")
 	contextPath := flag.String("context", "", "context JSON file")
 	out := flag.String("out", "", "new candidate directory")
 	command := flag.String("command", "", "trusted shell command; write Go source to $TEI_SOURCE")
 	timeout := flag.Duration("timeout", 10*time.Minute, "command timeout")
 	flag.Parse()
-	if *id == "" || *provider == "" || *model == "" || *prompt == "" || *contextPath == "" || *out == "" || *command == "" {
-		fail(fmt.Errorf("-id, -provider, -model, -prompt, -context, -out, and -command are required"))
+	if *id == "" || *provider == "" || *model == "" || *contractPath == "" || *prompt == "" || *contextPath == "" || *out == "" || *command == "" {
+		fail(fmt.Errorf("-id, -provider, -model, -contract, -prompt, -context, -out, and -command are required"))
 	}
 	manifest, err := generatorselection.GenerateWithCommand(context.Background(), generatorselection.ModelOptions{
-		ID: *id, Provider: *provider, Model: *model,
+		ID: *id, Provider: *provider, Model: *model, ContractPath: *contractPath,
 		PromptPath: *prompt, ContextPath: *contextPath, OutDir: *out,
 		Command: *command, Timeout: *timeout,
 	})

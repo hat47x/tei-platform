@@ -12,10 +12,12 @@ import (
 
 func modelOptions(t *testing.T, out, command string) ModelOptions {
 	t.Helper()
+	_, contract, _, _ := paths(t)
 	base := filepath.Join(repoRoot(t), "tools", "reference-generator-selection", "testdata", "generation")
 	return ModelOptions{
 		ID: "model-template", Provider: "external-command", Model: "fixture-model-v0",
-		PromptPath: filepath.Join(base, "prompt.txt"), ContextPath: filepath.Join(base, "context.json"),
+		ContractPath: contract,
+		PromptPath:   filepath.Join(base, "prompt.txt"), ContextPath: filepath.Join(base, "context.json"),
 		OutDir: out, Command: command, Timeout: 30 * time.Second,
 	}
 }

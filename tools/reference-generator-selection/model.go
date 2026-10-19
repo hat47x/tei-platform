@@ -15,14 +15,15 @@ import (
 // caller, and its output is recorded through the same provenance boundary as a
 // hand-recorded candidate.
 type ModelOptions struct {
-	ID          string
-	Provider    string
-	Model       string
-	PromptPath  string
-	ContextPath string
-	OutDir      string
-	Command     string
-	Timeout     time.Duration
+	ID           string
+	Provider     string
+	Model        string
+	ContractPath string
+	PromptPath   string
+	ContextPath  string
+	OutDir       string
+	Command      string
+	Timeout      time.Duration
 }
 
 // GenerateWithCommand runs one external command and records the source it
@@ -33,8 +34,8 @@ func GenerateWithCommand(ctx context.Context, opts ModelOptions) (CandidateManif
 	if strings.TrimSpace(opts.ID) == "" || strings.TrimSpace(opts.Provider) == "" || strings.TrimSpace(opts.Model) == "" {
 		return CandidateManifest{}, fmt.Errorf("id, provider, and model are required")
 	}
-	if strings.TrimSpace(opts.PromptPath) == "" || strings.TrimSpace(opts.ContextPath) == "" {
-		return CandidateManifest{}, fmt.Errorf("prompt and context are required")
+	if strings.TrimSpace(opts.ContractPath) == "" || strings.TrimSpace(opts.PromptPath) == "" || strings.TrimSpace(opts.ContextPath) == "" {
+		return CandidateManifest{}, fmt.Errorf("contract, prompt, and context are required")
 	}
 	if strings.TrimSpace(opts.Command) == "" {
 		return CandidateManifest{}, fmt.Errorf("command is required")
@@ -53,6 +54,7 @@ func GenerateWithCommand(ctx context.Context, opts ModelOptions) (CandidateManif
 	}
 	cmd := exec.CommandContext(runCtx, "bash", "-lc", opts.Command)
 	cmd.Env = append(os.Environ(),
+		"TEI_CONTRACT="+opts.ContractPath,
 		"TEI_PROMPT="+opts.PromptPath,
 		"TEI_CONTEXT="+opts.ContextPath,
 		"TEI_SOURCE="+sourcePath,
@@ -72,7 +74,7 @@ func GenerateWithCommand(ctx context.Context, opts ModelOptions) (CandidateManif
 		return CandidateManifest{}, fmt.Errorf("generation command wrote an empty source")
 	}
 	return Record(RecordOptions{
-		ID: opts.ID, Provider: opts.Provider, Model: opts.Model,
+		ID: opts.ID, Provider: opts.Provider, Model: opts.Model, ContractPath: opts.ContractPath,
 		SourcePath: sourcePath, PromptPath: opts.PromptPath, ContextPath: opts.ContextPath,
 		Note: "recorded from an external generation command",
 	}, opts.OutDir)

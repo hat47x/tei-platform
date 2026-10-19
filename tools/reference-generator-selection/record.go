@@ -12,14 +12,15 @@ import (
 // happens outside this package; Record only writes the source and the
 // provenance needed to reproduce and verify the selection input.
 type RecordOptions struct {
-	ID          string
-	Origin      string
-	Provider    string
-	Model       string
-	SourcePath  string
-	PromptPath  string
-	ContextPath string
-	Note        string
+	ID           string
+	Origin       string
+	Provider     string
+	Model        string
+	ContractPath string
+	SourcePath   string
+	PromptPath   string
+	ContextPath  string
+	Note         string
 }
 
 // Record writes a candidate directory from an externally generated source. It
@@ -35,6 +36,20 @@ func Record(opts RecordOptions, outDir string) (CandidateManifest, error) {
 	}
 	if strings.TrimSpace(opts.SourcePath) == "" || strings.TrimSpace(opts.PromptPath) == "" || strings.TrimSpace(opts.ContextPath) == "" {
 		return CandidateManifest{}, fmt.Errorf("source, prompt, and context are required")
+	}
+	if strings.TrimSpace(opts.ContractPath) == "" {
+		return CandidateManifest{}, fmt.Errorf("contract is required")
+	}
+	var contract Contract
+	if _, err := readJSON(opts.ContractPath, &contract); err != nil {
+		return CandidateManifest{}, err
+	}
+	if err := validateContract(contract); err != nil {
+		return CandidateManifest{}, err
+	}
+	contractRaw, err := os.ReadFile(opts.ContractPath)
+	if err != nil {
+		return CandidateManifest{}, err
 	}
 	origin := opts.Origin
 	if origin == "" {
@@ -80,7 +95,7 @@ func Record(opts RecordOptions, outDir string) (CandidateManifest, error) {
 		Schema: CandidateSchema, ID: opts.ID, Version: "1", Origin: origin,
 		Source: "main.go", SourceDigest: digest(source), Note: opts.Note,
 		Generation: &GenerationProvenance{
-			Provider: opts.Provider, Model: opts.Model,
+			Provider: opts.Provider, Model: opts.Model, ContractDigest: digest(contractRaw),
 			PromptDigest: digest(prompt), ContextDigest: digest(context), OutputDigest: digest(source),
 			PromptPath: "prompt.txt", ContextPath: "context.json",
 		},

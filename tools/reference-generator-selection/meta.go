@@ -38,7 +38,7 @@ func runMetaGenerator(ctx context.Context, generatorSource []byte, contractPath 
 	if err := os.WriteFile(filepath.Join(tempDir, "main.go"), generatorSource, 0o644); err != nil {
 		return nil, err
 	}
-	binaryPath := filepath.Join(tempDir, "generator")
+	binaryPath := candidateBinaryPath(filepath.Join(tempDir, "generator"))
 	buildCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 	if err := buildCandidate(buildCtx, tempDir, binaryPath); err != nil {
@@ -80,6 +80,17 @@ func GenerateWithMetaGenerator(ctx context.Context, opts MetaOptions) (Candidate
 	}
 	if strings.TrimSpace(opts.OutDir) == "" {
 		return CandidateManifest{}, fmt.Errorf("out is required")
+	}
+	var contract Contract
+	if _, err := readJSON(opts.ContractPath, &contract); err != nil {
+		return CandidateManifest{}, err
+	}
+	if err := validateContract(contract); err != nil {
+		return CandidateManifest{}, err
+	}
+	contractRaw, err := os.ReadFile(opts.ContractPath)
+	if err != nil {
+		return CandidateManifest{}, err
 	}
 	generatorSource, err := os.ReadFile(opts.GeneratorSourcePath)
 	if err != nil {
@@ -140,7 +151,7 @@ func GenerateWithMetaGenerator(ctx context.Context, opts MetaOptions) (Candidate
 		Schema: CandidateSchema, ID: opts.ID, Version: "1", Origin: "generated-ai",
 		Source: "main.go", SourceDigest: digest(source), Note: note,
 		Generation: &GenerationProvenance{
-			Provider: opts.Provider, Model: opts.Model,
+			Provider: opts.Provider, Model: opts.Model, ContractDigest: digest(contractRaw),
 			PromptDigest: digest(prompt), ContextDigest: digest(contextRaw), OutputDigest: digest(source),
 			PromptPath: "prompt.txt", ContextPath: "context.json",
 		},

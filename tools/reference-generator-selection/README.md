@@ -33,11 +33,20 @@ go run ./tools/reference-generator-selection/cmd/tei-generator-build \
   -out /tmp/line-amount-candidates -all
 ```
 
+版を明示して一つのstrategyだけを生成できます。`-version`は候補manifestとgenerator provenanceへ記録され、source自体は変えません。既存の生成物を置換する場合は、新しい版の候補を別directoryへ生成し、固定fixtureで再選抜します。
+
+```text
+go run ./tools/reference-generator-selection/cmd/tei-generator-build \
+  -contract tools/reference-generator-selection/testdata/line-amount/contract.json \
+  -strategy template -version 2 -out /tmp/line-amount-template-v2
+```
+
 外部モデルが出したsourceは、promptとcontextとともに記録できます。
 
 ```text
 go run ./tools/reference-generator-selection/cmd/tei-generator-record \
   -id model-candidate -provider example-provider -model example-model-v1 \
+  -contract tools/reference-generator-selection/testdata/line-amount/contract.json \
   -source /tmp/model-main.go -prompt /tmp/prompt.txt -context /tmp/context.json \
   -out /tmp/recorded-candidate
 ```
@@ -49,12 +58,13 @@ go run ./tools/reference-generator-selection/cmd/tei-generator-record \
 ```text
 go run ./tools/reference-generator-selection/cmd/tei-generator-model \
   -id model-candidate -provider example-provider -model example-model-v1 \
+  -contract tools/reference-generator-selection/testdata/line-amount/contract.json \
   -prompt /tmp/prompt.txt -context /tmp/context.json \
   -out /tmp/recorded-candidate \
   -command 'your-model-cli ... "$TEI_PROMPT" "$TEI_CONTEXT" > "$TEI_SOURCE"'
 ```
 
-`tei-generator-model`は、`TEI_PROMPT`、`TEI_CONTEXT`、`TEI_SOURCE`、`TEI_TMPDIR`、`TEI_PROVIDER`、`TEI_MODEL`を環境変数で渡し、コマンドが`TEI_SOURCE`へ書いたGo sourceを記録します。特定ベンダーのAPI・認証・課金・モデル版管理は埋め込みません。コマンドは信頼済みのものだけを指定し、秘密情報を出力しないでください。
+`tei-generator-model`は、`TEI_CONTRACT`、`TEI_PROMPT`、`TEI_CONTEXT`、`TEI_SOURCE`、`TEI_TMPDIR`、`TEI_PROVIDER`、`TEI_MODEL`を環境変数で渡し、コマンドが`TEI_SOURCE`へ書いたGo sourceを記録します。`TEI_CONTRACT`は候補の契約digestを求める入力であり、コマンドが別契約向けのsourceを出しても、選抜は現在の契約との不一致として拒否します。特定ベンダーのAPI・認証・課金・モデル版管理は埋め込みません。コマンドは信頼済みのものだけを指定し、秘密情報を出力しないでください。
 
 外部の**生成器**が候補sourceを生成する場合は、生成器を深さ1で実行して記録できます。
 
@@ -99,11 +109,12 @@ go run ./tools/reference-generator-selection/cmd/tei-generator-meta \
 `origin: generated-ai`の候補は、`generation`を必須とします。
 
 - `provider`、`model`
+- `contractDigest`（候補を作ったときの契約）
 - `promptDigest`、`contextDigest`
 - `outputDigest`
 - `promptPath`、`contextPath`（任意。記録したprompt・contextの相対path）
 
-選抜は、`outputDigest`が候補sourceのdigestと一致することを確認します。`generation`のない`generated-ai`候補は拒否します。`promptPath`・`contextPath`がある場合は、そのfileを読み、digestが記録と一致することを確認します。pathは候補directory内の相対pathに限り、シンボリックリンクを拒否します。
+選抜は、`contractDigest`が現在の契約と一致すること、`outputDigest`が候補sourceのdigestと一致することを確認します。`generation`のない`generated-ai`候補は拒否します。契約が変わった候補を、別契約の証拠として再利用できません。`promptPath`・`contextPath`がある場合は、そのfileを読み、digestが記録と一致することを確認します。pathは候補directory内の相対pathに限り、シンボリックリンクを拒否します。
 
 `tei-generator-record`は、外部モデルが出したsourceとprompt・contextを一つの候補directoryへ記録します。モデル呼出し自体は行いません。
 
@@ -135,16 +146,36 @@ go run ./tools/reference-generator-selection/cmd/tei-generator-meta \
 - `depth`が1以外の場合は拒否します。生成器が別の生成器を生成する再帰は、このPoCの対象外です。
 - `testdata/meta/generator.go`は固定fixtureで、実モデルが生成した生成器ではありません。
 
-## 生成器registryと失効
+## 生成器registryとライフサイクル
 
-`testdata/registry.json`は、契約ごとに生成器のid・version・状態・source digestを記録します。
+`testdata/registry.json`（v0）は契約ごとに生成器のid・version・状態・source digestを記録します。`testdata/registry-lifecycle.json`（v1）は、置換と失効の理由まで記録します。
 
 - `status: active`のentryだけを、そのidの現在の版として解決します。
-- `status: revoked`のentryは選抜で拒否します。
-- 同じid・versionの重複、契約digestの不一致、source digestの不一致を拒否します。
-- `tei-generator-select -registry`を使うと、registryにない候補、失効した候補、versionやsource digestが一致しない候補を拒否します。
+- `status: superseded`は後継の版に置き換えられた版です。`supersedes`で後継元を示し、ちょうど1つの後継を持たなければなりません。
+- `status: revoked`は使用してはならない版です。v1では`reason`を必須にします。
+- 同じid・versionの重複、契約digestの不一致、source digestの不一致、置換先の欠落・二重の後継・循環を拒否します。
+- `tei-generator-select -registry`を使うと、registryにない候補、失効した候補、置換済みの候補、versionやsource digestが一致しない候補を拒否します。
 
-registryは選抜の制約であり、意味の受理・権限・本番配備の許可ではありません。失効履歴の自動追跡や、失効に伴う生成物の再生成は未実装です。
+v1のregistryは意味の受理・権限・本番配備の許可ではありません。版の系列と現在のactive版をプロジェクト内で宣言するだけです。
+
+### 候補への影響確認
+
+`tei-generator-reconcile`は、registryと候補directoryを比較し、候補が現在のactive版かを報告します。
+
+```text
+go run ./tools/reference-generator-selection/cmd/tei-generator-reconcile \
+  -registry tools/reference-generator-selection/testdata/registry-lifecycle.json \
+  -contract tools/reference-generator-selection/testdata/line-amount/contract.json \
+  -candidates tools/reference-generator-selection/testdata/candidates
+```
+
+- `current`: active版とversion・source digestが一致する。
+- `stale-version` / `stale-source` / `stale-contract`: 再生成または再選抜が必要。
+- `superseded` / `revoked`: その版を使ってはならない。
+- `unregistered`: registryにない候補。
+- 登録済みのidに現在の候補がなければ、`generators`で不足を示す。
+
+reconcileは候補をビルド・実行・選抜しません。再生成した候補も、固定fixtureでの選抜をやり直す必要があります。自動再生成・自動選抜・失効の承認は行いません。
 
 ## receipt
 
@@ -166,12 +197,13 @@ registryは選抜の制約であり、意味の受理・権限・本番配備の
 - 候補のsource digestを実byteで確認する。digest不一致の候補をビルドしない。
 - 候補の出力を独立に比較する。候補が「合格」と自己申告しても採用しない。
 - 危険な候補を、欠落・通貨・丸め・精度の負例で落とす。
+- 生成AI候補のgeneration provenanceを、現在の契約digestへ束縛する。
 - 生成器の選択を、意味の受理・権限・本番配備へ接続しない。
 
 ## 未実装
 
 - 特定ベンダーのAPI呼出し・認証・課金・モデル版管理。外部コマンドへ委ねており、TEI内には実装していません。
 - `promptPath`・`contextPath`を省略した候補では、digestの形式だけを確認し、内容との対応は検証しません。
-- 深さ2以上のメタ生成、失効履歴・再生成の自動追跡。
+- 深さ2以上のメタ生成、失効に伴う自動再生成・自動選抜・失効の承認。
 - 実Provider・実Target・別言語（.NET/JVM/WASM）での比較。
 - 候補の署名、build provenance（#943 / #1370）。
