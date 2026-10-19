@@ -9,6 +9,7 @@ import (
 
 	auditlog "tei/tools/reference-audit-log"
 	authn "tei/tools/reference-authentication"
+	offlinestorage "tei/tools/reference-offline-storage"
 	tenantisolation "tei/tools/reference-tenant-isolation"
 )
 
@@ -137,6 +138,39 @@ func verifyAuthentication() (bool, string) {
 	return true, "valid credential, missing credential, tenant mismatch, and incomplete principal were checked"
 }
 
+func verifyOfflineStorage() (bool, string) {
+	root, err := os.MkdirTemp("", "tei-offline-conformance-*")
+	if err != nil {
+		return false, err.Error()
+	}
+	defer os.RemoveAll(root)
+	store, err := offlinestorage.Open(root)
+	if err != nil {
+		return false, err.Error()
+	}
+	if err := store.Put("state/one.txt", []byte("one")); err != nil {
+		return false, "own-root write failed: " + err.Error()
+	}
+	if content, err := store.Get("state/one.txt"); err != nil || string(content) != "one" {
+		return false, "own-root read failed"
+	}
+	if err := store.Close(); err != nil {
+		return false, err.Error()
+	}
+	reopened, err := offlinestorage.Open(root)
+	if err != nil {
+		return false, err.Error()
+	}
+	defer reopened.Close()
+	if content, err := reopened.Get("state/one.txt"); err != nil || string(content) != "one" {
+		return false, "reopened store lost the value"
+	}
+	if _, err := reopened.Get("../outside.txt"); err == nil {
+		return false, "path traversal was accepted"
+	}
+	return true, "write, read, reopen, and path traversal rejection were checked"
+}
+
 func hasCapability(capabilities []string, want string) bool {
 	for _, capability := range capabilities {
 		if capability == want {
@@ -171,7 +205,7 @@ func VerifyWithLock(profilePath, catalogDir, lockPath string) (Receipt, error) {
 
 func runConformance(receipt Receipt) Receipt {
 	checked := map[string]bool{}
-	for _, capability := range []string{"tenant-isolation", "audit", "authentication"} {
+	for _, capability := range []string{"tenant-isolation", "audit", "authentication", "offline-storage"} {
 		var selected *PluginSummary
 		for i := range receipt.Plugins {
 			plugin := &receipt.Plugins[i]
@@ -197,6 +231,8 @@ func runConformance(receipt Receipt) Receipt {
 			ok, detail = verifyAuditLog()
 		case "authentication":
 			ok, detail = verifyAuthentication()
+		case "offline-storage":
+			ok, detail = verifyOfflineStorage()
 		}
 		status := "verified"
 		if !ok {

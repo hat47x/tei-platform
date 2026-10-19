@@ -1,0 +1,10 @@
+{
+  "schema": "tei.reference.delivery-plugin/v0",
+  "id": "offline-storage",
+  "version": "1",
+  "kind": "delivery-foundation",
+  "capabilities": ["offline-storage", "single-user"],
+  "entrypoints": ["offlinestorage.Open", "Store.Put", "Store.Get", "Store.List", "Store.Delete"],
+  "guarantees": ["local access without a remote service", "storage-root confinement", "symbolic-link rejection"],
+  "notGuaranteed": ["multi-device synchronization", "encryption at rest", "concurrent multi-writer safety"]
+}
