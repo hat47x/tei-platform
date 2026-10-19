@@ -10,20 +10,28 @@ import (
 )
 
 // tei-delivery-profile validates that the selected plugins provide the
-// capabilities a delivery profile requires. It does not deploy or implement a
+// capabilities a delivery profile requires, or verifies the conformance checks
+// that exist for those capabilities. It does not deploy or implement a
 // delivery form.
 func main() {
-	if len(os.Args) < 2 || os.Args[1] != "validate" {
-		fmt.Fprintln(os.Stderr, "usage: tei-delivery-profile validate -profile FILE")
+	if len(os.Args) < 2 || (os.Args[1] != "validate" && os.Args[1] != "verify") {
+		fmt.Fprintln(os.Stderr, "usage: tei-delivery-profile <validate|verify> -profile FILE")
 		os.Exit(2)
 	}
-	fs := flag.NewFlagSet("validate", flag.ExitOnError)
+	command := os.Args[1]
+	fs := flag.NewFlagSet(command, flag.ExitOnError)
 	profilePath := fs.String("profile", "", "delivery profile JSON")
 	_ = fs.Parse(os.Args[2:])
 	if *profilePath == "" {
 		fail(fmt.Errorf("-profile is required"))
 	}
-	receipt, err := deliveryprofile.Validate(*profilePath)
+	var receipt deliveryprofile.Receipt
+	var err error
+	if command == "verify" {
+		receipt, err = deliveryprofile.Verify(*profilePath)
+	} else {
+		receipt, err = deliveryprofile.Validate(*profilePath)
+	}
 	if err != nil {
 		fail(err)
 	}

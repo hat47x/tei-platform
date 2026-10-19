@@ -115,3 +115,41 @@ func TestEmptyRequiredCapabilitiesIsRejected(t *testing.T) {
 		t.Fatal("empty requiredCapabilities was accepted")
 	}
 }
+
+func TestVerifySaaSExercisesTenantIsolation(t *testing.T) {
+	receipt, err := Verify(filepath.Join(testdata(t), "profiles", "saas.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !receipt.Passed {
+		t.Fatalf("verify failed: %+v", receipt)
+	}
+	status := map[string]string{}
+	for _, check := range receipt.Conformance {
+		status[check.Capability] = check.Status
+	}
+	if status["tenant-isolation"] != "verified" {
+		t.Fatalf("tenant-isolation was not verified: %+v", receipt.Conformance)
+	}
+	if status["audit"] != "unverified" || status["authentication"] != "unverified" {
+		t.Fatalf("unexpected unverified statuses: %+v", receipt.Conformance)
+	}
+}
+
+func TestVerifyIndividualReportsNoTenantIsolationCheck(t *testing.T) {
+	receipt, err := Verify(filepath.Join(testdata(t), "profiles", "individual.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !receipt.Passed {
+		t.Fatalf("verify failed: %+v", receipt)
+	}
+	if len(receipt.Conformance) != 2 {
+		t.Fatalf("conformance=%+v", receipt.Conformance)
+	}
+	for _, check := range receipt.Conformance {
+		if check.Status != "unverified" {
+			t.Fatalf("unexpected check: %+v", check)
+		}
+	}
+}
