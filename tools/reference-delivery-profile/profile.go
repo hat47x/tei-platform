@@ -48,6 +48,7 @@ type PluginSummary struct {
 	ID           string   `json:"id"`
 	Version      string   `json:"version"`
 	Path         string   `json:"path"`
+	Digest       string   `json:"digest"`
 	Capabilities []string `json:"capabilities"`
 	Requires     []string `json:"requires,omitempty"`
 	Conflicts    []string `json:"conflicts,omitempty"`
@@ -99,6 +100,21 @@ func uniqueSorted(values []string) []string {
 // capability fails closed; it is not replaced by another plugin or a per-form
 // implementation.
 func Validate(profilePath string) (Receipt, error) {
+	return ValidateWithCatalog(profilePath, "")
+}
+
+// ValidateWithCatalog resolves plugin references that omit path from the
+// catalog directory. A path reference still loads that exact descriptor; the
+// catalog is only used for references without a path.
+func ValidateWithCatalog(profilePath, catalogDir string) (Receipt, error) {
+	var catalog Catalog
+	if catalogDir != "" {
+		loaded, err := LoadCatalog(catalogDir)
+		if err != nil {
+			return Receipt{}, err
+		}
+		catalog = loaded
+	}
 	var profile Profile
 	if err := readJSON(profilePath, &profile); err != nil {
 		return Receipt{}, err
@@ -128,38 +144,51 @@ func Validate(profilePath string) (Receipt, error) {
 	seenPlugin := map[string]bool{}
 	var provided []string
 	for _, ref := range profile.Plugins {
-		if strings.TrimSpace(ref.ID) == "" || strings.TrimSpace(ref.Version) == "" || strings.TrimSpace(ref.Path) == "" {
-			return Receipt{}, fmt.Errorf("plugin id, version, and path are required")
+		if strings.TrimSpace(ref.ID) == "" || strings.TrimSpace(ref.Version) == "" {
+			return Receipt{}, fmt.Errorf("plugin id and version are required")
 		}
 		if seenPlugin[ref.ID] {
 			return Receipt{}, fmt.Errorf("duplicate plugin id %q", ref.ID)
 		}
 		seenPlugin[ref.ID] = true
-		pluginPath := ref.Path
-		if !filepath.IsAbs(pluginPath) {
-			pluginPath = filepath.Join(profileDir, filepath.FromSlash(pluginPath))
-		}
 		var plugin Plugin
-		if err := readJSON(pluginPath, &plugin); err != nil {
-			return Receipt{}, err
-		}
-		if plugin.Schema != PluginSchema {
-			return Receipt{}, fmt.Errorf("plugin %s schema %q is not %q", ref.ID, plugin.Schema, PluginSchema)
-		}
-		if plugin.ID != ref.ID {
-			return Receipt{}, fmt.Errorf("plugin path %s declares id %q, profile requires %q", pluginPath, plugin.ID, ref.ID)
-		}
-		if plugin.Version != ref.Version {
-			return Receipt{}, fmt.Errorf("plugin %s version %q does not match profile version %q", ref.ID, plugin.Version, ref.Version)
-		}
-		if len(plugin.Capabilities) == 0 {
-			return Receipt{}, fmt.Errorf("plugin %s declares no capabilities", ref.ID)
+		var pluginPath, pluginDigest string
+		if strings.TrimSpace(ref.Path) != "" {
+			pluginPath = ref.Path
+			if !filepath.IsAbs(pluginPath) {
+				pluginPath = filepath.Join(profileDir, filepath.FromSlash(pluginPath))
+			}
+			raw, err := os.ReadFile(pluginPath)
+			if err != nil {
+				return Receipt{}, err
+			}
+			plugin, err = decodePlugin(pluginPath, raw)
+			if err != nil {
+				return Receipt{}, err
+			}
+			pluginDigest = digestBytes(raw)
+			if plugin.ID != ref.ID {
+				return Receipt{}, fmt.Errorf("plugin path %s declares id %q, profile requires %q", pluginPath, plugin.ID, ref.ID)
+			}
+			if plugin.Version != ref.Version {
+				return Receipt{}, fmt.Errorf("plugin %s version %q does not match profile version %q", ref.ID, plugin.Version, ref.Version)
+			}
+		} else {
+			if catalog == nil {
+				return Receipt{}, fmt.Errorf("plugin %s has no path; -catalog is required", ref.ID)
+			}
+			entry, err := catalog.Resolve(ref.ID, ref.Version)
+			if err != nil {
+				return Receipt{}, err
+			}
+			plugin, pluginPath, pluginDigest = entry.Plugin, entry.Path, entry.Digest
 		}
 		capabilities := uniqueSorted(plugin.Capabilities)
 		provided = append(provided, capabilities...)
 		receipt.Plugins = append(receipt.Plugins, PluginSummary{
-			ID: ref.ID, Version: ref.Version, Path: ref.Path, Capabilities: capabilities,
-			Requires: uniqueSorted(plugin.Requires), Conflicts: uniqueSorted(plugin.Conflicts),
+			ID: ref.ID, Version: ref.Version, Path: pluginPath, Digest: pluginDigest,
+			Capabilities: capabilities,
+			Requires:     uniqueSorted(plugin.Requires), Conflicts: uniqueSorted(plugin.Conflicts),
 		})
 	}
 	byID := map[string]PluginSummary{}

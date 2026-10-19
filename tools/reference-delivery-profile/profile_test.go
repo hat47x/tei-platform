@@ -224,3 +224,79 @@ func TestDependencyCycleIsRejected(t *testing.T) {
 		t.Fatal("dependency cycle was accepted")
 	}
 }
+
+func copyIntoCatalog(t *testing.T, dir, name string) {
+	t.Helper()
+	raw, err := os.ReadFile(pluginPath(t, name))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, name+".json"), raw, 0o600); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestCatalogResolvesPluginsWithoutPath(t *testing.T) {
+	catalogDir := t.TempDir()
+	copyIntoCatalog(t, catalogDir, "audit")
+	copyIntoCatalog(t, catalogDir, "authentication")
+	profile := Profile{
+		Schema: ProfileSchema, ID: "catalog", Version: "1",
+		RequiredCapabilities: []string{"audit", "authentication"},
+		Plugins: []PluginRef{
+			{ID: "audit", Version: "1"},
+			{ID: "authentication", Version: "1"},
+		},
+	}
+	receipt, err := ValidateWithCatalog(writeProfile(t, profile), catalogDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !receipt.Passed {
+		t.Fatalf("catalog profile did not pass: %+v", receipt)
+	}
+	for _, plugin := range receipt.Plugins {
+		if plugin.Path == "" || plugin.Digest == "" {
+			t.Fatalf("catalog plugin lacks path or digest: %+v", plugin)
+		}
+	}
+}
+
+func TestCatalogMissingVersionIsRejected(t *testing.T) {
+	catalogDir := t.TempDir()
+	copyIntoCatalog(t, catalogDir, "audit")
+	profile := Profile{
+		Schema: ProfileSchema, ID: "catalog-missing", Version: "1",
+		RequiredCapabilities: []string{"audit"},
+		Plugins:              []PluginRef{{ID: "audit", Version: "2"}},
+	}
+	if _, err := ValidateWithCatalog(writeProfile(t, profile), catalogDir); err == nil {
+		t.Fatal("missing catalog version was accepted")
+	}
+}
+
+func TestCatalogWithoutCatalogDirectoryIsRejected(t *testing.T) {
+	profile := Profile{
+		Schema: ProfileSchema, ID: "no-catalog", Version: "1",
+		RequiredCapabilities: []string{"audit"},
+		Plugins:              []PluginRef{{ID: "audit", Version: "1"}},
+	}
+	if _, err := ValidateWithCatalog(writeProfile(t, profile), ""); err == nil {
+		t.Fatal("reference without path and catalog was accepted")
+	}
+}
+
+func TestCatalogDuplicateVersionIsRejected(t *testing.T) {
+	catalogDir := t.TempDir()
+	copyIntoCatalog(t, catalogDir, "audit")
+	raw, err := os.ReadFile(pluginPath(t, "audit"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(catalogDir, "audit-copy.json"), raw, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := LoadCatalog(catalogDir); err == nil {
+		t.Fatal("duplicate catalog version was accepted")
+	}
+}
