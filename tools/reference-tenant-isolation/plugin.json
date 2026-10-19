@@ -1,0 +1,23 @@
+{
+  "schema": "tei.reference.delivery-plugin/v0",
+  "id": "tenant-isolation",
+  "version": "1",
+  "kind": "delivery-foundation",
+  "capabilities": ["tenant-isolation", "audit"],
+  "entrypoints": [
+    "tenantisolation.Open",
+    "Scope.RequireTenant",
+    "Scope.Read",
+    "Scope.Write"
+  ],
+  "guarantees": [
+    "tenant root confinement",
+    "cross-tenant denial",
+    "symbolic-link rejection"
+  ],
+  "notGuaranteed": [
+    "database row-level authorization",
+    "external API isolation",
+    "process or network sandboxing"
+  ]
+}
