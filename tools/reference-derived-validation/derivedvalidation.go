@@ -72,6 +72,8 @@ type Report struct {
 	Code            string `json:"code"`
 	DerivationState string `json:"derivationState,omitempty"`
 	Validation      string `json:"validation"`
+	// This read-only reference never performs a save or observes a commit.
+	// Keep the existing JSON field for compatibility, but never claim a guarantee.
 	SaveGuaranteed  bool   `json:"saveGuaranteed"`
 	Message         string `json:"message,omitempty"`
 }
@@ -145,7 +147,7 @@ func Evaluate(in Input) Report {
 	report.Code = CodeValidationSatisfied
 	report.Validation = "satisfied"
 	if strings.TrimSpace(in.Phase) == PhaseSave {
-		report.SaveGuaranteed = true
+		report.Message = "保存時相当の合成Validation成立。実Action・Commit・保存結果を観測していないため保存保証ではない。"
 	} else {
 		report.Message = "Preview上の成立であり、保存時点の確定判定ではない。保存Actionで現行版を再評価する。"
 	}
