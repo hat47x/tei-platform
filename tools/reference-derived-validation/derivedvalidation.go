@@ -67,13 +67,12 @@ type Input struct {
 	Phase         string     `json:"phase"`
 }
 
-// Report is the read-only result.
+// Report is the read-only result. This reference never performs a save or
+// observes a commit; SaveGuaranteed remains for JSON compatibility but is false.
 type Report struct {
 	Code            string `json:"code"`
 	DerivationState string `json:"derivationState,omitempty"`
 	Validation      string `json:"validation"`
-	// This read-only reference never performs a save or observes a commit.
-	// Keep the existing JSON field for compatibility, but never claim a guarantee.
 	SaveGuaranteed  bool   `json:"saveGuaranteed"`
 	Message         string `json:"message,omitempty"`
 }
