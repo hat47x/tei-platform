@@ -200,6 +200,33 @@ func verifyExportPackage() (bool, string) {
 	return true, "export, manifest digest, file digest, and round-trip verification were checked"
 }
 
+func verifySingleUser() (bool, string) {
+	root, err := os.MkdirTemp("", "tei-single-user-conformance-*")
+	if err != nil {
+		return false, err.Error()
+	}
+	defer os.RemoveAll(root)
+	first, err := offlinestorage.Open(root)
+	if err != nil {
+		return false, err.Error()
+	}
+	if _, err := offlinestorage.Open(root); !errors.Is(err, offlinestorage.ErrInUse) {
+		first.Close()
+		return false, "second open was not rejected as ErrInUse"
+	}
+	if err := first.Close(); err != nil {
+		return false, err.Error()
+	}
+	second, err := offlinestorage.Open(root)
+	if err != nil {
+		return false, "reopen after close failed: " + err.Error()
+	}
+	if err := second.Close(); err != nil {
+		return false, err.Error()
+	}
+	return true, "second open was rejected and the lock was released on close"
+}
+
 func hasCapability(capabilities []string, want string) bool {
 	for _, capability := range capabilities {
 		if capability == want {
@@ -234,7 +261,7 @@ func VerifyWithLock(profilePath, catalogDir, lockPath string) (Receipt, error) {
 
 func runConformance(receipt Receipt) Receipt {
 	checked := map[string]bool{}
-	for _, capability := range []string{"tenant-isolation", "audit", "authentication", "offline-storage", "export-package"} {
+	for _, capability := range []string{"tenant-isolation", "audit", "authentication", "offline-storage", "single-user", "export-package"} {
 		var selected *PluginSummary
 		for i := range receipt.Plugins {
 			plugin := &receipt.Plugins[i]
@@ -262,6 +289,8 @@ func runConformance(receipt Receipt) Receipt {
 			ok, detail = verifyAuthentication()
 		case "offline-storage":
 			ok, detail = verifyOfflineStorage()
+		case "single-user":
+			ok, detail = verifySingleUser()
 		case "export-package":
 			ok, detail = verifyExportPackage()
 		}

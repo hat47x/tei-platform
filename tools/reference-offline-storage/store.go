@@ -4,6 +4,7 @@
 package offlinestorage
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path"
@@ -12,9 +13,14 @@ import (
 	"strings"
 )
 
+var ErrInUse = errors.New("store is already open (single-user)")
+
+const lockName = ".tei-store.lock"
+
 type Store struct {
 	rootPath string
 	root     *os.Root
+	lockPath string
 }
 
 func Open(rootPath string) (*Store, error) {
@@ -28,23 +34,47 @@ func Open(rootPath string) (*Store, error) {
 	if err := os.MkdirAll(absolute, 0o755); err != nil {
 		return nil, err
 	}
+	lockPath := filepath.Join(absolute, lockName)
+	lock, err := os.OpenFile(lockPath, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600)
+	if err != nil {
+		if os.IsExist(err) {
+			return nil, ErrInUse
+		}
+		return nil, err
+	}
+	_, writeErr := fmt.Fprintf(lock, "%d\n", os.Getpid())
+	closeErr := lock.Close()
+	if writeErr != nil || closeErr != nil {
+		os.Remove(lockPath)
+		return nil, fmt.Errorf("create store lock: %w", errors.Join(writeErr, closeErr))
+	}
 	root, err := os.OpenRoot(absolute)
 	if err != nil {
+		os.Remove(lockPath)
 		return nil, err
 	}
 	info, err := root.Stat(".")
 	if err != nil {
 		root.Close()
+		os.Remove(lockPath)
 		return nil, err
 	}
 	if !info.IsDir() {
 		root.Close()
+		os.Remove(lockPath)
 		return nil, fmt.Errorf("storage root is not a directory: %s", absolute)
 	}
-	return &Store{rootPath: absolute, root: root}, nil
+	return &Store{rootPath: absolute, root: root, lockPath: lockPath}, nil
 }
 
-func (s *Store) Close() error { return s.root.Close() }
+func (s *Store) Close() error {
+	rootErr := s.root.Close()
+	lockErr := os.Remove(s.lockPath)
+	if errors.Is(lockErr, os.ErrNotExist) {
+		lockErr = nil
+	}
+	return errors.Join(rootErr, lockErr)
+}
 
 func keyPath(key string) (string, error) {
 	key = strings.TrimSpace(strings.ReplaceAll(key, "\\", "/"))
@@ -171,6 +201,9 @@ func (s *Store) List() ([]string, error) {
 		relative, err := filepath.Rel(s.rootPath, path)
 		if err != nil {
 			return err
+		}
+		if relative == lockName {
+			return nil
 		}
 		keys = append(keys, filepath.ToSlash(relative))
 		return nil
