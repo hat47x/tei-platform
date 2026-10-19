@@ -50,15 +50,16 @@ type PluginSummary struct {
 }
 
 type Receipt struct {
-	Schema               string          `json:"schema"`
-	ProfileID            string          `json:"profileId"`
-	ProfileVersion       string          `json:"profileVersion"`
-	RequiredCapabilities []string        `json:"requiredCapabilities"`
-	Plugins              []PluginSummary `json:"plugins"`
-	ProvidedCapabilities []string        `json:"providedCapabilities"`
-	Missing              []string        `json:"missing"`
-	Passed               bool            `json:"passed"`
-	Notes                []string        `json:"notes"`
+	Schema               string            `json:"schema"`
+	ProfileID            string            `json:"profileId"`
+	ProfileVersion       string            `json:"profileVersion"`
+	RequiredCapabilities []string          `json:"requiredCapabilities"`
+	Plugins              []PluginSummary   `json:"plugins"`
+	ProvidedCapabilities []string          `json:"providedCapabilities"`
+	Missing              []string          `json:"missing"`
+	Conformance          []CapabilityCheck `json:"conformance,omitempty"`
+	Passed               bool              `json:"passed"`
+	Notes                []string          `json:"notes"`
 }
 
 func readJSON(path string, into any) error {

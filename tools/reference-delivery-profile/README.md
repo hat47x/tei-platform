@@ -9,6 +9,15 @@ go run ./tools/reference-delivery-profile/cmd/tei-delivery-profile \
 
 `passed=true`は、選択したpluginの能力宣言がprofileの必須能力を満たしたことだけを示します。実機での動作や、pluginが保証を実際に守ることを証明しません。
 
+`verify`は、conformance testがある能力について、選択したpluginの実動作も確認します。
+
+```text
+go run ./tools/reference-delivery-profile/cmd/tei-delivery-profile \
+  verify -profile tools/reference-delivery-profile/testdata/profiles/saas.json
+```
+
+`verify`の`tenant-isolation`は、[reference-tenant-isolation](../reference-tenant-isolation/README.md)の`Scope`を実際に使い、越境要求、path traversal、自テナントのread/write、symlink越境を確認します。conformance testがない能力は`unverified`として残し、合格とは表示しません。
+
 ## Delivery Profile
 
 ```json
@@ -35,6 +44,16 @@ go run ./tools/reference-delivery-profile/cmd/tei-delivery-profile \
 - 必須能力が、選択したpluginの能力で満たされない場合は`missing`へ残し、`passed=false`にする。
 - 能力の欠落を、別のpluginや形態別実装で暗黙に補わない。
 
+## 実動作の確認
+
+`verify`は、能力名の一致に加えて、そのReferenceにconformance testがある能力だけを実行します。
+
+- `tenant-isolation`: 二つのテナントrootを作り、越境要求の拒否、`..`による参照の拒否、自テナントのread/write、別テナントrootへのsymlink越境の拒否を確認する。
+- それ以外の能力: `unverified`として記録し、動作確認済みとは扱わない。
+- conformance testが失敗した場合は`passed=false`とする。
+
+`unverified`は失敗ではありませんが、保証の確認でもありません。実Provider・実Targetでの確認とは分けて扱います。
+
 ## 提供形態の例
 
 | profile | 必須能力 | 選択するplugin |
@@ -56,5 +75,6 @@ SaaSの`tenant-isolation`は[reference-tenant-isolation](../reference-tenant-iso
 
 - pluginの配布・取得・署名・失効、バージョン解決。
 - plugin同士の依存関係、競合、初期化順序。
-- 選択したpluginの実際の動作確認（tenant-isolationの越境拒否試験との自動接続）。
+- `tenant-isolation`以外の能力のconformance test。
+- 実Provider・実Targetでの確認。
 - 課金・契約・データ所在・監査保存期間。
