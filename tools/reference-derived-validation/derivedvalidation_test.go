@@ -24,10 +24,13 @@ func TestLimitBelowAmountIsNotSatisfied(t *testing.T) {
 	}
 }
 
-func TestLimitAboveAmountIsSatisfiedAtSave(t *testing.T) {
+func TestSavePhaseValidationDoesNotGuaranteeCommit(t *testing.T) {
 	report := Evaluate(base())
-	if report.Code != CodeValidationSatisfied || report.Validation != "satisfied" || !report.SaveGuaranteed {
-		t.Fatalf("report=%+v want satisfied and save-guaranteed", report)
+	if report.Code != CodeValidationSatisfied || report.Validation != "satisfied" || report.SaveGuaranteed {
+		t.Fatalf("report=%+v want satisfied without an unobserved save guarantee", report)
+	}
+	if report.Message == "" {
+		t.Fatalf("save-like synthetic result must explain absent commit evidence: %+v", report)
 	}
 }
 
@@ -111,5 +114,18 @@ func TestInvalidAmountIsRejected(t *testing.T) {
 	report := Evaluate(in)
 	if report.Code != CodeInvalidRequest {
 		t.Fatalf("report=%+v want INVALID_REQUEST", report)
+	}
+}
+
+// Phase is caller-supplied. Neither preview nor save is proof of an Owner
+// Action, transaction or durable DB effect in this read-only reference.
+func TestNoSyntheticPhaseClaimsSaveGuarantee(t *testing.T) {
+	for _, phase := range []string{PhasePreview, PhaseSave, "", "unknown"} {
+		in := base()
+		in.Phase = phase
+		report := Evaluate(in)
+		if report.SaveGuaranteed {
+			t.Fatalf("phase=%q unexpectedly attested a save: %+v", phase, report)
+		}
 	}
 }
