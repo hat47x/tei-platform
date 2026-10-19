@@ -141,7 +141,7 @@
 | [`reference-data-import-check/`](reference-data-import-check/) | 業務データ取込みの段階D0。タブ区切りの行の形をData定義に照らして検査する参照（#1807） |
 | [`reference-function-definition-document/`](reference-function-definition-document/) | 受理済みの意味から機能定義書を導出する参照（#1803） |
 | [`reference-ddl-entry/`](reference-ddl-entry/) | 物理対応から提供元が出力できるDDLを表ごとに取り出す入口（#1803） |
-| [`reference-design-output/`](reference-design-output/) | 受理済みの意味から表・機能・対応一覧・DDLを一つのrevisionへ束縛して導出する参照（#1803） |
+| [`reference-design-output/`](reference-design-output/) | 受理済みの意味から表・機能・対応一覧・DDL・静的HTML索引を一つのrevisionへ束縛して導出する参照（#1803） |
 | [`reference-access-matrix/`](reference-access-matrix/) | Application × Dataの宣言された利用の対応表を導出する参照（#1803） |
 | [`reference-partial-import-plan/`](reference-partial-import-plan/) | 別Workspaceから選んだData定義の取込み結果を分類する読取り専用の参照（#1805） |
 | [`reference-table-definition-document/`](reference-table-definition-document/) | 受理済みの意味から表定義書を導出する参照（#1803） |
