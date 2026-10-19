@@ -43,6 +43,18 @@ go run ./tools/reference-delivery-profile/cmd/tei-delivery-profile \
   validate -profile PROFILE -catalog PLUGIN_DIR
 ```
 
+catalogを使う場合、`version`にはexactのほか、`^1.2`、`~1.2`、`>=1.2 <2`、`*`を指定できます。条件を満たす最も新しいversionを選びます。`path`を指定した場合は、そのdescriptorのversionを厳密に比較します。
+
+解決した構成はlock fileへ保存でき、後から同じversion・digest・順序かを検証できます。
+
+```text
+go run ./tools/reference-delivery-profile/cmd/tei-delivery-profile \
+  resolve -profile PROFILE -catalog PLUGIN_DIR -out PLUGIN_LOCK.json
+
+go run ./tools/reference-delivery-profile/cmd/tei-delivery-profile \
+  validate -profile PROFILE -catalog PLUGIN_DIR -lock PLUGIN_LOCK.json
+```
+
 plugin descriptorは`requires`と`conflicts`を持てます。`requires`のpluginはprofileで明示的に選択されている必要があります。暗黙に追加しません。
 
 ## 検証
@@ -51,7 +63,9 @@ plugin descriptorは`requires`と`conflicts`を持てます。`requires`のplugi
 - plugin descriptorのschema、id、version、能力を検査する。
 - 同じplugin idの重複を拒否する。
 - `path`がないplugin参照をcatalogから解決する。catalogにないid・versionは拒否する。
+- version制約を満たす最も新しいversionを選び、同値の候補が複数あれば拒否する。
 - descriptorのdigestをreceiptへ記録する。
+- `-lock`指定時は、lockのprofile・pluginのversionとdigest・順序が解決結果と一致することを確認する。lock自体のdigest不一致も拒否する。
 - `requires`のpluginが選択されていない場合、`conflicts`のpluginが選択されている場合は拒否する。
 - 依存関係を解決し、`order`へ初期化順を記録する。循環依存は拒否する。
 - 必須能力が、選択したpluginの能力で満たされない場合は`missing`へ残し、`passed=false`にする。
@@ -86,7 +100,7 @@ SaaSの`tenant-isolation`は[reference-tenant-isolation](../reference-tenant-iso
 
 ## 未実装
 
-- pluginの配布・取得・署名・失効、version制約・範囲からの解決、lock file。
+- pluginの配布・取得・署名・失効、lockの署名、prerelease・build metadata付きversion。
 - `tenant-isolation`以外の能力のconformance test。
 - 実Provider・実Targetでの確認。
 - 課金・契約・データ所在・監査保存期間。

@@ -9,40 +9,65 @@ import (
 	deliveryprofile "tei/tools/reference-delivery-profile"
 )
 
-// tei-delivery-profile validates that the selected plugins provide the
-// capabilities a delivery profile requires, or verifies the conformance checks
-// that exist for those capabilities. It does not deploy or implement a
-// delivery form.
+// tei-delivery-profile validates a plugin composition, verifies the
+// conformance checks that exist for it, or writes a lock file for a resolved
+// composition. It does not deploy or implement a delivery form.
 func main() {
-	if len(os.Args) < 2 || (os.Args[1] != "validate" && os.Args[1] != "verify") {
-		fmt.Fprintln(os.Stderr, "usage: tei-delivery-profile <validate|verify> -profile FILE")
+	if len(os.Args) < 2 {
+		fmt.Fprintln(os.Stderr, "usage: tei-delivery-profile <validate|verify|resolve> -profile FILE [-catalog DIR] [-lock FILE] [-out FILE]")
 		os.Exit(2)
 	}
 	command := os.Args[1]
+	if command != "validate" && command != "verify" && command != "resolve" {
+		fmt.Fprintf(os.Stderr, "unknown command %q\n", command)
+		os.Exit(2)
+	}
 	fs := flag.NewFlagSet(command, flag.ExitOnError)
 	profilePath := fs.String("profile", "", "delivery profile JSON")
-	catalogDir := fs.String("catalog", "", "optional plugin catalog directory for references without path")
+	catalogDir := fs.String("catalog", "", "plugin catalog directory for references without path")
+	lockPath := fs.String("lock", "", "lock file to verify")
+	outPath := fs.String("out", "", "lock file to write for resolve")
 	_ = fs.Parse(os.Args[2:])
 	if *profilePath == "" {
 		fail(fmt.Errorf("-profile is required"))
 	}
-	var receipt deliveryprofile.Receipt
-	var err error
-	if command == "verify" {
-		receipt, err = deliveryprofile.VerifyWithCatalog(*profilePath, *catalogDir)
-	} else {
-		receipt, err = deliveryprofile.ValidateWithCatalog(*profilePath, *catalogDir)
+	switch command {
+	case "resolve":
+		if *catalogDir == "" || *outPath == "" {
+			fail(fmt.Errorf("-catalog and -out are required for resolve"))
+		}
+		lock, err := deliveryprofile.ResolveLock(*profilePath, *catalogDir, *outPath)
+		if err != nil {
+			fail(err)
+		}
+		emit(lock)
+		return
+	case "verify":
+		receipt, err := deliveryprofile.VerifyWithLock(*profilePath, *catalogDir, *lockPath)
+		if err != nil {
+			fail(err)
+		}
+		emit(receipt)
+		if !receipt.Passed {
+			os.Exit(1)
+		}
+	default:
+		receipt, err := deliveryprofile.ValidateWithLock(*profilePath, *catalogDir, *lockPath)
+		if err != nil {
+			fail(err)
+		}
+		emit(receipt)
+		if !receipt.Passed {
+			os.Exit(1)
+		}
 	}
-	if err != nil {
-		fail(err)
-	}
+}
+
+func emit(value any) {
 	encoder := json.NewEncoder(os.Stdout)
 	encoder.SetIndent("", "  ")
-	if err := encoder.Encode(receipt); err != nil {
+	if err := encoder.Encode(value); err != nil {
 		fail(err)
-	}
-	if !receipt.Passed {
-		os.Exit(1)
 	}
 }
 
