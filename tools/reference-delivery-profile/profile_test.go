@@ -299,3 +299,22 @@ func TestCatalogDuplicateVersionIsRejected(t *testing.T) {
 		t.Fatal("duplicate catalog version was accepted")
 	}
 }
+
+func TestVerifySierExercisesExportPackage(t *testing.T) {
+	receipt, err := Verify(filepath.Join(testdata(t), "profiles", "sier.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !receipt.Passed {
+		t.Fatalf("verify failed: %+v", receipt)
+	}
+	status := map[string]string{}
+	for _, check := range receipt.Conformance {
+		status[check.Capability] = check.Status
+	}
+	for _, capability := range []string{"export-package", "authentication", "audit"} {
+		if status[capability] != "verified" {
+			t.Fatalf("%s was not verified: %+v", capability, receipt.Conformance)
+		}
+	}
+}
