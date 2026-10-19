@@ -11,6 +11,10 @@ import (
 )
 
 func mapping(id, table string, withPK bool) persistence.Mapping {
+	return mappingWith(id, table, withPK, false)
+}
+
+func mappingWith(id, table string, withPK, withUnique bool) persistence.Mapping {
 	m := persistence.Mapping{
 		ID: core.CanonicalID(id), Database: "store", SemanticData: core.CanonicalID("s." + table), Table: table,
 		Columns: []persistence.ColumnMapping{
@@ -19,6 +23,11 @@ func mapping(id, table string, withPK bool) persistence.Mapping {
 	}
 	if withPK {
 		m.PrimaryKey = []core.CanonicalID{core.CanonicalID("s." + table + ".code")}
+	}
+	if withUnique {
+		m.UniqueConstraints = []persistence.UniqueConstraintMapping{{
+			Name: table + "_code_key", Attributes: []core.CanonicalID{core.CanonicalID("s." + table + ".code")},
+		}}
 	}
 	return m
 }
@@ -41,8 +50,26 @@ func TestTableWithoutPrimaryKeyIsRenderedByTheProvider(t *testing.T) {
 	}
 }
 
+func TestPrimaryKeyIsRenderedAfterColumnsWithoutAName(t *testing.T) {
+	w := ir.World{Persistence: []persistence.Mapping{mapping("m.p", "pk_table", true)}}
+	res, err := Render(w, "store", environment.ProviderPostgres)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(res.Unresolved) != 0 || len(res.Tables) != 1 {
+		t.Fatalf("result = %+v", res)
+	}
+	st := res.Tables[0].Statements
+	last := st[len(st)-1]
+	if !strings.Contains(last, "ADD PRIMARY KEY") || strings.Contains(last, "CONSTRAINT") {
+		t.Fatalf("statements = %v", st)
+	}
+}
+
 func TestProviderRefusalIsReportedPerTableNotHidden(t *testing.T) {
-	w := ir.World{Persistence: []persistence.Mapping{mapping("m.a", "alpha", false), mapping("m.p", "pk_table", true)}}
+	// The provider cannot yet render unique constraints; the other table must
+	// still be returned and the refusal must carry the provider's reason.
+	w := ir.World{Persistence: []persistence.Mapping{mapping("m.a", "alpha", false), mappingWith("m.u", "uq_table", false, true)}}
 	res, err := Render(w, "store", environment.ProviderPostgres)
 	if err != nil {
 		t.Fatal(err)
@@ -50,8 +77,8 @@ func TestProviderRefusalIsReportedPerTableNotHidden(t *testing.T) {
 	if len(res.Tables) != 1 || !strings.HasSuffix(res.Tables[0].Name, "alpha") {
 		t.Fatalf("renderable tables = %+v", res.Tables)
 	}
-	if len(res.Unresolved) != 1 || !strings.HasSuffix(res.Unresolved[0].Table, "pk_table") ||
-		!strings.Contains(res.Unresolved[0].Reason, "primary key") {
+	if len(res.Unresolved) != 1 || !strings.HasSuffix(res.Unresolved[0].Table, "uq_table") ||
+		!strings.Contains(res.Unresolved[0].Reason, "add-unique-constraint") {
 		t.Fatalf("unresolved = %+v", res.Unresolved)
 	}
 }

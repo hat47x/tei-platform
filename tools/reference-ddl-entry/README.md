@@ -19,13 +19,13 @@ go run ./tools/reference-ddl-entry/cmd/tei-ddl-entry -workspace reference/worksp
 
 ## 現在分かっていること
 
-`reference/workspace`の`sales_core`は、すべての表が主キーを持つため、PostgreSQLの提供元が「新規作成する表の主キーは、制約の識別が実現できるまで出力しない」として拒否します（`tables`は空、`unresolved`に二表）。主キーのない表は出力できます。
+PostgreSQLの提供元は、新規作成する表の**主キー**を、列の追加の後に`ALTER TABLE ... ADD PRIMARY KEY (...)`として出力します。名前は付けず、PostgreSQLが決めます（[設計案](../../plan/design/POSTGRES_CONSTRAINT_RENDERING_DESIGN_2026-10.md)の案C）。`reference/workspace`の`sales_core`は、二つの表とも出力できます。
 
-つまり、実用的な新規作成用のDDLを出すには、提供元側の主キーの出力が先に要ります。これは「意味の変更に伴う既存データの移行設計」の5章（PostgreSQLでの安全な手順）が扱う領域で、このツールでは扱いません。
+一方、**一意制約と外部キーはまだ出力できません**。これらを持つ表は、提供元が未対応の変更種別として拒否し、`unresolved`に理由つきで出ます。黙って省くことはありません。主キーの変更（既存の表）も未対応です。出力文を実データベースで実行して確かめる検証は、まだ行っていません。
 
 ## 未実装
 
-- 提供元の主キー・外部キー・一意制約を含む新規作成のレンダリング（提供元の担当）
+- 提供元の外部キー・一意制約を含む新規作成のレンダリング（提供元の担当。設計案のP2・P3）
 - PostgreSQL以外の提供元
 - DDLの書式の差し替え、コメントの付与
 - ファイルへの出力
