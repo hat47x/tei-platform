@@ -14,7 +14,7 @@ import (
 // verifies its exact bytes. It does not install the bundle.
 func main() {
 	if len(os.Args) < 2 {
-		fmt.Fprintln(os.Stderr, "usage: tei-delivery-bundle <pack|verify|keygen|sign|verify-signature|install|activate|rollback|status|health|start|stop> [options]")
+		fmt.Fprintln(os.Stderr, "usage: tei-delivery-bundle <pack|verify|keygen|sign|verify-signature|install|activate|rollback|status|health|start|stop|restart> [options]")
 		os.Exit(2)
 	}
 	command := os.Args[1]
@@ -126,6 +126,15 @@ func main() {
 		} else {
 			receipt, err = deliverybundle.Stop(*statePath)
 		}
+		if err != nil {
+			fail(err)
+		}
+		emit(receipt)
+	case "restart":
+		if *statePath == "" || *healthCommand == "" {
+			fail(fmt.Errorf("-state and -command are required for restart"))
+		}
+		receipt, err := deliverybundle.Restart(*statePath, *healthCommand, *serviceLog, *healthTimeout)
 		if err != nil {
 			fail(err)
 		}
