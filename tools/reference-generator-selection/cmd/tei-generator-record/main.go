@@ -18,7 +18,8 @@ func main() {
 	provider := flag.String("provider", "", "model provider")
 	model := flag.String("model", "", "model name or version")
 	contractPath := flag.String("contract", "", "generator contract JSON")
-	source := flag.String("source", "", "generated Go source file")
+	language := flag.String("language", "go", "candidate language: go or python")
+	source := flag.String("source", "", "generated source file (.go or .py)")
 	prompt := flag.String("prompt", "", "prompt file")
 	context := flag.String("context", "", "context JSON file")
 	out := flag.String("out", "", "new candidate directory")
@@ -28,8 +29,9 @@ func main() {
 		fail(fmt.Errorf("-id, -provider, -model, -contract, -source, -prompt, -context, and -out are required"))
 	}
 	manifest, err := generatorselection.Record(generatorselection.RecordOptions{
-		ID: *id, Origin: *origin, Provider: *provider, Model: *model, ContractPath: *contractPath,
-		SourcePath: *source, PromptPath: *prompt, ContextPath: *context, Note: *note,
+		ID: *id, Origin: *origin, Provider: *provider, Model: *model, Language: *language,
+		ContractPath: *contractPath,
+		SourcePath:   *source, PromptPath: *prompt, ContextPath: *context, Note: *note,
 	}, *out)
 	if err != nil {
 		fail(err)

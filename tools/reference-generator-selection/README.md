@@ -59,7 +59,18 @@ go run ./tools/reference-generator-selection/cmd/tei-generator-record \
   -out /tmp/recorded-candidate
 ```
 
-`tei-generator-record`はモデルを呼び出しません。生成済みsourceをbyte単位で複製し、prompt・contextを同じdirectoryへ保存して、selectionがdigestを独立に確認できるようにします。
+`-language python`を指定すると、`.py`のsourceを`main.py`として記録できます。
+
+```text
+go run ./tools/reference-generator-selection/cmd/tei-generator-record \
+  -id model-python -provider example-provider -model example-model-v1 \
+  -language python \
+  -contract tools/reference-generator-selection/testdata/line-amount/contract.json \
+  -source /tmp/model-main.py -prompt /tmp/prompt.txt -context /tmp/context.json \
+  -out /tmp/recorded-python
+```
+
+`tei-generator-record`はモデルを呼び出しません。生成済みsourceをbyte単位で複製し、prompt・contextを同じdirectoryへ保存して、selectionがdigestを独立に確認できるようにします。`language`とsource拡張子が一致しない場合は拒否します。
 
 外部の生成コマンドを呼び出し、その出力をそのまま記録することもできます。
 
@@ -72,7 +83,7 @@ go run ./tools/reference-generator-selection/cmd/tei-generator-model \
   -command 'your-model-cli ... "$TEI_PROMPT" "$TEI_CONTEXT" > "$TEI_SOURCE"'
 ```
 
-`tei-generator-model`は、`TEI_CONTRACT`、`TEI_PROMPT`、`TEI_CONTEXT`、`TEI_SOURCE`、`TEI_TMPDIR`、`TEI_PROVIDER`、`TEI_MODEL`を環境変数で渡し、コマンドが`TEI_SOURCE`へ書いたGo sourceを記録します。`TEI_CONTRACT`は候補の契約digestを求める入力であり、コマンドが別契約向けのsourceを出しても、選抜は現在の契約との不一致として拒否します。特定ベンダーのAPI・認証・課金・モデル版管理は埋め込みません。コマンドは信頼済みのものだけを指定し、秘密情報を出力しないでください。
+`tei-generator-model`は、`TEI_CONTRACT`、`TEI_LANGUAGE`、`TEI_PROMPT`、`TEI_CONTEXT`、`TEI_SOURCE`、`TEI_TMPDIR`、`TEI_PROVIDER`、`TEI_MODEL`を環境変数で渡し、コマンドが`TEI_SOURCE`へ書いたsourceを記録します。`-language python`では`TEI_SOURCE`が`.py`になり、記録先も`main.py`です。`TEI_CONTRACT`は候補の契約digestを求める入力であり、コマンドが別契約向けのsourceを出しても、選抜は現在の契約との不一致として拒否します。特定ベンダーのAPI・認証・課金・モデル版管理は埋め込みません。コマンドは信頼済みのものだけを指定し、秘密情報を出力しないでください。
 
 外部の**生成器**が候補sourceを生成する場合は、生成器を深さ1で実行して記録できます。
 
@@ -124,7 +135,7 @@ go run ./tools/reference-generator-selection/cmd/tei-generator-meta \
 
 選抜は、`contractDigest`が現在の契約と一致すること、`outputDigest`が候補sourceのdigestと一致することを確認します。`generation`のない`generated-ai`候補は拒否します。契約が変わった候補を、別契約の証拠として再利用できません。`promptPath`・`contextPath`がある場合は、そのfileを読み、digestが記録と一致することを確認します。pathは候補directory内の相対pathに限り、シンボリックリンクを拒否します。
 
-`tei-generator-record`は、外部モデルが出したsourceとprompt・contextを一つの候補directoryへ記録します。モデル呼出し自体は行いません。
+`tei-generator-record`は、外部モデルが出したsourceとprompt・contextを一つの候補directoryへ記録します。モデル呼出し自体は行いません。`language`は`go`または`python`で、source拡張子と記録先（`main.go`/`main.py`）を一致させます。
 
 `testdata/candidates/dangerous`の`generation`は`recorded-fixture`で、実モデルを呼び出した記録ではありません。生成AIのprovenance境界を試験するための固定fixtureです。実モデル実行では、同じ項目へ実際のprovider・model・prompt・contextのdigestを入れる必要があります。
 
@@ -240,6 +251,7 @@ reconcileは候補をビルド・実行・選抜しません。再生成した�
 - 特定ベンダーのAPI呼出し・認証・課金・モデル版管理。外部コマンドへ委ねており、TEI内には実装していません。
 - `promptPath`・`contextPath`を省略した候補では、digestの形式だけを確認し、内容との対応は検証しません。
 - 深さ2以上のメタ生成、失効に伴う自動再生成・自動選抜・失効の承認。
+- Python sourceを出力するメタ生成器のlineage検証。
 - Python以外の言語（.NET/JVM/WASM等）と、実Targetでの処理系固定・依存解決。
 - 実Provider・実Targetでの比較。
 - 候補の署名・attestation・artifact store、buildの完全な再現性（#943 / #1370 / #1104）。
