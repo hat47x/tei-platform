@@ -60,6 +60,18 @@ go run ./tools/reference-delivery-bundle/cmd/tei-delivery-bundle \
 - 書き込み後にcatalogを読み直し、重複や不正なdescriptorがないことを確認する。
 - 複数fileの書き込みはトランザクションではない。途中で失敗した場合、それまでのfileは残る。
 
+新規catalogを一括で作る場合は`-fresh`を使います。既存catalogを更新するのではなく、staging directoryへ全descriptorを書き、catalogとして検証してから一度のRenameで公開します。
+
+```text
+go run ./tools/reference-delivery-bundle/cmd/tei-delivery-bundle \
+  install -fresh -bundle bundle.zip -signature bundle.sig -public public.pem \
+  -catalog ./new-plugin-catalog
+```
+
+- 既存のcatalog directoryがある場合は拒否する。
+- 失敗時はtarget directoryを残さない。
+- 既存catalogとのmergeは`-fresh`なしの`install`を使う。mergeは非トランザクションである。
+
 ## 守っている境界
 
 - bundleは選択済みの構成を固定するだけで、pluginの取得・信頼・権限を付与しない。

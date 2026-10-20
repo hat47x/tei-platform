@@ -20,6 +20,7 @@ func main() {
 	fs := flag.NewFlagSet(command, flag.ExitOnError)
 	profilePath := fs.String("profile", "", "delivery profile JSON")
 	catalogDir := fs.String("catalog", "", "plugin catalog directory")
+	fresh := fs.Bool("fresh", false, "create a new catalog atomically instead of merging")
 	out := fs.String("out", "", "output bundle zip")
 	bundlePath := fs.String("bundle", "", "bundle zip")
 	privateKey := fs.String("key", "", "ed25519 private key PEM")
@@ -49,7 +50,13 @@ func main() {
 		if *bundlePath == "" || *signaturePath == "" || *publicKey == "" || *catalogDir == "" {
 			fail(fmt.Errorf("-bundle, -signature, -public, and -catalog are required for install"))
 		}
-		receipt, err := deliverybundle.Install(*bundlePath, *signaturePath, *publicKey, *catalogDir)
+		var receipt deliverybundle.InstallReceipt
+		var err error
+		if *fresh {
+			receipt, err = deliverybundle.InstallFresh(*bundlePath, *signaturePath, *publicKey, *catalogDir)
+		} else {
+			receipt, err = deliverybundle.Install(*bundlePath, *signaturePath, *publicKey, *catalogDir)
+		}
 		if err != nil {
 			fail(err)
 		}
