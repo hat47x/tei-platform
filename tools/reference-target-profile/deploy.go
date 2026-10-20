@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	generatorselection "tei/tools/reference-generator-selection"
 )
@@ -109,7 +110,7 @@ func Deploy(ctx context.Context, opts DeployOptions) (DeployReceipt, error) {
 			receipt.Reason = err.Error()
 			return receipt, nil
 		}
-		historyPath := filepath.Join(historyDir, digestBytes(previous))
+		historyPath := filepath.Join(historyDir, strings.TrimPrefix(digestBytes(previous), "sha256:"))
 		if err := os.WriteFile(historyPath, previous, 0o644); err != nil {
 			receipt.Reason = err.Error()
 			return receipt, nil
