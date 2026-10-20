@@ -230,10 +230,11 @@ reconcileは候補をビルド・実行・選抜しません。再生成した�
 - WorkspaceのSource Indexから求めた`workspaceRevision`
 - fixtureのdigestと、契約・fixtureを合わせた`suiteVersion`
 - 候補ごとの`language`、`sourceDigest`、`binaryDigest`、`runtime`、`buildEvidence`、`generator`・`generation`（あれば）、各caseの`got`/`want`、`passed`、`rejectReason`
+- 各caseの`execution`（`exitCode`、stdout/stderrのdigest、`timedOut`）
 - 合格した候補の`qualified`と、不合格の`rejected`
 - `grantsRuntimeAuthority: false`、`provesRealProvider: false`
 
-同じWorkspace・契約・fixture・候補sourceからは、同じ`sourceDigest`と結果が得られます。`binaryDigest`と`buildEvidence`のtoolchain/環境は実行環境に依存し、再現性は未検証です。時刻や実行者のidentityは含めません。
+同じWorkspace・契約・fixture・候補sourceからは、同じ`sourceDigest`と結果が得られます。`binaryDigest`と`buildEvidence`のtoolchain/環境は実行環境に依存し、再現性は未検証です。`execution`はstdout/stderrの内容そのものではなくdigestとexit stateだけを残し、時刻や実行者のidentityは含めません。
 
 ## 守っている境界
 
