@@ -178,3 +178,36 @@ func (l *Log) Append(tenantID, actor, action, subject string) (Entry, error) {
 	}
 	return entry, nil
 }
+
+// Head returns the latest entry hash after verifying the chain. An empty log
+// returns the genesis hash. Pin the head outside the log to detect suffix
+// deletion.
+func (l *Log) Head() (string, error) {
+	if err := l.Verify(); err != nil {
+		return "", err
+	}
+	entries, err := readEntries(l.path)
+	if err != nil {
+		return "", err
+	}
+	if len(entries) == 0 {
+		return genesisHash, nil
+	}
+	return entries[len(entries)-1].Hash, nil
+}
+
+// VerifyHead verifies the chain and requires the last hash to equal expected.
+// This detects deletion of a suffix when the caller has pinned the head.
+func (l *Log) VerifyHead(expected string) error {
+	if strings.TrimSpace(expected) == "" {
+		return fmt.Errorf("expected head is required")
+	}
+	head, err := l.Head()
+	if err != nil {
+		return err
+	}
+	if head != expected {
+		return fmt.Errorf("audit head mismatch: expected %s, actual %s", expected, head)
+	}
+	return nil
+}

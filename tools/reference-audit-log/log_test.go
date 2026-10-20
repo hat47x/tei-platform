@@ -101,3 +101,45 @@ func TestReopenContinuesTheChain(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestHeadPinningDetectsSuffixDeletion(t *testing.T) {
+	log, path := newLog(t)
+	if _, err := log.Append("tenant-a", "user-1", "read", "order/1"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := log.Append("tenant-a", "user-1", "write", "order/1"); err != nil {
+		t.Fatal(err)
+	}
+	head, err := log.Head()
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	lines := strings.Split(strings.TrimRight(string(raw), "\n"), "\n")
+	if len(lines) != 2 {
+		t.Fatalf("lines=%d", len(lines))
+	}
+	if err := os.WriteFile(path, []byte(strings.Join(lines[:1], "\n")+"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := log.Verify(); err != nil {
+		t.Fatalf("without a pinned head, the remaining chain is valid: %v", err)
+	}
+	if err := log.VerifyHead(head); err == nil {
+		t.Fatal("pinned head did not detect suffix deletion")
+	}
+}
+
+func TestHeadOfEmptyLogIsGenesis(t *testing.T) {
+	log, _ := newLog(t)
+	head, err := log.Head()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if head != genesisHash {
+		t.Fatalf("head=%s", head)
+	}
+}

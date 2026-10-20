@@ -22,7 +22,7 @@
 | [`reference-target-profile/`](reference-target-profile/) | 同じ契約・fixture・候補を複数のTarget Profileで実行し、宣言と実行結果、case別出力の意味一致を記録する参照（#2019） |
 | [`reference-productivity-benchmark/`](reference-productivity-benchmark/) | 4タスクの計画とrunのcoverageを検証し、3方法×3回の中央値と範囲を集計する参照（#2018） |
 | [`reference-tenant-isolation/`](reference-tenant-isolation/) | SaaS向けに、テナントrootの閉じ込めと越境拒否を提供する基盤pluginの参照（#2020） |
-| [`reference-audit-log/`](reference-audit-log/) | 追記専用のhash chainと改ざん検出を提供する監査ログ基盤pluginの参照（#2020） |
+| [`reference-audit-log/`](reference-audit-log/) | 追記専用のhash chain、改ざん検出、pinned headによる末尾削除検出を提供する監査ログ基盤pluginの参照（#2020） |
 | [`reference-authentication/`](reference-authentication/) | credentialを発行せず、principalとtenantの認証境界を検証する基盤pluginの参照（#2020） |
 | [`reference-offline-storage/`](reference-offline-storage/) | 個人向けに、root内へ閉じたローカル保存を提供する基盤pluginの参照（#2020） |
 | [`reference-export-package/`](reference-export-package/) | SIer向けに、manifestとdigest付きの配布zipを作る基盤pluginの参照（#2020） |
