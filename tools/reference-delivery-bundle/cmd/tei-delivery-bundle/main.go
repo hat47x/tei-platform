@@ -14,7 +14,7 @@ import (
 // verifies its exact bytes. It does not install the bundle.
 func main() {
 	if len(os.Args) < 2 {
-		fmt.Fprintln(os.Stderr, "usage: tei-delivery-bundle <pack|verify|keygen|sign|verify-signature|install|activate|rollback|status|health|start|stop|restart> [options]")
+		fmt.Fprintln(os.Stderr, "usage: tei-delivery-bundle <pack|verify|keygen|sign|verify-signature|install|activate|rollback|status|health|start|stop|restart|reconcile> [options]")
 		os.Exit(2)
 	}
 	command := os.Args[1]
@@ -32,6 +32,7 @@ func main() {
 	healthTimeout := fs.Duration("timeout", 30*time.Second, "health-check timeout")
 	serviceLog := fs.String("log", "", "service log file")
 	graceful := fs.Bool("graceful", false, "send SIGTERM before Kill")
+	healthCheck := fs.String("health", "", "trusted health-check command for reconcile")
 	_ = fs.Parse(os.Args[2:])
 	switch command {
 	case "pack":
@@ -135,6 +136,15 @@ func main() {
 			fail(fmt.Errorf("-state and -command are required for restart"))
 		}
 		receipt, err := deliverybundle.Restart(*statePath, *healthCommand, *serviceLog, *healthTimeout)
+		if err != nil {
+			fail(err)
+		}
+		emit(receipt)
+	case "reconcile":
+		if *statePath == "" || *healthCommand == "" || *healthCheck == "" {
+			fail(fmt.Errorf("-state, -command, and -health are required for reconcile"))
+		}
+		receipt, err := deliverybundle.Reconcile(*statePath, *healthCommand, *healthCheck, *serviceLog, *healthTimeout)
 		if err != nil {
 			fail(err)
 		}

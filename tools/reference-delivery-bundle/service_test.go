@@ -92,3 +92,50 @@ func TestRestartWithoutRunningServiceIsRejected(t *testing.T) {
 		t.Fatal("restart without a running service was accepted")
 	}
 }
+
+func TestReconcileStartsWhenAbsent(t *testing.T) {
+	statePath := activeState(t)
+	receipt, err := Reconcile(statePath, "exec sleep 5", "exit 0", "", time.Second)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _, _ = Stop(statePath) })
+	if receipt.Action != "started" || receipt.Service == nil {
+		t.Fatalf("unexpected reconcile receipt: %+v", receipt)
+	}
+}
+
+func TestReconcileNoopWhenHealthy(t *testing.T) {
+	statePath := activeState(t)
+	_, err := Start(statePath, "exec sleep 5", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _, _ = Stop(statePath) })
+	receipt, err := Reconcile(statePath, "exec sleep 5", "exit 0", "", time.Second)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if receipt.Action != "noop" || !receipt.Healthy || receipt.Health == nil {
+		t.Fatalf("unexpected reconcile receipt: %+v", receipt)
+	}
+}
+
+func TestReconcileRestartsUnhealthy(t *testing.T) {
+	statePath := activeState(t)
+	first, err := Start(statePath, "exec sleep 5", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _, _ = Stop(statePath) })
+	receipt, err := Reconcile(statePath, "exec sleep 5", "exit 1", "", time.Second)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if receipt.Action != "restarted" || receipt.Service == nil {
+		t.Fatalf("unexpected reconcile receipt: %+v", receipt)
+	}
+	if receipt.Service.PID == first.PID {
+		t.Fatalf("restart kept the same pid: %d", receipt.Service.PID)
+	}
+}
