@@ -120,3 +120,23 @@ func TestFreshInstallFailureLeavesNoCatalog(t *testing.T) {
 		t.Fatalf("failed fresh install left a catalog: %v", err)
 	}
 }
+
+func TestMergeInstallPreflightsAllConflicts(t *testing.T) {
+	bundle, signature, publicKey, manifest := packSigned(t)
+	if len(manifest.Plugins) < 2 {
+		t.Fatal("test bundle needs at least two plugins")
+	}
+	catalog := filepath.Join(t.TempDir(), "catalog")
+	if err := os.MkdirAll(catalog, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(catalog, manifest.Plugins[1].File), []byte("different"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Install(bundle, signature, publicKey, catalog); err == nil {
+		t.Fatal("conflict was accepted")
+	}
+	if _, err := os.Stat(filepath.Join(catalog, manifest.Plugins[0].File)); !os.IsNotExist(err) {
+		t.Fatal("install wrote an earlier file before detecting a later conflict")
+	}
+}

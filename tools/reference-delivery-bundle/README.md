@@ -57,8 +57,10 @@ go run ./tools/reference-delivery-bundle/cmd/tei-delivery-bundle \
 - bundleの署名とパッケージを検証してから書き込む。
 - 書き込むのはplugin descriptorだけ。zip内の任意pathは展開しない。
 - 同じdigestの既存fileはskipし、異なるdigestの既存fileは上書きせず失敗する。
+- 既存fileとの衝突は、書き込み前に全件確認する。
+- 書き込み中に失敗した場合、この呼び出しで作ったfileを削除する。削除にも失敗した場合は残ることがある。
 - 書き込み後にcatalogを読み直し、重複や不正なdescriptorがないことを確認する。
-- 複数fileの書き込みはトランザクションではない。途中で失敗した場合、それまでのfileは残る。
+- 複数fileの書き込みは完全なトランザクションではない。preflightとbest-effort rollbackで部分適用を抑える。
 
 新規catalogを一括で作る場合は`-fresh`を使います。既存catalogを更新するのではなく、staging directoryへ全descriptorを書き、catalogとして検証してから一度のRenameで公開します。
 
@@ -70,7 +72,7 @@ go run ./tools/reference-delivery-bundle/cmd/tei-delivery-bundle \
 
 - 既存のcatalog directoryがある場合は拒否する。
 - 失敗時はtarget directoryを残さない。
-- 既存catalogとのmergeは`-fresh`なしの`install`を使う。mergeは非トランザクションである。
+- 既存catalogとのmergeは`-fresh`なしの`install`を使う。preflightとbest-effort rollbackを持つが、完全なトランザクションではない。
 
 ## 配備状態とロールバック
 
