@@ -28,7 +28,7 @@
 | [`reference-offline-storage/`](reference-offline-storage/) | 個人向けに、root内へ閉じたローカル保存を提供する基盤pluginの参照（#2020） |
 | [`reference-export-package/`](reference-export-package/) | SIer向けに、manifestとdigest付きの配布zipを作る基盤pluginの参照（#2020） |
 | [`reference-delivery-profile/`](reference-delivery-profile/) | 提供形態ごとにpluginを選択し、必須能力が揃っているかを検証する参照（#2020） |
-| [`reference-delivery-bundle/`](reference-delivery-bundle/) | 解決済みprofileとplugin descriptorをzip化し、digest・detached signature・merge/fresh install・activate/rollback・health/start/stopを提供する参照（#2020） |
+| [`reference-delivery-bundle/`](reference-delivery-bundle/) | 解決済みprofileとplugin descriptorをzip化し、digest・detached signature・merge/fresh install・activate/rollback・health/start/graceful stopを提供する参照（#2020） |
 
 ## 設計、業務知識、受入れ
 
