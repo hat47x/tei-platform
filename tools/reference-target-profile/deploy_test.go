@@ -88,21 +88,69 @@ func TestDeployInPlaceUpdatesTarget(t *testing.T) {
 	}
 }
 
-func TestDeployRejectsUnsupportedUpdateOrStorage(t *testing.T) {
+func TestDeployRejectsUnsupportedStorage(t *testing.T) {
 	_, _, _, candidates := selectionPaths(t)
-	for _, name := range []string{"server", "embedded"} {
-		profilePath := filepath.Join(repoRoot(t), "tools", "reference-target-profile", "testdata", name+".json")
-		receipt, err := Deploy(context.Background(), DeployOptions{
-			ProfilePath: profilePath, CandidatesDir: candidates, RootDir: t.TempDir(),
-		})
-		if err != nil {
-			t.Fatal(err)
+	profilePath := filepath.Join(repoRoot(t), "tools", "reference-target-profile", "testdata", "embedded.json")
+	receipt, err := Deploy(context.Background(), DeployOptions{
+		ProfilePath: profilePath, CandidatesDir: candidates, RootDir: t.TempDir(),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if receipt.Passed || !strings.Contains(receipt.Reason, "storage") {
+		t.Fatalf("sqlite profile was deployed by the reference: %+v", receipt)
+	}
+}
+
+func TestDeployRollingSwitchesSlotsAndRollsBack(t *testing.T) {
+	_, _, _, candidates := selectionPaths(t)
+	root := t.TempDir()
+	serverPath := filepath.Join(repoRoot(t), "tools", "reference-target-profile", "testdata", "server.json")
+	first, err := Deploy(context.Background(), DeployOptions{
+		ProfilePath: serverPath, CandidatesDir: candidates, RootDir: root,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !first.Passed || first.CurrentSlot != "a" || first.PreviousSlot != "" || first.RollbackAvailable {
+		t.Fatalf("first rolling deployment failed: %+v", first)
+	}
+	profile, err := Load(serverPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	profile.ID = "server-template"
+	profile.GeneratorID = "template"
+	changed, err := json.MarshalIndent(profile, "", "  ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	secondProfile := filepath.Join(t.TempDir(), "server-template.json")
+	if err := os.WriteFile(secondProfile, append(changed, '\n'), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	second, err := Deploy(context.Background(), DeployOptions{
+		ProfilePath: secondProfile, CandidatesDir: candidates, RootDir: root,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !second.Passed || second.CurrentSlot != "b" || second.PreviousSlot != "a" || !second.RollbackAvailable {
+		t.Fatalf("second rolling deployment did not switch slots: %+v", second)
+	}
+	for _, slot := range []string{"a", "b"} {
+		if _, err := os.Stat(filepath.Join(root, "slots", slot, "artifact")); err != nil {
+			t.Fatalf("slot %s artifact is missing: %v", slot, err)
 		}
-		if receipt.Passed || receipt.Reason == "" {
-			t.Fatalf("%s profile was deployed by the reference: %+v", name, receipt)
-		}
-		if !strings.Contains(receipt.Reason, "storage") && !strings.Contains(receipt.Reason, "update") {
-			t.Fatalf("%s failure reason is unclear: %q", name, receipt.Reason)
-		}
+	}
+	rolledBack, err := Rollback(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !rolledBack.Passed || rolledBack.CurrentSlot != "a" || rolledBack.PreviousSlot != "b" {
+		t.Fatalf("rollback did not restore the previous slot: %+v", rolledBack)
+	}
+	if rolledBack.ArtifactDigest != first.ArtifactDigest {
+		t.Fatalf("rollback artifact digest=%s want %s", rolledBack.ArtifactDigest, first.ArtifactDigest)
 	}
 }
