@@ -188,12 +188,14 @@ func TestResidentProcessesKeepOldInvocationThroughCutover(t *testing.T) {
 		t.Fatal(err)
 	}
 	bLease.Release()
-	drainCtx, stopDrain := context.WithCancel(ctx)
-	stopDrain()
-	if err := c.Reap(drainCtx); !errors.Is(err, context.Canceled) {
+	// Reap starts with a live context: the outstanding Lease must hold the
+	// old process until the deadline, not merely propagate pre-cancellation.
+	drainCtx, stopDrain := context.WithTimeout(ctx, 150*time.Millisecond)
+	defer stopDrain()
+	if err := c.Reap(drainCtx); !errors.Is(err, context.DeadlineExceeded) {
 		t.Fatalf("active old lease did not block retirement: %v", err)
 	}
-	if oldStops != 0 || c.PendingRetirements() != 1 {
+	if oldStops != 0 || c.PendingRetirements() != 1 || p1.cmd.ProcessState != nil {
 		t.Fatal("old process cleaned before its request completed")
 	}
 	if err := p1.exchange("RELEASE", "DONE"); err != nil {
