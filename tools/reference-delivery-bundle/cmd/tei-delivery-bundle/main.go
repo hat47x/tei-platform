@@ -14,7 +14,7 @@ import (
 // verifies its exact bytes. It does not install the bundle.
 func main() {
 	if len(os.Args) < 2 {
-		fmt.Fprintln(os.Stderr, "usage: tei-delivery-bundle <pack|verify|keygen|sign|verify-signature|install|activate|rollback|status|health> [options]")
+		fmt.Fprintln(os.Stderr, "usage: tei-delivery-bundle <pack|verify|keygen|sign|verify-signature|install|activate|rollback|status|health|start|stop> [options]")
 		os.Exit(2)
 	}
 	command := os.Args[1]
@@ -28,8 +28,9 @@ func main() {
 	publicKey := fs.String("public", "", "ed25519 public key PEM")
 	signaturePath := fs.String("signature", "", "detached signature file")
 	statePath := fs.String("state", "", "deployment state JSON")
-	healthCommand := fs.String("command", "", "trusted health-check command")
+	healthCommand := fs.String("command", "", "trusted service or health command")
 	healthTimeout := fs.Duration("timeout", 30*time.Second, "health-check timeout")
+	serviceLog := fs.String("log", "", "service log file")
 	_ = fs.Parse(os.Args[2:])
 	switch command {
 	case "pack":
@@ -104,6 +105,24 @@ func main() {
 		if !receipt.Healthy {
 			os.Exit(1)
 		}
+	case "start":
+		if *statePath == "" || *healthCommand == "" {
+			fail(fmt.Errorf("-state and -command are required for start"))
+		}
+		receipt, err := deliverybundle.Start(*statePath, *healthCommand, *serviceLog)
+		if err != nil {
+			fail(err)
+		}
+		emit(receipt)
+	case "stop":
+		if *statePath == "" {
+			fail(fmt.Errorf("-state is required for stop"))
+		}
+		receipt, err := deliverybundle.Stop(*statePath)
+		if err != nil {
+			fail(err)
+		}
+		emit(receipt)
 	case "keygen":
 		if *privateKey == "" || *publicKey == "" {
 			fail(fmt.Errorf("-key and -public are required for keygen"))

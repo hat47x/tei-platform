@@ -111,17 +111,37 @@ go run ./tools/reference-delivery-bundle/cmd/tei-delivery-bundle \
 - 出力はdigestだけを記録し、本文はreceiptへ含めない。
 - stateのactive/previousが現在も検証できることを前提にする。
 
+## 起動と停止
+
+trustedなサービスコマンドをバックグラウンドで起動し、PIDを記録します。
+
+```text
+go run ./tools/reference-delivery-bundle/cmd/tei-delivery-bundle \
+  start -state ./deployment-state.json \
+  -command 'your-service-command' -log ./service.log
+
+go run ./tools/reference-delivery-bundle/cmd/tei-delivery-bundle \
+  stop -state ./deployment-state.json
+```
+
+- `start`は`bash -lc`でコマンドを起動し、PID・catalog・digest・開始時刻・ログpathを`<state>.pid`へ記録する。
+- `TEI_CATALOG`、`TEI_ACTIVE_DIGEST`、`TEI_STATE`を環境変数で渡す。
+- `stop`は記録したPIDへ`Kill`を送り、PID fileを削除する。graceful shutdownは行わない。
+- 既にPID fileがある場合、二重起動として拒否する。プロセスの生存確認や自動再起動は行わない。
+- このReferenceはLinux/WSLの`bash`を前提とする。
+
 ## 守っている境界
 
 - bundleは選択済みの構成を固定するだけで、pluginの取得・信頼・権限を付与しない。
 - signatureはbundleの完全性だけを示す。署名者・公開鍵の信頼、配備経路の真正性は扱わない。
 - `install`はローカルcatalogへの配置だけを行う。`activate` / `rollback`はstate fileの更新だけを行い、サービスを起動・停止しない。
 - `health`は利用者が指定したtrustedなコマンドの終了コードを記録するだけで、サービスを起動・監視しない。
+- `start` / `stop`はtrustedなコマンドの起動とPIDへのKillだけを行う。graceful shutdown、再起動、監視、PID再利用の防止は行わない。
 - catalogにないpluginを暗黙に追加しない。
 
 ## 未実装
 
 - 鍵管理、信頼の起点、署名者の認証。
-- 配布、サービスへのインストール・起動・停止、継続的なヘルス監視、多段階ロールバック、トランザクション。
+- 配布、継続的なヘルス監視、graceful shutdown、自動再起動、多段階ロールバック、トランザクション。
 - 部分bundle、差分更新。
 - 実SaaS・実顧客先での配備確認。
