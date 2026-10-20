@@ -93,18 +93,35 @@ go run ./tools/reference-delivery-bundle/cmd/tei-delivery-bundle \
 - `rollback`はprevious catalogを検証してからactiveとpreviousを入れ替える。previousがない場合は拒否する。
 - `status`はactiveとpreviousのcatalogが現在も検証できるかを確認する。
 - stateはtemp fileへの書き込みとRenameで更新する。
-- ロールバックは1段階の入れ替えであり、サービスプロセスの起動・停止・ヘルスチェックは行わない。
+- ロールバックは1段階の入れ替えであり、サービスプロセスの起動・停止は行わない。
+
+## ヘルスチェック
+
+active deploymentに対して、利用者が用意したtrustedなコマンドを実行し、終了コードを記録します。
+
+```text
+go run ./tools/reference-delivery-bundle/cmd/tei-delivery-bundle \
+  health -state ./deployment-state.json \
+  -command 'your-service-health-check' -timeout 30s
+```
+
+- `TEI_CATALOG`、`TEI_ACTIVE_DIGEST`、`TEI_STATE`を環境変数で渡す。
+- 終了コード0を`healthy=true`、それ以外を`healthy=false`とする。
+- timeoutを超えた場合は`healthy=false`、`error=timeout`とする。
+- 出力はdigestだけを記録し、本文はreceiptへ含めない。
+- stateのactive/previousが現在も検証できることを前提にする。
 
 ## 守っている境界
 
 - bundleは選択済みの構成を固定するだけで、pluginの取得・信頼・権限を付与しない。
 - signatureはbundleの完全性だけを示す。署名者・公開鍵の信頼、配備経路の真正性は扱わない。
 - `install`はローカルcatalogへの配置だけを行う。`activate` / `rollback`はstate fileの更新だけを行い、サービスを起動・停止しない。
+- `health`は利用者が指定したtrustedなコマンドの終了コードを記録するだけで、サービスを起動・監視しない。
 - catalogにないpluginを暗黙に追加しない。
 
 ## 未実装
 
 - 鍵管理、信頼の起点、署名者の認証。
-- 配布、サービスへのインストール・起動・停止・ヘルスチェック、多段階ロールバック、トランザクション。
+- 配布、サービスへのインストール・起動・停止、継続的なヘルス監視、多段階ロールバック、トランザクション。
 - 部分bundle、差分更新。
 - 実SaaS・実顧客先での配備確認。
