@@ -38,8 +38,9 @@ const (
 )
 
 const (
-	LanguageGo     = "go"
-	LanguagePython = "python"
+	LanguageGo         = "go"
+	LanguagePython     = "python"
+	LanguageJavaScript = "javascript"
 )
 
 type InputSpec struct {
@@ -578,12 +579,15 @@ func evaluateCandidate(ctx context.Context, dir string, fixture Fixture, contrac
 	if manifest.ID == "" || manifest.Origin == "" || manifest.Source == "" || manifest.SourceDigest == "" {
 		return reject("candidate identity is incomplete")
 	}
-	if language != LanguageGo && language != LanguagePython {
+	if language != LanguageGo && language != LanguagePython && language != LanguageJavaScript {
 		return reject("unsupported candidate language: " + language)
 	}
 	expectedExtension := ".go"
-	if language == LanguagePython {
+	switch language {
+	case LanguagePython:
 		expectedExtension = ".py"
+	case LanguageJavaScript:
+		expectedExtension = ".js"
 	}
 	if strings.ToLower(filepath.Ext(manifest.Source)) != expectedExtension {
 		return reject("candidate source extension does not match language " + language)
@@ -674,7 +678,7 @@ func evaluateCandidate(ctx context.Context, dir string, fixture Fixture, contrac
 			return reject("generator provenance does not match the current contract and template")
 		}
 	}
-	var binaryPath, pythonPath string
+	var binaryPath, scriptPath string
 	switch language {
 	case LanguageGo:
 		binaryDir, err := os.MkdirTemp("", "tei-generator-candidate-*")
@@ -708,10 +712,10 @@ func evaluateCandidate(ctx context.Context, dir string, fixture Fixture, contrac
 	case LanguagePython:
 		var version string
 		var available bool
-		pythonPath, version, available = findPython()
+		scriptPath, version, available = findPython()
 		command := "python <source>"
-		if pythonPath != "" {
-			command = pythonPath + " <source>"
+		if scriptPath != "" {
+			command = scriptPath + " <source>"
 		}
 		receipt.Runtime = &RuntimeEvidence{
 			Language: LanguagePython, Command: command, Version: version, Available: available,
@@ -719,15 +723,30 @@ func evaluateCandidate(ctx context.Context, dir string, fixture Fixture, contrac
 		if !available {
 			return reject("runtime unavailable: python3/python was not found")
 		}
+	case LanguageJavaScript:
+		var version string
+		var available bool
+		scriptPath, version, available = findJavaScript()
+		command := "node <source>"
+		if scriptPath != "" {
+			command = scriptPath + " <source>"
+		}
+		receipt.Runtime = &RuntimeEvidence{
+			Language: LanguageJavaScript, Command: command, Version: version, Available: available,
+		}
+		if !available {
+			return reject("runtime unavailable: node was not found")
+		}
 	}
 
 	for _, tc := range fixture.Cases {
 		var got Result
 		var execution *ExecutionEvidence
 		var err error
-		if language == LanguagePython {
-			got, execution, err = runPythonCandidate(ctx, pythonPath, sourcePath, tc.Input)
-		} else {
+		switch language {
+		case LanguagePython, LanguageJavaScript:
+			got, execution, err = runScriptCandidate(ctx, scriptPath, sourcePath, tc.Input)
+		default:
 			got, execution, err = runCandidate(ctx, binaryPath, tc.Input)
 		}
 		result := CaseResult{CaseID: tc.ID, Want: tc.Want, Got: got, Execution: execution}
@@ -855,12 +874,24 @@ func findPython() (path, version string, available bool) {
 	return "", "", false
 }
 
-func runPythonCandidate(ctx context.Context, pythonPath, sourcePath string, input json.RawMessage) (Result, *ExecutionEvidence, error) {
+func findJavaScript() (path, version string, available bool) {
+	found, err := exec.LookPath("node")
+	if err != nil {
+		return "", "", false
+	}
+	out, err := exec.Command(found, "--version").CombinedOutput()
+	if err != nil {
+		return "", "", false
+	}
+	return found, strings.TrimSpace(string(out)), true
+}
+
+func runScriptCandidate(ctx context.Context, interpreter, sourcePath string, input json.RawMessage) (Result, *ExecutionEvidence, error) {
 	absolute, err := filepath.Abs(sourcePath)
 	if err != nil {
 		return Result{}, nil, err
 	}
-	return runProgram(ctx, pythonPath, []string{absolute}, input)
+	return runProgram(ctx, interpreter, []string{absolute}, input)
 }
 
 func runCandidate(ctx context.Context, binary string, input json.RawMessage) (Result, *ExecutionEvidence, error) {
