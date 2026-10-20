@@ -45,7 +45,12 @@ class RealPostgresArchive(unittest.TestCase):
     def test_receipt_symlink_is_refused(self):
         actual = self.receipt.with_name("original.json")
         self.receipt.rename(actual)
-        self.receipt.symlink_to(actual.name)
+        try:
+            self.receipt.symlink_to(actual.name)
+        except OSError as exc:
+            if getattr(exc, "winerror", None) == 1314:
+                self.skipTest("Windows symlink privilege is unavailable")
+            raise
         with self.assertRaisesRegex(ValueError, "regular file"):
             verify_module.verify(self.receipt)
 

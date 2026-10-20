@@ -1,0 +1,4 @@
+# Archived witnesses are hashed as raw bytes; checkout must not rewrite them.
+/plan/evidence/TEI_E1_SYNTHETIC_MANIFEST_20261012_38267656696.json -text
+/plan/evidence/tei-e1-synthetic-38267656696/*.json -text
+/plan/evidence/TEI_E2A1_REAL_POSTGRES_RECEIPT_38311557882.json -text
