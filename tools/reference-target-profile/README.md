@@ -20,6 +20,11 @@ go run ./tools/reference-target-profile/cmd/tei-target-profile \
   -contract tools/reference-generator-selection/testdata/line-amount/contract.json \
   -fixtures tools/reference-generator-selection/testdata/line-amount/fixtures.json \
   -candidates tools/reference-generator-selection/testdata/candidates
+
+go run ./tools/reference-target-profile/cmd/tei-target-profile \
+  deploy -profile tools/reference-target-profile/testdata/desktop-replace.json \
+  -candidates tools/reference-generator-selection/testdata/candidates \
+  -root /tmp/tei-target-profile-root
 ```
 
 ## Profileの項目
@@ -27,15 +32,15 @@ go run ./tools/reference-target-profile/cmd/tei-target-profile \
 | 項目 | 内容 |
 | --- | --- |
 | `processModel` | `oneshot`（caseごとに別process）、`long-running`（1 processで複数request）、`batch`（未対応） |
-| `storage` | `none`、`filesystem`、`sqlite`、`remote` |
+| `storage` | `none`、`filesystem`、`sqlite`、`remote`。`filesystem`だけdeploy参照で扱う |
 | `network` | `none`、`loopback`、`allowed` |
-| `update` | `replace`、`in-place`、`rolling` |
+| `update` | `replace`、`in-place`、`rolling`。`replace`/`in-place`だけdeploy参照で扱う |
 | `memoryLimitBytes` | 正の整数 |
 | `observability` | 観測手段の一覧。`stdout`・`stderr`・`exit-code`はcase実行から観測する |
 | `unsupported` | このprofileで扱わない機能 |
 | `generatorId` | このprofileで選ぶ生成器のid（任意） |
 
-`testdata/server.json`はlong-running・filesystem・network allowed・rolling updateで`long-running-template`を選び、`testdata/embedded.json`はone-shot・sqlite・network none・replace updateで`alternative`を選びます。serverの`audit-log`はこのReferenceでは提供しないため、`unsupported`へ明示しています。
+`testdata/server.json`はlong-running・filesystem・network allowed・rolling updateで`long-running-template`を選び、`testdata/embedded.json`はone-shot・sqlite・network none・replace updateで`alternative`を選びます。serverの`audit-log`はこのReferenceでは提供しないため、`unsupported`へ明示しています。`testdata/desktop-replace.json`はfilesystem・replace updateで`template`を選び、ローカルartifact配備の参照に使います。
 
 ## 実行とreceipt
 
@@ -55,6 +60,16 @@ memory limitは`GOMEMLIMIT`としてselectionのサブプロセスへ渡しま�
 
 `processModel`は、oneshotならcaseごとのprocess実行、long-runningなら1 processへ全requestを送り全responseを比較します。long-running probeは現在Go候補だけを対象とし、processが途中で終了した場合やresponse数が足りない場合は`passed=false`にします。batchは未対応として返します。
 
+## ローカルartifact配備
+
+`deploy`は、選択したGo候補をbuildし、ローカルfilesystemのrootへartifactとして配置します。実Targetへの配備ではなく、`storage: filesystem`と`update: replace`/`in-place`の最小の挙動を確認する参照です。
+
+- `replace`: 新しいartifactを同じrootへrenameし、既存artifactは`history/<digest>`へ保持します。
+- `in-place`: 既存artifactを上書きし、上書き前のartifactを`history/<digest>`へ保持します。
+- 配備後にartifact digestを再計算し、build結果と一致することを確認します。historyのdigestも照合します。
+- `sqlite`・`remote` storage、`rolling` update、Go以外の候補は未対応として`passed=false`にします。
+- 実Targetのsupervisor・無停止更新・ロールバック・電源断耐性・複数ホスト配備は扱いません。
+
 ## Profile間の意味比較
 
 `compare`は、複数のprofileを同じ契約・fixture・候補集合で順に実行し、各profileが選んだ生成器の**case別出力**を比較します。
@@ -71,7 +86,7 @@ memory limitは`GOMEMLIMIT`としてselectionのサブプロセスへ渡しま�
 - profileは意味を変えない。契約・fixture・候補は同じものを使う。
 - profileは`generatorId`で生成器を一つ選ぶ。選ばれなかった候補は`not selected by target profile`として拒否し、別の生成器へ暗黙にフォールバックしない。
 - `processModel`はoneshotのprocess-per-case、long-runningのsingle-processを実行で確認する。batchは未対応。
-- `storage`・`network`・`update`は**宣言**であり、このReferenceでは強制していない。receiptの`enforcement`に`declared-only`と記録する。
+- `storage`の`filesystem`と`update`の`replace`/`in-place`は、`deploy`のローカルfilesystem参照で限定的に確認する。`network`、`sqlite`/`remote` storage、`rolling` updateは宣言または未対応のまま。
 - `observability`は`stdout`・`stderr`・`exit-code`だけをcase実行から観測する。未対応channelは`unsupported`として返し、合格にしない。
 - profileの合格や`semanticsEqual`は、実機・実OS・実Targetでの動作を証明しない。
 - 組込み固有のリアルタイム性・安全認証・電源断耐性は扱わない。
@@ -79,7 +94,7 @@ memory limitは`GOMEMLIMIT`としてselectionのサブプロセスへ渡しま�
 ## 未実装
 
 - OS・CPU・RTOS別の実行環境と、実機での資源測定。
-- `network`・`storage`・`update`の強制。
+- `network`の強制、`sqlite`/`remote` storage、`rolling` update。
 - batch processModel、long-runningのPython/JavaScript候補。
 - `audit-log`・分散trace・metrics等の観測channel。
 - 実Targetへの配備、ロールバック、長期運用。
