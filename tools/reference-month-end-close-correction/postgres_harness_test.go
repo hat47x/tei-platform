@@ -336,3 +336,24 @@ func (h *harness) closeInvariants() map[string]int64 {
 	}
 	return m
 }
+
+// waitLeaseExpired waits until the database clock says the lease expired.
+// The tests never assume that the test process's clock and the database
+// clock advance together.
+func (h *harness) waitLeaseExpired(key string) {
+	h.t.Helper()
+	deadline := time.Now().Add(30 * time.Second)
+	for {
+		var expired bool
+		if err := h.conn.QueryRow(h.ctx, `SELECT coalesce((SELECT expires_at <= clock_timestamp() FROM mecc.job_lease WHERE job_key=$1), true)`, key).Scan(&expired); err != nil {
+			h.t.Fatal(err)
+		}
+		if expired {
+			return
+		}
+		if time.Now().After(deadline) {
+			h.t.Fatalf("lease %s did not expire by the database clock", key)
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+}

@@ -264,7 +264,7 @@ func TestPostgresPJOB01KillRestartDoubleAndAfterComplete(t *testing.T) {
 		t.Fatalf("details after kill %d: a killed chunk left rows", n)
 	}
 	refusedWith(t, h.run(4, nil, closeArgs(dpath, "srv-b", "3s", "")...), ErrAlreadyRunning.Error())
-	time.Sleep(3500 * time.Millisecond)
+	h.waitLeaseExpired(CloseJobKey(month))
 	resumer := h.start(nil, closeArgs(dpath, "srv-b", "3s", "300ms")...)
 	for h.int(`SELECT count(*) FROM mecc.close_attempt WHERE outcome='resumed'`) == 0 {
 		time.Sleep(50 * time.Millisecond)
@@ -313,7 +313,7 @@ func TestPostgresPOPS01FencingAfterTakeoverWithClockSkew(t *testing.T) {
 	if err := h.conn.QueryRow(h.ctx, `SELECT naive_would_take_over FROM mecc.lease_event WHERE owner_id='srv-b' AND state='claim-refused'`).Scan(&naive); err != nil || !naive {
 		t.Fatalf("host-clock judgment not recorded as a takeover: %v %v", naive, err)
 	}
-	time.Sleep(2500 * time.Millisecond)
+	h.waitLeaseExpired(CloseJobKey(month))
 	b := h.start(fast, closeArgs(dpath, "srv-b", "2s", "300ms")...)
 	for h.int(`SELECT count(*) FROM mecc.lease_event WHERE owner_id='srv-b' AND state='takeover'`) == 0 {
 		time.Sleep(20 * time.Millisecond)
@@ -360,7 +360,7 @@ func TestPostgresPOPS01FencingAfterTakeoverWithClockSkew(t *testing.T) {
 	}
 	var hostExp time.Time
 	h.conn.QueryRow(h.ctx, `SELECT owner_host_expires_at FROM mecc.job_lease WHERE job_key=$1`, key).Scan(&hostExp)
-	time.Sleep(700 * time.Millisecond)
+	h.waitLeaseExpired(key)
 	o2, takeover, err := slow.Claim(h.ctx, key, "y", time.Second)
 	if err != nil || !takeover || o2.FencingToken != o1.FencingToken+1 {
 		t.Fatalf("takeover after db expiry: %+v %v %v", o2, takeover, err)
@@ -543,7 +543,7 @@ func TestPostgresThroughSlice1(t *testing.T) {
 		t.Fatalf("re-activation %+v", again)
 	}
 	h.killed(CrashCloseChunkMid+":2", asOf(at, base(d2p, "srv-a")...)...)
-	time.Sleep(3500 * time.Millisecond)
+	h.waitLeaseExpired(CloseJobKey(month))
 	cr := decodeOut[CloseResult](t, h.run(0, nil, asOf(at, base(d2p, "srv-b")...)...))
 	refusedWith(t, h.run(4, nil, asOf(at, base(d2p, "srv-c")...)...), ErrAlreadyCompleted.Error())
 	inv := h.closeInvariants()
