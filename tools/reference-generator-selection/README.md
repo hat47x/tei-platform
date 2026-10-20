@@ -129,7 +129,7 @@ go run ./tools/reference-generator-selection/cmd/tei-generator-meta \
 | `alternative` | handwritten | 10進を整数へ変換し、最後に一度だけ丸める | 全fixture合格 |
 | `dangerous` | generated-ai | float64、欠落の0化、通貨・単位無視、精度検査なし | 負例で不合格 |
 
-`testdata/candidates/`の3候補はGoです。Python候補は`-strategy python-template`、JavaScript候補は`-strategy javascript-template`で生成し、同じ`-candidates`directoryへ置いて選抜できます。候補は`candidate.json`で`id`、`language`、`origin`、source path、source digestを宣言します。選抜はsource digestを実byteで再計算し、一致しなければビルド前に拒否します。ビルドに成功したことや、候補の自己申告は合格の根拠にしません。
+`testdata/candidates/`の4候補はGoです（`long-running-template`を含む）。Python候補は`-strategy python-template`、JavaScript候補は`-strategy javascript-template`で生成し、同じ`-candidates`directoryへ置いて選抜できます。候補は`candidate.json`で`id`、`language`、`origin`、source path、source digestを宣言します。選抜はsource digestを実byteで再計算し、一致しなければビルド前に拒否します。ビルドに成功したことや、候補の自己申告は合格の根拠にしません。
 
 ## 生成AI候補のprovenance
 
@@ -149,7 +149,7 @@ go run ./tools/reference-generator-selection/cmd/tei-generator-meta \
 
 ## 生成器sourceの生成
 
-`tei-generator-build`は、契約JSONと固定strategy（`template`、`alternative`、`dangerous`、`python-template`、`javascript-template`）から、候補sourceを決定的に生成します。
+`tei-generator-build`は、契約JSONと固定strategy（`template`、`alternative`、`dangerous`、`python-template`、`javascript-template`、`long-running-template`）から、候補sourceを決定的に生成します。
 
 - Goのsourceは`go/format`で整形してから書き出します。Python・JavaScriptのsourceは整形せず、生成したbyte列をそのまま使います。
 - `candidate.json`には`language`、`source`（`main.go`/`main.py`/`main.js`）、`generator`を記録します。
@@ -174,6 +174,15 @@ go run ./tools/reference-generator-selection/cmd/tei-generator-meta \
 - 同じfixtureでGo候補とPython候補、Go候補とJavaScript候補の出力を比較する試験を持つ。これは同じ参照契約の範囲であり、すべての言語・Runtimeの同等性を証明しません。
 
 これらの参照は、別言語の候補を同じ選抜経路へ載せられることの確認であり、Python/JavaScript製品実装の採用や、実Targetでの処理系固定を意味しません。
+
+## long-running候補
+
+`long-running-template`は、標準入力のnewline-delimited JSONを繰り返し読み、1 requestごとに1 JSONを標準出力へ返すGo候補を生成します。単発実行では1 requestを処理して終了し、Target Profileのlong-running probeでは同じprocessへ複数requestを送ります。
+
+- 選抜のfixture実行は、これまでどおりcaseごとにprocessを起動します。
+- `tei-target-profile`のlong-running profileは、この候補を1 processで起動し、全requestのresponseをfixtureと比較します。
+- processが途中で終了した場合、response数が足りない場合、fixtureと異なる場合は失敗します。
+- long-running probeは現在Go候補だけを対象とし、Python/JavaScript候補は明示的に未対応とします。
 
 ## Go候補のbuild evidence
 
@@ -261,6 +270,7 @@ reconcileは候補をビルド・実行・選抜しません。再生成した�
 - `promptPath`・`contextPath`を省略した候補では、digestの形式だけを確認し、内容との対応は検証しません。
 - 深さ2以上のメタ生成、失効に伴う自動再生成・自動選抜・失効の承認。
 - Python/JavaScript sourceを出力するメタ生成器のlineage検証。
+- long-runningのPython/JavaScript候補。
 - Python/JavaScript以外の言語（.NET/JVM/WASM等）と、実Targetでの処理系固定・依存解決。
 - 実Provider・実Targetでの比較。
 - 候補の署名・attestation・artifact store、buildの完全な再現性（#943 / #1370 / #1104）。

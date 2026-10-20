@@ -29,14 +29,15 @@ type ObservabilityEvidence struct {
 }
 
 type Receipt struct {
-	Schema      string                     `json:"schema"`
-	Profile     Profile                    `json:"profile"`
-	Selection   generatorselection.Receipt `json:"selection"`
-	Observation *ObservabilityEvidence     `json:"observation,omitempty"`
-	Enforcement map[string]string          `json:"enforcement"`
-	Unsupported []string                   `json:"unsupported,omitempty"`
-	Passed      bool                       `json:"passed"`
-	Notes       []string                   `json:"notes"`
+	Schema       string                     `json:"schema"`
+	Profile      Profile                    `json:"profile"`
+	Selection    generatorselection.Receipt `json:"selection"`
+	Observation  *ObservabilityEvidence     `json:"observation,omitempty"`
+	ProcessModel *ProcessModelEvidence      `json:"processModel,omitempty"`
+	Enforcement  map[string]string          `json:"enforcement"`
+	Unsupported  []string                   `json:"unsupported,omitempty"`
+	Passed       bool                       `json:"passed"`
+	Notes        []string                   `json:"notes"`
 }
 
 // Run applies the profile's memory limit to the selection subprocesses, runs
@@ -69,9 +70,13 @@ func Run(ctx context.Context, opts RunOptions) (Receipt, error) {
 		return Receipt{}, err
 	}
 	observation := observe(profile, selection)
+	processModel := enforceProcessModel(ctx, profile, opts, selection)
 	unsupported := append([]string(nil), profile.Unsupported...)
 	for _, value := range observation.Unsupported {
 		unsupported = appendUnique(unsupported, value)
+	}
+	if !processModel.Passed && processModel.Mode == ProcessBatch {
+		unsupported = appendUnique(unsupported, "batch-process-model")
 	}
 	observabilityEnforcement := "observed"
 	if len(observation.Unsupported) > 0 {
@@ -80,25 +85,40 @@ func Run(ctx context.Context, opts RunOptions) (Receipt, error) {
 			observabilityEnforcement = "unsupported"
 		}
 	}
+	processEnforcement := "unsupported"
+	switch processModel.Mode {
+	case ProcessOneShot:
+		processEnforcement = "oneshot:failed"
+		if processModel.Passed {
+			processEnforcement = "oneshot:process-per-case"
+		}
+	case ProcessLongRunning:
+		processEnforcement = "long-running:failed"
+		if processModel.Passed {
+			processEnforcement = "long-running:single-process"
+		}
+	}
 	return Receipt{
-		Schema:      Schema,
-		Profile:     profile,
-		Selection:   selection,
-		Observation: observation,
+		Schema:       Schema,
+		Profile:      profile,
+		Selection:    selection,
+		Observation:  observation,
+		ProcessModel: processModel,
 		Enforcement: map[string]string{
 			"memory":        "env:GOMEMLIMIT (soft)",
-			"processModel":  "declared-only",
+			"processModel":  processEnforcement,
 			"storage":       "declared-only",
 			"network":       "declared-only",
 			"update":        "declared-only",
 			"observability": observabilityEnforcement,
 		},
 		Unsupported: unsupported,
-		Passed:      selection.Passed && len(observation.Unsupported) == 0,
+		Passed:      selection.Passed && len(observation.Unsupported) == 0 && processModel.Passed,
 		Notes: []string{
 			"同じ受理済み契約・fixture・候補を、Target Profileの宣言とmemory limit付きで実行した。",
 			"observabilityのstdout・stderr・exit-codeはcase実行から観測した。未対応channelはUnsupportedとして返す。",
-			"processModel・storage・network・updateは宣言であり、このReferenceでは強制していない。",
+			"processModelはoneshotのprocess-per-case、long-runningのsingle-processを実行で確認した。",
+			"storage・network・updateは宣言であり、このReferenceでは強制していない。",
 			"profileの合格は、実機・実OS・実Targetでの動作を証明しない。",
 		},
 	}, nil

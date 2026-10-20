@@ -29,7 +29,7 @@ func TestCaseResultsRecordExecutionEvidence(t *testing.T) {
 			checked++
 		}
 	}
-	if checked != 30 {
-		t.Fatalf("expected 30 case executions, checked %d", checked)
+	if checked != 10*len(receipt.Candidates) {
+		t.Fatalf("expected %d case executions, checked %d", 10*len(receipt.Candidates), checked)
 	}
 }
