@@ -238,6 +238,8 @@ CREATE TABLE mecc.close_run (
   cut_max_entry bigint NOT NULL,
   cut_shipments integer NOT NULL,
   cut_shipment_amount numeric(18,0) NOT NULL,
+  cut_slips integer NOT NULL DEFAULT 0,
+  cut_slip_amount numeric(18,2) NOT NULL DEFAULT 0,
   starts integer NOT NULL DEFAULT 1,
   started_at timestamptz NOT NULL DEFAULT clock_timestamp(),
   completed_at timestamptz
@@ -339,6 +341,6 @@ func ResetSchema(ctx context.Context, conn *pgx.Conn) error {
 	if name != DatabaseName {
 		return fmt.Errorf("refuse to reset schema in %q", name)
 	}
-	_, err := conn.Exec(ctx, `DROP SCHEMA IF EXISTS mecc CASCADE; CREATE SCHEMA mecc;`+ddl)
+	_, err := conn.Exec(ctx, `DROP SCHEMA IF EXISTS mecc CASCADE; CREATE SCHEMA mecc;`+ddl+ddlSlice2)
 	return err
 }
