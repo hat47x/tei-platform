@@ -129,7 +129,7 @@
 | --- | --- |
 | [`reference-data-first-persistence/`](reference-data-first-persistence/) | Dataに手書きの宣言を重ね、実PostgreSQLで実行前の確認・書込み・別接続の再読込を一巡する確認（生成・認可・製品E2は対象外） |
 | [`reference-external-query-evidence/`](reference-external-query-evidence/) | 外部問合せの実行根拠を確認 |
-| [`reference-order-migration-dual-db/`](reference-order-migration-dual-db/) | 技術検証用サンプル`order-migration-dual-db`の工程1〜3。旧DBの観測と照合値付きの移行計画、全件の写し、区切りごとの移行と効果記録を経由した参照系DBへの引当を、PostgreSQLの三つのインスタンスで実行する(異種DBの要件は対象外) |
+| [`reference-order-migration-dual-db/`](reference-order-migration-dual-db/) | 技術検証用サンプル`order-migration-dual-db`の工程1〜6。旧DBの観測と照合値付きの移行計画、全件の写し、区切りごとの移行と効果記録を経由した参照系DBへの引当、論理デコーディングによる並走中の変更の反映、得意先マスタの項目ごとの正本と名前の分割、請求システムへの冪等な送信、切替の関門、逆同期と巻戻しの訓練を、PostgreSQLの三つのインスタンスで実行する(異種DBの要件は対象外) |
 | [`reference-oracle-local-fixture/`](reference-oracle-local-fixture/) | 別用途の既存Oracleに一時的な検証用データを作り、ドライバー・名前付きバインド・読取り専用の効き方・検証根拠の受入れを確認 |
 | [`reference-postgres-header-detail-runtime/`](reference-postgres-header-detail-runtime/) | PostgreSQL上の親子明細処理の参照実装 |
 | [`reference-postgres-integration/`](reference-postgres-integration/) | PostgreSQL接続の統合確認 |

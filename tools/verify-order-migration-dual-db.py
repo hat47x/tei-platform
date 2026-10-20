@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run the order-migration-dual-db slice-1 tests against three real PostgreSQL
+"""Run the order-migration-dual-db tests (steps 1-6) against three real PostgreSQL
 instances started in Docker, and write a receipt.
 
 The script creates three containers named tei-omdd-<random>-{legacy,primary,
@@ -33,7 +33,14 @@ EXPECTED_DB_TESTS = (
     "TestPostgresPTX03ShortageConvergesBothOrCompensated",
     "TestPostgresPDB02InventoryStopBoundedAndResolved",
     "TestPostgresThroughSlice1",
+    "TestPostgresPMIG02ChangeFeedNoLossNoDuplicate",
+    "TestPostgresPINT03FieldOwnersAndCodeMap",
+    "TestPostgresPMIG03ExpandWithOldWritersContractRefused",
+    "TestPostgresPTX02BillingTimeoutResendAppliedOnce",
+    "TestPostgresThroughSteps1To6",
 )
+# The step-4 change feed reads the legacy instance by logical decoding.
+SERVER_ARGS = {"legacy": ("-c", "wal_level=logical")}
 
 
 def run(cmd, **kw):
@@ -55,11 +62,11 @@ def git_state():
     return head, dirty == ""
 
 
-def start_container(name, image, port):
+def start_container(name, image, port, server_args=()):
     if subprocess.run(["docker", "container", "inspect", name], capture_output=True).returncode == 0:
         raise SystemExit(f"container {name} already exists; refusing to reuse it")
     run(["docker", "run", "-d", "--name", name, "-e", "POSTGRES_HOST_AUTH_METHOD=trust",
-         "-p", f"127.0.0.1:{port}:5432", image])
+         "-p", f"127.0.0.1:{port}:5432", image, *server_args])
 
 
 def wait_ready(name, deadline=90):
@@ -115,13 +122,15 @@ def main():
     }
     try:
         for role in ROLES:
-            start_container(names[role], args.image, ports[role])
+            start_container(names[role], args.image, ports[role], SERVER_ARGS.get(role, ()))
         for role in ROLES:
             wait_ready(names[role])
             run(["docker", "exec", names[role], "psql", "-U", "postgres", "-h", "127.0.0.1",
                  "-c", f"CREATE DATABASE tei_omdd_{role}"])
         receipt["serverVersions"] = {role: run(["docker", "exec", names[role], "psql", "-U", "postgres", "-h", "127.0.0.1",
                                                 "-tAc", "SHOW server_version"]) for role in ROLES}
+        receipt["walLevels"] = {role: run(["docker", "exec", names[role], "psql", "-U", "postgres", "-h", "127.0.0.1",
+                                           "-tAc", "SHOW wal_level"]) for role in ROLES}
         receipt["imageId"] = run(["docker", "image", "inspect", "--format", "{{.Id}}", args.image])
         receipt["goVersion"] = run([args.go, "version"])
         env = dict(os.environ)

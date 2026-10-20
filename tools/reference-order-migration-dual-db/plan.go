@@ -24,7 +24,11 @@ type Plan struct {
 	Chunks           []Chunk        `json:"chunks"`
 	Reconciliation   Reconciliation `json:"reconciliation"`
 	KnownDifferences []string       `json:"knownDifferences"`
-	Digest           string         `json:"digest,omitempty"`
+	// ItemCodeMap is the legacy-to-new item code conversion observed in
+	// step 1. A legacy code with more than one new code is one-to-many and
+	// is never converted by guessing.
+	ItemCodeMap []ItemCodeMapping `json:"itemCodeMap,omitempty"`
+	Digest      string            `json:"digest,omitempty"`
 }
 
 // PlanSource records what was observed in the legacy database in step 1.
@@ -101,6 +105,80 @@ func BuildPlan(obs Observation, chunkSize int) (Plan, error) {
 		KnownDifferences: []string{},
 	}
 	return Seal(p)
+}
+
+// ItemCodeMapping is one row of the item code conversion.
+type ItemCodeMapping struct {
+	LegacyCode string `json:"legacyCode"`
+	NewCode    string `json:"newCode"`
+}
+
+// KnownDifferenceItemCode is the known difference a plan declares when it
+// carries an item code map: primary item codes are compared with the legacy
+// rows after converting them back to legacy codes with the plan's map.
+const KnownDifferenceItemCode = "item-code:primary-codes-compared-as-legacy-codes-via-plan-itemCodeMap"
+
+// WithItemCodeMap adds the item code map to a plan, declares the matching
+// known difference and reseals the plan.
+func WithItemCodeMap(p Plan, m []ItemCodeMapping) (Plan, error) {
+	if len(m) == 0 {
+		return p, nil
+	}
+	m = append([]ItemCodeMapping(nil), m...)
+	sort.Slice(m, func(i, j int) bool {
+		if m[i].LegacyCode != m[j].LegacyCode {
+			return m[i].LegacyCode < m[j].LegacyCode
+		}
+		return m[i].NewCode < m[j].NewCode
+	})
+	back := map[string]string{}
+	for _, e := range m {
+		if e.LegacyCode == "" || e.NewCode == "" {
+			return Plan{}, errors.New("item code map has an empty code")
+		}
+		if prev, ok := back[e.NewCode]; ok && prev != e.LegacyCode {
+			// The reverse conversion must be a function.
+			return Plan{}, fmt.Errorf("new code %s maps back to both %s and %s", e.NewCode, prev, e.LegacyCode)
+		}
+		back[e.NewCode] = e.LegacyCode
+	}
+	p.ItemCodeMap = m
+	p.KnownDifferences = append(append([]string{}, p.KnownDifferences...), KnownDifferenceItemCode)
+	return Seal(p)
+}
+
+// Declares reports whether the plan declares a known difference.
+func (p Plan) Declares(known string) bool {
+	for _, k := range p.KnownDifferences {
+		if k == known {
+			return true
+		}
+	}
+	return false
+}
+
+// ForwardCodes returns the new codes for a legacy code: none when the code
+// is not in the map (it is kept as is), one when it converts, and more than
+// one when it is one-to-many and cannot be converted without a decision.
+func (p Plan) ForwardCodes(legacy string) []string {
+	var out []string
+	for _, e := range p.ItemCodeMap {
+		if e.LegacyCode == legacy {
+			out = append(out, e.NewCode)
+		}
+	}
+	return out
+}
+
+// LegacyCode converts a primary item code back to the legacy code; codes
+// outside the map are the same on both sides.
+func (p Plan) LegacyCode(newCode string) string {
+	for _, e := range p.ItemCodeMap {
+		if e.NewCode == newCode {
+			return e.LegacyCode
+		}
+	}
+	return newCode
 }
 
 // Seal computes the digest over the plan without its digest field.

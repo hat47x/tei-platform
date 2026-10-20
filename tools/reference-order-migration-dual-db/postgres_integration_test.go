@@ -138,10 +138,26 @@ func (h *harness) seedLegacy() {
 			h.exec(h.legacy, `INSERT INTO omdd.legacy_order_line VALUES ($1,$2,$3,$4,$5::text::numeric,$6::text::numeric)`, o.OrderNo, l.LineNo, l.ItemCode, l.Qty, l.UnitPrice, l.Amount)
 		}
 	}
+	for i := 0; i < syntheticCustomers; i++ {
+		h.exec(h.legacy, `INSERT INTO omdd.legacy_customer VALUES ($1,$2,$3,$4)`,
+			fmt.Sprintf("C%03d", i), fmt.Sprintf("得意先%02d 担当%02d", i, i), fmt.Sprintf("東京都千代田区%d-1", i+1), 1000000+i*1000)
+	}
+	for _, m := range syntheticCodeMap() {
+		h.exec(h.legacy, `INSERT INTO omdd.legacy_item_code_map VALUES ($1,$2)`, m.LegacyCode, m.NewCode)
+	}
+}
+
+// syntheticCustomers matches the customer codes used by syntheticLegacy.
+const syntheticCustomers = 17
+
+// syntheticCodeMap has one one-to-one and one one-to-many legacy code.
+func syntheticCodeMap() []ItemCodeMapping {
+	return []ItemCodeMapping{{"100001", "1000010001"}, {"100002", "1000020001"}, {"100002", "1000020002"}}
 }
 
 func ampleStock() map[string]int64 {
-	return map[string]int64{"ITM-A": 10000, "ITM-B": 10000, "ITM-C": 10000, "ITM-D": 10000, "ITM-E": 10000, "ITM-F": 10000}
+	return map[string]int64{"ITM-A": 10000, "ITM-B": 10000, "ITM-C": 10000, "ITM-D": 10000, "ITM-E": 10000, "ITM-F": 10000,
+		"1000010001": 10000, "1000020001": 10000, "1000020002": 10000}
 }
 
 func (h *harness) seedStock(stock map[string]int64) {

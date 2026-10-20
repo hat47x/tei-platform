@@ -52,6 +52,15 @@ func Reconcile(ctx context.Context, primary *pgx.Conn, plan Plan) (ReconcileResu
 	if err != nil {
 		return res, err
 	}
+	if plan.Declares(KnownDifferenceItemCode) {
+		// The only declared known difference: compare converted item codes
+		// as legacy codes.
+		for i := range migrated {
+			for j := range migrated[i].Lines {
+				migrated[i].Lines[j].ItemCode = plan.LegacyCode(migrated[i].Lines[j].ItemCode)
+			}
+		}
+	}
 	target, err := Observe(migrated)
 	if err != nil {
 		return res, err
