@@ -136,19 +136,37 @@ type CaseResult struct {
 	Want   Result `json:"want"`
 }
 
+// BuildEvidence records the source and toolchain inputs used to build a native
+// candidate. It is not a signature or an attestation, and it does not claim
+// that the binary is reproducible across environments.
+type BuildEvidence struct {
+	Language         string `json:"language"`
+	Command          string `json:"command"`
+	Toolchain        string `json:"toolchain,omitempty"`
+	GOOS             string `json:"goos,omitempty"`
+	GOARCH           string `json:"goarch,omitempty"`
+	CGOEnabled       string `json:"cgoEnabled,omitempty"`
+	GOFLAGS          string `json:"goflags,omitempty"`
+	SourceDigest     string `json:"sourceDigest"`
+	BinaryDigest     string `json:"binaryDigest,omitempty"`
+	BuildInputDigest string `json:"buildInputDigest"`
+	Reproducibility  string `json:"reproducibility"`
+}
+
 type CandidateReceipt struct {
-	ID           string                `json:"id"`
-	Language     string                `json:"language"`
-	Origin       string                `json:"origin"`
-	SourceDigest string                `json:"sourceDigest"`
-	BinaryDigest string                `json:"binaryDigest,omitempty"`
-	Runtime      *RuntimeEvidence      `json:"runtime,omitempty"`
-	Generator    *GeneratorProvenance  `json:"generator,omitempty"`
-	Generation   *GenerationProvenance `json:"generation,omitempty"`
-	Lineage      *Lineage              `json:"lineage,omitempty"`
-	Results      []CaseResult          `json:"results,omitempty"`
-	Passed       bool                  `json:"passed"`
-	RejectReason string                `json:"rejectReason,omitempty"`
+	ID            string                `json:"id"`
+	Language      string                `json:"language"`
+	Origin        string                `json:"origin"`
+	SourceDigest  string                `json:"sourceDigest"`
+	BinaryDigest  string                `json:"binaryDigest,omitempty"`
+	Runtime       *RuntimeEvidence      `json:"runtime,omitempty"`
+	BuildEvidence *BuildEvidence        `json:"buildEvidence,omitempty"`
+	Generator     *GeneratorProvenance  `json:"generator,omitempty"`
+	Generation    *GenerationProvenance `json:"generation,omitempty"`
+	Lineage       *Lineage              `json:"lineage,omitempty"`
+	Results       []CaseResult          `json:"results,omitempty"`
+	Passed        bool                  `json:"passed"`
+	RejectReason  string                `json:"rejectReason,omitempty"`
 }
 
 type Receipt struct {
@@ -654,7 +672,17 @@ func evaluateCandidate(ctx context.Context, dir string, fixture Fixture, contrac
 		}
 		defer os.RemoveAll(binaryDir)
 		binaryPath = candidateBinaryPath(filepath.Join(binaryDir, manifest.ID))
-		receipt.Runtime = &RuntimeEvidence{Language: LanguageGo, Command: "go build", Version: goRuntimeVersion(), Available: true}
+		toolchain := goRuntimeVersion()
+		goos, goarch, cgo := goBuildEnvironment()
+		goflags := os.Getenv("GOFLAGS")
+		receipt.Runtime = &RuntimeEvidence{Language: LanguageGo, Command: "go build", Version: toolchain, Available: true}
+		receipt.BuildEvidence = &BuildEvidence{
+			Language: LanguageGo, Command: "go build", Toolchain: toolchain,
+			GOOS: goos, GOARCH: goarch, CGOEnabled: cgo, GOFLAGS: goflags,
+			SourceDigest:     manifest.SourceDigest,
+			BuildInputDigest: buildInputDigest(source, toolchain, goos, goarch, cgo, goflags),
+			Reproducibility:  "not-tested",
+		}
 		buildCtx, cancel := context.WithTimeout(ctx, 2*time.Minute)
 		defer cancel()
 		if err := buildCandidate(buildCtx, dir, binaryPath); err != nil {
@@ -665,6 +693,7 @@ func evaluateCandidate(ctx context.Context, dir string, fixture Fixture, contrac
 			return CandidateReceipt{}, err
 		}
 		receipt.BinaryDigest = digest(binary)
+		receipt.BuildEvidence.BinaryDigest = receipt.BinaryDigest
 	case LanguagePython:
 		var version string
 		var available bool
@@ -762,6 +791,39 @@ func goRuntimeVersion() string {
 		}
 	})
 	return goVersionValue
+}
+
+var (
+	goEnvOnce   sync.Once
+	goOSValue   string
+	goArchValue string
+	cgoValue    string
+)
+
+func goBuildEnvironment() (goos, goarch, cgoEnabled string) {
+	goEnvOnce.Do(func() {
+		out, err := exec.Command("go", "env", "GOOS", "GOARCH", "CGO_ENABLED").Output()
+		if err != nil {
+			return
+		}
+		lines := strings.Split(strings.TrimSpace(string(out)), "\n")
+		if len(lines) > 0 {
+			goOSValue = strings.TrimSpace(lines[0])
+		}
+		if len(lines) > 1 {
+			goArchValue = strings.TrimSpace(lines[1])
+		}
+		if len(lines) > 2 {
+			cgoValue = strings.TrimSpace(lines[2])
+		}
+	})
+	return goOSValue, goArchValue, cgoValue
+}
+
+func buildInputDigest(source []byte, toolchain, goos, goarch, cgoEnabled, goflags string) string {
+	return digest([]byte(strings.Join([]string{
+		LanguageGo, digest(source), toolchain, goos, goarch, cgoEnabled, goflags,
+	}, "\x00")))
 }
 
 func findPython() (path, version string, available bool) {
