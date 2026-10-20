@@ -134,6 +134,13 @@ type CloseResult struct {
 	ShipmentAmount  int64   `json:"shipmentAmount"`
 	Chunks          int     `json:"chunks"`
 	ChunksThisRun   int     `json:"chunksThisRun"`
+	// Slips of the month at the cut (steps 4-6) and the report the close
+	// stored.
+	Slips         int    `json:"slips"`
+	SlipAmountSen int64  `json:"-"`
+	SlipAmount    string `json:"slipAmount"`
+	TaxTotal      int64  `json:"taxTotal"`
+	ReportSHA256  string `json:"reportSha256,omitempty"`
 }
 
 func recordAttempt(ctx context.Context, conn *pgx.Conn, month, owner, outcome string, token uint64, msg string) {
@@ -301,13 +308,15 @@ func startRun(ctx context.Context, conn *pgx.Conn, d Decision, res *CloseResult,
 			return err
 		}
 		if _, err := tx.Exec(ctx, `INSERT INTO mecc.close_run(month,decision_digest,calendar_version,import_digest,import_ids,status,fencing_token,owner_id,as_of,
-			cut_at,cut_snapshot,cut_entries,cut_amount,cut_max_entry,cut_shipments,cut_shipment_amount)
+			cut_at,cut_snapshot,cut_entries,cut_amount,cut_max_entry,cut_shipments,cut_shipment_amount,cut_slips,cut_slip_amount)
 			SELECT $1,$2,$3,$4,$5,'running',$6,$7,$8,clock_timestamp(),pg_current_snapshot()::text,
 			  (SELECT count(*) FROM mecc.sales_entry WHERE posting_month=$1),
 			  (SELECT coalesce(sum(amount),0) FROM mecc.sales_entry WHERE posting_month=$1),
 			  (SELECT coalesce(max(entry_id),0) FROM mecc.sales_entry WHERE posting_month=$1),
 			  (SELECT count(*) FROM mecc.shipment_event WHERE decision_digest=$2 AND to_char(ship_date,'YYYY-MM')=$1),
-			  (SELECT coalesce(sum(amount),0) FROM mecc.shipment_event WHERE decision_digest=$2 AND to_char(ship_date,'YYYY-MM')=$1)`,
+			  (SELECT coalesce(sum(amount),0) FROM mecc.shipment_event WHERE decision_digest=$2 AND to_char(ship_date,'YYYY-MM')=$1),
+			  (SELECT count(*) FROM mecc.slip WHERE posting_month=$1),
+			  (SELECT coalesce(sum(amount),0) FROM mecc.slip WHERE posting_month=$1)`,
 			month, d.Digest, d.CalendarVersion, res.ImportDigest, res.ImportIDs, int64(own.FencingToken), own.OwnerID, time.Now()); err != nil {
 			return err
 		}
@@ -329,11 +338,12 @@ func startRun(ctx context.Context, conn *pgx.Conn, d Decision, res *CloseResult,
 	}
 	var cutAt time.Time
 	var cutAmount, shipAmount int64
-	if err := tx.QueryRow(ctx, `SELECT starts, cut_at, cut_snapshot, cut_entries, cut_amount::bigint, cut_shipments, cut_shipment_amount::bigint FROM mecc.close_run WHERE month=$1`, month).
-		Scan(&res.Starts, &cutAt, &res.CutSnapshot, &res.Entries, &cutAmount, &res.Shipments, &shipAmount); err != nil {
+	if err := tx.QueryRow(ctx, `SELECT starts, cut_at, cut_snapshot, cut_entries, cut_amount::bigint, cut_shipments, cut_shipment_amount::bigint, cut_slips, (cut_slip_amount*100)::bigint FROM mecc.close_run WHERE month=$1`, month).
+		Scan(&res.Starts, &cutAt, &res.CutSnapshot, &res.Entries, &cutAmount, &res.Shipments, &shipAmount, &res.Slips, &res.SlipAmountSen); err != nil {
 		return err
 	}
 	res.CutAt, res.Amount, res.ShipmentAmount = cutAt.UTC().Format(time.RFC3339Nano), cutAmount, shipAmount
+	res.SlipAmount = FormatSen(res.SlipAmountSen)
 	return tx.Commit(ctx)
 }
 
@@ -416,6 +426,11 @@ func finishRun(ctx context.Context, conn *pgx.Conn, d Decision, res *CloseResult
 	res.Awaiting = awaiting
 	if _, err := tx.Exec(ctx, `INSERT INTO mecc.close_total VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
 		month, entries, amount, awaiting, res.Shipments, res.ShipmentAmount, d.Digest, d.CalendarVersion, res.ImportDigest, int64(res.FencingToken), res.OwnerID); err != nil {
+		return err
+	}
+	// Steps 4-6: the slips posted to the month equal the cut, and the
+	// close stores its report of them.
+	if err := writeCloseReport(ctx, tx, d, res); err != nil {
 		return err
 	}
 	crashPoint(CrashCloseBeforeComplete)

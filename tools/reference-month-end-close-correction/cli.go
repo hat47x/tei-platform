@@ -30,6 +30,21 @@ commands (the DSN of the dedicated database tei_mecc comes from TEI_MECC_DSN):
                                                 step 2: rebuild an imported file from the stored records
   close          -decision d.json -owner ID -ttl D -chunk-size N -as-of T
                                                 step 3: run or resume the close job of the month
+  item-load      -file items.json               register items, tax rates and initial prices
+  events         -decision d.json -policy p.json -file events.json
+                                                step 4: deliver order events (any order, late ones too)
+  release        -decision d.json -policy p.json -event ID -recorded-at T
+                                                step 4: apply an event the hold policy kept out
+  price-revise   -item I -valid-from D -price P -recorded-at T [-decision d.json -policy p.json]
+                                                step 5: revise a price (retroactive, current or reserved);
+                                                with a decision, reprice the month's slips as red and black
+  price-cancel   -item I -valid-from D -recorded-at T [-decision d.json -policy p.json]
+                                                step 5: withdraw a revision, and reprice likewise
+  price-at       -item I -on D -known-at T      step 5: the price valid on D as known at T
+  slip-amend     -slip N -qty Q                 step 5: try to update a slip in place (refused)
+  tax            -tax-rule r.json -months M[,M] step 6: tax by PostgreSQL, Go and SQLite, compared
+  report         -decision d.json -basis close|current -out F
+                                                step 6: reissue the month's report as of the close, or the current balance
 
 Refusals (rejected files, refused or fenced close runs, decision mismatches) exit 4.
 `
@@ -41,6 +56,9 @@ type cliArgs struct {
 	importID                                                int64
 	ttl, chunkPause                                         time.Duration
 	holidays                                                multiFlag
+	policy, item, validFrom, price, on, knownAt, event      string
+	taxRule, months, basis                                  string
+	slip, qty                                               int64
 }
 
 type multiFlag []string
@@ -77,6 +95,18 @@ func Main(args []string, stdout, stderr io.Writer) int {
 	fs.DurationVar(&a.ttl, "ttl", 3*time.Second, "close job lease ttl (judged by the database clock)")
 	fs.DurationVar(&a.chunkPause, "chunk-pause", 0, "pause after each close chunk (test pacing)")
 	fs.Var(&a.holidays, "holiday", "added holiday DATE=NAME (repeatable)")
+	fs.StringVar(&a.policy, "policy", "", "late-arrival policy file")
+	fs.StringVar(&a.item, "item", "", "item code")
+	fs.StringVar(&a.validFrom, "valid-from", "", "first valid date of a price (YYYY-MM-DD)")
+	fs.StringVar(&a.price, "price", "", "unit price (decimal, at most 2 places)")
+	fs.StringVar(&a.on, "on", "", "valid date to look up (YYYY-MM-DD)")
+	fs.StringVar(&a.knownAt, "known-at", "", "record instant to look up (RFC 3339)")
+	fs.StringVar(&a.event, "event", "", "event id")
+	fs.StringVar(&a.taxRule, "tax-rule", "", "tax rounding rule file")
+	fs.StringVar(&a.months, "months", "", "posting months, comma separated")
+	fs.StringVar(&a.basis, "basis", "", "report basis: close or current")
+	fs.Int64Var(&a.slip, "slip", 0, "slip id")
+	fs.Int64Var(&a.qty, "qty", 0, "quantity")
 	if err := fs.Parse(args[1:]); err != nil {
 		return 2
 	}
@@ -104,7 +134,8 @@ func refusal(err error) (string, bool) {
 	if r, ok := IsReject(err); ok {
 		return r, true
 	}
-	for _, e := range []error{ErrDecisionMismatch, ErrAlreadyRunning, ErrAlreadyCompleted, ErrNotYetScheduled, ErrNoImport, ErrFenced, ErrCalendarNotYetKnown, ErrMonthClosing} {
+	for _, e := range []error{ErrDecisionMismatch, ErrAlreadyRunning, ErrAlreadyCompleted, ErrNotYetScheduled, ErrNoImport, ErrFenced, ErrCalendarNotYetKnown, ErrMonthClosing,
+		ErrEventMonth, ErrClosedPeriod, ErrImmutableSlip, ErrPriceOverlap, ErrPriceRecordedBackwards, ErrNothingToCancel} {
 		if errors.Is(err, e) {
 			return e.Error(), true
 		}
@@ -248,6 +279,102 @@ func runCommand(ctx context.Context, cmd string, a cliArgs) (any, error) {
 			return nil, err
 		}
 		return RunClose(ctx, conn, d, CloseOptions{OwnerID: a.owner, TTL: a.ttl, ChunkSize: a.chunkSize, AsOf: at, HostNow: HostClock(), ChunkPause: a.chunkPause})
+	case "item-load":
+		var items []ItemDef
+		if err := readJSON(a.file, &items); err != nil {
+			return nil, err
+		}
+		return map[string]any{"items": len(items)}, LoadItems(ctx, conn, items)
+	case "events":
+		d, err := decision()
+		if err != nil {
+			return nil, err
+		}
+		pol, err := ReadLatePolicy(a.policy)
+		if err != nil {
+			return nil, err
+		}
+		var evs []OrderEvent
+		if err := readJSON(a.file, &evs); err != nil {
+			return nil, err
+		}
+		out := []EventResult{}
+		for _, ev := range evs {
+			r, err := ApplyEvent(ctx, conn, d, pol, ev)
+			if err != nil {
+				return out, err
+			}
+			out = append(out, r)
+		}
+		return out, nil
+	case "release":
+		d, err := decision()
+		if err != nil {
+			return nil, err
+		}
+		pol, err := ReadLatePolicy(a.policy)
+		if err != nil {
+			return nil, err
+		}
+		at, err := parseTime("recorded-at", a.recordedAt)
+		if err != nil {
+			return nil, err
+		}
+		return ReleaseHeld(ctx, conn, d, pol, a.event, at)
+	case "price-revise", "price-cancel":
+		at, err := parseTime("recorded-at", a.recordedAt)
+		if err != nil {
+			return nil, err
+		}
+		var dp *Decision
+		var pol LatePolicy
+		if a.decision != "" {
+			d, err := decision()
+			if err != nil {
+				return nil, err
+			}
+			if pol, err = ReadLatePolicy(a.policy); err != nil {
+				return nil, err
+			}
+			dp = &d
+		}
+		if cmd == "price-cancel" {
+			return CancelRevision(ctx, conn, dp, pol, a.item, a.validFrom, at)
+		}
+		return RevisePrice(ctx, conn, dp, pol, a.item, a.validFrom, a.price, at)
+	case "price-at":
+		at, err := parseTime("known-at", a.knownAt)
+		if err != nil {
+			return nil, err
+		}
+		return PriceAt(ctx, conn, a.item, a.on, at)
+	case "slip-amend":
+		if err := AmendSlipInPlace(ctx, conn, a.slip, a.qty); err != nil {
+			return nil, err
+		}
+		return map[string]any{"slip": a.slip, "amended": true}, nil
+	case "tax":
+		rule, err := ReadTaxRule(a.taxRule)
+		if err != nil {
+			return nil, err
+		}
+		if a.months == "" {
+			return nil, fmt.Errorf("-months is required")
+		}
+		return CheckTax(ctx, conn, rule, strings.Split(a.months, ","))
+	case "report":
+		d, err := decision()
+		if err != nil {
+			return nil, err
+		}
+		if a.out == "" {
+			return nil, fmt.Errorf("-out is required")
+		}
+		r, err := Reissue(ctx, conn, d, a.basis)
+		if err != nil {
+			return r, err
+		}
+		return r, os.WriteFile(a.out, r.Report, 0o644)
 	}
 	return nil, fmt.Errorf("unknown command %q\n%s", cmd, usage)
 }

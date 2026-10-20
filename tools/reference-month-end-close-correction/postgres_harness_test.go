@@ -73,17 +73,23 @@ func newHarness(t *testing.T) *harness {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { h.conn.Close(context.Background()) })
-	if err := ResetSchema(ctx, h.conn); err != nil {
-		t.Fatal(err)
-	}
 	h.spec = testSpec(t)
-	if _, err := LoadCalendar(ctx, h.conn, testCalendar(t)); err != nil {
-		t.Fatal(err)
+	h.reset()
+	return h
+}
+
+// reset recreates the schema with the synthetic calendar and payables.
+func (h *harness) reset() {
+	h.t.Helper()
+	if err := ResetSchema(h.ctx, h.conn); err != nil {
+		h.t.Fatal(err)
+	}
+	if _, err := LoadCalendar(h.ctx, h.conn, testCalendar(h.t)); err != nil {
+		h.t.Fatal(err)
 	}
 	for _, p := range syntheticPayables() {
 		h.exec(`INSERT INTO mecc.payable VALUES ($1,$2::text::date)`, p.ID, p.NominalDue)
 	}
-	return h
 }
 
 func (h *harness) exec(sql string, args ...any) {

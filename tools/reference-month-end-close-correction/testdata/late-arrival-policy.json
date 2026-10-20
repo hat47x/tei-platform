@@ -1,0 +1,9 @@
+{
+  "id": "late-arrival-v1",
+  "onClosedPeriod": {
+    "shipment-registered": "adjust-open-period",
+    "shipment-changed": "adjust-open-period",
+    "shipment-cancelled": "hold",
+    "price-revision": "adjust-open-period"
+  }
+}

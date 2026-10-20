@@ -1,4 +1,4 @@
-// Command tei-month-end-close runs steps 1-3 of the month-end-close-correction
+// Command tei-month-end-close runs steps 1-6 of the month-end-close-correction
 // technical validation sample against a dedicated PostgreSQL database.
 package main
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run the month-end-close-correction tests (steps 1-3) against a real
+"""Run the month-end-close-correction tests (steps 1-6) against a real
 PostgreSQL instance started in Docker, and write a receipt.
 
 The script creates one container named tei-mecc-<random>-pg and removes
@@ -10,6 +10,11 @@ is not evidence.
 The partner file, the messages and the servers are synthetic and run on one
 machine. The receipt says so; it is not evidence of a real partner link or a
 production close.
+
+The SQLite path of the tax check (step 6) runs in an in-memory SQLite database
+through the standard sqlite3 module of the Python that runs this script
+(TEI_MECC_PYTHON): the Go module has no SQLite driver. The receipt records the
+SQLite version.
 """
 import argparse
 import json
@@ -18,6 +23,7 @@ from pathlib import Path
 import secrets
 import shutil
 import socket
+import sqlite3
 import subprocess
 import sys
 import tempfile
@@ -35,6 +41,10 @@ EXPECTED_DB_TESTS = (
     "TestPostgresPOPS01FencingAfterTakeoverWithClockSkew",
     "TestPostgresPTIME01OnlineWritesDuringCloseAndBoundary",
     "TestPostgresThroughSlice1",
+    "TestPostgresPTIME04LateAndReorderedEvents",
+    "TestPostgresPTIME02PTIME03RedBlackAndBitemporalPrice",
+    "TestPostgresPCALC01TaxPathsAndReissue",
+    "TestPostgresThroughSlice2",
 )
 
 
@@ -106,10 +116,11 @@ def main():
         "schema": "tei.reference.month-end-close-correction-receipt/v0",
         "repositoryRevision": head,
         "workingTreeClean": clean,
-        "steps": [1, 2, 3],
-        "evidenceNature": "real-postgres-one-local-instance-synthetic-file-simulated-messages-same-machine-servers",
+        "steps": [1, 2, 3, 4, 5, 6],
+        "evidenceNature": "real-postgres-one-local-instance-synthetic-file-simulated-messages-same-machine-servers-in-memory-sqlite-via-python",
         "notEvidenceFor": ["real partner file link", "real message broker", "production close", "servers on separate machines",
-                           "P-B2C-02", "steps 4-6"],
+                           "P-B2C-02", "a SQLite database used by the product",
+                           "slips derived from the step-2 shipment events"],
         "image": args.image,
         "container": name,
     }
@@ -128,6 +139,9 @@ def main():
         env["TEI_MECC_DSN"] = f"postgres://postgres@127.0.0.1:{port}/{DATABASE}?sslmode=disable"
         env["TEI_MECC_CONFIRM_ISOLATED"] = DATABASE
         env["TEI_MECC_OUT_DIR"] = str(out)
+        env["TEI_MECC_PYTHON"] = sys.executable
+        receipt["python"] = sys.version.split()[0]
+        receipt["sqliteVersion"] = sqlite3.sqlite_version
         cmd = [args.go, "test", "-json", "-count=1", "-timeout", "15m", PACKAGE]
         receipt["command"] = " ".join(cmd[1:])
         started = time.time()
@@ -153,7 +167,7 @@ def main():
         receipt["containersRemoved"] = removed
     (out / "receipt.json").write_text(json.dumps(receipt, indent=2, ensure_ascii=False) + "\n")
     print(json.dumps({k: receipt.get(k) for k in ("repositoryRevision", "workingTreeClean", "counts", "passed",
-                                                   "serverVersion", "testSeconds", "containersRemoved")}, ensure_ascii=False))
+                                                   "serverVersion", "sqliteVersion", "testSeconds", "containersRemoved")}, ensure_ascii=False))
     print(f"receipt: {out / 'receipt.json'}")
     return 0 if receipt.get("passed") else 1
 
