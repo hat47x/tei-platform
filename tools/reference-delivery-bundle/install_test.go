@@ -75,3 +75,48 @@ func TestInstallRejectsWrongPublicKey(t *testing.T) {
 		t.Fatal("install accepted a signature from another key")
 	}
 }
+
+func TestFreshInstallCreatesCompleteCatalog(t *testing.T) {
+	bundle, signature, publicKey, manifest := packSigned(t)
+	catalog := filepath.Join(t.TempDir(), "fresh-catalog")
+	receipt, err := InstallFresh(bundle, signature, publicKey, catalog)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(receipt.Installed) != len(manifest.Plugins) {
+		t.Fatalf("installed=%d want %d", len(receipt.Installed), len(manifest.Plugins))
+	}
+	for _, plugin := range manifest.Plugins {
+		if _, err := os.Stat(filepath.Join(catalog, plugin.File)); err != nil {
+			t.Fatalf("missing %s: %v", plugin.File, err)
+		}
+	}
+}
+
+func TestFreshInstallRefusesExistingTarget(t *testing.T) {
+	bundle, signature, publicKey, _ := packSigned(t)
+	catalog := filepath.Join(t.TempDir(), "existing")
+	if err := os.MkdirAll(catalog, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := InstallFresh(bundle, signature, publicKey, catalog); err == nil {
+		t.Fatal("fresh install accepted an existing catalog")
+	}
+}
+
+func TestFreshInstallFailureLeavesNoCatalog(t *testing.T) {
+	bundle, signature, _, _ := packSigned(t)
+	dir := t.TempDir()
+	otherPrivate := filepath.Join(dir, "other-private.pem")
+	otherPublic := filepath.Join(dir, "other-public.pem")
+	if err := GenerateKeypair(otherPrivate, otherPublic); err != nil {
+		t.Fatal(err)
+	}
+	catalog := filepath.Join(dir, "catalog")
+	if _, err := InstallFresh(bundle, signature, otherPublic, catalog); err == nil {
+		t.Fatal("fresh install accepted a wrong key")
+	}
+	if _, err := os.Stat(catalog); !os.IsNotExist(err) {
+		t.Fatalf("failed fresh install left a catalog: %v", err)
+	}
+}
