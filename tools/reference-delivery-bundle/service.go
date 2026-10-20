@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -129,6 +130,12 @@ func readingRecord(statePath string) (serviceRecord, error) {
 }
 
 func processAlive(pid int) bool {
+	if raw, err := os.ReadFile(fmt.Sprintf("/proc/%d/stat", pid)); err == nil {
+		text := string(raw)
+		if end := strings.LastIndex(text, ")"); end >= 0 && end+2 < len(text) {
+			return text[end+2] != 'Z'
+		}
+	}
 	return exec.Command("kill", "-0", strconv.Itoa(pid)).Run() == nil
 }
 
@@ -167,4 +174,13 @@ func StopGraceful(statePath string, timeout time.Duration) (ServiceReceipt, erro
 		Catalog: record.Catalog, Digest: record.Digest, PID: record.PID,
 		Log: record.Log, StartedAt: record.StartedAt,
 	}, nil
+}
+
+// Restart stops the recorded service gracefully and starts the supplied
+// command. It does not wait for application readiness.
+func Restart(statePath, command, logPath string, timeout time.Duration) (ServiceReceipt, error) {
+	if _, err := StopGraceful(statePath, timeout); err != nil {
+		return ServiceReceipt{}, err
+	}
+	return Start(statePath, command, logPath)
 }
