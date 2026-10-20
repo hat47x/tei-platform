@@ -16,6 +16,7 @@ type RecordOptions struct {
 	Origin       string
 	Provider     string
 	Model        string
+	Language     string
 	ContractPath string
 	SourcePath   string
 	PromptPath   string
@@ -40,6 +41,18 @@ func Record(opts RecordOptions, outDir string) (CandidateManifest, error) {
 	if strings.TrimSpace(opts.ContractPath) == "" {
 		return CandidateManifest{}, fmt.Errorf("contract is required")
 	}
+	language, err := normalizeLanguage(opts.Language)
+	if err != nil {
+		return CandidateManifest{}, err
+	}
+	expectedExtension := ".go"
+	if language == LanguagePython {
+		expectedExtension = ".py"
+	}
+	if strings.ToLower(filepath.Ext(opts.SourcePath)) != expectedExtension {
+		return CandidateManifest{}, fmt.Errorf("source extension does not match language %s", language)
+	}
+	sourceName := candidateSourceName(language)
 	var contract Contract
 	if _, err := readJSON(opts.ContractPath, &contract); err != nil {
 		return CandidateManifest{}, err
@@ -79,7 +92,7 @@ func Record(opts RecordOptions, outDir string) (CandidateManifest, error) {
 		return CandidateManifest{}, err
 	}
 	cleanup := func() { _ = os.RemoveAll(outDir) }
-	if err := os.WriteFile(filepath.Join(outDir, "main.go"), source, 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(outDir, sourceName), source, 0o644); err != nil {
 		cleanup()
 		return CandidateManifest{}, err
 	}
@@ -92,8 +105,8 @@ func Record(opts RecordOptions, outDir string) (CandidateManifest, error) {
 		return CandidateManifest{}, err
 	}
 	manifest := CandidateManifest{
-		Schema: CandidateSchema, ID: opts.ID, Version: "1", Origin: origin,
-		Source: "main.go", SourceDigest: digest(source), Note: opts.Note,
+		Schema: CandidateSchema, ID: opts.ID, Version: "1", Language: language, Origin: origin,
+		Source: sourceName, SourceDigest: digest(source), Note: opts.Note,
 		Generation: &GenerationProvenance{
 			Provider: opts.Provider, Model: opts.Model, ContractDigest: digest(contractRaw),
 			PromptDigest: digest(prompt), ContextDigest: digest(context), OutputDigest: digest(source),
@@ -111,4 +124,24 @@ func Record(opts RecordOptions, outDir string) (CandidateManifest, error) {
 		return CandidateManifest{}, err
 	}
 	return manifest, nil
+}
+
+func normalizeLanguage(language string) (string, error) {
+	switch strings.TrimSpace(language) {
+	case "":
+		return LanguageGo, nil
+	case LanguageGo:
+		return LanguageGo, nil
+	case LanguagePython:
+		return LanguagePython, nil
+	default:
+		return "", fmt.Errorf("unsupported language %q", language)
+	}
+}
+
+func candidateSourceName(language string) string {
+	if language == LanguagePython {
+		return "main.py"
+	}
+	return "main.go"
 }
