@@ -156,6 +156,19 @@ go run ./tools/reference-generator-selection/cmd/tei-generator-meta \
 
 このPython参照は、別言語の候補を同じ選抜経路へ載せられることの確認であり、Python製品実装の採用や、実Targetでの処理系固定を意味しません。
 
+## Go候補のbuild evidence
+
+Go候補のreceiptには`buildEvidence`を記録します。
+
+- `toolchain`: `go version`の結果
+- `goos`、`goarch`、`cgoEnabled`、`goflags`: build時の環境
+- `sourceDigest`: buildしたsource
+- `binaryDigest`: 得られた実行ファイル
+- `buildInputDigest`: source・toolchain・GOOS/GOARCH・CGO・GOFLAGSを結合したdigest
+- `reproducibility: not-tested`
+
+`buildInputDigest`は、どのsourceとbuild環境から候補を得たかをreceipt内で結び付けるための参照値です。署名・attestation・artifact storeではなく、別環境で同じbinaryが得られること（再現性）を証明しません。`binaryDigest`はGoの版・OS・build設定に依存します。
+
 ## メタ生成（深さ1）
 
 生成器そのものを外部で生成し、その生成器が候補sourceを出す経路を、深さ1に限って扱います。
@@ -205,11 +218,11 @@ reconcileは候補をビルド・実行・選抜しません。再生成した�
 - 契約のid・version・status
 - WorkspaceのSource Indexから求めた`workspaceRevision`
 - fixtureのdigestと、契約・fixtureを合わせた`suiteVersion`
-- 候補ごとの`language`、`sourceDigest`、`binaryDigest`、`runtime`、`generator`・`generation`（あれば）、各caseの`got`/`want`、`passed`、`rejectReason`
+- 候補ごとの`language`、`sourceDigest`、`binaryDigest`、`runtime`、`buildEvidence`、`generator`・`generation`（あれば）、各caseの`got`/`want`、`passed`、`rejectReason`
 - 合格した候補の`qualified`と、不合格の`rejected`
 - `grantsRuntimeAuthority: false`、`provesRealProvider: false`
 
-同じWorkspace・契約・fixture・候補sourceからは、同じ`sourceDigest`と結果が得られます。`binaryDigest`はGoの版やビルド環境に依存します。時刻や実行者のidentityは含めません。
+同じWorkspace・契約・fixture・候補sourceからは、同じ`sourceDigest`と結果が得られます。`binaryDigest`と`buildEvidence`のtoolchain/環境は実行環境に依存し、再現性は未検証です。時刻や実行者のidentityは含めません。
 
 ## 守っている境界
 
@@ -229,4 +242,4 @@ reconcileは候補をビルド・実行・選抜しません。再生成した�
 - 深さ2以上のメタ生成、失効に伴う自動再生成・自動選抜・失効の承認。
 - Python以外の言語（.NET/JVM/WASM等）と、実Targetでの処理系固定・依存解決。
 - 実Provider・実Targetでの比較。
-- 候補の署名、build provenance（#943 / #1370）。
+- 候補の署名・attestation・artifact store、buildの完全な再現性（#943 / #1370 / #1104）。
