@@ -18,25 +18,52 @@ var ErrPlanMismatch = errors.New("plan digest mismatch")
 // ObserveLegacy is step 1's observation: it reads the legacy order backlog in
 // one repeatable-read transaction.
 func ObserveLegacy(ctx context.Context, legacy *pgx.Conn) (Observation, error) {
+	obs, _, err := observeLegacyWithMap(ctx, legacy)
+	return obs, err
+}
+
+func observeLegacyWithMap(ctx context.Context, legacy *pgx.Conn) (Observation, []ItemCodeMapping, error) {
 	tx, err := legacy.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.RepeatableRead, AccessMode: pgx.ReadOnly})
 	if err != nil {
-		return Observation{}, err
+		return Observation{}, nil, err
 	}
 	defer tx.Rollback(context.Background())
 	orders, err := loadOrders(ctx, tx, legacyTables, "", keyRange{})
 	if err != nil {
-		return Observation{}, err
+		return Observation{}, nil, err
 	}
-	return Observe(orders)
+	obs, err := Observe(orders)
+	if err != nil {
+		return Observation{}, nil, err
+	}
+	rows, err := tx.Query(ctx, `SELECT legacy_code, new_code FROM omdd.legacy_item_code_map ORDER BY legacy_code COLLATE "C", new_code COLLATE "C"`)
+	if err != nil {
+		return Observation{}, nil, err
+	}
+	defer rows.Close()
+	var m []ItemCodeMapping
+	for rows.Next() {
+		var e ItemCodeMapping
+		if err := rows.Scan(&e.LegacyCode, &e.NewCode); err != nil {
+			return Observation{}, nil, err
+		}
+		m = append(m, e)
+	}
+	return obs, m, rows.Err()
 }
 
-// MakePlan runs step 1: observe the legacy database and build the plan.
+// MakePlan runs step 1: observe the legacy database and build the plan,
+// including the item code map prepared in the legacy database.
 func MakePlan(ctx context.Context, legacy *pgx.Conn, chunkSize int) (Plan, error) {
-	obs, err := ObserveLegacy(ctx, legacy)
+	obs, m, err := observeLegacyWithMap(ctx, legacy)
 	if err != nil {
 		return Plan{}, err
 	}
-	return BuildPlan(obs, chunkSize)
+	p, err := BuildPlan(obs, chunkSize)
+	if err != nil {
+		return Plan{}, err
+	}
+	return WithItemCodeMap(p, m)
 }
 
 // SnapshotSchema identifies the snapshot record format.
@@ -51,8 +78,10 @@ type SnapshotRecord struct {
 	// MatchesPlanObservation is false when the legacy database changed
 	// between step 1 and step 2. That is recorded, not refused: the copy is
 	// the source for step 3 and the change feed belongs to step 4.
-	MatchesPlanObservation bool   `json:"matchesPlanObservation"`
-	Digest                 string `json:"digest,omitempty"`
+	MatchesPlanObservation bool `json:"matchesPlanObservation"`
+	// CopiedCustomers is the customer master copied in the same snapshot.
+	CopiedCustomers int    `json:"copiedCustomers"`
+	Digest          string `json:"digest,omitempty"`
 }
 
 // SnapshotPosition records where in the legacy database the copy was taken.
@@ -63,10 +92,45 @@ type SnapshotPosition struct {
 	ServerVersion string `json:"serverVersion"`
 	// Exactness states how WALLSN relates to PGSnapshot. They are read in the
 	// same statement but WAL position is not transactional, so the pair is an
-	// approximation. An exact pairing needs a logical replication slot's
-	// consistent point (CREATE_REPLICATION_SLOT ... EXPORT_SNAPSHOT), which
-	// belongs to step 4 and is not implemented.
-	Exactness string `json:"exactness"`
+	// approximation, and step 4 does not use WALLSN to decide anything.
+	Exactness  string           `json:"exactness"`
+	ChangeFeed ChangeFeedOrigin `json:"changeFeed"`
+}
+
+// ChangeFeedOrigin is where step 4 starts reading the legacy changes. The
+// slot is created before the snapshot, so ConsistentLSN is a lower bound:
+// every transaction that the snapshot does not see commits after it.
+// Whether a decoded transaction is already in the copy is decided by its
+// xid against PGSnapshot (see ChangeFeedExactness).
+type ChangeFeedOrigin struct {
+	Method        string `json:"method"`
+	Slot          string `json:"slot"`
+	ConsistentLSN string `json:"consistentLsn"`
+	Exactness     string `json:"exactness"`
+}
+
+// afterSlotHook is an in-process test hook (nil in the CLI) called after the
+// change feed slot is created and before the snapshot is taken.
+var afterSlotHook func()
+
+// createChangeFeedSlot creates the logical replication slot of the sample.
+// A slot left by a copy that never reached the primary is dropped first.
+func createChangeFeedSlot(ctx context.Context, legacy *pgx.Conn) (ChangeFeedOrigin, error) {
+	var level string
+	if err := legacy.QueryRow(ctx, `SHOW wal_level`).Scan(&level); err != nil {
+		return ChangeFeedOrigin{}, err
+	}
+	if level != "logical" {
+		return ChangeFeedOrigin{}, fmt.Errorf("legacy wal_level is %q; the change feed needs wal_level=logical", level)
+	}
+	if _, err := legacy.Exec(ctx, `SELECT pg_drop_replication_slot(slot_name) FROM pg_replication_slots WHERE slot_name = $1 AND database = current_database()`, ChangeFeedSlot); err != nil {
+		return ChangeFeedOrigin{}, err
+	}
+	o := ChangeFeedOrigin{Method: ChangeFeedMethod, Slot: ChangeFeedSlot, Exactness: ChangeFeedExactness}
+	if err := legacy.QueryRow(ctx, `SELECT lsn::text FROM pg_create_logical_replication_slot($1, 'test_decoding')`, ChangeFeedSlot).Scan(&o.ConsistentLSN); err != nil {
+		return ChangeFeedOrigin{}, fmt.Errorf("create change feed slot: %w", err)
+	}
+	return o, nil
 }
 
 func (s SnapshotRecord) computeDigest() (string, error) {
@@ -144,12 +208,19 @@ func TakeSnapshot(ctx context.Context, legacy, primary *pgx.Conn, plan Plan) (Sn
 		}
 	}
 
+	feed, err := createChangeFeedSlot(ctx, legacy)
+	if err != nil {
+		return SnapshotRecord{}, false, err
+	}
+	if afterSlotHook != nil {
+		afterSlotHook()
+	}
 	ltx, err := legacy.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.RepeatableRead, AccessMode: pgx.ReadOnly})
 	if err != nil {
 		return SnapshotRecord{}, false, err
 	}
 	defer ltx.Rollback(context.Background())
-	var pos SnapshotPosition
+	pos := SnapshotPosition{ChangeFeed: feed}
 	if err := ltx.QueryRow(ctx, `SELECT pg_current_snapshot()::text, pg_current_wal_lsn()::text, current_setting('server_version')`).
 		Scan(&pos.PGSnapshot, &pos.WALLSN, &pos.ServerVersion); err != nil {
 		return SnapshotRecord{}, false, err
@@ -157,6 +228,10 @@ func TakeSnapshot(ctx context.Context, legacy, primary *pgx.Conn, plan Plan) (Sn
 	pos.Isolation = "repeatable-read-read-only"
 	pos.Exactness = "approximate-wal-position-read-in-snapshot-statement"
 	orders, err := loadOrders(ctx, ltx, legacyTables, "", keyRange{})
+	if err != nil {
+		return SnapshotRecord{}, false, err
+	}
+	customers, err := loadLegacyCustomers(ctx, ltx)
 	if err != nil {
 		return SnapshotRecord{}, false, err
 	}
@@ -173,6 +248,7 @@ func TakeSnapshot(ctx context.Context, legacy, primary *pgx.Conn, plan Plan) (Sn
 		Position:               pos,
 		Copied:                 obs.Summary,
 		MatchesPlanObservation: obs.RowsetDigest == plan.Source.Observed.RowsetDigest,
+		CopiedCustomers:        len(customers),
 	}
 	if rec.Digest, err = rec.computeDigest(); err != nil {
 		return SnapshotRecord{}, false, err
@@ -207,6 +283,12 @@ func TakeSnapshot(ctx context.Context, legacy, primary *pgx.Conn, plan Plan) (Sn
 				plan.Digest, o.OrderNo, l.LineNo, l.ItemCode, l.Qty, l.UnitPrice, l.Amount); err != nil {
 				return SnapshotRecord{}, false, err
 			}
+		}
+	}
+	for _, c := range customers {
+		if _, err := tx.Exec(ctx, `INSERT INTO omdd.stage_customer(plan_digest, customer_code, customer_name, address, credit_limit) VALUES ($1,$2,$3,$4,$5::text::numeric)`,
+			plan.Digest, c.Code, c.Name, c.Address, c.CreditLimit); err != nil {
+			return SnapshotRecord{}, false, err
 		}
 	}
 	if err := tx.Commit(ctx); err != nil {

@@ -25,6 +25,12 @@ const (
 	CrashBeforeSend           = "before-send"
 	CrashAfterInventoryCommit = "after-inventory-commit"
 	CrashBeforeCompensation   = "before-compensation"
+	// Step 4: a legacy transaction is applied and recorded in the primary,
+	// the slot is not advanced yet.
+	CrashAfterChangeApplied = "after-change-applied"
+	// Step 6: a reverse-sync group is committed in the legacy database, the
+	// primary outbox is not marked delivered yet.
+	CrashAfterReverseLegacyCommit = "after-reverse-legacy-commit"
 )
 
 var crash struct {

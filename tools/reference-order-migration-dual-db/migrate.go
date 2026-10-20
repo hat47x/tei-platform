@@ -19,6 +19,9 @@ type MigrateResult struct {
 	ChunksWritten  []string `json:"chunksWritten"`
 	OrdersWritten  int      `json:"ordersWritten"`
 	OrdersExisting int      `json:"ordersExisting"`
+	// OrdersHeld counts copied orders not migrated because an item code is
+	// one-to-many (see omdd.cdc_held).
+	OrdersHeld int `json:"ordersHeld"`
 }
 
 // ReservationPayload is the outbox payload delivered to the inventory DB.
@@ -94,10 +97,20 @@ func migrateChunk(ctx context.Context, primary *pgx.Conn, plan Plan, chunk Chunk
 	}
 	lines := 0
 	sum := new(big.Int)
+	migrated := 0
 	for i, o := range orders {
 		if i == len(orders)/2 {
 			crashPoint(CrashChunkMid)
 		}
+		o, ok, err := convertForPrimary(ctx, tx, plan, o)
+		if err != nil {
+			return false, fmt.Errorf("order %s: %w", o.OrderNo, err)
+		}
+		if !ok {
+			res.OrdersHeld++
+			continue
+		}
+		migrated++
 		written, err := writeOrder(ctx, tx, plan, chunk, o)
 		if err != nil {
 			return false, fmt.Errorf("order %s: %w", o.OrderNo, err)
@@ -114,10 +127,36 @@ func migrateChunk(ctx context.Context, primary *pgx.Conn, plan Plan, chunk Chunk
 		}
 	}
 	if _, err := tx.Exec(ctx, `INSERT INTO omdd.mig_checkpoint(plan_digest, chunk_id, snapshot_digest, order_count, line_count, amount_sum) VALUES ($1,$2,$3,$4,$5,$6::text::numeric)`,
-		plan.Digest, chunk.ID, snap.Digest, len(orders), lines, sum.String()); err != nil {
+		plan.Digest, chunk.ID, snap.Digest, migrated, lines, sum.String()); err != nil {
 		return false, err
 	}
 	return false, tx.Commit(ctx)
+}
+
+// convertForPrimary converts the order's legacy item codes with the plan's
+// map. An order with a one-to-many code and no recorded decision is not
+// migrated: it is held (once) for a person, like the change feed does.
+func convertForPrimary(ctx context.Context, tx pgx.Tx, plan Plan, o Order) (Order, bool, error) {
+	out := o
+	out.Lines = append([]Line(nil), o.Lines...)
+	for i, l := range out.Lines {
+		code, ambiguous, err := newCodeFor(ctx, tx, plan, o.OrderNo, l.LineNo, l.ItemCode)
+		if err != nil {
+			return o, false, err
+		}
+		if ambiguous {
+			raw, err := json.Marshal(o)
+			if err != nil {
+				return o, false, err
+			}
+			_, err = tx.Exec(ctx, `INSERT INTO omdd.cdc_held(plan_digest, commit_lsn, entity, entity_key, reason, change)
+				SELECT $1, NULL, 'order', $2, $3, $4 WHERE NOT EXISTS (SELECT 1 FROM omdd.cdc_held WHERE entity='order' AND entity_key=$2 AND state='held')`,
+				plan.Digest, o.OrderNo, HeldOneToManyCode, raw)
+			return o, false, err
+		}
+		out.Lines[i].ItemCode = code
+	}
+	return out, true, nil
 }
 
 // writeOrder writes one order idempotently: an existing row with the same
