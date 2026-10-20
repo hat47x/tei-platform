@@ -129,6 +129,10 @@ go run ./tools/reference-delivery-bundle/cmd/tei-delivery-bundle \
 go run ./tools/reference-delivery-bundle/cmd/tei-delivery-bundle \
   restart -state ./deployment-state.json \
   -command 'your-service-command' -timeout 10s
+
+go run ./tools/reference-delivery-bundle/cmd/tei-delivery-bundle \
+  reconcile -state ./deployment-state.json \
+  -command 'your-service-command' -health 'your-health-check' -timeout 10s
 ```
 
 - `start`は`bash -lc`でコマンドを起動し、PID・catalog・digest・開始時刻・ログpathを`<state>.pid`へ記録する。
@@ -136,7 +140,8 @@ go run ./tools/reference-delivery-bundle/cmd/tei-delivery-bundle \
 - `stop`は記録したPIDへ`Kill`を送り、PID fileを削除する。
 - `stop -graceful`は`kill -TERM`を送り、timeoutまで終了を待ってから必要なら`Kill`する。アプリケーションのshutdown完了は検証しない。
 - `restart`はgraceful stopの後に同じコマンドを起動する。起動準備・healthの完了は待たない。
-- 既にPID fileがある場合、二重起動として拒否する。自動再起動・監視は行わない。
+- `reconcile`は1回だけ監督する。未起動ならstart、healthyならnoop、unhealthyならrestartし、stale PIDは除去する。外部のcronやtimerから呼ぶ。
+- 既にPID fileがある場合、二重起動として拒否する。`reconcile`自身はループ・監視しない。
 - このReferenceはLinux/WSLの`bash`と`kill`を前提とする。
 
 ## 守っている境界
@@ -145,12 +150,12 @@ go run ./tools/reference-delivery-bundle/cmd/tei-delivery-bundle \
 - signatureはbundleの完全性だけを示す。署名者・公開鍵の信頼、配備経路の真正性は扱わない。
 - `install`はローカルcatalogへの配置だけを行う。`activate` / `rollback`はstate fileの更新だけを行い、サービスを起動・停止しない。
 - `health`は利用者が指定したtrustedなコマンドの終了コードを記録するだけで、サービスを起動・監視しない。
-- `start` / `stop` / `restart`はtrustedなコマンドの起動とPIDへのシグナルだけを行う。`stop -graceful`はSIGTERMを送るが、アプリケーションのshutdown完了、自動再起動、監視、PID再利用の防止は行わない。
+- `start` / `stop` / `restart` / `reconcile`はtrustedなコマンドの起動とPIDへのシグナルだけを行う。`stop -graceful`はSIGTERMを送るが、アプリケーションのshutdown完了、監視ループ、PID再利用の防止は行わない。
 - catalogにないpluginを暗黙に追加しない。
 
 ## 未実装
 
 - 鍵管理、信頼の起点、署名者の認証。
-- 配布、継続的なヘルス監視、アプリケーションのshutdown完了検証、自動再起動、多段階ロールバック、トランザクション。
+- 配布、継続的なヘルス監視・自動再起動ループ、アプリケーションのshutdown完了検証、多段階ロールバック、トランザクション。
 - 部分bundle、差分更新。
 - 実SaaS・実顧客先での配備確認。
