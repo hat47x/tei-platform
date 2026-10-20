@@ -1,0 +1,41 @@
+{
+  "schema": "tei.reference.mecc-file-spec/v0",
+  "id": "partner-shipment",
+  "version": 1,
+  "encoding": "windows-31j",
+  "recordLength": 80,
+  "lineTerminator": "\r\n",
+  "header": {"kind": "H", "fields": [
+    {"name": "kind", "offset": 0, "length": 1, "type": "const", "value": "H"},
+    {"name": "sender", "offset": 1, "length": 10, "type": "alnum"},
+    {"name": "fileSeq", "offset": 11, "length": 6, "type": "number"},
+    {"name": "createdAt", "offset": 17, "length": 14, "type": "number"},
+    {"name": "month", "offset": 31, "length": 6, "type": "number"},
+    {"name": "filler", "offset": 37, "length": 43, "type": "filler"}
+  ]},
+  "data": {"kind": "D", "fields": [
+    {"name": "kind", "offset": 0, "length": 1, "type": "const", "value": "D"},
+    {"name": "recSeq", "offset": 1, "length": 6, "type": "number"},
+    {"name": "shipmentId", "offset": 7, "length": 10, "type": "alnum"},
+    {"name": "orderNo", "offset": 17, "length": 10, "type": "alnum"},
+    {"name": "shipDate", "offset": 27, "length": 8, "type": "date"},
+    {"name": "qty", "offset": 35, "length": 6, "type": "number"},
+    {"name": "amount", "offset": 41, "length": 10, "type": "number"},
+    {"name": "itemName", "offset": 51, "length": 20, "type": "text"},
+    {"name": "note", "offset": 71, "length": 9, "type": "text"}
+  ]},
+  "trailer": {"kind": "T", "fields": [
+    {"name": "kind", "offset": 0, "length": 1, "type": "const", "value": "T"},
+    {"name": "count", "offset": 1, "length": 6, "type": "number"},
+    {"name": "amountSum", "offset": 7, "length": 12, "type": "number"},
+    {"name": "filler", "offset": 19, "length": 61, "type": "filler"}
+  ]},
+  "trailerCountField": "count",
+  "trailerSumField": "amountSum",
+  "dataSumField": "amount",
+  "fileSeqField": "fileSeq",
+  "senderField": "sender",
+  "monthField": "month",
+  "compareEquivalents": [["\u301c", "\uff5e"], ["\u2016", "\u2225"], ["\u2212", "\uff0d"], ["\u00a2", "\uffe0"], ["\u00a3", "\uffe1"], ["\u00ac", "\uffe2"]],
+  "eventMapping": {"shipmentId": "shipmentId", "orderNo": "orderNo", "shipDate": "shipDate", "qty": "qty", "amount": "amount", "itemName": "itemName"}
+}
