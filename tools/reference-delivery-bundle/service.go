@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strconv"
 	"time"
 )
 
@@ -102,6 +103,62 @@ func Stop(statePath string) (ServiceReceipt, error) {
 	}
 	if err := process.Kill(); err != nil {
 		return ServiceReceipt{}, err
+	}
+	if err := os.Remove(pidFile(statePath)); err != nil {
+		return ServiceReceipt{}, err
+	}
+	return ServiceReceipt{
+		Catalog: record.Catalog, Digest: record.Digest, PID: record.PID,
+		Log: record.Log, StartedAt: record.StartedAt,
+	}, nil
+}
+
+func readingRecord(statePath string) (serviceRecord, error) {
+	raw, err := os.ReadFile(pidFile(statePath))
+	if err != nil {
+		return serviceRecord{}, err
+	}
+	var record serviceRecord
+	if err := json.Unmarshal(raw, &record); err != nil {
+		return serviceRecord{}, fmt.Errorf("service record is not valid JSON: %w", err)
+	}
+	if record.PID <= 0 {
+		return serviceRecord{}, fmt.Errorf("service record has no pid")
+	}
+	return record, nil
+}
+
+func processAlive(pid int) bool {
+	return exec.Command("kill", "-0", strconv.Itoa(pid)).Run() == nil
+}
+
+// StopGraceful sends SIGTERM through the platform `kill` command, waits up to
+// timeout for the process to exit, then falls back to Kill. It does not verify
+// application-level shutdown.
+func StopGraceful(statePath string, timeout time.Duration) (ServiceReceipt, error) {
+	record, err := readingRecord(statePath)
+	if err != nil {
+		return ServiceReceipt{}, err
+	}
+	if timeout <= 0 {
+		timeout = 10 * time.Second
+	}
+	pidText := strconv.Itoa(record.PID)
+	if err := exec.Command("kill", "-TERM", pidText).Run(); err != nil {
+		return ServiceReceipt{}, fmt.Errorf("send SIGTERM: %w", err)
+	}
+	deadline := time.Now().Add(timeout)
+	for processAlive(record.PID) && time.Now().Before(deadline) {
+		time.Sleep(100 * time.Millisecond)
+	}
+	if processAlive(record.PID) {
+		process, err := os.FindProcess(record.PID)
+		if err != nil {
+			return ServiceReceipt{}, err
+		}
+		if err := process.Kill(); err != nil {
+			return ServiceReceipt{}, err
+		}
 	}
 	if err := os.Remove(pidFile(statePath)); err != nil {
 		return ServiceReceipt{}, err

@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 )
 
 func TestStartAndStopService(t *testing.T) {
@@ -46,5 +47,22 @@ func TestStopWithoutRecordIsRejected(t *testing.T) {
 	statePath := activeState(t)
 	if _, err := Stop(statePath); err == nil {
 		t.Fatal("stop without a record was accepted")
+	}
+}
+
+func TestStopGracefulWaitsForTermination(t *testing.T) {
+	statePath := activeState(t)
+	if _, err := Start(statePath, "exec sleep 5", ""); err != nil {
+		t.Fatal(err)
+	}
+	receipt, err := StopGraceful(statePath, 2*time.Second)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if receipt.PID <= 0 {
+		t.Fatalf("unexpected receipt: %+v", receipt)
+	}
+	if _, err := os.Stat(pidFile(statePath)); !os.IsNotExist(err) {
+		t.Fatalf("pid file was not removed: %v", err)
 	}
 }

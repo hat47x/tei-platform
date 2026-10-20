@@ -31,6 +31,7 @@ func main() {
 	healthCommand := fs.String("command", "", "trusted service or health command")
 	healthTimeout := fs.Duration("timeout", 30*time.Second, "health-check timeout")
 	serviceLog := fs.String("log", "", "service log file")
+	graceful := fs.Bool("graceful", false, "send SIGTERM before Kill")
 	_ = fs.Parse(os.Args[2:])
 	switch command {
 	case "pack":
@@ -118,7 +119,13 @@ func main() {
 		if *statePath == "" {
 			fail(fmt.Errorf("-state is required for stop"))
 		}
-		receipt, err := deliverybundle.Stop(*statePath)
+		var receipt deliverybundle.ServiceReceipt
+		var err error
+		if *graceful {
+			receipt, err = deliverybundle.StopGraceful(*statePath, *healthTimeout)
+		} else {
+			receipt, err = deliverybundle.Stop(*statePath)
+		}
 		if err != nil {
 			fail(err)
 		}
