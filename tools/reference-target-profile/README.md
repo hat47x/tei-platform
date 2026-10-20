@@ -25,6 +25,9 @@ go run ./tools/reference-target-profile/cmd/tei-target-profile \
   deploy -profile tools/reference-target-profile/testdata/desktop-replace.json \
   -candidates tools/reference-generator-selection/testdata/candidates \
   -root /tmp/tei-target-profile-root
+
+go run ./tools/reference-target-profile/cmd/tei-target-profile \
+  rollback -root /tmp/tei-target-profile-root
 ```
 
 ## Profileの項目
@@ -34,7 +37,7 @@ go run ./tools/reference-target-profile/cmd/tei-target-profile \
 | `processModel` | `oneshot`（caseごとに別process）、`long-running`（1 processで複数request）、`batch`（未対応） |
 | `storage` | `none`、`filesystem`、`sqlite`、`remote`。`filesystem`だけdeploy参照で扱う |
 | `network` | `none`、`loopback`、`allowed` |
-| `update` | `replace`、`in-place`、`rolling`。`replace`/`in-place`だけdeploy参照で扱う |
+| `update` | `replace`、`in-place`、`rolling`。deploy参照で扱う |
 | `memoryLimitBytes` | 正の整数 |
 | `observability` | 観測手段の一覧。`stdout`・`stderr`・`exit-code`はcase実行から観測する |
 | `unsupported` | このprofileで扱わない機能 |
@@ -62,13 +65,14 @@ memory limitは`GOMEMLIMIT`としてselectionのサブプロセスへ渡しま�
 
 ## ローカルartifact配備
 
-`deploy`は、選択したGo候補をbuildし、ローカルfilesystemのrootへartifactとして配置します。実Targetへの配備ではなく、`storage: filesystem`と`update: replace`/`in-place`の最小の挙動を確認する参照です。
+`deploy`は、選択したGo候補をbuildし、ローカルfilesystemのrootへartifactとして配置します。実Targetへの配備ではなく、`storage: filesystem`と`update`の最小の挙動を確認する参照です。
 
 - `replace`: 新しいartifactを同じrootへrenameし、既存artifactは`history/<digest>`へ保持します。
 - `in-place`: 既存artifactを上書きし、上書き前のartifactを`history/<digest>`へ保持します。
-- 配備後にartifact digestを再計算し、build結果と一致することを確認します。historyのdigestも照合します。
-- `sqlite`・`remote` storage、`rolling` update、Go以外の候補は未対応として`passed=false`にします。
-- 実Targetのsupervisor・無停止更新・ロールバック・電源断耐性・複数ホスト配備は扱いません。
+- `rolling`: `slots/a`と`slots/b`の2 slotを使い、非active slotへ新artifactを置いてから`current` pointerをatomicに切り替えます。旧slotは保持し、`rollback`でcurrent/previousを入れ替えます。
+- 配備後にartifact digestを再計算し、build結果と一致することを確認します。history/slotのdigestも照合します。
+- `sqlite`・`remote` storage、Go以外の候補は未対応として`passed=false`にします。
+- 実Targetのsupervisor・health check・traffic drain・電源断耐性・複数ホスト配備は扱いません。
 
 ## Profile間の意味比較
 
@@ -86,7 +90,7 @@ memory limitは`GOMEMLIMIT`としてselectionのサブプロセスへ渡しま�
 - profileは意味を変えない。契約・fixture・候補は同じものを使う。
 - profileは`generatorId`で生成器を一つ選ぶ。選ばれなかった候補は`not selected by target profile`として拒否し、別の生成器へ暗黙にフォールバックしない。
 - `processModel`はoneshotのprocess-per-case、long-runningのsingle-processを実行で確認する。batchは未対応。
-- `storage`の`filesystem`と`update`の`replace`/`in-place`は、`deploy`のローカルfilesystem参照で限定的に確認する。`network`、`sqlite`/`remote` storage、`rolling` updateは宣言または未対応のまま。
+- `storage`の`filesystem`と`update`の`replace`/`in-place`/`rolling`は、`deploy`のローカルfilesystem参照で限定的に確認する。`network`、`sqlite`/`remote` storageは宣言または未対応のまま。
 - `observability`は`stdout`・`stderr`・`exit-code`だけをcase実行から観測する。未対応channelは`unsupported`として返し、合格にしない。
 - profileの合格や`semanticsEqual`は、実機・実OS・実Targetでの動作を証明しない。
 - 組込み固有のリアルタイム性・安全認証・電源断耐性は扱わない。
@@ -94,7 +98,7 @@ memory limitは`GOMEMLIMIT`としてselectionのサブプロセスへ渡しま�
 ## 未実装
 
 - OS・CPU・RTOS別の実行環境と、実機での資源測定。
-- `network`の強制、`sqlite`/`remote` storage、`rolling` update。
+- `network`の強制、`sqlite`/`remote` storage。
 - batch processModel、long-runningのPython/JavaScript候補。
 - `audit-log`・分散trace・metrics等の観測channel。
 - 実Targetへの配備、ロールバック、長期運用。
