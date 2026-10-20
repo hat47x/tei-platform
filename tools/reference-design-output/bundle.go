@@ -158,8 +158,11 @@ func Build(world ir.World, sourceRevision string, provider environment.DatabaseP
 		Reason: "受理済みのBusiness Procedure sourceがまだ提供されていません（#1125）。" +
 			"業務・機能・データ間の対応一覧は、非CanonicalなDFDや候補から生成しません。",
 	})
+	bundle.Manifest.Notes = append(bundle.Manifest.Notes,
+		"index.htmlは成果物の一覧とリンクを表示するナビゲーションであり、manifestのartifactには含めません。")
 	sort.Slice(bundle.Manifest.Unsupported, func(i, j int) bool { return bundle.Manifest.Unsupported[i].Name < bundle.Manifest.Unsupported[j].Name })
 	sort.Slice(bundle.Manifest.Artifacts, func(i, j int) bool { return bundle.Manifest.Artifacts[i].Name < bundle.Manifest.Artifacts[j].Name })
+	bundle.Files = append(bundle.Files, File{Path: "index.html", Content: renderIndex(bundle.Manifest)})
 	sort.Slice(bundle.Files, func(i, j int) bool { return bundle.Files[i].Path < bundle.Files[j].Path })
 	return bundle, nil
 }

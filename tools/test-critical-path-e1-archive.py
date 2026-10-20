@@ -3,6 +3,7 @@
 import importlib.util
 from pathlib import Path
 import shutil
+import subprocess
 import tempfile
 import unittest
 
@@ -31,6 +32,37 @@ class ArchivedEvidenceIntegrity(unittest.TestCase):
     def test_original_eight_receipts(self):
         result = self.verify()
         self.assertEqual(8, result["receiptCount"])
+        self.assertEqual("UNQUALIFIED", result["productGate"])
+
+    def test_autocrlf_checkout_preserves_original_witness_bytes(self):
+        # Exercise Git's checkout conversion, not a normalized verifier input.
+        root = Path(self.temp.name)
+        source, checkout = root / "source", root / "checkout"
+        source.mkdir()
+        paths = [archive.MANIFEST, *[archive.RECEIPTS / name for name in archive.NAMES],
+                 ROOT / "plan/evidence/TEI_E2A1_REAL_POSTGRES_RECEIPT_38311557882.json"]
+        for path in [ROOT / ".gitattributes", *paths]:
+            target = source / path.relative_to(ROOT)
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(path.read_bytes())
+
+        def git(*args, cwd=source):
+            subprocess.run(["git", *args], cwd=cwd, check=True,
+                           stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+        git("init")
+        git("config", "core.autocrlf", "true")
+        git("add", ".")
+        git("-c", "user.name=Archive test", "-c", "user.email=archive-test@example.invalid",
+            "-c", "commit.gpgsign=false", "commit", "-m", "Archive checkout fixture")
+        git("clone", "--no-local", "--no-checkout", str(source), str(checkout))
+        git("config", "core.autocrlf", "true", cwd=checkout)
+        git("checkout", "--force", "HEAD", cwd=checkout)
+        for path in paths:
+            self.assertEqual(path.read_bytes(), (checkout / path.relative_to(ROOT)).read_bytes(),
+                             str(path.relative_to(ROOT)))
+        result = archive.verify_archive(checkout / archive.MANIFEST.relative_to(ROOT),
+                                        checkout / archive.RECEIPTS.relative_to(ROOT))
         self.assertEqual("UNQUALIFIED", result["productGate"])
 
     def test_mutated_raw_receipt_refused(self):
@@ -66,7 +98,12 @@ class ArchivedEvidenceIntegrity(unittest.TestCase):
         path = self.receipts / "web-positive.json"
         target = self.receipts / "web-negative-unit-price.json"
         path.unlink()
-        path.symlink_to(target.name)
+        try:
+            path.symlink_to(target.name)
+        except OSError as exc:
+            if getattr(exc, "winerror", None) == 1314:
+                self.skipTest("Windows symlink privilege is unavailable")
+            raise
         with self.assertRaisesRegex(ValueError, "not a regular file"):
             self.verify()
 

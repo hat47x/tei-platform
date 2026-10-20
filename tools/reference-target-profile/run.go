@@ -16,20 +16,35 @@ type RunOptions struct {
 	ProfilePath   string
 }
 
+// ObservabilityEvidence records which declared observation channels the
+// harness actually observed from the selected candidate's case executions.
+type ObservabilityEvidence struct {
+	Declared          []string `json:"declared"`
+	Observed          []string `json:"observed"`
+	Unsupported       []string `json:"unsupported,omitempty"`
+	Cases             int      `json:"cases"`
+	CasesWithStdout   int      `json:"casesWithStdout"`
+	CasesWithStderr   int      `json:"casesWithStderr"`
+	CasesWithExitCode int      `json:"casesWithExitCode"`
+}
+
 type Receipt struct {
-	Schema      string                     `json:"schema"`
-	Profile     Profile                    `json:"profile"`
-	Selection   generatorselection.Receipt `json:"selection"`
-	Enforcement map[string]string          `json:"enforcement"`
-	Unsupported []string                   `json:"unsupported,omitempty"`
-	Passed      bool                       `json:"passed"`
-	Notes       []string                   `json:"notes"`
+	Schema       string                     `json:"schema"`
+	Profile      Profile                    `json:"profile"`
+	Selection    generatorselection.Receipt `json:"selection"`
+	Observation  *ObservabilityEvidence     `json:"observation,omitempty"`
+	ProcessModel *ProcessModelEvidence      `json:"processModel,omitempty"`
+	Enforcement  map[string]string          `json:"enforcement"`
+	Unsupported  []string                   `json:"unsupported,omitempty"`
+	Passed       bool                       `json:"passed"`
+	Notes        []string                   `json:"notes"`
 }
 
 // Run applies the profile's memory limit to the selection subprocesses, runs
 // the same fixed fixtures, and records which constraints were actually
-// enforced. Process model, storage, network, update, and observability are
-// declarations in this Reference; they are not enforced by the harness.
+// enforced. Process model, storage, network, and update remain declarations;
+// observability channels stdout, stderr, and exit-code are observed from the
+// selected candidate's case executions.
 func Run(ctx context.Context, opts RunOptions) (Receipt, error) {
 	profile, err := Load(opts.ProfilePath)
 	if err != nil {
@@ -54,24 +69,112 @@ func Run(ctx context.Context, opts RunOptions) (Receipt, error) {
 	if err != nil {
 		return Receipt{}, err
 	}
+	observation := observe(profile, selection)
+	processModel := enforceProcessModel(ctx, profile, opts, selection)
+	unsupported := append([]string(nil), profile.Unsupported...)
+	for _, value := range observation.Unsupported {
+		unsupported = appendUnique(unsupported, value)
+	}
+	if !processModel.Passed && processModel.Mode == ProcessBatch {
+		unsupported = appendUnique(unsupported, "batch-process-model")
+	}
+	observabilityEnforcement := "observed"
+	if len(observation.Unsupported) > 0 {
+		observabilityEnforcement = "partial"
+		if len(observation.Observed) == 0 {
+			observabilityEnforcement = "unsupported"
+		}
+	}
+	processEnforcement := "unsupported"
+	switch processModel.Mode {
+	case ProcessOneShot:
+		processEnforcement = "oneshot:failed"
+		if processModel.Passed {
+			processEnforcement = "oneshot:process-per-case"
+		}
+	case ProcessLongRunning:
+		processEnforcement = "long-running:failed"
+		if processModel.Passed {
+			processEnforcement = "long-running:single-process"
+		}
+	}
 	return Receipt{
-		Schema:    Schema,
-		Profile:   profile,
-		Selection: selection,
+		Schema:       Schema,
+		Profile:      profile,
+		Selection:    selection,
+		Observation:  observation,
+		ProcessModel: processModel,
 		Enforcement: map[string]string{
 			"memory":        "env:GOMEMLIMIT (soft)",
-			"processModel":  "declared-only",
+			"processModel":  processEnforcement,
 			"storage":       "declared-only",
 			"network":       "declared-only",
 			"update":        "declared-only",
-			"observability": "declared-only",
+			"observability": observabilityEnforcement,
 		},
-		Unsupported: append([]string(nil), profile.Unsupported...),
-		Passed:      selection.Passed,
+		Unsupported: unsupported,
+		Passed:      selection.Passed && len(observation.Unsupported) == 0 && processModel.Passed,
 		Notes: []string{
 			"同じ受理済み契約・fixture・候補を、Target Profileの宣言とmemory limit付きで実行した。",
-			"processModel・storage・network・update・observabilityは宣言であり、このReferenceでは強制していない。",
+			"observabilityのstdout・stderr・exit-codeはcase実行から観測した。未対応channelはUnsupportedとして返す。",
+			"processModelはoneshotのprocess-per-case、long-runningのsingle-processを実行で確認した。",
+			"storage・network・updateは宣言であり、このReferenceでは強制していない。",
 			"profileの合格は、実機・実OS・実Targetでの動作を証明しない。",
 		},
 	}, nil
+}
+
+func observe(profile Profile, selection generatorselection.Receipt) *ObservabilityEvidence {
+	observation := &ObservabilityEvidence{
+		Declared: append([]string(nil), profile.Observability...),
+		Observed: []string{}, Unsupported: []string{},
+	}
+	candidate := selectedCandidate(Receipt{Profile: profile, Selection: selection})
+	if candidate == nil || len(candidate.Results) == 0 {
+		observation.Unsupported = append(observation.Unsupported, "no-execution-evidence")
+		return observation
+	}
+	observation.Cases = len(candidate.Results)
+	for _, result := range candidate.Results {
+		if result.Execution == nil {
+			continue
+		}
+		observation.CasesWithStdout++
+		observation.CasesWithStderr++
+		observation.CasesWithExitCode++
+	}
+	for _, channel := range profile.Observability {
+		switch channel {
+		case "stdout":
+			if observation.CasesWithStdout == observation.Cases {
+				observation.Observed = appendUnique(observation.Observed, channel)
+			} else {
+				observation.Unsupported = appendUnique(observation.Unsupported, channel)
+			}
+		case "stderr":
+			if observation.CasesWithStderr == observation.Cases {
+				observation.Observed = appendUnique(observation.Observed, channel)
+			} else {
+				observation.Unsupported = appendUnique(observation.Unsupported, channel)
+			}
+		case "exit-code":
+			if observation.CasesWithExitCode == observation.Cases {
+				observation.Observed = appendUnique(observation.Observed, channel)
+			} else {
+				observation.Unsupported = appendUnique(observation.Unsupported, channel)
+			}
+		default:
+			observation.Unsupported = appendUnique(observation.Unsupported, channel)
+		}
+	}
+	return observation
+}
+
+func appendUnique(values []string, value string) []string {
+	for _, existing := range values {
+		if existing == value {
+			return values
+		}
+	}
+	return append(values, value)
 }

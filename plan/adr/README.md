@@ -60,3 +60,5 @@ Issueでは「何を行うか」を管理し、ADRでは「なぜその方針を
 - [ADR-0036: 提供形態の違いはプラグインの選択で実現し、形態別の実装を作らない](0036-delivery-forms-as-plugin-composition.md)（採用）
 - [ADR-0037: 生成器の失効・置換を、意味・生成物・実行受理の版から分離する](0037-generator-lifecycle-separation.md)（提案中）
 - [ADR-0038: 認知機能を提案ポートとして扱い、受理・権限・実行から分離する](0038-cognition-as-proposal-port.md)（提案中）
+- [ADR-0039: Query入力の不在と明示NULLを契約で分け、SQL実行前に拒否する](0039-query-input-presence-and-null.md)（提案中）
+- [ADR-0040: 生成器の失効承認をregistryの編集と分離し、承認recordの対象一致だけを検証する](0040-generator-revocation-approval-separation.md)（提案中）

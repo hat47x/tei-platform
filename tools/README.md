@@ -17,16 +17,18 @@
 | [`repositoryqualification/`](repositoryqualification/) | リポジトリ検証条件の共通処理 |
 | [`reference-cli-trace-benchmark/`](reference-cli-trace-benchmark/) | 合成Workspaceによるtraceの処理段別の時間・メモリ計測と出力不変の確認 |
 | [`reference-change-packet/`](reference-change-packet/) | 変更範囲・危険度・検証・停止条件をJSONで宣言し、範囲確認と検証実行・証拠記録を行う参照（#2017） |
-| [`reference-generator-selection/`](reference-generator-selection/) | 受理済み契約に対する生成器候補を固定fixtureで比較し、source/binary digest、実行言語・runtimeと結果をreceiptへ残す参照。GoとPythonの候補、registryの版・置換・失効も確認する（#2016 / #2077） |
-| [`reference-target-profile/`](reference-target-profile/) | 同じ契約・fixture・候補を複数のTarget Profileで実行し、宣言と実行結果、case別出力の意味一致を記録する参照（#2019） |
-| [`reference-productivity-benchmark/`](reference-productivity-benchmark/) | 生産性比較のrunを検証・記録し、3方法×3回の中央値と範囲を集計する参照（#2018） |
+| [`reference-generator-selection/`](reference-generator-selection/) | 受理済み契約に対する生成器候補を固定fixtureで比較し、source/binary digest、実行言語・runtime、Goのbuild evidence、case実行のexit/stderr digestと結果をreceiptへ残す参照。Go・Python・JavaScript、long-running候補、registryの版・置換・失効も確認する（#2016 / #2077） |
+| [`reference-generator-context/`](reference-generator-context/) | 受理済み契約・fixture・Workspace revisionから、生成モデル向けの上限付き文脈を作る参照（#2016 / #2021） |
+| [`reference-generator-revocation-review/`](reference-generator-revocation-review/) | 生成器registryの失効と、registry編集とは別の承認recordの対象一致を検査する参照。承認者のAuthority・trustは検証しない（#2076） |
+| [`reference-target-profile/`](reference-target-profile/) | 同じ契約・fixture・候補を複数のTarget Profileで実行し、宣言と実行結果、case別出力の意味一致、oneshot/long-running process model、stdout/stderr/exit-codeの観測を記録する参照（#2019） |
+| [`reference-productivity-benchmark/`](reference-productivity-benchmark/) | 4タスクの計画とrunのcoverageを検証し、3方法×3回の中央値と範囲を集計する参照（#2018） |
 | [`reference-tenant-isolation/`](reference-tenant-isolation/) | SaaS向けに、テナントrootの閉じ込めと越境拒否を提供する基盤pluginの参照（#2020） |
-| [`reference-audit-log/`](reference-audit-log/) | 追記専用のhash chainと改ざん検出を提供する監査ログ基盤pluginの参照（#2020） |
+| [`reference-audit-log/`](reference-audit-log/) | 追記専用のhash chain、改ざん検出、pinned headによる末尾削除検出を提供する監査ログ基盤pluginの参照（#2020） |
 | [`reference-authentication/`](reference-authentication/) | credentialを発行せず、principalとtenantの認証境界を検証する基盤pluginの参照（#2020） |
 | [`reference-offline-storage/`](reference-offline-storage/) | 個人向けに、root内へ閉じたローカル保存を提供する基盤pluginの参照（#2020） |
 | [`reference-export-package/`](reference-export-package/) | SIer向けに、manifestとdigest付きの配布zipを作る基盤pluginの参照（#2020） |
 | [`reference-delivery-profile/`](reference-delivery-profile/) | 提供形態ごとにpluginを選択し、必須能力が揃っているかを検証する参照（#2020） |
-| [`reference-delivery-bundle/`](reference-delivery-bundle/) | 解決済みprofileとplugin descriptorを1つのzipへまとめ、digestを検証する参照（#2020） |
+| [`reference-delivery-bundle/`](reference-delivery-bundle/) | 解決済みprofileとplugin descriptorをzip化し、digest・detached signature・merge/fresh install・activate/rollback・health/start/stopを提供する参照（#2020） |
 
 ## 設計、業務知識、受入れ
 
@@ -44,6 +46,7 @@
 | [`reference-capability-transport/`](reference-capability-transport/) | Capabilityの伝送形式と境界の確認 |
 | [`reference-chat-cli-host/`](reference-chat-cli-host/) | 信頼された開発用Hostの事前診断 |
 | [`reference-cognition-port/`](reference-cognition-port/) | 軽量認知を提案ポートとして扱い、文脈・出所・能力限界・失敗状態を記録する参照。受理・権限・実行を決めない（#2021） |
+| [`reference-cognition-handoff/`](reference-cognition-handoff/) | 軽量認知のpositive validation提案をShared Acceptanceの変更candidateへ変換する参照（#2021） |
 | [`reference-critical-lowering/`](reference-critical-lowering/) | 意味定義から実行形式への変換条件の確認 |
 | [`reference-derivation-cache/`](reference-derivation-cache/) | 導出値の鮮度・キャッシュ再利用条件・業務上の確定値の境界を合成入力で判定する読取り専用の参照（#1641） |
 | [`reference-derivation-evidence/`](reference-derivation-evidence/) | 導出値の設計由来・評価根拠・診断と、要求者ごとの開示境界を合成入力で判定する読取り専用の参照（#1696） |
@@ -63,6 +66,7 @@
 | [`reference-procedure-expansion/`](reference-procedure-expansion/) | 受理済み手順を非画面・画面・外部・AIの実現先へ展開し、実行可能範囲を分ける参照 |
 | [`reference-procedure-formalization/`](reference-procedure-formalization/) | 業務手順の文章から、形式化を妨げる不足と矛盾を根拠付きの質問として示す読取り専用の参照 |
 | [`reference-purpose-preflight/`](reference-purpose-preflight/) | 開発目的に対する業務規則の未確定・実行時値待ちを合成データで区別 |
+| [`reference-query-input-nullability/`](reference-query-input-nullability/) | Query入力のmissingと明示nullを区別し、NULL可否を契約で明示してSQL実行前に拒否する参照（#2056） |
 | [`reference-quantity-arith/`](reference-quantity-arith/) | 数量・単価・金額の単位・通貨・丸めの意味注釈を合成入力で検査する読取り専用の参照（#1705） |
 | [`reference-read-consistency/`](reference-read-consistency/) | 一回の導出評価の入力読取り整合・Snapshot保証・競合時の失敗境界を合成入力で判定する読取り専用の参照（#1708） |
 | [`reference-realization-compliance/`](reference-realization-compliance/) | 規則が宣言する業務意味と実現の型・NULL方針・丸め・等価性の適合を合成fixtureで検査する読取り専用の参照（#1694） |
@@ -126,6 +130,8 @@
 | --- | --- |
 | [`reference-data-first-persistence/`](reference-data-first-persistence/) | Dataに手書きの宣言を重ね、実PostgreSQLで実行前の確認・書込み・別接続の再読込を一巡する確認（生成・認可・製品E2は対象外） |
 | [`reference-external-query-evidence/`](reference-external-query-evidence/) | 外部問合せの実行根拠を確認 |
+| [`reference-month-end-close-correction/`](reference-month-end-close-correction/) | 技術検証用サンプル`month-end-close-correction`の工程1〜6。版つきの営業日カレンダーから締め日・ジョブの予定・支払期日を確定して改訂の影響を記録し、CP932の固定長ファイルを宣言した仕様で取り込んで模擬のメッセージと一つの事象に照合し、対象月を業務キーとする締めジョブをDBの時計による貸与とDB側のフェンシングトークン検査で実行する。締めの後に順不同で届く事象を版と方針で受け付け、有効時点と記録時点の二つの軸の単価で赤黒の伝票を計上し、請求書単位・税率別の税額をPostgreSQL、Go、SQLiteで比べて締め時点の帳票をバイト単位で再出力する(PostgreSQLの一つのインスタンス。合成のファイル、模擬のメッセージ、合成の事象。SQLiteはPythonの標準モジュールでのメモリ上の計算) |
+| [`reference-order-migration-dual-db/`](reference-order-migration-dual-db/) | 技術検証用サンプル`order-migration-dual-db`の工程1〜6。旧DBの観測と照合値付きの移行計画、全件の写し、区切りごとの移行と効果記録を経由した参照系DBへの引当、論理デコーディングによる並走中の変更の反映、得意先マスタの項目ごとの正本と名前の分割、請求システムへの冪等な送信、切替の関門、逆同期と巻戻しの訓練を、PostgreSQLの三つのインスタンスで実行する(異種DBの要件は対象外) |
 | [`reference-oracle-local-fixture/`](reference-oracle-local-fixture/) | 別用途の既存Oracleに一時的な検証用データを作り、ドライバー・名前付きバインド・読取り専用の効き方・検証根拠の受入れを確認 |
 | [`reference-postgres-header-detail-runtime/`](reference-postgres-header-detail-runtime/) | PostgreSQL上の親子明細処理の参照実装 |
 | [`reference-postgres-integration/`](reference-postgres-integration/) | PostgreSQL接続の統合確認 |
@@ -139,7 +145,7 @@
 | [`reference-data-import-check/`](reference-data-import-check/) | 業務データ取込みの段階D0。タブ区切りの行の形をData定義に照らして検査する参照（#1807） |
 | [`reference-function-definition-document/`](reference-function-definition-document/) | 受理済みの意味から機能定義書を導出する参照（#1803） |
 | [`reference-ddl-entry/`](reference-ddl-entry/) | 物理対応から提供元が出力できるDDLを表ごとに取り出す入口（#1803） |
-| [`reference-design-output/`](reference-design-output/) | 受理済みの意味から表・機能・対応一覧・DDLを一つのrevisionへ束縛して導出する参照（#1803） |
+| [`reference-design-output/`](reference-design-output/) | 受理済みの意味から表・機能・対応一覧・DDL・静的HTML索引を一つのrevisionへ束縛して導出する参照（#1803） |
 | [`reference-access-matrix/`](reference-access-matrix/) | Application × Dataの宣言された利用の対応表を導出する参照（#1803） |
 | [`reference-partial-import-plan/`](reference-partial-import-plan/) | 別Workspaceから選んだData定義の取込み結果を分類する読取り専用の参照（#1805） |
 | [`reference-table-definition-document/`](reference-table-definition-document/) | 受理済みの意味から表定義書を導出する参照（#1803） |
@@ -166,6 +172,8 @@
 | [`ci-workflows-test.py`](ci-workflows-test.py) | 手動CIの版ずれ・作業領域検査と、自動健全性CIの公開PR境界・mainへのpush経路（コミットごとの同時実行集合、検査手順のシェル）を、隔離したGit環境で再現する回帰試験（`python3 tools/ci-workflows-test.py`）。本物のCIの実行、実際のpushイベントの挙動、TEI全体検証は扱わない |
 | [`verify-critical-path-e1-archive.py`](verify-critical-path-e1-archive.py) | E1合成証拠の8件原本と固定SHA目録、R0/R1/R2・未資格状態を照合する（製品Gateの検査ではない） |
 | [`test-critical-path-e1-archive.py`](test-critical-path-e1-archive.py) | E1保全検査の改ざん・欠落・偽資格の回帰試験 |
+| [`verify-month-end-close-correction.py`](verify-month-end-close-correction.py) | `reference-month-end-close-correction`の全試験(工程1〜6)を、Dockerで起動した使い捨てのPostgreSQLで実行し、skipが0件であることと観測値、PythonとSQLiteの版をreceiptへ残す。作ったコンテナーだけを終了時に削除する |
+| [`verify-order-migration-dual-db.py`](verify-order-migration-dual-db.py) | `reference-order-migration-dual-db`の全試験を、Dockerで起動した三つの使い捨てPostgreSQLで実行し、skipが0件であることと観測値をreceiptへ残す。作ったコンテナーだけを終了時に削除する |
 | [`check-core-isolation.sh`](check-core-isolation.sh) | 合成基盤の隔離試験と別モジュールからの公開API試験 |
 | [`verify-composition-reference.sh`](verify-composition-reference.sh) | 固定したクリーンな版で合成基盤・項目対応・実Process・中核独立性を検査し、結果を標準出力へ返す。全体健全性と本番移行の判定は別に行い、申し送りは[#1223](https://github.com/hat47x/tei-platform/issues/1223)へ記載する |
 | [`repository-health-check.sh`](repository-health-check.sh) | 形式、静的検査、全Goテスト、参照Workspaceの検証 |

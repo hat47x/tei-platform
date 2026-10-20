@@ -38,8 +38,9 @@ const (
 )
 
 const (
-	LanguageGo     = "go"
-	LanguagePython = "python"
+	LanguageGo         = "go"
+	LanguagePython     = "python"
+	LanguageJavaScript = "javascript"
 )
 
 type InputSpec struct {
@@ -129,26 +130,55 @@ type RuntimeEvidence struct {
 	Available bool   `json:"available"`
 }
 
+// ExecutionEvidence records what the harness observed around one case
+// execution. It is a digest of stdout/stderr and the process exit state, not a
+// copy of the content and not a claim about a real target.
+type ExecutionEvidence struct {
+	ExitCode     int    `json:"exitCode"`
+	StdoutDigest string `json:"stdoutDigest"`
+	StderrDigest string `json:"stderrDigest"`
+	TimedOut     bool   `json:"timedOut,omitempty"`
+}
+
 type CaseResult struct {
-	CaseID string `json:"caseId"`
-	Passed bool   `json:"passed"`
-	Got    Result `json:"got"`
-	Want   Result `json:"want"`
+	CaseID    string             `json:"caseId"`
+	Passed    bool               `json:"passed"`
+	Got       Result             `json:"got"`
+	Want      Result             `json:"want"`
+	Execution *ExecutionEvidence `json:"execution,omitempty"`
+}
+
+// BuildEvidence records the source and toolchain inputs used to build a native
+// candidate. It is not a signature or an attestation, and it does not claim
+// that the binary is reproducible across environments.
+type BuildEvidence struct {
+	Language         string `json:"language"`
+	Command          string `json:"command"`
+	Toolchain        string `json:"toolchain,omitempty"`
+	GOOS             string `json:"goos,omitempty"`
+	GOARCH           string `json:"goarch,omitempty"`
+	CGOEnabled       string `json:"cgoEnabled,omitempty"`
+	GOFLAGS          string `json:"goflags,omitempty"`
+	SourceDigest     string `json:"sourceDigest"`
+	BinaryDigest     string `json:"binaryDigest,omitempty"`
+	BuildInputDigest string `json:"buildInputDigest"`
+	Reproducibility  string `json:"reproducibility"`
 }
 
 type CandidateReceipt struct {
-	ID           string                `json:"id"`
-	Language     string                `json:"language"`
-	Origin       string                `json:"origin"`
-	SourceDigest string                `json:"sourceDigest"`
-	BinaryDigest string                `json:"binaryDigest,omitempty"`
-	Runtime      *RuntimeEvidence      `json:"runtime,omitempty"`
-	Generator    *GeneratorProvenance  `json:"generator,omitempty"`
-	Generation   *GenerationProvenance `json:"generation,omitempty"`
-	Lineage      *Lineage              `json:"lineage,omitempty"`
-	Results      []CaseResult          `json:"results,omitempty"`
-	Passed       bool                  `json:"passed"`
-	RejectReason string                `json:"rejectReason,omitempty"`
+	ID            string                `json:"id"`
+	Language      string                `json:"language"`
+	Origin        string                `json:"origin"`
+	SourceDigest  string                `json:"sourceDigest"`
+	BinaryDigest  string                `json:"binaryDigest,omitempty"`
+	Runtime       *RuntimeEvidence      `json:"runtime,omitempty"`
+	BuildEvidence *BuildEvidence        `json:"buildEvidence,omitempty"`
+	Generator     *GeneratorProvenance  `json:"generator,omitempty"`
+	Generation    *GenerationProvenance `json:"generation,omitempty"`
+	Lineage       *Lineage              `json:"lineage,omitempty"`
+	Results       []CaseResult          `json:"results,omitempty"`
+	Passed        bool                  `json:"passed"`
+	RejectReason  string                `json:"rejectReason,omitempty"`
 }
 
 type Receipt struct {
@@ -549,12 +579,15 @@ func evaluateCandidate(ctx context.Context, dir string, fixture Fixture, contrac
 	if manifest.ID == "" || manifest.Origin == "" || manifest.Source == "" || manifest.SourceDigest == "" {
 		return reject("candidate identity is incomplete")
 	}
-	if language != LanguageGo && language != LanguagePython {
+	if language != LanguageGo && language != LanguagePython && language != LanguageJavaScript {
 		return reject("unsupported candidate language: " + language)
 	}
 	expectedExtension := ".go"
-	if language == LanguagePython {
+	switch language {
+	case LanguagePython:
 		expectedExtension = ".py"
+	case LanguageJavaScript:
+		expectedExtension = ".js"
 	}
 	if strings.ToLower(filepath.Ext(manifest.Source)) != expectedExtension {
 		return reject("candidate source extension does not match language " + language)
@@ -645,7 +678,7 @@ func evaluateCandidate(ctx context.Context, dir string, fixture Fixture, contrac
 			return reject("generator provenance does not match the current contract and template")
 		}
 	}
-	var binaryPath, pythonPath string
+	var binaryPath, scriptPath string
 	switch language {
 	case LanguageGo:
 		binaryDir, err := os.MkdirTemp("", "tei-generator-candidate-*")
@@ -654,7 +687,17 @@ func evaluateCandidate(ctx context.Context, dir string, fixture Fixture, contrac
 		}
 		defer os.RemoveAll(binaryDir)
 		binaryPath = candidateBinaryPath(filepath.Join(binaryDir, manifest.ID))
-		receipt.Runtime = &RuntimeEvidence{Language: LanguageGo, Command: "go build", Version: goRuntimeVersion(), Available: true}
+		toolchain := goRuntimeVersion()
+		goos, goarch, cgo := goBuildEnvironment()
+		goflags := os.Getenv("GOFLAGS")
+		receipt.Runtime = &RuntimeEvidence{Language: LanguageGo, Command: "go build", Version: toolchain, Available: true}
+		receipt.BuildEvidence = &BuildEvidence{
+			Language: LanguageGo, Command: "go build", Toolchain: toolchain,
+			GOOS: goos, GOARCH: goarch, CGOEnabled: cgo, GOFLAGS: goflags,
+			SourceDigest:     manifest.SourceDigest,
+			BuildInputDigest: buildInputDigest(source, toolchain, goos, goarch, cgo, goflags),
+			Reproducibility:  "not-tested",
+		}
 		buildCtx, cancel := context.WithTimeout(ctx, 2*time.Minute)
 		defer cancel()
 		if err := buildCandidate(buildCtx, dir, binaryPath); err != nil {
@@ -665,13 +708,14 @@ func evaluateCandidate(ctx context.Context, dir string, fixture Fixture, contrac
 			return CandidateReceipt{}, err
 		}
 		receipt.BinaryDigest = digest(binary)
+		receipt.BuildEvidence.BinaryDigest = receipt.BinaryDigest
 	case LanguagePython:
 		var version string
 		var available bool
-		pythonPath, version, available = findPython()
+		scriptPath, version, available = findPython()
 		command := "python <source>"
-		if pythonPath != "" {
-			command = pythonPath + " <source>"
+		if scriptPath != "" {
+			command = scriptPath + " <source>"
 		}
 		receipt.Runtime = &RuntimeEvidence{
 			Language: LanguagePython, Command: command, Version: version, Available: available,
@@ -679,17 +723,33 @@ func evaluateCandidate(ctx context.Context, dir string, fixture Fixture, contrac
 		if !available {
 			return reject("runtime unavailable: python3/python was not found")
 		}
+	case LanguageJavaScript:
+		var version string
+		var available bool
+		scriptPath, version, available = findJavaScript()
+		command := "node <source>"
+		if scriptPath != "" {
+			command = scriptPath + " <source>"
+		}
+		receipt.Runtime = &RuntimeEvidence{
+			Language: LanguageJavaScript, Command: command, Version: version, Available: available,
+		}
+		if !available {
+			return reject("runtime unavailable: node was not found")
+		}
 	}
 
 	for _, tc := range fixture.Cases {
 		var got Result
+		var execution *ExecutionEvidence
 		var err error
-		if language == LanguagePython {
-			got, err = runPythonCandidate(ctx, pythonPath, sourcePath, tc.Input)
-		} else {
-			got, err = runCandidate(ctx, binaryPath, tc.Input)
+		switch language {
+		case LanguagePython, LanguageJavaScript:
+			got, execution, err = runScriptCandidate(ctx, scriptPath, sourcePath, tc.Input)
+		default:
+			got, execution, err = runCandidate(ctx, binaryPath, tc.Input)
 		}
-		result := CaseResult{CaseID: tc.ID, Want: tc.Want, Got: got}
+		result := CaseResult{CaseID: tc.ID, Want: tc.Want, Got: got, Execution: execution}
 		if err != nil {
 			result.Passed = false
 			receipt.Results = append(receipt.Results, result)
@@ -764,6 +824,39 @@ func goRuntimeVersion() string {
 	return goVersionValue
 }
 
+var (
+	goEnvOnce   sync.Once
+	goOSValue   string
+	goArchValue string
+	cgoValue    string
+)
+
+func goBuildEnvironment() (goos, goarch, cgoEnabled string) {
+	goEnvOnce.Do(func() {
+		out, err := exec.Command("go", "env", "GOOS", "GOARCH", "CGO_ENABLED").Output()
+		if err != nil {
+			return
+		}
+		lines := strings.Split(strings.TrimSpace(string(out)), "\n")
+		if len(lines) > 0 {
+			goOSValue = strings.TrimSpace(lines[0])
+		}
+		if len(lines) > 1 {
+			goArchValue = strings.TrimSpace(lines[1])
+		}
+		if len(lines) > 2 {
+			cgoValue = strings.TrimSpace(lines[2])
+		}
+	})
+	return goOSValue, goArchValue, cgoValue
+}
+
+func buildInputDigest(source []byte, toolchain, goos, goarch, cgoEnabled, goflags string) string {
+	return digest([]byte(strings.Join([]string{
+		LanguageGo, digest(source), toolchain, goos, goarch, cgoEnabled, goflags,
+	}, "\x00")))
+}
+
 func findPython() (path, version string, available bool) {
 	for _, name := range []string{"python3", "python"} {
 		found, err := exec.LookPath(name)
@@ -781,34 +874,56 @@ func findPython() (path, version string, available bool) {
 	return "", "", false
 }
 
-func runPythonCandidate(ctx context.Context, pythonPath, sourcePath string, input json.RawMessage) (Result, error) {
-	absolute, err := filepath.Abs(sourcePath)
+func findJavaScript() (path, version string, available bool) {
+	found, err := exec.LookPath("node")
 	if err != nil {
-		return Result{}, err
+		return "", "", false
 	}
-	return runProgram(ctx, pythonPath, []string{absolute}, input)
+	out, err := exec.Command(found, "--version").CombinedOutput()
+	if err != nil {
+		return "", "", false
+	}
+	return found, strings.TrimSpace(string(out)), true
 }
 
-func runCandidate(ctx context.Context, binary string, input json.RawMessage) (Result, error) {
+func runScriptCandidate(ctx context.Context, interpreter, sourcePath string, input json.RawMessage) (Result, *ExecutionEvidence, error) {
+	absolute, err := filepath.Abs(sourcePath)
+	if err != nil {
+		return Result{}, nil, err
+	}
+	return runProgram(ctx, interpreter, []string{absolute}, input)
+}
+
+func runCandidate(ctx context.Context, binary string, input json.RawMessage) (Result, *ExecutionEvidence, error) {
 	return runProgram(ctx, binary, nil, input)
 }
 
-func runProgram(ctx context.Context, name string, args []string, input json.RawMessage) (Result, error) {
+func runProgram(ctx context.Context, name string, args []string, input json.RawMessage) (Result, *ExecutionEvidence, error) {
 	runCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 	cmd := exec.CommandContext(runCtx, name, args...)
 	cmd.Stdin = bytes.NewReader(input)
-	out, err := cmd.Output()
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	err := cmd.Run()
+	evidence := &ExecutionEvidence{
+		ExitCode: 0, StdoutDigest: digest(stdout.Bytes()), StderrDigest: digest(stderr.Bytes()),
+	}
 	if err != nil {
+		evidence.ExitCode = -1
 		var exit *exec.ExitError
 		if errors.As(err, &exit) {
-			return Result{}, fmt.Errorf("candidate exited %d: %s", exit.ExitCode(), string(exit.Stderr))
+			evidence.ExitCode = exit.ExitCode()
 		}
-		return Result{}, err
+		if runCtx.Err() == context.DeadlineExceeded {
+			evidence.TimedOut = true
+		}
+		return Result{}, evidence, fmt.Errorf("candidate exited %d: %s", evidence.ExitCode, stderr.String())
 	}
 	var result Result
-	if err := json.Unmarshal(out, &result); err != nil {
-		return Result{}, fmt.Errorf("candidate output is not a result: %w: %q", err, out)
+	if err := json.Unmarshal(stdout.Bytes(), &result); err != nil {
+		return Result{}, evidence, fmt.Errorf("candidate output is not a result: %w: %q", err, stdout.Bytes())
 	}
-	return result, nil
+	return result, evidence, nil
 }
