@@ -1,0 +1,9 @@
+{
+  "schema": "tei.reference.mecc-close-rule/v0",
+  "closeDay": "last-business-day",
+  "cutoffLocal": "17:00",
+  "closeJobBusinessDaysAfter": 1,
+  "closeJobLocal": "00:00",
+  "dueDateAdjustment": "previous-business-day",
+  "businessDateRule": "local-date-of-acceptance"
+}
