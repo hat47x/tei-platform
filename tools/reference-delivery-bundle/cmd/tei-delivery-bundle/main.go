@@ -13,7 +13,7 @@ import (
 // verifies its exact bytes. It does not install the bundle.
 func main() {
 	if len(os.Args) < 2 {
-		fmt.Fprintln(os.Stderr, "usage: tei-delivery-bundle <pack|verify|keygen|sign|verify-signature|install> [options]")
+		fmt.Fprintln(os.Stderr, "usage: tei-delivery-bundle <pack|verify|keygen|sign|verify-signature|install|activate|rollback|status> [options]")
 		os.Exit(2)
 	}
 	command := os.Args[1]
@@ -26,6 +26,7 @@ func main() {
 	privateKey := fs.String("key", "", "ed25519 private key PEM")
 	publicKey := fs.String("public", "", "ed25519 public key PEM")
 	signaturePath := fs.String("signature", "", "detached signature file")
+	statePath := fs.String("state", "", "deployment state JSON")
 	_ = fs.Parse(os.Args[2:])
 	switch command {
 	case "pack":
@@ -61,6 +62,33 @@ func main() {
 			fail(err)
 		}
 		emit(receipt)
+	case "activate":
+		if *catalogDir == "" || *statePath == "" {
+			fail(fmt.Errorf("-catalog and -state are required for activate"))
+		}
+		state, err := deliverybundle.Activate(*catalogDir, *statePath)
+		if err != nil {
+			fail(err)
+		}
+		emit(state)
+	case "rollback":
+		if *statePath == "" {
+			fail(fmt.Errorf("-state is required for rollback"))
+		}
+		state, err := deliverybundle.Rollback(*statePath)
+		if err != nil {
+			fail(err)
+		}
+		emit(state)
+	case "status":
+		if *statePath == "" {
+			fail(fmt.Errorf("-state is required for status"))
+		}
+		state, err := deliverybundle.Status(*statePath)
+		if err != nil {
+			fail(err)
+		}
+		emit(state)
 	case "keygen":
 		if *privateKey == "" || *publicKey == "" {
 			fail(fmt.Errorf("-key and -public are required for keygen"))

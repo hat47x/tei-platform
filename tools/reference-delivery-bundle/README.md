@@ -72,16 +72,37 @@ go run ./tools/reference-delivery-bundle/cmd/tei-delivery-bundle \
 - 失敗時はtarget directoryを残さない。
 - 既存catalogとのmergeは`-fresh`なしの`install`を使う。mergeは非トランザクションである。
 
+## 配備状態とロールバック
+
+`activate`は検証済みcatalogをactiveとしてstate fileへ記録し、直前のactiveをpreviousとして保持します。
+
+```text
+go run ./tools/reference-delivery-bundle/cmd/tei-delivery-bundle \
+  activate -catalog ./new-plugin-catalog -state ./deployment-state.json
+
+go run ./tools/reference-delivery-bundle/cmd/tei-delivery-bundle \
+  rollback -state ./deployment-state.json
+
+go run ./tools/reference-delivery-bundle/cmd/tei-delivery-bundle \
+  status -state ./deployment-state.json
+```
+
+- `activate`はcatalogを読み直し、空・不正・digest不一致を拒否する。
+- `rollback`はprevious catalogを検証してからactiveとpreviousを入れ替える。previousがない場合は拒否する。
+- `status`はactiveとpreviousのcatalogが現在も検証できるかを確認する。
+- stateはtemp fileへの書き込みとRenameで更新する。
+- ロールバックは1段階の入れ替えであり、サービスプロセスの起動・停止・ヘルスチェックは行わない。
+
 ## 守っている境界
 
 - bundleは選択済みの構成を固定するだけで、pluginの取得・信頼・権限を付与しない。
-- signatureはbundleの完全性だけを示す。署名者・公開鍵の信頼、配布経路の真正性は扱わない。
-- `install`はローカルcatalogへの配置だけを行う。サービスへの配備、起動、ロールバックは行わない。
+- signatureはbundleの完全性だけを示す。署名者・公開鍵の信頼、配備経路の真正性は扱わない。
+- `install`はローカルcatalogへの配置だけを行う。`activate` / `rollback`はstate fileの更新だけを行い、サービスを起動・停止しない。
 - catalogにないpluginを暗黙に追加しない。
 
 ## 未実装
 
 - 鍵管理、信頼の起点、署名者の認証。
-- 配布、サービスへのインストール、ロールバック、トランザクション。
+- 配布、サービスへのインストール・起動・停止・ヘルスチェック、多段階ロールバック、トランザクション。
 - 部分bundle、差分更新。
 - 実SaaS・実顧客先での配備確認。
