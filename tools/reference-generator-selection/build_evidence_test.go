@@ -47,7 +47,7 @@ func TestGoCandidateRecordsBuildEvidence(t *testing.T) {
 			t.Fatalf("%s build input digest mismatch: %q want %q", candidate.ID, evidence.BuildInputDigest, want)
 		}
 	}
-	if checked != 3 {
-		t.Fatalf("expected three Go candidates, checked %d", checked)
+	if checked != len(receipt.Candidates) {
+		t.Fatalf("expected %d Go candidates, checked %d", len(receipt.Candidates), checked)
 	}
 }

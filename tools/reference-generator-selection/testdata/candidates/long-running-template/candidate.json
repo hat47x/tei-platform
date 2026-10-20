@@ -1,0 +1,17 @@
+{
+  "schema": "tei.reference.generator-candidate/v0",
+  "id": "long-running-template",
+  "version": "1",
+  "language": "go",
+  "origin": "template",
+  "source": "main.go",
+  "sourceDigest": "sha256:fe3e03a26f36f3879ac33d79ed5a03abf859251d972aee9d3e0c3ccb3e31a650",
+  "generator": {
+    "id": "line-amount-long-running-template",
+    "version": "1",
+    "strategy": "long-running-template",
+    "language": "go",
+    "contractDigest": "sha256:1c1371a2c140a72ab85405ef933ed33411cd78c36035be2052afb038346ca971",
+    "templateDigest": "sha256:032b7e91a7e3c8f0df404149908d1a35909780ddec8542bc8f52ce57d3c055f7"
+  }
+}
