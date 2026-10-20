@@ -8,7 +8,7 @@
   "network": "allowed",
   "update": "rolling",
   "memoryLimitBytes": 67108864,
-  "observability": ["stdout", "exit-code", "audit-log"],
-  "unsupported": ["hard-realtime"],
+  "observability": ["stdout", "exit-code"],
+  "unsupported": ["hard-realtime", "audit-log"],
   "generatorId": "template"
 }

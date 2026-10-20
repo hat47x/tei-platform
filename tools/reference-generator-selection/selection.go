@@ -129,11 +129,22 @@ type RuntimeEvidence struct {
 	Available bool   `json:"available"`
 }
 
+// ExecutionEvidence records what the harness observed around one case
+// execution. It is a digest of stdout/stderr and the process exit state, not a
+// copy of the content and not a claim about a real target.
+type ExecutionEvidence struct {
+	ExitCode     int    `json:"exitCode"`
+	StdoutDigest string `json:"stdoutDigest"`
+	StderrDigest string `json:"stderrDigest"`
+	TimedOut     bool   `json:"timedOut,omitempty"`
+}
+
 type CaseResult struct {
-	CaseID string `json:"caseId"`
-	Passed bool   `json:"passed"`
-	Got    Result `json:"got"`
-	Want   Result `json:"want"`
+	CaseID    string             `json:"caseId"`
+	Passed    bool               `json:"passed"`
+	Got       Result             `json:"got"`
+	Want      Result             `json:"want"`
+	Execution *ExecutionEvidence `json:"execution,omitempty"`
 }
 
 // BuildEvidence records the source and toolchain inputs used to build a native
@@ -712,13 +723,14 @@ func evaluateCandidate(ctx context.Context, dir string, fixture Fixture, contrac
 
 	for _, tc := range fixture.Cases {
 		var got Result
+		var execution *ExecutionEvidence
 		var err error
 		if language == LanguagePython {
-			got, err = runPythonCandidate(ctx, pythonPath, sourcePath, tc.Input)
+			got, execution, err = runPythonCandidate(ctx, pythonPath, sourcePath, tc.Input)
 		} else {
-			got, err = runCandidate(ctx, binaryPath, tc.Input)
+			got, execution, err = runCandidate(ctx, binaryPath, tc.Input)
 		}
-		result := CaseResult{CaseID: tc.ID, Want: tc.Want, Got: got}
+		result := CaseResult{CaseID: tc.ID, Want: tc.Want, Got: got, Execution: execution}
 		if err != nil {
 			result.Passed = false
 			receipt.Results = append(receipt.Results, result)
@@ -843,34 +855,44 @@ func findPython() (path, version string, available bool) {
 	return "", "", false
 }
 
-func runPythonCandidate(ctx context.Context, pythonPath, sourcePath string, input json.RawMessage) (Result, error) {
+func runPythonCandidate(ctx context.Context, pythonPath, sourcePath string, input json.RawMessage) (Result, *ExecutionEvidence, error) {
 	absolute, err := filepath.Abs(sourcePath)
 	if err != nil {
-		return Result{}, err
+		return Result{}, nil, err
 	}
 	return runProgram(ctx, pythonPath, []string{absolute}, input)
 }
 
-func runCandidate(ctx context.Context, binary string, input json.RawMessage) (Result, error) {
+func runCandidate(ctx context.Context, binary string, input json.RawMessage) (Result, *ExecutionEvidence, error) {
 	return runProgram(ctx, binary, nil, input)
 }
 
-func runProgram(ctx context.Context, name string, args []string, input json.RawMessage) (Result, error) {
+func runProgram(ctx context.Context, name string, args []string, input json.RawMessage) (Result, *ExecutionEvidence, error) {
 	runCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 	cmd := exec.CommandContext(runCtx, name, args...)
 	cmd.Stdin = bytes.NewReader(input)
-	out, err := cmd.Output()
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	err := cmd.Run()
+	evidence := &ExecutionEvidence{
+		ExitCode: 0, StdoutDigest: digest(stdout.Bytes()), StderrDigest: digest(stderr.Bytes()),
+	}
 	if err != nil {
+		evidence.ExitCode = -1
 		var exit *exec.ExitError
 		if errors.As(err, &exit) {
-			return Result{}, fmt.Errorf("candidate exited %d: %s", exit.ExitCode(), string(exit.Stderr))
+			evidence.ExitCode = exit.ExitCode()
 		}
-		return Result{}, err
+		if runCtx.Err() == context.DeadlineExceeded {
+			evidence.TimedOut = true
+		}
+		return Result{}, evidence, fmt.Errorf("candidate exited %d: %s", evidence.ExitCode, stderr.String())
 	}
 	var result Result
-	if err := json.Unmarshal(out, &result); err != nil {
-		return Result{}, fmt.Errorf("candidate output is not a result: %w: %q", err, out)
+	if err := json.Unmarshal(stdout.Bytes(), &result); err != nil {
+		return Result{}, evidence, fmt.Errorf("candidate output is not a result: %w: %q", err, stdout.Bytes())
 	}
-	return result, nil
+	return result, evidence, nil
 }
