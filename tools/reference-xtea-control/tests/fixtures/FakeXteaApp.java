@@ -25,11 +25,13 @@ import javax.swing.JTable;
 import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
 import javax.swing.table.DefaultTableModel;
+import xeadDriver.FakeWrappedField;
 
 /** Small Swing fixture used to exercise the control protocol without X-TEA. */
 public final class FakeXteaApp {
     private final JFrame frame = new JFrame("Fake X-TEA Control Fixture");
     private final JTextField input = new JTextField("initial", 24);
+    private final FakeWrappedField wrappedInput = new FakeWrappedField();
     private final JLabel status = new JLabel("idle");
     private final DefaultTableModel tableModel = new DefaultTableModel(
             new Object[][] { { "A", "Alpha" }, { "B", "Beta" } }, new String[] { "Code", "Name" });
@@ -94,6 +96,9 @@ public final class FakeXteaApp {
         JPanel top = new JPanel(new GridLayout(0, 2, 8, 8));
         top.add(new JLabel("Input"));
         top.add(input);
+        wrappedInput.getInnerField().setName("wrappedInput");
+        top.add(new JLabel("Wrapped"));
+        top.add(wrappedInput);
         top.add(new JLabel("Mode"));
         top.add(mode);
         top.add(enabled);

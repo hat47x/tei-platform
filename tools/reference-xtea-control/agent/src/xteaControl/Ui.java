@@ -215,7 +215,12 @@ final class Ui {
             @Override
             public Map<String, Object> call() {
                 Object oldValue = readValue(target);
-                if (target instanceof JTextComponent) {
+                boolean customField = setCustomFieldValue(target, requestedValue);
+                if (customField) {
+                    // X-TEA wraps editable fields in XFTextField and similar
+                    // components; setting the inner JTextField alone leaves the
+                    // wrapper's value state unchanged.
+                } else if (target instanceof JTextComponent) {
                     JTextComponent text = (JTextComponent) target;
                     String value = requestedValue == null ? "" : String.valueOf(requestedValue);
                     if ("append".equalsIgnoreCase(mode)) {
@@ -1247,6 +1252,32 @@ final class Ui {
             return ((JSlider) component).getValue();
         }
         return labelOf(component);
+    }
+
+    /**
+     * Set a value through X-TEA's editable-field wrapper when the selected
+     * component is an inner Swing widget. XFTextField, XFDateField, XFCheckBox
+     * and related classes keep their own value state and formatting rules.
+     */
+    private static boolean setCustomFieldValue(Component target, Object requestedValue) {
+        Component parent = target.getParent();
+        while (parent != null) {
+            String className = parent.getClass().getName();
+            if (className.startsWith("xeadDriver.XF")) {
+                java.lang.reflect.Method setter = method(parent.getClass(), "setValue");
+                if (setter != null && setter.getParameterTypes().length == 1) {
+                    try {
+                        setter.invoke(parent, requestedValue == null ? "" : String.valueOf(requestedValue));
+                        return true;
+                    } catch (Exception e) {
+                        throw new BridgeException("UI_FAILURE",
+                                "custom field setValue failed: " + describe(e));
+                    }
+                }
+            }
+            parent = parent.getParent();
+        }
+        return false;
     }
 
     private static void selectCombo(JComboBox<?> combo, Object value) {
