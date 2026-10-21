@@ -34,6 +34,7 @@ type RegistryEntry struct {
 	ID           string `json:"id"`
 	Version      string `json:"version"`
 	Status       string `json:"status"`
+	Language     string `json:"language,omitempty"`
 	SourceDigest string `json:"sourceDigest"`
 	Supersedes   string `json:"supersedes,omitempty"`
 	Reason       string `json:"reason,omitempty"`
@@ -113,6 +114,9 @@ func validateRegistryEntries(registry Registry) error {
 		}
 		if !digestPattern.MatchString(entry.SourceDigest) {
 			return fmt.Errorf("registry entry %s@%s has no source digest", entry.ID, entry.Version)
+		}
+		if entry.Language != "" && entry.Language != LanguageGo && entry.Language != LanguagePython {
+			return fmt.Errorf("registry entry %s@%s has unsupported language %q", entry.ID, entry.Version, entry.Language)
 		}
 		if !v1 && (entry.Supersedes != "" || entry.Reason != "") {
 			return fmt.Errorf("registry entry %s@%s uses replacement fields; they require %s",

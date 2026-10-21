@@ -1,0 +1,7 @@
+{
+  "schema": "tei.reference.query-input-nullability-request/v0",
+  "id": "request-wrong-type",
+  "inputs": {
+    "customer_id": 42
+  }
+}

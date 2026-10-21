@@ -1,0 +1,8 @@
+{
+  "schema": "tei.reference.query-input-nullability-request/v0",
+  "id": "request-empty-string",
+  "inputs": {
+    "customer_id": "C-001",
+    "nickname": ""
+  }
+}

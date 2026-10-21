@@ -1,0 +1,33 @@
+{
+  "schema": "tei.reference.benchmark-plan/v0",
+  "tasks": [
+    {
+      "id": "add-master",
+      "title": "顧客マスタを追加し、一覧・編集・参照選択・保存・検証エラーを動かす",
+      "start": "顧客マスタが存在しない受理済みWorkspace",
+      "completion": "一覧・編集・参照選択・保存・検証エラーが同じ完了条件を満たす",
+      "forbidden": ["未受理のcandidateを受理済み意味として扱う", "既存の無関係なSourceを書き換える"]
+    },
+    {
+      "id": "validation-change",
+      "title": "数量と単価の正値検証を追加し、既存の保存経路で確認する",
+      "start": "数量・単価の検証がない受理済みWorkspace",
+      "completion": "不正値の保存が拒否され、正しい値の保存が成功する",
+      "forbidden": ["検証を画面だけで行い、保存経路を迂回する"]
+    },
+    {
+      "id": "target-change",
+      "title": "同じ受理済み意味から別の実行形態（WebからCLI、または別言語）へ実現する",
+      "start": "Webで動作する受理済みWorkspace",
+      "completion": "同じ入力・期待値で別Targetが動作する",
+      "forbidden": ["意味をTargetごとに分岐させる"]
+    },
+    {
+      "id": "approval-rollback",
+      "title": "承認・差戻し・取消確認などの手続きを追加し、機能参照と手続きを区別して表示する",
+      "start": "手続きを持たない受理済みWorkspace",
+      "completion": "承認・差戻し・取消確認が状態として動き、機能参照と区別される",
+      "forbidden": ["手続きを単なる画面状態として実装する"]
+    }
+  ]
+}
