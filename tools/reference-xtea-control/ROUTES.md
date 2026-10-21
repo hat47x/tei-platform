@@ -82,12 +82,12 @@
 | `Service` | `GET /Service` | セッション開始状況、拒否・成功・中断件数 |
 | `Service` | `POST /Service` | `FUNCTION`と任意パラメータ。応答はJSON/XML/テキスト |
 
-確認済み: 上記分岐をローカル模擬サーブレットで呼ぶ契約試験。実デプロイ環境は未確認。
+確認済み: 上記`DBMethod`分岐を、元の`DBMethod`を埋め込みJettyで起動し、使い捨てH2の合成テーブルに対してHTTPで実行。`GET`の状態表示、SELECTのJava直列化、COUNT、INSERT、UPDATE、DELETE、COMMIT、ROLLBACK、IPを確認。`Service`は模擬サーブレットとの契約試験のみ。
 
 ## 未確認の経路
 
 - Modeler / Editorの全ダイアログを開いた実行。表の全セル、全ての検査エラー、全てのインポート分岐は未実行。
 - Driverのログイン後、各Functionの実DB操作、Script、出力ファイル、メール、HTTP。
-- XeadServerの実DataSource、JNDI、DB製品別ドライバ、トランザクション分離。
+- XeadServerのWAR配備、Tomcat、JNDI DataSource、`Service`の実動作、DB製品別ドライバ、認可・本番運用。
 - WindowsのDPI・Look and Feel・ロケール別の表示差。セレクタは表示文字に依存できるが、文字列が変わればシナリオ側の更新が要る。
 - Java 8実機。クラスファイルはJava 8（major 52）だが、実行確認はJDK 11。
