@@ -93,6 +93,11 @@ class LiveServiceTest(unittest.TestCase):
                 pass
         cls.tmp.cleanup()
 
+    def test_service_status(self) -> None:
+        value = self.client.service_status()
+        self.assertEqual(value["status"], 200)
+        self.assertIn("Session Status", value["body"])
+
     def test_service_function(self) -> None:
         value = self.client.service("AF200J", {"REQUEST_TYPE": "ListSections"})
         self.assertEqual(value["status"], 200)
