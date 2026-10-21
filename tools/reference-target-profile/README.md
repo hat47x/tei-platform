@@ -61,7 +61,7 @@ memory limitは`GOMEMLIMIT`としてselectionのサブプロセスへ渡しま�
 
 `observability`の`stdout`・`stderr`・`exit-code`は、選択候補の各case実行からdigest・exit codeを観測します。`audit-log`等の未対応channelを宣言したprofileは`observation.unsupported`へ記録し、`passed=false`にします。暗黙に別の観測手段で代替しません。
 
-`processModel`は、oneshotならcaseごとのprocess実行、long-runningなら1 processへ全requestを送り全responseを比較します。long-running probeは現在Go候補だけを対象とし、processが途中で終了した場合やresponse数が足りない場合は`passed=false`にします。batchは未対応として返します。
+`processModel`は、oneshotならcaseごとのprocess実行、long-runningなら1 processへ全requestを送り全responseを比較します。long-running probeは現在Go候補だけを対象とし、processが途中で終了した場合、終了codeが0以外の場合、responseの欠落・過剰・期待値との不一致、末尾を含むJSONの破損がある場合は`passed=false`にします。全responseをEOFまで読み、末尾の空白だけは許容します。batchは未対応として返します。
 
 ## ローカルartifact配備
 
