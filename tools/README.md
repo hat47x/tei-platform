@@ -18,6 +18,7 @@
 | [`reference-cli-trace-benchmark/`](reference-cli-trace-benchmark/) | 合成Workspaceによるtraceの処理段別の時間・メモリ計測と出力不変の確認 |
 | [`reference-change-packet/`](reference-change-packet/) | 変更範囲・危険度・検証・停止条件をJSONで宣言し、範囲確認と検証実行・証拠記録を行う参照（#2017） |
 | [`reference-generator-selection/`](reference-generator-selection/) | 受理済み契約に対する生成器候補を固定fixtureで比較し、source/binary digest、実行言語・runtime、Goのbuild evidence、case実行のexit/stderr digestと結果をreceiptへ残す参照。Go・Python・JavaScript、long-running候補、registryの版・置換・失効も確認する（#2016 / #2077） |
+| [`reference-generator-attestation/`](reference-generator-attestation/) | 選抜receiptから候補のcanonical statementを作り、ssh-keygenの署名で改変を検出する参照。署名者のAuthority・trust rootは検証しない（#2016） |
 | [`reference-generator-context/`](reference-generator-context/) | 受理済み契約・fixture・Workspace revisionから、生成モデル向けの上限付き文脈を作る参照（#2016 / #2021） |
 | [`reference-generator-revocation-review/`](reference-generator-revocation-review/) | 生成器registryの失効と、registry編集とは別の承認recordの対象一致を検査する参照。承認者のAuthority・trustは検証しない（#2076） |
 | [`reference-target-profile/`](reference-target-profile/) | 同じ契約・fixture・候補を複数のTarget Profileで実行し、宣言と実行結果、case別出力の意味一致、oneshot/long-running process model、stdout/stderr/exit-codeの観測、filesystem artifactのreplace/in-place/rolling配備とrollbackを記録する参照（#2019） |
@@ -28,7 +29,7 @@
 | [`reference-offline-storage/`](reference-offline-storage/) | 個人向けに、root内へ閉じたローカル保存を提供する基盤pluginの参照（#2020） |
 | [`reference-export-package/`](reference-export-package/) | SIer向けに、manifestとdigest付きの配布zipを作る基盤pluginの参照（#2020） |
 | [`reference-delivery-profile/`](reference-delivery-profile/) | 提供形態ごとにpluginを選択し、必須能力が揃っているかを検証する参照（#2020） |
-| [`reference-delivery-bundle/`](reference-delivery-bundle/) | 解決済みprofileとplugin descriptorをzip化し、digest・detached signature・merge/fresh install・activate/rollback・health/start/graceful stop/restartを提供する参照（#2020） |
+| [`reference-delivery-bundle/`](reference-delivery-bundle/) | 解決済みprofileとplugin descriptorをzip化し、digest・detached signature・merge/fresh install・activate/rollback・health/start/graceful stop/restart/reconcileを提供する参照（#2020） |
 
 ## 設計、業務知識、受入れ
 
