@@ -8,6 +8,8 @@ TEIの参照モデル再現を確認するとき、X-TEAのGUIだけが入力経
 
 対象は比較試験の入力経路であり、TEIのCanonical意味、X-TEAとの互換性、移植の受理、旧Runtimeの動作同等性を決めるものではありません。
 
+[#2152](https://github.com/hat47x/tei-platform/issues/2152)では、各機能タイプの主要操作を先に確認し、その後に参照モデルで使うスクリプトUIを確認します。XeadServerへの追加対応は今回の対象外です。Modeler / Editorの編集・保存も、このDriverの試験には含めません。
+
 ## 構成
 
 | 部分 | 役割 |
@@ -19,7 +21,8 @@ TEIの参照モデル再現を確認するとき、X-TEAのGUIだけが入力経
 | `clone-xtea.*` | 四つの公開リポジトリを取得し、`upstream.json`の版と照合する |
 | `launch-xtea.*` | X-TEAの既存JARを、制御エージェント付きで起動する |
 | `scenarios/` | 読み取り専用のModeler / Editor確認と、全入力種別を通す合成GUI試験 |
-| `tests/` | 合成SwingアプリのE2E試験と、XeadServerクライアントの契約試験 |
+| `tests/` | 合成Swingアプリ、元のDriverと合成モデル・DBの実動試験、XeadServerクライアントの契約試験 |
+| `inventory_xtea.py` | 手元のXEAF / ZIPから機能タイプとスクリプトUIの呼出し候補を調べる |
 
 X-TEAのソースやJARはこのディレクトリへ同梱しません。`clone-xtea`で取得し、`launch-xtea`で既存の配布物または自前ビルドを起動します。エージェントはX-TEAのクラスを変更・再コンパイルしないため、M49/M50のような配布版の差があっても同じ制御面を使えます。
 
@@ -36,6 +39,7 @@ X-TEAのソースやJARはこのディレクトリへ同梱しません。`clone
 | テキストフィールド、テキストエリア、パスワード欄 | `POST /set`。パスワード値はスナップショットでマスク |
 | コンボボックス、スピナー、スライダー | `POST /set` |
 | タブ、リスト、ツリー、テーブル | `POST /select`、`POST /table/set`、`POST /table/read` |
+| X-TEA独自の行編集 | `POST /table/edit`の`start`で実際のセル編集部品を開き、`set`・`invoke`で入力後、`commit`または`cancel`で編集を終了。DBの確定とは別 |
 | Enterなどのキー操作、キーバインド | `POST /key`。SwingのInputMap/ActionMapを先に使い、生のKeyEventへフォールバック |
 | モーダルダイアログ、確認メッセージ | 非同期`invoke`の後に`POST /wait`でウィンドウを待ち、同じ制御面で操作 |
 | 画面状態の観察 | `POST /snapshot`（役割、表示文字、選択状態、表の列・行、タブ、境界） |
@@ -131,7 +135,35 @@ python xtea_control.py --endpoint build\modeler-endpoint.json `
   scenario scenarios\modeler-read-only-about.json
 ```
 
-シナリオの`steps`は`wait_window`、`invoke`、`set`、`select`、`table_set`、`table_assert`、`key`、`close`、`wait_selector`、`wait_text`、`assert_text`、`snapshot`、`screenshot`、`sleep`を扱います。AIは座標ではなく、`{"role":"button","text":"OK"}`のような意味的な選択子を生成すれば足ります。
+シナリオの`steps`は`wait_window`、`invoke`、`set`、`select`、`table_set`、`table_edit`、`table_assert`、`key`、`close`、`wait_selector`、`wait_text`、`assert_text`、`snapshot`、`screenshot`、`sleep`を扱います。AIは座標ではなく、`{"role":"button","text":"OK"}`のような意味的な選択子を生成すれば足ります。
+
+XF110の選択画面と更新画面は同じタイトルになるため、`{"windowClass":"xeadDriver.XF110_SubList$","role":"table"}`のようにウィンドウのクラスでも絞れます。CLIでは`--window-class`を使います。`find`、`wait_text`、`assert_text`も`window`・`windowClass`・`index`を考慮します。
+
+### Driverの主要操作を再実行する
+
+外部のDriverランタイム一式、GUIを表示できる環境、実行用JDK 11、`--release 8`対応のコンパイラを用意し、エージェントをビルドします。Windowsでは次のように実行します。
+
+```powershell
+$env:XTEA_RUNTIME_HOME = "C:\path\to\X-TEA\Driver"
+$env:JAVA = "C:\path\to\jdk-11\bin\java.exe"
+$env:JAVAC = "C:\path\to\jdk-11\bin\javac.exe"
+.\build.cmd
+python tests\test_live_driver.py
+```
+
+Linuxでは`./build.sh`の後、同じ環境変数を設定して`python3 tests/test_live_driver.py`を実行します。JDK 17では標準のJavaScriptエンジンが使えないため、この実動試験のランタイムにはJDK 11を使います。`XTEA_RUNTIME_HOME`未指定時は明示的にskipし、指定したランタイムやビルド成果物が足りない場合は失敗します。
+
+試験は元のDriverのFunctionLauncherを合成起動パネルから呼び、各試験で新しい合成モデル・H2 DBを生成します。更新結果は別JDBC接続から読みます。元の参照モデルや業務DBへ接続する引数はありません。操作トレース・DB前後値・Java版・JAR指紋・PDFを`artifacts/live-driver/`に保存します。試験の成否はテスト実行結果で確認してください。JSONが存在するだけでは成功を意味しません。
+
+X-TEAの表は1物理セルに複数の論理列を持つ場合があります。`table-read`の論理列名と、`table-edit`の物理列番号を混同しないでください。独自の行オブジェクトを`table-set`で置き換える操作は拒否します。XF110 / XF310では通常、物理列`0`を編集し、開いた部品をスナップショットから選びます。長文型は表示欄へ書き込まず、編集ボタンから専用ダイアログを開きます。
+
+### 参照モデルで使う範囲を調べる
+
+```powershell
+python inventory_xtea.py C:\private\reference-models --out artifacts\reference-inventory.json
+```
+
+XEAFまたはZIPを読み、Functionタイプ別件数、スクリプトUIの呼出し候補、SHA-256を記録します。ZIP内の複数版やバックアップを自動選択しません。モデル本文・Function名・スクリプト本文は出力しませんが、ファイル名とZIPメンバー名は含むため、結果はローカルに保管してください。XML本文から静的に調べた候補と、実動試験で確認した操作は[対応表](ROUTES.md)で区別しています。
 
 ### 5. XeadServer
 
@@ -161,6 +193,17 @@ python tests\test_live_server.py
 
 ## 検証したこと
 
+### #2152の追加確認（2026-10-21）
+
+LinuxのJDK 11.0.32.1、配布`XTeaDriverInstaller230127`のランタイム、使い捨てH2 1.4.187で実行しました。エージェントと合成起動パネルはJava 8ターゲットです。
+
+- `tests/test_live_driver.py`: 13件。8機能タイプの主要操作、明細追加・削除・取消、長文編集、スクリプトUIを確認します。詳細な範囲と制約は[対応表](ROUTES.md)を参照してください。
+- `tests/test_integration.py`: 9件。従来の8件に、標準テーブルの実編集・確定・取消・行範囲外の拒否を追加しました。
+- `tests/test_inventory.py`: 2件。複数版を選別せずに列挙すること、本文を出力しないこと、不正XMLを拒否することを確認します。
+- XeadServerは変更していません。既存の模擬サーブレット契約試験4件を回帰確認します。
+
+### 初期インターフェースの確認
+
 2026-10-21、JDK 11.0.20.1（`--release 8`でコンパイル）で確認しました。
 
 - `python tests/test_integration.py`: 8件成功。メニュー、テキスト、ボタン、Enter、タブ、チェックボックス、コンボ、通常テーブル、X-TEA型のカスタム行オブジェクトを持つテーブル、モーダルダイアログ、スクリーンショット、トレース、未知selector、トークン拒否を合成Swingアプリで確認。
@@ -172,7 +215,7 @@ python tests\test_live_server.py
 
 ### 検証していないこと
 
-- Driverの上記以外のFunction画面、更新・コミット／ロールバックの実DB結果、元の`jdbc:derby://localhost/...`接続。
+- 各参照モデル本体を用いた全Function・全分岐の実動作、元の`jdbc:derby://localhost/...`接続。追加の更新試験は合成モデル・使い捨てH2の範囲です。
 - XeadServerのWAR配備、Tomcat、JNDI DataSource、`Service`サーブレットの実動作。`DBMethod`は埋め込みJettyとH2で確認したが、実デプロイ環境ではない。
 - 四つのアプリの全ダイアログ・全条件分岐の実行。経路表は入力種別とトップレベル入口の到達性を示すもので、全業務ケースの実行結果ではない。
 - X-TEAのソースと配布JARの同一性、#940の固定baselineとの対応、TEI側の意味一致。
@@ -184,9 +227,10 @@ python tests\test_live_server.py
 reference-xtea-control/
   agent/src/xteaControl/   Java agent（Agent, BridgeServer, Ui, Json, Trace）
   server-harness/          元DBMethodの埋め込みJetty/H2ハーネス
-  tests/                   合成GUI E2E、XeadServer契約・実DBMethod試験
+  tests/                   合成GUI E2E、実Driver、XeadServer契約・実DBMethod試験
   scenarios/               読み取り専用シナリオ
   xtea_control.py          Swing制御クライアント
+  inventory_xtea.py        参照モデルの機能タイプ・UI呼出し候補の静的調査
   xtea_server.py           XeadServer HTTPクライアント
   build.ps1 / build.sh
   launch-xtea.ps1

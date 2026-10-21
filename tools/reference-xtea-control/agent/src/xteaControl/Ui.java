@@ -217,6 +217,9 @@ final class Ui {
                 Object oldValue = readValue(target);
                 if (target instanceof JTextComponent) {
                     JTextComponent text = (JTextComponent) target;
+                    if (!text.isEditable() || !text.isEnabled()) {
+                        throw new BridgeException("COMPONENT_NOT_EDITABLE", "text component is read-only or disabled");
+                    }
                     String value = requestedValue == null ? "" : String.valueOf(requestedValue);
                     if ("append".equalsIgnoreCase(mode)) {
                         text.setText(text.getText() + value);
@@ -333,6 +336,11 @@ final class Ui {
                 if (!table.isCellEditable(row, column)) {
                     throw new BridgeException("CELL_NOT_EDITABLE", "cell is not editable");
                 }
+                Object current = table.getValueAt(row, column);
+                if (current != null && (method(current.getClass(), "getColumnMap") != null
+                        || method(current.getClass(), "getColumnValueMap") != null)) {
+                    throw new BridgeException("INVALID_ARGUMENT", "custom row object requires /table/edit");
+                }
                 table.setValueAt(cellValue, row, column);
                 if (table.isEditing()) {
                     table.getCellEditor().stopCellEditing();
@@ -381,6 +389,56 @@ final class Ui {
                 value.put("rowCount", table.getRowCount());
                 value.put("selectedRow", table.getSelectedRow());
                 value.put("truncated", table.getRowCount() > maxRows);
+                return value;
+            }
+        }, DEFAULT_TIMEOUT_MS);
+    }
+
+    /** Use the real editor: X-TEA stores a whole logical row in one model cell. */
+    static Map<String, Object> tableEdit(final Map<String, Object> selector, final Map<String, Object> request)
+            throws Exception {
+        final Component target = resolve(selector);
+        if (!(target instanceof JTable)) {
+            throw new BridgeException("NOT_A_TABLE", "selector does not resolve to a table");
+        }
+        return call(new Callable<Map<String, Object>>() {
+            @Override
+            public Map<String, Object> call() {
+                JTable table = (JTable) target;
+                String action = stringValue(request.get("action"));
+                if ("commit".equals(action) || "cancel".equals(action)) {
+                    if (!table.isEditing()) {
+                        throw new BridgeException("INVALID_STATE", "table has no active editor");
+                    }
+                    if ("cancel".equals(action)) {
+                        table.getCellEditor().cancelCellEditing();
+                    } else if (!table.getCellEditor().stopCellEditing()) {
+                        throw new BridgeException("INVALID_VALUE", "cell editor rejected the value");
+                    }
+                } else if ("start".equals(action)) {
+                    int row = intValue(request.get("row"), -1);
+                    int column = columnIndex(table, request.get("column"));
+                    if (row < 0 || row >= table.getRowCount()) {
+                        throw new BridgeException("INVALID_ROW", "row out of range: " + row);
+                    }
+                    if (column < 0 || column >= table.getColumnCount()) {
+                        throw new BridgeException("INVALID_COLUMN", "column out of range: " + column);
+                    }
+                    if (table.isEditing() && !table.getCellEditor().stopCellEditing()) {
+                        throw new BridgeException("INVALID_VALUE", "current cell editor rejected the value");
+                    }
+                    if (!table.editCellAt(row, column)) {
+                        throw new BridgeException("CELL_NOT_EDITABLE", "cell editor could not start");
+                    }
+                    table.getEditorComponent().requestFocusInWindow();
+                } else {
+                    throw new BridgeException("INVALID_ARGUMENT", "action must be start, commit or cancel");
+                }
+                Trace.record("table.edit", describeComponent(table), Json.write(request));
+                Map<String, Object> value = new LinkedHashMap<String, Object>();
+                value.put("editing", table.isEditing());
+                value.put("row", table.getEditingRow());
+                value.put("column", table.getEditingColumn());
                 return value;
             }
         }, DEFAULT_TIMEOUT_MS);
@@ -511,6 +569,9 @@ final class Ui {
                 Component component = target;
                 if (component == null) {
                     Window active = activeWindow();
+                    if (active == null && !orderedWindows().isEmpty()) {
+                        active = orderedWindows().get(0);
+                    }
                     if (active == null) {
                         throw new BridgeException("NO_WINDOW", "no visible window");
                     }
@@ -590,6 +651,7 @@ final class Ui {
 
     private static Component resolveOnEdt(Map<String, Object> selector) {
         String windowPattern = stringValue(selector.get("window"));
+        String windowClass = stringValue(selector.get("windowClass"));
         String path = stringValue(selector.get("path"));
         List<Window> candidates = new ArrayList<Window>();
         Window active = activeWindow();
@@ -612,6 +674,9 @@ final class Ui {
         Component firstVisibleMatch = null;
         for (Window window : candidates) {
             if (windowPattern != null && !matches(windowPattern, titleOf(window))) {
+                continue;
+            }
+            if (windowClass != null && !matches(windowClass, window.getClass().getName())) {
                 continue;
             }
             if (path != null) {
@@ -686,6 +751,9 @@ final class Ui {
     private static Map<String, Object> node(Component component, String ref, String path, int depth, int maxDepth,
             int maxNodes, boolean includeTableRows, boolean includeInvisible, int[] count,
             IdentityHashMap<Object, Object> seen) {
+        if (component instanceof javax.swing.CellRendererPane) {
+            return null;
+        }
         if (count[0] >= maxNodes) {
             return null;
         }
@@ -844,6 +912,10 @@ final class Ui {
     }
 
     private static void addAll(Component component, List<Component> list, boolean includeMenus) {
+        // Renderers paint copies of cells; only the attached editor accepts input.
+        if (component instanceof javax.swing.CellRendererPane) {
+            return;
+        }
         list.add(component);
         if (component instanceof JMenu) {
             JMenu menu = (JMenu) component;
@@ -1093,7 +1165,10 @@ final class Ui {
         }
         java.lang.reflect.Method cellListMethod = method(first.getClass(), "getCellObjectList");
         java.lang.reflect.Method columnMapMethod = method(first.getClass(), "getColumnMap");
-        if (cellListMethod == null || columnMapMethod == null) {
+        if (columnMapMethod == null) {
+            columnMapMethod = method(first.getClass(), "getColumnValueMap");
+        }
+        if (columnMapMethod == null) {
             return null;
         }
         try {
@@ -1107,8 +1182,25 @@ final class Ui {
             List<Object> usedColumnKeys = new ArrayList<Object>();
             for (int r = 0; r < table.getRowCount() && r < maxRows; r++) {
                 Object rowObject = table.getValueAt(r, 0);
-                if (rowObject == null || !cellListMethod.getDeclaringClass().isAssignableFrom(rowObject.getClass())) {
+                if (rowObject == null || !columnMapMethod.getDeclaringClass().isAssignableFrom(rowObject.getClass())) {
                     return null;
+                }
+                if (cellListMethod == null) {
+                    Map<?, ?> rowMap = (Map<?, ?>) columnMapMethod.invoke(rowObject);
+                    if (r == 0) {
+                        List<String> keys = new ArrayList<String>();
+                        for (Object key : rowMap.keySet()) {
+                            keys.add(String.valueOf(key));
+                        }
+                        Collections.sort(keys);
+                        columns.addAll(keys);
+                    }
+                    List<Object> row = new ArrayList<Object>();
+                    for (Object key : columns) {
+                        row.add(brief(rowMap.get(key)));
+                    }
+                    rows.add(row);
+                    continue;
                 }
                 Object cellListObject = cellListMethod.invoke(rowObject);
                 if (!(cellListObject instanceof List)) {

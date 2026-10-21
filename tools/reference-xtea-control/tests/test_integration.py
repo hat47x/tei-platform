@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -124,6 +125,24 @@ class IntegrationTest(unittest.TestCase):
         self.assertEqual(value["rows"][0], ["A", "Alpha"])
         self.assertEqual(value["rowType"], "FakeXteaApp$CustomRow")
         self.client.select({"role": "tab", "window": "Fake X-TEA"}, item_index=0)
+
+    def test_04c_real_cell_editor_commit_cancel(self) -> None:
+        table = {"windowClass": "javax.swing.JFrame$", "name": "table"}
+        original = self.client.table_read(table)["rows"][0][1]
+        self.client.table_edit(table, row=0, column="Name")
+        node = self.client.find({"window": "Fake X-TEA", "role": "text", "text": "^" + re.escape(original) + "$"})
+        self.assertIsNotNone(node)
+        editor = {"window": "Fake X-TEA", "path": node["path"]}
+        self.client.set_value(editor, "Committed")
+        self.client.table_edit(table, "commit")
+        self.assertEqual(self.client.table_read(table)["rows"][0][1], "Committed")
+        self.client.table_edit(table, row=0, column="Name")
+        self.client.set_value(editor, "Discarded")
+        self.client.table_edit(table, "cancel")
+        self.assertEqual(self.client.table_read(table)["rows"][0][1], "Committed")
+        with self.assertRaises(ControlError) as caught:
+            self.client.table_edit(table, row=999)
+        self.assertEqual(caught.exception.code, "INVALID_ROW")
 
     def test_05_modal_dialog(self) -> None:
         self.client.select({"role": "tab", "window": "Fake X-TEA"}, item_index=0)
