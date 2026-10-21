@@ -82,12 +82,15 @@
 | `Service` | `GET /Service` | セッション開始状況、拒否・成功・中断件数 |
 | `Service` | `POST /Service` | `FUNCTION`と任意パラメータ。応答はJSON/XML/テキスト |
 
-確認済み: 上記`DBMethod`分岐を、元の`DBMethod`を埋め込みJettyで起動し、使い捨てH2の合成テーブルに対してHTTPで実行。`GET`の状態表示、SELECTのJava直列化、COUNT、INSERT、UPDATE、DELETE、COMMIT、ROLLBACK、IPを確認。`Service`は模擬サーブレットとの契約試験のみ。
+確認済み: 上記`DBMethod`分岐を、元の`DBMethod`を埋め込みJettyで起動し、使い捨てH2の合成テーブルに対してHTTPで実行。`GET`の状態表示、SELECTのJava直列化、COUNT、INSERT、UPDATE、DELETE、COMMIT、ROLLBACK、IPを確認。
+
+`Service`の`POST`は、Skeletonの一時複製に対して`FUNCTION=AF200J`、`REQUEST_TYPE=ListSections`を送り、2件の部門データがJSONで返ることを確認。ただしハーネスは、上流の認証前`userID`検査を引数`user`へ置き換えるビルド時差分を適用している。この成功は認証バグを補った状態でのFunction実行経路の確認であり、上流認証の正しさの証明ではない。
 
 ## 未確認の経路
 
 - Modeler / Editorの全ダイアログを開いた実行。表の全セル、全ての検査エラー、全てのインポート分岐は未実行。
 - Driverのログイン後、各Functionの実DB操作、Script、出力ファイル、メール、HTTP。
-- XeadServerのWAR配備、Tomcat、JNDI DataSource、`Service`の実動作、DB製品別ドライバ、認可・本番運用。
+- XeadServerのWAR配備、Tomcat、JNDI DataSource、実デプロイ環境、DB製品別ドライバ、認可・本番運用。
+- `Service`の認証条件の正しさ、実ユーザー、認可。ハーネスでは認証前の`userID`検査を引数`user`へ置き換えている。
 - WindowsのDPI・Look and Feel・ロケール別の表示差。セレクタは表示文字に依存できるが、文字列が変わればシナリオ側の更新が要る。
 - Java 8実機。クラスファイルはJava 8（major 52）だが、実行確認はJDK 11。
