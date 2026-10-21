@@ -161,6 +161,7 @@
 | [`reference-transform-runtime-engine/`](reference-transform-runtime-engine/) | 決定的な変換処理の実行例 |
 | [`reference-transform-runtime-engine-build/`](reference-transform-runtime-engine-build/) | 変換実行基盤の構築確認 |
 | [`reference-transform-seed-builder/`](reference-transform-seed-builder/) | 変換用の初期データを組み立てる処理 |
+| [`reference-xtea-control/`](reference-xtea-control/) | X-TEAのSwingアプリとXeadServerを、AIが再現可能に操作する参照用テストインターフェース |
 | [`reference-xead-cross-view/`](reference-xead-cross-view/) | Xeadの複数表示間の意味照合 |
 | [`reference-xead-source-adapter/`](reference-xead-source-adapter/) | Xead資産を読むSource接続例 |
 | [`reference-xead-source-inspect/`](reference-xead-source-inspect/) | Xead資産の読取り・調査補助 |
