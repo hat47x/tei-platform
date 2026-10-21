@@ -717,33 +717,10 @@ func evaluateCandidate(ctx context.Context, dir string, fixture Fixture, contrac
 		}
 		receipt.BinaryDigest = digest(binary)
 		receipt.BuildEvidence.BinaryDigest = receipt.BinaryDigest
-	case LanguagePython:
-		var version string
-		var available bool
-		scriptPath, version, available = findPython()
-		command := "python <source>"
-		if scriptPath != "" {
-			command = scriptPath + " <source>"
-		}
-		receipt.Runtime = &RuntimeEvidence{
-			Language: LanguagePython, Command: command, Version: version, Available: available,
-		}
-		if !available {
-			return reject("runtime unavailable: python3/python was not found")
-		}
-	case LanguageJavaScript:
-		var version string
-		var available bool
-		scriptPath, version, available = findJavaScript()
-		command := "node <source>"
-		if scriptPath != "" {
-			command = scriptPath + " <source>"
-		}
-		receipt.Runtime = &RuntimeEvidence{
-			Language: LanguageJavaScript, Command: command, Version: version, Available: available,
-		}
-		if !available {
-			return reject("runtime unavailable: node was not found")
+	case LanguagePython, LanguageJavaScript:
+		scriptPath, receipt.Runtime = ResolveScriptRuntime(language)
+		if !receipt.Runtime.Available {
+			return reject("runtime unavailable: " + language + " interpreter was not found")
 		}
 	case LanguageJava:
 		var version string
@@ -934,6 +911,27 @@ func javaBuildInputDigest(source []byte, toolchain string) string {
 	return digest([]byte(strings.Join([]string{
 		"javac", LanguageJava, digest(source), toolchain,
 	}, "\x00")))
+}
+
+// ResolveScriptRuntime uses the same interpreter discovery for selection and
+// target-profile probes. Availability is evidence of a runnable interpreter,
+// not permission to execute a candidate or a limit on its resource use.
+func ResolveScriptRuntime(language string) (string, *RuntimeEvidence) {
+	var executable, version string
+	var available bool
+	command := ""
+	switch language {
+	case LanguagePython:
+		executable, version, available = findPython()
+		command = "python <source>"
+	case LanguageJavaScript:
+		executable, version, available = findJavaScript()
+		command = "node <source>"
+	}
+	if executable != "" {
+		command = executable + " <source>"
+	}
+	return executable, &RuntimeEvidence{Language: language, Command: command, Version: version, Available: available}
 }
 
 func findPython() (path, version string, available bool) {
