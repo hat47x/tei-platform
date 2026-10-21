@@ -22,11 +22,33 @@ public final class DriverFixture {
             RunScript.execute(db, new FileReader(args[0] + "/init.sql"));
         }
         final Session session = new Session(args[0] + "/fixture.xeaf", "00000", "password", "fixture") {
-            // The PDF producer runs unchanged; external viewer interaction is outside this fixture.
-            @Override public void browseFile(java.net.URI uri) { }
+            // Producers run unchanged; record completion instead of opening an external viewer.
+            @Override public void browseFile(java.net.URI uri) {
+                try {
+                    String name = java.nio.file.Paths.get(uri).getFileName().toString();
+                    java.nio.file.Files.write(java.nio.file.Paths.get(args[0], "output-ready"),
+                            name.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                } catch (java.io.IOException error) {
+                    throw new RuntimeException(error);
+                }
+            }
         };
         final NodeList functions = DocumentBuilderFactory.newInstance().newDocumentBuilder()
                 .parse(args[0] + "/fixture.xeaf").getElementsByTagName("Function");
+        // The non-Application Session constructor omits this ordinary UI initializer.
+        // Instantiate the original calendar class; do not replace its input/selection behavior.
+        java.lang.reflect.Constructor<?> calendarConstructor = Class.forName("xeadDriver.XFCalendar")
+                .getDeclaredConstructor(Session.class);
+        calendarConstructor.setAccessible(true);
+        java.lang.reflect.Field calendarField = Session.class.getDeclaredField("xfCalendar");
+        calendarField.setAccessible(true);
+        SwingUtilities.invokeAndWait(() -> {
+            try {
+                calendarField.set(session, calendarConstructor.newInstance(session));
+            } catch (ReflectiveOperationException error) {
+                throw new RuntimeException(error);
+            }
+        });
         SwingUtilities.invokeLater(() -> {
             JFrame frame = new JFrame("Driver fixture launcher");
             frame.setLayout(new GridLayout(0, 1));

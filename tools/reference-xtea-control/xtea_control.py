@@ -163,6 +163,7 @@ class ControlClient:
             if selector.get("windowClass") and not _regex_matches(selector["windowClass"], window.get("class", "")):
                 continue
             matches.extend(node for node in _iter_nodes(window) if _node_matches(node, selector))
+        matches.sort(key=lambda node: 0 if node.get("showing") else 1 if node.get("visible") else 2)
         index = int(selector.get("index", 0))
         return matches[index] if 0 <= index < len(matches) else None
 

@@ -670,9 +670,7 @@ final class Ui {
         Pattern name = optionalPattern(selector.get("name"));
         Pattern className = optionalPattern(selector.get("class"));
         int wantedIndex = intValue(selector.get("index"), 0);
-        int found = 0;
-        Component firstMatch = null;
-        Component firstVisibleMatch = null;
+        List<Component> foundComponents = new ArrayList<Component>();
         for (Window window : candidates) {
             if (windowPattern != null && !matches(windowPattern, titleOf(window))) {
                 continue;
@@ -690,26 +688,19 @@ final class Ui {
             List<Component> components = flatten(window, true);
             for (Component component : components) {
                 if (matchesComponent(component, role, text, contains, name, className)) {
-                    if (found == wantedIndex) {
-                        if (component.isShowing()) {
-                            return component;
-                        }
-                        if (component.isVisible() && firstVisibleMatch == null) {
-                            firstVisibleMatch = component;
-                        }
-                        if (firstMatch == null) {
-                            firstMatch = component;
-                        }
-                    }
-                    found++;
+                    foundComponents.add(component);
                 }
             }
         }
-        if (firstVisibleMatch != null) {
-            return firstVisibleMatch;
-        }
-        if (firstMatch != null) {
-            return firstMatch;
+        Collections.sort(foundComponents, new java.util.Comparator<Component>() {
+            @Override public int compare(Component left, Component right) {
+                int a = left.isShowing() ? 0 : left.isVisible() ? 1 : 2;
+                int b = right.isShowing() ? 0 : right.isVisible() ? 1 : 2;
+                return Integer.compare(a, b);
+            }
+        });
+        if (wantedIndex >= 0 && wantedIndex < foundComponents.size()) {
+            return foundComponents.get(wantedIndex);
         }
         throw new BridgeException("NOT_FOUND", "no component matched selector " + Json.write(selector));
     }
@@ -1344,13 +1335,18 @@ final class Ui {
 
     /**
      * Set a value through X-TEA's editable-field wrapper when the selected
-     * component is an inner Swing widget. XFTextField, XFDateField, XFCheckBox
-     * and related classes keep their own value state and formatting rules.
+     * component is an inner text widget. XFTextField and related classes keep
+     * their own value state and formatting rules. Choice widgets use native input.
      */
     private static boolean setCustomFieldValue(Component target, Object requestedValue) {
         Component parent = target.getParent();
         while (parent != null) {
             String className = parent.getClass().getName();
+            // This dialog container reads its plain widgets directly; its setter does not
+            // implement every input type (notably ZEROFILL).
+            if (className.equals("xeadDriver.XFInputDialogField")) {
+                return false;
+            }
             if (className.startsWith("xeadDriver.")) {
                 java.lang.reflect.Method setter = method(parent.getClass(), "setValue", Object.class);
                 if (setter != null) {

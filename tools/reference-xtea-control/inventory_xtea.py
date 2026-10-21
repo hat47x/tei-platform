@@ -16,6 +16,9 @@ UI_CALLS = ("getInputDialog", "getOptionDialog", "getCheckListDialog", "getLongT
             "showDialogToChooseFile", "showMessageDialog", "showConfirmDialog", "showInputDialog",
             "showOptionDialog")
 MAX_XML_BYTES = 32 * 1024 * 1024
+BUTTON_ACTIONS = {"EXIT", "ADD", "EDIT", "COPY", "DELETE", "NEXT", "UPDATE", "OUTPUT",
+                  "ADD_ROW", "REMOVE_ROW", "RETURN_ROWS"}
+INPUT_TYPES = {"ALPHA", "KANJI", "TEXTAREA", "NUMERIC", "ZEROFILL", "DATE", "LISTBOX", "CHECKBOX", "PASSWORD", "FILE_CHOOSER"}
 
 
 def inspect_model(data: bytes) -> dict:
@@ -25,28 +28,44 @@ def inspect_model(data: bytes) -> dict:
         raise ValueError("DTD/entity declarations are not accepted")
     root = ET.fromstring(data)
     counts = Counter(f.get("Type", "") for f in root.findall(".//Function"))
+    actions = {}
+    for function in root.findall(".//Function"):
+        counter = actions.setdefault(function.get("Type", ""), Counter())
+        for button in function.findall(".//Button"):
+            action = button.get("Action", "")
+            # Keep fixed action names only: call expressions can contain private IDs/parameters.
+            counter[action if action in BUTTON_ACTIONS else "OTHER"] += 1
     ui = Counter()
+    input_types = Counter()
     for element in root.iter():
         # Attribute names are from Driver's Function/Table/System script inputs.
         for key in ("Script", "Text", "LoginScript", "ScriptFunctions"):
             if key == "Text" and element.tag != "Script":
                 continue
             text = element.get(key, "")
+            for input_type in re.findall(r"\.addField\s*\(\s*[\"'][^\"']*[\"']\s*,\s*[\"']([A-Z_]+)[\"']", text):
+                input_types[input_type if input_type in INPUT_TYPES else "OTHER"] += 1
             for call in UI_CALLS:
                 ui[call] += len(re.findall(r"\b" + call + r"\s*\(", text))
     return {"sha256": hashlib.sha256(data).hexdigest(),
             "functionTypes": dict(sorted(counts.items())),
-            "scriptUiCallCandidates": {key: value for key, value in sorted(ui.items()) if value}}
+            "buttonActions": {typ: dict(sorted(counter.items())) for typ, counter in sorted(actions.items()) if counter},
+            "scriptUiCallCandidates": {key: value for key, value in sorted(ui.items()) if value},
+            "inputFieldTypeCandidates": dict(sorted(input_types.items()))}
 
 
 def inventory(paths: list[Path]) -> dict:
     models = []
+    uninspected = []
     for path in paths:
         if path.is_dir():
-            models.extend(inventory(sorted(p for p in path.rglob("*")
-                                           if p.suffix.lower() in (".xeaf", ".zip")))["models"])
+            nested = inventory(sorted(p for p in path.rglob("*")
+                                      if p.suffix.lower() in (".xeaf", ".zip")))
+            models.extend(nested["models"])
+            uninspected.extend(nested["uninspectedInputs"])
         elif path.suffix.lower() == ".zip":
             with zipfile.ZipFile(path) as archive:
+                count_before = len(models)
                 for entry in archive.infolist():
                     if entry.filename.lower().endswith(".xeaf"):
                         if entry.file_size > MAX_XML_BYTES:
@@ -54,6 +73,8 @@ def inventory(paths: list[Path]) -> dict:
                         # Enumerate every member, including backups. Never choose a version implicitly.
                         models.append({"archive": path.name, "member": entry.filename,
                                        **inspect_model(archive.read(entry))})
+                if len(models) == count_before:
+                    uninspected.append({"archive": path.name, "reason": "NO_XEAF"})
         elif path.suffix.lower() == ".xeaf":
             if path.stat().st_size > MAX_XML_BYTES:
                 raise ValueError("XEAF exceeds 32 MiB")
@@ -61,7 +82,7 @@ def inventory(paths: list[Path]) -> dict:
         else:
             raise ValueError("input must be a directory, .zip or .xeaf")
     used = sorted({typ for model in models for typ, count in model["functionTypes"].items() if count})
-    return {"models": models, "usedFunctionTypes": used,
+    return {"models": models, "uninspectedInputs": uninspected, "usedFunctionTypes": used,
             "absentFunctionTypes": sorted(set(FUNCTION_TYPES) - set(used)),
             "note": "Static counts only. UI calls are lexical candidates, including comments/strings; no execution or coverage claim."}
 

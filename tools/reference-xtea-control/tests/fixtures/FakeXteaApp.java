@@ -100,6 +100,10 @@ public final class FakeXteaApp {
         wrappedInput.getInnerField().setName("wrappedInput");
         top.add(new JLabel("Wrapped"));
         top.add(wrappedInput);
+        JButton hiddenRun = new JButton("Run");
+        hiddenRun.setVisible(false);
+        hiddenRun.addActionListener(event -> status.setText("hidden-run"));
+        top.add(hiddenRun);
         wrappedStatus.setName("wrapperValue");
         top.add(wrappedStatus);
         top.add(new JLabel("Mode"));

@@ -45,6 +45,7 @@ def write_fixture(folder: Path) -> Path:
                           InitialListing="T", OrderBy="ITEM.ID")
         fields(f, "Field" if typ == "200" else "Column", ["ITEM.ID", "ITEM.NAME"])
         button(f, 0, 3, "EXIT", "Close")
+        button(f, 5, 9, "OUTPUT", "Excel")
         if typ == "100":
             f.set("DetailFunction", "F200")
             ET.SubElement(f, "Filter", DataSource="ITEM.NAME", FieldOptions="SCAN", Order="0")
@@ -69,6 +70,7 @@ def write_fixture(folder: Path) -> Path:
                                    OrderBy="LINE.SEQ", InitialListing="T")
             fields(detail, "Column", ["LINE.SEQ", "LINE.VALUE"])
             button(detail, 0, 3, "EXIT", "Close")
+            button(detail, 5, 9, "OUTPUT", "Excel")
         else:
             f.set("DetailTable", "LINE")
             f.set("DetailOrderBy", "LINE.SEQ")
@@ -76,6 +78,7 @@ def write_fixture(folder: Path) -> Path:
             button(f, 1, 6, "ADD_ROW", "Add row")
             button(f, 2, 7, "REMOVE_ROW", "Remove row")
             button(f, 3, 8, "UPDATE", "Save")
+            button(f, 5, 9, "OUTPUT", "Excel")
 
     f = ET.SubElement(system, "Function", ID="F311", Type="XF310", Name="Control long text",
                       HeaderTable="ITEM", DetailTable="LINE", DetailOrderBy="LINE.SEQ", Size="AUTO")
@@ -111,6 +114,17 @@ instance.getReturnMap().put("UI_RESULT",p.showOptionDialog(null,"Fixture choice"
     }
     for name, script in scripts.items():
         ET.SubElement(system, "Function", ID="S" + name, Type="XF000", Name="Script " + name, Script=script)
+    for typ, initial in (("ALPHA", "initial"), ("TEXTAREA", "initial"), ("NUMERIC", "1"),
+                         ("ZEROFILL", ""), ("DATE", "2026-10-21"), ("CHECKBOX", "false"), ("LISTBOX", "A")):
+        script = '''var d=instance.getSession().getInputDialog(); d.clear();
+d.setFont(new (Java.type("java.awt.Font"))("Dialog",0,14));
+var f=d.addField("Value", "%s", 0, "VALUE"); f.setSize(5);
+''' % typ
+        if typ == "LISTBOX":
+            script += 'f.addItem("First", "A"); f.addItem("Second", "B");\n'
+        script += 'f.setValue("%s"); var r=d.request("Script typed input");\n' % initial
+        script += 'instance.getReturnMap().put("UI_RESULT",r+":"+d.getValueOfFieldByParmID("VALUE"));'
+        ET.SubElement(system, "Function", ID="STYPE_" + typ, Type="XF000", Name="Input " + typ, Script=script)
     ET.SubElement(system, "PrintFont", ID="FONT", PDFFontName="Helvetica", PDFEncoding="Cp1252")
     for typ in ("290", "390"):
         f = ET.SubElement(system, "Function", ID="F" + typ, Type="XF" + typ,
@@ -129,8 +143,8 @@ instance.getReturnMap().put("UI_RESULT",p.showOptionDialog(null,"Fixture choice"
 CREATE TABLE USERS (IDUSER CHAR(5), TXPASSWORD VARCHAR(100), TXNAME VARCHAR(30),
  NREMPLOYEE VARCHAR(10), TXEMAIL VARCHAR(30), TXMENUS VARCHAR(20), DTVALID DATE, DTEXPIRE DATE);
 INSERT INTO USERS VALUES ('00000','5f4dcc3b5aa765d61d8327deb882cf99','Fixture','','','ALL','2000-01-01','2099-12-31');
-CREATE TABLE USER_VARIANTS (IDUSERKUBUN VARCHAR(30));
-INSERT INTO USER_VARIANTS VALUES ('KBCALENDAR');
+CREATE TABLE USER_VARIANTS (IDUSERKUBUN VARCHAR(30), KBUSERKUBUN VARCHAR(10), TXUSERKUBUN VARCHAR(30), SQLIST INT);
+INSERT INTO USER_VARIANTS VALUES ('KBCALENDAR','A','Fixture calendar',0);
 CREATE TABLE VARIANTS (IDVARIANT VARCHAR(30), TXVALUE VARCHAR(100), TXTYPE VARCHAR(20));
 INSERT INTO VARIANTS VALUES ('LOGIN_PERMITTED','T','STRING');
 CREATE TABLE NUMBERS (IDNUMBER VARCHAR(30), NRCURRENT INT, NRNUMDIGIT INT,

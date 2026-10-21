@@ -96,7 +96,8 @@ class IntegrationTest(unittest.TestCase):
 
     def test_03_text_button_and_key(self) -> None:
         self.client.set_value({"name": "input"}, "hello")
-        self.client.set_value({"name": "wrappedInput"}, "wrapped-value")
+        self.client.set_value({"name": "wrappedInput"}, "wrapped")
+        self.client.set_value({"name": "wrappedInput"}, "-value", mode="append")
         self.assertEqual(self.client.find({"name": "wrappedInput"})["textValue"], "wrapped-value")
         self.client.invoke({"role": "button", "text": "Run"}, settle_ms=100)
         self.client.wait_text({"name": "status"}, expected="ran:hello", timeout_ms=5000)
