@@ -68,11 +68,21 @@ type shrinkOutcome struct {
 }
 
 func scenarioPOPS02(t *testing.T, h *harness, n, s *unitProc) map[string]any {
+	// Each unit is checked against its own declared bound. The revocation
+	// runs against a notification-dropping unit with the default 2 s. The
+	// scope reductions use notification-dropping units that declare 5 s, so
+	// the stale window they must expose is observed even when the machine
+	// stalls for a moment between warming the cache and polling.
 	bound := DefaultConfig(KindMember).AuthzMaxAge
-	boundMS := float64(bound.Milliseconds())
+	slowBound := 5 * time.Second
+	bounds := map[string]time.Duration{n.name: bound}
+	boundMS := func(u *unitProc) float64 { return float64(bounds[u.name].Milliseconds()) }
 	v := h.startUnit("member-drop-notify", KindMember, unitOptions{args: []string{"-drop-notify", "-pool-max", "2"}})
 	defer v.stop()
-	res := map[string]any{"declaredBoundMs": bound.Milliseconds(), "clockDomain": "monotonic-test-process"}
+	bounds[v.name] = bound
+	res := map[string]any{"declaredBoundMs": map[string]int64{n.name: bound.Milliseconds(), v.name: bound.Milliseconds(),
+		"member-drop-notify-5s": slowBound.Milliseconds(), "member-unsafe-snapshot": slowBound.Milliseconds()},
+		"clockDomain": "monotonic-test-process"}
 
 	// 1. Revoke a member at the staff unit; query it at two member units.
 	for _, u := range []*unitProc{n, v} {
@@ -97,13 +107,13 @@ func scenarioPOPS02(t *testing.T, h *harness, n, s *unitProc) map[string]any {
 			}
 			x.AcceptedAfterOrigin++
 			x.LastAcceptedStart = rec.StartMS
-			if rec.StartMS >= boundMS {
+			if rec.StartMS >= boundMS(u) {
 				x.AcceptedAfterBound++
 			}
 		})
 	for name, x := range rev {
 		if x.AcceptedAfterBound != 0 || x.FirstRefusedEnd < 0 {
-			t.Errorf("%s: revocation not effective within %v: %+v", name, bound, x)
+			t.Errorf("%s: revocation not effective within %v: %+v", name, bounds[name], x)
 		}
 	}
 	if rev[v.name].AcceptedAfterOrigin == 0 {
@@ -144,7 +154,7 @@ func scenarioPOPS02(t *testing.T, h *harness, n, s *unitProc) map[string]any {
 		for _, u := range units {
 			out[u.name] = &shrinkOutcome{}
 		}
-		pollWindow(h, units, "/member/orders?$top=100", principal, origin, bound+500*time.Millisecond,
+		pollWindow(h, units, "/member/orders?$top=100", principal, origin, slowBound+500*time.Millisecond,
 			func(u *unitProc, rec pollRecord, r resp) {
 				x := out[u.name]
 				x.Polls++
@@ -166,7 +176,7 @@ func scenarioPOPS02(t *testing.T, h *harness, n, s *unitProc) map[string]any {
 					}
 				}
 				if removedSeen {
-					if rec.StartMS >= boundMS {
+					if rec.StartMS >= boundMS(u) {
 						x.RemovedSeenAfter++
 					} else {
 						x.RemovedSeenInBound++
@@ -186,11 +196,16 @@ func scenarioPOPS02(t *testing.T, h *harness, n, s *unitProc) map[string]any {
 			t.Errorf("%s %s: the stale grant was never used, the case was not exercised", principal, unit)
 		}
 	}
+	v.stop()
+	v = h.startUnit("member-drop-notify-5s", KindMember, unitOptions{args: []string{"-drop-notify", "-pool-max", "2", "-authz-max-age", slowBound.String()}})
+	defer v.stop()
+	bounds[v.name] = slowBound
 	a, ao := shrink(MemberCorp, AccountCorp2, false, []*unitProc{n, v})
 	b, bo := shrink(MemberCorp2, 7, true, []*unitProc{n, v})
 	v.stop()
-	neg := h.startUnit("member-unsafe-snapshot", KindMember, unitOptions{args: []string{"-drop-notify", "-unsafe-ignore-authz-snapshot", "-pool-max", "2"}})
+	neg := h.startUnit("member-unsafe-snapshot", KindMember, unitOptions{args: []string{"-drop-notify", "-unsafe-ignore-authz-snapshot", "-pool-max", "2", "-authz-max-age", slowBound.String()}})
 	defer neg.stop()
+	bounds[neg.name] = slowBound
 	c, co := shrink(MemberCorp3, 9, false, []*unitProc{neg})
 	verify(MemberCorp, ao[n.name], n.name, false, false)
 	verify(MemberCorp, ao[v.name], v.name, true, false)

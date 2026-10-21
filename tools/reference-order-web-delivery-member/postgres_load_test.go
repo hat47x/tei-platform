@@ -167,7 +167,10 @@ func confirmBlock(s *unitProc, ids []int64) ([]time.Duration, int) {
 type connSample struct {
 	MaxByRole       map[string]int `json:"maxConnectionsByRole"`
 	MaxActiveByRole map[string]int `json:"maxActiveByRole"`
-	Samples         int            `json:"samples"`
+	// MaxSlowByRole counts active member order reads (the injected slow
+	// downstream); they are the requests the concurrency slots bound.
+	MaxSlowByRole map[string]int `json:"maxActiveSlowReadsByRole"`
+	Samples       int            `json:"samples"`
 }
 
 func (cs *connSample) sample(h *harness, stop <-chan struct{}) func() {
@@ -180,13 +183,15 @@ func (cs *connSample) sample(h *harness, stop <-chan struct{}) func() {
 		}
 		defer conn.Close(h.ctx)
 		for {
-			rows, err := conn.Query(h.ctx, `SELECT usename, count(*), count(*) FILTER (WHERE state = 'active')
+			rows, err := conn.Query(h.ctx, `SELECT usename, count(*), count(*) FILTER (WHERE state = 'active'),
+				count(*) FILTER (WHERE state = 'active' AND query LIKE '%generate_series%' AND query NOT LIKE '%pg_stat_activity%')
 				FROM pg_stat_activity WHERE datname = current_database() AND usename IS NOT NULL AND pid <> pg_backend_pid() GROUP BY usename`)
 			if err == nil {
 				for rows.Next() {
 					var u string
-					var all, active int
-					if rows.Scan(&u, &all, &active) == nil {
+					var all, active, slow int
+					if rows.Scan(&u, &all, &active, &slow) == nil {
+						cs.MaxSlowByRole[u] = max(cs.MaxSlowByRole[u], slow)
 						cs.MaxByRole[u] = max(cs.MaxByRole[u], all)
 						cs.MaxActiveByRole[u] = max(cs.MaxActiveByRole[u], active)
 					}
@@ -240,9 +245,9 @@ func scenarioPB2C02(t *testing.T, h *harness, s *unitProc) map[string]any {
 		}
 		return out
 	}
-	conds := map[string]*loadCondition{"noSurge": {conns: &connSample{MaxByRole: map[string]int{}, MaxActiveByRole: map[string]int{}}},
-		"protected":   {conns: &connSample{MaxByRole: map[string]int{}, MaxActiveByRole: map[string]int{}}},
-		"unprotected": {conns: &connSample{MaxByRole: map[string]int{}, MaxActiveByRole: map[string]int{}}}}
+	conds := map[string]*loadCondition{"noSurge": {conns: &connSample{MaxByRole: map[string]int{}, MaxActiveByRole: map[string]int{}, MaxSlowByRole: map[string]int{}}},
+		"protected":   {conns: &connSample{MaxByRole: map[string]int{}, MaxActiveByRole: map[string]int{}, MaxSlowByRole: map[string]int{}}},
+		"unprotected": {conns: &connSample{MaxByRole: map[string]int{}, MaxActiveByRole: map[string]int{}, MaxSlowByRole: map[string]int{}}}}
 	confirmBlock(s, ids()[:20]) // warm the staff path
 	block := func(name string, target *unitProc) {
 		c := conds[name]
@@ -318,7 +323,7 @@ func scenarioPB2C02(t *testing.T, h *harness, s *unitProc) map[string]any {
 		t.Errorf("member side did not degrade gradually (ok %d, 429 %d)", ok, limited)
 	}
 	pc := conds["protected"].conns
-	if pc.MaxByRole[MemberRole] > h.limits.MemberConnections || pc.MaxActiveByRole[MemberRole] > cfg.TierConcurrency+1 || pc.Samples == 0 || pc.MaxByRole[StaffRole] == 0 {
+	if pc.MaxByRole[MemberRole] > h.limits.MemberConnections || pc.MaxSlowByRole[MemberRole] > cfg.TierConcurrency || pc.Samples == 0 || pc.MaxByRole[StaffRole] == 0 {
 		t.Errorf("member role connections exceeded the bulkhead or were not observed: %+v", pc)
 	}
 	var limit int
