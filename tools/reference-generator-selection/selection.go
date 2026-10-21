@@ -710,7 +710,7 @@ func evaluateCandidate(ctx context.Context, dir string, fixture Fixture, contrac
 			return reject("build is not reproducible: " + err.Error())
 		}
 		receipt.BuildEvidence.ReproducedDigest = reproduced
-		receipt.BuildEvidence.Reproducibility = "same-digest-twice"
+		receipt.BuildEvidence.Reproducibility = "path-independent-twice"
 		binary, err := os.ReadFile(binaryPath)
 		if err != nil {
 			return CandidateReceipt{}, err
@@ -812,32 +812,65 @@ func candidateBinaryPath(path string) string {
 const buildCommand = "go build -trimpath -buildvcs=false"
 
 func buildCandidate(ctx context.Context, dir, binaryPath string) error {
-	build := exec.CommandContext(ctx, "go", "build", "-trimpath", "-buildvcs=false", "-o", binaryPath, ".")
+	files, err := goSourceFiles(dir)
+	if err != nil {
+		return err
+	}
+	args := append([]string{"build", "-trimpath", "-buildvcs=false", "-o", binaryPath}, files...)
+	build := exec.CommandContext(ctx, "go", args...)
 	build.Dir = dir
 	out, err := build.CombinedOutput()
-	if err == nil {
-		return nil
+	if err != nil {
+		return fmt.Errorf("%v: %s", err, out)
 	}
-	// Generated candidates may live outside a Go module. Their sources use the
-	// standard library only, so retry in GOPATH mode instead of requiring a
-	// go.mod in a temporary directory.
-	if strings.Contains(string(out), "go.mod file not found") {
-		fallback := exec.CommandContext(ctx, "go", "build", "-trimpath", "-buildvcs=false", "-o", binaryPath, "main.go")
-		fallback.Dir = dir
-		fallback.Env = append(os.Environ(), "GO111MODULE=off")
-		if fallbackOut, fallbackErr := fallback.CombinedOutput(); fallbackErr == nil {
-			return nil
-		} else {
-			return fmt.Errorf("%v: %s", fallbackErr, fallbackOut)
+	return nil
+}
+
+func goSourceFiles(dir string) ([]string, error) {
+	if _, err := os.Stat(filepath.Join(dir, "main.go")); err == nil {
+		return []string{"main.go"}, nil
+	} else if !os.IsNotExist(err) {
+		return nil, err
+	}
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return nil, err
+	}
+	var files []string
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(strings.ToLower(entry.Name()), ".go") {
+			continue
 		}
+		files = append(files, entry.Name())
 	}
-	return fmt.Errorf("%v: %s", err, out)
+	if len(files) == 0 {
+		return nil, fmt.Errorf("no Go source files in %s", dir)
+	}
+	sort.Strings(files)
+	return files, nil
 }
 
 // buildCandidateTwice builds the same source twice with path-independent flags
-// and returns the second digest. A mismatch is an error, not a warning.
+// and returns the second digest. The second build uses a copy of the Go sources
+// in a different directory, so a path-dependent build is rejected.
 func buildCandidateTwice(ctx context.Context, dir, binaryPath string) (string, error) {
-	if err := buildCandidate(ctx, dir, binaryPath); err != nil {
+	firstDir, err := os.MkdirTemp("", "tei-generator-repro-a-*")
+	if err != nil {
+		return "", err
+	}
+	defer os.RemoveAll(firstDir)
+	secondDir, err := os.MkdirTemp("", "tei-generator-repro-b-*")
+	if err != nil {
+		return "", err
+	}
+	defer os.RemoveAll(secondDir)
+	if err := copyGoSources(dir, firstDir); err != nil {
+		return "", err
+	}
+	if err := copyGoSources(dir, secondDir); err != nil {
+		return "", err
+	}
+	if err := buildCandidate(ctx, firstDir, binaryPath); err != nil {
 		return "", err
 	}
 	first, err := os.ReadFile(binaryPath)
@@ -845,7 +878,7 @@ func buildCandidateTwice(ctx context.Context, dir, binaryPath string) (string, e
 		return "", err
 	}
 	secondPath := binaryPath + ".second"
-	if err := buildCandidate(ctx, dir, secondPath); err != nil {
+	if err := buildCandidate(ctx, secondDir, secondPath); err != nil {
 		return "", err
 	}
 	second, err := os.ReadFile(secondPath)
@@ -854,9 +887,26 @@ func buildCandidateTwice(ctx context.Context, dir, binaryPath string) (string, e
 	}
 	firstDigest, secondDigest := digest(first), digest(second)
 	if firstDigest != secondDigest {
-		return secondDigest, fmt.Errorf("first %s, second %s", firstDigest, secondDigest)
+		return secondDigest, fmt.Errorf("path-dependent build: first %s, second %s", firstDigest, secondDigest)
 	}
 	return secondDigest, nil
+}
+
+func copyGoSources(srcDir, dstDir string) error {
+	files, err := goSourceFiles(srcDir)
+	if err != nil {
+		return err
+	}
+	for _, name := range files {
+		content, err := os.ReadFile(filepath.Join(srcDir, name))
+		if err != nil {
+			return err
+		}
+		if err := os.WriteFile(filepath.Join(dstDir, name), content, 0o644); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 var (

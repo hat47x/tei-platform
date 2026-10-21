@@ -35,8 +35,8 @@ func TestGoCandidateRecordsBuildEvidence(t *testing.T) {
 		if evidence.BinaryDigest != candidate.BinaryDigest {
 			t.Fatalf("%s binary digest does not match build evidence", candidate.ID)
 		}
-		if evidence.Reproducibility != "same-digest-twice" {
-			t.Fatalf("%s did not record a repeated build: %+v", candidate.ID, evidence)
+		if evidence.Reproducibility != "path-independent-twice" {
+			t.Fatalf("%s did not record a path-independent build: %+v", candidate.ID, evidence)
 		}
 		if evidence.ReproducedDigest != evidence.BinaryDigest {
 			t.Fatalf("%s reproduced digest does not match: %+v", candidate.ID, evidence)

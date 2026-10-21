@@ -130,6 +130,9 @@ func TestGetRejectsTamperedArtifact(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if !put.Passed || put.ObjectPath == "" {
+		t.Fatalf("artifact put failed before tamper test: %+v", put)
+	}
 	if err := os.WriteFile(filepath.Join(put.ObjectPath, "artifact"), []byte("tampered"), 0o755); err != nil {
 		t.Fatal(err)
 	}
