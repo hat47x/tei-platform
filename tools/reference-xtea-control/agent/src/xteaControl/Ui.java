@@ -413,13 +413,14 @@ final class Ui {
                     }
                     if (keyName != null && !keyName.isEmpty()) {
                         int keyCode = keyCode(keyName);
-                        if (dispatchKeyBinding(receiver, keyCode, modifiers)) {
-                            return;
-                        }
+                        boolean hasKeyListener = receiver.getKeyListeners().length > 0;
                         receiver.dispatchEvent(new KeyEvent(receiver, KeyEvent.KEY_PRESSED,
                                 System.currentTimeMillis(), modifiers, keyCode, KeyEvent.CHAR_UNDEFINED));
                         receiver.dispatchEvent(new KeyEvent(receiver, KeyEvent.KEY_RELEASED,
                                 System.currentTimeMillis(), modifiers, keyCode, KeyEvent.CHAR_UNDEFINED));
+                        if (!hasKeyListener) {
+                            dispatchKeyBinding(receiver, keyCode, modifiers);
+                        }
                     }
                 } catch (Throwable t) {
                     Trace.record("key.error", label, describe(t));
