@@ -51,6 +51,8 @@ func Record(opts RecordOptions, outDir string) (CandidateManifest, error) {
 		expectedExtension = ".py"
 	case LanguageJavaScript:
 		expectedExtension = ".js"
+	case LanguageJava:
+		expectedExtension = ".java"
 	}
 	if strings.ToLower(filepath.Ext(opts.SourcePath)) != expectedExtension {
 		return CandidateManifest{}, fmt.Errorf("source extension does not match language %s", language)
@@ -139,6 +141,8 @@ func normalizeLanguage(language string) (string, error) {
 		return LanguagePython, nil
 	case LanguageJavaScript:
 		return LanguageJavaScript, nil
+	case LanguageJava:
+		return LanguageJava, nil
 	default:
 		return "", fmt.Errorf("unsupported language %q", language)
 	}
@@ -150,6 +154,8 @@ func candidateSourceName(language string) string {
 		return "main.py"
 	case LanguageJavaScript:
 		return "main.js"
+	case LanguageJava:
+		return "Main.java"
 	default:
 		return "main.go"
 	}

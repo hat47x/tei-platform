@@ -47,6 +47,7 @@ var generatorTemplates = map[string]generatorTemplate{
 	"python-template":       {file: "templates/template.py.tmpl", id: "line-amount-python-template", origin: "template", strategy: "python-template", language: LanguagePython, source: "main.py"},
 	"javascript-template":   {file: "templates/template.js.tmpl", id: "line-amount-javascript-template", origin: "template", strategy: "javascript-template", language: LanguageJavaScript, source: "main.js"},
 	"long-running-template": {file: "templates/template-long-running.go.tmpl", id: "line-amount-long-running-template", origin: "template", strategy: "long-running-template", language: LanguageGo, source: "main.go"},
+	"java-template":         {file: "templates/Main.java.tmpl", id: "line-amount-java-template", origin: "template", strategy: "java-template", language: LanguageJava, source: "Main.java"},
 }
 
 type templateData struct {
