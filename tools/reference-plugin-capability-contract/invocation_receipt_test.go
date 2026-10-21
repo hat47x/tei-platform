@@ -101,6 +101,15 @@ func TestSourceAdapterReturnsExactPayloadFreeInvocationReceipt(t *testing.T) {
 		t.Fatalf("source digest=%s want=%s", result.SourceArtifactDigest, want)
 	}
 
+	inspectionBytes, err := json.Marshal(result.Inspection)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resultSum := sha256.Sum256(inspectionBytes)
+	if want := "sha256:" + hex.EncodeToString(resultSum[:]); receipt.ResultDigest != want {
+		t.Fatalf("result digest=%s want=%s", receipt.ResultDigest, want)
+	}
+
 	encoded, err := json.Marshal(receipt)
 	if err != nil {
 		t.Fatal(err)
