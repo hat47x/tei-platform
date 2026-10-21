@@ -27,4 +27,4 @@ $text = $text.Replace($old, $new)
 Write-Output "fixture: $targetPath"
 Write-Output "xeaf:    $xeaf"
 Write-Output "db:      $dbPath"
-Write-Output "This database is disposable. The scenario mutates one department name."
+Write-Output "This database is disposable. Driver scenarios may update or delete department rows."
