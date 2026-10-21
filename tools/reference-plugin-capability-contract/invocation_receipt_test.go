@@ -10,6 +10,14 @@ import (
 	"tei/internal/xeadsource"
 )
 
+func receiptTestHasSHA256Digest(value string) bool {
+	if !strings.HasPrefix(value, "sha256:") {
+		return false
+	}
+	digest, err := hex.DecodeString(strings.TrimPrefix(value, "sha256:"))
+	return err == nil && len(digest) == sha256.Size
+}
+
 func TestInvocationReceiptExcludesPayloadAndCopiesAuthorityLimits(t *testing.T) {
 	secret := "synthetic-private-result"
 	execution := InvocationExecution{
@@ -76,7 +84,7 @@ func TestSourceAdapterReturnsExactPayloadFreeInvocationReceipt(t *testing.T) {
 		"request digest": receipt.RequestDigest,
 		"result digest": receipt.ResultDigest,
 	} {
-		if !validSHA256Fingerprint(value) {
+		if !receiptTestHasSHA256Digest(value) {
 			t.Fatalf("%s fingerprint is not exact: %q", name, value)
 		}
 	}
