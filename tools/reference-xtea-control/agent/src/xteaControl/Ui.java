@@ -359,6 +359,10 @@ final class Ui {
         return call(new Callable<Map<String, Object>>() {
             @Override
             public Map<String, Object> call() {
+                Map<String, Object> value = readCustomTable(table, maxRows);
+                if (value != null) {
+                    return value;
+                }
                 List<Object> columns = new ArrayList<Object>();
                 for (int c = 0; c < table.getColumnCount(); c++) {
                     columns.add(table.getColumnName(c));
@@ -371,7 +375,7 @@ final class Ui {
                     }
                     rows.add(row);
                 }
-                Map<String, Object> value = new LinkedHashMap<String, Object>();
+                value = new LinkedHashMap<String, Object>();
                 value.put("columns", columns);
                 value.put("rows", rows);
                 value.put("rowCount", table.getRowCount());
@@ -603,6 +607,8 @@ final class Ui {
         Pattern className = optionalPattern(selector.get("class"));
         int wantedIndex = intValue(selector.get("index"), 0);
         int found = 0;
+        Component firstMatch = null;
+        Component firstVisibleMatch = null;
         for (Window window : candidates) {
             if (windowPattern != null && !matches(windowPattern, titleOf(window))) {
                 continue;
@@ -618,11 +624,25 @@ final class Ui {
             for (Component component : components) {
                 if (matchesComponent(component, role, text, contains, name, className)) {
                     if (found == wantedIndex) {
-                        return component;
+                        if (component.isShowing()) {
+                            return component;
+                        }
+                        if (component.isVisible() && firstVisibleMatch == null) {
+                            firstVisibleMatch = component;
+                        }
+                        if (firstMatch == null) {
+                            firstMatch = component;
+                        }
                     }
                     found++;
                 }
             }
+        }
+        if (firstVisibleMatch != null) {
+            return firstVisibleMatch;
+        }
+        if (firstMatch != null) {
+            return firstMatch;
         }
         throw new BridgeException("NOT_FOUND", "no component matched selector " + Json.write(selector));
     }
@@ -1054,6 +1074,129 @@ final class Ui {
         entry.put("text", labelOf(component));
         entry.put("enabled", Boolean.valueOf(component.isEnabled()));
         return entry;
+    }
+
+    /**
+     * X-TEA list screens often render one logical row through a custom row
+     * object rather than ordinary table cells. Read that object reflectively
+     * when it exposes the standard shape (getColumnMap/getCellObjectList and
+     * cells with getExternalValue), so the JSON view is not just object names.
+     */
+    private static Map<String, Object> readCustomTable(JTable table, int maxRows) {
+        if (table.getRowCount() == 0 || table.getColumnCount() == 0) {
+            return null;
+        }
+        Object first = table.getValueAt(0, 0);
+        if (first == null) {
+            return null;
+        }
+        java.lang.reflect.Method cellListMethod = method(first.getClass(), "getCellObjectList");
+        java.lang.reflect.Method columnMapMethod = method(first.getClass(), "getColumnMap");
+        if (cellListMethod == null || columnMapMethod == null) {
+            return null;
+        }
+        try {
+            Object columnMapObject = columnMapMethod.invoke(first);
+            if (!(columnMapObject instanceof Map)) {
+                return null;
+            }
+            Map<?, ?> columnMap = (Map<?, ?>) columnMapObject;
+            List<Object> columns = new ArrayList<Object>();
+            List<Object> rows = new ArrayList<Object>();
+            List<Object> usedColumnKeys = new ArrayList<Object>();
+            for (int r = 0; r < table.getRowCount() && r < maxRows; r++) {
+                Object rowObject = table.getValueAt(r, 0);
+                if (rowObject == null || !cellListMethod.getDeclaringClass().isAssignableFrom(rowObject.getClass())) {
+                    return null;
+                }
+                Object cellListObject = cellListMethod.invoke(rowObject);
+                if (!(cellListObject instanceof List)) {
+                    return null;
+                }
+                List<Object> row = new ArrayList<Object>();
+                for (Object cell : (List<?>) cellListObject) {
+                    Object internalValue = invokeNoArg(cell, "getInternalValue");
+                    Object value = invokeNoArg(cell, "getExternalValue");
+                    if (value == null) {
+                        value = internalValue;
+                    }
+                    if (r == 0) {
+                        columns.add(columnNameFor(columnMap, internalValue, usedColumnKeys));
+                    }
+                    row.add(brief(value));
+                }
+                rows.add(row);
+            }
+            Map<String, Object> value = new LinkedHashMap<String, Object>();
+            value.put("columns", columns);
+            value.put("rows", rows);
+            value.put("rowCount", table.getRowCount());
+            value.put("selectedRow", table.getSelectedRow());
+            value.put("truncated", table.getRowCount() > maxRows);
+            value.put("rowType", first.getClass().getName());
+            return value;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private static Object invokeNoArg(Object target, String name) {
+        if (target == null) {
+            return null;
+        }
+        java.lang.reflect.Method found = method(target.getClass(), name);
+        if (found == null) {
+            return null;
+        }
+        try {
+            return found.invoke(target);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private static String columnNameFor(Map<?, ?> columnMap, Object internalValue, List<Object> usedKeys) {
+        Object fallback = null;
+        for (Map.Entry<?, ?> entry : columnMap.entrySet()) {
+            if (usedKeys.contains(entry.getKey())) {
+                continue;
+            }
+            if (entry.getValue() == internalValue) {
+                usedKeys.add(entry.getKey());
+                return String.valueOf(entry.getKey());
+            }
+            if (fallback == null && entry.getValue() != null && entry.getValue().equals(internalValue)) {
+                fallback = entry.getKey();
+            }
+        }
+        if (fallback != null) {
+            usedKeys.add(fallback);
+            return String.valueOf(fallback);
+        }
+        for (Map.Entry<?, ?> entry : columnMap.entrySet()) {
+            if (!usedKeys.contains(entry.getKey())) {
+                usedKeys.add(entry.getKey());
+                return String.valueOf(entry.getKey());
+            }
+        }
+        return "column" + usedKeys.size();
+    }
+
+    private static java.lang.reflect.Method method(Class<?> type, String name) {
+        if (type == null) {
+            return null;
+        }
+        try {
+            java.lang.reflect.Method found = type.getMethod(name);
+            if (!found.isAccessible()) {
+                found.setAccessible(true);
+            }
+            return found;
+        } catch (NoSuchMethodException e) {
+            return null;
+        } catch (RuntimeException e) {
+            return null;
+        }
     }
 
     private static List<Object> tableRows(JTable table, int maxRows) {

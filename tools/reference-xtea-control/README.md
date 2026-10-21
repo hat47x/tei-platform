@@ -152,15 +152,15 @@ python xtea_server.py --base-url http://127.0.0.1:8080/xteaServer `
 
 2026-10-21、JDK 11.0.20.1（`--release 8`でコンパイル）で確認しました。
 
-- `python tests/test_integration.py`: 7件成功。メニュー、テキスト、ボタン、Enter、タブ、チェックボックス、コンボ、テーブル、モーダルダイアログ、スクリーンショット、トレース、未知selector、トークン拒否を合成Swingアプリで確認。
+- `python tests/test_integration.py`: 8件成功。メニュー、テキスト、ボタン、Enter、タブ、チェックボックス、コンボ、通常テーブル、X-TEA型のカスタム行オブジェクトを持つテーブル、モーダルダイアログ、スクリーンショット、トレース、未知selector、トークン拒否を合成Swingアプリで確認。
 - `python tests/test_server_client.py`: 4件成功。`DBMethod`のSELECT/COUNT/INSERT/UPDATE/DELETE/COMMIT/ROLLBACK/CALL/IPと`Service`をローカル模擬サーブレットで確認。
 - 実X-TEA Modeler（配布`xteamdl.jar`、About表示`V1.R4.M50`）で`MfgOrder.xead`を開き、メニュー8件・操作44件を列挙し、Aboutダイアログの開閉、スナップショット、スクリーンショットを確認。
 - 実X-TEA Editor（配布`xteaedt.jar`）で`MfgOrder.xead`を開き、メニュー8件・操作40件を列挙し、スナップショットとスクリーンショットを確認。
-- 実X-TEA Driver（配布`xteadrv.jar`）で、引数なしの起動時に「システム定義ファイルが指定されていません」のダイアログへ到達し、`Skeleton.xeaf`の複製を渡した起動時にDB接続失敗のダイアログへ到達。ログイン後のFunction画面は未確認（Derby Network Serverを起動していないため）。
+- 実X-TEA Driver（配布`xteadrv.jar`）で、引数なしの起動時に「システム定義ファイルが指定されていません」のダイアログへ到達。`Skeleton.xeaf`の複製（DB URLだけを埋め込みDerbyへ変更）でログイン画面を開き、合成ユーザ`00000`でログイン後、`XF100`「部門情報の一覧・保守」を開き、カスタム行オブジェクトから4列・2行を読み取り、画面キャプチャを取得。閉じる操作も確認。
 
 ### 検証していないこと
 
-- Driverのログイン後メニュー、各Functionの実データ操作、コミット／ロールバックの実DB結果。
+- Driverの上記以外のFunction画面、更新・コミット／ロールバックの実DB結果、元の`jdbc:derby://localhost/...`接続。
 - XeadServerの実デプロイ環境。`xtea_server.py`は模擬サーブレットとの契約試験だけ。
 - 四つのアプリの全ダイアログ・全条件分岐の実行。経路表は入力種別とトップレベル入口の到達性を示すもので、全業務ケースの実行結果ではない。
 - X-TEAのソースと配布JARの同一性、#940の固定baselineとの対応、TEI側の意味一致。

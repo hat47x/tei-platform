@@ -114,6 +114,14 @@ class IntegrationTest(unittest.TestCase):
         self.assertEqual(self.client.find({"role": "tab", "window": "Fake X-TEA"})["selectedIndex"], 1)
         self.client.select({"role": "tab", "window": "Fake X-TEA"}, item_index=0)
 
+    def test_04b_custom_row_table(self) -> None:
+        self.client.select({"role": "tab", "window": "Fake X-TEA"}, item_index=2)
+        value = self.client.table_read({"name": "customTable"})
+        self.assertEqual(value["columns"], ["Code", "Name"])
+        self.assertEqual(value["rows"][0], ["A", "Alpha"])
+        self.assertEqual(value["rowType"], "FakeXteaApp$CustomRow")
+        self.client.select({"role": "tab", "window": "Fake X-TEA"}, item_index=0)
+
     def test_05_modal_dialog(self) -> None:
         self.client.select({"role": "tab", "window": "Fake X-TEA"}, item_index=0)
         self.client.invoke({"role": "button", "text": "Open Dialog"})
