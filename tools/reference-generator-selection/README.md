@@ -192,10 +192,13 @@ Go候補のreceiptには`buildEvidence`を記録します。
 - `goos`、`goarch`、`cgoEnabled`、`goflags`: build時の環境
 - `sourceDigest`: buildしたsource
 - `binaryDigest`: 得られた実行ファイル
-- `buildInputDigest`: source・toolchain・GOOS/GOARCH・CGO・GOFLAGSを結合したdigest
-- `reproducibility: not-tested`
+- `reproducedDigest`: `-trimpath -buildvcs=false`でもう一度buildした実行ファイル
+- `buildInputDigest`: build command・source・toolchain・GOOS/GOARCH・CGO・GOFLAGSを結合したdigest
+- `reproducibility: same-digest-twice`
 
-`buildInputDigest`は、どのsourceとbuild環境から候補を得たかをreceipt内で結び付けるための参照値です。署名・attestation・artifact storeではなく、別環境で同じbinaryが得られること（再現性）を証明しません。`binaryDigest`はGoの版・OS・build設定に依存します。
+同じ候補を`go build -trimpath -buildvcs=false`で2回buildし、`binaryDigest`と`reproducedDigest`が一致する場合だけ合格します。一致しなければ`reproducibility: mismatch`として候補を拒否します。
+
+これは同じ環境・同じsourceでの反復buildの一致であり、別machine・別toolchain・clean cacheでの再現性や、artifact store・署名を証明しません。`buildInputDigest`は、どのsourceとbuild環境から候補を得たかをreceipt内で結び付けるための参照値です。`binaryDigest`はGoの版・OS・build設定に依存します。
 
 ## メタ生成（深さ1）
 
@@ -251,7 +254,7 @@ reconcileは候補をビルド・実行・選抜しません。再生成した�
 - 合格した候補の`qualified`と、不合格の`rejected`
 - `grantsRuntimeAuthority: false`、`provesRealProvider: false`
 
-同じWorkspace・契約・fixture・候補sourceからは、同じ`sourceDigest`と結果が得られます。`binaryDigest`と`buildEvidence`のtoolchain/環境は実行環境に依存し、再現性は未検証です。`execution`はstdout/stderrの内容そのものではなくdigestとexit stateだけを残し、時刻や実行者のidentityは含めません。
+同じWorkspace・契約・fixture・候補sourceからは、同じ`sourceDigest`と結果が得られます。`buildEvidence`は同じ環境での反復build一致を記録しますが、別環境での再現性は未検証です。`execution`はstdout/stderrの内容そのものではなくdigestとexit stateだけを残し、時刻や実行者のidentityは含めません。
 
 ## 守っている境界
 
@@ -273,4 +276,4 @@ reconcileは候補をビルド・実行・選抜しません。再生成した�
 - long-runningのPython/JavaScript候補。
 - Python/JavaScript以外の言語（.NET/JVM/WASM等）と、実Targetでの処理系固定・依存解決。
 - 実Provider・実Targetでの比較。
-- 候補の署名・attestation・artifact store、buildの完全な再現性（#943 / #1370 / #1104）。
+- 候補のartifact store、別machine・別toolchain・clean cacheでのbuild再現性（#943 / #1370 / #1104）。

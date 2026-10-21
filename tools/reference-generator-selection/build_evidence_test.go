@@ -35,8 +35,11 @@ func TestGoCandidateRecordsBuildEvidence(t *testing.T) {
 		if evidence.BinaryDigest != candidate.BinaryDigest {
 			t.Fatalf("%s binary digest does not match build evidence", candidate.ID)
 		}
-		if evidence.Reproducibility != "not-tested" {
-			t.Fatalf("%s made a reproducibility claim: %+v", candidate.ID, evidence)
+		if evidence.Reproducibility != "same-digest-twice" {
+			t.Fatalf("%s did not record a repeated build: %+v", candidate.ID, evidence)
+		}
+		if evidence.ReproducedDigest != evidence.BinaryDigest {
+			t.Fatalf("%s reproduced digest does not match: %+v", candidate.ID, evidence)
 		}
 		source, err := os.ReadFile(filepath.Join(candidates, candidate.ID, "main.go"))
 		if err != nil {
