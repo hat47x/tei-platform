@@ -161,6 +161,7 @@ type BuildEvidence struct {
 	GOFLAGS          string `json:"goflags,omitempty"`
 	SourceDigest     string `json:"sourceDigest"`
 	BinaryDigest     string `json:"binaryDigest,omitempty"`
+	ReproducedDigest string `json:"reproducedDigest,omitempty"`
 	BuildInputDigest string `json:"buildInputDigest"`
 	Reproducibility  string `json:"reproducibility"`
 }
@@ -690,9 +691,9 @@ func evaluateCandidate(ctx context.Context, dir string, fixture Fixture, contrac
 		toolchain := goRuntimeVersion()
 		goos, goarch, cgo := goBuildEnvironment()
 		goflags := os.Getenv("GOFLAGS")
-		receipt.Runtime = &RuntimeEvidence{Language: LanguageGo, Command: "go build", Version: toolchain, Available: true}
+		receipt.Runtime = &RuntimeEvidence{Language: LanguageGo, Command: buildCommand, Version: toolchain, Available: true}
 		receipt.BuildEvidence = &BuildEvidence{
-			Language: LanguageGo, Command: "go build", Toolchain: toolchain,
+			Language: LanguageGo, Command: buildCommand, Toolchain: toolchain,
 			GOOS: goos, GOARCH: goarch, CGOEnabled: cgo, GOFLAGS: goflags,
 			SourceDigest:     manifest.SourceDigest,
 			BuildInputDigest: buildInputDigest(source, toolchain, goos, goarch, cgo, goflags),
@@ -700,9 +701,13 @@ func evaluateCandidate(ctx context.Context, dir string, fixture Fixture, contrac
 		}
 		buildCtx, cancel := context.WithTimeout(ctx, 2*time.Minute)
 		defer cancel()
-		if err := buildCandidate(buildCtx, dir, binaryPath); err != nil {
-			return reject("build failed: " + err.Error())
+		reproduced, err := buildCandidateTwice(buildCtx, dir, binaryPath)
+		if err != nil {
+			receipt.BuildEvidence.Reproducibility = "mismatch"
+			return reject("build is not reproducible: " + err.Error())
 		}
+		receipt.BuildEvidence.ReproducedDigest = reproduced
+		receipt.BuildEvidence.Reproducibility = "same-digest-twice"
 		binary, err := os.ReadFile(binaryPath)
 		if err != nil {
 			return CandidateReceipt{}, err
@@ -786,8 +791,10 @@ func candidateBinaryPath(path string) string {
 	return path
 }
 
+const buildCommand = "go build -trimpath -buildvcs=false"
+
 func buildCandidate(ctx context.Context, dir, binaryPath string) error {
-	build := exec.CommandContext(ctx, "go", "build", "-o", binaryPath, ".")
+	build := exec.CommandContext(ctx, "go", "build", "-trimpath", "-buildvcs=false", "-o", binaryPath, ".")
 	build.Dir = dir
 	out, err := build.CombinedOutput()
 	if err == nil {
@@ -797,7 +804,7 @@ func buildCandidate(ctx context.Context, dir, binaryPath string) error {
 	// standard library only, so retry in GOPATH mode instead of requiring a
 	// go.mod in a temporary directory.
 	if strings.Contains(string(out), "go.mod file not found") {
-		fallback := exec.CommandContext(ctx, "go", "build", "-o", binaryPath, "main.go")
+		fallback := exec.CommandContext(ctx, "go", "build", "-trimpath", "-buildvcs=false", "-o", binaryPath, "main.go")
 		fallback.Dir = dir
 		fallback.Env = append(os.Environ(), "GO111MODULE=off")
 		if fallbackOut, fallbackErr := fallback.CombinedOutput(); fallbackErr == nil {
@@ -807,6 +814,31 @@ func buildCandidate(ctx context.Context, dir, binaryPath string) error {
 		}
 	}
 	return fmt.Errorf("%v: %s", err, out)
+}
+
+// buildCandidateTwice builds the same source twice with path-independent flags
+// and returns the second digest. A mismatch is an error, not a warning.
+func buildCandidateTwice(ctx context.Context, dir, binaryPath string) (string, error) {
+	if err := buildCandidate(ctx, dir, binaryPath); err != nil {
+		return "", err
+	}
+	first, err := os.ReadFile(binaryPath)
+	if err != nil {
+		return "", err
+	}
+	secondPath := binaryPath + ".second"
+	if err := buildCandidate(ctx, dir, secondPath); err != nil {
+		return "", err
+	}
+	second, err := os.ReadFile(secondPath)
+	if err != nil {
+		return "", err
+	}
+	firstDigest, secondDigest := digest(first), digest(second)
+	if firstDigest != secondDigest {
+		return secondDigest, fmt.Errorf("first %s, second %s", firstDigest, secondDigest)
+	}
+	return secondDigest, nil
 }
 
 var (
@@ -853,7 +885,7 @@ func goBuildEnvironment() (goos, goarch, cgoEnabled string) {
 
 func buildInputDigest(source []byte, toolchain, goos, goarch, cgoEnabled, goflags string) string {
 	return digest([]byte(strings.Join([]string{
-		LanguageGo, digest(source), toolchain, goos, goarch, cgoEnabled, goflags,
+		buildCommand, LanguageGo, digest(source), toolchain, goos, goarch, cgoEnabled, goflags,
 	}, "\x00")))
 }
 
