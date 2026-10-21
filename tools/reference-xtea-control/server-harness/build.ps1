@@ -42,6 +42,35 @@ $compileClasspath = "$servletApi;$RuntimeHome\*"
 & javac -encoding windows-31j -source 8 -target 8 -cp $compileClasspath -d $classes $sources
 if ($LASTEXITCODE -ne 0) { throw "javac failed for XeadServer" }
 
+$ms932 = [System.Text.Encoding]::GetEncoding(932)
+$compatSourceDir = Join-Path $toolRoot "build\server-compat-src\xeadServer"
+New-Item -ItemType Directory -Force $compatSourceDir | Out-Null
+
+# XeadServer 7947b52 checks userID before userID = user runs, so every login
+# fails. Compile a build-time copy that checks the method argument instead.
+# The upstream file is not modified; this is an explicit harness-only patch.
+$sessionSource = Join-Path $sourceDir "Session.java"
+$sessionText = [System.IO.File]::ReadAllText($sessionSource, $ms932)
+$sessionText = $sessionText.Replace(
+    'userID.matches("[0-9a-zA-Z]+")',
+    'user.matches("[0-9a-zA-Z]+")')
+$compatSession = Join-Path $compatSourceDir "Session.java"
+[System.IO.File]::WriteAllText($compatSession, $sessionText, $ms932)
+& javac -encoding windows-31j -source 8 -target 8 -cp "$classes;$compileClasspath" -d $classes $compatSession
+if ($LASTEXITCODE -ne 0) { throw "javac failed for the compatible Session" }
+
+# Service.java imports a JDK-internal serializer removed in JDK 11. Redirect
+# only those imports to the Xerces classes bundled with X-TEA.
+$serviceSource = Join-Path $sourceDir "Service.java"
+$serviceText = [System.IO.File]::ReadAllText($serviceSource, $ms932)
+$serviceText = $serviceText.Replace(
+    "com.sun.org.apache.xml.internal.serialize",
+    "org.apache.xml.serialize")
+$compatService = Join-Path $compatSourceDir "Service.java"
+[System.IO.File]::WriteAllText($compatService, $serviceText, $ms932)
+& javac -encoding windows-31j -source 8 -target 8 -cp "$classes;$compileClasspath" -d $classes $compatService
+if ($LASTEXITCODE -ne 0) { throw "javac failed for the compatible Service" }
+
 $jetty = (Get-ChildItem $deps -Filter "*.jar" | ForEach-Object { $_.FullName }) -join ";"
 $harnessClasspath = "$servletApi;$jetty;$RuntimeHome\*"
 & javac -encoding UTF-8 -source 8 -target 8 -cp "$classes;$harnessClasspath" -d $harnessClasses `
