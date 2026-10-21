@@ -41,6 +41,7 @@ const (
 	LanguageGo         = "go"
 	LanguagePython     = "python"
 	LanguageJavaScript = "javascript"
+	LanguageJava       = "java"
 )
 
 type InputSpec struct {
@@ -580,7 +581,7 @@ func evaluateCandidate(ctx context.Context, dir string, fixture Fixture, contrac
 	if manifest.ID == "" || manifest.Origin == "" || manifest.Source == "" || manifest.SourceDigest == "" {
 		return reject("candidate identity is incomplete")
 	}
-	if language != LanguageGo && language != LanguagePython && language != LanguageJavaScript {
+	if language != LanguageGo && language != LanguagePython && language != LanguageJavaScript && language != LanguageJava {
 		return reject("unsupported candidate language: " + language)
 	}
 	expectedExtension := ".go"
@@ -589,6 +590,8 @@ func evaluateCandidate(ctx context.Context, dir string, fixture Fixture, contrac
 		expectedExtension = ".py"
 	case LanguageJavaScript:
 		expectedExtension = ".js"
+	case LanguageJava:
+		expectedExtension = ".java"
 	}
 	if strings.ToLower(filepath.Ext(manifest.Source)) != expectedExtension {
 		return reject("candidate source extension does not match language " + language)
@@ -679,7 +682,7 @@ func evaluateCandidate(ctx context.Context, dir string, fixture Fixture, contrac
 			return reject("generator provenance does not match the current contract and template")
 		}
 	}
-	var binaryPath, scriptPath string
+	var binaryPath, scriptPath, javaPath, javacPath, javaClassesDir string
 	switch language {
 	case LanguageGo:
 		binaryDir, err := os.MkdirTemp("", "tei-generator-candidate-*")
@@ -714,34 +717,47 @@ func evaluateCandidate(ctx context.Context, dir string, fixture Fixture, contrac
 		}
 		receipt.BinaryDigest = digest(binary)
 		receipt.BuildEvidence.BinaryDigest = receipt.BinaryDigest
-	case LanguagePython:
+	case LanguagePython, LanguageJavaScript:
+		scriptPath, receipt.Runtime = ResolveScriptRuntime(language)
+		if !receipt.Runtime.Available {
+			return reject("runtime unavailable: " + language + " interpreter was not found")
+		}
+	case LanguageJava:
 		var version string
 		var available bool
-		scriptPath, version, available = findPython()
-		command := "python <source>"
-		if scriptPath != "" {
-			command = scriptPath + " <source>"
+		javacPath, javaPath, version, available = findJava()
+		command := "javac; java -cp <classes> Main"
+		if javaPath != "" {
+			command = "javac; " + javaPath + " -cp <classes> Main"
 		}
 		receipt.Runtime = &RuntimeEvidence{
-			Language: LanguagePython, Command: command, Version: version, Available: available,
+			Language: LanguageJava, Command: command, Version: version, Available: available,
 		}
 		if !available {
-			return reject("runtime unavailable: python3/python was not found")
+			return reject("runtime unavailable: javac/java was not found")
 		}
-	case LanguageJavaScript:
-		var version string
-		var available bool
-		scriptPath, version, available = findJavaScript()
-		command := "node <source>"
-		if scriptPath != "" {
-			command = scriptPath + " <source>"
+		javaClassesDir, err = os.MkdirTemp("", "tei-java-candidate-*")
+		if err != nil {
+			return CandidateReceipt{}, err
 		}
-		receipt.Runtime = &RuntimeEvidence{
-			Language: LanguageJavaScript, Command: command, Version: version, Available: available,
+		defer os.RemoveAll(javaClassesDir)
+		compileCtx, cancel := context.WithTimeout(ctx, 2*time.Minute)
+		defer cancel()
+		compile := exec.CommandContext(compileCtx, javacPath, "-d", javaClassesDir, sourcePath)
+		if out, err := compile.CombinedOutput(); err != nil {
+			return reject("java compile failed: " + err.Error() + ": " + string(out))
 		}
-		if !available {
-			return reject("runtime unavailable: node was not found")
+		classBytes, err := os.ReadFile(filepath.Join(javaClassesDir, "Main.class"))
+		if err != nil {
+			return reject("compiled class is unreadable: " + err.Error())
 		}
+		receipt.BuildEvidence = &BuildEvidence{
+			Language: LanguageJava, Command: "javac", Toolchain: version,
+			SourceDigest: manifest.SourceDigest, BinaryDigest: digest(classBytes),
+			BuildInputDigest: javaBuildInputDigest(source, version),
+			Reproducibility:  "not-tested",
+		}
+		receipt.BinaryDigest = receipt.BuildEvidence.BinaryDigest
 	}
 
 	for _, tc := range fixture.Cases {
@@ -751,6 +767,8 @@ func evaluateCandidate(ctx context.Context, dir string, fixture Fixture, contrac
 		switch language {
 		case LanguagePython, LanguageJavaScript:
 			got, execution, err = runScriptCandidate(ctx, scriptPath, sourcePath, tc.Input)
+		case LanguageJava:
+			got, execution, err = runProgram(ctx, javaPath, []string{"-cp", javaClassesDir, "Main"}, tc.Input)
 		default:
 			got, execution, err = runCandidate(ctx, binaryPath, tc.Input)
 		}
@@ -889,6 +907,33 @@ func buildInputDigest(source []byte, toolchain, goos, goarch, cgoEnabled, goflag
 	}, "\x00")))
 }
 
+func javaBuildInputDigest(source []byte, toolchain string) string {
+	return digest([]byte(strings.Join([]string{
+		"javac", LanguageJava, digest(source), toolchain,
+	}, "\x00")))
+}
+
+// ResolveScriptRuntime uses the same interpreter discovery for selection and
+// target-profile probes. Availability is evidence of a runnable interpreter,
+// not permission to execute a candidate or a limit on its resource use.
+func ResolveScriptRuntime(language string) (string, *RuntimeEvidence) {
+	var executable, version string
+	var available bool
+	command := ""
+	switch language {
+	case LanguagePython:
+		executable, version, available = findPython()
+		command = "python <source>"
+	case LanguageJavaScript:
+		executable, version, available = findJavaScript()
+		command = "node <source>"
+	}
+	if executable != "" {
+		command = executable + " <source>"
+	}
+	return executable, &RuntimeEvidence{Language: language, Command: command, Version: version, Available: available}
+}
+
 func findPython() (path, version string, available bool) {
 	for _, name := range []string{"python3", "python"} {
 		found, err := exec.LookPath(name)
@@ -916,6 +961,22 @@ func findJavaScript() (path, version string, available bool) {
 		return "", "", false
 	}
 	return found, strings.TrimSpace(string(out)), true
+}
+
+func findJava() (javacPath, javaPath, version string, available bool) {
+	javac, err := exec.LookPath("javac")
+	if err != nil {
+		return "", "", "", false
+	}
+	java, err := exec.LookPath("java")
+	if err != nil {
+		return "", "", "", false
+	}
+	out, err := exec.Command(javac, "-version").CombinedOutput()
+	if err != nil {
+		return "", "", "", false
+	}
+	return javac, java, strings.TrimSpace(string(out)), true
 }
 
 func runScriptCandidate(ctx context.Context, interpreter, sourcePath string, input json.RawMessage) (Result, *ExecutionEvidence, error) {

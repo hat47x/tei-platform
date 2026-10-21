@@ -30,15 +30,16 @@ type ProcessCase struct {
 // candidate according to the profile's declared process model. It is not a
 // measurement of a real target's process supervisor.
 type ProcessModelEvidence struct {
-	Mode         string        `json:"mode"`
-	Processes    int           `json:"processes"`
-	Requests     int           `json:"requests"`
-	Responses    int           `json:"responses"`
-	Passed       bool          `json:"passed"`
-	ExitCode     int           `json:"exitCode,omitempty"`
-	StderrDigest string        `json:"stderrDigest,omitempty"`
-	Reason       string        `json:"reason,omitempty"`
-	Cases        []ProcessCase `json:"cases,omitempty"`
+	Mode         string                              `json:"mode"`
+	Runtime      *generatorselection.RuntimeEvidence `json:"runtime,omitempty"`
+	Processes    int                                 `json:"processes"`
+	Requests     int                                 `json:"requests"`
+	Responses    int                                 `json:"responses"`
+	Passed       bool                                `json:"passed"`
+	ExitCode     int                                 `json:"exitCode,omitempty"`
+	StderrDigest string                              `json:"stderrDigest,omitempty"`
+	Reason       string                              `json:"reason,omitempty"`
+	Cases        []ProcessCase                       `json:"cases,omitempty"`
 }
 
 func enforceProcessModel(ctx context.Context, profile Profile, opts RunOptions, selection generatorselection.Receipt) *ProcessModelEvidence {
@@ -46,6 +47,10 @@ func enforceProcessModel(ctx context.Context, profile Profile, opts RunOptions, 
 	case ProcessOneShot:
 		return oneshotEvidence(profile, selection)
 	case ProcessLongRunning:
+		candidate := selectedCandidate(Receipt{Profile: profile, Selection: selection})
+		if candidate == nil || !candidate.Passed {
+			return &ProcessModelEvidence{Mode: ProcessLongRunning, Reason: "selected candidate did not pass selection"}
+		}
 		return longRunningEvidence(ctx, profile, opts)
 	case ProcessBatch:
 		return &ProcessModelEvidence{
@@ -99,10 +104,6 @@ func longRunningEvidence(ctx context.Context, profile Profile, opts RunOptions) 
 	if language == "" {
 		language = generatorselection.LanguageGo
 	}
-	if language != generatorselection.LanguageGo {
-		evidence.Reason = "long-running probe supports only Go candidates in this reference"
-		return evidence
-	}
 	fixtureRaw, err := os.ReadFile(opts.FixturePath)
 	if err != nil {
 		evidence.Reason = "fixture is unreadable: " + err.Error()
@@ -127,13 +128,33 @@ func longRunningEvidence(ctx context.Context, profile Profile, opts RunOptions) 
 	if runtime.GOOS == "windows" {
 		binaryPath += ".exe"
 	}
-	if err := buildGoCandidate(ctx, candidateDir, binaryPath); err != nil {
-		evidence.Reason = "candidate build failed: " + err.Error()
+	executable := binaryPath
+	var args []string
+	switch language {
+	case generatorselection.LanguageGo:
+		if err := buildGoCandidate(ctx, candidateDir, binaryPath); err != nil {
+			evidence.Reason = "candidate build failed: " + err.Error()
+			return evidence
+		}
+	case generatorselection.LanguagePython, generatorselection.LanguageJavaScript:
+		executable, evidence.Runtime = generatorselection.ResolveScriptRuntime(language)
+		if !evidence.Runtime.Available {
+			evidence.Reason = "runtime unavailable: " + language + " interpreter was not found"
+			return evidence
+		}
+		sourcePath, err := filepath.Abs(filepath.Join(candidateDir, filepath.FromSlash(manifest.Source)))
+		if err != nil {
+			evidence.Reason = err.Error()
+			return evidence
+		}
+		args = []string{sourcePath}
+	default:
+		evidence.Reason = "unsupported long-running candidate language: " + language
 		return evidence
 	}
 	runCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
-	cmd := exec.CommandContext(runCtx, binaryPath)
+	cmd := exec.CommandContext(runCtx, executable, args...)
 	var input bytes.Buffer
 	encoder := json.NewEncoder(&input)
 	for _, tc := range fixture.Cases {

@@ -42,7 +42,7 @@ type Receipt struct {
 
 // Run applies the profile's memory limit to the selection subprocesses, runs
 // the same fixed fixtures, and records which constraints were actually
-// enforced. Process model, storage, network, and update remain declarations;
+// enforced. Storage, network, and update remain declarations;
 // observability channels stdout, stderr, and exit-code are observed from the
 // selected candidate's case executions.
 func Run(ctx context.Context, opts RunOptions) (Receipt, error) {
@@ -98,6 +98,10 @@ func Run(ctx context.Context, opts RunOptions) (Receipt, error) {
 			processEnforcement = "long-running:single-process"
 		}
 	}
+	memoryEnforcement := "env:GOMEMLIMIT (soft)"
+	if candidate := selectedCandidate(Receipt{Profile: profile, Selection: selection}); candidate != nil && candidate.Language != generatorselection.LanguageGo {
+		memoryEnforcement = "not-enforced: GOMEMLIMIT does not limit non-Go runtimes"
+	}
 	return Receipt{
 		Schema:       Schema,
 		Profile:      profile,
@@ -105,7 +109,7 @@ func Run(ctx context.Context, opts RunOptions) (Receipt, error) {
 		Observation:  observation,
 		ProcessModel: processModel,
 		Enforcement: map[string]string{
-			"memory":        "env:GOMEMLIMIT (soft)",
+			"memory":        memoryEnforcement,
 			"processModel":  processEnforcement,
 			"storage":       "declared-only",
 			"network":       "declared-only",
@@ -115,7 +119,7 @@ func Run(ctx context.Context, opts RunOptions) (Receipt, error) {
 		Unsupported: unsupported,
 		Passed:      selection.Passed && len(observation.Unsupported) == 0 && processModel.Passed,
 		Notes: []string{
-			"同じ受理済み契約・fixture・候補を、Target Profileの宣言とmemory limit付きで実行した。",
+			"同じ受理済み契約・fixture・候補を、Target Profileの宣言とともに実行した。memoryの強制範囲はenforcementへ記録する。",
 			"observabilityのstdout・stderr・exit-codeはcase実行から観測した。未対応channelはUnsupportedとして返す。",
 			"processModelはoneshotのprocess-per-case、long-runningのsingle-processを実行で確認した。",
 			"storage・network・updateは宣言であり、このReferenceでは強制していない。",
