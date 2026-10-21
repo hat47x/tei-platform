@@ -133,6 +133,7 @@
 | [`reference-external-query-evidence/`](reference-external-query-evidence/) | 外部問合せの実行根拠を確認 |
 | [`reference-month-end-close-correction/`](reference-month-end-close-correction/) | 技術検証用サンプル`month-end-close-correction`の工程1〜6。版つきの営業日カレンダーから締め日・ジョブの予定・支払期日を確定して改訂の影響を記録し、CP932の固定長ファイルを宣言した仕様で取り込んで模擬のメッセージと一つの事象に照合し、対象月を業務キーとする締めジョブをDBの時計による貸与とDB側のフェンシングトークン検査で実行する。締めの後に順不同で届く事象を版と方針で受け付け、有効時点と記録時点の二つの軸の単価で赤黒の伝票を計上し、請求書単位・税率別の税額をPostgreSQL、Go、SQLiteで比べて締め時点の帳票をバイト単位で再出力する(PostgreSQLの一つのインスタンス。合成のファイル、模擬のメッセージ、合成の事象。SQLiteはPythonの標準モジュールでのメモリ上の計算) |
 | [`reference-order-migration-dual-db/`](reference-order-migration-dual-db/) | 技術検証用サンプル`order-migration-dual-db`の工程1〜6。旧DBの観測と照合値付きの移行計画、全件の写し、区切りごとの移行と効果記録を経由した参照系DBへの引当、論理デコーディングによる並走中の変更の反映、得意先マスタの項目ごとの正本と名前の分割、請求システムへの冪等な送信、切替の関門、逆同期と巻戻しの訓練を、PostgreSQLの三つのインスタンスで実行する(異種DBの要件は対象外) |
+| [`reference-order-web-delivery-member/`](reference-order-web-delivery-member/) | 技術検証用サンプル`order-web-delivery`の工程6。工程1の読込計画(`reference/web-api-contract`)から会員と社員の射影を導き、会員向けと社内向けを別プロセスの配備単位としてPostgreSQLで動かす。他人の注文と社内向けの項目を返さないこと、会員の照会の急増を429と`Retry-After`で抑えて社内の確定の応答時間を守ること、表示用キャッシュの古さを宣言した上限以内に保ち判断は正本で行うこと、一方の配備単位での剥奪が他方で上限以内に効き縮小後の行が見えないことを確かめる(PostgreSQLの一つのインスタンス、同じ機械の上の合成の負荷) |
 | [`reference-oracle-local-fixture/`](reference-oracle-local-fixture/) | 別用途の既存Oracleに一時的な検証用データを作り、ドライバー・名前付きバインド・読取り専用の効き方・検証根拠の受入れを確認 |
 | [`reference-postgres-header-detail-runtime/`](reference-postgres-header-detail-runtime/) | PostgreSQL上の親子明細処理の参照実装 |
 | [`reference-postgres-integration/`](reference-postgres-integration/) | PostgreSQL接続の統合確認 |
@@ -176,6 +177,7 @@
 | [`test-critical-path-e1-archive.py`](test-critical-path-e1-archive.py) | E1保全検査の改ざん・欠落・偽資格の回帰試験 |
 | [`verify-month-end-close-correction.py`](verify-month-end-close-correction.py) | `reference-month-end-close-correction`の全試験(工程1〜6)を、Dockerで起動した使い捨てのPostgreSQLで実行し、skipが0件であることと観測値、PythonとSQLiteの版をreceiptへ残す。作ったコンテナーだけを終了時に削除する |
 | [`verify-order-migration-dual-db.py`](verify-order-migration-dual-db.py) | `reference-order-migration-dual-db`の全試験を、Dockerで起動した三つの使い捨てPostgreSQLで実行し、skipが0件であることと観測値をreceiptへ残す。作ったコンテナーだけを終了時に削除する |
+| [`verify-order-web-delivery-member.py`](verify-order-web-delivery-member.py) | `reference-order-web-delivery-member`の全試験(工程6)を、Dockerで起動した使い捨てのPostgreSQLで実行し、skipが0件であることと観測値、通しの記録の要約をreceiptへ残す。作ったコンテナーだけを終了時に削除する |
 | [`check-core-isolation.sh`](check-core-isolation.sh) | 合成基盤の隔離試験と別モジュールからの公開API試験 |
 | [`verify-composition-reference.sh`](verify-composition-reference.sh) | 固定したクリーンな版で合成基盤・項目対応・実Process・中核独立性を検査し、結果を標準出力へ返す。全体健全性と本番移行の判定は別に行い、申し送りは[#1223](https://github.com/hat47x/tei-platform/issues/1223)へ記載する |
 | [`repository-health-check.sh`](repository-health-check.sh) | 形式、静的検査、全Goテスト、参照Workspaceの検証 |
