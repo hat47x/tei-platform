@@ -269,7 +269,7 @@ func (u *unit) authenticate(w http.ResponseWriter, r *http.Request, kind string)
 		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthenticated"})
 		return g, false
 	case err != nil:
-		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "unavailable"})
+		unavailableErr(w, err)
 		return g, false
 	case g.Kind != kind:
 		writeJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden"})

@@ -261,6 +261,13 @@ func (u *unitProc) stop() {
 		case <-time.After(10 * time.Second):
 			u.h.t.Errorf("unit %s did not exit", u.name)
 		}
+		if u.h.t.Failed() && u.stderr.Len() > 0 {
+			tail := u.stderr.String()
+			if len(tail) > 4000 {
+				tail = tail[len(tail)-4000:]
+			}
+			u.h.t.Logf("unit %s stderr:\n%s", u.name, tail)
+		}
 		u.client.CloseIdleConnections()
 	})
 }

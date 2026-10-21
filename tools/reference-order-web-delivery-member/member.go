@@ -150,7 +150,7 @@ func (u *unit) listOrders(w http.ResponseWriter, r *http.Request, g Grant) {
 		return
 	}
 	if err != nil {
-		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "unavailable"})
+		unavailableErr(w, err)
 		return
 	}
 	if out == nil {
@@ -187,7 +187,7 @@ func (u *unit) getOrder(w http.ResponseWriter, r *http.Request, g Grant) {
 	case errors.Is(err, errBadRequest):
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "query-not-accepted"})
 	case err != nil:
-		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "unavailable"})
+		unavailableErr(w, err)
 	case len(out) == 0:
 		writeJSON(w, http.StatusNotFound, notFound)
 	default:
@@ -242,7 +242,7 @@ func (u *unit) patchOrder(w http.ResponseWriter, r *http.Request, g Grant) {
 		return
 	}
 	if !errors.Is(err, pgx.ErrNoRows) {
-		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "unavailable"})
+		unavailableErr(w, err)
 		return
 	}
 	var cur int64
@@ -284,7 +284,7 @@ func (u *unit) stockDisplay(w http.ResponseWriter, r *http.Request, g Grant) {
 		return
 	}
 	if err != nil {
-		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "unavailable"})
+		unavailableErr(w, err)
 		return
 	}
 	src := "canonical"
@@ -331,7 +331,7 @@ func (u *unit) reorder(w http.ResponseWriter, r *http.Request, g Grant) {
 	ctx := r.Context()
 	tx, err := u.pool.Begin(ctx)
 	if err != nil {
-		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "unavailable"})
+		unavailableErr(w, err)
 		return
 	}
 	defer tx.Rollback(context.Background())
@@ -345,7 +345,7 @@ func (u *unit) reorder(w http.ResponseWriter, r *http.Request, g Grant) {
 	res := ReorderResult{DecidedOn: "canonical", DisplayedVersion: displayed}
 	if err := tx.QueryRow(ctx, `SELECT stock, version FROM owdm.item WHERE item_code = $1 FOR UPDATE`, item).
 		Scan(&res.CanonicalStock, &res.CanonicalVersion); err != nil {
-		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "unavailable"})
+		unavailableErr(w, err)
 		return
 	}
 	reuse := derivationcache.Reuse(derivationcache.Input{CacheRequested: true,
@@ -377,7 +377,7 @@ func (u *unit) reorder(w http.ResponseWriter, r *http.Request, g Grant) {
 		err = tx.Commit(ctx)
 	}
 	if err != nil {
-		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "unavailable"})
+		unavailableErr(w, err)
 		return
 	}
 	// Read-your-writes: the caller's next read takes a fresh grant (with a

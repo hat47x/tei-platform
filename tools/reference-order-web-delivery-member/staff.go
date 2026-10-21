@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"net/url"
 	"strings"
@@ -259,4 +260,11 @@ func (u *unit) adjustStock(w http.ResponseWriter, r *http.Request, g Grant) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"itemCode": item, "stock": stock, "version": version})
+}
+
+// unavailableErr answers 503 and logs the cause on the unit's stderr; the
+// cause is never sent to the client.
+func unavailableErr(w http.ResponseWriter, err error) {
+	log.Printf("unavailable: %v", err)
+	unavailable(w)
 }
