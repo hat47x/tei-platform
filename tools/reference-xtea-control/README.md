@@ -116,6 +116,20 @@ Driver:
 
 起動すると`build/<app>-endpoint.json`に`url`と`token`が書かれます。`-Foreground`を付けるとコンソールで起動します。
 
+Driverの更新シナリオは、必ずSkeletonの複製を使います。
+
+```powershell
+.\driver-fixture.ps1 `
+  -SkeletonHome C:\path\to\X-TEA\Driver\Skeleton `
+  -Target build\driver-fixture
+.\launch-xtea.cmd -App driver -Home C:\path\to\X-TEA\Driver `
+  -Model build\driver-fixture\Skeleton.xeaf
+python xtea_control.py --endpoint build\driver-endpoint.json `
+  scenario scenarios\driver-update-department.json
+```
+
+このシナリオは部門名を1件更新します。実業務DBや共有DBには実行しないでください。
+
 ### 4. 操作
 
 ```powershell
@@ -212,6 +226,7 @@ LinuxのJDK 11.0.32.1、配布`XTeaDriverInstaller230127`のランタイム、�
 - 実X-TEA Modeler（配布`xteamdl.jar`、About表示`V1.R4.M50`）で`MfgOrder.xead`を開き、メニュー8件・操作44件を列挙し、Aboutダイアログの開閉、スナップショット、スクリーンショットを確認。
 - 実X-TEA Editor（配布`xteaedt.jar`）で`MfgOrder.xead`を開き、メニュー8件・操作40件を列挙し、スナップショットとスクリーンショットを確認。
 - 実X-TEA Driver（配布`xteadrv.jar`）で、引数なしの起動時に「システム定義ファイルが指定されていません」のダイアログへ到達。`Skeleton.xeaf`の複製（DB URLだけを埋め込みDerbyへ変更）でログイン画面を開き、合成ユーザ`00000`でログイン後、`XF100`「部門情報の一覧・保守」を開き、カスタム行オブジェクトから4列・2行を読み取り、画面キャプチャを取得。選択行でEnterを押して`XF300`詳細画面を開き、そのスナップショットと画面キャプチャも取得。`F3 閉じる`で両画面を閉じる操作を確認。
+- 実Driverの更新経路として、`XF300`から`F8 部門情報`、`F5 編集`、部門名の変更、`F5 更新`を実行し、一覧を開き直して新しい値を確認。更新後のDerby DBを独立に問い合わせ、`AT010.CDBUMON=00001`の`TXBUMON`が変更されたことも確認。`scenarios/driver-update-department.json`と`driver-fixture.ps1`で再現できます。更新は使い捨てDBだけで行っています。
 
 ### 検証していないこと
 
@@ -228,11 +243,12 @@ reference-xtea-control/
   agent/src/xteaControl/   Java agent（Agent, BridgeServer, Ui, Json, Trace）
   server-harness/          元DBMethodの埋め込みJetty/H2ハーネス
   tests/                   合成GUI E2E、実Driver、XeadServer契約・実DBMethod試験
-  scenarios/               読み取り専用シナリオ
+  scenarios/               読み取り専用シナリオと、使い捨てDB向けDriver更新シナリオ
   xtea_control.py          Swing制御クライアント
   inventory_xtea.py        参照モデルの機能タイプ・UI呼出し候補の静的調査
   xtea_server.py           XeadServer HTTPクライアント
   build.ps1 / build.sh
+  driver-fixture.ps1       使い捨てSkeleton DBの作成
   launch-xtea.ps1
   clone-xtea.ps1 / clone-xtea.sh
   upstream.json            取得時点の上流HEAD

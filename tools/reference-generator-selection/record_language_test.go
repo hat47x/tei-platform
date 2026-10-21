@@ -91,6 +91,39 @@ func TestRecordedJavaScriptCandidateIsSelectable(t *testing.T) {
 	}
 }
 
+func TestRecordedJavaCandidateIsSelectable(t *testing.T) {
+	if _, _, _, ok := findJava(); !ok {
+		t.Skip("javac/java is not available")
+	}
+	workspaceDir, contract, fixtures, _ := paths(t)
+	sourceDir := filepath.Join(t.TempDir(), "java-source")
+	generated, err := GenerateVersion(contract, "java-template", "1", sourceDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	base := filepath.Join(repoRoot(t), "tools", "reference-generator-selection", "testdata", "generation")
+	out := filepath.Join(t.TempDir(), "recorded-java")
+	manifest, err := Record(RecordOptions{
+		ID: "recorded-java", Provider: "recorded-fixture", Model: "fixture-v0", Language: LanguageJava,
+		ContractPath: contract, SourcePath: filepath.Join(generated.Path, "Main.java"),
+		PromptPath:  filepath.Join(base, "prompt.txt"),
+		ContextPath: filepath.Join(base, "context.json"),
+	}, out)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if manifest.Language != LanguageJava || manifest.Source != "Main.java" {
+		t.Fatalf("unexpected recorded manifest: %+v", manifest)
+	}
+	receipt, err := Select(context.Background(), workspaceDir, contract, fixtures, filepath.Dir(out))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !receipt.Passed || len(receipt.Qualified) != 1 || receipt.Qualified[0] != "recorded-java" {
+		t.Fatalf("recorded java candidate was not selected: %+v", receipt)
+	}
+}
+
 func TestExternalCommandRecordsPythonCandidate(t *testing.T) {
 	if _, _, ok := findPython(); !ok {
 		t.Skip("python3/python is not available")

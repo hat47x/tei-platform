@@ -222,8 +222,9 @@ final class Ui {
                     }
                     String value = requestedValue == null ? "" : String.valueOf(requestedValue);
                     if ("append".equalsIgnoreCase(mode)) {
-                        text.setText(text.getText() + value);
-                    } else {
+                        value = text.getText() + value;
+                    }
+                    if (!setCustomFieldValue(target, value)) {
                         text.setText(value);
                     }
                 } else if (target instanceof JComboBox) {
@@ -1275,12 +1276,12 @@ final class Ui {
         return "column" + usedKeys.size();
     }
 
-    private static java.lang.reflect.Method method(Class<?> type, String name) {
+    private static java.lang.reflect.Method method(Class<?> type, String name, Class<?>... parameters) {
         if (type == null) {
             return null;
         }
         try {
-            java.lang.reflect.Method found = type.getMethod(name);
+            java.lang.reflect.Method found = type.getMethod(name, parameters);
             if (!found.isAccessible()) {
                 found.setAccessible(true);
             }
@@ -1339,6 +1340,32 @@ final class Ui {
             return ((JSlider) component).getValue();
         }
         return labelOf(component);
+    }
+
+    /**
+     * Set a value through X-TEA's editable-field wrapper when the selected
+     * component is an inner Swing widget. XFTextField, XFDateField, XFCheckBox
+     * and related classes keep their own value state and formatting rules.
+     */
+    private static boolean setCustomFieldValue(Component target, Object requestedValue) {
+        Component parent = target.getParent();
+        while (parent != null) {
+            String className = parent.getClass().getName();
+            if (className.startsWith("xeadDriver.")) {
+                java.lang.reflect.Method setter = method(parent.getClass(), "setValue", Object.class);
+                if (setter != null) {
+                    try {
+                        setter.invoke(parent, requestedValue == null ? "" : String.valueOf(requestedValue));
+                        return true;
+                    } catch (Exception e) {
+                        throw new BridgeException("UI_FAILURE",
+                                "custom field setValue failed: " + describe(e));
+                    }
+                }
+            }
+            parent = parent.getParent();
+        }
+        return false;
     }
 
     private static void selectCombo(JComboBox<?> combo, Object value) {

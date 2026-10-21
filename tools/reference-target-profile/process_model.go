@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -133,11 +134,16 @@ func longRunningEvidence(ctx context.Context, profile Profile, opts RunOptions) 
 	runCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 	cmd := exec.CommandContext(runCtx, binaryPath)
-	stdin, err := cmd.StdinPipe()
-	if err != nil {
-		evidence.Reason = err.Error()
-		return evidence
+	var input bytes.Buffer
+	encoder := json.NewEncoder(&input)
+	for _, tc := range fixture.Cases {
+		if err := encoder.Encode(tc.Input); err != nil {
+			evidence.Reason = "encoding request failed: " + err.Error()
+			return evidence
+		}
 	}
+	// os/exec writes input concurrently with stdout reads, avoiding pipe deadlock.
+	cmd.Stdin = &input
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		evidence.Reason = err.Error()
@@ -151,29 +157,25 @@ func longRunningEvidence(ctx context.Context, profile Profile, opts RunOptions) 
 	}
 	evidence.Processes = 1
 	evidence.Requests = len(fixture.Cases)
-	encoder := json.NewEncoder(stdin)
-	writeFailed := false
-	for _, tc := range fixture.Cases {
-		if err := encoder.Encode(tc.Input); err != nil {
-			writeFailed = true
-			evidence.Reason = "writing request failed: " + err.Error()
-			break
-		}
-	}
-	_ = stdin.Close()
 	decoder := json.NewDecoder(stdout)
-	for _, tc := range fixture.Cases {
+	for {
 		var got generatorselection.Result
 		if err := decoder.Decode(&got); err != nil {
-			evidence.Reason = "reading response failed: " + err.Error()
+			if err != io.EOF {
+				evidence.Reason = "reading response failed: " + err.Error()
+				// Drain malformed output so the child can exit before Wait.
+				_, _ = io.Copy(io.Discard, stdout)
+			}
 			break
 		}
+		evidence.Responses++
+		if evidence.Responses > len(fixture.Cases) {
+			evidence.Reason = "candidate returned extra responses"
+			continue
+		}
+		tc := fixture.Cases[evidence.Responses-1]
 		processCase := ProcessCase{CaseID: tc.ID, Got: got, Want: tc.Want, Passed: reflect.DeepEqual(got, tc.Want)}
 		evidence.Cases = append(evidence.Cases, processCase)
-		evidence.Responses++
-	}
-	if writeFailed && evidence.Reason == "" {
-		evidence.Reason = "request write failed before all cases"
 	}
 	waitErr := cmd.Wait()
 	if cmd.ProcessState != nil {
