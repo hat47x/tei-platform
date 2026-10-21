@@ -1,6 +1,6 @@
 {
   "name": "driver-login-xf100",
-  "description": "Login to a synthetic Skeleton system definition, open the department list (XF100), read its custom row objects, and close it. Uses synthetic credentials and data only.",
+  "description": "Login to a synthetic Skeleton system definition, open the department list (XF100), read its custom row objects, open the selected detail (XF300), and close both. Uses synthetic credentials and data only.",
   "steps": [
     { "op": "wait_window", "title": "1\\.0\\.8|Skeleton|管理", "timeoutMs": 30000 },
     { "op": "set", "selector": { "path": "0.0.5" }, "value": "00000" },
@@ -8,10 +8,17 @@
     { "op": "invoke", "selector": { "role": "button", "text": "ログイン|Login" }, "settleMs": 1000 },
     { "op": "wait_window", "title": "1\\.0\\.8", "timeoutMs": 30000 },
     { "op": "invoke", "selector": { "role": "button", "text": "部門情報の一覧・保守" }, "settleMs": 1000 },
-    { "op": "wait_window", "title": "部門情報", "timeoutMs": 30000 },
+    { "op": "wait_window", "title": "部門情報の一覧", "timeoutMs": 30000 },
     { "op": "table_assert", "selector": { "role": "table" }, "row": 0, "column": "AT010.CDBUMON", "equals": "00001" },
     { "op": "snapshot", "path": "artifacts/driver-xf100-snapshot.json", "maxDepth": 12 },
     { "op": "screenshot", "path": "artifacts/driver-xf100.png" },
-    { "op": "invoke", "selector": { "role": "button", "text": "F3 閉じる" }, "settleMs": 500 }
+    { "op": "select", "selector": { "role": "table" }, "row": 0, "column": 0 },
+    { "op": "key", "selector": { "role": "table" }, "key": "ENTER" },
+    { "op": "wait_window", "title": "関連情報|部門と", "timeoutMs": 30000 },
+    { "op": "snapshot", "path": "artifacts/driver-xf300-snapshot.json", "maxDepth": 12 },
+    { "op": "screenshot", "path": "artifacts/driver-xf300.png" },
+    { "op": "invoke", "selector": { "window": "関連情報|部門と", "role": "button", "text": "F3 閉じる" }, "settleMs": 500 },
+    { "op": "wait_window", "title": "関連情報|部門と", "state": "absent", "timeoutMs": 10000 },
+    { "op": "invoke", "selector": { "window": "部門情報の一覧", "role": "button", "text": "F3 閉じる" }, "settleMs": 500 }
   ]
 }

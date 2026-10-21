@@ -99,6 +99,9 @@ class IntegrationTest(unittest.TestCase):
         self.client.wait_text({"name": "status"}, expected="ran:hello", timeout_ms=5000)
         self.client.key({"name": "input"}, key="ENTER")
         self.client.wait_text({"name": "status"}, expected="enter:hello", timeout_ms=5000)
+        self.client.select({"name": "table"}, row=0, column=0)
+        self.client.key({"name": "table"}, key="ENTER")
+        self.client.wait_text({"name": "status"}, expected="table-enter", timeout_ms=5000)
 
     def test_04_choices_tabs_and_table(self) -> None:
         enabled = self.client.set_value({"name": "enabled"}, False)
