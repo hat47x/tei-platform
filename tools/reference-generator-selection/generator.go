@@ -41,13 +41,15 @@ type generatorTemplate struct {
 }
 
 var generatorTemplates = map[string]generatorTemplate{
-	"template":              {file: "templates/template.go.tmpl", id: "line-amount-template", origin: "template", strategy: "template", language: LanguageGo, source: "main.go"},
-	"alternative":           {file: "templates/alternative.go.tmpl", id: "line-amount-alternative", origin: "handwritten", strategy: "alternative", language: LanguageGo, source: "main.go"},
-	"dangerous":             {file: "templates/dangerous.go.tmpl", id: "line-amount-dangerous", origin: "generated-ai", strategy: "dangerous", language: LanguageGo, source: "main.go"},
-	"python-template":       {file: "templates/template.py.tmpl", id: "line-amount-python-template", origin: "template", strategy: "python-template", language: LanguagePython, source: "main.py"},
-	"javascript-template":   {file: "templates/template.js.tmpl", id: "line-amount-javascript-template", origin: "template", strategy: "javascript-template", language: LanguageJavaScript, source: "main.js"},
-	"long-running-template": {file: "templates/template-long-running.go.tmpl", id: "line-amount-long-running-template", origin: "template", strategy: "long-running-template", language: LanguageGo, source: "main.go"},
-	"java-template":         {file: "templates/Main.java.tmpl", id: "line-amount-java-template", origin: "template", strategy: "java-template", language: LanguageJava, source: "Main.java"},
+	"template":                         {file: "templates/template.go.tmpl", id: "line-amount-template", origin: "template", strategy: "template", language: LanguageGo, source: "main.go"},
+	"alternative":                      {file: "templates/alternative.go.tmpl", id: "line-amount-alternative", origin: "handwritten", strategy: "alternative", language: LanguageGo, source: "main.go"},
+	"dangerous":                        {file: "templates/dangerous.go.tmpl", id: "line-amount-dangerous", origin: "generated-ai", strategy: "dangerous", language: LanguageGo, source: "main.go"},
+	"python-template":                  {file: "templates/template.py.tmpl", id: "line-amount-python-template", origin: "template", strategy: "python-template", language: LanguagePython, source: "main.py"},
+	"javascript-template":              {file: "templates/template.js.tmpl", id: "line-amount-javascript-template", origin: "template", strategy: "javascript-template", language: LanguageJavaScript, source: "main.js"},
+	"long-running-template":            {file: "templates/template-long-running.go.tmpl", id: "line-amount-long-running-template", origin: "template", strategy: "long-running-template", language: LanguageGo, source: "main.go"},
+	"java-template":                    {file: "templates/Main.java.tmpl", id: "line-amount-java-template", origin: "template", strategy: "java-template", language: LanguageJava, source: "Main.java"},
+	"python-long-running-template":     {file: "templates/template-long-running.py.tmpl", id: "line-amount-python-long-running-template", origin: "template", strategy: "python-long-running-template", language: LanguagePython, source: "main.py"},
+	"javascript-long-running-template": {file: "templates/template-long-running.js.tmpl", id: "line-amount-javascript-long-running-template", origin: "template", strategy: "javascript-long-running-template", language: LanguageJavaScript, source: "main.js"},
 }
 
 type templateData struct {
