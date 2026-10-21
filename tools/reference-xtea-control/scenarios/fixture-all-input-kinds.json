@@ -1,0 +1,27 @@
+{
+  "name": "fixture-all-input-kinds",
+  "description": "Contract test scenario for menus, text, buttons, keys, tabs, checkbox, combo, table, modal dialogs, screenshots, and trace.",
+  "steps": [
+    { "op": "wait_window", "title": "Fake X-TEA", "timeoutMs": 15000 },
+    { "op": "invoke", "selector": { "role": "menuitem", "text": "Open" }, "settleMs": 100 },
+    { "op": "assert_text", "selector": { "name": "status" }, "equals": "opened" },
+    { "op": "set", "selector": { "name": "input" }, "value": "hello" },
+    { "op": "invoke", "selector": { "role": "button", "text": "Run" }, "settleMs": 100 },
+    { "op": "assert_text", "selector": { "name": "status" }, "equals": "ran:hello" },
+    { "op": "key", "selector": { "name": "input" }, "key": "ENTER" },
+    { "op": "assert_text", "selector": { "name": "status" }, "equals": "enter:hello" },
+    { "op": "set", "selector": { "name": "enabled" }, "value": false },
+    { "op": "set", "selector": { "name": "mode" }, "value": "Safe" },
+    { "op": "select", "selector": { "role": "tab", "window": "Fake X-TEA" }, "item_index": 1 },
+    { "op": "select", "selector": { "role": "tab", "window": "Fake X-TEA" }, "item_index": 0 },
+    { "op": "table_set", "selector": { "name": "table" }, "row": 0, "column": "Name", "value": "Changed" },
+    { "op": "table_assert", "selector": { "name": "table" }, "row": 0, "column": "Name", "equals": "Changed" },
+    { "op": "invoke", "selector": { "role": "button", "text": "Open Dialog" } },
+    { "op": "wait_window", "title": "Fake Dialog", "timeoutMs": 10000 },
+    { "op": "set", "selector": { "name": "dialogInput" }, "value": "changed" },
+    { "op": "screenshot", "selector": { "window": "Fake Dialog" }, "path": "artifacts/fixture-dialog.png" },
+    { "op": "invoke", "selector": { "window": "Fake Dialog", "role": "button", "text": "OK" } },
+    { "op": "wait_window", "title": "Fake Dialog", "state": "absent", "timeoutMs": 10000 },
+    { "op": "snapshot", "path": "artifacts/fixture-snapshot.json" }
+  ]
+}
