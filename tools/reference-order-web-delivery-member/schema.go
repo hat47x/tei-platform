@@ -27,8 +27,11 @@ type RoleLimits struct {
 // DefaultRoleLimits caps the member role across all member unit replicas at
 // 16 connections (one unit uses its pool of 4 and one LISTEN connection; the
 // tests run up to three replicas at once). The staff role has its own cap.
+// The member statement timeout is 10 s: PostgreSQL measures it on the wall
+// clock, which jumped forward by several seconds under WSL2 and cancelled a
+// 2 s statement that was not slow.
 func DefaultRoleLimits() RoleLimits {
-	return RoleLimits{MemberConnections: 16, StaffConnections: 10, MemberStatementMS: 2000}
+	return RoleLimits{MemberConnections: 16, StaffConnections: 10, MemberStatementMS: 10000}
 }
 
 // Seed principals and accounts used by the tests.
