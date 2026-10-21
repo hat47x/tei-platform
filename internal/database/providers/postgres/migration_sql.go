@@ -41,11 +41,17 @@ func validateResolvedMigrationDiff(diff schemadiff.Diff) error {
 // RenderMigrationSQLWithObservation.
 func renderResolvedMigrationSQL(diff schemadiff.Diff) ([]string, error) {
 	var out []string
+	// A primary key on a newly created table is added unnamed, after the table's
+	// columns exist, so PostgreSQL chooses the name and the constraint is observed
+	// by its table rather than by an assumed name. Only newly created tables are
+	// handled here; changing an existing primary key stays unsupported.
+	var createdWithPrimaryKey []schemadiff.Change
+	addedColumns := map[string]map[string]physical.Column{}
 	for _, change := range diff.Changes {
 		switch change.Kind {
 		case schemadiff.CreateTable:
 			if len(change.PrimaryKey) > 0 {
-				return nil, fmt.Errorf("postgres migration SQL rendering does not support primary key on newly created table %s until constraint identity is realizable", change.Table)
+				createdWithPrimaryKey = append(createdWithPrimaryKey, change)
 			}
 			// Columns are emitted by following AddColumn changes to retain one common change model.
 			out = append(out, fmt.Sprintf("CREATE TABLE %s ();", quoteQualifiedName(change.Table)))
@@ -55,6 +61,10 @@ func renderResolvedMigrationSQL(diff schemadiff.Diff) ([]string, error) {
 			if change.Column == nil {
 				return nil, fmt.Errorf("add-column %s has no column", change.Table)
 			}
+			if addedColumns[change.Table] == nil {
+				addedColumns[change.Table] = map[string]physical.Column{}
+			}
+			addedColumns[change.Table][change.Column.Name] = *change.Column
 			stmt := fmt.Sprintf("ALTER TABLE %s ADD COLUMN %s %s", quoteQualifiedName(change.Table), quoteIdentifier(change.Column.Name), change.Column.PhysicalType)
 			if !change.Column.Nullable {
 				stmt += " NOT NULL"
@@ -109,6 +119,19 @@ func renderResolvedMigrationSQL(diff schemadiff.Diff) ([]string, error) {
 		default:
 			return nil, fmt.Errorf("postgres migration SQL rendering does not support schema change kind %q on %s", change.Kind, change.Table)
 		}
+	}
+	for _, created := range createdWithPrimaryKey {
+		columns := addedColumns[created.Table]
+		for _, name := range created.PrimaryKey {
+			column, ok := columns[name]
+			if !ok {
+				return nil, fmt.Errorf("primary key column %s of newly created table %s is not added by this diff", name, created.Table)
+			}
+			if column.Nullable {
+				return nil, fmt.Errorf("primary key column %s of newly created table %s is nullable; PostgreSQL would make it NOT NULL and the declared schema would drift", name, created.Table)
+			}
+		}
+		out = append(out, fmt.Sprintf("ALTER TABLE %s ADD PRIMARY KEY (%s);", quoteQualifiedName(created.Table), joinQuotedIdentifiers(created.PrimaryKey)))
 	}
 	return out, nil
 }

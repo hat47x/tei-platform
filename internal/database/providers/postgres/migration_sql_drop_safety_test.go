@@ -2,6 +2,7 @@ package postgres_test
 
 import (
 	"errors"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -144,21 +145,90 @@ func TestRenderMigrationSQLWithObservationRejectsWholeDiffWhenAnyDropTableIsUnsa
 	}
 }
 
-func TestRenderMigrationSQLRejectsCreateTablePrimaryKeyUntilConstraintIdentityIsRealizable(t *testing.T) {
+func TestRenderMigrationSQLAddsPrimaryKeyToNewTableAfterItsColumns(t *testing.T) {
 	diff := schemadiff.Diff{
 		Database: "sales_core",
 		Changes: []schemadiff.Change{
-			{Kind: schemadiff.CreateTable, Table: "public.new_table", PrimaryKey: []string{"id"}},
+			{Kind: schemadiff.CreateTable, Table: "public.new_table", PrimaryKey: []string{"tenant", "id"}},
+			{Kind: schemadiff.AddColumn, Table: "public.new_table", Column: &physical.Column{Name: "tenant", PhysicalType: "text"}},
 			{Kind: schemadiff.AddColumn, Table: "public.new_table", Column: &physical.Column{Name: "id", PhysicalType: "bigint"}},
 		},
 	}
 
 	statements, err := postgres.RenderMigrationSQL(diff)
-	if err == nil || !strings.Contains(err.Error(), "does not support primary key on newly created table") || !strings.Contains(err.Error(), "constraint identity") {
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []string{
+		`CREATE TABLE "public"."new_table" ();`,
+		`ALTER TABLE "public"."new_table" ADD COLUMN "tenant" text NOT NULL;`,
+		`ALTER TABLE "public"."new_table" ADD COLUMN "id" bigint NOT NULL;`,
+		`ALTER TABLE "public"."new_table" ADD PRIMARY KEY ("tenant", "id");`,
+	}
+	if !reflect.DeepEqual(statements, want) {
+		t.Fatalf("statements=%#v want=%#v", statements, want)
+	}
+	for _, statement := range statements {
+		if strings.Contains(statement, "CONSTRAINT") {
+			t.Fatalf("primary key must stay unnamed so PostgreSQL chooses the name: %q", statement)
+		}
+	}
+}
+
+func TestRenderMigrationSQLRejectsNewTablePrimaryKeyColumnThatIsMissingOrNullable(t *testing.T) {
+	missing := schemadiff.Diff{
+		Database: "sales_core",
+		Changes: []schemadiff.Change{
+			{Kind: schemadiff.CreateTable, Table: "public.new_table", PrimaryKey: []string{"id"}},
+			{Kind: schemadiff.AddColumn, Table: "public.new_table", Column: &physical.Column{Name: "other", PhysicalType: "bigint"}},
+		},
+	}
+	statements, err := postgres.RenderMigrationSQL(missing)
+	if err == nil || !strings.Contains(err.Error(), "is not added by this diff") || statements != nil {
 		t.Fatalf("statements=%#v err=%v", statements, err)
 	}
-	if statements != nil {
-		t.Fatalf("unrealized create-table primary key returned partial statements=%#v", statements)
+
+	nullable := schemadiff.Diff{
+		Database: "sales_core",
+		Changes: []schemadiff.Change{
+			{Kind: schemadiff.CreateTable, Table: "public.new_table", PrimaryKey: []string{"id"}},
+			{Kind: schemadiff.AddColumn, Table: "public.new_table", Column: &physical.Column{Name: "id", PhysicalType: "bigint", Nullable: true}},
+		},
+	}
+	statements, err = postgres.RenderMigrationSQL(nullable)
+	if err == nil || !strings.Contains(err.Error(), "is nullable") || statements != nil {
+		t.Fatalf("statements=%#v err=%v", statements, err)
+	}
+}
+
+func TestRenderMigrationSQLKeepsEachNewTablePrimaryKeyWithItsOwnTable(t *testing.T) {
+	diff := schemadiff.Diff{
+		Database: "sales_core",
+		Changes: []schemadiff.Change{
+			{Kind: schemadiff.CreateTable, Table: "public.a", PrimaryKey: []string{"id"}},
+			{Kind: schemadiff.CreateTable, Table: "public.b", PrimaryKey: []string{"id"}},
+			{Kind: schemadiff.AddColumn, Table: "public.a", Column: &physical.Column{Name: "id", PhysicalType: "bigint"}},
+			{Kind: schemadiff.AddColumn, Table: "public.b", Column: &physical.Column{Name: "other", PhysicalType: "bigint"}},
+		},
+	}
+	// Table b has no id column in this diff: a's column must not satisfy b's key.
+	if _, err := postgres.RenderMigrationSQL(diff); err == nil || !strings.Contains(err.Error(), "public.b") {
+		t.Fatalf("err=%v", err)
+	}
+}
+
+func TestRenderMigrationSQLDoesNotDropUnsupportedConstraintOnNewTableSilently(t *testing.T) {
+	diff := schemadiff.Diff{
+		Database: "sales_core",
+		Changes: []schemadiff.Change{
+			{Kind: schemadiff.CreateTable, Table: "public.new_table", PrimaryKey: []string{"id"}},
+			{Kind: schemadiff.AddColumn, Table: "public.new_table", Column: &physical.Column{Name: "id", PhysicalType: "bigint"}},
+			{Kind: schemadiff.AddUniqueConstraint, Table: "public.new_table", UniqueConstraint: &physical.UniqueConstraint{Name: "new_table_id_key", Columns: []string{"id"}}},
+		},
+	}
+	statements, err := postgres.RenderMigrationSQL(diff)
+	if err == nil || !strings.Contains(err.Error(), "add-unique-constraint") || statements != nil {
+		t.Fatalf("statements=%#v err=%v", statements, err)
 	}
 }
 
