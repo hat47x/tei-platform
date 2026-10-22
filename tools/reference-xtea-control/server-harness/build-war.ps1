@@ -37,11 +37,14 @@ New-Item -ItemType Directory -Force $classes, $lib | Out-Null
 
 Copy-Item (Join-Path $toolRoot "build\server-classes\*") $classes -Recurse
 Copy-Item (Join-Path $RuntimeHome "*.jar") $lib
+& javac -encoding UTF-8 -source 8 -target 8 -cp "$classes;$(Join-Path $deps 'javax.servlet-api-3.1.0.jar')" -d $classes (Join-Path $root "JdbcBootstrap.java")
+if ($LASTEXITCODE -ne 0) { throw "javac failed for JdbcBootstrap" }
 
 $escapedXeaf = [System.Security.SecurityElement]::Escape((Resolve-Path $Xeaf).Path)
 $webXml = @"
 <?xml version="1.0" encoding="UTF-8"?>
 <web-app xmlns="http://xmlns.jcp.org/xml/ns/javaee" version="3.1">
+  <listener><listener-class>xteaServerHarness.JdbcBootstrap</listener-class></listener>
   <servlet>
     <servlet-name>DBMethod</servlet-name>
     <servlet-class>xeadServer.DBMethod</servlet-class>
