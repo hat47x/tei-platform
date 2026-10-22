@@ -111,6 +111,14 @@ bash tools/reference-critical-path-evidence-audit/compose-smoke.sh
 - Source、Target、DB schema、Git revisionを値の一致だけで同一視しない。DB schemaとApplicationは別のライフサイクルであり、`schemaCompatibility=compatible` は**提出された判定結果の表明**に過ぎない。Providerの実状態・readの独立性・記録時点はreviewerが確認する。
 - `E0` のフォーム検査が通っても、C0/Studio/Business/Loweringの本当のproducer-consumer接続や製品上の動作を証明しない。
 
+## 一改訂packetの未実行見本（E2）
+
+`testdata/p0-order-entry-e2-not-executed.json` は、#1163が求める「同じ新しい1回の実runから記録する」packet（受理済みSource R1・Host認可・Web build・DB schema・Command・別invocationのObservation・S02/S05/N11の負例）の欄を揃え、**実行した欄を一つも埋めていない**見本である。未実行の欄は空文字にする。`not-executed` のような文字列を入れると、このpreflightは非空のlocatorを「証跡あり」と数える。
+
+期待結果は`INCOMPLETE`・`productGate=UNQUALIFIED`・非ゼロ終了で、`REVISION_QUALIFICATION_STALE_OR_MISSING`、`ACCEPTED_R0_R1_LINEAGE_MISSING`、`S02_*`・`S05_*`・`N11_UNOBSERVED_CONTROL_MISSING`、`E2_COMMAND_AND_INDEPENDENT_READ_NOT_CORRELATED`など18件の不足が列挙される。`not_executed_fixture_test.go` がこの一覧を固定し、欄が値で埋まった見本を「未実行」と呼べなくする。
+
+R0・意味同値R2を**Web自身が**実行前に拒否したことは、現行のpacket形式に欄が無く、この見本は主張しない。外部ハーネスによる検出と区別して記録する欄は、実runが得られる時点で別途検討する。これは実行結果でも、G1/G2のPASSでもない。
+
 ## 記録の例（不足しているため必ずINCOMPLETE）
 
 ```json
