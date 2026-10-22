@@ -17,7 +17,7 @@ import (
 // two targets are equivalent.
 func main() {
 	if len(os.Args) < 2 {
-		fmt.Fprintln(os.Stderr, "usage: tei-target-profile <validate|run|compare> [-profile FILE] [-profiles FILE,...] [options]")
+		fmt.Fprintln(os.Stderr, "usage: tei-target-profile <validate|run|compare|deploy|rollback> [-profile FILE] [-profiles FILE,...] [options]")
 		os.Exit(2)
 	}
 	command := os.Args[1]
@@ -28,9 +28,14 @@ func main() {
 	contractPath := fs.String("contract", "", "generator contract JSON")
 	fixturesPath := fs.String("fixtures", "", "fixed fixture JSON")
 	candidatesDir := fs.String("candidates", "", "directory containing candidate directories")
+	enforceNetwork := fs.Bool("enforce-network", false, "require Linux network namespace isolation for network:none (run/compare only)")
+	rootDir := fs.String("root", "", "local deployment root for deploy")
 	_ = fs.Parse(os.Args[2:])
-	if command != "compare" && *profilePath == "" {
+	if command != "compare" && command != "rollback" && *profilePath == "" {
 		fail(fmt.Errorf("-profile is required"))
+	}
+	if *enforceNetwork && command != "run" && command != "compare" {
+		fail(fmt.Errorf("-enforce-network is supported only for run/compare"))
 	}
 	switch command {
 	case "validate":
@@ -45,7 +50,7 @@ func main() {
 		}
 		receipt, err := targetprofile.Run(context.Background(), targetprofile.RunOptions{
 			WorkspaceDir: *workspaceDir, ContractPath: *contractPath,
-			FixturePath: *fixturesPath, CandidatesDir: *candidatesDir, ProfilePath: *profilePath,
+			FixturePath: *fixturesPath, CandidatesDir: *candidatesDir, ProfilePath: *profilePath, EnforceNetwork: *enforceNetwork,
 		})
 		if err != nil {
 			fail(err)
@@ -69,8 +74,34 @@ func main() {
 		}
 		receipt, err := targetprofile.Compare(context.Background(), targetprofile.CompareOptions{
 			WorkspaceDir: *workspaceDir, ContractPath: *contractPath,
-			FixturePath: *fixturesPath, CandidatesDir: *candidatesDir, ProfilePaths: paths,
+			FixturePath: *fixturesPath, CandidatesDir: *candidatesDir, ProfilePaths: paths, EnforceNetwork: *enforceNetwork,
 		})
+		if err != nil {
+			fail(err)
+		}
+		emit(receipt)
+		if !receipt.Passed {
+			os.Exit(1)
+		}
+	case "deploy":
+		if *candidatesDir == "" || *rootDir == "" {
+			fail(fmt.Errorf("-candidates and -root are required for deploy"))
+		}
+		receipt, err := targetprofile.Deploy(context.Background(), targetprofile.DeployOptions{
+			ProfilePath: *profilePath, CandidatesDir: *candidatesDir, RootDir: *rootDir,
+		})
+		if err != nil {
+			fail(err)
+		}
+		emit(receipt)
+		if !receipt.Passed {
+			os.Exit(1)
+		}
+	case "rollback":
+		if *rootDir == "" {
+			fail(fmt.Errorf("-root is required for rollback"))
+		}
+		receipt, err := targetprofile.Rollback(*rootDir)
 		if err != nil {
 			fail(err)
 		}

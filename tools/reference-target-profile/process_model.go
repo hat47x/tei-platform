@@ -7,12 +7,12 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"reflect"
 	"runtime"
-	"strings"
 	"time"
 
 	generatorselection "tei/tools/reference-generator-selection"
@@ -29,15 +29,20 @@ type ProcessCase struct {
 // candidate according to the profile's declared process model. It is not a
 // measurement of a real target's process supervisor.
 type ProcessModelEvidence struct {
-	Mode         string        `json:"mode"`
-	Processes    int           `json:"processes"`
-	Requests     int           `json:"requests"`
-	Responses    int           `json:"responses"`
-	Passed       bool          `json:"passed"`
-	ExitCode     int           `json:"exitCode,omitempty"`
-	StderrDigest string        `json:"stderrDigest,omitempty"`
-	Reason       string        `json:"reason,omitempty"`
-	Cases        []ProcessCase `json:"cases,omitempty"`
+	CandidateID  string                              `json:"candidateId,omitempty"`
+	SourceDigest string                              `json:"sourceDigest,omitempty"`
+	BinaryDigest string                              `json:"binaryDigest,omitempty"`
+	Binding      string                              `json:"binding,omitempty"`
+	Mode         string                              `json:"mode"`
+	Runtime      *generatorselection.RuntimeEvidence `json:"runtime,omitempty"`
+	Processes    int                                 `json:"processes"`
+	Requests     int                                 `json:"requests"`
+	Responses    int                                 `json:"responses"`
+	Passed       bool                                `json:"passed"`
+	ExitCode     int                                 `json:"exitCode,omitempty"`
+	StderrDigest string                              `json:"stderrDigest,omitempty"`
+	Reason       string                              `json:"reason,omitempty"`
+	Cases        []ProcessCase                       `json:"cases,omitempty"`
 }
 
 func enforceProcessModel(ctx context.Context, profile Profile, opts RunOptions, selection generatorselection.Receipt) *ProcessModelEvidence {
@@ -45,7 +50,11 @@ func enforceProcessModel(ctx context.Context, profile Profile, opts RunOptions, 
 	case ProcessOneShot:
 		return oneshotEvidence(profile, selection)
 	case ProcessLongRunning:
-		return longRunningEvidence(ctx, profile, opts)
+		candidate := selectedCandidate(Receipt{Profile: profile, Selection: selection})
+		if candidate == nil || !candidate.Passed {
+			return &ProcessModelEvidence{Mode: ProcessLongRunning, Reason: "selected candidate did not pass selection"}
+		}
+		return longRunningEvidence(ctx, opts, *candidate)
 	case ProcessBatch:
 		return &ProcessModelEvidence{
 			Mode: ProcessBatch, Passed: false,
@@ -77,31 +86,8 @@ func oneshotEvidence(profile Profile, selection generatorselection.Receipt) *Pro
 	return evidence
 }
 
-func longRunningEvidence(ctx context.Context, profile Profile, opts RunOptions) *ProcessModelEvidence {
-	evidence := &ProcessModelEvidence{Mode: ProcessLongRunning}
-	if strings.TrimSpace(profile.GeneratorID) == "" {
-		evidence.Reason = "long-running profile has no generatorId"
-		return evidence
-	}
-	candidateDir := filepath.Join(opts.CandidatesDir, profile.GeneratorID)
-	var manifest generatorselection.CandidateManifest
-	manifestRaw, err := os.ReadFile(filepath.Join(candidateDir, "candidate.json"))
-	if err != nil {
-		evidence.Reason = "candidate manifest is unreadable: " + err.Error()
-		return evidence
-	}
-	if err := json.Unmarshal(manifestRaw, &manifest); err != nil {
-		evidence.Reason = "candidate manifest is invalid: " + err.Error()
-		return evidence
-	}
-	language := manifest.Language
-	if language == "" {
-		language = generatorselection.LanguageGo
-	}
-	if language != generatorselection.LanguageGo {
-		evidence.Reason = "long-running probe supports only Go candidates in this reference"
-		return evidence
-	}
+func longRunningEvidence(ctx context.Context, opts RunOptions, selected generatorselection.CandidateReceipt) *ProcessModelEvidence {
+	evidence := &ProcessModelEvidence{Mode: ProcessLongRunning, CandidateID: selected.ID}
 	fixtureRaw, err := os.ReadFile(opts.FixturePath)
 	if err != nil {
 		evidence.Reason = "fixture is unreadable: " + err.Error()
@@ -122,22 +108,72 @@ func longRunningEvidence(ctx context.Context, profile Profile, opts RunOptions) 
 		return evidence
 	}
 	defer os.RemoveAll(tempDir)
+	manifest, err := snapshotProbeSource(opts.CandidatesDir, tempDir, selected)
+	if err != nil {
+		evidence.Reason = "candidate binding failed: " + err.Error()
+		return evidence
+	}
+	evidence.SourceDigest = manifest.SourceDigest
+	evidence.Binding = "source-digest"
+	language := selected.Language
 	binaryPath := filepath.Join(tempDir, "candidate")
 	if runtime.GOOS == "windows" {
 		binaryPath += ".exe"
 	}
-	if err := buildGoCandidate(ctx, candidateDir, binaryPath); err != nil {
-		evidence.Reason = "candidate build failed: " + err.Error()
+	executable := binaryPath
+	var args []string
+	switch language {
+	case generatorselection.LanguageGo:
+		if err := buildGoCandidate(ctx, tempDir, binaryPath); err != nil {
+			evidence.Reason = "candidate build failed: " + err.Error()
+			return evidence
+		}
+		binary, err := os.ReadFile(binaryPath)
+		if err != nil {
+			evidence.Reason = "probe executable is unreadable: " + err.Error()
+			return evidence
+		}
+		evidence.BinaryDigest = digestBytes(binary)
+		if selected.BinaryDigest == "" || evidence.BinaryDigest != selected.BinaryDigest {
+			evidence.Reason = "probe binary digest differs from selection"
+			return evidence
+		}
+		evidence.Binding = "source-and-binary-digest"
+	case generatorselection.LanguagePython, generatorselection.LanguageJavaScript:
+		executable, evidence.Runtime = generatorselection.ResolveScriptRuntime(language)
+		if !evidence.Runtime.Available {
+			evidence.Reason = "runtime unavailable: " + language + " interpreter was not found"
+			return evidence
+		}
+		sourcePath, err := filepath.Abs(filepath.Join(tempDir, manifest.Source))
+		if err != nil {
+			evidence.Reason = err.Error()
+			return evidence
+		}
+		args = []string{sourcePath}
+	default:
+		evidence.Reason = "unsupported long-running candidate language: " + language
 		return evidence
 	}
+	return runLongRunningProbe(ctx, opts, fixture, executable, args, evidence)
+}
+
+// runLongRunningProbe handles the stream after the executable/source binding
+// has been checked. Protocol regression tests use synthetic executables here.
+func runLongRunningProbe(ctx context.Context, opts RunOptions, fixture generatorselection.Fixture, executable string, args []string, evidence *ProcessModelEvidence) *ProcessModelEvidence {
 	runCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
-	cmd := exec.CommandContext(runCtx, binaryPath)
-	stdin, err := cmd.StdinPipe()
-	if err != nil {
-		evidence.Reason = err.Error()
-		return evidence
+	cmd := opts.execution.Command(runCtx, executable, args...)
+	var input bytes.Buffer
+	encoder := json.NewEncoder(&input)
+	for _, tc := range fixture.Cases {
+		if err := encoder.Encode(tc.Input); err != nil {
+			evidence.Reason = "encoding request failed: " + err.Error()
+			return evidence
+		}
 	}
+	// os/exec writes input concurrently with stdout reads, avoiding pipe deadlock.
+	cmd.Stdin = &input
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		evidence.Reason = err.Error()
@@ -151,29 +187,25 @@ func longRunningEvidence(ctx context.Context, profile Profile, opts RunOptions) 
 	}
 	evidence.Processes = 1
 	evidence.Requests = len(fixture.Cases)
-	encoder := json.NewEncoder(stdin)
-	writeFailed := false
-	for _, tc := range fixture.Cases {
-		if err := encoder.Encode(tc.Input); err != nil {
-			writeFailed = true
-			evidence.Reason = "writing request failed: " + err.Error()
-			break
-		}
-	}
-	_ = stdin.Close()
 	decoder := json.NewDecoder(stdout)
-	for _, tc := range fixture.Cases {
+	for {
 		var got generatorselection.Result
 		if err := decoder.Decode(&got); err != nil {
-			evidence.Reason = "reading response failed: " + err.Error()
+			if err != io.EOF {
+				evidence.Reason = "reading response failed: " + err.Error()
+				// Drain malformed output so the child can exit before Wait.
+				_, _ = io.Copy(io.Discard, stdout)
+			}
 			break
 		}
+		evidence.Responses++
+		if evidence.Responses > len(fixture.Cases) {
+			evidence.Reason = "candidate returned extra responses"
+			continue
+		}
+		tc := fixture.Cases[evidence.Responses-1]
 		processCase := ProcessCase{CaseID: tc.ID, Got: got, Want: tc.Want, Passed: reflect.DeepEqual(got, tc.Want)}
 		evidence.Cases = append(evidence.Cases, processCase)
-		evidence.Responses++
-	}
-	if writeFailed && evidence.Reason == "" {
-		evidence.Reason = "request write failed before all cases"
 	}
 	waitErr := cmd.Wait()
 	if cmd.ProcessState != nil {
@@ -199,23 +231,14 @@ func longRunningEvidence(ctx context.Context, profile Profile, opts RunOptions) 
 }
 
 func buildGoCandidate(ctx context.Context, dir, binaryPath string) error {
-	build := exec.CommandContext(ctx, "go", "build", "-o", binaryPath, ".")
+	// Match the selection reference's single-file, path-independent build.
+	build := exec.CommandContext(ctx, "go", "build", "-trimpath", "-buildvcs=false", "-o", binaryPath, "main.go")
 	build.Dir = dir
 	out, err := build.CombinedOutput()
-	if err == nil {
-		return nil
+	if err != nil {
+		return fmt.Errorf("%v: %s", err, out)
 	}
-	if strings.Contains(string(out), "go.mod file not found") {
-		fallback := exec.CommandContext(ctx, "go", "build", "-o", binaryPath, "main.go")
-		fallback.Dir = dir
-		fallback.Env = append(os.Environ(), "GO111MODULE=off")
-		if fallbackOut, fallbackErr := fallback.CombinedOutput(); fallbackErr == nil {
-			return nil
-		} else {
-			return fmt.Errorf("%v: %s", fallbackErr, fallbackOut)
-		}
-	}
-	return fmt.Errorf("%v: %s", err, out)
+	return nil
 }
 
 func digestBytes(content []byte) string {

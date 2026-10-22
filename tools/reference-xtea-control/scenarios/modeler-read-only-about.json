@@ -1,0 +1,14 @@
+{
+  "name": "modeler-read-only-about",
+  "description": "Open a model, catalog the UI, open About, capture it, and close only the dialog. No model save.",
+  "steps": [
+    { "op": "wait_window", "title": "X-TEA Modeler", "timeoutMs": 30000 },
+    { "op": "snapshot", "path": "artifacts/modeler-snapshot.json", "maxDepth": 10 },
+    { "op": "screenshot", "path": "artifacts/modeler-window.png" },
+    { "op": "invoke", "selector": { "window": "X-TEA Modeler", "role": "menuitem", "text": "バージョン|Version|About" }, "settleMs": 300 },
+    { "op": "wait_window", "title": "About|バージョン", "timeoutMs": 10000 },
+    { "op": "screenshot", "path": "artifacts/modeler-about.png" },
+    { "op": "invoke", "selector": { "window": "About|バージョン", "role": "button", "text": "OK|閉じる|Close" } },
+    { "op": "wait_window", "title": "About|バージョン", "state": "absent", "timeoutMs": 10000 }
+  ]
+}

@@ -57,6 +57,22 @@ go run ./tools/reference-generator-selection/cmd/tei-generator-build \
   -strategy javascript-template -out /tmp/line-amount-javascript
 ```
 
+Javaの参照候補も生成できます。
+
+```text
+go run ./tools/reference-generator-selection/cmd/tei-generator-build \
+  -contract tools/reference-generator-selection/testdata/line-amount/contract.json \
+  -strategy java-template -out /tmp/line-amount-java
+```
+
+WebAssemblyの参照候補も生成できます。
+
+```text
+go run ./tools/reference-generator-selection/cmd/tei-generator-build \
+  -contract tools/reference-generator-selection/testdata/line-amount/contract.json \
+  -strategy wasm-template -out /tmp/line-amount-wasm
+```
+
 外部モデルが出したsourceは、promptとcontextとともに記録できます。
 
 ```text
@@ -129,7 +145,7 @@ go run ./tools/reference-generator-selection/cmd/tei-generator-meta \
 | `alternative` | handwritten | 10進を整数へ変換し、最後に一度だけ丸める | 全fixture合格 |
 | `dangerous` | generated-ai | float64、欠落の0化、通貨・単位無視、精度検査なし | 負例で不合格 |
 
-`testdata/candidates/`の4候補はGoです（`long-running-template`を含む）。Python候補は`-strategy python-template`、JavaScript候補は`-strategy javascript-template`で生成し、同じ`-candidates`directoryへ置いて選抜できます。候補は`candidate.json`で`id`、`language`、`origin`、source path、source digestを宣言します。選抜はsource digestを実byteで再計算し、一致しなければビルド前に拒否します。ビルドに成功したことや、候補の自己申告は合格の根拠にしません。
+`testdata/candidates/`の4候補はGoです（`long-running-template`を含む）。Python候補は`-strategy python-template`、JavaScript候補は`-strategy javascript-template`、Java候補は`-strategy java-template`、WASM候補は`-strategy wasm-template`で生成し、同じ`-candidates`directoryへ置いて選抜できます。候補は`candidate.json`で`id`、`language`、`origin`、source path、source digestを宣言します。選抜はsource digestを実byteで再計算し、一致しなければビルド前に拒否します。ビルドに成功したことや、候補の自己申告は合格の根拠にしません。
 
 ## 生成AI候補のprovenance
 
@@ -143,15 +159,15 @@ go run ./tools/reference-generator-selection/cmd/tei-generator-meta \
 
 選抜は、`contractDigest`が現在の契約と一致すること、`outputDigest`が候補sourceのdigestと一致することを確認します。`generation`のない`generated-ai`候補は拒否します。契約が変わった候補を、別契約の証拠として再利用できません。`promptPath`・`contextPath`がある場合は、そのfileを読み、digestが記録と一致することを確認します。pathは候補directory内の相対pathに限り、シンボリックリンクを拒否します。
 
-`tei-generator-record`は、外部モデルが出したsourceとprompt・contextを一つの候補directoryへ記録します。モデル呼出し自体は行いません。`language`は`go`・`python`・`javascript`で、source拡張子と記録先（`main.go`/`main.py`/`main.js`）を一致させます。
+`tei-generator-record`は、外部モデルが出したsourceとprompt・contextを一つの候補directoryへ記録します。モデル呼出し自体は行いません。`language`は`go`・`python`・`javascript`・`java`・`wasm`で、source拡張子と記録先（`main.go`/`main.py`/`main.js`/`Main.java`/`main.go`）を一致させます。`wasm`のsourceはGo source `.go`で、記録先は`main.go`です。
 
 `testdata/candidates/dangerous`の`generation`は`recorded-fixture`で、実モデルを呼び出した記録ではありません。生成AIのprovenance境界を試験するための固定fixtureです。実モデル実行では、同じ項目へ実際のprovider・model・prompt・contextのdigestを入れる必要があります。
 
 ## 生成器sourceの生成
 
-`tei-generator-build`は、契約JSONと固定strategy（`template`、`alternative`、`dangerous`、`python-template`、`javascript-template`、`long-running-template`）から、候補sourceを決定的に生成します。
+`tei-generator-build`は、契約JSONと固定strategy（`template`、`alternative`、`dangerous`、`python-template`、`javascript-template`、`java-template`、`wasm-template`、`long-running-template`、`python-long-running-template`、`javascript-long-running-template`）から、候補sourceを決定的に生成します。
 
-- Goのsourceは`go/format`で整形してから書き出します。Python・JavaScriptのsourceは整形せず、生成したbyte列をそのまま使います。
+- Goのsourceは`go/format`で整形してから書き出します。Python・JavaScript・Javaのsourceは整形せず、生成したbyte列をそのまま使います。
 - `candidate.json`には`language`、`source`（`main.go`/`main.py`/`main.js`）、`generator`を記録します。
   - 生成器のid・version・strategy・language
   - 契約のdigest
@@ -164,16 +180,21 @@ go run ./tools/reference-generator-selection/cmd/tei-generator-meta \
 
 ## 別言語候補の実行
 
-`python-template`はPython、`javascript-template`はJavaScriptの参照候補を生成します。候補manifestの`language`は`python`/`javascript`、sourceは`main.py`/`main.js`です。
+`python-template`はPython、`javascript-template`はJavaScript、`java-template`はJava、`wasm-template`はGo sourceからWebAssemblyの参照候補を生成します。候補manifestの`language`は`python`/`javascript`/`java`/`wasm`、sourceは`main.py`/`main.js`/`Main.java`/`main.go`です。
 
 - Go候補は`go build`で実行ファイルを作り、`binaryDigest`を記録します。
 - Python候補は`python3`または`python`、JavaScript候補は`node`でsourceを実行します。どちらも`binaryDigest`は空です。
-- receiptの`runtime`へ、言語、起動方法、処理系のversion、利用可否を記録します。
+- Java候補は`javac -d <classes> Main.java`でcompileし、`java -cp <classes> Main`で実行します。`binaryDigest`は生成された`Main.class`のdigestです。
+- WASM候補はsourceを2つの別directoryへcopyし、それぞれ`GOOS=js GOARCH=wasm go build -trimpath -buildvcs=false`で`.wasm`を作ってdigestを比較します。一致した場合だけ合格し、`node <GOROOT>/lib/wasm/wasm_exec_node.js <candidate.wasm>`で実行します。`binaryDigest`はwasm binaryのdigest、`reproducibility`は`path-independent-twice`です。
+- receiptの`runtime`へ、言語、起動方法、処理系のversion、利用可否を記録します。Javaは`javac`と`java`、WASMは`node`と`wasm_exec_node.js`が必要です。
 - 処理系が見つからない場合は`runtime unavailable`として拒否し、PASSや空の結果へ潰しません。
 - source拡張子が`language`と一致しない候補、未知の`language`を拒否します。
-- 同じfixtureでGo候補とPython候補、Go候補とJavaScript候補の出力を比較する試験を持つ。これは同じ参照契約の範囲であり、すべての言語・Runtimeの同等性を証明しません。
+- 同じfixtureでGo候補とPython候補、Go候補とJavaScript候補、Go候補とJava候補、Go候補とWASM候補の出力を比較する試験を持つ。これは同じ参照契約の範囲であり、すべての言語・Runtimeの同等性を証明しません。
+- Javaのclassファイルの再現性は`not-tested`です。WASMは同じ環境でのsource path非依存build一致までを確認しますが、別machine・別toolchain・実WASM runtimeでの再現性は未検証です。JVM/WASM runtimeの版・依存解決・実Targetでの起動は別の境界です。
 
-これらの参照は、別言語の候補を同じ選抜経路へ載せられることの確認であり、Python/JavaScript製品実装の採用や、実Targetでの処理系固定を意味しません。
+これらの参照は、別言語・別実行形式の候補を同じ選抜経路へ載せられることの確認であり、Python/JavaScript/Java/WASM製品実装の採用や、実Targetでの処理系固定を意味しません。
+
+`SelectForTargetWithExecution`は、信頼済みの実行wrapperをexecutable/argvのprefixとして指定する参照APIです。選抜の全case実行へ適用し、wrapperの失敗を候補の失敗として扱います。ビルドと処理系の検出は対象外です。別runnerで候補コードを動かすlineage検証は、wrapper指定中は未対応として拒否します。prefixの存在は、隔離能力や実行権限の証明にはなりません。Target ProfileはLinux namespaceの利用可否を確認してから、このAPIへ接続します。
 
 ## long-running候補
 
@@ -182,7 +203,8 @@ go run ./tools/reference-generator-selection/cmd/tei-generator-meta \
 - 選抜のfixture実行は、これまでどおりcaseごとにprocessを起動します。
 - `tei-target-profile`のlong-running profileは、この候補を1 processで起動し、全requestのresponseをfixtureと比較します。
 - processが途中で終了した場合、response数が足りない場合、fixtureと異なる場合は失敗します。
-- long-running probeは現在Go候補だけを対象とし、Python/JavaScript候補は明示的に未対応とします。
+- `python-long-running-template`と`javascript-long-running-template`は、同じ計算・拒否をPython/JavaScriptのnewline-delimited JSON処理として生成します。既存の単発テンプレートは変更せず、別のtemplate digestで識別します。
+- Target ProfileのprobeはGo・Python・JavaScript候補を対象とします。Javaのlong-running probeは未対応です。処理系がなければ不合格とし、Python/JavaScriptにはGoのメモリ上限が効かないことをreceiptへ記録します。
 
 ## Go候補のbuild evidence
 
@@ -192,10 +214,13 @@ Go候補のreceiptには`buildEvidence`を記録します。
 - `goos`、`goarch`、`cgoEnabled`、`goflags`: build時の環境
 - `sourceDigest`: buildしたsource
 - `binaryDigest`: 得られた実行ファイル
-- `buildInputDigest`: source・toolchain・GOOS/GOARCH・CGO・GOFLAGSを結合したdigest
-- `reproducibility: not-tested`
+- `reproducedDigest`: sourceを別directoryへcopyし、`-trimpath -buildvcs=false`でもう一度buildした実行ファイル
+- `buildInputDigest`: build command・source・toolchain・GOOS/GOARCH・CGO・GOFLAGSを結合したdigest
+- `reproducibility: path-independent-twice`
 
-`buildInputDigest`は、どのsourceとbuild環境から候補を得たかをreceipt内で結び付けるための参照値です。署名・attestation・artifact storeではなく、別環境で同じbinaryが得られること（再現性）を証明しません。`binaryDigest`はGoの版・OS・build設定に依存します。
+同じ候補を`go build -trimpath -buildvcs=false`で2回buildします。2回目はGo sourceを別の一時directoryへcopyしてbuildし、`binaryDigest`と`reproducedDigest`が一致する場合だけ合格します。一致しなければ`reproducibility: mismatch`として候補を拒否します。
+
+これは同じ環境・同じtoolchainで、source pathに依存せず同じbinaryが得られることの確認です。別machine・別toolchain・clean cache・外部依存での再現性や、artifact store・署名を証明しません。`buildInputDigest`は、どのsourceとbuild環境から候補を得たかをreceipt内で結び付けるための参照値です。`binaryDigest`はGoの版・OS・build設定に依存します。
 
 ## メタ生成（深さ1）
 
@@ -251,7 +276,7 @@ reconcileは候補をビルド・実行・選抜しません。再生成した�
 - 合格した候補の`qualified`と、不合格の`rejected`
 - `grantsRuntimeAuthority: false`、`provesRealProvider: false`
 
-同じWorkspace・契約・fixture・候補sourceからは、同じ`sourceDigest`と結果が得られます。`binaryDigest`と`buildEvidence`のtoolchain/環境は実行環境に依存し、再現性は未検証です。`execution`はstdout/stderrの内容そのものではなくdigestとexit stateだけを残し、時刻や実行者のidentityは含めません。
+同じWorkspace・契約・fixture・候補sourceからは、同じ`sourceDigest`と結果が得られます。`buildEvidence`は同じ環境でsource pathを変えた反復build一致を記録しますが、別環境での再現性は未検証です。`execution`はstdout/stderrの内容そのものではなくdigestとexit stateだけを残し、時刻や実行者のidentityは含めません。
 
 ## 守っている境界
 
@@ -269,8 +294,8 @@ reconcileは候補をビルド・実行・選抜しません。再生成した�
 - 特定ベンダーのAPI呼出し・認証・課金・モデル版管理。外部コマンドへ委ねており、TEI内には実装していません。
 - `promptPath`・`contextPath`を省略した候補では、digestの形式だけを確認し、内容との対応は検証しません。
 - 深さ2以上のメタ生成、失効に伴う自動再生成・自動選抜・失効の承認。
-- Python/JavaScript sourceを出力するメタ生成器のlineage検証。
-- long-runningのPython/JavaScript候補。
-- Python/JavaScript以外の言語（.NET/JVM/WASM等）と、実Targetでの処理系固定・依存解決。
+- Python/JavaScript/Java/WASM sourceを出力するメタ生成器のlineage検証。
+- long-runningのJava/WASM候補。
+- Java以外のJVM言語、.NET/WASM等と、実Targetでの処理系固定・依存解決。
 - 実Provider・実Targetでの比較。
-- 候補の署名・attestation・artifact store、buildの完全な再現性（#943 / #1370 / #1104）。
+- 候補のartifact store、別machine・別toolchain・clean cacheでのbuild再現性（#943 / #1370 / #1104）。

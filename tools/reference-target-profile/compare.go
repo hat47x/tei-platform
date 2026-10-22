@@ -12,11 +12,12 @@ import (
 const ComparisonSchema = "tei.reference.target-profile-comparison/v0"
 
 type CompareOptions struct {
-	WorkspaceDir  string
-	ContractPath  string
-	FixturePath   string
-	CandidatesDir string
-	ProfilePaths  []string
+	WorkspaceDir   string
+	ContractPath   string
+	FixturePath    string
+	CandidatesDir  string
+	ProfilePaths   []string
+	EnforceNetwork bool
 }
 
 type ProfileSummary struct {
@@ -84,7 +85,7 @@ func Compare(ctx context.Context, opts CompareOptions) (ComparisonReceipt, error
 		receipt, err := Run(ctx, RunOptions{
 			WorkspaceDir: opts.WorkspaceDir, ContractPath: opts.ContractPath,
 			FixturePath: opts.FixturePath, CandidatesDir: opts.CandidatesDir,
-			ProfilePath: profilePath,
+			ProfilePath: profilePath, EnforceNetwork: opts.EnforceNetwork,
 		})
 		if err != nil {
 			return ComparisonReceipt{}, fmt.Errorf("%s: %w", profilePath, err)
