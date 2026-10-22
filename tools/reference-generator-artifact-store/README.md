@@ -12,6 +12,12 @@ go run ./tools/reference-generator-artifact-store/cmd/tei-generator-artifact-sto
 
 go run ./tools/reference-generator-artifact-store/cmd/tei-generator-artifact-store \
   get -store /tmp/tei-artifacts -source-digest sha256:...
+
+go run ./tools/reference-generator-artifact-store/cmd/tei-generator-artifact-store \
+  list -store /tmp/tei-artifacts
+
+go run ./tools/reference-generator-artifact-store/cmd/tei-generator-artifact-store \
+  prune -store /tmp/tei-artifacts -keep sha256:... -dry-run
 ```
 
 ## 保存layout
@@ -46,6 +52,17 @@ source、receipt、実binaryのどれかが一致しなければ`passed=false`�
 - 保存後にsourceまたはartifactが改変されていれば`passed=false`にする。
 - 要求したsource digestとobject metadataが一致しなければ拒否する。
 
+## 一覧と削除
+
+`list`は全objectのmetadataと再計算digestを返します。壊れたobjectが1件でもあれば`passed=false`にします。
+
+`prune`は、明示した`-keep`のsource digestだけを残し、それ以外のobjectを削除します。
+
+- `-dry-run`は削除候補を`wouldDelete`へ返し、実byteを消しません。
+- keep setが空、未知のdigestを含む、またはstoreに検証失敗objectがある場合は、何も削除せず`passed=false`にします。
+- 削除後にkept objectを取得できること、削除したobjectを取得できないことを試験で確認します。
+- 保持期間・監査アクセス権・削除承認・削除履歴の保存は決めません。呼出し側がkeep setを明示する参照です。
+
 ## 検証すること・しないこと
 
 | 検証する | 検証しない |
@@ -66,11 +83,14 @@ source、receipt、実binaryのどれかが一致しなければ`passed=false`�
 - receiptのbinary digestを改変すると`passed=false`。
 - 保存後にartifactを改変すると`passed=false`。
 - 未知の候補を拒否する。
+- `list`が全objectを検証し、改変objectがあれば不合格にする。
+- `prune`が明示keepだけを残し、dry-runでは削除しない。
+- keep set欠落・未知digest・検証失敗objectでは削除しない。
 
 ## 未実装・限界
 
 - 暗号学的署名・attestation・署名者Authority。
 - 別machine・別toolchain・clean cacheでのbuild再現性。
-- garbage collection、保持期間、監査アクセス権、remote object store。
+- 保持期間、監査アクセス権、削除承認、削除履歴、remote object store。
 - artifactの実行承認、実Targetへの配備、ロールバック。
 - Python/JavaScript候補（binaryを持たない）の保存。
