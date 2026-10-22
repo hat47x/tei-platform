@@ -315,6 +315,77 @@ final class Ui {
         }, DEFAULT_TIMEOUT_MS);
     }
 
+    static Map<String, Object> treeRead(final Map<String, Object> selector, final Map<String, Object> request)
+            throws Exception {
+        final Component target = resolve(selector);
+        if (!(target instanceof JTree)) {
+            throw new BridgeException("NOT_A_TREE", "selector does not resolve to a tree");
+        }
+        final JTree tree = (JTree) target;
+        final int maxRows = Math.min(intValue(request.get("maxRows"), 500), 2000);
+        return call(new Callable<Map<String, Object>>() {
+            @Override
+            public Map<String, Object> call() {
+                List<Object> rows = new ArrayList<Object>();
+                Object root = tree.getModel().getRoot();
+                collectTreeRows(tree, new TreePath(root), 0, rows, maxRows);
+                Map<String, Object> value = new LinkedHashMap<String, Object>();
+                value.put("rows", rows);
+                value.put("rowCount", rows.size());
+                value.put("selectedPath", tree.getSelectionPath() == null ? null : tree.getSelectionPath().toString());
+                value.put("truncated", rows.size() >= maxRows);
+                return value;
+            }
+        }, DEFAULT_TIMEOUT_MS);
+    }
+
+    private static void collectTreeRows(JTree tree, TreePath path, int depth, List<Object> rows, int maxRows) {
+        if (rows.size() >= maxRows) {
+            return;
+        }
+        Object value = path.getLastPathComponent();
+        int visibleRow = tree.getRowForPath(path);
+        Map<String, Object> entry = new LinkedHashMap<String, Object>();
+        entry.put("row", visibleRow);
+        entry.put("depth", depth);
+        entry.put("indices", treeIndices(tree, path));
+        entry.put("text", treeText(tree, path, visibleRow));
+        entry.put("leaf", Boolean.valueOf(tree.getModel().isLeaf(value)));
+        entry.put("expanded", Boolean.valueOf(visibleRow >= 0 && tree.isExpanded(visibleRow)));
+        rows.add(entry);
+        int count = tree.getModel().getChildCount(value);
+        for (int i = 0; i < count; i++) {
+            Object child = tree.getModel().getChild(value, i);
+            collectTreeRows(tree, path.pathByAddingChild(child), depth + 1, rows, maxRows);
+        }
+    }
+
+    private static List<Object> treeIndices(JTree tree, TreePath path) {
+        List<Object> indices = new ArrayList<Object>();
+        Object parent = tree.getModel().getRoot();
+        indices.add(Integer.valueOf(0));
+        Object[] components = path.getPath();
+        for (int i = 1; i < components.length; i++) {
+            int index = tree.getModel().getIndexOfChild(parent, components[i]);
+            indices.add(Integer.valueOf(index));
+            parent = components[i];
+        }
+        return indices;
+    }
+
+    private static String treeText(JTree tree, TreePath path, int row) {
+        Object value = path.getLastPathComponent();
+        if (row < 0) {
+            return String.valueOf(value);
+        }
+        try {
+            return tree.convertValueToText(value, tree.isRowSelected(row), tree.isExpanded(row),
+                    tree.getModel().isLeaf(value), row, false);
+        } catch (RuntimeException e) {
+            return String.valueOf(value);
+        }
+    }
+
     static Map<String, Object> tableSet(final Map<String, Object> selector, final Map<String, Object> request)
             throws Exception {
         final Component target = resolve(selector);
