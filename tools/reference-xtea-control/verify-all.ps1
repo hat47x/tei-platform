@@ -38,6 +38,13 @@ try {
         if ($env:XTEA_SERVER_SOURCE -and $env:XTEA_RUNTIME_HOME -and $env:XTEA_SKELETON_HOME) {
             Invoke-Test "live Service" @("tests\test_live_service.py")
             Invoke-Test "Tomcat WAR" @("tests\test_tomcat_war.py")
+            if ($env:TOMCAT_HOME -and $env:TOMCAT_URL) {
+                Invoke-Test "external Tomcat" @("tests\test_external_tomcat.py")
+            } else {
+                Write-Output ""
+                Write-Output "SKIP external Tomcat: TOMCAT_HOME / TOMCAT_URL are not set"
+                $results += [pscustomobject]@{ Test = "external Tomcat"; Result = "SKIP" }
+            }
         } else {
             Write-Output ""
             Write-Output "SKIP live Service / Tomcat WAR: XTEA_SKELETON_HOME is not set"

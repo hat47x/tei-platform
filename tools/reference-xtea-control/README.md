@@ -204,6 +204,7 @@ $env:XTEA_SKELETON_HOME = "C:\path\to\X-TEA\Driver\Skeleton"
 python tests\test_live_server.py
 python tests\test_live_service.py
 python tests\test_tomcat_war.py
+python tests\test_external_tomcat.py
 ```
 
 詳細は[`server-harness/README.md`](server-harness/README.md)を参照してください。
@@ -233,6 +234,7 @@ python tests\test_tomcat_war.py
 - `python tests/test_live_server.py`: 3件成功。元の`DBMethod`を埋め込みJettyで起動し、使い捨てH2の合成テーブルに対してSELECT/COUNT/INSERT/UPDATE/DELETE/COMMIT/ROLLBACK/CALL/IPをHTTPで確認。応答のJava直列化も受信。`CALL SQUARE(9)`は「procedure was executed」を返すことを確認。
 - `python tests/test_live_service.py`: 2件成功。Skeletonの一時複製と、ビルド時に明示した互換差分を使い、元の`Service`の`GET /Service`がセッション状態を返すこと、`FUNCTION=AF200J`、`REQUEST_TYPE=ListSections`で2件の部門データがJSONで返ることを確認。
 - `python tests/test_tomcat_war.py`: 1件成功。`WEB-INF/web.xml`付きのWARディレクトリを埋め込みTomcat 9.0へ配備し、`DBMethod`の状態取得と`Service`の`AF200J`をHTTPで確認。
+- `python tests/test_external_tomcat.py`: 1件成功。外部Tomcat 9.0.89へ`xteaServer.war`を配備し、`DBMethod`と`Service`をHTTPで確認。WAR内の`JdbcBootstrap`がDerbyドライバを登録する。
 - 実X-TEA Modeler（配布`xteamdl.jar`、About表示`V1.R4.M50`）で`MfgOrder.xead`を開き、メニュー8件・操作44件を列挙し、Aboutダイアログの開閉、スナップショット、スクリーンショットを確認。
 - 実Modelerの保存経路として、`MfgOrder.xead`の複製でシステム名を変更し、`保存`メニュー、バックアップ確認の`はい`を実行。保存後のXMLに新しいシステム名が入り、`backup/`に更新前ファイルが作られることを確認。`scenarios/modeler-save-copy.json`と`modeler-fixture.ps1`で再現できます。
 - 実Editorの保存経路として、`MfgOrder.xead`の複製でシステム名を変更し、`保存`メニュー、バックアップ確認の`はい`を実行。保存後のXMLに新しいシステム名が入り、`backup/`に更新前ファイルが作られることを確認。`scenarios/editor-save-copy.json`で再現できます。
@@ -246,7 +248,7 @@ python tests\test_tomcat_war.py
 
 - Driverの明示的なトランザクションrollback操作（失敗時の内部rollbackは確認済み）、上記以外のFunction画面、元の`jdbc:derby://localhost/...`接続。
 - Modeler / Editorの保存以外の編集（要素の追加・削除・並べ替え、一括置換、表・機能の編集）。
-- XeadServerの外部Tomcat、JNDI DataSource、実デプロイ環境。WARディレクトリの埋め込みTomcat配備までは確認したが、外部コンテナや本番設定ではない。
+- XeadServerのJNDI DataSource、本番Tomcat設定、実デプロイ環境。埋め込みTomcatと使い捨ての外部Tomcat 9.0.89へのWAR配備までは確認した。
 - `Service`の認証条件の正しさ、実ユーザー、認可。ハーネスでは認証前の`userID`検査を引数`user`へ置き換えている。
 - 四つのアプリの全ダイアログ・全条件分岐の実行。経路表は入力種別とトップレベル入口の到達性を示すもので、全業務ケースの実行結果ではない。
 - X-TEAのソースと配布JARの同一性、#940の固定baselineとの対応、TEI側の意味一致。
