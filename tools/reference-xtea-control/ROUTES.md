@@ -82,7 +82,7 @@
 | `Service` | `GET /Service` | セッション開始状況、拒否・成功・中断件数 |
 | `Service` | `POST /Service` | `FUNCTION`と任意パラメータ。応答はJSON/XML/テキスト |
 
-確認済み: 上記`DBMethod`分岐を、元の`DBMethod`を埋め込みJettyで起動し、使い捨てH2の合成テーブルに対してHTTPで実行。`GET`の状態表示、SELECTのJava直列化、COUNT、INSERT、UPDATE、DELETE、COMMIT、ROLLBACK、IPを確認。
+確認済み: 上記`DBMethod`分岐を、元の`DBMethod`を埋め込みJettyで起動し、使い捨てH2の合成テーブルに対してHTTPで実行。`GET`の状態表示、SELECTのJava直列化、COUNT、INSERT、UPDATE、DELETE、COMMIT、ROLLBACK、CALL、IPを確認。`CALL SQUARE(9)`は「procedure was executed」を返す。
 
 `Service`の`GET`はセッション状態を返すことを確認。`POST`は、Skeletonの一時複製に対して`FUNCTION=AF200J`、`REQUEST_TYPE=ListSections`を送り、2件の部門データがJSONで返ることを確認。ただしハーネスは、上流の認証前`userID`検査を引数`user`へ置き換えるビルド時差分を適用している。この成功は認証バグを補った状態でのFunction実行経路の確認であり、上流認証の正しさの証明ではない。
 
