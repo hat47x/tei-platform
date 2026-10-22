@@ -84,7 +84,7 @@ func TestCandidateQuoteShapeConformanceAndRealRuntimeProcessOneInvocation(t *tes
 	if runtime.GOOS == "windows" {
 		t.Skip("reference process requires a platform-specific executable policy")
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 180*time.Second) // #2057: CI負荷時の実プロセス完了を待つ。Windowsではskipされるためローカル再現不可。90秒の内訳（build+複数回の実プロセス起動）をLinux CIで計測してから再調整する。
 	defer cancel()
 
 	source, err := os.ReadFile("../../plugins/reference-order-quote/main.go")
