@@ -1379,8 +1379,13 @@ final class Ui {
     private static TreePath treePath(JTree tree, Object requested, int row) {
         if (requested instanceof List) {
             TreePath path = new TreePath(tree.getModel().getRoot());
-            for (Object part : (List<?>) requested) {
-                int index = intValue(part, -1);
+            List<?> indices = (List<?>) requested;
+            int start = 0;
+            if (!indices.isEmpty() && intValue(indices.get(0), -1) == 0) {
+                start = 1;
+            }
+            for (int i = start; i < indices.size(); i++) {
+                int index = intValue(indices.get(i), -1);
                 Object parent = path.getLastPathComponent();
                 if (index < 0 || index >= tree.getModel().getChildCount(parent)) {
                     throw new BridgeException("INVALID_PATH", "tree child index out of range: " + index);
@@ -1393,8 +1398,10 @@ final class Ui {
             String text = String.valueOf(requested);
             if (text.matches("\\d+(\\.\\d+)*")) {
                 TreePath path = new TreePath(tree.getModel().getRoot());
-                for (String part : text.split("\\.")) {
-                    int index = Integer.parseInt(part);
+                String[] parts = text.split("\\.");
+                int start = parts.length > 1 && "0".equals(parts[0]) ? 1 : 0;
+                for (int i = start; i < parts.length; i++) {
+                    int index = Integer.parseInt(parts[i]);
                     Object parent = path.getLastPathComponent();
                     if (index < 0 || index >= tree.getModel().getChildCount(parent)) {
                         throw new BridgeException("INVALID_PATH", "tree child index out of range: " + index);

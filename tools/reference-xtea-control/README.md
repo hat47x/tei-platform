@@ -36,6 +36,8 @@ X-TEAのソースやJARはこのディレクトリへ同梱しません。`clone
 | テキストフィールド、テキストエリア、パスワード欄 | `POST /set`。パスワード値はスナップショットでマスク |
 | コンボボックス、スピナー、スライダー | `POST /set` |
 | タブ、リスト、ツリー、テーブル | `POST /select`、`POST /tree/read`、`POST /table/set`、`POST /table/read` |
+
+`tree-read`の`indices`は先頭の`0`がルートを表します。この配列をそのまま`select`の`path`へ渡すと、同じノードを選択できます。
 | Enterなどのキー操作、キーバインド | `POST /key`。SwingのInputMap/ActionMapを先に使い、生のKeyEventへフォールバック |
 | モーダルダイアログ、確認メッセージ | 非同期`invoke`の後に`POST /wait`でウィンドウを待ち、同じ制御面で操作 |
 | 画面状態の観察 | `POST /snapshot`（役割、表示文字、選択状態、表の列・行、タブ、境界） |
