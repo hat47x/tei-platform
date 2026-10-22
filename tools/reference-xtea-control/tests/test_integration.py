@@ -148,6 +148,14 @@ class IntegrationTest(unittest.TestCase):
             self.client.table_edit(table, row=999)
         self.assertEqual(caught.exception.code, "INVALID_ROW")
 
+    def test_04c_tree_read(self) -> None:
+        self.client.select({"role": "tab", "window": "Fake X-TEA"}, item_index=3)
+        value = self.client.tree_read({"name": "tree"})
+        self.assertEqual([row["text"] for row in value["rows"]],
+                         ["root", "tables", "T1", "T2", "functions"])
+        self.assertEqual(value["rows"][2]["indices"], [0, 0, 0])
+        self.client.select({"role": "tab", "window": "Fake X-TEA"}, item_index=0)
+
     def test_05_modal_dialog(self) -> None:
         self.client.select({"role": "tab", "window": "Fake X-TEA"}, item_index=0)
         self.client.invoke({"role": "button", "text": "Open Dialog"})

@@ -131,14 +131,14 @@ XF000のトランザクション試験は、元の`createTableOperator`で1行�
 
 `Service`の`GET`はセッション状態を返すことを確認。`POST`は、Skeletonの一時複製に対して`FUNCTION=AF200J`、`REQUEST_TYPE=ListSections`を送り、2件の部門データがJSONで返ることを確認。ただしハーネスは、上流の認証前`userID`検査を引数`user`へ置き換えるビルド時差分を適用している。この成功は認証バグを補った状態でのFunction実行経路の確認であり、上流認証の正しさの証明ではない。
 
-`WEB-INF/web.xml`付きのWARディレクトリを作り、埋め込みTomcat 9.0へ配備した状態でも、`DBMethod`の状態取得と`Service`の`AF200J`をHTTPで確認。外部TomcatやJNDI DataSourceは未確認。
+`WEB-INF/web.xml`付きのWARディレクトリを作り、埋め込みTomcat 9.0へ配備した状態でも、`DBMethod`の状態取得と`Service`の`AF200J`をHTTPで確認。外部Tomcat 9.0.89へWARを配備した状態でも同じ2経路を確認。WAR内の`JdbcBootstrap`がDerbyドライバを`DriverManager`へ登録する。
 
 ## 未確認の経路
 
 - Modeler / Editorの全ダイアログを開いた実行。表の全セル、全ての検査エラー、全てのインポート分岐は未実行。
 - 各参照モデル本体とその業務DBでの全経路、XF000のタイマー、一覧の全ソート・ページ移動・出力の全分岐、別機能への全呼出し、検出対象外の入力型・全検査エラー、メール、HTTP。
 - 元の`jdbc:derby://localhost/...`接続、Derby Network Server。今回の更新試験は使い捨てH2のみ。
-- XeadServerの外部Tomcat、JNDI DataSource、実デプロイ環境、DB製品別ドライバ、認可・本番運用。
+- XeadServerのJNDI DataSource、本番Tomcat設定、実デプロイ環境、DB製品別ドライバ、認可・本番運用。
 - `Service`の認証条件の正しさ、実ユーザー、認可。ハーネスでは認証前の`userID`検査を引数`user`へ置き換えている。
 - WindowsのDPI・Look and Feel・ロケール別の表示差。セレクタは表示文字に依存できるが、文字列が変わればシナリオ側の更新が要る。
 - Java 8実機。クラスファイルはJava 8（major 52）だが、実行確認はJDK 11。

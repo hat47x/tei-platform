@@ -23,8 +23,10 @@ import javax.swing.JScrollPane;
 import javax.swing.JTabbedPane;
 import javax.swing.JTable;
 import javax.swing.JTextField;
+import javax.swing.JTree;
 import javax.swing.SwingUtilities;
 import javax.swing.table.DefaultTableModel;
+import javax.swing.tree.DefaultMutableTreeNode;
 import xeadDriver.FakeWrappedField;
 
 /** Small Swing fixture used to exercise the control protocol without X-TEA. */
@@ -147,6 +149,16 @@ public final class FakeXteaApp {
         JTable customTable = new JTable(new CustomTableModel(customRows));
         customTable.setName("customTable");
         tabs.addTab("Custom", new JScrollPane(customTable));
+
+        DefaultMutableTreeNode root = new DefaultMutableTreeNode("root");
+        DefaultMutableTreeNode tables = new DefaultMutableTreeNode("tables");
+        tables.add(new DefaultMutableTreeNode("T1"));
+        tables.add(new DefaultMutableTreeNode("T2"));
+        root.add(tables);
+        root.add(new DefaultMutableTreeNode("functions"));
+        JTree tree = new JTree(root);
+        tree.setName("tree");
+        tabs.addTab("Tree", new JScrollPane(tree));
         tabs.setName("tabs");
 
         frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
