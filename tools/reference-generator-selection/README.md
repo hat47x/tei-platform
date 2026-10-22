@@ -191,12 +191,12 @@ go run ./tools/reference-generator-selection/cmd/tei-generator-meta \
 - Go候補は`go build`で実行ファイルを作り、`binaryDigest`を記録します。
 - Python候補は`python3`または`python`、JavaScript候補は`node`でsourceを実行します。どちらも`binaryDigest`は空です。
 - Java候補は`javac -d <classes> Main.java`でcompileし、`java -cp <classes> Main`で実行します。`binaryDigest`は生成された`Main.class`のdigestです。
-- WASM候補は`GOOS=js GOARCH=wasm go build -trimpath -buildvcs=false`で`.wasm`を作り、`node <GOROOT>/lib/wasm/wasm_exec_node.js <candidate.wasm>`で実行します。`binaryDigest`はwasm binaryのdigestです。
+- WASM候補はsourceを2つの別directoryへcopyし、それぞれ`GOOS=js GOARCH=wasm go build -trimpath -buildvcs=false`で`.wasm`を作ってdigestを比較します。一致した場合だけ合格し、`node <GOROOT>/lib/wasm/wasm_exec_node.js <candidate.wasm>`で実行します。`binaryDigest`はwasm binaryのdigest、`reproducibility`は`path-independent-twice`です。
 - receiptの`runtime`へ、言語、起動方法、処理系のversion、利用可否を記録します。Javaは`javac`と`java`、WASMは`node`と`wasm_exec_node.js`が必要です。
 - 処理系が見つからない場合は`runtime unavailable`として拒否し、PASSや空の結果へ潰しません。
 - source拡張子が`language`と一致しない候補、未知の`language`を拒否します。
 - 同じfixtureでGo候補とPython候補、Go候補とJavaScript候補、Go候補とJava候補、Go候補とWASM候補の出力を比較する試験を持つ。これは同じ参照契約の範囲であり、すべての言語・Runtimeの同等性を証明しません。
-- JavaのclassファイルとWASM binaryの再現性は`not-tested`です。JVM/WASM runtimeの版・依存解決・実Targetでの起動は別の境界です。
+- Javaのclassファイルの再現性は`not-tested`です。WASMは同じ環境でのsource path非依存build一致までを確認しますが、別machine・別toolchain・実WASM runtimeでの再現性は未検証です。JVM/WASM runtimeの版・依存解決・実Targetでの起動は別の境界です。
 
 これらの参照は、別言語・別実行形式の候補を同じ選抜経路へ載せられることの確認であり、Python/JavaScript/Java/WASM製品実装の採用や、実Targetでの処理系固定を意味しません。
 

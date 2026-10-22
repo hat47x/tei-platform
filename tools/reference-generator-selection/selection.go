@@ -791,11 +791,9 @@ func evaluateCandidate(ctx context.Context, dir string, fixture Fixture, contrac
 		wasmPath = filepath.Join(wasmDir, "candidate.wasm")
 		buildCtx, cancel := context.WithTimeout(ctx, 2*time.Minute)
 		defer cancel()
-		build := exec.CommandContext(buildCtx, "go", "build", "-trimpath", "-buildvcs=false", "-o", wasmPath, "main.go")
-		build.Dir = dir
-		build.Env = append(os.Environ(), "GOOS=js", "GOARCH=wasm")
-		if out, err := build.CombinedOutput(); err != nil {
-			return reject("wasm build failed: " + err.Error() + ": " + string(out))
+		reproduced, err := buildWasmTwice(buildCtx, dir, wasmPath)
+		if err != nil {
+			return reject("wasm build is not reproducible: " + err.Error())
 		}
 		binary, err := os.ReadFile(wasmPath)
 		if err != nil {
@@ -806,8 +804,8 @@ func evaluateCandidate(ctx context.Context, dir string, fixture Fixture, contrac
 			Language: LanguageWasm, Command: "GOOS=js GOARCH=wasm go build -trimpath -buildvcs=false",
 			Toolchain: toolchain, GOOS: "js", GOARCH: "wasm", CGOEnabled: "0",
 			SourceDigest: manifest.SourceDigest, BinaryDigest: digest(binary),
-			BuildInputDigest: wasmBuildInputDigest(source, toolchain),
-			Reproducibility:  "not-tested",
+			ReproducedDigest: reproduced, BuildInputDigest: wasmBuildInputDigest(source, toolchain),
+			Reproducibility: "path-independent-twice",
 		}
 		receipt.BinaryDigest = receipt.BuildEvidence.BinaryDigest
 	}
@@ -1021,6 +1019,56 @@ func wasmBuildInputDigest(source []byte, toolchain string) string {
 	return digest([]byte(strings.Join([]string{
 		"GOOS=js GOARCH=wasm go build -trimpath -buildvcs=false", LanguageWasm, digest(source), toolchain,
 	}, "\x00")))
+}
+
+func buildWasmTwice(ctx context.Context, dir, wasmPath string) (string, error) {
+	firstDir, err := os.MkdirTemp("", "tei-wasm-repro-a-*")
+	if err != nil {
+		return "", err
+	}
+	defer os.RemoveAll(firstDir)
+	secondDir, err := os.MkdirTemp("", "tei-wasm-repro-b-*")
+	if err != nil {
+		return "", err
+	}
+	defer os.RemoveAll(secondDir)
+	if err := copyGoSources(dir, firstDir); err != nil {
+		return "", err
+	}
+	if err := copyGoSources(dir, secondDir); err != nil {
+		return "", err
+	}
+	if err := buildWasmCandidate(ctx, firstDir, wasmPath); err != nil {
+		return "", err
+	}
+	first, err := os.ReadFile(wasmPath)
+	if err != nil {
+		return "", err
+	}
+	secondPath := wasmPath + ".second"
+	if err := buildWasmCandidate(ctx, secondDir, secondPath); err != nil {
+		return "", err
+	}
+	second, err := os.ReadFile(secondPath)
+	if err != nil {
+		return "", err
+	}
+	firstDigest, secondDigest := digest(first), digest(second)
+	if firstDigest != secondDigest {
+		return secondDigest, fmt.Errorf("first %s, second %s", firstDigest, secondDigest)
+	}
+	return secondDigest, nil
+}
+
+func buildWasmCandidate(ctx context.Context, dir, outputPath string) error {
+	build := exec.CommandContext(ctx, "go", "build", "-trimpath", "-buildvcs=false", "-o", outputPath, "main.go")
+	build.Dir = dir
+	build.Env = append(os.Environ(), "GOOS=js", "GOARCH=wasm")
+	out, err := build.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("%v: %s", err, out)
+	}
+	return nil
 }
 
 func resolveWasmRuntime() (nodePath, wasmExecPath, version string, available bool) {
