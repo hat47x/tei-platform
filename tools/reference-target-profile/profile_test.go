@@ -2,6 +2,7 @@ package targetprofile
 
 import (
 	"context"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -70,6 +71,75 @@ func TestValidateRejectsUnknownOrIncompleteProfiles(t *testing.T) {
 	}
 }
 
+func TestRunRejectsDeclaredUnsupportedObservability(t *testing.T) {
+	workspace, contract, fixtures, candidates := selectionPaths(t)
+	var profile Profile
+	raw, err := os.ReadFile(filepath.Join(repoRoot(t), "tools", "reference-target-profile", "testdata", "server.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(raw, &profile); err != nil {
+		t.Fatal(err)
+	}
+	profile.Observability = append(profile.Observability, "audit-log")
+	changed, err := json.MarshalIndent(profile, "", "  ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	profilePath := filepath.Join(t.TempDir(), "server-audit.json")
+	if err := os.WriteFile(profilePath, append(changed, '\n'), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	receipt, err := Run(context.Background(), RunOptions{
+		WorkspaceDir: workspace, ContractPath: contract, FixturePath: fixtures,
+		CandidatesDir: candidates, ProfilePath: profilePath,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if receipt.Passed {
+		t.Fatalf("profile with unsupported observation channel passed: %+v", receipt)
+	}
+	if receipt.Observation == nil || len(receipt.Observation.Unsupported) == 0 || !strings.Contains(strings.Join(receipt.Observation.Unsupported, ","), "audit-log") {
+		t.Fatalf("unsupported observation channel was not recorded: %+v", receipt.Observation)
+	}
+}
+
+func TestLongRunningProfileRejectsOneshotCandidate(t *testing.T) {
+	workspace, contract, fixtures, candidates := selectionPaths(t)
+	var profile Profile
+	raw, err := os.ReadFile(filepath.Join(repoRoot(t), "tools", "reference-target-profile", "testdata", "server.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(raw, &profile); err != nil {
+		t.Fatal(err)
+	}
+	profile.ID = "long-running-with-oneshot"
+	profile.GeneratorID = "template"
+	changed, err := json.MarshalIndent(profile, "", "  ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	profilePath := filepath.Join(t.TempDir(), "long-running-oneshot.json")
+	if err := os.WriteFile(profilePath, append(changed, '\n'), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	receipt, err := Run(context.Background(), RunOptions{
+		WorkspaceDir: workspace, ContractPath: contract, FixturePath: fixtures,
+		CandidatesDir: candidates, ProfilePath: profilePath,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if receipt.Passed || receipt.ProcessModel == nil || receipt.ProcessModel.Passed {
+		t.Fatalf("one-shot candidate passed a long-running profile: %+v", receipt.ProcessModel)
+	}
+	if receipt.ProcessModel.Mode != ProcessLongRunning || receipt.ProcessModel.Reason == "" {
+		t.Fatalf("long-running failure was not explained: %+v", receipt.ProcessModel)
+	}
+}
+
 func TestRunAppliesProfilesAndKeepsSelection(t *testing.T) {
 	workspace, contract, fixtures, candidates := selectionPaths(t)
 	previous, had := os.LookupEnv("GOMEMLIMIT")
@@ -97,6 +167,35 @@ func TestRunAppliesProfilesAndKeepsSelection(t *testing.T) {
 		}
 		if !strings.Contains(receipt.Enforcement["memory"], "GOMEMLIMIT") {
 			t.Fatalf("%s: memory enforcement is not recorded: %+v", name, receipt.Enforcement)
+		}
+		if receipt.Enforcement["observability"] != "observed" {
+			t.Fatalf("%s: observability was not observed: %+v", name, receipt.Enforcement)
+		}
+		if receipt.Observation == nil || len(receipt.Observation.Observed) != len(receipt.Profile.Observability) {
+			t.Fatalf("%s: unexpected observation evidence: %+v", name, receipt.Observation)
+		}
+		if receipt.Observation.Cases != 10 || receipt.Observation.CasesWithStdout != 10 || receipt.Observation.CasesWithExitCode != 10 {
+			t.Fatalf("%s: observation case counts are incomplete: %+v", name, receipt.Observation)
+		}
+		if receipt.ProcessModel == nil || !receipt.ProcessModel.Passed {
+			t.Fatalf("%s: process model was not enforced: %+v", name, receipt.ProcessModel)
+		}
+		switch name {
+		case "server":
+			if receipt.ProcessModel.Mode != ProcessLongRunning || receipt.ProcessModel.Processes != 1 ||
+				receipt.ProcessModel.Requests != 10 || receipt.ProcessModel.Responses != 10 {
+				t.Fatalf("server process model evidence is wrong: %+v", receipt.ProcessModel)
+			}
+			if receipt.Enforcement["processModel"] != "long-running:single-process" {
+				t.Fatalf("server process model enforcement is wrong: %+v", receipt.Enforcement)
+			}
+		case "embedded":
+			if receipt.ProcessModel.Mode != ProcessOneShot || receipt.ProcessModel.Processes != 10 {
+				t.Fatalf("embedded process model evidence is wrong: %+v", receipt.ProcessModel)
+			}
+			if receipt.Enforcement["processModel"] != "oneshot:process-per-case" {
+				t.Fatalf("embedded process model enforcement is wrong: %+v", receipt.Enforcement)
+			}
 		}
 		if receipt.Profile.GeneratorID == "" {
 			t.Fatalf("%s: profile did not select a generator", name)

@@ -19,6 +19,9 @@ go run ./tools/reference-design-output/cmd/tei-design-output \
 | `data-application-matrix.md` | 同じ宣言をData側から読み直した表 | `reference-access-matrix` |
 | `ddl/<database>.sql` | 提供元が出力できる新規作成用DDL | `reference-ddl-entry` |
 | `manifest.json` | 導出元revision、成果物ごとのdigest、未解決、対象外 | このツール |
+| `index.html` | 成果物へのリンク、revision、未解決を示す静的なナビゲーション | このツール |
+
+`index.html`はナビゲーションであり、`manifest.json`のartifactには含めません。外部script・stylesheet・font・imageを使わず、成果物を編集する機能も持ちません。
 
 manifestは各成果物の`digest`（描画後byte列のSHA-256）と`structureRevision`（その文書が導出した構造の版）を持ちます。`sourceRevision`はWorkspaceの管理対象Source全体のrevisionで、一つのbundleが一つの受理済み状態から作られたことを示します。
 
@@ -43,7 +46,7 @@ manifestは各成果物の`digest`（描画後byte列のSHA-256）と`structureR
 
 ## 未実装
 
-- 書式の差し替え（Markdown以外の出力plugin）。現状はMarkdownとSQLだけです。
+- 本文の書式差し替え（Markdown以外の出力plugin）。`index.html`はナビゲーションのみで、本文のHTML化は行いません。
 - 受理済みBusiness Procedureを用いたBusiness × Function × Dataの対応一覧（#1125待ち）。
 - DDLのコメント・命名規則の選択と、PostgreSQL以外の提供元。
 - 成果物上の編集を変更案へ戻す経路。編集可能な正本の位置表示は未実装です。

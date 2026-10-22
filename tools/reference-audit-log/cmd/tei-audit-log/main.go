@@ -12,8 +12,8 @@ import (
 // tei-audit-log appends one entry or verifies the hash chain of a Reference
 // audit log. It is a foundation, not a production audit store.
 func main() {
-	if len(os.Args) < 2 || (os.Args[1] != "append" && os.Args[1] != "verify") {
-		fmt.Fprintln(os.Stderr, "usage: tei-audit-log <append|verify> -log FILE [options]")
+	if len(os.Args) < 2 || (os.Args[1] != "append" && os.Args[1] != "verify" && os.Args[1] != "head") {
+		fmt.Fprintln(os.Stderr, "usage: tei-audit-log <append|verify|head> -log FILE [options]")
 		os.Exit(2)
 	}
 	command := os.Args[1]
@@ -23,6 +23,7 @@ func main() {
 	actor := fs.String("actor", "", "actor")
 	action := fs.String("action", "", "action")
 	subject := fs.String("subject", "", "subject")
+	expectedHead := fs.String("head", "", "pinned head hash for verify")
 	_ = fs.Parse(os.Args[2:])
 	if *logPath == "" {
 		fail(fmt.Errorf("-log is required"))
@@ -39,7 +40,11 @@ func main() {
 		}
 		emit(entry)
 	case "verify":
-		if err := log.Verify(); err != nil {
+		if *expectedHead != "" {
+			if err := log.VerifyHead(*expectedHead); err != nil {
+				fail(err)
+			}
+		} else if err := log.Verify(); err != nil {
 			fail(err)
 		}
 		entries, err := log.Entries()
@@ -47,6 +52,16 @@ func main() {
 			fail(err)
 		}
 		emit(map[string]any{"verified": true, "entries": len(entries)})
+	case "head":
+		head, err := log.Head()
+		if err != nil {
+			fail(err)
+		}
+		entries, err := log.Entries()
+		if err != nil {
+			fail(err)
+		}
+		emit(map[string]any{"head": head, "entries": len(entries)})
 	}
 }
 

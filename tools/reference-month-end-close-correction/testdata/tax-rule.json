@@ -1,0 +1,10 @@
+{
+  "id": "invoice-per-rate-truncate-v1",
+  "unit": "invoice-per-rate",
+  "invoiceKey": "customer+posting-month",
+  "method": "truncate-toward-zero",
+  "lineAmountScale": 2,
+  "taxScale": 0,
+  "allocation": "proportional-truncate-toward-zero",
+  "remainderTo": "largest-absolute-amount-then-smallest-slip-id"
+}

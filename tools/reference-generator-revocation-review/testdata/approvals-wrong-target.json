@@ -1,0 +1,17 @@
+{
+  "schema": "tei.reference.generator-revocation-approvals/v0",
+  "contractId": "sales.line-amount",
+  "contractVersion": "1",
+  "contractDigest": "sha256:1c1371a2c140a72ab85405ef933ed33411cd78c36035be2052afb038346ca971",
+  "approvals": [
+    {
+      "id": "dangerous",
+      "version": "1",
+      "sourceDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+      "authority": "release-board",
+      "role": "generator-owner",
+      "evidenceDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "approvedRevision": "rev-2026-10-20"
+    }
+  ]
+}

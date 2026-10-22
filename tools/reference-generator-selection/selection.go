@@ -21,6 +21,7 @@ import (
 	"runtime"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"tei/internal/ir"
@@ -34,6 +35,13 @@ const (
 	FixtureSchema   = "tei.reference.generator-fixture/v0"
 	CandidateSchema = "tei.reference.generator-candidate/v0"
 	ReceiptSchema   = "tei.reference.generator-selection-receipt/v0"
+)
+
+const (
+	LanguageGo         = "go"
+	LanguagePython     = "python"
+	LanguageJavaScript = "javascript"
+	LanguageJava       = "java"
 )
 
 type InputSpec struct {
@@ -104,6 +112,7 @@ type CandidateManifest struct {
 	Schema       string                `json:"schema"`
 	ID           string                `json:"id"`
 	Version      string                `json:"version,omitempty"`
+	Language     string                `json:"language,omitempty"`
 	Origin       string                `json:"origin"`
 	Source       string                `json:"source"`
 	SourceDigest string                `json:"sourceDigest"`
@@ -113,27 +122,69 @@ type CandidateManifest struct {
 	Lineage      *Lineage              `json:"lineage,omitempty"`
 }
 
+// RuntimeEvidence records which interpreter or build tool ran the candidate.
+// For Python there is no compiled artifact, so BinaryDigest is empty.
+type RuntimeEvidence struct {
+	Language  string `json:"language"`
+	Command   string `json:"command"`
+	Version   string `json:"version,omitempty"`
+	Available bool   `json:"available"`
+}
+
+// ExecutionEvidence records what the harness observed around one case
+// execution. It is a digest of stdout/stderr and the process exit state, not a
+// copy of the content and not a claim about a real target.
+type ExecutionEvidence struct {
+	ExitCode     int    `json:"exitCode"`
+	StdoutDigest string `json:"stdoutDigest"`
+	StderrDigest string `json:"stderrDigest"`
+	TimedOut     bool   `json:"timedOut,omitempty"`
+}
+
 type CaseResult struct {
-	CaseID string `json:"caseId"`
-	Passed bool   `json:"passed"`
-	Got    Result `json:"got"`
-	Want   Result `json:"want"`
+	CaseID    string             `json:"caseId"`
+	Passed    bool               `json:"passed"`
+	Got       Result             `json:"got"`
+	Want      Result             `json:"want"`
+	Execution *ExecutionEvidence `json:"execution,omitempty"`
+}
+
+// BuildEvidence records the source and toolchain inputs used to build a native
+// candidate. It is not a signature or an attestation, and it does not claim
+// that the binary is reproducible across environments.
+type BuildEvidence struct {
+	Language         string `json:"language"`
+	Command          string `json:"command"`
+	Toolchain        string `json:"toolchain,omitempty"`
+	GOOS             string `json:"goos,omitempty"`
+	GOARCH           string `json:"goarch,omitempty"`
+	CGOEnabled       string `json:"cgoEnabled,omitempty"`
+	GOFLAGS          string `json:"goflags,omitempty"`
+	SourceDigest     string `json:"sourceDigest"`
+	BinaryDigest     string `json:"binaryDigest,omitempty"`
+	ReproducedDigest string `json:"reproducedDigest,omitempty"`
+	BuildInputDigest string `json:"buildInputDigest"`
+	Reproducibility  string `json:"reproducibility"`
 }
 
 type CandidateReceipt struct {
-	ID           string                `json:"id"`
-	Origin       string                `json:"origin"`
-	SourceDigest string                `json:"sourceDigest"`
-	BinaryDigest string                `json:"binaryDigest,omitempty"`
-	Generator    *GeneratorProvenance  `json:"generator,omitempty"`
-	Generation   *GenerationProvenance `json:"generation,omitempty"`
-	Lineage      *Lineage              `json:"lineage,omitempty"`
-	Results      []CaseResult          `json:"results,omitempty"`
-	Passed       bool                  `json:"passed"`
-	RejectReason string                `json:"rejectReason,omitempty"`
+	ID            string                `json:"id"`
+	Language      string                `json:"language"`
+	Origin        string                `json:"origin"`
+	SourceDigest  string                `json:"sourceDigest"`
+	BinaryDigest  string                `json:"binaryDigest,omitempty"`
+	Runtime       *RuntimeEvidence      `json:"runtime,omitempty"`
+	BuildEvidence *BuildEvidence        `json:"buildEvidence,omitempty"`
+	Generator     *GeneratorProvenance  `json:"generator,omitempty"`
+	Generation    *GenerationProvenance `json:"generation,omitempty"`
+	Lineage       *Lineage              `json:"lineage,omitempty"`
+	Results       []CaseResult          `json:"results,omitempty"`
+	Passed        bool                  `json:"passed"`
+	RejectReason  string                `json:"rejectReason,omitempty"`
 }
 
 type Receipt struct {
+	Execution              ExecutionOptions   `json:"execution,omitempty"`
 	Schema                 string             `json:"schema"`
 	ContractID             string             `json:"contractId"`
 	ContractVersion        string             `json:"contractVersion"`
@@ -411,14 +462,20 @@ func SelectWithRegistry(ctx context.Context, workspaceDir, contractPath, fixture
 // outside the list are reported as rejected, so a profile cannot silently fall
 // back to another generator.
 func SelectForTarget(ctx context.Context, workspaceDir, contractPath, fixturePath, candidatesDir, registryPath string, allowedIDs []string) (Receipt, error) {
-	return selectWithRegistryAndFilter(ctx, workspaceDir, contractPath, fixturePath, candidatesDir, registryPath, allowedIDs)
+	return selectWithRegistryAndFilter(ctx, workspaceDir, contractPath, fixturePath, candidatesDir, registryPath, allowedIDs, ExecutionOptions{})
+}
+
+// SelectForTargetWithExecution applies a wrapper to every candidate fixture
+// process. Lineage execution is rejected because it has a separate runner.
+func SelectForTargetWithExecution(ctx context.Context, workspaceDir, contractPath, fixturePath, candidatesDir, registryPath string, allowedIDs []string, execution ExecutionOptions) (Receipt, error) {
+	return selectWithRegistryAndFilter(ctx, workspaceDir, contractPath, fixturePath, candidatesDir, registryPath, allowedIDs, execution)
 }
 
 func selectWithRegistry(ctx context.Context, workspaceDir, contractPath, fixturePath, candidatesDir, registryPath string) (Receipt, error) {
-	return selectWithRegistryAndFilter(ctx, workspaceDir, contractPath, fixturePath, candidatesDir, registryPath, nil)
+	return selectWithRegistryAndFilter(ctx, workspaceDir, contractPath, fixturePath, candidatesDir, registryPath, nil, ExecutionOptions{})
 }
 
-func selectWithRegistryAndFilter(ctx context.Context, workspaceDir, contractPath, fixturePath, candidatesDir, registryPath string, allowedIDs []string) (Receipt, error) {
+func selectWithRegistryAndFilter(ctx context.Context, workspaceDir, contractPath, fixturePath, candidatesDir, registryPath string, allowedIDs []string, execution ExecutionOptions) (Receipt, error) {
 	loaded, err := workspace.Load(workspaceDir)
 	if err != nil {
 		return Receipt{}, fmt.Errorf("load Workspace: %w", err)
@@ -466,7 +523,8 @@ func selectWithRegistryAndFilter(ctx context.Context, workspaceDir, contractPath
 		return Receipt{}, err
 	}
 	receipt := Receipt{
-		Schema: ReceiptSchema, ContractID: contract.ID, ContractVersion: contract.Version,
+		Execution: execution,
+		Schema:    ReceiptSchema, ContractID: contract.ID, ContractVersion: contract.Version,
 		ContractStatus: contract.Status, WorkspaceRevision: sourceindex.ModelRevision(index),
 		FixtureDigest: digest(fixtureRaw),
 		SuiteVersion:  digest(append(append(append([]byte("v0\x00"), contractRaw...), 0), fixtureRaw...)),
@@ -491,7 +549,7 @@ func selectWithRegistryAndFilter(ctx context.Context, workspaceDir, contractPath
 	}
 	sort.Strings(directories)
 	for _, name := range directories {
-		candidate, err := evaluateCandidate(ctx, filepath.Join(candidatesDir, name), fixture, contractPath, digest(contractRaw), registry, allowed)
+		candidate, err := evaluateCandidate(ctx, filepath.Join(candidatesDir, name), fixture, contractPath, digest(contractRaw), registry, allowed, execution)
 		if err != nil {
 			return Receipt{}, err
 		}
@@ -510,12 +568,16 @@ func selectWithRegistryAndFilter(ctx context.Context, workspaceDir, contractPath
 	return receipt, nil
 }
 
-func evaluateCandidate(ctx context.Context, dir string, fixture Fixture, contractPath, contractDigest string, registry *Registry, allowed map[string]bool) (CandidateReceipt, error) {
+func evaluateCandidate(ctx context.Context, dir string, fixture Fixture, contractPath, contractDigest string, registry *Registry, allowed map[string]bool, executionOptions ExecutionOptions) (CandidateReceipt, error) {
 	var manifest CandidateManifest
 	if _, err := readJSON(filepath.Join(dir, "candidate.json"), &manifest); err != nil {
 		return CandidateReceipt{}, err
 	}
-	receipt := CandidateReceipt{ID: manifest.ID, Origin: manifest.Origin, SourceDigest: manifest.SourceDigest, Generator: manifest.Generator, Generation: manifest.Generation, Lineage: manifest.Lineage}
+	language := candidateLanguage(manifest)
+	receipt := CandidateReceipt{
+		ID: manifest.ID, Language: language, Origin: manifest.Origin, SourceDigest: manifest.SourceDigest,
+		Generator: manifest.Generator, Generation: manifest.Generation, Lineage: manifest.Lineage,
+	}
 	reject := func(reason string) (CandidateReceipt, error) {
 		receipt.Passed = false
 		receipt.RejectReason = reason
@@ -526,6 +588,21 @@ func evaluateCandidate(ctx context.Context, dir string, fixture Fixture, contrac
 	}
 	if manifest.ID == "" || manifest.Origin == "" || manifest.Source == "" || manifest.SourceDigest == "" {
 		return reject("candidate identity is incomplete")
+	}
+	if language != LanguageGo && language != LanguagePython && language != LanguageJavaScript && language != LanguageJava {
+		return reject("unsupported candidate language: " + language)
+	}
+	expectedExtension := ".go"
+	switch language {
+	case LanguagePython:
+		expectedExtension = ".py"
+	case LanguageJavaScript:
+		expectedExtension = ".js"
+	case LanguageJava:
+		expectedExtension = ".java"
+	}
+	if strings.ToLower(filepath.Ext(manifest.Source)) != expectedExtension {
+		return reject("candidate source extension does not match language " + language)
 	}
 	if len(allowed) > 0 && !allowed[manifest.ID] {
 		return reject("not selected by target profile")
@@ -549,6 +626,9 @@ func evaluateCandidate(ctx context.Context, dir string, fixture Fixture, contrac
 		if entry.SourceDigest != manifest.SourceDigest {
 			return reject("registry source digest mismatch")
 		}
+		if entry.Language != "" && entry.Language != language {
+			return reject("registry language mismatch: active " + entry.Language + ", candidate " + language)
+		}
 	}
 	if manifest.Generator != nil {
 		if manifest.Generator.ID == "" || manifest.Generator.Version == "" || manifest.Generator.Strategy == "" {
@@ -556,6 +636,9 @@ func evaluateCandidate(ctx context.Context, dir string, fixture Fixture, contrac
 		}
 		if manifest.Generator.ContractDigest != contractDigest {
 			return reject("generator contract digest mismatch")
+		}
+		if manifest.Generator.Language != "" && manifest.Generator.Language != language {
+			return reject("generator language mismatch")
 		}
 	}
 	if manifest.Origin == "generated-ai" && manifest.Generation == nil {
@@ -587,42 +670,120 @@ func evaluateCandidate(ctx context.Context, dir string, fixture Fixture, contrac
 		}
 	}
 	if manifest.Lineage != nil {
+		if len(executionOptions.CommandPrefix) > 0 {
+			return reject("lineage execution is unsupported with a command wrapper")
+		}
 		if err := verifyLineage(ctx, dir, contractPath, manifest.Lineage, source); err != nil {
 			return reject("generator lineage verification failed: " + err.Error())
 		}
 	}
 	if manifest.Generator != nil {
-		rendered, err := renderCandidate(contractPath, manifest.Generator.Strategy)
+		declared := *manifest.Generator
+		if declared.Language == "" {
+			declared.Language = language
+		}
+		rendered, err := renderCandidateVersion(contractPath, declared.Strategy, declared.Version)
 		if err != nil {
 			return reject("generator provenance cannot be reproduced: " + err.Error())
 		}
 		if !bytes.Equal(rendered.Source, source) {
 			return reject("source does not match the declared generator and contract")
 		}
-		if rendered.Manifest.Generator == nil || *rendered.Manifest.Generator != *manifest.Generator {
+		if rendered.Manifest.Generator == nil || *rendered.Manifest.Generator != declared {
 			return reject("generator provenance does not match the current contract and template")
 		}
 	}
-	binaryDir, err := os.MkdirTemp("", "tei-generator-candidate-*")
-	if err != nil {
-		return CandidateReceipt{}, err
+	var binaryPath, scriptPath, javaPath, javacPath, javaClassesDir string
+	switch language {
+	case LanguageGo:
+		binaryDir, err := os.MkdirTemp("", "tei-generator-candidate-*")
+		if err != nil {
+			return CandidateReceipt{}, err
+		}
+		defer os.RemoveAll(binaryDir)
+		binaryPath = candidateBinaryPath(filepath.Join(binaryDir, manifest.ID))
+		toolchain := goRuntimeVersion()
+		goos, goarch, cgo := goBuildEnvironment()
+		goflags := os.Getenv("GOFLAGS")
+		receipt.Runtime = &RuntimeEvidence{Language: LanguageGo, Command: buildCommand, Version: toolchain, Available: true}
+		receipt.BuildEvidence = &BuildEvidence{
+			Language: LanguageGo, Command: buildCommand, Toolchain: toolchain,
+			GOOS: goos, GOARCH: goarch, CGOEnabled: cgo, GOFLAGS: goflags,
+			SourceDigest:     manifest.SourceDigest,
+			BuildInputDigest: buildInputDigest(source, toolchain, goos, goarch, cgo, goflags),
+			Reproducibility:  "not-tested",
+		}
+		buildCtx, cancel := context.WithTimeout(ctx, 2*time.Minute)
+		defer cancel()
+		reproduced, err := buildCandidateTwice(buildCtx, dir, binaryPath)
+		if err != nil {
+			receipt.BuildEvidence.Reproducibility = "mismatch"
+			return reject("build is not reproducible: " + err.Error())
+		}
+		receipt.BuildEvidence.ReproducedDigest = reproduced
+		receipt.BuildEvidence.Reproducibility = "path-independent-twice"
+		binary, err := os.ReadFile(binaryPath)
+		if err != nil {
+			return CandidateReceipt{}, err
+		}
+		receipt.BinaryDigest = digest(binary)
+		receipt.BuildEvidence.BinaryDigest = receipt.BinaryDigest
+	case LanguagePython, LanguageJavaScript:
+		scriptPath, receipt.Runtime = ResolveScriptRuntime(language)
+		if !receipt.Runtime.Available {
+			return reject("runtime unavailable: " + language + " interpreter was not found")
+		}
+	case LanguageJava:
+		var version string
+		var available bool
+		javacPath, javaPath, version, available = findJava()
+		command := "javac; java -cp <classes> Main"
+		if javaPath != "" {
+			command = "javac; " + javaPath + " -cp <classes> Main"
+		}
+		receipt.Runtime = &RuntimeEvidence{
+			Language: LanguageJava, Command: command, Version: version, Available: available,
+		}
+		if !available {
+			return reject("runtime unavailable: javac/java was not found")
+		}
+		javaClassesDir, err = os.MkdirTemp("", "tei-java-candidate-*")
+		if err != nil {
+			return CandidateReceipt{}, err
+		}
+		defer os.RemoveAll(javaClassesDir)
+		compileCtx, cancel := context.WithTimeout(ctx, 2*time.Minute)
+		defer cancel()
+		compile := exec.CommandContext(compileCtx, javacPath, "-d", javaClassesDir, sourcePath)
+		if out, err := compile.CombinedOutput(); err != nil {
+			return reject("java compile failed: " + err.Error() + ": " + string(out))
+		}
+		classBytes, err := os.ReadFile(filepath.Join(javaClassesDir, "Main.class"))
+		if err != nil {
+			return reject("compiled class is unreadable: " + err.Error())
+		}
+		receipt.BuildEvidence = &BuildEvidence{
+			Language: LanguageJava, Command: "javac", Toolchain: version,
+			SourceDigest: manifest.SourceDigest, BinaryDigest: digest(classBytes),
+			BuildInputDigest: javaBuildInputDigest(source, version),
+			Reproducibility:  "not-tested",
+		}
+		receipt.BinaryDigest = receipt.BuildEvidence.BinaryDigest
 	}
-	defer os.RemoveAll(binaryDir)
-	binaryPath := candidateBinaryPath(filepath.Join(binaryDir, manifest.ID))
-	buildCtx, cancel := context.WithTimeout(ctx, 2*time.Minute)
-	defer cancel()
-	if err := buildCandidate(buildCtx, dir, binaryPath); err != nil {
-		return reject("build failed: " + err.Error())
-	}
-	binary, err := os.ReadFile(binaryPath)
-	if err != nil {
-		return CandidateReceipt{}, err
-	}
-	receipt.BinaryDigest = digest(binary)
 
 	for _, tc := range fixture.Cases {
-		got, err := runCandidate(ctx, binaryPath, tc.Input)
-		result := CaseResult{CaseID: tc.ID, Want: tc.Want, Got: got}
+		var got Result
+		var execution *ExecutionEvidence
+		var err error
+		switch language {
+		case LanguagePython, LanguageJavaScript:
+			got, execution, err = runScriptCandidate(ctx, scriptPath, sourcePath, tc.Input, executionOptions)
+		case LanguageJava:
+			got, execution, err = runProgram(ctx, javaPath, []string{"-cp", javaClassesDir, "Main"}, tc.Input, executionOptions)
+		default:
+			got, execution, err = runCandidate(ctx, binaryPath, tc.Input, executionOptions)
+		}
+		result := CaseResult{CaseID: tc.ID, Want: tc.Want, Got: got, Execution: execution}
 		if err != nil {
 			result.Passed = false
 			receipt.Results = append(receipt.Results, result)
@@ -643,6 +804,13 @@ func evaluateCandidate(ctx context.Context, dir string, fixture Fixture, contrac
 	return receipt, nil
 }
 
+func candidateLanguage(manifest CandidateManifest) string {
+	if manifest.Language == "" {
+		return LanguageGo
+	}
+	return manifest.Language
+}
+
 // candidateBinaryPath gives the built executable a platform-appropriate name.
 // A Windows binary without .exe is not reliably executable through os/exec.
 func candidateBinaryPath(path string) string {
@@ -652,45 +820,264 @@ func candidateBinaryPath(path string) string {
 	return path
 }
 
+const buildCommand = "go build -trimpath -buildvcs=false"
+
 func buildCandidate(ctx context.Context, dir, binaryPath string) error {
-	build := exec.CommandContext(ctx, "go", "build", "-o", binaryPath, ".")
+	files, err := goSourceFiles(dir)
+	if err != nil {
+		return err
+	}
+	args := append([]string{"build", "-trimpath", "-buildvcs=false", "-o", binaryPath}, files...)
+	build := exec.CommandContext(ctx, "go", args...)
 	build.Dir = dir
 	out, err := build.CombinedOutput()
-	if err == nil {
-		return nil
+	if err != nil {
+		return fmt.Errorf("%v: %s", err, out)
 	}
-	// Generated candidates may live outside a Go module. Their sources use the
-	// standard library only, so retry in GOPATH mode instead of requiring a
-	// go.mod in a temporary directory.
-	if strings.Contains(string(out), "go.mod file not found") {
-		fallback := exec.CommandContext(ctx, "go", "build", "-o", binaryPath, "main.go")
-		fallback.Dir = dir
-		fallback.Env = append(os.Environ(), "GO111MODULE=off")
-		if fallbackOut, fallbackErr := fallback.CombinedOutput(); fallbackErr == nil {
-			return nil
-		} else {
-			return fmt.Errorf("%v: %s", fallbackErr, fallbackOut)
-		}
-	}
-	return fmt.Errorf("%v: %s", err, out)
+	return nil
 }
 
-func runCandidate(ctx context.Context, binary string, input json.RawMessage) (Result, error) {
+func goSourceFiles(dir string) ([]string, error) {
+	if _, err := os.Stat(filepath.Join(dir, "main.go")); err == nil {
+		return []string{"main.go"}, nil
+	} else if !os.IsNotExist(err) {
+		return nil, err
+	}
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return nil, err
+	}
+	var files []string
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(strings.ToLower(entry.Name()), ".go") {
+			continue
+		}
+		files = append(files, entry.Name())
+	}
+	if len(files) == 0 {
+		return nil, fmt.Errorf("no Go source files in %s", dir)
+	}
+	sort.Strings(files)
+	return files, nil
+}
+
+// buildCandidateTwice builds the same source twice with path-independent flags
+// and returns the second digest. The second build uses a copy of the Go sources
+// in a different directory, so a path-dependent build is rejected.
+func buildCandidateTwice(ctx context.Context, dir, binaryPath string) (string, error) {
+	firstDir, err := os.MkdirTemp("", "tei-generator-repro-a-*")
+	if err != nil {
+		return "", err
+	}
+	defer os.RemoveAll(firstDir)
+	secondDir, err := os.MkdirTemp("", "tei-generator-repro-b-*")
+	if err != nil {
+		return "", err
+	}
+	defer os.RemoveAll(secondDir)
+	if err := copyGoSources(dir, firstDir); err != nil {
+		return "", err
+	}
+	if err := copyGoSources(dir, secondDir); err != nil {
+		return "", err
+	}
+	if err := buildCandidate(ctx, firstDir, binaryPath); err != nil {
+		return "", err
+	}
+	first, err := os.ReadFile(binaryPath)
+	if err != nil {
+		return "", err
+	}
+	secondPath := binaryPath + ".second"
+	if err := buildCandidate(ctx, secondDir, secondPath); err != nil {
+		return "", err
+	}
+	second, err := os.ReadFile(secondPath)
+	if err != nil {
+		return "", err
+	}
+	firstDigest, secondDigest := digest(first), digest(second)
+	if firstDigest != secondDigest {
+		return secondDigest, fmt.Errorf("path-dependent build: first %s, second %s", firstDigest, secondDigest)
+	}
+	return secondDigest, nil
+}
+
+func copyGoSources(srcDir, dstDir string) error {
+	files, err := goSourceFiles(srcDir)
+	if err != nil {
+		return err
+	}
+	for _, name := range files {
+		content, err := os.ReadFile(filepath.Join(srcDir, name))
+		if err != nil {
+			return err
+		}
+		if err := os.WriteFile(filepath.Join(dstDir, name), content, 0o644); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+var (
+	goVersionOnce  sync.Once
+	goVersionValue string
+)
+
+func goRuntimeVersion() string {
+	goVersionOnce.Do(func() {
+		out, err := exec.Command("go", "version").Output()
+		if err == nil {
+			goVersionValue = strings.TrimSpace(string(out))
+		}
+	})
+	return goVersionValue
+}
+
+var (
+	goEnvOnce   sync.Once
+	goOSValue   string
+	goArchValue string
+	cgoValue    string
+)
+
+func goBuildEnvironment() (goos, goarch, cgoEnabled string) {
+	goEnvOnce.Do(func() {
+		out, err := exec.Command("go", "env", "GOOS", "GOARCH", "CGO_ENABLED").Output()
+		if err != nil {
+			return
+		}
+		lines := strings.Split(strings.TrimSpace(string(out)), "\n")
+		if len(lines) > 0 {
+			goOSValue = strings.TrimSpace(lines[0])
+		}
+		if len(lines) > 1 {
+			goArchValue = strings.TrimSpace(lines[1])
+		}
+		if len(lines) > 2 {
+			cgoValue = strings.TrimSpace(lines[2])
+		}
+	})
+	return goOSValue, goArchValue, cgoValue
+}
+
+func buildInputDigest(source []byte, toolchain, goos, goarch, cgoEnabled, goflags string) string {
+	return digest([]byte(strings.Join([]string{
+		buildCommand, LanguageGo, digest(source), toolchain, goos, goarch, cgoEnabled, goflags,
+	}, "\x00")))
+}
+
+func javaBuildInputDigest(source []byte, toolchain string) string {
+	return digest([]byte(strings.Join([]string{
+		"javac", LanguageJava, digest(source), toolchain,
+	}, "\x00")))
+}
+
+// ResolveScriptRuntime uses the same interpreter discovery for selection and
+// target-profile probes. Availability is evidence of a runnable interpreter,
+// not permission to execute a candidate or a limit on its resource use.
+func ResolveScriptRuntime(language string) (string, *RuntimeEvidence) {
+	var executable, version string
+	var available bool
+	command := ""
+	switch language {
+	case LanguagePython:
+		executable, version, available = findPython()
+		command = "python <source>"
+	case LanguageJavaScript:
+		executable, version, available = findJavaScript()
+		command = "node <source>"
+	}
+	if executable != "" {
+		command = executable + " <source>"
+	}
+	return executable, &RuntimeEvidence{Language: language, Command: command, Version: version, Available: available}
+}
+
+func findPython() (path, version string, available bool) {
+	for _, name := range []string{"python3", "python"} {
+		found, err := exec.LookPath(name)
+		if err != nil {
+			continue
+		}
+		// Windows may provide a python3.exe app-execution alias that is not a
+		// working interpreter. Only accept a command that can report its version.
+		out, err := exec.Command(found, "--version").CombinedOutput()
+		if err != nil {
+			continue
+		}
+		return found, strings.TrimSpace(string(out)), true
+	}
+	return "", "", false
+}
+
+func findJavaScript() (path, version string, available bool) {
+	found, err := exec.LookPath("node")
+	if err != nil {
+		return "", "", false
+	}
+	out, err := exec.Command(found, "--version").CombinedOutput()
+	if err != nil {
+		return "", "", false
+	}
+	return found, strings.TrimSpace(string(out)), true
+}
+
+func findJava() (javacPath, javaPath, version string, available bool) {
+	javac, err := exec.LookPath("javac")
+	if err != nil {
+		return "", "", "", false
+	}
+	java, err := exec.LookPath("java")
+	if err != nil {
+		return "", "", "", false
+	}
+	out, err := exec.Command(javac, "-version").CombinedOutput()
+	if err != nil {
+		return "", "", "", false
+	}
+	return javac, java, strings.TrimSpace(string(out)), true
+}
+
+func runScriptCandidate(ctx context.Context, interpreter, sourcePath string, input json.RawMessage, options ExecutionOptions) (Result, *ExecutionEvidence, error) {
+	absolute, err := filepath.Abs(sourcePath)
+	if err != nil {
+		return Result{}, nil, err
+	}
+	return runProgram(ctx, interpreter, []string{absolute}, input, options)
+}
+
+func runCandidate(ctx context.Context, binary string, input json.RawMessage, options ExecutionOptions) (Result, *ExecutionEvidence, error) {
+	return runProgram(ctx, binary, nil, input, options)
+}
+
+func runProgram(ctx context.Context, name string, args []string, input json.RawMessage, options ExecutionOptions) (Result, *ExecutionEvidence, error) {
 	runCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
-	cmd := exec.CommandContext(runCtx, binary)
+	cmd := options.Command(runCtx, name, args...)
 	cmd.Stdin = bytes.NewReader(input)
-	out, err := cmd.Output()
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	err := cmd.Run()
+	evidence := &ExecutionEvidence{
+		ExitCode: 0, StdoutDigest: digest(stdout.Bytes()), StderrDigest: digest(stderr.Bytes()),
+	}
 	if err != nil {
+		evidence.ExitCode = -1
 		var exit *exec.ExitError
 		if errors.As(err, &exit) {
-			return Result{}, fmt.Errorf("candidate exited %d: %s", exit.ExitCode(), string(exit.Stderr))
+			evidence.ExitCode = exit.ExitCode()
 		}
-		return Result{}, err
+		if runCtx.Err() == context.DeadlineExceeded {
+			evidence.TimedOut = true
+		}
+		return Result{}, evidence, fmt.Errorf("candidate exited %d: %s", evidence.ExitCode, stderr.String())
 	}
 	var result Result
-	if err := json.Unmarshal(out, &result); err != nil {
-		return Result{}, fmt.Errorf("candidate output is not a result: %w: %q", err, out)
+	if err := json.Unmarshal(stdout.Bytes(), &result); err != nil {
+		return Result{}, evidence, fmt.Errorf("candidate output is not a result: %w: %q", err, stdout.Bytes())
 	}
-	return result, nil
+	return result, evidence, nil
 }

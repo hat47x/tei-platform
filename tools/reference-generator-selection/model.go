@@ -18,6 +18,7 @@ type ModelOptions struct {
 	ID           string
 	Provider     string
 	Model        string
+	Language     string
 	ContractPath string
 	PromptPath   string
 	ContextPath  string
@@ -40,12 +41,16 @@ func GenerateWithCommand(ctx context.Context, opts ModelOptions) (CandidateManif
 	if strings.TrimSpace(opts.Command) == "" {
 		return CandidateManifest{}, fmt.Errorf("command is required")
 	}
+	language, err := normalizeLanguage(opts.Language)
+	if err != nil {
+		return CandidateManifest{}, err
+	}
 	tempDir, err := os.MkdirTemp("", "tei-generator-model-*")
 	if err != nil {
 		return CandidateManifest{}, err
 	}
 	defer os.RemoveAll(tempDir)
-	sourcePath := filepath.Join(tempDir, "source.go")
+	sourcePath := filepath.Join(tempDir, "source"+filepath.Ext(candidateSourceName(language)))
 	runCtx := ctx
 	if opts.Timeout > 0 {
 		var cancel context.CancelFunc
@@ -55,6 +60,7 @@ func GenerateWithCommand(ctx context.Context, opts ModelOptions) (CandidateManif
 	cmd := exec.CommandContext(runCtx, "bash", "-lc", opts.Command)
 	cmd.Env = append(os.Environ(),
 		"TEI_CONTRACT="+opts.ContractPath,
+		"TEI_LANGUAGE="+language,
 		"TEI_PROMPT="+opts.PromptPath,
 		"TEI_CONTEXT="+opts.ContextPath,
 		"TEI_SOURCE="+sourcePath,
@@ -74,8 +80,9 @@ func GenerateWithCommand(ctx context.Context, opts ModelOptions) (CandidateManif
 		return CandidateManifest{}, fmt.Errorf("generation command wrote an empty source")
 	}
 	return Record(RecordOptions{
-		ID: opts.ID, Provider: opts.Provider, Model: opts.Model, ContractPath: opts.ContractPath,
-		SourcePath: sourcePath, PromptPath: opts.PromptPath, ContextPath: opts.ContextPath,
+		ID: opts.ID, Provider: opts.Provider, Model: opts.Model, Language: language,
+		ContractPath: opts.ContractPath,
+		SourcePath:   sourcePath, PromptPath: opts.PromptPath, ContextPath: opts.ContextPath,
 		Note: "recorded from an external generation command",
 	}, opts.OutDir)
 }

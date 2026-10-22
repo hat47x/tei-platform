@@ -8,6 +8,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"io/fs"
 	"os"
 	"os/exec"
@@ -293,10 +294,55 @@ func copyPracticalBWorkspace(t *testing.T, src, dst string) {
 		if err != nil {
 			return err
 		}
+		// This historical candidate fixes LF Source fingerprints. Reconstruct
+		// that fixture only in scratch, even after an autocrlf checkout. Runtime
+		// loaders and the reference baseline must keep their exact bytes.
+		if ext := filepath.Ext(rel); ext == ".tei" || ext == ".sql" || ext == ".md" {
+			data = bytes.ReplaceAll(data, []byte("\r\n"), []byte("\n"))
+		}
 		return os.WriteFile(target, data, 0o644)
 	})
 	if err != nil {
 		t.Fatalf("workspace copyを作れません: %v", err)
+	}
+}
+
+func TestPracticalBScratchFixtureLineEndings(t *testing.T) {
+	for _, newline := range []string{"\n", "\r\n"} {
+		t.Run(fmt.Sprintf("newline-%x", newline), func(t *testing.T) {
+			source, scratch := t.TempDir(), t.TempDir()
+			original := []byte("application fixture {" + newline + "}" + newline)
+			binary := []byte{0, '\r', '\n', 0xff}
+			if err := os.WriteFile(filepath.Join(source, "application.tei"), original, 0o644); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(filepath.Join(source, "attachment.bin"), binary, 0o644); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(filepath.Join(source, "query.sql"), []byte("select 1;"+newline), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(filepath.Join(source, "README.md"), []byte("managed fixture"+newline), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			copyPracticalBWorkspace(t, source, scratch)
+			copied := readPracticalBTree(t, scratch)
+			if copied["application.tei"] != "application fixture {\n}\n" {
+				t.Fatal("scratch Source does not match the fixed LF fixture")
+			}
+			if copied["attachment.bin"] != string(binary) {
+				t.Fatal("non-Source bytes changed")
+			}
+			if copied["query.sql"] != "select 1;\n" {
+				t.Fatal("scratch SQL does not match the fixed LF fixture")
+			}
+			if copied["README.md"] != "managed fixture\n" {
+				t.Fatal("scratch managed documentation does not match the fixed LF fixture")
+			}
+			if got := readPracticalBTree(t, source); got["application.tei"] != string(original) || got["attachment.bin"] != string(binary) || got["query.sql"] != "select 1;"+newline || got["README.md"] != "managed fixture"+newline {
+				t.Fatal("fixture preparation changed its source")
+			}
+		})
 	}
 }
 
