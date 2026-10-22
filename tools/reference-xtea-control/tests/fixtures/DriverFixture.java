@@ -26,8 +26,13 @@ public final class DriverFixture {
             @Override public void browseFile(java.net.URI uri) {
                 try {
                     String name = java.nio.file.Paths.get(uri).getFileName().toString();
-                    java.nio.file.Files.write(java.nio.file.Paths.get(args[0], "output-ready"),
+                    java.nio.file.Path pending = java.nio.file.Paths.get(args[0], "output-ready.tmp");
+                    java.nio.file.Files.write(pending,
                             name.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                    // Readers use existence as completion: publish only after all bytes are written.
+                    java.nio.file.Files.move(pending, java.nio.file.Paths.get(args[0], "output-ready"),
+                            java.nio.file.StandardCopyOption.ATOMIC_MOVE,
+                            java.nio.file.StandardCopyOption.REPLACE_EXISTING);
                 } catch (java.io.IOException error) {
                     throw new RuntimeException(error);
                 }
