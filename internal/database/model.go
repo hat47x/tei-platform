@@ -44,8 +44,9 @@ type Contract struct {
 // QueryInputは、Database Contract Queryが受け取る一つの入力を表す。
 // Query名や物理parameter名から意味を推測せず、入力名とSemantic型identityを明示的に保持する。
 type QueryInput struct {
-	Name core.LocalName   `json:"name"`
-	Type core.CanonicalID `json:"type"`
+	Name     core.LocalName   `json:"name"`
+	Type     core.CanonicalID `json:"type"`
+	Nullable bool             `json:"nullable,omitempty"`
 }
 
 // QueryResultCardinalityは、Database Contract Queryが正常に完了したときに返し得る

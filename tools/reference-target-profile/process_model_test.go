@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"testing"
@@ -65,7 +66,14 @@ func main() { io.Copy(io.Discard, os.Stdin); fmt.Print(%s); os.Exit(%d) }
 			}
 			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 			defer cancel()
-			evidence := longRunningEvidence(ctx, Profile{GeneratorID: "probe"}, RunOptions{CandidatesDir: root, FixturePath: fixturePath})
+			binary := filepath.Join(t.TempDir(), "probe")
+			if runtime.GOOS == "windows" {
+				binary += ".exe"
+			}
+			if err := buildGoCandidate(ctx, candidate, binary); err != nil {
+				t.Fatal(err)
+			}
+			evidence := runLongRunningProbe(ctx, RunOptions{}, fixture, binary, nil, &ProcessModelEvidence{Mode: ProcessLongRunning})
 			if evidence.Passed != (tc.reason == "") || !strings.Contains(evidence.Reason, tc.reason) {
 				t.Fatalf("unexpected pass/reason: %+v", evidence)
 			}

@@ -42,6 +42,7 @@ const (
 	LanguagePython     = "python"
 	LanguageJavaScript = "javascript"
 	LanguageJava       = "java"
+	LanguageWasm       = "wasm"
 )
 
 type InputSpec struct {
@@ -589,7 +590,7 @@ func evaluateCandidate(ctx context.Context, dir string, fixture Fixture, contrac
 	if manifest.ID == "" || manifest.Origin == "" || manifest.Source == "" || manifest.SourceDigest == "" {
 		return reject("candidate identity is incomplete")
 	}
-	if language != LanguageGo && language != LanguagePython && language != LanguageJavaScript && language != LanguageJava {
+	if language != LanguageGo && language != LanguagePython && language != LanguageJavaScript && language != LanguageJava && language != LanguageWasm {
 		return reject("unsupported candidate language: " + language)
 	}
 	expectedExtension := ".go"
@@ -600,6 +601,8 @@ func evaluateCandidate(ctx context.Context, dir string, fixture Fixture, contrac
 		expectedExtension = ".js"
 	case LanguageJava:
 		expectedExtension = ".java"
+	case LanguageWasm:
+		expectedExtension = ".go"
 	}
 	if strings.ToLower(filepath.Ext(manifest.Source)) != expectedExtension {
 		return reject("candidate source extension does not match language " + language)
@@ -693,7 +696,7 @@ func evaluateCandidate(ctx context.Context, dir string, fixture Fixture, contrac
 			return reject("generator provenance does not match the current contract and template")
 		}
 	}
-	var binaryPath, scriptPath, javaPath, javacPath, javaClassesDir string
+	var binaryPath, scriptPath, javaPath, javacPath, javaClassesDir, wasmPath, wasmExecPath, nodePath string
 	switch language {
 	case LanguageGo:
 		binaryDir, err := os.MkdirTemp("", "tei-generator-candidate-*")
@@ -769,6 +772,43 @@ func evaluateCandidate(ctx context.Context, dir string, fixture Fixture, contrac
 			Reproducibility:  "not-tested",
 		}
 		receipt.BinaryDigest = receipt.BuildEvidence.BinaryDigest
+	case LanguageWasm:
+		var version string
+		var available bool
+		nodePath, wasmExecPath, version, available = resolveWasmRuntime()
+		receipt.Runtime = &RuntimeEvidence{
+			Language: LanguageWasm, Command: "node wasm_exec_node.js <wasm>", Version: version, Available: available,
+		}
+		if !available {
+			return reject("runtime unavailable: node or Go wasm_exec_node.js was not found")
+		}
+		wasmDir, err := os.MkdirTemp("", "tei-wasm-candidate-*")
+		if err != nil {
+			return CandidateReceipt{}, err
+		}
+		defer os.RemoveAll(wasmDir)
+		wasmPath = filepath.Join(wasmDir, "candidate.wasm")
+		buildCtx, cancel := context.WithTimeout(ctx, 2*time.Minute)
+		defer cancel()
+		build := exec.CommandContext(buildCtx, "go", "build", "-trimpath", "-buildvcs=false", "-o", wasmPath, "main.go")
+		build.Dir = dir
+		build.Env = append(os.Environ(), "GOOS=js", "GOARCH=wasm")
+		if out, err := build.CombinedOutput(); err != nil {
+			return reject("wasm build failed: " + err.Error() + ": " + string(out))
+		}
+		binary, err := os.ReadFile(wasmPath)
+		if err != nil {
+			return CandidateReceipt{}, err
+		}
+		toolchain := goRuntimeVersion()
+		receipt.BuildEvidence = &BuildEvidence{
+			Language: LanguageWasm, Command: "GOOS=js GOARCH=wasm go build -trimpath -buildvcs=false",
+			Toolchain: toolchain, GOOS: "js", GOARCH: "wasm", CGOEnabled: "0",
+			SourceDigest: manifest.SourceDigest, BinaryDigest: digest(binary),
+			BuildInputDigest: wasmBuildInputDigest(source, toolchain),
+			Reproducibility:  "not-tested",
+		}
+		receipt.BinaryDigest = receipt.BuildEvidence.BinaryDigest
 	}
 
 	for _, tc := range fixture.Cases {
@@ -780,6 +820,8 @@ func evaluateCandidate(ctx context.Context, dir string, fixture Fixture, contrac
 			got, execution, err = runScriptCandidate(ctx, scriptPath, sourcePath, tc.Input, executionOptions)
 		case LanguageJava:
 			got, execution, err = runProgram(ctx, javaPath, []string{"-cp", javaClassesDir, "Main"}, tc.Input, executionOptions)
+		case LanguageWasm:
+			got, execution, err = runProgram(ctx, nodePath, []string{wasmExecPath, wasmPath}, tc.Input, executionOptions)
 		default:
 			got, execution, err = runCandidate(ctx, binaryPath, tc.Input, executionOptions)
 		}
@@ -972,6 +1014,32 @@ func javaBuildInputDigest(source []byte, toolchain string) string {
 	return digest([]byte(strings.Join([]string{
 		"javac", LanguageJava, digest(source), toolchain,
 	}, "\x00")))
+}
+
+func wasmBuildInputDigest(source []byte, toolchain string) string {
+	return digest([]byte(strings.Join([]string{
+		"GOOS=js GOARCH=wasm go build -trimpath -buildvcs=false", LanguageWasm, digest(source), toolchain,
+	}, "\x00")))
+}
+
+func resolveWasmRuntime() (nodePath, wasmExecPath, version string, available bool) {
+	node, err := exec.LookPath("node")
+	if err != nil {
+		return "", "", "", false
+	}
+	out, err := exec.Command(node, "--version").CombinedOutput()
+	if err != nil {
+		return "", "", "", false
+	}
+	gorootOut, err := exec.Command("go", "env", "GOROOT").Output()
+	if err != nil {
+		return "", "", "", false
+	}
+	wasmExec := filepath.Join(strings.TrimSpace(string(gorootOut)), "lib", "wasm", "wasm_exec_node.js")
+	if _, err := os.Stat(wasmExec); err != nil {
+		return "", "", "", false
+	}
+	return node, wasmExec, strings.TrimSpace(string(out)), true
 }
 
 // ResolveScriptRuntime uses the same interpreter discovery for selection and
