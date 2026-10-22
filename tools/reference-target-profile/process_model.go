@@ -154,7 +154,7 @@ func longRunningEvidence(ctx context.Context, profile Profile, opts RunOptions) 
 	}
 	runCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
-	cmd := exec.CommandContext(runCtx, executable, args...)
+	cmd := opts.execution.Command(runCtx, executable, args...)
 	var input bytes.Buffer
 	encoder := json.NewEncoder(&input)
 	for _, tc := range fixture.Cases {

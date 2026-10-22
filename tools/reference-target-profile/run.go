@@ -9,11 +9,13 @@ import (
 )
 
 type RunOptions struct {
-	WorkspaceDir  string
-	ContractPath  string
-	FixturePath   string
-	CandidatesDir string
-	ProfilePath   string
+	WorkspaceDir   string
+	ContractPath   string
+	FixturePath    string
+	CandidatesDir  string
+	ProfilePath    string
+	EnforceNetwork bool
+	execution      generatorselection.ExecutionOptions
 }
 
 // ObservabilityEvidence records which declared observation channels the
@@ -29,6 +31,7 @@ type ObservabilityEvidence struct {
 }
 
 type Receipt struct {
+	Network      *NetworkEvidence           `json:"network,omitempty"`
 	Schema       string                     `json:"schema"`
 	Profile      Profile                    `json:"profile"`
 	Selection    generatorselection.Receipt `json:"selection"`
@@ -42,13 +45,23 @@ type Receipt struct {
 
 // Run applies the profile's memory limit to the selection subprocesses, runs
 // the same fixed fixtures, and records which constraints were actually
-// enforced. Storage, network, and update remain declarations;
+// enforced. Storage and update remain declarations; network isolation is opt-in;
 // observability channels stdout, stderr, and exit-code are observed from the
 // selected candidate's case executions.
 func Run(ctx context.Context, opts RunOptions) (Receipt, error) {
 	profile, err := Load(opts.ProfilePath)
 	if err != nil {
 		return Receipt{}, err
+	}
+	var network *NetworkEvidence
+	networkEnforcement := "declared-only"
+	if opts.EnforceNetwork {
+		network = prepareNetwork(ctx, profile)
+		if !network.Available {
+			return Receipt{Schema: Schema, Profile: profile, Network: network, Passed: false, Enforcement: map[string]string{"network": "unavailable"}}, nil
+		}
+		opts.execution = network.Execution
+		networkEnforcement = network.Method
 	}
 	previous, hadPrevious := os.LookupEnv("GOMEMLIMIT")
 	if err := os.Setenv("GOMEMLIMIT", strconv.FormatInt(profile.MemoryLimitBytes, 10)); err != nil {
@@ -65,7 +78,7 @@ func Run(ctx context.Context, opts RunOptions) (Receipt, error) {
 	if profile.GeneratorID != "" {
 		allowed = []string{profile.GeneratorID}
 	}
-	selection, err := generatorselection.SelectForTarget(ctx, opts.WorkspaceDir, opts.ContractPath, opts.FixturePath, opts.CandidatesDir, "", allowed)
+	selection, err := generatorselection.SelectForTargetWithExecution(ctx, opts.WorkspaceDir, opts.ContractPath, opts.FixturePath, opts.CandidatesDir, "", allowed, opts.execution)
 	if err != nil {
 		return Receipt{}, err
 	}
@@ -104,6 +117,7 @@ func Run(ctx context.Context, opts RunOptions) (Receipt, error) {
 	}
 	return Receipt{
 		Schema:       Schema,
+		Network:      network,
 		Profile:      profile,
 		Selection:    selection,
 		Observation:  observation,
@@ -112,7 +126,7 @@ func Run(ctx context.Context, opts RunOptions) (Receipt, error) {
 			"memory":        memoryEnforcement,
 			"processModel":  processEnforcement,
 			"storage":       "declared-only",
-			"network":       "declared-only",
+			"network":       networkEnforcement,
 			"update":        "declared-only",
 			"observability": observabilityEnforcement,
 		},
@@ -122,7 +136,7 @@ func Run(ctx context.Context, opts RunOptions) (Receipt, error) {
 			"同じ受理済み契約・fixture・候補を、Target Profileの宣言とともに実行した。memoryの強制範囲はenforcementへ記録する。",
 			"observabilityのstdout・stderr・exit-codeはcase実行から観測した。未対応channelはUnsupportedとして返す。",
 			"processModelはoneshotのprocess-per-case、long-runningのsingle-processを実行で確認した。",
-			"storage・network・updateは宣言であり、このReferenceでは強制していない。",
+			"storage・updateは宣言。networkの強制範囲はenforcementとnetworkへ記録する。",
 			"profileの合格は、実機・実OS・実Targetでの動作を証明しない。",
 		},
 	}, nil

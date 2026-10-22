@@ -80,6 +80,28 @@ JavaScriptは`-strategy javascript-long-running-template`で生成します。Pr
 - 1 processで全requestを処理したこと、応答数、case結果、終了code、stderr digestを記録します。単発候補を選んでも常駐の合格にはなりません。
 - 処理系の隔離、依存解決、OSのメモリ上限、実Targetのsupervisorは扱いません。
 
+## Linuxでのnetwork隔離
+
+`run`/`compare`に`-enforce-network`を付けると、`network: none`の候補をLinuxのuser/network namespace内で実行します。既定は従来どおり宣言だけです。`loopback`/`allowed`の強制は未対応として拒否し、指定を無視して実行しません。`validate`/`deploy`/`rollback`への指定も拒否します。
+
+```bash
+go run ./tools/reference-target-profile/cmd/tei-target-profile run \
+  -enforce-network \
+  -profile tools/reference-target-profile/testdata/embedded.json \
+  -workspace reference/workspace \
+  -contract tools/reference-generator-selection/testdata/line-amount/contract.json \
+  -fixtures tools/reference-generator-selection/testdata/line-amount/fixtures.json \
+  -candidates tools/reference-generator-selection/testdata/candidates
+```
+
+- `unshare --user --map-root-user --net --`を使用します。起動前に`readlink /proc/self/ns/net`を隔離下で実行し、親とは別のnetwork namespaceに入ったことを確認します。wrapperのargv、親とprobeのnamespace、失敗理由、stderr digestを`network`へ記録します。
+- 非Linux、コマンド不在、kernelによる拒否、親と同じnamespace等では、候補を一つも実行せず`passed=false`と`enforcement.network: unavailable`を返します。候補実行時にwrapperが失敗しても隔離なしへ切り替えません。
+- 選抜のcase実行と、追加のlong-running probeの両方を隔離します。`selection.execution.commandPrefix`に使用したwrapperを記録します。oneshotはcaseごとに別namespace、long-running probeは1 namespace内の1 processで全要求を処理します。
+- 実行対象のlineage検証は別のrunnerを使うため、隔離指定中は未対応として拒否します。
+- 隔離は候補実行時のIP network namespaceの分離です。ビルド・処理系の検出、filesystem、AF_UNIX、ホスト側serviceを介する代理通信、CPU・メモリ・子孫processの管理は範囲外です。新しい実行先としての汎用sandboxや本番Hostの安全性を証明しません。
+- 実動試験では同じホストのIPv4 loopback listenerへの接続が隔離なしでは成立し、隔離中は成立せず、同じ業務fixtureがoneshot/long-runningで成功することを確認します。Python/JavaScriptの隔離下でのfixture比較も行います。IPv6や外部ネットワークの実通信は試験していません。
+- namespaceや処理系を利用できない環境では実動試験を理由付きでskipします。そのskipをnetwork隔離の成功とは扱いません。利用できないときの拒否は別の負例で検証します。
+
 ## ローカルartifact配備
 
 `deploy`は、選択したGo候補をbuildし、ローカルfilesystemのrootへartifactとして配置します。実Targetへの配備ではなく、`storage: filesystem`と`update`の最小の挙動を確認する参照です。
@@ -107,7 +129,7 @@ JavaScriptは`-strategy javascript-long-running-template`で生成します。Pr
 - profileは意味を変えない。契約・fixture・候補は同じものを使う。
 - profileは`generatorId`で生成器を一つ選ぶ。選ばれなかった候補は`not selected by target profile`として拒否し、別の生成器へ暗黙にフォールバックしない。
 - `processModel`はoneshotのprocess-per-case、long-runningのsingle-processを実行で確認する。batchは未対応。
-- `storage`の`filesystem`と`update`の`replace`/`in-place`/`rolling`は、`deploy`のローカルfilesystem参照で限定的に確認する。`network`、`sqlite`/`remote` storageは宣言または未対応のまま。
+- `storage`の`filesystem`と`update`の`replace`/`in-place`/`rolling`は、`deploy`のローカルfilesystem参照で限定的に確認する。`network`は以下のopt-inの範囲で強制し、`sqlite`/`remote` storageは宣言または未対応のまま。
 - `observability`は`stdout`・`stderr`・`exit-code`だけをcase実行から観測する。未対応channelは`unsupported`として返し、合格にしない。
 - profileの合格や`semanticsEqual`は、実機・実OS・実Targetでの動作を証明しない。
 - 組込み固有のリアルタイム性・安全認証・電源断耐性は扱わない。
@@ -115,7 +137,7 @@ JavaScriptは`-strategy javascript-long-running-template`で生成します。Pr
 ## 未実装
 
 - OS・CPU・RTOS別の実行環境と、実機での資源測定。
-- `network`の強制、`sqlite`/`remote` storage。
+- `loopback`等のnetwork方針の強制、Linux namespace以外の実行器、`sqlite`/`remote` storage。
 - batch processModel、long-runningのJava候補。
 - `audit-log`・分散trace・metrics等の観測channel。
 - 実Targetへの配備、ロールバック、長期運用。
