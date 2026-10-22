@@ -757,9 +757,9 @@ func evaluateCandidate(ctx context.Context, dir string, fixture Fixture, contrac
 		defer os.RemoveAll(javaClassesDir)
 		compileCtx, cancel := context.WithTimeout(ctx, 2*time.Minute)
 		defer cancel()
-		compile := exec.CommandContext(compileCtx, javacPath, "-d", javaClassesDir, sourcePath)
-		if out, err := compile.CombinedOutput(); err != nil {
-			return reject("java compile failed: " + err.Error() + ": " + string(out))
+		reproduced, err := buildJavaTwice(compileCtx, javacPath, dir, javaClassesDir)
+		if err != nil {
+			return reject("java compile is not reproducible: " + err.Error())
 		}
 		classBytes, err := os.ReadFile(filepath.Join(javaClassesDir, "Main.class"))
 		if err != nil {
@@ -768,8 +768,8 @@ func evaluateCandidate(ctx context.Context, dir string, fixture Fixture, contrac
 		receipt.BuildEvidence = &BuildEvidence{
 			Language: LanguageJava, Command: "javac", Toolchain: version,
 			SourceDigest: manifest.SourceDigest, BinaryDigest: digest(classBytes),
-			BuildInputDigest: javaBuildInputDigest(source, version),
-			Reproducibility:  "not-tested",
+			ReproducedDigest: reproduced, BuildInputDigest: javaBuildInputDigest(source, version),
+			Reproducibility: "path-independent-twice",
 		}
 		receipt.BinaryDigest = receipt.BuildEvidence.BinaryDigest
 	case LanguageWasm:
@@ -1012,6 +1012,83 @@ func javaBuildInputDigest(source []byte, toolchain string) string {
 	return digest([]byte(strings.Join([]string{
 		"javac", LanguageJava, digest(source), toolchain,
 	}, "\x00")))
+}
+
+func buildJavaTwice(ctx context.Context, javacPath, dir, classesDir string) (string, error) {
+	firstDir, err := os.MkdirTemp("", "tei-java-repro-a-*")
+	if err != nil {
+		return "", err
+	}
+	defer os.RemoveAll(firstDir)
+	secondDir, err := os.MkdirTemp("", "tei-java-repro-b-*")
+	if err != nil {
+		return "", err
+	}
+	defer os.RemoveAll(secondDir)
+	if err := copyJavaSources(dir, firstDir); err != nil {
+		return "", err
+	}
+	if err := copyJavaSources(dir, secondDir); err != nil {
+		return "", err
+	}
+	if err := compileJavaCandidate(ctx, javacPath, firstDir, classesDir); err != nil {
+		return "", err
+	}
+	secondClasses, err := os.MkdirTemp("", "tei-java-classes-*")
+	if err != nil {
+		return "", err
+	}
+	defer os.RemoveAll(secondClasses)
+	if err := compileJavaCandidate(ctx, javacPath, secondDir, secondClasses); err != nil {
+		return "", err
+	}
+	first, err := os.ReadFile(filepath.Join(classesDir, "Main.class"))
+	if err != nil {
+		return "", err
+	}
+	second, err := os.ReadFile(filepath.Join(secondClasses, "Main.class"))
+	if err != nil {
+		return "", err
+	}
+	firstDigest, secondDigest := digest(first), digest(second)
+	if firstDigest != secondDigest {
+		return secondDigest, fmt.Errorf("first %s, second %s", firstDigest, secondDigest)
+	}
+	return secondDigest, nil
+}
+
+func compileJavaCandidate(ctx context.Context, javacPath, dir, classesDir string) error {
+	compile := exec.CommandContext(ctx, javacPath, "-d", classesDir, "Main.java")
+	compile.Dir = dir
+	if out, err := compile.CombinedOutput(); err != nil {
+		return fmt.Errorf("%v: %s", err, out)
+	}
+	return nil
+}
+
+func copyJavaSources(srcDir, dstDir string) error {
+	entries, err := os.ReadDir(srcDir)
+	if err != nil {
+		return err
+	}
+	copied := 0
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(strings.ToLower(entry.Name()), ".java") {
+			continue
+		}
+		content, err := os.ReadFile(filepath.Join(srcDir, entry.Name()))
+		if err != nil {
+			return err
+		}
+		if err := os.WriteFile(filepath.Join(dstDir, entry.Name()), content, 0o644); err != nil {
+			return err
+		}
+		copied++
+	}
+	if copied == 0 {
+		return fmt.Errorf("no Java sources in %s", srcDir)
+	}
+	return nil
 }
 
 func wasmBuildInputDigest(source []byte, toolchain string) string {
