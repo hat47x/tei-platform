@@ -48,6 +48,21 @@ func TestListAndPruneExplicitKeep(t *testing.T) {
 	if _, err := Get(storeDir, alternative.SourceDigest); err == nil {
 		t.Fatal("pruned object is still readable")
 	}
+	if !prune.AuditRecorded || prune.AuditPath == "" {
+		t.Fatalf("prune audit was not recorded: %+v", prune)
+	}
+	audit, err := Audit(storeDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !audit.Passed || len(audit.Records) != 1 {
+		t.Fatalf("unexpected audit: %+v", audit)
+	}
+	record := audit.Records[0]
+	if record.Operation != "prune" || record.DryRun || record.RecordedAt == "" ||
+		len(record.Keep) != 1 || len(record.Deleted) != 1 || record.Deleted[0] != alternative.SourceDigest {
+		t.Fatalf("unexpected audit record: %+v", record)
+	}
 }
 
 func TestPruneDryRunDoesNotDelete(t *testing.T) {
@@ -93,6 +108,20 @@ func TestPruneRefusesTamperedObject(t *testing.T) {
 	}
 	if prune.Passed || !strings.Contains(prune.Reason, "unverified") {
 		t.Fatalf("tampered object was pruned: %+v", prune)
+	}
+}
+
+func TestAuditRejectsMalformedRecord(t *testing.T) {
+	storeDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(storeDir, "prune-audit.jsonl"), []byte("not-json\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	audit, err := Audit(storeDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if audit.Passed || !strings.Contains(audit.Reason, "invalid") {
+		t.Fatalf("malformed audit was accepted: %+v", audit)
 	}
 }
 
