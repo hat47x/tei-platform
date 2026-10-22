@@ -7,6 +7,7 @@ JAVA selects JDK 11 (Nashorn); JAVAC selects a compiler supporting --release 8.
 from __future__ import annotations
 
 import hashlib
+from datetime import datetime, timezone
 import json
 import os
 from pathlib import Path
@@ -25,9 +26,32 @@ from driver_fixture import write_fixture
 from xtea_control import ControlClient, ControlError
 
 
+def new_run_folder():
+    parent = ROOT / "artifacts/live-driver"
+    parent.mkdir(parents=True, exist_ok=True)
+    return Path(tempfile.mkdtemp(prefix="run-", dir=parent))
+
+
+def write_run_summary(result, folder):
+    status = ("failed" if not result.wasSuccessful() else
+              "skipped" if result.skipped or result.expectedFailures or not result.testsRun else "passed")
+    (folder / "summary.json").write_text(json.dumps({
+        "status": status, "testsRun": result.testsRun,
+        "failures": [{"test": test.id(), "traceback": trace} for test, trace in result.failures],
+        "errors": [{"test": test.id(), "traceback": trace} for test, trace in result.errors],
+        "skipped": [{"test": test.id(), "reason": reason} for test, reason in result.skipped],
+        "expectedFailures": [{"test": test.id(), "traceback": trace} for test, trace in result.expectedFailures],
+        "unexpectedSuccesses": [test.id() for test in result.unexpectedSuccesses],
+    }, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
 class LiveDriverTest(unittest.TestCase):
+    STARTUP_TIMEOUT_SECONDS = 120
+    OUTPUT_TIMEOUT_SECONDS = 120
+
     @classmethod
     def setUpClass(cls):
+        cls.artifacts = new_run_folder()
         runtime = os.environ.get("XTEA_RUNTIME_HOME")
         if not runtime:
             raise unittest.SkipTest("XTEA_RUNTIME_HOME is not set; real Driver was not tested")
@@ -45,15 +69,21 @@ class LiveDriverTest(unittest.TestCase):
         subprocess.run([os.environ.get("JAVAC", "javac"), "--release", "8", "-encoding", "UTF-8",
                         "-cp", cls.classpath, "-d", str(cls.classes),
                         str(ROOT / "tests/fixtures/DriverFixture.java")], check=True, timeout=60)
-        cls.artifacts = ROOT / "artifacts/live-driver"
-        cls.artifacts.mkdir(parents=True, exist_ok=True)
         fingerprint = {p.name: hashlib.sha256(p.read_bytes()).hexdigest()
                        for p in sorted(cls.runtime.glob("*.jar"))}
         (cls.artifacts / "runtime.json").write_text(json.dumps({
+            "startedAtUtc": datetime.now(timezone.utc).isoformat(),
+            "display": os.environ.get("DISPLAY"),
+            "startupTimeoutSeconds": cls.STARTUP_TIMEOUT_SECONDS,
+            "outputTimeoutSeconds": cls.OUTPUT_TIMEOUT_SECONDS,
             "java": subprocess.run([cls.java, "-version"], capture_output=True, text=True,
                                    check=True).stderr,
             "jars": fingerprint,
             "agentSha256": hashlib.sha256(cls.agent.read_bytes()).hexdigest(),
+            "sourceSha256": {str(p.relative_to(ROOT)): hashlib.sha256(p.read_bytes()).hexdigest()
+                             for p in [Path(__file__).resolve(), ROOT / "tests/driver_fixture.py",
+                                       ROOT / "tests/fixtures/DriverFixture.java", ROOT / "xtea_control.py",
+                                       *sorted((ROOT / "agent/src").rglob("*.java"))]},
             "scope": "synthetic model; original Driver FunctionLauncher; no external viewer",
         }, indent=2), encoding="utf-8")
 
@@ -74,7 +104,8 @@ class LiveDriverTest(unittest.TestCase):
             "-cp", self.classpath, "DriverFixture", str(self.folder)],
             stdout=self.log, stderr=self.log)
         self.addCleanup(self.stop_process)
-        deadline = time.monotonic() + 30
+        started = time.monotonic()
+        deadline = started + self.STARTUP_TIMEOUT_SECONDS
         while time.monotonic() < deadline:
             if self.process.poll() is not None:
                 self.fail(f"Driver exited with {self.process.returncode}; see {self.log.name}")
@@ -87,7 +118,10 @@ class LiveDriverTest(unittest.TestCase):
                     pass
             time.sleep(0.1)
         else:
-            self.fail(f"Driver launcher did not appear; see {self.log.name}")
+            self.fail(f"Driver launcher did not appear within {self.STARTUP_TIMEOUT_SECONDS}s "
+                      f"(endpoint={endpoint.exists()}, ready={(self.folder / 'ready').exists()}); "
+                      f"see {self.log.name}")
+        self.startup_seconds = time.monotonic() - started
         self.observations = []
         self.outputs = []
         self.addCleanup(self.record_evidence)
@@ -104,6 +138,7 @@ class LiveDriverTest(unittest.TestCase):
 
     def record_evidence(self):
         evidence = {"health": self.client.health(), "observations": self.observations, "outputs": self.outputs,
+                    "startupSeconds": self.startup_seconds,
                     "snapshot": self.client.snapshot(),
                     "modelSha256": hashlib.sha256((self.folder / "fixture.xeaf").read_bytes()).hexdigest(),
                     "trace": self.client.trace()}
@@ -295,11 +330,13 @@ class LiveDriverTest(unittest.TestCase):
     def check_excel(self, window_class, expected, absent=()):
         ready = self.folder / "output-ready"
         ready.unlink(missing_ok=True)
+        started = time.monotonic()
         self.button(window_class, "Excel")
-        deadline = time.monotonic() + 10
+        deadline = started + self.OUTPUT_TIMEOUT_SECONDS
         while not ready.exists() and time.monotonic() < deadline:
             time.sleep(0.05)
-        self.assertTrue(ready.exists(), "Driver did not finish the output callback")
+        self.assertTrue(ready.exists(), f"Driver did not finish the output callback within {self.OUTPUT_TIMEOUT_SECONDS}s")
+        completion_seconds = time.monotonic() - started
         output = self.folder / ready.read_text(encoding="utf-8")
         self.assertEqual(output.suffix, ".xlsx")
         with zipfile.ZipFile(output) as archive:
@@ -320,7 +357,7 @@ class LiveDriverTest(unittest.TestCase):
         name = self._testMethodName + "-" + window_class.rsplit(".", 1)[-1] + ".xlsx"
         (self.artifacts / name).write_bytes(data)
         self.outputs.append({"file": name, "sha256": hashlib.sha256(data).hexdigest(),
-                             "bytes": len(data), "cellValues": values})
+                             "bytes": len(data), "cellValues": values, "completionSeconds": completion_seconds})
 
     def test_290_single_record_pdf(self):
         self.check_pdf("290")
@@ -498,4 +535,8 @@ class LiveDriverTest(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    unittest.main(verbosity=2)
+    result = unittest.main(verbosity=2, exit=False).result
+    folder = getattr(LiveDriverTest, "artifacts", None) or new_run_folder()
+    write_run_summary(result, folder)
+    print("Driver run artifacts:", folder)
+    sys.exit(not result.wasSuccessful())

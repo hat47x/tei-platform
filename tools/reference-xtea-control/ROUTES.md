@@ -2,7 +2,7 @@
 
 この表は、`reference-xtea-control`がどの入口を同じ制御面から扱えるかを示します。対象版は[`upstream.json`](upstream.json)の四つのHEADです。画面上の全ボタン・全条件分岐の実行結果を保証する表ではありません。
 
-[#2152](https://github.com/hat47x/tei-platform/issues/2152)の今回の対象は、Driverの各機能タイプの主要操作、続いて参照モデルで使うスクリプトUIです。XeadServerは対象外です。下記の実動試験は配布JARを使うため、取得したソースのHEADとは別に`artifacts/live-driver/runtime.json`でJARのSHA-256を記録します。
+[#2152](https://github.com/hat47x/tei-platform/issues/2152)の今回の対象は、Driverの各機能タイプの主要操作、続いて参照モデルで使うスクリプトUIです。XeadServerは対象外です。下記の実動試験は配布JARを使うため、取得したソースのHEADとは別に`artifacts/live-driver/run-*/runtime.json`でJARのSHA-256を記録します。実行ごとの`summary.json`で件数・成否・skipを確認します。
 
 ## 到達性の定義
 
