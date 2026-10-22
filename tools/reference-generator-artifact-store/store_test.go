@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 	"testing"
 
 	generatorselection "tei/tools/reference-generator-selection"
@@ -30,22 +31,44 @@ func selectionPaths(t *testing.T) (workspace, contract, fixtures, candidates str
 		filepath.Join(base, "candidates")
 }
 
+var (
+	selectionReceiptOnce sync.Once
+	selectionReceiptPath string
+	selectionReceiptRaw  []byte
+	selectionReceiptErr  error
+)
+
 func writeSelectionReceipt(t *testing.T) (string, generatorselection.Receipt) {
 	t.Helper()
-	workspace, contract, fixtures, candidates := selectionPaths(t)
-	selection, err := generatorselection.Select(context.Background(), workspace, contract, fixtures, candidates)
-	if err != nil {
+	selectionReceiptOnce.Do(func() {
+		workspace, contract, fixtures, candidates := selectionPaths(t)
+		selection, err := generatorselection.Select(context.Background(), workspace, contract, fixtures, candidates)
+		if err != nil {
+			selectionReceiptErr = err
+			return
+		}
+		raw, err := json.MarshalIndent(selection, "", "  ")
+		if err != nil {
+			selectionReceiptErr = err
+			return
+		}
+		selectionReceiptRaw = append(raw, '\n')
+		dir, err := os.MkdirTemp("", "tei-artifact-selection-*")
+		if err != nil {
+			selectionReceiptErr = err
+			return
+		}
+		selectionReceiptPath = filepath.Join(dir, "selection.json")
+		selectionReceiptErr = os.WriteFile(selectionReceiptPath, selectionReceiptRaw, 0o600)
+	})
+	if selectionReceiptErr != nil {
+		t.Fatal(selectionReceiptErr)
+	}
+	var selection generatorselection.Receipt
+	if err := json.Unmarshal(selectionReceiptRaw, &selection); err != nil {
 		t.Fatal(err)
 	}
-	raw, err := json.MarshalIndent(selection, "", "  ")
-	if err != nil {
-		t.Fatal(err)
-	}
-	path := filepath.Join(t.TempDir(), "selection.json")
-	if err := os.WriteFile(path, append(raw, '\n'), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	return path, selection
+	return selectionReceiptPath, selection
 }
 
 func TestPutAndGetArtifact(t *testing.T) {
@@ -95,7 +118,7 @@ func TestPutAndGetArtifact(t *testing.T) {
 }
 
 func TestPutRejectsReceiptDigestMismatch(t *testing.T) {
-	receiptPath, selection := writeSelectionReceipt(t)
+	_, selection := writeSelectionReceipt(t)
 	_, _, _, candidates := selectionPaths(t)
 	for i := range selection.Candidates {
 		if selection.Candidates[i].ID == "template" {
@@ -106,6 +129,7 @@ func TestPutRejectsReceiptDigestMismatch(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	receiptPath := filepath.Join(t.TempDir(), "tampered.json")
 	if err := os.WriteFile(receiptPath, append(raw, '\n'), 0o600); err != nil {
 		t.Fatal(err)
 	}
