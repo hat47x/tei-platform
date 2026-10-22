@@ -2,6 +2,7 @@ package generatorartifactstore
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
@@ -59,16 +60,18 @@ type PruneReceipt struct {
 }
 
 type AuditRecord struct {
-	Schema      string   `json:"schema"`
-	Operation   string   `json:"operation"`
-	RecordedAt  string   `json:"recordedAt"`
-	DryRun      bool     `json:"dryRun"`
-	Keep        []string `json:"keep"`
-	Kept        []string `json:"kept"`
-	Deleted     []string `json:"deleted,omitempty"`
-	WouldDelete []string `json:"wouldDelete,omitempty"`
-	Passed      bool     `json:"passed"`
-	Reason      string   `json:"reason,omitempty"`
+	Schema         string   `json:"schema"`
+	Operation      string   `json:"operation"`
+	RecordedAt     string   `json:"recordedAt"`
+	DryRun         bool     `json:"dryRun"`
+	Keep           []string `json:"keep"`
+	Kept           []string `json:"kept"`
+	Deleted        []string `json:"deleted,omitempty"`
+	WouldDelete    []string `json:"wouldDelete,omitempty"`
+	Passed         bool     `json:"passed"`
+	Reason         string   `json:"reason,omitempty"`
+	PreviousDigest string   `json:"previousDigest,omitempty"`
+	RecordDigest   string   `json:"recordDigest"`
 }
 
 type AuditReceipt struct {
@@ -186,6 +189,15 @@ func Prune(opts PruneOptions) (PruneReceipt, error) {
 		receipt.Reason = "store contains an unverified object; refusing to prune"
 		return receipt, nil
 	}
+	records, err := readAudit(opts.StoreDir)
+	if err != nil {
+		receipt.Reason = "existing audit log is invalid; refusing to prune: " + err.Error()
+		return receipt, nil
+	}
+	previousDigest := ""
+	if len(records) > 0 {
+		previousDigest = records[len(records)-1].RecordDigest
+	}
 	found := map[string]bool{}
 	for _, object := range list.Objects {
 		if keep[object.SourceDigest] {
@@ -216,7 +228,7 @@ func Prune(opts PruneOptions) (PruneReceipt, error) {
 	sort.Strings(receipt.Deleted)
 	sort.Strings(receipt.WouldDelete)
 	receipt.AuditPath = filepath.Join(opts.StoreDir, "prune-audit.jsonl")
-	if err := appendPruneAudit(opts.StoreDir, receipt); err != nil {
+	if err := appendPruneAudit(opts.StoreDir, previousDigest, receipt); err != nil {
 		receipt.Reason = "prune completed but audit append failed: " + err.Error()
 		return receipt, nil
 	}
@@ -225,13 +237,15 @@ func Prune(opts PruneOptions) (PruneReceipt, error) {
 	return receipt, nil
 }
 
-func appendPruneAudit(storeDir string, receipt PruneReceipt) error {
+func appendPruneAudit(storeDir, previousDigest string, receipt PruneReceipt) error {
 	path := filepath.Join(storeDir, "prune-audit.jsonl")
 	record := AuditRecord{
 		Schema: AuditSchema, Operation: "prune", RecordedAt: time.Now().UTC().Format(time.RFC3339Nano),
 		DryRun: receipt.DryRun, Keep: receipt.Keep, Kept: receipt.Kept,
 		Deleted: receipt.Deleted, WouldDelete: receipt.WouldDelete, Passed: true,
+		PreviousDigest: previousDigest,
 	}
+	record.RecordDigest = auditRecordDigest(record)
 	raw, err := json.Marshal(record)
 	if err != nil {
 		return err
@@ -247,19 +261,42 @@ func appendPruneAudit(storeDir string, receipt PruneReceipt) error {
 	return file.Close()
 }
 
-// Audit reads the append-only local prune audit log. It verifies JSON syntax
-// and record schema, but not identity, approval, or tamper resistance.
+func auditRecordDigest(record AuditRecord) string {
+	record.RecordDigest = ""
+	raw, err := json.Marshal(record)
+	if err != nil {
+		return ""
+	}
+	return digest(raw)
+}
+
+// Audit reads the local hash-chained prune audit log. It verifies JSON syntax,
+// record schema, each record digest, and the previous-record link. It does not
+// verify identity, approval, or a signature.
 func Audit(storeDir string) (AuditReceipt, error) {
 	receipt := AuditReceipt{
 		Schema: AuditSchema, StoreDir: storeDir, Records: []AuditRecord{}, Passed: true,
 	}
-	raw, err := os.ReadFile(filepath.Join(storeDir, "prune-audit.jsonl"))
-	if os.IsNotExist(err) {
+	records, err := readAudit(storeDir)
+	if err != nil {
+		receipt.Passed = false
+		receipt.Reason = err.Error()
 		return receipt, nil
 	}
-	if err != nil {
-		return receipt, err
+	receipt.Records = records
+	return receipt, nil
+}
+
+func readAudit(storeDir string) ([]AuditRecord, error) {
+	raw, err := os.ReadFile(filepath.Join(storeDir, "prune-audit.jsonl"))
+	if os.IsNotExist(err) {
+		return []AuditRecord{}, nil
 	}
+	if err != nil {
+		return nil, err
+	}
+	records := []AuditRecord{}
+	previous := ""
 	for _, line := range strings.Split(string(raw), "\n") {
 		line = strings.TrimSpace(line)
 		if line == "" {
@@ -267,18 +304,21 @@ func Audit(storeDir string) (AuditReceipt, error) {
 		}
 		var record AuditRecord
 		if err := json.Unmarshal([]byte(line), &record); err != nil {
-			receipt.Passed = false
-			receipt.Reason = "audit line is invalid: " + err.Error()
-			return receipt, nil
+			return nil, fmt.Errorf("audit line is invalid: %w", err)
 		}
 		if record.Schema != AuditSchema || record.Operation != "prune" || record.RecordedAt == "" {
-			receipt.Passed = false
-			receipt.Reason = "audit record is incomplete"
-			return receipt, nil
+			return nil, fmt.Errorf("audit record is incomplete")
 		}
-		receipt.Records = append(receipt.Records, record)
+		if record.PreviousDigest != previous {
+			return nil, fmt.Errorf("audit chain is broken at %s", record.RecordedAt)
+		}
+		if record.RecordDigest == "" || record.RecordDigest != auditRecordDigest(record) {
+			return nil, fmt.Errorf("audit record digest does not match at %s", record.RecordedAt)
+		}
+		previous = record.RecordDigest
+		records = append(records, record)
 	}
-	return receipt, nil
+	return records, nil
 }
 
 func trimDigest(value string) string {
