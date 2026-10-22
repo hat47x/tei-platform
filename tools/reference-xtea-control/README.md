@@ -6,7 +6,7 @@ X-TEAのSwingアプリ（Modeler / Editor / Driver）と、HTTPサーバ（XeadS
 
 TEIの参照モデル再現を確認するとき、X-TEAのGUIだけが入力経路だと、操作手順・画面位置・ダイアログの開閉順が暗黙になり、比較の再現性が下がります。このツールは、画面を画像認識や座標クリックで操作する代わりに、**実行中のSwingコンポーネントを安定した役割・名前・パスで列挙し、同じ制御面から入力する**ための最小の経路を追加します。
 
-対象は比較試験の入力経路であり、TEIのCanonical意味、X-TEAとの互換性、移植の受理、旧Runtimeの動作同等性を決めるものではありません。
+対象は比較試験の入力経路であり、TEIのCanonical意味、X-TEAとの互換性、移植の受理、旧Runtimeの動作同等性を決めるものではありません。現在地と残作業の分類は[STATUS.md](STATUS.md)にまとめています。
 
 ## 構成
 
@@ -256,6 +256,7 @@ python tests\test_tomcat_war.py
 
 ```text
 reference-xtea-control/
+  STATUS.md                現在地、残作業の分類、引継ぎの入口
   agent/src/xteaControl/   Java agent（Agent, BridgeServer, Ui, Json, Trace）
   server-harness/          元DBMethod/Serviceの埋め込みJettyハーネス
   tests/                   合成GUI E2E、XeadServer契約・実DBMethod/Service試験
