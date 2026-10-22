@@ -47,6 +47,18 @@ func renderResolvedMigrationSQL(diff schemadiff.Diff) ([]string, error) {
 	// handled here; changing an existing primary key stays unsupported.
 	var createdWithPrimaryKey []schemadiff.Change
 	addedColumns := map[string]map[string]physical.Column{}
+	// Unique constraints and foreign keys are rendered only for tables created
+	// in this same diff: those tables are empty, so no existing row can violate
+	// the constraint. Adding one to an existing table needs a check of existing
+	// data first and stays unsupported. They follow the primary keys, and
+	// foreign keys come last so every table in the diff exists by then.
+	createdTables := map[string]bool{}
+	for _, change := range diff.Changes {
+		if change.Kind == schemadiff.CreateTable {
+			createdTables[change.Table] = true
+		}
+	}
+	var uniqueStatements, foreignKeyStatements []string
 	for _, change := range diff.Changes {
 		switch change.Kind {
 		case schemadiff.CreateTable:
@@ -94,6 +106,35 @@ func renderResolvedMigrationSQL(diff schemadiff.Diff) ([]string, error) {
 			} else {
 				out = append(out, fmt.Sprintf("ALTER TABLE %s ALTER COLUMN %s SET NOT NULL;", quoteQualifiedName(change.Table), quoteIdentifier(change.Column.Name)))
 			}
+		case schemadiff.AddUniqueConstraint:
+			if !createdTables[change.Table] {
+				return nil, fmt.Errorf("postgres migration SQL rendering does not support schema change kind %q on %s: only tables created in the same diff are supported", change.Kind, change.Table)
+			}
+			if change.UniqueConstraint == nil || len(change.UniqueConstraint.Columns) == 0 {
+				return nil, fmt.Errorf("add-unique-constraint %s has no columns", change.Table)
+			}
+			stmt := fmt.Sprintf("ALTER TABLE %s ADD ", quoteQualifiedName(change.Table))
+			if strings.TrimSpace(change.UniqueConstraint.Name) != "" {
+				stmt += "CONSTRAINT " + quoteIdentifier(change.UniqueConstraint.Name) + " "
+			}
+			uniqueStatements = append(uniqueStatements, stmt+fmt.Sprintf("UNIQUE (%s);", joinQuotedIdentifiers(change.UniqueConstraint.Columns)))
+		case schemadiff.AddForeignKey:
+			if !createdTables[change.Table] {
+				return nil, fmt.Errorf("postgres migration SQL rendering does not support schema change kind %q on %s: only tables created in the same diff are supported", change.Kind, change.Table)
+			}
+			fk := change.ForeignKey
+			if fk == nil || len(fk.Columns) == 0 || len(fk.ReferencedColumns) != len(fk.Columns) || strings.TrimSpace(fk.ReferencedTable) == "" {
+				return nil, fmt.Errorf("add-foreign-key %s has an incomplete definition", change.Table)
+			}
+			if strings.TrimSpace(fk.ReferencedSchema) == "" {
+				return nil, fmt.Errorf("add-foreign-key %s has no referenced schema; the referenced table is not resolved by search_path", change.Table)
+			}
+			stmt := fmt.Sprintf("ALTER TABLE %s ADD ", quoteQualifiedName(change.Table))
+			if strings.TrimSpace(fk.Name) != "" {
+				stmt += "CONSTRAINT " + quoteIdentifier(fk.Name) + " "
+			}
+			foreignKeyStatements = append(foreignKeyStatements, stmt+fmt.Sprintf("FOREIGN KEY (%s) REFERENCES %s (%s);",
+				joinQuotedIdentifiers(fk.Columns), quoteQualifiedName(fk.ReferencedSchema+"."+fk.ReferencedTable), joinQuotedIdentifiers(fk.ReferencedColumns)))
 		case schemadiff.ChangePrimaryKey:
 			return nil, fmt.Errorf("postgres migration SQL rendering does not support primary-key change on %s until constraint identity is realizable", change.Table)
 		case schemadiff.AddIndex:
@@ -133,6 +174,8 @@ func renderResolvedMigrationSQL(diff schemadiff.Diff) ([]string, error) {
 		}
 		out = append(out, fmt.Sprintf("ALTER TABLE %s ADD PRIMARY KEY (%s);", quoteQualifiedName(created.Table), joinQuotedIdentifiers(created.PrimaryKey)))
 	}
+	out = append(out, uniqueStatements...)
+	out = append(out, foreignKeyStatements...)
 	return out, nil
 }
 

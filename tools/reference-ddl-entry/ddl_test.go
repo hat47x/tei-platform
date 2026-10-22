@@ -66,10 +66,27 @@ func TestPrimaryKeyIsRenderedAfterColumnsWithoutAName(t *testing.T) {
 	}
 }
 
+func TestUniqueConstraintIsRenderedForANewTable(t *testing.T) {
+	w := ir.World{Persistence: []persistence.Mapping{mappingWith("m.u", "uq_table", false, true)}}
+	res, err := Render(w, "store", environment.ProviderPostgres)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(res.Unresolved) != 0 || len(res.Tables) != 1 {
+		t.Fatalf("result = %+v", res)
+	}
+	st := res.Tables[0].Statements
+	if !strings.Contains(st[len(st)-1], "UNIQUE") {
+		t.Fatalf("statements = %v", st)
+	}
+}
+
 func TestProviderRefusalIsReportedPerTableNotHidden(t *testing.T) {
-	// The provider cannot yet render unique constraints; the other table must
-	// still be returned and the refusal must carry the provider's reason.
-	w := ir.World{Persistence: []persistence.Mapping{mapping("m.a", "alpha", false), mappingWith("m.u", "uq_table", false, true)}}
+	// A nullable primary key column is refused by the provider; the other table
+	// must still be returned and the refusal must carry the provider's reason.
+	nullablePK := mapping("m.n", "nullable_pk", true)
+	nullablePK.Columns[0].Nullability = persistence.Optional
+	w := ir.World{Persistence: []persistence.Mapping{mapping("m.a", "alpha", false), nullablePK}}
 	res, err := Render(w, "store", environment.ProviderPostgres)
 	if err != nil {
 		t.Fatal(err)
@@ -77,8 +94,8 @@ func TestProviderRefusalIsReportedPerTableNotHidden(t *testing.T) {
 	if len(res.Tables) != 1 || !strings.HasSuffix(res.Tables[0].Name, "alpha") {
 		t.Fatalf("renderable tables = %+v", res.Tables)
 	}
-	if len(res.Unresolved) != 1 || !strings.HasSuffix(res.Unresolved[0].Table, "uq_table") ||
-		!strings.Contains(res.Unresolved[0].Reason, "add-unique-constraint") {
+	if len(res.Unresolved) != 1 || !strings.HasSuffix(res.Unresolved[0].Table, "nullable_pk") ||
+		!strings.Contains(res.Unresolved[0].Reason, "is nullable") {
 		t.Fatalf("unresolved = %+v", res.Unresolved)
 	}
 }
