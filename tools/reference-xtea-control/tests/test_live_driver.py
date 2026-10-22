@@ -104,6 +104,7 @@ class LiveDriverTest(unittest.TestCase):
 
     def record_evidence(self):
         evidence = {"health": self.client.health(), "observations": self.observations, "outputs": self.outputs,
+                    "snapshot": self.client.snapshot(),
                     "modelSha256": hashlib.sha256((self.folder / "fixture.xeaf").read_bytes()).hexdigest(),
                     "trace": self.client.trace()}
         (self.artifacts / (self._testMethodName + ".json")).write_text(
@@ -133,6 +134,24 @@ class LiveDriverTest(unittest.TestCase):
     def test_000_script_launcher(self):
         self.open_function("000")
         self.result("CONTROL_RESULT=ran")
+        self.assertEqual(self.observe(), self.observations[0])
+
+    def script_transaction(self, answer, expected):
+        self.script("TRANSACTION")
+        confirmation = {"window": "^Script transaction$", "role": "button", "text": "^" + answer + "$"}
+        self.assertTrue(self.client.wait_selector(confirmation)["matched"])
+        self.client.invoke(confirmation)
+        # The same transaction must see the UPDATE before either decision.
+        self.result("UI_RESULT=1:Pending:" + expected)
+
+    def test_000_script_commit(self):
+        self.script_transaction("Yes", "Pending")
+        observed = self.observe()  # Independent JDBC connection after commit.
+        self.assertIn("001:Pending:1;", observed)
+        self.assertIn("002:Beta:0;", observed)
+
+    def test_000_script_rollback(self):
+        self.script_transaction("No", "Alpha")
         self.assertEqual(self.observe(), self.observations[0])
 
     def test_100_search_select_detail(self):

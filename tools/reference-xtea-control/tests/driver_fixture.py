@@ -90,6 +90,15 @@ def write_fixture(folder: Path) -> Path:
     ET.SubElement(system, "Function", ID="F000", Type="XF000", Name="Control XF000",
                   Script='instance.getReturnMap().put("CONTROL_RESULT", "ran");')
     scripts = {
+        "TRANSACTION": '''function readName() {
+var q=instance.createTableOperator("SELECT NAME FROM ITEM WHERE ID='001'");
+q.next(); return q.getValueOf("NAME").toString().trim(); }
+var rows=instance.createTableOperator("UPDATE ITEM SET NAME='Pending', UPDCOUNTER=UPDCOUNTER+1 WHERE ID='001'").execute();
+var pending=readName();
+var p=Java.type("javax.swing.JOptionPane");
+var answer=p.showConfirmDialog(null,"Save pending change?","Script transaction",p.YES_NO_OPTION);
+if (answer==p.YES_OPTION) { instance.commit(); } else { instance.rollback(); }
+instance.getReturnMap().put("UI_RESULT",rows+":"+pending+":"+readName());''',
         "INPUT": '''var d=instance.getSession().getInputDialog(); d.clear();
 d.setFont(new (Java.type("java.awt.Font"))("Dialog",0,14));
 var f=d.addField("Value", "ALPHA", 0, "VALUE"); f.setValue("initial");
