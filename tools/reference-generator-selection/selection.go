@@ -184,6 +184,7 @@ type CandidateReceipt struct {
 }
 
 type Receipt struct {
+	Execution              ExecutionOptions   `json:"execution,omitempty"`
 	Schema                 string             `json:"schema"`
 	ContractID             string             `json:"contractId"`
 	ContractVersion        string             `json:"contractVersion"`
@@ -461,14 +462,20 @@ func SelectWithRegistry(ctx context.Context, workspaceDir, contractPath, fixture
 // outside the list are reported as rejected, so a profile cannot silently fall
 // back to another generator.
 func SelectForTarget(ctx context.Context, workspaceDir, contractPath, fixturePath, candidatesDir, registryPath string, allowedIDs []string) (Receipt, error) {
-	return selectWithRegistryAndFilter(ctx, workspaceDir, contractPath, fixturePath, candidatesDir, registryPath, allowedIDs)
+	return selectWithRegistryAndFilter(ctx, workspaceDir, contractPath, fixturePath, candidatesDir, registryPath, allowedIDs, ExecutionOptions{})
+}
+
+// SelectForTargetWithExecution applies a wrapper to every candidate fixture
+// process. Lineage execution is rejected because it has a separate runner.
+func SelectForTargetWithExecution(ctx context.Context, workspaceDir, contractPath, fixturePath, candidatesDir, registryPath string, allowedIDs []string, execution ExecutionOptions) (Receipt, error) {
+	return selectWithRegistryAndFilter(ctx, workspaceDir, contractPath, fixturePath, candidatesDir, registryPath, allowedIDs, execution)
 }
 
 func selectWithRegistry(ctx context.Context, workspaceDir, contractPath, fixturePath, candidatesDir, registryPath string) (Receipt, error) {
-	return selectWithRegistryAndFilter(ctx, workspaceDir, contractPath, fixturePath, candidatesDir, registryPath, nil)
+	return selectWithRegistryAndFilter(ctx, workspaceDir, contractPath, fixturePath, candidatesDir, registryPath, nil, ExecutionOptions{})
 }
 
-func selectWithRegistryAndFilter(ctx context.Context, workspaceDir, contractPath, fixturePath, candidatesDir, registryPath string, allowedIDs []string) (Receipt, error) {
+func selectWithRegistryAndFilter(ctx context.Context, workspaceDir, contractPath, fixturePath, candidatesDir, registryPath string, allowedIDs []string, execution ExecutionOptions) (Receipt, error) {
 	loaded, err := workspace.Load(workspaceDir)
 	if err != nil {
 		return Receipt{}, fmt.Errorf("load Workspace: %w", err)
@@ -516,7 +523,8 @@ func selectWithRegistryAndFilter(ctx context.Context, workspaceDir, contractPath
 		return Receipt{}, err
 	}
 	receipt := Receipt{
-		Schema: ReceiptSchema, ContractID: contract.ID, ContractVersion: contract.Version,
+		Execution: execution,
+		Schema:    ReceiptSchema, ContractID: contract.ID, ContractVersion: contract.Version,
 		ContractStatus: contract.Status, WorkspaceRevision: sourceindex.ModelRevision(index),
 		FixtureDigest: digest(fixtureRaw),
 		SuiteVersion:  digest(append(append(append([]byte("v0\x00"), contractRaw...), 0), fixtureRaw...)),
@@ -541,7 +549,7 @@ func selectWithRegistryAndFilter(ctx context.Context, workspaceDir, contractPath
 	}
 	sort.Strings(directories)
 	for _, name := range directories {
-		candidate, err := evaluateCandidate(ctx, filepath.Join(candidatesDir, name), fixture, contractPath, digest(contractRaw), registry, allowed)
+		candidate, err := evaluateCandidate(ctx, filepath.Join(candidatesDir, name), fixture, contractPath, digest(contractRaw), registry, allowed, execution)
 		if err != nil {
 			return Receipt{}, err
 		}
@@ -560,7 +568,7 @@ func selectWithRegistryAndFilter(ctx context.Context, workspaceDir, contractPath
 	return receipt, nil
 }
 
-func evaluateCandidate(ctx context.Context, dir string, fixture Fixture, contractPath, contractDigest string, registry *Registry, allowed map[string]bool) (CandidateReceipt, error) {
+func evaluateCandidate(ctx context.Context, dir string, fixture Fixture, contractPath, contractDigest string, registry *Registry, allowed map[string]bool, executionOptions ExecutionOptions) (CandidateReceipt, error) {
 	var manifest CandidateManifest
 	if _, err := readJSON(filepath.Join(dir, "candidate.json"), &manifest); err != nil {
 		return CandidateReceipt{}, err
@@ -662,6 +670,9 @@ func evaluateCandidate(ctx context.Context, dir string, fixture Fixture, contrac
 		}
 	}
 	if manifest.Lineage != nil {
+		if len(executionOptions.CommandPrefix) > 0 {
+			return reject("lineage execution is unsupported with a command wrapper")
+		}
 		if err := verifyLineage(ctx, dir, contractPath, manifest.Lineage, source); err != nil {
 			return reject("generator lineage verification failed: " + err.Error())
 		}
@@ -766,11 +777,11 @@ func evaluateCandidate(ctx context.Context, dir string, fixture Fixture, contrac
 		var err error
 		switch language {
 		case LanguagePython, LanguageJavaScript:
-			got, execution, err = runScriptCandidate(ctx, scriptPath, sourcePath, tc.Input)
+			got, execution, err = runScriptCandidate(ctx, scriptPath, sourcePath, tc.Input, executionOptions)
 		case LanguageJava:
-			got, execution, err = runProgram(ctx, javaPath, []string{"-cp", javaClassesDir, "Main"}, tc.Input)
+			got, execution, err = runProgram(ctx, javaPath, []string{"-cp", javaClassesDir, "Main"}, tc.Input, executionOptions)
 		default:
-			got, execution, err = runCandidate(ctx, binaryPath, tc.Input)
+			got, execution, err = runCandidate(ctx, binaryPath, tc.Input, executionOptions)
 		}
 		result := CaseResult{CaseID: tc.ID, Want: tc.Want, Got: got, Execution: execution}
 		if err != nil {
@@ -1029,22 +1040,22 @@ func findJava() (javacPath, javaPath, version string, available bool) {
 	return javac, java, strings.TrimSpace(string(out)), true
 }
 
-func runScriptCandidate(ctx context.Context, interpreter, sourcePath string, input json.RawMessage) (Result, *ExecutionEvidence, error) {
+func runScriptCandidate(ctx context.Context, interpreter, sourcePath string, input json.RawMessage, options ExecutionOptions) (Result, *ExecutionEvidence, error) {
 	absolute, err := filepath.Abs(sourcePath)
 	if err != nil {
 		return Result{}, nil, err
 	}
-	return runProgram(ctx, interpreter, []string{absolute}, input)
+	return runProgram(ctx, interpreter, []string{absolute}, input, options)
 }
 
-func runCandidate(ctx context.Context, binary string, input json.RawMessage) (Result, *ExecutionEvidence, error) {
-	return runProgram(ctx, binary, nil, input)
+func runCandidate(ctx context.Context, binary string, input json.RawMessage, options ExecutionOptions) (Result, *ExecutionEvidence, error) {
+	return runProgram(ctx, binary, nil, input, options)
 }
 
-func runProgram(ctx context.Context, name string, args []string, input json.RawMessage) (Result, *ExecutionEvidence, error) {
+func runProgram(ctx context.Context, name string, args []string, input json.RawMessage, options ExecutionOptions) (Result, *ExecutionEvidence, error) {
 	runCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
-	cmd := exec.CommandContext(runCtx, name, args...)
+	cmd := options.Command(runCtx, name, args...)
 	cmd.Stdin = bytes.NewReader(input)
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout

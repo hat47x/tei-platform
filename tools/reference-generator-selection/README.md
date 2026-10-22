@@ -185,6 +185,8 @@ go run ./tools/reference-generator-selection/cmd/tei-generator-meta \
 
 これらの参照は、別言語の候補を同じ選抜経路へ載せられることの確認であり、Python/JavaScript/Java製品実装の採用や、実Targetでの処理系固定を意味しません。
 
+`SelectForTargetWithExecution`は、信頼済みの実行wrapperをexecutable/argvのprefixとして指定する参照APIです。選抜の全case実行へ適用し、wrapperの失敗を候補の失敗として扱います。ビルドと処理系の検出は対象外です。別runnerで候補コードを動かすlineage検証は、wrapper指定中は未対応として拒否します。prefixの存在は、隔離能力や実行権限の証明にはなりません。Target ProfileはLinux namespaceの利用可否を確認してから、このAPIへ接続します。
+
 ## long-running候補
 
 `long-running-template`は、標準入力のnewline-delimited JSONを繰り返し読み、1 requestごとに1 JSONを標準出力へ返すGo候補を生成します。単発実行では1 requestを処理して終了し、Target Profileのlong-running probeでは同じprocessへ複数requestを送ります。
