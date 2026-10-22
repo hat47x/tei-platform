@@ -216,6 +216,14 @@ python tests\test_tomcat_war.py
 - 画面には業務データが表示され得ます。`snapshot`や`screenshot`の成果物を公開リポジトリへ置く場合は、参照モデルの公開条件（[#941](https://github.com/hat47x/tei-platform/issues/941)）に従ってください。
 - この制御面はテスト専用です。認可、監査、利用者分離、本番運用の境界を提供しません。
 
+## 一括検証
+
+```powershell
+.\verify-all.ps1
+```
+
+`build.ps1`、Swing E2E、サーバ契約試験を実行し、`XTEA_SERVER_SOURCE`、`XTEA_RUNTIME_HOME`、`XTEA_SKELETON_HOME`が設定されていれば実DBMethod、実Service、Tomcat WARも実行します。環境変数がない実動試験はSKIPとして表示し、失敗とは区別します。`-SkipLive`で実動試験を省略できます。
+
 ## 検証したこと
 
 2026-10-21、JDK 11.0.20.1（`--release 8`でコンパイル）で確認しました。
@@ -255,6 +263,7 @@ reference-xtea-control/
   xtea_control.py          Swing制御クライアント
   xtea_server.py           XeadServer HTTPクライアント
   build.ps1 / build.sh
+  verify-all.ps1           合成・契約・実動試験の一括実行
   driver-fixture.ps1       使い捨てSkeleton DBの作成
   modeler-fixture.ps1      使い捨てモデル複製の作成
   launch-xtea.ps1
