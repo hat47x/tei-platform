@@ -73,10 +73,13 @@ source、receipt、実binaryのどれかが一致しなければ`passed=false`�
 - `operation: prune`、`recordedAt`、`dryRun`
 - `keep`、`kept`、`deleted`、`wouldDelete`
 - `passed`
+- `previousDigest`、`recordDigest`
 
-`audit`はJSONLを読み、schemaと必須fieldを検証します。壊れた行があれば`passed=false`にします。
+`recordDigest`はrecord自身のdigest、`previousDigest`は直前recordのdigestです。`audit`はJSONLを読み、schema・必須field・各recordのdigest・previous linkを検証します。壊れた行や改変・並べ替え・欠落があれば`passed=false`にします。
 
-このauditはローカルの追記logであり、署名・改ざん耐性・実行者identity・削除承認を証明しません。失敗した`prune`（空keep、未知digest、検証失敗object）は削除を行わないため、成功auditを書きません。
+`prune`は既存auditが壊れている場合、削除前に拒否します。失敗した`prune`（空keep、未知digest、検証失敗object、壊れたaudit）は削除を行わないため、成功auditを書きません。
+
+このauditはローカルのhash chainであり、署名・実行者identity・削除承認を証明しません。ファイル全体の置換やchainごと作り直す攻撃は防げません。
 
 ## 検証すること・しないこと
 
@@ -102,12 +105,14 @@ source、receipt、実binaryのどれかが一致しなければ`passed=false`�
 - `prune`が明示keepだけを残し、dry-runでは削除しない。
 - keep set欠落・未知digest・検証失敗objectでは削除しない。
 - 成功したpruneがauditへ記録され、`audit`で読み戻せる。
-- 壊れたaudit行を拒否する。
+- 2回のpruneがprevious linkでつながる。
+- record改変をdigest不一致で拒否する。
+- 壊れたaudit行を拒否し、その状態ではpruneしない。
 
 ## 未実装・限界
 
 - 暗号学的署名・attestation・署名者Authority。
 - 別machine・別toolchain・clean cacheでのbuild再現性。
-- 保持期間、監査アクセス権、削除承認、auditの改ざん耐性・実行者identity、remote object store。
+- 保持期間、監査アクセス権、削除承認、auditの署名・実行者identity、chain全体の置換耐性、remote object store。
 - artifactの実行承認、実Targetへの配備、ロールバック。
 - Python/JavaScript候補（binaryを持たない）の保存。
