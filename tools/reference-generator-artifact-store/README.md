@@ -18,6 +18,9 @@ go run ./tools/reference-generator-artifact-store/cmd/tei-generator-artifact-sto
 
 go run ./tools/reference-generator-artifact-store/cmd/tei-generator-artifact-store \
   prune -store /tmp/tei-artifacts -keep sha256:... -dry-run
+
+go run ./tools/reference-generator-artifact-store/cmd/tei-generator-artifact-store \
+  audit -store /tmp/tei-artifacts
 ```
 
 ## 保存layout
@@ -61,7 +64,19 @@ source、receipt、実binaryのどれかが一致しなければ`passed=false`�
 - `-dry-run`は削除候補を`wouldDelete`へ返し、実byteを消しません。
 - keep setが空、未知のdigestを含む、またはstoreに検証失敗objectがある場合は、何も削除せず`passed=false`にします。
 - 削除後にkept objectを取得できること、削除したobjectを取得できないことを試験で確認します。
-- 保持期間・監査アクセス権・削除承認・削除履歴の保存は決めません。呼出し側がkeep setを明示する参照です。
+- 保持期間・監査アクセス権・削除承認は決めません。呼出し側がkeep setを明示する参照です。
+
+## 削除audit
+
+成功した`prune`は、`<store>/prune-audit.jsonl`へ1行のJSONを追記します。
+
+- `operation: prune`、`recordedAt`、`dryRun`
+- `keep`、`kept`、`deleted`、`wouldDelete`
+- `passed`
+
+`audit`はJSONLを読み、schemaと必須fieldを検証します。壊れた行があれば`passed=false`にします。
+
+このauditはローカルの追記logであり、署名・改ざん耐性・実行者identity・削除承認を証明しません。失敗した`prune`（空keep、未知digest、検証失敗object）は削除を行わないため、成功auditを書きません。
 
 ## 検証すること・しないこと
 
@@ -86,11 +101,13 @@ source、receipt、実binaryのどれかが一致しなければ`passed=false`�
 - `list`が全objectを検証し、改変objectがあれば不合格にする。
 - `prune`が明示keepだけを残し、dry-runでは削除しない。
 - keep set欠落・未知digest・検証失敗objectでは削除しない。
+- 成功したpruneがauditへ記録され、`audit`で読み戻せる。
+- 壊れたaudit行を拒否する。
 
 ## 未実装・限界
 
 - 暗号学的署名・attestation・署名者Authority。
 - 別machine・別toolchain・clean cacheでのbuild再現性。
-- 保持期間、監査アクセス権、削除承認、削除履歴、remote object store。
+- 保持期間、監査アクセス権、削除承認、auditの改ざん耐性・実行者identity、remote object store。
 - artifactの実行承認、実Targetへの配備、ロールバック。
 - Python/JavaScript候補（binaryを持たない）の保存。

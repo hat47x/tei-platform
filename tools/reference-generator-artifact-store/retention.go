@@ -5,11 +5,14 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
+	"time"
 )
 
 const (
 	ListSchema  = "tei.reference.generator-artifact-list/v0"
 	PruneSchema = "tei.reference.generator-artifact-prune/v0"
+	AuditSchema = "tei.reference.generator-artifact-prune-audit/v0"
 )
 
 type StoredObject struct {
@@ -46,11 +49,34 @@ type PruneReceipt struct {
 	Deleted          []string `json:"deleted,omitempty"`
 	WouldDelete      []string `json:"wouldDelete,omitempty"`
 	MissingKeep      []string `json:"missingKeep,omitempty"`
+	AuditPath        string   `json:"auditPath,omitempty"`
+	AuditRecorded    bool     `json:"auditRecorded"`
 	Passed           bool     `json:"passed"`
 	Reason           string   `json:"reason,omitempty"`
 	GrantsAuthority  bool     `json:"grantsAuthority"`
 	ProvesRealTarget bool     `json:"provesRealTarget"`
 	Notes            []string `json:"notes"`
+}
+
+type AuditRecord struct {
+	Schema      string   `json:"schema"`
+	Operation   string   `json:"operation"`
+	RecordedAt  string   `json:"recordedAt"`
+	DryRun      bool     `json:"dryRun"`
+	Keep        []string `json:"keep"`
+	Kept        []string `json:"kept"`
+	Deleted     []string `json:"deleted,omitempty"`
+	WouldDelete []string `json:"wouldDelete,omitempty"`
+	Passed      bool     `json:"passed"`
+	Reason      string   `json:"reason,omitempty"`
+}
+
+type AuditReceipt struct {
+	Schema   string        `json:"schema"`
+	StoreDir string        `json:"storeDir"`
+	Records  []AuditRecord `json:"records"`
+	Passed   bool          `json:"passed"`
+	Reason   string        `json:"reason,omitempty"`
 }
 
 // List reads every object directory and re-verifies its source and artifact
@@ -189,7 +215,69 @@ func Prune(opts PruneOptions) (PruneReceipt, error) {
 	sort.Strings(receipt.Kept)
 	sort.Strings(receipt.Deleted)
 	sort.Strings(receipt.WouldDelete)
+	receipt.AuditPath = filepath.Join(opts.StoreDir, "prune-audit.jsonl")
+	if err := appendPruneAudit(opts.StoreDir, receipt); err != nil {
+		receipt.Reason = "prune completed but audit append failed: " + err.Error()
+		return receipt, nil
+	}
+	receipt.AuditRecorded = true
 	receipt.Passed = true
+	return receipt, nil
+}
+
+func appendPruneAudit(storeDir string, receipt PruneReceipt) error {
+	path := filepath.Join(storeDir, "prune-audit.jsonl")
+	record := AuditRecord{
+		Schema: AuditSchema, Operation: "prune", RecordedAt: time.Now().UTC().Format(time.RFC3339Nano),
+		DryRun: receipt.DryRun, Keep: receipt.Keep, Kept: receipt.Kept,
+		Deleted: receipt.Deleted, WouldDelete: receipt.WouldDelete, Passed: true,
+	}
+	raw, err := json.Marshal(record)
+	if err != nil {
+		return err
+	}
+	file, err := os.OpenFile(path, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o644)
+	if err != nil {
+		return err
+	}
+	if _, err := file.Write(append(raw, '\n')); err != nil {
+		_ = file.Close()
+		return err
+	}
+	return file.Close()
+}
+
+// Audit reads the append-only local prune audit log. It verifies JSON syntax
+// and record schema, but not identity, approval, or tamper resistance.
+func Audit(storeDir string) (AuditReceipt, error) {
+	receipt := AuditReceipt{
+		Schema: AuditSchema, StoreDir: storeDir, Records: []AuditRecord{}, Passed: true,
+	}
+	raw, err := os.ReadFile(filepath.Join(storeDir, "prune-audit.jsonl"))
+	if os.IsNotExist(err) {
+		return receipt, nil
+	}
+	if err != nil {
+		return receipt, err
+	}
+	for _, line := range strings.Split(string(raw), "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		var record AuditRecord
+		if err := json.Unmarshal([]byte(line), &record); err != nil {
+			receipt.Passed = false
+			receipt.Reason = "audit line is invalid: " + err.Error()
+			return receipt, nil
+		}
+		if record.Schema != AuditSchema || record.Operation != "prune" || record.RecordedAt == "" {
+			receipt.Passed = false
+			receipt.Reason = "audit record is incomplete"
+			return receipt, nil
+		}
+		receipt.Records = append(receipt.Records, record)
+	}
 	return receipt, nil
 }
 
