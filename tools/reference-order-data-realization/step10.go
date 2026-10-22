@@ -116,9 +116,9 @@ func (c *Chain) Step10SQLite(ctx context.Context) error {
 		Injected: "同じ最終版の保存写像をSQLiteへ実現し、工程9で登録した受注と境界値(空文字とNULL、先頭ゼロ、桁の大きい金額、時差のある時刻、マイクロ秒、日本語)を書いて読み戻す",
 		Expect:   "宣言した方言の対応では値の差が0件(宣言した既知の差分は値の差として現れない)。素朴な対応(数値の型の宣言)では差が検出される(陰性対照)",
 		Observed: map[string]any{
-			"declared": map[string]any{"valuesCompared": declared.ValuesCompared, "diffs": len(declared.Diffs), "listOrderSame": declared.ListOrderSame, "uniqueProbes": declared.UniqueProbes, "sqliteVersion": declared.SQLiteVersion},
-			"naive":    map[string]any{"valuesCompared": naive.ValuesCompared, "diffs": naive.Diffs},
-			"postgresGoTypes":  types,
+			"declared":                map[string]any{"valuesCompared": declared.ValuesCompared, "diffs": len(declared.Diffs), "listOrderSame": declared.ListOrderSame, "uniqueProbes": declared.UniqueProbes, "sqliteVersion": declared.SQLiteVersion},
+			"naive":                   map[string]any{"valuesCompared": naive.ValuesCompared, "diffs": naive.Diffs},
+			"postgresGoTypes":         types,
 			"postgresNullExternalIds": pgNullExternal,
 		},
 		Passed: passed,

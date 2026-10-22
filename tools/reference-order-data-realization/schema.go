@@ -212,13 +212,13 @@ func execWithLockTimeout(ctx context.Context, db *sql.DB, timeoutMillis int, stm
 
 // StageApply records the application of one stage.
 type StageApply struct {
-	Stage                string   `json:"stage"`
-	FreshObservation     string   `json:"freshObservation,omitempty"`
-	Statements           []string `json:"statements,omitempty"`
-	ElapsedMillis        float64  `json:"elapsedMillis"`
-	LockTimeoutMillis    int      `json:"lockTimeoutMillis"`
-	WithinLockTimeout    bool     `json:"withinLockTimeout"`
-	AppliedThroughCore   string   `json:"appliedThrough"`
+	Stage              string   `json:"stage"`
+	FreshObservation   string   `json:"freshObservation,omitempty"`
+	Statements         []string `json:"statements,omitempty"`
+	ElapsedMillis      float64  `json:"elapsedMillis"`
+	LockTimeoutMillis  int      `json:"lockTimeoutMillis"`
+	WithinLockTimeout  bool     `json:"withinLockTimeout"`
+	AppliedThroughCore string   `json:"appliedThrough"`
 }
 
 // applyExpand checks the fresh observation against the plan before anything

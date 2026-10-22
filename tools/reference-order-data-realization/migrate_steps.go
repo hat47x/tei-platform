@@ -86,8 +86,9 @@ func (c *Chain) Step5BuildPlan(ctx context.Context, dsn string) error {
 		markStatement("SEQUENCE", metaSchema+".order_no_seq", marker),
 		"CREATE TABLE "+metaSchema+".numbering_event (seq bigserial PRIMARY KEY, order_id bigint, event text NOT NULL, reason text, external_id text, model_revision text NOT NULL)",
 		markStatement("TABLE", metaSchema+".numbering_event", marker),
+		markStatement("SEQUENCE", metaSchema+".numbering_event_seq_seq", marker),
 	)
-	st.safety.Created = append(st.safety.Created, "schema "+metaSchema, metaSchema+".writer", metaSchema+".order_no_seq", metaSchema+".numbering_event")
+	st.safety.Created = append(st.safety.Created, "schema "+metaSchema, metaSchema+".writer", metaSchema+".order_no_seq", metaSchema+".numbering_event", metaSchema+".numbering_event_seq_seq")
 	if _, err := execWithLockTimeout(ctx, db, c.Decl.Migration.LockTimeoutMillis, stmts); err != nil {
 		return fmt.Errorf("step 5: create old structure: %w", err)
 	}
@@ -99,11 +100,11 @@ func (c *Chain) Step5BuildPlan(ctx context.Context, dsn string) error {
 	}
 	// Seed rows through the R0 mapping (the old structure has no new column).
 	seed := []struct {
-		id       int64
-		ext      any
-		lines    int
-		minutes  int
-		total    string
+		id      int64
+		ext     any
+		lines   int
+		minutes int
+		total   string
 	}{
 		{1001, "S-1001", 2, 0, "3200.00"},
 		{1002, "000123", 1, 30, "800.00"},
@@ -195,17 +196,17 @@ func (c *Chain) Step5BuildPlan(ctx context.Context, dsn string) error {
 			{Asset: "tools/reference-postgres-migration-rendering", Called: false, Reason: "package mainで固定の表と索引だけを扱い、無条件のDROPを持つ。同じ内部部品(migration.Plan、migration.Render)を直接使う"},
 		},
 		Output: map[string]any{
-			"databaseSafety":            st.safety,
-			"oldStructureMatchesR0":     true,
-			"seededOrders":              st.seeded,
-			"seedDigestR0Columns":       st.seedDigest,
-			"observation":               plan.BasedOnObservation,
-			"diffFinal":                 kinds(plan.Diff),
+			"databaseSafety":              st.safety,
+			"oldStructureMatchesR0":       true,
+			"seededOrders":                st.seeded,
+			"seedDigestR0Columns":         st.seedDigest,
+			"observation":                 plan.BasedOnObservation,
+			"diffFinal":                   kinds(plan.Diff),
 			"diffVariantWithoutDecisions": kinds(variantDiff),
-			"diffsDiffer":               fmt.Sprint(kinds(plan.Diff)) != fmt.Sprint(kinds(variantDiff)),
-			"plan":                      plan,
-			"variantDuplicateProbe":     variantProbe,
-			"comparisonProjection":      "観測は保存写像が使うスキーマ(public)に限る。サンプルの管理表はodr_metaに置く",
+			"diffsDiffer":                 fmt.Sprint(kinds(plan.Diff)) != fmt.Sprint(kinds(variantDiff)),
+			"plan":                        plan,
+			"variantDuplicateProbe":       variantProbe,
+			"comparisonProjection":        "観測は保存写像が使うスキーマ(public)に限る。サンプルの管理表はodr_metaに置く",
 		},
 	})
 	c.gap("ツール", "移行の描画(PostgreSQLの提供元)が一意制約の追加を描画できない", "契約(contract)段階の文をサンプルが描画する。providerの拒否の文言を計画に記録")

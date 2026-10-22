@@ -63,19 +63,19 @@ type Revisions struct {
 
 // Record is the single chain record.
 type Record struct {
-	Schema             string       `json:"schema"`
-	RunID              string       `json:"runId"`
-	DeclarationsDigest string       `json:"declarationsDigest"`
-	Declarations       Declarations `json:"declarations"`
-	Revisions          Revisions    `json:"revisions"`
-	Tools              ToolBinaries `json:"tools"`
-	Steps              []StepRecord `json:"steps"`
-	Faults             []Check      `json:"faultInjections"`
-	Completion         []Check      `json:"completionConditions"`
-	Gaps               []Gap        `json:"platformGaps"`
-	Limits             []string     `json:"limits"`
+	Schema             string            `json:"schema"`
+	RunID              string            `json:"runId"`
+	DeclarationsDigest string            `json:"declarationsDigest"`
+	Declarations       Declarations      `json:"declarations"`
+	Revisions          Revisions         `json:"revisions"`
+	Tools              ToolBinaries      `json:"tools"`
+	Steps              []StepRecord      `json:"steps"`
+	Faults             []Check           `json:"faultInjections"`
+	Completion         []Check           `json:"completionConditions"`
+	Gaps               []Gap             `json:"platformGaps"`
+	Limits             []string          `json:"limits"`
 	Environment        map[string]string `json:"environment"`
-	Passed             bool         `json:"passed"`
+	Passed             bool              `json:"passed"`
 }
 
 // Chain holds the state handed from step to step.

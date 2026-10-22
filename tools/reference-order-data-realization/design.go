@@ -8,8 +8,8 @@ import (
 	"path/filepath"
 	"slices"
 
-	exampleslide "tei/tools/reference-example-slide"
 	ercrossview "tei/tools/reference-er-table-crossview"
+	exampleslide "tei/tools/reference-example-slide"
 )
 
 // Step1AddAttribute copies the workspace twice (the chain copy and the variant
@@ -72,16 +72,16 @@ func (c *Chain) Step1AddAttribute(ctx context.Context) error {
 			{Asset: "tools/reference-shared-acceptance", Called: false, Reason: "共通受理の型付き操作(13種)に既存のDataへの属性追加がない。複製への直接編集として記録し、受理は未接続"},
 		},
 		Output: map[string]any{
-			"source":               "reference/workspace(読むだけ。一時ディレクトリへ複製)",
-			"directEdits":          edits,
-			"filesEdited":          len(edits),
-			"linesInserted":        lines,
-			"acceptance":           "not-connected",
-			"attribute":            c.Decl.Attribute.Attribute,
-			"validationErrors":     0,
-			"dotTeiCopied":         dotTEI == nil,
-			"dotTeiAffectsLoad":    "複製した.tei/(決定の記録とplugin-lock)を含めたまま読込みと検証が通った",
-			"variantSameRevision":  rv == r1,
+			"source":              "reference/workspace(読むだけ。一時ディレクトリへ複製)",
+			"directEdits":         edits,
+			"filesEdited":         len(edits),
+			"linesInserted":       lines,
+			"acceptance":          "not-connected",
+			"attribute":           c.Decl.Attribute.Attribute,
+			"validationErrors":    0,
+			"dotTeiCopied":        dotTEI == nil,
+			"dotTeiAffectsLoad":   "複製した.tei/(決定の記録とplugin-lock)を含めたまま読込みと検証が通った",
+			"variantSameRevision": rv == r1,
 		},
 	})
 	c.gap("コア", "意味の変更(既存のDataへの属性追加)を受理版として同定する型付き操作がない", "工程1の複製への直接編集。編集箇所と件数を記録")
@@ -217,18 +217,18 @@ func (c *Chain) Step2AcceptBusinessKey(ctx context.Context) error {
 			{Asset: "tools/reference-shared-acceptance", Called: true, How: "go buildした実行ファイル: revision、preview、review -format json、accept(add-candidate-key)"},
 		},
 		Output: map[string]any{
-			"reviewFingerprint":        review.Fingerprint,
-			"reviewModelRevision":      review.ModelRevision,
-			"authoredQuestions":        review.Authored,
-			"keyProbe":                 findings,
-			"answerHandoffFingerprint": handoff.Fingerprint,
-			"answerStatus":             handoff.Answers[0].Status,
-			"acceptanceReview":         rv.ReviewFingerprint,
-			"decision":                 acc.Decision,
-			"decisionRecord":           acc.RecordPath,
-			"candidateFingerprint":     acc.CandidateFP,
+			"reviewFingerprint":                review.Fingerprint,
+			"reviewModelRevision":              review.ModelRevision,
+			"authoredQuestions":                review.Authored,
+			"keyProbe":                         findings,
+			"answerHandoffFingerprint":         handoff.Fingerprint,
+			"answerStatus":                     handoff.Answers[0].Status,
+			"acceptanceReview":                 rv.ReviewFingerprint,
+			"decision":                         acc.Decision,
+			"decisionRecord":                   acc.RecordPath,
+			"candidateFingerprint":             acc.CandidateFP,
 			"sharedAcceptanceRevisionEqualsR1": true,
-			"note": "例の記録に衝突がないことは業務キーの根拠にならない(probeはunresolvedを返す)。受理は回答の転記であり、回答者の認証はない",
+			"note":                             "例の記録に衝突がないことは業務キーの根拠にならない(probeはunresolvedを返す)。受理は回答の転記であり、回答者の認証はない",
 		},
 	})
 	return nil
@@ -308,14 +308,14 @@ func (c *Chain) Step3CrossviewAndUnique(ctx context.Context) error {
 			{Asset: "tools/reference-shared-acceptance", Called: false, Reason: "保存写像へ一意制約を加える型付き操作がない。保存写像への直接編集として記録し、受理は未接続"},
 		},
 		Output: map[string]any{
-			"keyComparisonsBeforeDecision": cmpBefore,
-			"keyComparisonsAfterDecision":  cmpAfter,
+			"keyComparisonsBeforeDecision":    cmpBefore,
+			"keyComparisonsAfterDecision":     cmpAfter,
 			"primaryKeyNotTakenAsBusinessKey": true,
-			"uniqueDecision":               c.Decl.UniqueDecision,
-			"directEdit":                   edit,
-			"unresolvedPassedThrough":      after.Unresolved,
-			"variantKeyComparisons":        keyComparisons(variantView, keyID),
-			"structureRevision":            after.StructureRevision,
+			"uniqueDecision":                  c.Decl.UniqueDecision,
+			"directEdit":                      edit,
+			"unresolvedPassedThrough":         after.Unresolved,
+			"variantKeyComparisons":           keyComparisons(variantView, keyID),
+			"structureRevision":               after.StructureRevision,
 		},
 	})
 	c.gap("コア", "保存写像へ一意制約を宣言する受理の操作がない(候補キーは共通受理で受理できる)", "工程3の保存写像への直接編集")

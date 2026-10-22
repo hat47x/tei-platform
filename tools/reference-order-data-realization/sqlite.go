@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math/big"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -28,11 +29,15 @@ const sqliteTimeLayout = "2006-01-02T15:04:05.000000Z"
 const sqliteRunner = `import json, sqlite3, sys
 req = json.load(sys.stdin)
 db = sqlite3.connect(req["path"])
-out = {"sqliteVersion": sqlite3.sqlite_version, "results": {}, "probes": {}}
+out = {"sqliteVersion": sqlite3.sqlite_version, "results": {}, "probes": {}, "insertErrors": []}
 for s in req["setup"]:
     db.execute(s)
 for ins in req["inserts"]:
-    db.executemany(ins["sql"], ins["rows"])
+    for row in ins["rows"]:
+        try:
+            db.execute(ins["sql"], row)
+        except sqlite3.IntegrityError as e:
+            out["insertErrors"].append({"table": ins["table"], "key": str(row[0]), "error": str(e)})
 db.commit()
 for name, sql in req["queries"].items():
     cur = db.execute(sql)
@@ -57,8 +62,9 @@ type sqliteRequest struct {
 }
 
 type sqliteInsert struct {
-	SQL  string  `json:"sql"`
-	Rows [][]any `json:"rows"`
+	Table string  `json:"table"`
+	SQL   string  `json:"sql"`
+	Rows  [][]any `json:"rows"`
 }
 
 type sqliteProbe struct {
@@ -72,7 +78,12 @@ type sqliteResponse struct {
 		Columns []string `json:"columns"`
 		Rows    [][]any  `json:"rows"`
 	} `json:"results"`
-	Probes map[string]string `json:"probes"`
+	Probes       map[string]string `json:"probes"`
+	InsertErrors []struct {
+		Table string `json:"table"`
+		Key   string `json:"key"`
+		Error string `json:"error"`
+	} `json:"insertErrors"`
 }
 
 func pythonCommand() (string, error) {
@@ -287,6 +298,38 @@ func sqliteSemanticValue(v any, st persistence.StorageType) string {
 	return fmt.Sprintf("?%T:%v", v, v)
 }
 
+// compareValue compares a PostgreSQL value with the value SQLite returned,
+// as semantic values: integers, strings (a string that came back as a number
+// is a change), decimals by exact rational value, and instants in UTC. A
+// decimal whose value is equal but whose text lost its scale is reported as
+// scaleOnly and is not counted as a value change.
+func compareValue(pgv, sqv any, st persistence.StorageType) (string, string, bool, bool) {
+	p, s := semanticValue(pgv, st), sqliteSemanticValue(sqv, st)
+	if st != persistence.StorageDecimal || pgv == nil || sqv == nil {
+		return p, s, p == s, false
+	}
+	pt, ok := pgv.(string)
+	if !ok {
+		return p, s, false, false
+	}
+	var st2 string
+	switch x := sqv.(type) {
+	case string:
+		st2 = x
+	case json.Number:
+		st2 = x.String()
+	default:
+		return p, s, false, false
+	}
+	a, okA := new(big.Rat).SetString(pt)
+	b, okB := new(big.Rat).SetString(st2)
+	if !okA || !okB {
+		return p, s, false, false
+	}
+	equal := a.Cmp(b) == 0
+	return "d:" + pt, "d:" + st2, equal, equal && pt != st2
+}
+
 // ValueDiff is one value that did not survive the round trip.
 type ValueDiff struct {
 	Table    string `json:"table"`
@@ -305,6 +348,7 @@ type RoundTrip struct {
 	ValuesCompared   int               `json:"valuesCompared"`
 	Diffs            []ValueDiff       `json:"diffs"`
 	Undeclared       int               `json:"undeclaredDiffs"`
+	ScaleOnlyChanges int               `json:"decimalScaleOnlyChanges"`
 	ListOrderSame    bool              `json:"listOrderSameAsPostgres"`
 	UniqueProbes     map[string]string `json:"uniqueProbes"`
 	FileRemoved      bool              `json:"sqliteFileRemoved"`
@@ -349,7 +393,7 @@ func roundTrip(ctx context.Context, dir, label string, world ir.World, decl SQLi
 		for _, c := range t.Columns {
 			qcols = append(qcols, quoteIdent(c))
 		}
-		ins := sqliteInsert{SQL: fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s)", quoteIdent(n), strings.Join(qcols, ", "), marks)}
+		ins := sqliteInsert{Table: n, SQL: fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s)", quoteIdent(n), strings.Join(qcols, ", "), marks)}
 		for _, row := range src.rows {
 			enc := make([]any, len(row))
 			for i, v := range row {
@@ -378,9 +422,6 @@ func roundTrip(ctx context.Context, dir, label string, world ir.World, decl SQLi
 	for _, n := range names {
 		t, src := schema[n], pg[n]
 		got := resp.Results[n]
-		if len(got.Rows) != len(src.rows) {
-			return rt, fmt.Errorf("table %s: %d rows read back, %d written", n, len(got.Rows), len(src.rows))
-		}
 		sort.Slice(src.rows, func(i, j int) bool { return fmt.Sprint(src.rows[i][0]) < fmt.Sprint(src.rows[j][0]) })
 		byKey := map[string][]any{}
 		for _, r := range got.Rows {
@@ -390,12 +431,23 @@ func roundTrip(ctx context.Context, dir, label string, world ir.World, decl SQLi
 			key := fmt.Sprint(row[0])
 			back, ok := byKey[key]
 			if !ok {
-				return rt, fmt.Errorf("table %s: row %s not read back", n, key)
+				reason := "missing"
+				for _, e := range resp.InsertErrors {
+					if e.Table == n && e.Key == key {
+						reason = "rejected: " + e.Error
+					}
+				}
+				rt.Diffs = append(rt.Diffs, ValueDiff{Table: n, Key: key, Column: "<row>", Postgres: "present", SQLite: reason})
+				rt.Undeclared++
+				continue
 			}
 			for i, v := range row {
 				rt.ValuesCompared++
-				p, s := semanticValue(v, t.Storage[i]), sqliteSemanticValue(back[i], t.Storage[i])
-				if p != s {
+				p, s, equal, scaleOnly := compareValue(v, back[i], t.Storage[i])
+				if scaleOnly {
+					rt.ScaleOnlyChanges++
+				}
+				if !equal {
 					rt.Diffs = append(rt.Diffs, ValueDiff{Table: n, Key: key, Column: t.Columns[i], Postgres: p, SQLite: s})
 					rt.Undeclared++
 				}

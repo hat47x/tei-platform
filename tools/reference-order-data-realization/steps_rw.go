@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"tei/internal/core"
@@ -385,7 +386,9 @@ func (c *Chain) Step9Register(ctx context.Context) error {
 	var regF Registration
 	var reassigned string
 	var obsF string
+	var provisional any
 	if errF == nil {
+		provisional = ptrValue(subF.ExternalID)
 		regF = register("F-issuer-stopped", adapterA, subF)
 		iss.start()
 		n, err := iss.issue(ctx)
@@ -415,7 +418,7 @@ func (c *Chain) Step9Register(ctx context.Context) error {
 	policyOK := false
 	switch policy {
 	case PolicyProvisional:
-		policyOK = errF == nil && howF == "provisional" && regF.Outcome == OutcomeCommitted && reassigned != "" && obsF == ObsObserved
+		policyOK = errF == nil && howF == "provisional" && strings.HasPrefix(fmt.Sprint(provisional), prefix) && regF.Outcome == OutcomeCommitted && reassigned != "" && obsF == ObsObserved
 	case PolicyStop:
 		policyOK = errors.Is(errF, ErrIssuerUnavailable)
 	}
@@ -423,11 +426,12 @@ func (c *Chain) Step9Register(ctx context.Context) error {
 		Injected: "重複の拒否、利用者の取消し、同時登録の敗者、接続の喪失で受注番号の欠番を作り、外部番号の採番元(HTTP)を止める",
 		Expect:   "欠番がすべて採番の記録(取消しの理由)で説明でき、採番元の停止時に宣言した方針どおりに振る舞う",
 		Observed: map[string]any{
-			"gaps": gaps, "declaredPolicy": policy, "issuerStopped": map[string]any{"how": howF, "error": errString(errF), "registration": regF.Outcome, "provisional": ptrValue(subF.ExternalID), "reassignedTo": reassigned, "observation": obsF},
+			"gaps": gaps, "declaredPolicy": policy, "issuerStopped": map[string]any{"how": howF, "error": errString(errF), "registration": regF.Outcome, "provisional": provisional, "reassignedTo": reassigned, "observation": obsF},
 		},
 		Passed: len(gaps.Gaps) >= 3 && len(gaps.Unexplained) == 0 && len(gaps.UnrecordedUsed) == 0 && policyOK,
 	})
 	out["registrations"] = regs
+	out["externalNumbersIssued"] = iss.issued
 	out["concurrentSameExternalNumber"] = concurrent
 	out["listAfter"] = len(final.Rows)
 	out["committed"] = committed
