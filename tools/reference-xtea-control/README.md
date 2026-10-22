@@ -6,7 +6,7 @@ X-TEAのSwingアプリ（Modeler / Editor / Driver）と、HTTPサーバ（XeadS
 
 TEIの参照モデル再現を確認するとき、X-TEAのGUIだけが入力経路だと、操作手順・画面位置・ダイアログの開閉順が暗黙になり、比較の再現性が下がります。このツールは、画面を画像認識や座標クリックで操作する代わりに、**実行中のSwingコンポーネントを安定した役割・名前・パスで列挙し、同じ制御面から入力する**ための最小の経路を追加します。
 
-対象は比較試験の入力経路であり、TEIのCanonical意味、X-TEAとの互換性、移植の受理、旧Runtimeの動作同等性を決めるものではありません。
+対象は比較試験の入力経路であり、TEIのCanonical意味、X-TEAとの互換性、移植の受理、旧Runtimeの動作同等性を決めるものではありません。現在地と残作業の分類は[STATUS.md](STATUS.md)にまとめています。
 
 ## 構成
 
@@ -216,6 +216,14 @@ python tests\test_tomcat_war.py
 - 画面には業務データが表示され得ます。`snapshot`や`screenshot`の成果物を公開リポジトリへ置く場合は、参照モデルの公開条件（[#941](https://github.com/hat47x/tei-platform/issues/941)）に従ってください。
 - この制御面はテスト専用です。認可、監査、利用者分離、本番運用の境界を提供しません。
 
+## 一括検証
+
+```powershell
+.\verify-all.ps1
+```
+
+`build.ps1`、Swing E2E、サーバ契約試験を実行し、`XTEA_SERVER_SOURCE`、`XTEA_RUNTIME_HOME`、`XTEA_SKELETON_HOME`が設定されていれば実DBMethod、実Service、Tomcat WARも実行します。環境変数がない実動試験はSKIPとして表示し、失敗とは区別します。`-SkipLive`で実動試験を省略できます。
+
 ## 検証したこと
 
 2026-10-21、JDK 11.0.20.1（`--release 8`でコンパイル）で確認しました。
@@ -248,6 +256,7 @@ python tests\test_tomcat_war.py
 
 ```text
 reference-xtea-control/
+  STATUS.md                現在地、残作業の分類、引継ぎの入口
   agent/src/xteaControl/   Java agent（Agent, BridgeServer, Ui, Json, Trace）
   server-harness/          元DBMethod/Serviceの埋め込みJettyハーネス
   tests/                   合成GUI E2E、XeadServer契約・実DBMethod/Service試験
@@ -255,6 +264,7 @@ reference-xtea-control/
   xtea_control.py          Swing制御クライアント
   xtea_server.py           XeadServer HTTPクライアント
   build.ps1 / build.sh
+  verify-all.ps1           合成・契約・実動試験の一括実行
   driver-fixture.ps1       使い捨てSkeleton DBの作成
   modeler-fixture.ps1      使い捨てモデル複製の作成
   launch-xtea.ps1
