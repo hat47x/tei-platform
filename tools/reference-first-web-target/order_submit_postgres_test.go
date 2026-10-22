@@ -206,6 +206,74 @@ func TestPostgresOrderSubmitRejectsAlreadySubmittedOrderWithoutChangingState(t *
 	}
 }
 
+// countingSubmitStore records how often the effect was attempted.
+type countingSubmitStore struct {
+	orderSubmitStore
+	submits int
+}
+
+func (s *countingSubmitStore) Submit(ctx context.Context, orderID int64) error {
+	s.submits++
+	return s.orderSubmitStore.Submit(ctx, orderID)
+}
+
+func TestPostgresOrderSubmitDeniedBeforeEffectLeavesRowUntouched(t *testing.T) {
+	dsn := orderSubmitTestDSN(t)
+	db := openOrderFixtureDB(t, dsn)
+	inner, err := newPostgresOrderSubmitStore(dsn, dsn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = inner.Close() })
+
+	t.Run("business authorization denied", func(t *testing.T) {
+		store := &countingSubmitStore{orderSubmitStore: inner}
+		result, err := newOrderSubmitRunner(t, store).RunCommand(context.Background(), commandScenarioInput{
+			LoginID: "legacy-order-viewer", Credential: "viewer-secret",
+			From: orderSubmitInput.From, RowIndex: 0,
+		})
+		if err != nil {
+			t.Fatalf("a business denial must not be an Execution Error: %v", err)
+		}
+		if result.Stage != "authorization-denied" || result.Command != nil || result.Observation != nil {
+			t.Fatalf("result=%+v", result)
+		}
+		if store.submits != 0 || orderStatus(t, db, 1001) != "draft" {
+			t.Fatalf("effect attempted=%d status=%q", store.submits, orderStatus(t, db, 1001))
+		}
+	})
+
+	t.Run("host effect grant unavailable", func(t *testing.T) {
+		store := &countingSubmitStore{orderSubmitStore: inner}
+		runner := newOrderSubmitRunner(t, store)
+		runner.hostEffect = func(context.Context, string) error { return errors.New("revoked") }
+		result, err := runner.RunCommand(context.Background(), orderSubmitInput)
+		if err == nil || !strings.Contains(err.Error(), "HOST_EFFECT_GRANT_UNAVAILABLE") {
+			t.Fatalf("err=%v result=%+v", err, result)
+		}
+		if result.Stage != "host-effect-grant-denied" || result.Command != nil || result.Observation != nil {
+			t.Fatalf("result=%+v", result)
+		}
+		if store.submits != 0 || orderStatus(t, db, 1001) != "draft" {
+			t.Fatalf("effect attempted=%d status=%q", store.submits, orderStatus(t, db, 1001))
+		}
+	})
+
+	t.Run("synthetic failure order never reaches the store", func(t *testing.T) {
+		// Order 1003 is rejected by the synthetic adapter guard before any effect.
+		if _, err := db.Exec(`INSERT INTO public.orders VALUES (1003, 13, '2026-09-18T07:30:00Z', 'draft', 6200.00, NULL)`); err != nil {
+			t.Fatal(err)
+		}
+		store := &countingSubmitStore{orderSubmitStore: inner}
+		input := orderSubmitInput
+		input.RowIndex = 2
+		_, err := newOrderSubmitRunner(t, store).RunCommand(context.Background(), input)
+		if err == nil || store.submits != 0 || orderStatus(t, db, 1003) != "draft" {
+			t.Fatalf("err=%v attempted=%d status=%q", err, store.submits, orderStatus(t, db, 1003))
+		}
+	})
+}
+
 type failingReadStore struct{ orderSubmitStore }
 
 func (failingReadStore) ReadStatus(context.Context, int64) (string, error) {
