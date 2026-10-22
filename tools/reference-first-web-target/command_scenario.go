@@ -29,7 +29,19 @@ type referenceCommandScenarioRunner struct {
 	// Host-specific, opt-in gate for the accepted Web entry point. The
 	// legacy diagnostic runner remains explicitly synthetic.
 	hostEffect func(context.Context, string) error
-	now        time.Time
+	// Optional external store for the submit effect (nil: the in-memory
+	// synthetic state only, as before). The store is written only after the
+	// business authorization and the Host effect Grant at the concrete Adapter.
+	// The Observation below stays synthetic even with a store; a real
+	// observation is a separate read that this runner does not perform.
+	submitStore orderSubmitStore
+	now         time.Time
+}
+
+// orderSubmitStore is the single state change of the submit Command. A failure
+// is an Execution Error, never a Business Result.
+type orderSubmitStore interface {
+	SubmitOrder(ctx context.Context, orderID int64) (backendPID int64, err error)
 }
 
 func newReferenceCommandScenarioRunner(
@@ -294,6 +306,11 @@ func (r *referenceCommandScenarioRunner) runAuthenticatedSubjectCommandWithEffec
 			if err := r.hostEffect(invokeCtx, subjectID); err != nil {
 				result.Stage = "host-effect-grant-denied"
 				return capabilityinvoke.BusinessResult{}, errors.New("HOST_EFFECT_GRANT_UNAVAILABLE")
+			}
+		}
+		if r.submitStore != nil {
+			if _, storeErr := r.submitStore.SubmitOrder(invokeCtx, actualOrderID); storeErr != nil {
+				return capabilityinvoke.BusinessResult{}, fmt.Errorf("external submit store failed: %w", storeErr)
 			}
 		}
 		state[actualOrderID] = "submitted"
