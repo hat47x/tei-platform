@@ -122,6 +122,20 @@ Editor:
   -Model C:\path\to\X-TEA\Modeler\MfgOrder.xead
 ```
 
+Editorの保存を確認する場合も、参照モデルの複製を使います。
+
+```powershell
+.\modeler-fixture.ps1 `
+  -ModelHome C:\path\to\X-TEA\Modeler `
+  -Target build\editor-fixture
+.\launch-xtea.cmd -App editor -Home C:\path\to\X-TEA\Driver `
+  -Model build\editor-fixture\MfgOrder.xead
+python xtea_control.py --endpoint build\editor-endpoint.json `
+  scenario scenarios\editor-save-copy.json
+```
+
+このシナリオは複製したモデルのシステム名を変更して保存します。原本や共有モデルには実行しないでください。
+
 Driver:
 
 ```powershell
@@ -209,6 +223,7 @@ python tests\test_live_service.py
 - `python tests/test_live_service.py`: 2件成功。Skeletonの一時複製と、ビルド時に明示した互換差分を使い、元の`Service`の`GET /Service`がセッション状態を返すこと、`FUNCTION=AF200J`、`REQUEST_TYPE=ListSections`で2件の部門データがJSONで返ることを確認。
 - 実X-TEA Modeler（配布`xteamdl.jar`、About表示`V1.R4.M50`）で`MfgOrder.xead`を開き、メニュー8件・操作44件を列挙し、Aboutダイアログの開閉、スナップショット、スクリーンショットを確認。
 - 実Modelerの保存経路として、`MfgOrder.xead`の複製でシステム名を変更し、`保存`メニュー、バックアップ確認の`はい`を実行。保存後のXMLに新しいシステム名が入り、`backup/`に更新前ファイルが作られることを確認。`scenarios/modeler-save-copy.json`と`modeler-fixture.ps1`で再現できます。
+- 実Editorの保存経路として、`MfgOrder.xead`の複製でシステム名を変更し、`保存`メニュー、バックアップ確認の`はい`を実行。保存後のXMLに新しいシステム名が入り、`backup/`に更新前ファイルが作られることを確認。`scenarios/editor-save-copy.json`で再現できます。
 - 実X-TEA Editor（配布`xteaedt.jar`）で`MfgOrder.xead`を開き、メニュー8件・操作40件を列挙し、スナップショットとスクリーンショットを確認。
 - 実X-TEA Driver（配布`xteadrv.jar`）で、引数なしの起動時に「システム定義ファイルが指定されていません」のダイアログへ到達。`Skeleton.xeaf`の複製（DB URLだけを埋め込みDerbyへ変更）でログイン画面を開き、合成ユーザ`00000`でログイン後、`XF100`「部門情報の一覧・保守」を開き、カスタム行オブジェクトから4列・2行を読み取り、画面キャプチャを取得。選択行でEnterを押して`XF300`詳細画面を開き、そのスナップショットと画面キャプチャも取得。`F3 閉じる`で両画面を閉じる操作を確認。
 - 実Driverの更新経路として、`XF300`から`F8 部門情報`、`F5 編集`、部門名の変更、`F5 更新`を実行し、一覧を開き直して新しい値を確認。更新後のDerby DBを独立に問い合わせ、`AT010.CDBUMON=00001`の`TXBUMON`が変更されたことも確認。`scenarios/driver-update-department.json`と`driver-fixture.ps1`で再現できます。更新は使い捨てDBだけで行っています。
@@ -217,7 +232,7 @@ python tests\test_live_service.py
 ### 検証していないこと
 
 - Driverのロールバック、上記以外のFunction画面、元の`jdbc:derby://localhost/...`接続。
-- Modelerの保存以外の編集（要素の追加・削除・並べ替え、一括置換）、Editorの書込み・保存。
+- Modeler / Editorの保存以外の編集（要素の追加・削除・並べ替え、一括置換、表・機能の編集）。
 - XeadServerのWAR配備、Tomcat、JNDI DataSource、実デプロイ環境。`DBMethod`と`Service`は埋め込みJettyで確認したが、実デプロイ環境ではない。
 - `Service`の認証条件の正しさ、実ユーザー、認可。ハーネスでは認証前の`userID`検査を引数`user`へ置き換えている。
 - 四つのアプリの全ダイアログ・全条件分岐の実行。経路表は入力種別とトップレベル入口の到達性を示すもので、全業務ケースの実行結果ではない。
