@@ -1,21 +1,140 @@
 # reference-order-data-realization
 
-技術検証用サンプル[`order-data-realization`](../../reference/order-data-realization/README.md)(サンプル3)の工程1〜10を、一つの通しの記録としてつなぐ実装です。設計の正本は[技術検証用サンプルの統合設計 4.3節](../../plan/design/TECH_VALIDATION_SAMPLES_2026-10.md)です。
+技術検証用サンプル[`order-data-realization`](../../reference/order-data-realization/README.md)(サンプル3)の工程1〜10を、一つの通しの記録としてつなぐ実装です。受注に属性を一つ加えた定義が、版の記録、設計質問、論理ERと物理表、標準機能候補、移行と収束、一覧と明細、登録と別接続の再読込、SQLiteでの往復まで、同じ版の照合値のまま引き継がれるかを確かめます。設計の正本は[技術検証用サンプルの統合設計 4.3節](../../plan/design/TECH_VALIDATION_SAMPLES_2026-10.md)です。
 
-この文書は作業中です。調査の結論として、工程ごとに既存資産を呼べるかを先に記録します。
+この実装はサンプル固有の処理で、`internal/`の基盤には入れていません。基盤に宣言の場所や操作がないもの(属性追加と一意制約の受理、移行の段階と旧版の書き手、採番と欠番、SQLiteの方言)は、サンプル側に最小限で作り、通しの記録の`platformGaps`に残します。
 
-## 工程ごとの既存資産の呼出し(調査の結論)
+## 実行方法
 
-| 工程 | 既存資産 | 呼べるか | 呼び方、または呼べない理由 |
+GoとDockerとPython 3(標準の`sqlite3`モジュール)がある環境で、リポジトリのルートから実行します。
+
+```bash
+python3 tools/verify-order-data-realization.py
+```
+
+検証器は`tei-odr-<乱数>-pg`という名前のPostgreSQLのコンテナーを一つ起動し、空のDB`tei_odr`を作ってこのパッケージの全試験を実行し、終了時にそのコンテナーだけを削除します。全試験がPASSでskipが0件、かつ通しの記録(`chain-record.json`)が合格のときだけ合格です。受領記録(`receipt.json`)と通しの記録は、リポジトリの外の一時ディレクトリに出ます。作業ツリーに未コミットの変更があると実行を拒否します。
+
+DBを使わない部分(工程1〜4と単体試験)は、次で確かめられます。
+
+```bash
+go test ./tools/reference-order-data-realization/ -count=1
+go run ./tools/reference-order-data-realization/cmd/tei-order-data-realization design -out <出力先>
+```
+
+実DBの試験は、環境変数`TEI_ODR_DSN`(使い捨てのDB)と`TEI_ODR_CONFIRM_ISOLATED=tei_odr`がないとskipします。skipは合格の根拠になりません。工程10は、Pythonが見つからなければskipせずに失敗します(`TEI_ODR_PYTHON`で指定できます)。
+
+`reference/workspace`は読むだけです。一時ディレクトリへ三つ複製します(変更前の版R0のまま残す複製、通しで変更する複製、二つの判断を行わない複製)。
+
+## 版の照合値
+
+版の照合値は、共通受理(`tools/reference-shared-acceptance`の`revision`)と同じ`sourceindex.ModelRevision`です。工程2で共通受理の実行ファイルが返す値と一致することを確かめています。
+
+| 版 | 作る工程 | 内容 |
+| --- | --- | --- |
+| R0 | 工程1(複製の直後) | `reference/workspace`の複製のまま |
+| R1 | 工程1 | 受注に属性`deliveryNote`(配送メモ、`std.text`)を加え、保存写像の列`delivery_note`(任意)と一覧の問合せの列を加えた版。複製への直接編集 |
+| R2 | 工程2 | 外部番号`sales.order.external_id`を業務キー(候補キー`sales.order.external_number`)として共通受理で受理した版 |
+| R3(最終版) | 工程3 | 保存写像へ一意制約`orders_external_id_key`を宣言した版。複製への直接編集 |
+
+工程4〜10は、作業領域の複製の版がR3と一致することを各工程の冒頭で確かめ、一致しなければDBへ触れる前に停止します(`ErrRevisionMismatch`)。通しの中で、工程7の後にR3の複製をさらに変更した複製を工程8へ渡し、停止することを確かめます。単体試験では、R0の複製と、変更した複製の両方が停止することを確かめます。
+
+## 工程と既存資産
+
+| 工程 | 関数 | 既存資産の呼出し | 渡すもの |
 | --- | --- | --- | --- |
-| 1 | なし(足場なし) | - | サンプル側で、作業領域の複製へ属性を直接編集する。共通受理(`tools/reference-shared-acceptance`)の型付き操作に既存のDataへの属性追加がないため、受理は未接続 |
-| 2 | `tools/reference-example-slide` | 呼べる | 取込み可能なパッケージ`exampleslide`。`CatalogFromWorld`、`Review`、`BindAnswers`、`ProbeBaseCandidateKeys`を変更せずに呼ぶ |
-| 2 | `tools/reference-shared-acceptance` | 呼べる(別プロセス) | `package main`のため取り込めない。`go build`した実行ファイルの`revision`、`preview`、`review`、`accept`で`add-candidate-key`を複製へ受理する |
-| 3 | `tools/reference-er-table-crossview` | 呼べる | 取込み可能なパッケージ`ercrossview`の`Project`。一意制約の宣言は共通受理に操作がないため、保存写像への直接編集で行い、受理は未接続 |
-| 4 | `tools/reference-standard-function-candidates` | 呼べる(別プロセス) | `package main`のため取り込めない。`go build`した実行ファイルを`-workspace`と`-application order_entry`で呼ぶ |
-| 5 | `tools/reference-postgres-integration`、`tools/reference-postgres-migration-rendering` | 呼べない | どちらも`package main`で、表を手組みし、無条件の`DROP SCHEMA ... CASCADE`を持つ。作業領域を受け取らない。同じ内部部品(`realization.RealizeDesired`、`postgres.Provider`、`schemadiff.Compare`、`migration.Plan`)を直接使う |
-| 5 | `tools/reference-ddl-entry` | 呼べる | 取込み可能なパッケージ`ddlentry`の`Render`で、変更前の版R0から旧構造の表を作る |
-| 6・9 | `tools/reference-data-first-persistence` | 呼べない | `package main`で、受付依頼(`examples/first-workspace`)と手書きの宣言に固定されている。同じ設計(駆動部の`ResolvePattern`、`ResolveCommandBinding`、`InvokeCapability`、`ExecuteObservationRead`)を受注へ当てる最小の実装をサンプル側に置く |
-| 7 | `tools/reference-scenario-state-diff` | 呼べる | 取込み可能なパッケージ`scenariodiff`の`Plan`で、移行の前後の行を比べる |
-| 8 | `tools/reference-postgres-header-detail-runtime` | 呼べない | `package main`で、手組みの表と固定の行を作り、判定段階Bが既定の動作と出力を固定する。同じ内部の入口(`ExecuteHeaderDetailContractQueryInEnvironment`)を、一覧の結果を受けて呼ぶ |
-| 10 | なし(足場なし) | - | SQLiteの提供元がない。Python標準の`sqlite3`を別プロセスで使い、方言の対応はサンプルの宣言に置く |
+| 1 属性の追加と版の記録 | `Step1AddAttribute` | なし。共通受理の型付き操作(13種)に、既存のDataへの属性追加がないため、受理は未接続 | R0とR1、直接編集の箇所(4ファイル、7行)。複製した`.tei/`を含めたまま読込みと検証が通ること |
+| 2 設計質問への回答と業務キーの受理 | `Step2AcceptBusinessKey` | `reference-example-slide`をGoで取り込み、`CatalogFromWorld`、`Review`、`ProbeBaseCandidateKeys`、`BindAnswers`を呼ぶ。`reference-shared-acceptance`は`package main`のため`go build`した実行ファイルで、`revision`、`preview`、`review`、`accept`(`add-candidate-key`)を呼ぶ | 設計質問の照合値、回答の受け渡しの照合値(未検証のまま)、受理の決定記録、R2。例の記録に衝突がないことは業務キーの根拠にならない(probeは`unresolved`) |
+| 3 論理ERと物理表の対応、一意制約の判断 | `Step3CrossviewAndUnique` | `reference-er-table-crossview`をGoで取り込み、`Project`を判断の前後と判断なしの版で呼ぶ。一意制約の宣言は共通受理に操作がないため、保存写像への直接編集 | 判断の前は主キーと業務キーが`distinct-attribute-set`で一意制約なし、判断の後は一意制約が`same-attribute-set`。主キーから業務キーを推測しない。未解決は補正せずに渡す。R3 |
+| 4 標準機能候補の生成 | `Step4StandardFunctions` | `reference-standard-function-candidates`は`package main`のため、実行ファイルを`-workspace`と`-application order_entry`で呼ぶ | 受注の作成・更新の候補(実行しない)と不足項目。候補が追加した属性を持つこと |
+| 5 旧構造のDBの構築、差分の検出、移行の計画 | `Step5BuildPlan` | `reference-ddl-entry`をGoで取り込み、R0の世界から旧構造の表を作る。`reference-postgres-integration`と`reference-postgres-migration-rendering`は呼べない(`package main`で、表を手組みし、無条件の`DROP SCHEMA ... CASCADE`を持つ)。同じ内部部品を直接使う | 旧構造がR0の期待状態と一致すること、R3と判断なしの版の差分、段階に分けた移行の計画(観測の照合値、拡張の定義の照合値)、判断なしの版での重複登録の試行(取り消す) |
+| 6 移行前の登録の拒否 | `Step6RefuseBeforeMigration` | `reference-data-first-persistence`は呼べない(`package main`で、受付依頼と手書きの宣言・表に固定)。同じ段階の実行前確認を受注へ当て、駆動部の`InvokeCapability`で手書きのアダプターを呼ぶ | 拒否の理由(物理の差分)、アダプターの呼出し0回、既存の行が変わらないこと |
+| 7 移行の適用と再観測での収束 | `Step7ApplyAndConverge` | `reference-scenario-state-diff`をGoで取り込み、移行の前後の行を比べる。適用は内部の`migration.ApplyPostgresWithFreshObservation` | 計画後の構造変更での停止、旧版の書き手と共存する拡張、縮約の拒否と適用、差分0件、既存の行が変わらないこと |
+| 8 一覧と親子明細の取得 | `Step8ListAndDetail` | `reference-postgres-header-detail-runtime`は呼べない(`package main`で固定の表と行を作り、判定段階Bが既定の動作と出力を固定)。同じ内部の`ExecuteHeaderDetailContractQueryInEnvironment`を、一覧の結果を受けて呼ぶ。一覧は駆動部の`ExecuteBrowseQuery`で新設 | 追加した属性を含む一覧、一覧の行をそのまま渡した明細、明細のない受注の0件と表の欠落による実行失敗の区別 |
+| 9 登録、別接続での再読込、重複拒否 | `Step9Register` | 工程6と同じ | 登録の結果と別接続の観測、重複の拒否、同時登録、結果不明の決着、欠番の説明、採番元の停止時の振舞い |
+| 10 SQLiteでの実現と値の往復 | `Step10SQLite` | なし。TEIにSQLiteの提供元がない。Python標準の`sqlite3`を別プロセスで使う | 境界値の登録、宣言した方言と素朴な方言(陰性対照)での往復の比較、一覧の並び順、一意制約の振舞い |
+
+部分工程の診断として残す資産(`reference-model-search`など)は、工程の成否に使いません。
+
+## 失敗注入
+
+| 要件 | 工程 | 注入 | 合否の観測 |
+| --- | --- | --- | --- |
+| P-MIG-03 | 6 | 列も一意制約もない旧構造のDBへ、変更後の定義のまま登録する | 実行前確認の物理の段階が未解決(列の追加と一意制約の追加)で拒否され、アダプターの呼出しが0回、既存の行の照合値が変わらない |
+| 固有 | 5・7 | 計画の後、適用の前に、別の接続が`public.orders`へ列を加える | 適用直前の観測の照合値が計画と食い違い、文を一つも実行せずに停止する。列が残ったままの再計画は、物理だけにある列の削除を含むため自動で適用せず判断待ちにする。列が戻された後に再計画して適用する |
+| P-MIG-03(拡張) | 7 | R0の保存写像で組んだ旧版の登録処理が、拡張の適用の前後に書き込み続ける(短い取引で行のロックを持つ) | 拡張の`ALTER TABLE`が宣言のロック待ちの上限(3秒)内に終わり、旧版の行の新しい属性がすべてNULL(宣言どおり)、旧版が登録表で有効な間は縮約(一意制約の追加)が拒否され、縮約の前なら拡張を戻せる(取り消す取引で確かめる)。旧版を退役させた後に縮約を適用する |
+| 固有 | 9 | 二つの接続が同じ外部番号を登録する。先の接続はコミットの直前で待ち、後の接続が一意索引の待ちに入ったことを`pg_stat_activity`で確かめてからコミットする | 一件だけ成立し、後の登録は確定した失敗(SQLSTATE 23505) |
+| P-TX-02 | 9 | 登録のコミット後に、(a)読取り用の接続を閉じる、(b)表の名前を変えて失わせる | 登録の結果はコミット済み、別接続の観測は`read-failed`のまま記録し、`observed`にしない。読取りが戻った後の再読込で`observed`になる |
+| P-INT-03 | 9 | 重複の拒否、コミット前の取消し、同時登録の敗者、コミット前の接続の喪失(`pg_terminate_backend`)で受注番号の欠番を作り、外部番号の採番元(HTTPの模擬)を止める | 欠番がすべて採番の台帳の取消しの理由で説明でき、台帳にない番号がない。採番元の停止時は宣言(`provisional-then-reassign`)どおり仮番号`PROV-<受注番号>`で登録を続け、採番元の復旧後に払い出した番号へ振り替える |
+| P-DB-03(拡張) | 10 | 同じ最終版の保存写像をSQLiteへ実現し、登録した受注と境界値を書いて読み戻す | 宣言した方言の対応では値の差が0件。素朴な対応(文字列と十進数を`NUMERIC`で宣言)では、先頭ゼロの消失、桁の大きい金額の丸め、その結果の一意制約違反を検出する(陰性対照) |
+
+接続の喪失は結果不明(`result-unknown`、SQLSTATE 57P01)として記録し、別の接続の照会で`not-committed`へ決着させます。確定した失敗(重複の拒否)とは区別します。
+
+採番の方針を`stop`にした場合の振舞い(登録を止める)は、単体試験で確かめます。通しでは`provisional-then-reassign`を宣言して使います。
+
+## 通しの完了条件
+
+通しの記録の`completionConditions`に、READMEの完了条件ごとの合否と観測値が入ります。
+
+| 条件 | 確かめ方 |
+| --- | --- |
+| C1 同じ版での引継ぎ | 工程4〜10と移行の計画の版がR3。変更した複製を工程8へ渡すと停止する |
+| C2 判断の有無で差分と結果が変わる | 判断なしの版(R1と同じ版)では、工程5の差分が列の追加だけで、同じ外部番号の二件が登録される(取り消す取引で確かめる)。最終版では差分に一意制約の追加が入り、工程9で重複が確定した失敗になる |
+| C3 移行前の拒否と収束後の登録 | 工程6で拒否した登録と同じ内容が工程9で通る。既存の行の照合値が変わらず、新しい属性は既存の行でNULL |
+| 一覧の識別子を明細へ渡す | 一覧の写像済みの結果と行番号を、そのまま明細の取得へ渡す |
+| C5 登録の結果と別接続の観測 | P-TX-02と、確定した失敗と結果不明の区別 |
+| C6 使い捨てDBの隔離と破棄 | 開始前に、既定のDBでないこと、利用者の関係とスキーマとイベントトリガーが0件であることを確かめる。作った表、連番、スキーマに所有印のコメントを付け、終了時は所有印が一致するものだけを削除し、関係とスキーマが0件に戻ったことを確かめる |
+| C7 拡張 | 旧版と共存する移行(P-MIG-03)とSQLiteでの往復(P-DB-03)の合否 |
+
+## SQLiteで確かめたことと確かめていないこと
+
+PostgreSQLとSQLiteという異種の製品の組合せで確かめた最初の事例です。
+
+確かめたこと:
+
+- 同じ最終版の保存写像(列、主キー、一意制約、索引、親子の補助列)から、PostgreSQL(TEIの提供元の描画と、サンプルが描画した一意制約)とSQLite(サンプルが宣言した型の対応)の二つの製品に表を実現した。
+- PostgreSQLから読んだ値を、宣言した表現でSQLiteのファイルへ書き、SQLite自身が読み返した値と全件比べた。比べ方は意味の値で、整数、文字列(空文字とNULLを区別する)、十進数(正確な有理数。位取りの変化は別に数える)、UTCの瞬間である。境界値は、空文字とNULL、先頭ゼロの外部番号、24桁の整数部を持つ金額、負の金額と末尾のゼロ、時差の異なる同じ瞬間、マイクロ秒、日本語(サロゲートペア、波ダッシュ、半角カナを含む)。
+- SQLiteの一意制約が重複を拒否し、NULLの重複を許すこと(PostgreSQLの既定と同じ)。
+- UTCの固定幅の文字列で並べたSQLiteの一覧の順序が、PostgreSQLのtimestamptzの順序と一致すること(時刻が同じ行は受注番号の昇順に揃えて比べた)。
+
+確かめていないこと:
+
+- TEIのSQLiteの提供元(カタログの観測、`schemadiff`での比較、移行の描画と適用)はない。SQLite側の構造は宣言から作っただけで、観測して期待状態と比べていない。
+- TEIのクエリ実行器でSQLiteへ問合せを実行していない。一覧の順序は、サンプルが書いたSQLiteのSQLで確かめた。
+- Goのドライバーを通したSQLiteへの書込み、SQLiteでの同時実行と書込みの待ち、照合順序の差(P-DB-04)、SQLiteでの算術と十進数の並べ替え。
+- 二つの製品の間の移行、同時運用、同期。
+
+方言の差の宣言は、このパッケージの[`declarations.json`](declarations.json)の`sqliteDialect`に置きます。[データベースプラグインの方言契約設計](../../plan/design/DATABASE_DIALECT_PLUGIN_DESIGN_2026-10.md)では、製品の方言プラグインの「物理型の対応」の面に置く案ですが、SQLiteの提供元がまだないためです。宣言した既知の差分(元の時差を保たない、長さの上限を強制しない)は、意味の値の比較では差として現れません。PostgreSQLのtimestamptzも元の時差を保たないためです。
+
+## サンプルの宣言
+
+[`declarations.json`](declarations.json)は、基盤に宣言の場所がない項目をサンプル固有の宣言として持ちます。受理済みの意味ではありません。通しの記録は、その照合値と内容を持ちます。
+
+- 追加する属性と、既存の行・旧版の行での値(NULL)
+- 業務キー(候補キー)と設計質問、一意制約の判断
+- 移行の段階(拡張は列の追加、縮約は一意制約の追加で旧版が有効な間は拒否)、ロック待ちの上限、自動で適用しない変更(列と表の削除)
+- 採番(受注番号はDBの連番で欠番は理由付きで許す、外部番号は外部の採番元で停止時は仮番号で続けて振り替える)
+- SQLiteの方言(宣言した対応と、陰性対照の素朴な対応)
+
+## 基盤の不足
+
+通しの記録の`platformGaps`に、領域と、サンプル側での補い方を残します。
+
+| 領域 | 不足 | サンプル側の補い方 |
+| --- | --- | --- |
+| コア | 既存のDataへの属性追加を受理版として同定する型付き操作がない | 工程1の複製への直接編集。編集箇所と件数を記録 |
+| コア | 保存写像へ一意制約を宣言する受理の操作がない(候補キーは共通受理で受理できる) | 工程3の保存写像への直接編集 |
+| ツール | PostgreSQLの移行の描画が一意制約の追加を描画できない | 縮約の段階の文をサンプルが描画し、提供元の拒否の文言を計画に記録 |
+| コア | 移行計画の観測の照合値(`BasedOnActualFingerprint`)を適用の前に照合していない。構造の観測の照合値を作る公開の関数もない | サンプルが観測の照合値を計算し、適用の直前に再観測して照合する |
+| データ | 旧版の書込みと共存する移行手順(段階、旧版が残る間の縮約の拒否)を提供元が持たない | 段階と拒否条件をサンプルの宣言に置き、書き手の登録表(`odr_meta.writer`)で判定 |
+| 実行時 | 保存の実行前確認が受注に使えない。受注の契約(`sales_core.order` v4.2)は書込みを状態の列に限るが、手書きのアダプターは範囲を検査されずに全列を書く | サンプル側の実行前確認。契約の書込み範囲の検査は未実装のまま記録 |
+| データ | 業務キーの採番(採番元、欠番の許容と理由、採番元の停止時の方針)を宣言できない | サンプルの宣言と台帳(`odr_meta.numbering_event`) |
+| プラグイン | SQLiteの提供元と、方言の宣言の場所がない | サンプルの宣言とPython標準の`sqlite3` |
+
+## 限界
+
+- 登録のアダプターは手書き(custom go)です。認可はなく、設計質問の回答者の身元も認証していません。
+- 属性の追加と一意制約の宣言は複製への直接編集で、共通受理を通していません。共通受理を通ったのは候補キーだけです。
+- 登録の確定と再読込は、同じプロセスの別の接続(プール)です。別のサーバではありません。
+- DBは検証器が起動した使い捨てのPostgreSQL一つで、実環境ではありません。外部番号の採番元は、同じプロセスのHTTPの模擬です。
+- スキーマの比較は、保存写像が使うスキーマ(`public`)に限ります。サンプルの管理表(`odr_meta`)は比較の外です。
+- 時間に依存する判定はありません。旧版の書き手の進み具合は行数で待ち、ロック待ちの時間は単調時計で測ります。
