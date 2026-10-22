@@ -63,6 +63,12 @@ memory limitは`GOMEMLIMIT`としてselectionのサブプロセスへ渡しま�
 
 `processModel`は、oneshotならcaseごとのprocess実行、long-runningなら1 processへ全requestを送り全responseを比較します。long-running probeはGo・Python・JavaScript候補を対象とし、processが途中で終了した場合、終了codeが0以外の場合、responseの欠落・過剰・期待値との不一致、末尾を含むJSONの破損がある場合は`passed=false`にします。全responseをEOFまで読み、末尾の空白だけは許容します。batchは未対応として返します。
 
+常駐probeはdirectory名ではなく、選抜receiptの候補IDに一致するmanifestを探します。候補IDの重複、languageやsource digestの変更、実際のsource bytesと選抜digestの不一致は、processを起動する前に拒否します。照合した単一sourceのbytesを専用の一時directoryへコピーし、そのコピーをbuildまたは実行します。候補directoryの隣接ファイルは取り込みません。
+
+Goは選抜と同じ `go build -trimpath -buildvcs=false -o ... main.go` でbuildし、binary digestも選抜receiptと一致した場合だけ実行します。同じsourceでもtoolchainやbuild環境の違いでbinaryが変われば拒否します。`processModel`には `candidateId`、`sourceDigest`、`binaryDigest`、`binding=source-and-binary-digest`を記録します。Python/JavaScriptは `binding=source-digest`を記録し、interpreterや依存ライブラリの同一性までは保証しません。
+
+対象は単一の通常ファイルです。Goは `main.go`、Pythonは `.py`、JavaScriptは `.js`を対象とし、sourceのdirectory参照・symlink・複数ファイル構成は対応しません。これは参照probeの実行対象を選抜証拠と結び付ける確認であり、署名済み来歴や実Targetへの配備受理ではありません。ローカル配備のGo buildも同じ単一 `main.go` のbuild方法を共有しますが、配備へ選抜receiptとの照合を追加したものではありません。
+
 ## Python/JavaScriptの常駐候補
 
 `python-long-running-template`と`javascript-long-running-template`は、既存の単発候補と同じ計算・拒否をnewline-delimited JSONで繰り返す候補です。既存の単発テンプレートのsourceとtemplate digestは変えていません。
