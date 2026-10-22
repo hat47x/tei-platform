@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 
 	generatorartifactstore "tei/tools/reference-generator-artifact-store"
 )
@@ -14,7 +15,7 @@ import (
 // source digest and retrieves it again. It does not sign or grant authority.
 func main() {
 	if len(os.Args) < 2 {
-		fmt.Fprintln(os.Stderr, "usage: tei-generator-artifact-store <put|get> [options]")
+		fmt.Fprintln(os.Stderr, "usage: tei-generator-artifact-store <put|get|list|prune> [options]")
 		os.Exit(2)
 	}
 	command := os.Args[1]
@@ -24,6 +25,8 @@ func main() {
 	candidatesDir := fs.String("candidates", "", "directory containing candidate directories")
 	storeDir := fs.String("store", "", "artifact store root")
 	sourceDigest := fs.String("source-digest", "", "content-addressed source digest")
+	keep := fs.String("keep", "", "comma-separated source digests to keep for prune")
+	dryRun := fs.Bool("dry-run", false, "report prune candidates without deleting")
 	_ = fs.Parse(os.Args[2:])
 	switch command {
 	case "put":
@@ -53,10 +56,46 @@ func main() {
 		if !receipt.Passed {
 			os.Exit(1)
 		}
+	case "list":
+		if *storeDir == "" {
+			fail(fmt.Errorf("-store is required"))
+		}
+		receipt, err := generatorartifactstore.List(*storeDir)
+		if err != nil {
+			fail(err)
+		}
+		emit(receipt)
+		if !receipt.Passed {
+			os.Exit(1)
+		}
+	case "prune":
+		if *storeDir == "" || *keep == "" {
+			fail(fmt.Errorf("-store and -keep are required"))
+		}
+		receipt, err := generatorartifactstore.Prune(generatorartifactstore.PruneOptions{
+			StoreDir: *storeDir, Keep: splitCSV(*keep), DryRun: *dryRun,
+		})
+		if err != nil {
+			fail(err)
+		}
+		emit(receipt)
+		if !receipt.Passed {
+			os.Exit(1)
+		}
 	default:
 		fmt.Fprintf(os.Stderr, "unknown command %q\n", command)
 		os.Exit(2)
 	}
+}
+
+func splitCSV(value string) []string {
+	var values []string
+	for _, part := range strings.Split(value, ",") {
+		if trimmed := strings.TrimSpace(part); trimmed != "" {
+			values = append(values, trimmed)
+		}
+	}
+	return values
 }
 
 func emit(value any) {
