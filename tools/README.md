@@ -17,7 +17,7 @@
 | [`repositoryqualification/`](repositoryqualification/) | リポジトリ検証条件の共通処理 |
 | [`reference-cli-trace-benchmark/`](reference-cli-trace-benchmark/) | 合成Workspaceによるtraceの処理段別の時間・メモリ計測と出力不変の確認 |
 | [`reference-change-packet/`](reference-change-packet/) | 変更範囲・危険度・検証・停止条件をJSONで宣言し、範囲確認と検証実行・証拠記録を行う参照（#2017） |
-| [`reference-generator-selection/`](reference-generator-selection/) | 受理済み契約に対する生成器候補を固定fixtureで比較し、source/binary digest、実行言語・runtime、Goの反復build一致、case実行のexit/stderr digestと結果をreceiptへ残す参照。Go・Python・JavaScript・Java、long-running候補、registryの版・置換・失効も確認する（#2016 / #2077） |
+| [`reference-generator-selection/`](reference-generator-selection/) | 受理済み契約に対する生成器候補を固定fixtureで比較し、source/binary digest、実行言語・runtime、Goのsource path非依存な反復build一致、case実行のexit/stderr digestと結果をreceiptへ残す参照。Go・Python・JavaScript・Java、long-running候補、registryの版・置換・失効も確認する（#2016 / #2077） |
 | [`reference-generator-attestation/`](reference-generator-attestation/) | 選抜receiptから候補のcanonical statementを作り、ssh-keygenの署名で改変を検出する参照。署名者のAuthority・trust rootは検証しない（#2016） |
 | [`reference-generator-artifact-store/`](reference-generator-artifact-store/) | 選抜receiptのGo候補source/binaryをsource digestでcontent-addressedに保存・取得し、再計算digestで改変を拒否する参照（#2016） |
 | [`reference-generator-context/`](reference-generator-context/) | 受理済み契約・fixture・Workspace revisionから、生成モデル向けの上限付き文脈を作る参照（#2016 / #2021） |
@@ -68,7 +68,7 @@
 | [`reference-procedure-expansion/`](reference-procedure-expansion/) | 受理済み手順を非画面・画面・外部・AIの実現先へ展開し、実行可能範囲を分ける参照 |
 | [`reference-procedure-formalization/`](reference-procedure-formalization/) | 業務手順の文章から、形式化を妨げる不足と矛盾を根拠付きの質問として示す読取り専用の参照 |
 | [`reference-purpose-preflight/`](reference-purpose-preflight/) | 開発目的に対する業務規則の未確定・実行時値待ちを合成データで区別 |
-| [`reference-query-input-nullability/`](reference-query-input-nullability/) | Query入力のmissingと明示nullを区別し、NULL可否を契約で明示してSQL実行前に拒否する参照（#2056） |
+| [`reference-query-input-nullability/`](reference-query-input-nullability/) | Query入力のmissingと明示nullを区別し、NULL可否を契約で明示してSQL実行前に拒否する参照。一時PostgreSQLで許可NULL・省略・空文字・拒否を観測する（#2056） |
 | [`reference-quantity-arith/`](reference-quantity-arith/) | 数量・単価・金額の単位・通貨・丸めの意味注釈を合成入力で検査する読取り専用の参照（#1705） |
 | [`reference-read-consistency/`](reference-read-consistency/) | 一回の導出評価の入力読取り整合・Snapshot保証・競合時の失敗境界を合成入力で判定する読取り専用の参照（#1708） |
 | [`reference-realization-compliance/`](reference-realization-compliance/) | 規則が宣言する業務意味と実現の型・NULL方針・丸め・等価性の適合を合成fixtureで検査する読取り専用の参照（#1694） |

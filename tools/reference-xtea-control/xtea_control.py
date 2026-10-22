@@ -262,6 +262,10 @@ def run_scenario(client: ControlClient, scenario_path: str | Path) -> None:
                 value["columns"].index(column)]
             if actual != step.get("equals"):
                 raise AssertionError(f"table[{row}][{column}] expected {step.get('equals')!r}, got {actual!r}")
+        elif operation == "table_row_count":
+            value = client.table_read(step["selector"], int(step.get("maxRows", 50)))
+            if value["rowCount"] != int(step["equals"]):
+                raise AssertionError(f"table row count expected {step['equals']}, got {value['rowCount']}")
         elif operation == "key":
             client.key(step.get("selector"), step.get("key"), step.get("text"), step.get("modifiers"))
         elif operation == "close":
@@ -288,6 +292,11 @@ def run_scenario(client: ControlClient, scenario_path: str | Path) -> None:
                 raise AssertionError(f"expected {step['equals']!r}, got {actual!r}")
             if step.get("contains") is not None and step["contains"] not in (actual or ""):
                 raise AssertionError(f"expected to contain {step['contains']!r}, got {actual!r}")
+        elif operation == "file_contains":
+            path = Path(step["path"])
+            data = path.read_text(encoding=step.get("encoding", "utf-8"))
+            if step["contains"] not in data:
+                raise AssertionError(f"{path} does not contain {step['contains']!r}")
         elif operation == "snapshot":
             value = client.snapshot(**{k: v for k, v in step.items() if k != "op"})
             if step.get("path"):

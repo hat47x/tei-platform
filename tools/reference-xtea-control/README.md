@@ -17,7 +17,7 @@ TEIの参照モデル再現を確認するとき、X-TEAのGUIだけが入力経
 | `agent/` | X-TEAのJVMに`-javaagent`で読み込む、依存ライブラリ不要のHTTP/JSON制御面。SwingのEDT上でコンポーネントを列挙・操作する |
 | `xtea_control.py` | エンドポイントファイルを読み、シナリオJSONを実行するPythonクライアント（標準ライブラリのみ） |
 | `xtea_server.py` | XeadServerの`DBMethod` / `Service`の全コマンド分岐を呼ぶHTTPクライアント。XeadServer自体はGUIでないため、新しいJVMエージェントを必要としない |
-| `server-harness/` | 元の`DBMethod`を埋め込みJettyと使い捨てH2で動かす最小ハーネス |
+| `server-harness/` | 元の`DBMethod` / `Service`を埋め込みJettyで動かす最小ハーネス |
 | `clone-xtea.*` | 四つの公開リポジトリを取得し、`upstream.json`の版と照合する |
 | `launch-xtea.*` | X-TEAの既存JARを、制御エージェント付きで起動する |
 | `scenarios/` | 読み取り専用のModeler / Editor確認と、全入力種別を通す合成GUI試験 |
@@ -65,7 +65,14 @@ X-TEAのソースやJARはこのディレクトリへ同梱しません。`clone
 | `POST /DBMethod` `IP` | `ip` |
 | `POST /Service` 任意の`FUNCTION`とパラメータ | `service` |
 
-XeadServerはデプロイ済みのサーブレットコンテナを対象にできます。ローカル確認用に、元の`DBMethod`を埋め込みJettyで起動し、使い捨てH2へ接続する`server-harness/`も同梱します。`Service`はJDK 11で削除された内部XML APIに依存するため、ハーネスでは配備せず契約試験だけを行います。
+XeadServerはデプロイ済みのサーブレットコンテナを対象にできます。ローカル確認用に、元の`DBMethod`と`Service`を埋め込みJettyで起動する`server-harness/`も同梱します。`DBMethod`は使い捨てH2へ、`Service`はSkeletonの複製へ接続します。
+
+Serviceのハーネスは、ビルド時にだけ次の2つの互換差分を適用します。上流ファイルは変更しません。
+
+- JDK 11で削除された内部XML APIのimportを、X-TEA同梱のXercesへ置換する。
+- 上流`7947b52`で認証前に未設定の`userID`を検査している箇所を、引数`user`の検査へ置換する。
+
+2つ目は認証条件の挙動変更です。Serviceの成功は、この差分を明示的に適用した状態でのFunction実行経路の確認であり、上流の認証が正しいことの証明ではありません。詳細は[`server-harness/README.md`](server-harness/README.md)を参照してください。
 
 ## 使い方
 
@@ -97,6 +104,20 @@ Modeler:
   -Model C:\path\to\X-TEA\Modeler\MfgOrder.xead
 ```
 
+Modelerの保存を確認する場合は、参照モデルの複製を使います。
+
+```powershell
+.\modeler-fixture.ps1 `
+  -ModelHome C:\path\to\X-TEA\Modeler `
+  -Target build\modeler-fixture
+.\launch-xtea.cmd -App modeler -Home C:\path\to\X-TEA\Modeler `
+  -Model build\modeler-fixture\MfgOrder.xead
+python xtea_control.py --endpoint build\modeler-endpoint.json `
+  scenario scenarios\modeler-save-copy.json
+```
+
+このシナリオは複製したモデルのシステム名を変更して保存します。原本や共有モデルには実行しないでください。
+
 Editor:
 
 ```powershell
@@ -104,6 +125,20 @@ Editor:
   -Home C:\path\to\X-TEA\Driver `
   -Model C:\path\to\X-TEA\Modeler\MfgOrder.xead
 ```
+
+Editorの保存を確認する場合も、参照モデルの複製を使います。
+
+```powershell
+.\modeler-fixture.ps1 `
+  -ModelHome C:\path\to\X-TEA\Modeler `
+  -Target build\editor-fixture
+.\launch-xtea.cmd -App editor -Home C:\path\to\X-TEA\Driver `
+  -Model build\editor-fixture\MfgOrder.xead
+python xtea_control.py --endpoint build\editor-endpoint.json `
+  scenario scenarios\editor-save-copy.json
+```
+
+このシナリオは複製したモデルのシステム名を変更して保存します。原本や共有モデルには実行しないでください。
 
 Driver:
 
@@ -116,7 +151,7 @@ Driver:
 
 起動すると`build/<app>-endpoint.json`に`url`と`token`が書かれます。`-Foreground`を付けるとコンソールで起動します。
 
-Driverの更新シナリオは、必ずSkeletonの複製を使います。
+Driverの更新・削除シナリオは、必ずSkeletonの複製を使います。
 
 ```powershell
 .\driver-fixture.ps1 `
@@ -126,9 +161,11 @@ Driverの更新シナリオは、必ずSkeletonの複製を使います。
   -Model build\driver-fixture\Skeleton.xeaf
 python xtea_control.py --endpoint build\driver-endpoint.json `
   scenario scenarios\driver-update-department.json
+python xtea_control.py --endpoint build\driver-endpoint.json `
+  scenario scenarios\driver-create-delete-department.json
 ```
 
-このシナリオは部門名を1件更新します。実業務DBや共有DBには実行しないでください。
+更新シナリオは部門名を1件変更します。作成・削除シナリオは既存部門の複写で`00003`を作り、削除確認を経て消します。どちらも実業務DBや共有DBには実行しないでください。
 
 ### 4. 操作
 
@@ -149,7 +186,7 @@ python xtea_control.py --endpoint build\modeler-endpoint.json `
   scenario scenarios\modeler-read-only-about.json
 ```
 
-シナリオの`steps`は`wait_window`、`invoke`、`set`、`select`、`table_set`、`table_edit`、`table_assert`、`key`、`close`、`wait_selector`、`wait_text`、`assert_text`、`snapshot`、`screenshot`、`sleep`を扱います。AIは座標ではなく、`{"role":"button","text":"OK"}`のような意味的な選択子を生成すれば足ります。
+シナリオの`steps`は`wait_window`、`invoke`、`set`、`select`、`table_set`、`table_edit`、`table_assert`、`table_row_count`、`key`、`close`、`wait_selector`、`wait_text`、`assert_text`、`snapshot`、`screenshot`、`file_contains`、`sleep`を扱います。AIは座標ではなく、`{"role":"button","text":"OK"}`のような意味的な選択子を生成すれば足ります。
 
 XF110の選択画面と更新画面は同じタイトルになるため、`{"windowClass":"xeadDriver.XF110_SubList$","role":"table"}`のようにウィンドウのクラスでも絞れます。CLIでは`--window-class`を使います。`find`、`wait_text`、`assert_text`も`window`・`windowClass`・`index`を考慮します。
 
@@ -183,16 +220,19 @@ XEAFまたはZIPを読み、Functionタイプ・標準ボタン操作の件数�
 
 ```powershell
 python xtea_server.py --base-url http://127.0.0.1:8080/xteaServer status
+python xtea_server.py --base-url http://127.0.0.1:8080/xteaServer service-status
 python xtea_server.py --base-url http://127.0.0.1:8080/xteaServer `
   service --function AF200J --param REQUEST_TYPE=ListSections
 ```
 
-元の`DBMethod`をローカルで動かす場合:
+元の`DBMethod`と`Service`をローカルで動かす場合:
 
 ```powershell
 $env:XTEA_SERVER_SOURCE = "C:\path\to\XeadServer"
 $env:XTEA_RUNTIME_HOME = "C:\path\to\X-TEA\Driver"
+$env:XTEA_SKELETON_HOME = "C:\path\to\X-TEA\Driver\Skeleton"
 python tests\test_live_server.py
+python tests\test_live_service.py
 ```
 
 詳細は[`server-harness/README.md`](server-harness/README.md)を参照してください。
@@ -222,16 +262,22 @@ LinuxのJDK 11.0.32.1、配布`XTeaDriverInstaller230127`のランタイム、�
 
 - `python tests/test_integration.py`: 8件成功。メニュー、テキスト、ボタン、Enter、タブ、チェックボックス、コンボ、通常テーブル、X-TEA型のカスタム行オブジェクトを持つテーブル、モーダルダイアログ、スクリーンショット、トレース、未知selector、トークン拒否を合成Swingアプリで確認。
 - `python tests/test_server_client.py`: 4件成功。`DBMethod`のSELECT/COUNT/INSERT/UPDATE/DELETE/COMMIT/ROLLBACK/CALL/IPと`Service`をローカル模擬サーブレットで確認。
-- `python tests/test_live_server.py`: 2件成功。元の`DBMethod`を埋め込みJettyで起動し、使い捨てH2の合成テーブルに対してSELECT/COUNT/INSERT/UPDATE/DELETE/COMMIT/ROLLBACK/IPをHTTPで確認。応答のJava直列化も受信。
+- `python tests/test_live_server.py`: 3件成功。元の`DBMethod`を埋め込みJettyで起動し、使い捨てH2の合成テーブルに対してSELECT/COUNT/INSERT/UPDATE/DELETE/COMMIT/ROLLBACK/CALL/IPをHTTPで確認。応答のJava直列化も受信。`CALL SQUARE(9)`は「procedure was executed」を返すことを確認。
+- `python tests/test_live_service.py`: 2件成功。Skeletonの一時複製と、ビルド時に明示した互換差分を使い、元の`Service`の`GET /Service`がセッション状態を返すこと、`FUNCTION=AF200J`、`REQUEST_TYPE=ListSections`で2件の部門データがJSONで返ることを確認。
 - 実X-TEA Modeler（配布`xteamdl.jar`、About表示`V1.R4.M50`）で`MfgOrder.xead`を開き、メニュー8件・操作44件を列挙し、Aboutダイアログの開閉、スナップショット、スクリーンショットを確認。
+- 実Modelerの保存経路として、`MfgOrder.xead`の複製でシステム名を変更し、`保存`メニュー、バックアップ確認の`はい`を実行。保存後のXMLに新しいシステム名が入り、`backup/`に更新前ファイルが作られることを確認。`scenarios/modeler-save-copy.json`と`modeler-fixture.ps1`で再現できます。
+- 実Editorの保存経路として、`MfgOrder.xead`の複製でシステム名を変更し、`保存`メニュー、バックアップ確認の`はい`を実行。保存後のXMLに新しいシステム名が入り、`backup/`に更新前ファイルが作られることを確認。`scenarios/editor-save-copy.json`で再現できます。
 - 実X-TEA Editor（配布`xteaedt.jar`）で`MfgOrder.xead`を開き、メニュー8件・操作40件を列挙し、スナップショットとスクリーンショットを確認。
 - 実X-TEA Driver（配布`xteadrv.jar`）で、引数なしの起動時に「システム定義ファイルが指定されていません」のダイアログへ到達。`Skeleton.xeaf`の複製（DB URLだけを埋め込みDerbyへ変更）でログイン画面を開き、合成ユーザ`00000`でログイン後、`XF100`「部門情報の一覧・保守」を開き、カスタム行オブジェクトから4列・2行を読み取り、画面キャプチャを取得。選択行でEnterを押して`XF300`詳細画面を開き、そのスナップショットと画面キャプチャも取得。`F3 閉じる`で両画面を閉じる操作を確認。
 - 実Driverの更新経路として、`XF300`から`F8 部門情報`、`F5 編集`、部門名の変更、`F5 更新`を実行し、一覧を開き直して新しい値を確認。更新後のDerby DBを独立に問い合わせ、`AT010.CDBUMON=00001`の`TXBUMON`が変更されたことも確認。`scenarios/driver-update-department.json`と`driver-fixture.ps1`で再現できます。更新は使い捨てDBだけで行っています。
+- 実Driverの作成・削除経路として、`XF300`から`F8 部門情報`、`F7 複写`で`00003`を作成し、一覧を開き直して3行になることを確認。続いて`F9 削除`、確認ダイアログの`はい`で削除し、一覧が2行に戻ることを確認。削除後のDerby DBを独立に問い合わせ、`00003`が存在しないことも確認。`scenarios/driver-create-delete-department.json`で再現できます。
 
 ### 検証していないこと
 
 - 各参照モデル本体を用いた全Function・全分岐の実動作、元の`jdbc:derby://localhost/...`接続。追加の更新試験は合成モデル・使い捨てH2の範囲です。
-- XeadServerのWAR配備、Tomcat、JNDI DataSource、`Service`サーブレットの実動作。`DBMethod`は埋め込みJettyとH2で確認したが、実デプロイ環境ではない。
+- Modeler / Editorの保存以外の編集（要素の追加・削除・並べ替え、一括置換、表・機能の編集）。
+- XeadServerのWAR配備、Tomcat、JNDI DataSource、実デプロイ環境。`DBMethod`と`Service`は埋め込みJettyで確認したが、実デプロイ環境ではない。
+- `Service`の認証条件の正しさ、実ユーザー、認可。ハーネスでは認証前の`userID`検査を引数`user`へ置き換えている。
 - 四つのアプリの全ダイアログ・全条件分岐の実行。経路表は入力種別とトップレベル入口の到達性を示すもので、全業務ケースの実行結果ではない。
 - X-TEAのソースと配布JARの同一性、#940の固定baselineとの対応、TEI側の意味一致。
 - Java 8実機。コンパイルターゲットは8だが、実行確認はJDK 11。
@@ -241,14 +287,15 @@ LinuxのJDK 11.0.32.1、配布`XTeaDriverInstaller230127`のランタイム、�
 ```text
 reference-xtea-control/
   agent/src/xteaControl/   Java agent（Agent, BridgeServer, Ui, Json, Trace）
-  server-harness/          元DBMethodの埋め込みJetty/H2ハーネス
-  tests/                   合成GUI E2E、実Driver、XeadServer契約・実DBMethod試験
-  scenarios/               読み取り専用シナリオと、使い捨てDB向けDriver更新シナリオ
+  server-harness/          元DBMethod/Serviceの埋め込みJettyハーネス
+  tests/                   合成GUI E2E、実Driver、XeadServer契約・実DBMethod/Service試験
+  scenarios/               読み取り専用シナリオと、使い捨てDB向けDriver更新・作成削除シナリオ
   xtea_control.py          Swing制御クライアント
   inventory_xtea.py        参照モデルの機能タイプ・UI呼出し候補の静的調査
   xtea_server.py           XeadServer HTTPクライアント
   build.ps1 / build.sh
   driver-fixture.ps1       使い捨てSkeleton DBの作成
+  modeler-fixture.ps1      使い捨てモデル複製の作成
   launch-xtea.ps1
   clone-xtea.ps1 / clone-xtea.sh
   upstream.json            取得時点の上流HEAD

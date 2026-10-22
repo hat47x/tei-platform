@@ -54,6 +54,12 @@ public final class XteaServerHarness {
         db.setInitParameter("DataSource", "SalesDs");
         db.setInitParameter("SubDB", "");
         context.addServlet(db, "/DBMethod");
+
+        ServletHolder service = new ServletHolder(new xeadServer.Service());
+        service.setInitParameter("SystemDefinition", xeaf);
+        service.setInitParameter("User", "00000");
+        service.setInitParameter("Password", "0000000000");
+        context.addServlet(service, "/Service");
         server.setHandler(context);
 
         server.start();

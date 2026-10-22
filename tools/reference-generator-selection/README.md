@@ -157,7 +157,7 @@ go run ./tools/reference-generator-selection/cmd/tei-generator-meta \
 
 ## 生成器sourceの生成
 
-`tei-generator-build`は、契約JSONと固定strategy（`template`、`alternative`、`dangerous`、`python-template`、`javascript-template`、`java-template`、`long-running-template`）から、候補sourceを決定的に生成します。
+`tei-generator-build`は、契約JSONと固定strategy（`template`、`alternative`、`dangerous`、`python-template`、`javascript-template`、`java-template`、`long-running-template`、`python-long-running-template`、`javascript-long-running-template`）から、候補sourceを決定的に生成します。
 
 - Goのsourceは`go/format`で整形してから書き出します。Python・JavaScript・Javaのsourceは整形せず、生成したbyte列をそのまま使います。
 - `candidate.json`には`language`、`source`（`main.go`/`main.py`/`main.js`）、`generator`を記録します。
@@ -185,6 +185,8 @@ go run ./tools/reference-generator-selection/cmd/tei-generator-meta \
 
 これらの参照は、別言語の候補を同じ選抜経路へ載せられることの確認であり、Python/JavaScript/Java製品実装の採用や、実Targetでの処理系固定を意味しません。
 
+`SelectForTargetWithExecution`は、信頼済みの実行wrapperをexecutable/argvのprefixとして指定する参照APIです。選抜の全case実行へ適用し、wrapperの失敗を候補の失敗として扱います。ビルドと処理系の検出は対象外です。別runnerで候補コードを動かすlineage検証は、wrapper指定中は未対応として拒否します。prefixの存在は、隔離能力や実行権限の証明にはなりません。Target ProfileはLinux namespaceの利用可否を確認してから、このAPIへ接続します。
+
 ## long-running候補
 
 `long-running-template`は、標準入力のnewline-delimited JSONを繰り返し読み、1 requestごとに1 JSONを標準出力へ返すGo候補を生成します。単発実行では1 requestを処理して終了し、Target Profileのlong-running probeでは同じprocessへ複数requestを送ります。
@@ -192,7 +194,8 @@ go run ./tools/reference-generator-selection/cmd/tei-generator-meta \
 - 選抜のfixture実行は、これまでどおりcaseごとにprocessを起動します。
 - `tei-target-profile`のlong-running profileは、この候補を1 processで起動し、全requestのresponseをfixtureと比較します。
 - processが途中で終了した場合、response数が足りない場合、fixtureと異なる場合は失敗します。
-- long-running probeは現在Go候補だけを対象とし、Python/JavaScript/Java候補は明示的に未対応とします。
+- `python-long-running-template`と`javascript-long-running-template`は、同じ計算・拒否をPython/JavaScriptのnewline-delimited JSON処理として生成します。既存の単発テンプレートは変更せず、別のtemplate digestで識別します。
+- Target ProfileのprobeはGo・Python・JavaScript候補を対象とします。Javaのlong-running probeは未対応です。処理系がなければ不合格とし、Python/JavaScriptにはGoのメモリ上限が効かないことをreceiptへ記録します。
 
 ## Go候補のbuild evidence
 
@@ -202,13 +205,13 @@ Go候補のreceiptには`buildEvidence`を記録します。
 - `goos`、`goarch`、`cgoEnabled`、`goflags`: build時の環境
 - `sourceDigest`: buildしたsource
 - `binaryDigest`: 得られた実行ファイル
-- `reproducedDigest`: `-trimpath -buildvcs=false`でもう一度buildした実行ファイル
+- `reproducedDigest`: sourceを別directoryへcopyし、`-trimpath -buildvcs=false`でもう一度buildした実行ファイル
 - `buildInputDigest`: build command・source・toolchain・GOOS/GOARCH・CGO・GOFLAGSを結合したdigest
-- `reproducibility: same-digest-twice`
+- `reproducibility: path-independent-twice`
 
-同じ候補を`go build -trimpath -buildvcs=false`で2回buildし、`binaryDigest`と`reproducedDigest`が一致する場合だけ合格します。一致しなければ`reproducibility: mismatch`として候補を拒否します。
+同じ候補を`go build -trimpath -buildvcs=false`で2回buildします。2回目はGo sourceを別の一時directoryへcopyしてbuildし、`binaryDigest`と`reproducedDigest`が一致する場合だけ合格します。一致しなければ`reproducibility: mismatch`として候補を拒否します。
 
-これは同じ環境・同じsourceでの反復buildの一致であり、別machine・別toolchain・clean cacheでの再現性や、artifact store・署名を証明しません。`buildInputDigest`は、どのsourceとbuild環境から候補を得たかをreceipt内で結び付けるための参照値です。`binaryDigest`はGoの版・OS・build設定に依存します。
+これは同じ環境・同じtoolchainで、source pathに依存せず同じbinaryが得られることの確認です。別machine・別toolchain・clean cache・外部依存での再現性や、artifact store・署名を証明しません。`buildInputDigest`は、どのsourceとbuild環境から候補を得たかをreceipt内で結び付けるための参照値です。`binaryDigest`はGoの版・OS・build設定に依存します。
 
 ## メタ生成（深さ1）
 
@@ -264,7 +267,7 @@ reconcileは候補をビルド・実行・選抜しません。再生成した�
 - 合格した候補の`qualified`と、不合格の`rejected`
 - `grantsRuntimeAuthority: false`、`provesRealProvider: false`
 
-同じWorkspace・契約・fixture・候補sourceからは、同じ`sourceDigest`と結果が得られます。`buildEvidence`は同じ環境での反復build一致を記録しますが、別環境での再現性は未検証です。`execution`はstdout/stderrの内容そのものではなくdigestとexit stateだけを残し、時刻や実行者のidentityは含めません。
+同じWorkspace・契約・fixture・候補sourceからは、同じ`sourceDigest`と結果が得られます。`buildEvidence`は同じ環境でsource pathを変えた反復build一致を記録しますが、別環境での再現性は未検証です。`execution`はstdout/stderrの内容そのものではなくdigestとexit stateだけを残し、時刻や実行者のidentityは含めません。
 
 ## 守っている境界
 
@@ -283,7 +286,7 @@ reconcileは候補をビルド・実行・選抜しません。再生成した�
 - `promptPath`・`contextPath`を省略した候補では、digestの形式だけを確認し、内容との対応は検証しません。
 - 深さ2以上のメタ生成、失効に伴う自動再生成・自動選抜・失効の承認。
 - Python/JavaScript/Java sourceを出力するメタ生成器のlineage検証。
-- long-runningのPython/JavaScript/Java候補。
+- long-runningのJava候補。
 - Java以外のJVM言語、.NET/WASM等と、実Targetでの処理系固定・依存解決。
 - 実Provider・実Targetでの比較。
 - 候補のartifact store、別machine・別toolchain・clean cacheでのbuild再現性（#943 / #1370 / #1104）。

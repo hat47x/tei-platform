@@ -2,6 +2,10 @@ package generatorselection
 
 import (
 	"context"
+	"encoding/json"
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -31,5 +35,30 @@ func TestCaseResultsRecordExecutionEvidence(t *testing.T) {
 	}
 	if checked != 10*len(receipt.Candidates) {
 		t.Fatalf("expected %d case executions, checked %d", 10*len(receipt.Candidates), checked)
+	}
+}
+
+func TestWrappedSelectionRejectsSeparateLineageRunner(t *testing.T) {
+	workspace, contract, fixtures, _ := paths(t)
+	candidates := filepath.Join(t.TempDir(), "candidates")
+	generated, err := Generate(contract, "template", filepath.Join(candidates, "template"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifest := generated.Manifest
+	manifest.Lineage = &Lineage{Depth: 1, GeneratorSource: "must-not-execute.go"}
+	raw, err := json.Marshal(manifest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(generated.Path, "candidate.json"), raw, 0600); err != nil {
+		t.Fatal(err)
+	}
+	receipt, err := SelectForTargetWithExecution(context.Background(), workspace, contract, fixtures, candidates, "", []string{"template"}, ExecutionOptions{CommandPrefix: []string{"must-not-execute"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if receipt.Passed || len(receipt.Candidates) != 1 || len(receipt.Candidates[0].Results) != 0 || !strings.Contains(receipt.Candidates[0].RejectReason, "lineage execution is unsupported") {
+		t.Fatalf("lineage escaped wrapper boundary: %+v", receipt)
 	}
 }

@@ -38,6 +38,10 @@ type Result struct {
 	Tables []Table `json:"tables"`
 	// Unresolved lists tables the Provider refused or could not realize.
 	Unresolved []Unresolved `json:"unresolved"`
+	// Script is the whole database rendered as one diff, in an order that can be
+	// executed (every table before the foreign keys that reference it). It is
+	// empty when any table is unresolved: a partial script is never offered.
+	Script []string `json:"script"`
 	// Note states what the statements are: a fresh-create script derived from
 	// the declared mappings, not a migration for an existing database.
 	Note string `json:"note"`
@@ -48,7 +52,7 @@ type Result struct {
 func Render(world ir.World, databaseID string, provider environment.DatabaseProvider) (Result, error) {
 	out := Result{
 		Schema: Schema, Database: databaseID, Provider: string(provider),
-		Tables: []Table{}, Unresolved: []Unresolved{},
+		Tables: []Table{}, Unresolved: []Unresolved{}, Script: []string{},
 		Note: "宣言された物理対応から導いた新規作成用のDDLです。既存のデータベースへの移行文ではありません。",
 	}
 	var mappings []persistence.Mapping
@@ -80,6 +84,17 @@ func Render(world ir.World, databaseID string, provider environment.DatabaseProv
 			continue
 		}
 		out.Tables = append(out.Tables, Table{Name: t.Name, Statements: statements})
+	}
+	if len(out.Unresolved) == 0 {
+		diff, err := schemadiff.Compare(desired, physical.SchemaSnapshot{Database: core.CanonicalID(databaseID)})
+		if err != nil {
+			return out, fmt.Errorf("compare whole database: %w", err)
+		}
+		script, err := migration.Render(provider, diff)
+		if err != nil {
+			return out, fmt.Errorf("render whole database: %w", err)
+		}
+		out.Script = script
 	}
 	return out, nil
 }
