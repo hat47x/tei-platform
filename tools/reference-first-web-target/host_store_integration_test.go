@@ -29,8 +29,9 @@ import (
 // synthetic: the issuer (the test verifier accepts everything, which is NOT a
 // human Acceptance) and the effect Grant (syntheticEffectReader).
 
-// Re-exec the test binary as the Web process. It opens the Store read-only
-// (no verifier), so the child can read but never issue a Decision.
+// Re-exec the test binary as the Web process. The child only reads; its
+// verifier is the same test-only issuer policy as the parent's (accept every
+// Decision), which is NOT a human Acceptance.
 func TestCombinedWebTargetHostStoreChild(t *testing.T) {
 	dir := os.Getenv("TEI_TEST_HOSTSTORE_DIR")
 	if dir == "" {
@@ -46,7 +47,7 @@ func TestCombinedWebTargetHostStoreChild(t *testing.T) {
 	if separator < 0 {
 		os.Exit(3)
 	}
-	store, err := hoststore.Open(dir, nil)
+	store, err := hoststore.Open(dir, func(context.Context, hoststore.Decision) error { return nil })
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "store open failed")
 		os.Exit(3)

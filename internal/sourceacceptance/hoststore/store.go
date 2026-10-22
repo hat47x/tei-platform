@@ -3,10 +3,10 @@
 // and answers "which one is CURRENT" on every call by re-reading the file.
 //
 // It is a storage and state-transition component only. It never decides that a
-// Source is accepted: Ingest requires a DecisionVerifier injected by the Host,
-// and there is no default verifier. Who may issue a Decision, the signature
-// scheme and the revocation policy are Host decisions this package does not
-// make. A Store that holds a Decision is NOT evidence of human Acceptance.
+// Source is accepted: Ingest and every read require a DecisionVerifier
+// injected by the Host, and there is no default verifier. signature.go offers
+// a provisional Ed25519 issuer policy (TrustPolicy.Verifier). A Store that
+// holds a Decision is NOT evidence of human Acceptance.
 //
 // The Store is a single-writer design. Writers in one process are serialized
 // by a mutex; writes replace the file atomically, so a concurrent reader (for
@@ -72,9 +72,12 @@ type Store struct {
 	mu       sync.Mutex
 }
 
-// Open returns a Store rooted at dir. A nil verifier yields a read-only Store:
-// ReadCurrentAcceptedSource works, but Ingest returns ErrVerifierRequired.
-// Revoke does not need a verifier because it only narrows authority.
+// Open returns a Store rooted at dir. The verifier is applied on Ingest AND on
+// every ReadCurrentAcceptedSource, so a Decision written into the directory by
+// anything other than Ingest (or edited afterwards) is not current. A nil
+// verifier yields a Store that can neither ingest nor report a current
+// Decision: no verifier, no authority. Revoke does not need a verifier because
+// it only narrows authority.
 func Open(dir string, verifier DecisionVerifier) (*Store, error) {
 	if strings.TrimSpace(dir) == "" {
 		return nil, errors.New("HOST_STORE_DIR_REQUIRED")
@@ -97,20 +100,28 @@ type file struct {
 }
 
 // ReadCurrentAcceptedSource implements sourceacceptance.Reader. The file is
-// re-read on every call; nothing is cached, so revocation takes effect on the
-// next verification.
+// re-read and the current Decision re-verified on every call; nothing is
+// cached, so revocation and a change of trust take effect on the next
+// verification.
 func (s *Store) ReadCurrentAcceptedSource(ctx context.Context, applicationID string) (sourceacceptance.Record, error) {
 	if err := ctx.Err(); err != nil {
 		return sourceacceptance.Record{}, err
+	}
+	if s.verifier == nil {
+		return sourceacceptance.Record{}, ErrVerifierRequired
 	}
 	state, err := s.load(applicationID)
 	if err != nil {
 		return sourceacceptance.Record{}, ErrNoCurrentAcceptance
 	}
 	for _, e := range state.Entries {
-		if e.State == StateCurrent {
-			return cloneRecord(e.Decision.Record), nil
+		if e.State != StateCurrent {
+			continue
 		}
+		if checkRecord(e.Decision.Record) != nil || s.verifier(ctx, e.Decision) != nil {
+			return sourceacceptance.Record{}, ErrNoCurrentAcceptance
+		}
+		return cloneRecord(e.Decision.Record), nil
 	}
 	return sourceacceptance.Record{}, ErrNoCurrentAcceptance
 }

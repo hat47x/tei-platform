@@ -16,9 +16,11 @@ import (
 )
 
 func main() {
-	// The Reference CLI has no authoritative Host acceptance service yet.
-	// A Host integration must inject its Reader here; labels and Decision JSON
-	// are not a substitute. Unaccepted fixtures require explicit diagnostics.
+	// The shipped CLI injects no Reader. A Source Reader is selected only by
+	// -host-acceptance-store with -host-acceptance-trust (signed Decisions,
+	// provisional policy); labels and Decision JSON are not a substitute. No
+	// effect Grant Reader can be selected here, so accepted Commands are still
+	// refused before dispatch. Unaccepted fixtures require explicit diagnostics.
 	if err := runCombinedWebTarget(context.Background(), nil, os.Args[1:]); err != nil {
 		if err == flag.ErrHelp {
 			return
@@ -51,6 +53,8 @@ func runCombinedWebTargetWithEffectGrant(ctx context.Context, reader sourceaccep
 		listen        = flags.String("listen", "127.0.0.1:8080", "HTTP listen address")
 		scopedRoutes  = flags.Bool("scoped-routes", false, "diagnostic: expose only the selected Application's HTTP routes")
 		diagnostic    = flags.Bool("diagnostic-unaccepted-source", false, "test-only: load unaccepted Reference Source without a Host witness")
+		storeDir      = flags.String("host-acceptance-store", "", "existing Host Acceptance Store directory (requires -host-acceptance-trust)")
+		trustPath     = flags.String("host-acceptance-trust", "", "Host trust file listing issuer public keys (requires -host-acceptance-store)")
 	)
 	if err := flags.Parse(args); err != nil {
 		return err
@@ -65,6 +69,22 @@ func runCombinedWebTargetWithEffectGrant(ctx context.Context, reader sourceaccep
 	appID, err := core.ParseCanonicalID(*applicationID)
 	if err != nil {
 		return err
+	}
+	if (*storeDir == "") != (*trustPath == "") {
+		return fmt.Errorf("HOST_ACCEPTANCE_STORE_FLAGS: -host-acceptance-store and -host-acceptance-trust are required together")
+	}
+	if *storeDir != "" {
+		if reader != nil {
+			return fmt.Errorf("HOST_ACCEPTANCE_STORE_CONFLICT: the embedding Host already supplied a Source Reader")
+		}
+		if *diagnostic {
+			return fmt.Errorf("SOURCE_ACCEPTANCE_DIAGNOSTIC_CONFLICT: Host Readers cannot be bypassed")
+		}
+		store, err := openHostAcceptanceStore(*storeDir, *trustPath)
+		if err != nil {
+			return err
+		}
+		reader = store
 	}
 	var loaded workspace.Result
 	var acceptedWorkspace sourceacceptance.VerifiedWorkspace
