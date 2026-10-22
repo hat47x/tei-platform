@@ -6,7 +6,7 @@ X-TEAのSwingアプリ（Modeler / Editor / Driver）と、HTTPサーバ（XeadS
 
 TEIの参照モデル再現を確認するとき、X-TEAのGUIだけが入力経路だと、操作手順・画面位置・ダイアログの開閉順が暗黙になり、比較の再現性が下がります。このツールは、画面を画像認識や座標クリックで操作する代わりに、**実行中のSwingコンポーネントを安定した役割・名前・パスで列挙し、同じ制御面から入力する**ための最小の経路を追加します。
 
-対象は比較試験の入力経路であり、TEIのCanonical意味、X-TEAとの互換性、移植の受理、旧Runtimeの動作同等性を決めるものではありません。
+対象は比較試験の入力経路であり、TEIのCanonical意味、X-TEAとの互換性、移植の受理、旧Runtimeの動作同等性を決めるものではありません。現在地と残作業の分類は[STATUS.md](STATUS.md)にまとめています。
 
 ## 構成
 
@@ -159,9 +159,11 @@ python xtea_control.py --endpoint build\driver-endpoint.json `
   scenario scenarios\driver-update-department.json
 python xtea_control.py --endpoint build\driver-endpoint.json `
   scenario scenarios\driver-create-delete-department.json
+python xtea_control.py --endpoint build\driver-endpoint.json `
+  scenario scenarios\driver-delete-rejected-rollback.json
 ```
 
-更新シナリオは部門名を1件変更します。作成・削除シナリオは既存部門の複写で`00003`を作り、削除確認を経て消します。どちらも実業務DBや共有DBには実行しないでください。
+更新シナリオは部門名を1件変更します。作成・削除シナリオは既存部門の複写で`00003`を作り、削除確認を経て消します。失敗rollbackシナリオは参照済み部門の削除を拒否させ、行数が変わらないことを確認します。いずれも実業務DBや共有DBには実行しないでください。
 
 ### 4. 操作
 
@@ -214,6 +216,14 @@ python tests\test_tomcat_war.py
 - 画面には業務データが表示され得ます。`snapshot`や`screenshot`の成果物を公開リポジトリへ置く場合は、参照モデルの公開条件（[#941](https://github.com/hat47x/tei-platform/issues/941)）に従ってください。
 - この制御面はテスト専用です。認可、監査、利用者分離、本番運用の境界を提供しません。
 
+## 一括検証
+
+```powershell
+.\verify-all.ps1
+```
+
+`build.ps1`、Swing E2E、サーバ契約試験を実行し、`XTEA_SERVER_SOURCE`、`XTEA_RUNTIME_HOME`、`XTEA_SKELETON_HOME`が設定されていれば実DBMethod、実Service、Tomcat WARも実行します。環境変数がない実動試験はSKIPとして表示し、失敗とは区別します。`-SkipLive`で実動試験を省略できます。
+
 ## 検証したこと
 
 2026-10-21、JDK 11.0.20.1（`--release 8`でコンパイル）で確認しました。
@@ -230,10 +240,11 @@ python tests\test_tomcat_war.py
 - 実X-TEA Driver（配布`xteadrv.jar`）で、引数なしの起動時に「システム定義ファイルが指定されていません」のダイアログへ到達。`Skeleton.xeaf`の複製（DB URLだけを埋め込みDerbyへ変更）でログイン画面を開き、合成ユーザ`00000`でログイン後、`XF100`「部門情報の一覧・保守」を開き、カスタム行オブジェクトから4列・2行を読み取り、画面キャプチャを取得。選択行でEnterを押して`XF300`詳細画面を開き、そのスナップショットと画面キャプチャも取得。`F3 閉じる`で両画面を閉じる操作を確認。
 - 実Driverの更新経路として、`XF300`から`F8 部門情報`、`F5 編集`、部門名の変更、`F5 更新`を実行し、一覧を開き直して新しい値を確認。更新後のDerby DBを独立に問い合わせ、`AT010.CDBUMON=00001`の`TXBUMON`が変更されたことも確認。`scenarios/driver-update-department.json`と`driver-fixture.ps1`で再現できます。更新は使い捨てDBだけで行っています。
 - 実Driverの作成・削除経路として、`XF300`から`F8 部門情報`、`F7 複写`で`00003`を作成し、一覧を開き直して3行になることを確認。続いて`F9 削除`、確認ダイアログの`はい`で削除し、一覧が2行に戻ることを確認。削除後のDerby DBを独立に問い合わせ、`00003`が存在しないことも確認。`scenarios/driver-create-delete-department.json`で再現できます。
+- 実Driverの失敗rollback経路として、参照されている`00001`の`F9 削除`を実行。`削除できません`のエラーで詳細画面が維持され、一覧が2行のまま変わらないことを確認。`scenarios/driver-delete-rejected-rollback.json`で再現できます。これはXF200内部の失敗時rollbackであり、利用者が明示的に実行するrollback操作ではありません。
 
 ### 検証していないこと
 
-- Driverのロールバック、上記以外のFunction画面、元の`jdbc:derby://localhost/...`接続。
+- Driverの明示的なトランザクションrollback操作（失敗時の内部rollbackは確認済み）、上記以外のFunction画面、元の`jdbc:derby://localhost/...`接続。
 - Modeler / Editorの保存以外の編集（要素の追加・削除・並べ替え、一括置換、表・機能の編集）。
 - XeadServerの外部Tomcat、JNDI DataSource、実デプロイ環境。WARディレクトリの埋め込みTomcat配備までは確認したが、外部コンテナや本番設定ではない。
 - `Service`の認証条件の正しさ、実ユーザー、認可。ハーネスでは認証前の`userID`検査を引数`user`へ置き換えている。
@@ -245,6 +256,7 @@ python tests\test_tomcat_war.py
 
 ```text
 reference-xtea-control/
+  STATUS.md                現在地、残作業の分類、引継ぎの入口
   agent/src/xteaControl/   Java agent（Agent, BridgeServer, Ui, Json, Trace）
   server-harness/          元DBMethod/Serviceの埋め込みJettyハーネス
   tests/                   合成GUI E2E、XeadServer契約・実DBMethod/Service試験
@@ -252,6 +264,7 @@ reference-xtea-control/
   xtea_control.py          Swing制御クライアント
   xtea_server.py           XeadServer HTTPクライアント
   build.ps1 / build.sh
+  verify-all.ps1           合成・契約・実動試験の一括実行
   driver-fixture.ps1       使い捨てSkeleton DBの作成
   modeler-fixture.ps1      使い捨てモデル複製の作成
   launch-xtea.ps1
