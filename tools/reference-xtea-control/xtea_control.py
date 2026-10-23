@@ -116,6 +116,9 @@ class ControlClient:
         return self.request("POST", "/table/set",
                             {"selector": selector, "row": row, "column": column, "value": value})
 
+    def table_info(self, selector: Dict[str, Any]) -> Dict[str, Any]:
+        return self.request("POST", "/table/info", {"selector": selector})
+
     def table_read(self, selector: Dict[str, Any], max_rows: int = 50) -> Dict[str, Any]:
         return self.request("POST", "/table/read",
                             {"selector": selector, "maxRows": max_rows})
@@ -348,6 +351,9 @@ def build_parser() -> argparse.ArgumentParser:
     select.add_argument("--item-index", type=int)
     select.add_argument("--title")
 
+    table_info = sub.add_parser("table-info")
+    _add_selector_arguments(table_info)
+
     table_read = sub.add_parser("table-read")
     _add_selector_arguments(table_read)
     table_read.add_argument("--max-rows", type=int, default=50)
@@ -440,6 +446,8 @@ def main(argv: Optional[List[str]] = None) -> int:
                        (("row", args.row), ("column", args.column), ("index", args.item_index),
                         ("title", args.title)) if value is not None}
             _print(client.select(selector_from_args(args), **options))
+        elif args.command == "table-info":
+            _print(client.table_info(selector_from_args(args)))
         elif args.command == "table-read":
             _print(client.table_read(selector_from_args(args), args.max_rows))
         elif args.command == "tree-read":

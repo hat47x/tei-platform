@@ -424,6 +424,34 @@ final class Ui {
         }, DEFAULT_TIMEOUT_MS);
     }
 
+    static Map<String, Object> tableInfo(final Map<String, Object> selector, final Map<String, Object> request)
+            throws Exception {
+        final Component target = resolve(selector);
+        if (!(target instanceof JTable)) {
+            throw new BridgeException("NOT_A_TABLE", "selector does not resolve to a table");
+        }
+        final JTable table = (JTable) target;
+        return call(new Callable<Map<String, Object>>() {
+            @Override
+            public Map<String, Object> call() {
+                List<Object> columns = new ArrayList<Object>();
+                for (int i = 0; i < table.getColumnCount(); i++) {
+                    columns.add(table.getColumnName(i));
+                }
+                Map<String, Object> value = new LinkedHashMap<String, Object>();
+                value.put("tableRowCount", table.getRowCount());
+                value.put("modelRowCount", table.getModel().getRowCount());
+                value.put("modelClass", table.getModel().getClass().getName());
+                value.put("columns", columns);
+                value.put("selectedRow", table.getSelectedRow());
+                value.put("selectedColumn", table.getSelectedColumn());
+                value.put("rowSorterClass", table.getRowSorter() == null ? null
+                        : table.getRowSorter().getClass().getName());
+                return value;
+            }
+        }, DEFAULT_TIMEOUT_MS);
+    }
+
     static Map<String, Object> tableRead(final Map<String, Object> selector, final Map<String, Object> request)
             throws Exception {
         final Component target = resolve(selector);
