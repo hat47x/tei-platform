@@ -1,6 +1,8 @@
 # X-TEA操作経路の対応表
 
-この表は、`reference-xtea-control`がどの入口を同じ制御面から扱えるかを示します。対象版は[`upstream.json`](upstream.json)の四つのHEADです。画面上の全ボタン・全条件分岐の実行結果を保証する表ではありません。
+この表は、`reference-xtea-control`がどの入口を同じ制御面から扱えるかを示します。対象版は[`upstream.json`](upstream.json)のHEADです。画面上の全ボタン・全条件分岐の実行結果を保証する表ではありません。
+
+XeadServerはTEIの参考対象外です。以下のXeadServer節は過去の参考記録であり、新しい比較・受入・検証の対象ではありません。
 
 ## 到達性の定義
 
@@ -66,7 +68,7 @@
 
 未確認: `XF100`/`XF300`以外のFunction、利用者が明示的に実行するトランザクションrollback、元の`jdbc:derby://localhost/...`接続、Derby Network Server。
 
-## XeadServer
+## XeadServer（参考・対象外）
 
 `web.xml`のサーブレットマッピングと`DBMethod` / `Service`の分岐に基づきます。
 
@@ -92,7 +94,6 @@
 
 - Modeler / Editorの全ダイアログを開いた実行。表の全セル、全ての検査エラー、全てのインポート分岐は未実行。
 - Driverのログイン後、各Functionの実DB操作、Script、出力ファイル、メール、HTTP。
-- XeadServerのJNDI DataSource、本番Tomcat設定、実デプロイ環境、DB製品別ドライバ、認可・本番運用。
-- `Service`の認証条件の正しさ、実ユーザー、認可。ハーネスでは認証前の`userID`検査を引数`user`へ置き換えている。
+- XeadServerは対象外のため、JNDI / 本番Tomcat / 認証 / 認可 / 実デプロイは確認対象に含めない。
 - WindowsのDPI・Look and Feel・ロケール別の表示差。セレクタは表示文字に依存できるが、文字列が変わればシナリオ側の更新が要る。
 - Java 8実機。クラスファイルはJava 8（major 52）だが、実行確認はJDK 11。

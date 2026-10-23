@@ -1,5 +1,6 @@
 param(
-    [switch]$SkipLive
+    [switch]$SkipLive,
+    [switch]$IncludeXeadServer
 )
 
 $ErrorActionPreference = "Stop"
@@ -25,32 +26,38 @@ try {
     if ($LASTEXITCODE -ne 0) { throw "agent build failed" }
 
     Invoke-Test "Swing E2E" @("tests\test_integration.py")
-    Invoke-Test "server contract" @("tests\test_server_client.py")
 
-    if (-not $SkipLive) {
-        if ($env:XTEA_SERVER_SOURCE -and $env:XTEA_RUNTIME_HOME) {
-            Invoke-Test "live DBMethod" @("tests\test_live_server.py")
-        } else {
-            Write-Output ""
-            Write-Output "SKIP live DBMethod: XTEA_SERVER_SOURCE / XTEA_RUNTIME_HOME are not set"
-            $results += [pscustomobject]@{ Test = "live DBMethod"; Result = "SKIP" }
-        }
-        if ($env:XTEA_SERVER_SOURCE -and $env:XTEA_RUNTIME_HOME -and $env:XTEA_SKELETON_HOME) {
-            Invoke-Test "live Service" @("tests\test_live_service.py")
-            Invoke-Test "Tomcat WAR" @("tests\test_tomcat_war.py")
-            if ($env:TOMCAT_HOME -and $env:TOMCAT_URL) {
-                Invoke-Test "external Tomcat" @("tests\test_external_tomcat.py")
+    if ($IncludeXeadServer) {
+        Invoke-Test "server contract (reference)" @("tests\test_server_client.py")
+        if (-not $SkipLive) {
+            if ($env:XTEA_SERVER_SOURCE -and $env:XTEA_RUNTIME_HOME) {
+                Invoke-Test "live DBMethod (reference)" @("tests\test_live_server.py")
             } else {
                 Write-Output ""
-                Write-Output "SKIP external Tomcat: TOMCAT_HOME / TOMCAT_URL are not set"
-                $results += [pscustomobject]@{ Test = "external Tomcat"; Result = "SKIP" }
+                Write-Output "SKIP live DBMethod: XTEA_SERVER_SOURCE / XTEA_RUNTIME_HOME are not set"
+                $results += [pscustomobject]@{ Test = "live DBMethod"; Result = "SKIP" }
             }
-        } else {
-            Write-Output ""
-            Write-Output "SKIP live Service / Tomcat WAR: XTEA_SKELETON_HOME is not set"
-            $results += [pscustomobject]@{ Test = "live Service"; Result = "SKIP" }
-            $results += [pscustomobject]@{ Test = "Tomcat WAR"; Result = "SKIP" }
+            if ($env:XTEA_SERVER_SOURCE -and $env:XTEA_RUNTIME_HOME -and $env:XTEA_SKELETON_HOME) {
+                Invoke-Test "live Service (reference)" @("tests\test_live_service.py")
+                Invoke-Test "Tomcat WAR (reference)" @("tests\test_tomcat_war.py")
+                if ($env:TOMCAT_HOME -and $env:TOMCAT_URL) {
+                    Invoke-Test "external Tomcat (reference)" @("tests\test_external_tomcat.py")
+                } else {
+                    Write-Output ""
+                    Write-Output "SKIP external Tomcat: TOMCAT_HOME / TOMCAT_URL are not set"
+                    $results += [pscustomobject]@{ Test = "external Tomcat"; Result = "SKIP" }
+                }
+            } else {
+                Write-Output ""
+                Write-Output "SKIP live Service / Tomcat WAR: XTEA_SKELETON_HOME is not set"
+                $results += [pscustomobject]@{ Test = "live Service"; Result = "SKIP" }
+                $results += [pscustomobject]@{ Test = "Tomcat WAR"; Result = "SKIP" }
+            }
         }
+    } else {
+        Write-Output ""
+        Write-Output "SKIP XeadServer: out of scope (use -IncludeXeadServer for the legacy reference tests)"
+        $results += [pscustomobject]@{ Test = "XeadServer (reference)"; Result = "SKIP" }
     }
 } finally {
     Pop-Location
