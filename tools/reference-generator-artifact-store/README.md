@@ -23,7 +23,10 @@ go run ./tools/reference-generator-artifact-store/cmd/tei-generator-artifact-sto
   audit -store /tmp/tei-artifacts
 
 go run ./tools/reference-generator-artifact-store/cmd/tei-generator-artifact-store \
-  checkpoint -store /tmp/tei-artifacts
+  checkpoint -store /tmp/tei-artifacts -out /tmp/checkpoint.json
+
+go run ./tools/reference-generator-artifact-store/cmd/tei-generator-artifact-store \
+  verify-checkpoint -store /tmp/tei-artifacts -checkpoint /tmp/checkpoint.json
 ```
 
 ## 保存layout
@@ -95,6 +98,8 @@ ssh-keygen -Y verify -f /tmp/allowed_signers -I signer -n tei-audit \
 
 署名はcheckpointのbyte列に束縛されます。署名者のAuthority・trust root・削除承認は検証しません。checkpointと署名を別の場所へ保管すれば、後からaudit全体を照合する参照にできます。
 
+`verify-checkpoint`は、保管したcheckpointの`recordCount`・`headDigest`・`auditDigest`を、現在のstoreから再計算したcheckpointと比較します。署名の検証は行わないため、署名検証と組み合わせて使います。mismatchは`passed=false`にします。
+
 ## 検証すること・しないこと
 
 | 検証する | 検証しない |
@@ -124,6 +129,7 @@ ssh-keygen -Y verify -f /tmp/allowed_signers -I signer -n tei-audit \
 - 壊れたaudit行を拒否し、その状態ではpruneしない。
 - `checkpoint`がrecord数・head・audit file digestを返し、改変auditを拒否する。
 - checkpointのJSONを`ssh-keygen`で署名・検証でき、改変されたcheckpointを拒否する。
+- `verify-checkpoint`が保存checkpointと現在のaudit chainを比較し、mismatchを拒否する。
 
 ## 未実装・限界
 

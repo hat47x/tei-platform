@@ -366,3 +366,56 @@ func Checkpoint(storeDir string) (CheckpointReceipt, error) {
 	receipt.Passed = true
 	return receipt, nil
 }
+
+type CheckpointVerification struct {
+	Schema         string            `json:"schema"`
+	StoreDir       string            `json:"storeDir"`
+	CheckpointPath string            `json:"checkpointPath"`
+	Expected       CheckpointReceipt `json:"expected"`
+	Actual         CheckpointReceipt `json:"actual"`
+	Passed         bool              `json:"passed"`
+	Reason         string            `json:"reason,omitempty"`
+}
+
+const CheckpointVerificationSchema = "tei.reference.generator-artifact-checkpoint-verification/v0"
+
+// VerifyCheckpoint compares a stored checkpoint file with the current audit
+// chain. It checks semantic equality, not a signature or the signer's identity.
+func VerifyCheckpoint(storeDir, checkpointPath string) (CheckpointVerification, error) {
+	verification := CheckpointVerification{
+		Schema: CheckpointVerificationSchema, StoreDir: storeDir, CheckpointPath: checkpointPath,
+	}
+	raw, err := os.ReadFile(checkpointPath)
+	if err != nil {
+		return verification, err
+	}
+	var expected CheckpointReceipt
+	if err := json.Unmarshal(raw, &expected); err != nil {
+		return verification, err
+	}
+	verification.Expected = expected
+	if expected.Schema != CheckpointSchema || !expected.Passed {
+		verification.Reason = "stored checkpoint is not a passing checkpoint"
+		return verification, nil
+	}
+	actual, err := Checkpoint(storeDir)
+	if err != nil {
+		return verification, err
+	}
+	verification.Actual = actual
+	if !actual.Passed {
+		verification.Reason = "current audit checkpoint is not passing: " + actual.Reason
+		return verification, nil
+	}
+	switch {
+	case expected.RecordCount != actual.RecordCount:
+		verification.Reason = "record count differs from the stored checkpoint"
+	case expected.HeadDigest != actual.HeadDigest:
+		verification.Reason = "head digest differs from the stored checkpoint"
+	case expected.AuditDigest != actual.AuditDigest:
+		verification.Reason = "audit digest differs from the stored checkpoint"
+	default:
+		verification.Passed = true
+	}
+	return verification, nil
+}

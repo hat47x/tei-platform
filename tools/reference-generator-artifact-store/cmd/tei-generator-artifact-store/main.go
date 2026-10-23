@@ -15,7 +15,7 @@ import (
 // source digest and retrieves it again. It does not sign or grant authority.
 func main() {
 	if len(os.Args) < 2 {
-		fmt.Fprintln(os.Stderr, "usage: tei-generator-artifact-store <put|get|list|prune|audit|checkpoint> [options]")
+		fmt.Fprintln(os.Stderr, "usage: tei-generator-artifact-store <put|get|list|prune|audit|checkpoint|verify-checkpoint> [options]")
 		os.Exit(2)
 	}
 	command := os.Args[1]
@@ -28,6 +28,7 @@ func main() {
 	keep := fs.String("keep", "", "comma-separated source digests to keep for prune")
 	dryRun := fs.Bool("dry-run", false, "report prune candidates without deleting")
 	outPath := fs.String("out", "", "write the checkpoint JSON to this file")
+	checkpointFile := fs.String("checkpoint", "", "stored checkpoint JSON to verify")
 	_ = fs.Parse(os.Args[2:])
 	switch command {
 	case "put":
@@ -111,6 +112,18 @@ func main() {
 			if err := os.WriteFile(*outPath, append(raw, '\n'), 0o644); err != nil {
 				fail(err)
 			}
+		}
+		emit(receipt)
+		if !receipt.Passed {
+			os.Exit(1)
+		}
+	case "verify-checkpoint":
+		if *storeDir == "" || *checkpointFile == "" {
+			fail(fmt.Errorf("-store and -checkpoint are required"))
+		}
+		receipt, err := generatorartifactstore.VerifyCheckpoint(*storeDir, *checkpointFile)
+		if err != nil {
+			fail(err)
 		}
 		emit(receipt)
 		if !receipt.Passed {
