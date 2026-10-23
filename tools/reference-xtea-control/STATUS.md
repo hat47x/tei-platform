@@ -15,7 +15,7 @@ TEIの参照モデル再現確認で必要になるX-TEAの入力・観測を、
 
 | コンポーネント | 確認済み | 主な証拠 |
 | --- | --- | --- |
-| Modeler | 読み取り、About、システム名変更と保存、テーブル名変更と保存、バックアップ | `scenarios/modeler-save-copy.json`、`scenarios/modeler-edit-table-name.json` |
+| Modeler | 読み取り、About、システム名変更と保存、テーブル名変更と保存、フィールド名変更と保存、バックアップ | `scenarios/modeler-save-copy.json`、`scenarios/modeler-edit-table-name.json`、`scenarios/modeler-edit-field-name.json` |
 | Editor | 読み取り、システム名変更と保存、テーブル名変更と保存、テーブル一覧から編集画面を開く、バックアップ | `scenarios/editor-save-copy.json`、`scenarios/editor-edit-table-name.json`、`scenarios/editor-open-table-from-list.json` |
 | Driver | ログイン、XF100、XF300、XF200の更新・作成・削除、失敗時rollback | `scenarios/driver-*.json` |
 | XeadServer | **対象外**。`xtea_server.py`と`server-harness/`は過去の参考資産 | `tests/test_live_*.py`、`tests/test_tomcat_war.py` |
