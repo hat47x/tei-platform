@@ -53,6 +53,21 @@ func (s *PgHandleStore) Save(ctx context.Context, h pruntime.DurableInvocationHa
 		return pruntime.DurableInvocationHandle{}, err
 	}
 	defer tx.Rollback(ctx)
+	// Storage-side fencing: a handle is written only by the current
+	// supervisor of its lease. ReconcileDurableInvocation compares the
+	// caller's token with the token in the handle only, which still holds
+	// the old owner's token when the new owner's reconciliation was refused.
+	if h.ResourceLeaseID != "" {
+		var owner string
+		var token int64
+		err := tx.QueryRow(ctx, `SELECT owner_id, fencing_token FROM orhc.supervisor_ownership WHERE lease_id=$1 FOR SHARE`, h.ResourceLeaseID).Scan(&owner, &token)
+		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+			return pruntime.DurableInvocationHandle{}, err
+		}
+		if owner != h.SupervisorOwnerID || uint64(token) != h.FencingToken {
+			return pruntime.DurableInvocationHandle{}, fmt.Errorf("%w: invocation %s handle written by %s token %d; current supervisor %s token %d", ErrFenced, h.InvocationID, h.SupervisorOwnerID, h.FencingToken, owner, token)
+		}
+	}
 	if expected == 0 {
 		tag, err := tx.Exec(ctx, `INSERT INTO orhc.invocation_handle VALUES ($1,1,$2) ON CONFLICT DO NOTHING`, h.InvocationID, raw)
 		if err != nil {

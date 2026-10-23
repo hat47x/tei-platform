@@ -3,6 +3,7 @@ package orderrollouthost
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -11,6 +12,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 
 	"tei/internal/deployment/executor"
 	pruntime "tei/internal/plugin/runtime"
@@ -52,6 +54,16 @@ func WriteMigrationBundle(dir string, s Start) error {
 		return err
 	}
 	return os.WriteFile(filepath.Join(dir, MigrationDir, "bundle.json"), raw, 0o644)
+}
+
+// sqlState returns the SQLSTATE and the server message of a database error.
+// Connection errors are not described (they name the target).
+func sqlState(err error) string {
+	var pg *pgconn.PgError
+	if errors.As(err, &pg) {
+		return " (" + pg.Code + ": " + pg.Message + ")"
+	}
+	return ""
 }
 
 // runAtlas is the stand-in executable of the migration.atlas deployment
@@ -146,7 +158,7 @@ func runAtlas(stdin io.Reader, stdout, stderr io.Writer) int {
 			switch st.Kind {
 			case "schema", "data":
 				if _, err := tx.Exec(ctx, st.SQL); err != nil {
-					return fmt.Errorf("%s step failed", st.Kind)
+					return fmt.Errorf("%s step failed%s", st.Kind, sqlState(err))
 				}
 				if st.Kind == "schema" && hold > 0 {
 					time.Sleep(time.Duration(hold) * time.Millisecond)

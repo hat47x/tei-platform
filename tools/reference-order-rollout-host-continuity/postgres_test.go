@@ -74,7 +74,10 @@ func (s *scenario) runTakeover(o takeoverOpts) takeoverRun {
 		if _, err := s.sales.Exec(s.ctx, `UPDATE tei_atlas.job SET gate_open=true`); err != nil {
 			s.t.Fatal(err)
 		}
-		s.waitFor("the migration to finish", 60*time.Second, s.count(s.sales, `SELECT count(*) FROM tei_atlas.job WHERE lifecycle='succeeded'`))
+		s.waitFor("the migration to finish", 60*time.Second, s.count(s.sales, `SELECT count(*) FROM tei_atlas.job WHERE lifecycle IN ('succeeded','failed')`))
+		if n := s.scalar(s.sales, `SELECT count(*) FROM tei_atlas.job WHERE lifecycle='succeeded'`); n != 1 {
+			s.t.Fatal("the migration failed")
+		}
 	}
 	if err := ContinueProcess(a.cmd.Process.Pid); err != nil {
 		s.t.Fatal(err)
@@ -381,8 +384,11 @@ func TestPostgresPlanChangedRejectedBeforeObservation(t *testing.T) {
 	ws := filepath.Join(t.TempDir(), "workspace")
 	copyWorkspace(t, filepath.Join(s.repo, DefaultWorkspace), ws)
 	r := s.runTakeover(takeoverOpts{aOffset: "0s", bOffset: "1m", bWorkspace: ws})
+	// Host B's token never reached the handle or the runtime: host A's raw
+	// reattach on the tool registry passes, and host A's reconciliation is
+	// refused only by the storage-side check of the handle store.
 	fencing := s.checkFencing(r, map[string]bool{"ownership-heartbeat": true, "ownership-reclaim": true, "ownership-release": true, "lease-renew": true,
-		"lease-release": true, "lease-fence": true, "invocation-reconcile": true})
+		"lease-release": true, "lease-fence": true, "runtime-reattach": false, "invocation-reconcile": true})
 	if r.b.Recovery != nil || !strings.Contains(r.b.RecoveryError, "runtime policy fingerprint changed") || r.b.Observes != 0 || r.b.Reattaches != 0 || r.b.PlanMatchesRun {
 		t.Fatalf("plan change: recovery=%+v err=%q observes=%d reattaches=%d planMatches=%v", r.b.Recovery, r.b.RecoveryError, r.b.Observes, r.b.Reattaches, r.b.PlanMatchesRun)
 	}

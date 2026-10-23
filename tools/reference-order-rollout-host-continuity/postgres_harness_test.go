@@ -131,6 +131,9 @@ func newScenario(t *testing.T, name string) *scenario {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() {
+		if t.Failed() {
+			s.diagnose()
+		}
 		for _, c := range s.children {
 			c.kill()
 		}
@@ -152,6 +155,8 @@ func newScenario(t *testing.T, name string) *scenario {
 	for _, q := range []string{
 		"ALTER TABLE public.orders OWNER TO " + mig, "ALTER SCHEMA tei_atlas OWNER TO " + mig,
 		"ALTER TABLE tei_atlas.job OWNER TO " + mig, "ALTER TABLE tei_atlas.revision OWNER TO " + mig,
+		// Creating the index of the expand needs CREATE on the schema.
+		"GRANT CREATE ON SCHEMA public TO " + mig,
 		"GRANT SELECT, INSERT ON public.orders TO " + app,
 		// 4.0.0 rows written earlier by 3.7.0; some without status.
 		`INSERT INTO public.orders(order_id,customer_id,ordered_at,status,total_amount)
@@ -453,4 +458,37 @@ func (s *scenario) writeOut(name string, v any) string {
 		s.t.Fatal(err)
 	}
 	return string(raw)
+}
+
+// diagnose logs the records of a failed scenario. The rows contain no
+// concrete values (that is what the leak check verifies).
+func (s *scenario) diagnose() {
+	ctx := context.Background()
+	for _, q := range []struct {
+		pool *pgxpool.Pool
+		sql  string
+	}{
+		{s.sales, `SELECT to_jsonb(j)::text FROM tei_atlas.job j`},
+		{s.sales, `SELECT to_jsonb(r)::text FROM tei_atlas.revision r`},
+		{s.sales, `SELECT pid::text || ' ' || coalesce(wait_event_type,'') || ' ' || coalesce(wait_event,'') || ' ' || state || ' ' || left(query, 80) FROM pg_stat_activity WHERE datname = current_database() AND pid <> pg_backend_pid()`},
+		{s.control, `SELECT to_jsonb(e)::text FROM orhc.call_event e ORDER BY seq`},
+		{s.control, `SELECT op || ' ' || actor || ' ' || accepted::text || ' ' || count(*)::text FROM orhc.ownership_event GROUP BY op, actor, accepted ORDER BY 1`},
+		{s.control, `SELECT op || ' ' || actor || ' ' || accepted::text || ' ' || coalesce(message,'') FROM orhc.lease_event ORDER BY seq DESC LIMIT 12`},
+	} {
+		rows, err := q.pool.Query(ctx, q.sql)
+		if err != nil {
+			s.t.Logf("diagnose: %v", err)
+			continue
+		}
+		for rows.Next() {
+			var line string
+			_ = rows.Scan(&line)
+			s.t.Logf("diagnose: %s", line)
+		}
+		rows.Close()
+	}
+	for _, c := range s.children {
+		raw, _ := os.ReadFile(c.stderr)
+		s.t.Logf("diagnose: %s stderr: %s", c.name, raw)
+	}
 }
