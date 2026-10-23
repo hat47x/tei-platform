@@ -339,13 +339,16 @@ func RollbackTo(root, sourceDigest string) (RollbackReceipt, error) {
 			return receipt, nil
 		}
 		currentHistory := filepath.Join(historyDir, strings.TrimPrefix(currentDigest, "sha256:"))
-		if _, err := os.Stat(currentHistory); os.IsNotExist(err) {
+		if saved, err := os.ReadFile(currentHistory); os.IsNotExist(err) {
 			if err := os.WriteFile(currentHistory, current, 0o755); err != nil {
 				receipt.Reason = err.Error()
 				return receipt, nil
 			}
 		} else if err != nil {
-			receipt.Reason = err.Error()
+			receipt.Reason = "current history artifact is unreadable: " + err.Error()
+			return receipt, nil
+		} else if digestBytes(saved) != currentDigest {
+			receipt.Reason = "current history artifact digest does not match the current artifact"
 			return receipt, nil
 		}
 	} else if !os.IsNotExist(err) {
