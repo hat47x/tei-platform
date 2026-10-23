@@ -192,6 +192,65 @@ func TestPruneRefusesTamperedObject(t *testing.T) {
 	}
 }
 
+func TestCheckpointSummarizesAudit(t *testing.T) {
+	empty, err := Checkpoint(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !empty.Passed || empty.RecordCount != 0 || empty.HeadDigest != "" || empty.AuditDigest == "" {
+		t.Fatalf("unexpected empty checkpoint: %+v", empty)
+	}
+
+	storeDir := t.TempDir()
+	template := putCandidate(t, storeDir, "template")
+	putCandidate(t, storeDir, "alternative")
+	if _, err := Prune(PruneOptions{StoreDir: storeDir, Keep: []string{template.SourceDigest}}); err != nil {
+		t.Fatal(err)
+	}
+	checkpoint, err := Checkpoint(storeDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	audit, err := Audit(storeDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !checkpoint.Passed || checkpoint.RecordCount != 1 || checkpoint.HeadDigest != audit.Records[0].RecordDigest {
+		t.Fatalf("unexpected checkpoint: %+v", checkpoint)
+	}
+	raw, err := os.ReadFile(filepath.Join(storeDir, "prune-audit.jsonl"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if checkpoint.AuditDigest != digest(raw) {
+		t.Fatalf("audit digest mismatch: %s", checkpoint.AuditDigest)
+	}
+}
+
+func TestCheckpointRejectsTamperedAudit(t *testing.T) {
+	storeDir := t.TempDir()
+	template := putCandidate(t, storeDir, "template")
+	putCandidate(t, storeDir, "alternative")
+	if _, err := Prune(PruneOptions{StoreDir: storeDir, Keep: []string{template.SourceDigest}}); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(storeDir, "prune-audit.jsonl")
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, append(raw, []byte("tampered\n")...), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	checkpoint, err := Checkpoint(storeDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if checkpoint.Passed || checkpoint.Reason == "" {
+		t.Fatalf("tampered audit produced a passing checkpoint: %+v", checkpoint)
+	}
+}
+
 func TestAuditRejectsMalformedRecord(t *testing.T) {
 	storeDir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(storeDir, "prune-audit.jsonl"), []byte("not-json\n"), 0o644); err != nil {

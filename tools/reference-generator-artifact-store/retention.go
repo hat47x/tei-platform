@@ -11,9 +11,10 @@ import (
 )
 
 const (
-	ListSchema  = "tei.reference.generator-artifact-list/v0"
-	PruneSchema = "tei.reference.generator-artifact-prune/v0"
-	AuditSchema = "tei.reference.generator-artifact-prune-audit/v0"
+	ListSchema       = "tei.reference.generator-artifact-list/v0"
+	PruneSchema      = "tei.reference.generator-artifact-prune/v0"
+	AuditSchema      = "tei.reference.generator-artifact-prune-audit/v0"
+	CheckpointSchema = "tei.reference.generator-artifact-audit-checkpoint/v0"
 )
 
 type StoredObject struct {
@@ -326,4 +327,42 @@ func trimDigest(value string) string {
 		return value[len("sha256:"):]
 	}
 	return value
+}
+
+type CheckpointReceipt struct {
+	Schema           string `json:"schema"`
+	StoreDir         string `json:"storeDir"`
+	RecordCount      int    `json:"recordCount"`
+	HeadDigest       string `json:"headDigest,omitempty"`
+	AuditDigest      string `json:"auditDigest"`
+	Passed           bool   `json:"passed"`
+	Reason           string `json:"reason,omitempty"`
+	GrantsAuthority  bool   `json:"grantsAuthority"`
+	ProvesRealTarget bool   `json:"provesRealTarget"`
+}
+
+// Checkpoint summarizes the audit chain without signing it. The caller can
+// sign the emitted JSON or a file containing it with an external tool.
+func Checkpoint(storeDir string) (CheckpointReceipt, error) {
+	receipt := CheckpointReceipt{
+		Schema: CheckpointSchema, StoreDir: storeDir, GrantsAuthority: false, ProvesRealTarget: false,
+	}
+	records, err := readAudit(storeDir)
+	if err != nil {
+		receipt.Reason = err.Error()
+		return receipt, nil
+	}
+	raw, err := os.ReadFile(filepath.Join(storeDir, "prune-audit.jsonl"))
+	if os.IsNotExist(err) {
+		raw = nil
+	} else if err != nil {
+		return receipt, err
+	}
+	receipt.RecordCount = len(records)
+	receipt.AuditDigest = digest(raw)
+	if len(records) > 0 {
+		receipt.HeadDigest = records[len(records)-1].RecordDigest
+	}
+	receipt.Passed = true
+	return receipt, nil
 }
