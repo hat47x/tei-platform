@@ -84,7 +84,16 @@ source、receipt、実binaryのどれかが一致しなければ`passed=false`�
 
 このauditはローカルのhash chainであり、署名・実行者identity・削除承認を証明しません。ファイル全体の置換やchainごと作り直す攻撃は防げません。
 
-`checkpoint`は、検証済みの`recordCount`、`headDigest`、audit file全体の`auditDigest`を返します。checkpoint自体は署名しません。外部の署名toolでcheckpointのJSONを署名し、別の場所へ保管すれば、後からaudit全体を照合するための参照にできます。
+`checkpoint`は、検証済みの`recordCount`、`headDigest`、audit file全体の`auditDigest`を返します。`-out`を指定すると、同じJSONをfileへ書き出します。checkpoint自体は署名しません。
+
+```text
+tei-generator-artifact-store checkpoint -store /tmp/tei-artifacts -out /tmp/checkpoint.json
+ssh-keygen -Y sign -f /tmp/audit-key -n tei-audit /tmp/checkpoint.json
+ssh-keygen -Y verify -f /tmp/allowed_signers -I signer -n tei-audit \
+  -s /tmp/checkpoint.json.sig < /tmp/checkpoint.json
+```
+
+署名はcheckpointのbyte列に束縛されます。署名者のAuthority・trust root・削除承認は検証しません。checkpointと署名を別の場所へ保管すれば、後からaudit全体を照合する参照にできます。
 
 ## 検証すること・しないこと
 
@@ -114,6 +123,7 @@ source、receipt、実binaryのどれかが一致しなければ`passed=false`�
 - record改変をdigest不一致で拒否する。
 - 壊れたaudit行を拒否し、その状態ではpruneしない。
 - `checkpoint`がrecord数・head・audit file digestを返し、改変auditを拒否する。
+- checkpointのJSONを`ssh-keygen`で署名・検証でき、改変されたcheckpointを拒否する。
 
 ## 未実装・限界
 
