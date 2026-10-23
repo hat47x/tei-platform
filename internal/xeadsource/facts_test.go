@@ -1,12 +1,14 @@
 package xeadsource
 
 import (
+	"encoding/json"
 	"reflect"
+	"strings"
 	"testing"
 )
 
 func TestExtractRelationalSourceFactsPreservesLegacyKeyAndRelationshipReferences(t *testing.T) {
-	doc, err := Parse(FormatXead, []byte(`<System><Table ID="T1"><TableField ID="F1" AttributeType="DERIVABLE" DataTypeID="DT1"/><TableField ID="F2" AttributeType="NATIVE" DataTypeID="DT2"/><TableKey ID="K1" Type="PK"><TableKeyField FieldID="F1" SortKey="10"/><TableKeyField FieldID="F2" SortKey="20"/></TableKey></Table><Relationship ID="R1" Table1ID="T1" TableKey1ID="K1" Table2ID="T2" TableKey2ID="K2"/></System>`))
+	doc, err := Parse(FormatXead, []byte(`<System><Table ID="T1"><TableField ID="F1" AttributeType="DERIVABLE" DataTypeID="DT1"/><TableField ID="F2" AttributeType="NATIVE" DataTypeID="DT2"/><TableKey ID="K1" Type="PK"><TableKeyField FieldID="F1" SortKey="10"/><TableKeyField FieldID="F2" SortKey="20"/></TableKey></Table><Relationship ID="R1" Type="FAMILY" Table1ID="T1" TableKey1ID="K1" Table2ID="T2" TableKey2ID="K2"/></System>`))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -33,6 +35,7 @@ func TestExtractRelationalSourceFactsPreservesLegacyKeyAndRelationshipReferences
 	}
 	relation := got.RelationshipKeys[0]
 	if relation.RelationshipID != "R1" ||
+		relation.RelationshipType != "FAMILY" ||
 		relation.Table1LegacyID != "T1" ||
 		relation.Key1LegacyID != "K1" ||
 		relation.Table2LegacyID != "T2" ||
@@ -42,6 +45,30 @@ func TestExtractRelationalSourceFactsPreservesLegacyKeyAndRelationshipReferences
 	}
 	if !reflect.DeepEqual(relation.AuthorityLimits, relationshipKeyAuthorityLimits) {
 		t.Fatalf("relationship authority limits drifted: %#v", relation.AuthorityLimits)
+	}
+}
+
+func TestExtractRelationalSourceFactsPreservesRawRelationshipType(t *testing.T) {
+	for _, kind := range []string{"FAMILY", "REFFER", "FUTURE_KIND"} {
+		doc, err := Parse(FormatXead, []byte(`<System><Relationship ID="R1" Type="`+kind+`"/></System>`))
+		if err != nil {
+			t.Fatal(err)
+		}
+		facts := ExtractRelationalSourceFacts(doc)
+		if len(facts.RelationshipKeys) != 1 {
+			t.Fatalf("type %q: relationship count = %d", kind, len(facts.RelationshipKeys))
+		}
+		relation := facts.RelationshipKeys[0]
+		if relation.RelationshipType != kind || relation.Nature != SourceFactNature {
+			t.Fatalf("type %q lost its source value or authority limit: %#v", kind, relation)
+		}
+		encoded, err := json.Marshal(relation)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(string(encoded), `"relationshipType":"`+kind+`"`) {
+			t.Fatalf("type %q absent from source-fact JSON: %s", kind, encoded)
+		}
 	}
 }
 
