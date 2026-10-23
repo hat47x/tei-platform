@@ -35,7 +35,7 @@ X-TEAのソースやJARはこのディレクトリへ同梱しません。`clone
 | ボタン、チェックボックス、ラジオボタン | `POST /invoke` / `POST /set` |
 | テキストフィールド、テキストエリア、パスワード欄 | `POST /set`。パスワード値はスナップショットでマスク |
 | コンボボックス、スピナー、スライダー | `POST /set` |
-| タブ、リスト、ツリー、テーブル | `POST /select`、`POST /tree/read`、`POST /table/set`、`POST /table/read` |
+| タブ、リスト、ツリー、テーブル | `POST /select`、`POST /tree/read`、`POST /click`、`POST /table/set`、`POST /table/read` |
 
 `tree-read`の`indices`は先頭の`0`がルートを表します。この配列をそのまま`select`の`path`へ渡すと、同じノードを選択できます。
 | Enterなどのキー操作、キーバインド | `POST /key`。SwingのInputMap/ActionMapを先に使い、生のKeyEventへフォールバック |
@@ -235,7 +235,7 @@ python tests\test_external_tomcat.py
 
 2026-10-21、JDK 11.0.20.1（`--release 8`でコンパイル）で確認しました。
 
-- `python tests/test_integration.py`: 9件成功。メニュー、テキスト、ボタン、Enter、タブ、チェックボックス、コンボ、通常テーブル、X-TEA型のカスタム行オブジェクトを持つテーブル、ツリー全体の読取り、モーダルダイアログ、スクリーンショット、トレース、未知selector、トークン拒否を合成Swingアプリで確認。
+- `python tests/test_integration.py`: 10件成功。メニュー、テキスト、ボタン、Enter、タブ、チェックボックス、コンボ、通常テーブル、X-TEA型のカスタム行オブジェクトを持つテーブル、ツリー全体の読取り、テーブル行のダブルクリック、モーダルダイアログ、スクリーンショット、トレース、未知selector、トークン拒否を合成Swingアプリで確認。
 - `python tests/test_server_client.py`: 4件成功。`DBMethod`のSELECT/COUNT/INSERT/UPDATE/DELETE/COMMIT/ROLLBACK/CALL/IPと`Service`をローカル模擬サーブレットで確認。
 - `python tests/test_live_server.py`: 3件成功。元の`DBMethod`を埋め込みJettyで起動し、使い捨てH2の合成テーブルに対してSELECT/COUNT/INSERT/UPDATE/DELETE/COMMIT/ROLLBACK/CALL/IPをHTTPで確認。応答のJava直列化も受信。`CALL SQUARE(9)`は「procedure was executed」を返すことを確認。
 - `python tests/test_live_service.py`: 2件成功。Skeletonの一時複製と、ビルド時に明示した互換差分を使い、元の`Service`の`GET /Service`がセッション状態を返すこと、`FUNCTION=AF200J`、`REQUEST_TYPE=ListSections`で2件の部門データがJSONで返ることを確認。

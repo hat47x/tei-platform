@@ -103,6 +103,15 @@ class ControlClient:
         body.update(options)
         return self.request("POST", "/select", body)
 
+    def click(self, selector: Dict[str, Any], count: int = 1,
+              row: Optional[int] = None, column: Optional[int] = None) -> Dict[str, Any]:
+        body: Dict[str, Any] = {"selector": selector, "count": count}
+        if row is not None:
+            body["row"] = row
+        if column is not None:
+            body["column"] = column
+        return self.request("POST", "/click", body)
+
     def table_set(self, selector: Dict[str, Any], row: int, column: Any, value: Any) -> Dict[str, Any]:
         return self.request("POST", "/table/set",
                             {"selector": selector, "row": row, "column": column, "value": value})
@@ -356,6 +365,12 @@ def build_parser() -> argparse.ArgumentParser:
     key.add_argument("--type-text")
     key.add_argument("--modifiers", nargs="*", default=[])
 
+    click = sub.add_parser("click")
+    _add_selector_arguments(click)
+    click.add_argument("--count", type=int, choices=[1, 2, 3], default=1)
+    click.add_argument("--row", type=int)
+    click.add_argument("--column", type=int)
+
     close = sub.add_parser("close")
     _add_selector_arguments(close)
 
@@ -430,6 +445,8 @@ def main(argv: Optional[List[str]] = None) -> int:
             _print(client.table_set(selector_from_args(args), args.row, args.column, args.value))
         elif args.command == "key":
             _print(client.key(selector_from_args(args) or None, args.key, args.type_text, args.modifiers))
+        elif args.command == "click":
+            _print(client.click(selector_from_args(args), args.count, args.row, args.column))
         elif args.command == "close":
             _print(client.close(selector_from_args(args)))
         elif args.command == "wait-window":
