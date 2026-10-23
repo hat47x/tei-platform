@@ -268,6 +268,47 @@ class LiveDriverTest(unittest.TestCase):
         self.wait_class("xeadDriver.XF000", "absent")
         self.assertEqual(self.observe(), self.observations[0])
 
+    def clock_execution(self, repeat):
+        launcher = {"window": "^Driver fixture launcher$"}
+        self.client.invoke(dict(launcher, role="button", text="^Prepare next clock$"))
+        requested_time = self.client.find(dict(launcher, name="nextTime"))["text"]
+        self.open_function("002")
+        console = {"windowClass": "xeadDriver.XF000$", "role": "text", "class": "JTextArea$"}
+        clock = {"windowClass": "xeadDriver.XF000$", "role": "text", "class": "JTextField$"}
+        self.client.wait_text(console, contains="timer-ready")
+        self.client.set_value(clock, requested_time)
+        if not repeat:
+            self.client.invoke({"windowClass": "xeadDriver.XF000$", "role": "checkbox", "text": "^Repeat in time$"})
+        self.client.invoke({"windowClass": "xeadDriver.XF000$", "role": "checkbox", "text": "^Run on day off$"})
+        started = time.monotonic()
+        self.button("xeadDriver.XF000", "^Start$")
+        self.client.wait_text(console, contains="is the time to execute")
+        self.assertEqual(self.observe(), self.observations[0])
+        self.client.wait_text(console, contains="timer-finished", timeout_ms=120000)
+        if repeat:
+            deadline = time.monotonic() + 10
+            while time.monotonic() < deadline:
+                if self.client.find(console)["textValue"].count("is the time to execute") == 2:
+                    break
+                time.sleep(0.05)
+            self.assertEqual(self.client.find(console)["textValue"].count("is the time to execute"), 2)
+            self.button("xeadDriver.XF000", "^Stop$")
+        self.client.wait_text(console, contains="The timer is canceled")
+        self.outputs.append({"kind": "clockExecution", "requestedTime": requested_time, "repeat": repeat,
+                             "elapsedSeconds": time.monotonic() - started,
+                             "console": self.client.find(console)["textValue"]})
+        self.assertTrue(self.client.find(clock)["enabled"])
+        self.assertFalse(self.client.find({"windowClass": "xeadDriver.XF000$", "role": "button", "text": "^Stop$"})["enabled"])
+        self.button("xeadDriver.XF000", "^Exit$")
+        self.result("CONTROL_RESULT=timer")
+        self.assertIn("001:Timer:1;002:Beta:0;", self.observe())
+
+    def test_000_clock_fires_once(self):
+        self.clock_execution(repeat=False)
+
+    def test_000_clock_fires_and_rearms(self):
+        self.clock_execution(repeat=True)
+
     def test_000_clock_run_now(self):
         self.open_function("002")
         console = {"windowClass": "xeadDriver.XF000$", "role": "text", "class": "JTextArea$"}

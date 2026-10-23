@@ -837,7 +837,7 @@ final class Ui {
         value.put("bounds", bounds(component));
         if (component instanceof JTextComponent) {
             value.put("editable", Boolean.valueOf(((JTextComponent) component).isEditable()));
-            value.put("textValue", brief(readValue(component)));
+            value.put("textValue", readValue(component));
         }
         if (component instanceof AbstractButton) {
             value.put("selected", Boolean.valueOf(((AbstractButton) component).isSelected()));
@@ -1375,7 +1375,7 @@ final class Ui {
             return "********";
         }
         if (component instanceof JTextComponent) {
-            return brief(((JTextComponent) component).getText());
+            return ((JTextComponent) component).getText();
         }
         if (component instanceof AbstractButton) {
             return Boolean.valueOf(((AbstractButton) component).isSelected());

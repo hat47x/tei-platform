@@ -102,6 +102,14 @@ public final class DriverFixture {
                     .format(java.time.format.DateTimeFormatter.ofPattern("HH:mm", java.util.Locale.ROOT)));
             futureTime.setName("futureTime");
             frame.add(futureTime);
+            JLabel nextTime = new JLabel("unset");
+            nextTime.setName("nextTime");
+            JButton prepareClock = new JButton("Prepare next clock");
+            // Use the scheduler JVM's clock and leave at least 30 seconds for GUI setup.
+            prepareClock.addActionListener(event -> nextTime.setText(java.time.LocalTime.now().plusSeconds(90)
+                    .format(java.time.format.DateTimeFormatter.ofPattern("HH:mm", java.util.Locale.ROOT))));
+            frame.add(prepareClock);
+            frame.add(nextTime);
             frame.add(result);
             frame.pack();
             frame.setVisible(true);

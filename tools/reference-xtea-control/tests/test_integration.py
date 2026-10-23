@@ -107,6 +107,13 @@ class IntegrationTest(unittest.TestCase):
         self.client.select({"name": "table"}, row=0, column=0)
         self.client.key({"name": "table"}, key="ENTER")
         self.client.wait_text({"name": "status"}, expected="table-enter", timeout_ms=5000)
+        long_text = "日本語の長文" * 100 + "END"
+        self.client.set_value({"name": "input"}, long_text)
+        self.client.wait_text({"name": "input"}, contains="END", timeout_ms=1000)
+        result = self.client.set_value({"name": "input"}, "-appended", mode="append")
+        self.assertEqual(result["oldValue"], long_text)
+        self.assertEqual(result["value"], long_text + "-appended")
+        self.client.set_value({"name": "input"}, "hello")
 
     def test_04_choices_tabs_and_table(self) -> None:
         enabled = self.client.set_value({"name": "enabled"}, False)
