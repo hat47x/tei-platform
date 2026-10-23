@@ -265,6 +265,9 @@ def run_scenario(client: ControlClient, scenario_path: str | Path) -> None:
             value = client.table_read(step["selector"], int(step.get("maxRows", 50)))
             if value["rowCount"] != int(step["equals"]):
                 raise AssertionError(f"table row count expected {step['equals']}, got {value['rowCount']}")
+        elif operation == "click":
+            client.click(step["selector"], int(step.get("count", 1)),
+                         step.get("row"), step.get("column"))
         elif operation == "key":
             client.key(step.get("selector"), step.get("key"), step.get("text"), step.get("modifiers"))
         elif operation == "close":
