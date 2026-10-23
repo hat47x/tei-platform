@@ -142,6 +142,55 @@ func TestLongRunningProfileRejectsOneshotCandidate(t *testing.T) {
 	}
 }
 
+func TestRunAppliesWasmLongRunningProcessModel(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows Node wasm_exec exits nonzero after a multi-request stream")
+	}
+	if _, _, _, ok := findWasmForProbe(); !ok {
+		t.Skip("node or Go wasm_exec_node.js is not available")
+	}
+	workspace, contract, fixtures, _ := selectionPaths(t)
+	candidates := filepath.Join(t.TempDir(), "candidates")
+	if _, err := generatorselection.GenerateVersion(contract, "wasm-long-running-template", "1",
+		filepath.Join(candidates, "wasm-long-running-template")); err != nil {
+		t.Fatal(err)
+	}
+	var profile Profile
+	raw, err := os.ReadFile(filepath.Join(repoRoot(t), "tools", "reference-target-profile", "testdata", "server.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(raw, &profile); err != nil {
+		t.Fatal(err)
+	}
+	profile.ID = "wasm-long-running"
+	profile.ProcessModel = ProcessLongRunning
+	profile.Update = UpdateReplace
+	profile.GeneratorID = "wasm-long-running-template"
+	changed, err := json.MarshalIndent(profile, "", "  ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	profilePath := filepath.Join(t.TempDir(), "wasm-long-running.json")
+	if err := os.WriteFile(profilePath, append(changed, '\n'), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	receipt, err := Run(context.Background(), RunOptions{
+		WorkspaceDir: workspace, ContractPath: contract, FixturePath: fixtures,
+		CandidatesDir: candidates, ProfilePath: profilePath,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !receipt.Passed || receipt.ProcessModel == nil || !receipt.ProcessModel.Passed {
+		t.Fatalf("wasm long-running profile did not pass: %+v", receipt.ProcessModel)
+	}
+	if receipt.ProcessModel.Mode != ProcessLongRunning || receipt.ProcessModel.Processes != 1 ||
+		receipt.ProcessModel.Requests != 10 || receipt.ProcessModel.Responses != 10 {
+		t.Fatalf("unexpected wasm process evidence: %+v", receipt.ProcessModel)
+	}
+}
+
 func TestRunAppliesJavaLongRunningProcessModel(t *testing.T) {
 	if _, _, _, ok := findJavaForProbe(); !ok {
 		t.Skip("javac/java is not available")

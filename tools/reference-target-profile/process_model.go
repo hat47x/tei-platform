@@ -193,6 +193,37 @@ func longRunningEvidence(ctx context.Context, opts RunOptions, selected generato
 		}
 		executable = java
 		args = []string{"-cp", classesDir, "Main"}
+	case generatorselection.LanguageWasm:
+		node, wasmExec, version, available := findWasmForProbe()
+		if !available {
+			evidence.Reason = "runtime unavailable: node or Go wasm_exec_node.js was not found"
+			return evidence
+		}
+		wasmPath := filepath.Join(tempDir, "candidate.wasm")
+		build := exec.CommandContext(ctx, "go", "build", "-trimpath", "-buildvcs=false", "-o", wasmPath, "main.go")
+		build.Dir = tempDir
+		build.Env = append(os.Environ(), "GOOS=js", "GOARCH=wasm")
+		if out, err := build.CombinedOutput(); err != nil {
+			evidence.Reason = "wasm build failed: " + err.Error() + ": " + string(out)
+			return evidence
+		}
+		wasmBytes, err := os.ReadFile(wasmPath)
+		if err != nil {
+			evidence.Reason = "wasm binary is unreadable: " + err.Error()
+			return evidence
+		}
+		evidence.BinaryDigest = digestBytes(wasmBytes)
+		if selected.BinaryDigest == "" || evidence.BinaryDigest != selected.BinaryDigest {
+			evidence.Reason = "probe wasm digest differs from selection"
+			return evidence
+		}
+		evidence.Binding = "source-and-binary-digest"
+		evidence.Runtime = &generatorselection.RuntimeEvidence{
+			Language: generatorselection.LanguageWasm, Command: node + " wasm_exec_node.js <wasm>",
+			Version: version, Available: true,
+		}
+		executable = node
+		args = []string{wasmExec, wasmPath}
 	default:
 		evidence.Reason = "unsupported long-running candidate language: " + language
 		return evidence
@@ -292,6 +323,26 @@ func findJavaForProbe() (javacPath, javaPath, version string, available bool) {
 		return "", "", "", false
 	}
 	return javac, java, strings.TrimSpace(string(out)), true
+}
+
+func findWasmForProbe() (nodePath, wasmExecPath, version string, available bool) {
+	node, err := exec.LookPath("node")
+	if err != nil {
+		return "", "", "", false
+	}
+	out, err := exec.Command(node, "--version").CombinedOutput()
+	if err != nil {
+		return "", "", "", false
+	}
+	gorootOut, err := exec.Command("go", "env", "GOROOT").Output()
+	if err != nil {
+		return "", "", "", false
+	}
+	wasmExec := filepath.Join(strings.TrimSpace(string(gorootOut)), "lib", "wasm", "wasm_exec_node.js")
+	if _, err := os.Stat(wasmExec); err != nil {
+		return "", "", "", false
+	}
+	return node, wasmExec, strings.TrimSpace(string(out)), true
 }
 
 func buildGoCandidate(ctx context.Context, dir, binaryPath string) error {
