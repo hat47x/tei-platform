@@ -8,6 +8,8 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+
+	generatorselection "tei/tools/reference-generator-selection"
 )
 
 func repoRoot(t *testing.T) string {
@@ -137,6 +139,52 @@ func TestLongRunningProfileRejectsOneshotCandidate(t *testing.T) {
 	}
 	if receipt.ProcessModel.Mode != ProcessLongRunning || receipt.ProcessModel.Reason == "" {
 		t.Fatalf("long-running failure was not explained: %+v", receipt.ProcessModel)
+	}
+}
+
+func TestRunAppliesJavaLongRunningProcessModel(t *testing.T) {
+	if _, _, _, ok := findJavaForProbe(); !ok {
+		t.Skip("javac/java is not available")
+	}
+	workspace, contract, fixtures, _ := selectionPaths(t)
+	candidates := filepath.Join(t.TempDir(), "candidates")
+	if _, err := generatorselection.GenerateVersion(contract, "java-long-running-template", "1",
+		filepath.Join(candidates, "java-long-running-template")); err != nil {
+		t.Fatal(err)
+	}
+	var profile Profile
+	raw, err := os.ReadFile(filepath.Join(repoRoot(t), "tools", "reference-target-profile", "testdata", "server.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(raw, &profile); err != nil {
+		t.Fatal(err)
+	}
+	profile.ID = "java-long-running"
+	profile.ProcessModel = ProcessLongRunning
+	profile.Update = UpdateReplace
+	profile.GeneratorID = "java-long-running-template"
+	changed, err := json.MarshalIndent(profile, "", "  ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	profilePath := filepath.Join(t.TempDir(), "java-long-running.json")
+	if err := os.WriteFile(profilePath, append(changed, '\n'), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	receipt, err := Run(context.Background(), RunOptions{
+		WorkspaceDir: workspace, ContractPath: contract, FixturePath: fixtures,
+		CandidatesDir: candidates, ProfilePath: profilePath,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !receipt.Passed || receipt.ProcessModel == nil || !receipt.ProcessModel.Passed {
+		t.Fatalf("java long-running profile did not pass: %+v", receipt.ProcessModel)
+	}
+	if receipt.ProcessModel.Mode != ProcessLongRunning || receipt.ProcessModel.Processes != 1 ||
+		receipt.ProcessModel.Requests != 10 || receipt.ProcessModel.Responses != 10 {
+		t.Fatalf("unexpected java process evidence: %+v", receipt.ProcessModel)
 	}
 }
 
