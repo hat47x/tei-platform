@@ -143,3 +143,36 @@ func TestContractQuerySQLRealizationRejectsUnexpectedRuntimeInput(t *testing.T) 
 		t.Fatalf("未定義runtime inputを黙ってSQLへ渡しています: %v", err)
 	}
 }
+
+// TestContractQuerySQLRealizationDistinguishesMissingFromExplicitNull は、
+// #2056 の受入条件「missing、allowed NULL、forbidden NULL を区別する」を検証する。
+func TestContractQuerySQLRealizationDistinguishesMissingFromExplicitNull(t *testing.T) {
+	// missing: key が存在しない -> エラー
+	r, _ := contractQuerySQLFixture()
+	_, err := r.MapRuntimeParameters(map[string]any{})
+	if err == nil || !strings.Contains(err.Error(), "input idのruntime値がありません") {
+		t.Fatalf("missing input が拒否されませんでした: %v", err)
+	}
+
+	// forbidden NULL: key は存在するが値が nil、Nullable=false（既定） -> エラー
+	r2, _ := contractQuerySQLFixture()
+	_, err = r2.MapRuntimeParameters(map[string]any{"id": nil})
+	if err == nil || !strings.Contains(err.Error(), "NULL を受け付けません") {
+		t.Fatalf("forbidden NULL が拒否されませんでした: %v", err)
+	}
+
+	// allowed NULL: Nullable=true のとき、nil は通過する
+	r3, contract := contractQuerySQLFixture()
+	contract.Inputs[0].Nullable = true
+	r3.Inputs[0].Nullable = true
+	if err := r3.ValidateContract(contract); err != nil {
+		t.Fatalf("nullable 一致の検証に失敗: %v", err)
+	}
+	mapped, err := r3.MapRuntimeParameters(map[string]any{"id": nil})
+	if err != nil {
+		t.Fatalf("allowed NULL が拒否されました: %v", err)
+	}
+	if mapped["customer_id"] != nil {
+		t.Fatalf("allowed NULL の値が保持されませんでした: %#v", mapped)
+	}
+}

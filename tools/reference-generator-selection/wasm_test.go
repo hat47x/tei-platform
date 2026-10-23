@@ -34,6 +34,10 @@ func TestWasmTemplateIsSelectable(t *testing.T) {
 	if candidate.Runtime == nil || !candidate.Runtime.Available || candidate.Runtime.Language != LanguageWasm {
 		t.Fatalf("wasm runtime evidence is missing: %+v", candidate.Runtime)
 	}
+	if candidate.BuildEvidence == nil || candidate.BuildEvidence.Reproducibility != "path-independent-twice" ||
+		candidate.BuildEvidence.ReproducedDigest != candidate.BinaryDigest {
+		t.Fatalf("wasm build reproducibility evidence is missing: %+v", candidate.BuildEvidence)
+	}
 	for _, result := range candidate.Results {
 		if !result.Passed {
 			t.Fatalf("wasm candidate failed fixture %s: %+v", result.CaseID, result)

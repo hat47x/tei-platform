@@ -45,6 +45,7 @@ func TestLongRunningEvidenceRequiresCompleteResponseStream(t *testing.T) {
 		{name: "truncated", output: valid.String()[:strings.LastIndex(strings.TrimSpace(valid.String()), "\n")+1], reason: "responses", responses: len(fixture.Cases) - 1},
 		{name: "mismatch", output: strings.Replace(valid.String(), `"state":"present"`, `"state":"wrong"`, 1), reason: "fixture mismatch", responses: len(fixture.Cases)},
 		{name: "nonzero-exit", output: valid.String(), exit: 7, reason: "candidate wait failed", responses: len(fixture.Cases)},
+		{name: "no-response", reason: "responses"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -74,6 +75,17 @@ func main() { io.Copy(io.Discard, os.Stdin); fmt.Print(%s); os.Exit(%d) }
 				t.Fatal(err)
 			}
 			evidence := runLongRunningProbe(ctx, RunOptions{}, fixture, binary, nil, &ProcessModelEvidence{Mode: ProcessLongRunning})
+			m := evidence.Measurement
+			if m == nil || m.ElapsedNanos <= 0 || m.UserCPUNanos < 0 || m.SystemCPUNanos < 0 || m.GOOS != runtime.GOOS {
+				t.Fatalf("missing process measurement: %+v", m)
+			}
+			if tc.responses == 0 {
+				if evidence.FirstResponseNanos != nil {
+					t.Fatal("invented first response latency without a response")
+				}
+			} else if evidence.FirstResponseNanos == nil || *evidence.FirstResponseNanos <= 0 || *evidence.FirstResponseNanos > m.ElapsedNanos {
+				t.Fatalf("first response latency is outside execution: %+v", evidence)
+			}
 			if evidence.Passed != (tc.reason == "") || !strings.Contains(evidence.Reason, tc.reason) {
 				t.Fatalf("unexpected pass/reason: %+v", evidence)
 			}
@@ -81,5 +93,12 @@ func main() { io.Copy(io.Discard, os.Stdin); fmt.Print(%s); os.Exit(%d) }
 				t.Fatalf("incomplete execution evidence: %+v", evidence)
 			}
 		})
+	}
+}
+
+func TestLongRunningStartFailureHasNoMeasurements(t *testing.T) {
+	evidence := runLongRunningProbe(context.Background(), RunOptions{}, generatorselection.Fixture{}, filepath.Join(t.TempDir(), "missing"), nil, &ProcessModelEvidence{Mode: ProcessLongRunning})
+	if evidence.Passed || evidence.Processes != 0 || evidence.Measurement != nil || evidence.FirstResponseNanos != nil {
+		t.Fatalf("start failure invented measurements: %+v", evidence)
 	}
 }

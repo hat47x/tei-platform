@@ -2,41 +2,42 @@
 
 データ担当者が、検証用に複製した受注業務の作業領域で受注に属性を一つ追加し、その定義を同じ版のまま実PostgreSQLの移行、一覧と親子明細の取得、登録と別接続での再読込まで通す技術検証用サンプルです。業務キーの受理と一意制約の宣言という二つの判断が、期待状態、移行の差分、登録時の重複拒否まで同じ版で効くかを確かめます。拡張として、旧版の書き手と共存する移行と、同じ最終版をSQLiteへ実現したときの値の往復を加えます。
 
-- 状態: 設計案は提案段階です。このREADMEは入口であり、通しの検証は未実装です。各工程の実装・試験・実環境での確認の状況は、次の工程表で工程ごとに区別して示します。
+- 状態: 設計案は提案段階です。工程1〜10を一つの通しの記録としてつなぐ実装を[`tools/reference-order-data-realization`](../../tools/reference-order-data-realization/README.md)に置き、使い捨ての実PostgreSQLとPython標準の`sqlite3`で通しの検証を行いました。実環境での確認ではありません。属性の追加と一意制約の宣言は複製への直接編集で、共通受理を通ったのは業務キー(候補キー)だけです。
 - 設計の正本: [技術検証用サンプルの統合設計](../../plan/design/TECH_VALIDATION_SAMPLES_2026-10.md)の4.3節。技術検証用サンプルの位置づけは同じ文書の1.2節、要件の目録は2章、資産の対応表は6章にあります。DBの共通層と方言層の分離は[データベースプラグインの方言契約設計](../../plan/design/DATABASE_DIALECT_PLUGIN_DESIGN_2026-10.md)が扱います。
 - 各資産の使い方と実装状況は、それぞれのREADMEが正本です。このREADMEは工程との対応を案内するだけで、内容を写しません。
 
 ## 工程
 
-「現状」は、工程に置いた既存資産の範囲で判断した区分です。工程の間の受け渡しは、すべての工程で未接続です。現在の各部品は、別のデータ(受付依頼、手組みの顧客表、受注表)と別の使い捨ての表で動いています。
+「現状」は、通しの検証([`tools/reference-order-data-realization`](../../tools/reference-order-data-realization/README.md))で確かめた区分です。工程の間は、版の照合値(最終版R3)で受け渡します。既存資産を呼べた工程と、呼べずに同じ内部部品を直接使った工程の別と理由は、実装のREADMEの「工程と既存資産」にあります。
 
 | 区分 | 意味 |
 | --- | --- |
 | 実装あり | コードはあるが、資産の中に試験が見当たらない |
-| 合成データで試験 | 合成データ、検証用の作業領域、使い捨てのDBを使う試験や受領記録が資産にある。このREADMEの作成時に試験は実行していない |
+| 合成データで試験 | 合成データ、検証用の作業領域、使い捨てのDBを使う試験や受領記録が資産にある |
+| 通しで確認 | 検証用に複製した作業領域と、検証器が起動した使い捨ての実PostgreSQL(工程10はPython標準の`sqlite3`)で、通しの検証の中で確かめた。実環境での確認ではない |
 | 実環境で確認 | 実際の提供元や運用環境で確かめた記録がある |
 | 足場なし | 工程を担う既存資産がない |
 | 未確認 | 資産のREADMEから状況を確かめられなかった |
 
 | 工程 | 内容 | 前工程から受け取るもの | 使う既存資産 | 現状 |
 | --- | --- | --- | --- | --- |
-| 1 | 属性の追加と版の記録 | なし(作業領域の複製、変更前の版R0) | なし。共有入力は[受注業務の作業領域](../workspace/)(複製して使う)。編集の補助は部分診断のみ | 足場なし |
-| 2 | 設計質問への回答と業務キーの受理 | 属性を追加した複製と版 | [reference-example-slide](../../tools/reference-example-slide/README.md) | 合成データで試験 |
-| 3 | 論理ERと物理表の対応、一意制約の判断 | 候補キーを受理した版 | [reference-er-table-crossview](../../tools/reference-er-table-crossview/README.md) | 合成データで試験 |
-| 4 | 標準機能候補の生成 | 最終版の複製 | [reference-standard-function-candidates](../../tools/reference-standard-function-candidates/README.md) | 合成データで試験 |
-| 5 | 旧構造のDBの構築、差分の検出、移行の計画 | 最終版とR0から導く期待状態 | [reference-postgres-integration](../../tools/reference-postgres-integration/)、[reference-postgres-migration-rendering](../../tools/reference-postgres-migration-rendering/)(どちらもREADMEなし。[tools/README.md](../../tools/README.md)に掲載) | 実装あり |
-| 6 | 移行前の登録の拒否 | 旧構造のDBと期待状態、工程4の不足項目 | [reference-data-first-persistence](../../tools/reference-data-first-persistence/README.md) | 合成データで試験 |
-| 7 | 移行の適用と再観測での収束 | 工程5の計画と観測、工程6で拒否された旧構造のDB | [reference-postgres-migration-rendering](../../tools/reference-postgres-migration-rendering/) | 実装あり |
-| 8 | 一覧と親子明細の取得 | 収束したDB | なし。親子明細は部分診断のみ | 足場なし |
-| 9 | 登録、別接続での再読込、重複拒否 | 工程8のDBと登録前の一覧、工程4の不足項目 | [reference-data-first-persistence](../../tools/reference-data-first-persistence/README.md) | 合成データで試験 |
-| 10 | 第二の製品(SQLite)での実現と値の往復(拡張) | 最終版と、工程9で登録した受注と境界値 | なし | 足場なし |
+| 1 | 属性の追加と版の記録 | なし(作業領域の複製、変更前の版R0) | なし。共有入力は[受注業務の作業領域](../workspace/)(複製して使う)。共通受理に属性追加の操作がないため、サンプル側で複製を直接編集する | 通しで確認(受理は未接続) |
+| 2 | 設計質問への回答と業務キーの受理 | 属性を追加した複製と版 | [reference-example-slide](../../tools/reference-example-slide/README.md)、[reference-shared-acceptance](../../tools/reference-shared-acceptance/README.md)(`add-candidate-key`) | 通しで確認 |
+| 3 | 論理ERと物理表の対応、一意制約の判断 | 候補キーを受理した版 | [reference-er-table-crossview](../../tools/reference-er-table-crossview/README.md)。一意制約の宣言は保存写像への直接編集 | 通しで確認(一意制約の受理は未接続) |
+| 4 | 標準機能候補の生成 | 最終版の複製 | [reference-standard-function-candidates](../../tools/reference-standard-function-candidates/README.md) | 通しで確認 |
+| 5 | 旧構造のDBの構築、差分の検出、移行の計画 | 最終版とR0から導く期待状態 | [reference-ddl-entry](../../tools/reference-ddl-entry/README.md)。[reference-postgres-integration](../../tools/reference-postgres-integration/)と[reference-postgres-migration-rendering](../../tools/reference-postgres-migration-rendering/)は呼べない(同じ内部部品を直接使う) | 通しで確認 |
+| 6 | 移行前の登録の拒否 | 旧構造のDBと期待状態、工程4の不足項目 | [reference-data-first-persistence](../../tools/reference-data-first-persistence/README.md)は呼べない(受付依頼に固定)。同じ段階の実行前確認を受注へ当てる | 通しで確認 |
+| 7 | 移行の適用と再観測での収束 | 工程5の計画と観測、工程6で拒否された旧構造のDB | [reference-scenario-state-diff](../../tools/reference-scenario-state-diff/README.md)。適用は内部の入口を直接使う | 通しで確認 |
+| 8 | 一覧と親子明細の取得 | 収束したDB | 一覧の入口を新設。[reference-postgres-header-detail-runtime](../../tools/reference-postgres-header-detail-runtime/README.md)は呼べない(判定段階Bが固定)。同じ内部の入口を一覧の結果から呼ぶ | 通しで確認 |
+| 9 | 登録、別接続での再読込、重複拒否 | 工程8のDBと登録前の一覧、工程4の不足項目 | 工程6と同じ | 通しで確認 |
+| 10 | 第二の製品(SQLite)での実現と値の往復(拡張) | 最終版と、工程9で登録した受注と境界値 | なし。SQLiteの提供元がないため、Python標準の`sqlite3`を別プロセスで使い、方言の対応をサンプルの宣言に置く | 通しで確認(TEIのSQLiteの提供元ではない) |
 
 補足します。
 
-- 工程5と7の二つのツールは、実PostgreSQLへ接続するコードを持ちますが、READMEも試験も資産の中にありません。実行の記録は確かめていません。
-- 工程6と9の資産は、実PostgreSQLでの確認を受領記録として持ちます。対象は受付依頼(`examples/first-workspace`)で、受注への適用は未実装です。使い捨てのDBでの確認であり、実環境での確認ではありません。
-- 工程8の一覧取得を担っていた2件は#1197で削除済みです。受注の一覧を実PostgreSQLから取得する入口は、通しの検証で新設します。
-- 工程10は、SQLiteの提供元がないため成立しません。
+- 工程5と7の二つのツール(`reference-postgres-integration`、`reference-postgres-migration-rendering`)は、`package main`で表を手組みし、無条件の削除を持つため、通しでは呼んでいません。通しは同じ内部部品(期待状態の導出、観測、差分、移行の計画と適用)を直接使います。
+- 工程6と9の資産は受付依頼(`examples/first-workspace`)に固定されています。通しは同じ段階の実行前確認と、駆動部の実行・独立の読取りの入口を受注へ当てます。登録のアダプターは手書きで、受注の契約の書込み範囲は検査していません。
+- 工程8の一覧取得を担っていた2件は#1197で削除済みです。通しは駆動部の一覧の入口で受注の一覧を取得します。
+- 工程10は、TEIのSQLiteの提供元がないまま、サンプルの宣言とPython標準の`sqlite3`で確かめました。確かめたことと確かめていないことは、[実装のREADME](../../tools/reference-order-data-realization/README.md#sqliteで確かめたことと確かめていないこと)にあります。
 
 ## 取り込むピーキーな要件と失敗注入
 
@@ -55,7 +56,7 @@
 
 ## 通しの完了条件
 
-通しの完了条件は、現在は一つも成立していません。一つの定義を全工程に通す実行がないためです。
+次の条件を、通しの検証(`python3 tools/verify-order-data-realization.py`)で確かめます。合否と観測値は、検証器が出す通しの記録(`chain-record.json`)の`completionConditions`と`faultInjections`に入ります。条件ごとの確かめ方は[実装のREADME](../../tools/reference-order-data-realization/README.md#通しの完了条件)にあります。拡張の条件(最後の項目)も含めて成立しましたが、SQLiteの側はTEIの提供元ではなく、サンプルの宣言とPython標準の`sqlite3`による確認です。
 
 - 属性追加と二つの判断(業務キーの受理、一意制約の宣言)が、最終版に結び付いたまま、期待状態、移行の差分、一覧、登録のすべてに使われる。別の版や別の複製を読めば、検証器が停止する。
 - 二つの判断を行った版と行わなかった版で、工程5の差分と工程9の結果が異なることを、一つの実行系列で示す。
@@ -63,7 +64,7 @@
 - 一覧で選んだ受注の識別子が、そのまま親子明細の取得へ渡る。
 - 登録の結果と別接続での再読込が別々の根拠として記録され、再読込に失敗した登録は結果不明として残る。
 - 検証器は工程をまたぐ使い捨てのDBを一つだけ使い、開始前に空であることを確かめ、終了時に所有印のあるものだけを削除する。
-- (拡張)旧版と共存する移行が宣言どおりに進み、SQLiteで読み戻した値がPostgreSQLの値と一致するか、宣言した既知の差分だけである。SQLiteの提供元が成立するまで、後者は完了の判定に含めない。
+- (拡張)旧版と共存する移行が宣言どおりに進み、SQLiteで読み戻した値がPostgreSQLの値と一致するか、宣言した既知の差分だけである。SQLiteの側はTEIの提供元ではなく、サンプルの宣言とPython標準の`sqlite3`で確かめる。
 
 ## 部分工程の診断(互換入口)
 
@@ -80,7 +81,7 @@
 
 ## 基盤への改善圧力
 
-詳細(現状、求める条件、確認方法)は設計文書の4.3節「基盤への改善圧力と現状」にあります。
+詳細(現状、求める条件、確認方法)は設計文書の4.3節「基盤への改善圧力と現状」にあります。通しの検証で、基盤にないためサンプル側で補ったものは、[実装のREADMEの「基盤の不足」](../../tools/reference-order-data-realization/README.md#基盤の不足)に記録しています。
 
 | 要件 | 不足 |
 | --- | --- |

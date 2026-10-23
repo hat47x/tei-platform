@@ -21,19 +21,20 @@ type CompareOptions struct {
 }
 
 type ProfileSummary struct {
-	ID               string            `json:"id"`
-	Version          string            `json:"version"`
-	ProcessModel     string            `json:"processModel"`
-	Storage          string            `json:"storage"`
-	Network          string            `json:"network"`
-	Update           string            `json:"update"`
-	MemoryLimitBytes int64             `json:"memoryLimitBytes"`
-	GeneratorID      string            `json:"generatorId,omitempty"`
-	Passed           bool              `json:"passed"`
-	Qualified        []string          `json:"qualified"`
-	Rejected         []string          `json:"rejected"`
-	Enforcement      map[string]string `json:"enforcement"`
-	Unsupported      []string          `json:"unsupported,omitempty"`
+	ProcessModelEvidence *ProcessModelEvidence `json:"processModelEvidence,omitempty"`
+	ID                   string                `json:"id"`
+	Version              string                `json:"version"`
+	ProcessModel         string                `json:"processModel"`
+	Storage              string                `json:"storage"`
+	Network              string                `json:"network"`
+	Update               string                `json:"update"`
+	MemoryLimitBytes     int64                 `json:"memoryLimitBytes"`
+	GeneratorID          string                `json:"generatorId,omitempty"`
+	Passed               bool                  `json:"passed"`
+	Qualified            []string              `json:"qualified"`
+	Rejected             []string              `json:"rejected"`
+	Enforcement          map[string]string     `json:"enforcement"`
+	Unsupported          []string              `json:"unsupported,omitempty"`
 }
 
 type ProfileCase struct {
@@ -132,7 +133,8 @@ func Compare(ctx context.Context, opts CompareOptions) (ComparisonReceipt, error
 
 func summarizeProfile(run Receipt) ProfileSummary {
 	return ProfileSummary{
-		ID: run.Profile.ID, Version: run.Profile.Version,
+		ProcessModelEvidence: run.ProcessModel,
+		ID:                   run.Profile.ID, Version: run.Profile.Version,
 		ProcessModel: run.Profile.ProcessModel, Storage: run.Profile.Storage,
 		Network: run.Profile.Network, Update: run.Profile.Update,
 		MemoryLimitBytes: run.Profile.MemoryLimitBytes, GeneratorID: run.Profile.GeneratorID,

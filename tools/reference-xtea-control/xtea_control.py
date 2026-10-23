@@ -111,6 +111,10 @@ class ControlClient:
         return self.request("POST", "/table/read",
                             {"selector": selector, "maxRows": max_rows})
 
+    def tree_read(self, selector: Dict[str, Any], max_rows: int = 500) -> Dict[str, Any]:
+        return self.request("POST", "/tree/read",
+                            {"selector": selector, "maxRows": max_rows})
+
     def key(self, selector: Optional[Dict[str, Any]] = None, key: Optional[str] = None,
             text: Optional[str] = None, modifiers: Optional[List[str]] = None) -> Dict[str, Any]:
         body: Dict[str, Any] = {"key": key, "text": text, "modifiers": modifiers or []}
@@ -336,6 +340,10 @@ def build_parser() -> argparse.ArgumentParser:
     _add_selector_arguments(table_read)
     table_read.add_argument("--max-rows", type=int, default=50)
 
+    tree_read = sub.add_parser("tree-read")
+    _add_selector_arguments(tree_read)
+    tree_read.add_argument("--max-rows", type=int, default=500)
+
     table_set = sub.add_parser("table-set")
     _add_selector_arguments(table_set)
     table_set.add_argument("--row", type=int, required=True)
@@ -416,6 +424,8 @@ def main(argv: Optional[List[str]] = None) -> int:
             _print(client.select(selector_from_args(args), **options))
         elif args.command == "table-read":
             _print(client.table_read(selector_from_args(args), args.max_rows))
+        elif args.command == "tree-read":
+            _print(client.tree_read(selector_from_args(args), args.max_rows))
         elif args.command == "table-set":
             _print(client.table_set(selector_from_args(args), args.row, args.column, args.value))
         elif args.command == "key":
