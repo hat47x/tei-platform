@@ -31,6 +31,26 @@ func TestCompareServerAndEmbeddedProfilesHaveEqualSemantics(t *testing.T) {
 	if len(receipt.Cases) != 10 {
 		t.Fatalf("unexpected case count: %d", len(receipt.Cases))
 	}
+	for _, profile := range receipt.Profiles {
+		evidence := profile.ProcessModelEvidence
+		if evidence == nil {
+			t.Fatal("comparison dropped process measurements")
+		}
+		if profile.ProcessModel == ProcessLongRunning {
+			if evidence.Measurement == nil || evidence.FirstResponseNanos == nil {
+				t.Fatalf("missing long-running measurements: %+v", evidence)
+			}
+		} else {
+			if evidence.Measurement != nil || evidence.FirstResponseNanos != nil || len(evidence.Cases) != 10 {
+				t.Fatalf("oneshot was presented as one invocation: %+v", evidence)
+			}
+			for _, c := range evidence.Cases {
+				if c.Measurement == nil || c.Measurement.ElapsedNanos <= 0 {
+					t.Fatalf("missing oneshot case measurement: %+v", c)
+				}
+			}
+		}
+	}
 	for _, item := range receipt.Cases {
 		if !item.Equal {
 			t.Fatalf("case %s was not equal: %+v", item.CaseID, item)

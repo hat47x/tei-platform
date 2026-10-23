@@ -12,6 +12,12 @@ go run ./tools/reference-generator-selection/cmd/tei-generator-select \
 
 registryを使うと、登録済みで有効な版だけを選抜できます。
 
+caseごとの `execution.measurement` に、実行呼出し直前から終了待ち・入出力の完了までの経過時間 `elapsedNanos`、OSのprocess stateから取得した `userCpuNanos` と `systemCpuNanos` を記録します。単位はいずれもnanosecondです。build・処理系検出・終了後のJSON検証はこの経過時間に含めません。`goos`、`goarch`、`harnessGoVersion` は参照実行器の環境を示します。候補のsource/binary digestと処理系・buildの証拠は既存の項目に残します。
+
+観測値を含むreceiptのbytesは試行ごとに変わります。receipt digestとその署名は個々の試行に対応し、source/binaryの再現性は既存のdigestで別に確認します。
+
+非0終了・不正な出力・起動後のtimeoutでも、process stateを取得できた場合は観測値を残します。起動失敗などでstateがなければmeasurementを省略し、0として埋めません。CPU時間0はOSの時間分解能内での有効な観測値です。複数threadのCPU時間が加算されるため、経過時間を上回る場合があります。CPU時間はGoの `os.ProcessState` が返すprocessと子processの会計値で、wrapperを指定した場合はその影響も受けます。子孫process全体の監視、メモリ量・CPU上限の強制、実Targetの測定や性能順位を示すものではありません。
+
 ```text
 go run ./tools/reference-generator-selection/cmd/tei-generator-registry \
   validate -registry tools/reference-generator-selection/testdata/registry.json \

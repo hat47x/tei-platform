@@ -69,6 +69,20 @@ Goは選抜と同じ `go build -trimpath -buildvcs=false -o ... main.go` でbuil
 
 対象は単一の通常ファイルです。Goは `main.go`、Pythonは `.py`、JavaScriptは `.js`を対象とし、sourceのdirectory参照・symlink・複数ファイル構成は対応しません。これは参照probeの実行対象を選抜証拠と結び付ける確認であり、署名済み来歴や実Targetへの配備受理ではありません。ローカル配備のGo buildも同じ単一 `main.go` のbuild方法を共有しますが、配備へ選抜receiptとの照合を追加したものではありません。
 
+## 実行時間とCPU時間の観測
+
+`processModel` はprocessの実行回数とともに時間の観測値を残します。
+
+- oneshot: `cases[].measurement` にcaseごとの経過時間・CPU時間を記録します。複数processの合計を単一processの測定値として示さず、先の選抜で観測した値を使います。
+- long-running: `measurement` にprobeの1 processについて記録します。build後、`Start` の直前から全応答の読取り・終了待ちの完了までを測ります。request送信、応答のJSON解釈・case比較、終了待ちを含む参照実行器から見た経過時間です。
+- long-runningの `firstResponseNanos`: `Start` の直前から、JSONとして解釈できた最初の応答までの経過時間です。起動・wrapper・最初のrequestの処理・入出力・JSON解釈を含み、純粋な起動時間ではありません。応答がなければ省略します。応答の存在と意味の合格は別で、不正な値を返した候補にも観測値は残ります。
+
+各 `measurement` の `elapsedNanos`、`userCpuNanos`、`systemCpuNanos` の単位はnanosecondです。CPU時間はOSのprocess stateを通じて取得し、GoのAPIが返すprocess・子processの会計範囲に従います。wrapperを使えばその処理も含み得ます。起動失敗などでprocess stateがなければmeasurementを省略します。CPU時間0はOSの時間分解能内での観測値であり、未観測の代わりではありません。
+
+`goos`、`goarch`、`harnessGoVersion` は参照実行器の環境です。候補のsource/binary digest、build情報、Python/JavaScriptの処理系情報は既存のreceiptに残します。`compare` も各profileの `processModelEvidence` にこれらの値を保持します。意味の一致判定は従来どおりcaseの結果を比較し、時間の差を意味の差や合否条件にはしません。
+
+これらはローカル参照実行器の単一試行の観測値です。CPU・メモリ上限の強制、メモリ使用量、子孫process全体の監視、純粋な起動時間、実Targetや機種間の性能比較、実配備時の更新時間は今回の測定範囲に含みません。機種・負荷・OSの会計方法が異なる値から、性能順位やリアルタイム性を判断できません。
+
 ## Python/JavaScriptの常駐候補
 
 `python-long-running-template`と`javascript-long-running-template`は、既存の単発候補と同じ計算・拒否をnewline-delimited JSONで繰り返す候補です。既存の単発テンプレートのsourceとtemplate digestは変えていません。

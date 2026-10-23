@@ -136,10 +136,11 @@ type RuntimeEvidence struct {
 // execution. It is a digest of stdout/stderr and the process exit state, not a
 // copy of the content and not a claim about a real target.
 type ExecutionEvidence struct {
-	ExitCode     int    `json:"exitCode"`
-	StdoutDigest string `json:"stdoutDigest"`
-	StderrDigest string `json:"stderrDigest"`
-	TimedOut     bool   `json:"timedOut,omitempty"`
+	Measurement  *ProcessMeasurement `json:"measurement,omitempty"`
+	ExitCode     int                 `json:"exitCode"`
+	StdoutDigest string              `json:"stdoutDigest"`
+	StderrDigest string              `json:"stderrDigest"`
+	TimedOut     bool                `json:"timedOut,omitempty"`
 }
 
 type CaseResult struct {
@@ -1253,9 +1254,12 @@ func runProgram(ctx context.Context, name string, args []string, input json.RawM
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
+	started := time.Now()
 	err := cmd.Run()
+	elapsed := time.Since(started)
 	evidence := &ExecutionEvidence{
-		ExitCode: 0, StdoutDigest: digest(stdout.Bytes()), StderrDigest: digest(stderr.Bytes()),
+		Measurement: MeasureProcess(cmd.ProcessState, elapsed),
+		ExitCode:    0, StdoutDigest: digest(stdout.Bytes()), StderrDigest: digest(stderr.Bytes()),
 	}
 	if err != nil {
 		evidence.ExitCode = -1
