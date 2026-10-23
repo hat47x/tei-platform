@@ -11,6 +11,7 @@
 package orderrollouthost
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -187,7 +188,9 @@ func LoadStart(p Paths) (Start, error) {
 	}
 	s := Start{
 		RunID: run.RunID, SolutionID: string(run.SolutionID), SolutionVersion: run.SolutionVersion, Environment: run.Environment,
-		StartRecordDigest: digest(runRaw), PlanFingerprint: run.PlanFingerprint,
+		// Line endings depend on the checkout (CRLF on Windows with
+		// core.autocrlf); the digest is taken over LF line endings.
+		StartRecordDigest: digest(bytes.ReplaceAll(runRaw, []byte("\r\n"), []byte("\n"))), PlanFingerprint: run.PlanFingerprint,
 		PluginLockFingerprint: plan.PluginLockFingerprint, RuntimePolicyFingerprint: plan.RuntimePolicyFingerprint,
 		EnvironmentPlanDigest: jsonDigest(plan), Command: cmd,
 		InitialSalesRelease: initial, InitialObservedAt: run.Initial.ObservedAt,
