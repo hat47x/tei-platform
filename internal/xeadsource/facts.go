@@ -148,10 +148,11 @@ func ExtractRelationalSourceFacts(doc Document) RelationalSourceFacts {
 			facts.LegacyKeys = append(facts.LegacyKeys, key)
 
 		case "Relationship":
+			relationshipType, _ := exactAttribute(n, "Type")
 			facts.RelationshipKeys = append(facts.RelationshipKeys, RelationshipKeyFact{
 				Locator:          n.Locator,
 				RelationshipID:   attributeValue(n, "ID"),
-				RelationshipType: attributeValue(n, "Type"),
+				RelationshipType: relationshipType,
 				Table1LegacyID:   attributeValue(n, "Table1ID"),
 				Key1LegacyID:     attributeValue(n, "TableKey1ID"),
 				Table2LegacyID:   attributeValue(n, "Table2ID"),
