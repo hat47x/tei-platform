@@ -12,6 +12,12 @@ go run ./tools/reference-generator-selection/cmd/tei-generator-select \
 
 registryを使うと、登録済みで有効な版だけを選抜できます。
 
+caseごとの `execution.measurement` に、実行呼出し直前から終了待ち・入出力の完了までの経過時間 `elapsedNanos`、OSのprocess stateから取得した `userCpuNanos` と `systemCpuNanos` を記録します。単位はいずれもnanosecondです。build・処理系検出・終了後のJSON検証はこの経過時間に含めません。`goos`、`goarch`、`harnessGoVersion` は参照実行器の環境を示します。候補のsource/binary digestと処理系・buildの証拠は既存の項目に残します。
+
+観測値を含むreceiptのbytesは試行ごとに変わります。receipt digestとその署名は個々の試行に対応し、source/binaryの再現性は既存のdigestで別に確認します。
+
+非0終了・不正な出力・起動後のtimeoutでも、process stateを取得できた場合は観測値を残します。起動失敗などでstateがなければmeasurementを省略し、0として埋めません。CPU時間0はOSの時間分解能内での有効な観測値です。複数threadのCPU時間が加算されるため、経過時間を上回る場合があります。CPU時間はGoの `os.ProcessState` が返すprocessと子processの会計値で、wrapperを指定した場合はその影響も受けます。子孫process全体の監視、メモリ量・CPU上限の強制、実Targetの測定や性能順位を示すものではありません。
+
 ```text
 go run ./tools/reference-generator-selection/cmd/tei-generator-registry \
   validate -registry tools/reference-generator-selection/testdata/registry.json \
@@ -165,7 +171,7 @@ go run ./tools/reference-generator-selection/cmd/tei-generator-meta \
 
 ## 生成器sourceの生成
 
-`tei-generator-build`は、契約JSONと固定strategy（`template`、`alternative`、`dangerous`、`python-template`、`javascript-template`、`java-template`、`wasm-template`、`long-running-template`、`python-long-running-template`、`javascript-long-running-template`）から、候補sourceを決定的に生成します。
+`tei-generator-build`は、契約JSONと固定strategy（`template`、`alternative`、`dangerous`、`python-template`、`javascript-template`、`java-template`、`wasm-template`、`long-running-template`、`python-long-running-template`、`javascript-long-running-template`、`java-long-running-template`）から、候補sourceを決定的に生成します。
 
 - Goのsourceは`go/format`で整形してから書き出します。Python・JavaScript・Javaのsourceは整形せず、生成したbyte列をそのまま使います。
 - `candidate.json`には`language`、`source`（`main.go`/`main.py`/`main.js`）、`generator`を記録します。
@@ -184,13 +190,13 @@ go run ./tools/reference-generator-selection/cmd/tei-generator-meta \
 
 - Go候補は`go build`で実行ファイルを作り、`binaryDigest`を記録します。
 - Python候補は`python3`または`python`、JavaScript候補は`node`でsourceを実行します。どちらも`binaryDigest`は空です。
-- Java候補は`javac -d <classes> Main.java`でcompileし、`java -cp <classes> Main`で実行します。`binaryDigest`は生成された`Main.class`のdigestです。
+- Java候補はsourceを2つの別directoryへcopyし、それぞれ`javac -d <classes> Main.java`でcompileして`Main.class`のdigestを比較します。一致した場合だけ合格し、`java -cp <classes> Main`で実行します。`binaryDigest`は`Main.class`のdigest、`reproducibility`は`path-independent-twice`です。
 - WASM候補はsourceを2つの別directoryへcopyし、それぞれ`GOOS=js GOARCH=wasm go build -trimpath -buildvcs=false`で`.wasm`を作ってdigestを比較します。一致した場合だけ合格し、`node <GOROOT>/lib/wasm/wasm_exec_node.js <candidate.wasm>`で実行します。`binaryDigest`はwasm binaryのdigest、`reproducibility`は`path-independent-twice`です。
 - receiptの`runtime`へ、言語、起動方法、処理系のversion、利用可否を記録します。Javaは`javac`と`java`、WASMは`node`と`wasm_exec_node.js`が必要です。
 - 処理系が見つからない場合は`runtime unavailable`として拒否し、PASSや空の結果へ潰しません。
 - source拡張子が`language`と一致しない候補、未知の`language`を拒否します。
 - 同じfixtureでGo候補とPython候補、Go候補とJavaScript候補、Go候補とJava候補、Go候補とWASM候補の出力を比較する試験を持つ。これは同じ参照契約の範囲であり、すべての言語・Runtimeの同等性を証明しません。
-- Javaのclassファイルの再現性は`not-tested`です。WASMは同じ環境でのsource path非依存build一致までを確認しますが、別machine・別toolchain・実WASM runtimeでの再現性は未検証です。JVM/WASM runtimeの版・依存解決・実Targetでの起動は別の境界です。
+- JavaとWASMは、同じ環境でのsource path非依存build一致までを確認します。別machine・別toolchain・clean cache・実JVM/実WASM runtimeでの再現性は未検証です。JVM/WASM runtimeの版・依存解決・実Targetでの起動は別の境界です。
 
 これらの参照は、別言語・別実行形式の候補を同じ選抜経路へ載せられることの確認であり、Python/JavaScript/Java/WASM製品実装の採用や、実Targetでの処理系固定を意味しません。
 
@@ -203,8 +209,8 @@ go run ./tools/reference-generator-selection/cmd/tei-generator-meta \
 - 選抜のfixture実行は、これまでどおりcaseごとにprocessを起動します。
 - `tei-target-profile`のlong-running profileは、この候補を1 processで起動し、全requestのresponseをfixtureと比較します。
 - processが途中で終了した場合、response数が足りない場合、fixtureと異なる場合は失敗します。
-- `python-long-running-template`と`javascript-long-running-template`は、同じ計算・拒否をPython/JavaScriptのnewline-delimited JSON処理として生成します。既存の単発テンプレートは変更せず、別のtemplate digestで識別します。
-- Target ProfileのprobeはGo・Python・JavaScript候補を対象とします。Javaのlong-running probeは未対応です。処理系がなければ不合格とし、Python/JavaScriptにはGoのメモリ上限が効かないことをreceiptへ記録します。
+- `python-long-running-template`、`javascript-long-running-template`、`java-long-running-template`は、同じ計算・拒否を各言語のnewline-delimited JSON処理として生成します。既存の単発テンプレートは変更せず、別のtemplate digestで識別します。
+- Target ProfileのprobeはGo・Python・JavaScript・Java候補を対象とします。WASMのlong-running probeは未対応です。処理系がなければ不合格とし、Go以外にはGoのメモリ上限が効かないことをreceiptへ記録します。
 
 ## Go候補のbuild evidence
 
@@ -295,7 +301,7 @@ reconcileは候補をビルド・実行・選抜しません。再生成した�
 - `promptPath`・`contextPath`を省略した候補では、digestの形式だけを確認し、内容との対応は検証しません。
 - 深さ2以上のメタ生成、失効に伴う自動再生成・自動選抜・失効の承認。
 - Python/JavaScript/Java/WASM sourceを出力するメタ生成器のlineage検証。
-- long-runningのJava/WASM候補。
+- long-runningのWASM候補。
 - Java以外のJVM言語、.NET/WASM等と、実Targetでの処理系固定・依存解決。
 - 実Provider・実Targetでの比較。
 - 候補のartifact store、別machine・別toolchain・clean cacheでのbuild再現性（#943 / #1370 / #1104）。

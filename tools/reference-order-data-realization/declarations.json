@@ -1,0 +1,69 @@
+{
+  "schema": "tei.reference.order-data-realization-declarations/v0",
+  "note": "このサンプルが置く宣言です。基盤に宣言の場所がない項目(移行の段階、採番、SQLiteの方言)を、サンプル固有の宣言として持ちます。受理済みの意味ではありません。",
+  "attributeAddition": {
+    "data": "sales.order",
+    "symbol": "deliveryNote",
+    "attribute": "sales.order.delivery_note",
+    "type": "std.text",
+    "column": "delivery_note",
+    "storage": "varchar",
+    "nullability": "optional",
+    "existingRowsValue": null
+  },
+  "businessKey": {
+    "data": "sales.order",
+    "id": "sales.order.external_number",
+    "symbol": "ExternalNumber",
+    "attributes": ["sales.order.external_id"],
+    "question": "外部番号(sales.order.external_id)は、受注を一意に識別する業務キーか",
+    "answer": "外部番号を受注の業務キーとして受理する。物理の主キー(order_id)は代理の識別子のままとする"
+  },
+  "uniqueDecision": {
+    "declare": true,
+    "mapping": "sales_core.order",
+    "name": "orders_external_id_key",
+    "attributes": ["sales.order.external_id"]
+  },
+  "migration": {
+    "stages": [
+      {"name": "expand", "changeKinds": ["add-column"], "refuseWhileOldWriters": false},
+      {"name": "contract", "changeKinds": ["add-unique-constraint"], "refuseWhileOldWriters": true}
+    ],
+    "lockTimeoutMillis": 3000,
+    "oldWriterValues": {"sales.order.delivery_note": null},
+    "notAppliedAutomatically": ["drop-column", "drop-table"]
+  },
+  "numbering": {
+    "orderNumber": {"method": "database-sequence", "gaps": "allowed-with-recorded-reason"},
+    "externalNumber": {"source": "external-issuer", "onUnavailable": "provisional-then-reassign", "provisionalPrefix": "PROV-"}
+  },
+  "sqliteDialect": {
+    "placement": "サンプルの宣言(このファイル)。設計案では製品の方言プラグインの「物理型の対応」の面に置くが、SQLiteの提供元がまだない",
+    "storage": {
+      "int64": "INTEGER",
+      "varchar": "TEXT",
+      "text": "TEXT",
+      "decimal": "TEXT",
+      "datetime-tz": "TEXT"
+    },
+    "encoding": {
+      "decimal": "PostgreSQLのnumericの文字列表現をそのまま保存する(位取りを保つ)",
+      "datetime-tz": "UTCに直したRFC 3339の固定幅の文字列(YYYY-MM-DDTHH:MM:SS.ffffffZ)。元の時差は保存しない"
+    },
+    "knownDifferences": [
+      {"storage": "datetime-tz", "kind": "offset-not-retained", "detail": "PostgreSQLのtimestamptzもSQLiteのUTC文字列も元の時差を保たない。瞬間として比べる"},
+      {"storage": "varchar", "kind": "length-not-enforced", "detail": "SQLiteのTEXTは長さの上限を強制しない。値の往復には影響しない"}
+    ]
+  },
+  "sqliteNaiveDialect": {
+    "note": "陰性対照。素朴な対応(数値の型の宣言)で値が変わることを、比較が検出できるかを確かめる",
+    "storage": {
+      "int64": "INTEGER",
+      "varchar": "NUMERIC",
+      "text": "TEXT",
+      "decimal": "NUMERIC",
+      "datetime-tz": "TEXT"
+    }
+  }
+}

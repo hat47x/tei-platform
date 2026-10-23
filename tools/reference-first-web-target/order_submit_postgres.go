@@ -90,7 +90,9 @@ func (s *postgresOrderSubmitStore) ReadStatus(ctx context.Context, orderID int64
 		orderID,
 	).Scan(&status)
 	if err != nil {
-		return "", fmt.Errorf("read order status: %w", err)
+		// The Observation error reaches the HTTP client; keep the driver's
+		// connection detail (user, host, port, database) out of it, as Submit does.
+		return "", errors.New("read order status failed")
 	}
 	return status, nil
 }

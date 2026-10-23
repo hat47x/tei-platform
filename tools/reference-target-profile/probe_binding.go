@@ -69,6 +69,11 @@ func snapshotProbeSource(candidatesDir, snapshotDir string, selected generatorse
 		extension = ".py"
 	case generatorselection.LanguageJavaScript:
 		extension = ".js"
+	case generatorselection.LanguageJava:
+		extension = ".java"
+		if manifest.Source != "Main.java" {
+			return manifest, fmt.Errorf("Java probe supports only the selected Main.java source")
+		}
 	default:
 		return manifest, fmt.Errorf("unsupported long-running candidate language: %s", language)
 	}
