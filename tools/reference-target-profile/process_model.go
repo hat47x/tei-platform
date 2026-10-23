@@ -19,30 +19,33 @@ import (
 )
 
 type ProcessCase struct {
-	CaseID string                    `json:"caseId"`
-	Passed bool                      `json:"passed"`
-	Got    generatorselection.Result `json:"got"`
-	Want   generatorselection.Result `json:"want"`
+	Measurement *generatorselection.ProcessMeasurement `json:"measurement,omitempty"`
+	CaseID      string                                 `json:"caseId"`
+	Passed      bool                                   `json:"passed"`
+	Got         generatorselection.Result              `json:"got"`
+	Want        generatorselection.Result              `json:"want"`
 }
 
 // ProcessModelEvidence records whether the harness executed the selected
 // candidate according to the profile's declared process model. It is not a
 // measurement of a real target's process supervisor.
 type ProcessModelEvidence struct {
-	CandidateID  string                              `json:"candidateId,omitempty"`
-	SourceDigest string                              `json:"sourceDigest,omitempty"`
-	BinaryDigest string                              `json:"binaryDigest,omitempty"`
-	Binding      string                              `json:"binding,omitempty"`
-	Mode         string                              `json:"mode"`
-	Runtime      *generatorselection.RuntimeEvidence `json:"runtime,omitempty"`
-	Processes    int                                 `json:"processes"`
-	Requests     int                                 `json:"requests"`
-	Responses    int                                 `json:"responses"`
-	Passed       bool                                `json:"passed"`
-	ExitCode     int                                 `json:"exitCode,omitempty"`
-	StderrDigest string                              `json:"stderrDigest,omitempty"`
-	Reason       string                              `json:"reason,omitempty"`
-	Cases        []ProcessCase                       `json:"cases,omitempty"`
+	Measurement        *generatorselection.ProcessMeasurement `json:"measurement,omitempty"`
+	FirstResponseNanos *int64                                 `json:"firstResponseNanos,omitempty"`
+	CandidateID        string                                 `json:"candidateId,omitempty"`
+	SourceDigest       string                                 `json:"sourceDigest,omitempty"`
+	BinaryDigest       string                                 `json:"binaryDigest,omitempty"`
+	Binding            string                                 `json:"binding,omitempty"`
+	Mode               string                                 `json:"mode"`
+	Runtime            *generatorselection.RuntimeEvidence    `json:"runtime,omitempty"`
+	Processes          int                                    `json:"processes"`
+	Requests           int                                    `json:"requests"`
+	Responses          int                                    `json:"responses"`
+	Passed             bool                                   `json:"passed"`
+	ExitCode           int                                    `json:"exitCode,omitempty"`
+	StderrDigest       string                                 `json:"stderrDigest,omitempty"`
+	Reason             string                                 `json:"reason,omitempty"`
+	Cases              []ProcessCase                          `json:"cases,omitempty"`
 }
 
 func enforceProcessModel(ctx context.Context, profile Profile, opts RunOptions, selection generatorselection.Receipt) *ProcessModelEvidence {
@@ -78,6 +81,9 @@ func oneshotEvidence(profile Profile, selection generatorselection.Receipt) *Pro
 	evidence.Passed = true
 	for _, result := range candidate.Results {
 		processCase := ProcessCase{CaseID: result.CaseID, Passed: result.Passed, Got: result.Got, Want: result.Want}
+		if result.Execution != nil {
+			processCase.Measurement = result.Execution.Measurement
+		}
 		if !result.Passed {
 			evidence.Passed = false
 		}
@@ -181,6 +187,7 @@ func runLongRunningProbe(ctx context.Context, opts RunOptions, fixture generator
 	}
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
+	started := time.Now()
 	if err := cmd.Start(); err != nil {
 		evidence.Reason = "candidate start failed: " + err.Error()
 		return evidence
@@ -199,6 +206,10 @@ func runLongRunningProbe(ctx context.Context, opts RunOptions, fixture generator
 			break
 		}
 		evidence.Responses++
+		if evidence.FirstResponseNanos == nil {
+			firstResponse := time.Since(started).Nanoseconds()
+			evidence.FirstResponseNanos = &firstResponse
+		}
 		if evidence.Responses > len(fixture.Cases) {
 			evidence.Reason = "candidate returned extra responses"
 			continue
@@ -208,6 +219,7 @@ func runLongRunningProbe(ctx context.Context, opts RunOptions, fixture generator
 		evidence.Cases = append(evidence.Cases, processCase)
 	}
 	waitErr := cmd.Wait()
+	evidence.Measurement = generatorselection.MeasureProcess(cmd.ProcessState, time.Since(started))
 	if cmd.ProcessState != nil {
 		evidence.ExitCode = cmd.ProcessState.ExitCode()
 	}

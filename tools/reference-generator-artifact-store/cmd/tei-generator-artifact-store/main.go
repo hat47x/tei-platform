@@ -15,7 +15,7 @@ import (
 // source digest and retrieves it again. It does not sign or grant authority.
 func main() {
 	if len(os.Args) < 2 {
-		fmt.Fprintln(os.Stderr, "usage: tei-generator-artifact-store <put|get|list|prune> [options]")
+		fmt.Fprintln(os.Stderr, "usage: tei-generator-artifact-store <put|get|list|prune|audit> [options]")
 		os.Exit(2)
 	}
 	command := os.Args[1]
@@ -75,6 +75,18 @@ func main() {
 		receipt, err := generatorartifactstore.Prune(generatorartifactstore.PruneOptions{
 			StoreDir: *storeDir, Keep: splitCSV(*keep), DryRun: *dryRun,
 		})
+		if err != nil {
+			fail(err)
+		}
+		emit(receipt)
+		if !receipt.Passed {
+			os.Exit(1)
+		}
+	case "audit":
+		if *storeDir == "" {
+			fail(fmt.Errorf("-store is required"))
+		}
+		receipt, err := generatorartifactstore.Audit(*storeDir)
 		if err != nil {
 			fail(err)
 		}
