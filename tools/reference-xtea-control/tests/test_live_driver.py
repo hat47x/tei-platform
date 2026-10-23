@@ -229,6 +229,10 @@ class LiveDriverTest(unittest.TestCase):
             self.client.set_value(locked, False)
         self.assertEqual(caught.exception.code, "COMPONENT_NOT_EDITABLE")
         self.assertTrue(self.client.find(locked)["selected"])
+        with self.assertRaises(ControlError) as caught:
+            self.client.invoke(locked)
+        self.assertEqual(caught.exception.code, "COMPONENT_NOT_EDITABLE")
+        self.assertTrue(self.client.find(locked)["selected"])
         self.button("xeadDriver.XF000", "^Exit$")
         self.result("RETURN_CODE=01")
         self.assertEqual(self.observe(), self.observations[0])

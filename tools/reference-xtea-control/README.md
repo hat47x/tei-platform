@@ -249,6 +249,8 @@ xvfb-run -a sh -c 'for check_name in inventory driver_result integration live_dr
 
 試験は元のDriverのFunctionLauncherを合成起動パネルから呼び、各試験で新しい合成モデル・H2 DBを生成します。更新結果は別JDBC接続から読みます。元の参照モデルや業務DBへ接続する引数はありません。操作トレース・DB前後値・Java版・JAR指紋・PDF・Excelを、実行ごとに作る`artifacts/live-driver/run-*/`へ保存し、終了時に保存先を表示します。Excelはファイルを展開してセル値まで照合します。`runtime.json`には実行したツールのソース指紋、画面の`DISPLAY`とUTC時刻も残します。
 
+`invoke`は非同期の受付を返します。無効な部品は`COMPONENT_NOT_EDITABLE`で拒否し、受け付けた呼出しはトレースの`invoke.start`・`invoke.complete`・`invoke.error`で経過を確認できます。`invoke.complete`はイベント処理から戻ったことを表し、別スレッドの業務処理やDB更新の完了を示しません。モーダル画面を開くイベントは、その画面を閉じるまで完了しません。DBや出力結果は従来どおり別途照合します。
+
 同じ試験名を反復する場合も、ログ・DB観測・生成物は試験1回ごとの`case-*`フォルダーへ分けます。失敗時の画面（表の値を含む）と操作トレースは、次の入力型の試験や後片付けより前に`*-failure-*.json`へ保存します。
 
 `summary.json`は実行件数、失敗・エラーの対象と内容、skipの理由を記録します。`status`は成功した実行で`passed`、失敗・エラー・想定外の成功があれば`failed`、skipや想定どおりの失敗を含むか0件なら`skipped`です。終了コードと合わせて確認し、記録がない実行を成功とは扱わないでください。環境未指定のskipは終了コード0でも`passed`になりません。操作記録のJSONが存在するだけでは成功を意味しません。

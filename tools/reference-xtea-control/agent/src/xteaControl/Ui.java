@@ -174,12 +174,25 @@ final class Ui {
 
     static Map<String, Object> invoke(final Map<String, Object> selector, final long settleMs) throws Exception {
         final Component target = resolve(selector);
+        call(new Callable<Void>() {
+            @Override public Void call() {
+                if (!target.isEnabled()) {
+                    throw new BridgeException("COMPONENT_NOT_EDITABLE", "component is disabled");
+                }
+                return null;
+            }
+        }, DEFAULT_TIMEOUT_MS);
         final String label = describeComponent(target);
         final long started = System.currentTimeMillis();
+        Trace.record("invoke", label, "settleMs=" + settleMs);
         SwingUtilities.invokeLater(new Runnable() {
             @Override
             public void run() {
                 try {
+                    Trace.record("invoke.start", label, "enabled=" + target.isEnabled() + " showing=" + target.isShowing());
+                    if (!target.isEnabled()) {
+                        throw new BridgeException("COMPONENT_NOT_EDITABLE", "component became disabled before invocation");
+                    }
                     if (target instanceof AbstractButton) {
                         ((AbstractButton) target).doClick(0);
                     } else if (target instanceof JTabbedPane) {
@@ -190,12 +203,12 @@ final class Ui {
                     } else {
                         throw new IllegalStateException("component does not accept invoke: " + target.getClass().getName());
                     }
+                    Trace.record("invoke.complete", label, "handler returned");
                 } catch (Throwable t) {
                     Trace.record("invoke.error", label, describe(t));
                 }
             }
         });
-        Trace.record("invoke", label, "settleMs=" + settleMs);
         if (settleMs > 0) {
             Thread.sleep(Math.min(settleMs, 30000));
         }

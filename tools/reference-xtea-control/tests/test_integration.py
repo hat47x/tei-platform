@@ -177,15 +177,22 @@ class IntegrationTest(unittest.TestCase):
 
     def test_05_modal_dialog(self) -> None:
         self.client.select({"role": "tab", "window": "Fake X-TEA"}, item_index=0)
-        self.client.invoke({"role": "button", "text": "Open Dialog"})
+        cursor = self.client.trace()["lastId"]
+        operation = self.client.invoke({"role": "button", "text": "Open Dialog"})
         self.client.wait_window("Fake Dialog", timeout_ms=10000)
         windows = self.client.windows()["windows"]
         dialog = next(w for w in windows if w["title"] == "Fake Dialog")
         self.assertTrue(dialog["modal"])
+        events = [event["type"] for event in self.client.trace(since=cursor)["events"]
+                  if event["target"] == operation["target"]]
+        self.assertEqual(events, ["invoke", "invoke.start"])
         self.client.set_value({"name": "dialogInput"}, "changed")
         self.client.invoke({"role": "button", "text": "OK"})
         self.client.wait_window("Fake Dialog", state="absent", timeout_ms=10000)
         self.client.wait_text({"name": "status"}, expected="dialog:hello", timeout_ms=5000)
+        events = [event["type"] for event in self.client.trace(since=cursor)["events"]
+                  if event["target"] == operation["target"]]
+        self.assertEqual(events, ["invoke", "invoke.start", "invoke.complete"])
 
     def test_06_screenshot_and_trace(self) -> None:
         path = Path(self.tmp.name) / "fixture.png"
