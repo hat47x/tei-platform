@@ -7,6 +7,7 @@ JAVA selects JDK 11 (Nashorn); JAVAC selects a compiler supporting --release 8.
 from __future__ import annotations
 
 import hashlib
+from contextlib import contextmanager
 from datetime import datetime, timezone
 import json
 import os
@@ -48,6 +49,34 @@ def write_run_summary(result, folder):
 class LiveDriverTest(unittest.TestCase):
     STARTUP_TIMEOUT_SECONDS = 120
     OUTPUT_TIMEOUT_SECONDS = 120
+
+    @contextmanager
+    def failure_diagnostic(self, context):
+        try:
+            yield
+        except unittest.SkipTest:
+            raise
+        except Exception:
+            try:
+                capture = {"test": self.id(), "context": context,
+                           "snapshot": self.client.snapshot(includeTableRows=True),
+                           "trace": self.client.trace()}
+                path = self.artifacts / f"{self._testMethodName}-failure-{time.time_ns()}.json"
+                path.write_text(json.dumps(capture, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
+            except Exception as error:
+                print(f"Failure diagnostic unavailable: {type(error).__name__}", file=sys.stderr)
+            raise
+
+    def _callTestMethod(self, method):
+        # Capture before unittest runs tearDown/cleanups, including on Python 3.10.
+        with self.failure_diagnostic({"phase": "test"}):
+            return super()._callTestMethod(method)
+
+    @contextmanager
+    def subTest(self, *args, **params):
+        with super().subTest(*args, **params):
+            with self.failure_diagnostic({"args": args, "params": params}):
+                yield
 
     @classmethod
     def setUpClass(cls):

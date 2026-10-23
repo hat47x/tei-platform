@@ -4,10 +4,52 @@ from pathlib import Path
 import tempfile
 import unittest
 
+import test_live_driver as driver_tests
 from test_live_driver import write_run_summary
 
 
 class DriverResultTest(unittest.TestCase):
+    def test_failures_are_captured_before_state_changes(self):
+        class Client:
+            value = "failed state"
+
+            def snapshot(self, **options):
+                return {"value": self.value}
+
+            def trace(self):
+                return {"events": []}
+
+        class Fixture(driver_tests.LiveDriverTest):
+            client = Client()
+
+            def setUp(self):
+                pass
+
+            def test_flow(self):
+                with self.subTest(input_type="ALPHA"):
+                    self.fail("input missing")
+                self.client.value = "next state"
+
+            def test_parent_failure(self):
+                self.fail("input missing")
+
+            def tearDown(self):
+                self.client.value = "cleanup state"
+
+        for name in ("test_flow", "test_parent_failure"):
+            with self.subTest(test_method=name), tempfile.TemporaryDirectory() as tmp:
+                Fixture.artifacts = Path(tmp)
+                Fixture.client = Client()
+                result = unittest.TestResult()
+                Fixture(name).run(result)
+                self.assertEqual(len(result.failures), 1)
+                capture = json.loads(next(Path(tmp).glob("*-failure-*.json")).read_text())
+                self.assertEqual(capture["snapshot"]["value"], "failed state")
+                if name == "test_flow":
+                    self.assertEqual(capture["context"]["params"]["input_type"], "ALPHA")
+                else:
+                    self.assertEqual(capture["context"]["phase"], "test")
+
     def test_actual_unittest_outcomes(self):
         class Fixture(unittest.TestCase):
             def test_pass(self):
