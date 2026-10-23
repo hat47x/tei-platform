@@ -7,20 +7,20 @@ X-TEA制御面の現在地を、到達済みの経路と残作業の性質に分
 TEIの参照モデル再現確認で必要になるX-TEAの入力・観測を、GUIの座標操作に依存せず、生成AIが同じ手順で再実行できる状態になりました。
 
 - Modeler / Editor / Driverは、起動時JavaエージェントとシナリオJSONで操作する。
-- XeadServerは、HTTPクライアントで操作する。
 - 実行した版、コマンド、結果、未確認事項を残せる。
 - 別の担当者は`verify-all.ps1`で合成試験と実動試験を再実行できる。
+- XeadServerはTEIの参考対象外とし、この制御面の対象に含めない。
 
 ## 到達済みの経路
 
 | コンポーネント | 確認済み | 主な証拠 |
 | --- | --- | --- |
-| Modeler | 読み取り、About、システム名変更と保存、テーブル名変更と保存、バックアップ | `scenarios/modeler-save-copy.json`、`scenarios/modeler-edit-table-name.json` |
-| Editor | 読み取り、システム名変更と保存、バックアップ | `scenarios/editor-save-copy.json` |
+| Modeler | 読み取り、About、システム名変更と保存、テーブル名変更と保存、フィールド名変更と保存、バックアップ | `scenarios/modeler-save-copy.json`、`scenarios/modeler-edit-table-name.json`、`scenarios/modeler-edit-field-name.json` |
+| Editor | 読み取り、システム名変更と保存、テーブル名変更と保存、テーブル一覧から編集画面を開く、バックアップ | `scenarios/editor-save-copy.json`、`scenarios/editor-edit-table-name.json`、`scenarios/editor-open-table-from-list.json` |
 | Driver | ログイン、XF100、XF300、XF200の更新・作成・削除、失敗時rollback | `scenarios/driver-*.json` |
-| Server | `DBMethod`のSELECT/COUNT/INSERT/UPDATE/DELETE/COMMIT/ROLLBACK/CALL/IP、`Service`のGET/POST、Jetty/Tomcat | `tests/test_live_*.py`、`tests/test_tomcat_war.py` |
+| XeadServer | **対象外**。`xtea_server.py`と`server-harness/`は過去の参考資産 | `tests/test_live_*.py`、`tests/test_tomcat_war.py` |
 
-`verify-all.ps1`の実動環境変数付き実行で、Swing E2E 10件、サーバ契約4件、実DBMethod 3件、実Service 2件、Tomcat WAR 1件、外部Tomcat 1件が成功しています。
+`verify-all.ps1`の既定実行ではSwing E2E 10件を確認します。XeadServerの参考試験は`-IncludeXeadServer`を付けた場合だけ実行し、TEIの比較・受入には使いません。
 
 ## Driverの合成モデルによる検証
 
@@ -35,13 +35,12 @@ TEIの参照モデル再現確認で必要になるX-TEAの入力・観測を、
 1. **元のUIに存在しない操作**
    - XF200の登録・更新・削除は操作時に確定し、利用者が任意に実行するトランザクションrollbackボタンはありません。
    - 失敗時の内部rollbackは確認済みです。
-2. **元のサーブレットが使わない経路**
-   - `DBMethod`と`Service`は`.xeaf`から自前のDataSourceを作るため、JNDI DataSourceは実行経路に含まれません。
-   - 外部TomcatへのWAR配備は運用上の確認であり、HTTPの入力経路そのものではありません。
+2. **TEIの参考対象外**
+   - XeadServerは対象外です。`DBMethod` / `Service` / WAR / Tomcat / JNDI / 認証は、TEIの比較・受入・新規検証に使いません。
+   - 既存のコードと試験は過去の調査資産であり、`-IncludeXeadServer`を付けた場合だけ参考実行します。
 3. **別Issueの機能移植**
    - Modeler / Editorのテーブル名変更は確認済みです。要素追加・削除・並べ替え・一括置換・機能編集は、制御面ではなく#1802配下の機能移植として扱います。
-4. **上流の修正判断**
-   - `Service`の認証前`userID`検査は上流`7947b52`の挙動です。ハーネスはビルド時だけ引数`user`へ置き換えています。上流の修正版確認または差分適用の判断が必要です。
+   - Editorのフィールド一覧は`Field` / `TableField`の版差により空になるため、#2199で扱います。
 
 ## 引継ぎの入口
 

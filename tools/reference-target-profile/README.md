@@ -28,6 +28,9 @@ go run ./tools/reference-target-profile/cmd/tei-target-profile \
 
 go run ./tools/reference-target-profile/cmd/tei-target-profile \
   rollback -root /tmp/tei-target-profile-root
+
+go run ./tools/reference-target-profile/cmd/tei-target-profile \
+  rollback -root /tmp/tei-target-profile-root -to sha256:...
 ```
 
 ## Profileの項目
@@ -39,6 +42,7 @@ go run ./tools/reference-target-profile/cmd/tei-target-profile \
 | `network` | `none`、`loopback`、`allowed` |
 | `update` | `replace`、`in-place`、`rolling`。deploy参照で扱う |
 | `memoryLimitBytes` | 正の整数 |
+| `cpuTimeLimitSeconds` | 任意の非負整数。0・省略は未宣言。`-enforce-cpu` では正の値が必要 |
 | `observability` | 観測手段の一覧。`stdout`・`stderr`・`exit-code`はcase実行から観測する |
 | `unsupported` | このprofileで扱わない機能 |
 | `generatorId` | このprofileで選ぶ生成器のid（任意） |
@@ -82,6 +86,30 @@ Goは選抜と同じ `go build -trimpath -buildvcs=false -o ... main.go` でbuil
 `goos`、`goarch`、`harnessGoVersion` は参照実行器の環境です。候補のsource/binary digest、build情報、Python/JavaScriptの処理系情報は既存のreceiptに残します。`compare` も各profileの `processModelEvidence` にこれらの値を保持します。意味の一致判定は従来どおりcaseの結果を比較し、時間の差を意味の差や合否条件にはしません。
 
 これらはローカル参照実行器の単一試行の観測値です。CPU・メモリ上限の強制、メモリ使用量、子孫process全体の監視、純粋な起動時間、実Targetや機種間の性能比較、実配備時の更新時間は今回の測定範囲に含みません。機種・負荷・OSの会計方法が異なる値から、性能順位やリアルタイム性を判断できません。
+
+## CPU時間上限の適用（Linux、明示指定時）
+
+`run` / `compare` の `-enforce-cpu` は、profileの `cpuTimeLimitSeconds` を候補の各processへ適用します。既定は未宣言なら `enforcement.cpu=not-declared`、正の値を宣言しただけなら `declared-only` です。
+
+```text
+go run ./tools/reference-target-profile/cmd/tei-target-profile \
+  run -profile tools/reference-target-profile/testdata/cpu-batch.json \
+  -workspace reference/workspace \
+  -contract tools/reference-generator-selection/testdata/line-amount/contract.json \
+  -fixtures tools/reference-generator-selection/testdata/line-amount/fixtures.json \
+  -candidates tools/reference-generator-selection/testdata/candidates \
+  -enforce-cpu
+```
+
+- `prlimit --cpu=N:N --` でsoft・hard双方のCPU時間上限を秒単位で設定します。起動前に同じwrapper経由で `/proc/self/limits` を読み、要求値を確認します。利用不可・不一致なら候補の選抜前に `passed=false` を返します。適用を外して実行し直す経路はありません。
+- `cpu` に要求値、観測したsoft/hard値、wrapper argv、利用可否、失敗理由、stderr digestを記録します。成功時の `enforcement.cpu` は `linux:prlimit-cpu` です。compareの各profileにもCPU宣言と証拠を残します。
+- 選抜の各caseと、追加のlong-running/batch probeに同じ制限を適用します。oneshotでは各processが個別に上限を持ち、常駐・batch probeでは全requestを処理する1 processに適用します。上限到達で候補が非0終了すれば、既存の終了検査で不合格になります。
+- `-enforce-network` と併用できます。CPU wrapperの内側にnetwork namespace wrapperを置き、組み合わせた起動方法でCPU上限を確認します。実際のargvは `selection.execution.commandPrefix` に残ります。別runnerを使うlineage検証は、既存のwrapper制約に従って拒否します。
+- `-enforce-cpu` 指定時の省略・0、Linux以外、utility不在、probe失敗は成功として扱いません。負値はprofile検証で拒否します。このflagは `run` / `compare` のみで利用できます。
+
+[LinuxのRLIMIT_CPU](https://man7.org/linux/man-pages/man2/getrlimit.2.html)はprocess単位のCPU時間上限です。経過時間、CPU利用率・コア数、fixture全体や子孫process群の合算予算を制御するものではありません。forkしたprocessは上限を継承しても各processのCPU時間は別に計数されます。compile・処理系検出・メモリ・process数の制約は今回のwrapperの対象外です。既存の30秒の実行期限とGoのsoft memory limitは別に扱います。
+
+実動試験は、同じ合成workloadが制限なしでCPU時間2秒に到達し、1秒の上限を適用すると親の経過時間によるtimeoutより先にsignalで終了することを対照で確認します。同じ業務fixtureをoneshot・long-running・batchで比較し、network wrapperとの併用も確認します。ローカル参照実行器の検証であり、正式なHost権限、特権processへの制約、実Targetのsupervisor、リアルタイム保証や本番配備の証拠ではありません。利用できないOS・utility・namespaceの実動試験はskipし、環境不足を実動成功として数えません。CI全体のsuccessだけでは実動試験の実行とskipを区別できません。
 
 ## Python/JavaScript/Javaの常駐候補
 
@@ -129,9 +157,11 @@ go run ./tools/reference-target-profile/cmd/tei-target-profile run \
 - `replace`: 新しいartifactを同じrootへrenameし、既存artifactは`history/<digest>`へ保持します。
 - `in-place`: 既存artifactを上書きし、上書き前のartifactを`history/<digest>`へ保持します。
 - `rolling`: `slots/a`と`slots/b`の2 slotを使い、非active slotへ新artifactを置いてから`current` pointerをatomicに切り替えます。旧slotは保持し、`rollback`でcurrent/previousを入れ替えます。
+- `rollback -to <digest>`: `replace`/`in-place`の`history/<digest>`から指定artifactを選び、digestを照合してからcurrentへatomicに戻します。戻す前のcurrentはhistoryへ保持します。
 - 配備後にartifact digestを再計算し、build結果と一致することを確認します。history/slotのdigestも照合します。
 - `sqlite`・`remote` storage、Go以外の候補は未対応として`passed=false`にします。
 - 実Targetのsupervisor・health check・traffic drain・電源断耐性・複数ホスト配備は扱いません。
+- `rollback -to`は`replace`/`in-place`のhistoryだけを対象とし、rollingのslot rollbackは`-to`なしの`rollback`を使います。
 
 ## Profile間の意味比較
 

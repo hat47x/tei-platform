@@ -1,6 +1,8 @@
 # reference-xtea-control
 
-X-TEAのSwingアプリ（Modeler / Editor / Driver）と、HTTPサーバ（XeadServer）を、生成AIから再現可能に操作するための参照用テストインターフェースです。
+X-TEAのSwingアプリ（Modeler / Editor / Driver）を、生成AIから再現可能に操作するための参照用テストインターフェースです。
+
+XeadServerはTEIの参考対象外とし、このインターフェースの対象に含めません。`xtea_server.py`と`server-harness/`は過去の調査資産として残しますが、`verify-all.ps1`の既定実行には含めません。
 
 ## 目的
 
@@ -9,6 +11,13 @@ TEIの参照モデル再現を確認するとき、X-TEAのGUIだけが入力経
 対象は比較試験の入力経路であり、TEIのCanonical意味、X-TEAとの互換性、移植の受理、旧Runtimeの動作同等性を決めるものではありません。現在地と残作業の分類は[STATUS.md](STATUS.md)にまとめています。
 
 [#2152](https://github.com/hat47x/tei-platform/issues/2152)では、各機能タイプの主要操作を先に確認し、その後に参照モデルで使うスクリプトUIを確認します。XeadServerへの追加対応は今回の対象外です。Modeler / Editorの編集・保存も、このDriverの試験には含めません。
+### 対象外
+
+- XeadServer（`DBMethod` / `Service` / WAR / Tomcat / JNDI）
+- XeadServerの認証・認可、実デプロイ、DB製品別ドライバ
+- XeadServerを対象にした契約試験・実動試験の新規追加
+
+XeadServerの既存コードと試験は、過去の調査を再現するための参考資産です。TEIの比較対象や受入条件には使いません。
 
 ## 構成
 
@@ -54,7 +63,9 @@ X-TEAのソースやJARはこのディレクトリへ同梱しません。`clone
 - **XeadEditor**: File / 編集 / DDL / 検査 / ツール系メニュー、ツリー、表・機能の編集画面、検査ダイアログ、インポート系ダイアログ。
 - **XeadDriver**: 起動引数（システム定義、ユーザ、パスワード）、ログイン、メニュー、Function種別`XF000` / `XF100` / `XF110` / `XF200` / `XF290` / `XF300` / `XF310` / `XF390`の画面、一覧・絞り込み、入力ダイアログ、確認・エラー、コミット／ロールバック、出力。
 
-### XeadServer（HTTP）
+### XeadServer（HTTP、参考・対象外）
+
+以下の経路は過去の調査資産です。TEIの比較対象外であり、新規の検証対象にはしません。
 
 | 経路 | クライアント |
 | --- | --- |
@@ -67,7 +78,7 @@ X-TEAのソースやJARはこのディレクトリへ同梱しません。`clone
 | `POST /DBMethod` `IP` | `ip` |
 | `POST /Service` 任意の`FUNCTION`とパラメータ | `service` |
 
-XeadServerはデプロイ済みのサーブレットコンテナを対象にできます。ローカル確認用に、元の`DBMethod`と`Service`を埋め込みJettyで起動する`server-harness/`も同梱します。`DBMethod`は使い捨てH2へ、`Service`はSkeletonの複製へ接続します。
+XeadServerはTEIの参考対象外です。過去の調査を再現するための参考として、元の`DBMethod`と`Service`を埋め込みJettyで起動する`server-harness/`を残しています。`DBMethod`は使い捨てH2へ、`Service`はSkeletonの複製へ接続します。新規の比較・受入・検証には使いません。
 
 Serviceのハーネスは、ビルド時にだけ次の2つの互換差分を適用します。上流ファイルは変更しません。
 
@@ -118,9 +129,11 @@ python xtea_control.py --endpoint build\modeler-endpoint.json `
   scenario scenarios\modeler-save-copy.json
 python xtea_control.py --endpoint build\modeler-endpoint.json `
   scenario scenarios\modeler-edit-table-name.json
+python xtea_control.py --endpoint build\modeler-endpoint.json `
+  scenario scenarios\modeler-edit-field-name.json
 ```
 
-これらのシナリオは複製したモデルのシステム名、または部門テーブル名を変更して保存します。原本や共有モデルには実行しないでください。
+これらのシナリオは複製したモデルのシステム名、部門テーブル名、または部門Cフィールド名を変更して保存します。原本や共有モデルには実行しないでください。
 
 Editor:
 
@@ -287,7 +300,7 @@ python tests\test_external_tomcat.py
 .\verify-all.ps1
 ```
 
-`build.ps1`、Swing E2E、サーバ契約試験を実行し、`XTEA_SERVER_SOURCE`、`XTEA_RUNTIME_HOME`、`XTEA_SKELETON_HOME`が設定されていれば実DBMethod、実Service、Tomcat WARも実行します。環境変数がない実動試験はSKIPとして表示し、失敗とは区別します。`-SkipLive`で実動試験を省略できます。
+既定では`build.ps1`とSwing E2Eだけを実行します。XeadServerは対象外のため、サーバ契約・実DBMethod・実Service・Tomcat WARは実行しません。過去の参考試験を再実行する場合だけ`-IncludeXeadServer`を付けます。実動試験の環境変数がない場合はSKIPとして表示し、失敗とは区別します。`-SkipLive`で実動試験を省略できます。
 
 ## 検証したこと
 
@@ -322,6 +335,7 @@ XF000のコンソールでは、無効化された「Run right now」を制御�
 2026-10-21、JDK 11.0.20.1（`--release 8`でコンパイル）で確認しました。
 
 - `python tests/test_integration.py`: 10件成功。メニュー、テキスト、ボタン、Enter、タブ、チェックボックス、コンボ、通常テーブル、X-TEA型のカスタム行オブジェクトを持つテーブル、ツリー全体の読取り、テーブル行のダブルクリック、モーダルダイアログ、スクリーンショット、トレース、未知selector、トークン拒否を合成Swingアプリで確認。
+- 以下はXeadServerの**参考（対象外）**としての過去結果です。TEIの比較・受入には使いません。
 - `python tests/test_server_client.py`: 4件成功。`DBMethod`のSELECT/COUNT/INSERT/UPDATE/DELETE/COMMIT/ROLLBACK/CALL/IPと`Service`をローカル模擬サーブレットで確認。
 - `python tests/test_live_server.py`: 3件成功。元の`DBMethod`を埋め込みJettyで起動し、使い捨てH2の合成テーブルに対してSELECT/COUNT/INSERT/UPDATE/DELETE/COMMIT/ROLLBACK/CALL/IPをHTTPで確認。応答のJava直列化も受信。`CALL SQUARE(9)`は「procedure was executed」を返すことを確認。
 - `python tests/test_live_service.py`: 2件成功。Skeletonの一時複製と、ビルド時に明示した互換差分を使い、元の`Service`の`GET /Service`がセッション状態を返すこと、`FUNCTION=AF200J`、`REQUEST_TYPE=ListSections`で2件の部門データがJSONで返ることを確認。
@@ -330,6 +344,7 @@ XF000のコンソールでは、無効化された「Run right now」を制御�
 - 実X-TEA Modeler（配布`xteamdl.jar`、About表示`V1.R4.M50`）で`MfgOrder.xead`を開き、メニュー8件・操作44件を列挙し、Aboutダイアログの開閉、スナップショット、スクリーンショットを確認。
 - 実Modelerの保存経路として、`MfgOrder.xead`の複製でシステム名を変更し、`保存`メニュー、バックアップ確認の`はい`を実行。保存後のXMLに新しいシステム名が入り、`backup/`に更新前ファイルが作られることを確認。`scenarios/modeler-save-copy.json`と`modeler-fixture.ps1`で再現できます。
 - 実Modelerの要素編集として、`tree-read`の`indices`で`AT010 部門`を選択し、Enterでテーブル定義画面を開き、テーブル名を`部門TEST`へ変更して保存。XMLの`Table ID="61"`の`Name`が変わったことを確認。`scenarios/modeler-edit-table-name.json`で再現できます。
+- 実Modelerのフィールド編集として、`AT010`の`CDBUMON`フィールドを選択し、論理名を`部門C TEST`へ変更して保存。XMLの`TableField`の`Name`が変わったことを確認。`scenarios/modeler-edit-field-name.json`で再現できます。
 - 実Editorの保存経路として、`MfgOrder.xead`の複製でシステム名を変更し、`保存`メニュー、バックアップ確認の`はい`を実行。保存後のXMLに新しいシステム名が入り、`backup/`に更新前ファイルが作られることを確認。`scenarios/editor-save-copy.json`で再現できます。
 - 実Editorの要素編集として、`tree-read`の`indices`で部門テーブルを選択し、Enterでテーブル編集画面を開き、テーブル名を`部門TEST`へ変更して保存。XMLの`Table ID="61"`の`Name`が変わったことを確認。`scenarios/editor-edit-table-name.json`で再現できます。
 - 実Editorのテーブル一覧で`61 部門`の行をダブルクリックし、`61`と`部門`を表示する編集画面が開くことを確認。`scenarios/editor-open-table-from-list.json`で再現できます。
