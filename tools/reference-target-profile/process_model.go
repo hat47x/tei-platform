@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"runtime"
+	"strings"
 	"time"
 
 	generatorselection "tei/tools/reference-generator-selection"
@@ -57,12 +58,13 @@ func enforceProcessModel(ctx context.Context, profile Profile, opts RunOptions, 
 		if candidate == nil || !candidate.Passed {
 			return &ProcessModelEvidence{Mode: ProcessLongRunning, Reason: "selected candidate did not pass selection"}
 		}
-		return longRunningEvidence(ctx, opts, *candidate)
+		return longRunningEvidence(ctx, opts, *candidate, ProcessLongRunning)
 	case ProcessBatch:
-		return &ProcessModelEvidence{
-			Mode: ProcessBatch, Passed: false,
-			Reason: "batch process model is not implemented by this reference",
+		candidate := selectedCandidate(Receipt{Profile: profile, Selection: selection})
+		if candidate == nil || !candidate.Passed {
+			return &ProcessModelEvidence{Mode: ProcessBatch, Reason: "selected candidate did not pass selection"}
 		}
+		return longRunningEvidence(ctx, opts, *candidate, ProcessBatch)
 	default:
 		return &ProcessModelEvidence{Mode: profile.ProcessModel, Passed: false, Reason: "unknown process model"}
 	}
@@ -92,8 +94,8 @@ func oneshotEvidence(profile Profile, selection generatorselection.Receipt) *Pro
 	return evidence
 }
 
-func longRunningEvidence(ctx context.Context, opts RunOptions, selected generatorselection.CandidateReceipt) *ProcessModelEvidence {
-	evidence := &ProcessModelEvidence{Mode: ProcessLongRunning, CandidateID: selected.ID}
+func longRunningEvidence(ctx context.Context, opts RunOptions, selected generatorselection.CandidateReceipt, mode string) *ProcessModelEvidence {
+	evidence := &ProcessModelEvidence{Mode: mode, CandidateID: selected.ID}
 	fixtureRaw, err := os.ReadFile(opts.FixturePath)
 	if err != nil {
 		evidence.Reason = "fixture is unreadable: " + err.Error()
@@ -157,6 +159,71 @@ func longRunningEvidence(ctx context.Context, opts RunOptions, selected generato
 			return evidence
 		}
 		args = []string{sourcePath}
+	case generatorselection.LanguageJava:
+		javac, java, version, available := findJavaForProbe()
+		if !available {
+			evidence.Reason = "runtime unavailable: javac/java was not found"
+			return evidence
+		}
+		classesDir := filepath.Join(tempDir, "classes")
+		if err := os.MkdirAll(classesDir, 0o755); err != nil {
+			evidence.Reason = err.Error()
+			return evidence
+		}
+		compile := exec.CommandContext(ctx, javac, "-d", classesDir, manifest.Source)
+		compile.Dir = tempDir
+		if out, err := compile.CombinedOutput(); err != nil {
+			evidence.Reason = "java compile failed: " + err.Error() + ": " + string(out)
+			return evidence
+		}
+		classBytes, err := os.ReadFile(filepath.Join(classesDir, "Main.class"))
+		if err != nil {
+			evidence.Reason = "compiled class is unreadable: " + err.Error()
+			return evidence
+		}
+		evidence.BinaryDigest = digestBytes(classBytes)
+		if selected.BinaryDigest == "" || evidence.BinaryDigest != selected.BinaryDigest {
+			evidence.Reason = "probe class digest differs from selection"
+			return evidence
+		}
+		evidence.Binding = "source-and-binary-digest"
+		evidence.Runtime = &generatorselection.RuntimeEvidence{
+			Language: generatorselection.LanguageJava, Command: java + " -cp <classes> Main",
+			Version: version, Available: true,
+		}
+		executable = java
+		args = []string{"-cp", classesDir, "Main"}
+	case generatorselection.LanguageWasm:
+		node, wasmExec, version, available := findWasmForProbe()
+		if !available {
+			evidence.Reason = "runtime unavailable: node or Go wasm_exec_node.js was not found"
+			return evidence
+		}
+		wasmPath := filepath.Join(tempDir, "candidate.wasm")
+		build := exec.CommandContext(ctx, "go", "build", "-trimpath", "-buildvcs=false", "-o", wasmPath, "main.go")
+		build.Dir = tempDir
+		build.Env = append(os.Environ(), "GOOS=js", "GOARCH=wasm")
+		if out, err := build.CombinedOutput(); err != nil {
+			evidence.Reason = "wasm build failed: " + err.Error() + ": " + string(out)
+			return evidence
+		}
+		wasmBytes, err := os.ReadFile(wasmPath)
+		if err != nil {
+			evidence.Reason = "wasm binary is unreadable: " + err.Error()
+			return evidence
+		}
+		evidence.BinaryDigest = digestBytes(wasmBytes)
+		if selected.BinaryDigest == "" || evidence.BinaryDigest != selected.BinaryDigest {
+			evidence.Reason = "probe wasm digest differs from selection"
+			return evidence
+		}
+		evidence.Binding = "source-and-binary-digest"
+		evidence.Runtime = &generatorselection.RuntimeEvidence{
+			Language: generatorselection.LanguageWasm, Command: node + " wasm_exec_node.js <wasm>",
+			Version: version, Available: true,
+		}
+		executable = node
+		args = []string{wasmExec, wasmPath}
 	default:
 		evidence.Reason = "unsupported long-running candidate language: " + language
 		return evidence
@@ -240,6 +307,42 @@ func runLongRunningProbe(ctx context.Context, opts RunOptions, fixture generator
 		evidence.Reason = fmt.Sprintf("candidate returned %d of %d responses", evidence.Responses, evidence.Requests)
 	}
 	return evidence
+}
+
+func findJavaForProbe() (javacPath, javaPath, version string, available bool) {
+	javac, err := exec.LookPath("javac")
+	if err != nil {
+		return "", "", "", false
+	}
+	java, err := exec.LookPath("java")
+	if err != nil {
+		return "", "", "", false
+	}
+	out, err := exec.Command(javac, "-version").CombinedOutput()
+	if err != nil {
+		return "", "", "", false
+	}
+	return javac, java, strings.TrimSpace(string(out)), true
+}
+
+func findWasmForProbe() (nodePath, wasmExecPath, version string, available bool) {
+	node, err := exec.LookPath("node")
+	if err != nil {
+		return "", "", "", false
+	}
+	out, err := exec.Command(node, "--version").CombinedOutput()
+	if err != nil {
+		return "", "", "", false
+	}
+	gorootOut, err := exec.Command("go", "env", "GOROOT").Output()
+	if err != nil {
+		return "", "", "", false
+	}
+	wasmExec := filepath.Join(strings.TrimSpace(string(gorootOut)), "lib", "wasm", "wasm_exec_node.js")
+	if _, err := os.Stat(wasmExec); err != nil {
+		return "", "", "", false
+	}
+	return node, wasmExec, strings.TrimSpace(string(out)), true
 }
 
 func buildGoCandidate(ctx context.Context, dir, binaryPath string) error {

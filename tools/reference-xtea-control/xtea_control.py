@@ -104,9 +104,21 @@ class ControlClient:
         body.update(options)
         return self.request("POST", "/select", body)
 
+    def click(self, selector: Dict[str, Any], count: int = 1,
+              row: Optional[int] = None, column: Optional[int] = None) -> Dict[str, Any]:
+        body: Dict[str, Any] = {"selector": selector, "count": count}
+        if row is not None:
+            body["row"] = row
+        if column is not None:
+            body["column"] = column
+        return self.request("POST", "/click", body)
+
     def table_set(self, selector: Dict[str, Any], row: int, column: Any, value: Any) -> Dict[str, Any]:
         return self.request("POST", "/table/set",
                             {"selector": selector, "row": row, "column": column, "value": value})
+
+    def table_info(self, selector: Dict[str, Any]) -> Dict[str, Any]:
+        return self.request("POST", "/table/info", {"selector": selector})
 
     def table_read(self, selector: Dict[str, Any], max_rows: int = 50) -> Dict[str, Any]:
         return self.request("POST", "/table/read",
@@ -270,6 +282,9 @@ def run_scenario(client: ControlClient, scenario_path: str | Path) -> None:
             value = client.table_read(step["selector"], int(step.get("maxRows", 50)))
             if value["rowCount"] != int(step["equals"]):
                 raise AssertionError(f"table row count expected {step['equals']}, got {value['rowCount']}")
+        elif operation == "click":
+            client.click(step["selector"], int(step.get("count", 1)),
+                         step.get("row"), step.get("column"))
         elif operation == "key":
             client.key(step.get("selector"), step.get("key"), step.get("text"), step.get("modifiers"))
         elif operation == "close":
@@ -350,6 +365,9 @@ def build_parser() -> argparse.ArgumentParser:
     select.add_argument("--item-index", type=int)
     select.add_argument("--title")
 
+    table_info = sub.add_parser("table-info")
+    _add_selector_arguments(table_info)
+
     table_read = sub.add_parser("table-read")
     _add_selector_arguments(table_read)
     table_read.add_argument("--max-rows", type=int, default=50)
@@ -375,6 +393,12 @@ def build_parser() -> argparse.ArgumentParser:
     key.add_argument("--key")
     key.add_argument("--type-text")
     key.add_argument("--modifiers", nargs="*", default=[])
+
+    click = sub.add_parser("click")
+    _add_selector_arguments(click)
+    click.add_argument("--count", type=int, choices=[1, 2, 3], default=1)
+    click.add_argument("--row", type=int)
+    click.add_argument("--column", type=int)
 
     close = sub.add_parser("close")
     _add_selector_arguments(close)
@@ -443,6 +467,8 @@ def main(argv: Optional[List[str]] = None) -> int:
                        (("row", args.row), ("column", args.column), ("index", args.item_index),
                         ("title", args.title)) if value is not None}
             _print(client.select(selector_from_args(args), **options))
+        elif args.command == "table-info":
+            _print(client.table_info(selector_from_args(args)))
         elif args.command == "table-read":
             _print(client.table_read(selector_from_args(args), args.max_rows))
         elif args.command == "tree-read":
@@ -453,6 +479,8 @@ def main(argv: Optional[List[str]] = None) -> int:
             _print(client.table_edit(selector_from_args(args), args.action, args.row, args.column))
         elif args.command == "key":
             _print(client.key(selector_from_args(args) or None, args.key, args.type_text, args.modifiers))
+        elif args.command == "click":
+            _print(client.click(selector_from_args(args), args.count, args.row, args.column))
         elif args.command == "close":
             _print(client.close(selector_from_args(args)))
         elif args.command == "wait-window":

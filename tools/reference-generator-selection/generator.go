@@ -51,6 +51,8 @@ var generatorTemplates = map[string]generatorTemplate{
 	"python-long-running-template":     {file: "templates/template-long-running.py.tmpl", id: "line-amount-python-long-running-template", origin: "template", strategy: "python-long-running-template", language: LanguagePython, source: "main.py"},
 	"javascript-long-running-template": {file: "templates/template-long-running.js.tmpl", id: "line-amount-javascript-long-running-template", origin: "template", strategy: "javascript-long-running-template", language: LanguageJavaScript, source: "main.js"},
 	"wasm-template":                    {file: "templates/template.go.tmpl", id: "line-amount-wasm-template", origin: "template", strategy: "wasm-template", language: LanguageWasm, source: "main.go"},
+	"java-long-running-template":       {file: "templates/Main-long-running.java.tmpl", id: "line-amount-java-long-running-template", origin: "template", strategy: "java-long-running-template", language: LanguageJava, source: "Main.java"},
+	"wasm-long-running-template":       {file: "templates/template-long-running.go.tmpl", id: "line-amount-wasm-long-running-template", origin: "template", strategy: "wasm-long-running-template", language: LanguageWasm, source: "main.go"},
 }
 
 type templateData struct {

@@ -431,6 +431,34 @@ final class Ui {
         }, DEFAULT_TIMEOUT_MS);
     }
 
+    static Map<String, Object> tableInfo(final Map<String, Object> selector, final Map<String, Object> request)
+            throws Exception {
+        final Component target = resolve(selector);
+        if (!(target instanceof JTable)) {
+            throw new BridgeException("NOT_A_TABLE", "selector does not resolve to a table");
+        }
+        final JTable table = (JTable) target;
+        return call(new Callable<Map<String, Object>>() {
+            @Override
+            public Map<String, Object> call() {
+                List<Object> columns = new ArrayList<Object>();
+                for (int i = 0; i < table.getColumnCount(); i++) {
+                    columns.add(table.getColumnName(i));
+                }
+                Map<String, Object> value = new LinkedHashMap<String, Object>();
+                value.put("tableRowCount", table.getRowCount());
+                value.put("modelRowCount", table.getModel().getRowCount());
+                value.put("modelClass", table.getModel().getClass().getName());
+                value.put("columns", columns);
+                value.put("selectedRow", table.getSelectedRow());
+                value.put("selectedColumn", table.getSelectedColumn());
+                value.put("rowSorterClass", table.getRowSorter() == null ? null
+                        : table.getRowSorter().getClass().getName());
+                return value;
+            }
+        }, DEFAULT_TIMEOUT_MS);
+    }
+
     static Map<String, Object> tableRead(final Map<String, Object> selector, final Map<String, Object> request)
             throws Exception {
         final Component target = resolve(selector);
@@ -564,6 +592,45 @@ final class Ui {
         Map<String, Object> value = new LinkedHashMap<String, Object>();
         value.put("accepted", Boolean.TRUE);
         value.put("target", label);
+        return value;
+    }
+
+    static Map<String, Object> click(final Map<String, Object> selector, final Map<String, Object> request)
+            throws Exception {
+        final Component target = resolve(selector);
+        final int count = Math.max(1, Math.min(intValue(request.get("count"), 1), 3));
+        final int row = intValue(request.get("row"), -1);
+        final int column = intValue(request.get("column"), -1);
+        final String label = describeComponent(target);
+        SwingUtilities.invokeLater(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    int x = Math.max(1, target.getWidth() / 2);
+                    int y = Math.max(1, target.getHeight() / 2);
+                    if (target instanceof JTable && row >= 0) {
+                        JTable table = (JTable) target;
+                        Rectangle cell = table.getCellRect(row, column >= 0 ? column : 0, true);
+                        x = cell.x + Math.max(1, cell.width / 2);
+                        y = cell.y + Math.max(1, cell.height / 2);
+                    }
+                    long now = System.currentTimeMillis();
+                    for (int i = 1; i <= count; i++) {
+                        target.dispatchEvent(new java.awt.event.MouseEvent(target,
+                                java.awt.event.MouseEvent.MOUSE_CLICKED, now,
+                                java.awt.event.InputEvent.BUTTON1_DOWN_MASK, x, y, i, false,
+                                java.awt.event.MouseEvent.BUTTON1));
+                    }
+                } catch (Throwable t) {
+                    Trace.record("click.error", label, describe(t));
+                }
+            }
+        });
+        Trace.record("click", label, "count=" + count + ",row=" + row + ",column=" + column);
+        Map<String, Object> value = new LinkedHashMap<String, Object>();
+        value.put("accepted", Boolean.TRUE);
+        value.put("target", label);
+        value.put("count", count);
         return value;
     }
 

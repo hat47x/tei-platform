@@ -38,7 +38,9 @@ final class BridgeServer {
         ROUTES.add("POST /table/set");
         ROUTES.add("POST /table/read");
         ROUTES.add("POST /table/edit");
+        ROUTES.add("POST /table/info");
         ROUTES.add("POST /tree/read");
+        ROUTES.add("POST /click");
         ROUTES.add("POST /key");
         ROUTES.add("POST /close");
         ROUTES.add("POST /wait");
@@ -117,8 +119,12 @@ final class BridgeServer {
                     respond(exchange, 200, ok(Ui.tableRead(selector(body), body)));
                 } else if ("POST /table/edit".equals(route)) {
                     respond(exchange, 200, ok(Ui.tableEdit(selector(body), body)));
+                } else if ("POST /table/info".equals(route)) {
+                    respond(exchange, 200, ok(Ui.tableInfo(selector(body), body)));
                 } else if ("POST /tree/read".equals(route)) {
                     respond(exchange, 200, ok(Ui.treeRead(selector(body), body)));
+                } else if ("POST /click".equals(route)) {
+                    respond(exchange, 200, ok(Ui.click(selector(body), body)));
                 } else if ("POST /key".equals(route)) {
                     respond(exchange, 200, ok(Ui.key(body.get("selector") instanceof Map
                             ? selector(body) : null, body)));

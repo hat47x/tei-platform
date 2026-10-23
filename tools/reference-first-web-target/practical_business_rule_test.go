@@ -23,6 +23,24 @@ import (
 // this rule in the checked-in Reference or production.
 func workspaceWithUnitPriceRule(t *testing.T) string {
 	t.Helper()
+	scratch, _ := workspaceWithUnitPriceRuleReceipts(t)
+	return scratch
+}
+
+// unitPriceRuleReceipts are the Shared Acceptance CLI outputs of that
+// test-only acceptance, kept verbatim for an evidence packet.
+type unitPriceRuleReceipts struct {
+	R0, R1                     string
+	CandidateFingerprint       string
+	ReviewFingerprint          string
+	ReviewCandidateFingerprint string
+	Candidate, Review          []byte
+	Decision, Reload           []byte
+}
+
+func workspaceWithUnitPriceRuleReceipts(t *testing.T) (string, unitPriceRuleReceipts) {
+	t.Helper()
+	var receipts unitPriceRuleReceipts
 	scratch := filepath.Join(t.TempDir(), "workspace")
 	if err := os.CopyFS(scratch, os.DirFS(referenceWorkspacePath(t))); err != nil {
 		t.Fatal(err)
@@ -47,6 +65,7 @@ func workspaceWithUnitPriceRule(t *testing.T) string {
 	if revision.ModelRevision == "" {
 		t.Fatal("Shared Acceptance CLI returned empty model revision")
 	}
+	receipts.R0 = revision.ModelRevision
 	candidate := map[string]any{
 		"schema":            "tei.reference.change-candidate/v0",
 		"id":                "cand-practical-business-rule-test",
@@ -83,6 +102,7 @@ func workspaceWithUnitPriceRule(t *testing.T) string {
 	if err := os.WriteFile(candidatePath, data, 0o600); err != nil {
 		t.Fatal(err)
 	}
+	receipts.Candidate = data
 
 	// Preview is read-only; the two authoritative files may change only on Accept.
 	validationPath := filepath.Join(scratch, "semantic", "sales", "validation.tei")
@@ -119,25 +139,30 @@ func workspaceWithUnitPriceRule(t *testing.T) string {
 		t.Fatal("Preview mutated authoritative source")
 	}
 	var review struct {
-		PreviewAcceptable bool   `json:"previewAcceptable"`
-		ReviewFingerprint string `json:"reviewFingerprint"`
+		PreviewAcceptable    bool   `json:"previewAcceptable"`
+		ReviewFingerprint    string `json:"reviewFingerprint"`
+		CandidateFingerprint string `json:"candidateFingerprint"`
 	}
-	if err := json.Unmarshal(runAcceptance("review", "-workspace", scratch, "-candidate", candidatePath, "-format", "json"), &review); err != nil {
+	receipts.Review = runAcceptance("review", "-workspace", scratch, "-candidate", candidatePath, "-format", "json")
+	if err := json.Unmarshal(receipts.Review, &review); err != nil {
 		t.Fatal(err)
 	}
+	receipts.ReviewFingerprint = review.ReviewFingerprint
+	receipts.ReviewCandidateFingerprint = review.CandidateFingerprint
 	if !review.PreviewAcceptable || review.ReviewFingerprint == "" {
 		t.Fatalf("unexpected review: %+v", review)
 	}
 	var decision struct {
-		Decision      string `json:"decision"`
-		SourceChanged bool   `json:"sourceChanged"`
-		ReviewBinding *struct {
+		Decision             string `json:"decision"`
+		SourceChanged        bool   `json:"sourceChanged"`
+		CandidateFingerprint string `json:"candidateFingerprint"`
+		ReviewBinding        *struct {
 			Fingerprint string `json:"fingerprint"`
 		} `json:"reviewBinding"`
 	}
-	if err := json.Unmarshal(runAcceptance("accept", "-workspace", scratch,
-		"-candidate", candidatePath, "-expected-review-fingerprint", review.ReviewFingerprint),
-		&decision); err != nil {
+	receipts.Decision = runAcceptance("accept", "-workspace", scratch,
+		"-candidate", candidatePath, "-expected-review-fingerprint", review.ReviewFingerprint)
+	if err := json.Unmarshal(receipts.Decision, &decision); err != nil {
 		t.Fatal(err)
 	}
 	if decision.Decision != "accepted" || !decision.SourceChanged ||
@@ -145,7 +170,17 @@ func workspaceWithUnitPriceRule(t *testing.T) string {
 		decision.ReviewBinding.Fingerprint != review.ReviewFingerprint {
 		t.Fatalf("test-only acceptance is not review-bound: %+v", decision)
 	}
-	return scratch
+	receipts.CandidateFingerprint = decision.CandidateFingerprint
+	// Reload after Accept through the same CLI: the accepted revision R1.
+	receipts.Reload = runAcceptance("revision", "-workspace", scratch)
+	var reloaded struct {
+		ModelRevision string `json:"modelRevision"`
+	}
+	if err := json.Unmarshal(receipts.Reload, &reloaded); err != nil || reloaded.ModelRevision == "" {
+		t.Fatalf("reload after accept: %v %s", err, receipts.Reload)
+	}
+	receipts.R1 = reloaded.ModelRevision
+	return scratch, receipts
 }
 
 func TestPracticalBusinessRuleChangeReachesDriverAndWebWithoutTargetRuleList(t *testing.T) {

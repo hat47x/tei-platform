@@ -122,6 +122,10 @@ class IntegrationTest(unittest.TestCase):
         self.assertEqual(mode["value"], "Safe")
         table = self.client.table_read({"name": "table"})
         self.assertEqual(table["rowCount"], 2)
+        info = self.client.table_info({"name": "table"})
+        self.assertEqual(info["tableRowCount"], 2)
+        self.assertEqual(info["modelRowCount"], 2)
+        self.assertIn("TableModel", info["modelClass"])
         self.client.table_set({"name": "table"}, 0, "Name", "Changed")
         self.assertEqual(self.client.find({"name": "table"})["columnCount"], 2)
         self.assertEqual(self.client.table_read({"name": "table"})["rows"][0][1], "Changed")
@@ -165,6 +169,11 @@ class IntegrationTest(unittest.TestCase):
         tree = self.client.find({"name": "tree"})
         self.assertIn("T1", tree["selectedPath"])
         self.client.select({"role": "tab", "window": "Fake X-TEA"}, item_index=0)
+
+    def test_04d_table_double_click(self) -> None:
+        self.client.select({"role": "tab", "window": "Fake X-TEA"}, item_index=0)
+        self.client.click({"role": "table"}, count=2, row=0, column=0)
+        self.client.wait_text({"name": "status"}, expected="table-double", timeout_ms=5000)
 
     def test_05_modal_dialog(self) -> None:
         self.client.select({"role": "tab", "window": "Fake X-TEA"}, item_index=0)

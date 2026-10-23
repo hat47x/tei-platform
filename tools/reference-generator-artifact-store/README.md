@@ -21,6 +21,14 @@ go run ./tools/reference-generator-artifact-store/cmd/tei-generator-artifact-sto
 
 go run ./tools/reference-generator-artifact-store/cmd/tei-generator-artifact-store \
   audit -store /tmp/tei-artifacts
+
+go run ./tools/reference-generator-artifact-store/cmd/tei-generator-artifact-store \
+  checkpoint -store /tmp/tei-artifacts -out /tmp/checkpoint.json
+
+go run ./tools/reference-generator-artifact-store/cmd/tei-generator-artifact-store \
+  verify-checkpoint -store /tmp/tei-artifacts -checkpoint /tmp/checkpoint.json \
+  -signature /tmp/checkpoint.json.sig \
+  -allowed-signers /tmp/allowed_signers -identity signer
 ```
 
 ## 保存layout
@@ -81,6 +89,21 @@ source、receipt、実binaryのどれかが一致しなければ`passed=false`�
 
 このauditはローカルのhash chainであり、署名・実行者identity・削除承認を証明しません。ファイル全体の置換やchainごと作り直す攻撃は防げません。
 
+`checkpoint`は、検証済みの`recordCount`、`headDigest`、audit file全体の`auditDigest`を返します。`-out`を指定すると、同じJSONをfileへ書き出します。checkpoint自体は署名しません。
+
+```text
+tei-generator-artifact-store checkpoint -store /tmp/tei-artifacts -out /tmp/checkpoint.json
+ssh-keygen -Y sign -f /tmp/audit-key -n tei-audit /tmp/checkpoint.json
+ssh-keygen -Y verify -f /tmp/allowed_signers -I signer -n tei-audit \
+  -s /tmp/checkpoint.json.sig < /tmp/checkpoint.json
+```
+
+署名はcheckpointのbyte列に束縛されます。署名者のAuthority・trust root・削除承認は検証しません。checkpointと署名を別の場所へ保管すれば、後からaudit全体を照合する参照にできます。
+
+`verify-checkpoint`は、保管したcheckpointの`recordCount`・`headDigest`・`auditDigest`を、現在のstoreから再計算したcheckpointと比較します。mismatchは`passed=false`にします。
+
+`-signature`・`-allowed-signers`・`-identity`を指定すると、先にcheckpointのdetached signatureを`ssh-keygen -Y verify`で検証し、その後にstoreとの一致を検証します。署名が不正なら`signatureVerified=false`、storeと不一致なら`signatureVerified=true`のまま`passed=false`になります。署名者のAuthority・trust rootは検証しません。
+
 ## 検証すること・しないこと
 
 | 検証する | 検証しない |
@@ -108,11 +131,15 @@ source、receipt、実binaryのどれかが一致しなければ`passed=false`�
 - 2回のpruneがprevious linkでつながる。
 - record改変をdigest不一致で拒否する。
 - 壊れたaudit行を拒否し、その状態ではpruneしない。
+- `checkpoint`がrecord数・head・audit file digestを返し、改変auditを拒否する。
+- checkpointのJSONを`ssh-keygen`で署名・検証でき、改変されたcheckpointを拒否する。
+- `verify-checkpoint`が保存checkpointと現在のaudit chainを比較し、mismatchを拒否する。
+- `-signature`指定時は署名とstore一致の両方を検証し、改変checkpointを拒否する。
 
 ## 未実装・限界
 
 - 暗号学的署名・attestation・署名者Authority。
 - 別machine・別toolchain・clean cacheでのbuild再現性。
-- 保持期間、監査アクセス権、削除承認、auditの署名・実行者identity、chain全体の置換耐性、remote object store。
+- 保持期間、監査アクセス権、削除承認、audit/checkpointの署名・実行者identity、chain全体の置換耐性、remote object store。
 - artifactの実行承認、実Targetへの配備、ロールバック。
 - Python/JavaScript候補（binaryを持たない）の保存。

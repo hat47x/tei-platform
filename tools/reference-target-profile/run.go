@@ -88,9 +88,6 @@ func Run(ctx context.Context, opts RunOptions) (Receipt, error) {
 	for _, value := range observation.Unsupported {
 		unsupported = appendUnique(unsupported, value)
 	}
-	if !processModel.Passed && processModel.Mode == ProcessBatch {
-		unsupported = appendUnique(unsupported, "batch-process-model")
-	}
 	observabilityEnforcement := "observed"
 	if len(observation.Unsupported) > 0 {
 		observabilityEnforcement = "partial"
@@ -109,6 +106,11 @@ func Run(ctx context.Context, opts RunOptions) (Receipt, error) {
 		processEnforcement = "long-running:failed"
 		if processModel.Passed {
 			processEnforcement = "long-running:single-process"
+		}
+	case ProcessBatch:
+		processEnforcement = "batch:failed"
+		if processModel.Passed {
+			processEnforcement = "batch:single-process"
 		}
 	}
 	memoryEnforcement := "env:GOMEMLIMIT (soft)"
@@ -135,7 +137,7 @@ func Run(ctx context.Context, opts RunOptions) (Receipt, error) {
 		Notes: []string{
 			"同じ受理済み契約・fixture・候補を、Target Profileの宣言とともに実行した。memoryの強制範囲はenforcementへ記録する。",
 			"observabilityのstdout・stderr・exit-codeはcase実行から観測した。未対応channelはUnsupportedとして返す。",
-			"processModelはoneshotのprocess-per-case、long-runningのsingle-processを実行で確認した。",
+			"processModelはoneshotのprocess-per-case、long-running/batchのsingle-processを実行で確認した。",
 			"storage・updateは宣言。networkの強制範囲はenforcementとnetworkへ記録する。",
 			"profileの合格は、実機・実OS・実Targetでの動作を証明しない。",
 		},

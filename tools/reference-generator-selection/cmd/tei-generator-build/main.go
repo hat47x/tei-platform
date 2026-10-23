@@ -16,7 +16,7 @@ func main() {
 	contractPath := flag.String("contract", "", "generator contract JSON")
 	outDir := flag.String("out", "", "new output directory")
 	all := flag.Bool("all", false, "generate all fixed strategies under -out at version 1")
-	strategy := flag.String("strategy", "", "one of template, alternative, dangerous, python-template, javascript-template, java-template, wasm-template, long-running-template, python-long-running-template, javascript-long-running-template")
+	strategy := flag.String("strategy", "", "one of template, alternative, dangerous, python-template, javascript-template, java-template, wasm-template, long-running-template, python-long-running-template, javascript-long-running-template, java-long-running-template, wasm-long-running-template")
 	version := flag.String("version", "1", "generator version recorded in the candidate manifest")
 	flag.Parse()
 	if *contractPath == "" || *outDir == "" {
