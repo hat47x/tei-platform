@@ -44,9 +44,20 @@ import (
 //
 // It needs TEI_TEST_POSTGRES_DSN (an empty, disposable database) and
 // TEI_E2E_PACKET_OUT (a directory outside the repository); otherwise it skips.
+//
+// TEI_E2E_FULL_HEALTH_RECEIPT optionally names a JSON file from
+// `gh run view <id> --json databaseId,headSha,event,workflowName,status,conclusion,url`
+// for the repository health workflow run on push to main. It is accepted only
+// when that run checked out exactly this HEAD (which must equal origin/main)
+// and succeeded; the workflow checks a clean tree before and after
+// tools/repository-health-check.sh. The receipt is caller-supplied: the audit
+// does not dereference it, and a human reviews it with the packet.
 
 const (
 	e2eOutEnv       = "TEI_E2E_PACKET_OUT"
+	e2eHealthEnv    = "TEI_E2E_FULL_HEALTH_RECEIPT"
+	e2eHealthFlow   = "TEI PR・main 健全性確認"
+	e2eRunURLPrefix = "https://github.com/hat47x/tei-platform/actions/runs/"
 	e2eChildStore   = "TEI_E2E_CHILD_STORE"
 	e2eChildTrust   = "TEI_E2E_CHILD_TRUST"
 	e2eChildGrant   = "TEI_E2E_CHILD_GRANT"
@@ -502,6 +513,7 @@ func TestOneRevisionOrderEntryE2EPacket(t *testing.T) {
 	}
 
 	cleanAfter := gitOutput(t, repoRoot, "status", "--porcelain") == ""
+	fullHealth, healthRaw := e2eFullHealth(t, head, mainSHA)
 
 	// 11. Receipts and the packet.
 	locator := map[string]string{
@@ -532,6 +544,9 @@ func TestOneRevisionOrderEntryE2EPacket(t *testing.T) {
 			"head": head, "children": []string{"zero-price", "grant-revoked", "positive", "read-dsn-missing", "s02-startup-refused", "s02-runtime"}, "positiveWebPid": webPID,
 			"startedAt": started.Format(time.RFC3339), "finishedAt": time.Now().UTC().Format(time.RFC3339)}),
 	}
+	if healthRaw != nil {
+		locator["fullHealth"] = run.write("qualification-full-health-ci-run.json", healthRaw)
+	}
 	packet := map[string]any{
 		"schema": "tei.critical-path-evidence/v0",
 		"claim":  "E2",
@@ -540,8 +555,8 @@ func TestOneRevisionOrderEntryE2EPacket(t *testing.T) {
 			"positiveTest": "TestOneRevisionOrderEntryE2EPacket", "negativeTest": "TestOneRevisionOrderEntryE2EPacket (R0/R2/unit-price-zero/S05/N11/S02 controls)",
 			"evidenceClass": "actual-observed",
 		},
-		"qualification": map[string]any{"head": head, "main": mainSHA, "fullHealth": "NOT_RUN",
-			"cleanBefore": cleanBefore, "cleanAfter": cleanAfter, "receipt": ""},
+		"qualification": map[string]any{"head": head, "main": mainSHA, "fullHealth": fullHealth,
+			"cleanBefore": cleanBefore, "cleanAfter": cleanAfter, "receipt": locator["fullHealth"]},
 		"acceptance": map[string]any{
 			"r0": receipts.R0, "r1": receipts.R1, "candidateFingerprint": receipts.CandidateFingerprint,
 			"reviewFingerprint": receipts.ReviewFingerprint, "reviewCandidateFingerprint": receipts.ReviewCandidateFingerprint,
@@ -602,9 +617,14 @@ func TestOneRevisionOrderEntryE2EPacket(t *testing.T) {
 	for _, d := range report.Diagnostics {
 		has[d] = true
 	}
-	// Only the trusted full health of an exact checkout remains; this run does
-	// not record it.
-	if len(report.Diagnostics) != 1 || !has["TRUSTED_FULL_HEALTH_NOT_RECORDED"] || report.Status != "INCOMPLETE" {
+	if healthRaw != nil {
+		// With a matching health receipt nothing declarative is missing. The
+		// audit still asks for human review and never grants a Product Gate.
+		if len(report.Diagnostics) != 0 || report.Status != "REVIEW_REQUIRED" {
+			t.Errorf("expected REVIEW_REQUIRED with no diagnostics: status=%s %v", report.Status, report.Diagnostics)
+		}
+	} else if len(report.Diagnostics) != 1 || !has["TRUSTED_FULL_HEALTH_NOT_RECORDED"] || report.Status != "INCOMPLETE" {
+		// Only the trusted full health of an exact checkout remains.
 		t.Errorf("expected only TRUSTED_FULL_HEALTH_NOT_RECORDED to remain: status=%s %v", report.Status, report.Diagnostics)
 	}
 	for _, filled := range []string{"S02_REAL_DATASOURCE_SCHEMA_READINESS_MISSING", "S02_NEGATIVE_CONTROL_MISSING",
@@ -615,4 +635,37 @@ func TestOneRevisionOrderEntryE2EPacket(t *testing.T) {
 			t.Errorf("this run should have supplied evidence for %s", filled)
 		}
 	}
+}
+
+// e2eFullHealth returns NOT_RUN without a receipt. With one, it fails the
+// test unless the receipt is the health workflow's successful push run for
+// exactly this HEAD, and HEAD is origin/main.
+func e2eFullHealth(t *testing.T, head, mainSHA string) (string, []byte) {
+	t.Helper()
+	path := os.Getenv(e2eHealthEnv)
+	if path == "" {
+		return "NOT_RUN", nil
+	}
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("%s: %v", e2eHealthEnv, err)
+	}
+	var run struct {
+		DatabaseID   int64  `json:"databaseId"`
+		HeadSHA      string `json:"headSha"`
+		Event        string `json:"event"`
+		WorkflowName string `json:"workflowName"`
+		Status       string `json:"status"`
+		Conclusion   string `json:"conclusion"`
+		URL          string `json:"url"`
+	}
+	if err := json.Unmarshal(raw, &run); err != nil {
+		t.Fatalf("%s is not a run receipt: %v", e2eHealthEnv, err)
+	}
+	if head != mainSHA || run.HeadSHA != head || run.Event != "push" || run.WorkflowName != e2eHealthFlow ||
+		run.Status != "completed" || run.Conclusion != "success" || run.DatabaseID == 0 ||
+		run.URL != fmt.Sprintf("%s%d", e2eRunURLPrefix, run.DatabaseID) {
+		t.Fatalf("health receipt does not match this exact checkout: head=%s main=%s run=%+v", head, mainSHA, run)
+	}
+	return "PASS", raw
 }
