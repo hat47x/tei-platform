@@ -305,6 +305,10 @@ func (r *referenceCommandScenarioRunner) runAuthenticatedSubjectCommandWithEffec
 				if errors.Is(err, errOrderNotSubmittable) {
 					return capabilityinvoke.BusinessResult{}, errOrderNotSubmittable
 				}
+				if errors.Is(err, errPhysicalSchemaNotReady) {
+					result.Stage = "physical-schema-not-ready"
+					return capabilityinvoke.BusinessResult{}, errPhysicalSchemaNotReady
+				}
 				// The driver error can be echoed to the client; keep
 				// connection detail out of it.
 				return capabilityinvoke.BusinessResult{}, errors.New("order submit effect failed")
