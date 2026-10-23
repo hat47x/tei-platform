@@ -2,6 +2,7 @@ package generatorartifactstore
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"os"
 	"os/exec"
@@ -15,7 +16,8 @@ func TestCheckpointCanBeSignedAndVerified(t *testing.T) {
 	if err != nil {
 		t.Skip("ssh-keygen is not available")
 	}
-	checkpoint, err := Checkpoint(t.TempDir())
+	storeDir := t.TempDir()
+	checkpoint, err := Checkpoint(storeDir)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -52,10 +54,27 @@ func TestCheckpointCanBeSignedAndVerified(t *testing.T) {
 	if output, err := verify.CombinedOutput(); err != nil {
 		t.Fatalf("checkpoint verification failed: %v: %s", err, output)
 	}
+	signed, err := VerifySignedCheckpoint(context.Background(), storeDir, checkpointPath, signaturePath, allowed, "signer", "tei-audit")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !signed.Passed || !signed.SignatureVerified {
+		t.Fatalf("signed checkpoint did not pass: %+v", signed)
+	}
 	tampered := append(append([]byte{}, raw...), ' ')
 	verifyTampered := exec.Command(keygen, "-Y", "verify", "-f", allowed, "-I", "signer", "-n", "tei-audit", "-s", signaturePath)
 	verifyTampered.Stdin = bytes.NewReader(tampered)
 	if err := verifyTampered.Run(); err == nil {
 		t.Fatal("tampered checkpoint signature was accepted")
+	}
+	if err := os.WriteFile(checkpointPath, tampered, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	bad, err := VerifySignedCheckpoint(context.Background(), storeDir, checkpointPath, signaturePath, allowed, "signer", "tei-audit")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if bad.Passed || bad.SignatureVerified {
+		t.Fatalf("tampered checkpoint was accepted: %+v", bad)
 	}
 }

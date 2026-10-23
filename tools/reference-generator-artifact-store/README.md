@@ -26,7 +26,9 @@ go run ./tools/reference-generator-artifact-store/cmd/tei-generator-artifact-sto
   checkpoint -store /tmp/tei-artifacts -out /tmp/checkpoint.json
 
 go run ./tools/reference-generator-artifact-store/cmd/tei-generator-artifact-store \
-  verify-checkpoint -store /tmp/tei-artifacts -checkpoint /tmp/checkpoint.json
+  verify-checkpoint -store /tmp/tei-artifacts -checkpoint /tmp/checkpoint.json \
+  -signature /tmp/checkpoint.json.sig \
+  -allowed-signers /tmp/allowed_signers -identity signer
 ```
 
 ## 保存layout
@@ -98,7 +100,9 @@ ssh-keygen -Y verify -f /tmp/allowed_signers -I signer -n tei-audit \
 
 署名はcheckpointのbyte列に束縛されます。署名者のAuthority・trust root・削除承認は検証しません。checkpointと署名を別の場所へ保管すれば、後からaudit全体を照合する参照にできます。
 
-`verify-checkpoint`は、保管したcheckpointの`recordCount`・`headDigest`・`auditDigest`を、現在のstoreから再計算したcheckpointと比較します。署名の検証は行わないため、署名検証と組み合わせて使います。mismatchは`passed=false`にします。
+`verify-checkpoint`は、保管したcheckpointの`recordCount`・`headDigest`・`auditDigest`を、現在のstoreから再計算したcheckpointと比較します。mismatchは`passed=false`にします。
+
+`-signature`・`-allowed-signers`・`-identity`を指定すると、先にcheckpointのdetached signatureを`ssh-keygen -Y verify`で検証し、その後にstoreとの一致を検証します。署名が不正なら`signatureVerified=false`、storeと不一致なら`signatureVerified=true`のまま`passed=false`になります。署名者のAuthority・trust rootは検証しません。
 
 ## 検証すること・しないこと
 
@@ -130,6 +134,7 @@ ssh-keygen -Y verify -f /tmp/allowed_signers -I signer -n tei-audit \
 - `checkpoint`がrecord数・head・audit file digestを返し、改変auditを拒否する。
 - checkpointのJSONを`ssh-keygen`で署名・検証でき、改変されたcheckpointを拒否する。
 - `verify-checkpoint`が保存checkpointと現在のaudit chainを比較し、mismatchを拒否する。
+- `-signature`指定時は署名とstore一致の両方を検証し、改変checkpointを拒否する。
 
 ## 未実装・限界
 

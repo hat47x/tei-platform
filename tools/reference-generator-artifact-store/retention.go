@@ -1,9 +1,11 @@
 package generatorartifactstore
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -417,5 +419,49 @@ func VerifyCheckpoint(storeDir, checkpointPath string) (CheckpointVerification, 
 	default:
 		verification.Passed = true
 	}
+	return verification, nil
+}
+
+type SignedCheckpointVerification struct {
+	CheckpointVerification
+	SignaturePath     string `json:"signaturePath"`
+	Identity          string `json:"identity"`
+	SignatureVerified bool   `json:"signatureVerified"`
+}
+
+// VerifySignedCheckpoint verifies a detached ssh-keygen signature over the
+// checkpoint bytes, then compares the checkpoint with the current audit chain.
+// It does not verify the signer's authority or trust root.
+func VerifySignedCheckpoint(ctx context.Context, storeDir, checkpointPath, signaturePath, allowedSigners, identity, namespace string) (SignedCheckpointVerification, error) {
+	verification := SignedCheckpointVerification{
+		CheckpointVerification: CheckpointVerification{
+			Schema: CheckpointVerificationSchema, StoreDir: storeDir, CheckpointPath: checkpointPath,
+		},
+		SignaturePath: signaturePath, Identity: identity,
+	}
+	if namespace == "" {
+		namespace = "tei-audit"
+	}
+	raw, err := os.ReadFile(checkpointPath)
+	if err != nil {
+		return verification, err
+	}
+	verify := exec.CommandContext(ctx, "ssh-keygen", "-Y", "verify",
+		"-f", allowedSigners, "-I", identity, "-n", namespace, "-s", signaturePath)
+	verify.Stdin = strings.NewReader(string(raw))
+	if output, err := verify.CombinedOutput(); err != nil {
+		verification.Reason = "checkpoint signature verification failed: " + strings.TrimSpace(string(output))
+		return verification, nil
+	}
+	verification.SignatureVerified = true
+	semantic, err := VerifyCheckpoint(storeDir, checkpointPath)
+	if err != nil {
+		return verification, err
+	}
+	verification.CheckpointVerification = semantic
+	if !semantic.Passed {
+		return verification, nil
+	}
+	verification.Passed = true
 	return verification, nil
 }
