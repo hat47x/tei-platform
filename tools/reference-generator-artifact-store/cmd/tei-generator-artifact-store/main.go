@@ -29,6 +29,10 @@ func main() {
 	dryRun := fs.Bool("dry-run", false, "report prune candidates without deleting")
 	outPath := fs.String("out", "", "write the checkpoint JSON to this file")
 	checkpointFile := fs.String("checkpoint", "", "stored checkpoint JSON to verify")
+	signaturePath := fs.String("signature", "", "detached signature over the checkpoint")
+	allowedSignersPath := fs.String("allowed-signers", "", "ssh allowed signers file")
+	identity := fs.String("identity", "", "principal in the allowed signers file")
+	namespace := fs.String("namespace", "tei-audit", "ssh signature namespace")
 	_ = fs.Parse(os.Args[2:])
 	switch command {
 	case "put":
@@ -120,6 +124,21 @@ func main() {
 	case "verify-checkpoint":
 		if *storeDir == "" || *checkpointFile == "" {
 			fail(fmt.Errorf("-store and -checkpoint are required"))
+		}
+		if *signaturePath != "" {
+			if *allowedSignersPath == "" || *identity == "" {
+				fail(fmt.Errorf("-signature requires -allowed-signers and -identity"))
+			}
+			receipt, err := generatorartifactstore.VerifySignedCheckpoint(context.Background(),
+				*storeDir, *checkpointFile, *signaturePath, *allowedSignersPath, *identity, *namespace)
+			if err != nil {
+				fail(err)
+			}
+			emit(receipt)
+			if !receipt.Passed {
+				os.Exit(1)
+			}
+			return
 		}
 		receipt, err := generatorartifactstore.VerifyCheckpoint(*storeDir, *checkpointFile)
 		if err != nil {
