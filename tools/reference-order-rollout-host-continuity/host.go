@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -168,6 +169,7 @@ type atlasRunner struct {
 	control  *pgxpool.Pool
 	sales    *pgxpool.Pool
 
+	accepted      *atomic.Bool
 	mu            sync.Mutex
 	runtimeHandle string
 	acceptedSeq   int64
@@ -232,6 +234,7 @@ func (r *atlasRunner) watchAcceptance(ctx context.Context, handle string) {
 			r.mu.Lock()
 			r.acceptedSeq = seq
 			r.mu.Unlock()
+			r.accepted.Store(true)
 			return
 		}
 		select {
@@ -281,7 +284,9 @@ func invocationRecord(plan pruntime.EnvironmentPlan, pv pruntime.InvocationProve
 		ResourceLeaseRefreshes: pv.ResourceLeaseRefreshes, ResourceLeaseSupervision: pv.ResourceLeaseSupervision, ResourceLeaseOwnership: pv.ResourceLeaseOwnership}
 }
 
-func hostParts(ctx context.Context, cfg HostConfig, sec HostSecrets, start Start) (*pgxpool.Pool, *pgxpool.Pool, *PgOwnershipStore, *PgBroker, error) {
+// hostParts builds the pools, the ownership store and the broker. Injected
+// failures (step 2) start once the tool's acceptance notice was seen.
+func hostParts(ctx context.Context, cfg HostConfig, sec HostSecrets, start Start, accepted *atomic.Bool) (*pgxpool.Pool, *pgxpool.Pool, *PgOwnershipStore, *PgBroker, error) {
 	control, err := pgxpool.New(ctx, sec.ControlDSN)
 	if err != nil {
 		return nil, nil, nil, nil, errors.New("control database configuration rejected")
@@ -295,8 +300,8 @@ func hostParts(ctx context.Context, cfg HostConfig, sec HostSecrets, start Start
 	if !ok {
 		return nil, nil, nil, nil, fmt.Errorf("capability %s not in plan", CapabilityID)
 	}
-	own := &PgOwnershipStore{Pool: control, Actor: cfg.Owner, HostNow: cfg.hostNow, FailHeartbeat: cfg.FailHeartbeat}
-	broker := &PgBroker{Pool: control, Actor: cfg.Owner, Now: cfg.hostNow, FailRenew: cfg.FailRenew,
+	own := &PgOwnershipStore{Pool: control, Actor: cfg.Owner, HostNow: cfg.hostNow, FailHeartbeat: func() bool { return cfg.FailHeartbeat && accepted.Load() }}
+	broker := &PgBroker{Pool: control, Actor: cfg.Owner, Now: cfg.hostNow, FailRenew: func() bool { return cfg.FailRenew && accepted.Load() },
 		TTL: cr.LeasePolicy.WithDefaults().RenewBeforeDuration() + cfg.LeaseSlack,
 		Adapters: []resource.Adapter{
 			&resource.ReferenceSecretManagerAdapter{Handles: map[core.CanonicalID]string{core.MustCanonicalID(resCredential): sec.SecretHandle}},
@@ -315,14 +320,15 @@ func RunHostA(ctx context.Context, cfg HostConfig, sec HostSecrets) (CallRecord,
 	if err != nil {
 		return CallRecord{}, err
 	}
-	control, sales, own, broker, err := hostParts(ctx, cfg, sec, start)
+	var accepted atomic.Bool
+	control, sales, own, broker, err := hostParts(ctx, cfg, sec, start, &accepted)
 	if err != nil {
 		return CallRecord{}, err
 	}
 	defer control.Close()
 	defer sales.Close()
 	adapters := &hostAdapters{secrets: sec}
-	runner := &atlasRunner{cfg: cfg, start: start, adapters: adapters, handles: &PgHandleStore{Pool: control}, control: control, sales: sales}
+	runner := &atlasRunner{cfg: cfg, start: start, adapters: adapters, handles: &PgHandleStore{Pool: control}, control: control, sales: sales, accepted: &accepted}
 	reg := pruntime.Registry{
 		Sandboxes: pruntime.HostSandboxLauncher{Network: adapters, Filesystem: adapters, Secrets: adapters, Runner: runner, Now: cfg.hostNow},
 		Verifier:  referenceVerifier{}, Resources: broker, SupervisorOwnerships: own, SupervisorOwnerID: cfg.Owner, SupervisorOwnershipTTL: cfg.OwnershipTTL,
@@ -388,29 +394,29 @@ func staleProbes(ctx context.Context, cfg HostConfig, start Start, control, sale
 
 // TakeoverRecord is the output of steps 3 and 4 (host B).
 type TakeoverRecord struct {
-	Identity           Identity                         `json:"identity"`
-	HandleRevisionSeen int                              `json:"handleRevisionSeen"`
-	PreviousOwner      string                           `json:"previousOwner"`
-	PreviousToken      uint64                           `json:"previousToken"`
-	LeaseID            string                           `json:"leaseId"`
-	Owner              string                           `json:"owner"`
-	FencingToken       uint64                           `json:"fencingToken"`
-	RefusedClaims      int                              `json:"refusedClaims"`
-	NaiveAtRefusals    []bool                           `json:"naiveHostClockTakeoverAtRefusals"`
-	NaiveAtTakeover    bool                             `json:"naiveHostClockTakeoverAtTakeover"`
-	TakeoverWaitMS     int64                            `json:"takeoverWaitMs"`
-	PlanMatchesRun     bool                             `json:"planMatchesRun"`
-	ObservesBefore     int64                            `json:"runtimeObservesBeforeReconcile"`
-	Observes           int64                            `json:"runtimeObserves"`
-	Reattaches         int64                            `json:"runtimeReattaches"`
+	Identity           Identity                           `json:"identity"`
+	HandleRevisionSeen int                                `json:"handleRevisionSeen"`
+	PreviousOwner      string                             `json:"previousOwner"`
+	PreviousToken      uint64                             `json:"previousToken"`
+	LeaseID            string                             `json:"leaseId"`
+	Owner              string                             `json:"owner"`
+	FencingToken       uint64                             `json:"fencingToken"`
+	RefusedClaims      int                                `json:"refusedClaims"`
+	NaiveAtRefusals    []bool                             `json:"naiveHostClockTakeoverAtRefusals"`
+	NaiveAtTakeover    bool                               `json:"naiveHostClockTakeoverAtTakeover"`
+	TakeoverWaitMS     int64                              `json:"takeoverWaitMs"`
+	PlanMatchesRun     bool                               `json:"planMatchesRun"`
+	ObservesBefore     int64                              `json:"runtimeObservesBeforeReconcile"`
+	Observes           int64                              `json:"runtimeObserves"`
+	Reattaches         int64                              `json:"runtimeReattaches"`
 	Recovery           *pruntime.InvocationRecoveryResult `json:"recovery,omitempty"`
-	RecoveryError      string                           `json:"recoveryError,omitempty"`
-	ReconciledSeq      int64                            `json:"reconciledSeq"`
-	LeaseReleased      bool                             `json:"leaseReleased"`
-	LeaseReleaseError  string                           `json:"leaseReleaseError,omitempty"`
-	OwnershipReleased  bool                             `json:"ownershipReleased"`
-	LeaseStateAfter    string                           `json:"leaseStateAfter"`
-	OwnershipRowsAfter int                              `json:"ownershipRowsAfter"`
+	RecoveryError      string                             `json:"recoveryError,omitempty"`
+	ReconciledSeq      int64                              `json:"reconciledSeq"`
+	LeaseReleased      bool                               `json:"leaseReleased"`
+	LeaseReleaseError  string                             `json:"leaseReleaseError,omitempty"`
+	OwnershipReleased  bool                               `json:"ownershipReleased"`
+	LeaseStateAfter    string                             `json:"leaseStateAfter"`
+	OwnershipRowsAfter int                                `json:"ownershipRowsAfter"`
 }
 
 // RunHostB is steps 3 and 4: wait for the durable invocation handle written
@@ -422,7 +428,7 @@ func RunHostB(ctx context.Context, cfg HostConfig, sec HostSecrets) (TakeoverRec
 	if err != nil {
 		return TakeoverRecord{}, err
 	}
-	control, sales, own, broker, err := hostParts(ctx, cfg, sec, start)
+	control, sales, own, broker, err := hostParts(ctx, cfg, sec, start, &atomic.Bool{})
 	if err != nil {
 		return TakeoverRecord{}, err
 	}
@@ -566,4 +572,3 @@ func writeJSON(path string, v any) error {
 	}
 	return os.Rename(tmp, filepath.Clean(path))
 }
-

@@ -44,8 +44,9 @@ type PgBroker struct {
 	Adapters []resource.Adapter
 	TTL      time.Duration
 	Now      func() time.Time
-	// FailRenew injects a broker failure on every Renew (step 2).
-	FailRenew bool
+	// FailRenew, when it returns true, injects a broker failure on Renew
+	// (step 2).
+	FailRenew func() bool
 
 	mu    sync.Mutex
 	local map[string]localLease
@@ -165,7 +166,7 @@ func (b *PgBroker) refuse(ctx context.Context, id, op string, revision int, toke
 // Renew extends the lease in place. Only the acquiring process can renew,
 // and only with the current revision and fencing token.
 func (b *PgBroker) Renew(ctx context.Context, req resource.AcquireRequest, prev resource.Lease) (resource.Lease, error) {
-	if b.FailRenew {
+	if b.FailRenew != nil && b.FailRenew() {
 		return resource.Lease{}, b.refuse(ctx, prev.ID, "renew", prev.Revision, int64(prev.FencingToken), 0, "injected broker failure")
 	}
 	req = resource.NormalizeAcquireRequest(req)

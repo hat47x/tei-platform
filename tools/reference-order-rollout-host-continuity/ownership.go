@@ -66,8 +66,9 @@ type PgOwnershipStore struct {
 	Pool    *pgxpool.Pool
 	Actor   string
 	HostNow func() time.Time
-	// FailHeartbeat injects a store failure on every Heartbeat (step 2).
-	FailHeartbeat bool
+	// FailHeartbeat, when it returns true, injects a store failure on
+	// Heartbeat (step 2).
+	FailHeartbeat func() bool
 
 	mu       sync.Mutex
 	observed map[string]ownershipView
@@ -198,7 +199,7 @@ func (s *PgOwnershipStore) rejected(ctx context.Context, o resource.SupervisorOw
 
 // Heartbeat advances the heartbeat of the same owner and token.
 func (s *PgOwnershipStore) Heartbeat(ctx context.Context, o resource.SupervisorOwnership, ttl time.Duration) (resource.SupervisorOwnership, error) {
-	if s.FailHeartbeat {
+	if s.FailHeartbeat != nil && s.FailHeartbeat() {
 		_ = s.event(ctx, s.Pool, o.LeaseID, "heartbeat-injected-failure", false, int64(o.FencingToken), 0, "", nil, "injected store failure")
 		return resource.SupervisorOwnership{}, fmt.Errorf("injected ownership store failure")
 	}

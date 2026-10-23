@@ -31,13 +31,13 @@ type Observation struct {
 	Source ObservationSource `json:"source"`
 	// Seq is the logical time of the observation (orhc.event_seq), compared
 	// with the logical time of the reconciliation it must follow.
-	Seq      int64             `json:"seq"`
+	Seq      int64               `json:"seq"`
 	Snapshot deployment.Snapshot `json:"snapshot"`
 	// Evidence read from the instance besides the release record.
-	IndexPresent   bool     `json:"indexPresent"`
-	LegacyColumns  []string `json:"legacyColumns"`
-	Releases       []string `json:"releasesRecorded"`
-	JobCount       int      `json:"executionCount"`
+	IndexPresent  bool     `json:"indexPresent"`
+	LegacyColumns []string `json:"legacyColumns"`
+	Releases      []string `json:"releasesRecorded"`
+	JobCount      int      `json:"executionCount"`
 }
 
 // Observe re-reads the target state: the release the migration tool recorded
@@ -150,6 +150,16 @@ func AttemptFromRecovery(s Start, r pruntime.InvocationRecoveryResult) executor.
 		res.Outcome, res.Message = executor.OutcomeUnknown, "execution state unknown; keep the command unresolved"
 	}
 	return res
+}
+
+// AttemptFromRefusal records a reconciliation that was refused before any
+// observation (for example because the environment plan changed during the
+// handover). The command was dispatched in step 2 and its external effect is
+// unknown, so it is kept unresolved, never made dispatchable again.
+func AttemptFromRefusal(s Start, invocationID, reason string) executor.Result {
+	return executor.Result{ExecutorID: CapabilityID, AttemptID: "attempt:" + invocationID + ":refused", ActionID: s.Command.ActionID,
+		IdempotencyKey: s.Command.IdempotencyKey, Outcome: executor.OutcomeUnknown, ExternalRef: "invocation:" + invocationID,
+		Message: "reconciliation refused before observation (" + reason + "); command unresolved"}
 }
 
 // Reflect is step 5: record the attempt in the run, then accept an
