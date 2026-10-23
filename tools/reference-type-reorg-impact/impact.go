@@ -24,6 +24,7 @@ type Use struct {
 	Attribute string `json:"attribute"`
 	Data      string `json:"data"`
 	Type      string `json:"type"`
+	Target    string `json:"target,omitempty"`
 }
 
 // ValidationUse records a Validation whose referenced attribute uses a merged type.
@@ -130,7 +131,7 @@ func Analyze(world ir.World, m Merge) (Impact, error) {
 				attrType[string(a.ID)] = string(a.TypeRef)
 				attrData[string(a.ID)] = string(d.ID)
 				if from[string(a.TypeRef)] {
-					out.Attributes = append(out.Attributes, Use{string(a.ID), string(d.ID), string(a.TypeRef)})
+					out.Attributes = append(out.Attributes, Use{Attribute: string(a.ID), Data: string(d.ID), Type: string(a.TypeRef)})
 				}
 			}
 		}
