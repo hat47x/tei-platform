@@ -20,7 +20,7 @@ TEIの参照モデル再現確認で必要になるX-TEAの入力・観測を、
 | Driver | ログイン、XF100、XF300、XF200の更新・作成・削除、失敗時rollback | `scenarios/driver-*.json` |
 | Server | `DBMethod`のSELECT/COUNT/INSERT/UPDATE/DELETE/COMMIT/ROLLBACK/CALL/IP、`Service`のGET/POST、Jetty/Tomcat | `tests/test_live_*.py`、`tests/test_tomcat_war.py` |
 
-`verify-all.ps1`の実動環境変数付き実行で、Swing E2E 9件、サーバ契約4件、実DBMethod 3件、実Service 2件、Tomcat WAR 1件、外部Tomcat 1件が成功しています。
+`verify-all.ps1`の実動環境変数付き実行で、Swing E2E 10件、サーバ契約4件、実DBMethod 3件、実Service 2件、Tomcat WAR 1件、外部Tomcat 1件が成功しています。
 
 ## 残作業の性質
 
