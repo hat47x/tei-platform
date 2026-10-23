@@ -27,6 +27,7 @@ func main() {
 	sourceDigest := fs.String("source-digest", "", "content-addressed source digest")
 	keep := fs.String("keep", "", "comma-separated source digests to keep for prune")
 	dryRun := fs.Bool("dry-run", false, "report prune candidates without deleting")
+	outPath := fs.String("out", "", "write the checkpoint JSON to this file")
 	_ = fs.Parse(os.Args[2:])
 	switch command {
 	case "put":
@@ -101,6 +102,15 @@ func main() {
 		receipt, err := generatorartifactstore.Checkpoint(*storeDir)
 		if err != nil {
 			fail(err)
+		}
+		if *outPath != "" {
+			raw, err := json.MarshalIndent(receipt, "", "  ")
+			if err != nil {
+				fail(err)
+			}
+			if err := os.WriteFile(*outPath, append(raw, '\n'), 0o644); err != nil {
+				fail(err)
+			}
 		}
 		emit(receipt)
 		if !receipt.Passed {
