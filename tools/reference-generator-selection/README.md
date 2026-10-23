@@ -171,7 +171,7 @@ go run ./tools/reference-generator-selection/cmd/tei-generator-meta \
 
 ## 生成器sourceの生成
 
-`tei-generator-build`は、契約JSONと固定strategy（`template`、`alternative`、`dangerous`、`python-template`、`javascript-template`、`java-template`、`wasm-template`、`long-running-template`、`python-long-running-template`、`javascript-long-running-template`）から、候補sourceを決定的に生成します。
+`tei-generator-build`は、契約JSONと固定strategy（`template`、`alternative`、`dangerous`、`python-template`、`javascript-template`、`java-template`、`wasm-template`、`long-running-template`、`python-long-running-template`、`javascript-long-running-template`、`java-long-running-template`）から、候補sourceを決定的に生成します。
 
 - Goのsourceは`go/format`で整形してから書き出します。Python・JavaScript・Javaのsourceは整形せず、生成したbyte列をそのまま使います。
 - `candidate.json`には`language`、`source`（`main.go`/`main.py`/`main.js`）、`generator`を記録します。
@@ -209,8 +209,8 @@ go run ./tools/reference-generator-selection/cmd/tei-generator-meta \
 - 選抜のfixture実行は、これまでどおりcaseごとにprocessを起動します。
 - `tei-target-profile`のlong-running profileは、この候補を1 processで起動し、全requestのresponseをfixtureと比較します。
 - processが途中で終了した場合、response数が足りない場合、fixtureと異なる場合は失敗します。
-- `python-long-running-template`と`javascript-long-running-template`は、同じ計算・拒否をPython/JavaScriptのnewline-delimited JSON処理として生成します。既存の単発テンプレートは変更せず、別のtemplate digestで識別します。
-- Target ProfileのprobeはGo・Python・JavaScript候補を対象とします。Javaのlong-running probeは未対応です。処理系がなければ不合格とし、Python/JavaScriptにはGoのメモリ上限が効かないことをreceiptへ記録します。
+- `python-long-running-template`、`javascript-long-running-template`、`java-long-running-template`は、同じ計算・拒否を各言語のnewline-delimited JSON処理として生成します。既存の単発テンプレートは変更せず、別のtemplate digestで識別します。
+- Target ProfileのprobeはGo・Python・JavaScript・Java候補を対象とします。WASMのlong-running probeは未対応です。処理系がなければ不合格とし、Go以外にはGoのメモリ上限が効かないことをreceiptへ記録します。
 
 ## Go候補のbuild evidence
 
@@ -301,7 +301,7 @@ reconcileは候補をビルド・実行・選抜しません。再生成した�
 - `promptPath`・`contextPath`を省略した候補では、digestの形式だけを確認し、内容との対応は検証しません。
 - 深さ2以上のメタ生成、失効に伴う自動再生成・自動選抜・失効の承認。
 - Python/JavaScript/Java/WASM sourceを出力するメタ生成器のlineage検証。
-- long-runningのJava/WASM候補。
+- long-runningのWASM候補。
 - Java以外のJVM言語、.NET/WASM等と、実Targetでの処理系固定・依存解決。
 - 実Provider・実Targetでの比較。
 - 候補のartifact store、別machine・別toolchain・clean cacheでのbuild再現性（#943 / #1370 / #1104）。

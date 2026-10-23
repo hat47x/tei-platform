@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"runtime"
+	"strings"
 	"time"
 
 	generatorselection "tei/tools/reference-generator-selection"
@@ -158,6 +159,40 @@ func longRunningEvidence(ctx context.Context, opts RunOptions, selected generato
 			return evidence
 		}
 		args = []string{sourcePath}
+	case generatorselection.LanguageJava:
+		javac, java, version, available := findJavaForProbe()
+		if !available {
+			evidence.Reason = "runtime unavailable: javac/java was not found"
+			return evidence
+		}
+		classesDir := filepath.Join(tempDir, "classes")
+		if err := os.MkdirAll(classesDir, 0o755); err != nil {
+			evidence.Reason = err.Error()
+			return evidence
+		}
+		compile := exec.CommandContext(ctx, javac, "-d", classesDir, manifest.Source)
+		compile.Dir = tempDir
+		if out, err := compile.CombinedOutput(); err != nil {
+			evidence.Reason = "java compile failed: " + err.Error() + ": " + string(out)
+			return evidence
+		}
+		classBytes, err := os.ReadFile(filepath.Join(classesDir, "Main.class"))
+		if err != nil {
+			evidence.Reason = "compiled class is unreadable: " + err.Error()
+			return evidence
+		}
+		evidence.BinaryDigest = digestBytes(classBytes)
+		if selected.BinaryDigest == "" || evidence.BinaryDigest != selected.BinaryDigest {
+			evidence.Reason = "probe class digest differs from selection"
+			return evidence
+		}
+		evidence.Binding = "source-and-binary-digest"
+		evidence.Runtime = &generatorselection.RuntimeEvidence{
+			Language: generatorselection.LanguageJava, Command: java + " -cp <classes> Main",
+			Version: version, Available: true,
+		}
+		executable = java
+		args = []string{"-cp", classesDir, "Main"}
 	default:
 		evidence.Reason = "unsupported long-running candidate language: " + language
 		return evidence
@@ -241,6 +276,22 @@ func runLongRunningProbe(ctx context.Context, opts RunOptions, fixture generator
 		evidence.Reason = fmt.Sprintf("candidate returned %d of %d responses", evidence.Responses, evidence.Requests)
 	}
 	return evidence
+}
+
+func findJavaForProbe() (javacPath, javaPath, version string, available bool) {
+	javac, err := exec.LookPath("javac")
+	if err != nil {
+		return "", "", "", false
+	}
+	java, err := exec.LookPath("java")
+	if err != nil {
+		return "", "", "", false
+	}
+	out, err := exec.Command(javac, "-version").CombinedOutput()
+	if err != nil {
+		return "", "", "", false
+	}
+	return javac, java, strings.TrimSpace(string(out)), true
 }
 
 func buildGoCandidate(ctx context.Context, dir, binaryPath string) error {
