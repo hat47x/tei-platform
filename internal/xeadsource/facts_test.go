@@ -50,7 +50,7 @@ func TestExtractRelationalSourceFactsPreservesLegacyKeyAndRelationshipReferences
 
 func TestExtractRelationalSourceFactsPreservesRawRelationshipType(t *testing.T) {
 	for _, kind := range []string{"FAMILY", "REFFER", "FUTURE_KIND"} {
-		doc, err := Parse(FormatXead, []byte(`<System><Relationship ID="R1" Type="`+kind+`"/></System>`))
+		doc, err := Parse(FormatXead, []byte(`<System><Relationship ID="R1" Type="` + kind + `"/></System>`))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -66,7 +66,7 @@ func TestExtractRelationalSourceFactsPreservesRawRelationshipType(t *testing.T) 
 		if err != nil {
 			t.Fatal(err)
 		}
-		if !strings.Contains(string(encoded), `"relationshipType":"`+kind+`"`) {
+		if !strings.Contains(string(encoded), `"relationshipType":"` + kind + `"`) {
 			t.Fatalf("type %q absent from source-fact JSON: %s", kind, encoded)
 		}
 	}
