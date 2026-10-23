@@ -146,6 +146,8 @@ Web、Desktop、Mobile、API、MCP、VUI等を、Coreへ個別実装を埋め込
 
 Targetごとの差はCapability negotiationやRuntime Binding等で明示し、Conformanceによって共通意味が保たれていることを確認します。
 
+TEI独自の共通Hostや共通Runtimeを生成物の必須依存としません。.NET / Java等の既存アプリケーションに組み込む部品と、必要な機能を包含する単独ネイティブ実行ファイルの双方を構成できる必要があります。認証認可、Capability、副作用制御、監査などは、各関心の契約と、対象環境で実際に責務を負う主体へ結び付けます。
+
 **業務機能の経路間完全性**: 同じAccepted Applicationと実行条件を扱うCLI、Web、Desktop、Mobile、API、MCP等の経路は、原則として全業務操作・Validation・認可・Outcome・副作用・Observationに同等に到達可能でなければなりません。CLIを業務機能の省略版とはせず、一経路のDriver/CLI Scenario群から業務定義全体を検証可能にします。経路間の差は入力・表示・通信・Host連携という実現方法に限定し、未実装の業務機能や「非対応表示」を同等性として扱いません。必要な実装能力が不足する場合は、同じ業務契約を満たす明示的・認可済み代替手段を使うか、実行・配備前に不適合／未解決として検出します。
 
 同じDriver ScenarioとAccepted revisionを基準に、CLIで検証した業務の操作・期待結果・観測をWeb等のTarget-specific E2Eへ導出できる必要があります。生成元の業務assertionは共通化し、Webの認証・session・CSRF・画面操作・Accessibility等のTarget固有テストは別途実行します。CLIの業務PASSだけでWeb E2EもPASSと宣言したり、未対応Scenarioを黙ってskipしたりしてはいけません。詳細境界と最初の実証は`plan/design/CROSS_ROUTE_FUNCTIONAL_PARITY_AND_TEST_DERIVATION.md`、#1180に置きます。
@@ -154,7 +156,7 @@ Targetが「何を表示・操作できるか」というTarget Capabilityと、
 
 Target / Hostがinspectionやdevelopment controlのために公開するMCP等のcontrol interfaceと、Application自身が業務上のPresentation / InteractionをMCP Targetとして公開する場合も区別できる必要があります。
 
-業務アプリケーションを利用者のAIへ公開する経路でも、同じ利用者・同じ受理済みの版・同じ実行条件で、認可、Validation、業務結果、実行エラー、Observationの意味を保つ必要があります。参照専用の公開では、更新を起こせる操作を公開せず、権限外の行・項目・集計も返してはいけません。利用者の権限と代理するAIの識別を追跡できる必要があります。更新を公開する場合の承認、再実行、結果不明の扱いは、既存の業務契約とHostの権限に従います。
+業務アプリケーションを利用者のAIへ公開する経路でも、同じ利用者・同じ受理済みの版・同じ実行条件で、認可、Validation、業務結果、実行エラー、Observationの意味を保つ必要があります。参照専用の公開では、更新を起こせる操作を公開せず、権限外の行・項目・集計も返してはいけません。利用者の権限と代理するAIの識別を追跡できる必要があります。更新を公開する場合の承認、再実行、結果不明の扱いは、既存の業務契約と、対象環境で実行権限・副作用を管理する主体の契約に従います。
 
 参照専用の経路を先に検証することは可能ですが、対象から外した更新操作を明示し、全業務操作の同等性を達成したとは扱いません。開発者向けMCPを必須にする要求でもありません。
 
@@ -296,7 +298,7 @@ prerelease / experimentalなframework、AI evaluator、agent方式等を検証�
 
 Target / Driver / Providerごとに必要な性能条件を定義し、測定・Conformanceできる構造を持つ必要があります。
 
-Plugin / Semantic Extensionを増やしたこと自体を理由に、Targetの起動時間、初期転送量、常駐memory、storage footprint、network request数、resolver時間を無制限に増やしてはいけません。特に標準機能をExtensionとして提供する場合は、logicalな拡張単位と物理的なartifact / process / Wasm moduleの単位を分け、Targetごとに未使用実装の除外、共通runtimeの共有、artifact重複排除、static linking、lazy loading等を選べる必要があります。
+Plugin / Semantic Extensionを増やしたこと自体を理由に、Targetの起動時間、初期転送量、常駐memory、storage footprint、network request数、resolver時間を無制限に増やしてはいけません。特に標準機能をExtensionとして提供する場合は、logicalな拡張単位と物理的なartifact / process / Wasm moduleの単位を分け、Targetごとに未使用実装の除外、既存runtimeの利用、artifact重複排除、static linking、lazy loading等を選べる必要があります。
 
 性能最適化のために複数Extensionを一つのartifactへ統合しても、元のidentity、version、Lock、provenance、Authorityへ逆追跡できなければなりません。反対に、一つのExtensionを一つのprocessや一つのWasm moduleとして配布することを標準前提にしてはいけません。
 
