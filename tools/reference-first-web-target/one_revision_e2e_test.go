@@ -36,9 +36,11 @@ import (
 // What stays synthetic, and is labelled so in the packet: the Host effect Grant
 // (syntheticEffectReader), the issuer (a per-run key, not a human), the order
 // rows the Command validates (the reference read fixture), and the zero unit
-// price of the negative case. No pre-dispatch schema check exists on this Web
-// path, so S02 is recorded as not executed. The audit can never return a
-// Product Gate; this run is not a G2 PASS.
+// price of the negative case. The physical table is built from the accepted
+// declaration, and the Web process checks it at startup and before each write
+// (S02); two drifted tables in a second disposable database are the S02
+// controls. The audit can never return a Product Gate; this run is not a G2
+// PASS.
 //
 // It needs TEI_TEST_POSTGRES_DSN (an empty, disposable database) and
 // TEI_E2E_PACKET_OUT (a directory outside the repository); otherwise it skips.
@@ -49,6 +51,7 @@ const (
 	e2eChildTrust   = "TEI_E2E_CHILD_TRUST"
 	e2eChildGrant   = "TEI_E2E_CHILD_GRANT"
 	e2eChildReadDSN = "TEI_E2E_CHILD_READ_DSN"
+	e2eChildDSN     = "TEI_E2E_CHILD_DSN"
 	e2eChildZero    = "TEI_E2E_CHILD_ZERO_PRICE"
 	e2eDecisionRef  = "e2e-1163-d1"
 	e2eIssuer       = "provisional-per-run-issuer"
@@ -101,6 +104,9 @@ func TestOneRevisionE2EWebChild(t *testing.T) {
 		fail("E2E_CHILD_STORE")
 	}
 	dsn := os.Getenv(orderSubmitDSNEnv)
+	if override := os.Getenv(e2eChildDSN); override != "" {
+		dsn = override
+	}
 	readDSN := dsn
 	if override := os.Getenv(e2eChildReadDSN); override != "" {
 		readDSN = override
@@ -183,13 +189,13 @@ func (r *e2eRun) start(root string, extraEnv ...string) e2eChild {
 	}
 }
 
-func (r *e2eRun) refuse(root, code string) []byte {
+func (r *e2eRun) refuse(root, code string, extraEnv ...string) []byte {
 	t := r.t
 	t.Helper()
 	address := freeAddress(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	command := r.command(ctx, root, address)
+	command := r.command(ctx, root, address, extraEnv...)
 	command.Args = append(command.Args, "-legacy-users", "does-not-exist", "-legacy-authorization", "does-not-exist")
 	output, err := command.CombinedOutput()
 	var exit *exec.ExitError
@@ -367,8 +373,19 @@ func TestOneRevisionOrderEntryE2EPacket(t *testing.T) {
 	}
 	run.env = []string{e2eChildStore + "=" + storeDir, e2eChildTrust + "=" + trustPath}
 
-	// 3. The disposable PostgreSQL fixture: orders 1001 and 1002, both draft.
-	db := openOrderFixtureDB(t, dsn)
+	// 3. The disposable PostgreSQL fixture, built from the accepted R1
+	// declaration: orders 1001 and 1002, both draft. Its readiness is the S02
+	// positive evidence.
+	db := openDeclaredOrderFixtureDB(t, dsn, loaded.World)
+	readinessStore, err := newPostgresOrderSubmitStore(dsn, dsn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = readinessStore.Close() })
+	readiness, err := readinessStore.checkOrderSubmitSchema(context.Background(), loaded.World)
+	if err != nil || !readiness.Compatible {
+		t.Fatalf("the declared fixture is not ready: %+v %v", readiness, err)
+	}
 
 	// 4. Web refuses R0 and the meaning-equivalent R2 itself, before HTTP.
 	refusalR0 := run.refuse(r0, "SOURCE_FINGERPRINT_MISMATCH")
@@ -444,9 +461,49 @@ func TestOneRevisionOrderEntryE2EPacket(t *testing.T) {
 		orderStatus(t, db, 1001) != "submitted" {
 		t.Fatalf("N11: an unobserved write was reported: status=%d body=%s row=%s", status, n11Raw, orderStatus(t, db, 1001))
 	}
+	// 10. S02 controls in a second disposable database of the same server.
+	// (a) The declared index is missing: the Web process does not publish HTTP.
+	// (b) A column is dropped after startup: the submit is refused before the
+	// UPDATE, and order 1001 and the row count stay.
+	s02DSN := otherDatabaseDSN(t, dsn, "tei_e2e_s02")
+	e2eDSNs = append(e2eDSNs, s02DSN)
+	db2 := openDeclaredOrderFixtureDB(t, s02DSN, loaded.World)
+	s02Store, err := newPostgresOrderSubmitStore(s02DSN, s02DSN)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = s02Store.Close() })
+	if _, err := db2.Exec(`DROP INDEX public.orders_customer_idx`); err != nil {
+		t.Fatal(err)
+	}
+	startupDrift, _ := s02Store.checkOrderSubmitSchema(context.Background(), loaded.World)
+	s02Startup := run.refuse(r1, "PHYSICAL_SCHEMA_NOT_READY", e2eChildDSN+"="+s02DSN)
+	resetDeclaredOrders(t, db2, loaded.World)
+	child = run.start(r1, e2eChildDSN+"="+s02DSN)
+	if _, err := db2.Exec(`ALTER TABLE public.orders DROP COLUMN external_id`); err != nil {
+		t.Fatal(err)
+	}
+	runtimeDrift, _ := s02Store.checkOrderSubmitSchema(context.Background(), loaded.World)
+	status, s02Raw := submitRow(t, child.base, 0)
+	s02Result, s02Err := decodeCommand(t, s02Raw)
+	child.stop()
+	var s02Rows int
+	if err := db2.QueryRow(`SELECT count(*) FROM public.orders`).Scan(&s02Rows); err != nil {
+		t.Fatal(err)
+	}
+	if status != http.StatusUnprocessableEntity || !strings.Contains(s02Err, "PHYSICAL_SCHEMA_NOT_READY") ||
+		s02Result.Stage != "physical-schema-not-ready" || s02Result.Command != nil ||
+		orderStatus(t, db2, 1001) != "draft" || s02Rows != 2 ||
+		bytes.Contains(s02Raw, []byte("public.orders")) || bytes.Contains(s02Raw, []byte("tei_e2e_s02")) {
+		t.Fatalf("S02 runtime control: status=%d stage=%s err=%q rows=%d body=%s", status, s02Result.Stage, s02Err, s02Rows, redactDSN(string(s02Raw)))
+	}
+	if startupDrift.Compatible || runtimeDrift.Compatible {
+		t.Fatal("the drifted tables were reported compatible")
+	}
+
 	cleanAfter := gitOutput(t, repoRoot, "status", "--porcelain") == ""
 
-	// 10. Receipts and the packet.
+	// 11. Receipts and the packet.
 	locator := map[string]string{
 		"candidate": run.write("acceptance-candidate.json", receipts.Candidate),
 		"review":    run.write("acceptance-review.json", receipts.Review),
@@ -463,9 +520,16 @@ func TestOneRevisionOrderEntryE2EPacket(t *testing.T) {
 		"read":      run.write("physical-independent-read.json", map[string]any{"orderId": 1001, "readerPid": reader.Process.Pid, "output": readOut.String()}),
 		"n11": run.write("web-n11-unobserved.json", map[string]any{"fixtureReset": "public.orders order_id=1001 set to draft before this control",
 			"status": status, "response": json.RawMessage(n11Raw), "rowStatusAfter": "submitted"}),
+		"schema": run.write("physical-schema-readiness.json", map[string]any{"scope": "the submit store's write set (public.orders)",
+			"declaredFrom": "accepted R1 Persistence Mapping", "readiness": readiness}),
+		"s02": run.write("physical-s02-controls.json", map[string]any{
+			"startup": map[string]any{"drift": "DROP INDEX public.orders_customer_idx", "readiness": startupDrift, "webOutput": string(s02Startup)},
+			"runtime": map[string]any{"drift": "ALTER TABLE public.orders DROP COLUMN external_id (after startup)", "readiness": runtimeDrift,
+				"status": status, "response": json.RawMessage(s02Raw), "order1001After": "draft", "rowCountAfter": s02Rows},
+			"database": "second disposable database in the same server"}),
 		"workspace": run.write("web-workspace-revision.json", map[string]any{"acceptedR1": receipts.R1, "loadedSourceIndexRevision": sourceindex.ModelRevision(index1), "members": len(index1.Artifacts), "hostDecisionRef": e2eDecisionRef}),
 		"targetLaunch": run.write("web-target-launch.json", map[string]any{"executable": "go test binary of tools/reference-first-web-target",
-			"head": head, "children": []string{"zero-price", "grant-revoked", "positive", "read-dsn-missing"}, "positiveWebPid": webPID,
+			"head": head, "children": []string{"zero-price", "grant-revoked", "positive", "read-dsn-missing", "s02-startup-refused", "s02-runtime"}, "positiveWebPid": webPID,
 			"startedAt": started.Format(time.RFC3339), "finishedAt": time.Now().UTC().Format(time.RFC3339)}),
 	}
 	packet := map[string]any{
@@ -473,7 +537,7 @@ func TestOneRevisionOrderEntryE2EPacket(t *testing.T) {
 		"claim":  "E2",
 		"contract": map[string]any{
 			"producerPath": "internal/sourceacceptance/hoststore/store.go", "consumerPath": "tools/reference-first-web-target/main.go",
-			"positiveTest": "TestOneRevisionOrderEntryE2EPacket", "negativeTest": "TestOneRevisionOrderEntryE2EPacket (R0/R2/unit-price-zero/S05/N11 controls)",
+			"positiveTest": "TestOneRevisionOrderEntryE2EPacket", "negativeTest": "TestOneRevisionOrderEntryE2EPacket (R0/R2/unit-price-zero/S05/N11/S02 controls)",
 			"evidenceClass": "actual-observed",
 		},
 		"qualification": map[string]any{"head": head, "main": mainSHA, "fullHealth": "NOT_RUN",
@@ -492,13 +556,12 @@ func TestOneRevisionOrderEntryE2EPacket(t *testing.T) {
 			"positiveReceipt": locator["positive"], "negativeReceipt": locator["negative"], "unobservedControlReceipt": locator["n11"],
 		},
 		"physical": map[string]any{
-			"acceptedRevision": receipts.R1, "datasource": "disposable PostgreSQL 16 (public.orders fixture)",
-			// No pre-dispatch schema check exists on this Web path: S02 not executed.
-			"schemaCompatibility": "unresolved", "schemaEvidence": "",
+			"acceptedRevision": receipts.R1, "datasource": "disposable PostgreSQL 16 (public.orders built from the R1 declaration)",
+			"schemaCompatibility": "compatible", "schemaEvidence": locator["schema"],
 			// D6: the effect Grant is synthetic. This value is a label, not authority.
 			"hostAuthorityEvidence": "synthetic-effect-grant:test-only",
 			"commandReceipt":        locator["command"], "independentReadReceipt": locator["read"], "recordId": "public.orders:order_id=1001",
-			"schemaFailureControl": "", "hostFailureControl": locator["s05"],
+			"schemaFailureControl": locator["s02"], "hostFailureControl": locator["s05"],
 		},
 	}
 	packetPath := filepath.Join(out, "packet.json")
@@ -518,7 +581,7 @@ func TestOneRevisionOrderEntryE2EPacket(t *testing.T) {
 		}
 	}
 
-	// 11. The existing audit. It never returns a Product Gate.
+	// 12. The existing audit. It never returns a Product Gate.
 	audit := exec.Command("go", "run", "./tools/reference-critical-path-evidence-audit", "-packet", packetPath, "-head", head, "-main", mainSHA)
 	audit.Dir = repoRoot
 	reportRaw, auditErr := audit.Output()
@@ -539,12 +602,13 @@ func TestOneRevisionOrderEntryE2EPacket(t *testing.T) {
 	for _, d := range report.Diagnostics {
 		has[d] = true
 	}
-	for _, want := range []string{"TRUSTED_FULL_HEALTH_NOT_RECORDED", "S02_REAL_DATASOURCE_SCHEMA_READINESS_MISSING", "S02_NEGATIVE_CONTROL_MISSING"} {
-		if !has[want] {
-			t.Errorf("expected remaining diagnostic %s", want)
-		}
+	// Only the trusted full health of an exact checkout remains; this run does
+	// not record it.
+	if len(report.Diagnostics) != 1 || !has["TRUSTED_FULL_HEALTH_NOT_RECORDED"] || report.Status != "INCOMPLETE" {
+		t.Errorf("expected only TRUSTED_FULL_HEALTH_NOT_RECORDED to remain: status=%s %v", report.Status, report.Diagnostics)
 	}
-	for _, filled := range []string{"ACCEPTED_R0_R1_LINEAGE_MISSING", "WEB_NOT_BOUND_TO_ACCEPTED_R1_RULE_SELECTION",
+	for _, filled := range []string{"S02_REAL_DATASOURCE_SCHEMA_READINESS_MISSING", "S02_NEGATIVE_CONTROL_MISSING",
+		"ACCEPTED_R0_R1_LINEAGE_MISSING", "WEB_NOT_BOUND_TO_ACCEPTED_R1_RULE_SELECTION",
 		"E2_COMMAND_AND_INDEPENDENT_READ_NOT_CORRELATED", "N11_UNOBSERVED_CONTROL_MISSING", "S05_NEGATIVE_CONTROL_MISSING",
 		"E1_NEGATIVE_SELECTED_RULE_RUNNING_WEB_EVIDENCE_REQUIRED", "ACTUAL_WEB_POSITIVE_AND_NEGATIVE_RECEIPTS_REQUIRED"} {
 		if has[filled] {

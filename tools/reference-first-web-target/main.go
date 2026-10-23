@@ -137,6 +137,14 @@ func runCombinedWebTargetWithHost(ctx context.Context, reader sourceacceptance.R
 	switch appID {
 	case core.MustCanonicalID("order_entry"):
 		readScenario = newReferenceReadScenarioRunner(loaded.World)
+		// A real store must match the accepted declaration before HTTP is
+		// published, and again before each write (S02, physical side).
+		submitStore := wiring.submitStore
+		if submitStore != nil {
+			if submitStore, err = requireOrderSubmitSchema(ctx, loaded.World, submitStore); err != nil {
+				return err
+			}
+		}
 		command, err := newReferenceCommandScenarioRunner(
 			loaded.World,
 			*legacyUsers,
@@ -159,7 +167,7 @@ func runCombinedWebTargetWithHost(ctx context.Context, reader sourceacceptance.R
 				return nil
 			}
 		}
-		command.submitStore = wiring.submitStore
+		command.submitStore = submitStore
 		if wiring.wrapCommandRead != nil {
 			command.read = wiring.wrapCommandRead(command.read)
 		}
