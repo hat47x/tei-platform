@@ -72,6 +72,17 @@ func TestExtractRelationalSourceFactsPreservesRawRelationshipType(t *testing.T) 
 	}
 }
 
+func TestExtractRelationalSourceFactsIgnoresNamespacedRelationshipTypeLookalike(t *testing.T) {
+	doc, err := Parse(FormatXead, []byte(`<System xmlns:x="urn:foreign"><Relationship ID="R1" x:Type="FAMILY"/></System>`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := ExtractRelationalSourceFacts(doc)
+	if len(got.RelationshipKeys) != 1 || got.RelationshipKeys[0].RelationshipType != "" {
+		t.Fatalf("foreign namespaced Type was promoted to source relationship type: %#v", got.RelationshipKeys)
+	}
+}
+
 func TestExtractRelationalSourceFactsKeepsDeclaredKeyFieldsSeparateFromDataIdentity(t *testing.T) {
 	doc, err := Parse(FormatXeaf, []byte(`<System><Function ID="F1" KeyFields="A; B;"><Detail ID="D1" KeyFields="H;L;"/></Function></System>`))
 	if err != nil {
