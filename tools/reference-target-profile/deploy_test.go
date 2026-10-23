@@ -54,6 +54,52 @@ func TestDeployReplaceInstallsAndKeepsPreviousArtifact(t *testing.T) {
 	}
 }
 
+func TestRollbackToHistoryArtifact(t *testing.T) {
+	_, _, _, candidates := selectionPaths(t)
+	root := t.TempDir()
+	profilePath := filepath.Join(repoRoot(t), "tools", "reference-target-profile", "testdata", "desktop-replace.json")
+	first, err := Deploy(context.Background(), DeployOptions{
+		ProfilePath: profilePath, CandidatesDir: candidates, RootDir: root,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	profile, err := Load(profilePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	profile.ID = "desktop-replace-alt"
+	profile.GeneratorID = "alternative"
+	changed, err := json.MarshalIndent(profile, "", "  ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	altProfile := filepath.Join(t.TempDir(), "desktop-replace-alt.json")
+	if err := os.WriteFile(altProfile, append(changed, '\n'), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	second, err := Deploy(context.Background(), DeployOptions{
+		ProfilePath: altProfile, CandidatesDir: candidates, RootDir: root,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	rolledBack, err := RollbackTo(root, first.ArtifactDigest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !rolledBack.Passed || rolledBack.RolledBackTo != first.ArtifactDigest || rolledBack.PreviousDigest != second.ArtifactDigest {
+		t.Fatalf("rollback to history failed: %+v", rolledBack)
+	}
+	installed, err := os.ReadFile(filepath.Join(root, "artifact"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if digestBytes(installed) != first.ArtifactDigest {
+		t.Fatalf("installed artifact digest=%s want %s", digestBytes(installed), first.ArtifactDigest)
+	}
+}
+
 func TestDeployInPlaceUpdatesTarget(t *testing.T) {
 	_, _, _, candidates := selectionPaths(t)
 	root := t.TempDir()

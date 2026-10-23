@@ -28,6 +28,9 @@ go run ./tools/reference-target-profile/cmd/tei-target-profile \
 
 go run ./tools/reference-target-profile/cmd/tei-target-profile \
   rollback -root /tmp/tei-target-profile-root
+
+go run ./tools/reference-target-profile/cmd/tei-target-profile \
+  rollback -root /tmp/tei-target-profile-root -to sha256:...
 ```
 
 ## Profileの項目
@@ -154,9 +157,11 @@ go run ./tools/reference-target-profile/cmd/tei-target-profile run \
 - `replace`: 新しいartifactを同じrootへrenameし、既存artifactは`history/<digest>`へ保持します。
 - `in-place`: 既存artifactを上書きし、上書き前のartifactを`history/<digest>`へ保持します。
 - `rolling`: `slots/a`と`slots/b`の2 slotを使い、非active slotへ新artifactを置いてから`current` pointerをatomicに切り替えます。旧slotは保持し、`rollback`でcurrent/previousを入れ替えます。
+- `rollback -to <digest>`: `replace`/`in-place`の`history/<digest>`から指定artifactを選び、digestを照合してからcurrentへatomicに戻します。戻す前のcurrentはhistoryへ保持します。
 - 配備後にartifact digestを再計算し、build結果と一致することを確認します。history/slotのdigestも照合します。
 - `sqlite`・`remote` storage、Go以外の候補は未対応として`passed=false`にします。
 - 実Targetのsupervisor・health check・traffic drain・電源断耐性・複数ホスト配備は扱いません。
+- `rollback -to`は`replace`/`in-place`のhistoryだけを対象とし、rollingのslot rollbackは`-to`なしの`rollback`を使います。
 
 ## Profile間の意味比較
 

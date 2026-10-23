@@ -31,6 +31,7 @@ func main() {
 	enforceNetwork := fs.Bool("enforce-network", false, "require Linux network namespace isolation for network:none (run/compare only)")
 	enforceCPU := fs.Bool("enforce-cpu", false, "require Linux per-process CPU time limits (run/compare only)")
 	rootDir := fs.String("root", "", "local deployment root for deploy")
+	rollbackTo := fs.String("to", "", "history source digest for rollback")
 	_ = fs.Parse(os.Args[2:])
 	if command != "compare" && command != "rollback" && *profilePath == "" {
 		fail(fmt.Errorf("-profile is required"))
@@ -107,7 +108,13 @@ func main() {
 		if *rootDir == "" {
 			fail(fmt.Errorf("-root is required for rollback"))
 		}
-		receipt, err := targetprofile.Rollback(*rootDir)
+		var receipt targetprofile.RollbackReceipt
+		var err error
+		if *rollbackTo != "" {
+			receipt, err = targetprofile.RollbackTo(*rootDir, *rollbackTo)
+		} else {
+			receipt, err = targetprofile.Rollback(*rootDir)
+		}
 		if err != nil {
 			fail(err)
 		}

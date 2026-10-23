@@ -2,6 +2,7 @@ package targetprofile
 
 import (
 	"context"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -180,7 +181,9 @@ type RollbackReceipt struct {
 	Schema           string `json:"schema"`
 	CurrentSlot      string `json:"currentSlot,omitempty"`
 	PreviousSlot     string `json:"previousSlot,omitempty"`
+	RolledBackTo     string `json:"rolledBackTo,omitempty"`
 	ArtifactDigest   string `json:"artifactDigest,omitempty"`
+	PreviousDigest   string `json:"previousDigest,omitempty"`
 	Passed           bool   `json:"passed"`
 	Reason           string `json:"reason,omitempty"`
 	GrantsAuthority  bool   `json:"grantsAuthority"`
@@ -302,6 +305,83 @@ func Rollback(root string) (RollbackReceipt, error) {
 	receipt.ArtifactDigest = digestBytes(artifact)
 	receipt.Passed = true
 	return receipt, nil
+}
+
+// RollbackTo installs a previously retired artifact from history/<digest>.
+// It verifies the stored digest, keeps the current artifact in history, and
+// atomically replaces the current artifact. It does not check health.
+func RollbackTo(root, sourceDigest string) (RollbackReceipt, error) {
+	receipt := RollbackReceipt{
+		Schema: RollbackSchema, RolledBackTo: sourceDigest,
+		GrantsAuthority: false, ProvesRealTarget: false,
+	}
+	if !validDigest(sourceDigest) {
+		receipt.Reason = "source digest must be sha256:<64 hex>"
+		return receipt, nil
+	}
+	historyPath := filepath.Join(root, "history", strings.TrimPrefix(sourceDigest, "sha256:"))
+	artifact, err := os.ReadFile(historyPath)
+	if err != nil {
+		receipt.Reason = "history artifact is unreadable: " + err.Error()
+		return receipt, nil
+	}
+	if digestBytes(artifact) != sourceDigest {
+		receipt.Reason = "history artifact digest does not match the requested digest"
+		return receipt, nil
+	}
+	targetPath := filepath.Join(root, "artifact")
+	if current, err := os.ReadFile(targetPath); err == nil {
+		currentDigest := digestBytes(current)
+		receipt.PreviousDigest = currentDigest
+		historyDir := filepath.Join(root, "history")
+		if err := os.MkdirAll(historyDir, 0o755); err != nil {
+			receipt.Reason = err.Error()
+			return receipt, nil
+		}
+		currentHistory := filepath.Join(historyDir, strings.TrimPrefix(currentDigest, "sha256:"))
+		if _, err := os.Stat(currentHistory); os.IsNotExist(err) {
+			if err := os.WriteFile(currentHistory, current, 0o755); err != nil {
+				receipt.Reason = err.Error()
+				return receipt, nil
+			}
+		} else if err != nil {
+			receipt.Reason = err.Error()
+			return receipt, nil
+		}
+	} else if !os.IsNotExist(err) {
+		receipt.Reason = err.Error()
+		return receipt, nil
+	}
+	tempPath := filepath.Join(root, ".artifact-rollback")
+	if err := os.WriteFile(tempPath, artifact, 0o755); err != nil {
+		receipt.Reason = err.Error()
+		return receipt, nil
+	}
+	if err := os.Rename(tempPath, targetPath); err != nil {
+		_ = os.Remove(tempPath)
+		receipt.Reason = "atomic rollback failed: " + err.Error()
+		return receipt, nil
+	}
+	installed, err := os.ReadFile(targetPath)
+	if err != nil {
+		receipt.Reason = "installed artifact is unreadable: " + err.Error()
+		return receipt, nil
+	}
+	if digestBytes(installed) != sourceDigest {
+		receipt.Reason = "installed artifact digest does not match the requested digest"
+		return receipt, nil
+	}
+	receipt.ArtifactDigest = sourceDigest
+	receipt.Passed = true
+	return receipt, nil
+}
+
+func validDigest(value string) bool {
+	if !strings.HasPrefix(value, "sha256:") || len(value) != len("sha256:")+64 {
+		return false
+	}
+	_, err := hex.DecodeString(strings.TrimPrefix(value, "sha256:"))
+	return err == nil
 }
 
 func readPointer(path string) (string, error) {
