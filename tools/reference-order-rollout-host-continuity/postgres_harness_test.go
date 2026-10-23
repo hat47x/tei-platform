@@ -490,5 +490,8 @@ func (s *scenario) diagnose() {
 	for _, c := range s.children {
 		raw, _ := os.ReadFile(c.stderr)
 		s.t.Logf("diagnose: %s stderr: %s", c.name, raw)
+		if rep, err := os.ReadFile(c.report); err == nil {
+			s.t.Logf("diagnose: %s report: %s", c.name, rep)
+		}
 	}
 }

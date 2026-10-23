@@ -20,6 +20,7 @@ import (
 type localLease struct {
 	req      resource.AcquireRequest
 	lease    resource.Lease
+	issued   time.Time // host clock at acquisition, without monotonic reading
 	acquired time.Time // monotonic reading
 }
 
@@ -35,9 +36,12 @@ type localLease struct {
 // adapters (the reference adapters hold no external state).
 //
 // Renewal is not time-gated by the broker; the maximum lifetime is measured
-// on the acquiring process's monotonic clock. ExpiresAt is written with the
-// host clock (Now) because the product's lease supervisor schedules renewal
-// from it; no other host reads it to decide anything.
+// on the acquiring process's monotonic clock. ExpiresAt is in host-clock
+// terms because the product's lease supervisor schedules renewal from it; no
+// other host reads it to decide anything. A renewed expiry is the issue time
+// plus the monotonic time elapsed since the acquisition plus the TTL, so it
+// always advances (the product rejects a renewal whose expiry does not
+// advance, which a backward step of the wall clock would otherwise cause).
 type PgBroker struct {
 	Pool     *pgxpool.Pool
 	Actor    string
@@ -131,7 +135,7 @@ func (b *PgBroker) Acquire(ctx context.Context, req resource.AcquireRequest) (re
 	if b.local == nil {
 		b.local = map[string]localLease{}
 	}
-	b.local[id] = localLease{req: req, lease: l, acquired: time.Now()}
+	b.local[id] = localLease{req: req, lease: l, issued: issued, acquired: time.Now()}
 	b.mu.Unlock()
 	return l, nil
 }
@@ -212,7 +216,11 @@ func (b *PgBroker) Renew(ctx context.Context, req resource.AcquireRequest, prev 
 		old[string(v.Kind)+"|"+v.Scope] = v
 	}
 	next := resource.Lease{ID: prev.ID, Revision: row.revision + 1, FencingToken: uint64(row.token), IssuedAt: row.issued, RuntimePolicyFingerprint: row.policyFP}
-	next.ExpiresAt = b.now().Add(b.TTL).Format(time.RFC3339Nano)
+	expires := loc.issued.Add(time.Since(loc.acquired)).Add(b.TTL)
+	if d := loc.issued.Add(policy.MaxLifetimeDuration()); expires.After(d) {
+		expires = d
+	}
+	next.ExpiresAt = expires.Format(time.RFC3339Nano)
 	for _, p := range req.Permissions {
 		a, err := b.adapter(p.Kind)
 		if err != nil {
