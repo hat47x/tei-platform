@@ -140,6 +140,28 @@ func TestLongRunningProfileRejectsOneshotCandidate(t *testing.T) {
 	}
 }
 
+func TestRunAppliesBatchProcessModel(t *testing.T) {
+	workspace, contract, fixtures, candidates := selectionPaths(t)
+	profilePath := filepath.Join(repoRoot(t), "tools", "reference-target-profile", "testdata", "batch.json")
+	receipt, err := Run(context.Background(), RunOptions{
+		WorkspaceDir: workspace, ContractPath: contract, FixturePath: fixtures,
+		CandidatesDir: candidates, ProfilePath: profilePath,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !receipt.Passed || receipt.ProcessModel == nil || !receipt.ProcessModel.Passed {
+		t.Fatalf("batch profile did not pass: %+v", receipt)
+	}
+	if receipt.ProcessModel.Mode != ProcessBatch || receipt.ProcessModel.Processes != 1 ||
+		receipt.ProcessModel.Requests != 10 || receipt.ProcessModel.Responses != 10 {
+		t.Fatalf("unexpected batch process evidence: %+v", receipt.ProcessModel)
+	}
+	if receipt.Enforcement["processModel"] != "batch:single-process" {
+		t.Fatalf("batch enforcement is wrong: %+v", receipt.Enforcement)
+	}
+}
+
 func TestRunAppliesProfilesAndKeepsSelection(t *testing.T) {
 	workspace, contract, fixtures, candidates := selectionPaths(t)
 	previous, had := os.LookupEnv("GOMEMLIMIT")

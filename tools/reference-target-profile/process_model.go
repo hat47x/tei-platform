@@ -57,12 +57,13 @@ func enforceProcessModel(ctx context.Context, profile Profile, opts RunOptions, 
 		if candidate == nil || !candidate.Passed {
 			return &ProcessModelEvidence{Mode: ProcessLongRunning, Reason: "selected candidate did not pass selection"}
 		}
-		return longRunningEvidence(ctx, opts, *candidate)
+		return longRunningEvidence(ctx, opts, *candidate, ProcessLongRunning)
 	case ProcessBatch:
-		return &ProcessModelEvidence{
-			Mode: ProcessBatch, Passed: false,
-			Reason: "batch process model is not implemented by this reference",
+		candidate := selectedCandidate(Receipt{Profile: profile, Selection: selection})
+		if candidate == nil || !candidate.Passed {
+			return &ProcessModelEvidence{Mode: ProcessBatch, Reason: "selected candidate did not pass selection"}
 		}
+		return longRunningEvidence(ctx, opts, *candidate, ProcessBatch)
 	default:
 		return &ProcessModelEvidence{Mode: profile.ProcessModel, Passed: false, Reason: "unknown process model"}
 	}
@@ -92,8 +93,8 @@ func oneshotEvidence(profile Profile, selection generatorselection.Receipt) *Pro
 	return evidence
 }
 
-func longRunningEvidence(ctx context.Context, opts RunOptions, selected generatorselection.CandidateReceipt) *ProcessModelEvidence {
-	evidence := &ProcessModelEvidence{Mode: ProcessLongRunning, CandidateID: selected.ID}
+func longRunningEvidence(ctx context.Context, opts RunOptions, selected generatorselection.CandidateReceipt, mode string) *ProcessModelEvidence {
+	evidence := &ProcessModelEvidence{Mode: mode, CandidateID: selected.ID}
 	fixtureRaw, err := os.ReadFile(opts.FixturePath)
 	if err != nil {
 		evidence.Reason = "fixture is unreadable: " + err.Error()

@@ -34,7 +34,7 @@ go run ./tools/reference-target-profile/cmd/tei-target-profile \
 
 | 項目 | 内容 |
 | --- | --- |
-| `processModel` | `oneshot`（caseごとに別process）、`long-running`（1 processで複数request）、`batch`（未対応） |
+| `processModel` | `oneshot`（caseごとに別process）、`long-running`（1 processで複数request）、`batch`（1 processで全requestを処理して終了） |
 | `storage` | `none`、`filesystem`、`sqlite`、`remote`。`filesystem`だけdeploy参照で扱う |
 | `network` | `none`、`loopback`、`allowed` |
 | `update` | `replace`、`in-place`、`rolling`。deploy参照で扱う |
@@ -61,7 +61,7 @@ memory limitは`GOMEMLIMIT`としてselectionのサブプロセスへ渡しま�
 
 `observability`の`stdout`・`stderr`・`exit-code`は、選択候補の各case実行からdigest・exit codeを観測します。`audit-log`等の未対応channelを宣言したprofileは`observation.unsupported`へ記録し、`passed=false`にします。暗黙に別の観測手段で代替しません。
 
-`processModel`は、oneshotならcaseごとのprocess実行、long-runningなら1 processへ全requestを送り全responseを比較します。long-running probeはGo・Python・JavaScript候補を対象とし、processが途中で終了した場合、終了codeが0以外の場合、responseの欠落・過剰・期待値との不一致、末尾を含むJSONの破損がある場合は`passed=false`にします。全responseをEOFまで読み、末尾の空白だけは許容します。batchは未対応として返します。
+`processModel`は、oneshotならcaseごとのprocess実行、long-running/batchなら1 processへ全requestを送り全responseを比較します。long-running/batch probeはGo・Python・JavaScript候補を対象とし、processが途中で終了した場合、終了codeが0以外の場合、responseの欠落・過剰・期待値との不一致、末尾を含むJSONの破損がある場合は`passed=false`にします。全responseをEOFまで読み、末尾の空白だけは許容します。batchはsingle ephemeral processとして扱い、scheduler・job queue・再試行は実装しません。
 
 常駐probeはdirectory名ではなく、選抜receiptの候補IDに一致するmanifestを探します。候補IDの重複、languageやsource digestの変更、実際のsource bytesと選抜digestの不一致は、processを起動する前に拒否します。照合した単一sourceのbytesを専用の一時directoryへコピーし、そのコピーをbuildまたは実行します。候補directoryの隣接ファイルは取り込みません。
 
@@ -148,7 +148,7 @@ go run ./tools/reference-target-profile/cmd/tei-target-profile run \
 
 - profileは意味を変えない。契約・fixture・候補は同じものを使う。
 - profileは`generatorId`で生成器を一つ選ぶ。選ばれなかった候補は`not selected by target profile`として拒否し、別の生成器へ暗黙にフォールバックしない。
-- `processModel`はoneshotのprocess-per-case、long-runningのsingle-processを実行で確認する。batchは未対応。
+- `processModel`はoneshotのprocess-per-case、long-running/batchのsingle-processを実行で確認する。
 - `storage`の`filesystem`と`update`の`replace`/`in-place`/`rolling`は、`deploy`のローカルfilesystem参照で限定的に確認する。`network`は以下のopt-inの範囲で強制し、`sqlite`/`remote` storageは宣言または未対応のまま。
 - `observability`は`stdout`・`stderr`・`exit-code`だけをcase実行から観測する。未対応channelは`unsupported`として返し、合格にしない。
 - profileの合格や`semanticsEqual`は、実機・実OS・実Targetでの動作を証明しない。
@@ -158,7 +158,7 @@ go run ./tools/reference-target-profile/cmd/tei-target-profile run \
 
 - OS・CPU・RTOS別の実行環境と、実機での資源測定。
 - `loopback`等のnetwork方針の強制、Linux namespace以外の実行器、`sqlite`/`remote` storage。
-- batch processModel、long-runningのJava候補。
+- long-running/batchのJava候補、batch scheduler・job queue・再試行。
 - `audit-log`・分散trace・metrics等の観測channel。
 - 実Targetへの配備、ロールバック、長期運用。
 - 異なるfixture集合・異なる期待値でのprofile比較。現在は同じfixtureの範囲だけを比較する。
