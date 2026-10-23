@@ -251,6 +251,68 @@ func TestCheckpointRejectsTamperedAudit(t *testing.T) {
 	}
 }
 
+func TestVerifyCheckpointMatchesStore(t *testing.T) {
+	storeDir := t.TempDir()
+	checkpoint, err := Checkpoint(storeDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	checkpointPath := filepath.Join(t.TempDir(), "checkpoint.json")
+	raw, err := json.MarshalIndent(checkpoint, "", "  ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(checkpointPath, append(raw, '\n'), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	verification, err := VerifyCheckpoint(storeDir, checkpointPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !verification.Passed || verification.Expected.RecordCount != verification.Actual.RecordCount {
+		t.Fatalf("checkpoint did not verify: %+v", verification)
+	}
+}
+
+func TestVerifyCheckpointDetectsMismatch(t *testing.T) {
+	storeDir := t.TempDir()
+	checkpoint, err := Checkpoint(storeDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	checkpoint.HeadDigest = "sha256:" + strings.Repeat("0", 64)
+	checkpointPath := filepath.Join(t.TempDir(), "checkpoint.json")
+	raw, err := json.MarshalIndent(checkpoint, "", "  ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(checkpointPath, append(raw, '\n'), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	verification, err := VerifyCheckpoint(storeDir, checkpointPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if verification.Passed || !strings.Contains(verification.Reason, "head digest") {
+		t.Fatalf("mismatched checkpoint was accepted: %+v", verification)
+	}
+}
+
+func TestVerifyCheckpointRejectsInvalidCheckpoint(t *testing.T) {
+	storeDir := t.TempDir()
+	path := filepath.Join(t.TempDir(), "checkpoint.json")
+	if err := os.WriteFile(path, []byte(`{"schema":"other","passed":true}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	verification, err := VerifyCheckpoint(storeDir, path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if verification.Passed || verification.Reason == "" {
+		t.Fatalf("invalid checkpoint was accepted: %+v", verification)
+	}
+}
+
 func TestAuditRejectsMalformedRecord(t *testing.T) {
 	storeDir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(storeDir, "prune-audit.jsonl"), []byte("not-json\n"), 0o644); err != nil {
