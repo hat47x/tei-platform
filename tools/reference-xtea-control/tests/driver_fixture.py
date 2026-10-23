@@ -89,6 +89,12 @@ def write_fixture(folder: Path) -> Path:
 
     ET.SubElement(system, "Function", ID="F000", Type="XF000", Name="Control XF000",
                   Script='instance.getReturnMap().put("CONTROL_RESULT", "ran");')
+    for ident, option, label in (("001", "CONSOLE", "Console"), ("002", "00:00", "Timer")):
+        script = '''instance.createTableOperator("UPDATE ITEM SET NAME='%s', UPDCOUNTER=UPDCOUNTER+1 WHERE ID='001'").execute();
+instance.commit(); instance.setStatusMessage("%s-finished");
+instance.getReturnMap().put("CONTROL_RESULT", "%s");''' % (label, label.lower(), label.lower())
+        ET.SubElement(system, "Function", ID="F" + ident, Type="XF000", Name="Control " + label,
+                      TimerOption=option, TimerMessage=label.lower() + "-ready", Script=script)
     scripts = {
         "TRANSACTION": '''function readName() {
 var q=instance.createTableOperator("SELECT NAME FROM ITEM WHERE ID='001'");

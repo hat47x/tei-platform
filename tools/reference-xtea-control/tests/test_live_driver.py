@@ -220,6 +220,66 @@ class LiveDriverTest(unittest.TestCase):
         self.script_transaction("No", "Alpha")
         self.assertEqual(self.observe(), self.observations[0])
 
+    def test_000_console_run_and_cancel(self):
+        console = {"windowClass": "xeadDriver.XF000$", "role": "text", "class": "JTextArea$"}
+        self.open_function("001")
+        self.client.wait_text(console, contains="console-ready")
+        locked = {"windowClass": "xeadDriver.XF000$", "role": "checkbox", "text": "^Run right now$"}
+        with self.assertRaises(ControlError) as caught:
+            self.client.set_value(locked, False)
+        self.assertEqual(caught.exception.code, "COMPONENT_NOT_EDITABLE")
+        self.assertTrue(self.client.find(locked)["selected"])
+        self.button("xeadDriver.XF000", "^Exit$")
+        self.result("RETURN_CODE=01")
+        self.assertEqual(self.observe(), self.observations[0])
+        self.open_function("001")
+        self.client.wait_text(console, contains="console-ready")
+        self.assertFalse(self.client.find({"windowClass": "xeadDriver.XF000$", "role": "text",
+                                           "class": "JTextField$"})["enabled"])
+        self.button("xeadDriver.XF000", "^Start$")
+        self.client.wait_text(console, contains="console-finished")
+        self.assertFalse(self.client.find({"windowClass": "xeadDriver.XF000$", "role": "button", "text": "^Start$"})["enabled"])
+        self.button("xeadDriver.XF000", "^Exit$")
+        self.result("CONTROL_RESULT=console")
+        self.assertIn("001:Console:1;002:Beta:0;", self.observe())
+
+    def test_000_clock_start_stop(self):
+        self.open_function("002")
+        console = {"windowClass": "xeadDriver.XF000$", "role": "text", "class": "JTextArea$"}
+        clock = {"windowClass": "xeadDriver.XF000$", "role": "text", "class": "JTextField$"}
+        self.client.wait_text(console, contains="timer-ready")
+        self.client.set_value(clock, "invalid")
+        self.button("xeadDriver.XF000", "^Start$")
+        error = {"windowClass": "^javax.swing.JDialog$", "role": "button", "text": "^OK$"}
+        self.assertTrue(self.client.wait_selector(error)["matched"])
+        self.client.invoke(error)
+        # Read a future time prepared with the same JVM clock used by the original scheduler.
+        future = self.client.find({"window": "^Driver fixture launcher$", "name": "futureTime"})["text"]
+        self.client.set_value(clock, future)
+        self.client.invoke({"windowClass": "xeadDriver.XF000$", "role": "checkbox", "text": "^Run on day off$"})
+        self.button("xeadDriver.XF000", "^Start$")
+        self.client.wait_text(console, contains="is the time to execute")
+        self.assertFalse(self.client.find(clock)["enabled"])
+        self.assertTrue(self.client.find({"windowClass": "xeadDriver.XF000$", "role": "button", "text": "^Stop$"})["enabled"])
+        self.button("xeadDriver.XF000", "^Stop$")
+        self.client.wait_text(console, contains="The timer is canceled")
+        self.assertTrue(self.client.find(clock)["enabled"])
+        self.button("xeadDriver.XF000", "^Exit$")
+        self.wait_class("xeadDriver.XF000", "absent")
+        self.assertEqual(self.observe(), self.observations[0])
+
+    def test_000_clock_run_now(self):
+        self.open_function("002")
+        console = {"windowClass": "xeadDriver.XF000$", "role": "text", "class": "JTextArea$"}
+        self.client.wait_text(console, contains="timer-ready")
+        self.client.invoke({"windowClass": "xeadDriver.XF000$", "role": "checkbox", "text": "^Run right now$"})
+        self.assertFalse(self.client.find({"windowClass": "xeadDriver.XF000$", "role": "text", "class": "JTextField$"})["enabled"])
+        self.button("xeadDriver.XF000", "^Start$")
+        self.client.wait_text(console, contains="timer-finished")
+        self.button("xeadDriver.XF000", "^Exit$")
+        self.result("CONTROL_RESULT=timer")
+        self.assertIn("001:Timer:1;002:Beta:0;", self.observe())
+
     def test_100_search_select_detail(self):
         self.open_function("100")
         self.wait_class("xeadDriver.XF100")

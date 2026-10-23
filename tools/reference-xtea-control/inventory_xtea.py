@@ -29,7 +29,13 @@ def inspect_model(data: bytes) -> dict:
     root = ET.fromstring(data)
     counts = Counter(f.get("Type", "") for f in root.findall(".//Function"))
     actions = {}
+    timer_options = Counter()
     for function in root.findall(".//Function"):
+        if function.get("Type") == "XF000":
+            option = function.get("TimerOption", "")
+            mode = ("NONE" if not option else option if option in ("CONSOLE", "NOW") else
+                    "CLOCK" if ":" in option else "OTHER")
+            timer_options[mode] += 1
         counter = actions.setdefault(function.get("Type", ""), Counter())
         for button in function.findall(".//Button"):
             action = button.get("Action", "")
@@ -50,6 +56,7 @@ def inspect_model(data: bytes) -> dict:
     return {"sha256": hashlib.sha256(data).hexdigest(),
             "functionTypes": dict(sorted(counts.items())),
             "buttonActions": {typ: dict(sorted(counter.items())) for typ, counter in sorted(actions.items()) if counter},
+            "xf000TimerOptions": dict(sorted(timer_options.items())),
             "scriptUiCallCandidates": {key: value for key, value in sorted(ui.items()) if value},
             "inputFieldTypeCandidates": dict(sorted(input_types.items()))}
 

@@ -16,7 +16,9 @@ class InventoryTest(unittest.TestCase):
             path = Path(folder) / "synthetic.zip"
             data = b'<System><Function ID="PRIVATE" Name="PRIVATE" Type="XF200">' \
                    b'<Button Action="OUTPUT"/><Button Action="COPY"/><Button Action="CALL(PRIVATE)"/></Function>' \
-                   b'<Function Type="XF000" Script="session.getInputDialog(); d.addField(&quot;PRIVATE&quot;,&quot;DATE&quot;);"/></System>'
+                   b'<Function Type="XF000" TimerOption="CONSOLE" Script="session.getInputDialog(); d.addField(&quot;PRIVATE&quot;,&quot;DATE&quot;);"/>' \
+                   b'<Function Type="XF000" TimerOption="PRIVATE:TIME"/><Function Type="XF000" TimerOption="PRIVATE"/>' \
+                   b'<Function Type="XF000"/><Function Type="XF000" TimerOption="NOW"/></System>'
             with zipfile.ZipFile(path, "w") as archive:
                 archive.writestr("current.xeaf", data)
                 archive.writestr("backup/old.xeaf", b'<System><Function Type="XF110"/></System>')
@@ -29,6 +31,8 @@ class InventoryTest(unittest.TestCase):
             self.assertEqual(result["usedFunctionTypes"], ["XF000", "XF110", "XF200"])
             self.assertEqual(result["models"][0]["scriptUiCallCandidates"], {"getInputDialog": 1})
             self.assertEqual(result["models"][0]["inputFieldTypeCandidates"], {"DATE": 1})
+            self.assertEqual(result["models"][0]["xf000TimerOptions"],
+                             {"CLOCK": 1, "CONSOLE": 1, "NONE": 1, "NOW": 1, "OTHER": 1})
             self.assertEqual(result["models"][0]["buttonActions"], {"XF200": {"COPY": 1, "OTHER": 1, "OUTPUT": 1}})
             self.assertEqual(result["uninspectedInputs"], [{"archive": "design-only.zip", "reason": "NO_XEAF"}])
             self.assertIn("XF390", result["absentFunctionTypes"])

@@ -214,6 +214,9 @@ final class Ui {
         return call(new Callable<Map<String, Object>>() {
             @Override
             public Map<String, Object> call() {
+                if (!target.isEnabled()) {
+                    throw new BridgeException("COMPONENT_NOT_EDITABLE", "component is disabled");
+                }
                 Object oldValue = readValue(target);
                 if (target instanceof JTextComponent) {
                     JTextComponent text = (JTextComponent) target;

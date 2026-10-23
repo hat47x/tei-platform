@@ -97,6 +97,11 @@ public final class DriverFixture {
                 }
             });
             frame.add(observe);
+            // Schedule cancellation far from the JVM's current time, including near midnight.
+            JLabel futureTime = new JLabel(java.time.LocalTime.now().plusHours(12)
+                    .format(java.time.format.DateTimeFormatter.ofPattern("HH:mm", java.util.Locale.ROOT)));
+            futureTime.setName("futureTime");
+            frame.add(futureTime);
             frame.add(result);
             frame.pack();
             frame.setVisible(true);
