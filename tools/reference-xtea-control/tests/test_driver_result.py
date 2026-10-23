@@ -12,8 +12,11 @@ class DriverResultTest(unittest.TestCase):
     def test_failures_are_captured_before_state_changes(self):
         class Client:
             value = "failed state"
+            broken = False
 
             def snapshot(self, **options):
+                if self.broken:
+                    raise RuntimeError("snapshot unavailable")
                 return {"value": self.value}
 
             def trace(self):
@@ -33,10 +36,14 @@ class DriverResultTest(unittest.TestCase):
             def test_parent_failure(self):
                 self.fail("input missing")
 
+            def test_broken_snapshot(self):
+                self.client.broken = True
+                self.fail("original failure")
+
             def tearDown(self):
                 self.client.value = "cleanup state"
 
-        for name in ("test_flow", "test_parent_failure"):
+        for name in ("test_flow", "test_parent_failure", "test_broken_snapshot"):
             with self.subTest(test_method=name), tempfile.TemporaryDirectory() as tmp:
                 Fixture.artifacts = Path(tmp)
                 Fixture.client = Client()
@@ -44,6 +51,11 @@ class DriverResultTest(unittest.TestCase):
                 Fixture(name).run(result)
                 self.assertEqual(len(result.failures), 1)
                 capture = json.loads(next(Path(tmp).glob("*-failure-*.json")).read_text())
+                if name == "test_broken_snapshot":
+                    self.assertIn("snapshot unavailable", capture["snapshotError"])
+                    self.assertEqual(capture["trace"]["events"], [])
+                    self.assertIn("original failure", result.failures[0][1])
+                    continue
                 self.assertEqual(capture["snapshot"]["value"], "failed state")
                 if name == "test_flow":
                     self.assertEqual(capture["context"]["params"]["input_type"], "ALPHA")

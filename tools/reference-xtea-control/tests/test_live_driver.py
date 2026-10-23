@@ -58,9 +58,13 @@ class LiveDriverTest(unittest.TestCase):
             raise
         except Exception:
             try:
-                capture = {"test": self.id(), "context": context,
-                           "snapshot": self.client.snapshot(includeTableRows=True),
-                           "trace": self.client.trace()}
+                capture = {"test": self.id(), "context": context}
+                for name, read in (("snapshot", lambda: self.client.snapshot(includeTableRows=True)),
+                                   ("trace", self.client.trace)):
+                    try:
+                        capture[name] = read()
+                    except Exception as error:
+                        capture[name + "Error"] = f"{type(error).__name__}: {error}"
                 path = self.artifacts / f"{self._testMethodName}-failure-{time.time_ns()}.json"
                 path.write_text(json.dumps(capture, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
             except Exception as error:
