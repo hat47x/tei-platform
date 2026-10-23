@@ -2,6 +2,7 @@ package orderrollouthost
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"slices"
 	"time"
@@ -158,6 +159,9 @@ func AttemptFromRecovery(s Start, r pruntime.InvocationRecoveryResult) executor.
 // the observation shows sales_core 4.1.0 with order_entry 3.7.0 as the only
 // active application.
 func Reflect(s Start, run durable.Run, attempt executor.Result, reconciledSeq int64, obs *Observation, obsErr error) Reflection {
+	// The durable functions update the action slice in place; work on a
+	// deep copy so the caller's run is never changed.
+	run = cloneRun(run)
 	run = durable.RecordExecutorResult(run, attempt)
 	out := Reflection{Identity: s.Identity(), Attempt: attempt, ReconciledSeq: reconciledSeq, Observation: obs}
 	out.Identity.ActionID, out.Identity.IdempotencyKey = attempt.ActionID, attempt.IdempotencyKey
@@ -171,10 +175,16 @@ func Reflect(s Start, run durable.Run, attempt executor.Result, reconciledSeq in
 		out.ObservationNote = fmt.Sprintf("observation source %s is not a re-observation after the command", obs.Source)
 	case obs.Seq <= reconciledSeq:
 		out.ObservationNote = fmt.Sprintf("observation seq %d does not follow the reconciliation seq %d", obs.Seq, reconciledSeq)
+	case !(obs.Snapshot.IsActive(OrderApplication, LegacyVersion) && len(obs.Snapshot.ActiveApplications) == 1):
+		// The run model completes a database release from the release
+		// alone; the target of this command also requires order_entry
+		// 3.7.0 to be the only active application, so such an
+		// observation is not handed to the run.
+		out.Arrival = ArrivalUnresolved
+		out.ObservationNote = "observed applications differ from the target state (order_entry 3.7.0 only)"
 	default:
 		run = durable.Reconcile(run, obs.Snapshot, nil)
-		target := obs.Snapshot.IsActive(OrderApplication, LegacyVersion) && len(obs.Snapshot.ActiveApplications) == 1
-		if actionStatus(run, attempt.ActionID) == string(durable.ActionCompleted) && target {
+		if actionStatus(run, attempt.ActionID) == string(durable.ActionCompleted) {
 			out.Arrival = ArrivalCompleted
 		} else {
 			out.Arrival = ArrivalUnresolved
@@ -187,6 +197,18 @@ func Reflect(s Start, run durable.Run, attempt executor.Result, reconciledSeq in
 	out.ReadyActions = append([]string{}, run.ReadyActions...)
 	out.WaitingActions = append([]string{}, run.WaitingActions...)
 	out.Attempts = len(run.Attempts)
+	return out
+}
+
+func cloneRun(run durable.Run) durable.Run {
+	raw, err := json.Marshal(run)
+	if err != nil {
+		panic(err)
+	}
+	var out durable.Run
+	if err := json.Unmarshal(raw, &out); err != nil {
+		panic(err)
+	}
 	return out
 }
 
