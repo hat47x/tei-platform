@@ -144,13 +144,6 @@ func (s *webTargetServer) handleCommandScenario(w http.ResponseWriter, r *http.R
 // Both credential and session routes use the same JSON result and error envelope.
 func (s *webTargetServer) writeCommandScenarioHTTPResult(w http.ResponseWriter, result commandScenarioResult, err error) {
 	if err != nil {
-		publicError := err.Error()
-		// A Command result can precede a failing independent Observation read.
-		// The write may already be committed, so retain the partial result but
-		// avoid exposing Provider details or suggesting an unchecked retry.
-		if result.Stage == "observation" && result.Command != nil && result.Observation == nil {
-			publicError = "action completion unconfirmed; inspect authoritative state before retrying"
-		}
 		response := webCommandScenarioErrorResponse{
 			HandoverBaselineID:         s.projection.HandoverBaselineID,
 			BaselineRepositoryRevision: s.projection.BaselineRepositoryRevision,
@@ -158,7 +151,7 @@ func (s *webTargetServer) writeCommandScenarioHTTPResult(w http.ResponseWriter, 
 			TargetAdapter:              s.projection.TargetAdapter,
 			Host:                       s.projection.Host,
 			Result:                     result,
-			ExecutionError:             publicError,
+			ExecutionError:             err.Error(),
 		}
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		w.WriteHeader(http.StatusUnprocessableEntity)
