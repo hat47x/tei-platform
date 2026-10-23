@@ -61,7 +61,7 @@ memory limitは`GOMEMLIMIT`としてselectionのサブプロセスへ渡しま�
 
 `observability`の`stdout`・`stderr`・`exit-code`は、選択候補の各case実行からdigest・exit codeを観測します。`audit-log`等の未対応channelを宣言したprofileは`observation.unsupported`へ記録し、`passed=false`にします。暗黙に別の観測手段で代替しません。
 
-`processModel`は、oneshotならcaseごとのprocess実行、long-running/batchなら1 processへ全requestを送り全responseを比較します。long-running/batch probeはGo・Python・JavaScript・Java候補を対象とし、processが途中で終了した場合、終了codeが0以外の場合、responseの欠落・過剰・期待値との不一致、末尾を含むJSONの破損がある場合は`passed=false`にします。全responseをEOFまで読み、末尾の空白だけは許容します。batchはsingle ephemeral processとして扱い、scheduler・job queue・再試行は実装しません。
+`processModel`は、oneshotならcaseごとのprocess実行、long-running/batchなら1 processへ全requestを送り全responseを比較します。long-running/batch probeはGo・Python・JavaScript・Java・WASM候補を対象とし、processが途中で終了した場合、終了codeが0以外の場合、responseの欠落・過剰・期待値との不一致、末尾を含むJSONの破損がある場合は`passed=false`にします。全responseをEOFまで読み、末尾の空白だけは許容します。batchはsingle ephemeral processとして扱い、scheduler・job queue・再試行は実装しません。WindowsのNode wasm_execはmulti-request streamの終了時に非0で終了するため、WASMのlong-running/batch probeはLinux CIだけで検証し、Windowsでは未対応として扱います。
 
 常駐probeはdirectory名ではなく、選抜receiptの候補IDに一致するmanifestを探します。候補IDの重複、languageやsource digestの変更、実際のsource bytesと選抜digestの不一致は、processを起動する前に拒否します。照合した単一sourceのbytesを専用の一時directoryへコピーし、そのコピーをbuildまたは実行します。候補directoryの隣接ファイルは取り込みません。
 
@@ -159,6 +159,7 @@ go run ./tools/reference-target-profile/cmd/tei-target-profile run \
 - OS・CPU・RTOS別の実行環境と、実機での資源測定。
 - `loopback`等のnetwork方針の強制、Linux namespace以外の実行器、`sqlite`/`remote` storage。
 - batch scheduler・job queue・再試行。
+- WindowsでのWASM long-running/batch probe。Node wasm_execの終了挙動に依存する。
 - `audit-log`・分散trace・metrics等の観測channel。
 - 実Targetへの配備、ロールバック、長期運用。
 - 異なるfixture集合・異なる期待値でのprofile比較。現在は同じfixtureの範囲だけを比較する。
