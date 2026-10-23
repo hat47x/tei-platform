@@ -133,6 +133,9 @@ class IntegrationTest(unittest.TestCase):
         self.assertEqual([row["text"] for row in value["rows"]],
                          ["root", "tables", "T1", "T2", "functions"])
         self.assertEqual(value["rows"][2]["indices"], [0, 0, 0])
+        self.client.select({"name": "tree"}, path=[0, 0, 0])
+        tree = self.client.find({"name": "tree"})
+        self.assertIn("T1", tree["selectedPath"])
         self.client.select({"role": "tab", "window": "Fake X-TEA"}, item_index=0)
 
     def test_05_modal_dialog(self) -> None:

@@ -2,6 +2,7 @@ package generatorartifactstore
 
 import (
 	"context"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -62,6 +63,86 @@ func TestListAndPruneExplicitKeep(t *testing.T) {
 	if record.Operation != "prune" || record.DryRun || record.RecordedAt == "" ||
 		len(record.Keep) != 1 || len(record.Deleted) != 1 || record.Deleted[0] != alternative.SourceDigest {
 		t.Fatalf("unexpected audit record: %+v", record)
+	}
+	if record.PreviousDigest != "" || record.RecordDigest == "" {
+		t.Fatalf("unexpected audit chain fields: %+v", record)
+	}
+}
+
+func TestAuditChainLinksRecords(t *testing.T) {
+	storeDir := t.TempDir()
+	template := putCandidate(t, storeDir, "template")
+	putCandidate(t, storeDir, "alternative")
+	if _, err := Prune(PruneOptions{StoreDir: storeDir, Keep: []string{template.SourceDigest}}); err != nil {
+		t.Fatal(err)
+	}
+	second, err := Prune(PruneOptions{StoreDir: storeDir, Keep: []string{template.SourceDigest}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !second.Passed {
+		t.Fatalf("second prune failed: %+v", second)
+	}
+	audit, err := Audit(storeDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !audit.Passed || len(audit.Records) != 2 {
+		t.Fatalf("unexpected audit: %+v", audit)
+	}
+	if audit.Records[1].PreviousDigest != audit.Records[0].RecordDigest {
+		t.Fatalf("audit chain is not linked: %+v", audit.Records)
+	}
+}
+
+func TestAuditChainDetectsTamper(t *testing.T) {
+	storeDir := t.TempDir()
+	template := putCandidate(t, storeDir, "template")
+	putCandidate(t, storeDir, "alternative")
+	if _, err := Prune(PruneOptions{StoreDir: storeDir, Keep: []string{template.SourceDigest}}); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(storeDir, "prune-audit.jsonl")
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var record AuditRecord
+	if err := json.Unmarshal(raw, &record); err != nil {
+		t.Fatal(err)
+	}
+	record.Deleted = append(record.Deleted, "sha256:"+strings.Repeat("0", 64))
+	tampered, err := json.Marshal(record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, append(tampered, '\n'), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	audit, err := Audit(storeDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if audit.Passed || !strings.Contains(audit.Reason, "digest") {
+		t.Fatalf("tampered audit was accepted: %+v", audit)
+	}
+}
+
+func TestPruneRefusesCorruptAudit(t *testing.T) {
+	storeDir := t.TempDir()
+	template := putCandidate(t, storeDir, "template")
+	if err := os.WriteFile(filepath.Join(storeDir, "prune-audit.jsonl"), []byte("not-json\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	prune, err := Prune(PruneOptions{StoreDir: storeDir, Keep: []string{template.SourceDigest}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if prune.Passed || !strings.Contains(prune.Reason, "audit") {
+		t.Fatalf("corrupt audit was ignored: %+v", prune)
+	}
+	if _, err := Get(storeDir, template.SourceDigest); err != nil {
+		t.Fatalf("object was deleted despite corrupt audit: %v", err)
 	}
 }
 

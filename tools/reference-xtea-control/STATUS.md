@@ -15,7 +15,7 @@ TEIの参照モデル再現確認で必要になるX-TEAの入力・観測を、
 
 | コンポーネント | 確認済み | 主な証拠 |
 | --- | --- | --- |
-| Modeler | 読み取り、About、システム名変更と保存、バックアップ | `scenarios/modeler-save-copy.json` |
+| Modeler | 読み取り、About、システム名変更と保存、テーブル名変更と保存、バックアップ | `scenarios/modeler-save-copy.json`、`scenarios/modeler-edit-table-name.json` |
 | Editor | 読み取り、システム名変更と保存、バックアップ | `scenarios/editor-save-copy.json` |
 | Driver | ログイン、XF100、XF300、XF200の更新・作成・削除、失敗時rollback | `scenarios/driver-*.json` |
 | Server | `DBMethod`のSELECT/COUNT/INSERT/UPDATE/DELETE/COMMIT/ROLLBACK/CALL/IP、`Service`のGET/POST、Jetty/Tomcat | `tests/test_live_*.py`、`tests/test_tomcat_war.py` |
@@ -33,7 +33,7 @@ TEIの参照モデル再現確認で必要になるX-TEAの入力・観測を、
    - `DBMethod`と`Service`は`.xeaf`から自前のDataSourceを作るため、JNDI DataSourceは実行経路に含まれません。
    - 外部TomcatへのWAR配備は運用上の確認であり、HTTPの入力経路そのものではありません。
 3. **別Issueの機能移植**
-   - Modeler / Editorの保存以外の編集（要素の追加・削除・並べ替え、表・機能の編集）は、制御面ではなく#1802配下の機能移植として扱います。
+   - Modeler / Editorのテーブル名変更は確認済みです。要素追加・削除・並べ替え・一括置換・機能編集は、制御面ではなく#1802配下の機能移植として扱います。
 4. **上流の修正判断**
    - `Service`の認証前`userID`検査は上流`7947b52`の挙動です。ハーネスはビルド時だけ引数`user`へ置き換えています。上流の修正版確認または差分適用の判断が必要です。
 
