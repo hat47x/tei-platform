@@ -136,10 +136,11 @@ type RuntimeEvidence struct {
 // execution. It is a digest of stdout/stderr and the process exit state, not a
 // copy of the content and not a claim about a real target.
 type ExecutionEvidence struct {
-	ExitCode     int    `json:"exitCode"`
-	StdoutDigest string `json:"stdoutDigest"`
-	StderrDigest string `json:"stderrDigest"`
-	TimedOut     bool   `json:"timedOut,omitempty"`
+	Measurement  *ProcessMeasurement `json:"measurement,omitempty"`
+	ExitCode     int                 `json:"exitCode"`
+	StdoutDigest string              `json:"stdoutDigest"`
+	StderrDigest string              `json:"stderrDigest"`
+	TimedOut     bool                `json:"timedOut,omitempty"`
 }
 
 type CaseResult struct {
@@ -757,9 +758,9 @@ func evaluateCandidate(ctx context.Context, dir string, fixture Fixture, contrac
 		defer os.RemoveAll(javaClassesDir)
 		compileCtx, cancel := context.WithTimeout(ctx, 2*time.Minute)
 		defer cancel()
-		compile := exec.CommandContext(compileCtx, javacPath, "-d", javaClassesDir, sourcePath)
-		if out, err := compile.CombinedOutput(); err != nil {
-			return reject("java compile failed: " + err.Error() + ": " + string(out))
+		reproduced, err := buildJavaTwice(compileCtx, javacPath, dir, javaClassesDir)
+		if err != nil {
+			return reject("java compile is not reproducible: " + err.Error())
 		}
 		classBytes, err := os.ReadFile(filepath.Join(javaClassesDir, "Main.class"))
 		if err != nil {
@@ -768,8 +769,8 @@ func evaluateCandidate(ctx context.Context, dir string, fixture Fixture, contrac
 		receipt.BuildEvidence = &BuildEvidence{
 			Language: LanguageJava, Command: "javac", Toolchain: version,
 			SourceDigest: manifest.SourceDigest, BinaryDigest: digest(classBytes),
-			BuildInputDigest: javaBuildInputDigest(source, version),
-			Reproducibility:  "not-tested",
+			ReproducedDigest: reproduced, BuildInputDigest: javaBuildInputDigest(source, version),
+			Reproducibility: "path-independent-twice",
 		}
 		receipt.BinaryDigest = receipt.BuildEvidence.BinaryDigest
 	case LanguageWasm:
@@ -790,11 +791,9 @@ func evaluateCandidate(ctx context.Context, dir string, fixture Fixture, contrac
 		wasmPath = filepath.Join(wasmDir, "candidate.wasm")
 		buildCtx, cancel := context.WithTimeout(ctx, 2*time.Minute)
 		defer cancel()
-		build := exec.CommandContext(buildCtx, "go", "build", "-trimpath", "-buildvcs=false", "-o", wasmPath, "main.go")
-		build.Dir = dir
-		build.Env = append(os.Environ(), "GOOS=js", "GOARCH=wasm")
-		if out, err := build.CombinedOutput(); err != nil {
-			return reject("wasm build failed: " + err.Error() + ": " + string(out))
+		reproduced, err := buildWasmTwice(buildCtx, dir, wasmPath)
+		if err != nil {
+			return reject("wasm build is not reproducible: " + err.Error())
 		}
 		binary, err := os.ReadFile(wasmPath)
 		if err != nil {
@@ -805,8 +804,8 @@ func evaluateCandidate(ctx context.Context, dir string, fixture Fixture, contrac
 			Language: LanguageWasm, Command: "GOOS=js GOARCH=wasm go build -trimpath -buildvcs=false",
 			Toolchain: toolchain, GOOS: "js", GOARCH: "wasm", CGOEnabled: "0",
 			SourceDigest: manifest.SourceDigest, BinaryDigest: digest(binary),
-			BuildInputDigest: wasmBuildInputDigest(source, toolchain),
-			Reproducibility:  "not-tested",
+			ReproducedDigest: reproduced, BuildInputDigest: wasmBuildInputDigest(source, toolchain),
+			Reproducibility: "path-independent-twice",
 		}
 		receipt.BinaryDigest = receipt.BuildEvidence.BinaryDigest
 	}
@@ -1016,10 +1015,137 @@ func javaBuildInputDigest(source []byte, toolchain string) string {
 	}, "\x00")))
 }
 
+func buildJavaTwice(ctx context.Context, javacPath, dir, classesDir string) (string, error) {
+	firstDir, err := os.MkdirTemp("", "tei-java-repro-a-*")
+	if err != nil {
+		return "", err
+	}
+	defer os.RemoveAll(firstDir)
+	secondDir, err := os.MkdirTemp("", "tei-java-repro-b-*")
+	if err != nil {
+		return "", err
+	}
+	defer os.RemoveAll(secondDir)
+	if err := copyJavaSources(dir, firstDir); err != nil {
+		return "", err
+	}
+	if err := copyJavaSources(dir, secondDir); err != nil {
+		return "", err
+	}
+	if err := compileJavaCandidate(ctx, javacPath, firstDir, classesDir); err != nil {
+		return "", err
+	}
+	secondClasses, err := os.MkdirTemp("", "tei-java-classes-*")
+	if err != nil {
+		return "", err
+	}
+	defer os.RemoveAll(secondClasses)
+	if err := compileJavaCandidate(ctx, javacPath, secondDir, secondClasses); err != nil {
+		return "", err
+	}
+	first, err := os.ReadFile(filepath.Join(classesDir, "Main.class"))
+	if err != nil {
+		return "", err
+	}
+	second, err := os.ReadFile(filepath.Join(secondClasses, "Main.class"))
+	if err != nil {
+		return "", err
+	}
+	firstDigest, secondDigest := digest(first), digest(second)
+	if firstDigest != secondDigest {
+		return secondDigest, fmt.Errorf("first %s, second %s", firstDigest, secondDigest)
+	}
+	return secondDigest, nil
+}
+
+func compileJavaCandidate(ctx context.Context, javacPath, dir, classesDir string) error {
+	compile := exec.CommandContext(ctx, javacPath, "-d", classesDir, "Main.java")
+	compile.Dir = dir
+	if out, err := compile.CombinedOutput(); err != nil {
+		return fmt.Errorf("%v: %s", err, out)
+	}
+	return nil
+}
+
+func copyJavaSources(srcDir, dstDir string) error {
+	entries, err := os.ReadDir(srcDir)
+	if err != nil {
+		return err
+	}
+	copied := 0
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(strings.ToLower(entry.Name()), ".java") {
+			continue
+		}
+		content, err := os.ReadFile(filepath.Join(srcDir, entry.Name()))
+		if err != nil {
+			return err
+		}
+		if err := os.WriteFile(filepath.Join(dstDir, entry.Name()), content, 0o644); err != nil {
+			return err
+		}
+		copied++
+	}
+	if copied == 0 {
+		return fmt.Errorf("no Java sources in %s", srcDir)
+	}
+	return nil
+}
+
 func wasmBuildInputDigest(source []byte, toolchain string) string {
 	return digest([]byte(strings.Join([]string{
 		"GOOS=js GOARCH=wasm go build -trimpath -buildvcs=false", LanguageWasm, digest(source), toolchain,
 	}, "\x00")))
+}
+
+func buildWasmTwice(ctx context.Context, dir, wasmPath string) (string, error) {
+	firstDir, err := os.MkdirTemp("", "tei-wasm-repro-a-*")
+	if err != nil {
+		return "", err
+	}
+	defer os.RemoveAll(firstDir)
+	secondDir, err := os.MkdirTemp("", "tei-wasm-repro-b-*")
+	if err != nil {
+		return "", err
+	}
+	defer os.RemoveAll(secondDir)
+	if err := copyGoSources(dir, firstDir); err != nil {
+		return "", err
+	}
+	if err := copyGoSources(dir, secondDir); err != nil {
+		return "", err
+	}
+	if err := buildWasmCandidate(ctx, firstDir, wasmPath); err != nil {
+		return "", err
+	}
+	first, err := os.ReadFile(wasmPath)
+	if err != nil {
+		return "", err
+	}
+	secondPath := wasmPath + ".second"
+	if err := buildWasmCandidate(ctx, secondDir, secondPath); err != nil {
+		return "", err
+	}
+	second, err := os.ReadFile(secondPath)
+	if err != nil {
+		return "", err
+	}
+	firstDigest, secondDigest := digest(first), digest(second)
+	if firstDigest != secondDigest {
+		return secondDigest, fmt.Errorf("first %s, second %s", firstDigest, secondDigest)
+	}
+	return secondDigest, nil
+}
+
+func buildWasmCandidate(ctx context.Context, dir, outputPath string) error {
+	build := exec.CommandContext(ctx, "go", "build", "-trimpath", "-buildvcs=false", "-o", outputPath, "main.go")
+	build.Dir = dir
+	build.Env = append(os.Environ(), "GOOS=js", "GOARCH=wasm")
+	out, err := build.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("%v: %s", err, out)
+	}
+	return nil
 }
 
 func resolveWasmRuntime() (nodePath, wasmExecPath, version string, available bool) {
@@ -1128,9 +1254,12 @@ func runProgram(ctx context.Context, name string, args []string, input json.RawM
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
+	started := time.Now()
 	err := cmd.Run()
+	elapsed := time.Since(started)
 	evidence := &ExecutionEvidence{
-		ExitCode: 0, StdoutDigest: digest(stdout.Bytes()), StderrDigest: digest(stderr.Bytes()),
+		Measurement: MeasureProcess(cmd.ProcessState, elapsed),
+		ExitCode:    0, StdoutDigest: digest(stdout.Bytes()), StderrDigest: digest(stderr.Bytes()),
 	}
 	if err != nil {
 		evidence.ExitCode = -1

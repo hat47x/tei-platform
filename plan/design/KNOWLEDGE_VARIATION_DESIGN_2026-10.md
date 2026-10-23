@@ -1,7 +1,7 @@
 # 再利用した知識の変動点と適用先差分の設計
 
 - 状態: 評価待ち（未採用）
-- 対応課題: なし（RQ-027とRQ-029の担当課題の新設候補）
+- 対応課題: [#2091](https://github.com/hat47x/tei-platform/issues/2091)（標準プラグイン定義への案件修正の更新）。知識の再利用全体を担当する課題は未設定
 - 関連課題: [#998](https://github.com/hat47x/tei-platform/issues/998)、[#1016](https://github.com/hat47x/tei-platform/issues/1016)、[#997](https://github.com/hat47x/tei-platform/issues/997)、[#1067](https://github.com/hat47x/tei-platform/issues/1067)
 - 関連要求: RQ-015、RQ-017、RQ-027、RQ-029
 - 関連する設計判断: [ADR-0017](../adr/0017-application-pattern-ownership.md)、[ADR-0022](../adr/0022-ai-proposal-canonical-acceptance-boundary.md)、[ADR-0028](../adr/0028-human-ai-builder-agent-shared-knowledge-plane.md)
@@ -24,6 +24,8 @@ RQ-029は、知識を再利用するときに、再利用元、依存、前提�
 三つの領域が、同じ問題に別々の規則を作り始めています。[プロジェクトのプラグイン構成設計](PROJECT_PLUGIN_COMPOSITION_DESIGN.md)は、これらを一つの多重継承の関係や後勝ちの規則にまとめることを禁じています。本設計もこの方針に従い、共通の上書き演算は作りません。定めるのは、意味の層で共通に守る規則と、再利用の関係を失わないための最小限の記録です。
 
 ## 解決したい問題
+
+2026年10月20日の具体化では、標準プラグインの更新に関する#2091を、本設計の三者比較と接続します。[変更・更新・再生成の継続性設計](CHANGE_CONTINUITY_DESIGN_2026-10.md)に、形式の変換・案件修正・業務データ移行の担当境界と、未適用の案を取り消す場合の受入候補を示します。共通の上書き演算を作らない方針と、ここで示す四分類は維持します。
 
 参照用作業領域には、二つ目のアプリケーション`repair_intake`があります。その顧客参照のアプリケーションの型（`repair_intake.customer_reference`）は、`order_entry.customer_reference`を参考に作られました。ところが、その関係は`.tei/decisions/`の決定記録に自由記述の注記として残っているだけです。
 
