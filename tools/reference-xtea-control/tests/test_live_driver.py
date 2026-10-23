@@ -625,6 +625,48 @@ class LiveDriverTest(unittest.TestCase):
         self.result("UI_RESULT=0:B")
         self.assertEqual(self.observe(), self.observations[0])
 
+    def test_script_option_cancel(self):
+        self.script("OPTION")
+        selector = {"windowClass": "xeadDriver.XFOptionDialog$", "role": "list"}
+        self.assertTrue(self.client.wait_selector(selector)["matched"])
+        self.client.select(selector, item_index=1)
+        self.client.close({"windowClass": "xeadDriver.XFOptionDialog$"})
+        self.result("UI_RESULT=-1")
+        self.assertEqual(self.observe(), self.observations[0])
+
+    def test_script_checklist_cancel(self):
+        for close_window in (False, True):
+            with self.subTest(close_window=close_window):
+                self.script("CHECK")
+                selector = {"windowClass": "xeadDriver.XFCheckListDialog$", "role": "list"}
+                self.assertTrue(self.client.wait_selector(selector)["matched"])
+                self.client.select(selector, item_index=1)
+                self.client.key(selector, key="SPACE")
+                if close_window:
+                    self.client.close({"windowClass": "xeadDriver.XFCheckListDialog$"})
+                else:
+                    self.button("xeadDriver.XFCheckListDialog", "^Cancel$")
+                self.result("UI_RESULT=-1:")
+                returned = self.client.find({"window": "^Driver fixture launcher$", "name": "result"})["text"]
+                self.assertRegex(returned, r"UI_RESULT=-1:(?:,|})")
+                self.assertEqual(self.observe(), self.observations[0])
+
+    def test_script_swing_negative_and_cancel(self):
+        for name, caption, expected in (("CONFIRM", "^No$", "1"), ("CONFIRM", None, "-1"),
+                                         ("PROMPT", "^Cancel$", "null"), ("CHOICE", None, "-1")):
+            with self.subTest(name=name, caption=caption):
+                self.script(name)
+                dialog = {"windowClass": "javax.swing.JDialog$"}
+                self.assertTrue(self.client.wait_selector(dict(dialog, role="button"))["matched"])
+                if name == "PROMPT":
+                    self.client.set_value(dict(dialog, role="text"), "Discarded")
+                if caption:
+                    self.client.invoke(dict(dialog, role="button", text=caption))
+                else:
+                    self.client.close(dialog)
+                self.result("UI_RESULT=" + expected)
+                self.assertEqual(self.observe(), self.observations[0])
+
     def test_script_input_types_used_by_reference_models(self):
         for typ, value, expected in (("ALPHA", "Typed", "Typed"), ("TEXTAREA", "Lines", "Lines"),
                                       ("NUMERIC", "123", "123"), ("ZEROFILL", "12", "00012"),

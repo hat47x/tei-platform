@@ -100,12 +100,12 @@ XF000のコンソールは、開始した場合のDB更新と、実行せず終�
 | 検出した呼出し候補 | 合成XF000のスクリプトから確認する操作 |
 | --- | --- |
 | `getInputDialog` | 入力、OKで返す値、閉じて取消 |
-| `getOptionDialog` | 選択肢を変更しEnter、選択番号を照合 |
-| `getCheckListDialog` | 行選択・Space・OK、選択キーを照合 |
+| `getOptionDialog` | 選択肢を変更しEnter、選択番号を照合。選択変更後に閉じると取消値`-1` |
+| `getCheckListDialog` | 行選択・Space・OK、選択キーを照合。Cancel・閉じるでは`-1`と空の選択結果 |
 | `showMessageDialog` | メッセージを閉じてスクリプトへ復帰 |
-| `showConfirmDialog` | Yesを押し戻り値を照合 |
-| `showInputDialog` | 文字入力・OK、戻り値を照合 |
-| `showOptionDialog` | 動的な選択ボタンを押し戻り値を照合 |
+| `showConfirmDialog` | Yes / No / 閉じるの戻り値`0` / `1` / `-1`を照合 |
+| `showInputDialog` | 文字入力・OK、戻り値を照合。入力後のCancelは`null` |
+| `showOptionDialog` | 動的な選択ボタンを押し戻り値を照合。閉じるは`-1` |
 
 合成入力スクリプトでは、Linux上で`XFInputDialog.request`がnullフォントを参照しないよう、ダイアログへフォントを明示しています。元のDriverや参照モデルは修正しません。
 
