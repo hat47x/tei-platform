@@ -41,6 +41,23 @@ func runCombinedWebTarget(ctx context.Context, reader sourceacceptance.Reader, a
 // Host effect admission immediately before a Command changes state. The Host
 // must inject both authentic Readers; the CLI cannot manufacture either one.
 func runCombinedWebTargetWithEffectGrant(ctx context.Context, reader sourceacceptance.Reader, effectReader HostEffectGrantReader, args []string) error {
+	return runCombinedWebTargetWithHost(ctx, reader, effectReader, webHostWiring{}, args)
+}
+
+// webHostWiring is what an embedding Host (or a test acting as one) may add
+// beyond the two Readers. The shipped CLI passes the zero value: it cannot
+// select a real store, so it cannot write business state.
+type webHostWiring struct {
+	// submitStore makes the order_entry submit Command write real state.
+	submitStore orderSubmitStore
+	// wrapCommandRead wraps the read the submit Command validates. Tests use
+	// it to present a changed synthetic fixture row; it is not a Provider.
+	wrapCommandRead func(readScenarioRunner) readScenarioRunner
+}
+
+// runCombinedWebTargetWithHost is runCombinedWebTargetWithEffectGrant plus the
+// Host's optional wiring.
+func runCombinedWebTargetWithHost(ctx context.Context, reader sourceacceptance.Reader, effectReader HostEffectGrantReader, wiring webHostWiring, args []string) error {
 	flags := flag.NewFlagSet("first-web-target", flag.ContinueOnError)
 	var (
 		workspacePath = flags.String("workspace", "reference/workspace", "TEI workspace directory")
@@ -141,6 +158,10 @@ func runCombinedWebTargetWithEffectGrant(ctx context.Context, reader sourceaccep
 				}
 				return nil
 			}
+		}
+		command.submitStore = wiring.submitStore
+		if wiring.wrapCommandRead != nil {
+			command.read = wiring.wrapCommandRead(command.read)
 		}
 		commandScenario = command
 	case core.MustCanonicalID("repair_intake"):
