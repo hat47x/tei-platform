@@ -117,10 +117,8 @@ class LiveDriverTest(unittest.TestCase):
         }, indent=2), encoding="utf-8")
 
     def setUp(self):
-        for suffix in (".json", ".pdf"):
-            (self.artifacts / (self._testMethodName + suffix)).unlink(missing_ok=True)
-        for output in self.artifacts.glob(self._testMethodName + "-*.xlsx"):
-            output.unlink()
+        # Repeating a test ID in one run must not overwrite an earlier attempt's logs.
+        self.artifacts = Path(tempfile.mkdtemp(prefix="case-", dir=type(self).artifacts))
         self.tmp = tempfile.TemporaryDirectory(prefix="driver-", dir=ROOT / "build")
         self.addCleanup(self.tmp.cleanup)
         self.folder = Path(self.tmp.name)
