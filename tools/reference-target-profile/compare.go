@@ -18,6 +18,7 @@ type CompareOptions struct {
 	CandidatesDir  string
 	ProfilePaths   []string
 	EnforceNetwork bool
+	EnforceCPU     bool
 }
 
 type ProfileSummary struct {
@@ -35,6 +36,9 @@ type ProfileSummary struct {
 	Rejected             []string              `json:"rejected"`
 	Enforcement          map[string]string     `json:"enforcement"`
 	Unsupported          []string              `json:"unsupported,omitempty"`
+
+	CPUTimeLimitSeconds int64        `json:"cpuTimeLimitSeconds,omitempty"`
+	CPU                 *CPUEvidence `json:"cpu,omitempty"`
 }
 
 type ProfileCase struct {
@@ -87,6 +91,7 @@ func Compare(ctx context.Context, opts CompareOptions) (ComparisonReceipt, error
 			WorkspaceDir: opts.WorkspaceDir, ContractPath: opts.ContractPath,
 			FixturePath: opts.FixturePath, CandidatesDir: opts.CandidatesDir,
 			ProfilePath: profilePath, EnforceNetwork: opts.EnforceNetwork,
+			EnforceCPU: opts.EnforceCPU,
 		})
 		if err != nil {
 			return ComparisonReceipt{}, fmt.Errorf("%s: %w", profilePath, err)
@@ -134,7 +139,8 @@ func Compare(ctx context.Context, opts CompareOptions) (ComparisonReceipt, error
 func summarizeProfile(run Receipt) ProfileSummary {
 	return ProfileSummary{
 		ProcessModelEvidence: run.ProcessModel,
-		ID:                   run.Profile.ID, Version: run.Profile.Version,
+		CPUTimeLimitSeconds:  run.Profile.CPUTimeLimitSeconds, CPU: run.CPU,
+		ID: run.Profile.ID, Version: run.Profile.Version,
 		ProcessModel: run.Profile.ProcessModel, Storage: run.Profile.Storage,
 		Network: run.Profile.Network, Update: run.Profile.Update,
 		MemoryLimitBytes: run.Profile.MemoryLimitBytes, GeneratorID: run.Profile.GeneratorID,
@@ -244,6 +250,7 @@ func profileDifferences(runs []Receipt) []string {
 		{"network", func(run Receipt) string { return run.Profile.Network }},
 		{"update", func(run Receipt) string { return run.Profile.Update }},
 		{"memoryLimitBytes", func(run Receipt) string { return fmt.Sprintf("%d", run.Profile.MemoryLimitBytes) }},
+		{"cpuTimeLimitSeconds", func(run Receipt) string { return fmt.Sprintf("%d", run.Profile.CPUTimeLimitSeconds) }},
 	}
 	var out []string
 	for _, field := range fields {

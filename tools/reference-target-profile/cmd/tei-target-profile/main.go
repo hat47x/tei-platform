@@ -29,6 +29,7 @@ func main() {
 	fixturesPath := fs.String("fixtures", "", "fixed fixture JSON")
 	candidatesDir := fs.String("candidates", "", "directory containing candidate directories")
 	enforceNetwork := fs.Bool("enforce-network", false, "require Linux network namespace isolation for network:none (run/compare only)")
+	enforceCPU := fs.Bool("enforce-cpu", false, "require Linux per-process CPU time limits (run/compare only)")
 	rootDir := fs.String("root", "", "local deployment root for deploy")
 	_ = fs.Parse(os.Args[2:])
 	if command != "compare" && command != "rollback" && *profilePath == "" {
@@ -36,6 +37,9 @@ func main() {
 	}
 	if *enforceNetwork && command != "run" && command != "compare" {
 		fail(fmt.Errorf("-enforce-network is supported only for run/compare"))
+	}
+	if *enforceCPU && command != "run" && command != "compare" {
+		fail(fmt.Errorf("-enforce-cpu is supported only for run/compare"))
 	}
 	switch command {
 	case "validate":
@@ -51,6 +55,7 @@ func main() {
 		receipt, err := targetprofile.Run(context.Background(), targetprofile.RunOptions{
 			WorkspaceDir: *workspaceDir, ContractPath: *contractPath,
 			FixturePath: *fixturesPath, CandidatesDir: *candidatesDir, ProfilePath: *profilePath, EnforceNetwork: *enforceNetwork,
+			EnforceCPU: *enforceCPU,
 		})
 		if err != nil {
 			fail(err)
@@ -75,6 +80,7 @@ func main() {
 		receipt, err := targetprofile.Compare(context.Background(), targetprofile.CompareOptions{
 			WorkspaceDir: *workspaceDir, ContractPath: *contractPath,
 			FixturePath: *fixturesPath, CandidatesDir: *candidatesDir, ProfilePaths: paths, EnforceNetwork: *enforceNetwork,
+			EnforceCPU: *enforceCPU,
 		})
 		if err != nil {
 			fail(err)

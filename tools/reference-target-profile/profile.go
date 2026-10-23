@@ -44,6 +44,8 @@ type Profile struct {
 	Observability    []string `json:"observability"`
 	Unsupported      []string `json:"unsupported,omitempty"`
 	GeneratorID      string   `json:"generatorId,omitempty"`
+
+	CPUTimeLimitSeconds int64 `json:"cpuTimeLimitSeconds,omitempty"`
 }
 
 func Load(path string) (Profile, error) {
@@ -92,6 +94,9 @@ func Validate(profile Profile) error {
 	}
 	if profile.MemoryLimitBytes <= 0 {
 		return fmt.Errorf("memoryLimitBytes must be positive")
+	}
+	if profile.CPUTimeLimitSeconds < 0 {
+		return fmt.Errorf("cpuTimeLimitSeconds must not be negative")
 	}
 	if len(profile.Observability) == 0 {
 		return fmt.Errorf("observability must not be empty")
