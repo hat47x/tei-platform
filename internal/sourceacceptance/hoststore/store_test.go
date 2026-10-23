@@ -110,9 +110,12 @@ func TestRevokeIsSeenByTheNextRead(t *testing.T) {
 		t.Fatal(err)
 	}
 	// A second Store handle on the same directory models another process.
-	other, err := Open(store.dir, nil)
+	other, err := Open(store.dir, acceptAll)
 	if err != nil {
 		t.Fatal(err)
+	}
+	if err := verify(other, r1); err != nil {
+		t.Fatalf("independent handle does not see the current Decision: %v", err)
 	}
 	if err := store.Revoke("order_entry", "d1"); err != nil {
 		t.Fatal(err)
