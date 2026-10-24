@@ -104,17 +104,22 @@ func dynamicScriptSourceLimit(n Node) string {
 	if !n.Known {
 		return ""
 	}
-	var body string
+	var attributeName string
 	switch n.Name {
 	case "Script":
-		body = attributeValue(n, "Text")
+		attributeName = "Text"
 	case "Function":
-		body = attributeValue(n, "Script")
+		attributeName = "Script"
 	default:
 		return ""
 	}
-	if strings.Contains(body, "executeScript") {
-		return "source-script-text-mentions-executeScript-not-runtime-or-execution-authority"
+	// A namespace-qualified attribute with the same local name is foreign
+	// evidence, not the unqualified X-TEA Script/Function source attribute.
+	for _, attribute := range n.Attributes {
+		if attribute.Name == attributeName &&
+			strings.Contains(attribute.Value, "executeScript") {
+			return "source-script-text-mentions-executeScript-not-runtime-or-execution-authority"
+		}
 	}
 	return ""
 }
