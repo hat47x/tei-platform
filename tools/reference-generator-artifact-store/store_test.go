@@ -340,6 +340,20 @@ func TestPutAndGetSourceOnlyArtifacts(t *testing.T) {
 			if !got.Passed || got.BinaryDigest != "" {
 				t.Fatalf("%s artifact was not read back: %+v", test.language, got)
 			}
+			list, err := List(storeDir)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !list.Passed || len(list.Objects) != 1 || !list.Objects[0].Verified {
+				t.Fatalf("%s source-only object failed list verification: %+v", test.language, list)
+			}
+			prune, err := Prune(PruneOptions{StoreDir: storeDir, Keep: []string{put.SourceDigest}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !prune.Passed || len(prune.Kept) != 1 {
+				t.Fatalf("%s source-only object failed prune verification: %+v", test.language, prune)
+			}
 		})
 	}
 }
