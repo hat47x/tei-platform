@@ -544,6 +544,7 @@ final class Ui {
         final int count = Math.max(1, Math.min(intValue(request.get("count"), 1), 3));
         final int row = intValue(request.get("row"), -1);
         final int column = intValue(request.get("column"), -1);
+        final int button = intValue(request.get("button"), 1) == 3 ? 3 : 1;
         final String label = describeComponent(target);
         SwingUtilities.invokeLater(new Runnable() {
             @Override
@@ -556,25 +557,95 @@ final class Ui {
                         Rectangle cell = table.getCellRect(row, column >= 0 ? column : 0, true);
                         x = cell.x + Math.max(1, cell.width / 2);
                         y = cell.y + Math.max(1, cell.height / 2);
+                    } else if (target instanceof JTree && ((JTree) target).getSelectionPath() != null) {
+                        Rectangle path = ((JTree) target).getPathBounds(((JTree) target).getSelectionPath());
+                        if (path != null) {
+                            x = path.x + Math.max(1, path.width / 2);
+                            y = path.y + Math.max(1, path.height / 2);
+                        }
                     }
                     long now = System.currentTimeMillis();
+                    int mask = button == 3 ? java.awt.event.InputEvent.BUTTON3_DOWN_MASK
+                            : java.awt.event.InputEvent.BUTTON1_DOWN_MASK;
                     for (int i = 1; i <= count; i++) {
                         target.dispatchEvent(new java.awt.event.MouseEvent(target,
-                                java.awt.event.MouseEvent.MOUSE_CLICKED, now,
-                                java.awt.event.InputEvent.BUTTON1_DOWN_MASK, x, y, i, false,
-                                java.awt.event.MouseEvent.BUTTON1));
+                                java.awt.event.MouseEvent.MOUSE_PRESSED, now, mask, x, y, i, false, button));
+                        target.dispatchEvent(new java.awt.event.MouseEvent(target,
+                                java.awt.event.MouseEvent.MOUSE_RELEASED, now, mask, x, y, i, false, button));
+                        if (button == 1) {
+                            target.dispatchEvent(new java.awt.event.MouseEvent(target,
+                                    java.awt.event.MouseEvent.MOUSE_CLICKED, now, mask, x, y, i, false, button));
+                        }
                     }
                 } catch (Throwable t) {
                     Trace.record("click.error", label, describe(t));
                 }
             }
         });
-        Trace.record("click", label, "count=" + count + ",row=" + row + ",column=" + column);
+        Trace.record("click", label, "count=" + count + ",row=" + row + ",column=" + column + ",button=" + button);
         Map<String, Object> value = new LinkedHashMap<String, Object>();
         value.put("accepted", Boolean.TRUE);
         value.put("target", label);
         value.put("count", count);
+        value.put("button", button);
         return value;
+    }
+
+    static Map<String, Object> invokeMethod(final Map<String, Object> selector, final Map<String, Object> request)
+            throws Exception {
+        final Component target = resolve(selector);
+        final String name = String.valueOf(request.get("method"));
+        final java.lang.reflect.Method method = findMethod(target.getClass(), name);
+        if (method == null) {
+            StringBuilder available = new StringBuilder();
+            for (java.lang.reflect.Method candidate : target.getClass().getDeclaredMethods()) {
+                if (candidate.getName().toLowerCase().contains("delete")) {
+                    available.append(candidate.getName()).append(" ");
+                }
+            }
+            throw new BridgeException("METHOD_NOT_FOUND",
+                    "no zero-arg or ActionEvent method: " + name
+                            + " on " + target.getClass().getName()
+                            + " (delete methods: " + available.toString().trim() + ")");
+        }
+        method.setAccessible(true);
+        final String label = describeComponent(target);
+        SwingUtilities.invokeAndWait(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    if (method.getParameterTypes().length == 0) {
+                        method.invoke(target);
+                    } else {
+                        method.invoke(target, new ActionEvent(target, ActionEvent.ACTION_PERFORMED, ""));
+                    }
+                } catch (Throwable t) {
+                    throw new RuntimeException(t);
+                }
+            }
+        });
+        Trace.record("invoke-method", label, name);
+        Map<String, Object> value = new LinkedHashMap<String, Object>();
+        value.put("accepted", Boolean.TRUE);
+        value.put("target", label);
+        value.put("method", name);
+        return value;
+    }
+
+    private static java.lang.reflect.Method findMethod(Class<?> type, String name) {
+        for (Class<?> current = type; current != null; current = current.getSuperclass()) {
+            for (java.lang.reflect.Method method : current.getDeclaredMethods()) {
+                if (!method.getName().equals(name)) {
+                    continue;
+                }
+                Class<?>[] parameters = method.getParameterTypes();
+                if (parameters.length == 0
+                        || (parameters.length == 1 && parameters[0].equals(ActionEvent.class))) {
+                    return method;
+                }
+            }
+        }
+        return null;
     }
 
     static Map<String, Object> close(final Map<String, Object> selector) throws Exception {
@@ -762,6 +833,13 @@ final class Ui {
                 if (component != null && matchesComponent(component, role, text, contains, name, className)) {
                     return component;
                 }
+                continue;
+            }
+            if ("window".equals(role) && matchesComponent(window, role, text, contains, name, className)) {
+                if (found == wantedIndex) {
+                    return window;
+                }
+                found++;
                 continue;
             }
             List<Component> components = flatten(window, true);
