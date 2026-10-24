@@ -95,9 +95,9 @@ func Put(ctx context.Context, opts StoreOptions) (Receipt, error) {
 		return receipt, fmt.Errorf("candidate %q is not in the receipt", opts.CandidateID)
 	}
 	switch candidate.Language {
-	case generatorselection.LanguageGo, generatorselection.LanguageWasm, generatorselection.LanguageWasi:
+	case generatorselection.LanguageGo, generatorselection.LanguageWasm, generatorselection.LanguageWasi, generatorselection.LanguageJava:
 	default:
-		receipt.Reason = "artifact store supports Go, WASM, and WASI candidates in this reference"
+		receipt.Reason = "artifact store supports Go, Java, WASM, and WASI candidates in this reference"
 		return receipt, nil
 	}
 	receipt.SourceDigest = candidate.SourceDigest
@@ -108,7 +108,11 @@ func Put(ctx context.Context, opts StoreOptions) (Receipt, error) {
 		return receipt, nil
 	}
 	candidateDir := filepath.Join(opts.CandidatesDir, candidate.ID)
-	sourcePath := filepath.Join(candidateDir, "main.go")
+	sourceName := "main.go"
+	if candidate.Language == generatorselection.LanguageJava {
+		sourceName = "Main.java"
+	}
+	sourcePath := filepath.Join(candidateDir, sourceName)
 	source, err := os.ReadFile(sourcePath)
 	if err != nil {
 		receipt.Reason = "candidate source is unreadable: " + err.Error()
@@ -224,6 +228,27 @@ func Get(storeDir, sourceDigest string) (Receipt, error) {
 }
 
 func buildArtifact(ctx context.Context, language, dir, binaryPath string) error {
+	if language == generatorselection.LanguageJava {
+		javac, err := exec.LookPath("javac")
+		if err != nil {
+			return fmt.Errorf("javac is unavailable: %w", err)
+		}
+		classesDir, err := os.MkdirTemp("", "tei-artifact-java-*")
+		if err != nil {
+			return err
+		}
+		defer os.RemoveAll(classesDir)
+		compile := exec.CommandContext(ctx, javac, "-d", classesDir, "Main.java")
+		compile.Dir = dir
+		if out, err := compile.CombinedOutput(); err != nil {
+			return fmt.Errorf("%v: %s", err, out)
+		}
+		classBytes, err := os.ReadFile(filepath.Join(classesDir, "Main.class"))
+		if err != nil {
+			return err
+		}
+		return os.WriteFile(binaryPath, classBytes, 0o755)
+	}
 	build := exec.CommandContext(ctx, "go", "build", "-trimpath", "-buildvcs=false", "-o", binaryPath, "main.go")
 	build.Dir = dir
 	switch language {
