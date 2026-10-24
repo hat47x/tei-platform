@@ -61,6 +61,8 @@ type RelationshipKeyFact struct {
 	Locator          string   `json:"locator"`
 	RelationshipID   string   `json:"relationshipId,omitempty"`
 	RelationshipType string   `json:"relationshipType,omitempty"`
+	ExistWhen1       *string  `json:"existWhen1,omitempty"`
+	ExistWhen2       *string  `json:"existWhen2,omitempty"`
 	Table1LegacyID   string   `json:"table1LegacyId,omitempty"`
 	Key1LegacyID     string   `json:"key1LegacyId,omitempty"`
 	Table2LegacyID   string   `json:"table2LegacyId,omitempty"`
@@ -153,6 +155,8 @@ func ExtractRelationalSourceFacts(doc Document) RelationalSourceFacts {
 				Locator:          n.Locator,
 				RelationshipID:   attributeValue(n, "ID"),
 				RelationshipType: relationshipType,
+				ExistWhen1:       exactOptionalAttribute(n, "ExistWhen1"),
+				ExistWhen2:       exactOptionalAttribute(n, "ExistWhen2"),
 				Table1LegacyID:   attributeValue(n, "Table1ID"),
 				Key1LegacyID:     attributeValue(n, "TableKey1ID"),
 				Table2LegacyID:   attributeValue(n, "Table2ID"),
@@ -303,6 +307,15 @@ func attributeValue(n Node, name string) string {
 		}
 	}
 	return ""
+}
+
+// exactOptionalAttribute keeps a declared empty source value distinct from absence.
+func exactOptionalAttribute(n Node, name string) *string {
+	value, ok := exactAttribute(n, name)
+	if !ok {
+		return nil
+	}
+	return &value
 }
 
 func splitLegacyFieldList(raw string) []string {
