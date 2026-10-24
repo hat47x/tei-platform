@@ -113,6 +113,12 @@ class ControlClient:
             body["column"] = column
         return self.request("POST", "/click", body)
 
+    def drag(self, selector: Dict[str, Any], from_row: int, to_row: int,
+             column: int = 0) -> Dict[str, Any]:
+        return self.request("POST", "/drag",
+                            {"selector": selector, "fromRow": from_row,
+                             "toRow": to_row, "column": column})
+
     def invoke_method(self, selector: Dict[str, Any], method: str) -> Dict[str, Any]:
         return self.request("POST", "/invoke-method",
                             {"selector": selector, "method": method})
@@ -276,6 +282,9 @@ def run_scenario(client: ControlClient, scenario_path: str | Path) -> None:
         elif operation == "click":
             client.click(step["selector"], int(step.get("count", 1)),
                          step.get("row"), step.get("column"), int(step.get("button", 1)))
+        elif operation == "drag":
+            client.drag(step["selector"], int(step["fromRow"]), int(step["toRow"]),
+                        int(step.get("column", 0)))
         elif operation == "invoke_method":
             client.invoke_method(step["selector"], step["method"])
         elif operation == "key":
@@ -330,6 +339,9 @@ def run_scenario(client: ControlClient, scenario_path: str | Path) -> None:
             if "name" in step and field["name"] != step["name"]:
                 raise AssertionError(f"field {step['fieldAlias']} name expected "
                                      f"{step['name']!r}, got {field['name']!r}")
+            if "sortKey" in step and field["sortKey"] != step["sortKey"]:
+                raise AssertionError(f"field {step['fieldAlias']} sort key expected "
+                                     f"{step['sortKey']!r}, got {field['sortKey']!r}")
         elif operation == "model_assert_table_absent":
             import xtea_cli
             model = xtea_cli.load_model(Path(step["path"]))
@@ -414,6 +426,12 @@ def build_parser() -> argparse.ArgumentParser:
     click.add_argument("--column", type=int)
     click.add_argument("--button", type=int, choices=[1, 3], default=1)
 
+    drag = sub.add_parser("drag")
+    _add_selector_arguments(drag)
+    drag.add_argument("--from-row", type=int, required=True)
+    drag.add_argument("--to-row", type=int, required=True)
+    drag.add_argument("--column", type=int, default=0)
+
     invoke_method = sub.add_parser("invoke-method")
     _add_selector_arguments(invoke_method)
     invoke_method.add_argument("--method", required=True)
@@ -496,6 +514,8 @@ def main(argv: Optional[List[str]] = None) -> int:
             _print(client.key(selector_from_args(args) or None, args.key, args.type_text, args.modifiers))
         elif args.command == "click":
             _print(client.click(selector_from_args(args), args.count, args.row, args.column, args.button))
+        elif args.command == "drag":
+            _print(client.drag(selector_from_args(args), args.from_row, args.to_row, args.column))
         elif args.command == "invoke-method":
             _print(client.invoke_method(selector_from_args(args), args.method))
         elif args.command == "close":

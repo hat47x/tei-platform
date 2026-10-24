@@ -30,7 +30,7 @@ XeadServerはTEIの参考対象外です。以下のXeadServer節は過去の参
 | プロパティ画面 | 各入力部品 | 可変 | テキスト、コンボ、チェック、表、タブ |
 | ダイアログ | 子ウィンドウ | 可変 | About、ドキュメント、一覧、インポート、マトリクス、データ型整理、表同期 |
 
-確認済み: 上記44操作の列挙、Aboutダイアログの開閉、スナップショット、1550×830の画面キャプチャ。`MfgOrder.xead`の複製でシステム名を変更し、`保存`メニューとバックアップ確認の`はい`を実行。保存後のXMLに新名称が入り、更新前ファイルが`backup/`へ作られることを確認。`AT010 部門`をツリーから選び、Enterでテーブル定義画面を開き、テーブル名を変更して保存できることも確認。`CDBUMON`フィールドを選び、論理名を変更して保存できることも確認。`TXTEKIYO`フィールドを選び、編集画面を開いてから`jMenuItemXeadTreeNodeDelete_actionPerformed`を実行し、XMLから削除できることも確認。フィールド一覧から`jMenuItemXeadTreeNodeAdd_actionPerformed`で新規フィールド`TXTEST`を追加できることも確認。`CDBUMON`のデータ型を`TX010`へ変更し、キー定義の警告を閉じて保存できることも確認。
+確認済み: 上記44操作の列挙、Aboutダイアログの開閉、スナップショット、1550×830の画面キャプチャ。`MfgOrder.xead`の複製でシステム名を変更し、`保存`メニューとバックアップ確認の`はい`を実行。保存後のXMLに新名称が入り、更新前ファイルが`backup/`へ作られることを確認。`AT010 部門`をツリーから選び、Enterでテーブル定義画面を開き、テーブル名を変更して保存できることも確認。`CDBUMON`フィールドを選び、論理名を変更して保存できることも確認。`TXTEKIYO`フィールドを選び、編集画面を開いてから`jMenuItemXeadTreeNodeDelete_actionPerformed`を実行し、XMLから削除できることも確認。フィールド一覧から`jMenuItemXeadTreeNodeAdd_actionPerformed`で新規フィールド`TXTEST`を追加できることも確認。`CDBUMON`のデータ型を`TX010`へ変更し、キー定義の警告を閉じて保存できることも確認。フィールド一覧のドラッグで`TXTEKIYO`を`NRKANRISYA`の前へ移動できることも確認。
 
 ## XeadEditor
 
