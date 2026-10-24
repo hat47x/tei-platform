@@ -131,6 +131,15 @@ func List(storeDir string) (ListReceipt, error) {
 			object.Reason = "artifact is unreadable: " + artifactErr.Error()
 		case digest(source) != metadata.SourceDigest:
 			object.Reason = "stored source digest does not match"
+		case metadata.BinaryDigest == "" && len(artifact) != 0:
+			object.Reason = "source-only artifact is not empty"
+		case metadata.BinaryDigest == "":
+			if filepath.Base(objectPath) != trimDigest(metadata.SourceDigest) {
+				object.Reason = "object path does not match the source digest"
+			} else {
+				object.Verified = true
+				object.SourceBytes = int64(len(source))
+			}
 		case digest(artifact) != metadata.BinaryDigest:
 			object.Reason = "stored artifact digest does not match"
 		case filepath.Base(objectPath) != trimDigest(metadata.SourceDigest):
