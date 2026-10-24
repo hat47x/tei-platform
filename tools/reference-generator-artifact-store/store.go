@@ -94,8 +94,10 @@ func Put(ctx context.Context, opts StoreOptions) (Receipt, error) {
 	if candidate == nil {
 		return receipt, fmt.Errorf("candidate %q is not in the receipt", opts.CandidateID)
 	}
-	if candidate.Language != generatorselection.LanguageGo {
-		receipt.Reason = "artifact store supports only Go candidates in this reference"
+	switch candidate.Language {
+	case generatorselection.LanguageGo, generatorselection.LanguageWasm, generatorselection.LanguageWasi:
+	default:
+		receipt.Reason = "artifact store supports Go, WASM, and WASI candidates in this reference"
 		return receipt, nil
 	}
 	receipt.SourceDigest = candidate.SourceDigest
@@ -122,7 +124,7 @@ func Put(ctx context.Context, opts StoreOptions) (Receipt, error) {
 	}
 	defer os.RemoveAll(tempDir)
 	binaryPath := filepath.Join(tempDir, "artifact")
-	if err := buildGoCandidate(ctx, candidateDir, binaryPath); err != nil {
+	if err := buildArtifact(ctx, candidate.Language, candidateDir, binaryPath); err != nil {
 		receipt.Reason = "candidate build failed: " + err.Error()
 		return receipt, nil
 	}
@@ -221,9 +223,18 @@ func Get(storeDir, sourceDigest string) (Receipt, error) {
 	return receipt, nil
 }
 
-func buildGoCandidate(ctx context.Context, dir, binaryPath string) error {
+func buildArtifact(ctx context.Context, language, dir, binaryPath string) error {
 	build := exec.CommandContext(ctx, "go", "build", "-trimpath", "-buildvcs=false", "-o", binaryPath, "main.go")
 	build.Dir = dir
+	switch language {
+	case generatorselection.LanguageGo:
+	case generatorselection.LanguageWasm:
+		build.Env = append(os.Environ(), "GOOS=js", "GOARCH=wasm")
+	case generatorselection.LanguageWasi:
+		build.Env = append(os.Environ(), "GOOS=wasip1", "GOARCH=wasm")
+	default:
+		return fmt.Errorf("unsupported artifact language %q", language)
+	}
 	out, err := build.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("%v: %s", err, out)
