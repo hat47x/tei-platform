@@ -1,7 +1,8 @@
 # TEI構成議論の整理と次の設計判断（2026-10-24）
 
 - 状態：検討中。利用者の方針、既存実装、追加提案、未決事項を区別した設計メモ。
-- 確認したmain：`274428e3e429c8beb9c2e801e9301ba1664ca8b9`。
+- 初回整理の基準main（当時の確認を残す履歴）：`274428e3e429c8beb9c2e801e9301ba1664ca8b9`。
+- 今回の再精査で照合したmain：`f29636c2e59dcfcf2069fde4b8e5fe29fd5ab544`。後続の追補と検証はこの版を基準とする。
 - 主な担当課題：[#982](https://github.com/hat47x/tei-platform/issues/982)、[#1063](https://github.com/hat47x/tei-platform/issues/1063)、[#1803](https://github.com/hat47x/tei-platform/issues/1803)。
 - 既存のHost方針変更案：[Draft PR #2226](https://github.com/hat47x/tei-platform/pull/2226)、確認head `7554f42188d0670f28979dfe75ad513f1bb11ea6`。
 - 本書の役割：複数の議論を既存課題へつなぐ。製品要求、採用済みADR、実装状況の正本を置き換えない。
@@ -106,7 +107,7 @@
 
 今回の再確認では、並行する統括Workから、Business Procedureの受理済みSource、生成コードとSHO設計書の来歴、Library・Generatorの互換性と失効に関する追加依頼が進んでいることを確認した。依頼文は調査範囲の根拠として扱う。回答本文を取得できない箇所について、その結論や採用判断を推定していない。
 
-最新の照合対象はmain `f29636c2e59dcfcf2069fde4b8e5fe29fd5ab544`。既存の`tools/reference-design-output/README.md`のblobは`192c1fc13dfaabac101dd577f06233956de6af45`、ADR索引は`96101c4157e67f5821741237d34a2fcdbf883760`で、前回確認した内容を保つ。PR #2226はhead `7554f42188d0670f28979dfe75ad513f1bb11ea6`のOpen/Draftであり、Host方針変更のmain統合とは区別する。
+今回の再精査で照合した対象はmain `f29636c2e59dcfcf2069fde4b8e5fe29fd5ab544`。既存の`tools/reference-design-output/README.md`のblobは`192c1fc13dfaabac101dd577f06233956de6af45`、ADR索引は`96101c4157e67f5821741237d34a2fcdbf883760`で、前回確認した内容を保つ。PR #2226はhead `7554f42188d0670f28979dfe75ad513f1bb11ea6`のOpen/Draftであり、Host方針変更のmain統合とは区別する。
 
 ### 三つの問いを分ける
 
