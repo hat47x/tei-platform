@@ -89,6 +89,12 @@ func Deploy(ctx context.Context, opts DeployOptions) (DeployReceipt, error) {
 		receipt.Reason = err.Error()
 		return receipt, nil
 	}
+	release, err := lockLocalUpdate(opts.RootDir)
+	if err != nil {
+		receipt.Reason = err.Error()
+		return receipt, nil
+	}
+	defer release()
 	stagingDir, err := os.MkdirTemp(opts.RootDir, ".staging-*")
 	if err != nil {
 		receipt.Reason = err.Error()
@@ -259,6 +265,12 @@ func Rollback(root string) (RollbackReceipt, error) {
 	receipt := RollbackReceipt{
 		Schema: RollbackSchema, GrantsAuthority: false, ProvesRealTarget: false,
 	}
+	release, err := lockLocalUpdate(root)
+	if err != nil {
+		receipt.Reason = err.Error()
+		return receipt, nil
+	}
+	defer release()
 	current, err := readPointer(filepath.Join(root, "current"))
 	if err != nil {
 		receipt.Reason = err.Error()
@@ -319,6 +331,13 @@ func RollbackTo(root, sourceDigest string) (RollbackReceipt, error) {
 		receipt.Reason = "source digest must be sha256:<64 hex>"
 		return receipt, nil
 	}
+	release, err := lockLocalUpdate(root)
+	if err != nil {
+		receipt.Reason = err.Error()
+		return receipt, nil
+	}
+	defer release()
+
 	historyPath := filepath.Join(root, "history", strings.TrimPrefix(sourceDigest, "sha256:"))
 	artifact, err := os.ReadFile(historyPath)
 	if err != nil {
@@ -408,4 +427,15 @@ func writePointer(path, value string) error {
 		return err
 	}
 	return nil
+}
+
+// lockLocalUpdate excludes cooperating writers to one local filesystem root.
+// A crashed writer leaves the directory behind; never infer stale ownership
+// from age or remove an existing lock automatically.
+func lockLocalUpdate(root string) (func(), error) {
+	path := filepath.Join(root, ".update-lock")
+	if err := os.Mkdir(path, 0o700); err != nil {
+		return nil, fmt.Errorf("local update lock unavailable (active update or recovery required): %w", err)
+	}
+	return func() { _ = os.Remove(path) }, nil
 }
