@@ -58,14 +58,15 @@ type LegacyKeyFact struct {
 }
 
 type RelationshipKeyFact struct {
-	Locator         string   `json:"locator"`
-	RelationshipID  string   `json:"relationshipId,omitempty"`
-	Table1LegacyID  string   `json:"table1LegacyId,omitempty"`
-	Key1LegacyID    string   `json:"key1LegacyId,omitempty"`
-	Table2LegacyID  string   `json:"table2LegacyId,omitempty"`
-	Key2LegacyID    string   `json:"key2LegacyId,omitempty"`
-	Nature          string   `json:"nature"`
-	AuthorityLimits []string `json:"authorityLimits"`
+	Locator          string   `json:"locator"`
+	RelationshipID   string   `json:"relationshipId,omitempty"`
+	RelationshipType string   `json:"relationshipType,omitempty"`
+	Table1LegacyID   string   `json:"table1LegacyId,omitempty"`
+	Key1LegacyID     string   `json:"key1LegacyId,omitempty"`
+	Table2LegacyID   string   `json:"table2LegacyId,omitempty"`
+	Key2LegacyID     string   `json:"key2LegacyId,omitempty"`
+	Nature           string   `json:"nature"`
+	AuthorityLimits  []string `json:"authorityLimits"`
 }
 
 type DeclaredKeyFieldsFact struct {
@@ -147,15 +148,17 @@ func ExtractRelationalSourceFacts(doc Document) RelationalSourceFacts {
 			facts.LegacyKeys = append(facts.LegacyKeys, key)
 
 		case "Relationship":
+			relationshipType, _ := exactAttribute(n, "Type")
 			facts.RelationshipKeys = append(facts.RelationshipKeys, RelationshipKeyFact{
-				Locator:         n.Locator,
-				RelationshipID:  attributeValue(n, "ID"),
-				Table1LegacyID:  attributeValue(n, "Table1ID"),
-				Key1LegacyID:    attributeValue(n, "TableKey1ID"),
-				Table2LegacyID:  attributeValue(n, "Table2ID"),
-				Key2LegacyID:    attributeValue(n, "TableKey2ID"),
-				Nature:          SourceFactNature,
-				AuthorityLimits: cloneStrings(relationshipKeyAuthorityLimits),
+				Locator:          n.Locator,
+				RelationshipID:   attributeValue(n, "ID"),
+				RelationshipType: relationshipType,
+				Table1LegacyID:   attributeValue(n, "Table1ID"),
+				Key1LegacyID:     attributeValue(n, "TableKey1ID"),
+				Table2LegacyID:   attributeValue(n, "Table2ID"),
+				Key2LegacyID:     attributeValue(n, "TableKey2ID"),
+				Nature:           SourceFactNature,
+				AuthorityLimits:  cloneStrings(relationshipKeyAuthorityLimits),
 			})
 		case "Key":
 			if doc.Format == FormatXeaf {
