@@ -237,6 +237,86 @@ def _print_functions(functions: List[Dict[str, Any]]) -> None:
         ]))
 
 
+def _by_id(items: List[Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
+    return {item["id"]: item for item in items}
+
+
+def _table_view(table: Dict[str, Any]) -> Dict[str, Any]:
+    return {
+        "id": table["id"],
+        "name": table["name"],
+        "alias": table["alias"],
+        "subsystem": table["subsystem"],
+        "fields": [
+            {
+                "id": field["id"],
+                "alias": field["alias"],
+                "name": field["name"],
+                "dataType": field["dataType"]["sortKey"],
+                "notNull": field["notNull"],
+            }
+            for field in table["fields"]
+        ],
+        "keys": [
+            {"type": key["type"], "fields": [item["fieldId"] for item in key["fields"]]}
+            for key in table["keys"]
+        ],
+    }
+
+
+def _function_view(function: Dict[str, Any]) -> Dict[str, Any]:
+    return {
+        "id": function["id"],
+        "name": function["name"],
+        "type": function["type"]["code"],
+        "subsystem": function["subsystem"],
+        "parameters": function["parameters"],
+        "return": function["return"],
+        "ioTables": [
+            {
+                "tableId": item["table"]["id"],
+                "operations": item["operations"],
+            }
+            for item in function["ioTables"]
+        ],
+        "calls": [item["id"] for item in function["calls"]],
+    }
+
+
+def _diff_collection(before: List[Dict[str, Any]], after: List[Dict[str, Any]],
+                     view) -> Dict[str, Any]:
+    left = _by_id(before)
+    right = _by_id(after)
+    added = [right[key] for key in sorted(right.keys() - left.keys(), key=int)]
+    removed = [left[key] for key in sorted(left.keys() - right.keys(), key=int)]
+    changed = []
+    for key in sorted(left.keys() & right.keys(), key=int):
+        before_view = view(left[key])
+        after_view = view(right[key])
+        if before_view != after_view:
+            changed.append({"id": key, "before": before_view, "after": after_view})
+    return {"added": added, "removed": removed, "changed": changed}
+
+
+def diff_models(before: Dict[str, Any], after: Dict[str, Any]) -> Dict[str, Any]:
+    system_before = {key: before["system"].get(key) for key in ("name", "version", "formatVersion")}
+    system_after = {key: after["system"].get(key) for key in ("name", "version", "formatVersion")}
+    system_changes = {
+        key: {"before": system_before[key], "after": system_after[key]}
+        for key in system_before if system_before[key] != system_after[key]
+    }
+    return {
+        "schemaVersion": SCHEMA_VERSION,
+        "source": {
+            "before": before["source"],
+            "after": after["source"],
+        },
+        "system": system_changes,
+        "tables": _diff_collection(before["tables"], after["tables"], _table_view),
+        "functions": _diff_collection(before["functions"], after["functions"], _function_view),
+    }
+
+
 def main(argv: Optional[List[str]] = None) -> int:
     parser = argparse.ArgumentParser(description="Read-only X-TEA model inspection")
     parser.add_argument("--json", action="store_true", help="JSON output (default: text for lists)")
@@ -267,7 +347,20 @@ def main(argv: Optional[List[str]] = None) -> int:
     export = sub.add_parser("export", help="full normalized model as JSON")
     export.add_argument("model", type=Path)
 
+    diff = sub.add_parser("diff", help="compare two models by table and function ID")
+    diff.add_argument("before", type=Path)
+    diff.add_argument("after", type=Path)
+
     args = parser.parse_args(argv)
+    if args.command == "diff":
+        try:
+            before = load_model(args.before)
+            after = load_model(args.after)
+        except (OSError, ValueError, ET.ParseError) as error:
+            print(f"error: {error}", file=sys.stderr)
+            return 2
+        _print_json(diff_models(before, after))
+        return 0
     try:
         model = load_model(args.model)
     except (OSError, ValueError, ET.ParseError) as error:
