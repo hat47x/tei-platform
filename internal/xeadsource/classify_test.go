@@ -116,3 +116,79 @@ func TestParseAloneDoesNotGrantCandidateMeaning(t *testing.T) {
 		}
 	}
 }
+
+func TestClassifyRetainsDynamicScriptSourceMarkerWithoutExecutionAuthority(t *testing.T) {
+	const marker = "source-script-text-mentions-executeScript-not-runtime-or-execution-authority"
+	// Synthetic data only: both Table Script.Text and Function.Script are
+	// source attributes, not invocation traces or accepted TEI meanings.
+	doc, err := Parse(FormatXeaf, []byte(`<System xmlns:f="urn:foreign">
+		<Table>
+			<Script EventP="BU" Text="instance.executeScript(scriptText);" />
+			<Script EventP="AR" Text="AT000_DERIVED.value = AT000_INPUT.value;" />
+			<f:Script Text="instance.executeScript(secret);" />
+		</Table>
+		<Function Script="instance.executeScript(functionText);" />
+	</System>`))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	withoutPolicy := Classify(doc, nil)
+	if len(withoutPolicy) != 6 {
+		t.Fatalf("unexpected candidate count: %d", len(withoutPolicy))
+	}
+	for _, c := range withoutPolicy {
+		if !c.Unresolved || len(c.Classifications) != 0 || c.Extension != "" {
+			t.Fatalf("lexical Script evidence granted implicit mapping: %#v", c)
+		}
+	}
+	if !reflect.DeepEqual(withoutPolicy[2].AuthorityLimits, []string{marker}) {
+		t.Fatalf("Table Script dynamic marker lost: %#v", withoutPolicy[2])
+	}
+	if len(withoutPolicy[3].AuthorityLimits) != 0 {
+		t.Fatalf("Script without marker was inferred to execute dynamically: %#v", withoutPolicy[3])
+	}
+	if len(withoutPolicy[4].AuthorityLimits) != 0 || !withoutPolicy[4].Unresolved {
+		t.Fatalf("foreign namespace gained Script evidence or authority: %#v", withoutPolicy[4])
+	}
+	if !reflect.DeepEqual(withoutPolicy[5].AuthorityLimits, []string{marker}) {
+		t.Fatalf("Function.Script dynamic marker lost: %#v", withoutPolicy[5])
+	}
+
+	withPolicy := Classify(doc, ClassificationPolicy{
+		"Script": {
+			Classifications: []string{"unresolved"},
+			AuthorityLimits: []string{marker, "owner-acceptance-required"},
+		},
+		"Function": {Classifications: []string{"unresolved"}},
+	})
+	if !reflect.DeepEqual(withPolicy[2].AuthorityLimits, []string{
+		"owner-acceptance-required", marker,
+	}) {
+		t.Fatalf("source marker should not duplicate a policy limit: %#v", withPolicy[2])
+	}
+	if !reflect.DeepEqual(withPolicy[2].Classifications, []string{"unresolved"}) {
+		t.Fatalf("source marker must not promote business meaning: %#v", withPolicy[2])
+	}
+	if len(withPolicy[3].AuthorityLimits) != 2 {
+		t.Fatalf("explicit policy limits must remain even without a source marker: %#v", withPolicy[3])
+	}
+}
+
+func TestClassifyDynamicScriptMarkerIsLexicalNotCallGraph(t *testing.T) {
+	const marker = "source-script-text-mentions-executeScript-not-runtime-or-execution-authority"
+	doc, err := Parse(FormatXeaf, []byte(`<System>
+		<Script Text="// executeScript is mentioned in a comment only" />
+		<Script Text="eval(otherSource);" />
+	</System>`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := Classify(doc, nil)
+	if !reflect.DeepEqual(got[1].AuthorityLimits, []string{marker}) {
+		t.Fatalf("lexical mention must remain evidence, not a claimed call: %#v", got[1])
+	}
+	if len(got[2].AuthorityLimits) != 0 || !got[2].Unresolved {
+		t.Fatalf("absence of executeScript must not claim Script purity: %#v", got[2])
+	}
+}
