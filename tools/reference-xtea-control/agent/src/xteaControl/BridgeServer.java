@@ -37,6 +37,7 @@ final class BridgeServer {
         ROUTES.add("POST /select");
         ROUTES.add("POST /table/set");
         ROUTES.add("POST /table/read");
+        ROUTES.add("POST /table/edit");
         ROUTES.add("POST /table/info");
         ROUTES.add("POST /tree/read");
         ROUTES.add("POST /click");
@@ -117,6 +118,8 @@ final class BridgeServer {
                     respond(exchange, 200, ok(Ui.tableSet(selector(body), body)));
                 } else if ("POST /table/read".equals(route)) {
                     respond(exchange, 200, ok(Ui.tableRead(selector(body), body)));
+                } else if ("POST /table/edit".equals(route)) {
+                    respond(exchange, 200, ok(Ui.tableEdit(selector(body), body)));
                 } else if ("POST /table/info".equals(route)) {
                     respond(exchange, 200, ok(Ui.tableInfo(selector(body), body)));
                 } else if ("POST /tree/read".equals(route)) {
@@ -278,6 +281,7 @@ final class BridgeServer {
             return 504;
         }
         if (code.startsWith("INVALID_") || "NOT_A_TABLE".equals(code) || "CELL_NOT_EDITABLE".equals(code)
+                || "COMPONENT_NOT_EDITABLE".equals(code)
                 || "UNSUPPORTED_COMPONENT".equals(code) || "NO_WINDOW".equals(code)) {
             return 400;
         }
@@ -292,7 +296,7 @@ final class BridgeServer {
         }
         // Convenience: accept selector keys at the top level as well.
         Map<String, Object> value = new LinkedHashMap<String, Object>();
-        for (String key : new String[] { "window", "path", "role", "text", "textContains", "name", "class", "index" }) {
+        for (String key : new String[] { "window", "windowClass", "path", "role", "text", "textContains", "name", "class", "index" }) {
             if (body.containsKey(key)) {
                 value.put(key, body.get(key));
             }

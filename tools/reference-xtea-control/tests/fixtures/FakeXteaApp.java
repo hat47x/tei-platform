@@ -37,6 +37,7 @@ public final class FakeXteaApp {
     private final JTextField input = new JTextField("initial", 24);
     private final FakeWrappedField wrappedInput = new FakeWrappedField();
     private final JLabel status = new JLabel("idle");
+    private final JLabel wrappedStatus = new JLabel();
     private final DefaultTableModel tableModel = new DefaultTableModel(
             new Object[][] { { "A", "Alpha" }, { "B", "Beta" } }, new String[] { "Code", "Name" });
     private final JTable table = new JTable(tableModel);
@@ -111,6 +112,12 @@ public final class FakeXteaApp {
         wrappedInput.getInnerField().setName("wrappedInput");
         top.add(new JLabel("Wrapped"));
         top.add(wrappedInput);
+        JButton hiddenRun = new JButton("Run");
+        hiddenRun.setVisible(false);
+        hiddenRun.addActionListener(event -> status.setText("hidden-run"));
+        top.add(hiddenRun);
+        wrappedStatus.setName("wrapperValue");
+        top.add(wrappedStatus);
         top.add(new JLabel("Mode"));
         top.add(mode);
         top.add(enabled);
@@ -122,6 +129,7 @@ public final class FakeXteaApp {
             @Override
             public void actionPerformed(ActionEvent e) {
                 status.setText("ran:" + input.getText());
+                wrappedStatus.setText(String.valueOf(wrappedInput.getValue()));
             }
         });
         JButton dialogButton = new JButton("Open Dialog");

@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -95,15 +96,24 @@ class IntegrationTest(unittest.TestCase):
 
     def test_03_text_button_and_key(self) -> None:
         self.client.set_value({"name": "input"}, "hello")
-        self.client.set_value({"name": "wrappedInput"}, "wrapped-value")
+        self.client.set_value({"name": "wrappedInput"}, "wrapped")
+        self.client.set_value({"name": "wrappedInput"}, "-value", mode="append")
         self.assertEqual(self.client.find({"name": "wrappedInput"})["textValue"], "wrapped-value")
         self.client.invoke({"role": "button", "text": "Run"}, settle_ms=100)
         self.client.wait_text({"name": "status"}, expected="ran:hello", timeout_ms=5000)
+        self.client.wait_text({"name": "wrapperValue"}, expected="wrapped-value", timeout_ms=5000)
         self.client.key({"name": "input"}, key="ENTER")
         self.client.wait_text({"name": "status"}, expected="enter:hello", timeout_ms=5000)
         self.client.select({"name": "table"}, row=0, column=0)
         self.client.key({"name": "table"}, key="ENTER")
         self.client.wait_text({"name": "status"}, expected="table-enter", timeout_ms=5000)
+        long_text = "日本語の長文" * 100 + "END"
+        self.client.set_value({"name": "input"}, long_text)
+        self.client.wait_text({"name": "input"}, contains="END", timeout_ms=1000)
+        result = self.client.set_value({"name": "input"}, "-appended", mode="append")
+        self.assertEqual(result["oldValue"], long_text)
+        self.assertEqual(result["value"], long_text + "-appended")
+        self.client.set_value({"name": "input"}, "hello")
 
     def test_04_choices_tabs_and_table(self) -> None:
         enabled = self.client.set_value({"name": "enabled"}, False)
@@ -131,6 +141,24 @@ class IntegrationTest(unittest.TestCase):
         self.assertEqual(value["rowType"], "FakeXteaApp$CustomRow")
         self.client.select({"role": "tab", "window": "Fake X-TEA"}, item_index=0)
 
+    def test_04c_real_cell_editor_commit_cancel(self) -> None:
+        table = {"windowClass": "javax.swing.JFrame$", "name": "table"}
+        original = self.client.table_read(table)["rows"][0][1]
+        self.client.table_edit(table, row=0, column="Name")
+        node = self.client.find({"window": "Fake X-TEA", "role": "text", "text": "^" + re.escape(original) + "$"})
+        self.assertIsNotNone(node)
+        editor = {"window": "Fake X-TEA", "path": node["path"]}
+        self.client.set_value(editor, "Committed")
+        self.client.table_edit(table, "commit")
+        self.assertEqual(self.client.table_read(table)["rows"][0][1], "Committed")
+        self.client.table_edit(table, row=0, column="Name")
+        self.client.set_value(editor, "Discarded")
+        self.client.table_edit(table, "cancel")
+        self.assertEqual(self.client.table_read(table)["rows"][0][1], "Committed")
+        with self.assertRaises(ControlError) as caught:
+            self.client.table_edit(table, row=999)
+        self.assertEqual(caught.exception.code, "INVALID_ROW")
+
     def test_04c_tree_read(self) -> None:
         self.client.select({"role": "tab", "window": "Fake X-TEA"}, item_index=3)
         value = self.client.tree_read({"name": "tree"})
@@ -149,15 +177,24 @@ class IntegrationTest(unittest.TestCase):
 
     def test_05_modal_dialog(self) -> None:
         self.client.select({"role": "tab", "window": "Fake X-TEA"}, item_index=0)
-        self.client.invoke({"role": "button", "text": "Open Dialog"})
+        cursor = self.client.trace()["lastId"]
+        operation = self.client.invoke({"role": "button", "text": "Open Dialog"})
         self.client.wait_window("Fake Dialog", timeout_ms=10000)
         windows = self.client.windows()["windows"]
         dialog = next(w for w in windows if w["title"] == "Fake Dialog")
         self.assertTrue(dialog["modal"])
+        window_call = self.client.invoke_method({"role": "window", "window": "^Fake Dialog$"}, "toFront")
+        self.assertTrue(window_call["accepted"])
+        events = [event["type"] for event in self.client.trace(since=cursor)["events"]
+                  if event["target"] == operation["target"]]
+        self.assertEqual(events, ["invoke", "invoke.start"])
         self.client.set_value({"name": "dialogInput"}, "changed")
         self.client.invoke({"role": "button", "text": "OK"})
         self.client.wait_window("Fake Dialog", state="absent", timeout_ms=10000)
         self.client.wait_text({"name": "status"}, expected="dialog:hello", timeout_ms=5000)
+        events = [event["type"] for event in self.client.trace(since=cursor)["events"]
+                  if event["target"] == operation["target"]]
+        self.assertEqual(events, ["invoke", "invoke.start", "invoke.complete"])
 
     def test_06_screenshot_and_trace(self) -> None:
         path = Path(self.tmp.name) / "fixture.png"

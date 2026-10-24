@@ -10,6 +10,7 @@ TEIの参照モデル再現を確認するとき、X-TEAのGUIだけが入力経
 
 対象は比較試験の入力経路であり、TEIのCanonical意味、X-TEAとの互換性、移植の受理、旧Runtimeの動作同等性を決めるものではありません。現在地と残作業の分類は[STATUS.md](STATUS.md)にまとめています。
 
+[#2152](https://github.com/hat47x/tei-platform/issues/2152)では、各機能タイプの主要操作を先に確認し、その後に参照モデルで使うスクリプトUIを確認します。XeadServerへの追加対応は今回の対象外です。Modeler / Editorの編集・保存も、このDriverの試験には含めません。
 ### 対象外
 
 - XeadServer（`DBMethod` / `Service` / WAR / Tomcat / JNDI）
@@ -29,7 +30,8 @@ XeadServerの既存コードと試験は、過去の調査を再現するため�
 | `clone-xtea.*` | 四つの公開リポジトリを取得し、`upstream.json`の版と照合する |
 | `launch-xtea.*` | X-TEAの既存JARを、制御エージェント付きで起動する |
 | `scenarios/` | 読み取り専用のModeler / Editor確認と、全入力種別を通す合成GUI試験 |
-| `tests/` | 合成SwingアプリのE2E試験と、XeadServerクライアントの契約試験 |
+| `tests/` | 合成Swingアプリ、元のDriverと合成モデル・DBの実動試験、XeadServerクライアントの契約試験 |
+| `inventory_xtea.py` | 手元のXEAF / ZIPから機能タイプとスクリプトUIの呼出し候補を調べる |
 
 X-TEAのソースやJARはこのディレクトリへ同梱しません。`clone-xtea`で取得し、`launch-xtea`で既存の配布物または自前ビルドを起動します。エージェントはX-TEAのクラスを変更・再コンパイルしないため、M49/M50のような配布版の差があっても同じ制御面を使えます。
 
@@ -46,14 +48,15 @@ X-TEAのソースやJARはこのディレクトリへ同梱しません。`clone
 | テキストフィールド、テキストエリア、パスワード欄 | `POST /set`。パスワード値はスナップショットでマスク |
 | コンボボックス、スピナー、スライダー | `POST /set` |
 | タブ、リスト、ツリー、テーブル | `POST /select`、`POST /tree/read`、`POST /click`、`POST /table/info`、`POST /table/set`、`POST /table/read` |
+| X-TEA独自の行編集 | `POST /table/edit`の`start`で実際のセル編集部品を開き、`set`・`invoke`で入力後、`commit`または`cancel`で編集を終了。DBの確定とは別 |
 | 画面固有の内部アクション | `POST /invoke-method`（`ActionEvent`または無引数のメソッドを明示指定） |
-
-`tree-read`の`indices`は先頭の`0`がルートを表します。この配列をそのまま`select`の`path`へ渡すと、同じノードを選択できます。
 | Enterなどのキー操作、キーバインド | `POST /key`。SwingのInputMap/ActionMapを先に使い、生のKeyEventへフォールバック |
 | モーダルダイアログ、確認メッセージ | 非同期`invoke`の後に`POST /wait`でウィンドウを待ち、同じ制御面で操作 |
 | 画面状態の観察 | `POST /snapshot`（役割、表示文字、選択状態、表の列・行、タブ、境界） |
 | 操作の記録 | `GET /trace`（呼び出し、対象、変更前後、エラー） |
 | 画面の証跡 | `POST /screenshot`（PNGをbase64で返す） |
+
+`tree-read`の`indices`は先頭の`0`がルートを表します。この配列をそのまま`select`の`path`へ渡すと、同じノードを選択できます。
 
 各アプリで到達できる入口の単位は次のとおりです。
 
@@ -234,7 +237,56 @@ python xtea_control.py --endpoint build\modeler-endpoint.json `
   scenario scenarios\modeler-read-only-about.json
 ```
 
-シナリオの`steps`は`wait_window`、`invoke`、`invoke_method`、`set`、`select`、`click`、`table_set`、`table_assert`、`table_row_count`、`key`、`close`、`wait_selector`、`wait_text`、`assert_text`、`snapshot`、`screenshot`、`file_contains`、`file_not_contains`、`sleep`を扱います。AIは座標ではなく、`{"role":"button","text":"OK"}`のような意味的な選択子を生成すれば足ります。
+シナリオの`steps`は`wait_window`、`invoke`、`invoke_method`、`set`、`select`、`click`、`table_set`、`table_edit`、`table_assert`、`table_row_count`、`key`、`close`、`wait_selector`、`wait_text`、`assert_text`、`snapshot`、`screenshot`、`file_contains`、`file_not_contains`、`sleep`を扱います。AIは座標ではなく、`{"role":"button","text":"OK"}`のような意味的な選択子を生成すれば足ります。
+
+XF110の選択画面と更新画面は同じタイトルになるため、`{"windowClass":"xeadDriver.XF110_SubList$","role":"table"}`のようにウィンドウのクラスでも絞れます。CLIでは`--window-class`を使います。`find`、`wait_text`、`assert_text`も`window`・`windowClass`・`index`を考慮します。
+
+`tree-read`の`indices`は先頭の`0`がルートを表します。この配列をそのまま`select`の`path`へ渡すと、同じノードを選択できます。
+
+### Driverの主要操作を再実行する
+
+外部のDriverランタイム一式、GUIを表示できる環境、実行用JDK 11、`--release 8`対応のコンパイラを用意し、エージェントをビルドします。Windowsでは次のように実行します。
+
+```powershell
+$env:XTEA_RUNTIME_HOME = "C:\path\to\X-TEA\Driver"
+$env:JAVA = "C:\path\to\jdk-11\bin\java.exe"
+$env:JAVAC = "C:\path\to\jdk-11\bin\javac.exe"
+python verify_driver.py
+```
+
+Linuxでは同じ環境変数を設定して`python3 verify_driver.py`を実行します。ビルド、棚卸し・結果記録の試験、Swing統合、Driver実動試験を順に実行し、失敗した時点で打ち切ります。JDK 17では標準のJavaScriptエンジンが使えないため、この実動試験のランタイムにはJDK 11を使います。`XTEA_RUNTIME_HOME`未指定時は明示的にskipし、指定したランタイムやビルド成果物が足りない場合は失敗します。
+
+Linuxの再現試験では、Xvfbが利用できる場合は専用の仮想画面を使います。先に上記の環境変数を設定してください。
+
+```sh
+xvfb-run -a python3 verify_driver.py
+```
+
+この入口はXeadServerの試験を含みません。ビルドをやり直さず個別に確認する場合は、従来どおり`python tests/test_live_driver.py`などを実行できます。
+
+途中で失敗した場合は終了コードを保って打ち切ります。Driverランタイム未指定時のskipは成功の証拠にせず、最後に表示される保存先の`summary.json`も確認してください。`runtime.json`には`verify_driver.py`の指紋も含みます。
+
+これはGUIを無効にする試験ではなく、Swingを別のXサーバーへ表示する試験です。共有デスクトップやWindowsの表示・フォーカスと同じ条件を確認するものではありません。
+
+起動待ちとExcel出力の完了待ちは、それぞれ120秒で打ち切ります。各試験の操作記録に実際の起動・出力所要時間を残し、起動失敗ではエンドポイントと起動完了マーカーの有無を報告します。起動や操作をやり直す処理はありません。
+
+試験は元のDriverのFunctionLauncherを合成起動パネルから呼び、各試験で新しい合成モデル・H2 DBを生成します。更新結果は別JDBC接続から読みます。元の参照モデルや業務DBへ接続する引数はありません。操作トレース・DB前後値・Java版・JAR指紋・PDF・Excelを、実行ごとに作る`artifacts/live-driver/run-*/`へ保存し、終了時に保存先を表示します。Excelはファイルを展開してセル値まで照合します。`runtime.json`には実行したツールのソース指紋、画面の`DISPLAY`とUTC時刻も残します。
+
+`invoke`は非同期の受付を返します。無効な部品は`COMPONENT_NOT_EDITABLE`で拒否し、受け付けた呼出しはトレースの`invoke.start`・`invoke.complete`・`invoke.error`で経過を確認できます。`invoke.complete`はイベント処理から戻ったことを表し、別スレッドの業務処理やDB更新の完了を示しません。モーダル画面を開くイベントは、その画面を閉じるまで完了しません。DBや出力結果は従来どおり別途照合します。
+
+同じ試験名を反復する場合も、ログ・DB観測・生成物は試験1回ごとの`case-*`フォルダーへ分けます。失敗時の画面（表の値を含む）と操作トレースは、次の入力型の試験や後片付けより前に`*-failure-*.json`へ保存します。
+
+`summary.json`は実行件数、失敗・エラーの対象と内容、skipの理由を記録します。`status`は成功した実行で`passed`、失敗・エラー・想定外の成功があれば`failed`、skipや想定どおりの失敗を含むか0件なら`skipped`です。終了コードと合わせて確認し、記録がない実行を成功とは扱わないでください。環境未指定のskipは終了コード0でも`passed`になりません。操作記録のJSONが存在するだけでは成功を意味しません。
+
+X-TEAの表は1物理セルに複数の論理列を持つ場合があります。`table-read`の論理列名と、`table-edit`の物理列番号を混同しないでください。独自の行オブジェクトを`table-set`で置き換える操作は拒否します。XF110 / XF310では通常、物理列`0`を編集し、開いた部品をスナップショットから選びます。長文型は表示欄へ書き込まず、編集ボタンから専用ダイアログを開きます。
+
+### 参照モデルで使う範囲を調べる
+
+```powershell
+python inventory_xtea.py C:\private\reference-models --out artifacts\reference-inventory.json
+```
+
+XEAFまたはZIPを読み、Functionタイプ・標準ボタン操作の件数、スクリプトUIと入力型の呼出し候補、SHA-256を記録します。ZIP内の複数版やバックアップを自動選択しません。XEAFがないZIPも未調査の入力として残します。モデル本文・Function名・スクリプト本文・任意のボタン呼出し式は出力しませんが、ファイル名とZIPメンバー名は含むため、結果はローカルに保管してください。XML本文から静的に調べた候補と、実動試験で確認した操作は[対応表](ROUTES.md)で区別しています。
 
 ### 5. XeadServer
 
@@ -269,6 +321,16 @@ python tests\test_external_tomcat.py
 
 ## 一括検証
 
+Driverの追加検証は、上記の環境変数を設定して次を実行します。Linuxの仮想画面では`xvfb-run -a python3 verify_driver.py`を使います。
+
+```powershell
+python verify_driver.py
+```
+
+ビルド・棚卸し・結果記録・Swing統合・Driver実動を順に確認します。XeadServerは含みません。
+
+従来のSwing基礎試験には次の入口も残しています。こちらはDriverの追加試験を含みません。
+
 ```powershell
 .\verify-all.ps1
 ```
@@ -276,6 +338,34 @@ python tests\test_external_tomcat.py
 既定では`build.ps1`とSwing E2Eだけを実行します。XeadServerは対象外のため、サーバ契約・実DBMethod・実Service・Tomcat WARは実行しません。過去の参考試験を再実行する場合だけ`-IncludeXeadServer`を付けます。実動試験の環境変数がない場合はSKIPとして表示し、失敗とは区別します。`-SkipLive`で実動試験を省略できます。
 
 ## 検証したこと
+
+### #2152の追加確認（2026-10-23）
+
+LinuxのJDK 11.0.32.1、配布`XTeaDriverInstaller230127`のランタイム、使い捨てH2 1.4.187で実行しました。エージェントと合成起動パネルはJava 8ターゲットです。
+
+- `tests/test_live_driver.py`: 33件。8機能タイプの主要操作、明細追加・削除・取消、一括更新の取消、単票コピー、XF100一覧・XF300明細からの追加と取消・登録後の一覧更新、5タイプのExcel出力、長文編集、スクリプトUIと検出した7入力型を確認します。選択肢・チェックリストの取消、Swing確認のNo・閉じる、入力取消、選択画面の閉じるも戻り値とDB不変で照合します。XF000のコンソール開始・未実行終了、時刻指定の不正入力・予約開始・停止・即時実行、予約時刻到達後の自動実行・反復時の次回予約も対象です。XF000は、未確定の更新値を読んだ後、確認ダイアログからcommit / rollbackを選び、別JDBC接続から結果を照合します。詳細な範囲と制約は[対応表](ROUTES.md)を参照してください。
+- `tests/test_integration.py`: 10件。ツリー内容の読取り、標準テーブルの実編集・確定・取消・行範囲外の拒否に加え、表示中のボタンを非表示の同名ボタンより先に選ぶこと、入力欄の内部保持値へ追記が届くこと、240文字を超える日本語入力の末尾を読み取れ、追記前後の全文が返ることを確認します。
+- `tests/test_inventory.py`: 2件。複数版とXEAFのないZIPの列挙、標準ボタン・入力型・XF000タイマー設定種別の候補集計、本文や呼出し式を出力しないこと、不正XMLの拒否を確認します。
+- `tests/test_driver_result.py`: 2件。成功・subtestの失敗・例外・skip・0件・想定どおりの失敗・想定外の成功を照合し、未実行や失敗を`passed`にしないことと、失敗時の状態を次の処理・後片付けより前に保存することを確認します。
+- XeadServerは変更していません。既存の模擬サーブレット契約試験4件を回帰確認します。
+
+2026-10-22の再実行では、確認ダイアログのボタンが待機後に見つからないケースと、複写の保存後に画面が閉じないケースに加え、入力型ALPHAの入力欄が見つからないエラーが発生しました。追加した確定・ロールバックは全体実行でも成功し、個別の確定操作3連続・ロールバック・複写3連続も成功しましたが、原因は未特定です。最後の全体実行は23件中22件成功・入力型試験1件エラーであり、全体合格とは扱いません。自動再試行で失敗を隠さず、今後の診断のため各試験の最終スナップショットも操作記録に保存します。
+
+2026-10-23は、共有デスクトップで確定・複写・7入力型の試験を4巡（12件）実行し成功しました。Xvfbの専用画面でDriverの全23件が成功した後、別の全体実行では4件が起動待ち30秒の上限で失敗しました。この失敗も別の実行記録として保持します。起動待ちを120秒へ延ばし、その後の確認ではJVMのCPU数を`JAVA_TOOL_OPTIONS=-XX:ActiveProcessorCount=2`で2に限定しています。これらは今回の再実行条件であり、前日の断続的な入力・複写失敗の原因を特定・修正したことを示しません。
+
+その次の実行では23件中22件が成功し、Excel出力1件が完了待ち10秒を超えました。直後のスナップショットには出力成功が表示されており、出力完了待ちも120秒へ延ばしました。セル値の照合条件とDBの前後比較は緩めていません。
+
+mainのツリー読取り対応を統合した後、別のExcel試験で完了ファイルの中身を空文字として読む失敗を捕捉しました。試験用Sessionが完了ファイルを作ってから内容を書き込む間に、読取り側が先に進んだ競合です。一時ファイルへ書き終えてから原子的に移動する方式に変更し、未完了の内容を公開しないようにしました。元のDriverの出力処理は変更していません。
+
+コンソール・予約開始停止を追加した時点では、上記のXvfb・2 CPU・起動／Excel完了待ち120秒の条件で全26件成功しました。`summary.json`の成否・件数と、実行時ソースの指紋が当時のファイルと一致することも確認しました。
+
+共有デスクトップでは、確定・複写・7入力型を20巡（60件）実行し成功しました。CPU数の指定を外した別の10巡（30件）も成功し、30回分の操作記録を別々のフォルダーへ保持しました。これらの成功から、以前の断続的な失敗が修正されたとは判断しません。
+
+XF000のコンソールでは、無効化された「Run right now」を制御面から変更できる不具合を再現しました。`set`の共通処理で無効化された部品への書込みを拒否し、選択状態が維持されることを同じ試験で確認します。
+
+予約時刻到達の試験では、Driverのスクリプトが実行された後の停止メッセージを読み取れず、1件が失敗しました。原因は制御面が`textValue`を240文字で切り詰めていたことです。`text`は概要表示のまま保ち、テキスト入力欄の`textValue`と`set`の前後値は全文を返すよう修正しました。パスワード欄は従来どおりマスクします。
+
+### 初期インターフェースの確認
 
 2026-10-21、JDK 11.0.20.1（`--release 8`でコンパイル）で確認しました。
 
@@ -304,7 +394,7 @@ python tests\test_external_tomcat.py
 
 ### 検証していないこと
 
-- Driverの明示的なトランザクションrollback操作（失敗時の内部rollbackは確認済み）、上記以外のFunction画面、元の`jdbc:derby://localhost/...`接続。
+- 各参照モデル本体を用いた全Function・全分岐の実動作、元の`jdbc:derby://localhost/...`接続。追加の更新試験は合成モデル・使い捨てH2の範囲です。
 - Modelerのフィールド追加・並べ替え・型変更、Editorの要素追加・削除・並べ替え・一括置換・機能編集（テーブル名変更とModelerのフィールド名変更・削除は確認済み）。
 - 三つのSwingアプリの全ダイアログ・全条件分岐の実行。経路表は入力種別とトップレベル入口の到達性を示すもので、全業務ケースの実行結果ではない。
 - X-TEAのソースと配布JARの同一性、#940の固定baselineとの対応、TEI側の意味一致。
@@ -317,10 +407,12 @@ reference-xtea-control/
   STATUS.md                現在地、残作業の分類、引継ぎの入口
   agent/src/xteaControl/   Java agent（Agent, BridgeServer, Ui, Json, Trace）
   server-harness/          XeadServerの過去調査資産（参考・対象外）
-  tests/                   合成GUI E2E、モデルCLI、XeadServer参考試験
+  tests/                   合成GUI E2E、モデルCLI、実Driver、棚卸し・結果記録、XeadServer参考試験
   scenarios/               読み取り専用シナリオと、使い捨てDB向けDriver更新・作成削除シナリオ
   xtea_cli.py               .xead読取り専用CLI（GUI不要）
   xtea_control.py          Swing制御クライアント
+  inventory_xtea.py        参照モデルの機能タイプ・UI呼出し候補の静的調査
+  verify_driver.py         Driver関連のビルド・検証をまとめて実行
   xtea_server.py           XeadServer HTTPクライアント（参考・対象外）
   build.ps1 / build.sh
   verify-all.ps1           合成GUI・モデルCLIの一括検証
