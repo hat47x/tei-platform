@@ -257,3 +257,8 @@ PR #2250には、byte再現性・digest束縛・不足入力の拒否・別工�
 対象20チャットの直近2往復を照合した。取得できる利用者発言には、前回送った質問を超える新しい構成決定は確認できず、回答の大半は参照カード等で本文未取得だった。別の読取機能の用途も確認したが、Notionのthread読取はメール用であり、ChatGPT本文を読む手段として使っていない。
 
 一方、開発引継ぎWorkと#1803にPR #2250の進展が記録され、GitHub上でも確認できたため、前回質問以外の有益な情報として本節へ取り込んだ。追加質問の受付・回答内容の確認・仕様の採用は別々に作業記録へ残す。#2240と#2226のDraft、ADR番号衝突の未決を、#2250の統合によって変更したとは扱わない。
+
+
+### 終了時の追加照合：生成物の言語情報
+
+終了時にmain `4cad164bd8081905404a11f6c9344791fe3b037f`を再確認した。[PR #2252](https://github.com/hat47x/tei-platform/pull/2252)が統合され、artifact storeのput/get receiptとlist entryに`language`が追加された。候補の言語を一覧から区別するための情報であり、[同版README](https://github.com/hat47x/tei-platform/blob/4cad164bd8081905404a11f6c9344791fe3b037f/tools/reference-generator-artifact-store/README.md)は`grantsAuthority`と`provesRealTarget`をfalseに保つ。言語の宣言は実行環境の同一性、業務適合、実行許可の証明ではない。上記#2250の比較は固定した統合版に対するものであり、この追加変更を再実装する提案にはしない。
