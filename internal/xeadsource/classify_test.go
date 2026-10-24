@@ -192,3 +192,22 @@ func TestClassifyDynamicScriptMarkerIsLexicalNotCallGraph(t *testing.T) {
 		t.Fatalf("absence of executeScript must not claim Script purity: %#v", got[2])
 	}
 }
+
+func TestClassifyIgnoresForeignNamespaceScriptAttribute(t *testing.T) {
+	doc, err := Parse(FormatXeaf, []byte(`<System xmlns:f="urn:foreign">
+		<Script f:Text="instance.executeScript(other);" />
+		<Function f:Script="instance.executeScript(other);" />
+	</System>`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := Classify(doc, nil)
+	if len(got) != 3 {
+		t.Fatalf("unexpected candidate count: %d", len(got))
+	}
+	for _, c := range got {
+		if len(c.AuthorityLimits) != 0 || !c.Unresolved {
+			t.Fatalf("foreign attribute was treated as X-TEA executable source: %#v", c)
+		}
+	}
+}
