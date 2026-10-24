@@ -169,6 +169,59 @@ func TestGetRejectsTamperedArtifact(t *testing.T) {
 	}
 }
 
+func TestPutAndGetWasiArtifact(t *testing.T) {
+	workspace, contract, fixtures, _ := selectionPaths(t)
+	candidates := filepath.Join(t.TempDir(), "candidates")
+	if _, err := generatorselection.GenerateVersion(contract, "wasi-template", "1",
+		filepath.Join(candidates, "wasi-template")); err != nil {
+		t.Fatal(err)
+	}
+	selection, err := generatorselection.Select(context.Background(), workspace, contract, fixtures, candidates)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !selection.Passed || len(selection.Candidates) != 1 || !selection.Candidates[0].Passed {
+		t.Fatalf("wasi candidate did not pass selection: %+v", selection.Candidates)
+	}
+	raw, err := json.MarshalIndent(selection, "", "  ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	receiptPath := filepath.Join(t.TempDir(), "selection.json")
+	if err := os.WriteFile(receiptPath, append(raw, '\n'), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	storeDir := t.TempDir()
+	put, err := Put(context.Background(), StoreOptions{
+		ReceiptPath: receiptPath, CandidateID: selection.Candidates[0].ID,
+		CandidatesDir: candidates, StoreDir: storeDir,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !put.Passed || put.ObjectPath == "" {
+		t.Fatalf("wasi artifact was not stored: %+v", put)
+	}
+	rawObject, err := os.ReadFile(filepath.Join(put.ObjectPath, "object.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var object Object
+	if err := json.Unmarshal(rawObject, &object); err != nil {
+		t.Fatal(err)
+	}
+	if object.Language != generatorselection.LanguageWasi {
+		t.Fatalf("stored language=%s want wasi", object.Language)
+	}
+	got, err := Get(storeDir, put.SourceDigest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !got.Passed || got.BinaryDigest != put.BinaryDigest {
+		t.Fatalf("wasi artifact was not read back: %+v", got)
+	}
+}
+
 func TestPutRejectsUnknownCandidate(t *testing.T) {
 	receiptPath, _ := writeSelectionReceipt(t)
 	_, _, _, candidates := selectionPaths(t)
