@@ -1,0 +1,70 @@
+#!/usr/bin/env python3
+"""Tests for the read-only .xead inspection CLI."""
+
+from __future__ import annotations
+
+import io
+import json
+import sys
+import unittest
+from contextlib import redirect_stdout
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+
+import xtea_cli  # noqa: E402
+
+FIXTURE = ROOT / "tests" / "fixtures" / "minimal.xead"
+
+
+class ModelCliTest(unittest.TestCase):
+    def setUp(self) -> None:
+        self.model = xtea_cli.load_model(FIXTURE)
+
+    def test_summary(self) -> None:
+        summary = xtea_cli.model_summary(self.model)
+        self.assertEqual(summary["system"]["name"], "テストシステム")
+        self.assertEqual(summary["counts"]["tables"], 1)
+        self.assertEqual(summary["counts"]["functions"], 2)
+        self.assertEqual(summary["counts"]["functionsByType"]["XF100"], 1)
+        self.assertEqual(summary["counts"]["functionsByType"]["Menu"], 1)
+
+    def test_table_fields_and_key(self) -> None:
+        table = self.model["tables"][0]
+        self.assertEqual(table["id"], "10")
+        self.assertEqual(table["alias"], "AT010")
+        self.assertEqual(len(table["fields"]), 2)
+        self.assertEqual(table["fields"][0]["alias"], "CDBUMON")
+        self.assertTrue(table["fields"][0]["notNull"])
+        self.assertEqual(table["fields"][0]["dataType"]["sql"], "CHAR(10)")
+        self.assertEqual(table["keys"][0]["type"], "PK")
+        self.assertEqual(table["keys"][0]["fields"][0]["fieldId"], "1")
+
+    def test_function_io_and_calls(self) -> None:
+        functions = {item["id"]: item for item in self.model["functions"]}
+        listed = functions["20"]
+        self.assertEqual(listed["type"]["code"], "XF100")
+        self.assertEqual(listed["ioTables"][0]["table"]["name"], "部門")
+        self.assertTrue(listed["ioTables"][0]["operations"]["create"])
+        self.assertTrue(listed["ioTables"][0]["operations"]["read"])
+        self.assertFalse(listed["ioTables"][0]["operations"]["update"])
+
+        menu = functions["21"]
+        self.assertEqual(menu["type"]["code"], "Menu")
+        self.assertEqual(menu["calls"][0]["id"], "20")
+        self.assertEqual(menu["ioPanels"][0]["background"], "WINDOW")
+
+    def test_export_cli(self) -> None:
+        output = io.StringIO()
+        with redirect_stdout(output):
+            code = xtea_cli.main(["export", str(FIXTURE)])
+        self.assertEqual(code, 0)
+        exported = json.loads(output.getvalue())
+        self.assertEqual(exported["schemaVersion"], 1)
+        self.assertEqual(len(exported["tables"]), 1)
+        self.assertEqual(len(exported["functions"]), 2)
+
+
+if __name__ == "__main__":
+    unittest.main(verbosity=2)

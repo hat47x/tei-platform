@@ -26,6 +26,7 @@ try {
     if ($LASTEXITCODE -ne 0) { throw "agent build failed" }
 
     Invoke-Test "Swing E2E" @("tests\test_integration.py")
+    Invoke-Test "model CLI" @("tests\test_model_cli.py")
 
     if ($IncludeXeadServer) {
         Invoke-Test "server contract (reference)" @("tests\test_server_client.py")
