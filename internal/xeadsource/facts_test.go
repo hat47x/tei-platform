@@ -83,6 +83,68 @@ func TestExtractRelationalSourceFactsIgnoresNamespacedRelationshipTypeLookalike(
 	}
 }
 
+func TestExtractRelationalSourceFactsPreservesExistWhenPresenceAndLiteralValue(t *testing.T) {
+	doc, err := Parse(FormatXead, []byte(`<System><Relationship ID="R1" Type="REFFER" ExistWhen1="" ExistWhen2="  A &amp; B  "/></System>`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := ExtractRelationalSourceFacts(doc)
+	if len(got.RelationshipKeys) != 1 {
+		t.Fatalf("relationship count = %d", len(got.RelationshipKeys))
+	}
+	relation := got.RelationshipKeys[0]
+	if relation.ExistWhen1 == nil || *relation.ExistWhen1 != "" ||
+		relation.ExistWhen2 == nil || *relation.ExistWhen2 != "  A & B  " {
+		t.Fatalf("present empty or literal non-empty source attribute was lost: %#v", relation)
+	}
+	encoded, err := json.Marshal(relation)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var object map[string]any
+	if err := json.Unmarshal(encoded, &object); err != nil {
+		t.Fatal(err)
+	}
+	if value, exists := object["existWhen1"]; !exists || value != "" {
+		t.Fatalf("explicit empty ExistWhen1 not preserved in JSON: %s", encoded)
+	}
+	if value, exists := object["existWhen2"]; !exists || value != "  A & B  " {
+		t.Fatalf("literal ExistWhen2 not preserved in JSON: %s", encoded)
+	}
+}
+
+func TestExtractRelationalSourceFactsDoesNotInventExistWhenOnAbsentOrForeignAttribute(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		source string
+	}{
+		{name: "both missing", source: `<System><Relationship ID="R1"/></System>`},
+		{name: "foreign namespace", source: `<System xmlns:x="urn:foreign"><Relationship ID="R1" x:ExistWhen1="A" x:ExistWhen2="B"/></System>`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			doc, err := Parse(FormatXead, []byte(tc.source))
+			if err != nil {
+				t.Fatal(err)
+			}
+			got := ExtractRelationalSourceFacts(doc)
+			if len(got.RelationshipKeys) != 1 {
+				t.Fatalf("relationship count = %d", len(got.RelationshipKeys))
+			}
+			relation := got.RelationshipKeys[0]
+			if relation.ExistWhen1 != nil || relation.ExistWhen2 != nil {
+				t.Fatalf("absent or foreign namespaced attribute was promoted: %#v", relation)
+			}
+			encoded, err := json.Marshal(relation)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if strings.Contains(string(encoded), `"existWhen1"`) || strings.Contains(string(encoded), `"existWhen2"`) {
+				t.Fatalf("absent declarations were invented in JSON: %s", encoded)
+			}
+		})
+	}
+}
+
 func TestExtractRelationalSourceFactsKeepsDeclaredKeyFieldsSeparateFromDataIdentity(t *testing.T) {
 	doc, err := Parse(FormatXeaf, []byte(`<System><Function ID="F1" KeyFields="A; B;"><Detail ID="D1" KeyFields="H;L;"/></Function></System>`))
 	if err != nil {
