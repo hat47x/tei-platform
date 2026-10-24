@@ -158,9 +158,11 @@ python xtea_control.py --endpoint build\modeler-endpoint.json `
   scenario scenarios\modeler-delete-field.json
 python xtea_control.py --endpoint build\modeler-endpoint.json `
   scenario scenarios\modeler-add-field.json
+python xtea_control.py --endpoint build\modeler-endpoint.json `
+  scenario scenarios\modeler-change-field-type.json
 ```
 
-これらのシナリオは複製したモデルのシステム名、部門テーブル名、部門Cフィールド名を変更し、`TXTEKIYO`フィールドを削除し、または新しいフィールド`TXTEST`を追加して保存します。原本や共有モデルには実行しないでください。
+これらのシナリオは複製したモデルのシステム名、部門テーブル名、部門Cフィールド名を変更し、`TXTEKIYO`フィールドを削除し、新しいフィールド`TXTEST`を追加し、または`CDBUMON`のデータ型を変更して保存します。原本や共有モデルには実行しないでください。
 
 Editor:
 
@@ -236,7 +238,7 @@ python xtea_control.py --endpoint build\modeler-endpoint.json `
   scenario scenarios\modeler-read-only-about.json
 ```
 
-シナリオの`steps`は`wait_window`、`invoke`、`invoke_method`、`set`、`select`、`click`、`table_set`、`table_assert`、`table_row_count`、`key`、`close`、`wait_selector`、`wait_text`、`assert_text`、`snapshot`、`screenshot`、`file_contains`、`file_not_contains`、`sleep`を扱います。AIは座標ではなく、`{"role":"button","text":"OK"}`のような意味的な選択子を生成すれば足ります。
+シナリオの`steps`は`wait_window`、`invoke`、`invoke_method`、`set`、`select`、`click`、`table_set`、`table_assert`、`table_row_count`、`key`、`close`、`wait_selector`、`wait_text`、`assert_text`、`snapshot`、`screenshot`、`file_contains`、`file_not_contains`、`model_assert_field`、`sleep`を扱います。AIは座標ではなく、`{"role":"button","text":"OK"}`のような意味的な選択子を生成すれば足ります。
 
 ### 5. XeadServer
 
@@ -296,6 +298,7 @@ python tests\test_external_tomcat.py
 - 実Modelerのフィールド編集として、`AT010`の`CDBUMON`フィールドを選択し、論理名を`部門C TEST`へ変更して保存。XMLの`TableField`の`Name`が変わったことを確認。`scenarios/modeler-edit-field-name.json`で再現できます。
 - 実Modelerのフィールド削除として、`AT010`の`TXTEKIYO`を選択・Enterで編集画面を開き、`POST /invoke-method`で`jMenuItemXeadTreeNodeDelete_actionPerformed`を実行して保存。XMLから`TableField`が消えたことを確認。`scenarios/modeler-delete-field.json`で再現できます。ノードを先に開くことが前提です。
 - 実Modelerのフィールド追加として、`AT010`のフィールド一覧を開き、`jMenuItemXeadTreeNodeAdd_actionPerformed`で新規フィールドを作成。論理名`TEST_FIELD`、別名`TXTEST`を設定して保存し、XMLに`TableField Alias="TXTEST"`が追加されたことを確認。`scenarios/modeler-add-field.json`で再現できます。
+- 実Modelerのデータ型変更として、`CDBUMON`のデータ型メニューから`TX010`を選択。キー定義の警告を`OK`で閉じて保存し、`DataTypeID`が`26`から`13`（`TX010`）へ変わることをモデルCLIで確認。`scenarios/modeler-change-field-type.json`で再現できます。
 - 実Editorの保存経路として、`MfgOrder.xead`の複製でシステム名を変更し、`保存`メニュー、バックアップ確認の`はい`を実行。保存後のXMLに新しいシステム名が入り、`backup/`に更新前ファイルが作られることを確認。`scenarios/editor-save-copy.json`で再現できます。
 - 実Editorの要素編集として、`tree-read`の`indices`で部門テーブルを選択し、Enterでテーブル編集画面を開き、テーブル名を`部門TEST`へ変更して保存。XMLの`Table ID="61"`の`Name`が変わったことを確認。`scenarios/editor-edit-table-name.json`で再現できます。
 - 実Editorのテーブル一覧で`61 部門`の行をダブルクリックし、`61`と`部門`を表示する編集画面が開くことを確認。`scenarios/editor-open-table-from-list.json`で再現できます。
@@ -308,7 +311,7 @@ python tests\test_external_tomcat.py
 ### 検証していないこと
 
 - Driverの明示的なトランザクションrollback操作（失敗時の内部rollbackは確認済み）、上記以外のFunction画面、元の`jdbc:derby://localhost/...`接続。
-- Modelerのフィールド並べ替え・型変更、Editorの要素追加・削除・並べ替え・一括置換・機能編集（テーブル名変更とModelerのフィールド追加・名前変更・削除は確認済み）。
+- Modelerのフィールド並べ替え、Editorの要素追加・削除・並べ替え・一括置換・機能編集（テーブル名変更とModelerのフィールド追加・名前変更・削除・型変更は確認済み）。
 - 三つのSwingアプリの全ダイアログ・全条件分岐の実行。経路表は入力種別とトップレベル入口の到達性を示すもので、全業務ケースの実行結果ではない。
 - X-TEAのソースと配布JARの同一性、#940の固定baselineとの対応、TEI側の意味一致。
 - Java 8実機。コンパイルターゲットは8だが、実行確認はJDK 11。
