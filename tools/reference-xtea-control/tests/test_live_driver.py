@@ -116,6 +116,7 @@ class LiveDriverTest(unittest.TestCase):
             "sourceSha256": {str(p.relative_to(ROOT)): hashlib.sha256(p.read_bytes()).hexdigest()
                              for p in [Path(__file__).resolve(), ROOT / "tests/driver_fixture.py",
                                        ROOT / "tests/fixtures/DriverFixture.java", ROOT / "xtea_control.py",
+                                       ROOT / "verify_driver.py",
                                        *sorted((ROOT / "agent/src").rglob("*.java"))]},
             "scope": "synthetic model; original Driver FunctionLauncher; no external viewer",
         }, indent=2), encoding="utf-8")

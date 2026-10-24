@@ -223,25 +223,20 @@ XF110の選択画面と更新画面は同じタイトルになるため、`{"win
 $env:XTEA_RUNTIME_HOME = "C:\path\to\X-TEA\Driver"
 $env:JAVA = "C:\path\to\jdk-11\bin\java.exe"
 $env:JAVAC = "C:\path\to\jdk-11\bin\javac.exe"
-.\build.cmd
-python tests\test_live_driver.py
+python verify_driver.py
 ```
 
-Linuxでは`./build.sh`の後、同じ環境変数を設定して`python3 tests/test_live_driver.py`を実行します。JDK 17では標準のJavaScriptエンジンが使えないため、この実動試験のランタイムにはJDK 11を使います。`XTEA_RUNTIME_HOME`未指定時は明示的にskipし、指定したランタイムやビルド成果物が足りない場合は失敗します。
+Linuxでは同じ環境変数を設定して`python3 verify_driver.py`を実行します。ビルド、棚卸し・結果記録の試験、Swing統合、Driver実動試験を順に実行し、失敗した時点で打ち切ります。JDK 17では標準のJavaScriptエンジンが使えないため、この実動試験のランタイムにはJDK 11を使います。`XTEA_RUNTIME_HOME`未指定時は明示的にskipし、指定したランタイムやビルド成果物が足りない場合は失敗します。
 
 Linuxの再現試験では、Xvfbが利用できる場合は専用の仮想画面を使います。先に上記の環境変数を設定してください。
 
 ```sh
-xvfb-run -a python3 tests/test_live_driver.py
+xvfb-run -a python3 verify_driver.py
 ```
 
-Driver関連の試験をまとめて実行する場合は、同じ環境変数を設定し、ビルド後に次を実行します。XeadServerの試験は含みません。
+この入口はXeadServerの試験を含みません。ビルドをやり直さず個別に確認する場合は、従来どおり`python tests/test_live_driver.py`などを実行できます。
 
-```sh
-xvfb-run -a sh -c 'for check_name in inventory driver_result integration live_driver; do python3 "tests/test_${check_name}.py" || exit $?; done'
-```
-
-途中で失敗した場合は終了コードを保って打ち切ります。Driverランタイム未指定時のskipは成功の証拠にせず、最後に表示される保存先の`summary.json`も確認してください。
+途中で失敗した場合は終了コードを保って打ち切ります。Driverランタイム未指定時のskipは成功の証拠にせず、最後に表示される保存先の`summary.json`も確認してください。`runtime.json`には`verify_driver.py`の指紋も含みます。
 
 これはGUIを無効にする試験ではなく、Swingを別のXサーバーへ表示する試験です。共有デスクトップやWindowsの表示・フォーカスと同じ条件を確認するものではありません。
 
@@ -297,6 +292,16 @@ python tests\test_external_tomcat.py
 - この制御面はテスト専用です。認可、監査、利用者分離、本番運用の境界を提供しません。
 
 ## 一括検証
+
+Driverの追加検証は、上記の環境変数を設定して次を実行します。Linuxの仮想画面では`xvfb-run -a python3 verify_driver.py`を使います。
+
+```powershell
+python verify_driver.py
+```
+
+ビルド・棚卸し・結果記録・Swing統合・Driver実動を順に確認します。XeadServerは含みません。
+
+従来のSwing基礎試験には次の入口も残しています。こちらはDriverの追加試験を含みません。
 
 ```powershell
 .\verify-all.ps1
