@@ -10,9 +10,8 @@ import (
 	designoutput "tei/tools/reference-design-output"
 )
 
-// tei-design-output writes one bundle of derived design artifacts into a new
-// directory. It never edits the Workspace, never overwrites an existing file,
-// and never grants acceptance or execution authority.
+// tei-design-output publishes or checks derived design bundles. It never
+// edits the Workspace and never grants acceptance or execution authority.
 func main() {
 	root := flag.String("workspace", "", "accepted Workspace root to read")
 	out := flag.String("out", "", "new output directory; must not exist")
@@ -20,9 +19,21 @@ func main() {
 	contract := flag.String("contract", "", "optional reference generator contract JSON")
 	strategy := flag.String("strategy", "", "fixed generator strategy; requires -contract")
 	version := flag.String("generator-version", "1", "declared generator version")
+	verify := flag.String("verify", "", "existing bundle to compare with current inputs; read-only, excludes -out")
 	flag.Parse()
-	if *root == "" || *out == "" {
-		fail(fmt.Errorf("-workspace and -out are required"))
+	destination := *out
+	processBundle := designoutput.Write
+	processWithGenerator := designoutput.WriteWithGenerator
+	if *verify != "" {
+		if *out != "" {
+			fail(fmt.Errorf("-verify and -out are mutually exclusive"))
+		}
+		destination = *verify
+		processBundle = designoutput.Verify
+		processWithGenerator = designoutput.VerifyWithGenerator
+	}
+	if *root == "" || destination == "" {
+		fail(fmt.Errorf("-workspace and either -out or -verify are required"))
 	}
 	var manifest designoutput.Manifest
 	var err error
@@ -30,13 +41,13 @@ func main() {
 		if *strategy != "" || *version != "1" {
 			fail(fmt.Errorf("-strategy and -generator-version require -contract"))
 		}
-		manifest, err = designoutput.Write(*root, *out, environment.DatabaseProvider(*provider))
+		manifest, err = processBundle(*root, destination, environment.DatabaseProvider(*provider))
 	} else {
 		contractJSON, readErr := os.ReadFile(*contract)
 		if readErr != nil {
 			fail(readErr)
 		}
-		manifest, err = designoutput.WriteWithGenerator(*root, *out, environment.DatabaseProvider(*provider), contractJSON, *strategy, *version)
+		manifest, err = processWithGenerator(*root, destination, environment.DatabaseProvider(*provider), contractJSON, *strategy, *version)
 	}
 	if err != nil {
 		fail(err)
