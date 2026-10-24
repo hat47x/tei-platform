@@ -330,6 +330,11 @@ def run_scenario(client: ControlClient, scenario_path: str | Path) -> None:
             if "name" in step and field["name"] != step["name"]:
                 raise AssertionError(f"field {step['fieldAlias']} name expected "
                                      f"{step['name']!r}, got {field['name']!r}")
+        elif operation == "model_assert_table_absent":
+            import xtea_cli
+            model = xtea_cli.load_model(Path(step["path"]))
+            if any(item["id"] == step["tableId"] for item in model["tables"]):
+                raise AssertionError(f"table still exists: {step['tableId']}")
         elif operation == "snapshot":
             value = client.snapshot(**{k: v for k, v in step.items() if k != "op"})
             if step.get("path"):
