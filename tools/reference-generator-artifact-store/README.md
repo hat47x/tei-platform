@@ -47,6 +47,8 @@ go run ./tools/reference-generator-artifact-store/cmd/tei-generator-artifact-sto
 - `sourceDigest`、`binaryDigest`
 - `receiptDigest`
 
+`put`/`get`のreceiptと`list`のobject entryにも`language`を記録し、保存した候補の実行形式を一覧から区別できます。
+
 ## 保存時の検査
 
 1. 選抜receiptから候補を探す。
@@ -121,6 +123,7 @@ ssh-keygen -Y verify -f /tmp/allowed_signers -I signer -n tei-audit \
 `go test ./tools/reference-generator-artifact-store/... -count=1`で、次を確認します。
 
 - 選抜receiptからsource/binaryを保存し、source digestで取得できる。
+- `put`/`get`のreceiptと`list`のentryが`language`を返す。
 - WASI候補のsourceとwasm binaryを保存・取得できる。
 - Java候補のsourceと`Main.class`を保存・取得できる。
 - Python/JavaScript候補のsourceを保存・取得できる。artifactは空で、binary digestを持たない。
