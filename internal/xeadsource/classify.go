@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"sort"
+	"strings"
 )
 
 type CandidateRule struct {
@@ -69,8 +70,23 @@ func Classify(doc Document, policy ClassificationPolicy) []Candidate {
 			sort.Strings(c.Classifications)
 			c.Extension = rule.Extension
 			c.AuthorityLimits = append([]string(nil), rule.AuthorityLimits...)
-			sort.Strings(c.AuthorityLimits)
 		}
+		// This is only lexical source evidence. In particular it never makes
+		// Script execution authorized, classifies the business effect, or
+		// interprets the absence of a marker as proof that a Script is pure.
+		if limit := dynamicScriptSourceLimit(n); limit != "" {
+			present := false
+			for _, existing := range c.AuthorityLimits {
+				if existing == limit {
+					present = true
+					break
+				}
+			}
+			if !present {
+				c.AuthorityLimits = append(c.AuthorityLimits, limit)
+			}
+		}
+		sort.Strings(c.AuthorityLimits)
 		out = append(out, c)
 		for _, child := range n.Children {
 			walk(child)
@@ -78,4 +94,27 @@ func Classify(doc Document, policy ClassificationPolicy) []Candidate {
 	}
 	walk(doc.Root)
 	return out
+}
+
+// dynamicScriptSourceLimit observes only the exact XML attribute that carries
+// source Script text. Mentioning the method name in code or a comment does
+// not prove a call occurred. Unrecognized or foreign-namespace nodes remain
+// outside this source-derived observation.
+func dynamicScriptSourceLimit(n Node) string {
+	if !n.Known {
+		return ""
+	}
+	var body string
+	switch n.Name {
+	case "Script":
+		body = attributeValue(n, "Text")
+	case "Function":
+		body = attributeValue(n, "Script")
+	default:
+		return ""
+	}
+	if strings.Contains(body, "executeScript") {
+		return "source-script-text-mentions-executeScript-not-runtime-or-execution-authority"
+	}
+	return ""
 }
