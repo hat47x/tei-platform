@@ -314,6 +314,22 @@ def run_scenario(client: ControlClient, scenario_path: str | Path) -> None:
             data = path.read_text(encoding=step.get("encoding", "utf-8"))
             if step["contains"] in data:
                 raise AssertionError(f"{path} still contains {step['contains']!r}")
+        elif operation == "model_assert_field":
+            import xtea_cli
+            model = xtea_cli.load_model(Path(step["path"]))
+            table = next((item for item in model["tables"] if item["id"] == step["tableId"]), None)
+            if table is None:
+                raise AssertionError(f"table not found: {step['tableId']}")
+            field = next((item for item in table["fields"]
+                          if item["alias"] == step["fieldAlias"] or item["id"] == step["fieldAlias"]), None)
+            if field is None:
+                raise AssertionError(f"field not found: {step['fieldAlias']}")
+            if "dataTypeSortKey" in step and field["dataType"]["sortKey"] != step["dataTypeSortKey"]:
+                raise AssertionError(f"field {step['fieldAlias']} data type expected "
+                                     f"{step['dataTypeSortKey']!r}, got {field['dataType']['sortKey']!r}")
+            if "name" in step and field["name"] != step["name"]:
+                raise AssertionError(f"field {step['fieldAlias']} name expected "
+                                     f"{step['name']!r}, got {field['name']!r}")
         elif operation == "snapshot":
             value = client.snapshot(**{k: v for k, v in step.items() if k != "op"})
             if step.get("path"):
