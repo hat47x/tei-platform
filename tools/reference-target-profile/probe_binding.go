@@ -79,6 +79,11 @@ func snapshotProbeSource(candidatesDir, snapshotDir string, selected generatorse
 		if manifest.Source != "main.go" {
 			return manifest, fmt.Errorf("WASM probe supports only the selected main.go source")
 		}
+	case generatorselection.LanguageWasi:
+		extension = ".go"
+		if manifest.Source != "main.go" {
+			return manifest, fmt.Errorf("WASI probe supports only the selected main.go source")
+		}
 	default:
 		return manifest, fmt.Errorf("unsupported long-running candidate language: %s", language)
 	}

@@ -175,7 +175,7 @@ go run ./tools/reference-generator-selection/cmd/tei-generator-meta \
 
 ## 生成器sourceの生成
 
-`tei-generator-build`は、契約JSONと固定strategy（`template`、`alternative`、`dangerous`、`python-template`、`javascript-template`、`java-template`、`wasm-template`、`wasi-template`、`long-running-template`、`python-long-running-template`、`javascript-long-running-template`、`java-long-running-template`、`wasm-long-running-template`）から、候補sourceを決定的に生成します。
+`tei-generator-build`は、契約JSONと固定strategy（`template`、`alternative`、`dangerous`、`python-template`、`javascript-template`、`java-template`、`wasm-template`、`wasi-template`、`long-running-template`、`python-long-running-template`、`javascript-long-running-template`、`java-long-running-template`、`wasm-long-running-template`、`wasi-long-running-template`）から、候補sourceを決定的に生成します。
 
 - Goのsourceは`go/format`で整形してから書き出します。Python・JavaScript・Javaのsourceは整形せず、生成したbyte列をそのまま使います。
 - `candidate.json`には`language`、`source`（`main.go`/`main.py`/`main.js`）、`generator`を記録します。
@@ -202,7 +202,7 @@ go run ./tools/reference-generator-selection/cmd/tei-generator-meta \
 - source拡張子が`language`と一致しない候補、未知の`language`を拒否します。
 - 同じfixtureでGo候補とPython候補、Go候補とJavaScript候補、Go候補とJava候補、Go候補とWASM候補、Go候補とWASI候補の出力を比較する試験を持つ。これは同じ参照契約の範囲であり、すべての言語・Runtimeの同等性を証明しません。
 - Java、WASM、WASIは、同じ環境でのsource path非依存build一致までを確認します。別machine・別toolchain・clean cache・実JVM/実WASM runtimeでの再現性は未検証です。JVM/WASM runtimeの版・依存解決・実Targetでの起動は別の境界です。
-- WASIはNodeの`node:wasi`（preview1）を使う参照実行であり、Nodeのexperimental機能に依存します。WASI long-running/batch、wasmtime/browser/embedded runtime、実Targetでの起動は未対応です。
+- WASIはNodeの`node:wasi`（preview1）を使う参照実行であり、Nodeのexperimental機能に依存します。wasmtime/browser/embedded runtime、実Targetでの起動は未対応です。
 
 これらの参照は、別言語・別実行形式の候補を同じ選抜経路へ載せられることの確認であり、Python/JavaScript/Java/WASM製品実装の採用や、実Targetでの処理系固定を意味しません。
 
@@ -215,8 +215,8 @@ go run ./tools/reference-generator-selection/cmd/tei-generator-meta \
 - 選抜のfixture実行は、これまでどおりcaseごとにprocessを起動します。
 - `tei-target-profile`のlong-running profileは、この候補を1 processで起動し、全requestのresponseをfixtureと比較します。
 - processが途中で終了した場合、response数が足りない場合、fixtureと異なる場合は失敗します。
-- `python-long-running-template`、`javascript-long-running-template`、`java-long-running-template`、`wasm-long-running-template`は、同じ計算・拒否を各言語・実行形式のnewline-delimited JSON処理として生成します。既存の単発テンプレートは変更せず、別のtemplate digestで識別します。
-- Target ProfileのprobeはGo・Python・JavaScript・Java・WASM候補を対象とします。WASMのlong-running/batchはLinux CIで検証し、WindowsのNode wasm_execは未対応です。処理系がなければ不合格とし、Go以外にはGoのメモリ上限が効かないことをreceiptへ記録します。
+- `python-long-running-template`、`javascript-long-running-template`、`java-long-running-template`、`wasm-long-running-template`、`wasi-long-running-template`は、同じ計算・拒否を各言語・実行形式のnewline-delimited JSON処理として生成します。既存の単発テンプレートは変更せず、別のtemplate digestで識別します。
+- Target ProfileのprobeはGo・Python・JavaScript・Java・WASM・WASI候補を対象とします。WASMのlong-running/batchはLinux CIで検証し、WindowsのNode wasm_execは未対応です。WASIはNodeの`node:wasi`で実行します。処理系がなければ不合格とし、Go以外にはGoのメモリ上限が効かないことをreceiptへ記録します。
 
 ## Go候補のbuild evidence
 
@@ -311,3 +311,9 @@ reconcileは候補をビルド・実行・選抜しません。再生成した�
 - Java以外のJVM言語、.NET/WASM等と、実Targetでの処理系固定・依存解決。
 - 実Provider・実Targetでの比較。
 - 候補のartifact store、別machine・別toolchain・clean cacheでのbuild再現性（#943 / #1370 / #1104）。
+
+## 読込み済みWorldからの描画
+
+`RenderForWorld`は、呼出元が一度読み込んだWorldと契約JSONのbyte列を受け取り、入力属性・型と出力型を照合してから、既存の固定strategyのsourceとcandidate manifestを返します。filesystemの出力、build・選抜・実行は行いません。契約の複合規則の受理やHostの実行許可を与えるAPIではありません。
+
+[設計成果物bundle](../reference-design-output/README.md)では、文書とコード候補を同じWorldとsource revisionへ結び付けるために使います。manifestの対応は来歴であり、モデル全体の意味的な網羅や実行適合の証拠とは区別します。

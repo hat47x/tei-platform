@@ -25,9 +25,26 @@ go run ./tools/reference-design-output/cmd/tei-design-output \
 
 manifestは各成果物の`digest`（描画後byte列のSHA-256）と`structureRevision`（その文書が導出した構造の版）を持ちます。`sourceRevision`はWorkspaceの管理対象Source全体のrevisionで、一つのbundleが一つの受理済み状態から作られたことを示します。
 
+## 文書とコード候補を同じWorkspaceから導出する
+
+任意の `-contract` と `-strategy` を指定すると、一度読み込んだWorldを文書導出と既存の固定生成器で共有します。契約の入力属性・型と出力型をそのWorldへ照合し、不在・型不一致・不正な契約・未知strategyでは出力を公開しません。
+
+```text
+go run ./tools/reference-design-output/cmd/tei-design-output \
+  -workspace reference/workspace -out /tmp/tei-design-code-output \
+  -contract tools/reference-generator-selection/testdata/line-amount/contract.json \
+  -strategy template -generator-version 1
+```
+
+既存の文書・DDLに加え、`generated/`へsource（Goなら`main.go`）、`candidate.json`、入力契約の原byte列`contract.json`を収録します。全fileのdigestを既存manifestのartifact一覧へ載せ、共通の`sourceRevision`から追跡できます。`candidate.json`は生成器ID・宣言version・strategy・template digest・contract digest・source digestを持ちます。コードの変換・描画は既存の生成器を再利用し、第二の生成器や来歴台帳は作りません。flagを省略すれば従来の文書出力だけを行います。
+
+この契約は、Workspaceで解決した属性・型を使う **reference-localな複合規則** です。複合規則そのものの受理、モデル全体のコード化、文書とコードの意味的な網羅・同値性を証明しません。sourceは`unqualified-source-candidate`として載せ、build・実行・選抜は行いません。生成器versionは呼出元の宣言で、registryの現在性や署名者Authorityの確認ではありません。固定fixtureによる選抜、実Targetでの実行、現在の実行権限は別途確認します。
+
+これはSHO固有の書式やプレビュー・編集・保存との統合ではありません。Business cross-viewの`unsupported`も維持します。Workspaceの信頼できる受理元、読み取り中の変更を排除する原子的snapshot、入力版の真正性も、この来歴manifestだけでは保証しません。
+
 ## 守っている境界
 
-- 入力はWorkspaceの受理済みWorldとSource Indexだけです。`.tei/decisions`、`.tei/confirmations`、未受理のcandidate、Business DFDの参照用fixtureを、受理済みの意味へ昇格しません。
+- 文書・DDLの導出元はWorkspaceの受理済みWorldとSource Indexです。`.tei/decisions`、`.tei/confirmations`、未受理のcandidate、Business DFDの参照用fixtureを、受理済みの意味へ昇格しません。
 - 成果物は派生であり、編集してもWorkspaceへ戻りません。成果物からSourceを書き換える経路はありません。
 - 一覧はPatternやCapabilityが宣言した内容です。実際の副作用、権限、実行結果の観測ではありません。
 - DDLは提供元（既定はPostgreSQL）が出力できた表だけを含みます。提供元が拒否した表は`manifest.json`の`unresolved`へ残し、このツールでSQLを補いません。出力は新規作成用であり、既存データベースへの移行文ではありません。
