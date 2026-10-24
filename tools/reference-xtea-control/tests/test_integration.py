@@ -183,6 +183,8 @@ class IntegrationTest(unittest.TestCase):
         windows = self.client.windows()["windows"]
         dialog = next(w for w in windows if w["title"] == "Fake Dialog")
         self.assertTrue(dialog["modal"])
+        window_call = self.client.invoke_method({"role": "window", "window": "^Fake Dialog$"}, "toFront")
+        self.assertTrue(window_call["accepted"])
         events = [event["type"] for event in self.client.trace(since=cursor)["events"]
                   if event["target"] == operation["target"]]
         self.assertEqual(events, ["invoke", "invoke.start"])

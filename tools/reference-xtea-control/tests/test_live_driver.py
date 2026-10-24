@@ -402,6 +402,60 @@ class LiveDriverTest(unittest.TestCase):
         self.assertIn("001:Alpha:0;", observed)
         self.assertIn("003:Alpha:0;", observed)
 
+    def test_100_add_and_cancel_refresh(self):
+        self.open_function("100")
+        self.wait_class("xeadDriver.XF100")
+        table = {"windowClass": "xeadDriver.XF100$", "role": "table"}
+        field = {"windowClass": "xeadDriver.XF200$", "role": "text", "class": "JTextField$"}
+        for save in (False, True):
+            with self.subTest(save=save):
+                self.button("xeadDriver.XF100", "Add")
+                self.wait_class("xeadDriver.XF200")
+                self.client.set_value(field, "003")
+                self.client.set_value(dict(field, index=1), "FromList")
+                self.button("xeadDriver.XF200", "Add|Save" if save else "Close")
+                self.wait_class("xeadDriver.XF200", "absent")
+                rows = self.client.table_read(table)
+                self.assertEqual(rows["rowCount"], 3 if save else 2)
+                if save:
+                    self.assertIn("FromList", rows["rows"][2])
+                    self.assertIn("003:FromList:0;", self.observe())
+                else:
+                    self.assertEqual(self.observe(), self.observations[0])
+        self.button("xeadDriver.XF100", "Close")
+
+    def test_300_add_detail_and_cancel_refresh(self):
+        self.open_function("300")
+        self.wait_class("xeadDriver.XF300")
+        table = {"windowClass": "xeadDriver.XF300$", "role": "table"}
+        field = {"windowClass": "xeadDriver.XF200$", "role": "text", "class": "JTextField$"}
+        for save in (False, True):
+            with self.subTest(save=save):
+                self.button("xeadDriver.XF300", "Add")
+                self.wait_class("xeadDriver.XF200")
+                self.assertEqual(self.client.find(field)["textValue"], "001")
+                self.client.set_value(dict(field, index=1), "3")
+                self.client.set_value(dict(field, index=2), "FromDetail")
+                self.button("xeadDriver.XF200", "Add|Save" if save else "Close")
+                self.wait_class("xeadDriver.XF200", "absent")
+                rows = self.client.table_read(table)
+                self.assertEqual(rows["rowCount"], 3 if save else 2)
+                if save:
+                    self.assertIn("FromDetail", rows["rows"][2])
+                    observed = self.observe()
+                    self.assertIn("L:001:3:FromDetail;", observed)
+                    self.assertIn("001:Alpha:0;002:Beta:0;", observed)
+                else:
+                    self.assertEqual(self.observe(), self.observations[0])
+        self.client.select(table, row=2)
+        self.client.key(table, key="ENTER")
+        self.wait_class("xeadDriver.XF200")
+        self.assertEqual(self.client.find(dict(field, index=2))["textValue"], "FromDetail")
+        self.button("xeadDriver.XF200", "Close")
+        self.wait_class("xeadDriver.XF200", "absent")
+        self.assertEqual(self.client.table_read(table)["rowCount"], 3)
+        self.button("xeadDriver.XF300", "Close")
+
     def test_110_cancel_update(self):
         self.open_function("110")
         self.wait_class("xeadDriver.XF110")

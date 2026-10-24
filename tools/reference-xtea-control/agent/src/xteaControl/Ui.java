@@ -911,10 +911,7 @@ final class Ui {
                 continue;
             }
             if ("window".equals(role) && matchesComponent(window, role, text, contains, name, className)) {
-                if (found == wantedIndex) {
-                    return window;
-                }
-                found++;
+                foundComponents.add(window);
                 continue;
             }
             List<Component> components = flatten(window, true);

@@ -67,9 +67,10 @@ def write_fixture(folder: Path) -> Path:
         if typ == "300":
             f.set("HeaderFunction", "F200")
             detail = ET.SubElement(f, "Detail", Table="LINE", Caption="Lines", Order="0",
-                                   OrderBy="LINE.SEQ", InitialListing="T")
+                                   OrderBy="LINE.SEQ", InitialListing="T", DetailFunction="F201")
             fields(detail, "Column", ["LINE.SEQ", "LINE.VALUE"])
             button(detail, 0, 3, "EXIT", "Close")
+            button(detail, 1, 6, "ADD", "Add")
             button(detail, 5, 9, "OUTPUT", "Excel")
         else:
             f.set("DetailTable", "LINE")
@@ -79,6 +80,12 @@ def write_fixture(folder: Path) -> Path:
             button(f, 2, 7, "REMOVE_ROW", "Remove row")
             button(f, 3, 8, "UPDATE", "Save")
             button(f, 5, 9, "OUTPUT", "Excel")
+
+    line_entry = ET.SubElement(system, "Function", ID="F201", Type="XF200", Name="Control line entry",
+                               PrimaryTable="LINE", Size="AUTO")
+    fields(line_entry, "Field", ["LINE.ID", "LINE.SEQ", "LINE.VALUE"])
+    button(line_entry, 0, 3, "EXIT", "Close")
+    button(line_entry, 1, 6, "EDIT", "Save")
 
     f = ET.SubElement(system, "Function", ID="F311", Type="XF310", Name="Control long text",
                       HeaderTable="ITEM", DetailTable="LINE", DetailOrderBy="LINE.SEQ", Size="AUTO")
