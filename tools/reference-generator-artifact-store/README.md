@@ -124,6 +124,7 @@ ssh-keygen -Y verify -f /tmp/allowed_signers -I signer -n tei-audit \
 - WASI候補のsourceとwasm binaryを保存・取得できる。
 - Java候補のsourceと`Main.class`を保存・取得できる。
 - Python/JavaScript候補のsourceを保存・取得できる。artifactは空で、binary digestを持たない。
+- source-only objectも`list`/`prune`で検証でき、空artifactと空binary digestを照合する。
 - 同じobjectの再保存が`reused=true`になる。
 - receiptのbinary digestを改変すると`passed=false`。
 - 保存後にartifactを改変すると`passed=false`。
