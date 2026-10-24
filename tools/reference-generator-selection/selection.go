@@ -1282,6 +1282,16 @@ func resolveWasiRuntime() (nodePath, version string, available bool) {
 	return node, strings.TrimSpace(string(out)), true
 }
 
+// ResolveWasiRuntime exposes the same Node discovery for target-profile probes.
+func ResolveWasiRuntime() (nodePath, version string, available bool) {
+	return resolveWasiRuntime()
+}
+
+// WasiRunnerSource returns the embedded Node WASI preview1 runner.
+func WasiRunnerSource() []byte {
+	return wasiRunner
+}
+
 // ResolveScriptRuntime uses the same interpreter discovery for selection and
 // target-profile probes. Availability is evidence of a runnable interpreter,
 // not permission to execute a candidate or a limit on its resource use.
