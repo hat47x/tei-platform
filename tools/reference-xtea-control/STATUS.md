@@ -7,6 +7,7 @@ X-TEA制御面の現在地を、到達済みの経路と残作業の性質に分
 TEIの参照モデル再現確認で必要になるX-TEAの入力・観測を、GUIの座標操作に依存せず、生成AIが同じ手順で再実行できる状態になりました。
 
 - Modeler / Editor / Driverは、起動時JavaエージェントとシナリオJSONで操作する。
+- `.xead`は`xtea_cli.py`で直接読み、テーブル・フィールド・キー・機能・入出力・呼び出し関係をJSONで取得する。
 - 実行した版、コマンド、結果、未確認事項を残せる。
 - 別の担当者は`verify-all.ps1`で合成試験と実動試験を再実行できる。
 - XeadServerはTEIの参考対象外とし、この制御面の対象に含めない。
@@ -18,9 +19,10 @@ TEIの参照モデル再現確認で必要になるX-TEAの入力・観測を、
 | Modeler | 読み取り、About、システム名変更と保存、テーブル名変更と保存、フィールド名変更と保存、バックアップ | `scenarios/modeler-save-copy.json`、`scenarios/modeler-edit-table-name.json`、`scenarios/modeler-edit-field-name.json` |
 | Editor | 読み取り、システム名変更と保存、テーブル名変更と保存、テーブル一覧から編集画面を開く、バックアップ | `scenarios/editor-save-copy.json`、`scenarios/editor-edit-table-name.json`、`scenarios/editor-open-table-from-list.json` |
 | Driver | ログイン、XF100、XF300、XF200の更新・作成・削除、失敗時rollback | `scenarios/driver-*.json` |
+| モデルCLI | システム、テーブル、フィールド、キー、機能種別、入出力CRUD、呼び出し関係のJSON出力 | `xtea_cli.py`、`tests/test_model_cli.py` |
 | XeadServer | **対象外**。`xtea_server.py`と`server-harness/`は過去の参考資産 | `tests/test_live_*.py`、`tests/test_tomcat_war.py` |
 
-`verify-all.ps1`の既定実行ではSwing E2E 10件を確認します。XeadServerの参考試験は`-IncludeXeadServer`を付けた場合だけ実行し、TEIの比較・受入には使いません。
+`verify-all.ps1`の既定実行ではSwing E2E 10件とモデルCLI 4件を確認します。XeadServerの参考試験は`-IncludeXeadServer`を付けた場合だけ実行し、TEIの比較・受入には使いません。
 
 ## 残作業の性質
 

@@ -84,6 +84,31 @@ Serviceのハーネスは、ビルド時にだけ次の2つの互換差分を適
 
 2つ目は認証条件の挙動変更です。Serviceの成功は、この差分を明示的に適用した状態でのFunction実行経路の確認であり、上流の認証が正しいことの証明ではありません。詳細は[`server-harness/README.md`](server-harness/README.md)を参照してください。
 
+## モデルCLI（GUI不要）
+
+`xtea_cli.py`は`.xead`を直接読み、テーブル・フィールド・キー・機能・入出力・呼び出し関係を正規化したJSONで返します。X-TEAを起動せず、Swingにも依存せず、モデルを変更しません。生成AIがTEI側の機能定義と照合するときは、GUI操作ではなくこの出力を使えます。
+
+```powershell
+python xtea_cli.py summary build\modeler-fixture\MfgOrder.xead
+python xtea_cli.py tables build\modeler-fixture\MfgOrder.xead --json
+python xtea_cli.py functions build\modeler-fixture\MfgOrder.xead --type XF100 --json
+python xtea_cli.py show-table build\modeler-fixture\MfgOrder.xead 61
+python xtea_cli.py show-function build\modeler-fixture\MfgOrder.xead 17
+python xtea_cli.py export build\modeler-fixture\MfgOrder.xead > model.json
+```
+
+`export`は次の形のスキーマを返します。
+
+- `system`: 名前、版、フォーマット版
+- `subsystems`: ID、名前、並び順
+- `functionTypes`: `XF100`などのコードと名前
+- `tables`: フィールド、データ型、NOT NULL、主キー・索引キー、サブシステム
+- `functions`: 機能種別、入出力テーブル、CRUD可否、入出力パネル、呼び出し先
+
+AIは`export`のJSONを基準モデルと候補モデルでそれぞれ取得し、`tables[].id`や`functions[].id`で突き合わせます。画面を開かなくても、機能ごとの入力・出力・可能操作を比較できます。
+
+このCLIは読取り専用です。保存・更新・削除は行いません。モデルの変更が必要な場合は、従来のGUIシナリオを使ってください。
+
 ## 使い方
 
 ### 1. ビルド
@@ -252,6 +277,8 @@ python tests\test_external_tomcat.py
 2026-10-21、JDK 11.0.20.1（`--release 8`でコンパイル）で確認しました。
 
 - `python tests/test_integration.py`: 10件成功。メニュー、テキスト、ボタン、Enter、タブ、チェックボックス、コンボ、通常テーブル、X-TEA型のカスタム行オブジェクトを持つテーブル、ツリー全体の読取り、テーブル行のダブルクリック、モーダルダイアログ、スクリーンショット、トレース、未知selector、トークン拒否を合成Swingアプリで確認。
+- `python tests/test_model_cli.py`: 4件成功。合成`.xead`からシステム、テーブル、フィールド、キー、機能種別、入出力CRUD、呼び出し関係、`export`のJSONを確認。
+- 実`MfgOrder.xead`で`summary`、`tables --id 61`、`functions --type XF100`を実行し、56テーブル・233機能・XF100 47件を取得。
 - 以下はXeadServerの**参考（対象外）**としての過去結果です。TEIの比較・受入には使いません。
 - `python tests/test_server_client.py`: 4件成功。`DBMethod`のSELECT/COUNT/INSERT/UPDATE/DELETE/COMMIT/ROLLBACK/CALL/IPと`Service`をローカル模擬サーブレットで確認。
 - `python tests/test_live_server.py`: 3件成功。元の`DBMethod`を埋め込みJettyで起動し、使い捨てH2の合成テーブルに対してSELECT/COUNT/INSERT/UPDATE/DELETE/COMMIT/ROLLBACK/CALL/IPをHTTPで確認。応答のJava直列化も受信。`CALL SQUARE(9)`は「procedure was executed」を返すことを確認。
@@ -275,9 +302,7 @@ python tests\test_external_tomcat.py
 
 - Driverの明示的なトランザクションrollback操作（失敗時の内部rollbackは確認済み）、上記以外のFunction画面、元の`jdbc:derby://localhost/...`接続。
 - Modeler / Editorの要素追加・削除・並べ替え・一括置換・機能編集（両方のテーブル名変更は確認済み）。
-- XeadServerのJNDI DataSource、本番Tomcat設定、実デプロイ環境。埋め込みTomcatと使い捨ての外部Tomcat 9.0.89へのWAR配備までは確認した。
-- `Service`の認証条件の正しさ、実ユーザー、認可。ハーネスでは認証前の`userID`検査を引数`user`へ置き換えている。
-- 四つのアプリの全ダイアログ・全条件分岐の実行。経路表は入力種別とトップレベル入口の到達性を示すもので、全業務ケースの実行結果ではない。
+- 三つのSwingアプリの全ダイアログ・全条件分岐の実行。経路表は入力種別とトップレベル入口の到達性を示すもので、全業務ケースの実行結果ではない。
 - X-TEAのソースと配布JARの同一性、#940の固定baselineとの対応、TEI側の意味一致。
 - Java 8実機。コンパイルターゲットは8だが、実行確認はJDK 11。
 
@@ -287,13 +312,14 @@ python tests\test_external_tomcat.py
 reference-xtea-control/
   STATUS.md                現在地、残作業の分類、引継ぎの入口
   agent/src/xteaControl/   Java agent（Agent, BridgeServer, Ui, Json, Trace）
-  server-harness/          元DBMethod/Serviceの埋め込みJettyハーネス
-  tests/                   合成GUI E2E、XeadServer契約・実DBMethod/Service試験
+  server-harness/          XeadServerの過去調査資産（参考・対象外）
+  tests/                   合成GUI E2E、モデルCLI、XeadServer参考試験
   scenarios/               読み取り専用シナリオと、使い捨てDB向けDriver更新・作成削除シナリオ
+  xtea_cli.py               .xead読取り専用CLI（GUI不要）
   xtea_control.py          Swing制御クライアント
-  xtea_server.py           XeadServer HTTPクライアント
+  xtea_server.py           XeadServer HTTPクライアント（参考・対象外）
   build.ps1 / build.sh
-  verify-all.ps1           合成・契約・実動試験の一括実行
+  verify-all.ps1           合成GUI・モデルCLIの一括検証
   driver-fixture.ps1       使い捨てSkeleton DBの作成
   modeler-fixture.ps1      使い捨てモデル複製の作成
   launch-xtea.ps1
