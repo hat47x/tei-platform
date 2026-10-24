@@ -43,6 +43,7 @@ type Object struct {
 type Receipt struct {
 	Schema           string   `json:"schema"`
 	CandidateID      string   `json:"candidateId"`
+	Language         string   `json:"language,omitempty"`
 	SourceDigest     string   `json:"sourceDigest"`
 	BinaryDigest     string   `json:"binaryDigest"`
 	ObjectPath       string   `json:"objectPath"`
@@ -102,6 +103,7 @@ func Put(ctx context.Context, opts StoreOptions) (Receipt, error) {
 		return receipt, nil
 	}
 	sourceOnly := candidate.Language == generatorselection.LanguagePython || candidate.Language == generatorselection.LanguageJavaScript
+	receipt.Language = candidate.Language
 	receipt.SourceDigest = candidate.SourceDigest
 	receipt.BinaryDigest = candidate.BinaryDigest
 	sourceHex, err := digestHex(candidate.SourceDigest)
@@ -243,6 +245,7 @@ func Get(storeDir, sourceDigest string) (Receipt, error) {
 		return receipt, nil
 	}
 	receipt.CandidateID = object.CandidateID
+	receipt.Language = object.Language
 	receipt.BinaryDigest = object.BinaryDigest
 	receipt.ObjectPath = objectPath
 	receipt.Passed = true
