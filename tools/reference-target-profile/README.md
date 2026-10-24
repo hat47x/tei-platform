@@ -158,11 +158,19 @@ go run ./tools/reference-target-profile/cmd/tei-target-profile run \
 - `in-place`: 既存artifactを上書きし、上書き前のartifactを`history/<digest>`へ保持します。
 - `rolling`: `slots/a`と`slots/b`の2 slotを使い、非active slotへ新artifactを置いてから`current` pointerをatomicに切り替えます。旧slotは保持し、`rollback`でcurrent/previousを入れ替えます。
 - `rollback -to <digest>`: `replace`/`in-place`の`history/<digest>`から指定artifactを選び、digestを照合してからcurrentへatomicに戻します。戻す前のcurrentはhistoryへ保持します。
-- currentの退避先historyが既にある場合は、内容のdigestを照合します。読めない・一致しない場合はcurrentの置換前に拒否し、壊れたhistoryも上書きしません。この確認は単一実行内のもので、同時書込みの排他制御や電源断耐性は提供しません。
+- currentの退避先historyが既にある場合は、内容のdigestを照合します。読めない・一致しない場合はcurrentの置換前に拒否し、壊れたhistoryも上書きしません。この確認は電源断耐性を提供しません。
 - 配備後にartifact digestを再計算し、build結果と一致することを確認します。history/slotのdigestも照合します。
 - `sqlite`・`remote` storage、Go以外の候補は未対応として`passed=false`にします。
 - 実Targetのsupervisor・health check・traffic drain・電源断耐性・複数ホスト配備は扱いません。
 - `rollback -to`は`replace`/`in-place`のhistoryだけを対象とし、rollingのslot rollbackは`-to`なしの`rollback`を使います。
+
+### 同じ配備先への同時更新
+
+`deploy`（replace/in-place/rolling）と両方の`rollback`は、root内の`.update-lock` directoryを排他的に作成します。配備はbuild前、rollbackは履歴・pointerの読取り前に取得し、結果の照合まで保持します。取得できなければ待機・再試行せず`passed=false`を返し、artifact・history・pointer・stagingを変更しません。別rootの更新は妨げません。
+
+正常終了・通常のエラーではlockを解放します。強制終了・電源断で残ったlockは自動削除しません。復旧時は、同じrootに対する更新processが動いていないことと、artifact・history・pointerの状態を確認してから、空の`.update-lock` directoryを手動で削除します。稼働中のlockを削除すると排他が失われます。
+
+これは、この手順に従うローカルfilesystemのwriter間の排他です。古い版のツール、外部からの書込み、lock/rootの差替え、ネットワークfilesystem、分散lock、電源断後の整合性や自動復旧は保証しません。実Targetでの実行権限やhealth checkを与えるものでもありません。
 
 ## Profile間の意味比較
 
