@@ -1,6 +1,6 @@
 # reference-generator-artifact-store（#2016）
 
-選抜receiptのGo/Java/WASM/WASI候補sourceとbinaryを、source digestでcontent-addressedに保存・取得する参照です。保存時と取得時にdigestを再計算し、receipt・object metadata・実byteの不一致を拒否します。
+選抜receiptのGo/Java/WASM/WASI候補sourceとbinary、Python/JavaScript候補のsourceを、source digestでcontent-addressedに保存・取得する参照です。保存時と取得時にdigestを再計算し、receipt・object metadata・実byteの不一致を拒否します。
 
 署名・attestation・Authority・実Targetでの実行は扱いません。`grantsAuthority`と`provesRealTarget`は常にfalseです。
 
@@ -110,6 +110,7 @@ ssh-keygen -Y verify -f /tmp/allowed_signers -I signer -n tei-audit \
 | --- | --- |
 | receiptのsource/binary digestと実byteの一致 | 候補の正しさ・意味の受理 |
 | 再buildしたbinary digest（Go/Java/WASM/WASI） | 別machine・別toolchainでの再現性 |
+| Python/JavaScriptのsource digest | interpreter・依存ライブラリの同一性 |
 | objectのsource/artifactの改変 | 署名・attestation・署名者Authority |
 | content-addressed pathとmetadata | 実Provider・実Target・本番配備 |
 
@@ -122,6 +123,7 @@ ssh-keygen -Y verify -f /tmp/allowed_signers -I signer -n tei-audit \
 - 選抜receiptからsource/binaryを保存し、source digestで取得できる。
 - WASI候補のsourceとwasm binaryを保存・取得できる。
 - Java候補のsourceと`Main.class`を保存・取得できる。
+- Python/JavaScript候補のsourceを保存・取得できる。artifactは空で、binary digestを持たない。
 - 同じobjectの再保存が`reused=true`になる。
 - receiptのbinary digestを改変すると`passed=false`。
 - 保存後にartifactを改変すると`passed=false`。
@@ -144,5 +146,5 @@ ssh-keygen -Y verify -f /tmp/allowed_signers -I signer -n tei-audit \
 - 別machine・別toolchain・clean cacheでのbuild再現性。
 - 保持期間、監査アクセス権、削除承認、audit/checkpointの署名・実行者identity、chain全体の置換耐性、remote object store。
 - artifactの実行承認、実Targetへの配備、ロールバック。
-- Python/JavaScript候補の保存。Go/Java/WASM/WASIだけを対象とする。
+- Python/JavaScriptのinterpreter・依存ライブラリ・実行環境の同一性。
 - WASM/WASIの実runtimeでの実行、実Targetへの配備。
