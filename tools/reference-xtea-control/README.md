@@ -193,9 +193,11 @@ python xtea_control.py --endpoint build\editor-endpoint.json `
   scenario scenarios\editor-open-table-from-list.json
 python xtea_control.py --endpoint build\editor-endpoint.json `
   scenario scenarios\editor-delete-table.json
+python xtea_control.py --endpoint build\editor-endpoint.json `
+  scenario scenarios\editor-add-function.json
 ```
 
-`editor-open-table-from-list.json`はテーブル一覧のダブルクリックで編集画面を開く読取り専用の確認です。残りは複製したモデルのシステム名・部門テーブル名を変更し、または部門テーブルを削除して保存します。原本や共有モデルには実行しないでください。
+`editor-open-table-from-list.json`はテーブル一覧のダブルクリックで編集画面を開く読取り専用の確認です。残りは複製したモデルのシステム名・部門テーブル名を変更し、部門テーブルを削除し、または機能`TEST_FUNCTION`を追加して保存します。原本や共有モデルには実行しないでください。
 
 Driver:
 
@@ -245,7 +247,7 @@ python xtea_control.py --endpoint build\modeler-endpoint.json `
   scenario scenarios\modeler-read-only-about.json
 ```
 
-シナリオの`steps`は`wait_window`、`invoke`、`invoke_method`、`set`、`select`、`click`、`drag`、`table_set`、`table_assert`、`table_row_count`、`key`、`close`、`wait_selector`、`wait_text`、`assert_text`、`snapshot`、`screenshot`、`file_contains`、`file_not_contains`、`model_assert_field`、`model_assert_table_absent`、`sleep`を扱います。AIは座標ではなく、`{"role":"button","text":"OK"}`のような意味的な選択子を生成すれば足ります。
+シナリオの`steps`は`wait_window`、`invoke`、`invoke_method`、`set`、`select`、`click`、`drag`、`table_set`、`table_assert`、`table_row_count`、`key`、`close`、`wait_selector`、`wait_text`、`assert_text`、`snapshot`、`screenshot`、`file_contains`、`file_not_contains`、`model_assert_field`、`model_assert_table_absent`、`model_assert_function`、`sleep`を扱います。AIは座標ではなく、`{"role":"button","text":"OK"}`のような意味的な選択子を生成すれば足ります。
 
 ### 5. XeadServer
 
@@ -291,7 +293,7 @@ python tests\test_external_tomcat.py
 2026-10-21、JDK 11.0.20.1（`--release 8`でコンパイル）で確認しました。
 
 - `python tests/test_integration.py`: 10件成功。メニュー、テキスト、ボタン、Enter、タブ、チェックボックス、コンボ、通常テーブル、X-TEA型のカスタム行オブジェクトを持つテーブル、ツリー全体の読取り、テーブル行のダブルクリック、モーダルダイアログ、スクリーンショット、トレース、未知selector、トークン拒否を合成Swingアプリで確認。
-- `python tests/test_model_cli.py`: 5件成功。合成`.xead`からシステム、テーブル、フィールド、キー、機能種別、入出力CRUD、呼び出し関係、`export`のJSON、`diff`の追加・削除・変更を確認。
+- `python tests/test_model_cli.py`: 6件成功。合成`.xead`からシステム、テーブル、フィールド、キー、機能種別、入出力CRUD、呼び出し関係、`export`のJSON、`diff`の追加・削除・変更、Editor形式の`Type`属性を確認。
 - 実`MfgOrder.xead`で`summary`、`tables --id 61`、`functions --type XF100`を実行し、56テーブル・233機能・XF100 47件を取得。
 - 以下はXeadServerの**参考（対象外）**としての過去結果です。TEIの比較・受入には使いません。
 - `python tests/test_server_client.py`: 4件成功。`DBMethod`のSELECT/COUNT/INSERT/UPDATE/DELETE/COMMIT/ROLLBACK/CALL/IPと`Service`をローカル模擬サーブレットで確認。
@@ -311,6 +313,7 @@ python tests\test_external_tomcat.py
 - 実Editorの要素編集として、`tree-read`の`indices`で部門テーブルを選択し、Enterでテーブル編集画面を開き、テーブル名を`部門TEST`へ変更して保存。XMLの`Table ID="61"`の`Name`が変わったことを確認。`scenarios/editor-edit-table-name.json`で再現できます。
 - 実Editorのテーブル一覧で`61 部門`の行をダブルクリックし、`61`と`部門`を表示する編集画面が開くことを確認。`scenarios/editor-open-table-from-list.json`で再現できます。
 - 実Editorのテーブル削除として、`61 部門`を選択・Enterで開き、`jMenuItemXETreeNodeDelete_actionPerformed`を実行して保存。XMLから`Table ID="61"`が消えたことを`model_assert_table_absent`で確認。`scenarios/editor-delete-table.json`で再現できます。
+- 実Editorの機能追加として、機能一覧から追加ウィザードを開き、機能ID`999`、機能名`TEST_FUNCTION`、機能タイプ`XF000`を設定して保存。XMLに`Function ID="999" Type="XF000"`が追加されたことを確認。`scenarios/editor-add-function.json`で再現できます。
 - 実X-TEA Editor（配布`xteaedt.jar`）で`MfgOrder.xead`を開き、メニュー8件・操作40件を列挙し、スナップショットとスクリーンショットを確認。実ツリーは`tree-read`で328ノードを列挙できた。
 - 実X-TEA Driver（配布`xteadrv.jar`）で、引数なしの起動時に「システム定義ファイルが指定されていません」のダイアログへ到達。`Skeleton.xeaf`の複製（DB URLだけを埋め込みDerbyへ変更）でログイン画面を開き、合成ユーザ`00000`でログイン後、`XF100`「部門情報の一覧・保守」を開き、カスタム行オブジェクトから4列・2行を読み取り、画面キャプチャを取得。選択行でEnterを押して`XF300`詳細画面を開き、そのスナップショットと画面キャプチャも取得。`F3 閉じる`で両画面を閉じる操作を確認。
 - 実Driverの更新経路として、`XF300`から`F8 部門情報`、`F5 編集`、部門名の変更、`F5 更新`を実行し、一覧を開き直して新しい値を確認。更新後のDerby DBを独立に問い合わせ、`AT010.CDBUMON=00001`の`TXBUMON`が変更されたことも確認。`scenarios/driver-update-department.json`と`driver-fixture.ps1`で再現できます。更新は使い捨てDBだけで行っています。
@@ -320,7 +323,7 @@ python tests\test_external_tomcat.py
 ### 検証していないこと
 
 - Driverの明示的なトランザクションrollback操作（失敗時の内部rollbackは確認済み）、上記以外のFunction画面、元の`jdbc:derby://localhost/...`接続。
-- Editorの要素追加・並べ替え・一括置換・機能編集（Modelerのテーブル名・フィールド名・追加・削除・型変更・並べ替えとEditorのテーブル削除は確認済み）。
+- Editorの要素並べ替え・一括置換・機能編集（Modelerの全フィールド操作と、Editorのテーブル削除・機能追加は確認済み）。
 - 三つのSwingアプリの全ダイアログ・全条件分岐の実行。経路表は入力種別とトップレベル入口の到達性を示すもので、全業務ケースの実行結果ではない。
 - X-TEAのソースと配布JARの同一性、#940の固定baselineとの対応、TEI側の意味一致。
 - Java 8実機。コンパイルターゲットは8だが、実行確認はJDK 11。

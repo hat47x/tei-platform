@@ -557,6 +557,13 @@ final class Ui {
                         Rectangle cell = table.getCellRect(row, column >= 0 ? column : 0, true);
                         x = cell.x + Math.max(1, cell.width / 2);
                         y = cell.y + Math.max(1, cell.height / 2);
+                    } else if (target instanceof JList && row >= 0) {
+                        JList list = (JList) target;
+                        Rectangle cell = list.getCellBounds(row, row);
+                        if (cell != null) {
+                            x = cell.x + Math.max(1, cell.width / 2);
+                            y = cell.y + Math.max(1, cell.height / 2);
+                        }
                     } else if (target instanceof JTree && ((JTree) target).getSelectionPath() != null) {
                         Rectangle path = ((JTree) target).getPathBounds(((JTree) target).getSelectionPath());
                         if (path != null) {
@@ -661,7 +668,7 @@ final class Ui {
         }
         method.setAccessible(true);
         final String label = describeComponent(target);
-        SwingUtilities.invokeAndWait(new Runnable() {
+        SwingUtilities.invokeLater(new Runnable() {
             @Override
             public void run() {
                 try {
@@ -671,7 +678,7 @@ final class Ui {
                         method.invoke(target, new ActionEvent(target, ActionEvent.ACTION_PERFORMED, ""));
                     }
                 } catch (Throwable t) {
-                    throw new RuntimeException(t);
+                    Trace.record("invoke-method.error", label, describe(t));
                 }
             }
         });

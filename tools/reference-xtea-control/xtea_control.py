@@ -347,6 +347,19 @@ def run_scenario(client: ControlClient, scenario_path: str | Path) -> None:
             model = xtea_cli.load_model(Path(step["path"]))
             if any(item["id"] == step["tableId"] for item in model["tables"]):
                 raise AssertionError(f"table still exists: {step['tableId']}")
+        elif operation == "model_assert_function":
+            import xtea_cli
+            model = xtea_cli.load_model(Path(step["path"]))
+            function = next((item for item in model["functions"]
+                             if item["id"] == step["functionId"]), None)
+            if function is None:
+                raise AssertionError(f"function not found: {step['functionId']}")
+            if "name" in step and function["name"] != step["name"]:
+                raise AssertionError(f"function {step['functionId']} name expected "
+                                     f"{step['name']!r}, got {function['name']!r}")
+            if "type" in step and function["type"]["code"] != step["type"]:
+                raise AssertionError(f"function {step['functionId']} type expected "
+                                     f"{step['type']!r}, got {function['type']['code']!r}")
         elif operation == "snapshot":
             value = client.snapshot(**{k: v for k, v in step.items() if k != "op"})
             if step.get("path"):
