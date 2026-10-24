@@ -77,6 +77,10 @@ WebAssemblyの参照候補も生成できます。
 go run ./tools/reference-generator-selection/cmd/tei-generator-build \
   -contract tools/reference-generator-selection/testdata/line-amount/contract.json \
   -strategy wasm-template -out /tmp/line-amount-wasm
+
+go run ./tools/reference-generator-selection/cmd/tei-generator-build \
+  -contract tools/reference-generator-selection/testdata/line-amount/contract.json \
+  -strategy wasi-template -out /tmp/line-amount-wasi
 ```
 
 外部モデルが出したsourceは、promptとcontextとともに記録できます。
@@ -171,7 +175,7 @@ go run ./tools/reference-generator-selection/cmd/tei-generator-meta \
 
 ## 生成器sourceの生成
 
-`tei-generator-build`は、契約JSONと固定strategy（`template`、`alternative`、`dangerous`、`python-template`、`javascript-template`、`java-template`、`wasm-template`、`long-running-template`、`python-long-running-template`、`javascript-long-running-template`、`java-long-running-template`、`wasm-long-running-template`）から、候補sourceを決定的に生成します。
+`tei-generator-build`は、契約JSONと固定strategy（`template`、`alternative`、`dangerous`、`python-template`、`javascript-template`、`java-template`、`wasm-template`、`wasi-template`、`long-running-template`、`python-long-running-template`、`javascript-long-running-template`、`java-long-running-template`、`wasm-long-running-template`）から、候補sourceを決定的に生成します。
 
 - Goのsourceは`go/format`で整形してから書き出します。Python・JavaScript・Javaのsourceは整形せず、生成したbyte列をそのまま使います。
 - `candidate.json`には`language`、`source`（`main.go`/`main.py`/`main.js`）、`generator`を記録します。
@@ -186,17 +190,19 @@ go run ./tools/reference-generator-selection/cmd/tei-generator-meta \
 
 ## 別言語候補の実行
 
-`python-template`はPython、`javascript-template`はJavaScript、`java-template`はJava、`wasm-template`はGo sourceからWebAssemblyの参照候補を生成します。候補manifestの`language`は`python`/`javascript`/`java`/`wasm`、sourceは`main.py`/`main.js`/`Main.java`/`main.go`です。
+`python-template`はPython、`javascript-template`はJavaScript、`java-template`はJava、`wasm-template`はGo sourceからWebAssemblyの参照候補、`wasi-template`はGo sourceからWASI preview1の参照候補を生成します。候補manifestの`language`は`python`/`javascript`/`java`/`wasm`/`wasi`、sourceは`main.py`/`main.js`/`Main.java`/`main.go`です。
 
 - Go候補は`go build`で実行ファイルを作り、`binaryDigest`を記録します。
 - Python候補は`python3`または`python`、JavaScript候補は`node`でsourceを実行します。どちらも`binaryDigest`は空です。
 - Java候補はsourceを2つの別directoryへcopyし、それぞれ`javac -d <classes> Main.java`でcompileして`Main.class`のdigestを比較します。一致した場合だけ合格し、`java -cp <classes> Main`で実行します。`binaryDigest`は`Main.class`のdigest、`reproducibility`は`path-independent-twice`です。
 - WASM候補はsourceを2つの別directoryへcopyし、それぞれ`GOOS=js GOARCH=wasm go build -trimpath -buildvcs=false`で`.wasm`を作ってdigestを比較します。一致した場合だけ合格し、`node <GOROOT>/lib/wasm/wasm_exec_node.js <candidate.wasm>`で実行します。`binaryDigest`はwasm binaryのdigest、`reproducibility`は`path-independent-twice`です。
-- receiptの`runtime`へ、言語、起動方法、処理系のversion、利用可否を記録します。Javaは`javac`と`java`、WASMは`node`と`wasm_exec_node.js`が必要です。
+- WASI候補はsourceを2つの別directoryへcopyし、それぞれ`GOOS=wasip1 GOARCH=wasm go build -trimpath -buildvcs=false`で`.wasm`を作ってdigestを比較します。一致した場合だけ合格し、`node --no-warnings <embedded wasi_node.js> <candidate.wasm>`で実行します。`binaryDigest`はwasm binaryのdigest、`reproducibility`は`path-independent-twice`です。
+- receiptの`runtime`へ、言語、起動方法、処理系のversion、利用可否を記録します。Javaは`javac`と`java`、WASMは`node`と`wasm_exec_node.js`、WASIは`node`の`node:wasi`が必要です。
 - 処理系が見つからない場合は`runtime unavailable`として拒否し、PASSや空の結果へ潰しません。
 - source拡張子が`language`と一致しない候補、未知の`language`を拒否します。
-- 同じfixtureでGo候補とPython候補、Go候補とJavaScript候補、Go候補とJava候補、Go候補とWASM候補の出力を比較する試験を持つ。これは同じ参照契約の範囲であり、すべての言語・Runtimeの同等性を証明しません。
-- JavaとWASMは、同じ環境でのsource path非依存build一致までを確認します。別machine・別toolchain・clean cache・実JVM/実WASM runtimeでの再現性は未検証です。JVM/WASM runtimeの版・依存解決・実Targetでの起動は別の境界です。
+- 同じfixtureでGo候補とPython候補、Go候補とJavaScript候補、Go候補とJava候補、Go候補とWASM候補、Go候補とWASI候補の出力を比較する試験を持つ。これは同じ参照契約の範囲であり、すべての言語・Runtimeの同等性を証明しません。
+- Java、WASM、WASIは、同じ環境でのsource path非依存build一致までを確認します。別machine・別toolchain・clean cache・実JVM/実WASM runtimeでの再現性は未検証です。JVM/WASM runtimeの版・依存解決・実Targetでの起動は別の境界です。
+- WASIはNodeの`node:wasi`（preview1）を使う参照実行であり、Nodeのexperimental機能に依存します。WASI long-running/batch、wasmtime/browser/embedded runtime、実Targetでの起動は未対応です。
 
 これらの参照は、別言語・別実行形式の候補を同じ選抜経路へ載せられることの確認であり、Python/JavaScript/Java/WASM製品実装の採用や、実Targetでの処理系固定を意味しません。
 

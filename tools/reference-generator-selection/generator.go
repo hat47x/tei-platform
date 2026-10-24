@@ -53,6 +53,7 @@ var generatorTemplates = map[string]generatorTemplate{
 	"wasm-template":                    {file: "templates/template.go.tmpl", id: "line-amount-wasm-template", origin: "template", strategy: "wasm-template", language: LanguageWasm, source: "main.go"},
 	"java-long-running-template":       {file: "templates/Main-long-running.java.tmpl", id: "line-amount-java-long-running-template", origin: "template", strategy: "java-long-running-template", language: LanguageJava, source: "Main.java"},
 	"wasm-long-running-template":       {file: "templates/template-long-running.go.tmpl", id: "line-amount-wasm-long-running-template", origin: "template", strategy: "wasm-long-running-template", language: LanguageWasm, source: "main.go"},
+	"wasi-template":                    {file: "templates/template.go.tmpl", id: "line-amount-wasi-template", origin: "template", strategy: "wasi-template", language: LanguageWasi, source: "main.go"},
 }
 
 type templateData struct {
@@ -121,7 +122,7 @@ func renderCandidateVersion(contractPath, strategy, version string) (renderedCan
 		return renderedCandidate{}, err
 	}
 	formatted := []byte(rendered.String())
-	if tmpl.language == LanguageGo || tmpl.language == LanguageWasm {
+	if tmpl.language == LanguageGo || tmpl.language == LanguageWasm || tmpl.language == LanguageWasi {
 		formatted, err = format.Source(formatted)
 		if err != nil {
 			return renderedCandidate{}, fmt.Errorf("generated source is not valid Go: %w", err)
