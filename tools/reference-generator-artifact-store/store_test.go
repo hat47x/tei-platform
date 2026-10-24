@@ -279,6 +279,71 @@ func TestPutAndGetJavaArtifact(t *testing.T) {
 	}
 }
 
+func TestPutAndGetSourceOnlyArtifacts(t *testing.T) {
+	if _, err := exec.LookPath("node"); err != nil {
+		t.Skip("node is not available")
+	}
+	for _, test := range []struct {
+		strategy string
+		language string
+	}{
+		{strategy: "python-template", language: generatorselection.LanguagePython},
+		{strategy: "javascript-template", language: generatorselection.LanguageJavaScript},
+	} {
+		t.Run(test.language, func(t *testing.T) {
+			workspace, contract, fixtures, _ := selectionPaths(t)
+			candidates := filepath.Join(t.TempDir(), "candidates")
+			if _, err := generatorselection.GenerateVersion(contract, test.strategy, "1",
+				filepath.Join(candidates, test.strategy)); err != nil {
+				t.Fatal(err)
+			}
+			selection, err := generatorselection.Select(context.Background(), workspace, contract, fixtures, candidates)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !selection.Passed || len(selection.Candidates) != 1 || !selection.Candidates[0].Passed {
+				t.Fatalf("%s candidate did not pass selection: %+v", test.language, selection.Candidates)
+			}
+			if selection.Candidates[0].BinaryDigest != "" {
+				t.Fatalf("source-only candidate has a binary digest: %+v", selection.Candidates[0])
+			}
+			raw, err := json.MarshalIndent(selection, "", "  ")
+			if err != nil {
+				t.Fatal(err)
+			}
+			receiptPath := filepath.Join(t.TempDir(), "selection.json")
+			if err := os.WriteFile(receiptPath, append(raw, '\n'), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			storeDir := t.TempDir()
+			put, err := Put(context.Background(), StoreOptions{
+				ReceiptPath: receiptPath, CandidateID: selection.Candidates[0].ID,
+				CandidatesDir: candidates, StoreDir: storeDir,
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !put.Passed || put.ObjectPath == "" || put.BinaryDigest != "" {
+				t.Fatalf("%s artifact was not stored: %+v", test.language, put)
+			}
+			artifact, err := os.ReadFile(filepath.Join(put.ObjectPath, "artifact"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(artifact) != 0 {
+				t.Fatalf("source-only artifact is not empty: %d bytes", len(artifact))
+			}
+			got, err := Get(storeDir, put.SourceDigest)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !got.Passed || got.BinaryDigest != "" {
+				t.Fatalf("%s artifact was not read back: %+v", test.language, got)
+			}
+		})
+	}
+}
+
 func TestPutRejectsUnknownCandidate(t *testing.T) {
 	receiptPath, _ := writeSelectionReceipt(t)
 	_, _, _, candidates := selectionPaths(t)
