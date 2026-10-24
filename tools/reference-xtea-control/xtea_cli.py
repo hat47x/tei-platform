@@ -101,6 +101,8 @@ def load_model(path: Path) -> Dict[str, Any]:
     def function_info(function: ET.Element) -> Dict[str, Any]:
         function_type_id = _s(function, "FunctionTypeID")
         function_type = function_types.get(function_type_id)
+        type_code = _s(function_type, "SortKey") or _s(function, "Type")
+        type_name = _s(function_type, "Name") or type_code
         io_tables = []
         for io_table in function.findall("IOTable"):
             table_id = _s(io_table, "TableID")
@@ -142,8 +144,8 @@ def load_model(path: Path) -> Dict[str, Any]:
             "sortKey": _s(function, "SortKey"),
             "type": {
                 "id": function_type_id,
-                "code": _s(function_type, "SortKey"),
-                "name": _s(function_type, "Name"),
+                "code": type_code,
+                "name": type_name,
             },
             "subsystem": {"id": _s(function, "SubsystemID"),
                           "name": subsystem_name(_s(function, "SubsystemID"))},

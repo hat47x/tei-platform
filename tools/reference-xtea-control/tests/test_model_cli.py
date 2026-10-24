@@ -56,6 +56,20 @@ class ModelCliTest(unittest.TestCase):
         self.assertEqual(menu["calls"][0]["id"], "20")
         self.assertEqual(menu["ioPanels"][0]["background"], "WINDOW")
 
+    def test_type_attribute_fallback(self) -> None:
+        text = FIXTURE.read_text(encoding="utf-8")
+        text = text.replace('FunctionTypeID="1"', 'Type="XF100"')
+        with tempfile.NamedTemporaryFile("w", suffix=".xead", encoding="utf-8",
+                                         delete=False) as handle:
+            handle.write(text)
+            modified_path = Path(handle.name)
+        try:
+            model = xtea_cli.load_model(modified_path)
+        finally:
+            modified_path.unlink()
+        functions = {item["id"]: item for item in model["functions"]}
+        self.assertEqual(functions["20"]["type"]["code"], "XF100")
+
     def test_diff_changed_field_and_removed_function(self) -> None:
         self.assertEqual(
             xtea_cli.diff_models(self.model, self.model)["tables"]["changed"], [])
