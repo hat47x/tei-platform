@@ -105,13 +105,18 @@ class ControlClient:
         return self.request("POST", "/select", body)
 
     def click(self, selector: Dict[str, Any], count: int = 1,
-              row: Optional[int] = None, column: Optional[int] = None) -> Dict[str, Any]:
-        body: Dict[str, Any] = {"selector": selector, "count": count}
+              row: Optional[int] = None, column: Optional[int] = None,
+              button: int = 1) -> Dict[str, Any]:
+        body: Dict[str, Any] = {"selector": selector, "count": count, "button": button}
         if row is not None:
             body["row"] = row
         if column is not None:
             body["column"] = column
         return self.request("POST", "/click", body)
+
+    def invoke_method(self, selector: Dict[str, Any], method: str) -> Dict[str, Any]:
+        return self.request("POST", "/invoke-method",
+                            {"selector": selector, "method": method})
 
     def table_set(self, selector: Dict[str, Any], row: int, column: Any, value: Any) -> Dict[str, Any]:
         return self.request("POST", "/table/set",
@@ -284,7 +289,9 @@ def run_scenario(client: ControlClient, scenario_path: str | Path) -> None:
                 raise AssertionError(f"table row count expected {step['equals']}, got {value['rowCount']}")
         elif operation == "click":
             client.click(step["selector"], int(step.get("count", 1)),
-                         step.get("row"), step.get("column"))
+                         step.get("row"), step.get("column"), int(step.get("button", 1)))
+        elif operation == "invoke_method":
+            client.invoke_method(step["selector"], step["method"])
         elif operation == "key":
             client.key(step.get("selector"), step.get("key"), step.get("text"), step.get("modifiers"))
         elif operation == "close":
@@ -316,6 +323,11 @@ def run_scenario(client: ControlClient, scenario_path: str | Path) -> None:
             data = path.read_text(encoding=step.get("encoding", "utf-8"))
             if step["contains"] not in data:
                 raise AssertionError(f"{path} does not contain {step['contains']!r}")
+        elif operation == "file_not_contains":
+            path = Path(step["path"])
+            data = path.read_text(encoding=step.get("encoding", "utf-8"))
+            if step["contains"] in data:
+                raise AssertionError(f"{path} still contains {step['contains']!r}")
         elif operation == "snapshot":
             value = client.snapshot(**{k: v for k, v in step.items() if k != "op"})
             if step.get("path"):
@@ -399,6 +411,11 @@ def build_parser() -> argparse.ArgumentParser:
     click.add_argument("--count", type=int, choices=[1, 2, 3], default=1)
     click.add_argument("--row", type=int)
     click.add_argument("--column", type=int)
+    click.add_argument("--button", type=int, choices=[1, 3], default=1)
+
+    invoke_method = sub.add_parser("invoke-method")
+    _add_selector_arguments(invoke_method)
+    invoke_method.add_argument("--method", required=True)
 
     close = sub.add_parser("close")
     _add_selector_arguments(close)
@@ -480,7 +497,9 @@ def main(argv: Optional[List[str]] = None) -> int:
         elif args.command == "key":
             _print(client.key(selector_from_args(args) or None, args.key, args.type_text, args.modifiers))
         elif args.command == "click":
-            _print(client.click(selector_from_args(args), args.count, args.row, args.column))
+            _print(client.click(selector_from_args(args), args.count, args.row, args.column, args.button))
+        elif args.command == "invoke-method":
+            _print(client.invoke_method(selector_from_args(args), args.method))
         elif args.command == "close":
             _print(client.close(selector_from_args(args)))
         elif args.command == "wait-window":

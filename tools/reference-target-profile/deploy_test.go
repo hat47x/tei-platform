@@ -100,6 +100,88 @@ func TestRollbackToHistoryArtifact(t *testing.T) {
 	}
 }
 
+func TestRollbackToPreservesVerifiedCurrentHistory(t *testing.T) {
+	for _, state := range []string{"missing", "valid", "corrupt", "directory"} {
+		t.Run(state, func(t *testing.T) {
+			root := t.TempDir()
+			history := filepath.Join(root, "history")
+			if err := os.Mkdir(history, 0o755); err != nil {
+				t.Fatal(err)
+			}
+			current, target := []byte("current artifact"), []byte("retired artifact")
+			targetDigest := digestBytes(target)
+			targetHistory := filepath.Join(history, strings.TrimPrefix(targetDigest, "sha256:"))
+			currentHistory := filepath.Join(history, strings.TrimPrefix(digestBytes(current), "sha256:"))
+			currentPath := filepath.Join(root, "artifact")
+			for path, contents := range map[string][]byte{currentPath: current, targetHistory: target} {
+				if err := os.WriteFile(path, contents, 0o755); err != nil {
+					t.Fatal(err)
+				}
+			}
+			switch state {
+			case "valid", "corrupt":
+				contents := current
+				if state == "corrupt" {
+					contents = []byte("damaged history")
+				}
+				if err := os.WriteFile(currentHistory, contents, 0o600); err != nil {
+					t.Fatal(err)
+				}
+			case "directory":
+				if err := os.Mkdir(currentHistory, 0o755); err != nil {
+					t.Fatal(err)
+				}
+			}
+			receipt, err := RollbackTo(root, targetDigest)
+			if err != nil {
+				t.Fatal(err)
+			}
+			want := target
+			if state == "corrupt" || state == "directory" {
+				want = current
+				if receipt.Passed || !strings.Contains(receipt.Reason, "current history artifact") {
+					t.Fatalf("unusable current history was accepted: %+v", receipt)
+				}
+				if _, err := os.Stat(filepath.Join(root, ".artifact-rollback")); !os.IsNotExist(err) {
+					t.Fatalf("rollback staging started before history validation: %v", err)
+				}
+			} else {
+				if !receipt.Passed || receipt.PreviousDigest != digestBytes(current) {
+					t.Fatalf("valid rollback failed: %+v", receipt)
+				}
+				installed, err := os.ReadFile(currentPath)
+				if err != nil || string(installed) != string(target) {
+					t.Fatalf("target artifact not installed: %q, %v", installed, err)
+				}
+				saved, err := os.ReadFile(currentHistory)
+				if err != nil || string(saved) != string(current) {
+					t.Fatalf("current artifact not retained: %q, %v", saved, err)
+				}
+				// The retained artifact must support the reverse rollback too.
+				reverse, err := RollbackTo(root, receipt.PreviousDigest)
+				if err != nil || !reverse.Passed || reverse.PreviousDigest != targetDigest {
+					t.Fatalf("reverse rollback failed: %+v, %v", reverse, err)
+				}
+				want = current
+			}
+			installed, err := os.ReadFile(currentPath)
+			if err != nil || string(installed) != string(want) {
+				t.Fatalf("current artifact changed unexpectedly: %q, %v", installed, err)
+			}
+			storedTarget, err := os.ReadFile(targetHistory)
+			if err != nil || string(storedTarget) != string(target) {
+				t.Fatalf("target history changed: %q, %v", storedTarget, err)
+			}
+			if state == "corrupt" {
+				stored, err := os.ReadFile(currentHistory)
+				if err != nil || string(stored) != "damaged history" {
+					t.Fatalf("damaged evidence was overwritten: %q, %v", stored, err)
+				}
+			}
+		})
+	}
+}
+
 func TestDeployInPlaceUpdatesTarget(t *testing.T) {
 	_, _, _, candidates := selectionPaths(t)
 	root := t.TempDir()
