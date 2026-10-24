@@ -65,13 +65,13 @@ memory limitは`GOMEMLIMIT`としてselectionのサブプロセスへ渡しま�
 
 `observability`の`stdout`・`stderr`・`exit-code`は、選択候補の各case実行からdigest・exit codeを観測します。`audit-log`等の未対応channelを宣言したprofileは`observation.unsupported`へ記録し、`passed=false`にします。暗黙に別の観測手段で代替しません。
 
-`processModel`は、oneshotならcaseごとのprocess実行、long-running/batchなら1 processへ全requestを送り全responseを比較します。long-running/batch probeはGo・Python・JavaScript・Java・WASM候補を対象とし、processが途中で終了した場合、終了codeが0以外の場合、responseの欠落・過剰・期待値との不一致、末尾を含むJSONの破損がある場合は`passed=false`にします。全responseをEOFまで読み、末尾の空白だけは許容します。batchはsingle ephemeral processとして扱い、scheduler・job queue・再試行は実装しません。WindowsのNode wasm_execはmulti-request streamの終了時に非0で終了するため、WASMのlong-running/batch probeはLinux CIだけで検証し、Windowsでは未対応として扱います。
+`processModel`は、oneshotならcaseごとのprocess実行、long-running/batchなら1 processへ全requestを送り全responseを比較します。long-running/batch probeはGo・Python・JavaScript・Java・WASM・WASI候補を対象とし、processが途中で終了した場合、終了codeが0以外の場合、responseの欠落・過剰・期待値との不一致、末尾を含むJSONの破損がある場合は`passed=false`にします。全responseをEOFまで読み、末尾の空白だけは許容します。batchはsingle ephemeral processとして扱い、scheduler・job queue・再試行は実装しません。WindowsのNode wasm_execはmulti-request streamの終了時に非0で終了するため、WASMのlong-running/batch probeはLinux CIだけで検証し、Windowsでは未対応として扱います。WASIはNodeの`node:wasi`（preview1）で実行します。
 
 常駐probeはdirectory名ではなく、選抜receiptの候補IDに一致するmanifestを探します。候補IDの重複、languageやsource digestの変更、実際のsource bytesと選抜digestの不一致は、processを起動する前に拒否します。照合した単一sourceのbytesを専用の一時directoryへコピーし、そのコピーをbuildまたは実行します。候補directoryの隣接ファイルは取り込みません。
 
-Goは選抜と同じ `go build -trimpath -buildvcs=false -o ... main.go` でbuildし、binary digestも選抜receiptと一致した場合だけ実行します。同じsourceでもtoolchainやbuild環境の違いでbinaryが変われば拒否します。Javaは`javac -d <classes> Main.java`でcompileし、`Main.class`のdigestが選抜receiptと一致した場合だけ実行します。`processModel`には `candidateId`、`sourceDigest`、`binaryDigest`、`binding=source-and-binary-digest`を記録します。Python/JavaScriptは `binding=source-digest`を記録し、interpreterや依存ライブラリの同一性までは保証しません。
+Goは選抜と同じ `go build -trimpath -buildvcs=false -o ... main.go` でbuildし、binary digestも選抜receiptと一致した場合だけ実行します。同じsourceでもtoolchainやbuild環境の違いでbinaryが変われば拒否します。Javaは`javac -d <classes> Main.java`でcompileし、`Main.class`のdigestが選抜receiptと一致した場合だけ実行します。WASMは`GOOS=js`、WASIは`GOOS=wasip1`で`.wasm`へbuildし、wasm binaryのdigestを選抜receiptと照合します。`processModel`には `candidateId`、`sourceDigest`、`binaryDigest`、`binding=source-and-binary-digest`を記録します。Python/JavaScriptは `binding=source-digest`を記録し、interpreterや依存ライブラリの同一性までは保証しません。
 
-対象は単一の通常ファイルです。Goは `main.go`、Pythonは `.py`、JavaScriptは `.js`、Javaは `Main.java`を対象とし、sourceのdirectory参照・symlink・複数ファイル構成は対応しません。これは参照probeの実行対象を選抜証拠と結び付ける確認であり、署名済み来歴や実Targetへの配備受理ではありません。ローカル配備のGo buildも同じ単一 `main.go` のbuild方法を共有しますが、配備へ選抜receiptとの照合を追加したものではありません。
+対象は単一の通常ファイルです。Go/WASM/WASIは `main.go`、Pythonは `.py`、JavaScriptは `.js`、Javaは `Main.java`を対象とし、sourceのdirectory参照・symlink・複数ファイル構成は対応しません。これは参照probeの実行対象を選抜証拠と結び付ける確認であり、署名済み来歴や実Targetへの配備受理ではありません。ローカル配備のGo buildも同じ単一 `main.go` のbuild方法を共有しますが、配備へ選抜receiptとの照合を追加したものではありません。
 
 ## 実行時間とCPU時間の観測
 
@@ -111,9 +111,9 @@ go run ./tools/reference-target-profile/cmd/tei-target-profile \
 
 実動試験は、同じ合成workloadが制限なしでCPU時間2秒に到達し、1秒の上限を適用すると親の経過時間によるtimeoutより先にsignalで終了することを対照で確認します。同じ業務fixtureをoneshot・long-running・batchで比較し、network wrapperとの併用も確認します。ローカル参照実行器の検証であり、正式なHost権限、特権processへの制約、実Targetのsupervisor、リアルタイム保証や本番配備の証拠ではありません。利用できないOS・utility・namespaceの実動試験はskipし、環境不足を実動成功として数えません。CI全体のsuccessだけでは実動試験の実行とskipを区別できません。
 
-## Python/JavaScript/Javaの常駐候補
+## Python/JavaScript/Java/WASIの常駐候補
 
-`python-long-running-template`、`javascript-long-running-template`、`java-long-running-template`は、既存の単発候補と同じ計算・拒否をnewline-delimited JSONで繰り返す候補です。既存の単発テンプレートのsourceとtemplate digestは変えていません。
+`python-long-running-template`、`javascript-long-running-template`、`java-long-running-template`、`wasi-long-running-template`は、既存の単発候補と同じ計算・拒否をnewline-delimited JSONで繰り返す候補です。既存の単発テンプレートのsourceとtemplate digestは変えていません。
 
 ```bash
 go run ./tools/reference-generator-selection/cmd/tei-generator-build \
@@ -121,10 +121,10 @@ go run ./tools/reference-generator-selection/cmd/tei-generator-build \
   -strategy python-long-running-template -out /tmp/tei-script-candidates/python-long-running-template
 ```
 
-JavaScriptは`-strategy javascript-long-running-template`、Javaは`-strategy java-long-running-template`で生成します。Profileの`processModel`を`long-running`、`generatorId`を生成したstrategyと同じ値にして、`run`または`compare`の`-candidates`へ候補の親directoryを指定します。
+JavaScriptは`-strategy javascript-long-running-template`、Javaは`-strategy java-long-running-template`、WASIは`-strategy wasi-long-running-template`で生成します。Profileの`processModel`を`long-running`、`generatorId`を生成したstrategyと同じ値にして、`run`または`compare`の`-candidates`へ候補の親directoryを指定します。
 
 - 選抜を通った候補だけを常駐probeで実行し、単発実行の選抜と常駐実行の両方を合格条件にします。
-- Pythonは`python3`/`python`、JavaScriptは`node`、Javaは`javac`/`java`を探し、実行可能な処理系のcommand・versionを`processModel.runtime`へ記録します。処理系がなければ不合格です。
+- Pythonは`python3`/`python`、JavaScript/WASIは`node`、Javaは`javac`/`java`を探し、実行可能な処理系のcommand・versionを`processModel.runtime`へ記録します。処理系がなければ不合格です。
 - 1 processで全requestを処理したこと、応答数、case結果、終了code、stderr digestを記録します。単発候補を選んでも常駐の合格にはなりません。
 - 処理系の隔離、依存解決、OSのメモリ上限、実Targetのsupervisorは扱いません。
 
@@ -199,6 +199,7 @@ go run ./tools/reference-target-profile/cmd/tei-target-profile run \
 - `loopback`等のnetwork方針の強制、Linux namespace以外の実行器、`sqlite`/`remote` storage。
 - batch scheduler・job queue・再試行。
 - WindowsでのWASM long-running/batch probe。Node wasm_execの終了挙動に依存する。
+- WASIのwasmtime・browser・embedded runtimeでのlong-running/batch。Nodeの`node:wasi`だけを検証する。
 - `audit-log`・分散trace・metrics等の観測channel。
 - 実Targetへの配備、ロールバック、長期運用。
 - 異なるfixture集合・異なる期待値でのprofile比較。現在は同じfixtureの範囲だけを比較する。

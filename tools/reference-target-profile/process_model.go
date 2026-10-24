@@ -224,6 +224,42 @@ func longRunningEvidence(ctx context.Context, opts RunOptions, selected generato
 		}
 		executable = node
 		args = []string{wasmExec, wasmPath}
+	case generatorselection.LanguageWasi:
+		node, version, available := generatorselection.ResolveWasiRuntime()
+		if !available {
+			evidence.Reason = "runtime unavailable: node was not found"
+			return evidence
+		}
+		wasiPath := filepath.Join(tempDir, "candidate.wasm")
+		build := exec.CommandContext(ctx, "go", "build", "-trimpath", "-buildvcs=false", "-o", wasiPath, "main.go")
+		build.Dir = tempDir
+		build.Env = append(os.Environ(), "GOOS=wasip1", "GOARCH=wasm")
+		if out, err := build.CombinedOutput(); err != nil {
+			evidence.Reason = "wasi build failed: " + err.Error() + ": " + string(out)
+			return evidence
+		}
+		wasiBytes, err := os.ReadFile(wasiPath)
+		if err != nil {
+			evidence.Reason = "wasi binary is unreadable: " + err.Error()
+			return evidence
+		}
+		evidence.BinaryDigest = digestBytes(wasiBytes)
+		if selected.BinaryDigest == "" || evidence.BinaryDigest != selected.BinaryDigest {
+			evidence.Reason = "probe wasi digest differs from selection"
+			return evidence
+		}
+		runnerPath := filepath.Join(tempDir, "wasi_node.js")
+		if err := os.WriteFile(runnerPath, generatorselection.WasiRunnerSource(), 0o644); err != nil {
+			evidence.Reason = err.Error()
+			return evidence
+		}
+		evidence.Binding = "source-and-binary-digest"
+		evidence.Runtime = &generatorselection.RuntimeEvidence{
+			Language: generatorselection.LanguageWasi, Command: node + " wasi_node.js <wasm>",
+			Version: version, Available: true,
+		}
+		executable = node
+		args = []string{"--no-warnings", runnerPath, wasiPath}
 	default:
 		evidence.Reason = "unsupported long-running candidate language: " + language
 		return evidence
