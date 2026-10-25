@@ -268,7 +268,7 @@ func TestRenderMigrationSQLDoesNotAddUniqueOrForeignKeyToExistingTables(t *testi
 			change,
 		}}
 		statements, err := postgres.RenderMigrationSQL(diff)
-		if err == nil || !strings.Contains(err.Error(), string(change.Kind)) || !strings.Contains(err.Error(), "only tables created in the same diff") || statements != nil {
+		if err == nil || !strings.Contains(err.Error(), string(change.Kind)) || !strings.Contains(err.Error(), "without an existing-data observation") || statements != nil {
 			t.Fatalf("kind=%s statements=%#v err=%v", change.Kind, statements, err)
 		}
 	}
@@ -351,10 +351,10 @@ func TestRenderMigrationSQLRejectsAlterColumnWithoutBeforeColumn(t *testing.T) {
 }
 
 func TestRenderMigrationSQLRejectsUnsupportedSchemaChangeKinds(t *testing.T) {
+	// Additions to existing tables need an existing-data observation; see
+	// TestRenderMigrationSQLDoesNotAddUniqueOrForeignKeyToExistingTables.
 	kinds := []schemadiff.ChangeKind{
-		schemadiff.AddUniqueConstraint,
 		schemadiff.DropUniqueConstraint,
-		schemadiff.AddForeignKey,
 		schemadiff.DropForeignKey,
 	}
 	for _, kind := range kinds {
