@@ -146,6 +146,7 @@ func TestDriverBindingPreservesCommitUncertainErrorAndSameOperationReplay(t *tes
 		t.Fatalf("same-operation replay duplicated effect: result=%+v runner=%+v err=%v version=%d receipts=%d calls=%d", replay, adapter.last, err, db.version, len(db.records), adapter.calls)
 	}
 }
+
 // postCommitInvalidResultAdapter reproduces the dangerous current ordering:
 // the real Runner commits, then the Adapter returns a result which violates the
 // existing output-only Canonical contract. This is NOT a production Adapter.
