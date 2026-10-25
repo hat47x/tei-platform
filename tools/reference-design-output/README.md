@@ -42,6 +42,23 @@ go run ./tools/reference-design-output/cmd/tei-design-output \
 
 これはSHO固有の書式やプレビュー・編集・保存との統合ではありません。Business cross-viewの`unsupported`も維持します。Workspaceの信頼できる受理元、読み取り中の変更を排除する原子的snapshot、入力版の真正性も、この来歴manifestだけでは保証しません。
 
+## 保存済みbundleを現在の入力と照合する
+
+`-verify <directory>` は、呼出元が指定したWorkspace・provider・生成器設定から同じ処理で再導出し、保存済みの全fileをbyte単位で比較します。文書、DDL、コード候補、契約、candidate manifest、`manifest.json`に加え、ナビゲーションの`index.html`も対象です。保存されたmanifestからpathや生成器設定を取り出して信用する方式ではありません。
+
+```text
+go run ./tools/reference-design-output/cmd/tei-design-output \
+  -workspace reference/workspace -verify /tmp/tei-design-code-output \
+  -contract tools/reference-generator-selection/testdata/line-amount/contract.json \
+  -strategy template -generator-version 1
+```
+
+文書のみのbundleは、`-contract`等を付けずに照合します。コード候補付きのbundleは、生成時と同じ入力契約のbyte列・strategy・宣言versionを呼出元が指定します。`-verify`と`-out`は併用できません。成功時は確認したmanifestを出力してexit 0、不一致や読取失敗ではexit 1を返します。bundle、Workspace、stagingへの書込み、コードのbuild・実行・選抜は行いません。
+
+変更・欠落・余分なfile、bundle内のsymlinkや通常file以外の項目を拒否します。保存側のdigestを書き直して自己整合させても、現在の入力からの再導出と一致しなければ拒否します。通常のfileは期待サイズと照合し、期待byte数＋1を上限として読みます。入力Sourceの空白だけが変わった場合も、`sourceRevision`が変われば現在版との一致にはなりません。単なる不一致を、改ざんや業務意味の変更と断定しません。
+
+この確認は、現在の導出処理と呼出元が選んだ入力に対するbyte一致です。過去版を検証するには対応する入力・導出処理を別途保持する必要があります。同じ生成器の誤り、文書と実行の意味的一致、署名・発行主体・受理元・registryの現在性・実行権限は確認しません。同時書込みを排除するsnapshot、filesystem全体のsandbox、実DB・SHO・実Targetの受入も保証しません。自分で編集した文書を保存・レビューする経路とは別の照合であり、編集内容をSourceへ戻しません。
+
 ## 守っている境界
 
 - 文書・DDLの導出元はWorkspaceの受理済みWorldとSource Indexです。`.tei/decisions`、`.tei/confirmations`、未受理のcandidate、Business DFDの参照用fixtureを、受理済みの意味へ昇格しません。

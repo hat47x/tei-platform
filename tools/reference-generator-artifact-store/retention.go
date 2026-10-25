@@ -23,6 +23,7 @@ type StoredObject struct {
 	SourceDigest  string `json:"sourceDigest"`
 	BinaryDigest  string `json:"binaryDigest"`
 	CandidateID   string `json:"candidateId"`
+	Language      string `json:"language,omitempty"`
 	Path          string `json:"path"`
 	SourceBytes   int64  `json:"sourceBytes"`
 	ArtifactBytes int64  `json:"artifactBytes"`
@@ -122,6 +123,7 @@ func List(storeDir string) (ListReceipt, error) {
 		object.SourceDigest = metadata.SourceDigest
 		object.BinaryDigest = metadata.BinaryDigest
 		object.CandidateID = metadata.CandidateID
+		object.Language = metadata.Language
 		source, sourceErr := os.ReadFile(filepath.Join(objectPath, "source"))
 		artifact, artifactErr := os.ReadFile(filepath.Join(objectPath, "artifact"))
 		switch {

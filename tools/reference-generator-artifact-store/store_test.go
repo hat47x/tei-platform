@@ -82,7 +82,7 @@ func TestPutAndGetArtifact(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !put.Passed || put.Reused || put.SourceDigest == "" || put.BinaryDigest == "" || put.ObjectPath == "" {
+	if !put.Passed || put.Reused || put.Language != generatorselection.LanguageGo || put.SourceDigest == "" || put.BinaryDigest == "" || put.ObjectPath == "" {
 		t.Fatalf("artifact put failed: %+v", put)
 	}
 	if _, err := os.Stat(filepath.Join(put.ObjectPath, "source")); err != nil {
@@ -95,7 +95,7 @@ func TestPutAndGetArtifact(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !get.Passed || get.SourceDigest != put.SourceDigest || get.BinaryDigest != put.BinaryDigest {
+	if !get.Passed || get.Language != generatorselection.LanguageGo || get.SourceDigest != put.SourceDigest || get.BinaryDigest != put.BinaryDigest {
 		t.Fatalf("artifact get failed: %+v", get)
 	}
 	again, err := Put(context.Background(), StoreOptions{
@@ -323,7 +323,7 @@ func TestPutAndGetSourceOnlyArtifacts(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if !put.Passed || put.ObjectPath == "" || put.BinaryDigest != "" {
+			if !put.Passed || put.Language != test.language || put.ObjectPath == "" || put.BinaryDigest != "" {
 				t.Fatalf("%s artifact was not stored: %+v", test.language, put)
 			}
 			artifact, err := os.ReadFile(filepath.Join(put.ObjectPath, "artifact"))
@@ -337,14 +337,15 @@ func TestPutAndGetSourceOnlyArtifacts(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if !got.Passed || got.BinaryDigest != "" {
+			if !got.Passed || got.Language != test.language || got.BinaryDigest != "" {
 				t.Fatalf("%s artifact was not read back: %+v", test.language, got)
 			}
 			list, err := List(storeDir)
 			if err != nil {
 				t.Fatal(err)
 			}
-			if !list.Passed || len(list.Objects) != 1 || !list.Objects[0].Verified {
+			if !list.Passed || len(list.Objects) != 1 || !list.Objects[0].Verified ||
+				list.Objects[0].Language != test.language {
 				t.Fatalf("%s source-only object failed list verification: %+v", test.language, list)
 			}
 			prune, err := Prune(PruneOptions{StoreDir: storeDir, Keep: []string{put.SourceDigest}})
