@@ -26,16 +26,16 @@ func cancellationRuntimePlan(t *testing.T) pruntime.EnvironmentPlan {
 		Runtime: plugin.Runtime{Kind: plugin.RuntimeProcess, Command: "worker", Sandbox: plugin.SandboxRequired},
 		Provides: []plugin.Capability{{
 			Kind: plugin.CapabilityDeploymentExecutor, ID: cid("deploy.runtime.cancel"),
-			Actions: []deployment.ActionKind{deployment.ActionDatabaseRelease},
+			Actions:     []deployment.ActionKind{deployment.ActionDatabaseRelease},
 			Permissions: []permission.Spec{perm},
 		}},
 	}
 	env := environment.Environment{
-		ID: cid("runtime_cancel_test"),
+		ID:      cid("runtime_cancel_test"),
 		Plugins: []environment.ExtensionRequirement{{ID: def.ID, CompatibleMajor: 1}},
 		PermissionGrants: []environment.PermissionGrant{{
 			CapabilityKind: string(plugin.CapabilityDeploymentExecutor),
-			CapabilityID: cid("deploy.runtime.cancel"), Permission: perm,
+			CapabilityID:   cid("deploy.runtime.cancel"), Permission: perm,
 		}},
 		ResourceBindings: []environment.ResourceBinding{
 			rb(permission.KindNetwork, "database-endpoint", "runtime_cancel_test.database_endpoint"),
@@ -73,7 +73,7 @@ func TestCancelledRuntimeInvocationSkipsResourceAcquisition(t *testing.T) {
 
 type cancellationOnAcquireBroker struct {
 	resourceBroker
-	cancel                 context.CancelFunc
+	cancel                   context.CancelFunc
 	releaseContextUncanceled bool
 }
 
