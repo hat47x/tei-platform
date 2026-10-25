@@ -342,6 +342,15 @@ def run_scenario(client: ControlClient, scenario_path: str | Path) -> None:
             if "sortKey" in step and field["sortKey"] != step["sortKey"]:
                 raise AssertionError(f"field {step['fieldAlias']} sort key expected "
                                      f"{step['sortKey']!r}, got {field['sortKey']!r}")
+        elif operation == "model_assert_table":
+            import xtea_cli
+            model = xtea_cli.load_model(Path(step["path"]))
+            table = next((item for item in model["tables"] if item["id"] == step["tableId"]), None)
+            if table is None:
+                raise AssertionError(f"table not found: {step['tableId']}")
+            if "name" in step and table["name"] != step["name"]:
+                raise AssertionError(f"table {step['tableId']} name expected "
+                                     f"{step['name']!r}, got {table['name']!r}")
         elif operation == "model_assert_table_absent":
             import xtea_cli
             model = xtea_cli.load_model(Path(step["path"]))
