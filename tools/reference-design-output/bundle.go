@@ -2,8 +2,8 @@
 // accepted Workspace: table and function definition documents, declared
 // Application x Data matrices in both directions, and the DDL each database
 // Provider can render. The bundle is an artifact of accepted meaning, not a
-// second source: editing its files never changes the Workspace, and a
-// candidate that has not been accepted is never included.
+// second source: editing its files never changes the Workspace. Optional
+// reference-local code candidates remain separate from derived documents.
 package designoutput
 
 import (

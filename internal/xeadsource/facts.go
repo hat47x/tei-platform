@@ -58,14 +58,17 @@ type LegacyKeyFact struct {
 }
 
 type RelationshipKeyFact struct {
-	Locator         string   `json:"locator"`
-	RelationshipID  string   `json:"relationshipId,omitempty"`
-	Table1LegacyID  string   `json:"table1LegacyId,omitempty"`
-	Key1LegacyID    string   `json:"key1LegacyId,omitempty"`
-	Table2LegacyID  string   `json:"table2LegacyId,omitempty"`
-	Key2LegacyID    string   `json:"key2LegacyId,omitempty"`
-	Nature          string   `json:"nature"`
-	AuthorityLimits []string `json:"authorityLimits"`
+	Locator          string   `json:"locator"`
+	RelationshipID   string   `json:"relationshipId,omitempty"`
+	RelationshipType string   `json:"relationshipType,omitempty"`
+	ExistWhen1       *string  `json:"existWhen1,omitempty"`
+	ExistWhen2       *string  `json:"existWhen2,omitempty"`
+	Table1LegacyID   string   `json:"table1LegacyId,omitempty"`
+	Key1LegacyID     string   `json:"key1LegacyId,omitempty"`
+	Table2LegacyID   string   `json:"table2LegacyId,omitempty"`
+	Key2LegacyID     string   `json:"key2LegacyId,omitempty"`
+	Nature           string   `json:"nature"`
+	AuthorityLimits  []string `json:"authorityLimits"`
 }
 
 type DeclaredKeyFieldsFact struct {
@@ -147,15 +150,19 @@ func ExtractRelationalSourceFacts(doc Document) RelationalSourceFacts {
 			facts.LegacyKeys = append(facts.LegacyKeys, key)
 
 		case "Relationship":
+			relationshipType, _ := exactAttribute(n, "Type")
 			facts.RelationshipKeys = append(facts.RelationshipKeys, RelationshipKeyFact{
-				Locator:         n.Locator,
-				RelationshipID:  attributeValue(n, "ID"),
-				Table1LegacyID:  attributeValue(n, "Table1ID"),
-				Key1LegacyID:    attributeValue(n, "TableKey1ID"),
-				Table2LegacyID:  attributeValue(n, "Table2ID"),
-				Key2LegacyID:    attributeValue(n, "TableKey2ID"),
-				Nature:          SourceFactNature,
-				AuthorityLimits: cloneStrings(relationshipKeyAuthorityLimits),
+				Locator:          n.Locator,
+				RelationshipID:   attributeValue(n, "ID"),
+				RelationshipType: relationshipType,
+				ExistWhen1:       exactOptionalAttribute(n, "ExistWhen1"),
+				ExistWhen2:       exactOptionalAttribute(n, "ExistWhen2"),
+				Table1LegacyID:   attributeValue(n, "Table1ID"),
+				Key1LegacyID:     attributeValue(n, "TableKey1ID"),
+				Table2LegacyID:   attributeValue(n, "Table2ID"),
+				Key2LegacyID:     attributeValue(n, "TableKey2ID"),
+				Nature:           SourceFactNature,
+				AuthorityLimits:  cloneStrings(relationshipKeyAuthorityLimits),
 			})
 		case "Key":
 			if doc.Format == FormatXeaf {
@@ -300,6 +307,15 @@ func attributeValue(n Node, name string) string {
 		}
 	}
 	return ""
+}
+
+// exactOptionalAttribute keeps a declared empty source value distinct from absence.
+func exactOptionalAttribute(n Node, name string) *string {
+	value, ok := exactAttribute(n, name)
+	if !ok {
+		return nil
+	}
+	return &value
 }
 
 func splitLegacyFieldList(raw string) []string {
