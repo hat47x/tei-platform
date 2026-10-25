@@ -39,6 +39,7 @@ type HistoryPruneReceipt struct {
 	Kept        []HistoryEntry `json:"kept"`
 	Deleted     []HistoryEntry `json:"deleted"`
 	WouldDelete []HistoryEntry `json:"wouldDelete,omitempty"`
+	AuditPath   string         `json:"auditPath,omitempty"`
 	Passed      bool           `json:"passed"`
 	Reason      string         `json:"reason,omitempty"`
 }
@@ -90,6 +91,12 @@ func PruneHistory(root string, keepLast int, dryRun bool) (HistoryPruneReceipt, 
 		return receipt, nil
 	}
 	defer release()
+	if !dryRun {
+		if err := verifyHistoryAudit(root); err != nil {
+			receipt.Reason = "existing history audit is invalid: " + err.Error()
+			return receipt, nil
+		}
+	}
 	entries, err := readHistoryEntries(root)
 	if err != nil {
 		return receipt, err
@@ -136,6 +143,12 @@ func PruneHistory(root string, keepLast int, dryRun bool) (HistoryPruneReceipt, 
 		}
 		receipt.Deleted = append(receipt.Deleted, entry)
 	}
+	auditPath, err := appendHistoryAudit(root, StorageFilesystem, keepLast, receipt.Deleted)
+	if err != nil {
+		receipt.Reason = "history pruned but audit append failed: " + err.Error()
+		return receipt, nil
+	}
+	receipt.AuditPath = auditPath
 	receipt.Passed = true
 	return receipt, nil
 }

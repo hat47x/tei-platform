@@ -172,7 +172,8 @@ go run ./tools/reference-target-profile/cmd/tei-target-profile run \
 - `history`は`history/<digest>`の内容を再計算し、file名と一致しない・読めないartifactを不合格にします。`prune-history -keep-last N`は検証済みartifactを新しい順にN件残し、`-dry-run`では削除しません。検証に失敗したartifactがある場合は削除しません。
 - `history` / `prune-history`は、history directory自体のsymlinkと、artifactのsymlink・通常file以外の項目を拒否し、リンク先や特殊fileの内容を読みません。外部writerによる検査後の差替えを防ぐsnapshotや、filesystem全体のsandboxではありません。
 - pruneの`deleted`は、削除に成功したfileだけを記録します。途中の削除に失敗した場合は`passed=false`とし、先に成功した削除は戻しません。全件を一度に削除するtransactionではありません。
-- 保持期間の判定はfileの更新時刻に依存し、同時刻の場合はdigest順で決めます。削除の承認・audit・暗号学的な履歴保護は扱いません。
+- 保持期間の判定はfileの更新時刻に依存し、同時刻の場合はdigest順で決めます。削除の承認・暗号学的な履歴保護は扱いません。
+- 成功した`prune-history`は`root/history-prune-audit.jsonl`へrecordを追記します。recordはstorage・keepLast・削除digest・previousDigest・recordDigestを含むhash chainで、prune前に既存chainを検証します。auditの署名・実行者identity・削除承認は扱いません。
 - `remote` storage、Go以外の候補は未対応として`passed=false`にします。
 - 実Targetのsupervisor・health check・traffic drain・電源断耐性・複数ホスト配備は扱いません。
 - `rollback -to`は`replace`/`in-place`のhistoryだけを対象とし、rollingのslot rollbackは`-to`なしの`rollback`を使います。
