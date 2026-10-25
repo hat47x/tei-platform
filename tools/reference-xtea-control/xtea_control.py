@@ -345,11 +345,16 @@ def run_scenario(client: ControlClient, scenario_path: str | Path) -> None:
         elif operation == "model_assert_table":
             import xtea_cli
             model = xtea_cli.load_model(Path(step["path"]))
-            table = next((item for item in model["tables"] if item["id"] == step["tableId"]), None)
+            if "tableId" in step:
+                table = next((item for item in model["tables"]
+                              if item["id"] == step["tableId"]), None)
+            else:
+                table = next((item for item in model["tables"]
+                              if item["name"] == step.get("name")), None)
             if table is None:
-                raise AssertionError(f"table not found: {step['tableId']}")
+                raise AssertionError(f"table not found: {step.get('tableId', step.get('name'))}")
             if "name" in step and table["name"] != step["name"]:
-                raise AssertionError(f"table {step['tableId']} name expected "
+                raise AssertionError(f"table {table['id']} name expected "
                                      f"{step['name']!r}, got {table['name']!r}")
         elif operation == "model_assert_table_absent":
             import xtea_cli
