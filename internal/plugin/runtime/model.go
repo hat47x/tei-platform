@@ -632,6 +632,11 @@ func sandboxProfile(lease *resource.Lease) SandboxProfile {
 }
 
 func (r Registry) InvokeWithProvenance(ctx context.Context, plan EnvironmentPlan, kind plugin.CapabilityKind, id core.CanonicalID, operation, requestID string, payload any) (inv Invocation, retErr error) {
+	// A known cancellation must stop before plugin verification, process setup,
+	// or an invocation-scoped resource lease can be acquired.
+	if err := ctx.Err(); err != nil {
+		return Invocation{}, err
+	}
 	cr, ok := plan.Capability(kind, id)
 	if !ok {
 		return Invocation{}, fmt.Errorf("capability %s %s is not uniquely resolved", kind, id)
@@ -711,6 +716,12 @@ func (r Registry) InvokeWithProvenance(ctx context.Context, plan EnvironmentPlan
 		}
 	default:
 		return Invocation{}, fmt.Errorf("unsupported runtime boundary %s", cr.Boundary)
+	}
+
+	// Artifact verification and implementation selection may be external calls.
+	// Recheck before requesting any permission-bearing resource lease.
+	if err := ctx.Err(); err != nil {
+		return Invocation{}, err
 	}
 
 	var lease *resource.Lease
@@ -798,6 +809,13 @@ func (r Registry) InvokeWithProvenance(ctx context.Context, plan EnvironmentPlan
 		leaseControllerView = leaseControl
 	}
 	req := Request{ProtocolVersion: ProtocolVersion, RequestID: requestID, Plugin: cr.Plugin, CapabilityKind: kind, CapabilityID: id, DescriptorFingerprint: pr.DescriptorFingerprint, PluginLockFingerprint: plan.PluginLockFingerprint, Permissions: prov.Permissions, ResourceLease: lease, LeaseController: leaseControllerView, Operation: operation, Payload: b}
+	// Acquisition and ownership/fencing may have finished after cancellation.
+	// The registered defers revoke the acquired lease even on this early return.
+	// Cancellation after this check is still subject to the selected provider's
+	// execution and effect-commit guarantees; it is not proof of rollback.
+	if err := ctx.Err(); err != nil {
+		return Invocation{}, err
+	}
 	var resp Response
 	switch cr.Boundary {
 	case BoundaryInProcess:
