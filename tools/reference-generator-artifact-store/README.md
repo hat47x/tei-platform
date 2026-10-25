@@ -37,6 +37,7 @@ go run ./tools/reference-generator-artifact-store/cmd/tei-generator-artifact-sto
 <store>/objects/<source-digest-hex>/
   source
   artifact
+  receipt.json
   object.json
 ```
 
@@ -45,9 +46,10 @@ go run ./tools/reference-generator-artifact-store/cmd/tei-generator-artifact-sto
 - `candidateId`、`language`
 - `contractId`、`contractVersion`
 - `sourceDigest`、`binaryDigest`
+- `buildEvidenceDigest`（選抜receiptのbuildEvidenceをcanonical JSONにしたdigest。source-only候補では省略）
 - `receiptDigest`
 
-`put`/`get`のreceiptと`list`のobject entryにも`language`を記録し、保存した候補の実行形式を一覧から区別できます。
+`receipt.json`は保存時の選抜receipt全体で、`receiptDigest`と照合します。`put`/`get`のreceiptにも`buildEvidenceDigest`を返します。`put`/`get`のreceiptと`list`のobject entryにも`language`を記録し、保存した候補の実行形式を一覧から区別できます。
 
 ## 保存時の検査
 
@@ -62,12 +64,14 @@ source、receipt、実binaryのどれかが一致しなければ`passed=false`�
 ## 取得時の検査
 
 - `source`と`artifact`を読み、`object.json`のdigestと再計算値を照合する。
-- 保存後にsourceまたはartifactが改変されていれば`passed=false`にする。
+- `receipt.json`のdigestを`receiptDigest`と照合し、保存元の選抜receiptを確認する。
+- 選抜receipt内の候補source/binary digestとbuildEvidence digestをobject metadataと照合する。
+- 保存後にsource・artifact・receipt・object metadataが改変されていれば`passed=false`にする。
 - 要求したsource digestとobject metadataが一致しなければ拒否する。
 
 ## 一覧と削除
 
-`list`は全objectのmetadataと再計算digestを返します。壊れたobjectが1件でもあれば`passed=false`にします。
+`list`は全objectのmetadataと再計算digestを返します。`receipt.json`と選抜receipt内のsource/binary/buildEvidenceも照合し、壊れたobjectが1件でもあれば`passed=false`にします。
 
 `prune`は、明示した`-keep`のsource digestだけを残し、それ以外のobjectを削除します。
 
