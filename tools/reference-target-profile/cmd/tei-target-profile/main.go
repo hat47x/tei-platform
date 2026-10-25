@@ -34,8 +34,13 @@ func main() {
 	rollbackTo := fs.String("to", "", "history source digest for rollback")
 	keepLast := fs.Int("keep-last", 0, "number of newest history artifacts to keep")
 	historyDryRun := fs.Bool("dry-run", false, "report history deletions without deleting")
+	outPath := fs.String("out", "", "write the receipt or checkpoint to this file")
+	approvalPath := fs.String("approval", "", "prune approval JSON")
+	signaturePath := fs.String("signature", "", "detached signature over the approval")
+	allowedSigners := fs.String("allowed-signers", "", "ssh allowed signers file")
+	identity := fs.String("identity", "", "principal in the allowed signers file")
 	_ = fs.Parse(os.Args[2:])
-	if command != "compare" && command != "rollback" && command != "history" && command != "prune-history" && command != "history-audit" && *profilePath == "" {
+	if command != "compare" && command != "rollback" && command != "history" && command != "prune-history" && command != "history-audit" && command != "history-audit-checkpoint" && command != "history-prune-approval" && *profilePath == "" {
 		fail(fmt.Errorf("-profile is required"))
 	}
 	if *enforceNetwork && command != "run" && command != "compare" {
@@ -148,11 +153,60 @@ func main() {
 		if !receipt.Passed {
 			os.Exit(1)
 		}
+	case "history-audit-checkpoint":
+		if *rootDir == "" {
+			fail(fmt.Errorf("-root is required for history-audit-checkpoint"))
+		}
+		checkpoint, err := targetprofile.BuildHistoryAuditCheckpoint(*rootDir)
+		if err != nil {
+			fail(err)
+		}
+		if *outPath != "" {
+			raw, err := json.MarshalIndent(checkpoint, "", "  ")
+			if err != nil {
+				fail(err)
+			}
+			if err := os.WriteFile(*outPath, append(raw, '\n'), 0o644); err != nil {
+				fail(err)
+			}
+		}
+		emit(checkpoint)
+		if !checkpoint.Passed {
+			os.Exit(1)
+		}
+	case "history-prune-approval":
+		if *rootDir == "" || *keepLast == 0 {
+			fail(fmt.Errorf("-root and -keep-last are required for history-prune-approval"))
+		}
+		approval, err := targetprofile.BuildHistoryPruneApproval(*rootDir, *keepLast)
+		if err != nil {
+			fail(err)
+		}
+		if *outPath != "" {
+			raw, err := json.MarshalIndent(approval, "", "  ")
+			if err != nil {
+				fail(err)
+			}
+			if err := os.WriteFile(*outPath, append(raw, '\n'), 0o644); err != nil {
+				fail(err)
+			}
+		}
+		emit(approval)
 	case "prune-history":
 		if *rootDir == "" || *keepLast == 0 {
 			fail(fmt.Errorf("-root and -keep-last are required for prune-history"))
 		}
-		receipt, err := targetprofile.PruneHistory(*rootDir, *keepLast, *historyDryRun)
+		var receipt targetprofile.HistoryPruneReceipt
+		var err error
+		if *approvalPath != "" {
+			if *signaturePath == "" || *allowedSigners == "" || *identity == "" {
+				fail(fmt.Errorf("-approval requires -signature, -allowed-signers, and -identity"))
+			}
+			receipt, err = targetprofile.PruneHistoryApproved(context.Background(), *rootDir, *keepLast, *historyDryRun,
+				*approvalPath, *signaturePath, *allowedSigners, *identity)
+		} else {
+			receipt, err = targetprofile.PruneHistory(*rootDir, *keepLast, *historyDryRun)
+		}
 		if err != nil {
 			fail(err)
 		}

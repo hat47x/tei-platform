@@ -74,11 +74,17 @@ func deploySQLite(ctx context.Context, root string, artifact []byte, receipt *De
 		digest, artifact, time.Now().UTC().Format(time.RFC3339Nano)); err != nil {
 		return err
 	}
+	if err := verifySQLiteArtifact(tx, digest); err != nil {
+		return err
+	}
 	current, err := stateValue(tx, "current")
 	if err != nil {
 		return err
 	}
 	if current != "" {
+		if err := verifySQLiteArtifact(tx, current); err != nil {
+			return err
+		}
 		if err := putState(tx, "previous", current); err != nil {
 			return err
 		}
@@ -100,6 +106,18 @@ func deploySQLite(ctx context.Context, root string, artifact []byte, receipt *De
 	receipt.PreviousDigest = current
 	receipt.Installed = true
 	receipt.DatabasePath = filepath.Join(root, "artifacts.db")
+	return nil
+}
+
+// verifySQLiteArtifact checks retained bytes inside the state-change transaction.
+func verifySQLiteArtifact(tx *sql.Tx, digest string) error {
+	var content []byte
+	if err := tx.QueryRow(`SELECT content FROM artifacts WHERE digest = ?`, digest).Scan(&content); err != nil {
+		return fmt.Errorf("sqlite artifact is unreadable: %w", err)
+	}
+	if digestBytes(content) != digest {
+		return fmt.Errorf("stored sqlite artifact digest does not match")
+	}
 	return nil
 }
 

@@ -316,15 +316,15 @@ func Rollback(root string) (RollbackReceipt, error) {
 	receipt := RollbackReceipt{
 		Schema: RollbackSchema, GrantsAuthority: false, ProvesRealTarget: false,
 	}
-	if sqliteRoot(root) {
-		return rollbackSQLite(context.Background(), root)
-	}
 	release, err := lockLocalUpdate(root)
 	if err != nil {
 		receipt.Reason = err.Error()
 		return receipt, nil
 	}
 	defer release()
+	if sqliteRoot(root) {
+		return rollbackSQLite(context.Background(), root)
+	}
 	current, err := readPointer(filepath.Join(root, "current"))
 	if err != nil {
 		receipt.Reason = err.Error()
@@ -385,15 +385,15 @@ func RollbackTo(root, sourceDigest string) (RollbackReceipt, error) {
 		receipt.Reason = "source digest must be sha256:<64 hex>"
 		return receipt, nil
 	}
-	if sqliteRoot(root) {
-		return rollbackToSQLite(context.Background(), root, sourceDigest)
-	}
 	release, err := lockLocalUpdate(root)
 	if err != nil {
 		receipt.Reason = err.Error()
 		return receipt, nil
 	}
 	defer release()
+	if sqliteRoot(root) {
+		return rollbackToSQLite(context.Background(), root, sourceDigest)
+	}
 
 	historyPath := filepath.Join(root, "history", strings.TrimPrefix(sourceDigest, "sha256:"))
 	artifact, err := os.ReadFile(historyPath)

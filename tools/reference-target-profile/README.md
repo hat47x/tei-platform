@@ -39,7 +39,18 @@ go run ./tools/reference-target-profile/cmd/tei-target-profile \
   prune-history -root /tmp/tei-target-profile-root -keep-last 2 -dry-run
 
 go run ./tools/reference-target-profile/cmd/tei-target-profile \
+  history-prune-approval -root /tmp/tei-target-profile-root -keep-last 2 -out /tmp/prune-approval.json
+ssh-keygen -Y sign -f /tmp/approval-key -n tei-history-prune /tmp/prune-approval.json
+go run ./tools/reference-target-profile/cmd/tei-target-profile \
+  prune-history -root /tmp/tei-target-profile-root -keep-last 2 \
+  -approval /tmp/prune-approval.json -signature /tmp/prune-approval.json.sig \
+  -allowed-signers /tmp/allowed_signers -identity signer
+
+go run ./tools/reference-target-profile/cmd/tei-target-profile \
   history-audit -root /tmp/tei-target-profile-root
+
+go run ./tools/reference-target-profile/cmd/tei-target-profile \
+  history-audit-checkpoint -root /tmp/tei-target-profile-root -out /tmp/history-audit-checkpoint.json
 ```
 
 ## Profileの項目
@@ -170,13 +181,15 @@ go run ./tools/reference-target-profile/cmd/tei-target-profile run \
 - replace/in-place配備と`rollback -to`では、currentの退避先historyが既にある場合、内容のdigestを照合し、一致する履歴は書き直さず更新時刻も保ちます。読めない・一致しない場合はcurrentの置換前に拒否し、壊れたhistoryも上書きしません。この確認は電源断耐性を提供しません。
 - 配備後にartifact digestを再計算し、build結果と一致することを確認します。history/slotのdigestも照合します。
 - `storage: none`はrootを作らず、build結果のdigestだけを検証します。
-- `storage: sqlite`は`artifacts.db`のtransactionでartifactとcurrent/previousを更新し、配備後にDBから読み戻してdigestを照合します。`rollback`はcurrent/previousを入れ替え、`rollback -to <digest>`はDBのartifactへ戻します。
+- `storage: sqlite`は`artifacts.db`のtransactionでartifactとcurrent/previousを更新し、候補と現在artifactの保存内容を、pointer切替前の同じtransactionでdigest照合します。候補またはcurrentが破損・欠落していれば、pointerと新規挿入をcommitせず拒否します。配備後の再読取照合も維持します。`rollback`はcurrent/previousを入れ替え、`rollback -to <digest>`はDBのartifactへ戻します。
+- SQLiteの両rollbackとpruneも、filesystemと同じ`.update-lock`を状態読取り前に取得します。pruneの`deleted`はDB transactionのcommit成功後に設定し、保護対象の拒否やrollbackした削除予定を含めません。commit後のaudit追記が失敗した場合は、削除済み範囲を残して`passed=false`を返します。
 - sqliteの`history`は`artifacts` tableのcontentを再計算し、`prune-history -keep-last N`はcurrent/previousを削除対象に含む場合に拒否します。`-dry-run`では削除しません。
 - `history`は`history/<digest>`の内容を再計算し、file名と一致しない・読めないartifactを不合格にします。`prune-history -keep-last N`は検証済みartifactを新しい順にN件残し、`-dry-run`では削除しません。検証に失敗したartifactがある場合は削除しません。
 - `history` / `prune-history`は、history directory自体のsymlinkと、artifactのsymlink・通常file以外の項目を拒否し、リンク先や特殊fileの内容を読みません。外部writerによる検査後の差替えを防ぐsnapshotや、filesystem全体のsandboxではありません。
 - pruneの`deleted`は、削除に成功したfileだけを記録します。途中の削除に失敗した場合は`passed=false`とし、先に成功した削除は戻しません。全件を一度に削除するtransactionではありません。
 - 保持期間の判定はfileの更新時刻に依存し、同時刻の場合はdigest順で決めます。削除の承認・暗号学的な履歴保護は扱いません。
-- 成功した`prune-history`は`root/history-prune-audit.jsonl`へrecordを追記します。recordはstorage・keepLast・削除digest・previousDigest・recordDigestを含むhash chainで、prune前に既存chainを検証します。`history-audit`はchainを読み、record数・head・各recordを返します。auditの署名・実行者identity・削除承認は扱いません。
+- 成功した`prune-history`は`root/history-prune-audit.jsonl`へrecordを追記します。recordはstorage・keepLast・削除digest・previousDigest・recordDigestを含むhash chainで、prune前に既存chainを検証します。`history-audit`はchainを読み、record数・head・各recordを返します。`history-audit-checkpoint`はcount・head・audit file全体のdigestを`-out`へ書き出し、`ssh-keygen -Y sign`で外部署名できます。auditの署名・実行者identity・削除承認は扱いません。
+- `history-prune-approval`はroot・storage・keepLast・削除digestの一覧をJSONへ出力します。`prune-history -approval ... -signature ... -allowed-signers ... -identity ...`は、approvalのdetached signatureと、現在の削除対象の完全一致を確認してから削除します。署名者のAuthority・trust rootは検証しません。approval確認後、削除前に履歴が変わった場合の再確認は行いません。
 - `remote` storage、Go以外の候補は未対応として`passed=false`にします。
 - 実Targetのsupervisor・health check・traffic drain・電源断耐性・複数ホスト配備は扱いません。
 - `rollback -to`は`replace`/`in-place`のhistoryだけを対象とし、rollingのslot rollbackは`-to`なしの`rollback`を使います。
