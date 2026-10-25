@@ -22,6 +22,34 @@ type historyAuditRecord struct {
 	RecordDigest   string   `json:"recordDigest"`
 }
 
+type HistoryAuditReceipt struct {
+	Schema     string               `json:"schema"`
+	Root       string               `json:"root"`
+	Count      int                  `json:"count"`
+	HeadDigest string               `json:"headDigest,omitempty"`
+	Records    []historyAuditRecord `json:"records"`
+	Passed     bool                 `json:"passed"`
+	Reason     string               `json:"reason,omitempty"`
+}
+
+const HistoryAuditReceiptSchema = "tei.reference.target-profile-history-audit-receipt/v0"
+
+func HistoryAudit(root string) (HistoryAuditReceipt, error) {
+	receipt := HistoryAuditReceipt{Schema: HistoryAuditReceiptSchema, Root: root, Records: []historyAuditRecord{}}
+	records, err := readHistoryAudit(root)
+	if err != nil {
+		receipt.Reason = err.Error()
+		return receipt, nil
+	}
+	receipt.Records = records
+	receipt.Count = len(records)
+	if len(records) > 0 {
+		receipt.HeadDigest = records[len(records)-1].RecordDigest
+	}
+	receipt.Passed = true
+	return receipt, nil
+}
+
 func historyAuditPath(root string) string {
 	return filepath.Join(root, "history-prune-audit.jsonl")
 }
