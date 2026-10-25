@@ -25,6 +25,7 @@ import (
 	accessmatrix "tei/tools/reference-access-matrix"
 	ddlentry "tei/tools/reference-ddl-entry"
 	funcdoc "tei/tools/reference-function-definition-document"
+	generatorselection "tei/tools/reference-generator-selection"
 	tabledoc "tei/tools/reference-table-definition-document"
 )
 
@@ -245,29 +246,31 @@ func renderDDL(result ddlentry.Result, sourceRevision string) []byte {
 // leave a partially written bundle. A concurrent creator that appears between
 // the absence check and the Rename is an explicit limitation, not a guarantee.
 func Write(workspaceDir, outDir string, provider environment.DatabaseProvider) (Manifest, error) {
+	return write(workspaceDir, outDir, provider, nil, "", "")
+}
+
+// WriteWithGenerator derives documents and one unqualified source candidate
+// from the same loaded World. The contract's composite rule is reference-local;
+// the bundle is provenance, not semantic equivalence or acceptance evidence.
+func WriteWithGenerator(workspaceDir, outDir string, provider environment.DatabaseProvider, contractJSON []byte, strategy, version string) (Manifest, error) {
+	if len(contractJSON) == 0 || strings.TrimSpace(strategy) == "" || strings.TrimSpace(version) == "" {
+		return Manifest{}, fmt.Errorf("contract JSON, strategy, and generator version are required")
+	}
+	return write(workspaceDir, outDir, provider, contractJSON, strategy, version)
+}
+
+func write(workspaceDir, outDir string, provider environment.DatabaseProvider, contractJSON []byte, strategy, version string) (Manifest, error) {
 	if strings.TrimSpace(workspaceDir) == "" || strings.TrimSpace(outDir) == "" {
 		return Manifest{}, fmt.Errorf("workspace and out are required")
 	}
-	loaded, err := workspace.Load(workspaceDir)
-	if err != nil {
-		return Manifest{}, fmt.Errorf("load Workspace: %w", err)
-	}
-	index, err := workspace.BuildSourceIndex(workspaceDir, loaded)
-	if err != nil {
-		return Manifest{}, fmt.Errorf("build Source Index: %w", err)
-	}
-	bundle, err := Build(loaded.World, sourceindex.ModelRevision(index), provider)
+	bundle, err := buildFromWorkspace(workspaceDir, provider, contractJSON, strategy, version)
 	if err != nil {
 		return Manifest{}, err
 	}
-
-	manifestJSON, err := json.MarshalIndent(bundle.Manifest, "", "  ")
+	files, err := bundleFiles(bundle)
 	if err != nil {
 		return Manifest{}, err
 	}
-	manifestJSON = append(manifestJSON, '\n')
-	files := append([]File(nil), bundle.Files...)
-	files = append(files, File{Path: "manifest.json", Content: manifestJSON})
 
 	absolute, err := filepath.Abs(outDir)
 	if err != nil {
@@ -316,4 +319,68 @@ func Write(workspaceDir, outDir string, provider environment.DatabaseProvider) (
 		return Manifest{}, fmt.Errorf("publish design-output bundle: %w", err)
 	}
 	return bundle.Manifest, nil
+}
+
+// buildFromWorkspace is shared by publication and read-only verification so
+// both derive from one loaded World with the same generator implementation.
+func buildFromWorkspace(workspaceDir string, provider environment.DatabaseProvider, contractJSON []byte, strategy, version string) (Bundle, error) {
+	loaded, err := workspace.Load(workspaceDir)
+	if err != nil {
+		return Bundle{}, fmt.Errorf("load Workspace: %w", err)
+	}
+	index, err := workspace.BuildSourceIndex(workspaceDir, loaded)
+	if err != nil {
+		return Bundle{}, fmt.Errorf("build Source Index: %w", err)
+	}
+	bundle, err := Build(loaded.World, sourceindex.ModelRevision(index), provider)
+	if err != nil {
+		return Bundle{}, err
+	}
+
+	if contractJSON != nil {
+		source, candidate, err := generatorselection.RenderForWorld(loaded.World, contractJSON, strategy, version)
+		if err != nil {
+			return Bundle{}, fmt.Errorf("render source candidate: %w", err)
+		}
+		candidateJSON, err := json.MarshalIndent(candidate, "", "  ")
+		if err != nil {
+			return Bundle{}, err
+		}
+		for _, artifact := range []struct {
+			name, kind, schema string
+			content            []byte
+		}{
+			{candidate.Source, "unqualified-source-candidate", "", source},
+			{"candidate.json", "generator-candidate-manifest", candidate.Schema, append(candidateJSON, '\n')},
+			{"contract.json", "reference-generator-contract", generatorselection.ContractSchema, contractJSON},
+		} {
+			path := "generated/" + artifact.name
+			bundle.Files = append(bundle.Files, File{Path: path, Content: artifact.content})
+			bundle.Manifest.Artifacts = append(bundle.Manifest.Artifacts, Artifact{
+				Name: path, Kind: artifact.kind, Schema: artifact.schema, Path: path,
+				Bytes: len(artifact.content), Digest: digestOf(artifact.content),
+			})
+		}
+		bundle.Manifest.Notes = append(bundle.Manifest.Notes,
+			"generated/は入力属性・型を同じWorldへ照合した未選抜コード候補です。複合規則はreference-localで、受理・意味の網羅・実行適合・権限を証明しません。")
+		sort.Slice(bundle.Manifest.Artifacts, func(i, j int) bool { return bundle.Manifest.Artifacts[i].Name < bundle.Manifest.Artifacts[j].Name })
+		for i := range bundle.Files {
+			if bundle.Files[i].Path == "index.html" {
+				bundle.Files[i].Content = renderIndex(bundle.Manifest)
+			}
+		}
+	}
+
+	return bundle, nil
+}
+
+func bundleFiles(bundle Bundle) ([]File, error) {
+	manifestJSON, err := json.MarshalIndent(bundle.Manifest, "", "  ")
+	if err != nil {
+		return nil, err
+	}
+	manifestJSON = append(manifestJSON, '\n')
+	files := append([]File(nil), bundle.Files...)
+	files = append(files, File{Path: "manifest.json", Content: manifestJSON})
+	return files, nil
 }

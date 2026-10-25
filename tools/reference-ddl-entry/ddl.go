@@ -64,13 +64,23 @@ func Render(world ir.World, databaseID string, provider environment.DatabaseProv
 	if len(mappings) == 0 {
 		return out, fmt.Errorf("no persistence mapping declares database %q", databaseID)
 	}
-	desired, err := realization.RealizeDesired(mappings, databaseID, provider)
+	desired, naming, err := realization.RealizeDesiredWithUnresolved(mappings, databaseID, provider)
 	if err != nil {
 		return out, fmt.Errorf("realize desired schema: %w", err)
+	}
+	// A table whose generated constraint names collide is reported with the
+	// reason and not rendered; PostgreSQL would otherwise pick another name.
+	namingReason := make(map[string]string, len(naming))
+	for _, u := range naming {
+		namingReason[u.Table] = u.Reason
 	}
 	tables := append([]physical.Table(nil), desired.Tables...)
 	sort.Slice(tables, func(i, j int) bool { return tables[i].Name < tables[j].Name })
 	for _, t := range tables {
+		if reason, ok := namingReason[t.QualifiedName()]; ok {
+			out.Unresolved = append(out.Unresolved, Unresolved{Table: t.Name, Reason: reason})
+			continue
+		}
 		single := physical.SchemaSnapshot{Database: core.CanonicalID(databaseID), Tables: []physical.Table{t}}
 		empty := physical.SchemaSnapshot{Database: core.CanonicalID(databaseID)}
 		diff, err := schemadiff.Compare(single, empty)

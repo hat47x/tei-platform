@@ -16,13 +16,13 @@ TEIの参照モデル再現確認で必要になるX-TEAの入力・観測を、
 
 | コンポーネント | 確認済み | 主な証拠 |
 | --- | --- | --- |
-| Modeler | 読み取り、About、システム名変更と保存、テーブル名変更と保存、フィールド名変更と保存、フィールド削除と保存、バックアップ | `scenarios/modeler-save-copy.json`、`scenarios/modeler-edit-table-name.json`、`scenarios/modeler-edit-field-name.json`、`scenarios/modeler-delete-field.json` |
-| Editor | 読み取り、システム名変更と保存、テーブル名変更と保存、テーブル一覧から編集画面を開く、バックアップ | `scenarios/editor-save-copy.json`、`scenarios/editor-edit-table-name.json`、`scenarios/editor-open-table-from-list.json` |
+| Modeler | 読み取り、About、システム名変更と保存、テーブル名変更と保存、フィールド名変更・追加・削除・型変更・並べ替えと保存、バックアップ | `scenarios/modeler-*.json` |
+| Editor | 読み取り、システム名変更と保存、テーブル名変更と保存、テーブル一覧から編集画面を開く、テーブル追加・削除、機能追加と保存、バックアップ | `scenarios/editor-*.json` |
 | Driver | ログイン、XF100、XF300、XF200の更新・作成・削除、失敗時rollback | `scenarios/driver-*.json` |
-| モデルCLI | システム、テーブル、フィールド、キー、機能種別、入出力CRUD、呼び出し関係のJSON出力 | `xtea_cli.py`、`tests/test_model_cli.py` |
+| モデルCLI | システム、テーブル、フィールド、キー、機能種別、入出力CRUD、呼び出し関係、2モデルの差分、参照検査のJSON出力 | `xtea_cli.py`、`tests/test_model_cli.py` |
 | XeadServer | **対象外**。`xtea_server.py`と`server-harness/`は過去の参考資産 | `tests/test_live_*.py`、`tests/test_tomcat_war.py` |
 
-`verify-all.ps1`の既定実行ではSwing E2E 11件とモデルCLI 4件を確認します。XeadServerの参考試験は`-IncludeXeadServer`を付けた場合だけ実行し、TEIの比較・受入には使いません。
+`verify-all.ps1`の既定実行ではSwing E2E 11件とモデルCLI 7件を確認します。XeadServerの参考試験は`-IncludeXeadServer`を付けた場合だけ実行し、TEIの比較・受入には使いません。
 
 ## Driverの合成モデルによる検証
 

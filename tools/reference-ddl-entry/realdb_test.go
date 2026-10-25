@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"regexp"
+	"sort"
 	"strings"
 	"testing"
 	"time"
@@ -64,6 +66,13 @@ func throwawayDB(t *testing.T, adminDSN string) *sql.DB {
 // difference against the declared one.
 func converge(t *testing.T, db *sql.DB, world ir.World, databaseID string) (Result, schemadiff.Diff) {
 	t.Helper()
+	return convergeWith(t, db, world, databaseID, func(s string) string { return s })
+}
+
+// convergeWith is converge with each statement rewritten before execution, to
+// reproduce DDL written by an earlier version of the renderer.
+func convergeWith(t *testing.T, db *sql.DB, world ir.World, databaseID string, rewrite func(string) string) (Result, schemadiff.Diff) {
+	t.Helper()
 	res, err := Render(world, databaseID, environment.ProviderPostgres)
 	if err != nil {
 		t.Fatal(err)
@@ -108,6 +117,7 @@ func converge(t *testing.T, db *sql.DB, world ir.World, databaseID string) (Resu
 		t.Fatal("comparison found no difference on an empty database")
 	}
 	for _, statement := range res.Script {
+		statement = rewrite(statement)
 		if _, err := db.ExecContext(ctx, statement); err != nil {
 			t.Fatalf("execute %q: %v", statement, err)
 		}
@@ -130,6 +140,8 @@ func constraintNames(t *testing.T, db *sql.DB, contype string) []string {
 		}
 		out = append(out, n)
 	}
+	// Byte order, as Go compares; the database collation may order differently.
+	sort.Strings(out)
 	return out
 }
 
@@ -196,5 +208,116 @@ func TestRealPostgresUniqueAndForeignKeyConverge(t *testing.T) {
 	unique := strings.Join(constraintNames(t, db, "u"), ",")
 	if !strings.Contains(unique, "child_label_key") || len(constraintNames(t, db, "u")) != 2 {
 		t.Fatalf("observed unique constraints = %s", unique)
+	}
+}
+
+// namingWorld declares unique constraints and foreign keys without names:
+// multi-column in a non-sorted declared order, and a multibyte table name.
+func namingWorld(parentTable, childTable string, columnSuffix string) (ir.World, string) {
+	col := func(table, name string) persistence.ColumnMapping {
+		return persistence.ColumnMapping{
+			Attribute: core.CanonicalID("s." + table + "." + name), Column: name,
+			Storage: persistence.StorageVarchar, Nullability: persistence.Required,
+		}
+	}
+	attr := func(table, name string) core.CanonicalID { return core.CanonicalID("s." + table + "." + name) }
+	a, b := "a"+columnSuffix, "b"+columnSuffix
+	parent := persistence.Mapping{
+		ID: "m.parent", Database: "store", SemanticData: "s.parent", Table: "public." + parentTable,
+		Columns:    []persistence.ColumnMapping{col("parent", a), col("parent", b)},
+		PrimaryKey: []core.CanonicalID{attr("parent", a), attr("parent", b)},
+	}
+	child := persistence.Mapping{
+		ID: "m.child", Database: "store", SemanticData: "s.child", Table: "public." + childTable,
+		Columns:    []persistence.ColumnMapping{col("child", "id"), col("child", "p"+a), col("child", "p"+b), col("child", "ラベル")},
+		PrimaryKey: []core.CanonicalID{attr("child", "id")},
+		UniqueConstraints: []persistence.UniqueConstraintMapping{
+			{Attributes: []core.CanonicalID{attr("child", "p"+b), attr("child", "p"+a)}},
+			{Attributes: []core.CanonicalID{attr("child", "ラベル")}},
+		},
+		ForeignKeys: []persistence.ForeignKeyMapping{{
+			Attributes:        []core.CanonicalID{attr("child", "p"+a), attr("child", "p"+b)},
+			ReferencedMapping: "m.parent", ReferencedAttributes: []core.CanonicalID{attr("parent", a), attr("parent", b)},
+		}},
+	}
+	return ir.World{Persistence: []persistence.Mapping{child, parent}}, "store"
+}
+
+// desiredConstraintNames lists the names realization decided, by kind.
+func desiredConstraintNames(t *testing.T, world ir.World, databaseID string) (unique, foreign []string) {
+	t.Helper()
+	desired, err := realization.RealizeDesired(world.Persistence, databaseID, environment.ProviderPostgres)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, table := range desired.Tables {
+		for _, uc := range table.UniqueConstraints {
+			unique = append(unique, uc.Name)
+		}
+		for _, fk := range table.ForeignKeys {
+			foreign = append(foreign, fk.Name)
+		}
+	}
+	sort.Strings(unique)
+	sort.Strings(foreign)
+	return unique, foreign
+}
+
+var namedConstraint = regexp.MustCompile(`ADD CONSTRAINT "[^"]+" (UNIQUE|FOREIGN KEY)`)
+
+func TestRealPostgresGeneratedNamesMatchDatabasesCreatedWithoutNames(t *testing.T) {
+	dsn := realDSN(t)
+	world, databaseID := namingWorld("親表", "子表", "")
+	wantUnique, wantForeign := desiredConstraintNames(t, world, databaseID)
+	if strings.Join(wantUnique, ",") != "子表_pb_pa_key,子表_ラベル_key" || strings.Join(wantForeign, ",") != "子表_pa_pb_fkey" {
+		t.Fatalf("desired names unique=%v foreign=%v", wantUnique, wantForeign)
+	}
+	for _, variant := range []struct {
+		name    string
+		rewrite func(string) string
+	}{
+		{"named DDL (this renderer)", func(s string) string { return s }},
+		{"unnamed DDL (earlier renderer)", func(s string) string { return namedConstraint.ReplaceAllString(s, "ADD $1") }},
+	} {
+		t.Run(variant.name, func(t *testing.T) {
+			db := throwawayDB(t, dsn)
+			res, diff := convergeWith(t, db, world, databaseID, variant.rewrite)
+			if len(diff.Changes) != 0 || len(diff.Unresolved) != 0 {
+				raw, _ := json.MarshalIndent(diff, "", "  ")
+				t.Fatalf("observed schema did not converge:\n%s\nscript:\n%s", raw, strings.Join(res.Script, "\n"))
+			}
+			// The diff compares structure only; the names are checked directly.
+			if got := constraintNames(t, db, "u"); strings.Join(got, ",") != strings.Join(wantUnique, ",") {
+				t.Fatalf("observed unique names = %v, desired %v", got, wantUnique)
+			}
+			if got := constraintNames(t, db, "f"); strings.Join(got, ",") != strings.Join(wantForeign, ",") {
+				t.Fatalf("observed foreign key names = %v, desired %v", got, wantForeign)
+			}
+		})
+	}
+}
+
+func TestRealPostgresLongGeneratedNamesAreCreatedAsDecided(t *testing.T) {
+	dsn := realDSN(t)
+	// The generated names exceed 63 bytes and are shortened with a digest; an
+	// unnamed DDL would get PostgreSQL's truncated names instead (not checked).
+	world, databaseID := namingWorld("parent_table_with_a_long_name", "child_table_with_a_rather_long_name", "_column_with_a_long_name")
+	wantUnique, wantForeign := desiredConstraintNames(t, world, databaseID)
+	for _, name := range append(append([]string(nil), wantUnique...), wantForeign...) {
+		if len(name) > 63 {
+			t.Fatalf("desired name %q is %d bytes", name, len(name))
+		}
+	}
+	db := throwawayDB(t, dsn)
+	res, diff := converge(t, db, world, databaseID)
+	if len(diff.Changes) != 0 || len(diff.Unresolved) != 0 {
+		raw, _ := json.MarshalIndent(diff, "", "  ")
+		t.Fatalf("observed schema did not converge:\n%s\nscript:\n%s", raw, strings.Join(res.Script, "\n"))
+	}
+	if got := constraintNames(t, db, "u"); strings.Join(got, ",") != strings.Join(wantUnique, ",") {
+		t.Fatalf("observed unique names = %v, desired %v", got, wantUnique)
+	}
+	if got := constraintNames(t, db, "f"); strings.Join(got, ",") != strings.Join(wantForeign, ",") {
+		t.Fatalf("observed foreign key names = %v, desired %v", got, wantForeign)
 	}
 }

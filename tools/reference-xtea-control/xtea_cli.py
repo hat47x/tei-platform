@@ -101,6 +101,8 @@ def load_model(path: Path) -> Dict[str, Any]:
     def function_info(function: ET.Element) -> Dict[str, Any]:
         function_type_id = _s(function, "FunctionTypeID")
         function_type = function_types.get(function_type_id)
+        type_code = _s(function_type, "SortKey") or _s(function, "Type")
+        type_name = _s(function_type, "Name") or type_code
         io_tables = []
         for io_table in function.findall("IOTable"):
             table_id = _s(io_table, "TableID")
@@ -142,8 +144,8 @@ def load_model(path: Path) -> Dict[str, Any]:
             "sortKey": _s(function, "SortKey"),
             "type": {
                 "id": function_type_id,
-                "code": _s(function_type, "SortKey"),
-                "name": _s(function_type, "Name"),
+                "code": type_code,
+                "name": type_name,
             },
             "subsystem": {"id": _s(function, "SubsystemID"),
                           "name": subsystem_name(_s(function, "SubsystemID"))},
@@ -237,6 +239,133 @@ def _print_functions(functions: List[Dict[str, Any]]) -> None:
         ]))
 
 
+def validate_model(model: Dict[str, Any]) -> Dict[str, Any]:
+    errors: List[str] = []
+    warnings: List[str] = []
+    subsystem_ids = {item["id"] for item in model["subsystems"]}
+    function_type_ids = {item["id"] for item in model["functionTypes"]}
+    table_ids = {item["id"] for item in model["tables"]}
+    function_ids = {item["id"] for item in model["functions"]}
+
+    for table in model["tables"]:
+        prefix = f"table {table['id']}"
+        if table["subsystem"]["id"] and table["subsystem"]["id"] not in subsystem_ids:
+            errors.append(f"{prefix}: unknown subsystem {table['subsystem']['id']}")
+        field_ids = {field["id"] for field in table["fields"]}
+        aliases = [field["alias"] for field in table["fields"] if field["alias"]]
+        if len(aliases) != len(set(aliases)):
+            warnings.append(f"{prefix}: duplicate field alias")
+        for field in table["fields"]:
+            if not field["dataType"]["sortKey"]:
+                errors.append(f"{prefix} field {field['id']}: missing data type")
+        for key in table["keys"]:
+            for item in key["fields"]:
+                if item["fieldId"] not in field_ids:
+                    errors.append(f"{prefix} key {key['id']}: unknown field {item['fieldId']}")
+
+    for function in model["functions"]:
+        prefix = f"function {function['id']}"
+        if function["subsystem"]["id"] and function["subsystem"]["id"] not in subsystem_ids:
+            errors.append(f"{prefix}: unknown subsystem {function['subsystem']['id']}")
+        if function["type"]["id"] and function["type"]["id"] not in function_type_ids \
+                and not function["type"]["code"]:
+            errors.append(f"{prefix}: unknown function type {function['type']['id']}")
+        for io_table in function["ioTables"]:
+            if io_table["table"]["id"] and io_table["table"]["id"] not in table_ids:
+                errors.append(f"{prefix}: unknown IO table {io_table['table']['id']}")
+        for call in function["calls"]:
+            if call["id"] not in function_ids:
+                errors.append(f"{prefix}: unknown called function {call['id']}")
+
+    return {
+        "schemaVersion": SCHEMA_VERSION,
+        "source": model["source"],
+        "errors": errors,
+        "warnings": warnings,
+        "valid": not errors,
+    }
+
+
+def _by_id(items: List[Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
+    return {item["id"]: item for item in items}
+
+
+def _table_view(table: Dict[str, Any]) -> Dict[str, Any]:
+    return {
+        "id": table["id"],
+        "name": table["name"],
+        "alias": table["alias"],
+        "subsystem": table["subsystem"],
+        "fields": [
+            {
+                "id": field["id"],
+                "alias": field["alias"],
+                "name": field["name"],
+                "dataType": field["dataType"]["sortKey"],
+                "notNull": field["notNull"],
+            }
+            for field in table["fields"]
+        ],
+        "keys": [
+            {"type": key["type"], "fields": [item["fieldId"] for item in key["fields"]]}
+            for key in table["keys"]
+        ],
+    }
+
+
+def _function_view(function: Dict[str, Any]) -> Dict[str, Any]:
+    return {
+        "id": function["id"],
+        "name": function["name"],
+        "type": function["type"]["code"],
+        "subsystem": function["subsystem"],
+        "parameters": function["parameters"],
+        "return": function["return"],
+        "ioTables": [
+            {
+                "tableId": item["table"]["id"],
+                "operations": item["operations"],
+            }
+            for item in function["ioTables"]
+        ],
+        "calls": [item["id"] for item in function["calls"]],
+    }
+
+
+def _diff_collection(before: List[Dict[str, Any]], after: List[Dict[str, Any]],
+                     view) -> Dict[str, Any]:
+    left = _by_id(before)
+    right = _by_id(after)
+    added = [right[key] for key in sorted(right.keys() - left.keys(), key=int)]
+    removed = [left[key] for key in sorted(left.keys() - right.keys(), key=int)]
+    changed = []
+    for key in sorted(left.keys() & right.keys(), key=int):
+        before_view = view(left[key])
+        after_view = view(right[key])
+        if before_view != after_view:
+            changed.append({"id": key, "before": before_view, "after": after_view})
+    return {"added": added, "removed": removed, "changed": changed}
+
+
+def diff_models(before: Dict[str, Any], after: Dict[str, Any]) -> Dict[str, Any]:
+    system_before = {key: before["system"].get(key) for key in ("name", "version", "formatVersion")}
+    system_after = {key: after["system"].get(key) for key in ("name", "version", "formatVersion")}
+    system_changes = {
+        key: {"before": system_before[key], "after": system_after[key]}
+        for key in system_before if system_before[key] != system_after[key]
+    }
+    return {
+        "schemaVersion": SCHEMA_VERSION,
+        "source": {
+            "before": before["source"],
+            "after": after["source"],
+        },
+        "system": system_changes,
+        "tables": _diff_collection(before["tables"], after["tables"], _table_view),
+        "functions": _diff_collection(before["functions"], after["functions"], _function_view),
+    }
+
+
 def main(argv: Optional[List[str]] = None) -> int:
     parser = argparse.ArgumentParser(description="Read-only X-TEA model inspection")
     parser.add_argument("--json", action="store_true", help="JSON output (default: text for lists)")
@@ -267,13 +396,33 @@ def main(argv: Optional[List[str]] = None) -> int:
     export = sub.add_parser("export", help="full normalized model as JSON")
     export.add_argument("model", type=Path)
 
+    diff = sub.add_parser("diff", help="compare two models by table and function ID")
+    diff.add_argument("before", type=Path)
+    diff.add_argument("after", type=Path)
+
+    validate = sub.add_parser("validate", help="check model references")
+    validate.add_argument("model", type=Path)
+
     args = parser.parse_args(argv)
+    if args.command == "diff":
+        try:
+            before = load_model(args.before)
+            after = load_model(args.after)
+        except (OSError, ValueError, ET.ParseError) as error:
+            print(f"error: {error}", file=sys.stderr)
+            return 2
+        _print_json(diff_models(before, after))
+        return 0
     try:
         model = load_model(args.model)
     except (OSError, ValueError, ET.ParseError) as error:
         print(f"error: {error}", file=sys.stderr)
         return 2
 
+    if args.command == "validate":
+        result = validate_model(model)
+        _print_json(result)
+        return 0 if result["valid"] else 1
     if args.command == "summary":
         _print_json(model_summary(model))
         return 0
