@@ -184,6 +184,30 @@ else { instance.getReturnMap().remove("ITEM.ID"); }''',
     for kind, script in prompt_scripts.items():
         ET.SubElement(system, "Function", ID="SFILTER_" + kind, Type="XF000",
                       Name="Filter " + kind, Script=script)
+
+    picker = ET.SubElement(system, "Function", ID="F104", Type="XF100", Name="Name picker",
+                           PrimaryTable="ITEM", InitialListing="T", OrderBy="ITEM.ID",
+                           ParmType="COLUMNS", Size="AUTO")
+    fields(picker, "Column", ["ITEM.ID", "ITEM.NAME"])
+    button(picker, 0, 3, "EXIT", "Close")
+    ET.SubElement(system, "Function", ID="SNAME_INPUT", Type="XF000", Name="Name input",
+                  Script='''var d=instance.getSession().getInputDialog();
+d.setFont(new (Java.type("java.awt.Font"))("Dialog",0,14));
+d.addField("Name", "ALPHA", 0, "NAME").setValue(instance.getParmMap().get("ITEM.NAME"));
+var reply=d.request("Edit name input");
+if(reply==0) { instance.getReturnMap().put("ITEM.NAME",d.getValueOfFieldByParmID("NAME")); }
+else { instance.getReturnMap().remove("ITEM.NAME"); }''')
+    for number, target in (("202", "SNAME_INPUT"), ("203", "F104")):
+        f = ET.SubElement(system, "Function", ID="F" + number, Type="XF200", Name="Prompt editor " + number,
+                          PrimaryTable="ITEM", Size="AUTO")
+        fields(f, "Field", ["ITEM.ID", "ITEM.NAME"])
+        options = ["PROMPT_CALL(" + target + ")"]
+        if number == "202":
+            options += [op + "(ITEM.NAME)" for op in ("PROMPT_CALL_TO_PUT", "PROMPT_CALL_TO_PUT_TO")]
+        options += [op + "(ITEM.NAME)" for op in ("PROMPT_CALL_TO_GET", "PROMPT_CALL_TO_GET_TO")]
+        f.findall("Field")[1].set("FieldOptions", ",".join(options))
+        button(f, 0, 3, "EXIT", "Close")
+        button(f, 1, 6, "EDIT", "Save")
     for typ, initial in (("ALPHA", "initial"), ("TEXTAREA", "initial"), ("NUMERIC", "1"),
                          ("ZEROFILL", ""), ("DATE", "2026-10-21"), ("CHECKBOX", "false"), ("LISTBOX", "A")):
         script = '''var d=instance.getSession().getInputDialog(); d.clear();

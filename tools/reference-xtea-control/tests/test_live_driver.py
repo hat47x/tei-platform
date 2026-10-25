@@ -655,17 +655,59 @@ class LiveDriverTest(unittest.TestCase):
         self.client.invoke({"window": "^Driver fixture launcher$", "role": "button",
                             "text": f"^S{name} DISPLAY$"})
 
-    def filter_prompt(self, kind):
-        self.assertTrue(self.client.wait_selector({"windowClass": "xeadDriver.XF100$",
-                                                  "class": "XF100_PromptCallField$"})["matched"])
-        field = self.client.find({"windowClass": "xeadDriver.XF100$",
-                                  "class": "XF100_PromptCallField$"})
+    def open_prompt(self, caller, dialog_class):
+        selector = {"windowClass": "xeadDriver.XF" + caller + "$",
+                    "class": "XF" + caller + "_PromptCallField$"}
+        self.assertTrue(self.client.wait_selector(selector)["matched"])
+        field = self.client.find(selector)
         self.assertIsNotNone(field)
         button = next(node for node in field["children"] if node["role"] == "button")
-        self.client.invoke({"windowClass": "xeadDriver.XF100$", "path": button["path"]})
-        selector = {"windowClass": "xeadDriver.XF" + kind + "Dialog$"}
+        self.client.invoke({"windowClass": selector["windowClass"], "path": button["path"]})
+        selector = {"windowClass": "xeadDriver.XF" + dialog_class + "$"}
         self.assertTrue(self.client.wait_selector(selector)["matched"])
         return selector
+
+    def filter_prompt(self, kind):
+        return self.open_prompt("100", kind + "Dialog")
+
+    def test_200_script_prompt_cancel_then_save(self):
+        self.open_function("202", "EDIT")
+        for decision in ("cancel", "accept"):
+            with self.subTest(decision=decision):
+                self.open_prompt("200", "InputDialog")
+                field = {"windowClass": "xeadDriver.XFInputDialog$", "role": "text", "text": "^Alpha$"}
+                self.client.set_value(field, "Picked")
+                self.button("xeadDriver.XFInputDialog", "^Close$" if decision == "cancel" else "^OK$")
+                self.client.wait_text({"windowClass": "xeadDriver.XF200$", "role": "text",
+                                       "class": "JTextField$", "index": 1},
+                                      expected="Alpha" if decision == "cancel" else "Picked")
+                self.assertEqual(self.observe(), self.observations[0])
+        self.button("xeadDriver.XF200", "Save")
+        self.result("RETURN_CODE=20")
+        self.assertIn("001:Picked:1;002:Beta:0;", self.observe())
+
+    def test_200_list_prompt_cancel_discard_then_save(self):
+        for save in (False, True):
+            with self.subTest(save=save):
+                self.open_function("203", "EDIT")
+                # Closing the picker without a selected return must preserve Alpha.
+                self.open_prompt("200", "100")
+                self.button("xeadDriver.XF100", "Close$")
+                field = {"windowClass": "xeadDriver.XF200$", "role": "text", "class": "JTextField$", "index": 1}
+                self.client.wait_text(field, expected="Alpha")
+                self.open_prompt("200", "100")
+                table = {"windowClass": "xeadDriver.XF100$", "role": "table"}
+                self.assertEqual(self.client.table_read(table)["rowCount"], 2)
+                self.client.select(table, row=1)
+                self.client.key(table, key="ENTER")
+                self.client.wait_text(field, expected="Beta")
+                self.assertEqual(self.observe(), self.observations[0])
+                self.button("xeadDriver.XF200", "Save" if save else "Close")
+                self.result("RETURN_CODE=20" if save else "RETURN_CODE=21")
+                if save:
+                    self.assertIn("001:Beta:1;002:Beta:0;", self.observe())
+                else:
+                    self.assertEqual(self.observe(), self.observations[0])
 
     def filter_rows(self, expected):
         self.assertTrue(self.client.wait_selector({"windowClass": "xeadDriver.XF100$",
