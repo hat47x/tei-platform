@@ -1,6 +1,6 @@
 # TEIの実装状況
 
-- 整理日: 2026-10-18
+- 整理日: 2026-10-25
 - 開発段階: **参照実装を使った実験と検証**
 - 品質に関する注意: **生成AIを用いて開発中であり、コード・設計・安全性の体系的な人的確認は未実施**です。本番利用を想定していません。
 
@@ -22,6 +22,7 @@ TEIは、分野固有の知識と実装技術を分けて管理するローコ�
 | 判定段階Cと最初のウェブ実行先 | **合格**。2026年9月19日に固定したビルド`0ba87a4e0a96f70a198b03ff7652fb00e3826abe`の意味、機能、表示を検証。**表示の忠実度は一人のAI評価者が判定しており、人による承認ではありません** | [段階Cの判定記録](../plan/gate/GATE_C_READINESS_AUDIT.md)、[検証根拠の条件](../plan/gate/GATE_C_EVIDENCE_CONTRACT.md) |
 | 共通受理と二つ目のアプリケーション | `repair_intake`の意味定義の一部を、明示的な受理を経て参照用作業領域へ取り込む経路などを検討・実装。受理済みであることと、実行先で動作を確認済みであることは別 | [参照用作業領域の案内](../reference/README.md)、[実装の構成](architecture.md) |
 | Web起動前の入力元照合 | 複合Web TargetにHost Readerの注入口を追加し、同じ読込結果から管理対象Sourceを照合してからRunnerとHTTPを生成する。通常CLIは正式Reader未接続のため起動拒否。合成fixtureには明示的な診断起動を用いる。**真正なHost受理・人的受理・製品G1/G2は未達** | [Web起動前の照合](../tools/reference-first-web-target/README.md)、[横断受入 #1119](https://github.com/hat47x/tei-platform/issues/1119) |
+| 生成器候補の選抜・来歴・artifact | 固定fixtureの選抜、source/binary digest、Go/Java/WASM/WASI/Python/JavaScriptのartifact保存、prune auditとcheckpointの署名・再検証を参照実装で確認。**実Provider・実Target・署名者Authority・別machine再現性は未確認** | [tools索引](../tools/README.md)、[ADR-0041](../plan/adr/0041-generated-artifact-provenance-boundaries.md)、[#2016](https://github.com/hat47x/tei-platform/issues/2016) |
 
 判定段階A・B・Cの「合格」は、**各判定時点に固定したソース、ビルド、検証根拠に対するもの**です。現在の`main`、すべての提供元、未知の業務、本番環境、別の実行先を自動的に合格とするものではありません。過去の検証結果を、そのまま新しい変更の検証根拠にはしません。
 
