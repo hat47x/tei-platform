@@ -4,13 +4,13 @@
 - 対象: `plan/research/SEMANTIC_EXTENSION_DEPENDENCY_PRE_ADR_2026-10.md`
 - 実証レーン: ISSUE-000077
 - 主担当要求: RQ-031 / RQ-032 / RQ-033
-- 評価目的: 構造を肯定するためではなく、意味の再現性・依存解決・Authority分離を破れる反例を探す
+- 評価目的: 構造の妥当性を肯定するのではなく、意味の再現性・依存解決・Authority分離を破る反例を探す
 
 ## 1. 結論
 
 Semantic ExtensionとRuntime Pluginを分離し、Semantic SetをEnvironmentより上流で固定する方向は妥当である。
 
-一方、現行Pre-ADRをそのまま実装すると、少なくとも次の経路で構造を破れる。
+一方、現行Pre-ADRをそのまま実装すると、少なくとも次の経路で構造が破綻し得る。
 
 1. greedyなversion選択が、実際には解がある依存graphを「解決不能」と誤判定する。
 2. Semantic Interfaceを文字列の自己申告だけで提供できると、互換性のないproviderが同じInterfaceを名乗れる。
@@ -56,7 +56,7 @@ Semantic ExtensionとRuntime Pluginを分離し、Semantic SetをEnvironmentよ�
 
 ## 3. A1 — greedy resolverはfalse conflictを作れる
 
-現行Reference resolverは、同じExtension IDのcompatible majorから最高versionを先に選び、そのversionの依存を再帰的に固定する。
+現行Reference resolverは、同じExtension IDのcompatible majorの中から最高versionを先に選び、そのversionの依存を再帰的に固定する。
 
 次のgraphを考える。
 
@@ -83,13 +83,13 @@ Y 1.0.0
 
 `X 1.1.0`を選べば全体は解決できる。
 
-しかしA側を先に辿って`X 1.2.0`を固定すると`Z@2`が選ばれ、その後B → Y → Z@1でconflictになる。これは「依存graphが解けない」のではなく、「greedyな選択が外れた」だけである。
+しかしA側を先に辿って`X 1.2.0`を固定すると`Z@2`が選ばれ、その後B → Y → Z@1でconflictになる。これは「依存graphを解決できない」のではなく、「greedyな選択が適切でなかった」だけである。
 
 ### 判定
 
 **Blocker。**
 
-「deterministicであること」と「正しく解けること」は別である。常に同じ誤答を返しても再現性は満たせるが、resolverとしては不十分である。
+「deterministicであること」と「正しく解決できること」は別である。常に同じ誤答を返しても再現性は満たせるが、resolverとしては不十分である。
 
 ### 設計反映
 
@@ -111,7 +111,7 @@ requires interface relation-acyclic-validator/v1
 
 を導入した場合、provider側が単に同じ文字列を宣言するだけでは不十分である。
 
-悪意がなくても、二つのExtensionが`relation-acyclic-validator/v1`を異なる入出力・unknown規則・diagnostic意味で解釈できる。悪意があれば、偽providerが同じInterface名を先に提供できる。
+悪意がなくても、二つのExtensionが`relation-acyclic-validator/v1`を異なる入出力・unknown規則・diagnosticの意味で解釈する可能性がある。悪意があれば、偽providerが同じInterface名を先に提供できる。
 
 ### 判定
 
@@ -132,7 +132,7 @@ Semantic Interface自体に少なくとも次を持たせる。
 - unknown / failure semantics
 - provider conformance requirement
 
-providerの`implements`宣言だけでは適合済みと扱わない。
+providerの`implements`宣言だけでは、適合済みとは扱わない。
 
 同じInterfaceを複数providerが満たす場合も、明示的なselection policyまたはAccepted wiringが無ければ、package IDやversion順で暗黙選択しない。
 
@@ -149,7 +149,7 @@ provider descriptorはInterface名だけでなくexact contract versionとcontra
 
 現行Referenceは複数Extensionが同じnamespaceを所有する場合をUnresolvedにできる。一方、まだ誰も宣言していないnamespaceでは、最初のExtensionがその名前を使える。
 
-この方式をproductionへ広げると、第三者Extensionが先に`std.data`等を宣言するdependency confusionが成立し得る。
+この方式をproductionへ広げると、第三者Extensionが`std.data`等を先に宣言するdependency confusionが成立し得る。
 
 ### 判定
 
