@@ -78,11 +78,11 @@ func TestSourceAdapterReturnsExactPayloadFreeInvocationReceipt(t *testing.T) {
 	}
 	for name, value := range map[string]string{
 		"request authority": receipt.RequestShapeAuthorityEvidenceFingerprint,
-		"result authority": receipt.ResultShapeAuthorityEvidenceFingerprint,
-		"request trust": receipt.RequestShapeTrustQualificationFingerprint,
-		"result trust": receipt.ResultShapeTrustQualificationFingerprint,
-		"request digest": receipt.RequestDigest,
-		"result digest": receipt.ResultDigest,
+		"result authority":  receipt.ResultShapeAuthorityEvidenceFingerprint,
+		"request trust":     receipt.RequestShapeTrustQualificationFingerprint,
+		"result trust":      receipt.ResultShapeTrustQualificationFingerprint,
+		"request digest":    receipt.RequestDigest,
+		"result digest":     receipt.ResultDigest,
 	} {
 		if !receiptTestHasSHA256Digest(value) {
 			t.Fatalf("%s fingerprint is not exact: %q", name, value)
@@ -129,8 +129,8 @@ func TestSourceAdapterReturnsExactPayloadFreeInvocationReceipt(t *testing.T) {
 func TestSourceAdapterReceiptSeparatesSourceBytesFromCapabilityIdentity(t *testing.T) {
 	contract, provider, registry := sourceAdapterRegistryFixture(t)
 	request := SourceAdapterRequest{
-		Format: xeadsource.FormatXead,
-		SourceBytes: []byte(`<System FormatVersion="1.2"><Table ID="T1"/></System>`),
+		Format:                xeadsource.FormatXead,
+		SourceBytes:           []byte(`<System FormatVersion="1.2"><Table ID="T1"/></System>`),
 		TranscriptionContract: sourceAdapterTranscriptionContract(),
 	}
 	left, err := registry.ResolveAndInvoke(sourceAdapterResolveInput(contract, provider), request)

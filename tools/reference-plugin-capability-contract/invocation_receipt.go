@@ -27,19 +27,19 @@ type InvocationReceipt struct {
 // In particular, the digest fields are observations and not signatures.
 func (execution InvocationExecution) Receipt() InvocationReceipt {
 	return InvocationReceipt{
-		Schema:                                    invocationReceiptSchema,
-		Resolution:                                execution.Resolution,
-		RequestShape:                              execution.RequestShape,
-		RequestShapeFingerprint:                   execution.RequestShapeFingerprint,
-		RequestShapeAuthorityEvidenceFingerprint:  execution.RequestShapeAuthorityEvidenceFingerprint,
+		Schema:                                   invocationReceiptSchema,
+		Resolution:                               execution.Resolution,
+		RequestShape:                             execution.RequestShape,
+		RequestShapeFingerprint:                  execution.RequestShapeFingerprint,
+		RequestShapeAuthorityEvidenceFingerprint: execution.RequestShapeAuthorityEvidenceFingerprint,
 		RequestShapeTrustQualificationFingerprint: execution.RequestShapeTrustQualificationFingerprint,
-		ResultShape:                               execution.ResultShape,
-		ResultShapeFingerprint:                    execution.ResultShapeFingerprint,
-		ResultShapeAuthorityEvidenceFingerprint:   execution.ResultShapeAuthorityEvidenceFingerprint,
-		ResultShapeTrustQualificationFingerprint:  execution.ResultShapeTrustQualificationFingerprint,
-		PayloadCodec:                              execution.PayloadCodec,
-		RequestDigest:                             execution.RequestDigest,
-		ResultDigest:                              execution.ResultDigest,
-		AuthorityLimits:                           append([]string(nil), execution.AuthorityLimits...),
+		ResultShape:                              execution.ResultShape,
+		ResultShapeFingerprint:                   execution.ResultShapeFingerprint,
+		ResultShapeAuthorityEvidenceFingerprint:  execution.ResultShapeAuthorityEvidenceFingerprint,
+		ResultShapeTrustQualificationFingerprint: execution.ResultShapeTrustQualificationFingerprint,
+		PayloadCodec:                             execution.PayloadCodec,
+		RequestDigest:                            execution.RequestDigest,
+		ResultDigest:                             execution.ResultDigest,
+		AuthorityLimits:                          append([]string(nil), execution.AuthorityLimits...),
 	}
 }
