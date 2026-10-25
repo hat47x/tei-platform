@@ -30,34 +30,47 @@ type StoreOptions struct {
 }
 
 type Object struct {
-	Schema          string `json:"schema"`
-	CandidateID     string `json:"candidateId"`
-	Language        string `json:"language"`
-	ContractID      string `json:"contractId"`
-	ContractVersion string `json:"contractVersion"`
-	SourceDigest    string `json:"sourceDigest"`
-	BinaryDigest    string `json:"binaryDigest"`
-	ReceiptDigest   string `json:"receiptDigest"`
+	Schema              string `json:"schema"`
+	CandidateID         string `json:"candidateId"`
+	Language            string `json:"language"`
+	ContractID          string `json:"contractId"`
+	ContractVersion     string `json:"contractVersion"`
+	SourceDigest        string `json:"sourceDigest"`
+	BinaryDigest        string `json:"binaryDigest"`
+	BuildEvidenceDigest string `json:"buildEvidenceDigest,omitempty"`
+	ReceiptDigest       string `json:"receiptDigest"`
 }
 
 type Receipt struct {
-	Schema           string   `json:"schema"`
-	CandidateID      string   `json:"candidateId"`
-	Language         string   `json:"language,omitempty"`
-	SourceDigest     string   `json:"sourceDigest"`
-	BinaryDigest     string   `json:"binaryDigest"`
-	ObjectPath       string   `json:"objectPath"`
-	Reused           bool     `json:"reused"`
-	Passed           bool     `json:"passed"`
-	Reason           string   `json:"reason,omitempty"`
-	GrantsAuthority  bool     `json:"grantsAuthority"`
-	ProvesRealTarget bool     `json:"provesRealTarget"`
-	Notes            []string `json:"notes"`
+	Schema              string   `json:"schema"`
+	CandidateID         string   `json:"candidateId"`
+	Language            string   `json:"language,omitempty"`
+	SourceDigest        string   `json:"sourceDigest"`
+	BinaryDigest        string   `json:"binaryDigest"`
+	BuildEvidenceDigest string   `json:"buildEvidenceDigest,omitempty"`
+	ObjectPath          string   `json:"objectPath"`
+	Reused              bool     `json:"reused"`
+	Passed              bool     `json:"passed"`
+	Reason              string   `json:"reason,omitempty"`
+	GrantsAuthority     bool     `json:"grantsAuthority"`
+	ProvesRealTarget    bool     `json:"provesRealTarget"`
+	Notes               []string `json:"notes"`
 }
 
 func digest(content []byte) string {
 	sum := sha256.Sum256(content)
 	return "sha256:" + hex.EncodeToString(sum[:])
+}
+
+func buildEvidenceDigest(candidate *generatorselection.CandidateReceipt) (string, error) {
+	if candidate == nil || candidate.BuildEvidence == nil {
+		return "", nil
+	}
+	encoded, err := json.Marshal(candidate.BuildEvidence)
+	if err != nil {
+		return "", err
+	}
+	return digest(encoded), nil
 }
 
 func digestHex(value string) (string, error) {
@@ -106,6 +119,11 @@ func Put(ctx context.Context, opts StoreOptions) (Receipt, error) {
 	receipt.Language = candidate.Language
 	receipt.SourceDigest = candidate.SourceDigest
 	receipt.BinaryDigest = candidate.BinaryDigest
+	evidenceDigest, err := buildEvidenceDigest(candidate)
+	if err != nil {
+		return receipt, err
+	}
+	receipt.BuildEvidenceDigest = evidenceDigest
 	sourceHex, err := digestHex(candidate.SourceDigest)
 	if err != nil {
 		receipt.Reason = err.Error()
@@ -163,6 +181,24 @@ func Put(ctx context.Context, opts StoreOptions) (Receipt, error) {
 			existingMatches = len(existing) == 0
 		}
 		if existingMatches {
+			rawExistingObject, err := os.ReadFile(filepath.Join(objectPath, "object.json"))
+			if err != nil {
+				receipt.Reason = "existing object metadata is unreadable: " + err.Error()
+				return receipt, nil
+			}
+			var existingObject Object
+			if err := json.Unmarshal(rawExistingObject, &existingObject); err != nil {
+				receipt.Reason = "existing object metadata is invalid: " + err.Error()
+				return receipt, nil
+			}
+			if existingObject.ReceiptDigest != digest(rawReceipt) ||
+				existingObject.BuildEvidenceDigest != receipt.BuildEvidenceDigest ||
+				existingObject.CandidateID != candidate.ID ||
+				existingObject.SourceDigest != candidate.SourceDigest ||
+				existingObject.BinaryDigest != candidate.BinaryDigest {
+				receipt.Reason = "existing object provenance differs from the current selection receipt"
+				return receipt, nil
+			}
 			receipt.ObjectPath = objectPath
 			receipt.Reused = true
 			receipt.Passed = true
@@ -173,7 +209,8 @@ func Put(ctx context.Context, opts StoreOptions) (Receipt, error) {
 		Schema: ObjectSchema, CandidateID: candidate.ID, Language: candidate.Language,
 		ContractID: selection.ContractID, ContractVersion: selection.ContractVersion,
 		SourceDigest: candidate.SourceDigest, BinaryDigest: candidate.BinaryDigest,
-		ReceiptDigest: digest(rawReceipt),
+		BuildEvidenceDigest: receipt.BuildEvidenceDigest,
+		ReceiptDigest:       digest(rawReceipt),
 	}
 	encodedObject, err := json.MarshalIndent(object, "", "  ")
 	if err != nil {
@@ -188,6 +225,10 @@ func Put(ctx context.Context, opts StoreOptions) (Receipt, error) {
 		return receipt, nil
 	}
 	if err := os.WriteFile(filepath.Join(objectPath, "artifact"), binary, 0o755); err != nil {
+		receipt.Reason = err.Error()
+		return receipt, nil
+	}
+	if err := os.WriteFile(filepath.Join(objectPath, "receipt.json"), rawReceipt, 0o644); err != nil {
 		receipt.Reason = err.Error()
 		return receipt, nil
 	}
@@ -223,6 +264,43 @@ func Get(storeDir, sourceDigest string) (Receipt, error) {
 		receipt.Reason = "object metadata source digest does not match the requested digest"
 		return receipt, nil
 	}
+	rawReceipt, err := os.ReadFile(filepath.Join(objectPath, "receipt.json"))
+	if err != nil {
+		receipt.Reason = "stored selection receipt is unreadable: " + err.Error()
+		return receipt, nil
+	}
+	if digest(rawReceipt) != object.ReceiptDigest {
+		receipt.Reason = "stored selection receipt digest does not match"
+		return receipt, nil
+	}
+	var selection generatorselection.Receipt
+	if err := json.Unmarshal(rawReceipt, &selection); err != nil {
+		receipt.Reason = "stored selection receipt is invalid: " + err.Error()
+		return receipt, nil
+	}
+	var selected *generatorselection.CandidateReceipt
+	for index := range selection.Candidates {
+		if selection.Candidates[index].ID == object.CandidateID {
+			selected = &selection.Candidates[index]
+			break
+		}
+	}
+	if selected == nil {
+		receipt.Reason = "stored selection receipt does not contain the candidate"
+		return receipt, nil
+	}
+	if selected.SourceDigest != object.SourceDigest || selected.BinaryDigest != object.BinaryDigest {
+		receipt.Reason = "stored selection receipt digests do not match the object"
+		return receipt, nil
+	}
+	evidenceDigest, err := buildEvidenceDigest(selected)
+	if err != nil {
+		return receipt, err
+	}
+	if evidenceDigest != object.BuildEvidenceDigest {
+		receipt.Reason = "stored build evidence digest does not match the selection receipt"
+		return receipt, nil
+	}
 	source, err := os.ReadFile(filepath.Join(objectPath, "source"))
 	if err != nil {
 		return receipt, err
@@ -247,6 +325,7 @@ func Get(storeDir, sourceDigest string) (Receipt, error) {
 	receipt.CandidateID = object.CandidateID
 	receipt.Language = object.Language
 	receipt.BinaryDigest = object.BinaryDigest
+	receipt.BuildEvidenceDigest = object.BuildEvidenceDigest
 	receipt.ObjectPath = objectPath
 	receipt.Passed = true
 	return receipt, nil

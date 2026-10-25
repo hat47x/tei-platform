@@ -31,6 +31,12 @@ go run ./tools/reference-target-profile/cmd/tei-target-profile \
 
 go run ./tools/reference-target-profile/cmd/tei-target-profile \
   rollback -root /tmp/tei-target-profile-root -to sha256:...
+
+go run ./tools/reference-target-profile/cmd/tei-target-profile \
+  history -root /tmp/tei-target-profile-root
+
+go run ./tools/reference-target-profile/cmd/tei-target-profile \
+  prune-history -root /tmp/tei-target-profile-root -keep-last 2 -dry-run
 ```
 
 ## Profileの項目
@@ -38,7 +44,7 @@ go run ./tools/reference-target-profile/cmd/tei-target-profile \
 | 項目 | 内容 |
 | --- | --- |
 | `processModel` | `oneshot`（caseごとに別process）、`long-running`（1 processで複数request）、`batch`（1 processで全requestを処理して終了） |
-| `storage` | `none`、`filesystem`、`sqlite`、`remote`。`filesystem`だけdeploy参照で扱う |
+| `storage` | `none`、`filesystem`、`sqlite`、`remote`。`none`と`filesystem`をdeploy参照で扱う |
 | `network` | `none`、`loopback`、`allowed` |
 | `update` | `replace`、`in-place`、`rolling`。deploy参照で扱う |
 | `memoryLimitBytes` | 正の整数 |
@@ -152,21 +158,26 @@ go run ./tools/reference-target-profile/cmd/tei-target-profile run \
 
 ## ローカルartifact配備
 
-`deploy`は、選択したGo候補をbuildし、ローカルfilesystemのrootへartifactとして配置します。実Targetへの配備ではなく、`storage: filesystem`と`update`の最小の挙動を確認する参照です。
+`deploy`は、選択したGo候補をbuildし、ローカルfilesystemのrootへartifactとして配置します。実Targetへの配備ではなく、`storage: filesystem`と`update`の最小の挙動を確認する参照です。`storage: none`ではartifactをbuild・digest照合するだけで、永続配置せず`installed=false`を返します。
 
 - `replace`: 新しいartifactを同じrootへrenameし、既存artifactは`history/<digest>`へ保持します。
 - `in-place`: 既存artifactを上書きし、上書き前のartifactを`history/<digest>`へ保持します。
 - `rolling`: `slots/a`と`slots/b`の2 slotを使い、非active slotへ新artifactを置いてから`current` pointerをatomicに切り替えます。旧slotは保持し、`rollback`でcurrent/previousを入れ替えます。
 - `rollback -to <digest>`: `replace`/`in-place`の`history/<digest>`から指定artifactを選び、digestを照合してからcurrentへatomicに戻します。戻す前のcurrentはhistoryへ保持します。
-- currentの退避先historyが既にある場合は、内容のdigestを照合します。読めない・一致しない場合はcurrentの置換前に拒否し、壊れたhistoryも上書きしません。この確認は電源断耐性を提供しません。
+- replace/in-place配備と`rollback -to`では、currentの退避先historyが既にある場合、内容のdigestを照合し、一致する履歴は書き直さず更新時刻も保ちます。読めない・一致しない場合はcurrentの置換前に拒否し、壊れたhistoryも上書きしません。この確認は電源断耐性を提供しません。
 - 配備後にartifact digestを再計算し、build結果と一致することを確認します。history/slotのdigestも照合します。
+- `storage: none`はrootを作らず、build結果のdigestだけを検証します。
+- `history`は`history/<digest>`の内容を再計算し、file名と一致しない・読めないartifactを不合格にします。`prune-history -keep-last N`は検証済みartifactを新しい順にN件残し、`-dry-run`では削除しません。検証に失敗したartifactがある場合は削除しません。
+- `history` / `prune-history`は、history directory自体のsymlinkと、artifactのsymlink・通常file以外の項目を拒否し、リンク先や特殊fileの内容を読みません。外部writerによる検査後の差替えを防ぐsnapshotや、filesystem全体のsandboxではありません。
+- pruneの`deleted`は、削除に成功したfileだけを記録します。途中の削除に失敗した場合は`passed=false`とし、先に成功した削除は戻しません。全件を一度に削除するtransactionではありません。
+- 保持期間の判定はfileの更新時刻に依存し、同時刻の場合はdigest順で決めます。削除の承認・audit・暗号学的な履歴保護は扱いません。
 - `sqlite`・`remote` storage、Go以外の候補は未対応として`passed=false`にします。
 - 実Targetのsupervisor・health check・traffic drain・電源断耐性・複数ホスト配備は扱いません。
 - `rollback -to`は`replace`/`in-place`のhistoryだけを対象とし、rollingのslot rollbackは`-to`なしの`rollback`を使います。
 
 ### 同じ配備先への同時更新
 
-`deploy`（replace/in-place/rolling）と両方の`rollback`は、root内の`.update-lock` directoryを排他的に作成します。配備はbuild前、rollbackは履歴・pointerの読取り前に取得し、結果の照合まで保持します。取得できなければ待機・再試行せず`passed=false`を返し、artifact・history・pointer・stagingを変更しません。別rootの更新は妨げません。
+`deploy`（replace/in-place/rolling）と両方の`rollback`、`prune-history`（dry-runを含む）は、root内の`.update-lock` directoryを排他的に作成します。配備はbuild前、rollbackは履歴・pointerの読取り前、pruneは履歴一覧の読取り前に取得し、処理と結果の照合まで保持します。pruneのdry-runも、一時的なlockの作成・解放を行いますが、artifactは削除しません。取得できなければ待機・再試行せず`passed=false`を返し、artifact・history・pointer・stagingを変更しません。別rootの更新は妨げません。
 
 正常終了・通常のエラーではlockを解放します。強制終了・電源断で残ったlockは自動削除しません。復旧時は、同じrootに対する更新processが動いていないことと、artifact・history・pointerの状態を確認してから、空の`.update-lock` directoryを手動で削除します。稼働中のlockを削除すると排他が失われます。
 
@@ -187,8 +198,8 @@ go run ./tools/reference-target-profile/cmd/tei-target-profile run \
 
 - profileは意味を変えない。契約・fixture・候補は同じものを使う。
 - profileは`generatorId`で生成器を一つ選ぶ。選ばれなかった候補は`not selected by target profile`として拒否し、別の生成器へ暗黙にフォールバックしない。
-- `processModel`はoneshotのprocess-per-case、long-running/batchのsingle-processを実行で確認する。
-- `storage`の`filesystem`と`update`の`replace`/`in-place`/`rolling`は、`deploy`のローカルfilesystem参照で限定的に確認する。`network`は以下のopt-inの範囲で強制し、`sqlite`/`remote` storageは宣言または未対応のまま。
+- `processModel`はoneshotのprocess-per-case、long-running/batchのsingle-processを実行で確認する。batchはGo・Python・JavaScript・Java・WASI候補で確認し、WASM候補はLinux CIだけで確認する。
+- `storage`の`none`/`filesystem`と`update`の`replace`/`in-place`/`rolling`は、`deploy`のローカル参照で限定的に確認する。`network`は以下のopt-inの範囲で強制し、`sqlite`/`remote` storageは宣言または未対応のまま。
 - `observability`は`stdout`・`stderr`・`exit-code`だけをcase実行から観測する。未対応channelは`unsupported`として返し、合格にしない。
 - profileの合格や`semanticsEqual`は、実機・実OS・実Targetでの動作を証明しない。
 - 組込み固有のリアルタイム性・安全認証・電源断耐性は扱わない。

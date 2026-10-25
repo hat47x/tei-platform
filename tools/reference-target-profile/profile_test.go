@@ -305,6 +305,208 @@ func TestRunAppliesBatchProcessModel(t *testing.T) {
 	}
 }
 
+func TestRunAppliesJavaBatchProcessModel(t *testing.T) {
+	if _, _, _, ok := findJavaForProbe(); !ok {
+		t.Skip("javac/java is not available")
+	}
+	workspace, contract, fixtures, _ := selectionPaths(t)
+	candidates := filepath.Join(t.TempDir(), "candidates")
+	if _, err := generatorselection.GenerateVersion(contract, "java-long-running-template", "1",
+		filepath.Join(candidates, "java-long-running-template")); err != nil {
+		t.Fatal(err)
+	}
+	var profile Profile
+	raw, err := os.ReadFile(filepath.Join(repoRoot(t), "tools", "reference-target-profile", "testdata", "server.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(raw, &profile); err != nil {
+		t.Fatal(err)
+	}
+	profile.ID = "java-batch"
+	profile.ProcessModel = ProcessBatch
+	profile.Update = UpdateReplace
+	profile.GeneratorID = "java-long-running-template"
+	changed, err := json.MarshalIndent(profile, "", "  ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	profilePath := filepath.Join(t.TempDir(), "java-batch.json")
+	if err := os.WriteFile(profilePath, append(changed, '\n'), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	receipt, err := Run(context.Background(), RunOptions{
+		WorkspaceDir: workspace, ContractPath: contract, FixturePath: fixtures,
+		CandidatesDir: candidates, ProfilePath: profilePath,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !receipt.Passed || receipt.ProcessModel == nil || !receipt.ProcessModel.Passed {
+		t.Fatalf("java batch profile did not pass: %+v", receipt.ProcessModel)
+	}
+	if receipt.ProcessModel.Mode != ProcessBatch || receipt.ProcessModel.Processes != 1 ||
+		receipt.ProcessModel.Requests != 10 || receipt.ProcessModel.Responses != 10 ||
+		receipt.Enforcement["processModel"] != "batch:single-process" {
+		t.Fatalf("unexpected java batch evidence: %+v", receipt.ProcessModel)
+	}
+}
+
+func TestRunAppliesWasiBatchProcessModel(t *testing.T) {
+	if _, _, ok := generatorselection.ResolveWasiRuntime(); !ok {
+		t.Skip("node is not available")
+	}
+	workspace, contract, fixtures, _ := selectionPaths(t)
+	candidates := filepath.Join(t.TempDir(), "candidates")
+	if _, err := generatorselection.GenerateVersion(contract, "wasi-long-running-template", "1",
+		filepath.Join(candidates, "wasi-long-running-template")); err != nil {
+		t.Fatal(err)
+	}
+	var profile Profile
+	raw, err := os.ReadFile(filepath.Join(repoRoot(t), "tools", "reference-target-profile", "testdata", "server.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(raw, &profile); err != nil {
+		t.Fatal(err)
+	}
+	profile.ID = "wasi-batch"
+	profile.ProcessModel = ProcessBatch
+	profile.Update = UpdateReplace
+	profile.GeneratorID = "wasi-long-running-template"
+	changed, err := json.MarshalIndent(profile, "", "  ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	profilePath := filepath.Join(t.TempDir(), "wasi-batch.json")
+	if err := os.WriteFile(profilePath, append(changed, '\n'), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	receipt, err := Run(context.Background(), RunOptions{
+		WorkspaceDir: workspace, ContractPath: contract, FixturePath: fixtures,
+		CandidatesDir: candidates, ProfilePath: profilePath,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !receipt.Passed || receipt.ProcessModel == nil || !receipt.ProcessModel.Passed {
+		t.Fatalf("wasi batch profile did not pass: %+v", receipt.ProcessModel)
+	}
+	if receipt.ProcessModel.Mode != ProcessBatch || receipt.ProcessModel.Processes != 1 ||
+		receipt.ProcessModel.Requests != 10 || receipt.ProcessModel.Responses != 10 ||
+		receipt.Enforcement["processModel"] != "batch:single-process" {
+		t.Fatalf("unexpected wasi batch evidence: %+v", receipt.ProcessModel)
+	}
+}
+
+func TestRunAppliesScriptBatchProcessModel(t *testing.T) {
+	for _, test := range []struct {
+		language string
+		strategy string
+	}{
+		{language: generatorselection.LanguagePython, strategy: "python-long-running-template"},
+		{language: generatorselection.LanguageJavaScript, strategy: "javascript-long-running-template"},
+	} {
+		t.Run(test.language, func(t *testing.T) {
+			_, runtime := generatorselection.ResolveScriptRuntime(test.language)
+			if runtime == nil || !runtime.Available {
+				t.Skipf("%s runtime is not available", test.language)
+			}
+			workspace, contract, fixtures, _ := selectionPaths(t)
+			candidates := filepath.Join(t.TempDir(), "candidates")
+			if _, err := generatorselection.GenerateVersion(contract, test.strategy, "1",
+				filepath.Join(candidates, test.strategy)); err != nil {
+				t.Fatal(err)
+			}
+			var profile Profile
+			raw, err := os.ReadFile(filepath.Join(repoRoot(t), "tools", "reference-target-profile", "testdata", "server.json"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := json.Unmarshal(raw, &profile); err != nil {
+				t.Fatal(err)
+			}
+			profile.ID = test.language + "-batch"
+			profile.ProcessModel = ProcessBatch
+			profile.Update = UpdateReplace
+			profile.GeneratorID = test.strategy
+			changed, err := json.MarshalIndent(profile, "", "  ")
+			if err != nil {
+				t.Fatal(err)
+			}
+			profilePath := filepath.Join(t.TempDir(), "batch.json")
+			if err := os.WriteFile(profilePath, append(changed, '\n'), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			receipt, err := Run(context.Background(), RunOptions{
+				WorkspaceDir: workspace, ContractPath: contract, FixturePath: fixtures,
+				CandidatesDir: candidates, ProfilePath: profilePath,
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !receipt.Passed || receipt.ProcessModel == nil || !receipt.ProcessModel.Passed {
+				t.Fatalf("%s batch profile did not pass: %+v", test.language, receipt.ProcessModel)
+			}
+			if receipt.ProcessModel.Mode != ProcessBatch || receipt.ProcessModel.Processes != 1 ||
+				receipt.ProcessModel.Requests != 10 || receipt.ProcessModel.Responses != 10 ||
+				receipt.Enforcement["processModel"] != "batch:single-process" {
+				t.Fatalf("unexpected %s batch evidence: %+v", test.language, receipt.ProcessModel)
+			}
+		})
+	}
+}
+
+func TestRunAppliesWasmBatchProcessModel(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows Node wasm_exec exits nonzero after a multi-request stream")
+	}
+	if _, _, _, ok := findWasmForProbe(); !ok {
+		t.Skip("node or Go wasm_exec_node.js is not available")
+	}
+	workspace, contract, fixtures, _ := selectionPaths(t)
+	candidates := filepath.Join(t.TempDir(), "candidates")
+	if _, err := generatorselection.GenerateVersion(contract, "wasm-long-running-template", "1",
+		filepath.Join(candidates, "wasm-long-running-template")); err != nil {
+		t.Fatal(err)
+	}
+	var profile Profile
+	raw, err := os.ReadFile(filepath.Join(repoRoot(t), "tools", "reference-target-profile", "testdata", "server.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(raw, &profile); err != nil {
+		t.Fatal(err)
+	}
+	profile.ID = "wasm-batch"
+	profile.ProcessModel = ProcessBatch
+	profile.Update = UpdateReplace
+	profile.GeneratorID = "wasm-long-running-template"
+	changed, err := json.MarshalIndent(profile, "", "  ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	profilePath := filepath.Join(t.TempDir(), "wasm-batch.json")
+	if err := os.WriteFile(profilePath, append(changed, '\n'), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	receipt, err := Run(context.Background(), RunOptions{
+		WorkspaceDir: workspace, ContractPath: contract, FixturePath: fixtures,
+		CandidatesDir: candidates, ProfilePath: profilePath,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !receipt.Passed || receipt.ProcessModel == nil || !receipt.ProcessModel.Passed {
+		t.Fatalf("wasm batch profile did not pass: %+v", receipt.ProcessModel)
+	}
+	if receipt.ProcessModel.Mode != ProcessBatch || receipt.ProcessModel.Processes != 1 ||
+		receipt.ProcessModel.Requests != 10 || receipt.ProcessModel.Responses != 10 ||
+		receipt.Enforcement["processModel"] != "batch:single-process" {
+		t.Fatalf("unexpected wasm batch evidence: %+v", receipt.ProcessModel)
+	}
+}
+
 func TestRunAppliesProfilesAndKeepsSelection(t *testing.T) {
 	workspace, contract, fixtures, candidates := selectionPaths(t)
 	previous, had := os.LookupEnv("GOMEMLIMIT")
