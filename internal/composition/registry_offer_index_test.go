@@ -95,8 +95,8 @@ func TestIndexedOffersPreservePreviousDependencyResolution(t *testing.T) {
 		for i := 0; i < count; i++ {
 			id := fmt.Sprintf("plugin-%03d", i)
 			p := Provider{
-				ID: id,
-				Scope: scopes[random.Intn(len(scopes))],
+				ID:     id,
+				Scope:  scopes[random.Intn(len(scopes))],
 				Offers: contracts[random.Intn(len(contracts))],
 			}
 			seenContracts := map[string]bool{}
@@ -144,7 +144,7 @@ func TestIndexedOffersPreserveExplicitSelectionInExactScope(t *testing.T) {
 		"c": {ID: "c", Scope: "tenant-b", Offers: read},
 		"d": {ID: "d", Scope: "tenant-a", Offers: otherShape},
 		"client": {ID: "client", Scope: "tenant-a",
-			Offers: Contract{ID: "client", Version: "1", Shape: "exact"},
+			Offers:   Contract{ID: "client", Version: "1", Shape: "exact"},
 			Requires: []Dependency{{Contract: read, ProviderID: "b"}}},
 	}
 	result, err := evaluate(providers)
