@@ -1,0 +1,63 @@
+name: TEI X-TEA Driver control Python checks
+
+# Check only synthetic/stdlib Python paths. No X-TEA sources, runtime jars,
+# reference model, GUI, Java build or Windows machine is required.
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, reopened, synchronize, ready_for_review]
+    paths:
+      - 'tools/reference-xtea-control/**'
+      - '.github/workflows/tei-xtea-driver-control-python-ci.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'tools/reference-xtea-control/**'
+      - '.github/workflows/tei-xtea-driver-control-python-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tei-xtea-python-${{ github.event_name }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  synthetic-python:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      CANDIDATE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+
+      - name: Verify candidate and Python runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$CANDIDATE_SHA"
+          test -z "$(git status --porcelain=v1 --untracked-files=all)"
+          python3 --version
+          printf 'candidate=%s\n' "$CANDIDATE_SHA"
+
+      - name: Run synthetic inventory and Driver result regression
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd tools/reference-xtea-control
+          env -u XTEA_RUNTIME_HOME python3 tests/test_inventory.py
+          env -u XTEA_RUNTIME_HOME python3 tests/test_driver_result.py
+
+      - name: Check repository unchanged
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$CANDIDATE_SHA"
+          test -z "$(git status --porcelain=v1 --untracked-files=all)"
