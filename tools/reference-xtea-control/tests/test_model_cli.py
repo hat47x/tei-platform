@@ -56,6 +56,17 @@ class ModelCliTest(unittest.TestCase):
         self.assertEqual(menu["calls"][0]["id"], "20")
         self.assertEqual(menu["ioPanels"][0]["background"], "WINDOW")
 
+    def test_schema_contract(self) -> None:
+        schemas = xtea_cli.model_schemas()
+        self.assertIn("system", schemas["model"]["required"])
+        self.assertIn("functions", schemas["model"]["required"])
+        self.assertIn("tables", schemas["diff"]["required"])
+        output = io.StringIO()
+        with redirect_stdout(output):
+            code = xtea_cli.main(["schema", "diff"])
+        self.assertEqual(code, 0)
+        self.assertEqual(json.loads(output.getvalue())["title"], "X-TEA model diff")
+
     def test_validate_references(self) -> None:
         self.assertTrue(xtea_cli.validate_model(self.model)["valid"])
         text = FIXTURE.read_text(encoding="utf-8")
