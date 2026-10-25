@@ -277,6 +277,51 @@ func TestDeploySQLiteAndRollback(t *testing.T) {
 	if !swapped.Passed || swapped.ArtifactDigest != second.ArtifactDigest {
 		t.Fatalf("sqlite slot rollback failed: %+v", swapped)
 	}
+
+	history, err := History(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !history.Passed || len(history.Entries) != 2 {
+		t.Fatalf("sqlite history did not verify: %+v", history)
+	}
+
+	thirdProfile := profile
+	thirdProfile.ID = "sqlite-third"
+	thirdProfile.GeneratorID = "long-running-template"
+	changed, err = json.MarshalIndent(thirdProfile, "", "  ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(profilePath, append(changed, '\n'), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Deploy(context.Background(), DeployOptions{
+		ProfilePath: profilePath, CandidatesDir: candidates, RootDir: root,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	dryRun, err := PruneHistory(root, 2, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !dryRun.Passed || len(dryRun.Kept) != 2 || len(dryRun.WouldDelete) != 1 {
+		t.Fatalf("sqlite prune dry-run failed: %+v", dryRun)
+	}
+	pruned, err := PruneHistory(root, 2, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !pruned.Passed || len(pruned.Deleted) != 1 {
+		t.Fatalf("sqlite prune failed: %+v", pruned)
+	}
+	history, err = History(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !history.Passed || len(history.Entries) != 2 {
+		t.Fatalf("sqlite history after prune is wrong: %+v", history)
+	}
 }
 
 func TestDeployInPlaceUpdatesTarget(t *testing.T) {
