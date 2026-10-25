@@ -196,7 +196,7 @@ go run ./tools/reference-target-profile/cmd/tei-target-profile run \
 
 - profileは意味を変えない。契約・fixture・候補は同じものを使う。
 - profileは`generatorId`で生成器を一つ選ぶ。選ばれなかった候補は`not selected by target profile`として拒否し、別の生成器へ暗黙にフォールバックしない。
-- `processModel`はoneshotのprocess-per-case、long-running/batchのsingle-processを実行で確認する。batchはGo候補に加え、Java候補とWASI候補でも確認する。
+- `processModel`はoneshotのprocess-per-case、long-running/batchのsingle-processを実行で確認する。batchはGo・Python・JavaScript・Java・WASI候補で確認し、WASM候補はLinux CIだけで確認する。
 - `storage`の`none`/`filesystem`と`update`の`replace`/`in-place`/`rolling`は、`deploy`のローカル参照で限定的に確認する。`network`は以下のopt-inの範囲で強制し、`sqlite`/`remote` storageは宣言または未対応のまま。
 - `observability`は`stdout`・`stderr`・`exit-code`だけをcase実行から観測する。未対応channelは`unsupported`として返し、合格にしない。
 - profileの合格や`semanticsEqual`は、実機・実OS・実Targetでの動作を証明しない。
