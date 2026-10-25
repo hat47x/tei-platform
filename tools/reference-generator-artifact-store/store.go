@@ -30,29 +30,31 @@ type StoreOptions struct {
 }
 
 type Object struct {
-	Schema          string `json:"schema"`
-	CandidateID     string `json:"candidateId"`
-	Language        string `json:"language"`
-	ContractID      string `json:"contractId"`
-	ContractVersion string `json:"contractVersion"`
-	SourceDigest    string `json:"sourceDigest"`
-	BinaryDigest    string `json:"binaryDigest"`
-	ReceiptDigest   string `json:"receiptDigest"`
+	Schema              string `json:"schema"`
+	CandidateID         string `json:"candidateId"`
+	Language            string `json:"language"`
+	ContractID          string `json:"contractId"`
+	ContractVersion     string `json:"contractVersion"`
+	SourceDigest        string `json:"sourceDigest"`
+	BinaryDigest        string `json:"binaryDigest"`
+	BuildEvidenceDigest string `json:"buildEvidenceDigest,omitempty"`
+	ReceiptDigest       string `json:"receiptDigest"`
 }
 
 type Receipt struct {
-	Schema           string   `json:"schema"`
-	CandidateID      string   `json:"candidateId"`
-	Language         string   `json:"language,omitempty"`
-	SourceDigest     string   `json:"sourceDigest"`
-	BinaryDigest     string   `json:"binaryDigest"`
-	ObjectPath       string   `json:"objectPath"`
-	Reused           bool     `json:"reused"`
-	Passed           bool     `json:"passed"`
-	Reason           string   `json:"reason,omitempty"`
-	GrantsAuthority  bool     `json:"grantsAuthority"`
-	ProvesRealTarget bool     `json:"provesRealTarget"`
-	Notes            []string `json:"notes"`
+	Schema              string   `json:"schema"`
+	CandidateID         string   `json:"candidateId"`
+	Language            string   `json:"language,omitempty"`
+	SourceDigest        string   `json:"sourceDigest"`
+	BinaryDigest        string   `json:"binaryDigest"`
+	BuildEvidenceDigest string   `json:"buildEvidenceDigest,omitempty"`
+	ObjectPath          string   `json:"objectPath"`
+	Reused              bool     `json:"reused"`
+	Passed              bool     `json:"passed"`
+	Reason              string   `json:"reason,omitempty"`
+	GrantsAuthority     bool     `json:"grantsAuthority"`
+	ProvesRealTarget    bool     `json:"provesRealTarget"`
+	Notes               []string `json:"notes"`
 }
 
 func digest(content []byte) string {
@@ -106,6 +108,13 @@ func Put(ctx context.Context, opts StoreOptions) (Receipt, error) {
 	receipt.Language = candidate.Language
 	receipt.SourceDigest = candidate.SourceDigest
 	receipt.BinaryDigest = candidate.BinaryDigest
+	if candidate.BuildEvidence != nil {
+		encodedEvidence, err := json.Marshal(candidate.BuildEvidence)
+		if err != nil {
+			return receipt, err
+		}
+		receipt.BuildEvidenceDigest = digest(encodedEvidence)
+	}
 	sourceHex, err := digestHex(candidate.SourceDigest)
 	if err != nil {
 		receipt.Reason = err.Error()
@@ -173,7 +182,8 @@ func Put(ctx context.Context, opts StoreOptions) (Receipt, error) {
 		Schema: ObjectSchema, CandidateID: candidate.ID, Language: candidate.Language,
 		ContractID: selection.ContractID, ContractVersion: selection.ContractVersion,
 		SourceDigest: candidate.SourceDigest, BinaryDigest: candidate.BinaryDigest,
-		ReceiptDigest: digest(rawReceipt),
+		BuildEvidenceDigest: receipt.BuildEvidenceDigest,
+		ReceiptDigest:       digest(rawReceipt),
 	}
 	encodedObject, err := json.MarshalIndent(object, "", "  ")
 	if err != nil {
@@ -247,6 +257,7 @@ func Get(storeDir, sourceDigest string) (Receipt, error) {
 	receipt.CandidateID = object.CandidateID
 	receipt.Language = object.Language
 	receipt.BinaryDigest = object.BinaryDigest
+	receipt.BuildEvidenceDigest = object.BuildEvidenceDigest
 	receipt.ObjectPath = objectPath
 	receipt.Passed = true
 	return receipt, nil
