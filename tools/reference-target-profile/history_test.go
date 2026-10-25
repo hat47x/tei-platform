@@ -117,6 +117,13 @@ func TestPruneHistoryWritesAuditChain(t *testing.T) {
 	if len(records) != 2 || records[0].PreviousDigest != "" || records[1].PreviousDigest != records[0].RecordDigest {
 		t.Fatalf("audit chain is incomplete: %+v", records)
 	}
+	audit, err := HistoryAudit(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !audit.Passed || audit.Count != 2 || audit.HeadDigest != records[1].RecordDigest {
+		t.Fatalf("history audit receipt is wrong: %+v", audit)
+	}
 }
 
 func TestPruneHistoryRejectsTamperedAudit(t *testing.T) {
@@ -142,6 +149,13 @@ func TestPruneHistoryRejectsTamperedAudit(t *testing.T) {
 	}
 	if receipt.Passed || !strings.Contains(receipt.Reason, "audit") {
 		t.Fatalf("tampered audit was accepted: %+v", receipt)
+	}
+	audit, err := HistoryAudit(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if audit.Passed || audit.Reason == "" {
+		t.Fatalf("tampered audit produced a passing receipt: %+v", audit)
 	}
 }
 
