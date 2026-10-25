@@ -16,6 +16,43 @@ from typing import Any, Dict, List, Optional
 
 SCHEMA_VERSION = 1
 
+MODEL_SCHEMA: Dict[str, Any] = {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "title": "X-TEA normalized model",
+    "type": "object",
+    "required": ["schemaVersion", "source", "system", "subsystems",
+                 "functionTypes", "tables", "functions"],
+    "properties": {
+        "schemaVersion": {"const": SCHEMA_VERSION},
+        "source": {"type": "string"},
+        "system": {"type": "object"},
+        "subsystems": {"type": "array"},
+        "functionTypes": {"type": "array"},
+        "tables": {"type": "array"},
+        "functions": {"type": "array"},
+    },
+}
+
+DIFF_SCHEMA: Dict[str, Any] = {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "title": "X-TEA model diff",
+    "type": "object",
+    "required": ["schemaVersion", "source", "system", "tables", "functions"],
+    "properties": {
+        "schemaVersion": {"const": SCHEMA_VERSION},
+        "source": {"type": "object"},
+        "system": {"type": "object"},
+        "tables": {"type": "object",
+                   "required": ["added", "removed", "changed"]},
+        "functions": {"type": "object",
+                      "required": ["added", "removed", "changed"]},
+    },
+}
+
+
+def model_schemas() -> Dict[str, Any]:
+    return {"model": MODEL_SCHEMA, "diff": DIFF_SCHEMA}
+
 
 def _s(element: Optional[ET.Element], name: str, default: str = "") -> str:
     if element is None:
@@ -403,7 +440,14 @@ def main(argv: Optional[List[str]] = None) -> int:
     validate = sub.add_parser("validate", help="check model references")
     validate.add_argument("model", type=Path)
 
+    schema = sub.add_parser("schema", help="JSON schemas for export and diff")
+    schema.add_argument("name", nargs="?", choices=["model", "diff"])
+
     args = parser.parse_args(argv)
+    if args.command == "schema":
+        schemas = model_schemas()
+        _print_json(schemas[args.name] if args.name else schemas)
+        return 0
     if args.command == "diff":
         try:
             before = load_model(args.before)
