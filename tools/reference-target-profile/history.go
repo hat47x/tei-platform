@@ -71,6 +71,16 @@ func PruneHistory(root string, keepLast int, dryRun bool) (HistoryPruneReceipt, 
 		receipt.Reason = "keepLast must be at least 1"
 		return receipt, nil
 	}
+	if strings.TrimSpace(root) == "" {
+		receipt.Reason = "root is required"
+		return receipt, nil
+	}
+	release, err := lockLocalUpdate(root)
+	if err != nil {
+		receipt.Reason = err.Error()
+		return receipt, nil
+	}
+	defer release()
 	entries, err := readHistoryEntries(root)
 	if err != nil {
 		return receipt, err
@@ -93,14 +103,13 @@ func PruneHistory(root string, keepLast int, dryRun bool) (HistoryPruneReceipt, 
 		return receipt, nil
 	}
 	receipt.Kept = entries[:keepLast]
-	receipt.Deleted = entries[keepLast:]
+	toDelete := entries[keepLast:]
 	if dryRun {
-		receipt.WouldDelete = receipt.Deleted
-		receipt.Deleted = nil
+		receipt.WouldDelete = toDelete
 		receipt.Passed = true
 		return receipt, nil
 	}
-	for _, entry := range receipt.Deleted {
+	for _, entry := range toDelete {
 		current, err := os.ReadFile(entry.Path)
 		if err != nil {
 			receipt.Reason = "history artifact is unreadable: " + err.Error()
@@ -111,11 +120,12 @@ func PruneHistory(root string, keepLast int, dryRun bool) (HistoryPruneReceipt, 
 			return receipt, nil
 		}
 	}
-	for _, entry := range receipt.Deleted {
+	for _, entry := range toDelete {
 		if err := os.Remove(entry.Path); err != nil {
 			receipt.Reason = err.Error()
 			return receipt, nil
 		}
+		receipt.Deleted = append(receipt.Deleted, entry)
 	}
 	receipt.Passed = true
 	return receipt, nil
@@ -123,10 +133,17 @@ func PruneHistory(root string, keepLast int, dryRun bool) (HistoryPruneReceipt, 
 
 func readHistoryEntries(root string) ([]HistoryEntry, error) {
 	dir := filepath.Join(root, "history")
-	dirEntries, err := os.ReadDir(dir)
+	info, err := os.Lstat(dir)
 	if os.IsNotExist(err) {
 		return []HistoryEntry{}, nil
 	}
+	if err != nil {
+		return nil, err
+	}
+	if !info.IsDir() {
+		return nil, fmt.Errorf("history must be a directory, not a symlink or file")
+	}
+	dirEntries, err := os.ReadDir(dir)
 	if err != nil {
 		return nil, err
 	}
@@ -137,11 +154,16 @@ func readHistoryEntries(root string) ([]HistoryEntry, error) {
 		}
 		name := dirEntry.Name()
 		path := filepath.Join(dir, name)
-		info, err := os.Stat(path)
+		info, err := dirEntry.Info()
 		if err != nil {
 			return nil, err
 		}
 		entry := HistoryEntry{Path: path, Bytes: info.Size(), Modified: info.ModTime()}
+		if !info.Mode().IsRegular() {
+			entry.Reason = "history artifact is not a regular file"
+			entries = append(entries, entry)
+			continue
+		}
 		if len(name) != 64 {
 			entry.Reason = "history file name is not a 64-hex digest"
 			entries = append(entries, entry)

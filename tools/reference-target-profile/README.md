@@ -164,10 +164,12 @@ go run ./tools/reference-target-profile/cmd/tei-target-profile run \
 - `in-place`: 既存artifactを上書きし、上書き前のartifactを`history/<digest>`へ保持します。
 - `rolling`: `slots/a`と`slots/b`の2 slotを使い、非active slotへ新artifactを置いてから`current` pointerをatomicに切り替えます。旧slotは保持し、`rollback`でcurrent/previousを入れ替えます。
 - `rollback -to <digest>`: `replace`/`in-place`の`history/<digest>`から指定artifactを選び、digestを照合してからcurrentへatomicに戻します。戻す前のcurrentはhistoryへ保持します。
-- currentの退避先historyが既にある場合は、内容のdigestを照合します。読めない・一致しない場合はcurrentの置換前に拒否し、壊れたhistoryも上書きしません。この確認は電源断耐性を提供しません。
+- replace/in-place配備と`rollback -to`では、currentの退避先historyが既にある場合、内容のdigestを照合し、一致する履歴は書き直さず更新時刻も保ちます。読めない・一致しない場合はcurrentの置換前に拒否し、壊れたhistoryも上書きしません。この確認は電源断耐性を提供しません。
 - 配備後にartifact digestを再計算し、build結果と一致することを確認します。history/slotのdigestも照合します。
 - `storage: none`はrootを作らず、build結果のdigestだけを検証します。
 - `history`は`history/<digest>`の内容を再計算し、file名と一致しない・読めないartifactを不合格にします。`prune-history -keep-last N`は検証済みartifactを新しい順にN件残し、`-dry-run`では削除しません。検証に失敗したartifactがある場合は削除しません。
+- `history` / `prune-history`は、history directory自体のsymlinkと、artifactのsymlink・通常file以外の項目を拒否し、リンク先や特殊fileの内容を読みません。外部writerによる検査後の差替えを防ぐsnapshotや、filesystem全体のsandboxではありません。
+- pruneの`deleted`は、削除に成功したfileだけを記録します。途中の削除に失敗した場合は`passed=false`とし、先に成功した削除は戻しません。全件を一度に削除するtransactionではありません。
 - 保持期間の判定はfileの更新時刻に依存し、同時刻の場合はdigest順で決めます。削除の承認・audit・暗号学的な履歴保護は扱いません。
 - `sqlite`・`remote` storage、Go以外の候補は未対応として`passed=false`にします。
 - 実Targetのsupervisor・health check・traffic drain・電源断耐性・複数ホスト配備は扱いません。
@@ -175,7 +177,7 @@ go run ./tools/reference-target-profile/cmd/tei-target-profile run \
 
 ### 同じ配備先への同時更新
 
-`deploy`（replace/in-place/rolling）と両方の`rollback`は、root内の`.update-lock` directoryを排他的に作成します。配備はbuild前、rollbackは履歴・pointerの読取り前に取得し、結果の照合まで保持します。取得できなければ待機・再試行せず`passed=false`を返し、artifact・history・pointer・stagingを変更しません。別rootの更新は妨げません。
+`deploy`（replace/in-place/rolling）と両方の`rollback`、`prune-history`（dry-runを含む）は、root内の`.update-lock` directoryを排他的に作成します。配備はbuild前、rollbackは履歴・pointerの読取り前、pruneは履歴一覧の読取り前に取得し、処理と結果の照合まで保持します。pruneのdry-runも、一時的なlockの作成・解放を行いますが、artifactは削除しません。取得できなければ待機・再試行せず`passed=false`を返し、artifact・history・pointer・stagingを変更しません。別rootの更新は妨げません。
 
 正常終了・通常のエラーではlockを解放します。強制終了・電源断で残ったlockは自動削除しません。復旧時は、同じrootに対する更新processが動いていないことと、artifact・history・pointerの状態を確認してから、空の`.update-lock` directoryを手動で削除します。稼働中のlockを削除すると排他が失われます。
 

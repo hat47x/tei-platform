@@ -3,6 +3,7 @@ package targetprofile
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -112,5 +113,72 @@ func TestPruneHistoryRejectsNonPositiveKeep(t *testing.T) {
 	}
 	if receipt.Passed || receipt.Reason == "" {
 		t.Fatalf("invalid keepLast was accepted: %+v", receipt)
+	}
+}
+
+func TestHistoryRejectsSymbolicLinks(t *testing.T) {
+	for _, directoryLink := range []bool{false, true} {
+		t.Run(map[bool]string{false: "artifact-link", true: "history-directory-link"}[directoryLink], func(t *testing.T) {
+			root, external := t.TempDir(), t.TempDir()
+			target := writeHistoryArtifact(t, external, "external", time.Unix(100, 0))
+			if directoryLink {
+				if err := os.Symlink(filepath.Join(external, "history"), filepath.Join(root, "history")); err != nil {
+					t.Skipf("symlink unavailable: %v", err)
+				}
+			} else {
+				if err := os.Mkdir(filepath.Join(root, "history"), 0o755); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.Symlink(target, filepath.Join(root, "history", filepath.Base(target))); err != nil {
+					t.Skipf("symlink unavailable: %v", err)
+				}
+			}
+			receipt, err := History(root)
+			if err == nil && receipt.Passed {
+				t.Fatal("history followed a symlink and verified external bytes")
+			}
+			pruned, err := PruneHistory(root, 1, false)
+			if err == nil && pruned.Passed {
+				t.Fatal("prune accepted a symbolic link")
+			}
+			raw, err := os.ReadFile(target)
+			if err != nil || string(raw) != "external" {
+				t.Fatalf("external artifact changed: %q %v", raw, err)
+			}
+			if _, err := os.Lstat(filepath.Join(root, ".update-lock")); !os.IsNotExist(err) {
+				t.Fatalf("failed prune left lock: %v", err)
+			}
+		})
+	}
+}
+
+func TestPruneHistoryReportsOnlyCompletedDeletions(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("requires POSIX directory permissions")
+	}
+	root := t.TempDir()
+	writeHistoryArtifact(t, root, "old", time.Unix(100, 0))
+	writeHistoryArtifact(t, root, "new", time.Unix(200, 0))
+	dir := filepath.Join(root, "history")
+	if err := os.Chmod(dir, 0o555); err != nil {
+		t.Fatal(err)
+	}
+	defer os.Chmod(dir, 0o755)
+	// Privileged users can bypass directory permissions; do not count that as proof.
+	probe := filepath.Join(dir, "permission-probe")
+	if err := os.WriteFile(probe, nil, 0o600); err == nil {
+		os.Remove(probe)
+		t.Skip("directory permissions are bypassed by this user/filesystem")
+	}
+	receipt, err := PruneHistory(root, 1, false)
+	if err != nil || receipt.Passed || receipt.Reason == "" || len(receipt.Deleted) != 0 {
+		t.Fatalf("failed deletion reported success or a deleted file: %+v %v", receipt, err)
+	}
+	entries, err := os.ReadDir(dir)
+	if err != nil || len(entries) != 2 {
+		t.Fatalf("failed deletion changed history: %v %v", entries, err)
+	}
+	if _, err := os.Lstat(filepath.Join(root, ".update-lock")); !os.IsNotExist(err) {
+		t.Fatalf("failed deletion left lock: %v", err)
 	}
 }
