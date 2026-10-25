@@ -1,6 +1,8 @@
 # X-TEA操作経路の対応表
 
-この表は、`reference-xtea-control`がどの入口を同じ制御面から扱えるかを示します。対象版は[`upstream.json`](upstream.json)の四つのHEADです。画面上の全ボタン・全条件分岐の実行結果を保証する表ではありません。
+この表は、`reference-xtea-control`がどの入口を同じ制御面から扱えるかを示します。対象版は[`upstream.json`](upstream.json)のHEADです。画面上の全ボタン・全条件分岐の実行結果を保証する表ではありません。
+
+XeadServerはTEIの参考対象外です。以下のXeadServer節は過去の参考記録であり、新しい比較・受入・検証の対象ではありません。
 
 ## 到達性の定義
 
@@ -28,7 +30,7 @@
 | プロパティ画面 | 各入力部品 | 可変 | テキスト、コンボ、チェック、表、タブ |
 | ダイアログ | 子ウィンドウ | 可変 | About、ドキュメント、一覧、インポート、マトリクス、データ型整理、表同期 |
 
-確認済み: 上記44操作の列挙、Aboutダイアログの開閉、スナップショット、1550×830の画面キャプチャ。
+確認済み: 上記44操作の列挙、Aboutダイアログの開閉、スナップショット、1550×830の画面キャプチャ。`MfgOrder.xead`の複製でシステム名を変更し、`保存`メニューとバックアップ確認の`はい`を実行。保存後のXMLに新名称が入り、更新前ファイルが`backup/`へ作られることを確認。`AT010 部門`をツリーから選び、Enterでテーブル定義画面を開き、テーブル名を変更して保存できることも確認。`CDBUMON`フィールドを選び、論理名を変更して保存できることも確認。`TXTEKIYO`フィールドを選び、編集画面を開いてから`jMenuItemXeadTreeNodeDelete_actionPerformed`を実行し、XMLから削除できることも確認。フィールド一覧から`jMenuItemXeadTreeNodeAdd_actionPerformed`で新規フィールド`TXTEST`を追加できることも確認。`CDBUMON`のデータ型を`TX010`へ変更し、キー定義の警告を閉じて保存できることも確認。フィールド一覧のドラッグで`TXTEKIYO`を`NRKANRISYA`の前へ移動できることも確認。
 
 ## XeadEditor
 
@@ -44,7 +46,7 @@
 | ツール | ログ、SQL、スキャン、インポート、一覧 |
 | ツリー／表／機能画面 | 選択、セル編集、タブ、コンテキストメニュー |
 
-確認済み: 40操作の列挙、ツリーを含むスナップショット、画面キャプチャ。
+確認済み: 40操作の列挙、ツリーを含むスナップショット、画面キャプチャ。`MfgOrder.xead`の複製でシステム名を変更し、`保存`メニューとバックアップ確認の`はい`を実行。保存後のXMLに新名称が入り、更新前ファイルが`backup/`へ作られることを確認。部門テーブルをツリーから選び、Enterで編集画面を開き、テーブル名を変更して保存できることも確認。`61 部門`を開いてから`jMenuItemXETreeNodeDelete_actionPerformed`で削除し、XMLからテーブルが消えることも確認。機能一覧の追加ウィザードから`TEST_FUNCTION`（`XF000`）を追加できることも確認。テーブル一覧から`TEST_TABLE`を追加できることも確認。機能`232`のIDを`998`へ変更できることも確認。
 
 ## XeadDriver
 
@@ -62,11 +64,11 @@
 | 共通ダイアログ | 入力、チェックリスト、オプション、長文編集、エラー、進捗 |
 | 出力 | 印刷、PDF、CSV、Excel、テキスト、メール、HTTP |
 
-確認済み: 引数なしの起動でシステム定義未指定のメッセージ。`Skeleton.xeaf`の複製（DB URLを埋め込みDerbyへ変更）でログイン画面を表示し、合成ユーザ`00000`でログイン。`XF100`「部門情報の一覧・保守」を開き、カスタム行オブジェクトから4列・2行を読み取り、画面キャプチャを取得。選択行でEnterを押して`XF300`「部門と関連情報の確認」を開き、スナップショットと画面キャプチャを取得。`F3 閉じる`で両画面を閉じる操作を確認。
+確認済み: 引数なしの起動でシステム定義未指定のメッセージ。`Skeleton.xeaf`の複製（DB URLを埋め込みDerbyへ変更）でログイン画面を表示し、合成ユーザ`00000`でログイン。`XF100`「部門情報の一覧・保守」を開き、カスタム行オブジェクトから4列・2行を読み取り、画面キャプチャを取得。選択行でEnterを押して`XF300`「部門と関連情報の確認」を開き、スナップショットと画面キャプチャを取得。`F8 部門情報`から`XF200`詳細、`F5 編集`、部門名の変更、`F5 更新`を実行し、一覧を開き直して新値を確認。更新後のDerby DBを独立に問い合わせ、`AT010.CDBUMON=00001`の`TXBUMON`が変更されたことも確認。`F7 複写`で`00003`を作成し、一覧が3行になること、`F9 削除`と確認ダイアログの`はい`で2行に戻ること、DBから`00003`が消えることを確認。`F3 閉じる`で画面を閉じる操作を確認。参照済みの`00001`を`F9 削除`すると`削除できません`で拒否され、詳細画面が維持され、一覧が2行のまま変わらないことを確認（XF200内部の失敗rollback）。
 
-未確認: `XF100`/`XF300`以外のFunction、更新・追加・削除・コミット／ロールバック、元の`jdbc:derby://localhost/...`接続、Derby Network Server。
+未確認: `XF100`/`XF300`以外のFunction、利用者が明示的に実行するトランザクションrollback、元の`jdbc:derby://localhost/...`接続、Derby Network Server。
 
-## XeadServer
+## XeadServer（参考・対象外）
 
 `web.xml`のサーブレットマッピングと`DBMethod` / `Service`の分岐に基づきます。
 
@@ -82,12 +84,16 @@
 | `Service` | `GET /Service` | セッション開始状況、拒否・成功・中断件数 |
 | `Service` | `POST /Service` | `FUNCTION`と任意パラメータ。応答はJSON/XML/テキスト |
 
-確認済み: 上記`DBMethod`分岐を、元の`DBMethod`を埋め込みJettyで起動し、使い捨てH2の合成テーブルに対してHTTPで実行。`GET`の状態表示、SELECTのJava直列化、COUNT、INSERT、UPDATE、DELETE、COMMIT、ROLLBACK、IPを確認。`Service`は模擬サーブレットとの契約試験のみ。
+確認済み: 上記`DBMethod`分岐を、元の`DBMethod`を埋め込みJettyで起動し、使い捨てH2の合成テーブルに対してHTTPで実行。`GET`の状態表示、SELECTのJava直列化、COUNT、INSERT、UPDATE、DELETE、COMMIT、ROLLBACK、CALL、IPを確認。`CALL SQUARE(9)`は「procedure was executed」を返す。
+
+`Service`の`GET`はセッション状態を返すことを確認。`POST`は、Skeletonの一時複製に対して`FUNCTION=AF200J`、`REQUEST_TYPE=ListSections`を送り、2件の部門データがJSONで返ることを確認。ただしハーネスは、上流の認証前`userID`検査を引数`user`へ置き換えるビルド時差分を適用している。この成功は認証バグを補った状態でのFunction実行経路の確認であり、上流認証の正しさの証明ではない。
+
+`WEB-INF/web.xml`付きのWARディレクトリを作り、埋め込みTomcat 9.0へ配備した状態でも、`DBMethod`の状態取得と`Service`の`AF200J`をHTTPで確認。外部Tomcat 9.0.89へWARを配備した状態でも同じ2経路を確認。WAR内の`JdbcBootstrap`がDerbyドライバを`DriverManager`へ登録する。
 
 ## 未確認の経路
 
 - Modeler / Editorの全ダイアログを開いた実行。表の全セル、全ての検査エラー、全てのインポート分岐は未実行。
 - Driverのログイン後、各Functionの実DB操作、Script、出力ファイル、メール、HTTP。
-- XeadServerのWAR配備、Tomcat、JNDI DataSource、`Service`の実動作、DB製品別ドライバ、認可・本番運用。
+- XeadServerは対象外のため、JNDI / 本番Tomcat / 認証 / 認可 / 実デプロイは確認対象に含めない。
 - WindowsのDPI・Look and Feel・ロケール別の表示差。セレクタは表示文字に依存できるが、文字列が変わればシナリオ側の更新が要る。
 - Java 8実機。クラスファイルはJava 8（major 52）だが、実行確認はJDK 11。

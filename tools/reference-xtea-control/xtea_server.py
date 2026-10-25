@@ -138,6 +138,14 @@ class ServerClient:
     def ip(self, session: str = "", db: str = "") -> Dict[str, Any]:
         return self.dbmethod("IP", session=session, db=db)
 
+    def service_status(self) -> Dict[str, Any]:
+        code, content_type, body = self._get("/Service")
+        return {
+            "status": code,
+            "contentType": content_type,
+            "body": _decode_text(body, content_type),
+        }
+
     def service(self, function: str, params: Optional[Dict[str, Any]] = None,
                 user: Optional[str] = None, password: Optional[str] = None) -> Dict[str, Any]:
         fields: Dict[str, str] = {"FUNCTION": function}
@@ -216,6 +224,7 @@ def main(argv: Optional[List[str]] = None) -> int:
             command.add_argument("--method", default="" if name == "dbmethod" else None)
         command.add_argument("--session", default="")
         command.add_argument("--db", default="")
+    sub.add_parser("service-status")
     service = sub.add_parser("service")
     service.add_argument("--function", required=True)
     service.add_argument("--param", action="append", default=[], metavar="KEY=VALUE")
@@ -226,6 +235,8 @@ def main(argv: Optional[List[str]] = None) -> int:
             _print(client.routes())
         elif args.command == "status":
             _print(client.status())
+        elif args.command == "service-status":
+            _print(client.service_status())
         elif args.command == "service":
             params: Dict[str, Any] = {}
             for item in args.param:

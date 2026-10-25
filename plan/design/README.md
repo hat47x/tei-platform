@@ -48,11 +48,13 @@
 | [`EXECUTION_CORRELATION_DESIGN_2026-10.md`](EXECUTION_CORRELATION_DESIGN_2026-10.md) | 一つの業務操作を実行先から提供元まで追跡し、意味の版・ビルド・ロックへ戻るための識別子と記録の規則。担当Issueは無く、評価待ち |
 | [`SEMANTIC_CHANGE_DATA_EVOLUTION_DESIGN_2026-10.md`](SEMANTIC_CHANGE_DATA_EVOLUTION_DESIGN_2026-10.md) | 受理した意味の変更と既存の業務データの両立性の判定、影響の観測、段階的な移行。担当Issueは無く、評価待ち |
 | [`KNOWLEDGE_VARIATION_DESIGN_2026-10.md`](KNOWLEDGE_VARIATION_DESIGN_2026-10.md) | 再利用した知識の変動点、適用先での選択と分岐、再利用元の更新の扱い。RQ-027・RQ-029に対応する、評価待ちの設計 |
+| [`GENERATOR_CONTRACT_BOUNDARIES_DESIGN_2026-10.md`](GENERATOR_CONTRACT_BOUNDARIES_DESIGN_2026-10.md) | 生成器の契約に宣言する、派生名の規則・拡張点・AIの書込み窓・要求する能力と縮退。評価待ちの設計（[GitHub #2090](https://github.com/hat47x/tei-platform/issues/2090)、[#2092](https://github.com/hat47x/tei-platform/issues/2092)、[#2094](https://github.com/hat47x/tei-platform/issues/2094)、[#2096](https://github.com/hat47x/tei-platform/issues/2096)） |
 | [`BUSINESS_DATA_IMPORT_DESIGN_2026-10.md`](BUSINESS_DATA_IMPORT_DESIGN_2026-10.md) | 人が用意した業務データと初期データの取込みを、通常のCapabilityの検証・認可・結果の分離を通して行うための段階案（[GitHub #1807](https://github.com/hat47x/tei-platform/issues/1807)） |
 | [`POSTGRES_CONSTRAINT_RENDERING_DESIGN_2026-10.md`](POSTGRES_CONSTRAINT_RENDERING_DESIGN_2026-10.md) | PostgreSQL提供元が主キー・一意制約・外部キーを出力できない現状と、制約の名前の決め方、段階的な解消案（[GitHub #1803](https://github.com/hat47x/tei-platform/issues/1803)） |
 | [`AUTHORING_TOOL_FEATURE_TRANSFER_MAP_2026-10.md`](AUTHORING_TOOL_FEATURE_TRANSFER_MAP_2026-10.md) | 既存の設計ツール（X-TEA ModelerとEditor）の機能を、担当Issue・新規Issue・移植しない機能へ仕分けた対応表（[GitHub #1802](https://github.com/hat47x/tei-platform/issues/1802)） |
 | [`AUXILIARY_DESIGN_INFORMATION_PLACEMENT_2026-10.md`](AUXILIARY_DESIGN_INFORMATION_PLACEMENT_2026-10.md) | 用語、改訂履歴、注記、区分などの補助情報を、意味の正本・導出・表示情報・運用の記録のどれに置くかの案（[GitHub #1808](https://github.com/hat47x/tei-platform/issues/1808)） |
 | [`GENERATIVE_LOWCODE_PRODUCT_STRATEGY_2026-10.md`](GENERATIVE_LOWCODE_PRODUCT_STRATEGY_2026-10.md) | 生成AIネイティブなローコード開発基盤としての価値仮説、適用範囲、優先順位、測定と撤回条件（#2016〜#2021、未採用） |
+| [`CHANGE_CONTINUITY_DESIGN_2026-10.md`](CHANGE_CONTINUITY_DESIGN_2026-10.md) | 更新・再生成で案件の知識と処理を保つ機能、AI編集と業務経路、派生名と意味への対応、能力の照合、担当境界と受入候補（#2090〜#2096） |
 | [`DSH_DEVELOPMENT_PLUGIN_PROPOSAL_2026-10.md`](DSH_DEVELOPMENT_PLUGIN_PROPOSAL_2026-10.md) | DeepSeek HarnessをTEI開発の薄いAdapterとして使うためのプラグイン・スキル提案（未実装） |
 | [`PRODUCTIVITY_BENCHMARK_PROTOCOL_2026-10.md`](PRODUCTIVITY_BENCHMARK_PROTOCOL_2026-10.md) | 従来型コーディング・ローコード・TEIを同じ業務変更で比較する手順、指標、不確かさ、撤回条件（[GitHub #2018](https://github.com/hat47x/tei-platform/issues/2018)、未実施） |
 | [`DELIVERY_PLUGIN_COMPOSITION_2026-10.md`](DELIVERY_PLUGIN_COMPOSITION_2026-10.md) | 個人・SIer・SaaSの提供形態を、形態別実装ではなくプラグインの選択で構成する設計案（[GitHub #2020](https://github.com/hat47x/tei-platform/issues/2020)、[ADR-0036](../adr/0036-delivery-forms-as-plugin-composition.md)） |

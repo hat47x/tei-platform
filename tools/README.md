@@ -17,12 +17,12 @@
 | [`repositoryqualification/`](repositoryqualification/) | リポジトリ検証条件の共通処理 |
 | [`reference-cli-trace-benchmark/`](reference-cli-trace-benchmark/) | 合成Workspaceによるtraceの処理段別の時間・メモリ計測と出力不変の確認 |
 | [`reference-change-packet/`](reference-change-packet/) | 変更範囲・危険度・検証・停止条件をJSONで宣言し、範囲確認と検証実行・証拠記録を行う参照（#2017） |
-| [`reference-generator-selection/`](reference-generator-selection/) | 受理済み契約に対する生成器候補を固定fixtureで比較し、source/binary digest、実行言語・runtime、Goの反復build一致、case実行のexit/stderr digestと結果をreceiptへ残す参照。Go・Python・JavaScript、long-running候補、registryの版・置換・失効も確認する（#2016 / #2077） |
+| [`reference-generator-selection/`](reference-generator-selection/) | 受理済み契約に対する生成器候補を固定fixtureで比較し、source/binary digest、実行言語・runtime、Go/Java/WASM/WASIのsource path非依存な反復build一致、case実行のexit/stderr digestと結果をreceiptへ残す参照。Go・Python・JavaScript・Java・WASM・WASI、long-running候補、registryの版・置換・失効も確認する（#2016 / #2077） |
 | [`reference-generator-attestation/`](reference-generator-attestation/) | 選抜receiptから候補のcanonical statementを作り、ssh-keygenの署名で改変を検出する参照。署名者のAuthority・trust rootは検証しない（#2016） |
-| [`reference-generator-artifact-store/`](reference-generator-artifact-store/) | 選抜receiptのGo候補source/binaryをsource digestでcontent-addressedに保存・取得し、再計算digestで改変を拒否する参照（#2016） |
+| [`reference-generator-artifact-store/`](reference-generator-artifact-store/) | 選抜receiptのGo/Java/WASM/WASI候補source/binaryとPython/JavaScript候補sourceをsource digestでcontent-addressedに保存・取得し、再計算digestで改変を拒否し、receipt/listで言語を返す参照。明示keep setによるlist/prune、成功pruneのhash-chain audit log、ssh-keygenで署名できるaudit checkpointと、署名・store一致を併せて検証するcheckpoint再検証も持つ（#2016） |
 | [`reference-generator-context/`](reference-generator-context/) | 受理済み契約・fixture・Workspace revisionから、生成モデル向けの上限付き文脈を作る参照（#2016 / #2021） |
 | [`reference-generator-revocation-review/`](reference-generator-revocation-review/) | 生成器registryの失効と、registry編集とは別の承認recordの対象一致を検査する参照。承認者のAuthority・trustは検証しない（#2076） |
-| [`reference-target-profile/`](reference-target-profile/) | 同じ契約・fixture・候補を複数のTarget Profileで実行し、宣言と実行結果、case別出力の意味一致、oneshot/long-running process model、stdout/stderr/exit-codeの観測、filesystem artifactのreplace/in-place/rolling配備とrollbackを記録する参照（#2019） |
+| [`reference-target-profile/`](reference-target-profile/) | 同じ契約・fixture・候補を複数のTarget Profileで実行し、宣言と実行結果、case別出力の意味一致、oneshot/long-running/batch process model、stdout/stderr/exit-codeの観測、filesystem artifactのreplace/in-place/rolling配備、slot/history指定のrollback、historyの検証・保持件数によるpruneを記録する参照（#2019） |
 | [`reference-productivity-benchmark/`](reference-productivity-benchmark/) | 4タスクの計画とrunのcoverageを検証し、3方法×3回の中央値と範囲を集計する参照（#2018） |
 | [`reference-tenant-isolation/`](reference-tenant-isolation/) | SaaS向けに、テナントrootの閉じ込めと越境拒否を提供する基盤pluginの参照（#2020） |
 | [`reference-audit-log/`](reference-audit-log/) | 追記専用のhash chain、改ざん検出、pinned headによる末尾削除検出を提供する監査ログ基盤pluginの参照（#2020） |
@@ -68,7 +68,7 @@
 | [`reference-procedure-expansion/`](reference-procedure-expansion/) | 受理済み手順を非画面・画面・外部・AIの実現先へ展開し、実行可能範囲を分ける参照 |
 | [`reference-procedure-formalization/`](reference-procedure-formalization/) | 業務手順の文章から、形式化を妨げる不足と矛盾を根拠付きの質問として示す読取り専用の参照 |
 | [`reference-purpose-preflight/`](reference-purpose-preflight/) | 開発目的に対する業務規則の未確定・実行時値待ちを合成データで区別 |
-| [`reference-query-input-nullability/`](reference-query-input-nullability/) | Query入力のmissingと明示nullを区別し、NULL可否を契約で明示してSQL実行前に拒否する参照（#2056） |
+| [`reference-query-input-nullability/`](reference-query-input-nullability/) | Query入力のmissingと明示nullを区別し、NULL可否を契約で明示してSQL実行前に拒否する参照。一時PostgreSQLで許可NULL・省略・空文字・拒否を観測する（#2056） |
 | [`reference-quantity-arith/`](reference-quantity-arith/) | 数量・単価・金額の単位・通貨・丸めの意味注釈を合成入力で検査する読取り専用の参照（#1705） |
 | [`reference-read-consistency/`](reference-read-consistency/) | 一回の導出評価の入力読取り整合・Snapshot保証・競合時の失敗境界を合成入力で判定する読取り専用の参照（#1708） |
 | [`reference-realization-compliance/`](reference-realization-compliance/) | 規則が宣言する業務意味と実現の型・NULL方針・丸め・等価性の適合を合成fixtureで検査する読取り専用の参照（#1694） |
@@ -90,6 +90,7 @@
 | [`reference-build-execution-binding/`](reference-build-execution-binding/) | ビルド実行と主体・対象の結び付け |
 | [`reference-builder-contract-resolution/`](reference-builder-contract-resolution/) | Builder契約の解決と適用 |
 | [`reference-studio-composition-evidence-7/`](reference-studio-composition-evidence-7/) | TEI Studioの静的合成を実装外から検査する限定的な黒箱検査器（#1824 / #7） |
+| [`reference-host-acceptance/`](reference-host-acceptance/) | 暫定のHost Acceptance Storeへ、issuerが署名したDecisionを鍵生成・署名・取込み・失効する参照ツール。効果許可は与えない（#267 / #1121） |
 | [`reference-host-draft-recovery/`](reference-host-draft-recovery/) | Hostの外部編集競合・Draft復旧・副作用再送しない境界を合成入力で判定する読取り専用の参照（#1529） |
 | [`reference-deployment-attempt/`](reference-deployment-attempt/) | 配備試行の参照用起動点 |
 | [`reference-durable-run-golden/`](reference-durable-run-golden/) | 永続実行記録の期待出力の再現 |
@@ -133,8 +134,11 @@
 | [`reference-data-first-persistence/`](reference-data-first-persistence/) | Dataに手書きの宣言を重ね、実PostgreSQLで実行前の確認・書込み・別接続の再読込を一巡する確認（生成・認可・製品E2は対象外） |
 | [`reference-external-query-evidence/`](reference-external-query-evidence/) | 外部問合せの実行根拠を確認 |
 | [`reference-month-end-close-correction/`](reference-month-end-close-correction/) | 技術検証用サンプル`month-end-close-correction`の工程1〜6。版つきの営業日カレンダーから締め日・ジョブの予定・支払期日を確定して改訂の影響を記録し、CP932の固定長ファイルを宣言した仕様で取り込んで模擬のメッセージと一つの事象に照合し、対象月を業務キーとする締めジョブをDBの時計による貸与とDB側のフェンシングトークン検査で実行する。締めの後に順不同で届く事象を版と方針で受け付け、有効時点と記録時点の二つの軸の単価で赤黒の伝票を計上し、請求書単位・税率別の税額をPostgreSQL、Go、SQLiteで比べて締め時点の帳票をバイト単位で再出力する(PostgreSQLの一つのインスタンス。合成のファイル、模擬のメッセージ、合成の事象。SQLiteはPythonの標準モジュールでのメモリ上の計算) |
+| [`reference-order-entry-persistence/`](reference-order-entry-persistence/) | `order_entry`の注文を、Persistence Mappingから導いたDDLの使い捨てPostgreSQLへ書き込み、別プロセスが読み戻す確認（#1127）。実行前に物理schemaとSource revisionを別々に確かめ、書込み直前の許可確認を経て更新する。Source・Host許可は合成で、通常のWeb経路・生成CRUD・人的受理・製品E2は対象外 |
 | [`reference-order-assist-provider-offline/`](reference-order-assist-provider-offline/) | 技術検証用サンプル`order-assist-provider`の拡張工程7・8と複合シナリオC5。見積の規則の第2世代を、端末(JavaScript)、サーバ(実行体)、一括の見直し(WASI)へ配布する途中で旧版の実行先を判定から外し、オフラインの模擬端末(`reference-offline-storage`に保存)から操作単位で同期して項目単位の競合と旧単価を再検証で止め、旧世代の端末の未知の項目を保つ。値引きの承認を見積の照合値と規程の版に固定し、期間つきの代理、差戻し、規程の移行を扱い、別プロセスの模擬の外部与信の結果不明を照会で確定し、補償の途中で止めた作業者を収束させる(PostgreSQLの一つのインスタンス、同じ機械の上の模擬の端末と外部与信) |
+| [`reference-order-data-realization/`](reference-order-data-realization/) | 技術検証用サンプル`order-data-realization`の工程1〜10の通しの検証。複製した作業領域の受注へ属性を一つ加え(直接編集)、外部番号を共通受理で業務キーとして受理し、一意制約を宣言した最終版の照合値を、標準機能候補、旧構造のDBからの移行の計画と適用、一覧と親子明細、登録と別接続の再読込、SQLiteでの往復まで引き継ぐ。計画後の構造変更での停止、旧版の書き手と共存する移行と縮約の拒否、同じ外部番号の同時登録、登録後の再読込の喪失、欠番と採番元の停止、方言の差による値の変化を注入する(PostgreSQLの一つのインスタンス。SQLiteはPythonの標準モジュールでのファイル。手書きの登録アダプター、同じ機械の上の模擬の採番元) |
 | [`reference-order-migration-dual-db/`](reference-order-migration-dual-db/) | 技術検証用サンプル`order-migration-dual-db`の工程1〜6。旧DBの観測と照合値付きの移行計画、全件の写し、区切りごとの移行と効果記録を経由した参照系DBへの引当、論理デコーディングによる並走中の変更の反映、得意先マスタの項目ごとの正本と名前の分割、請求システムへの冪等な送信、切替の関門、逆同期と巻戻しの訓練を、PostgreSQLの三つのインスタンスで実行する(異種DBの要件は対象外) |
+| [`reference-order-rollout-host-continuity/`](reference-order-rollout-host-continuity/) | 技術検証用サンプル`order-rollout-host-continuity`の工程1〜5の通しの検証。開始記録の最初の命令`sales_expand/apply`を、製品の`Registry`と隔離の実行部で、別プロセスのホストAから子プロセスの移行ツールへ貸与つきで一回呼び、ホストAを止めて期限の後にホストBが排他トークンで引き継ぎ、製品の再接続で実行状態へ戻り、命令の後に取り直した観測でだけ完了とする。所有記録・貸与の権限・耐久呼出の記録はPostgreSQLに置く(サンプル固有)。貸与の更新・心拍の失敗、時計のずれ、環境計画の更新、実行状態の不明と喪失、拡張の間の旧版の書込み、秘密と具体の参照先の漏れを注入する(PostgreSQLの一つのインスタンス、同じ機械の上のホストと移行ツールの別プロセス) |
 | [`reference-order-web-delivery-member/`](reference-order-web-delivery-member/) | 技術検証用サンプル`order-web-delivery`の工程6。工程1の読込計画(`reference/web-api-contract`)から会員と社員の射影を導き、会員向けと社内向けを別プロセスの配備単位としてPostgreSQLで動かす。他人の注文と社内向けの項目を返さないこと、会員の照会の急増を429と`Retry-After`で抑えて社内の確定の応答時間を守ること、表示用キャッシュの古さを宣言した上限以内に保ち判断は正本で行うこと、一方の配備単位での剥奪が他方で上限以内に効き縮小後の行が見えないことを確かめる(PostgreSQLの一つのインスタンス、同じ機械の上の合成の負荷) |
 | [`reference-oracle-local-fixture/`](reference-oracle-local-fixture/) | 別用途の既存Oracleに一時的な検証用データを作り、ドライバー・名前付きバインド・読取り専用の効き方・検証根拠の受入れを確認 |
 | [`reference-postgres-header-detail-runtime/`](reference-postgres-header-detail-runtime/) | PostgreSQL上の親子明細処理の参照実装 |
@@ -179,7 +183,9 @@
 | [`test-critical-path-e1-archive.py`](test-critical-path-e1-archive.py) | E1保全検査の改ざん・欠落・偽資格の回帰試験 |
 | [`verify-month-end-close-correction.py`](verify-month-end-close-correction.py) | `reference-month-end-close-correction`の全試験(工程1〜6)を、Dockerで起動した使い捨てのPostgreSQLで実行し、skipが0件であることと観測値、PythonとSQLiteの版をreceiptへ残す。作ったコンテナーだけを終了時に削除する |
 | [`verify-order-assist-provider-offline.py`](verify-order-assist-provider-offline.py) | `reference-order-assist-provider-offline`の全試験(工程7・8、C5)を、Dockerで起動した使い捨てのPostgreSQLで実行し、skipが0件であることと観測値、GoとNode.jsの版、C5の通しの記録の要約をreceiptへ残す。作ったコンテナーだけを終了時に削除する |
+| [`verify-order-data-realization.py`](verify-order-data-realization.py) | `reference-order-data-realization`の全試験(工程1〜10)を、Dockerで起動した使い捨てのPostgreSQLで実行し、skipが0件であることと、通しの記録(失敗注入と完了条件の合否)の要約、GoとPythonとSQLiteの版をreceiptへ残す。作ったコンテナーだけを終了時に削除する |
 | [`verify-order-migration-dual-db.py`](verify-order-migration-dual-db.py) | `reference-order-migration-dual-db`の全試験を、Dockerで起動した三つの使い捨てPostgreSQLで実行し、skipが0件であることと観測値をreceiptへ残す。作ったコンテナーだけを終了時に削除する |
+| [`verify-order-rollout-host-continuity.py`](verify-order-rollout-host-continuity.py) | `reference-order-rollout-host-continuity`の全試験(工程1〜5)を、Dockerで起動した使い捨てのPostgreSQL(乱数のパスワード)で実行し、skipが0件であることと観測値、通しの記録の要約、試験の出力にパスワードと接続先がないことをreceiptへ残す。`--race`で競合検出つき。作ったコンテナーだけを終了時に削除する |
 | [`verify-order-web-delivery-member.py`](verify-order-web-delivery-member.py) | `reference-order-web-delivery-member`の全試験(工程6)を、Dockerで起動した使い捨てのPostgreSQLで実行し、skipが0件であることと観測値、通しの記録の要約をreceiptへ残す。作ったコンテナーだけを終了時に削除する |
 | [`check-core-isolation.sh`](check-core-isolation.sh) | 合成基盤の隔離試験と別モジュールからの公開API試験 |
 | [`verify-composition-reference.sh`](verify-composition-reference.sh) | 固定したクリーンな版で合成基盤・項目対応・実Process・中核独立性を検査し、結果を標準出力へ返す。全体健全性と本番移行の判定は別に行い、申し送りは[#1223](https://github.com/hat47x/tei-platform/issues/1223)へ記載する |

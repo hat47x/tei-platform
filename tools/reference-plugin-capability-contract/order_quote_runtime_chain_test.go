@@ -84,9 +84,6 @@ func TestCandidateQuoteShapeConformanceAndRealRuntimeProcessOneInvocation(t *tes
 	if runtime.GOOS == "windows" {
 		t.Skip("reference process requires a platform-specific executable policy")
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
-	defer cancel()
-
 	source, err := os.ReadFile("../../plugins/reference-order-quote/main.go")
 	if err != nil {
 		t.Fatal(err)
@@ -100,12 +97,19 @@ func TestCandidateQuoteShapeConformanceAndRealRuntimeProcessOneInvocation(t *tes
 		t.Fatal(err)
 	}
 	binary := filepath.Join(t.TempDir(), "quote-chain")
-	build := exec.CommandContext(ctx, "go", "build", "-o", binary, ".")
+	// #2057: go buildはキャッシュなし・CPU競合のCIで数十秒かかる一方、実プロセスの起動は
+	// 1回あたり数十ms以内である。buildは独立した長い期限で待ち、実プロセスの期限は
+	// build後に始めて、build時間が起動側の予算を食わないようにする。
+	buildCtx, cancelBuild := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancelBuild()
+	build := exec.CommandContext(buildCtx, "go", "build", "-o", binary, ".")
 	build.Dir = isolated
 	build.Env = append(os.Environ(), "GOWORK=off", "GOTOOLCHAIN=local")
 	if output, err := build.CombinedOutput(); err != nil {
 		t.Fatalf("compile independent quote provider: %v\n%s", err, output)
 	}
+	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
+	defer cancel()
 	binaryBytes, err := os.ReadFile(binary)
 	if err != nil {
 		t.Fatal(err)

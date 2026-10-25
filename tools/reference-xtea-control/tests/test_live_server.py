@@ -114,6 +114,14 @@ class LiveServerTest(unittest.TestCase):
         self.assertIn("rollbacked", self.client.rollback("")["body"])
         self.assertEqual(self.client.ip()["body"], "127.0.0.1")
 
+    def test_call_branch(self) -> None:
+        value = self.client.call("CALL SQUARE(9)")
+        self.assertEqual(value["status"], 200)
+        if value.get("serialized"):
+            self.assertGreater(value["byteLength"], 0)
+        else:
+            self.assertIn("procedure was executed", value["body"])
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

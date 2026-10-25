@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/sha256"
+	_ "embed"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -30,6 +31,9 @@ import (
 	"tei/internal/workspace"
 )
 
+//go:embed templates/wasi_node.js
+var wasiRunner []byte
+
 const (
 	ContractSchema  = "tei.reference.generator-contract/v0"
 	FixtureSchema   = "tei.reference.generator-fixture/v0"
@@ -41,6 +45,9 @@ const (
 	LanguageGo         = "go"
 	LanguagePython     = "python"
 	LanguageJavaScript = "javascript"
+	LanguageJava       = "java"
+	LanguageWasm       = "wasm"
+	LanguageWasi       = "wasi"
 )
 
 type InputSpec struct {
@@ -134,10 +141,11 @@ type RuntimeEvidence struct {
 // execution. It is a digest of stdout/stderr and the process exit state, not a
 // copy of the content and not a claim about a real target.
 type ExecutionEvidence struct {
-	ExitCode     int    `json:"exitCode"`
-	StdoutDigest string `json:"stdoutDigest"`
-	StderrDigest string `json:"stderrDigest"`
-	TimedOut     bool   `json:"timedOut,omitempty"`
+	Measurement  *ProcessMeasurement `json:"measurement,omitempty"`
+	ExitCode     int                 `json:"exitCode"`
+	StdoutDigest string              `json:"stdoutDigest"`
+	StderrDigest string              `json:"stderrDigest"`
+	TimedOut     bool                `json:"timedOut,omitempty"`
 }
 
 type CaseResult struct {
@@ -183,6 +191,7 @@ type CandidateReceipt struct {
 }
 
 type Receipt struct {
+	Execution              ExecutionOptions   `json:"execution,omitempty"`
 	Schema                 string             `json:"schema"`
 	ContractID             string             `json:"contractId"`
 	ContractVersion        string             `json:"contractVersion"`
@@ -460,14 +469,20 @@ func SelectWithRegistry(ctx context.Context, workspaceDir, contractPath, fixture
 // outside the list are reported as rejected, so a profile cannot silently fall
 // back to another generator.
 func SelectForTarget(ctx context.Context, workspaceDir, contractPath, fixturePath, candidatesDir, registryPath string, allowedIDs []string) (Receipt, error) {
-	return selectWithRegistryAndFilter(ctx, workspaceDir, contractPath, fixturePath, candidatesDir, registryPath, allowedIDs)
+	return selectWithRegistryAndFilter(ctx, workspaceDir, contractPath, fixturePath, candidatesDir, registryPath, allowedIDs, ExecutionOptions{})
+}
+
+// SelectForTargetWithExecution applies a wrapper to every candidate fixture
+// process. Lineage execution is rejected because it has a separate runner.
+func SelectForTargetWithExecution(ctx context.Context, workspaceDir, contractPath, fixturePath, candidatesDir, registryPath string, allowedIDs []string, execution ExecutionOptions) (Receipt, error) {
+	return selectWithRegistryAndFilter(ctx, workspaceDir, contractPath, fixturePath, candidatesDir, registryPath, allowedIDs, execution)
 }
 
 func selectWithRegistry(ctx context.Context, workspaceDir, contractPath, fixturePath, candidatesDir, registryPath string) (Receipt, error) {
-	return selectWithRegistryAndFilter(ctx, workspaceDir, contractPath, fixturePath, candidatesDir, registryPath, nil)
+	return selectWithRegistryAndFilter(ctx, workspaceDir, contractPath, fixturePath, candidatesDir, registryPath, nil, ExecutionOptions{})
 }
 
-func selectWithRegistryAndFilter(ctx context.Context, workspaceDir, contractPath, fixturePath, candidatesDir, registryPath string, allowedIDs []string) (Receipt, error) {
+func selectWithRegistryAndFilter(ctx context.Context, workspaceDir, contractPath, fixturePath, candidatesDir, registryPath string, allowedIDs []string, execution ExecutionOptions) (Receipt, error) {
 	loaded, err := workspace.Load(workspaceDir)
 	if err != nil {
 		return Receipt{}, fmt.Errorf("load Workspace: %w", err)
@@ -515,7 +530,8 @@ func selectWithRegistryAndFilter(ctx context.Context, workspaceDir, contractPath
 		return Receipt{}, err
 	}
 	receipt := Receipt{
-		Schema: ReceiptSchema, ContractID: contract.ID, ContractVersion: contract.Version,
+		Execution: execution,
+		Schema:    ReceiptSchema, ContractID: contract.ID, ContractVersion: contract.Version,
 		ContractStatus: contract.Status, WorkspaceRevision: sourceindex.ModelRevision(index),
 		FixtureDigest: digest(fixtureRaw),
 		SuiteVersion:  digest(append(append(append([]byte("v0\x00"), contractRaw...), 0), fixtureRaw...)),
@@ -540,7 +556,7 @@ func selectWithRegistryAndFilter(ctx context.Context, workspaceDir, contractPath
 	}
 	sort.Strings(directories)
 	for _, name := range directories {
-		candidate, err := evaluateCandidate(ctx, filepath.Join(candidatesDir, name), fixture, contractPath, digest(contractRaw), registry, allowed)
+		candidate, err := evaluateCandidate(ctx, filepath.Join(candidatesDir, name), fixture, contractPath, digest(contractRaw), registry, allowed, execution)
 		if err != nil {
 			return Receipt{}, err
 		}
@@ -559,7 +575,7 @@ func selectWithRegistryAndFilter(ctx context.Context, workspaceDir, contractPath
 	return receipt, nil
 }
 
-func evaluateCandidate(ctx context.Context, dir string, fixture Fixture, contractPath, contractDigest string, registry *Registry, allowed map[string]bool) (CandidateReceipt, error) {
+func evaluateCandidate(ctx context.Context, dir string, fixture Fixture, contractPath, contractDigest string, registry *Registry, allowed map[string]bool, executionOptions ExecutionOptions) (CandidateReceipt, error) {
 	var manifest CandidateManifest
 	if _, err := readJSON(filepath.Join(dir, "candidate.json"), &manifest); err != nil {
 		return CandidateReceipt{}, err
@@ -580,7 +596,7 @@ func evaluateCandidate(ctx context.Context, dir string, fixture Fixture, contrac
 	if manifest.ID == "" || manifest.Origin == "" || manifest.Source == "" || manifest.SourceDigest == "" {
 		return reject("candidate identity is incomplete")
 	}
-	if language != LanguageGo && language != LanguagePython && language != LanguageJavaScript {
+	if language != LanguageGo && language != LanguagePython && language != LanguageJavaScript && language != LanguageJava && language != LanguageWasm && language != LanguageWasi {
 		return reject("unsupported candidate language: " + language)
 	}
 	expectedExtension := ".go"
@@ -589,6 +605,10 @@ func evaluateCandidate(ctx context.Context, dir string, fixture Fixture, contrac
 		expectedExtension = ".py"
 	case LanguageJavaScript:
 		expectedExtension = ".js"
+	case LanguageJava:
+		expectedExtension = ".java"
+	case LanguageWasm, LanguageWasi:
+		expectedExtension = ".go"
 	}
 	if strings.ToLower(filepath.Ext(manifest.Source)) != expectedExtension {
 		return reject("candidate source extension does not match language " + language)
@@ -659,6 +679,9 @@ func evaluateCandidate(ctx context.Context, dir string, fixture Fixture, contrac
 		}
 	}
 	if manifest.Lineage != nil {
+		if len(executionOptions.CommandPrefix) > 0 {
+			return reject("lineage execution is unsupported with a command wrapper")
+		}
 		if err := verifyLineage(ctx, dir, contractPath, manifest.Lineage, source); err != nil {
 			return reject("generator lineage verification failed: " + err.Error())
 		}
@@ -679,7 +702,7 @@ func evaluateCandidate(ctx context.Context, dir string, fixture Fixture, contrac
 			return reject("generator provenance does not match the current contract and template")
 		}
 	}
-	var binaryPath, scriptPath string
+	var binaryPath, scriptPath, javaPath, javacPath, javaClassesDir, wasmPath, wasmExecPath, nodePath, wasiRunnerPath string
 	switch language {
 	case LanguageGo:
 		binaryDir, err := os.MkdirTemp("", "tei-generator-candidate-*")
@@ -707,41 +730,128 @@ func evaluateCandidate(ctx context.Context, dir string, fixture Fixture, contrac
 			return reject("build is not reproducible: " + err.Error())
 		}
 		receipt.BuildEvidence.ReproducedDigest = reproduced
-		receipt.BuildEvidence.Reproducibility = "same-digest-twice"
+		receipt.BuildEvidence.Reproducibility = "path-independent-twice"
 		binary, err := os.ReadFile(binaryPath)
 		if err != nil {
 			return CandidateReceipt{}, err
 		}
 		receipt.BinaryDigest = digest(binary)
 		receipt.BuildEvidence.BinaryDigest = receipt.BinaryDigest
-	case LanguagePython:
+	case LanguagePython, LanguageJavaScript:
+		scriptPath, receipt.Runtime = ResolveScriptRuntime(language)
+		if !receipt.Runtime.Available {
+			return reject("runtime unavailable: " + language + " interpreter was not found")
+		}
+	case LanguageJava:
 		var version string
 		var available bool
-		scriptPath, version, available = findPython()
-		command := "python <source>"
-		if scriptPath != "" {
-			command = scriptPath + " <source>"
+		javacPath, javaPath, version, available = findJava()
+		command := "javac; java -cp <classes> Main"
+		if javaPath != "" {
+			command = "javac; " + javaPath + " -cp <classes> Main"
 		}
 		receipt.Runtime = &RuntimeEvidence{
-			Language: LanguagePython, Command: command, Version: version, Available: available,
+			Language: LanguageJava, Command: command, Version: version, Available: available,
 		}
 		if !available {
-			return reject("runtime unavailable: python3/python was not found")
+			return reject("runtime unavailable: javac/java was not found")
 		}
-	case LanguageJavaScript:
+		javaClassesDir, err = os.MkdirTemp("", "tei-java-candidate-*")
+		if err != nil {
+			return CandidateReceipt{}, err
+		}
+		defer os.RemoveAll(javaClassesDir)
+		compileCtx, cancel := context.WithTimeout(ctx, 2*time.Minute)
+		defer cancel()
+		reproduced, err := buildJavaTwice(compileCtx, javacPath, dir, javaClassesDir)
+		if err != nil {
+			return reject("java compile is not reproducible: " + err.Error())
+		}
+		classBytes, err := os.ReadFile(filepath.Join(javaClassesDir, "Main.class"))
+		if err != nil {
+			return reject("compiled class is unreadable: " + err.Error())
+		}
+		receipt.BuildEvidence = &BuildEvidence{
+			Language: LanguageJava, Command: "javac", Toolchain: version,
+			SourceDigest: manifest.SourceDigest, BinaryDigest: digest(classBytes),
+			ReproducedDigest: reproduced, BuildInputDigest: javaBuildInputDigest(source, version),
+			Reproducibility: "path-independent-twice",
+		}
+		receipt.BinaryDigest = receipt.BuildEvidence.BinaryDigest
+	case LanguageWasm:
 		var version string
 		var available bool
-		scriptPath, version, available = findJavaScript()
-		command := "node <source>"
-		if scriptPath != "" {
-			command = scriptPath + " <source>"
-		}
+		nodePath, wasmExecPath, version, available = resolveWasmRuntime()
 		receipt.Runtime = &RuntimeEvidence{
-			Language: LanguageJavaScript, Command: command, Version: version, Available: available,
+			Language: LanguageWasm, Command: "node wasm_exec_node.js <wasm>", Version: version, Available: available,
+		}
+		if !available {
+			return reject("runtime unavailable: node or Go wasm_exec_node.js was not found")
+		}
+		wasmDir, err := os.MkdirTemp("", "tei-wasm-candidate-*")
+		if err != nil {
+			return CandidateReceipt{}, err
+		}
+		defer os.RemoveAll(wasmDir)
+		wasmPath = filepath.Join(wasmDir, "candidate.wasm")
+		buildCtx, cancel := context.WithTimeout(ctx, 2*time.Minute)
+		defer cancel()
+		reproduced, err := buildWasmTwice(buildCtx, dir, wasmPath)
+		if err != nil {
+			return reject("wasm build is not reproducible: " + err.Error())
+		}
+		binary, err := os.ReadFile(wasmPath)
+		if err != nil {
+			return CandidateReceipt{}, err
+		}
+		toolchain := goRuntimeVersion()
+		receipt.BuildEvidence = &BuildEvidence{
+			Language: LanguageWasm, Command: "GOOS=js GOARCH=wasm go build -trimpath -buildvcs=false",
+			Toolchain: toolchain, GOOS: "js", GOARCH: "wasm", CGOEnabled: "0",
+			SourceDigest: manifest.SourceDigest, BinaryDigest: digest(binary),
+			ReproducedDigest: reproduced, BuildInputDigest: wasmBuildInputDigest(source, toolchain),
+			Reproducibility: "path-independent-twice",
+		}
+		receipt.BinaryDigest = receipt.BuildEvidence.BinaryDigest
+	case LanguageWasi:
+		var version string
+		var available bool
+		nodePath, version, available = resolveWasiRuntime()
+		receipt.Runtime = &RuntimeEvidence{
+			Language: LanguageWasi, Command: "node wasi_node.js <wasm>", Version: version, Available: available,
 		}
 		if !available {
 			return reject("runtime unavailable: node was not found")
 		}
+		wasiDir, err := os.MkdirTemp("", "tei-wasi-candidate-*")
+		if err != nil {
+			return CandidateReceipt{}, err
+		}
+		defer os.RemoveAll(wasiDir)
+		wasiRunnerPath = filepath.Join(wasiDir, "run.js")
+		if err := os.WriteFile(wasiRunnerPath, wasiRunner, 0o644); err != nil {
+			return CandidateReceipt{}, err
+		}
+		wasmPath = filepath.Join(wasiDir, "candidate.wasm")
+		buildCtx, cancel := context.WithTimeout(ctx, 2*time.Minute)
+		defer cancel()
+		reproduced, err := buildWasiTwice(buildCtx, dir, wasmPath)
+		if err != nil {
+			return reject("wasi build is not reproducible: " + err.Error())
+		}
+		binary, err := os.ReadFile(wasmPath)
+		if err != nil {
+			return CandidateReceipt{}, err
+		}
+		toolchain := goRuntimeVersion()
+		receipt.BuildEvidence = &BuildEvidence{
+			Language: LanguageWasi, Command: "GOOS=wasip1 GOARCH=wasm go build -trimpath -buildvcs=false",
+			Toolchain: toolchain, GOOS: "wasip1", GOARCH: "wasm", CGOEnabled: "0",
+			SourceDigest: manifest.SourceDigest, BinaryDigest: digest(binary),
+			ReproducedDigest: reproduced, BuildInputDigest: wasiBuildInputDigest(source, toolchain),
+			Reproducibility: "path-independent-twice",
+		}
+		receipt.BinaryDigest = receipt.BuildEvidence.BinaryDigest
 	}
 
 	for _, tc := range fixture.Cases {
@@ -750,9 +860,15 @@ func evaluateCandidate(ctx context.Context, dir string, fixture Fixture, contrac
 		var err error
 		switch language {
 		case LanguagePython, LanguageJavaScript:
-			got, execution, err = runScriptCandidate(ctx, scriptPath, sourcePath, tc.Input)
+			got, execution, err = runScriptCandidate(ctx, scriptPath, sourcePath, tc.Input, executionOptions)
+		case LanguageJava:
+			got, execution, err = runProgram(ctx, javaPath, []string{"-cp", javaClassesDir, "Main"}, tc.Input, executionOptions)
+		case LanguageWasm:
+			got, execution, err = runProgram(ctx, nodePath, []string{wasmExecPath, wasmPath}, tc.Input, executionOptions)
+		case LanguageWasi:
+			got, execution, err = runProgram(ctx, nodePath, []string{"--no-warnings", wasiRunnerPath, wasmPath}, tc.Input, executionOptions)
 		default:
-			got, execution, err = runCandidate(ctx, binaryPath, tc.Input)
+			got, execution, err = runCandidate(ctx, binaryPath, tc.Input, executionOptions)
 		}
 		result := CaseResult{CaseID: tc.ID, Want: tc.Want, Got: got, Execution: execution}
 		if err != nil {
@@ -794,32 +910,65 @@ func candidateBinaryPath(path string) string {
 const buildCommand = "go build -trimpath -buildvcs=false"
 
 func buildCandidate(ctx context.Context, dir, binaryPath string) error {
-	build := exec.CommandContext(ctx, "go", "build", "-trimpath", "-buildvcs=false", "-o", binaryPath, ".")
+	files, err := goSourceFiles(dir)
+	if err != nil {
+		return err
+	}
+	args := append([]string{"build", "-trimpath", "-buildvcs=false", "-o", binaryPath}, files...)
+	build := exec.CommandContext(ctx, "go", args...)
 	build.Dir = dir
 	out, err := build.CombinedOutput()
-	if err == nil {
-		return nil
+	if err != nil {
+		return fmt.Errorf("%v: %s", err, out)
 	}
-	// Generated candidates may live outside a Go module. Their sources use the
-	// standard library only, so retry in GOPATH mode instead of requiring a
-	// go.mod in a temporary directory.
-	if strings.Contains(string(out), "go.mod file not found") {
-		fallback := exec.CommandContext(ctx, "go", "build", "-trimpath", "-buildvcs=false", "-o", binaryPath, "main.go")
-		fallback.Dir = dir
-		fallback.Env = append(os.Environ(), "GO111MODULE=off")
-		if fallbackOut, fallbackErr := fallback.CombinedOutput(); fallbackErr == nil {
-			return nil
-		} else {
-			return fmt.Errorf("%v: %s", fallbackErr, fallbackOut)
+	return nil
+}
+
+func goSourceFiles(dir string) ([]string, error) {
+	if _, err := os.Stat(filepath.Join(dir, "main.go")); err == nil {
+		return []string{"main.go"}, nil
+	} else if !os.IsNotExist(err) {
+		return nil, err
+	}
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return nil, err
+	}
+	var files []string
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(strings.ToLower(entry.Name()), ".go") {
+			continue
 		}
+		files = append(files, entry.Name())
 	}
-	return fmt.Errorf("%v: %s", err, out)
+	if len(files) == 0 {
+		return nil, fmt.Errorf("no Go source files in %s", dir)
+	}
+	sort.Strings(files)
+	return files, nil
 }
 
 // buildCandidateTwice builds the same source twice with path-independent flags
-// and returns the second digest. A mismatch is an error, not a warning.
+// and returns the second digest. The second build uses a copy of the Go sources
+// in a different directory, so a path-dependent build is rejected.
 func buildCandidateTwice(ctx context.Context, dir, binaryPath string) (string, error) {
-	if err := buildCandidate(ctx, dir, binaryPath); err != nil {
+	firstDir, err := os.MkdirTemp("", "tei-generator-repro-a-*")
+	if err != nil {
+		return "", err
+	}
+	defer os.RemoveAll(firstDir)
+	secondDir, err := os.MkdirTemp("", "tei-generator-repro-b-*")
+	if err != nil {
+		return "", err
+	}
+	defer os.RemoveAll(secondDir)
+	if err := copyGoSources(dir, firstDir); err != nil {
+		return "", err
+	}
+	if err := copyGoSources(dir, secondDir); err != nil {
+		return "", err
+	}
+	if err := buildCandidate(ctx, firstDir, binaryPath); err != nil {
 		return "", err
 	}
 	first, err := os.ReadFile(binaryPath)
@@ -827,7 +976,7 @@ func buildCandidateTwice(ctx context.Context, dir, binaryPath string) (string, e
 		return "", err
 	}
 	secondPath := binaryPath + ".second"
-	if err := buildCandidate(ctx, dir, secondPath); err != nil {
+	if err := buildCandidate(ctx, secondDir, secondPath); err != nil {
 		return "", err
 	}
 	second, err := os.ReadFile(secondPath)
@@ -836,9 +985,26 @@ func buildCandidateTwice(ctx context.Context, dir, binaryPath string) (string, e
 	}
 	firstDigest, secondDigest := digest(first), digest(second)
 	if firstDigest != secondDigest {
-		return secondDigest, fmt.Errorf("first %s, second %s", firstDigest, secondDigest)
+		return secondDigest, fmt.Errorf("path-dependent build: first %s, second %s", firstDigest, secondDigest)
 	}
 	return secondDigest, nil
+}
+
+func copyGoSources(srcDir, dstDir string) error {
+	files, err := goSourceFiles(srcDir)
+	if err != nil {
+		return err
+	}
+	for _, name := range files {
+		content, err := os.ReadFile(filepath.Join(srcDir, name))
+		if err != nil {
+			return err
+		}
+		if err := os.WriteFile(filepath.Join(dstDir, name), content, 0o644); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 var (
@@ -889,6 +1055,264 @@ func buildInputDigest(source []byte, toolchain, goos, goarch, cgoEnabled, goflag
 	}, "\x00")))
 }
 
+func javaBuildInputDigest(source []byte, toolchain string) string {
+	return digest([]byte(strings.Join([]string{
+		"javac", LanguageJava, digest(source), toolchain,
+	}, "\x00")))
+}
+
+func buildJavaTwice(ctx context.Context, javacPath, dir, classesDir string) (string, error) {
+	firstDir, err := os.MkdirTemp("", "tei-java-repro-a-*")
+	if err != nil {
+		return "", err
+	}
+	defer os.RemoveAll(firstDir)
+	secondDir, err := os.MkdirTemp("", "tei-java-repro-b-*")
+	if err != nil {
+		return "", err
+	}
+	defer os.RemoveAll(secondDir)
+	if err := copyJavaSources(dir, firstDir); err != nil {
+		return "", err
+	}
+	if err := copyJavaSources(dir, secondDir); err != nil {
+		return "", err
+	}
+	if err := compileJavaCandidate(ctx, javacPath, firstDir, classesDir); err != nil {
+		return "", err
+	}
+	secondClasses, err := os.MkdirTemp("", "tei-java-classes-*")
+	if err != nil {
+		return "", err
+	}
+	defer os.RemoveAll(secondClasses)
+	if err := compileJavaCandidate(ctx, javacPath, secondDir, secondClasses); err != nil {
+		return "", err
+	}
+	first, err := os.ReadFile(filepath.Join(classesDir, "Main.class"))
+	if err != nil {
+		return "", err
+	}
+	second, err := os.ReadFile(filepath.Join(secondClasses, "Main.class"))
+	if err != nil {
+		return "", err
+	}
+	firstDigest, secondDigest := digest(first), digest(second)
+	if firstDigest != secondDigest {
+		return secondDigest, fmt.Errorf("first %s, second %s", firstDigest, secondDigest)
+	}
+	return secondDigest, nil
+}
+
+func compileJavaCandidate(ctx context.Context, javacPath, dir, classesDir string) error {
+	compile := exec.CommandContext(ctx, javacPath, "-d", classesDir, "Main.java")
+	compile.Dir = dir
+	if out, err := compile.CombinedOutput(); err != nil {
+		return fmt.Errorf("%v: %s", err, out)
+	}
+	return nil
+}
+
+func copyJavaSources(srcDir, dstDir string) error {
+	entries, err := os.ReadDir(srcDir)
+	if err != nil {
+		return err
+	}
+	copied := 0
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(strings.ToLower(entry.Name()), ".java") {
+			continue
+		}
+		content, err := os.ReadFile(filepath.Join(srcDir, entry.Name()))
+		if err != nil {
+			return err
+		}
+		if err := os.WriteFile(filepath.Join(dstDir, entry.Name()), content, 0o644); err != nil {
+			return err
+		}
+		copied++
+	}
+	if copied == 0 {
+		return fmt.Errorf("no Java sources in %s", srcDir)
+	}
+	return nil
+}
+
+func wasmBuildInputDigest(source []byte, toolchain string) string {
+	return digest([]byte(strings.Join([]string{
+		"GOOS=js GOARCH=wasm go build -trimpath -buildvcs=false", LanguageWasm, digest(source), toolchain,
+	}, "\x00")))
+}
+
+func buildWasmTwice(ctx context.Context, dir, wasmPath string) (string, error) {
+	firstDir, err := os.MkdirTemp("", "tei-wasm-repro-a-*")
+	if err != nil {
+		return "", err
+	}
+	defer os.RemoveAll(firstDir)
+	secondDir, err := os.MkdirTemp("", "tei-wasm-repro-b-*")
+	if err != nil {
+		return "", err
+	}
+	defer os.RemoveAll(secondDir)
+	if err := copyGoSources(dir, firstDir); err != nil {
+		return "", err
+	}
+	if err := copyGoSources(dir, secondDir); err != nil {
+		return "", err
+	}
+	if err := buildWasmCandidate(ctx, firstDir, wasmPath); err != nil {
+		return "", err
+	}
+	first, err := os.ReadFile(wasmPath)
+	if err != nil {
+		return "", err
+	}
+	secondPath := wasmPath + ".second"
+	if err := buildWasmCandidate(ctx, secondDir, secondPath); err != nil {
+		return "", err
+	}
+	second, err := os.ReadFile(secondPath)
+	if err != nil {
+		return "", err
+	}
+	firstDigest, secondDigest := digest(first), digest(second)
+	if firstDigest != secondDigest {
+		return secondDigest, fmt.Errorf("first %s, second %s", firstDigest, secondDigest)
+	}
+	return secondDigest, nil
+}
+
+func buildWasmCandidate(ctx context.Context, dir, outputPath string) error {
+	build := exec.CommandContext(ctx, "go", "build", "-trimpath", "-buildvcs=false", "-o", outputPath, "main.go")
+	build.Dir = dir
+	build.Env = append(os.Environ(), "GOOS=js", "GOARCH=wasm")
+	out, err := build.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("%v: %s", err, out)
+	}
+	return nil
+}
+
+func resolveWasmRuntime() (nodePath, wasmExecPath, version string, available bool) {
+	node, err := exec.LookPath("node")
+	if err != nil {
+		return "", "", "", false
+	}
+	out, err := exec.Command(node, "--version").CombinedOutput()
+	if err != nil {
+		return "", "", "", false
+	}
+	gorootOut, err := exec.Command("go", "env", "GOROOT").Output()
+	if err != nil {
+		return "", "", "", false
+	}
+	wasmExec := filepath.Join(strings.TrimSpace(string(gorootOut)), "lib", "wasm", "wasm_exec_node.js")
+	if _, err := os.Stat(wasmExec); err != nil {
+		return "", "", "", false
+	}
+	return node, wasmExec, strings.TrimSpace(string(out)), true
+}
+
+func wasiBuildInputDigest(source []byte, toolchain string) string {
+	return digest([]byte(strings.Join([]string{
+		"GOOS=wasip1 GOARCH=wasm go build -trimpath -buildvcs=false", LanguageWasi, digest(source), toolchain,
+	}, "\x00")))
+}
+
+func buildWasiTwice(ctx context.Context, dir, wasmPath string) (string, error) {
+	firstDir, err := os.MkdirTemp("", "tei-wasi-repro-a-*")
+	if err != nil {
+		return "", err
+	}
+	defer os.RemoveAll(firstDir)
+	secondDir, err := os.MkdirTemp("", "tei-wasi-repro-b-*")
+	if err != nil {
+		return "", err
+	}
+	defer os.RemoveAll(secondDir)
+	if err := copyGoSources(dir, firstDir); err != nil {
+		return "", err
+	}
+	if err := copyGoSources(dir, secondDir); err != nil {
+		return "", err
+	}
+	if err := buildWasiCandidate(ctx, firstDir, wasmPath); err != nil {
+		return "", err
+	}
+	first, err := os.ReadFile(wasmPath)
+	if err != nil {
+		return "", err
+	}
+	secondPath := wasmPath + ".second"
+	if err := buildWasiCandidate(ctx, secondDir, secondPath); err != nil {
+		return "", err
+	}
+	second, err := os.ReadFile(secondPath)
+	if err != nil {
+		return "", err
+	}
+	firstDigest, secondDigest := digest(first), digest(second)
+	if firstDigest != secondDigest {
+		return secondDigest, fmt.Errorf("first %s, second %s", firstDigest, secondDigest)
+	}
+	return secondDigest, nil
+}
+
+func buildWasiCandidate(ctx context.Context, dir, outputPath string) error {
+	build := exec.CommandContext(ctx, "go", "build", "-trimpath", "-buildvcs=false", "-o", outputPath, "main.go")
+	build.Dir = dir
+	build.Env = append(os.Environ(), "GOOS=wasip1", "GOARCH=wasm")
+	out, err := build.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("%v: %s", err, out)
+	}
+	return nil
+}
+
+func resolveWasiRuntime() (nodePath, version string, available bool) {
+	node, err := exec.LookPath("node")
+	if err != nil {
+		return "", "", false
+	}
+	out, err := exec.Command(node, "--version").CombinedOutput()
+	if err != nil {
+		return "", "", false
+	}
+	return node, strings.TrimSpace(string(out)), true
+}
+
+// ResolveWasiRuntime exposes the same Node discovery for target-profile probes.
+func ResolveWasiRuntime() (nodePath, version string, available bool) {
+	return resolveWasiRuntime()
+}
+
+// WasiRunnerSource returns the embedded Node WASI preview1 runner.
+func WasiRunnerSource() []byte {
+	return wasiRunner
+}
+
+// ResolveScriptRuntime uses the same interpreter discovery for selection and
+// target-profile probes. Availability is evidence of a runnable interpreter,
+// not permission to execute a candidate or a limit on its resource use.
+func ResolveScriptRuntime(language string) (string, *RuntimeEvidence) {
+	var executable, version string
+	var available bool
+	command := ""
+	switch language {
+	case LanguagePython:
+		executable, version, available = findPython()
+		command = "python <source>"
+	case LanguageJavaScript:
+		executable, version, available = findJavaScript()
+		command = "node <source>"
+	}
+	if executable != "" {
+		command = executable + " <source>"
+	}
+	return executable, &RuntimeEvidence{Language: language, Command: command, Version: version, Available: available}
+}
+
 func findPython() (path, version string, available bool) {
 	for _, name := range []string{"python3", "python"} {
 		found, err := exec.LookPath(name)
@@ -918,29 +1342,48 @@ func findJavaScript() (path, version string, available bool) {
 	return found, strings.TrimSpace(string(out)), true
 }
 
-func runScriptCandidate(ctx context.Context, interpreter, sourcePath string, input json.RawMessage) (Result, *ExecutionEvidence, error) {
+func findJava() (javacPath, javaPath, version string, available bool) {
+	javac, err := exec.LookPath("javac")
+	if err != nil {
+		return "", "", "", false
+	}
+	java, err := exec.LookPath("java")
+	if err != nil {
+		return "", "", "", false
+	}
+	out, err := exec.Command(javac, "-version").CombinedOutput()
+	if err != nil {
+		return "", "", "", false
+	}
+	return javac, java, strings.TrimSpace(string(out)), true
+}
+
+func runScriptCandidate(ctx context.Context, interpreter, sourcePath string, input json.RawMessage, options ExecutionOptions) (Result, *ExecutionEvidence, error) {
 	absolute, err := filepath.Abs(sourcePath)
 	if err != nil {
 		return Result{}, nil, err
 	}
-	return runProgram(ctx, interpreter, []string{absolute}, input)
+	return runProgram(ctx, interpreter, []string{absolute}, input, options)
 }
 
-func runCandidate(ctx context.Context, binary string, input json.RawMessage) (Result, *ExecutionEvidence, error) {
-	return runProgram(ctx, binary, nil, input)
+func runCandidate(ctx context.Context, binary string, input json.RawMessage, options ExecutionOptions) (Result, *ExecutionEvidence, error) {
+	return runProgram(ctx, binary, nil, input, options)
 }
 
-func runProgram(ctx context.Context, name string, args []string, input json.RawMessage) (Result, *ExecutionEvidence, error) {
+func runProgram(ctx context.Context, name string, args []string, input json.RawMessage, options ExecutionOptions) (Result, *ExecutionEvidence, error) {
 	runCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
-	cmd := exec.CommandContext(runCtx, name, args...)
+	cmd := options.Command(runCtx, name, args...)
 	cmd.Stdin = bytes.NewReader(input)
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
+	started := time.Now()
 	err := cmd.Run()
+	elapsed := time.Since(started)
 	evidence := &ExecutionEvidence{
-		ExitCode: 0, StdoutDigest: digest(stdout.Bytes()), StderrDigest: digest(stderr.Bytes()),
+		Measurement: MeasureProcess(cmd.ProcessState, elapsed),
+		ExitCode:    0, StdoutDigest: digest(stdout.Bytes()), StderrDigest: digest(stderr.Bytes()),
 	}
 	if err != nil {
 		evidence.ExitCode = -1

@@ -4,9 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 	"testing"
 
 	generatorselection "tei/tools/reference-generator-selection"
@@ -30,22 +32,44 @@ func selectionPaths(t *testing.T) (workspace, contract, fixtures, candidates str
 		filepath.Join(base, "candidates")
 }
 
+var (
+	selectionReceiptOnce sync.Once
+	selectionReceiptPath string
+	selectionReceiptRaw  []byte
+	selectionReceiptErr  error
+)
+
 func writeSelectionReceipt(t *testing.T) (string, generatorselection.Receipt) {
 	t.Helper()
-	workspace, contract, fixtures, candidates := selectionPaths(t)
-	selection, err := generatorselection.Select(context.Background(), workspace, contract, fixtures, candidates)
-	if err != nil {
+	selectionReceiptOnce.Do(func() {
+		workspace, contract, fixtures, candidates := selectionPaths(t)
+		selection, err := generatorselection.Select(context.Background(), workspace, contract, fixtures, candidates)
+		if err != nil {
+			selectionReceiptErr = err
+			return
+		}
+		raw, err := json.MarshalIndent(selection, "", "  ")
+		if err != nil {
+			selectionReceiptErr = err
+			return
+		}
+		selectionReceiptRaw = append(raw, '\n')
+		dir, err := os.MkdirTemp("", "tei-artifact-selection-*")
+		if err != nil {
+			selectionReceiptErr = err
+			return
+		}
+		selectionReceiptPath = filepath.Join(dir, "selection.json")
+		selectionReceiptErr = os.WriteFile(selectionReceiptPath, selectionReceiptRaw, 0o600)
+	})
+	if selectionReceiptErr != nil {
+		t.Fatal(selectionReceiptErr)
+	}
+	var selection generatorselection.Receipt
+	if err := json.Unmarshal(selectionReceiptRaw, &selection); err != nil {
 		t.Fatal(err)
 	}
-	raw, err := json.MarshalIndent(selection, "", "  ")
-	if err != nil {
-		t.Fatal(err)
-	}
-	path := filepath.Join(t.TempDir(), "selection.json")
-	if err := os.WriteFile(path, append(raw, '\n'), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	return path, selection
+	return selectionReceiptPath, selection
 }
 
 func TestPutAndGetArtifact(t *testing.T) {
@@ -58,7 +82,7 @@ func TestPutAndGetArtifact(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !put.Passed || put.Reused || put.SourceDigest == "" || put.BinaryDigest == "" || put.ObjectPath == "" {
+	if !put.Passed || put.Reused || put.Language != generatorselection.LanguageGo || put.SourceDigest == "" || put.BinaryDigest == "" || put.ObjectPath == "" {
 		t.Fatalf("artifact put failed: %+v", put)
 	}
 	if _, err := os.Stat(filepath.Join(put.ObjectPath, "source")); err != nil {
@@ -71,7 +95,7 @@ func TestPutAndGetArtifact(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !get.Passed || get.SourceDigest != put.SourceDigest || get.BinaryDigest != put.BinaryDigest {
+	if !get.Passed || get.Language != generatorselection.LanguageGo || get.SourceDigest != put.SourceDigest || get.BinaryDigest != put.BinaryDigest {
 		t.Fatalf("artifact get failed: %+v", get)
 	}
 	again, err := Put(context.Background(), StoreOptions{
@@ -95,7 +119,7 @@ func TestPutAndGetArtifact(t *testing.T) {
 }
 
 func TestPutRejectsReceiptDigestMismatch(t *testing.T) {
-	receiptPath, selection := writeSelectionReceipt(t)
+	_, selection := writeSelectionReceipt(t)
 	_, _, _, candidates := selectionPaths(t)
 	for i := range selection.Candidates {
 		if selection.Candidates[i].ID == "template" {
@@ -106,6 +130,7 @@ func TestPutRejectsReceiptDigestMismatch(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	receiptPath := filepath.Join(t.TempDir(), "tampered.json")
 	if err := os.WriteFile(receiptPath, append(raw, '\n'), 0o600); err != nil {
 		t.Fatal(err)
 	}
@@ -130,6 +155,9 @@ func TestGetRejectsTamperedArtifact(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if !put.Passed || put.ObjectPath == "" {
+		t.Fatalf("artifact put failed before tamper test: %+v", put)
+	}
 	if err := os.WriteFile(filepath.Join(put.ObjectPath, "artifact"), []byte("tampered"), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -139,6 +167,195 @@ func TestGetRejectsTamperedArtifact(t *testing.T) {
 	}
 	if got.Passed || !strings.Contains(got.Reason, "artifact digest") {
 		t.Fatalf("tampered artifact was accepted: %+v", got)
+	}
+}
+
+func TestPutAndGetWasiArtifact(t *testing.T) {
+	workspace, contract, fixtures, _ := selectionPaths(t)
+	candidates := filepath.Join(t.TempDir(), "candidates")
+	if _, err := generatorselection.GenerateVersion(contract, "wasi-template", "1",
+		filepath.Join(candidates, "wasi-template")); err != nil {
+		t.Fatal(err)
+	}
+	selection, err := generatorselection.Select(context.Background(), workspace, contract, fixtures, candidates)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !selection.Passed || len(selection.Candidates) != 1 || !selection.Candidates[0].Passed {
+		t.Fatalf("wasi candidate did not pass selection: %+v", selection.Candidates)
+	}
+	raw, err := json.MarshalIndent(selection, "", "  ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	receiptPath := filepath.Join(t.TempDir(), "selection.json")
+	if err := os.WriteFile(receiptPath, append(raw, '\n'), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	storeDir := t.TempDir()
+	put, err := Put(context.Background(), StoreOptions{
+		ReceiptPath: receiptPath, CandidateID: selection.Candidates[0].ID,
+		CandidatesDir: candidates, StoreDir: storeDir,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !put.Passed || put.ObjectPath == "" {
+		t.Fatalf("wasi artifact was not stored: %+v", put)
+	}
+	rawObject, err := os.ReadFile(filepath.Join(put.ObjectPath, "object.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var object Object
+	if err := json.Unmarshal(rawObject, &object); err != nil {
+		t.Fatal(err)
+	}
+	if object.Language != generatorselection.LanguageWasi {
+		t.Fatalf("stored language=%s want wasi", object.Language)
+	}
+	got, err := Get(storeDir, put.SourceDigest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !got.Passed || got.BinaryDigest != put.BinaryDigest {
+		t.Fatalf("wasi artifact was not read back: %+v", got)
+	}
+}
+
+func TestPutAndGetJavaArtifact(t *testing.T) {
+	if _, err := exec.LookPath("javac"); err != nil {
+		t.Skip("javac is not available")
+	}
+	workspace, contract, fixtures, _ := selectionPaths(t)
+	candidates := filepath.Join(t.TempDir(), "candidates")
+	if _, err := generatorselection.GenerateVersion(contract, "java-template", "1",
+		filepath.Join(candidates, "java-template")); err != nil {
+		t.Fatal(err)
+	}
+	selection, err := generatorselection.Select(context.Background(), workspace, contract, fixtures, candidates)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !selection.Passed || len(selection.Candidates) != 1 || !selection.Candidates[0].Passed {
+		t.Fatalf("java candidate did not pass selection: %+v", selection.Candidates)
+	}
+	raw, err := json.MarshalIndent(selection, "", "  ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	receiptPath := filepath.Join(t.TempDir(), "selection.json")
+	if err := os.WriteFile(receiptPath, append(raw, '\n'), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	storeDir := t.TempDir()
+	put, err := Put(context.Background(), StoreOptions{
+		ReceiptPath: receiptPath, CandidateID: selection.Candidates[0].ID,
+		CandidatesDir: candidates, StoreDir: storeDir,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !put.Passed || put.ObjectPath == "" {
+		t.Fatalf("java artifact was not stored: %+v", put)
+	}
+	rawObject, err := os.ReadFile(filepath.Join(put.ObjectPath, "object.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var object Object
+	if err := json.Unmarshal(rawObject, &object); err != nil {
+		t.Fatal(err)
+	}
+	if object.Language != generatorselection.LanguageJava {
+		t.Fatalf("stored language=%s want java", object.Language)
+	}
+	got, err := Get(storeDir, put.SourceDigest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !got.Passed || got.BinaryDigest != put.BinaryDigest {
+		t.Fatalf("java artifact was not read back: %+v", got)
+	}
+}
+
+func TestPutAndGetSourceOnlyArtifacts(t *testing.T) {
+	if _, err := exec.LookPath("node"); err != nil {
+		t.Skip("node is not available")
+	}
+	for _, test := range []struct {
+		strategy string
+		language string
+	}{
+		{strategy: "python-template", language: generatorselection.LanguagePython},
+		{strategy: "javascript-template", language: generatorselection.LanguageJavaScript},
+	} {
+		t.Run(test.language, func(t *testing.T) {
+			workspace, contract, fixtures, _ := selectionPaths(t)
+			candidates := filepath.Join(t.TempDir(), "candidates")
+			if _, err := generatorselection.GenerateVersion(contract, test.strategy, "1",
+				filepath.Join(candidates, test.strategy)); err != nil {
+				t.Fatal(err)
+			}
+			selection, err := generatorselection.Select(context.Background(), workspace, contract, fixtures, candidates)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !selection.Passed || len(selection.Candidates) != 1 || !selection.Candidates[0].Passed {
+				t.Fatalf("%s candidate did not pass selection: %+v", test.language, selection.Candidates)
+			}
+			if selection.Candidates[0].BinaryDigest != "" {
+				t.Fatalf("source-only candidate has a binary digest: %+v", selection.Candidates[0])
+			}
+			raw, err := json.MarshalIndent(selection, "", "  ")
+			if err != nil {
+				t.Fatal(err)
+			}
+			receiptPath := filepath.Join(t.TempDir(), "selection.json")
+			if err := os.WriteFile(receiptPath, append(raw, '\n'), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			storeDir := t.TempDir()
+			put, err := Put(context.Background(), StoreOptions{
+				ReceiptPath: receiptPath, CandidateID: selection.Candidates[0].ID,
+				CandidatesDir: candidates, StoreDir: storeDir,
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !put.Passed || put.Language != test.language || put.ObjectPath == "" || put.BinaryDigest != "" {
+				t.Fatalf("%s artifact was not stored: %+v", test.language, put)
+			}
+			artifact, err := os.ReadFile(filepath.Join(put.ObjectPath, "artifact"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(artifact) != 0 {
+				t.Fatalf("source-only artifact is not empty: %d bytes", len(artifact))
+			}
+			got, err := Get(storeDir, put.SourceDigest)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !got.Passed || got.Language != test.language || got.BinaryDigest != "" {
+				t.Fatalf("%s artifact was not read back: %+v", test.language, got)
+			}
+			list, err := List(storeDir)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !list.Passed || len(list.Objects) != 1 || !list.Objects[0].Verified ||
+				list.Objects[0].Language != test.language {
+				t.Fatalf("%s source-only object failed list verification: %+v", test.language, list)
+			}
+			prune, err := Prune(PruneOptions{StoreDir: storeDir, Keep: []string{put.SourceDigest}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !prune.Passed || len(prune.Kept) != 1 {
+				t.Fatalf("%s source-only object failed prune verification: %+v", test.language, prune)
+			}
+		})
 	}
 }
 
