@@ -200,9 +200,11 @@ python xtea_control.py --endpoint build\editor-endpoint.json `
   scenario scenarios\editor-add-function.json
 python xtea_control.py --endpoint build\editor-endpoint.json `
   scenario scenarios\editor-add-table.json
+python xtea_control.py --endpoint build\editor-endpoint.json `
+  scenario scenarios\editor-rename-function-id.json
 ```
 
-`editor-open-table-from-list.json`はテーブル一覧のダブルクリックで編集画面を開く読取り専用の確認です。残りは複製したモデルのシステム名・部門テーブル名を変更し、部門テーブルを削除し、機能`TEST_FUNCTION`またはテーブル`TEST_TABLE`を追加して保存します。原本や共有モデルには実行しないでください。
+`editor-open-table-from-list.json`はテーブル一覧のダブルクリックで編集画面を開く読取り専用の確認です。残りは複製したモデルのシステム名・部門テーブル名を変更し、部門テーブルを削除し、機能`TEST_FUNCTION`・テーブル`TEST_TABLE`を追加し、または機能IDを変更して保存します。原本や共有モデルには実行しないでください。
 
 Driver:
 
@@ -320,6 +322,7 @@ python tests\test_external_tomcat.py
 - 実Editorのテーブル削除として、`61 部門`を選択・Enterで開き、`jMenuItemXETreeNodeDelete_actionPerformed`を実行して保存。XMLから`Table ID="61"`が消えたことを`model_assert_table_absent`で確認。`scenarios/editor-delete-table.json`で再現できます。
 - 実Editorの機能追加として、機能一覧から追加ウィザードを開き、機能ID`999`、機能名`TEST_FUNCTION`、機能タイプ`XF000`を設定して保存。XMLに`Function ID="999" Type="XF000"`が追加されたことを確認。`scenarios/editor-add-function.json`で再現できます。
 - 実Editorのテーブル追加として、テーブル一覧から追加ダイアログを開き、ID`999`、名前`TEST_TABLE`を設定して保存。XMLに`Table ID="999" Name="TEST_TABLE"`が追加されたことを確認。`scenarios/editor-add-table.json`で再現できます。
+- 実Editorの機能ID変更として、機能`232`を選択・Enterで開き、`jMenuItemXETreeNodeRename_actionPerformed`の入力ダイアログで`998`へ変更して保存。XMLから`232`が消え`998`になることを確認。`scenarios/editor-rename-function-id.json`で再現できます。
 - 実X-TEA Editor（配布`xteaedt.jar`）で`MfgOrder.xead`を開き、メニュー8件・操作40件を列挙し、スナップショットとスクリーンショットを確認。実ツリーは`tree-read`で328ノードを列挙できた。
 - 実X-TEA Driver（配布`xteadrv.jar`）で、引数なしの起動時に「システム定義ファイルが指定されていません」のダイアログへ到達。`Skeleton.xeaf`の複製（DB URLだけを埋め込みDerbyへ変更）でログイン画面を開き、合成ユーザ`00000`でログイン後、`XF100`「部門情報の一覧・保守」を開き、カスタム行オブジェクトから4列・2行を読み取り、画面キャプチャを取得。選択行でEnterを押して`XF300`詳細画面を開き、そのスナップショットと画面キャプチャも取得。`F3 閉じる`で両画面を閉じる操作を確認。
 - 実Driverの更新経路として、`XF300`から`F8 部門情報`、`F5 編集`、部門名の変更、`F5 更新`を実行し、一覧を開き直して新しい値を確認。更新後のDerby DBを独立に問い合わせ、`AT010.CDBUMON=00001`の`TXBUMON`が変更されたことも確認。`scenarios/driver-update-department.json`と`driver-fixture.ps1`で再現できます。更新は使い捨てDBだけで行っています。
@@ -329,7 +332,7 @@ python tests\test_external_tomcat.py
 ### 検証していないこと
 
 - Driverの明示的なトランザクションrollback操作（失敗時の内部rollbackは確認済み）、上記以外のFunction画面、元の`jdbc:derby://localhost/...`接続。
-- Editorの要素並べ替え・一括置換・機能編集（Modelerの全フィールド操作と、Editorのテーブル追加・削除・機能追加は確認済み）。
+- Editorの要素並べ替え・一括置換・機能編集（Modelerの全フィールド操作と、Editorのテーブル追加・削除・機能追加・機能ID変更は確認済み）。
 - 三つのSwingアプリの全ダイアログ・全条件分岐の実行。経路表は入力種別とトップレベル入口の到達性を示すもので、全業務ケースの実行結果ではない。
 - X-TEAのソースと配布JARの同一性、#940の固定baselineとの対応、TEI側の意味一致。
 - Java 8実機。コンパイルターゲットは8だが、実行確認はJDK 11。
