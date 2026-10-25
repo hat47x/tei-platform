@@ -91,8 +91,8 @@ func main() {
 			os.Exit(1)
 		}
 	case "deploy":
-		if *candidatesDir == "" || *rootDir == "" {
-			fail(fmt.Errorf("-candidates and -root are required for deploy"))
+		if *candidatesDir == "" {
+			fail(fmt.Errorf("-candidates is required for deploy"))
 		}
 		receipt, err := targetprofile.Deploy(context.Background(), targetprofile.DeployOptions{
 			ProfilePath: *profilePath, CandidatesDir: *candidatesDir, RootDir: *rootDir,

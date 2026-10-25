@@ -19,7 +19,7 @@ func TestDeployReplaceInstallsAndKeepsPreviousArtifact(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !first.Passed || first.ArtifactDigest == "" || first.PreviousDigest != "" || first.HistoryPath != "" {
+	if !first.Passed || !first.Installed || first.ArtifactDigest == "" || first.PreviousDigest != "" || first.HistoryPath != "" {
 		t.Fatalf("first replace deployment failed: %+v", first)
 	}
 
@@ -179,6 +179,37 @@ func TestRollbackToPreservesVerifiedCurrentHistory(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestDeployNoneBuildsWithoutInstalling(t *testing.T) {
+	_, _, _, candidates := selectionPaths(t)
+	profile, err := Load(filepath.Join(repoRoot(t), "tools", "reference-target-profile", "testdata", "desktop-replace.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	profile.ID = "desktop-none"
+	profile.Storage = StorageNone
+	changed, err := json.MarshalIndent(profile, "", "  ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	profilePath := filepath.Join(t.TempDir(), "desktop-none.json")
+	if err := os.WriteFile(profilePath, append(changed, '\n'), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	root := filepath.Join(t.TempDir(), "unused-root")
+	receipt, err := Deploy(context.Background(), DeployOptions{
+		ProfilePath: profilePath, CandidatesDir: candidates, RootDir: root,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !receipt.Passed || receipt.Installed || receipt.Storage != StorageNone || receipt.ArtifactDigest == "" {
+		t.Fatalf("storage=none deployment failed: %+v", receipt)
+	}
+	if _, err := os.Stat(root); !os.IsNotExist(err) {
+		t.Fatalf("storage=none created the root: %v", err)
 	}
 }
 
