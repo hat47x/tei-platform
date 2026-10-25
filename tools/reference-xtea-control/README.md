@@ -395,6 +395,34 @@ main `0a15a63e8`を取り込み、Script UIの呼出元への反映とリスト�
 
 追加の5件は検索条件からのチェックリスト・入力・オプションの呼出しと戻り、複数項目フォームです。取消後の入力APIには編集値が残ることを確認し、呼出元ではダイアログの戻り値を判定してから反映することを検証します。調整中の表示名セレクタと取消値の期待違いによる失敗記録も保持し、最終版の成功記録とは区別します。実参照モデル・Windowsでの受入確認ではありません。
 
+### #2154：断続的なDriver失敗の切分け（未受入）
+
+`tests/test_live_driver.py` は指定した `unittest` メソッドだけを実行できます。確認ダイアログ、複写、ALPHA入力の断続的失敗を再調査する際は、元の配布Driver・使い捨て合成XEAF/H2を使用し、**失敗した試行の結果を保持したまま停止**します。以下はWindowsの専用デスクトップで実行する担当向けの手順例です。現時点でこの反復手順のWindows実行結果はありません。
+
+```powershell
+$env:XTEA_RUNTIME_HOME = "C:\path\to\X-TEA\Driver"
+$env:JAVA_TOOL_OPTIONS = "-XX:ActiveProcessorCount=2"
+python tests\test_driver_result.py   # ランタイムを伴わない分類テストを先に確認
+if ($LASTEXITCODE -ne 0) { throw "result tests failed" }
+foreach ($case in @(
+  "test_200_copy",
+  "test_script_input_types_used_by_reference_models",
+  "test_script_swing_negative_and_cancel"
+)) {
+  for ($trial = 1; $trial -le 10; $trial++) {
+    Write-Host "case=$case trial=$trial"
+    python tests\test_live_driver.py "LiveDriverTest.$case"
+    if ($LASTEXITCODE -ne 0) {
+      throw "Driver regression failed: case=$case trial=$trial; preserve artifacts/live-driver/run-*/"
+    }
+  }
+}
+```
+
+Linuxで同じ固定条件の隔離画面を使う場合は、各 `python tests/test_live_driver.py ...` 呼出しを `xvfb-run -a python3 ...` に置き換えます。事前に `sh build.sh` を実行し、Java 11と対象JARのSHA-256を確認してください。試験ごとに `artifacts/live-driver/run-*/` が新規作成され、`runtime.json`（使用ソース・JAR・Java・DISPLAY）、`summary.json`、`case-*/`（操作観測・ログ・失敗直後のsnapshot/trace）が保存されます。初回失敗後は関連ファイルを採取し、同じ実行を成功結果で上書きせず、画面上の対象部品・イベント完了・DB確定を分けて比較します。
+
+この反復は制御面の再現性を調べるもので、原典の業務意味や本番動作の受入ではありません。GitHub Actionsの合成Python/Swing検証と、JDK11/Xvfbの配布Driver実動38件は独立した試験として記録します。Windows担当は実機の再現性・表示/フォーカス差を別途確認してください。
+
 ### 初期インターフェースの確認
 
 2026-10-21、JDK 11.0.20.1（`--release 8`でコンパイル）で確認しました。
