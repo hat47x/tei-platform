@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"time"
 
 	deliverybundle "tei/tools/reference-delivery-bundle"
 )
@@ -13,18 +14,25 @@ import (
 // verifies its exact bytes. It does not install the bundle.
 func main() {
 	if len(os.Args) < 2 {
-		fmt.Fprintln(os.Stderr, "usage: tei-delivery-bundle <pack|verify|keygen|sign|verify-signature|install> [options]")
+		fmt.Fprintln(os.Stderr, "usage: tei-delivery-bundle <pack|verify|keygen|sign|verify-signature|install|activate|rollback|status|health|start|stop|restart|reconcile> [options]")
 		os.Exit(2)
 	}
 	command := os.Args[1]
 	fs := flag.NewFlagSet(command, flag.ExitOnError)
 	profilePath := fs.String("profile", "", "delivery profile JSON")
 	catalogDir := fs.String("catalog", "", "plugin catalog directory")
+	fresh := fs.Bool("fresh", false, "create a new catalog atomically instead of merging")
 	out := fs.String("out", "", "output bundle zip")
 	bundlePath := fs.String("bundle", "", "bundle zip")
 	privateKey := fs.String("key", "", "ed25519 private key PEM")
 	publicKey := fs.String("public", "", "ed25519 public key PEM")
 	signaturePath := fs.String("signature", "", "detached signature file")
+	statePath := fs.String("state", "", "deployment state JSON")
+	healthCommand := fs.String("command", "", "trusted service or health command")
+	healthTimeout := fs.Duration("timeout", 30*time.Second, "health-check timeout")
+	serviceLog := fs.String("log", "", "service log file")
+	graceful := fs.Bool("graceful", false, "send SIGTERM before Kill")
+	healthCheck := fs.String("health", "", "trusted health-check command for reconcile")
 	_ = fs.Parse(os.Args[2:])
 	switch command {
 	case "pack":
@@ -49,7 +57,94 @@ func main() {
 		if *bundlePath == "" || *signaturePath == "" || *publicKey == "" || *catalogDir == "" {
 			fail(fmt.Errorf("-bundle, -signature, -public, and -catalog are required for install"))
 		}
-		receipt, err := deliverybundle.Install(*bundlePath, *signaturePath, *publicKey, *catalogDir)
+		var receipt deliverybundle.InstallReceipt
+		var err error
+		if *fresh {
+			receipt, err = deliverybundle.InstallFresh(*bundlePath, *signaturePath, *publicKey, *catalogDir)
+		} else {
+			receipt, err = deliverybundle.Install(*bundlePath, *signaturePath, *publicKey, *catalogDir)
+		}
+		if err != nil {
+			fail(err)
+		}
+		emit(receipt)
+	case "activate":
+		if *catalogDir == "" || *statePath == "" {
+			fail(fmt.Errorf("-catalog and -state are required for activate"))
+		}
+		state, err := deliverybundle.Activate(*catalogDir, *statePath)
+		if err != nil {
+			fail(err)
+		}
+		emit(state)
+	case "rollback":
+		if *statePath == "" {
+			fail(fmt.Errorf("-state is required for rollback"))
+		}
+		state, err := deliverybundle.Rollback(*statePath)
+		if err != nil {
+			fail(err)
+		}
+		emit(state)
+	case "status":
+		if *statePath == "" {
+			fail(fmt.Errorf("-state is required for status"))
+		}
+		state, err := deliverybundle.Status(*statePath)
+		if err != nil {
+			fail(err)
+		}
+		emit(state)
+	case "health":
+		if *statePath == "" || *healthCommand == "" {
+			fail(fmt.Errorf("-state and -command are required for health"))
+		}
+		receipt, err := deliverybundle.Health(*statePath, *healthCommand, *healthTimeout)
+		if err != nil {
+			fail(err)
+		}
+		emit(receipt)
+		if !receipt.Healthy {
+			os.Exit(1)
+		}
+	case "start":
+		if *statePath == "" || *healthCommand == "" {
+			fail(fmt.Errorf("-state and -command are required for start"))
+		}
+		receipt, err := deliverybundle.Start(*statePath, *healthCommand, *serviceLog)
+		if err != nil {
+			fail(err)
+		}
+		emit(receipt)
+	case "stop":
+		if *statePath == "" {
+			fail(fmt.Errorf("-state is required for stop"))
+		}
+		var receipt deliverybundle.ServiceReceipt
+		var err error
+		if *graceful {
+			receipt, err = deliverybundle.StopGraceful(*statePath, *healthTimeout)
+		} else {
+			receipt, err = deliverybundle.Stop(*statePath)
+		}
+		if err != nil {
+			fail(err)
+		}
+		emit(receipt)
+	case "restart":
+		if *statePath == "" || *healthCommand == "" {
+			fail(fmt.Errorf("-state and -command are required for restart"))
+		}
+		receipt, err := deliverybundle.Restart(*statePath, *healthCommand, *serviceLog, *healthTimeout)
+		if err != nil {
+			fail(err)
+		}
+		emit(receipt)
+	case "reconcile":
+		if *statePath == "" || *healthCommand == "" || *healthCheck == "" {
+			fail(fmt.Errorf("-state, -command, and -health are required for reconcile"))
+		}
+		receipt, err := deliverybundle.Reconcile(*statePath, *healthCommand, *healthCheck, *serviceLog, *healthTimeout)
 		if err != nil {
 			fail(err)
 		}

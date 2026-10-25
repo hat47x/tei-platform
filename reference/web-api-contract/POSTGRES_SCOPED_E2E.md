@@ -90,9 +90,34 @@ Issue #1769のコメントは、`NULL AS`による非選択列のマスクにつ
 
 ### この試験が確かめていないこと
 
-- Tenant用の参照（`scoped_postgres_reference.go`）も、コード上は同じ既定の`ORDER BY o.ordered_at DESC`を使うが、実DBでは確かめていない。
-- Queryパラメータ`from`は、`o.ordered_at >= $2`として非公開列への述語になる。この試験は`from`をHostが固定する値として扱う。呼出し元が`from`を指定できる経路があれば、`from`を変えながら応答の行の有無を見ることで、非公開列の値を推測できる可能性がある。
+- Tenant用の参照と`from`の経路は、E12で確かめた。
 - Count、Aggregate、Expand、複数列の並びなど、ほかの間接推測の経路。
+
+## E12. Tenant用の参照でも並びは非公開列に従う／`from`は呼出し元から渡せない
+
+`postgres_scoped_tenant_inference_integration_test.go`は、E11の二つの未確認点を実PostgreSQLで確かめる特性化試験である。E11と同じく、固定するのは現在の参照実装の既知の限界であり、望ましい動作の証明ではない。
+
+### Tenant用の参照（`ScopedPostgresOrdersReference`）
+
+コード上の予想どおり、既定の`ORDER BY o.ordered_at DESC, o.order_id DESC`は、公開していない`orderedAt`の大小関係を、公開項目だけの応答の並びへ出す。`tenant-a`の注文3・9について、公開項目を変えずに`orderedAt`の大小だけを入れ替えた。
+
+| 要求 | 9が新しい | 3が新しい |
+|---|---|---|
+| `$select=orderId`（`$orderby`なし） | `[9, 3]` | `[3, 9]` |
+| `$select=orderId&$top=1` | `[9]` | `[3]` |
+| `$select=orderId&$orderby=orderId asc` | `[3, 9]` | `[3, 9]` |
+
+`tenant-b`の行は、どの場合も応答に現れない（Tenantの隔離は破れていない）。
+
+### `from`による推測は、この参照では成立しない
+
+`from`は`o.ordered_at >= :from`として非公開列への述語になるが、呼出し元は要求で渡せない。要求の入口（`BindRead`）は`$select`・`$filter`・`$orderby`・`$top`以外のキーを拒否し、`$filter`は`orderedAt`を許さない。試験は次の要求がすべて拒否されることを確かめる。`$select=orderedAt`、`$orderby=orderedAt desc`、`$filter=orderedAt ge ...`、`from=...`、`$from=...`、`tenant_id=tenant-b`。`from`は`ExecuteScopedCanonicalRead`の引数としてHostが渡す。
+
+この結論は、入口がこの4つのキーに限られる間だけ成り立つ。`from`などを呼出し元に開く変更を入れるときは、その時点で推測の経路を再評価する。
+
+### 実行の記録とE11と同じ扱い
+
+実行したexact commit、server_version、Goのバージョンは、この変更のプルリクエストに記録する。DSN未設定ではSKIPし、実証したことにはならない。解消は未決で、E11の「扱い」と同じ判断に従う。実行は`-run TestScopedTenantPostgres`を指定する。
 
 ## なお未実証
 

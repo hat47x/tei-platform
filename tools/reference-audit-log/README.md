@@ -7,6 +7,10 @@ go run ./tools/reference-audit-log/cmd/tei-audit-log append \
   -log /tmp/audit.jsonl -tenant tenant-a -actor user-1 -action read -subject order/1
 
 go run ./tools/reference-audit-log/cmd/tei-audit-log verify -log /tmp/audit.jsonl
+
+go run ./tools/reference-audit-log/cmd/tei-audit-log head -log /tmp/audit.jsonl
+
+go run ./tools/reference-audit-log/cmd/tei-audit-log verify -log /tmp/audit.jsonl -head PINNED_HASH
 ```
 
 ## エントリ
@@ -34,10 +38,11 @@ go run ./tools/reference-audit-log/cmd/tei-audit-log verify -log /tmp/audit.json
 - 既存エントリの変更は、hash chainの検証で検出する。
 - 壊れたchainへは追記しない。
 - 再オープン後も直前のhashからchainを継続する。
+- 最新hashを外部へ固定し、`verify -head`で照合すると、末尾エントリの削除を検出できる。
 
 ## 保証しないこと
 
-- 末尾のエントリを削除された場合の検出。最新hashを外部へ固定しない限り、短いchainは検証を通る。
+- 最新hashを外部へ固定していない場合の、末尾エントリ削除の検出。短いchainは検証を通る。
 - 外部ストレージの不変性、WORM、法的な監査要件への適合。
 - 内容の機密性。必要なら保存時の暗号化を別pluginで行う。
 - 複数writerの競合制御。このReferenceは単一writerを前提とする。
@@ -53,7 +58,7 @@ go run ./tools/reference-audit-log/cmd/tei-audit-log verify -log /tmp/audit.json
 
 ## 未実装
 
-- 最新hashの外部固定、透明性ログ、署名。
+- 最新hashを保管・配布する外部機構、透明性ログ、署名。
 - 保存期間、削除、アーカイブ。
 - 複数プロセス・複数writerでの順序保証。
 - 暗号化、テナントごとの鍵。

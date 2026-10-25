@@ -326,6 +326,8 @@ RQを単独のチェック項目として見るより、同じ業務シナリオ
 
 ## 5. 次に読むもの
 
+更新を重ねても案件固有の知識と処理を保つための具体化は、[変更・更新・再生成の継続性設計](../plan/design/CHANGE_CONTINUITY_DESIGN_2026-10.md)を参照してください。RQ-002・007・008・013・015・017・028・029と、担当Issue、失敗例、受入候補を対応付けています。要求の具体化と、未採用の実現方式、未実施の検証を区別して読めます。
+
 - 要求が守る価値（個人・組織・社会）: [`../product/value/TEI_PRODUCT_VALUE.md`](../product/value/TEI_PRODUCT_VALUE.md)
 - 正式な要求本文: [`TEI_PRODUCT_REQUIREMENTS.md`](TEI_PRODUCT_REQUIREMENTS.md)
 - 業務システム設計の要求解釈: [`BUSINESS_SYSTEM_DESIGN_REQUIREMENTS.md`](BUSINESS_SYSTEM_DESIGN_REQUIREMENTS.md)

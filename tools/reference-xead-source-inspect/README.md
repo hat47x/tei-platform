@@ -31,7 +31,10 @@ go run ./tools/reference-xead-source-inspect \
 - authority limit
 
 出力はReference Modelの利用条件を変更しません。public RepositoryへEvidenceを保存する場合は、
-`plan/REFERENCE_MODEL_PUBLICATION_BOUNDARY_2026-10.md`に従います。
+[`docs/business-system-design.md`](../../docs/business-system-design.md)に記載された第三者資料の参照・複製・再配布の原則と、
+[Issue #941](https://github.com/hat47x/tei-platform/issues/941)のReference Modelごとの権利確認状況を確認してください。
+原典やその実質的な抜粋・変換物の公開可否が未確認の場合は、公開判断をOwnerへ戻し、公開Evidenceに含めません。
+構造検証の成功やsource factの観測は、意味受理にも公開許諾にもなりません。
 
 
 `relationalResolutionStatus`と`relationalFactResolutions`は、source factをCanonical meaningとして承認したことを示しません。`relationalResolutionPolicyRevision`も判定算法のprovenanceであり、semantic authorityではありません。

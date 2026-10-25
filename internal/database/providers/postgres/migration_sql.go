@@ -41,11 +41,29 @@ func validateResolvedMigrationDiff(diff schemadiff.Diff) error {
 // RenderMigrationSQLWithObservation.
 func renderResolvedMigrationSQL(diff schemadiff.Diff) ([]string, error) {
 	var out []string
+	// A primary key on a newly created table is added unnamed, after the table's
+	// columns exist, so PostgreSQL chooses the name and the constraint is observed
+	// by its table rather than by an assumed name. Only newly created tables are
+	// handled here; changing an existing primary key stays unsupported.
+	var createdWithPrimaryKey []schemadiff.Change
+	addedColumns := map[string]map[string]physical.Column{}
+	// Unique constraints and foreign keys are rendered only for tables created
+	// in this same diff: those tables are empty, so no existing row can violate
+	// the constraint. Adding one to an existing table needs a check of existing
+	// data first and stays unsupported. They follow the primary keys, and
+	// foreign keys come last so every table in the diff exists by then.
+	createdTables := map[string]bool{}
+	for _, change := range diff.Changes {
+		if change.Kind == schemadiff.CreateTable {
+			createdTables[change.Table] = true
+		}
+	}
+	var uniqueStatements, foreignKeyStatements []string
 	for _, change := range diff.Changes {
 		switch change.Kind {
 		case schemadiff.CreateTable:
 			if len(change.PrimaryKey) > 0 {
-				return nil, fmt.Errorf("postgres migration SQL rendering does not support primary key on newly created table %s until constraint identity is realizable", change.Table)
+				createdWithPrimaryKey = append(createdWithPrimaryKey, change)
 			}
 			// Columns are emitted by following AddColumn changes to retain one common change model.
 			out = append(out, fmt.Sprintf("CREATE TABLE %s ();", quoteQualifiedName(change.Table)))
@@ -55,6 +73,10 @@ func renderResolvedMigrationSQL(diff schemadiff.Diff) ([]string, error) {
 			if change.Column == nil {
 				return nil, fmt.Errorf("add-column %s has no column", change.Table)
 			}
+			if addedColumns[change.Table] == nil {
+				addedColumns[change.Table] = map[string]physical.Column{}
+			}
+			addedColumns[change.Table][change.Column.Name] = *change.Column
 			stmt := fmt.Sprintf("ALTER TABLE %s ADD COLUMN %s %s", quoteQualifiedName(change.Table), quoteIdentifier(change.Column.Name), change.Column.PhysicalType)
 			if !change.Column.Nullable {
 				stmt += " NOT NULL"
@@ -84,6 +106,37 @@ func renderResolvedMigrationSQL(diff schemadiff.Diff) ([]string, error) {
 			} else {
 				out = append(out, fmt.Sprintf("ALTER TABLE %s ALTER COLUMN %s SET NOT NULL;", quoteQualifiedName(change.Table), quoteIdentifier(change.Column.Name)))
 			}
+		case schemadiff.AddUniqueConstraint:
+			if !createdTables[change.Table] {
+				return nil, fmt.Errorf("postgres migration SQL rendering does not support schema change kind %q on %s: only tables created in the same diff are supported", change.Kind, change.Table)
+			}
+			if change.UniqueConstraint == nil || len(change.UniqueConstraint.Columns) == 0 {
+				return nil, fmt.Errorf("add-unique-constraint %s has no columns", change.Table)
+			}
+			// Names are decided by the realization policy (#1803); an unnamed
+			// constraint here means the name was not decided, so it is refused
+			// instead of being left to PostgreSQL.
+			if strings.TrimSpace(change.UniqueConstraint.Name) == "" {
+				return nil, fmt.Errorf("add-unique-constraint %s has no constraint name; the realization policy must decide it", change.Table)
+			}
+			uniqueStatements = append(uniqueStatements, fmt.Sprintf("ALTER TABLE %s ADD CONSTRAINT %s UNIQUE (%s);",
+				quoteQualifiedName(change.Table), quoteIdentifier(change.UniqueConstraint.Name), joinQuotedIdentifiers(change.UniqueConstraint.Columns)))
+		case schemadiff.AddForeignKey:
+			if !createdTables[change.Table] {
+				return nil, fmt.Errorf("postgres migration SQL rendering does not support schema change kind %q on %s: only tables created in the same diff are supported", change.Kind, change.Table)
+			}
+			fk := change.ForeignKey
+			if fk == nil || len(fk.Columns) == 0 || len(fk.ReferencedColumns) != len(fk.Columns) || strings.TrimSpace(fk.ReferencedTable) == "" {
+				return nil, fmt.Errorf("add-foreign-key %s has an incomplete definition", change.Table)
+			}
+			if strings.TrimSpace(fk.ReferencedSchema) == "" {
+				return nil, fmt.Errorf("add-foreign-key %s has no referenced schema; the referenced table is not resolved by search_path", change.Table)
+			}
+			if strings.TrimSpace(fk.Name) == "" {
+				return nil, fmt.Errorf("add-foreign-key %s has no constraint name; the realization policy must decide it", change.Table)
+			}
+			foreignKeyStatements = append(foreignKeyStatements, fmt.Sprintf("ALTER TABLE %s ADD CONSTRAINT %s FOREIGN KEY (%s) REFERENCES %s (%s);",
+				quoteQualifiedName(change.Table), quoteIdentifier(fk.Name), joinQuotedIdentifiers(fk.Columns), quoteQualifiedName(fk.ReferencedSchema+"."+fk.ReferencedTable), joinQuotedIdentifiers(fk.ReferencedColumns)))
 		case schemadiff.ChangePrimaryKey:
 			return nil, fmt.Errorf("postgres migration SQL rendering does not support primary-key change on %s until constraint identity is realizable", change.Table)
 		case schemadiff.AddIndex:
@@ -110,6 +163,21 @@ func renderResolvedMigrationSQL(diff schemadiff.Diff) ([]string, error) {
 			return nil, fmt.Errorf("postgres migration SQL rendering does not support schema change kind %q on %s", change.Kind, change.Table)
 		}
 	}
+	for _, created := range createdWithPrimaryKey {
+		columns := addedColumns[created.Table]
+		for _, name := range created.PrimaryKey {
+			column, ok := columns[name]
+			if !ok {
+				return nil, fmt.Errorf("primary key column %s of newly created table %s is not added by this diff", name, created.Table)
+			}
+			if column.Nullable {
+				return nil, fmt.Errorf("primary key column %s of newly created table %s is nullable; PostgreSQL would make it NOT NULL and the declared schema would drift", name, created.Table)
+			}
+		}
+		out = append(out, fmt.Sprintf("ALTER TABLE %s ADD PRIMARY KEY (%s);", quoteQualifiedName(created.Table), joinQuotedIdentifiers(created.PrimaryKey)))
+	}
+	out = append(out, uniqueStatements...)
+	out = append(out, foreignKeyStatements...)
 	return out, nil
 }
 

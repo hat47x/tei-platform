@@ -32,6 +32,7 @@
 | [`DATABASE_CONTRACT_QUERY_V1_DESIGN.md`](DATABASE_CONTRACT_QUERY_V1_DESIGN.md) | 契約に基づく問い合わせの形式、SQLによる実現、実行器との対応付け、提供実装の実行基盤という四層（ISSUE-000018〜ISSUE-000021 / ADR-0007 / ADR-0021） |
 | [`DATABASE_DIALECT_PLUGIN_DESIGN_2026-10.md`](DATABASE_DIALECT_PLUGIN_DESIGN_2026-10.md) | PostgreSQLとSQLiteを対象に、関係データベースの共通契約と製品ごとの方言プラグインを分ける検討案（識別子、方言の面、製品の版、現行コードの仕分け、実施順序） |
 | [`DATABASE_QUERY_INPUT_NULLABILITY_2026-10.md`](DATABASE_QUERY_INPUT_NULLABILITY_2026-10.md) | Query入力のmissingと明示NULLを区別し、presence/nullを契約で明示してSQL実行前に拒否する検討案（[#2056](https://github.com/hat47x/tei-platform/issues/2056)、未採用） |
+| [`GENERATOR_REVOCATION_APPROVAL_BOUNDARY_2026-10.md`](GENERATOR_REVOCATION_APPROVAL_BOUNDARY_2026-10.md) | 生成器の失効承認recordをregistry編集と分離し、対象一致・監査・再生成の完了条件を整理する検討案（[#2076](https://github.com/hat47x/tei-platform/issues/2076)、未採用） |
 | [`CONTRACT_ONLY_GENERATIVE_PROVIDER_POC_2026-10.md`](CONTRACT_ONLY_GENERATIVE_PROVIDER_POC_2026-10.md) | 実装を持たない契約と独立した適合試験を先に共有し、案件内でAIまたは人が必要なProviderだけを補完するPoC案（[#1975](https://github.com/hat47x/tei-platform/issues/1975)、未採用） |
 | [`BUSINESS_LIFECYCLE_V1_DESIGN.md`](BUSINESS_LIFECYCLE_V1_DESIGN.md) | 業務の状態遷移を意味の正本として定義し、実行・観測する設計（ISSUE-000038 / ADR-0024 / ADR-0025） |
 | [`DESIGN_SYNTHESIS_CROSS_VIEW_PROOF_DESIGN.md`](DESIGN_SYNTHESIS_CROSS_VIEW_PROOF_DESIGN.md) | RQ-026の複数視点の照合を、対象を限定した証明上の条件として設計案の候補を絞り込む処理へ接続する、評価待ちの設計 |
@@ -47,11 +48,13 @@
 | [`EXECUTION_CORRELATION_DESIGN_2026-10.md`](EXECUTION_CORRELATION_DESIGN_2026-10.md) | 一つの業務操作を実行先から提供元まで追跡し、意味の版・ビルド・ロックへ戻るための識別子と記録の規則。担当Issueは無く、評価待ち |
 | [`SEMANTIC_CHANGE_DATA_EVOLUTION_DESIGN_2026-10.md`](SEMANTIC_CHANGE_DATA_EVOLUTION_DESIGN_2026-10.md) | 受理した意味の変更と既存の業務データの両立性の判定、影響の観測、段階的な移行。担当Issueは無く、評価待ち |
 | [`KNOWLEDGE_VARIATION_DESIGN_2026-10.md`](KNOWLEDGE_VARIATION_DESIGN_2026-10.md) | 再利用した知識の変動点、適用先での選択と分岐、再利用元の更新の扱い。RQ-027・RQ-029に対応する、評価待ちの設計 |
+| [`GENERATOR_CONTRACT_BOUNDARIES_DESIGN_2026-10.md`](GENERATOR_CONTRACT_BOUNDARIES_DESIGN_2026-10.md) | 生成器の契約に宣言する、派生名の規則・拡張点・AIの書込み窓・要求する能力と縮退。評価待ちの設計（[GitHub #2090](https://github.com/hat47x/tei-platform/issues/2090)、[#2092](https://github.com/hat47x/tei-platform/issues/2092)、[#2094](https://github.com/hat47x/tei-platform/issues/2094)、[#2096](https://github.com/hat47x/tei-platform/issues/2096)） |
 | [`BUSINESS_DATA_IMPORT_DESIGN_2026-10.md`](BUSINESS_DATA_IMPORT_DESIGN_2026-10.md) | 人が用意した業務データと初期データの取込みを、通常のCapabilityの検証・認可・結果の分離を通して行うための段階案（[GitHub #1807](https://github.com/hat47x/tei-platform/issues/1807)） |
 | [`POSTGRES_CONSTRAINT_RENDERING_DESIGN_2026-10.md`](POSTGRES_CONSTRAINT_RENDERING_DESIGN_2026-10.md) | PostgreSQL提供元が主キー・一意制約・外部キーを出力できない現状と、制約の名前の決め方、段階的な解消案（[GitHub #1803](https://github.com/hat47x/tei-platform/issues/1803)） |
 | [`AUTHORING_TOOL_FEATURE_TRANSFER_MAP_2026-10.md`](AUTHORING_TOOL_FEATURE_TRANSFER_MAP_2026-10.md) | 既存の設計ツール（X-TEA ModelerとEditor）の機能を、担当Issue・新規Issue・移植しない機能へ仕分けた対応表（[GitHub #1802](https://github.com/hat47x/tei-platform/issues/1802)） |
 | [`AUXILIARY_DESIGN_INFORMATION_PLACEMENT_2026-10.md`](AUXILIARY_DESIGN_INFORMATION_PLACEMENT_2026-10.md) | 用語、改訂履歴、注記、区分などの補助情報を、意味の正本・導出・表示情報・運用の記録のどれに置くかの案（[GitHub #1808](https://github.com/hat47x/tei-platform/issues/1808)） |
 | [`GENERATIVE_LOWCODE_PRODUCT_STRATEGY_2026-10.md`](GENERATIVE_LOWCODE_PRODUCT_STRATEGY_2026-10.md) | 生成AIネイティブなローコード開発基盤としての価値仮説、適用範囲、優先順位、測定と撤回条件（#2016〜#2021、未採用） |
+| [`CHANGE_CONTINUITY_DESIGN_2026-10.md`](CHANGE_CONTINUITY_DESIGN_2026-10.md) | 更新・再生成で案件の知識と処理を保つ機能、AI編集と業務経路、派生名と意味への対応、能力の照合、担当境界と受入候補（#2090〜#2096） |
 | [`DSH_DEVELOPMENT_PLUGIN_PROPOSAL_2026-10.md`](DSH_DEVELOPMENT_PLUGIN_PROPOSAL_2026-10.md) | DeepSeek HarnessをTEI開発の薄いAdapterとして使うためのプラグイン・スキル提案（未実装） |
 | [`PRODUCTIVITY_BENCHMARK_PROTOCOL_2026-10.md`](PRODUCTIVITY_BENCHMARK_PROTOCOL_2026-10.md) | 従来型コーディング・ローコード・TEIを同じ業務変更で比較する手順、指標、不確かさ、撤回条件（[GitHub #2018](https://github.com/hat47x/tei-platform/issues/2018)、未実施） |
 | [`DELIVERY_PLUGIN_COMPOSITION_2026-10.md`](DELIVERY_PLUGIN_COMPOSITION_2026-10.md) | 個人・SIer・SaaSの提供形態を、形態別実装ではなくプラグインの選択で構成する設計案（[GitHub #2020](https://github.com/hat47x/tei-platform/issues/2020)、[ADR-0036](../adr/0036-delivery-forms-as-plugin-composition.md)） |

@@ -12,27 +12,33 @@ import (
 const ComparisonSchema = "tei.reference.target-profile-comparison/v0"
 
 type CompareOptions struct {
-	WorkspaceDir  string
-	ContractPath  string
-	FixturePath   string
-	CandidatesDir string
-	ProfilePaths  []string
+	WorkspaceDir   string
+	ContractPath   string
+	FixturePath    string
+	CandidatesDir  string
+	ProfilePaths   []string
+	EnforceNetwork bool
+	EnforceCPU     bool
 }
 
 type ProfileSummary struct {
-	ID               string            `json:"id"`
-	Version          string            `json:"version"`
-	ProcessModel     string            `json:"processModel"`
-	Storage          string            `json:"storage"`
-	Network          string            `json:"network"`
-	Update           string            `json:"update"`
-	MemoryLimitBytes int64             `json:"memoryLimitBytes"`
-	GeneratorID      string            `json:"generatorId,omitempty"`
-	Passed           bool              `json:"passed"`
-	Qualified        []string          `json:"qualified"`
-	Rejected         []string          `json:"rejected"`
-	Enforcement      map[string]string `json:"enforcement"`
-	Unsupported      []string          `json:"unsupported,omitempty"`
+	ProcessModelEvidence *ProcessModelEvidence `json:"processModelEvidence,omitempty"`
+	ID                   string                `json:"id"`
+	Version              string                `json:"version"`
+	ProcessModel         string                `json:"processModel"`
+	Storage              string                `json:"storage"`
+	Network              string                `json:"network"`
+	Update               string                `json:"update"`
+	MemoryLimitBytes     int64                 `json:"memoryLimitBytes"`
+	GeneratorID          string                `json:"generatorId,omitempty"`
+	Passed               bool                  `json:"passed"`
+	Qualified            []string              `json:"qualified"`
+	Rejected             []string              `json:"rejected"`
+	Enforcement          map[string]string     `json:"enforcement"`
+	Unsupported          []string              `json:"unsupported,omitempty"`
+
+	CPUTimeLimitSeconds int64        `json:"cpuTimeLimitSeconds,omitempty"`
+	CPU                 *CPUEvidence `json:"cpu,omitempty"`
 }
 
 type ProfileCase struct {
@@ -84,7 +90,8 @@ func Compare(ctx context.Context, opts CompareOptions) (ComparisonReceipt, error
 		receipt, err := Run(ctx, RunOptions{
 			WorkspaceDir: opts.WorkspaceDir, ContractPath: opts.ContractPath,
 			FixturePath: opts.FixturePath, CandidatesDir: opts.CandidatesDir,
-			ProfilePath: profilePath,
+			ProfilePath: profilePath, EnforceNetwork: opts.EnforceNetwork,
+			EnforceCPU: opts.EnforceCPU,
 		})
 		if err != nil {
 			return ComparisonReceipt{}, fmt.Errorf("%s: %w", profilePath, err)
@@ -131,6 +138,8 @@ func Compare(ctx context.Context, opts CompareOptions) (ComparisonReceipt, error
 
 func summarizeProfile(run Receipt) ProfileSummary {
 	return ProfileSummary{
+		ProcessModelEvidence: run.ProcessModel,
+		CPUTimeLimitSeconds:  run.Profile.CPUTimeLimitSeconds, CPU: run.CPU,
 		ID: run.Profile.ID, Version: run.Profile.Version,
 		ProcessModel: run.Profile.ProcessModel, Storage: run.Profile.Storage,
 		Network: run.Profile.Network, Update: run.Profile.Update,
@@ -241,6 +250,7 @@ func profileDifferences(runs []Receipt) []string {
 		{"network", func(run Receipt) string { return run.Profile.Network }},
 		{"update", func(run Receipt) string { return run.Profile.Update }},
 		{"memoryLimitBytes", func(run Receipt) string { return fmt.Sprintf("%d", run.Profile.MemoryLimitBytes) }},
+		{"cpuTimeLimitSeconds", func(run Receipt) string { return fmt.Sprintf("%d", run.Profile.CPUTimeLimitSeconds) }},
 	}
 	var out []string
 	for _, field := range fields {

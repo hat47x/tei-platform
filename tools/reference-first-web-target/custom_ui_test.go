@@ -157,6 +157,7 @@ func TestCustomSubmitUIGetIsPresentationOnlyAndContainsNoPresetCredential(t *tes
 		"name=\"loginId\"",
 		"name=\"credential\" type=\"password\"",
 		"commandScenarioRunner",
+		`name="row" type="number" min="0" required`,
 		testBaselineRevision,
 		testTargetRevision,
 	} {
@@ -405,6 +406,75 @@ func TestCustomSubmitUISeparatesValidationAuthorizationAndExecutionErrorStates(t
 		if strings.Contains(executionBody, forbidden) {
 			t.Fatalf("Execution Error state incorrectly contains %q", forbidden)
 		}
+	}
+}
+
+func TestCustomSubmitUIRejectsMissingOrInvalidRowBeforeCommand(t *testing.T) {
+	loaded, err := workspace.Load(referenceWorkspacePath(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	projection, err := buildWebTargetProjection(loaded.World, projectionConfig{
+		HandoverBaselineID:         testBaselineID,
+		BaselineRepositoryRevision: testBaselineRevision,
+		TargetBuildRevision:        testTargetRevision,
+		ApplicationID:              core.MustCanonicalID("order_entry"),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	recording := &recordingCommandScenarioRunner{}
+	server, err := newWebTargetServer(
+		projection,
+		newReferenceReadScenarioRunner(loaded.World),
+		recording,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		name       string
+		includeRow bool
+		row        string
+		want       string
+	}{
+		{"missing", false, "", "selected row is required"},
+		{"empty", true, "", "selected row is required"},
+		{"not-integer", true, "abc", "row must be a non-negative integer"},
+		{"negative", true, "-1", "row must be a non-negative integer"},
+		{"overflow", true, "9999999999999999999999999999", "row must be a non-negative integer"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			form := url.Values{
+				"loginId":    {"test-user"},
+				"credential": {"test-credential"},
+				"from":       {"2026-09-18T08:30:00Z"},
+			}
+			if tc.includeRow {
+				form.Set("row", tc.row)
+			}
+			response := postCustomSubmit(t, server.Handler(), form)
+			if response.Code != http.StatusBadRequest {
+				t.Fatalf("status=%d want 400", response.Code)
+			}
+			body := response.Body.String()
+			if !strings.Contains(body, `id="input-error"`) ||
+				!strings.Contains(body, tc.want) {
+				t.Fatalf("input diagnostic missing: %s", body)
+			}
+			for _, forbidden := range []string{
+				`id="execution-error"`,
+				"Command Business Result",
+				"test-credential",
+			} {
+				if strings.Contains(body, forbidden) {
+					t.Fatalf("unexpected content %q", forbidden)
+				}
+			}
+			if len(recording.calls) != 0 {
+				t.Fatalf("invalid input invoked command runner: %d calls", len(recording.calls))
+			}
+		})
 	}
 }
 

@@ -48,6 +48,18 @@ go test -count=1 ./reference/derivation-validation
 go vet ./reference/derivation-validation
 ```
 
+## 既存Canonical Validationへの限定接続（M2の部分証拠）
+
+`canonical_integration_test.go` は、**既存D1の `derivationref.Multiply` が返した値を、既存 `validationeval.Evaluate` の `Source.Number` へ明示的なSemantic Attribute IDで渡す**合成試験である。業務Validationは既存の `semantic.ValidationPositive` をそのまま使い、Validation式・計算Rule・認可機構の第二正本を作らない。
+
+- 数量2×単価300→導出600→positive成立、数量0→導出0→positive不成立。
+- 入力未取得、宣言NULL、演算子評価不能は、`not-satisfied` ではなく評価エラーとして扱う。試験専用Sourceが原因を区別する。
+- 表示名が同じでも異なるSemantic Attribute IDの値を転用しない。
+- **証拠の限界**：ここでの `positive` は合成の検証ルールであり、元モデルの意味受理や実案件の導出Bindingではない。既存 `validationeval` は `positive` と `relation-unique` のみを扱い、受注金額≦与信上限を表す既存Canonical Validation kindは確認できていない。そのため従来の上限比較の `Check` と、新たに接続したpositive試験の成立を同一視しない。D15 M2全体の完了も主張しない。
+- 実Provider / Host Authority / Snapshot / Transaction / Commit / DB行効果 / X-TEA原典再現は試験していない。これらは #1693 / #1708 / #1129 / #1174 とOwner判断に委譲する。
+
+`go test -count=1 ./reference/derivation-validation` が、この接続試験と従来の状態区分試験を同時に実行する。
+
 ## 未実装・依存
 
 - Validationの式言語、ルールの第二正本、独立した依存グラフを作らない。循環検出は既存 D1 `ValidateGraph` を再利用する。

@@ -154,7 +154,12 @@ func (s *webTargetServer) writeCommandScenarioHTTPResult(w http.ResponseWriter, 
 			ExecutionError:             err.Error(),
 		}
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		w.WriteHeader(http.StatusUnprocessableEntity)
+		status := http.StatusUnprocessableEntity
+		if result.Stage == "command-commit-unconfirmed" {
+			// An uncertain Commit is not an invalid-input/business 422.
+			status = http.StatusInternalServerError
+		}
+		w.WriteHeader(status)
 		encoder := json.NewEncoder(w)
 		encoder.SetIndent("", "  ")
 		if encodeErr := encoder.Encode(response); encodeErr != nil {
