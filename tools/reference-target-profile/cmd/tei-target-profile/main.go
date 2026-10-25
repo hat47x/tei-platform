@@ -34,8 +34,9 @@ func main() {
 	rollbackTo := fs.String("to", "", "history source digest for rollback")
 	keepLast := fs.Int("keep-last", 0, "number of newest history artifacts to keep")
 	historyDryRun := fs.Bool("dry-run", false, "report history deletions without deleting")
+	outPath := fs.String("out", "", "write the receipt or checkpoint to this file")
 	_ = fs.Parse(os.Args[2:])
-	if command != "compare" && command != "rollback" && command != "history" && command != "prune-history" && command != "history-audit" && *profilePath == "" {
+	if command != "compare" && command != "rollback" && command != "history" && command != "prune-history" && command != "history-audit" && command != "history-audit-checkpoint" && *profilePath == "" {
 		fail(fmt.Errorf("-profile is required"))
 	}
 	if *enforceNetwork && command != "run" && command != "compare" {
@@ -146,6 +147,27 @@ func main() {
 		}
 		emit(receipt)
 		if !receipt.Passed {
+			os.Exit(1)
+		}
+	case "history-audit-checkpoint":
+		if *rootDir == "" {
+			fail(fmt.Errorf("-root is required for history-audit-checkpoint"))
+		}
+		checkpoint, err := targetprofile.BuildHistoryAuditCheckpoint(*rootDir)
+		if err != nil {
+			fail(err)
+		}
+		if *outPath != "" {
+			raw, err := json.MarshalIndent(checkpoint, "", "  ")
+			if err != nil {
+				fail(err)
+			}
+			if err := os.WriteFile(*outPath, append(raw, '\n'), 0o644); err != nil {
+				fail(err)
+			}
+		}
+		emit(checkpoint)
+		if !checkpoint.Passed {
 			os.Exit(1)
 		}
 	case "prune-history":
