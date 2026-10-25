@@ -152,6 +152,13 @@ instance.getReturnMap().put("UI_RESULT",p.showInputDialog(null,"Fixture prompt")
 var options=Java.to(["First","Second"],"java.lang.Object[]");
 instance.getReturnMap().put("UI_RESULT",p.showOptionDialog(null,"Fixture choice","Script choice",p.DEFAULT_OPTION,p.QUESTION_MESSAGE,null,options,options[0]));''',
     }
+    scripts["NESTED_CALL"] = scripts["NESTED"].replace(
+        'var child=instance.getSession().executeFunction("F200",p);',
+        'instance.getParmMap().put("INSTANCE_MODE","EDIT"); instance.callFunction("F200"); '
+        'var child=instance.getReturnMap();')
+    for typ in ("104", "290", "390"):
+        scripts["NESTED_" + typ] = scripts["NESTED_CALL"].replace('callFunction("F200")',
+                                                                 'callFunction("F' + typ + '")')
     for name, script in scripts.items():
         ET.SubElement(system, "Function", ID="S" + name, Type="XF000", Name="Script " + name, Script=script)
 

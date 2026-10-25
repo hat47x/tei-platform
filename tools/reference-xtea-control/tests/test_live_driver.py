@@ -234,8 +234,8 @@ class LiveDriverTest(unittest.TestCase):
         self.script_transaction("No", "Alpha")
         self.assertEqual(self.observe(), self.observations[0])
 
-    def nested_transaction(self, save_child, commit_parent):
-        self.script("NESTED")
+    def nested_transaction(self, save_child, commit_parent, route="NESTED"):
+        self.script(route)
         self.wait_class("xeadDriver.XF200")
         field = {"windowClass": "xeadDriver.XF200$", "role": "text", "text": "^OuterPending$"}
         self.assertIsNotNone(self.client.find(field))
@@ -247,6 +247,8 @@ class LiveDriverTest(unittest.TestCase):
         self.assertTrue(self.client.wait_selector(confirmation)["matched"])
         self.client.invoke(confirmation)
         self.result("UI_RESULT=" + ("20" if save_child else "21") + ":" + ("0" if commit_parent else "1"))
+        if route == "NESTED_CALL":
+            self.result("RETURN_CODE=" + ("20" if save_child else "21"))
         if save_child:
             # The child committed the shared connection, including the outer pending write.
             expected = "001:ChildSaved:2;002:Beta:0;"
@@ -270,6 +272,57 @@ class LiveDriverTest(unittest.TestCase):
 
     def test_000_nested_close_then_rollback(self):
         self.nested_transaction(save_child=False, commit_parent=False)
+
+    def test_000_call_function_save_then_commit(self):
+        self.nested_transaction(save_child=True, commit_parent=True, route="NESTED_CALL")
+
+    def test_000_call_function_save_then_rollback(self):
+        self.nested_transaction(save_child=True, commit_parent=False, route="NESTED_CALL")
+
+    def test_000_call_function_close_then_commit(self):
+        self.nested_transaction(save_child=False, commit_parent=True, route="NESTED_CALL")
+
+    def test_000_call_function_close_then_rollback(self):
+        self.nested_transaction(save_child=False, commit_parent=False, route="NESTED_CALL")
+
+    def read_child_then_rollback(self, typ):
+        self.script("NESTED_" + typ)
+        if typ == "104":
+            self.wait_class("xeadDriver.XF100")
+            self.button("xeadDriver.XF100", "Close$")
+        confirmation = {"window": "^Outer transaction$", "role": "button", "text": "^No$"}
+        self.assertTrue(self.client.wait_selector(confirmation)["matched"])
+        output = None
+        if typ in ("290", "390"):
+            files = list(self.folder.glob("*F" + typ + "*.pdf"))
+            self.assertEqual(len(files), 1)
+            output = files[0]
+            before = hashlib.sha256(output.read_bytes()).hexdigest()
+        self.client.invoke(confirmation)
+        code = "01" if typ == "104" else "00"
+        self.result("UI_RESULT=" + code + ":1")
+        self.result("RETURN_CODE=" + code)
+        # Normal completion of the read/report child commits the shared connection.
+        self.assertIn("001:OuterPending:1;002:Beta:0;", self.observe())
+        if output is not None:
+            data = output.read_bytes()
+            self.assertEqual(hashlib.sha256(data).hexdigest(), before)
+            self.assertTrue(data.startswith(b"%PDF-"))
+            self.assertIn(b"%%EOF", data)
+            self.assertGreater(len(data), 500)
+            saved = self.artifacts / (self._testMethodName + ".pdf")
+            saved.write_bytes(data)
+            self.outputs.append({"file": saved.name, "sha256": before, "bytes": len(data),
+                                 "unchangedAfterParentRollback": True})
+
+    def test_000_read_list_close_then_rollback(self):
+        self.read_child_then_rollback("104")
+
+    def test_000_report_290_then_rollback(self):
+        self.read_child_then_rollback("290")
+
+    def test_000_report_390_then_rollback(self):
+        self.read_child_then_rollback("390")
 
     def test_000_console_run_and_cancel(self):
         console = {"windowClass": "xeadDriver.XF000$", "role": "text", "class": "JTextArea$"}
