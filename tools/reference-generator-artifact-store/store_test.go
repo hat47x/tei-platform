@@ -491,6 +491,37 @@ func TestPutRejectsReuseWithDifferentProvenance(t *testing.T) {
 	}
 }
 
+func TestPutRestoresMissingSelectionReceiptOnReuse(t *testing.T) {
+	receiptPath, _ := writeSelectionReceipt(t)
+	_, _, _, candidates := selectionPaths(t)
+	storeDir := t.TempDir()
+	first, err := Put(context.Background(), StoreOptions{
+		ReceiptPath: receiptPath, CandidateID: "template", CandidatesDir: candidates, StoreDir: storeDir,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(filepath.Join(first.ObjectPath, "receipt.json")); err != nil {
+		t.Fatal(err)
+	}
+	second, err := Put(context.Background(), StoreOptions{
+		ReceiptPath: receiptPath, CandidateID: "template", CandidatesDir: candidates, StoreDir: storeDir,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !second.Passed || !second.Reused {
+		t.Fatalf("existing object was not reused: %+v", second)
+	}
+	got, err := Get(storeDir, first.SourceDigest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !got.Passed {
+		t.Fatalf("restored receipt did not verify: %+v", got)
+	}
+}
+
 func TestPutRejectsUnknownCandidate(t *testing.T) {
 	receiptPath, _ := writeSelectionReceipt(t)
 	_, _, _, candidates := selectionPaths(t)
