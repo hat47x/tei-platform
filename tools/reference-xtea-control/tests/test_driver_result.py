@@ -1,6 +1,9 @@
 """A skipped or failed runtime check must never be reported as passed."""
 import json
+import os
 from pathlib import Path
+import subprocess
+import sys
 import tempfile
 import unittest
 
@@ -100,6 +103,24 @@ class DriverResultTest(unittest.TestCase):
                 self.assertEqual(summary["testsRun"], 0 if name == "empty" else 1)
                 if name == "fail":
                     self.assertIn("field='ALPHA'", summary["failures"][0]["test"])
+
+    def test_skipped_runtime_exits_nonzero(self):
+        # A missing Driver runtime must not look like a successful verification.
+        env = os.environ.copy()
+        env.pop("XTEA_RUNTIME_HOME", None)
+        script = Path(driver_tests.__file__).resolve()
+        completed = subprocess.run(
+            [sys.executable, str(script), "LiveDriverTest.test_000_script_launcher"],
+            cwd=script.parent.parent, env=env, capture_output=True, text=True,
+            check=False,
+        )
+        self.assertNotEqual(completed.returncode, 0, completed.stdout + completed.stderr)
+        marker = "Driver run artifacts:"
+        self.assertIn(marker, completed.stdout)
+        run_folder = Path(completed.stdout.split(marker, 1)[1].strip().splitlines()[0])
+        summary = json.loads((run_folder / "summary.json").read_text(encoding="utf-8"))
+        self.assertEqual(summary["status"], "skipped")
+        self.assertTrue(summary["skipped"])
 
 
 if __name__ == "__main__":
