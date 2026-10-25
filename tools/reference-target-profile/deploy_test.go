@@ -214,6 +214,71 @@ func TestDeployNoneBuildsWithoutInstalling(t *testing.T) {
 	}
 }
 
+func TestDeploySQLiteAndRollback(t *testing.T) {
+	_, _, _, candidates := selectionPaths(t)
+	profile, err := Load(filepath.Join(repoRoot(t), "tools", "reference-target-profile", "testdata", "desktop-replace.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	profile.Storage = StorageSQLite
+	changed, err := json.MarshalIndent(profile, "", "  ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	profilePath := filepath.Join(t.TempDir(), "sqlite.json")
+	if err := os.WriteFile(profilePath, append(changed, '\n'), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	root := t.TempDir()
+	first, err := Deploy(context.Background(), DeployOptions{
+		ProfilePath: profilePath, CandidatesDir: candidates, RootDir: root,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !first.Passed || !first.Installed || first.DatabasePath == "" || first.ArtifactDigest == "" {
+		t.Fatalf("sqlite deployment failed: %+v", first)
+	}
+	if _, err := os.Stat(first.DatabasePath); err != nil {
+		t.Fatalf("sqlite database is missing: %v", err)
+	}
+
+	alternativeProfile := profile
+	alternativeProfile.ID = "sqlite-alt"
+	alternativeProfile.GeneratorID = "alternative"
+	changed, err = json.MarshalIndent(alternativeProfile, "", "  ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(profilePath, append(changed, '\n'), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	second, err := Deploy(context.Background(), DeployOptions{
+		ProfilePath: profilePath, CandidatesDir: candidates, RootDir: root,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !second.Passed || second.PreviousDigest != first.ArtifactDigest {
+		t.Fatalf("second sqlite deployment failed: %+v", second)
+	}
+
+	rolledBack, err := RollbackTo(root, first.ArtifactDigest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !rolledBack.Passed || rolledBack.ArtifactDigest != first.ArtifactDigest {
+		t.Fatalf("sqlite rollback-to failed: %+v", rolledBack)
+	}
+	swapped, err := Rollback(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !swapped.Passed || swapped.ArtifactDigest != second.ArtifactDigest {
+		t.Fatalf("sqlite slot rollback failed: %+v", swapped)
+	}
+}
+
 func TestDeployInPlaceUpdatesTarget(t *testing.T) {
 	_, _, _, candidates := selectionPaths(t)
 	root := t.TempDir()
@@ -250,7 +315,19 @@ func TestDeployInPlaceUpdatesTarget(t *testing.T) {
 
 func TestDeployRejectsUnsupportedStorage(t *testing.T) {
 	_, _, _, candidates := selectionPaths(t)
-	profilePath := filepath.Join(repoRoot(t), "tools", "reference-target-profile", "testdata", "embedded.json")
+	profile, err := Load(filepath.Join(repoRoot(t), "tools", "reference-target-profile", "testdata", "embedded.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	profile.Storage = StorageRemote
+	changed, err := json.MarshalIndent(profile, "", "  ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	profilePath := filepath.Join(t.TempDir(), "remote.json")
+	if err := os.WriteFile(profilePath, append(changed, '\n'), 0o600); err != nil {
+		t.Fatal(err)
+	}
 	receipt, err := Deploy(context.Background(), DeployOptions{
 		ProfilePath: profilePath, CandidatesDir: candidates, RootDir: t.TempDir(),
 	})
@@ -258,7 +335,7 @@ func TestDeployRejectsUnsupportedStorage(t *testing.T) {
 		t.Fatal(err)
 	}
 	if receipt.Passed || !strings.Contains(receipt.Reason, "storage") {
-		t.Fatalf("sqlite profile was deployed by the reference: %+v", receipt)
+		t.Fatalf("remote profile was deployed by the reference: %+v", receipt)
 	}
 }
 
