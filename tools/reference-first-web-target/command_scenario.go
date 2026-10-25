@@ -309,6 +309,12 @@ func (r *referenceCommandScenarioRunner) runAuthenticatedSubjectCommandWithEffec
 					result.Stage = "physical-schema-not-ready"
 					return capabilityinvoke.BusinessResult{}, errPhysicalSchemaNotReady
 				}
+				if errors.Is(err, errOrderSubmitCommitUnconfirmed) {
+					// Preserve the uncertain Commit category through Driver wrapping.
+					// This Reference has no durable receipt, so it must not retry here.
+					result.Stage = "command-commit-unconfirmed"
+					return capabilityinvoke.BusinessResult{}, errOrderSubmitCommitUnconfirmed
+				}
 				// The driver error can be echoed to the client; keep
 				// connection detail out of it.
 				return capabilityinvoke.BusinessResult{}, errors.New("order submit effect failed")
