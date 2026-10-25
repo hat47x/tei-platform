@@ -83,6 +83,13 @@ func TestLocalUpdateLockRejectsAllWriters(t *testing.T) {
 		r, err := Deploy(context.Background(), DeployOptions{ProfilePath: path, CandidatesDir: candidates, RootDir: root})
 		check(r.Passed, r.Reason, err)
 	}
+	for _, dryRun := range []bool{false, true} {
+		r, err := PruneHistory(root, 1, dryRun)
+		check(r.Passed, r.Reason, err)
+		if len(r.Deleted) != 0 || len(r.WouldDelete) != 0 {
+			t.Fatal("blocked prune reported deletions")
+		}
+	}
 	r, err := Rollback(root)
 	check(r.Passed, r.Reason, err)
 	r, err = RollbackTo(root, digestBytes(retired))

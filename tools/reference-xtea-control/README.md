@@ -101,6 +101,7 @@ python xtea_cli.py show-function build\modeler-fixture\MfgOrder.xead 17
 python xtea_cli.py export build\modeler-fixture\MfgOrder.xead > model.json
 python xtea_cli.py diff before.xead after.xead > diff.json
 python xtea_cli.py validate MfgOrder.xead
+python xtea_cli.py schema diff
 ```
 
 `export`は次の形のスキーマを返します。
@@ -113,9 +114,11 @@ python xtea_cli.py validate MfgOrder.xead
 
 AIは`export`のJSONを基準モデルと候補モデルでそれぞれ取得し、`tables[].id`や`functions[].id`で突き合わせます。画面を開かなくても、機能ごとの入力・出力・可能操作を比較できます。
 
-`diff`は2つのモデルをIDで突き合わせ、`tables`と`functions`の`added` / `removed` / `changed`を返します。`changed`には変更前後のフィールド、データ型、キー、入出力CRUD、呼び出し関係が入ります。
+`diff`は2つのモデルをIDで突き合わせ、`tables`と`functions`の`added` / `removed` / `changed`を返します。`changed`には変更前後のフィールド、データ型、キー、入出力CRUD、呼び出し関係が入ります。`--exit-code`を付けると、差分がある場合に終了コード1を返します。
 
 `validate`は、テーブルのサブシステム、フィールドのデータ型、キーのフィールドID、機能の種別、入出力テーブル、呼び出し先の参照を検査します。エラーがある場合は終了コード1を返します。
+
+`schema`は`export`と`diff`のJSON Schemaを返します。AIや外部ツールが出力契約を確認するときに使います。
 
 このCLIは読取り専用です。保存・更新・削除は行いません。モデルの変更が必要な場合は、従来のGUIシナリオを使ってください。
 
@@ -171,9 +174,11 @@ python xtea_control.py --endpoint build\modeler-endpoint.json `
   scenario scenarios\modeler-change-field-type.json
 python xtea_control.py --endpoint build\modeler-endpoint.json `
   scenario scenarios\modeler-reorder-field.json
+python xtea_control.py --endpoint build\modeler-endpoint.json `
+  scenario scenarios\modeler-add-table.json
 ```
 
-これらのシナリオは複製したモデルのシステム名、部門テーブル名、部門Cフィールド名を変更し、`TXTEKIYO`フィールドを削除・並べ替えし、新しいフィールド`TXTEST`を追加し、または`CDBUMON`のデータ型を変更して保存します。原本や共有モデルには実行しないでください。
+これらのシナリオは複製したモデルのシステム名、部門テーブル名、部門Cフィールド名を変更し、`TXTEKIYO`フィールドを削除・並べ替えし、新しいフィールド`TXTEST`・テーブル`TEST_TABLE`を追加し、または`CDBUMON`のデータ型を変更して保存します。原本や共有モデルには実行しないでください。
 
 Editor:
 
@@ -428,7 +433,7 @@ Linuxで同じ固定条件の隔離画面を使う場合は、各 `python tests/
 2026-10-21、JDK 11.0.20.1（`--release 8`でコンパイル）で確認しました。
 
 - `python tests/test_integration.py`: 10件成功。メニュー、テキスト、ボタン、Enter、タブ、チェックボックス、コンボ、通常テーブル、X-TEA型のカスタム行オブジェクトを持つテーブル、ツリー全体の読取り、テーブル行のダブルクリック、モーダルダイアログ、スクリーンショット、トレース、未知selector、トークン拒否を合成Swingアプリで確認。
-- `python tests/test_model_cli.py`: 7件成功。合成`.xead`からシステム、テーブル、フィールド、キー、機能種別、入出力CRUD、呼び出し関係、`export`のJSON、`diff`の追加・削除・変更、`validate`の参照エラー、Editor形式の`Type`属性を確認。
+- `python tests/test_model_cli.py`: 8件成功。合成`.xead`からシステム、テーブル、フィールド、キー、機能種別、入出力CRUD、呼び出し関係、`export`のJSON、`diff`の追加・削除・変更、`validate`の参照エラー、`schema`の契約、Editor形式の`Type`属性を確認。
 - 実`MfgOrder.xead`で`summary`、`tables --id 61`、`functions --type XF100`を実行し、56テーブル・233機能・XF100 47件を取得。
 - 以下はXeadServerの**参考（対象外）**としての過去結果です。TEIの比較・受入には使いません。
 - `python tests/test_server_client.py`: 4件成功。`DBMethod`のSELECT/COUNT/INSERT/UPDATE/DELETE/COMMIT/ROLLBACK/CALL/IPと`Service`をローカル模擬サーブレットで確認。
@@ -444,6 +449,7 @@ Linuxで同じ固定条件の隔離画面を使う場合は、各 `python tests/
 - 実Modelerのフィールド追加として、`AT010`のフィールド一覧を開き、`jMenuItemXeadTreeNodeAdd_actionPerformed`で新規フィールドを作成。論理名`TEST_FIELD`、別名`TXTEST`を設定して保存し、XMLに`TableField Alias="TXTEST"`が追加されたことを確認。`scenarios/modeler-add-field.json`で再現できます。
 - 実Modelerのデータ型変更として、`CDBUMON`のデータ型メニューから`TX010`を選択。キー定義の警告を`OK`で閉じて保存し、`DataTypeID`が`26`から`13`（`TX010`）へ変わることをモデルCLIで確認。`scenarios/modeler-change-field-type.json`で再現できます。
 - 実Modelerのフィールド並べ替えとして、フィールド一覧で`TXTEKIYO`を3行目から1行目へドラッグし、保存。`TXTEKIYO`のSortKeyが`0030`、`NRKANRISYA`が`0040`へ入れ替わったことをモデルCLIで確認。`scenarios/modeler-reorder-field.json`で再現できます。
+- 実Modelerのテーブル追加として、DB構成から`jMenuItemXeadTreeNodeAdd_actionPerformed`で新規テーブルを作成し、名前`TEST_TABLE`を設定して保存。IDはModelerが自動採番し、XMLに`Table Name="TEST_TABLE"`が追加されたことを確認。`scenarios/modeler-add-table.json`で再現できます。
 - 実Editorの保存経路として、`MfgOrder.xead`の複製でシステム名を変更し、`保存`メニュー、バックアップ確認の`はい`を実行。保存後のXMLに新しいシステム名が入り、`backup/`に更新前ファイルが作られることを確認。`scenarios/editor-save-copy.json`で再現できます。
 - 実Editorの要素編集として、`tree-read`の`indices`で部門テーブルを選択し、Enterでテーブル編集画面を開き、テーブル名を`部門TEST`へ変更して保存。XMLの`Table ID="61"`の`Name`が変わったことを確認。`scenarios/editor-edit-table-name.json`で再現できます。
 - 実Editorのテーブル一覧で`61 部門`の行をダブルクリックし、`61`と`部門`を表示する編集画面が開くことを確認。`scenarios/editor-open-table-from-list.json`で再現できます。

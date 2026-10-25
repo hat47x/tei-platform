@@ -16,7 +16,9 @@ const wasi = new WASI({
 });
 WebAssembly.instantiate(fs.readFileSync(wasmPath), wasi.getImportObject())
   .then(({ instance }) => {
-    process.exit(wasi.start(instance));
+    // Do not call process.exit here: an explicit exit can truncate the last
+    // WASI stdout write on Windows. Set the code and let Node drain stdio.
+    process.exitCode = wasi.start(instance);
   })
   .catch((error) => {
     console.error(error);

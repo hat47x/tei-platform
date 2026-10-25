@@ -16,13 +16,13 @@ TEIの参照モデル再現確認で必要になるX-TEAの入力・観測を、
 
 | コンポーネント | 確認済み | 主な証拠 |
 | --- | --- | --- |
-| Modeler | 読み取り、About、システム名変更と保存、テーブル名変更と保存、フィールド名変更・追加・削除・型変更・並べ替えと保存、バックアップ | `scenarios/modeler-*.json` |
+| Modeler | 読み取り、About、システム名変更と保存、テーブル名変更・追加と保存、フィールド名変更・追加・削除・型変更・並べ替えと保存、バックアップ | `scenarios/modeler-*.json` |
 | Editor | 読み取り、システム名変更と保存、テーブル名変更と保存、テーブル一覧から編集画面を開く、テーブル追加・削除、機能追加・機能ID変更と保存、バックアップ | `scenarios/editor-*.json` |
 | Driver | ログイン、XF100、XF300、XF200の更新・作成・削除、失敗時rollback | `scenarios/driver-*.json` |
-| モデルCLI | システム、テーブル、フィールド、キー、機能種別、入出力CRUD、呼び出し関係、2モデルの差分、参照検査のJSON出力 | `xtea_cli.py`、`tests/test_model_cli.py` |
+| モデルCLI | システム、テーブル、フィールド、キー、機能種別、入出力CRUD、呼び出し関係、2モデルの差分、参照検査、JSON Schemaの出力 | `xtea_cli.py`、`tests/test_model_cli.py` |
 | XeadServer | **対象外**。`xtea_server.py`と`server-harness/`は過去の参考資産 | `tests/test_live_*.py`、`tests/test_tomcat_war.py` |
 
-`verify-all.ps1`の既定実行ではSwing E2E 12件とモデルCLI 7件を確認します。XeadServerの参考試験は`-IncludeXeadServer`を付けた場合だけ実行し、TEIの比較・受入には使いません。
+`verify-all.ps1`の既定実行ではSwing E2E 12件とモデルCLI 8件を確認します。XeadServerの参考試験は`-IncludeXeadServer`を付けた場合だけ実行し、TEIの比較・受入には使いません。
 
 ## Driverの合成モデルによる検証
 
@@ -42,9 +42,30 @@ Script UIはダイアログ単体に加え、合成XF100からのチェックリ
 2. **TEIの参考対象外**
    - XeadServerは対象外です。`DBMethod` / `Service` / WAR / Tomcat / JNDI / 認証は、TEIの比較・受入・新規検証に使いません。
    - 既存のコードと試験は過去の調査資産であり、`-IncludeXeadServer`を付けた場合だけ参考実行します。
-3. **別Issueの機能移植**
-   - Modeler / Editorのテーブル名変更は確認済みです。要素追加・削除・並べ替え・一括置換・機能編集は、制御面ではなく#1802配下の機能移植として扱います。
+3. **確認済みの要素操作**
+   - Modeler: テーブル名変更・追加、フィールド名変更・追加・削除・型変更・並べ替え。
+   - Editor: テーブル名変更・追加・削除、機能追加・機能ID変更。
+4. **別Issueの機能移植**
+   - Editorの要素並べ替え・一括置換は、モデル全体の操作として未確認です。#1802配下の機能移植として扱います。
    - Editorのフィールド一覧は`Field` / `TableField`の版差により空になるため、#2199で扱います。
+   - 追加したテーブルのフィールド・主キー設定は未確認です。
+
+## 完了判定
+
+Issue #2152の制御面MVPは、次の条件で完了とします。
+
+- Modeler / Editor / Driverの主要入口を、AIがシナリオJSONで再実行できる。
+- 主要な書込み（保存、テーブル・フィールド・機能の追加削除変更、DriverのCRUD）を、使い捨てデータで確認できる。
+- `.xead`の構造・機能・入出力・差分・参照整合性を、GUIなしのCLIで取得できる。
+- 実行した版、コマンド、結果、未確認事項を残している。
+- XeadServerは対象外として明示している。
+
+次は完了に含めません。
+
+- TEIのCanonical意味や業務上の等価性の判定。
+- 4アプリの全ダイアログ・全条件分岐の実行。
+- 実業務DB、本番デプロイ、認可。
+- Editorの要素並べ替え・一括置換と、追加テーブルのキー設計。
 
 ## 引継ぎの入口
 

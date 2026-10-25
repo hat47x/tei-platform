@@ -35,7 +35,7 @@ func main() {
 	keepLast := fs.Int("keep-last", 0, "number of newest history artifacts to keep")
 	historyDryRun := fs.Bool("dry-run", false, "report history deletions without deleting")
 	_ = fs.Parse(os.Args[2:])
-	if command != "compare" && command != "rollback" && command != "history" && command != "prune-history" && *profilePath == "" {
+	if command != "compare" && command != "rollback" && command != "history" && command != "prune-history" && command != "history-audit" && *profilePath == "" {
 		fail(fmt.Errorf("-profile is required"))
 	}
 	if *enforceNetwork && command != "run" && command != "compare" {
@@ -129,6 +129,18 @@ func main() {
 			fail(fmt.Errorf("-root is required for history"))
 		}
 		receipt, err := targetprofile.History(*rootDir)
+		if err != nil {
+			fail(err)
+		}
+		emit(receipt)
+		if !receipt.Passed {
+			os.Exit(1)
+		}
+	case "history-audit":
+		if *rootDir == "" {
+			fail(fmt.Errorf("-root is required for history-audit"))
+		}
+		receipt, err := targetprofile.HistoryAudit(*rootDir)
 		if err != nil {
 			fail(err)
 		}

@@ -28,6 +28,7 @@ type DeployReceipt struct {
 	ArtifactDigest    string   `json:"artifactDigest,omitempty"`
 	PreviousDigest    string   `json:"previousDigest,omitempty"`
 	HistoryPath       string   `json:"historyPath,omitempty"`
+	DatabasePath      string   `json:"databasePath,omitempty"`
 	CurrentSlot       string   `json:"currentSlot,omitempty"`
 	PreviousSlot      string   `json:"previousSlot,omitempty"`
 	RollbackAvailable bool     `json:"rollbackAvailable"`
@@ -55,8 +56,8 @@ func Deploy(ctx context.Context, opts DeployOptions) (DeployReceipt, error) {
 			"実Targetの配備・supervisor・ロールバック・無停止更新を証明しない。",
 		},
 	}
-	if profile.Storage != StorageFilesystem && profile.Storage != StorageNone {
-		receipt.Reason = "deploy reference supports storage=filesystem or storage=none, got " + profile.Storage
+	if profile.Storage != StorageFilesystem && profile.Storage != StorageNone && profile.Storage != StorageSQLite {
+		receipt.Reason = "deploy reference supports storage=filesystem, none, or sqlite, got " + profile.Storage
 		return receipt, nil
 	}
 	if profile.Update != UpdateReplace && profile.Update != UpdateInPlace && profile.Update != UpdateRolling {
@@ -140,6 +141,18 @@ func Deploy(ctx context.Context, opts DeployOptions) (DeployReceipt, error) {
 		return receipt, nil
 	}
 	receipt.ArtifactDigest = digestBytes(artifact)
+	if profile.Storage == StorageSQLite {
+		if opts.RootDir == "" {
+			receipt.Reason = "storage=sqlite requires -root"
+			return receipt, nil
+		}
+		if err := deploySQLite(ctx, opts.RootDir, artifact, &receipt); err != nil {
+			receipt.Reason = err.Error()
+			return receipt, nil
+		}
+		receipt.Passed = true
+		return receipt, nil
+	}
 	if profile.Update == UpdateRolling {
 		if err := deployRolling(opts.RootDir, artifact, &receipt); err != nil {
 			receipt.Reason = err.Error()
@@ -158,8 +171,16 @@ func Deploy(ctx context.Context, opts DeployOptions) (DeployReceipt, error) {
 			return receipt, nil
 		}
 		historyPath := filepath.Join(historyDir, strings.TrimPrefix(digestBytes(previous), "sha256:"))
-		if err := os.WriteFile(historyPath, previous, 0o644); err != nil {
-			receipt.Reason = err.Error()
+		if saved, err := os.ReadFile(historyPath); os.IsNotExist(err) {
+			if err := os.WriteFile(historyPath, previous, 0o644); err != nil {
+				receipt.Reason = err.Error()
+				return receipt, nil
+			}
+		} else if err != nil {
+			receipt.Reason = "current history artifact is unreadable: " + err.Error()
+			return receipt, nil
+		} else if digestBytes(saved) != receipt.PreviousDigest {
+			receipt.Reason = "current history artifact digest does not match the current artifact"
 			return receipt, nil
 		}
 		receipt.HistoryPath = historyPath
@@ -295,6 +316,9 @@ func Rollback(root string) (RollbackReceipt, error) {
 	receipt := RollbackReceipt{
 		Schema: RollbackSchema, GrantsAuthority: false, ProvesRealTarget: false,
 	}
+	if sqliteRoot(root) {
+		return rollbackSQLite(context.Background(), root)
+	}
 	release, err := lockLocalUpdate(root)
 	if err != nil {
 		receipt.Reason = err.Error()
@@ -360,6 +384,9 @@ func RollbackTo(root, sourceDigest string) (RollbackReceipt, error) {
 	if !validDigest(sourceDigest) {
 		receipt.Reason = "source digest must be sha256:<64 hex>"
 		return receipt, nil
+	}
+	if sqliteRoot(root) {
+		return rollbackToSQLite(context.Background(), root, sourceDigest)
 	}
 	release, err := lockLocalUpdate(root)
 	if err != nil {
