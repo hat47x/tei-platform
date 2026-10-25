@@ -110,8 +110,15 @@ class ModelCliTest(unittest.TestCase):
             modified_path = Path(handle.name)
         try:
             diff = xtea_cli.diff_models(self.model, xtea_cli.load_model(modified_path))
+            with redirect_stdout(io.StringIO()):
+                same_code = xtea_cli.main(
+                    ["diff", str(FIXTURE), str(FIXTURE), "--exit-code"])
+                changed_code = xtea_cli.main(
+                    ["diff", str(FIXTURE), str(modified_path), "--exit-code"])
         finally:
             modified_path.unlink()
+        self.assertEqual(same_code, 0)
+        self.assertEqual(changed_code, 1)
         self.assertEqual([item["id"] for item in diff["tables"]["changed"]], ["10"])
         fields = diff["tables"]["changed"][0]["after"]["fields"]
         self.assertIn("部門名称", [field["name"] for field in fields])
