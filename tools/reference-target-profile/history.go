@@ -46,11 +46,13 @@ type HistoryPruneReceipt struct {
 // History lists and verifies artifacts retained under history/<digest>.
 func History(root string) (HistoryReceipt, error) {
 	receipt := HistoryReceipt{Schema: HistorySchema, Root: root}
+	var entries []HistoryEntry
+	var err error
 	if sqliteRoot(root) {
-		receipt.Reason = "history command supports storage=filesystem only"
-		return receipt, nil
+		entries, err = sqliteHistory(root)
+	} else {
+		entries, err = readHistoryEntries(root)
 	}
-	entries, err := readHistoryEntries(root)
 	if err != nil {
 		return receipt, err
 	}
@@ -76,8 +78,7 @@ func PruneHistory(root string, keepLast int, dryRun bool) (HistoryPruneReceipt, 
 		return receipt, nil
 	}
 	if sqliteRoot(root) {
-		receipt.Reason = "prune-history supports storage=filesystem only"
-		return receipt, nil
+		return pruneSQLiteHistory(root, keepLast, dryRun)
 	}
 	if strings.TrimSpace(root) == "" {
 		receipt.Reason = "root is required"

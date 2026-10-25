@@ -167,7 +167,8 @@ go run ./tools/reference-target-profile/cmd/tei-target-profile run \
 - replace/in-place配備と`rollback -to`では、currentの退避先historyが既にある場合、内容のdigestを照合し、一致する履歴は書き直さず更新時刻も保ちます。読めない・一致しない場合はcurrentの置換前に拒否し、壊れたhistoryも上書きしません。この確認は電源断耐性を提供しません。
 - 配備後にartifact digestを再計算し、build結果と一致することを確認します。history/slotのdigestも照合します。
 - `storage: none`はrootを作らず、build結果のdigestだけを検証します。
-- `storage: sqlite`は`artifacts.db`のtransactionでartifactとcurrent/previousを更新し、配備後にDBから読み戻してdigestを照合します。`rollback`はcurrent/previousを入れ替え、`rollback -to <digest>`はDBのartifactへ戻します。`history`/`prune-history`はsqliteでは未対応です。
+- `storage: sqlite`は`artifacts.db`のtransactionでartifactとcurrent/previousを更新し、配備後にDBから読み戻してdigestを照合します。`rollback`はcurrent/previousを入れ替え、`rollback -to <digest>`はDBのartifactへ戻します。
+- sqliteの`history`は`artifacts` tableのcontentを再計算し、`prune-history -keep-last N`はcurrent/previousを削除対象に含む場合に拒否します。`-dry-run`では削除しません。
 - `history`は`history/<digest>`の内容を再計算し、file名と一致しない・読めないartifactを不合格にします。`prune-history -keep-last N`は検証済みartifactを新しい順にN件残し、`-dry-run`では削除しません。検証に失敗したartifactがある場合は削除しません。
 - `history` / `prune-history`は、history directory自体のsymlinkと、artifactのsymlink・通常file以外の項目を拒否し、リンク先や特殊fileの内容を読みません。外部writerによる検査後の差替えを防ぐsnapshotや、filesystem全体のsandboxではありません。
 - pruneの`deleted`は、削除に成功したfileだけを記録します。途中の削除に失敗した場合は`passed=false`とし、先に成功した削除は戻しません。全件を一度に削除するtransactionではありません。
