@@ -146,3 +146,49 @@ func TestDriverBindingPreservesCommitUncertainErrorAndSameOperationReplay(t *tes
 		t.Fatalf("same-operation replay duplicated effect: result=%+v runner=%+v err=%v version=%d receipts=%d calls=%d", replay, adapter.last, err, db.version, len(db.records), adapter.calls)
 	}
 }
+// postCommitInvalidResultAdapter reproduces the dangerous current ordering:
+// the real Runner commits, then the Adapter returns a result which violates the
+// existing output-only Canonical contract. This is NOT a production Adapter.
+type postCommitInvalidResultAdapter struct{ committed *referenceEffectAdapter }
+
+func (a postCommitInvalidResultAdapter) Invoke(ctx context.Context, capability core.CanonicalID, input any) (capabilityinvoke.BusinessResult, error) {
+	result, err := a.committed.Invoke(ctx, capability, input)
+	if err != nil {
+		return result, err
+	}
+	result.Mode = capabilityinvoke.ResultOutcome
+	result.Outcome = "denied" // Never declared for output-only sales.order.submit.
+	return result, nil
+}
+
+func TestDriverRejectsPostCommitInvalidBusinessResultWithoutErasingEffect(t *testing.T) {
+	db := newMemoryProvider()
+	resolver, committed, req := effectDriverFixture(t, db)
+	ctx := context.Background()
+	adapters := referenceEffectBindingResolver{
+		adapter: postCommitInvalidResultAdapter{committed: committed},
+	}
+
+	// A valid request and synthetic Grant let the existing Runner COMMIT once.
+	// Only afterward does capabilityinvoke.ValidateBusinessResult reject mode.
+	invocation, err := resolver.InvokeCapability(
+		ctx, "order_entry", "sales.order.submit", adapters, req,
+	)
+	if err == nil || invocation.Result.Mode != "" {
+		t.Fatalf("invalid post-commit result must be a Driver Execution Error: result=%+v err=%v", invocation, err)
+	}
+	if committed.last.Status != StatusCommitted || committed.calls != 1 ||
+		db.version != 1 || db.value != string(req.Payload) || len(db.records) != 1 {
+		t.Fatalf("Execution Error incorrectly implies rollback: status=%s calls=%d version=%d receipts=%d", committed.last.Status, committed.calls, db.version, len(db.records))
+	}
+
+	// The same immutable operation can be looked up without another write.
+	// This test demonstrates evidence still exists; production recovery needs
+	// trusted Grant, Owner meaning and an explicit execution disposition.
+	lookedUp, lookupErr := committed.runner.Lookup(ctx, req, committed.grant)
+	if lookupErr != nil || lookedUp.Status != StatusReplayed ||
+		lookedUp.Receipt.OperationID != req.OperationID ||
+		db.version != 1 || committed.calls != 1 {
+		t.Fatalf("post-commit evidence cannot be recovered safely: lookup=%+v err=%v", lookedUp, lookupErr)
+	}
+}
