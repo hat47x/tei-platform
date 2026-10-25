@@ -31,6 +31,12 @@ go run ./tools/reference-target-profile/cmd/tei-target-profile \
 
 go run ./tools/reference-target-profile/cmd/tei-target-profile \
   rollback -root /tmp/tei-target-profile-root -to sha256:...
+
+go run ./tools/reference-target-profile/cmd/tei-target-profile \
+  history -root /tmp/tei-target-profile-root
+
+go run ./tools/reference-target-profile/cmd/tei-target-profile \
+  prune-history -root /tmp/tei-target-profile-root -keep-last 2 -dry-run
 ```
 
 ## Profileの項目
@@ -161,6 +167,8 @@ go run ./tools/reference-target-profile/cmd/tei-target-profile run \
 - currentの退避先historyが既にある場合は、内容のdigestを照合します。読めない・一致しない場合はcurrentの置換前に拒否し、壊れたhistoryも上書きしません。この確認は電源断耐性を提供しません。
 - 配備後にartifact digestを再計算し、build結果と一致することを確認します。history/slotのdigestも照合します。
 - `storage: none`はrootを作らず、build結果のdigestだけを検証します。
+- `history`は`history/<digest>`の内容を再計算し、file名と一致しない・読めないartifactを不合格にします。`prune-history -keep-last N`は検証済みartifactを新しい順にN件残し、`-dry-run`では削除しません。検証に失敗したartifactがある場合は削除しません。
+- 保持期間の判定はfileの更新時刻に依存し、同時刻の場合はdigest順で決めます。削除の承認・audit・暗号学的な履歴保護は扱いません。
 - `sqlite`・`remote` storage、Go以外の候補は未対応として`passed=false`にします。
 - 実Targetのsupervisor・health check・traffic drain・電源断耐性・複数ホスト配備は扱いません。
 - `rollback -to`は`replace`/`in-place`のhistoryだけを対象とし、rollingのslot rollbackは`-to`なしの`rollback`を使います。

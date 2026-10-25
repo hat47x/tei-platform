@@ -32,8 +32,10 @@ func main() {
 	enforceCPU := fs.Bool("enforce-cpu", false, "require Linux per-process CPU time limits (run/compare only)")
 	rootDir := fs.String("root", "", "local deployment root for deploy")
 	rollbackTo := fs.String("to", "", "history source digest for rollback")
+	keepLast := fs.Int("keep-last", 0, "number of newest history artifacts to keep")
+	historyDryRun := fs.Bool("dry-run", false, "report history deletions without deleting")
 	_ = fs.Parse(os.Args[2:])
-	if command != "compare" && command != "rollback" && *profilePath == "" {
+	if command != "compare" && command != "rollback" && command != "history" && command != "prune-history" && *profilePath == "" {
 		fail(fmt.Errorf("-profile is required"))
 	}
 	if *enforceNetwork && command != "run" && command != "compare" {
@@ -115,6 +117,30 @@ func main() {
 		} else {
 			receipt, err = targetprofile.Rollback(*rootDir)
 		}
+		if err != nil {
+			fail(err)
+		}
+		emit(receipt)
+		if !receipt.Passed {
+			os.Exit(1)
+		}
+	case "history":
+		if *rootDir == "" {
+			fail(fmt.Errorf("-root is required for history"))
+		}
+		receipt, err := targetprofile.History(*rootDir)
+		if err != nil {
+			fail(err)
+		}
+		emit(receipt)
+		if !receipt.Passed {
+			os.Exit(1)
+		}
+	case "prune-history":
+		if *rootDir == "" || *keepLast == 0 {
+			fail(fmt.Errorf("-root and -keep-last are required for prune-history"))
+		}
+		receipt, err := targetprofile.PruneHistory(*rootDir, *keepLast, *historyDryRun)
 		if err != nil {
 			fail(err)
 		}
