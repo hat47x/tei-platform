@@ -50,6 +50,40 @@ func HistoryAudit(root string) (HistoryAuditReceipt, error) {
 	return receipt, nil
 }
 
+type HistoryAuditCheckpoint struct {
+	Schema      string `json:"schema"`
+	Root        string `json:"root"`
+	Count       int    `json:"count"`
+	HeadDigest  string `json:"headDigest,omitempty"`
+	AuditDigest string `json:"auditDigest"`
+	Passed      bool   `json:"passed"`
+	Reason      string `json:"reason,omitempty"`
+}
+
+const HistoryAuditCheckpointSchema = "tei.reference.target-profile-history-audit-checkpoint/v0"
+
+func BuildHistoryAuditCheckpoint(root string) (HistoryAuditCheckpoint, error) {
+	checkpoint := HistoryAuditCheckpoint{Schema: HistoryAuditCheckpointSchema, Root: root}
+	records, err := readHistoryAudit(root)
+	if err != nil {
+		checkpoint.Reason = err.Error()
+		return checkpoint, nil
+	}
+	raw, err := os.ReadFile(historyAuditPath(root))
+	if os.IsNotExist(err) {
+		raw = nil
+	} else if err != nil {
+		return checkpoint, err
+	}
+	checkpoint.Count = len(records)
+	checkpoint.AuditDigest = digestBytes(raw)
+	if len(records) > 0 {
+		checkpoint.HeadDigest = records[len(records)-1].RecordDigest
+	}
+	checkpoint.Passed = true
+	return checkpoint, nil
+}
+
 func historyAuditPath(root string) string {
 	return filepath.Join(root, "history-prune-audit.jsonl")
 }
