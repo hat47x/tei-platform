@@ -44,6 +44,7 @@ def write_run_summary(result, folder):
         "expectedFailures": [{"test": test.id(), "traceback": trace} for test, trace in result.expectedFailures],
         "unexpectedSuccesses": [test.id() for test in result.unexpectedSuccesses],
     }, ensure_ascii=False, indent=2), encoding="utf-8")
+    return status
 
 
 class LiveDriverTest(unittest.TestCase):
@@ -918,6 +919,6 @@ class LiveDriverTest(unittest.TestCase):
 if __name__ == "__main__":
     result = unittest.main(verbosity=2, exit=False).result
     folder = getattr(LiveDriverTest, "artifacts", None) or new_run_folder()
-    write_run_summary(result, folder)
+    status = write_run_summary(result, folder)
     print("Driver run artifacts:", folder)
-    sys.exit(not result.wasSuccessful())
+    sys.exit(status != "passed")
