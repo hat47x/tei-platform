@@ -199,6 +199,20 @@ func Put(ctx context.Context, opts StoreOptions) (Receipt, error) {
 				receipt.Reason = "existing object provenance differs from the current selection receipt"
 				return receipt, nil
 			}
+			storedReceiptPath := filepath.Join(objectPath, "receipt.json")
+			storedReceipt, err := os.ReadFile(storedReceiptPath)
+			if os.IsNotExist(err) {
+				if err := os.WriteFile(storedReceiptPath, rawReceipt, 0o644); err != nil {
+					receipt.Reason = err.Error()
+					return receipt, nil
+				}
+			} else if err != nil {
+				receipt.Reason = "existing selection receipt is unreadable: " + err.Error()
+				return receipt, nil
+			} else if digest(storedReceipt) != existingObject.ReceiptDigest {
+				receipt.Reason = "existing selection receipt digest does not match"
+				return receipt, nil
+			}
 			receipt.ObjectPath = objectPath
 			receipt.Reused = true
 			receipt.Passed = true
