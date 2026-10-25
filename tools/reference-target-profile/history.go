@@ -78,9 +78,6 @@ func PruneHistory(root string, keepLast int, dryRun bool) (HistoryPruneReceipt, 
 		receipt.Reason = "keepLast must be at least 1"
 		return receipt, nil
 	}
-	if sqliteRoot(root) {
-		return pruneSQLiteHistory(root, keepLast, dryRun)
-	}
 	if strings.TrimSpace(root) == "" {
 		receipt.Reason = "root is required"
 		return receipt, nil
@@ -91,6 +88,9 @@ func PruneHistory(root string, keepLast int, dryRun bool) (HistoryPruneReceipt, 
 		return receipt, nil
 	}
 	defer release()
+	if sqliteRoot(root) {
+		return pruneSQLiteHistory(root, keepLast, dryRun)
+	}
 	if !dryRun {
 		if err := verifyHistoryAudit(root); err != nil {
 			receipt.Reason = "existing history audit is invalid: " + err.Error()
