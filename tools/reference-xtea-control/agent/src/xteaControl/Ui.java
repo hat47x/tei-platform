@@ -1097,6 +1097,20 @@ final class Ui {
             JList<?> list = (JList<?>) component;
             value.put("itemCount", list.getModel().getSize());
             value.put("selectedIndex", list.getSelectedIndex());
+            List<Object> items = new ArrayList<Object>();
+            for (int i = 0; i < Math.min(list.getModel().getSize(), 200); i++) {
+                Object item = list.getModel().getElementAt(i);
+                Map<String, Object> entry = new LinkedHashMap<String, Object>();
+                entry.put("index", i);
+                entry.put("text", item instanceof Component ? labelOf((Component) item) : brief(item));
+                if (item instanceof AbstractButton) {
+                    entry.put("checked", ((AbstractButton) item).isSelected());
+                    entry.put("enabled", ((AbstractButton) item).isEnabled());
+                }
+                items.add(entry);
+            }
+            value.put("items", items);
+            value.put("itemsTruncated", list.getModel().getSize() > items.size());
         }
         if (component instanceof JSpinner) {
             value.put("value", brief(((JSpinner) component).getValue()));

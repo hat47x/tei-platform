@@ -655,6 +655,129 @@ class LiveDriverTest(unittest.TestCase):
         self.client.invoke({"window": "^Driver fixture launcher$", "role": "button",
                             "text": f"^S{name} DISPLAY$"})
 
+    def filter_prompt(self, kind):
+        self.assertTrue(self.client.wait_selector({"windowClass": "xeadDriver.XF100$",
+                                                  "class": "XF100_PromptCallField$"})["matched"])
+        field = self.client.find({"windowClass": "xeadDriver.XF100$",
+                                  "class": "XF100_PromptCallField$"})
+        self.assertIsNotNone(field)
+        button = next(node for node in field["children"] if node["role"] == "button")
+        self.client.invoke({"windowClass": "xeadDriver.XF100$", "path": button["path"]})
+        selector = {"windowClass": "xeadDriver.XF" + kind + "Dialog$"}
+        self.assertTrue(self.client.wait_selector(selector)["matched"])
+        return selector
+
+    def filter_rows(self, expected):
+        self.assertTrue(self.client.wait_selector({"windowClass": "xeadDriver.XF100$",
+                                                  "role": "table"})["matched"])
+        self.button("xeadDriver.XF100", "^(List|Search)$")
+        rows = self.client.table_read({"windowClass": "xeadDriver.XF100$", "role": "table"})["rows"]
+        actual = [str(row[0]).strip() for row in rows]
+        self.assertEqual(actual, expected)
+        self.outputs.append({"filterRows": actual})
+
+    def checklist_state(self, expected):
+        selector = {"windowClass": "xeadDriver.XFCheckListDialog$", "role": "list"}
+        node = self.client.find(selector)
+        self.assertEqual(node["itemCount"], 2)
+        self.assertFalse(node["itemsTruncated"])
+        actual = {item["text"].strip(): item["checked"] for item in node["items"]}
+        self.assertEqual(actual, expected)
+        self.outputs.append({"checklistItems": node["items"]})
+        return selector, node["items"]
+
+    def toggle_check(self, label):
+        selector = {"windowClass": "xeadDriver.XFCheckListDialog$", "role": "list"}
+        item = next(item for item in self.client.find(selector)["items"] if item["text"].strip() == label)
+        self.client.select(selector, item_index=item["index"])
+        self.client.key(selector, key="SPACE")
+
+    def test_script_prompt_checklist_accept_and_reopen(self):
+        self.open_function("101")
+        self.filter_rows(["001"])
+        self.filter_prompt("CheckList")
+        self.checklist_state({"Alpha": True, "Beta": False})
+        self.toggle_check("Beta")
+        self.button("xeadDriver.XFCheckListDialog", "^OK$")
+        self.filter_rows(["001", "002"])
+        self.filter_prompt("CheckList")
+        self.checklist_state({"Alpha": True, "Beta": True})
+        self.toggle_check("Alpha")
+        self.button("xeadDriver.XFCheckListDialog", "^OK$")
+        self.filter_rows(["002"])
+        self.filter_prompt("CheckList")
+        self.checklist_state({"Alpha": False, "Beta": True})
+        self.button("xeadDriver.XFCheckListDialog", "^Cancel$")
+        self.button("xeadDriver.XF100", "Close$")
+        self.assertEqual(self.observe(), self.observations[0])
+
+    def test_script_prompt_checklist_cancel_and_empty(self):
+        self.open_function("101")
+        for decision in ("cancel", "close", "empty"):
+            with self.subTest(decision=decision):
+                self.filter_prompt("CheckList")
+                self.checklist_state({"Alpha": True, "Beta": False})
+                self.toggle_check("Alpha")
+                if decision == "empty":
+                    self.button("xeadDriver.XFCheckListDialog", "^OK$")
+                else:
+                    self.toggle_check("Beta")
+                    if decision == "close":
+                        self.client.close({"windowClass": "xeadDriver.XFCheckListDialog$"})
+                    else:
+                        self.button("xeadDriver.XFCheckListDialog", "^Cancel$")
+                # Missing result key preserves the caller's old filter, including empty OK.
+                self.filter_rows(["001"])
+        self.button("xeadDriver.XF100", "Close$")
+        self.assertEqual(self.observe(), self.observations[0])
+
+    def test_script_prompt_input_accept_cancel_and_empty(self):
+        self.open_function("102")
+        self.filter_prompt("Input")
+        field = {"windowClass": "xeadDriver.XFInputDialog$", "role": "text", "class": "JTextField$"}
+        self.client.wait_text(field, expected="001")
+        self.client.set_value(field, "002")
+        self.button("xeadDriver.XFInputDialog", "^OK$")
+        self.filter_rows(["002"])
+        for close_window in (False, True):
+            with self.subTest(close_window=close_window):
+                dialog = self.filter_prompt("Input")
+                self.client.wait_text(field, expected="002")
+                self.client.set_value(field, "001")
+                if close_window:
+                    self.client.close(dialog)
+                else:
+                    self.button("xeadDriver.XFInputDialog", "^Close$")
+                self.filter_rows(["002"])
+        self.filter_prompt("Input")
+        self.client.wait_text(field, expected="002")
+        self.client.set_value(field, "")
+        self.button("xeadDriver.XFInputDialog", "^OK$")
+        self.filter_rows(["001", "002"])
+        self.button("xeadDriver.XF100", "Close$")
+        self.assertEqual(self.observe(), self.observations[0])
+
+    def test_script_prompt_option_accept_and_cancel(self):
+        self.open_function("103")
+        self.filter_rows(["001"])
+        self.filter_prompt("Option")
+        selector = {"windowClass": "xeadDriver.XFOptionDialog$", "role": "list"}
+        self.assertEqual([item["text"] for item in self.client.find(selector)["items"]], ["Alpha", "Beta"])
+        self.client.select(selector, item_index=1)
+        self.client.key(selector, key="ENTER")
+        self.filter_rows(["002"])
+        dialog = self.filter_prompt("Option")
+        self.assertEqual(self.client.find(selector)["itemCount"], 2)
+        self.client.select(selector, item_index=0)
+        self.client.close(dialog)
+        self.filter_rows(["002"])
+        self.filter_prompt("Option")
+        self.client.select(selector, item_index=0)
+        self.client.key(selector, key="ENTER")
+        self.filter_rows(["001"])
+        self.button("xeadDriver.XF100", "Close$")
+        self.assertEqual(self.observe(), self.observations[0])
+
     def test_script_input_accept_and_cancel(self):
         self.script("INPUT")
         selector = {"windowClass": "xeadDriver.XFInputDialog$", "role": "text", "text": "^initial$"}
@@ -667,6 +790,31 @@ class LiveDriverTest(unittest.TestCase):
         self.button("xeadDriver.XFInputDialog", "Close")
         self.result("UI_RESULT=-1:")
         self.assertEqual(self.observe(), self.observations[0])
+
+    def test_script_multi_field_form_accept_cancel_and_reopen(self):
+        dialog = {"windowClass": "xeadDriver.XFInputDialog$"}
+        for decision in ("accept", "cancel", "close"):
+            with self.subTest(decision=decision):
+                self.script("FORM")
+                text = dict(dialog, role="text", text="^initial$")
+                self.assertTrue(self.client.wait_selector(text)["matched"])
+                # Every reopen reconstructs four fields; previous accepted values must not leak.
+                number = dict(dialog, role="text", text="^1$")
+                self.assertIsNotNone(self.client.find(number))
+                self.assertFalse(self.client.find(dict(dialog, role="checkbox"))["selected"])
+                self.client.set_value(text, "batch")
+                self.client.set_value(number, "12")
+                self.client.set_value(dict(dialog, role="checkbox"), True)
+                self.client.set_value(dict(dialog, role="combobox"), "Second")
+                if decision == "close":
+                    self.client.close(dialog)
+                else:
+                    self.button("xeadDriver.XFInputDialog", "^OK$" if decision == "accept" else "^Close$")
+                # Cancel reports -1 but field getters still contain edited values.
+                # Callers must check the reply instead of treating getters as accepted input.
+                reply = "0" if decision == "accept" else "-1"
+                self.result("UI_RESULT=" + reply + ":batch:12:true:B")
+                self.assertEqual(self.observe(), self.observations[0])
 
     def test_script_option_and_checklist(self):
         self.script("OPTION")

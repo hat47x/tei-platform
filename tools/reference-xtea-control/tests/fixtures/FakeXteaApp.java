@@ -17,6 +17,7 @@ import javax.swing.JComboBox;
 import javax.swing.JDialog;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
+import javax.swing.JList;
 import javax.swing.JMenu;
 import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
@@ -169,6 +170,14 @@ public final class FakeXteaApp {
         JTree tree = new JTree(root);
         tree.setName("tree");
         tabs.addTab("Tree", new JScrollPane(tree));
+        Object[] listItems = new Object[201];
+        JCheckBox checked = new JCheckBox("Checked item", true);
+        checked.setEnabled(false);
+        listItems[0] = checked;
+        for (int i = 1; i < listItems.length; i++) listItems[i] = "Item " + i;
+        JList<Object> list = new JList<Object>(listItems);
+        list.setName("observedList");
+        tabs.addTab("List", new JScrollPane(list));
         tabs.setName("tabs");
 
         frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);

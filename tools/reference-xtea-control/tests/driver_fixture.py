@@ -117,6 +117,17 @@ d.setFont(new (Java.type("java.awt.Font"))("Dialog",0,14));
 var f=d.addField("Value", "ALPHA", 0, "VALUE"); f.setValue("initial");
 var r=d.request("Script input");
 instance.getReturnMap().put("UI_RESULT", r+":"+d.getValueOfFieldByParmID("VALUE"));''',
+        "FORM": '''var d=instance.getSession().getInputDialog();
+d.setFont(new (Java.type("java.awt.Font"))("Dialog",0,14));
+d.addField("Text", "ALPHA", 0, "TEXT").setValue("initial");
+d.addField("Number", "NUMERIC", 0, "NUMBER").setValue("1");
+d.addField("Enabled", "CHECKBOX", 0, "ENABLED").setValue("false");
+var choice=d.addField("Choice", "LISTBOX", 0, "CHOICE");
+choice.addItem("First", "A"); choice.addItem("Second", "B"); choice.setValue("A");
+var r=d.request("Script form");
+instance.getReturnMap().put("UI_RESULT",r+":"+d.getValueOfFieldByParmID("TEXT")+":"+
+d.getValueOfFieldByParmID("NUMBER")+":"+d.getValueOfFieldByParmID("ENABLED")+":"+
+d.getValueOfFieldByParmID("CHOICE"));''',
         "OPTION": '''var d=instance.getSession().getOptionDialog();
 d.addOption("First"); d.addOption("Second");
 instance.getReturnMap().put("UI_RESULT", d.request("Script option"));''',
@@ -136,6 +147,43 @@ instance.getReturnMap().put("UI_RESULT",p.showOptionDialog(null,"Fixture choice"
     }
     for name, script in scripts.items():
         ET.SubElement(system, "Function", ID="S" + name, Type="XF000", Name="Script " + name, Script=script)
+
+    # Original synthetic prompt callers: no reference-model Script is copied.
+    for number, kind in (("101", "CHECK"), ("102", "INPUT"), ("103", "OPTION")):
+        f = ET.SubElement(system, "Function", ID="F" + number, Type="XF100",
+                          Name="Prompt " + kind, PrimaryTable="ITEM", Size="AUTO",
+                          InitialListing="T", OrderBy="ITEM.ID")
+        fields(f, "Column", ["ITEM.ID", "ITEM.NAME"])
+        button(f, 0, 3, "EXIT", "Close")
+        options = ["VALUE(001)", "PROMPT_CALL(SFILTER_" + kind + ")"]
+        options += [op + "(ITEM.ID)" for op in ("PROMPT_CALL_TO_PUT", "PROMPT_CALL_TO_PUT_TO",
+                                                "PROMPT_CALL_TO_GET", "PROMPT_CALL_TO_GET_TO")]
+        ET.SubElement(f, "Filter", DataSource="ITEM.ID", FieldOptions=",".join(options), Order="0")
+
+    prompt_scripts = {
+        "CHECK": '''var d=instance.getSession().getCheckListDialog();
+var q=instance.createTableOperator("Select", "ITEM"); q.setOrderBy("ID");
+while(q.next()) { d.addRow(q.getValueOf("ID")+"", q.getValueOf("NAME")+""); }
+d.setListSelected(instance.getParmMap().get("ITEM.ID"));
+var reply=d.request("Filter checklist");
+if(reply==0) { instance.getReturnMap().put("ITEM.ID",d.getListSelected()); }
+else { instance.getReturnMap().remove("ITEM.ID"); }''',
+        "INPUT": '''var d=instance.getSession().getInputDialog();
+d.setFont(new (Java.type("java.awt.Font"))("Dialog",0,14));
+var f=d.addField("Identifier", "ALPHA", 0, "ID");
+f.setValue(instance.getParmMap().get("ITEM.ID"));
+var reply=d.request("Filter input");
+if(reply==0) { instance.getReturnMap().put("ITEM.ID",d.getValueOfFieldByParmID("ID")); }
+else { instance.getReturnMap().remove("ITEM.ID"); }''',
+        "OPTION": '''var d=instance.getSession().getOptionDialog();
+d.addOption("Alpha"); d.addOption("Beta");
+var reply=d.request("Filter option");
+if(reply>=0) { instance.getReturnMap().put("ITEM.ID",reply==0?"001":"002"); }
+else { instance.getReturnMap().remove("ITEM.ID"); }''',
+    }
+    for kind, script in prompt_scripts.items():
+        ET.SubElement(system, "Function", ID="SFILTER_" + kind, Type="XF000",
+                      Name="Filter " + kind, Script=script)
     for typ, initial in (("ALPHA", "initial"), ("TEXTAREA", "initial"), ("NUMERIC", "1"),
                          ("ZEROFILL", ""), ("DATE", "2026-10-21"), ("CHECKBOX", "false"), ("LISTBOX", "A")):
         script = '''var d=instance.getSession().getInputDialog(); d.clear();

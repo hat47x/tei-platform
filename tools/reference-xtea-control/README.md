@@ -255,7 +255,7 @@ python xtea_control.py --endpoint build\modeler-endpoint.json `
   scenario scenarios\modeler-read-only-about.json
 ```
 
-シナリオの`steps`は`wait_window`、`invoke`、`invoke_method`、`set`、`select`、`click`、`drag`、`table_set`、`table_assert`、`table_row_count`、`key`、`close`、`wait_selector`、`wait_text`、`assert_text`、`snapshot`、`screenshot`、`file_contains`、`file_not_contains`、`model_assert_field`、`model_assert_table`、`model_assert_table_absent`、`model_assert_function`、`sleep`を扱います。AIは座標ではなく、`{"role":"button","text":"OK"}`のような意味的な選択子を生成すれば足ります。
+シナリオの`steps`は`wait_window`、`invoke`、`invoke_method`、`set`、`select`、`click`、`drag`、`table_set`、`table_edit`、`table_assert`、`table_row_count`、`key`、`close`、`wait_selector`、`wait_text`、`assert_text`、`snapshot`、`screenshot`、`file_contains`、`file_not_contains`、`model_assert_field`、`model_assert_table`、`model_assert_table_absent`、`model_assert_function`、`sleep`を扱います。AIは座標ではなく、`{"role":"button","text":"OK"}`のような意味的な選択子を生成すれば足ります。
 
 XF110の選択画面と更新画面は同じタイトルになるため、`{"windowClass":"xeadDriver.XF110_SubList$","role":"table"}`のようにウィンドウのクラスでも絞れます。CLIでは`--window-class`を使います。`find`、`wait_text`、`assert_text`も`window`・`windowClass`・`index`を考慮します。
 
@@ -289,6 +289,10 @@ xvfb-run -a python3 verify_driver.py
 起動待ちとExcel出力の完了待ちは、それぞれ120秒で打ち切ります。各試験の操作記録に実際の起動・出力所要時間を残し、起動失敗ではエンドポイントと起動完了マーカーの有無を報告します。起動や操作をやり直す処理はありません。
 
 試験は元のDriverのFunctionLauncherを合成起動パネルから呼び、各試験で新しい合成モデル・H2 DBを生成します。更新結果は別JDBC接続から読みます。元の参照モデルや業務DBへ接続する引数はありません。操作トレース・DB前後値・Java版・JAR指紋・PDF・Excelを、実行ごとに作る`artifacts/live-driver/run-*/`へ保存し、終了時に保存先を表示します。Excelはファイルを展開してセル値まで照合します。`runtime.json`には実行したツールのソース指紋、画面の`DISPLAY`とUTC時刻も残します。
+
+リストのスナップショットは、先頭200項目の表示名・インデックスと、チェック項目の選択状態・有効状態を返します。`selectedIndex`はカーソル位置であり、チェック状態は各項目の`checked`で確認します。省略の有無は`itemsTruncated`で区別します。
+
+Script UIの追加試験は、合成XF100の検索条件からXF000のチェックリスト・入力・オプションを開き、結果を検索条件へ戻して行の変化まで照合します。初期選択・複数選択・取消・空選択・再表示と、複数項目フォームも対象です。詳細は[操作経路の対応表](ROUTES.md#呼出元の画面まで戻るscript-ui)を参照してください。
 
 `invoke`は非同期の受付を返します。無効な部品は`COMPONENT_NOT_EDITABLE`で拒否し、受け付けた呼出しはトレースの`invoke.start`・`invoke.complete`・`invoke.error`で経過を確認できます。`invoke.complete`はイベント処理から戻ったことを表し、別スレッドの業務処理やDB更新の完了を示しません。モーダル画面を開くイベントは、その画面を閉じるまで完了しません。DBや出力結果は従来どおり別途照合します。
 
@@ -421,7 +425,6 @@ XF000のコンソールでは、無効化された「Run right now」を制御�
 - Driverの明示的なトランザクションrollback操作（失敗時の内部rollbackは確認済み）、上記以外のFunction画面、元の`jdbc:derby://localhost/...`接続。
 - Editorの要素並べ替え・一括置換・機能編集（Modelerの全フィールド操作と、Editorのテーブル追加・削除・機能追加は確認済み）。
 
-- Modelerのフィールド追加・並べ替え・型変更、Editorの要素追加・削除・並べ替え・一括置換・機能編集（テーブル名変更とModelerのフィールド名変更・削除は確認済み）。
 - 三つのSwingアプリの全ダイアログ・全条件分岐の実行。経路表は入力種別とトップレベル入口の到達性を示すもので、全業務ケースの実行結果ではない。
 - X-TEAのソースと配布JARの同一性、#940の固定baselineとの対応、TEI側の意味一致。
 - Java 8実機。コンパイルターゲットは8だが、実行確認はJDK 11。

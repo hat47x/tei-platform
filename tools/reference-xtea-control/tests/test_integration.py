@@ -175,6 +175,21 @@ class IntegrationTest(unittest.TestCase):
         self.client.click({"role": "table"}, count=2, row=0, column=0)
         self.client.wait_text({"name": "status"}, expected="table-double", timeout_ms=5000)
 
+    def test_04e_list_items_and_check_state(self) -> None:
+        self.client.select({"name": "tabs"}, title="List")
+        try:
+            node = self.client.find({"name": "observedList"})
+            self.assertEqual(node["itemCount"], 201)
+            self.assertTrue(node["itemsTruncated"])
+            self.assertEqual(len(node["items"]), 200)
+            self.assertEqual(node["items"][0], {"index": 0, "text": "Checked item",
+                                               "checked": True, "enabled": False})
+            self.assertEqual(node["items"][1], {"index": 1, "text": "Item 1"})
+            self.client.select({"name": "observedList"}, item_index=1)
+            self.assertEqual(self.client.find({"name": "observedList"})["selectedIndex"], 1)
+        finally:
+            self.client.select({"name": "tabs"}, title="Main")
+
     def test_05_modal_dialog(self) -> None:
         self.client.select({"role": "tab", "window": "Fake X-TEA"}, item_index=0)
         cursor = self.client.trace()["lastId"]
