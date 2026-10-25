@@ -111,7 +111,7 @@ python xtea_cli.py schema diff
 
 AIは`export`のJSONを基準モデルと候補モデルでそれぞれ取得し、`tables[].id`や`functions[].id`で突き合わせます。画面を開かなくても、機能ごとの入力・出力・可能操作を比較できます。
 
-`diff`は2つのモデルをIDで突き合わせ、`tables`と`functions`の`added` / `removed` / `changed`を返します。`changed`には変更前後のフィールド、データ型、キー、入出力CRUD、呼び出し関係が入ります。
+`diff`は2つのモデルをIDで突き合わせ、`tables`と`functions`の`added` / `removed` / `changed`を返します。`changed`には変更前後のフィールド、データ型、キー、入出力CRUD、呼び出し関係が入ります。`--exit-code`を付けると、差分がある場合に終了コード1を返します。
 
 `validate`は、テーブルのサブシステム、フィールドのデータ型、キーのフィールドID、機能の種別、入出力テーブル、呼び出し先の参照を検査します。エラーがある場合は終了コード1を返します。
 

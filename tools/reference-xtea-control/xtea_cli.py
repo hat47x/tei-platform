@@ -436,6 +436,8 @@ def main(argv: Optional[List[str]] = None) -> int:
     diff = sub.add_parser("diff", help="compare two models by table and function ID")
     diff.add_argument("before", type=Path)
     diff.add_argument("after", type=Path)
+    diff.add_argument("--exit-code", action="store_true",
+                      help="return 1 when the models differ")
 
     validate = sub.add_parser("validate", help="check model references")
     validate.add_argument("model", type=Path)
@@ -455,8 +457,14 @@ def main(argv: Optional[List[str]] = None) -> int:
         except (OSError, ValueError, ET.ParseError) as error:
             print(f"error: {error}", file=sys.stderr)
             return 2
-        _print_json(diff_models(before, after))
-        return 0
+        result = diff_models(before, after)
+        _print_json(result)
+        changed = bool(result["system"]) or any(
+            result[key][kind]
+            for key in ("tables", "functions")
+            for kind in ("added", "removed", "changed")
+        )
+        return 1 if args.exit_code and changed else 0
     try:
         model = load_model(args.model)
     except (OSError, ValueError, ET.ParseError) as error:
