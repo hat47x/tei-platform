@@ -93,8 +93,9 @@ class DriverResultTest(unittest.TestCase):
                 result = unittest.TestResult()
                 if name != "empty":
                     Fixture("test_" + name).run(result)
-                write_run_summary(result, Path(tmp))
+                written_status = write_run_summary(result, Path(tmp))
                 summary = json.loads((Path(tmp) / "summary.json").read_text())
+                self.assertEqual(written_status, expected)
                 self.assertEqual(summary["status"], expected)
                 self.assertEqual(summary["testsRun"], 0 if name == "empty" else 1)
                 if name == "fail":
