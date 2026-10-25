@@ -196,7 +196,7 @@ go run ./tools/reference-generator-selection/cmd/tei-generator-meta \
 - Python候補は`python3`または`python`、JavaScript候補は`node`でsourceを実行します。どちらも`binaryDigest`は空です。
 - Java候補はsourceを2つの別directoryへcopyし、それぞれ`javac -d <classes> Main.java`でcompileして`Main.class`のdigestを比較します。一致した場合だけ合格し、`java -cp <classes> Main`で実行します。`binaryDigest`は`Main.class`のdigest、`reproducibility`は`path-independent-twice`です。
 - WASM候補はsourceを2つの別directoryへcopyし、それぞれ`GOOS=js GOARCH=wasm go build -trimpath -buildvcs=false`で`.wasm`を作ってdigestを比較します。一致した場合だけ合格し、`node <GOROOT>/lib/wasm/wasm_exec_node.js <candidate.wasm>`で実行します。`binaryDigest`はwasm binaryのdigest、`reproducibility`は`path-independent-twice`です。
-- WASI候補はsourceを2つの別directoryへcopyし、それぞれ`GOOS=wasip1 GOARCH=wasm go build -trimpath -buildvcs=false`で`.wasm`を作ってdigestを比較します。一致した場合だけ合格し、`node --no-warnings <embedded wasi_node.js> <candidate.wasm>`で実行します。`binaryDigest`はwasm binaryのdigest、`reproducibility`は`path-independent-twice`です。
+- WASI候補はsourceを2つの別directoryへcopyし、それぞれ`GOOS=wasip1 GOARCH=wasm go build -trimpath -buildvcs=false`で`.wasm`を作ってdigestを比較します。一致した場合だけ合格し、`node --no-warnings <embedded wasi_node.js> <candidate.wasm>`で実行します。`binaryDigest`はwasm binaryのdigest、`reproducibility`は`path-independent-twice`です。runnerはstdoutのflush前に終了して出力を切り捨てないよう、`process.exit`ではなく`exitCode`を使います。
 - receiptの`runtime`へ、言語、起動方法、処理系のversion、利用可否を記録します。Javaは`javac`と`java`、WASMは`node`と`wasm_exec_node.js`、WASIは`node`の`node:wasi`が必要です。
 - 処理系が見つからない場合は`runtime unavailable`として拒否し、PASSや空の結果へ潰しません。
 - source拡張子が`language`と一致しない候補、未知の`language`を拒否します。
