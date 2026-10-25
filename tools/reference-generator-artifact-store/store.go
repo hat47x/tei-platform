@@ -62,6 +62,17 @@ func digest(content []byte) string {
 	return "sha256:" + hex.EncodeToString(sum[:])
 }
 
+func buildEvidenceDigest(candidate *generatorselection.CandidateReceipt) (string, error) {
+	if candidate == nil || candidate.BuildEvidence == nil {
+		return "", nil
+	}
+	encoded, err := json.Marshal(candidate.BuildEvidence)
+	if err != nil {
+		return "", err
+	}
+	return digest(encoded), nil
+}
+
 func digestHex(value string) (string, error) {
 	if !strings.HasPrefix(value, "sha256:") || len(value) != len("sha256:")+64 {
 		return "", fmt.Errorf("invalid sha256 digest %q", value)
@@ -108,13 +119,11 @@ func Put(ctx context.Context, opts StoreOptions) (Receipt, error) {
 	receipt.Language = candidate.Language
 	receipt.SourceDigest = candidate.SourceDigest
 	receipt.BinaryDigest = candidate.BinaryDigest
-	if candidate.BuildEvidence != nil {
-		encodedEvidence, err := json.Marshal(candidate.BuildEvidence)
-		if err != nil {
-			return receipt, err
-		}
-		receipt.BuildEvidenceDigest = digest(encodedEvidence)
+	evidenceDigest, err := buildEvidenceDigest(candidate)
+	if err != nil {
+		return receipt, err
 	}
+	receipt.BuildEvidenceDigest = evidenceDigest
 	sourceHex, err := digestHex(candidate.SourceDigest)
 	if err != nil {
 		receipt.Reason = err.Error()
@@ -201,6 +210,10 @@ func Put(ctx context.Context, opts StoreOptions) (Receipt, error) {
 		receipt.Reason = err.Error()
 		return receipt, nil
 	}
+	if err := os.WriteFile(filepath.Join(objectPath, "receipt.json"), rawReceipt, 0o644); err != nil {
+		receipt.Reason = err.Error()
+		return receipt, nil
+	}
 	if err := os.WriteFile(filepath.Join(objectPath, "object.json"), append(encodedObject, '\n'), 0o644); err != nil {
 		receipt.Reason = err.Error()
 		return receipt, nil
@@ -231,6 +244,43 @@ func Get(storeDir, sourceDigest string) (Receipt, error) {
 	}
 	if object.SourceDigest != sourceDigest {
 		receipt.Reason = "object metadata source digest does not match the requested digest"
+		return receipt, nil
+	}
+	rawReceipt, err := os.ReadFile(filepath.Join(objectPath, "receipt.json"))
+	if err != nil {
+		receipt.Reason = "stored selection receipt is unreadable: " + err.Error()
+		return receipt, nil
+	}
+	if digest(rawReceipt) != object.ReceiptDigest {
+		receipt.Reason = "stored selection receipt digest does not match"
+		return receipt, nil
+	}
+	var selection generatorselection.Receipt
+	if err := json.Unmarshal(rawReceipt, &selection); err != nil {
+		receipt.Reason = "stored selection receipt is invalid: " + err.Error()
+		return receipt, nil
+	}
+	var selected *generatorselection.CandidateReceipt
+	for index := range selection.Candidates {
+		if selection.Candidates[index].ID == object.CandidateID {
+			selected = &selection.Candidates[index]
+			break
+		}
+	}
+	if selected == nil {
+		receipt.Reason = "stored selection receipt does not contain the candidate"
+		return receipt, nil
+	}
+	if selected.SourceDigest != object.SourceDigest || selected.BinaryDigest != object.BinaryDigest {
+		receipt.Reason = "stored selection receipt digests do not match the object"
+		return receipt, nil
+	}
+	evidenceDigest, err := buildEvidenceDigest(selected)
+	if err != nil {
+		return receipt, err
+	}
+	if evidenceDigest != object.BuildEvidenceDigest {
+		receipt.Reason = "stored build evidence digest does not match the selection receipt"
 		return receipt, nil
 	}
 	source, err := os.ReadFile(filepath.Join(objectPath, "source"))
