@@ -44,6 +44,7 @@ def write_run_summary(result, folder):
         "expectedFailures": [{"test": test.id(), "traceback": trace} for test, trace in result.expectedFailures],
         "unexpectedSuccesses": [test.id() for test in result.unexpectedSuccesses],
     }, ensure_ascii=False, indent=2), encoding="utf-8")
+    return status
 
 
 class LiveDriverTest(unittest.TestCase):
@@ -60,12 +61,24 @@ class LiveDriverTest(unittest.TestCase):
             try:
                 capture = {"test": self.id(), "context": context}
                 for name, read in (("snapshot", lambda: self.client.snapshot(includeTableRows=True)),
+                                   ("windows", self.client.windows),
                                    ("trace", self.client.trace)):
                     try:
                         capture[name] = read()
                     except Exception as error:
                         capture[name + "Error"] = f"{type(error).__name__}: {error}"
-                path = self.artifacts / f"{self._testMethodName}-failure-{time.time_ns()}.json"
+                stem = f"{self._testMethodName}-failure-{time.time_ns()}"
+                screenshot_path = self.artifacts / (stem + ".png")
+                try:
+                    picture = self.client.screenshot(path=screenshot_path)
+                    capture["screenshot"] = {
+                        "file": screenshot_path.name,
+                        "width": picture["width"],
+                        "height": picture["height"],
+                    }
+                except Exception as error:
+                    capture["screenshotError"] = f"{type(error).__name__}: {error}"
+                path = self.artifacts / (stem + ".json")
                 path.write_text(json.dumps(capture, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
             except Exception as error:
                 print(f"Failure diagnostic unavailable: {type(error).__name__}", file=sys.stderr)
@@ -960,6 +973,6 @@ class LiveDriverTest(unittest.TestCase):
 if __name__ == "__main__":
     result = unittest.main(verbosity=2, exit=False).result
     folder = getattr(LiveDriverTest, "artifacts", None) or new_run_folder()
-    write_run_summary(result, folder)
+    status = write_run_summary(result, folder)
     print("Driver run artifacts:", folder)
-    sys.exit(not result.wasSuccessful())
+    sys.exit(status != "passed")

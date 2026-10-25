@@ -207,7 +207,7 @@ python xtea_control.py --endpoint build\editor-endpoint.json `
   scenario scenarios\editor-rename-function-id.json
 ```
 
-`editor-open-table-from-list.json`はテーブル一覧のダブルクリックで編集画面を開く読取り専用の確認です。残りは複製したモデルのシステム名・部門テーブル名を変更し、部門テーブルを削除し、機能`TEST_FUNCTION`・テーブル`TEST_TABLE`を追加し、または機能IDを変更して保存します。原本や共有モデルには実行しないでください。
+`editor-open-table-from-list.json`はテーブル一覧のダブルクリックで編集画面を開く読取り専用の確認です。残りは複製したモデルのシステム名・部門テーブル名を変更し、部門テーブルを削除し、機能`TEST_FUNCTION`・テーブル`TEST_TABLE`を追加し、機能IDを変更して保存します。原本や共有モデルには実行しないでください。
 
 Driver:
 
@@ -298,9 +298,9 @@ Script UIの追加試験は、合成XF100の検索条件からXF000のチェッ�
 
 `invoke`は非同期の受付を返します。無効な部品は`COMPONENT_NOT_EDITABLE`で拒否し、受け付けた呼出しはトレースの`invoke.start`・`invoke.complete`・`invoke.error`で経過を確認できます。`invoke.complete`はイベント処理から戻ったことを表し、別スレッドの業務処理やDB更新の完了を示しません。モーダル画面を開くイベントは、その画面を閉じるまで完了しません。DBや出力結果は従来どおり別途照合します。
 
-同じ試験名を反復する場合も、ログ・DB観測・生成物は試験1回ごとの`case-*`フォルダーへ分けます。失敗時の画面（表の値を含む）と操作トレースは、次の入力型の試験や後片付けより前に`*-failure-*.json`へ保存します。
+同じ試験名を反復する場合も、ログ・DB観測・生成物は試験1回ごとの`case-*`フォルダーへ分けます。失敗時の画面構造（表の値を含む）・表示ウィンドウ一覧・操作トレースは、次の入力型の試験や後片付けより前に`*-failure-*.json`へ保存し、表示中の画面を`*-failure-*.png`にも保存します。PNGの取得が失敗した場合は`*-failure-*.json`に`screenshotError`を記録し、元の試験失敗を維持します。画像には参照モデルの内容が写り得るため、`artifacts/`内に留め、公開範囲は#941に従ってください。
 
-`summary.json`は実行件数、失敗・エラーの対象と内容、skipの理由を記録します。`status`は成功した実行で`passed`、失敗・エラー・想定外の成功があれば`failed`、skipや想定どおりの失敗を含むか0件なら`skipped`です。終了コードと合わせて確認し、記録がない実行を成功とは扱わないでください。環境未指定のskipは終了コード0でも`passed`になりません。操作記録のJSONが存在するだけでは成功を意味しません。
+`summary.json`は実行件数、失敗・エラーの対象と内容、skipの理由を記録します。`status`は成功した実行で`passed`、失敗・エラー・想定外の成功があれば`failed`、skipや想定どおりの失敗を含むか0件なら`skipped`です。終了コードと合わせて確認し、記録がない実行を成功とは扱わないでください。Driver個別試験の終了コードは`passed`の場合だけ0とし、環境未指定のskip・0件・既知の失敗・失敗・エラーは非0とします。`verify_driver.py`もここで停止します。操作記録のJSONが存在するだけでは成功を意味しません。
 
 X-TEAの表は1物理セルに複数の論理列を持つ場合があります。`table-read`の論理列名と、`table-edit`の物理列番号を混同しないでください。独自の行オブジェクトを`table-set`で置き換える操作は拒否します。XF110 / XF310では通常、物理列`0`を編集し、開いた部品をスナップショットから選びます。長文型は表示欄へ書き込まず、編集ボタンから専用ダイアログを開きます。
 
@@ -394,6 +394,34 @@ XF000のコンソールでは、無効化された「Run right now」を制御�
 main `0a15a63e8`を取り込み、Script UIの呼出元への反映とリスト項目の観測を追加した版で、`verify_driver.py`からビルド・棚卸し2件・結果記録2件・Swing統合12件・Driver実動38件が成功しました。別途モデルCLI 7件も成功し、合計61件です。実行条件はXvfb・JDK 11・2 CPU・起動と出力の待ち上限120秒です。38件は別々のcaseに記録し、skip・失敗・エラーなし、実行ソースとビルド済みAgentの指紋一致を確認しました。
 
 追加の5件は検索条件からのチェックリスト・入力・オプションの呼出しと戻り、複数項目フォームです。取消後の入力APIには編集値が残ることを確認し、呼出元ではダイアログの戻り値を判定してから反映することを検証します。調整中の表示名セレクタと取消値の期待違いによる失敗記録も保持し、最終版の成功記録とは区別します。実参照モデル・Windowsでの受入確認ではありません。
+
+### #2154：断続的なDriver失敗の切分け（未受入）
+
+`tests/test_live_driver.py` は指定した `unittest` メソッドだけを実行できます。確認ダイアログ、複写、ALPHA入力の断続的失敗を再調査する際は、元の配布Driver・使い捨て合成XEAF/H2を使用し、**失敗した試行の結果を保持したまま停止**します。以下はWindowsの専用デスクトップで実行する担当向けの手順例です。現時点でこの反復手順のWindows実行結果はありません。
+
+```powershell
+$env:XTEA_RUNTIME_HOME = "C:\path\to\X-TEA\Driver"
+$env:JAVA_TOOL_OPTIONS = "-XX:ActiveProcessorCount=2"
+python tests\test_driver_result.py   # ランタイムを伴わない分類テストを先に確認
+if ($LASTEXITCODE -ne 0) { throw "result tests failed" }
+foreach ($case in @(
+  "test_200_copy",
+  "test_script_input_types_used_by_reference_models",
+  "test_script_swing_negative_and_cancel"
+)) {
+  for ($trial = 1; $trial -le 10; $trial++) {
+    Write-Host "case=$case trial=$trial"
+    python tests\test_live_driver.py "LiveDriverTest.$case"
+    if ($LASTEXITCODE -ne 0) {
+      throw "Driver regression failed: case=$case trial=$trial; preserve artifacts/live-driver/run-*/"
+    }
+  }
+}
+```
+
+Linuxで同じ固定条件の隔離画面を使う場合は、各 `python tests/test_live_driver.py ...` 呼出しを `xvfb-run -a python3 ...` に置き換えます。事前に `sh build.sh` を実行し、Java 11と対象JARのSHA-256を確認してください。試験ごとに `artifacts/live-driver/run-*/` が新規作成され、`runtime.json`（使用ソース・JAR・Java・DISPLAY）、`summary.json`、`case-*/`（操作観測・ログ・失敗直後のsnapshot/trace）が保存されます。初回失敗後は関連ファイルを採取し、同じ実行を成功結果で上書きせず、画面上の対象部品・イベント完了・DB確定を分けて比較します。
+
+この反復は制御面の再現性を調べるもので、原典の業務意味や本番動作の受入ではありません。GitHub Actionsの合成Python/Swing検証と、JDK11/Xvfbの配布Driver実動38件は独立した試験として記録します。Windows担当は実機の再現性・表示/フォーカス差を別途確認してください。
 
 ### 初期インターフェースの確認
 
