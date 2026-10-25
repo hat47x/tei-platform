@@ -1,7 +1,7 @@
 name: TEI X-TEA Driver control Python checks
 
-# Check only synthetic/stdlib Python paths. No X-TEA sources, runtime jars,
-# reference model, GUI, Java build or Windows machine is required.
+# Check synthetic Python and Swing-agent paths without external X-TEA JARs or
+# reference models. The synthetic Swing check runs on Xvfb, not Windows/Driver.
 on:
   pull_request:
     branches: [main]
@@ -26,7 +26,7 @@ concurrency:
 jobs:
   synthetic-python:
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 20
     env:
       CANDIDATE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
       PYTHONDONTWRITEBYTECODE: '1'
@@ -53,6 +53,45 @@ jobs:
           cd tools/reference-xtea-control
           env -u XTEA_RUNTIME_HOME python3 tests/test_inventory.py
           env -u XTEA_RUNTIME_HOME python3 tests/test_driver_result.py
+
+      - name: Install pinned Java 11
+        uses: actions/setup-java@dded0888837ed1f317902acf8a20df0ad188d165 # v4
+        with:
+          distribution: temurin
+          java-version: '11'
+
+      - name: Build Java 8-compatible agent and synthetic fixture
+        shell: bash
+        run: |
+          set -euo pipefail
+          java -version
+          javac -version
+          cd tools/reference-xtea-control
+          sh build.sh
+          test -s build/xtea-control-agent.jar
+          test -f build/fixture-classes/FakeXteaApp.class
+
+      - name: Run synthetic Swing control over dedicated Xvfb display
+        shell: bash
+        run: |
+          set -euo pipefail
+          command -v xvfb-run
+          cd tools/reference-xtea-control
+          xvfb-run -a python3 - <<'PY'
+          import sys
+          import unittest
+          from pathlib import Path
+
+          sys.path.insert(0, str(Path("tests").resolve()))
+          from test_integration import IntegrationTest
+
+          suite = unittest.defaultTestLoader.loadTestsFromTestCase(IntegrationTest)
+          result = unittest.TextTestRunner(verbosity=2).run(suite)
+          if result.testsRun != 12 or not result.wasSuccessful() or result.skipped or result.expectedFailures:
+              raise SystemExit("Synthetic Swing verification incomplete or failed: "
+                               f"ran={result.testsRun} skipped={len(result.skipped)}")
+          print("synthetic-swing-passed=12")
+          PY
 
       - name: Check repository unchanged
         if: always()
