@@ -171,9 +171,11 @@ python xtea_control.py --endpoint build\modeler-endpoint.json `
   scenario scenarios\modeler-change-field-type.json
 python xtea_control.py --endpoint build\modeler-endpoint.json `
   scenario scenarios\modeler-reorder-field.json
+python xtea_control.py --endpoint build\modeler-endpoint.json `
+  scenario scenarios\modeler-add-table.json
 ```
 
-これらのシナリオは複製したモデルのシステム名、部門テーブル名、部門Cフィールド名を変更し、`TXTEKIYO`フィールドを削除・並べ替えし、新しいフィールド`TXTEST`を追加し、または`CDBUMON`のデータ型を変更して保存します。原本や共有モデルには実行しないでください。
+これらのシナリオは複製したモデルのシステム名、部門テーブル名、部門Cフィールド名を変更し、`TXTEKIYO`フィールドを削除・並べ替えし、新しいフィールド`TXTEST`・テーブル`TEST_TABLE`を追加し、または`CDBUMON`のデータ型を変更して保存します。原本や共有モデルには実行しないでください。
 
 Editor:
 
@@ -319,6 +321,7 @@ python tests\test_external_tomcat.py
 - 実Modelerのフィールド追加として、`AT010`のフィールド一覧を開き、`jMenuItemXeadTreeNodeAdd_actionPerformed`で新規フィールドを作成。論理名`TEST_FIELD`、別名`TXTEST`を設定して保存し、XMLに`TableField Alias="TXTEST"`が追加されたことを確認。`scenarios/modeler-add-field.json`で再現できます。
 - 実Modelerのデータ型変更として、`CDBUMON`のデータ型メニューから`TX010`を選択。キー定義の警告を`OK`で閉じて保存し、`DataTypeID`が`26`から`13`（`TX010`）へ変わることをモデルCLIで確認。`scenarios/modeler-change-field-type.json`で再現できます。
 - 実Modelerのフィールド並べ替えとして、フィールド一覧で`TXTEKIYO`を3行目から1行目へドラッグし、保存。`TXTEKIYO`のSortKeyが`0030`、`NRKANRISYA`が`0040`へ入れ替わったことをモデルCLIで確認。`scenarios/modeler-reorder-field.json`で再現できます。
+- 実Modelerのテーブル追加として、DB構成から`jMenuItemXeadTreeNodeAdd_actionPerformed`で新規テーブルを作成し、名前`TEST_TABLE`を設定して保存。IDはModelerが自動採番し、XMLに`Table Name="TEST_TABLE"`が追加されたことを確認。`scenarios/modeler-add-table.json`で再現できます。
 - 実Editorの保存経路として、`MfgOrder.xead`の複製でシステム名を変更し、`保存`メニュー、バックアップ確認の`はい`を実行。保存後のXMLに新しいシステム名が入り、`backup/`に更新前ファイルが作られることを確認。`scenarios/editor-save-copy.json`で再現できます。
 - 実Editorの要素編集として、`tree-read`の`indices`で部門テーブルを選択し、Enterでテーブル編集画面を開き、テーブル名を`部門TEST`へ変更して保存。XMLの`Table ID="61"`の`Name`が変わったことを確認。`scenarios/editor-edit-table-name.json`で再現できます。
 - 実Editorのテーブル一覧で`61 部門`の行をダブルクリックし、`61`と`部門`を表示する編集画面が開くことを確認。`scenarios/editor-open-table-from-list.json`で再現できます。
