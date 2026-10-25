@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestDeployReplaceInstallsAndKeepsPreviousArtifact(t *testing.T) {
@@ -311,5 +312,84 @@ func TestDeployRollingSwitchesSlotsAndRollsBack(t *testing.T) {
 	}
 	if rolledBack.ArtifactDigest != first.ArtifactDigest {
 		t.Fatalf("rollback artifact digest=%s want %s", rolledBack.ArtifactDigest, first.ArtifactDigest)
+	}
+}
+
+func TestDeployPreservesExistingCurrentHistory(t *testing.T) {
+	_, _, _, candidates := selectionPaths(t)
+	base := filepath.Join(repoRoot(t), "tools/reference-target-profile/testdata/desktop-replace.json")
+	for _, mode := range []string{UpdateReplace, UpdateInPlace} {
+		for _, state := range []string{"valid", "corrupt"} {
+			t.Run(mode+"/"+state, func(t *testing.T) {
+				root := t.TempDir()
+				current := []byte("current artifact")
+				currentPath := filepath.Join(root, "artifact")
+				if err := os.WriteFile(currentPath, current, 0o755); err != nil {
+					t.Fatal(err)
+				}
+				saved := "current artifact"
+				if state == "corrupt" {
+					saved = "damaged history"
+				}
+				history := filepath.Join(root, "history", strings.TrimPrefix(digestBytes(current), "sha256:"))
+				if err := os.MkdirAll(filepath.Dir(history), 0o755); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(history, []byte(saved), 0o600); err != nil {
+					t.Fatal(err)
+				}
+				oldTime := time.Unix(100, 0)
+				if err := os.Chtimes(history, oldTime, oldTime); err != nil {
+					t.Fatal(err)
+				}
+				profile, err := Load(base)
+				if err != nil {
+					t.Fatal(err)
+				}
+				profile.Update = mode
+				raw, err := json.Marshal(profile)
+				if err != nil {
+					t.Fatal(err)
+				}
+				profilePath := filepath.Join(t.TempDir(), "profile.json")
+				if err := os.WriteFile(profilePath, raw, 0o600); err != nil {
+					t.Fatal(err)
+				}
+				receipt, err := Deploy(context.Background(), DeployOptions{ProfilePath: profilePath, CandidatesDir: candidates, RootDir: root})
+				if err != nil {
+					t.Fatal(err)
+				}
+				if state == "valid" {
+					if !receipt.Passed || !receipt.Installed {
+						t.Fatalf("valid retained history blocked deploy: %+v", receipt)
+					}
+				} else {
+					if receipt.Passed || receipt.Installed || !strings.Contains(receipt.Reason, "history artifact") {
+						t.Fatalf("corrupt history was overwritten: %+v", receipt)
+					}
+					now, err := os.ReadFile(currentPath)
+					if err != nil || string(now) != string(current) {
+						t.Fatalf("rejected deploy changed current: %q %v", now, err)
+					}
+				}
+				now, err := os.ReadFile(history)
+				if err != nil || string(now) != saved {
+					t.Fatalf("retained history overwritten: %q %v", now, err)
+				}
+				info, err := os.Stat(history)
+				if err != nil || !info.ModTime().Equal(oldTime) {
+					t.Fatalf("history retention time changed: %v %v", info, err)
+				}
+				entries, err := os.ReadDir(root)
+				if err != nil {
+					t.Fatal(err)
+				}
+				for _, entry := range entries {
+					if entry.Name() == ".update-lock" || strings.HasPrefix(entry.Name(), ".staging-") {
+						t.Fatalf("deploy left temporary state: %s", entry.Name())
+					}
+				}
+			})
+		}
 	}
 }

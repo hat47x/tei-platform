@@ -158,8 +158,16 @@ func Deploy(ctx context.Context, opts DeployOptions) (DeployReceipt, error) {
 			return receipt, nil
 		}
 		historyPath := filepath.Join(historyDir, strings.TrimPrefix(digestBytes(previous), "sha256:"))
-		if err := os.WriteFile(historyPath, previous, 0o644); err != nil {
-			receipt.Reason = err.Error()
+		if saved, err := os.ReadFile(historyPath); os.IsNotExist(err) {
+			if err := os.WriteFile(historyPath, previous, 0o644); err != nil {
+				receipt.Reason = err.Error()
+				return receipt, nil
+			}
+		} else if err != nil {
+			receipt.Reason = "current history artifact is unreadable: " + err.Error()
+			return receipt, nil
+		} else if digestBytes(saved) != receipt.PreviousDigest {
+			receipt.Reason = "current history artifact digest does not match the current artifact"
 			return receipt, nil
 		}
 		receipt.HistoryPath = historyPath
