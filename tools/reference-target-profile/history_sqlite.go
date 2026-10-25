@@ -75,7 +75,7 @@ func pruneSQLiteHistory(root string, keepLast int, dryRun bool) (HistoryPruneRec
 		return receipt, nil
 	}
 	receipt.Kept = entries[:keepLast]
-	receipt.Deleted = entries[keepLast:]
+	toDelete := entries[keepLast:]
 
 	db, err := openSQLite(root)
 	if err != nil {
@@ -95,19 +95,18 @@ func pruneSQLiteHistory(root string, keepLast int, dryRun bool) (HistoryPruneRec
 	if err != nil {
 		return receipt, err
 	}
-	for _, entry := range receipt.Deleted {
+	for _, entry := range toDelete {
 		if entry.Digest == current || entry.Digest == previous {
 			receipt.Reason = "refusing to delete the current or previous sqlite artifact"
 			return receipt, nil
 		}
 	}
 	if dryRun {
-		receipt.WouldDelete = receipt.Deleted
-		receipt.Deleted = nil
+		receipt.WouldDelete = toDelete
 		receipt.Passed = true
 		return receipt, nil
 	}
-	for _, entry := range receipt.Deleted {
+	for _, entry := range toDelete {
 		if _, err := tx.Exec(`DELETE FROM artifacts WHERE digest = ?`, entry.Digest); err != nil {
 			receipt.Reason = err.Error()
 			return receipt, nil
@@ -117,6 +116,7 @@ func pruneSQLiteHistory(root string, keepLast int, dryRun bool) (HistoryPruneRec
 		receipt.Reason = err.Error()
 		return receipt, nil
 	}
+	receipt.Deleted = toDelete
 	auditPath, err := appendHistoryAudit(root, StorageSQLite, keepLast, receipt.Deleted)
 	if err != nil {
 		receipt.Reason = "sqlite history pruned but audit append failed: " + err.Error()
