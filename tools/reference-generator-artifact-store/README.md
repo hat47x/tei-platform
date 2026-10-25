@@ -57,7 +57,7 @@ go run ./tools/reference-generator-artifact-store/cmd/tei-generator-artifact-sto
 2. 候補sourceを読み、`sourceDigest`を再計算する。
 3. `go build -trimpath -buildvcs=false`でbinaryを再buildする。
 4. 再buildのbinary digestがreceiptの`binaryDigest`と一致するか確認する。
-5. objectが既に存在しdigestが一致すれば再利用する。一致しなければ上書きせず、新しい保存として扱う。
+5. objectが既に存在しdigestが一致し、かつobject metadataの`receiptDigest`・`buildEvidenceDigest`・candidate/source/binaryが現在の選抜receiptと一致すれば再利用する。provenanceが異なる場合は上書きせず拒否する。
 
 source、receipt、実binaryのどれかが一致しなければ`passed=false`にし、現在の証拠として使わない。
 
@@ -133,6 +133,7 @@ ssh-keygen -Y verify -f /tmp/allowed_signers -I signer -n tei-audit \
 - Python/JavaScript候補のsourceを保存・取得できる。artifactは空で、binary digestを持たない。
 - source-only objectも`list`/`prune`で検証でき、空artifactと空binary digestを照合する。
 - 同じobjectの再保存が`reused=true`になる。
+- provenanceの異なる既存objectは再利用せず拒否する。
 - receiptのbinary digestを改変すると`passed=false`。
 - 保存後にartifactを改変すると`passed=false`。
 - 未知の候補を拒否する。
