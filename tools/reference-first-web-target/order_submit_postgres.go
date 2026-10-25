@@ -29,6 +29,11 @@ type orderSubmitStore interface {
 
 var errOrderNotSubmittable = errors.New("ORDER_NOT_SUBMITTABLE")
 
+// A failed Commit acknowledgement does not prove that the UPDATE rolled back.
+// This public sentinel deliberately excludes database connection details.
+// The reference Store has no OperationID/receipt-based replay facility.
+var errOrderSubmitCommitUnconfirmed = errors.New("action completion unconfirmed; inspect authoritative state before retrying")
+
 // postgresOrderSubmitStore writes public.orders (the physical table declared by
 // databases/sales-core/persistence/order.tei) over one pool and reads over a
 // second pool, so the read does not reuse the writer's session.
@@ -77,7 +82,9 @@ func (s *postgresOrderSubmitStore) Submit(ctx context.Context, orderID int64) er
 		return errOrderNotSubmittable
 	}
 	if err := transaction.Commit(); err != nil {
-		return fmt.Errorf("commit order submit: %w", err)
+		// The database may have committed despite the failed acknowledgement.
+		// Do not return a low-level driver error through the HTTP-facing Adapter.
+		return errOrderSubmitCommitUnconfirmed
 	}
 	return nil
 }

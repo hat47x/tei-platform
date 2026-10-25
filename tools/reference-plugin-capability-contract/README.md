@@ -105,6 +105,14 @@ Contract側の`shapeIssuer`は、request / result schemaを誰が発行したも
 ただし、Referenceが確認したのはissuer identityの結び付けまでです。署名検証や組織横断のpublisher trust policyは別のEvidenceとして扱います。
 
 
+## 原典本文を複製しないInvocation Receipt
+
+generic InvocationはContractとProviderを解決し、要求・応答Shapeの照合を行います。呼出し結果には証拠の指紋と入出力のdigestがあります。しかし、Source Adapterの返却値では、これらの一部が参照できませんでした。
+
+Referenceでは`InvocationExecution.Receipt()`を追加しました。返却する`InvocationReceipt`には、選択したContractとProvider、要求・応答Shape、利用したAuthority Evidence、Trust Qualification、Payload Codec、入出力digestを残します。要求・応答の本文は含めません。Source Adapterはこのreceiptを`invocationReceipt`として返し、原典本文のdigestと分類結果を従来どおり別に保持します。
+
+receiptは呼出し時の観測情報です。digestは署名ではなく、Authority Evidenceの指紋も発行元の認証を証明しません。digestから原典の同一性が分かる場合もあるため、receiptも非公開の原典と同じ公開範囲で扱う必要があります。今回の変更でCanonical AcceptanceやRuntime Authorityが成立するわけではありません。AIやStudioが利用した実装と検証条件へ戻れるようにするためのReferenceであり、receiptを永続保存する機構は追加していません。
+
 ## 副作用を持つCapabilityとの境界
 
 generic Invocationではrequest schemaを実装呼出し前に検査できますが、result schemaは呼出し後にしか検査できません。書込みCapabilityへそのまま使うと、resultが不正でも外部副作用だけが残る可能性があります。

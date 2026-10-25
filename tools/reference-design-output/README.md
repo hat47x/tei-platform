@@ -23,6 +23,10 @@ go run ./tools/reference-design-output/cmd/tei-design-output \
 
 `index.html`はナビゲーションであり、`manifest.json`のartifactには含めません。外部script・stylesheet・font・imageを使わず、成果物を編集する機能も持ちません。
 
+一覧では、受理済みWorldの宣言から導出した文書・DDLと、任意の未選抜コード候補・参照用契約を分けて表示します。bundle全体を承認済みとは表示しません。各成果物の未解決事項をリンクのそばに示し、digest・byte数・構造の版は「版とファイル情報」で確認できます。Businessなど出力できない項目も別に残します。未知の種別は「その他」に表示し、文書や候補と推定しません。
+
+コード候補を含む場合は、`generated/candidate.json`で生成器ID・宣言版・strategy・各digest、`generated/contract.json`で入力契約を確認する案内を表示します。宣言版から現在の生成器資格を判断しません。表示は既存manifestの種別情報を使い、新しい受理状態や来歴台帳を追加しません。
+
 manifestは各成果物の`digest`（描画後byte列のSHA-256）と`structureRevision`（その文書が導出した構造の版）を持ちます。`sourceRevision`はWorkspaceの管理対象Source全体のrevisionで、一つのbundleが一つの受理済み状態から作られたことを示します。
 
 ## 文書とコード候補を同じWorkspaceから導出する
@@ -57,7 +61,7 @@ go run ./tools/reference-design-output/cmd/tei-design-output \
 
 変更・欠落・余分なfile、bundle内のsymlinkや通常file以外の項目を拒否します。保存側のdigestを書き直して自己整合させても、現在の入力からの再導出と一致しなければ拒否します。通常のfileは期待サイズと照合し、期待byte数＋1を上限として読みます。入力Sourceの空白だけが変わった場合も、`sourceRevision`が変われば現在版との一致にはなりません。単なる不一致を、改ざんや業務意味の変更と断定しません。
 
-この確認は、現在の導出処理と呼出元が選んだ入力に対するbyte一致です。過去版を検証するには対応する入力・導出処理を別途保持する必要があります。同じ生成器の誤り、文書と実行の意味的一致、署名・発行主体・受理元・registryの現在性・実行権限は確認しません。同時書込みを排除するsnapshot、filesystem全体のsandbox、実DB・SHO・実Targetの受入も保証しません。自分で編集した文書を保存・レビューする経路とは別の照合であり、編集内容をSourceへ戻しません。
+この確認は、現在の導出処理と呼出元が選んだ入力に対するbyte一致です。過去版を検証するには対応する入力・導出処理を別途保持する必要があります。ナビゲーションの表示だけが変わった場合も、`index.html`のbyte列が違えば不一致になります。同じ生成器の誤り、文書と実行の意味的一致、署名・発行主体・受理元・registryの現在性・実行権限は確認しません。同時書込みを排除するsnapshot、filesystem全体のsandbox、実DB・SHO・実Targetの受入も保証しません。自分で編集した文書を保存・レビューする経路とは別の照合であり、編集内容をSourceへ戻しません。
 
 ## 守っている境界
 
