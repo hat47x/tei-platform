@@ -1,0 +1,77 @@
+name: TEI annotation read-only UI Node qualification
+
+# A focused, actual Node run for the three independent reference display lanes.
+# This is NOT a Browser/Studio/Windows/Source-Owner acceptance gate.
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, reopened, synchronize, ready_for_review]
+    paths:
+      - 'plan/design/mockups/**'
+      - '.github/workflows/tei-annotation-ui-node-ci.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'plan/design/mockups/**'
+      - '.github/workflows/tei-annotation-ui-node-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tei-annotation-node-${{ github.event_name }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  annotation-node:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      TARGET_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - name: Checkout exact PR candidate head or main push
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+
+      - name: Pin Node runtime
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24.21.0
+          check-latest: false
+
+      - name: Verify exact head and clean working tree
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$TARGET_SHA"
+          test -z "$(git status --porcelain=v1 --untracked-files=all)"
+          node --version
+          printf 'annotation-node-exact-sha=%s\n' "$TARGET_SHA"
+          for file in \
+            plan/design/mockups/annotation-evidence-list-projection.mjs \
+            plan/design/mockups/annotation-evidence-list-projection.test.mjs \
+            plan/design/mockups/annotation-decision-index-projection.mjs \
+            plan/design/mockups/annotation-decision-index-projection.test.mjs \
+            plan/design/mockups/annotation-evidence-list-sketch.html; do
+            test -f "$file"
+            printf 'blob=%s file=%s\n' "$(git hash-object "$file")" "$file"
+          done
+
+      - name: Run native Node test runner on both projections and synthetic DOM
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test \
+            plan/design/mockups/annotation-evidence-list-projection.test.mjs \
+            plan/design/mockups/annotation-decision-index-projection.test.mjs
+
+      - name: Verify no modifications from the tests
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$TARGET_SHA"
+          test -z "$(git status --porcelain=v1 --untracked-files=all)"
