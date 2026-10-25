@@ -378,3 +378,76 @@ MMIのCLI・MCP・表参照を、TEIモデル改訂の管理や業務意味の�
 | X-TEA継承 | 複合キー診断候補を実repoで確認する範囲と、業務順序を推定せずOwnerへ残す範囲はどこか |
 
 前回受付済みのGo多言語担当には重ねて送らず、前回未送信の20担当と今回加えた認知基盤の2担当、計22チャットで追加質問の受付を確認した。「設計への取り込み検討」は別担当の同時配信と1件重なったため、それ以降の配信範囲を共有して追加送信を止めた。受付・回答本文の取得・Issue保存・提案の採用は別々に記録する。回答が参照カードだけの場合は、そのカードを新しい結論として合成しない。今回もADR採用状態と既存Issueの完了判定は変更しない。
+
+## 10月26日第2追補：回答の検討記録から具体的な再開ケースへ
+
+mainは前回と同じ`b36ffdfd609bbc73bb1be93867576280c913f9d9`だった。今回新たに読めたのは、前回の配信後に各担当が既存Issueへ保存した9件の検討記録であり、実装の進展とは区別する。22チャットの直近2ターンを確認した範囲では、「TEI採用検討整理」で回答本文を取得できた。他は参照カードのみで、結論を読み取ったとは扱わない。Go多言語担当の直近回答も参照カードだったため、既に取得済みの本文と現行Issueを出発点とした。
+
+### 新しく得られた具体化
+
+| 既存の記録 | 今回取り込む内容 | まだ成立を確認していないこと |
+| --- | --- | --- |
+| [#982 文書改善Aと意味接続A+B](https://github.com/hat47x/tei-platform/issues/982#issuecomment-6400666089) | 一資料・一利用者に説明だけの改訂と業務規則の改訂を加え、曖昧さの発見、再確認作業、誤った再確認不要、B接続の追加作業を比較する案 | 利用者の負担削減。Aの後に同じ資料を読む学習効果も分ける必要がある |
+| [#982 参照r1と対象r2](https://github.com/hat47x/tei-platform/issues/982#issuecomment-6400704893) | リンク解決、指定版との一致、改訂後の説明の妥当性を分けて表示する案 | r1のbyte一致からr2の説明が妥当とはいえない。別branchのr2を固定納品r1へ自動適用しない |
+| [#1803 SHO引用の保存後再開](https://github.com/hat47x/tei-platform/issues/1803#issuecomment-6400766500) | bundle移動時の明示再結合、同path差替え時の不一致、r2への明示切替を別操作にする案 | artifactのbyteだけで引用の由来は決まらない。参照記録のschema採用・SHO実機往復は未確認 |
+| [#1124 Studio再開](https://github.com/hat47x/tei-platform/issues/1124#issuecomment-6400665273) | Hostの一時Workspace番号、scopeを含む対象、Candidate基準版を別に再確認する案 | namespace絞込後の一行表示は対象の一意性を保証しない。実Desktopでの再開成功は未実証 |
+| [#1125 Validation適用範囲](https://github.com/hat47x/tei-platform/issues/1125#issuecomment-6400716990) | BP-05の集合差を、必須の漏れ・対象外・別経路で満たす・未決として人が調べる案 | 集合差だけでは欠陥・適用漏れ・受理を決められない。別経路の宣言だけで実適用を保証しない |
+| [#1649 Diagnostic表示引数](https://github.com/hat47x/tei-platform/issues/1649#issuecomment-6400679963) | 内部で型付き表示引数を保持し、Studio専用投影で転送する案。既存CLI JSONとMessage順序は維持する | `json:"-"`でCLI出力から除くだけではWails越しに届かない。MessageRef所有者・翻訳承認方針と表示実装は未決 |
+| [#988 Method／Skillの作業参照](https://github.com/hat47x/tei-platform/issues/988#issuecomment-6400655966) | SEIのMethod候補、作業Direction、Harness Skill、Generatorの意味契約を区別し、作業時のexact参照を残す案 | Method選択やHarness交換は契約・Owner受理・実行権限を変更しない。共通選択engineの採用ではない |
+| [#1805 原因と参照影響](https://github.com/hat47x/tei-platform/issues/1805#issuecomment-6400750117) | 曖昧Keyの原因1件と二つのRelationshipへの影響を区別し、既存診断Consumerとの互換性を調べる案 | SortKeyが一意・両側の型が一致・診断0件でも列対応の意味は未受理。候補パッチの実repo適用は未確認 |
+| [#2196 収集と順位の評価](https://github.com/hat47x/tei-platform/issues/2196#issuecomment-6400734721) | 変更意図ごとに必要根拠Rを独立に決め、候補集合Cへの保持を確かめてから同じCで順位を比較する案 | 変更意図を入力しない現行Rerankから意図別の改善を主張できない。G1/G2という呼称は評価手順案であり製品の新Gateではない |
+
+### 接続する作業を小さく保つ
+
+最初の作業案は、引用した成果物と人の説明を保存して再開すること。所在だけの移動なら由来とbyteを確認して参照を再結合し、説明対象をr2へ変えるときは利用者が別操作として選ぶ。artifact digestが同じでも元manifest・sourceRevisionが異なる二つのbundleを、自動的に同じ引用先とはしない。SHO側の注記保存を、TEI Source変更やOwner受理に読み替えない。
+
+意味接続Bは追跡できるData／Function／Businessの範囲を明示して追加する。Business対応がunsupportedの範囲は影響不明とし、再確認不要とは表示しない。一方で、B全完成を文書改善AやMMI独立PoCの開始条件にもしない。MMIのCLI・MCPの能力を利用する箇所はexact版の実コード・実在コマンドへ戻し、閉じた旧Draftの試験と混ぜない。今回これらの能力を追加で実行確認したわけではない。
+
+Studioの一行表示、Validationの集合差、認知基盤の候補集合は、それぞれ異なる対象範囲の観測である。表示用の投影で曖昧性を失わず、探索で見つからないことを不存在の証拠にしない。既存のscope・対象版・根拠を保ち、各機能に共通の新しい承認状態は作らない。この接続方針は[#982の第2追補](https://github.com/hat47x/tei-platform/issues/982#issuecomment-6404312054)へ記録した。
+
+### 修正済み事項と今回の未実行ケース
+
+#2291による固定生成器の未対応丸め拒否は修正済みとして維持する。一方、今回静的に再確認した`selection.go`（blob `61c8f3b0d25c1a462e346c372c38e72f3184efa5`）の`validateFixture`はschema・契約ID／版・case ID等を確認する処理であり、期待値そのものの意味を計算して検査する処理ではない。Generator provenanceを持つ候補の再描画と、各候補の結果を`tc.Want`と比較する処理も別である。手書き候補と誤った期待値の組合せは、固定生成入口の修正を取り消す主張にはせず、独立期待値の責務を確かめる未実行ケースとしてテスト担当へ渡した。
+
+Storeでは保存source破損とreceipt欠落が同時に起きる複合ケースを問い、正常な補完までGetの欠落拒否で止めない検査順序を検討する。新しいStore layoutや承認系を先行させない。これも実動で再現した障害の報告ではない。
+
+### 今回の追加質問
+
+| チャット | 前回から一段深めるケース |
+| --- | --- |
+| TEI業務モデル設計方針 | 親側不成立時の完了通知と再操作 |
+| TEI文書管理方針 | source破損とreceipt欠落が重なる補完 |
+| TEI 生成AI利用検討 | 現行MMIの実コマンドと旧Draftの区別 |
+| TEIプラグイン層設計 | 欠落と明示nullの原因保持 |
+| TEI多言語設計 | 表示引数欠落時の原文と翻訳 |
+| TEIテスト設計 | 手書き候補と独立期待値の責務 |
+| TEI高速ビルド方針 | 異なるbuildEvidenceでの正当な再build |
+| TEIプラグイン設計比較 | indexのみ変わるbundleの説明 |
+| TEIプラグイン管理整理 | 中断後に変わるMethod/Skill版 |
+| TEI-EKI接続 | 撤回した仮説と同文の再提案 |
+| TEI Desktop仕様 | 一行表示でも残る曖昧性 |
+| TEI設計への取り込み検討 | 別経路でValidationを満たす根拠 |
+| TEI計画への反映 | 固定納品r1と別branchのr2 |
+| TEI採用検討整理 | A対A+B比較の学習効果 |
+| TEI Research Brief | Business未対応のまま試せる範囲 |
+| TEI要件トリアージ | 技術的未対応と業務未受理の完了条件 |
+| TEI 生成AI時代のユニケージ再評価 | 同値への復帰と確認だけの撤回 |
+| TEI汎用フレームワーク脱却構想 | 原資料に通貨がない入力 |
+| TEI SHO命名とMMI再定義 | 同digest・別由来の引用候補 |
+| TEI X TEA継承事項調査 | 診断件数と意味未決のConsumer互換性 |
+| TEI認知基盤構成検討 | 収集・順位・意図入力の比較分離 |
+| TEIローカル認知基盤導入案 | 直接一致優先と間接関連探索の違い |
+| TEI Go多言語対応調査 | 型付きnullとAdapterのキー欠落 |
+
+質問の受付・回答本文の取得・Issueへの保存・提案採用は別に管理する。今回の追補で新しい契約・ADRを採用せず、既存Issueを完了にも変更しない。
+
+### 今回の質問後にIssue本文で取得できた回答
+
+- [採用検討の追加比較](https://github.com/hat47x/tei-platform/issues/982#issuecomment-6404318135)は、二度読むだけのA→A対照と、意味接続を加えるA→B比較を分ける案となった。初回判断を先に固定し、必要な再確認箇所の正解をB自身の表示から作らない。一人・二改訂では難易度や順序の影響が残るため、因果効果や製品採用の実証とはしない。
+- [Validationの別経路調査](https://github.com/hat47x/tei-platform/issues/1125#issuecomment-6404320479)では、三規則を評価するscenarioがCommandを呼ばない一方、Gate試験はtest-only adapterから二規則を渡す点が報告された。二つの成功記録を足して、三規則が実受注提出経路で適用されると主張しない。実呼出元と拒否時の後続停止を固定版で追う調査を先に行い、未確認を不存在とは扱わない。BP-05の業務責務はOwner未決のまま。
+- [Studioの一行表示の具体化](https://github.com/hat47x/tei-platform/issues/1124#issuecomment-6404322747)は、既存Go試験がフィルタ後もglobalな曖昧性を保持することを示し、Presenterで同じ情報を落とさない案を提示した。Graph上のqualified Ref解決と、scopeなしのCanonical Inspect／Source位置の確定は別である。前者だけを編集対象や権限の確定へ使わず、一覧閲覧を保ちながら対象依存操作を保留する。実UI試験の成功報告ではない。
+- [Method／Skillの中断再開](https://github.com/hat47x/tei-platform/issues/988#issuecomment-6404330126)は、既存Task Packetの作業Evidenceから凍結した生成Contextを参照し、candidateの既存context/prompt/output digestとMethod Applicationをつなぐ案となった。現行PacketにMethod/Skill専用fieldがあるとはせず、Generatorのid/version/strategyを別概念で上書きしない。旧版で完成したsourceを記録へ回復する場合と、新Method/Skillを使う別試行を区別し、同一source byteから同じ作業来歴を推定しない。
+
+以上4件も担当の静的調査・検討案として取り込む。今回こちらでGo／Node／モデル／実UIの試験を実行したことにはしない。
+
+第2追補の追加質問は23チャットで受付を確認した。前回の22件とは別の配信で、Go担当も型付きAPIと入力adapterの責務をさらに分ける質問で対象に含めた。受付を新しい回答や合意の成立として数えない。
