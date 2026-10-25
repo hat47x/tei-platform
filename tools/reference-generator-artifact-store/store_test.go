@@ -359,6 +359,66 @@ func TestPutAndGetSourceOnlyArtifacts(t *testing.T) {
 	}
 }
 
+func TestGetRejectsTamperedSelectionReceipt(t *testing.T) {
+	receiptPath, _ := writeSelectionReceipt(t)
+	_, _, _, candidates := selectionPaths(t)
+	storeDir := t.TempDir()
+	put, err := Put(context.Background(), StoreOptions{
+		ReceiptPath: receiptPath, CandidateID: "template", CandidatesDir: candidates, StoreDir: storeDir,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !put.Passed {
+		t.Fatalf("put failed: %+v", put)
+	}
+	if err := os.WriteFile(filepath.Join(put.ObjectPath, "receipt.json"), []byte(`{}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	got, err := Get(storeDir, put.SourceDigest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Passed || !strings.Contains(got.Reason, "selection receipt") {
+		t.Fatalf("tampered selection receipt was accepted: %+v", got)
+	}
+}
+
+func TestGetRejectsTamperedBuildEvidenceDigest(t *testing.T) {
+	receiptPath, _ := writeSelectionReceipt(t)
+	_, _, _, candidates := selectionPaths(t)
+	storeDir := t.TempDir()
+	put, err := Put(context.Background(), StoreOptions{
+		ReceiptPath: receiptPath, CandidateID: "template", CandidatesDir: candidates, StoreDir: storeDir,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	rawObject, err := os.ReadFile(filepath.Join(put.ObjectPath, "object.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var object Object
+	if err := json.Unmarshal(rawObject, &object); err != nil {
+		t.Fatal(err)
+	}
+	object.BuildEvidenceDigest = "sha256:" + strings.Repeat("0", 64)
+	changed, err := json.MarshalIndent(object, "", "  ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(put.ObjectPath, "object.json"), append(changed, '\n'), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	got, err := Get(storeDir, put.SourceDigest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Passed || !strings.Contains(got.Reason, "build evidence") {
+		t.Fatalf("tampered build evidence digest was accepted: %+v", got)
+	}
+}
+
 func TestPutRejectsUnknownCandidate(t *testing.T) {
 	receiptPath, _ := writeSelectionReceipt(t)
 	_, _, _, candidates := selectionPaths(t)

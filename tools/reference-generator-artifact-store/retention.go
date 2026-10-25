@@ -126,11 +126,16 @@ func List(storeDir string) (ListReceipt, error) {
 		object.Language = metadata.Language
 		source, sourceErr := os.ReadFile(filepath.Join(objectPath, "source"))
 		artifact, artifactErr := os.ReadFile(filepath.Join(objectPath, "artifact"))
+		storedReceipt, receiptErr := os.ReadFile(filepath.Join(objectPath, "receipt.json"))
 		switch {
 		case sourceErr != nil:
 			object.Reason = "source is unreadable: " + sourceErr.Error()
 		case artifactErr != nil:
 			object.Reason = "artifact is unreadable: " + artifactErr.Error()
+		case receiptErr != nil:
+			object.Reason = "selection receipt is unreadable: " + receiptErr.Error()
+		case digest(storedReceipt) != metadata.ReceiptDigest:
+			object.Reason = "stored selection receipt digest does not match"
 		case digest(source) != metadata.SourceDigest:
 			object.Reason = "stored source digest does not match"
 		case metadata.BinaryDigest == "" && len(artifact) != 0:
