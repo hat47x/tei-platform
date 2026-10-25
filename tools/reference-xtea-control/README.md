@@ -97,6 +97,7 @@ python xtea_cli.py show-table build\modeler-fixture\MfgOrder.xead 61
 python xtea_cli.py show-function build\modeler-fixture\MfgOrder.xead 17
 python xtea_cli.py export build\modeler-fixture\MfgOrder.xead > model.json
 python xtea_cli.py diff before.xead after.xead > diff.json
+python xtea_cli.py validate MfgOrder.xead
 ```
 
 `export`は次の形のスキーマを返します。
@@ -110,6 +111,8 @@ python xtea_cli.py diff before.xead after.xead > diff.json
 AIは`export`のJSONを基準モデルと候補モデルでそれぞれ取得し、`tables[].id`や`functions[].id`で突き合わせます。画面を開かなくても、機能ごとの入力・出力・可能操作を比較できます。
 
 `diff`は2つのモデルをIDで突き合わせ、`tables`と`functions`の`added` / `removed` / `changed`を返します。`changed`には変更前後のフィールド、データ型、キー、入出力CRUD、呼び出し関係が入ります。
+
+`validate`は、テーブルのサブシステム、フィールドのデータ型、キーのフィールドID、機能の種別、入出力テーブル、呼び出し先の参照を検査します。エラーがある場合は終了コード1を返します。
 
 このCLIは読取り専用です。保存・更新・削除は行いません。モデルの変更が必要な場合は、従来のGUIシナリオを使ってください。
 
@@ -295,7 +298,7 @@ python tests\test_external_tomcat.py
 2026-10-21、JDK 11.0.20.1（`--release 8`でコンパイル）で確認しました。
 
 - `python tests/test_integration.py`: 10件成功。メニュー、テキスト、ボタン、Enter、タブ、チェックボックス、コンボ、通常テーブル、X-TEA型のカスタム行オブジェクトを持つテーブル、ツリー全体の読取り、テーブル行のダブルクリック、モーダルダイアログ、スクリーンショット、トレース、未知selector、トークン拒否を合成Swingアプリで確認。
-- `python tests/test_model_cli.py`: 6件成功。合成`.xead`からシステム、テーブル、フィールド、キー、機能種別、入出力CRUD、呼び出し関係、`export`のJSON、`diff`の追加・削除・変更、Editor形式の`Type`属性を確認。
+- `python tests/test_model_cli.py`: 7件成功。合成`.xead`からシステム、テーブル、フィールド、キー、機能種別、入出力CRUD、呼び出し関係、`export`のJSON、`diff`の追加・削除・変更、`validate`の参照エラー、Editor形式の`Type`属性を確認。
 - 実`MfgOrder.xead`で`summary`、`tables --id 61`、`functions --type XF100`を実行し、56テーブル・233機能・XF100 47件を取得。
 - 以下はXeadServerの**参考（対象外）**としての過去結果です。TEIの比較・受入には使いません。
 - `python tests/test_server_client.py`: 4件成功。`DBMethod`のSELECT/COUNT/INSERT/UPDATE/DELETE/COMMIT/ROLLBACK/CALL/IPと`Service`をローカル模擬サーブレットで確認。

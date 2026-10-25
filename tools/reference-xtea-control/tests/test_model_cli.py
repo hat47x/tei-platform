@@ -56,6 +56,23 @@ class ModelCliTest(unittest.TestCase):
         self.assertEqual(menu["calls"][0]["id"], "20")
         self.assertEqual(menu["ioPanels"][0]["background"], "WINDOW")
 
+    def test_validate_references(self) -> None:
+        self.assertTrue(xtea_cli.validate_model(self.model)["valid"])
+        text = FIXTURE.read_text(encoding="utf-8")
+        text = text.replace('SubsystemID="1"', 'SubsystemID="999"')
+        text = text.replace('TableID="10"', 'TableID="999"')
+        with tempfile.NamedTemporaryFile("w", suffix=".xead", encoding="utf-8",
+                                         delete=False) as handle:
+            handle.write(text)
+            modified_path = Path(handle.name)
+        try:
+            result = xtea_cli.validate_model(xtea_cli.load_model(modified_path))
+        finally:
+            modified_path.unlink()
+        self.assertFalse(result["valid"])
+        self.assertTrue(any("unknown subsystem" in item for item in result["errors"]))
+        self.assertTrue(any("unknown IO table" in item for item in result["errors"]))
+
     def test_type_attribute_fallback(self) -> None:
         text = FIXTURE.read_text(encoding="utf-8")
         text = text.replace('FunctionTypeID="1"', 'Type="XF100"')
