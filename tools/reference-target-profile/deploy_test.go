@@ -312,7 +312,7 @@ func TestDeploySQLiteAndRollback(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !pruned.Passed || len(pruned.Deleted) != 1 {
+	if !pruned.Passed || len(pruned.Deleted) != 1 || pruned.AuditPath == "" {
 		t.Fatalf("sqlite prune failed: %+v", pruned)
 	}
 	history, err = History(root)

@@ -53,6 +53,12 @@ func pruneSQLiteHistory(root string, keepLast int, dryRun bool) (HistoryPruneRec
 	receipt := HistoryPruneReceipt{
 		Schema: HistoryPruneSchema, Root: root, KeepLast: keepLast, DryRun: dryRun,
 	}
+	if !dryRun {
+		if err := verifyHistoryAudit(root); err != nil {
+			receipt.Reason = "existing history audit is invalid: " + err.Error()
+			return receipt, nil
+		}
+	}
 	entries, err := sqliteHistory(root)
 	if err != nil {
 		return receipt, err
@@ -111,6 +117,12 @@ func pruneSQLiteHistory(root string, keepLast int, dryRun bool) (HistoryPruneRec
 		receipt.Reason = err.Error()
 		return receipt, nil
 	}
+	auditPath, err := appendHistoryAudit(root, StorageSQLite, keepLast, receipt.Deleted)
+	if err != nil {
+		receipt.Reason = "sqlite history pruned but audit append failed: " + err.Error()
+		return receipt, nil
+	}
+	receipt.AuditPath = auditPath
 	receipt.Passed = true
 	return receipt, nil
 }

@@ -90,6 +90,61 @@ func TestPruneHistoryKeepsNewestAndDryRun(t *testing.T) {
 	}
 }
 
+func TestPruneHistoryWritesAuditChain(t *testing.T) {
+	root := t.TempDir()
+	writeHistoryArtifact(t, root, "one", time.Unix(100, 0))
+	writeHistoryArtifact(t, root, "two", time.Unix(200, 0))
+	writeHistoryArtifact(t, root, "three", time.Unix(300, 0))
+	first, err := PruneHistory(root, 2, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !first.Passed || first.AuditPath == "" {
+		t.Fatalf("prune did not write an audit: %+v", first)
+	}
+	writeHistoryArtifact(t, root, "four", time.Unix(400, 0))
+	second, err := PruneHistory(root, 2, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !second.Passed || second.AuditPath != first.AuditPath {
+		t.Fatalf("second prune audit is wrong: %+v", second)
+	}
+	records, err := readHistoryAudit(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(records) != 2 || records[0].PreviousDigest != "" || records[1].PreviousDigest != records[0].RecordDigest {
+		t.Fatalf("audit chain is incomplete: %+v", records)
+	}
+}
+
+func TestPruneHistoryRejectsTamperedAudit(t *testing.T) {
+	root := t.TempDir()
+	writeHistoryArtifact(t, root, "one", time.Unix(100, 0))
+	writeHistoryArtifact(t, root, "two", time.Unix(200, 0))
+	writeHistoryArtifact(t, root, "three", time.Unix(300, 0))
+	if _, err := PruneHistory(root, 2, false); err != nil {
+		t.Fatal(err)
+	}
+	path := historyAuditPath(root)
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, append(raw, []byte("tampered\n")...), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	writeHistoryArtifact(t, root, "four", time.Unix(400, 0))
+	receipt, err := PruneHistory(root, 2, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if receipt.Passed || !strings.Contains(receipt.Reason, "audit") {
+		t.Fatalf("tampered audit was accepted: %+v", receipt)
+	}
+}
+
 func TestPruneHistoryRefusesUnverifiedArtifact(t *testing.T) {
 	root := t.TempDir()
 	path := writeHistoryArtifact(t, root, "broken", time.Unix(100, 0))
