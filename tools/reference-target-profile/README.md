@@ -39,6 +39,14 @@ go run ./tools/reference-target-profile/cmd/tei-target-profile \
   prune-history -root /tmp/tei-target-profile-root -keep-last 2 -dry-run
 
 go run ./tools/reference-target-profile/cmd/tei-target-profile \
+  history-prune-approval -root /tmp/tei-target-profile-root -keep-last 2 -out /tmp/prune-approval.json
+ssh-keygen -Y sign -f /tmp/approval-key -n tei-history-prune /tmp/prune-approval.json
+go run ./tools/reference-target-profile/cmd/tei-target-profile \
+  prune-history -root /tmp/tei-target-profile-root -keep-last 2 \
+  -approval /tmp/prune-approval.json -signature /tmp/prune-approval.json.sig \
+  -allowed-signers /tmp/allowed_signers -identity signer
+
+go run ./tools/reference-target-profile/cmd/tei-target-profile \
   history-audit -root /tmp/tei-target-profile-root
 
 go run ./tools/reference-target-profile/cmd/tei-target-profile \
@@ -181,6 +189,7 @@ go run ./tools/reference-target-profile/cmd/tei-target-profile run \
 - pruneの`deleted`は、削除に成功したfileだけを記録します。途中の削除に失敗した場合は`passed=false`とし、先に成功した削除は戻しません。全件を一度に削除するtransactionではありません。
 - 保持期間の判定はfileの更新時刻に依存し、同時刻の場合はdigest順で決めます。削除の承認・暗号学的な履歴保護は扱いません。
 - 成功した`prune-history`は`root/history-prune-audit.jsonl`へrecordを追記します。recordはstorage・keepLast・削除digest・previousDigest・recordDigestを含むhash chainで、prune前に既存chainを検証します。`history-audit`はchainを読み、record数・head・各recordを返します。`history-audit-checkpoint`はcount・head・audit file全体のdigestを`-out`へ書き出し、`ssh-keygen -Y sign`で外部署名できます。auditの署名・実行者identity・削除承認は扱いません。
+- `history-prune-approval`はroot・storage・keepLast・削除digestの一覧をJSONへ出力します。`prune-history -approval ... -signature ... -allowed-signers ... -identity ...`は、approvalのdetached signatureと、現在の削除対象の完全一致を確認してから削除します。署名者のAuthority・trust rootは検証しません。approval確認後、削除前に履歴が変わった場合の再確認は行いません。
 - `remote` storage、Go以外の候補は未対応として`passed=false`にします。
 - 実Targetのsupervisor・health check・traffic drain・電源断耐性・複数ホスト配備は扱いません。
 - `rollback -to`は`replace`/`in-place`のhistoryだけを対象とし、rollingのslot rollbackは`-to`なしの`rollback`を使います。
