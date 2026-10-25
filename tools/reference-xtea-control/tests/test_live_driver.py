@@ -234,6 +234,43 @@ class LiveDriverTest(unittest.TestCase):
         self.script_transaction("No", "Alpha")
         self.assertEqual(self.observe(), self.observations[0])
 
+    def nested_transaction(self, save_child, commit_parent):
+        self.script("NESTED")
+        self.wait_class("xeadDriver.XF200")
+        field = {"windowClass": "xeadDriver.XF200$", "role": "text", "text": "^OuterPending$"}
+        self.assertIsNotNone(self.client.find(field))
+        if save_child:
+            self.client.set_value(field, "ChildSaved")
+        self.button("xeadDriver.XF200", "Save" if save_child else "Close")
+        confirmation = {"window": "^Outer transaction$", "role": "button",
+                        "text": "^Yes$" if commit_parent else "^No$"}
+        self.assertTrue(self.client.wait_selector(confirmation)["matched"])
+        self.client.invoke(confirmation)
+        self.result("UI_RESULT=" + ("20" if save_child else "21") + ":" + ("0" if commit_parent else "1"))
+        if save_child:
+            # The child committed the shared connection, including the outer pending write.
+            expected = "001:ChildSaved:2;002:Beta:0;"
+        elif commit_parent:
+            # Closing the child is not a rollback of the outer transaction.
+            expected = "001:OuterPending:1;002:Beta:0;"
+        else:
+            expected = "001:Alpha:0;002:Beta:0;"
+        self.assertIn(expected, self.observe())
+        self.outputs.append({"childSaved": save_child, "parentCommitted": commit_parent,
+                             "expectedRows": expected})
+
+    def test_000_nested_save_then_commit(self):
+        self.nested_transaction(save_child=True, commit_parent=True)
+
+    def test_000_nested_save_then_rollback(self):
+        self.nested_transaction(save_child=True, commit_parent=False)
+
+    def test_000_nested_close_then_commit(self):
+        self.nested_transaction(save_child=False, commit_parent=True)
+
+    def test_000_nested_close_then_rollback(self):
+        self.nested_transaction(save_child=False, commit_parent=False)
+
     def test_000_console_run_and_cancel(self):
         console = {"windowClass": "xeadDriver.XF000$", "role": "text", "class": "JTextArea$"}
         self.open_function("001")

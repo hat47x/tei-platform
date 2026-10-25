@@ -103,6 +103,13 @@ instance.getReturnMap().put("CONTROL_RESULT", "%s");''' % (label, label.lower(),
         ET.SubElement(system, "Function", ID="F" + ident, Type="XF000", Name="Control " + label,
                       TimerOption=option, TimerMessage=label.lower() + "-ready", Script=script)
     scripts = {
+        "NESTED": '''instance.createTableOperator("UPDATE ITEM SET NAME='OuterPending', UPDCOUNTER=UPDCOUNTER+1 WHERE ID='001'").execute();
+var p=new (Java.type("java.util.HashMap"))(); p.put("ID","001"); p.put("INSTANCE_MODE","EDIT");
+var child=instance.getSession().executeFunction("F200",p);
+var pane=Java.type("javax.swing.JOptionPane");
+var answer=pane.showConfirmDialog(null,"Commit the outer transaction?","Outer transaction",pane.YES_NO_OPTION);
+if(answer==pane.YES_OPTION) { instance.commit(); } else { instance.rollback(); }
+instance.getReturnMap().put("UI_RESULT",child.get("RETURN_CODE")+":"+answer);''',
         "TRANSACTION": '''function readName() {
 var q=instance.createTableOperator("SELECT NAME FROM ITEM WHERE ID='001'");
 q.next(); return q.getValueOf("NAME").toString().trim(); }
