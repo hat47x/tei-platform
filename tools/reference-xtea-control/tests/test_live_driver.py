@@ -61,12 +61,24 @@ class LiveDriverTest(unittest.TestCase):
             try:
                 capture = {"test": self.id(), "context": context}
                 for name, read in (("snapshot", lambda: self.client.snapshot(includeTableRows=True)),
+                                   ("windows", self.client.windows),
                                    ("trace", self.client.trace)):
                     try:
                         capture[name] = read()
                     except Exception as error:
                         capture[name + "Error"] = f"{type(error).__name__}: {error}"
-                path = self.artifacts / f"{self._testMethodName}-failure-{time.time_ns()}.json"
+                stem = f"{self._testMethodName}-failure-{time.time_ns()}"
+                screenshot_path = self.artifacts / (stem + ".png")
+                try:
+                    picture = self.client.screenshot(path=screenshot_path)
+                    capture["screenshot"] = {
+                        "file": screenshot_path.name,
+                        "width": picture["width"],
+                        "height": picture["height"],
+                    }
+                except Exception as error:
+                    capture["screenshotError"] = f"{type(error).__name__}: {error}"
+                path = self.artifacts / (stem + ".json")
                 path.write_text(json.dumps(capture, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
             except Exception as error:
                 print(f"Failure diagnostic unavailable: {type(error).__name__}", file=sys.stderr)
