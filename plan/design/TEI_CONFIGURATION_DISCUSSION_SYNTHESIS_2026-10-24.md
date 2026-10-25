@@ -5,7 +5,7 @@
 - 10月24日の再精査基準main：`f29636c2e59dcfcf2069fde4b8e5fe29fd5ab544`。10月25日の追補は末尾に別の照合版を記す。
 - 主な担当課題：[#982](https://github.com/hat47x/tei-platform/issues/982)、[#1063](https://github.com/hat47x/tei-platform/issues/1063)、[#1803](https://github.com/hat47x/tei-platform/issues/1803)。
 - 既存のHost方針変更案：[Draft PR #2226](https://github.com/hat47x/tei-platform/pull/2226)、確認head `7554f42188d0670f28979dfe75ad513f1bb11ea6`。
-- 最新の照合main（10月25日午前の再精査）：`622e842512a8fbe4ba72781a82f987efd01db5e8`。PR #2250/#2252/#2255/#2257の進展は各追補を参照。
+- 今回の本文精査・コード照合の基準main：`23783b568c880c94ebeb462356162478e3b1ac77`。MMI側は`a8addd1560bd02131b29ade4d9d1cfa7ca5f9b21`。過去の確認版と当時の判断は各追補に保持する。
 - 本書の役割：複数の議論を既存課題へつなぐ。製品要求、採用済みADR、実装状況の正本を置き換えない。
 
 ## 今回増えた論点
@@ -285,3 +285,47 @@ PR #2250には、byte再現性・digest束縛・不足入力の拒否・別工�
 ### 継承事項調査との接点
 
 新たに再開した「TEI X TEA継承事項調査」も確認した。[PR #2257](https://github.com/hat47x/tei-platform/pull/2257)は、一時複製を使う実Editorでテーブル追加・保存とXMLへの要素追加を確認した記録で、フィールド・主キー設定は未確認である。この原典操作の観察と、#2255の派生成果物のbyte照合は別の根拠として扱う。原典で見た事実、TEIへ移す意味の候補、Ownerによる受理、生成物の照合を一例で対応付ける追加質問へつなぎ、GUI操作の成功からTEIの三視点の受理を導かない。
+
+
+## 2026-10-25 本文取得後の再精査：残る接続を既存機能へ絞る
+
+今回は対象21チャットのうち19件で回答本文を取得し、前回の質問以外に進んだ話題も照合した。Research Briefは参照カード、EKI接続は最新回答本文を取得できず、その結論は推定していない。以下は、読めた担当者の提案・静的調査と、こちらで固定コードへ照合した内容を区別して整理する。
+
+### 進展を取り込んで前提を補正する
+
+| 論点 | 本文と一次資料から確認・整理したこと | 次に深める点 |
+| --- | --- | --- |
+| 文書と候補の表示 | [PR #2259](https://github.com/hat47x/tei-platform/pull/2259)は統合済み。既存Kindで文書・未選抜候補・その他を分け、未解決をリンク付近へ表示する | 同じ分類機能を再提案せず、SHOで参照して保存・再読込する最小接続へ進む |
+| SHOとMMI | SHO担当はまず成果物ファイル単位の参照を推奨。MMIの[materializeDocument](https://github.com/hat47x/markdown-matrix-injector/blob/a8addd1560bd02131b29ade4d9d1cfa7ca5f9b21/03_Implement/src/application/materialize.ts)は表参照の実体化等を扱い、任意のTEI成果物を汎用的に保存する入口とは扱えない | 引用対象のpath・版・digestと、人の説明文を別に保持し、元bundleを変更しない案を比較する |
+| 参照とレビューの現在性 | 計画・方式比較担当は、r1への通常リンクが解決しても、r2登場後の説明の妥当性は決まらない反例を整理した | ファイルの存在、指定artifactとの一致、改訂後のレビュー要否を分けて利用者に示す |
+| MMI先行利用 | 固定版[CLI](https://github.com/hat47x/markdown-matrix-injector/blob/a8addd1560bd02131b29ade4d9d1cfa7ca5f9b21/03_Implement/src/cli/mmi.ts)にinventory・inspectのセル観測・match-idsがある。一方、[MCP公開一覧](https://github.com/hat47x/markdown-matrix-injector/blob/a8addd1560bd02131b29ade4d9d1cfa7ca5f9b21/04_Documentation/mcp-server.md)は同一範囲ではなく読取・検証専用 | CLIの観測結果と既存handoff等で根拠を渡し、人が保存したR0レビューを原資料R1取得後に再開する案。MCPの書込追加やTEI完成を先行条件にしない |
+| 演算と生成器 | D8に既存の正負の十進丸め期待値がある。生成器の契約検査と実現能力の間に静的な意味差が確認できた | 新評価器やfixture基盤を作る前に、既存D8と生成器の接続・未対応拒否を比較する |
+| 保存物の保全 | 文書管理担当は、表示より先に既存objectの保全を確認すべきと指摘した。PR #2270の固定headにも該当する書込み到達経路を確認した | 既存検査を使う再利用／拒否へ絞り、新layoutや複数世代管理を今回の前提にしない |
+| 作業再開 | Desktop担当は、起動時Workspace ID・同名要素の曖昧性・編集基準版の再取得を課題としている。これは担当者の静的指摘で、今回ここで実行確認したものではない | 保存先が見つかるだけでなく、同じ意味対象と同じ編集基準版へ戻れるかを一操作で比較する |
+
+MMIのCLI・MCP・表参照を、TEIモデル改訂の管理や業務意味の受理へそのまま拡張したとは扱わない。SHOの候補表示・保存・参照更新も提案段階であり、ファイル参照ができることだけを利用者価値の実証としない。
+
+### コードへ照合した二つの不足
+
+**丸め契約と固定生成器の対応。** main `23783b568c880c94ebeb462356162478e3b1ac77`の[selection.go](https://github.com/hat47x/tei-platform/blob/23783b568c880c94ebeb462356162478e3b1ac77/tools/reference-generator-selection/selection.go)はhalf-up/half-evenを許容するが、[generator.go](https://github.com/hat47x/tei-platform/blob/23783b568c880c94ebeb462356162478e3b1ac77/tools/reference-generator-selection/generator.go)はtemplateDataへmodeを渡さず、[Go template](https://github.com/hat47x/tei-platform/blob/23783b568c880c94ebeb462356162478e3b1ac77/tools/reference-generator-selection/templates/template.go.tmpl)はroundHalfUpを使う。既存[D8期待値](https://github.com/hat47x/tei-platform/blob/23783b568c880c94ebeb462356162478e3b1ac77/reference/derivation-typed-arithmetic/typed_test.go)の1.005や-1.005で差を説明できる。これは静的照合であり、今回生成・実行を再現した記録ではない。
+
+次は#1063/#2016/#988で、未対応modeを生成前に拒否する案と対応実装を加える案を比較する。業務でどの丸めを選ぶかは別のOwner判断であり、技術上の宣言と実現の不一致をその判断待ちにしない。D8のNULL伝播とline-amountのmissing統合も同義とみなさない。以前の税の集計単位・電話確認の例は業務上の比較例であり、現行reference contractが直接表せると主張しない。
+
+**既存Artifact Storeの書込み・再利用。** [PR #2270](https://github.com/hat47x/tei-platform/pull/2270)の確認headは `773178130db12b0da96a9ee534a9262417a8ec3a`、確認時Open・非Draft。[store.go](https://github.com/hat47x/tei-platform/blob/773178130db12b0da96a9ee534a9262417a8ec3a/tools/reference-generator-artifact-store/store.go)では、既存artifactが現在binaryと不一致または読取失敗の場合に、同じsource digestのobjectPathへのWriteFile処理へ進み得る。また、再利用成功前に保存receipt/source全体をGetと同等に検査していない。この固定headに対する静的な確認を[レビューコメント](https://github.com/hat47x/tei-platform/pull/2270#issuecomment-6395662585)へ残した。実行による再現・修正・試験成功は今回の範囲ではない。
+
+同一source・異なるbinary/evidence、保存receiptだけの破損を最小の負例とし、拒否時に既存byteが不変かを既存担当へ戻す。Artifact再利用、build処理の省略、検証Evidenceの再利用は別に評価する。保存済みであることから性能改善や適合済みを導かない。
+
+### 前回の質問以外に進んだ議論を保持する
+
+- 業務モデル担当から、子明細編集の業務Actionと親側への更新宣言が一致するかという未決が示された。公開文書には原典固有の識別子・名称・参照位置を転載せず、業務上の一つの変更単位と実装上の付随更新を区別する問いとして#1125へ戻す。
+- ユニケージ再評価担当は、数量を変更後に元へ戻しても、過去の確認が自動的に有効へ戻るとは限らない点を整理した。現在値の一致、確認対象、根拠、失効条件、Commit時の対象版・認可を分ける案として保持する。
+- 多言語担当の議論は、言語別コード生成とは別に、Diagnosticの型付き引数・message所有者・翻訳資源・既存CLI JSON互換性へ進んでいる。#1649/#1551等の既存責務を使い、OperationsからReferenceへ依存させる新基盤を前提にしない。
+- Plugin管理担当は、意味契約・構成制約・作業Direction・認知Methodを分け、SEIやHarnessの探索方法が意味の正本や実行権限を変えない接続を検討している。これは設計提案であり、TEI・SEI共通選択エンジンの採用ではない。
+- 継承事項調査では、Relationshipに参照されない複合キーのSortKey重複・欠落を検査する候補パッチが作られた。添付の実repo適用・Go試験は未確認で、候補作成を実装済みとせず#1805の既存担当へ戻す。
+- [PR #2268](https://github.com/hat47x/tei-platform/pull/2268)は既存表への制約追加DDLを、違反件数の観測が揃う場合に限って出力する進展である。観測できない状態をゼロとせず拒否し、適用直前の観測や実行権限の問題と分ける。記録された実DB試験を今回再実行したとは主張しない。
+
+### 優先する問いと文書反映
+
+直近の技術確認は、(1)既存保存物の保全、(2)宣言した丸めと生成実装の適合に絞る。並行して、MMIのレビュー保存・再開と、SHOのファイル単位参照を利用者の一作業へ具体化する。Businessの意味・確認の有効範囲はOwner判断へ残し、各線の全完成を他の着手条件にしない。
+
+各21チャット向けに、この本文精査に基づく追加質問を作成した。回答を関連Issueの短い検討コメントへ保存できる場合はURLを返すよう依頼する方針としたが、送信では会話履歴のレート制限が返った。受付・回答取得・Issue保存を成立したものとして数えず、未送信の質問とエラーは作業記録へ残す。新規ADRや要件の採用、既存Issueの完了判定は今回行わない。
