@@ -71,7 +71,7 @@ source、receipt、実binaryのどれかが一致しなければ`passed=false`�
 
 ## 一覧と削除
 
-`list`は全objectのmetadataと再計算digestを返します。壊れたobjectが1件でもあれば`passed=false`にします。
+`list`は全objectのmetadataと再計算digestを返します。`receipt.json`と選抜receipt内のsource/binary/buildEvidenceも照合し、壊れたobjectが1件でもあれば`passed=false`にします。
 
 `prune`は、明示した`-keep`のsource digestだけを残し、それ以外のobjectを削除します。
 
