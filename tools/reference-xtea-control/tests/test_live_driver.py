@@ -216,6 +216,13 @@ class LiveDriverTest(unittest.TestCase):
         self.result("CONTROL_RESULT=ran")
         self.assertEqual(self.observe(), self.observations[0])
 
+    def test_script_char_key_physical_type(self):
+        self.script("KEY_TYPES")
+        # Both tables contain A, but the source CHAR declaration pads the predicate.
+        # Only the physically matching CHAR key matches it in the disposable H2.
+        self.result("UI_RESULT=1:1:0:true")
+        self.assertEqual(self.observe(), self.observations[0])
+
     def script_transaction(self, answer, expected):
         self.script("TRANSACTION")
         confirmation = {"window": "^Script transaction$", "role": "button", "text": "^" + answer + "$"}

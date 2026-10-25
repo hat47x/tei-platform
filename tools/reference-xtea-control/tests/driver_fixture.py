@@ -28,6 +28,9 @@ def write_fixture(folder: Path) -> Path:
     for name in ("USER_VARIANTS", "VARIANTS", "NUMBERS", "SESSION_DETAIL", "CALENDAR"):
         ET.SubElement(system, "Table", ID=name, Name=name)
     table("ITEM", [("ID", "CHAR", 3), ("NAME", "CHAR", 30)], "ID")
+    # Same source declaration, deliberately different physical key types below.
+    for name in ("KEY_CHAR", "KEY_VARCHAR"):
+        table(name, [("CODE", "CHAR", 4)], "CODE")
     table("LINE", [("ID", "CHAR", 3), ("SEQ", "INTEGER", 3),
                    ("VALUE", "CHAR", 30), ("NOTE", "VARCHAR", 100)], "ID;SEQ")
 
@@ -103,6 +106,11 @@ instance.getReturnMap().put("CONTROL_RESULT", "%s");''' % (label, label.lower(),
         ET.SubElement(system, "Function", ID="F" + ident, Type="XF000", Name="Control " + label,
                       TimerOption=option, TimerMessage=label.lower() + "-ready", Script=script)
     scripts = {
+        "KEY_TYPES": '''var fixed=instance.createTableOperator("Count","KEY_CHAR"); fixed.addKeyValue("CODE","A");
+var all=instance.createTableOperator("Count","KEY_VARCHAR");
+var varying=instance.createTableOperator("Count","KEY_VARCHAR"); varying.addKeyValue("CODE","A");
+var padded=String(varying.getSqlText()).indexOf("'A   '")>=0;
+instance.getReturnMap().put("UI_RESULT",fixed.execute()+":"+all.execute()+":"+varying.execute()+":"+padded);''',
         "NESTED": '''instance.createTableOperator("UPDATE ITEM SET NAME='OuterPending', UPDCOUNTER=UPDCOUNTER+1 WHERE ID='001'").execute();
 var p=new (Java.type("java.util.HashMap"))(); p.put("ID","001"); p.put("INSTANCE_MODE","EDIT");
 var child=instance.getSession().executeFunction("F200",p);
@@ -266,6 +274,10 @@ CREATE TABLE SESSION_DETAIL (NRSESSION VARCHAR(30), SQPROGRAM INT, IDMENU VARCHA
 CREATE TABLE CALENDAR (KBCALENDAR VARCHAR(10), DTOFF DATE);
 CREATE TABLE ITEM (ID CHAR(3) PRIMARY KEY, NAME VARCHAR(30), UPDCOUNTER INT DEFAULT 0);
 INSERT INTO ITEM(ID,NAME) VALUES ('001','Alpha'),('002','Beta');
+CREATE TABLE KEY_CHAR (CODE CHAR(4) PRIMARY KEY);
+CREATE TABLE KEY_VARCHAR (CODE VARCHAR(4) PRIMARY KEY);
+INSERT INTO KEY_CHAR VALUES ('A');
+INSERT INTO KEY_VARCHAR VALUES ('A');
 CREATE TABLE LINE (ID CHAR(3), SEQ INT, VALUE VARCHAR(30), NOTE VARCHAR(100) DEFAULT 'Note', UPDCOUNTER INT DEFAULT 0,
  PRIMARY KEY(ID,SEQ));
 INSERT INTO LINE(ID,SEQ,VALUE) VALUES ('001',1,'First'),('001',2,'Second');
