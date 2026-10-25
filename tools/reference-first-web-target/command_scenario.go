@@ -383,6 +383,12 @@ func (r *referenceCommandScenarioRunner) runAuthenticatedSubjectCommandWithEffec
 	}
 	observation, err := driver.ExecuteObservationRead(ctx, readIdentity, nature, readState)
 	if err != nil {
+		if r.submitStore != nil {
+			// A real-store Submit has already returned successfully. A later
+			// independent read failure cannot establish that the write rolled back.
+			// Keep the partial Command result and hide the Provider's connection details.
+			return result, errors.New("action completion unconfirmed; inspect authoritative state before retrying")
+		}
 		return result, err
 	}
 	result.Observation = &observationProjection{
