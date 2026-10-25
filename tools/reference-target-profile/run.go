@@ -15,6 +15,7 @@ type RunOptions struct {
 	CandidatesDir  string
 	ProfilePath    string
 	EnforceNetwork bool
+	EnforceCPU     bool
 	execution      generatorselection.ExecutionOptions
 }
 
@@ -31,6 +32,7 @@ type ObservabilityEvidence struct {
 }
 
 type Receipt struct {
+	CPU          *CPUEvidence               `json:"cpu,omitempty"`
 	Network      *NetworkEvidence           `json:"network,omitempty"`
 	Schema       string                     `json:"schema"`
 	Profile      Profile                    `json:"profile"`
@@ -45,7 +47,7 @@ type Receipt struct {
 
 // Run applies the profile's memory limit to the selection subprocesses, runs
 // the same fixed fixtures, and records which constraints were actually
-// enforced. Storage and update remain declarations; network isolation is opt-in;
+// enforced. Storage and update remain declarations; CPU and network enforcement are opt-in;
 // observability channels stdout, stderr, and exit-code are observed from the
 // selected candidate's case executions.
 func Run(ctx context.Context, opts RunOptions) (Receipt, error) {
@@ -62,6 +64,19 @@ func Run(ctx context.Context, opts RunOptions) (Receipt, error) {
 		}
 		opts.execution = network.Execution
 		networkEnforcement = network.Method
+	}
+	var cpu *CPUEvidence
+	cpuEnforcement := "not-declared"
+	if profile.CPUTimeLimitSeconds > 0 {
+		cpuEnforcement = "declared-only"
+	}
+	if opts.EnforceCPU {
+		cpu = prepareCPU(ctx, profile, opts.execution)
+		if !cpu.Available {
+			return Receipt{Schema: Schema, Profile: profile, Network: network, CPU: cpu, Passed: false, Enforcement: map[string]string{"cpu": "unavailable", "network": networkEnforcement}}, nil
+		}
+		opts.execution = cpu.Execution
+		cpuEnforcement = cpu.Method
 	}
 	previous, hadPrevious := os.LookupEnv("GOMEMLIMIT")
 	if err := os.Setenv("GOMEMLIMIT", strconv.FormatInt(profile.MemoryLimitBytes, 10)); err != nil {
@@ -88,9 +103,6 @@ func Run(ctx context.Context, opts RunOptions) (Receipt, error) {
 	for _, value := range observation.Unsupported {
 		unsupported = appendUnique(unsupported, value)
 	}
-	if !processModel.Passed && processModel.Mode == ProcessBatch {
-		unsupported = appendUnique(unsupported, "batch-process-model")
-	}
 	observabilityEnforcement := "observed"
 	if len(observation.Unsupported) > 0 {
 		observabilityEnforcement = "partial"
@@ -110,6 +122,11 @@ func Run(ctx context.Context, opts RunOptions) (Receipt, error) {
 		if processModel.Passed {
 			processEnforcement = "long-running:single-process"
 		}
+	case ProcessBatch:
+		processEnforcement = "batch:failed"
+		if processModel.Passed {
+			processEnforcement = "batch:single-process"
+		}
 	}
 	memoryEnforcement := "env:GOMEMLIMIT (soft)"
 	if candidate := selectedCandidate(Receipt{Profile: profile, Selection: selection}); candidate != nil && candidate.Language != generatorselection.LanguageGo {
@@ -118,11 +135,13 @@ func Run(ctx context.Context, opts RunOptions) (Receipt, error) {
 	return Receipt{
 		Schema:       Schema,
 		Network:      network,
+		CPU:          cpu,
 		Profile:      profile,
 		Selection:    selection,
 		Observation:  observation,
 		ProcessModel: processModel,
 		Enforcement: map[string]string{
+			"cpu":           cpuEnforcement,
 			"memory":        memoryEnforcement,
 			"processModel":  processEnforcement,
 			"storage":       "declared-only",
@@ -133,9 +152,9 @@ func Run(ctx context.Context, opts RunOptions) (Receipt, error) {
 		Unsupported: unsupported,
 		Passed:      selection.Passed && len(observation.Unsupported) == 0 && processModel.Passed,
 		Notes: []string{
-			"同じ受理済み契約・fixture・候補を、Target Profileの宣言とともに実行した。memoryの強制範囲はenforcementへ記録する。",
+			"同じ受理済み契約・fixture・候補を、Target Profileの宣言とともに実行した。memory・CPUの強制範囲はenforcementへ記録する。",
 			"observabilityのstdout・stderr・exit-codeはcase実行から観測した。未対応channelはUnsupportedとして返す。",
-			"processModelはoneshotのprocess-per-case、long-runningのsingle-processを実行で確認した。",
+			"processModelはoneshotのprocess-per-case、long-running/batchのsingle-processを実行で確認した。",
 			"storage・updateは宣言。networkの強制範囲はenforcementとnetworkへ記録する。",
 			"profileの合格は、実機・実OS・実Targetでの動作を証明しない。",
 		},

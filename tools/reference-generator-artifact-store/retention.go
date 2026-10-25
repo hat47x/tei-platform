@@ -1,9 +1,11 @@
 package generatorartifactstore
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -11,15 +13,17 @@ import (
 )
 
 const (
-	ListSchema  = "tei.reference.generator-artifact-list/v0"
-	PruneSchema = "tei.reference.generator-artifact-prune/v0"
-	AuditSchema = "tei.reference.generator-artifact-prune-audit/v0"
+	ListSchema       = "tei.reference.generator-artifact-list/v0"
+	PruneSchema      = "tei.reference.generator-artifact-prune/v0"
+	AuditSchema      = "tei.reference.generator-artifact-prune-audit/v0"
+	CheckpointSchema = "tei.reference.generator-artifact-audit-checkpoint/v0"
 )
 
 type StoredObject struct {
 	SourceDigest  string `json:"sourceDigest"`
 	BinaryDigest  string `json:"binaryDigest"`
 	CandidateID   string `json:"candidateId"`
+	Language      string `json:"language,omitempty"`
 	Path          string `json:"path"`
 	SourceBytes   int64  `json:"sourceBytes"`
 	ArtifactBytes int64  `json:"artifactBytes"`
@@ -119,6 +123,7 @@ func List(storeDir string) (ListReceipt, error) {
 		object.SourceDigest = metadata.SourceDigest
 		object.BinaryDigest = metadata.BinaryDigest
 		object.CandidateID = metadata.CandidateID
+		object.Language = metadata.Language
 		source, sourceErr := os.ReadFile(filepath.Join(objectPath, "source"))
 		artifact, artifactErr := os.ReadFile(filepath.Join(objectPath, "artifact"))
 		switch {
@@ -128,6 +133,15 @@ func List(storeDir string) (ListReceipt, error) {
 			object.Reason = "artifact is unreadable: " + artifactErr.Error()
 		case digest(source) != metadata.SourceDigest:
 			object.Reason = "stored source digest does not match"
+		case metadata.BinaryDigest == "" && len(artifact) != 0:
+			object.Reason = "source-only artifact is not empty"
+		case metadata.BinaryDigest == "":
+			if filepath.Base(objectPath) != trimDigest(metadata.SourceDigest) {
+				object.Reason = "object path does not match the source digest"
+			} else {
+				object.Verified = true
+				object.SourceBytes = int64(len(source))
+			}
 		case digest(artifact) != metadata.BinaryDigest:
 			object.Reason = "stored artifact digest does not match"
 		case filepath.Base(objectPath) != trimDigest(metadata.SourceDigest):
@@ -326,4 +340,139 @@ func trimDigest(value string) string {
 		return value[len("sha256:"):]
 	}
 	return value
+}
+
+type CheckpointReceipt struct {
+	Schema           string `json:"schema"`
+	StoreDir         string `json:"storeDir"`
+	RecordCount      int    `json:"recordCount"`
+	HeadDigest       string `json:"headDigest,omitempty"`
+	AuditDigest      string `json:"auditDigest"`
+	Passed           bool   `json:"passed"`
+	Reason           string `json:"reason,omitempty"`
+	GrantsAuthority  bool   `json:"grantsAuthority"`
+	ProvesRealTarget bool   `json:"provesRealTarget"`
+}
+
+// Checkpoint summarizes the audit chain without signing it. The caller can
+// sign the emitted JSON or a file containing it with an external tool.
+func Checkpoint(storeDir string) (CheckpointReceipt, error) {
+	receipt := CheckpointReceipt{
+		Schema: CheckpointSchema, StoreDir: storeDir, GrantsAuthority: false, ProvesRealTarget: false,
+	}
+	records, err := readAudit(storeDir)
+	if err != nil {
+		receipt.Reason = err.Error()
+		return receipt, nil
+	}
+	raw, err := os.ReadFile(filepath.Join(storeDir, "prune-audit.jsonl"))
+	if os.IsNotExist(err) {
+		raw = nil
+	} else if err != nil {
+		return receipt, err
+	}
+	receipt.RecordCount = len(records)
+	receipt.AuditDigest = digest(raw)
+	if len(records) > 0 {
+		receipt.HeadDigest = records[len(records)-1].RecordDigest
+	}
+	receipt.Passed = true
+	return receipt, nil
+}
+
+type CheckpointVerification struct {
+	Schema         string            `json:"schema"`
+	StoreDir       string            `json:"storeDir"`
+	CheckpointPath string            `json:"checkpointPath"`
+	Expected       CheckpointReceipt `json:"expected"`
+	Actual         CheckpointReceipt `json:"actual"`
+	Passed         bool              `json:"passed"`
+	Reason         string            `json:"reason,omitempty"`
+}
+
+const CheckpointVerificationSchema = "tei.reference.generator-artifact-checkpoint-verification/v0"
+
+// VerifyCheckpoint compares a stored checkpoint file with the current audit
+// chain. It checks semantic equality, not a signature or the signer's identity.
+func VerifyCheckpoint(storeDir, checkpointPath string) (CheckpointVerification, error) {
+	verification := CheckpointVerification{
+		Schema: CheckpointVerificationSchema, StoreDir: storeDir, CheckpointPath: checkpointPath,
+	}
+	raw, err := os.ReadFile(checkpointPath)
+	if err != nil {
+		return verification, err
+	}
+	var expected CheckpointReceipt
+	if err := json.Unmarshal(raw, &expected); err != nil {
+		return verification, err
+	}
+	verification.Expected = expected
+	if expected.Schema != CheckpointSchema || !expected.Passed {
+		verification.Reason = "stored checkpoint is not a passing checkpoint"
+		return verification, nil
+	}
+	actual, err := Checkpoint(storeDir)
+	if err != nil {
+		return verification, err
+	}
+	verification.Actual = actual
+	if !actual.Passed {
+		verification.Reason = "current audit checkpoint is not passing: " + actual.Reason
+		return verification, nil
+	}
+	switch {
+	case expected.RecordCount != actual.RecordCount:
+		verification.Reason = "record count differs from the stored checkpoint"
+	case expected.HeadDigest != actual.HeadDigest:
+		verification.Reason = "head digest differs from the stored checkpoint"
+	case expected.AuditDigest != actual.AuditDigest:
+		verification.Reason = "audit digest differs from the stored checkpoint"
+	default:
+		verification.Passed = true
+	}
+	return verification, nil
+}
+
+type SignedCheckpointVerification struct {
+	CheckpointVerification
+	SignaturePath     string `json:"signaturePath"`
+	Identity          string `json:"identity"`
+	SignatureVerified bool   `json:"signatureVerified"`
+}
+
+// VerifySignedCheckpoint verifies a detached ssh-keygen signature over the
+// checkpoint bytes, then compares the checkpoint with the current audit chain.
+// It does not verify the signer's authority or trust root.
+func VerifySignedCheckpoint(ctx context.Context, storeDir, checkpointPath, signaturePath, allowedSigners, identity, namespace string) (SignedCheckpointVerification, error) {
+	verification := SignedCheckpointVerification{
+		CheckpointVerification: CheckpointVerification{
+			Schema: CheckpointVerificationSchema, StoreDir: storeDir, CheckpointPath: checkpointPath,
+		},
+		SignaturePath: signaturePath, Identity: identity,
+	}
+	if namespace == "" {
+		namespace = "tei-audit"
+	}
+	raw, err := os.ReadFile(checkpointPath)
+	if err != nil {
+		return verification, err
+	}
+	verify := exec.CommandContext(ctx, "ssh-keygen", "-Y", "verify",
+		"-f", allowedSigners, "-I", identity, "-n", namespace, "-s", signaturePath)
+	verify.Stdin = strings.NewReader(string(raw))
+	if output, err := verify.CombinedOutput(); err != nil {
+		verification.Reason = "checkpoint signature verification failed: " + strings.TrimSpace(string(output))
+		return verification, nil
+	}
+	verification.SignatureVerified = true
+	semantic, err := VerifyCheckpoint(storeDir, checkpointPath)
+	if err != nil {
+		return verification, err
+	}
+	verification.CheckpointVerification = semantic
+	if !semantic.Passed {
+		return verification, nil
+	}
+	verification.Passed = true
+	return verification, nil
 }

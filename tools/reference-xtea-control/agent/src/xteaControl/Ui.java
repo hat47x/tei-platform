@@ -424,6 +424,34 @@ final class Ui {
         }, DEFAULT_TIMEOUT_MS);
     }
 
+    static Map<String, Object> tableInfo(final Map<String, Object> selector, final Map<String, Object> request)
+            throws Exception {
+        final Component target = resolve(selector);
+        if (!(target instanceof JTable)) {
+            throw new BridgeException("NOT_A_TABLE", "selector does not resolve to a table");
+        }
+        final JTable table = (JTable) target;
+        return call(new Callable<Map<String, Object>>() {
+            @Override
+            public Map<String, Object> call() {
+                List<Object> columns = new ArrayList<Object>();
+                for (int i = 0; i < table.getColumnCount(); i++) {
+                    columns.add(table.getColumnName(i));
+                }
+                Map<String, Object> value = new LinkedHashMap<String, Object>();
+                value.put("tableRowCount", table.getRowCount());
+                value.put("modelRowCount", table.getModel().getRowCount());
+                value.put("modelClass", table.getModel().getClass().getName());
+                value.put("columns", columns);
+                value.put("selectedRow", table.getSelectedRow());
+                value.put("selectedColumn", table.getSelectedColumn());
+                value.put("rowSorterClass", table.getRowSorter() == null ? null
+                        : table.getRowSorter().getClass().getName());
+                return value;
+            }
+        }, DEFAULT_TIMEOUT_MS);
+    }
+
     static Map<String, Object> tableRead(final Map<String, Object> selector, final Map<String, Object> request)
             throws Exception {
         final Component target = resolve(selector);
@@ -508,6 +536,174 @@ final class Ui {
         value.put("accepted", Boolean.TRUE);
         value.put("target", label);
         return value;
+    }
+
+    static Map<String, Object> click(final Map<String, Object> selector, final Map<String, Object> request)
+            throws Exception {
+        final Component target = resolve(selector);
+        final int count = Math.max(1, Math.min(intValue(request.get("count"), 1), 3));
+        final int row = intValue(request.get("row"), -1);
+        final int column = intValue(request.get("column"), -1);
+        final int button = intValue(request.get("button"), 1) == 3 ? 3 : 1;
+        final String label = describeComponent(target);
+        SwingUtilities.invokeLater(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    int x = Math.max(1, target.getWidth() / 2);
+                    int y = Math.max(1, target.getHeight() / 2);
+                    if (target instanceof JTable && row >= 0) {
+                        JTable table = (JTable) target;
+                        Rectangle cell = table.getCellRect(row, column >= 0 ? column : 0, true);
+                        x = cell.x + Math.max(1, cell.width / 2);
+                        y = cell.y + Math.max(1, cell.height / 2);
+                    } else if (target instanceof JList && row >= 0) {
+                        JList list = (JList) target;
+                        Rectangle cell = list.getCellBounds(row, row);
+                        if (cell != null) {
+                            x = cell.x + Math.max(1, cell.width / 2);
+                            y = cell.y + Math.max(1, cell.height / 2);
+                        }
+                    } else if (target instanceof JTree && ((JTree) target).getSelectionPath() != null) {
+                        Rectangle path = ((JTree) target).getPathBounds(((JTree) target).getSelectionPath());
+                        if (path != null) {
+                            x = path.x + Math.max(1, path.width / 2);
+                            y = path.y + Math.max(1, path.height / 2);
+                        }
+                    }
+                    long now = System.currentTimeMillis();
+                    int mask = button == 3 ? java.awt.event.InputEvent.BUTTON3_DOWN_MASK
+                            : java.awt.event.InputEvent.BUTTON1_DOWN_MASK;
+                    for (int i = 1; i <= count; i++) {
+                        target.dispatchEvent(new java.awt.event.MouseEvent(target,
+                                java.awt.event.MouseEvent.MOUSE_PRESSED, now, mask, x, y, i, false, button));
+                        target.dispatchEvent(new java.awt.event.MouseEvent(target,
+                                java.awt.event.MouseEvent.MOUSE_RELEASED, now, mask, x, y, i, false, button));
+                        if (button == 1) {
+                            target.dispatchEvent(new java.awt.event.MouseEvent(target,
+                                    java.awt.event.MouseEvent.MOUSE_CLICKED, now, mask, x, y, i, false, button));
+                        }
+                    }
+                } catch (Throwable t) {
+                    Trace.record("click.error", label, describe(t));
+                }
+            }
+        });
+        Trace.record("click", label, "count=" + count + ",row=" + row + ",column=" + column + ",button=" + button);
+        Map<String, Object> value = new LinkedHashMap<String, Object>();
+        value.put("accepted", Boolean.TRUE);
+        value.put("target", label);
+        value.put("count", count);
+        value.put("button", button);
+        return value;
+    }
+
+    static Map<String, Object> drag(final Map<String, Object> selector, final Map<String, Object> request)
+            throws Exception {
+        final Component target = resolve(selector);
+        if (!(target instanceof JTable)) {
+            throw new BridgeException("NOT_A_TABLE", "drag currently requires a table");
+        }
+        final JTable table = (JTable) target;
+        final int fromRow = intValue(request.get("fromRow"), -1);
+        final int toRow = intValue(request.get("toRow"), -1);
+        final int column = intValue(request.get("column"), 0);
+        if (fromRow < 0 || toRow < 0 || fromRow >= table.getRowCount() || toRow >= table.getRowCount()) {
+            throw new BridgeException("INVALID_ARGUMENT", "fromRow/toRow must be valid table rows");
+        }
+        final String label = describeComponent(target);
+        SwingUtilities.invokeLater(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    Rectangle from = table.getCellRect(fromRow, column, true);
+                    Rectangle to = table.getCellRect(toRow, column, true);
+                    int fromX = from.x + from.width / 2;
+                    int fromY = from.y + from.height / 2;
+                    int toX = to.x + to.width / 2;
+                    int toY = to.y + to.height / 2;
+                    long now = System.currentTimeMillis();
+                    target.dispatchEvent(new java.awt.event.MouseEvent(target,
+                            java.awt.event.MouseEvent.MOUSE_PRESSED, now,
+                            java.awt.event.InputEvent.BUTTON1_DOWN_MASK, fromX, fromY, 1, false,
+                            java.awt.event.MouseEvent.BUTTON1));
+                    target.dispatchEvent(new java.awt.event.MouseEvent(target,
+                            java.awt.event.MouseEvent.MOUSE_DRAGGED, now,
+                            java.awt.event.InputEvent.BUTTON1_DOWN_MASK, toX, toY, 1, false,
+                            java.awt.event.MouseEvent.BUTTON1));
+                    target.dispatchEvent(new java.awt.event.MouseEvent(target,
+                            java.awt.event.MouseEvent.MOUSE_RELEASED, now,
+                            java.awt.event.InputEvent.BUTTON1_DOWN_MASK, toX, toY, 1, false,
+                            java.awt.event.MouseEvent.BUTTON1));
+                } catch (Throwable t) {
+                    Trace.record("drag.error", label, describe(t));
+                }
+            }
+        });
+        Trace.record("drag", label, "from=" + fromRow + " to=" + toRow);
+        Map<String, Object> value = new LinkedHashMap<String, Object>();
+        value.put("accepted", Boolean.TRUE);
+        value.put("target", label);
+        value.put("fromRow", fromRow);
+        value.put("toRow", toRow);
+        return value;
+    }
+
+    static Map<String, Object> invokeMethod(final Map<String, Object> selector, final Map<String, Object> request)
+            throws Exception {
+        final Component target = resolve(selector);
+        final String name = String.valueOf(request.get("method"));
+        final java.lang.reflect.Method method = findMethod(target.getClass(), name);
+        if (method == null) {
+            StringBuilder available = new StringBuilder();
+            for (java.lang.reflect.Method candidate : target.getClass().getDeclaredMethods()) {
+                if (candidate.getName().toLowerCase().contains("delete")) {
+                    available.append(candidate.getName()).append(" ");
+                }
+            }
+            throw new BridgeException("METHOD_NOT_FOUND",
+                    "no zero-arg or ActionEvent method: " + name
+                            + " on " + target.getClass().getName()
+                            + " (delete methods: " + available.toString().trim() + ")");
+        }
+        method.setAccessible(true);
+        final String label = describeComponent(target);
+        SwingUtilities.invokeLater(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    if (method.getParameterTypes().length == 0) {
+                        method.invoke(target);
+                    } else {
+                        method.invoke(target, new ActionEvent(target, ActionEvent.ACTION_PERFORMED, ""));
+                    }
+                } catch (Throwable t) {
+                    Trace.record("invoke-method.error", label, describe(t));
+                }
+            }
+        });
+        Trace.record("invoke-method", label, name);
+        Map<String, Object> value = new LinkedHashMap<String, Object>();
+        value.put("accepted", Boolean.TRUE);
+        value.put("target", label);
+        value.put("method", name);
+        return value;
+    }
+
+    private static java.lang.reflect.Method findMethod(Class<?> type, String name) {
+        for (Class<?> current = type; current != null; current = current.getSuperclass()) {
+            for (java.lang.reflect.Method method : current.getDeclaredMethods()) {
+                if (!method.getName().equals(name)) {
+                    continue;
+                }
+                Class<?>[] parameters = method.getParameterTypes();
+                if (parameters.length == 0
+                        || (parameters.length == 1 && parameters[0].equals(ActionEvent.class))) {
+                    return method;
+                }
+            }
+        }
+        return null;
     }
 
     static Map<String, Object> close(final Map<String, Object> selector) throws Exception {
@@ -695,6 +891,13 @@ final class Ui {
                 if (component != null && matchesComponent(component, role, text, contains, name, className)) {
                     return component;
                 }
+                continue;
+            }
+            if ("window".equals(role) && matchesComponent(window, role, text, contains, name, className)) {
+                if (found == wantedIndex) {
+                    return window;
+                }
+                found++;
                 continue;
             }
             List<Component> components = flatten(window, true);

@@ -16,9 +16,11 @@ import (
 )
 
 func main() {
-	// The Reference CLI has no authoritative Host acceptance service yet.
-	// A Host integration must inject its Reader here; labels and Decision JSON
-	// are not a substitute. Unaccepted fixtures require explicit diagnostics.
+	// The shipped CLI injects no Reader. A Source Reader is selected only by
+	// -host-acceptance-store with -host-acceptance-trust (signed Decisions,
+	// provisional policy); labels and Decision JSON are not a substitute. No
+	// effect Grant Reader can be selected here, so accepted Commands are still
+	// refused before dispatch. Unaccepted fixtures require explicit diagnostics.
 	if err := runCombinedWebTarget(context.Background(), nil, os.Args[1:]); err != nil {
 		if err == flag.ErrHelp {
 			return
@@ -39,6 +41,23 @@ func runCombinedWebTarget(ctx context.Context, reader sourceacceptance.Reader, a
 // Host effect admission immediately before a Command changes state. The Host
 // must inject both authentic Readers; the CLI cannot manufacture either one.
 func runCombinedWebTargetWithEffectGrant(ctx context.Context, reader sourceacceptance.Reader, effectReader HostEffectGrantReader, args []string) error {
+	return runCombinedWebTargetWithHost(ctx, reader, effectReader, webHostWiring{}, args)
+}
+
+// webHostWiring is what an embedding Host (or a test acting as one) may add
+// beyond the two Readers. The shipped CLI passes the zero value: it cannot
+// select a real store, so it cannot write business state.
+type webHostWiring struct {
+	// submitStore makes the order_entry submit Command write real state.
+	submitStore orderSubmitStore
+	// wrapCommandRead wraps the read the submit Command validates. Tests use
+	// it to present a changed synthetic fixture row; it is not a Provider.
+	wrapCommandRead func(readScenarioRunner) readScenarioRunner
+}
+
+// runCombinedWebTargetWithHost is runCombinedWebTargetWithEffectGrant plus the
+// Host's optional wiring.
+func runCombinedWebTargetWithHost(ctx context.Context, reader sourceacceptance.Reader, effectReader HostEffectGrantReader, wiring webHostWiring, args []string) error {
 	flags := flag.NewFlagSet("first-web-target", flag.ContinueOnError)
 	var (
 		workspacePath = flags.String("workspace", "reference/workspace", "TEI workspace directory")
@@ -51,6 +70,8 @@ func runCombinedWebTargetWithEffectGrant(ctx context.Context, reader sourceaccep
 		listen        = flags.String("listen", "127.0.0.1:8080", "HTTP listen address")
 		scopedRoutes  = flags.Bool("scoped-routes", false, "diagnostic: expose only the selected Application's HTTP routes")
 		diagnostic    = flags.Bool("diagnostic-unaccepted-source", false, "test-only: load unaccepted Reference Source without a Host witness")
+		storeDir      = flags.String("host-acceptance-store", "", "existing Host Acceptance Store directory (requires -host-acceptance-trust)")
+		trustPath     = flags.String("host-acceptance-trust", "", "Host trust file listing issuer public keys (requires -host-acceptance-store)")
 	)
 	if err := flags.Parse(args); err != nil {
 		return err
@@ -65,6 +86,22 @@ func runCombinedWebTargetWithEffectGrant(ctx context.Context, reader sourceaccep
 	appID, err := core.ParseCanonicalID(*applicationID)
 	if err != nil {
 		return err
+	}
+	if (*storeDir == "") != (*trustPath == "") {
+		return fmt.Errorf("HOST_ACCEPTANCE_STORE_FLAGS: -host-acceptance-store and -host-acceptance-trust are required together")
+	}
+	if *storeDir != "" {
+		if reader != nil {
+			return fmt.Errorf("HOST_ACCEPTANCE_STORE_CONFLICT: the embedding Host already supplied a Source Reader")
+		}
+		if *diagnostic {
+			return fmt.Errorf("SOURCE_ACCEPTANCE_DIAGNOSTIC_CONFLICT: Host Readers cannot be bypassed")
+		}
+		store, err := openHostAcceptanceStore(*storeDir, *trustPath)
+		if err != nil {
+			return err
+		}
+		reader = store
 	}
 	var loaded workspace.Result
 	var acceptedWorkspace sourceacceptance.VerifiedWorkspace
@@ -100,6 +137,14 @@ func runCombinedWebTargetWithEffectGrant(ctx context.Context, reader sourceaccep
 	switch appID {
 	case core.MustCanonicalID("order_entry"):
 		readScenario = newReferenceReadScenarioRunner(loaded.World)
+		// A real store must match the accepted declaration before HTTP is
+		// published, and again before each write (S02, physical side).
+		submitStore := wiring.submitStore
+		if submitStore != nil {
+			if submitStore, err = requireOrderSubmitSchema(ctx, loaded.World, submitStore); err != nil {
+				return err
+			}
+		}
 		command, err := newReferenceCommandScenarioRunner(
 			loaded.World,
 			*legacyUsers,
@@ -121,6 +166,10 @@ func runCombinedWebTargetWithEffectGrant(ctx context.Context, reader sourceaccep
 				}
 				return nil
 			}
+		}
+		command.submitStore = submitStore
+		if wiring.wrapCommandRead != nil {
+			command.read = wiring.wrapCommandRead(command.read)
 		}
 		commandScenario = command
 	case core.MustCanonicalID("repair_intake"):

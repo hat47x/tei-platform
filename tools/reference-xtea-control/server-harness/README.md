@@ -1,4 +1,6 @@
-# XeadServer live harness
+# XeadServer live harness（参考・対象外）
+
+XeadServerはTEIの参考対象外です。このハーネスは過去の調査を再現するための参考資産であり、新しい比較・受入・検証には使いません。`verify-all.ps1`の既定実行にも含まれません。
 
 `xtea_server.py`のHTTP契約を、模擬サーブレットではなく元の`DBMethod` / `Service`クラスで確認するための最小ハーネスです。
 

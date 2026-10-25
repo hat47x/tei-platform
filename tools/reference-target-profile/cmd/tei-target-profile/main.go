@@ -29,13 +29,20 @@ func main() {
 	fixturesPath := fs.String("fixtures", "", "fixed fixture JSON")
 	candidatesDir := fs.String("candidates", "", "directory containing candidate directories")
 	enforceNetwork := fs.Bool("enforce-network", false, "require Linux network namespace isolation for network:none (run/compare only)")
+	enforceCPU := fs.Bool("enforce-cpu", false, "require Linux per-process CPU time limits (run/compare only)")
 	rootDir := fs.String("root", "", "local deployment root for deploy")
+	rollbackTo := fs.String("to", "", "history source digest for rollback")
+	keepLast := fs.Int("keep-last", 0, "number of newest history artifacts to keep")
+	historyDryRun := fs.Bool("dry-run", false, "report history deletions without deleting")
 	_ = fs.Parse(os.Args[2:])
-	if command != "compare" && command != "rollback" && *profilePath == "" {
+	if command != "compare" && command != "rollback" && command != "history" && command != "prune-history" && *profilePath == "" {
 		fail(fmt.Errorf("-profile is required"))
 	}
 	if *enforceNetwork && command != "run" && command != "compare" {
 		fail(fmt.Errorf("-enforce-network is supported only for run/compare"))
+	}
+	if *enforceCPU && command != "run" && command != "compare" {
+		fail(fmt.Errorf("-enforce-cpu is supported only for run/compare"))
 	}
 	switch command {
 	case "validate":
@@ -51,6 +58,7 @@ func main() {
 		receipt, err := targetprofile.Run(context.Background(), targetprofile.RunOptions{
 			WorkspaceDir: *workspaceDir, ContractPath: *contractPath,
 			FixturePath: *fixturesPath, CandidatesDir: *candidatesDir, ProfilePath: *profilePath, EnforceNetwork: *enforceNetwork,
+			EnforceCPU: *enforceCPU,
 		})
 		if err != nil {
 			fail(err)
@@ -75,6 +83,7 @@ func main() {
 		receipt, err := targetprofile.Compare(context.Background(), targetprofile.CompareOptions{
 			WorkspaceDir: *workspaceDir, ContractPath: *contractPath,
 			FixturePath: *fixturesPath, CandidatesDir: *candidatesDir, ProfilePaths: paths, EnforceNetwork: *enforceNetwork,
+			EnforceCPU: *enforceCPU,
 		})
 		if err != nil {
 			fail(err)
@@ -84,8 +93,8 @@ func main() {
 			os.Exit(1)
 		}
 	case "deploy":
-		if *candidatesDir == "" || *rootDir == "" {
-			fail(fmt.Errorf("-candidates and -root are required for deploy"))
+		if *candidatesDir == "" {
+			fail(fmt.Errorf("-candidates is required for deploy"))
 		}
 		receipt, err := targetprofile.Deploy(context.Background(), targetprofile.DeployOptions{
 			ProfilePath: *profilePath, CandidatesDir: *candidatesDir, RootDir: *rootDir,
@@ -101,7 +110,37 @@ func main() {
 		if *rootDir == "" {
 			fail(fmt.Errorf("-root is required for rollback"))
 		}
-		receipt, err := targetprofile.Rollback(*rootDir)
+		var receipt targetprofile.RollbackReceipt
+		var err error
+		if *rollbackTo != "" {
+			receipt, err = targetprofile.RollbackTo(*rootDir, *rollbackTo)
+		} else {
+			receipt, err = targetprofile.Rollback(*rootDir)
+		}
+		if err != nil {
+			fail(err)
+		}
+		emit(receipt)
+		if !receipt.Passed {
+			os.Exit(1)
+		}
+	case "history":
+		if *rootDir == "" {
+			fail(fmt.Errorf("-root is required for history"))
+		}
+		receipt, err := targetprofile.History(*rootDir)
+		if err != nil {
+			fail(err)
+		}
+		emit(receipt)
+		if !receipt.Passed {
+			os.Exit(1)
+		}
+	case "prune-history":
+		if *rootDir == "" || *keepLast == 0 {
+			fail(fmt.Errorf("-root and -keep-last are required for prune-history"))
+		}
+		receipt, err := targetprofile.PruneHistory(*rootDir, *keepLast, *historyDryRun)
 		if err != nil {
 			fail(err)
 		}

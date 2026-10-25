@@ -45,6 +45,12 @@ func Invoke(ctx context.Context, capability semantic.Capability, adapter Adapter
 		return BusinessResult{}, fmt.Errorf("capability %sを実行するAdapterが指定されていません", capability.ID)
 	}
 
+	// A request cancelled before dispatch must not reach an effectful Adapter.
+	// Cancellation after dispatch cannot by itself establish non-commit.
+	if err := ctx.Err(); err != nil {
+		return BusinessResult{}, err
+	}
+
 	result, err := adapter.Invoke(ctx, capability.ID, input)
 	if err != nil {
 		return BusinessResult{}, fmt.Errorf("capability %sの実行を完了できませんでした: %w", capability.ID, err)

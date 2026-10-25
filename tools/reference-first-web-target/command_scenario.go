@@ -305,6 +305,16 @@ func (r *referenceCommandScenarioRunner) runAuthenticatedSubjectCommandWithEffec
 				if errors.Is(err, errOrderNotSubmittable) {
 					return capabilityinvoke.BusinessResult{}, errOrderNotSubmittable
 				}
+				if errors.Is(err, errPhysicalSchemaNotReady) {
+					result.Stage = "physical-schema-not-ready"
+					return capabilityinvoke.BusinessResult{}, errPhysicalSchemaNotReady
+				}
+				if errors.Is(err, errOrderSubmitCommitUnconfirmed) {
+					// Preserve the uncertain Commit category through Driver wrapping.
+					// This Reference has no durable receipt, so it must not retry here.
+					result.Stage = "command-commit-unconfirmed"
+					return capabilityinvoke.BusinessResult{}, errOrderSubmitCommitUnconfirmed
+				}
 				// The driver error can be echoed to the client; keep
 				// connection detail out of it.
 				return capabilityinvoke.BusinessResult{}, errors.New("order submit effect failed")
@@ -379,6 +389,12 @@ func (r *referenceCommandScenarioRunner) runAuthenticatedSubjectCommandWithEffec
 	}
 	observation, err := driver.ExecuteObservationRead(ctx, readIdentity, nature, readState)
 	if err != nil {
+		if r.submitStore != nil {
+			// A real-store Submit has already returned successfully. A later
+			// independent read failure cannot establish that the write rolled back.
+			// Keep the partial Command result and hide the Provider's connection details.
+			return result, errors.New("action completion unconfirmed; inspect authoritative state before retrying")
+		}
 		return result, err
 	}
 	result.Observation = &observationProjection{
