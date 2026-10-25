@@ -31,6 +31,7 @@ type DeployReceipt struct {
 	CurrentSlot       string   `json:"currentSlot,omitempty"`
 	PreviousSlot      string   `json:"previousSlot,omitempty"`
 	RollbackAvailable bool     `json:"rollbackAvailable"`
+	Installed         bool     `json:"installed"`
 	Passed            bool     `json:"passed"`
 	Reason            string   `json:"reason,omitempty"`
 	GrantsAuthority   bool     `json:"grantsAuthority"`
@@ -54,8 +55,8 @@ func Deploy(ctx context.Context, opts DeployOptions) (DeployReceipt, error) {
 			"実Targetの配備・supervisor・ロールバック・無停止更新を証明しない。",
 		},
 	}
-	if profile.Storage != StorageFilesystem {
-		receipt.Reason = "deploy reference supports only storage=filesystem, got " + profile.Storage
+	if profile.Storage != StorageFilesystem && profile.Storage != StorageNone {
+		receipt.Reason = "deploy reference supports storage=filesystem or storage=none, got " + profile.Storage
 		return receipt, nil
 	}
 	if profile.Update != UpdateReplace && profile.Update != UpdateInPlace && profile.Update != UpdateRolling {
@@ -83,6 +84,33 @@ func Deploy(ctx context.Context, opts DeployOptions) (DeployReceipt, error) {
 	}
 	if language != generatorselection.LanguageGo {
 		receipt.Reason = "deploy reference supports only Go candidates"
+		return receipt, nil
+	}
+	if profile.Storage == StorageNone {
+		tempDir, err := os.MkdirTemp("", "tei-deploy-none-*")
+		if err != nil {
+			receipt.Reason = err.Error()
+			return receipt, nil
+		}
+		defer os.RemoveAll(tempDir)
+		binaryPath := filepath.Join(tempDir, "artifact")
+		if err := buildGoCandidate(ctx, candidateDir, binaryPath); err != nil {
+			receipt.Reason = "candidate build failed: " + err.Error()
+			return receipt, nil
+		}
+		artifact, err := os.ReadFile(binaryPath)
+		if err != nil {
+			receipt.Reason = err.Error()
+			return receipt, nil
+		}
+		receipt.ArtifactDigest = digestBytes(artifact)
+		receipt.Installed = false
+		receipt.Passed = true
+		receipt.Notes = append(receipt.Notes, "storage=noneではartifactを検証するが、永続配置しない。")
+		return receipt, nil
+	}
+	if opts.RootDir == "" {
+		receipt.Reason = "storage=filesystem requires -root"
 		return receipt, nil
 	}
 	if err := os.MkdirAll(opts.RootDir, 0o755); err != nil {
@@ -117,6 +145,7 @@ func Deploy(ctx context.Context, opts DeployOptions) (DeployReceipt, error) {
 			receipt.Reason = err.Error()
 			return receipt, nil
 		}
+		receipt.Installed = true
 		receipt.Passed = true
 		return receipt, nil
 	}
@@ -177,6 +206,7 @@ func Deploy(ctx context.Context, opts DeployOptions) (DeployReceipt, error) {
 			return receipt, nil
 		}
 	}
+	receipt.Installed = true
 	receipt.Passed = true
 	return receipt, nil
 }
