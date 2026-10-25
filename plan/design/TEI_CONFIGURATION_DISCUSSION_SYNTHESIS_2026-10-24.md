@@ -5,7 +5,8 @@
 - 10月24日の再精査基準main：`f29636c2e59dcfcf2069fde4b8e5fe29fd5ab544`。10月25日の追補は末尾に別の照合版を記す。
 - 主な担当課題：[#982](https://github.com/hat47x/tei-platform/issues/982)、[#1063](https://github.com/hat47x/tei-platform/issues/1063)、[#1803](https://github.com/hat47x/tei-platform/issues/1803)。
 - 既存のHost方針変更案：[Draft PR #2226](https://github.com/hat47x/tei-platform/pull/2226)、確認head `7554f42188d0670f28979dfe75ad513f1bb11ea6`。
-- 今回の本文精査・コード照合の基準main：`23783b568c880c94ebeb462356162478e3b1ac77`。MMI側は`a8addd1560bd02131b29ade4d9d1cfa7ca5f9b21`。過去の確認版と当時の判断は各追補に保持する。
+- 10月25日の本文精査・コード照合の基準main：`23783b568c880c94ebeb462356162478e3b1ac77`。MMI側は`a8addd1560bd02131b29ade4d9d1cfa7ca5f9b21`。過去の確認版と当時の判断は各追補に保持する。
+- 10月26日の追加照合main：`b36ffdfd609bbc73bb1be93867576280c913f9d9`。途中の固定版`a5da3c5034bc41af8973aedfa4e20adbae8b3bc5`と、その後の#2291統合を末尾に区別して記す。
 - 本書の役割：複数の議論を既存課題へつなぐ。製品要求、採用済みADR、実装状況の正本を置き換えない。
 
 ## 今回増えた論点
@@ -329,3 +330,51 @@ MMIのCLI・MCP・表参照を、TEIモデル改訂の管理や業務意味の�
 直近の技術確認は、(1)既存保存物の保全、(2)宣言した丸めと生成実装の適合に絞る。並行して、MMIのレビュー保存・再開と、SHOのファイル単位参照を利用者の一作業へ具体化する。Businessの意味・確認の有効範囲はOwner判断へ残し、各線の全完成を他の着手条件にしない。
 
 各21チャット向けに、この本文精査に基づく追加質問を作成した。回答を関連Issueの短い検討コメントへ保存できる場合はURLを返すよう依頼する方針としたが、送信では会話履歴のレート制限が返った。受付・回答取得・Issue保存を成立したものとして数えず、未送信の質問とエラーは作業記録へ残す。新規ADRや要件の採用、既存Issueの完了判定は今回行わない。
+
+## 10月26日追補：修正済み事項と残る構成判断
+
+初回照合mainは`a5da3c5034bc41af8973aedfa4e20adbae8b3bc5`、#2291統合後の追加照合は`b36ffdfd609bbc73bb1be93867576280c913f9d9`。前日の指摘をそのまま現在の欠陥として扱わず、統合された変更と残る問いを区別する。以下はコードの静的照合、取得できた回答本文、既存Issueの検討記録を合わせた整理であり、新たな実行試験や採用判断ではない。
+
+### 保存済みobjectの再利用と旧形式の移行
+
+[PR #2270](https://github.com/hat47x/tei-platform/pull/2270)と[PR #2281](https://github.com/hat47x/tei-platform/pull/2281)は統合済みである。現在の`store.go`（blob `be9f5bfffa2931fea61e92abe660074cefdc00a4`）では、再利用時に保存receiptを読み、digest不一致を拒否する。receiptが存在しないobjectには、元metadataの`receiptDigest`と提示した選抜receiptの原byteが合致する経路でreceiptを補う。このため「保存receiptを読まず再利用する」という前日の固定headへの指摘を、そのまま現状へ引き継がない。
+
+一方、既存artifactのbyte不一致・読取失敗時に新規書込み処理へ進み得る点と、再利用時に保存source自体を再検査していない点は、このmainにも静的に残る。正常な完全一致の再利用、元byteを保つ拒否、旧形式への明示的な補完を分け、既存Get検査を使う最小案を担当へ戻す。旧形式のreceipt補完まで「全ファイルを一切変更しない」に含めて拒否する案にはしない。保存処理のblobは後続の`b36ffdf`でも同一だった。今回の実動再現は未実施である。[担当の#2016追補](https://github.com/hat47x/tei-platform/issues/2016#issuecomment-6400630488)では、#2281の試験が現行objectからreceiptを削除したケースであり、`receiptDigest`を持たない旧metadata全般の移行実証ではないことも整理された。元の選抜証拠を推測で復元しない。
+
+同じ論点は[既存#2016のハーネス担当追補](https://github.com/hat47x/tei-platform/issues/2016#issuecomment-6398214503)にもある。保存成功、候補単位の固定fixture適合、現在の実行資格は異なる主張である。不合格候補を比較・監査のために保存することと、それを実行対象に選ぶことも分ける。既存コメントへ接続し、同内容の新しい記録系を作らない。
+
+### 未対応の丸め方式は生成前拒否で対処済み
+
+前日の静的指摘を受けた[PR #2291](https://github.com/hat47x/tei-platform/pull/2291)は、head `d289e1c30c2f76555683e68bdbfd97ba66dcffb7`、merge `f520d5c3dec6fbd83fa919cce21c3790ddd2adca`で統合された。`b36ffdf`の共通入口`renderCandidateBytes`は、固定生成器が対応しないhalf-evenを描画前に拒否する。契約自体がhalf-upとhalf-evenを許容することは変えていない。したがって「half-evenを宣言してもhalf-upを生成する」という前日の問題を、現在も未修正とは記さない。
+
+[#2016の統合記録](https://github.com/hat47x/tei-platform/issues/2016#issuecomment-6400622319)には、修正前の14 strategyでの再現、修正後の公開前拒否、World・bundle入口での出力未作成、half-upの既存byte維持、独立した正負tieの試験、PRとexact mergeのCI成功が記録された。これらは担当の実行記録であり、今回こちらで再実行したものではない。
+
+これはhalf-evenの各言語実装の完成でも、業務で使う丸め方式の採用でもない。必要な生成方式へ対応を追加する場合だけ、正負のtie・精度・実行方式を独立期待値と比較する。技術上の未対応は拒否で扱い、業務上の方式選択はOwnerへ残す。現時点の固定生成器に、未対応方式の完成を一律の着手条件として要求しない。
+
+### 認知基盤は候補探索の不足と順位改善を分ける
+
+「TEI認知基盤構成検討」「TEIローカル認知基盤導入案」では、以前の質問から独立して、候補集合を作る段階の不足が具体化していた。[PR #2197](https://github.com/hat47x/tei-platform/pull/2197)はOpen/Draft、確認headは`d1076a5a55bff61a42daef2db0ef0d200d2098c9`である。
+
+このheadのDiscoverは、同パッケージのテストをファイル名または本文中の対象stemで収集し、収集中の件数上限で停止してから並べ替える。現行mainの`revision_test.go`には`TestEvaluateWithBaseCannotBypassStale`があるが、本文に`qualification`はない。したがって`qualification.go`からの名前・文字列一致だけでは、この関連テストは候補に入らない。後段のモデル順位付けでは、候補外の根拠を回復できない。これはソース上の照合であり、今回のCLI実行結果ではない。
+
+別に、package名が広く本文一致する場合、早い件数打切りによって直接テストが落ちる問題も担当から報告された。実ファイルによる二つの負例、収集後の選抜、直接一致の優先、未探索範囲の診断を既存PoCの中で確認する。必要根拠を候補集合へ保持できるかと、同じ候補集合でモデルが順位を改善するかを別に比較する。CI成功や合成fixtureの発見を探索網羅・モデルの有効性へ昇格させず、全repo解析や新しいCognition Portを先行条件にしない。[#2196へ追補](https://github.com/hat47x/tei-platform/issues/2196#issuecomment-6400630989)し、二つの担当へ異なる観点の質問を整理した。
+
+### 前回の質問以外に進んだ議論の接続
+
+- ハーネス側は、外部CLIの停止・再開、候補sourceの凍結、独立評価、OS上の実効隔離へ検討を深めている。[外部ハーネス担当の追補](https://github.com/hat47x/tei-platform/issues/2016#issuecomment-6398212685)では、操作互換と再送判断を分け、実Targetへのapply/effectに必要なoperation identity・authority・結果観測を未決として残す。TEIの意味の正本や実行権限を、認知Method・作業Direction・Harnessの選択へ移さない。
+- [独立評価担当の追補](https://github.com/hat47x/tei-platform/issues/2016#issuecomment-6398214503)は、half-even契約にhalf-upの期待値を残す負例を提案している。契約構文の妥当性、候補のfixture適合、期待値自体の意味上の妥当性を分ける。生成コードから期待値を逆算せず、既存D8の正負の丸め期待値を使う。これは10月25日時点の未実行案であり、10月26日の#2291では固定生成器を公開前に拒否することで対処した。同じ不具合の再提案は避け、独立評価の一般的な論点とblind評価・実業務適合の未実証を区別する。
+- 配備側では[PR #2289](https://github.com/hat47x/tei-platform/pull/2289)が統合され、[現行status](../../docs/status.md)にTarget Profileのprocess model、多言語実行、filesystem/sqlite配備、history・prune・audit・署名済みapprovalの確認範囲が記載された。remote storage、実Targetのsupervisor・health check・traffic drain、署名者Authority・trust rootは未確認として残る。これらの実装・記録の増加から、本番配備や正当な署名者の成立を導かない。
+
+### 各担当へ戻す問い
+
+| 担当する議論 | 深める判断 |
+| --- | --- |
+| Business・業務モデル | 子明細の業務Actionと親側の更新宣言の関係、業務上の一変更単位、値が元へ戻った場合の確認失効条件を誰が決めるか |
+| Plugin・型付き演算・テスト | #2291の未対応拒否を前提に、必要な方式へ対応を追加するときの比較は何か。欠落・null・通貨・単位の写像と、独立した正負の期待値をどう保つか |
+| 文書管理・高速build | 正常再利用・破損拒否・旧形式移行をどう分けるか。保存再利用とbuild省略とEvidence再利用を混同していないか |
+| SHO・MMI・Desktop・EKI | 成果物ファイル参照とレビュー保存・再開を一作業として成立させる最小範囲は何か。同じ対象・基準版・未確認の判断をどう保持するか |
+| Diagnostic多言語表示 | 型付き引数・message所有者・依存方向と、CLI JSONの既存Message・順序の互換性をどう保つか |
+| SEI・Harness・認知基盤 | 候補探索、認知Method、順位付け、独立評価、実効隔離の不足を別々に測れるか |
+| X-TEA継承 | 複合キー診断候補を実repoで確認する範囲と、業務順序を推定せずOwnerへ残す範囲はどこか |
+
+前回受付済みのGo多言語担当には重ねて送らず、前回未送信の20担当と今回加えた認知基盤の2担当、計22チャットで追加質問の受付を確認した。「設計への取り込み検討」は別担当の同時配信と1件重なったため、それ以降の配信範囲を共有して追加送信を止めた。受付・回答本文の取得・Issue保存・提案の採用は別々に記録する。回答が参照カードだけの場合は、そのカードを新しい結論として合成しない。今回もADR採用状態と既存Issueの完了判定は変更しない。
