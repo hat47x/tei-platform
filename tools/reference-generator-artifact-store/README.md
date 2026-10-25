@@ -45,9 +45,10 @@ go run ./tools/reference-generator-artifact-store/cmd/tei-generator-artifact-sto
 - `candidateId`、`language`
 - `contractId`、`contractVersion`
 - `sourceDigest`、`binaryDigest`
+- `buildEvidenceDigest`（選抜receiptのbuildEvidenceをcanonical JSONにしたdigest。source-only候補では省略）
 - `receiptDigest`
 
-`put`/`get`のreceiptと`list`のobject entryにも`language`を記録し、保存した候補の実行形式を一覧から区別できます。
+`put`/`get`のreceiptにも`buildEvidenceDigest`を返します。`put`/`get`のreceiptと`list`のobject entryにも`language`を記録し、保存した候補の実行形式を一覧から区別できます。
 
 ## 保存時の検査
 
