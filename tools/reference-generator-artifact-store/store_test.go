@@ -454,6 +454,43 @@ func TestListRejectsTamperedBuildEvidenceDigest(t *testing.T) {
 	}
 }
 
+func TestPutRejectsReuseWithDifferentProvenance(t *testing.T) {
+	receiptPath, _ := writeSelectionReceipt(t)
+	_, _, _, candidates := selectionPaths(t)
+	storeDir := t.TempDir()
+	first, err := Put(context.Background(), StoreOptions{
+		ReceiptPath: receiptPath, CandidateID: "template", CandidatesDir: candidates, StoreDir: storeDir,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	rawObject, err := os.ReadFile(filepath.Join(first.ObjectPath, "object.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var object Object
+	if err := json.Unmarshal(rawObject, &object); err != nil {
+		t.Fatal(err)
+	}
+	object.ReceiptDigest = "sha256:" + strings.Repeat("0", 64)
+	changed, err := json.MarshalIndent(object, "", "  ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(first.ObjectPath, "object.json"), append(changed, '\n'), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	second, err := Put(context.Background(), StoreOptions{
+		ReceiptPath: receiptPath, CandidateID: "template", CandidatesDir: candidates, StoreDir: storeDir,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if second.Passed || !strings.Contains(second.Reason, "provenance") {
+		t.Fatalf("different provenance was reused: %+v", second)
+	}
+}
+
 func TestPutRejectsUnknownCandidate(t *testing.T) {
 	receiptPath, _ := writeSelectionReceipt(t)
 	_, _, _, candidates := selectionPaths(t)
