@@ -121,6 +121,10 @@ func renderCandidateBytes(contractRaw []byte, strategy, version string, world *i
 	if strings.TrimSpace(version) == "" {
 		return renderedCandidate{}, fmt.Errorf("generator version is required")
 	}
+	if contract.Rounding.Mode != "half-up" {
+		return renderedCandidate{}, fmt.Errorf("fixed generator strategy %q does not support rounding mode %q", strategy, contract.Rounding.Mode)
+	}
+
 	templateRaw, err := templateFiles.ReadFile(tmpl.file)
 	if err != nil {
 		return renderedCandidate{}, err

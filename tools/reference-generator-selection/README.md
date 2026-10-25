@@ -312,6 +312,12 @@ reconcileは候補をビルド・実行・選抜しません。再生成した�
 - 実Provider・実Targetでの比較。
 - 候補のartifact store、別machine・別toolchain・clean cacheでのbuild再現性（#943 / #1370 / #1104）。
 
+## 丸め契約と固定生成器の対応範囲
+
+契約の検証は`half-up`と`half-even`を区別して許容しますが、現在の固定strategyが生成できるのは`half-up`だけです。`half-even`を指定した生成は、source・manifest・出力directoryの公開前に明示的に拒否します。`Generate` / `GenerateVersion` / `GenerateAll`、来歴確認での再描画、`RenderForWorld`と設計bundleへの接続に共通の検査です。対応していない丸めを別の方式へ置き換えません。
+
+これは固定生成器の制約であり、業務で`half-up`を採用する判断や、契約全体から`half-even`を禁止する変更ではありません。将来対応する場合は、正負のtie（1.005 / -1.005等）を既存D8の独立期待値と比較し、各生成言語・単発/常駐で確認します。通常の`half-up`のtemplate bytes・出力・digestは変更しません。
+
 ## 読込み済みWorldからの描画
 
 `RenderForWorld`は、呼出元が一度読み込んだWorldと契約JSONのbyte列を受け取り、入力属性・型と出力型を照合してから、既存の固定strategyのsourceとcandidate manifestを返します。filesystemの出力、build・選抜・実行は行いません。契約の複合規則の受理やHostの実行許可を与えるAPIではありません。
