@@ -25,6 +25,15 @@ class DriverResultTest(unittest.TestCase):
             def trace(self):
                 return {"events": []}
 
+            def windows(self):
+                return {"windows": [{"title": self.value, "focused": True}]}
+
+            def screenshot(self, path):
+                if self.broken:
+                    raise OSError("screenshot unavailable")
+                Path(path).write_bytes(bytes((137, 80, 78, 71, 13, 10, 26, 10)))
+                return {"width": 80, "height": 60}
+
         class Fixture(driver_tests.LiveDriverTest):
             client = Client()
 
@@ -56,10 +65,16 @@ class DriverResultTest(unittest.TestCase):
                 capture = json.loads(next(Path(tmp).glob("*-failure-*.json")).read_text())
                 if name == "test_broken_snapshot":
                     self.assertIn("snapshot unavailable", capture["snapshotError"])
+                    self.assertIn("screenshot unavailable", capture["screenshotError"])
                     self.assertEqual(capture["trace"]["events"], [])
                     self.assertIn("original failure", result.failures[0][1])
                     continue
                 self.assertEqual(capture["snapshot"]["value"], "failed state")
+                self.assertEqual(capture["windows"]["windows"][0]["title"], "failed state")
+                self.assertEqual(capture["screenshot"]["width"], 80)
+                image = Path(tmp) / capture["screenshot"]["file"]
+                self.assertTrue(image.is_file())
+                self.assertEqual(image.read_bytes()[:4], bytes((137, 80, 78, 71)))
                 if name == "test_flow":
                     self.assertEqual(capture["context"]["params"]["input_type"], "ALPHA")
                 else:
