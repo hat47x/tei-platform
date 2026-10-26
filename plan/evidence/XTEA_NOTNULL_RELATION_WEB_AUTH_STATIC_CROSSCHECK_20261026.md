@@ -1,6 +1,13 @@
 # X-TEA固定版：TableField NotNull／Relation任意性／DDLとWeb認証境界の静的対照（2026-10-26）
 
-状態：**旧製品のSource Evidence・設計検討資料。TEIのAccepted Meaning、DDL同等性、実配布Webの安全性を認定しない。** 担当Issueは[#1126](https://github.com/hat47x/tei-platform/issues/1126)（ER／論理と物理）、[#1043](https://github.com/hat47x/tei-platform/issues/1043)（Web Session／認証）。上流の既知のlogin到達問題は[#2222](https://github.com/hat47x/tei-platform/issues/2222)を参照する。既存Issueにある調査コメントを再投稿する目的ではない。
+状態：**旧製品の固定Source Evidence・比較用資料。現行TEIの採用済みReference、Accepted Meaning、DDL同等性、実配布Webの安全性を認定しない。** 担当Issueは[#1126](https://github.com/hat47x/tei-platform/issues/1126)（ER／論理と物理）、[#1043](https://github.com/hat47x/tei-platform/issues/1043)（Web Session／認証）。旧上流loginの初期化順問題はClosed/not plannedの[#2222](https://github.com/hat47x/tei-platform/issues/2222)を過去証拠として参照する。既存Issueにある調査コメントを再投稿する目的ではない。
+
+## 0. 2026-10-27時点の最新Issue/PR照合による適用範囲の訂正
+
+- **[#2222](https://github.com/hat47x/tei-platform/issues/2222) は Closed / not planned。** 2026-10-26に再取得した[#2222コメント](https://github.com/hat47x/tei-platform/issues/2222#issuecomment-6373034128)は「XeadServerをTEIの参考対象外とする」方針を明示している。旧Serviceの`userID.matches`条件不整合は**過去の固定ソースに関する記録**としてのみ保持し、修正方針の未解決な現行Issueと扱わない。ハーネスは履歴資産として保全し、既定検証から除外した変更は**[merged PR #2223](https://github.com/hat47x/tei-platform/pull/2223)**。したがって旧XeadServerを現行TEIの実証必須ターゲットとして再導入しない。
+- **[#1126](https://github.com/hat47x/tei-platform/issues/1126) は Open。** 旧Modelerにおける`NotNull`・Relation端点optional・列DDL・FK節生成の分離は既存[#1126コメント](https://github.com/hat47x/tei-platform/issues/1126#issuecomment-6222299793)に反映済み。原典`Relationship@Type`と`ExistWhen1/2`を原文Source Factで保持する変更の[PR #2219はmerged](https://github.com/hat47x/tei-platform/pull/2219)。これはTEIのsemantic optionality・cardinality・FK mappingのOwner受理を証明しない。以前の[#1126追補](https://github.com/hat47x/tei-platform/issues/1126#issuecomment-6390896918)にある「Draft/未統合」は当時の状態であり、現行状態ではない。
+- **[#1043](https://github.com/hat47x/tei-platform/issues/1043) はOpen、[ADR-0019](../adr/0019-authentication-capability-boundary.md)・[ADR-0020](../adr/0020-capability-business-outcome-boundary.md)は採用済み。** XeadServerのHTTP 500一律失敗、独自`NRSESSION`、Cookie不明という旧仕様を、TEIの認証Outcome/Session要件として転用しない。新しい[#1043 SAML追補](https://github.com/hat47x/tei-platform/issues/1043#issuecomment-6415005161)と[Draft PR #2302](https://github.com/hat47x/tei-platform/pull/2302)には業務利用SAML条件の提案があるが、**PR #2302はDraft・未統合**。旧XeadServer一経路にSAMLが見つからないことと、TEIの現行・提案中の認証要件は独立。
+- **証拠の取り扱い：** 旧同名#1チャットと保存archiveの完全な発話・ファイル原文を今回すべて再取得したわけではない。Modeler巨大ソース該当行、同梱HelpのZIP内部HTML、M49/M50同値性、旧fixture計数差は本書の「既存記録／未確認」を保持する。検証済みの直接ソースと引継ぎ記録を混同しない。
 
 ## 1. 固定版と読取り範囲
 
@@ -69,6 +76,6 @@ TEI現行責務は[#1126](https://github.com/hat47x/tei-platform/issues/1126)。
 - **推論／提案**：旧表示と列制約からCanonical Relationのoptional/cardinality、あるいはFK enforcementを自動確定すべきでない。#1126でOwnerが意味判断し、DB差分/移行は既存[#1803](https://github.com/hat47x/tei-platform/issues/1803)へ委譲。
 - **未確認**：Helpの正確なHTMLパス・行番号、M49/M50メソッド同等性、fixture件数不一致の解消、実GUI編集・保存後XML・実CreateTable/DB実行、実配布WAR/Cookie/Proxy/認証成功、原典データからAccepted MeaningへのOwner受理。
 - **最小負例（未実行）**：同じKeyで1 FieldだけNotNullをfalseにした場合の図terminalとDDL列を独立比較。さらに`ExistWhen`のみ変更した場合の図terminal／FK節を別比較。元モデルは隔離複製を利用し、原本digest不変を保証。TEIではSource Factの欠落と明示空を混同せず、論理の未受理とDDL生成不可を独立に診断。
-- **Issue分担**：#1126は論理意味／UI／Crossview、#1803は物理DDL／Migration、#1043はWeb Session・認証／認可、#2222はXeadServer認証前段不整合、#940は実旧Runtime観測、#941は資料利用条件。#1158はUI Adapter、#1174はCapability Effect Fence、#2020はDelivery Profileであり、以前の#1回答で「password専用」「Web認証監査専用」と割り当てた場合は誤り。
+- **Issue分担**：#1126は論理意味／UI／Crossview、#1803は物理DDL／Migration、#1043はWeb Session・認証／認可、#2222はClosed/not plannedの歴史的XeadServer認証不整合、#940は実旧Runtime観測、#941は資料利用条件。#1158はUI Adapter、#1174はCapability Effect Fence、#2020はDelivery Profileであり、以前の#1回答で「password専用」「Web認証監査専用」と割り当てた場合は誤り。
 
-**検証実績：** 固定GitHubコードの読み取り、既存Issue本文・コメント・設計・採用済みADRの静的照合のみ。**未実施：** GUI、通信、認証、DB/DDL、ビルド、テスト、実現環境での比較。新規Issueを作る根拠は現時点でない。
+**検証実績：** 固定GitHubコードの読み取り、既存Issue本文・コメント・設計・採用済みADRの静的照合のみ。**未実施：** GUI、通信、認証、DB/DDL、ビルド、テスト、実現環境での比較。旧XeadServerに対する新たな実装・実行要求は作成しない。新規Issueを作る根拠は現時点でない。
