@@ -451,3 +451,51 @@ Storeでは保存source破損とreceipt欠落が同時に起きる複合ケー�
 以上4件も担当の静的調査・検討案として取り込む。今回こちらでGo／Node／モデル／実UIの試験を実行したことにはしない。
 
 第2追補の追加質問は23チャットで受付を確認した。前回の22件とは別の配信で、Go担当も型付きAPIと入力adapterの責務をさらに分ける質問で対象に含めた。受付を新しい回答や合意の成立として数えない。
+
+## 10月26日第3追補：表示・入力・確認の境界を具体化する
+
+照合mainは前回と同じ`b36ffdfd609bbc73bb1be93867576280c913f9d9`。前回の質問後に追加された5件の検討記録、前回の配信対象外で進んでいたデータ様式・計画起票の本文、現在のコードを照合した。実装の進展と、議論が具体化したことは分ける。
+
+### 前回の回答から今回取り込む内容
+
+| 取得できた記録 | 具体化された内容 | 引き続き未決・未実証の範囲 |
+| --- | --- | --- |
+| [#2196 変更意図の比較](https://github.com/hat47x/tei-platform/issues/2196#issuecomment-6404361050) | 同じ対象でも、表示順変更と鮮度判定変更では必要根拠が異なる。収集差・同じ候補集合内の順位差・意図入力の差を別々に比較する案 | 意図入力は現行Rerankに未実装。実モデルの有用性や採用は未確認 |
+| [#2077 Java入力境界](https://github.com/hat47x/tei-platform/issues/2077#issuecomment-6404364178) | Adapterのキー欠落／明示null、型付きAPIの前提違反、計算上の契約不適合を分ける案。独立Consumer一呼出しからLibraryを評価する | Field等のAPI名やnull拒否方法は候補。現行Mainのstdin/stdout試験を公開JARの完成証拠にはしない |
+| [#1803 同artifact・別由来](https://github.com/hat47x/tei-platform/issues/1803#issuecomment-6404348631) | 同じartifact byteでも元manifest・sourceRevisionが異なれば、所在再結合と引用先変更を区別する | 引用単位を元bundle snapshotとするか、由来を限定したartifactとするか。SHO実装・再読込試験は未実施 |
+| [#1125 確認範囲と撤回履歴](https://github.com/hat47x/tei-platform/issues/1125#issuecomment-6404347737) | 対象値・確認範囲と根拠・後続履歴を分ける。無関係メモ、A→B→A、Source byte不変のwithdrawを比較する案 | 失効規則はOwner未決。#958の認知reviewを業務の電話確認完了へ自動変換しない |
+| [#1805 global/local Consumer](https://github.com/hat47x/tei-platform/issues/1805#issuecomment-6404358144) | 診断追加で全体statusと局所Key状態がどう変わるかを分け、無関係な正常Keyを保持する案 | 原因診断追加は件数・順序・Booleanの互換性を変え得る。局所resolvedは意味Acceptedや全体発行資格ではない |
+
+### モデルへ渡す情報を評価条件に含める
+
+Draft #2197 head `d1076a5a55bff61a42daef2db0ef0d200d2098c9`の`main.go`を静的に確認した。`Candidate`（27–35行）はpath・kind・SHA-256・basis・rank等を保持し、`Rerank`のrequest（236–244行）は対象path・SHAと候補metadataを送る。ソース本文・抜粋と変更意図は、このリクエストに含まれない。
+
+したがって、現在の順位付けはこのmetadataを条件とした評価として扱う。hashの存在から、その版の本文をモデルが読んだとはいわない。同じmetadataでの決定的順位とモデル順位を比較し、本文や意図の追加は入力情報を変えた別の比較にする。[#2196へ静的確認を追補](https://github.com/hat47x/tei-platform/issues/2196#issuecomment-6405231654)し、現在の入力で答えられる問いを担当へ戻した。モデル実行・Go試験は今回行っていない。
+
+### 前回の質問とは別に進んでいた構想
+
+「TEIデータ様式調査提案」の取得できた本文は、基本値、構造、意味を持つ複合データ、操作、表示の五層を提案していた。意味・物理表現・表示を分け、同じデータを表やグラフ等へ投影する構想である。列挙された型や外部描画候補を、採用済みCore型・標準UI・現行実装とはしない。
+
+最初の検討は、同じ表示ラベルの二ノードと多重有向辺を持つ架空graph一件に絞る。node/edge表と描画を往復するとき、identity・向き・多重性・意味属性を保持する場所と、layout/UI設定を分ける。ノード選択から定義へ移動する場合も、Graphのqualified RefとCanonical Inspect／Source位置の確定は別である。まず既存機構でread-onlyに確認できる範囲を示し、型体系一式や新runtimeを先行条件にしない。[入口#982へ記録](https://github.com/hat47x/tei-platform/issues/982#issuecomment-6405239670)し、#1803の引用と#1124の選択Consumerへ接続した。
+
+「TEI計画起票継続整理」では、計画§31/§32の当時の未実証判定と後続のReference証拠を対応付ける提案があった。取得本文は`23783b5`基準で#2270をOpenとしていたため、現状の統合済み#2270/#2281/#2291とは区別して更新を依頼した。現時点の#2254はhead `e54aba08eba6460140db03c1957a1d070dad935c`のOpen/Draft、#2226も従来headのOpen/Draftである。現行mainの計画ファイル（blob `628dfd5e1a8b5dcdbdb218a703f84e7dcaa95979`）でも末尾の§31を確認した。§32は#2254側のDraft追補であり、main統合済みの節とは扱わない。#2178/#2180/#2205/#2207のmerged状態も再確認したが、試験を再実行したことにはしない。実DBを使う試験、合成受理・認可、製品資格、Owner意味受理を分ける整理を[#1119へ追補](https://github.com/hat47x/tei-platform/issues/1119#issuecomment-6405292403)した。ADR-0041の番号衝突は今回変更しない。
+
+### 次に問う範囲
+
+今回確認した26チャットのうち、読める材料を使って問いを更新できる11担当向けに追加質問を整理した。本文未取得・新しい根拠未確認の15担当には前回の質問を照合対象として残す。
+
+| チャット | 今回深めるケース |
+| --- | --- |
+| TEI認知基盤構成検討 | path等のmetadataと本文・意図の情報量を分けた比較 |
+| TEI Go多言語対応調査 | JSON字句の受理と型付き値の計算適合 |
+| TEI SHO命名とMMI再定義 | 無関係artifact追加で変わるmanifestと引用単位 |
+| TEI X TEA継承事項調査 | 正常Keyだけの閲覧と全体変換で使う状態 |
+| TEI 生成AI時代のユニケージ再評価 | withdraw、内容reject、認可失効、未保存編集 |
+| TEI Desktop仕様 | 図のノード選択から編集対象を確定できる範囲 |
+| TEI設計への取り込み検討 | 規則選択からCommandまでの各辺の証拠 |
+| TEI採用検討整理 | Bの支援範囲外を不明のまま保つ価値比較 |
+| TEIプラグイン管理整理 | source記録の回復と外部操作の再送 |
+| TEIデータ様式調査提案 | 多重有向graph一件での意味・表現・表示の分離 |
+| TEI計画起票継続整理 | 当時の計画と現在の統合・証拠状態の対応 |
+
+受付・回答本文取得・Issue保存・採用は引き続き別に記録する。今回の文書整理で新しい型・API・Gate・ADRを採用しない。
