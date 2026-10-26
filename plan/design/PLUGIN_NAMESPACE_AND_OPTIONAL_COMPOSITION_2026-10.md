@@ -207,6 +207,8 @@ accepted semantic / explicit project bindings
 
 (2) **Executable qualification**: 正しいProvider/Artifact、現行Authority、Activationに必要なContext、Target対応、SourceとProviderの鮮度、InvocationごとのGenerationを検査。前段の成功をこの段階の権限としない（#1121/#1118）。
 
+ここでいう「信頼されたHost/実行境界」は、独立したTEI専用HostプロセスやWailsを必須にする意味ではない。CLI、Web、Worker、Desktop等のTargetで、実際に外部能力を強制できる責任主体を明示するという意味で使う。
+
 Query・Mutation・Transfer・Migrationは共通Port接続を**再利用**できる一方、Result/Failure/Checkpointや実行保証は独立Contractで扱う。任意Graphの循環と、初期化で値を必要とする依存循環と、業務Relationの相互参照は異なる。計画的なフィードバックループは明示的な遅延/境界なしに許可しない。
 
 ### 9.6 複数DB Update / Data Migrationの既存Ownerを再確認する
@@ -236,3 +238,75 @@ Query・Mutation・Transfer・Migrationは共通Port接続を**再利用**でき
 - **維持する採用済み判断**: ADR-0032のContract中心/一時Effect/Generation、ADR-0033のCore/Plugin境界、RQ-005の複数DBと保証の区別。
 - **今回具体化した候補**: 型パラメータとInstance参照の分離、Bindingの値供給源・評価時点・Source Revision、2段階の合成判定、独立Ownerへのデータ移行の委譲。
 - **未採用・未実装・未実証**: `GraphType<T>`文法、`Binding<T>`の型定義・Expressionの文法/評価、Instance再利用の隔離、`tei.*`正式ID構文、Registry移行、異種DBの更新原子性、Runtimeでの実Consumer検証。
+
+
+---
+
+## 10. 契約互換性：同じ名前・Major・実装宣言でも意味の互換性は証明されない
+
+この節は#951のContract Conformanceへ与える**実Consumer側の検査要件案**であり、新しいCompatibility RegistryやAuthorization Authorityの設計ではない。Namespaceが`tei.std.*`であること、Packageが署名済みであること、Contract Majorが等しいこと、Providerが`implements`を宣言することを、単独で十分条件にしない。
+
+### 10.1 Contractを観測可能な要求の束として捉える
+
+```text
+Contract C = (
+  identity + exact definition fingerprint,
+  input / output / failure / unknown semantics,
+  declared effect + scope + context requirements,
+  behavioral guarantees,
+  conformance / provenance evidence requirements
+)
+```
+
+具体的な`Lookup<K,V>`のConsumerに対し、Providerが以下を満たせるかを別に照合する。
+
+| 軸 | 例 | 不適合の例 |
+| --- | --- | --- |
+| 入力 | IDのSemantic Type/Scope、Optional/NULL | `CustomerId`要求へ偶然同じ文字列の`AccountId`を渡す |
+| 出力 | 取得件数、欠損・曖昧性、フィールド型 | N件あり得る結果から最初の1件を黙って返す |
+| 失敗/不確実性 | `NotFound`/`Rejected`/`Unknown` | 適用後の応答喪失を`Rejected`とする |
+| Effect | 読取だけ、外部状態の書込み | read-only Lookupが暗黙にリソース作成する |
+| Scope/Context | Workspace限定、必要なContext Slot | 別Application/Tenantへ結果を使い回す |
+| 保証 | Snapshot、Staleness、Local Tx等 | `atomic across two stores`をProviderに実力なく宣言 |
+| 実現先 | 対象Target・Artifact・現在Authority | Wasm未対応をprocess fallbackで黙って実行 |
+
+型理論上、単純なread-only関数の入力は反変・出力は共変として検討可能だが、可変`ResourceRef<T>`や双方向Portを自動的に共変とはしない。呼出しの不変条件、失敗と副作用、Identity範囲を含む振舞い互換性は単なる構造的Type Shapeより強い要求である。
+
+### 10.2 候補選択と利用許可は異なる判定
+
+```text
+contract candidate identified
+  -> structural / semantic reference checks
+  -> producer publication Authority
+  -> provider conformance Evidence evaluated
+  -> requested target / binding compatible
+  -> current runtime Authority and physical capability check
+  -> selected generation pinned on invocation
+```
+
+各段階で証拠が不足した結果は`Unknown / NotQualified`として保持し、成功と読み替えない。特に、一つのFixtureへのConformance Test PASSをすべての外部データ・負荷・提供元に関する正しさへ拡張しない。正当なPublisherが後日Contractを追加しても、Consumerの採用済みFingerprintや互換性Evidenceを置き換えずに勝手に再選択しない（#951）。
+
+### 10.3 変更を分解して差分検査する
+
+| 変更 | 候補判定 | 理由 |
+| --- | --- | --- |
+| 実装Artifactのみ更新 | Contractは保持できる可能性 | Artifact/Build/Runtimeの検証は再実施 |
+| 必須Input追加 | 既存Consumerは原則再検証 | 提供できない入力を暗黙既定にしない |
+| Optional Field追加 | 条件付きで互換 | 厳密Schema・シリアライズ・Consumer検査による |
+| Outputの値域縮小 | 振舞い仕様と契約に依存 | 結果の一部が出なくなるとConsumerの期待を破る場合 |
+| Effectの追加（read→write） | 原則自動互換にしない | 実行権限と副作用境界が変わる |
+| Strong consistency→eventual | 保証を弱める変更 | 名前・形だけで互換としない |
+| Contractの`tei.experimental`→`tei.std` | 新Identityとして比較 | 明示Migration/Adapter/履歴とConsumer採用が必要 |
+| 論理Instanceの参照先変更 | Meaningが同じでも再検査 | Scope、Data ownership、Runtime Generation、Source Revisionが変わる |
+
+UI/Graphの座標など表示専用差分は意味的な契約変更としない。他方、見かけ上は同じ項目名でも対応するSource/Relationや有効範囲が変われば、意味的変更として扱う。
+
+### 10.4 最小追加負例と採用判断
+
+- **C1**: 同じMajor/Package Versionでも、Failure SemanticsやEffectのContract Fingerprintが変わった候補を自動採用しない。
+- **C2**: `Lookup`が読取として宣言されているのに実際は副作用を伴うProviderのConformance不能/隔離不足を隠さない。
+- **C3**: Artifact digest一致だけでPublisher Authorityの失効や現在権限を合格させない。
+- **C4**: Read consistencyを強から弱へ変更するAdapter差替えを、単なる`implements`宣言で通さない。
+- **C5**: Logical Instanceの配置・設定を変えてもContract定義が変わらない場合、Source/Binding/Runtime readinessだけ適切に再検査する。
+
+C1〜C5はいずれも**受入候補で未実行**。実装が必要になった場合も、#951の既存Resolver・Conformanceと#943の既存Artifact/Lockへ最小の差分を加える方針を守る。振舞い互換性の一般的な完全証明をTEIの目標とせず、可能な静的検査・実Consumer試験・外部Providerの独立観測・残る未確認を区別する。
