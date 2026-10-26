@@ -167,3 +167,9 @@ P4を、表の削除の事前確認（`RenderMigrationSQLWithObservation`と`Sch
 - PostgreSQL以外の提供元。現在、提供元のレンダリングはPostgreSQLだけが実装されている。
 - 主キーの変更（P5）の安全な手順。既存の表への制約の追加（P4）は、既存データの件数の検査つきで実装しました（4.4）。違反がある場合の扱いの宣言は未決です。
 - 外部キーの検証を後から行う方式（`NOT VALID`の利用）。運用上のロックの特性が変わるため、移行設計の5章と合わせて判断する。
+
+### X-TEA旧ModelerのNotNull・Relationship図・CreateTableとの比較（2026-10-26、#1126）
+
+固定XeadModeler M49では、TableFieldの`NotNull`は**列の`NOT NULL`出力**に使われる一方、Relationship図の端点任意性は**参照Keyの各FieldのNotNull集約とExistWhen条件**から判断され、外部キー節は**FK出力設定・Relationship Type・ExistWhen等**の別条件で生成される。これらを一つの論理optional値に圧縮して逆推測しない。旧仕様をPostgreSQL Providerの生成仕様として取り込む判断でもない。旧モデルからの転写時は原文Source Factを保持し、[#1126](https://github.com/hat47x/tei-platform/issues/1126)でOwnerの意味受理を要する。物理制約の実現は本設計と[#1803](https://github.com/hat47x/tei-platform/issues/1803)で別に検証する。
+
+固定SHA・ソース位置（Modeler.java 10248–10253／16495–16529／25408–25430等）・既存Issueコメント・今回の静的再照合範囲・未検証事項は[旧X-TEA対照Evidence](../evidence/XTEA_NOTNULL_RELATION_WEB_AUTH_STATIC_CROSSCHECK_20261026.md)を参照。固定M49の巨大Modeler.java本文は今回GitHub行指定取得で再取得できておらず、根拠は既往の固定版調査コメント。実GUI／保存XML／実DDL／DB、M50との差は未検証。
