@@ -118,3 +118,121 @@ Graph Editor/Inspectorは複雑なBindingを投影できるが、表示座標を
 - リポジトリの`std.*`一括置換、公式Registry運用、業務意味のAcceptance、本番Authority付与、既存PRのmergeは**非目標**。
 
 本文は設計候補であり、人による採用判断と関連OwnerのEvidenceを経るまで、ADR-0032の採用済み境界やProduction仕様を置き換えない。
+
+
+---
+
+## 9. 深化検討（2026-10-27）：Type / Instance / Bindingを最小の実Consumerで反証する
+
+### 9.1 何を新設しないか（現行Referenceとの差分）
+
+[入出力対応Reference](../../reference/composition-io-mapping/README.md)は既存`composition.Registry.InspectWiringSet`を利用し、契約項目の型・単位・多重度・機密区分・Semantic TypeRef候補・出力順序を限定的に検査する。一方、実Sourceの意味受理、任意式の評価、動的値、実Invocation、正本への適用は未実証である。この差を埋めるために第二Provider Resolverや新しい「全用途対応Graph IR」を先に作らない。
+
+[案件Composition設計](PROJECT_PLUGIN_COMPOSITION_DESIGN.md)の既存Role/Extension/Overlayと、[呼出し文脈](CAPABILITY_INVOCATION_CONTEXT_DESIGN.md)のSemantic Request / Context Slotの分離を再利用する。案件がPrincipalを利用しないことと、実行時のHost-owned context/OS境界が存在しないことを同一視しない。各`requires`が宣言したContext Slotだけが必要であり、`Principal`を全Invocationの暗黙必須項目にしない。
+
+### 9.2 Type引数とInstance参照は異なる
+
+`GraphType<Store : BlobWriter>`の`Store`は**実装可能な契約/型の制約**であり、`storeRef: invoiceStore`は**既に構成された論理Instanceへの参照**。この区別を維持する。
+
+| 観点 | 型の特殊化 | Instance Binding |
+| --- | --- | --- |
+| 入力 | 契約/Component Type | 特定のLogical Instance |
+| 意味 | 型制約を満たす実装群の選択 | 個別の設定・所有者・Namespace・Lifecycleへ接続 |
+| 多重度 | 一つの型から多数Instance可能 | 共有/専用は明示 |
+| 切替 | 契約/型の互換検査 | 設定・参照範囲・Runtime Generationの再検査 |
+
+`S3Store`を型引数にしたから同じBucketが選ばれるわけではない。逆に、`invoiceStore`と`archiveStore`を同じS3Store Typeから作っても、Bucket、CredentialRef、Data ownership、Scoped Leaseが異なりうる。`singleton`は型の普遍性ではなく、明示的に選択したLifecycle/Provider Policyによる制約候補とする。Shared Instanceを複数Application/Tenantで使う場合、単なる文字列Scope一致やProvider再利用でデータ・権限隔離が成立したとしない（[#2110](https://github.com/hat47x/tei-platform/issues/2110)、[#2020](https://github.com/hat47x/tei-platform/issues/2020)）。
+
+### 9.3 設定Bindingの型と時点を分ける（候補）
+
+`Binding<T>`は以下の概念的な**供給元の分類**を持つが、直ちにKernel固定Enumへしない。正確な型名/構文は未決。
+
+| 供給元 | 例 | 必要な検査 |
+| --- | --- | --- |
+| Literal | 固定値、設定名 | 許容値と型。機密値をLockへ埋め込まない |
+| Semantic reference | 受理済みUser Entity / Field / Relation | Qualified Ref、Source Revision、Semantic Type、Cardinality、所有元 |
+| Pure expression | 氏名フィールドを連結して表示名へ写像 | 入力型、欠損/NULL、構文版、演算子の意味、非副作用性 |
+| Explicit Provider output | 設定Providerから得る論理識別子 | Provider/Contract選択、結果版、観測時点・失効 |
+| Invocation-specific input/context | 要求ごとのCustomer ID、必要な場合だけ認証情報等のSlot | 宣言されたSlotか、実行時の信頼境界、Cache Partition |
+
+評価の時点（Source authoring、Composition/Resolve、Activation、Invocation、Observation）と、値の所有者・改訂・Secret性は別軸とする。ある時点で「提供できる」ことと「後の実行時にも有効」であることを混同しない。Provider outputやCredentialなど未取得の値は`Unknown`であり、空文字やゼロへ変換しない。
+
+**拒否条件**: Activation時の固定ParameterがInvocation単位で変わる式を密かに参照すること、式に任意の更新やネットワーク呼出しを埋めること、`FieldRef<User,String>`の代わりに未検証の文字列列名を意味参照として使うこと、未受理のSource/異Scopeを現在のBindingへ流すこと、欠損/NULL/未確定を既定値で黙って埋めること。
+
+**既存の区別を保存**: 一時的な`Effect Scope`の逆順Cleanup（ADR-0032）と、DB/APIへ適用した**永続的な業務Mutation**は別の意味である。後者を前者の`dispose`で自動取消できるようには扱わない。型検査・静的宣言は実行時の外部能力の許可・隔離に代わらない。
+
+### 9.4 X-TEAの差を使った具体的なGraph Binding候補
+
+同じDirectory Contractを持つ二つの案件で、モデルが異なる例を考える（架空のSchemaでありX-TEA原典の表名・動作の断定ではない）。
+
+```yaml
+# 議論用の擬似構文。既存 .tei/parser では受理できない。
+componentType: example.identity/UserDirectory
+contract: tei.experimental.identity/UserLookup@0
+requires:
+  entity: EntityRef<User>
+  key: KeyMapping<User,UserId>
+  display: PureExpression<User,String>
+instances:
+  - id: backofficeUsers
+    type: example.identity/UserDirectory
+    bindings:
+      entity: {semanticRef: "example.erp/User@1", revision: "r10"}
+      key: {semanticRef: "example.erp/User.userNo@1", revision: "r10"}
+      display: {expr: "concat(lastName, firstName)", operatorContract: "example.expression/Concat@1"}
+  - id: customerUsers
+    type: example.identity/UserDirectory
+    bindings:
+      entity: {semanticRef: "example.customer/CustomerAccount@1", revision: "r21"}
+      key: {semanticRef: "example.customer/CustomerAccount.accountId@1", revision: "r21"}
+      display: {semanticRef: "example.customer/CustomerProfile.displayName@1", revision: "r21"}
+```
+
+`display`へ渡すPureExpressionと、外部DataSourceから`CustomerProfile`を取得する操作は同じではない。後者が別Service/DBを要するなら、`Lookup` Provider/Relation ResolverへのPortを明示し、Read Effect・Consistency・Cache Scope・Failureを契約として分離する。
+
+`UserId`と`CustomerId`は表現が両方文字列でも同一と仮定しない。関係が1:NやAmbiguousなら、`Resolution`の明示的結果を保ち、唯一のUserへ縮退させない。UIのView Node IDから直接Source locator/Authorityへ渡すこともしない。
+
+### 9.5 合成の検証境界を二段階にする
+
+```text
+accepted semantic / explicit project bindings
+    -> qualified reference + contract/shape/owner inspection
+    -> declarative connection candidate (NOT executable)
+    -> existing contract/provider/lock resolution
+    -> target-specific lowering + current authority + activation readiness
+    -> pinned invocation -> per-source effect outcomes / independent observation
+```
+
+(1) **Candidate validation**: 型、識別Scope、個数、式の入力、依存循環、Bindingの所有/改訂を判定。未解決は`Unknown`で止める。これだけでRuntime Readyとしない。
+
+(2) **Executable qualification**: 正しいProvider/Artifact、現行Authority、Activationに必要なContext、Target対応、SourceとProviderの鮮度、InvocationごとのGenerationを検査。前段の成功をこの段階の権限としない（#1121/#1118）。
+
+Query・Mutation・Transfer・Migrationは共通Port接続を**再利用**できる一方、Result/Failure/Checkpointや実行保証は独立Contractで扱う。任意Graphの循環と、初期化で値を必要とする依存循環と、業務Relationの相互参照は異なる。計画的なフィードバックループは明示的な遅延/境界なしに許可しない。
+
+### 9.6 複数DB Update / Data Migrationの既存Ownerを再確認する
+
+[RQ-005](../../requirements/TEI_PRODUCT_REQUIREMENTS.md)のN:Mとtransaction/failure boundaryを維持。[#2143](https://github.com/hat47x/tei-platform/issues/2143)にはSnapshot時点とChange Log位置の対、主従の正本切替、逆同期、項目所有者、Collision Queueの不足が、[#2147](https://github.com/hat47x/tei-platform/issues/2147)にはCheckpoint/Reconcilation/Cutover Gateの不足が既に実例とともに記録されている。これらを新しい`tei.std.data`実装のために二重実装しない。
+
+データ操作の`Plan`、`Applied`、`Unknown outcome`を別に表現し、個別更新の原子性・冪等性・再送条件はProvider能力に依存する。`ChangeSet`は意図の表現案であり、ひとつのトランザクションや二相Commitを保証する意味ではない。逆同期や正本切替はデータの所有/権限の変更なので、人のAcceptanceと観測のGateを通す候補とする（#2143/#2147）。異種DBの実動作は未確認である。
+
+### 9.7 既存Referenceと不足を分けた追加受入案
+
+| Case | 反証する仮説 / 負例 | 既存証拠または不足 |
+| --- | --- | --- |
+| G1 | 同じComponent Typeの二Instanceを別々のEntity/Key/式へ接続し、Runtimeも設定が混線しない | 型・多重度の部分検査は既存Reference、実Binding/Runtimeは未確認 |
+| G2 | 固定ConfigへInvocation依存式を入力すると構成時に拒否 | 評価時点と式の規則は未確定 |
+| G3 | Optional/NULL/Missing/Unknown/Unavailableを式とMappingで区別 | Referenceの恒等スカラー例は既存、実演算子接続は未確認 |
+| G4 | 同じ名前だが異なるScope/型のUserIdを接続しない。Ambiguousは候補のまま | Semantic TypeRef候補検査は既存、発行Authority/Source受理は未確認 |
+| G5 | `tei.std.identity`を導入しないBatchのSource→Transform→Sink | 未実装の代表Consumer試験 |
+| G6 | 型付きContractにConformantな外部実装でも、不正なRuntime Authority/Artifactを拒否 | Registry試作の宣言・試料と実Runtime権限を区別 |
+| G7 | 二DB更新で片側`Applied`・片側`Unknown`を全成功にしない | RQ-005既存要求。異種DB実動作は未確認 |
+| G8 | SourceスナップショットとCDC位置不一致、切替前未解決差分で止める | #2143/#2147に既存。試験は既存Ownerへ |
+| G9 | `tei.experimental.*`から`tei.std.*`への変更でProviderや保存済みLockを暗黙更新しない | #951/#1920、移行実体と回帰は未確認 |
+
+**最小検証の順**: G5（ゼロIdentity）→ G1/G2/G3/G4（型付き二Instance）→ G6/G9（Contract移行）→ G7/G8（既存DB移行Ownerへ接続）。各ケースでSource Revision、Package/Contract、Provider/Artifact、Target、結果、未検証を独立記録する。新しいKernel TypeやRegistryを追加する前に、既存Referenceの拡張で可能な範囲を実測する。
+
+### 9.8 現段階の採否
+
+- **維持する採用済み判断**: ADR-0032のContract中心/一時Effect/Generation、ADR-0033のCore/Plugin境界、RQ-005の複数DBと保証の区別。
+- **今回具体化した候補**: 型パラメータとInstance参照の分離、Bindingの値供給源・評価時点・Source Revision、2段階の合成判定、独立Ownerへのデータ移行の委譲。
+- **未採用・未実装・未実証**: `GraphType<T>`文法、`Binding<T>`の型定義・Expressionの文法/評価、Instance再利用の隔離、`tei.*`正式ID構文、Registry移行、異種DBの更新原子性、Runtimeでの実Consumer検証。
