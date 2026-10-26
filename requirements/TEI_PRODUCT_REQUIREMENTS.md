@@ -150,6 +150,8 @@ Targetごとの差はCapability negotiationやRuntime Binding等で明示し、C
 
 同じDriver ScenarioとAccepted revisionを基準に、CLIで検証した業務の操作・期待結果・観測をWeb等のTarget-specific E2Eへ導出できる必要があります。生成元の業務assertionは共通化し、Webの認証・session・CSRF・画面操作・Accessibility等のTarget固有テストは別途実行します。CLIの業務PASSだけでWeb E2EもPASSと宣言したり、未対応Scenarioを黙ってskipしたりしてはいけません。詳細境界と最初の実証は`plan/design/CROSS_ROUTE_FUNCTIONAL_PARITY_AND_TEST_DERIVATION.md`、#1180に置きます。
 
+操作の入口と処理の実行場所は独立に扱います。同一プロセス、端末内の別プロセス、遠隔の提供元、複数拠点での分担でも、同じ業務契約・権限・確定と復旧の条件を保つ必要があります。入口や実行場所だけを根拠に権限を付与せず、TEI専用の常駐Hostを必須にしません。X-TEA由来の機能への対応と受入例は[経路横断受入の設計案](../plan/design/XTEA_FUNCTION_CROSS_ROUTE_ACCEPTANCE_DESIGN_2026-10.md)に置きます。
+
 Targetが「何を表示・操作できるか」というTarget Capabilityと、「どのtransport・信頼境界・session・Resource条件で実行されるか」というExecution / Trust Profileを、実装都合だけで一つのTarget差へ畳んではいけません。必要な分離は第一Targetと第二TargetのReferenceから検証します。
 
 Target / Hostがinspectionやdevelopment controlのために公開するMCP等のcontrol interfaceと、Application自身が業務上のPresentation / InteractionをMCP Targetとして公開する場合も区別できる必要があります。
@@ -256,11 +258,17 @@ secret、network endpoint、filesystem path等のHost materialをCanonical defin
 
 AI、Editor、generated code、automationも同じ権限・Resource境界を迂回してはいけません。AI actorであることや自律度が高いことから、write、Capability invocation、secret / network / filesystem access等のauthorityを暗黙に付与してはいけません。
 
+業務利用の認証接続ではSAMLを必須とし、認証方式の実装はプラグインまたは対象環境の認証基盤へ接続します。認証成功と業務操作の許可を分け、発行元を含む検証済みの外部主体から業務主体への対応付けと、現在の所属・対象範囲・操作権限を確認する必要があります。Subjectや表示名の文字列一致、クライアントが送るRole・Tenant、WebView・loopback・IPCの利用を権限の根拠にしてはいけません。確定時の認可と、結果照会・帳票取得時の認可を区別します。Mock認証や設定スクリプトの成功を、実IdPとのSAML往復や実際の権限正本の検証済み証拠として扱ってはいけません。
+
 ## RQ-020 再実行・takeover・unknownを安全に扱えること
 
 外部Runtimeの状態が不明なときに、同じ副作用を自動replayしてはいけません。
 
 ownership、fencing、durable handle、observation等を用いて、誰が現在の実行を調停する権限を持つかと、外部Runtimeがどのgenerationを受理したかを区別できる必要があります。
+
+同じ引数による新規実行と、同一要求の再送・再開を識別できる必要があります。同一要求の識別子には主体・操作・対象範囲・対象版・入力内容を結び付け、確定記録を同じ要求へ照合します。現在の業務状態だけから、その要求が確定したとは判断しません。別の入口から復旧する場合も現在の認証・主体対応・認可を再確認し、識別子を知っているだけでは結果を開示しません。
+
+取消要求の受付、実行停止、未確定、確定済み、確定不明、業務上の補償を区別する必要があります。通信や画面の終了をrollback済みの証拠にせず、処理の寿命と取消しを受け付ける境界を明示します。部分確定が許されない業務操作を、実装都合のチャンク化で分割してはいけません。
 
 ## RQ-021 ReferenceとConformanceで再現可能性を示すこと
 
