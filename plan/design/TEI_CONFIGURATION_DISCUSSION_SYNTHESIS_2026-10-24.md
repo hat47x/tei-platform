@@ -499,3 +499,26 @@ Draft #2197 head `d1076a5a55bff61a42daef2db0ef0d200d2098c9`の`main.go`を静的
 | TEI計画起票継続整理 | 当時の計画と現在の統合・証拠状態の対応 |
 
 受付・回答本文取得・Issue保存・採用は引き続き別に記録する。今回の文書整理で新しい型・API・Gate・ADRを採用しない。
+
+### 今回得られた補足と並行議論
+
+[認知基盤担当の補足](https://github.com/hat47x/tei-platform/issues/2196#issuecomment-6405250381)では、pathだけの決定的順位D_path、同じkind/basis等も使うD_meta、同じmetadataを受け取るM_metaを分けた。モデルとpathだけのbaselineを比べるだけでは、入力情報の差とモデルの寄与が交絡する。basisは収集器の本文文字列一致に由来する弱い信号だが、本文そのものではない。意図と抜粋の追加も別々の比較案として扱う。いずれも未実行の評価設計である。
+
+[Java担当の補足](https://github.com/hat47x/tei-platform/issues/2077#issuecomment-6405271852)は、入力字句の受理範囲と、型付き数値の計算適合を独立にした。既存9ケースを型付き計算、解析失敗を含む10ケースをAdapter経路で比較する案で、字句ポリシーを型付きAPIへ押し込まない。指数表記の扱い、複合エラーの優先順、公開API・配布方式は未決。独立Consumerのclassを別コンパイルして一呼出しを確かめる段階と、JAR配布・正式Library・業務受理の完成を分ける。今回Javaを実走した報告ではない。
+
+前回の質問とは別に、ハーネス側でも[生成Contextの固定・仕様充足](https://github.com/hat47x/tei-platform/issues/2016#issuecomment-6405240166)と[参照・読取・充足の分離](https://github.com/hat47x/tei-platform/issues/2016#issuecomment-6405286815)へ議論が進んでいた。locatorとdigest、実際に渡したbyte、その作業の判断に十分な意味情報を区別する案である。本文を渡したことも、正しく理解した証拠とはしない。暫定Reference Behavior Briefを共通入力として固定する案では、条項の由来をcontract・参照実装・公開fixture由来・Ownerレビュー等に分け、fixture由来の説明を独立した意味仕様と称さない。Briefとoracleが矛盾する場合は候補の失敗だけで処理せず、仕様と期待値の衝突として担当へ返す。このBriefをCanonical契約へ昇格させず、Projection・実効隔離・外部AI実行が完成したとも扱わない。
+
+### 取得できた追加回答からの具体化
+
+| 回答 | 今回得た差分 |
+| --- | --- |
+| [#1803 引用単位](https://github.com/hat47x/tei-platform/issues/1803#issuecomment-6405307799) | bundle snapshotと由来を限定した単一artifactでは一致条件が異なる。保存済みの前者を再開時に後者へ暗黙変換しない。manifest一致だけではindex等を含む全ファイルsnapshotの一致ともいえない。引用単位の案・既定値は未採用 |
+| [#1805 操作範囲](https://github.com/hat47x/tei-platform/issues/1805#issuecomment-6405300951) | 無関係Keyのread-only表示とK/J全体の変換・発行でglobal/localの参照範囲を分ける。原形閲覧にはlocal resolved自体も必須にせず、局所状態から全体完了・意味受理を導かない |
+| [#1125 reviewと業務確認](https://github.com/hat47x/tei-platform/issues/1125#issuecomment-6405336702) | assertionへのwithdrawは電話実施や正式な業務確認の取消ではない。Source reject、変更Proposal不採用、Commit認可の失効、未保存UI編集も別に記録し、外部業務事実の逆操作へ変換しない |
+| [#1125 呼出しの辺](https://github.com/hat47x/tei-platform/issues/1125#issuecomment-6405348447) | 三規則のCLI評価と、認証後に二規則だけを評価してtest-only Commandへ進むGate試験が分かれた。三規則から正式Commandへ至る一経路の実証は未成立として、未確認の辺を明示した。全repoで不存在とは断定しない |
+| [#1124 Graph選択](https://github.com/hat47x/tei-platform/issues/1124#issuecomment-6405343434) | 画面上のnode keyと論理ModelRefとSource位置を分ける。現Catalog Entryにはscopeがないためlabelやfilterからqualified keyを推定しない。元Graphにqualified keyがある場合もSource未解決なら編集は保留し、候補閲覧は続ける案 |
+| [#982 範囲外の価値比較](https://github.com/hat47x/tei-platform/issues/982#issuecomment-6405341104) | Business unsupportedを不明・照会待ちとして別計上し、確認不要へ変えない。表示上の時短だけでなく接続作業と後続照会の負担を含める。例示の時間は実測ではなく、効果を証明しない |
+
+これら6件と前述の認知基盤・Javaの2件、計8件を今回の質問後にIssue本文で取得した回答として反映した。新しい構造・API・仕様の採用や実機成功には昇格させない。
+
+今回対象とした11担当では追加質問の受付を全件確認した。配信台帳は第3追補として前回23件と分け、残る15担当の本文未取得・根拠未確認も保持する。
