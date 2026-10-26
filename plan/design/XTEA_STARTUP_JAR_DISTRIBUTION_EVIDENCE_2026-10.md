@@ -34,6 +34,8 @@
 
 [`README.md`の保存方法についての既存公表記録](https://github.com/hat47x/tei-platform/issues/943#issuecomment-6234874050)によると、配布マニュアルは元installer ZIP内に保持され、Source working tree・Git bundle・配布ZIPは別個の保存対象である。したがってReadme/INSTALL.DATの過去静的調査結果を再利用することと、今回そのZIP内容を独立に展開・再検査したことを区別する。
 
+**製品版とデータ形式版の追加照合（既存証拠の再索引）:** M49 source `src/xeadModeler/DialogAbout.java:47,50` は `FORMAT_VERSION="1.2"` / `FULL_VERSION="V1.R4.M49"`。M50 installer内 `Files/xteamdl.jar` の `xeadModeler.DialogAbout` class定数は、[既存#940記録](https://github.com/hat47x/tei-platform/issues/940#issuecomment-6205292851)および[独立照合記録](https://github.com/hat47x/tei-platform/issues/940#issuecomment-6205334330)で `FORMAT_VERSION="1.2"` / `FULL_VERSION="V1.R4.M50"` と報告されている。**表示製品版は異なるが、形式版の文字列は一致**。これはデータ形式の読み書き互換、M50のSource provenance、M50 Jar内Manifestの `Implementation-Version` 欄の有無を証明しない。今回M50 class bytesを再解析していないため、M50値は「以前の固定artifact静的検査記録」として区分する。
+
 **保存物とソースの非同一性:** 保存Source snapshotのM49とInstaller JARのM50は版表示が異なる。[#943既存記録](https://github.com/hat47x/tei-platform/issues/943#issuecomment-6234874050)にあるとおり、Source snapshot（working-treeを含む）とInstaller ZIPが同一Build由来である証拠はない。版違いを誤配布や互換障害と断定しない。
 
 ## 2. 起動時の層を混同しない
