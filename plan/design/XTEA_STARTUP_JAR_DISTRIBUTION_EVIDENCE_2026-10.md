@@ -1,0 +1,52 @@
+# X-TEA startup JAR 配布・版・更新の証拠境界（2026-10-26）
+
+- 状態: **外部Referenceの静的証拠整理**。X-TEAの実行検証・TEIの更新機構への受入証明ではない。
+- Source of truth: [#943](https://github.com/hat47x/tei-platform/issues/943)（Source/Build/Artifact provenance）、[#1223](https://github.com/hat47x/tei-platform/issues/1223) / [ADR-0032](../adr/0032-composition-kernel-replacement.md)（Generation/更新/rollback）、[#2019](https://github.com/hat47x/tei-platform/issues/2019)（Target配備・更新のReference）、[#2020](https://github.com/hat47x/tei-platform/issues/2020) / [ADR-0036](../adr/0036-delivery-forms-as-plugin-composition.md)（配布形態）。
+- この資料は既存Issueの受入条件を代替せず、X-TEA特有のJAR更新方法をTEI標準へ移植しない。
+
+## 1. 固定した証拠
+
+| 層 | 識別子・位置 | 状態 |
+| --- | --- | --- |
+| 公開M49 Source | [xead/XeadModeler commit `68f1535b1c5dd80a327dfced37be401ecd3093c9`](https://github.com/xead/XeadModeler/commit/68f1535b1c5dd80a327dfced37be401ecd3093c9) | GitHub固定版を直接静的確認 |
+| M49 source `jar/MANIFEST.MF` | Git blob `3c4183c3b0cead82069cf4b00ac631685f99d1bf`, 1–8行 | `Main-Class: xeadModeler.Application` と相対 `Class-Path`。製品version/build/source digestなし |
+| M49 `Application.java` | Git blob `093171faf36b2c5842aa22f94a234b713c635b67`, 49–69 / 88–96行 | `main` → `new Application(args)` → `new Modeler(args,this)` |
+| M49 `DialogAbout.java` | Git blob `23efd3f221eb8f160132a45f2c44785b71d363b7`, 50行 | `FULL_VERSION = V1.R4.M49` |
+| 設定探索の変更履歴 | [commit `73a09364d99c6ef9f1ace8db18e4861caed6445e`](https://github.com/xead/XeadModeler/commit/73a09364d99c6ef9f1ace8db18e4861caed6445e), `Modeler.java` `jbInitComponentsAndVariants()` 差分 | `xteamdl.properties` を作業ディレクトリ優先、次に `java.class.path` 由来ディレクトリ。M49最終本文は文字コードによる取得失敗で同一性未再確認 |
+| 保存M50 Installer ZIP | `packages/XTeaModelerInstaller1_4_50.zip`, SHA-256 `d5875dac35c0fdfc19c761a78957707d218ef1baa75b854e002b70ad419196e8` | [保存物調査の記録](https://github.com/hat47x/tei-platform/issues/1223#issuecomment-6262536696)。本調査でバイナリ再取得・hash再計算は行っていない |
+| ZIP内Modeler JAR | `Files/xteamdl.jar`, SHA-256 `0305791a8f5a61291d436f7f04dc8ff1180fa79841bda88b01524d636fb9f04f` | [以前のbytecode静的解析記録](https://github.com/hat47x/tei-platform/issues/940#issuecomment-6266988686)。M50の版表示は[既存#943静的照合](https://github.com/hat47x/tei-platform/issues/943#issuecomment-6234874050)由来 |
+| M50 installer設定 | `INSTALL.DAT`, SHA-256 `d21eb61234d23ebf3a46049240853df3a13624087cb4b88c257848f9e7e95e92` | [既存#1223静的照合](https://github.com/hat47x/tei-platform/issues/1223#issuecomment-6262536696)。`%ProgramFilesDir%\\XTEA\\Modeler`、`.xead`関連付け、`xteamdl.bat`、shortcut宣言 |
+| M50 README | SHA-256 `7c4c0fa90b6996145c0f652f0ca590f597c1981951f37f0022c5d2832f8c6829` | [既存#1223静的照合](https://github.com/hat47x/tei-platform/issues/1223#issuecomment-6262536696)。Java 1.7–1.8別途導入/確認、uninstall時のユーザー作成file保持の記述 |
+
+**保存物とソースの非同一性:** 保存Source snapshotのM49とInstaller JARのM50は版表示が異なる。[#943既存記録](https://github.com/hat47x/tei-platform/issues/943#issuecomment-6234874050)にあるとおり、Source snapshot（working-treeを含む）とInstaller ZIPが同一Build由来である証拠はない。版違いを誤配布や互換障害と断定しない。
+
+## 2. 起動時の層を混同しない
+
+```text
+OS shortcut / file association / xteamdl.bat (installer declaration; execution NOT VERIFIED)
+  -> startup JAR (exact bytes / external launcher selection NOT VERIFIED)
+  -> MANIFEST Main-Class: xeadModeler.Application (M49 source confirmed)
+  -> Application.main -> Modeler(args, this) (M49 source confirmed)
+  -> xteamdl.properties: working directory, then java.class.path-derived path
+     (1.4.21 source change confirmed; M49 final source and M50 binary path NOT VERIFIED)
+```
+
+Manifest `Class-Path` は依存JAR名の列挙であり、アプリケーション製品版やどの起動JARを選ぶかを意味しない。Eclipse `.classpath` の開発機パスも配布Runtime classpathの証拠ではない。`java.class.path` からJAR所在を推測するロジックは、複数pathや起動方式の差で仮定が崩れ得る。起動JAR版選択が「設定値」「固定名」「ディレクトリ走査」のどれかはランチャー/`xteamdl.bat`実体を実証するまで未確定とする。
+
+## 3. backup / staging / rollback の非主張
+
+`INSTALL.DAT`で分かるのはインストール先・関連付け・shortcut等の**宣言**であり、OS上の実副作用ではない。Readmeのuninstall時ユーザーfile保持の記述は、**更新前backupや失敗時rollback**の保証ではない。既存#940にあるModelerの通常モデル保存処理のbackupと、startup JAR更新のbackupは別の操作である。
+
+M50同梱文書のbackup/staging/rollbackの規範的な章・行は今回直接確定できておらず、**存在しない**とも**実装済み**とも言えない。インストーラ実行、途中停止、旧JAR復帰、Registry/shortcut/関連付けの復旧、実Windowsファイル状態はいずれも NOT VERIFIED。
+
+## 4. TEIに戻す最小受入案（採用・実装・実行はしていない）
+
+- **#943 provenance**: Source closure・build definition/toolchain・JARと依存memberのdigest・installer ZIPのdigest・文書版を独立して記録。表示版/filename/Manifest/classpathをartifact identityへ昇格させず、Source↔JARのbuild link不明ならUnknown。
+- **#2019 Target配備**: 旧artifact/配置・設定・Host上の関連付け等の変更前状態、staging bytes、切替/復旧後のexact digestを別々に観測。preflight拒否、staging失敗、切替途中失敗、旧世代不在、破損historyを負例にする。既存のfilesystem/SQLite local Reference PASSを実Windows/JAR復旧へ一般化しない。
+- **#1223 / ADR-0032**: インストール成功・起動成功・Readiness・Availability・drain・永続副作用の可逆性を別Evidenceとする。外部副作用やユーザー作成物の保全は自動的なEffect rollbackと同値ではない。
+- **#2020 / ADR-0036**: Personal/SIer/SaaSで配布、Host変更、権限、user-owned dataの所有主体をProfile/Pluginに基づき検証する。X-TEA特有のWindows登録方式は要求しない。
+
+## 5. 調査・変更履歴
+
+- 2026-10-26: 既存#943、#1223、#2019、#2020及びADR-0032/0036と重複照合。公開M49 GitHub source/manifestを再読。旧archive記録はGitHub上の既存hash付きコメントで確認したが、保存ZIP/同梱文書のbyte列をこの環境で再検証したわけではない。旧チャットの`systemError`結果は採用しない。
+- X-TEA/TEIの実行・試験、main編集、mergeなし。実実行環境、M50 Manifest/versionの独立再読、更新手順書の規範的段落・行、source→binary build record、Windowsのbackup/staging/rollback観測は保留。
