@@ -123,6 +123,19 @@ Editorは、Modelerの機能定義から実行用の機能定義を作り込み�
 - 取込み元が別の所有境界にある場合を診断する
 - 外部の意味名前空間の読み取り専用の参照（[#1570](https://github.com/hat47x/tei-platform/issues/1570)）と、定義の取込みを混同しない
 
+#### M49固定版に見るXEAD parser・Dataflow参照の失敗境界（2026-10-27、静的確認）
+
+**比較元**：XeadModeler commit [`68f1535b1c5dd80a327dfced37be401ecd3093c9`](https://github.com/xead/XeadModeler/tree/68f1535b1c5dd80a327dfced37be401ecd3093c9)。`DialogImportXEAD.java` のGit blobは `691f5e3c4071a23825f26012f71ebfa3a864e47c`、`DialogDataflowLine.java` は `319d3a6eb9914fee825098b121c78ef6a0d5f355`。以下は旧ツールのソース上の事実と条件付き推論であり、TEIの実装証拠ではない。
+
+- **解析失敗とモデル状態**：`DialogImportXEAD.request(String)` [221–245行](https://github.com/xead/XeadModeler/blob/68f1535b1c5dd80a327dfced37be401ecd3093c9/src/xeadModeler/DialogImportXEAD.java#L221-L245) は `domDocumentFrom=null` にしてから解析し、`IOException`/`SAXException`を空のcatchで処理した後、null確認なしで`getElementsByTagName("System")`へ進む。この**部分Import入口**には取込先`frame_.domDocument`を消去する操作はないが、通常Open全体のエラー後状態を保証するものではない。
+- **namespaceと未知子要素**：`getElementsByTagName("System")`等はタグの**修飾名**による検索で、namespace URIの正しさを検証しない。接頭辞付き`x:System`は文字列`System`とは一致せず、既定namespaceの`System`はURIが異なっても名前検索だけでは区別できない。取込元DOMの構文解析成功は、取込先への未知データ保持を意味しない。特に`importDataflow()` [1040–1116行](https://github.com/xead/XeadModeler/blob/68f1535b1c5dd80a327dfced37be401ecd3093c9/src/xeadModeler/DialogImportXEAD.java#L1040-L1116) は既存子要素を全削除し、既知ノード・線を再構築するため、未知子要素の引継ぎを保証しない。Table更新には既存要素を再利用する別経路もある（[1531–1697行](https://github.com/xead/XeadModeler/blob/68f1535b1c5dd80a327dfced37be401ecd3093c9/src/xeadModeler/DialogImportXEAD.java#L1531-L1697)）。
+- **欠落・重複参照ID**：`importDataflow()` [1052–1116行](https://github.com/xead/XeadModeler/blob/68f1535b1c5dd80a327dfced37be401ecd3093c9/src/xeadModeler/DialogImportXEAD.java#L1052-L1116) は元Node ID→新Node IDの対応表を作り、Line端点を`indexOf`で変換する。欠落IDは`get(-1)`に至り得る一方、**重複した元ID**は最初の一致へ束縛され得る。いずれも既存子要素を削除した後の処理であり、途中失敗を取り消すrollbackは確認できない。取込時の欠落端点は[#1805既存記録](https://github.com/hat47x/tei-platform/issues/1805#issuecomment-6207997267)、重複IDは[追補](https://github.com/hat47x/tei-platform/issues/1805#issuecomment-6418435553)を参照する。
+- **編集UIでの欠落端点**：`DialogDataflowLine.request()` [374–448行](https://github.com/xead/XeadModeler/blob/68f1535b1c5dd80a327dfced37be401ecd3093c9/src/xeadModeler/DialogDataflowLine.java#L374-L448) は一致しないNode IDでも選択index 0が残る経路を持つ。表示される先頭候補を確定参照とみなさない（[#1125追補](https://github.com/hat47x/tei-platform/issues/1125#issuecomment-6418455306)）。
+
+**TEIへ引き継ぐ検証候補**：Source解析失敗、未知・namespaced構造、参照ID欠落／重複、候補更新途中失敗を区別する。未解決参照を初回一致や表示上の選択で補完せず、Sourceの来歴と失敗理由を保持し、明示的に受理するまではAccepted正本を変更しない。Source Adapterの既存qualified-name／unknown保持契約は[#950](https://github.com/hat47x/tei-platform/issues/950)を再利用し、別のparserやAcceptance機構を増やさない。
+
+**未確認**：M50配布JARとの同等性、通常Open経路の全体状態、GUI・保存後ファイル、旧実モデルへの出現、TEIの負例試験／full Repository Health。旧ツールのソース静的確認を製品動作・TEI適合の実証に読み替えない。
+
 ### 5.4 データ型の再編（[#1806](https://github.com/hat47x/tei-platform/issues/1806)）
 
 意味の型（コード、金額、数量など）を整理し、複数の型を統合する仕事です。X-TEAでは、型の定義が桁と基本型とSQL上の表現を持ち、項目が型を指します。型を統合すると、キーの結合に使う項目の型が一致しなくなる場合があります。
