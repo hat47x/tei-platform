@@ -231,6 +231,71 @@ class LiveDriverTest(unittest.TestCase):
         # The same transaction must see the UPDATE before either decision.
         self.result("UI_RESULT=1:Pending:" + expected)
 
+    def range_menu(self, invalid=False):
+        self.script("ROUTE_BAD" if invalid else "ROUTE")
+        menu = {"windowClass": "xeadDriver.XFOptionDialog$", "role": "list"}
+        self.assertTrue(self.client.wait_selector(menu)["matched"])
+        self.assertEqual(self.client.find(menu)["itemCount"], 2)
+        return menu
+
+    def range_input(self, invalid=False):
+        menu = self.range_menu(invalid)
+        self.client.select(menu, item_index=0)
+        self.client.key(menu, key="ENTER")
+        dialog = {"windowClass": "xeadDriver.XFInputDialog$"}
+        self.assertTrue(self.client.wait_selector(dict(dialog, text="^Choose dates$"))["matched"])
+        return dialog
+
+    def range_cancelled(self):
+        # XF000 can return 00 for a cancellation handled by its own Script.
+        self.result("UI_RESULT=00:cancelled:untouched:untouched:false")
+        self.assertEqual(self.observe(), self.observations[0])
+
+    def test_script_range_parent_cancel(self):
+        for close_window in (False, True):
+            with self.subTest(close_window=close_window):
+                menu = self.range_menu()
+                if close_window:
+                    self.client.close({"windowClass": menu["windowClass"]})
+                else:
+                    self.client.select(menu, item_index=1)
+                    self.client.key(menu, key="ENTER")
+                self.range_cancelled()
+
+    def test_script_range_child_cancel_reopen(self):
+        for close_window in (False, True):
+            with self.subTest(close_window=close_window):
+                dialog = self.range_input()
+                if close_window:
+                    self.client.close(dialog)
+                else:
+                    self.button("xeadDriver.XFInputDialog", "^Close$")
+                self.range_cancelled()
+
+    def test_script_range_invalid_retry_cancel(self):
+        dialog = self.range_input(invalid=True)
+        for _ in range(2):
+            self.button("xeadDriver.XFInputDialog", "^OK$")
+            self.assertTrue(self.client.wait_selector(
+                dict(dialog, text="^Start must not follow end$"))["matched"])
+        self.button("xeadDriver.XFInputDialog", "^Close$")
+        self.range_cancelled()
+        self.range_input()  # New call resets the previous validation message.
+        self.button("xeadDriver.XFInputDialog", "^Close$")
+        self.range_cancelled()
+
+    def test_script_range_correct_then_accept(self):
+        dialog = self.range_input(invalid=True)
+        self.button("xeadDriver.XFInputDialog", "^OK$")
+        self.assertTrue(self.client.wait_selector(dict(dialog, text="^Start must not follow end$"))["matched"])
+        self.client.invoke(dict(dialog, role="button", text="^$", **{"class": "^javax.swing.JButton$"}))
+        day = {"windowClass": "xeadDriver.XFCalendar$", "role": "button", "text": "^1$"}
+        self.assertTrue(self.client.wait_selector(day)["matched"])
+        self.client.invoke(day)
+        self.button("xeadDriver.XFInputDialog", "^OK$")
+        self.result("UI_RESULT=00:accepted:2026-10-01:2026-10-01:true")
+        self.assertEqual(self.observe(), self.observations[0])
+
     def test_000_script_commit(self):
         self.script_transaction("Yes", "Pending")
         observed = self.observe()  # Independent JDBC connection after commit.

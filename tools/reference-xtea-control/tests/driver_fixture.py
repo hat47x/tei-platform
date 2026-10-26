@@ -164,6 +164,34 @@ instance.getReturnMap().put("UI_RESULT",p.showOptionDialog(null,"Fixture choice"
         'var child=instance.getSession().executeFunction("F200",p);',
         'instance.getParmMap().put("INSTANCE_MODE","EDIT"); instance.callFunction("F200"); '
         'var child=instance.getReturnMap();')
+    scripts["RANGE_MENU"] = '''var d=session.getOptionDialog();
+d.addOption("Edit range"); d.addOption("Close");
+var reply=d.request("Range menu");
+if(reply==0) { instance.callFunction("SRANGE_INPUT"); }
+else { instance.returnMap.put("RANGE_DECISION","cancelled"); }'''
+    scripts["RANGE_INPUT"] = '''var d=session.getInputDialog();
+d.setFont(new (Java.type("java.awt.Font"))("Dialog",0,14));
+var from=d.addField("From","DATE",0,"FROM"); from.setValue(session.getAttribute("RangeFrom"));
+var thru=d.addField("Through","DATE",0,"THRU"); thru.setValue(session.getAttribute("RangeThru"));
+d.setMessage("Choose dates");
+for(;;) {
+var reply=d.request("Range input");
+if(reply!=0) { instance.returnMap.put("RANGE_DECISION","cancelled"); break; }
+if(from.getValue()>thru.getValue()) { d.setMessage("Start must not follow end"); continue; }
+session.setAttribute("AcceptedFrom",from.getValue()); session.setAttribute("AcceptedThru",thru.getValue());
+instance.callFunction("SRANGE_ACCEPT"); break;
+}'''
+    # Synthetic terminal observes adoption, not the reference model's bulk editor.
+    scripts["RANGE_ACCEPT"] = '''instance.returnMap.put("RANGE_DECISION","accepted");
+instance.returnMap.put("RANGE_REACHED",true);'''
+    for name, start in (("ROUTE", "01"), ("ROUTE_BAD", "31")):
+        scripts[name] = '''session.setAttribute("RangeFrom","2026-10-%s");
+session.setAttribute("RangeThru","2026-10-01");
+session.setAttribute("AcceptedFrom","untouched"); session.setAttribute("AcceptedThru","untouched");
+instance.callFunction("SRANGE_MENU");
+instance.returnMap.put("UI_RESULT",instance.returnMap.get("RETURN_CODE")+":"+
+instance.returnMap.get("RANGE_DECISION")+":"+session.getAttribute("AcceptedFrom")+":"+
+session.getAttribute("AcceptedThru")+":"+instance.returnMap.containsKey("RANGE_REACHED"));''' % start
     for typ in ("104", "290", "390"):
         scripts["NESTED_" + typ] = scripts["NESTED_CALL"].replace('callFunction("F200")',
                                                                  'callFunction("F' + typ + '")')
