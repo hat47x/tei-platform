@@ -122,6 +122,7 @@ Editorは、Modelerの機能定義から実行用の機能定義を作り込み�
 - 主キーのように、別の定義が依存する要素の変更を、関連があれば拒否する
 - 取込み元が別の所有境界にある場合を診断する
 - Dataflowの元Node IDが重複する場合も、最初の一致への端点再対応付けを意味上の一意な解決とみなさない。M49の`DialogImportXEAD.importDataflow()`は元/先Node IDを並行配列に蓄積し、Lineの`NodeID1/NodeID2`を`nodeIDListFrom.indexOf(...)`で付け替える（L1052–1116）。同一元Node IDが複数ある場合は先頭の一致に寄り、未一致の場合は`get(-1)`へ至り得る（静的導出、実行未確認）。詳細と既存受入例は[#1805のDataflow証拠](https://github.com/hat47x/tei-platform/issues/1805#issuecomment-6207997267)に集約する
+- `DataflowLine@ID`の重複は、元`DataflowNode@ID`の重複や同一Nodeへの複数参照とは別に診断する。M49の`DialogImportXEAD.importDataflow()`（L1091–1116）は元Lineの`ID`を照合せず、元DOMの各Lineを順次複製し、取込先DOMの最大`DataflowLine@ID`+1を新IDとして`appendChild`する（最大値探索は`getLastDomElementOfTheType()` L2823–2841）。元DOMに同じLine IDが複数あり、Task/Role・端点解決が正常に進みこの複製ループへ到達する条件では、個別のLineとして再採番され、同一元IDを根拠に上書き・統合されない（静的導出、未実行）。これは**部分Importの当該ループ限定**の観察で、通常Open/Saveの重複ID拒否・保存後の表示結果・M50配布版は未確認。TEI側では元IDが衝突した事実と各要素のsource locatorを残し、再採番で曖昧性を隠さない（[#1805](https://github.com/hat47x/tei-platform/issues/1805)、[#950](https://github.com/hat47x/tei-platform/issues/950)）。
 - 外部の意味名前空間の読み取り専用の参照（[#1570](https://github.com/hat47x/tei-platform/issues/1570)）と、定義の取込みを混同しない
 
 ### 5.4 データ型の再編（[#1806](https://github.com/hat47x/tei-platform/issues/1806)）
