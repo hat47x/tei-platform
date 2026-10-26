@@ -18,6 +18,22 @@
 | M50 installer設定 | `INSTALL.DAT`, SHA-256 `d21eb61234d23ebf3a46049240853df3a13624087cb4b88c257848f9e7e95e92` | [既存#1223静的照合](https://github.com/hat47x/tei-platform/issues/1223#issuecomment-6262536696)。`%ProgramFilesDir%\\XTEA\\Modeler`、`.xead`関連付け、`xteamdl.bat`、shortcut宣言 |
 | M50 README | SHA-256 `7c4c0fa90b6996145c0f652f0ca590f597c1981951f37f0022c5d2832f8c6829` | [既存#1223静的照合](https://github.com/hat47x/tei-platform/issues/1223#issuecomment-6262536696)。Java 1.7–1.8別途導入/確認、uninstall時のユーザー作成file保持の記述 |
 
+## 1a. Manifest版フィールドとarchive checksumの確認（2026-10-26追補）
+
+保存アーカイブは非公開Referenceであり、ここでは既存GitHub Issueに公表済みの識別情報と、追加で確認したchecksum台帳の行番号のみを扱う。archive Git HEADは `e5bbfeb4610dd40420afc42c0d6a7188768fef98`。
+
+| archive `SHA256SUMS` の位置 | 対象 | 掲載されているSHA-256 | 証拠の限界 |
+| --- | --- | --- | --- |
+| 3行 | `packages/XTeaModelerInstaller1_4_50.zip` | `d5875dac35c0fdfc19c761a78957707d218ef1baa75b854e002b70ad419196e8` | 保存台帳との整合。今回ZIP bytesの独立再計算はしていない |
+| 6行 | `source-history/XeadModeler.bundle` | `ddee2f44ae6d195c7e15d91ab7ead95caeaac1cd0cf322a6cbf80618dbb57c31` | 履歴の保存物であり、M50 JARのビルド来歴ではない |
+| 298行 | `source/XeadModeler/jar/MANIFEST.MF` | `c6b4ee820d5b425687e374616b468bb6b8380a8aabf6250d1d6e3e2e9970bba0` | M49 source側。M50 JAR内Manifestとは同一視しない |
+| 299行 | `source/XeadModeler/src/xeadModeler/Application.java` | `d89dbc9efa76a285e516e1ce1bad83ae27d532f5b159a8138da7fa6aaafe1e20` | M49起動入口 |
+| 300行 | `source/XeadModeler/src/xeadModeler/DialogAbout.java` | `04fdcde99c8531e62eb1a04551647d85ce793a19827d84dcccc6cedc70d7609a` | M49 `FULL_VERSION` 定数 |
+
+保存sourceのManifestは上記M49コミットとGit blob `3c4183c3b0cead82069cf4b00ac631685f99d1bf` が一致する。内容1–8行には `Main-Class: xeadModeler.Application` と相対 `Class-Path` を記述する一方、**`Implementation-Version` 行は存在しない**（`Manifest-Version: 1.0` はJAR Manifest形式の版であり製品版ではない）。一方、**M50 ZIP内 `Files/xteamdl.jar` の `META-INF/MANIFEST.MF` は今回直接検査できない**ため、M50の `Main-Class` や `Implementation-Version` 欠落は未確認。M50 `V1.R4.M50` は[既存のclass定数静的検査記録](https://github.com/hat47x/tei-platform/issues/943#issuecomment-6234874050)であり、Manifestがその版を宣言したという意味ではない。
+
+[`README.md`の保存方法についての既存公表記録](https://github.com/hat47x/tei-platform/issues/943#issuecomment-6234874050)によると、配布マニュアルは元installer ZIP内に保持され、Source working tree・Git bundle・配布ZIPは別個の保存対象である。したがってReadme/INSTALL.DATの過去静的調査結果を再利用することと、今回そのZIP内容を独立に展開・再検査したことを区別する。
+
 **保存物とソースの非同一性:** 保存Source snapshotのM49とInstaller JARのM50は版表示が異なる。[#943既存記録](https://github.com/hat47x/tei-platform/issues/943#issuecomment-6234874050)にあるとおり、Source snapshot（working-treeを含む）とInstaller ZIPが同一Build由来である証拠はない。版違いを誤配布や互換障害と断定しない。
 
 ## 2. 起動時の層を混同しない
@@ -37,7 +53,7 @@ Manifest `Class-Path` は依存JAR名の列挙であり、アプリケーショ�
 
 `INSTALL.DAT`で分かるのはインストール先・関連付け・shortcut等の**宣言**であり、OS上の実副作用ではない。Readmeのuninstall時ユーザーfile保持の記述は、**更新前backupや失敗時rollback**の保証ではない。既存#940にあるModelerの通常モデル保存処理のbackupと、startup JAR更新のbackupは別の操作である。
 
-M50同梱文書のbackup/staging/rollbackの規範的な章・行は今回直接確定できておらず、**存在しない**とも**実装済み**とも言えない。インストーラ実行、途中停止、旧JAR復帰、Registry/shortcut/関連付けの復旧、実Windowsファイル状態はいずれも NOT VERIFIED。
+M50同梱文書のbackup/staging/rollbackの規範的な章・行は今回直接確定できておらず、**存在しない**とも**実装済み**とも言えない。保存archiveのroot READMEはmanualsをZIP内に保管し単独展開していないと説明するため、当該Readme・helpの全文探索を完了したと主張しない。インストーラ実行、途中停止、旧JAR復帰、Registry/shortcut/関連付けの復旧、実Windowsファイル状態はいずれも NOT VERIFIED。
 
 ## 4. TEIに戻す最小受入案（採用・実装・実行はしていない）
 
