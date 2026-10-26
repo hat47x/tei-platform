@@ -1,6 +1,6 @@
 # PostgreSQL提供元の制約出力の設計
 
-- 状態: 設計案（評価待ち）。P1〜P4を実装した（P4は4.4）。P5は実装していない。
+- 状態: 設計案（評価待ち）。P1〜P5を実装した（P4は4.4、P5は4.5）。
 - 対象Issue: [#1803](https://github.com/hat47x/tei-platform/issues/1803)（DDL出力の入口。親: [#1802](https://github.com/hat47x/tei-platform/issues/1802)）
 - 関連する設計判断: [ADR-0009](../adr/0009-unique-constraint-and-unique-index.md)、[ADR-0013](../adr/0013-offline-physical-realization-policy.md)、[ADR-0015](../adr/0015-provider-owned-migration-sql-rendering.md)
 - 関連する設計: [意味の変更に伴う既存データの移行設計](SEMANTIC_CHANGE_DATA_EVOLUTION_DESIGN_2026-10.md)の5章（PostgreSQLでの安全な手順）
@@ -123,7 +123,7 @@ P1〜P3は、空の表に対する新規作成だけを扱います。既存デ�
 
 P4を、表の削除の事前確認（`RenderMigrationSQLWithObservation`と`SchemaObservation`）と同じ形で実装しました。実装は`internal/database/providers/postgres/constraint_data.go`にあります。
 
-- 対象: 同じ差分で作らない表への一意制約・外部キーの追加と、主キーを持たない表への主キーの追加（`change-primary-key`のうち変更前の主キーが空のもの）。既存の主キーの置き換えと削除はP5として拒否のままです。
+- 対象: 同じ差分で作らない表への一意制約・外部キーの追加と、主キーを持たない表への主キーの追加（`change-primary-key`のうち変更前の主キーが空のもの）。既存の主キーの置き換えはP5（4.5）で扱い、主キーをなくす変更は拒否のままです。
 - 観測: `Provider.ObserveConstraintData`が、差分の追加ごとに件数を数え、`SchemaObservation.ConstraintData`に入れます。数える内容は、主キーと一意制約では、NULLを含まない重複したキーの値の数と、その値を持つ行の数です。主キーでは、キーの列にNULLがある行の数も数えます。外部キーでは、キーの列がすべてNULLでなく、参照先に対応する行がない行の数を数えます（`MATCH SIMPLE`）。参照先の表を同じ差分で作る場合は、その表が空なので、キーの列がすべてNULLでない行を数えます。問い合わせは識別子を引用符で囲み、件数だけを返します。値は返しません。
 - 観測できない場合: 数える手段を持たない読取り口や、権限がなく数えられなかった場合は、その追加を`Observed=false`とし、理由を残します。件数ゼロとはみなしません。
 - 判定: `RenderMigrationSQLWithObservation`は、追加ごとに観測を照合します。観測がない、観測できなかった、別の差分の観測である場合は`existing-data-unobserved`、件数が一つでもゼロでない場合は`existing-data-violations`として、件数を示し、差分全体を拒否します（`ConstraintDataReadinessError`）。主キーの列が望む状態でNULLを許す場合も拒否します。観測を受け取らない`RenderMigrationSQL`は、既存の表への追加を常に拒否します。
@@ -137,6 +137,26 @@ P4を、表の削除の事前確認（`RenderMigrationSQLWithObservation`と`Sch
 - 重複の判定は、問い合わせの`GROUP BY`の等価で数えます。制約の索引の演算子クラスと等価の定義が異なる型では、件数が制約の判定と一致しない可能性があります。確かめていません。
 - 大きな表での件数の問い合わせの所要時間と負荷。全件を走査します。
 - 移行設計の5章が推奨する手順（一意性は`CONCURRENTLY`で作った索引から制約にする、外部キーは`NOT VALID`の後に`VALIDATE CONSTRAINT`）は使っていません。ロックの特性が変わるため、7章のとおり別に判断します。
+
+### 4.5 既存の主キーの置き換え（P5）
+
+設計の議論は[#2301](https://github.com/hat47x/tei-platform/issues/2301)にあります。主キーは物理モデルで無名（案C）なので、既存の制約の名前は望む状態にも差分にもありません。実装は、名前を仮定せず、観測した名前で`DROP CONSTRAINT`します。実装は`primary_key_identity.go`、`constraint_data.go`、`migration_sql.go`にあります。
+
+- 対象: 変更前も変更後も主キーを持つ`change-primary-key`（同じ差分で作らない表）。主キーをなくす変更（変更後が空）は、拒否のままです。
+- 観測: `ObserveConstraintData`が、置き換えごとに（種別`primary-key-replace`）、カタログ（`pg_constraint`の`contype='p'`）から主キーの制約名と列の並びを読み、同じ主キーの索引に依存する外部キー（`contype='f'`、`confrelid`と`conindid`が一致するもの）を制約名・子の表・子の列で読みます（`PrimaryKeyIdentityReader`）。そのうえで、P4と同じ数え方で、新しい主キーの列の重複と、NULLのある行を数えます。観測した主キーの列が差分の変更前と違う場合、名前を読めない場合、読取り口が対応しない場合は、`Observed=false`です。
+- 判定: `RenderMigrationSQLWithObservation`は、観測がない、観測できなかった、別の差分の観測である、制約名がない場合を`existing-data-unobserved`、件数がゼロでない場合を`existing-data-violations`、新しい主キーの列がNULLを許す場合を`primary-key-column-nullable`、**参照する外部キーがある場合を`primary-key-referenced-by-foreign-keys`として、外部キーの名前と表を示して拒否**します（fail-closed。`CASCADE`も、外部キーの作り直しもしません）。同じ差分で変更前の主キーの列を`drop-column`する場合は、主キーが暗黙に消えるので出力しません。
+- 出力: `ALTER TABLE <表> DROP CONSTRAINT <観測した名前>, ADD PRIMARY KEY (<新しい列>);`を1文で出力します。1つの`ALTER TABLE`は原子的なので、新しいキーが失敗しても（観測の後に書き込まれた重複など）、旧主キーが残ります。新しい主キーは無名のままです（案C）。適用の直前は、`ApplyPostgresWithFreshObservation`が再観測して出し直すので、名前が変わっていれば計画した文と食い違って止まります。
+- 実データベースの確認: PostgreSQL 16（`postgres:16`）で、名前が既定でない主キー(a)を(a,b)に置き換える場合に差分が空になること（新しい主キーは`t_pkey`）、重複・NULLが件数つきで拒否され旧主キーが残ること、参照する外部キーが名前つきで拒否されること、観測なしが`unresolved`になること、観測の後に制約名が変わった場合に古い文が実行できないこと、失敗した文の後に旧主キーが残ることを確かめました（`tools/reference-ddl-entry/primary_key_replace_realdb_test.go`）。
+
+仮決め（利用者の暫定承認。正式な採用ではない）: 参照する外部キーがある場合の拒否、1文での入れ替え、主キーをなくす変更の拒否。
+
+未決:
+
+- 参照する外部キーを落として作り直す手順。子の表の検査とロックを伴う。
+- 主キーをなくす変更。列がNOT NULLのまま残るなど、望む状態との整合を決める必要がある。
+- ロック: `ADD PRIMARY KEY`は`ACCESS EXCLUSIVE`ロックの下で、全行を走査して索引を作る。`CREATE UNIQUE INDEX CONCURRENTLY`の後に`ADD CONSTRAINT ... PRIMARY KEY USING INDEX`で付ける方式は実装していない。
+- 主キーの列の名前の変更。`drop-column`と`add-column`の組になる間は、上の列の削除の規則で拒否する。
+- 別の一意制約の索引を参照する外部キーは、主キーの置き換えの影響を受けないとして含めていない。パーティション表での外部キーの扱いは確かめていない。
 
 ## 5. 効果仮説と観測（#1973）
 
@@ -165,5 +185,5 @@ P4を、表の削除の事前確認（`RenderMigrationSQLWithObservation`と`Sch
 - 制約の名前の決め方（4.2の案C）。一意制約と外部キーの生成規則は、PostgreSQLの既定の名前に合わせる規則で**仮決め**です（4.2の「1番目の仮決め」）。正式に採用するかは決めていません。
 - 名前だけが異なる場合の差分の種類。
 - PostgreSQL以外の提供元。現在、提供元のレンダリングはPostgreSQLだけが実装されている。
-- 主キーの変更（P5）の安全な手順。既存の表への制約の追加（P4）は、既存データの件数の検査つきで実装しました（4.4）。違反がある場合の扱いの宣言は未決です。
+- 主キーの変更（P5）。既存の主キーの置き換えは、観測した制約名と件数の検査つきで実装しました（4.5）。参照する外部キーがある場合の拒否と1文での入れ替えは**仮決め**です。主キーをなくす変更、外部キーの作り直し、`CONCURRENTLY`の方式は未決です。既存の表への制約の追加（P4）は、既存データの件数の検査つきで実装しました（4.4）。違反がある場合の扱いの宣言は未決です。
 - 外部キーの検証を後から行う方式（`NOT VALID`の利用）。運用上のロックの特性が変わるため、移行設計の5章と合わせて判断する。
