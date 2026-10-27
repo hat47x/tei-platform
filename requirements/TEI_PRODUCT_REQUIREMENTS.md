@@ -88,6 +88,8 @@ Database、Runtime、Target等の製品固有知識は、Provider / Adapter / Ca
 
 Capabilityごとにbuiltin、generated implementation、plugin、既存実装等をBindingでき、必要なCapabilityだけを置き換えられる構造を持つ必要があります。
 
+プラグインの利用に際して、Principal、Database、業務Semantic Model等の特定分野の概念を全構成へ必須導入してはいけません。汎用の値変換・バッチは必要な型と接続だけで構成でき、業務上の意味的同一性を主張するBindingではじめて正本となる意味参照の範囲・版・受理状態を確認できる必要があります。実行時の外部権限検査とは分離します。
+
 一つのComponent Typeから、設定・DataSource・対象Semantic Entity・利用範囲の異なる複数の論理Instanceを構成できなければなりません。固定パラメータ、正本へ追跡できる型付き項目・Relation参照、許された変換式、呼出しごとの値を区別し、名前や文字列表記の一致だけでBindingを確定してはいけません。実行時に変わる値を準備時の固定設定へ暗黙に混入させず、未解決・複数候補・版不一致は検査できる必要があります。
 
 TEI管理の予約名前空間は`tei.*`とし、標準契約を`tei.std.*`、実験候補を`tei.experimental.*`、寄稿・委任管理の拡張を`tei.contrib.*`に配置できなければなりません。外部・案件Pluginには別の管理名前空間を認め、名前の類似やプレフィックスだけでContract適合、公開Authority、実行権限を認めてはいけません。既存`std.*`等の識別子は自動改名せず、参照先・版・Lock・利用Consumerを照合した移行を必要とします。
