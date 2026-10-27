@@ -310,3 +310,116 @@ UI/Graphの座標など表示専用差分は意味的な契約変更としない
 - **C5**: Logical Instanceの配置・設定を変えてもContract定義が変わらない場合、Source/Binding/Runtime readinessだけ適切に再検査する。
 
 C1〜C5はいずれも**受入候補で未実行**。実装が必要になった場合も、#951の既存Resolver・Conformanceと#943の既存Artifact/Lockへ最小の差分を加える方針を守る。振舞い互換性の一般的な完全証明をTEIの目標とせず、可能な静的検査・実Consumer試験・外部Providerの独立観測・残る未確認を区別する。
+
+
+---
+
+## 11. Coreに残すのは「合成が成立するための機構」まで（2026-10-27 追加仮説）
+
+### 11.1 Kernel minimality の判定原則
+
+ある概念をTEI Coreに組み込むかどうかは、その概念の利用頻度ではなく、**分野固有の型を知らない合成器が、それなしではPort/Instance/Generationを安全かつ決定的に検査できないか**で判断する。
+
+| 横断機構として残す候補 | プラグイン側へ置く候補 | 単独で保証できないこと |
+| --- | --- | --- |
+| Contract/型参照、入出力要求、Candidate選択と不適合診断 | \`tei.std.data\`のDatabase、ChangeSet、Schema/Mutation | DBのTransactionと永続データの正本性 |
+| 論理Instance、Port配線、依存Scope・Generation/寿命の追跡 | \`tei.std.identity\`のUser/Principal/Session/Tenant | 実際の本人性やTenant隔離 |
+| 宣言上の一時Effect/要求Contextの機構 | 個別プラグインが定義するRead/Write/Publish等の意味 | OS隔離、APIの許可、業務補償 |
+| 参照の型・範囲、未解決/曖昧性を保存する検査機構 | Field/Entity/Relation/Expressionの業務意味 | 未受理Sourceの真正性・Entityの唯一性 |
+| 必要Target向けLoweringと既存信頼境界への接続 | UI、Batch、Workflow、Migrationの機能 | あらゆるTargetでの同じ実行保証 |
+
+ここで\`Effect\`は多義的である。ADR-0032の**一時的な逆作用/解放の追跡**は横断機構だが、\`db.write\`や\`network.send\`の業務上・物理上の意味は追加の契約と実行境界が判断する。すべての副作用をKernelへenum登録しない。仮に一般的な宣言属性で必要なEffectを表す場合も、静的宣言は実行時の強制ではない。
+
+**反証条件**: 独立した二DomainのConsumerで、利用されないBusiness Typeの登録を新たに強制する、Core enumが増える、第二Resolver/Lock/Authorityが生まれる、あるいはコンパイル後の独立Targetが不要な管理Runtimeを同梱するなら、抽象の境界を再検討する。
+
+### 11.2 意味受理は「すべてのGraphに必須」ではない
+
+\`CSV Rows -> Normalize -> File Sink\`のような汎用処理は、型と構成の検証だけで成立しうる。**何らかの業務的意味を主張した**Node/Port/Field/Relation/Identity Mappingに限り、その宣言された根拠・Source Revision・受理状態を照合する。
+
+\`\`\`text
+generic composition:
+  typed source -> typed transform -> typed sink
+  [canonical business meaning is not implicitly invented]
+
+semantic business binding:
+  accepted semantic ref (or explicit unresolved candidate)
+      + qualified owner/scope/source revision
+      + typed relationship/field/expression
+      -> candidate wiring, not executable authority
+\`\`\`
+
+業務意味が無いという理由で未検証の物理操作を許可するわけではない。例えば\`File Sink\`のOS書込みは実行Adapter/環境の強制範囲であり、業務Principalの有無と独立している。一方、\`CurrentPrincipal\`を要求する機能は、任意の文字列から認証済みの主体を生成できない。必要な信頼済みContext Slotを契約で宣言する（[#1118](https://github.com/hat47x/tei-platform/issues/1118)）。
+
+### 11.3 複数のグラフを一つの辺の意味へ還元しない
+
+| Graph | 辺の意味 | 主な検査 |
+| --- | --- | --- |
+| Contract/Service dependency | 提供・要求/実装 | Contract適合、Provider選択、Scope |
+| Instance configuration | 既存Instanceへの参照・固定パラメータ | 所有者、Cardinality、Binding stage |
+| Semantic relation / mapping | 業務上の参照と項目の対応 | Semantic ID、Relation多重度、Source Revision |
+| Value/Data flow | 実際の値の変換・配送 | 値型、欠損/NULL/Unknown、順序/縮約 |
+| Execution/Workflow | 処理の前後関係・分岐・反復 | 依存循環、失敗・再試行/補償 |
+| Resource/Data ownership | 利用可能な実体、正本と派生先 | Lease、保持/削除、移行と整合性 |
+
+同じUIに描画しても、辺種別によって意味と責務が異なる。相互参照する業務EntityのRelationが存在しても、起動順序の循環として自動的に拒否しない。逆に、値の生成前にその値を必要とする初期化循環を、Relationの循環として見逃さない。画面表示用Node IDは永続的な契約RefやSource locatorへ昇格しない（#1124/#1120）。
+
+### 11.4 決定的な候補検証と、後段の動的証拠
+
+次の記法は**検査の役割を説明する疑似形式**であり、新しいKernel APIの採用ではない。
+
+\`\`\`text
+Given:
+  G        = application-owned composition selection
+  S        = accepted semantic snapshot where semantic claims exist
+  R        = existing provider Registry snapshot
+  L        = pinned package / contract / artifact references
+  B        = instance-scoped typed bindings
+
+Inspect(G,S,R,L,B) -> { candidate | unresolved | rejected, diagnostics, dependencies }
+\`\`\`
+
+構成上は\`candidate\`でも、実行可能な判定ではない。Runtimeで要求された外部能力と現在Authorityを有効化時・操作時の必要箇所で確認し、旧Generationのin-flight参照を保持する（ADR-0032、#1118/#1223）。同じ入力Snapshot/選択規則の下で同じ候補/診断/依存集合を返すことと、外部DB・Network応答が毎回同じになることを混同しない。
+
+異なるTarget向けの静的/動的Loweringが同じ意味/契約の観測結果を維持することは受入目標だが、配布物、Protocol、常駐機構、更新保証が同じとは限らない。Targetで存在しない保証を暗黙に補わず、必要なら不適合として返す。これは既存[#1121](https://github.com/hat47x/tei-platform/issues/1121)の担当。
+
+## 12. 実証の優先度と比較可能な効果
+
+### 12.1 一つのKernel候補を三つの独立Consumerへ適用
+
+| Consumer | 必須な型・能力 | 持ち込まない前提 | 独立に観測する結果 |
+| --- | --- | --- | --- |
+| **A. CSV整形バッチ** | Stream/File Source、Pure Transform、File Sink | Principal、Tenant、RDB、業務Semantic Acceptance | File/Recordの期待値、追加依存、静的成果物のサイズ |
+| **B. 顧客Web表示** | User/CustomerのQualified Model Mapping、Lookup、表示Projection | 固定のUser物理表・DB一種類・固定IdP | 同じConsumerで異なるSchema 2件、別Instanceの混線なし、曖昧Mapping拒否 |
+| **C. 異種DB移送** | Source/Target、型変換、ID Mapping、Checkpoint、個別Effect Outcome | 暗黙の二相CommitやRollback、固定Primary DB | 件数/照合、途中停止・再開、Applied/Unknown差、正本切替の停止条件 |
+
+AとBが同じRegistry/Bindingを利用しても、Bの業務上のUserとAのファイル処理を一つのSemantic Classへ合併しない。Bは既定のUser Directoryを一つ指しても、Component TypeのSingletonを要求しない。CでDB固有のAdapterを使用しても、変更の意図と各Sourceの実保証を区別し、移行の正式受入は#2143/#2147に委譲する。
+
+**検証の階層**：設計候補、Source/Definition静的検査、合成Reference、独立Consumer、実Provider/DB、対象Targetでの権限/副作用、GUI/運用受入を別のEvidenceとして記録する。ReferenceがPASSでも上位をPASSへ伝播させない。
+
+### 12.2 二つの正本を作らないための計測
+
+追加のGraphType/Binding DSLを採用する前に、既存\`composition.Registry\`と\`reference/composition-io-mapping\`の差分でA/Bを表せるかを先に調べる。新しい抽象を導入する場合は以下を旧方式と対比する。
+
+- 2つ目の独立Consumerへ移す際に追加するSource/Mapping/手書きコードの量、同じ意味の二重定義数。
+- 未定義/曖昧/型不一致/旧Revisionのそれぞれについて、原因が失われない診断の数。
+- 単純バッチに読み込まれる不要Package・サービス・起動処理と、静的実行成果物の大きさ。
+- Instanceの共有/個別構成、機密情報の伝播、更新時の再資格確認について、明示的に再検証が必要となる対象数。
+- DB移行でのCheckpoint再開の差分と、独立に観測できた不明結果・部分失敗の件数。
+
+**撤回条件**：同じ利用者価値を既存機構で表現できる、型付きGraph導入の記述量が比較対象より増える一方で安全性・再利用性・追跡可能性に観測可能な改善がない、Scope/Authorityを重複定義する、独立Consumer間で共通契約が成立しない場合は抽象を撤回/縮小する（[#1973](https://github.com/hat47x/tei-platform/issues/1973)、[#1067](https://github.com/hat47x/tei-platform/issues/1067)）。
+
+### 12.3 追加する負例（いずれも提案・未実行）
+
+| Case | 条件 | 期待 |
+| --- | --- | --- |
+| K1 | Principal未導入で純粋CSV変換 | 不要Identity解決なしで候補を構成。外部File出力の実行権限は別 |
+| K2 | 顧客の意味を主張しないGeneric Scalar Transform | Business Acceptanceを暗黙要求/偽装しない |
+| K3 | UserIdとCustomerIdの文字列表現が一致 | Qualified Semantic Mappingの明示がなければ同一視しない |
+| K4 | Semantic Relationには循環、Instance activationには循環なし | Relationの循環を一律にActivation失敗としない |
+| K5 | Init Value dependencyに閉路 | 明示的Delay/不変条件なしには未適格 |
+| K6 | 同一Typeを二Instanceで異なるDataSource/固定式へ接続 | 個別のBinding、秘密参照、結果/Cacheが混ざらない |
+| K7 | Runtime選択Generationは固定、Authorityは途中で失効 | 固定Generationを理由に失効後の効果Commitを許さない |
+| K8 | SQLite静的TargetへDynamic hot-swap-only保証を要求 | Targetにその能力がなければ、不足を診断して拒否 |
+| K9 | Data MigrationでTarget成功応答が喪失 | 実際の\`Unknown\`を安全な再照合なしで\`Rejected\`や\`Applied\`へ変えない |
+
+本節は**新製品仕様の確定や実Provider受入を宣言しない**。最初の実証はA→Bの小さい二Consumerを選び、既存Referenceで表現できないものが固定できたときだけ追加形を検討する。Cは既存Ownerへ接続する。
