@@ -25,6 +25,14 @@
 
 これらは一つのglobal epochを追加する理由ではない。Graph描画だけの変更でSourceの意味・依存Evidenceが不変なら、すべての実現準備を一律に失効させる必要はない。一方で、Source変更をConsumerが検知するまでの鮮度をepochだけで保証することもできない。
 
+### Graph更新拒否→旧描画維持→選択map失効（#1124 [コメント #6426483819](https://github.com/hat47x/tei-platform/issues/1124#issuecomment-6426483819) の追加差分、未実装）
+
+**正常なG1→G2置換で同じ表示IDを再利用する負例とは別**に、G2が`missing_endpoint`等で`graph.update(G2)`から拒否された場合を扱う。`reference/tei-studio-graph/graph.ts:284-316`は`normalizeGraph`成功後だけSVGと描画revisionを置換するため、失敗時にはG1のSVG・選択が残り、G1の可視nodeイベントは依然として有効である。成功後の旧DOMイベント拒否では、このケースを防げない。現行Workbench `main.ts:50-57`の`onSelect(nodeId)`は現在の`entries`を検索するため、G1の表示node IDをR11/G2側の候補や別scopeへ誤対応させ得る（Consumerでの発生は未実証）。
+
+**Consumerの追加採用条件（提案）**：G2用の`view-node ID → qualified Key`対応表M2とGraph/Catalog snapshotは、描画更新が成功し対応するSnapshotを確定するまで**仮置き**し、G1のDOMへ公開しない。更新が拒否されたらM2をcommitしない。さらに、Source R10→R11等によってG1のSnapshotが現在のCatalog/Source/Graphと一致しなくなったときは、**旧描画が残っても**G1用の確定選択map M1を失効し、表示選択からのread-only InspectとSource locator確定を停止する。可視の旧G1はstale/unresolved診断付きの参照表示にとどめる。G1のSnapshotがなお現在と検証できる場合まで無条件にM1を失効させる必要はないが、拒否されたG2のM2でG1のKを再解釈してはならない。
+
+**既存証拠と限界**：`reference/tei-studio-graph/graph.test.mjs:139-159`は不正更新時の旧SVG・旧選択維持と、**成功更新後**の旧DOMイベント無効化を個別確認する。更新拒否時のG1 DOMとM1/M2の版対応、クリック後の`InspectSubject`呼出し0、Source locator確定0はConsumer横断の未実装・未実行条件。Graph部品の仕様変更や新Core/Host APIを要求しない。
+
 ## 一つの競合例（未実行の受入負例）
 
 | 時点 | 事実 | 誤表示を招く経路 |
@@ -48,6 +56,7 @@ Source変更を検知した時点で旧表示のcurrent-readyを取り消し、�
 
 - **負例A（現在未実行）**: W固定でR10→R11変更、R10のready成功とInspect成功を後着。R10の表示済みreadyは失効、両旧成功は現行表示を上書きせず、R11の独立な根拠が無ければ`unknown/not-verified`を維持。
 - **負例B（現在未実行）**: G1のnode ID `K`とG2の`K`が別Scopeの対象。同じview-node IDがあっても旧選択mapは失効し、Scopeが一意になるまでscopeなしInspect・Source locator確定をしない。
+- **負例C（現在未実行、#6426483819）**: R10/G1で表示node ID `K`→Scope oneのM1が成立。SourceをR11へ更新し、K→Scope twoのM2を準備したG2を`missing_endpoint`で更新拒否。G1のSVGとKが残ること、M2が公開されずM1もR11では失効すること、残ったKのclick後も`InspectSubject` spy呼出し0・Source locator確定0・stale診断保持を同じConsumer試験でassertする。Source/Graphが変わらない検証済みG1ではM1を不必要に無効化しない。
 - **既存証拠**: `responses.workspace-switch.test.mjs` は旧Catalog/Validation/XEAD応答（成功・失敗）の拒否、`graph.test.mjs` は旧DOMイベント拒否、`presentation.fingerprint-contract.test.mjs` はCatalog/Inspect fingerprint契約、`bridge.test.mjs`/`e2e.mjs` はSource Acceptance後も`not-verified`表示を維持する条件を、それぞれ**試験コードとして**持つ。今回の新しい負例をPASSと扱わない。
 - **未証明**: 非Host ConsumerのSource変更通知、readiness Evidence schema/発行者/失効条件、原子的な複数資源Snapshot、実Provider/DB/Invocationの現在性、実UIの負例E2E。
 
