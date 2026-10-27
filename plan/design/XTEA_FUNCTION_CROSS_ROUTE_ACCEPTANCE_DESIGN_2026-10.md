@@ -113,8 +113,24 @@ CLI、Web、Desktopは業務操作の入口である。処理の配置は、同�
 
 SUIで確認対象とした資料は`730b4448e516dfe1a9ee83880d0b756fcabc7fd4`の認証BFF・ブローカー設定である。これは過去の固定版調査であり、SUIの現在版に対する実証ではない。設定スクリプトの成功だけではIdP登録や設定内容を確認できないため、失敗の検知・設定の再読取り・実際の認証往復を受入条件にする。
 
+### 5.1. 既存Web参照試験で確認した範囲
+
+2026-10-27にPR #2302の固定版`a1f6ea41b29dcce741aa95926cfbbc801dee58a4`で、既存の`TestOneRevisionOrderEntryE2EPacket`を実行した。Go 1.26.9、PostgreSQL 16.15、使い捨てDB、変更前後がcleanの独立した複製を使い、`origin/main`の観測版は`2a1e68d5919799f41cb09b7167cfeedf25905ee7`である。再現するには空の使い捨てDBを`TEI_TEST_POSTGRES_DSN`、リポジトリ外の出力先を`TEI_E2E_PACKET_OUT`へ設定し、次を実行する。共有DBには向けない。
+
+```bash
+go test -race -count=1 -timeout 8m -json -run '^TestOneRevisionOrderEntryE2EPacket$' ./tools/reference-first-web-target
+```
+
+試験はPASSした。起動したWebのHTTP処理から受注1001を確定し、Web停止後に別のOSプロセスが`submitted`を読み取った。単価0、合成Grantの失効、物理スキーマ不整合の拒否も、この参照試験の範囲で確認した。実DBを使う一方、入力行・Grant・受理用の発行者鍵は試験用であり、実業務の主体や現在権限の証明ではない。
+
+XR-06に関わるN11では、確定後の読取り先を利用不能にして、DBは`submitted`、応答のCommandは保持、Stageは`observation`、Observationはnullとなることを生成済みの本文で確認した。ただし独立した負例の準備で受注1001をdraftへ戻している。その後の状態を保ったまま再読取り・同一要求の回収へ進む復旧試験はないため、XR-06全体のPASSとはしない。
+
+証拠の制約も残る。N11証拠を書き出す時点の`status`変数は後続S02で上書きされているため、`web-n11-unobserved.json`のHTTP状態422をN11の観測値として採用しない。ソースと本文・DBの確認を分け、HTTP状態の個別保存・照合は#1163へ追跡する。試験自体のPASSを、全証拠項目の妥当性へ広げない。
+
+生成した`packet.json`のSHA-256は`be0bdc0a07312991c387d40e08eec55e270c540175d5cfcf590b78eb209f3d23`、`audit-report.json`は`e00ee40124200332379c43149e6393d3a6699a261de34bc7e46fe96f7bf3f944`である。原本はリポジトリ外に保管し、#1163の実行記録から対応付ける。指紋は原本との照合用であり公開取得や再現成功を保証しない。監査結果は`INCOMPLETE / UNQUALIFIED`、診断は`TRUSTED_FULL_HEALTH_NOT_RECORDED`である。同じ版のmain向け健全性記録を与えておらず、PRのCIで代用しない。
+
 ## 6. 採用・実装に進む条件
 
 要求と既存ADRに反しない範囲で、最小の接続案を隔離ブランチで比較する。主体・所属の正本、操作許可と対象許可の対応、取消し後の調停責任、帳票の時点・保存期間・取得権限は、実際の案件と提供元に結び付けて判断する。Fixtureでこれらを決定済みとは扱わない。
 
-XR-01からXR-10、実SAML、実権限正本、三入口の操作、PDF/印刷は本書ではNOT RUNである。過去のDB境界試験や固定GateのPASSを転用しない。採用済み意味の変更や権限付与は人の判断に戻し、実装・実環境確認の状態は`docs/status.md`と対象版付きの証拠で別に管理する。
+XR-01からXR-10の全条件を通す実行、実SAML、実権限正本、三入口の操作、PDF/印刷はNOT RUNである。5.1節のWeb参照試験は一部の工程の証拠として扱い、これらの完了へ転用しない。過去のDB境界試験や固定GateのPASSを転用しない。採用済み意味の変更や権限付与は人の判断に戻し、実装・実環境確認の状態は`docs/status.md`と対象版付きの証拠で別に管理する。
