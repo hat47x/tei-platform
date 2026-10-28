@@ -109,7 +109,7 @@ python3 tools/verify-order-multilingual-operation.py --out /tmp/tei-omo-receipt
 
 - スクリプトは`tei-omo-<乱数>-pg`という名前のPostgreSQL(既定は`postgres:16-alpine`)を一つ起動し、終了時にそのコンテナーだけを削除します。`TEI_OMO_DSN`、`TEI_OMO_CONFIRM_ISOLATED`、`TEI_OMO_OUT_DIR`、`TEI_OMO_PYTHON`、`TEI_OMO_NODE`を与えて`go test -json -count=1`を実行し、全試験がPASSでskipが0件、通しの記録が合格、試験の後も作業ツリーが清浄なときだけ合格です。
 - 環境変数がないと、通しの試験はskipします。工程1〜4の試験と単体試験はDBなしで動きます。
-- 一回の実行は約20秒です(コンテナーの起動を除く)。
+- 一回の試験は約12〜19秒です(コンテナーの起動を除く)。
 
 ## 時間に依存する判定
 
@@ -117,7 +117,13 @@ python3 tools/verify-order-multilingual-operation.py --out /tmp/tei-omo-receipt
 
 ## 安定性の記録
 
-(反復の結果をこの節に記録します。)
+WSL2(Ubuntu、Go 1.26.9 linux/amd64、Python 3.12.3、SQLite 3.45.1、Node 20.20.2(ICU 78.2、CLDR 48.0)、`postgres:16-alpine`のPostgreSQL 16.15)で、作業ブランチの浅いcloneを毎回作り直して`tools/verify-order-multilingual-operation.py`を実行しました。
+
+| 試験の版 | 回数 | 結果 | 試験の時間(秒) |
+| --- | --- | --- | --- |
+| `65ba99b` | 5 | 5回とも6件PASS、FAIL 0、SKIP 0、通しの記録は合格、試験後も作業ツリーは清浄、作ったコンテナーは毎回削除 | 12.0、13.8、18.5、13.5、14.1 |
+
+不安定な試験は観測していません。固定情報の照合値(`2df56be1…`)、配布候補のダイジェスト(改訂前`296848a4…`、改訂後`d9cb6492…`)、固定情報の差替え後の照合値(`b8e5ffb8…`)と再生成のダイジェスト(`a8eaaccb…`)、一覧のハッシュ(二進`1531cb21…`、ICU`92392500…`)、交互の続き頁の抜け8行と重複1行は、5回とも同じ値でした。Goの`golang.org/x/text`はv0.41.0です。
 
 ## 基盤の不足
 
