@@ -7,6 +7,8 @@
 - [E1合成証拠の8件原本保全と再検証](TEI_E1_SYNTHETIC_ARCHIVE_README_20261013.md)（試験用証拠。製品Gateは未資格）
 - [E2a-1実PostgreSQL先行証拠の原本保全](TEI_E2A1_REAL_POSTGRES_ARCHIVE_20261013.md)（手書きSQL／同一プロセス別pool。製品G2は未資格）
 - [E1合成WebとE2a-1実DBの横断証拠誤結合防止](TEI_E1_E2_JOIN_LIMITS_20261013.md)（異なる版・Application・Authority。8件のG2阻害条件）
+- [#1803 新規作成DDLの実PostgreSQL実行](POSTGRES_DDL_ENTRY_REAL_DB_20261020.md)（#2103のheadで主キー・一意制約・外部キー。tei-ddl-entryの表ごとの出力で外部キーの順序が崩れる例を含む）
 - [RQ-025・RQ-026の受入根拠](RQ025_RQ026_ACCEPTANCE_TRACE.md)
 - [再生手順の再現性契約](R7B_REPLAY_RECIPE_REPEATABILITY_CONTRACT_2026-09.md)
 - [知識移植の実行可能な検証](KNOWLEDGE_PORTABILITY_EXECUTABLE_EVIDENCE_2026-09.md)
+- [X-TEA固定版 NotNull／Relationship任意性／DDL・Web認証の静的対照](XTEA_NOTNULL_RELATION_WEB_AUTH_STATIC_CROSSCHECK_20261026.md)（旧実装の比較証拠。Accepted Meaning・本番適格性の実証ではない）

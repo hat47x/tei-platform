@@ -98,6 +98,7 @@
 | [`reference-plugin-capability-contract/`](reference-plugin-capability-contract/) | Pluginが提供する機能の契約確認 |
 | [`reference-plugin-package-builder/`](reference-plugin-package-builder/) | Plugin配布物の組立て例 |
 | [`reference-plugin-self-build/`](reference-plugin-self-build/) | Plugin自身が構築手順を提供する場合の確認 |
+| [`reference-plugin-build-supply/`](reference-plugin-build-supply/) | 技術検証用サンプル`plugin-build-supply`の工程1〜4の通しの検証。構築意図と実ファイル・観測したGoから`tei.process.reference`の計画を確定し、その照合値を、ホストが発行する発生識別子つきの二回の実構築と内容アドレスの保管庫、既存の自己構築の実行器の検証根拠(二回構築、段階の収束、ホスト登録)、保管庫から再取得したバイト列のプロセス通信の版1での呼出しまで引き継ぐ。提供元の曖昧さ・追加・信頼の失効、部分出力を残す失敗・二回構築の不一致・一回の実行の二重計上・同時の試行の強制終了、汚れた作業ツリー・外部モジュール・ソースとツールチェーンの食い違い・ホストのGo設定、工程間の識別の差替えと工程の欠落を注入する(同じ機械の上の実際のGoの構築。提供元のカタログと信頼の失効は合成) |
 | [`reference-process-plugin/`](reference-process-plugin/) | 別プロセスで動くPluginの参照用起動点 |
 | [`reference-composition-process-bridge/`](reference-composition-process-bridge/) | 合成基盤と従来・独立プロセスプラグインの接続試験 |
 | [`reference-runtime-capability-identity/`](reference-runtime-capability-identity/) | 実行時Capabilityの識別方法の確認 |
@@ -187,6 +188,7 @@
 | [`verify-order-migration-dual-db.py`](verify-order-migration-dual-db.py) | `reference-order-migration-dual-db`の全試験を、Dockerで起動した三つの使い捨てPostgreSQLで実行し、skipが0件であることと観測値をreceiptへ残す。作ったコンテナーだけを終了時に削除する |
 | [`verify-order-rollout-host-continuity.py`](verify-order-rollout-host-continuity.py) | `reference-order-rollout-host-continuity`の全試験(工程1〜5)を、Dockerで起動した使い捨てのPostgreSQL(乱数のパスワード)で実行し、skipが0件であることと観測値、通しの記録の要約、試験の出力にパスワードと接続先がないことをreceiptへ残す。`--race`で競合検出つき。作ったコンテナーだけを終了時に削除する |
 | [`verify-order-web-delivery-member.py`](verify-order-web-delivery-member.py) | `reference-order-web-delivery-member`の全試験(工程6)を、Dockerで起動した使い捨てのPostgreSQLで実行し、skipが0件であることと観測値、通しの記録の要約をreceiptへ残す。作ったコンテナーだけを終了時に削除する |
+| [`verify-plugin-build-supply.py`](verify-plugin-build-supply.py) | `reference-plugin-build-supply`の全試験(工程1〜4)を、清浄な複製(作業ブランチのコミットの浅いcloneなど)の上で、ネットワークからモジュールとツールチェーンを取得せずに実行し、skipが0件であることと観測値、通しの記録の要約、Goの版、試験の後も作業ツリーが清浄であることをreceiptへ残す。Dockerは使わない |
 | [`check-core-isolation.sh`](check-core-isolation.sh) | 合成基盤の隔離試験と別モジュールからの公開API試験 |
 | [`verify-composition-reference.sh`](verify-composition-reference.sh) | 固定したクリーンな版で合成基盤・項目対応・実Process・中核独立性を検査し、結果を標準出力へ返す。全体健全性と本番移行の判定は別に行い、申し送りは[#1223](https://github.com/hat47x/tei-platform/issues/1223)へ記載する |
 | [`repository-health-check.sh`](repository-health-check.sh) | 形式、静的検査、全Goテスト、参照Workspaceの検証 |
