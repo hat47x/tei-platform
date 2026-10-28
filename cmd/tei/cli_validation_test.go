@@ -132,22 +132,14 @@ func TestValidateWorkspaceJSONFingerprintsMatchModelCatalog(t *testing.T) {
 
 func TestValidateWorkspaceJSONFingerprintsChangeWithContent(t *testing.T) {
 	root := t.TempDir()
-	writeWorkspaceFile(t, root, "tei.workspace.yaml", "workspace: valid
-sources:
-  - semantic
-")
-	writeWorkspaceFile(t, root, "semantic/sales/empty.tei", "namespace sales
-")
+	writeWorkspaceFile(t, root, "tei.workspace.yaml", "workspace: valid\nsources:\n  - semantic\n")
+	writeWorkspaceFile(t, root, "semantic/sales/empty.tei", "namespace sales\n")
 	world1, source1 := validateFingerprints(t, root)
 	again1, againSource1 := validateFingerprints(t, root)
 	if world1 != again1 || source1 != againSource1 {
 		t.Fatal("fingerprints are not stable for unchanged files")
 	}
-	writeWorkspaceFile(t, root, "semantic/sales/empty.tei", "namespace sales
-
-data Order {
-}
-")
+	writeWorkspaceFile(t, root, "semantic/sales/empty.tei", "namespace sales\n\ndata Order {\n}\n")
 	world2, source2 := validateFingerprints(t, root)
 	if world1 == world2 || source1 == source2 {
 		t.Fatalf("fingerprints did not change: world %s -> %s, source %s -> %s", world1, world2, source1, source2)
@@ -158,16 +150,8 @@ data Order {
 // the fingerprints are omitted from the JSON instead of being empty strings.
 func TestValidateWorkspaceJSONOmitsFingerprintsWithoutVersion(t *testing.T) {
 	root := t.TempDir()
-	writeWorkspaceFile(t, root, "tei.workspace.yaml", "workspace: bad
-sources:
-  - semantic
-")
-	writeWorkspaceFile(t, root, "semantic/sales/order.tei", "namespace sales
-
-data Order {
-    attribute orderId type }
-}
-")
+	writeWorkspaceFile(t, root, "tei.workspace.yaml", "workspace: bad\nsources:\n  - semantic\n")
+	writeWorkspaceFile(t, root, "semantic/sales/order.tei", "namespace sales\n\ndata Order {\n    attribute orderId type }\n}\n")
 	for name, dir := range map[string]string{"parse": root, "load": filepath.Join(t.TempDir(), "missing")} {
 		var out bytes.Buffer
 		if _, err := validateWorkspaceJSON(&out, dir); err != nil {
@@ -184,10 +168,7 @@ data Order {
 // exits 0, so callers must use the exit code (or JSON ok), not stdout == "ok".
 func TestValidateWorkspaceWarningOnlyContract(t *testing.T) {
 	root := t.TempDir()
-	writeWorkspaceFile(t, root, "tei.workspace.yaml", "workspace: warn
-sources:
-  - releases
-")
+	writeWorkspaceFile(t, root, "tei.workspace.yaml", "workspace: warn\nsources:\n  - releases\n")
 	writeWorkspaceFile(t, root, "releases/applications/order-entry/1.0.0.tei", `application-release order_entry 1.0.0 {
     source-revision "warning-only"
 
@@ -219,11 +200,8 @@ sources:
 	if err != nil || code != 0 {
 		t.Fatalf("text exit=%d err=%v body=%q", code, err, text.String())
 	}
-	if text.String() == "ok
-" || !strings.HasSuffix(text.String(), "
-ok
-") ||
-		!strings.Contains(text.String(), "	warning	") {
+	if text.String() == "ok\n" || !strings.HasSuffix(text.String(), "\nok\n") ||
+		!strings.Contains(text.String(), "\twarning\t") {
 		t.Fatalf("warning-only text output changed: %q", text.String())
 	}
 }
