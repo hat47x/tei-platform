@@ -597,7 +597,7 @@ func TestOneRevisionOrderEntryE2EPacket(t *testing.T) {
 	}
 
 	// 12. The existing audit. It never returns a Product Gate.
-	audit := exec.Command("go", "run", "./tools/reference-critical-path-evidence-audit", "-packet", packetPath, "-head", head, "-main", mainSHA)
+	audit := exec.Command(evidenceAuditExe(t), "-packet", packetPath, "-head", head, "-main", mainSHA)
 	audit.Dir = repoRoot
 	reportRaw, auditErr := audit.Output()
 	var report struct {

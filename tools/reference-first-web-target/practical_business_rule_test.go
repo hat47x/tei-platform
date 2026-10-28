@@ -48,7 +48,7 @@ func workspaceWithUnitPriceRuleReceipts(t *testing.T) (string, unitPriceRuleRece
 	repoRoot := filepath.Clean(filepath.Join(referenceWorkspacePath(t), "..", ".."))
 	runAcceptance := func(args ...string) []byte {
 		t.Helper()
-		cmd := exec.Command("go", append([]string{"run", "./tools/reference-shared-acceptance"}, args...)...)
+		cmd := exec.Command(sharedAcceptanceExe(t), args...)
 		cmd.Dir = repoRoot
 		output, err := cmd.CombinedOutput()
 		if err != nil {
