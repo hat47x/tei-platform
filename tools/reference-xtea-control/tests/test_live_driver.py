@@ -231,15 +231,15 @@ class LiveDriverTest(unittest.TestCase):
         # The same transaction must see the UPDATE before either decision.
         self.result("UI_RESULT=1:Pending:" + expected)
 
-    def range_menu(self, invalid=False):
-        self.script("ROUTE_BAD" if invalid else "ROUTE")
+    def range_menu(self, invalid=False, route=None):
+        self.script(route or ("ROUTE_BAD" if invalid else "ROUTE"))
         menu = {"windowClass": "xeadDriver.XFOptionDialog$", "role": "list"}
         self.assertTrue(self.client.wait_selector(menu)["matched"])
         self.assertEqual(self.client.find(menu)["itemCount"], 2)
         return menu
 
-    def range_input(self, invalid=False):
-        menu = self.range_menu(invalid)
+    def range_input(self, invalid=False, route=None):
+        menu = self.range_menu(invalid, route)
         self.client.select(menu, item_index=0)
         self.client.key(menu, key="ENTER")
         dialog = {"windowClass": "xeadDriver.XFInputDialog$"}
@@ -295,6 +295,33 @@ class LiveDriverTest(unittest.TestCase):
         self.button("xeadDriver.XFInputDialog", "^OK$")
         self.result("UI_RESULT=00:accepted:2026-10-01:2026-10-01:true")
         self.assertEqual(self.observe(), self.observations[0])
+
+    def range_key_cancel(self, route, close_window=True):
+        self.range_input(route=route)
+        self.button("xeadDriver.XFInputDialog", "^OK$")
+        key = {"windowClass": "xeadDriver.XF310_KeyInputDialog$"}
+        self.assertTrue(self.client.wait_selector(key)["matched"])
+        if close_window:
+            self.client.close(key)
+        else:
+            self.button("xeadDriver.XF310_KeyInputDialog", "^(Close|Cancel)$")
+        # Downstream cancellation replaces the return map, but not Session values.
+        self.result("UI_RESULT=01:null:2026-10-01:2026-10-01:false")
+
+    def test_script_range_key_cancel_preserves_session(self):
+        for close_window in (False, True):
+            with self.subTest(close_window=close_window):
+                self.range_key_cancel("ROUTE_KEY", close_window)
+                self.assertEqual(self.observe(), self.observations[0])
+
+    def test_script_range_key_cancel_parent_rollback(self):
+        self.range_key_cancel("ROUTE_KEY_ROLLBACK")
+        # Explicit DB rollback does not undo the Script's Session attributes.
+        self.assertEqual(self.observe(), self.observations[0])
+
+    def test_script_range_key_cancel_parent_commit(self):
+        self.range_key_cancel("ROUTE_KEY_COMMIT")
+        self.assertIn("001:OuterPending:1;", self.observe())
 
     def test_000_script_commit(self):
         self.script_transaction("Yes", "Pending")
