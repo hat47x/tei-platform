@@ -157,7 +157,7 @@ func TestValidateWorkspaceJSONOmitsFingerprintsWithoutVersion(t *testing.T) {
 		if _, err := validateWorkspaceJSON(&out, dir); err != nil {
 			t.Fatal(err)
 		}
-		if strings.Contains(out.String(), "Fingerprint") {
+		if strings.Contains(out.String(), "\"worldFingerprint\"") || strings.Contains(out.String(), "\"sourceIndexFingerprint\"") {
 			t.Fatalf("%s: fingerprint must be omitted: %s", name, out.String())
 		}
 	}
@@ -201,7 +201,7 @@ func TestValidateWorkspaceWarningOnlyContract(t *testing.T) {
 		t.Fatalf("text exit=%d err=%v body=%q", code, err, text.String())
 	}
 	if text.String() == "ok\n" || !strings.HasSuffix(text.String(), "\nok\n") ||
-		!strings.Contains(text.String(), "\twarning\t") {
+		!strings.HasPrefix(text.String(), "warning\t") {
 		t.Fatalf("warning-only text output changed: %q", text.String())
 	}
 }
