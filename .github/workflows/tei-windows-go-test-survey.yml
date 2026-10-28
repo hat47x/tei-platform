@@ -47,7 +47,9 @@ jobs:
           $packages = @('./internal/plugin/runtime', './internal/desktophost', './internal/operations', './cmd/tei')
           # 失敗があっても集計まで進める。終了コードは最後の工程で判定する。
           go test -json -count=1 -timeout 30m @packages > "$env:RUNNER_TEMP/gotest.jsonl"
-          "GOTEST_EXIT=$LASTEXITCODE" | Out-File -Append -Encoding utf8 $env:GITHUB_ENV
+          $code = $LASTEXITCODE
+          "GOTEST_EXIT=$code" | Out-File -Append -Encoding utf8 $env:GITHUB_ENV
+          exit 0
 
       - name: 通過・失敗・Skipを集計
         shell: pwsh
