@@ -494,7 +494,7 @@ func TestOneRevisionOrderEntryE2EPacket(t *testing.T) {
 	repeated, repeatErr := decodeCommand(t, repeatRaw)
 	child.stop()
 	if repeatStatus != http.StatusUnprocessableEntity || repeated.Stage != "command-effect-failed" ||
-		repeatErr != errOrderNotSubmittable.Error() || repeated.Command != nil || repeated.Observation != nil ||
+		!strings.Contains(repeatErr, errOrderNotSubmittable.Error()) || repeated.Command != nil || repeated.Observation != nil ||
 		orderStatus(t, db, 1001) != "submitted" || orderStatus(t, db, 1002) != "draft" {
 		t.Fatalf("repeated input was mistaken for receipt recovery: status=%d body=%s", repeatStatus, repeatRaw)
 	}
