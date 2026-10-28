@@ -459,8 +459,8 @@ func TestOneRevisionOrderEntryE2EPacket(t *testing.T) {
 		t.Fatal(err)
 	}
 	child = run.start(r1, e2eChildReadDSN+"="+missingRead.String())
-	status, n11Raw := submitRow(t, child.base, 0)
-	n11, _ := decodeCommand(t, n11Raw)
+	n11Status, n11Raw := submitRow(t, child.base, 0)
+	n11, n11Err := decodeCommand(t, n11Raw)
 	child.stop()
 	parsedDSN, _ := url.Parse(dsn)
 	for _, detail := range []string{parsedDSN.Host, parsedDSN.User.Username() + " ", "user=", "tei_e2e_missing_read_database"} {
@@ -468,9 +468,23 @@ func TestOneRevisionOrderEntryE2EPacket(t *testing.T) {
 			t.Fatalf("N11 response discloses database connection detail %q", detail)
 		}
 	}
-	if n11.Stage == "completed" || (n11.Observation != nil && n11.Observation.Result == "submitted") ||
+	if n11Status != http.StatusUnprocessableEntity || n11.Stage != "observation" || n11.Command == nil ||
+		n11.Observation != nil || n11Err != errOrderSubmitCommitUnconfirmed.Error() ||
 		orderStatus(t, db, 1001) != "submitted" {
-		t.Fatalf("N11: an unobserved write was reported: status=%d body=%s row=%s", status, n11Raw, orderStatus(t, db, 1001))
+		t.Fatalf("N11: an unobserved write was reported: status=%d body=%s row=%s", n11Status, n11Raw, orderStatus(t, db, 1001))
+	}
+	// Re-observe that same committed row after the failed Observation. The
+	// helper only SELECTs; do not reset the row or invoke Submit again. This
+	// proves state readability, not OperationID/receipt-based recovery.
+	n11Reader := exec.Command(exe, "-test.run=^TestHelperReadOrderStatus$", "-test.v")
+	n11Reader.Env = append(os.Environ(), orderSubmitHelperEnv+"=1001")
+	var n11ReadOut bytes.Buffer
+	n11Reader.Stdout, n11Reader.Stderr = &n11ReadOut, &n11ReadOut
+	if err := n11Reader.Run(); err != nil || !strings.Contains(n11ReadOut.String(), "ORDER_STATUS status=submitted") {
+		t.Fatalf("N11 independent re-observation: %v %s", err, redactDSN(n11ReadOut.String()))
+	}
+	if n11Reader.Process.Pid == child.pid || orderStatus(t, db, 1001) != "submitted" || orderStatus(t, db, 1002) != "draft" {
+		t.Fatal("N11 re-observation reused the Web process or changed the orders")
 	}
 	// 10. S02 controls in a second disposable database of the same server.
 	// (a) The declared index is missing: the Web process does not publish HTTP.
@@ -495,18 +509,18 @@ func TestOneRevisionOrderEntryE2EPacket(t *testing.T) {
 		t.Fatal(err)
 	}
 	runtimeDrift, _ := s02Store.checkOrderSubmitSchema(context.Background(), loaded.World)
-	status, s02Raw := submitRow(t, child.base, 0)
+	s02Status, s02Raw := submitRow(t, child.base, 0)
 	s02Result, s02Err := decodeCommand(t, s02Raw)
 	child.stop()
 	var s02Rows int
 	if err := db2.QueryRow(`SELECT count(*) FROM public.orders`).Scan(&s02Rows); err != nil {
 		t.Fatal(err)
 	}
-	if status != http.StatusUnprocessableEntity || !strings.Contains(s02Err, "PHYSICAL_SCHEMA_NOT_READY") ||
+	if s02Status != http.StatusUnprocessableEntity || !strings.Contains(s02Err, "PHYSICAL_SCHEMA_NOT_READY") ||
 		s02Result.Stage != "physical-schema-not-ready" || s02Result.Command != nil ||
 		orderStatus(t, db2, 1001) != "draft" || s02Rows != 2 ||
 		bytes.Contains(s02Raw, []byte("public.orders")) || bytes.Contains(s02Raw, []byte("tei_e2e_s02")) {
-		t.Fatalf("S02 runtime control: status=%d stage=%s err=%q rows=%d body=%s", status, s02Result.Stage, s02Err, s02Rows, redactDSN(string(s02Raw)))
+		t.Fatalf("S02 runtime control: status=%d stage=%s err=%q rows=%d body=%s", s02Status, s02Result.Stage, s02Err, s02Rows, redactDSN(string(s02Raw)))
 	}
 	if startupDrift.Compatible || runtimeDrift.Compatible {
 		t.Fatal("the drifted tables were reported compatible")
@@ -531,13 +545,15 @@ func TestOneRevisionOrderEntryE2EPacket(t *testing.T) {
 		"command":   run.write("physical-command.json", map[string]any{"orderId": 1001, "command": positive.Command, "webPid": webPID, "rowStatusAfter": "submitted"}),
 		"read":      run.write("physical-independent-read.json", map[string]any{"orderId": 1001, "readerPid": reader.Process.Pid, "output": readOut.String()}),
 		"n11": run.write("web-n11-unobserved.json", map[string]any{"fixtureReset": "public.orders order_id=1001 set to draft before this control",
-			"status": status, "response": json.RawMessage(n11Raw), "rowStatusAfter": "submitted"}),
+			"status": n11Status, "response": json.RawMessage(n11Raw), "rowStatusAfter": "submitted",
+			"reobservation": map[string]any{"readerPid": n11Reader.Process.Pid, "output": n11ReadOut.String(),
+				"mode": "independent SELECT after failed Observation; no reset or resubmit", "operationReceiptRecovery": false}}),
 		"schema": run.write("physical-schema-readiness.json", map[string]any{"scope": "the submit store's write set (public.orders)",
 			"declaredFrom": "accepted R1 Persistence Mapping", "readiness": readiness}),
 		"s02": run.write("physical-s02-controls.json", map[string]any{
 			"startup": map[string]any{"drift": "DROP INDEX public.orders_customer_idx", "readiness": startupDrift, "webOutput": string(s02Startup)},
 			"runtime": map[string]any{"drift": "ALTER TABLE public.orders DROP COLUMN external_id (after startup)", "readiness": runtimeDrift,
-				"status": status, "response": json.RawMessage(s02Raw), "order1001After": "draft", "rowCountAfter": s02Rows},
+				"status": s02Status, "response": json.RawMessage(s02Raw), "order1001After": "draft", "rowCountAfter": s02Rows},
 			"database": "second disposable database in the same server"}),
 		"workspace": run.write("web-workspace-revision.json", map[string]any{"acceptedR1": receipts.R1, "loadedSourceIndexRevision": sourceindex.ModelRevision(index1), "members": len(index1.Artifacts), "hostDecisionRef": e2eDecisionRef}),
 		"targetLaunch": run.write("web-target-launch.json", map[string]any{"executable": "go test binary of tools/reference-first-web-target",
