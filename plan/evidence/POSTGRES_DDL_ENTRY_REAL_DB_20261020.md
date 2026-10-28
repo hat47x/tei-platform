@@ -59,6 +59,10 @@ ALTER TABLE "tei_ddl_pgcheck"."alpha" ADD FOREIGN KEY ("beta_code") REFERENCES "
 
 直し方はこの記録では決めません。#2103で扱います。
 
+### 追記（2026-10-28）
+
+B1の対処として、表を外部キーの参照順に並べる変更を[PR #2313](https://github.com/hat47x/tei-platform/pull/2313)で提出した。この記録は上記の版（`4cc6489d7`）に対する観測であり、#2313の版では再実行していない。再実行する場合は、同じ実行器でケースB1が成功するかを確かめ、別の記録として残す。
+
 ## 静的解析と単体試験
 
 同じ版で`go vet`と`go test -count=1`を`./internal/database/providers/postgres/...`と`./tools/reference-ddl-entry/...`に実行し、すべて成功しました（Go 1.26.9、`GOTOOLCHAIN=auto`）。
