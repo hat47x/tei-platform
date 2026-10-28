@@ -16,6 +16,43 @@ from typing import Any, Dict, List, Optional
 
 SCHEMA_VERSION = 1
 
+MODEL_SCHEMA: Dict[str, Any] = {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "title": "X-TEA normalized model",
+    "type": "object",
+    "required": ["schemaVersion", "source", "system", "subsystems",
+                 "functionTypes", "tables", "functions"],
+    "properties": {
+        "schemaVersion": {"const": SCHEMA_VERSION},
+        "source": {"type": "string"},
+        "system": {"type": "object"},
+        "subsystems": {"type": "array"},
+        "functionTypes": {"type": "array"},
+        "tables": {"type": "array"},
+        "functions": {"type": "array"},
+    },
+}
+
+DIFF_SCHEMA: Dict[str, Any] = {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "title": "X-TEA model diff",
+    "type": "object",
+    "required": ["schemaVersion", "source", "system", "tables", "functions"],
+    "properties": {
+        "schemaVersion": {"const": SCHEMA_VERSION},
+        "source": {"type": "object"},
+        "system": {"type": "object"},
+        "tables": {"type": "object",
+                   "required": ["added", "removed", "changed"]},
+        "functions": {"type": "object",
+                      "required": ["added", "removed", "changed"]},
+    },
+}
+
+
+def model_schemas() -> Dict[str, Any]:
+    return {"model": MODEL_SCHEMA, "diff": DIFF_SCHEMA}
+
 
 def _s(element: Optional[ET.Element], name: str, default: str = "") -> str:
     if element is None:
@@ -399,11 +436,20 @@ def main(argv: Optional[List[str]] = None) -> int:
     diff = sub.add_parser("diff", help="compare two models by table and function ID")
     diff.add_argument("before", type=Path)
     diff.add_argument("after", type=Path)
+    diff.add_argument("--exit-code", action="store_true",
+                      help="return 1 when the models differ")
 
     validate = sub.add_parser("validate", help="check model references")
     validate.add_argument("model", type=Path)
 
+    schema = sub.add_parser("schema", help="JSON schemas for export and diff")
+    schema.add_argument("name", nargs="?", choices=["model", "diff"])
+
     args = parser.parse_args(argv)
+    if args.command == "schema":
+        schemas = model_schemas()
+        _print_json(schemas[args.name] if args.name else schemas)
+        return 0
     if args.command == "diff":
         try:
             before = load_model(args.before)
@@ -411,8 +457,14 @@ def main(argv: Optional[List[str]] = None) -> int:
         except (OSError, ValueError, ET.ParseError) as error:
             print(f"error: {error}", file=sys.stderr)
             return 2
-        _print_json(diff_models(before, after))
-        return 0
+        result = diff_models(before, after)
+        _print_json(result)
+        changed = bool(result["system"]) or any(
+            result[key][kind]
+            for key in ("tables", "functions")
+            for kind in ("added", "removed", "changed")
+        )
+        return 1 if args.exit_code and changed else 0
     try:
         model = load_model(args.model)
     except (OSError, ValueError, ET.ParseError) as error:
