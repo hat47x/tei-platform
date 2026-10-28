@@ -2,6 +2,7 @@ package targetprofile
 
 import (
 	"path/filepath"
+	"sort"
 	"time"
 )
 
@@ -11,7 +12,7 @@ func sqliteHistory(root string) ([]HistoryEntry, error) {
 		return nil, err
 	}
 	defer db.Close()
-	rows, err := db.Query(`SELECT digest, content, created_at FROM artifacts ORDER BY created_at DESC, digest DESC`)
+	rows, err := db.Query(`SELECT digest, content, created_at FROM artifacts`)
 	if err != nil {
 		return nil, err
 	}
@@ -46,6 +47,12 @@ func sqliteHistory(root string) ([]HistoryEntry, error) {
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
+	sort.Slice(entries, func(i, j int) bool {
+		if entries[i].Modified.Equal(entries[j].Modified) {
+			return entries[i].Digest > entries[j].Digest
+		}
+		return entries[i].Modified.After(entries[j].Modified)
+	})
 	return entries, nil
 }
 

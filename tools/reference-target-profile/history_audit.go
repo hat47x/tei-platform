@@ -64,16 +64,17 @@ const HistoryAuditCheckpointSchema = "tei.reference.target-profile-history-audit
 
 func BuildHistoryAuditCheckpoint(root string) (HistoryAuditCheckpoint, error) {
 	checkpoint := HistoryAuditCheckpoint{Schema: HistoryAuditCheckpointSchema, Root: root}
-	records, err := readHistoryAudit(root)
-	if err != nil {
-		checkpoint.Reason = err.Error()
-		return checkpoint, nil
-	}
 	raw, err := os.ReadFile(historyAuditPath(root))
 	if os.IsNotExist(err) {
 		raw = nil
 	} else if err != nil {
-		return checkpoint, err
+		checkpoint.Reason = err.Error()
+		return checkpoint, nil
+	}
+	records, err := parseHistoryAudit(raw)
+	if err != nil {
+		checkpoint.Reason = err.Error()
+		return checkpoint, nil
 	}
 	checkpoint.Count = len(records)
 	checkpoint.AuditDigest = digestBytes(raw)
@@ -105,6 +106,10 @@ func readHistoryAudit(root string) ([]historyAuditRecord, error) {
 	if err != nil {
 		return nil, err
 	}
+	return parseHistoryAudit(raw)
+}
+
+func parseHistoryAudit(raw []byte) ([]historyAuditRecord, error) {
 	records := []historyAuditRecord{}
 	for _, line := range strings.Split(string(raw), "\n") {
 		if strings.TrimSpace(line) == "" {
