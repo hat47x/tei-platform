@@ -64,7 +64,9 @@ bash tools/reference-authoring-witness-openssh/pressure-test.sh
 
 current OpenSSHの`verify-time` optionを使い、OpenSSHが受け付ける`YYYYMMDDHHMMSSZ`形式でfixtureの検証時刻を固定します。
 
-このChatGPT実行環境には`ssh-keygen`が無かったため、ここで実行PASSは出していません。OpenSSHがあるtrusted local cloneでpressure testを実行し、exact commitと結果をISSUE-000974へ記録するまで、このReferenceを採用済みとは扱いません。
+`verify-time`未対応のOpenSSH（例: Ubuntu 22.04に付属する8.9p1）では正例を確立できません。harnessは署名前に実物に対するcapability probeを行い、`Invalid "verify-time" option`を検出した時点で、provider不在と同じ終了コード77で停止します。
+
+2026-10-27に、trusted local clone（Windows用OpenSSH 9.5p2、exact commit `1cc6cfa8d`）で実物のsign / verify round tripと6件のfail closed負例を通し、ISSUE-000974へ記録しました。同一commitの`tei-repository-health-ci`もsuccessであり、GitHub-hosted ubuntu-24.04の実OpenSSHが`pressure_test.go`経由で同一fixtureを通しています。provider採否の判断とSPI抽出はISSUE-000974で進みます。
 
 ## 非主張
 

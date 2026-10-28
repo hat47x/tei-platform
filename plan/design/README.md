@@ -209,3 +209,7 @@ S1 realistic intent / candidate frontier
 | 実行先と表示・操作の境界 | 判定段階Cより前のため未確定。[Gate C Evidence契約](../gate/GATE_C_EVIDENCE_CONTRACT.md)とISSUE-000026 |
 
 判定段階の前に確定していない領域について、先回りして設計文書は作りません。
+
+## 直近の構成議論
+
+- [TEI構成議論の整理と次の設計判断（2026-10-24）](TEI_CONFIGURATION_DISCUSSION_SYNTHESIS_2026-10-24.md)：独自Host非必須、TEI内での業務シミュレーション、DSL・プラグインの交差的利用、同じ版からのコード・設計書出力を既存Issueへ対応付ける検討メモ。採用・実装完了の宣言ではありません。
