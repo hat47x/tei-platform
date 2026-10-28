@@ -472,7 +472,7 @@ func TestClosureThatCannotBeFixedStops(t *testing.T) {
 	if errDirty == nil || dirtyRun.ExitCode == 0 || !strings.Contains(dirtyRun.Stderr, "clean") {
 		t.Fatalf("a dirty working tree must stop stage 1 and the runner: %v / exit %d %s", errDirty, dirtyRun.ExitCode, dirtyRun.Stderr)
 	}
-	results["dirtyTree"] = map[string]any{"stage1": errDirty.Error(), "runnerExit": dirtyRun.ExitCode, "runner": lastLine(dirtyRun.Stderr)}
+	results["dirtyTree"] = map[string]any{"stage1": errDirty.Error(), "runnerExit": dirtyRun.ExitCode, "runner": firstLine(dirtyRun.Stderr)}
 
 	external := copyRepository(t, env, "external-module", func(dir string) {
 		main := filepath.Join(dir, "tools", "reference-process-plugin", "main.go")
@@ -499,7 +499,7 @@ func TestClosureThatCannotBeFixedStops(t *testing.T) {
 	if errExternal == nil || externalRun.ExitCode == 0 || externalRun.Evidence != nil {
 		t.Fatalf("an external module must stop stage 1 and the runner: %v / exit %d", errExternal, externalRun.ExitCode)
 	}
-	results["externalModule"] = map[string]any{"stage1": errExternal.Error(), "runnerExit": externalRun.ExitCode, "runner": lastLine(externalRun.Stderr)}
+	results["externalModule"] = map[string]any{"stage1": errExternal.Error(), "runnerExit": externalRun.ExitCode, "runner": firstLine(externalRun.Stderr)}
 
 	changed := copyRepository(t, env, "source-changed", func(dir string) {
 		main := filepath.Join(dir, "tools", "reference-process-plugin", "main.go")
@@ -597,7 +597,7 @@ func TestThroughDetectsSwappedIdentityAndMissingStage(t *testing.T) {
 	})
 }
 
-func lastLine(s string) string {
+func firstLine(s string) string {
 	lines := strings.Split(strings.TrimSpace(s), "\n")
-	return lines[len(lines)-1]
+	return lines[0]
 }
