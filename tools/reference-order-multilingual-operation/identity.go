@@ -21,7 +21,7 @@ import (
 // std.message and no language plugin; those are added to the copy by the
 // operator (stage 1 and 2) and are listed in PlatformGaps.
 type Unified struct {
-	Workspace    string          `json:"workspace"`
+	Workspace    string           `json:"workspace"`
 	Environment  core.CanonicalID `json:"environment"`
 	Application  core.CanonicalID `json:"application"`
 	Owner        plugin.Identity  `json:"owner"`

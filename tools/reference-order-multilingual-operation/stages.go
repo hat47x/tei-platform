@@ -618,7 +618,10 @@ func (c *Chain) IdentityChecks(ctx context.Context) error {
 		{"owner plugin", "reference/multilingual-overlays workspace_display_test.go", "tei.order.ui@1.0.0", owner, "read-from-test-source"},
 	}
 	s := c.S2
-	type mix struct{ id, want string; err error }
+	type mix struct {
+		id, want string
+		err      error
+	}
 	var mixes []mix
 	foreignOwner := ov.Target
 	// message owner of another asset
