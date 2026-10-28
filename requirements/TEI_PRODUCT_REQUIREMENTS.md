@@ -66,6 +66,8 @@ TEIは、これらの資産を意味、機能、実現方法、入力元索引�
 
 反対に、logicalに一つのData Modelとして扱うことを、単一Databaseへの物理統合要件にはしません。法令、組織責任、可用性、性能、既存資産等による配置差をEnvironment Binding / Provider / Realizationとして表現できる必要があります。
 
+複数Database・Document Store・外部Serviceから組み立てた読み取り用Projectionが存在しても、その表示項目を自動的に更新可能とはみなしてはいけません。編集可能な項目については、正本の所有元、更新先・更新操作の意味、必要な版条件と保証を明示し、一意の逆変換が存在しない導出値・集約値・曖昧なRelationを勝手に書き戻さない必要があります。単一Databaseの標準CRUDは簡易な設定で成立し、複数Sourceの更新や移行にだけ必要な追加契約を要求できることとします。
+
 ## RQ-006 Desired / Actual / Diff / Unresolvedを分離できること
 
 Database等の外部状態について、望ましい状態、観測された状態、確定した差分、比較未確定を区別できなければなりません。
