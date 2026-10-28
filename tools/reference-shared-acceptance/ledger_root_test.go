@@ -32,7 +32,7 @@ func TestDecisionLedgerOutwardSymlinkIsNotFollowed(t *testing.T) {
 	if len(entries) != 0 {
 		t.Fatalf("Decision record was written outside the Workspace: %v", entries)
 	}
-	if _, err := loadDecisionRecords(root); err == nil {
+	if _, err := loadDecisionRecords(root, nil); err == nil {
 		t.Fatal("outward Decision ledger symlink was read as a Workspace ledger")
 	}
 }

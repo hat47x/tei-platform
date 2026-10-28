@@ -465,7 +465,7 @@ func TestDecisionRecordContentAddressRejectsInPlaceTampering(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if _, err := loadDecisionRecords(dir); err == nil {
+	if _, err := loadDecisionRecords(dir, nil); err == nil {
 		t.Fatal("content-addressed decision recordのin-place改ざんを拒否していません")
 	} else if !strings.Contains(err.Error(), "content hashがfile名と一致しません") {
 		t.Fatalf("unexpected error: %v", err)
