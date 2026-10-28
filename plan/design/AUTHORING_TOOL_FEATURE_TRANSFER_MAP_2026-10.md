@@ -54,7 +54,7 @@ Modelerは、業務、データ、機能の三つの視点を一つのファイ�
 | 領域 | X-TEAでの機能 | TEIでの扱い | 担当 |
 | --- | --- | --- | --- |
 | 検索と置換 | モデル全体の文字列の走査と置換。要素種別、属性、大文字小文字の区別、置換の対象を選択 | 検索は読み取り、置換は変更案として受理境界へ渡す | 新規：[#1804](https://github.com/hat47x/tei-platform/issues/1804) |
-| 別ファイルからの取込み | 別モデル取込みは対象種別ごとに照合・更新規則が異なる。M49のDataflowは既存の子を置換し、Node/LineのIDを再採番する。欠落参照が常にログ出力・skipされるわけではない | 取込みは候補として受け取り、受理を経て反映する。欠落した参照を黙って落とさない | 新規：[#1805](https://github.com/hat47x/tei-platform/issues/1805) |
+| 別ファイルからの取込み | 別のモデルから、サブシステム、役割、機能、表、データフローを取り込む。照合・更新規則は対象種別と形式で異なる。M49の既存照合は内部ID一致とは限らず、形式・要素によって更新／追加／skipが分かれる。Dataflowは既存の子を置換してNode/LineのIDを再採番する。未解決参照や先行DOM変更の扱いも経路別で、欠落参照が常にログ出力・skipされるわけではない | 取込みは候補として受け取り、受理を経て反映する。欠落した参照を黙って落とさない | 新規：[#1805](https://github.com/hat47x/tei-platform/issues/1805) |
 | 表定義の突合せ | 別ファイルの同じ表との差異の列挙（名称、項目、型、非NULL、既定値、キー、種別）と、取込みによる同期 | 外部の意味名前空間の参照を読み取り専用で扱う。同期は取込みの受理境界へ従う | [#1570](https://github.com/hat47x/tei-platform/issues/1570)、[#1805](https://github.com/hat47x/tei-platform/issues/1805) |
 | 版間の差異 | 二つのファイルを比べた変更一覧と、変更に対応するDDLの生成 | 意味の差分と依存の影響を共通機能にする | ISSUE-000034（[#362](https://github.com/hat47x/tei-platform/issues/362)から計画文書へ移管） |
 | データ型の再編 | データ型の統合（項目を別の型へ移し、元の型を削除する） | 意味の型の統合と、影響を受ける項目の一覧 | 新規：[#1806](https://github.com/hat47x/tei-platform/issues/1806) |
@@ -113,7 +113,7 @@ Editorは、Modelerの機能定義から実行用の機能定義を作り込み�
 
 ### 5.3 別モデルからの部分取込み（[#1805](https://github.com/hat47x/tei-platform/issues/1805)）
 
-別の設計から、サブシステム、役割、機能、表、業務フローを取り込む仕事です。X-TEA M49の取込みは対象種別ごとに異なり、Function/Table等の照合とDataflow子要素の置換・再採番を一つの「ID一致による更新」にまとめられません。欠落参照も、記録してskipする経路だけでなく、変換途中で例外に至り得る経路があります。
+別の設計から、サブシステム、役割、機能、表、業務フローを取り込む仕事です。固定M49の取込み照合は形式・要素ごとに異なり、内部ID一致を共通upsert規則とすることはできません。Function/Table等の照合とDataflow子要素の置換・再採番も、一つの「ID一致による更新」にまとめられません。未選択の参照先へ既存bindできる場合、参照を解決できず全コピーを見送る場合、先行DOM更新だけが残り得る場合、変換途中で例外に至り得る場合を区別します。
 
 守る境界:
 
@@ -135,6 +135,16 @@ Editorは、Modelerの機能定義から実行用の機能定義を作り込み�
 
 根拠: [XEAD固定source](https://github.com/xead/XeadModeler/blob/68f1535b1c5dd80a327dfced37be401ecd3093c9/src/xeadModeler/DialogImportXEAD.java#L609-L685)（blob `691f5e3c4071a23825f26012f71ebfa3a864e47c`）、[XEAF固定source](https://github.com/xead/XeadModeler/blob/68f1535b1c5dd80a327dfced37be401ecd3093c9/src/xeadModeler/DialogImportXEAF.java#L341-L509)（blob `2ebd83e61595c1195311472039a8ffd90bfb9936`）。M50配布JARでの同一性、GUI実行、TEIのwrite/upsert実装済み保証は未確認。
 
+#### 固定M49の証拠：未選択参照・entity-kind・部分適用（2026-10-26、静的照合）
+
+本追補は既存[#950](https://github.com/hat47x/tei-platform/issues/950)・[#1805](https://github.com/hat47x/tei-platform/issues/1805)の責務を変更せず、追加の一般Importerを設計しない。過去#2会話・archiveの全文を回収したという意味ではない。
+
+- **固定資料**：XeadModeler M49 source commit `68f1535b1c5dd80a327dfced37be401ecd3093c9`、[XEAD Importソース](https://github.com/xead/XeadModeler/blob/68f1535b1c5dd80a327dfced37be401ecd3093c9/src/xeadModeler/DialogImportXEAD.java) Git blob `691f5e3c4071a23825f26012f71ebfa3a864e47c`、保存SHA-256 `1217eb273e24f857de5777740bd51c121078e2131febcd0f41f1dcff149bab08`。[XEAF Importソース](https://github.com/xead/XeadModeler/blob/68f1535b1c5dd80a327dfced37be401ecd3093c9/src/xeadModeler/DialogImportXEAF.java) Git blob `2ebd83e61595c1195311472039a8ffd90bfb9936`。配布M50 `xteamdl.jar` SHA-256 `0305791a8f5a61291d436f7f04dc8ff1180fa79841bda88b01524d636fb9f04f`は成果物の識別のみで、M49とのbytecode同等性・実動作を証明しない。
+- **参照先が未選択（M49確認事実）**：XEAD `checkTaskDefinition():926–945`は、取込元`DataflowNode@TaskID`を元`Task`に解決してSortKeyを読み、取込先`Task`の最初の一致IDを返す。`importDataflow():988–1035`はProcess→TaskとSubject→Roleを型別に検査し、未解決カウンタがあればDataflowコピーを見送る。参照先TaskはDataflow取込みで再作成しない。Roleの数値ID一致だけでTaskとしてbindする経路ではない。
+- **dangling / entity-kindの境界（M49事実＋静的推論）**：`checkTaskDefinition():927–945`は、元Taskが見つからない場合`taskSortKey=""`のまま取込先TaskのSortKeyを検索する。このため同値の空SortKeyを持つ取込先Taskがあれば、そのIDへ誤bindし得る（**推論・実行未検証**）。「元Taskが欠落し、同じ数値IDのRoleだけがある」条件を、単なる未選択Taskへの正常bindと区別する。sourceでtagが違うことは一致の根拠にせず、失効／kind不一致／空キー照合を別々に未解決候補として保持する。Taskの存在だけで業務意味受理を主張しない。
+- **逐次書込みと復元（M49確認事実＋静的推論）**：XEAD `importTables():609–711`は共有型→Table群→Relationshipの順にDOMを操作し、`createTableDefinition():1720`は子Field生成前にTableを編集中DOMへ追加する。`:1725–1746`のField生成途中で例えば`:1733`の数値変換が失敗した場合、`jButtonStart_actionPerformed():589–598`の例外処理に以前のDOM変更を一括復元するコードはない。先行Tableや型定義のDOM変更残存は**静的推論**であり、実DBでの部分commitやディスク保存結果ではない。元Import内の失敗と、再import時の冪等性・親欠落・ID衝突は別の受入論点である。
+- **既存受入との対応**：[#950](https://github.com/hat47x/tei-platform/issues/950)は原典のkind・ID・親scope・SortKey・参照をsource factとして保存し、Canonical identityへ昇格しない。[#1805](https://github.com/hat47x/tei-platform/issues/1805)には欠落参照保持・意味衝突診断・受理前の正本不変が**既に存在**する。追加の**合成負例候補（未実行）**は、(a)未選択で元/先Taskが一致する正常bind、(b)元Taskがdanglingで異種別Roleだけ同じ数値ID、かつ取込先Taskが空SortKeyの異常入力、(c)先行Table追加後に後続Field変換が失敗しても正本不変、の3件を独立に確認すること。診断・原子性は既存#1805/#267へ渡し、Source Adapterに適用権限を持たせない。関連する証拠は[#1805 Dataflow](https://github.com/hat47x/tei-platform/issues/1805#issuecomment-6207997267)、[#1805 Table依存](https://github.com/hat47x/tei-platform/issues/1805#issuecomment-6210000415)。
+- **未確認**：M49実行/GUIと保存後XML、M50 bytecode／配布版動作、旧#2 archive全履歴の一次再取得、TEIの全Target適用での正本原子性、合成負例のPASSは未確認。旧ツールの静的挙動からTEI受入済みを推定しない。
 
 ### 5.4 データ型の再編（[#1806](https://github.com/hat47x/tei-platform/issues/1806)）
 
@@ -174,6 +184,7 @@ Editorは、Modelerの機能定義から実行用の機能定義を作り込み�
 | 暗黙前提 | 旧ツールでの現れ | TEIで必要な扱い |
 | --- | --- | --- |
 | 識別子と並び順が一つの値 | `ID(seq)`が識別と一覧順を兼ねる | 論理識別子と表示順を分ける |
+| 取込みの同一性判定が単純なID一致 | M49 XEADのTableはSortKey＋所属Subsystem、子TableFieldは親Table.SortKey＋Alias／Nameで照合する。XEAF Functionは元IDを既存SortKeyと比較して一致時skipする別方式 | 形式・entity-kind・親scope・照合キー・source来歴を保持し、意味の同一性やCanonical IDへ暗黙に昇格させない（#950/#1805） |
 | 取込みの照合・付替え規則が要素種別で異なる | Function/TableのSortKey照合と、Dataflowの子要素置換・ID再採番・元Node IDの先着対応が併存する（Modeler M49） | 旧IDをCanonical identityにせず、衝突候補と由来を区別する |
 | 取込みが部分的に成功する | 欠落時は経路によりskip・一部DOM変更・例外があり得る。DataflowLine端点欠落は`indexOf=-1`から例外に至る経路がある（M49、実行未確認） | 欠落を未解決として保持し、受理前に副作用を起こさない |
 | 関連の条件付きは制約にしない | DDLの出力で、条件付きの関連は外部キーにならない | 条件付きの関連を、実行側の規則として宣言する |
