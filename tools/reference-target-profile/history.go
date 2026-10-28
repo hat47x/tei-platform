@@ -71,6 +71,12 @@ func History(root string) (HistoryReceipt, error) {
 // PruneHistory deletes all but the newest keepLast verified history artifacts.
 // It refuses to delete when any retained artifact is unreadable or altered.
 func PruneHistory(root string, keepLast int, dryRun bool) (HistoryPruneReceipt, error) {
+	return pruneHistory(root, keepLast, dryRun, nil)
+}
+
+// pruneHistory holds the existing writer lock across optional approval
+// verification, plan derivation, mutation, and audit append.
+func pruneHistory(root string, keepLast int, dryRun bool, verifyApproval func() error) (HistoryPruneReceipt, error) {
 	receipt := HistoryPruneReceipt{
 		Schema: HistoryPruneSchema, Root: root, KeepLast: keepLast, DryRun: dryRun,
 	}
@@ -88,6 +94,12 @@ func PruneHistory(root string, keepLast int, dryRun bool) (HistoryPruneReceipt, 
 		return receipt, nil
 	}
 	defer release()
+	if verifyApproval != nil {
+		if err := verifyApproval(); err != nil {
+			receipt.Reason = err.Error()
+			return receipt, nil
+		}
+	}
 	if sqliteRoot(root) {
 		return pruneSQLiteHistory(root, keepLast, dryRun)
 	}
