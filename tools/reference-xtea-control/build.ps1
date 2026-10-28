@@ -35,6 +35,7 @@ $manifest = Join-Path $output "MANIFEST.MF"
 if ($LASTEXITCODE -ne 0) { throw "jar failed for the control agent" }
 
 $fixtures = Get-ChildItem -Recurse -File (Join-Path $root "tests\fixtures\*.java") |
+    Where-Object { $_.Name -ne "DriverFixture.java" } |
     ForEach-Object { $_.FullName }
 & javac --release 8 -encoding UTF-8 -d $fixtureClasses $fixtures
 if ($LASTEXITCODE -ne 0) { throw "javac failed for the test fixture" }

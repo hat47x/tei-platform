@@ -19,6 +19,7 @@ from __future__ import annotations
 import argparse
 import base64
 import json
+import re
 import sys
 import time
 import urllib.error
@@ -145,6 +146,11 @@ class ControlClient:
             body["selector"] = selector
         return self.request("POST", "/key", body)
 
+    def table_edit(self, selector: Dict[str, Any], action: str = "start", row: int = 0,
+                   column: Any = 0) -> Dict[str, Any]:
+        return self.request("POST", "/table/edit",
+                            {"selector": selector, "action": action, "row": row, "column": column})
+
     def close(self, selector: Dict[str, Any]) -> Dict[str, Any]:
         return self.request("POST", "/close", {"selector": selector})
 
@@ -177,11 +183,16 @@ class ControlClient:
 
     def find(self, selector: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         snapshot = self.snapshot()
+        matches = []
         for window in snapshot.get("windows", []):
-            found = _find_in_node(window, selector)
-            if found is not None:
-                return found
-        return None
+            if selector.get("window") and not _regex_matches(selector["window"], window.get("text", "")):
+                continue
+            if selector.get("windowClass") and not _regex_matches(selector["windowClass"], window.get("class", "")):
+                continue
+            matches.extend(node for node in _iter_nodes(window) if _node_matches(node, selector))
+        matches.sort(key=lambda node: 0 if node.get("showing") else 1 if node.get("visible") else 2)
+        index = int(selector.get("index", 0))
+        return matches[index] if 0 <= index < len(matches) else None
 
     def wait_text(self, selector: Dict[str, Any], expected: Optional[str] = None,
                   contains: Optional[str] = None, timeout_ms: int = 10000) -> Dict[str, Any]:
@@ -200,19 +211,20 @@ class ControlClient:
         raise TimeoutError(f"text condition not met for {selector}; last={last}")
 
 
-def _find_in_node(node: Dict[str, Any], selector: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-    if _node_matches(node, selector):
-        return node
+def _iter_nodes(node: Dict[str, Any]):
+    yield node
     for child in node.get("children", []):
-        found = _find_in_node(child, selector)
-        if found is not None:
-            return found
-    return None
+        yield from _iter_nodes(child)
+
+
+def _regex_matches(pattern: str, value: str) -> bool:
+    try:
+        return re.search(pattern, value, re.IGNORECASE) is not None
+    except re.error:
+        return pattern.lower() in value.lower()
 
 
 def _node_matches(node: Dict[str, Any], selector: Dict[str, Any]) -> bool:
-    import re
-
     role = selector.get("role")
     if role and node.get("role") != role:
         return False
@@ -222,27 +234,26 @@ def _node_matches(node: Dict[str, Any], selector: Dict[str, Any]) -> bool:
             if key == "path":
                 if node.get(key) != pattern:
                     return False
-            elif not re.search(pattern, str(node.get(key, "")), re.IGNORECASE):
+            elif not _regex_matches(pattern, str(node.get(key, ""))):
                 return False
     for key, field in (("text", "text"), ("textContains", "text")):
         if selector.get(key) is not None:
             pattern = str(selector[key])
-            target = str(node.get(field, "")) + " " + str(node.get("textValue", ""))
-            flags = re.IGNORECASE
+            target = str(node.get(field, ""))
             if key == "textContains":
                 if pattern.lower() not in target.lower():
                     return False
-            elif not re.search(pattern, target, flags):
+            elif not _regex_matches(pattern, target):
                 return False
     return True
 
 
 def selector_from_args(args: argparse.Namespace) -> Dict[str, Any]:
     selector: Dict[str, Any] = {}
-    for key in ("window", "path", "role", "text", "text_contains", "name", "class", "index"):
+    for key in ("window", "window_class", "path", "role", "text", "text_contains", "name", "class", "index"):
         value = getattr(args, key, None)
         if value is not None:
-            selector["textContains" if key == "text_contains" else key] = value
+            selector[{"text_contains": "textContains", "window_class": "windowClass"}.get(key, key)] = value
     return selector
 
 
@@ -267,6 +278,9 @@ def run_scenario(client: ControlClient, scenario_path: str | Path) -> None:
             client.select(step["selector"], **options)
         elif operation == "table_set":
             client.table_set(step["selector"], step["row"], step["column"], step.get("value"))
+        elif operation == "table_edit":
+            client.table_edit(step["selector"], step.get("action", "start"),
+                              int(step.get("row", 0)), step.get("column", 0))
         elif operation == "table_assert":
             value = client.table_read(step["selector"], int(step.get("maxRows", 50)))
             row = int(step["row"])
@@ -440,6 +454,12 @@ def build_parser() -> argparse.ArgumentParser:
     table_set.add_argument("--column", required=True)
     table_set.add_argument("--value", required=True)
 
+    table_edit = sub.add_parser("table-edit")
+    _add_selector_arguments(table_edit)
+    table_edit.add_argument("--action", choices=["start", "commit", "cancel"], default="start")
+    table_edit.add_argument("--row", type=int, default=0)
+    table_edit.add_argument("--column", default="0")
+
     key = sub.add_parser("key")
     _add_selector_arguments(key)
     key.add_argument("--key")
@@ -494,6 +514,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 def _add_selector_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--window")
+    parser.add_argument("--window-class")
     parser.add_argument("--path")
     parser.add_argument("--role")
     parser.add_argument("--text")
@@ -537,6 +558,8 @@ def main(argv: Optional[List[str]] = None) -> int:
             _print(client.tree_read(selector_from_args(args), args.max_rows))
         elif args.command == "table-set":
             _print(client.table_set(selector_from_args(args), args.row, args.column, args.value))
+        elif args.command == "table-edit":
+            _print(client.table_edit(selector_from_args(args), args.action, args.row, args.column))
         elif args.command == "key":
             _print(client.key(selector_from_args(args) or None, args.key, args.type_text, args.modifiers))
         elif args.command == "click":
