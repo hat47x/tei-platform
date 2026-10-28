@@ -486,6 +486,18 @@ func TestOneRevisionOrderEntryE2EPacket(t *testing.T) {
 	if n11Reader.Process.Pid == child.pid || orderStatus(t, db, 1001) != "submitted" || orderStatus(t, db, 1002) != "draft" {
 		t.Fatal("N11 re-observation reused the Web process or changed the orders")
 	}
+	// Explicitly resending the same business input is not receipt recovery:
+	// this endpoint has no OperationID. With the committed row preserved,
+	// Submit rejects it rather than returning the earlier Command result.
+	child = run.start(r1)
+	repeatStatus, repeatRaw := submitRow(t, child.base, 0)
+	repeated, repeatErr := decodeCommand(t, repeatRaw)
+	child.stop()
+	if repeatStatus != http.StatusUnprocessableEntity || repeated.Stage != "command-effect-failed" ||
+		repeatErr != errOrderNotSubmittable.Error() || repeated.Command != nil || repeated.Observation != nil ||
+		orderStatus(t, db, 1001) != "submitted" || orderStatus(t, db, 1002) != "draft" {
+		t.Fatalf("repeated input was mistaken for receipt recovery: status=%d body=%s", repeatStatus, repeatRaw)
+	}
 	// 10. S02 controls in a second disposable database of the same server.
 	// (a) The declared index is missing: the Web process does not publish HTTP.
 	// (b) A column is dropped after startup: the submit is refused before the
@@ -547,7 +559,10 @@ func TestOneRevisionOrderEntryE2EPacket(t *testing.T) {
 		"n11": run.write("web-n11-unobserved.json", map[string]any{"fixtureReset": "public.orders order_id=1001 set to draft before this control",
 			"status": n11Status, "response": json.RawMessage(n11Raw), "rowStatusAfter": "submitted",
 			"reobservation": map[string]any{"readerPid": n11Reader.Process.Pid, "output": n11ReadOut.String(),
-				"mode": "independent SELECT after failed Observation; no reset or resubmit", "operationReceiptRecovery": false}}),
+				"mode": "independent SELECT after failed Observation; no reset or resubmit", "operationReceiptRecovery": false},
+			"repeatedInput": map[string]any{"status": repeatStatus, "response": json.RawMessage(repeatRaw),
+				"rowStatusAfter": "submitted", "operationReceiptRecovery": false,
+				"mode": "explicit test resend after independent SELECT; endpoint has no OperationID"}}),
 		"schema": run.write("physical-schema-readiness.json", map[string]any{"scope": "the submit store's write set (public.orders)",
 			"declaredFrom": "accepted R1 Persistence Mapping", "readiness": readiness}),
 		"s02": run.write("physical-s02-controls.json", map[string]any{
