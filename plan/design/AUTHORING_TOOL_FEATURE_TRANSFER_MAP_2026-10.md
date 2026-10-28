@@ -125,6 +125,16 @@ Editorは、Modelerの機能定義から実行用の機能定義を作り込み�
 - `DataflowLine@ID`の重複は、元`DataflowNode@ID`の重複や同一Nodeへの複数参照とは別に診断する。M49の`DialogImportXEAD.importDataflow()`（L1091–1116）は元Lineの`ID`を照合せず、元DOMの各Lineを順次複製し、取込先DOMの最大`DataflowLine@ID`+1を新IDとして`appendChild`する（最大値探索は`getLastDomElementOfTheType()` L2823–2841）。元DOMに同じLine IDが複数あり、Task/Role・端点解決が正常に進みこの複製ループへ到達する条件では、個別のLineとして再採番され、同一元IDを根拠に上書き・統合されない（静的導出、未実行）。これは**部分Importの当該ループ限定**の観察で、通常Open/Saveの重複ID拒否・保存後の表示結果・M50配布版は未確認。TEI側では元IDが衝突した事実と各要素のsource locatorを残し、再採番で曖昧性を隠さない（[#1805](https://github.com/hat47x/tei-platform/issues/1805)、[#950](https://github.com/hat47x/tei-platform/issues/950)）。
 - 外部の意味名前空間の読み取り専用の参照（[#1570](https://github.com/hat47x/tei-platform/issues/1570)）と、定義の取込みを混同しない
 
+固定M49ソースの静的照合による**XEADとXEAFの取込規則の差**（旧Runtime実測でもTEI採用仕様でもない）:
+
+- XEAD `DialogImportXEAD.importTables()`（`xead/XeadModeler@68f1535b1c5dd80a327dfced37be401ecd3093c9`、609–685行）は、選択元Subsystemかつ非空`Table.SortKey`のTableを対象にし、既存Tableの同一`SortKey`一致時、対象Subsystemも一致すれば`updateTableDefinition()`、所属が異なればスキップ、一致先がなければ`createTableDefinition()`へ進む。照合はSource `SortKey`を用い、同一キーの意味的同一性は証明しない。
+- XEAF `DialogImportXEAF.importTables()`（同commit、341–428行）は、選択元SubsystemのSource `Table@ID`と取込先Tableの`SortKey`を比較し、一致した場合は**更新せずスキップ**、不一致なら新規Tableを作成する。XEAF `importFunctions()`（430–509行）も既存Function一致時はスキップ。**両形式の「一致＝update」を共通仕様にしない**。
+- XEAF `importSubsystem()`（840–846行）は選択された取込先Subsystemの`Name`/`Descriptions`へSource属性を無条件に`setAttribute`する。DOM `getAttribute`の属性未設定時と明示空値の区別はこの代入で失われ得る。これはTable/Function一致時のskipとは別経路。
+- XEAFの`request()`（187–239行）と`jButtonStart_actionPerformed()`（262–320行）は元・先Subsystemを選び、`importTables()`（358–364行）は元Subsystemに属するTableだけを対象とする。`XeadImportLog<日時>.txt`には元・先、選択範囲、作成/skip等が記録されるが、**全Source項目の完全inventory・除外理由・source削除の証明ではない**。部分選択による欠落をdelete/tombstoneへ自動変換しない。
+- TEIでは#950のsource-faithful観測と#1805の取込候補・衝突/欠落・#267の明示受理を分離する。同一論理Source項目のstable key/版/意味同一性/更新方針は別途検証し、旧ID・SortKey・XML位置をCanonical identityへ昇格しない。取込後の再実行（内部ID・子要素・参照の冪等性）と、元ファイルの完全snapshotに基づく削除検知は**未実証**。
+
+根拠: [XEAD固定source](https://github.com/xead/XeadModeler/blob/68f1535b1c5dd80a327dfced37be401ecd3093c9/src/xeadModeler/DialogImportXEAD.java#L609-L685)（blob `691f5e3c4071a23825f26012f71ebfa3a864e47c`）、[XEAF固定source](https://github.com/xead/XeadModeler/blob/68f1535b1c5dd80a327dfced37be401ecd3093c9/src/xeadModeler/DialogImportXEAF.java#L341-L509)（blob `2ebd83e61595c1195311472039a8ffd90bfb9936`）。M50配布JARでの同一性、GUI実行、TEIのwrite/upsert実装済み保証は未確認。
+
 #### 固定M49の証拠：未選択参照・entity-kind・部分適用（2026-10-26、静的照合）
 
 本追補は既存[#950](https://github.com/hat47x/tei-platform/issues/950)・[#1805](https://github.com/hat47x/tei-platform/issues/1805)の責務を変更せず、追加の一般Importerを設計しない。過去#2会話・archiveの全文を回収したという意味ではない。
