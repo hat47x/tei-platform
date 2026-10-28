@@ -143,9 +143,9 @@ func RenderMigrationSQLWithObservation(diff schemadiff.Diff, observation SchemaO
 	if !constraintReadiness.Executable {
 		return nil, &ConstraintDataReadinessError{Readiness: constraintReadiness}
 	}
-	checked := map[string]bool{}
+	checked := map[string]ConstraintDataCheck{}
 	for _, addition := range constraintReadiness.Additions {
-		checked[addition.Check.identity()] = true
+		checked[addition.Check.identity()] = addition.Check
 	}
 	return renderResolvedMigrationSQL(diff, checked)
 }

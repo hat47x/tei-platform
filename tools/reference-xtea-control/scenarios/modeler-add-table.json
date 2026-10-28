@@ -1,0 +1,23 @@
+{
+  "name": "modeler-add-table",
+  "description": "Add a table through the Modeler DB-structure tree, name it TEST_TABLE, save, and verify it by name. The table ID is assigned by the Modeler. Uses a disposable MfgOrder.xead copy.",
+  "steps": [
+    { "op": "wait_window", "title": "X-TEA Modeler", "timeoutMs": 30000 },
+    { "op": "select", "selector": { "role": "tree" }, "path": [0, 2, 0, 0] },
+    { "op": "key", "selector": { "role": "tree" }, "key": "ENTER" },
+    { "op": "sleep", "ms": 1000 },
+    { "op": "invoke_method", "selector": { "role": "window", "window": "X-TEA Modeler" }, "method": "jMenuItemXeadTreeNodeAdd_actionPerformed" },
+    { "op": "sleep", "ms": 1000 },
+    { "op": "select", "selector": { "role": "tree" }, "path": [0, 2, 0, 0, 0] },
+    { "op": "key", "selector": { "role": "tree" }, "key": "ENTER" },
+    { "op": "sleep", "ms": 1000 },
+    { "op": "set", "selector": { "window": "X-TEA Modeler", "path": "0.1.2.9.0.2.0.0.1.1.0" }, "value": "TEST_TABLE" },
+    { "op": "set", "selector": { "window": "X-TEA Modeler", "path": "0.1.2.9.0.2.0.0.1.1.7" }, "value": "TEST_TABLE" },
+    { "op": "invoke", "selector": { "window": "X-TEA Modeler", "path": "m.0.7" }, "settleMs": 1000 },
+    { "op": "wait_window", "title": "バックアップの確認", "timeoutMs": 30000 },
+    { "op": "invoke", "selector": { "window": "バックアップの確認", "role": "button", "text": "はい" }, "settleMs": 1000 },
+    { "op": "wait_window", "title": "バックアップの確認", "state": "absent", "timeoutMs": 30000 },
+    { "op": "sleep", "ms": 1500 },
+    { "op": "model_assert_table", "path": "build/modeler-fixture/MfgOrder.xead", "name": "TEST_TABLE" }
+  ]
+}

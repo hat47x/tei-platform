@@ -196,7 +196,7 @@ go run ./tools/reference-generator-selection/cmd/tei-generator-meta \
 - Python候補は`python3`または`python`、JavaScript候補は`node`でsourceを実行します。どちらも`binaryDigest`は空です。
 - Java候補はsourceを2つの別directoryへcopyし、それぞれ`javac -d <classes> Main.java`でcompileして`Main.class`のdigestを比較します。一致した場合だけ合格し、`java -cp <classes> Main`で実行します。`binaryDigest`は`Main.class`のdigest、`reproducibility`は`path-independent-twice`です。
 - WASM候補はsourceを2つの別directoryへcopyし、それぞれ`GOOS=js GOARCH=wasm go build -trimpath -buildvcs=false`で`.wasm`を作ってdigestを比較します。一致した場合だけ合格し、`node <GOROOT>/lib/wasm/wasm_exec_node.js <candidate.wasm>`で実行します。`binaryDigest`はwasm binaryのdigest、`reproducibility`は`path-independent-twice`です。
-- WASI候補はsourceを2つの別directoryへcopyし、それぞれ`GOOS=wasip1 GOARCH=wasm go build -trimpath -buildvcs=false`で`.wasm`を作ってdigestを比較します。一致した場合だけ合格し、`node --no-warnings <embedded wasi_node.js> <candidate.wasm>`で実行します。`binaryDigest`はwasm binaryのdigest、`reproducibility`は`path-independent-twice`です。
+- WASI候補はsourceを2つの別directoryへcopyし、それぞれ`GOOS=wasip1 GOARCH=wasm go build -trimpath -buildvcs=false`で`.wasm`を作ってdigestを比較します。一致した場合だけ合格し、`node --no-warnings <embedded wasi_node.js> <candidate.wasm>`で実行します。`binaryDigest`はwasm binaryのdigest、`reproducibility`は`path-independent-twice`です。runnerはstdoutのflush前に終了して出力を切り捨てないよう、`process.exit`ではなく`exitCode`を使います。
 - receiptの`runtime`へ、言語、起動方法、処理系のversion、利用可否を記録します。Javaは`javac`と`java`、WASMは`node`と`wasm_exec_node.js`、WASIは`node`の`node:wasi`が必要です。
 - 処理系が見つからない場合は`runtime unavailable`として拒否し、PASSや空の結果へ潰しません。
 - source拡張子が`language`と一致しない候補、未知の`language`を拒否します。
@@ -311,6 +311,12 @@ reconcileは候補をビルド・実行・選抜しません。再生成した�
 - Java以外のJVM言語、.NET/WASM等と、実Targetでの処理系固定・依存解決。
 - 実Provider・実Targetでの比較。
 - 候補のartifact store、別machine・別toolchain・clean cacheでのbuild再現性（#943 / #1370 / #1104）。
+
+## 丸め契約と固定生成器の対応範囲
+
+契約の検証は`half-up`と`half-even`を区別して許容しますが、現在の固定strategyが生成できるのは`half-up`だけです。`half-even`を指定した生成は、source・manifest・出力directoryの公開前に明示的に拒否します。`Generate` / `GenerateVersion` / `GenerateAll`、来歴確認での再描画、`RenderForWorld`と設計bundleへの接続に共通の検査です。対応していない丸めを別の方式へ置き換えません。
+
+これは固定生成器の制約であり、業務で`half-up`を採用する判断や、契約全体から`half-even`を禁止する変更ではありません。将来対応する場合は、正負のtie（1.005 / -1.005等）を既存D8の独立期待値と比較し、各生成言語・単発/常駐で確認します。通常の`half-up`のtemplate bytes・出力・digestは変更しません。
 
 ## 読込み済みWorldからの描画
 

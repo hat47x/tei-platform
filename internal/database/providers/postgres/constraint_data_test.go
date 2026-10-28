@@ -157,9 +157,9 @@ func TestRenderRefusesPrimaryKeyOnColumnThatStaysNullable(t *testing.T) {
 	}
 }
 
-func TestRenderStillRefusesPrimaryKeyReplacement(t *testing.T) {
+func TestRenderStillRefusesRemovingPrimaryKey(t *testing.T) {
 	diff := schemadiff.Diff{Database: "sales_core", Changes: []schemadiff.Change{
-		{Kind: schemadiff.ChangePrimaryKey, Table: "public.customers", PrimaryKey: []string{"id", "region"}, BeforePrimaryKey: []string{"id"}},
+		{Kind: schemadiff.ChangePrimaryKey, Table: "public.customers", BeforePrimaryKey: []string{"id"}},
 	}}
 	observation := postgres.SchemaObservation{Snapshot: existingTablesSnapshot()}
 	if _, err := postgres.RenderMigrationSQLWithObservation(diff, observation); err == nil || !strings.Contains(err.Error(), "does not support primary-key change") {
