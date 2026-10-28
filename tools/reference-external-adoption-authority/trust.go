@@ -156,3 +156,11 @@ func writeOwnerGrants(dir string, grants []authoritytrust.Grant) ([]string, erro
 	}
 	return paths, nil
 }
+
+func issuerOf(k SignerKey) authoritytrust.Issuer {
+	return authoritytrust.Issuer{ID: k.Ref, Version: k.Version}
+}
+
+func ownerList(grants ...authoritytrust.Grant) []authoritytrust.Grant {
+	return append([]authoritytrust.Grant(nil), grants...)
+}

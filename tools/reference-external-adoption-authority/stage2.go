@@ -83,15 +83,7 @@ type catalogOut struct {
 		EvidenceFingerprint           string `json:"evidenceFingerprint"`
 		TrustQualificationFingerprint string `json:"trustQualificationFingerprint"`
 	} `json:"namespaceAuthorities"`
-	Constraints []struct {
-		Extension string `json:"extension"`
-		ID        string `json:"id"`
-		Subject   struct {
-			Kind string `json:"kind"`
-			ID   string `json:"id"`
-		} `json:"subject"`
-		EvaluatorProviderExtension string `json:"evaluatorProviderExtension"`
-	} `json:"constraints"`
+	Constraints     []json.RawMessage   `json:"constraints"`
 	Unresolved      []catalogUnresolved `json:"unresolved"`
 	AuthorityLimits []string            `json:"authorityLimits"`
 }
@@ -434,7 +426,7 @@ func (s *Sample) runStage2(ctx context.Context, s1 stage1Out, c Carried, p Trust
 	if lock.SemanticSetFingerprint != cat.ResolutionFingerprint || plan.SemanticSetFingerprint != cat.ResolutionFingerprint {
 		return out, nil, fmt.Errorf("lock, plan and catalog disagree on the semantic set")
 	}
-	verifyPlan, err := runCLI(ctx, s.Tools.Catalog, s.Repo, append(ci.args(), "-verify-validation-plan", out.PlanPath)...)
+	verifyPlan, err := runCLI(ctx, s.Tools.Catalog, s.Repo, append(resolveInputs.args(), "-verify-validation-plan", out.PlanPath)...)
 	if err != nil {
 		return out, nil, err
 	}
