@@ -99,6 +99,7 @@
 | [`reference-plugin-package-builder/`](reference-plugin-package-builder/) | Plugin配布物の組立て例 |
 | [`reference-plugin-self-build/`](reference-plugin-self-build/) | Plugin自身が構築手順を提供する場合の確認 |
 | [`reference-plugin-build-supply/`](reference-plugin-build-supply/) | 技術検証用サンプル`plugin-build-supply`の工程1〜4の通しの検証。構築意図と実ファイル・観測したGoから`tei.process.reference`の計画を確定し、その照合値を、ホストが発行する発生識別子つきの二回の実構築と内容アドレスの保管庫、既存の自己構築の実行器の検証根拠(二回構築、段階の収束、ホスト登録)、保管庫から再取得したバイト列のプロセス通信の版1での呼出しまで引き継ぐ。提供元の曖昧さ・追加・信頼の失効、部分出力を残す失敗・二回構築の不一致・一回の実行の二重計上・同時の試行の強制終了、汚れた作業ツリー・外部モジュール・ソースとツールチェーンの食い違い・ホストのGo設定、工程間の識別の差替えと工程の欠落を注入する(同じ機械の上の実際のGoの構築。提供元のカタログと信頼の失効は合成) |
+| [`reference-order-multilingual-operation/`](reference-order-multilingual-operation/) | 技術検証用サンプル`order-multilingual-operation`の工程1〜6の通しの検証。複製した作業領域に受注の所有プラグイン、`std.message`、言語プラグインを加え、所有者・環境・原文言語・項目名を一組にして既存の多言語資産を変更せずに呼ぶ。日本語原文を一回改訂した前後の同じ対象一覧の突合表で、従属訳だけの失効と配布候補の再生成を確かめる。許可・受理・固定情報の失効と言語プラグインの撤去、配布候補の訳文の書換えと固定情報の差替え、改訂直後の旧配布候補、翻訳器の失敗・取消し・結果不明と機密の外部送信、翻訳中の同時編集、PostgreSQLとSQLiteの並びの差を注入する(合成のホスト、模擬の翻訳器、PostgreSQLの一つのインスタンス、SQLiteはPythonの標準モジュールでのファイル、Node) |
 | [`reference-process-plugin/`](reference-process-plugin/) | 別プロセスで動くPluginの参照用起動点 |
 | [`reference-composition-process-bridge/`](reference-composition-process-bridge/) | 合成基盤と従来・独立プロセスプラグインの接続試験 |
 | [`reference-runtime-capability-identity/`](reference-runtime-capability-identity/) | 実行時Capabilityの識別方法の確認 |
@@ -189,6 +190,7 @@
 | [`verify-order-rollout-host-continuity.py`](verify-order-rollout-host-continuity.py) | `reference-order-rollout-host-continuity`の全試験(工程1〜5)を、Dockerで起動した使い捨てのPostgreSQL(乱数のパスワード)で実行し、skipが0件であることと観測値、通しの記録の要約、試験の出力にパスワードと接続先がないことをreceiptへ残す。`--race`で競合検出つき。作ったコンテナーだけを終了時に削除する |
 | [`verify-order-web-delivery-member.py`](verify-order-web-delivery-member.py) | `reference-order-web-delivery-member`の全試験(工程6)を、Dockerで起動した使い捨てのPostgreSQLで実行し、skipが0件であることと観測値、通しの記録の要約をreceiptへ残す。作ったコンテナーだけを終了時に削除する |
 | [`verify-plugin-build-supply.py`](verify-plugin-build-supply.py) | `reference-plugin-build-supply`の全試験(工程1〜4)を、清浄な複製(作業ブランチのコミットの浅いcloneなど)の上で、ネットワークからモジュールとツールチェーンを取得せずに実行し、skipが0件であることと観測値、通しの記録の要約、Goの版、試験の後も作業ツリーが清浄であることをreceiptへ残す。Dockerは使わない |
+| [`verify-order-multilingual-operation.py`](verify-order-multilingual-operation.py) | `reference-order-multilingual-operation`の全試験(工程1〜6)を、清浄な複製の上で、Dockerで起動した使い捨てのPostgreSQLで実行し、skipが0件であることと、通しの記録(失敗注入、完了条件、条件付きの条件の合否)の要約、Go・Python・SQLite・Nodeの版、試験の後も作業ツリーが清浄であることをreceiptへ残す。作ったコンテナーだけを終了時に削除する |
 | [`check-core-isolation.sh`](check-core-isolation.sh) | 合成基盤の隔離試験と別モジュールからの公開API試験 |
 | [`verify-composition-reference.sh`](verify-composition-reference.sh) | 固定したクリーンな版で合成基盤・項目対応・実Process・中核独立性を検査し、結果を標準出力へ返す。全体健全性と本番移行の判定は別に行い、申し送りは[#1223](https://github.com/hat47x/tei-platform/issues/1223)へ記載する |
 | [`repository-health-check.sh`](repository-health-check.sh) | 形式、静的検査、全Goテスト、参照Workspaceの検証 |
