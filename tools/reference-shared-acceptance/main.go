@@ -13,6 +13,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"tei/tools/internal/opensshwitness"
 )
 
 func main() {
@@ -29,7 +31,8 @@ const usage = `usage:
   reference-shared-acceptance attach-semantic-evaluation -candidate FILE -semantic-evaluation FILE [-out FILE]
   reference-shared-acceptance attach-rmt-transcription -candidate FILE -rmt-transcription FILE [-out FILE]
   reference-shared-acceptance revision -workspace DIR
-  reference-shared-acceptance decisions -workspace DIR [-out FILE]
+  reference-shared-acceptance decisions -workspace DIR [-out FILE] [-witness-allowed-signers FILE -witness-verify-time TIME] [-witness-revocation FILE]
+  reference-shared-acceptance witness-decision -workspace DIR -decision RECORD -workspace-identity TOKEN -key KEYFILE [-witness-issued-at TIME] [-witness-nonce TEXT] [-witness-ssh-keygen PATH] [-witness-allowed-signers FILE -witness-verify-time TIME] [-witness-revocation FILE] [-out FILE]
   reference-shared-acceptance confirm-record -workspace DIR -input FILE [-out FILE] [-allow-reference-baseline]
   reference-shared-acceptance confirm-check -workspace DIR -input FILE [-out FILE]
   reference-shared-acceptance confirmations -workspace DIR [-out FILE]
@@ -42,7 +45,7 @@ func runCLI(args []string, stdout, stderr io.Writer) int {
 	}
 	command := args[0]
 	switch command {
-	case "preview", "review", "accept", "reject", "attach-qualification", "propose-qualified-reference-pattern", "attach-semantic-evaluation", "attach-rmt-transcription", "revision", "decisions", "confirm-record", "confirm-check", "confirmations":
+	case "preview", "review", "accept", "reject", "attach-qualification", "propose-qualified-reference-pattern", "attach-semantic-evaluation", "attach-rmt-transcription", "revision", "decisions", "witness-decision", "confirm-record", "confirm-check", "confirmations":
 	default:
 		fmt.Fprint(stderr, usage)
 		return 2
@@ -63,14 +66,25 @@ func runCLI(args []string, stdout, stderr io.Writer) int {
 	expectedReviewFingerprint := flags.String("expected-review-fingerprint", "", "accept時に必須のreviewFingerprint。reviewコマンドで得た現在のProjectionと一致する必要があります")
 	reason := flags.String("reason", "", "rejectの理由")
 	allowBaseline := flags.Bool("allow-reference-baseline", false, "Gate B / Gate Cが固定したreference/workspaceへのsource変更またはDecision記録を許可する")
+	decisionRecordPath := flags.String("decision", "", "witness-decisionのbinding先Decision record（workspace相対path）")
+	workspaceIdentity := flags.String("workspace-identity", "", "witness namespaceへ埋め込むoperator管理のworkspace token")
+	witnessKeyPath := flags.String("key", "", "witness-decisionのReference署名用秘密鍵file")
+	witnessIssuedAt := flags.String("witness-issued-at", "", "witness発行時刻（YYYYMMDDTHHMMSSZ、省略時は現在UTC）")
+	witnessNonce := flags.String("witness-nonce", "", "witness記録に残す任意のnonce")
+	witnessSSHKeygen := flags.String("witness-ssh-keygen", "", "witness用ssh-keygen binary（省略時はPATH）")
+	witnessIdentity := flags.String("witness-identity", "", "witness-decisionの署名者principal記録（検証はpolicyで確定する）")
+	witnessAllowedSigners := flags.String("witness-allowed-signers", "", "witness検証用allowed-signers policy file（operator管理）")
+	witnessVerifyTime := flags.String("witness-verify-time", "", "witness検証時刻（YYYYMMDDHHMMSSZ）")
+	witnessRevocation := flags.String("witness-revocation", "", "witness検証のKRL / revoked-keys file（任意）")
 	if err := flags.Parse(args[1:]); err != nil {
 		return 2
 	}
 	needsWorkspace := command != "attach-qualification" && command != "attach-semantic-evaluation" && command != "attach-rmt-transcription"
-	needsCandidate := command != "revision" && command != "decisions" && !strings.HasPrefix(command, "confirm")
+	needsCandidate := command != "revision" && command != "decisions" && command != "witness-decision" && !strings.HasPrefix(command, "confirm")
 	if (needsWorkspace && *workspacePath == "") ||
 		((command == "confirm-record" || command == "confirm-check") && *inputPath == "") ||
 		(needsCandidate && *candidatePath == "") ||
+		(command == "witness-decision" && (*decisionRecordPath == "" || *workspaceIdentity == "" || *witnessKeyPath == "" || *witnessIdentity == "")) ||
 		(command == "attach-qualification" && *qualificationPath == "") ||
 		(command == "propose-qualified-reference-pattern" && (*qualificationPath == "" || *referenceReusePath == "")) ||
 		(command == "attach-semantic-evaluation" && *semanticEvaluationPath == "") ||
@@ -137,6 +151,8 @@ func runCLI(args []string, stdout, stderr io.Writer) int {
 			preservedInput = *candidatePath
 		case "confirm-check", "confirm-record":
 			preservedInput = *inputPath
+		case "witness-decision":
+			preservedInput = *decisionRecordPath
 		}
 		if preservedInput != "" {
 			collision, err := outputDestinationsReferToSameFile(preservedInput, *outPath)
@@ -330,12 +346,71 @@ func runCLI(args []string, stdout, stderr io.Writer) int {
 	}
 
 	if command == "decisions" {
-		index, err := loadDecisionRecords(*workspacePath)
+		witness, err := witnessOptionsFromFlags(*witnessAllowedSigners, *witnessVerifyTime, *witnessRevocation)
+		if err != nil {
+			fmt.Fprintln(stderr, err)
+			return 2
+		}
+		index, err := loadDecisionRecords(*workspacePath, witness)
 		if err != nil {
 			fmt.Fprintln(stderr, err)
 			return 1
 		}
 		return emit(index)
+	}
+
+	if command == "witness-decision" {
+		if !*allowBaseline && isReferenceBaseline(*workspacePath) {
+			fmt.Fprintln(stderr, "reference/workspaceはGate B / Gate Cが固定したbaselineなので、witness記録を書きませんでした（意図的に書く場合は -allow-reference-baseline）")
+			return 2
+		}
+		witness, err := witnessOptionsFromFlags(*witnessAllowedSigners, *witnessVerifyTime, *witnessRevocation)
+		if err != nil {
+			fmt.Fprintln(stderr, err)
+			return 2
+		}
+		issuedAt := *witnessIssuedAt
+		if issuedAt == "" {
+			issuedAt = opensshwitness.Now()
+		}
+		rec := DecisionWitnessRecord{
+			Schema:             decisionWitnessSchema,
+			WorkspaceIdentity:  *workspaceIdentity,
+			DecisionRecordPath: *decisionRecordPath,
+			SignerIdentity:     *witnessIdentity,
+			WitnessIssuedAt:    issuedAt,
+			WitnessNonce:       *witnessNonce,
+		}
+		recorded, rel, err := buildDecisionWitness(
+			*workspacePath, *witnessKeyPath, rec,
+			opensshwitness.SSHKeygenOption(*witnessSSHKeygen),
+		)
+		if err != nil {
+			fmt.Fprintln(stderr, err)
+			return 1
+		}
+		reported := struct {
+			Record              string                     `json:"record"`
+			DecisionFingerprint string                     `json:"decisionFingerprint"`
+			Verification        *witnessVerificationReport `json:"verification,omitempty"`
+		}{
+			Record:              rel,
+			DecisionFingerprint: recorded.DecisionFingerprint,
+		}
+		if witness != nil {
+			target, err := verifiedDecisionRecord(*workspacePath, *decisionRecordPath, witness)
+			if err != nil {
+				fmt.Fprintln(stderr, err)
+				return 1
+			}
+			reported.Verification = &witnessVerificationReport{
+				ActorStatus:     target.DecisionActorStatus,
+				AuthorityStatus: target.DecisionAuthorityStatus,
+				WitnessStatus:   target.DecisionWitnessStatus,
+				Diagnostics:     target.WitnessDiagnostics,
+			}
+		}
+		return emit(reported)
 	}
 
 	if command == "confirmations" {
@@ -682,6 +757,7 @@ func outputTouchesWorkspaceManagedSource(root, output string) (bool, error) {
 		relative == "tei.workspace.yaml" ||
 		relative == ".tei/plugin-lock.json" ||
 		relative == ".tei/decisions" || strings.HasPrefix(relative, ".tei/decisions/") ||
+		relative == ".tei/decision-witnesses" || strings.HasPrefix(relative, ".tei/decision-witnesses/") ||
 		relative == ".tei/confirmations" || strings.HasPrefix(relative, ".tei/confirmations/") {
 		return true, nil
 	}

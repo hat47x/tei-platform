@@ -1,4 +1,6 @@
-# XeadServer live harness
+# XeadServer live harness（参考・対象外）
+
+XeadServerはTEIの参考対象外です。このハーネスは過去の調査を再現するための参考資産であり、新しい比較・受入・検証には使いません。`verify-all.ps1`の既定実行にも含まれません。
 
 `xtea_server.py`のHTTP契約を、模擬サーブレットではなく元の`DBMethod` / `Service`クラスで確認するための最小ハーネスです。
 
@@ -41,14 +43,27 @@ $env:XTEA_RUNTIME_HOME = "C:\path\to\X-TEA\Driver"
 $env:XTEA_SKELETON_HOME = "C:\path\to\X-TEA\Driver\Skeleton"
 python tests\test_live_server.py
 python tests\test_live_service.py
+python tests\test_tomcat_war.py
+```
+
+外部Tomcatを使う場合:
+
+```powershell
+$env:TOMCAT_HOME = "C:\path\to\apache-tomcat"
+$env:TOMCAT_URL = "http://127.0.0.1:18080"
+python tests\test_external_tomcat.py
 ```
 
 `test_live_server.py`は一時H2 DBを作り、`SELECT` / `SELECT COUNT` / `INSERT` / `UPDATE` / `DELETE` / `COMMIT` / `ROLLBACK` / `IP`を元の`DBMethod`へHTTPで送ります。
 
 `test_live_service.py`はSkeletonの一時複製を作り、`Service`へ`FUNCTION=AF200J`、`REQUEST_TYPE=ListSections`を送ります。2件の部門データがJSONで返ることを確認します。
 
+`test_tomcat_war.py`は`build-war.ps1`で`WEB-INF/web.xml`付きのWARディレクトリを作り、埋め込みTomcat 9.0へ配備します。`DBMethod`の状態取得と`Service`の`AF200J`をHTTPで確認します。WARは生成物であり、リポジトリへコミットしません。
+
+`test_external_tomcat.py`は、起動済みの使い捨てTomcatへ`xteaServer.war`をコピーし、同じ2経路を確認します。WARには`JdbcBootstrap`リスナーを含め、webappクラスローダーのDerbyドライバを`DriverManager`へ登録します。これがないとTomcatのWAR配備では`No suitable driver found`になります。外部Tomcatの起動・停止とポート設定は呼び出し側の責任です。
+
 ## 境界
 
 - Serviceの認証条件は、上記のとおりビルド時に明示的に補っています。認証の正しさ、実ユーザー、認可は未確認です。
 - H2 1.4.187の合成テーブルとSkeletonの複製だけを使い、実業務DBには接続しません。
-- XeadServerのWAR配備、JNDI DataSource、Tomcat、DB製品別ドライバ、本番運用は対象外です。
+- 埋め込みTomcatへのWAR配備は確認しますが、外部Tomcat、JNDI DataSource、DB製品別ドライバ、本番運用は対象外です。

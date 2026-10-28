@@ -5,6 +5,8 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -23,8 +25,10 @@ import javax.swing.JScrollPane;
 import javax.swing.JTabbedPane;
 import javax.swing.JTable;
 import javax.swing.JTextField;
+import javax.swing.JTree;
 import javax.swing.SwingUtilities;
 import javax.swing.table.DefaultTableModel;
+import javax.swing.tree.DefaultMutableTreeNode;
 import xeadDriver.FakeWrappedField;
 
 /** Small Swing fixture used to exercise the control protocol without X-TEA. */
@@ -49,6 +53,14 @@ public final class FakeXteaApp {
         });
         status.setName("status");
         table.setName("table");
+        table.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                if (e.getClickCount() == 2) {
+                    status.setText("table-double");
+                }
+            }
+        });
         table.addKeyListener(new KeyAdapter() {
             @Override
             public void keyPressed(KeyEvent e) {
@@ -139,6 +151,16 @@ public final class FakeXteaApp {
         JTable customTable = new JTable(new CustomTableModel(customRows));
         customTable.setName("customTable");
         tabs.addTab("Custom", new JScrollPane(customTable));
+
+        DefaultMutableTreeNode root = new DefaultMutableTreeNode("root");
+        DefaultMutableTreeNode tables = new DefaultMutableTreeNode("tables");
+        tables.add(new DefaultMutableTreeNode("T1"));
+        tables.add(new DefaultMutableTreeNode("T2"));
+        root.add(tables);
+        root.add(new DefaultMutableTreeNode("functions"));
+        JTree tree = new JTree(root);
+        tree.setName("tree");
+        tabs.addTab("Tree", new JScrollPane(tree));
         tabs.setName("tabs");
 
         frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);

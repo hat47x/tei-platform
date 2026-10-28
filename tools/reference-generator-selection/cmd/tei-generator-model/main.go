@@ -18,7 +18,7 @@ func main() {
 	provider := flag.String("provider", "", "model provider")
 	model := flag.String("model", "", "model name or version")
 	contractPath := flag.String("contract", "", "generator contract JSON")
-	language := flag.String("language", "go", "candidate language: go, python, javascript, or java")
+	language := flag.String("language", "go", "candidate language: go, python, javascript, java, or wasm")
 	prompt := flag.String("prompt", "", "prompt file")
 	contextPath := flag.String("context", "", "context JSON file")
 	out := flag.String("out", "", "new candidate directory")

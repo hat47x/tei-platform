@@ -16,6 +16,8 @@ public final class H2Init {
                 Statement statement = connection.createStatement()) {
             statement.execute("DROP TABLE IF EXISTS T");
             statement.execute("CREATE TABLE T (ID INT PRIMARY KEY, NAME VARCHAR(64))");
+            statement.execute("DROP ALIAS IF EXISTS SQUARE");
+            statement.execute("CREATE ALIAS SQUARE FOR \"java.lang.Math.sqrt\"");
         }
     }
 }

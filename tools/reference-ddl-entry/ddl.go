@@ -70,9 +70,15 @@ func Render(world ir.World, databaseID string, provider environment.DatabaseProv
 	if len(mappings) == 0 {
 		return out, fmt.Errorf("no persistence mapping declares database %q", databaseID)
 	}
-	desired, err := realization.RealizeDesired(mappings, databaseID, provider)
+	desired, naming, err := realization.RealizeDesiredWithUnresolved(mappings, databaseID, provider)
 	if err != nil {
 		return out, fmt.Errorf("realize desired schema: %w", err)
+	}
+	// A table whose generated constraint names collide is reported with the
+	// reason and not rendered; PostgreSQL would otherwise pick another name.
+	namingReason := make(map[string]string, len(naming))
+	for _, u := range naming {
+		namingReason[u.Table] = u.Reason
 	}
 	tables := append([]physical.Table(nil), desired.Tables...)
 	sort.Slice(tables, func(i, j int) bool { return tables[i].Name < tables[j].Name })
@@ -87,6 +93,11 @@ func Render(world ir.World, databaseID string, provider environment.DatabaseProv
 	for _, t := range ordered {
 		if ref, ok := failedReference(t, failed); ok {
 			out.Unresolved = append(out.Unresolved, Unresolved{Table: t.Name, Reason: fmt.Sprintf("外部キーの参照先の表 %s を出力できないため、この表も出力しません", ref)})
+			failed[tableKey(t.Schema, t.Name)] = t.Name
+			continue
+		}
+		if reason, ok := namingReason[t.QualifiedName()]; ok {
+			out.Unresolved = append(out.Unresolved, Unresolved{Table: t.Name, Reason: reason})
 			failed[tableKey(t.Schema, t.Name)] = t.Name
 			continue
 		}

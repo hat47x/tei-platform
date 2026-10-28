@@ -41,6 +41,7 @@ type SourceAdapterImplementation struct {
 
 type SourceAdapterExecution struct {
 	Resolution           Resolution            `json:"resolution"`
+	InvocationReceipt    InvocationReceipt     `json:"invocationReceipt"`
 	SourceArtifactDigest string                `json:"sourceArtifactDigest"`
 	Inspection           xeadsource.Inspection `json:"inspection"`
 	AuthorityLimits      []string              `json:"authorityLimits"`
@@ -229,6 +230,7 @@ func (r *SourceAdapterRegistry) ResolveAndInvoke(
 
 	return SourceAdapterExecution{
 		Resolution:           execution.Resolution,
+		InvocationReceipt:    execution.Receipt(),
 		SourceArtifactDigest: "sha256:" + expectedDigest,
 		Inspection:           inspection,
 		AuthorityLimits:      limits,

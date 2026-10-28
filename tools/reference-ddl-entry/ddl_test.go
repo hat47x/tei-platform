@@ -214,3 +214,41 @@ func TestStatesThatItIsNotAMigration(t *testing.T) {
 		t.Fatalf("note = %q", res.Note)
 	}
 }
+
+func TestUnnamedUniqueConstraintGetsTheGeneratedName(t *testing.T) {
+	m := mappingWith("m.u", "public.uq_table", false, true)
+	m.UniqueConstraints[0].Name = ""
+	res, err := Render(ir.World{Persistence: []persistence.Mapping{m}}, "store", environment.ProviderPostgres)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(res.Unresolved) != 0 || len(res.Tables) != 1 {
+		t.Fatalf("result = %+v", res)
+	}
+	st := res.Tables[0].Statements
+	if want := `ALTER TABLE "public"."uq_table" ADD CONSTRAINT "uq_table_code_key" UNIQUE ("code");`; st[len(st)-1] != want {
+		t.Fatalf("statements = %v", st)
+	}
+}
+
+func TestGeneratedNameCollisionIsReportedPerTable(t *testing.T) {
+	// x's unique constraint would be named x_code_key, which y declares; both
+	// back an index in the same schema, so PostgreSQL would refuse one.
+	x := mappingWith("m.x", "public.x", false, true)
+	x.UniqueConstraints[0].Name = ""
+	y := mappingWith("m.y", "public.y", false, true)
+	y.UniqueConstraints[0].Name = "x_code_key"
+	res, err := Render(ir.World{Persistence: []persistence.Mapping{x, y}}, "store", environment.ProviderPostgres)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(res.Tables) != 1 || res.Tables[0].Name != "y" {
+		t.Fatalf("renderable tables = %+v", res.Tables)
+	}
+	if len(res.Unresolved) != 1 || res.Unresolved[0].Table != "x" || !strings.Contains(res.Unresolved[0].Reason, "collision") {
+		t.Fatalf("unresolved = %+v", res.Unresolved)
+	}
+	if len(res.Script) != 0 {
+		t.Fatalf("a partial script must not be offered: %v", res.Script)
+	}
+}

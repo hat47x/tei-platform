@@ -1,0 +1,14 @@
+{
+  "name": "modeler-save-copy",
+  "description": "Change the system name of a disposable MfgOrder.xead copy, save it, answer the backup prompt, and verify the written XML. Never run against an original reference model.",
+  "steps": [
+    { "op": "wait_window", "title": "X-TEA Modeler", "timeoutMs": 30000 },
+    { "op": "set", "selector": { "path": "0.1.2.0.0.4" }, "value": "MODELER SAVE TEST" },
+    { "op": "invoke", "selector": { "window": "X-TEA Modeler", "path": "m.0.7" }, "settleMs": 1000 },
+    { "op": "wait_window", "title": "バックアップの確認", "timeoutMs": 30000 },
+    { "op": "invoke", "selector": { "window": "バックアップの確認", "role": "button", "text": "はい" }, "settleMs": 1000 },
+    { "op": "wait_window", "title": "バックアップの確認", "state": "absent", "timeoutMs": 30000 },
+    { "op": "sleep", "ms": 1500 },
+    { "op": "file_contains", "path": "build/modeler-fixture/MfgOrder.xead", "contains": "MODELER SAVE TEST" }
+  ]
+}
