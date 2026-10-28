@@ -11,6 +11,7 @@ import (
 	"os"
 
 	"tei/internal/core"
+	"tei/internal/driver"
 	"tei/internal/sourceacceptance"
 	"tei/internal/workspace"
 )
@@ -50,6 +51,10 @@ func runCombinedWebTargetWithEffectGrant(ctx context.Context, reader sourceaccep
 type webHostWiring struct {
 	// submitStore makes the order_entry submit Command write real state.
 	submitStore orderSubmitStore
+	// browse replaces the fixed-row browse executor of the order_entry read
+	// runner, for both the read endpoint and the read the submit Command
+	// validates. nil keeps the fixture.
+	browse driver.BrowseQueryExecutor
 	// wrapCommandRead wraps the read the submit Command validates. Tests use
 	// it to present a changed synthetic fixture row; it is not a Provider.
 	wrapCommandRead func(readScenarioRunner) readScenarioRunner
@@ -136,7 +141,11 @@ func runCombinedWebTargetWithHost(ctx context.Context, reader sourceacceptance.R
 	)
 	switch appID {
 	case core.MustCanonicalID("order_entry"):
-		readScenario = newReferenceReadScenarioRunner(loaded.World)
+		orderRead := newReferenceReadScenarioRunner(loaded.World)
+		if wiring.browse != nil {
+			orderRead.browse = wiring.browse
+		}
+		readScenario = orderRead
 		// A real store must match the accepted declaration before HTTP is
 		// published, and again before each write (S02, physical side).
 		submitStore := wiring.submitStore
@@ -168,6 +177,9 @@ func runCombinedWebTargetWithHost(ctx context.Context, reader sourceacceptance.R
 			}
 		}
 		command.submitStore = submitStore
+		if wiring.browse != nil {
+			command.read = orderRead
+		}
 		if wiring.wrapCommandRead != nil {
 			command.read = wiring.wrapCommandRead(command.read)
 		}

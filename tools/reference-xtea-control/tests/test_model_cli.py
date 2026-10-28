@@ -56,6 +56,17 @@ class ModelCliTest(unittest.TestCase):
         self.assertEqual(menu["calls"][0]["id"], "20")
         self.assertEqual(menu["ioPanels"][0]["background"], "WINDOW")
 
+    def test_schema_contract(self) -> None:
+        schemas = xtea_cli.model_schemas()
+        self.assertIn("system", schemas["model"]["required"])
+        self.assertIn("functions", schemas["model"]["required"])
+        self.assertIn("tables", schemas["diff"]["required"])
+        output = io.StringIO()
+        with redirect_stdout(output):
+            code = xtea_cli.main(["schema", "diff"])
+        self.assertEqual(code, 0)
+        self.assertEqual(json.loads(output.getvalue())["title"], "X-TEA model diff")
+
     def test_validate_references(self) -> None:
         self.assertTrue(xtea_cli.validate_model(self.model)["valid"])
         text = FIXTURE.read_text(encoding="utf-8")
@@ -99,8 +110,15 @@ class ModelCliTest(unittest.TestCase):
             modified_path = Path(handle.name)
         try:
             diff = xtea_cli.diff_models(self.model, xtea_cli.load_model(modified_path))
+            with redirect_stdout(io.StringIO()):
+                same_code = xtea_cli.main(
+                    ["diff", str(FIXTURE), str(FIXTURE), "--exit-code"])
+                changed_code = xtea_cli.main(
+                    ["diff", str(FIXTURE), str(modified_path), "--exit-code"])
         finally:
             modified_path.unlink()
+        self.assertEqual(same_code, 0)
+        self.assertEqual(changed_code, 1)
         self.assertEqual([item["id"] for item in diff["tables"]["changed"]], ["10"])
         fields = diff["tables"]["changed"][0]["after"]["fields"]
         self.assertIn("部門名称", [field["name"] for field in fields])

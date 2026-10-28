@@ -82,7 +82,7 @@ func TestPutAndGetArtifact(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !put.Passed || put.Reused || put.Language != generatorselection.LanguageGo || put.SourceDigest == "" || put.BinaryDigest == "" || put.ObjectPath == "" {
+	if !put.Passed || put.Reused || put.Language != generatorselection.LanguageGo || put.SourceDigest == "" || put.BinaryDigest == "" || put.BuildEvidenceDigest == "" || put.ObjectPath == "" {
 		t.Fatalf("artifact put failed: %+v", put)
 	}
 	if _, err := os.Stat(filepath.Join(put.ObjectPath, "source")); err != nil {
@@ -95,7 +95,7 @@ func TestPutAndGetArtifact(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !get.Passed || get.Language != generatorselection.LanguageGo || get.SourceDigest != put.SourceDigest || get.BinaryDigest != put.BinaryDigest {
+	if !get.Passed || get.Language != generatorselection.LanguageGo || get.SourceDigest != put.SourceDigest || get.BinaryDigest != put.BinaryDigest || get.BuildEvidenceDigest != put.BuildEvidenceDigest {
 		t.Fatalf("artifact get failed: %+v", get)
 	}
 	again, err := Put(context.Background(), StoreOptions{
@@ -323,7 +323,7 @@ func TestPutAndGetSourceOnlyArtifacts(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if !put.Passed || put.Language != test.language || put.ObjectPath == "" || put.BinaryDigest != "" {
+			if !put.Passed || put.Language != test.language || put.ObjectPath == "" || put.BinaryDigest != "" || put.BuildEvidenceDigest != "" {
 				t.Fatalf("%s artifact was not stored: %+v", test.language, put)
 			}
 			artifact, err := os.ReadFile(filepath.Join(put.ObjectPath, "artifact"))
@@ -356,6 +356,169 @@ func TestPutAndGetSourceOnlyArtifacts(t *testing.T) {
 				t.Fatalf("%s source-only object failed prune verification: %+v", test.language, prune)
 			}
 		})
+	}
+}
+
+func TestGetRejectsTamperedSelectionReceipt(t *testing.T) {
+	receiptPath, _ := writeSelectionReceipt(t)
+	_, _, _, candidates := selectionPaths(t)
+	storeDir := t.TempDir()
+	put, err := Put(context.Background(), StoreOptions{
+		ReceiptPath: receiptPath, CandidateID: "template", CandidatesDir: candidates, StoreDir: storeDir,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !put.Passed {
+		t.Fatalf("put failed: %+v", put)
+	}
+	if err := os.WriteFile(filepath.Join(put.ObjectPath, "receipt.json"), []byte(`{}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	got, err := Get(storeDir, put.SourceDigest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Passed || !strings.Contains(got.Reason, "selection receipt") {
+		t.Fatalf("tampered selection receipt was accepted: %+v", got)
+	}
+}
+
+func TestGetRejectsTamperedBuildEvidenceDigest(t *testing.T) {
+	receiptPath, _ := writeSelectionReceipt(t)
+	_, _, _, candidates := selectionPaths(t)
+	storeDir := t.TempDir()
+	put, err := Put(context.Background(), StoreOptions{
+		ReceiptPath: receiptPath, CandidateID: "template", CandidatesDir: candidates, StoreDir: storeDir,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	rawObject, err := os.ReadFile(filepath.Join(put.ObjectPath, "object.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var object Object
+	if err := json.Unmarshal(rawObject, &object); err != nil {
+		t.Fatal(err)
+	}
+	object.BuildEvidenceDigest = "sha256:" + strings.Repeat("0", 64)
+	changed, err := json.MarshalIndent(object, "", "  ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(put.ObjectPath, "object.json"), append(changed, '\n'), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	got, err := Get(storeDir, put.SourceDigest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Passed || !strings.Contains(got.Reason, "build evidence") {
+		t.Fatalf("tampered build evidence digest was accepted: %+v", got)
+	}
+}
+
+func TestListRejectsTamperedBuildEvidenceDigest(t *testing.T) {
+	receiptPath, _ := writeSelectionReceipt(t)
+	_, _, _, candidates := selectionPaths(t)
+	storeDir := t.TempDir()
+	put, err := Put(context.Background(), StoreOptions{
+		ReceiptPath: receiptPath, CandidateID: "template", CandidatesDir: candidates, StoreDir: storeDir,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	rawObject, err := os.ReadFile(filepath.Join(put.ObjectPath, "object.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var object Object
+	if err := json.Unmarshal(rawObject, &object); err != nil {
+		t.Fatal(err)
+	}
+	object.BuildEvidenceDigest = "sha256:" + strings.Repeat("0", 64)
+	changed, err := json.MarshalIndent(object, "", "  ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(put.ObjectPath, "object.json"), append(changed, '\n'), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	list, err := List(storeDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if list.Passed || len(list.Objects) != 1 || list.Objects[0].Verified {
+		t.Fatalf("tampered build evidence digest passed list: %+v", list)
+	}
+}
+
+func TestPutRejectsReuseWithDifferentProvenance(t *testing.T) {
+	receiptPath, _ := writeSelectionReceipt(t)
+	_, _, _, candidates := selectionPaths(t)
+	storeDir := t.TempDir()
+	first, err := Put(context.Background(), StoreOptions{
+		ReceiptPath: receiptPath, CandidateID: "template", CandidatesDir: candidates, StoreDir: storeDir,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	rawObject, err := os.ReadFile(filepath.Join(first.ObjectPath, "object.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var object Object
+	if err := json.Unmarshal(rawObject, &object); err != nil {
+		t.Fatal(err)
+	}
+	object.ReceiptDigest = "sha256:" + strings.Repeat("0", 64)
+	changed, err := json.MarshalIndent(object, "", "  ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(first.ObjectPath, "object.json"), append(changed, '\n'), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	second, err := Put(context.Background(), StoreOptions{
+		ReceiptPath: receiptPath, CandidateID: "template", CandidatesDir: candidates, StoreDir: storeDir,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if second.Passed || !strings.Contains(second.Reason, "provenance") {
+		t.Fatalf("different provenance was reused: %+v", second)
+	}
+}
+
+func TestPutRestoresMissingSelectionReceiptOnReuse(t *testing.T) {
+	receiptPath, _ := writeSelectionReceipt(t)
+	_, _, _, candidates := selectionPaths(t)
+	storeDir := t.TempDir()
+	first, err := Put(context.Background(), StoreOptions{
+		ReceiptPath: receiptPath, CandidateID: "template", CandidatesDir: candidates, StoreDir: storeDir,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(filepath.Join(first.ObjectPath, "receipt.json")); err != nil {
+		t.Fatal(err)
+	}
+	second, err := Put(context.Background(), StoreOptions{
+		ReceiptPath: receiptPath, CandidateID: "template", CandidatesDir: candidates, StoreDir: storeDir,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !second.Passed || !second.Reused {
+		t.Fatalf("existing object was not reused: %+v", second)
+	}
+	got, err := Get(storeDir, first.SourceDigest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !got.Passed {
+		t.Fatalf("restored receipt did not verify: %+v", got)
 	}
 }
 
