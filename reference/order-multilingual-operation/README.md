@@ -2,28 +2,28 @@
 
 運用者が、日本語で動いている受注業務を、通常のプラグインにも受注の業務定義にも手を入れずに、後から追加する英語の言語プラグインで英語でも運用できるようにする技術検証用サンプルです。確かめたいのは、日本語の原文を一度改訂したとき、確認メッセージ、画面の表示名、機能名のうち改訂した原文に従属する英訳だけが失効し、他の訳は残るか、という点です。
 
-- 状態: 設計案は提案段階です。このREADMEは入口であり、通しの流れは実装していません。各工程の実装、試験、実環境での確認の状況は、下の工程表で工程ごとに区別して示します。
+- 状態: 設計案は提案段階です。工程1〜6の通しの検証を[`tools/reference-order-multilingual-operation`](../../tools/reference-order-multilingual-operation/README.md)に実装しました。合成のホストと模擬の翻訳器を使い、製品の受理機構や翻訳サービスでの確認ではありません。各工程の状況は下の工程表で区別して示します。
 - 設計の正本: [技術検証用サンプルの統合設計 4.8節](../../plan/design/TECH_VALIDATION_SAMPLES_2026-10.md#48-受注業務の英語化運用と原文改訂時の訳の失効order-multilingual-operation)。技術検証用サンプルの位置づけ、物語、受け渡しの詳細はそちらを参照してください。
 - 各資産の説明と使い方は、それぞれのREADMEが正本です。この入口は工程との対応だけを示します。
 
 ## 工程
 
-現状の区分は、各資産のREADMEの記述から判断したものです。この入口を書いた時点では、どの試験も実行していません。各資産は別々の合成識別子と版の表記で動いており、工程間で同じ環境と固定情報を引き継ぐ接続はまだありません。
+各資産は単独では別々の合成識別子と版の表記で動きます。通しの検証は、`reference/workspace`の複製と一組の識別子(所有プラグイン`sales.order_entry@1.0.0`、環境`development`、原文言語`ja-JP`、項目名`message-body`と`display-name`)の下で、各資産を変更せずに呼んでつなぎます。
 
 | 工程 | 内容 | 前工程から受け取るもの | 使う既存資産 | 現状 |
 | --- | --- | --- | --- | --- |
-| 1 | 多言語に依存しない確認メッセージの原文定義 | なし(最初の工程)。日本語で運用中の受注業務(`sales.order.submit`)と、環境・固定情報 | [`reference/standard-messages`](../standard-messages/README.md)。受注業務の正本は[`reference/workspace`](../workspace/)(共有入力) | 合成データで試験 |
-| 2 | 英訳の後付けと、束縛・許可・上書きを経た選択 | 工程1のカタログと定義(書き換えない) | [`reference/message-localization`](../message-localization/README.md) | 合成データで試験 |
-| 3 | 表示名と機能名の英語化と、版を固定した基準の配布候補 | 工程2と同じ環境・固定情報 | [`reference/multilingual-overlays`](../multilingual-overlays/README.md)、[`reference/multilingual-resources`](../multilingual-resources/README.md) | 合成データで試験 |
-| 4 | 日本語原文の改訂と、従属する訳だけの失効・再生成 | 工程1の版、工程2の確認済みの訳、工程3の基準の配布候補とダイジェスト | [`reference/multilingual-overlays`](../multilingual-overlays/README.md)、[`reference/multilingual-resources`](../multilingual-resources/README.md)、[`reference/multilingual-integration`](../multilingual-integration/README.md) | 合成データで試験 |
-| 5(条件付き) | 確認メッセージに出す商品説明の訳の実DB保存と翻訳準備 | 前提が成り立った場合に限り、工程4の対象言語と失効判定の形 | [`reference/multilingual-business-data`](../multilingual-business-data/README.md) | 合成データで試験 |
-| 6(条件付き) | 一括確定件数の複数形と桁区切りによる英語表示の再生成 | 工程2の確認メッセージ、工程3・4の表示名 | [`reference/multilingual-format`](../multilingual-format/README.md) | 合成データで試験 |
+| 1 | 多言語に依存しない確認メッセージの原文定義 | なし(最初の工程)。日本語で運用中の受注業務(`sales.order.submit`)と、環境・固定情報 | [`reference/standard-messages`](../standard-messages/README.md)。受注業務の正本は[`reference/workspace`](../workspace/)(共有入力) | 通しの検証で実装(作業領域の複製を実際に読み込む。原文宣言は合成) |
+| 2 | 英訳の後付けと、束縛・許可・上書きを経た選択 | 工程1のカタログと定義(書き換えない) | [`reference/message-localization`](../message-localization/README.md) | 通しの検証で実装(合成のホストの確認口) |
+| 3 | 表示名と機能名の英語化と、版を固定した基準の配布候補 | 工程2と同じ環境・固定情報 | [`reference/multilingual-overlays`](../multilingual-overlays/README.md)、[`reference/multilingual-resources`](../multilingual-resources/README.md) | 通しの検証で実装(作業領域の経路`BuildAcceptedWorkspaceDisplay`は複製で失敗するため使わない) |
+| 4 | 日本語原文の改訂と、従属する訳だけの失効・再生成 | 工程1の版、工程2の確認済みの訳、工程3の基準の配布候補とダイジェスト | [`reference/multilingual-overlays`](../multilingual-overlays/README.md)、[`reference/multilingual-resources`](../multilingual-resources/README.md)、[`reference/multilingual-integration`](../multilingual-integration/README.md) | 通しの検証で実装(突合表。`multilingual-integration`は入口がなく呼ばない) |
+| 5(条件付き) | 確認メッセージに出す商品説明の訳の実DB保存と翻訳準備 | 前提が成り立った場合に限り、工程4の対象言語と失効判定の形 | [`reference/multilingual-business-data`](../multilingual-business-data/README.md) | 通しの検証で実PostgreSQLとSQLiteに保存して確認。前提(商品コードから商品説明への接続)は不成立で、完了に数えない |
+| 6(条件付き) | 一括確定件数の複数形と桁区切りによる英語表示の再生成 | 工程2の確認メッセージ、工程3・4の表示名 | [`reference/multilingual-format`](../multilingual-format/README.md) | 通しの検証でメッセージの整数引数に接続し、GoとJavaScriptで一致を確認。複数形の別形はサンプルの形で、完了に数えない |
 
 工程ごとの補足です。
 
 - 工程4: `reference/multilingual-integration`は三つの資産を一つの合成シナリオから呼ぶ横断の試作で、識別子は一本化していません。通しの完了条件の根拠にはしません。
-- 工程5: SQLiteとPostgreSQLの実物に合成データを保存する試験があります。受注明細の商品コードから商品説明へたどる接続はなく、前提が成立するまで条件付きです。
-- 工程6: GoとJavaScriptを固定表で比べるだけで、メッセージの整数引数とは接続していません。
+- 工程5: 受注明細の商品コードから商品説明へたどる接続は作業領域になく、通しの検証は`product:<itemCode>`というサンプルの対応で動かします。前提が成立するまで条件付きです。
+- 工程6: 複数形の別形は、メッセージの契約(`named-v0`)にないため、通しの検証が訳の側にサンプルの形で持たせています。
 
 ## 取り込むピーキーな要件と失敗注入
 
@@ -40,7 +40,7 @@
 
 ## 通しの完了条件
 
-現在、通しの完了条件はどれも成立していません。所有者、環境、原文言語、項目名の識別子が資産ごとに異なり、一つの原文改訂で通して動く構成がないためです。
+必須の三条件は、[`tools/reference-order-multilingual-operation`](../../tools/reference-order-multilingual-operation/README.md)の通しの検証で、同じ記録の上で成立しました(合成のホスト、模擬の翻訳器、作業領域の複製)。観測値と、確かめていないことは同READMEにあります。
 
 必須の条件は次の三つです。
 
@@ -49,6 +49,14 @@
 - 許可、受理、固定情報の失効、または言語プラグインの撤去が起きても、日本語の原文で業務が続き、旧訳を黙って使わない。
 
 工程5と6は、前提の接続が成立した場合に限って条件に加えます。それまでは達成済みとして数えません。
+
+### 実行方法
+
+作業ブランチのコミットを浅いcloneした清浄な複製で、次を実行します。Docker、Go、Python(`sqlite3`)、Nodeが必要です。
+
+```bash
+python3 tools/verify-order-multilingual-operation.py --out /tmp/tei-omo-receipt
+```
 
 ## 部分工程の診断(互換入口)
 
