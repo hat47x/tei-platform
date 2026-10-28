@@ -33,8 +33,14 @@ type runnerOrderSubmitStore struct {
 	runner      submitRunner
 	grantSource submitGrantSource
 	schemaCheck func(context.Context) error
-	status      orderSubmitStore
+	status      orderStatusReader
 	closer      func() error
+}
+
+// orderStatusReader is the read-only half of orderSubmitStore. The Observation
+// read uses it so that this store has no field whose type could also write.
+type orderStatusReader interface {
+	ReadStatus(ctx context.Context, orderID int64) (string, error)
 }
 
 // submitRunner is the part of effectcommit.Runner this store uses. A fake can
@@ -66,7 +72,7 @@ func newRunnerOrderSubmitStore(
 	runner submitRunner,
 	grantSource submitGrantSource,
 	schemaCheck func(context.Context) error,
-	status orderSubmitStore,
+	status orderStatusReader,
 ) (*runnerOrderSubmitStore, error) {
 	if runner == nil || grantSource == nil || status == nil {
 		return nil, errors.New("runner order submit store requires a runner, a grant source and a status reader")
@@ -178,6 +184,11 @@ func (s *runnerOrderSubmitStore) Submit(ctx context.Context, orderID int64) erro
 
 // LookupSubmit asks the Runner for the receipt of the deterministic OperationID
 // of this order. It is not on orderSubmitStore and is used only in tests.
+//
+// Recovery after errOrderSubmitCommitUnconfirmed: a retry of Submit with the same
+// OperationID is reported as errOrderNotSubmittable even when the earlier
+// attempt did commit (the Runner answers Replayed). A caller must not retry;
+// it recovers with LookupSubmit (the receipt) or ReadStatus (the row).
 // NotRecorded means only "no record in the same DB".
 func (s *runnerOrderSubmitStore) LookupSubmit(ctx context.Context, orderID int64) (effectcommit.Result, error) {
 	grant, err := s.grantFor(ctx, orderID)

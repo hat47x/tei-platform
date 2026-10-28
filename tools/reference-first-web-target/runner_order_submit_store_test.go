@@ -157,8 +157,9 @@ func TestRunnerOrderSubmitDeniedBeforeEffectWritesNothing(t *testing.T) {
 	if err := s.Submit(context.Background(), 1001); !errors.Is(err, errOrderNotSubmittable) {
 		t.Fatalf("err=%v", err)
 	}
-	if p.tx.writeCalls != 0 || p.tx.saveCalls != 0 {
-		t.Fatalf("write=%d save=%d", p.tx.writeCalls, p.tx.saveCalls)
+	// The authority check was reached, and nothing was written after it denied.
+	if p.tx.checkCalls != 1 || p.tx.writeCalls != 0 || p.tx.saveCalls != 0 {
+		t.Fatalf("check=%d write=%d save=%d", p.tx.checkCalls, p.tx.writeCalls, p.tx.saveCalls)
 	}
 }
 
@@ -181,19 +182,10 @@ func TestRunnerOrderSubmitReplayAndHashConflict(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// Same request: Replayed, no second write.
-	hashing := effectcommit.Runner{Provider: newFakeSubmit()}
-	_ = hashing
-	// Obtain the receipt by a real first commit through a recording provider.
-	first := newFakeSubmit()
-	rs, _ := newFakeStore(t, first, nil, nil)
-	if err := rs.Submit(context.Background(), 1001); err != nil {
-		t.Fatal(err)
-	}
-	var rec effectcommit.Receipt
-	rec = effectcommit.Receipt{Scope: req.Scope, OperationID: req.OperationID, ResourceVersion: 1}
-	// Compute hash via a Lookup-free path: capture from SaveReceipt is not exposed,
-	// so derive it with a recording transaction.
+	// Same request: Replayed, no second write. The stored receipt carries the
+	// request hash a first commit would have saved; captureHash derives it with a
+	// recording transaction because SaveReceipt's argument is not exposed.
+	rec := effectcommit.Receipt{Scope: req.Scope, OperationID: req.OperationID, ResourceVersion: 1}
 	rec.RequestHash = captureHash(t, req, grant)
 	p.tx.existing = &rec
 	if err := s.Submit(context.Background(), 1001); !errors.Is(err, errOrderNotSubmittable) {

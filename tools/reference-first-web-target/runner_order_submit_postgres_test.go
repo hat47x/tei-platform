@@ -20,10 +20,13 @@ import (
 
 // Real PostgreSQL tests for runnerOrderSubmitStore. Gated by
 // TEI_TEST_POSTGRES_DSN. The authority table, receipts table, lock_authority
-// and apply_owner_effect below are TEST-ONLY DDL installed in a uniquely named
-// disposable schema and dropped afterwards; they are not an Authority and the
-// grant is synthetic. A green run is a local reference result, not proof of
-// production atomicity or durability.
+// and apply_owner_effect below are TEST-ONLY DDL installed in a disposable
+// schema with a FIXED name (runnerTestSchema), dropped before and after each
+// test; two runs against one PostgreSQL would collide, so point each run at its
+// own database. They are not an Authority and the grant is synthetic. A green
+// run is a reference result, not proof of production atomicity or durability.
+// Without the DSN these tests SKIP; a skip is not evidence (the CI workflow
+// tei-runner-order-submit-postgres-ci.yml fails if they are skipped).
 
 const runnerTestSchema = "tei_wf_g1_runner"
 
