@@ -430,7 +430,12 @@ type DecisionRecord struct {
 	ReviewDiagnostics           []Diagnostic        `json:"reviewDiagnostics,omitempty"`
 	DecisionActorStatus         string              `json:"decisionActorStatus"`
 	DecisionAuthorityStatus     string              `json:"decisionAuthorityStatus"`
-	Decision                    Decision            `json:"decision"`
+	// DecisionWitnessStatusは、OpenSSH署名witness（.tei/decision-witnesses）とこの
+	// recordのexact binding状態を示す。none / recorded / verified / invalid /
+	// conflicted。verifiedでも受理状態やaccepted meaningは変わらない。
+	DecisionWitnessStatus string       `json:"decisionWitnessStatus"`
+	WitnessDiagnostics    []Diagnostic `json:"witnessDiagnostics,omitempty"`
+	Decision              Decision     `json:"decision"`
 }
 
 type DecisionIndex struct {
@@ -465,7 +470,9 @@ func recordDecision(root string, d Decision) (string, error) {
 
 // loadDecisionRecordsは、保存された決定を読み、現在のworkspaceに対して検証する。
 // 記録の内容を信用してmeaningを再構成せず、現在のsourceと照合した結果だけを付ける。
-func loadDecisionRecords(root string) (DecisionIndex, error) {
+// witnessがnilでない場合、.tei/decision-witnessesのOpenSSH署名witnessをrecord本文に
+// exactにbindingして検証する。nilなら検証せず、witnessがあってもstatusを解決しない。
+func loadDecisionRecords(root string, witness *WitnessVerifyOptions) (DecisionIndex, error) {
 	index := DecisionIndex{Schema: decisionIndexSchema, Records: []DecisionRecord{}}
 	s, err := takeSnapshot(root)
 	if err != nil {
@@ -492,6 +499,11 @@ func loadDecisionRecords(root string) (DecisionIndex, error) {
 		}
 	}
 	sort.Strings(names)
+
+	// witness判定にはrecord本文のdigestと、mutate可能なrecordの参照が必要である。
+	// 最後に値へ戻してindexへ入れる。
+	witnessRecords := make([]*DecisionRecord, 0, len(names))
+	witnessDigests := make(map[string]string, len(names))
 
 	for _, name := range names {
 		rel := decisionDir + "/" + name
@@ -525,8 +537,9 @@ func loadDecisionRecords(root string) (DecisionIndex, error) {
 			ArtifactEvidenceStatus:  "none",
 			ReviewBindingStatus:     "none",
 			ReviewCoverageStatus:    "none",
-			DecisionActorStatus:     "unresolved",
-			DecisionAuthorityStatus: "unresolved",
+			DecisionActorStatus:     actorStatusUnresolved,
+			DecisionAuthorityStatus: authorityStatusUnresolved,
+			DecisionWitnessStatus:   witnessStatusNone,
 		}
 		if d.ModelRevisionAfter == s.revision {
 			record.Status = "current"
@@ -614,7 +627,25 @@ func loadDecisionRecords(root string) (DecisionIndex, error) {
 			}
 		}
 		record.Decision.RecordPath = rel
-		index.Records = append(index.Records, record)
+		witnessRecords = append(witnessRecords, &record)
+		witnessDigests[rel] = "sha256:" + hex.EncodeToString(sum[:])
+	}
+
+	witnesses, err := loadDecisionWitnesses(files)
+	if err != nil {
+		return index, err
+	}
+	verifier := (*witnessVerifyInternal)(nil)
+	if witness != nil {
+		// loader層ではprovider binaryをPATHから選ばせる（flagsの明示指定は
+		// Reference / test用に限定する）。
+		verifier = &witnessVerifyInternal{WitnessVerifyOptions: *witness}
+	}
+	if err := bindDecisionWitnesses(witnessRecords, witnessDigests, witnesses, verifier); err != nil {
+		return index, err
+	}
+	for _, record := range witnessRecords {
+		index.Records = append(index.Records, *record)
 	}
 
 	return index, nil

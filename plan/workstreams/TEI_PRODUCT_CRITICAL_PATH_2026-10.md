@@ -1044,3 +1044,46 @@ G0/G1/G2は**全面的な直列開発を要求しない**。DB fixtureとProvide
 この行列は第二のEvidence Schemaではなく#1163既存Packetの実験入力。Source/Accepted/Target/Provider/Authority/Command/Observationの個別証拠と、実行版・run URL・原本checksum・未実行理由を保持する。実行していない列は`unresolved`／`not-executed`、Secret・生の接続文字列は保存しない。
 
 **停止線**：この節の追加は実装・CI・正式人的受理・G1〜G4の新規PASSを意味しない。対象変更の範囲とexact headに応じて現行`AGENTS.md`の検証規則を適用し、全PRへの全体健全性確認の一律義務化を避ける。
+
+## 32. X-TEA包含 #8：初回read-onlyと更新系の証拠・依存を分離する（2026-10-25）
+
+本節は[#1119の#8統合記録](https://github.com/hat47x/tei-platform/issues/1119#issuecomment-6386491091)と[#1802の既存機能対応表](../design/AUTHORING_TOOL_FEATURE_TRANSFER_MAP_2026-10.md)への**最小追補候補**。新Gate・Reader・Host・二重の機能台帳を定義しない。既存のG0〜G4や§31の受入条件を書き換えず、**参照モデル転写の最初の実行slice**を[#1142](https://github.com/hat47x/tei-platform/issues/1142)の自作synthetic read-onlyに限定する。未受理の原典更新を初回成立条件に戻さない。
+
+### Source / Candidate / Accepted と証拠段階
+
+- **Source**：X-TEA原典の固定版・構造・宣言・旧Driver静的コードと、別に取得した原Runtime観測。原典の静的事実と実行観測は別証拠。非公開XML/Script本文/業務データ/個別ID/画面は[#941](https://github.com/hat47x/tei-platform/issues/941)に従いpublicへ出さない。
+- **Candidate**：Readerによる出典付きfact、Data/Function/Business一モデルの対応案、UI/Script/Driverの実現候補、独立loss ledger・candidate receipt。名称・Key一致・宣言CRUDから業務identityや副作用を導出しない。
+- **Accepted**：対象範囲、根拠版、責任ある判断者、受理内容を固定した意味の受理。**試験用scratch Acceptance、CI成功、旧GUI操作成功、Source Factは原典意味のOwner Acceptanceではない**。
+- 証拠は code-located / CI-success-at-exact-head / synthetic-executed / original-GUI-observed / real-DB-observed / owner-accepted / independently-compared を各々記録する。一つのPASSは他段階へ昇格しない。未読担当はunconfirmed。
+
+### S0〜S5：最小引渡しと着手条件（全面直列化しない）
+
+| 段階 | Producer → Consumer | 最小成果・着手条件 | 未成立の境界 |
+| --- | --- | --- | --- |
+| S0 Source／包含範囲 | #1 → #3 → #2；#1802参照 | 元版/digest、node・attribute・text・関係の処遇、loss ledgerとcandidate bytes receipt。Windows不要 | inventory PASS≠意味移植 |
+| S1 **初回synthetic read-only** | #2/#3 → #7；#5はUI/Interaction観測 | 既存merged [#1144](https://github.com/hat47x/tei-platform/pull/1144)のsynthetic testを再利用。Candidate→試験用Decision→reload→Driver browse→mapped read、正負Validation、store不変 | 原典の人的受理、原実機、実DB、等価性を要求・主張しない |
+| S2 原Driverの独立実動 | #4/#5 → #W/#940 → #3 | 固定配布版と隔離モデル/DBでUI、Script/SQL、例外、DB前後、独立readを取得 | read-only表示でもScript副作用が未観測なら副作用なしは未確認 |
+| S3 原典意味の受理 | #2/#6/#3 → Owner → #7 | identity、業務Action、拒否/取消、Script効果/例外を対象版ごとに受理または保留 | 未受理の原典更新系を正式実装しない。低位機構の合成調査は並走可能 |
+| S4 更新・Commit・結果伝播 | #6/#7 + #4 → #1129/#1174/#1127 | **受理した対象のみ**、既存Target環境の認可/Provider/Transactionへ接続。必要時#1708で鮮度確認。Commit unknown、Observation unknown、呼出前/後取消を分離 | 新TEI独自Host、Runner、Capability文法を開始条件にしない |
+| S5 全件処遇・比較 | #3/#8 → Owner | 全Source要素と機能種別の処遇、旧/TEI別run、権利・未観測・差異を照合 | 一件の合成PASS≠全機能移植・原典動作等価 |
+
+**必須否定例**：宣言CRUDからOwner Actionの実効果を推定しない／旧実動証拠と前提一致なしでequivalentとしない／pre-dispatch取消を呼出後rollbackと混同しない／Commit不明と正常Commit後Observation失敗を混同して再送しない／実行までにSource・Binding・Schema・Authorityが安全性に関係して変化したら再検査またはfail-closed。実行責務は既存#267/#1121/#1129/#1174/#1708/#1142へ返す。
+
+### 同時進行Draftの合流前提と証拠の範囲
+
+| Draft PR | 当該担当の修正 | 合流で検証する反例 |
+| --- | --- | --- |
+| [#2219](https://github.com/hat47x/tei-platform/pull/2219) (#1) | Source Relationship種別をsource factへ保持 | 種別文字列をTEI Relation意味/Acceptedに自動昇格しない |
+| [#2220](https://github.com/hat47x/tei-platform/pull/2220) (#4) | **正常Submit後のObservation失敗**を結果未確認とする | read失敗を書込失敗確定としない |
+| [#2236](https://github.com/hat47x/tei-platform/pull/2236) (#7) | **Commit応答喪失**のAdapter/HTTP結果分類。#2220と同じcommand_scenario.goの別hunk | Commit不明を失敗確定・自動再送可能としない。両PR合流後に正負試験 |
+| [#2251](https://github.com/hat47x/tei-platform/pull/2251) (#6) | Capability呼出直前の取消済みContextでdispatchを止める | dispatch 0回は呼出後副作用不在やrollbackを保証しない |
+
+各PRはDraft/Open。PR exact-headでのRepository Health成功はその版に対するコード・合成試験の資格であって、4本の統合版、実DB、Windows原典Runtime、Owner受理の証明ではない。main進行・head更新後はrunを再取得する。#8から他担当の差分を変更・マージしない。
+
+### #Wへの確認仕様とOwner未決
+
+- **対象/操作**：既存[#2152](https://github.com/hat47x/tei-platform/issues/2152)の制御機構を使い、固定Modeler/Editor/Driverでread-only一覧・詳細をまず操作する。Menu/Option、Script発火・例外、SQL、UI結果、DB before/after、別接続readを記録。更新/取消/失敗は別の明示ケース。Editor追加削除の制御面は[#2199](https://github.com/hat47x/tei-platform/issues/2199)に委譲。
+- **隔離/復旧**：原本はread-only、モデル/DBは使い捨て複製、loopback接続・試験主体を使用。接続停止→プロセス終了→残接続閉鎖→ベースラインから複製を再作成→digest再照合。確定不明を成功・失敗のいずれにも丸めない。
+- **未決Owner**：原典のidentity・業務Action・Scriptの効果と失敗、拒否・取消と認可、権利・公開許諾。既存ADR-0020/0029と#1129/#1174で表せない具体的反例が得られる場合のみ代案・根拠・影響先をProposed ADR候補へ送り、Acceptedとしない。
+
+**検証状態**：本節は固定main・既存ソース・Issue/PR・GitHub Actionsを読み取った計画追補。Go試験、trusted full health、実原典Candidateの全件検収、Windows GUI、実DB、原Driver/TEI実行比較、人的Owner受理を本節の作業で実施していない。

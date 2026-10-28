@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 
 	"tei/internal/database/physical"
@@ -21,6 +22,10 @@ const (
 	ConstraintDataPrimaryKey ConstraintDataCheckKind = "primary-key"
 	ConstraintDataUnique     ConstraintDataCheckKind = "unique-constraint"
 	ConstraintDataForeignKey ConstraintDataCheckKind = "foreign-key"
+	// ConstraintDataPrimaryKeyReplace replaces the primary key of an existing
+	// table that already has one (#1803 P5). It additionally carries the
+	// observed constraint name and the foreign keys that depend on the old key.
+	ConstraintDataPrimaryKeyReplace ConstraintDataCheckKind = "primary-key-replace"
 )
 
 // ConstraintDataCheck is the observed existing-data fact for one constraint
@@ -47,12 +52,22 @@ type ConstraintDataCheck struct {
 	// MissingReferenceRows counts rows whose foreign-key columns are all
 	// non-NULL and have no referenced row (MATCH SIMPLE).
 	MissingReferenceRows int64 `json:"missingReferenceRows"`
+	// BeforeColumns is, for a primary-key replacement, the primary key the diff
+	// expects to replace. Columns holds the new key.
+	BeforeColumns []string `json:"beforeColumns,omitempty"`
+	// PrimaryKeyName is the real name of the existing primary key constraint,
+	// read from the catalog. It is never derived from the table name.
+	PrimaryKeyName string `json:"primaryKeyName,omitempty"`
+	// ReferencingForeignKeys are the foreign keys that depend on the existing
+	// primary key's index. Dropping the key would fail or require CASCADE.
+	ReferencingForeignKeys []ReferencingForeignKey `json:"referencingForeignKeys,omitempty"`
 }
 
 func (c ConstraintDataCheck) identity() string {
 	return strings.Join([]string{
 		string(c.Kind), c.Table, strings.Join(c.Columns, "\x1f"),
 		c.ReferencedTable, strings.Join(c.ReferencedColumns, "\x1f"),
+		strings.Join(c.BeforeColumns, "\x1f"),
 	}, "\x1e")
 }
 
@@ -73,8 +88,9 @@ type ConstraintDataReader interface {
 
 // existingTableConstraintAdditions returns the constraint additions in diff
 // that target a table not created by the same diff, as unobserved checks. A
-// primary-key change is an addition only when the table has no primary key;
-// replacing or dropping one (P5) is not covered here.
+// primary-key change is an addition when the table has no primary key and a
+// replacement (P5) when it has one and keeps one; removing a primary key
+// altogether is not covered and is refused by the renderer.
 func existingTableConstraintAdditions(diff schemadiff.Diff) ([]ConstraintDataCheck, error) {
 	created := createdTablesOf(diff)
 	var out []ConstraintDataCheck
@@ -98,8 +114,12 @@ func constraintAdditionCheck(change schemadiff.Change, created map[string]bool) 
 	}
 	switch change.Kind {
 	case schemadiff.ChangePrimaryKey:
-		if len(change.BeforePrimaryKey) != 0 || len(change.PrimaryKey) == 0 {
+		if len(change.PrimaryKey) == 0 {
 			return ConstraintDataCheck{}, false, nil
+		}
+		if len(change.BeforePrimaryKey) != 0 {
+			return ConstraintDataCheck{Kind: ConstraintDataPrimaryKeyReplace, Table: change.Table,
+				Columns: append([]string(nil), change.PrimaryKey...), BeforeColumns: append([]string(nil), change.BeforePrimaryKey...)}, true, nil
 		}
 		return ConstraintDataCheck{Kind: ConstraintDataPrimaryKey, Table: change.Table, Columns: append([]string(nil), change.PrimaryKey...)}, true, nil
 	case schemadiff.AddUniqueConstraint:
@@ -158,6 +178,29 @@ func (p Provider) ObserveConstraintData(ctx context.Context, observation SchemaO
 			return observation, fmt.Errorf("%s %s: %w", check.Kind, check.Table, err)
 		}
 		switch check.Kind {
+		case ConstraintDataPrimaryKeyReplace:
+			identityReader, canRead := p.Catalog.(PrimaryKeyIdentityReader)
+			if !canRead {
+				check.Reason = "the catalog reader cannot read the existing primary key constraint"
+				continue
+			}
+			pk, err := identityReader.PrimaryKeyIdentity(ctx, table)
+			if err != nil {
+				check.Reason = "reading the existing primary key constraint failed: " + err.Error()
+				continue
+			}
+			if strings.TrimSpace(pk.Name) == "" || !slices.Equal(pk.Columns, check.BeforeColumns) {
+				check.Reason = fmt.Sprintf("the observed primary key (%s) differs from the diff's current key (%s)", strings.Join(pk.Columns, ", "), strings.Join(check.BeforeColumns, ", "))
+				continue
+			}
+			check.PrimaryKeyName = pk.Name
+			check.ReferencingForeignKeys = pk.ReferencingForeignKeys
+			counts, err := reader.CountKeyViolations(ctx, table, check.Columns, true)
+			if err != nil {
+				check.Reason = "counting existing rows failed: " + err.Error()
+				continue
+			}
+			check.DuplicateKeys, check.DuplicateRows, check.NullKeyRows = counts.DuplicateKeys, counts.DuplicateRows, counts.NullKeyRows
 		case ConstraintDataPrimaryKey, ConstraintDataUnique:
 			counts, err := reader.CountKeyViolations(ctx, table, check.Columns, check.Kind == ConstraintDataPrimaryKey)
 			if err != nil {
@@ -195,6 +238,10 @@ const (
 	// ConstraintDataNullablePrimaryKey: a primary-key column stays nullable in
 	// the desired schema; PostgreSQL would make it NOT NULL and drift.
 	ConstraintDataNullablePrimaryKey ConstraintDataReadinessReason = "primary-key-column-nullable"
+	// ConstraintDataReferencedByForeignKeys: foreign keys depend on the primary
+	// key being replaced. They are named and the replacement is refused; the
+	// provider never cascades.
+	ConstraintDataReferencedByForeignKeys ConstraintDataReadinessReason = "primary-key-referenced-by-foreign-keys"
 )
 
 type ConstraintAdditionReadiness struct {
@@ -269,9 +316,20 @@ func (o SchemaObservation) AssessConstraintDataReadiness(diff schemadiff.Diff) (
 				assessment.Executable = false
 				assessment.Reason = ConstraintDataViolations
 				assessment.Detail = violations + "; no declared handling exists, so the constraint is not added"
+			} else if want.Kind == ConstraintDataPrimaryKeyReplace {
+				switch {
+				case strings.TrimSpace(check.PrimaryKeyName) == "":
+					assessment.Executable = false
+					assessment.Reason = ConstraintDataUnobserved
+					assessment.Detail = "the existing primary key constraint name was not observed; it is never assumed from the table name"
+				case len(check.ReferencingForeignKeys) > 0:
+					assessment.Executable = false
+					assessment.Reason = ConstraintDataReferencedByForeignKeys
+					assessment.Detail = "referenced by " + describeReferencingForeignKeys(check.ReferencingForeignKeys) + "; the primary key is not replaced"
+				}
 			}
 		}
-		if assessment.Executable && want.Kind == ConstraintDataPrimaryKey {
+		if assessment.Executable && (want.Kind == ConstraintDataPrimaryKey || want.Kind == ConstraintDataPrimaryKeyReplace) {
 			if column, nullable, err := o.nullablePrimaryKeyColumn(diff, want); err != nil {
 				return ConstraintDataReadiness{}, err
 			} else if nullable {
@@ -291,11 +349,11 @@ func (o SchemaObservation) AssessConstraintDataReadiness(diff schemadiff.Diff) (
 func violationSummary(c ConstraintDataCheck) string {
 	var parts []string
 	switch c.Kind {
-	case ConstraintDataPrimaryKey, ConstraintDataUnique:
+	case ConstraintDataPrimaryKey, ConstraintDataPrimaryKeyReplace, ConstraintDataUnique:
 		if c.DuplicateRows > 0 || c.DuplicateKeys > 0 {
 			parts = append(parts, fmt.Sprintf("%d row(s) share %d duplicated key value(s)", c.DuplicateRows, c.DuplicateKeys))
 		}
-		if c.Kind == ConstraintDataPrimaryKey && c.NullKeyRows > 0 {
+		if c.Kind != ConstraintDataUnique && c.NullKeyRows > 0 {
 			parts = append(parts, fmt.Sprintf("%d row(s) have NULL in a key column", c.NullKeyRows))
 		}
 	case ConstraintDataForeignKey:
