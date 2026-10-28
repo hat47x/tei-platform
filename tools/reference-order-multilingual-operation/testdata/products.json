@@ -1,0 +1,16 @@
+{
+  "note": "Product descriptions keyed by the order line item code. Rows P-2xx carry strings whose order differs between binary and language dependent comparison (voiced marks precomposed and combining, half-width kana, full-width symbols, letter case).",
+  "products": [
+    {"code": "P-100", "ja": "常温で保管してください。", "en": "Store at room temperature.", "jaRevised": "直射日光を避けて常温で保管してください。"},
+    {"code": "P-101", "ja": "割れ物です。", "en": "Fragile.", "jaRevised": "割れ物です。取扱注意。"},
+    {"code": "P-102", "ja": "要冷蔵。", "en": "Keep refrigerated.", "jaRevised": "要冷蔵(5℃以下)。"},
+    {"code": "P-201", "ja": "が", "en": "apple"},
+    {"code": "P-202", "ja": "か\u3099", "en": "Apple"},
+    {"code": "P-203", "ja": "ｶﾞ", "en": "Banana"},
+    {"code": "P-204", "ja": "カ", "en": "banana"},
+    {"code": "P-205", "ja": "か", "en": "_underscore"},
+    {"code": "P-206", "ja": "＃1", "en": "#1"},
+    {"code": "P-207", "ja": "ガ", "en": "Ä"},
+    {"code": "P-208", "ja": "ｶ", "en": "-dash"}
+  ]
+}
