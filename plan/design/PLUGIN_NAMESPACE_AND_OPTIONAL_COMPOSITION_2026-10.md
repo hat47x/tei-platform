@@ -442,6 +442,8 @@ AとBが同じRegistry/Bindingを利用しても、Bの業務上のUserとAの�
 
 これは、読み取り側の`CompositeEntity`や`Projection`を更新可能なDB行と同じものに見せる際の**view-update問題**である。各Sourceが書込みCapabilityを持つだけでは解けず、どの変更を誰の正本へどう配分するかの業務判断と、外部副作用の保証が必要である。X-TEAの「主DB＋参照用副DB」型の簡便さは既定の**Read Projection**として提供できるが、複数DB更新へ拡張するときはこの境界を越える契約が必要。
 
+DBのView更新には基底関係への変更伝播が一意に決まらない場合があるという研究上の背景がある（[Franconi & Guagliardo, The View Update Problem Revisited](https://arxiv.org/abs/1211.3016)）。また、[双方向モデル変換のLens法則を扱う研究](https://pmc.ncbi.nlm.nih.gov/articles/PMC8645541/)は純粋な更新写像の整合条件を与えるが、TEIの外部DBの原子性や認可を保証するものではない。
+
 ### 13.2 読取りと書込みを別契約へ分ける
 
 提案する**概念上の**段階は次の通り。新しい固定Kernel enumや別Resolver/第二Source正本は導入しない。
