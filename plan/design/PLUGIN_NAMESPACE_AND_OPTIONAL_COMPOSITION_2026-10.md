@@ -467,7 +467,7 @@ sources + qualified bindings
 
 - **Get–Put**：`get(s)`を変更なしで戻す際、外部正本に不要な更新を発生させない。
 - **Put–Get**：`put(s,v)`が成功した後の独立した読取りは、保証された整合性条件の下で利用者が要求した値を再現する。
-- **Put–Put**：同じRevision条件の下で繰り返した更新が矛盾した副作用を生まない。非冪等Operationは「法則」から自動的に再試行を許可しない。
+- **Put–Put（追加の候補法則）**：純粋な写像上で、定義可能な範囲について `put(put(s,v1),v2) = put(s,v2)`。先の変更が後の変更で上書きされるという性質であり、外部DBの再試行や冪等性を保証しない。
 
 ただし、これらは単純な関数Lensの法則を**外部更新の契約候補**へ持ち込む際の比較指標に過ぎない。実DBの更新にはRevision競合、権限、遅延、部分Commit、通信断がある。`put`を宣言しただけで上記が証明済みになるわけではない。永続DB操作の確定は[#1157](https://github.com/hat47x/tei-platform/issues/1157)・[#1174](https://github.com/hat47x/tei-platform/issues/1174)・[#1129](https://github.com/hat47x/tei-platform/issues/1129)の既存Ownerに接続し、下位実行を再実装しない。
 
