@@ -10,13 +10,13 @@ import (
 )
 
 // tei-generator-build renders candidate sources from one contract and fixed
-// strategies. It writes only to a new directory and does not select, accept,
-// or execute the generated code.
+// strategies, including a Python reference strategy. It writes only to a new
+// directory and does not select, accept, or execute the generated code.
 func main() {
 	contractPath := flag.String("contract", "", "generator contract JSON")
 	outDir := flag.String("out", "", "new output directory")
 	all := flag.Bool("all", false, "generate all fixed strategies under -out at version 1")
-	strategy := flag.String("strategy", "", "one of template, alternative, dangerous")
+	strategy := flag.String("strategy", "", "one of template, alternative, dangerous, python-template, javascript-template, java-template, wasm-template, long-running-template, python-long-running-template, javascript-long-running-template, java-long-running-template, wasm-long-running-template, wasi-template, wasi-long-running-template")
 	version := flag.String("version", "1", "generator version recorded in the candidate manifest")
 	flag.Parse()
 	if *contractPath == "" || *outDir == "" {

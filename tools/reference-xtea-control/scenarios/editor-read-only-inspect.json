@@ -1,0 +1,9 @@
+{
+  "name": "editor-read-only-inspect",
+  "description": "Open a model in the Editor, capture its initial window and component tree. No save or DDL execution.",
+  "steps": [
+    { "op": "wait_window", "title": "X-TEA Editor", "timeoutMs": 30000 },
+    { "op": "snapshot", "path": "artifacts/editor-snapshot.json", "maxDepth": 10 },
+    { "op": "screenshot", "path": "artifacts/editor-window.png" }
+  ]
+}

@@ -1,0 +1,120 @@
+# 受注入力の補助機能と営業端末(order-assist-provider)
+
+案件の担当者が、受注入力の画面へ、税抜小計を返す見積と、案件固有の顧客助言を既存のアプリケーションへ後付けし、ホスト運用者が提供元の世代交換を行っても、契約から画面表示まで同じ識別で呼び出せるかを確かめる技術検証用サンプルです。合成の成功と正式な権限を混同しないこと、見積の許可と受注確定の許可を取り違えないことが焦点です。拡張として、営業担当者がオフラインの端末で見積を作り、同期の後に値引きの承認と外部与信へ進む流れを加えます。
+
+- 状態: 設計案は提案段階です。このREADMEは入口であり、工程1〜6の通しの検証は未実装です。拡張の工程7・8と複合シナリオC5は、[`tools/reference-order-assist-provider-offline`](../../tools/reference-order-assist-provider-offline/README.md)が合成データと同じ機械の上のPostgreSQLで試験します。各工程の実装・試験・実環境での確認の状況は、次の工程表で工程ごとに区別して示します。
+- 設計の正本: [技術検証用サンプルの統合設計](../../plan/design/TECH_VALIDATION_SAMPLES_2026-10.md)の4.5節。技術検証用サンプルの位置づけは同じ文書の1.2節、要件の目録は2章、資産の対応表は6章、複合シナリオC5は3.3節にあります。
+- 先行サンプル`order-workflow`(設計文書の4.1節)とは別の対象です。受注の確定サービスへの接続は未成立の提案で、拡張の工程8は確定へ渡す入力までを作ります。
+- 各資産の使い方と実装状況は、それぞれのREADMEが正本です。このREADMEは工程との対応を案内するだけで、内容を写しません。
+
+## 工程
+
+「現状」は、工程に置いた既存資産の範囲で判断した区分です。工程1〜6の間の受け渡しと、工程6から7への受け渡しは未接続です。現在は、見積が運搬の試験、助言が画面と識別の試験に分かれています。工程7から8への受け渡し(再検証済みの見積の照合値)は、同じ資産の中で接続しています。
+
+| 区分 | 意味 |
+| --- | --- |
+| 実装あり | コードはあるが、資産の中に試験が見当たらない |
+| 合成データで試験 | 合成データ、合成の証跡、模擬の提供元を使う試験が資産にある。このREADMEの作成時に試験は実行していない |
+| 実環境で確認 | 実際の提供元や運用環境で確かめた記録がある |
+| 足場なし | 工程を担う既存資産がない |
+| 未確認 | 資産のREADMEから状況を確かめられなかった |
+
+| 工程 | 内容 | 前工程から受け取るもの | 使う既存資産 | 現状 |
+| --- | --- | --- | --- | --- |
+| 1 | 見積の機能契約と候補意味の宣言・解決 | なし(受理前の候補一式) | 共有入力の[受注見積の候補](../candidates/order-quote/README.md) | 合成データで試験 |
+| 2 | 見積の提供元実装と実現方式の同等性 | 工程1の契約と固定ベクトル23件 | [reference-order-quote](../../plugins/reference-order-quote/README.md)、[reference-order-quote-js](../../plugins/reference-order-quote-js/)(READMEなし)、[wasip1-quote-realization](../wasip1-quote-realization/README.md)、[quote-cross-language](../quote-cross-language/README.md) | 合成データで試験 |
+| 3 | 案件固有の顧客助言の追加、構成案の照合、変更面積の確認 | 契約宣言の形式と見積の成果物の照合値 | [composition-evidence-handoff](../composition-evidence-handoff/README.md)、[composition-io-mapping](../composition-io-mapping/README.md) | 合成データで試験 |
+| 4 | 呼出し文脈・実行の識別・運搬と権限 | 工程3で診断済みの構成案 | [reference-capability-invocation-context](../../tools/reference-capability-invocation-context/README.md) | 合成データで試験 |
+| 5 | 提供元の選択・世代交換・撤去・復旧と実プロセスの呼出し | 工程4の許可済み呼出しと実行の識別 | 工程に組み込む資産はなく、部分診断のみ | 合成データで試験 |
+| 6 | 画面での見積と助言の併記 | 工程5の呼出し結果 | 工程に組み込む資産はなく、部分診断のみ | 合成データで試験 |
+| 7 | 営業端末でのオフライン見積と同期(拡張) | 工程5の世代つきの見積の実現(未接続。同じソースから構築した二つの世代の実現で代える) | [reference-order-assist-provider-offline](../../tools/reference-order-assist-provider-offline/README.md)。工程2の三つの実現、[reference-offline-storage](../../tools/reference-offline-storage/README.md)を使う | 合成データで試験 |
+| 8 | 値引きの承認と外部与信(拡張) | 工程7の再検証済みの見積と照合値 | [reference-order-assist-provider-offline](../../tools/reference-order-assist-provider-offline/README.md)。模擬の外部与信は別プロセス | 合成データで試験 |
+
+補足します。
+
+- 工程7・8の区分は、このREADMEの更新時に検証スクリプトで試験を実行した結果です(後述の「工程7・8の実行」)。端末、外部与信、承認者はすべて模擬で、同じ機械の上で動きます。
+
+- 工程2の23件の比較は、Node.jsがない環境と現時点のWindowsでは省略されます。省略された試験を合格に数えません。
+- 工程5の世代交換の試験は、業務結果を返さない試験用の実行体を被験体にしています。見積と助言の成果物での切替と、二つの提供元をまたぐ交換は未確認です。
+- 工程6は、助言だけが画面の診断ホストで表示されます。見積の画面表示は未実装です。
+- 工程4・5では、権限を読む時点と子プロセスの起動の間の失効競合が、回帰診断として固定されたまま未解消です。
+
+## 取り込むピーキーな要件と失敗注入
+
+注入する失敗と合否の観測の詳細は、設計文書の4.5節にあります。要件の内容は2章の要件目録を参照してください。「固有」は目録にない、このサンプル固有の困難です。
+
+| 要件 | 工程 | 注入する失敗(要点) | 観測する合否(要点) |
+| --- | --- | --- | --- |
+| 固有 | 5 | 処理中の呼出しがある間に、提供元を撤去・交換・復旧する | 旧世代の処理が完了し、他の提供元に及ばない |
+| P-OPS-02 | 4・5 | 助言の実行許可の失効と同時に起動が始まる | 失効後に旧世代で新規起動しない(現状は未達) |
+| 固有 | 1・4 | 見積の許可と受注確定の許可を取り違える | 二つを別の契約・別の許可として評価する |
+| P-MIX-03 | 3〜5 | 契約と版は同じまま、要求・結果の形や成果物の照合値が食い違う | 起動前に停止し、参照ありを未検証として扱う |
+| P-CALC-01 | 2・6 | 構造は適合するが小計が誤っている応答を返す | 受領側の独立した再計算で検出する |
+| P-DB-02 | 6 | 助言の提供元が撤去されている間に受注を確定する | 確定の可否が補助の不在に影響されない(通し確認は未実装) |
+| P-MIX-01 | 7 | 三つの実現への配布の途中で一つだけ旧版に残す(拡張) | 結果が一致し、旧版の実現は判定に使われない |
+| P-MIX-02 | 7 | 2台の端末をオフラインで更新し、その間に単価を改訂する(拡張) | 消えた更新がなく、旧単価の見積が同期時に止まる |
+| P-MIX-03 | 7 | 旧世代の実現を持つ端末が新世代のサーバへ同期する(拡張) | 未知の項目を落とさず、範囲外の世代を拒否する |
+| P-WF-01 | 8 | 承認の後に見積額が変わる。期間外に代理承認する(拡張) | 古い見積への承認が無効になり、期間外の代理を拒否する |
+| P-WF-02 | 8 | 承認途中の案件を残して承認規程を改訂する(拡張) | 旧版で始めた案件が旧版のまま完了する |
+| P-TX-02 | 8 | 外部与信が枠を消費した後に応答を返さず切断する(拡張) | 消費が1件で、結果不明が照会で確定する |
+| P-TX-03 | 8 | 与信の消費後に承認が却下され、戻しの途中で止まる(拡張) | 全段完了か全段補償済みに収束する |
+
+## 通しの完了条件
+
+工程1〜6の通しの完了条件は、現在は一つも成立していません。契約から画面までを同じ識別で通す経路が`main`にないためです。拡張の条件は、合成データと同じ機械の上のPostgreSQLで成立を確かめました(実環境での確認ではありません)。
+
+- 見積と助言が、契約の宣言から画面表示まで同じ識別(契約、版、形の照合値、提供元、成果物のSHA-256、世代)で通り、どこかで一つでも食い違えば起動前に停止する。
+- 助言を加えた構成案の診断結果と、提供元を加えた確定コミットの変更面積が、工程4以降の呼出しの入力になる。診断が参照ありのままでも、実行許可は別の権限から得る。
+- 世代交換、撤去、復旧の前後で実成果物のSHA-256が照合され、処理中の旧世代が保たれる。復旧後に23件が同じ結果を返し、旧世代の許可は復権しない。
+- 見積の許可、助言の実行許可、受注確定の許可が独立に失効でき、失効後の新規呼出しが拒否される。失効競合が残る間は、解消したとは扱わない。
+- 画面に、受注の読取と並べて見積と助言と、その根拠が表示される。
+- (拡張)オフライン端末で作った見積が、同期の再検証、承認、外部与信まで同じ見積の照合値で引き継がれる。与信の消費と戻しはそれぞれ一回だけ行われる。複合シナリオC5の試験(`TestPostgresC5ThroughOfflineToCredit`)で合成データについて確認した。工程5の世代交換が渡す実現との接続と、受注の確定サービスへの接続は未成立。
+- 提案、採用、実装、試験、実環境の状態が工程ごとに区別して記録され、合成の発行者や試験用の鍵を実環境の証拠として数えない。
+
+## 工程7・8の実行
+
+工程7・8と複合シナリオC5は、Go、Node.js、DockerがあるLinux(WSL2を含む)で、リポジトリのルートから次を実行して確かめます。使い捨てのPostgreSQLのコンテナーを一つ作り、全試験がPASSでskipが0件のときだけ成功とします。要件ごとの作り、注入する失敗、確かめること、基盤の不足は[資産のREADME](../../tools/reference-order-assist-provider-offline/README.md)にあります。
+
+```sh
+python3 tools/verify-order-assist-provider-offline.py --out /tmp/oapo-receipt
+```
+
+## 部分工程の診断(互換入口)
+
+次の資産は、工程の一つの境界を単独で確かめる診断として、位置と入口を変えずに残します。実行方法は各資産のREADMEを参照してください。
+
+| 工程 | 資産 | 確かめる境界 |
+| --- | --- | --- |
+| 1 | [reference-plugin-capability-contract](../../tools/reference-plugin-capability-contract/README.md) | 機能契約の宣言と解決 |
+| 2 | [reference-plugin-wasi-smoke](../../tools/reference-plugin-wasi-smoke/README.md) | WASIでの実現方式の別の診断 |
+| 2 | [derivation-realization](../derivation-realization/README.md)、[reference-realization-compliance](../../tools/reference-realization-compliance/README.md) | 規則と実現の意味の適合(P-MIX-01) |
+| 2 | [reference-rule-binding](../../tools/reference-rule-binding/README.md) | 導出規則の適用先の解決(P-MIX-01) |
+| 2 | [quote-component-candidate](../quote-component-candidate/README.md) | 見積のプレビューの型付き境界の候補(P-MIX-01) |
+| 3 | [reference-project-customer-advice](../../plugins/reference-project-customer-advice/README.md) | 案件固有の顧客助言 |
+| 3 | [application-composition](../application-composition/README.md)、[local-cpu-reuse](../local-cpu-reuse/README.md) | 構成の診断。後者と助言との接続は未確認 |
+| 3 | [reference-subproject-impact](../../tools/reference-subproject-impact/README.md) | 提供元を加えた際のコア変更面積 |
+| 3 | [reference-generated-code-connection](../../tools/reference-generated-code-connection/README.md) | 生成コードを契約境界から呼べる範囲 |
+| 4 | [reference-capability-transport](../../tools/reference-capability-transport/README.md) | 見積の運搬と23件の試験 |
+| 4 | [reference-runtime-capability-identity](../../tools/reference-runtime-capability-identity/README.md) | 権限競合の回帰診断 |
+| 5 | [composition-kernel](../composition-kernel/README.md) | 合成基盤の試作 |
+| 5 | [reference-composition-process-bridge](../../tools/reference-composition-process-bridge/README.md) | 実成果物の切替と拒否の橋渡し |
+| 5 | [reference-process-executor](../../plugins/reference-process-executor/README.md) | 橋渡し、隔離、WASIの試験用の実行体 |
+| 6 | [reference-project-advice-lit](../../tools/reference-project-advice-lit/README.md) | 助言の画面表示 |
+
+## 基盤への改善圧力
+
+詳細(現状、求める条件、確認方法)は設計文書の4.5節「基盤への改善圧力と現状」にあります。
+
+| 要件 | 不足 |
+| --- | --- |
+| 固有 | 契約・提供元・成果物・権限の同一の識別を一か所から導き、運搬と画面まで通す経路がない |
+| P-OPS-02 | 権限を読む時点と、子プロセスの起動の間の失効競合が未解消 |
+| 固有 | 世代交換が別の資産の成果物で確かめられているだけで、見積と助言と二つの提供元をまたぐ交換が未確認 |
+| P-CALC-01 | 形式の言語が整数・範囲・通貨を宣言できず、適合証拠と形の発行者の正式な受理経路もない |
+| 固有 | 提供元追加でのコア変更面積の計測が暫定の分類にとどまる |
+| P-MIX-01、P-MIX-03 | 同じ規則の実現の版と世代を、端末とサーバの間で照合する経路がない |
+| P-MIX-02 | 操作単位の同期と項目単位の競合検出がない |
+| P-WF-01、P-WF-02 | 承認対象の版の固定と、案件の定義の版の固定がない |
+| P-TX-02、P-TX-03 | 外部の提供元への冪等キーと補償の宣言が、提供元の契約にない |
+
+拡張の工程7・8は、P-MIX-01からP-TX-03までの不足をサンプル側で最小限に作って試験したもので、基盤の不足は解消していません。サンプル側で作ったものは[資産のREADME](../../tools/reference-order-assist-provider-offline/README.md)の「基盤の不足」にあります。

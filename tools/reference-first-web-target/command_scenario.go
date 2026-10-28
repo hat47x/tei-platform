@@ -29,7 +29,10 @@ type referenceCommandScenarioRunner struct {
 	// Host-specific, opt-in gate for the accepted Web entry point. The
 	// legacy diagnostic runner remains explicitly synthetic.
 	hostEffect func(context.Context, string) error
-	now        time.Time
+	// Opt-in real state. nil keeps the synthetic in-memory Command and its
+	// synthetic Observation.
+	submitStore orderSubmitStore
+	now         time.Time
 }
 
 func newReferenceCommandScenarioRunner(
@@ -296,6 +299,31 @@ func (r *referenceCommandScenarioRunner) runAuthenticatedSubjectCommandWithEffec
 				return capabilityinvoke.BusinessResult{}, errors.New("HOST_EFFECT_GRANT_UNAVAILABLE")
 			}
 		}
+		if r.submitStore != nil {
+			if err := r.submitStore.Submit(invokeCtx, actualOrderID); err != nil {
+				result.Stage = "command-effect-failed"
+				if errors.Is(err, errOrderNotSubmittable) {
+					return capabilityinvoke.BusinessResult{}, errOrderNotSubmittable
+				}
+				if errors.Is(err, errPhysicalSchemaNotReady) {
+					result.Stage = "physical-schema-not-ready"
+					return capabilityinvoke.BusinessResult{}, errPhysicalSchemaNotReady
+				}
+				if errors.Is(err, errOrderSubmitCommitUnconfirmed) {
+					// Preserve the uncertain Commit category through Driver wrapping.
+					// This Reference has no durable receipt, so it must not retry here.
+					result.Stage = "command-commit-unconfirmed"
+					return capabilityinvoke.BusinessResult{}, errOrderSubmitCommitUnconfirmed
+				}
+				// The driver error can be echoed to the client; keep
+				// connection detail out of it.
+				return capabilityinvoke.BusinessResult{}, errors.New("order submit effect failed")
+			}
+		}
+		// With a store the real write above is the effect and the Observation
+		// reads the store; this map is then only a shadow. Keeping the
+		// assignment directly in the Adapter body keeps the effect-fence
+		// ordering contract test valid for both modes.
 		state[actualOrderID] = "submitted"
 		return capabilityinvoke.BusinessResult{
 			Capability: capability,
@@ -343,19 +371,30 @@ func (r *referenceCommandScenarioRunner) runAuthenticatedSubjectCommandWithEffec
 	result.Command = &projectedCommand
 
 	result.Stage = "observation"
-	observation, err := driver.ExecuteObservationRead(
-		ctx,
-		"synthetic.order_state.read",
-		driver.ObservationEvidenceSynthetic,
-		func(context.Context) (any, error) {
-			value, exists := state[orderID]
-			if !exists {
-				return nil, fmt.Errorf("order state not found")
-			}
-			return value, nil
-		},
-	)
+	readIdentity := "synthetic.order_state.read"
+	nature := driver.ObservationEvidenceSynthetic
+	readState := func(context.Context) (any, error) {
+		value, exists := state[orderID]
+		if !exists {
+			return nil, fmt.Errorf("order state not found")
+		}
+		return value, nil
+	}
+	if r.submitStore != nil {
+		readIdentity = "postgres.order_status.read"
+		nature = driver.ObservationEvidenceExternalObserved
+		readState = func(readCtx context.Context) (any, error) {
+			return r.submitStore.ReadStatus(readCtx, orderID)
+		}
+	}
+	observation, err := driver.ExecuteObservationRead(ctx, readIdentity, nature, readState)
 	if err != nil {
+		if r.submitStore != nil {
+			// A real-store Submit has already returned successfully. A later
+			// independent read failure cannot establish that the write rolled back.
+			// Keep the partial Command result and hide the Provider's connection details.
+			return result, errors.New("action completion unconfirmed; inspect authoritative state before retrying")
+		}
 		return result, err
 	}
 	result.Observation = &observationProjection{

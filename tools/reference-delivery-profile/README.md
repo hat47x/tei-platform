@@ -76,7 +76,7 @@ plugin descriptorは`requires`と`conflicts`を持てます。`requires`のplugi
 `verify`は、能力名の一致に加えて、そのReferenceにconformance testがある能力だけを実行します。
 
 - `tenant-isolation`: 二つのテナントrootを作り、越境要求の拒否、`..`による参照の拒否、自テナントのread/write、別テナントrootへのsymlink越境の拒否を確認する。
-- `audit`: 追記専用logへ2件を書き、hash chainの検証、既存エントリの改ざん検出、改ざん後の追記拒否を確認する（[reference-audit-log](../reference-audit-log/README.md)）。
+- `audit`: 追記専用logへ2件を書き、hash chainの検証、既存エントリの改ざん検出、改ざん後の追記拒否、pinned headによる末尾削除の検出を確認する（[reference-audit-log](../reference-audit-log/README.md)）。
 - `authentication`: 有効なfixture credential、credential欠落、別tenantのprincipal、不完全なprincipalを確認する（[reference-authentication](../reference-authentication/README.md)）。
 - `offline-storage`: 自rootへのwrite/read、再オープン後のread、path traversalの拒否を確認する（[reference-offline-storage](../reference-offline-storage/README.md)）。
 - `single-user`: 既に開いているstoreの2回目のOpenを拒否し、close後に再オープンできることを確認する。

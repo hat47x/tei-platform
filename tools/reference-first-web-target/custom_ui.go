@@ -13,6 +13,7 @@ type customSubmitPageData struct {
 	Projection webTargetProjection
 	Result     *commandScenarioResult
 	ResultJSON string
+	InputError string
 	Error      string
 }
 
@@ -31,22 +32,26 @@ func (s *webTargetServer) handleCustomSubmit(w http.ResponseWriter, r *http.Requ
 		if err := r.ParseForm(); err != nil {
 			s.renderCustomSubmit(w, http.StatusBadRequest, customSubmitPageData{
 				Projection: s.projection,
-				Error:      "form input could not be parsed",
+				InputError: "form input could not be parsed",
 			})
 			return
 		}
 
-		rowIndex := 0
-		if raw := r.Form.Get("row"); raw != "" {
-			parsed, err := strconv.Atoi(raw)
-			if err != nil || parsed < 0 {
-				s.renderCustomSubmit(w, http.StatusBadRequest, customSubmitPageData{
-					Projection: s.projection,
-					Error:      "row must be a non-negative integer",
-				})
-				return
-			}
-			rowIndex = parsed
+		rawRow := r.Form.Get("row")
+		if rawRow == "" {
+			s.renderCustomSubmit(w, http.StatusBadRequest, customSubmitPageData{
+				Projection: s.projection,
+				InputError: "selected row is required",
+			})
+			return
+		}
+		rowIndex, err := strconv.Atoi(rawRow)
+		if err != nil || rowIndex < 0 {
+			s.renderCustomSubmit(w, http.StatusBadRequest, customSubmitPageData{
+				Projection: s.projection,
+				InputError: "row must be a non-negative integer",
+			})
+			return
 		}
 		from := r.Form.Get("from")
 		if from == "" {
@@ -166,7 +171,7 @@ Reference専用UIです。credentialはruntime inputとしてのみ使い、結�
 <input name="from" value="2026-09-18T08:30:00Z" required>
 </label>
 <label>Selected row
-<input name="row" type="number" min="0" value="0" required>
+<input name="row" type="number" min="0" required>
 </label>
 </div>
 <button type="submit">Submit selected order</button>
@@ -289,6 +294,13 @@ Reference専用UIです。credentialはruntime inputとしてのみ使い、結�
 </table>
 </article>
 {{end}}
+</section>
+{{end}}
+
+{{if .InputError}}
+<section class="error" id="input-error">
+<h2>Input error</h2>
+<p>{{.InputError}}</p>
 </section>
 {{end}}
 

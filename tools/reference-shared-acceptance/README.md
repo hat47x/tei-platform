@@ -112,12 +112,45 @@ go run ./tools/reference-shared-acceptance decisions -workspace DIR
 - `reviewCoverageStatus`: `complete`、`incomplete`、`none`、`invalid`。受理時に記録したA1〜A8のcoverageを分類した結果
 - `reviewIncomplete`: 受理時に`partial`または`not-evaluated`だったsection。有効なReview bindingでだけ表示
 - `reviewDiagnostics`: Review bindingの不整合。A1〜A8の件数、Partial / NotEvaluatedの内訳、section code、Projection schema、Projection再計算fingerprint、coverage一致を検査する
-- `decisionActorStatus`: current Referenceでは`unresolved`。candidateの`origin.actor`やCLI実行者をDecision actorへ読み替えない
-- `decisionAuthorityStatus`: current Referenceでは`unresolved`。Review bindingやDecision recordの存在をauthoring authorityの証明にしない
+- `decisionActorStatus`: `unresolved`。OpenSSH署名witnessの検証がexactに成立した場合だけ`identity-resolved`に上がる（次節）。candidateの`origin.actor`やCLI実行者をDecision actorへ読み替えない
+- `decisionAuthorityStatus`: `unresolved`。witness検証がexactに成立した場合だけ`authority-qualified`に上がる（次節）。Review bindingやDecision recordの存在を、それ自体authoring authorityの証明にしない
+- `decisionWitnessStatus`: witness ledgerとこのrecordのbinding状態。`none / recorded / verified / invalid / conflicted`。詳細は次節
+- `witnessDiagnostics`: witnessのbinding・検証結果。`WITNESS_*`codeで失敗理由とqualified provenanceを残す
 - 読み込み時は、まずfile名のSHA-256と実内容が一致するかを確認し、その後にJSON/schema、Source、Evidence、Review bindingを検査します
 - 読めない記録があれば、黙って飛ばさずerrorにします
 
-この記録はauthorityではありません。`.tei/`はmanaged sourceではないため、accepted / rejectedのどちらの記録を置いてもmodel revisionは変わらず、全部消してもaccepted meaningは変わりません。同じfile名のまま内容を書き換えたrecordはcontent-address不一致として拒否します。正しいcontent-addressを持つ偽recordでもmeaningは動かず、現在のworkspaceとの照合結果が食い違いとして出ます（`record_test.go`）。content-addressは記録内容の同一性を確認するもので、誰が承認・拒否したかを証明する署名ではありません。current Referenceでは`decisionActorStatus`と`decisionAuthorityStatus`をともに`unresolved`として返し、Proposal originやReview identityから判断者を補完しません。`reviewBindingStatus=verified`も、人がReviewを読んだことの証明ではありません。保存されたProjectionとfingerprintの一致を確認したことだけを示します。`recorded`はProjection snapshotを持たない旧形式のため、元のReview内容までは検証できません。`RQ-027`のaccepted Decision到達性に加え、PV-AI-01ではrejected / stale candidateの追跡可能性として同じledgerを再利用します。
+この記録はauthorityではありません。`.tei/`はmanaged sourceではないため、accepted / rejectedのどちらの記録を置いてもmodel revisionは変わらず、全部消してもaccepted meaningは変わりません。同じfile名のまま内容を書き換えたrecordはcontent-address不一致として拒否します。正しいcontent-addressを持つ偽recordでもmeaningは動かず、現在のworkspaceとの照合結果が食い違いとして出ます（`record_test.go`）。content-addressは記録内容の同一性を確認するもので、誰が承認・拒否したかを証明する署名ではありません。current Referenceでは、witness検証configurationを与えない限り`decisionActorStatus`と`decisionAuthorityStatus`をともに`unresolved`のまま返し、Proposal originやReview identityから判断者を補完しません。`reviewBindingStatus=verified`も、人がReviewを読んだことの証明ではありません。保存されたProjectionとfingerprintの一致を確認したことだけを示します。`recorded`はProjection snapshotを持たない旧形式のため、元のReview内容までは検証できません。`RQ-027`のaccepted Decision到達性に加え、PV-AI-01ではrejected / stale candidateの追跡可能性として同じledgerを再利用します。
+
+### Decision witness — OpenSSH署名によるexact binding（Reference pressure、#974）
+
+Decision recordの本文全体へ、OpenSSH（ssh-keygen -Y sign / verify）の署名witnessを結び付けられます。`tools/internal/opensshwitness`のprovider libraryを利用します。witness記録は`.tei/decision-witnesses/<内容のSHA-256>.json`へcontent-addressedで置かれ、Decision / Confirmation ledgerと同じ`os.OpenRoot(workspace)`のcontainmentに置かれます。witnessは付加Evidenceであり、Canonical sourceではありません。削除してもmodel revisionもaccepted meaningも変わらず、`authority-qualified`なwitnessがあっても受理状態・Source書込みは変わりません（Evidence Gate 2026-10 §6）。
+
+```bash
+# 決定記録へのwitness署名と記録（Reference harnessの鍵）
+go run ./tools/reference-shared-acceptance witness-decision -workspace DIR \
+  -decision .tei/decisions/<SHA>.json -workspace-identity ws-ref-001 \
+  -key witness_ed25519 -witness-identity reviewer@example.test \
+  -witness-issued-at 20261028T120000Z
+
+# policyとpinned verify-timeを与えたときは、書込み直後に検証結果も出す
+go run ./tools/reference-shared-acceptance witness-decision ... \
+  -witness-allowed-signers allowed_signers -witness-verify-time 20261028120000Z
+
+# Decision ledger読み込み時にwitnessをrecord本文へ検証して分類する
+go run ./tools/reference-shared-acceptance decisions -workspace DIR \
+  -witness-allowed-signers allowed_signers -witness-verify-time 20261028120000Z \
+  [-witness-revocation krl]
+```
+
+bindingと検証の規則（fail closed）:
+
+- witness messageはDecision record本文（candidate / review binding / 基準revision / 決定semantics / 理由 / source scopeのdigest）から再導出します。recordの改変・飲み替えはdigest照合とprovider検証で検知します
+- namespaceをDecision record本文から決定論的に導出するため、policy側のnamespace許可がworkspace・semantics・scopeのexact bindingを確定します。policy・verify time・revocationはCLI flags（operator管理のboundary）だけから得て、workspace・candidate・recordの内容から補完しません
+- 構造的なbinding（本文digest・message digest・signature digestの一致）が通るだけでは`recorded`に留まり、actor / authorityは解決しません。provider不在・verify-time非対応でも同じです
+- providerが`authority-qualified`を出した場合だけ、`decisionActorStatus=identity-resolved`、`decisionAuthorityStatus=authority-qualified`に上がります。policy不一致・満了・失効・改変は拒絶として`WITNESS_PROVIDER_REJECTED`で残り、未解決のままです
+- 同一candidateに対しaccepted / rejected双方のwitnessがqualifiedになった場合、winnerを決められないため、両方`authority-conflicted`へ落ちます（Evidence Gate §10）
+- reviewBindingを持たないrecord（current Referenceのreject）はwitness対象になりません。E6のexact bindingにはreview Projection identityが必須であるためです
+- これはReference harness pressure（test供給の鍵・policy）であり、production identity providerではありません。provider SPIの採否判定（#974）は、この実装とは別に判断します
 
 ### 確認の記録 — 一度答えた確認を繰り返さない
 

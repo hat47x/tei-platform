@@ -248,3 +248,33 @@ func TestBundleManifestIsSortedAndRecordsUnsupportedDimensions(t *testing.T) {
 		t.Fatal("manifest has no boundary notes")
 	}
 }
+
+func TestIndexHTMLIsNavigationOnly(t *testing.T) {
+	out := filepath.Join(t.TempDir(), "design-output")
+	manifest, err := Write(referenceWorkspace(t), out, "postgres")
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, err := os.ReadFile(filepath.Join(out, "index.html"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	content := string(raw)
+	if !strings.Contains(content, `<a href="table-definitions.md">`) {
+		t.Fatalf("index does not link to an artifact: %s", content)
+	}
+	if strings.Contains(content, "ZgotmplZ") {
+		t.Fatal("index contains an escaped template URL")
+	}
+	if strings.Contains(content, "<script") {
+		t.Fatal("index contains a script")
+	}
+	if !strings.Contains(content, manifest.SourceRevision) {
+		t.Fatal("index does not show the source revision")
+	}
+	for _, artifact := range manifest.Artifacts {
+		if artifact.Name == "index" || artifact.Path == "index.html" {
+			t.Fatal("index.html must not be a manifest artifact")
+		}
+	}
+}

@@ -228,7 +228,7 @@ func TestRenderMigrationSQLRendersUniqueAndForeignKeyOfNewTablesAfterPrimaryKeys
 			{Kind: schemadiff.AddForeignKey, Table: "public.child", ForeignKey: &physical.ForeignKey{
 				Name: "child_parent_fk", Columns: []string{"parent_id"}, ReferencedSchema: "public", ReferencedTable: "parent", ReferencedColumns: []string{"id"}}},
 			{Kind: schemadiff.AddUniqueConstraint, Table: "public.child", UniqueConstraint: &physical.UniqueConstraint{Name: "child_code_key", Columns: []string{"code"}}},
-			{Kind: schemadiff.AddUniqueConstraint, Table: "public.child", UniqueConstraint: &physical.UniqueConstraint{Columns: []string{"parent_id", "code"}}},
+			{Kind: schemadiff.AddUniqueConstraint, Table: "public.child", UniqueConstraint: &physical.UniqueConstraint{Name: "child_parent_id_code_key", Columns: []string{"parent_id", "code"}}},
 			{Kind: schemadiff.CreateTable, Table: "public.parent", PrimaryKey: []string{"id"}},
 			{Kind: schemadiff.AddColumn, Table: "public.parent", Column: &physical.Column{Name: "id", PhysicalType: "bigint"}},
 		},
@@ -249,7 +249,7 @@ func TestRenderMigrationSQLRendersUniqueAndForeignKeyOfNewTablesAfterPrimaryKeys
 		`ALTER TABLE "public"."child" ADD PRIMARY KEY ("id");`,
 		`ALTER TABLE "public"."parent" ADD PRIMARY KEY ("id");`,
 		`ALTER TABLE "public"."child" ADD CONSTRAINT "child_code_key" UNIQUE ("code");`,
-		`ALTER TABLE "public"."child" ADD UNIQUE ("parent_id", "code");`,
+		`ALTER TABLE "public"."child" ADD CONSTRAINT "child_parent_id_code_key" UNIQUE ("parent_id", "code");`,
 		`ALTER TABLE "public"."child" ADD CONSTRAINT "child_parent_fk" FOREIGN KEY ("parent_id") REFERENCES "public"."parent" ("id");`,
 	}
 	if !reflect.DeepEqual(statements, want) {
@@ -268,7 +268,7 @@ func TestRenderMigrationSQLDoesNotAddUniqueOrForeignKeyToExistingTables(t *testi
 			change,
 		}}
 		statements, err := postgres.RenderMigrationSQL(diff)
-		if err == nil || !strings.Contains(err.Error(), string(change.Kind)) || !strings.Contains(err.Error(), "only tables created in the same diff") || statements != nil {
+		if err == nil || !strings.Contains(err.Error(), string(change.Kind)) || !strings.Contains(err.Error(), "without an existing-data observation") || statements != nil {
 			t.Fatalf("kind=%s statements=%#v err=%v", change.Kind, statements, err)
 		}
 	}
@@ -351,10 +351,10 @@ func TestRenderMigrationSQLRejectsAlterColumnWithoutBeforeColumn(t *testing.T) {
 }
 
 func TestRenderMigrationSQLRejectsUnsupportedSchemaChangeKinds(t *testing.T) {
+	// Additions to existing tables need an existing-data observation; see
+	// TestRenderMigrationSQLDoesNotAddUniqueOrForeignKeyToExistingTables.
 	kinds := []schemadiff.ChangeKind{
-		schemadiff.AddUniqueConstraint,
 		schemadiff.DropUniqueConstraint,
-		schemadiff.AddForeignKey,
 		schemadiff.DropForeignKey,
 	}
 	for _, kind := range kinds {
@@ -410,5 +410,22 @@ func TestRenderMigrationSQLRejectsDropIndexWithoutSchema(t *testing.T) {
 	_, err := postgres.RenderMigrationSQL(diff)
 	if err == nil || !strings.Contains(err.Error(), "not schema-qualified") {
 		t.Fatalf("err=%v", err)
+	}
+}
+
+func TestRenderMigrationSQLRejectsUnnamedUniqueAndForeignKey(t *testing.T) {
+	for _, change := range []schemadiff.Change{
+		{Kind: schemadiff.AddUniqueConstraint, Table: "public.child", UniqueConstraint: &physical.UniqueConstraint{Columns: []string{"code"}}},
+		{Kind: schemadiff.AddForeignKey, Table: "public.child", ForeignKey: &physical.ForeignKey{
+			Columns: []string{"parent_id"}, ReferencedSchema: "public", ReferencedTable: "parent", ReferencedColumns: []string{"id"}}},
+	} {
+		diff := schemadiff.Diff{Database: "sales_core", Changes: []schemadiff.Change{
+			{Kind: schemadiff.CreateTable, Table: "public.child"},
+			change,
+		}}
+		statements, err := postgres.RenderMigrationSQL(diff)
+		if err == nil || !strings.Contains(err.Error(), "no constraint name") || statements != nil {
+			t.Fatalf("kind=%s statements=%#v err=%v", change.Kind, statements, err)
+		}
 	}
 }

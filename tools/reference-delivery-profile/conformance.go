@@ -107,7 +107,33 @@ func verifyAuditLog() (bool, string) {
 	if err := log.Verify(); err == nil {
 		return false, "tampered audit entry was verified"
 	}
-	return true, "append-only chain, reopen, and tamper detection were checked"
+	headPath := filepath.Join(dir, "head.jsonl")
+	headLog, err := auditlog.Open(headPath)
+	if err != nil {
+		return false, err.Error()
+	}
+	if _, err := headLog.Append("tenant-a", "conformance", "read", "order/2"); err != nil {
+		return false, err.Error()
+	}
+	if _, err := headLog.Append("tenant-a", "conformance", "write", "order/2"); err != nil {
+		return false, err.Error()
+	}
+	head, err := headLog.Head()
+	if err != nil {
+		return false, err.Error()
+	}
+	headRaw, err := os.ReadFile(headPath)
+	if err != nil {
+		return false, err.Error()
+	}
+	headLines := strings.Split(strings.TrimRight(string(headRaw), "\n"), "\n")
+	if err := os.WriteFile(headPath, []byte(strings.Join(headLines[:len(headLines)-1], "\n")+"\n"), 0o600); err != nil {
+		return false, err.Error()
+	}
+	if err := headLog.VerifyHead(head); err == nil {
+		return false, "pinned head did not detect suffix deletion"
+	}
+	return true, "append-only chain, reopen, tamper detection, and pinned-head suffix detection were checked"
 }
 
 type conformanceVerifier struct {
