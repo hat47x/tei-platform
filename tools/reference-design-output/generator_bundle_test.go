@@ -98,6 +98,7 @@ func TestGeneratorBundleRejectsUnboundOrInvalidContractBeforePublication(t *test
 		{"missing attribute", bytes.ReplaceAll(raw, []byte("sales.order_line.quantity"), []byte("sales.missing.quantity")), "template", "1"},
 		{"wrong type", bytes.ReplaceAll(raw, []byte("std.decimal"), []byte("std.money")), "template", "1"},
 		{"malformed JSON", []byte("{"), "template", "1"},
+		{"unsupported rounding", bytes.ReplaceAll(raw, []byte("half-up"), []byte("half-even")), "template", "1"},
 		{"missing contract", nil, "template", "1"},
 		{"unknown strategy", raw, "unknown", "1"},
 		{"missing strategy", raw, "", "1"},
