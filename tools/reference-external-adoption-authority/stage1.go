@@ -59,7 +59,11 @@ type suiReport struct {
 	TEIAuthority           string `json:"teiAuthority"`
 	Fixture                string `json:"fixture"`
 	FixtureValid           bool   `json:"fixtureValid"`
-	Mapping                struct {
+	Diagnostics            []struct {
+		Code   string `json:"code"`
+		Island string `json:"island"`
+	} `json:"diagnostics"`
+	Mapping struct {
 		DataDefinition          string `json:"dataDefinition"`
 		ParentRelation          string `json:"parentRelation"`
 		RelationTarget          string `json:"relationTarget"`
@@ -401,4 +405,21 @@ func readLossRecord(path, wantDigest string) (LossRecord, []byte, error) {
 		return LossRecord{}, nil, fmt.Errorf("%w: loss record reads lossless=true", ErrInputMismatch)
 	}
 	return loss, raw, nil
+}
+
+func diagnosticCodes(r suiReport) string {
+	var codes []string
+	for _, d := range r.Diagnostics {
+		codes = append(codes, d.Code)
+	}
+	sort.Strings(codes)
+	return strings.Join(codes, ",")
+}
+
+func diagnosticIslands(r suiReport) string {
+	var islands []string
+	for _, d := range r.Diagnostics {
+		islands = append(islands, d.Island)
+	}
+	return strings.Join(islands, ",")
 }

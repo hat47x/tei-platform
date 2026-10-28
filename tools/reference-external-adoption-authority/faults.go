@@ -54,11 +54,30 @@ func (s *Sample) faultPGOV01(ctx context.Context) error {
 		return err
 	}
 	out, err := runStage1(ctx, s.Tools, s.Repo, filepath.Join(dir, "stage1"), path)
-	same := err == nil && out.Carried.MappingReportDigest == s.s1.Carried.MappingReportDigest &&
-		out.Carried.LossRecordDigest == s.s1.Carried.LossRecordDigest
-	s.addFault("pgov01-revision-only", "P-GOV-01", "1", same && out.Pin.RevisionAdvanced,
+	// The probe names the island of a cycle by iterating a map, so the
+	// bytes of the M4 report can differ between two runs on the same input.
+	// The comparison is therefore on verdicts, diagnostic codes and the
+	// loss content; differing report bytes are recorded.
+	sameVerdicts := err == nil
+	var bytesDiffer []string
+	for _, fx := range stage1Fixtures {
+		a, b := s.s1.Reports[fx.File], out.Reports[fx.File]
+		sameVerdicts = sameVerdicts && a.FixtureValid == b.FixtureValid && diagnosticCodes(a) == diagnosticCodes(b)
+		if s.s1.ReportDigests[fx.File] != out.ReportDigests[fx.File] {
+			bytesDiffer = append(bytesDiffer, fx.File)
+		}
+	}
+	la, lb := s.s1.Loss, out.Loss
+	la.MappingReportDigest, lb.MappingReportDigest = "", ""
+	ra, _ := digestJSON(la)
+	rb, _ := digestJSON(lb)
+	sameLoss := err == nil && ra == rb
+	s.addFault("pgov01-revision-only", "P-GOV-01", "1", sameVerdicts && sameLoss && out.Pin.RevisionAdvanced,
 		map[string]any{"error": errString(err), "revisionAdvanced": out.Pin.RevisionAdvanced,
-			"sameReportAndLossDigests": same, "note": "freshness is bound to the four blobs; the moved revision is recorded, not a stop"})
+			"sameVerdictsAndDiagnosticCodes": sameVerdicts, "sameLossContent": sameLoss,
+			"reportBytesDifferFromMainRun": bytesDiffer,
+			"m4CycleIslands":               []string{diagnosticIslands(s.s1.Reports[stage1Fixtures[3].File]), diagnosticIslands(out.Reports[stage1Fixtures[3].File])},
+			"note":                         "freshness is bound to the four blobs; the moved revision is recorded, not a stop"})
 	return nil
 }
 
