@@ -423,3 +423,109 @@ AとBが同じRegistry/Bindingを利用しても、Bの業務上のUserとAの�
 | K9 | Data MigrationでTarget成功応答が喪失 | 実際の`Unknown`を安全な再照合なしで`Rejected`や`Applied`へ変えない |
 
 本節は**新製品仕様の確定や実Provider受入を宣言しない**。最初の実証はA→Bの小さい二Consumerを選び、既存Referenceで表現できないものが固定できたときだけ追加形を検討する。Cは既存Ownerへ接続する。
+
+---
+
+## 13. 読取Projectionからの更新は自動的に導けない（2026-10-29 追加候補）
+
+### 13.1 何が新しい問題か
+
+複数Sourceから一つの`Customer`や`User`を組み立て、一覧/単票で**読める**ことは、その論理オブジェクトを編集して**書ける**ことの証明ではない。例えば次の区別がある。
+
+| 論理項目 | 読取りの実現 | 編集時に不足する情報 |
+| --- | --- | --- |
+| `customer.displayName` | RDBの`familyName + givenName` | 変更後の文字列を姓・名のどちらへ戻すか |
+| `customer.preferences` | Document DBのJSON path | 当該pathの正本・Version・Patch保証 |
+| `customer.orderCount` | Order APIの集約結果 | Countへの逆変換は存在しない |
+| `customer.organization` | 複数Relationの探索 | どのMembershipを選択・更新するか |
+| `customer.enabled` | Account Store + 外部IdPの派生 | どのOwnerへのCommandが状態を確定するか |
+
+これは、読み取り側の`CompositeEntity`や`Projection`を更新可能なDB行と同じものに見せる際の**view-update問題**である。各Sourceが書込みCapabilityを持つだけでは解けず、どの変更を誰の正本へどう配分するかの業務判断と、外部副作用の保証が必要である。X-TEAの「主DB＋参照用副DB」型の簡便さは既定の**Read Projection**として提供できるが、複数DB更新へ拡張するときはこの境界を越える契約が必要。
+
+### 13.2 読取りと書込みを別契約へ分ける
+
+提案する**概念上の**段階は次の通り。新しい固定Kernel enumや別Resolver/第二Source正本は導入しない。
+
+```text
+sources + qualified bindings
+   -> ReadProjection<V> + provenance/field ownership
+       -> explicit user/domain update intent
+           -> optional WriteMapping / owner-routed Commands
+               -> Prepare/Validate/Authorize/Commit via existing owners
+                   -> per-target receipt and independent readback
+```
+
+`ReadProjection<V>`は**既定でread-only**。保存ボタン等を生成するときには、(a) 正本Ownerへの単一Command、(b) 明示的な書戻しMapping、(c) 明示的な多Source ChangeSet/Operation のいずれを使うかを案件側が選ぶ。どれもなければ編集可能UIを生成せず、read-only/unsupportedを表示する。
+
+**単一DBの通常CRUD**は簡単な(a)のTemplateで成立してよい。これは一律に複数DB用のChangeSet/Journal/Sagaを要求する意味ではない。逆に、`readable`というPortだけから自動的に`writable`を推論しない。
+
+### 13.3 更新を伴うMappingには部分的な逆方向契約が要る
+
+純粋な双方向写像を考えると、`get: S -> V`と、元の状態を参照する`put: (S,V) -> Result<S,Conflict>`が候補になる。これは**考察用のモデル**で、実行用のDB一括Mutation APIを定義するものではない。
+
+更新可能な範囲では、少なくとも以下の性質を検査対象にできる。
+
+- **Get–Put**：`get(s)`を変更なしで戻す際、外部正本に不要な更新を発生させない。
+- **Put–Get**：`put(s,v)`が成功した後の独立した読取りは、保証された整合性条件の下で利用者が要求した値を再現する。
+- **Put–Put**：同じRevision条件の下で繰り返した更新が矛盾した副作用を生まない。非冪等Operationは「法則」から自動的に再試行を許可しない。
+
+ただし、これらは単純な関数Lensの法則を**外部更新の契約候補**へ持ち込む際の比較指標に過ぎない。実DBの更新にはRevision競合、権限、遅延、部分Commit、通信断がある。`put`を宣言しただけで上記が証明済みになるわけではない。永続DB操作の確定は[#1157](https://github.com/hat47x/tei-platform/issues/1157)・[#1174](https://github.com/hat47x/tei-platform/issues/1174)・[#1129](https://github.com/hat47x/tei-platform/issues/1129)の既存Ownerに接続し、下位実行を再実装しない。
+
+例えば、`displayName = familyName + " " + givenName`は読取Projectionとして容易でも、同じ表示名から元の姓名を一意に戻せないため、明示的な分割規則・独立した姓名編集UI・業務Commandなしにwrite-backの候補とはしない。`orderCount`のような集約値は原則として直接更新Portを持たない。
+
+### 13.4 フィールド所有元と更新先の選択
+
+```yaml
+# 提案中の擬似構文。読み取りモデルの所有/更新を表す例。
+view: example.customer/CustomerSummary
+fields:
+  displayName:
+    read:
+      from: profileStore
+      expression: displayName
+    update:
+      mode: owner-command
+      command: profileService/UpdateDisplayName
+  orderCount:
+    read:
+      from: orderService
+      expression: count(orders)
+    update:
+      mode: read-only
+  newsletterPreference:
+    read:
+      from: preferencesDocument
+      path: $.newsletter
+    update:
+      mode: explicit-patch
+      owner: preferencesService
+      expectedRevision: required
+```
+
+`profileStore`と`preferencesDocument`が別DataSourceでも、`CustomerSummary`は単一の読取契約として使える。複数の正本に書く操作は**一つのProjectionの逆演算**ではなく、Targetを明示する複数Command/ChangeSetとして扱い、各TargetのCommit/Unknownを保持する。JSON pathが分かっても、フィールドの正本・配列Indexの安定性・削除の意味・Document Revisionが分からなければ更新は認めない。
+
+Read Projectionの取得時点、Source Revision、Projection Definition Revision、Field Ownership、データのStaleness/Cacheの条件は、後続のWrite Intent検証に必要な場合だけ参照する。これらを全部一つの「Version」に潰さない。Cacheから読んだ値のRevisionが更新先で保証されないときは、適切な条件付き更新・再読取り・競合提示が必要になる。
+
+### 13.5 Data migrationと更新Mappingの共通点・非共通点
+
+通常編集とMigrationは、Source/Target Mapping、型変換、Qualified Identity、対象Revision、Read/Write Capabilityの検査を再利用できる。ただしMigrationは、大量データを横断するCheckpoint、履歴・削除、再開、正本所有者の切替、Source/Targetの差分照合が必要なため、通常の単行`put`契約とは別である。
+
+移行先での単純なupsertを「読取Projectionの逆写像」と呼ばない。ID生成を伴う移行では対応表の永続性が必要であり、削除の伝播も案件で決める。#2143/#2147の既存Ownerの切替/照合条件を保持する。外部の二DBを1つのトランザクションとして扱うことをTEI Coreで保証しない。
+
+### 13.6 受入候補（NOT RUN）
+
+| Case | Given / When | Expected |
+| --- | --- | --- |
+| W1 | 姓＋名の表示だけを定義し、結合後の表示名を編集 | 逆写像やOwner Commandなしではread-onlyとして拒否 |
+| W2 | 注文件数の集約Projectionを編集 | 更新先を推測せずunsupported |
+| W3 | Document JSON pathを変更するが期待Revisionが古い | Providerの条件付き更新でConflictを返し、成功としない |
+| W4 | 2つのSourceが`displayName`を返しField Ownerが未決 | 暗黙の先勝ち/後勝ち更新を拒否 |
+| W5 | 単一SQLiteで編集 | Local Owner Commandのみで動作し分散Coordinationを必須にしない |
+| W6 | 複数DBへ変更後片側がApplied/片側がUnknown | 部分結果と再照合要件を維持、無条件再送しない |
+| W7 | 別Tenant/Semantic Scopeの同名CustomerIdを表示 | 自動結合・更新・Cache共有しない |
+| W8 | 同じProjectionのSource Revisionが更新直前に変わる | 現在の前提に再資格確認し、古いRead ReceiptをCommit権限にしない |
+| W9 | Source→Target移行でID採番を含むCheckpoint後の再実行 | 対応IDを安定させ、同じ旧レコードから新IDを二重生成しない |
+
+**比較する効果**：単一DBの標準CRUDを複雑化せず、RDB＋Document DBのRead Projectionを作れるか。書戻し先の曖昧性を拒否できるか。既存のQuery/Mutation/Source Mappingを重複実装せず、2 Consumerの宣言量、追加コード、拒否診断、実データでの独立確認を比較する。既存`#1127`のCRUD/生成、`#1129`の業務副作用、`#2143/#2147`の移行、`#951`のProvider適合を独立Ownerとして維持する。
+
+**撤回条件**：既存の明示Command＋Read Projectionだけで必要な編集操作を自然に実現できる場合、一般的な双方向`Lens`型の新設は撤回する。逆写像を自動生成しても実業務の曖昧さを解決できない場合は、型としての「書戻し可能性」を固定Coreに導入しない。実装/実DB/GUIの検証は未実施。
