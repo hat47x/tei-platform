@@ -23,12 +23,12 @@ import (
 
 // Identities of the sample's distribution. They are synthetic.
 const (
-	PackageID       = "sui_sensemaking.island_models"
-	PackageVersion  = "1.0.0"
-	ProviderID      = "read-sui"
+	PackageID        = "sui_sensemaking.island_models"
+	PackageVersion   = "1.0.0"
+	ProviderID       = "read-sui"
 	CompositionScope = "project-board"
-	PublisherID     = "sui_sensemaking.publisher"
-	SignerRef       = "sui_sensemaking.semantic_signer"
+	PublisherID      = "sui_sensemaking.publisher"
+	SignerRef        = "sui_sensemaking.semantic_signer"
 )
 
 var semanticRead = composition.Contract{

@@ -384,7 +384,7 @@ func (s *Sample) faultLossless(ctx context.Context) error {
 	s.addFault("lossless-loss-record-rewritten", "固有", "1-3",
 		errors.Is(errCarried, ErrInputMismatch) && errors.Is(errOwn, ErrInputMismatch) && bridgeErr != nil && !sig.Qualified,
 		map[string]any{"againstCarriedDigest": errString(errCarried), "againstItsOwnDigest": errString(errOwn),
-			"planFingerprintChanged": locked.PlanFingerprint != s.s3.Locked.PlanFingerprint,
+			"planFingerprintChanged":      locked.PlanFingerprint != s.s3.Locked.PlanFingerprint,
 			"buildBridgeWithOriginalLock": errString(bridgeErr), "signedPreflight": sig.Error})
 
 	rep, err := BuildCompletionReport(*s.Chain)

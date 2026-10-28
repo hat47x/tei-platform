@@ -220,7 +220,7 @@ func (s *Sample) Finish() {
 			"substitutionStops": subIDs, "throughNegativeControls": thrIDs}})
 	loss, lossIDs := s.faultsPassed("lossless-")
 	s.Rec.Completion = append(s.Rec.Completion, Check{ID: "lossless-false-carried-to-completion-report", Requirement: "固有", Stage: "1-4",
-		Passed: loss && s.Rec.Through.Lossless != nil && !*s.Rec.Through.Lossless && repErr == nil && !rep.Loss.Lossless,
+		Passed:   loss && s.Rec.Through.Lossless != nil && !*s.Rec.Through.Lossless && repErr == nil && !rep.Loss.Lossless,
 		Observed: map[string]any{"throughLossless": s.Rec.Through.Lossless, "reportLossless": rep.Loss.Lossless, "cases": lossIDs}})
 	gov, _ := s.faultsPassed("pgov01-")
 	intr, intIDs := s.faultsPassed("pint03-")
@@ -236,7 +236,7 @@ func (s *Sample) Finish() {
 		Passed: mean && selected == "1", Observed: map[string]any{"selectedEntries": selected, "cases": meanIDs}})
 	rneg, rnegIDs := s.faultsPassed("report-")
 	s.Rec.Completion = append(s.Rec.Completion, Check{ID: "completion-report-distinguishes-and-does-not-overclaim", Requirement: "固有", Stage: "報告",
-		Passed: repErr == nil && len(repMismatch) == 0 && rneg,
+		Passed:   repErr == nil && len(repMismatch) == 0 && rneg,
 		Observed: map[string]any{"reportError": errString(repErr), "mismatches": repMismatch, "negativeControls": rnegIDs}})
 	passed := s.Rec.Through.Complete && gov
 	for _, list := range [][]Check{s.Rec.Faults, s.Rec.Completion} {
