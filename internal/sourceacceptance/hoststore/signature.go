@@ -1,12 +1,14 @@
 package hoststore
 
 import (
+	"bytes"
 	"context"
 	"crypto/ed25519"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"sort"
 	"strings"
@@ -214,24 +216,35 @@ func LoadTrustPolicy(path string) (TrustPolicy, error) {
 
 // ParseTrustPolicy validates a trust document: known schema, at least one
 // issuer, a 32-byte public key, a non-empty key ID and Application list, and
-// no duplicate issuer/key pair, and a well-formed optional validity window.
+// no duplicate issuer/key pair, no public key listed twice, no unknown member, and a well-formed optional validity window.
 func ParseTrustPolicy(raw []byte) (TrustPolicy, error) {
 	var policy TrustPolicy
-	if err := json.Unmarshal(raw, &policy); err != nil || policy.Schema != trustSchema || len(policy.Issuers) == 0 {
+	// Unknown members are refused, not ignored: a misspelled "revoked" or
+	// "notAfter" would otherwise leave the key silently unrestricted.
+	decoder := json.NewDecoder(bytes.NewReader(raw))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&policy); err != nil || policy.Schema != trustSchema || len(policy.Issuers) == 0 {
+		return TrustPolicy{}, errors.New("HOST_STORE_TRUST_INVALID")
+	}
+	if _, err := decoder.Token(); err != io.EOF {
 		return TrustPolicy{}, errors.New("HOST_STORE_TRUST_INVALID")
 	}
 	seen := map[string]bool{}
+	seenKeys := map[string]bool{}
 	for _, issuer := range policy.Issuers {
 		key, err := base64.StdEncoding.DecodeString(issuer.PublicKey)
 		id := issuer.Issuer + "\x00" + issuer.KeyID
 		if err != nil || len(key) != ed25519.PublicKeySize || strings.TrimSpace(issuer.Issuer) == "" ||
-			strings.TrimSpace(issuer.KeyID) == "" || len(issuer.Applications) == 0 || seen[id] {
+			strings.TrimSpace(issuer.KeyID) == "" || len(issuer.Applications) == 0 || seen[id] || seenKeys[string(key)] {
 			return TrustPolicy{}, errors.New("HOST_STORE_TRUST_INVALID")
 		}
 		if _, err := parseKeyWindow(issuer); err != nil {
 			return TrustPolicy{}, errors.New("HOST_STORE_TRUST_INVALID")
 		}
 		seen[id] = true
+		// Validity and revocation are keyed by (issuer, keyId), so the same key
+		// material under a second entry would bypass a revocation.
+		seenKeys[string(key)] = true
 	}
 	return policy, nil
 }
