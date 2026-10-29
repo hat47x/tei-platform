@@ -608,3 +608,86 @@ old Accepted/Binding/Generation
 **段階的な観測方法**：最初に既存`reference/composition-io-mapping`と#1121の既存Keysを使い、A/Bの二Consumerについて「再検証した数」「影響なしとした根拠」「不明として止めた数」「不必要な全件無効化数」を記録する。Field-levelの依存根拠が得られない実装なら、まずSource単位の保守的無効化を試す。実データ/実Provider/実Targetへ進んだときだけ、前段の合成判定を独立Evidenceで上書きできる。
 
 **縮小・撤回条件**：既存#1120の変更影響Graphと#1121の再評価鍵で同じ診断を得られるなら、新しいWitness型・Cache層・専用Resolverは実装しない。限定再検証が安全に示せない場合は、局所最適化を撤回して十分な範囲を再検証する。現時点では完全性の証明方式、動的依存の記録粒度、実環境の時間的安全性は未決である。
+
+
+---
+
+## 15. グラフの完全性は保証境界と証拠の範囲を持つ（2026-10-29、設計候補）
+
+### 15.1 「図になければ存在しない」を適用できる範囲
+
+目標は、**TEIの宣言・合成・実行制御が所有する処理について、実際に実行可能な工程や外部能力がGraphに可視化され、隠れたHook/暗黙fallbackで意味・依存・副作用が増えないこと**。ただし、任意のnative Pluginや外部SaaSの内部演算まで全てTEIのGraph Nodeとして展開するという意味ではない。
+
+グラフの完全性は、少なくとも **Phase**（意味解釈/Build/配備/Invocation）、**Target**（CLI/Web/Wasm等）、**境界**（TEIが制御する呼出しと外部実装の境界）、**粒度**（業務操作/実行工程/内部命令）、**対象Effect/Dependencyの集合** を限定して主張する。別Targetの成功や一部Traceの観測を全Target・全実行パスの不在証明に使わない。
+
+たとえば、TEIが扱う`Run External Analyzer`を一つのOpaque Nodeとして表し、その入力・出力と要求するNetwork/File権限を示すことは許容する。その内部アルゴリズムを全展開する必要はない。ただし宣言なしに後続`Upload Results`処理が発火するような隠れたWorkflow Edgeを許してはならない。Opaque Node内部の未宣言Network送信を抑止できない実行環境では、**その副作用が存在しないと保証しない**。
+
+| 表現・証拠 | 表すもの | 表さないもの |
+| --- | --- | --- |
+| Authoring/Desired Graph | 人・AIが指定した工程、型、出力、明示Binding | Providerの選択結果、実行履歴 |
+| Resolved/Lowered Graph | 固定Source/Contract/Provider/Targetで解決された実行可能な工程・依存 | 全外部副作用の実測結果 |
+| Target Enforcement Boundary | 許可したResource/Effect以外を実行できないかという環境側の制約 | 業務上の正しさ、任意native codeの無害性 |
+| Execution/Observation Evidence | 実際に確認できた工程・成果・効果と、不明な区間 | 観測していない実行パスの不在の証明 |
+
+**完全な計画を持つこと**、**未宣言操作を技術的に拒否できること**、**実際にすべての操作が成功したこと**は別の保証である。Signed Manifest、Providerの`implements`自己申告、Build Hash、Source Lockだけでは、許可済み外部プロセスの隠れたネットワーク通信の不在は証明できない。Runtime権限の強制主体はTargetに応じて異なり、TEI専用共通Hostを必須としない（Open Draft [#2226](https://github.com/hat47x/tei-platform/pull/2226)）。
+
+### 15.2 宣言、導出、実行の対応を検査する
+
+```text
+Source intent / Graph declaration
+    -> resolve language, bindings, exact providers
+    -> target-specific plan / build graph
+    -> constrained execution where supported
+    -> independent per-operation and effect observation
+
+Validation:
+  every selected orchestration step has a declared or derived cause
+  every generated intermediate has a producer and downstream binding
+  every required external effect has a declared capability and enforcement owner
+  anything outside verified coverage is explicit unresolved, not silently absent
+```
+
+#1109のAuthoring IntentとResolved BuildPlan、#1103のBuild Graph Node/Edge、#1096のToolchain Source closure、#943のBuild/Artifact/Lock、#1121のLowering/Authorityを**別の正本として置換せず接続する**。BuildとRuntimeのdependency graphは分離し、該当Build Artifactを経由して因果的に追跡する。同じ図に表示する場合もBuild EdgeとRuntime/Value/Effect Edgeの意味を混同しない。
+
+- **静的構成**: Toolが解決した全Source/Builder/Output/必要能力を固定して初めて、選択されたBuild Planの限定的な閉包を検証できる。`stage0`は外部の正確なSeedとしてGraphに明記し、無から生まれたBuilderのように描かない。
+- **動的構成**: 条件分岐・Fan-out・動的依存を許す場合、静的Node数だけで完全とはせず、Generator/Resolverの識別、入力Revision、許される展開範囲、今回解決したEdge集合を対応付ける。未解決の展開先はAbsentではなくUnresolved。
+- **Opaque Plugin**: Package/Typeに属する実装の内部処理はOpaqueでよいが、そのNodeがTEI境界へ要求するCapability、入出力、公開Effect Scope、失敗/Unknownの扱いを隠してはいけない。実装が許可済み外部Resourceの内側で起こす細かな操作までは、Provider固有のConformance/監査でしか分からない場合がある。
+- **差分/再検証**: 第14節の`unaffected-with-evidence`は、当該Consumerについて必要なSource/Build/Runtime依存範囲の閉包が確認できている場合だけ主張する。Dynamic/Unknown依存は「図にないので関係ない」と処理しない。
+
+### 15.3 導出と強制を区別した最小の保証式（説明用）
+
+```text
+PlanClosed(G, Phase, Target, Scope)
+  = 解決できる範囲で未接続の工程/依存が残っていない
+
+EffectConfined(G, Boundary)
+  = 当該Boundaryで実行可能な外部Effectが
+    Graphの宣言・許可した集合から逸脱できないことを
+    Runtime側の制約で保証できる
+
+GraphTraceConformant(G, Evidence)
+  = 観測した実行TraceがGraphの依存/効果宣言に反しない
+```
+
+上記は**新しいKernel API/Enumではない**。PlanClosedだけではEffectConfinedは言えず、GraphTraceConformantだけでは未観測パスに隠れたEffectが存在しないとは言えない。`EffectConfined`も、許可済みEffectが意味上正しく使われる保証ではない。例えば`network:all`を付与したOpaque Processについて「特定のサーバ以外へ送信していない」とは主張しない。
+
+要求する完全性レベルに必要なBoundaryが使えない場合、保守的に権限を減らす、実装を限定する、観測を強める、あるいは**保証未確認として実行・採用を保留**する。低保証の試験プログラムなら実行を許しても、証拠を強い保証と表示してはならない。
+
+### 15.4 反証可能な正負ケース（すべてNOT RUN）
+
+| Case | 条件 | 期待される判定 |
+| --- | --- | --- |
+| GC-01 | 明示Node A→Generator B→生成Source C→Builder D→Artifact E | Producer/Output/Edgeの閉包を逆追跡できる |
+| GC-02 | 別TargetのBuildで後段の生成Stepが隠れたHookで発火 | 宣言外の工程を完全Planとして受理しない |
+| GC-03 | 動的fan-outの解決結果が一部だけ届く | 未解決をAbsentとしない。結果の完全性を主張しない |
+| GC-04 | Opaque Native Pluginが宣言外のNetwork接続を試みる | 強制できるTargetなら拒否。できなければ非存在保証を出さない |
+| GC-05 | build-only SDKが変わり、Runtime Contractは不変 | Build/Artifactへの影響に限定。受理済み意味を暗黙改訂しない |
+| GC-06 | Opaque Nodeが正しいOutputを返しつつ未宣言Fileへ書く | 出力値一致だけでEffect ConformanceをPASSにしない |
+| GC-07 | Scope A/Bの二Instanceで一方だけConfigが変わる | 共有Dependencyを確認し、独立なら必要な部分だけ再検証 |
+| GC-08 | 実行Graphは固定されたが現在Grantが失効 | Graph/Artifact Fingerprintを認可として扱わず必要時拒否 |
+| GC-09 | Stage0 SeedをGraphから省き、初期Builderが自己生成されたように表示 | 真のBuild provenanceとして不適格 |
+| GC-10 | 観測Traceでは違反なしだが未計測Effect経路が残る | `observed-conformant`と`no undeclared effects`を混同しない |
+
+**実証の優先度**：#1103のBuild Graph Referenceに対してGC-01/02/03/09で工程の閉包を、既存#1121 Lowering ReferenceでGC-05/07/08を、実外部実装の許可境界ではGC-04/06/10を別々に検証する。最初から全Domainの普遍的「完全性証明」を設計しない。
+
+**撤回/縮小条件**：#1103/#1121の既存Graph/Lowering/Runtime Authorityと、Target個別のOS/Adapter制約で必要な範囲を検査できる場合、本節を独立したGraph Runtime/専用Manifest/第二Lockの新設理由にしない。新しい抽象化を採用するなら、二つの独立Consumer・異なるTargetでの隠れ依存/Effect検出の改善を実測してからにする。
