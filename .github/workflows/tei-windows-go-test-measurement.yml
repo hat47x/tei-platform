@@ -1,0 +1,151 @@
+name: TEI Windows go test 実測（手動・自身の変更時のみ）
+
+# Issue #2319。Windows固有の分岐を持つ4パッケージのgo testを、実際のWindows上で
+# 実行し、通過・失敗・Skipの件数とSkipの理由を記録する。
+# 全PRの必須検査にはしない（AGENTS.mdの方針、#1189）。起動は手動(workflow_dispatch)と、
+# このworkflow自身を変更するPRに限る。試験の失敗はジョブの失敗にせず、要約へ記録する。
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - .github/workflows/tei-windows-go-test-measurement.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tei-windows-go-test-measurement-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  windows-go-test:
+    runs-on: windows-2025
+    timeout-minutes: 40
+    env:
+      GOENV: off
+      GOWORK: off
+      GOFLAGS: ''
+      GOTOOLCHAIN: local
+    steps:
+      - name: 対象のGit版を取得
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: 固定Go版をWindowsで用意
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: go.mod
+          check-latest: false
+          cache: false
+
+      - name: 対象パッケージのgo testを実行して集計
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $head = (git rev-parse HEAD).Trim()
+          if ($LASTEXITCODE -ne 0 -or $head -ne $env:GITHUB_SHA) {
+            throw "Wrong Windows checkout: $head"
+          }
+          if ((go env GOOS).Trim() -ne 'windows') {
+            throw 'Not running native Windows Go'
+          }
+          $packages = @('./internal/plugin/runtime', './internal/desktophost', './internal/operations', './cmd/tei')
+          $jsonPath = Join-Path $env:RUNNER_TEMP 'windows-go-test.jsonl'
+          # 失敗しても集計まで進める。終了コードは要約に記録する。
+          $ErrorActionPreference = 'Continue'
+          go test -json -count=1 -timeout 30m @packages 2>&1 | Out-File -FilePath $jsonPath -Encoding utf8
+          $exit = $LASTEXITCODE
+          $ErrorActionPreference = 'Stop'
+
+          $events = @()
+          $nonJson = @()
+          foreach ($line in Get-Content -Path $jsonPath) {
+            if ($line.TrimStart().StartsWith('{')) {
+              try { $events += ($line | ConvertFrom-Json) } catch { $nonJson += $line }
+            } elseif ($line.Trim() -ne '') {
+              $nonJson += $line
+            }
+          }
+
+          $tests = $events | Where-Object { $_.Test -and $_.Action -in @('pass', 'fail', 'skip') }
+          $outputs = @{}
+          foreach ($e in ($events | Where-Object { $_.Action -eq 'output' -and $_.Test })) {
+            $key = "$($e.Package)|$($e.Test)"
+            if (-not $outputs.ContainsKey($key)) { $outputs[$key] = New-Object System.Collections.Generic.List[string] }
+            $outputs[$key].Add($e.Output.TrimEnd())
+          }
+
+          $summary = New-Object System.Collections.Generic.List[string]
+          $summary.Add('## Windows go test 実測 (Issue #2319)')
+          $summary.Add('')
+          $summary.Add("コミット: $head / go test終了コード: $exit")
+          $summary.Add('')
+          $summary.Add('| パッケージ | 通過 | 失敗 | Skip |')
+          $summary.Add('| --- | ---: | ---: | ---: |')
+          foreach ($p in ($tests | Group-Object Package | Sort-Object Name)) {
+            $pass = @($p.Group | Where-Object Action -eq 'pass').Count
+            $fail = @($p.Group | Where-Object Action -eq 'fail').Count
+            $skip = @($p.Group | Where-Object Action -eq 'skip').Count
+            $summary.Add("| $($p.Name) | $pass | $fail | $skip |")
+          }
+          $pkgFail = @($events | Where-Object { -not $_.Test -and $_.Action -eq 'fail' })
+          if ($pkgFail.Count -gt 0) {
+            $summary.Add('')
+            $summary.Add('パッケージ単位で失敗: ' + (($pkgFail | ForEach-Object { $_.Package }) -join ', '))
+          }
+
+          $summary.Add('')
+          $summary.Add('### 失敗した試験')
+          $failed = @($tests | Where-Object Action -eq 'fail')
+          if ($failed.Count -eq 0) { $summary.Add('なし') }
+          foreach ($t in $failed) { $summary.Add("- $($t.Package) $($t.Test)") }
+
+          $summary.Add('')
+          $summary.Add('### Skipした試験とSkip理由')
+          $skipped = @($tests | Where-Object Action -eq 'skip')
+          if ($skipped.Count -eq 0) { $summary.Add('なし') }
+          $reasonCount = @{}
+          foreach ($t in $skipped) {
+            $key = "$($t.Package)|$($t.Test)"
+            $reason = ''
+            if ($outputs.ContainsKey($key)) {
+              $hit = $outputs[$key] | Where-Object { $_ -match '\.go:\d+:' } | Select-Object -Last 1
+              if ($hit) { $reason = ($hit -replace '^\s*', '') }
+            }
+            if ($reason -eq '') { $reason = '(理由の出力なし)' }
+            $summary.Add("- $($t.Package) $($t.Test): $reason")
+            $r = $reason -replace '^[^:]+\.go:\d+:\s*', ''
+            if ($reasonCount.ContainsKey($r)) { $reasonCount[$r]++ } else { $reasonCount[$r] = 1 }
+          }
+          if ($reasonCount.Count -gt 0) {
+            $summary.Add('')
+            $summary.Add('### Skip理由別の件数')
+            foreach ($kv in ($reasonCount.GetEnumerator() | Sort-Object Value -Descending)) {
+              $summary.Add("- $($kv.Value)件: $($kv.Key)")
+            }
+          }
+          if ($nonJson.Count -gt 0) {
+            $summary.Add('')
+            $summary.Add('### JSON以外の出力(ビルド失敗等)')
+            $summary.Add('```')
+            foreach ($l in ($nonJson | Select-Object -First 40)) { $summary.Add($l) }
+            $summary.Add('```')
+          }
+          $summary | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append
+          $summary | ForEach-Object { Write-Host $_ }
+
+          if ($tests.Count -eq 0) {
+            throw 'go test の結果が1件も得られなかった（実行基盤の問題の可能性）'
+          }
+
+      - name: 検証が作業ツリーを汚していないことを確認
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $dirty = @(git status --porcelain=v1 --untracked-files=all)
+          if ($LASTEXITCODE -ne 0 -or $dirty.Count -ne 0) {
+            throw "Verification left an unclean checkout: $dirty"
+          }
