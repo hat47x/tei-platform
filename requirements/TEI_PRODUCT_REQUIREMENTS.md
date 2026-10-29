@@ -280,6 +280,8 @@ ownership、fencing、durable handle、observation等を用いて、誰が現在
 
 Driver Scenarioを唯一のテストケース定義とする範囲では、再生成したCLIコマンド／各Target E2EがScenarioの操作・分岐・期待値・必要な観測を漏らさず保持しているかを、機械的なcoverage matrixと生成物の一致検査で示します。同じScenario revision／Generator version／Target Bindingから生成した成果物は再現可能であり、手修正された生成物や旧revisionの生成物はstaleとして検出できる必要があります。CLIでScenarioが実行可能と確認できることと、各Targetでの実E2E／認証／視覚・操作品質が確認できることは別のEvidenceです。
 
+構成・Build・実行の処理経路について完全性を主張する場合は、対象となるPhase、Target、実装・外部資源の信頼境界、宣言で捕捉できる依存や副作用の範囲を明示しなければなりません。Authoring上の宣言、解決・Loweringされた実行計画、実際に観測された処理・効果を区別し、未宣言の工程・依存・副作用が実行可能な場合は、その不在をGraphの表示だけから保証してはいけません。必要な工程・外部能力を制御できる境界では未宣言の操作を拒否し、それが検証できないProviderでは完全性を未確認として扱える必要があります。最小Batchに全用途共通のExecution Engineや業務Principalを強制してはいけません。
+
 AIが作成したProposalやgenerated artifactを採用した場合も、AIを介さずauthoritative sourceを再読込し、同じCanonical meaningとConformance結果を再現できる必要があります。
 
 interactive Targetでは、少なくともSemantic Conformance、利用者ScenarioのInteraction / Functional Evidence、Target固有のVisual Fidelity Evidenceを区別します。GUI agent、VLM、image similarity等のvisual evaluatorを利用しても、その結果だけでSemantic / Functional Conformanceを合格にしてはいけません。
@@ -423,7 +425,7 @@ TEIは、Data Model、Function / Interaction、Business Procedure、UI、workflo
 
 標準機能として提供する意味体系にも、原則として第三者Extensionと同じidentity、dependency、conflict、discovery、Conformanceの契約を適用します。実装をbuiltinにすることは許容しますが、標準機能だけが利用できる別の意味追加経路を前提にしません。
 
-標準namespaceのauthorityも同じ原則に従って明示します。`std.*`等の予約namespaceは、最初に宣言したExtensionやload順によって所有権を得る仕組みにしてはいけません。標準機能が複数packageへ分かれる場合も、namespace ownerからの明示的な委譲や同等の契約で追跡できる必要があります。
+標準namespaceのauthorityも同じ原則に従って明示します。TEI管理の`tei.*`、その下の`tei.std.*`・`tei.experimental.*`・`tei.contrib.*`等の予約namespaceは、最初に宣言したExtensionやload順によって所有権を得る仕組みにしてはいけません。標準機能が複数packageへ分かれる場合も、namespace ownerからの明示的な委譲や同等の契約で追跡できる必要があります。正式なID構文、委任単位、既存`std.*`参照の移行方式は別途採用判断を要します。
 
 ## RQ-032 Plugin / DSLで意味論を宣言・合成できること
 
