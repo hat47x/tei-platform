@@ -80,7 +80,10 @@ func renderResolvedMigrationSQL(diff schemadiff.Diff, checked map[string]Constra
 			droppedColumns[change.Table][change.BeforeColumn.Name] = true
 		}
 	}
-	var existingPrimaryKeyStatements, uniqueStatements, foreignKeyStatements []string
+	var existingPrimaryKeyStatements, uniqueStatements, foreignKeyStatements, renameStatements []string
+	if err := refuseRenameTargetConflicts(diff); err != nil {
+		return nil, err
+	}
 	for _, change := range diff.Changes {
 		switch change.Kind {
 		case schemadiff.CreateTable:
@@ -128,6 +131,20 @@ func renderResolvedMigrationSQL(diff schemadiff.Diff, checked map[string]Constra
 			} else {
 				out = append(out, fmt.Sprintf("ALTER TABLE %s ALTER COLUMN %s SET NOT NULL;", quoteQualifiedName(change.Table), quoteIdentifier(change.Column.Name)))
 			}
+		case schemadiff.RenameConstraint:
+			// Only a constraint of an existing table, renamed from the name
+			// observed in the catalog, and only after the observation says the
+			// name still exists and the new one is free (#1803). The primary
+			// key is unnamed in the model and is never renamed.
+			check, err := existingAdditionChecked(change)
+			if err != nil {
+				return nil, err
+			}
+			if strings.TrimSpace(check.BeforeName) == "" || strings.TrimSpace(check.NewName) == "" {
+				return nil, fmt.Errorf("rename-constraint %s has no observed or declared name", change.Table)
+			}
+			renameStatements = append(renameStatements, fmt.Sprintf("ALTER TABLE %s RENAME CONSTRAINT %s TO %s;",
+				quoteQualifiedName(change.Table), quoteIdentifier(check.BeforeName), quoteIdentifier(check.NewName)))
 		case schemadiff.AddUniqueConstraint:
 			if _, err := existingAdditionChecked(change); err != nil {
 				return nil, err
@@ -224,6 +241,7 @@ func renderResolvedMigrationSQL(diff schemadiff.Diff, checked map[string]Constra
 		out = append(out, fmt.Sprintf("ALTER TABLE %s ADD PRIMARY KEY (%s);", quoteQualifiedName(created.Table), joinQuotedIdentifiers(created.PrimaryKey)))
 	}
 	out = append(out, existingPrimaryKeyStatements...)
+	out = append(out, renameStatements...)
 	out = append(out, uniqueStatements...)
 	out = append(out, foreignKeyStatements...)
 	return out, nil
@@ -446,4 +464,46 @@ func qualifiedIndexName(table, index string) (string, error) {
 	default:
 		return "", fmt.Errorf("table name %q cannot determine PostgreSQL index schema", table)
 	}
+}
+
+// refuseRenameTargetConflicts refuses a diff in which a rename's new name is
+// also the target of another rename or of an addition in the same diff. The
+// catalog observation cannot see names that only this diff introduces. A
+// rename onto a name that another rename of the same diff vacates is refused
+// too: the observation finds the name taken.
+func refuseRenameTargetConflicts(diff schemadiff.Diff) error {
+	// Unique constraints share the schema's relation namespace; a foreign key
+	// only meets the constraints of its own table.
+	owner := map[string]string{}
+	claim := func(change schemadiff.Change, kind, name string) error {
+		schema := ""
+		if i := strings.LastIndex(change.Table, "."); i >= 0 {
+			schema = change.Table[:i]
+		}
+		key := schema + "\x00" + name
+		if kind == "fk" {
+			key = "fk\x00" + change.Table + "\x00" + name
+		}
+		if prior, ok := owner[key]; ok {
+			return fmt.Errorf("constraint name %q is claimed twice in one diff (%s on %s and %s)", name, prior, change.Table, change.Kind)
+		}
+		owner[key] = string(change.Kind) + " on " + change.Table
+		return nil
+	}
+	for _, change := range diff.Changes {
+		switch change.Kind {
+		case schemadiff.RenameConstraint, schemadiff.AddUniqueConstraint, schemadiff.AddForeignKey:
+			switch {
+			case change.UniqueConstraint != nil:
+				if err := claim(change, "unique", strings.TrimSpace(change.UniqueConstraint.Name)); err != nil {
+					return err
+				}
+			case change.ForeignKey != nil:
+				if err := claim(change, "fk", strings.TrimSpace(change.ForeignKey.Name)); err != nil {
+					return err
+				}
+			}
+		}
+	}
+	return nil
 }

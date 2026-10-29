@@ -15,11 +15,20 @@ import (
 
 // cliValidationReport is a projection for automation, not a second semantic
 // validation model or a grant of authority to modify accepted source.
+//
+// worldFingerprint and sourceIndexFingerprint are present only when the
+// Workspace was loaded and indexed (ok=true or semantic findings). They are
+// omitted for syntax findings and execution failures, where no version exists.
+// They equal the values from inspect and model catalog for the same files, and
+// are evidence of the read version, not of correctness. Fields were added to
+// tei.cli.validate/v0; existing readers that ignore unknown fields are unaffected.
 type cliValidationReport struct {
-	SchemaVersion string                `json:"schemaVersion"`
-	OK            bool                  `json:"ok"`
-	Diagnostics   []cliValidationItem   `json:"diagnostics"`
-	Error         *cliValidationFailure `json:"error,omitempty"`
+	SchemaVersion          string                `json:"schemaVersion"`
+	OK                     bool                  `json:"ok"`
+	Diagnostics            []cliValidationItem   `json:"diagnostics"`
+	WorldFingerprint       string                `json:"worldFingerprint,omitempty"`
+	SourceIndexFingerprint string                `json:"sourceIndexFingerprint,omitempty"`
+	Error                  *cliValidationFailure `json:"error,omitempty"`
 }
 
 // Source locations never synthesize an empty Semantic Subject for parse errors.
@@ -99,6 +108,8 @@ func validateWorkspaceJSON(out io.Writer, root string) (int, error) {
 		})
 		return writeValidationReport(out, report, 1)
 	}
+	report.WorldFingerprint = result.WorldFingerprint
+	report.SourceIndexFingerprint = result.SourceIndexFingerprint
 	for _, projected := range result.Diagnostics {
 		item := cliValidationItem{Diagnostic: projected.Diagnostic}
 		for _, ref := range projected.Sources {

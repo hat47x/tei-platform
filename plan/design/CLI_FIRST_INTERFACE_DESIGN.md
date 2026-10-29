@@ -56,7 +56,7 @@ go run ./cmd/tei commands
 go run ./cmd/tei validate -workspace reference/workspace -json
 ```
 
-`schemaVersion=tei.cli.validate/v0`、`ok`、`diagnostics`、必要な場合の`error`を持つ。Validationの`subject`が成立している場合はそのまま使い、Source Indexから位置を戻す。構文解析時点のエラーは意味上のSubjectがまだないため、出所の位置だけを付ける。
+`schemaVersion=tei.cli.validate/v0`、`ok`、`diagnostics`、必要な場合の`error`を持つ。Workspaceを読込み・索引化できた場合は、`inspect`と同じ計算の`worldFingerprint`・`sourceIndexFingerprint`も持つ（構文エラーと読込み失敗では省く。schemaVersionは`v0`のまま項目を追加した。[#2317](https://github.com/hat47x/tei-platform/issues/2317)）。Validationの`subject`が成立している場合はそのまま使い、Source Indexから位置を戻す。構文解析時点のエラーは意味上のSubjectがまだないため、出所の位置だけを付ける。
 
 `validate -workspace`の従来のテキスト出力は互換性のため維持する。初版の`-json`はこの経路だけに対応する。既存`world`等のJSON結果を共通の`result`形式へ一斉に包み直さない。
 

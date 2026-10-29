@@ -588,6 +588,6 @@ AIが空欄をもっともらしく埋めても、それだけでは品質が向
 - `requirements/BUSINESS_SYSTEM_DESIGN_REQUIREMENTS.md`
 - `docs/architecture.md`
 - `plan/UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md`
-- `plan/APPLICATION_PATTERN_V1_DESIGN.md`
+- `plan/design/APPLICATION_PATTERN_V1_DESIGN.md`
 
 業務システム設計の検討だけを理由に判定段階を増やしたり、開発者向け編集環境のホストをアプリケーションの実行先の検証根拠とみなしたりはしません。業務手順や業務の流れなどの実験は、検証根拠から正式な要求や構成の変更が必要と分かるまでは、計画・参照事例の側で進めます。

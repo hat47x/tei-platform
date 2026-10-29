@@ -180,6 +180,14 @@ func main() {
 			os.Exit(code)
 		}
 	}
+	if command != "inspect" && command != "trace" && !(command == "validate" && jsonValidationRequested) {
+		// #2332: text/JSON commands advertised by `tei commands` reject flags
+		// they do not read, instead of silently ignoring them.
+		if err := validateSelectedReadOnlyFlags(fs, command); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(2)
+		}
+	}
 	if command == "validate" && jsonValidationRequested {
 		if parseErr == nil {
 			parseErr = validateJSONValidationFlags(fs)

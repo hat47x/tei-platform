@@ -1,0 +1,7 @@
+workspace: board_consumer
+sources:
+  - semantic
+imports:
+  - alias: sui
+    path: ../provider
+    namespace: sui

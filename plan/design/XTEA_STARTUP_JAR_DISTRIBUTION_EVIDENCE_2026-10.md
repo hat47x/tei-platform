@@ -12,11 +12,12 @@
 | M49 source `jar/MANIFEST.MF` | Git blob `3c4183c3b0cead82069cf4b00ac631685f99d1bf`, 1–8行 | `Main-Class: xeadModeler.Application` と相対 `Class-Path`。製品version/build/source digestなし |
 | M49 `Application.java` | Git blob `093171faf36b2c5842aa22f94a234b713c635b67`, 49–69 / 88–96行 | `main` → `new Application(args)` → `new Modeler(args,this)` |
 | M49 `DialogAbout.java` | Git blob `23efd3f221eb8f160132a45f2c44785b71d363b7`, 50行 | `FULL_VERSION = V1.R4.M49` |
-| 設定探索の変更履歴 | [commit `73a09364d99c6ef9f1ace8db18e4861caed6445e`](https://github.com/xead/XeadModeler/commit/73a09364d99c6ef9f1ace8db18e4861caed6445e), `Modeler.java` `jbInitComponentsAndVariants()` 差分 | `xteamdl.properties` を作業ディレクトリ優先、次に `java.class.path` 由来ディレクトリ |
-| M49最終 `Modeler.java` | [固定commitの公開Source](https://github.com/xead/XeadModeler/blob/68f1535b1c5dd80a327dfced37be401ecd3093c9/src/xeadModeler/Modeler.java)、Git blob `c104e379862cf280a5944ed97c35cfe568c5f348`、SHA-256 `7cbbefe8115b20e2ba13fcfdb21ef9c5ae596debf673b6afaf21ab6b20a3edef` | 保存archiveのsnapshotと公開commitのblob一致を直接確認。181行で`properties` fieldを初期化し、1614行で初期化メソッドを呼び、1653–1695行で設定を読む。作業ディレクトリを先に探し、無ければJAR配置先へfallbackする。既存Modeler instance用の明示reloadは同固定Sourceに見つからない。M50 JAR動作とGUI反映は未確認（[Issue #940記録](https://github.com/hat47x/tei-platform/issues/940#issuecomment-6467903431)） |
-| 保存M50 Installer ZIP | `packages/XTeaModelerInstaller1_4_50.zip`, SHA-256 `d5875dac35c0fdfc19c761a78957707d218ef1baa75b854e002b70ad419196e8` | [保存物調査の記録](https://github.com/hat47x/tei-platform/issues/1223#issuecomment-6262536696)。本調査でバイナリ再取得・hash再計算は行っていない |
+| 設定探索の変更履歴 | [commit `73a09364d99c6ef9f1ace8db18e4861caed6445e`](https://github.com/xead/XeadModeler/commit/73a09364d99c6ef9f1ace8db18e4861caed6445e), `Modeler.java` `jbInitComponentsAndVariants()` 差分 | `xteamdl.properties` を作業ディレクトリ優先、次に `java.class.path`文字列から算出したパス |
+| M49最終 `Modeler.java` | [固定commitの公開Source](https://github.com/xead/XeadModeler/blob/68f1535b1c5dd80a327dfced37be401ecd3093c9/src/xeadModeler/Modeler.java)、Git blob `c104e379862cf280a5944ed97c35cfe568c5f348`、SHA-256 `7cbbefe8115b20e2ba13fcfdb21ef9c5ae596debf673b6afaf21ab6b20a3edef` | 保存archiveのsnapshotと公開commitのblob一致を直接確認。181行で`properties` fieldを初期化し、1614行で初期化メソッドを呼び、1653–1705行で設定読込を試行・適用する。作業ディレクトリ直下を先に探し、無ければ`java.class.path`文字列から最後の`File.separator`までを切り出して組み立てたパスを探索する。これが実際のJAR配置先と一致するかは起動方式に依存する。既存Modeler instance用の明示reloadは同固定Sourceに見つからない。M50 JAR動作とGUI反映は未確認（[Issue #940記録](https://github.com/hat47x/tei-platform/issues/940#issuecomment-6467903431)） |
+| 保存M50 Installer ZIP | `packages/XTeaModelerInstaller1_4_50.zip`, SHA-256 `d5875dac35c0fdfc19c761a78957707d218ef1baa75b854e002b70ad419196e8` | [保存物調査の記録](https://github.com/hat47x/tei-platform/issues/1223#issuecomment-6262536696)。2026-10-29に保存ZIPのraw SHA-256を再計算して既存値と一致確認。外部からの再取得は行っていない |
 | ZIP内Modeler JAR | `Files/xteamdl.jar`, SHA-256 `0305791a8f5a61291d436f7f04dc8ff1180fa79841bda88b01524d636fb9f04f` | [以前のbytecode静的解析記録](https://github.com/hat47x/tei-platform/issues/940#issuecomment-6266988686)。M50の版表示は[既存#943静的照合](https://github.com/hat47x/tei-platform/issues/943#issuecomment-6234874050)由来 |
 | M50 installer設定 | `INSTALL.DAT`, SHA-256 `d21eb61234d23ebf3a46049240853df3a13624087cb4b88c257848f9e7e95e92` | [既存#1223静的照合](https://github.com/hat47x/tei-platform/issues/1223#issuecomment-6262536696)。`%ProgramFilesDir%\\XTEA\\Modeler`、`.xead`関連付け、`xteamdl.bat`、shortcut宣言 |
+| M50 installer内launcher | `Files/xteamdl.bat`, ZIP entry SHA-256 `8882d1e7d60aa3a0fc33f21e8b0e4573a3d7bdbe4989cb2b43386371e62f2080` | ZIP SHA-256 `d5875dac35c0fdfc19c761a78957707d218ef1baa75b854e002b70ad419196e8` のentryを静的確認。scriptは固定basename `xteamdl.jar` を指定する。原script本文は転載しない。OS上の関連付け結果・BAT実行・installed fileの同一性は未確認 |
 | M50 README | SHA-256 `7c4c0fa90b6996145c0f652f0ca590f597c1981951f37f0022c5d2832f8c6829` | [既存#1223静的照合](https://github.com/hat47x/tei-platform/issues/1223#issuecomment-6262536696)。Java 1.7–1.8別途導入/確認、uninstall時のユーザー作成file保持の記述 |
 
 ## 1a. Manifest版フィールドとarchive checksumの確認（2026-10-26追補）
@@ -42,16 +43,20 @@
 ## 2. 起動時の層を混同しない
 
 ```text
-OS shortcut / file association / xteamdl.bat (installer declaration; execution NOT VERIFIED)
-  -> startup JAR (exact bytes / external launcher selection NOT VERIFIED)
-  -> MANIFEST Main-Class: xeadModeler.Application (M49 source confirmed)
+M50 installer declaration:
+  INSTALL.DAT .xead association / shortcut -> xteamdl.bat
+    -> xteamdl.jar (fixed basename declared by package BAT)
+    (OS registration, BAT execution, installed file identity NOT VERIFIED)
+
+M49 source-only launch path:
+  MANIFEST Main-Class: xeadModeler.Application (M49 source confirmed)
   -> Application.main -> Modeler(args, this) (M49 source confirmed)
-  -> xteamdl.properties: working directory, then java.class.path-derived path
+  -> xteamdl.properties: working directory, then a path derived from the java.class.path string
      (M49 final source blob c104e379862cf280a5944ed97c35cfe568c5f348 confirmed;
       M50 binary path and runtime reload behavior NOT VERIFIED)
 ```
 
-Manifest `Class-Path` は依存JAR名の列挙であり、アプリケーション製品版やどの起動JARを選ぶかを意味しない。Eclipse `.classpath` の開発機パスも配布Runtime classpathの証拠ではない。`java.class.path` からJAR所在を推測するロジックは、複数pathや起動方式の差で仮定が崩れ得る。起動JAR版選択が「設定値」「固定名」「ディレクトリ走査」のどれかはランチャー/`xteamdl.bat`実体を実証するまで未確定とする。
+Manifest `Class-Path` は依存JAR名の列挙であり、アプリケーション製品版やどの起動JARを選ぶかを意味しない。Eclipse `.classpath` の開発機パスも配布Runtime classpathの証拠ではない。M49 Sourceが`java.class.path`から組み立てる探索パスも、実際のJAR配置先を保証しない。複数pathや起動方式によってパスの意味が変わり得る。M50 installer ZIP内のBATは`xteamdl.jar`という固定basenameを指定するが、OSがこのBATを起動すること、インストール後のBAT/JARがZIP entryと同じであること、実行時にそのJARが選ばれることは未確認とする。
 
 ## 3. backup / staging / rollback の非主張
 
