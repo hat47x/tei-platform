@@ -29,8 +29,8 @@ go run ./cmd/tei commands
 モデルや定義の整合性を調べる場合、生成AIなどの呼出し元は次のようにJSON形式の診断結果を取得できます。
 
 ```bash
-go run ./cmd/tei validate \\
-  -workspace reference/workspace \\
+go run ./cmd/tei validate \
+  -workspace reference/workspace \
   -json > /tmp/tei-validation.json
 ```
 
