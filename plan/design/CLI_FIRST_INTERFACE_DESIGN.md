@@ -56,7 +56,7 @@ go run ./cmd/tei commands
 go run ./cmd/tei validate -workspace reference/workspace -json
 ```
 
-`schemaVersion=tei.cli.validate/v0`、`ok`、`diagnostics`、必要な場合の`error`を持つ。Validationの`subject`が成立している場合はそのまま使い、Source Indexから位置を戻す。構文解析時点のエラーは意味上のSubjectがまだないため、出所の位置だけを付ける。
+`schemaVersion=tei.cli.validate/v0`、`ok`、`diagnostics`、必要な場合の`error`を持つ。Workspaceを読込み・索引化できた場合は、`inspect`と同じ計算の`worldFingerprint`・`sourceIndexFingerprint`も持つ（構文エラーと読込み失敗では省く。schemaVersionは`v0`のまま項目を追加した。[#2317](https://github.com/hat47x/tei-platform/issues/2317)）。Validationの`subject`が成立している場合はそのまま使い、Source Indexから位置を戻す。構文解析時点のエラーは意味上のSubjectがまだないため、出所の位置だけを付ける。
 
 `validate -workspace`の従来のテキスト出力は互換性のため維持する。初版の`-json`はこの経路だけに対応する。既存`world`等のJSON結果を共通の`result`形式へ一斉に包み直さない。
 
@@ -184,3 +184,58 @@ Issue #1165に対し、既存 `index.Build` → `modelref/derivedbridge.FromInde
 - 認可を伴う操作、無認証HTTP・偽の主体・古いrevisionの拒否（#1158の完了条件2）。認可付き操作とHTTP/IPCのアダプタは未実装であり、本節では扱わない。
 - 実際のWebやデスクトップでの認証・実行。合成アダプタや同一プロセスの呼出しの結果を、その代用にしない。
 - HTTP方式、デスクトップのIPC方式、Wailsの採否（完了条件5）。
+
+## 10. JSON出力の契約一覧とv0内の互換規則（#2354、2026-10-29）
+
+`tei commands`が広告する12件の読取りコマンドについて、2026-10-29時点のorigin/main（`eafdfcab7`）のコードを読んで確認した結果と、版固定の候補を整理する。範囲は`cmd/tei/main.go`と各コマンドの出力型で、実行による確認は含まない。下の「採否」は提案であり、採用にはOwnerの判断が要る。
+
+### 10.1 現状の一覧
+
+| コマンド | 出力のschemaVersion | 失敗時の機械可読形式 | 出力の実体 |
+| --- | --- | --- | --- |
+| `model catalog` | あり（`tei.cli.model/v0`） | JSONの`error.code`、終了コード2 | CLI用の応答型 |
+| `inspect` | あり（`tei.cli.inspect/v0`） | JSONの`error.code`、終了コード1または2 | CLI用の応答型 |
+| `trace` | あり（`tei.cli.trace/v0`） | JSONの`error.code`、終了コード1または2 | CLI用の応答型 |
+| `validate -workspace -json` | あり（`tei.cli.validate/v0`） | JSONの`error.code`、終了コード1または2 | CLI用の応答型 |
+| `commands` | あり（`tei.cli.discovery/v0`） | 引数があれば標準エラーの自由文、終了コード2 | CLI用の応答型 |
+| `validate`（テキスト） | なし（tab区切り行または`ok`） | 標準エラーの自由文、終了コード1または2 | 該当なし |
+| `workspace-files` | なし | 標準エラーの自由文、終了コード2 | `workspace.ManagedFile`の配列を直接出力 |
+| `source-index` | なし | 標準エラーの自由文、終了コード2 | 主体指定なしは`sourceindex.Index`（`artifacts`・`references`）、主体指定ありは`operations.SubjectSources`を直接出力 |
+| `knowledge-context` | なし | 標準エラーの自由文、不一致は終了コード1、そのほかは2 | `knowledgecontext.Context`または選択開示の構造体を直接出力 |
+| `world` | なし | 標準エラーの自由文、終了コード2 | `ir.World`を直接出力 |
+| `requirements` | なし | 同上 | `dependency.Derive`の結果を直接出力 |
+| `plugin-lock` | なし | 同上 | `plugin.Lock`を直接出力 |
+| `plugin-resolve` | なし | 同上 | `plugin.ResolvedSet`を直接出力 |
+| `plugin-runtime-plan` | なし | 同上（計画の構築失敗は終了コード1） | `pluginruntime`の計画を直接出力 |
+
+読取りコマンドの出力型のうち、`source-index`の型は上のとおり確定した（Issue起票時は未確認だった）。いずれもschemaVersionの欄を持たない。
+
+### 10.2 v0の中での互換な変更と、versionを上げる変更（提案）
+
+`tei.cli.*/v0`の読み手には、未知の欄を無視することを求める。この前提で次のように分ける。
+
+- v0のまま行える変更: 出力へ欄を追加する。`error.code`に新しい値を追加する。既存の欄の意味・型・単位を変えない。配列の既存要素の並び順を変えない。
+- versionを上げる変更: 既存の欄の削除・改名・型変更・意味の変更。`ok`と終了コードの対応の変更。既存の`error.code`の意味の変更。必須の入力flagの追加。
+
+読み手は`error.code`を、列挙された既知の値以外が来ても失敗として扱う。`schemaVersion`が自分の知るもの以外なら、結果を解釈せず失敗として扱う。
+
+### 10.3 版固定が必要なコマンドと追加案（提案）
+
+外部の利用者（TAIの`reference-tei-model`など）が機械的に読む可能性が高いのは、`workspace-files`、`source-index`、`knowledge-context`である。`world`・`requirements`・`plugin-lock`・`plugin-resolve`・`plugin-runtime-plan`は内部構造体の直接出力であり、外部契約か内部デバッグ用かの宣言が先に必要になる（Owner判断）。
+
+内部構造体の直接出力に版を足す方法は次の2案がある。
+
+1. 現在の出力を`result`へ入れる包みを足す: `{"schemaVersion": "...", "ok": true, "result": <現在の出力>}`。既存の応答型（`inspect`など）と形がそろう。一方、出力の最上位の形が変わるため、現在の出力を読んでいる呼出しは壊れる。v0の互換規則では扱えず、新しいversionまたは新しいflagが要る。
+2. 現在の最上位に`schemaVersion`欄だけを足す: 配列を直接出力している`workspace-files`には使えない。オブジェクトを出力するコマンドは、v0の互換変更として足せる。ただし内部構造体の欄の増減が、そのまま外部の出力の変更になる状態は残る。
+
+投影型を挟む案は、内部構造体の変更を外部の出力から切り離せる。代わりに、型・変換・試験の保守が増える。選択はOwner判断とし、本節では決めない。
+
+### 10.4 失敗時の形式（提案、未決）
+
+選択肢は、(a)`validate -json`と同じ`error.code`付きJSONを対象コマンドへ広げる、(b)現状（標準エラーの自由文と終了コード）を契約として明記する、の2つである。(b)を選ぶ場合、呼出し側は標準出力が空であることと成功した空の結果を、終了コードで区別する。終了コードの意味は§3.2の記載（0成功、1 findingまたは不一致、2入力・読込み・出力の失敗）を使う。(a)の対象範囲と、`v0`の維持か`v1`への移行かが未決である。
+
+### 10.5 この節が確認していないこと
+
+- 各コマンドを実際に実行した出力の確認。型の読取りだけである。
+- 本節の互換規則を、既存の読み手（TAIを含む）が満たしているかの確認。
+- Issue #2318（tei自身のbuild識別）の出力形式。本文が別の内容になっており、人間の確認待ちである。

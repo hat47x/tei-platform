@@ -1,0 +1,93 @@
+name: TEI Windows go test 範囲確認
+
+# Issue #2319。Windows固有の分岐を持つパッケージで、go testの通過・失敗・Skipの件数を記録する。
+# 全PRへの必須検査にはしない（AGENTS.md、#1189）。手動起動と、このファイル自身の変更時だけ動く。
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - .github/workflows/tei-windows-go-test-survey.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tei-windows-go-test-survey-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  windows-go-test:
+    runs-on: windows-2025
+    timeout-minutes: 40
+    env:
+      GOENV: off
+      GOWORK: off
+      GOFLAGS: ''
+      GOTOOLCHAIN: local
+    steps:
+      - name: 対象のGit版を取得
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: 固定Go版をWindowsで用意
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: go.mod
+          check-latest: false
+          cache: false
+
+      - name: 対象パッケージのgo testを実行
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          if ((go env GOOS).Trim() -ne 'windows') { throw 'Not running native Windows Go' }
+          $packages = @('./internal/plugin/runtime', './internal/desktophost', './internal/operations', './cmd/tei')
+          # 失敗があっても集計まで進める。終了コードは最後の工程で判定する。
+          go test -json -count=1 -timeout 30m @packages > "$env:RUNNER_TEMP/gotest.jsonl"
+          $code = $LASTEXITCODE
+          "GOTEST_EXIT=$code" | Out-File -Append -Encoding utf8 $env:GITHUB_ENV
+          exit 0
+
+      - name: 通過・失敗・Skipを集計
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $events = Get-Content "$env:RUNNER_TEMP/gotest.jsonl" | ForEach-Object { try { $_ | ConvertFrom-Json } catch { $null } } | Where-Object { $_ }
+          $tests = $events | Where-Object { $_.Test -and $_.Action -in @('pass', 'fail', 'skip') }
+          $lines = @()
+          $lines += "## Windows go test 集計 (commit $env:GITHUB_SHA)"
+          $lines += ''
+          $lines += '| package | pass | fail | skip |'
+          $lines += '|---|---|---|---|'
+          foreach ($g in ($tests | Group-Object Package)) {
+            $c = @{ pass = 0; fail = 0; skip = 0 }
+            foreach ($t in $g.Group) { $c[$t.Action]++ }
+            $lines += "| $($g.Name) | $($c.pass) | $($c.fail) | $($c.skip) |"
+          }
+          $lines += ''
+          $lines += '### Skip理由（テストごと）'
+          $skips = $tests | Where-Object { $_.Action -eq 'skip' }
+          foreach ($s in $skips) {
+            $reason = ($events | Where-Object { $_.Package -eq $s.Package -and $_.Test -eq $s.Test -and $_.Action -eq 'output' -and $_.Output -notmatch '^\s*(=== |--- )' } | ForEach-Object { $_.Output.Trim() }) -join ' / '
+            $lines += "- $($s.Package) $($s.Test): $reason"
+          }
+          $lines += ''
+          $lines += '### 失敗'
+          foreach ($f in ($tests | Where-Object { $_.Action -eq 'fail' })) {
+            $lines += "- $($f.Package) $($f.Test)"
+            $out = $events | Where-Object { $_.Package -eq $f.Package -and $_.Test -eq $f.Test -and $_.Action -eq 'output' -and $_.Output -notmatch '^\s*(=== |--- )' } | Select-Object -First 8 | ForEach-Object { '    ' + $_.Output.TrimEnd() }
+            $lines += $out
+          }
+          $pkgFail = $events | Where-Object { -not $_.Test -and $_.Action -eq 'fail' }
+          foreach ($f in $pkgFail) { $lines += "- (package) $($f.Package)" }
+          $lines | Out-File -Append -Encoding utf8 $env:GITHUB_STEP_SUMMARY
+          $lines | ForEach-Object { Write-Host $_ }
+
+      - name: 結果を判定
+        shell: pwsh
+        run: |
+          # PRではworkflow定義の確認だけが目的なので、試験失敗は集計に残して成功扱いにする。手動起動では失敗を失敗として返す。
+          if ($env:GOTEST_EXIT -ne '0' -and $env:GITHUB_EVENT_NAME -eq 'workflow_dispatch') { throw "go test exit code $env:GOTEST_EXIT (集計は上の工程を参照)" }

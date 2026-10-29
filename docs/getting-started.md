@@ -29,12 +29,12 @@ go run ./cmd/tei commands
 モデルや定義の整合性を調べる場合、生成AIなどの呼出し元は次のようにJSON形式の診断結果を取得できます。
 
 ```bash
-go run ./cmd/tei validate \\
-  -workspace reference/workspace \\
+go run ./cmd/tei validate \
+  -workspace reference/workspace \
   -json > /tmp/tei-validation.json
 ```
 
-結果には`schemaVersion`、`ok`、`diagnostics`が含まれます。構文に誤りがあれば元ファイルの位置を示し、意味の検証では可能な範囲で対象要素と入力元索引の位置を返します。`-json`を指定しない従来の`validate -workspace`は、テキスト形式で結果を返します。
+結果には`schemaVersion`、`ok`、`diagnostics`が含まれます。構文の誤りも読込みの失敗もなく読めた場合は、`worldFingerprint`と`sourceIndexFingerprint`も返します。値は`model catalog`・`inspect`・`trace`と同じ計算で、同じファイル内容なら一致し、内容が変われば変わります。どの版のWorkspaceを検証した結果かを後から照合する証拠であり、内容が正しいことや受理されたことの証拠ではありません。構文に誤りがある場合と読込みに失敗した場合は、版が存在しないため両項目を省きます。構文に誤りがあれば元ファイルの位置を示し、意味の検証では可能な範囲で対象要素と入力元索引の位置を返します。`-json`を指定しない従来の`validate -workspace`は、テキスト形式で結果を返します。警告だけの場合、テキストは警告行を出力した後に`ok`を出力し、終了コードは`0`です。標準出力全体が`ok`と一致することを成功条件にすると、警告付きの成功を失敗と誤判定します。成否は終了コード、または`-json`の`ok`で判定してください。`ok`が`true`でも`diagnostics`に警告が残ることがあります。
 
 終了コードは`0`が検証成功（警告を含む）、`1`が検証不成立、`2`が入力・読込みなどの実行失敗です。`-json`で返す結果を利用するときも終了コードを確認してください。`commands`はすべてのコマンドや拡張機能を列挙する完全な登録簿ではありません。詳細とウェブやデスクトップへの接続方針は[コマンドライン優先のインターフェース設計](../plan/design/CLI_FIRST_INTERFACE_DESIGN.md)を参照してください。
 

@@ -7,7 +7,7 @@
 - ルートの[README](README.md)と、変更対象のREADMEを読みます。
 - 現行構成は[docs/architecture.md](docs/architecture.md)、実装の成立状況は[docs/status.md](docs/status.md)で確認します。
 - 関連するIssue・PR・ADRを読みます。設計判断が矛盾している場合は、解決するまで統合しません。
-- `reference/workspace`はGate B / Gate Cが固定したbaselineです。明示的な理由と`-allow-reference-baseline`なしに変更しません。
+- `reference/workspace`の内容は、Gate B / Gate Cの判定時に固定した版（Gate Bはcommit `e5231839a`）と、判定後に更新された現在の版で異なります。固定版は履歴から参照し、現在の内容を固定版として引用しません。現在の版を変更する場合は、Issue番号と理由を明記し、`reference-shared-acceptance`の受理経路（`-allow-reference-baseline`付き）を使います。`.tei`ファイルの手編集は避けます。規則の扱いは[#2335](https://github.com/hat47x/tei-platform/issues/2335)で検討中です。
 - 秘密情報、顧客データ、未公開資料を、コミット・Issue・PR・ログへ入れません。
 - コアとプラグインのサブプロジェクト化は[ADR-0033](plan/adr/0033-core-and-plugin-subprojects.md)に従います。目標配置を実装済みとみなさず、一括移動やGoモジュールの一律分割をしません。
 

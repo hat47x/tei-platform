@@ -13,7 +13,8 @@
 | [`internal/`](internal/) | 複数のツールから使う共通処理 |
 | [`repository-architecture-check/`](repository-architecture-check/) | パッケージ構成と依存境界の検査 |
 | [`repository-dependency-report/`](repository-dependency-report/) | Goの直接依存関係の一覧作成 |
-| [`repository-plan-check/`](repository-plan-check/) | ADR・Issueの番号や要求と検証表の対応確認 |
+| [`repository-plan-check/`](repository-plan-check/) | ADR・Issueの番号や要求と検証表の対応確認、ADR索引とADRファイルの一致・状態の確認（#2343） |
+| [`repository-node-tests/`](repository-node-tests/) | どのworkflowからも実行されなかったNode.js試験5ファイルをgo testから実行する（#2346） |
 | [`repositoryqualification/`](repositoryqualification/) | リポジトリ検証条件の共通処理 |
 | [`reference-cli-trace-benchmark/`](reference-cli-trace-benchmark/) | 合成Workspaceによるtraceの処理段別の時間・メモリ計測と出力不変の確認 |
 | [`reference-change-packet/`](reference-change-packet/) | 変更範囲・危険度・検証・停止条件をJSONで宣言し、範囲確認と検証実行・証拠記録を行う参照（#2017） |
@@ -31,6 +32,14 @@
 | [`reference-export-package/`](reference-export-package/) | SIer向けに、manifestとdigest付きの配布zipを作る基盤pluginの参照（#2020） |
 | [`reference-delivery-profile/`](reference-delivery-profile/) | 提供形態ごとにpluginを選択し、必須能力が揃っているかを検証する参照（#2020） |
 | [`reference-delivery-bundle/`](reference-delivery-bundle/) | 解決済みprofileとplugin descriptorをzip化し、digest・detached signature・merge/fresh install・activate/rollback・health/start/graceful stop/restart/reconcileを提供する参照（#2020） |
+| [`reference-change-assurance/`](reference-change-assurance/) | 変更に応じて、過去の検証結果が現在も同じ主張を裏付け得る範囲を、合成データで示す読取り専用の参照（#1445） |
+| [`reference-subproject-impact/`](reference-subproject-impact/) | 確定した二つのコミットの実差分から、プラグイン追加時に既存コアを何か所変更したかを測る参照（#1251） |
+| [`reference-studio-host-boundary/`](reference-studio-host-boundary/) | TEI StudioのWeb接続・失効・要求スコープと、DesktopのDraft・private-resource境界を確認する独立回帰（#1824） |
+| [`reference-studio-host-qualification/`](reference-studio-host-qualification/) | TEI StudioでCLI・Go共通操作・Host結果の意味を比較する検査（#1824） |
+| [`reference-studio-static-composition/`](reference-studio-static-composition/) | TEI Studioの静的合成の最小参照実装（#1824） |
+| [`reference-derivation-disclosure/`](reference-derivation-disclosure/) | 導出結果の開示境界を、既存`security.authorize`へ判断を委譲して判定する読取り専用の合成参照（#1693） |
+| [`reference-er-table-crossview/`](reference-er-table-crossview/) | 論理ERと物理表を相互参照する二つの読取り専用の表示を、一つの成果物へ出力する参照（#1126） |
+| [`reference-project-advice-lit/`](reference-project-advice-lit/) | 案件専用のGo補助プラグインとWeb標準/Litを組み合わせた、最小の縦断参照（#951 / #997） |
 
 ## 設計、業務知識、受入れ
 
@@ -99,10 +108,15 @@
 | [`reference-plugin-package-builder/`](reference-plugin-package-builder/) | Plugin配布物の組立て例 |
 | [`reference-plugin-self-build/`](reference-plugin-self-build/) | Plugin自身が構築手順を提供する場合の確認 |
 | [`reference-plugin-build-supply/`](reference-plugin-build-supply/) | 技術検証用サンプル`plugin-build-supply`の工程1〜4の通しの検証。構築意図と実ファイル・観測したGoから`tei.process.reference`の計画を確定し、その照合値を、ホストが発行する発生識別子つきの二回の実構築と内容アドレスの保管庫、既存の自己構築の実行器の検証根拠(二回構築、段階の収束、ホスト登録)、保管庫から再取得したバイト列のプロセス通信の版1での呼出しまで引き継ぐ。提供元の曖昧さ・追加・信頼の失効、部分出力を残す失敗・二回構築の不一致・一回の実行の二重計上・同時の試行の強制終了、汚れた作業ツリー・外部モジュール・ソースとツールチェーンの食い違い・ホストのGo設定、工程間の識別の差替えと工程の欠落を注入する(同じ機械の上の実際のGoの構築。提供元のカタログと信頼の失効は合成) |
+| [`reference-order-multilingual-operation/`](reference-order-multilingual-operation/) | 技術検証用サンプル`order-multilingual-operation`の工程1〜6の通しの検証。複製した作業領域に受注の所有プラグイン、`std.message`、言語プラグインを加え、所有者・環境・原文言語・項目名を一組にして既存の多言語資産を変更せずに呼ぶ。日本語原文を一回改訂した前後の同じ対象一覧の突合表で、従属訳だけの失効と配布候補の再生成を確かめる。許可・受理・固定情報の失効と言語プラグインの撤去、配布候補の訳文の書換えと固定情報の差替え、改訂直後の旧配布候補、翻訳器の失敗・取消し・結果不明と機密の外部送信、翻訳中の同時編集、PostgreSQLとSQLiteの並びの差を注入する(合成のホスト、模擬の翻訳器、PostgreSQLの一つのインスタンス、SQLiteはPythonの標準モジュールでのファイル、Node) |
+| [`reference-external-adoption-authority/`](reference-external-adoption-authority/) | 技術検証用サンプル`external-adoption-authority`の工程1〜4の通しの検証。SUIの島階層の契約を固定版のまま写した影の検査の報告から、拡張の後付けと名前空間所有者の判定、意味の固定記録、署名つきのデータのみの配布物、合成ホストでの受理まで、固定版・写像報告・損失の記録の照合値と`lossless=false`を一つの記録で引き継ぐ。依存blobの変更、同じ名前空間の二つの提供元、所有者と署名者の信頼付与の失効・鍵交換・期限、損失なしへの読替え、提供元の意味の変更とファイルの移動、工程間の差替えを注入する(既存資産を変更せずに固定入力の複製で呼ぶ。外部側は固定表の複製による模擬、信頼付与・鍵・ホストは合成、時刻は論理時刻)
+| [`reference-order-rule-design/`](reference-order-rule-design/) | 技術検証用サンプル`order-rule-design`の工程1〜6の通しの検証。合成の旧資料と共有の合成契約の読取りと出所状態(結び付いた・表だけ・対象なし)、受理済み作業領域の複製との突合、変更候補の作成、通常のGitによる受渡しと再構築、影響範囲と過去の検証根拠の再利用可否、審査と署名つき決定までを一つの記録でつなぐ。候補・出所・署名つきの決定は共通受理へpreviewとreviewだけで提出して止め、受理しない(`order-workflow`への提出は未接続)。既存資産は変更せずに呼び、サンプル固有の処理は`internal/`へ入れない |
 | [`reference-process-plugin/`](reference-process-plugin/) | 別プロセスで動くPluginの参照用起動点 |
 | [`reference-composition-process-bridge/`](reference-composition-process-bridge/) | 合成基盤と従来・独立プロセスプラグインの接続試験 |
 | [`reference-runtime-capability-identity/`](reference-runtime-capability-identity/) | 実行時Capabilityの識別方法の確認 |
 | [`reference-runtime-snapshot/`](reference-runtime-snapshot/) | 生成時と実行時の投影境界の確認 |
+| [`reference-plugin-bundle/`](reference-plugin-bundle/) | 二つの独立プラグインを一つの成果物へ結合し、論理識別子と物理成果物を同一視しないことを確かめる参照試験（#1251） |
+| [`reference-plugin-wasi-smoke/`](reference-plugin-wasi-smoke/) | 独立プラグインを同一ソースからLinux/amd64とWASIへ構築し、両方の実行結果を比較する試験（#1251） |
 
 ## ウェブ実行先と判定根拠
 
@@ -127,6 +141,10 @@
 | [`reference-golden/`](reference-golden/) | 参照用の期待出力の生成 |
 | [`reference-target-package-evidence/`](reference-target-package-evidence/) | 実行先パッケージの構成根拠の確認 |
 | [`reference-critical-path-evidence-audit/`](reference-critical-path-evidence-audit/) | クリティカルパスの根拠一式の事前検査 |
+| [`reference-first-web-frozen-world-generate/`](reference-first-web-frozen-world-generate/) | 正規化したWorldを、既存のSource loaderから書き出す構築専用の診断出力器 |
+| [`reference-first-web-frozen-world-verify/`](reference-first-web-frozen-world-verify/) | 同じ型付きIRとencoding/json規約でWorldを再直列化する読取り専用の診断 |
+| [`reference-first-web-host-admission/`](reference-first-web-host-admission/) | E1のApplication単位の選択を、Hostが保持する現在の受理snapshotと照合する検査 |
+| [`reference-first-web-two-unit-e1/`](reference-first-web-two-unit-e1/) | 第一Web TargetをBrowserとLinux/APIの二成果物へ生成し、局所的に確かめるE1実証（#1182） |
 
 ## データベースと外部接続
 
@@ -190,6 +208,14 @@
 | [`verify-order-rollout-host-continuity.py`](verify-order-rollout-host-continuity.py) | `reference-order-rollout-host-continuity`の全試験(工程1〜5)を、Dockerで起動した使い捨てのPostgreSQL(乱数のパスワード)で実行し、skipが0件であることと観測値、通しの記録の要約、試験の出力にパスワードと接続先がないことをreceiptへ残す。`--race`で競合検出つき。作ったコンテナーだけを終了時に削除する |
 | [`verify-order-web-delivery-member.py`](verify-order-web-delivery-member.py) | `reference-order-web-delivery-member`の全試験(工程6)を、Dockerで起動した使い捨てのPostgreSQLで実行し、skipが0件であることと観測値、通しの記録の要約をreceiptへ残す。作ったコンテナーだけを終了時に削除する |
 | [`verify-plugin-build-supply.py`](verify-plugin-build-supply.py) | `reference-plugin-build-supply`の全試験(工程1〜4)を、清浄な複製(作業ブランチのコミットの浅いcloneなど)の上で、ネットワークからモジュールとツールチェーンを取得せずに実行し、skipが0件であることと観測値、通しの記録の要約、Goの版、試験の後も作業ツリーが清浄であることをreceiptへ残す。Dockerは使わない |
+| [`verify-order-multilingual-operation.py`](verify-order-multilingual-operation.py) | `reference-order-multilingual-operation`の全試験(工程1〜6)を、清浄な複製の上で、Dockerで起動した使い捨てのPostgreSQLで実行し、skipが0件であることと、通しの記録(失敗注入、完了条件、条件付きの条件の合否)の要約、Go・Python・SQLite・Nodeの版、試験の後も作業ツリーが清浄であることをreceiptへ残す。作ったコンテナーだけを終了時に削除する |
+| [`verify-external-adoption-authority.py`](verify-external-adoption-authority.py) | `reference-external-adoption-authority`の全試験(工程1〜4)を、清浄な複製の上で、ネットワークからモジュールとツールチェーンを取得せずに実行し、skipが0件であることと、通しの記録(失敗注入と完了条件の合否、信頼の時点)の要約、Goの版、試験の後も作業ツリーが清浄であることをreceiptへ残す。Dockerは使わない |
+| [`verify-order-rule-design.py`](verify-order-rule-design.py) | `reference-order-rule-design`の全試験(工程1〜6)を、清浄な複製の上で、ネットワークからモジュールとツールチェーンを取得せずに実行し、skipが0件であることと、通しの記録(失敗注入と完了条件の合否、未検証の一覧)を確かめて受領記録を出す。Node.jsとOpenSSHが要り、Dockerは使わない。`--repeat N`で判定と診断の安定を比べる |
+| [`self-build-ci-contract-test.py`](self-build-ci-contract-test.py) | セルフビルド専用CIの起動漏れと証拠欠落を、ワークフロー定義から検査する局所回帰試験 |
+| [`verify-critical-path-e1-e2-join.py`](verify-critical-path-e1-e2-join.py) | 保存済みのE1とE2a-1の二つの記録を、証拠の差し替えや水増しなしに突き合わせる。同一の実行系列であることは示さない |
+| [`test-critical-path-e1-e2-join.py`](test-critical-path-e1-e2-join.py) | 上記の突き合わせに対する、証拠の差し替え・水増しの回帰試験 |
+| [`verify-e2a1-postgres-archive.py`](verify-e2a1-postgres-archive.py) | 保存済みのE2a-1実PostgreSQL試験記録1件について、保存内容の不変と試験限りの範囲を照合する。PostgreSQLの再実行はしない |
+| [`test-e2a1-postgres-archive.py`](test-e2a1-postgres-archive.py) | E2a-1保存記録の改ざんを想定した回帰試験 |
 | [`check-core-isolation.sh`](check-core-isolation.sh) | 合成基盤の隔離試験と別モジュールからの公開API試験 |
 | [`verify-composition-reference.sh`](verify-composition-reference.sh) | 固定したクリーンな版で合成基盤・項目対応・実Process・中核独立性を検査し、結果を標準出力へ返す。全体健全性と本番移行の判定は別に行い、申し送りは[#1223](https://github.com/hat47x/tei-platform/issues/1223)へ記載する |
 | [`repository-health-check.sh`](repository-health-check.sh) | 形式、静的検査、全Goテスト、参照Workspaceの検証 |
@@ -205,5 +231,13 @@
 | [`verify-first-web-target-r7b-integration-receipt.sh`](verify-first-web-target-r7b-integration-receipt.sh) | R7B統合記録の照合 |
 | [`verify-first-web-target-r7b-post-merge.sh`](verify-first-web-target-r7b-post-merge.sh) | R7B統合後の状態検査 |
 | [`business-procedure-gate-a-critical-tests.txt`](business-procedure-gate-a-critical-tests.txt) | Gate Aの確認対象となる重要テストの一覧 |
+| [`check-core-identity-isolation.sh`](check-core-identity-isolation.sh) | 合成基盤の識別子まわりの隔離試験 |
+| [`check-core-subject-isolation.sh`](check-core-subject-isolation.sh) | 合成基盤の主体まわりの隔離試験 |
+| [`check-reference-plugin-bundle-isolation.sh`](check-reference-plugin-bundle-isolation.sh) | `reference-plugin-bundle`の隔離試験 |
+| [`check-reference-plugin-wasi-smoke.sh`](check-reference-plugin-wasi-smoke.sh) | `reference-plugin-wasi-smoke`の実行 |
+| [`check-reference-project-plugin-isolation.sh`](check-reference-project-plugin-isolation.sh) | 案件専用参照プラグインの隔離試験 |
+| [`check-transform-evidence-mutation.sh`](check-transform-evidence-mutation.sh) | Transform Engineのソース変更が、再現可能な構築・Build Plan・Evidence v2へ伝わるかの確認 |
+| [`check-transform-wasm-approved-invoke.sh`](check-transform-wasm-approved-invoke.sh) | 署名済みReference Hostの承認を要求して、測定済みのWasm CLIを起動する確認 |
+| [`check-transform-wasm-conformance.sh`](check-transform-wasm-conformance.sh) | js/wasmの実行がネイティブのTransform wire契約を保つことの確認 |
 
 R7Bの一回限りの準備・公開・後処理を行うスクリプトは、統合と対象ブランチの終了後に削除しました。現在の根拠確認や再現に使う検査・取得ツールは上の一覧に残しています。

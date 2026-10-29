@@ -27,20 +27,36 @@ func selectedReadOnlyFlagError(out io.Writer, command string, err error) (int, e
 	}
 }
 
+// selectedReadOnlyFlagAllowlist lists, per command, every flag the command
+// reads. commandCatalog advertises the same flags, and a table-driven test
+// keeps the two in agreement. `model catalog` is not listed here because it
+// parses its own arguments instead of the shared FlagSet.
+var selectedReadOnlyFlagAllowlist = map[string][]string{
+	"inspect": {"workspace", "subject-kind", "subject-id"},
+	"trace": {
+		"workspace", "scope", "subject-kind", "subject-id",
+		"direction", "mode", "offset", "limit", "expected-fingerprint",
+	},
+	"workspace-files": {"workspace"},
+	"source-index":    {"workspace", "subject-kind", "subject-id"},
+	"knowledge-context": {
+		"workspace", "subject-kind", "subject-id", "disclose",
+		"expected-data-design-fingerprint", "expected-disclosure-fingerprint",
+	},
+	"validate":            {"workspace", "world", "json"},
+	"world":               {"workspace", "world"},
+	"requirements":        {"workspace", "world"},
+	"plugin-lock":         {"workspace", "world"},
+	"plugin-resolve":      {"workspace", "world", "environment", "plugin-lock"},
+	"plugin-runtime-plan": {"workspace", "world", "environment", "plugin-lock"},
+}
+
 // Each selected read-only CLI command owns its advertised flags, even though
 // the older tei binary shares one FlagSet across many commands. Rejecting an
 // unrelated *recognized* flag prevents silent loss of caller intent.
 func validateSelectedReadOnlyFlags(fs *flag.FlagSet, command string) error {
-	var names []string
-	switch command {
-	case "inspect":
-		names = []string{"workspace", "subject-kind", "subject-id"}
-	case "trace":
-		names = []string{
-			"workspace", "scope", "subject-kind", "subject-id",
-			"direction", "mode", "offset", "limit", "expected-fingerprint",
-		}
-	default:
+	names, ok := selectedReadOnlyFlagAllowlist[command]
+	if !ok {
 		return nil
 	}
 	allowed := make(map[string]bool, len(names))
