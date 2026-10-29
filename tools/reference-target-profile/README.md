@@ -183,6 +183,7 @@ go run ./tools/reference-target-profile/cmd/tei-target-profile run \
 - `storage: none`はrootを作らず、build結果のdigestだけを検証します。
 - `storage: sqlite`は`artifacts.db`のtransactionでartifactとcurrent/previousを更新し、候補と現在artifactの保存内容を、pointer切替前の同じtransactionでdigest照合します。候補またはcurrentが破損・欠落していれば、pointerと新規挿入をcommitせず拒否します。配備後の再読取照合も維持します。`rollback`はcurrent/previousを入れ替え、`rollback -to <digest>`はDBのartifactへ戻します。
 - SQLiteの両rollbackとpruneも、filesystemと同じ`.update-lock`を状態読取り前に取得します。pruneの`deleted`はDB transactionのcommit成功後に設定し、保護対象の拒否やrollbackした削除予定を含めません。commit後のaudit追記が失敗した場合は、削除済み範囲を残して`passed=false`を返します。
+- SQLiteのpruneは、削除命令の正常終了だけで成功とせず、commit前の同じtransactionで残ったartifact集合・内容のdigest・作成時刻と、current/previousが計画どおりであることを読み取って確認します。削除の無視・再挿入、保持対象の消失・改変、pointer変更等があればtransaction全体をrollbackし、`deleted`を空にして拒否します。確認のため保持artifact全体を再読取りします。別tableへの記録など、これらの条件を変えないtriggerを一律に禁止するものではありません。
 - SQLite履歴の新旧は、`created_at`をRFC3339Nanoとして解析した時刻で比較します。同一時刻はdigestの降順です。小数秒の桁数やタイムゾーン表記の文字列順を新旧として扱いません。計画と実削除もこの順序を共有します。旧い文字列順に依存したapprovalは現在の削除予定と一致しなければ拒否し、署名済みbyte列を自動修正しません。
 - sqliteの`history`は`artifacts` tableのcontentを再計算し、`prune-history -keep-last N`はcurrent/previousを削除対象に含む場合に拒否します。`-dry-run`では削除しません。
 - `history`は`history/<digest>`の内容を再計算し、file名と一致しない・読めないartifactを不合格にします。`prune-history -keep-last N`は検証済みartifactを新しい順にN件残し、`-dry-run`では削除しません。検証に失敗したartifactがある場合は削除しません。
@@ -191,6 +192,7 @@ go run ./tools/reference-target-profile/cmd/tei-target-profile run \
 - 保持期間の判定はfileの更新時刻に依存し、同時刻の場合はdigest順で決めます。削除の承認・暗号学的な履歴保護は扱いません。
 - 成功した`prune-history`は`root/history-prune-audit.jsonl`へrecordを追記します。recordはstorage・keepLast・削除digest・previousDigest・recordDigestを含むhash chainで、prune前に既存chainを検証します。`history-audit`はchainを読み、record数・head・各recordを返します。`history-audit-checkpoint`はcount・head・audit file全体のdigestを`-out`へ書き出し、`ssh-keygen -Y sign`で外部署名できます。auditの署名・実行者identity・削除承認は扱いません。
 - audit checkpointのcount・head・audit digestは、一度読み取った同じbyte列を解析して作ります。読取り全体の原子的snapshot、記録の完全性や署名者のAuthorityを証明するものではありません。
+- 末尾改行のない既存auditも読取りでは受け入れます。追記時には必要な区切り改行を加え、二つのJSON recordを連結してchainを壊さないようにします。既存のbyte列とrecord digestは書き換えません。削除と外部auditの追記は一つのtransactionではなく、途中失敗・電源断後の監査完全性や自動回復は保証しません。
 - `history-prune-approval`はroot・storage・keepLast・削除digestの一覧をJSONへ出力します。`prune-history -approval ... -signature ... -allowed-signers ... -identity ...`は、approvalのdetached signatureと、現在の削除対象の完全一致を確認してから削除します。署名者のAuthority・trust rootは検証しません。署名確認・削除対象との照合から削除・audit追記まで、同じ`.update-lock`を保持します。計画の作成も同じlockを使うため、協調writerの更新中は拒否します。計画作成には既存rootで一時lockを作成・解放できる権限が必要ですが、artifactは削除しません。署名確認を通った後もlockを取り直さずに削除へ進みます。
 - `remote` storage、Go以外の候補は未対応として`passed=false`にします。
 - 実Targetのsupervisor・health check・traffic drain・電源断耐性・複数ホスト配備は扱いません。
