@@ -296,11 +296,15 @@ class LiveDriverTest(unittest.TestCase):
         self.result("UI_RESULT=00:accepted:2026-10-01:2026-10-01:true")
         self.assertEqual(self.observe(), self.observations[0])
 
-    def range_key_cancel(self, route, close_window=True):
+    def range_key_input(self, route):
         self.range_input(route=route)
         self.button("xeadDriver.XFInputDialog", "^OK$")
         key = {"windowClass": "xeadDriver.XF310_KeyInputDialog$"}
         self.assertTrue(self.client.wait_selector(key)["matched"])
+        return key
+
+    def range_key_cancel(self, route, close_window=True):
+        key = self.range_key_input(route)
         if close_window:
             self.client.close(key)
         else:
@@ -322,6 +326,41 @@ class LiveDriverTest(unittest.TestCase):
     def test_script_range_key_cancel_parent_commit(self):
         self.range_key_cancel("ROUTE_KEY_COMMIT")
         self.assertIn("001:OuterPending:1;", self.observe())
+
+    def range_key_missing(self, key):
+        field = dict(key, role="text", **{"class": "^javax.swing.JTextField$"})
+        self.client.set_value(field, "999")
+        self.button("xeadDriver.XF310_KeyInputDialog", "^OK$")
+        self.assertTrue(self.client.wait_selector(dict(
+            key, **{"class": "JTextArea$"}, text=".*key value specified is missing.*"))["matched"])
+        self.assertEqual(self.client.find(field)["text"], "999")
+        return field
+
+    def test_script_range_key_missing_cancel_retains_candidate(self):
+        key = self.range_key_input("ROUTE_KEY")
+        self.range_key_missing(key)
+        self.client.close(key)
+        self.result("UI_RESULT=01:null:2026-10-01:2026-10-01:false")
+        # A failed lookup can leave its candidate key in the returned map.
+        self.assertIn("ID=999", self.client.find({"name": "result"})["text"])
+        self.assertEqual(self.observe(), self.observations[0])
+
+    def test_script_range_key_validate_retry_then_read(self):
+        key = self.range_key_input("ROUTE_KEY")
+        self.button("xeadDriver.XF310_KeyInputDialog", "^OK$")
+        self.assertTrue(self.client.wait_selector(dict(
+            key, **{"class": "JTextArea$"}, text=r"^Input valid data\.$"))["matched"])
+        field = self.range_key_missing(key)
+        self.client.set_value(field, "001")
+        self.button("xeadDriver.XF310_KeyInputDialog", "^OK$")
+        table = {"windowClass": "xeadDriver.XF310$", "role": "table"}
+        self.assertTrue(self.client.wait_selector(table)["matched"])
+        self.assertIsNotNone(self.client.find({"windowClass": "xeadDriver.XF310$", "text": "^Alpha$"}))
+        self.assertEqual(self.client.table_read(table)["rowCount"], 2)
+        self.button("xeadDriver.XF310", "Close")
+        self.result("UI_RESULT=21:null:2026-10-01:2026-10-01:false")
+        self.assertIn("ID=001", self.client.find({"name": "result"})["text"])
+        self.assertEqual(self.observe(), self.observations[0])
 
     def test_000_script_commit(self):
         self.script_transaction("Yes", "Pending")
