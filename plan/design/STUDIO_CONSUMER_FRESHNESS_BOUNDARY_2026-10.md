@@ -33,6 +33,19 @@
 
 **既存証拠と限界**：`reference/tei-studio-graph/graph.test.mjs:139-159`は不正更新時の旧SVG・旧選択維持と、**成功更新後**の旧DOMイベント無効化を個別確認する。更新拒否時のG1 DOMとM1/M2の版対応、クリック後の`InspectSubject`呼出し0、Source locator確定0はConsumer横断の未実装・未実行条件。Graph部品の仕様変更や新Core/Host APIを要求しない。
 
+### Accept結果によるSource改訂とDecision記録失敗の合流（#1124 [コメント #6470746209](https://github.com/hat47x/tei-platform/issues/1124#issuecomment-6470746209)、未実装）
+
+これはSource改訂後の旧応答失効とDecision記録失敗を**同じConsumer上で同時に扱う**設計負例である。固定main `b301d39604c79c1128e7031b788cf51a73e3ebc1` の [`TestAcceptReportsSourceChangedWhenDecisionLedgerWriteFails`](https://github.com/hat47x/tei-platform/blob/b301d39604c79c1128e7031b788cf51a73e3ebc1/tools/reference-shared-acceptance/ledger_root_test.go#L95) は、CLIが非ゼロ終了でも `decision=accepted` と `sourceChanged=true` を返し、Decision ledger書込み失敗を `DECISION_RECORD_FAILED` として示し、`recordPath`を空に保つ条件を確認する。これはSource受理が成立した結果の応答であり、Decision ledger永続化の証拠ではない。事実の読み取り根拠は[#267の既存実装記録](https://github.com/hat47x/tei-platform/issues/267#issuecomment-6247518560)と[#1124の結合負例](https://github.com/hat47x/tei-platform/issues/1124#issuecomment-6470746209)を参照する。
+
+**現在の境界**：Workbenchの`responses.ts`は表示応答の世代と順序を制御し、`presentation.ts::readInspection`は応答fingerprintを保持中Catalogと照合する。一方、現行WorkbenchにAccept UIやSource watcherはなく、この非ゼロAccept結果を受けて表示を失効させるConsumer接続も確認されていない。したがって以下は将来のtyped結果Consumerに対する設計候補であり、実装済みの動作ではない。
+
+**受入候補**：
+1. R10のschema/readiness表示とR10 Inspect応答が保留中に、同じWorkspaceでAcceptを実行し、SourceがR11へ変わる一方でDecision ledger記録が失敗する。非ゼロ終了コードだけからAccept拒否・Source不変を推定せず、typed結果の`accepted + sourceChanged`をSource変更の観測として扱う。
+2. R10の表示済みschema/readinessを直ちに`再照合が必要`へ失効させ、保留中のR10 Inspect成功も表示を上書きしない。Decision記録が失敗していても、Acceptを自動再試行しない。
+3. Sourceの現在版とDecision ledgerを独立に再読取する。再読取まで`ready`や永続化済みを表示せず、再読取がR12を示す場合はR12を現行として扱う。結果本文を解釈できない非ゼロ応答など効果不明の場合も、自動再試行せず状態を再観測する。
+
+このケースを既存負例Aと別々の成功例へ分解して代用しない。Source受理、Decision記録、UI freshness、Ownerによる業務意味の受理、Target readinessは別の結果である。Shared Acceptanceの既存契約や新しいHost/Acceptance APIを追加する提案ではない。テスト・GUI・Owner受理は**NOT RUN**。
+
 ## 一つの競合例（未実行の受入負例）
 
 | 時点 | 事実 | 誤表示を招く経路 |
@@ -57,6 +70,7 @@ Source変更を検知した時点で旧表示のcurrent-readyを取り消し、�
 - **負例A（現在未実行）**: W固定でR10→R11変更、R10のready成功とInspect成功を後着。R10の表示済みreadyは失効、両旧成功は現行表示を上書きせず、R11の独立な根拠が無ければ`unknown/not-verified`を維持。
 - **負例B（現在未実行）**: G1のnode ID `K`とG2の`K`が別Scopeの対象。同じview-node IDがあっても旧選択mapは失効し、Scopeが一意になるまでscopeなしInspect・Source locator確定をしない。
 - **負例C（現在未実行、#6426483819）**: R10/G1で表示node ID `K`→Scope oneのM1が成立。SourceをR11へ更新し、K→Scope twoのM2を準備したG2を`missing_endpoint`で更新拒否。G1のSVGとKが残ること、M2が公開されずM1もR11では失効すること、残ったKのclick後も`InspectSubject` spy呼出し0・Source locator確定0・stale診断保持を同じConsumer試験でassertする。Source/Graphが変わらない検証済みG1ではM1を不必要に無効化しない。
+- **負例D（現在未実装・未実行、#6470746209）**: R10の表示済みschema/readinessと保留中Inspectがある状態で、Accept後にSourceがR11へ変わりDecision ledgerだけ記録失敗となる。非ゼロ終了でも`accepted + sourceChanged`結果が得られた場合はR10表示を失効し、遅延R10成功を拒否する。Sourceとledgerの再読取前に`ready`・記録済みを表示せず、Accept自動再試行は0回。
 - **既存証拠**: `responses.workspace-switch.test.mjs` は旧Catalog/Validation/XEAD応答（成功・失敗）の拒否、`graph.test.mjs` は旧DOMイベント拒否、`presentation.fingerprint-contract.test.mjs` はCatalog/Inspect fingerprint契約、`bridge.test.mjs`/`e2e.mjs` はSource Acceptance後も`not-verified`表示を維持する条件を、それぞれ**試験コードとして**持つ。今回の新しい負例をPASSと扱わない。
 - **未証明**: 非Host ConsumerのSource変更通知、readiness Evidence schema/発行者/失効条件、原子的な複数資源Snapshot、実Provider/DB/Invocationの現在性、実UIの負例E2E。
 
