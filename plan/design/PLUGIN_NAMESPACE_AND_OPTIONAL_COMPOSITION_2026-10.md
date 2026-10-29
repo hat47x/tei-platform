@@ -531,3 +531,80 @@ Read Projectionの取得時点、Source Revision、Projection Definition Revisio
 **比較する効果**：単一DBの標準CRUDを複雑化せず、RDB＋Document DBのRead Projectionを作れるか。書戻し先の曖昧性を拒否できるか。既存のQuery/Mutation/Source Mappingを重複実装せず、2 Consumerの宣言量、追加コード、拒否診断、実データでの独立確認を比較する。既存`#1127`のCRUD/生成、`#1129`の業務副作用、`#2143/#2147`の移行、`#951`のProvider適合を独立Ownerとして維持する。
 
 **撤回条件**：既存の明示Command＋Read Projectionだけで必要な編集操作を自然に実現できる場合、一般的な双方向`Lens`型の新設は撤回する。逆写像を自動生成しても実業務の曖昧さを解決できない場合は、型としての「書戻し可能性」を固定Coreに導入しない。実装/実DB/GUIの検証は未実施。
+
+---
+
+## 14. 変更影響の完全性と限定再検証（2026-10-29、設計候補）
+
+### 14.1 新たな問題：影響を発見した ≠ 影響範囲が完全である
+
+#1120は型付き意味参照・変更影響Graph、#1121の[Critical Lowering設計](CRITICAL_LOWERING_CONTRACT_DESIGN.md) §3はInterpret/Accept/Resolve/Target/Buildの段階別再評価鍵、#1016は案件差分の`unchanged/applicable/conflict/unresolved`、#2091はProvider更新と案件上書きの三者比較を既に扱う。本節はこれらを置き換えず、**型付きInstance Bindingの変更後、「このConsumerは影響を受けない」と言い切るための証拠の十分性**を追加で検証する。
+
+- **影響あり**：追跡済み依存辺または保守的な範囲に変更が及び、再資格確認が必要。
+- **影響なし（根拠付き）**：対象Consumerに必要な依存関係の記録が、その用途・評価時点・Scopeに対して完全であり、変更との交差がないと確認できる。
+- **不明**：依存先の動的探索、未解決Alias、未受理Source、Schema全体しか分からない変更、外部Pluginが隠す依存などにより、必要な依存閉包が不完全。**不明を「影響なし」に変換しない**。
+
+この三分類は既存診断に投影する**判定候補**であって、新しいKernel enumや独立したImpact Authorityではない。完全性を証明できない対象は、必要な範囲を広げて再検証するか、保留・拒否する。ただし関係ない全Projectを無条件にstaleへすることも正当化しない。
+
+### 14.2 依存関係の根拠は既存の正本から導出する
+
+仮に`Dependency Witness`と呼ぶ場合でも、これはSource Index、Accepted Semantic Snapshot、既存Contract/Provider Registry、Binding選択、Build Plan/Lock、Target Capabilityを**参照して生成する読取り専用の診断**である。第二Source、第二Lock、第二Resolver、業務上の受理receipt、Runtime許可トークンにはしない。
+
+| 変更対象 | 根拠となる依存 | 無効化の原則 | 無効化してはいけないもの |
+| --- | --- | --- | --- |
+| Accepted Semantic定義 | Qualified Ref・Revision・利用Field/Relation | 当該意味に依存するBinding/Consumerと下流 | 変更に依存しない別Scopeの受理済み意味 |
+| Contract定義・互換性 | exact Contract/Fingerprint・必要Guarantee | 当該契約を要求する接続・下流選択 | 未関連の契約・案件全体 |
+| Logical Instance設定 | Instance Ref・Parameter・Context依存 | 当該Instanceと、その出力に依存するConsumer | 同型でも独立した別Instance |
+| Provider/Artifact | Provider選択・共有Artifact・実現Target | **共有**Artifactを使う全Instanceの該当実現・下流 | Artifactが変わっても意味正本自体 |
+| Data Schema / Field Owner | Source Schema Revision・Field/Relation path | 実際の変更部分または不明ならDataSource対象範囲 | Schema変更を根拠とする業務意味の暗黙改訂 |
+| Build-only依存 | Builder/toolchain/生成入力 | 対応するBuild・Artifact | Runtime Requirement Graphへbuild-only Providerを強制追加 |
+| 実データ・現在Authority | 値Version、read-set、Effect Grant/失効 | **実行/Commit時**の条件付き照合 | 静的なLock PASSを現在許可に昇格すること |
+
+最後の「現在Authority」の検査は事前計算した依存差分の範囲外となる場合があり、**不変なArtifact/Contract fingerprintだけで省略できない**（#1174/#1118）。DataSourceの現在値についても、構成時に読んだSchemaと、処理時に読んだRow/Document Versionの区別を保つ（#1708/#1641）。依存証拠の完全性は、各境界で主張する範囲に限定し、あらゆる外部情報を完全に追跡できるとは宣言しない。
+
+### 14.3 具体的な再構成比較
+
+```text
+CustomerView_A -> profileReadA -> profileDb/field.displayName
+CustomerView_B -> orderReadB   -> ordersApi/orderCount
+CustomerView_C -> profileReadC -> profileDb/* (dynamic path)
+```
+
+`profileDb/field.displayName`のみの変更で、(A)は影響あり。(B)はそのConsumerがprofileDbを参照しないことを、記録された閉包が完全に示すなら影響なし。(C)は動的pathが変更Fieldを参照する可能性を否定できないため不明とする。
+
+ただし、`profileDb`の**全Schema Revisionだけ**を受け取ってField単位の差が分からない場合、(A)と(C)の影響は保守的に広げる。これを根拠に(B)の依存関係が完全だと推測するのではなく、(B)の独立性を別に確認する。
+
+同じComponent Typeから作った`profileReadA`と`profileReadC`は設定・Cacheを共有しないことが基本である。一方、**同一物理Provider/Artifactを明示共有**している場合は、Artifact更新・Publisher失効の影響を片方だけに狭めてはならない。Instance固有のAuthority失効と共有Artifactの失効は、異なる適用範囲を持つ。
+
+### 14.4 変更の適格性と公開順序
+
+```text
+old Accepted/Binding/Generation
+  -> proposed change + qualified dependency diff
+  -> candidate impact (affected / justified-unaffected / unresolved)
+  -> changed portion: existing Resolve + Binding/Target qualification
+  -> full new-generation completeness check
+  -> publish with existing CAS / in-flight pin / drain
+  -> independent current Authority at required operation/commit points
+```
+
+局所的な再検証を許す場合も、**公開する新Generation全体の参照が整合**していることを別に確認する。旧Graphと新Field Mapを混ぜた半端なGenerationを公開しない。無関係なConsumerは以前の候補結果を再利用できる場合があるが、これは旧認可や古い外部値が実行時にも有効という主張ではない。UIの描画epochについては#1124、案件上書きの競合については#2091、実行世代の公開については#1223が正本。
+
+### 14.5 最小負例・正例（すべて未実行）
+
+| Case | Given/When | Expected |
+| --- | --- | --- |
+| IV-01 | AがField X、Bが独立Field Yだけを使い、依存閉包が完全。Xだけ変更 | Aのみ再検証、Bは根拠付き影響なし |
+| IV-02 | Consumerが動的Field lookupで隠れた依存を持つ | 無関係扱いせず、不明/範囲拡大 |
+| IV-03 | Field単位の差分なしでDataSource Schemaだけ改訂 | 既知のFieldだけを安全と誤判定しない |
+| IV-04 | 二Instanceが同Typeだが設定・Providerが独立 | 一方のBinding更新で別Instanceを無条件にstale化しない |
+| IV-05 | 二Instanceが実Artifactを共有し、Artifact/Publisherが失効 | 関連する双方を再資格確認/必要時拒否 |
+| IV-06 | Contract fingerprintは不変、必要なConsistency保証が弱化 | 利用Consumerの保証要求に再照合、不適合を保持 |
+| IV-07 | Candidate検査成功後に現在Grantが失効 | 静的結果再利用だけで外部EffectをCommitしない |
+| IV-08 | 新Bindingの一部だけ適格、残りが未解決 | 不完全な新Generationを公開しない |
+| IV-09 | Build-only toolchainだけ更新 | Build/Artifactを再資格確認し、業務意味の自動変更としない |
+| IV-10 | キャッシュの結果が別Scope/異なるContextから要求される | 明示的な隔離・適合根拠なしに値や機密を横断再利用しない |
+
+**段階的な観測方法**：最初に既存`reference/composition-io-mapping`と#1121の既存Keysを使い、A/Bの二Consumerについて「再検証した数」「影響なしとした根拠」「不明として止めた数」「不必要な全件無効化数」を記録する。Field-levelの依存根拠が得られない実装なら、まずSource単位の保守的無効化を試す。実データ/実Provider/実Targetへ進んだときだけ、前段の合成判定を独立Evidenceで上書きできる。
+
+**縮小・撤回条件**：既存#1120の変更影響Graphと#1121の再評価鍵で同じ診断を得られるなら、新しいWitness型・Cache層・専用Resolverは実装しない。限定再検証が安全に示せない場合は、局所最適化を撤回して十分な範囲を再検証する。現時点では完全性の証明方式、動的依存の記録粒度、実環境の時間的安全性は未決である。
