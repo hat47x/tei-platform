@@ -89,6 +89,14 @@ func historyPrunePlan(root string, keepLast int) (string, []HistoryEntry, error)
 }
 
 func BuildHistoryPruneApproval(root string, keepLast int) (HistoryPruneApproval, error) {
+	if strings.TrimSpace(root) == "" || keepLast < 1 {
+		return HistoryPruneApproval{}, fmt.Errorf("root and keepLast >= 1 are required")
+	}
+	release, err := lockLocalUpdate(root)
+	if err != nil {
+		return HistoryPruneApproval{}, err
+	}
+	defer release()
 	storage, deleted, err := historyPrunePlan(root, keepLast)
 	if err != nil {
 		return HistoryPruneApproval{}, err
@@ -159,9 +167,7 @@ func PruneHistoryApproved(ctx context.Context, root string, keepLast int, dryRun
 		receipt.Reason = "approval, signature, allowed-signers, and identity are required together"
 		return receipt, nil
 	}
-	if err := verifyHistoryPruneApproval(ctx, root, keepLast, approvalPath, signaturePath, allowedSigners, identity); err != nil {
-		receipt.Reason = err.Error()
-		return receipt, nil
-	}
-	return PruneHistory(root, keepLast, dryRun)
+	return pruneHistory(root, keepLast, dryRun, func() error {
+		return verifyHistoryPruneApproval(ctx, root, keepLast, approvalPath, signaturePath, allowedSigners, identity)
+	})
 }

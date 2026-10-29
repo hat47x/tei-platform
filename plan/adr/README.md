@@ -53,6 +53,7 @@ Issueでは「何を行うか」を管理し、ADRでは「なぜその方針を
 - [ADR-0028: TEIの成果物を人間・構築に携わるAI・業務を扱うAIの共通知識基盤として扱う](0028-human-ai-builder-agent-shared-knowledge-plane.md)
 - [ADR-0029: アプリケーションが評価する検証規則を、正本の`uses validation`宣言から選ぶ](0029-application-validation-selection-from-canonical-declaration.md)
 - [ADR-0030: 生成AIが扱う情報を文脈付きの認識状態として保持する](0030-context-scoped-epistemic-knowledge.md)
+- [ADR-0031: 標準開発環境とGit-native authoringを第一級の開発経路として扱う](0031-tool-neutral-git-native-development.md)
 - [ADR-0032: Cordis型の構成中核をTEIの新しいプラグイン基盤とする](0032-composition-kernel-replacement.md)（目標方針として採用。本番向け実装は移行中）
 - [ADR-0033: コアとプラグインをサブプロジェクトとして管理する](0033-core-and-plugin-subprojects.md)（目標構成として採用。ソース移動は未実施）
 - [ADR-0034: 生成器を受理済み意味から導出する版付き成果物として扱い、生成AIによる生成器生成を同じ適合境界に置く](0034-generator-as-derived-artifact.md)（提案中）
@@ -63,3 +64,4 @@ Issueでは「何を行うか」を管理し、ADRでは「なぜその方針を
 - [ADR-0039: Query入力の不在と明示NULLを契約で分け、SQL実行前に拒否する](0039-query-input-presence-and-null.md)（提案中）
 - [ADR-0040: 生成器の失効承認をregistryの編集と分離し、承認recordの対象一致だけを検証する](0040-generator-revocation-approval-separation.md)（提案中）
 - [ADR-0041: 生成物の来歴・選抜・artifact・auditを分離し、実行権限へ接続しない](0041-generated-artifact-provenance-boundaries.md)（提案中）
+- [ADR-0042: Decision witnessのactor・authority状態は、policy検証configurationによるexact bindingでのみ解決し、受理とは混同しない](0042-decision-witness-authority-qualified-boundary.md)（提案中）

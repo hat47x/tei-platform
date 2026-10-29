@@ -56,7 +56,7 @@ func traceRMTIdentityAcrossAcceptance(
 	if context.BaseModelRevision != before.revision {
 		return fail("source proposal was not evaluated against this before revision")
 	}
-	ledger, err := loadDecisionRecords(after.root)
+	ledger, err := loadDecisionRecords(after.root, nil)
 	if err != nil {
 		return fail("Decision ledger cannot be verified: " + err.Error())
 	}

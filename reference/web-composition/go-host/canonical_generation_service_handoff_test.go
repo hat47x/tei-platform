@@ -81,11 +81,14 @@ func TestCanonicalQuoteActionUsesHostOwnedGenerationServiceRoute(t *testing.T) {
 	runtimeHost := pruntime.Registry{Processes: process, Verifier: verifier, ServiceAcceptance: accepted}
 
 	routeCalls := 0
-	routeUnavailable, wrongGeneration := false, false
-	invoker, err := servicehost.NewSelectedServiceCarrierInvoker(
-		coordinator, runtimeHost,
-		func(_ context.Context, pinned composition.Binding) (servicehost.SelectedServiceCarrierRoute, error) {
+	routeUnavailable, wrongGeneration, wrongEnvironment := false, false, false
+	currentRoute, err := servicehost.BindHostApplicationEnvironmentRoute(
+		core.CanonicalID("order_entry"), core.CanonicalID("development"),
+		func(_ context.Context, application, environment core.CanonicalID, pinned composition.Binding) (servicehost.SelectedServiceCarrierRoute, error) {
 			routeCalls++
+			if application != "order_entry" || environment != "development" {
+				return servicehost.SelectedServiceCarrierRoute{}, errors.New("unexpected trusted Host scope")
+			}
 			if routeUnavailable {
 				return servicehost.SelectedServiceCarrierRoute{}, errors.New("private Host route unavailable")
 			}
@@ -93,14 +96,23 @@ func TestCanonicalQuoteActionUsesHostOwnedGenerationServiceRoute(t *testing.T) {
 			if wrongGeneration {
 				route.Binding.Generation++
 			}
-			// Route is Host-owned; pinned is provided only by the Coordinator,
-			// not by the HTTP request (which advertises a forged application).
+			if wrongEnvironment {
+				// A self-consistent Policy fingerprint is not Host Environment authority.
+				route.Plan.Environment = "production"
+				route.Plan.RuntimePolicyFingerprint = pruntime.PolicyFingerprint(route.Plan)
+			}
+			// The Host chooses Application and Environment once, and the current
+			// source validates them on every request regardless of HTTP claims.
 			if pinned != binding {
 				return servicehost.SelectedServiceCarrierRoute{}, errors.New("unrecognized Host binding")
 			}
 			return route, nil
 		},
 	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	invoker, err := servicehost.NewSelectedServiceCarrierInvoker(coordinator, runtimeHost, currentRoute)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -200,15 +212,22 @@ func TestCanonicalQuoteActionUsesHostOwnedGenerationServiceRoute(t *testing.T) {
 	}
 	assertCounts(3, 1, 1, 1)
 	routeUnavailable = false
+	wrongEnvironment = true
+	if status := call(); status != http.StatusServiceUnavailable {
+		t.Fatalf("wrong Host Environment Plan status %d", status)
+	}
+	// Even a recomputed fingerprint cannot authorize a different Environment.
+	assertCounts(4, 1, 1, 1)
+	wrongEnvironment = false
 	hostGuardAllowed = false
 	if status := call(); status != http.StatusServiceUnavailable {
 		t.Fatalf("withdrawn Application guard status %d", status)
 	}
-	assertCounts(3, 1, 1, 1)
+	assertCounts(4, 1, 1, 1)
 	hostGuardAllowed = true
 	accepted.revoked = true
 	if status := call(); status != http.StatusServiceUnavailable {
 		t.Fatalf("revoked Provider status %d", status)
 	}
-	assertCounts(4, 2, 1, 1)
+	assertCounts(5, 2, 1, 1)
 }
