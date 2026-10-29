@@ -58,6 +58,10 @@ M49 source-only launch path:
 
 Manifest `Class-Path` は依存JAR名の列挙であり、アプリケーション製品版やどの起動JARを選ぶかを意味しない。Eclipse `.classpath` の開発機パスも配布Runtime classpathの証拠ではない。M49 Sourceが`java.class.path`から組み立てる探索パスも、実際のJAR配置先を保証しない。複数pathや起動方式によってパスの意味が変わり得る。M50 installer ZIP内のBATは`xteamdl.jar`という固定basenameを指定するが、OSがこのBATを起動すること、インストール後のBAT/JARがZIP entryと同じであること、実行時にそのJARが選ばれることは未確認とする。
 
+### 設定値の逐次適用と不正数値（M49 Source-only）
+
+固定M49の`Modeler.java:1671–1706`では、設定キーを順に適用し、`MainFontSize`と`IOImageFontSize`を整数変換します。読込全体は一つの`try`に含まれ、例外を空の`catch`で無視します。不正な数値で変換が失敗すると、それ以前に代入された値を戻す処理はなく、後続キーの代入へ進みません。たとえば`MainFontSize`の変換失敗は後続の`IOImageFont`等に、`IOImageFontSize`の変換失敗は後続の`IOImageFolder`等に影響し得ます。これは固定Sourceの制御フローから分かる範囲であり、不正値の許容仕様、実GUIの表示、M50配布JARでの同等動作は未確認です（[Issue #940のsource-only追補](https://github.com/hat47x/tei-platform/issues/940#issuecomment-6499417616)）。
+
 ## 3. backup / staging / rollback の非主張
 
 `INSTALL.DAT`で分かるのはインストール先・関連付け・shortcut等の**宣言**であり、OS上の実副作用ではない。Readmeのuninstall時ユーザーfile保持の記述は、**更新前backupや失敗時rollback**の保証ではない。既存#940にあるModelerの通常モデル保存処理のbackupと、startup JAR更新のbackupは別の操作である。
