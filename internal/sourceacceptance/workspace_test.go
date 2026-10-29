@@ -127,3 +127,29 @@ func TestLoadVerifiedWorkspaceRefusesMissingReaderBeforeSourceLoad(t *testing.T)
 		t.Fatal("missing Reader returned an unverified Workspace")
 	}
 }
+
+// Regression pin only. The deterministic Load-to-index race (a file changed
+// between Load and index build) is covered in internal/workspace
+// (TestBuildSourceIndexFromLoadIgnoresLaterFileChange); this test checks that
+// a change to an unparsed managed file after acceptance is refused.
+func TestLoadVerifiedWorkspaceRefusesChangedUnparsedManagedFile(t *testing.T) {
+	root := t.TempDir()
+	if err := os.CopyFS(root, os.DirFS(filepath.Join("..", "..", "reference", "workspace"))); err != nil {
+		t.Fatalf("copy reference Workspace: %v", err)
+	}
+	reader, _, _ := workspaceTestReader(t, root)
+	if _, err := LoadVerifiedWorkspace(context.Background(), reader, "order_entry", root); err != nil {
+		t.Fatalf("unmodified accepted copy was refused: %v", err)
+	}
+	readme := filepath.Join(root, "databases", "sales-core", "README.md")
+	if err := os.WriteFile(readme, []byte("modified after acceptance\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	got, err := LoadVerifiedWorkspace(context.Background(), reader, "order_entry", root)
+	if err == nil || !strings.Contains(err.Error(), "SOURCE_FINGERPRINT_MISMATCH") {
+		t.Fatalf("modified README.md must be refused: %v", err)
+	}
+	if !reflect.DeepEqual(got, VerifiedWorkspace{}) {
+		t.Fatal("refused Workspace returned a World")
+	}
+}

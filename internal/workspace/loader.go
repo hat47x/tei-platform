@@ -1,6 +1,7 @@
 package workspace
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -51,6 +52,11 @@ type Result struct {
 	// serialized Source Index; only Load may populate this snapshot.
 	sourceSnapshotRoot string
 	sourceSnapshot     map[string][]byte
+	// Load-time bytes of managed files that no domain loader parsed (for
+	// example README.md or unknown-root assets). Kept apart from
+	// sourceSnapshot so the parser-bound meaning of that map, and of
+	// IndexedLoadedSnapshot, is unchanged. Used only by BuildSourceIndexFromLoad.
+	sourceManagedExtra map[string][]byte
 
 	// Only populated during Load. One pinned directory handle protects all
 	// domain Source reads from a Workspace root pathname being replaced.
@@ -175,10 +181,35 @@ func loadWithStack(root string, visiting map[string]bool) (Result, error) {
 		return Result{}, err
 	}
 	Normalize(&r.World)
+	// Capture the bytes of managed files that no loader parsed, through the
+	// same pinned root, so the Source Index can be built without a later
+	// filesystem read. Imported Workspaces are loaded by their own call and
+	// are not covered. Nothing here is parsed.
+	if err := captureManagedExtra(sourceRoot, &r); err != nil {
+		return Result{}, err
+	}
 	// The loader snapshot stays available, but an OS handle must not escape
 	// the Load lifetime. Imports close their own pinned roots independently.
 	r.sourceReadRoot = nil
 	return r, nil
+}
+
+func captureManagedExtra(root *os.Root, r *Result) error {
+	r.sourceManagedExtra = make(map[string][]byte)
+	for _, managed := range r.ManagedFiles {
+		content, err := readPinnedWorkspaceFile(root, managed.Path)
+		if err != nil {
+			return fmt.Errorf("capture managed source %q at Load: %w", managed.Path, err)
+		}
+		if previous, ok := r.sourceSnapshot[managed.Path]; ok {
+			if !bytes.Equal(previous, content) {
+				return fmt.Errorf("source %q changed while loading Workspace", managed.Path)
+			}
+			continue
+		}
+		r.sourceManagedExtra[managed.Path] = content
+	}
+	return nil
 }
 
 // parseWorkspaceYAML is retained for existing callers of the source-root-only API.
