@@ -137,3 +137,58 @@
 | TEI構成検討 | AdapterのPayload責務と確定効果の整合 |
 
 送信受付と回答本文の取得は別に扱う。取得制限やタイムアウトは未確認として配信台帳へ残す。今回は公開ソースの静的照合と議論整理であり、Lean/Go/DB/UI試験を新規実行していない。非公開原典の詳細は転載せず、ADRの採用状態も変更しない。
+
+
+## 2026-10-29第2追補：回答の回収と実装進展の取り込み
+
+今回の照合版はmain `4fde7e46e73cb0f0eaa6694d655662d094842bb3`。上の追補の照合版とは区別する。チャット本文の取得がタイムアウトした範囲は、担当が既存Issueへ保存した読取り可能な回答で補った。受付・本文取得・Issue保存・設計採用を別々に記録する。
+
+### 前回の未確認をどう整理したか
+
+[Graph担当の回答](https://github.com/hat47x/tei-platform/issues/982#issuecomment-6476555702)は、前回のDiff前提の訂正を明示的に参照している。したがって、訂正メッセージ自体の受付は未確認の履歴として残しつつ、**訂正内容が担当の回答へ反映されたこと**は確認できた。訂正の再送や同じ反例の再作成は不要である。
+
+「TEI汎用フレームワーク脱却構想」への四問の依頼は、前回の送信台帳では未確認のまま。既存回答の不存在とは断定せず、再確認する場合は受領済みなら参照だけを返すように依頼する。本文を取得できなかった他のチャットへは、受付済みの同一依頼を繰り返さない。
+
+### 候補が見つかったことと網羅できたこと
+
+[#982の追加反例](https://github.com/hat47x/tei-platform/issues/982#issuecomment-6476664267)は、影響候補が正数でも網羅性が未確認となる場合を具体化した。非競合の関係からN3が候補になっても、競合して経路へ採用できなかった別関係が残る。表示案は「候補N3 1件／競合関係の影響は未判定」であり、「N3だけが影響対象」とはしない。
+
+次の問いは、この区別をConsumerがどの観測から説明できるかである。既存評価器の戻り値、Validateの診断、Consumerが保持する評価条件を分け、全経路の被覆追跡を実装済みとしない。Ruleだけが変わった場合はGraph差分が空でも評価条件は変わるため、過去の評価表示の再照合を検討する。これは表示・再利用条件の案であり、新しいRule正本や変更種別の採用ではない。
+
+### 条件付き証明から対象集合の欠落へ
+
+[Lean担当の回答](https://github.com/hat47x/tei-platform/issues/1063#issuecomment-6475396003)は、有限リスト全件検査の性質と、実Providerが返した集合の完全性を分けた。全明細命題は `P(L) := ∀ l∈L, q(l)>0`、返却リストRを検査する形式モデルの正しさは、そのモデル内の性質である。日本語からの翻訳、Rと業務対象Lの一致、鮮度、Ownerの適用範囲、生成実装の忠実性は証明対象外としている。Leanの実装・実行はまだない。
+
+次の判別例は、Lに正値のAと数量0のBがあるのに、RがAだけを返す場合である。Rの全件検査が成立してもLの業務命題は成立しない。空集合・NULL・未取得の意味も未受理のまま保持する。形式モデルの定理を追加することと、実データ取得の欠落を検出することを別の確認へ戻す。
+
+### 検査Source、ビルド入力、保存後の実行
+
+[ハーネス#4のS4-01/S4-02](https://github.com/hat47x/tei-platform/issues/2016#issuecomment-6476652969)を読み、現照合版の `selection.go` が引き続きblob `61c8f3b0d25c1a462e346c372c38e72f3184efa5` であることを確認した。初回Sourceの読取り・digest検査後に、二回のBuild用コピーが元directoryから別々に読み取る。二回Buildの一致は、初回検査Sourceとの一致を自動では示さない。静的な競合仮説であり、誤PASSの実測ではない。
+
+次は単一Go候補のS4-01へ絞り、試験用の同期点で差替え時点を固定し、初回検査D1・コピー1・コピー2・実行Binaryを別々に観測する案を問う。試験用同期点を製品hook/APIへ一般化しない。Oracleが正しくても評価対象が違えば、その候補の適合証拠として使えない。
+
+[Java担当の新しいStore所見](https://github.com/hat47x/tei-platform/issues/2077#issuecomment-6482440631)は、保存成功と復元実行の閉包を分ける。`store.go` は現照合版でもblob `be9f5bfffa2931fea61e92abe660074cefdc00a4`。主classだけの保存・取得のbyte整合を、関連class一式が必要なConsumer起動の成功と同一視しない。次は全classの直接起動と、Put/Getで戻した保存物だけの隔離起動を対照にする。既存classesや外部classpathから不足分が紛れ込む条件も分ける。同SourceでBuild条件が異なる保存衝突は、拒否が既存物を保護する効用と、複数の実行物を保持できる範囲を別に検討する。新しいStore schemaの採用はまだ行わない。
+
+### 前回質問以外に進んだ実装と文書
+
+| 確認先 | 今回取り込む進展 | 現在も別に残る条件 |
+| --- | --- | --- |
+| [#2324](https://github.com/hat47x/tei-platform/pull/2324)、[#1127の統合記録](https://github.com/hat47x/tei-platform/issues/1127#issuecomment-6484512293) | Web Targetにopt-inのRunner StoreとLookupSubmitが統合。実PGの試験記録がある | 出荷CLIの既定採用、真正なgrant、試験用Owner処理から正式業務への対応、Outcome写像は未決。実PG結果は既存記録であり今回の再実行ではない |
+| [#2348の文書反映](https://github.com/hat47x/tei-platform/issues/1124#issuecomment-6486575297) | Accept後のledger失敗と旧Inspect後着の結合例がStudio鮮度設計へ統合 | 設計文書の統合。Consumer/GUI実装やOwner受入ではない |
+| [#2372](https://github.com/hat47x/tei-platform/pull/2372)・[技術検証サンプルの現状](https://github.com/hat47x/tei-platform/blob/4fde7e46e73cb0f0eaa6694d655662d094842bb3/plan/design/TECH_VALIDATION_SAMPLES_2026-10.md) | 十サンプルの限定的な通し検証の統合状況を文書へ反映。#2327多言語運用、#2349外部採用、#2362規則設計の進展も含む | order-workflowは未統合。4・5は拡張工程だけ。実環境の確認や設計全体の採用とは別で、Java StoreやGenerator競合の証拠にも代用しない |
+| [#2328](https://github.com/hat47x/tei-platform/pull/2328) | validateのJSON結果に読込み版fingerprintを追加 | 結果をある読込み版へ対応付けることであり、外部変更の常時検出や実Sourceの原子的snapshotではない |
+
+Runner Storeの実装 `runner_order_submit_store.go`（blob `5e15ba8bbbd45dfd4615fd758d60e1af77e4a3c7`）も静的に確認した。これにより「直接SQLしか存在しない」という旧時点の説明を、現在の全体結論には使わない。一方、現在状態がsubmittedであることと、自要求の確定Receiptを取得できたことは別である。Commit応答喪失後のLookupと再Submitのnot-submittableを、同一OperationID・要求同一性・現在認可に沿って比較する問いを構成担当へ返す。既存の実DB試験の再実装は求めない。
+
+### 今回の配信対象と範囲
+
+| チャット | 追加質問・回収事項 |
+| --- | --- |
+| TEIデータ様式 | 非空Impactと未判定経路、Rule変更時の過去表示 |
+| TEIハーネス#4 | S4-01を決定的に判別する同期点と実入力の観測 |
+| TEI Lean活用のメリット | Providerが対象明細を欠落させた場合と条件付き定理 |
+| TEI Go多言語対応調査 | Java Store取得物だけによる隔離実行 |
+| TEI構成検討 | opt-in Runner統合後のLookupと再Submit、旧設計の更新範囲 |
+| TEI汎用フレームワーク脱却構想 | 前回未確認の四問の回収。回答済みなら再作業不要 |
+
+この表は問いの整理であり、全件送信や回答完了を示すものではない。受付と失敗は別の配信記録へ残す。今回は公開コード・Issue・文書の静的確認のみ。Go/Java/Lean/DB/UI、競合再現、正式なOwner受理を新規実行していない。
