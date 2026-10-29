@@ -102,6 +102,16 @@ jobs:
           $failed = @($tests | Where-Object Action -eq 'fail')
           if ($failed.Count -eq 0) { $summary.Add('なし') }
           foreach ($t in $failed) { $summary.Add("- $($t.Package) $($t.Test)") }
+          foreach ($t in $failed) {
+            $key = "$($t.Package)|$($t.Test)"
+            if ($outputs.ContainsKey($key)) {
+              $summary.Add('')
+              $summary.Add("#### $($t.Test) の出力(末尾20行)")
+              $summary.Add('```')
+              foreach ($l in ($outputs[$key] | Select-Object -Last 20)) { $summary.Add($l) }
+              $summary.Add('```')
+            }
+          }
 
           $summary.Add('')
           $summary.Add('### Skipした試験とSkip理由')
@@ -140,6 +150,8 @@ jobs:
           if ($tests.Count -eq 0) {
             throw 'go test の結果が1件も得られなかった（実行基盤の問題の可能性）'
           }
+          # go testの終了コードを引き継がない。失敗は要約に記録済み。
+          exit 0
 
       - name: 検証が作業ツリーを汚していないことを確認
         shell: pwsh
