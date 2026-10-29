@@ -32,8 +32,9 @@ func (l *businessProcessLauncher) Invoke(ctx context.Context, command pruntime.P
 // It is NOT an order submission, database write, transaction, or replacement
 // for Host-side business authorization and effect-time Permission checks.
 func TestIndependentBusinessQuoteOverExistingGenericProcessTransport(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
-	defer cancel()
+	// #2057: buildは実プロセスの期限と切り離し、独立した長い期限で待つ。
+	buildCtx, cancelBuild := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancelBuild()
 
 	// Build the complete source of the standalone business plugin in an
 	// unrelated offline Go module. Copying only main.go could silently omit a
@@ -79,13 +80,15 @@ func TestIndependentBusinessQuoteOverExistingGenericProcessTransport(t *testing.
 		{"vet", "./..."},
 		{"build", "-o", binary, "."},
 	} {
-		cmd := exec.CommandContext(ctx, "go", args...)
+		cmd := exec.CommandContext(buildCtx, "go", args...)
 		cmd.Dir = work
 		cmd.Env = env
 		if output, err := cmd.CombinedOutput(); err != nil {
 			t.Fatalf("standalone quote plugin %v failed: %v\n%s", args, err, output)
 		}
 	}
+	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
+	defer cancel()
 	image, err := os.ReadFile(binary)
 	if err != nil {
 		t.Fatal(err)

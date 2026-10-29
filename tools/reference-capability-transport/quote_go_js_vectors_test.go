@@ -30,8 +30,11 @@ func TestIndependentGoAndJavaScriptQuoteSemanticParity(t *testing.T) {
 		t.Skip("Node.js unavailable: not evidence of cross-language parity")
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 180*time.Second)
-	defer cancel()
+	// #2057: go buildはキャッシュなし・CPU競合のCIで数十秒かかる一方、実プロセスの起動は
+	// 1回あたり数十ms以内である。buildは独立した長い期限で待ち、実プロセスの期限は
+	// build後に始めて、build時間が起動側の予算を食わないようにする。
+	buildCtx, cancelBuild := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancelBuild()
 
 	// Build the reference Go provider from a self-contained, offline module.
 	work := t.TempDir()
@@ -63,13 +66,15 @@ func TestIndependentGoAndJavaScriptQuoteSemanticParity(t *testing.T) {
 		t.Fatal(err)
 	}
 	goBinary := filepath.Join(t.TempDir(), "order-quote-go")
-	build := exec.CommandContext(ctx, "go", "build", "-o", goBinary, ".")
+	build := exec.CommandContext(buildCtx, "go", "build", "-o", goBinary, ".")
 	build.Dir = work
 	build.Env = append(os.Environ(), "GOOS="+runtime.GOOS, "GOARCH="+runtime.GOARCH,
 		"GOENV=off", "GOWORK=off", "GOFLAGS=", "GOTOOLCHAIN=local", "GOPROXY=off", "GOSUMDB=off")
 	if output, err := build.CombinedOutput(); err != nil {
 		t.Fatalf("standalone Go build failed: %v\n%s", err, output)
 	}
+	ctx, cancel := context.WithTimeout(context.Background(), 180*time.Second)
+	defer cancel()
 	goBytes, err := os.ReadFile(goBinary)
 	if err != nil {
 		t.Fatal(err)

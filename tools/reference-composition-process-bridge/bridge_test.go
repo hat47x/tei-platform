@@ -94,14 +94,19 @@ func testSelectedCompositionInvokesProcessPlugin(t *testing.T, source string) {
 	if runtime.GOOS == "windows" {
 		t.Skip("reference stdio process launcher forbids spaces in executable paths on Windows")
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
-	defer cancel()
+	// #2057: go buildはキャッシュなし・CPU競合のCIで数十秒かかる一方、実プロセスの起動は
+	// 1回あたり数十ms以内である。buildは独立した長い期限で待ち、実プロセスの期限は
+	// build後に始めて、build時間が起動側の予算を食わないようにする。
+	buildCtx, cancelBuild := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancelBuild()
 
 	binaryPath := filepath.Join(t.TempDir(), "tei-process-reference")
-	build := exec.CommandContext(ctx, "go", "build", "-o", binaryPath, source)
+	build := exec.CommandContext(buildCtx, "go", "build", "-o", binaryPath, source)
 	if output, err := build.CombinedOutput(); err != nil {
 		t.Fatalf("build existing process plugin: %v\n%s", err, output)
 	}
+	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
+	defer cancel()
 	bytes, err := os.ReadFile(binaryPath)
 	if err != nil {
 		t.Fatal(err)
