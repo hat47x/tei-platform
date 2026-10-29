@@ -103,3 +103,30 @@ func TestRealizeDesiredLeavesNamesToProvidersWithoutNamingPolicy(t *testing.T) {
 		t.Fatalf("oracle policy has no naming rule yet: %#v", child.UniqueConstraints)
 	}
 }
+
+// #1803: only a name the realization generated is marked as generated; the
+// diff compares the declared ones.
+func TestRealizeDesiredMarksGeneratedNamesOnly(t *testing.T) {
+	mappings := namingMappings(
+		[]persistence.UniqueConstraintMapping{
+			{Attributes: []core.CanonicalID{"s.child.pb"}},
+			{Name: "child_declared_uq", Attributes: []core.CanonicalID{"s.child.pa"}},
+		},
+		[]persistence.ForeignKeyMapping{
+			{Attributes: []core.CanonicalID{"s.child.pa", "s.child.pb"}, ReferencedMapping: "m.parent", ReferencedAttributes: []core.CanonicalID{"s.parent.a", "s.parent.b"}},
+		},
+	)
+	snapshot, err := persistence.RealizeDesired(mappings, "store", postgres.RealizationPolicy{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	child, _ := snapshot.Table("public.child")
+	for _, uc := range child.UniqueConstraints {
+		if want := uc.Name != "child_declared_uq"; uc.NameGenerated != want {
+			t.Fatalf("unique %q NameGenerated=%v", uc.Name, uc.NameGenerated)
+		}
+	}
+	if len(child.ForeignKeys) != 1 || !child.ForeignKeys[0].NameGenerated {
+		t.Fatalf("foreign keys=%#v", child.ForeignKeys)
+	}
+}
