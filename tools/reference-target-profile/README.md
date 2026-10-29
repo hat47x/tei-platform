@@ -182,6 +182,8 @@ go run ./tools/reference-target-profile/cmd/tei-target-profile run \
 - 配備後にartifact digestを再計算し、build結果と一致することを確認します。history/slotのdigestも照合します。
 - `storage: none`はrootを作らず、build結果のdigestだけを検証します。
 - `storage: sqlite`は`artifacts.db`のtransactionでartifactとcurrent/previousを更新し、候補と現在artifactの保存内容を、pointer切替前の同じtransactionでdigest照合します。候補またはcurrentが破損・欠落していれば、pointerと新規挿入をcommitせず拒否します。配備後の再読取照合も維持します。`rollback`はcurrent/previousを入れ替え、`rollback -to <digest>`はDBのartifactへ戻します。
+- SQLiteの配備と両rollbackは、全pointer更新後・commit前にcurrent/previousが予定値と一致し、指している非空digestのartifactが存在して内容も一致することを同じtransactionで確認します。更新の無視、切替後の内容改変・退避版の消失などではcommitせず拒否します。両rollbackは、退避するcurrentの破損・欠落も更新前に拒否し、既存の証拠を保持します。これは通常の往復rollbackの確認であり、壊れた現行版を破棄する緊急復旧を提供しません。
+- SQLiteの成功receiptは検証したpreviousを既存の`previousDigest`へ記録します。両rollbackではこの値を`rollback -to`へ渡して逆向きに戻せます。currentがなく既存previousを保持する配備・指定rollbackでも、その保持値を返します。この値は実Targetの起動可否や操作の許可を示しません。確認対象はこの二つのpointerと参照artifactであり、全履歴・任意のtrigger副作用・commit後の外部更新・電源断回復を保証するものではありません。
 - SQLiteの両rollbackとpruneも、filesystemと同じ`.update-lock`を状態読取り前に取得します。pruneの`deleted`はDB transactionのcommit成功後に設定し、保護対象の拒否やrollbackした削除予定を含めません。commit後のaudit追記が失敗した場合は、削除済み範囲を残して`passed=false`を返します。
 - SQLiteのpruneは、削除命令の正常終了だけで成功とせず、commit前の同じtransactionで残ったartifact集合・内容のdigest・作成時刻と、current/previousが計画どおりであることを読み取って確認します。削除の無視・再挿入、保持対象の消失・改変、pointer変更等があればtransaction全体をrollbackし、`deleted`を空にして拒否します。確認のため保持artifact全体を再読取りします。別tableへの記録など、これらの条件を変えないtriggerを一律に禁止するものではありません。
 - SQLite履歴の新旧は、`created_at`をRFC3339Nanoとして解析した時刻で比較します。同一時刻はdigestの降順です。小数秒の桁数やタイムゾーン表記の文字列順を新旧として扱いません。計画と実削除もこの順序を共有します。旧い文字列順に依存したapprovalは現在の削除予定と一致しなければ拒否し、署名済みbyte列を自動修正しません。
