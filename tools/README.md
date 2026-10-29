@@ -13,7 +13,8 @@
 | [`internal/`](internal/) | 複数のツールから使う共通処理 |
 | [`repository-architecture-check/`](repository-architecture-check/) | パッケージ構成と依存境界の検査 |
 | [`repository-dependency-report/`](repository-dependency-report/) | Goの直接依存関係の一覧作成 |
-| [`repository-plan-check/`](repository-plan-check/) | ADR・Issueの番号や要求と検証表の対応確認 |
+| [`repository-plan-check/`](repository-plan-check/) | ADR・Issueの番号や要求と検証表の対応確認、ADR索引とADRファイルの一致・状態の確認（#2343） |
+| [`repository-node-tests/`](repository-node-tests/) | どのworkflowからも実行されなかったNode.js試験5ファイルをgo testから実行する（#2346） |
 | [`repositoryqualification/`](repositoryqualification/) | リポジトリ検証条件の共通処理 |
 | [`reference-cli-trace-benchmark/`](reference-cli-trace-benchmark/) | 合成Workspaceによるtraceの処理段別の時間・メモリ計測と出力不変の確認 |
 | [`reference-change-packet/`](reference-change-packet/) | 変更範囲・危険度・検証・停止条件をJSONで宣言し、範囲確認と検証実行・証拠記録を行う参照（#2017） |
@@ -109,6 +110,7 @@
 | [`reference-plugin-build-supply/`](reference-plugin-build-supply/) | 技術検証用サンプル`plugin-build-supply`の工程1〜4の通しの検証。構築意図と実ファイル・観測したGoから`tei.process.reference`の計画を確定し、その照合値を、ホストが発行する発生識別子つきの二回の実構築と内容アドレスの保管庫、既存の自己構築の実行器の検証根拠(二回構築、段階の収束、ホスト登録)、保管庫から再取得したバイト列のプロセス通信の版1での呼出しまで引き継ぐ。提供元の曖昧さ・追加・信頼の失効、部分出力を残す失敗・二回構築の不一致・一回の実行の二重計上・同時の試行の強制終了、汚れた作業ツリー・外部モジュール・ソースとツールチェーンの食い違い・ホストのGo設定、工程間の識別の差替えと工程の欠落を注入する(同じ機械の上の実際のGoの構築。提供元のカタログと信頼の失効は合成) |
 | [`reference-order-multilingual-operation/`](reference-order-multilingual-operation/) | 技術検証用サンプル`order-multilingual-operation`の工程1〜6の通しの検証。複製した作業領域に受注の所有プラグイン、`std.message`、言語プラグインを加え、所有者・環境・原文言語・項目名を一組にして既存の多言語資産を変更せずに呼ぶ。日本語原文を一回改訂した前後の同じ対象一覧の突合表で、従属訳だけの失効と配布候補の再生成を確かめる。許可・受理・固定情報の失効と言語プラグインの撤去、配布候補の訳文の書換えと固定情報の差替え、改訂直後の旧配布候補、翻訳器の失敗・取消し・結果不明と機密の外部送信、翻訳中の同時編集、PostgreSQLとSQLiteの並びの差を注入する(合成のホスト、模擬の翻訳器、PostgreSQLの一つのインスタンス、SQLiteはPythonの標準モジュールでのファイル、Node) |
 | [`reference-external-adoption-authority/`](reference-external-adoption-authority/) | 技術検証用サンプル`external-adoption-authority`の工程1〜4の通しの検証。SUIの島階層の契約を固定版のまま写した影の検査の報告から、拡張の後付けと名前空間所有者の判定、意味の固定記録、署名つきのデータのみの配布物、合成ホストでの受理まで、固定版・写像報告・損失の記録の照合値と`lossless=false`を一つの記録で引き継ぐ。依存blobの変更、同じ名前空間の二つの提供元、所有者と署名者の信頼付与の失効・鍵交換・期限、損失なしへの読替え、提供元の意味の変更とファイルの移動、工程間の差替えを注入する(既存資産を変更せずに固定入力の複製で呼ぶ。外部側は固定表の複製による模擬、信頼付与・鍵・ホストは合成、時刻は論理時刻)
+| [`reference-order-rule-design/`](reference-order-rule-design/) | 技術検証用サンプル`order-rule-design`の工程1〜6の通しの検証。合成の旧資料と共有の合成契約の読取りと出所状態(結び付いた・表だけ・対象なし)、受理済み作業領域の複製との突合、変更候補の作成、通常のGitによる受渡しと再構築、影響範囲と過去の検証根拠の再利用可否、審査と署名つき決定までを一つの記録でつなぐ。候補・出所・署名つきの決定は共通受理へpreviewとreviewだけで提出して止め、受理しない(`order-workflow`への提出は未接続)。既存資産は変更せずに呼び、サンプル固有の処理は`internal/`へ入れない |
 | [`reference-process-plugin/`](reference-process-plugin/) | 別プロセスで動くPluginの参照用起動点 |
 | [`reference-composition-process-bridge/`](reference-composition-process-bridge/) | 合成基盤と従来・独立プロセスプラグインの接続試験 |
 | [`reference-runtime-capability-identity/`](reference-runtime-capability-identity/) | 実行時Capabilityの識別方法の確認 |
@@ -208,6 +210,7 @@
 | [`verify-plugin-build-supply.py`](verify-plugin-build-supply.py) | `reference-plugin-build-supply`の全試験(工程1〜4)を、清浄な複製(作業ブランチのコミットの浅いcloneなど)の上で、ネットワークからモジュールとツールチェーンを取得せずに実行し、skipが0件であることと観測値、通しの記録の要約、Goの版、試験の後も作業ツリーが清浄であることをreceiptへ残す。Dockerは使わない |
 | [`verify-order-multilingual-operation.py`](verify-order-multilingual-operation.py) | `reference-order-multilingual-operation`の全試験(工程1〜6)を、清浄な複製の上で、Dockerで起動した使い捨てのPostgreSQLで実行し、skipが0件であることと、通しの記録(失敗注入、完了条件、条件付きの条件の合否)の要約、Go・Python・SQLite・Nodeの版、試験の後も作業ツリーが清浄であることをreceiptへ残す。作ったコンテナーだけを終了時に削除する |
 | [`verify-external-adoption-authority.py`](verify-external-adoption-authority.py) | `reference-external-adoption-authority`の全試験(工程1〜4)を、清浄な複製の上で、ネットワークからモジュールとツールチェーンを取得せずに実行し、skipが0件であることと、通しの記録(失敗注入と完了条件の合否、信頼の時点)の要約、Goの版、試験の後も作業ツリーが清浄であることをreceiptへ残す。Dockerは使わない |
+| [`verify-order-rule-design.py`](verify-order-rule-design.py) | `reference-order-rule-design`の全試験(工程1〜6)を、清浄な複製の上で、ネットワークからモジュールとツールチェーンを取得せずに実行し、skipが0件であることと、通しの記録(失敗注入と完了条件の合否、未検証の一覧)を確かめて受領記録を出す。Node.jsとOpenSSHが要り、Dockerは使わない。`--repeat N`で判定と診断の安定を比べる |
 | [`self-build-ci-contract-test.py`](self-build-ci-contract-test.py) | セルフビルド専用CIの起動漏れと証拠欠落を、ワークフロー定義から検査する局所回帰試験 |
 | [`verify-critical-path-e1-e2-join.py`](verify-critical-path-e1-e2-join.py) | 保存済みのE1とE2a-1の二つの記録を、証拠の差し替えや水増しなしに突き合わせる。同一の実行系列であることは示さない |
 | [`test-critical-path-e1-e2-join.py`](test-critical-path-e1-e2-join.py) | 上記の突き合わせに対する、証拠の差し替え・水増しの回帰試験 |

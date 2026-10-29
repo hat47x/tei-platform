@@ -26,6 +26,19 @@ const (
 	// table that already has one (#1803 P5). It additionally carries the
 	// observed constraint name and the foreign keys that depend on the old key.
 	ConstraintDataPrimaryKeyReplace ConstraintDataCheckKind = "primary-key-replace"
+	// ConstraintDataRenameConstraint renames a unique constraint or foreign key
+	// of an existing table whose declared name differs from the observed one
+	// (#1803). It carries no row counts: it records whether the observed name
+	// still exists and whether the new name is free.
+	ConstraintDataRenameConstraint ConstraintDataCheckKind = "rename-constraint"
+)
+
+// ConstraintRenameKind names the constraint family of a rename.
+type ConstraintRenameKind string
+
+const (
+	ConstraintRenameUnique     ConstraintRenameKind = "unique"
+	ConstraintRenameForeignKey ConstraintRenameKind = "foreign-key"
 )
 
 // ConstraintDataCheck is the observed existing-data fact for one constraint
@@ -61,6 +74,15 @@ type ConstraintDataCheck struct {
 	// ReferencingForeignKeys are the foreign keys that depend on the existing
 	// primary key's index. Dropping the key would fail or require CASCADE.
 	ReferencingForeignKeys []ReferencingForeignKey `json:"referencingForeignKeys,omitempty"`
+	// RenameKind, BeforeName and NewName identify a constraint rename.
+	// SourceFound records that a constraint of that family named BeforeName
+	// exists on the table; NameOccupiedBy describes what already holds NewName
+	// (empty when it is free).
+	RenameKind     ConstraintRenameKind `json:"renameKind,omitempty"`
+	BeforeName     string               `json:"beforeName,omitempty"`
+	NewName        string               `json:"newName,omitempty"`
+	SourceFound    bool                 `json:"sourceFound,omitempty"`
+	NameOccupiedBy string               `json:"nameOccupiedBy,omitempty"`
 }
 
 func (c ConstraintDataCheck) identity() string {
@@ -68,7 +90,23 @@ func (c ConstraintDataCheck) identity() string {
 		string(c.Kind), c.Table, strings.Join(c.Columns, "\x1f"),
 		c.ReferencedTable, strings.Join(c.ReferencedColumns, "\x1f"),
 		strings.Join(c.BeforeColumns, "\x1f"),
+		string(c.RenameKind), c.BeforeName, c.NewName,
 	}, "\x1e")
+}
+
+// ConstraintRenameFacts are what the catalog says about one rename.
+type ConstraintRenameFacts struct {
+	SourceFound    bool
+	NameOccupiedBy string
+}
+
+// ConstraintNameReader is an optional extension to CatalogReader that reads,
+// for a constraint rename, whether the observed constraint still exists and
+// whether the new name is free in the namespaces PostgreSQL enforces: the
+// schema's relations (a unique constraint's index shares them) and the
+// constraints of the table.
+type ConstraintNameReader interface {
+	ConstraintRenameFacts(ctx context.Context, table RelationIdentity, kind ConstraintRenameKind, oldName, newName string) (ConstraintRenameFacts, error)
 }
 
 // KeyViolationCounts are the counts for a primary key or unique constraint.
@@ -122,6 +160,24 @@ func constraintAdditionCheck(change schemadiff.Change, created map[string]bool) 
 				Columns: append([]string(nil), change.PrimaryKey...), BeforeColumns: append([]string(nil), change.BeforePrimaryKey...)}, true, nil
 		}
 		return ConstraintDataCheck{Kind: ConstraintDataPrimaryKey, Table: change.Table, Columns: append([]string(nil), change.PrimaryKey...)}, true, nil
+	case schemadiff.RenameConstraint:
+		check := ConstraintDataCheck{Kind: ConstraintDataRenameConstraint, Table: change.Table, BeforeName: strings.TrimSpace(change.BeforeName)}
+		switch {
+		case change.UniqueConstraint != nil && change.ForeignKey == nil:
+			check.RenameKind = ConstraintRenameUnique
+			check.Columns = append([]string(nil), change.UniqueConstraint.Columns...)
+			check.NewName = strings.TrimSpace(change.UniqueConstraint.Name)
+		case change.ForeignKey != nil && change.UniqueConstraint == nil:
+			check.RenameKind = ConstraintRenameForeignKey
+			check.Columns = append([]string(nil), change.ForeignKey.Columns...)
+			check.NewName = strings.TrimSpace(change.ForeignKey.Name)
+		default:
+			return ConstraintDataCheck{}, false, fmt.Errorf("rename-constraint %s must carry exactly one of a unique constraint or a foreign key", change.Table)
+		}
+		if check.BeforeName == "" || check.NewName == "" || check.BeforeName == check.NewName {
+			return ConstraintDataCheck{}, false, fmt.Errorf("rename-constraint %s needs an observed name and a different declared name", change.Table)
+		}
+		return check, true, nil
 	case schemadiff.AddUniqueConstraint:
 		if change.UniqueConstraint == nil || len(change.UniqueConstraint.Columns) == 0 {
 			return ConstraintDataCheck{}, false, fmt.Errorf("add-unique-constraint %s has no columns", change.Table)
@@ -169,6 +225,10 @@ func (p Provider) ObserveConstraintData(ctx context.Context, observation SchemaO
 	reader, ok := p.Catalog.(ConstraintDataReader)
 	for i := range checks {
 		check := &checks[i]
+		if check.Kind == ConstraintDataRenameConstraint {
+			p.observeConstraintRename(ctx, check)
+			continue
+		}
 		if !ok {
 			check.Reason = "the catalog reader cannot count existing rows"
 			continue
@@ -226,6 +286,26 @@ func (p Provider) ObserveConstraintData(ctx context.Context, observation SchemaO
 	return observation, nil
 }
 
+func (p Provider) observeConstraintRename(ctx context.Context, check *ConstraintDataCheck) {
+	reader, ok := p.Catalog.(ConstraintNameReader)
+	if !ok {
+		check.Reason = "the catalog reader cannot read constraint names"
+		return
+	}
+	table, err := relationIdentityFromQualifiedName(check.Table)
+	if err != nil {
+		check.Reason = err.Error()
+		return
+	}
+	facts, err := reader.ConstraintRenameFacts(ctx, table, check.RenameKind, check.BeforeName, check.NewName)
+	if err != nil {
+		check.Reason = "reading constraint names failed: " + err.Error()
+		return
+	}
+	check.SourceFound, check.NameOccupiedBy = facts.SourceFound, facts.NameOccupiedBy
+	check.Observed = true
+}
+
 type ConstraintDataReadinessReason string
 
 const (
@@ -242,6 +322,12 @@ const (
 	// key being replaced. They are named and the replacement is refused; the
 	// provider never cascades.
 	ConstraintDataReferencedByForeignKeys ConstraintDataReadinessReason = "primary-key-referenced-by-foreign-keys"
+	// ConstraintRenameSourceMissing: no constraint of the family carries the
+	// observed name any more; the plan is stale and is not applied.
+	ConstraintRenameSourceMissing ConstraintDataReadinessReason = "constraint-rename-source-missing"
+	// ConstraintRenameNameTaken: another relation or constraint already holds
+	// the new name, so the constraint is unresolved rather than renamed.
+	ConstraintRenameNameTaken ConstraintDataReadinessReason = "constraint-rename-name-taken"
 )
 
 type ConstraintAdditionReadiness struct {
@@ -309,6 +395,18 @@ func (o SchemaObservation) AssessConstraintDataReadiness(diff schemadiff.Diff) (
 				assessment.Detail = "the observation was taken for a different diff; unresolved"
 			} else if check.Reason != "" {
 				assessment.Detail += " (" + check.Reason + ")"
+			}
+		case want.Kind == ConstraintDataRenameConstraint:
+			assessment.Check = check
+			switch {
+			case !check.SourceFound:
+				assessment.Executable = false
+				assessment.Reason = ConstraintRenameSourceMissing
+				assessment.Detail = fmt.Sprintf("no %s constraint %q exists on the table any more; the observation is stale", check.RenameKind, check.BeforeName)
+			case check.NameOccupiedBy != "":
+				assessment.Executable = false
+				assessment.Reason = ConstraintRenameNameTaken
+				assessment.Detail = fmt.Sprintf("the name %q is already used by %s; unresolved, not renamed", check.NewName, check.NameOccupiedBy)
 			}
 		default:
 			assessment.Check = check
@@ -466,4 +564,67 @@ func (r SQLCatalogReader) CountMissingReferences(ctx context.Context, table Rela
 	var missing int64
 	err = r.DB.QueryRowContext(ctx, query).Scan(&missing)
 	return missing, err
+}
+
+const constraintSourceQuery = `
+SELECT count(*)
+FROM pg_catalog.pg_constraint con
+JOIN pg_catalog.pg_class cls ON cls.oid = con.conrelid
+JOIN pg_catalog.pg_namespace ns ON ns.oid = cls.relnamespace
+WHERE ns.nspname = $1 AND cls.relname = $2 AND con.conname = $3 AND con.contype::text = $4`
+
+// constraintNameOccupantQuery lists what holds the new name: a relation of the
+// schema (tables, indexes, the primary key's index, sequences, views) and a
+// constraint of the same table. Only the kinds are returned, never data.
+const constraintNameOccupantQuery = `
+SELECT 'relation of kind ' || cls.relkind::text
+FROM pg_catalog.pg_class cls
+JOIN pg_catalog.pg_namespace ns ON ns.oid = cls.relnamespace
+WHERE ns.nspname = $1 AND cls.relname = $3
+UNION ALL
+SELECT 'constraint of type ' || con.contype::text || ' on the same table'
+FROM pg_catalog.pg_constraint con
+JOIN pg_catalog.pg_class cls ON cls.oid = con.conrelid
+JOIN pg_catalog.pg_namespace ns ON ns.oid = cls.relnamespace
+WHERE ns.nspname = $1 AND cls.relname = $2 AND con.conname = $3`
+
+func (r SQLCatalogReader) ConstraintRenameFacts(ctx context.Context, table RelationIdentity, kind ConstraintRenameKind, oldName, newName string) (ConstraintRenameFacts, error) {
+	var contype string
+	switch kind {
+	case ConstraintRenameUnique:
+		contype = "u"
+	case ConstraintRenameForeignKey:
+		contype = "f"
+	default:
+		return ConstraintRenameFacts{}, fmt.Errorf("unknown constraint rename kind %q", kind)
+	}
+	var facts ConstraintRenameFacts
+	var found int
+	if err := r.DB.QueryRowContext(ctx, constraintSourceQuery, table.Schema, table.Name, oldName, contype).Scan(&found); err != nil {
+		return ConstraintRenameFacts{}, err
+	}
+	facts.SourceFound = found == 1
+	rows, err := r.DB.QueryContext(ctx, constraintNameOccupantQuery, table.Schema, table.Name, newName)
+	if err != nil {
+		return ConstraintRenameFacts{}, err
+	}
+	defer rows.Close()
+	var occupants []string
+	for rows.Next() {
+		var what string
+		if err := rows.Scan(&what); err != nil {
+			return ConstraintRenameFacts{}, err
+		}
+		// A foreign key is not a relation: only constraint names of its own
+		// table can collide with it.
+		if kind == ConstraintRenameForeignKey && !strings.HasPrefix(what, "constraint") {
+			continue
+		}
+		occupants = append(occupants, what)
+	}
+	if err := rows.Err(); err != nil {
+		return ConstraintRenameFacts{}, err
+	}
+	facts.NameOccupiedBy = strings.Join(occupants, " and ")
+	return facts, nil
 }

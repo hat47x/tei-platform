@@ -193,11 +193,11 @@ Wails beta29 実ソース `v3/pkg/application/bindings.go`（Git blob `ae2140f90
 # fixed #1833 headのGo生成を済ませた非merge snapshotのrepository root
 # go version = 1.26.9; Host = 4bc437c7; generator = fe8e37b1
 # internal/studiohost/staticservices/services.generated.go が存在すること
-cp tools/reference-studio-composition-evidence-7/wails_multi_service_test.go \\
+cp tools/reference-studio-composition-evidence-7/wails_multi_service_test.go \
    cmd/tei-studio/wails_multi_service_test.go
 cd cmd/tei-studio
-CGO_ENABLED=0 go test -mod=readonly -count=1 -v \\
-  -tags 'studio_generated,server,tei_wails_multi_probe' \\
+CGO_ENABLED=0 go test -mod=readonly -count=1 -v \
+  -tags 'studio_generated,server,tei_wails_multi_probe' \
   -run 'TestWails(TwoGeneratedServicesRetainBothMethodsAndRejectDuplicate|IdenticallyNamedMethodsOfDifferentServiceTypesDoNotConflict)$' .
 rm wails_multi_service_test.go # 検証snapshot内だけ
 ```
