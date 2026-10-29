@@ -152,11 +152,11 @@ node reference/studio-authoring/real-browser.mjs \
 既存のJSONと同じ投影・審査結果を、独立した静的HTMLとして確認できます。ブラウザを使っても正本を直接編集する機構は追加しません。HTML内の表・ER・機能・業務は同じWorldの参照用表示です。参照用業務手順は受理済み正本ではなく、提案の審査も人間による受理ではありません。
 
 ```sh
-node reference/studio-authoring/cli.mjs inspect \\
-  -workspace "$scratch/workspace" \\
+node reference/studio-authoring/cli.mjs inspect \
+  -workspace "$scratch/workspace" \
   -focus relation:sales.order.lines -format html > "$scratch/studio.html"
-node reference/studio-authoring/cli.mjs review-edit \\
-  -workspace "$scratch/workspace" -edit-file "$scratch/edit.json" \\
+node reference/studio-authoring/cli.mjs review-edit \
+  -workspace "$scratch/workspace" -edit-file "$scratch/edit.json" \
   -format html > "$scratch/review.html"
 ```
 
