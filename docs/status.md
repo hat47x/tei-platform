@@ -1,6 +1,6 @@
 # TEIの実装状況
 
-- 整理日: 2026-10-25
+- 整理日: 2026-10-29
 - 開発段階: **参照実装を使った実験と検証**
 - 品質に関する注意: **生成AIを用いて開発中であり、コード・設計・安全性の体系的な人的確認は未実施**です。本番利用を想定していません。
 
@@ -24,6 +24,7 @@ TEIは、分野固有の知識と実装技術を分けて管理するローコ�
 | Web起動前の入力元照合 | 複合Web TargetにHost Readerの注入口を追加し、同じ読込結果から管理対象Sourceを照合してからRunnerとHTTPを生成する。通常CLIは正式Reader未接続のため起動拒否。合成fixtureには明示的な診断起動を用いる。**真正なHost受理・人的受理・製品G1/G2は未達** | [Web起動前の照合](../tools/reference-first-web-target/README.md)、[横断受入 #1119](https://github.com/hat47x/tei-platform/issues/1119) |
 | 生成器候補の選抜・来歴・artifact | 固定fixtureの選抜、source/binary digest、Go/Java/WASM/WASI/Python/JavaScriptのartifact保存、prune auditとcheckpointの署名・再検証を参照実装で確認。**実Provider・実Target・署名者Authority・別machine再現性は未確認** | [tools索引](../tools/README.md)、[ADR-0041](../plan/adr/0041-generated-artifact-provenance-boundaries.md)、[#2016](https://github.com/hat47x/tei-platform/issues/2016) |
 | Target Profileの配備境界 | oneshot/long-running/batch、Go/Python/JavaScript/Java/WASM/WASIの実行、filesystem/sqlite artifactのreplace・rollback、historyの検証・prune・hash-chain audit・署名済みapprovalを参照実装で確認。**remote storage、実Targetのsupervisor・health check・traffic drain、署名者Authority・trust rootは未確認** | [Target Profile](../tools/reference-target-profile/README.md)、[#2019](https://github.com/hat47x/tei-platform/issues/2019) |
+| 技術検証用サンプル | 業務系システムで頻出する難しい要件を一つの作業の流れで重ねて起こす通しの検証が、2026年10月20日〜29日に10サンプルで`main`へ統合された（`order-workflow`を除く。うち受注の画面経路と補助機能は拡張の工程のみ）。使い捨てのPostgreSQLと合成データ、同じ機械上の別プロセス、模擬の提供元で、工程の記録を照合値でつなぐ。異種DBはPostgreSQLとSQLiteの値の往復までで、**TEIのSQLite提供元はなく、主DBと参照系DBを異種で組む構成も成立していません。実環境での確認ではありません。`order-workflow`との接続、共通受理を通した受理、実際の外部提供元・取引先、複数サーバの本番構成は未確認** | [統合設計](../plan/design/TECH_VALIDATION_SAMPLES_2026-10.md)、[統合状況の一覧](../plan/design/TECH_VALIDATION_SAMPLES_2026-10.md#73-段階2-通しの検証の追加)、[参照用資料の案内](../reference/README.md#技術検証用サンプルの構成) |
 
 判定段階A・B・Cの「合格」は、**各判定時点に固定したソース、ビルド、検証根拠に対するもの**です。現在の`main`、すべての提供元、未知の業務、本番環境、別の実行先を自動的に合格とするものではありません。過去の検証結果を、そのまま新しい変更の検証根拠にはしません。
 
