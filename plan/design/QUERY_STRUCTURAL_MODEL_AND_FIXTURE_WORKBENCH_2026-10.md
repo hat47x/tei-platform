@@ -204,6 +204,16 @@ M1では既存Domain（型・範囲・列挙値）とRelation（キー・参照�
 
 #1803と既存`reference-design-output`のsourceRevision/structureRevision/artifact digestを再利用する。fixture revision、evaluated context、evaluator version等は**説明に必要な追加の来歴参照**であり、artifact byte一致だけで評価・意味・人のレビューの現在性を保証しない。SHO Composerの別文書正本を作らない。
 
+### 7.1 Plugin-firstと外部Consumerへの投影（#2390と整合）
+
+- **解析/DSL**：SQL構文・テンプレート分岐・Operator意味は#988のLanguage/Operator Pluginによる解釈候補。Pluginを組み込むことだけで受理済みMeaningを拡張しない。
+- **純粋な説明出力**：既存のDerivedIR/RelationalIRと許されたモデル参照から、仮想関係、列lineage、演算依存、Coverage、source locator、許可済みfixture例を返すread-only投影。出力構造を新しい公開標準ABIへ即時固定しない。内部のGo実装やTEI Studio UIを**必須の実行依存にしない**構成を最初に比較する。
+- **Consumer**：Modeler、SHO文書、CLI/静的HTML、外部Host（例：外部Editorのプラグイン）から利用できるように、構造の提示・ナビゲーション指示・画面描画を分離。外部Hostでの呼出し可能性は#2390のC0〜C3資格を参照し、Query ExplainのReferenceだけで外部利用可能と宣言しない。
+- **操作と権限**：read-only Explainの契約はDB read grant、Sourceを書き換える権限、テストデータの注入権限、AI/自動テスト向けUI外部制御権限を内包しない。必要操作は既存のHost/Invocation Context、Provider binding、明示Capabilityを介す。生成アプリで外部制御プラグインを含めないBuild構成も独立に維持する。
+- **AIハーネス**：最小のtyped inspect/explain/fixture-compare結果が読めれば、AIはユーザー向け可読性と根拠を確認できる。AIが承認/受理済み意味へ変換することや、GUI制御を必須の正確性証拠にすることは避ける。
+
+最初のP0受入では、少なくとも**CLI/JSON等のUI非依存出力**が同じscope/field identityを参照できることを確認し、Modelerへの投影は次段階とする。このConsumer境界は、TEI専用Hostを再導入することを意味しない。
+
 ## 8. 実装順・担当引継ぎ（提案）
 
 | 段階 | 所有 | 実施 | 完了の根拠 |
