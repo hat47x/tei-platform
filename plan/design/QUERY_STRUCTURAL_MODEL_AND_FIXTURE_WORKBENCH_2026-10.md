@@ -3,6 +3,7 @@
 - 作成：2026-10-30
 - 状態：**設計・検証計画候補**。公開契約の採用、実装完了、SQL/DB間の意味同等性、Ownerの業務受理を表さない。
 - 基準：2026-10-30確認時のmain `2503a25fee9ffa47592d47818c2bb35c0a2c50ab`。実装着手時は再照合。
+- Query構造Explainの一次Owner：**#2387**（M0静的解析確認→M1 read-only投影→M2 fixture照合→M3 Modeler/SHOへの出力）。本書/PR #2388はその追加実証計画であり、重複する製品機能Ownerではない。
 - 主な担当：#1640（集合演算/評価と計画）、#1126（データモデル）、#1131（型付きDataset/Snapshot/Expectation）、#1124（Modelerの投影）、#1803（設計書導出）。
 - 関連：#988（SQL/DSLのOperator）、#1706（集合束縛・重複）、#1121（Lowering）、#1063（設計時/実行時のDSL）、#1180（保存済み業務Scenario）、#1807（外部データ取込）。新しい第二Semantic正本や第二Driverを設けない。
 
@@ -93,12 +94,12 @@ ORDER BY q.order_id
 
 上記は**説明用の配置**であり、SQLの実行順序/物理マテリアライズを示すものではない。Modelerは「エンティティ＋属性一覧」「CTEの演算DAG」「field lineage」「fixture行と中間結果」「SQL本文のsource span」を切り替え/連動させる。SELECT列を選択すればどのscope/演算/元属性に由来するか移動できる。
 
-### 固定fixture F0（値・期待値は独立に指定）
+### 固定fixture F0（#2387のQXケースに対する補助ケース。値・期待値は独立に指定）
 
 - customers: (C01, 青空商事), (C02, 山田商店)
 - orders: (O01,C01,OPEN), (O02,C01,OPEN), (O03,C02,OPEN), (O04,C02,CLOSED)
 - order_lines: (O01,1,2,100), (O01,2,1,50), (O02,1,1,50), (O04,1,3,100)
-- データ型/制約前提：orders.order_id一意、order_lines(受注ID,行番号)一意、参照先存在、quantity/price非NULL。整数例は桁あふれしない。通貨/丸めなど業務採用は対象外。
+- データ型/制約前提：orders.order_id一意、order_lines(受注ID,行番号)一意、参照先存在、**F0版ではquantity/price非NULL**。整数例は桁あふれしない。通貨/丸めなど業務採用は対象外。
 - `line_totals`: (O01,250),(O02,50),(O04,300)。
 - `open_orders`: (O01,C01,250),(O02,C01,50),(O03,C02,0)。
 - `threshold=200`、final: (O01,青空商事,250)。
@@ -110,7 +111,7 @@ ORDER BY q.order_id
 
 | ID | 最小変更 | 期待する区別/診断 |
 | --- | --- | --- |
-| N1 | 明細のないO03と、明細1件だがquantity=NULLのO02を比較する | absent groupを0にするCASEと、存在するNULL集計を別扱い。WHEREのUNKNOWNも識別 |
+| N1a / N1b | F0（quantity非NULL）へNULLを入れる / **nullableを明示した別モデル版**でO02.quantity=NULLを評価する | N1aはモデル制約違反として入力拒否。N1bはO02のSUM=NULL、O03のabsent group→0を区別。意味の違う二つのDataset/Model版を同じfixtureと見なさない |
 | N2 | JOIN先customersの重複キーを混入 | モデル制約違反としてfixture拒否。JOINの二重計上と誤った一意性を隠さない |
 | N3 | 件数制限を集計・Filterより前へ移す候補 | 不正/非同等な計画を拒否。既存#1640の先行Limit禁止を再利用 |
 | N4 | GROUP BY前に同じ受注の明細が複数存在 | 2行が1集約行へ寄与することを明示。row lineageが無ければ寄与行は未確認 |
@@ -124,6 +125,18 @@ ORDER BY q.order_id
 | N12 | 生成データの制約が矛盾/未対応 | unsatisfiable と unsupported と evaluation error を別分類 |
 
 N1は原fixtureのO02の行を**差替え**、O03は明細ゼロのままにする（同一テスト内の衝突を作らない）。N2はキー制約検査前に問い合わせ実行しない。
+
+### 4.1 最小SQL観測とその限界（2026-10-30追加）
+
+[再現用SQLite試料](../../plan/fixtures/query-workbench-f0/verify_sqlite.py)は**独立のSQL実行観測**に限定する。使い捨てのin-memory SQLite、テスト用架空データ、手書き期待値のみ使用。外部DB、TEI評価器、Host/Provider、Productionの認可には接続しない。単に「期待値が一度一致した」ことをSQLの意味証明へ昇格させない。
+
+```sh
+python3 plan/fixtures/query-workbench-f0/verify_sqlite.py
+```
+
+作業コンテナで同等の初期試料を手動実行した結果（**GitHub上の保存ファイルのexact-byte検証、TEIの実行試験、CIではない**）：F0のline_totals=[(O01,250),(O02,50),(O04,300)]、open_orders=[(O01,C01,250),(O02,C01,50),(O03,C02,0)]、final=[(O01,青空商事,250)]。N1a非NULL制約違反で拒否、N1b nullable別モデルではO02の集計がNULL、N2の顧客キー重複を拒否、N3の早すぎるLimitは空結果となりF0と非同等。CI/Goテスト/実PostgreSQL/Modeler操作は未実行。SQLite内部の検証が成功しても、中間CTEを元SQL実行時の物理的な作業表として取得した事実にはならない。
+
+**重要な追加境界**：通常のCTEに対し`WITH ... SELECT * FROM cte`を別SQLとして発行して得る値は、元のQueryと**別の実行**の観測である。純粋演算・同じ入力snapshot等の条件を固定した説明用の結果として扱う。時刻・乱数・volatile関数、再帰CTE、DMLを含むWITH、複数参照CTE、評価停止条件、環境/権限差があれば、別実行の中間結果を元SQLのactual中間結果と断定できない。PostgreSQLのCTEはinline/実体化等の選択が可能（https://www.postgresql.org/docs/current/queries-with.html）。Explain/Analyzeの物理的な推定・計測行数は、論理的な全中間行の値とは別の観測である。
 
 ## 5. テストデータはモデルに束縛された資産
 
@@ -150,6 +163,37 @@ M1では既存Domain（型・範囲・列挙値）とRelation（キー・参照�
 - **開示**：権限のないフィールドや中間行を表示しない。許可された集約結果から保護対象の元行を逆表示することを禁止する。
 - **停止**：NULL/文字照合/丸め/時点/重複/相関/Recursive等の意味が実現先で一致する根拠がない場合、unsupported/unresolvedを示しsilent fallbackしない。
 
+## 6.1 直交するScopeと説明の可否
+
+他レーン（#2386組織/時点、#1769行スコープ、#1706集合完全性、#2056入力NULL）との接続では**一つのScope enumに統合しない**。少なくとも四つの独立軸を使う。
+
+| 軸 | 主な問い | 誤って同一視しない対象 |
+| --- | --- | --- |
+| Lexical SQL Scope | このCTE/alias/相関列はどこで見えるか | Tenant/業務対象の許可範囲 |
+| Business/Temporal Scope | どの受注/組織関係・業務有効時点が対象か | SQLの単なるWHERE文字列 |
+| Read-set Scope | どの集合Rが取得され、R=Lと証明できるか、どのrevisionのsnapshotか | Providerの返したページや一部subset |
+| Authority/Disclosure Scope | 誰がどの元行・属性・集約結果・Lineageを見られるか | モデルに宣言された組織上のRole |
+
+「取得できない」「0件だった」「業務集合が空」「認可により非公開」「評価不能」「NULL」は別の状態。NOT EXISTSや全件合計での不在の確定は、対象集合と読み取りの完全性・鮮度・権限の根拠が必要。要約だけ開示可能な場合に、詳細行lineageを画面へ漏らさない。
+
+組織例（#2386、Draft PR #2389）への将来適用では「組織の複数経路JOIN→重複計上」や「as-of組織版・Rule版だけ変更・委任失効」を別の反例とする。Query説明結果が同じでも、Rule版・組織版/Grant版が異なれば現在の判断/表示が有効とは限らない。組織用の新規SQL実行器・認可正本は導入しない。
+
+### 6.2 説明用の評価表の最小レコード（表示向け概念、公開schema非採用）
+
+- Queryのauthoring sourceとsource digest（native SQL、2waySQLならtemplate source digest、選択条件/適用分岐、実際に評価するSQL digestを分ける）、解析器/言語/Operatorの固定版。
+- Query scope/演算IDと入力/出力のField IDs、parse/resolution/lowering/説明coverage。Opaqueや解決不能の残りを正常値へ埋めない。
+- model revision、Dataset/局所patch revision、parameter presence（missing/null/present）、snapshot/read-set completeness、評価時点/時区間、Rule/Domain revision。
+- **expected（独立oracle）**と**observed（評価器/Providerの実測）**、行/多重度の比較規則、unorderedならbagの多重度比較、ORDER BYの保証がある場合だけ順序比較。デフォルトの行番号をIdentityや安定ソート保証にしない。
+- Evaluation path：説明専用/TEI意味評価/別SQLへの差替え実行/元SQLの実行/対象DB物理計画の観測を区別。元SQLとは異なるSQLへの書換えを同一実行結果として表示しない。
+- Completeness/Authority/Provider/Execution failure、stale reason、証拠未取得の状態を別欄に記載。署名・byte一致・可読性評価は別資格。
+
+### 6.3 実装順に伴う停止条件
+
+- M0ではCTEの解析coverageを固定SQLで確認。Query側のscope-lowering coverageがFULLでも、Evaluatorの対応範囲は個別判定。
+- M1ではread-only図/表だけを出す。『CTE結果』として示す手書き期待値はexpectedと明記し、Provider actualと混同しない。
+- M2では既存#1131のDatasetで独立期待値・型付き検査・反例を実施。`DerivedSelect`の拒否を緩めず、必要なExecutor追加は#1640/#1121の別レビュー。
+- M3でModeler/SHOの版付き表示を展開。文書内の画像・参照先・説明文の改訂とSource/fixture/Ruleの改訂を分ける。説明を読めるかは「なぜO03=0か」「O02=NULLの理由」「GROUP後の一意性が業務IDでない理由」「全件集計の完全性」を人が正しく再説明できるかで圧力試験。
+
 ## 7. 表示とSHO設計書
 
 1. **構造ビュー**：実Entityと仮想Relationの図。Entityの親子/参照は関係線、CTE導出は演算線。ひとつのQueryを高密度表・図・ツリーに投影。
@@ -169,7 +213,7 @@ M1では既存Domain（型・範囲・列挙値）とRelation（キー・参照�
 | P2：Modeler/資料連結 | #1124 + #1803 | SQL ↔ モデル ↔ 行 ↔ 設計書の一往復。編集可能元と導出部分を区別 | 同じrevisionを辿れ、変更後はstale表示。既存manifest/文書出力を活用 |
 | P3：生成制約と別Target比較 | #1131 + #988/#1121、#1180はScenario再利用 | Domain/Constraintに基づく生成、最小の第二eval/実DB比較 | 生成の適用範囲と差異を説明できる。Lean/SMT、全SQL、各DBは先行決定しない |
 
-P0/P1の固定fixture・紙上oracleは並行可能。P2はP0のID/出力を受け取る。P3はP1で見つかった実不足をもとに範囲決定。既存Issue/PRに所有機能があればそこへ差分を寄せ、新しいWorkBenchモノリスを作らない。
+#2387が静的read-only説明の一次Owner。#2387のQX初期fixture（数量0・顧客C1/C2/C3等）を最初の構造試験に使い、本書F0（数量が非NULL、二CTE・thresholdでFilter）はP1で演算・NULL比較を明確にする**補助fixture**とする。二つの独立Dataset正本を作らず#1131の同じ型付き契約へ接続する。#2386のORG-13（対象集合完全性）・ORG-21（複数経路計上）はその次の拡張例とする。P0/P1の固定fixture・紙上oracleは並行可能。P2はP0のID/出力を受け取る。P3はP1で見つかった実不足をもとに範囲決定。既存Issue/PRに所有機能があればそこへ差分を寄せ、新しいWorkBenchモノリスを作らない。
 
 ## 9. 将来の形式検証・行の由来を扱う研究参照（採用候補）
 
