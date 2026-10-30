@@ -173,7 +173,7 @@ Editorは、Modelerの機能定義から実行用の機能定義を作り込み�
 
 用語と規則、改訂履歴、注記、しおり、主題領域などの区分を、意味の正本、表示情報、運用の記録のどれに置くかを決める仕事です。X-TEAでは、注記を記述欄の中の特定の印（`@NOTE@`）で表し、一覧にしています。
 
-**M49 Sourceの追加確認（TEI要件ではない）:** `System@DocFileFormat`はセミコロン区切りの外部資料候補として読み、`&ID`・`&NAME`・`<CURRENT>`を置換してFunctionの資料一覧を構成します。M49ではSystem定義から読み書きし、`xteamdl.properties`のキーとして参照するコードは確認できません。これは単なる設計書出力形式ではなく、Functionに付く外部資料参照を扱うSource factです。TEI側での意味・保管先の対応付けは未決で、[#1802のSource-only追補](https://github.com/hat47x/tei-platform/issues/1802#issuecomment-6499985744)に証拠を記録しました。旧書式・token構文をTEI契約へそのまま移しません。
+**M49 Sourceの追加確認（TEI要件ではない）:** `System@DocFileFormat`はセミコロン区切りの外部資料候補として読み、`&ID`・`&NAME`・`<CURRENT>`を置換してFunctionの資料一覧を構成します。M49ではSystem属性を読み、編集確定時にDOM属性を更新します。これは単なる設計書出力形式ではなく、Functionに付く外部資料参照を扱うSource factです。TEI側の意味・保管先および[#1808](https://github.com/hat47x/tei-platform/issues/1808)/[#1127](https://github.com/hat47x/tei-platform/issues/1127)/[#1130](https://github.com/hat47x/tei-platform/issues/1130)の責務分担は未決で、[#1802のSource-only追補](https://github.com/hat47x/tei-platform/issues/1802#issuecomment-6499985744)に証拠を記録しました。旧書式・token構文をTEI契約へそのまま移しません。
 
 守る境界:
 
