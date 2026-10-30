@@ -72,16 +72,17 @@ jobs:
           check-latest: false
           cache: false
 
-      # cmd/tei-studio はWails経由でcgoに依存するため、source scanがLinux runner
-      # で解決できない。配布物はbinaryなので、Windows向けにbuildした実binaryを
+      # cmd/tei-studio のdesktop buildはWails経由でcgo（gtk/webkit）に依存し、
+      # Linux runnerではbuildできない。配布と検査の対象は `-tags server` の
+      # CGO無効build（docs: tei-studio-server）なので、それを実binaryとして
       # -mode binary で検査する。製品に入る依存だけを直接照合する。
-      - name: Windows向けにbuildし実binaryを検査
+      - name: server構成でbuildし実binaryを検査
         shell: bash
         working-directory: cmd/tei-studio
         run: |
           set -euo pipefail
           go version
-          go build -o /tmp/tei-studio.exe .
+          CGO_ENABLED=0 go build -mod=readonly -tags server -o /tmp/tei-studio.exe .
           go run golang.org/x/vuln/cmd/govulncheck@latest -mode binary /tmp/tei-studio.exe
 
   npm-audit:
