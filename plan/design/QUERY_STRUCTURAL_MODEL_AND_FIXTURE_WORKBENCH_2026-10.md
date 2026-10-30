@@ -214,6 +214,39 @@ M1では既存Domain（型・範囲・列挙値）とRelation（キー・参照�
 
 最初のP0受入では、少なくとも**CLI/JSON等のUI非依存出力**が同じscope/field identityを参照できることを確認し、Modelerへの投影は次段階とする。このConsumer境界は、TEI専用Hostを再導入することを意味しない。
 
+### 7.2 M0の先行Gate：SQLワーカーの出所、スコープ付き束縛と説明の真偽（2026-10-31追補、未実行）
+
+[#2387のQX-12 相関サブクエリ・scalar・LATERAL・Windowの検討](https://github.com/hat47x/tei-platform/issues/2387#issuecomment-6534035206)を踏まえ、複雑なSQLの演算対応に進む前に、**現在存在する単純な列参照の解決でも誤った「完全解決」が生じないこと**を先に保証する。旧X-TEAの設計例、組織の関係経路、Smart DataのFunction Port、Value Contract/型付き項目にも共通する根拠境界である。
+
+**コードに基づく所見（main `4325ca79a52bf0d576db6fb4027bdc516b1023fd`、実Goテスト未実行）**
+
+- `internal/query/analyzer/client.go` は `RunPythonWorker` を備え、`internal/query/analyzer/model.go` の `ColumnOccurrence` は `ScopeID` と `Correlated/OuterScopeID` を備える。一方、`reference/workspace/plugins/tei-editor-intelligence-sql/1.0.0/plugin.tei` は外部 `python3 -m tei_sql_worker` と `sqlglot` を宣言するが、確認したmainの全追跡ファイル内に `tei_sql_worker` のPythonソースはない。配布済み外部パッケージや開発環境への導入の有無は**未確認**。同宣言を「クリーンcheckoutでSQL→wire ResultのE2Eが可能」とみなさない。
+- `DeriveFromAnalysis` 内の `resolveColumn` は、物理列解決に**ScopeID/OuterScopeIDを渡さず**、平坦な `TableAliases` と全Scopeの `SourceRef` を見て先行一致する別名を採る。内側と外側で同じ別名が異なる物理表を指すと、異なる列が同じ表へ誤束縛され得る（**静的コード読取りに基づく反例候補**。実行結果の観測ではない）。
+- 同じ物理表の二つのSource occurrenceを使った自己JOINでは、列の曖昧性を表名で `uniqueStrings` に潰すと、未修飾列を一意に解決したと誤認し得る。名称が同じでもSource occurrenceが二つなら同一参照ではない。
+- `outputByScopeName[scope][lowercase(name)] = outputID` は、同Scopeに重複する出力別名があると最後の列で上書きし得る。CTE列参照を「一意」と断定するには実際に一意か検証が必要。またCTEの `SourceKind` が`cte`でも、`Binding` が存在するScopeIDを参照しているかを検証せず `resolved++` する箇所がある。
+- 既存の `Coverage.Parse=full` は `result.Status=ok` から、`Coverage.Lowering=full` はworker側の申告文字列から導出される。これらと、**スコープ付き物理列解決・CTE参照・実SQLの利用形態まで一貫して確証されたこと**を同値扱いしない。
+
+**M0の最小反証テスト（いずれも今回NOT RUN）**
+
+| ID | 入力/対象 | 判別すべき事実 | 不合格／停止条件 |
+| --- | --- | --- | --- |
+| QX-M0-1 | クリーンなmainとPlugin宣言 | SQLワーカーの実物・配布単位・依存固定版・実行環境・protocol version・出所を特定 | descriptorだけでworker実装・SQLGlot実行をPASSにする |
+| QX-M0-2 | rootで`public.orders AS x`、subqueryで`public.order_lines AS x`、両方に`order_id`列 | inner `x.order_id`→`order_lines`、outer `x.order_id`→`orders`、同じalias文字列でも別Source occurrence | 先に列挙されたorders、または平坦Alias Mapで双方を同じ表へ束縛し、`Resolution=full`と表示 |
+| QX-M0-3 | `orders a JOIN orders b` 内の未修飾 `order_id` | 二つのSource occurrenceがあるため曖昧性を維持し、実SQLが拒否されるなら解析/実行エラーを保持 | 物理表名が同じことだけで曖昧性を消去 |
+| QX-M0-4 | 同ScopeのCTE出力別名二重宣言、CTE Bindingの未存在ScopeID | 出力別名の一意性・Binding参照先・未知列を検査し、少なくとも未解決/拒否 | mapの後勝ちや存在しない`Binding`から完全Lineageを描く |
+| QX-M0-5 | outer相関列、inner同名列、`EXISTS`/scalar/LATERAL各利用形態 | `OuterScopeID`と式の利用形態は独立。具体的利用形態が現wireで未識別なら部分/unsupported | 相関という理由だけでscalar/EXISTSを普通のJOINへ推測変換 |
+| QX-M0-6 | source SQLのみ変更、Schema Snapshotのみ変更、Output ordinalのみ変更 | 同じ名前・位置でも別identity/意味の場合は再解決・stale表示。構造・Lineage・fixture・評価観測の無効化境界を区別 | 古い解決済みLineage/受理済み意味を自動継承 |
+
+最初の作業単位は `internal/query/derived_test.go` の**synthetic `analyzer.Result` を使うQX-M0-2/3/4の負例**と、既存 `resolveColumn` の対象範囲の狭い修正を別の小Draftで検討すること。今回の計画文書はコードを変更しない。Testを実行しないうちは不具合の実測PASS/FAILとは呼ばず、原因候補として保持する。誤束縛は見た目の問題だけでなくSource/Field lineageが誤った物理表を指すため、単なる`unresolved`より危険な**false-positive resolution**として先行対処する。
+
+次に、実SQL→ワーカー→`analyzer.Result`→`DeriveFromAnalysis`へ同じSQLを流して、静的Go fixtureと差分比較を行う。workerが利用できないなら、実物と出所を特定する段階を明示的に停止し、Goで手組みしたResultをE2E証拠へ読み替えない。Plugin配布・Host/実行許可は#988/#2390/#951を参照し、通常のQuery説明のために独自Hostを追加しない。
+
+### 7.3 設計者が受入できる最小の閲覧操作
+
+最初のread-only Consumerは、**SQL本文の一つの式を選択→対応するScope/Source occurrence/演算/出力列へ移動→逆方向に根拠へ戻る**という一往復を最小操作とする。静的解析のCoverageと評価証拠は別欄、未解決・反例は非表示にしない。CTE中間表・相関した外側行ごとの例は固定Dataset/Scenario参照から示し、テスト値を実DBの物理中間値と呼ばない。
+
+合格条件は、同じ別名を持つ二つのScopeと同じ物理表を二度参照する自己JOINにおいて、選択先が正しいSource occurrenceか未解決であり、他Scopeへ誤Navigateしないこと。失敗した場合は投影を広げる前に束縛・source locatorの不確実性を表示する。編集・Source Acceptance・Host実行・Smart Data Hookはこの操作に含めない。
+
 ## 8. 実装順・担当引継ぎ（提案）
 
 | 段階 | 所有 | 実施 | 完了の根拠 |
