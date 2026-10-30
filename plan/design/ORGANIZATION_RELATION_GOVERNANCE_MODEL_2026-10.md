@@ -645,3 +645,112 @@ MECEは任意の世界全体に対する完全性を数学的に証明したと�
 - **長期の意味閉包**：既存Semantic Data/Relation/Ruleが想定する意味の範囲で足りるか。足りない場合の拡張はReference失敗の証拠に基づき別途判断。
 
 **状態**：本節は計画・比較・期待票の更新だけ。概念空間のMECE成立、新Core kind、DSL/Plugin実装、Lean証明、Provider同値、実Host資格、業務Owner受理のいずれも完了していない。
+
+## 25. 組織メタモデルの保存則と片方向投影（2026-10-30：他チャット横断）
+
+### 25.1 メタレベルの概念を組み合わせても守るべき保存則
+
+前節の構成文法（対象、関係、規則、出来事）と判別特性は概念を構成する候補である。ただし、**形式の組合せができることと、業務意味を保てることを別に検査**する。概念空間の必要十分性は単に分類の網羅だけでは検査できない。
+
+| 保存則 | 内容 | 禁止する誤推論 |
+| --- | --- | --- |
+| **同一性保存** | Person、Org、Position、Assignment、Eventなどは、それぞれ受理された同一性条件で識別 | 同名、社員番号一致、同じ物理PKから自動的に同一業務対象とする |
+| **依存関係の向き** | ある在任・雇用・所属は参加者や制度に依存し得るが、人物/職位の存在が必ずしもその在任関係に依存するわけではない | 退職でPersonを消す、空席でPositionを消す |
+| **事実と規範の分離** | Fact/Relationが成立しても、義務・決裁権能・禁止・許可には別の規範的根拠が要る | `holds(position)`→`approve=true` |
+| **変更と状態の分離** | ChangeEventの登録・承認と、指定時点の関係・公開組織版・外部Provider状態は別 | 発令を登録しただけで全テナントに反映済みとする |
+| **投影の情報損失の明示** | 詳細Relationから単純Relationへ投影できても、逆算で消えた期間・根拠・主務/副務を補えない | `memberOf`から実体化Assignmentを根拠付きで創作 |
+| **集合・多重度の保存** | 関係経路の列挙、DB Queryのbag semantics、配賦規則を区別 | `DISTINCT`によって業務的な二重計上を正したと宣言 |
+| **意味受理とAuthority分離** | Source／Candidate／Accepted Rule／Host Grant／実Effectを別状態とする | AI案/検証PASS/Source byte一致を決裁権能・実行許可へ昇格 |
+
+### 25.2 単純Relationと詳細Relationの可逆性を先に判定
+
+例えば`Assignment A1=(Person=P1,Position=M1,Org=D1,valid=[2027-04-01,2027-07-01),主務,Source=S1)`がある場合、**所属とみなす規則が正式に定義され、対象時点とスコープが一致し、取得集合が完全**なら、`memberOf(P1,D1)`を導出して表示できる。
+
+`projection(detail)=simple`は成立し得るが、一般には`inverse(simple)=detail`は成立しない。逆方向には、職位M1、任期、主務/副務、辞令Source、独立なAssignment IDという情報が不足する。UIが直接所属を編集した場合に黙って任期付きAssignmentを生成しない。対応不能は「詳細未決の業務関係」または明示的な導出・入力候補として残し、Owner受理を必要とする。
+
+この片方向性はW3C Organization Ontologyの直接`memberOf`・`Membership`・`Post`の使い分け、およびOntoUML/UFOのmaterial relationとRelatorを区別する議論と整合する。ただし、それらの外部OntologyをTEIの意味正本として採用するわけではない。
+
+- https://www.w3.org/TR/vocab-org/
+- https://ontouml.readthedocs.io/en/latest/classes/sortals/relator/index.html
+- https://ontouml.readthedocs.io/en/init-ontouml/relationships/material/index.html
+
+### 25.3 概念をなくす試験と、不要な導出を禁止する試験
+
+**ORG-32（NOT RUN）**：同じ`memberOf(P1,D1)`を、(a)期間のみの所属と、(b)特定職位への任命/主務/発令に由来する所属へ投影する。投影結果が同じでも元の詳細が異なることを示し、逆方向の無根拠な再構成を拒否する。**比較票は両者のSource/identity/validity/Owner状態を別行にする**。
+
+**ORG-33（NOT RUN）**：関係`employedBy(P1,A)`が消滅し、同一人物P1の別会社への関係が開始した場合、Personの同一性が保たれ、雇用・配置だけが変化することを検証。外部社員番号の再利用や失効をPersonの同一性規則にしない。
+
+## 26. 一つの最小業務事例を三視点で閉じる（手計算Oracle、TEI未実行）
+
+抽象概念の一覧を増やす代わりに、**購買申請の承認候補を選ぶ一件**に限り、同じ意味対象のData/Function/Businessをつなぐ。全て合成データであり、以下の期待値は独立して人が導出した**仮のOracle**。TEIや実Hostでの評価結果ではない。
+
+### 26.1 Data／関係の最小fixture
+
+| 対象 | 内容 |
+| --- | --- |
+| Person P1 | 申請者。2027-06-30、2027-07-01ともD1へ所属すると仮定 |
+| Organization D1 | 営業部 |
+| Position M1 | D1の部門長という職位。P2からP3へ交替してもM1は存続するという業務仮説 |
+| Occupancy A1 | P2がM1に在任。業務有効期間`[2027-04-01, 2027-07-01)` |
+| Occupancy A2 | P3がM1に在任。業務有効期間`[2027-07-01, ...)` |
+| Request Q1 | P1による購買申請。責任部署D1。テストの対象行 |
+| Business Rule B1 | 申請の責任部署D1の部門長職位M1へ対象時点で在任する人を候補とする。ただし本人は承認不可 |
+| Read set | 指定時点で対象の職位/在任/申請者関係について完全な集合を読めたかは、別の入力根拠。ここでは正常Oracleのみに完全性を仮定 |
+| Host Authority | `P2`や`P3`の実行可能Grantは未仮定。候補になったことと許可は別 |
+
+### 26.2 Businessの規則とFunctionの境界
+
+1. **候補導出**（純粋な意味評価）：`Candidate(Q1,date,OrgRevision,RuleRevision)`を評価。時点、業務Rule、関係の完全性を入力へ固定する。候補0件、複数件、未取得、本人との一致、関係の競合を別の診断にする。
+2. **機能側のバインド**（Smart Dataの論点との接続）：`purchase.approve`等のAction/Functionが、対象Dataに従属するRuleをどの拡張点で受けるかを検証する。**機能側の受け口**は必要だが、TEI Coreに`onBeforeCommit`のような名前や実行順序を先に追加しない。Function契約上の拡張点、参加Dataの対象選択、Rule ID/版、必要Read set、評価結果/業務拒否を**候補**として明示する。
+3. **副作用確定**（実Host境界）：現在Principal/Resource/ActionのGrant、権限版、CommitまでのFence、実効果のReceiptを既存#1174等へ委譲。Smart Data Ruleが評価できても実行許可やCommit成功を意味しない。
+4. **説明・シミュレーション**：Dataset/Snapshot/Scenario(#1131)で候補の期待値と変化を示し、複雑なQueryの構造は#2387のread-only Projectionで説明。実ProviderのCoverageとモデル上のOracleを混同しない。
+
+**重要な不足**：`Data.Script`という文字列が既存`internal/semantic/model.go`にあっても、Smart Dataの機能側バインド受け口が実装済みだとは言えない。旧XFTableEvaluatorなどの密結合を再現しない。Dataに従属するロジックと機能契約の接合点は、DSL/PluginとCapability所有元で別途受入する。
+
+### 26.3 意味の期待値と実行権限の不一致
+
+| 変更前後の条件 | 手計算した承認候補（期待） | 現在の実行許可 | 言ってはいけないこと |
+| --- | --- | --- | --- |
+| 2027-06-30、R1、B1、完全集合 | P2 | 未確認 | P2なら必ずCommit可能 |
+| 2027-07-01、R2、B1、完全集合 | P3 | 未確認 | P2の過去の在任が無効だった |
+| 2027-06-30、R1、B1、P2のHost Grant失効 | P2 | 対象操作の許可を別途再検査。失効が対象なら拒否 | 業務規則B1や在任A1も失効した |
+| 2027-06-30、R1、B1、A1の返却欠落 | **判定不能**（完全集合保証なし） | 検査対象外 | 部門長は不在、候補0人 |
+| 2027-06-30、R1、B2（「部門長と経理責任者の二者承認」） | P2は部門長側の候補だが、経理責任者の根拠なしでは**最終候補集合は未判定** | 未確認 | B1の候補をB2の承認完了として再利用 |
+
+Org Revision R1/R2がそれぞれ上記の在任関係に対応する公開版であることは、このfixture上の**仮定**であり、実装上の公開・一貫性・Snapshot Receiptの観測ではない。
+
+**ORG-34（NOT RUN）**：R1→R2でP2→P3の候補切替え、Rule不変。Oracleの表示で正しい時点と公開版を必須入力にする。実Host認可は独立。
+
+**ORG-35（NOT RUN）**：同じR1/B1でA1をProviderから返さないケース。取得集合の不完全性により候補なしと断定しない。#2387のCTE内中間行の説明があっても、Providerの集合完全性がなければ判断を確定しない。
+
+**ORG-36（NOT RUN）**：A1/R1不変・Rule B2に差し替え。B2が要求する別の経理責任者に関するData/Relationが欠落しているときに、旧B1結果を最新の完全な決裁として表示しない。
+
+## 27. 現行mainの静的確認と、未実装の境界（2026-10-30）
+
+基準：`main 2503a25fee9ffa47592d47818c2bb35c0a2c50ab`。今回read-onlyで以下のソースを確認。**テストは実行していない**。
+
+| 既存実装の観測 | このReferenceで利用できる範囲 | 今回の設計がまだ要求するもの |
+| --- | --- | --- |
+| `internal/semantic/model.go`の`Data`、`Relation`、`CandidateKey`、`FunctionalDependency`、`Validation` | 組織の対象、属性、単純Relation、業務識別候補とFDを構造的に保持する起点 | 期間付き配置・多項関係・主体/職位同一性・決裁規則などの汎用評価を実装済みとは言えない |
+| `Relation`は`Target`、`Cardinality`（one/many）、`Keys`を持つ | 関係の参照先・一部の多重度/キー対応 | 制度依存、複数軸、時点、役割、多項Relationの意味契約は別途必要。安易にCore enumを拡張しない |
+| `ValidationKind`は現行`positive`と`relation-unique`、`validationeval.Evaluate`はその評価器 | 不成立と技術的評価失敗を分ける基本境界がある | 決裁権能やSmart Dataの組織固有Rule実行器は現行`Evaluate`だけではカバーできない |
+| `internal/application/model.go`の`Pattern`はData/Relation/Query/Capability参照を持つ | Functionと業務Dataの参照を明示できる基本形 | Data従属Ruleを機能のタイミングで結び付ける一般的Hookはこの型から確認できない |
+| `internal/composition/registry.go`の`Contract`/`Provider`/`Assessment` | 契約・Provider候補とScopeを分ける基盤 | 候補の解決を実行認可/副作用許可と同一視しない。Registryの適格性はGrantでない |
+| `docs/status.md`（2026-10-29） | 製品の現在地はReference実験・検証であることを明記 | 完成製品・汎用Modeler/Runtimeの存在を主張しない |
+
+現行`Data.Script`文字列を「Smart Dataが実行時にFunctionへ自動注入される仕様」や「組織DSLが確定済み」と読み替えない。現行`Application.Pattern`の`Kind`を拡張し、新たな組織専用PatternをTEI Coreへ先行追加しない。
+
+## 28. 依存チームへの最小引渡し（新実装の提案ではなく検証票）
+
+| 既存担当 | 具体的な引渡し内容 | 成果・停止条件 |
+| --- | --- | --- |
+| #2386 組織メタ意味 | ORG-32〜36の意味区別・保存則、独立Oracle | 旧概念と詳細Relationの片方向性・権能推論禁止を説明できる。Owner意味受理とは別 |
+| #1126 Data/Relation | Position/Occupancy/Assignmentを既存Data/Relationで表現できる範囲と不足 | Core変更なしで構造モデル化できるか。期間/多項/Identityが表せないなら不足を明示 |
+| #988 DSL Plugin | 組織語彙・時点・Rule記述をDSL標準Pluginから意味モデルへ構築 | 新Parser/Core変更不要の最小圧力試験。未受理DSLを正本にしない |
+| #1131 Dataset/Scenario | Q1/P1/P2/P3/R1/R2/B1/B2 fixtureの入力・独立期待値 | モデル上のexpectationと実評価を別欄にする。Provider/E2E未実行を明示 |
+| #2387 Query Explain | 所属・職位・在任の段階別集合、欠落、NULL、複数候補の説明 | 読取構造の説明は実行可能SQLや集合完全性の証明ではない。現行D2拒否を緩めない |
+| #1124/#1803 Modeler/SHO | Person、Position、Assignment、Rule、Function/Procedureを同一SubjectへNavigate | 組織図・テーブル・日本語説明のどれも第二正本にしない |
+| #1174/#1043 Authority | 候補と実行認可・Commitを別に観測 | 失効の負例はHost側の試験で実証。現在の組織構造だけでGrantを出さない |
+| Smart Data/Function接続の検討 | Data従属ロジックの対象と、Function側の明示的なバインド受け口 | X-TEAの旧密結合を再実装せず、純粋評価・業務拒否・技術失敗・実Effectの責任境界を先に確認 |
+
+**優先順の更新**：P0：ORG-32 + ORG-34 + ORG-35（表現の片方向性・時点・集合完全性）→P1：ORG-36（Rule-only差分）→P2：Data従属Rule/Function拡張点とHost Authorityの接続。Caseを増やしてもテスト実装済みとは扱わない。Owner判断待ちの状態を維持する。
