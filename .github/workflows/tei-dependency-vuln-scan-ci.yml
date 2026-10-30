@@ -77,10 +77,11 @@ jobs:
       # -mode binary で検査する。製品に入る依存だけを直接照合する。
       - name: Windows向けにbuildし実binaryを検査
         shell: bash
+        working-directory: cmd/tei-studio
         run: |
           set -euo pipefail
           go version
-          go build -o /tmp/tei-studio.exe ./cmd/tei-studio
+          go build -o /tmp/tei-studio.exe .
           go run golang.org/x/vuln/cmd/govulncheck@latest -mode binary /tmp/tei-studio.exe
 
   npm-audit:
