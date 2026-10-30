@@ -155,7 +155,21 @@ M1では既存Domain（型・範囲・列挙値）とRelation（キー・参照�
 
 P0/P1の固定fixture・紙上oracleは並行可能。P2はP0のID/出力を受け取る。P3はP1で見つかった実不足をもとに範囲決定。既存Issue/PRに所有機能があればそこへ差分を寄せ、新しいWorkBenchモノリスを作らない。
 
-## 9. Owner判断と未実証
+## 9. 将来の形式検証・行の由来を扱う研究参照（採用候補）
+
+SQLの各結果行について「どの入力行が、どの演算によってこの出力を支えるか」を一般化する際、**row provenance**（由来情報）の理論が有効。Provenance semiringでは、単純な入力行のリスト以上に、複数の導出経路・重複・JOIN・集計について何を示せるかを選べる。設計ビューでは次の三種を区別する。
+
+- **which**：寄与した入力行の和集合（軽量。ただし導出方法は失う）。
+- **why**：結果を成立させる入力行の組合せ（証拠の候補を示せる）。
+- **how**：導出経路と多重度を表す代数的表現（コストが高い）。「寄与の証拠」と「業務上の因果・正当性」は非同等。
+
+公開の **provenance-lean v1.2.0**（2026-09-22、Pierre Senellart、DOI: https://doi.org/10.5281/zenodo.22900284、https://github.com/PierreSenellart/provenance-lean）は、Lean 4でsemiring由来情報、差集合、集計、HAVINGを含むモデルを形式化する。**TEI向け実装・テストデータ生成器・全SQL意味の正本ではない**ため、P3以降の比較対象とする。特に集計後の由来と、負例としてのNOT EXISTS/差集合を単純な行追跡で同一視しない。
+
+Apache Calciteの関係代数・変換規則（https://calcite.apache.org/docs/algebra.html）は意味保存の検査観点、SQLancerのTLP/NoREC（https://github.com/sqlancer/sqlancer）は独立oracleに加えて同値変換を利用するメタモルフィック試験の参考となる。ただしTEIでのSQL書換えや各DB製品での同値を未検証のまま採用しない。
+
+最初のReferenceでは、固定fixtureの明細2行が集計結果1行へ寄与したことを**観測/手書きoracle**で示す範囲にとどめる。一般的なwhy/how provenanceや証明書の生成、Leanライブラリの依存導入、実行時追跡の性能予算は、実際の表示価値と必要性を確認してから決める。
+
+## 10. Owner判断と未実証
 
 - Owner判断：このQuery Workbenchの最初の製品受入対象を「**設計書上の可読性**」に限定し、意味評価/制約生成を段階追加としてよいか。query-local fixtureを#1131 Datasetへ接続する最小契約と、手書き期待値のreview主体は誰か。NULL/空集合/0件の業務上の扱いが業務固有なら受理前に固定しない。
 - 未実証：CTE evaluator、SQL変換の同値性、行lineage、編集UI、SHOへのQuery資料生成、Lean/SMT生成、別Providerの結果同値、Owner業務受理。
