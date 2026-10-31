@@ -108,6 +108,7 @@ jobs:
             const edit = {
               schema: "tei.reference.studio-edit/v0", id: "e2e-relation",
               origin: "studio", intent: "明細から受注へ戻るRelationを追加する",
+              view: "er", subject: "data:sales.order_line",
               operation: "add-relation", relationID: "sales.order_line.order",
               symbol: "order", targetData: "sales.order", cardinality: "one"
             };
