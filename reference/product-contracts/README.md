@@ -47,7 +47,7 @@ go run ./cmd/tei validate -workspace reference/product-contracts
 ## 境界
 
 - 型の宣言であり、各製品の実装・権限・検証を置き換えません。
-- 共通の`Evidence`と`Authority`は最小限の項目だけを持ちます。
+- 共通の`Evidence`と`Authority`は最小限の項目だけを持ちます。現状ではどの属性・関係・能力からも参照しない**意図した省略**です（型の最小化。[#2411](https://github.com/hat47x/tei-platform/issues/2411)の照合記録）。EKI側の受理の正当化は`PolicyDigest`と検証者群・申告Workerの独立性の値であって`principal`/`role`の主体記録ではなく、EKIの`PolicySource`/`ProducerSource`の実体も未実装のため、TEI側の対応語彙はこの時点で固定しません。
 - `tei validate`は、宣言した型名の実在までを確認します。能力の出力型と次の入力型の接続は検査しません。たとえば`eki_attempt_execute`の出力を別の型へ替えても`ok`になります(`cmd/tei`の試験で確認、[#2410](https://github.com/hat47x/tei-platform/issues/2410))。接続の宣言形式は未決で、Ownerの判断を待ちます。
 - 実際の製品への移行は、契約ごとの意味と責務を確認してから行います。
 
