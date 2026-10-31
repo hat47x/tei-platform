@@ -169,7 +169,13 @@ func Validate(w ir.World) []Diagnostic {
 
 	addSemanticElement := func(id core.CanonicalID, kind string) {
 		if prior, exists := semanticElements[id]; exists {
-			out = append(out, errd("DUPLICATE_SEMANTIC_ELEMENT", "semantic element %s is declared as both %s and %s", id, prior, kind))
+			// The later declaration is the one being rejected, so its Subject
+			// carries the sources in -json output (#2400).
+			if prior == kind {
+				out = append(out, errFor(subject.Subject{Kind: "semantic-" + kind, ID: string(id)}, "DUPLICATE_SEMANTIC_ELEMENT", "semantic element %s is declared more than once as %s", id, kind))
+				return
+			}
+			out = append(out, errFor(subject.Subject{Kind: "semantic-" + kind, ID: string(id)}, "DUPLICATE_SEMANTIC_ELEMENT", "semantic element %s is declared as both %s and %s", id, prior, kind))
 			return
 		}
 		semanticElements[id] = kind
