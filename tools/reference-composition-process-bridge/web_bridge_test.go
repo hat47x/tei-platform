@@ -42,8 +42,6 @@ func TestProtectedWebRouteToSelectedProcessPlugin(t *testing.T) {
 	if output, err := build.CombinedOutput(); err != nil {
 		t.Fatalf("build existing process plugin: %v\n%s", err, output)
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
-	defer cancel()
 	bytes, err := os.ReadFile(binaryPath)
 	if err != nil {
 		t.Fatal(err)

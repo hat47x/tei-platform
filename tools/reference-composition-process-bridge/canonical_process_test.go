@@ -74,8 +74,6 @@ func TestCanonicalAuthorizationGatesRealSelectedProcessReceipt(t *testing.T) {
 	if output, err := build.CombinedOutput(); err != nil {
 		t.Fatalf("build independent plugin: %v\n%s", err, output)
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
-	defer cancel()
 	raw, err := os.ReadFile(binary)
 	if err != nil {
 		t.Fatal(err)
