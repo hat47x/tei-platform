@@ -23,6 +23,10 @@ TAI配下の5製品をTEIで再表現できるかを検討するための参照w
 | `product_contracts.sei_decision_record` | `Decision` | `Decision` |
 | `product_contracts.mmi_observation_select` | `Selection` | `Selection` |
 
+## アプリケーション
+
+`applications/product-flow/application.tei`は、`product_contracts`のsemanticモデルを参照する最小のアプリケーションです。能力の呼出し順や実装はまだ持ちません。
+
 ## 確認
 
 ```text
