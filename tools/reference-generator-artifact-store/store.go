@@ -367,8 +367,23 @@ func buildArtifact(ctx context.Context, language, dir, binaryPath string) error 
 		}
 		return os.WriteFile(binaryPath, classBytes, 0o755)
 	}
+	// 選抜時(tools/reference-generator-selection)と同じく、go.modを持たない一時ディレクトリでbuildする。
+	// 候補のディレクトリは本リポジトリのmoduleに属し、go.modのgoディレクティブがDefaultGODEBUGとして
+	// binaryに埋め込まれるため、go.modより新しいtoolchainではdigestが変わる(#2370)。
+	buildDir, err := os.MkdirTemp("", "tei-artifact-gosrc-*")
+	if err != nil {
+		return err
+	}
+	defer os.RemoveAll(buildDir)
+	source, err := os.ReadFile(filepath.Join(dir, "main.go"))
+	if err != nil {
+		return err
+	}
+	if err := os.WriteFile(filepath.Join(buildDir, "main.go"), source, 0o644); err != nil {
+		return err
+	}
 	build := exec.CommandContext(ctx, "go", "build", "-trimpath", "-buildvcs=false", "-o", binaryPath, "main.go")
-	build.Dir = dir
+	build.Dir = buildDir
 	switch language {
 	case generatorselection.LanguageGo:
 	case generatorselection.LanguageWasm:
