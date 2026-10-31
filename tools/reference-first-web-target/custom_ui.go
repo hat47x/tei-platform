@@ -79,6 +79,9 @@ func (s *webTargetServer) handleCustomSubmit(w http.ResponseWriter, r *http.Requ
 		status := http.StatusOK
 		if err != nil {
 			status = http.StatusUnprocessableEntity
+			if result.Stage == "command-commit-unconfirmed" {
+				status = http.StatusInternalServerError
+			}
 			data.Error = "command scenario could not complete: " + err.Error()
 		}
 		s.renderCustomSubmit(w, status, data)
