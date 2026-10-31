@@ -8,6 +8,7 @@ import (
 	"tei/internal/semantic"
 	"tei/internal/semantic/capabilityinvoke"
 	"tei/internal/workspace"
+	"tei/reference/product-contracts/bindings"
 )
 
 type adapterFunc func(context.Context, core.CanonicalID, any) (capabilityinvoke.BusinessResult, error)
@@ -35,11 +36,14 @@ func TestProductCapabilitiesCanBeInvokedByGoBinding(t *testing.T) {
 		"product_contracts.sei_decision_record",
 		"product_contracts.mmi_observation_select",
 	}
-	adapter := adapterFunc(func(_ context.Context, id core.CanonicalID, _ any) (capabilityinvoke.BusinessResult, error) {
+	adapter := adapterFunc(func(ctx context.Context, id core.CanonicalID, input any) (capabilityinvoke.BusinessResult, error) {
+		if id == "product_contracts.eki_task_submit" {
+			return bindings.EKITaskSubmit{}.Invoke(ctx, id, input)
+		}
 		return capabilityinvoke.BusinessResult{
 			Capability: id,
 			Mode:       capabilityinvoke.ResultOutput,
-			Payload:    map[string]any{"binding": "test"},
+			Payload:    map[string]any{"binding": "test", "input": input},
 		}, nil
 	})
 	for _, id := range ids {
@@ -47,7 +51,11 @@ func TestProductCapabilitiesCanBeInvokedByGoBinding(t *testing.T) {
 		if !ok {
 			t.Fatalf("%s capability was not loaded", id)
 		}
-		result, err := capabilityinvoke.Invoke(context.Background(), capability, adapter, map[string]any{"input": "test"})
+		input := map[string]any{"input": "test"}
+		if id == "product_contracts.eki_task_submit" {
+			input = map[string]any{"taskId": "tsk_reference", "executorId": "dev.example.transform"}
+		}
+		result, err := capabilityinvoke.Invoke(context.Background(), capability, adapter, input)
 		if err != nil {
 			t.Fatalf("invoke %s: %v", id, err)
 		}
