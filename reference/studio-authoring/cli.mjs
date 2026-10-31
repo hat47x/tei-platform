@@ -15,6 +15,16 @@ import { observeBusinessDFD, verifyBusinessDFDObservation } from "./business-obs
 import { produceBusinessDFD } from "./business-producer.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
+
+// #2354: the read-only tei commands wrap their previous output in a result
+// envelope ({schemaVersion, ok, result}). The bridge keeps consuming the
+// unwrapped shapes, so this boundary is where the envelope is removed.
+function unwrapEnvelope(envelope, label) {
+  if (!envelope || envelope.ok !== true || envelope.result === undefined)
+    throw new Error("INVALID_TEI_RESULT: " + label);
+  return envelope.result;
+}
+
 const usage = [
   "usage:",
   "  node reference/studio-authoring/cli.mjs inspect -workspace DIR -focus relation:ID|step:ID [-business-dfd FILE]",
@@ -55,9 +65,9 @@ function fromWorkspace(workspace, withSourceIndex) {
   const getRevision = () => JSON.parse(run("./tools/reference-shared-acceptance",
     "revision", "-workspace", workspace)).modelRevision;
   const before = getRevision();
-  const world = JSON.parse(run("./cmd/tei", "world", "-workspace", workspace));
+  const world = unwrapEnvelope(JSON.parse(run("./cmd/tei", "world", "-workspace", workspace)), "world");
   const sourceIndex = withSourceIndex
-    ? JSON.parse(run("./cmd/tei", "source-index", "-workspace", workspace))
+    ? unwrapEnvelope(JSON.parse(run("./cmd/tei", "source-index", "-workspace", workspace)), "source-index")
     : undefined;
   const after = getRevision();
   if (before !== after) throw new Error("SOURCE_CHANGED_DURING_PROJECTION");
