@@ -88,6 +88,28 @@ func TestValidateWorkspaceJSONSemanticFailure(t *testing.T) {
 	}
 }
 
+func TestValidateWorkspaceJSONDuplicateHasSubjectButNoAmbiguousSource(t *testing.T) {
+	root := t.TempDir()
+	writeWorkspaceFile(t, root, "tei.workspace.yaml", "workspace: duplicate\nsources:\n  - semantic\n")
+	writeWorkspaceFile(t, root, "semantic/intake/request.tei", "namespace intake\ndata Request {\n    attribute status type std.code\n    attribute status type std.code\n}\n")
+	var out bytes.Buffer
+	code, err := validateWorkspaceJSON(&out, root)
+	if err != nil || code != 1 {
+		t.Fatalf("exit=%d err=%v body=%s", code, err, out.String())
+	}
+	report := readValidationReport(t, &out)
+	for _, item := range report.Diagnostics {
+		if item.Diagnostic.Code != "DUPLICATE_SEMANTIC_ELEMENT" {
+			continue
+		}
+		if item.Diagnostic.Subject == nil || item.Diagnostic.Subject.ID != "intake.request.status" || len(item.Sources) != 0 {
+			t.Fatalf("duplicate diagnostic: %+v", item)
+		}
+		return
+	}
+	t.Fatalf("duplicate diagnostic missing: %+v", report)
+}
+
 func TestValidateWorkspaceJSONLoadFailure(t *testing.T) {
 	var out bytes.Buffer
 	code, err := validateWorkspaceJSON(&out, filepath.Join(t.TempDir(), "missing"))
