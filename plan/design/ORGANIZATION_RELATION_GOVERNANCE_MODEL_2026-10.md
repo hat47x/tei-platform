@@ -918,3 +918,55 @@ ORG-01〜36、ORG-Q1〜Q3は網羅候補の**設計台帳**であって、36件�
 **先行順**：P0-M1で「何が表現でき、何が失われるか」を独立に記録 → P0-V1は既存#1129/#1174の最終状態試験に**組織固有の差分を渡す** → P0-M2はread-only投影 → P0-V2は時点/経路の保証範囲を受入で分類。いずれも既存のDataset/ScenarioとGuard/Testを再利用し、#2386内に第二のSQL Worker、Validator、Auth Engine、実行Hostを設けない。
 
 **今回の実施状況**：設計文書の追記とGitHubの現行main静的照合のみ。テストコード、実Provider、実DB、Script/Macro各経路、実行時刻切替、Owner意味受理は**NOT RUN / 未受理**。見通しを正式な保証や「すべての組織に対するMECE成立」へ昇格させない。
+
+### 32.1 P0-Mの観測同値・関係の導出可能性を明示する（2026-10-31、採用前）
+
+**一つの技術的区別**：「詳細な関係をDataとして実体化できること」と「その関係が単純な所属を**意味的に含意すること**」は別。後者にはOwnerが受理した**導出規則**が要る。
+
+最小の合成事例：
+- `D1` は部門、`M1` はD1に置かれる職位、`P2` は人物、`A1` は`P2 occupies M1`という2027-06-30時点の配置。これだけでは、`memberOf(P2,D1)`の**業務上の意味**を確定しない。例えば外部委託者に在任・代行を認める組織では、職位占有から在籍所属を推論できるとは限らない。
+- Owner受理済みの橋渡しRule `occupies(P,M) ∧ positionIn(M,D) ∧ eligibility(P,M,D,C) ⇒ memberOf(P,D,C)` が存在し、`C=(有効日,制度/組織軸,Rule版,Source/取得scope)`の必要条件を満たしたときだけ、当該Scopeでの単純Relationを**派生表示**できる。Ruleに存在しない条件を推測で追加しない。
+- 複数の詳細配置`A1={P2,M1,D1,期間T1,根拠S1}`と`A2={P2,M2,D1,期間T2,根拠S2}`は同じ単純`memberOf(P2,D1)`へ投影され得る。したがって投影は一般に**多対一**であり、単純Relationから職位/期間/根拠/配置IDを逆構成できない。
+
+ここでの受入は、案件が従来利用していた**承認済み観測集合Q**（例：指定時点の直接所属表示）に対する旧モデルと新モデルの観測値が一致する、という**限定された観測同値**とする。数学的に書けば`∀q∈Q, ∀c∈C_test: q(M_old,c)=q(M_new,c)`が対象である。`C_test`を代表fixtureに限定した評価なら**実世界の全時点/全業務での完全同値ではない**。新しい職位・在任・権能Queryまで旧単純モデルと等価とは主張しない。
+
+**最小P0-Mの正負観測**：①受理済み橋渡しRuleと完全な合成Datasetで同じ所属を表示、②橋渡しRule不在なら派生所属を断定しない、③二つの詳細配置が同じ所属表示へ畳まれても逆構成を拒否、④期間終了・制度軸切替では対象文脈を再指定、⑤`DepartmentID`と`PositionID`の同じ基底文字列から同一対象を導出しない。評価不能・Source範囲不明は**検査票の未判定**として記録し、既存`Validation`へ未採用の新Outcome enumを追加しない。
+
+### 32.2 P0-Vの最小依存閉包とOwner-write Coverage（既存#1129の保証責任を再利用）
+
+#1129の[Data-attached Rule / Owner-write Coverage CV-2](https://github.com/hat47x/tei-platform/issues/1129#issuecomment-6535115011)を踏まえ、組織側が定義するのは**業務規範B1の評価に必要な意味依存集合**だけに絞る。これを既存Function/Providerに渡す契約上の入力候補とし、第二のRuntime/Enforcerは作らない。
+
+`B1`（Q1の責任部門の有効な部門長在任者を候補とし、申請者本人を除く）の依存候補：
+`Deps(B1)={Q1.responsibleOrg, Q1.applicant, PositionIn(M,D), Occupancy(P,M,valid), 受理された候補選定Rule版, Ruleが採る評価時点/組織軸, 取得集合の必要範囲}`。
+
+- **評価時点が固定でない場合**、データが一切更新されなくても、業務有効日の境界を跨ぐだけで評価結果が変わり得る。時計・有効期間は「書込みの有無」と独立した影響要因。
+- **間接的なEffect**：`Function approve(Q1)`の事前判定後、別の`Function transferResponsibility(Q1,D2)`や下位Capabilityが`Q1.responsibleOrg`を更新した場合、同Txであっても`B1(S_checked)`を`B1(S_final)`へ昇格させない。
+- **無関係な更新**：たとえば`Q1.memo`だけ変更し、Ruleが参照する全依存・時点が変わらず、対象集合の同版完全性を確認できるなら、当該更新だけを理由にB1の無条件再評価を義務にしない。
+- **依存不明**：Scriptや未解析SQLの間接更新範囲が解決できないとき、`Deps∩Writes=∅`を立証したことにはしない。未判定と記録し、保守的な実施方式は#1129 Owner/Providerが決める。
+
+**判定の原理**：Owner Ruleが最終Post-Imageで真であることを要求する場合、必要な書込みの依存閉包と時間境界について、(a)最終関連Mutation後の再検査、(b)対象を守るProvider/DB制約・条件付き書込み、(c)関連Mutationが最終検査後に起こらないと保証できるOwner Actionなど、**実装が実証した方式**によって成立させる。これは概念上の代替方式であり、全アプリ・全Providerに既定の再検査/DB機構を課すものではない。
+
+**Function-use Binding と Owner-write Enforcementを別行で記録**する：
+- Function-use：利用者向け画面、Function内のプレビューや候補表示にB1を適用できたか。
+- Owner-write：Owner管理下の**正当な書込み入口**（別Function/API/子Capability/間接更新を含む）から、保存対象とRule適用Scopeに対する最終の必須規範が保証されるか。
+
+既存Providerが対象入口を保証できる範囲を実証することと、外部の未管理の生DB書込みが絶対に存在しないことの証明は別。Trusted Scriptの広い能力は許容し、どの更新経路が**covered / uncovered / unknown**かを受入票に残す（新公開status enumではない）。
+
+**同じQ1を使う最小対照（いずれもNOT RUN）**：
+
+| 比較 | Rule依存への変化 | P0で観測すべき判定 |
+| --- | --- | --- |
+| F1：候補評価後、Q1のメモのみ修正 | 既知の依存に交差なし | 不要な全Rule再評価なしに整合性を説明できるか |
+| F2：候補評価後、別Functionが責任部署D1→D2を変更 | `Q1.responsibleOrg`が変わる | `P(S_final)`の再保証なしに承認を確定したなら不適合 |
+| F3：関係・Rule版は不変だが、業務有効時点を跨ぐ | 時間依存が変わり得る | Ownerの評価時点規則が未決なら最終候補を確定しない |
+| F4：非管理のTrusted Scriptが同じ対象を直接更新 | Providerが管理しない経路 | 標準FunctionのPASSを全書込み経路の保証と表示しない |
+
+この行列は#1129 FS-1/Owner-write Coverage、#1174 Effect Fence/TS-CUT1、#1131 Scenarioを**参照する組織用の意味差分**に限定する。Commit/Receipt/rollbackの結果分類、新Validator/Function Hook API/Source Registry、Leanによる不存在証明を本Issueで設計・実装しない。
+
+### 32.3 現行mainの静的照合と最短の証拠収集
+
+2026-10-31の参照main `65e64bd77fd7627258e15721ab20770162f7fe4c`で`internal/semantic/model.go`のData/Relation/CandidateKey/限定Validation、`internal/security/effectcommit/commit.go`のAuthority確認・WriteResource/SaveReceipt/CommitのTransaction契約を確認した。ここから「組織Profileの橋渡しRule evaluator」「全Owner経路の最終Post-Image強制」「業務有効日のCommit直前再評価」が**実装済み**とは推論しない。PR #2404は意味型Split候補のDraft設計で、組織固有の型再編機構が現在完成していることを意味しない（#1806）。
+
+**次の実行で収集すべき最小証拠**：同一モデル/固定合成Dataset/Rule IDと版/指定時点/Source scope、旧/新の選択したQuery結果と失われる属性、F1/F2の順序と最後の関連Mutation、独立Oracle、実Evaluator結果、Owner-writeの保証対象入口、実Provider/Hostの有無。モデル上の期待・実行・Owner受理をそれぞれ別列にする。
+
+**作業状態**：今回の追補は設計案と現行main静的比較まで。P0-M/P0-VのfixtureやFunction連結を実際に動かしたこと、完全なMECE証明、Ownerの業務意味受理、現行mainとの統合を主張しない。
