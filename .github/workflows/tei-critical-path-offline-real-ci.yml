@@ -105,20 +105,13 @@ jobs:
             if (rev.status !== 0 || world.status !== 0) {
               throw new Error("base read failed: " + rev.stderr + " / " + world.stderr);
             }
-            // #2354: tei world returns a result envelope; the bridge consumes
-            // the unwrapped Canonical World.
-            const worldEnvelope = JSON.parse(world.stdout);
-            if (worldEnvelope.ok !== true || !worldEnvelope.result) {
-              throw new Error("world envelope failed: " + world.stdout);
-            }
             const edit = {
               schema: "tei.reference.studio-edit/v0", id: "e2e-relation",
               origin: "studio", intent: "明細から受注へ戻るRelationを追加する",
-              view: "er", subject: "data:sales.order_line",
               operation: "add-relation", relationID: "sales.order_line.order",
               symbol: "order", targetData: "sales.order", cardinality: "one"
             };
-            const candidate = candidateFromEdit(worldEnvelope.result, JSON.parse(rev.stdout).modelRevision, edit);
+            const candidate = candidateFromEdit(JSON.parse(world.stdout), JSON.parse(rev.stdout).modelRevision, edit);
             const candidatePath = join(tmp, "candidate.json");
             writeFileSync(candidatePath, JSON.stringify(candidate) + "\n");
             const preview = go(["./tools/reference-shared-acceptance", "preview", "-workspace", ws, "-candidate", candidatePath]);

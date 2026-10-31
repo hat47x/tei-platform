@@ -289,8 +289,25 @@ func main() {
 		}
 		return
 	}
+	if command == "world" {
+		// #2354: world keeps its pre-envelope shape — one bare ir.World JSON
+		// on stdout, stderr text and exit 2 on argument/load failure — because
+		// the critical-path evidence audit digests these bytes against the
+		// accepted derived World.
+		if (*workspacePath == "") == (*worldPath == "") {
+			fmt.Fprintln(os.Stderr, "world requires exactly one of -workspace or -world")
+			os.Exit(2)
+		}
+		w, err := loadWorld(*worldPath, *workspacePath)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(2)
+		}
+		writeJSON(w)
+		return
+	}
 	if isResultEnvelopeCommand(command) {
-		// world, requirements, plugin-lock, plugin-resolve, plugin-runtime-plan
+		// requirements, plugin-lock, plugin-resolve, plugin-runtime-plan
 		code, err := resultCommandJSON(os.Stdout, command, *workspacePath, *worldPath, *environmentID, *pluginLockPath, fs.NArg())
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)

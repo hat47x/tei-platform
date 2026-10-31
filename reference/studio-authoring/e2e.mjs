@@ -19,9 +19,10 @@ if (process.env.TEI_STUDIO_E2E !== "1") {
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const baseline = join(root, "reference", "workspace");
 
-// #2354: the read-only tei commands wrap their previous output in a result
-// envelope ({schemaVersion, ok, result}). Remove the envelope here; the bridge
-// keeps consuming the unwrapped shapes.
+// #2354: the result-envelope tei commands wrap their previous output in
+// ({schemaVersion, ok, result}). `world` keeps its bare ir.World write, so only
+// the enveloped commands are unwrapped here; the bridge keeps consuming the
+// unwrapped shapes.
 function unwrapEnvelope(envelope, label) {
   if (!envelope || envelope.ok !== true || envelope.result === undefined)
     throw new Error("INVALID_TEI_RESULT: " + label);
@@ -90,7 +91,7 @@ function revision(workspace) {
   return JSON.parse(acceptance(["revision", "-workspace", workspace]).stdout).modelRevision;
 }
 function world(workspace) {
-  return unwrapEnvelope(JSON.parse(tei(["world", "-workspace", workspace]).stdout), "world");
+  return JSON.parse(tei(["world", "-workspace", workspace]).stdout);
 }
 function sourceIndex(workspace) {
   return unwrapEnvelope(JSON.parse(tei(["source-index", "-workspace", workspace]).stdout), "source-index");

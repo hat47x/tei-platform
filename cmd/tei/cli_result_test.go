@@ -61,9 +61,15 @@ func TestResultEnvelopeCommandsJSONContract(t *testing.T) {
 
 	reference := filepath.Join("..", "..", "reference", "workspace")
 
-	worldEnvelope := run(0, "world", "-workspace", reference)
-	if !worldEnvelope.OK || worldEnvelope.Result == nil || worldEnvelope.Error != nil {
-		t.Fatalf("unexpected world envelope: %+v", worldEnvelope)
+	// world stays outside the envelope (#2354): its stdout is one bare
+	// ir.World JSON, digested byte-for-byte by the critical-path evidence audit.
+	worldRaw := runRaw(0, "world", "-workspace", reference)
+	var worldBare map[string]any
+	if err := json.Unmarshal(worldRaw, &worldBare); err != nil {
+		t.Fatalf("world did not return JSON: %v", err)
+	}
+	if _, enveloped := worldBare["schemaVersion"]; enveloped || worldBare["applications"] == nil {
+		t.Fatalf("world must stay a bare ir.World write, got: %.80s", worldRaw)
 	}
 
 	filesEnvelope := run(0, "workspace-files", "-workspace", reference)
@@ -120,9 +126,25 @@ func TestResultEnvelopeCommandsJSONContract(t *testing.T) {
 		t.Fatalf("wrong plugin lock failure envelope: %+v", badLock)
 	}
 
-	unknownFlag := run(2, "world", "-no-such-option", "x")
-	if unknownFlag.OK || unknownFlag.Error == nil || unknownFlag.Error.Code != resultCodeInvalidArgument {
-		t.Fatalf("wrong flag failure envelope: %+v", unknownFlag)
+	worldFlagCmd := exec.Command(binary, "world", "-no-such-option", "x")
+	var worldFlagStdout, worldFlagStderr bytes.Buffer
+	worldFlagCmd.Stdout, worldFlagCmd.Stderr = &worldFlagStdout, &worldFlagStderr
+	if err := worldFlagCmd.Run(); err != nil {
+		var worldFlagExit *exec.ExitError
+		if !errors.As(err, &worldFlagExit) || worldFlagExit.ExitCode() != 2 {
+			t.Fatalf("world flag failure exit: %v", err)
+		}
+	} else {
+		t.Fatal("world flag failure must exit non-zero")
+	}
+	if worldFlagStdout.Len() != 0 || worldFlagStderr.Len() == 0 {
+		t.Fatalf("world flag failure must stay the stderr usage exit (stdout %.80q stderr %.80q)",
+			worldFlagStdout.String(), worldFlagStderr.String())
+	}
+
+	requirementsFlag := run(2, "requirements", "-no-such-option", "x")
+	if requirementsFlag.OK || requirementsFlag.Error == nil || requirementsFlag.Error.Code != resultCodeInvalidArgument {
+		t.Fatalf("wrong flag failure envelope: %+v", requirementsFlag)
 	}
 
 	unrelatedFlag := run(2, "workspace-files", "-workspace", reference, "-environment", "dev")

@@ -52,10 +52,14 @@ const (
 
 // isResultEnvelopeCommand reports whether the command wraps its output in the
 // #2354 result envelope. The command catalogue keeps advertising the same
-// flags; only the output shape and the failure path change.
+// flags; only the output shape and the failure path change. `world` stays a
+// bare ir.World write for now: the critical-path evidence audit
+// (tools/reference-critical-path-evidence-audit/live-r1-smoke.mjs) digests its
+// stdout bytes against the accepted derived World, so wrapping it is a
+// separate contract decision recorded on #2354.
 func isResultEnvelopeCommand(command string) bool {
 	switch command {
-	case "workspace-files", "source-index", "world", "requirements",
+	case "workspace-files", "source-index", "requirements",
 		"plugin-lock", "plugin-resolve", "plugin-runtime-plan":
 		return true
 	}
@@ -157,7 +161,7 @@ func sourceIndexJSON(out io.Writer, workspacePath, worldPath, subjectKind, subje
 	return emitResult(out, resultEnvelope("source-index", mode, inspection), 0)
 }
 
-// resultCommandJSON serves world, requirements, plugin-lock, plugin-resolve
+// resultCommandJSON serves requirements, plugin-lock, plugin-resolve
 // and plugin-runtime-plan. Their pre-envelope dispatch exited from five places
 // with stderr text; every failure here is one envelope instead, with the same
 // exit codes (2 for argument/load/resolve failures, 1 for semantic validation
@@ -172,9 +176,6 @@ func resultCommandJSON(out io.Writer, command, workspacePath, worldPath, environ
 	w, err := loadWorld(worldPath, workspacePath)
 	if err != nil {
 		return resultLoadFailure(out, command, err)
-	}
-	if command == "world" {
-		return emitResult(out, resultEnvelope(command, "", w), 0)
 	}
 	ds := validation.Validate(w)
 	if validation.HasErrors(ds) {

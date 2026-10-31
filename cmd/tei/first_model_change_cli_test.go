@@ -84,18 +84,10 @@ func TestFirstModelChangeCLIEndToEnd(t *testing.T) {
 		if strings.Contains(raw, workspaceRoot) || strings.Contains(raw, "semantic/intake/request.tei") {
 			t.Fatal("Canonical World must not embed the physical authoring source location")
 		}
-		var envelope struct {
-			OK     bool            `json:"ok"`
-			Result json.RawMessage `json:"result"`
-		}
-		if err := json.Unmarshal([]byte(raw), &envelope); err != nil {
-			t.Fatalf("unmarshal world envelope: %v", err)
-		}
-		if !envelope.OK {
-			t.Fatal("world envelope reported failure")
-		}
+		// world stays outside the #2354 result envelope: its stdout is one bare
+		// ir.World JSON, digested byte-for-byte by the critical-path evidence audit.
 		var world map[string]json.RawMessage
-		if err := json.Unmarshal(envelope.Result, &world); err != nil {
+		if err := json.Unmarshal([]byte(raw), &world); err != nil {
 			t.Fatalf("unmarshal world: %v", err)
 		}
 		return world

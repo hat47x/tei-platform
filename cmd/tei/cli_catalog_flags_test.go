@@ -117,6 +117,7 @@ func TestAdvertisedCommandsRejectUnrelatedFlagsAtProcessBoundary(t *testing.T) {
 	for _, args := range [][]string{
 		{"validate", "-workspace", root, "-expected-fingerprint", "x"},
 		{"knowledge-context", "-workspace", root, "-environment", "x"},
+		{"world", "-workspace", root, "-expected-fingerprint", "x"},
 	} {
 		code, stdout, stderr := run(args...)
 		if code != 2 || stdout != "" || !strings.Contains(stderr, args[0]+" does not accept -") {
@@ -125,8 +126,9 @@ func TestAdvertisedCommandsRejectUnrelatedFlagsAtProcessBoundary(t *testing.T) {
 	}
 	// #2354: the result envelope commands reject unrelated flags with one
 	// machine-readable INVALID_ARGUMENT envelope on stdout instead of stderr.
+	// `world` is not one of them: it keeps its bare ir.World write and the
+	// stderr rejection above.
 	for _, args := range [][]string{
-		{"world", "-workspace", root, "-expected-fingerprint", "x"},
 		{"requirements", "-workspace", root, "-limit", "1"},
 		{"plugin-lock", "-workspace", root, "-scope", "x"},
 		{"workspace-files", "-workspace", root, "-subject-kind", "x"},
