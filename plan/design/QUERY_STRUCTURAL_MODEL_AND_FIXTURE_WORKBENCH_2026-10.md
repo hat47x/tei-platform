@@ -241,6 +241,16 @@ M1では既存の意味型・値域制約（型・範囲・列挙値）とRelati
 
 次に、実SQL→ワーカー→`analyzer.Result`→`DeriveFromAnalysis`へ同じSQLを流して、静的Go fixtureと差分比較を行う。workerが利用できないなら、実物と出所を特定する段階を明示的に停止し、Goで手組みしたResultをE2E証拠へ読み替えない。Plugin配布・Host/実行許可は#988/#2390/#951を参照し、通常のQuery説明のために独自Hostを追加しない。
 
+### 7.2.1 M0の実装修正候補とその資格（2026-10-31）
+
+QX-M0-2/3/4への最初のGo側対策は、[Draft PR #2398](https://github.com/hat47x/tei-platform/pull/2398)に**別branch**で分離した。#2388は設計・fixtureのDraft、#2398は`internal/query/derived.go`と`derived_test.go`のみを扱うコードDraftである。双方を同じ完成判定にしない。
+
+- コード候補：`ColumnOccurrence.ScopeID`と明示`OuterScopeID`に基づく物理・論理Source occurrence解決、自己JOINにおける出現箇所保持、CTE出力別名重複の後勝ち回避、存在しないCTE Bindingの未解決化、物理＋CTEに同名列がある場合の曖昧性維持。
+- 合成Go回帰テスト（Draftへの追加定義であり**まだ実測ではない**）：同名Alias異Scope、内外の無修飾列、自己JOIN、相関した外側物理列、重複CTE出力、存在しないBinding、物理＋CTE出力衝突、相関した外側CTE列。
+- Goコードの静的な読み直しとGitHub保存は完了。`go test ./internal/query -count=1`と`gofmt`、クリーンcheckoutのwire/worker E2Eは未実行。GitHubを直接cloneできない環境、Go 1.23.2とrepo指定Go 1.26.9の差による制約があるため、結果をPASSへ昇格させない。
+- 特に残る問題：CTE Bindingの**可視性/名前解決**はtarget scopeの存在・kindのみでは確定しない。SELECT出力のデータ型・NULL可能性、引用識別子の方言別大文字小文字規則、外部workerの出所・runtime・SQLからの実写像も後続Gate。Go側の誤束縛防止が単独でAnalyzerの完全性やSQL実行許可を与えない。
+- 合格条件：exact headのfocused Go testsが再現可能にPASSし、残る未解決/曖昧性を`Resolution/Lineage/Coverage`として説明でき、既存のCTE合成testとD2拒否が後退しないこと。次にQX-M0-1の実worker実体の特定と、実SQL→wire→IRを別の資格として実施する。
+
 ### 7.3 設計者が受入できる最小の閲覧操作
 
 最初のread-only Consumerは、**SQL本文の一つの式を選択→対応するScope/Source occurrence/演算/出力列へ移動→逆方向に根拠へ戻る**という一往復を最小操作とする。静的解析のCoverageと評価証拠は別欄、未解決・反例は非表示にしない。CTE中間表・相関した外側行ごとの例は固定Dataset/Scenario参照から示し、テスト値を実DBの物理中間値と呼ばない。
