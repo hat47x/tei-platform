@@ -12,6 +12,17 @@ TAI配下の5製品をTEIで再表現できるかを検討するための参照w
 | SEI | `Decision` / `Unresolved` |
 | MMI | `Observation` / `Selection` |
 
+## 能力
+
+| 能力 | 入力 | 出力 |
+| --- | --- | --- |
+| `product_contracts.eki_task_submit` | `TaskRequest` | `Attempt` |
+| `product_contracts.eki_attempt_execute` | `Attempt` | `ResultClaim` |
+| `product_contracts.eki_result_accept` | `ResultClaim` | `AcceptedResult` |
+| `product_contracts.sui_document_put` | `Document` | `Document` |
+| `product_contracts.sei_decision_record` | `Decision` | `Decision` |
+| `product_contracts.mmi_observation_select` | `Selection` | `Selection` |
+
 ## 確認
 
 ```text
