@@ -174,12 +174,13 @@ func DeriveFromAnalysis(q EmbeddedSQL, databaseID core.CanonicalID, result analy
 		for i, c := range result.ColumnRefs {
 			total++
 			physicalSource, resolution := resolveColumn(snapshot, databaseID, ir.Sources, aliases, c.ScopeID, c.Correlated, c.OuterScopeID, c.Qualifier, c.Name)
-			logicalSource := FieldID("")
-			if resolution != "schema-resolved" {
-				logicalSource = resolveLogicalField(ir.Sources, c.ScopeID, c.Qualifier, c.Name, outputByScopeName)
-				if logicalSource != "" {
-					resolution = "logical-resolved"
-				}
+			logicalSource, logicalAmbiguous := resolveLogicalField(ir.Sources, c.ScopeID, c.Qualifier, c.Name, outputByScopeName)
+			if logicalAmbiguous || (logicalSource != "" && resolution == "schema-resolved") {
+				// A physical table and a CTE (or two CTE outputs) can both
+				// declare the same column. Never infer a preferred source.
+				physicalSource, logicalSource, resolution = "", "", "name-only"
+			} else if logicalSource != "" {
+				resolution = "logical-resolved"
 			}
 			if resolution == "schema-resolved" || resolution == "logical-resolved" {
 				resolved++
@@ -301,7 +302,10 @@ func firstAliasFor(aliases map[string]string, target string) string {
 	return keys[0]
 }
 
-func resolveLogicalField(sources []SourceRef, scopeID, qualifier, column string, outputs map[string]map[string][]FieldID) FieldID {
+func resolveLogicalField(sources []SourceRef, scopeID, qualifier, column string, outputs map[string]map[string][]FieldID) (FieldID, bool) {
+	if scopeID == "" {
+		scopeID = "scope:root"
+	}
 	var matches []FieldID
 	ambiguous := false
 	for _, src := range sources {
@@ -320,10 +324,13 @@ func resolveLogicalField(sources []SourceRef, scopeID, qualifier, column string,
 			matches = append(matches, ids[0])
 		}
 	}
-	if !ambiguous && len(matches) == 1 {
-		return matches[0]
+	if ambiguous || len(matches) > 1 {
+		return "", true
 	}
-	return ""
+	if len(matches) == 1 {
+		return matches[0], false
+	}
+	return "", false
 }
 
 // resolveColumn uses the source occurrence in the column's lexical scope.
