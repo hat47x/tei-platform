@@ -16,34 +16,43 @@ func (f adapterFunc) Invoke(ctx context.Context, id core.CanonicalID, input any)
 	return f(ctx, id, input)
 }
 
-func TestProductCapabilityCanBeInvokedByGoBinding(t *testing.T) {
+func TestProductCapabilitiesCanBeInvokedByGoBinding(t *testing.T) {
 	loaded, err := workspace.Load(".")
 	if err != nil {
 		t.Fatalf("product-contracts workspace: %v", err)
 	}
-	var capability semantic.Capability
+	byID := map[core.CanonicalID]semantic.Capability{}
 	for _, namespace := range loaded.World.Semantics {
-		for _, candidate := range namespace.Capabilities {
-			if candidate.ID == "product_contracts.eki_task_submit" {
-				capability = candidate
-			}
+		for _, capability := range namespace.Capabilities {
+			byID[capability.ID] = capability
 		}
 	}
-	if capability.ID == "" {
-		t.Fatal("eki_task_submit capability was not loaded")
+	ids := []core.CanonicalID{
+		"product_contracts.eki_task_submit",
+		"product_contracts.eki_attempt_execute",
+		"product_contracts.eki_result_accept",
+		"product_contracts.sui_document_put",
+		"product_contracts.sei_decision_record",
+		"product_contracts.mmi_observation_select",
 	}
 	adapter := adapterFunc(func(_ context.Context, id core.CanonicalID, _ any) (capabilityinvoke.BusinessResult, error) {
 		return capabilityinvoke.BusinessResult{
 			Capability: id,
 			Mode:       capabilityinvoke.ResultOutput,
-			Payload:    map[string]any{"attemptId": "atm_test"},
+			Payload:    map[string]any{"binding": "test"},
 		}, nil
 	})
-	result, err := capabilityinvoke.Invoke(context.Background(), capability, adapter, map[string]any{"taskId": "tsk_test"})
-	if err != nil {
-		t.Fatalf("invoke: %v", err)
-	}
-	if result.Mode != capabilityinvoke.ResultOutput {
-		t.Fatalf("result mode = %q, want output", result.Mode)
+	for _, id := range ids {
+		capability, ok := byID[id]
+		if !ok {
+			t.Fatalf("%s capability was not loaded", id)
+		}
+		result, err := capabilityinvoke.Invoke(context.Background(), capability, adapter, map[string]any{"input": "test"})
+		if err != nil {
+			t.Fatalf("invoke %s: %v", id, err)
+		}
+		if result.Mode != capabilityinvoke.ResultOutput {
+			t.Fatalf("%s result mode = %q, want output", id, result.Mode)
+		}
 	}
 }
