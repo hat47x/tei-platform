@@ -126,3 +126,75 @@ Studioの選択/ジャンプと[#2391](https://github.com/hat47x/tei-platform/is
 現時点で未決: TEA Semantic ruleの最小Extension interface、図形/edge/slotの最小schema、旧FAMILY/REFFER/SUBTYPEの厳密な意味対応、Businessの正本SourceとAction Tree、M49/M50・実GUIの対応、Layoutの長期保存/再対応付け、ノード密度とアクセシビリティの実機合格、Provider/Plugin Conformance、原子的複数Source更新、方法論間のRule競合。設計文書で推論により埋めず、各OwnerのReference Gateへ残す。
 
 **検証**: 2026-10-31時点、公開GitHubの関連Issue・main文書・公開M49 sourceを静的照合。本文は設計仮説と参照先の接続のみ。コード実装、Go/Nodeテスト、GUI、M50挙動、人間による意味受理、repository-health-checkは**NOT RUN / NOT VERIFIED**。
+
+## 8. 図中にない対象を不存在と判定するための五層（追加設計候補）
+
+他チャットの「図中になければ実際に存在しない」要求は、**対象を完全に列挙した閉じた管理範囲**についてだけ判断可能とする。未表示・権限不足・Source未読込・外部Plugin・実Runtimeを、要素数ゼロと取り違えない。
+
+| 完全性の軸 | 最小の確認事項 | 不足時 |
+| --- | --- | --- |
+| 1. 要素 | Source/Scope/種類/Filterに属する対象集合を漏れなく列挙した根拠 | 未表示と不存在の識別不能 |
+| 2. 関係 | 対象間のtyped relation、複合key、導出関係のRule・端点role・未解決を列挙 | 線がないことを無関係の証拠にしない |
+| 3. 表示 | 対象ごとに rendered / hidden / omitted / unsupported / unresolved のいずれかへ対応付け、理由・数を報告 | 描画の省略を対象の消失として解釈しない |
+| 4. 構成 | 実際のMethod/Notation/Provider/Component Instance/Rule集合と依存が確定しているか、当該図には無関係として除外した理由 | install済みPackageや宣言を利用中の実Instanceと推定しない |
+| 5. 時点 | Source、Semantic Set、Projection、Consumer snapshot、必要なProvider/Build観測の版・適用範囲 | 過去の完全性を現在の不存在主張へ流用しない |
+
+単純なDiagram Coverage.countだけでなく**対象集合、対象定義、使った規則、適用版、列挙の根拠**を最低限記録する。現行のモデルを読むだけのER図にBuildやProviderを要求することはないが、その場合「実行構成については主張しない」を明示する。通常の画面表示から、モデル全体や業務要件全体、外部環境の不存在を推定しない。
+
+**不存在判定の三値**: specified closed scopeにおける absent（不存在を確認）、present（存在を確認）、unknown（未観測・権限不足・未解決）。absenceを返せるのは、該当kindを含む完全なSource集合、Relation規則と対象範囲、適用版、非表示の区別が成立し、問いがその閉包内にある場合だけ。UIで非表示でも、元の対象が存在するならpresent。秘密・参照権限が不足する場合は、その対象の有無や件数を無断公開せずunknown/非開示とする。Coverageは安全性・開示判定の代わりではない。
+
+**対応する既存資産**: [三視点参照のSource/Evidence](CROSS_VIEW_TYPED_REFERENCE_CONTRACT_2026-10.md)、[既存ER/物理モデル比較](../../tools/reference-er-table-crossview/projection.go)、[Xead Cross-viewのSource再照合](../../tools/reference-xead-cross-view/README.md)。前二者は全対象の存在・実業務正しさを一括保証しない。Graphの描画成功もSource列挙の完全性を保証しない。
+
+## 9. 二項Edgeで表現しきれない関係の扱い
+
+現行 modelref.Edge は From→To の**二項の型付き参照**、現行Studio Graphは直線の二項表示である。三要素分析では、Composite RelationKey、TaskAction→TaskFunctionIO→Function→IOTable→Table、複数のactor/step/conditionを持つHandoff等を**一つの直線へ意味的に縮約できない**場合がある。新しいCore Hyperedgeを先に作らない。
+
+**最小投影形**: まず既存の正本側で個々のRelationとそのKey配列、複数の型付き参照、出典集合を保持する。図面上は次のどちらかを選べるようにする。
+
+1. 二項の表示線 + 説明可能な役割付きslot/詳細Inspector。クリックした線から関係そのもの、key対応、導出経路の一覧を開く。
+2. 必要な場合だけ「関係Occurrence」をview-only nodeとして置き、各参加要素から role付きportへ接続する。relationを表すview node IDはCanonical identityへ昇格せず、出典が正本を持つ場合だけQualified Relation Refを付ける。
+
+例：TaskAction A、TaskFunctionIO I、Function F、IOTable T、Data Dの観測経路をA→Dという一本に簡略表示しても、**source paths A→I→F→T→D と参照を導いたrule/evidence**を保持し、AがDのwrite effectを起こしたとは表示しない。キー構造もComposite Keyを一本の「FK」と誤記せずField pair集合へ展開できるようにする。契約上の端点roleが未解決ならグラフの欠落として黙って落とさずdiagnosticに残す。
+
+**図表間の関連表**: 同じQualified RefがData表、ER図、Function図、Business図で何回現れたかを、view occurrenceの逆索引として導出する。異なるDiagramでIDが一致するという理由で同じmeaningとしない。複数の意味体系の断面を示すことが利用者/AIの認知負荷を減らしたかは、実操作比較で評価する。
+
+## 10. Declared / Resolved / Observedと業務証拠の直交性
+
+Plugin公開基盤の議論で用いるDeclared（宣言）/Resolved（選択・合成）/Observed（実際の観測）に対応する視点を**既存の証拠から読み取り専用で投影**できるようにする。これをCanonicalな「第四のWorld」や独自Registry台帳へしない。将来Method Pluginを配布する際も、公開Registryでの検証成功やArtifact digest一致だけではConsumerの利用権限、現行Providerの適合、Accepted meaningを証明しない。
+
+同時に、Action/Interaction Evidenceで検討されている四つのレーンは別の軸である。
+
+| 業務・操作上のレーン | 示せること | 示せないこと |
+| --- | --- | --- |
+| Operation / Selection | 図上の意図、UIで選択した要素、操作要求 | 実対象が決まったこと、業務が確定したこと |
+| Declared Transition | 正本で宣言された条件・期待状態遷移 | 当該遷移が実際に起きたこと |
+| Observed Effect | 特定Provider/Target/時点/対象を独立に観測した結果 | 人・Ownerの業務受理、Source変更の原子性 |
+| Owner-Accepted Meaning | 既存正本で受理された業務意味と、その適用範囲 | 現在の実DB/配布Build/画面状態の保証 |
+
+公開・配布の三層と、この四レーンを単一の「validated」「green」「ready」に畳み込まない。Diagramには各線・図形の出典、対象scope、revision、選択map、適用時点、missing/unknown理由をInspectorから到達できるようにし、図面自体には必要最小限の区別を置く。
+
+図面内の「Dataを開く」「Actionを表示する」はStudio read-only navigationであり、業務記録の更新ではない。**UI locatorの一意性と意味参照の一意性は独立**。StudioのviewIDが一意でもQualified Refが曖昧ならInspect/Source確定を拒否し、逆に意味参照が一意でも現行画面のlocatorが曖昧なら外部UI actを拒否する。
+
+[#2391](https://github.com/hat47x/tei-platform/issues/2391)は2026-10-31現在、通常WebのA/B/C（Production外部Runner、Test外部Runner、Test optional instrumentation）とWails内蔵Application MCPのW0を**実証計画**として追補している。これはStudioのmethod/rendererの必須依存ではなく、任意の外部UI制御の別Gateである。Test/Production同一Scenario、配布実物の物理除去、business effect readback、Owner判断はそれぞれ別の結果であり、A/B/C/W0はNOT RUN。
+
+## 11. TEA-D0を実装可能な小課題へ切る（P0優先）
+
+**前提の厳密化**: 現行[Graph Reference](../../reference/tei-studio-graph/README.md)は GraphNode.id,label,x,y、GraphEdge.id,source,target,label と node-only onSelect を提供。**Data内部のField行クリック/Port/Hyperedgeは未実装**。最初から「既存GraphでField slotがクリック可能」とは主張せず、Data一覧・Field一覧など既存Consumerの別選択入口を一つのqualified snapshotへ結ぶところから開始する。
+
+| Step | 入力と最小変更 | Assertion | Owner / 依存 |
+| --- | --- | --- | --- |
+| G0：静的資格 | current World/Data/Relation、既存modelref、existing ER-crossviewのread-only出力 | scope/kind/id/版を固定。RelationKey未解決をunknownと保持。新しいSemantic Sourceなし | #1126 / #1120 |
+| G1：Diagram Binding | 2 Scopeに同名Data、同じDataの2図面Occurrence、Field一覧行のview IDを同じConsumer Bindingへ | Graph・List・Fieldの選択時にscope付きKey一致。view ID再利用で別Scope Inspect 0 | #1124（Graphは既存Reference） |
+| G2：描画拒否 | R10/G1のview ID K→Scope A、R11/G2用K→Scope Bのpending map、G2はmissing_endpoint | G1 DOMは残るがM2はpublishしない。M1はR11にはstale。Kクリック後Inspect/Source Locateとも0 | #1124 / 現行freshness設計 |
+| G3：表示・不存在 | Scope対象DataとRelationの閉包一覧、一部Hidden、一件Unsupported、Source版不明 | Hiddenはpresent。Unsupported/版不明はunknown。absent主張0。後続差分はlayout-only | #1126 / #1124 |
+| G4：Methodの意味境界 | exact Semantic Setに未採用のTEA意味規則候補、別Notation Providerを追加 | Notationだけの交換でAccepted意味・Semantic Lock不変。Meaningを変えるRuleは明示受理なしに適用しない | Semantic Extension既存契約 / #951 |
+| G5：複合Relation Intent | M49静的source factsと独自受注fixture、Key/Field不足ケース | 複数Change candidateとImpactのみ、Source書込み0、受理済み扱い0 | #1126 / #267（次Gate） |
+
+**最小出力物**: 1) Derived Projection/BindingのFixture、2) G1/G2のSpy回帰、3) closure manifestの正例・負例、4) read-only画面のData/Field/Relation選択、5) 既存Contractと衝突しない未対応の一覧。新たなプラグイン配布サービスやGeneral Canvasを先行要件にしない。
+
+**停止・撤回**: (i) Graph/list/Fieldを共通Bindingへ通せず表示IDがSourceへ漏れる、(ii) closed-scope absenceを正しく拒否できない、(iii) 同一SourceでProvider追加だけでAccepted意味が変わる、(iv) derived Relationが業務Action CRUDやEffectとして表示される、(v) target UIの実操作とOwnerの受理が混同される場合は受入不可。大きな抽象が必要だと判明しても、まず既存#1124/#1126/#951の境界に戻して原因を記録する。
+
+## 12. 今回の静的確認と未検証
+
+2026-10-31後続のmain head f89344bfca438a101b7ba93d357911bad8d3b609で、[Graphの入力・更新](../../reference/tei-studio-graph/graph.ts)、[ER/物理Cross-view Projection](../../tools/reference-er-table-crossview/projection.go)、[Business DFD diagram context](../../tools/reference-business-dfd/diagram_context.go)、[modelref](../../internal/modelref/model.go)、[Studio freshness](STUDIO_CONSUMER_FRESHNESS_BOUNDARY_2026-10.md)、[Xead Cross-view](../../tools/reference-xead-cross-view/README.md)を静的照合。#1124/#1125/#1126/#2391の現行Issue本文も再確認。Code/Testの実行、Studioの統合操作、実X-TEA GUI/M50、外部UI制御、Provider効果、Owner acceptanceは未実施。新設のG0〜G5は**提案/NOT RUN**であり、既存Graph単体の過去の合格を新しいConsumer受入とみなさない。
+
