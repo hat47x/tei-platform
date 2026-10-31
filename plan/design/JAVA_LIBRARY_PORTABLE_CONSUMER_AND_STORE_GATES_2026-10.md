@@ -99,6 +99,22 @@
 | **未実行** | TEI版JR-01〜06、生成Java型付きLibrary、Store上書き／部分失敗／復旧、TEI非依存の正式Consumer／外部Host実行、JAR配布、全TargetはNOT RUN。 |
 | **Owner未決** | 外部Libraryの正式公開契約、対応JDK／Target範囲、旧Buildの保持／回復要件、Store schema・Key方式、JSON字句許容、複合計算規則のBusiness意味受理、現在Host Authority。 |
 
+## 2026-10-31の実測追補：現行Javaテンプレートのclass閉包（JR-01の前段、**StoreはNOT RUN**）
+
+対象main `1e8d3031aee7881bf6907f7774c9dba7a438e11e` を再照合した。テンプレートGit blob `32a7c6877ab34ca26009f4436c2fe7ce487cb7ac`、契約Git blob `e72ae7fbcbff036a96bd45f78585d34e2c11f3d5`、公開fixture Git blob `4c8948b9e6f5b0a82609e8abe58cb073609a7ec1`。本試行は**TEI Generator CLI/Selector/Storeを呼ばず**、現行`Main.java.tmpl`へ`generator.go`に記載された固定値（`line-amount-java-template`、`sales.line-amount/1`、`java-template`、`JPY`、`scale=2`、`integerDigits=6`）を代入した隔離実行である。
+
+- **Source同一性の実測**：GitHubから取得したテンプレートへ独立に同じ値を代入したSourceのSHA-256=`0c724dd5c40f46853697aa71b0152296dd1b6a1197aabe5077370d96bce7ddf5`は、ローカル`Main.java`のSHA-256と一致（6,851 byte）。従って手書きJava参考実験ではなく、**公開された現行テンプレートの展開byte**そのものを検査した。ただし生成CLIのReceiptとSourceを結ぶ試行は未実施。
+- **Fixture同一性の実測**：公開10件の`cases/id/input/want`を再構成し、JSON object key順を正規化したSHA-256=`0f8d1302bb4cd020fb56f3c5145737dc8e9f14c74beae060b8b7011b9db2c5da`がGitHubの公開fixtureと一致。**JSON値内容の同一性**であり、元fixtureの生JSONファイルbyte一致ではない。
+- **実Java実行**：OpenJDK 21.0.12.1。コンパイルで`Main.class`（5,346 byte、SHA-256=`461c17f20bd389c17dddf020fabbee07bef0de11bdd0b4904cf4857ef3fd861a`）と`Main$Input.class`（604 byte、SHA-256=`bb92ff231a6cc8574cb636c25f9918868f9126fa13debcb608d67836c261737b`）の**二member**を観測。全classの隔離directoryで公開fixture **10/10** 合格。入力`1×1.005 JPY/piece`も`1.01 JPY`。
+- **最小反証の実測**：同じBuildから`Main.class`**だけ**を空directoryへ置き、同じ入力を`java -cp <isolated> Main`で起動すると**exit 1**、`java.lang.NoClassDefFoundError: Main$Input`。これにより現行StoreのJava分岐が採用する「主classのみを保存する形」の**実行閉包不足を隔離再現**できた。**現行Store.Put/Getを経由したJR-01Bの実測ではない**。
+- **Adapter追加観測（契約外・未採用）**：`quantity:null`の後に重複キー`quantity:"1"`を与えると`missing`、引用符なしJSON数値`quantity:1`は`present 1.00`、正常object後の余分な文字列` trailing`があっても`present 1.00`となった。Java独自parserの挙動でありJSON字句の業務受理やGoとの計算非同値としない。特に末尾ゴミを受理する問題は**Adapterの構文境界**として別に検証する。
+
+**Gate更新**：P0-Bは「現行公開テンプレートの全class vs 主class単独の隔離実行」を実測したが、**Store経由のJR-01A/B/Cは未完了**。次はStoreの現実装で`Put→Get→新規clean directoryへ実byte復元→同一JDK/入力で起動`を一試行に束縛する。P0-A（**TEI生成の型付き公開Java Libraryを独立Consumerから呼ぶ**）、JR-02〜06、Runtime資格、Owner意味受理は依然未実行。正式Store schema、鍵形式、ABI、JAR、共通Hostは未採用。
+
+**#2390横断の補足**：可搬性はPluginの属性単体でなく、`Consumer要求 × Provider提供 × Host保証 × Context/時点`の関係で評価する（[#2390の10/31追補](https://github.com/hat47x/tei-platform/issues/2390#issuecomment-6536745970)）。本書のJava C1は**callableな純粋計算**に限定され、`std.message`の非実行定義・Smart Data HookのHost phase・業務データ取得の集合完全性の適合を代用しない。#1861のNode/Chromium/Wasmtimeでの実WASM検証は既存証拠として参照し、同じ外部Consumer実験を重複実装しない。
+
+試験材料は対話内の隔離ZIPに保全し、repoへ実行バイナリを追加していない。これは製品JDK互換性の保証でも、Owner受理済み契約への格上げでもない。
+
 ## 引渡しと責任
 
 - **#2077／Generator・Java担当**：P0-A/B、Java Source→Build→class集合とConsumerのWitness。新規公開APIの最小形は比較後に決める。
