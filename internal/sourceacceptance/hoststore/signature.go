@@ -1,15 +1,18 @@
 package hoststore
 
 import (
+	"bytes"
 	"context"
 	"crypto/ed25519"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"sort"
 	"strings"
+	"time"
 
 	"tei/internal/sourceacceptance"
 	"tei/internal/sourceindex"
@@ -70,17 +73,135 @@ func Sign(d Decision, keyID string, key ed25519.PrivateKey) (Decision, error) {
 }
 
 // TrustedIssuer is one entry of the Host's trust file.
+//
+// NotBefore, NotAfter and Revoked are optional and PROVISIONAL (decisions
+// record D7). NotBefore/NotAfter are RFC3339 UTC timestamps ending in a capital
+// "Z"; a key is usable when NotBefore <= now < NotAfter (NotBefore inclusive,
+// NotAfter exclusive). Omitted (or JSON null) fields mean no restriction, and
+// an entry carrying none of the three never consults the clock. Limits that
+// matter to operators:
+//   - The window is judged at READ time against the Host's own clock, not at
+//     signing time (the signed payload carries no timestamp), so every Decision
+//     from a retired key lapses together and must be re-issued under a new key.
+//   - A running Web Target loads the trust file once, so adding Revoked or
+//     editing a window reaches it only after a restart or reload. Only the
+//     passage of time across NotAfter/NotBefore self-enforces.
+//   - Binaries that predate these fields ignore them and keep trusting the key.
+//   - A skewed or manipulated clock is not defended against; only a zero,
+//     out-of-range or panicking clock fails closed.
 type TrustedIssuer struct {
 	Issuer       string   `json:"issuer"`
 	KeyID        string   `json:"keyId"`
 	PublicKey    string   `json:"publicKey"`
 	Applications []string `json:"applications"`
+	NotBefore    *string  `json:"notBefore,omitempty"`
+	NotAfter     *string  `json:"notAfter,omitempty"`
+	Revoked      bool     `json:"revoked,omitempty"`
 }
 
 // TrustPolicy is the Host's list of issuers whose signed Decisions it accepts.
 type TrustPolicy struct {
 	Schema  string          `json:"schema"`
 	Issuers []TrustedIssuer `json:"issuers"`
+
+	now func() time.Time // not serialized; nil means time.Now
+}
+
+// WithClock returns a copy of the policy whose verifiers read the time from
+// now (nil means time.Now). Call it before Verifier(). It exists for tests and
+// for Hosts that inject a clock; it does not change the trust file.
+func (p TrustPolicy) WithClock(now func() time.Time) TrustPolicy {
+	p.now = now
+	return p
+}
+
+// keyWindow is a parsed validity window; a nil bound is unrestricted.
+type keyWindow struct {
+	notBefore, notAfter *time.Time
+}
+
+// parseKeyTime accepts only RFC3339 with a capital "Z" (no offsets).
+func parseKeyTime(s string) (time.Time, error) {
+	if !strings.HasSuffix(s, "Z") {
+		return time.Time{}, errors.New("not UTC")
+	}
+	t, err := time.Parse(time.RFC3339, s)
+	if err != nil {
+		return time.Time{}, err
+	}
+	return t.UTC(), nil
+}
+
+// parseKeyWindow is the single rule shared by ParseTrustPolicy (and the CLI via
+// it) and the verifier, so parse-time and verify-time checks cannot drift.
+func parseKeyWindow(i TrustedIssuer) (keyWindow, error) {
+	var w keyWindow
+	if i.NotBefore != nil {
+		t, err := parseKeyTime(*i.NotBefore)
+		if err != nil {
+			return keyWindow{}, err
+		}
+		w.notBefore = &t
+	}
+	if i.NotAfter != nil {
+		t, err := parseKeyTime(*i.NotAfter)
+		if err != nil {
+			return keyWindow{}, err
+		}
+		w.notAfter = &t
+	}
+	if w.notBefore != nil && w.notAfter != nil && !w.notAfter.After(*w.notBefore) {
+		return keyWindow{}, errors.New("empty window")
+	}
+	return w, nil
+}
+
+func (i TrustedIssuer) restricted() bool {
+	return i.Revoked || i.NotBefore != nil || i.NotAfter != nil
+}
+
+// readClock calls the clock and fails closed on a panic, a zero time or a year
+// outside 1..9999.
+func readClock(clock func() time.Time) (now time.Time, err error) {
+	defer func() {
+		if recover() != nil {
+			now, err = time.Time{}, errors.New("HOST_STORE_CLOCK_INVALID")
+		}
+	}()
+	now = clock()
+	if now.IsZero() || now.Year() < 1 || now.Year() > 9999 {
+		return time.Time{}, errors.New("HOST_STORE_CLOCK_INVALID")
+	}
+	return now, nil
+}
+
+// checkKeyState runs only after the signature verified. It never touches the
+// clock for an unrestricted entry.
+func checkKeyState(i TrustedIssuer, clock func() time.Time) error {
+	if !i.restricted() {
+		return nil
+	}
+	if i.Revoked {
+		return errors.New("HOST_STORE_KEY_REVOKED")
+	}
+	w, err := parseKeyWindow(i)
+	if err != nil {
+		return errors.New("HOST_STORE_KEY_WINDOW_INVALID")
+	}
+	if clock == nil {
+		clock = time.Now
+	}
+	now, err := readClock(clock)
+	if err != nil {
+		return err
+	}
+	if w.notBefore != nil && now.Before(*w.notBefore) {
+		return errors.New("HOST_STORE_KEY_NOT_YET_VALID")
+	}
+	if w.notAfter != nil && !now.Before(*w.notAfter) {
+		return errors.New("HOST_STORE_KEY_EXPIRED")
+	}
+	return nil
 }
 
 // LoadTrustPolicy reads and validates a trust file. Errors do not include the
@@ -95,21 +216,35 @@ func LoadTrustPolicy(path string) (TrustPolicy, error) {
 
 // ParseTrustPolicy validates a trust document: known schema, at least one
 // issuer, a 32-byte public key, a non-empty key ID and Application list, and
-// no duplicate issuer/key pair.
+// no duplicate issuer/key pair, no public key listed twice, no unknown member, and a well-formed optional validity window.
 func ParseTrustPolicy(raw []byte) (TrustPolicy, error) {
 	var policy TrustPolicy
-	if err := json.Unmarshal(raw, &policy); err != nil || policy.Schema != trustSchema || len(policy.Issuers) == 0 {
+	// Unknown members are refused, not ignored: a misspelled "revoked" or
+	// "notAfter" would otherwise leave the key silently unrestricted.
+	decoder := json.NewDecoder(bytes.NewReader(raw))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&policy); err != nil || policy.Schema != trustSchema || len(policy.Issuers) == 0 {
+		return TrustPolicy{}, errors.New("HOST_STORE_TRUST_INVALID")
+	}
+	if _, err := decoder.Token(); err != io.EOF {
 		return TrustPolicy{}, errors.New("HOST_STORE_TRUST_INVALID")
 	}
 	seen := map[string]bool{}
+	seenKeys := map[string]bool{}
 	for _, issuer := range policy.Issuers {
 		key, err := base64.StdEncoding.DecodeString(issuer.PublicKey)
 		id := issuer.Issuer + "\x00" + issuer.KeyID
 		if err != nil || len(key) != ed25519.PublicKeySize || strings.TrimSpace(issuer.Issuer) == "" ||
-			strings.TrimSpace(issuer.KeyID) == "" || len(issuer.Applications) == 0 || seen[id] {
+			strings.TrimSpace(issuer.KeyID) == "" || len(issuer.Applications) == 0 || seen[id] || seenKeys[string(key)] {
+			return TrustPolicy{}, errors.New("HOST_STORE_TRUST_INVALID")
+		}
+		if _, err := parseKeyWindow(issuer); err != nil {
 			return TrustPolicy{}, errors.New("HOST_STORE_TRUST_INVALID")
 		}
 		seen[id] = true
+		// Validity and revocation are keyed by (issuer, keyId), so the same key
+		// material under a second entry would bypass a revocation.
+		seenKeys[string(key)] = true
 	}
 	return policy, nil
 }
@@ -119,6 +254,7 @@ func ParseTrustPolicy(raw []byte) (TrustPolicy, error) {
 // Decision for an Application it is trusted for.
 func (p TrustPolicy) Verifier() DecisionVerifier {
 	issuers := append([]TrustedIssuer(nil), p.Issuers...)
+	clock := p.now
 	return func(_ context.Context, d Decision) error {
 		var evidence signatureEvidence
 		if err := json.Unmarshal(d.Evidence, &evidence); err != nil || evidence.Algorithm != algorithmEd25519 {
@@ -137,10 +273,12 @@ func (p TrustPolicy) Verifier() DecisionVerifier {
 				continue
 			}
 			key, _ := base64.StdEncoding.DecodeString(issuer.PublicKey)
-			if ed25519.Verify(ed25519.PublicKey(key), payload, signature) {
-				return nil
+			if !ed25519.Verify(ed25519.PublicKey(key), payload, signature) {
+				return errors.New("HOST_STORE_SIGNATURE_INVALID")
 			}
-			return errors.New("HOST_STORE_SIGNATURE_INVALID")
+			// State is judged only for a genuine signature, so a forgery on an
+			// expired key still reports SIGNATURE_INVALID.
+			return checkKeyState(issuer, clock)
 		}
 		return fmt.Errorf("HOST_STORE_ISSUER_NOT_TRUSTED")
 	}
