@@ -13,9 +13,11 @@ import (
 // membership checked against the Host's CURRENT witness. Consumers must use
 // Loaded.World from this result, not a separate Workspace Load.
 //
-// This boundary verifies source identity only. It does not authenticate a
-// Reader supplied by the caller, grant effect permission, or guarantee atomic
-// filesystem reads across all managed files (#1017).
+// SourceIndex is built only from the bytes Load captured (never re-read from
+// the filesystem), so it identifies the bytes Loaded.World came from. This is
+// still not atomic across files, detects no files omitted from membership,
+// does not cover imported Workspaces, and G1/G2 stay UNQUALIFIED. It does not
+// authenticate a Reader supplied by the caller or grant effect permission.
 type VerifiedWorkspace struct {
 	Loaded      workspace.Result
 	SourceIndex sourceindex.Index
@@ -39,9 +41,9 @@ func LoadVerifiedWorkspace(ctx context.Context, reader Reader, applicationID, ro
 	if err != nil {
 		return VerifiedWorkspace{}, fmt.Errorf("SOURCE_WORKSPACE_LOAD_FAILED: %w", err)
 	}
-	index, err := workspace.BuildSourceIndex(root, loaded)
+	index, err := workspace.BuildSourceIndexFromLoad(root, loaded)
 	if err != nil {
-		return VerifiedWorkspace{}, fmt.Errorf("SOURCE_INDEX_BUILD_FAILED: %w", err)
+		return VerifiedWorkspace{}, fmt.Errorf("SOURCE_INDEX_BUILD_FAILED: source index is not bound to Load-time bytes: %w", err)
 	}
 	record, err := VerifyCurrent(ctx, reader, applicationID, index)
 	if err != nil {
