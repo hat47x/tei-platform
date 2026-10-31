@@ -36,7 +36,7 @@ TAI配下の5製品をTEIで再表現できるかを検討するための参照w
 - `sei_decision_record`
 - `mmi_observation_select`
 
-patternは能力を参照しますが、呼出し順・副作用・実装はまだ持ちません。
+patternは能力を参照します。`realizations/`では、各capabilityを`custom go`の実装へ結びつける宣言だけを持ちます。呼出し順・副作用・実装本体はまだ持ちません。
 
 ## 確認
 
