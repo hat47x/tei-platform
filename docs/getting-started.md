@@ -26,6 +26,15 @@ go version
 go run ./cmd/tei commands
 ```
 
+結果を記録して後から再現できるようにするには、使った`tei`の識別も一緒に残します。`go build`で作った実行ファイルに対して次を実行すると、埋め込まれたコミット（`vcsRevision`）、未コミット変更の有無（`vcsModified`）、Goのバージョン、OSとCPUの種類が返ります。
+
+```bash
+go build -o tei ./cmd/tei
+./tei version -json
+```
+
+`go run`や`-buildvcs=false`でbuildした場合はコミットが埋め込まれないため、`source`が`unavailable`になります。識別は再現の手掛かりであり、配布の承認や署名ではありません。
+
 モデルや定義の整合性を調べる場合、生成AIなどの呼出し元は次のようにJSON形式の診断結果を取得できます。
 
 ```bash
