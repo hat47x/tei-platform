@@ -1,0 +1,3 @@
+pattern product_contracts_flow.sui_document_put command {
+    capability product_contracts.sui_document_put
+}
