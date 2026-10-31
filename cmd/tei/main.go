@@ -21,7 +21,6 @@ import (
 	"tei/internal/database/reconcile"
 	"tei/internal/database/release"
 	"tei/internal/database/schemadiff"
-	"tei/internal/dependency"
 	"tei/internal/deployment"
 	deploymentdurable "tei/internal/deployment/durable"
 	deploymentevidence "tei/internal/deployment/evidence"
@@ -115,7 +114,7 @@ func main() {
 	}
 	jsonValidationRequested := command == "validate" && wantsJSONValidation(os.Args[2:])
 	parseMode := flag.ExitOnError
-	if command == "inspect" || command == "trace" || jsonValidationRequested {
+	if command == "inspect" || command == "trace" || jsonValidationRequested || isResultEnvelopeCommand(command) {
 		parseMode = flag.ContinueOnError
 	}
 	fs := flag.NewFlagSet(command, parseMode)
@@ -190,10 +189,26 @@ func main() {
 			os.Exit(code)
 		}
 	}
+	// #2354: the envelope commands keep the FlagSet failure machine-readable
+	// too, instead of falling back to the stderr-only usage exit.
+	if isResultEnvelopeCommand(command) && parseErr != nil {
+		code, writeErr := emitResult(os.Stdout, resultFailure(command, resultCodeInvalidArgument, parseErr), 2)
+		if writeErr != nil {
+			fmt.Fprintln(os.Stderr, writeErr)
+		}
+		os.Exit(code)
+	}
 	if command != "inspect" && command != "trace" && !(command == "validate" && jsonValidationRequested) {
 		// #2332: text/JSON commands advertised by `tei commands` reject flags
 		// they do not read, instead of silently ignoring them.
 		if err := validateSelectedReadOnlyFlags(fs, command); err != nil {
+			if isResultEnvelopeCommand(command) {
+				code, writeErr := emitResult(os.Stdout, resultFailure(command, resultCodeInvalidArgument, err), 2)
+				if writeErr != nil {
+					fmt.Fprintln(os.Stderr, writeErr)
+				}
+				os.Exit(code)
+			}
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(2)
 		}
@@ -255,29 +270,34 @@ func main() {
 		return
 	}
 	if command == "workspace-files" {
-		if *workspacePath == "" || *worldPath != "" {
-			fmt.Fprintln(os.Stderr, "workspace-files requires -workspace and does not accept -world")
-			os.Exit(2)
-		}
-		r, err := workspace.Load(*workspacePath)
+		code, err := workspaceFilesJSON(os.Stdout, *workspacePath, *worldPath, fs.NArg())
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
-			os.Exit(2)
 		}
-		writeJSON(r.ManagedFiles)
+		if code != 0 {
+			os.Exit(code)
+		}
 		return
 	}
 	if command == "source-index" {
-		if *workspacePath == "" || *worldPath != "" {
-			fmt.Fprintln(os.Stderr, "source-index requires -workspace and does not accept -world")
-			os.Exit(2)
-		}
-		inspection, err := buildSourceIndexInspection(*workspacePath, *subjectKind, *subjectID)
+		code, err := sourceIndexJSON(os.Stdout, *workspacePath, *worldPath, *subjectKind, *subjectID, fs.NArg())
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
-			os.Exit(2)
 		}
-		writeJSON(inspection)
+		if code != 0 {
+			os.Exit(code)
+		}
+		return
+	}
+	if isResultEnvelopeCommand(command) {
+		// world, requirements, plugin-lock, plugin-resolve, plugin-runtime-plan
+		code, err := resultCommandJSON(os.Stdout, command, *workspacePath, *worldPath, *environmentID, *pluginLockPath, fs.NArg())
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+		}
+		if code != 0 {
+			os.Exit(code)
+		}
 		return
 	}
 	if command == "knowledge-review-plan" {
@@ -527,70 +547,6 @@ func main() {
 	}
 
 	switch command {
-	case "world":
-		writeJSON(w)
-	case "requirements":
-		validateOrExit(w)
-		writeJSON(dependency.Derive(w))
-	case "plugin-lock":
-		validateOrExit(w)
-		lock, err := plugin.BuildLock(plugin.Catalog{Plugins: w.Plugins, Bundles: w.Bundles}, w.Environments)
-		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(2)
-		}
-		writeJSON(lock)
-	case "plugin-resolve":
-		validateOrExit(w)
-		if *environmentID == "" {
-			fmt.Fprintln(os.Stderr, "-environment is required")
-			os.Exit(2)
-		}
-		env, ok := findEnvironment(w, core.MustCanonicalID(*environmentID))
-		if !ok {
-			fmt.Fprintf(os.Stderr, "unknown environment %s\n", *environmentID)
-			os.Exit(2)
-		}
-		catalog := plugin.Catalog{Plugins: w.Plugins, Bundles: w.Bundles}
-		var r plugin.ResolvedSet
-		var err error
-		if *pluginLockPath != "" {
-			var lock plugin.Lock
-			if err := decodeJSONFile(*pluginLockPath, &lock); err != nil {
-				fmt.Fprintln(os.Stderr, err)
-				os.Exit(2)
-			}
-			r, err = catalog.ResolveEnvironmentWithLock(env, lock)
-		} else {
-			r, err = catalog.ResolveEnvironment(env)
-		}
-		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(2)
-		}
-		writeJSON(r)
-	case "plugin-runtime-plan":
-		validateOrExit(w)
-		if *environmentID == "" || *pluginLockPath == "" {
-			fmt.Fprintln(os.Stderr, "-environment and -plugin-lock are required")
-			os.Exit(2)
-		}
-		env, ok := findEnvironment(w, core.MustCanonicalID(*environmentID))
-		if !ok {
-			fmt.Fprintf(os.Stderr, "unknown environment %s\n", *environmentID)
-			os.Exit(2)
-		}
-		var lock plugin.Lock
-		if err := decodeJSONFile(*pluginLockPath, &lock); err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(2)
-		}
-		plan, err := pluginruntime.BuildPlan(plugin.Catalog{Plugins: w.Plugins, Bundles: w.Bundles}, env, lock)
-		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(1)
-		}
-		writeJSON(plan)
 	case "validate":
 		ds := validation.Validate(w)
 		hasErr := false
