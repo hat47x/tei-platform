@@ -112,7 +112,7 @@ func TestReconcileNoopWhenHealthy(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _, _ = Stop(statePath) })
-	receipt, err := Reconcile(statePath, "exec sleep 5", "exit 0", "", time.Second)
+	receipt, err := Reconcile(statePath, "exec sleep 5", "exit 0", "", healthTestBudget)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -128,7 +128,7 @@ func TestReconcileRestartsUnhealthy(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _, _ = Stop(statePath) })
-	receipt, err := Reconcile(statePath, "exec sleep 5", "exit 1", "", time.Second)
+	receipt, err := Reconcile(statePath, "exec sleep 5", "exit 1", "", healthTestBudget)
 	if err != nil {
 		t.Fatal(err)
 	}
