@@ -95,7 +95,6 @@ func DeriveFromAnalysis(q EmbeddedSQL, databaseID core.CanonicalID, result analy
 		return ir
 	}
 	ir.Coverage.Parse = CoverageFull
-
 	for _, s := range result.Scopes {
 		ir.Scopes = append(ir.Scopes, QueryScope{ID: s.ID, ParentID: s.ParentID, Kind: s.Kind, Name: s.Name})
 	}
@@ -174,7 +173,11 @@ func DeriveFromAnalysis(q EmbeddedSQL, databaseID core.CanonicalID, result analy
 		for i, c := range result.ColumnRefs {
 			total++
 			physicalSource, resolution := resolveColumn(snapshot, databaseID, ir.Sources, aliases, c.ScopeID, c.Correlated, c.OuterScopeID, c.Qualifier, c.Name)
-			logicalSource, logicalAmbiguous := resolveLogicalField(ir.Sources, c.ScopeID, c.Qualifier, c.Name, outputByScopeName)
+			logicalScopeID := c.ScopeID
+			if c.Correlated {
+				logicalScopeID = c.OuterScopeID
+			}
+			logicalSource, logicalAmbiguous := resolveLogicalField(ir.Sources, logicalScopeID, c.Qualifier, c.Name, outputByScopeName)
 			if logicalAmbiguous || (logicalSource != "" && resolution == "schema-resolved") {
 				// A physical table and a CTE (or two CTE outputs) can both
 				// declare the same column. Never infer a preferred source.
