@@ -88,7 +88,7 @@ func TestValidateWorkspaceJSONSemanticFailure(t *testing.T) {
 	}
 }
 
-func TestValidateWorkspaceJSONDuplicateHasSubjectButNoAmbiguousSource(t *testing.T) {
+func TestValidateWorkspaceJSONDuplicateHasDeclarationCandidates(t *testing.T) {
 	root := t.TempDir()
 	writeWorkspaceFile(t, root, "tei.workspace.yaml", "workspace: duplicate\nsources:\n  - semantic\n")
 	writeWorkspaceFile(t, root, "semantic/intake/request.tei", "namespace intake\ndata Request {\n    attribute status type std.code\n    attribute status type std.code\n}\n")
@@ -102,7 +102,8 @@ func TestValidateWorkspaceJSONDuplicateHasSubjectButNoAmbiguousSource(t *testing
 		if item.Diagnostic.Code != "DUPLICATE_SEMANTIC_ELEMENT" {
 			continue
 		}
-		if item.Diagnostic.Subject == nil || item.Diagnostic.Subject.ID != "intake.request.status" || len(item.Sources) != 0 {
+		if item.Diagnostic.Subject == nil || item.Diagnostic.Subject.ID != "intake.request.status" || len(item.Sources) != 2 ||
+			item.Sources[0].Range.Start.Line != 3 || item.Sources[1].Range.Start.Line != 4 {
 			t.Fatalf("duplicate diagnostic: %+v", item)
 		}
 		return
