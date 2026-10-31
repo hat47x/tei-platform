@@ -398,16 +398,3 @@ func resolveColumn(
 	// Unknown and ambiguous bindings are never represented as known sources.
 	return "", "name-only"
 }
-
-func uniqueStrings(in []string) []string {
-	seen := map[string]bool{}
-	out := make([]string, 0, len(in))
-	for _, v := range in {
-		k := strings.ToLower(v)
-		if !seen[k] {
-			seen[k] = true
-			out = append(out, v)
-		}
-	}
-	return out
-}
