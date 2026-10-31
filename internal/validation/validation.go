@@ -169,8 +169,8 @@ func Validate(w ir.World) []Diagnostic {
 
 	addSemanticElement := func(id core.CanonicalID, kind string) {
 		if prior, exists := semanticElements[id]; exists {
-			// The later declaration is the one being rejected, so its Subject
-			// carries the sources in -json output (#2400).
+			// The Subject identifies the duplicate name and kind, but does not
+			// distinguish individual declarations with the same identity (#2400).
 			if prior == kind {
 				out = append(out, errFor(subject.Subject{Kind: "semantic-" + kind, ID: string(id)}, "DUPLICATE_SEMANTIC_ELEMENT", "semantic element %s is declared more than once as %s", id, kind))
 				return
