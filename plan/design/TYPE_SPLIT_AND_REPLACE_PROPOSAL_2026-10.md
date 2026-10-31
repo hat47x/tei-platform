@@ -94,3 +94,49 @@
 3. 型の分割に対する新しい汎用契約が不要で、既存の更新系操作と明示割当で安全に表せるなら、新たなType Registryや専用Approval Engineを導入しない。追加抽象が効果を示さなければ撤回する。
 
 **Owner判断待ち**：Semantic Typeの正式名称、値域制約をどの既存契約/Pluginで表すか、Splitの配分確定時に必要な人のレビュー範囲、値適合が未確認なモデル改版の採用・配備停止の区別。
+
+
+## 9. 2026-10-31 横断追補：参照の付替えと「統合完了」を混同しない
+
+**状態：現行mainの \`tools/reference-type-reorg-impact/impact.go\`、\`candidate.go\`、\`internal/semantic/model.go\` および現行Issueの静的照合に基づく追加設計。今回Go/CLI・Studio・実DBはNOT RUN。**
+
+### 9.1 追加で判明した到達点の差
+
+- \`Analyze\` は統合元型を使うAttributeだけでなく、型を直接参照するCapability Input/Outputと、統合元を基底とするAlias型を**影響一覧**に出す。
+- 一方、\`Candidate\` が生成する \`set-attribute-type\` は **\`Impact.Attributes\` のみ**を列挙する。Capability Input/OutputのTypeRefは書き換えない。Alias型が存在する場合、Candidateは拒否する。Source Type定義自体を削除・改名する操作も生成しない。
+- したがって、候補のShared Acceptanceで属性のTypeRef付替えが受理されても、「旧型を参照する全利用先が移行済み」「旧型を削除可能」「意味型の統合完了」を自動的に意味しない。既存の\`set-attribute-type\`のaccept/reload合成試験は、属性の変更の成立範囲として保持する。
+- \`physical-storage-differs\` の現行実装は、**統合元の型を使用している属性のStorage集合間**の差異を検出する。統合先の型を使用しているAttributeのStorageをその比較集合に加えていない。そのため、この診断が無くても、移行元と移行先の全使用箇所が同じ物理表現・値域制約を満たすとは言えない。これは参照用途の観察範囲に関する注意で、実DBのMigrationが必要になると確定したという主張ではない。
+
+### 9.2 型ライフサイクルの実用的な区分（正式Enumではない）
+
+1. **型参照の候補**：元型→先型への使用箇所単位の変更案。未受理の提案。
+2. **使用箇所の付替え**：Attribute等、変更対象とした参照について既存Acceptanceを通過。別の利用先は残り得る。
+3. **利用先の整理**：Capabilityの入出力、Alias、Validation、Key/Relation、外部Workspace等について、移行・互換維持・未解決の区別を表示。全利用先の自動検出を保証しない。単にリストが空だから外部参照が不存在と断定しない。
+4. **旧型の廃止判断**：参照・互換性・履歴の処遇と受理を確認した場合のみ。名称変更、Canonical ID置換、型定義削除を別の演算として扱う。旧型を残す選択も正当。
+5. **物理適用**：データやスキーマに影響する場合は別のProvider/Migration/Target資格で観測。意味の受理だけでDBが更新済みとしない。
+
+上記は設計者が理解できる**操作の進行状況**を説明するものであり、新しいCore状態enumや型Registryの導入を要求しない。
+
+### 9.3 最小の反例と受入票（すべて提案・NOT RUN）
+
+| ID | 既存モデルと操作 | 必要な判定 |
+| --- | --- | --- |
+| TM-01 | 型Xを参照するAttribute AとCapability入力Pが存在。AだけをX→Yに付替え | Shared AcceptanceのA変更を確認しても、Pの型はXのまま。「統合完了」と表示しない |
+| TM-02 | XのAttributeは1件だけでStorageはvarchar、YのAttributeには別Storageがある | 現行\`physical-storage-differs\`無しを「元／先の格納互換PASS」としない。比較できたScopeと未評価を明示 |
+| TM-03 | 旧型Xを基底にしたAlias Zが存在 | Candidate拒否の既存境界を維持。Zを黙ってYの派生型へ付替えない |
+| TM-04 | すべての現行Attribute参照を付替えたが、旧型X定義と外部Consumerがある | 内部参照移行と旧型廃止判断・外部互換性を分離 |
+| TM-05 | 同じ型IDの下で値の制約を厳しくする構想、既存値適合・運用時点が未検証 | 型の参照一致／名前一致のみで値適合と運用可能性を認定しない |
+
+### 9.4 ユーザーが最初から厳密な型管理をしなくてよい編集体験
+
+Studioはまず**基本型を指定する通常の項目定義**を許す。意味の共通性に気付いた段階で、既存TypeRef（意味型）を参照する変更案と利用先への影響を提示する。人による同一性判断を経て、項目単位に段階的に共有へ移行できる。
+
+- 初回から全項目のSemantic Typeを設計する義務は置かない。
+- **Domain**は対象領域、**Value Domain**は値域、**Semantic Type**は共有する一つの値の意味、という名称案を維持する（正式な名称採用はOwner判断）。
+- 現行\`semantic.Type\`には長さ・精度・文字集合等の汎用制約を直接持たない。初期Studioが\`VARCHAR(10)\`等の全値制約をCanonicalで保持できるかは未実証であり、実装済みとして提示しない。
+- 値の制約・利用先の必須性・参照先の存在や状態・実DBへの書込み条件は別責務。Smart DataのRuleはData側の所属とFunctionの明示拡張点で検討されているが、FunctionのBind/Precheck成功は全更新経路・Commit後不変条件の保証ではない（#1129/#1174）。
+- 共有の増加に伴う影響解析は、正本のTypeRef・依存グラフ・Source revisionを利用し、表・ER・Query Explain・SHO文書は同じAccepted Sourceから投影する。SQL/CTE別名の一致をTypeRef同一性の根拠にしない（#2387）。
+
+**次の最小実証はTM-01とTM-02を既存Referenceテストで判別すること**。型の全利用先を常に閉世界で列挙できるという前提や、旧型定義の廃止機構・新しい共通型Registryを先に実装しない。
+
+**Owner判断待ち**：Studioで「型参照変更」「使用箇所の移行」「統合・廃止」の言葉をどう表示するか、旧型の互換維持にどの範囲のConsumer確認を要するか、Value Domain制約を既存Validation/Pluginでどの程度まで表現するか。
