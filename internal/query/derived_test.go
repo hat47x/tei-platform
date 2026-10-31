@@ -316,3 +316,30 @@ func TestDerivedQueryIRMissingCTEBindingIsUnresolved(t *testing.T) {
 		t.Fatalf("missing CTE binding was treated as resolved: %#v", got)
 	}
 }
+
+
+func TestDerivedQueryIRUnqualifiedMixedPhysicalAndCTESourceIsAmbiguous(t *testing.T) {
+	q := query.EmbeddedSQL{ID: core.MustCanonicalID("app.mixed-source"), Datasource: core.MustLocalName("sales")}
+	result := analyzer.Result{
+		ProtocolVersion: 1, Status: "ok", Query: q.ID, Lowering: "full",
+		Scopes: []analyzer.Scope{
+			{ID: "scope:root", Kind: "root"},
+			{ID: "scope:cte:recent", Kind: "cte", Name: "recent", ParentID: "scope:root"},
+		},
+		ColumnRefs: []analyzer.ColumnOccurrence{{ID: "col:root", ScopeID: "scope:root", Name: "order_id"}},
+		OutputFields: []analyzer.OutputField{{ID: "out:recent", ScopeID: "scope:cte:recent", Name: "order_id"}},
+		Operations: []analyzer.Operation{
+			{ID: "root.table", Kind: "source", ScopeID: "scope:root", Source: "public.orders", SourceKind: "table", Alias: "o"},
+			{ID: "root.cte", Kind: "source", ScopeID: "scope:root", Source: "recent", SourceKind: "cte", Alias: "r", Binding: "scope:cte:recent"},
+		},
+	}
+	snap := physical.SchemaSnapshot{Database: core.MustCanonicalID("sales_core"), Tables: []physical.Table{
+		{Schema: "public", Name: "orders", Columns: []physical.Column{{Name: "order_id"}}},
+	}}
+	got := query.DeriveFromAnalysis(q, snap.Database, result, &snap)
+	if len(got.Fields) != 1 || got.Fields[0].Resolution == "schema-resolved" ||
+		got.Fields[0].Resolution == "logical-resolved" || got.Fields[0].PhysicalSource != "" ||
+		got.Fields[0].LogicalSourceField != "" || got.Coverage.Resolution == query.CoverageFull {
+		t.Fatalf("unqualified column was arbitrarily assigned to the physical or CTE source: %#v", got)
+	}
+}
