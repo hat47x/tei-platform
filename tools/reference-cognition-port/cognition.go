@@ -406,7 +406,7 @@ func proposeExternal(ctx context.Context, request Request, provider Provider, co
 		runCtx, cancel = context.WithTimeout(ctx, time.Duration(provider.Limits.TimeoutSeconds)*time.Second)
 		defer cancel()
 	}
-	cmd := exec.CommandContext(runCtx, "bash", "-lc", command)
+	cmd := exec.CommandContext(runCtx, "bash", "-c", command)
 	cmd.Env = append(os.Environ(),
 		"TEI_COGNITION_CONTEXT="+contextPath,
 		"TEI_COGNITION_OUTPUT="+outputPath,
