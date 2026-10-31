@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"flag"
 	"io"
@@ -115,16 +116,31 @@ func TestAdvertisedCommandsRejectUnrelatedFlagsAtProcessBoundary(t *testing.T) {
 
 	for _, args := range [][]string{
 		{"validate", "-workspace", root, "-expected-fingerprint", "x"},
-		{"world", "-workspace", root, "-expected-fingerprint", "x"},
-		{"requirements", "-workspace", root, "-limit", "1"},
-		{"plugin-lock", "-workspace", root, "-scope", "x"},
-		{"workspace-files", "-workspace", root, "-subject-kind", "x"},
-		{"source-index", "-workspace", root, "-environment", "x"},
 		{"knowledge-context", "-workspace", root, "-environment", "x"},
+		{"world", "-workspace", root, "-expected-fingerprint", "x"},
 	} {
 		code, stdout, stderr := run(args...)
 		if code != 2 || stdout != "" || !strings.Contains(stderr, args[0]+" does not accept -") {
 			t.Errorf("argv=%q exit=%d stdout=%q stderr=%q: unrelated flag was not rejected", args, code, stdout, stderr)
+		}
+	}
+	// #2354: the result envelope commands reject unrelated flags with one
+	// machine-readable INVALID_ARGUMENT envelope on stdout instead of stderr.
+	// `world` is not one of them: it keeps its bare ir.World write and the
+	// stderr rejection above.
+	for _, args := range [][]string{
+		{"requirements", "-workspace", root, "-limit", "1"},
+		{"plugin-lock", "-workspace", root, "-scope", "x"},
+		{"workspace-files", "-workspace", root, "-subject-kind", "x"},
+		{"source-index", "-workspace", root, "-environment", "x"},
+	} {
+		code, stdout, stderr := run(args...)
+		var envelope cliResultEnvelope
+		if code != 2 || stderr != "" || json.Unmarshal([]byte(stdout), &envelope) != nil ||
+			envelope.OK || envelope.Error == nil ||
+			envelope.Error.Code != "INVALID_ARGUMENT" ||
+			!strings.Contains(envelope.Error.Message, args[0]+" does not accept -") {
+			t.Errorf("argv=%q exit=%d stdout=%q stderr=%q: unrelated flag was not rejected as an envelope", args, code, stdout, stderr)
 		}
 	}
 	// Advertised flags keep working.
