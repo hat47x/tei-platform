@@ -7,7 +7,7 @@
 - ルートの[README](README.md)と、変更対象のREADMEを読みます。
 - 現行構成は[docs/architecture.md](docs/architecture.md)、実装の成立状況は[docs/status.md](docs/status.md)で確認します。
 - 関連するIssue・PR・ADRを読みます。設計判断が矛盾している場合は、解決するまで統合しません。
-- `reference/workspace`の内容は、Gate B / Gate Cの判定時に固定した版（Gate Bはcommit `e5231839a`）と、判定後に更新された現在の版で異なります。固定版は履歴から参照し、現在の内容を固定版として引用しません。現在の版を変更する場合は、Issue番号と理由を明記し、`reference-shared-acceptance`の受理経路（`-allow-reference-baseline`付き）を使います。`.tei`ファイルの手編集は避けます。規則の扱いは[#2335](https://github.com/hat47x/tei-platform/issues/2335)で検討中です。
+- `reference/workspace`は、**Gate B / Gate Cで固定した版**と、**現在の参照用作業領域**を区別して扱います。固定版は、Gate Bが固定したcommit `e5231839a5dcc62cce1181a2731fcb7c70d16736`（Gate Cのbaseline Rも同じ値）と、Gate Cが固定したtarget build `0ba87a4e0a96f70a198b03ff7652fb00e3826abe`（T）です。固定版は履歴から参照し、現在の作業領域の内容を固定版として引用しません。現在の作業領域を変更する場合は、Issue番号と理由をPRへ明記し、`reference-shared-acceptance`の受理経路（`-allow-reference-baseline`付き）を使います。`.tei`ファイルを手編集しません。受理した変更は`.tei/decisions/*.json`のDecisionに記録されるため、PRはそのファイルのパスを引用します。
 - 秘密情報、顧客データ、未公開資料を、コミット・Issue・PR・ログへ入れません。
 - コアとプラグインのサブプロジェクト化は[ADR-0033](plan/adr/0033-core-and-plugin-subprojects.md)に従います。目標配置を実装済みとみなさず、一括移動やGoモジュールの一律分割をしません。
 
