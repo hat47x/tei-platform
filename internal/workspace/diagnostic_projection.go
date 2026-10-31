@@ -21,7 +21,10 @@ func ProjectDiagnostics(diagnostics []validation.Diagnostic, index sourceindex.I
 	out := make([]ProjectedDiagnostic, 0, len(diagnostics))
 	for _, diagnostic := range diagnostics {
 		projected := ProjectedDiagnostic{Diagnostic: diagnostic}
-		if diagnostic.Subject == nil {
+		// A semantic Subject identifies the duplicated name, not a particular
+		// declaration. The index can retain only the first matching anchor, so
+		// presenting it as the rejected declaration would be misleading.
+		if diagnostic.Subject == nil || diagnostic.Code == "DUPLICATE_SEMANTIC_ELEMENT" {
 			out = append(out, projected)
 			continue
 		}
