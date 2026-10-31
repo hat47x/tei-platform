@@ -47,7 +47,7 @@ go run ./cmd/tei validate \
 
 能力の入出力については、宣言した型の実在を検査しますが、ある能力の出力と次の能力の入力が接続できることは検査しません（[参照例](../reference/product-contracts/README.md#境界)）。
 
-意味要素の重複診断では、`-json`が同じ識別子を持つローカルの宣言位置を候補として複数返すことがあります。候補の順序はファイルと位置による表示順であり、どの宣言を採用・拒否すべきかは示しません。importや標準定義など位置を網羅できない場合は候補を返しません。テキスト形式では一つの候補だけを代表位置として表示しません。
+意味要素の重複診断では、`-json`が同じ識別子を持つローカルの宣言位置を候補として複数返すことがあります。各候補の`subject`はその宣言の種類と識別子です。候補の順序はファイルと位置による表示順であり、どの宣言を採用・拒否すべきかは示しません。importや標準定義など位置を網羅できない場合は候補を返しません。テキスト形式では一つの候補だけを代表位置として表示しません。
 
 版を固定する値は、checkoutの改行（CRLF/LF）の受け取り方にも依存します。`sourceIndexFingerprint`と`modelRevision`（`model catalog`が返す、管理対象Sourceの版。Shared Acceptanceが照合する`baseModelRevision`と同じ値）は、Sourceの生バイトをsha256で識別するため、行末だけが違うcheckoutでも別の版になります。`worldFingerprint`は正規化したモデルの内容を識別しますが、元定義に書かれた本文をそのまま載せる欄（移行のDDLや問い合わせのSQLなど）があると、その本文の改行も反映されます。2026-10-31にmainで実測した結果では、`reference/workspace`（`databases/sales-core/migrations/20260826_001/migration.tei`と`persistence/order.tei`がSQL本文を持つ）ではCRLFのcheckoutで`worldFingerprint`も変わり、その種の欄を持たない`examples/first-workspace`では`worldFingerprint`は変わらず`sourceIndexFingerprint`と`modelRevision`だけが変わりました。別の環境で作った版固定の値を照合するときは、比較する側のcheckoutの改行をそろえてください。リポジトリ内のWorkspaceの木（`reference/workspace`、`examples/`配下、`reference/product-contracts`ほか、`tei.workspace.yaml`のある8木）は`.gitattributes`で`-text`に固定してあり、新しいcheckoutでは改行が書き換わらない。`core.autocrlf`が有効な環境で作った古いcheckoutで該当pathが`modified`に見えるときは、差分を確認し、必要な変更を保存したうえで、意図したファイルだけを復元してください。`git restore`は未保存の変更を破棄します。版識別を改行正規化後のバイトで計算する契約へ変えるかどうかは引き続き未決であり、[#2399](https://github.com/hat47x/tei-platform/issues/2399)で扱います。
 
