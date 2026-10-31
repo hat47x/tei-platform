@@ -66,6 +66,8 @@ TEIは、これらの資産を意味、機能、実現方法、入力元索引�
 
 反対に、logicalに一つのData Modelとして扱うことを、単一Databaseへの物理統合要件にはしません。法令、組織責任、可用性、性能、既存資産等による配置差をEnvironment Binding / Provider / Realizationとして表現できる必要があります。
 
+複数Database・Document Store・外部Serviceから組み立てた読み取り用Projectionが存在しても、その表示項目を自動的に更新可能とはみなしてはいけません。編集可能な項目については、正本の所有元、更新先・更新操作の意味、必要な版条件と保証を明示し、一意の逆変換が存在しない導出値・集約値・曖昧なRelationを勝手に書き戻さない必要があります。単一Databaseの標準CRUDは簡易な設定で成立し、複数Sourceの更新や移行にだけ必要な追加契約を要求できることとします。
+
 ## RQ-006 Desired / Actual / Diff / Unresolvedを分離できること
 
 Database等の外部状態について、望ましい状態、観測された状態、確定した差分、比較未確定を区別できなければなりません。
@@ -88,7 +90,13 @@ Database、Runtime、Target等の製品固有知識は、Provider / Adapter / Ca
 
 Capabilityごとにbuiltin、generated implementation、plugin、既存実装等をBindingでき、必要なCapabilityだけを置き換えられる構造を持つ必要があります。
 
-標準名前空間として`std.*`を予約し、Plugin / packageの名前衝突を避けられる必要があります。
+プラグインの利用に際して、Principal、Database、業務Semantic Model等の特定分野の概念を全構成へ必須導入してはいけません。汎用の値変換・バッチは必要な型と接続だけで構成でき、業務上の意味的同一性を主張するBindingではじめて正本となる意味参照の範囲・版・受理状態を確認できる必要があります。実行時の外部権限検査とは分離します。
+
+一つのComponent Typeから、設定・DataSource・対象Semantic Entity・利用範囲の異なる複数の論理Instanceを構成できなければなりません。固定パラメータ、正本へ追跡できる型付き項目・Relation参照、許された変換式、呼出しごとの値を区別し、名前や文字列表記の一致だけでBindingを確定してはいけません。実行時に変わる値を準備時の固定設定へ暗黙に混入させず、未解決・複数候補・版不一致は検査できる必要があります。
+
+Provider、型契約、意味参照、Instance設定、Bindingなどを変更するときは、影響を受けるConsumerと必要な再検証範囲を追跡できなければなりません。再検証不要と判断するには、その用途・Scopeで依存関係を十分に追跡できている根拠を必要とし、動的参照や依存情報の欠落を「影響なし」と扱ってはいけません。構成時の検査結果を現在の実行権限や永続データの整合保証へ流用しないものとします。
+
+TEI管理の予約名前空間は`tei.*`とし、標準契約を`tei.std.*`、実験候補を`tei.experimental.*`、寄稿・委任管理の拡張を`tei.contrib.*`に配置できなければなりません。外部・案件Pluginには別の管理名前空間を認め、名前の類似やプレフィックスだけでContract適合、公開Authority、実行権限を認めてはいけません。既存`std.*`等の識別子は自動改名せず、参照先・版・Lock・利用Consumerを照合した移行を必要とします。
 
 生成物へ案件固有の実装を結び付ける場合は、その実装の所有者、対応する拡張点と契約の版、入出力、実行段階を追跡できる必要があります。再生成は案件側の実装を上書きせず、拡張点の廃止や互換性のない変更を、利用前の不適合として検出できなければなりません。生成物への直接編集も、上書きの前に検出し、保全または明示的な判断へ渡します。特定言語の継承やファイル配置の規則は要求しません。
 
@@ -97,6 +105,8 @@ Capabilityごとにbuiltin、generated implementation、plugin、既存実装等
 ユーザーID、パスワード、無効状態、有効期限、失敗回数、独自のロック、組織情報などを含む既存の認証仕様を、移行時にTEI標準へ変更することを必須にしてはいけません。
 
 認証・認可はCapability契約とMappingを通して既存構造へ接続でき、後から必要な単位で置き換えられる必要があります。
+
+Principal、Account、Tenant、Sessionなどの業務上・認証上の概念はTEI Coreの必須入力にせず、利用する機能が`tei.std.*`または案件側の契約として必要な場合にだけ導入できなければなりません。これらを要求しない最小バッチはIdentity Pluginなしで構成可能とします。これは実行環境のOS権限・隔離・外部能力の強制を省略する意味ではありません。
 
 ## RQ-010 人間向けの高密度な設計・運用認知環境を提供できること
 
@@ -270,6 +280,8 @@ ownership、fencing、durable handle、observation等を用いて、誰が現在
 
 Driver Scenarioを唯一のテストケース定義とする範囲では、再生成したCLIコマンド／各Target E2EがScenarioの操作・分岐・期待値・必要な観測を漏らさず保持しているかを、機械的なcoverage matrixと生成物の一致検査で示します。同じScenario revision／Generator version／Target Bindingから生成した成果物は再現可能であり、手修正された生成物や旧revisionの生成物はstaleとして検出できる必要があります。CLIでScenarioが実行可能と確認できることと、各Targetでの実E2E／認証／視覚・操作品質が確認できることは別のEvidenceです。
 
+構成・Build・実行の処理経路について完全性を主張する場合は、対象となるPhase、Target、実装・外部資源の信頼境界、宣言で捕捉できる依存や副作用の範囲を明示しなければなりません。Authoring上の宣言、解決・Loweringされた実行計画、実際に観測された処理・効果を区別し、未宣言の工程・依存・副作用が実行可能な場合は、その不在をGraphの表示だけから保証してはいけません。必要な工程・外部能力を制御できる境界では未宣言の操作を拒否し、それが検証できないProviderでは完全性を未確認として扱える必要があります。最小Batchに全用途共通のExecution Engineや業務Principalを強制してはいけません。
+
 AIが作成したProposalやgenerated artifactを採用した場合も、AIを介さずauthoritative sourceを再読込し、同じCanonical meaningとConformance結果を再現できる必要があります。
 
 interactive Targetでは、少なくともSemantic Conformance、利用者ScenarioのInteraction / Functional Evidence、Target固有のVisual Fidelity Evidenceを区別します。GUI agent、VLM、image similarity等のvisual evaluatorを利用しても、その結果だけでSemantic / Functional Conformanceを合格にしてはいけません。
@@ -413,7 +425,7 @@ TEIは、Data Model、Function / Interaction、Business Procedure、UI、workflo
 
 標準機能として提供する意味体系にも、原則として第三者Extensionと同じidentity、dependency、conflict、discovery、Conformanceの契約を適用します。実装をbuiltinにすることは許容しますが、標準機能だけが利用できる別の意味追加経路を前提にしません。
 
-標準namespaceのauthorityも同じ原則に従って明示します。`std.*`等の予約namespaceは、最初に宣言したExtensionやload順によって所有権を得る仕組みにしてはいけません。標準機能が複数packageへ分かれる場合も、namespace ownerからの明示的な委譲や同等の契約で追跡できる必要があります。
+標準namespaceのauthorityも同じ原則に従って明示します。TEI管理の`tei.*`、その下の`tei.std.*`・`tei.experimental.*`・`tei.contrib.*`等の予約namespaceは、最初に宣言したExtensionやload順によって所有権を得る仕組みにしてはいけません。標準機能が複数packageへ分かれる場合も、namespace ownerからの明示的な委譲や同等の契約で追跡できる必要があります。正式なID構文、委任単位、既存`std.*`参照の移行方式は別途採用判断を要します。
 
 ## RQ-032 Plugin / DSLで意味論を宣言・合成できること
 
