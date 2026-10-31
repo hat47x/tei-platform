@@ -116,7 +116,12 @@ test('real Go inspect -> Node read-only projection -> metadata-only summary', {
   });
   assert.equal(normalized.status,0,failMessage('Normalized World read',normalized));
   assert.equal(normalized.stderr,'');
-  const world=JSON.parse(normalized.stdout);
+  const worldEnvelope=JSON.parse(normalized.stdout);
+  // #2354: tei read commands emit one tei.cli.<command>/v0 envelope; unwrap at the consume boundary.
+  if(worldEnvelope.schemaVersion!=='tei.cli.world/v0'||worldEnvelope.ok!==true||
+    worldEnvelope.result===undefined)
+    throw new Error('INVALID_TEI_RESULT: normalized world envelope');
+  const world=worldEnvelope.result;
   const typed=qualifyReferenceQuerySignature(world,observations);
   assert.equal(typed.status,'declared_signature_matched');
   assert.equal(typed.contract.id,'master_data.customer');
