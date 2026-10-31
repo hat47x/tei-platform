@@ -1,6 +1,6 @@
 # reference-change-packet（#2017）
 
-変更の範囲、危険度、必須の検証、停止条件を一つのJSONへ宣言し、変更pathの範囲確認と検証の実行、証拠の記録を行う参照です。ADR-0035の作業票（task packet）の最小実装で、意味の受理・権限の付与・PRの統合は行いません。
+変更の範囲、危険度、必須の検証、停止条件を一つのJSONへ宣言し、変更pathの範囲確認と検証の実行、証拠の記録を行う参照です。ADR-0035の作業票（task packet）の最小実装で、意味の受理・権限の付与・PRの統合は行いません。ADR-0035は提案中であり、本ツールは提案の最小実装であって、採用済みの判断ではありません。
 
 ```text
 go run ./tools/reference-change-packet/cmd/tei-change-packet validate -packet plan/...
