@@ -270,14 +270,16 @@ TEIのSQL構造モデリング検討と接続し、Queryを物理DB依存の文�
 
 対象集合の意味を定められないときは、**Closed-world（指定範囲を完全とみなす）/Open-world（未取得を不在とみなさない）**の契約が未確定として残る。個別Providerの返却状況やSQLで`COUNT=0`を得たことだけからClosed-world契約を導入しない。
 
-### 11.2 「候補なし」と表示できる条件
+### 11.2 「候補なし」の意味を閉じたテストと実Providerで分ける（2026-10-31訂正）
 
-1. 対象範囲が宣言され、適用する有効時点と版が決まっている。
-2. 現在の利用者が、その対象の完全性についての情報を開示される権限を持つ。
-3. Providerが必要な関係を同じsnapshot/版で取得でき、ページ欠落や非公開関係が判断へ影響しないことを保証できる。
-4. 受理済みの業務規則が集合の解釈を定めている。
+通常の設計・テストでは、業務Ownerが受理した対象範囲・0件・NULL・不在の意味を定義し、**閉じた小fixtureに対する独立Expectationと正負試験**で検証する。すべての0件に数学的な不存在証明、全域のProvider完全性証明や新しいProof Engineを義務づけない（#2387で確認された2026-10-30の方針に合わせる）。
 
-満たせない場合は、利用者向けには秘匿に配慮した`判定不能`等の表示とし、内部の`空集合`・`未取得`・`認可上非開示`・`Provider障害`の原因を適切な権限で追跡する。新しい万能Boolean/Confidence/Review-stateをCoreへ採用しない。既存診断、Rule、Graph、Consumer局所照合を候補とする。
+一方、**現実のProviderに部分取得・権限制限・ページ欠損等が判明していて、全業務対象に対する「候補なし」を主張する場合**は、以下を区別する。
+1. 対象業務スコープ、利用する組織軸、適用時点・Rule版と、そのスコープの閉世界／開世界のOwner前提。
+2. 実際の取得範囲、ページ・継続トークン、Snapshot/組織版、欠損・非開示が判定へ影響するかというProvider側の根拠。
+3. 業務規則の期待値と、結果を閲覧可能な現在の利用者権限。
+
+必要な範囲が未取得なら「**取得した範囲では候補なし**」と「**業務対象全体で候補なし**」は別の主張である。区別できないときは秘匿に配慮した判定不能/未検証を示す。内部では正当な空集合、未取得、非開示、Provider障害を区別する。新しい万能Boolean/Confidence/Review-stateをCoreへ採用しない。
 
 ### 11.3 Graph/Rule/Impact連携時の区別
 
@@ -754,3 +756,83 @@ Org Revision R1/R2がそれぞれ上記の在任関係に対応する公開版�
 | Smart Data/Function接続の検討 | Data従属ロジックの対象と、Function側の明示的なバインド受け口 | X-TEAの旧密結合を再実装せず、純粋評価・業務拒否・技術失敗・実Effectの責任境界を先に確認 |
 
 **優先順の更新**：P0：ORG-32 + ORG-34 + ORG-35（表現の片方向性・時点・集合完全性）→P1：ORG-36（Rule-only差分）→P2：Data従属Rule/Function拡張点とHost Authorityの接続。Caseを増やしてもテスト実装済みとは扱わない。Owner判断待ちの状態を維持する。
+
+## 29. P0検証を絞る：組織モデルの合成・最終状態・説明（2026-10-31）
+
+### 29.1 これ以上のケース追加より、二つの検証を実行へ移す
+
+ORG-01〜36、ORG-Q1〜Q3は網羅候補の**設計台帳**であって、36件の実証達成を意味しない。最初の価値確認は以下の二本に絞る。各既存Issueで実施済みの部分を再実装しない。
+
+**P0-M（Meta/Model、組織側の責務）**：既存ORG-32/34/35の小データをもとに、同じ`Person P1 / Position M1 / Occupancy A1 / Request Q1 / Rule B1`を、(a)直接Relation、(b)実体化Assignment、(c)職位/規範/時点、で**同じ基本Data/Relation**から構成する。構造として表現できない要素・意味的に未評価の要素・未受理の業務前提を別々に記録。最初はread-onlyな説明＋独立手計算Oracleで十分とし、組織用の新Core kindやUIを先行しない。
+
+**P0-V（Validation stability、Function/Host側へ引き渡す）**：業務評価時の状態と**同じトランザクションの最終状態**が異なるとき、`P(S_checked)`から`P(S_committed)`を推論してはならない。#1129のFS-1と#1174のV（Final Post-Image）のOwnerに、**組織側の一つの具体例**を提供する。#2386内に第二Runnerや全Rule再評価機構を作らない。
+
+#### P0-Vの合成反例（新しい独立Issue/Case IDではなく既存ORG-34の補助fixture）
+
+2027-06-30の固定ルール`B1`：「申請Qの責任部門の部門長職位を保持する人物が承認候補。ただし申請者本人は不可」。独立した手計算の前提：
+- D1営業部、部門長職位M1の在任者はP2。
+- D2管理部、部門長職位M2の在任者はP3。
+- Q1の申請者はP1、初期の責任部門はD1。
+- 対象の部門・職位・在任・申請者の固定Datasetを**テスト内では完全と仮定**。実Providerの保証ではない。
+
+| 手順 | Q1責任部門 | 承認実行主体 | 意味上の期待値 | 注意 |
+| --- | --- | --- | --- | --- |
+| S0・初期 | D1 | P2 | 候補として適合 | Host Grantは別 |
+| S1・事前評価 | D1 | P2 | `B1(S_checked)=true` | この評価がPASSでもEffectの許可でない |
+| S2・同一Tx内で後続Update | **D2**へ変更 | P2 | 現在のD2責任者はP3なので**P2による承認は不適合** | 評価後の自己書込みで入力が変化 |
+| S3・検査なしに承認を書き込みCommitした場合 | D2 | P2 | `B1(S_committed)=false` | CAS/Authority/Receiptが正しくてもOwner Rule違反となり得る |
+| S3'・最終状態を守る実現 | D2 | P2 | 最終状態検査または同等の不変条件保証により拒否/差戻し | 技術失敗/業務拒否/効果不明は分ける |
+
+この反例で、最終状態の業務条件を担保する方法（最後の関連Mutation後の再評価、書込み条件、DB制約、変更しない契約等）は**Owner RuleとAdapter/Provider能力に依存**する。すべてのRuleの無条件再計算を標準義務にしない。Org Revisionや外部人事DBと同Txでない場合は、同じDB Transactionを使ったことだけで組織Snapshotの安定性を宣言しない（#1708）。
+
+### 29.2 「候補の選択範囲」と「実行対象」の別の穴
+
+#1174の2026-10-31更新で指摘された、Capabilityの抽象的Grantと個別業務対象への許可の不一致を、組織承認にも適用する。例えば`approve`というCapabilityへのGrantがあっても、具体的な`Q1`申請・所属D1・決裁金額に対する許可は自動では成立しない。Ruleの評価対象集合`L`、取得された集合`R`、実際にEffectされる対象`E`、Host Grant scopeを同一視しない。
+
+- 意味上の`L`は案件のRule/選定条件で定義し、通常は閉じたDatasetで期待値を比較。明らかな部分取得があるときだけその限界を反映する。
+- `R`の構造的に正しいパース/Query Lineageは`R=L`を保証しない。#2387のQueryのScope/Source occurrence誤結合リスクが解決されるまでは「Full」表示も根拠不足の可能性がある（静的仮説、実測未確認）。
+- `E`は実際に更新される受注/申請等の**対象識別**とAuthority Scopeに対応させ、従来Capability Grantがその範囲を保証しているかを#1174のAdapter側で検査。組織の所属から認可Grantを自動生成しない。
+- V（Owner業務Invariant）、K（Receipt/Commit）、O（独立業務状態）を別々の証拠として残す。Kが確定してもV/業務完了は未確認となり得る。
+
+### 29.3 業務規則の改版を跨ぐ再送：過去のEffect≠現在の意味適合
+
+#1174のSR-1/SR-2の既存差分を組織側で再実装せず参照する。
+- R1期の所属/決裁Ruleで確定したOperationのReceiptをR2期にLookupしても、それは**当時のEffectに帰属する記録**であり、R2の規則に再適合したという意味ではない。
+- R1のReceiptが無く、R2期に同じOperationIDを再Submitすれば、現在実装によっては異なるRuleで初回Effectとなる可能性がある。「元試行の回復」と表示しない。未確定外部Effectと`NotRecorded`は別。
+- 新しいReceipt schemaやOutcome enumを#2386で追加せず、Accepted Rule/Org revision、実行したartifact、Operation/Receipt、独立Observationの**因果辺を持つこと**を受入条件の候補とする。
+
+## 30. P0記録票と責務引渡し（2026-10-31）
+
+### 30.1 最小記録票：必須の列とEvidence区分
+
+| 観測列 | 入力／出典 | 期待／実際の区分 |
+| --- | --- | --- |
+| Canonical Subject | Person/Position/Assignment/Q1のIDとScope | 期待の対象対応、実解決の有無 |
+| Semantic Accepted | 組織メタProfile、案件Rule B1、Ownerの意味判断と版 | 未受理なら未受理と表示 |
+| Data selection | 取得集合R、業務対象Lの定義と閉じたFixtureの仮定、Snapshot | 期待・実取得・未取得を分離 |
+| Evaluation | Function/Operationで選んだRule、Binding位置、検査したState | 手計算OracleとTEI Evaluator実測を別欄 |
+| Mutation | S_checked→最後の関連Mutation→S_committed/post-image | Tx構造だけで最終Invariantを証明しない |
+| Authorization | 実操作者、Q1個別対象、Tenant/Action/Resource、現在Grant | 組織候補表示と現在の許可は別 |
+| Effect & recovery | 実Commit、Receipt、Lookup、独立観測、再実行時の意味版 | Committed/Replayed/Unknownと業務完了を分ける |
+| Representation | 組織図、DSL、SQL Lineage、SHO文書の参照先 | 同一Subjectへの対応は実測で確認する |
+
+現段階では、この表をそのまま新しい公開schema・証明Receipt・UI必須項目と決めない。既存Issueのログ・Fixture/Scenario/Source witnessの**参照を並べる受入票**である。
+
+### 30.2 先行条件・停止条件・分担
+
+- **P0-M（#2386→#1126/#1131）**：既存`semantic.Data/Relation/Validation`と固定Datasetだけで直接所属/関係実体化/職位交替を表し、必要時だけ独立なConstraint評価器の不足を記録。**完了条件**はどの情報が保存され、どれが逆投影で失われるかを具体物で説明できること。
+- **P0-V（#1129/#1174）**：#1129既存FS-1最終状態反例を優先し、組織Q1/D1→D2例は意味の差分としてOwnerへ渡す。**停止条件**は実装のどの時点で最終`P(S_committed)`が保証されるか説明できないこと。組織側でDriver/Runnerを改造しない。
+- **M0 Query（#2387）**：synthetic Result→IR と native SQL→worker→Result→IRの実測を区別し、別Scopeの同名alias/自己JOINを誤った物理出現箇所に束縛しないことを先に検査。Providerの部分取得も別。
+- **P1 表現（#1124/#1803）**：同一Semantic Subjectから組織図/配置一覧/SHO設計書へNavigateするread-only Reference。数式のKaTeX組版・UIの外部制御(#2391)は任意の表現補助で、受理根拠や新しい認可経路にしない。
+- **P2 再利用（#2390/#988）**：組織Semantic Profileのうち外部製品が独立に使えるContract/Fixtureを切り出せるか。C0契約利用とC1実Provider実行を区別し、WIT/MCP/Go/専用Hostを標準必須としない。
+- **変更統合Gate**：本計画の基点mainは2026-10-30時点`2503a25...`であり、2026-10-31の参照mainは`4325ca79a52bf0d576db6fb4027bdc516b1023fd`。旧基点に基づく静的実装分析を新版の実装済み事実へ流用しない。Draft PR #2389のbase更新・マージは、通常の衝突/差分確認とレビュー後に判断する。GitHub Actions常時実行・全リポジトリ健康診断を再開条件にしない。
+
+### 30.3 当面の判定
+
+**観測**：既存mainの`internal/semantic/model.go`はData/Relationと`positive`/`relation-unique`のValidationを持つ。現mainの`internal/security/effectcommit/commit.go`は同Tx内のAuthority/Receipt/CAS/Commitを持つが、任意の業務上の`P(S_committed)`を一般保証するものではない。#2387にはQuery出現箇所を誤束縛し得る静的所見があり、実際のGo/worker回帰結果は未取得。
+
+**未実行の予測**：組織Q1例に対する最終状態違反の反例、read-only組織意味投影、版跨ぎの実Operation照合。
+
+**提案**：さらに多くのORGケースを増やす前に、P0-M/P0-V二つの最小Referenceで「意味の区別を保存できるか」「最終状態で意味が破綻しないか」を観測する。
+
+**Owner未決**：組織の同一性・時点・Rule改訂の進行中案件への適用、個別申請における責任部門変更の許容、承認者選択の時点、対象集合の範囲/空集合の意味、最終状態で維持する不変条件、代理権能/個別対象Authority。
