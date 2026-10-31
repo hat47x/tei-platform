@@ -164,7 +164,6 @@ func TestDerivedQueryIRPreservesCorrelatedColumnScope(t *testing.T) {
 	}
 }
 
-
 func TestDerivedQueryIRResolvesShadowedAliasesByScope(t *testing.T) {
 	q := query.EmbeddedSQL{ID: core.MustCanonicalID("app.alias-shadow"), Datasource: core.MustLocalName("sales")}
 	result := analyzer.Result{
@@ -317,7 +316,6 @@ func TestDerivedQueryIRMissingCTEBindingIsUnresolved(t *testing.T) {
 	}
 }
 
-
 func TestDerivedQueryIRUnqualifiedMixedPhysicalAndCTESourceIsAmbiguous(t *testing.T) {
 	q := query.EmbeddedSQL{ID: core.MustCanonicalID("app.mixed-source"), Datasource: core.MustLocalName("sales")}
 	result := analyzer.Result{
@@ -341,5 +339,32 @@ func TestDerivedQueryIRUnqualifiedMixedPhysicalAndCTESourceIsAmbiguous(t *testin
 		got.Fields[0].Resolution == "logical-resolved" || got.Fields[0].PhysicalSource != "" ||
 		got.Fields[0].LogicalSourceField != "" || got.Coverage.Resolution == query.CoverageFull {
 		t.Fatalf("unqualified column was arbitrarily assigned to the physical or CTE source: %#v", got)
+	}
+}
+
+func TestDerivedQueryIRCorrelatedCTEColumnUsesExplicitOuterScope(t *testing.T) {
+	q := query.EmbeddedSQL{ID: core.MustCanonicalID("app.correlated-cte"), Datasource: core.MustLocalName("sales")}
+	result := analyzer.Result{
+		ProtocolVersion: 1, Status: "ok", Query: q.ID,
+		Scopes: []analyzer.Scope{
+			{ID: "scope:root", Kind: "root"},
+			{ID: "scope:cte:recent", Kind: "cte", Name: "recent", ParentID: "scope:root"},
+			{ID: "scope:subquery:0", Kind: "subquery", ParentID: "scope:root"},
+		},
+		OutputFields: []analyzer.OutputField{
+			{ID: "out:cte:0", ScopeID: "scope:cte:recent", Name: "order_id"},
+		},
+		ColumnRefs: []analyzer.ColumnOccurrence{
+			{ID: "col:outer", ScopeID: "scope:subquery:0", Qualifier: "r", Name: "order_id", Correlated: true, OuterScopeID: "scope:root"},
+		},
+		Operations: []analyzer.Operation{
+			{ID: "root.source", Kind: "source", ScopeID: "scope:root", Source: "recent", SourceKind: "cte", Alias: "r", Binding: "scope:cte:recent"},
+		},
+	}
+	got := query.DeriveFromAnalysis(q, core.MustCanonicalID("sales_core"), result, nil)
+	if len(got.Fields) != 1 || got.Fields[0].Resolution != "logical-resolved" ||
+		len(got.OutputFields) != 1 || got.Fields[0].LogicalSourceField != got.OutputFields[0].ID ||
+		!got.Fields[0].Correlated || got.Fields[0].OuterScopeID != "scope:root" {
+		t.Fatalf("outer CTE output was not resolved at the recorded scope: %#v", got)
 	}
 }
