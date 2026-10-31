@@ -1,0 +1,109 @@
+namespace product_contracts
+
+type ContractId from std.identifier
+type Digest from std.text
+type Epoch from std.integer
+
+data Evidence {
+    attribute evidenceId type product_contracts.contract_id
+    attribute evidenceKind type std.code
+    attribute digest type product_contracts.digest
+    attribute synthetic type std.boolean
+    attribute source type std.text
+}
+
+data Authority {
+    attribute principal type std.text
+    attribute role type std.code
+    attribute verified type std.boolean
+}
+
+data TaskRequest {
+    attribute taskId type product_contracts.contract_id
+    attribute executorId type std.code
+    attribute executorVersion type std.text
+    attribute taskIrDigest type product_contracts.digest
+    attribute priority type std.code
+    attribute submittedAt type std.datetime
+}
+
+data Attempt {
+    attribute attemptId type product_contracts.contract_id
+    attribute taskId type product_contracts.contract_id
+    attribute leaseId type product_contracts.contract_id
+    attribute fenceEpoch type product_contracts.epoch
+    attribute phase type std.code
+    attribute workerIdentity type std.text
+}
+
+data ResultClaim {
+    attribute claimId type product_contracts.contract_id
+    attribute attemptId type product_contracts.contract_id
+    attribute status type std.code
+    attribute exitCode type std.integer
+    attribute outputDigest type product_contracts.digest
+    attribute outputBytes type std.integer
+    attribute claimedAt type std.datetime
+}
+
+data AcceptedResult {
+    attribute resultId type product_contracts.contract_id
+    attribute claimId type product_contracts.contract_id
+    attribute level type std.code
+    attribute policyDigest type product_contracts.digest
+    attribute acceptedAt type std.datetime
+}
+
+data Document {
+    attribute documentId type product_contracts.contract_id
+    attribute version type std.integer
+    attribute title type std.text
+    attribute updatedAt type std.datetime
+}
+
+data Card {
+    attribute cardId type product_contracts.contract_id
+    attribute documentId type product_contracts.contract_id
+    attribute text type std.text
+    attribute claimType type std.code
+}
+
+data Island {
+    attribute islandId type product_contracts.contract_id
+    attribute documentId type product_contracts.contract_id
+    attribute title type std.text
+}
+
+data Edge {
+    attribute edgeId type product_contracts.contract_id
+    attribute fromId type product_contracts.contract_id
+    attribute toId type product_contracts.contract_id
+    attribute edgeType type std.text
+}
+
+data Decision {
+    attribute decisionId type product_contracts.contract_id
+    attribute statement type std.text
+    attribute scope type std.code
+    attribute provisional type std.boolean
+    attribute responsible type std.text
+}
+
+data Unresolved {
+    attribute ref type std.text
+    attribute reason type std.text
+}
+
+data Observation {
+    attribute observationId type product_contracts.contract_id
+    attribute text type std.text
+    attribute source type std.text
+    attribute sourceVersion type std.code
+    attribute availability type std.code
+}
+
+data Selection {
+    attribute table type std.text
+    attribute rowCount type std.integer
+    attribute digest type product_contracts.digest
+}

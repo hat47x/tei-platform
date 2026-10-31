@@ -21,6 +21,7 @@ func commandCatalog() cliCommandCatalog {
 		SchemaVersion: "tei.cli.discovery/v0",
 		Scope:         "selected-read-only-commands",
 		Commands: []cliCommandRecord{
+			{Name: "version", Effect: "read-only", Required: []string{"none"}, Optional: []string{"-json"}, Output: "text; json when -json"},
 			{Name: "model catalog", Effect: "read-only", Required: []string{"-workspace"}, Optional: []string{"-namespace"}, Output: "json"},
 			{Name: "workspace-files", Effect: "read-only", Required: []string{"-workspace"}, Output: "json"},
 			{Name: "inspect", Effect: "read-only", Required: []string{"-workspace", "-subject-kind", "-subject-id"}, Output: "json"},
