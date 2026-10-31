@@ -208,3 +208,72 @@ P1の一例: Source/Operation AがArtifact Xを生成し、検証Operation BがX
 **未決（ここでCoreへ固定しない）**: トポロジー標準の最小primitive集合、Projection/Correspondenceの具体API、可逆編集の証明条件、全種類の動的Graphのclosure表現、複合図表レイアウト仕様、標準の唯一の図表UI、メタ生成の深さ・専用DSL。
 
 次の実作業の提案はP0→P1のread-only Referenceである。最初からCore型・Studioフック・新ビルドエンジンを増やさず、複合図表の価値と不足する構造を観測する。
+
+## 8. 2026-10-31 他領域との交差検証：共通構造が本当に共通か
+
+- **状態**: 本節は別チャットの設計仮説と現行mainの限定的な静的コード調査を接続した**未採用の追加受入候補**。main照合時点 `4325ca79a52bf0d576db6fb4027bdc516b1023fd`。新たなコード・試験・Pluginの完成を主張しない。
+- **コード上の現状（限定）**: `internal/modelref/model.go` の `Key` は `Scope + Subject`、`Graph` は `Nodes + Edges`、`Edge` は `From + To + Relation + Evidence` の**二項参照グラフ**であり、一般のn項関係・図表間対応表の製品APIではない。`reference/tei-studio-graph/graph.ts` は表示専用の `id/label/geometry` と二端点Edgeを持ち、現Referenceの直接自己ループを拒否する。Rendererのview IDを意味ID、実行/編集権限と見なせない。`reference/tei-studio-workbench/presentation.ts` の `Subject` は `kind/id` であり、qualified選択を横断して実装完了した状態ではない（#1124のConsumer安全性は未完）。
+- **方式**: 異なる2〜3個のConsumerを、同じ構造部品・投影・対応・診断によって表せるか試す。単純な二項Graphへ全てを押し込めず、既存の型・集合・役割付き関係・表の合成を先に試す。多項関係を描画上「関係ノード＋役割エッジ」に変換しても、元の関係の同一性・役割・来歴を失わないことを検証する。
+
+| 異なるConsumerによる圧力 | 共通機構の受入候補 | 領域側に残す意味／異なるAuthority |
+| --- | --- | --- |
+| 三視点・受注明細（#1124） | Data/Function/Businessの別Projectionから同一qualified subjectへnavigate、関係表と影響図を生成 | Business Procedureの正式受理、関係の意味、Source書込み判断はOwner |
+| 三要素分析の方法論プラグイン（設計案） | 同一subjectの複数図面Occurrence、図間の関係表、Notation・View StateとMeaningの分離、関連定義へのjump | 方法論上の妥当性・固有の記法・X-TEA互換性は専用Plugin。旧資産の表示から受理済み意味を推定しない |
+| 開発パイプライン（#943/#1121/#1016） | Operation/Artifact/Dependency/Overlayの図＋表＋関連グラフ、条件付き工程のcoverage、opaque工程の明示 | ビルド・キャッシュ・Provider選択・配布資格・実副作用は既存Owner |
+| 外部UI制御（#2391、任意） | ModelRefと実UI出現を異なる識別子として対応付け、選択snapshot/更新世代を再確認 | locate/act/wait/observeはUI Adapter。業務Command/Owner受理/Effectは#1158/#1174/#267、Scenario正本は#1180 |
+
+三要素分析を**Rendererの寄せ集め**とみなさず、構造上の役割を方法論上の意味・記法・編集制約へ写像する領域Pluginの圧力として試す。ただし三要素分析のNotation Grammar・Source互換・形式固有の生成規則を、本書でCore標準へ採用しない。Action Diagramも説明・検証用のProjectionであり、実行プロトコルを代替しない。
+
+**失敗判定を明確にする**: 共通の二項Graph/表への射影で多項の役割、順序、包含、Occurrence、多重度、時間、出典のいずれかを復元できない場合、「図を描けた」だけでカバー済みと判定しない。共通標準の真の不足と、領域Pluginの意味定義不足と、単なるRenderer不足を切り分ける。2つ以上の独立Consumerで反復する不足が見つかるまでは、新Core primitiveや新Studio APIを固定しない。
+
+## 9. 「ない」を断定するための限定された不在証拠
+
+図表が複数あり、図表間の関連グラフがあっても、要素の完全性と**関係の完全性**は別である。次の問いを独立に評価する。名称は実装上の列挙型ではなく、レビュー時の観点。
+
+| 完全性の観点 | 検証する対象 | 「不明」の典型 |
+| --- | --- | --- |
+| 対象集合の被覆 | 指定scope/型/条件で対象となる要素が全件投影されたか | フィルタされた・未解決Source・動的追加 |
+| 関係とroleの被覆 | 関係の種類、方向、全ての端点/roleが正しく投影されたか | n項関係の一部を二項Edgeとして捨てた |
+| Projectionの可視被覆 | 折畳み・非表示・省略した要素/関係を計数・展開できるか | 複合図表の別Viewに関係が隠れている |
+| 構成の解決閉包 | 標準Plugin・案件Overlay・Provider/契約・Build入力・条件付き処理が解決済みか | 未選択Provider、外部Builder内部、動的参照 |
+| Snapshotの整合 | Source/Accepted/Projection/Plugin Lock/Target/Environment/選択epochが整合するか | Source改訂後の旧Graphと新しい関係表を混用した |
+
+不在判定の概念規則（**製品APIではない**）:
+
+~~~text
+absent(typedQuery, boundedSnapshot) is supported only if:
+  query.scope is closed and explicitly bounded
+  AND subject coverage = complete
+  AND relation-role coverage = complete
+  AND view coverage is accounted for (including folded/hidden)
+  AND required composition/input closure = resolved
+  AND all participating revisions are coherent
+  AND unresolved/opaque regions do not intersect query.scope
+  AND there is no matching subject/relation
+otherwise:
+  unknown / not-proven   # not "absent"
+~~~
+
+この規則は**TEI管理下で宣言・解決されたモデル／工程の範囲**にだけ成立し得る。外部コンパイラ内部、未公開の外部副作用、実際のOwner Business Effectの不存在まで推論しない。また、completeな計画は実行完了・現在のAuthority・効果確定の証明ではない。
+
+### 9.1 版の異なるView同士のJoinは受理しない
+
+複合図表の図A、表B、関連表Cで`qualified key`が同じであっても、それぞれの表示が異なるSource/Projection revisionから生まれた場合、同じ現在事実として関係を結合しない。図AがG1、表BがG2なら、共通Viewとして確定するか片方をstaleにするまで、相互ナビゲーション・Source locator確定・Edit Intentを抑止する。図Aの描画更新が拒否された場合、旧DOMに新View mapを公開しない。これは#1124の既存Consumer不変条件を複合図表へ**適用する**提案であり、新しいglobal epochを発明しない。
+
+### 9.2 拡張プラグインの資格を図表完全性や実行権限に昇格しない
+
+別チャットの分散Registry構想では、**配布物の識別・形式・署名・Conformance**、**案件Compositionの解決・依存閉包・Target適合**、**実行時のAuthority/Resource/Effect Fence**を区別する。公開Registryで一つのPluginが検証済みでも、案件がそのPluginを含めた実効Pipelineを完全に解決したことにはならず、実行許可も付与されない。
+
+本設計で必要なのは既存#951（Contract/Provider）、#1016（案件Composition）、#943（Build/Artifact）、#1174（Effect/Outcome）への**根拠付き参照**であり、Registry ID/Genesis形式、Portable Verification Package、透明性サービスをStudioや基本トポロジーの固定APIへ導入することではない。Plugin Type、複数Instance、各Bindingのscope/契約/版も、図上の単一ノード名で同一視しない（Draft #2298は未採用）。
+
+## 10. 次の最小Referenceの具体的な受入判定（P0→P1に限定）
+
+1. **同一構造・二つのView**：同じqualified `modelref.Key` の要素をGraphとTableで異なる表示IDへ投影し、選択が同一対象に帰着する。異なるscopeの同kind+IDは候補表示にとどめ、Inspect/Locate呼出しは0。
+2. **多項関係と関連表**：例として「生成Operation・入力Artifact・出力Artifact・検証Evidence」のrole付き関係を、対応表と関係ノードの図に投影する。失われたroleやSource来歴があればFail。既存二項`modelref.Graph`への直接埋込みを強制しない。
+3. **三要素分析の投影**：一つの意味上の対象が別図で複数Occurrenceを持つ。Notation/座標/選択は表示側、意味の関係はDomain側。図上のジャンプはqualified参照の読取に限定する。
+4. **Complectの負例**：依存と順序を単一種類のEdgeに押し込んだ場合の情報損失、もしくはSource変更とView layout変更の連動を検出し、分離前後の変更影響を比較する。
+5. **Completenessの反例**：要素は全件表示したが関係が一部欠落する図、Overlay追加工程が隠れている図、旧Viewに新mappingを結合する図では、「ない」を拒否する。
+
+**出口条件**: 既存Reader/Graph/Table部品を再利用できる部分と不足を記録し、構造的・領域的・表示上の欠落を分類する。実装と試験の担当を#1124等のOwnerと合意し、P1のread-only完全性すら証明しない段階で、双方向編集・メタ生成・本番Production除去の受入へ進まない。新標準型の採用、AI生成Pluginの安全な実行、Studio複合図表UIの製品化はこのReferenceの成果を見て別途判断する。
+
+**検証状態**: 現行mainと関連Issueの静的照合に基づく設計追補。既存コードに対する新たな自動テスト、real UI/Provider/Target、実際の認知負荷比較、X-TEA三要素のSource互換証明はいずれも **NOT RUN / NOT PROVEN**。
