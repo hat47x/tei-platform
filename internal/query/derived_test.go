@@ -165,7 +165,7 @@ func TestDerivedQueryIRPreservesCorrelatedColumnScope(t *testing.T) {
 }
 
 func TestDerivedQueryIRResolvesShadowedAliasesByScope(t *testing.T) {
-	q := query.EmbeddedSQL{ID: core.MustCanonicalID("app.alias-shadow"), Datasource: core.MustLocalName("sales")}
+	q := query.EmbeddedSQL{ID: core.MustCanonicalID("app.alias_shadow"), Datasource: core.MustLocalName("sales")}
 	result := analyzer.Result{
 		ProtocolVersion: 1, Status: "ok", Query: q.ID, Lowering: "full",
 		Scopes: []analyzer.Scope{
@@ -198,7 +198,7 @@ func TestDerivedQueryIRResolvesShadowedAliasesByScope(t *testing.T) {
 }
 
 func TestDerivedQueryIRUnqualifiedFieldDoesNotSeeNestedScope(t *testing.T) {
-	q := query.EmbeddedSQL{ID: core.MustCanonicalID("app.nested-unqualified"), Datasource: core.MustLocalName("sales")}
+	q := query.EmbeddedSQL{ID: core.MustCanonicalID("app.nested_unqualified"), Datasource: core.MustLocalName("sales")}
 	result := analyzer.Result{
 		ProtocolVersion: 1, Status: "ok", Query: q.ID,
 		Scopes: []analyzer.Scope{
@@ -227,7 +227,7 @@ func TestDerivedQueryIRUnqualifiedFieldDoesNotSeeNestedScope(t *testing.T) {
 }
 
 func TestDerivedQueryIRSelfJoinKeepsOccurrenceAmbiguity(t *testing.T) {
-	q := query.EmbeddedSQL{ID: core.MustCanonicalID("app.self-join-ambiguous"), Datasource: core.MustLocalName("sales")}
+	q := query.EmbeddedSQL{ID: core.MustCanonicalID("app.self_join_ambiguous"), Datasource: core.MustLocalName("sales")}
 	result := analyzer.Result{
 		ProtocolVersion: 1, Status: "ok", Query: q.ID, Lowering: "full",
 		Scopes: []analyzer.Scope{{ID: "scope:root", Kind: "root"}},
@@ -248,7 +248,7 @@ func TestDerivedQueryIRSelfJoinKeepsOccurrenceAmbiguity(t *testing.T) {
 }
 
 func TestDerivedQueryIRRetainsCorrelatedOuterSource(t *testing.T) {
-	q := query.EmbeddedSQL{ID: core.MustCanonicalID("app.outer-source"), Datasource: core.MustLocalName("sales")}
+	q := query.EmbeddedSQL{ID: core.MustCanonicalID("app.outer_source"), Datasource: core.MustLocalName("sales")}
 	result := analyzer.Result{
 		ProtocolVersion: 1, Status: "ok", Query: q.ID,
 		Scopes: []analyzer.Scope{
@@ -275,7 +275,7 @@ func TestDerivedQueryIRRetainsCorrelatedOuterSource(t *testing.T) {
 }
 
 func TestDerivedQueryIRDuplicateCTEOutputIsNotArbitrarilyBound(t *testing.T) {
-	q := query.EmbeddedSQL{ID: core.MustCanonicalID("app.duplicate-cte-outputs"), Datasource: core.MustLocalName("sales")}
+	q := query.EmbeddedSQL{ID: core.MustCanonicalID("app.duplicate_cte_outputs"), Datasource: core.MustLocalName("sales")}
 	result := analyzer.Result{
 		ProtocolVersion: 1, Status: "ok", Query: q.ID,
 		Scopes: []analyzer.Scope{
@@ -300,7 +300,7 @@ func TestDerivedQueryIRDuplicateCTEOutputIsNotArbitrarilyBound(t *testing.T) {
 }
 
 func TestDerivedQueryIRMissingCTEBindingIsUnresolved(t *testing.T) {
-	q := query.EmbeddedSQL{ID: core.MustCanonicalID("app.missing-cte"), Datasource: core.MustLocalName("sales")}
+	q := query.EmbeddedSQL{ID: core.MustCanonicalID("app.missing_cte"), Datasource: core.MustLocalName("sales")}
 	result := analyzer.Result{
 		ProtocolVersion: 1, Status: "ok", Query: q.ID,
 		Scopes: []analyzer.Scope{{ID: "scope:root", Kind: "root"}},
@@ -317,7 +317,7 @@ func TestDerivedQueryIRMissingCTEBindingIsUnresolved(t *testing.T) {
 }
 
 func TestDerivedQueryIRUnqualifiedMixedPhysicalAndCTESourceIsAmbiguous(t *testing.T) {
-	q := query.EmbeddedSQL{ID: core.MustCanonicalID("app.mixed-source"), Datasource: core.MustLocalName("sales")}
+	q := query.EmbeddedSQL{ID: core.MustCanonicalID("app.mixed_source"), Datasource: core.MustLocalName("sales")}
 	result := analyzer.Result{
 		ProtocolVersion: 1, Status: "ok", Query: q.ID, Lowering: "full",
 		Scopes: []analyzer.Scope{
@@ -343,7 +343,7 @@ func TestDerivedQueryIRUnqualifiedMixedPhysicalAndCTESourceIsAmbiguous(t *testin
 }
 
 func TestDerivedQueryIRCorrelatedCTEColumnUsesExplicitOuterScope(t *testing.T) {
-	q := query.EmbeddedSQL{ID: core.MustCanonicalID("app.correlated-cte"), Datasource: core.MustLocalName("sales")}
+	q := query.EmbeddedSQL{ID: core.MustCanonicalID("app.correlated_cte"), Datasource: core.MustLocalName("sales")}
 	result := analyzer.Result{
 		ProtocolVersion: 1, Status: "ok", Query: q.ID,
 		Scopes: []analyzer.Scope{
