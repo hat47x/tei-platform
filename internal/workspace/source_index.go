@@ -14,9 +14,30 @@ import (
 // subjects continue to use the loader's legacy point location until their
 // parser anchors are introduced.
 func BuildSourceIndex(root string, result Result) (sourceindex.Index, error) {
+	return buildSourceIndex(root, result, false)
+}
+
+// BuildSourceIndexFromLoad builds the Source Index only from bytes captured by
+// Load: the parsed-file snapshot plus the Load-time capture of managed files
+// that no loader parsed. It never reads the filesystem; a path outside both
+// is an error, as is a Result without a Load snapshot or from another root.
+//
+// Identity is bound to Load-time bytes for managed files of this Workspace.
+// This is NOT an atomic multi-file snapshot (scan, domain reads and the extra
+// capture happen at different moments), does not detect files that never
+// entered ManagedFiles, does not cover imported Workspaces, and adds no
+// authority.
+func BuildSourceIndexFromLoad(root string, result Result) (sourceindex.Index, error) {
+	return buildSourceIndex(root, result, true)
+}
+
+func buildSourceIndex(root string, result Result, strict bool) (sourceindex.Index, error) {
 	rootReal, err := canonicalWorkspaceRoot(root)
 	if err != nil {
 		return sourceindex.Index{}, err
+	}
+	if strict && (result.sourceSnapshot == nil || result.sourceManagedExtra == nil) {
+		return sourceindex.Index{}, fmt.Errorf("Result has no Load-time source bytes; it was not produced by Load")
 	}
 	if result.sourceSnapshot != nil && result.sourceSnapshotRoot != rootReal {
 		return sourceindex.Index{}, fmt.Errorf("loaded source snapshot belongs to another Workspace")
@@ -44,6 +65,13 @@ func BuildSourceIndex(root string, result Result) (sourceindex.Index, error) {
 			// Index only reads it; a second full-file copy is unnecessary.
 			contents[p] = snapshot
 			return snapshot, nil
+		}
+		if strict {
+			if extra, ok := result.sourceManagedExtra[p]; ok {
+				contents[p] = extra
+				return extra, nil
+			}
+			return nil, fmt.Errorf("source %q is not covered by the Load-time bytes", p)
 		}
 		// Standalone Results and unparsed managed assets use a traversal-
 		// resistant rooted open per read. This is NOT a pinned multi-file
