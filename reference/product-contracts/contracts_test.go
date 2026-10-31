@@ -36,26 +36,35 @@ func TestProductCapabilitiesCanBeInvokedByGoBinding(t *testing.T) {
 		"product_contracts.sei_decision_record",
 		"product_contracts.mmi_observation_select",
 	}
+	adapters := map[core.CanonicalID]capabilityinvoke.Adapter{
+		"product_contracts.eki_task_submit":        bindings.EKITaskSubmit{},
+		"product_contracts.eki_attempt_execute":    bindings.EKIAttemptExecute{},
+		"product_contracts.eki_result_accept":      bindings.EKIResultAccept{},
+		"product_contracts.sui_document_put":       bindings.SUIDocumentPut{},
+		"product_contracts.sei_decision_record":    bindings.SEIDecisionRecord{},
+		"product_contracts.mmi_observation_select": bindings.MMIObservationSelect{},
+	}
 	adapter := adapterFunc(func(ctx context.Context, id core.CanonicalID, input any) (capabilityinvoke.BusinessResult, error) {
-		if id == "product_contracts.eki_task_submit" {
-			return bindings.EKITaskSubmit{}.Invoke(ctx, id, input)
+		bound, ok := adapters[id]
+		if !ok {
+			t.Fatalf("no reference binding for %s", id)
 		}
-		return capabilityinvoke.BusinessResult{
-			Capability: id,
-			Mode:       capabilityinvoke.ResultOutput,
-			Payload:    map[string]any{"binding": "test", "input": input},
-		}, nil
+		return bound.Invoke(ctx, id, input)
 	})
 	for _, id := range ids {
 		capability, ok := byID[id]
 		if !ok {
 			t.Fatalf("%s capability was not loaded", id)
 		}
-		input := map[string]any{"input": "test"}
-		if id == "product_contracts.eki_task_submit" {
-			input = map[string]any{"taskId": "tsk_reference", "executorId": "dev.example.transform"}
+		inputs := map[core.CanonicalID]map[string]any{
+			"product_contracts.eki_task_submit":        {"taskId": "tsk_reference", "executorId": "dev.example.transform"},
+			"product_contracts.eki_attempt_execute":    {"attemptId": "atm_reference"},
+			"product_contracts.eki_result_accept":      {"claimId": "clm_reference"},
+			"product_contracts.sui_document_put":       {"documentId": "doc_reference"},
+			"product_contracts.sei_decision_record":    {"decisionId": "dec_reference"},
+			"product_contracts.mmi_observation_select": {"table": "Sheet1!A1:E6"},
 		}
-		result, err := capabilityinvoke.Invoke(context.Background(), capability, adapter, input)
+		result, err := capabilityinvoke.Invoke(context.Background(), capability, adapter, inputs[id])
 		if err != nil {
 			t.Fatalf("invoke %s: %v", id, err)
 		}
