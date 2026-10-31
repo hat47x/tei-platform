@@ -1,6 +1,7 @@
 package validation_test
 
 import (
+	"strings"
 	"testing"
 
 	"tei/internal/application"
@@ -394,4 +395,58 @@ func TestDuplicateEnvironmentResourceBindingIsError(t *testing.T) {
 		}
 	}
 	t.Fatalf("expected DUPLICATE_ENVIRONMENT_RESOURCE_BINDING, got %#v", ds)
+}
+
+// #2400: DUPLICATE_SEMANTIC_ELEMENT must carry the later declaration's Subject,
+// and a same-kind duplicate must not read "as both attribute and attribute".
+func TestDuplicateSemanticElementCarriesSubjectAndReadableWording(t *testing.T) {
+	w := referenceWorld()
+	for i := range w.Semantics {
+		if w.Semantics[i].ID == cid("sales") {
+			w.Semantics[i].Data[0].Attributes = append(w.Semantics[i].Data[0].Attributes, semantic.Attribute{
+				ID: cid("sales.order.status"), Symbol: "status", TypeRef: cid("sales.order_status"),
+			})
+		}
+	}
+	dups := 0
+	for _, d := range validation.Validate(w) {
+		if d.Code != "DUPLICATE_SEMANTIC_ELEMENT" {
+			continue
+		}
+		dups++
+		if d.Subject == nil || d.Subject.Kind != "semantic-attribute" || d.Subject.ID != "sales.order.status" {
+			t.Fatalf("duplicate attribute diagnostic lacks its canonical Subject: %+v", d)
+		}
+		if !strings.Contains(d.Message, "declared more than once as attribute") {
+			t.Fatalf("same-kind duplicate wording is not readable: %s", d.Message)
+		}
+	}
+	if dups != 1 {
+		t.Fatalf("expected exactly one DUPLICATE_SEMANTIC_ELEMENT, got %d", dups)
+	}
+
+	cross := referenceWorld()
+	for i := range cross.Semantics {
+		if cross.Semantics[i].ID == cid("sales") {
+			cross.Semantics[i].Types = append(cross.Semantics[i].Types, semantic.Type{
+				ID: cid("customer.customer"), Symbol: "Customer", Kind: semantic.TypeAlias, Underlying: cid("std.code"),
+			})
+		}
+	}
+	found := false
+	for _, d := range validation.Validate(cross) {
+		if d.Code != "DUPLICATE_SEMANTIC_ELEMENT" {
+			continue
+		}
+		found = true
+		if d.Subject == nil || d.Subject.Kind != "semantic-data" || d.Subject.ID != "customer.customer" {
+			t.Fatalf("cross-kind duplicate diagnostic lacks its canonical Subject: %+v", d)
+		}
+		if !strings.Contains(d.Message, "as both type and data") {
+			t.Fatalf("cross-kind duplicate wording changed: %s", d.Message)
+		}
+	}
+	if !found {
+		t.Fatal("expected a DUPLICATE_SEMANTIC_ELEMENT for the cross-kind duplicate")
+	}
 }
