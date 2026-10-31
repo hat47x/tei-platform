@@ -1,6 +1,6 @@
 # ADR-0032: Cordis型の合成KernelをTEIの新しいプラグイン基盤とする
 
-> **後続判断（2026-10-24）**：[ADR-0041](0041-target-native-artifacts-without-tei-host.md)が、TEI独自の共通Hostを必須とする構想を置き換えました。本ADRのHost局所Generation、最小HostのRoot of Trust、Hostを中心とした移行経路は、その方式を選ぶTargetに限る設計・検証対象として読みます。契約中心の合成や静的Lowering等の判断と、当時の試験記録は維持します。
+> **後続判断（2026-10-24）**：[ADR-0043](0043-target-native-artifacts-without-tei-host.md)が、TEI独自の共通Hostを必須とする構想を置き換えました。本ADRのHost局所Generation、最小HostのRoot of Trust、Hostを中心とした移行経路は、その方式を選ぶTargetに限る設計・検証対象として読みます。契約中心の合成や静的Lowering等の判断と、当時の試験記録は維持します。
 
 - **状態**：採用（目標アーキテクチャ、2026-10-12）。**現行production Runtimeへの移行完了を意味しない**。
 - **関連**：[Issue #1223](https://github.com/hat47x/tei-platform/issues/1223)、[#951](https://github.com/hat47x/tei-platform/issues/951)、[#943](https://github.com/hat47x/tei-platform/issues/943)、[#259](https://github.com/hat47x/tei-platform/issues/259)。

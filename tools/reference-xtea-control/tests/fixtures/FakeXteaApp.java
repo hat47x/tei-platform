@@ -17,6 +17,7 @@ import javax.swing.JComboBox;
 import javax.swing.JDialog;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
+import javax.swing.JList;
 import javax.swing.JMenu;
 import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
@@ -37,6 +38,7 @@ public final class FakeXteaApp {
     private final JTextField input = new JTextField("initial", 24);
     private final FakeWrappedField wrappedInput = new FakeWrappedField();
     private final JLabel status = new JLabel("idle");
+    private final JLabel wrappedStatus = new JLabel();
     private final DefaultTableModel tableModel = new DefaultTableModel(
             new Object[][] { { "A", "Alpha" }, { "B", "Beta" } }, new String[] { "Code", "Name" });
     private final JTable table = new JTable(tableModel);
@@ -111,6 +113,12 @@ public final class FakeXteaApp {
         wrappedInput.getInnerField().setName("wrappedInput");
         top.add(new JLabel("Wrapped"));
         top.add(wrappedInput);
+        JButton hiddenRun = new JButton("Run");
+        hiddenRun.setVisible(false);
+        hiddenRun.addActionListener(event -> status.setText("hidden-run"));
+        top.add(hiddenRun);
+        wrappedStatus.setName("wrapperValue");
+        top.add(wrappedStatus);
         top.add(new JLabel("Mode"));
         top.add(mode);
         top.add(enabled);
@@ -122,6 +130,7 @@ public final class FakeXteaApp {
             @Override
             public void actionPerformed(ActionEvent e) {
                 status.setText("ran:" + input.getText());
+                wrappedStatus.setText(String.valueOf(wrappedInput.getValue()));
             }
         });
         JButton dialogButton = new JButton("Open Dialog");
@@ -161,6 +170,14 @@ public final class FakeXteaApp {
         JTree tree = new JTree(root);
         tree.setName("tree");
         tabs.addTab("Tree", new JScrollPane(tree));
+        Object[] listItems = new Object[201];
+        JCheckBox checked = new JCheckBox("Checked item", true);
+        checked.setEnabled(false);
+        listItems[0] = checked;
+        for (int i = 1; i < listItems.length; i++) listItems[i] = "Item " + i;
+        JList<Object> list = new JList<Object>(listItems);
+        list.setName("observedList");
+        tabs.addTab("List", new JScrollPane(list));
         tabs.setName("tabs");
 
         frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);

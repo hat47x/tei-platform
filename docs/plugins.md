@@ -1,6 +1,6 @@
 # プラグインと配布一式
 
-> **構成に関する判断**：[ADR-0032](../plan/adr/0032-composition-kernel-replacement.md)は契約中心の合成を扱います。後続の[ADR-0041](../plan/adr/0041-target-native-artifacts-without-tei-host.md)により、TEI独自の共通Hostの構築は前提から外れました。この文書の固定された`CapabilityKind`、既存のPlugin実行・固定機構、`Host`という実装名は現行実装・参照経路の説明です。
+> **構成に関する判断**：[ADR-0032](../plan/adr/0032-composition-kernel-replacement.md)は契約中心の合成を扱います。後続の[ADR-0043](../plan/adr/0043-target-native-artifacts-without-tei-host.md)により、TEI独自の共通Hostの構築は前提から外れました。この文書の固定された`CapabilityKind`、既存のPlugin実行・固定機構、`Host`という実装名は現行実装・参照経路の説明です。
 >
 > `internal/composition/`の試作を、すべての成果物に必須の本番実行基盤とはみなしません。既存の権限・副作用・結果伝播の検証証拠は、その接続範囲に限って有効です。
 

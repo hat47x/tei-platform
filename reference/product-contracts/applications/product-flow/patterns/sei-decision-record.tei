@@ -1,0 +1,3 @@
+pattern product_contracts_flow.sei_decision_record command {
+    capability product_contracts.sei_decision_record
+}

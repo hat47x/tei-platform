@@ -1,6 +1,6 @@
 # reference-generator-artifact-store（#2016）
 
-選抜receiptのGo候補sourceとbinaryを、source digestでcontent-addressedに保存・取得する参照です。保存時と取得時にdigestを再計算し、receipt・object metadata・実byteの不一致を拒否します。
+選抜receiptのGo/Java/WASM/WASI候補sourceとbinary、Python/JavaScript候補のsourceを、source digestでcontent-addressedに保存・取得する参照です。保存時と取得時にdigestを再計算し、receipt・object metadata・実byteの不一致を拒否します。
 
 署名・attestation・Authority・実Targetでの実行は扱いません。`grantsAuthority`と`provesRealTarget`は常にfalseです。
 
@@ -37,6 +37,7 @@ go run ./tools/reference-generator-artifact-store/cmd/tei-generator-artifact-sto
 <store>/objects/<source-digest-hex>/
   source
   artifact
+  receipt.json
   object.json
 ```
 
@@ -45,7 +46,10 @@ go run ./tools/reference-generator-artifact-store/cmd/tei-generator-artifact-sto
 - `candidateId`、`language`
 - `contractId`、`contractVersion`
 - `sourceDigest`、`binaryDigest`
+- `buildEvidenceDigest`（選抜receiptのbuildEvidenceをcanonical JSONにしたdigest。source-only候補では省略）
 - `receiptDigest`
+
+`receipt.json`は保存時の選抜receipt全体で、`receiptDigest`と照合します。`put`/`get`のreceiptにも`buildEvidenceDigest`を返します。`put`/`get`のreceiptと`list`のobject entryにも`language`を記録し、保存した候補の実行形式を一覧から区別できます。
 
 ## 保存時の検査
 
@@ -53,19 +57,21 @@ go run ./tools/reference-generator-artifact-store/cmd/tei-generator-artifact-sto
 2. 候補sourceを読み、`sourceDigest`を再計算する。
 3. `go build -trimpath -buildvcs=false`でbinaryを再buildする。
 4. 再buildのbinary digestがreceiptの`binaryDigest`と一致するか確認する。
-5. objectが既に存在しdigestが一致すれば再利用する。一致しなければ上書きせず、新しい保存として扱う。
+5. objectが既に存在しdigestが一致し、かつobject metadataの`receiptDigest`・`buildEvidenceDigest`・candidate/source/binaryが現在の選抜receiptと一致すれば再利用する。provenanceが異なる場合は上書きせず拒否する。`receipt.json`がない既存objectは、provenanceが一致する場合に限り`receipt.json`を復元して再利用する。
 
 source、receipt、実binaryのどれかが一致しなければ`passed=false`にし、現在の証拠として使わない。
 
 ## 取得時の検査
 
 - `source`と`artifact`を読み、`object.json`のdigestと再計算値を照合する。
-- 保存後にsourceまたはartifactが改変されていれば`passed=false`にする。
+- `receipt.json`のdigestを`receiptDigest`と照合し、保存元の選抜receiptを確認する。
+- 選抜receipt内の候補source/binary digestとbuildEvidence digestをobject metadataと照合する。
+- 保存後にsource・artifact・receipt・object metadataが改変されていれば`passed=false`にする。
 - 要求したsource digestとobject metadataが一致しなければ拒否する。
 
 ## 一覧と削除
 
-`list`は全objectのmetadataと再計算digestを返します。壊れたobjectが1件でもあれば`passed=false`にします。
+`list`は全objectのmetadataと再計算digestを返します。`receipt.json`と選抜receipt内のsource/binary/buildEvidenceも照合し、壊れたobjectが1件でもあれば`passed=false`にします。
 
 `prune`は、明示した`-keep`のsource digestだけを残し、それ以外のobjectを削除します。
 
@@ -104,12 +110,15 @@ ssh-keygen -Y verify -f /tmp/allowed_signers -I signer -n tei-audit \
 
 `-signature`・`-allowed-signers`・`-identity`を指定すると、先にcheckpointのdetached signatureを`ssh-keygen -Y verify`で検証し、その後にstoreとの一致を検証します。署名が不正なら`signatureVerified=false`、storeと不一致なら`signatureVerified=true`のまま`passed=false`になります。署名者のAuthority・trust rootは検証しません。
 
+Go候補の再buildは、選抜時と同じくgo.modを持たない一時ディレクトリで行います。候補のディレクトリでbuildすると、リポジトリのgo.modのgoディレクティブがDefaultGODEBUGとしてbinaryに入り、go.modより新しいtoolchain(例: go1.27.0)でdigestが一致しなくなります(#2370)。toolchainの版が選抜時と違えばdigestは変わりうるため、別toolchainでの再現性は引き続き検証対象外です。
+
 ## 検証すること・しないこと
 
 | 検証する | 検証しない |
 | --- | --- |
 | receiptのsource/binary digestと実byteの一致 | 候補の正しさ・意味の受理 |
-| 再buildしたbinary digest | 別machine・別toolchainでの再現性 |
+| 再buildしたbinary digest（Go/Java/WASM/WASI） | 別machine・別toolchainでの再現性 |
+| Python/JavaScriptのsource digest | interpreter・依存ライブラリの同一性 |
 | objectのsource/artifactの改変 | 署名・attestation・署名者Authority |
 | content-addressed pathとmetadata | 実Provider・実Target・本番配備 |
 
@@ -120,7 +129,14 @@ ssh-keygen -Y verify -f /tmp/allowed_signers -I signer -n tei-audit \
 `go test ./tools/reference-generator-artifact-store/... -count=1`で、次を確認します。
 
 - 選抜receiptからsource/binaryを保存し、source digestで取得できる。
+- `put`/`get`のreceiptと`list`のentryが`language`を返す。
+- WASI候補のsourceとwasm binaryを保存・取得できる。
+- Java候補のsourceと`Main.class`を保存・取得できる。
+- Python/JavaScript候補のsourceを保存・取得できる。artifactは空で、binary digestを持たない。
+- source-only objectも`list`/`prune`で検証でき、空artifactと空binary digestを照合する。
 - 同じobjectの再保存が`reused=true`になる。
+- provenanceの異なる既存objectは再利用せず拒否する。
+- `receipt.json`がない既存objectは、再`Put`で復元され、`Get`が通る。
 - receiptのbinary digestを改変すると`passed=false`。
 - 保存後にartifactを改変すると`passed=false`。
 - 未知の候補を拒否する。
@@ -142,4 +158,5 @@ ssh-keygen -Y verify -f /tmp/allowed_signers -I signer -n tei-audit \
 - 別machine・別toolchain・clean cacheでのbuild再現性。
 - 保持期間、監査アクセス権、削除承認、audit/checkpointの署名・実行者identity、chain全体の置換耐性、remote object store。
 - artifactの実行承認、実Targetへの配備、ロールバック。
-- Python/JavaScript候補（binaryを持たない）の保存。
+- Python/JavaScriptのinterpreter・依存ライブラリ・実行環境の同一性。
+- WASM/WASIの実runtimeでの実行、実Targetへの配備。

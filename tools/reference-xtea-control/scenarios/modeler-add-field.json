@@ -1,0 +1,23 @@
+{
+  "name": "modeler-add-field",
+  "description": "Activate the field list, add a new field through the Modeler tree action, fill its logical name and alias, save, and verify that the new TableField is in the XML. Uses a disposable MfgOrder.xead copy.",
+  "steps": [
+    { "op": "wait_window", "title": "X-TEA Modeler", "timeoutMs": 30000 },
+    { "op": "select", "selector": { "role": "tree" }, "path": [0, 2, 0, 0, 0, 0] },
+    { "op": "key", "selector": { "role": "tree" }, "key": "ENTER" },
+    { "op": "sleep", "ms": 1000 },
+    { "op": "invoke_method", "selector": { "role": "window", "window": "X-TEA Modeler" }, "method": "jMenuItemXeadTreeNodeAdd_actionPerformed" },
+    { "op": "sleep", "ms": 1000 },
+    { "op": "select", "selector": { "role": "tree" }, "path": [0, 2, 0, 0, 0, 0, 4] },
+    { "op": "key", "selector": { "role": "tree" }, "key": "ENTER" },
+    { "op": "sleep", "ms": 1000 },
+    { "op": "set", "selector": { "window": "X-TEA Modeler", "path": "0.1.2.11.0.1.0.0.0.1" }, "value": "TEST_FIELD" },
+    { "op": "set", "selector": { "window": "X-TEA Modeler", "path": "0.1.2.11.0.1.0.0.0.5" }, "value": "TXTEST" },
+    { "op": "invoke", "selector": { "window": "X-TEA Modeler", "path": "m.0.7" }, "settleMs": 1000 },
+    { "op": "wait_window", "title": "バックアップの確認", "timeoutMs": 30000 },
+    { "op": "invoke", "selector": { "window": "バックアップの確認", "role": "button", "text": "はい" }, "settleMs": 1000 },
+    { "op": "wait_window", "title": "バックアップの確認", "state": "absent", "timeoutMs": 30000 },
+    { "op": "sleep", "ms": 1500 },
+    { "op": "file_contains", "path": "build/modeler-fixture/MfgOrder.xead", "contains": "TXTEST" }
+  ]
+}

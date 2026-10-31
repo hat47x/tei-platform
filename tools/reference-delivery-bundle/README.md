@@ -135,7 +135,7 @@ go run ./tools/reference-delivery-bundle/cmd/tei-delivery-bundle \
   -command 'your-service-command' -health 'your-health-check' -timeout 10s
 ```
 
-- `start`は`bash -lc`でコマンドを起動し、PID・catalog・digest・開始時刻・ログpathを`<state>.pid`へ記録する。
+- `start`は`bash -c`でコマンドを起動し、PID・catalog・digest・開始時刻・ログpathを`<state>.pid`へ記録する。loginシェル（`bash -lc`）は使わないため、`~/.profile`等の読込は起動に含まれない。コマンドの解決は親プロセスの環境（`PATH`を含む）に依存する。外部のcron・timerから呼ぶ場合は、`PATH`が狭いことがあるため、コマンドを絶対pathで指定するか、実行元の環境で`PATH`を揃えること。
 - `TEI_CATALOG`、`TEI_ACTIVE_DIGEST`、`TEI_STATE`を環境変数で渡す。
 - `stop`は記録したPIDへ`Kill`を送り、PID fileを削除する。
 - `stop -graceful`は`kill -TERM`を送り、timeoutまで終了を待ってから必要なら`Kill`する。アプリケーションのshutdown完了は検証しない。

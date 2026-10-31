@@ -115,6 +115,8 @@ func TestFirstModelChangeCLIEndToEnd(t *testing.T) {
 	}
 	const old = "    attribute status type std.code\n"
 	const replacement = old + "    attribute priority type std.code\n"
+	// Windows checkouts may convert LF to CRLF; the edit is matched on LF text.
+	src = []byte(strings.ReplaceAll(string(src), "\r\n", "\n"))
 	if strings.Count(string(src), old) != 1 {
 		t.Fatal("unexpected first-workspace source; cannot perform the documented one-line edit")
 	}

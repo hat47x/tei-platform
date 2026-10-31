@@ -44,6 +44,7 @@
 | [`PLUGIN_DEPENDENCY_IO_MAPPING_DESIGN_2026-10.md`](PLUGIN_DEPENDENCY_IO_MAPPING_DESIGN_2026-10.md) | プラグイン間の依存を、受け渡す項目・パラメータ・値の出どころ・対応付けと変換・多重度・版の変化まで含めて整理する方式設計候補（[GitHub #1223](https://github.com/hat47x/tei-platform/issues/1223)、評価待ち） |
 | [`SUI_REFERENCE_ADOPTION_DESIGN_2026-09.md`](SUI_REFERENCE_ADOPTION_DESIGN_2026-09.md) | SUIの既存実装を生かしながらTEIへ移行するための設計基準 |
 | [`CROSS_VIEW_CHANGE_QUALIFICATION_REFERENCE_DRAFT.md`](CROSS_VIEW_CHANGE_QUALIFICATION_REFERENCE_DRAFT.md) | Issue #1143で検討中の、複数の視点にまたがる変更の適格性確認案。参照用の契約としては未採用 |
+| [`STUDIO_CONSUMER_FRESHNESS_BOUNDARY_2026-10.md`](STUDIO_CONSUMER_FRESHNESS_BOUNDARY_2026-10.md) | #1124の非Host Studio Consumerが非同期応答・Graph描画選択・Source/Accepted/readinessの鮮度を別々に検査する未採用の設計補足 |
 | [`BUSINESS_EFFECT_LIFECYCLE_DESIGN_2026-10.md`](BUSINESS_EFFECT_LIFECYCLE_DESIGN_2026-10.md) | 副作用を伴う実行の段階、確定後の外部効果、冪等の識別子、確定状態、補償、一括処理の再開をまとめる、評価待ちの設計（[GitHub #1129](https://github.com/hat47x/tei-platform/issues/1129)、[#1130](https://github.com/hat47x/tei-platform/issues/1130)） |
 | [`EXECUTION_CORRELATION_DESIGN_2026-10.md`](EXECUTION_CORRELATION_DESIGN_2026-10.md) | 一つの業務操作を実行先から提供元まで追跡し、意味の版・ビルド・ロックへ戻るための識別子と記録の規則。担当Issueは無く、評価待ち |
 | [`SEMANTIC_CHANGE_DATA_EVOLUTION_DESIGN_2026-10.md`](SEMANTIC_CHANGE_DATA_EVOLUTION_DESIGN_2026-10.md) | 受理した意味の変更と既存の業務データの両立性の判定、影響の観測、段階的な移行。担当Issueは無く、評価待ち |
@@ -59,6 +60,41 @@
 | [`PRODUCTIVITY_BENCHMARK_PROTOCOL_2026-10.md`](PRODUCTIVITY_BENCHMARK_PROTOCOL_2026-10.md) | 従来型コーディング・ローコード・TEIを同じ業務変更で比較する手順、指標、不確かさ、撤回条件（[GitHub #2018](https://github.com/hat47x/tei-platform/issues/2018)、未実施） |
 | [`DELIVERY_PLUGIN_COMPOSITION_2026-10.md`](DELIVERY_PLUGIN_COMPOSITION_2026-10.md) | 個人・SIer・SaaSの提供形態を、形態別実装ではなくプラグインの選択で構成する設計案（[GitHub #2020](https://github.com/hat47x/tei-platform/issues/2020)、[ADR-0036](../adr/0036-delivery-forms-as-plugin-composition.md)） |
 | [`TECH_VALIDATION_SAMPLES_2026-10.md`](TECH_VALIDATION_SAMPLES_2026-10.md) | ピーキーな要件の目録と、それを一つの作業の流れで同時に起こす技術検証用サンプル(既存の検証用資産の再編と新設)の構成案(未採用) |
+| [`AI_NATIVE_PLUGIN_COMPOSITION_DESIGN_2026-10.md`](AI_NATIVE_PLUGIN_COMPOSITION_DESIGN_2026-10.md) | 標準機能を含む製品構成を交換可能にし、生成AIの設計・実装・検証の足場にもする最小プラグイン規約の設計候補（[GitHub #1223](https://github.com/hat47x/tei-platform/issues/1223)ほか） |
+| [`BUSINESS_PROCEDURE_DESIGN_QUALITY_MODEL_2026-09.md`](BUSINESS_PROCEDURE_DESIGN_QUALITY_MODEL_2026-09.md) | 業務手順の設計品質を、業務意味を根拠を失わずに説明・検証・修正できる程度で評価するモデル（RQ-025・RQ-026） |
+| [`CLI_C2_DISCLOSURE_BOUNDARY_DESIGN.md`](CLI_C2_DISCLOSURE_BOUNDARY_DESIGN.md) | CLIのinspect・traceで、開示してよい内容を既存のAuthorization Capabilityで判定する境界の設計候補（[GitHub #1178](https://github.com/hat47x/tei-platform/issues/1178)） |
+| [`CLI_JSON_OUTPUT_CONTRACT_2026-10.md`](CLI_JSON_OUTPUT_CONTRACT_2026-10.md) | `tei commands`が広告する読取りコマンドのJSON出力の現状一覧、`tei.cli.*/v0`の互換変更の区別の規則案、schemaVersion追加と失敗時形式の決定案（[GitHub #2354](https://github.com/hat47x/tei-platform/issues/2354)、提案中） |
+| [`CLI_FIRST_INTERFACE_DESIGN.md`](CLI_FIRST_INTERFACE_DESIGN.md) | CLIを主入口とし、画面・API・CLIで共通にする意味（対象ID・版・検証結果・受理の成否など）を分けるインターフェース設計の初期案 |
+| [`CORDIS_CONTINUOUS_PLUGIN_UPDATE_EVALUATION_2026-10.md`](CORDIS_CONTINUOUS_PLUGIN_UPDATE_EVALUATION_2026-10.md) | Cordis由来の合成機構とTEIプラグインの継続更新の比較検討記録（[ADR-0032](../adr/0032-composition-kernel-replacement.md)で前提が置き換えられた） |
+| [`CORE_SUBPROJECT_ISOLATION_PROBE_2026-10.md`](CORE_SUBPROJECT_ISOLATION_PROBE_2026-10.md) | 合成基盤を独立して構築できるかを確かめる局所的な検証手順（[ADR-0033](../adr/0033-core-and-plugin-subprojects.md)に関連） |
+| [`CRITICAL_LOWERING_CONTRACT_DESIGN.md`](CRITICAL_LOWERING_CONTRACT_DESIGN.md) | 宣言からTargetの実現へ段階的に接続するCritical Lowering契約の候補 |
+| [`CROSS_ROUTE_FUNCTIONAL_PARITY_AND_TEST_DERIVATION.md`](CROSS_ROUTE_FUNCTIONAL_PARITY_AND_TEST_DERIVATION.md) | 経路間の業務機能の完全性と、Scenarioから導くE2E試験の設計。文中のコマンド名は将来案であり、既存のCLIコマンドではない |
+| [`CROSS_SEARCH_AND_REPLACE_PROPOSAL_2026-10.md`](CROSS_SEARCH_AND_REPLACE_PROPOSAL_2026-10.md) | 横断検索と、置換を変更案へ変換する最小経路の設計案（[GitHub #1804](https://github.com/hat47x/tei-platform/issues/1804)、PoC） |
+| [`CROSS_SEARCH_ACCEPTANCE_EXECUTION_2026-10.md`](CROSS_SEARCH_ACCEPTANCE_EXECUTION_2026-10.md) | 横断置換の変更案を受理境界へ渡し、受理後に各視点へ再投影する受理実行段の設計案（[GitHub #1804](https://github.com/hat47x/tei-platform/issues/1804)、PoC） |
+| [`CROSS_VIEW_TYPED_REFERENCE_CONTRACT_2026-10.md`](CROSS_VIEW_TYPED_REFERENCE_CONTRACT_2026-10.md) | 三視点の意味参照と変更影響の初期契約。参照契約の実装・試験は導入済みで、受理済みモデルの第二の正本ではない（[GitHub #1120](https://github.com/hat47x/tei-platform/issues/1120)） |
+| [`DATA_DERIVATION_REFERENCE_CONTRACT.md`](DATA_DERIVATION_REFERENCE_CONTRACT.md) | データ導出規則の最小意味契約（検証案）。導出関係の意味契約の正本 |
+| [`DATA_DERIVATION_CONTRACT_REFERENCE.md`](DATA_DERIVATION_CONTRACT_REFERENCE.md) | データ導出規則の参照実装と検証範囲の案内（[GitHub #1637](https://github.com/hat47x/tei-platform/issues/1637)）。意味契約は上の文書が正本 |
+| [`EVALUATION_CONTEXT_DETERMINISM_2026-10.md`](EVALUATION_CONTEXT_DETERMINISM_2026-10.md) | データ導出の評価文脈の明示入力と決定的な再評価の設計整理（[GitHub #1720](https://github.com/hat47x/tei-platform/issues/1720)、採用前） |
+| [`TEMPORAL_MEANING_DISTINCTION_2026-10.md`](TEMPORAL_MEANING_DISTINCTION_2026-10.md) | 導出値の時間意味(過去時点の再計算・規則の版・確定した保存値)を区別する提案（[GitHub #1727](https://github.com/hat47x/tei-platform/issues/1727)） |
+| [`DESKTOP_STUDIO_HOST_INTEGRATION_DESIGN.md`](DESKTOP_STUDIO_HOST_INTEGRATION_DESIGN.md) | Desktop Studio Hostの操作・状態・資源の境界の設計候補。実機の起動と操作の検証は未実施 |
+| [`DSL_OPERATOR_PLUGIN_COMPOSITION_DESIGN.md`](DSL_OPERATOR_PLUGIN_COMPOSITION_DESIGN.md) | DSLの言語プラグインと演算子の合成についての設計候補 |
+| [`EXAMPLE_ER_SLIDE_M1_2026-10.md`](EXAMPLE_ER_SLIDE_M1_2026-10.md) | 具体例からER図のスライドへつなぐ参照実装（M1）の候補 |
+| [`EXTERNAL_SEMANTIC_ACCEPTANCE_HANDOFF_2026-10.md`](EXTERNAL_SEMANTIC_ACCEPTANCE_HANDOFF_2026-10.md) | 外部の業務意味資産の選択と、案件での受理を結ぶ証拠契約の候補 |
+| [`GENERIC_CAPABILITY_MIGRATION_DESIGN.md`](GENERIC_CAPABILITY_MIGRATION_DESIGN.md) | Generic Capabilityへの移行設計（評価待ち・未採用） |
+| [`LOGICAL_RULE_SOURCE_CUT_PREFLIGHT.md`](LOGICAL_RULE_SOURCE_CUT_PREFLIGHT.md) | 候補キー・関数従属性の撤回に向けた、正本ソースの範囲を特定する読み取り専用の参照機構（[GitHub #1126](https://github.com/hat47x/tei-platform/issues/1126)） |
+| [`SEMANTIC_LOGICAL_IDENTITY_FD_AUTHORING.md`](SEMANTIC_LOGICAL_IDENTITY_FD_AUTHORING.md) | 論理候補キーと関数従属性を正本ソースで明示宣言する、読み取りと静的検証の最小実装（[GitHub #1126](https://github.com/hat47x/tei-platform/issues/1126)） |
+| [`RELATION_HISTORICAL_IMPACT_2026-10.md`](RELATION_HISTORICAL_IMPACT_2026-10.md) | Relationの削除・改名・分割で、変更前の状態から過去の参照を取り出す読み取り専用の拡張（[GitHub #1126](https://github.com/hat47x/tei-platform/issues/1126)） |
+| [`PLUGIN_SELF_BUILD_PRODUCTION_CONTRACT_2026-10.md`](PLUGIN_SELF_BUILD_PRODUCTION_CONTRACT_2026-10.md) | プラグインのセルフビルドの最小契約と移行Gateの検討案。production仕様の採用ではない |
+| [`REFERENCE_PORT_IMPLEMENTABILITY_GAP_TRIAGE_2026-10.md`](REFERENCE_PORT_IMPLEMENTABILITY_GAP_TRIAGE_2026-10.md) | 参照モデルの実装可否と欠落機能を、原典側で止まった理由から製品側の責務へ渡す照合方法の設計案（[GitHub #1969](https://github.com/hat47x/tei-platform/issues/1969)） |
+| [`REPOSITORY_ARCHITECTURE_DEPENDENCY_GUARD_2026-10.md`](REPOSITORY_ARCHITECTURE_DEPENDENCY_GUARD_2026-10.md) | リポジトリの依存方向を守る最小ガードの実装候補 |
+| [`RUNTIME_TARGET_BINARY_COMPOSITION_DESIGN.md`](RUNTIME_TARGET_BINARY_COMPOSITION_DESIGN.md) | 多様な実行環境に向けた最小ランタイムと配備単位の設計候補（評価待ち） |
+| [`SEI_REFERENCE_ADOPTION_STAGE0_DESIGN.md`](SEI_REFERENCE_ADOPTION_STAGE0_DESIGN.md) | SEIの既存実装をTEIの参照として取り込む段階0（Resume・Review Projection）の設計。固定した版のみに対する検証 |
+| [`STANDARD_MESSAGE_AND_LOCALIZATION_PLUGIN_2026-10.md`](STANDARD_MESSAGE_AND_LOCALIZATION_PLUGIN_2026-10.md) | 標準メッセージと多言語拡張をプラグインとして分離する候補契約とGo参照実装 |
+| [`SUI_MIGRATION_EXTENSION_AND_SPLIT_DESIGN_2026-10.md`](SUI_MIGRATION_EXTENSION_AND_SPLIT_DESIGN_2026-10.md) | SUIの移管に向けたTEIの拡張方針とSUIの分割案（評価待ち・未採用） |
+| [`TYPE_SPLIT_AND_REPLACE_PROPOSAL_2026-10.md`](TYPE_SPLIT_AND_REPLACE_PROPOSAL_2026-10.md) | 意味の型の分割・置換を変更案として扱う最小経路の設計案（[GitHub #1806](https://github.com/hat47x/tei-platform/issues/1806)、PoC） |
+| [`WEB_APPLICATION_COMPOSITION_DESIGN.md`](WEB_APPLICATION_COMPOSITION_DESIGN.md) | Webアプリケーションの構成キットとして、安全な要求経路と認証方式を組み合わせる設計候補（評価待ち） |
+| [`WEB_READ_WRITE_API_ADAPTER_DESIGN.md`](WEB_READ_WRITE_API_ADAPTER_DESIGN.md) | 標準Webの読込・書込API Adapterの設計候補と合成Reference。OData準拠・実DB書込・本番適合は未確認 |
+| [`XTEA_STARTUP_JAR_DISTRIBUTION_EVIDENCE_2026-10.md`](XTEA_STARTUP_JAR_DISTRIBUTION_EVIDENCE_2026-10.md) | X-TEAのstartup JARの配布・版・更新に関する、外部Referenceの静的な証拠整理。実行検証・TEIの更新機構への受入証明ではない |
 
 ## 関連する参照事例と評価
 
@@ -208,3 +244,7 @@ S1 realistic intent / candidate frontier
 | 実行先と表示・操作の境界 | 判定段階Cより前のため未確定。[Gate C Evidence契約](../gate/GATE_C_EVIDENCE_CONTRACT.md)とISSUE-000026 |
 
 判定段階の前に確定していない領域について、先回りして設計文書は作りません。
+
+## 直近の構成議論
+
+- [TEI構成議論の整理と次の設計判断（2026-10-24）](TEI_CONFIGURATION_DISCUSSION_SYNTHESIS_2026-10-24.md)：独自Host非必須、TEI内での業務シミュレーション、DSL・プラグインの交差的利用、同じ版からのコード・設計書出力を既存Issueへ対応付ける検討メモ。採用・実装完了の宣言ではありません。

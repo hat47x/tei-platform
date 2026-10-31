@@ -8,9 +8,17 @@ import (
 // WorkspaceValidation is a transport-independent read-only result shared by
 // CLI and future HTTP / desktop adapters. It does not accept a proposal,
 // mutate a workspace, or confer any execution authority.
+//
+// WorldFingerprint and SourceIndexFingerprint identify the version that this
+// single load produced the Diagnostics from, with the same computation as
+// inspect and model catalog. They are empty when Direct is set, because a
+// syntax finding means no World or Source Index was built. They are evidence
+// of the read version only, not of correctness or acceptance.
 type WorkspaceValidation struct {
-	Direct      *workspace.SourceDiagnostic
-	Diagnostics []workspace.ProjectedDiagnostic
+	Direct                 *workspace.SourceDiagnostic
+	Diagnostics            []workspace.ProjectedDiagnostic
+	WorldFingerprint       string
+	SourceIndexFingerprint string
 }
 
 func (r WorkspaceValidation) HasErrors() bool {
@@ -69,7 +77,13 @@ func ValidateWorkspace(root string) (WorkspaceValidation, error) {
 	if err != nil {
 		return WorkspaceValidation{}, &ValidationFailure{Stage: StageSourceIndex, Err: err}
 	}
+	worldFP, sourceFP, err := workspaceProjectionFingerprints(loaded.World, index)
+	if err != nil {
+		return WorkspaceValidation{}, err
+	}
 	return WorkspaceValidation{
-		Diagnostics: workspace.ProjectDiagnostics(validation.Validate(loaded.World), index),
+		Diagnostics:            workspace.ProjectDiagnostics(validation.Validate(loaded.World), index),
+		WorldFingerprint:       worldFP,
+		SourceIndexFingerprint: sourceFP,
 	}, nil
 }

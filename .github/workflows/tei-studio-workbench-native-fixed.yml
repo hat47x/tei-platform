@@ -38,7 +38,7 @@ jobs:
           git cat-file -e "$HOST_SHA^{commit}"
           git merge-base --is-ancestor "$HOST_SHA" HEAD
           git diff --exit-code "$HOST_SHA" HEAD -- internal/studiohost cmd/tei-studio reference/workspace
-          test "$(go version | awk '{print $3}')" = go1.26.9
+          test "$(go version | awk '{print $3}')" = go1.26.10
           for pair in \
             "1833 $GEN_SHA tools/reference-studio-static-composition" \
             "1849 $UI_SHA reference/tei-studio-workbench" \

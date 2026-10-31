@@ -211,6 +211,21 @@ func sortedKeys[V any](m map[string]V) []string {
 
 func evaluate(providers map[string]Provider) (Snapshot, error) {
 	var out Snapshot
+	// Build the candidate index once per atomic Apply. A dependency only
+	// needs providers offering the exact contract in the same scope.
+	// Iterate sorted provider IDs so ambiguity and activation order remain
+	// independent of Go map iteration order.
+	type offerKey struct {
+		scope    string
+		contract Contract
+	}
+	ids := sortedKeys(providers)
+	offers := make(map[offerKey][]string, len(ids))
+	for _, id := range ids {
+		p := providers[id]
+		key := offerKey{scope: p.Scope, contract: p.Offers}
+		offers[key] = append(offers[key], id)
+	}
 	memo := map[string]Assessment{}
 	visiting := map[string]bool{}
 	var resolve func(string) (Assessment, error)
@@ -225,11 +240,15 @@ func evaluate(providers map[string]Provider) (Snapshot, error) {
 		visiting[id] = true
 		a := Assessment{ProviderID: id, Eligible: true}
 		for _, req := range p.Requires {
-			var matches []string
-			for _, otherID := range sortedKeys(providers) {
-				other := providers[otherID]
-				if other.Scope == p.Scope && other.Offers == req.Contract && (req.ProviderID == "" || req.ProviderID == otherID) {
-					matches = append(matches, otherID)
+			matches := offers[offerKey{scope: p.Scope, contract: req.Contract}]
+			if req.ProviderID != "" {
+				// Explicit wiring must select a member of the indexed offer,
+				// never bypass the scope or the exact contract.
+				i := sort.SearchStrings(matches, req.ProviderID)
+				if i == len(matches) || matches[i] != req.ProviderID {
+					matches = nil
+				} else {
+					matches = matches[i : i+1]
 				}
 			}
 			if len(matches) == 0 {
@@ -263,7 +282,7 @@ func evaluate(providers map[string]Provider) (Snapshot, error) {
 		}
 		return a, nil
 	}
-	for _, id := range sortedKeys(providers) {
+	for _, id := range ids {
 		if _, err := resolve(id); err != nil {
 			return Snapshot{}, err
 		}

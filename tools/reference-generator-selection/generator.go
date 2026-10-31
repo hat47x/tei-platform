@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"strings"
 	"text/template"
+
+	"tei/internal/ir"
 )
 
 //go:embed templates/*.tmpl
@@ -53,6 +55,8 @@ var generatorTemplates = map[string]generatorTemplate{
 	"wasm-template":                    {file: "templates/template.go.tmpl", id: "line-amount-wasm-template", origin: "template", strategy: "wasm-template", language: LanguageWasm, source: "main.go"},
 	"java-long-running-template":       {file: "templates/Main-long-running.java.tmpl", id: "line-amount-java-long-running-template", origin: "template", strategy: "java-long-running-template", language: LanguageJava, source: "Main.java"},
 	"wasm-long-running-template":       {file: "templates/template-long-running.go.tmpl", id: "line-amount-wasm-long-running-template", origin: "template", strategy: "wasm-long-running-template", language: LanguageWasm, source: "main.go"},
+	"wasi-template":                    {file: "templates/template.go.tmpl", id: "line-amount-wasi-template", origin: "template", strategy: "wasi-template", language: LanguageWasi, source: "main.go"},
+	"wasi-long-running-template":       {file: "templates/template-long-running.go.tmpl", id: "line-amount-wasi-long-running-template", origin: "template", strategy: "wasi-long-running-template", language: LanguageWasi, source: "main.go"},
 }
 
 type templateData struct {
@@ -79,6 +83,37 @@ func renderCandidate(contractPath, strategy string) (renderedCandidate, error) {
 // renderCandidateVersion renders a candidate at an explicit generator version.
 // The source is unchanged by the version; the manifest and provenance carry it.
 func renderCandidateVersion(contractPath, strategy, version string) (renderedCandidate, error) {
+	contractRaw, err := os.ReadFile(contractPath)
+	if err != nil {
+		return renderedCandidate{}, err
+	}
+	return renderCandidateBytes(contractRaw, strategy, version, nil)
+}
+
+// RenderForWorld reuses the fixed generator after resolving the reference
+// contract's inputs against the caller's already-loaded World. It neither
+// accepts the composite rule nor builds, selects, or executes the source.
+func RenderForWorld(world ir.World, contractJSON []byte, strategy, version string) ([]byte, CandidateManifest, error) {
+	candidate, err := renderCandidateBytes(contractJSON, strategy, version, &world)
+	if err != nil {
+		return nil, CandidateManifest{}, err
+	}
+	return candidate.Source, candidate.Manifest, nil
+}
+
+func renderCandidateBytes(contractRaw []byte, strategy, version string, world *ir.World) (renderedCandidate, error) {
+	var contract Contract
+	if err := json.Unmarshal(contractRaw, &contract); err != nil {
+		return renderedCandidate{}, err
+	}
+	if err := validateContract(contract); err != nil {
+		return renderedCandidate{}, err
+	}
+	if world != nil {
+		if err := validateAgainstWorkspace(contract, *world); err != nil {
+			return renderedCandidate{}, err
+		}
+	}
 	tmpl, ok := generatorTemplates[strategy]
 	if !ok {
 		return renderedCandidate{}, fmt.Errorf("unknown generator strategy %q", strategy)
@@ -86,17 +121,10 @@ func renderCandidateVersion(contractPath, strategy, version string) (renderedCan
 	if strings.TrimSpace(version) == "" {
 		return renderedCandidate{}, fmt.Errorf("generator version is required")
 	}
-	contractRaw, err := os.ReadFile(contractPath)
-	if err != nil {
-		return renderedCandidate{}, err
+	if contract.Rounding.Mode != "half-up" {
+		return renderedCandidate{}, fmt.Errorf("fixed generator strategy %q does not support rounding mode %q", strategy, contract.Rounding.Mode)
 	}
-	var contract Contract
-	if _, err := readJSON(contractPath, &contract); err != nil {
-		return renderedCandidate{}, err
-	}
-	if err := validateContract(contract); err != nil {
-		return renderedCandidate{}, err
-	}
+
 	templateRaw, err := templateFiles.ReadFile(tmpl.file)
 	if err != nil {
 		return renderedCandidate{}, err
@@ -121,7 +149,7 @@ func renderCandidateVersion(contractPath, strategy, version string) (renderedCan
 		return renderedCandidate{}, err
 	}
 	formatted := []byte(rendered.String())
-	if tmpl.language == LanguageGo || tmpl.language == LanguageWasm {
+	if tmpl.language == LanguageGo || tmpl.language == LanguageWasm || tmpl.language == LanguageWasi {
 		formatted, err = format.Source(formatted)
 		if err != nil {
 			return renderedCandidate{}, fmt.Errorf("generated source is not valid Go: %w", err)

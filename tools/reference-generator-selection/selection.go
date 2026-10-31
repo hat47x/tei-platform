@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/sha256"
+	_ "embed"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -30,6 +31,9 @@ import (
 	"tei/internal/workspace"
 )
 
+//go:embed templates/wasi_node.js
+var wasiRunner []byte
+
 const (
 	ContractSchema  = "tei.reference.generator-contract/v0"
 	FixtureSchema   = "tei.reference.generator-fixture/v0"
@@ -43,6 +47,7 @@ const (
 	LanguageJavaScript = "javascript"
 	LanguageJava       = "java"
 	LanguageWasm       = "wasm"
+	LanguageWasi       = "wasi"
 )
 
 type InputSpec struct {
@@ -591,7 +596,7 @@ func evaluateCandidate(ctx context.Context, dir string, fixture Fixture, contrac
 	if manifest.ID == "" || manifest.Origin == "" || manifest.Source == "" || manifest.SourceDigest == "" {
 		return reject("candidate identity is incomplete")
 	}
-	if language != LanguageGo && language != LanguagePython && language != LanguageJavaScript && language != LanguageJava && language != LanguageWasm {
+	if language != LanguageGo && language != LanguagePython && language != LanguageJavaScript && language != LanguageJava && language != LanguageWasm && language != LanguageWasi {
 		return reject("unsupported candidate language: " + language)
 	}
 	expectedExtension := ".go"
@@ -602,7 +607,7 @@ func evaluateCandidate(ctx context.Context, dir string, fixture Fixture, contrac
 		expectedExtension = ".js"
 	case LanguageJava:
 		expectedExtension = ".java"
-	case LanguageWasm:
+	case LanguageWasm, LanguageWasi:
 		expectedExtension = ".go"
 	}
 	if strings.ToLower(filepath.Ext(manifest.Source)) != expectedExtension {
@@ -697,7 +702,7 @@ func evaluateCandidate(ctx context.Context, dir string, fixture Fixture, contrac
 			return reject("generator provenance does not match the current contract and template")
 		}
 	}
-	var binaryPath, scriptPath, javaPath, javacPath, javaClassesDir, wasmPath, wasmExecPath, nodePath string
+	var binaryPath, scriptPath, javaPath, javacPath, javaClassesDir, wasmPath, wasmExecPath, nodePath, wasiRunnerPath string
 	switch language {
 	case LanguageGo:
 		binaryDir, err := os.MkdirTemp("", "tei-generator-candidate-*")
@@ -808,6 +813,45 @@ func evaluateCandidate(ctx context.Context, dir string, fixture Fixture, contrac
 			Reproducibility: "path-independent-twice",
 		}
 		receipt.BinaryDigest = receipt.BuildEvidence.BinaryDigest
+	case LanguageWasi:
+		var version string
+		var available bool
+		nodePath, version, available = resolveWasiRuntime()
+		receipt.Runtime = &RuntimeEvidence{
+			Language: LanguageWasi, Command: "node wasi_node.js <wasm>", Version: version, Available: available,
+		}
+		if !available {
+			return reject("runtime unavailable: node was not found")
+		}
+		wasiDir, err := os.MkdirTemp("", "tei-wasi-candidate-*")
+		if err != nil {
+			return CandidateReceipt{}, err
+		}
+		defer os.RemoveAll(wasiDir)
+		wasiRunnerPath = filepath.Join(wasiDir, "run.js")
+		if err := os.WriteFile(wasiRunnerPath, wasiRunner, 0o644); err != nil {
+			return CandidateReceipt{}, err
+		}
+		wasmPath = filepath.Join(wasiDir, "candidate.wasm")
+		buildCtx, cancel := context.WithTimeout(ctx, 2*time.Minute)
+		defer cancel()
+		reproduced, err := buildWasiTwice(buildCtx, dir, wasmPath)
+		if err != nil {
+			return reject("wasi build is not reproducible: " + err.Error())
+		}
+		binary, err := os.ReadFile(wasmPath)
+		if err != nil {
+			return CandidateReceipt{}, err
+		}
+		toolchain := goRuntimeVersion()
+		receipt.BuildEvidence = &BuildEvidence{
+			Language: LanguageWasi, Command: "GOOS=wasip1 GOARCH=wasm go build -trimpath -buildvcs=false",
+			Toolchain: toolchain, GOOS: "wasip1", GOARCH: "wasm", CGOEnabled: "0",
+			SourceDigest: manifest.SourceDigest, BinaryDigest: digest(binary),
+			ReproducedDigest: reproduced, BuildInputDigest: wasiBuildInputDigest(source, toolchain),
+			Reproducibility: "path-independent-twice",
+		}
+		receipt.BinaryDigest = receipt.BuildEvidence.BinaryDigest
 	}
 
 	for _, tc := range fixture.Cases {
@@ -821,6 +865,8 @@ func evaluateCandidate(ctx context.Context, dir string, fixture Fixture, contrac
 			got, execution, err = runProgram(ctx, javaPath, []string{"-cp", javaClassesDir, "Main"}, tc.Input, executionOptions)
 		case LanguageWasm:
 			got, execution, err = runProgram(ctx, nodePath, []string{wasmExecPath, wasmPath}, tc.Input, executionOptions)
+		case LanguageWasi:
+			got, execution, err = runProgram(ctx, nodePath, []string{"--no-warnings", wasiRunnerPath, wasmPath}, tc.Input, executionOptions)
 		default:
 			got, execution, err = runCandidate(ctx, binaryPath, tc.Input, executionOptions)
 		}
@@ -1166,6 +1212,84 @@ func resolveWasmRuntime() (nodePath, wasmExecPath, version string, available boo
 		return "", "", "", false
 	}
 	return node, wasmExec, strings.TrimSpace(string(out)), true
+}
+
+func wasiBuildInputDigest(source []byte, toolchain string) string {
+	return digest([]byte(strings.Join([]string{
+		"GOOS=wasip1 GOARCH=wasm go build -trimpath -buildvcs=false", LanguageWasi, digest(source), toolchain,
+	}, "\x00")))
+}
+
+func buildWasiTwice(ctx context.Context, dir, wasmPath string) (string, error) {
+	firstDir, err := os.MkdirTemp("", "tei-wasi-repro-a-*")
+	if err != nil {
+		return "", err
+	}
+	defer os.RemoveAll(firstDir)
+	secondDir, err := os.MkdirTemp("", "tei-wasi-repro-b-*")
+	if err != nil {
+		return "", err
+	}
+	defer os.RemoveAll(secondDir)
+	if err := copyGoSources(dir, firstDir); err != nil {
+		return "", err
+	}
+	if err := copyGoSources(dir, secondDir); err != nil {
+		return "", err
+	}
+	if err := buildWasiCandidate(ctx, firstDir, wasmPath); err != nil {
+		return "", err
+	}
+	first, err := os.ReadFile(wasmPath)
+	if err != nil {
+		return "", err
+	}
+	secondPath := wasmPath + ".second"
+	if err := buildWasiCandidate(ctx, secondDir, secondPath); err != nil {
+		return "", err
+	}
+	second, err := os.ReadFile(secondPath)
+	if err != nil {
+		return "", err
+	}
+	firstDigest, secondDigest := digest(first), digest(second)
+	if firstDigest != secondDigest {
+		return secondDigest, fmt.Errorf("first %s, second %s", firstDigest, secondDigest)
+	}
+	return secondDigest, nil
+}
+
+func buildWasiCandidate(ctx context.Context, dir, outputPath string) error {
+	build := exec.CommandContext(ctx, "go", "build", "-trimpath", "-buildvcs=false", "-o", outputPath, "main.go")
+	build.Dir = dir
+	build.Env = append(os.Environ(), "GOOS=wasip1", "GOARCH=wasm")
+	out, err := build.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("%v: %s", err, out)
+	}
+	return nil
+}
+
+func resolveWasiRuntime() (nodePath, version string, available bool) {
+	node, err := exec.LookPath("node")
+	if err != nil {
+		return "", "", false
+	}
+	out, err := exec.Command(node, "--version").CombinedOutput()
+	if err != nil {
+		return "", "", false
+	}
+	return node, strings.TrimSpace(string(out)), true
+}
+
+// ResolveWasiRuntime exposes the same Node discovery for target-profile probes.
+func ResolveWasiRuntime() (nodePath, version string, available bool) {
+	return resolveWasiRuntime()
+}
+
+// WasiRunnerSource returns the embedded Node WASI preview1 runner.
+func WasiRunnerSource() []byte {
+	return wasiRunner
 }
 
 // ResolveScriptRuntime uses the same interpreter discovery for selection and

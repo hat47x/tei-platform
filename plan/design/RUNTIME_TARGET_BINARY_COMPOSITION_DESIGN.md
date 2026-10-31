@@ -1,6 +1,6 @@
 # 多様な実行環境に向けた最小ランタイムと配備単位の設計
 
-> **後続判断（2026-10-24）**：[ADR-0041](../adr/0041-target-native-artifacts-without-tei-host.md)により、最小ランタイムはTEI共通Hostの必須構成を意味しません。対象環境の既存機構の利用、アプリケーションへの組込み、必要機能の静的結合を基本の選択肢として評価します。本書は評価待ちの候補であり、採用済みRuntime仕様ではありません。
+> **後続判断（2026-10-24）**：[ADR-0043](../adr/0043-target-native-artifacts-without-tei-host.md)により、最小ランタイムはTEI共通Hostの必須構成を意味しません。対象環境の既存機構の利用、アプリケーションへの組込み、必要機能の静的結合を基本の選択肢として評価します。本書は評価待ちの候補であり、採用済みRuntime仕様ではありません。
 
 - **状態**: 評価待ち（2026-10-09）。設計候補であり、実装済みの機能、採用済みの配備定義形式、全環境への対応を主張しない。
 - **主担当**: [Target Capability / 実行・信頼条件の検証 #259](https://github.com/hat47x/tei-platform/issues/259)。ビルドの入力・成果物・固定情報は[#943](https://github.com/hat47x/tei-platform/issues/943)、Capability契約と実装選択は[#951](https://github.com/hat47x/tei-platform/issues/951)、案件構成は[#1016](https://github.com/hat47x/tei-platform/issues/1016)へ戻す。

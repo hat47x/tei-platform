@@ -10,6 +10,8 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	generatorselection "tei/tools/reference-generator-selection"
 )
 
 const (
@@ -23,6 +25,7 @@ type StoredObject struct {
 	SourceDigest  string `json:"sourceDigest"`
 	BinaryDigest  string `json:"binaryDigest"`
 	CandidateID   string `json:"candidateId"`
+	Language      string `json:"language,omitempty"`
 	Path          string `json:"path"`
 	SourceBytes   int64  `json:"sourceBytes"`
 	ArtifactBytes int64  `json:"artifactBytes"`
@@ -122,15 +125,56 @@ func List(storeDir string) (ListReceipt, error) {
 		object.SourceDigest = metadata.SourceDigest
 		object.BinaryDigest = metadata.BinaryDigest
 		object.CandidateID = metadata.CandidateID
+		object.Language = metadata.Language
 		source, sourceErr := os.ReadFile(filepath.Join(objectPath, "source"))
 		artifact, artifactErr := os.ReadFile(filepath.Join(objectPath, "artifact"))
+		storedReceipt, receiptErr := os.ReadFile(filepath.Join(objectPath, "receipt.json"))
+		var selection generatorselection.Receipt
+		var selected *generatorselection.CandidateReceipt
+		receiptParseErr := error(nil)
+		evidenceDigest := ""
+		if receiptErr == nil {
+			receiptParseErr = json.Unmarshal(storedReceipt, &selection)
+			if receiptParseErr == nil {
+				for index := range selection.Candidates {
+					if selection.Candidates[index].ID == metadata.CandidateID {
+						selected = &selection.Candidates[index]
+						break
+					}
+				}
+				if selected != nil {
+					evidenceDigest, receiptParseErr = buildEvidenceDigest(selected)
+				}
+			}
+		}
 		switch {
 		case sourceErr != nil:
 			object.Reason = "source is unreadable: " + sourceErr.Error()
 		case artifactErr != nil:
 			object.Reason = "artifact is unreadable: " + artifactErr.Error()
+		case receiptErr != nil:
+			object.Reason = "selection receipt is unreadable: " + receiptErr.Error()
+		case digest(storedReceipt) != metadata.ReceiptDigest:
+			object.Reason = "stored selection receipt digest does not match"
+		case receiptParseErr != nil:
+			object.Reason = "stored selection receipt is invalid: " + receiptParseErr.Error()
+		case selected == nil:
+			object.Reason = "stored selection receipt does not contain the candidate"
+		case selected.SourceDigest != metadata.SourceDigest || selected.BinaryDigest != metadata.BinaryDigest:
+			object.Reason = "stored selection receipt digests do not match the object"
+		case evidenceDigest != metadata.BuildEvidenceDigest:
+			object.Reason = "stored build evidence digest does not match the selection receipt"
 		case digest(source) != metadata.SourceDigest:
 			object.Reason = "stored source digest does not match"
+		case metadata.BinaryDigest == "" && len(artifact) != 0:
+			object.Reason = "source-only artifact is not empty"
+		case metadata.BinaryDigest == "":
+			if filepath.Base(objectPath) != trimDigest(metadata.SourceDigest) {
+				object.Reason = "object path does not match the source digest"
+			} else {
+				object.Verified = true
+				object.SourceBytes = int64(len(source))
+			}
 		case digest(artifact) != metadata.BinaryDigest:
 			object.Reason = "stored artifact digest does not match"
 		case filepath.Base(objectPath) != trimDigest(metadata.SourceDigest):

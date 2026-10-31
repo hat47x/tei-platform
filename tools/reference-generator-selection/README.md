@@ -77,6 +77,10 @@ WebAssemblyの参照候補も生成できます。
 go run ./tools/reference-generator-selection/cmd/tei-generator-build \
   -contract tools/reference-generator-selection/testdata/line-amount/contract.json \
   -strategy wasm-template -out /tmp/line-amount-wasm
+
+go run ./tools/reference-generator-selection/cmd/tei-generator-build \
+  -contract tools/reference-generator-selection/testdata/line-amount/contract.json \
+  -strategy wasi-template -out /tmp/line-amount-wasi
 ```
 
 外部モデルが出したsourceは、promptとcontextとともに記録できます。
@@ -113,7 +117,7 @@ go run ./tools/reference-generator-selection/cmd/tei-generator-model \
   -command 'your-model-cli ... "$TEI_PROMPT" "$TEI_CONTEXT" > "$TEI_SOURCE"'
 ```
 
-`tei-generator-model`は、`TEI_CONTRACT`、`TEI_LANGUAGE`、`TEI_PROMPT`、`TEI_CONTEXT`、`TEI_SOURCE`、`TEI_TMPDIR`、`TEI_PROVIDER`、`TEI_MODEL`を環境変数で渡し、コマンドが`TEI_SOURCE`へ書いたsourceを記録します。`-language python`では`TEI_SOURCE`が`.py`になり、記録先も`main.py`です。`TEI_CONTRACT`は候補の契約digestを求める入力であり、コマンドが別契約向けのsourceを出しても、選抜は現在の契約との不一致として拒否します。特定ベンダーのAPI・認証・課金・モデル版管理は埋め込みません。コマンドは信頼済みのものだけを指定し、秘密情報を出力しないでください。
+`tei-generator-model`は、`TEI_CONTRACT`、`TEI_LANGUAGE`、`TEI_PROMPT`、`TEI_CONTEXT`、`TEI_SOURCE`、`TEI_TMPDIR`、`TEI_PROVIDER`、`TEI_MODEL`を環境変数で渡し、コマンドが`TEI_SOURCE`へ書いたsourceを記録します。`-language python`では`TEI_SOURCE`が`.py`になり、記録先も`main.py`です。`TEI_CONTRACT`は候補の契約digestを求める入力であり、コマンドが別契約向けのsourceを出しても、選抜は現在の契約との不一致として拒否します。特定ベンダーのAPI・認証・課金・モデル版管理は埋め込みません。コマンドは信頼済みのものだけを指定し、秘密情報を出力しないでください。コマンドは`bash -c`で起動し、loginシェル（`~/.profile`等）は読まないため、receiptは利用者のlogin環境に依存しません。コマンドの解決は親プロセスの環境（`PATH`を含む）に依存します。
 
 外部の**生成器**が候補sourceを生成する場合は、生成器を深さ1で実行して記録できます。
 
@@ -171,7 +175,7 @@ go run ./tools/reference-generator-selection/cmd/tei-generator-meta \
 
 ## 生成器sourceの生成
 
-`tei-generator-build`は、契約JSONと固定strategy（`template`、`alternative`、`dangerous`、`python-template`、`javascript-template`、`java-template`、`wasm-template`、`long-running-template`、`python-long-running-template`、`javascript-long-running-template`、`java-long-running-template`、`wasm-long-running-template`）から、候補sourceを決定的に生成します。
+`tei-generator-build`は、契約JSONと固定strategy（`template`、`alternative`、`dangerous`、`python-template`、`javascript-template`、`java-template`、`wasm-template`、`wasi-template`、`long-running-template`、`python-long-running-template`、`javascript-long-running-template`、`java-long-running-template`、`wasm-long-running-template`、`wasi-long-running-template`）から、候補sourceを決定的に生成します。
 
 - Goのsourceは`go/format`で整形してから書き出します。Python・JavaScript・Javaのsourceは整形せず、生成したbyte列をそのまま使います。
 - `candidate.json`には`language`、`source`（`main.go`/`main.py`/`main.js`）、`generator`を記録します。
@@ -186,17 +190,19 @@ go run ./tools/reference-generator-selection/cmd/tei-generator-meta \
 
 ## 別言語候補の実行
 
-`python-template`はPython、`javascript-template`はJavaScript、`java-template`はJava、`wasm-template`はGo sourceからWebAssemblyの参照候補を生成します。候補manifestの`language`は`python`/`javascript`/`java`/`wasm`、sourceは`main.py`/`main.js`/`Main.java`/`main.go`です。
+`python-template`はPython、`javascript-template`はJavaScript、`java-template`はJava、`wasm-template`はGo sourceからWebAssemblyの参照候補、`wasi-template`はGo sourceからWASI preview1の参照候補を生成します。候補manifestの`language`は`python`/`javascript`/`java`/`wasm`/`wasi`、sourceは`main.py`/`main.js`/`Main.java`/`main.go`です。
 
 - Go候補は`go build`で実行ファイルを作り、`binaryDigest`を記録します。
 - Python候補は`python3`または`python`、JavaScript候補は`node`でsourceを実行します。どちらも`binaryDigest`は空です。
 - Java候補はsourceを2つの別directoryへcopyし、それぞれ`javac -d <classes> Main.java`でcompileして`Main.class`のdigestを比較します。一致した場合だけ合格し、`java -cp <classes> Main`で実行します。`binaryDigest`は`Main.class`のdigest、`reproducibility`は`path-independent-twice`です。
 - WASM候補はsourceを2つの別directoryへcopyし、それぞれ`GOOS=js GOARCH=wasm go build -trimpath -buildvcs=false`で`.wasm`を作ってdigestを比較します。一致した場合だけ合格し、`node <GOROOT>/lib/wasm/wasm_exec_node.js <candidate.wasm>`で実行します。`binaryDigest`はwasm binaryのdigest、`reproducibility`は`path-independent-twice`です。
-- receiptの`runtime`へ、言語、起動方法、処理系のversion、利用可否を記録します。Javaは`javac`と`java`、WASMは`node`と`wasm_exec_node.js`が必要です。
+- WASI候補はsourceを2つの別directoryへcopyし、それぞれ`GOOS=wasip1 GOARCH=wasm go build -trimpath -buildvcs=false`で`.wasm`を作ってdigestを比較します。一致した場合だけ合格し、`node --no-warnings <embedded wasi_node.js> <candidate.wasm>`で実行します。`binaryDigest`はwasm binaryのdigest、`reproducibility`は`path-independent-twice`です。runnerはstdoutのflush前に終了して出力を切り捨てないよう、`process.exit`ではなく`exitCode`を使います。
+- receiptの`runtime`へ、言語、起動方法、処理系のversion、利用可否を記録します。Javaは`javac`と`java`、WASMは`node`と`wasm_exec_node.js`、WASIは`node`の`node:wasi`が必要です。
 - 処理系が見つからない場合は`runtime unavailable`として拒否し、PASSや空の結果へ潰しません。
 - source拡張子が`language`と一致しない候補、未知の`language`を拒否します。
-- 同じfixtureでGo候補とPython候補、Go候補とJavaScript候補、Go候補とJava候補、Go候補とWASM候補の出力を比較する試験を持つ。これは同じ参照契約の範囲であり、すべての言語・Runtimeの同等性を証明しません。
-- JavaとWASMは、同じ環境でのsource path非依存build一致までを確認します。別machine・別toolchain・clean cache・実JVM/実WASM runtimeでの再現性は未検証です。JVM/WASM runtimeの版・依存解決・実Targetでの起動は別の境界です。
+- 同じfixtureでGo候補とPython候補、Go候補とJavaScript候補、Go候補とJava候補、Go候補とWASM候補、Go候補とWASI候補の出力を比較する試験を持つ。これは同じ参照契約の範囲であり、すべての言語・Runtimeの同等性を証明しません。
+- Java、WASM、WASIは、同じ環境でのsource path非依存build一致までを確認します。別machine・別toolchain・clean cache・実JVM/実WASM runtimeでの再現性は未検証です。JVM/WASM runtimeの版・依存解決・実Targetでの起動は別の境界です。
+- WASIはNodeの`node:wasi`（preview1）を使う参照実行であり、Nodeのexperimental機能に依存します。wasmtime/browser/embedded runtime、実Targetでの起動は未対応です。
 
 これらの参照は、別言語・別実行形式の候補を同じ選抜経路へ載せられることの確認であり、Python/JavaScript/Java/WASM製品実装の採用や、実Targetでの処理系固定を意味しません。
 
@@ -209,8 +215,8 @@ go run ./tools/reference-generator-selection/cmd/tei-generator-meta \
 - 選抜のfixture実行は、これまでどおりcaseごとにprocessを起動します。
 - `tei-target-profile`のlong-running profileは、この候補を1 processで起動し、全requestのresponseをfixtureと比較します。
 - processが途中で終了した場合、response数が足りない場合、fixtureと異なる場合は失敗します。
-- `python-long-running-template`、`javascript-long-running-template`、`java-long-running-template`、`wasm-long-running-template`は、同じ計算・拒否を各言語・実行形式のnewline-delimited JSON処理として生成します。既存の単発テンプレートは変更せず、別のtemplate digestで識別します。
-- Target ProfileのprobeはGo・Python・JavaScript・Java・WASM候補を対象とします。WASMのlong-running/batchはLinux CIで検証し、WindowsのNode wasm_execは未対応です。処理系がなければ不合格とし、Go以外にはGoのメモリ上限が効かないことをreceiptへ記録します。
+- `python-long-running-template`、`javascript-long-running-template`、`java-long-running-template`、`wasm-long-running-template`、`wasi-long-running-template`は、同じ計算・拒否を各言語・実行形式のnewline-delimited JSON処理として生成します。既存の単発テンプレートは変更せず、別のtemplate digestで識別します。
+- Target ProfileのprobeはGo・Python・JavaScript・Java・WASM・WASI候補を対象とします。WASMのlong-running/batchはLinux CIで検証し、WindowsのNode wasm_execは未対応です。WASIはNodeの`node:wasi`で実行します。処理系がなければ不合格とし、Go以外にはGoのメモリ上限が効かないことをreceiptへ記録します。
 
 ## Go候補のbuild evidence
 
@@ -305,3 +311,15 @@ reconcileは候補をビルド・実行・選抜しません。再生成した�
 - Java以外のJVM言語、.NET/WASM等と、実Targetでの処理系固定・依存解決。
 - 実Provider・実Targetでの比較。
 - 候補のartifact store、別machine・別toolchain・clean cacheでのbuild再現性（#943 / #1370 / #1104）。
+
+## 丸め契約と固定生成器の対応範囲
+
+契約の検証は`half-up`と`half-even`を区別して許容しますが、現在の固定strategyが生成できるのは`half-up`だけです。`half-even`を指定した生成は、source・manifest・出力directoryの公開前に明示的に拒否します。`Generate` / `GenerateVersion` / `GenerateAll`、来歴確認での再描画、`RenderForWorld`と設計bundleへの接続に共通の検査です。対応していない丸めを別の方式へ置き換えません。
+
+これは固定生成器の制約であり、業務で`half-up`を採用する判断や、契約全体から`half-even`を禁止する変更ではありません。将来対応する場合は、正負のtie（1.005 / -1.005等）を既存D8の独立期待値と比較し、各生成言語・単発/常駐で確認します。通常の`half-up`のtemplate bytes・出力・digestは変更しません。
+
+## 読込み済みWorldからの描画
+
+`RenderForWorld`は、呼出元が一度読み込んだWorldと契約JSONのbyte列を受け取り、入力属性・型と出力型を照合してから、既存の固定strategyのsourceとcandidate manifestを返します。filesystemの出力、build・選抜・実行は行いません。契約の複合規則の受理やHostの実行許可を与えるAPIではありません。
+
+[設計成果物bundle](../reference-design-output/README.md)では、文書とコード候補を同じWorldとsource revisionへ結び付けるために使います。manifestの対応は来歴であり、モデル全体の意味的な網羅や実行適合の証拠とは区別します。

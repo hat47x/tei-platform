@@ -174,12 +174,25 @@ final class Ui {
 
     static Map<String, Object> invoke(final Map<String, Object> selector, final long settleMs) throws Exception {
         final Component target = resolve(selector);
+        call(new Callable<Void>() {
+            @Override public Void call() {
+                if (!target.isEnabled()) {
+                    throw new BridgeException("COMPONENT_NOT_EDITABLE", "component is disabled");
+                }
+                return null;
+            }
+        }, DEFAULT_TIMEOUT_MS);
         final String label = describeComponent(target);
         final long started = System.currentTimeMillis();
+        Trace.record("invoke", label, "settleMs=" + settleMs);
         SwingUtilities.invokeLater(new Runnable() {
             @Override
             public void run() {
                 try {
+                    Trace.record("invoke.start", label, "enabled=" + target.isEnabled() + " showing=" + target.isShowing());
+                    if (!target.isEnabled()) {
+                        throw new BridgeException("COMPONENT_NOT_EDITABLE", "component became disabled before invocation");
+                    }
                     if (target instanceof AbstractButton) {
                         ((AbstractButton) target).doClick(0);
                     } else if (target instanceof JTabbedPane) {
@@ -190,12 +203,12 @@ final class Ui {
                     } else {
                         throw new IllegalStateException("component does not accept invoke: " + target.getClass().getName());
                     }
+                    Trace.record("invoke.complete", label, "handler returned");
                 } catch (Throwable t) {
                     Trace.record("invoke.error", label, describe(t));
                 }
             }
         });
-        Trace.record("invoke", label, "settleMs=" + settleMs);
         if (settleMs > 0) {
             Thread.sleep(Math.min(settleMs, 30000));
         }
@@ -214,18 +227,20 @@ final class Ui {
         return call(new Callable<Map<String, Object>>() {
             @Override
             public Map<String, Object> call() {
+                if (!target.isEnabled()) {
+                    throw new BridgeException("COMPONENT_NOT_EDITABLE", "component is disabled");
+                }
                 Object oldValue = readValue(target);
-                boolean customField = setCustomFieldValue(target, requestedValue);
-                if (customField) {
-                    // X-TEA wraps editable fields in XFTextField and similar
-                    // components; setting the inner JTextField alone leaves the
-                    // wrapper's value state unchanged.
-                } else if (target instanceof JTextComponent) {
+                if (target instanceof JTextComponent) {
                     JTextComponent text = (JTextComponent) target;
+                    if (!text.isEditable() || !text.isEnabled()) {
+                        throw new BridgeException("COMPONENT_NOT_EDITABLE", "text component is read-only or disabled");
+                    }
                     String value = requestedValue == null ? "" : String.valueOf(requestedValue);
                     if ("append".equalsIgnoreCase(mode)) {
-                        text.setText(text.getText() + value);
-                    } else {
+                        value = text.getText() + value;
+                    }
+                    if (!setCustomFieldValue(target, value)) {
                         text.setText(value);
                     }
                 } else if (target instanceof JComboBox) {
@@ -409,6 +424,11 @@ final class Ui {
                 if (!table.isCellEditable(row, column)) {
                     throw new BridgeException("CELL_NOT_EDITABLE", "cell is not editable");
                 }
+                Object current = table.getValueAt(row, column);
+                if (current != null && (method(current.getClass(), "getColumnMap") != null
+                        || method(current.getClass(), "getColumnValueMap") != null)) {
+                    throw new BridgeException("INVALID_ARGUMENT", "custom row object requires /table/edit");
+                }
                 table.setValueAt(cellValue, row, column);
                 if (table.isEditing()) {
                     table.getCellEditor().stopCellEditing();
@@ -490,6 +510,56 @@ final class Ui {
         }, DEFAULT_TIMEOUT_MS);
     }
 
+    /** Use the real editor: X-TEA stores a whole logical row in one model cell. */
+    static Map<String, Object> tableEdit(final Map<String, Object> selector, final Map<String, Object> request)
+            throws Exception {
+        final Component target = resolve(selector);
+        if (!(target instanceof JTable)) {
+            throw new BridgeException("NOT_A_TABLE", "selector does not resolve to a table");
+        }
+        return call(new Callable<Map<String, Object>>() {
+            @Override
+            public Map<String, Object> call() {
+                JTable table = (JTable) target;
+                String action = stringValue(request.get("action"));
+                if ("commit".equals(action) || "cancel".equals(action)) {
+                    if (!table.isEditing()) {
+                        throw new BridgeException("INVALID_STATE", "table has no active editor");
+                    }
+                    if ("cancel".equals(action)) {
+                        table.getCellEditor().cancelCellEditing();
+                    } else if (!table.getCellEditor().stopCellEditing()) {
+                        throw new BridgeException("INVALID_VALUE", "cell editor rejected the value");
+                    }
+                } else if ("start".equals(action)) {
+                    int row = intValue(request.get("row"), -1);
+                    int column = columnIndex(table, request.get("column"));
+                    if (row < 0 || row >= table.getRowCount()) {
+                        throw new BridgeException("INVALID_ROW", "row out of range: " + row);
+                    }
+                    if (column < 0 || column >= table.getColumnCount()) {
+                        throw new BridgeException("INVALID_COLUMN", "column out of range: " + column);
+                    }
+                    if (table.isEditing() && !table.getCellEditor().stopCellEditing()) {
+                        throw new BridgeException("INVALID_VALUE", "current cell editor rejected the value");
+                    }
+                    if (!table.editCellAt(row, column)) {
+                        throw new BridgeException("CELL_NOT_EDITABLE", "cell editor could not start");
+                    }
+                    table.getEditorComponent().requestFocusInWindow();
+                } else {
+                    throw new BridgeException("INVALID_ARGUMENT", "action must be start, commit or cancel");
+                }
+                Trace.record("table.edit", describeComponent(table), Json.write(request));
+                Map<String, Object> value = new LinkedHashMap<String, Object>();
+                value.put("editing", table.isEditing());
+                value.put("row", table.getEditingRow());
+                value.put("column", table.getEditingColumn());
+                return value;
+            }
+        }, DEFAULT_TIMEOUT_MS);
+    }
+
     static Map<String, Object> key(final Map<String, Object> selector, final Map<String, Object> request)
             throws Exception {
         final Component target = selector == null || selector.isEmpty() ? null : resolve(selector);
@@ -544,6 +614,7 @@ final class Ui {
         final int count = Math.max(1, Math.min(intValue(request.get("count"), 1), 3));
         final int row = intValue(request.get("row"), -1);
         final int column = intValue(request.get("column"), -1);
+        final int button = intValue(request.get("button"), 1) == 3 ? 3 : 1;
         final String label = describeComponent(target);
         SwingUtilities.invokeLater(new Runnable() {
             @Override
@@ -556,25 +627,153 @@ final class Ui {
                         Rectangle cell = table.getCellRect(row, column >= 0 ? column : 0, true);
                         x = cell.x + Math.max(1, cell.width / 2);
                         y = cell.y + Math.max(1, cell.height / 2);
+                    } else if (target instanceof JList && row >= 0) {
+                        JList list = (JList) target;
+                        Rectangle cell = list.getCellBounds(row, row);
+                        if (cell != null) {
+                            x = cell.x + Math.max(1, cell.width / 2);
+                            y = cell.y + Math.max(1, cell.height / 2);
+                        }
+                    } else if (target instanceof JTree && ((JTree) target).getSelectionPath() != null) {
+                        Rectangle path = ((JTree) target).getPathBounds(((JTree) target).getSelectionPath());
+                        if (path != null) {
+                            x = path.x + Math.max(1, path.width / 2);
+                            y = path.y + Math.max(1, path.height / 2);
+                        }
                     }
                     long now = System.currentTimeMillis();
+                    int mask = button == 3 ? java.awt.event.InputEvent.BUTTON3_DOWN_MASK
+                            : java.awt.event.InputEvent.BUTTON1_DOWN_MASK;
                     for (int i = 1; i <= count; i++) {
                         target.dispatchEvent(new java.awt.event.MouseEvent(target,
-                                java.awt.event.MouseEvent.MOUSE_CLICKED, now,
-                                java.awt.event.InputEvent.BUTTON1_DOWN_MASK, x, y, i, false,
-                                java.awt.event.MouseEvent.BUTTON1));
+                                java.awt.event.MouseEvent.MOUSE_PRESSED, now, mask, x, y, i, false, button));
+                        target.dispatchEvent(new java.awt.event.MouseEvent(target,
+                                java.awt.event.MouseEvent.MOUSE_RELEASED, now, mask, x, y, i, false, button));
+                        if (button == 1) {
+                            target.dispatchEvent(new java.awt.event.MouseEvent(target,
+                                    java.awt.event.MouseEvent.MOUSE_CLICKED, now, mask, x, y, i, false, button));
+                        }
                     }
                 } catch (Throwable t) {
                     Trace.record("click.error", label, describe(t));
                 }
             }
         });
-        Trace.record("click", label, "count=" + count + ",row=" + row + ",column=" + column);
+        Trace.record("click", label, "count=" + count + ",row=" + row + ",column=" + column + ",button=" + button);
         Map<String, Object> value = new LinkedHashMap<String, Object>();
         value.put("accepted", Boolean.TRUE);
         value.put("target", label);
         value.put("count", count);
+        value.put("button", button);
         return value;
+    }
+
+    static Map<String, Object> drag(final Map<String, Object> selector, final Map<String, Object> request)
+            throws Exception {
+        final Component target = resolve(selector);
+        if (!(target instanceof JTable)) {
+            throw new BridgeException("NOT_A_TABLE", "drag currently requires a table");
+        }
+        final JTable table = (JTable) target;
+        final int fromRow = intValue(request.get("fromRow"), -1);
+        final int toRow = intValue(request.get("toRow"), -1);
+        final int column = intValue(request.get("column"), 0);
+        if (fromRow < 0 || toRow < 0 || fromRow >= table.getRowCount() || toRow >= table.getRowCount()) {
+            throw new BridgeException("INVALID_ARGUMENT", "fromRow/toRow must be valid table rows");
+        }
+        final String label = describeComponent(target);
+        SwingUtilities.invokeLater(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    Rectangle from = table.getCellRect(fromRow, column, true);
+                    Rectangle to = table.getCellRect(toRow, column, true);
+                    int fromX = from.x + from.width / 2;
+                    int fromY = from.y + from.height / 2;
+                    int toX = to.x + to.width / 2;
+                    int toY = to.y + to.height / 2;
+                    long now = System.currentTimeMillis();
+                    target.dispatchEvent(new java.awt.event.MouseEvent(target,
+                            java.awt.event.MouseEvent.MOUSE_PRESSED, now,
+                            java.awt.event.InputEvent.BUTTON1_DOWN_MASK, fromX, fromY, 1, false,
+                            java.awt.event.MouseEvent.BUTTON1));
+                    target.dispatchEvent(new java.awt.event.MouseEvent(target,
+                            java.awt.event.MouseEvent.MOUSE_DRAGGED, now,
+                            java.awt.event.InputEvent.BUTTON1_DOWN_MASK, toX, toY, 1, false,
+                            java.awt.event.MouseEvent.BUTTON1));
+                    target.dispatchEvent(new java.awt.event.MouseEvent(target,
+                            java.awt.event.MouseEvent.MOUSE_RELEASED, now,
+                            java.awt.event.InputEvent.BUTTON1_DOWN_MASK, toX, toY, 1, false,
+                            java.awt.event.MouseEvent.BUTTON1));
+                } catch (Throwable t) {
+                    Trace.record("drag.error", label, describe(t));
+                }
+            }
+        });
+        Trace.record("drag", label, "from=" + fromRow + " to=" + toRow);
+        Map<String, Object> value = new LinkedHashMap<String, Object>();
+        value.put("accepted", Boolean.TRUE);
+        value.put("target", label);
+        value.put("fromRow", fromRow);
+        value.put("toRow", toRow);
+        return value;
+    }
+
+    static Map<String, Object> invokeMethod(final Map<String, Object> selector, final Map<String, Object> request)
+            throws Exception {
+        final Component target = resolve(selector);
+        final String name = String.valueOf(request.get("method"));
+        final java.lang.reflect.Method method = findMethod(target.getClass(), name);
+        if (method == null) {
+            StringBuilder available = new StringBuilder();
+            for (java.lang.reflect.Method candidate : target.getClass().getDeclaredMethods()) {
+                if (candidate.getName().toLowerCase().contains("delete")) {
+                    available.append(candidate.getName()).append(" ");
+                }
+            }
+            throw new BridgeException("METHOD_NOT_FOUND",
+                    "no zero-arg or ActionEvent method: " + name
+                            + " on " + target.getClass().getName()
+                            + " (delete methods: " + available.toString().trim() + ")");
+        }
+        method.setAccessible(true);
+        final String label = describeComponent(target);
+        SwingUtilities.invokeLater(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    if (method.getParameterTypes().length == 0) {
+                        method.invoke(target);
+                    } else {
+                        method.invoke(target, new ActionEvent(target, ActionEvent.ACTION_PERFORMED, ""));
+                    }
+                } catch (Throwable t) {
+                    Trace.record("invoke-method.error", label, describe(t));
+                }
+            }
+        });
+        Trace.record("invoke-method", label, name);
+        Map<String, Object> value = new LinkedHashMap<String, Object>();
+        value.put("accepted", Boolean.TRUE);
+        value.put("target", label);
+        value.put("method", name);
+        return value;
+    }
+
+    private static java.lang.reflect.Method findMethod(Class<?> type, String name) {
+        for (Class<?> current = type; current != null; current = current.getSuperclass()) {
+            for (java.lang.reflect.Method method : current.getDeclaredMethods()) {
+                if (!method.getName().equals(name)) {
+                    continue;
+                }
+                Class<?>[] parameters = method.getParameterTypes();
+                if (parameters.length == 0
+                        || (parameters.length == 1 && parameters[0].equals(ActionEvent.class))) {
+                    return method;
+                }
+            }
+        }
+        return null;
     }
 
     static Map<String, Object> close(final Map<String, Object> selector) throws Exception {
@@ -654,6 +853,9 @@ final class Ui {
                 Component component = target;
                 if (component == null) {
                     Window active = activeWindow();
+                    if (active == null && !orderedWindows().isEmpty()) {
+                        active = orderedWindows().get(0);
+                    }
                     if (active == null) {
                         throw new BridgeException("NO_WINDOW", "no visible window");
                     }
@@ -733,6 +935,7 @@ final class Ui {
 
     private static Component resolveOnEdt(Map<String, Object> selector) {
         String windowPattern = stringValue(selector.get("window"));
+        String windowClass = stringValue(selector.get("windowClass"));
         String path = stringValue(selector.get("path"));
         List<Window> candidates = new ArrayList<Window>();
         Window active = activeWindow();
@@ -750,11 +953,12 @@ final class Ui {
         Pattern name = optionalPattern(selector.get("name"));
         Pattern className = optionalPattern(selector.get("class"));
         int wantedIndex = intValue(selector.get("index"), 0);
-        int found = 0;
-        Component firstMatch = null;
-        Component firstVisibleMatch = null;
+        List<Component> foundComponents = new ArrayList<Component>();
         for (Window window : candidates) {
             if (windowPattern != null && !matches(windowPattern, titleOf(window))) {
+                continue;
+            }
+            if (windowClass != null && !matches(windowClass, window.getClass().getName())) {
                 continue;
             }
             if (path != null) {
@@ -764,29 +968,26 @@ final class Ui {
                 }
                 continue;
             }
+            if ("window".equals(role) && matchesComponent(window, role, text, contains, name, className)) {
+                foundComponents.add(window);
+                continue;
+            }
             List<Component> components = flatten(window, true);
             for (Component component : components) {
                 if (matchesComponent(component, role, text, contains, name, className)) {
-                    if (found == wantedIndex) {
-                        if (component.isShowing()) {
-                            return component;
-                        }
-                        if (component.isVisible() && firstVisibleMatch == null) {
-                            firstVisibleMatch = component;
-                        }
-                        if (firstMatch == null) {
-                            firstMatch = component;
-                        }
-                    }
-                    found++;
+                    foundComponents.add(component);
                 }
             }
         }
-        if (firstVisibleMatch != null) {
-            return firstVisibleMatch;
-        }
-        if (firstMatch != null) {
-            return firstMatch;
+        Collections.sort(foundComponents, new java.util.Comparator<Component>() {
+            @Override public int compare(Component left, Component right) {
+                int a = left.isShowing() ? 0 : left.isVisible() ? 1 : 2;
+                int b = right.isShowing() ? 0 : right.isVisible() ? 1 : 2;
+                return Integer.compare(a, b);
+            }
+        });
+        if (wantedIndex >= 0 && wantedIndex < foundComponents.size()) {
+            return foundComponents.get(wantedIndex);
         }
         throw new BridgeException("NOT_FOUND", "no component matched selector " + Json.write(selector));
     }
@@ -829,6 +1030,9 @@ final class Ui {
     private static Map<String, Object> node(Component component, String ref, String path, int depth, int maxDepth,
             int maxNodes, boolean includeTableRows, boolean includeInvisible, int[] count,
             IdentityHashMap<Object, Object> seen) {
+        if (component instanceof javax.swing.CellRendererPane) {
+            return null;
+        }
         if (count[0] >= maxNodes) {
             return null;
         }
@@ -846,7 +1050,7 @@ final class Ui {
         value.put("bounds", bounds(component));
         if (component instanceof JTextComponent) {
             value.put("editable", Boolean.valueOf(((JTextComponent) component).isEditable()));
-            value.put("textValue", brief(readValue(component)));
+            value.put("textValue", readValue(component));
         }
         if (component instanceof AbstractButton) {
             value.put("selected", Boolean.valueOf(((AbstractButton) component).isSelected()));
@@ -893,6 +1097,20 @@ final class Ui {
             JList<?> list = (JList<?>) component;
             value.put("itemCount", list.getModel().getSize());
             value.put("selectedIndex", list.getSelectedIndex());
+            List<Object> items = new ArrayList<Object>();
+            for (int i = 0; i < Math.min(list.getModel().getSize(), 200); i++) {
+                Object item = list.getModel().getElementAt(i);
+                Map<String, Object> entry = new LinkedHashMap<String, Object>();
+                entry.put("index", i);
+                entry.put("text", item instanceof Component ? labelOf((Component) item) : brief(item));
+                if (item instanceof AbstractButton) {
+                    entry.put("checked", ((AbstractButton) item).isSelected());
+                    entry.put("enabled", ((AbstractButton) item).isEnabled());
+                }
+                items.add(entry);
+            }
+            value.put("items", items);
+            value.put("itemsTruncated", list.getModel().getSize() > items.size());
         }
         if (component instanceof JSpinner) {
             value.put("value", brief(((JSpinner) component).getValue()));
@@ -987,6 +1205,10 @@ final class Ui {
     }
 
     private static void addAll(Component component, List<Component> list, boolean includeMenus) {
+        // Renderers paint copies of cells; only the attached editor accepts input.
+        if (component instanceof javax.swing.CellRendererPane) {
+            return;
+        }
         list.add(component);
         if (component instanceof JMenu) {
             JMenu menu = (JMenu) component;
@@ -1236,7 +1458,10 @@ final class Ui {
         }
         java.lang.reflect.Method cellListMethod = method(first.getClass(), "getCellObjectList");
         java.lang.reflect.Method columnMapMethod = method(first.getClass(), "getColumnMap");
-        if (cellListMethod == null || columnMapMethod == null) {
+        if (columnMapMethod == null) {
+            columnMapMethod = method(first.getClass(), "getColumnValueMap");
+        }
+        if (columnMapMethod == null) {
             return null;
         }
         try {
@@ -1250,8 +1475,25 @@ final class Ui {
             List<Object> usedColumnKeys = new ArrayList<Object>();
             for (int r = 0; r < table.getRowCount() && r < maxRows; r++) {
                 Object rowObject = table.getValueAt(r, 0);
-                if (rowObject == null || !cellListMethod.getDeclaringClass().isAssignableFrom(rowObject.getClass())) {
+                if (rowObject == null || !columnMapMethod.getDeclaringClass().isAssignableFrom(rowObject.getClass())) {
                     return null;
+                }
+                if (cellListMethod == null) {
+                    Map<?, ?> rowMap = (Map<?, ?>) columnMapMethod.invoke(rowObject);
+                    if (r == 0) {
+                        List<String> keys = new ArrayList<String>();
+                        for (Object key : rowMap.keySet()) {
+                            keys.add(String.valueOf(key));
+                        }
+                        Collections.sort(keys);
+                        columns.addAll(keys);
+                    }
+                    List<Object> row = new ArrayList<Object>();
+                    for (Object key : columns) {
+                        row.add(brief(rowMap.get(key)));
+                    }
+                    rows.add(row);
+                    continue;
                 }
                 Object cellListObject = cellListMethod.invoke(rowObject);
                 if (!(cellListObject instanceof List)) {
@@ -1326,12 +1568,12 @@ final class Ui {
         return "column" + usedKeys.size();
     }
 
-    private static java.lang.reflect.Method method(Class<?> type, String name) {
+    private static java.lang.reflect.Method method(Class<?> type, String name, Class<?>... parameters) {
         if (type == null) {
             return null;
         }
         try {
-            java.lang.reflect.Method found = type.getMethod(name);
+            java.lang.reflect.Method found = type.getMethod(name, parameters);
             if (!found.isAccessible()) {
                 found.setAccessible(true);
             }
@@ -1360,7 +1602,7 @@ final class Ui {
             return "********";
         }
         if (component instanceof JTextComponent) {
-            return brief(((JTextComponent) component).getText());
+            return ((JTextComponent) component).getText();
         }
         if (component instanceof AbstractButton) {
             return Boolean.valueOf(((AbstractButton) component).isSelected());
@@ -1394,16 +1636,21 @@ final class Ui {
 
     /**
      * Set a value through X-TEA's editable-field wrapper when the selected
-     * component is an inner Swing widget. XFTextField, XFDateField, XFCheckBox
-     * and related classes keep their own value state and formatting rules.
+     * component is an inner text widget. XFTextField and related classes keep
+     * their own value state and formatting rules. Choice widgets use native input.
      */
     private static boolean setCustomFieldValue(Component target, Object requestedValue) {
         Component parent = target.getParent();
         while (parent != null) {
             String className = parent.getClass().getName();
-            if (className.startsWith("xeadDriver.XF")) {
-                java.lang.reflect.Method setter = method(parent.getClass(), "setValue");
-                if (setter != null && setter.getParameterTypes().length == 1) {
+            // This dialog container reads its plain widgets directly; its setter does not
+            // implement every input type (notably ZEROFILL).
+            if (className.equals("xeadDriver.XFInputDialogField")) {
+                return false;
+            }
+            if (className.startsWith("xeadDriver.")) {
+                java.lang.reflect.Method setter = method(parent.getClass(), "setValue", Object.class);
+                if (setter != null) {
                     try {
                         setter.invoke(parent, requestedValue == null ? "" : String.valueOf(requestedValue));
                         return true;

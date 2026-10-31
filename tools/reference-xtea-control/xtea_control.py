@@ -19,6 +19,7 @@ from __future__ import annotations
 import argparse
 import base64
 import json
+import re
 import sys
 import time
 import urllib.error
@@ -104,13 +105,24 @@ class ControlClient:
         return self.request("POST", "/select", body)
 
     def click(self, selector: Dict[str, Any], count: int = 1,
-              row: Optional[int] = None, column: Optional[int] = None) -> Dict[str, Any]:
-        body: Dict[str, Any] = {"selector": selector, "count": count}
+              row: Optional[int] = None, column: Optional[int] = None,
+              button: int = 1) -> Dict[str, Any]:
+        body: Dict[str, Any] = {"selector": selector, "count": count, "button": button}
         if row is not None:
             body["row"] = row
         if column is not None:
             body["column"] = column
         return self.request("POST", "/click", body)
+
+    def drag(self, selector: Dict[str, Any], from_row: int, to_row: int,
+             column: int = 0) -> Dict[str, Any]:
+        return self.request("POST", "/drag",
+                            {"selector": selector, "fromRow": from_row,
+                             "toRow": to_row, "column": column})
+
+    def invoke_method(self, selector: Dict[str, Any], method: str) -> Dict[str, Any]:
+        return self.request("POST", "/invoke-method",
+                            {"selector": selector, "method": method})
 
     def table_set(self, selector: Dict[str, Any], row: int, column: Any, value: Any) -> Dict[str, Any]:
         return self.request("POST", "/table/set",
@@ -133,6 +145,11 @@ class ControlClient:
         if selector:
             body["selector"] = selector
         return self.request("POST", "/key", body)
+
+    def table_edit(self, selector: Dict[str, Any], action: str = "start", row: int = 0,
+                   column: Any = 0) -> Dict[str, Any]:
+        return self.request("POST", "/table/edit",
+                            {"selector": selector, "action": action, "row": row, "column": column})
 
     def close(self, selector: Dict[str, Any]) -> Dict[str, Any]:
         return self.request("POST", "/close", {"selector": selector})
@@ -166,11 +183,16 @@ class ControlClient:
 
     def find(self, selector: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         snapshot = self.snapshot()
+        matches = []
         for window in snapshot.get("windows", []):
-            found = _find_in_node(window, selector)
-            if found is not None:
-                return found
-        return None
+            if selector.get("window") and not _regex_matches(selector["window"], window.get("text", "")):
+                continue
+            if selector.get("windowClass") and not _regex_matches(selector["windowClass"], window.get("class", "")):
+                continue
+            matches.extend(node for node in _iter_nodes(window) if _node_matches(node, selector))
+        matches.sort(key=lambda node: 0 if node.get("showing") else 1 if node.get("visible") else 2)
+        index = int(selector.get("index", 0))
+        return matches[index] if 0 <= index < len(matches) else None
 
     def wait_text(self, selector: Dict[str, Any], expected: Optional[str] = None,
                   contains: Optional[str] = None, timeout_ms: int = 10000) -> Dict[str, Any]:
@@ -189,19 +211,20 @@ class ControlClient:
         raise TimeoutError(f"text condition not met for {selector}; last={last}")
 
 
-def _find_in_node(node: Dict[str, Any], selector: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-    if _node_matches(node, selector):
-        return node
+def _iter_nodes(node: Dict[str, Any]):
+    yield node
     for child in node.get("children", []):
-        found = _find_in_node(child, selector)
-        if found is not None:
-            return found
-    return None
+        yield from _iter_nodes(child)
+
+
+def _regex_matches(pattern: str, value: str) -> bool:
+    try:
+        return re.search(pattern, value, re.IGNORECASE) is not None
+    except re.error:
+        return pattern.lower() in value.lower()
 
 
 def _node_matches(node: Dict[str, Any], selector: Dict[str, Any]) -> bool:
-    import re
-
     role = selector.get("role")
     if role and node.get("role") != role:
         return False
@@ -211,27 +234,26 @@ def _node_matches(node: Dict[str, Any], selector: Dict[str, Any]) -> bool:
             if key == "path":
                 if node.get(key) != pattern:
                     return False
-            elif not re.search(pattern, str(node.get(key, "")), re.IGNORECASE):
+            elif not _regex_matches(pattern, str(node.get(key, ""))):
                 return False
     for key, field in (("text", "text"), ("textContains", "text")):
         if selector.get(key) is not None:
             pattern = str(selector[key])
-            target = str(node.get(field, "")) + " " + str(node.get("textValue", ""))
-            flags = re.IGNORECASE
+            target = str(node.get(field, ""))
             if key == "textContains":
                 if pattern.lower() not in target.lower():
                     return False
-            elif not re.search(pattern, target, flags):
+            elif not _regex_matches(pattern, target):
                 return False
     return True
 
 
 def selector_from_args(args: argparse.Namespace) -> Dict[str, Any]:
     selector: Dict[str, Any] = {}
-    for key in ("window", "path", "role", "text", "text_contains", "name", "class", "index"):
+    for key in ("window", "window_class", "path", "role", "text", "text_contains", "name", "class", "index"):
         value = getattr(args, key, None)
         if value is not None:
-            selector["textContains" if key == "text_contains" else key] = value
+            selector[{"text_contains": "textContains", "window_class": "windowClass"}.get(key, key)] = value
     return selector
 
 
@@ -256,6 +278,9 @@ def run_scenario(client: ControlClient, scenario_path: str | Path) -> None:
             client.select(step["selector"], **options)
         elif operation == "table_set":
             client.table_set(step["selector"], step["row"], step["column"], step.get("value"))
+        elif operation == "table_edit":
+            client.table_edit(step["selector"], step.get("action", "start"),
+                              int(step.get("row", 0)), step.get("column", 0))
         elif operation == "table_assert":
             value = client.table_read(step["selector"], int(step.get("maxRows", 50)))
             row = int(step["row"])
@@ -270,7 +295,12 @@ def run_scenario(client: ControlClient, scenario_path: str | Path) -> None:
                 raise AssertionError(f"table row count expected {step['equals']}, got {value['rowCount']}")
         elif operation == "click":
             client.click(step["selector"], int(step.get("count", 1)),
-                         step.get("row"), step.get("column"))
+                         step.get("row"), step.get("column"), int(step.get("button", 1)))
+        elif operation == "drag":
+            client.drag(step["selector"], int(step["fromRow"]), int(step["toRow"]),
+                        int(step.get("column", 0)))
+        elif operation == "invoke_method":
+            client.invoke_method(step["selector"], step["method"])
         elif operation == "key":
             client.key(step.get("selector"), step.get("key"), step.get("text"), step.get("modifiers"))
         elif operation == "close":
@@ -302,6 +332,62 @@ def run_scenario(client: ControlClient, scenario_path: str | Path) -> None:
             data = path.read_text(encoding=step.get("encoding", "utf-8"))
             if step["contains"] not in data:
                 raise AssertionError(f"{path} does not contain {step['contains']!r}")
+        elif operation == "file_not_contains":
+            path = Path(step["path"])
+            data = path.read_text(encoding=step.get("encoding", "utf-8"))
+            if step["contains"] in data:
+                raise AssertionError(f"{path} still contains {step['contains']!r}")
+        elif operation == "model_assert_field":
+            import xtea_cli
+            model = xtea_cli.load_model(Path(step["path"]))
+            table = next((item for item in model["tables"] if item["id"] == step["tableId"]), None)
+            if table is None:
+                raise AssertionError(f"table not found: {step['tableId']}")
+            field = next((item for item in table["fields"]
+                          if item["alias"] == step["fieldAlias"] or item["id"] == step["fieldAlias"]), None)
+            if field is None:
+                raise AssertionError(f"field not found: {step['fieldAlias']}")
+            if "dataTypeSortKey" in step and field["dataType"]["sortKey"] != step["dataTypeSortKey"]:
+                raise AssertionError(f"field {step['fieldAlias']} data type expected "
+                                     f"{step['dataTypeSortKey']!r}, got {field['dataType']['sortKey']!r}")
+            if "name" in step and field["name"] != step["name"]:
+                raise AssertionError(f"field {step['fieldAlias']} name expected "
+                                     f"{step['name']!r}, got {field['name']!r}")
+            if "sortKey" in step and field["sortKey"] != step["sortKey"]:
+                raise AssertionError(f"field {step['fieldAlias']} sort key expected "
+                                     f"{step['sortKey']!r}, got {field['sortKey']!r}")
+        elif operation == "model_assert_table":
+            import xtea_cli
+            model = xtea_cli.load_model(Path(step["path"]))
+            if "tableId" in step:
+                table = next((item for item in model["tables"]
+                              if item["id"] == step["tableId"]), None)
+            else:
+                table = next((item for item in model["tables"]
+                              if item["name"] == step.get("name")), None)
+            if table is None:
+                raise AssertionError(f"table not found: {step.get('tableId', step.get('name'))}")
+            if "name" in step and table["name"] != step["name"]:
+                raise AssertionError(f"table {table['id']} name expected "
+                                     f"{step['name']!r}, got {table['name']!r}")
+        elif operation == "model_assert_table_absent":
+            import xtea_cli
+            model = xtea_cli.load_model(Path(step["path"]))
+            if any(item["id"] == step["tableId"] for item in model["tables"]):
+                raise AssertionError(f"table still exists: {step['tableId']}")
+        elif operation == "model_assert_function":
+            import xtea_cli
+            model = xtea_cli.load_model(Path(step["path"]))
+            function = next((item for item in model["functions"]
+                             if item["id"] == step["functionId"]), None)
+            if function is None:
+                raise AssertionError(f"function not found: {step['functionId']}")
+            if "name" in step and function["name"] != step["name"]:
+                raise AssertionError(f"function {step['functionId']} name expected "
+                                     f"{step['name']!r}, got {function['name']!r}")
+            if "type" in step and function["type"]["code"] != step["type"]:
+                raise AssertionError(f"function {step['functionId']} type expected "
+                                     f"{step['type']!r}, got {function['type']['code']!r}")
         elif operation == "snapshot":
             value = client.snapshot(**{k: v for k, v in step.items() if k != "op"})
             if step.get("path"):
@@ -368,6 +454,12 @@ def build_parser() -> argparse.ArgumentParser:
     table_set.add_argument("--column", required=True)
     table_set.add_argument("--value", required=True)
 
+    table_edit = sub.add_parser("table-edit")
+    _add_selector_arguments(table_edit)
+    table_edit.add_argument("--action", choices=["start", "commit", "cancel"], default="start")
+    table_edit.add_argument("--row", type=int, default=0)
+    table_edit.add_argument("--column", default="0")
+
     key = sub.add_parser("key")
     _add_selector_arguments(key)
     key.add_argument("--key")
@@ -379,6 +471,17 @@ def build_parser() -> argparse.ArgumentParser:
     click.add_argument("--count", type=int, choices=[1, 2, 3], default=1)
     click.add_argument("--row", type=int)
     click.add_argument("--column", type=int)
+    click.add_argument("--button", type=int, choices=[1, 3], default=1)
+
+    drag = sub.add_parser("drag")
+    _add_selector_arguments(drag)
+    drag.add_argument("--from-row", type=int, required=True)
+    drag.add_argument("--to-row", type=int, required=True)
+    drag.add_argument("--column", type=int, default=0)
+
+    invoke_method = sub.add_parser("invoke-method")
+    _add_selector_arguments(invoke_method)
+    invoke_method.add_argument("--method", required=True)
 
     close = sub.add_parser("close")
     _add_selector_arguments(close)
@@ -411,6 +514,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 def _add_selector_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--window")
+    parser.add_argument("--window-class")
     parser.add_argument("--path")
     parser.add_argument("--role")
     parser.add_argument("--text")
@@ -454,10 +558,16 @@ def main(argv: Optional[List[str]] = None) -> int:
             _print(client.tree_read(selector_from_args(args), args.max_rows))
         elif args.command == "table-set":
             _print(client.table_set(selector_from_args(args), args.row, args.column, args.value))
+        elif args.command == "table-edit":
+            _print(client.table_edit(selector_from_args(args), args.action, args.row, args.column))
         elif args.command == "key":
             _print(client.key(selector_from_args(args) or None, args.key, args.type_text, args.modifiers))
         elif args.command == "click":
-            _print(client.click(selector_from_args(args), args.count, args.row, args.column))
+            _print(client.click(selector_from_args(args), args.count, args.row, args.column, args.button))
+        elif args.command == "drag":
+            _print(client.drag(selector_from_args(args), args.from_row, args.to_row, args.column))
+        elif args.command == "invoke-method":
+            _print(client.invoke_method(selector_from_args(args), args.method))
         elif args.command == "close":
             _print(client.close(selector_from_args(args)))
         elif args.command == "wait-window":

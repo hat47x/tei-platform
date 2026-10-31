@@ -1,12 +1,14 @@
 package xeadsource
 
 import (
+	"encoding/json"
 	"reflect"
+	"strings"
 	"testing"
 )
 
 func TestExtractRelationalSourceFactsPreservesLegacyKeyAndRelationshipReferences(t *testing.T) {
-	doc, err := Parse(FormatXead, []byte(`<System><Table ID="T1"><TableField ID="F1" AttributeType="DERIVABLE" DataTypeID="DT1"/><TableField ID="F2" AttributeType="NATIVE" DataTypeID="DT2"/><TableKey ID="K1" Type="PK"><TableKeyField FieldID="F1" SortKey="10"/><TableKeyField FieldID="F2" SortKey="20"/></TableKey></Table><Relationship ID="R1" Table1ID="T1" TableKey1ID="K1" Table2ID="T2" TableKey2ID="K2"/></System>`))
+	doc, err := Parse(FormatXead, []byte(`<System><Table ID="T1"><TableField ID="F1" AttributeType="DERIVABLE" DataTypeID="DT1"/><TableField ID="F2" AttributeType="NATIVE" DataTypeID="DT2"/><TableKey ID="K1" Type="PK"><TableKeyField FieldID="F1" SortKey="10"/><TableKeyField FieldID="F2" SortKey="20"/></TableKey></Table><Relationship ID="R1" Type="FAMILY" Table1ID="T1" TableKey1ID="K1" Table2ID="T2" TableKey2ID="K2"/></System>`))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -33,6 +35,7 @@ func TestExtractRelationalSourceFactsPreservesLegacyKeyAndRelationshipReferences
 	}
 	relation := got.RelationshipKeys[0]
 	if relation.RelationshipID != "R1" ||
+		relation.RelationshipType != "FAMILY" ||
 		relation.Table1LegacyID != "T1" ||
 		relation.Key1LegacyID != "K1" ||
 		relation.Table2LegacyID != "T2" ||
@@ -42,6 +45,103 @@ func TestExtractRelationalSourceFactsPreservesLegacyKeyAndRelationshipReferences
 	}
 	if !reflect.DeepEqual(relation.AuthorityLimits, relationshipKeyAuthorityLimits) {
 		t.Fatalf("relationship authority limits drifted: %#v", relation.AuthorityLimits)
+	}
+}
+
+func TestExtractRelationalSourceFactsPreservesRawRelationshipType(t *testing.T) {
+	for _, kind := range []string{"FAMILY", "REFFER", "FUTURE_KIND"} {
+		doc, err := Parse(FormatXead, []byte(`<System><Relationship ID="R1" Type="`+kind+`"/></System>`))
+		if err != nil {
+			t.Fatal(err)
+		}
+		facts := ExtractRelationalSourceFacts(doc)
+		if len(facts.RelationshipKeys) != 1 {
+			t.Fatalf("type %q: relationship count = %d", kind, len(facts.RelationshipKeys))
+		}
+		relation := facts.RelationshipKeys[0]
+		if relation.RelationshipType != kind || relation.Nature != SourceFactNature {
+			t.Fatalf("type %q lost its source value or authority limit: %#v", kind, relation)
+		}
+		encoded, err := json.Marshal(relation)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(string(encoded), `"relationshipType":"`+kind+`"`) {
+			t.Fatalf("type %q absent from source-fact JSON: %s", kind, encoded)
+		}
+	}
+}
+
+func TestExtractRelationalSourceFactsIgnoresNamespacedRelationshipTypeLookalike(t *testing.T) {
+	doc, err := Parse(FormatXead, []byte(`<System xmlns:x="urn:foreign"><Relationship ID="R1" x:Type="FAMILY"/></System>`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := ExtractRelationalSourceFacts(doc)
+	if len(got.RelationshipKeys) != 1 || got.RelationshipKeys[0].RelationshipType != "" {
+		t.Fatalf("foreign namespaced Type was promoted to source relationship type: %#v", got.RelationshipKeys)
+	}
+}
+
+func TestExtractRelationalSourceFactsPreservesExistWhenPresenceAndLiteralValue(t *testing.T) {
+	doc, err := Parse(FormatXead, []byte(`<System><Relationship ID="R1" Type="REFFER" ExistWhen1="" ExistWhen2="  A &amp; B  "/></System>`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := ExtractRelationalSourceFacts(doc)
+	if len(got.RelationshipKeys) != 1 {
+		t.Fatalf("relationship count = %d", len(got.RelationshipKeys))
+	}
+	relation := got.RelationshipKeys[0]
+	if relation.ExistWhen1 == nil || *relation.ExistWhen1 != "" ||
+		relation.ExistWhen2 == nil || *relation.ExistWhen2 != "  A & B  " {
+		t.Fatalf("present empty or literal non-empty source attribute was lost: %#v", relation)
+	}
+	encoded, err := json.Marshal(relation)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var object map[string]any
+	if err := json.Unmarshal(encoded, &object); err != nil {
+		t.Fatal(err)
+	}
+	if value, exists := object["existWhen1"]; !exists || value != "" {
+		t.Fatalf("explicit empty ExistWhen1 not preserved in JSON: %s", encoded)
+	}
+	if value, exists := object["existWhen2"]; !exists || value != "  A & B  " {
+		t.Fatalf("literal ExistWhen2 not preserved in JSON: %s", encoded)
+	}
+}
+
+func TestExtractRelationalSourceFactsDoesNotInventExistWhenOnAbsentOrForeignAttribute(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		source string
+	}{
+		{name: "both missing", source: `<System><Relationship ID="R1"/></System>`},
+		{name: "foreign namespace", source: `<System xmlns:x="urn:foreign"><Relationship ID="R1" x:ExistWhen1="A" x:ExistWhen2="B"/></System>`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			doc, err := Parse(FormatXead, []byte(tc.source))
+			if err != nil {
+				t.Fatal(err)
+			}
+			got := ExtractRelationalSourceFacts(doc)
+			if len(got.RelationshipKeys) != 1 {
+				t.Fatalf("relationship count = %d", len(got.RelationshipKeys))
+			}
+			relation := got.RelationshipKeys[0]
+			if relation.ExistWhen1 != nil || relation.ExistWhen2 != nil {
+				t.Fatalf("absent or foreign namespaced attribute was promoted: %#v", relation)
+			}
+			encoded, err := json.Marshal(relation)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if strings.Contains(string(encoded), `"existWhen1"`) || strings.Contains(string(encoded), `"existWhen2"`) {
+				t.Fatalf("absent declarations were invented in JSON: %s", encoded)
+			}
+		})
 	}
 }
 

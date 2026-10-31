@@ -40,8 +40,11 @@ type quoteSemanticResult struct {
 // Conformance Evidence. Expected values are independently written into the
 // corpus and never obtained from the provider under test.
 func TestIndependentQuoteProcessAgainstCandidateSemanticVectors(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
-	defer cancel()
+	// #2057: go buildはキャッシュなし・CPU競合のCIで数十秒かかる一方、実プロセスの起動は
+	// 1回あたり数十ms以内である。buildは独立した長い期限で待ち、実プロセスの期限は
+	// build後に始めて、build時間が起動側の予算を食わないようにする。
+	buildCtx, cancelBuild := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancelBuild()
 	raw, err := os.ReadFile("../../reference/candidates/order-quote/semantic-vectors-v0.json")
 	if err != nil {
 		t.Fatal(err)
@@ -88,13 +91,15 @@ func TestIndependentQuoteProcessAgainstCandidateSemanticVectors(t *testing.T) {
 		t.Fatal(err)
 	}
 	binary := filepath.Join(t.TempDir(), "quote-provider")
-	build := exec.CommandContext(ctx, "go", "build", "-o", binary, ".")
+	build := exec.CommandContext(buildCtx, "go", "build", "-o", binary, ".")
 	build.Dir = work
 	build.Env = append(os.Environ(), "GOENV=off", "GOWORK=off", "GOFLAGS=",
 		"GOTOOLCHAIN=local", "GOPROXY=off", "GOSUMDB=off")
 	if output, err := build.CombinedOutput(); err != nil {
 		t.Fatalf("independent quote build: %v\n%s", err, output)
 	}
+	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
+	defer cancel()
 	image, err := os.ReadFile(binary)
 	if err != nil {
 		t.Fatal(err)

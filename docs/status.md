@@ -1,6 +1,6 @@
 # TEIの実装状況
 
-- 整理日: 2026-10-18
+- 整理日: 2026-10-29
 - 開発段階: **参照実装を使った実験と検証**
 - 品質に関する注意: **生成AIを用いて開発中であり、コード・設計・安全性の体系的な人的確認は未実施**です。本番利用を想定していません。
 
@@ -11,7 +11,7 @@ TEIは、分野固有の知識と実装技術を分けて管理するローコ�
 | 領域 | 状況 | 確認先 |
 | --- | --- | --- |
 | 初回の業務モデル変更 | 独立した小さな作業領域で定義・入力元索引・検証・修復を扱う参照事例と回帰試験を用意。**画面生成・保存・外部連携の実証ではありません** | [初回モデル変更の手順](../examples/first-workspace/README.md)、[課題 #1161](https://github.com/hat47x/tei-platform/issues/1161) |
-| GitHub Actionsによるコード検証 | 2026年10月18日、PR #2012の統合コミット`0cc76fd992b0d25960ad0a6b27b96c569a9472b4`でRepository Healthが成功。確認時の`main`は`2c8c5bfe01e77a40ce1b1072f9d76dad82ef15d0`でこのコミットを含み、その後の差分は`tools/`配下とDesktop WebView smoke試験。**最新main SHAそのもののRepository Health再実行は未確認** | [Repository Health #39112031894](https://github.com/hat47x/tei-platform/actions/runs/39112031894)、[CI整備の課題 #1189](https://github.com/hat47x/tei-platform/issues/1189) |
+| GitHub Actionsによるコード検証 | `main`へのpushごとに、ワークフロー「TEI PR・main 健全性確認」が`tools/repository-health-check.sh`を実行する。結果は各コミットのActions実行で確認する（例：2026年10月28日の`6b144da54499e62ba40feeb77d89c352075c2c01`でRepository Healthが成功、[実行 #40739571851](https://github.com/hat47x/tei-platform/actions/runs/40739571851)）。この成功は、そのコミットで上記スクリプトが通ったことだけを示す。主ブランチ保護と必須チェックは未設定で、製品としての受入や意味の受理は示さない。2026年10月18日のPR #2012統合コミット`0cc76fd992b0d25960ad0a6b27b96c569a9472b4`の実行は、次の行のStudio PoC Aの記録として残す | [ワークフロー定義](../.github/workflows/tei-repository-health-ci.yml)、[Repository Health #39112031894](https://github.com/hat47x/tei-platform/actions/runs/39112031894)、[CI整備の課題 #1189](https://github.com/hat47x/tei-platform/issues/1189) |
 | Goのコマンドラインと作業領域 | `cmd/tei`に作業領域の読み込み、検証、入力元索引の作成などを実装。コマンドの例は導入手順に記載 | [使い始める](getting-started.md)、[参照用資料](../reference/README.md) |
 | TEI StudioのPoC A（Wails Web/Desktop Host） | 2026年10月18日、PR #2012の検証済み候補`c2d8866ba72bb877c4b74f444fe95b3b89368097`で二つのBrowserContext間のWorkspace選択・Catalog・Inspect・Validate・ObserveXeadと遅延応答の分離を確認し、統合コミット`0cc76fd992b0d25960ad0a6b27b96c569a9472b4`でもHost、Windows Desktop WebView2、Repository Healthが成功。後続PR #2014では空結果と読取失敗のDesktop表示も確認。**証拠は同一OS利用者・loopback Host内に限り、Workspace-ID認可、共有WebやPrincipal別の利用者分離、実利用者の価値を示しません。PoC A/B/C全体の完了も示しません** | [協調Issue #1824](https://github.com/hat47x/tei-platform/issues/1824)、[PR #2012](https://github.com/hat47x/tei-platform/pull/2012)、[PR #2014](https://github.com/hat47x/tei-platform/pull/2014)、[Wails Host #39112031888](https://github.com/hat47x/tei-platform/actions/runs/39112031888)、[Desktop WebView2 #39112031903](https://github.com/hat47x/tei-platform/actions/runs/39112031903)、[PR #2014 Desktop WebView2 #39113218123](https://github.com/hat47x/tei-platform/actions/runs/39113218123) |
 | アプリケーションとドライバー | `order_entry`で一覧表示、記録、参照、親子関係にある明細、操作などの意味上の境界を実証 | [全体構成](architecture.md)、[版1の計画](../plan/V1_REFERENCE_APPLICATION_PLAN.md) |
@@ -22,6 +22,9 @@ TEIは、分野固有の知識と実装技術を分けて管理するローコ�
 | 判定段階Cと最初のウェブ実行先 | **合格**。2026年9月19日に固定したビルド`0ba87a4e0a96f70a198b03ff7652fb00e3826abe`の意味、機能、表示を検証。**表示の忠実度は一人のAI評価者が判定しており、人による承認ではありません** | [段階Cの判定記録](../plan/gate/GATE_C_READINESS_AUDIT.md)、[検証根拠の条件](../plan/gate/GATE_C_EVIDENCE_CONTRACT.md) |
 | 共通受理と二つ目のアプリケーション | `repair_intake`の意味定義の一部を、明示的な受理を経て参照用作業領域へ取り込む経路などを検討・実装。受理済みであることと、実行先で動作を確認済みであることは別 | [参照用作業領域の案内](../reference/README.md)、[実装の構成](architecture.md) |
 | Web起動前の入力元照合 | 複合Web TargetにHost Readerの注入口を追加し、同じ読込結果から管理対象Sourceを照合してからRunnerとHTTPを生成する。通常CLIは正式Reader未接続のため起動拒否。合成fixtureには明示的な診断起動を用いる。**真正なHost受理・人的受理・製品G1/G2は未達** | [Web起動前の照合](../tools/reference-first-web-target/README.md)、[横断受入 #1119](https://github.com/hat47x/tei-platform/issues/1119) |
+| 生成器候補の選抜・来歴・artifact | 固定fixtureの選抜、source/binary digest、Go/Java/WASM/WASI/Python/JavaScriptのartifact保存、prune auditとcheckpointの署名・再検証を参照実装で確認。**実Provider・実Target・署名者Authority・別machine再現性は未確認** | [tools索引](../tools/README.md)、[ADR-0041](../plan/adr/0041-generated-artifact-provenance-boundaries.md)、[#2016](https://github.com/hat47x/tei-platform/issues/2016) |
+| Target Profileの配備境界 | oneshot/long-running/batch、Go/Python/JavaScript/Java/WASM/WASIの実行、filesystem/sqlite artifactのreplace・rollback、historyの検証・prune・hash-chain audit・署名済みapprovalを参照実装で確認。**remote storage、実Targetのsupervisor・health check・traffic drain、署名者Authority・trust rootは未確認** | [Target Profile](../tools/reference-target-profile/README.md)、[#2019](https://github.com/hat47x/tei-platform/issues/2019) |
+| 技術検証用サンプル | 業務系システムで頻出する難しい要件を一つの作業の流れで重ねて起こす通しの検証が、2026年10月20日〜29日に10サンプルで`main`へ統合された（`order-workflow`を除く。うち受注の画面経路と補助機能は拡張の工程のみ）。使い捨てのPostgreSQLと合成データ、同じ機械上の別プロセス、模擬の提供元で、工程の記録を照合値でつなぐ。異種DBはPostgreSQLとSQLiteの値の往復までで、**TEIのSQLite提供元はなく、主DBと参照系DBを異種で組む構成も成立していません。実環境での確認ではありません。`order-workflow`との接続、共通受理を通した受理、実際の外部提供元・取引先、複数サーバの本番構成は未確認** | [統合設計](../plan/design/TECH_VALIDATION_SAMPLES_2026-10.md)、[統合状況の一覧](../plan/design/TECH_VALIDATION_SAMPLES_2026-10.md#73-段階2-通しの検証の追加)、[参照用資料の案内](../reference/README.md#技術検証用サンプルの構成) |
 
 判定段階A・B・Cの「合格」は、**各判定時点に固定したソース、ビルド、検証根拠に対するもの**です。現在の`main`、すべての提供元、未知の業務、本番環境、別の実行先を自動的に合格とするものではありません。過去の検証結果を、そのまま新しい変更の検証根拠にはしません。
 

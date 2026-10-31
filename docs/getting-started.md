@@ -26,15 +26,28 @@ go version
 go run ./cmd/tei commands
 ```
 
+結果を記録して後から再現できるようにするには、使った`tei`の識別も一緒に残します。`go build`で作った実行ファイルに対して次を実行すると、埋め込まれたコミット（`vcsRevision`）、未コミット変更の有無（`vcsModified`）、Goのバージョン、OSとCPUの種類が返ります。
+
+```bash
+go build -o tei ./cmd/tei
+./tei version -json
+```
+
+`go run`や`-buildvcs=false`でbuildした場合はコミットが埋め込まれないため、`source`が`unavailable`になります。識別は再現の手掛かりであり、配布の承認や署名ではありません。
+
 モデルや定義の整合性を調べる場合、生成AIなどの呼出し元は次のようにJSON形式の診断結果を取得できます。
 
 ```bash
-go run ./cmd/tei validate \\
-  -workspace reference/workspace \\
+go run ./cmd/tei validate \
+  -workspace reference/workspace \
   -json > /tmp/tei-validation.json
 ```
 
-結果には`schemaVersion`、`ok`、`diagnostics`が含まれます。構文に誤りがあれば元ファイルの位置を示し、意味の検証では可能な範囲で対象要素と入力元索引の位置を返します。`-json`を指定しない従来の`validate -workspace`は、テキスト形式で結果を返します。
+結果には`schemaVersion`、`ok`、`diagnostics`が含まれます。構文の誤りも読込みの失敗もなく読めた場合は、`worldFingerprint`と`sourceIndexFingerprint`も返します。値は`model catalog`・`inspect`・`trace`と同じ計算で、同じファイル内容なら一致し、内容が変われば変わります。どの版のWorkspaceを検証した結果かを後から照合する証拠であり、内容が正しいことや受理されたことの証拠ではありません。構文に誤りがある場合と読込みに失敗した場合は、版が存在しないため両項目を省きます。構文に誤りがあれば元ファイルの位置を示し、意味の検証では可能な範囲で対象要素と入力元索引の位置を返します。`-json`を指定しない従来の`validate -workspace`は、テキスト形式で結果を返します。警告だけの場合、テキストは警告行を出力した後に`ok`を出力し、終了コードは`0`です。標準出力全体が`ok`と一致することを成功条件にすると、警告付きの成功を失敗と誤判定します。成否は終了コード、または`-json`の`ok`で判定してください。`ok`が`true`でも`diagnostics`に警告が残ることがあります。
+
+能力の入出力については、宣言した型の実在を検査しますが、ある能力の出力と次の能力の入力が接続できることは検査しません（[参照例](../reference/product-contracts/README.md#境界)）。
+
+版を固定する値は、checkoutの改行（CRLF/LF）の受け取り方にも依存します。`sourceIndexFingerprint`と`modelRevision`（`model catalog`が返す、管理対象Sourceの版。Shared Acceptanceが照合する`baseModelRevision`と同じ値）は、Sourceの生バイトをsha256で識別するため、行末だけが違うcheckoutでも別の版になります。`worldFingerprint`は正規化したモデルの内容を識別しますが、元定義に書かれた本文をそのまま載せる欄（移行のDDLや問い合わせのSQLなど）があると、その本文の改行も反映されます。2026-10-31にmainで実測した結果では、`reference/workspace`（`databases/sales-core/migrations/20260826_001/migration.tei`と`persistence/order.tei`がSQL本文を持つ）ではCRLFのcheckoutで`worldFingerprint`も変わり、その種の欄を持たない`examples/first-workspace`では`worldFingerprint`は変わらず`sourceIndexFingerprint`と`modelRevision`だけが変わりました。別の環境で作った版固定の値を照合するときは、比較する側のcheckoutの改行をそろえてください。gitの`core.autocrlf`が有効なcheckoutでは、LFで作った`modelRevision`とは一致しません。改行の扱いの運用（`.gitattributes`での固定など）は未決であり、[#2399](https://github.com/hat47x/tei-platform/issues/2399)で扱います。
 
 終了コードは`0`が検証成功（警告を含む）、`1`が検証不成立、`2`が入力・読込みなどの実行失敗です。`-json`で返す結果を利用するときも終了コードを確認してください。`commands`はすべてのコマンドや拡張機能を列挙する完全な登録簿ではありません。詳細とウェブやデスクトップへの接続方針は[コマンドライン優先のインターフェース設計](../plan/design/CLI_FIRST_INTERFACE_DESIGN.md)を参照してください。
 

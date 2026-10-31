@@ -28,9 +28,11 @@ type DeployReceipt struct {
 	ArtifactDigest    string   `json:"artifactDigest,omitempty"`
 	PreviousDigest    string   `json:"previousDigest,omitempty"`
 	HistoryPath       string   `json:"historyPath,omitempty"`
+	DatabasePath      string   `json:"databasePath,omitempty"`
 	CurrentSlot       string   `json:"currentSlot,omitempty"`
 	PreviousSlot      string   `json:"previousSlot,omitempty"`
 	RollbackAvailable bool     `json:"rollbackAvailable"`
+	Installed         bool     `json:"installed"`
 	Passed            bool     `json:"passed"`
 	Reason            string   `json:"reason,omitempty"`
 	GrantsAuthority   bool     `json:"grantsAuthority"`
@@ -54,8 +56,8 @@ func Deploy(ctx context.Context, opts DeployOptions) (DeployReceipt, error) {
 			"実Targetの配備・supervisor・ロールバック・無停止更新を証明しない。",
 		},
 	}
-	if profile.Storage != StorageFilesystem {
-		receipt.Reason = "deploy reference supports only storage=filesystem, got " + profile.Storage
+	if profile.Storage != StorageFilesystem && profile.Storage != StorageNone && profile.Storage != StorageSQLite {
+		receipt.Reason = "deploy reference supports storage=filesystem, none, or sqlite, got " + profile.Storage
 		return receipt, nil
 	}
 	if profile.Update != UpdateReplace && profile.Update != UpdateInPlace && profile.Update != UpdateRolling {
@@ -85,10 +87,43 @@ func Deploy(ctx context.Context, opts DeployOptions) (DeployReceipt, error) {
 		receipt.Reason = "deploy reference supports only Go candidates"
 		return receipt, nil
 	}
+	if profile.Storage == StorageNone {
+		tempDir, err := os.MkdirTemp("", "tei-deploy-none-*")
+		if err != nil {
+			receipt.Reason = err.Error()
+			return receipt, nil
+		}
+		defer os.RemoveAll(tempDir)
+		binaryPath := filepath.Join(tempDir, "artifact")
+		if err := buildGoCandidate(ctx, candidateDir, binaryPath); err != nil {
+			receipt.Reason = "candidate build failed: " + err.Error()
+			return receipt, nil
+		}
+		artifact, err := os.ReadFile(binaryPath)
+		if err != nil {
+			receipt.Reason = err.Error()
+			return receipt, nil
+		}
+		receipt.ArtifactDigest = digestBytes(artifact)
+		receipt.Installed = false
+		receipt.Passed = true
+		receipt.Notes = append(receipt.Notes, "storage=noneではartifactを検証するが、永続配置しない。")
+		return receipt, nil
+	}
+	if opts.RootDir == "" {
+		receipt.Reason = "storage=filesystem requires -root"
+		return receipt, nil
+	}
 	if err := os.MkdirAll(opts.RootDir, 0o755); err != nil {
 		receipt.Reason = err.Error()
 		return receipt, nil
 	}
+	release, err := lockLocalUpdate(opts.RootDir)
+	if err != nil {
+		receipt.Reason = err.Error()
+		return receipt, nil
+	}
+	defer release()
 	stagingDir, err := os.MkdirTemp(opts.RootDir, ".staging-*")
 	if err != nil {
 		receipt.Reason = err.Error()
@@ -106,11 +141,24 @@ func Deploy(ctx context.Context, opts DeployOptions) (DeployReceipt, error) {
 		return receipt, nil
 	}
 	receipt.ArtifactDigest = digestBytes(artifact)
+	if profile.Storage == StorageSQLite {
+		if opts.RootDir == "" {
+			receipt.Reason = "storage=sqlite requires -root"
+			return receipt, nil
+		}
+		if err := deploySQLite(ctx, opts.RootDir, artifact, &receipt); err != nil {
+			receipt.Reason = err.Error()
+			return receipt, nil
+		}
+		receipt.Passed = true
+		return receipt, nil
+	}
 	if profile.Update == UpdateRolling {
 		if err := deployRolling(opts.RootDir, artifact, &receipt); err != nil {
 			receipt.Reason = err.Error()
 			return receipt, nil
 		}
+		receipt.Installed = true
 		receipt.Passed = true
 		return receipt, nil
 	}
@@ -123,8 +171,16 @@ func Deploy(ctx context.Context, opts DeployOptions) (DeployReceipt, error) {
 			return receipt, nil
 		}
 		historyPath := filepath.Join(historyDir, strings.TrimPrefix(digestBytes(previous), "sha256:"))
-		if err := os.WriteFile(historyPath, previous, 0o644); err != nil {
-			receipt.Reason = err.Error()
+		if saved, err := os.ReadFile(historyPath); os.IsNotExist(err) {
+			if err := os.WriteFile(historyPath, previous, 0o644); err != nil {
+				receipt.Reason = err.Error()
+				return receipt, nil
+			}
+		} else if err != nil {
+			receipt.Reason = "current history artifact is unreadable: " + err.Error()
+			return receipt, nil
+		} else if digestBytes(saved) != receipt.PreviousDigest {
+			receipt.Reason = "current history artifact digest does not match the current artifact"
 			return receipt, nil
 		}
 		receipt.HistoryPath = historyPath
@@ -171,6 +227,7 @@ func Deploy(ctx context.Context, opts DeployOptions) (DeployReceipt, error) {
 			return receipt, nil
 		}
 	}
+	receipt.Installed = true
 	receipt.Passed = true
 	return receipt, nil
 }
@@ -259,6 +316,15 @@ func Rollback(root string) (RollbackReceipt, error) {
 	receipt := RollbackReceipt{
 		Schema: RollbackSchema, GrantsAuthority: false, ProvesRealTarget: false,
 	}
+	release, err := lockLocalUpdate(root)
+	if err != nil {
+		receipt.Reason = err.Error()
+		return receipt, nil
+	}
+	defer release()
+	if sqliteRoot(root) {
+		return rollbackSQLite(context.Background(), root)
+	}
 	current, err := readPointer(filepath.Join(root, "current"))
 	if err != nil {
 		receipt.Reason = err.Error()
@@ -319,6 +385,16 @@ func RollbackTo(root, sourceDigest string) (RollbackReceipt, error) {
 		receipt.Reason = "source digest must be sha256:<64 hex>"
 		return receipt, nil
 	}
+	release, err := lockLocalUpdate(root)
+	if err != nil {
+		receipt.Reason = err.Error()
+		return receipt, nil
+	}
+	defer release()
+	if sqliteRoot(root) {
+		return rollbackToSQLite(context.Background(), root, sourceDigest)
+	}
+
 	historyPath := filepath.Join(root, "history", strings.TrimPrefix(sourceDigest, "sha256:"))
 	artifact, err := os.ReadFile(historyPath)
 	if err != nil {
@@ -339,13 +415,16 @@ func RollbackTo(root, sourceDigest string) (RollbackReceipt, error) {
 			return receipt, nil
 		}
 		currentHistory := filepath.Join(historyDir, strings.TrimPrefix(currentDigest, "sha256:"))
-		if _, err := os.Stat(currentHistory); os.IsNotExist(err) {
+		if saved, err := os.ReadFile(currentHistory); os.IsNotExist(err) {
 			if err := os.WriteFile(currentHistory, current, 0o755); err != nil {
 				receipt.Reason = err.Error()
 				return receipt, nil
 			}
 		} else if err != nil {
-			receipt.Reason = err.Error()
+			receipt.Reason = "current history artifact is unreadable: " + err.Error()
+			return receipt, nil
+		} else if digestBytes(saved) != currentDigest {
+			receipt.Reason = "current history artifact digest does not match the current artifact"
 			return receipt, nil
 		}
 	} else if !os.IsNotExist(err) {
@@ -405,4 +484,15 @@ func writePointer(path, value string) error {
 		return err
 	}
 	return nil
+}
+
+// lockLocalUpdate excludes cooperating writers to one local filesystem root.
+// A crashed writer leaves the directory behind; never infer stale ownership
+// from age or remove an existing lock automatically.
+func lockLocalUpdate(root string) (func(), error) {
+	path := filepath.Join(root, ".update-lock")
+	if err := os.Mkdir(path, 0o700); err != nil {
+		return nil, fmt.Errorf("local update lock unavailable (active update or recovery required): %w", err)
+	}
+	return func() { _ = os.Remove(path) }, nil
 }

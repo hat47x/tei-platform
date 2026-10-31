@@ -4,13 +4,13 @@
 - 対象: `plan/research/SEMANTIC_EXTENSION_DEPENDENCY_PRE_ADR_2026-10.md`
 - 実証レーン: ISSUE-000077
 - 主担当要求: RQ-031 / RQ-032 / RQ-033
-- 評価目的: 構造を肯定するためではなく、意味の再現性・依存解決・Authority分離を破れる反例を探す
+- 評価目的: 構造の妥当性を肯定するのではなく、意味の再現性・依存解決・Authority分離を破る反例を探す
 
 ## 1. 結論
 
 Semantic ExtensionとRuntime Pluginを分離し、Semantic SetをEnvironmentより上流で固定する方向は妥当である。
 
-一方、現行Pre-ADRをそのまま実装すると、少なくとも次の経路で構造を破れる。
+一方、現行Pre-ADRをそのまま実装すると、少なくとも次の経路で構造が破綻し得る。
 
 1. greedyなversion選択が、実際には解がある依存graphを「解決不能」と誤判定する。
 2. Semantic Interfaceを文字列の自己申告だけで提供できると、互換性のないproviderが同じInterfaceを名乗れる。
@@ -56,7 +56,7 @@ Semantic ExtensionとRuntime Pluginを分離し、Semantic SetをEnvironmentよ�
 
 ## 3. A1 — greedy resolverはfalse conflictを作れる
 
-現行Reference resolverは、同じExtension IDのcompatible majorから最高versionを先に選び、そのversionの依存を再帰的に固定する。
+現行Reference resolverは、同じExtension IDのcompatible majorの中から最高versionを先に選び、そのversionの依存を再帰的に固定する。
 
 次のgraphを考える。
 
@@ -83,13 +83,13 @@ Y 1.0.0
 
 `X 1.1.0`を選べば全体は解決できる。
 
-しかしA側を先に辿って`X 1.2.0`を固定すると`Z@2`が選ばれ、その後B → Y → Z@1でconflictになる。これは「依存graphが解けない」のではなく、「greedyな選択が外れた」だけである。
+しかしA側を先に辿って`X 1.2.0`を固定すると`Z@2`が選ばれ、その後B → Y → Z@1でconflictになる。これは「依存graphを解決できない」のではなく、「greedyな選択が適切でなかった」だけである。
 
 ### 判定
 
 **Blocker。**
 
-「deterministicであること」と「正しく解けること」は別である。常に同じ誤答を返しても再現性は満たせるが、resolverとしては不十分である。
+「deterministicであること」と「正しく解決できること」は別である。常に同じ誤答を返しても再現性は満たせるが、resolverとしては不十分である。
 
 ### 設計反映
 
@@ -111,7 +111,7 @@ requires interface relation-acyclic-validator/v1
 
 を導入した場合、provider側が単に同じ文字列を宣言するだけでは不十分である。
 
-悪意がなくても、二つのExtensionが`relation-acyclic-validator/v1`を異なる入出力・unknown規則・diagnostic意味で解釈できる。悪意があれば、偽providerが同じInterface名を先に提供できる。
+悪意がなくても、二つのExtensionが`relation-acyclic-validator/v1`を異なる入出力・unknown規則・diagnosticの意味で解釈する可能性がある。悪意があれば、偽providerが同じInterface名を先に提供できる。
 
 ### 判定
 
@@ -132,7 +132,7 @@ Semantic Interface自体に少なくとも次を持たせる。
 - unknown / failure semantics
 - provider conformance requirement
 
-providerの`implements`宣言だけでは適合済みと扱わない。
+providerの`implements`宣言だけでは、適合済みとは扱わない。
 
 同じInterfaceを複数providerが満たす場合も、明示的なselection policyまたはAccepted wiringが無ければ、package IDやversion順で暗黙選択しない。
 
@@ -149,7 +149,7 @@ provider descriptorはInterface名だけでなくexact contract versionとcontra
 
 現行Referenceは複数Extensionが同じnamespaceを所有する場合をUnresolvedにできる。一方、まだ誰も宣言していないnamespaceでは、最初のExtensionがその名前を使える。
 
-この方式をproductionへ広げると、第三者Extensionが先に`std.data`等を宣言するdependency confusionが成立し得る。
+この方式をproductionへ広げると、第三者Extensionが`std.data`等を先に宣言するdependency confusionが成立し得る。
 
 ### 判定
 
@@ -174,7 +174,7 @@ Authority Evidenceがnamespaceとowner Extensionを明示した場合だけ、�
 これでfirst claimant経路と正当なstandard Extensionの導入経路を分ける候補はできた。ただしsubnamespace委譲、publisher / Source trust、Authority Evidence自体の発行Authorityは未実証である。A3をProduction上の解消済みBlockerとはまだ扱わない。
 ## 6. A4 — exact versionだけではlockにならない
 
-次が変わると、Extensionのexact versionが同じでも解釈やgraphが変わり得る。
+次のいずれかが変わると、Extensionのexact versionが同じでも、解釈やgraphが変わり得る。
 
 - root requirements
 - requirement -> provider wiring
@@ -188,7 +188,7 @@ Authority Evidenceがnamespaceとowner Extensionを明示した場合だけ、�
 
 **Blocker。**
 
-Semantic Lockはpackage version一覧では足りない。
+Semantic Lockには、package versionの一覧だけでは足りない。
 
 ### 設計反映
 
@@ -204,7 +204,7 @@ Semantic Lockまたは同等表現へ、少なくとも次を含める。
 - fingerprint canonicalization version
 - unresolvedが0であることを示せる状態
 
-既存lockがある場合は、それを候補探索のhintとして扱わず、まずexact graphとして検証する。Catalogへ新versionが増えただけでは再解決しない。
+既存lockがある場合は、候補探索のhintとして扱うのではなく、まずexact graphとして検証する。Catalogへ新versionが増えただけでは再解決しない。
 
 root requirementsまたはpolicyが変わった場合は、既存lockをそのまま有効とは扱わず、candidate re-resolutionとShared Acceptanceへ進める。
 
@@ -218,7 +218,7 @@ Source、Conformance、namespace AuthorityのEvidence fingerprintはSemantic Loc
 
 current Evidenceの扱いもsemantic replayから分けた。`-verify-semantic-lock`はexact graphの再現だけを確認し、`-verify-semantic-lock-evidence`を指定した場合に限り、lockへ固定したInterface contract / conformance profileとnamespace / ownerへ現在のAccepted Evidenceが結び付いているかを追加検査する。Evidence fingerprintそのものはmeaning identityへ含めないため、同じ契約に対するEvidence更新だけではSemantic Setを変えない。
 
-この追加検査はEvidenceの存在とexact bindingを確認するものであり、Evidenceの発行Authorityやpublisher trustまでは証明しない。
+この追加検査で確認するのは、Evidenceの存在とexact bindingである。Evidenceの発行Authorityやpublisher trustまでは証明しない。
 
 これにより「exact package versionだけをlockとする」反例と、「semantic replay成功をcurrent Evidenceの有効性と誤認する」反例はReference candidate上で縮小した。ただしlockのShared Acceptance接続、Accepted source側のExtension参照、Evidence発行Authority / supply-chain trust、exact-head executable Evidenceは未成立である。A4をProduction上の解消済みBlockerとはまだ扱わない。
 ## 7. A5 — EvaluatorをEnvironmentへ任せるとmeaningが揺れる
@@ -227,13 +227,13 @@ current Evidenceの扱いもsemantic replayから分けた。`-verify-semantic-l
 
 しかし、そのEvaluatorのpass / fail / unknownがShared AcceptanceやConformanceへ影響するなら、developmentでEvaluator A、productionでEvaluator Bを選ぶだけで同じsourceの受入可否が変わり得る。
 
-Evaluator outputがCanonical meaningそのものではなくても、Accepted Worldへ入れる条件を変えるならsemanticに重要である。
+Evaluator outputがCanonical meaningそのものでなくても、Accepted Worldに取り込む条件を変えるなら、semantic上重要である。
 
 ### 判定
 
 **Blocker。**
 
-Runtime providerの交換可能性と、Semantic Validationの交換可能性を同一視してはいけない。
+Runtime providerの交換可能性とSemantic Validationの交換可能性は、区別する必要がある。
 
 ### 設計反映
 
@@ -258,9 +258,9 @@ Evaluation EvidenceにはSemantic Set、Constraint、Interface contract、provid
 これにより「developmentとproductionでEnvironmentが別Evaluatorを選んでAccepted validityが変わる」という経路はReference candidate上では縮小した。ただしRuntime PluginとしてEvaluatorを実行するときのPermission / Sandbox / signature / artifact verification、Conformance Evidenceの発行Authority、Shared AcceptanceへのValidation Evidence接続は未実証である。A5をProduction上の解消済みBlockerとはまだ扱わない。
 ## 8. A6 — optional contributionからAcceptanceへ逆流できる
 
-「既存meaningを変えず、diagnosticやProjectionだけを追加するoptional Extension」は一見安全に見える。
+「既存meaningを変えず、diagnosticやProjectionだけを追加するoptional Extension」は、一見すると安全に見える。
 
-しかし、そのdiagnosticがblockingになったり、Shared Acceptance Previewの判定材料になったりすれば、存在するだけでAccepted Worldが変わり得る。
+しかし、そのdiagnosticがblockingになったり、Shared Acceptance Previewの判定材料になったりすると、Extensionが存在するだけでAccepted Worldが変わり得る。
 
 ### 判定
 
@@ -288,7 +288,7 @@ Validationを通じてAcceptanceへ影響するものは、optional Toolingと�
 
 Pre-ADRではStandard Profileをroot requirement setとして提供し、Profile自体をSemantic authorityにはしないとしている。
 
-この分離は妥当だが、Profile定義が変われば選ばれるSemantic Setが変わる。Profileはauthorityではなくても、意味解釈に影響する入力である。
+この分離は妥当だが、Profileの定義が変われば、選ばれるSemantic Setも変わる。Profileはauthorityではなくても、意味解釈に影響する入力である。
 
 ### 判定
 
@@ -306,7 +306,7 @@ Accepted ApplicationがProfileを参照する場合は、Profileのexact identit
 
 Bridge Extensionは相互依存を避けるうえで有効である。
 
-一方、意味体系がN個あり、各組合せにBridgeを作ると最大でO(N²)に近い接続面が生まれる。三体系以上の整合性ではさらに複雑になる。
+一方、意味体系がN個あり、それぞれの組合せにBridgeを作ると、接続面は最大でO(N²)に近い規模になる。三体系以上の整合性ではさらに複雑になる。
 
 ### 判定
 

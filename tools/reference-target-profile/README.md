@@ -31,6 +31,26 @@ go run ./tools/reference-target-profile/cmd/tei-target-profile \
 
 go run ./tools/reference-target-profile/cmd/tei-target-profile \
   rollback -root /tmp/tei-target-profile-root -to sha256:...
+
+go run ./tools/reference-target-profile/cmd/tei-target-profile \
+  history -root /tmp/tei-target-profile-root
+
+go run ./tools/reference-target-profile/cmd/tei-target-profile \
+  prune-history -root /tmp/tei-target-profile-root -keep-last 2 -dry-run
+
+go run ./tools/reference-target-profile/cmd/tei-target-profile \
+  history-prune-approval -root /tmp/tei-target-profile-root -keep-last 2 -out /tmp/prune-approval.json
+ssh-keygen -Y sign -f /tmp/approval-key -n tei-history-prune /tmp/prune-approval.json
+go run ./tools/reference-target-profile/cmd/tei-target-profile \
+  prune-history -root /tmp/tei-target-profile-root -keep-last 2 \
+  -approval /tmp/prune-approval.json -signature /tmp/prune-approval.json.sig \
+  -allowed-signers /tmp/allowed_signers -identity signer
+
+go run ./tools/reference-target-profile/cmd/tei-target-profile \
+  history-audit -root /tmp/tei-target-profile-root
+
+go run ./tools/reference-target-profile/cmd/tei-target-profile \
+  history-audit-checkpoint -root /tmp/tei-target-profile-root -out /tmp/history-audit-checkpoint.json
 ```
 
 ## Profileの項目
@@ -38,7 +58,7 @@ go run ./tools/reference-target-profile/cmd/tei-target-profile \
 | 項目 | 内容 |
 | --- | --- |
 | `processModel` | `oneshot`（caseごとに別process）、`long-running`（1 processで複数request）、`batch`（1 processで全requestを処理して終了） |
-| `storage` | `none`、`filesystem`、`sqlite`、`remote`。`filesystem`だけdeploy参照で扱う |
+| `storage` | `none`、`filesystem`、`sqlite`、`remote`。`none`・`filesystem`・`sqlite`をdeploy参照で扱う |
 | `network` | `none`、`loopback`、`allowed` |
 | `update` | `replace`、`in-place`、`rolling`。deploy参照で扱う |
 | `memoryLimitBytes` | 正の整数 |
@@ -65,13 +85,13 @@ memory limitは`GOMEMLIMIT`としてselectionのサブプロセスへ渡しま�
 
 `observability`の`stdout`・`stderr`・`exit-code`は、選択候補の各case実行からdigest・exit codeを観測します。`audit-log`等の未対応channelを宣言したprofileは`observation.unsupported`へ記録し、`passed=false`にします。暗黙に別の観測手段で代替しません。
 
-`processModel`は、oneshotならcaseごとのprocess実行、long-running/batchなら1 processへ全requestを送り全responseを比較します。long-running/batch probeはGo・Python・JavaScript・Java・WASM候補を対象とし、processが途中で終了した場合、終了codeが0以外の場合、responseの欠落・過剰・期待値との不一致、末尾を含むJSONの破損がある場合は`passed=false`にします。全responseをEOFまで読み、末尾の空白だけは許容します。batchはsingle ephemeral processとして扱い、scheduler・job queue・再試行は実装しません。WindowsのNode wasm_execはmulti-request streamの終了時に非0で終了するため、WASMのlong-running/batch probeはLinux CIだけで検証し、Windowsでは未対応として扱います。
+`processModel`は、oneshotならcaseごとのprocess実行、long-running/batchなら1 processへ全requestを送り全responseを比較します。long-running/batch probeはGo・Python・JavaScript・Java・WASM・WASI候補を対象とし、processが途中で終了した場合、終了codeが0以外の場合、responseの欠落・過剰・期待値との不一致、末尾を含むJSONの破損がある場合は`passed=false`にします。全responseをEOFまで読み、末尾の空白だけは許容します。batchはsingle ephemeral processとして扱い、scheduler・job queue・再試行は実装しません。WindowsのNode wasm_execはmulti-request streamの終了時に非0で終了するため、WASMのlong-running/batch probeはLinux CIだけで検証し、Windowsでは未対応として扱います。WASIはNodeの`node:wasi`（preview1）で実行します。
 
 常駐probeはdirectory名ではなく、選抜receiptの候補IDに一致するmanifestを探します。候補IDの重複、languageやsource digestの変更、実際のsource bytesと選抜digestの不一致は、processを起動する前に拒否します。照合した単一sourceのbytesを専用の一時directoryへコピーし、そのコピーをbuildまたは実行します。候補directoryの隣接ファイルは取り込みません。
 
-Goは選抜と同じ `go build -trimpath -buildvcs=false -o ... main.go` でbuildし、binary digestも選抜receiptと一致した場合だけ実行します。同じsourceでもtoolchainやbuild環境の違いでbinaryが変われば拒否します。Javaは`javac -d <classes> Main.java`でcompileし、`Main.class`のdigestが選抜receiptと一致した場合だけ実行します。`processModel`には `candidateId`、`sourceDigest`、`binaryDigest`、`binding=source-and-binary-digest`を記録します。Python/JavaScriptは `binding=source-digest`を記録し、interpreterや依存ライブラリの同一性までは保証しません。
+Goは選抜と同じ `go build -trimpath -buildvcs=false -o ... main.go` でbuildし、binary digestも選抜receiptと一致した場合だけ実行します。同じsourceでもtoolchainやbuild環境の違いでbinaryが変われば拒否します。Javaは`javac -d <classes> Main.java`でcompileし、`Main.class`のdigestが選抜receiptと一致した場合だけ実行します。WASMは`GOOS=js`、WASIは`GOOS=wasip1`で`.wasm`へbuildし、wasm binaryのdigestを選抜receiptと照合します。`processModel`には `candidateId`、`sourceDigest`、`binaryDigest`、`binding=source-and-binary-digest`を記録します。Python/JavaScriptは `binding=source-digest`を記録し、interpreterや依存ライブラリの同一性までは保証しません。
 
-対象は単一の通常ファイルです。Goは `main.go`、Pythonは `.py`、JavaScriptは `.js`、Javaは `Main.java`を対象とし、sourceのdirectory参照・symlink・複数ファイル構成は対応しません。これは参照probeの実行対象を選抜証拠と結び付ける確認であり、署名済み来歴や実Targetへの配備受理ではありません。ローカル配備のGo buildも同じ単一 `main.go` のbuild方法を共有しますが、配備へ選抜receiptとの照合を追加したものではありません。
+対象は単一の通常ファイルです。Go/WASM/WASIは `main.go`、Pythonは `.py`、JavaScriptは `.js`、Javaは `Main.java`を対象とし、sourceのdirectory参照・symlink・複数ファイル構成は対応しません。これは参照probeの実行対象を選抜証拠と結び付ける確認であり、署名済み来歴や実Targetへの配備受理ではありません。ローカル配備のGo buildも同じ単一 `main.go` のbuild方法を共有しますが、配備へ選抜receiptとの照合を追加したものではありません。
 
 ## 実行時間とCPU時間の観測
 
@@ -111,9 +131,9 @@ go run ./tools/reference-target-profile/cmd/tei-target-profile \
 
 実動試験は、同じ合成workloadが制限なしでCPU時間2秒に到達し、1秒の上限を適用すると親の経過時間によるtimeoutより先にsignalで終了することを対照で確認します。同じ業務fixtureをoneshot・long-running・batchで比較し、network wrapperとの併用も確認します。ローカル参照実行器の検証であり、正式なHost権限、特権processへの制約、実Targetのsupervisor、リアルタイム保証や本番配備の証拠ではありません。利用できないOS・utility・namespaceの実動試験はskipし、環境不足を実動成功として数えません。CI全体のsuccessだけでは実動試験の実行とskipを区別できません。
 
-## Python/JavaScript/Javaの常駐候補
+## Python/JavaScript/Java/WASIの常駐候補
 
-`python-long-running-template`、`javascript-long-running-template`、`java-long-running-template`は、既存の単発候補と同じ計算・拒否をnewline-delimited JSONで繰り返す候補です。既存の単発テンプレートのsourceとtemplate digestは変えていません。
+`python-long-running-template`、`javascript-long-running-template`、`java-long-running-template`、`wasi-long-running-template`は、既存の単発候補と同じ計算・拒否をnewline-delimited JSONで繰り返す候補です。既存の単発テンプレートのsourceとtemplate digestは変えていません。
 
 ```bash
 go run ./tools/reference-generator-selection/cmd/tei-generator-build \
@@ -121,10 +141,10 @@ go run ./tools/reference-generator-selection/cmd/tei-generator-build \
   -strategy python-long-running-template -out /tmp/tei-script-candidates/python-long-running-template
 ```
 
-JavaScriptは`-strategy javascript-long-running-template`、Javaは`-strategy java-long-running-template`で生成します。Profileの`processModel`を`long-running`、`generatorId`を生成したstrategyと同じ値にして、`run`または`compare`の`-candidates`へ候補の親directoryを指定します。
+JavaScriptは`-strategy javascript-long-running-template`、Javaは`-strategy java-long-running-template`、WASIは`-strategy wasi-long-running-template`で生成します。Profileの`processModel`を`long-running`、`generatorId`を生成したstrategyと同じ値にして、`run`または`compare`の`-candidates`へ候補の親directoryを指定します。
 
 - 選抜を通った候補だけを常駐probeで実行し、単発実行の選抜と常駐実行の両方を合格条件にします。
-- Pythonは`python3`/`python`、JavaScriptは`node`、Javaは`javac`/`java`を探し、実行可能な処理系のcommand・versionを`processModel.runtime`へ記録します。処理系がなければ不合格です。
+- Pythonは`python3`/`python`、JavaScript/WASIは`node`、Javaは`javac`/`java`を探し、実行可能な処理系のcommand・versionを`processModel.runtime`へ記録します。処理系がなければ不合格です。
 - 1 processで全requestを処理したこと、応答数、case結果、終了code、stderr digestを記録します。単発候補を選んでも常駐の合格にはなりません。
 - 処理系の隔離、依存解決、OSのメモリ上限、実Targetのsupervisorは扱いません。
 
@@ -152,16 +172,41 @@ go run ./tools/reference-target-profile/cmd/tei-target-profile run \
 
 ## ローカルartifact配備
 
-`deploy`は、選択したGo候補をbuildし、ローカルfilesystemのrootへartifactとして配置します。実Targetへの配備ではなく、`storage: filesystem`と`update`の最小の挙動を確認する参照です。
+`deploy`は、選択したGo候補をbuildし、ローカルfilesystemのrootへartifactとして配置します。実Targetへの配備ではなく、`storage`と`update`の最小の挙動を確認する参照です。`storage: none`ではartifactをbuild・digest照合するだけで、永続配置せず`installed=false`を返します。`storage: sqlite`では`root/artifacts.db`の`artifacts`/`state` tableへartifactとcurrent/previousを保存します。
 
 - `replace`: 新しいartifactを同じrootへrenameし、既存artifactは`history/<digest>`へ保持します。
 - `in-place`: 既存artifactを上書きし、上書き前のartifactを`history/<digest>`へ保持します。
 - `rolling`: `slots/a`と`slots/b`の2 slotを使い、非active slotへ新artifactを置いてから`current` pointerをatomicに切り替えます。旧slotは保持し、`rollback`でcurrent/previousを入れ替えます。
 - `rollback -to <digest>`: `replace`/`in-place`の`history/<digest>`から指定artifactを選び、digestを照合してからcurrentへatomicに戻します。戻す前のcurrentはhistoryへ保持します。
+- replace/in-place配備と`rollback -to`では、currentの退避先historyが既にある場合、内容のdigestを照合し、一致する履歴は書き直さず更新時刻も保ちます。読めない・一致しない場合はcurrentの置換前に拒否し、壊れたhistoryも上書きしません。この確認は電源断耐性を提供しません。
 - 配備後にartifact digestを再計算し、build結果と一致することを確認します。history/slotのdigestも照合します。
-- `sqlite`・`remote` storage、Go以外の候補は未対応として`passed=false`にします。
+- `storage: none`はrootを作らず、build結果のdigestだけを検証します。
+- `storage: sqlite`は`artifacts.db`のtransactionでartifactとcurrent/previousを更新し、候補と現在artifactの保存内容を、pointer切替前の同じtransactionでdigest照合します。候補またはcurrentが破損・欠落していれば、pointerと新規挿入をcommitせず拒否します。配備後の再読取照合も維持します。`rollback`はcurrent/previousを入れ替え、`rollback -to <digest>`はDBのartifactへ戻します。
+- SQLiteの配備と両rollbackは、全pointer更新後・commit前にcurrent/previousが予定値と一致し、指している非空digestのartifactが存在して内容も一致することを同じtransactionで確認します。更新の無視、切替後の内容改変・退避版の消失などではcommitせず拒否します。両rollbackは、退避するcurrentの破損・欠落も更新前に拒否し、既存の証拠を保持します。これは通常の往復rollbackの確認であり、壊れた現行版を破棄する緊急復旧を提供しません。
+- SQLiteの成功receiptは検証したpreviousを既存の`previousDigest`へ記録します。両rollbackではこの値を`rollback -to`へ渡して逆向きに戻せます。currentがなく既存previousを保持する配備・指定rollbackでも、その保持値を返します。この値は実Targetの起動可否や操作の許可を示しません。確認対象はこの二つのpointerと参照artifactであり、全履歴・任意のtrigger副作用・commit後の外部更新・電源断回復を保証するものではありません。
+- SQLiteの両rollbackとpruneも、filesystemと同じ`.update-lock`を状態読取り前に取得します。pruneの`deleted`はDB transactionのcommit成功後に設定し、保護対象の拒否やrollbackした削除予定を含めません。commit後のaudit追記が失敗した場合は、削除済み範囲を残して`passed=false`を返します。
+- SQLiteのpruneは、削除命令の正常終了だけで成功とせず、commit前の同じtransactionで残ったartifact集合・内容のdigest・作成時刻と、current/previousが計画どおりであることを読み取って確認します。削除の無視・再挿入、保持対象の消失・改変、pointer変更等があればtransaction全体をrollbackし、`deleted`を空にして拒否します。確認のため保持artifact全体を再読取りします。別tableへの記録など、これらの条件を変えないtriggerを一律に禁止するものではありません。
+- SQLite履歴の新旧は、`created_at`をRFC3339Nanoとして解析した時刻で比較します。同一時刻はdigestの降順です。小数秒の桁数やタイムゾーン表記の文字列順を新旧として扱いません。計画と実削除もこの順序を共有します。旧い文字列順に依存したapprovalは現在の削除予定と一致しなければ拒否し、署名済みbyte列を自動修正しません。
+- sqliteの`history`は`artifacts` tableのcontentを再計算し、`prune-history -keep-last N`はcurrent/previousを削除対象に含む場合に拒否します。`-dry-run`では削除しません。
+- `history`は`history/<digest>`の内容を再計算し、file名と一致しない・読めないartifactを不合格にします。`prune-history -keep-last N`は検証済みartifactを新しい順にN件残し、`-dry-run`では削除しません。検証に失敗したartifactがある場合は削除しません。
+- `history` / `prune-history`は、history directory自体のsymlinkと、artifactのsymlink・通常file以外の項目を拒否し、リンク先や特殊fileの内容を読みません。外部writerによる検査後の差替えを防ぐsnapshotや、filesystem全体のsandboxではありません。
+- pruneの`deleted`は、削除に成功したfileだけを記録します。途中の削除に失敗した場合は`passed=false`とし、先に成功した削除は戻しません。全件を一度に削除するtransactionではありません。
+- 保持期間の判定はfileの更新時刻に依存し、同時刻の場合はdigest順で決めます。削除の承認・暗号学的な履歴保護は扱いません。
+- 成功した`prune-history`は`root/history-prune-audit.jsonl`へrecordを追記します。recordはstorage・keepLast・削除digest・previousDigest・recordDigestを含むhash chainで、prune前に既存chainを検証します。`history-audit`はchainを読み、record数・head・各recordを返します。`history-audit-checkpoint`はcount・head・audit file全体のdigestを`-out`へ書き出し、`ssh-keygen -Y sign`で外部署名できます。auditの署名・実行者identity・削除承認は扱いません。
+- audit checkpointのcount・head・audit digestは、一度読み取った同じbyte列を解析して作ります。読取り全体の原子的snapshot、記録の完全性や署名者のAuthorityを証明するものではありません。
+- 末尾改行のない既存auditも読取りでは受け入れます。追記時には必要な区切り改行を加え、二つのJSON recordを連結してchainを壊さないようにします。既存のbyte列とrecord digestは書き換えません。削除と外部auditの追記は一つのtransactionではなく、途中失敗・電源断後の監査完全性や自動回復は保証しません。
+- `history-prune-approval`はroot・storage・keepLast・削除digestの一覧をJSONへ出力します。`prune-history -approval ... -signature ... -allowed-signers ... -identity ...`は、approvalのdetached signatureと、現在の削除対象の完全一致を確認してから削除します。署名者のAuthority・trust rootは検証しません。署名確認・削除対象との照合から削除・audit追記まで、同じ`.update-lock`を保持します。計画の作成も同じlockを使うため、協調writerの更新中は拒否します。計画作成には既存rootで一時lockを作成・解放できる権限が必要ですが、artifactは削除しません。署名確認を通った後もlockを取り直さずに削除へ進みます。
+- `remote` storage、Go以外の候補は未対応として`passed=false`にします。
 - 実Targetのsupervisor・health check・traffic drain・電源断耐性・複数ホスト配備は扱いません。
 - `rollback -to`は`replace`/`in-place`のhistoryだけを対象とし、rollingのslot rollbackは`-to`なしの`rollback`を使います。
+
+### 同じ配備先への同時更新
+
+`deploy`（replace/in-place/rolling）と両方の`rollback`、`prune-history`（dry-runを含む）は、root内の`.update-lock` directoryを排他的に作成します。配備はbuild前、rollbackは履歴・pointerの読取り前、pruneは履歴一覧の読取り前に取得し、処理と結果の照合まで保持します。pruneのdry-runも、一時的なlockの作成・解放を行いますが、artifactは削除しません。取得できなければ待機・再試行せず`passed=false`を返し、artifact・history・pointer・stagingを変更しません。別rootの更新は妨げません。
+
+正常終了・通常のエラーではlockを解放します。強制終了・電源断で残ったlockは自動削除しません。復旧時は、同じrootに対する更新processが動いていないことと、artifact・history・pointerの状態を確認してから、空の`.update-lock` directoryを手動で削除します。稼働中のlockを削除すると排他が失われます。
+
+これは、この手順に従うローカルfilesystemのwriter間の排他です。古い版のツール、外部からの書込み、lock/rootの差替え、ネットワークfilesystem、分散lock、電源断後の整合性や自動復旧は保証しません。実Targetでの実行権限やhealth checkを与えるものでもありません。
 
 ## Profile間の意味比較
 
@@ -178,8 +223,8 @@ go run ./tools/reference-target-profile/cmd/tei-target-profile run \
 
 - profileは意味を変えない。契約・fixture・候補は同じものを使う。
 - profileは`generatorId`で生成器を一つ選ぶ。選ばれなかった候補は`not selected by target profile`として拒否し、別の生成器へ暗黙にフォールバックしない。
-- `processModel`はoneshotのprocess-per-case、long-running/batchのsingle-processを実行で確認する。
-- `storage`の`filesystem`と`update`の`replace`/`in-place`/`rolling`は、`deploy`のローカルfilesystem参照で限定的に確認する。`network`は以下のopt-inの範囲で強制し、`sqlite`/`remote` storageは宣言または未対応のまま。
+- `processModel`はoneshotのprocess-per-case、long-running/batchのsingle-processを実行で確認する。batchはGo・Python・JavaScript・Java・WASI候補で確認し、WASM候補はLinux CIだけで確認する。
+- `storage`の`none`/`filesystem`/`sqlite`と`update`の`replace`/`in-place`/`rolling`は、`deploy`のローカル参照で限定的に確認する。`network`は以下のopt-inの範囲で強制し、`remote` storageは宣言または未対応のまま。
 - `observability`は`stdout`・`stderr`・`exit-code`だけをcase実行から観測する。未対応channelは`unsupported`として返し、合格にしない。
 - profileの合格や`semanticsEqual`は、実機・実OS・実Targetでの動作を証明しない。
 - 組込み固有のリアルタイム性・安全認証・電源断耐性は扱わない。
@@ -187,9 +232,10 @@ go run ./tools/reference-target-profile/cmd/tei-target-profile run \
 ## 未実装
 
 - OS・CPU・RTOS別の実行環境と、実機での資源測定。
-- `loopback`等のnetwork方針の強制、Linux namespace以外の実行器、`sqlite`/`remote` storage。
+- `loopback`等のnetwork方針の強制、Linux namespace以外の実行器、`remote` storage。
 - batch scheduler・job queue・再試行。
 - WindowsでのWASM long-running/batch probe。Node wasm_execの終了挙動に依存する。
+- WASIのwasmtime・browser・embedded runtimeでのlong-running/batch。Nodeの`node:wasi`だけを検証する。
 - `audit-log`・分散trace・metrics等の観測channel。
 - 実Targetへの配備、ロールバック、長期運用。
 - 異なるfixture集合・異なる期待値でのprofile比較。現在は同じfixtureの範囲だけを比較する。

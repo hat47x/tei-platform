@@ -87,3 +87,31 @@ node --experimental-strip-types --test reference/tei-studio-graph/graph.test.mjs
 - **#8（別アプリでの再利用）**: `buildPipelineGraph`をそのままTEI非依存consumerに渡せます。実UIとGraph部品を同時に実行し、TEI importなしで選択・破棄ができる証拠を取得してください。fixtureだけでは2 consumer Gateを満たしません。
 
 採用するGraph OSSのライセンス・版・更新負荷・SVG代替の評価、実ブラウザー/WebView試験、画面のフォーカス/IME/a11y検証は未実施です。
+
+## #1124: Consumer側のqualified選択と描画epoch（設計候補）
+
+> [#1124 第3追補](https://github.com/hat47x/tei-platform/issues/1124#issuecomment-6405343434)・[第4追補](https://github.com/hat47x/tei-platform/issues/1124#issuecomment-6405774769)の**Graph Consumer実装で補う条件**。ここで示すmap/guardは未実装・未実行であり、Graph表示部品の新しいTEI依存・Core ID・認可機構ではない。固定照合main: `b36ffdfd609bbc73bb1be93867576280c913f9d9`。
+
+- **意味Identityの供給元**: `GraphNode.id`はview-only key。`modelref.Key{Scope,Subject}`、`Ref{Scope,Subject,Version}`は上流の**Scope確定済み**ModelRef Graph/Projectionから取得する。現行Workbenchの`Subject{kind,id}`、scope-less `Parent`、namespace絞込、ラベル、表示順、あるいは`subjectKey(kind,id)`からScopeやqualified edgeを推定しない。未確定・曖昧な対象は候補表示を維持し、操作対象として未解決にする。
+- **画面内snapshot**: Consumerが描画ごとに`{renderEpoch, graph/source revisionまたはfingerprint, keyToViewID, viewIDToKey}`を所有し、1つのsnapshot内で表示IDとqualified Keyを一対一に対応させる。両mapは同じ検証済みProjectionから構築し、不足・重複・端点不明を暗黙補完しない。view IDはsnapshotを越える正本ID／永続ID／Source locator／権限IDではない。RefのversionとSourceの版照合はmapとは別に保持する。
+- **失効と公開の順序**: Workspace切替だけでなく**同一Workspace内Graph差替**でも、差替受理時点で旧Consumer snapshotを**先に失効**させ、旧選択を停止する。新Graph・対応mapの検証と設置が完了してから新epochを一体として公開する。構築・更新失敗時は旧意味選択を自動復活させず、復旧する場合も新epochとして公開する。Graph部品が再描画後も同じ`node.id`の視覚選択・フォーカスを保持できることは、そのIDに紐づく**旧意味選択**を承認する理由にならない。
+- **旧callback拒否**: 選択イベントに結び付けたsnapshot/epochが現在のactive snapshotと一致しないなら、`viewIDToKey.get(viewNodeID)`**より前**にrejectし、InspectもSource locator解決も起動しない。現行`graph.ts`の`generation !== revision`による旧SVGイベント拒否は**実装済み**だが、`GraphOptions.onSelect(nodeId: string)`はepochを渡さない。Consumerがイベントの元epochを確認するには、描画snapshotに結び付いたcallback/adapter（必要なら再mount）を設ける必要がある。可変な最新mapから旧IDを逆引きしてはならない。`responses.ts`の非同期応答世代は別責務。
+- **操作境界**: Graph／一覧／初期自動選択／Commandは同じConsumer側`selectForReadOnly`相当の判定へ集約する。Graphの表示IDを`InspectSubject(kind,id)`、SourceBridge`Locate(key)`、Source path、Candidate／Acceptへ直接流したり、文字列解析で変換したりしない。論理RefのResolve成功はSourceの一意性・認可を意味しない。現在の`InspectSubject`はscopeなしの照会で、Catalogの`ambiguous`やSourceBridgeの`subject-scope-ambiguous`ではその呼出し・Source確定を保留する。Graph/Source Index/Readerは同じWorkspace revisionで照合し、Source locator成功もAccepted意味・書込み権限を与えない。
+
+**最小Consumer回帰（未実行）**: 同じWorkspace Wにおいて、G1/epoch30の`view-node-0 → qualified Key(scope A)`をG2/epoch31の`view-node-0 → qualified Key(scope B)`へ差し替える。旧callbackを差替開始直後とG2公開後に呼んでも旧map lookup **0件**、Inspect **0件**、Source locator解決 **0件**。新callbackだけがscope BのKeyを得る。Source Indexがscope未確定なら`subject-scope-ambiguous`を表示してSource確定・scopeなしInspectは**0件**。Graphのview IDがInspect／Source locatorへの引数に現れない。既存`graph.test.mjs`の「stale events and disposed views」は表示部品の旧DOM拒否のみを実証し、このConsumerテストの代わりにはならない。
+
+
+### 更新成功と構造検査拒否の分岐（#1124 [追加受入 #6426483819](https://github.com/hat47x/tei-platform/issues/1124#issuecomment-6426483819)、未実装）
+
+**Consumer snapshotの安全側の順序**：次Graphのscope-qualified Projectionとmapを`pending`として組み立てる（**非公開**）→Graph差替を受理する時点で旧`active`をretire（選択不可）→`graph.update(nextInput)`を実行→**正常returnした場合のみ**Graphの描画と対応するpending map/epochを`active`としてpublishする。失敗したpending mapは破棄する。Consumerの選択epochはRenderer内部revisionの単なるコピーではない。旧描画を再び意味選択可能にするには、現在のGraph/Catalog/Source版を独立に再確認し、**新たな**snapshot/epochとそのcallback起源の拘束を作る必要がある。自動rollbackで旧mapを有効化しない。
+
+| 独立ケース | Renderer側の事実 | Consumer側のmap／選択契約 |
+| --- | --- | --- |
+| **A: 正常update**（G1→有効なG2） | 新DOMへ置換、描画revision増分。旧DOMイベントは`generation !== revision`で拒否。見た目の同じnode IDの選択・focusを維持する場合がある | G2の配置成功後だけpending mapをpublish。旧epochのcallbackはlookup前に拒否。同一view ID `K`でも新Mapのqualified Key Bだけを選択し、表示IDをInspect/locator引数へ変換しない |
+| **B: 構造検査拒否**（G2に`missing_endpoint`） | `normalizeGraph`が`replace`より前に例外。G1 DOM・Graph内部revision・表示選択は**変わらない**。残存G1ノードのイベントはRendererから`onSelect(K)`へ届き得る | G2 mapはpublishせず破棄。retire済みG1 mapも暗黙に復活させず、Consumerは`active=null`相当で選択を拒否。G1の閲覧は維持しても意味選択・Source確定は`stale-or-unresolved`相当 |
+
+**最小Inspect spy受入（未作成／NOT RUN、Bを独立に検証）**：W固定。G1の可視`K → Key(scope one, semantic-data/shared.id)`を表示中、G2用に`K → Key(scope two, semantic-data/shared.id)`をpendingに用意する。ただしG2入力には存在しないedge endpointを混入する。更新拒否後に**旧DOMのKを実際にclick**し、①旧DOMが残存、Graph内部の旧選択状態が保持、②Rendererの`onSelect(K)`が**1回通知**（無効化された旧DOMイベントの試験ではない）、③Consumerの旧map・pending map双方の`get`は**各0回**、④`inspectSubject` spy **0回**、SourceBridge`Locate` spy **0回**、⑤G2のKey/epochをactiveへ公開しない、⑥未呼出しのSourceBridge診断を実際の`subject-scope-ambiguous`観測と偽らない、を同時にassertする。旧描画が現在のSource snapshotと一致することを別途実証できない限りInspectを再開しない。
+
+**Aの対照条件**：別の正常なG2で同じview ID `K`を再利用した場合、旧DOMクリックは通知0、新DOMクリックだけがKey Bを選択する。**scopeなしInspect呼出し**は別途Catalog全体でBのCanonical Subject一意性を確認できた場合だけ許容（許容時はBの`kind/id`のみ1回でview IDなし）。同kind/IDが異scopeに重複するfixtureでは、新Mapの選択が成功してもInspect spyは**0回**とする。Renderer単体の既存`graph.test.mjs`だけではこのConsumer側のA/B判定を証明しない。
+
+実装配置・受入は[#1124](https://github.com/hat47x/tei-platform/issues/1124)。型付きRef解決は既存[#1120](https://github.com/hat47x/tei-platform/issues/1120)を再利用し、TEI独自Hostを必須化しない（[Draft PR #2226](https://github.com/hat47x/tei-platform/pull/2226)、提案中・main未統合）。
