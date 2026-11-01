@@ -178,3 +178,37 @@ Studioはまず**基本型を指定する通常の項目定義**を許す。意�
 - #2077の他言語への生成、#2390の外部製品によるPlugin利用は、型の構造適合・必要な契約・実行側の権限を個別に検証するレーン。型の改名・付替えだけで生成済みJava/.NET等のartifactや外部Hostの更新・実行許可を得ない。
 
 **次の優先順位**：まず上記CLI負例と退行をexact branchで実測（#1806）。次にTM-01/TM-02の局所使用先・物理Storageの観測範囲を明確にする（#1806）。最後にStudio上の段階的な意味型化を#1124へ接続する。値域制約のCore表現、分割先の人の意味判断、旧型の廃止、複合値第一級型化はOwner判断・実例待ちのまま維持する。
+
+## 11. 2026-11-01 追補：CLI入口だけでなく、Impact→Candidate内部APIでも誤転写を防ぐ
+
+**背景と新しい反例**：§10のCLI入口拒否を追加した後、`SplitImpact` が返す `Impact` を他の呼出元が直接 `Candidate(impact, revision)` に渡せることを確認した。CLIのフラグ検査はその呼出経路を通らないため、同じ誤転写問題が再発し得る。
+
+`SplitImpact` は既存の `Impact` の表示形状に合わせ、`Impact.Merge.Into` に分割先の**先頭**を置き、属性別の移行先は `Attributes[].Target` に保持している。一方、`Candidate` は統合専用のため `Merge.Into` だけを読んで変更候補を生成する。**同じJSON形状を共有できても、統合・分割の操作意味は異なる。**
+
+### 11.1 今回の限定的修正（Draft #2404）
+
+- `SplitImpact` に `split-candidate-unsupported` の診断を常に付与。既存の読み取り専用分析の結果・属性別の割当・キー/Validation/Capability影響は引き続き表示できる。
+- 統合専用 `Candidate` は既存のblocking診断の仕組みを使い、`split-candidate-unsupported` が含まれれば拒否する。これにより、CLI外からの内部API直接呼出しも拒否対象にする。
+- `candidate_test.go` に、属性別の `Reassignment` が指定済みでも `SplitImpact→Candidate` が拒否される負例を追加。現行の通常Merge→Candidateの正例は既存試験を再利用する。
+- 新しいCore kind、型Registry、Shared Acceptance契約、外部Hostは導入しない。既存 `Impact` の表示互換は維持し、専用の分割用候補変換が成立するまで候補化しない。
+
+### 11.2 実測・設計の境界
+
+| 観点 | 今回の変更と検証対象 | 未保証 |
+| --- | --- | --- |
+| CLI入口 | `-split -candidate-out` をWorkspace読込・出力前に拒否。CLIビルド・起動の負例を追加 | 将来のSplit候補の受理 |
+| 内部API | `SplitImpact→Candidate` の拒否診断と負例テストを追加 | 任意の利用者が診断を改変したImpactまで安全な型付けをすること |
+| 既存正常経路 | 読取り専用SplitImpactと通常のMerge Candidateのテストを維持 | TypeRef変更後の実DB、外部言語・プラグインの意味保存 |
+| 証拠・受理 | Candidate生成の可否と、正本のShared Acceptanceを別段階に保持 | Owner意味受理、旧型廃止判断、Provider Migration |
+
+**既存の実測**：Draftの先行コミット `7beb2e4ba18737a2d2f3ae6050fe24f6b7e2a2e6` に対するGitHub Actionsの「TEI PR・main 健全性確認」および依存脆弱性確認は `success`（2026-11-01取得）。この事実はそのコミットの変更範囲についてのみ有効。
+
+**追加変更の現状**：CLIビルド・起動を伴うテスト、および内部API直接呼出し拒否のテストはこの追補で新規追加した。新しいexact headのGo/CLI/CI結果は**まだ未確認**。新しいテストの定義をPASS済みと扱わず、latest headのCI終了と、CLI負例の実行ログを照合する必要がある。
+
+### 11.3 次の採用判断
+
+最小停止条件の実証後、分割先を個々のAttributeへ割り当てる操作をStudioで実現する場合は、「Source固定版＋Attribute identity＋明示Reassignment＋移行前後のTypeRef対応＋影響先」の保存を第一条件とする。正本への変更は既存Shared Acceptanceを利用する。
+
+複数Targetの割当てがすべて明示されていても、型の意味の同一性・値域互換・外部Consumer適合・旧型廃止は個別の判断である。意味型の利用範囲を追加で観測できた場合、必要に応じて影響一覧の範囲を拡張するが、「世界全体を調べた」という抽象的な保証は要求しない。
+
+**Owner未決**：本Referenceの `split-candidate-unsupported` を恒久的な公開診断に昇格させるか、将来の専用Split候補変換に合わせて削除するか。現段階はReference限定の暫定的な意味区別である。
