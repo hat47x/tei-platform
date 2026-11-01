@@ -410,9 +410,11 @@ main参照：`2197baaedbde178a042a280ea1bd1d534617bfc7`。現行`relational.go`�
 | 負例（欠落、循環、重複、未知演算、異Scope、CTE、Arity、Root欠落） | `unresolved`と局所diagnosticに分類。cross-scopeは即時不正とせず`unverified` | Worker/SQL方言で正当な可視性を満たすか、補完できるか |
 
 **実測の範囲**：
-- Python 3.13.5：`test_probe_relational_ir.py` **13件PASS**。`probe_relational_ir.py`は3例をJSONに投影し、Root構造候補と各ノードのSource operation ID・grain候補・unverified式を出力。
-- GitHubに保存した3ファイルとローカルで実行したファイルの**Git blob SHA一致**：`probe_relational_ir.py = 0166c89dc5b85d6ff721a959a2f242e82b50c770`、`relational_ir_synthetic.json = 9a47ab095e504798726976239dbf2c56dd123ce5`、`test_probe_relational_ir.py = 1edcce76f59982055603134eaaca7b6955c1a196`。
+- Python 3.13.5：`test_probe_relational_ir.py` **14件PASS**。`probe_relational_ir.py`は3例をJSONに投影し、Root構造候補と各ノードのSource operation ID・grain候補・unverified式を出力。
+- GitHubに保存した3ファイルとローカルで実行したファイルの**Git blob SHA一致**：`probe_relational_ir.py = 733d36dcfe4cd30becf0f5825e9a4ae2b863923d`、`relational_ir_synthetic.json = 9a47ab095e504798726976239dbf2c56dd123ce5`、`test_probe_relational_ir.py = ecd704ea714ecba996da60b6cb35a767c712d616`。
 - Go 1.23.2の隔離テストでは、現mainの`relational.go`と**バイト同一の型定義**を使用し、3種類の合成IRの`encoding/json.Unmarshal/Marshal`往復1件PASS。これは*Go型とJSON shapeの限定照合*。型ファイルをRepoへ複製・導入していない。repo指定Go toolchainでの正式`go test`や`DeriveFromAnalysis`、worker/実Provider/GUI/SHOは未実行。
+
+**QX-16との4点接合（fixture-only実測）**：前段`explain_qx16.py`が出力した`operationDependencies`を読み、今回の合成IRの`agg_l`→`line_sum`（line）、`join_rows`→`join_pairs`（line+delivery）、`agg_after`→`join_sum`（line+delivery）、`anti_filter`→`left_unmatched`（header+delivery）という**手動の対応表**でSource collectionの集合を比較した。ローカル実行では**4/4一致**。比較対象の手書き`join_sum`からdeliveryを外す負例は`unresolved-or-mismatch`として検出し、`test_probe_relational_ir.py`の**14件目**に追加。**任意SQLのSource/Claimを自動対応付けた結果ではなく、独立に表現した同じ固定fixtureの依存構造が矛盾しないかの照合**である。
 
 **構造を読めることとClaimが成立することの間の欠落**：
 1. `RelNode.Inputs`は演算Node ID、`OutputField.Inputs`はColumnOccurrence IDに由来するField Lineage。**出力Field→どのRelNodeの演算・GROUP/WHERE条件で成立したか**を現IRだけで自動認定する追加根拠は未確認。2種類のIDを短絡して結ばない。
