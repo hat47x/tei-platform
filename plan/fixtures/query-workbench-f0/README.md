@@ -54,7 +54,7 @@ python3 explain_qx16.py
 
 - `relational_ir_synthetic.json`：`internal/query/relational.go`の現行JSONタグと合う**手書き**3例。`aggregate_before_join`／`join_before_aggregate`／`left_join_filter`。**実SQLGlot worker／TEI DeriveFromAnalysisの出力ではない**。
 - `probe_relational_ir.py`：`RelNode.ID/Kind/Inputs/ScopeID/Source/SourceKind/Binding`だけを保守的に辿り、入力演算・Source occurrence・構造上のgrain**候補**をread-only JSONへ写す。Expression文字列はそのまま返し、意味解析・単調性判定は`unverified`とする。`claimConclusionPresence`は常に`not-established`。
-- `test_probe_relational_ir.py`：13件の局所テスト。演算順・依存Source・LEFT JOIN→Filter、自己JOIN occurrence、入力欠落、循環、重複ID、未知/opaque演算、Scope越え、CTE binding未検証、Arity不整合、root欠落、構造Candidateと業務Claim未成立の差を確認。
+- `test_probe_relational_ir.py`：14件の局所テスト。演算順・依存Source・LEFT JOIN→Filter、自己JOIN occurrence、入力欠落、循環、重複ID、未知/opaque演算、Scope越え、CTE binding未検証、Arity不整合、root欠落、構造Candidateと業務Claim未成立の差を確認。
 
 実行手順（Python 3.13.5、標準ライブラリのみ）：
 
@@ -63,18 +63,22 @@ cd plan/fixtures/query-workbench-f0
 python3 -m unittest -v test_probe_relational_ir.py
 python3 probe_relational_ir.py relational_ir_synthetic.json
 python3 probe_relational_ir.py relational_ir_synthetic.json --sample join_before_aggregate
+python3 explain_qx16.py > qx16_output.json
+python3 probe_relational_ir.py relational_ir_synthetic.json --compare-qx16 qx16_output.json
 ```
 
 **実測とexact性**（ローカル隔離Python；3ファイルをGitHubから再取得しblob比較）：
 
 | ファイル | Git blob SHA |
 | --- | --- |
-| `probe_relational_ir.py` | `0166c89dc5b85d6ff721a959a2f242e82b50c770` |
+| `probe_relational_ir.py` | `733d36dcfe4cd30becf0f5825e9a4ae2b863923d` |
 | `relational_ir_synthetic.json` | `9a47ab095e504798726976239dbf2c56dd123ce5` |
-| `test_probe_relational_ir.py` | `1edcce76f59982055603134eaaca7b6955c1a196` |
+| `test_probe_relational_ir.py` | `ecd704ea714ecba996da60b6cb35a767c712d616` |
 
-- `python3 -m unittest -v test_probe_relational_ir.py`：**13/13 PASS**（ローカル）。
+- `python3 -m unittest -v test_probe_relational_ir.py`：**14/14 PASS**（ローカル）。
 - 現行main `2197baaedbde178a042a280ea1bd1d534617bfc7`の`internal/query/relational.go` blob `4a91112b557585a4799b681c6348b46d85698f59`とバイト一致するGoソースを**隔離テストディレクトリ**で使用し、Go 1.23.2 + `GO111MODULE=off go test -v .`によって3例の`json.Unmarshal/Marshal`往復を**1件PASS**。これはGo型のJSON適合に関する限定検証であり、現行TEIモジュール指定Goや本体Goテストを実行したものではない。複製した型ファイルは**Repositoryへ持ち込まない**。
+
+**QX-16との明示接合**：`--compare-qx16`は既存`explain_qx16.py`が作った`operationDependencies`を読み、合成IRの`agg_l / join_rows / agg_after / anti_filter`という4演算と`line_sum / join_pairs / join_sum / left_unmatched`という4つの手書きClaimの`inputCollections`を、**fixture内で明示した対応表**に従って比較する。ローカル保存のQX-16 JSONに対して**4/4が`fixture-structure-agrees`**。入力集合を誤って減らした負例は`unresolved-or-mismatch`となり、14件目のテストで固定。**これは実SQLからの自動Bindingではなく、合成の2表現間の照合**である。
 
 **判定の意味**：`rootStructureTrace=candidate`は演算IDの参照グラフを辿れるという意味に限定する。SQL/Schema/Dialect/workerの入力帰属、Qualified Fieldの解決、`WHERE`/`EXISTS`の述語真偽、JOINのKeyとCardinality、NULL、Snapshot、Result Slice完全性、業務上のGrain/Identity、Action/Host Authorityは**いずれも未確認**。異Scope間のInput edgeは有効なCTE関係である可能性もあるため、直ちに「不正」ではなく`cross-scope-edge-unverified`へ留める。
 
