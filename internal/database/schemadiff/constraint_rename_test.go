@@ -1,6 +1,7 @@
 package schemadiff_test
 
 import (
+	"reflect"
 	"testing"
 
 	"tei/internal/core"
@@ -90,6 +91,39 @@ func TestCompareSameStructureConstraintsPairByNameFirst(t *testing.T) {
 	}
 	if len(diff.Changes) != 1 || diff.Changes[0].Kind != schemadiff.RenameConstraint || diff.Changes[0].BeforeName != "legacy" || diff.Changes[0].UniqueConstraint.Name != "a_first" {
 		t.Fatalf("changes=%#v", diff.Changes)
+	}
+}
+
+// Leftovers are paired by a deterministic name order, not by input order. The
+// same structures in a different order produce the same renames.
+func TestCompareSameStructureRenamePairingIsDeterministic(t *testing.T) {
+	makeTable := func(names ...string) physical.SchemaSnapshot {
+		var constraints []physical.UniqueConstraint
+		for _, name := range names {
+			constraints = append(constraints, physical.UniqueConstraint{Name: name, Columns: []string{"email"}})
+		}
+		return renameTable(constraints, nil)
+	}
+	first, err := schemadiff.Compare(makeTable("z_new", "a_new"), makeTable("n_old", "m_old"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := schemadiff.Compare(makeTable("a_new", "z_new"), makeTable("m_old", "n_old"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(first.Changes, second.Changes) {
+		t.Fatalf("input order changed the diff:\n%#v\n%#v", first.Changes, second.Changes)
+	}
+	if len(first.Changes) != 2 {
+		t.Fatalf("changes=%#v", first.Changes)
+	}
+	want := [][2]string{{"m_old", "a_new"}, {"n_old", "z_new"}}
+	for i, pair := range want {
+		change := first.Changes[i]
+		if change.Kind != schemadiff.RenameConstraint || change.BeforeName != pair[0] || change.UniqueConstraint == nil || change.UniqueConstraint.Name != pair[1] {
+			t.Fatalf("change[%d]=%#v want %v", i, change, pair)
+		}
 	}
 }
 
