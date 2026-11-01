@@ -28,10 +28,18 @@
 | C | 0 | 300 | 0 | `present`（0はNULLではない） |
 | D | NULL | 200 | （値なし） | `null` |
 
+導出できない行の状態は、原因ごとに分けます。
+
+- `present` / `null`：正当な値。NULLは失敗ではありません
+- `input-unavailable`：入力未取得（上のB）
+- `type-error`：型・演算子の失敗（例：数量`abc`）。入力未取得と区別します
+- `execution-unavailable`：規則を実行できない状態。入力未取得と区別します
+
 - 表示用の任意列で部分Projectionが明示的に許可されれば、A=600、C=0、D=NULL、B=評価不能と返し、`partial=true` と該当行を識別します。
 - `filter`（例 `amount > 0`）は、Bを黙って除外して「Aのみ・Count 1」と返しません。全体を不成立とします。
-- `sort`（例 `amount DESC limit 1`）は、Bが最大か不明なためAを「最大1件」と返しません。
-- `aggregate`（例 `SUM(amount)`）は、Bを0やNULLへ変換して合計を返しません。
+- `sort`（例 `amount DESC limit 1`）は、Bが最大か不明なためAを「最大1件」と返しません（`TestSortDescLimitOneDoesNotClaimMax`）。
+- `aggregate`（例 `SUM(amount)`）は、Bを0やNULLへ変換して合計を返しません（`TestSumDoesNotSubstituteZeroOrNullForMissingRow`）。
+- 同じfixtureで`sort`と`SUM`を再実行し、同じ結果になることを確かめます（`TestSortAndSumNegativesAreDeterministic`）。
 - `count-rows` は元行数を返し、導出失敗に影響されません。`count-derived` は導出に基づく件数なので、評価不能行があれば不成立です。
 
 ## 実行方法
