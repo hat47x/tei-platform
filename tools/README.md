@@ -80,6 +80,7 @@
 | [`reference-procedure-expansion/`](reference-procedure-expansion/) | 受理済み手順を非画面・画面・外部・AIの実現先へ展開し、実行可能範囲を分ける参照 |
 | [`reference-procedure-formalization/`](reference-procedure-formalization/) | 業務手順の文章から、形式化を妨げる不足と矛盾を根拠付きの質問として示す読取り専用の参照 |
 | [`reference-purpose-preflight/`](reference-purpose-preflight/) | 開発目的に対する業務規則の未確定・実行時値待ちを合成データで区別 |
+| [`reference-provider-override-update/`](reference-provider-override-update/) | 提供元定義の更新で案件側の上書き・追加を失わないよう、旧版・新版・案件を正本識別子ごとに比較し、`unchanged`/`applicable`/`conflict`/`unresolved`に分類する参照。名前の衝突と更新前への復帰を確認する（#2091） |
 | [`reference-query-input-nullability/`](reference-query-input-nullability/) | Query入力のmissingと明示nullを区別し、NULL可否を契約で明示してSQL実行前に拒否する参照。一時PostgreSQLで許可NULL・省略・空文字・拒否を観測する（#2056） |
 | [`reference-quantity-arith/`](reference-quantity-arith/) | 数量・単価・金額の単位・通貨・丸めの意味注釈を合成入力で検査する読取り専用の参照（#1705） |
 | [`reference-read-consistency/`](reference-read-consistency/) | 一回の導出評価の入力読取り整合・Snapshot保証・競合時の失敗境界を合成入力で判定する読取り専用の参照（#1708） |
