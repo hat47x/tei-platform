@@ -12,6 +12,8 @@ go run ./tools/reference-generator-selection/cmd/tei-generator-select \
 
 registryを使うと、登録済みで有効な版だけを選抜できます。
 
+`manifest.Source`は候補directory内の相対pathに限定します。絶対path、`..`、候補外へ解決するsymlinkは、実行前に拒否します。Python/JavaScriptのscript候補は、各caseの実行前後でsource bytesのdigestを再確認し、変化した場合は`source changed during execution`で候補を拒否します。caseごとの`execution.sourceDigest`に、そのcaseの直前に読んだsourceのdigestを残します。これは一つのAttempt内で同じsource bytesが実行されたことの技術的な記録であり、生成AIが見た入力全体の完全性や、OS・networkの隔離を証明しません。
+
 caseごとの `execution.measurement` に、実行呼出し直前から終了待ち・入出力の完了までの経過時間 `elapsedNanos`、OSのprocess stateから取得した `userCpuNanos` と `systemCpuNanos` を記録します。単位はいずれもnanosecondです。build・処理系検出・終了後のJSON検証はこの経過時間に含めません。`goos`、`goarch`、`harnessGoVersion` は参照実行器の環境を示します。候補のsource/binary digestと処理系・buildの証拠は既存の項目に残します。
 
 観測値を含むreceiptのbytesは試行ごとに変わります。receipt digestとその署名は個々の試行に対応し、source/binaryの再現性は既存のdigestで別に確認します。
@@ -298,6 +300,8 @@ reconcileは候補をビルド・実行・選抜しません。再生成した�
 - 受理済みWorkspaceの属性・型を、契約の入力として実際に解決する。存在しない属性や型の不一致を拒否する。
 - 期待値fixtureは候補より先に固定し、候補に合わせて書き換えない。
 - 候補のsource digestを実byteで確認する。digest不一致の候補をビルドしない。
+- `manifest.Source`を候補directory内の相対pathに限定し、絶対path・`..`・候補外へ解決するsymlinkを実行前に拒否する。
+- Python/JavaScriptのscript候補は、各caseの実行前後でsource bytesのdigestを再確認し、変化した候補を拒否する。caseごとの`execution.sourceDigest`に実行直前のdigestを残す。
 - 候補の出力を独立に比較する。候補が「合格」と自己申告しても採用しない。
 - 危険な候補を、欠落・通貨・丸め・精度の負例で落とす。
 - 生成AI候補のgeneration provenanceを、現在の契約digestへ束縛する。
