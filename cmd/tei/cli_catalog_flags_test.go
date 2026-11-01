@@ -134,6 +134,10 @@ func TestAdvertisedCommandsRejectUnrelatedFlagsAtProcessBoundary(t *testing.T) {
 		{"source-index", "-workspace", root, "-environment", "x"},
 		{"knowledge-context", "-workspace", root, "-environment", "x"},
 		{"knowledge-qualify", "-workspace", root, "-environment", "x"},
+		{"knowledge-review-plan", "-workspace", root, "-environment", "x"},
+		{"knowledge-review-handoff", "-workspace", root, "-environment", "x"},
+		{"knowledge-review-disclose", "-workspace", root, "-environment", "x"},
+		{"knowledge-data-design-candidate-review", "-workspace", root, "-environment", "x"},
 	} {
 		code, stdout, stderr := run(args...)
 		var envelope cliResultEnvelope

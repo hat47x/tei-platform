@@ -32,15 +32,20 @@
 | `inspect` | `tei.cli.inspect/v0` | JSON | JSON（`INVALID_ARGUMENT`、`SUBJECT_NOT_FOUND`、`INSPECTION_FAILED`、`WORKSPACE_LOAD_FAILED`、`SOURCE_INDEX_FAILED`） | いいえ（投影型） |
 | `trace` | `tei.cli.trace/v0` | JSON | JSON（`inspect`と同じ形） | いいえ（投影型） |
 | `validate -workspace -json` | `tei.cli.validate/v0` | JSON | JSON（`INVALID_ARGUMENT`、`WORKSPACE_LOAD_FAILED`、`SOURCE_INDEX_FAILED`、`WORKSPACE_VALIDATION_FAILED`） | いいえ（投影型） |
-| `workspace-files` | なし | `workspace.ManagedFile`の配列 | 標準エラー＋終了コード2 | はい |
-| `source-index` | なし | 対象なし: 入力元索引そのもの。対象あり: `operations.SubjectSources`。対象指定の有無で形が変わる | 標準エラー＋終了コード2 | はい（2形） |
-| `knowledge-context` | なし | `-subject-kind/-subject-id`が必須。`knowledgecontext.Context`。`-disclose`では開示の絞り込みに変わる | 標準エラー＋終了コード2（fingerprint不一致は1） | はい（`-disclose`で2形） |
+| `workspace-files` | `tei.cli.workspace-files/v0` | `result`に`workspace.ManagedFile`の配列 | JSON（`INVALID_ARGUMENT`、`WORKSPACE_LOAD_FAILED`） | いいえ（投影型。#2354第一陣で包んだ） |
+| `source-index` | `tei.cli.source-index/v0` | 対象なし: `result`に入力元索引そのもの（`mode=index`）。対象あり: `result`に`operations.SubjectSources`（`mode=subject`） | JSON（`INVALID_ARGUMENT`、`WORKSPACE_LOAD_FAILED`、`SOURCE_INDEX_FAILED`） | いいえ（投影型。`mode`で2形。#2354第一陣） |
+| `knowledge-context` | `tei.cli.knowledge-context/v0` | `result`に`knowledgecontext.Context`（`mode=context`）。`-disclose`では開示の絞り込み（`mode=disclosure`） | JSON（`INVALID_ARGUMENT`、`WORKSPACE_LOAD_FAILED`、`KNOWLEDGE_BUILD_FAILED`。fingerprint不一致は終了コード1） | いいえ（投影型。`mode`で2形。#2354第二陣） |
+| `knowledge-qualify` | `tei.cli.knowledge-qualify/v0` | `result`に`knowledgecontext.QualificationResult`（`mode=qualification`） | JSON（`INVALID_ARGUMENT`、`KNOWLEDGE_BUILD_FAILED`） | いいえ（投影型。#2354第二陣） |
+| `knowledge-review-plan` | `tei.cli.knowledge-review-plan/v0` | `result`に`knowledgecontext.BuilderReviewPlan`（`mode=plan`） | JSON（`INVALID_ARGUMENT`、`KNOWLEDGE_BUILD_FAILED`。fingerprint不一致は終了コード1） | いいえ（投影型。#2354第三陣） |
+| `knowledge-review-handoff` | `tei.cli.knowledge-review-handoff/v0` | `result`に`knowledgecontext.BuilderReviewHandoff`（`mode=handoff`） | JSON（`INVALID_ARGUMENT`、`KNOWLEDGE_BUILD_FAILED`。fingerprint不一致は終了コード1） | いいえ（投影型。#2354第三陣） |
+| `knowledge-review-disclose` | `tei.cli.knowledge-review-disclose/v0` | `result`に`knowledgecontext.DisclosureProjection`（`mode=disclosure`） | JSON（`INVALID_ARGUMENT`、`KNOWLEDGE_BUILD_FAILED`。fingerprint不一致は終了コード1） | いいえ（投影型。#2354第三陣） |
+| `knowledge-data-design-candidate-review` | `tei.cli.knowledge-data-design-candidate-review/v0` | `result`に`knowledgecontext.DataDesignCandidateReviewPacket`（`mode=review`） | JSON（`INVALID_ARGUMENT`、`KNOWLEDGE_BUILD_FAILED`。fingerprint不一致は終了コード1） | いいえ（投影型。#2354第三陣） |
 | `validate -workspace`（テキスト） | なし（テキスト） | テキスト | テキスト、終了コード1（診断あり）/2 | - |
-| `world` | なし | `ir.World` | 標準エラー＋終了コード2 | はい |
-| `requirements` | なし | `dependency.Derive(w)`の配列 | 標準エラー＋終了コード2 | はい |
-| `plugin-lock` | なし（lock形式自体は`formatVersion: 2`を持つ） | `plugin.Lock` | 標準エラー＋終了コード2 | はい |
-| `plugin-resolve` | なし | `plugin.ResolvedSet` | 標準エラー＋終了コード2（未知の環境など） | はい |
-| `plugin-runtime-plan` | なし | `pluginruntime.EnvironmentPlan` | 標準エラー＋終了コード2（構築失敗は1） | はい |
+| `world` | なし | `ir.World` | 標準エラー＋終了コード2 | はい（#2354で証跡照合の再設計とセットで判断する） |
+| `requirements` | `tei.cli.requirements/v0` | `result`に`dependency.Derive(w)`の配列 | JSON（`INVALID_ARGUMENT`、`WORKSPACE_LOAD_FAILED`） | いいえ（投影型。#2354第一陣） |
+| `plugin-lock` | `tei.cli.plugin-lock/v0` | `result`に`plugin.Lock`（lock形式自体は`formatVersion: 2`を持つ） | JSON（`INVALID_ARGUMENT`、`WORKSPACE_LOAD_FAILED`、`PLUGIN_LOCK_FAILED`） | いいえ（投影型。#2354第一陣） |
+| `plugin-resolve` | `tei.cli.plugin-resolve/v0` | `result`に`plugin.ResolvedSet` | JSON（`INVALID_ARGUMENT`、`WORKSPACE_LOAD_FAILED`、`UNKNOWN_ENVIRONMENT`、`INVALID_PLUGIN_LOCK`、`PLUGIN_RESOLVE_FAILED`） | いいえ（投影型。#2354第一陣） |
+| `plugin-runtime-plan` | `tei.cli.plugin-runtime-plan/v0` | `result`に`pluginruntime.EnvironmentPlan` | JSON（`INVALID_ARGUMENT`、`WORKSPACE_LOAD_FAILED`、`UNKNOWN_ENVIRONMENT`、`INVALID_PLUGIN_LOCK`、`PLUGIN_RUNTIME_PLAN_FAILED`。構築失敗は終了コード1） | いいえ（投影型。#2354第一陣） |
 
 観測の補足:
 
