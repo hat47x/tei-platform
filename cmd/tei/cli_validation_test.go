@@ -88,7 +88,7 @@ func TestValidateWorkspaceJSONSemanticFailure(t *testing.T) {
 	}
 }
 
-func TestValidateWorkspaceJSONDuplicateHasSubjectButNoAmbiguousSource(t *testing.T) {
+func TestValidateWorkspaceJSONDuplicateHasDeclarationCandidates(t *testing.T) {
 	root := t.TempDir()
 	writeWorkspaceFile(t, root, "tei.workspace.yaml", "workspace: duplicate\nsources:\n  - semantic\n")
 	writeWorkspaceFile(t, root, "semantic/intake/request.tei", "namespace intake\ndata Request {\n    attribute status type std.code\n    attribute status type std.code\n}\n")
@@ -102,12 +102,36 @@ func TestValidateWorkspaceJSONDuplicateHasSubjectButNoAmbiguousSource(t *testing
 		if item.Diagnostic.Code != "DUPLICATE_SEMANTIC_ELEMENT" {
 			continue
 		}
-		if item.Diagnostic.Subject == nil || item.Diagnostic.Subject.ID != "intake.request.status" || len(item.Sources) != 0 {
+		if item.Diagnostic.Subject == nil || item.Diagnostic.Subject.ID != "intake.request.status" || len(item.Sources) != 2 ||
+			item.Sources[0].Range.Start.Line != 3 || item.Sources[1].Range.Start.Line != 4 ||
+			item.Sources[0].Subject == nil || item.Sources[0].Subject.Kind != "semantic-attribute" ||
+			item.Sources[1].Subject == nil || item.Sources[1].Subject.Kind != "semantic-attribute" {
 			t.Fatalf("duplicate diagnostic: %+v", item)
 		}
 		return
 	}
 	t.Fatalf("duplicate diagnostic missing: %+v", report)
+}
+
+func TestValidateWorkspaceJSONCrossKindDuplicateLabelsCandidates(t *testing.T) {
+	root := t.TempDir()
+	writeWorkspaceFile(t, root, "tei.workspace.yaml", "workspace: duplicate\nsources:\n  - semantic\n")
+	writeWorkspaceFile(t, root, "semantic/a.tei", "namespace intake\ntype Request from std.code\n")
+	writeWorkspaceFile(t, root, "semantic/b.tei", "namespace intake\ndata Request {}\n")
+	var out bytes.Buffer
+	code, err := validateWorkspaceJSON(&out, root)
+	if err != nil || code != 1 {
+		t.Fatalf("exit=%d err=%v body=%s", code, err, out.String())
+	}
+	for _, item := range readValidationReport(t, &out).Diagnostics {
+		if item.Diagnostic.Code == "DUPLICATE_SEMANTIC_ELEMENT" {
+			if len(item.Sources) != 2 || item.Sources[0].Subject == nil || item.Sources[0].Subject.Kind != "semantic-type" || item.Sources[1].Subject == nil || item.Sources[1].Subject.Kind != "semantic-data" {
+				t.Fatalf("cross-kind candidates: %+v", item)
+			}
+			return
+		}
+	}
+	t.Fatal("cross-kind diagnostic missing")
 }
 
 func TestValidateWorkspaceJSONLoadFailure(t *testing.T) {
