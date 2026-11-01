@@ -243,7 +243,7 @@ M1では既存の意味型・値域制約（型・範囲・列挙値）とRelati
 
 ### 7.2.1 M0の実装修正候補とその資格（2026-10-31）
 
-QX-M0-2/3/4への最初のGo側対策は、[Draft PR #2398](https://github.com/hat47x/tei-platform/pull/2398)に**別branch**で分離した。#2388は設計・fixtureのDraft、#2398は`internal/query/derived.go`と`derived_test.go`のみを扱うコードDraftである。双方を同じ完成判定にしない。
+QX-M0-2/3/4への最初のGo側対策は、先行[Draft PR #2398](https://github.com/hat47x/tei-platform/pull/2398)に**別branch**で分離した。#2388は設計・fixtureのDraft、#2398は`internal/query/derived.go`と`derived_test.go`のみを扱うコードDraftである。双方を同じ完成判定にしない。
 
 - コード候補：`ColumnOccurrence.ScopeID`と明示`OuterScopeID`に基づく物理・論理Source occurrence解決、自己JOINにおける出現箇所保持、CTE出力別名重複の後勝ち回避、存在しないCTE Bindingの未解決化、物理＋CTEに同名列がある場合の曖昧性維持。
 - 合成Go回帰テスト（Draftへの追加定義であり**まだ実測ではない**）：同名Alias異Scope、内外の無修飾列、自己JOIN、相関した外側物理列、重複CTE出力、存在しないBinding、物理＋CTE出力衝突、相関した外側CTE列。
@@ -256,6 +256,64 @@ QX-M0-2/3/4への最初のGo側対策は、[Draft PR #2398](https://github.com/h
 最初のread-only Consumerは、**SQL本文の一つの式を選択→対応するScope/Source occurrence/演算/出力列へ移動→逆方向に根拠へ戻る**という一往復を最小操作とする。静的解析のCoverageと評価証拠は別欄、未解決・反例は非表示にしない。CTE中間表・相関した外側行ごとの例は固定Dataset/Scenario参照から示し、テスト値を実DBの物理中間値と呼ばない。
 
 合格条件は、同じ別名を持つ二つのScopeと同じ物理表を二度参照する自己JOINにおいて、選択先が正しいSource occurrenceか未解決であり、他Scopeへ誤Navigateしないこと。失敗した場合は投影を広げる前に束縛・source locatorの不確実性を表示する。編集・Source Acceptance・Host実行・Smart Data Hookはこの操作に含めない。
+
+### 7.4 QX-14：解析の入力版と結果の帰属（2026-11-01 横断更新、提案）
+
+**現在の分担と実際の状態**（確認時main `43517af5450aacb2fdd6c48585dc143f52d57da4`）：
+
+- QX-14aの**別Query ID/空ID拒否**は[PR #2465](https://github.com/hat47x/tei-platform/pull/2465)でmain統合済み。これによりID不一致の手組みResultは`Coverage=none`となるが、**同じIDでSQL本文を変更した場合の解析結果が現在版に属すること**までは示さない。
+- QX-14dのWorker request/response **Query ID・protocol版照合**は[Draft #2471](https://github.com/hat47x/tei-platform/pull/2471)（候補、未統合）。ダミーワーカーの関連試験は報告されているが、実SQLGlotワーカーの配布実物/互換性、実際のSQL→IR一巡は未確認。
+- QX-13のSource occurrenceスコープ/曖昧性の防御は[Draft #2454](https://github.com/hat47x/tei-platform/pull/2454)が旧[Draft #2398](https://github.com/hat47x/tei-platform/pull/2398)を取り込み、未知Source・誤ったOuterScope・循環/欠落/重複Scopeの追加負例まで含む。特定headで`race`/vet/gofmtの報告あり。ただし**現在head `06c2007b71b3675f4e0bffc35b004a7dda99aed7` に対する今回の再実行は未確認**。同じ修正を独立に二重マージしない。
+- 型付き文字列投影の4状態（present/empty/missing/unresolved）に関する[PR #2489](https://github.com/hat47x/tei-platform/pull/2489)、読取り整合・参照不在の[PR #2487](https://github.com/hat47x/tei-platform/pull/2487)はmain統合済み。しかし前者の成功は**Queryの業務型／結果行の意味受理**ではなく、後者の合成Referenceの診断は**実Provider横断のsnapshot証明**ではない。
+
+**QX-14b/cの第一級の欠落**：`analyzer.Request`は`Query/Source/Dialect/Schema/ProtocolVersion`を持ち、`analyzer.Result`の現行wireには入力SQL原byteのSHA・Schema identity・実Worker artifactへの直接の帰属がない。単にResult.Queryが等しく`Status=ok`であっても、旧Source S1解析を同一IDの現行Source S2の`Lineage`として見せられる余地がある。元SQLのsource revision/byteを採用済み意味や実行権限と混同しない。
+
+M0→M1の**説明用入力固定（新Core/Wire schemaの先行採用なし）**：
+
+| 入力区分 | 記録・照合対象 | その違いがあるときの扱い |
+| --- | --- | --- |
+| Authoring | Query CanonicalID、**native SQL原byte digest**、2waySQLならtemplate原byteと実際に展開したSQL/選択branch、Query編集revision | 新SQLへの再解析。旧解析は同一IDでもhistorical |
+| Analysis | Dialect、protocol版、SchemaContextの内容/digest・観測時点/identity、worker実行物・依存版、解析Operation | 互換性不明なら`unverified`/unsupported。workerの自己申告digestだけを因果証拠としない |
+| Meaning binding | Accepted Semantic revision、明示raw→Semantic Field mapping、意味型・値域制約/Rule版 | SQL構造の参照だけは残せても、意味・制約や妥当性を再照合 |
+| Example/evaluation | Dataset revision、局所patch、parameterのmissing/null/present、Operator/evaluator、入力scopeと取得完全性・整合要求 | Expected・Evaluatedを別に失効/再検証。閉じたfixtureの通常0件を毎回未判定にしない |
+| DB observation | Provider/DB条件、SQL実行入力、読取り保証・snapshot、観測Run、Authority・Disclosure context | 現在の実DB観測と歴史的証拠を分離。Query構造用の中間別SQLは元SQLの物理中間結果と呼ばない |
+| Presentation | Modeler/SHOの対象表示契約、Source/Template/文書・表示版 | 見た目だけの変更は元Source/意味の変更と区別。byte一致で人の受理を推定しない |
+
+必要なのは一個の「全体Fresh/Stale boolean」より、**どの主張・Projectionを再使用できるかの依存マトリクス**。例：
+
+- SQLの改訂（同一IDの`SELECT qty`→`SELECT price`）：構造・Lineage・SQL由来の期待値は原則再確認。以前のRunは historical に残す。出力FieldID（scope+ordinal）が同じでも同一意味とみなさない。
+- Schemaに同名列を追加：SQL textと表示テキスト自体は同じでも、無修飾列の解決/Lineageは再確認。ScopeのLexical構造は保存できる範囲がある。
+- DatasetやParameterだけ改訂：純粋なSQL構文図の再生成は不要な場合があるが、段階別Example/Expectation/評価/観測は対象Input Contextとの一致を確認。
+- 業務Rule/意味型だけ改訂：SQL構文の妥当性は直ちに変わらなくても、モデル上の許容値や業務上の説明・Expectedは再審査。Owner受理と文書の固定納品版は別。
+- 表示テンプレートだけ改訂：SQLの検証結果を単純に破棄しない。表示上のread-only説明と文書成果物のdigest/受理状態を再検証。
+- 認可だけ改訂：解析済み構造が過去に正しかったことは残せるが、**現在の値・実行結果の開示**はHost/Providerの現在Authorityで判定。非公開の行ID/件数を診断から漏らさない。
+
+最小反例を**QX-14b（same-ID source edit）／QX-14c（same SQL・different schema）**とし、生成物/表示の`current`と`historical`が区別できるかを先に問う。実Workerへの送信元で同一Invocationと固定入力を束縛する実装責務は#988/#2387に寄せ、D2のSQL digest検査や#1708のread consistencyを**Query Explainの証明済み境界**に読み替えない。
+
+### 7.5 結果の粒度（Grain）・参照Identity・Function Data Contextとの接続（2026-11-01提案）
+
+[Issue #2506](https://github.com/hat47x/tei-platform/issues/2506)はFunction Data Contextの**型付き参照・結果集合・ページ・選択epoch**、[Issue #2507](https://github.com/hat47x/tei-platform/issues/2507)は機能Patternが要求するShape/Grain/Operation/Rendererを担当する。#2387が所有するのは**SQLから読み取ったQuery-localな列・演算・出力の静的/fixture上の意味**まで。Query結果をFunction内の更新対象Entityに自動変換しない。
+
+| Query境界／観測単位 | SQLに基づく読み方 | TEI意味モデル/Functionへの接続判断 |
+| --- | --- | --- |
+| `order_lines` | 明細行（同一orderに複数） | (order_id,line_number)等の**明示された**業務識別条件がある場合に限る |
+| `line_totals` | `GROUP BY order_id`の**グループ単位**。O01=250、O02=50。O03のグループ行は存在しない | `order_id`は集約グループのキーだが、その集約行が受注Entityそのものになるわけではない |
+| `open_orders` | LEFT JOIN+CASEにより、明細が無いO03も**出力行**を持ちamount=0（モデル/fixture前提） | `orders.order_id`の一意性と`line_totals`のグループ単位が確認できる範囲で1受注1行。集約のNULLと欠落は異なる |
+| `final` | JOIN・threshold判定を通った**Query結果bag**。F0ではO01だけ | `customers.customer_id`の一意性と演算条件が固定されている場合に限り、O01は受注の説明対象に束縛可能。表示行index≠Action対象Identity |
+| D1(2件)×D2(3件)のJOIN | 同じHの二つのRelation Pathが結合すると**6行**に増幅し得る | 6行を業務上の6明細や6承認対象とみなさない。D1/D2は#2506の独立Contextとして保持 |
+| `DISTINCT`/Window/再帰 | 列組の重複除去・行ごとの値・反復Pathの帰結 | 業務Entity/Path occurrence/集約のIdentityを推測で作らない。未対応演算はCoverageを分ける |
+
+**粒度は複数Facetの組合せ**：Entity/Relation occurrence/Path occurrence/Aggregate group/Query result rowという観測単位、Business identity（受理済み）とQuery occurrence identity（局所）、多重度、NULL・missing・empty、Read-set completeness/版、編集可能性/Actionの前提を**直交する注釈**として持つ。SQLの`GROUP BY`や`DISTINCT`は表示・評価の粒度を変えるが、Entityを新規受理する行為ではない。既存#1126/#2495の意味型・構造Facetを再利用し、Query用の第二Meta Modelを導入しない。
+
+**QX-15（設計受入候補、NOT RUN）**：
+1. `line_totals`のO01（明細2行→集約1行）と`open_orders`のO03（LEFT JOIN後の受注1行、金額0）を横並び表示。行数/出力grainが同じでも**根拠と意味**は異なる。
+2. D1=2/D2=3の分離ContextとJOIN=6を比較し、`6`をEntity数/Relationship実体数へ自動採用しない。並列パスは#1706・#2506の既存fixtureを参照する。
+3. Query結果を表/チャート/SHO設計書へ投影しても同じSource/Scope/FieldとGrainへ戻れる。集約行の逆更新/クリックによる業務Action対象が一意でなければ、必要な明示Bindingが得られるまで編集Intentは保留する（実行許可は既存#951/#1174）。
+4. 同じQuery IDのSQL変更、Dataset変更、Context選択A→B時の遅延応答を別試験とし、前回Runを現在のFunction Contextへ表示・混入しない。選択epochは#2506が所有。
+5. `best-effort`の混合入力と`snapshot`強要求は[Issue #1708](https://github.com/hat47x/tei-platform/issues/1708)の既存契約に合わせる。参照先不在、Query未取得、NULLを区別し、異Provider間の同時点保証を推測しない。
+
+最初のConsumerはCLI/JSONのread-only一覧（scope→operator→出力grain→独立fixture oracleのexpected→実観測/未実行→元SQL source位置）。Modeler/SHOはこの同じ説明構造を観測者に応じて可視化・文章化する。**SHOの言語的な補正がAccepted SQL/Business Meaningを無断変更することはない**。新しい正式`Grain`公開型やRow provenanceエンジンは、このQX-15小さな試験で採否を判断する。
+
 
 ## 8. 実装順・担当引継ぎ（提案）
 
