@@ -640,3 +640,51 @@ D1〜D8の「受け止めた」を確かめる最小の試験案です。実装�
 | G-4 配置の重複 | 同じ位置に項目を置く | 診断が出る | 後から置いた項目が勝つ |
 | N-1 修正案 | 診断から修正案を作る | 受理境界へ渡る | 自動で受理する |
 
+## 付録C 現行文法で表せる部分と足りない部分
+
+### C.1 現行の宣言
+
+`order_entry`の参照には、次の宣言があります。いずれも現行の`.tei`文法で受理されています。
+
+- [recent-orders.tei](../../reference/workspace/applications/order-entry/patterns/recent-orders.tei)（`browse`）
+- [order-record.tei](../../reference/workspace/applications/order-entry/patterns/order-record.tei)（`record`）
+- [order-lines.tei](../../reference/workspace/applications/order-entry/patterns/order-lines.tei)（`header-detail`）
+- [submit-order.tei](../../reference/workspace/applications/order-entry/patterns/submit-order.tei)（`command`）
+- [customer-reference.tei](../../reference/workspace/applications/order-entry/patterns/customer-reference.tei)（`reference`）
+- [order.tei](../../reference/workspace/semantic/sales/order.tei)（`capability sales.order.submit`）
+
+### C.2 機能型ごとの対応
+
+| X-TEA | 現行文法で書ける部分 | 足りない宣言 |
+| --- | --- | --- |
+| XF100 一覧 | `browse`（`recent_orders`）、`record`（`order_record`）、`reference`（`customer_reference`） | 一覧から単票への遷移、列・絞り込み・並び順 |
+| XF110 一括更新 | `browse`、`command`（`submit_order`） | 一括の対象選択、部分成功、値パネル |
+| XF200 単票保守 | `record`、`command` | 項目の役割、追加・更新・削除の操作宣言、同時実行 |
+| XF290 単票印刷 | `record` | 帳票の投影、出力項目、テンプレート |
+| XF300 見出し明細表示 | `header-detail`、`record` | 明細の起動、階層ツリー、明細ごとの表示 |
+| XF310 見出し明細保守 | `header-detail`、`command` | 明細行の操作、同時実行、行番号 |
+| XF390 見出し明細印刷 | `header-detail` | 帳票の投影、明細の繰返し |
+| XF000 起動処理 | `command` | 起動契機、タイマー、実行先Profile |
+
+### C.3 追加する宣言の形（案）
+
+次は、D1〜D3で追加する宣言の**形の案**です。現行の`.tei`文法ではなく、採用が決まるまで実装・試験の対象にしません。
+
+```text
+interaction order_entry.order_maintenance on order_entry.order_record {
+    item customerId role lookup(target: order_entry.customer_reference)
+    item quantity   role required(validation: sales.order_line.quantity_positive)
+    item amount     role derived(rule: sales.order_line.amount)
+    action submit   command order_entry.submit_order
+    action open     record  order_entry.order_record
+    navigate row    order_entry.recent_orders -> order_entry.order_record
+}
+```
+
+要点は、**PatternのKindを増やさず、既存のPatternとCapabilityを型付きで参照する**ことです。遷移・項目の役割・操作・投影は、この対話契約の側に置きます。
+
+### C.4 最初のPoCで確かめること
+
+- 現行文法だけで、一覧・単票・親子の意味参照が成立する（既存Referenceで確認済み）。
+- 足りないのは、遷移・項目の役割・操作・投影の宣言である。
+- したがってWP3は、Kindを増やさず、L2の宣言を追加する方向で試す。
