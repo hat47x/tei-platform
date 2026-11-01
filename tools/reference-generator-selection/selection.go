@@ -66,14 +66,21 @@ type Rounding struct {
 }
 
 type Contract struct {
-	Schema   string      `json:"schema"`
-	ID       string      `json:"id"`
-	Version  string      `json:"version"`
-	Status   string      `json:"status"`
-	Note     string      `json:"note,omitempty"`
-	Inputs   []InputSpec `json:"inputs"`
-	Output   TypeSpec    `json:"output"`
-	Rounding Rounding    `json:"rounding"`
+	Schema     string          `json:"schema"`
+	ID         string          `json:"id"`
+	Version    string          `json:"version"`
+	Status     string          `json:"status"`
+	Note       string          `json:"note,omitempty"`
+	Inputs     []InputSpec     `json:"inputs"`
+	Output     TypeSpec        `json:"output"`
+	Rounding   Rounding        `json:"rounding"`
+	Projection *ProjectionSpec `json:"projection,omitempty"`
+}
+
+// ProjectionSpec marks a non-numeric reference contract. Identity keeps the
+// input value; normalize trims surrounding whitespace. Rounding must be absent.
+type ProjectionSpec struct {
+	Kind string `json:"kind"`
 }
 
 type Case struct {
@@ -94,6 +101,7 @@ type Result struct {
 	Amount   string `json:"amount,omitempty"`
 	Currency string `json:"currency,omitempty"`
 	Code     string `json:"code,omitempty"`
+	Text     string `json:"text,omitempty"`
 }
 
 type GenerationProvenance struct {
@@ -349,6 +357,15 @@ func validateContract(contract Contract) error {
 	}
 	if strings.TrimSpace(contract.Output.Primitive) == "" {
 		return fmt.Errorf("contract output primitive is required")
+	}
+	if contract.Projection != nil {
+		if contract.Projection.Kind != "identity" && contract.Projection.Kind != "normalize" {
+			return fmt.Errorf("projection kind must be identity or normalize")
+		}
+		if contract.Rounding != (Rounding{}) {
+			return fmt.Errorf("projection contracts must not set rounding")
+		}
+		return nil
 	}
 	if contract.Rounding.Precision < 1 || contract.Rounding.Scale < 0 || contract.Rounding.Scale > contract.Rounding.Precision {
 		return fmt.Errorf("contract rounding precision/scale is invalid")

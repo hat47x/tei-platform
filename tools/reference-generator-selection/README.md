@@ -323,3 +323,7 @@ reconcileは候補をビルド・実行・選抜しません。再生成した�
 `RenderForWorld`は、呼出元が一度読み込んだWorldと契約JSONのbyte列を受け取り、入力属性・型と出力型を照合してから、既存の固定strategyのsourceとcandidate manifestを返します。filesystemの出力、build・選抜・実行は行いません。契約の複合規則の受理やHostの実行許可を与えるAPIではありません。
 
 [設計成果物bundle](../reference-design-output/README.md)では、文書とコード候補を同じWorldとsource revisionへ結び付けるために使います。manifestの対応は来歴であり、モデル全体の意味的な網羅や実行適合の証拠とは区別します。
+
+## 文字列投影（reference-local）
+
+契約に`projection`がある場合、`rounding`は不要です。`identity`は入力をそのまま、`normalize`は前後の空白を除いて投影します。比較結果は`state`と`text`を使い、`missing`・`empty`（`state=present`で空）・`unresolved`を区別します。既存のmoney契約は`projection`を持たず、従来どおり`rounding`が必要です。
