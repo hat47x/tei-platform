@@ -55,6 +55,17 @@ OpenCode Goなど**特定の月額利用枠をDSHから共用できるかは、A
 
 **根拠の強さ**：公式実装ドキュメントと指定版の文書内容を確認した。DSHのローカルInstall、起動実物、Tool/Plugin APIの試用、TEIとのE2Eは未実施。コード断片への依存は基準コミットの変更を再点検してから用いる。
 
+### 2.2 追加の調査（2026-11-01）：Goal自律継続・Schedule・SDK-minimalの実効構成と外部送信
+
+[Goal/Schedule/大量並列開発・機密送出の詳細調査](DSH_SCALE_GOAL_SCHEDULE_EGRESS_RESEARCH_2026-11-01.md)を分離し、実試験Ownerを[TEI #2509](https://github.com/hat47x/tei-platform/issues/2509)、多Workstreamの対照を[TAI #234](https://github.com/hat47x/tai-pleroma/issues/234)へ接続した。以下は指定版のDSH公式構成・説明資料で確認した**設計上重要な追加差分**であり、実起動観測ではない。
+
+- **`sdk-minimal`と`headless`は機能・権限が異なる**。standalone `sdk-minimal`はGoal/Goal Round Driver/Tool GoalやSubagent、MCP Client、Scheduleを含まず、`sandbox-policy.mode: danger-full-access`を明示する。一方`base/headless`ではGoal関連Pluginを構成し、Headless側の既定Sandbox policyは`workspace-write`。いずれも実OSのアクセス可否は別実証。
+- **Goal保存と自律再開は別**：一Session一現行Goal、round既定上限256（Token/金額予算ではない）。再起動・Fork後は`disarmed`で、明示re-armが必要。Goal完了は独立評価器が検証した完了ではない。
+- **Scheduleは別責務**：Web側のScheduleはHostが稼働中にSessionへ予定の指示を届ける。停止中の複数回を完全実行・復旧する保証ではない。Task配達と実業務の結果を分ける。
+- **外部へのRequest拡張送出**：`dsh-session-log-deepseek`は既定で`enabled:true`。公式DeepSeek APIへ、通常のモデル入力`messages`とは別の`dsh_session_log`にSession Eventを送信し得る（既定最大8MiB/Request）。無効化中のEventは再有効化時にBacklog送信対象になり得る。In-flight payloadは切替前に準備済みのまま送信される可能性がある。**`sdk-minimal`にもこのPluginが組み込まれる**。セッション/機密データに関わる実利用時は[TAI #232](https://github.com/hat47x/tai-pleroma/issues/232)でRaw/Network強制・送出範囲を独立検査する。
+
+この知見は、安価なTokenによる探索範囲・Workstreamの拡大方針を弱めず、**並列探索を広げるための有効な実行単位（別Session/Issue/branch）と実通信・独立受理の条件**を具体化する。既存のCordis型Kernel採用判断と本番Runtimeは変更しない。
+
 ## 3. TEI側：既に採用していること、DSHから新たに得られること
 
 ### 3.1 Composition Kernelは「参考」から「十分な検証」へ
