@@ -121,6 +121,7 @@ X-TEAの機能型は8種です（`D:help/FunctionList.HTML`、`E:Editor.java L11
 | F-9 | 入出力の宣言 | `IOTable`に表ごとの作成・参照・更新・削除（`OpC`/`OpR`/`OpU`/`OpD`）を持ち、`IOPanel`（画面）、`IOSpool`（帳票）、`IOWebPage`（Webページ）、`IOTable`（表）という入出力の種類を持つ | 機能がどの表に何をする意図か、どの提示形態を持つかを宣言できる | 宣言と実行時の実際のSQLは別。宣言を検証しない経路がある | `M:Modeler.java`（`IOPanel`・`IOSpool`・`IOWebPage`）、`M:DialogDocuments.java L1827–1836` | CORE |
 | F-10 | 機能の呼出し関係 | `FunctionUsedByThis`（起動契機つき）と、ボタン・項目・明細からの起動を別に持つ | 機能間の依存を、呼出し元の種類つきで表せる | 呼出しの解析は文字列（`CALL(`等）の走査で、意味の参照ではない | `E:Editor.java L11976–12176` | PAT/STU |
 | F-11 | 機能型の直積分解 | 8型は独立した型ではなく、複数性（単票・一覧・見出し明細）、編集性（参照のみ・保守）、出力形態（画面・印刷）の組合せとして説明できる。型固有の属性も、この軸に対応する | 型の追加を、軸の組合せとして考えられる | 組合せの一部（一覧の印刷など）は存在しない。型ごとの実装は直積を共有しない | `D:XF100.java`〜`D:XF390.java`の属性抽出（下表） | PAT |
+| F-12 | 見出し明細表示の構造ツリー | `StructureTable`、`StructureUpperKeys`、`StructureChildKeys`、`StructureOrderBy`、`StructureRootText`、`StructureNodeText`、`StructureNodeIcons`で、自己参照する階層を見出しの下にツリー表示する | 組織・部品表・勘定科目のような階層を、専用画面を作らずに辿れる | 階層の意味は表の自己参照とキー項目に依存し、深さ・循環・権限の扱いが属性にない | `D:XF300.java L7772–7831, L1835–1874` | PAT/GEN |
 
 #### 4.2.1 機能型ごとの宣言パラメータ
 
@@ -227,6 +228,7 @@ X-TEAの機能型は8種です（`D:help/FunctionList.HTML`、`E:Editor.java L11
 | B-4 | 主題領域・部門・用語・注記・しおり・改訂履歴を持つ | 設計の補助情報を、モデルと一緒に保てる | 意味・表示・運用記録の区別がない | 既存[#1808](https://github.com/hat47x/tei-platform/issues/1808)、`M:Modeler.java` | CORE/STU |
 | B-5 | 項目ごとの例値（`Instance`）とスライド順を持つ | 設計の理解と説明に使える | 例値が正本の一部と誤解され得る | 既存[#1131](https://github.com/hat47x/tei-platform/issues/1131)、`M:DialogEditInstanceOnDatamodel.java` | STU |
 | B-6 | `TaskAction`が`Label`、`ExecuteIf`、説明を持ち、`TaskFunctionIO`が機能、入出力、`Operations`、説明を持つ | 作業の操作に、実行条件と利用する機能の入出力を結び付けられる | `ExecuteIf`は自然文に近い条件で、評価の規則・型・失敗が定まらない。`Operations`も自由記述に近い | `M:Modeler.java L20344, L21322, L23043, L28285–28291` | CORE/PAT |
+| B-7 | `TaskAction`の`ExecuteIf`は、画面と定義書では「実行条件」として表示されるが、Driver・Editor・Serverは評価しない | 業務手順の条件を、設計情報として記録できる | 条件が文書にだけ存在し、実行時の分岐としては働かない。読む人が実行条件と誤解し得る | `M:Modeler.java L19992–19993, L22928–22934`、Driver/Editor/Serverに`ExecuteIf`の参照なし（静的確認） | CORE |
 
 ### 4.10 配備・運用（P）
 
