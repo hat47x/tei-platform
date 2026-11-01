@@ -609,7 +609,7 @@ SELECT count(*)
 FROM pg_catalog.pg_constraint con
 JOIN pg_catalog.pg_class cls ON cls.oid = con.conrelid
 JOIN pg_catalog.pg_namespace ns ON ns.oid = cls.relnamespace
-WHERE ns.nspname = $1 AND cls.relname = $2 AND con.conname = $3 AND con.contype::text = $4`
+WHERE ns.nspname = $1 AND cls.relname = $2 AND con.conname = $3 AND con.contype::text = $4 AND con.conparentid = 0`
 
 // constraintNameOccupantQuery lists what holds the new name: a relation of the
 // schema (tables, indexes, the primary key's index, sequences, views) and a
