@@ -16,6 +16,7 @@ go run ./tools/reference-type-reorg-impact/cmd/tei-type-reorg-impact \
 
 - 型分割は影響一覧と未割当診断を出す参照機能です。現行CLIは項目別の再割当を受け取りません。
 - **`-split` と `-candidate-out` の併用はエラーで拒否**します。属性別移行先を保持せず統合用の候補へ写すと誤った型付替えになるためです。
+- `SplitImpact` の結果には `split-candidate-unsupported` 診断を含め、内部APIから統合専用 `Candidate` に渡した場合も候補化を拒否します。分割の分析結果はJSONで参照できますが、この診断を意味上の異常や型自体の不正とは解釈しません。
 - 型統合の `-candidate-out` は引き続き利用できます。いずれも受理やSource書換えは別の明示操作です。
 
 ## 出力
