@@ -469,8 +469,8 @@ func TestSurfaceWorkspaceStandardCRDFixture(t *testing.T) {
 		t.Fatalf("update must bind to the capability that declares the effect: %+v", update)
 	}
 	create, ok := findOperation(surface, "ledger.create.sales.order")
-	if !ok || create.Binding != "" {
-		t.Fatalf("create has no declared capability and must stay unbound: %+v", create)
+	if !ok || create.Binding != "sales.order.register" {
+		t.Fatalf("create must bind to the capability that declares the effect: %+v", create)
 	}
 }
 

@@ -140,3 +140,52 @@ func TestInvokeBoundOperationReportsRejectionAsBusinessResult(t *testing.T) {
 		t.Fatalf("拒否された更新が行を変えています: %s", store["status"])
 	}
 }
+
+// TestInvokeBoundCreateOperationWritesAndIsObservable fixes the create side of
+// the same path: the bound capability runs and the synthetic store changes.
+func TestInvokeBoundCreateOperationWritesAndIsObservable(t *testing.T) {
+	resolver, err := standardCRDWorld(t)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	store := map[string]string{}
+	execution, err := resolver.InvokeCapability(
+		context.Background(),
+		"ledger",
+		"sales.order.register",
+		bindingAdapterResolverFunc(func(_ context.Context, binding realization.CustomGoBinding) (capabilityinvoke.Adapter, error) {
+			if binding.Identity() != "ledger/sales.order.register" {
+				return nil, errors.New("unexpected binding: " + binding.Identity())
+			}
+			return capabilityAdapterFunc(func(_ context.Context, _ core.CanonicalID, input any) (capabilityinvoke.BusinessResult, error) {
+				orderID, _ := input.(map[string]any)["orderId"].(string)
+				if _, exists := store[orderID]; exists {
+					return capabilityinvoke.BusinessResult{
+						Capability: "sales.order.register",
+						Mode:       capabilityinvoke.ResultOutcome,
+						Outcome:    "duplicate",
+						Payload:    map[string]any{"orderId": orderID},
+					}, nil
+				}
+				store[orderID] = "registered"
+				return capabilityinvoke.BusinessResult{
+					Capability: "sales.order.register",
+					Mode:       capabilityinvoke.ResultOutcome,
+					Outcome:    "created",
+					Payload:    map[string]any{"orderId": orderID},
+				}, nil
+			}), nil
+		}),
+		map[string]any{"orderId": "O-2"},
+	)
+	if err != nil {
+		t.Fatalf("束縛ありの登録を実行できません: %v", err)
+	}
+	if execution.Result.Outcome != "created" {
+		t.Fatalf("登録の業務結果=%+v", execution.Result)
+	}
+	if store["O-2"] != "registered" {
+		t.Fatalf("独立した観測で登録が確認できません: %+v", store)
+	}
+}
