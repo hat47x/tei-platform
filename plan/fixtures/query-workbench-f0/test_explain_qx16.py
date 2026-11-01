@@ -46,6 +46,9 @@ class QueryExplainQX16Tests(unittest.TestCase):
         self.assertEqual(self.claim("empty_complete", "line_sum")["status"], "exact-synthetic-scope")
         self.assertIsNone(self.claim("empty_complete", "line_sum")["conclusion"])
         self.assertIsNone(self.claim("empty_complete", "line_sum_gte_500")["conclusion"])
+        self.assertEqual(self.claim("empty_complete", "line_sum")["conclusionPresence"], "sql-null")
+        self.assertEqual(self.claim("empty_partial", "line_sum")["conclusionPresence"], "not-established")
+        self.assertEqual(self.claim("line_complete_delivery_partial", "join_sum")["conclusionPresence"], "not-established")
 
     def test_left_join_unmatched_row_depends_on_right_completeness(self):
         partial = self.claim("left_partial_no_match", "left_unmatched")
