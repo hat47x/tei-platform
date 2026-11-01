@@ -5,7 +5,7 @@ import "testing"
 func fixture() (ReadEvidence, Change, Action) {
 	anchor := Ref{Scope: "tenant-A", Kind: "order", ID: "H1"}
 	read := ReadEvidence{
-		MeaningRevision: "model-A", ContextID: "order-lines", ContextEpoch: "s1", Anchor: anchor, Completeness: "complete",
+		MeaningRevision: "model-A", ContextID: "order-lines", ContextInstanceID: "form-A", ContextEpoch: "s1", Anchor: anchor, Completeness: "complete",
 		Rows: []Row{
 			{OccurrenceID: "join-L1-D1", Grain: "entity", Entity: Ref{Scope: "tenant-A", Kind: "line", ID: "L1"}, FieldRef: "line.amount"},
 			{OccurrenceID: "join-L1-D2", Grain: "entity", Entity: Ref{Scope: "tenant-A", Kind: "line", ID: "L1"}, FieldRef: "line.amount"},
@@ -13,7 +13,7 @@ func fixture() (ReadEvidence, Change, Action) {
 			{OccurrenceID: "line-L2", Grain: "entity", Entity: Ref{Scope: "tenant-A", Kind: "line", ID: "L2"}, FieldRef: "line.amount"},
 		},
 	}
-	change := Change{MeaningRevision: "model-A", ActionRevision: "action-v1", ContextID: "order-lines", ContextEpoch: "s1", Anchor: anchor,
+	change := Change{MeaningRevision: "model-A", ActionRevision: "action-v1", ContextID: "order-lines", ContextInstanceID: "form-A", ContextEpoch: "s1", Anchor: anchor,
 		OccurrenceIDs: []string{"join-L1-D1", "join-L1-D2", "join-L1-D3"}, Operation: "update-field", FieldRef: "line.amount", Value: "500"}
 	action := Action{MeaningRevision: "model-A", Revision: "action-v1", ContextID: "order-lines", Operation: "update-field", SubjectKind: "line", TargetScope: "tenant-A", FieldRef: "line.amount", CapabilityID: "line.edit"}
 	return read, change, action
@@ -146,5 +146,21 @@ func TestSameKindButDifferentTargetScopeCannotBeWritten(t *testing.T) {
 	change.OccurrenceIDs = []string{"join-L1-D1"}
 	if got := Interpret(read, change, action); got.Status != "unresolved" {
 		t.Fatalf("scope: %#v", got)
+	}
+}
+
+func TestTwoViewInstancesCannotShareOneSelection(t *testing.T) {
+	read, change, action := fixture()
+	read.ContextInstanceID = "form-B" // same definition, same epoch, different UI window
+	if got := Interpret(read, change, action); got.Status != "stale" {
+		t.Fatalf("window: %#v", got)
+	}
+}
+
+func TestUnknownCompletenessIsNotAQualifiedRead(t *testing.T) {
+	read, change, action := fixture()
+	read.Completeness = "arbitrary-new-status"
+	if got := Interpret(read, change, action); got.Status != "unresolved" {
+		t.Fatalf("unknown completeness: %#v", got)
 	}
 }
