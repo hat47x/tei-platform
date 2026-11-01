@@ -1,11 +1,28 @@
 package application_test
 
 import (
+	"encoding/json"
+	"strings"
 	"testing"
 
 	"tei/internal/application"
 	"tei/internal/core"
 )
+
+func TestPatternJSONOmitsInteractionWhenAbsent(t *testing.T) {
+	pattern := application.Pattern{
+		ID:   "order_entry.order_record",
+		Kind: application.PatternRecord,
+		Data: "sales.order",
+	}
+	raw, err := json.Marshal(pattern)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(raw), "interaction") {
+		t.Fatalf("interactionのないPatternのJSONが変わっています: %s", raw)
+	}
+}
 
 func TestInteractionNavigationTargetsReturnsRecordPatternsInIDOrder(t *testing.T) {
 	app := application.Application{Patterns: []application.Pattern{
