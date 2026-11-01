@@ -1,8 +1,9 @@
 import tempfile
 import unittest
+from datetime import date
 from pathlib import Path
 
-from probe import check
+from probe import apply_allowlist, check
 
 
 class ProbeTest(unittest.TestCase):
@@ -43,6 +44,28 @@ class ProbeTest(unittest.TestCase):
             self.assertEqual([r["result"] for r in report["records"]],
                              ["unsupported-declaration", "unsupported-declaration"])
             self.assertTrue(all(r["severity"] == "error" for r in report["records"]))
+
+    def test_allowlist_exact_expired_stale_and_growth(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "docs").mkdir()
+            entry = {"document": "docs/example.md", "name": "docs/missing", "reason": "tracking", "issue": 2309}
+            report = check(root, "docs/example.md", "`ref:docs/missing`")
+            apply_allowlist(report, {"baseline_count": 1, "entries": [entry]}, date(2026, 11, 1))
+            self.assertEqual(report["records"][0]["result"], "allowlisted-unresolved")
+            expired = dict(entry, expires="2026-10-31")
+            report = check(root, "docs/example.md", "`ref:docs/missing`")
+            apply_allowlist(report, {"baseline_count": 1, "entries": [expired]}, date(2026, 11, 1))
+            self.assertEqual(report["allowlist"]["issues"][0]["result"], "expired-allowlist")
+            (root / "docs" / "missing").write_text("", encoding="utf-8")
+            report = check(root, "docs/example.md", "`ref:docs/missing`")
+            apply_allowlist(report, {"baseline_count": 1, "entries": [entry]}, date(2026, 11, 1))
+            self.assertEqual(report["allowlist"]["issues"][0]["result"], "stale-allowlist")
+            for data in ({"baseline_count": 0, "entries": [entry]},
+                         {"baseline_count": 1, "entries": [dict(entry, name="docs/*")]},
+                         {"baseline_count": 2, "entries": [entry, entry]}):
+                with self.assertRaises(ValueError):
+                    apply_allowlist(report, data, date(2026, 11, 1))
 
 
 if __name__ == "__main__":
