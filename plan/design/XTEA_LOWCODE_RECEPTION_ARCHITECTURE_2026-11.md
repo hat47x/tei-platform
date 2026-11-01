@@ -91,6 +91,25 @@ X-TEAのスクリプトAPIは、SQL・確定・機能呼出しを同じ面に置
 | B 業務モデリング | CORE / STU | 業務手順・作業・契機の宣言、三視点の診断 | [#1125](https://github.com/hat47x/tei-platform/issues/1125)、[#1126](https://github.com/hat47x/tei-platform/issues/1126) |
 | P 配備・運用 | PLG / RQ | 実行先Profile、遠隔実行の境界、観測 | [#2019](https://github.com/hat47x/tei-platform/issues/2019)、[#2020](https://github.com/hat47x/tei-platform/issues/2020) |
 
+### 4.1 現行実装との差
+
+受容先が現行のTEIにどこまで存在するかを、実装で確認しました。存在するものは再利用し、足りないものだけを追加します。
+
+| 受容面 | 現行のTEI | 根拠 | 差・対応 |
+| --- | --- | --- | --- |
+| Patternの種類 | 5種固定。未知のKindは構文エラー | `internal/application/model.go` L19–33、`internal/syntax/application_pattern.go` L29–31 | D1のパッケージは、5種の組合せで表すか、Kindの拡張点を別に設計する |
+| Patternの宣言 | `data`、`relation`、`query`、`capability`、`datasource`、`contract-query`のみ | 同 L54–63、`application_pattern.go` L36–129 | 対話項目・操作・フック・表示意図がない。D1・D2・D3で追加する |
+| 業務上の結末 | Capabilityの`Outcomes`と、呼出し境界のerrorを分ける | `internal/semantic/model.go` L128–133、L151–158 | D5はこれを再利用し、X-TEAの戻り値を混ぜない |
+| データ効果 | `create`と`update`のみ | `internal/semantic/model.go` L140–144 | `delete`を表せない。Business Effect Lifecycleと合わせて追加を検討する |
+| 認可 | subject・action・resourceの許可 | `internal/security/legacyauthorization/authorization.go` L29–45 | AC-11はこれを再利用できる。Pattern・Commandとの対応付けが要る |
+| 項目の意味 | Attribute（ID・型・説明・表示）とValidation | `internal/semantic/model.go` L64–70、L118–121 | 必須・更新禁止・参照入力・導出の役割は、ValidationとData Derivationへ寄せる |
+| 表示・配置 | アプリケーション層にモデルがない | `internal/application/model.go` | D4の表示意図を新設する |
+| 帳票・出力投影 | モデルがない | `internal/application/model.go` | D7を新設する |
+| 診断 | 既存のValidationがある | `internal/semantic/model.go` L118–121 | 三視点の抜け・未被呼出しはD8で追加する |
+| パッケージ | Pluginの合成はあるが、Patternパッケージはない | `internal/plugin/model.go` | D1でPlugin種別として設計する |
+
+この表から、D1のパッケージは「Kindを増やす」のではなく「5種の組合せと対話契約を追加する」方向が、現行実装と衝突しにくいと分かります。D5も、新しい結果型を増やすのではなく、既存の`Outcome`とerrorの分担に合わせるべきです。
+
 ## 5. 高難度の設計判断
 
 以下は、知識目録から直接には決まらない設計判断です。それぞれ、問題、選択肢、推奨、理由、受入条件、撤回条件、未解決を書きます。推奨は採用済みではありません。
@@ -316,25 +335,26 @@ lookup customer_lookup on order_entry.order_record.customerId
 - **画面を閉じる操作や画面遷移を、確定の契機にしない。** 確定はCommandの結果としてだけ起こす。
 - **画面の状態（表示・追加・編集）と、業務結果・取消・異常を、同じ値にしない。** 状態は対話契約の状態、結果はCommandの結果として分ける。
 - 同時更新の検出は、**宣言された同時実行契約**とする。更新カウンタ列は、その実現の一つ（提供元の詳細）であり、すべての表にある前提にしない。
-- 結果は、件数ではなく型付きの結果にする。
+- **結果は、業務上の結末と実行の失敗に分ける。** TEIはすでに、Capabilityの`Outcomes`（業務上の結末）と、呼出し境界のerror（実行の失敗）を分けています（`internal/semantic/model.go`の`Outcome`と`Capability`）。X-TEAの`RETURN_CODE`のように、両者を一つの値に混ぜません。
+- 実行の失敗は、型付きのエラーとして表す。少なくとも、対象なし、複数一致、版の不一致、権限の拒否、結果不明、未実行を区別する。業務上それらを正常な結末として扱う場合だけ、`Outcome`として宣言する。
+- `applied`（適用された）は業務上の結末ではなく、実行の成功と、独立した観測で確かめる（RQ-018）。
 
-```text
-CommandOutcome
-- applied            適用された（観測は別）
-- not-found          対象が存在しない
-- conflict           版・同時実行の不一致
-- multiple-match     条件に複数が一致した
-- rejected           検証・権限・規則による拒否
-- unknown            外部の状態が不明
-- not-executed       実行していない
-```
+X-TEAの戻り値とTEIの分類の対応（案）は、次のとおりです。
+
+| X-TEAの戻り値 | TEIの分類（案） | 注意 |
+| --- | --- | --- |
+| `10`登録、`20`更新、`30`削除 | 業務上の結末（`Outcome`）または実行の成功 | 業務結果として宣言するかを決める |
+| `00`表示、`11`追加、`21`編集 | 対話の状態 | `Outcome`にしない |
+| `01`取消 | 未実行 | 実行の失敗とも分ける |
+| `99`異常 | 実行の失敗（error） | 業務上の結末に変換しない |
+| 更新0件、複数一致、版の不一致 | 実行の失敗 | 業務上正常なら`Outcome`にする |
 
 - 読み取り専用のデータソースへの書込みは、宣言・検証・実行の各段で拒否する（知識目録D-7）。
 - Commandの成功は、業務の完了でも、外部状態の変化の観測でもない（RQ-018）。
 
 **受入条件.**
 
-- 0件更新、複数件一致、版の不一致、読み取り専用、実行時エラーを、それぞれ別の結果として返す。
+- 0件更新、複数件一致、版の不一致、読み取り専用、実行時エラーを、業務上の結末と実行の失敗のどちらかとして区別して返す。
 - 同じCommandを再実行したときの冪等性・不明状態を、結果型で表せる。
 - 画面の操作が、宣言されたCommandと効果へ解決でき、未宣言の副作用を実行しない。
 - 更新カウンタを持たない表でも、同時実行の契約を宣言できる（または、できないことを明示する）。
@@ -343,6 +363,7 @@ CommandOutcome
 
 **未解決.**
 
+- 削除の効果をどう表すか。現在の`DataEffect`は`create`と`update`だけで、`delete`を持たない（`internal/semantic/model.go` L140–144）。Business Effect Lifecycleと合わせて決める。
 - 見出しと明細を一つの操作で更新するときの、効果のまとまり（同一取引とするか、補償で表すか）。
 - 画面を閉じる・取消す操作と、Commandの取消・補償の対応。
 - 複数画面・外部効果をまたぐ取引の表現。
