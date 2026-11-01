@@ -99,7 +99,7 @@ W1 が前提。W2〜W4 は並行できる。W5 は W2 の後。
 
 W2（表定義書）も追加しました（[`internal/artifact/tabledef.go`](../../internal/artifact/tabledef.go)）。保存の対応と意味のデータから、`table`・`data`・`column`・`primary-key`・`index` の行を、保存の宣言順と索引名順で出します。列に写像されていない属性と、主キーが無い表は、空欄で埋めず `Unresolved` に載せます。形式は仮説H2（行指向のテキスト）で選んでいます（[PoCの仮説](../workstreams/POC_HYPOTHESES_2026-11.md)）。
 
-W3〜W5（機能定義書・対応一覧・DDLとの整合）とW6（CLI）は未着手です。
+W3〜W5（機能定義書・対応一覧・DDLとの整合）は [#2482](https://github.com/hat47x/tei-platform/issues/2482) で起票しました。W6（CLI）は未着手です。
 
 ## 7. 停止条件
 

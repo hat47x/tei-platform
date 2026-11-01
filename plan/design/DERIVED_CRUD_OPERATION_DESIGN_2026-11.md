@@ -141,7 +141,7 @@ go run ./cmd/tei scenario -workspace reference/workspace -scenario reference/dri
 | W4 | 入力項目と検証の結び付け | `internal/operations/surface.go`、`internal/validation/application_pattern.go`（参照のみ） | `validation` が対象データ・属性に結び付く場合だけ前提に付き、結び付かない場合は gap になる | S |
 | W5 | CLI と出力契約 | `cmd/tei/cli_surface.go`（新規）、`cli_contract.go`、`cli_result.go` | `tei commands` に現れ、`schemaVersion` と失敗時のエンベロープが既存の形式に揃う | M |
 | W6 | 受入用の負例作業領域 | `reference/standard-crud/workspace/`（新規） | 5.2 の N-01〜N-05 を一つの作業領域で再現でき、`validate` の診断コードが固定される | S |
-| W7 | 一覧 → 参照 → 更新の縦切り | `reference/driver-scenarios/order-entry-derived-crud.json`（新規） | P-1127-02 が `tei scenario` で通り、独立した読取りで観測できる | M |
+| W7 | 一覧 → 参照 → 更新の縦切り（[#2485](https://github.com/hat47x/tei-platform/issues/2485)） | `reference/driver-scenarios/order-entry-derived-crud.json`（新規） | P-1127-02 が `tei scenario` で通り、独立した読取りで観測できる | M |
 | W8 | 第一Web実行先への提示 | `tools/reference-first-web-target/`（参照のみ、必要なら小さな追加） | P-1127-02 が Web 経由でも同じ結果になる。表示の忠実度は判定しない | M |
 
 W1〜W4 は独立して進められる。W5 は W1〜W4 の後、W6 は W3 と並行、W7 は W3・W5 の後、W8 は W7 の後。
