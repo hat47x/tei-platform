@@ -7,6 +7,7 @@
 - ルートの[README](README.md)と、変更対象のREADMEを読みます。
 - 現行構成は[docs/architecture.md](docs/architecture.md)、実装の成立状況は[docs/status.md](docs/status.md)で確認します。
 - **プロジェクトの基本開発方針・優先順序**は[開発全体計画の「基本開発方針」](plan/MASTER_PLAN.md)を確認します。外部要件による机上評価と基盤構造の検討を先行し、生成AI向けCUIと標準プラグインを並行開発してヘッドレス一気通貫で実証した後、人間向けGUIを構築します。方針と現行の実装状況を区別します。
+- 外部AIハーネス（DeepSeek Harness等）を使うときは[DSHの構成・Headless・MCP/ToolとTEIの責務比較](plan/research/DEEPSEEK_HARNESS_TEI_CROSS_PRODUCT_ADOPTION_2026-11-01.md)を**研究上の参照**として確認します。既存[ADR-0032](plan/adr/0032-composition-kernel-replacement.md)の受理済みKernel方向性と、未受理の具体的Plugin/Host/MCP実装を分け、AI向けTool成功を意味・権限・外部Effectの証拠へ昇格させません。
 - 関連するIssue・PR・ADRを読みます。設計判断が矛盾している場合は、解決するまで統合しません。
 - `reference/workspace`は、**Gate B / Gate Cで固定した版**と、**現在の参照用作業領域**を区別して扱います。固定版は、Gate Bが固定したcommit `e5231839a5dcc62cce1181a2731fcb7c70d16736`（Gate Cのbaseline Rも同じ値）と、Gate Cが固定したtarget build `0ba87a4e0a96f70a198b03ff7652fb00e3826abe`（T）です。固定版は履歴から参照し、現在の作業領域の内容を固定版として引用しません。現在の作業領域を変更する場合は、Issue番号と理由をPRへ明記し、`reference-shared-acceptance`の受理経路（`-allow-reference-baseline`付き）を使います。`.tei`ファイルを手編集しません。受理した変更は`.tei/decisions/*.json`のDecisionに記録されるため、PRはそのファイルのパスを引用します。
 - 秘密情報、顧客データ、未公開資料を、コミット・Issue・PR・ログへ入れません。
