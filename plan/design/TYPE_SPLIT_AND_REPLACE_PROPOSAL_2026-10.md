@@ -69,7 +69,7 @@
 
 そのため `-split -candidate-out` を単なる書込み候補とみなすと、**「AはType1、BはType2に分割」したい意図が「AもBもType1」に失われる危険**がある。型の基底表現まで異なる例なら後続Previewが拒否し得るが、二つの移行先の基底表現が同じ例では、技術的な型検査だけで誤配分を見逃し得る。
 
-**P0停止条件（修正案）**：複数先への割当を含むSplitは、明示Reassignment・未割当ゼロ・移行先の型同一性・全影響が検査可能になるまではCandidate生成を**拒否**する。最小修正として `-split` と `-candidate-out` の併用を拒否し、読取り専用のImpactを残す。将来は専用のSplit→候補変換を採用しても、既存のShared AcceptanceとAuthoritative Sourceを再利用し、第二のPatch DSL／Approvalを作らない。
+**P0停止条件（2026-11-01、最小実装をDraftに保存）**：複数先への割当を含むSplitは、明示Reassignment・未割当ゼロ・移行先の型同一性・全影響が検査可能になるまではCandidate生成を**拒否**する。`-split` と `-candidate-out` の併用を拒否する小修正・オプション検査テストをこのDraftに追加した（新規Go実行は未実施）。読取り専用のImpactは維持する。将来は専用のSplit→候補変換を採用しても、既存のShared AcceptanceとAuthoritative Sourceを再利用し、第二のPatch DSL／Approvalを作らない。
 
 | 試験候補 | 入力 | 期待 |
 | --- | --- | --- |
@@ -140,3 +140,41 @@ Studioはまず**基本型を指定する通常の項目定義**を許す。意�
 **次の最小実証はTM-01とTM-02を既存Referenceテストで判別すること**。型の全利用先を常に閉世界で列挙できるという前提や、旧型定義の廃止機構・新しい共通型Registryを先に実装しない。
 
 **Owner判断待ち**：Studioで「型参照変更」「使用箇所の移行」「統合・廃止」の言葉をどう表示するか、旧型の互換維持にどの範囲のConsumer確認を要するか、Value Domain制約を既存Validation/Pluginでどの程度まで表現するか。
+
+## 10. 2026-11-01 追補：変更意図を失わない変換と、閉じた検証範囲
+
+**位置付け：#1806 のDraft PR #2404での限定的コード修正と、他チャットの #2387 SQL Scope／#1570 外部Semantic／#1935 Shared Acceptance の責務比較。以下のGoテストと実CLI動作は、執筆時点では未実行。正式な型仕様やOwner受理は未確定。**
+
+### 10.1 Impact→Candidateの変換は「変更意図」の保存を条件にする
+
+分割X→{Y,Z}の宣言を考える。意味型の基底型が同じでも、A→Y・B→Zという**割当先の対応関係**を失えば、型検査がPASSしても元の変更意図とは違う。
+
+- 入力：固定されたSource版、対象TypeRef、対象のAttribute identity、移行先候補集合、項目別の意図された割当。
+- 出力候補の成立条件：**入力で明示したAttribute集合と、候補の変更対象集合の一致**、各属性の元・先TypeRefの保存、未割当・余剰・重複・別Scope混入が無いこと。意図して対象外にした項目は対象外と明示し、「未発見」を「存在しない」に昇格させない。
+- Source→Impact→Candidate→Preview/Acceptという段階が一致していても、その段階で扱っていないCapability直接参照や外部Consumerの契約まで「型統合済み」とは判断しない。
+- 上記は既存 `structureRevision` と Shared Acceptance の `baseModelRevision` の**意味の違い**も保存することを要請する。型の使用先の構造版が固定されていても、直前のSource受理対象版は別に再照合する。
+
+この考え方は #2387 のSQL列解決と共通する。そこでは、同じ列名・aliasであってもScopeとSource occurrenceを保存して初めて正しい参照となる。同様に、型の分割では同じ基底表現でも属性別の割当先を保存する必要がある。ただし、Query IRやSQL Scopeを型管理の第二正本にしない。
+
+### 10.2 最小実装と、実際に確認すべき対象
+
+今回のDraft PR #2404には、`cmd/tei-type-reorg-impact/main.go` の入力境界で `-split` と `-candidate-out` の併用を拒否する条件を追加した。`main_test.go` にオプションの4ケース（読取り専用split、候補なしmerge、merge候補、split候補拒否）を追加し、READMEには分割の読取り専用契約を明記した。
+
+| ID | 確認する入力と出力 | 完了条件・証拠境界 |
+| --- | --- | --- |
+| TS-02a | `-split -candidate-out bad.json` | 非0終了、診断、bad.jsonを作らず、Workspace不変（要実CLIの負例） |
+| TS-02b | `-split`だけ | 影響JSON・未割当診断を保持、候補出力なし（既存機構の退行確認） |
+| TS-02c | `-candidate-out`で通常の統合 | 従来どおり候補を生成、既存のShared Acceptanceへpreview可能（退行確認） |
+| TS-02d | `-split -candidate-out`で実際のWorkspaceが存在しない | 実Workspaceの読取りや書込みに入る前に組合せ拒否（入口順の確認） |
+
+- **コード保存済み**と**GoテストがPASSした**は分ける。手元のGo 1.23.2では、現行`go.mod`指定のGo 1.26.10を満たさず、trusted exact checkoutでの `gofmt`、`go test ./tools/reference-type-reorg-impact/... -count=1` と実CLI実行が残る。
+- この修正は**候補生成の誤変換の入口を閉じる**だけで、正しいSplit候補の実装、Studio上の操作、意味型のOwner受理、実DB値適合、外部Hostの型互換性まで合格にしない。
+- 将来のSplit→Candidateが必要になったときは、TS-01・TS-03と、入力割当↔候補割当の完全性を独立した固定fixtureで実証してから入口を開く。新しい変更案スキーマや型Registryの採用は先行しない。
+
+### 10.3 Domainを横断する再利用の説明
+
+- **Domain＝対象領域**の共通用語と、**Semantic Type＝意味型**／**Value Domain＝値域**の用語候補を維持する。Contextや外部Namespaceの境界は、型の名称・値域一致から意味的同一性を自動認定する根拠ではない。
+- #1570の外部Semantic参照では、どのNamespaceを明示的に選んでいるかが分かる範囲を確認し、その範囲外のConsumerを「存在しない」と断言しない。閉じたReference fixtureは閉じた範囲で合格判定してよい。
+- #2077の他言語への生成、#2390の外部製品によるPlugin利用は、型の構造適合・必要な契約・実行側の権限を個別に検証するレーン。型の改名・付替えだけで生成済みJava/.NET等のartifactや外部Hostの更新・実行許可を得ない。
+
+**次の優先順位**：まず上記CLI負例と退行をexact branchで実測（#1806）。次にTM-01/TM-02の局所使用先・物理Storageの観測範囲を明確にする（#1806）。最後にStudio上の段階的な意味型化を#1124へ接続する。値域制約のCore表現、分割先の人の意味判断、旧型の廃止、複合値第一級型化はOwner判断・実例待ちのまま維持する。
