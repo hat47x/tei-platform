@@ -1,0 +1,27 @@
+{
+  "state": {
+    "records": {
+      "order:1": "old"
+    }
+  },
+  "requests": [
+    {
+      "key": "order:1",
+      "expectedPresent": true,
+      "expected": "old",
+      "newValue": "A",
+      "idempotencyKey": "update-a",
+      "authorized": true,
+      "valid": true
+    },
+    {
+      "key": "order:1",
+      "expectedPresent": true,
+      "expected": "old",
+      "newValue": "B",
+      "idempotencyKey": "update-b",
+      "authorized": true,
+      "valid": true
+    }
+  ]
+}
