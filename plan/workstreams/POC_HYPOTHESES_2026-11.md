@@ -98,4 +98,6 @@
 - 失敗: 束縛の解決失敗・アダプタ不在・結果の受領失敗は `error` として返す。
 - 観測: 拒否の理由の内訳を実行の記録から読めるようにする（H1の観測指標）。
 
-次の実装は、`internal/driver` の試験で、束縛ありの `sales.order.cancel` を偽のアダプタへ渡し、(1) 拒否が `BusinessResult` として返ること、(2) 束縛の解決失敗が `error` になることを固定する。`capabilityinvoke` の公開APIを確認してから書く。
+次の実装は、`internal/driver` の試験で、束縛ありの `sales.order.cancel` を偽のアダプタへ渡し、(1) 拒否が `BusinessResult` として返ること、(2) 束縛の解決失敗が `error` になることを固定する。
+
+確認済みのAPI（2026-11-02）: 実体は `internal/semantic/capabilityinvoke`。`BusinessResult{Capability, Mode, Outcome, Payload}`、`Adapter.Invoke(ctx, capability, input)`、`Invoke(ctx, capability, adapter, input)` は返された結果が能力の `result` 契約に従うかを検査する。したがって偽のアダプタは、`sales.order.cancel` の出力契約（`sales.order`）に合う `Mode`・`Outcome`・`Payload` を返す必要がある。
