@@ -28,6 +28,14 @@ class ProbeTest(unittest.TestCase):
             report = check(Path(tmp), "docs/example.md", "`ref:docs/../outside`")
             self.assertEqual(report["records"][0]["result"], "invalid-path")
 
+    def test_directory_marker_does_not_resolve_a_file(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "docs").mkdir()
+            (root / "docs" / "file").write_text("", encoding="utf-8")
+            report = check(root, "docs/example.md", "`ref:docs/file/`")
+            self.assertEqual(report["records"][0]["result"], "unresolved")
+
 
 if __name__ == "__main__":
     unittest.main()

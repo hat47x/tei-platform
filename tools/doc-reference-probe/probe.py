@@ -19,7 +19,7 @@ def check(root, document, text):
         valid = not any(part in ("..", ".") for part in name.split("/"))
         target = (root / name).resolve()
         valid = valid and target.is_relative_to(root)
-        exists = valid and target.exists()
+        exists = valid and (target.is_dir() if name.endswith("/") else target.exists())
         if not valid:
             severity, result = ("error" if kind else "warning"), "invalid-path"
         elif kind == "planned" and not planned_doc:
