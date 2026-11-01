@@ -1,6 +1,11 @@
+import sys
 import unittest
 
-from check import scan_text
+# checkのimportで__pycache__を作らない。CIの実行後作業領域検査が
+# 未追跡ファイルを失敗にするため（#2436）。
+sys.dont_write_bytecode = True
+
+from check import scan_text  # noqa: E402
 
 
 class ScanTextTest(unittest.TestCase):

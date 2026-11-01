@@ -1,6 +1,6 @@
 # check-public-boundary
 
-公開文書へ非公開資料の名前・所在を書かない規則（[`docs/documentation-quality.md`](../../../docs/documentation-quality.md) §11.1、#2342で決定）を、機械で検査する（#2436）。
+公開文書へ非公開資料の名前・所在を書かない規則（[`docs/documentation-quality.md`](../../docs/documentation-quality.md) §11.1、#2342で決定）を、機械で検査する（#2436）。
 
 ## 使い方
 
