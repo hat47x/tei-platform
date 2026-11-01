@@ -419,9 +419,9 @@ main参照：`2197baaedbde178a042a280ea1bd1d534617bfc7`。現行`relational.go`�
 2. `RelNode.Expressions`は文字列配列。SQLの比較や`EXISTS`のPredicate、`SUM`の対象/NULL・非負値域型、Window/Recursive、SQL dialectを型付きで十分説明したと推定しない。プローブの`expressionSemantics`は`unverified`、`claimConclusionPresence`は常に`not-established`。
 3. `RelNode.Resolution`や`Coverage.Full`が仮に存在しても、Provider read-set、必要なsnapshotの一致、Ownerの業務Meaning/受理、Host実行・開示許可の証拠にはならない。source scopeの判定はDraft #2454、worker応答ID/版はDraft #2471、同一Query IDのSQL原byte変化はQX-14の未解決課題。
 
-**次のM1判定方法（未実行）**：既存Queryパッケージの合成`analyzer.Result`から`DeriveFromAnalysis`→`RelationalIR`を**実際のGo呼出しで生成した結果**を、今回のQX-17プローブへ入力。3例の「Scope→Source occurrence→Operation Inputs→OutputFields」を別々に照合し、(a)同じ依存を辿れる、(b)構造は辿れるが出力Field接合は無根拠、(c)未表現／`opaque`、(d)誤った`Full`の4群へ分類する。現在のIRで説明の成立条件が表せない場合は、まず具体的な欠落字段を記録し、第二のParser/SQL Evaluator/新Core Provenance正本を作る前に既存Owner #2387/#988/#2506で接続を評価する。
+**次のM1判定方法（未実行）**：既存Queryパッケージの合成`analyzer.Result`から`DeriveFromAnalysis`→`RelationalIR`を**実際のGo呼出しで生成した結果**を、今回のQX-17プローブへ入力。3例の「Scope→Source occurrence→Operation Inputs→OutputFields」を別々に照合し、(a)同じ依存を辿れる、(b)構造は辿れるが出力Field接合は無根拠、(c)未表現／`opaque`、(d)誤った`Full`の4群へ分類する。現在のIRで説明の成立条件が表せない場合は、まず具体的な不足する項目を記録し、第二のParser/SQL Evaluator/新Core Provenance正本を作る前に既存Owner #2387/#988/#2506で接続を評価する。
 
-**同時に満たすべき横断要件**：#2506のData Context Instance/選択epochと#2500のAction対象IDは、本QX-17 Source operation IDと別のID。部分取得・JOINの行増幅・集約の操作不可をModeler/SHO/外部Consumerへ説明する際は、構造観測→対象束縛→当前性→Authority/Effectをそれぞれ独立に扱う。QX-17はread-only構造候補のStageに留め、業務完成・Commit・GenerationのPASSへ昇格しない。
+**同時に満たすべき横断要件**：#2506のData Context Instance/選択epochと#2500のAction対象IDは、本QX-17 Source operation IDと別のID。部分取得・JOINの行増幅・集約の操作不可をModeler/SHO/外部Consumerへ説明する際は、構造観測→対象束縛→現在性→Authority/Effectをそれぞれ独立に扱う。QX-17はread-only構造候補のStageに留め、業務完成・Commit・GenerationのPASSへ昇格しない。
 
 
 ## 8. 実装順・担当引継ぎ（提案）
