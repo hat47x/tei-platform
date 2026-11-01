@@ -1,0 +1,14 @@
+{
+  "target": {
+    "name": "reference-sql",
+    "maxPrecision": 18,
+    "maxScale": 4,
+    "roundingModes": ["HALF_UP", "HALF_EVEN"],
+    "exactDecimal": true
+  },
+  "resultType": "JPY",
+  "types": {
+    "JPY": { "currency": "JPY", "precision": 5, "scale": 2 }
+  },
+  "rounding": "HALF_EVEN"
+}
