@@ -440,7 +440,7 @@ Linuxで同じ固定条件の隔離画面を使う場合は、各 `python tests/
 
 2026-10-21、JDK 11.0.20.1（`--release 8`でコンパイル）で確認しました。
 
-- `python tests/test_integration.py`: 10件成功。メニュー、テキスト、ボタン、Enter、タブ、チェックボックス、コンボ、通常テーブル、X-TEA型のカスタム行オブジェクトを持つテーブル、ツリー全体の読取り、テーブル行のダブルクリック、モーダルダイアログ、スクリーンショット、トレース、未知selector、トークン拒否を合成Swingアプリで確認。
+- `python tests/test_integration.py`: 12件成功。メニュー、テキスト、ボタン、Enter、タブ、チェックボックス、コンボ、通常テーブル、X-TEA型のカスタム行オブジェクトを持つテーブル、実セルエディタのcommit/cancel、ツリー全体の読取り、テーブル行のダブルクリック、リスト項目とチェック状態、モーダルダイアログ、スクリーンショット、トレース、未知selector、トークン拒否を合成Swingアプリで確認。
 - `python tests/test_model_cli.py`: 8件成功。合成`.xead`からシステム、テーブル、フィールド、キー、機能種別、入出力CRUD、呼び出し関係、`export`のJSON、`diff`の追加・削除・変更、`validate`の参照エラー、`schema`の契約、Editor形式の`Type`属性を確認。
 - `python tests/test_scenario_files.py`: 1件成功。22件のシナリオJSONが、既知の`op`とselectorキーだけを使っていることを確認。
 - 同じモデルCLI 8件とシナリオ構造1件は、`.github/workflows/tei-reference-xtea-model-cli-ci.yml`で`xtea_cli.py`または`tests/`を変更したときに実行します。
