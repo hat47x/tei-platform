@@ -15,6 +15,10 @@
 | --- | --- | --- |
 | 完全取得の many を `SUM` | distinct 要素の和 | `OK` |
 | 別RelationとのJOINで fan-out | 二重計上を検出し、業務合計は distinct の和 | `JOIN_FANOUT_DETECTED`（`result` と `naiveJoinSum` を併記） |
+| 別Relationを`otherElements`で渡す | 2関係のクロス結合として fan-out を検出 | `JOIN_FANOUT_DETECTED` |
+| 同じ要素IDが複数回取得された | 黙って重複除去も二重計上もしない | `DUPLICATE_ELEMENT` |
+| 業務上別の明細が同じ金額 | IDが違えば両方計上する | `OK` |
+| 一部要素の実行に失敗 | 入力未取得と区別する | `EXECUTION_FAILED` |
 | 空集合（方針未宣言） | 勝手に0へ確定しない | `EMPTY_SET_POLICY_UNDECLARED` |
 | 空集合（方針 `zero` / `null`） | 宣言に従う | `EMPTY_SET_ZERO`（0）/ `EMPTY_SET_NULL` |
 | NULL要素（方針未宣言） | 空集合・未取得と混同しない | `NULL_ELEMENT_POLICY_UNDECLARED` |
@@ -33,6 +37,9 @@
 | --- | --- |
 | `SUM(O1.lines.amount)` | `OK`、`result=1100` |
 | `JOIN O1.lines × O1.deliveries` 後の単純SUM | `JOIN_FANOUT_DETECTED`、`result=1100`、`naiveJoinSum=2200`（2200へ黙って変えない） |
+| `otherElements`に配送履歴2件を渡したクロス結合 | `JOIN_FANOUT_DETECTED`、`result=1100`、`naiveJoinSum=2200` |
+| 同じ金額600の明細2件（IDが別） | `OK`、`result=1200`（金額で重複除去しない） |
+| 同じ要素ID L1が2回 | `DUPLICATE_ELEMENT` |
 | O2の空集合 `SUM`（方針未宣言） | `EMPTY_SET_POLICY_UNDECLARED` |
 | O3のNULL要素 `SUM`（方針未宣言） | `NULL_ELEMENT_POLICY_UNDECLARED` |
 | O1の明細が1件のみ取得 | `INCOMPLETE_SET`（600を全受注額としない） |
@@ -55,12 +62,17 @@ go run ./tools/reference-relation-aggregate/cmd/tei-relation-aggregate -input re
     { "id": "L1", "state": "present", "amount": "600" },
     { "id": "L2", "state": "present", "amount": "500" }
   ],
-  "joinFanOut": 2,
+  "otherElements": [
+    { "id": "D1", "state": "present", "amount": "0" },
+    { "id": "D2", "state": "present", "amount": "0" }
+  ],
   "targetShape": "aggregate",
   "authorization": "allowed",
   "op": "sum"
 }
 ```
+
+`joinFanOut`を明示する代わりに、別の many Relation を`otherElements`で渡せます。クロス結合の行数から fan-out を検出し、業務合計は`elements`の distinct 和のままです。
 
 ## 限界
 
