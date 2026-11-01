@@ -16,7 +16,9 @@ NODES = {
     "exists_500": {"operator": "filter-exists", "inputCollections": ["line"], "grain": "predicate:H"},
     "not_exists_500": {"operator": "negate-exists", "inputs": ["exists_500"],
                        "inputCollections": ["line"], "grain": "predicate:H"},
-    "join_sum": {"operator": "inner-join-then-sum", "inputCollections": ["line", "delivery"], "grain": "join-pair:H"},
+    "join_pairs": {"operator": "inner-join", "inputCollections": ["line", "delivery"], "grain": "join-pair:H"},
+    "join_sum": {"operator": "aggregate-sum", "inputs": ["join_pairs"],
+                 "inputCollections": ["line", "delivery"], "grain": "group:H"},
     "left_unmatched": {"operator": "left-join-then-is-null", "inputCollections": ["header", "delivery"], "grain": "header:H"},
 }
 
