@@ -99,6 +99,8 @@ X-TEAのスクリプトAPIは、SQL・確定・機能呼出しを同じ面に置
 
 **問題.** X-TEAの8機能型は、定型の対話を強力に支えました。しかし型ごとにDriverのクラスと画面生成コードがあり、型の追加は実装追加でした（知識目録F-1〜F-8、M-3）。TEIのApplication Patternは現在5種（browse、record、reference、command、header-detail）で、Kindごとに必要な型付き参照だけを受理します。
 
+知識目録F-11の分解に従うと、8型は独立した型ではなく、**複数性（単票・一覧・見出し明細）、編集性（参照のみ・保守）、出力形態（画面・印刷）**の組合せとして説明できます。型固有の属性も、この軸に対応します。したがってTEIでは、複数性と編集性をPatternの軸として持ち、出力形態は投影として扱うのが自然です。パッケージは、軸の組合せに名前と既定値を与えるものになります。
+
 **選択肢.**
 
 | 案 | 内容 | 利点 | 欠点 |
@@ -123,7 +125,7 @@ PatternPackage
 
 パッケージはCoreの要素種別を追加できません。追加が必要になった場合は、パッケージではなくCoreの拡張として、別の受理を経ます。
 
-**X-TEAの型との対応（案）.**
+**X-TEAの型との対応（案）.** 次の表は、8型をそのまま再現するためではなく、**同じ仕事を、Coreの意味とPatternの組合せで表せるか**を確かめるための仮説です。軸の組合せが同じでも、別の表し方があり得ます。
 
 | X-TEA | TEIでの表し方（案） | 補足 |
 | --- | --- | --- |
@@ -135,8 +137,6 @@ PatternPackage
 | XF310 見出し明細保守 | `header-detail`＋`command`（見出し・明細） | 明細行の操作を能力へ分ける |
 | XF390 見出し明細印刷 | `header-detail`＋出力投影 | 明細の繰返しを宣言 |
 | XF000 起動処理 | `command`＋起動契機 | タイマー・起動時は実行先Profile |
-
-この対応は、X-TEAの型をそのまま再現するためではありません。**同じ仕事を、Coreの意味とPatternの組合せで表せるか**を確かめるための仮説です。
 
 **受入条件.**
 
@@ -173,7 +173,7 @@ hook <id> on <pattern>
 - phase: before-read | after-read | before-change | after-change | before-delete | after-delete
 - scope: row | record | field
 - reads: 型付きのデータ参照（Data / Relation / Query）
-- uses: 能力の参照（Capability）だけ。直接のSQL・確定・任意の機能呼出しは不可
+- uses: 宣言済みの能力またはPatternの呼出し。解決できない呼出し、直接のSQL・確定は不可
 - produces: 項目値の候補、検証結果、行の採否
 - failure: rejected（理由つき） | unknown（未確定） | not-executed（未実行）
 ```
@@ -188,6 +188,30 @@ hook <id> on <pattern>
 | `AC` | after-change（追加） | record | 追加後の連携。確定の前後を分ける |
 | `BU` / `AU` | before-change / after-change（更新） | record | 更新件数の確認と混ぜない |
 | `BD` / `AD` | before-delete / after-delete | record | 参照整合の確認と混ぜない |
+
+**例: 受注明細の検証・導出・参照.** 受注明細の数量は正の値、金額は数量×単価、顧客は参照入力で選ぶ、という仕事を考えます。X-TEAでは、明細表のスクリプトに更新前の検証を書き、項目の`TypeOptions`に`AUTO_NUMBER`や`PROMPT_CALL`を置き、金額はスクリプトで計算していました（知識目録E-2、I-2、I-3）。TEIでは、三つに分けます。
+
+```text
+hook order_line_quantity_positive on order_entry.order_lines
+- phase: before-change
+- scope: row
+- reads: sales.order_line.quantity
+- produces: validation(quantity > 0)
+- failure: rejected("数量は正の値にしてください")
+
+lookup customer_lookup on order_entry.order_record.customerId
+- target: master.customer_search (browse)
+- output: master.customer.name -> order_entry.order_record.customerName
+
+（金額の導出は、新しいフックではなく、既存のData Derivationの契約に置く）
+```
+
+拒否する例は、次のとおりです。
+
+- フックから`update sales.order_line ...`のようなSQLを直接実行する。
+- フックから、宣言していない能力やPatternを呼ぶ。
+- 画面の幅を変えるために、数量の検証の宣言を変える。
+- 金額の導出をフックで再実装し、Data Derivationの契約と二重にする。
 
 **禁止すること.**
 
@@ -313,6 +337,7 @@ CommandOutcome
 
 **未解決.**
 
+- 見出しと明細を一つの操作で更新するときの、効果のまとまり（同一取引とするか、補償で表すか）。
 - 画面を閉じる・取消す操作と、Commandの取消・補償の対応。
 - 複数画面・外部効果をまたぐ取引の表現。
 - 一括更新（XF110相当）の部分成功の扱い。

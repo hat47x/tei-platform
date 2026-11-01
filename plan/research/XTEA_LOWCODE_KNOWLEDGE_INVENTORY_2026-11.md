@@ -120,6 +120,30 @@ X-TEAの機能型は8種です（`D:help/FunctionList.HTML`、`E:Editor.java L11
 | F-8 | XF000 スクリプトランチャー | 機能スクリプトを起動する。タイマー（`CONSOLE`、時刻、`NOW`）とコンソールを持つ | バッチ・定期処理・起動時処理を、画面なしで作れる | 明示的な確定を行わず、スクリプトの作者が確定を書く責任を持つ | `D:XF000.java L230–421, L616–624` | PAT/PLG |
 | F-9 | 入出力の宣言 | `IOTable`に表ごとの作成・参照・更新・削除（`OpC`/`OpR`/`OpU`/`OpD`）を持ち、`IOPanel`（画面）、`IOSpool`（帳票）、`IOWebPage`（Webページ）、`IOTable`（表）という入出力の種類を持つ | 機能がどの表に何をする意図か、どの提示形態を持つかを宣言できる | 宣言と実行時の実際のSQLは別。宣言を検証しない経路がある | `M:Modeler.java`（`IOPanel`・`IOSpool`・`IOWebPage`）、`M:DialogDocuments.java L1827–1836` | CORE |
 | F-10 | 機能の呼出し関係 | `FunctionUsedByThis`（起動契機つき）と、ボタン・項目・明細からの起動を別に持つ | 機能間の依存を、呼出し元の種類つきで表せる | 呼出しの解析は文字列（`CALL(`等）の走査で、意味の参照ではない | `E:Editor.java L11976–12176` | PAT/STU |
+| F-11 | 機能型の直積分解 | 8型は独立した型ではなく、複数性（単票・一覧・見出し明細）、編集性（参照のみ・保守）、出力形態（画面・印刷）の組合せとして説明できる。型固有の属性も、この軸に対応する | 型の追加を、軸の組合せとして考えられる | 組合せの一部（一覧の印刷など）は存在しない。型ごとの実装は直積を共有しない | `D:XF100.java`〜`D:XF390.java`の属性抽出（下表） | PAT |
+
+#### 4.2.1 機能型ごとの宣言パラメータ
+
+各型が実際に読む属性と子要素を抽出し、共通部分と型固有部分に分けました。属性名は原典の識別子です。
+
+| 型 | 共通の主な宣言 | 型固有の主な宣言 |
+| --- | --- | --- |
+| XF000 | `Name`、`Script` | `TimerOption`、`TimerMessage` |
+| XF100 | `PrimaryTable`、`Refer`、`Column`、`Filter`、`Field`、`Key`、`Script`、`Button`、`Size`、`FixedWhere`、`OrderBy` | `DetailFunction`、`InitialReadCount`、`InitialListing`、`ProcessRowIfOnlyOne`、`ParmType` |
+| XF110 | XF100と同じ共通部分 | `RangeKey`、`UpdateCounter`、`BatchTable`、`BatchField`、`BatchKeyFields`、`BatchWithKeyFields`、`BatchRecordFunction` |
+| XF200 | `PrimaryTable`、`Refer`、`Field`、`Key`、`Script`、`Button`、`Size`、`FixedWhere` | `Tab`、`TabField`、`ContinueAdd`、`FunctionAfterInsert`、`DataName`、`DetailRowNumberAuto`、`UpdateOnly`、`NoUpdate` |
+| XF290 | `PrimaryTable`、`Refer`、`Field`、`Key`、`Script` | `Phrase`、`Block`、`FontID`、`FontSize`、`FontStyle`、`Alignment`、`Margins`、`PageSize`、`Direction`、`WithPageNumber`、`SpacingAfter` |
+| XF300 | `HeaderTable`、`Refer`、`Column`、`Filter`、`Field`、`Key`、`Script`、`Button`、`Size`、`OrderBy` | `Detail`、`HeaderFunction`、`DetailFunction`、`StructureTable`、`StructureChildKeys`、`StructureNodeText`、`StructureOrderBy` |
+| XF310 | `HeaderTable`、`Refer`、`Field`、`Column`、`Key`、`Script`、`Button`、`Size` | `DetailTable`、`DetailKeyFields`、`DetailOrderBy`、`DetailFixedWhere`、`DetailRowNumberAuto`、`HeaderFixedWhere`、`StartInAddMode`、`UpdateCounter` |
+| XF390 | `HeaderTable`、`Refer`、`Field`、`Column`、`Key`、`Script` | `HeaderPhrase`、`Detail`、`DetailTableKey`、`FontID`、`TableFontID`、`RowNoWidth`、`Margins`、`PageSize`、`WithPageNumber` |
+
+この抽出から、次の三つが分かります。
+
+1. **共通部分が多い。** 表の結合、項目・列、キー、スクリプト、ボタン、固定条件、大きさは、ほぼ全型に共通します。型ごとの差は、複数性・編集性・出力形態に対応する部分に集中します。
+2. **型固有部分は三つの家族に分かれる。** 一覧（XF100/110/300）、保守（XF200/310）、印刷（XF290/390）です。XF000はどれにも属さない起動処理です。
+3. **型は直積の部分集合である。** 単票・一覧・見出し明細の三つの複数性、参照のみ・保守の二つの編集性、画面・印刷の二つの出力形態を考えると、8型はその一部の組合せに当たります。一覧の印刷や、単票の複数件保守などは存在しません。
+
+この分解は、TEIが8型をそのまま列挙するのではなく、**複数性・編集性・出力形態の軸と、共通の対話契約**で受け止められる可能性を示します。軸の組合せで表せない型（XF000の起動処理、XF300の構造ツリー）は、別の家族として扱います。
 
 ### 4.3 対話仕様の語彙（I）
 
@@ -228,3 +252,32 @@ X-TEAの機能型は8種です（`D:help/FunctionList.HTML`、`E:Editor.java L11
 - 実DBでのSQL、トランザクション、更新競合、帳票出力の結果は確認していません。旧Runtimeの実測は[#940](https://github.com/hat47x/tei-platform/issues/940)が担当します。
 - 参照モデルごとの機能型の使われ方、スクリプトの実例、帳票句の実例は、非公開の資料に依存するため、この文書へ転載していません。
 - サーバ（`XeadServer`）はTEIの参考対象外とされています。ここでは遠隔実行の境界を学ぶ材料としてだけ扱い、移植対象にしていません。
+
+## 付録A モデル要素の対応（抜粋）
+
+設計モデルが持つ主な要素と、TEIで受け止める候補の層です。要素の意味は属性名と使われ方からの整理で、原典の定義文の転載ではありません。
+
+| 要素 | 何を表すか | TEIの受容先（案） |
+| --- | --- | --- |
+| `System` | システム全体の設定（DB、メニュー、ログインスクリプト、フォント、PDF、SMTP、代理、変数、標準表） | 実行先・配備の設定、Plugin設定。意味の正本には置かない |
+| `Subsystem` | 表と機能の所有境界、業務のまとまり | 所有・適用範囲の宣言。診断の単位 |
+| `DataType` | 基本型、桁、小数、SQL表現 | 意味の型と、物理型への対応（Database Contract） |
+| `Table` | 表の名前、別名、所属、DB、更新カウンタ、種別 | Data、物理スキーマへの対応、同時実行の契約 |
+| `TableField` | 項目の別名、型、非NULL、既定値、更新禁止、属性種別、物理ID、表示指定 | Dataの属性、Validation、表示意図 |
+| `TableKey` | 主キー・副キー・索引と構成項目 | 識別子・一意性・索引の宣言 |
+| `Relationship` | 表間の関連（親子・参照・派生）、キーの対応、存在条件 | Relation、参照整合、条件付き関連の宣言 |
+| `Function` | 機能の種別、所属、入出力表、引数、戻り、呼出し | Patternの組合せ、Capability、入出力の宣言 |
+| `FunctionType` | 機能種別のコードと名前 | Patternパッケージの識別（Coreの列挙にしない） |
+| `IOTable` | 機能が使う表と、作成・参照・更新・削除の意図 | 宣言された効果。実行時の実際と分ける |
+| `IOPanel` / `IOSpool` / `IOWebPage` | 画面・帳票・Webページという出力の種類 | 投影の種類（表示プロファイル） |
+| `Role` / `Task` / `Event` / `TaskAction` | 業務の主体、作業、契機、作業の操作 | 業務手順、実行主体、起動契機 |
+| `TaskFunctionIO` | 作業の操作と機能の入出力の対応 | 業務と機能の対応（一対一にしない） |
+| `DataflowNode` / `DataflowLine` | 業務の流れの要素と線、配置 | 業務手順の投影。配置は表示情報 |
+| `SubjectArea` | 主題領域の区分 | 表示のまとまり、分類 |
+| `Terms` | 用語と規則 | 用語集（意味の定義と名称の索引を分ける） |
+| `Department` | 組織・部門 | 組織の意味（案件の拡張） |
+| `Instance` | 項目ごとの例値、スライド順 | 設計検証用の例（正本の一部にしない） |
+| `Menu` | メニューの構成 | ナビゲーションの投影 |
+| `SubDB` | 追加のDB接続（読み取り専用） | データソースの宣言と読み取り専用の境界 |
+
+この対応は、要素をそのままTEIの要素種別へ移すものではありません。**同じ仕事をどの層で受け止めるか**の候補です。
