@@ -103,7 +103,7 @@ X-TEAのスクリプトAPIは、SQL・確定・機能呼出しを同じ面に置
 | 業務上の結末 | Capabilityの`Outcomes`と、呼出し境界のerrorを分ける | `internal/semantic/model.go` L128–133、L151–158 | D5はこれを再利用し、X-TEAの戻り値を混ぜない |
 | データ効果 | `create`と`update`のみ | `internal/semantic/model.go` L140–144 | `delete`を表せない。Business Effect Lifecycleと合わせて追加を検討する |
 | 認可 | subject・action・resourceの許可 | `internal/security/legacyauthorization/authorization.go` L29–45 | AC-11はこれを再利用できる。Pattern・Commandとの対応付けが要る |
-| 項目の意味 | Attribute（ID・型・説明・表示）とValidation | `internal/semantic/model.go` L64–70、L118–121 | 必須・更新禁止・参照入力・導出の役割は、ValidationとData Derivationへ寄せる |
+| 項目の意味 | Attribute（ID・型・説明・表示）とValidation（`positive`、`relation-unique`のみ） | `internal/semantic/model.go` L64–70、L101–121 | 必須・更新禁止・値域は新設し、参照は`reference` Pattern、導出はData Derivationへ寄せる |
 | 表示・配置 | アプリケーション層にモデルがない | `internal/application/model.go` | D4の表示意図を新設する |
 | 帳票・出力投影 | モデルがない | `internal/application/model.go` | D7を新設する |
 | 診断 | 既存のValidationがある | `internal/semantic/model.go` L118–121 | 三視点の抜け・未被呼出しはD8で追加する |
@@ -201,8 +201,10 @@ hook <id> on <pattern>
 - reads: 型付きのデータ参照（Data / Relation / Query）
 - uses: 宣言済みの能力またはPatternの呼出し。解決できない呼出し、直接のSQL・確定は不可
 - produces: 項目値の候補、検証結果、行の採否
-- failure: rejected（理由つき） | unknown（未確定） | not-executed（未実行）
+- failure: not-satisfied（検証の不成立） | error（実行の失敗。不明・未実行を含む）
 ```
+
+**現行契約との対応.** `plugin.Capability`は、Kind、Actions、Observations、Evidence、DatabaseProviders、MigrationTools、Features、Permissionsを持ち、提供元の能力を表します（`internal/plugin/model.go`）。アプリケーションの対話フックを表す型ではないため、フックをこの契約へ直接載せません。フックはL2の宣言とし、本体の規則Pluginを別の契約で束縛するかを、D2の採用時に決めます。
 
 **X-TEAの契機との対応（案）.**
 
@@ -251,7 +253,7 @@ lookup customer_lookup on order_entry.order_record.customerId
 - 行レベルの検証・導出・参照入力の補助を、フック宣言と規則Pluginで表せる。
 - 宣言していない能力の呼出しを、検証時と実行時の両方で拒否する。
 - 同じフック宣言とPluginの版から、同じ入力に同じ結果を返す（決定性）。
-- フックの失敗が、`rejected`・`unknown`・`not-executed`のいずれかとして観測できる。
+- フックの失敗が、検証の不成立（業務上の結末）と実行の失敗（error）のどちらかとして観測できる。
 - 画面と帳票、Webとバッチで、同じフックの結果が一致する。
 
 **撤回条件.** フックの種類が増え続け、規則Pluginの契約が機能型の再実装になる場合は、フックをPatternパッケージ側へ移し、Coreの対話契約から外します。
@@ -274,6 +276,20 @@ lookup customer_lookup on order_entry.order_record.customerId
 | 意味の役割 | 識別子、必須、一意、参照（Relation）、導出、更新禁止、値域、形式 | CORE（Data / Relation / Validation / Data Derivation） | [#1126](https://github.com/hat47x/tei-platform/issues/1126)、[#1637](https://github.com/hat47x/tei-platform/issues/1637)、[#1707](https://github.com/hat47x/tei-platform/issues/1707) |
 | 対話の役割 | 編集可否、参照入力の束縛、既定値の出所、表示条件、入力補助（暦・コード・長文・画像） | PAT（対話契約） | [#1127](https://github.com/hat47x/tei-platform/issues/1127)、[#997](https://github.com/hat47x/tei-platform/issues/997) |
 | 表示の指定 | 幅、行数、整列、フォント、まとまり、順序 | PLG（表示プロファイル） | [#997](https://github.com/hat47x/tei-platform/issues/997) |
+
+**現行契約との対応.** X-TEAの役割が、現行のTEIでどこまで表せるかを確認しました。
+
+| X-TEAの役割 | 現行のTEIの受け皿 | 足りないもの |
+| --- | --- | --- |
+| 必須・任意 | `database.QueryInput.Nullable`はQuery入力のみ | DataのAttributeに必須がない。意味の必須を追加するか、Validationの種別にするかを決める |
+| 参照 | `reference` Patternと`contract-query`の入力対応（[customer-reference.tei](../../reference/workspace/applications/order-entry/patterns/customer-reference.tei)） | 項目と参照先を結ぶ対話の束縛 |
+| 導出・自動採番 | Data Derivationの設計・参照実装（[#1637](https://github.com/hat47x/tei-platform/issues/1637)、[#1707](https://github.com/hat47x/tei-platform/issues/1707)） | Attributeから導出規則への参照 |
+| 更新禁止 | なし | 意味の役割として追加するか、操作の宣言で表す |
+| 値域・区分 | `Type`（primitive/alias）とValidation（`positive`、`relation-unique`のみ） | 列挙・値集合・形式の表現 |
+| 入力支援 | なし | 対話の役割として追加 |
+| 表示 | なし | 表示プロファイル |
+
+既存でそのまま使えるのは、参照（`reference` Pattern）と一部の検証だけです。必須・更新禁止・値域・導出の参照は、`Validation`へ詰め込まず、意味の役割として追加するか、Data Derivationへ寄せるかを決めます。
 
 **参照入力の契約（案）.** X-TEAの`PROMPT_CALL`系は、呼び出す機能と値の受渡し方向を文字列で指定していました。TEIでは、**参照先のPattern**と、**入力・出力の項目対応**を型付きで宣言します。
 
