@@ -1,6 +1,8 @@
 package validation
 
 import (
+	"strings"
+
 	"tei/internal/application"
 	"tei/internal/core"
 	"tei/internal/database"
@@ -404,6 +406,18 @@ func validateRecordPatternInteraction(
 			// 参照Pattern自身のRelation不整合はreference PatternのValidationが報告する。
 			continue
 		}
+		if !applicationUsesNamespace(app, relation.Target) {
+			out = append(out, errFor(
+				patternSubject,
+				"APPLICATION_PATTERN_INTERACTION_LOOKUP_SEMANTIC_NOT_USED",
+				"record pattern %s interaction item %s lookup target %s belongs to a semantic namespace that application %s does not use",
+				pattern.ID,
+				item.Attribute,
+				relation.Target,
+				app.ID,
+			))
+			continue
+		}
 		targetAttributes := semanticDataAttributes[relation.Target]
 		targetType, ok := targetAttributes[item.Lookup.TargetAttribute]
 		if !ok {
@@ -480,6 +494,19 @@ func validateRecordPatternInteraction(
 		}
 	}
 	return out
+}
+
+func applicationUsesNamespace(app application.Application, id core.CanonicalID) bool {
+	namespace, _, ok := strings.Cut(string(id), ".")
+	if !ok {
+		return false
+	}
+	for _, used := range app.SemanticUses {
+		if string(used) == namespace {
+			return true
+		}
+	}
+	return false
 }
 
 func validateReferencePattern(

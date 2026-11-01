@@ -211,3 +211,13 @@ func TestValidateApplicationPatternsReportsNavigationDataMismatch(t *testing.T) 
 		t.Fatalf("diagnostics=%#v", ds)
 	}
 }
+
+func TestValidateApplicationPatternsReportsLookupSemanticNotUsed(t *testing.T) {
+	w := applicationPatternInteractionWorld()
+	w.Applications[0].SemanticUses = []core.CanonicalID{"sales"}
+
+	ds := validateApplicationPatterns(w)
+	if diagnosticByCode(ds, "APPLICATION_PATTERN_INTERACTION_LOOKUP_SEMANTIC_NOT_USED") == nil {
+		t.Fatalf("diagnostics=%#v", ds)
+	}
+}
