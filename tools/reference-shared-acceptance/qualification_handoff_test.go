@@ -479,7 +479,7 @@ func TestKnowledgeQualifyCLIOutputFlowsThroughAttachmentAndPreview(t *testing.T)
 	if err := cmd.Run(); err != nil {
 		t.Fatalf("tei knowledge-qualify failed: %v\nstderr=%s", err, qualificationErr.String())
 	}
-	qualification, err := decodeQualificationResult(qualificationOut.Bytes())
+	qualification, err := decodeQualificationInput(qualificationOut.Bytes())
 	if err != nil {
 		t.Fatalf("actual tei knowledge-qualify output is not accepted by handoff decoder: %v\noutput=%s", err, qualificationOut.String())
 	}

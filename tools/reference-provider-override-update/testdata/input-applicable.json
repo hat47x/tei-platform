@@ -1,0 +1,73 @@
+{
+  "schema": "tei.reference.provider-override-update-input/v0",
+  "provider": {
+    "id": "std.message",
+    "fromVersion": "1.0.0",
+    "toVersion": "1.1.0",
+    "base": [
+      {
+        "id": "std.message.order.submitted",
+        "kind": "message",
+        "fields": {
+          "text": "Order submitted",
+          "description": "Submitted order",
+          "x": "10",
+          "y": "20"
+        }
+      },
+      {
+        "id": "std.message.order.cancelled",
+        "kind": "message",
+        "fields": {
+          "text": "Order cancelled",
+          "description": "Cancelled order",
+          "x": "10",
+          "y": "40"
+        }
+      }
+    ],
+    "next": [
+      {
+        "id": "std.message.order.submitted",
+        "kind": "message",
+        "fields": {
+          "text": "Order submitted",
+          "description": "Order has been submitted",
+          "x": "10",
+          "y": "20"
+        }
+      },
+      {
+        "id": "std.message.order.cancelled",
+        "kind": "message",
+        "fields": {
+          "text": "Order cancelled",
+          "description": "Cancelled order",
+          "x": "10",
+          "y": "40"
+        }
+      }
+    ]
+  },
+  "case": {
+    "baseVersion": "1.0.0",
+    "overrides": [
+      {
+        "element": "std.message.order.submitted",
+        "fields": {
+          "text": "受注を受け付けました"
+        }
+      }
+    ],
+    "additions": [
+      {
+        "id": "std.message.case.received",
+        "kind": "message",
+        "fields": {
+          "text": "案件で追加した通知"
+        }
+      }
+    ]
+  },
+  "displayOnlyFields": ["x", "y"]
+}

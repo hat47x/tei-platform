@@ -1,0 +1,19 @@
+{
+  "schema": "tei.spike.text-projection-contract/v0",
+  "id": "sui.card.text",
+  "version": "1",
+  "status": "reference-local",
+  "note": "SUIのcard本文をそのまま投影するspike用の契約。製品の受理済み契約ではない。",
+  "inputs": [
+    {
+      "attribute": "sui.card.text",
+      "primitive": "std.text"
+    }
+  ],
+  "output": {
+    "primitive": "std.text"
+  },
+  "projection": {
+    "kind": "identity"
+  }
+}

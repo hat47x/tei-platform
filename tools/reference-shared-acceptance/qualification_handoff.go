@@ -16,6 +16,16 @@ func decodeQualificationInput(data []byte) (knowledgecontext.QualificationResult
 		return qualification, nil
 	}
 
+	// #2354: tei knowledge-qualify output may arrive as the command result
+	// envelope. Unwrap it before the bare-shape decoders reject the unknown
+	// schemaVersion field.
+	if unwrapped, envelopeErr := unwrapQualificationEnvelope(data); envelopeErr == nil {
+		result, resultErr := decodeQualificationResult(unwrapped)
+		if resultErr == nil {
+			return result, nil
+		}
+	}
+
 	decoder := json.NewDecoder(bytes.NewReader(data))
 	decoder.DisallowUnknownFields()
 	var handoff knowledgecontext.BuilderReviewHandoff
@@ -50,6 +60,38 @@ func decodeQualificationInput(data []byte) (knowledgecontext.QualificationResult
 		)
 	}
 	return handoff.Qualification, nil
+}
+
+// unwrapQualificationEnvelope extracts the result of a tei.cli.knowledge-qualify/v0
+// envelope. It fails for any other JSON so the caller can keep trying the bare
+// shapes.
+func unwrapQualificationEnvelope(data []byte) ([]byte, error) {
+	var envelope struct {
+		SchemaVersion string          `json:"schemaVersion"`
+		OK            bool            `json:"ok"`
+		Mode          string          `json:"mode,omitempty"`
+		Result        json.RawMessage `json:"result,omitempty"`
+		Error         *struct {
+			Code    string `json:"code"`
+			Message string `json:"message"`
+		} `json:"error,omitempty"`
+	}
+	if err := json.Unmarshal(data, &envelope); err != nil {
+		return nil, err
+	}
+	if envelope.SchemaVersion != "tei.cli.knowledge-qualify/v0" {
+		return nil, fmt.Errorf("schemaVersion %q is not tei.cli.knowledge-qualify/v0", envelope.SchemaVersion)
+	}
+	if envelope.Error != nil {
+		return nil, fmt.Errorf("tei knowledge-qualify failed: %s: %s", envelope.Error.Code, envelope.Error.Message)
+	}
+	if envelope.Mode != "" && envelope.Mode != "qualification" {
+		return nil, fmt.Errorf("tei knowledge-qualify returned mode %s", envelope.Mode)
+	}
+	if len(envelope.Result) == 0 {
+		return nil, fmt.Errorf("tei knowledge-qualify envelope has no result")
+	}
+	return envelope.Result, nil
 }
 
 func decodeQualificationResult(data []byte) (knowledgecontext.QualificationResult, error) {

@@ -15,23 +15,36 @@ import (
 // Verify compares every saved file with the current deterministic derivation.
 // It does not use saved metadata as trusted instructions or grant acceptance.
 func Verify(workspaceDir, bundleDir string, provider environment.DatabaseProvider) (Manifest, error) {
-	return verify(workspaceDir, bundleDir, provider, nil, "", "")
+	return verify(workspaceDir, bundleDir, provider, nil, "", "", Options{})
+}
+
+// VerifyWithOptions is Verify with the same document format and effect
+// observation used to build the bundle. Without the options the expected bytes
+// differ, so the caller must repeat them.
+func VerifyWithOptions(workspaceDir, bundleDir string, provider environment.DatabaseProvider, options Options) (Manifest, error) {
+	return verify(workspaceDir, bundleDir, provider, nil, "", "", options)
 }
 
 // VerifyWithGenerator requires caller-selected generation inputs rather than
 // inferring them from the untrusted bundle's contract or candidate manifest.
 func VerifyWithGenerator(workspaceDir, bundleDir string, provider environment.DatabaseProvider, contractJSON []byte, strategy, version string) (Manifest, error) {
+	return VerifyWithGeneratorWithOptions(workspaceDir, bundleDir, provider, contractJSON, strategy, version, Options{})
+}
+
+// VerifyWithGeneratorWithOptions is VerifyWithGenerator with the same format
+// and effect observation used to build the bundle.
+func VerifyWithGeneratorWithOptions(workspaceDir, bundleDir string, provider environment.DatabaseProvider, contractJSON []byte, strategy, version string, options Options) (Manifest, error) {
 	if len(contractJSON) == 0 || strings.TrimSpace(strategy) == "" || strings.TrimSpace(version) == "" {
 		return Manifest{}, fmt.Errorf("contract JSON, strategy, and generator version are required")
 	}
-	return verify(workspaceDir, bundleDir, provider, contractJSON, strategy, version)
+	return verify(workspaceDir, bundleDir, provider, contractJSON, strategy, version, options)
 }
 
-func verify(workspaceDir, bundleDir string, provider environment.DatabaseProvider, contractJSON []byte, strategy, version string) (Manifest, error) {
+func verify(workspaceDir, bundleDir string, provider environment.DatabaseProvider, contractJSON []byte, strategy, version string, options Options) (Manifest, error) {
 	if strings.TrimSpace(workspaceDir) == "" || strings.TrimSpace(bundleDir) == "" {
 		return Manifest{}, fmt.Errorf("workspace and bundle are required")
 	}
-	bundle, err := buildFromWorkspace(workspaceDir, provider, contractJSON, strategy, version)
+	bundle, err := buildFromWorkspace(workspaceDir, provider, contractJSON, strategy, version, options)
 	if err != nil {
 		return Manifest{}, err
 	}

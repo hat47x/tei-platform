@@ -12,6 +12,7 @@ go run ./tools/reference-type-reorg-impact/cmd/tei-type-reorg-impact \
 - 統合元の型を使う属性
 - 統合元を基にした別名の型
 - 影響を受ける候補キー、関数従属性、関連のキー
+- 受理後に各視点（属性・Validation・Capability・キー・物理列）が指すべき型の一覧（`reprojection`）と、全視点が同じ型へ揃うかの判定（`consistentAfter`）
 - 診断と、構造の版（`structureRevision`）
 
 ## 守っている境界
@@ -22,12 +23,13 @@ go run ./tools/reference-type-reorg-impact/cmd/tei-type-reorg-impact \
 - 関連のキーの型がすでに異なる場合は`relation-key-type-already-differs`を返します。統合でその差が見えなくなる場合は`relation-key-difference-would-be-hidden`を併せて返します。
 - 統合元の属性の物理的な格納型が異なる場合は`physical-storage-differs`を返します。物理型の変更は既存の移行の安全境界で扱います。
 - 統合元に基本型を指定した場合、統合先が自分自身の場合、未定義の型を指定した場合は診断にします。
+- `reprojection`は、受理後に各視点が指す型の計画です。受理を実行せず、実投影もしません。`consistentAfter`は、影響を受ける全視点が対象の型へ揃うかを示します。
 
 ## 未実装
 
-- 変更案の受理（#267）の実行と、受理後の再投影
-- 導出規則、Validationからの型の利用の追跡
-- 型の分割、置換
+- 変更案の受理（#267）の実行と、受理後の実投影（本参照は計画のみ）
+- 導出規則からの型の利用の追跡
+- 型の置換（統合と分割は実装済み）
 
 ## 受理境界への接続（#1935）
 

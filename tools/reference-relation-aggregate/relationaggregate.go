@@ -28,6 +28,8 @@ const (
 	CodeNullPolicyUndeclared     = "NULL_ELEMENT_POLICY_UNDECLARED"
 	CodeIncompleteSet            = "INCOMPLETE_SET"
 	CodeInputUnavailable         = "INPUT_UNAVAILABLE"
+	CodeExecutionFailed          = "EXECUTION_FAILED"
+	CodeDuplicateElement         = "DUPLICATE_ELEMENT"
 	CodeJoinFanOutDetected       = "JOIN_FANOUT_DETECTED"
 	CodeMultiplicityViolation    = "MULTIPLICITY_VIOLATION"
 	CodeScalarReduceRequired     = "SCALAR_REDUCE_REQUIRED"
@@ -53,6 +55,7 @@ const (
 	ElementPresent          = "present"
 	ElementNull             = "null"
 	ElementInputUnavailable = "input-unavailable"
+	ElementExecutionFailed  = "execution-failed"
 )
 
 // Empty-set policies.
@@ -83,8 +86,13 @@ type Input struct {
 	Complete bool `json:"complete"`
 	// Elements are the distinct business elements of the collection.
 	Elements []Element `json:"elements"`
+	// OtherElements is a second many relation joined for the check. A cross
+	// join with this relation multiplies the row count; the business total still
+	// counts only Elements.
+	OtherElements []Element `json:"otherElements,omitempty"`
 	// JoinFanOut is the number of copies of each element that a JOIN with another
-	// relation would introduce. 1 means no fan-out.
+	// relation would introduce. 1 means no fan-out. When OtherElements is set,
+	// its size is used instead of this explicit factor.
 	JoinFanOut int `json:"joinFanOut,omitempty"`
 	// TargetShape is where the collection is bound.
 	TargetShape string `json:"targetShape"`
@@ -132,9 +140,24 @@ func Evaluate(in Input) Report {
 		return reject(CodeScalarReduceRequired, "many を scalar 引数へ結ぶには明示の reduce 規則が必要。")
 	}
 
+	seen := map[string]bool{}
 	for _, element := range in.Elements {
-		if strings.TrimSpace(element.State) == ElementInputUnavailable {
+		if element.ID == "" {
+			continue
+		}
+		if seen[element.ID] {
+			return reject(CodeDuplicateElement,
+				fmt.Sprintf("同じ要素ID %q が複数回取得された。黙って重複除去も二重計上もしない。", element.ID))
+		}
+		seen[element.ID] = true
+	}
+
+	for _, element := range in.Elements {
+		switch strings.TrimSpace(element.State) {
+		case ElementInputUnavailable:
 			return reject(CodeInputUnavailable, "集合の一部要素の入力が未取得。")
+		case ElementExecutionFailed:
+			return reject(CodeExecutionFailed, "集合の一部要素の実行に失敗した。")
 		}
 	}
 	if !in.Complete {
@@ -169,6 +192,12 @@ func Evaluate(in Input) Report {
 	}
 
 	fanOut := in.JoinFanOut
+	if fanOut < 1 && len(in.OtherElements) > 1 {
+		// A cross join with the second many relation repeats each element once
+		// per row of that relation. The business total is still the distinct
+		// Elements sum.
+		fanOut = len(in.OtherElements)
+	}
 	if fanOut < 1 {
 		fanOut = 1
 	}
