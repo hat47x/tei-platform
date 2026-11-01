@@ -1094,3 +1094,14 @@ TAI [#232](https://github.com/hat47x/tai-pleroma/issues/232)に合わせ、組�
 - 既存P0-M/P0-Vに関する基本設計・NOT RUN境界は維持する。今回§33〜36は**要件拡張と横断受入候補の調査成果**であり、新しいCore enum、Organizationの実装、RDF/SHACL/OPA/DMN採用、MCP共通ABI、専用Host、構成改変の正式決定ではない。
 - **並列化する探索の広さと、実証するSliceの小ささを分離する**。AI開発速度を前提に要求群・独立PoC・Issue・組織Profileを積極的に追加してよいが、試験未実施／静的確認／合成Oracle／現行Provider実測／Owner意味受理は区分する。
 - 機密や個人情報は公開リポジトリへ実データを保存しない。公開のReferenceは合成組織と匿名IDに限定する。
+
+## 38. 新しい横断Pressure Corpusの独立所有先（2026-11-01）
+
+広いOrganization Profile群と多分野Conformanceの要求集合は、新設[TEI #2510](https://github.com/hat47x/tei-platform/issues/2510)「Organization Semantic Profile群：多分野Pressure Corpusと独立Conformanceを拡張・検証する」に、**実装ではなく探索/検証ポートフォリオのOwner**を分けた。
+
+- **#2386 / 本書**：組織メタ意味、属する関係の導出条件、P0-M/P0-Vの最小意味試験、単一案件のOwner受理との境界。
+- **#2510**：W3C/Workday/Entra/OPA/OMG等の参考事実と組織専門Profile群の比較、専門領域ごとの負例・Oracle、外部Consumer適合。P0比較候補`OPC-A`（二法人/多軸/兼務）、`OPC-B`（AI Agent委任/人間承認/実Host）、`OPC-C`（有効日改訂/危機対応/秘匿）を**NOT RUN**で所有する。
+- **#2495/#2493**：他の分野へ一般化できる多重facet/型トポロジー、並列開発の探索・統合管理をそれぞれ所有。組織領域の概念を一般Coreへ直接押し込まない。
+- **TAI #165/#232/#233、SEI #677**：組織AIの用途・機密/環境隔離・意志/仮説の価値比較は各製品Ownerが管理する。本書は元のSource/受理済み意味との参照関係だけ提示。
+
+**進捗条件**：課題の数や組織Profileの種類は大きく広げてよいが、正式なSemantic Profileの受理・Function/Provider実装・Host使用・OS隔離・業務Effectは、具体的なScopeの実測とOwner判断が揃った場合に限る。今回の#2510作成は上記実証の達成ではない。
