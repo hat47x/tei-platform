@@ -1,10 +1,13 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"os"
+	"os/signal"
 	"time"
 
 	deliverybundle "tei/tools/reference-delivery-bundle"
@@ -14,7 +17,7 @@ import (
 // verifies its exact bytes. It does not install the bundle.
 func main() {
 	if len(os.Args) < 2 {
-		fmt.Fprintln(os.Stderr, "usage: tei-delivery-bundle <pack|verify|keygen|sign|verify-signature|install|activate|rollback|status|health|start|stop|restart|reconcile> [options]")
+		fmt.Fprintln(os.Stderr, "usage: tei-delivery-bundle <pack|verify|keygen|sign|verify-signature|install|activate|rollback|status|health|start|stop|restart|reconcile|supervise> [options]")
 		os.Exit(2)
 	}
 	command := os.Args[1]
@@ -32,6 +35,8 @@ func main() {
 	healthTimeout := fs.Duration("timeout", 30*time.Second, "health-check timeout")
 	serviceLog := fs.String("log", "", "service log file")
 	graceful := fs.Bool("graceful", false, "send SIGTERM before Kill")
+	interval := fs.Duration("interval", 10*time.Second, "supervise interval")
+	iterations := fs.Int("iterations", 0, "supervise iterations (0 means no limit)")
 	healthCheck := fs.String("health", "", "trusted health-check command for reconcile")
 	_ = fs.Parse(os.Args[2:])
 	switch command {
@@ -149,6 +154,18 @@ func main() {
 			fail(err)
 		}
 		emit(receipt)
+	case "supervise":
+		if *statePath == "" || *healthCommand == "" || *healthCheck == "" {
+			fail(fmt.Errorf("-state, -command, and -health are required for supervise"))
+		}
+		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+		defer stop()
+		err := deliverybundle.Supervise(ctx, *statePath, *healthCommand, *healthCheck, *serviceLog, *healthTimeout, *interval, *iterations, func(receipt deliverybundle.ReconcileReceipt) {
+			emit(receipt)
+		})
+		if err != nil && !errors.Is(err, context.Canceled) {
+			fail(err)
+		}
 	case "keygen":
 		if *privateKey == "" || *publicKey == "" {
 			fail(fmt.Errorf("-key and -public are required for keygen"))
