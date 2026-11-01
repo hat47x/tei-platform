@@ -32,6 +32,8 @@ go run ./tools/reference-generator-selection/cmd/tei-generator-select \
 ```
 
 `projection`を持つ契約では、`-strategy text-template`で文字列投影の候補を生成できます。`identity`は入力をそのまま、`normalize`は前後の空白を除きます。`projection`がないmoney契約は従来のstrategyだけを受け付けます。
+
+`projection`の`kind=record`では、`-strategy text-record-template`で複数属性を一つのrecordとして投影する候補を生成できます。`present`はcanonical JSONオブジェクト、`missing`は欠落フィールド名のJSON配列、`unresolved`は状態だけを返し、空文字は`present`として区別します。`testdata/sui-text`と`testdata/sui-record`の適合fixtureは、生成した候補を実際にビルドして実行し、caseごとの出力、source digest、generator provenanceを確認します。
 候補sourceは、契約から固定strategyで生成できます。
 
 ```text

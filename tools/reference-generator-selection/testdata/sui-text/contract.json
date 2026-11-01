@@ -1,0 +1,11 @@
+{
+  "schema": "tei.reference.generator-contract/v0",
+  "id": "sui.card.text",
+  "version": "1",
+  "status": "reference-local",
+  "inputs": [
+    {"attribute": "sui.card.text", "primitive": "std.text"}
+  ],
+  "output": {"primitive": "std.text"},
+  "projection": {"kind": "normalize"}
+}
