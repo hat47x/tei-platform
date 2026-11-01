@@ -1,0 +1,21 @@
+{
+  "state": {
+    "settingsVersion": "s3",
+    "gitHead": "head-abc",
+    "permission": "allowed",
+    "standardEditorAvailable": true,
+    "plugins": [
+      {"id": "a", "version": "1", "installed": true, "enabled": true, "requiredDeps": ["b"]},
+      {"id": "b", "version": "1", "installed": true, "enabled": true, "requiredDeps": ["c"]},
+      {"id": "c", "version": "1", "installed": true, "enabled": true},
+      {"id": "d", "version": "1", "installed": true, "enabled": true, "optionalDeps": ["b"]},
+      {"id": "e", "version": "1", "installed": true, "enabled": true},
+      {"id": "f", "version": "1", "installed": false, "enabled": false, "requiredDeps": ["b"]}
+    ],
+    "sources": [
+      {"path": "semantic/order.tei", "fingerprint": "sha256:aaa", "unknownAttributes": true, "unknownElements": true},
+      {"path": "semantic/customer.tei", "fingerprint": "sha256:bbb"}
+    ]
+  },
+  "request": {"action": "disable", "pluginId": "b"}
+}
