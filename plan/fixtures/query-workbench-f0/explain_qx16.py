@@ -11,7 +11,11 @@ from verify_sqlite import qx16_claim_scope_observations
 # not parsed or inferred from a SQLGlot result and is not a new canonical model.
 NODES = {
     "line_sum": {"operator": "aggregate-sum", "inputCollections": ["line"], "grain": "group:H"},
+    "line_sum_gte_500": {"operator": "compare-gte", "inputs": ["line_sum"],
+                         "inputCollections": ["line"], "grain": "predicate:H"},
     "exists_500": {"operator": "filter-exists", "inputCollections": ["line"], "grain": "predicate:H"},
+    "not_exists_500": {"operator": "negate-exists", "inputs": ["exists_500"],
+                       "inputCollections": ["line"], "grain": "predicate:H"},
     "join_sum": {"operator": "inner-join-then-sum", "inputCollections": ["line", "delivery"], "grain": "join-pair:H"},
     "left_unmatched": {"operator": "left-join-then-is-null", "inputCollections": ["header", "delivery"], "grain": "header:H"},
 }
