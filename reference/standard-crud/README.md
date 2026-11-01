@@ -16,6 +16,8 @@
 
 ## 宣言の構成
 
+sales.order.cancel は applications/ledger/realizations/cancel-order.tei で実現済みです。束縛（binding）の解決と、実行へ進むための前提になります。
+
 ```text
 reference/standard-crud/workspace/
 ├─ tei.workspace.yaml
