@@ -225,7 +225,7 @@ hook order_line_quantity_positive on order_entry.order_lines
 - scope: row
 - reads: sales.order_line.quantity
 - produces: validation(quantity > 0)
-- failure: rejected("数量は正の値にしてください")
+- failure: not-satisfied("数量は正の値にしてください")
 
 lookup customer_lookup on order_entry.order_record.customerId
 - target: master.customer_search (browse)
@@ -264,6 +264,20 @@ lookup customer_lookup on order_entry.order_record.customerId
 - 行の採否（X-TEAの`isTheRowToBeSelected`に相当）を、フックの結果として許すか、Queryの条件として表すか。
 - 規則DSLの採用（[#1063](https://github.com/hat47x/tei-platform/issues/1063)）と、生成コードによるフック実装の許容範囲。
 - フックの評価が、一覧のページ分割・遅延読込みとどう整合するか。
+
+**フック契約の置き場所（案）.** 宣言と実装をどこに置くかを比べます。
+
+| 案 | 宣言 | 実装 | 利点 | 欠点 |
+| --- | --- | --- | --- | --- |
+| A Applicationの対話契約 | L2 | Plugin（実装だけ） | アプリの版と一緒に動き、全Targetで同じ宣言を使える | 対話契約の文法がフックで膨らみ、種別ごとにParserと検証の追加が要る |
+| B Pluginの契約 | L4 | 同 | Coreを変えずに拡張できる | アプリの挙動がPluginの可用性に依存し、Targetごとに解釈が分かれ得る |
+| C 宣言はL2、実装契約はL4 | L2 | L4の別契約 | 宣言の一貫性と拡張性を分けられる | 契約が二層になり、版の束縛を管理する必要がある |
+
+**推奨.** C。フックの「種類・位相・範囲・許可する効果」はCoreが小さく定義し、宣言はApplicationの対話契約に置きます。本体はL4の規則Pluginが実装し、Pluginの版をApplication側で束縛します。`plugin.Capability`は提供元の能力を表すため流用せず、フック実装用の別契約を定義します。
+
+**受入条件.** 宣言とPluginの版から同じ結果を返す。Pluginがない場合、検証で未解決として止まり、黙ってスキップしない。Pluginの版を変えたら再検証が必要になる。宣言に本体コードが入らない。
+
+**撤回条件.** フック種別が増え、Coreの小さな定義が機能型の再実装になる場合は、B（Pluginの契約）へ寄せ、ApplicationはPluginの選択だけを持ちます。
 
 ### D3 項目の「意味の役割」と「表示・入力支援」を分ける
 
