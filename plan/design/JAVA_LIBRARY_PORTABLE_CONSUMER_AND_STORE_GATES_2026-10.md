@@ -47,6 +47,29 @@
 
 **完了**：Getの保存整合性と、取り出した集合の実行可能性を別々に観測。外部依存や元ビルドdirectoryからのclass混入を拒否し、失敗した場合は実例外とExitを記録。JARではなくclass directoryでもよい。
 
+### 2026-11-01 JR-01用の実Store Put/Get試験票（提案・**未実行**）
+
+**新しい固定版**：TEI main `43517af5450aacb2fdd6c48585dc143f52d57da4`。現在の`store.go` blob `b57570dae7d20521b60d945893c288aed11ec1c9`は、以前の`be9f5bff...`から**Go候補の一時build配置**が変化した。一方、Javaの`javac -d <temp> Main.java`→**`Main.class`のみを`artifact`へ保存**する実装（348〜369行）は不変。既存`TestPutAndGetJavaArtifact`は実Put/Get digestが中心で、Store復元物の隔離Java実行を確認していない。
+
+**必要入力を固定すること（TEI正本から取得）**：
+- Git revision、`contract.json`の実byte/契約ID・版・digest（`sales.line-amount/1`・`reference-local`・half-up／scale=2／precision=8）、`fixtures.json`実byte/10件のIDと期待値、`GenerateVersion("java-template","1")`後の`candidate.json`・`Main.java`実byte。
+- `Select`実行時に得た当該Candidateの`SourceDigest/BinaryDigest/BuildEvidence`と選抜Receiptの**生byte**。**Store.Putの真正な入力前提**として固定する。前回の手作業テンプレート展開からこのReceiptを逆算して作った扱いにしない。
+- `java`/`javac`の実行パスと`-version`、JDK vendor、`JDK_JAVAC_OPTIONS`等の影響環境、`javac -d <classes> Main.java`のcwd、完全な`-cp <isolated-class-dir> Main`引数。元候補dir・CLASSPATH・以前のtest実行dirからのclass混入を避ける。JDK/Classpathは**Consumer実使用条件**と照合する。
+- `Put`後と`Get`後の`Passed/Reused/Reason/error`、`ObjectPath`、保存objectの`source,artifact,receipt.json,object.json`各実byte/digest・相対path、`Get`時点の`BinaryDigest`。4ファイル一致の判定を実Javaロードの成立と混ぜない。
+
+| 段階 | 実行／観測 | 受入／未証明 |
+| --- | --- | --- |
+| JR-01A（対照） | **同じ候補Main.java**を独立`javac -d`でcompileし、再帰的全class相対path/size/digest（少なくとも`Main.class`と`Main$Input.class`）を固定。**このclass集合**から隔離`java -cp`で公開10入力を再実行。 | 10/10と各classの存在・Load条件を観測。ただしこの集合はStoreから復元したものではない。 |
+| JR-01B（本題） | 実`Put→Get`で得た**Store内`artifact`の実byte**を新しい空directoryの`Main.class`へ配置。追加memberがないことを記録して同一入力で起動。 | 現行コードでは`NoClassDefFoundError: Main$Input`を予測。実Exit/stderrが必要。Put/Get成功のみを「復元可能」と認定しない。 |
+| JR-01C（対照） | JR-01Aと**同一compileの全class集合**を別の空directoryへコピーし、同じ公開10入力を実行。 | 10/10を期待するが、補完した`Main$Input.class`は**Store外**のためStore復元成功とは記録しない。 |
+| Source/Receipt境界 | `Generated.SourceDigest`、`Selected.CandidateReceipt.SourceDigest/BinaryDigest`、`Put/Get`および実読取byteを同一試行で列挙。 | これは試験fixtureの選抜Receiptを**Put入力へ結合**した観測。新しい独立Selector資格や当時のモデル生成因果の認定、Owner業務意味受理は別。 |
+
+**再利用できる既存実測**：[#2077の2026-10-31報告](https://github.com/hat47x/tei-platform/issues/2077#issuecomment-6538058027)で、手作業展開した現行テンプレートの6,851-byte Source、全classの`Main.class`（5,346-byte）・`Main$Input.class`（604-byte）、公開10/10、主class単独の`NoClassDefFoundError`は**OpenJDK21.0.12.1の隔離試験でRUN**。新試行はこれを「妥当な期待と比較元」として利用するが、別のJDK・Build/Locator・Store世代で自動的に同byte/同結果とは数えない。特に生fixture byte／Source byte／class byte／classpath実ロードを混同しない。
+
+**試験コードの準備状態**：既存`selectionPaths`・`GenerateVersion`・`Select`・`Put`・`Get`を再利用する`TestJavaStoreRestorationWitness`（試験専用Goファイル）は、作業用環境で`gofmt`処理した**未実行の提案物**として準備済み。repoへのテストfile追加、CI、`go test`実行は未了。実行環境Go 1.23.2はmainの`go 1.26.10`に不足し、外部ネットワークも不可。**SKIPをPASSに数えない**。既存試験に追加する場合、過去の欠落を恒久仕様へ固定する「失敗期待」は、全class保存の改修時に置換する。
+
+**完了条件**：実`Store.Put/Get`の証拠、Store全ファイルbyte、独立compileの全class集合、`-cp`と実Exit/結果、公開10fixtureの**同一Attemptの接合**が確認されること。技術検証が成立してもJR-02〜06、外部型付きC1 Library、配備/Authority、Owner意味受理は別。新しいStore schema・artifact key・共通Hostの採用は先行しない。
+
 ### P0-C：同Source別Build・復旧 — JR-02（既存票との差分限定）
 
 [二回目Putの4ファイル比較](https://github.com/hat47x/tei-platform/issues/2077#issuecomment-6502165611)および[再試行と応答喪失](https://github.com/hat47x/tei-platform/issues/2077#issuecomment-6516087790)を試験対象にする。合法な別Build A/Bを準備できた場合だけJR-02を実行する。
