@@ -19,6 +19,7 @@ def main():
     baseline = check(root, document, text)
     start = time.perf_counter()
     renamed = check(root, document, text.replace(original, "`ref:docs/architecture-renamed-2309.md`"))
+    implicit_renamed = check(root, document, text.replace(original, "`docs/architecture-renamed-2309.md`"))
     fabricated = check(root, document, text + "\n`ref:docs/fabricated-2309.md`\n")
     general = check(root, document, text + "\n`ordinary`\n")
     planned = check(root, "plan/synthetic.md", "`planned:docs/fabricated-2309.md` `ref:docs/fabricated-2309.md`")
@@ -30,9 +31,11 @@ def main():
         "injected_reference_defects_detected": sum((missing(renamed, "docs/architecture-renamed-2309.md"),
                                                    missing(fabricated, "docs/fabricated-2309.md"))),
         "injected_reference_defects_total": 2,
+        "implicit_rename": next((r["severity"] for r in implicit_renamed["records"]
+                                 if r["name"] == "docs/architecture-renamed-2309.md"), "not-extracted"),
         "general_word_extra_candidates": general["denominator"] - baseline["denominator"],
-        "planned_results": [r["result"] for r in planned["records"]],
-        "four_checks_elapsed_ms": round(elapsed, 2),
+        "planned_results": [{"result": r["result"], "severity": r["severity"]} for r in planned["records"]],
+        "five_checks_elapsed_ms": round(elapsed, 2),
     }, ensure_ascii=False, indent=2))
 
 
