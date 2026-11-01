@@ -164,6 +164,9 @@ type ExecutionEvidence struct {
 	StdoutDigest string              `json:"stdoutDigest"`
 	StderrDigest string              `json:"stderrDigest"`
 	TimedOut     bool                `json:"timedOut,omitempty"`
+	// SourceDigest is the digest of the script source read immediately before
+	// this case ran. It is empty for compiled candidates.
+	SourceDigest string `json:"sourceDigest,omitempty"`
 }
 
 type CaseResult struct {
@@ -708,7 +711,10 @@ func evaluateCandidate(ctx context.Context, dir string, fixture Fixture, contrac
 			return reject("generation contract digest mismatch")
 		}
 	}
-	sourcePath := filepath.Join(dir, filepath.FromSlash(manifest.Source))
+	sourcePath, err := candidateSourcePath(dir, manifest.Source)
+	if err != nil {
+		return reject("candidate source is not contained: " + err.Error())
+	}
 	source, err := os.ReadFile(sourcePath)
 	if err != nil {
 		return reject("source is unreadable: " + err.Error())
@@ -902,6 +908,16 @@ func evaluateCandidate(ctx context.Context, dir string, fixture Fixture, contrac
 	}
 
 	for _, tc := range fixture.Cases {
+		if language == LanguagePython || language == LanguageJavaScript {
+			current, err := sourceFileDigest(sourcePath)
+			if err != nil {
+				return reject("source is unreadable during execution: " + err.Error())
+			}
+			if current != actualDigest {
+				receipt.Results = append(receipt.Results, CaseResult{CaseID: tc.ID, Passed: false})
+				return reject("source changed during execution before case " + tc.ID)
+			}
+		}
 		var got Result
 		var execution *ExecutionEvidence
 		var err error
@@ -917,6 +933,9 @@ func evaluateCandidate(ctx context.Context, dir string, fixture Fixture, contrac
 		default:
 			got, execution, err = runCandidate(ctx, binaryPath, tc.Input, executionOptions)
 		}
+		if execution != nil && (language == LanguagePython || language == LanguageJavaScript) {
+			execution.SourceDigest = actualDigest
+		}
 		result := CaseResult{CaseID: tc.ID, Want: tc.Want, Got: got, Execution: execution}
 		if err != nil {
 			result.Passed = false
@@ -925,6 +944,15 @@ func evaluateCandidate(ctx context.Context, dir string, fixture Fixture, contrac
 		}
 		result.Passed = reflect.DeepEqual(got, tc.Want)
 		receipt.Results = append(receipt.Results, result)
+		if language == LanguagePython || language == LanguageJavaScript {
+			current, err := sourceFileDigest(sourcePath)
+			if err != nil {
+				return reject("source is unreadable after case " + tc.ID + ": " + err.Error())
+			}
+			if current != actualDigest {
+				return reject("source changed during execution after case " + tc.ID)
+			}
+		}
 	}
 	receipt.Passed = true
 	for _, result := range receipt.Results {
@@ -1403,6 +1431,57 @@ func findJava() (javacPath, javaPath, version string, available bool) {
 		return "", "", "", false
 	}
 	return javac, java, strings.TrimSpace(string(out)), true
+}
+
+// candidateSourcePath resolves the declared manifest source inside the
+// candidate directory. It refuses an absolute path, a path with "..", and a
+// symlink whose resolved target is outside the directory. The declaration is
+// never allowed to read a file beside the candidate.
+func candidateSourcePath(dir, declared string) (string, error) {
+	root, err := filepath.Abs(dir)
+	if err != nil {
+		return "", err
+	}
+	relative := filepath.FromSlash(declared)
+	if filepath.IsAbs(relative) {
+		return "", fmt.Errorf("source %q is absolute", declared)
+	}
+	cleaned := filepath.Clean(relative)
+	if cleaned == ".." || strings.HasPrefix(cleaned, ".."+string(os.PathSeparator)) {
+		return "", fmt.Errorf("source %q escapes the candidate directory", declared)
+	}
+	path := filepath.Join(root, cleaned)
+	resolvedRoot, err := filepath.EvalSymlinks(root)
+	if err != nil {
+		return "", err
+	}
+	resolvedPath, err := filepath.EvalSymlinks(path)
+	if err != nil {
+		return "", err
+	}
+	relativeToRoot, err := filepath.Rel(resolvedRoot, resolvedPath)
+	if err != nil {
+		return "", err
+	}
+	if relativeToRoot == ".." || strings.HasPrefix(relativeToRoot, ".."+string(os.PathSeparator)) {
+		return "", fmt.Errorf("source %q resolves outside the candidate directory", declared)
+	}
+	info, err := os.Stat(path)
+	if err != nil {
+		return "", err
+	}
+	if !info.Mode().IsRegular() {
+		return "", fmt.Errorf("source %q is not a regular file", declared)
+	}
+	return path, nil
+}
+
+func sourceFileDigest(path string) (string, error) {
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return "", err
+	}
+	return digest(raw), nil
 }
 
 func runScriptCandidate(ctx context.Context, interpreter, sourcePath string, input json.RawMessage, options ExecutionOptions) (Result, *ExecutionEvidence, error) {
