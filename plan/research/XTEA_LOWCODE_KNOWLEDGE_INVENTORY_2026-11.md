@@ -178,6 +178,7 @@ X-TEAの機能型は8種です（`D:help/FunctionList.HTML`、`E:Editor.java L11
 | I-13 | `Function`の`Parameters`と`Return`は自由記述で、実行時の値の受渡しは`parmMap`のキーで行う | 機能の入出力を、設計情報として記録できる | 型・必須・既定値・失敗の契約がなく、呼出し側と実装側がキー名を暗黙に合わせる | `M:Modeler.java L20588–20589`、Driver/Serverに`Parameters`・`Return`の参照なし（静的確認） | PAT/CORE |
 | I-14 | 基本型はSQL型から導出し（`INTEGER`、`FLOAT`、`STRING`、`BINARY`、`CLOB`、`BYTEA`、`DATE`、`TIME`、`DATETIME`）、業務上の型（コード・金額・数量）は区別しない | DB製品差を吸収して値を扱える | 同じ物理型でも業務上の意味が違う項目を、同じ型として扱う。型の統合・変更の影響を意味で判断できない | `D:XFUtility.java`（`getBasicTypeOf`）、`M:Modeler.java`（`DataType`の`BasicType`・`Length`・`Decimal`） | CORE |
 | I-15 | `Tab`と`TabField`で項目をタブにまとめ、検証エラー時は最初のエラーがあるタブへ移動する | 項目の多い画面を、意味のまとまりで分けられる | タブの順序とエラー移動が項目の並びに依存し、タブをまたぐ依存関係を宣言できない | `D:XF200.java L611–671, L2081` | PAT |
+| I-16 | 帳票の`Value`属性に、`&Text(...)`、`&DataSource(...)`、`&DataSourceImage(...)`、`&Barcode(...)`、`&SystemVariant(...)`、`&DateTime(...)`、`&Date(...)`、`&Image(...)`、`&Line(...)`、`&Rect(...)`というミニ言語を書き、項目・画像・バーコード・図形を差し込む | 一つの属性で、帳票の文面と差込みを表現できる | 文字列のミニ言語で、型付きの束縛・構文検査・エスケープの規則が一か所にない。項目の欠落も実行時まで分からない | `D:XF290.java L469–612`、`D:XF290.java`（`XF290_Phrase`の`Value`解析） | GEN/PLG |
 
 ### 4.4 イベントとスクリプト（E）
 
