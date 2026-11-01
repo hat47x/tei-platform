@@ -12,6 +12,8 @@ TEIでは、案件固有のデータモデルを含む分野固有の知識（�
 
 製品の価値と目指す姿は、[TEIが大切にする価値](product/value/TEI_PRODUCT_VALUE.md)と[TEIの将来像](product/vision/TEI_PRODUCT_VISION.md)をご覧ください。
 
+製品シリーズ全体の構想と役割の分担は、[YI Constellation 構想と設計](https://github.com/hat47x/tai-pleroma/blob/main/docs/YI_Constellation.pptx)をご覧ください。TEIは、知識のモデル化と検証を担う製品として紹介されています。資料の確認状況は2026年10月時点のものです。
+
 ## どこから読むか
 
 - [設計文書の案内](docs/README.md)
