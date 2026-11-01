@@ -182,7 +182,7 @@
 | [`reference-function-definition-document/`](reference-function-definition-document/) | 受理済みの意味から機能定義書を導出する参照（#1803） |
 | [`reference-ddl-entry/`](reference-ddl-entry/) | 物理対応から提供元が出力できるDDLを表ごとに取り出す入口（#1803） |
 | [`reference-developer-context/`](reference-developer-context/) | TEIのGoソース1件に対し、実在する関連テストと明示参照する設計資料を根拠付きの調査候補として返す読み取り専用の参照PoC。ローカルのSystem One互換判断モデルは候補の順位付けにだけ使い、失敗時は決定的な基準順を保つ。受理・権限・実行を決めない（#2196 / #2021） |
-| [`reference-design-output/`](reference-design-output/) | 受理済みの意味から表・機能・対応一覧・DDL・静的HTML索引を一つのrevisionへ束縛して導出する参照（#1803） |
+| [`reference-design-output/`](reference-design-output/) | 受理済みの意味から表・機能・対応一覧・DDL・静的HTML索引を一つのrevisionへ束縛して導出する参照。書式（markdown/text）を差し替えても意味の行を保ち、編集できる正本の位置と、宣言された利用／観測された副作用を別々に示す（#1803） |
 | [`reference-access-matrix/`](reference-access-matrix/) | Application × Dataの宣言された利用の対応表を導出する参照（#1803） |
 | [`reference-partial-import-plan/`](reference-partial-import-plan/) | 別Workspaceから選んだData定義の取込み結果を分類する読取り専用の参照（#1805） |
 | [`reference-table-definition-document/`](reference-table-definition-document/) | 受理済みの意味から表定義書を導出する参照（#1803） |
