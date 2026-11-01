@@ -57,6 +57,14 @@ func (b EKITaskSubmitHTTP) Invoke(ctx context.Context, id core.CanonicalID, inpu
 	defer response.Body.Close()
 	if response.StatusCode != http.StatusAccepted {
 		detail, _ := io.ReadAll(io.LimitReader(response.Body, 4096))
+		var problem struct {
+			Title  string `json:"title"`
+			Code   string `json:"code"`
+			Detail string `json:"detail"`
+		}
+		if err := json.Unmarshal(detail, &problem); err == nil && (problem.Code != "" || problem.Title != "") {
+			return capabilityinvoke.BusinessResult{}, fmt.Errorf("submit task: status %d: %s: %s", response.StatusCode, problem.Code, problem.Title)
+		}
 		return capabilityinvoke.BusinessResult{}, fmt.Errorf("submit task: status %d: %s", response.StatusCode, strings.TrimSpace(string(detail)))
 	}
 	var payload map[string]any

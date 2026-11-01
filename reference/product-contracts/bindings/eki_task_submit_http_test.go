@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -42,8 +43,9 @@ func TestEKITaskSubmitHTTPPostsTaskRequest(t *testing.T) {
 
 func TestEKITaskSubmitHTTPRejectsNonAccepted(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/problem+json")
 		w.WriteHeader(http.StatusUnprocessableEntity)
-		_, _ = w.Write([]byte(`{"title":"not admitted"}`))
+		_, _ = w.Write([]byte(`{"type":"about:blank","title":"not admitted","status":422,"code":"NOT_ACCEPTED"}`))
 	}))
 	defer server.Close()
 
@@ -54,5 +56,8 @@ func TestEKITaskSubmitHTTPRejectsNonAccepted(t *testing.T) {
 	})
 	if err == nil {
 		t.Fatal("non-202 response was accepted")
+	}
+	if !strings.Contains(err.Error(), "NOT_ACCEPTED") || !strings.Contains(err.Error(), "not admitted") {
+		t.Fatalf("error does not carry the problem fields: %v", err)
 	}
 }
