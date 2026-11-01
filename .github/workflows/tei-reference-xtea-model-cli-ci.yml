@@ -32,7 +32,7 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: モデルCLIの単体試験
+      - name: モデルCLIとシナリオの単体試験
         shell: bash
         run: |
           set -euo pipefail
@@ -40,3 +40,4 @@ jobs:
             -s tools/reference-xtea-control/tests \
             -p 'test_model_cli.py' \
             -v
+          python3 tools/reference-xtea-control/tests/test_scenario_files.py
