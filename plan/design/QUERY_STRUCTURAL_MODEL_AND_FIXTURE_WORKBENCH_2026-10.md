@@ -362,9 +362,11 @@ M0→M1の**説明用入力固定（新Core/Wire schemaの先行採用なし）*
 **完成した局所的成果**：同じDraft #2388の[合成fixtureディレクトリ](https://github.com/hat47x/tei-platform/tree/work/query-structural-fixture-design-20261030/plan/fixtures/query-workbench-f0)へ、元の`verify_sqlite.py`に加えて`explain_qx16.py`と`test_explain_qx16.py`を保存。新しいRuntime/SQL worker/DSL evaluator/Core schemaを作らず、合成fixture専用の手動`NODES`と`CASES`から**演算依存とClaim条件の読み取り専用JSON**を投影する。
 
 - **実測A**：GitHubとGit blobが一致する`verify_sqlite.py` (`b5939379f77f2b343be31e3464678328a9780a82`)をPython 3.13.5/SQLite 3.46.1の隔離ローカル実行でPASS。旧F0/N1a/N1b/N2/N3に加え、QX-16の8つの合成SQLite比較ケースで、期待値と一致することを確認。
-- **実測B**：`explain_qx16.py`のexact blob (`2791fa1f4903de77fcf7c12a362f61004bd45c00`)を実行してread-only JSONが生成されることを確認。**6つの明示Operator/Claim依存ノード、10シナリオ**を出力する。
-- **実測C**：`test_explain_qx16.py`のexact blob (`857328bf22d01447c2fd9757d5b6a3fadc189930`)で`python3 -m unittest -v test_explain_qx16.py` **10件PASS**。同じ観測R=600と異なる全集合、非負条件付き下界、負値モデル、Lineだけcomplete/Delivery partial、JOIN fan-out、EXISTS/NOT EXISTS、空SUM=NULL、右未一致の仮行消失、未受理状態、全Claimと依存ノードの対応を検査。
+- **実測B**：`explain_qx16.py`のexact blob (`bfa333eb30c1629fbc5e20388ffeed65c956f438`)を実行してread-only JSONが生成されることを確認。**7つの明示Operator/Claim依存ノード、10シナリオ**を出力する。
+- **実測C**：`test_explain_qx16.py`のexact blob (`bd12b85b64699202d054f52b550704840c95f379`)で`python3 -m unittest -v test_explain_qx16.py` **10件PASS**。同じ観測R=600と異なる全集合、非負条件付き下界、負値モデル、Lineだけcomplete/Delivery partial、JOIN fan-out、EXISTS/NOT EXISTS、空SUM=NULL、右未一致の仮行消失、未受理状態、全Claimと依存ノードの対応を検査。
 - 実行コマンド、blob SHA、説明ラベル、禁止する昇格を[README](https://github.com/hat47x/tei-platform/blob/work/query-structural-fixture-design-20261030/plan/fixtures/query-workbench-f0/README.md)へ記録。**このブランチの該当3ファイルだけの局所Python/SQLite実測**であり、TEI mainのGo/worker/Provider/Context/SHOテストのPASSではない。
+
+**補足：出力の粒度が変わる演算境界**。固定NODESで`join_pairs`は`join-pair:H`、その後の`join_sum`は`group:H`と分離し、後者が前者を入力に取ることを回帰テストで固定した。元の明細Entityとも別である。列の出所が同じでもJOIN出現数と集約後のGroupを同じIdentityへ写さない。
 
 **観測からの設計判断**：出力フィールドの列由来だけでなく、演算依存（JOIN後の多重度、反結合の有無、比較条件）をたどらなければ、同じ金額の出力を「正しい業務総額」へ写せない。完全取得は単純なContext-wide 1 bitではなく、**個々のClaimが必要とする入力集合/版/Scope**を保持したときに、部分取得でも独立した明細合計を条件付きで説明できる。既存の#1063による数学的片側法則も、必要条件が成立するときに限る。
 
