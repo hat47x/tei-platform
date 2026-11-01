@@ -6,8 +6,9 @@ import re
 import sys
 from pathlib import Path
 
-RULE = "repo-path-v1"
+RULE = "repo-path-v2"
 TOKEN = re.compile(r"`(?:(ref|planned):)?((?:docs|plan|tools|reference|requirements|product)/[A-Za-z0-9_./-]+)`")
+DECLARATION = re.compile(r"`(ref|planned):([^`\n]*)`")
 
 
 def check(root, document, text):
@@ -36,6 +37,14 @@ def check(root, document, text):
             severity, result = "warning", "unresolved"
         records.append({"line": text.count("\n", 0, match.start()) + 1, "name": name,
                         "declaration": kind or "implicit", "severity": severity, "result": result})
+    # A declaration must not disappear merely because its name is outside the
+    # limited grammar. Ordinary backticks remain outside the failure boundary.
+    for match in DECLARATION.finditer(text):
+        if TOKEN.fullmatch(match.group(0)):
+            continue
+        records.append({"line": text.count("\n", 0, match.start()) + 1, "name": match.group(2),
+                        "declaration": match.group(1), "severity": "error", "result": "unsupported-declaration"})
+    records.sort(key=lambda item: item["line"])
     return {"rule": RULE, "matching": "exact-filesystem-dependent-case", "document": document,
             "denominator": len(records), "records": records}
 

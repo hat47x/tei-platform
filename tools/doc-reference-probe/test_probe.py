@@ -36,6 +36,14 @@ class ProbeTest(unittest.TestCase):
             report = check(root, "docs/example.md", "`ref:docs/file/`")
             self.assertEqual(report["records"][0]["result"], "unresolved")
 
+    def test_unsupported_declaration_is_not_silently_ignored(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            report = check(Path(tmp), "docs/example.md", "`ref:unknown/file` `planned:docs/日本語` `ordinary`")
+            self.assertEqual(report["denominator"], 2)
+            self.assertEqual([r["result"] for r in report["records"]],
+                             ["unsupported-declaration", "unsupported-declaration"])
+            self.assertTrue(all(r["severity"] == "error" for r in report["records"]))
+
 
 if __name__ == "__main__":
     unittest.main()
