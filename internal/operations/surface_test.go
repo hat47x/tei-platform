@@ -383,3 +383,62 @@ func TestSurfaceWorkspaceReference(t *testing.T) {
 		t.Fatalf("reference workspace must report the update gap: %+v", surface.Gaps)
 	}
 }
+
+// TestSurfaceWorkspaceStandardCRDFixture derives the negative fixture. It fixes
+// the shape of the gaps a reader sees when a workspace declares persistence but
+// omits a key, a concurrency method, a lifecycle or a readable path.
+func TestSurfaceWorkspaceStandardCRDFixture(t *testing.T) {
+	root := filepath.Join("..", "..", "reference", "standard-crud", "workspace")
+	if _, err := os.Stat(root); err != nil {
+		t.Skipf("standard-crud fixture is not available: %v", err)
+	}
+
+	surface, err := SurfaceWorkspace(root, "ledger")
+	if err != nil {
+		t.Fatalf("derive fixture surface: %v", err)
+	}
+
+	wantOperations := []string{
+		"ledger.list.sales.note",
+		"ledger.list.sales.order",
+		"ledger.read.sales.order",
+		"ledger.create.sales.order",
+	}
+	var gotOperations []string
+	for _, operation := range surface.Operations {
+		gotOperations = append(gotOperations, operation.ID)
+	}
+	if len(gotOperations) != len(wantOperations) {
+		t.Fatalf("ops=%v want=%v", gotOperations, wantOperations)
+	}
+	for i, want := range wantOperations {
+		if gotOperations[i] != want {
+			t.Fatalf("ops=%v want=%v", gotOperations, wantOperations)
+		}
+	}
+
+	wantGaps := []string{
+		"sales.note/create/missing-semantics",
+		"sales.note/read/missing-semantics",
+		"sales.order/list/conflict",
+		"sales.order/retire/missing-input",
+		"sales.order/update/missing-semantics",
+	}
+	var gotGaps []string
+	for _, gap := range surface.Gaps {
+		gotGaps = append(gotGaps, gap.Target+"/"+gap.Kind+"/"+gap.Reason)
+	}
+	if len(gotGaps) != len(wantGaps) {
+		t.Fatalf("gaps=%v want=%v", gotGaps, wantGaps)
+	}
+	for i, want := range wantGaps {
+		if gotGaps[i] != want {
+			t.Fatalf("gaps=%v want=%v", gotGaps, wantGaps)
+		}
+	}
+	for _, gap := range surface.Gaps {
+		if gap.Detail == "" {
+			t.Fatalf("gap must explain itself: %+v", gap)
+		}
+	}
+}
