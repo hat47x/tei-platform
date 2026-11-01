@@ -40,6 +40,9 @@ type generatorTemplate struct {
 	strategy string
 	language string
 	source   string
+	// projection marks a generator whose contract requires a projection block
+	// instead of a rounding block. Tests that exercise rounding skip these.
+	projection bool
 }
 
 var generatorTemplates = map[string]generatorTemplate{
@@ -57,8 +60,8 @@ var generatorTemplates = map[string]generatorTemplate{
 	"wasm-long-running-template":       {file: "templates/template-long-running.go.tmpl", id: "line-amount-wasm-long-running-template", origin: "template", strategy: "wasm-long-running-template", language: LanguageWasm, source: "main.go"},
 	"wasi-template":                    {file: "templates/template.go.tmpl", id: "line-amount-wasi-template", origin: "template", strategy: "wasi-template", language: LanguageWasi, source: "main.go"},
 	"wasi-long-running-template":       {file: "templates/template-long-running.go.tmpl", id: "line-amount-wasi-long-running-template", origin: "template", strategy: "wasi-long-running-template", language: LanguageWasi, source: "main.go"},
-	"text-template":                    {file: "templates/text-projection.go.tmpl", id: "text-projection-template", origin: "template", strategy: "text-template", language: LanguageGo, source: "main.go"},
-	"text-record-template":             {file: "templates/text-record.go.tmpl", id: "text-record-projection-template", origin: "template", strategy: "text-record-template", language: LanguageGo, source: "main.go"},
+	"text-template":                    {file: "templates/text-projection.go.tmpl", id: "text-projection-template", origin: "template", strategy: "text-template", language: LanguageGo, source: "main.go", projection: true},
+	"text-record-template":             {file: "templates/text-record.go.tmpl", id: "text-record-projection-template", origin: "template", strategy: "text-record-template", language: LanguageGo, source: "main.go", projection: true},
 }
 
 type templateField struct {
