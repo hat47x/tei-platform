@@ -24,6 +24,7 @@ const (
 	CodeTimezoneUndeclared    = "TIMEZONE_UNDECLARED"
 	CodeRowClockReference     = "NONDETERMINISTIC_REEVALUATION"
 	CodeHiddenIO              = "HIDDEN_IO_IN_RULE"
+	CodeContextUnproven       = "CONTEXT_UNPROVEN"
 	CodeUnsupportedRule       = "UNSUPPORTED_RULE"
 	CodeInvalidRequest        = "INVALID_REQUEST"
 )
@@ -38,6 +39,9 @@ const (
 type Input struct {
 	// Kind selects the rule under evaluation.
 	Kind string `json:"kind"`
+	// RuleVersion is the pinned rule version the result is reproducible
+	// against. Changing it is a different explanation, not a silent rerun.
+	RuleVersion string `json:"ruleVersion,omitempty"`
 	// StartDate is the typed business input of elapsed-days.
 	StartDate string `json:"startDate,omitempty"`
 	// EvaluationDate is the declared evaluation argument (as-of date). It is a
@@ -56,14 +60,20 @@ type Input struct {
 	RowClockReference bool `json:"rowClockReference"`
 	// ExternalFetch is true when the realization performs hidden network I/O.
 	ExternalFetch bool `json:"externalFetch"`
+	// ProviderImpliedClock and ProviderImpliedLocale are true when the target or
+	// provider implies a clock or locale that the contract did not declare.
+	ProviderImpliedClock  bool `json:"providerImpliedClock,omitempty"`
+	ProviderImpliedLocale bool `json:"providerImpliedLocale,omitempty"`
 }
 
 // Report is the read-only result.
 type Report struct {
-	Code     string `json:"code"`
-	Accepted bool   `json:"accepted"`
-	Value    string `json:"value,omitempty"`
-	Message  string `json:"message,omitempty"`
+	Code        string   `json:"code"`
+	Accepted    bool     `json:"accepted"`
+	Value       string   `json:"value,omitempty"`
+	RuleVersion string   `json:"ruleVersion,omitempty"`
+	Unknown     []string `json:"unknown,omitempty"`
+	Message     string   `json:"message,omitempty"`
 }
 
 func reject(code, message string) Report {
@@ -85,6 +95,19 @@ func Evaluate(in Input) Report {
 		return reject(CodeHiddenIO,
 			"純粋なRule本文へ隠れたI/Oを混ぜない。事前取得した型付き入力か既存Query/Capabilityを明示する。AI生成実装を純粋と無条件認定しない。")
 	}
+	if in.ProviderImpliedClock || in.ProviderImpliedLocale {
+		unknown := []string{}
+		if in.ProviderImpliedClock {
+			unknown = append(unknown, "providerImpliedClock")
+		}
+		if in.ProviderImpliedLocale {
+			unknown = append(unknown, "providerImpliedLocale")
+		}
+		return Report{
+			Code: CodeContextUnproven, RuleVersion: in.RuleVersion, Unknown: unknown,
+			Message: "Provider/Target固有の暗黙Clock/Localeは適合未証明。宣言された評価文脈なしに同等としない（#1694へ接続）。",
+		}
+	}
 
 	switch strings.TrimSpace(in.Kind) {
 	case KindQuantityAmount:
@@ -97,7 +120,7 @@ func Evaluate(in Input) Report {
 		if !ok {
 			return reject(CodeInvalidRequest, fmt.Sprintf("invalid unit price %q", in.UnitPrice))
 		}
-		return Report{Code: CodeAmount, Accepted: true,
+		return Report{Code: CodeAmount, Accepted: true, RuleVersion: in.RuleVersion,
 			Value:   formatExact(quantity.Mul(quantity, unitPrice)),
 			Message: "時計・Locale宣言なしで評価する。"}
 
@@ -119,7 +142,7 @@ func Evaluate(in Input) Report {
 			return reject(CodeInvalidRequest, fmt.Sprintf("invalid evaluationDate %q", in.EvaluationDate))
 		}
 		days := int(evaluation.Sub(start).Hours() / 24)
-		return Report{Code: CodeDays, Accepted: true, Value: fmt.Sprintf("%d", days),
+		return Report{Code: CodeDays, Accepted: true, RuleVersion: in.RuleVersion, Value: fmt.Sprintf("%d", days),
 			Message: "宣言された評価引数から計算する。同じ固定評価日は再評価しても変わらない。"}
 
 	default:

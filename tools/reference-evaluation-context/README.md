@@ -23,6 +23,8 @@
 | 単純な数量×単価 | 時計宣言なしで評価 | `OK_AMOUNT` |
 | 実現が一行ごとに時計参照 | 禁止、基準時刻から計算 | `NONDETERMINISTIC_REEVALUATION` |
 | 実現が隠れた外部取得 | 純粋と認定しない | `HIDDEN_IO_IN_RULE` |
+| Provider/Targetが暗黙のClock/Localeを持つ | 適合未証明として扱い、黙って同等としない | `CONTEXT_UNPROVEN`（`unknown` に種別） |
+| 固定したInput+Context+Rule Versionの再評価 | 同じ結果とRule版を返す | `OK_DAYS`／`OK_AMOUNT`（`ruleVersion` 併記） |
 | 正体不明の規則 | 拒否 | `UNSUPPORTED_RULE` |
 
 一行ごとの時計参照と隠れたI/Oは他の文脈整合の前提を壊すため、最初に判定します。
@@ -39,6 +41,8 @@
 | `today` 要求なのに評価日未提供 | `EVALUATION_DATE_MISSING`、OS時刻にfallbackしない |
 | `quantity=2, price=300` | `OK_AMOUNT`、`value=600`（宣言不要） |
 | AI生成プラグインが暗黙 `time.Now`／外部HTTP | `NONDETERMINISTIC_REEVALUATION`／`HIDDEN_IO_IN_RULE` |
+| Provider/Targetが暗黙のClock/Localeを持つ | `CONTEXT_UNPROVEN`（`unknown=[providerImpliedClock]` など） |
+| 同じ定義日の再評価 | 同じ値と `ruleVersion` を返す |
 
 ## 実行方法
 
