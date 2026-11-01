@@ -9,7 +9,7 @@
 
 対象の同一性／構成文法／性質・法則／解釈文脈／利用箇所の要求／主張と根拠／実現と表示。各Pressureの意味に関連するM1〜M10（#2495）は重複して構わないが、**一つの性質を二つの独立な意味正本に保存しない**。
 
-以下の56ケースは**初期の異質性を測るための開始点であり、網羅の完了や上限を意味しない**。新規の構造・数学的性質・分野固有の解釈は追加し続ける。関心事が重複する場合も、操作・利用文脈・失われる情報が異なれば別の反例として保持する。
+以下の72ケースは**初期の異質性を測るための開始点であり、網羅の完了や上限を意味しない**。新規の構造・数学的性質・分野固有の解釈は追加し続ける。関心事が重複する場合も、操作・利用文脈・失われる情報が異なれば別の反例として保持する。
 
 ## A. 値と同一性（PC-01〜07）
 
@@ -101,6 +101,31 @@
 | PC-54 | AI CUIのRead Result | 構造化説明とevidence | Source Scope・鮮度・unknown・Disclosure | 説明成功を未取得データの存在確認に使う | #2354/#1178 |
 | PC-55 | 外部Hostでの意味型利用 | Java/.NET/Wasm成果物 | 入出力意味・NULL・Failure・Authority | 共通JSON shapeで実行等価と断定 | #2077/#2390 |
 | PC-56 | モデル改版と納品固定版 | R1 Delivery／R2 Working | Source・Contract・生成物・SHO同版 | 新TypeRefを旧納品物へ自動適用 | #1803/#1124 |
+
+## H. 数学的構造の複数解釈・高階／無限・分散（PC-57〜72、2026-11-02追加候補）
+
+同じCarrierが同種の公理体系を異なる演算で満たす場合や、有限・無限、時点、論理的な情報の違いがあり、一般的な「データ型」の列挙では発見しにくい反例を追加する。詳細なLaw束縛の評価Ownerは[#2544](https://github.com/hat47x/tei-platform/issues/2544)、情報保存は#2497、実Oracleは#2514に置く。**この16行は設計上のPressureであり、新しいSource正本・実装済みCore型・試験PASSではない。**
+
+| ID | Pressure / 資料上の構造 | 構成・表現 | 分けて問う性質 | 誤認・損失の負例 | 既存Owner |
+| --- | --- | --- | --- | --- | --- |
+| PC-57 | 同じ自然数上の二つのMonoid | Carrier `ℕ`、加法+0、乗法×1 | 演算束縛・単位元・結合律 | `Monoid`分類だけで演算を選ぶ | #2544/#988 |
+| PC-58 | 同じ集合上の二つのOrder | 通常の大小関係、整除関係 | 比較演算の同一性・全順序/半順序 | `Ordered`のみで比較結果を断定 | #2544/#2495 |
+| PC-59 | 同一Carrierの複数Topology | 離散／密着位相と開集合族 | carrierと位相族、連続性 | Graphの隣接・表示上の近さを位相公理と同一視 | #2544/#2495 |
+| PC-60 | 演算名のDiamond競合 | 2つのFacetが`combine`を要求 | 演算ID・公理・Use-siteの束縛 | 親の宣言順で一つを暗黙採用 | #2544/#951 |
+| PC-61 | 異なる記述の同じ制約 | 数値の範囲／共通Predicate、Constraint AND | 表現同値・充足可能性・Source | 式形が同じなので業務意味同一と断定 | #2544/#1806 |
+| PC-62 | 充足不能と空のDataset | `x>0∧x<0`／0件のDB | 空構造と矛盾する型宣言 | 実データ0件を充足不能の証明とする | #2544/#1806 |
+| PC-63 | 反例の有限Scope | Alloy等で一定数の原子を探索 | Bound、存在例、反例、未判定 | 有限探索無反例を無条件の数学証明とする | #2544/#2514 |
+| PC-64 | 全称条件と存在条件 | `∀x:P(x)`と`∃x:P(x)` | 空集合での真理・対象母集団 | emptyで全称真から必要レコード存在を断定 | #2544/#1063 |
+| PC-65 | 依存次元のVector/Tensor | `Vector(n)`、rank/dims/coords | index上の型条件・次元と形 | 同じbytes/lengthだけで座標系・物理量を同一視 | #2495/#2077 |
+| PC-66 | 再帰Treeと循環参照 | 再帰的データ定義とGraphの共有参照 | 木の有限展開、Object Identity、循環 | 再帰型を持つのでinstanceが必ずTreeと断定 | #2495/#1126 |
+| PC-67 | 無限・遅延Stream | 潜在的無限系列、有限prefix | 生成規則と現在の取得Scope | 3件取得したので全列挙済みと断定 | #2495/#1706 |
+| PC-68 | 因果順序と時計時刻 | 分散Event、happens-before、Lamport順序 | 部分順序、同時性、clockの意味 | UI表示用のtotal sortを因果順序として受理 | #2497/#2386 |
+| PC-69 | 可変参照と値のコピー | alias、immutable snapshot、shared state | 所有/可変性・EffectとValue同等性 | 同じ値が読めるので書込み互換と断定 | #2500/#1174 |
+| PC-70 | 疎構造のZero/Missing | Sparse Matrix、未格納Entry | 既定0／欠測／非存在の文脈 | 格納されていない座標を測定0と解釈 | #2497/#2056 |
+| PC-71 | 確率測度とスコアベクトル | Outcomes→Weights、正規化・事象代数 | 数値配列／確率公理／解釈 | `sum=1`だけから実験・観測の妥当性を主張 | #2544/#2514 |
+| PC-72 | 純粋関数と効果を持つAction | 同じ入力・出力型で異なるEffect | 数学的対応と実行Authority・Receipt | `A→B`が一致するだけで副作用や再試行安全性が等価と断定 | #988/#1174 |
+
+対応する数理上の参考：[Lean Type Classes](https://lean-lang.org/doc/reference/latest/Type-Classes/)（演算と公理）、[mathlib hierarchy design](https://leanprover-community.github.io/mathlib4_docs/Mathlib/Algebra/HierarchyDesign)（代数・順序・位相の交差による構造増殖）、[CUE Specification](https://cue.dev/docs/reference/spec/)（Constraintの結合とbottom）、[Alloy](https://alloytools.org/spec.html)（有限Scopeの構造例と反例）。いずれもTEIの標準Runtime・Proof Engineの選定ではない。
 
 ## 外部仕様の照合（2026-11-01読取り）
 
