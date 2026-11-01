@@ -164,6 +164,8 @@ X-TEAの機能型は8種です（`D:help/FunctionList.HTML`、`E:Editor.java L11
 | I-10 | `RETURN_CODE`が、画面の状態（`00`表示、`11`追加、`21`編集）、業務の結果（`10`登録、`20`更新、`30`削除）、取消（`01`）、異常（`99`）を同じ値で表す | 呼出し元が一つの値で画面と結果を扱える | 状態・結果・取消・異常が同じチャネルに混在し、呼出し元は値の意味を文脈で決める | `D:XF200.java L352–371, L1634, L1695, L1792`、`D:XF100.java L416, L816, L1462`、`D:XFUtility.java`（`getMessageOfReturnCode`） | PAT |
 | I-11 | 呼出し元は`INSTANCE_MODE`（`ADD`/`EDIT`/`INQ`）で子画面のモードを決め、`ParmType`（`COLUMNS`）と`ParmAdditional`で値を渡し、`RETURN_TO`で戻り先を指定する | 画面間の遷移と値の受渡しを、属性の組合せで作れる | 受渡しは型のないマップで、キー名とモード文字列が暗黙の契約になる | `D:XF200.java L349–396`、`D:XF100.java L821–831, L1426–1465` | PAT |
 | I-12 | `InitialListing`、`InitialReadCount`、`ProcessRowIfOnlyOne`が、初回の一覧取得と1件時の自動遷移を制御する | 一覧の初期表示と、1件だけのときの自動オープンを宣言できる | 業務上の分岐と画面の操作性が同じ属性に混ざり、自動遷移の条件が画面ごとに異なる | `D:XF100.java L447, L536–540, L1218–1221` | PAT |
+| I-13 | `Function`の`Parameters`と`Return`は自由記述で、実行時の値の受渡しは`parmMap`のキーで行う | 機能の入出力を、設計情報として記録できる | 型・必須・既定値・失敗の契約がなく、呼出し側と実装側がキー名を暗黙に合わせる | `M:Modeler.java L20588–20589`、Driver/Serverに`Parameters`・`Return`の参照なし（静的確認） | PAT/CORE |
+| I-14 | 基本型はSQL型から導出し（`INTEGER`、`FLOAT`、`STRING`、`BINARY`、`CLOB`、`BYTEA`、`DATE`、`TIME`、`DATETIME`）、業務上の型（コード・金額・数量）は区別しない | DB製品差を吸収して値を扱える | 同じ物理型でも業務上の意味が違う項目を、同じ型として扱う。型の統合・変更の影響を意味で判断できない | `D:XFUtility.java`（`getBasicTypeOf`）、`M:Modeler.java`（`DataType`の`BasicType`・`Length`・`Decimal`） | CORE |
 
 ### 4.4 イベントとスクリプト（E）
 
