@@ -184,6 +184,7 @@
 | [`reference-developer-context/`](reference-developer-context/) | TEIのGoソース1件に対し、実在する関連テストと明示参照する設計資料を根拠付きの調査候補として返す読み取り専用の参照PoC。ローカルのSystem One互換判断モデルは候補の順位付けにだけ使い、失敗時は決定的な基準順を保つ。受理・権限・実行を決めない（#2196 / #2021） |
 | [`reference-design-output/`](reference-design-output/) | 受理済みの意味から表・機能・対応一覧・DDL・静的HTML索引を一つのrevisionへ束縛して導出する参照。書式（markdown/text）を差し替えても意味の行を保ち、編集できる正本の位置と、宣言された利用／観測された副作用を別々に示す（#1803） |
 | [`reference-access-matrix/`](reference-access-matrix/) | Application × Dataの宣言された利用の対応表を導出する参照（#1803） |
+| [`reference-accounting-period/`](reference-accounting-period/) | 業務日付とシステム時刻を分け、期間の状態・締め済み期間の直接更新拒否・赤黒訂正・締め後の到着方針・順序鍵と版による再生・締め時点の照合値を判定する参照（#2144） |
 | [`reference-partial-import-plan/`](reference-partial-import-plan/) | 別Workspaceから選んだData定義の取込み結果を分類する読取り専用の参照（#1805） |
 | [`reference-table-definition-document/`](reference-table-definition-document/) | 受理済みの意味から表定義書を導出する参照（#1803） |
 | [`reference-list-roundtrip/`](reference-list-roundtrip/) | 意味の要素の一覧を出力し、編集後の一覧を変更案へ戻す読取り専用の参照（#1807） |
