@@ -47,3 +47,35 @@ python3 explain_qx16.py
 出力に`operationDependencies`（固定演算依存）・`inputContext`（取得範囲の合成仮定）・`claims`（成立条件と結論）・`syntheticSqliteActual`（実行観測）・`notProven`を併記する。列Lineageの寄与と、JOIN/WHERE/EXISTS等の**行存在・重複・確定条件への依存**は別。
 
 次段の課題は、この固定`NODES`を既存`RelationalIR`から由来付きで取得できるかの反証実験。QX-13/#2454の曖昧性の扱い、QX-14/#2471の解析入力への帰属が未確認の範囲では、NodeやClaimを完全解決として公開しない。#2506 Function Data Contextは正式のinput slice/selection epochを所有し、#1063がOperator Law、#1131/#2514が独立Oracle、#2500が編集逆写像、#1174がAction/Effectを所有する。**第二SQL evaluatorや新たなSemantic SSOTは構築しない。**
+
+## QX-17：既存RelationalIR形状への保守的な構造照合（2026-11-02）
+
+追加ファイル：
+
+- `relational_ir_synthetic.json`：`internal/query/relational.go`の現行JSONタグと合う**手書き**3例。`aggregate_before_join`／`join_before_aggregate`／`left_join_filter`。**実SQLGlot worker／TEI DeriveFromAnalysisの出力ではない**。
+- `probe_relational_ir.py`：`RelNode.ID/Kind/Inputs/ScopeID/Source/SourceKind/Binding`だけを保守的に辿り、入力演算・Source occurrence・構造上のgrain**候補**をread-only JSONへ写す。Expression文字列はそのまま返し、意味解析・単調性判定は`unverified`とする。`claimConclusionPresence`は常に`not-established`。
+- `test_probe_relational_ir.py`：13件の局所テスト。演算順・依存Source・LEFT JOIN→Filter、自己JOIN occurrence、入力欠落、循環、重複ID、未知/opaque演算、Scope越え、CTE binding未検証、Arity不整合、root欠落、構造Candidateと業務Claim未成立の差を確認。
+
+実行手順（Python 3.13.5、標準ライブラリのみ）：
+
+```sh
+cd plan/fixtures/query-workbench-f0
+python3 -m unittest -v test_probe_relational_ir.py
+python3 probe_relational_ir.py relational_ir_synthetic.json
+python3 probe_relational_ir.py relational_ir_synthetic.json --sample join_before_aggregate
+```
+
+**実測とexact性**（ローカル隔離Python；3ファイルをGitHubから再取得しblob比較）：
+
+| ファイル | Git blob SHA |
+| --- | --- |
+| `probe_relational_ir.py` | `0166c89dc5b85d6ff721a959a2f242e82b50c770` |
+| `relational_ir_synthetic.json` | `9a47ab095e504798726976239dbf2c56dd123ce5` |
+| `test_probe_relational_ir.py` | `1edcce76f59982055603134eaaca7b6955c1a196` |
+
+- `python3 -m unittest -v test_probe_relational_ir.py`：**13/13 PASS**（ローカル）。
+- 現行main `2197baaedbde178a042a280ea1bd1d534617bfc7`の`internal/query/relational.go` blob `4a91112b557585a4799b681c6348b46d85698f59`とバイト一致するGoソースを**隔離テストディレクトリ**で使用し、Go 1.23.2 + `GO111MODULE=off go test -v .`によって3例の`json.Unmarshal/Marshal`往復を**1件PASS**。これはGo型のJSON適合に関する限定検証であり、現行TEIモジュール指定Goや本体Goテストを実行したものではない。複製した型ファイルは**Repositoryへ持ち込まない**。
+
+**判定の意味**：`rootStructureTrace=candidate`は演算IDの参照グラフを辿れるという意味に限定する。SQL/Schema/Dialect/workerの入力帰属、Qualified Fieldの解決、`WHERE`/`EXISTS`の述語真偽、JOINのKeyとCardinality、NULL、Snapshot、Result Slice完全性、業務上のGrain/Identity、Action/Host Authorityは**いずれも未確認**。異Scope間のInput edgeは有効なCTE関係である可能性もあるため、直ちに「不正」ではなく`cross-scope-edge-unverified`へ留める。
+
+**次の縦切り**：合成`analyzer.Result`から実際のGo `DeriveFromAnalysis`を経て得た`RelationalIR`を、同じプローブへ入力し、手書き期待との欠落・差異を測る。現行`OutputField.Inputs`は**ColumnOccurrence ID**からの列Lineageであり、`RelNode.Inputs`は**演算ID**である。2種類のInput IDを同一視せず、OutputField→演算ノードの一致が現モデルで表せない場合は`unsupported`。#2454のScopeと#2471のworker応答契約がDraftの間は、この試験を実SQL→Modeler end-to-endのPASSへ昇格しない。
