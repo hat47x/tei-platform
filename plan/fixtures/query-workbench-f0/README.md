@@ -24,8 +24,8 @@ python3 explain_qx16.py
 | ファイル | 一致確認したGit blob |
 | --- | --- |
 | `verify_sqlite.py` | `b5939379f77f2b343be31e3464678328a9780a82` |
-| `explain_qx16.py` | `bfa333eb30c1629fbc5e20388ffeed65c956f438` |
-| `test_explain_qx16.py` | `bd12b85b64699202d054f52b550704840c95f379` |
+| `explain_qx16.py` | `2b6c0b570b1da0085972fddee81d1c759ebd3d0b` |
+| `test_explain_qx16.py` | `0b47846ecb730bd3feaa53040798d2e06fbb538a` |
 
 - `verify_sqlite.py`：**PASS**、QX-16の8 SQLiteシナリオ、F0/N1a/N1b/N2/N3の既存比較を確認。
 - `python3 -m unittest -v test_explain_qx16.py`：**10 tests PASS**。
@@ -41,6 +41,8 @@ python3 explain_qx16.py
 - `witness-true`/`witness-false`：一致行が観測された**場合のみ**のEXISTS/NOT EXISTS。空の部分集合から不存在を推論しない。
 - `observed-slice-only`：SQLを観測範囲で実行した値。全入力を要するJOIN/LEFT JOINの結果を確定値へ昇格しない。
 - `unresolved-partial`など：入力不足またはSQL NULL。NULLと0を自動同一視しない。
+
+出力には**`conclusionPresence=sql-null`（実際のSQL NULL）と`not-established`（未確定）を区別**し、両者のJSON値が`null`であっても意味を混同しない。`value`は条件付きも含む値の提示であり、業務受理の意味ではない。
 
 出力に`operationDependencies`（固定演算依存）・`inputContext`（取得範囲の合成仮定）・`claims`（成立条件と結論）・`syntheticSqliteActual`（実行観測）・`notProven`を併記する。列Lineageの寄与と、JOIN/WHERE/EXISTS等の**行存在・重複・確定条件への依存**は別。
 
