@@ -99,6 +99,7 @@ X-TEAのスクリプトAPIは、SQL・確定・機能呼出しを同じ面に置
 | --- | --- | --- | --- |
 | Patternの種類 | 5種固定。未知のKindは構文エラー | `internal/application/model.go` L19–33、`internal/syntax/application_pattern.go` L29–31 | D1のパッケージは、5種の組合せで表すか、Kindの拡張点を別に設計する |
 | Patternの宣言 | `data`、`relation`、`query`、`capability`、`datasource`、`contract-query`のみ | 同 L54–63、`application_pattern.go` L36–129 | 対話項目・操作・フック・表示意図がない。D1・D2・D3で追加する |
+| 遷移 | Pattern間の遷移宣言がない | `internal/application/model.go` | 一覧から単票、明細の起動などをD1で追加する |
 | 業務上の結末 | Capabilityの`Outcomes`と、呼出し境界のerrorを分ける | `internal/semantic/model.go` L128–133、L151–158 | D5はこれを再利用し、X-TEAの戻り値を混ぜない |
 | データ効果 | `create`と`update`のみ | `internal/semantic/model.go` L140–144 | `delete`を表せない。Business Effect Lifecycleと合わせて追加を検討する |
 | 認可 | subject・action・resourceの許可 | `internal/security/legacyauthorization/authorization.go` L29–45 | AC-11はこれを再利用できる。Pattern・Commandとの対応付けが要る |
