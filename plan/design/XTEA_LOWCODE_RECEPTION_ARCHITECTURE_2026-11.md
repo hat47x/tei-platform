@@ -824,7 +824,7 @@ pattern order_entry.order_record record {
 }
 ```
 
-PoCが検査するのは、項目がDataのattributeか、参照先がreference Patternか、参照先Relationのtarget attributeか、型が一致するか、遷移元が同じDataのbrowse Patternかです。
+PoCが検査するのは、項目がDataのattributeか、参照先がreference Patternか、参照先Relationのtarget attributeか、型が一致するか、参照先のSemantic名前空間がApplicationの`uses semantic`に含まれるか、遷移元が同じDataのbrowse Patternかです。
 
 採用時の目標形は、項目の役割（必須・導出・更新禁止）、操作（Commandの起動）、投影（画面・帳票）まで含みます。
 
