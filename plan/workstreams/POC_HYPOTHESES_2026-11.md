@@ -118,3 +118,9 @@
 - 分かったこと: **単一 `output` 契約の能力は、拒否を業務結果として表せない。** `ValidateBusinessResult` は `Mode: output` を要求し、`Outcome` の指定を拒否する。拒否（期待状態の不一致・権限外・検証違反）を `BusinessResult` で返すには、書き込み能力に `outcomes` の宣言が要る。
 - 意味: H1の「拒否を業務結果として返す」は、書き込み能力の `outcomes`（例: `rejected`・`conflict`）として宣言する形になる。能力の出力契約と、拒否の表現が結び付く。
 - 次: 負例の作業領域の `sales.order.cancel` に `outcomes` を足し、拒否の `BusinessResult` が `error` にならないことを試験で固定する。
+### 2026-11-02 — 拒否が業務結果として返り、行が変わらないことを観測した（H1の実証範囲）
+
+- 実装: 負例の `sales.order.cancel` を `outcome cancelled sales.order` と `outcome conflict sales.order` の二つの結果に変え、拒否を `BusinessResult{Mode: outcome, Outcome: "conflict"}` として返す試験を追加した（`internal/driver/bound_write_test.go`）。
+- 観測: 期待状態を持つ呼出しに対し、別の書き手が先に状態を変えていた場合、`InvokeCapability` は `error` を返さず、`conflict` の業務結果を返した。合成の保存領域では行の状態が変わっていないことを確かめた。
+- 範囲の限界: 保存領域は試験内の合成であり、実データベース・実トランザクションでの確認ではない。並行する二つの実トランザクションの競合は確かめていない。
+- 意味: H1の「期待状態の不一致を拒否として返す」は、能力の `outcomes` に拒否の結果を宣言する形で、実行の入口まで成立する。実DBでの検証は別の段階（#2483の残り）。

@@ -13,6 +13,7 @@ data Note {
 
 capability sales.order.cancel {
     input order sales.order
-    output sales.order
+    outcome cancelled sales.order
+    outcome conflict sales.order
     effect update sales.order
 }

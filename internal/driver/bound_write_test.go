@@ -47,7 +47,8 @@ func TestInvokeBoundOperationResolvesTheDeclaredRealization(t *testing.T) {
 			return capabilityAdapterFunc(func(_ context.Context, capability core.CanonicalID, _ any) (capabilityinvoke.BusinessResult, error) {
 				return capabilityinvoke.BusinessResult{
 					Capability: "sales.order.cancel",
-					Mode:       capabilityinvoke.ResultOutput,
+					Mode:       capabilityinvoke.ResultOutcome,
+					Outcome:    "cancelled",
 					Payload:    map[string]any{"orderId": "O-1", "status": "cancelled"},
 				}, nil
 			}), nil
@@ -60,7 +61,7 @@ func TestInvokeBoundOperationResolvesTheDeclaredRealization(t *testing.T) {
 	if seen.Identity() != "ledger/sales.order.cancel" {
 		t.Fatalf("束縛の解決先が違います: %s", seen.Identity())
 	}
-	if execution.Result.Mode != capabilityinvoke.ResultOutput || execution.Result.Payload == nil {
+	if execution.Result.Mode != capabilityinvoke.ResultOutcome || execution.Result.Outcome != "cancelled" || execution.Result.Payload == nil {
 		t.Fatalf("業務結果がそのまま返っていません: %+v", execution.Result)
 	}
 }
@@ -85,5 +86,57 @@ func TestInvokeBoundOperationSurfacesResolutionFailureAsError(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "adapter not available") {
 		t.Fatalf("原因が保持されていません: %v", err)
+	}
+}
+
+// TestInvokeBoundOperationReportsRejectionAsBusinessResult fixes the H1 shape:
+// an expected-state mismatch is a business outcome, not an execution error.
+func TestInvokeBoundOperationReportsRejectionAsBusinessResult(t *testing.T) {
+	resolver, err := standardCRDWorld(t)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Synthetic store: the adapter writes here, so the test can observe that a
+	// rejected update left the row unchanged.
+	// Another writer already cancelled the order; the caller still expects "new".
+	store := map[string]string{"status": "cancelled"}
+
+	execution, err := resolver.InvokeCapability(
+		context.Background(),
+		"ledger",
+		"sales.order.cancel",
+		bindingAdapterResolverFunc(func(_ context.Context, _ realization.CustomGoBinding) (capabilityinvoke.Adapter, error) {
+			return capabilityAdapterFunc(func(_ context.Context, _ core.CanonicalID, input any) (capabilityinvoke.BusinessResult, error) {
+				expected, _ := input.(map[string]any)["expectedStatus"].(string)
+				if expected != store["status"] {
+					return capabilityinvoke.BusinessResult{
+						Capability: "sales.order.cancel",
+						Mode:       capabilityinvoke.ResultOutcome,
+						Outcome:    "conflict",
+						Payload:    map[string]any{"orderId": "O-1", "expectedStatus": expected, "actualStatus": store["status"]},
+					}, nil
+				}
+				store["status"] = "cancelled"
+				return capabilityinvoke.BusinessResult{
+					Capability: "sales.order.cancel",
+					Mode:       capabilityinvoke.ResultOutcome,
+					Outcome:    "cancelled",
+					Payload:    map[string]any{"orderId": "O-1", "status": store["status"]},
+				}, nil
+			}), nil
+		}),
+		map[string]any{"orderId": "O-1", "expectedStatus": "new"},
+	)
+	if err != nil {
+		t.Fatalf("拒否は実行エラーではなく業務結果で返らなければならない: %v", err)
+	}
+	if execution.Result.Outcome != "conflict" || execution.Result.Payload == nil {
+		t.Fatalf("拒否の業務結果が失われています: %+v", execution.Result)
+	}
+	// Independent observation of the synthetic store: the rejected update did
+	// not change the row.
+	if store["status"] != "cancelled" {
+		t.Fatalf("拒否された更新が行を変えています: %s", store["status"])
 	}
 }
