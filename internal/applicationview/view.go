@@ -24,12 +24,14 @@ type View struct {
 	Navigations   []Navigation            `json:"navigations,omitempty"`
 }
 
-// Itemは、対話に現れる項目と、その型・表示名・入力部品・参照先を表す。
+// Itemは、対話に現れる項目と、その型・表示名・入力部品・意味の役割・参照先を表す。
 type Item struct {
 	Attribute core.CanonicalID `json:"attribute"`
 	Type      core.CanonicalID `json:"type,omitempty"`
 	Label     string           `json:"label,omitempty"`
 	Input     string           `json:"input,omitempty"`
+	Required  bool             `json:"required,omitempty"`
+	Immutable bool             `json:"immutable,omitempty"`
 	Lookup    *Lookup          `json:"lookup,omitempty"`
 }
 
@@ -119,6 +121,8 @@ func Build(world ir.World, applicationID, patternID core.CanonicalID) (View, err
 			Type:      attribute.TypeRef,
 			Label:     labelOf(attribute),
 			Input:     inputKind(attribute.TypeRef),
+			Required:  attribute.Required,
+			Immutable: attribute.Immutable,
 		}
 		if item.Lookup != nil {
 			target, ok := patterns[item.Lookup.Pattern]

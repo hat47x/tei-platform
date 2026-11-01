@@ -27,7 +27,7 @@ nav{margin-top:2rem;border-top:1px solid #ddd;padding-top:1rem}
 <form>
 {{range .Items}}<div class="entry">
 <label for="{{.Attribute}}">{{.Label}}</label>
-<input id="{{.Attribute}}" name="{{.Attribute}}" type="{{.Input}}"{{if .Lookup}} readonly{{end}}>
+<input id="{{.Attribute}}" name="{{.Attribute}}" type="{{.Input}}"{{if .Required}} required{{end}}{{if or .Immutable .Lookup}} readonly{{end}}>
 {{if .Lookup}}<span class="lookup">参照: {{.Lookup.Pattern}} → {{.Lookup.TargetAttribute}} ({{.Lookup.TargetType}})</span>{{end}}
 </div>
 {{end}}</form>

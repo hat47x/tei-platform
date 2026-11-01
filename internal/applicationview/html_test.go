@@ -18,7 +18,7 @@ func TestRenderHTMLEscapesLabelsAndRendersInputs(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(html, `type="text"`) || !strings.Contains(html, `name="sales.order.order_id"`) {
+	if !strings.Contains(html, `type="text"`) || !strings.Contains(html, `name="sales.order.order_id"`) || !strings.Contains(html, "required") || !strings.Contains(html, "readonly") {
 		t.Fatalf("input was not rendered: %s", html)
 	}
 	if !strings.Contains(html, "参照: order_entry.customer_reference") {

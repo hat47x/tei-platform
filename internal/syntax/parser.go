@@ -1880,28 +1880,45 @@ func (p *Parser) parseSemanticData(namespace core.CanonicalID) (semantic.Data, e
 			}
 			desc := ""
 			disp := ""
-			if nt, _ := p.peek(); nt.Text == "description" {
-				_, _ = p.next()
-				descTok, err := p.expect(TokenString)
+			required := false
+			immutable := false
+		attributeOptions:
+			for {
+				nt, err := p.peek()
 				if err != nil {
 					return d, err
 				}
-				desc = descTok.Text
-			}
-			if nt, _ := p.peek(); nt.Text == "display" {
-				_, _ = p.next()
-				dispTok, err := p.expect(TokenString)
-				if err != nil {
-					return d, err
+				switch nt.Text {
+				case "description":
+					_, _ = p.next()
+					descTok, err := p.expect(TokenString)
+					if err != nil {
+						return d, err
+					}
+					desc = descTok.Text
+				case "display":
+					_, _ = p.next()
+					dispTok, err := p.expect(TokenString)
+					if err != nil {
+						return d, err
+					}
+					disp = dispTok.Text
+				case "required":
+					_, _ = p.next()
+					required = true
+				case "immutable":
+					_, _ = p.next()
+					immutable = true
+				default:
+					break attributeOptions
 				}
-				disp = dispTok.Text
 			}
 			aseg, err := core.SymbolToSegment(aSym.Text)
 			if err != nil {
 				return d, p.errAt(aSym, err.Error())
 			}
 			aid, _ := core.ParseCanonicalID(string(id) + "." + aseg)
-			d.Attributes = append(d.Attributes, semantic.Attribute{ID: aid, Symbol: aSym.Text, Description: desc, Display: disp, TypeRef: typeRef})
+			d.Attributes = append(d.Attributes, semantic.Attribute{ID: aid, Symbol: aSym.Text, Description: desc, Display: disp, TypeRef: typeRef, Required: required, Immutable: immutable})
 		case "description":
 			_, _ = p.next()
 			descTok, err := p.expect(TokenString)

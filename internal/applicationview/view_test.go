@@ -17,7 +17,7 @@ func viewWorld() ir.World {
 				Data: []semantic.Data{{
 					ID: "sales.order",
 					Attributes: []semantic.Attribute{
-						{ID: "sales.order.order_id", Symbol: "order_id", Display: "受注番号", TypeRef: "std.identifier"},
+						{ID: "sales.order.order_id", Symbol: "order_id", Display: "受注番号", TypeRef: "std.identifier", Required: true, Immutable: true},
 						{ID: "sales.order.customer_id", TypeRef: "customer.customer_id"},
 					},
 					Relations: []semantic.Relation{{
@@ -147,6 +147,19 @@ func TestBuildAddsLabelAndInputKind(t *testing.T) {
 		t.Fatalf("item=%+v", view.Items[0])
 	}
 	if view.Items[1].Label != "sales.order.customer_id" || view.Items[1].Input != "text" {
+		t.Fatalf("item=%+v", view.Items[1])
+	}
+}
+
+func TestBuildCarriesRequiredAndImmutable(t *testing.T) {
+	view, err := applicationview.Build(viewWorld(), "order_entry", "order_entry.order_record")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !view.Items[0].Required || !view.Items[0].Immutable {
+		t.Fatalf("item=%+v", view.Items[0])
+	}
+	if view.Items[1].Required || view.Items[1].Immutable {
 		t.Fatalf("item=%+v", view.Items[1])
 	}
 }
