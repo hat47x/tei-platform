@@ -120,20 +120,27 @@ func TestDeriveOperationSurfaceListReadAndCreate(t *testing.T) {
 		t.Fatalf("derived operations must carry a basis: %+v", surface.Operations)
 	}
 
-	// update stays a gap because no concurrency method is declared.
-	gap, ok := findGap(surface, "sales.order", "update")
-	if !ok || gap.Reason != "missing-semantics" || gap.Detail == "" {
-		t.Fatalf("expected an update gap explaining the missing concurrency method: %+v", surface.Gaps)
+	// update is derived with expected-state comparison (PoC hypothesis H1).
+	update, ok := findOperation(surface, "order_entry.update.sales.order")
+	if !ok {
+		t.Fatalf("update operation missing: %+v", surface.Operations)
 	}
-	if _, ok := findOperation(surface, "order_entry.update.sales.order"); ok {
-		t.Fatalf("update must not be derived: %+v", surface.Operations)
+	if update.Concurrency != "expected-state" || update.Autonomy != "attended" {
+		t.Fatalf("update must declare expected-state comparison and stay attended: %+v", update)
 	}
-	if len(surface.Gaps) != 1 {
+	if len(update.Inputs) != 1 || update.Inputs[0] != "sales.order.order_id" {
+		t.Fatalf("update must carry the identifying key: %+v", update.Inputs)
+	}
+	if len(update.Effects) != 1 || update.Effects[0] != "update:sales.order" {
+		t.Fatalf("update must declare its effect: %+v", update.Effects)
+	}
+
+	if len(surface.Gaps) != 0 {
 		t.Fatalf("unexpected gaps: %+v", surface.Gaps)
 	}
 
-	if surface.Summary.Operations != 3 || surface.Summary.Derived != 3 ||
-		surface.Summary.Unattended != 2 || surface.Summary.Gaps != 1 {
+	if surface.Summary.Operations != 4 || surface.Summary.Derived != 4 ||
+		surface.Summary.Unattended != 2 || surface.Summary.Gaps != 0 {
 		t.Fatalf("unexpected summary: %+v", surface.Summary)
 	}
 	if len(surface.AuthorityLimits) == 0 {
@@ -273,17 +280,21 @@ func TestDeriveOperationSurfaceDoesNotDuplicateAcrossAliases(t *testing.T) {
 	for _, gap := range surface.Gaps {
 		counts[gap.Kind]++
 	}
-	if counts["update"] != 1 {
-		t.Fatalf("the same missing declaration must be reported once: %+v", surface.Gaps)
+	if counts["update"] != 0 {
+		t.Fatalf("update is derived, so it must not be reported as a gap: %+v", surface.Gaps)
 	}
-	createCount := 0
+	updates := 0
+	creates := 0
 	for _, operation := range surface.Operations {
-		if operation.Kind == "create" {
-			createCount++
+		switch operation.Kind {
+		case "create":
+			creates++
+		case "update":
+			updates++
 		}
 	}
-	if createCount != 1 {
-		t.Fatalf("create must be derived once across aliases: %+v", surface.Operations)
+	if creates != 1 || updates != 1 {
+		t.Fatalf("create and update must be derived once across aliases: %+v", surface.Operations)
 	}
 }
 
@@ -335,11 +346,11 @@ func TestDeriveOperationSurfaceApplicationFilter(t *testing.T) {
 	})
 
 	all := DeriveOperationSurface(world, "")
-	if all.Summary.Operations != 6 {
-		t.Fatalf("expected six operations for two applications: %+v", all.Summary)
+	if all.Summary.Operations != 8 {
+		t.Fatalf("expected eight operations for two applications: %+v", all.Summary)
 	}
 	filtered := DeriveOperationSurface(world, "repair_intake")
-	if filtered.Summary.Operations != 3 || filtered.Application != "repair_intake" {
+	if filtered.Summary.Operations != 4 || filtered.Application != "repair_intake" {
 		t.Fatalf("filter must keep only the requested application: %+v", filtered)
 	}
 	if _, ok := findOperation(filtered, "repair_intake.create.sales.order"); !ok {
@@ -379,8 +390,8 @@ func TestSurfaceWorkspaceReference(t *testing.T) {
 	if len(create.Inputs) == 0 || create.Autonomy != "attended" {
 		t.Fatalf("derived create must carry inputs and be attended: %+v", create)
 	}
-	if gap, ok := findGap(surface, "sales.order", "update"); !ok || gap.Reason != "missing-semantics" {
-		t.Fatalf("reference workspace must report the update gap: %+v", surface.Gaps)
+	if update, ok := findOperation(surface, "order_entry.update.sales.order"); !ok || update.Concurrency != "expected-state" {
+		t.Fatalf("reference workspace must derive update with expected-state comparison: %+v", surface.Operations)
 	}
 }
 
@@ -403,6 +414,7 @@ func TestSurfaceWorkspaceStandardCRDFixture(t *testing.T) {
 		"ledger.list.sales.order",
 		"ledger.read.sales.order",
 		"ledger.create.sales.order",
+		"ledger.update.sales.order",
 	}
 	var gotOperations []string
 	for _, operation := range surface.Operations {
@@ -422,7 +434,6 @@ func TestSurfaceWorkspaceStandardCRDFixture(t *testing.T) {
 		"sales.note/read/missing-semantics",
 		"sales.order/list/conflict",
 		"sales.order/retire/missing-input",
-		"sales.order/update/missing-semantics",
 	}
 	var gotGaps []string
 	for _, gap := range surface.Gaps {

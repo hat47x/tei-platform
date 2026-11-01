@@ -36,7 +36,7 @@ pattern order_entry.order_record record {
 | `list` | `persist` があり、データソースが読取り可能 | なし（上限のみ） | なし | `unattended` |
 | `read` | `persist` と、候補キーまたは主キーがある（候補キーを優先） | キー属性 | なし | `unattended` |
 | `create` | `persist` があり、データソースが書込み可能で、キーが生成可能または入力可能 | キー以外の必須属性 | create | `attended` |
-| `update` | `persist`、キー、同時更新の検出方法がある | キー＋更新可能属性 | update | `attended` |
+| `update` | `persist` とキーがある（同時更新は期待状態の比較を既定とする。仮説H1） | キー＋更新可能属性 | update | `attended` |
 | `retire` | 状態属性と、廃止に対応する `capability` の効果が宣言されている | キー＋理由 | update（状態） | `attended` |
 
 導出の細部。
@@ -44,11 +44,7 @@ pattern order_entry.order_record record {
 - **一覧**は `read` と同じキーの昇順、既定の上限（例: 200件）で返す。検索条件・並び替え・集計は導出しない（#1640 D2の担当）。上限に達した場合は「打ち切った」ことを結果に含め、空の結果と区別する（CLI C1の `summary` と `full` の区別と同じ規律）。
 - **一件参照**はキーが一意であることを要求する。主キーも候補キーも無い場合は `missing-semantics` の gap とし、行の全列一致で代用しない。
 - **登録**の入力は、`persist` にある列のうち、キーが自動生成でないものを必須、`optional` の列を任意とする。`validation` は対象データまたは属性に結び付いているものを前提として付ける。
-- **更新**は、同時更新の検出方法を要求する。次のいずれかである。
-  1. 版属性（`version` 相当）が宣言され、`persist` に写像されている。
-  2. 期待状態の比較（更新前の全列の照合値を受け取り、一致した場合だけ更新する）を、アプリケーションが明示的に選ぶ。
-
-  どちらも無い場合は `missing-semantics` の gap とし、`update` を `attended` のまま無条件に提供しない（後勝ちで他人の更新を消さないため）。
+- **更新**は、同時更新の検出方法を要求します。PoCの仮説H1として、**期待状態の比較を既定**とします（[PoCの仮説](../workstreams/POC_HYPOTHESES_2026-11.md)）。呼出し側はキーと、読んだときの値を送り、一致した場合だけ書きます。版属性による比較は、業務が版番号の一致を要求した時点で足す別方式です。どちらも無い状態を「後勝ちでよい」と解釈しません。
 - **廃止**は削除ではない。`data` に状態属性があり、その状態へ遷移する `capability` が `effect update` を持つ場合だけ導出する。削除は、依存する `data` が無く、かつ削除を明示した場合に限る。依存がある場合の削除は `conflict` として返す（参照整合性を暗黙に壊さない）。
 - **論理削除・監査列・採番**は導出しない。#1129の効果規則で宣言する（3章）。
 
@@ -121,7 +117,7 @@ sort operations by (target, kind rank)   # kind rank: list < read < create < upd
 | --- | --- | --- |
 | N-1127-01 | 主キーも候補キーも無いデータ | `read` と `update` が `missing-semantics` の gap になり、操作面に現れない |
 | N-1127-02 | 読み取り専用のデータソースに `record` パターンがある | `create`・`update` が `conflict` になり、受理を止める |
-| N-1127-03 | 版属性が無く、期待状態の比較も選んでいない | `update` が `missing-semantics` になり、後勝ちの更新を提供しない |
+| N-1127-03 | 期待状態を伴わない更新要求 | 拒否し、後勝ちで上書きしない（仮説H1） |
 | N-1127-04 | 他データから参照されているデータの削除 | `conflict`。状態遷移による廃止だけを候補にする |
 | N-1127-05 | `validation` に違反する入力 | 業務結果（拒否）として返し、実行エラーにしない（ADR-0020） |
 | N-1127-06 | 意味を変更した後に、古い操作面で実行する | `OPERATION_SURFACE_STALE` で停止し、暗黙に最新の意味で実行しない |
@@ -150,19 +146,19 @@ go run ./cmd/tei scenario -workspace reference/workspace -scenario reference/dri
 
 W1〜W4 は独立して進められる。W5 は W1〜W4 の後、W6 は W3 と並行、W7 は W3・W5 の後、W8 は W7 の後。
 
-**実装状況（2026-11-01）。** W1・W2 に加え、W3 のうち `create` の導出と、W4 の検証の結び付けを [`internal/operations/surface.go`](../../internal/operations/surface.go) に追加しました。
+**実装状況（2026-11-01）。** W1・W2 に加え、W3（`create`・`update`・`retire` の導出）と W4（検証の結び付け）、W6（負例の作業領域）を追加しました。
 
 - `create` は、書込み可能な別名・保存の対応・識別キーがある場合に導出し、入力（保存列の順）、前提（アプリケーションが宣言した検証のうち、そのデータの属性に付くもの）、効果（`create:<data>`）、自律区分（`attended`）を付けます。
-- `update` は導出せず、同時更新の検出方法が宣言されていないことを `missing-semantics` の未解決として返します。
+- `update` は、仮説H1に従い、期待状態の比較（`concurrency: expected-state`）を付けて導出します。版属性による比較は、必要になった時点で足す別方式です。
 - `retire` は、そのデータへの更新の意図（`effect update`）があるのにライフサイクルの宣言が無い場合に、`missing-input` の未解決として返します。意図が無ければ何も返しません。
 - 同じ保存先へ複数の別名から届く場合、操作と未解決を重複させません。
 
-`go test ./internal/operations -run Surface` が通り、参照用作業領域 `order_entry` では `list`・`read`・`create` と、`update` の未解決が出ます。W5（CLI）、W6（負例の作業領域）、W7・W8（Scenario・Web）は未着手です。
+`go test ./internal/operations -run Surface` が通り、参照用作業領域 `order_entry` では `list`・`read`・`create`・`update` が出ます。負例の作業領域は [`reference/standard-crud/`](../../reference/standard-crud/README.md) にあり、識別キーの欠落・ライフサイクルの欠落・書込み専用の別名を固定しています。W5（CLI）、W7・W8（Scenario・Web）は未着手です。
 
 ## 7. 停止条件
 
 - 操作面を実行の可否判定に使い始めた場合は停止する（操作面の設計の15章が未決のため）。
-- 導出した `update` が、版属性も期待状態の比較も無いまま提供された場合は停止する。
+- 導出した `update` から `concurrency` を落とした場合は停止する。
 - 削除を、依存関係の検査なしに提供した場合は停止する。
 - 画面の項目・配置を、操作面の外（実行先の設定）へ意味として持ち込んだ場合は停止する。
 

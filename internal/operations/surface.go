@@ -67,8 +67,12 @@ type Operation struct {
 	Inputs        []string `json:"inputs,omitempty"`
 	Preconditions []string `json:"preconditions,omitempty"`
 	Effects       []string `json:"effects,omitempty"`
-	Autonomy      string   `json:"autonomy"`
-	Basis         string   `json:"basis"`
+	// Concurrency names how an update detects a concurrent change. The PoC
+	// hypothesis is expected-state comparison; a version attribute would be a
+	// second, declared method (see plan/workstreams/POC_HYPOTHESES_2026-11.md).
+	Concurrency string `json:"concurrency,omitempty"`
+	Autonomy    string `json:"autonomy"`
+	Basis       string `json:"basis"`
 }
 
 // SurfaceGap records why a standard operation could not be derived.
@@ -279,13 +283,20 @@ func deriveApplicationOperations(
 				Basis:         basis,
 			})
 
-			// The reference model can not declare a concurrency method yet, so
-			// update stays visible as a gap instead of becoming a lost update.
-			gaps = append(gaps, SurfaceGap{
-				Target: target,
-				Kind:   "update",
-				Reason: "missing-semantics",
-				Detail: "no version attribute or expected-state comparison is declared",
+			// PoC hypothesis H1: an update is derived with expected-state
+			// comparison. The caller sends the key and the values it read; the
+			// write applies only when they still match. A declared version
+			// attribute is a later, explicit alternative, not a requirement.
+			emitOperation(&ops, seen, Operation{
+				ID:          operationID(app.ID, "update", mapping.SemanticData),
+				Kind:        "update",
+				Target:      target,
+				Origin:      "derived",
+				Inputs:      key,
+				Effects:     []string{"update:" + target},
+				Concurrency: "expected-state",
+				Autonomy:    "attended",
+				Basis:       basis,
 			})
 			if index.updateIntent[mapping.SemanticData] {
 				gaps = append(gaps, SurfaceGap{

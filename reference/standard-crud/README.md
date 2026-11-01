@@ -10,9 +10,9 @@
 | 宣言 | 期待する結果 | 何を示すか |
 | --- | --- | --- |
 | `sales.note` に主キーも候補キーも無い | `read`・`create` が `missing-semantics` | 識別子が無いと一件参照も登録も導けない |
-| `sales.order` に版属性も期待状態の比較も無い | `update` が `missing-semantics` | 後勝ちの更新を黙って提供しない |
+| `sales.order` は識別キーがある | `update` が `concurrency: expected-state` で導出される | 後勝ちを避ける方法を、宣言を足さずに既定で持つ（仮説H1） |
 | `sales.order` に `effect update` の能力はあるが、ライフサイクルの宣言が無い | `retire` が `missing-input` | 状態遷移の意図はあるが、製品側にライフサイクルの宣言がまだ無い |
-| `sales_archive` を `access write` で使う | `list` が `conflict`（`create` は導出する） | 書込み専用の経路から読めない |
+| `sales_archive` を `access write` で使う | `list` が `conflict`（`create`・`update` は導出する） | 書込み専用の経路から読めない |
 
 ## 宣言の構成
 
@@ -47,12 +47,12 @@ operations
   ledger.list.sales.order
   ledger.read.sales.order
   ledger.create.sales.order
+  ledger.update.sales.order
 gaps
   sales.note/create/missing-semantics
   sales.note/read/missing-semantics
   sales.order/list/conflict
   sales.order/retire/missing-input
-  sales.order/update/missing-semantics
 ```
 
 ## 非目標と限界
