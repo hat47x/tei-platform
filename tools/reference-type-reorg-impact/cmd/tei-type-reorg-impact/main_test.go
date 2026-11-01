@@ -85,10 +85,12 @@ func TestCLIBlocksSplitCandidateBeforeWorkspaceRead(t *testing.T) {
 		t.Fatalf("read-only split failed: %v\n%s", err, impactJSON)
 	}
 	var impact struct {
-		ReviewRequired bool   `json:"reviewRequired"`
-		Applied        bool   `json:"applied"`
-		Attributes     []any  `json:"attributes"`
-		Diagnostics    []struct{ Code string `json:"code"` } `json:"diagnostics"`
+		ReviewRequired bool  `json:"reviewRequired"`
+		Applied        bool  `json:"applied"`
+		Attributes     []any `json:"attributes"`
+		Diagnostics    []struct {
+			Code string `json:"code"`
+		} `json:"diagnostics"`
 	}
 	if err := json.Unmarshal(impactJSON, &impact); err != nil {
 		t.Fatalf("read-only split did not return impact JSON: %v\n%s", err, impactJSON)
