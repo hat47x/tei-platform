@@ -74,13 +74,20 @@ X-TEAの4アプリケーション（固定したcommit）
 ### WP3 最小の対話契約のPoC
 
 - **目的**: 一覧と単票の二つのPatternで、項目の役割・表示意図・操作の宣言が、Coreを増やさずに成立するかを確かめる。
-- **内容**: 既存の`order_entry`を対象に、項目の意味の役割（必須、参照、導出、更新禁止）と、対話の役割（参照入力、編集可否）、表示意図（順序、まとまり）を分けて宣言する。画面とCLIの投影を同じ契約から出す。幅・整列だけを変えたときに意味の差分が出ないことを確認する。対話契約の置き場所は、Patternのfieldを拡張するか、別の宣言にするかを最初に決める。現行Parserは未知のfieldを拒否する（`internal/syntax/application_pattern.go`）。現行で使えるのは、参照（`reference` Pattern）と`positive`・`relation-unique`の検証だけであり、必須・更新禁止・値域の置き場所は[受容アーキテクチャのD3.1](design/XTEA_LOWCODE_RECEPTION_ARCHITECTURE_2026-11.md)の候補を比較して決める。
+- **WP3a（先に行う）**: 既存の`order_record`と`customer_reference`を使い、項目の並び・参照入力・一覧から単票への遷移だけを宣言する。必須・更新禁止・値域は扱わない。Coreの属性を増やさず、対話契約の層だけを試せる。
+- **WP3aの手順（案、未実施）**:
+  1. 変更前の基準を取る。`go test ./internal/application ./internal/syntax`と`go run ./cmd/tei validate -workspace reference/workspace`の結果を記録する。
+  2. `order_record`に、`orderId`、`customerId`、`orderedAt`、`status`、`total`の順序と、`customerId`から`customer_reference`への参照入力を宣言する。
+  3. 構文と検証の負例を追加する。未知の項目、未知の参照先、項目の重複、型の不一致を拒否する。
+  4. CLIとWebの投影で、項目の順序と参照入力が同じになることを確認する。表示だけを変えたときに意味の差分が出ないことを確認する。
+  5. 変更候補は、`internal/application/model.go`の対話契約の型、`internal/syntax/application_pattern.go`の解析、`reference/workspace/applications/order-entry/patterns/order-record.tei`の宣言、構文・検証・投影の試験である。いずれもD1・D2.1の採用判断の後に着手する。
+- **WP3b（D3.1の決定後）**: 必須・更新禁止・値域を、Attribute・Validation・Typeのどこへ置くかを決め、負例つきで試す。Coreの属性追加はA4に当たるため、決定前に実装しない。
 - **成果物**: 参照用作業領域の小さな宣言、適合試験、負例、結果の記録。
 - **受入**: AC-3、AC-4に対応する確認が取れる。Coreの要素種別を追加していない。表示の変更で意味の差分が出ない。
-- **依存**: WP2のD3・D4の判断。
+- **依存**: WP2のD1・D2.1・D3.1・D4の判断。
 - **既存の担当**: [#1127](https://github.com/hat47x/tei-platform/issues/1127)、[#997](https://github.com/hat47x/tei-platform/issues/997)、[#1124](https://github.com/hat47x/tei-platform/issues/1124)。
 - **危険度**: A2（隔離ブランチの変更）。
-- **停止条件**: 項目の役割が既存のData Derivation・Validationと重複する場合は、新しい語彙を増やさず既存へ寄せる。
+- **停止条件**: 項目の役割が既存のData Derivation・Validationと重複する場合は、新しい語彙を増やさず既存へ寄せる。参照入力か遷移が既存のPatternの組合せで表せない場合は、Coreの拡張ではなく、対話契約の設計を見直すまで止める。
 
 ### WP4 対話フックの契約PoC
 
