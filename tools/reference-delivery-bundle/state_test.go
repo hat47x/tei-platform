@@ -94,3 +94,39 @@ func TestStatusRejectsChangedCatalog(t *testing.T) {
 		t.Fatal("status accepted a changed catalog")
 	}
 }
+
+func TestMultiStepRollbackUsesHistory(t *testing.T) {
+	statePath := filepath.Join(t.TempDir(), "state.json")
+	first := catalogWith(t, "audit")
+	second := catalogWith(t, "audit", "authentication")
+	third := catalogWith(t, "audit", "authentication", "offline-storage")
+	firstState, err := Activate(first, statePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	secondState, err := Activate(second, statePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	thirdState, err := Activate(third, statePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(thirdState.History) != 2 {
+		t.Fatalf("history=%+v", thirdState.History)
+	}
+	rolledBack, err := Rollback(statePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rolledBack.Active.Digest != secondState.Active.Digest {
+		t.Fatalf("first rollback did not restore second: %+v", rolledBack)
+	}
+	rolledBack, err = Rollback(statePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rolledBack.Active.Digest != firstState.Active.Digest {
+		t.Fatalf("second rollback did not restore first: %+v", rolledBack)
+	}
+}
