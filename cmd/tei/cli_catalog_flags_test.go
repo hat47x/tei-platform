@@ -116,7 +116,6 @@ func TestAdvertisedCommandsRejectUnrelatedFlagsAtProcessBoundary(t *testing.T) {
 
 	for _, args := range [][]string{
 		{"validate", "-workspace", root, "-expected-fingerprint", "x"},
-		{"knowledge-context", "-workspace", root, "-environment", "x"},
 		{"world", "-workspace", root, "-expected-fingerprint", "x"},
 	} {
 		code, stdout, stderr := run(args...)
@@ -133,6 +132,8 @@ func TestAdvertisedCommandsRejectUnrelatedFlagsAtProcessBoundary(t *testing.T) {
 		{"plugin-lock", "-workspace", root, "-scope", "x"},
 		{"workspace-files", "-workspace", root, "-subject-kind", "x"},
 		{"source-index", "-workspace", root, "-environment", "x"},
+		{"knowledge-context", "-workspace", root, "-environment", "x"},
+		{"knowledge-qualify", "-workspace", root, "-environment", "x"},
 	} {
 		code, stdout, stderr := run(args...)
 		var envelope cliResultEnvelope
