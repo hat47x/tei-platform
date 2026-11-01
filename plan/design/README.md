@@ -34,6 +34,7 @@
 | [`DATABASE_QUERY_INPUT_NULLABILITY_2026-10.md`](DATABASE_QUERY_INPUT_NULLABILITY_2026-10.md) | Query入力のmissingと明示NULLを区別し、presence/nullを契約で明示してSQL実行前に拒否する検討案（[#2056](https://github.com/hat47x/tei-platform/issues/2056)、未採用） |
 | [`DATA_STRUCTURE_META_FACETS_AND_TOPOLOGY_2026-11.md`](DATA_STRUCTURE_META_FACETS_AND_TOPOLOGY_2026-11.md) | 数学的構造・値域・単位・時間・観測・実現を多重facetとして整理する型メタ概念空間の検討（[#2495](https://github.com/hat47x/tei-platform/issues/2495)、未採用） |
 | [`DATA_STRUCTURE_PRESSURE_CORPUS_2026-11.md`](DATA_STRUCTURE_PRESSURE_CORPUS_2026-11.md) | Arrow・Protobuf・科学配列・GIS・業務・UIなど56件の異質な構造を比較する探索用Pressure Corpus（[#2501](https://github.com/hat47x/tei-platform/issues/2501)、未採用） |
+| [`STRUCTURE_PRESERVING_TRANSFORMATIONS_AND_PROJECTIONS_2026-11.md`](STRUCTURE_PRESERVING_TRANSFORMATIONS_AND_PROJECTIONS_2026-11.md) | 型構造間の保存写像・複数Projection・編集逆写像と観測／損失の検討（[#2497](https://github.com/hat47x/tei-platform/issues/2497)、未採用） |
 | [`GENERATOR_REVOCATION_APPROVAL_BOUNDARY_2026-10.md`](GENERATOR_REVOCATION_APPROVAL_BOUNDARY_2026-10.md) | 生成器の失効承認recordをregistry編集と分離し、対象一致・監査・再生成の完了条件を整理する検討案（[#2076](https://github.com/hat47x/tei-platform/issues/2076)、未採用） |
 | [`CONTRACT_ONLY_GENERATIVE_PROVIDER_POC_2026-10.md`](CONTRACT_ONLY_GENERATIVE_PROVIDER_POC_2026-10.md) | 実装を持たない契約と独立した適合試験を先に共有し、案件内でAIまたは人が必要なProviderだけを補完するPoC案（[#1975](https://github.com/hat47x/tei-platform/issues/1975)、未採用） |
 | [`BUSINESS_LIFECYCLE_V1_DESIGN.md`](BUSINESS_LIFECYCLE_V1_DESIGN.md) | 業務の状態遷移を意味の正本として定義し、実行・観測する設計（ISSUE-000038 / ADR-0024 / ADR-0025） |
