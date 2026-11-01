@@ -30,8 +30,10 @@
 
 ## 開示境界
 
-- `admin`：`inputValue`／`unitPrice` を開示。
+- `admin`：結果が`present`のときだけ`inputValue`／`unitPrice`を開示する。`input-missing`・NULL・`compute-error`・`unauthorized`などの非present状態では、値が無いため伏せる。
 - `general`：`inputValue`／`unitPrice`／`rowExistence` を伏せる（`redacted`）。
+- `unauthorized`：`admin`でも`rowExistence`を伏せ、値と入力を開示しない。
+- エラー文言は、入力値・単価を含めない。
 - 入力versionが不明なときは `traceable=false` とし、`unknown=[inputVersion]` を残す（完全再現を主張しない）。
 - 規則のSource位置が移動してもCanonical identityと意味が同一なら説明identityは不変。
 
@@ -44,7 +46,9 @@
 | 正常値の説明 | `RESULT_PRESENT`、`ruleId`／`targetId`／`realization` を開示 |
 | 単価未取得 | `INPUT_MISSING`（NULLと区別） |
 | 単価NULL（宣言あり／なし） | `NULL_DECLARED` と `NULL_UNDECLARED` を区別 |
+| 計算不能 | `COMPUTE_ERROR`（NULL・未取得と区別） |
 | 管理者と一般利用者 | 一般の `trace` は単価・入力値・行存在を伏せる |
+| 非present状態の管理者 | 値が無いため `inputValue`／`unitPrice` を伏せる（`unauthorized`は`rowExistence`も） |
 | 入力version不明 | `traceable=false`、`unknown=[inputVersion]` |
 | Source移動（意味不変） | 説明identityは不変 |
 
