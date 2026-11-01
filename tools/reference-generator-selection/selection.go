@@ -66,14 +66,31 @@ type Rounding struct {
 }
 
 type Contract struct {
-	Schema   string      `json:"schema"`
-	ID       string      `json:"id"`
-	Version  string      `json:"version"`
-	Status   string      `json:"status"`
-	Note     string      `json:"note,omitempty"`
-	Inputs   []InputSpec `json:"inputs"`
-	Output   TypeSpec    `json:"output"`
-	Rounding Rounding    `json:"rounding"`
+	Schema     string          `json:"schema"`
+	ID         string          `json:"id"`
+	Version    string          `json:"version"`
+	Status     string          `json:"status"`
+	Note       string          `json:"note,omitempty"`
+	Inputs     []InputSpec     `json:"inputs"`
+	Output     TypeSpec        `json:"output"`
+	Rounding   Rounding        `json:"rounding"`
+	Projection *ProjectionSpec `json:"projection,omitempty"`
+}
+
+// ProjectionSpec marks a non-numeric reference contract. Identity keeps the
+// input value; normalize trims surrounding whitespace; record projects several
+// named fields. Rounding must be absent.
+type ProjectionSpec struct {
+	Kind   string            `json:"kind"`
+	Fields []ProjectionField `json:"fields,omitempty"`
+}
+
+// ProjectionField maps one input key to one output field.
+type ProjectionField struct {
+	Name      string `json:"name"`
+	Input     string `json:"input"`
+	Attribute string `json:"attribute"`
+	Primitive string `json:"primitive"`
 }
 
 type Case struct {
@@ -94,6 +111,7 @@ type Result struct {
 	Amount   string `json:"amount,omitempty"`
 	Currency string `json:"currency,omitempty"`
 	Code     string `json:"code,omitempty"`
+	Text     string `json:"text,omitempty"`
 }
 
 type GenerationProvenance struct {
@@ -349,6 +367,35 @@ func validateContract(contract Contract) error {
 	}
 	if strings.TrimSpace(contract.Output.Primitive) == "" {
 		return fmt.Errorf("contract output primitive is required")
+	}
+	if contract.Projection != nil {
+		switch contract.Projection.Kind {
+		case "identity", "normalize":
+			if len(contract.Projection.Fields) != 0 {
+				return fmt.Errorf("a single-value projection must not declare fields")
+			}
+		case "record":
+			if len(contract.Projection.Fields) == 0 {
+				return fmt.Errorf("a record projection requires fields")
+			}
+			seen := map[string]bool{}
+			for _, field := range contract.Projection.Fields {
+				if strings.TrimSpace(field.Name) == "" || strings.TrimSpace(field.Input) == "" ||
+					strings.TrimSpace(field.Attribute) == "" || strings.TrimSpace(field.Primitive) == "" {
+					return fmt.Errorf("record fields require name, input, attribute, and primitive")
+				}
+				if seen[field.Name] {
+					return fmt.Errorf("record field %q is duplicated", field.Name)
+				}
+				seen[field.Name] = true
+			}
+		default:
+			return fmt.Errorf("projection kind must be identity, normalize, or record")
+		}
+		if contract.Rounding != (Rounding{}) {
+			return fmt.Errorf("projection contracts must not set rounding")
+		}
+		return nil
 	}
 	if contract.Rounding.Precision < 1 || contract.Rounding.Scale < 0 || contract.Rounding.Scale > contract.Rounding.Precision {
 		return fmt.Errorf("contract rounding precision/scale is invalid")

@@ -40,6 +40,15 @@ patternは能力を参照します。`realizations/`では、各capabilityを`cu
 
 `bindings/`には、入力検証だけを行う決定論的な参照bindingと、EKI Control Planeの`/v1/tasks`へTaskRequestをHTTPで送る`EKITaskSubmitHTTP`があります。後者は呼び出し側からHTTP clientを渡すため、mTLSやbearer tokenは呼び出し側が設定します。
 
+live testは、`EKI_CONTROL_URL`と`EKI_CONTROL_TOKEN`がある場合だけ実行します。
+
+```text
+EKI_CONTROL_URL=http://127.0.0.1:18082 EKI_CONTROL_TOKEN=<token> \
+  go test ./reference/product-contracts/bindings -run TestLiveEKI -count=1 -v
+```
+
+EKIのControl PlaneはWSL上で起動すると、Windows Firewallの許可を都度求めずにloopbackで接続できます。
+
 ## 確認
 
 ```text

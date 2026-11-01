@@ -54,3 +54,22 @@ func TestProductFlowActivationFollowsDependencies(t *testing.T) {
 		}
 	}
 }
+
+// TestProductFlowOrderDependsOnCoeffects removes the Attempt/ResultClaim
+// dependencies. The registry then falls back to its deterministic name order,
+// which differs from the EKI chain, so the earlier assertion is not vacuous.
+func TestProductFlowOrderDependsOnCoeffects(t *testing.T) {
+	registry := composition.NewRegistry()
+	snapshot, err := registry.Apply(0, []composition.Provider{
+		{ID: "eki_task_submit", Scope: "product_contracts", Offers: productContract("product_contracts.attempt")},
+		{ID: "eki_attempt_execute", Scope: "product_contracts", Offers: productContract("product_contracts.result_claim")},
+		{ID: "eki_result_accept", Scope: "product_contracts", Offers: productContract("product_contracts.accepted_result")},
+	}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []string{"eki_attempt_execute", "eki_result_accept", "eki_task_submit"}
+	if !reflect.DeepEqual(snapshot.ActivationOrder, want) {
+		t.Fatalf("activation order without coeffects = %v, want %v", snapshot.ActivationOrder, want)
+	}
+}

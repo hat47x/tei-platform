@@ -27,6 +27,24 @@ zipは次のentryを持ちます。
 - `verify`でmanifestのdigestと各ファイルのsize・digestを確認する。
 - zip内のentryとmanifestのファイル一覧が一致しない場合は拒否する。
 
+## カテゴリと含めないものの明示（#2020の受入3）
+
+`-include`／`-exclude`を指定すると、パッケージが運ぶカテゴリを`meaning`・`data`・`authority`・`evidence`から選び、manifestへ記録します。
+
+```text
+go run ./tools/reference-export-package/cmd/tei-export-package \
+  export -root ./app -out /tmp/app.zip -include meaning,data -exclude authority,evidence
+```
+
+- `include`を省略すると全カテゴリが対象。`exclude`は常に優先する
+- manifestの`includedCategories`・`excludedCategories`に、含めるもの・含めないものを列挙する
+- 対象に指定したがファイルが無いカテゴリは`emptyCategories`として明示する（黙って消さない）
+- `meaning/`・`data/`・`authority/`・`evidence/`の外にあるファイルは、分類できないため拒否する
+- 未知のカテゴリ名は拒否する
+- 各ファイルの`category`もmanifestへ記録する
+
+`-include`／`-exclude`を指定しない場合は従来どおりで、カテゴリの欄を持ちません。
+
 ## 保証しないこと
 
 - パッケージの署名、配布経路の真正性。

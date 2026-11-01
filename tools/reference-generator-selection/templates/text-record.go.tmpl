@@ -1,0 +1,56 @@
+package main
+
+// Generated candidate for the {{.ContractID}} record projection contract at
+// version {{.ContractVersion}}. Missing, unresolved and empty are distinct.
+// A present record is a canonical JSON object; a missing result lists the
+// absent field names as a JSON array.
+
+import (
+	"encoding/json"
+	"fmt"
+	"os"
+)
+
+type output struct {
+	State string `json:"state"`
+	Text  string `json:"text,omitempty"`
+}
+
+func emit(out output) {
+	encoded, _ := json.Marshal(out)
+	fmt.Println(string(encoded))
+}
+
+func main() {
+	var in map[string]any
+	if err := json.NewDecoder(os.Stdin).Decode(&in); err != nil {
+		emit(output{State: "error"})
+		os.Exit(2)
+	}
+	record := map[string]string{}
+	var missing []string
+	unresolved := false
+	{{- range .Fields }}
+	if value, ok := in["{{.Input}}"]; !ok {
+		missing = append(missing, "{{.Name}}")
+	} else if value == nil {
+		unresolved = true
+	} else if text, ok := value.(string); !ok {
+		emit(output{State: "error"})
+		os.Exit(2)
+	} else {
+		record["{{.Name}}"] = text
+	}
+	{{- end }}
+	if unresolved {
+		emit(output{State: "unresolved"})
+		return
+	}
+	if len(missing) > 0 {
+		encoded, _ := json.Marshal(missing)
+		emit(output{State: "missing", Text: string(encoded)})
+		return
+	}
+	encoded, _ := json.Marshal(record)
+	emit(output{State: "present", Text: string(encoded)})
+}

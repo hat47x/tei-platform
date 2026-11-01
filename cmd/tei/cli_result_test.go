@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"runtime"
 	"testing"
+
+	"tei/internal/knowledgecontext"
 )
 
 // #2354: the result envelope commands must expose one machine-readable JSON
@@ -156,6 +158,78 @@ func TestResultEnvelopeCommandsJSONContract(t *testing.T) {
 	if bothSources.OK || bothSources.Error == nil || bothSources.Error.Code != resultCodeInvalidArgument {
 		t.Fatalf("wrong both-sources envelope: %+v", bothSources)
 	}
+
+	// knowledge-context / knowledge-qualify join the envelope (#2354 second
+	// wave). knowledge-context keeps two output shapes; `mode` distinguishes
+	// them the way `source-index` already did.
+	contextEnvelope := run(0, "knowledge-context", "-workspace", reference,
+		"-subject-kind", "semantic-data", "-subject-id", "sales.order")
+	if !contextEnvelope.OK || contextEnvelope.Mode != resultModeContext || contextEnvelope.Result == nil {
+		t.Fatalf("unexpected knowledge-context envelope: %+v", contextEnvelope)
+	}
+	var contextShape knowledgecontext.Context
+	if err := reMarshal(contextEnvelope.Result, &contextShape); err != nil {
+		t.Fatalf("knowledge-context result is not a Context: %v", err)
+	}
+	if contextShape.Subject.Kind != "semantic-data" || contextShape.Subject.ID != "sales.order" {
+		t.Fatalf("knowledge-context result lost the subject: %+v", contextShape.Subject)
+	}
+
+	disclosureEnvelope := run(0, "knowledge-context", "-workspace", reference,
+		"-subject-kind", "semantic-data", "-subject-id", "sales.order", "-disclose", "source")
+	if !disclosureEnvelope.OK || disclosureEnvelope.Mode != resultModeDisclosure || disclosureEnvelope.Result == nil {
+		t.Fatalf("unexpected disclosure envelope: %+v", disclosureEnvelope)
+	}
+
+	missingSubject := run(2, "knowledge-context", "-workspace", reference)
+	if missingSubject.OK || missingSubject.Error == nil || missingSubject.Error.Code != resultCodeKnowledgeFailed {
+		t.Fatalf("wrong missing-subject envelope: %+v", missingSubject)
+	}
+
+	disclosureFlag := run(2, "knowledge-context", "-workspace", reference, "-expected-disclosure-fingerprint", "sha256:00")
+	if disclosureFlag.OK || disclosureFlag.Error == nil || disclosureFlag.Error.Code != resultCodeInvalidArgument {
+		t.Fatalf("wrong disclosure flag envelope: %+v", disclosureFlag)
+	}
+
+	qualificationRequirements := filepath.Join(t.TempDir(), "requirements.json")
+	requirementsJSON := `{"expectedKind":"semantic-data"}`
+	if err := os.WriteFile(qualificationRequirements, []byte(requirementsJSON), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	qualifyEnvelope := run(0, "knowledge-qualify", "-workspace", reference,
+		"-subject-kind", "semantic-data", "-subject-id", "sales.order",
+		"-qualification-requirements", qualificationRequirements)
+	if !qualifyEnvelope.OK || qualifyEnvelope.Mode != resultModeQualification || qualifyEnvelope.Result == nil {
+		t.Fatalf("unexpected knowledge-qualify envelope: %+v", qualifyEnvelope)
+	}
+	var qualificationShape knowledgecontext.QualificationResult
+	if err := reMarshal(qualifyEnvelope.Result, &qualificationShape); err != nil {
+		t.Fatalf("knowledge-qualify result is not a QualificationResult: %v", err)
+	}
+	if qualificationShape.Candidate.Kind != "semantic-data" {
+		t.Fatalf("knowledge-qualify result lost the candidate: %+v", qualificationShape.Candidate)
+	}
+
+	absentRequirements := run(2, "knowledge-qualify", "-workspace", reference,
+		"-subject-kind", "semantic-data", "-subject-id", "sales.order",
+		"-qualification-requirements", filepath.Join(t.TempDir(), "absent.json"))
+	if absentRequirements.OK || absentRequirements.Error == nil || absentRequirements.Error.Code != resultCodeKnowledgeFailed {
+		t.Fatalf("wrong absent requirements envelope: %+v", absentRequirements)
+	}
+
+	knowledgeFlag := run(2, "knowledge-qualify", "-no-such-option", "x")
+	if knowledgeFlag.OK || knowledgeFlag.Error == nil || knowledgeFlag.Error.Code != resultCodeInvalidArgument {
+		t.Fatalf("wrong knowledge flag failure envelope: %+v", knowledgeFlag)
+	}
+}
+
+// reMarshal round-trips the envelope's dynamic result into a concrete shape.
+func reMarshal(from any, into any) error {
+	raw, err := json.Marshal(from)
+	if err != nil {
+		return err
+	}
+	return json.Unmarshal(raw, into)
 }
 
 func lockJSONBytes(t *testing.T, raw []byte) []byte {

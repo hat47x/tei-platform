@@ -40,6 +40,9 @@ type generatorTemplate struct {
 	strategy string
 	language string
 	source   string
+	// projection marks a generator whose contract requires a projection block
+	// instead of a rounding block. Tests that exercise rounding skip these.
+	projection bool
 }
 
 var generatorTemplates = map[string]generatorTemplate{
@@ -57,6 +60,13 @@ var generatorTemplates = map[string]generatorTemplate{
 	"wasm-long-running-template":       {file: "templates/template-long-running.go.tmpl", id: "line-amount-wasm-long-running-template", origin: "template", strategy: "wasm-long-running-template", language: LanguageWasm, source: "main.go"},
 	"wasi-template":                    {file: "templates/template.go.tmpl", id: "line-amount-wasi-template", origin: "template", strategy: "wasi-template", language: LanguageWasi, source: "main.go"},
 	"wasi-long-running-template":       {file: "templates/template-long-running.go.tmpl", id: "line-amount-wasi-long-running-template", origin: "template", strategy: "wasi-long-running-template", language: LanguageWasi, source: "main.go"},
+	"text-template":                    {file: "templates/text-projection.go.tmpl", id: "text-projection-template", origin: "template", strategy: "text-template", language: LanguageGo, source: "main.go", projection: true},
+	"text-record-template":             {file: "templates/text-record.go.tmpl", id: "text-record-projection-template", origin: "template", strategy: "text-record-template", language: LanguageGo, source: "main.go", projection: true},
+}
+
+type templateField struct {
+	Name  string
+	Input string
 }
 
 type templateData struct {
@@ -70,6 +80,8 @@ type templateData struct {
 	Scale           int
 	IntegerDigits   int
 	ScalePow        int
+	ProjectionKind  string
+	Fields          []templateField
 }
 
 // renderCandidate renders one source and its provenance without touching the
@@ -121,8 +133,21 @@ func renderCandidateBytes(contractRaw []byte, strategy, version string, world *i
 	if strings.TrimSpace(version) == "" {
 		return renderedCandidate{}, fmt.Errorf("generator version is required")
 	}
-	if contract.Rounding.Mode != "half-up" {
-		return renderedCandidate{}, fmt.Errorf("fixed generator strategy %q does not support rounding mode %q", strategy, contract.Rounding.Mode)
+	if contract.Projection != nil {
+		expected := "text-template"
+		if contract.Projection.Kind == "record" {
+			expected = "text-record-template"
+		}
+		if strategy != expected {
+			return renderedCandidate{}, fmt.Errorf("projection kind %q requires the %s strategy", contract.Projection.Kind, expected)
+		}
+	} else {
+		if strategy == "text-template" || strategy == "text-record-template" {
+			return renderedCandidate{}, fmt.Errorf("%s requires a projection contract", strategy)
+		}
+		if contract.Rounding.Mode != "half-up" {
+			return renderedCandidate{}, fmt.Errorf("fixed generator strategy %q does not support rounding mode %q", strategy, contract.Rounding.Mode)
+		}
 	}
 
 	templateRaw, err := templateFiles.ReadFile(tmpl.file)
@@ -143,6 +168,12 @@ func renderCandidateBytes(contractRaw []byte, strategy, version string, world *i
 		ContractDigest: digest(contractRaw), GeneratorID: tmpl.id, Strategy: tmpl.strategy,
 		Currency: "JPY", Precision: contract.Rounding.Precision, Scale: contract.Rounding.Scale,
 		IntegerDigits: integerDigits, ScalePow: scalePow,
+	}
+	if contract.Projection != nil {
+		data.ProjectionKind = contract.Projection.Kind
+		for _, field := range contract.Projection.Fields {
+			data.Fields = append(data.Fields, templateField{Name: field.Name, Input: field.Input})
+		}
 	}
 	var rendered strings.Builder
 	if err := parsed.Execute(&rendered, data); err != nil {

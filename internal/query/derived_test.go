@@ -62,6 +62,23 @@ func TestDerivedQueryIRResolvesAliasAndRelationalPlan(t *testing.T) {
 	}
 }
 
+func TestDerivedQueryIRDoesNotReuseAnotherQueryAnalysis(t *testing.T) {
+	q := query.EmbeddedSQL{ID: core.MustCanonicalID("app.current"), Datasource: core.MustLocalName("sales")}
+	snap := physical.SchemaSnapshot{Database: core.MustCanonicalID("sales_core"), Tables: []physical.Table{{Schema: "public", Name: "orders", Columns: []physical.Column{{Name: "order_id"}}}}}
+	for _, id := range []core.CanonicalID{core.MustCanonicalID("app.other"), ""} {
+		result := analyzer.Result{ProtocolVersion: 1, Status: "ok", Query: id, Tables: []string{"public.orders"}, Columns: []string{"order_id"}, Lowering: "full"}
+		got := query.DeriveFromAnalysis(q, snap.Database, result, &snap)
+		if got.Coverage.Parse != query.CoverageNone || got.Coverage.Resolution != query.CoverageNone || got.Coverage.Lowering != query.CoverageNone || len(got.Fields) != 0 || len(got.Sources) != 0 {
+			t.Fatalf("analysis %q was projected onto current query: %#v", id, got)
+		}
+	}
+	empty := query.EmbeddedSQL{Datasource: q.Datasource}
+	got := query.DeriveFromAnalysis(empty, snap.Database, analyzer.Result{Status: "ok", Tables: []string{"public.orders"}}, &snap)
+	if got.Coverage.Parse != query.CoverageNone || len(got.Sources) != 0 {
+		t.Fatalf("empty query IDs were accepted: %#v", got)
+	}
+}
+
 func TestDerivedQueryIRResolvesUnqualifiedFieldWhenUnique(t *testing.T) {
 	q := query.EmbeddedSQL{ID: core.MustCanonicalID("app.simple"), Datasource: core.MustLocalName("sales")}
 	result := analyzer.Result{ProtocolVersion: 1, Status: "ok", Query: q.ID, Tables: []string{"public.orders"}, Columns: []string{"order_id"}, Lowering: "full", Operations: []analyzer.Operation{{ID: "source:0", Kind: "source", Source: "public.orders"}, {ID: "project:0", Kind: "project", Inputs: []string{"source:0"}, Expressions: []string{"order_id"}}}}

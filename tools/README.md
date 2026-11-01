@@ -24,11 +24,16 @@
 | [`reference-generator-artifact-store/`](reference-generator-artifact-store/) | 選抜receiptのGo/Java/WASM/WASI候補source/binaryとPython/JavaScript候補sourceをsource digestでcontent-addressedに保存・取得し、再計算digestで改変を拒否し、receipt/listで言語を返す参照。明示keep setによるlist/prune、成功pruneのhash-chain audit log、ssh-keygenで署名できるaudit checkpointと、署名・store一致を併せて検証するcheckpoint再検証も持つ（#2016） |
 | [`reference-generator-context/`](reference-generator-context/) | 受理済み契約・fixture・Workspace revisionから、生成モデル向けの上限付き文脈を作る参照（#2016 / #2021） |
 | [`reference-generator-revocation-review/`](reference-generator-revocation-review/) | 生成器registryの失効と、registry編集とは別の承認recordの対象一致を検査する参照。承認者のAuthority・trustは検証しない（#2076） |
+| [`reference-generator-extension-points/`](reference-generator-extension-points/) | 生成器が宣言した拡張点に案件側のコードを生成物の外から結び付け、契約変更・再生成での保持・拡張点外の直接編集・業務結果の差を検査する参照（#2090） |
 | [`reference-derived-name-check/`](reference-derived-name-check/) | 要素の名前と、生成器・Providerが作る派生名の衝突、予約語、最大長、使用できない文字を、層ごとの宣言された規則で定義の受理前に検査する参照。規則は参照用の宣言で、実在のProviderや生成器の規則とは未接続（#2094） |
+| [`reference-semantic-domain-coverage/`](reference-semantic-domain-coverage/) | 意味の定義と要素の対応を、受理済み定義だけを根拠に検査する参照。複数一致（一本道の破れ）、未記入の要素、What/Whyの欠落を一覧する（#2095） |
 | [`reference-target-profile/`](reference-target-profile/) | 同じ契約・fixture・候補を複数のTarget Profileで実行し、宣言と実行結果、case別出力の意味一致、oneshot/long-running/batch process model、stdout/stderr/exit-codeの観測、filesystem artifactのreplace/in-place/rolling配備、sqlite artifactの保存・rollback、slot/history指定のrollback、historyの検証・保持件数によるprune、署名済みapprovalによる削除承認、そのhash-chain auditとaudit checkpointを記録する参照（#2019） |
+| [`reference-temporal-derivation/`](reference-temporal-derivation/) | 業務有効時点・記録時点・規則版・評価時点・確定保存値を区別し、過去再計算を historical-replay / what-if / current-computation / confirmed-fact-read としてラベルする参照。過去価格や当時の規則版が無ければ未確認とし、確定保存値を書き換えない（#1727） |
+| [`reference-derived-field-projection/`](reference-derived-field-projection/) | 導出項目の意味状態（宣言・未保存Preview・実行時導出・確定保存）を表示先へ渡し、導出値への直接書込をAction／保存境界でも拒否する参照。古い表示値を確定値として返さない（#1707） |
 | [`reference-productivity-benchmark/`](reference-productivity-benchmark/) | 4タスクの計画とrunのcoverageを検証し、3方法×3回の中央値と範囲を集計する参照（#2018） |
 | [`reference-tenant-isolation/`](reference-tenant-isolation/) | SaaS向けに、テナントrootの閉じ込めと越境拒否を提供する基盤pluginの参照（#2020） |
 | [`reference-audit-log/`](reference-audit-log/) | 追記専用のhash chain、改ざん検出、pinned headによる末尾削除検出を提供する監査ログ基盤pluginの参照（#2020） |
+| [`reference-ai-write-window/`](reference-ai-write-window/) | Pluginが宣言した書込み窓にAIの編集が収まっているかを検査し、窓の外の変更を受理前に拒否する参照。未解決と確認済み違反、Target別の可用性、全体生成の境界を分ける（#2092） |
 | [`reference-authentication/`](reference-authentication/) | credentialを発行せず、principalとtenantの認証境界を検証する基盤pluginの参照（#2020） |
 | [`reference-offline-storage/`](reference-offline-storage/) | 個人向けに、root内へ閉じたローカル保存を提供する基盤pluginの参照（#2020） |
 | [`reference-export-package/`](reference-export-package/) | SIer向けに、manifestとdigest付きの配布zipを作る基盤pluginの参照（#2020） |
@@ -39,6 +44,9 @@
 | [`reference-studio-host-boundary/`](reference-studio-host-boundary/) | TEI StudioのWeb接続・失効・要求スコープと、DesktopのDraft・private-resource境界を確認する独立回帰（#1824） |
 | [`reference-studio-host-qualification/`](reference-studio-host-qualification/) | TEI StudioでCLI・Go共通操作・Host結果の意味を比較する検査（#1824） |
 | [`reference-studio-static-composition/`](reference-studio-static-composition/) | TEI Studioの静的合成の最小参照実装（#1824） |
+| [`reference-studio-plugin-inventory/`](reference-studio-plugin-inventory/) | Studioのプラグインについて、導入・有効・権限・版対応・提供元・読取り可否を別の値として整理し、未完了の走査や過去の件数を現在の0件・確認済みにせず、無効プラグインを起動せずに診断する参照（#2045） |
+| [`reference-studio-plugin-disable/`](reference-studio-plugin-disable/) | Studioのプラグインの無効化・削除・再有効化について、必須依存の追加候補、明示確定、設定版・宣言・ソース指紋・権限の再検査、設定更新と拡張起動の分離、設計ソースのバイト保持を判定する参照（#2046） |
+| [`reference-studio-plugin-data-lifecycle/`](reference-studio-plugin-data-lifecycle/) | Studioの生ソース保存と明示的なデータ削除について、プラグイン不在でも保存できること、受理・実行との分離、外部編集との競合、プラグイン削除とデータ削除の区別、共有・不明領域の扱い、保持不能時の全体拒否、変換規則の適用を判定する参照（#2047） |
 | [`reference-derivation-disclosure/`](reference-derivation-disclosure/) | 導出結果の開示境界を、既存`security.authorize`へ判断を委譲して判定する読取り専用の合成参照（#1693） |
 | [`reference-er-table-crossview/`](reference-er-table-crossview/) | 論理ERと物理表を相互参照する二つの読取り専用の表示を、一つの成果物へ出力する参照（#1126） |
 | [`reference-project-advice-lit/`](reference-project-advice-lit/) | 案件専用のGo補助プラグインとWeb標準/Litを組み合わせた、最小の縦断参照（#951 / #997） |
@@ -57,6 +65,7 @@
 | [`reference-capability-invocation-context/`](reference-capability-invocation-context/) | Capability実行時の文脈境界の確認 |
 | [`reference-capability-mutation-protocol/`](reference-capability-mutation-protocol/) | 変更を伴うCapabilityの手順確認 |
 | [`reference-capability-transport/`](reference-capability-transport/) | Capabilityの伝送形式と境界の確認 |
+| [`reference-capability-degradation/`](reference-capability-degradation/) | 既存DB・Providerが観測された能力と業務操作が要求する保証を照合し、不足時に操作を生成しないか明示の弱い保証を宣言するかを記録する参照。縮退を同等と認証しない（#2096） |
 | [`reference-chat-cli-host/`](reference-chat-cli-host/) | 信頼された開発用Hostの事前診断 |
 | [`reference-cognition-port/`](reference-cognition-port/) | 軽量認知を提案ポートとして扱い、文脈・出所・能力限界・失敗状態を記録する参照。受理・権限・実行を決めない（#2021） |
 | [`reference-cognition-handoff/`](reference-cognition-handoff/) | 軽量認知のpositive validation提案をShared Acceptanceの変更candidateへ変換する参照（#2021） |
@@ -79,6 +88,7 @@
 | [`reference-procedure-expansion/`](reference-procedure-expansion/) | 受理済み手順を非画面・画面・外部・AIの実現先へ展開し、実行可能範囲を分ける参照 |
 | [`reference-procedure-formalization/`](reference-procedure-formalization/) | 業務手順の文章から、形式化を妨げる不足と矛盾を根拠付きの質問として示す読取り専用の参照 |
 | [`reference-purpose-preflight/`](reference-purpose-preflight/) | 開発目的に対する業務規則の未確定・実行時値待ちを合成データで区別 |
+| [`reference-provider-override-update/`](reference-provider-override-update/) | 提供元定義の更新で案件側の上書き・追加を失わないよう、旧版・新版・案件を正本識別子ごとに比較し、`unchanged`/`applicable`/`conflict`/`unresolved`に分類する参照。名前の衝突と更新前への復帰を確認する（#2091） |
 | [`reference-query-input-nullability/`](reference-query-input-nullability/) | Query入力のmissingと明示nullを区別し、NULL可否を契約で明示してSQL実行前に拒否する参照。一時PostgreSQLで許可NULL・省略・空文字・拒否を観測する（#2056） |
 | [`reference-quantity-arith/`](reference-quantity-arith/) | 数量・単価・金額の単位・通貨・丸めの意味注釈を合成入力で検査する読取り専用の参照（#1705） |
 | [`reference-read-consistency/`](reference-read-consistency/) | 一回の導出評価の入力読取り整合・Snapshot保証・競合時の失敗境界を合成入力で判定する読取り専用の参照（#1708） |
@@ -175,8 +185,9 @@
 | [`reference-function-definition-document/`](reference-function-definition-document/) | 受理済みの意味から機能定義書を導出する参照（#1803） |
 | [`reference-ddl-entry/`](reference-ddl-entry/) | 物理対応から提供元が出力できるDDLを表ごとに取り出す入口（#1803） |
 | [`reference-developer-context/`](reference-developer-context/) | TEIのGoソース1件に対し、実在する関連テストと明示参照する設計資料を根拠付きの調査候補として返す読み取り専用の参照PoC。ローカルのSystem One互換判断モデルは候補の順位付けにだけ使い、失敗時は決定的な基準順を保つ。受理・権限・実行を決めない（#2196 / #2021） |
-| [`reference-design-output/`](reference-design-output/) | 受理済みの意味から表・機能・対応一覧・DDL・静的HTML索引を一つのrevisionへ束縛して導出する参照（#1803） |
+| [`reference-design-output/`](reference-design-output/) | 受理済みの意味から表・機能・対応一覧・DDL・静的HTML索引を一つのrevisionへ束縛して導出する参照。書式（markdown/text）を差し替えても意味の行を保ち、編集できる正本の位置と、宣言された利用／観測された副作用を別々に示す（#1803） |
 | [`reference-access-matrix/`](reference-access-matrix/) | Application × Dataの宣言された利用の対応表を導出する参照（#1803） |
+| [`reference-accounting-period/`](reference-accounting-period/) | 業務日付とシステム時刻を分け、期間の状態・締め済み期間の直接更新拒否・赤黒訂正・締め後の到着方針・順序鍵と版による再生・締め時点の照合値を判定する参照（#2144） |
 | [`reference-partial-import-plan/`](reference-partial-import-plan/) | 別Workspaceから選んだData定義の取込み結果を分類する読取り専用の参照（#1805） |
 | [`reference-table-definition-document/`](reference-table-definition-document/) | 受理済みの意味から表定義書を導出する参照（#1803） |
 | [`reference-list-roundtrip/`](reference-list-roundtrip/) | 意味の要素の一覧を出力し、編集後の一覧を変更案へ戻す読取り専用の参照（#1807） |

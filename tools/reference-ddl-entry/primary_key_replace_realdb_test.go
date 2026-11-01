@@ -241,3 +241,68 @@ func TestRealPostgresFailedPrimaryKeyReplacementLeavesOldKeyIntact(t *testing.T)
 		t.Fatalf("rows=%d err=%v", rows, err)
 	}
 }
+
+// Removing the primary key uses the observed constraint name and converges.
+// The columns keep their NOT NULL attribute; only the key constraint is dropped.
+func TestRealPostgresPrimaryKeyRemovalUsesObservedNameAndConverges(t *testing.T) {
+	f := newPrimaryKeyFixture(t, realDSN(t), nil,
+		`INSERT INTO "public"."t" VALUES ('1', 'x'), ('2', 'y')`,
+	)
+	if name, columns := primaryKeyConstraint(t, f); name != legacyPrimaryKeyName || columns != "a" {
+		t.Fatalf("fixture key = %s (%s)", name, columns)
+	}
+	diff, observation := f.observeAndDiff(t, f.provider, true)
+	if got := changeKinds(diff); got != "change-primary-key public.t" {
+		t.Fatalf("diff = %s", got)
+	}
+	check := observation.ConstraintData[0]
+	if check.Kind != postgres.ConstraintDataPrimaryKeyRemove || !check.Observed ||
+		check.PrimaryKeyName != legacyPrimaryKeyName || len(check.ReferencingForeignKeys) != 0 {
+		t.Fatalf("check = %+v", check)
+	}
+	statements, err := postgres.RenderMigrationSQLWithObservation(diff, observation)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(statements) != 1 || !strings.Contains(statements[0], `DROP CONSTRAINT "`+legacyPrimaryKeyName+`"`) ||
+		strings.Contains(statements[0], "t_pkey") {
+		t.Fatalf("statements = %v", statements)
+	}
+	for _, statement := range statements {
+		if _, err := f.db.Exec(statement); err != nil {
+			t.Fatalf("execute %q: %v", statement, err)
+		}
+	}
+	after, _ := f.observeAndDiff(t, f.provider, false)
+	if len(after.Changes) != 0 || len(after.Unresolved) != 0 {
+		raw, _ := json.MarshalIndent(after, "", "  ")
+		t.Fatalf("observed schema did not converge:\n%s", raw)
+	}
+	var keys int
+	if err := f.db.QueryRow(`SELECT count(*) FROM pg_catalog.pg_constraint WHERE contype='p' AND conrelid='public.t'::regclass`).Scan(&keys); err != nil || keys != 0 {
+		t.Fatalf("primary keys remaining = %d, err = %v", keys, err)
+	}
+}
+
+// A primary key that a foreign key depends on is not removed; the referencing
+// foreign key is named and the whole diff is refused. Nothing is cascaded.
+func TestRealPostgresPrimaryKeyRemovalReferencedByForeignKeyIsRefused(t *testing.T) {
+	f := newPrimaryKeyFixture(t, realDSN(t), nil,
+		`INSERT INTO "public"."t" VALUES ('1', 'x')`,
+		`CREATE TABLE "public"."refs" (id text PRIMARY KEY, ta text)`,
+		`ALTER TABLE "public"."refs" ADD CONSTRAINT refs_ta_custom_fk FOREIGN KEY (ta) REFERENCES "public"."t" (a)`,
+	)
+	diff, observation := f.observeAndDiff(t, f.provider, true)
+	statements, err := postgres.RenderMigrationSQLWithObservation(diff, observation)
+	var blocked *postgres.ConstraintDataReadinessError
+	if !errors.As(err, &blocked) || statements != nil {
+		t.Fatalf("statements=%v err=%v", statements, err)
+	}
+	if !strings.Contains(err.Error(), string(postgres.ConstraintDataReferencedByForeignKeys)) ||
+		!strings.Contains(err.Error(), `refs_ta_custom_fk`) || !strings.Contains(err.Error(), "not removed") {
+		t.Fatalf("err=%v", err)
+	}
+	if name, columns := primaryKeyConstraint(t, f); name != legacyPrimaryKeyName || columns != "a" {
+		t.Fatalf("old key changed: %s (%s)", name, columns)
+	}
+}

@@ -43,15 +43,32 @@ type Plan struct {
 	TargetRevision string       `json:"targetRevision"`
 	Items          []Item       `json:"items"`
 	Unresolved     []Diagnostic `json:"unresolved"`
+	ReferenceOnly  []Diagnostic `json:"referenceOnly,omitempty"`
 	Diagnostics    []Diagnostic `json:"diagnostics"`
 	// Importable is false while any item conflicts or any dependency is missing.
 	Importable bool `json:"importable"`
 	Applied    bool `json:"applied"`
 }
 
+// Options adds the boundaries an import must respect. ReferenceOnlyNamespaces
+// are namespaces the target uses read-only (the #1570 contract); a selected
+// Data in one of them is not imported. SourceOwner and TargetOwner diagnose a
+// source that belongs to a different ownership boundary.
+type Options struct {
+	ReferenceOnlyNamespaces []string
+	SourceOwner             string
+	TargetOwner             string
+}
+
 // Analyze plans importing the selected Data IDs. Dependencies that exist in
 // neither the target nor the selection are kept as unresolved, not dropped.
 func Analyze(source, target ir.World, selected []string) (Plan, error) {
+	return AnalyzeWithOptions(source, target, selected, Options{})
+}
+
+// AnalyzeWithOptions is Analyze plus the reference-only and ownership
+// boundaries.
+func AnalyzeWithOptions(source, target ir.World, selected []string, opts Options) (Plan, error) {
 	if len(selected) == 0 {
 		return Plan{}, fmt.Errorf("select at least one Data definition")
 	}
@@ -64,7 +81,19 @@ func Analyze(source, target ir.World, selected []string) (Plan, error) {
 		return Plan{}, err
 	}
 	p := Plan{Schema: Schema, SourceRevision: srcRev, TargetRevision: tgtRev,
-		Items: []Item{}, Unresolved: []Diagnostic{}, Diagnostics: []Diagnostic{}}
+		Items: []Item{}, Unresolved: []Diagnostic{}, ReferenceOnly: []Diagnostic{}, Diagnostics: []Diagnostic{}}
+
+	referenceOnly := map[string]bool{}
+	for _, ns := range opts.ReferenceOnlyNamespaces {
+		referenceOnly[ns] = true
+	}
+	if opts.SourceOwner != "" && opts.TargetOwner != "" && opts.SourceOwner != opts.TargetOwner {
+		p.Diagnostics = append(p.Diagnostics, Diagnostic{
+			Code:    "different-ownership-boundary",
+			Subject: opts.SourceOwner,
+			Detail:  opts.TargetOwner,
+		})
+	}
 
 	srcData, srcNS := dataOf(source)
 	tgtData, tgtNS := dataOf(target)
@@ -86,6 +115,10 @@ func Analyze(source, target ir.World, selected []string) (Plan, error) {
 		d, ok := srcData[id]
 		if !ok {
 			p.Diagnostics = append(p.Diagnostics, Diagnostic{Code: "not-in-source", Subject: id})
+			continue
+		}
+		if referenceOnly[srcNS[id]] {
+			p.ReferenceOnly = append(p.ReferenceOnly, Diagnostic{Code: "reference-only-namespace", Subject: id, Detail: srcNS[id]})
 			continue
 		}
 		existing, inTarget := tgtData[id]
@@ -130,15 +163,16 @@ func Analyze(source, target ir.World, selected []string) (Plan, error) {
 	}
 
 	sortDiag(p.Unresolved)
+	sortDiag(p.ReferenceOnly)
 	sortDiag(p.Diagnostics)
-	p.Importable = len(p.Unresolved) == 0
+	p.Importable = len(p.Unresolved) == 0 && len(p.ReferenceOnly) == 0
 	for _, it := range p.Items {
 		if it.Status == Conflict {
 			p.Importable = false
 		}
 	}
 	for _, d := range p.Diagnostics {
-		if d.Code == "not-in-source" || d.Code == "dependent-definition-affected" {
+		if d.Code == "not-in-source" || d.Code == "dependent-definition-affected" || d.Code == "different-ownership-boundary" {
 			p.Importable = false
 		}
 	}
