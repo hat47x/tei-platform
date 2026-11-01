@@ -126,7 +126,9 @@ def qx16_claim_scope_observations() -> dict:
 def main():
     evidence = {"evidenceNature": "synthetic-sqlite-in-memory", "actual": {},
                 "notProven": ["TEI DerivedIR evaluation", "original-query intermediate materialization",
-                              "provider equivalence", "accepted business semantics", "production permissions"]}
+                              "provider equivalence", "accepted business semantics", "production permissions",
+                              "QX16 actual Provider inclusion/completeness", "QX16 accepted nonnegative law",
+                              "QX16 current business claim and Action authority"]}
     with make_db(quantity_nullable=False) as con:
         evidence["actual"]["F0"] = query_steps(con)
         assert evidence["actual"]["F0"] == EXPECTED["F0"]
