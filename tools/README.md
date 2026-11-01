@@ -28,6 +28,7 @@
 | [`reference-derived-name-check/`](reference-derived-name-check/) | 要素の名前と、生成器・Providerが作る派生名の衝突、予約語、最大長、使用できない文字を、層ごとの宣言された規則で定義の受理前に検査する参照。規則は参照用の宣言で、実在のProviderや生成器の規則とは未接続（#2094） |
 | [`reference-semantic-domain-coverage/`](reference-semantic-domain-coverage/) | 意味の定義と要素の対応を、受理済み定義だけを根拠に検査する参照。複数一致（一本道の破れ）、未記入の要素、What/Whyの欠落を一覧する（#2095） |
 | [`reference-target-profile/`](reference-target-profile/) | 同じ契約・fixture・候補を複数のTarget Profileで実行し、宣言と実行結果、case別出力の意味一致、oneshot/long-running/batch process model、stdout/stderr/exit-codeの観測、filesystem artifactのreplace/in-place/rolling配備、sqlite artifactの保存・rollback、slot/history指定のrollback、historyの検証・保持件数によるprune、署名済みapprovalによる削除承認、そのhash-chain auditとaudit checkpointを記録する参照（#2019） |
+| [`reference-temporal-derivation/`](reference-temporal-derivation/) | 業務有効時点・記録時点・規則版・評価時点・確定保存値を区別し、過去再計算を historical-replay / what-if / current-computation / confirmed-fact-read としてラベルする参照。過去価格や当時の規則版が無ければ未確認とし、確定保存値を書き換えない（#1727） |
 | [`reference-productivity-benchmark/`](reference-productivity-benchmark/) | 4タスクの計画とrunのcoverageを検証し、3方法×3回の中央値と範囲を集計する参照（#2018） |
 | [`reference-tenant-isolation/`](reference-tenant-isolation/) | SaaS向けに、テナントrootの閉じ込めと越境拒否を提供する基盤pluginの参照（#2020） |
 | [`reference-audit-log/`](reference-audit-log/) | 追記専用のhash chain、改ざん検出、pinned headによる末尾削除検出を提供する監査ログ基盤pluginの参照（#2020） |
