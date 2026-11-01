@@ -44,6 +44,7 @@
 | [`reference-studio-host-boundary/`](reference-studio-host-boundary/) | TEI StudioのWeb接続・失効・要求スコープと、DesktopのDraft・private-resource境界を確認する独立回帰（#1824） |
 | [`reference-studio-host-qualification/`](reference-studio-host-qualification/) | TEI StudioでCLI・Go共通操作・Host結果の意味を比較する検査（#1824） |
 | [`reference-studio-static-composition/`](reference-studio-static-composition/) | TEI Studioの静的合成の最小参照実装（#1824） |
+| [`reference-studio-plugin-inventory/`](reference-studio-plugin-inventory/) | Studioのプラグインについて、導入・有効・権限・版対応・提供元・読取り可否を別の値として整理し、未完了の走査や過去の件数を現在の0件・確認済みにせず、無効プラグインを起動せずに診断する参照（#2045） |
 | [`reference-derivation-disclosure/`](reference-derivation-disclosure/) | 導出結果の開示境界を、既存`security.authorize`へ判断を委譲して判定する読取り専用の合成参照（#1693） |
 | [`reference-er-table-crossview/`](reference-er-table-crossview/) | 論理ERと物理表を相互参照する二つの読取り専用の表示を、一つの成果物へ出力する参照（#1126） |
 | [`reference-project-advice-lit/`](reference-project-advice-lit/) | 案件専用のGo補助プラグインとWeb標準/Litを組み合わせた、最小の縦断参照（#951 / #997） |
