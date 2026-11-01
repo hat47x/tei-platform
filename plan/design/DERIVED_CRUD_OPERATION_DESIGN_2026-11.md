@@ -150,6 +150,15 @@ go run ./cmd/tei scenario -workspace reference/workspace -scenario reference/dri
 
 W1〜W4 は独立して進められる。W5 は W1〜W4 の後、W6 は W3 と並行、W7 は W3・W5 の後、W8 は W7 の後。
 
+**実装状況（2026-11-01）。** W1・W2 に加え、W3 のうち `create` の導出と、W4 の検証の結び付けを [`internal/operations/surface.go`](../../internal/operations/surface.go) に追加しました。
+
+- `create` は、書込み可能な別名・保存の対応・識別キーがある場合に導出し、入力（保存列の順）、前提（アプリケーションが宣言した検証のうち、そのデータの属性に付くもの）、効果（`create:<data>`）、自律区分（`attended`）を付けます。
+- `update` は導出せず、同時更新の検出方法が宣言されていないことを `missing-semantics` の未解決として返します。
+- `retire` は、そのデータへの更新の意図（`effect update`）があるのにライフサイクルの宣言が無い場合に、`missing-input` の未解決として返します。意図が無ければ何も返しません。
+- 同じ保存先へ複数の別名から届く場合、操作と未解決を重複させません。
+
+`go test ./internal/operations -run Surface` が通り、参照用作業領域 `order_entry` では `list`・`read`・`create` と、`update` の未解決が出ます。W5（CLI）、W6（負例の作業領域）、W7・W8（Scenario・Web）は未着手です。
+
 ## 7. 停止条件
 
 - 操作面を実行の可否判定に使い始めた場合は停止する（操作面の設計の15章が未決のため）。

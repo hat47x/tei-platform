@@ -142,7 +142,7 @@ func DeriveOperationSurface(world ir.World, applicationFilter string) OperationS
 		},
 	}
 
-	data := semanticDataIndex(world)
+	index := newSurfaceIndex(world)
 	applications := append([]application.Application(nil), world.Applications...)
 	sort.Slice(applications, func(i, j int) bool { return applications[i].ID < applications[j].ID })
 
@@ -151,22 +151,51 @@ func DeriveOperationSurface(world ir.World, applicationFilter string) OperationS
 		if applicationFilter != "" && string(app.ID) != applicationFilter {
 			continue
 		}
-		ops, appGaps := deriveApplicationOperations(world, app, data)
+		ops, appGaps := deriveApplicationOperations(world, app, index)
 		out.Operations = append(out.Operations, ops...)
 		gaps = append(gaps, appGaps...)
 	}
 
 	sortOperations(out.Operations)
-	sortGaps(gaps)
-	out.Gaps = gaps
+	out.Gaps = dedupeGaps(gaps)
+	sortGaps(out.Gaps)
 	out.Summary = summarize(out)
 	return out
+}
+
+// surfaceIndex holds the semantic lookups the derivation needs. It is built
+// once per surface so the derivation stays a pure function of the World.
+type surfaceIndex struct {
+	data         map[core.CanonicalID]semantic.Data
+	validations  map[core.CanonicalID]semantic.Validation
+	updateIntent map[core.CanonicalID]bool
+}
+
+func newSurfaceIndex(world ir.World) surfaceIndex {
+	index := surfaceIndex{
+		data:         semanticDataIndex(world),
+		validations:  map[core.CanonicalID]semantic.Validation{},
+		updateIntent: map[core.CanonicalID]bool{},
+	}
+	for _, namespace := range world.Semantics {
+		for _, validation := range namespace.Validations {
+			if _, exists := index.validations[validation.ID]; !exists {
+				index.validations[validation.ID] = validation
+			}
+		}
+		for _, capability := range namespace.Capabilities {
+			if capability.Effect != nil && capability.Effect.Kind == semantic.DataEffectUpdate {
+				index.updateIntent[capability.Effect.Data] = true
+			}
+		}
+	}
+	return index
 }
 
 func deriveApplicationOperations(
 	world ir.World,
 	app application.Application,
-	data map[core.CanonicalID]semantic.Data,
+	index surfaceIndex,
 ) ([]Operation, []SurfaceGap) {
 	var ops []Operation
 	var gaps []SurfaceGap
@@ -177,61 +206,148 @@ func deriveApplicationOperations(
 
 	for _, alias := range aliases {
 		for _, mapping := range persistenceForDatabase(world.Persistence, alias.TargetDatabase) {
-			element, ok := data[mapping.SemanticData]
+			element, ok := index.data[mapping.SemanticData]
 			if !ok {
 				// The missing semantic data is reported by the existing
 				// workspace validation; the surface does not duplicate it.
 				continue
 			}
-			if alias.Access == database.AccessWrite {
+			target := string(mapping.SemanticData)
+			basis := mappingBasis(mapping)
+			key := surfaceKey(element, mapping)
+			readable := alias.Access != database.AccessWrite
+			writable := alias.Access != database.AccessRead
+
+			if !readable {
 				gaps = append(gaps, SurfaceGap{
-					Target: string(mapping.SemanticData),
+					Target: target,
 					Kind:   "list",
 					Reason: "conflict",
 					Detail: "datasource alias " + string(alias.Alias) + " is write-only",
 				})
-				continue
-			}
-
-			listID := operationID(app.ID, "list", mapping.SemanticData)
-			if _, exists := seen[listID]; !exists {
-				seen[listID] = struct{}{}
-				ops = append(ops, Operation{
-					ID:       listID,
+			} else {
+				emitOperation(&ops, seen, Operation{
+					ID:       operationID(app.ID, "list", mapping.SemanticData),
 					Kind:     "list",
-					Target:   string(mapping.SemanticData),
+					Target:   target,
 					Origin:   "derived",
 					Autonomy: "unattended",
-					Basis:    mappingBasis(mapping),
+					Basis:    basis,
 				})
+				if len(key) == 0 {
+					gaps = append(gaps, SurfaceGap{
+						Target: target,
+						Kind:   "read",
+						Reason: "missing-semantics",
+						Detail: "no candidate key or persistence primary key is declared",
+					})
+				} else {
+					emitOperation(&ops, seen, Operation{
+						ID:       operationID(app.ID, "read", mapping.SemanticData),
+						Kind:     "read",
+						Target:   target,
+						Origin:   "derived",
+						Inputs:   key,
+						Autonomy: "unattended",
+						Basis:    basis,
+					})
+				}
 			}
 
-			key := surfaceKey(element, mapping)
-			readID := operationID(app.ID, "read", mapping.SemanticData)
+			if !writable {
+				continue
+			}
 			if len(key) == 0 {
 				gaps = append(gaps, SurfaceGap{
-					Target: string(mapping.SemanticData),
-					Kind:   "read",
+					Target: target,
+					Kind:   "create",
 					Reason: "missing-semantics",
-					Detail: "no candidate key or persistence primary key is declared",
+					Detail: "create requires an identifying key",
 				})
 				continue
 			}
-			if _, exists := seen[readID]; !exists {
-				seen[readID] = struct{}{}
-				ops = append(ops, Operation{
-					ID:       readID,
-					Kind:     "read",
-					Target:   string(mapping.SemanticData),
-					Origin:   "derived",
-					Inputs:   key,
-					Autonomy: "unattended",
-					Basis:    mappingBasis(mapping),
+
+			emitOperation(&ops, seen, Operation{
+				ID:            operationID(app.ID, "create", mapping.SemanticData),
+				Kind:          "create",
+				Target:        target,
+				Origin:        "derived",
+				Inputs:        createInputs(mapping),
+				Preconditions: preconditionsFor(app, element, index),
+				Effects:       []string{"create:" + target},
+				Autonomy:      "attended",
+				Basis:         basis,
+			})
+
+			// The reference model can not declare a concurrency method yet, so
+			// update stays visible as a gap instead of becoming a lost update.
+			gaps = append(gaps, SurfaceGap{
+				Target: target,
+				Kind:   "update",
+				Reason: "missing-semantics",
+				Detail: "no version attribute or expected-state comparison is declared",
+			})
+			if index.updateIntent[mapping.SemanticData] {
+				gaps = append(gaps, SurfaceGap{
+					Target: target,
+					Kind:   "retire",
+					Reason: "missing-input",
+					Detail: "no lifecycle or state declaration exists for this data",
 				})
 			}
 		}
 	}
 	return ops, gaps
+}
+
+// emitOperation appends an operation once. Two aliases may reach the same
+// persistence mapping; the surface keeps the first deterministic result.
+func emitOperation(ops *[]Operation, seen map[string]struct{}, operation Operation) {
+	if _, exists := seen[operation.ID]; exists {
+		return
+	}
+	seen[operation.ID] = struct{}{}
+	*ops = append(*ops, operation)
+}
+
+// createInputs lists the persisted attributes a caller supplies. Column order
+// is the authored order, so the result does not depend on map iteration.
+func createInputs(mapping persistence.Mapping) []string {
+	seen := map[core.CanonicalID]struct{}{}
+	var out []string
+	for _, column := range mapping.Columns {
+		if _, exists := seen[column.Attribute]; exists {
+			continue
+		}
+		seen[column.Attribute] = struct{}{}
+		out = append(out, string(column.Attribute))
+	}
+	return out
+}
+
+// preconditionsFor returns the validations the application declares and that
+// belong to the data element or one of its attributes.
+func preconditionsFor(app application.Application, element semantic.Data, index surfaceIndex) []string {
+	if len(app.Validations) == 0 {
+		return nil
+	}
+	attributes := map[core.CanonicalID]struct{}{}
+	for _, attribute := range element.Attributes {
+		attributes[attribute.ID] = struct{}{}
+	}
+	var out []string
+	for _, id := range app.Validations {
+		validation, ok := index.validations[id]
+		if !ok {
+			continue
+		}
+		if _, ok := attributes[validation.Attribute]; !ok {
+			continue
+		}
+		out = append(out, string(validation.ID))
+	}
+	sort.Strings(out)
+	return out
 }
 
 // semanticDataIndex returns every semantic data element by canonical ID.
@@ -338,6 +454,23 @@ func sortGaps(gaps []SurfaceGap) {
 		}
 		return gaps[i].Reason < gaps[j].Reason
 	})
+}
+
+// dedupeGaps keeps one gap per target, kind, reason and detail. Two aliases may
+// reach the same mapping, and the same missing declaration must not be reported
+// twice.
+func dedupeGaps(gaps []SurfaceGap) []SurfaceGap {
+	seen := map[string]struct{}{}
+	out := make([]SurfaceGap, 0, len(gaps))
+	for _, gap := range gaps {
+		key := gap.Target + "\x00" + gap.Kind + "\x00" + gap.Reason + "\x00" + gap.Detail
+		if _, exists := seen[key]; exists {
+			continue
+		}
+		seen[key] = struct{}{}
+		out = append(out, gap)
+	}
+	return out
 }
 
 func summarize(surface OperationSurface) SurfaceSummary {

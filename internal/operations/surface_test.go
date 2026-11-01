@@ -48,12 +48,10 @@ func surfaceTestWorld(access database.Access, candidateKey bool) ir.World {
 			SemanticData: "sales.order",
 			Table:        "orders",
 			PrimaryKey:   []core.CanonicalID{"sales.order.order_id"},
-			Columns: []persistence.ColumnMapping{{
-				Attribute:   "sales.order.order_id",
-				Column:      "order_id",
-				Storage:     persistence.StorageInt64,
-				Nullability: persistence.Required,
-			}},
+			Columns: []persistence.ColumnMapping{
+				{Attribute: "sales.order.order_id", Column: "order_id", Storage: persistence.StorageInt64, Nullability: persistence.Required},
+				{Attribute: "sales.order.status", Column: "status", Storage: persistence.StorageVarchar, Nullability: persistence.Required},
+			},
 		}},
 	}
 }
@@ -67,7 +65,16 @@ func findOperation(surface OperationSurface, id string) (Operation, bool) {
 	return Operation{}, false
 }
 
-func TestDeriveOperationSurfaceListAndRead(t *testing.T) {
+func findGap(surface OperationSurface, target, kind string) (SurfaceGap, bool) {
+	for _, gap := range surface.Gaps {
+		if gap.Target == target && gap.Kind == kind {
+			return gap, true
+		}
+	}
+	return SurfaceGap{}, false
+}
+
+func TestDeriveOperationSurfaceListReadAndCreate(t *testing.T) {
 	surface := DeriveOperationSurface(surfaceTestWorld(database.AccessReadWrite, true), "")
 
 	if surface.SchemaVersion != OperationSurfaceSchemaVersion || surface.Effect != "read-only" {
@@ -95,15 +102,38 @@ func TestDeriveOperationSurfaceListAndRead(t *testing.T) {
 	if len(read.Inputs) != 1 || read.Inputs[0] != "sales.order.order_id" {
 		t.Fatalf("read must require the business key: %+v", read.Inputs)
 	}
-	if read.Basis == "" || list.Basis == "" {
+
+	create, ok := findOperation(surface, "order_entry.create.sales.order")
+	if !ok {
+		t.Fatalf("create operation missing: %+v", surface.Operations)
+	}
+	if create.Autonomy != "attended" {
+		t.Fatalf("create must be attended: %+v", create)
+	}
+	if len(create.Inputs) != 2 || create.Inputs[0] != "sales.order.order_id" || create.Inputs[1] != "sales.order.status" {
+		t.Fatalf("create inputs must follow the persisted columns: %+v", create.Inputs)
+	}
+	if len(create.Effects) != 1 || create.Effects[0] != "create:sales.order" {
+		t.Fatalf("create must declare its effect: %+v", create.Effects)
+	}
+	if create.Basis == "" || list.Basis == "" {
 		t.Fatalf("derived operations must carry a basis: %+v", surface.Operations)
 	}
 
-	if len(surface.Gaps) != 0 {
+	// update stays a gap because no concurrency method is declared.
+	gap, ok := findGap(surface, "sales.order", "update")
+	if !ok || gap.Reason != "missing-semantics" || gap.Detail == "" {
+		t.Fatalf("expected an update gap explaining the missing concurrency method: %+v", surface.Gaps)
+	}
+	if _, ok := findOperation(surface, "order_entry.update.sales.order"); ok {
+		t.Fatalf("update must not be derived: %+v", surface.Operations)
+	}
+	if len(surface.Gaps) != 1 {
 		t.Fatalf("unexpected gaps: %+v", surface.Gaps)
 	}
-	if surface.Summary.Operations != 2 || surface.Summary.Derived != 2 ||
-		surface.Summary.Unattended != 2 || surface.Summary.Gaps != 0 {
+
+	if surface.Summary.Operations != 3 || surface.Summary.Derived != 3 ||
+		surface.Summary.Unattended != 2 || surface.Summary.Gaps != 1 {
 		t.Fatalf("unexpected summary: %+v", surface.Summary)
 	}
 	if len(surface.AuthorityLimits) == 0 {
@@ -132,26 +162,42 @@ func TestDeriveOperationSurfaceMissingKeyIsAGap(t *testing.T) {
 	if _, ok := findOperation(surface, "order_entry.read.sales.order"); ok {
 		t.Fatal("read must not be derived without an identifying key")
 	}
+	if _, ok := findOperation(surface, "order_entry.create.sales.order"); ok {
+		t.Fatal("create must not be derived without an identifying key")
+	}
 	if _, ok := findOperation(surface, "order_entry.list.sales.order"); !ok {
 		t.Fatal("list must still be derived")
 	}
-	if len(surface.Gaps) != 1 {
-		t.Fatalf("expected one gap: %+v", surface.Gaps)
+	readGap, ok := findGap(surface, "sales.order", "read")
+	if !ok || readGap.Reason != "missing-semantics" {
+		t.Fatalf("expected a read gap: %+v", surface.Gaps)
 	}
-	gap := surface.Gaps[0]
-	if gap.Target != "sales.order" || gap.Kind != "read" || gap.Reason != "missing-semantics" || gap.Detail == "" {
-		t.Fatalf("unexpected gap: %+v", gap)
+	createGap, ok := findGap(surface, "sales.order", "create")
+	if !ok || createGap.Reason != "missing-semantics" {
+		t.Fatalf("expected a create gap: %+v", surface.Gaps)
+	}
+	if len(surface.Gaps) != 2 {
+		t.Fatalf("expected two gaps, one per operation: %+v", surface.Gaps)
 	}
 }
 
 func TestDeriveOperationSurfaceWriteOnlyAlias(t *testing.T) {
 	surface := DeriveOperationSurface(surfaceTestWorld(database.AccessWrite, true), "")
 
-	if len(surface.Operations) != 0 {
+	if _, ok := findOperation(surface, "order_entry.list.sales.order"); ok {
 		t.Fatalf("write-only alias must not derive read operations: %+v", surface.Operations)
 	}
-	if len(surface.Gaps) != 1 || surface.Gaps[0].Reason != "conflict" || surface.Gaps[0].Kind != "list" {
+	if _, ok := findOperation(surface, "order_entry.read.sales.order"); ok {
+		t.Fatalf("write-only alias must not derive read operations: %+v", surface.Operations)
+	}
+	gap, ok := findGap(surface, "sales.order", "list")
+	if !ok || gap.Reason != "conflict" {
 		t.Fatalf("expected a list conflict gap: %+v", surface.Gaps)
+	}
+	// A write-only alias can still create, because only the write side is used.
+	create, ok := findOperation(surface, "order_entry.create.sales.order")
+	if !ok || create.Autonomy != "attended" {
+		t.Fatalf("write-only alias must derive create: %+v", surface.Operations)
 	}
 }
 
@@ -159,7 +205,85 @@ func TestDeriveOperationSurfaceReadOnlyAlias(t *testing.T) {
 	surface := DeriveOperationSurface(surfaceTestWorld(database.AccessRead, true), "")
 
 	if surface.Summary.Operations != 2 {
-		t.Fatalf("read-only alias must still derive list and read: %+v", surface.Summary)
+		t.Fatalf("read-only alias must derive only list and read: %+v", surface.Summary)
+	}
+	if _, ok := findOperation(surface, "order_entry.create.sales.order"); ok {
+		t.Fatalf("read-only alias must not derive create: %+v", surface.Operations)
+	}
+	if len(surface.Gaps) != 0 {
+		t.Fatalf("read-only alias must not report write-side gaps: %+v", surface.Gaps)
+	}
+}
+
+func TestDeriveOperationSurfaceCreatePreconditions(t *testing.T) {
+	world := surfaceTestWorld(database.AccessReadWrite, true)
+	world.Semantics[0].Validations = []semantic.Validation{
+		{ID: "sales.order.order_id_positive", Symbol: "orderIdPositive", Kind: "positive", Attribute: "sales.order.order_id"},
+		{ID: "sales.customer.name_positive", Symbol: "namePositive", Kind: "positive", Attribute: "customer.customer.name"},
+	}
+	world.Applications[0].Validations = []core.CanonicalID{
+		"sales.order.order_id_positive",
+		"sales.customer.name_positive",
+	}
+
+	surface := DeriveOperationSurface(world, "")
+
+	create, ok := findOperation(surface, "order_entry.create.sales.order")
+	if !ok {
+		t.Fatalf("create operation missing: %+v", surface.Operations)
+	}
+	if len(create.Preconditions) != 1 || create.Preconditions[0] != "sales.order.order_id_positive" {
+		t.Fatalf("create must carry only the validations declared for this data: %+v", create.Preconditions)
+	}
+}
+
+func TestDeriveOperationSurfaceRetireGapRequiresUpdateIntent(t *testing.T) {
+	world := surfaceTestWorld(database.AccessReadWrite, true)
+	if _, ok := findGap(DeriveOperationSurface(world, ""), "sales.order", "retire"); ok {
+		t.Fatal("retire must not be reported without an update intent on the data")
+	}
+
+	world.Semantics[0].Capabilities = []semantic.Capability{{
+		ID:     "sales.order.submit",
+		Symbol: "submit",
+		Effect: &semantic.DataEffect{Kind: semantic.DataEffectUpdate, Data: "sales.order"},
+	}}
+
+	surface := DeriveOperationSurface(world, "")
+	gap, ok := findGap(surface, "sales.order", "retire")
+	if !ok || gap.Reason != "missing-input" || gap.Detail == "" {
+		t.Fatalf("expected a retire gap explaining the missing lifecycle: %+v", surface.Gaps)
+	}
+	if _, ok := findOperation(surface, "order_entry.retire.sales.order"); ok {
+		t.Fatalf("retire must not be derived without a lifecycle declaration: %+v", surface.Operations)
+	}
+}
+
+func TestDeriveOperationSurfaceDoesNotDuplicateAcrossAliases(t *testing.T) {
+	world := surfaceTestWorld(database.AccessReadWrite, true)
+	world.Applications[0].Databases = append(world.Applications[0].Databases, application.DatabaseRequirement{
+		Alias:          "sales_read",
+		TargetDatabase: "sales_core",
+		Access:         database.AccessRead,
+	})
+
+	surface := DeriveOperationSurface(world, "")
+
+	counts := map[string]int{}
+	for _, gap := range surface.Gaps {
+		counts[gap.Kind]++
+	}
+	if counts["update"] != 1 {
+		t.Fatalf("the same missing declaration must be reported once: %+v", surface.Gaps)
+	}
+	createCount := 0
+	for _, operation := range surface.Operations {
+		if operation.Kind == "create" {
+			createCount++
+		}
+	}
+	if createCount != 1 {
+		t.Fatalf("create must be derived once across aliases: %+v", surface.Operations)
 	}
 }
 
@@ -211,14 +335,14 @@ func TestDeriveOperationSurfaceApplicationFilter(t *testing.T) {
 	})
 
 	all := DeriveOperationSurface(world, "")
-	if all.Summary.Operations != 4 {
-		t.Fatalf("expected four operations for two applications: %+v", all.Summary)
+	if all.Summary.Operations != 6 {
+		t.Fatalf("expected six operations for two applications: %+v", all.Summary)
 	}
 	filtered := DeriveOperationSurface(world, "repair_intake")
-	if filtered.Summary.Operations != 2 || filtered.Application != "repair_intake" {
+	if filtered.Summary.Operations != 3 || filtered.Application != "repair_intake" {
 		t.Fatalf("filter must keep only the requested application: %+v", filtered)
 	}
-	if _, ok := findOperation(filtered, "repair_intake.list.sales.order"); !ok {
+	if _, ok := findOperation(filtered, "repair_intake.create.sales.order"); !ok {
 		t.Fatalf("filtered surface lost its operations: %+v", filtered.Operations)
 	}
 }
@@ -247,5 +371,15 @@ func TestSurfaceWorkspaceReference(t *testing.T) {
 	}
 	if len(read.Inputs) == 0 {
 		t.Fatalf("derived read must carry identifying inputs: %+v", read)
+	}
+	create, ok := findOperation(surface, "order_entry.create.sales.order")
+	if !ok {
+		t.Fatalf("reference workspace lost the derived create: %+v", surface.Operations)
+	}
+	if len(create.Inputs) == 0 || create.Autonomy != "attended" {
+		t.Fatalf("derived create must carry inputs and be attended: %+v", create)
+	}
+	if gap, ok := findGap(surface, "sales.order", "update"); !ok || gap.Reason != "missing-semantics" {
+		t.Fatalf("reference workspace must report the update gap: %+v", surface.Gaps)
 	}
 }

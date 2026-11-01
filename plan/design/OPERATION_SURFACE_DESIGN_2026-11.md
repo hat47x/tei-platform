@@ -282,7 +282,7 @@ type SurfaceGap struct {
 
 W1 → W2 →（W3・W4 は並行）→ W5 → W6 の順に進めます。W1・W2 は #1127 の W1・W2 と同じ作業になるため、別々に実装しません。
 
-**実装状況（2026-11-01）。** W1・W2 の参照実装を [`internal/operations/surface.go`](../../internal/operations/surface.go) に追加しました。`list`・`read` の導出、キーの優先順位、未解決（`missing-semantics`・`conflict`）の分類、決定性の試験を含みます。`go test ./internal/operations -run Surface` が通ります。W3〜W6（上書き・自律区分・CLI・実行時の照合）は未着手で、CLI への公開は15章の判断待ちです。
+**実装状況（2026-11-01）。** W1・W2 の参照実装を [`internal/operations/surface.go`](../../internal/operations/surface.go) に追加しました。`list`・`read` の導出、キーの優先順位、未解決（`missing-semantics`・`conflict`）の分類、決定性の試験を含みます。標準操作の `create` と、`update`・`retire` の未解決は、[#1127の設計](DERIVED_CRUD_OPERATION_DESIGN_2026-11.md)のW3・W4に従って同じ実装で扱います。`go test ./internal/operations -run Surface` が通ります。W3（上書き）・W4（書込みの自律区分）・W5（CLI）・W6（実行時の照合）は未着手で、CLI への公開は15章の判断待ちです。
 
 ## 15. 未決（Owner判断が要る点）
 
