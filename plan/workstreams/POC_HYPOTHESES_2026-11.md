@@ -101,3 +101,14 @@
 次の実装は、`internal/driver` の試験で、束縛ありの `sales.order.cancel` を偽のアダプタへ渡し、(1) 拒否が `BusinessResult` として返ること、(2) 束縛の解決失敗が `error` になることを固定する。
 
 確認済みのAPI（2026-11-02）: 実体は `internal/semantic/capabilityinvoke`。`BusinessResult{Capability, Mode, Outcome, Payload}`、`Adapter.Invoke(ctx, capability, input)`、`Invoke(ctx, capability, adapter, input)` は返された結果が能力の `result` 契約に従うかを検査する。したがって偽のアダプタは、`sales.order.cancel` の出力契約（`sales.order`）に合う `Mode`・`Outcome`・`Payload` を返す必要がある。
+### 2026-11-02 — 束縛ありの実行試験の型（次の実装手順）
+
+既存の `internal/driver/final_gate_b_scenario_test.go` と同じ型で書けます。
+
+1. `driver.NewResolver(world)` を作る（世界は作業領域から読み込む）。
+2. `resolver.InvokeCapability(ctx, "ledger", "sales.order.cancel", アダプタ解決, 入力)` を呼ぶ。アダプタ解決は `bindingAdapterResolverFunc` と同じ形で、期待する束縛の識別子は `ledger/sales.order.cancel`。
+3. `sales.order.cancel` は単一の `output` 契約なので、偽のアダプタは `BusinessResult{Capability: "sales.order.cancel", Mode: capabilityinvoke.ResultOutput, Payload: <sales.order の行>}` を返す。`Mode` が違えば `ValidateBusinessResult` が拒否する。
+4. 期待状態の不一致を表す場合は、`error` ではなく `BusinessResult` として拒否を返し、`InvokeCapability` が `error` を返さないことを確かめる。
+5. 束縛の解決に失敗する場合（実現を外す、アプリケーションを変える）は `error` になることを確かめる。
+
+この型で書けば、H4（能力への束縛）とH1（拒否を業務結果として返す）を同時に確かめられます。
