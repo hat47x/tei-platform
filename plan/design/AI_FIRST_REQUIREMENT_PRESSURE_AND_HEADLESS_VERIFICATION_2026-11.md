@@ -110,6 +110,18 @@ E1とE2は最小の共通面が成立した時点から重ねて実施できる�
 
 既存Harnessで足りる場合はTEI専用Agent Loopを増やさず、DSH実験で**機能上の増分と負担**を測る。上記は研究・実証計画候補で、DSH/TEI E2Eの実測、標準MCP必須化、正式契約採用を意味しない。
 
+## 5.2 DSHのGoal・Scheduleと安価な大量推論を前提とする並列開発（2026-11-01、Proposed）
+
+[DSH Goal/Schedule/通信境界の一次資料調査](../research/DSH_SCALE_GOAL_SCHEDULE_EGRESS_RESEARCH_2026-11-01.md)を、P1〜P10の外部要件適合とAI-first CUIの実証計画へ追加した。具体的なread-only実験を[#2509](https://github.com/hat47x/tei-platform/issues/2509)、複数Workstream/Goal/Schedule比較を[TAI #234](https://github.com/hat47x/tai-pleroma/issues/234)が担当する。要件ポートフォリオ自体の拡大と横断割当ては既存[#2493](https://github.com/hat47x/tei-platform/issues/2493)へ保つ。
+
+**Goal、Tool、Schedule、Resultを同じ「自動化済み」として束ねない。** DSHの`sdk-minimal`はGoal driverを含まず、`base/headless`ではGoal関連Pluginを利用できる構成がある。ただしGoalは一Session一件で、Round上限はToken/金額上限ではなく、Restart時の再開には明示的なre-armが必要。Web側ScheduleはHost稼働中のSessionへの指示配送であり、作業の完了・失敗復旧・正式業務結果は別。
+
+**新たな通信負例**：公式DSHの`dsh-session-log-deepseek`は既定で送信対象Eventをモデル入力とは別の`dsh_session_log` Request拡張に含め得る。既定最大8MiB/Request、`enabled:false`後のin-flight、再有効化時のBacklogは[TAI #232](https://github.com/hat47x/tai-pleroma/issues/232)と合成・隔離環境で検査する。`sdk-minimal`の既定`danger-full-access`はHost/OS機密境界を保証しない。公開可能な合成Inputを用いた`TEI CLI単体 / DSH Headless / DSH SDK-minimal`の同一Source対照から始める。
+
+拡大する実装・Issue探索はSource/Model/Contractの共通正本を保ち、**別Session×別branch/worktree×別fixture**で並列化する。結果のMerge・独立試験・正式な意味受理、Host権限、実Effectは従来のOwner境界に留める。探索された候補数、実証済みの変更数、統合競合と人の確認負担を別々の品質指標として扱う。
+
+**状態**：公式Sourceと設計比較まで。実DSH起動、OS通信/権限検証、DGA-01〜06、実AI並列開発の性能/費用比較、Owner正式受理はすべてNOT RUN。
+
 ## 6. 採否と現在の限界
 
 - **Owner方針として確認済み**：外部要件の十分な机上評価を基盤実装に先行させること、CUIと標準Pluginを並行開発すること、ヘッドレス実証を基準にGUIを後続実装すること。
