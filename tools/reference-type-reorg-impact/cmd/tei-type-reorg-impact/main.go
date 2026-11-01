@@ -11,8 +11,15 @@ import (
 	typereorg "tei/tools/reference-type-reorg-impact"
 )
 
-// The CLI only prints the impact of a proposed type merge. It cannot rewrite
-// sources or accept the merge.
+// The CLI reports the impact of a type merge or split. It may export a
+// merge candidate, but never rewrites source or accepts a meaning change.
+func validateCandidateMode(split bool, candidateOut string) error {
+	if split && candidateOut != "" {
+		return fmt.Errorf("-candidate-out is not supported with -split: split reassignment is not yet represented in candidates")
+	}
+	return nil
+}
+
 func main() {
 	root := flag.String("workspace", "", "source Workspace root to read")
 	from := flag.String("from", "", "comma-separated type IDs to merge away (or single source type for -split)")
@@ -23,6 +30,10 @@ func main() {
 	flag.Parse()
 	if *root == "" || *from == "" || *into == "" {
 		fmt.Fprintln(os.Stderr, "-workspace, -from and -into are required")
+		os.Exit(1)
+	}
+	if err := validateCandidateMode(*split, *candOut); err != nil {
+		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 	loaded, err := workspace.Load(*root)
