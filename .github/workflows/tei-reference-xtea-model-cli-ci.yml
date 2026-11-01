@@ -1,6 +1,6 @@
 name: X-TEAモデルCLIの検査
 
-# `.xead`を読むCLIの単体試験だけを実行する。X-TEA本体やGUIは起動しない。
+# モデルCLIとシナリオ構造の単体試験だけを実行する。X-TEA本体やGUIは起動しない。
 on:
   pull_request:
     branches: [main]
@@ -8,12 +8,16 @@ on:
     paths:
       - 'tools/reference-xtea-control/xtea_cli.py'
       - 'tools/reference-xtea-control/tests/**'
+      - 'tools/reference-xtea-control/scenarios/**'
+      - 'tools/reference-xtea-control/verify-all.ps1'
       - '.github/workflows/tei-reference-xtea-model-cli-ci.yml'
   push:
     branches: [main]
     paths:
       - 'tools/reference-xtea-control/xtea_cli.py'
       - 'tools/reference-xtea-control/tests/**'
+      - 'tools/reference-xtea-control/scenarios/**'
+      - 'tools/reference-xtea-control/verify-all.ps1'
       - '.github/workflows/tei-reference-xtea-model-cli-ci.yml'
 
 permissions: {}
