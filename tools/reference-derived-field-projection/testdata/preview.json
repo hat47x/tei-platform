@@ -1,0 +1,10 @@
+{
+  "field": { "id": "order-line.amount", "kind": "derived" },
+  "phase": "preview",
+  "operation": "display",
+  "derivedState": "present",
+  "derivedValue": "900",
+  "savedValue": "600",
+  "inputsUnsaved": true,
+  "renderers": ["web", "cli"]
+}
