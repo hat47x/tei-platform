@@ -1,0 +1,12 @@
+{
+  "systemTime": "2026-05-10T09:00:00Z",
+  "periods": [
+    { "id": "2026-04", "state": "closed", "start": "2026-04-01", "end": "2026-04-30" },
+    { "id": "2026-05", "state": "open", "start": "2026-05-01", "end": "2026-05-31" }
+  ],
+  "slips": [
+    { "id": "S-APR-1", "period": "2026-04", "businessDate": "2026-04-15", "amount": "1000", "status": "posted" }
+  ],
+  "action": { "kind": "update", "slipId": "S-APR-1", "businessDate": "2026-04-15", "amount": "1200" },
+  "latePolicy": "hold"
+}
