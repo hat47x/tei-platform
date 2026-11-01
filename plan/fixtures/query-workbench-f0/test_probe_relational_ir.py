@@ -2,7 +2,7 @@
 import json
 import unittest
 from pathlib import Path
-from probe_relational_ir import probe
+from probe_relational_ir import probe, compare_qx16
 
 SAMPLES = json.loads(Path(__file__).with_name('relational_ir_synthetic.json').read_text(encoding='utf-8'))['samples']
 
@@ -92,6 +92,23 @@ class ProbeTests(unittest.TestCase):
         o = probe({'root': 'missing', 'nodes': [{'id': 'x', 'kind': 'source', 'source': 'line'}]})
         self.assertEqual(o['rootStructureTrace'], 'unresolved')
         self.assertIn('missing-root:missing', o['rootIssues'])
+
+    def test_explicit_qx16_dependency_bridge_matches_but_does_not_prove_claim(self):
+        # Independent expectations are hand-labeled QX-16 Claim input collections.
+        labels = {'operationDependencies': {
+            'line_sum': {'inputCollections': ['line']},
+            'join_pairs': {'inputCollections': ['line', 'delivery']},
+            'join_sum': {'inputCollections': ['line', 'delivery']},
+            'left_unmatched': {'inputCollections': ['header', 'delivery']},
+        }}
+        matches = compare_qx16(SAMPLES, labels)
+        self.assertEqual(len(matches['comparison']), 4)
+        self.assertTrue(all(x['status'] == 'fixture-structure-agrees' for x in matches['comparison']))
+        self.assertTrue(all(x['claimSemantics'] == 'not-established' for x in matches['comparison']))
+        # A bad manually supplied identity of the source population is NOT accepted.
+        labels['operationDependencies']['join_sum']['inputCollections'] = ['line']
+        failed = compare_qx16(SAMPLES, labels)
+        self.assertEqual(failed['comparison'][2]['status'], 'unresolved-or-mismatch')
 
     def test_candidate_is_not_claim_acceptance(self):
         o = probe(SAMPLES['aggregate_before_join'])
