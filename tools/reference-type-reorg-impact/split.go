@@ -57,6 +57,11 @@ func SplitImpact(world ir.World, s Split) (Impact, error) {
 		out.Diagnostics = append(out.Diagnostics, Diagnostic{Code: code, Subject: subject})
 	}
 
+	// SplitImpact is an analysis only. Its Impact.Merge field is a legacy
+	// rendering shape and must never be interpreted as a merge candidate.
+	// Block Candidate even if every attribute has an explicit reassignment.
+	diag("split-candidate-unsupported", s.From)
+
 	// Target types must exist.
 	for _, t := range s.Into {
 		if _, ok := types[t]; !ok {

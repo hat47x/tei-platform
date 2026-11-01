@@ -7,6 +7,19 @@ go run ./tools/reference-type-reorg-impact/cmd/tei-type-reorg-impact \
   -workspace reference/workspace -from <統合元の型ID,...> -into <統合先の型ID>
 ~~~
 
+## 型分割の読取り専用モード
+
+```text
+go run ./tools/reference-type-reorg-impact/cmd/tei-type-reorg-impact \
+  -workspace reference/workspace -split -from <元型ID> -into <移行先型ID1,移行先型ID2>
+```
+
+- 型分割は影響一覧と未割当診断を出す参照機能です。現行CLIは項目別の再割当を受け取りません。
+- **`-split` と `-candidate-out` の併用はエラーで拒否**します。属性別移行先を保持せず統合用の候補へ写すと誤った型付替えになるためです。
+- `SplitImpact` の結果には `split-candidate-unsupported` 診断を含め、内部APIから統合専用 `Candidate` に渡した場合も候補化を拒否します。分割の分析結果はJSONで参照できますが、この診断を意味上の異常や型自体の不正とは解釈しません。
+- `Candidate`は同じプロセスの`Analyze`が返した未変更の統合影響だけを受けます。影響を変更した場合やJSONから再読込みした場合は再分析が必要です。この照合は操作の取り違えを防ぐもので、署名・意味の受理・現在のWorkspaceとの一致を証明しません。
+- 型統合の `-candidate-out` は引き続き利用できます。いずれも受理やSource書換えは別の明示操作です。
+
 ## 出力
 
 - 統合元の型を使う属性
@@ -27,7 +40,7 @@ go run ./tools/reference-type-reorg-impact/cmd/tei-type-reorg-impact \
 
 - 変更案の受理（#267）の実行と、受理後の再投影
 - 導出規則、Validationからの型の利用の追跡
-- 型の分割、置換
+- 型の分割の変更候補生成・受理と型の置換（分割の影響一覧は実装済み）
 
 ## 受理境界への接続（#1935）
 
