@@ -1,0 +1,11 @@
+{
+  "effectsObserved": true,
+  "effectsSource": "audit-log:2026-11-01",
+  "observedEffects": [
+    {
+      "application": "order_entry",
+      "data": "sales.order",
+      "access": "create"
+    }
+  ]
+}
