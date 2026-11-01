@@ -219,6 +219,47 @@ PatternPackage
 
 **受入条件（追加）.** 同じパッケージの版を変えたとき、再検証が必要になったことが分かる。二つのパッケージが同じPattern IDを持つとき、暗黙に一方を選ばず、衝突として止まる。
 
+**パッケージ宣言の形（案）.** パッケージは、既存のPatternを束ねる**派生の宣言**であり、Patternの定義を複製しません。
+
+```text
+package order_entry.list_to_record ^1 {
+    application order_entry
+    member browse order_entry.recent_orders
+    member record order_entry.order_record
+    requires semantic sales.order
+    requires relation sales.order.customer
+    projection screen
+    conformance list_to_record
+}
+```
+
+- `member`はPatternの型付き参照です。KindはPattern側から取り、パッケージで再宣言しません。
+- `requires`は、パッケージが前提にするSemanticの参照です。Applicationの`uses semantic`と矛盾しないことを検査します。
+- `projection`は、パッケージが提供する投影の種類です。テンプレートやTarget Profileは生成器側に残します。
+- `conformance`は、適合試験の名前です。fixtureの内容は試験側に置きます。
+- `^1`はmajor版です。minorは互換の範囲で上げ、majorの変更は再検証を要求します。
+
+**検査（案）.** 次の順で検査します。
+
+1. メンバーのPatternがApplicationに存在する。
+2. メンバーのKindが、パッケージの種類に許される組合せか。
+3. 同じPatternを二つの役割で重複して参照していない。
+4. `requires`のSemanticがApplicationの`uses semantic`に含まれる。
+5. パッケージの版がApplicationの束縛と一致する。
+6. 取り外したときに、Semanticのfingerprintが変わらない。
+
+**パッケージがしないこと.**
+
+- 新しいSemantic要素を作らない。
+- Patternの定義を上書きしない。上書きが必要なら、別のPatternを作る。
+- 投影のレイアウトを持たない。テンプレートとProfileは生成器の入力に残す。
+
+**未解決.**
+
+- 役割名（`entry`など）を宣言するか、並び順だけで表すか。
+- 複数パッケージが同じPatternを共有するときの、版の整合。
+- パッケージの削除と、Applicationの束縛の解除の順序。
+
 ### D2 対話の拡張点を、宣言されたフックと能力に限る
 
 **問題.** X-TEAは、表の`Script`に`EventP`/`EventR`を持たせ、読取前後・追加前後・更新前後・削除前後にJavaScriptを差し込めました（知識目録E-1〜E-3）。スクリプトAPIは、機能呼出し・SQL・確定・取消まで持ちます（E-4、E-5）。この仕組みは、定型の間に案件固有の検証・導出・連携を差し込む力を与えましたが、宣言された効果と実際の効果を一致させません。
