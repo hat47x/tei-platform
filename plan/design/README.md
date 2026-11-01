@@ -95,6 +95,7 @@
 | [`WEB_APPLICATION_COMPOSITION_DESIGN.md`](WEB_APPLICATION_COMPOSITION_DESIGN.md) | Webアプリケーションの構成キットとして、安全な要求経路と認証方式を組み合わせる設計候補（評価待ち） |
 | [`WEB_READ_WRITE_API_ADAPTER_DESIGN.md`](WEB_READ_WRITE_API_ADAPTER_DESIGN.md) | 標準Webの読込・書込API Adapterの設計候補と合成Reference。OData準拠・実DB書込・本番適合は未確認 |
 | [`XTEA_STARTUP_JAR_DISTRIBUTION_EVIDENCE_2026-10.md`](XTEA_STARTUP_JAR_DISTRIBUTION_EVIDENCE_2026-10.md) | X-TEAのstartup JARの配布・版・更新に関する、外部Referenceの静的な証拠整理。実行検証・TEIの更新機構への受入証明ではない |
+| [`XTEA_LOWCODE_RECEPTION_ARCHITECTURE_2026-11.md`](XTEA_LOWCODE_RECEPTION_ARCHITECTURE_2026-11.md) | X-TEAから回収したローコードの知見を、Core・Pattern・生成器・Plugin・Studio・要件のどこで受け止めるかの設計案（未採用）。パッケージ・対話フック・項目の役割・結果型・標準業務意味の判断候補を含む |
 
 ## 関連する参照事例と評価
 
