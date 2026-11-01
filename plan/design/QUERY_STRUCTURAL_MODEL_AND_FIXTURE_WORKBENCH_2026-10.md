@@ -337,10 +337,11 @@ M0→M1の**説明用入力固定（新Core/Wire schemaの先行採用なし）*
 | COUNT(*) | 観測したQuery入力bagの出現数は包含・重複の条件付きで件数の下界となり得る | 業務Entity件数、COUNT(DISTINCT)、JOINの出現行数を同一視しない |
 | MIN／MAX | 比較可能な観測値があれば、全集合MINは観測MIN以下、全集合MAXは観測MAX以上 | 未対応順序・collation・NULL・未取得・時間変化があれば法則の適用を保留。最終極値を確定しない |
 | NOT EXISTS／差集合／反結合 | 実際に条件へ一致するWitnessは不在Claimの反例になり得る | 不在の確定には当該述語・母集団に対する閉じた入力範囲が必要。秘匿範囲を推測表示しない |
+| LEFT JOINの未一致行／右列IS NULL | 閉じた入力・確定したJOIN条件では、右一致なしの行を説明可能 | 右側が部分取得のとき、仮の(H,NULL)行は右行D1が追加されると(H,D1)に**置換され得る**。入力包含R⊆Lでも**LEFT JOIN出力bagの包含は一般に成り立たない**。CASEで0を埋めた値も全集合の確定0とはみなさない |
 | ORDER BY/LIMIT／Top-N | 観測済み範囲内の順序・順位候補を説明可能 | 未取得候補・タイブレーカー・方言・collationを無視して全体順位を確定しない |
 | 不透明な式・Window・再帰CTE | 既存IRが取得したScope/Source occurrenceを表示 | Window frameや再帰停止条件・演算利用形態が現wireに無ければunsupported/partialに留め、数学的性質を推測しない |
 
-#### 最小判別ケース QX-16a〜f（互いに独立した確認列）
+#### 最小判別ケース QX-16a〜g（互いに独立した確認列）
 
 - **a：同一観測と異なる全体**。観測R={A:600}に対しL1={A:600,B:500}はSUM=1100、L2={A:600,B:1000}はSUM=1600。部分観測だけでexact sumや合計<1500を確定しない。非負などの適用条件が受理・確認された場合の「合計≥500」だけは片側の結論となり得る。
 - **b：値域制約変更の反例**。負のB=-200を認める別の値域制約revisionならSUM=400。「SUM」の名前や観測済み値が正であったことを非負Lawの根拠にしない。
@@ -348,12 +349,13 @@ M0→M1の**説明用入力固定（新Core/Wire schemaの先行採用なし）*
 - **d：存在と不在**。観測R={A:600}でamount≥500のWitnessがあればEXISTS真／NOT EXISTS偽を限定的に示せる。一方、Rが空でも真の全集合は空または未観測Aを含む可能性があり、不在は決まらない。SQL三値論理UNKNOWNと観測不明を区別する。
 - **e：独立依存**。明細の同一必要版・必要Scopeでの全集合2件がそろい、配送履歴は1/2件のみ取得したとき、**明細のみを集約するノード**の正確なSUMは条件付きで使える。配送履歴JOIN後の集計や全配送Countには波及させない。Context全体の単一FULLビットで一律に止める必要もない。
 - **f：現在性と用途**。t0の成立根拠は履歴として保持する。tCommitや表示時に対象・値・規則・認可が変わったら現在のAction完了や実行許可へ自動転用しない。#1708/#1641の整合性、#1125/#1174のBusiness Action、#2516の用途相対Projectionを参照する。
+- **g：LEFT JOINの非単調な未一致行**。固定親H、右の配送履歴未取得時に一旦右行0件で計算するとLEFT JOINは(H,NULL)、右D1を加えると(H,D1)であり、前者の出力行は後者に含まれない。さらに右ID IS NULLによる反結合出力は(H)→空へ変わる。これは入力行が増えれば出力行もそのまま残るという単調包含の**反例**であり、F0の明細なしO03→金額0という説明も、対象右集合の完全性を前提にする。入力の局所完全性を持たない段階では「受領済み範囲で未一致」と表示する。
 
 **最小read-onlyの表示案**：Queryの正本rev／OutputField・RelNode／依存するSource occurrence・集合粒度／各入力の読取Scope・Predicate・Snapshot／Claim（exact・条件付き下界・存在Witness等）／仮定と不足／独立Expected・Observed・NOT RUN／Consumer用途。これは必要条件を観測する**表示用の候補**であり、新CoreのClaimProof種別、機械的に自動受理する証明書、第二Provider完全性機構、正式公開APIではない。#2387が演算構造、#1063がOperator Law、#2506がData Context、#2514が独立Oracle、#2497/#2500が表示写像・編集逆対応を所有する。
 
 **現行SSOTの補足**：[docs/architecture.md](https://github.com/hat47x/tei-platform/blob/main/docs/architecture.md)が定める、SQLを直接書く方式ではSQLが正本、図／モデルから記述する方式ではモデルが正本という**著者モード別の正本**を維持する。QX-16の最初の対象はSQL著者モードのread-only Explainであり、全Query表現を一律「SQLが正本」に変更する提案ではない。
 
-**Evidence**：a/b/c/dの数値は、ローカル隔離Python sqlite3上で独立に再構成した合成SQLの参考観測（R:600、L1:1100、L2:1600、負値版:400、二配送JOIN:2200、EXISTS true／NOT EXISTS false）。e/fと数学的条件の製品適用は紙上の設計候補。GitHub保存ファイルの新規exact実行・TEI Query Evaluator・実Worker・実Provider/DB・Function Context/CUI・SHO/GUI・Lean・Owner意味受理は**NOT RUN／未採用**。
+**Evidence**：a/b/c/d/gの数値・行は、ローカル隔離Python sqlite3上で独立に再構成した合成SQLの参考観測（R:600、L1:1100、L2:1600、負値版:400、二配送JOIN:2200、EXISTS true／NOT EXISTS false、LEFT JOINは右空時(H,NULL)、右D1時(H,D1)）。e/fと数学的条件の製品適用は紙上の設計候補。GitHubの[既存F0合成script](https://github.com/hat47x/tei-platform/blob/work/query-structural-fixture-design-20261030/plan/fixtures/query-workbench-f0/verify_sqlite.py)にQX-16対照ケースを追加したが、**保存後のexact file実行は今回NOT RUN**。TEI Query Evaluator・実Worker・実Provider/DB・Function Context/CUI・SHO/GUI・Lean・Owner意味受理もNOT RUN／未採用。
 
 ## 8. 実装順・担当引継ぎ（提案）
 
