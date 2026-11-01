@@ -390,8 +390,18 @@ func TestSurfaceWorkspaceReference(t *testing.T) {
 	if len(create.Inputs) == 0 || create.Autonomy != "attended" {
 		t.Fatalf("derived create must carry inputs and be attended: %+v", create)
 	}
-	if update, ok := findOperation(surface, "order_entry.update.sales.order"); !ok || update.Concurrency != "expected-state" {
+	update, ok := findOperation(surface, "order_entry.update.sales.order")
+	if !ok || update.Concurrency != "expected-state" {
 		t.Fatalf("reference workspace must derive update with expected-state comparison: %+v", surface.Operations)
+	}
+	// The reference workspace declares no capability with a write effect on
+	// sales.order, so the write operations are derived but have no execution
+	// binding yet. The surface must say so instead of implying that they run.
+	if update.Binding != "" {
+		t.Fatalf("reference workspace must not invent an execution binding: %+v", update)
+	}
+	if create, ok := findOperation(surface, "order_entry.create.sales.order"); !ok || create.Binding != "" {
+		t.Fatalf("create must be derived without a binding: %+v", create)
 	}
 }
 
