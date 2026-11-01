@@ -21,6 +21,8 @@ const (
 	CodeConfirmedSavedImmutable   = "CONFIRMED_SAVED_IMMUTABLE"
 	CodeStaleInput                = "STALE_INPUT"
 	CodeStaleRule                 = "STALE_RULE"
+	CodeStaleSourceTime           = "STALE_SOURCE_TIME"
+	CodeSourceTimeUnspecified     = "SOURCE_TIME_UNSPECIFIED"
 	CodeContextMismatch           = "CONTEXT_MISMATCH"
 	CodeSnapshotIntegrityUnproven = "SNAPSHOT_INTEGRITY_UNPROVEN"
 	CodeInvalidRequest            = "INVALID_REQUEST"
@@ -32,6 +34,10 @@ type Entry struct {
 	InputVersion    string `json:"inputVersion"`
 	ContextClass    string `json:"contextClass"`
 	SourceTimePoint string `json:"sourceTimePoint"`
+	// EvaluatedAt is when the value was computed. It is informational only: a
+	// different evaluation wall-clock time does not make a cache stale, and the
+	// same wall-clock time does not prove the source did not move.
+	EvaluatedAt string `json:"evaluatedAt,omitempty"`
 	// Value is the cached value, never overwriting a confirmed business fact.
 	Value string `json:"value,omitempty"`
 }
@@ -42,6 +48,9 @@ type Context struct {
 	InputVersion    string `json:"inputVersion"`
 	ContextClass    string `json:"contextClass"`
 	SourceTimePoint string `json:"sourceTimePoint"`
+	// EvaluatedAt is the current evaluation time. It is kept apart from the
+	// source time point and is never used as a reuse criterion.
+	EvaluatedAt string `json:"evaluatedAt,omitempty"`
 }
 
 // Input is the whole synthetic request.
@@ -110,6 +119,17 @@ func Reuse(in Input) Report {
 	if in.Entry.ContextClass != in.Current.ContextClass {
 		return Report{Code: CodeContextMismatch, ValueNull: true,
 			Message: "権限・tenant・情報源時点が異なる結果を同一キャッシュとして共有しない。"}
+	}
+	// The source time point is part of the cache identity. An empty current
+	// source time point cannot prove that the source did not move, so it is
+	// unproven rather than reused.
+	if in.Current.SourceTimePoint == "" {
+		return Report{Code: CodeSourceTimeUnspecified, ValueNull: true,
+			Message: "現在の情報源時点が未指定。時点を確かめずに旧値を再利用しない。"}
+	}
+	if in.Entry.SourceTimePoint != in.Current.SourceTimePoint {
+		return Report{Code: CodeStaleSourceTime, ValueNull: true,
+			Message: fmt.Sprintf("情報源時点が %s から %s へ変わった。評価時刻が同じでも旧値を現在値として返さない。", in.Entry.SourceTimePoint, in.Current.SourceTimePoint)}
 	}
 	return Report{Code: CodeCacheReused, Accepted: true, Value: in.Entry.Value,
 		Message: "規則版・入力版・評価文脈・情報源時点が一致した再利用。"}
