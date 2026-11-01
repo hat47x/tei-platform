@@ -137,24 +137,70 @@ def probe(relational):
     }
 
 
+# Explicit fixture mapping, NOT a generated mapping from SQL or a generic operator API.
+QX16_LINKS = (
+    ('aggregate_before_join', 'agg_l', 'line_sum'),
+    ('join_before_aggregate', 'join_rows', 'join_pairs'),
+    ('join_before_aggregate', 'agg_after', 'join_sum'),
+    ('left_join_filter', 'anti_filter', 'left_unmatched'),
+)
+
+
+def compare_qx16(samples, qx16_report):
+    """Compare synthetic IR input dependencies with existing QX-16 hand-labels."""
+    labels = qx16_report.get('operationDependencies', {})
+    comparisons = []
+    for case_id, op_id, claim_id in QX16_LINKS:
+        case = samples.get(case_id)
+        trace = probe(case) if case is not None else None
+        node = next((n for n in trace['nodes'] if n['id'] == op_id), None) if trace else None
+        manual = labels.get(claim_id)
+        actual_sources = [s['source'] for s in node['sourceOccurrences']] if node else []
+        expected_sources = manual.get('inputCollections') if isinstance(manual, dict) else None
+        compatible = (node is not None and node['structureTrace'] == 'candidate'
+                      and isinstance(expected_sources, list)
+                      and set(expected_sources) == set(actual_sources)
+                      and len(expected_sources) == len(actual_sources))
+        comparisons.append({
+            'sample': case_id, 'relNodeId': op_id, 'qx16ManualClaimId': claim_id,
+            'qx16ExpectedSources': expected_sources, 'irTracedSources': actual_sources,
+            'status': 'fixture-structure-agrees' if compatible else 'unresolved-or-mismatch',
+            'claimSemantics': 'not-established',
+        })
+    return {'kind': 'fixture-only-qx16-to-ir-dependency-comparison',
+            'comparison': comparisons,
+            'notProven': [
+                'actual SQL/SQLGlot/DeriveFromAnalysis correspondence',
+                'automatic linkage from OutputField to RelNode',
+                'operator meaning, Provider completeness, Owner acceptance or Effect',
+            ]}
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('fixture', type=Path, help='JSON RelationalIR, or a named samples collection')
     parser.add_argument('--sample', help='select one named sample from a collection')
+    parser.add_argument('--compare-qx16', type=Path, help='compare existing explain_qx16.py JSON output with these synthetic IR samples')
     args = parser.parse_args()
     with args.fixture.open(encoding='utf-8') as f:
         data = json.load(f)
     if 'samples' in data:
         samples = data['samples']
-        if args.sample:
+        if args.compare_qx16:
+            if args.sample:
+                parser.error('--compare-qx16 cannot be used with --sample')
+            with args.compare_qx16.open(encoding='utf-8') as f:
+                old_report = json.load(f)
+            output = compare_qx16(samples, old_report)
+        elif args.sample:
             if args.sample not in samples:
                 parser.error(f'unknown sample: {args.sample}')
             output = probe(samples[args.sample])
         else:
             output = {name: probe(item) for name, item in samples.items()}
     else:
-        if args.sample:
-            parser.error('--sample requires a samples collection')
+        if args.sample or args.compare_qx16:
+            parser.error('--sample/--compare-qx16 requires a samples collection')
         output = probe(data)
     print(json.dumps(output, ensure_ascii=False, indent=2, sort_keys=True))
 
