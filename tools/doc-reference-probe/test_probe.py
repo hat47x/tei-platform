@@ -1,9 +1,12 @@
 import tempfile
 import unittest
+import json
+import subprocess
+import sys
 from datetime import date
 from pathlib import Path
 
-from probe import apply_allowlist, check
+from probe import apply_allowlist, check, compare_allowlists
 
 
 class ProbeTest(unittest.TestCase):
@@ -66,6 +69,39 @@ class ProbeTest(unittest.TestCase):
                          {"baseline_count": 2, "entries": [entry, entry]}):
                 with self.assertRaises(ValueError):
                     apply_allowlist(report, data, date(2026, 11, 1))
+
+    def test_allowlist_comparison_does_not_trust_current_cap(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            entry = {"document": "docs/example.md", "name": "docs/missing", "reason": "tracking", "issue": 2309}
+            baseline = {"baseline_count": 1, "entries": [entry]}
+            current = {"baseline_count": 2, "entries": [entry, dict(entry, name="docs/other")]}
+            report = check(Path(tmp), "docs/example.md", "`ref:docs/missing` `ref:docs/other`")
+            apply_allowlist(report, current, date(2026, 11, 1))
+            compare_allowlists(report, baseline, date(2026, 11, 1))
+            self.assertEqual([i["result"] for i in report["allowlist"]["issues"]],
+                             ["allowlist-increased", "allowlist-limit-increased"])
+            same = check(Path(tmp), "docs/example.md", "`ref:docs/missing`")
+            apply_allowlist(same, baseline, date(2026, 11, 1))
+            compare_allowlists(same, baseline, date(2026, 11, 1))
+            self.assertEqual(same["allowlist"]["issues"], [])
+
+    def test_cli_rejects_increase_even_when_local_limit_is_raised(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "docs").mkdir()
+            (root / "docs" / "example.md").write_text("`ref:docs/missing`", encoding="utf-8")
+            entry = {"document": "docs/example.md", "name": "docs/missing", "reason": "test", "issue": 2309}
+            baseline = root / "base.json"
+            current = root / "current.json"
+            baseline.write_text(json.dumps({"baseline_count": 0, "entries": []}), encoding="utf-8")
+            current.write_text(json.dumps({"baseline_count": 1, "entries": [entry]}), encoding="utf-8")
+            run = subprocess.run([sys.executable, str(Path(__file__).with_name("probe.py")),
+                                  "--root", str(root), "--allowlist", str(current),
+                                  "--baseline-allowlist", str(baseline), "docs/example.md"],
+                                 capture_output=True, text=True, check=False)
+            self.assertEqual(run.returncode, 1, run.stderr)
+            issues = json.loads(run.stdout)["allowlist"]["issues"]
+            self.assertEqual({item["result"] for item in issues}, {"allowlist-increased", "allowlist-limit-increased"})
 
 
 if __name__ == "__main__":

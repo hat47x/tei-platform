@@ -104,12 +104,28 @@ def apply_allowlist(report, data, today):
     report["allowlist"] = {"baseline_count": cap, "entry_count": len(entries), "issues": issues}
 
 
+def compare_allowlists(report, baseline, today):
+    # Validate the baseline with the same schema without inspecting any document.
+    baseline_report = {"document": "", "records": []}
+    apply_allowlist(baseline_report, baseline, today)
+    current = report["allowlist"]
+    current["compared_baseline_entries"] = len(baseline["entries"])
+    current["compared_baseline_limit"] = baseline["baseline_count"]
+    if current["entry_count"] > len(baseline["entries"]):
+        current["issues"].append({"result": "allowlist-increased", "severity": "error"})
+    if current["baseline_count"] > baseline["baseline_count"]:
+        current["issues"].append({"result": "allowlist-limit-increased", "severity": "error"})
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("document", help="repository-relative Markdown path")
     parser.add_argument("--root", type=Path, default=Path.cwd())
     parser.add_argument("--allowlist", type=Path, help="optional exact-entry JSON allowlist")
+    parser.add_argument("--baseline-allowlist", type=Path, help="trusted baseline JSON for increase checks")
     args = parser.parse_args()
+    if args.baseline_allowlist and not args.allowlist:
+        parser.error("--baseline-allowlist requires --allowlist")
     root = args.root.resolve()
     doc = (root / args.document).resolve()
     if not doc.is_relative_to(root) or not doc.is_file() or doc.suffix != ".md":
@@ -118,7 +134,10 @@ def main():
     report = check(root, document, doc.read_text(encoding="utf-8"))
     if args.allowlist:
         try:
-            apply_allowlist(report, json.loads(args.allowlist.read_text(encoding="utf-8")), date.today())
+            today = date.today()
+            apply_allowlist(report, json.loads(args.allowlist.read_text(encoding="utf-8")), today)
+            if args.baseline_allowlist:
+                compare_allowlists(report, json.loads(args.baseline_allowlist.read_text(encoding="utf-8")), today)
         except (ValueError, OSError) as exc:
             parser.error(f"invalid allowlist: {exc}")
     print(json.dumps(report, ensure_ascii=False, indent=2))
