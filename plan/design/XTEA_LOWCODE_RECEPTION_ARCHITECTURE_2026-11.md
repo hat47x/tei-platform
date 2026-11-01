@@ -822,3 +822,20 @@ interaction order_entry.order_maintenance on order_entry.order_record {
 - 足りないのは、遷移・項目の役割・操作・投影の宣言である。
 - PoC #2521で、項目・参照入力・遷移の最小部分が成立することを確認した。役割・操作・投影は未実装である。
 - したがってWP3は、Kindを増やさず、L2の宣言を追加する方向で試す。
+
+### C.5 PoCの現在地
+
+PoC #2521が実装した範囲と、まだ実装していない範囲を分けます。
+
+| 項目 | 状態 |
+| --- | --- |
+| `interaction`ブロックの構文（`item`、`lookup`、`navigate from`） | 実装済み |
+| 項目がDataのattributeか、参照先がreference Patternか、Relation targetのattributeか、型が一致するか | 実装済み |
+| 遷移元が同じDataのbrowse Patternか | 実装済み |
+| 診断コード（`UNKNOWN_APPLICATION_PATTERN_INTERACTION_ITEM`、`APPLICATION_PATTERN_INTERACTION_LOOKUP_TYPE_MISMATCH`など） | 実装済み |
+| crossviewの要求投影への対話参照 | 実装済み |
+| 必須・更新禁止・値域（D3.1） | 未実装 |
+| 操作（Commandの起動）、投影（画面・帳票）、Package、フック | 未実装 |
+| `reference/workspace`への宣言追加 | 未実施（受理経路が必要） |
+
+実装は、`internal/application/model.go`、`internal/syntax/application_pattern.go`、`internal/validation/application_pattern.go`、`internal/crossview/pattern_requirements.go`と、それぞれの試験です。
