@@ -58,6 +58,71 @@ def query_steps(con: sqlite3.Connection) -> dict:
         for name, sql in STEPS.items()
     }
 
+
+def qx16_claim_scope_observations() -> dict:
+    """Synthetic alternate populations, not actual Provider partial-read evidence."""
+    def observe(lines, deliveries, *, allow_negative: bool) -> dict:
+        with sqlite3.connect(":memory:") as con:
+            constraint = "" if allow_negative else " CHECK(amount >= 0)"
+            con.executescript(f"""
+                CREATE TABLE line(id TEXT PRIMARY KEY, order_id TEXT NOT NULL,
+                    amount INTEGER NOT NULL{constraint});
+                CREATE TABLE delivery(id TEXT PRIMARY KEY, order_id TEXT NOT NULL);
+            """)
+            con.executemany("INSERT INTO line VALUES (?, 'H', ?)", lines)
+            con.executemany("INSERT INTO delivery VALUES (?, 'H')", [(d,) for d in deliveries])
+            top = con.execute("SELECT amount FROM line ORDER BY amount DESC LIMIT 1").fetchone()
+            return {
+                "line_count": con.execute("SELECT COUNT(*) FROM line").fetchone()[0],
+                "line_sum": con.execute("SELECT SUM(amount) FROM line").fetchone()[0],
+                "delivery_count": con.execute("SELECT COUNT(*) FROM delivery").fetchone()[0],
+                "join_sum": con.execute(
+                    "SELECT SUM(l.amount) FROM line l JOIN delivery d ON l.order_id=d.order_id"
+                ).fetchone()[0],
+                "exists_500": con.execute(
+                    "SELECT EXISTS(SELECT 1 FROM line WHERE amount >= 500)"
+                ).fetchone()[0],
+                "not_exists_500": con.execute(
+                    "SELECT NOT EXISTS(SELECT 1 FROM line WHERE amount >= 500)"
+                ).fetchone()[0],
+                "top_amount": top[0] if top is not None else None,
+            }
+
+    observations = {
+        "R_A600_only": observe([("A", 600)], ["D1"], allow_negative=False),
+        "L1_A600_B500": observe([("A", 600), ("B", 500)], ["D1", "D2"], allow_negative=False),
+        "L2_A600_B1000": observe([("A", 600), ("B", 1000)], ["D1", "D2"], allow_negative=False),
+        "L1_one_delivery": observe([("A", 600), ("B", 500)], ["D1"], allow_negative=False),
+        "L_signed_model": observe([("A", 600), ("B", -200)], ["D1", "D2"], allow_negative=True),
+        "R_empty": observe([], [], allow_negative=False),
+    }
+    # Hand-authored, independently specified results of the local SQL cases.
+    expected = {
+        "R_A600_only":       {"line_count": 1, "line_sum": 600, "delivery_count": 1,
+                              "join_sum": 600, "exists_500": 1, "not_exists_500": 0, "top_amount": 600},
+        "L1_A600_B500":      {"line_count": 2, "line_sum": 1100, "delivery_count": 2,
+                              "join_sum": 2200, "exists_500": 1, "not_exists_500": 0, "top_amount": 600},
+        "L2_A600_B1000":     {"line_count": 2, "line_sum": 1600, "delivery_count": 2,
+                              "join_sum": 3200, "exists_500": 1, "not_exists_500": 0, "top_amount": 1000},
+        "L1_one_delivery":   {"line_count": 2, "line_sum": 1100, "delivery_count": 1,
+                              "join_sum": 1100, "exists_500": 1, "not_exists_500": 0, "top_amount": 600},
+        "L_signed_model":    {"line_count": 2, "line_sum": 400, "delivery_count": 2,
+                              "join_sum": 800, "exists_500": 1, "not_exists_500": 0, "top_amount": 600},
+        "R_empty":           {"line_count": 0, "line_sum": None, "delivery_count": 0,
+                              "join_sum": None, "exists_500": 0, "not_exists_500": 1, "top_amount": None},
+    }
+    assert observations == expected, (observations, expected)
+    # R is an identical observed input in L1/L2; source completion is unobservable from R.
+    assert observations["R_A600_only"]["line_sum"] == 600
+    assert observations["L1_A600_B500"]["line_sum"] < 1500
+    assert observations["L2_A600_B1000"]["line_sum"] >= 1500
+    # JOIN fan-out is a distinct Query operation, not the business line sum.
+    assert observations["L1_A600_B500"]["join_sum"] != observations["L1_A600_B500"]["line_sum"]
+    # Whether partial R ⊆ L holds for a real Provider, and whether the nonnegative
+    # model is accepted, cannot be established by this isolated SQLite fixture.
+    return observations
+
+
 def main():
     evidence = {"evidenceNature": "synthetic-sqlite-in-memory", "actual": {},
                 "notProven": ["TEI DerivedIR evaluation", "original-query intermediate materialization",
@@ -92,6 +157,7 @@ def main():
         con.execute("UPDATE order_lines SET quantity=NULL WHERE order_id='O02'")
         evidence["actual"]["N1_nullable_model"] = query_steps(con)
         assert evidence["actual"]["N1_nullable_model"] == EXPECTED["N1_nullable_model"]
+    evidence["actual"]["QX16_claim_scopes"] = qx16_claim_scope_observations()
     evidence["passed"] = True
     print(json.dumps(evidence, ensure_ascii=False, indent=2, sort_keys=True))
 
