@@ -45,6 +45,14 @@
 - [MCP](https://github.com/deepseek-ai/deepseek-harness/blob/ce7073d51254c26cd63b22a60835b8f948deb447/docs/subsystems/mcp.md)・[MCP Client](https://github.com/deepseek-ai/deepseek-harness/blob/ce7073d51254c26cd63b22a60835b8f948deb447/packages/mcp/mcp-client/README.md)
 - [Headless](https://github.com/deepseek-ai/deepseek-harness/blob/ce7073d51254c26cd63b22a60835b8f948deb447/packages/bundle/headless/README.md)・[CLI](https://github.com/deepseek-ai/deepseek-harness/blob/ce7073d51254c26cd63b22a60835b8f948deb447/apps/cli/reference/README.md)
 
+### 2.1 モデルの選択とハーネスの選択を分ける
+
+追加の一次資料：[DSH `llm-pi-ai` multi-provider adapter](https://github.com/deepseek-ai/deepseek-harness/blob/ce7073d51254c26cd63b22a60835b8f948deb447/packages/llm/llm-pi-ai/README.md)。このPluginは複数のProvider、OpenAI-compatible Gateway、自己運用Endpointを一つのAdapter面から扱い、Provider名・Model名・Wire API・CredentialsとReplay metadataを区別する。資格情報は`apiKeyEnv`等の**参照**として供給でき、Model SelectionとPlugin構成は別の変更単位となる。
+
+TEIの設計研究では、**(a) DSHというHarnessを使うか、(b) DSH経由でどのModel/Providerを使うか、(c) TEIのどのService Contractを使うか**を独立した選択として測る。同じHarness上で違うModelでも、Tool宣言・Sandbox・Result検査の差を観測できる形にする。
+
+OpenCode Goなど**特定の月額利用枠をDSHから共用できるかは、APIの到達性だけで決めない**。当該サービスの規約・認証方式・有効なEndpoint・モデル名・課金/利用枠を別途照合する。今回、実アカウント接続や利用枠の相互利用は未検証。Claudeのサブエージェント機能が存在することも、Claude Proの契約を第三者のAPIクライアントで使えるという意味ではない。
+
 **根拠の強さ**：公式実装ドキュメントと指定版の文書内容を確認した。DSHのローカルInstall、起動実物、Tool/Plugin APIの試用、TEIとのE2Eは未実施。コード断片への依存は基準コミットの変更を再点検してから用いる。
 
 ## 3. TEI側：既に採用していること、DSHから新たに得られること
