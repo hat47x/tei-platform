@@ -112,6 +112,51 @@ CPU/GPU、ネット接続、GitHub Actionsの利用上限、実DB/Windows/Browse
 
 これらは同時に進められる探索候補であり、**すべての完了を単一縦切りの開始条件にしない**。同じFixture/Contractを参照する関係はGitHub上のリンクで管理する。
 
+## 5A. 新しい横断Pressure：多重facetを持つデータをPlugin境界で安全に再利用する（2026-11-01／未採用）
+
+**入力元**：[#2495 データ構造のメタ概念空間](https://github.com/hat47x/tei-platform/issues/2495)／[Draft PR #2496](https://github.com/hat47x/tei-platform/pull/2496)。#2495は「対象・構成・性質/法則・解釈文脈・利用条件・根拠・実現」の七役割を暫定的に整理し、数学的位相とGraph/集合/物理格納を区別する。**分類・Value Domain・数学的法則のOwnerは#2495**であり、本計画はそれを「別Plugin/Consumer/Hostを跨いでも必要な法則が維持されるか」という追加Pressureに変換する。新しいCore型、推論器、標準Plugin規約の採用はこの節だけでは行わない。
+
+### 基本仮説：Shape一致は「操作の意味を保存する写像」の成立を証明しない
+
+ProviderからConsumerへの変換`g`と、Consumerが要求する操作`f`を考える。両者の接続には少なくとも、
+- 対象・Identity/Grain（どの出来事/実体/集合についての結果か）、
+- 構造・Cardinality/Order/Multiplicity（集合・bag・sequence、集計粒度）、
+- 解釈（温度の**点**か**差分**か、単位/換算元、イベント時刻か到着時刻か）、
+- 操作の法則と前提（演算の定義域、変換の全域性・情報損失、並べ替え・filter・aggregate・limitの順序）、
+- 観測（取得完全性、watermark等の明示的な保証、Snapshot/版、未知の範囲）、
+- 利用時Host条件（現在権限、開示先、実Load依存、失敗/unknown）
+を比較する必要がある。
+
+演算保存を要求するときは、**適用可能な入力集合を限定したうえで**`g(f_source(x))` と `f_target(g(x))` が一致するかを問う。これらを任意の演算で交換可能とはしない。演算の法則が未宣言、変換が部分的、または対象集合の完全性が不明なら、`candidate/unproven`として扱い、自動適合/自動換算へ昇格させない。既存#951のService Contract・Conformanceと#2390のConsumer/Host適合票の**比較条件**として表し、第二のContract SSOTを作らない。
+
+### 既存の温度イベント合成例をPlugin/Target横断の一件に使う
+
+#2495の合成イベント`e1(10:05,20°C)`、`e2(10:10,21°C)`、`e3(10:07,20.5°C)`を同じ版の入力とする。到着順はe1→e2→e3、測定時刻順はe1→e3→e2。対象時間窓を`[10:00,10:09)`とする。**取得した3件が窓の完全集合である証拠はない**。
+
+| Case | 操作上の正しい扱い | 具体的に誤る経路 | Owner |
+| --- | --- | --- | --- |
+| **FCT-1 / 時刻** | 測定時刻窓で選ぶと**既知の**対象はe1,e3。最後の2観測を測定時刻順で選ぶならe3,e2 | arrival順の先頭2件e1,e2を取ってからevent-time sortして「最新2件」と宣言／e3遅延を無視して窓を完結 | #2495/#1706/#1127 |
+| **FCT-2 / 単位・演算** | 温度点→Kは`T_K=T_°C+273.15`、二温度点の差は`ΔT_K=ΔT_°C`。差分と点の意味を維持 | 点20°C+点21°Cの合計を温度点41°Cとして扱う／差分に273.15を加える | #2495/#1705 |
+| **FCT-3 / Identity・集計** | 値が同一でも別Event IDなら両方を保持。Aggregationは対象の完全性が確認できる範囲で主張 | set-of-values化して出来事をdeduplicate／部分窓の平均を完全な期間平均と宣言 | #1706/#1127 |
+| **FCT-4 / 外部Provider** | Consumerの契約と時間/単位/Identity/取得条件に対応したHost Adapterを選び、変換の前提・loss・実装artifactを観測 | JSONが等しい、WITのShapeが一致、旧fixtureがPASSというだけで意味互換・完全性を認定 | #2390/#951/#1861 |
+| **FCT-5 / 表示・文書** | 同じSource/意味版からCLIの構造説明とグラフ・SHOへの表示を派生、完全性不明を明示 | 表示上の3点・KaTeX説明があるだけで測定範囲の完全性/計算法則/Owner受理を保証済みとする | #1803/#997/SHO |
+
+**反例の数値的判別**：20°Cと21°Cという二つの**温度点**を単純加算する操作自体が未定義なら拒否する。仮に数値だけを加算してから単位変換すると`41+273.15=314.15`、各点を変換して加算すると`293.15+294.15=587.30`となり、`sum`はこのアフィン変換を保存しない。この不一致は「温度点の合計」をContractに自動追加する根拠でなく、**操作・量の種類が不適合**であることを説明するための反例である。温度差は相殺によって正しく変換できる。
+
+### 実証対象と判定境界
+
+1. **机上**：#2495の分類・既存#1705/#1706の入力条件を参照し、FCT-1〜5を`meaning / operation / required evidence / Consumer / Target`へ写像。正式なMeta Schema/単位プラグインを先行固定しない。
+2. **headless**：AI向けCUIは同一固定Source/Fixtureの型付きread-only診断として、選択された出来事ID、どの時刻を使ったか、単位と量の種類、取得完全性、不成立操作を説明。#2354のJSON版・失敗形式は既存担当で整備。生成AIの自然文のみを独立Oracleとしない。
+3. **Plugin境界**：#2390の外部Consumer比較票へ、単なる`shape/transport`に加えて`operation law / interpretation / scope / time / completeness`の必要条件を連結。外部ConsumerにTEI CUI/Runtimeを要求せず、必要なContract/Adapter/Artifactだけを利用させる。
+4. **Target別**：表/時系列図/文書表示と実行Library/Serviceは別のProjection。演算と表示の一致、外部Host権限、実DB効果などは適切なOwnerへ個別証拠を戻す。未知のFacetを“非対応”と即断するより、観測不能/未解決を区別。
+5. **拡張**：温度時系列に続いて、通貨/レート時点、組織の代理・時点付き権限、Geometry/CRS、GraphのPath occurrence、確率/Measure、Mutable Collectionを並行Pressureとして追加可能。追加Issueの上限は置かず、意味・試験責務が独立するケースは積極的に分離する。
+
+### この追加Pressureが示す具体的な価値
+
+同じByte/型/Providerが別環境で動くことに加え、**利用者が要求する操作を、どの前提・法則・データ範囲で保存しているかを説明できること**を外部Plugin適合の品質要件候補とする。実装で必要な情報が得られない場合、CLI/Plugin/Hostのどの境界が不足しているかを特定できる。最初の課題は新Core抽象の導入ではなく、既存Contract/Collection/Quantityの証拠を同じCaseへ参照接合すること。
+
+**Evidence区分**：今回のFCT-1〜5は#2495の合成例から構成した追加の設計比較／**NOT RUN**。#2495のDraft #2496も未統合。数学的公理の形式証明、実TEI CUI、外部Provider実行、SHO投影、Owner意味受理はいずれも本計画で新たに成立していない。
+
 ## 6. トークン規模が変わっても測定を失わない
 
 ### 6.1 分けて測る
