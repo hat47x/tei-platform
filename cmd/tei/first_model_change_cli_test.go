@@ -84,6 +84,8 @@ func TestFirstModelChangeCLIEndToEnd(t *testing.T) {
 		if strings.Contains(raw, workspaceRoot) || strings.Contains(raw, "semantic/intake/request.tei") {
 			t.Fatal("Canonical World must not embed the physical authoring source location")
 		}
+		// world stays outside the #2354 result envelope: its stdout is one bare
+		// ir.World JSON, digested byte-for-byte by the critical-path evidence audit.
 		var world map[string]json.RawMessage
 		if err := json.Unmarshal([]byte(raw), &world); err != nil {
 			t.Fatalf("unmarshal world: %v", err)
@@ -94,8 +96,19 @@ func TestFirstModelChangeCLIEndToEnd(t *testing.T) {
 		t.Helper()
 		raw := run(0, "source-index", "-workspace", workspaceRoot,
 			"-subject-kind", "semantic-attribute", "-subject-id", id)
+		var envelope struct {
+			OK     bool            `json:"ok"`
+			Mode   string          `json:"mode"`
+			Result json.RawMessage `json:"result"`
+		}
+		if err := json.Unmarshal([]byte(raw), &envelope); err != nil {
+			t.Fatalf("unmarshal source-index %s envelope: %v", id, err)
+		}
+		if !envelope.OK || envelope.Mode != resultModeSubject {
+			t.Fatalf("unexpected source-index %s envelope: ok=%v mode=%q", id, envelope.OK, envelope.Mode)
+		}
 		var result sourceIndexSubjectView
-		if err := json.Unmarshal([]byte(raw), &result); err != nil {
+		if err := json.Unmarshal(envelope.Result, &result); err != nil {
 			t.Fatalf("unmarshal source-index %s: %v", id, err)
 		}
 		if len(result.References) != 1 || result.References[0].ArtifactPath != source {
@@ -115,6 +128,8 @@ func TestFirstModelChangeCLIEndToEnd(t *testing.T) {
 	}
 	const old = "    attribute status type std.code\n"
 	const replacement = old + "    attribute priority type std.code\n"
+	// Windows checkouts may convert LF to CRLF; the edit is matched on LF text.
+	src = []byte(strings.ReplaceAll(string(src), "\r\n", "\n"))
 	if strings.Count(string(src), old) != 1 {
 		t.Fatal("unexpected first-workspace source; cannot perform the documented one-line edit")
 	}

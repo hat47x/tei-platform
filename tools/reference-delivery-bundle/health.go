@@ -36,7 +36,7 @@ func Health(statePath, command string, timeout time.Duration) (HealthReceipt, er
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	started := time.Now()
-	cmd := exec.CommandContext(ctx, "bash", "-lc", command)
+	cmd := exec.CommandContext(ctx, "bash", "-c", command)
 	cmd.Env = append(os.Environ(),
 		"TEI_CATALOG="+state.Active.Catalog,
 		"TEI_ACTIVE_DIGEST="+state.Active.Digest,

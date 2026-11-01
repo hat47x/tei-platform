@@ -35,7 +35,7 @@ jobs:
           git cat-file -e "$HOST_SOURCE_SHA^{commit}"
           git merge-base --is-ancestor "$HOST_SOURCE_SHA" HEAD
           git diff --exit-code "$HOST_SOURCE_SHA" HEAD -- internal/studiohost cmd/tei-studio reference/workspace
-          test "$(go version | awk '{print $3}')" = go1.26.9
+          test "$(go version | awk '{print $3}')" = go1.26.10
           git fetch --no-tags --depth=50 https://github.com/hat47x/tei-platform.git refs/pull/1833/head
           git cat-file -e "$GENERATOR_SOURCE_SHA^{commit}"
           git archive "$GENERATOR_SOURCE_SHA" tools/reference-studio-static-composition | tar -xf -

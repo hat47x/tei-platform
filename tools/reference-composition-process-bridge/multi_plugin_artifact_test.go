@@ -30,13 +30,16 @@ func TestTwoLogicalPluginsShareOnePhysicalExecutable(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("reference stdio process launcher forbids spaces in executable paths on Windows")
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
-	defer cancel()
+	// #2057: buildは実プロセスの期限と切り離し、独立した長い期限で待つ。
+	buildCtx, cancelBuild := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancelBuild()
 	path := filepath.Join(t.TempDir(), "tei-bundled-plugins")
-	cmd := exec.CommandContext(ctx, "go", "build", "-o", path, "../reference-plugin-bundle")
+	cmd := exec.CommandContext(buildCtx, "go", "build", "-o", path, "../reference-plugin-bundle")
 	if out, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("build bundled executable: %v\n%s", err, out)
 	}
+	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
+	defer cancel()
 	raw, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatal(err)

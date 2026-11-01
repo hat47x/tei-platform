@@ -49,8 +49,9 @@ type Result struct {
 
 	// Private, transient read provenance. Not part of Canonical World or a
 	// serialized Source Index; only Load may populate this snapshot.
-	sourceSnapshotRoot string
-	sourceSnapshot     map[string][]byte
+	sourceSnapshotRoot  string
+	sourceSnapshot      map[string][]byte
+	semanticSourceFiles []string
 
 	// Only populated during Load. One pinned directory handle protects all
 	// domain Source reads from a Workspace root pathname being replaced.
@@ -415,6 +416,7 @@ func loadSemantics(root string, r *Result) error {
 		if err != nil {
 			return sourceErr(path, err)
 		}
+		r.semanticSourceFiles = append(r.semanticSourceFiles, relPath(root, path))
 		idx, ok := byNamespace[ns.ID]
 		if !ok {
 			idx = len(r.World.Semantics)

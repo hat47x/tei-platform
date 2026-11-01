@@ -1,6 +1,6 @@
 # reference-change-packet（#2017）
 
-変更の範囲、危険度、必須の検証、停止条件を一つのJSONへ宣言し、変更pathの範囲確認と検証の実行、証拠の記録を行う参照です。ADR-0035の作業票（task packet）の最小実装で、意味の受理・権限の付与・PRの統合は行いません。
+変更の範囲、危険度、必須の検証、停止条件を一つのJSONへ宣言し、変更pathの範囲確認と検証の実行、証拠の記録を行う参照です。ADR-0035の作業票（task packet）の最小実装で、意味の受理・権限の付与・PRの統合は行いません。ADR-0035は提案中であり、本ツールは提案の最小実装であって、採用済みの判断ではありません。
 
 ```text
 go run ./tools/reference-change-packet/cmd/tei-change-packet validate -packet plan/...
@@ -43,7 +43,7 @@ go run ./tools/reference-change-packet/cmd/tei-change-packet verify   -packet pl
 - 検証コマンドは、作業票に明示されたものだけを実行する。任意のShellを既定で受け付けない。検証コマンドは秘密情報を出力しないよう定義する。
 - 失敗・範囲外・git状態の不読を、成功として扱わない。
 - 作業票、Workspace、Gitの状態を書き換えない。PRの統合、意味の受理、権限の付与を行わない。
-- 実行環境は`bash`を前提とする。Windows nativeでの同等性は未検証。
+- 実行環境は`bash`を前提とする。Windows nativeでの同等性は未検証。検証コマンドは`bash -c`で起動し、loginシェル（`~/.profile`等）は読まない。コマンドの解決は親プロセスの環境（`PATH`を含む）に依存する。
 
 ## 証拠
 

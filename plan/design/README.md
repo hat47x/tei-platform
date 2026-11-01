@@ -63,6 +63,7 @@
 | [`AI_NATIVE_PLUGIN_COMPOSITION_DESIGN_2026-10.md`](AI_NATIVE_PLUGIN_COMPOSITION_DESIGN_2026-10.md) | 標準機能を含む製品構成を交換可能にし、生成AIの設計・実装・検証の足場にもする最小プラグイン規約の設計候補（[GitHub #1223](https://github.com/hat47x/tei-platform/issues/1223)ほか） |
 | [`BUSINESS_PROCEDURE_DESIGN_QUALITY_MODEL_2026-09.md`](BUSINESS_PROCEDURE_DESIGN_QUALITY_MODEL_2026-09.md) | 業務手順の設計品質を、業務意味を根拠を失わずに説明・検証・修正できる程度で評価するモデル（RQ-025・RQ-026） |
 | [`CLI_C2_DISCLOSURE_BOUNDARY_DESIGN.md`](CLI_C2_DISCLOSURE_BOUNDARY_DESIGN.md) | CLIのinspect・traceで、開示してよい内容を既存のAuthorization Capabilityで判定する境界の設計候補（[GitHub #1178](https://github.com/hat47x/tei-platform/issues/1178)） |
+| [`CLI_JSON_OUTPUT_CONTRACT_2026-10.md`](CLI_JSON_OUTPUT_CONTRACT_2026-10.md) | `tei commands`が広告する読取りコマンドのJSON出力の現状一覧、`tei.cli.*/v0`の互換変更の区別の規則案、schemaVersion追加と失敗時形式の決定案（[GitHub #2354](https://github.com/hat47x/tei-platform/issues/2354)、提案中） |
 | [`CLI_FIRST_INTERFACE_DESIGN.md`](CLI_FIRST_INTERFACE_DESIGN.md) | CLIを主入口とし、画面・API・CLIで共通にする意味（対象ID・版・検証結果・受理の成否など）を分けるインターフェース設計の初期案 |
 | [`CORDIS_CONTINUOUS_PLUGIN_UPDATE_EVALUATION_2026-10.md`](CORDIS_CONTINUOUS_PLUGIN_UPDATE_EVALUATION_2026-10.md) | Cordis由来の合成機構とTEIプラグインの継続更新の比較検討記録（[ADR-0032](../adr/0032-composition-kernel-replacement.md)で前提が置き換えられた） |
 | [`CORE_SUBPROJECT_ISOLATION_PROBE_2026-10.md`](CORE_SUBPROJECT_ISOLATION_PROBE_2026-10.md) | 合成基盤を独立して構築できるかを確かめる局所的な検証手順（[ADR-0033](../adr/0033-core-and-plugin-subprojects.md)に関連） |

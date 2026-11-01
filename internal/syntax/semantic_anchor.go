@@ -286,6 +286,13 @@ func skipSemanticCapabilityBody(lx *Lexer) error {
 			if _, err := expectLexerIdent(lx, "semantic capability outcome payload type"); err != nil {
 				return err
 			}
+		case "effect":
+			if _, err := expectLexerIdent(lx, "semantic capability effect kind"); err != nil {
+				return err
+			}
+			if _, err := expectLexerIdent(lx, "semantic capability effect data type"); err != nil {
+				return err
+			}
 		default:
 			return fmt.Errorf("unexpected semantic capability member %q at %d:%d", t.Text, t.Start.Line, t.Start.Column)
 		}

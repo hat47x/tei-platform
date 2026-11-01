@@ -20,9 +20,10 @@ type Deployment struct {
 }
 
 type State struct {
-	Schema   string      `json:"schema"`
-	Active   *Deployment `json:"active"`
-	Previous *Deployment `json:"previous,omitempty"`
+	Schema   string       `json:"schema"`
+	Active   *Deployment  `json:"active"`
+	Previous *Deployment  `json:"previous,omitempty"`
+	History  []Deployment `json:"history,omitempty"`
 }
 
 func catalogEntriesDigest(catalog deliveryprofile.Catalog) string {
@@ -133,6 +134,8 @@ func Activate(catalogDir, statePath string) (State, error) {
 	}
 	if previous, err := readState(statePath); err == nil {
 		next.Previous = previous.Active
+		next.History = append([]Deployment(nil), previous.History...)
+		next.History = append(next.History, *previous.Active)
 	} else if !os.IsNotExist(err) {
 		return State{}, err
 	}
@@ -142,20 +145,30 @@ func Activate(catalogDir, statePath string) (State, error) {
 	return next, nil
 }
 
-// Rollback swaps active and previous after verifying the previous catalog. It
-// does not start or stop a service.
+// Rollback restores the newest history entry after verifying its catalog. If
+// history is empty, it falls back to the previous deployment for compatibility
+// with state written before history existed. It does not start or stop a
+// service.
 func Rollback(statePath string) (State, error) {
 	state, err := readState(statePath)
 	if err != nil {
 		return State{}, err
 	}
-	if state.Previous == nil {
+	var target Deployment
+	if len(state.History) > 0 {
+		target = state.History[len(state.History)-1]
+	} else if state.Previous != nil {
+		target = *state.Previous
+	} else {
 		return State{}, fmt.Errorf("state has no previous deployment")
 	}
-	if err := verifyDeployment(*state.Previous); err != nil {
+	if err := verifyDeployment(target); err != nil {
 		return State{}, fmt.Errorf("previous deployment is not usable: %w", err)
 	}
-	next := State{Schema: StateSchema, Active: state.Previous, Previous: state.Active}
+	next := State{Schema: StateSchema, Active: &target, Previous: state.Active}
+	if len(state.History) > 0 {
+		next.History = append([]Deployment(nil), state.History[:len(state.History)-1]...)
+	}
 	if err := writeState(statePath, next); err != nil {
 		return State{}, err
 	}

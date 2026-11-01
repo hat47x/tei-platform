@@ -43,6 +43,7 @@ var selectedReadOnlyFlagAllowlist = map[string][]string{
 		"workspace", "subject-kind", "subject-id", "disclose",
 		"expected-data-design-fingerprint", "expected-disclosure-fingerprint",
 	},
+	"version":             {"json"},
 	"validate":            {"workspace", "world", "json"},
 	"world":               {"workspace", "world"},
 	"requirements":        {"workspace", "world"},

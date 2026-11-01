@@ -325,7 +325,7 @@ func runCommand(ctx context.Context, repo string, command Command) Step {
 	}
 	runCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
-	cmd := exec.CommandContext(runCtx, "bash", "-lc", command.Run)
+	cmd := exec.CommandContext(runCtx, "bash", "-c", command.Run)
 	cmd.Dir = repo
 	out, err := cmd.CombinedOutput()
 	step.Output, step.Truncated = truncate(string(out))
