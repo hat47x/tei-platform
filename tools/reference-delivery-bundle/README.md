@@ -1,4 +1,4 @@
-# reference-delivery-bundle（#2020）
+﻿# reference-delivery-bundle（#2020）
 
 解決済みのDelivery Profileとplugin descriptorを1つのzipへまとめるReferenceです。SIerが顧客先へplugin構成を持ち運ぶ、SaaSの配備単位を固定する、といった用途を想定します。配布・インストールは行いません。bundleの完全性はdetached signatureで確認できます。
 
@@ -76,7 +76,7 @@ go run ./tools/reference-delivery-bundle/cmd/tei-delivery-bundle \
 
 ## 配備状態とロールバック
 
-`activate`は検証済みcatalogをactiveとしてstate fileへ記録し、直前のactiveをpreviousとして保持します。
+`activate`は検証済みcatalogをactiveとしてstate fileへ記録し、直前のactiveをpreviousとして保持します。以前のactiveはhistoryへ積みます。
 
 ```text
 go run ./tools/reference-delivery-bundle/cmd/tei-delivery-bundle \
@@ -90,10 +90,11 @@ go run ./tools/reference-delivery-bundle/cmd/tei-delivery-bundle \
 ```
 
 - `activate`はcatalogを読み直し、空・不正・digest不一致を拒否する。
-- `rollback`はprevious catalogを検証してからactiveとpreviousを入れ替える。previousがない場合は拒否する。
+- `rollback`はhistoryの最新catalogを検証してactiveへ戻す。historyが空の場合は、history導入前のstateと互換のためにpreviousを使う。
+- `rollback`を繰り返すと、historyを新しい順に1段階ずつ戻る。
 - `status`はactiveとpreviousのcatalogが現在も検証できるかを確認する。
 - stateはtemp fileへの書き込みとRenameで更新する。
-- ロールバックは1段階の入れ替えであり、サービスプロセスの起動・停止は行わない。
+- ロールバックはstateの入れ替えであり、サービスプロセスの起動・停止は行わない。
 
 ## ヘルスチェック
 
@@ -156,6 +157,6 @@ go run ./tools/reference-delivery-bundle/cmd/tei-delivery-bundle \
 ## 未実装
 
 - 鍵管理、信頼の起点、署名者の認証。
-- 配布、継続的なヘルス監視・自動再起動ループ、アプリケーションのshutdown完了検証、多段階ロールバック、トランザクション。
+- 配布、継続的なヘルス監視・自動再起動ループ、アプリケーションのshutdown完了検証、トランザクション。
 - 部分bundle、差分更新。
 - 実SaaS・実顧客先での配備確認。
