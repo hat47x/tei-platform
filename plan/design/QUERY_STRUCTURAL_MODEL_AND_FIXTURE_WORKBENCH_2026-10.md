@@ -375,6 +375,24 @@ M0→M1の**説明用入力固定（新Core/Wire schemaの先行採用なし）*
 **未確認・Owner未決**：手動NODESが実SQLから正しく導出されること、Provider read-set包含/完全性、別Dialectでの一貫性、Business ID/単位・非負性/Action完了の意味受理、実Hostの開示・認可。局所ReferenceのPASSはSource Acceptance、実行許可、正式公開型・ADR採用、PR統合を意味しない。
 
 
+### 7.8 次段M0：手書き依存グラフと既存RelationalIRの対応範囲を先に固定（2026-11-01静的照合・未実行）
+
+main `fd59b6b1bac340b67244f9441a492c460921671a` の`internal/query/relational.go`、`derived.go`、`analyzer/model.go`を静的照合。現行`RelNode`は`ID/Kind/ScopeID/Inputs/Source/SourceKind/Binding/Alias/Resolution/JoinKind/Expressions`を保持する。`OutputField.Inputs`は元ColumnOccurrenceの参照を保持できる。一方、現時点のwireには**Claim種別・Operator数学法則・集合の取得完全性・演算ごとの結果Grain・SQL式の型付き構造を全て照合できる項目は揃っていない**。とくに`derived.go`のField Lineageは出力Columnの入力列であり、JOINの行数・WHEREの行排除・存在確認の必要母集団を全て表すものではない。
+
+| 固定QX-16 Node／演算 | 現IRで候補として読めるもの | まだ確定不能なもの／次の反例 |
+| --- | --- | --- |
+| Source occurrence（明細・配送） | `RelSource`、`ScopeID`、`Source/Binding/Alias` | #2454のScope/曖昧性/unknown Sourceが未統合なら`Resolution`の意味拡大を停止。実Provider Result Sliceの全件性は#2506 |
+| 明細集約 `line_sum` | `RelAggregate`、`RelNode.Inputs`、文字列`Expressions`、`OutputField.Inputs` | Group key、SUM対象、NULL算術、値域非負性、単位・通貨が型付きで保証されるかは未検証。手書き`group:H`を正本へ転記しない |
+| 結合出現 `join_pairs` | `RelJoin/JoinKind/Inputs`をQuery内の演算順へ追える可能性 | join pair粒度と元Entityを別とする受入、cardinality、キーの一意性、NULL条件、二集合の取得範囲 |
+| 結合後集約 `join_sum` | `RelAggregate`の前段InputがJOIN Nodeであるという演算DAG | `group:H`の集約結果と`join-pair:H`の出現行のIdentity非同値、増幅による業務総額の誤用 |
+| `line_sum_gte_500`／`exists_500`／`not_exists_500` | `RelFilter`と文字列`Expressions`、scope source参照を候補提示 | 比較条件/EXISTS use-kind/相関scopeの厳密な式構造は現wireで専用表現不在。単調・非単調の法則は#1063、`unsupported`の維持 |
+| `left_unmatched` | `RelJoin`のJoinKind候補＋`RelFilter`の式文字列 | RIGHT側の必要取得完全性、NULL由来、LEFT JOINの仮未一致行消失。任意SQLの式文字列から自動不在確定を行わない |
+
+**最初の反証可能なM0比較**：手書きReferenceの7 Nodeのうち、`RelSource/RelJoin/RelAggregate/RelFilter`に対応できる構造と、`unsupported`にする部分を`DerivedIR`の合成`analyzer.Result`で観測する。ノードは「正しく導出」「構造候補のみ」「未表現」「誤ったFull」の四区分で記録し、Query入力版(QX-14)とScope解決(#2454)の証拠欄を別にする。出力は**read-only JSONの比較票**であり、ProviderのSQL実行や業務Meaning/権限を先に要求しない。一般SQL構文の解釈は既存SQL worker/DSL Owner(#988)へ委ねる。
+
+**停止条件**：`RelNode.Kind`や`Expressions`を文字列として読むだけでPredicate/EXISTS/Window/Recursive・Operation Lawの意味が正しいと宣言しない。初回のM0で不足する情報を実測した後、既存`analyzer.Result`の対象限定拡張かConsumerの別説明候補かを比較する。新Core kind、SQL書換え、第二のEvaluator・Provider完全性証明器、可視化が動いただけのMeaning受理を導入しない。
+
+
 ## 8. 実装順・担当引継ぎ（提案）
 
 | 段階 | 所有 | 実施 | 完了の根拠 |
