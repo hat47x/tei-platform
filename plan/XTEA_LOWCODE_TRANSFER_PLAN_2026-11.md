@@ -49,6 +49,21 @@ X-TEAの4アプリケーション（固定したcommit）
 
 ## 4. 作業パッケージ
 
+### 4.1 既存Issueとの関係（2026-11-01時点）
+
+| WP | 既存Issue（状態） | 既存が扱う範囲 | この計画で足りないこと |
+| --- | --- | --- | --- |
+| WP3 | [#1127](https://github.com/hat47x/tei-platform/issues/1127)、[#1124](https://github.com/hat47x/tei-platform/issues/1124)、[#997](https://github.com/hat47x/tei-platform/issues/997)（すべてopen） | 標準CRUD、三視点モデラー、UI構成キット | 対話契約の宣言と、Patternの組合せとしてのパッケージ |
+| WP4 | [#1063](https://github.com/hat47x/tei-platform/issues/1063)、[#1129](https://github.com/hat47x/tei-platform/issues/1129)（open） | DSL、副作用規則 | フックの宣言・位相・効果の契約 |
+| WP5 | [#1129](https://github.com/hat47x/tei-platform/issues/1129)、[#1174](https://github.com/hat47x/tei-platform/issues/1174)、[#2147](https://github.com/hat47x/tei-platform/issues/2147)（open） | 副作用、Commitフェンス、段階移行 | `delete`効果、結果の分類、読み取り専用の三段拒否 |
+| WP6 | [#1130](https://github.com/hat47x/tei-platform/issues/1130)、[#1803](https://github.com/hat47x/tei-platform/issues/1803)（open） | バッチ・帳票、派生出力 | 出力投影の契約とテンプレートPlugin |
+| WP7 | [#2016](https://github.com/hat47x/tei-platform/issues/2016)、[#2076](https://github.com/hat47x/tei-platform/issues/2076)（open） | 生成器の選抜・失効 | Patternパッケージの契約と版の束縛 |
+| WP8 | なし | — | 暦・会計期間の意味と提供元（新規Issue候補） |
+| WP9 | [#1802](https://github.com/hat47x/tei-platform/issues/1802)、[#1124](https://github.com/hat47x/tei-platform/issues/1124)、[#1125](https://github.com/hat47x/tei-platform/issues/1125)（open） | 機能移植の仕分け、三視点編集、業務DFD | 受理済み意味に対する診断の一覧と負例 |
+| WP10 | なし | — | 文書の索引・引継ぎ（このブランチとPR） |
+
+[#1804](https://github.com/hat47x/tei-platform/issues/1804)、[#1805](https://github.com/hat47x/tei-platform/issues/1805)、[#1806](https://github.com/hat47x/tei-platform/issues/1806)、[#1807](https://github.com/hat47x/tei-platform/issues/1807)、[#1808](https://github.com/hat47x/tei-platform/issues/1808)、[#1637](https://github.com/hat47x/tei-platform/issues/1637)、[#1973](https://github.com/hat47x/tei-platform/issues/1973)は完了済みです。完了した成果は前提として再利用しますが、新しい作業の担当にはしません。
+
 各パッケージは、目的、内容、成果物、受入、依存、既存の担当、停止条件を持ちます。危険度はADR-0035の暫定運用に合わせます。
 
 ### WP1 知識目録の固定と点検

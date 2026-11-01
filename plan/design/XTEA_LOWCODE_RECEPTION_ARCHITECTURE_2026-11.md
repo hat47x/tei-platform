@@ -87,7 +87,7 @@ X-TEAのスクリプトAPIは、SQL・確定・機能呼出しを同じ面に置
 | D データアクセスと取引 | CORE / PLG / RQ | 能力の効果、競合の結果型、読み取り専用の境界 | [#1129](https://github.com/hat47x/tei-platform/issues/1129)、[#1174](https://github.com/hat47x/tei-platform/issues/1174) |
 | S 標準業務ライブラリ | CORE / PLG | 暦・税・通貨・採番・認証認可の宣言と提供元 | 新規（D6） |
 | O 派生出力 | GEN / STU | 設計書・DDL・行列・差分の生成とmanifest | [#1803](https://github.com/hat47x/tei-platform/issues/1803)、[#1806](https://github.com/hat47x/tei-platform/issues/1806) |
-| A 作者支援 | STU | 診断、検索・置換、取込みの受理境界 | [#1804](https://github.com/hat47x/tei-platform/issues/1804)、[#1805](https://github.com/hat47x/tei-platform/issues/1805)、[#1807](https://github.com/hat47x/tei-platform/issues/1807)、[#1808](https://github.com/hat47x/tei-platform/issues/1808) |
+| A 作者支援 | STU | 診断、検索・置換、取込みの受理境界 | 完了: [#1804](https://github.com/hat47x/tei-platform/issues/1804)、[#1805](https://github.com/hat47x/tei-platform/issues/1805)、[#1807](https://github.com/hat47x/tei-platform/issues/1807)、[#1808](https://github.com/hat47x/tei-platform/issues/1808)。進行中: [#1802](https://github.com/hat47x/tei-platform/issues/1802) |
 | B 業務モデリング | CORE / STU | 業務手順・作業・契機の宣言、三視点の診断 | [#1125](https://github.com/hat47x/tei-platform/issues/1125)、[#1126](https://github.com/hat47x/tei-platform/issues/1126) |
 | P 配備・運用 | PLG / RQ | 実行先Profile、遠隔実行の境界、観測 | [#2019](https://github.com/hat47x/tei-platform/issues/2019)、[#2020](https://github.com/hat47x/tei-platform/issues/2020) |
 
