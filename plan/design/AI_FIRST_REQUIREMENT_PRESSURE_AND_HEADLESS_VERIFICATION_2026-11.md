@@ -122,6 +122,19 @@ E1とE2は最小の共通面が成立した時点から重ねて実施できる�
 
 **状態**：公式Sourceと設計比較まで。実DSH起動、OS通信/権限検証、DGA-01〜06、実AI並列開発の性能/費用比較、Owner正式受理はすべてNOT RUN。
 
+## 5.3 Experimental Agent Teamsと用途相対Contextによる追加Pressure（2026-11-02、候補）
+
+[DSH Agent Teams＋専門家連携・Construction Contextの横断調査](../research/DSH_AGENT_TEAMS_CONTEXT_EXPERT_HANDOFF_2026-11-02.md)から、P1〜P10を補完する**候補P11〜P14**を追加する。実行試験や採用済みCore enumではない。
+
+| ID | 合成Pressure（要求） | 反証すべき不成立・既存Owner |
+| --- | --- | --- |
+| **P11 Team並列** | 同一WorkstreamにTeammate複数＋DAG/CAS、異WorkstreamをSession×worktreeへ分離し、Source/Fixture/Contractを追跡 | DSH Teamの`writeScopes`は警告にすぎず実FS更新を保護しない。Task完了≠検証済み成果。[#2493](https://github.com/hat47x/tei-platform/issues/2493)/[#2017](https://github.com/hat47x/tei-platform/issues/2017)/[TAI #234](https://github.com/hat47x/tai-pleroma/issues/234) |
+| **P12 Context投影** | 同一TEI意味からLead・fresh/fork teammate・ACP・SEI・SHO・CLIへ、目的ごとに必要情報だけを渡す | Source/Claimの粒度・時点・許可外項目・投影漏れ、TeamのRoster/Task全文Broadcast、非公開原文のSession/HTTP送信。[#2516](https://github.com/hat47x/tei-platform/issues/2516)/[#2515](https://github.com/hat47x/tei-platform/issues/2515) |
+| **P13 専門知識協調** | SEIが法域・専門性・時点・必要根拠・Unknownを識別し、外部DSHがMCP/ACP/人間専門家へ照会、意見をCandidateとして統合 | Toolが返した結果・専門Agentの自己申告・人間の見解をOwner意思・正規権限・現在の業務意味へ昇格。SEI #660/#677、TEI #2516、TAI #168 |
+| **P14 進捗・実効結果** | Goal/Schedule/Team Task/Tool/CI/実Provider結果を分離し、再起動と再試行後も同じSourceに戻る | Message受付だけで実処理成功、Goal完了だけで意味受理、停止/ACK-lossで二重副作用。TAI #234、TEI #1174/#1119 |
+
+**実証の差分**：[TEI #2509](https://github.com/hat47x/tei-platform/issues/2509)を`CLI単体 / DSH標準Headless / DSH sdk-minimal`の対照入口として維持。Agent Teamsは**任意の別レーン**とし、実験的Pluginが有効でない条件と有効条件を実Profileごとに確認する。合成・非機密Fixtureを用いて`T-01〜T-12`を既存Ownerへ配分し、並列度と独立検証成果の相関を測る。既存契約・受理境界を変えるための結論にはOwnerの判断を要する。
+
 ## 6. 採否と現在の限界
 
 - **Owner方針として確認済み**：外部要件の十分な机上評価を基盤実装に先行させること、CUIと標準Pluginを並行開発すること、ヘッドレス実証を基準にGUIを後続実装すること。
