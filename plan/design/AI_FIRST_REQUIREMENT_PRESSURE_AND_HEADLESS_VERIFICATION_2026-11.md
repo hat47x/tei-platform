@@ -91,6 +91,25 @@ E1とE2は最小の共通面が成立した時点から重ねて実施できる�
 
 最初の製品品質目標は、**同じ品質条件を満たす課題について、AIがTEIの実装方法を調べ、接続し、検証する負担を通常コーディング以下に近づけること**。実測値が得られるまでは達成と称さない。Token量のみの削減が品質・再現性を犠牲にする場合は改善とは判定しない。
 
+## 5.1 DeepSeek HarnessでのAI-first入口とPlugin合成の追加圧力（2026-11-01、提案）
+
+[DSH公式Sourceを固定した横断調査](../research/DEEPSEEK_HARNESS_TEI_CROSS_PRODUCT_ADOPTION_2026-11-01.md)を、AI向けCUI/Plugin/Source-Evidence/Hostの複合要件として追加する。既存[AI-native Plugin Composition](AI_NATIVE_PLUGIN_COMPOSITION_DESIGN_2026-10.md) §8・§13と[ADR-0032](../adr/0032-composition-kernel-replacement.md)で採用済みの**Cordis型Kernelの方向性は継承**し、今後の実証はDSHを「外側のHarness」、TEIを「意味と契約を持つ能力提供者」として比較する。
+
+最初は**DSHの既存headless Profile×TEIのread-only CLI一件**を合成Fixtureで実行できるかを評価する。DSH Session LogのEventとJSON Projection、TEI CLIのtyped Result/失敗分類、固定したモデルSource、Contract/Conformance、実Artifactの資格、Ownerの意味受理を**別の観測列**として扱う。
+
+次の差分圧力をP1〜P10へ重ねる（新しいGateやCore enumを設けない）。
+
+| 論点 | 増やす比較条件 | 既存の責務 |
+| --- | --- | --- |
+| AIが選択できる能力 | Profile/Bundle/Config差分による公開Tool/Contract/Providerの変化。失われた設定と必要なScopeを検出 | #951/#1223/#2492 |
+| CLIとMCPの同値性 | DSH標準MCP ClientからTEIの任意read-only Adapterを呼ぶ場合、CLIと同じMeaning/Failure/Unknownを返せるか | #1155/#1158/#2354/#2390 |
+| 実行Contextの確かさ | Agent/Sessionに登録されたToolが、実Hostの権限と最新のGeneration/Scopeに一致するか | #1121/#1174/#1223 |
+| 開示と監査 | 「モデルに見えた情報がログへ残る」方式と、企業内Rawを非開示とするOS/Host境界。最小Projectionで作業できるか | TAI #232、#2391 |
+| 副作用の分離 | DSH Tool result/Cancel/RetryがTEI Commit/Provider Result・Owner受理へ昇格しないこと | #1129/#1174/#1119 |
+| 専門家・別Harness接続 | SEIの専門性不足の認知をDSH側のSubagent/MCP/人間照会へ渡し、限定された根拠とUnknownを返す | SEI #381/#677、TAI #168 |
+
+既存Harnessで足りる場合はTEI専用Agent Loopを増やさず、DSH実験で**機能上の増分と負担**を測る。上記は研究・実証計画候補で、DSH/TEI E2Eの実測、標準MCP必須化、正式契約採用を意味しない。
+
 ## 6. 採否と現在の限界
 
 - **Owner方針として確認済み**：外部要件の十分な机上評価を基盤実装に先行させること、CUIと標準Pluginを並行開発すること、ヘッドレス実証を基準にGUIを後続実装すること。
