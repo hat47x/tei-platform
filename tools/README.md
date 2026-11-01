@@ -12,6 +12,7 @@
 | --- | --- |
 | [`internal/`](internal/) | 複数のツールから使う共通処理 |
 | [`repository-architecture-check/`](repository-architecture-check/) | パッケージ構成と依存境界の検査 |
+| [`check-public-boundary/`](check-public-boundary/) | 公開文書へ非公開資料の名前・所在を書かない規則（documentation-quality §11.1）の禁止語を、追跡対象ファイルへ機械検査する（#2436） |
 | [`repository-dependency-report/`](repository-dependency-report/) | Goの直接依存関係の一覧作成 |
 | [`repository-plan-check/`](repository-plan-check/) | ADR・Issueの番号や要求と検証表の対応確認、ADR索引とADRファイルの一致・状態の確認（#2343） |
 | [`repository-node-tests/`](repository-node-tests/) | どのworkflowからも実行されなかったNode.js試験5ファイルをgo testから実行する（#2346） |

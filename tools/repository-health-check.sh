@@ -8,7 +8,7 @@ set -uo pipefail
 # 一律の統合条件とはしない（AGENTS.mdとCONTRIBUTING.mdを参照）。
 #
 # Usage:
-#   tools/repository-health-check.sh          # gofmt, go vet, go test, workspace validate
+#   tools/repository-health-check.sh          # gofmt, go vet, go test, workspace validate, public boundary
 #   tools/repository-health-check.sh --fast   # skip go test
 #   tools/repository-health-check.sh --fix    # gofmt -w on drifted files first, then check
 #   (--fast and --fix can be combined)
@@ -81,6 +81,17 @@ workspace_valid() {
   fi
 }
 
+public_boundary_clean() {
+  local py
+  if command -v python3 >/dev/null 2>&1; then
+    py=python3
+  else
+    py=python
+  fi
+  "$py" tools/check-public-boundary/check_test.py || return 1
+  "$py" tools/check-public-boundary/check.py
+}
+
 if [[ "$fix" == true ]]; then
   fixed="$(gofmt -l . 2>/dev/null)"
   if [[ -n "$fixed" ]]; then
@@ -95,6 +106,7 @@ if [[ "$fast" == false ]]; then
   run_step "go test -count=1 -timeout 60m ./..." go test -count=1 -timeout 60m ./...
 fi
 run_step "tei validate -workspace reference/workspace" workspace_valid
+run_step "tools/check-public-boundary reports no violation" public_boundary_clean
 
 echo >&2
 for name in "${passed[@]}"; do
