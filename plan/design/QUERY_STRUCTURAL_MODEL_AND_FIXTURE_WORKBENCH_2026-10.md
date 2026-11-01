@@ -355,7 +355,23 @@ M0→M1の**説明用入力固定（新Core/Wire schemaの先行採用なし）*
 
 **現行SSOTの補足**：[docs/architecture.md](https://github.com/hat47x/tei-platform/blob/main/docs/architecture.md)が定める、SQLを直接書く方式ではSQLが正本、図／モデルから記述する方式ではモデルが正本という**著者モード別の正本**を維持する。QX-16の最初の対象はSQL著者モードのread-only Explainであり、全Query表現を一律「SQLが正本」に変更する提案ではない。
 
-**Evidence**：a/b/c/d/gの数値・行は、ローカル隔離Python sqlite3上で独立に再構成した合成SQLの参考観測（R:600、L1:1100、L2:1600、負値版:400、二配送JOIN:2200、EXISTS true／NOT EXISTS false、LEFT JOINは右空時(H,NULL)、右D1時(H,D1)）。e/fと数学的条件の製品適用は紙上の設計候補。GitHubの[既存F0合成script](https://github.com/hat47x/tei-platform/blob/work/query-structural-fixture-design-20261030/plan/fixtures/query-workbench-f0/verify_sqlite.py)にQX-16対照ケースを追加したが、**保存後のexact file実行は今回NOT RUN**。TEI Query Evaluator・実Worker・実Provider/DB・Function Context/CUI・SHO/GUI・Lean・Owner意味受理もNOT RUN／未採用。
+**Evidence**：a/b/c/d/gの数値・行は、ローカル隔離Python sqlite3上で独立に再構成した合成SQLの参考観測（R:600、L1:1100、L2:1600、負値版:400、二配送JOIN:2200、EXISTS true／NOT EXISTS false、LEFT JOINは右空時(H,NULL)、右D1時(H,D1)）。e/fと数学的条件の製品適用は紙上の設計候補。GitHubの[既存F0合成script](https://github.com/hat47x/tei-platform/blob/work/query-structural-fixture-design-20261030/plan/fixtures/query-workbench-f0/verify_sqlite.py)のexact blob `b5939379f77f2b343be31e3464678328a9780a82`は後続の2026-11-01に実行され、上記QX-16比較を含め期待値照合PASS。追加のread-only Referenceおよび回帰テストは次節7.7で別々に記録。TEI Query Evaluator・実Worker・実Provider/DB・Function Context/CUI・SHO/GUI・Lean・Owner意味受理はNOT RUN／未採用。
+
+### 7.7 QX-16の最小read-only Reference：exact実測と次の境界（2026-11-01）
+
+**完成した局所的成果**：同じDraft #2388の[合成fixtureディレクトリ](https://github.com/hat47x/tei-platform/tree/work/query-structural-fixture-design-20261030/plan/fixtures/query-workbench-f0)へ、元の`verify_sqlite.py`に加えて`explain_qx16.py`と`test_explain_qx16.py`を保存。新しいRuntime/SQL worker/DSL evaluator/Core schemaを作らず、合成fixture専用の手動`NODES`と`CASES`から**演算依存とClaim条件の読み取り専用JSON**を投影する。
+
+- **実測A**：GitHubとGit blobが一致する`verify_sqlite.py` (`b5939379f77f2b343be31e3464678328a9780a82`)をPython 3.13.5/SQLite 3.46.1の隔離ローカル実行でPASS。旧F0/N1a/N1b/N2/N3に加え、QX-16の8つの合成SQLite比較ケースで、期待値と一致することを確認。
+- **実測B**：`explain_qx16.py`のexact blob (`2791fa1f4903de77fcf7c12a362f61004bd45c00`)を実行してread-only JSONが生成されることを確認。**6つの明示Operator/Claim依存ノード、10シナリオ**を出力する。
+- **実測C**：`test_explain_qx16.py`のexact blob (`857328bf22d01447c2fd9757d5b6a3fadc189930`)で`python3 -m unittest -v test_explain_qx16.py` **10件PASS**。同じ観測R=600と異なる全集合、非負条件付き下界、負値モデル、Lineだけcomplete/Delivery partial、JOIN fan-out、EXISTS/NOT EXISTS、空SUM=NULL、右未一致の仮行消失、未受理状態、全Claimと依存ノードの対応を検査。
+- 実行コマンド、blob SHA、説明ラベル、禁止する昇格を[README](https://github.com/hat47x/tei-platform/blob/work/query-structural-fixture-design-20261030/plan/fixtures/query-workbench-f0/README.md)へ記録。**このブランチの該当3ファイルだけの局所Python/SQLite実測**であり、TEI mainのGo/worker/Provider/Context/SHOテストのPASSではない。
+
+**観測からの設計判断**：出力フィールドの列由来だけでなく、演算依存（JOIN後の多重度、反結合の有無、比較条件）をたどらなければ、同じ金額の出力を「正しい業務総額」へ写せない。完全取得は単純なContext-wide 1 bitではなく、**個々のClaimが必要とする入力集合/版/Scope**を保持したときに、部分取得でも独立した明細合計を条件付きで説明できる。既存の#1063による数学的片側法則も、必要条件が成立するときに限る。
+
+**次の具体的な縦切り（M0→M1、未実行）**：このReferenceで手書きした`NODES`を、#2454/#2471のScope/解析入力の正当性を照合した既存`RelationalIR`と付き合わせる。対象は`SOURCE → AGGREGATE → JOIN → FILTER`と`LEFT JOIN → IS NULL`の2経路のみ。各ノードについて「入力への寄与」と「結果行成立への依存」を別々に候補抽出し、現行IRに表現できないEXISTS/CTE相関/Window等は`unsupported`へ留める。QueryのJSON・CLI可視化とSHOはその後。FunctionのResult SliceやSelection Epochは#2506の責務、Operator Lawは#1063、Action/Effectは#1174、独立Oracleは#1131/#2514の既存資産を再利用する。
+
+**未確認・Owner未決**：手動NODESが実SQLから正しく導出されること、Provider read-set包含/完全性、別Dialectでの一貫性、Business ID/単位・非負性/Action完了の意味受理、実Hostの開示・認可。局所ReferenceのPASSはSource Acceptance、実行許可、正式公開型・ADR採用、PR統合を意味しない。
+
 
 ## 8. 実装順・担当引継ぎ（提案）
 
