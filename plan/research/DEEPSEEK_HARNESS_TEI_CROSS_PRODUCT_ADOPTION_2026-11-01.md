@@ -66,6 +66,14 @@ OpenCode Goなど**特定の月額利用枠をDSHから共用できるかは、A
 
 この知見は、安価なTokenによる探索範囲・Workstreamの拡大方針を弱めず、**並列探索を広げるための有効な実行単位（別Session/Issue/branch）と実通信・独立受理の条件**を具体化する。既存のCordis型Kernel採用判断と本番Runtimeは変更しない。
 
+### 2.3 継続調査（2026-11-02）：Experimental Agent TeamsとSEI/TEI横断の用途別Context
+
+DSHには[opt-inのExperimental Agent Teams](https://github.com/deepseek-ai/deepseek-harness/blob/ce7073d51254c26cd63b22a60835b8f948deb447/packages/experimental/agent-team/README.md)があり、Lead/Teammate、永続Task DAG・CAS更新、Agent間Messagesを構成できる。**同一Workspace・writeScopesはadvisory・自動Task Owner解放なし**という制約がある。標準Goal（一Session一件）のみをDSHの全並列能力と読み替えない。Team Task完了と独立したTEIのMeaning/Build/Host/Effect受理を分離する。
+
+他チャットで進展した[TEI #2515（外部Harness実効隔離・全送出）](https://github.com/hat47x/tei-platform/issues/2515)、[#2516（Construction Contextの用途相対Projection）](https://github.com/hat47x/tei-platform/issues/2516)を、[詳細研究のT-01〜T-12](DSH_AGENT_TEAMS_CONTEXT_EXPERT_HANDOFF_2026-11-02.md)へ接続した。SEIが「必要な専門性／Source／Unknown」を評価し、DSHが利用可能なAgent/MCP/ACPへ照会し、戻る見解をSEIが候補として区別する場合、**fork/fresh/ACPへの情報投影、Teamの全体Broadcast、MCP instructionsの非信頼性、実OS権限**を別々に観測する。
+
+この追加は新しい実Agent Host/汎用Task Coordinator/Context Contract正本を作るものではない。既存TEI/SEI/TAIのOwnerを活用し、Harness間で同じ意味・不確実性・開示範囲を保てるか比較する。**現状は文書読解・設計候補のみで実結合NOT RUN。**
+
 ## 3. TEI側：既に採用していること、DSHから新たに得られること
 
 ### 3.1 Composition Kernelは「参考」から「十分な検証」へ
