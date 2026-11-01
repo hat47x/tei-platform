@@ -88,6 +88,25 @@ def qx16_claim_scope_observations() -> dict:
                 "top_amount": top[0] if top is not None else None,
             }
 
+    def probe_left_join(deliveries) -> dict:
+        # Alternate synthetic populations: the observed NULL row can disappear
+        # when an unseen right-side match is later included.
+        with sqlite3.connect(":memory:") as con:
+            con.executescript("""
+                CREATE TABLE header(id TEXT PRIMARY KEY);
+                CREATE TABLE delivery(id TEXT PRIMARY KEY, order_id TEXT);
+                INSERT INTO header VALUES ('H');
+            """)
+            con.executemany("INSERT INTO delivery VALUES (?, 'H')", [(d,) for d in deliveries])
+            return {
+                "left_rows": [list(row) for row in con.execute(
+                    "SELECT h.id, d.id FROM header h LEFT JOIN delivery d ON h.id=d.order_id ORDER BY d.id"
+                )],
+                "anti_rows": [list(row) for row in con.execute(
+                    "SELECT h.id FROM header h LEFT JOIN delivery d ON h.id=d.order_id WHERE d.id IS NULL"
+                )],
+            }
+
     observations = {
         "R_A600_only": observe([("A", 600)], ["D1"], allow_negative=False),
         "L1_A600_B500": observe([("A", 600), ("B", 500)], ["D1", "D2"], allow_negative=False),
@@ -95,6 +114,8 @@ def qx16_claim_scope_observations() -> dict:
         "L1_one_delivery": observe([("A", 600), ("B", 500)], ["D1"], allow_negative=False),
         "L_signed_model": observe([("A", 600), ("B", -200)], ["D1", "D2"], allow_negative=True),
         "R_empty": observe([], [], allow_negative=False),
+        "left_right_empty": probe_left_join([]),
+        "left_right_D1": probe_left_join(["D1"]),
     }
     # Hand-authored, independently specified results of the local SQL cases.
     expected = {
@@ -110,6 +131,8 @@ def qx16_claim_scope_observations() -> dict:
                               "join_sum": 800, "exists_500": 1, "not_exists_500": 0, "top_amount": 600},
         "R_empty":           {"line_count": 0, "line_sum": None, "delivery_count": 0,
                               "join_sum": None, "exists_500": 0, "not_exists_500": 1, "top_amount": None},
+        "left_right_empty":  {"left_rows": [["H", None]], "anti_rows": [["H"]]},
+        "left_right_D1":     {"left_rows": [["H", "D1"]], "anti_rows": []},
     }
     assert observations == expected, (observations, expected)
     # R is an identical observed input in L1/L2; source completion is unobservable from R.
