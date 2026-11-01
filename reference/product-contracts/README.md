@@ -36,7 +36,7 @@ TAI配下の5製品をTEIで再表現できるかを検討するための参照w
 - `sei_decision_record`
 - `mmi_observation_select`
 
-patternは能力を参照します。`realizations/`では、各capabilityを`custom go`の実装へ結びつける宣言だけを持ちます。capabilityは`effect`で業務意図を宣言します。呼出し順はTEI DSLでは表現せず、TAI側の契約で検査します。
+patternは能力を参照します。`realizations/`では、各capabilityを`custom go`の実装へ結びつける宣言だけを持ちます。capabilityは`effect`で業務意図を宣言します。呼出し順はTEI DSLの専用構文では表現しません。3つのEKI capabilityを`composition`のProviderとして並べ、`Attempt`と`ResultClaim`の依存から`ActivationOrder`が`eki_task_submit → eki_attempt_execute → eki_result_accept`になることをtestで確認します。TAI側でも同じ順序を契約として検査します。
 
 `bindings/`には、入力検証だけを行う決定論的な参照bindingと、EKI Control Planeの`/v1/tasks`へTaskRequestをHTTPで送る`EKITaskSubmitHTTP`があります。後者は呼び出し側からHTTP clientを渡すため、mTLSやbearer tokenは呼び出し側が設定します。
 
