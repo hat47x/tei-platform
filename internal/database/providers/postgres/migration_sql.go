@@ -178,10 +178,27 @@ func renderResolvedMigrationSQL(diff schemadiff.Diff, checked map[string]Constra
 				quoteQualifiedName(change.Table), quoteIdentifier(fk.Name), joinQuotedIdentifiers(fk.Columns), quoteQualifiedName(fk.ReferencedSchema+"."+fk.ReferencedTable), joinQuotedIdentifiers(fk.ReferencedColumns)))
 		case schemadiff.ChangePrimaryKey:
 			// Adding a primary key to an existing table that has none is P4;
-			// replacing one is P5 and uses the constraint name observed in the
-			// catalog. Removing a primary key altogether stays unsupported.
+			// replacing one is P5; removing one drops the observed constraint.
+			// In every case the observed constraint name is used, never a name
+			// derived from the table name.
 			if len(change.PrimaryKey) == 0 {
-				return nil, fmt.Errorf("postgres migration SQL rendering does not support primary-key change on %s that removes the primary key until constraint identity is realizable", change.Table)
+				if len(change.BeforePrimaryKey) == 0 {
+					return nil, fmt.Errorf("primary-key change on %s removes the primary key but names no current key", change.Table)
+				}
+				observed, err := existingAdditionChecked(change)
+				if err != nil {
+					return nil, err
+				}
+				if strings.TrimSpace(observed.PrimaryKeyName) == "" {
+					return nil, fmt.Errorf("primary-key removal on %s has no observed constraint name; the name is never assumed from the table name", change.Table)
+				}
+				for _, name := range change.BeforePrimaryKey {
+					if droppedColumns[change.Table][name] {
+						return nil, fmt.Errorf("primary-key removal on %s: column %s of the current primary key is dropped by the same diff, which removes the key implicitly", change.Table, name)
+					}
+				}
+				existingPrimaryKeyStatements = append(existingPrimaryKeyStatements, fmt.Sprintf("ALTER TABLE %s DROP CONSTRAINT %s;", quoteQualifiedName(change.Table), quoteIdentifier(observed.PrimaryKeyName)))
+				continue
 			}
 			observed, err := existingAdditionChecked(change)
 			if err != nil {
