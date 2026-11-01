@@ -786,7 +786,22 @@ D1〜D8の「受け止めた」を確かめる最小の試験案です。実装�
 
 ### C.3 追加する宣言の形（案）
 
-次は、D1〜D3で追加する宣言の**形の案**です。現行の`.tei`文法ではなく、採用が決まるまで実装・試験の対象にしません。
+まず、PoCで実装した最小の形を示します（[#2521](https://github.com/hat47x/tei-platform/pull/2521)）。`main`には未統合で、Draft PRのブランチにあります。
+
+```text
+pattern order_entry.order_record record {
+    data sales.order
+    interaction {
+        item sales.order.order_id
+        item sales.order.customer_id lookup order_entry.customer_reference customer.customer.customer_id
+        navigate from order_entry.recent_orders
+    }
+}
+```
+
+PoCが検査するのは、項目がDataのattributeか、参照先がreference Patternか、参照先Relationのtarget attributeか、型が一致するか、遷移元が同じDataのbrowse Patternかです。
+
+採用時の目標形は、項目の役割（必須・導出・更新禁止）、操作（Commandの起動）、投影（画面・帳票）まで含みます。
 
 ```text
 interaction order_entry.order_maintenance on order_entry.order_record {
@@ -805,4 +820,5 @@ interaction order_entry.order_maintenance on order_entry.order_record {
 
 - 現行文法だけで、一覧・単票・親子の意味参照が成立する（既存Referenceで確認済み）。
 - 足りないのは、遷移・項目の役割・操作・投影の宣言である。
+- PoC #2521で、項目・参照入力・遷移の最小部分が成立することを確認した。役割・操作・投影は未実装である。
 - したがってWP3は、Kindを増やさず、L2の宣言を追加する方向で試す。
