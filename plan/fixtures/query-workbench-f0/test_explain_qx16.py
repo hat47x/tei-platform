@@ -64,6 +64,9 @@ class QueryExplainQX16Tests(unittest.TestCase):
                 self.assertIn(claim_id, nodes, (scenario, claim_id))
         self.assertEqual(nodes["line_sum_gte_500"]["inputs"], ["line_sum"])
         self.assertEqual(nodes["not_exists_500"]["inputs"], ["exists_500"])
+        self.assertEqual(nodes["join_sum"]["inputs"], ["join_pairs"])
+        self.assertEqual(nodes["join_pairs"]["grain"], "join-pair:H")
+        self.assertEqual(nodes["join_sum"]["grain"], "group:H")
 
     def test_no_host_or_provider_acceptance(self):
         data = build_reference()
