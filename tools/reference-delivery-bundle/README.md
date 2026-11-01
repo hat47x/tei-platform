@@ -89,10 +89,10 @@ go run ./tools/reference-delivery-bundle/cmd/tei-delivery-bundle \
   status -state ./deployment-state.json
 ```
 
-- `activate`はcatalogを読み直し、空・不正・digest不一致を拒否する。
+- `activate`はcatalogを読み直し、空・不正・digest不一致を拒否する。historyは最大20世代を保持し、古い世代から捨てる。
 - `rollback`はhistoryの最新catalogを検証してactiveへ戻す。historyが空の場合は、history導入前のstateと互換のためにpreviousを使う。
 - `rollback`を繰り返すと、historyを新しい順に1段階ずつ戻る。
-- `status`はactiveとpreviousのcatalogが現在も検証できるかを確認する。
+- `status`はactive、previous、historyのcatalogが現在も検証できるかを確認する。historyのcatalogが変更・削除されている場合は失敗する。
 - stateはtemp fileへの書き込みとRenameで更新する。
 - ロールバックはstateの入れ替えであり、サービスプロセスの起動・停止は行わない。
 
