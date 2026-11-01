@@ -12,6 +12,9 @@ import (
 // stable JSON protocol. SQLGlot's AST is intentionally not part of the wire
 // format.
 func RunPythonWorker(ctx context.Context, python, workerPath string, req Request) (Result, error) {
+	if req.ProtocolVersion <= 0 || req.Query == "" {
+		return Result{}, fmt.Errorf("sql analyzer request has no protocol version or query identity")
+	}
 	payload, err := json.Marshal(req)
 	if err != nil {
 		return Result{}, err
@@ -27,6 +30,11 @@ func RunPythonWorker(ctx context.Context, python, workerPath string, req Request
 	var out Result
 	if err := json.Unmarshal(stdout.Bytes(), &out); err != nil {
 		return Result{}, fmt.Errorf("decode sql analyzer response: %w", err)
+	}
+	// This matches the response to the requested identity and protocol only;
+	// it does not attest the worker or bind the response to SQL/schema bytes.
+	if out.ProtocolVersion != req.ProtocolVersion || out.Query != req.Query {
+		return Result{}, fmt.Errorf("sql analyzer response does not match request identity or protocol")
 	}
 	return out, nil
 }
