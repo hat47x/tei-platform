@@ -14,6 +14,8 @@ import (
 
 const StateSchema = "tei.reference.delivery-state/v0"
 
+const maxHistory = 20
+
 type Deployment struct {
 	Catalog string `json:"catalog"`
 	Digest  string `json:"digest"`
@@ -136,6 +138,9 @@ func Activate(catalogDir, statePath string) (State, error) {
 		next.Previous = previous.Active
 		next.History = append([]Deployment(nil), previous.History...)
 		next.History = append(next.History, *previous.Active)
+		if len(next.History) > maxHistory {
+			next.History = next.History[len(next.History)-maxHistory:]
+		}
 	} else if !os.IsNotExist(err) {
 		return State{}, err
 	}
@@ -186,6 +191,11 @@ func Status(statePath string) (State, error) {
 	if state.Previous != nil {
 		if err := verifyDeployment(*state.Previous); err != nil {
 			return State{}, fmt.Errorf("previous deployment is not usable: %w", err)
+		}
+	}
+	for index := range state.History {
+		if err := verifyDeployment(state.History[index]); err != nil {
+			return State{}, fmt.Errorf("history[%d] is not usable: %w", index, err)
 		}
 	}
 	return state, nil

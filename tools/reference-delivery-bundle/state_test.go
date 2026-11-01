@@ -130,3 +130,46 @@ func TestMultiStepRollbackUsesHistory(t *testing.T) {
 		t.Fatalf("second rollback did not restore first: %+v", rolledBack)
 	}
 }
+
+func TestHistoryIsCapped(t *testing.T) {
+	statePath := filepath.Join(t.TempDir(), "state.json")
+	catalog := catalogWith(t, "audit")
+	var state State
+	var err error
+	for index := 0; index < maxHistory+1; index++ {
+		state, err = Activate(catalog, statePath)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	if len(state.History) != maxHistory {
+		t.Fatalf("history=%d want %d", len(state.History), maxHistory)
+	}
+}
+
+func TestStatusRejectsChangedHistoryCatalog(t *testing.T) {
+	statePath := filepath.Join(t.TempDir(), "state.json")
+	first := catalogWith(t, "audit")
+	second := catalogWith(t, "audit", "authentication")
+	third := catalogWith(t, "audit", "authentication", "offline-storage")
+	if _, err := Activate(first, statePath); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Activate(second, statePath); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Activate(third, statePath); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(first, "audit.json")
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, append(raw, '\n'), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Status(statePath); err == nil {
+		t.Fatal("status accepted a changed history catalog")
+	}
+}
