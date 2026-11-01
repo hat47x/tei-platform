@@ -111,26 +111,31 @@ data Selection {
 capability product_contracts.eki_task_submit {
     input request product_contracts.task_request
     output product_contracts.attempt
+    effect create product_contracts.attempt
 }
 
 capability product_contracts.eki_attempt_execute {
     input execution product_contracts.attempt
     output product_contracts.result_claim
+    effect create product_contracts.result_claim
 }
 
 capability product_contracts.eki_result_accept {
     input claim product_contracts.result_claim
     output product_contracts.accepted_result
+    effect create product_contracts.accepted_result
 }
 
 capability product_contracts.sui_document_put {
     input document product_contracts.document
     output product_contracts.document
+    effect update product_contracts.document
 }
 
 capability product_contracts.sei_decision_record {
     input decision product_contracts.decision
     output product_contracts.decision
+    effect create product_contracts.decision
 }
 
 capability product_contracts.mmi_observation_select {
