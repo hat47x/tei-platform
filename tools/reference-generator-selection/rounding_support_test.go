@@ -33,6 +33,13 @@ func TestFixedGeneratorRejectsUnsupportedRoundingBeforePublication(t *testing.T)
 		t.Fatal(err)
 	}
 	for strategy := range generatorTemplates {
+		if strategy == "text-template" {
+			// text-template is a projection generator: its contract has no
+			// rounding block and requires a projection instead. Its acceptance
+			// and rejection are covered by text_template_test.go and
+			// projection_test.go.
+			continue
+		}
 		t.Run(strategy, func(t *testing.T) {
 			parent := t.TempDir()
 			out := filepath.Join(parent, "not-created")
