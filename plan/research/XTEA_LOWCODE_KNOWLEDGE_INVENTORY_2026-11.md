@@ -134,7 +134,7 @@ X-TEAの機能型は8種です（`D:help/FunctionList.HTML`、`E:Editor.java L11
 | F-10 | 機能の呼出し関係 | `FunctionUsedByThis`（起動契機つき）と、ボタン・項目・明細からの起動を別に持つ | 機能間の依存を、呼出し元の種類つきで表せる | 呼出しの解析は文字列（`CALL(`等）の走査で、意味の参照ではない | `E:Editor.java L11976–12176` | PAT/STU |
 | F-11 | 機能型の直積分解 | 8型は独立した型ではなく、複数性（単票・一覧・見出し明細）、編集性（参照のみ・保守）、出力形態（画面・印刷）の組合せとして説明できる。型固有の属性も、この軸に対応する | 型の追加を、軸の組合せとして考えられる | 組合せの一部（一覧の印刷など）は存在しない。型ごとの実装は直積を共有しない | `D:XF100.java`〜`D:XF390.java`の属性抽出（下表） | PAT |
 | F-12 | 見出し明細表示の構造ツリー | `StructureTable`、`StructureUpperKeys`、`StructureChildKeys`、`StructureOrderBy`、`StructureRootText`、`StructureNodeText`、`StructureNodeIcons`で、自己参照する階層を見出しの下にツリー表示する | 組織・部品表・勘定科目のような階層を、専用画面を作らずに辿れる | 階層の意味は表の自己参照とキー項目に依存し、深さ・循環・権限の扱いが属性にない | `D:XF300.java L7772–7831, L1835–1874` | PAT/GEN |
-| F-13 | 一括更新の値パネル | `BatchTable`、`BatchField`、`BatchWithKeyFields`、`BatchRecordFunction`で、選択行に適用する値をまとめて入力する。選択行のキー値が同じ項目は自動で埋める | 複数行の一括更新を、専用の値パネルで行える | 適用範囲と上書きの規則が属性と選択状態に依存し、部分成功の扱いが定まらない | `D:XF110_SubList.java L546–652, L766–886` | PAT |
+| F-13 | 一括更新の値パネル | `BatchTable`、`BatchField`、`BatchWithKeyFields`、`BatchRecordFunction`で、選択行に適用する値をまとめて入力する。選択行のキー値が同じ項目は自動で埋める。副一覧が更新を実行して`UPDATE`を返すと、主一覧が`RETURN_CODE` 20で閉じる | 複数行の一括更新を、専用の値パネルで行える | 適用範囲と上書きの規則が属性と選択状態に依存し、部分成功の扱いが定まらない | `D:XF110_SubList.java L546–652, L766–886`、`D:XF110.java L1280–1292` | PAT |
 
 #### 4.2.1 機能型ごとの宣言パラメータ
 
@@ -177,6 +177,7 @@ X-TEAの機能型は8種です（`D:help/FunctionList.HTML`、`E:Editor.java L11
 | I-12 | `InitialListing`、`InitialReadCount`、`ProcessRowIfOnlyOne`が、初回の一覧取得と1件時の自動遷移を制御する | 一覧の初期表示と、1件だけのときの自動オープンを宣言できる | 業務上の分岐と画面の操作性が同じ属性に混ざり、自動遷移の条件が画面ごとに異なる | `D:XF100.java L447, L536–540, L1218–1221` | PAT |
 | I-13 | `Function`の`Parameters`と`Return`は自由記述で、実行時の値の受渡しは`parmMap`のキーで行う | 機能の入出力を、設計情報として記録できる | 型・必須・既定値・失敗の契約がなく、呼出し側と実装側がキー名を暗黙に合わせる | `M:Modeler.java L20588–20589`、Driver/Serverに`Parameters`・`Return`の参照なし（静的確認） | PAT/CORE |
 | I-14 | 基本型はSQL型から導出し（`INTEGER`、`FLOAT`、`STRING`、`BINARY`、`CLOB`、`BYTEA`、`DATE`、`TIME`、`DATETIME`）、業務上の型（コード・金額・数量）は区別しない | DB製品差を吸収して値を扱える | 同じ物理型でも業務上の意味が違う項目を、同じ型として扱う。型の統合・変更の影響を意味で判断できない | `D:XFUtility.java`（`getBasicTypeOf`）、`M:Modeler.java`（`DataType`の`BasicType`・`Length`・`Decimal`） | CORE |
+| I-15 | `Tab`と`TabField`で項目をタブにまとめ、検証エラー時は最初のエラーがあるタブへ移動する | 項目の多い画面を、意味のまとまりで分けられる | タブの順序とエラー移動が項目の並びに依存し、タブをまたぐ依存関係を宣言できない | `D:XF200.java L611–671, L2081` | PAT |
 
 ### 4.4 イベントとスクリプト（E）
 
