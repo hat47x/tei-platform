@@ -15,7 +15,7 @@ python3 explain_qx16.py
 
 - `verify_sqlite.py`：既存F0・NULL/PK負例・QX-16の異なる母集団8ケースを、手書きの独立`EXPECTED`と照合する。
 - `explain_qx16.py`：元SQLの演算依存を**fixture固有の静的`NODES`**に明示し、10シナリオをread-only JSONで説明する。`inputContext.line/delivery.completeness`は合成fixtureの**明示的仮定**であり、SQLiteがProvider全件性を証明した事実ではない。
-- `test_explain_qx16.py`：部分取得の下界、同じ部分結果と異なる全体、配送だけ部分時の独立合計、JOIN fan-out、負値の値域制約、EXISTS/NOT EXISTS、空SUM=NULL、LEFT JOIN未一致行、Provider/意味未受理、各Claimから演算依存ノードへの追跡を確認する。
+- `test_explain_qx16.py`：部分取得の下界、同じ部分結果と異なる全体、配送だけ部分時の独立合計、JOIN fan-out、負値の値域制約、EXISTS/NOT EXISTS、空SUM=NULL、LEFT JOIN未一致行、Provider/意味未受理、各Claimから演算依存ノードへの追跡を確認する。特にJOINによる`join-pair:H`と、その後のSUMによる`group:H`を分離する。
 
 ## ローカル実測証拠（2026-11-01）
 
@@ -24,12 +24,12 @@ python3 explain_qx16.py
 | ファイル | 一致確認したGit blob |
 | --- | --- |
 | `verify_sqlite.py` | `b5939379f77f2b343be31e3464678328a9780a82` |
-| `explain_qx16.py` | `2791fa1f4903de77fcf7c12a362f61004bd45c00` |
-| `test_explain_qx16.py` | `857328bf22d01447c2fd9757d5b6a3fadc189930` |
+| `explain_qx16.py` | `bfa333eb30c1629fbc5e20388ffeed65c956f438` |
+| `test_explain_qx16.py` | `bd12b85b64699202d054f52b550704840c95f379` |
 
 - `verify_sqlite.py`：**PASS**、QX-16の8 SQLiteシナリオ、F0/N1a/N1b/N2/N3の既存比較を確認。
 - `python3 -m unittest -v test_explain_qx16.py`：**10 tests PASS**。
-- `explain_qx16.py`：JSON構築とパース確認（6種類の演算/Claimノード、10合成ケース）。
+- `explain_qx16.py`：JSON構築とパース確認（7つの演算/Claimノード、10合成ケース）。
 - 対象はこの3ファイルの**exact blob**であり、TEI全repo/現mainのGo testやProvider実験とは別。
 
 ## 読み取り専用説明の意味
