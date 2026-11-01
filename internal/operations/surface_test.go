@@ -253,6 +253,7 @@ func TestDeriveOperationSurfaceRetireGapRequiresUpdateIntent(t *testing.T) {
 	world.Semantics[0].Capabilities = []semantic.Capability{{
 		ID:     "sales.order.submit",
 		Symbol: "submit",
+		Inputs: []semantic.Parameter{{Name: "order", Type: "sales.order"}},
 		Effect: &semantic.DataEffect{Kind: semantic.DataEffectUpdate, Data: "sales.order"},
 	}}
 
@@ -470,5 +471,33 @@ func TestSurfaceWorkspaceStandardCRDFixture(t *testing.T) {
 	create, ok := findOperation(surface, "ledger.create.sales.order")
 	if !ok || create.Binding != "" {
 		t.Fatalf("create has no declared capability and must stay unbound: %+v", create)
+	}
+}
+
+func TestDeriveOperationSurfaceBindingRequiresTheDataAsInput(t *testing.T) {
+	world := surfaceTestWorld(database.AccessReadWrite, true)
+	world.Semantics[0].Capabilities = []semantic.Capability{
+		{
+			ID:     "sales.order.submit",
+			Symbol: "submit",
+			Inputs: []semantic.Parameter{{Name: "order", Type: "sales.order"}},
+			Effect: &semantic.DataEffect{Kind: semantic.DataEffectUpdate, Data: "sales.order"},
+		},
+		{
+			ID:     "sales.customer.touch",
+			Symbol: "touch",
+			Inputs: []semantic.Parameter{{Name: "customer", Type: "customer.customer"}},
+			Effect: &semantic.DataEffect{Kind: semantic.DataEffectUpdate, Data: "sales.order"},
+		},
+	}
+
+	surface := DeriveOperationSurface(world, "")
+
+	update, ok := findOperation(surface, "order_entry.update.sales.order")
+	if !ok {
+		t.Fatalf("update operation missing: %+v", surface.Operations)
+	}
+	if update.Binding != "sales.order.submit" {
+		t.Fatalf("only the capability that accepts the written data may be the binding: %q", update.Binding)
 	}
 }

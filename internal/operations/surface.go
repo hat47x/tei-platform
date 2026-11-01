@@ -198,6 +198,9 @@ func newSurfaceIndex(world ir.World) surfaceIndex {
 			if capability.Effect == nil {
 				continue
 			}
+			if !capabilityAcceptsData(capability, capability.Effect.Data) {
+				continue
+			}
 			if capability.Effect.Kind == semantic.DataEffectUpdate {
 				index.updateIntent[capability.Effect.Data] = true
 			}
@@ -208,6 +211,21 @@ func newSurfaceIndex(world ir.World) surfaceIndex {
 		}
 	}
 	return index
+}
+
+// capabilityAcceptsData reports whether the capability takes the data it writes
+// as an input or returns it. A capability that does not accept the data can not
+// be the execution binding of a standard write operation.
+func capabilityAcceptsData(capability semantic.Capability, data core.CanonicalID) bool {
+	if capability.Output == data {
+		return true
+	}
+	for _, input := range capability.Inputs {
+		if input.Type == data {
+			return true
+		}
+	}
+	return false
 }
 
 // bindingFor returns the capability that executes an operation of this kind on
