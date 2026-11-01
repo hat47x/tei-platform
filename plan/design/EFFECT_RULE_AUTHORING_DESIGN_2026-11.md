@@ -91,7 +91,7 @@ effect-rule sales.order.submit.notify_warehouse {
 | `EFFECT_RULE_NON_PURE_CONDITION` | `when` が入出力や状態変更を含む（静的に判定できる範囲で） |
 | `DERIVED_ATTRIBUTE_PERSISTED_WITHOUT_RULE` | 保存状態が `with-rule` の導出値を保存する効果規則が無い |
 
-ここでいう「保存するアプリケーション」は、対象データに `persist` を宣言しているアプリケーションとする。`persist` がこの作業領域に無いデータ（外部資産）は所有者が不明なので、`via capability` を必須にする。
+ここでいう「保存するアプリケーション」は、対象データに `persist` を宣言しているアプリケーションであり、**判断の所有者ではない**。誰が・いつ・何を根拠に決めたかの来歴はSEIが持ち、効果規則は判断の識別子を参照するだけにする（[TAI上流への立ち戻り](../workstreams/TAI_UPSTREAM_ALIGNMENT_2026-11.md)）。`persist` がこの作業領域に無いデータ（外部資産）は所有者が不明なので、`via capability` を必須にする。
 
 `EFFECT_RULE_CROSS_OWNER_DIRECT_UPDATE` は、副作用の設計1章が「診断の対象とする」と書いてから未実装のまま残っている項目である。ここで実装の入口を固定する。
 
