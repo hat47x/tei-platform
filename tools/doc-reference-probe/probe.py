@@ -101,7 +101,8 @@ def apply_allowlist(report, data, today):
                 if record["severity"] == "error":
                     record["severity"] = "warning"
                     record["result"] = "allowlisted-unresolved"
-    report["allowlist"] = {"baseline_count": cap, "entry_count": len(entries), "issues": issues}
+    report["allowlist"] = {"baseline_count": cap, "entry_count": len(entries),
+                           "entry_keys": sorted(seen), "issues": issues}
 
 
 def compare_allowlists(report, baseline, today):
@@ -115,6 +116,10 @@ def compare_allowlists(report, baseline, today):
         current["issues"].append({"result": "allowlist-increased", "severity": "error"})
     if current["baseline_count"] > baseline["baseline_count"]:
         current["issues"].append({"result": "allowlist-limit-increased", "severity": "error"})
+    baseline_keys = {(entry["document"], entry["name"]) for entry in baseline["entries"]}
+    for document, name in sorted(set(current["entry_keys"]) - baseline_keys):
+        current["issues"].append({"document": document, "name": name,
+                                  "result": "allowlist-entry-added", "severity": "error"})
 
 
 def main():

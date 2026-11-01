@@ -79,7 +79,7 @@ class ProbeTest(unittest.TestCase):
             apply_allowlist(report, current, date(2026, 11, 1))
             compare_allowlists(report, baseline, date(2026, 11, 1))
             self.assertEqual([i["result"] for i in report["allowlist"]["issues"]],
-                             ["allowlist-increased", "allowlist-limit-increased"])
+                             ["allowlist-increased", "allowlist-limit-increased", "allowlist-entry-added"])
             same = check(Path(tmp), "docs/example.md", "`ref:docs/missing`")
             apply_allowlist(same, baseline, date(2026, 11, 1))
             compare_allowlists(same, baseline, date(2026, 11, 1))
@@ -101,7 +101,22 @@ class ProbeTest(unittest.TestCase):
                                  capture_output=True, text=True, check=False)
             self.assertEqual(run.returncode, 1, run.stderr)
             issues = json.loads(run.stdout)["allowlist"]["issues"]
-            self.assertEqual({item["result"] for item in issues}, {"allowlist-increased", "allowlist-limit-increased"})
+            self.assertEqual({item["result"] for item in issues},
+                             {"allowlist-increased", "allowlist-limit-increased", "allowlist-entry-added"})
+
+    def test_allowlist_replacement_is_not_hidden_by_equal_count(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            old = {"document": "docs/example.md", "name": "docs/old", "reason": "tracking", "issue": 2309}
+            new = dict(old, name="docs/new")
+            report = check(Path(tmp), "docs/example.md", "`ref:docs/new`")
+            apply_allowlist(report, {"baseline_count": 1, "entries": [new]}, date(2026, 11, 1))
+            compare_allowlists(report, {"baseline_count": 1, "entries": [old]}, date(2026, 11, 1))
+            self.assertEqual(report["allowlist"]["issues"], [{"document": "docs/example.md", "name": "docs/new",
+                                                            "result": "allowlist-entry-added", "severity": "error"}])
+            removed = check(Path(tmp), "docs/example.md", "")
+            apply_allowlist(removed, {"baseline_count": 1, "entries": []}, date(2026, 11, 1))
+            compare_allowlists(removed, {"baseline_count": 1, "entries": [old]}, date(2026, 11, 1))
+            self.assertEqual(removed["allowlist"]["issues"], [])
 
 
 if __name__ == "__main__":
