@@ -970,3 +970,127 @@ ORG-01〜36、ORG-Q1〜Q3は網羅候補の**設計台帳**であって、36件�
 **次の実行で収集すべき最小証拠**：同一モデル/固定合成Dataset/Rule IDと版/指定時点/Source scope、旧/新の選択したQuery結果と失われる属性、F1/F2の順序と最後の関連Mutation、独立Oracle、実Evaluator結果、Owner-writeの保証対象入口、実Provider/Hostの有無。モデル上の期待・実行・Owner受理をそれぞれ別列にする。
 
 **作業状態**：今回の追補は設計案と現行main静的比較まで。P0-M/P0-VのfixtureやFunction連結を実際に動かしたこと、完全なMECE証明、Ownerの業務意味受理、現行mainとの統合を主張しない。
+
+## 33. メタ概念空間を一般Data Facetと接続する（2026-11-01：スコープ拡張）
+
+**発展の方向**：既存P0-M（組織の意味と関係投影）・P0-V（最終状態の必須規範）は、実証を始めるための**小さな検証単位**とする。一方、製品要件、標準Organization Profile、Issue、比較対象、適用分野の探索には人為的な上限を設けず、#2493/#2495のAI大量並列開発・メタ概念空間の方針と同期する。探索を縮小するためにP0を使わない。
+
+### 33.1 TEIの一般メタ空間との関係
+
+[TEI #2495](https://github.com/hat47x/tei-platform/issues/2495)では、プログラミング言語の単一型階層を基準にするのではなく、**何を指すか／どう構成されるか／数学的性質／量・単位・時空間／利用・観測／Targetへの実現**というメタレベルの質問を分離し、複数のfacetと多重上位概念を許す案が検討されている。組織メタモデルはこの一般構造の**Domain専門化**として位置づける。
+
+| 一般メタ空間での関心 | 組織に固有の構成要素・facet | 絶対に同一視しないもの |
+| --- | --- | --- |
+| **対象の同一性** | Person, Legal Entity, Organizational Unit, Position, Collaboration, Agent | 社員番号＝Person ID、法人＝Tenant、ログインPrincipal＝自然人 |
+| **構成・Relation** | membership, occupancy, employment, reporting, control, delegation, collaboration; n-ary assignment | SQL JOIN＝受理済み業務Relation、二経路＝二組織 |
+| **位相・グラフ性質** | 人事階層の木、マトリクスDAG、提携ネットワーク、行為の承認依存グラフ | Tree型を独立な組織Core kindと固定、全グラフに同一循環制約 |
+| **規範と意思決定** | accountability, obligation, prohibition, business decision right, conflict-of-interest | role/occupancy＝Host Grant、候補選定＝実行の許可 |
+| **時間/制度の文脈** | valid time, recorded time, org axis, jurisdiction, policy revision, change event | 現在のシステム時計＝業務上の有効時点、同値の全域revision |
+| **数量・集合** | FTE、兼務比率、予算配賦、multi-parent到達経路、集計grain | 割合の合計が1とは限らない、Relation bagの経路数＝組織数 |
+| **認識・証拠** | Source identity、未確認Mapping、Ownerの規程受理、表示可能範囲 | 外部人事Sourceの取得＝事実の受理、証拠byte一致＝権限取得 |
+| **物理実現** | RDB、JSON、Directory/SCIM、.NET/Java/WASM、組織図、SHO | 物理SchemaやWIT/MCPが組織意味の正本 |
+
+多重上位概念は、`is-a`（必要な同一性・制約の包含）、`has-facet`（独立の観点）、`acts-as`（文脈上の役割）、`composed-of`、`represented-as`、`implemented-by`を区別した**意味付きエッジ**として検討する。例えば「法人Aが企業グループの一員であり、契約主体であり、共同事業の参加者でもある」ことは、同じ対象に複数facet/Relationが成立するという意味であって、自動的にGo/Javaのmultiple inheritanceや型変換を要求する意味ではない。
+
+**MECEの検証対象**は各観点が担う意味の責務、構成に必要な情報、推論の許容条件。実際の対象が複数の意味facetを持つことは正常である。規範/組織構造/認可/証拠は複数段階で関係するが、一つの曖昧な`authority`へ畳まず独立の正本と責任を識別する。
+
+### 33.2 ユーザー・AI・組織主体の「行為」を分解する
+
+Organization Profileが対象にする`Agent`はPersonに限らない。法人、外部委託組織、明示的に承認されたサービス主体、AI Agentも業務上の行為の参加者になり得る。**Actorの分類と、実行のPrincipal/権限主体の同一性は別**に扱う。
+
+| 問い | 参照概念 | 組織Profile側で必要な区別 |
+| --- | --- | --- |
+| 誰が実際に操作したか | Invoker / Runtime Principal | 認証・Hostによる証明を要する |
+| 誰のために行ったか | Represented party / On-behalf-of | 被代理者・組織、関係の有効性 |
+| 誰が判断の責任を持つか | Accountability holder / Decision Owner | 制度・規則に由来する業務意味 |
+| 誰が作成・配置・呼出しを認めたか | Author / Publisher / Invoker policy | Source/承認版/対象/期間/委任元を分離 |
+| 何をどこまで任されたか | Delegation / Service Contract scope | Action, Resource, Context, Expiry, Revocation、必要な職務分掌 |
+| どの操作が実際に許可・確定されたか | Host Grant / Effect / Receipt / Observation | 現在Grant、個別対象、最後のMutation、実確定は別 |
+
+「AIエージェントが部門の代理として購買候補を作る」「人がその候補を承認する」「外部Hostが購買を確定する」は三つの異なる出来事と責任。役割facetや組織規程は提案・判断候補を作れるが、Host Grant・Token・秘密・更新権を自己発行できない。実行Targetが異なるときは外部Hostの実保証を明示する。
+
+## 34. 組織標準Profile群：要求の広域探索と概念の再利用
+
+現段階では**標準Organization Plugin/Profileの一つの大きな仕様を固定しない**。代わりに、**共通メタ概念空間＋交換可能な分野Profile＋Scope別Rule＋Conformance fixture**で、企業・公共機関・共同事業・非定型組織を扱えるかを広く検討する。各分野に専用Core型や独自Hostを設ける必要はない。
+
+| Profile探索群（すべて候補） | 特有の構造的圧力 | 最小の比較・負例 |
+| --- | --- | --- |
+| **小規模事業・事業所** | 少人数、役割兼任、直接所属からの段階的発展 | 空席/複雑Ruleを使わないモデルへ不要な固定表を強制しない |
+| **大規模企業・持株会社** | 多法人、子会社、連結、共同支配、管理責任 | 親会社であることから子会社の全Tenantアクセスを導かない |
+| **人事・異動管理** | 雇用/在籍/配置/職位/辞令/改組/遡及訂正 | 旧在籍Sourceの部分取得を退職・削除扱いしない |
+| **マトリクス・プロジェクト** | 複数報告経路、兼務/FTE、費用配賦、職務分掌 | 重複する経路から二重計上やGrant継承を暗黙決定しない |
+| **行政・自治体・公共機関** | 法令/管轄、指定代理、会議体、議決・公示の発効 | 職務上の権能とシステム許可を一致させない |
+| **学校・研究・学術共同体** | 所属、学部/研究室、任期、委員会、共同研究 | 研究室所属と雇用契約を同一関係へ畳まない |
+| **医療・専門職協働** | 有資格者、部署横断、職務責任、例外対応 | 資格・所属の一致だけで患者記録アクセスを許可しない |
+| **共同企業体・サプライチェーン** | 契約、協力会社、元請下請、依存/委託関係 | 契約上の代理を全取引・全情報へ一般化しない |
+| **分散組織・地域活動・非営利** | 会員、選任、合議、ボランティア、場所と活動 | 労働者・従業員だけをAgentの前提にしない |
+| **金融・監査・統制** | 職務分掌、利益相反、二者承認、代理決裁 | 役職から承認完了を推論しない。規程版の異なる再送を分ける |
+| **危機対応・BCP/安全保障** | 仮編成、委任の期限、交替、未確定情報での作業 | 緊急連絡網と本番権限昇格を一括導出しない |
+| **AIエージェント・サービス組織** | 非人間Actor、契約Provider、代理・委任、作業成果の検証 | Tool登録成功／AI提案を本人の受理・確定Effectとしない |
+| **組織の施設・地理・勤務形態** | 多拠点、リモート、勤務時間帯・兼務場所 | Site=Org Unit、Location=権限Scopeを自動的に同一視しない |
+| **継続する組織目的と成果** | 目標/制約、部門別負担、制度改訂、例外学習 | 目標の表明を現在の業務Ruleへ無承認で導入しない |
+
+**機能拡張候補**：組織の差分可視化、基幹Sourceマッピング、職位・在任のas-of照会、複数軸集計/配賦、動的承認候補、代理/委任のリスク診断、規程の自然言語化、複数組織の連携仕様、AIとの協働位置付け、緊急時の変化対応シミュレーション。各機能はOwnerが受理した対象意味と、既存Capability・Targetの実能力を照合して提供する。
+
+**探索と実証の両立**：上記は初期のPressure群であり、数・分野・Issueの固定上限ではない。多数の独立調査/PoCを並行してよい。一方、個別の実証結果を参照する際は`repo/issue/base/source/fixture/oracle/evidence/acceptance`を区別し、統合前の比較不能なPASSを寄せ集めて共通Profileの準拠を宣言しない。
+
+## 35. 外部の組織・権限・意思決定製品から抽出する設計上の圧力（2026-11-01）
+
+以下は**公開資料で確認できる参考事実**と**TEIへの設計上の解釈（未採用）**を別列にしたもの。製品固有のデータ構造やオンプレ/クラウド運用をコピーする仕様ではない。
+
+| 参考資料・観測できる機能 | TEIに持ち帰るPressure | 取り入れない暗黙の前提 |
+| --- | --- | --- |
+| **W3C Organization Ontology**：Organization/Unit/Post/Membership/ChangeEvent/Collaborationを含み、`holds`/ `postIn`から`memberOf`へ導出する**明示されたentailment例**がある [W3C ORG](https://www.w3.org/TR/vocab-org/) | 概念の別定義と橋渡しRuleを並べ、Ruleが適用されるProfileの範囲を明記 | W3Cの例示entailmentをすべてのTEI業務/制度へ無受理で適用しない。RDF必須化もしない |
+| **Workday**：Supervisory、Matrix、Cost Center、Geographic、Custom等の複数Org型 [公式ガイド](https://doc.workday.com/admin-guide/en-us/manage-workday/organizations/ivq1568755825744.html) | 人事・予算・地域・共同プロジェクト等を**軸ごとに異なるグラフ/ルール**として検査 | 共通の固定parent構造、Workdayと同じ内部テーブル/権限継承を前提にしない |
+| **Microsoft Entra Entitlement Management**：期限付きAccess Package、申請と承認、外部組織参加者、Group/Application等の権限管理 [公式資料](https://learn.microsoft.com/en-us/entra/id-governance/entitlement-management-overview) | 業務上の地位/権能と、実際に配布される期限付きのAccess Assignmentを分離 | 所属/役職だけで現在Grantや実Resource accessを生成しない |
+| **Open Policy Agent**：Policy Decisionと適用を分離し、外部data replica/cacheの鮮度制約を明示 [公式資料](https://www.openpolicyagent.org/docs/external-data) | 外部HR/組織SourceのReplication LagをRule/Authorityの評価時点と照合 | OPAの決定がHostのEffect commitの原子性やOwner意味受理を保証するとはみなさない |
+| **OMG BPMN/CMMN/DMN**：事前定義のProcess・適応的Case・Decision Modelが補完的 [OMG DMN](https://www.omg.org/dmn/) | Organizationの動的承認を、選定Decision・承認Process・未定型Caseで段階表現 | 三規格のEngineや共通Workflow HostをTEI Coreへ必須にしない |
+| **W3C SHACL**：RDFデータに対するShape/Constraint検証を提供 [W3C SHACL](https://www.w3.org/TR/shacl/) | Profileの型付きRelation・cardinality・閉じたDataset検査を独立Conformanceにする参考 | SHACL検証PASSから業務上の真実・Source完全性・現在Authorityを導かない |
+
+**外部仕様の採否**は、既存Semantic/Rule/Procedure/Pluginで説明できるか、Referenceが何を追加要求するか、同一模型から複数Targetへ意味を保てるかの比較後に決める。Modelerの可読性だけで既存の実現契約を改造しない。
+
+## 36. Function Data Context・組織DSL・TAI/SEIとの接続条件
+
+### 36.1 Function Data Contextには「組織のどの意味を表示・操作するか」を渡す
+
+TEI #1127が検討する`Semantic Data/Relations → Function Data Context + Operation Intent → Pattern Matching → Capability Resolution → Presentation Plugin`の導出では、組織領域に次の入力が必要になり得る。
+
+- **対象Context**：Person/Org/Position/AssignmentとそのID。複数1:NやN:M、同一Personが複数の配置に登場する場合も`Selected subject`を曖昧にしない。
+- **Relation Context**：参照するRelation型、軸、人事/経理/事業、経路と集計grain、階層の循環規則。Query JOIN/SQL aliasは受理済み業務Relationの代わりにならない。
+- **Temporal Context**：valid/recorded時点、公開されたOrg Rule revision、在任期間の判定基準。フィルタの`today`と業務基準日を混同しない。
+- **Operation Intent**：一覧/単票/配置差分/候補選定/異動のプレビュー/受理/配備/実実行などを区別。表示中の行選択、Functionへ渡す値、実Effect対象IDを照合。
+- **Conformance & exposure**：Functionが必要とするデータ集合の完全性・鮮度・許可済みProjectionを明記。権限不足の行を隠した一覧を「全社員一覧」と表示しない。
+- **Target**：同一Accepted Subjectから標準Org Chart、配属表、階層図、監査票、SHO文書、AI CUI、外部HostのContractへ投影する。UI編集の逆写像は案件/Owner受理を要する。
+
+**既存P0-Mへの追加停止条件**：一つの人物が複数職位/複数部門で現れるとき、UIの選択行と`Function Operation`対象が異なるIDにすり替わらない。同じ本人を2行に表示することと、二人の異なるPersonとして扱うことを区別する。
+
+### 36.2 SEI/TAI/外部ハーネスは異なる責務を保つ
+
+- **SEI**：組織が目指す価値・判断の仮説、未決、暗黙の期待、違和感・反証の管理。SEI [#677](https://github.com/hat47x/sei-cognition/issues/677)の組織意志・用途/適用範囲・改版後の再確認を参照する。
+- **TEI**：Ownerが受理した組織の同一性・関係・規範・Business Procedure・Rule/Source binding、意味Simulation/生成物の契約。未受理SEI案を自動的に案件のCurrent Ruleにしない。
+- **TAI**：Caseの目的・協働・再計画・成果を横断観測。TAI [#165](https://github.com/hat47x/tai-pleroma/issues/165)が対象とする企業・未知課題の自律活動を、TEIの組織意味と関係付ける。
+- **EKI/外部Harness**：目的限定のTaskと既存Capabilityを呼ぶConsumer/Worker。結果生成/Tool listing/OperationID一致を「業務判断の採用」「現在権限」「実効果の完了」へ昇格しない。
+- **SHO/SUI**：設計書・組織図・仮説と根拠の探索表示。表示の意味Subjectと出典へ遡れること、開示不能・未確認を保持することを確認する。
+
+### 36.3 組織データ・関係の機密保持を標準Conformanceの一部にする
+
+TAI [#232](https://github.com/hat47x/tai-pleroma/issues/232)に合わせ、組織の生データ（人物の所属履歴、機密の人事・統制・社外委託関係、公開前の改編案、アクセスパス、人数・存在有無など）を、AI Harnessや別Productの共有メモリ/同一OS権限に無条件公開しない。**TEIの保有側または実Hostが**用途限定のProject/Relation/Rule Queryを許可・投影し、外部Consumerには明示開示した最小結果を渡す設計。
+
+対象Scopeの絞り込み・削除後も、集計値、件数、パス有無、fingerprint、差分、説明文、ログ、エラー、検索のヒット数による間接漏えいがあり得る。機密重視ではProductのAPI認可に加えて実OS/Process/Filesystem/IPC/Network隔離と送出制約の**実証**を要する。モデルの`sensitive=true`ラベルをOSの強制境界の代替にしない。
+
+### 36.4 並列開発と検証へ橋渡しする
+
+- **探索Lane**：外部SaaS/OSS/規格を調査し、新たな概念・Profile・業務要件・負例を幅広く収集する（#2493、TAI #233）。候補数の制限は設けない。
+- **メタ構造Lane**：#2495の多重facet/typed edge・#2386の制度的意味・#1126のData/Relation表現を対照し、同じ意味を二重に実装しない。
+- **Product Lane**：#1127のFunction Data Context、#988のDSL、#1131のScenario、#1124/#1803のModeler/SHOへ、同一受理SubjectのProjectionを渡す。
+- **Host/Trust Lane**：#2390外部Consumer、#1174 Effect Fence、#2020 Tenant/Delivery、TAI #232の生データ隔離。契約の利用適合と現在Authority/実Effectは別。
+- **Qualification Lane**：各Issueの既存Fixture/Accepted meaning/実Target証拠を、Source revisionと手計算Oracle付きで照合する。新しい全体Gateやすべての標準Pluginに義務付けるCommon Hostを作らない。
+
+**具体的な追加Pressure（新Org Case ID固定前の候補）**：AIが代理で申請作成し承認は人間に残す／グループ企業で兼務する同一Personが二Tenantへアクセスできない／市役所の委員会所属と決裁権能が別／大学研究者が複数機関に研究者として所属するが雇用は一箇所／マトリクスOrgで到達経路2本でも人数1／人事異動の有効日cut／組織改編案が未受理の状態で外部ハーネスへ人事情報が漏れない／AIが提案した制度改正が未受理なら権能不変、など。これらを**認識候補、意味Contract、Host実行、実効果、Owner判断**のいずれで確かめるかを各Laneで明記する。
+
+## 37. 2026-11-01の適用範囲・最新main・採否境界
+
+- 今回読み取り専用で確認したmainは`43517af5450aacb2fdd6c48585dc143f52d57da4`。対象はGitHub上の既存Issue/PRとOrganization Draft文書の比較。旧mainを基準にした静的結論を現行mainでのテストPASSとして扱わない。
+- 既存P0-M/P0-Vに関する基本設計・NOT RUN境界は維持する。今回§33〜36は**要件拡張と横断受入候補の調査成果**であり、新しいCore enum、Organizationの実装、RDF/SHACL/OPA/DMN採用、MCP共通ABI、専用Host、構成改変の正式決定ではない。
+- **並列化する探索の広さと、実証するSliceの小ささを分離する**。AI開発速度を前提に要求群・独立PoC・Issue・組織Profileを積極的に追加してよいが、試験未実施／静的確認／合成Oracle／現行Provider実測／Owner意味受理は区分する。
+- 機密や個人情報は公開リポジトリへ実データを保存しない。公開のReferenceは合成組織と匿名IDに限定する。
