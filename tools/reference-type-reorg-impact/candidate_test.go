@@ -55,9 +55,9 @@ func TestCandidateRefusesBadRevisionAndUnusedMerge(t *testing.T) {
 		t.Fatal("merge with no attribute use accepted")
 	}
 }
-/// A split impact reuses the merge-shaped display payload. Even with an
- // explicit reassignment, the merge-only Candidate API must refuse it;
- // otherwise it would silently write all attributes to the first target.
+// A split impact reuses the merge-shaped display payload. Even with an
+// explicit reassignment, the merge-only Candidate API must refuse it;
+// otherwise it would silently write all attributes to the first target.
 func TestCandidateRefusesSplitImpact(t *testing.T) {
 	w := splitWorld()
 	imp, err := SplitImpact(w, Split{
