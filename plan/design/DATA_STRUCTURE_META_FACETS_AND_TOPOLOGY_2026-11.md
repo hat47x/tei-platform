@@ -308,3 +308,93 @@ M1〜M10は**何を見落としていないか**を問う探索用、上の七�
 値域条件の種類・検査時点・依存するContextは、既存のValidation、Operator、Provider、データ移行計画[#1935](https://github.com/hat47x/tei-platform/issues/1935)と[#1806](https://github.com/hat47x/tei-platform/issues/1806)で必要に応じて具体化する。新しい一般的なTypeKindや第二のAcceptance Engineを追加する前に、既存契約で表現できる範囲を実証する。
 
 **Ownerに求める最初の設計判断**：10軸や七役割を正式な固定分類として採用するかではなく、上記の反例をどの関係・検査・根拠で表示すれば、誤った自動推論と型の重複を避けられるか。その説明が欠けるところから抽象を増分採用する。
+
+## 17. 2026-11-01 外部エコシステムでの圧力試験：同じShapeでも異なる意味
+
+同じ構造を二つの製品で表現できたことと、同じ意味が保たれることは違う。この違いを一貫して説明できるように、[#2501の56ケースPressure Corpus](DATA_STRUCTURE_PRESSURE_CORPUS_2026-11.md)を追加した（探索台帳、実装済み機能一覧ではない）。
+
+### 17.1 一次資料で確認した圧力と、TEIへ持ち帰る論点
+
+| 外部の代表例 | 参照仕様で確認できること | TEI側に必要な概念上の区別 | 採用状態 |
+| --- | --- | --- | --- |
+| [Apache Arrow Nested Layouts](https://arrow.apache.org/docs/format/Intro.html) | List、Struct、Map、Union、辞書符号化の形状と物理レイアウトを区別。MapはList of key/value structsに近い物理構造 | **配布時の表現**・**key/valueの意味**・**元の出現数／順序**・**式での利用可否** | 情報収集。Arrow Provider採用ではない |
+| [Protocol Buffers Field Presence](https://protobuf.dev/programming-guides/field_presence/) | explicit presenceを持つ要素と、repeated/mapのようにunsetと空を区別できないフィールドがある | **欠落／空／デフォルト値／null** と、元の観測可能情報の保持 | 特定wire契約の採用ではない |
+| [xarray Data Structures](https://docs.xarray.dev/en/stable/user-guide/data-structures.html) | ndarrayに加えてnamed dimensions、coordinates、attributesを持ち、ラベルを使ってalignできる | **array shape**、**Dimension identity**、**座標値・ラベル**、**alignmentが採る集合範囲** | 科学配列Plugin案の参考 |
+| [OGC Simple Features](https://www.ogc.org/standards/sfa/) | GeometryのPoint／Curve／Surface等と、Spatial Reference Systemを伴う | **形状**、**CRS・軸順・datum**、**距離・投影操作の文脈** | GIS例の参考。全OGC準拠を主張しない |
+| [W3C SHACL](https://www.w3.org/TR/shacl/)／[JSON Schema](https://json-schema.org/draft/2020-12/json-schema-core) | 外部値に対する制約・検証と、複数条件の合成・検証結果の考え方を提供 | **受理済みの意味**と**値／Structureの適合**、検査手段によるcoverage | Validatorの必要条件を考える資料 |
+
+上表の「TEI側に必要な区別」は**推論／要件仮説**であって、外部規格の規定でも、既存TEIの実測PASSでもない。たとえばArrowのMap形を受け入れるだけで、業務Mapの唯一キー／列挙順／重複／欠損の意味が満たされることは保証されない。
+
+### 17.2 重要な教訓：情報を落とす変換の多くは局所的には正常
+
+- 集合へ変換して件数が変わっても、重複が業務意味なら損失であり、重複を問わない集合上の要件なら適切な変換になり得る。
+- 座標を持つArrayを単なるArrayとして保存できても、座標によるalignmentが必要なConsumerでは意味が足りなくなる。
+- Protobuf repeated fieldを空のListにできても、「項目を送らなかった」と「意図的に空を送った」の差を必要とするAPIではその差が失われ得る。
+- 絶対温度を数値と単位だけにしても、温度差演算との区別・換算の原点が失われる可能性がある。
+
+**全てに共通する汎用lossless変換を要求するより、どの用途・観測について情報を保持するかを精密に指定する方が、実装の自由度と意味上の安全性を両立する**という設計仮説を採る。
+
+## 18. 操作・観測を基準にした「意味保存」の最小定式化（採用前）
+
+変換を f: S → T、対象の固定版と解釈文脈を K、利用操作が要求する観測集合を O(K) と呼ぶ。ここでいう変換には、物理符号化、意味型の付替え、表示への投影、Plugin境界越え、生成先Targetへのloweringを含み得る。ただしこれらが同じ実装で行われるとは限らない。
+
+### 18.1 観測の保存条件
+
+ある観測 o について、変換の前後で対象となる値／集合／出来事から得られる結果が**明示された同値関係の下で比較可能**かを調べる。
+
+- 例示：o = 出現数、順序、Event ID、Value Domain membership、Quantityの単位・演算結果、Time Window completeness、Source revision、権限を伴う実行効果。
+- 比較で必要な前提：変換の定義域、対象となるSource/Target版、入力Snapshotや全件性、可変性、単位・参照文脈、許される誤差、必要な操作。
+- 観測に関する一致を**試験済みの有限Fixtureの性質**として報告するときと、全入力に対する**形式的な法則・証明**として報告するときを分ける。
+- 完全性を必要とする集計で取得対象が未知の部分集合の場合、観測できた範囲の値が正確でも「全件の集計が保存された」は未確認。
+
+表記例は o_S(s) ≈ o_T(f(s))（観測oについて指定された同値関係）の形で考えられるが、**この形をそのまま公開Formal DSL／型検査器へ採用する判断ではない**。
+
+### 18.2 変換の性質と適合を区別する
+
+| 概念 | 問うこと | 誤った一般化 |
+| --- | --- | --- |
+| 構造上の転写可能性 | Targetで値を表現できるか | 変換ができたから同じ意味 |
+| 値情報の保持 | 可逆か、重複・順序・Presenceが損失しないか | 物理型が同じならlossless |
+| 観測相対の保存 | 利用Operationが必要なObserverに限り意味を維持するか | 全ての用途で同じ可否 |
+| 名目的同一性 | Semantic Type/Issuer/Scope/Versionが一致するか | 値域の包含なら同一Type |
+| 実行資格 | Hostに必要なAuthority、Provider、契約、Tx/Commitが揃うか | 構造・演算の適合なら実行できる |
+| 証拠上の資格 | 宣言・形式証明・合成テスト・実Target観測・Owner受理は何か | ある一つのPASSを全てへ昇格 |
+
+**重要な反例**：Sequence→Bagは順序を失うが、同じ値・出現数を保つ条件では加算集計は成立し得る。Sequence→Setは重複を失い、SUMやCOUNTを一般に保存できない。したがって「SequenceはBagのsubtypeか」「BagはSetの親か」という一つの型階層だけで、全用途の代入・変換・演算を決定しない。
+
+### 18.3 変換の合成では前提の引継ぎが必要
+
+S→TがObserver O1を保存し、T→UがObserver O2を保存するだけでは、S→Uが任意のOを保存するとは言えない。合成の成否には、O1/O2の対応、各変換の定義域・出力値域、参照版、必要な単位と文脈、対象データの完全性、損失した情報の再取得可能性を確認する必要がある。
+
+最小の試験票は、(a) 個別変換の正例、(b) 情報損失の負例、(c) 合成したときのみ失敗する反例、(d) 同じ物理Targetだが解釈文脈が違う反例を含める。
+
+**所有**：上記の独立な観測・変換試験は[Issue #2498](https://github.com/hat47x/tei-platform/issues/2498)で具体化する。#1806の型分割安全化Draft #2404は継続し、AttributeID→TargetTypeRefの割当意図を失う候補を禁止する。
+
+## 19. AI大量並列開発時の担当・根拠の分割
+
+安価なトークンを大量調達してAIエージェントによる独立探索・PoCを増やす前提を、**候補領域の探索を広げ、検証範囲を明示しながら統合する設計**に反映する。
+
+| 担当 | 増補できる対象 | 成果物・再利用する基盤 | 他レーンから独立した成立条件 |
+| --- | --- | --- | --- |
+| #2495 メタ概念 | 新しい構成子・facet・公理・多重親の関係 | 本設計文書、#1120参照、#1705の量等 | 既存分類で説明できない具体例と境界を提示 |
+| #2498 観測・変換 | 入力形式、変換、Operation、Observer、失われる情報 | 既存Scenario/Oracle、#1806/#2077 | 変換前後の正負ペア・証拠範囲を提示 |
+| #2501 Corpus | 科学・業務・外部Protocol・GIS・UI等の多様なPressure | [56ケース台帳](DATA_STRUCTURE_PRESSURE_CORPUS_2026-11.md)、出典、Issue参照 | 既存型と違う要件・反例を収集。対象数の上限なし |
+| #2493 要件ポートフォリオ | 製品領域・異質Consumer・独立PoC・Agent作業票の拡充 | 既存#2017/#1445運用・Issueトリアージ | 独立探索、検証、統合の待ち時間・負担を区別 |
+| #1124/#2354 Consumer | Studio、AI CUIへのread-only説明と同版差分の表示 | Source/Typed Ref/既存CLI・UI Kit | 観測した範囲・鮮度・Disclosure・未対応を明示 |
+
+**並列化の優先境界**：探索用の異なる数学・科学・業務の候補は独立に拡張する。実装へ移す場合、同じCanonical/Shared Acceptance/Schema/Hostへ複数のAgentが独立した変更を競合投入しないよう、既存Owner/Issueと変更予定ファイルを明示する。全探索を一本の縦切りに縮約する義務は置かず、同一意味の正本だけを統一する。
+
+## 20. 次に試す、説明力の高い6つの観測対
+
+| 票 | 正例に必要な操作・Observer | 負例：実証で見分けたい失敗 | 実行先 |
+| --- | --- | --- | --- |
+| MP-01 | Sequence→Bag後に重複込みSUMが等しい（固定値・演算規則を明示） | 出現数を落とすSetでSUM一致を誤認 | #1706 / #2498 |
+| MP-02 | Presenceを要求しないConsumerへProto repeatedを渡す | 欠落と空を区別するConsumerで情報が復元可能と断定 | #2056 / #2498 |
+| MP-03 | xarrayのdims/coordsを保った投影でlabel alignment結果を再現 | ndarrayのみで同じshapeの別座標を同じ観測対象へ結合 | #2498 / #2077 |
+| MP-04 | OGC GeometryのCRSを明示し、対応する処理対象で空間演算 | CRS未宣言の座標pairで距離値を確定 | #2498 / #1126 |
+| MP-05 | 温度点の変換・点の差分という合法な演算を区別 | point＋point、差分にoffsetを加える誤換算 | #1705 / #2498 |
+| MP-06 | Source R2の新TypeRefとその結果を新Target/SHOへ固定版で転写 | 固定納品R1の成果物が自動的にR2へ更新済みと表示 | #1803 / #2077 / #2498 |
+
+全票は**追加した検証提案であり、ここでの新しいGo/CLI/DB/外部Provider実測はNOT RUN**。元のSource/Scenario/Expected Oracleは既存担当を利用し、値域・意味型・物理型・操作適合・証拠を二重に管理する新しい統合Engineは設けない。
+
+**今回の結論**：M1〜M10のチェックリストと七つの記述役割を上から型継承にするより、広いPressure Corpusを基に「必要なObserverをどの条件で保存できるか」を説明できるモデルが、異質Targetを扱うTEIのメタモデルに向いているかを反証可能な形で検証する。正式な契約採用・Owner意味受理は、その比較結果と既存Product/Target責務を踏まえて別判断とする。
