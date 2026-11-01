@@ -377,6 +377,9 @@ func validScopeChain(parents, kinds map[string]string, duplicate map[string]bool
 		if parent == "" {
 			return kinds[scope] == "root"
 		}
+		if kinds[scope] == "root" {
+			return false
+		}
 		scope = parent
 	}
 	return false
@@ -396,6 +399,9 @@ func isStrictScopeAncestor(parents, kinds map[string]string, duplicate map[strin
 		}
 		if parent == "" {
 			return found && kinds[child] == "root"
+		}
+		if kinds[child] == "root" {
+			return false
 		}
 		if parent == ancestor {
 			found = true
