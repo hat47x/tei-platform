@@ -157,12 +157,56 @@ func TestRenderRefusesPrimaryKeyOnColumnThatStaysNullable(t *testing.T) {
 	}
 }
 
-func TestRenderStillRefusesRemovingPrimaryKey(t *testing.T) {
+func TestRenderRemovesPrimaryKeyWithObservedConstraintName(t *testing.T) {
 	diff := schemadiff.Diff{Database: "sales_core", Changes: []schemadiff.Change{
 		{Kind: schemadiff.ChangePrimaryKey, Table: "public.customers", BeforePrimaryKey: []string{"id"}},
 	}}
-	observation := postgres.SchemaObservation{Snapshot: existingTablesSnapshot()}
-	if _, err := postgres.RenderMigrationSQLWithObservation(diff, observation); err == nil || !strings.Contains(err.Error(), "does not support primary-key change") {
+	observation := postgres.SchemaObservation{Snapshot: existingTablesSnapshot(), ConstraintData: []postgres.ConstraintDataCheck{{
+		Kind: postgres.ConstraintDataPrimaryKeyRemove, Table: "public.customers", BeforeColumns: []string{"id"},
+		PrimaryKeyName: "customers_legacy_pk", Observed: true,
+	}}}
+	statements, err := postgres.RenderMigrationSQLWithObservation(diff, observation)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := `ALTER TABLE "public"."customers" DROP CONSTRAINT "customers_legacy_pk";`
+	if len(statements) != 1 || statements[0] != want {
+		t.Fatalf("statements=%#v", statements)
+	}
+	if strings.Contains(statements[0], "customers_pkey") {
+		t.Fatal("the constraint name was assumed")
+	}
+}
+
+func TestRenderRefusesRemovingPrimaryKeyWithoutObservation(t *testing.T) {
+	diff := schemadiff.Diff{Database: "sales_core", Changes: []schemadiff.Change{
+		{Kind: schemadiff.ChangePrimaryKey, Table: "public.customers", BeforePrimaryKey: []string{"id"}},
+	}}
+	statements, err := postgres.RenderMigrationSQLWithObservation(diff, postgres.SchemaObservation{Snapshot: existingTablesSnapshot()})
+	var blocked *postgres.ConstraintDataReadinessError
+	if !errors.As(err, &blocked) || statements != nil || blocked.Readiness.Additions[0].Reason != postgres.ConstraintDataUnobserved {
+		t.Fatalf("statements=%#v err=%v", statements, err)
+	}
+}
+
+func TestRenderRefusesRemovingReferencedPrimaryKey(t *testing.T) {
+	diff := schemadiff.Diff{Database: "sales_core", Changes: []schemadiff.Change{
+		{Kind: schemadiff.ChangePrimaryKey, Table: "public.customers", BeforePrimaryKey: []string{"id"}},
+	}}
+	observation := postgres.SchemaObservation{Snapshot: existingTablesSnapshot(), ConstraintData: []postgres.ConstraintDataCheck{{
+		Kind: postgres.ConstraintDataPrimaryKeyRemove, Table: "public.customers", BeforeColumns: []string{"id"},
+		PrimaryKeyName: "customers_legacy_pk", Observed: true,
+		ReferencingForeignKeys: []postgres.ReferencingForeignKey{
+			{Constraint: "refs_customer_fk", Table: "public.refs", Columns: []string{"customer_id"}},
+		},
+	}}}
+	statements, err := postgres.RenderMigrationSQLWithObservation(diff, observation)
+	var blocked *postgres.ConstraintDataReadinessError
+	if !errors.As(err, &blocked) || statements != nil {
+		t.Fatalf("statements=%#v err=%v", statements, err)
+	}
+	if blocked.Readiness.Additions[0].Reason != postgres.ConstraintDataReferencedByForeignKeys ||
+		!strings.Contains(err.Error(), `refs_customer_fk`) || !strings.Contains(err.Error(), "not removed") {
 		t.Fatalf("err=%v", err)
 	}
 }
