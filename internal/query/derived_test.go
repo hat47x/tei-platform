@@ -230,7 +230,7 @@ func TestDerivedQueryIRSelfJoinKeepsOccurrenceAmbiguity(t *testing.T) {
 	q := query.EmbeddedSQL{ID: core.MustCanonicalID("app.self_join_ambiguous"), Datasource: core.MustLocalName("sales")}
 	result := analyzer.Result{
 		ProtocolVersion: 1, Status: "ok", Query: q.ID, Lowering: "full",
-		Scopes: []analyzer.Scope{{ID: "scope:root", Kind: "root"}},
+		Scopes:     []analyzer.Scope{{ID: "scope:root", Kind: "root"}},
 		ColumnRefs: []analyzer.ColumnOccurrence{{ID: "col:0", ScopeID: "scope:root", Name: "order_id"}},
 		Operations: []analyzer.Operation{
 			{ID: "source:a", Kind: "source", ScopeID: "scope:root", Source: "public.orders", SourceKind: "table", Alias: "a"},
@@ -324,7 +324,7 @@ func TestDerivedQueryIRUnqualifiedMixedPhysicalAndCTESourceIsAmbiguous(t *testin
 			{ID: "scope:root", Kind: "root"},
 			{ID: "scope:cte:recent", Kind: "cte", Name: "recent", ParentID: "scope:root"},
 		},
-		ColumnRefs: []analyzer.ColumnOccurrence{{ID: "col:root", ScopeID: "scope:root", Name: "order_id"}},
+		ColumnRefs:   []analyzer.ColumnOccurrence{{ID: "col:root", ScopeID: "scope:root", Name: "order_id"}},
 		OutputFields: []analyzer.OutputField{{ID: "out:recent", ScopeID: "scope:cte:recent", Name: "order_id"}},
 		Operations: []analyzer.Operation{
 			{ID: "root.table", Kind: "source", ScopeID: "scope:root", Source: "public.orders", SourceKind: "table", Alias: "o"},
