@@ -178,7 +178,7 @@ func DeriveFromAnalysis(q EmbeddedSQL, databaseID core.CanonicalID, result analy
 				logicalScopeID = c.OuterScopeID
 			}
 			logicalSource, logicalAmbiguous := resolveLogicalField(ir.Sources, logicalScopeID, c.Qualifier, c.Name, outputByScopeName)
-			if logicalAmbiguous || (logicalSource != "" && resolution == "schema-resolved") {
+			if (c.Correlated && c.OuterScopeID == "") || hasUnknownEligibleSource(ir.Sources, logicalScopeID, c.Qualifier) || logicalAmbiguous || (logicalSource != "" && resolution == "schema-resolved") {
 				// A physical table and a CTE (or two CTE outputs) can both
 				// declare the same column. Never infer a preferred source.
 				physicalSource, logicalSource, resolution = "", "", "name-only"
@@ -336,6 +336,29 @@ func resolveLogicalField(sources []SourceRef, scopeID, qualifier, column string,
 	return "", false
 }
 
+// An unresolved source may expose the requested column. It cannot be ignored
+// when proving uniqueness, but an unrelated qualified source need not block a
+// known explicit alias.
+func hasUnknownEligibleSource(sources []SourceRef, scopeID, qualifier string) bool {
+	if scopeID == "" {
+		scopeID = "scope:root"
+	}
+	for _, src := range sources {
+		if src.ScopeID != scopeID || src.Resolution == "schema-resolved" || src.Resolution == "logical" {
+			continue
+		}
+		if qualifier == "" || strings.EqualFold(src.Alias, qualifier) || strings.EqualFold(src.Name, qualifier) {
+			return true
+		}
+		if src.Alias == "" {
+			if dot := strings.LastIndex(src.Name, "."); dot >= 0 && strings.EqualFold(src.Name[dot+1:], qualifier) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 // resolveColumn uses the source occurrence in the column's lexical scope.
 // Physical table identity alone is insufficient: a self-join has two
 // occurrences even if both point to the same table.
@@ -359,6 +382,9 @@ func resolveColumn(
 			return "", "name-only"
 		}
 		scopeID = outerScopeID
+	}
+	if hasUnknownEligibleSource(sources, scopeID, source) {
+		return "", "name-only"
 	}
 
 	var matches []string

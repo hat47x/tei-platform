@@ -226,6 +226,32 @@ func TestDerivedQueryIRUnqualifiedFieldDoesNotSeeNestedScope(t *testing.T) {
 	}
 }
 
+func TestDerivedQueryIRUnknownSourceDoesNotProveUniqueColumn(t *testing.T) {
+	q := query.EmbeddedSQL{ID: core.MustCanonicalID("app.unknown_source"), Datasource: core.MustLocalName("sales")}
+	result := analyzer.Result{
+		ProtocolVersion: 1, Status: "ok", Query: q.ID,
+		Scopes: []analyzer.Scope{{ID: "scope:root", Kind: "root"}},
+		ColumnRefs: []analyzer.ColumnOccurrence{
+			{ID: "col:unqualified", ScopeID: "scope:root", Name: "order_id"},
+			{ID: "col:qualified", ScopeID: "scope:root", Qualifier: "o", Name: "order_id"},
+		},
+		Operations: []analyzer.Operation{
+			{ID: "source:known", Kind: "source", ScopeID: "scope:root", Source: "public.orders", SourceKind: "table", Alias: "o"},
+			{ID: "source:unknown", Kind: "source", ScopeID: "scope:root", Source: "public.unknown", SourceKind: "table", Alias: "u"},
+		},
+	}
+	snap := physical.SchemaSnapshot{Database: core.MustCanonicalID("sales_core"), Tables: []physical.Table{
+		{Schema: "public", Name: "orders", Columns: []physical.Column{{Name: "order_id"}}},
+	}}
+	got := query.DeriveFromAnalysis(q, snap.Database, result, &snap)
+	if len(got.Fields) != 2 || got.Fields[0].Resolution != "name-only" || got.Fields[0].PhysicalSource != "" {
+		t.Fatalf("unknown source must not prove uniqueness: %#v", got.Fields)
+	}
+	if got.Fields[1].Resolution != "schema-resolved" || got.Fields[1].PhysicalSource != "public.orders" {
+		t.Fatalf("explicit qualifier should still resolve known source: %#v", got.Fields[1])
+	}
+}
+
 func TestDerivedQueryIRSelfJoinKeepsOccurrenceAmbiguity(t *testing.T) {
 	q := query.EmbeddedSQL{ID: core.MustCanonicalID("app.self_join_ambiguous"), Datasource: core.MustLocalName("sales")}
 	result := analyzer.Result{
@@ -339,6 +365,38 @@ func TestDerivedQueryIRUnqualifiedMixedPhysicalAndCTESourceIsAmbiguous(t *testin
 		got.Fields[0].Resolution == "logical-resolved" || got.Fields[0].PhysicalSource != "" ||
 		got.Fields[0].LogicalSourceField != "" || got.Coverage.Resolution == query.CoverageFull {
 		t.Fatalf("unqualified column was arbitrarily assigned to the physical or CTE source: %#v", got)
+	}
+}
+
+func TestDerivedQueryIRUnknownSourceAndMissingOuterScopeStayUnresolved(t *testing.T) {
+	q := query.EmbeddedSQL{ID: core.MustCanonicalID("app.unknown_cte_scope"), Datasource: core.MustLocalName("sales")}
+	result := analyzer.Result{
+		ProtocolVersion: 1, Status: "ok", Query: q.ID,
+		Scopes: []analyzer.Scope{
+			{ID: "scope:root", Kind: "root"},
+			{ID: "scope:cte:recent", Kind: "cte", ParentID: "scope:root"},
+			{ID: "scope:subquery:0", Kind: "subquery", ParentID: "scope:root"},
+		},
+		OutputFields: []analyzer.OutputField{{ID: "out:cte:0", ScopeID: "scope:cte:recent", Name: "order_id"}},
+		ColumnRefs: []analyzer.ColumnOccurrence{
+			{ID: "col:unqualified", ScopeID: "scope:root", Name: "order_id"},
+			{ID: "col:qualified", ScopeID: "scope:root", Qualifier: "r", Name: "order_id"},
+			{ID: "col:missing-outer", ScopeID: "scope:subquery:0", Qualifier: "r", Name: "order_id", Correlated: true},
+		},
+		Operations: []analyzer.Operation{
+			{ID: "known", Kind: "source", ScopeID: "scope:root", Source: "recent", SourceKind: "cte", Alias: "r", Binding: "scope:cte:recent"},
+			{ID: "unknown", Kind: "source", ScopeID: "scope:root", Source: "missing", SourceKind: "cte", Alias: "m", Binding: "scope:cte:missing"},
+		},
+	}
+	got := query.DeriveFromAnalysis(q, core.MustCanonicalID("sales_core"), result, nil)
+	if len(got.Fields) != 3 || got.Fields[0].Resolution != "name-only" || got.Fields[0].LogicalSourceField != "" {
+		t.Fatalf("unknown CTE must not prove uniqueness: %#v", got.Fields)
+	}
+	if got.Fields[1].Resolution != "logical-resolved" || got.Fields[1].LogicalSourceField == "" {
+		t.Fatalf("explicit known alias should resolve: %#v", got.Fields[1])
+	}
+	if got.Fields[2].Resolution != "name-only" || got.Fields[2].LogicalSourceField != "" {
+		t.Fatalf("missing outer scope must not default to root: %#v", got.Fields[2])
 	}
 }
 
