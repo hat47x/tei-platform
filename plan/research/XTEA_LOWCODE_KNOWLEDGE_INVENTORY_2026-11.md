@@ -136,6 +136,8 @@ X-TEAの機能型は8種です（`D:help/FunctionList.HTML`、`E:Editor.java L11
 | F-12 | 見出し明細表示の構造ツリー | `StructureTable`、`StructureUpperKeys`、`StructureChildKeys`、`StructureOrderBy`、`StructureRootText`、`StructureNodeText`、`StructureNodeIcons`で、自己参照する階層を見出しの下にツリー表示する。展開は遅延で、子を持つ可能性がある節点には`Dummy`を置き、展開時に読み込む | 組織・部品表・勘定科目のような階層を、専用画面を作らずに辿れる | 階層の意味は表の自己参照とキー項目に依存し、深さ・循環・権限の検査が展開経路にない | `D:XF300.java L7772–7831, L1835–1874, L1447–1457` | PAT/GEN |
 | F-13 | 一括更新の値パネル | `BatchTable`、`BatchField`、`BatchWithKeyFields`、`BatchRecordFunction`で、選択行に適用する値をまとめて入力する。選択行のキー値が同じ項目は自動で埋める。副一覧が更新を実行して`UPDATE`を返すと、主一覧が`RETURN_CODE` 20で閉じる | 複数行の一括更新を、専用の値パネルで行える | 適用範囲と上書きの規則が属性と選択状態に依存し、部分成功の扱いが定まらない | `D:XF110_SubList.java L546–652, L766–886`、`D:XF110.java L1280–1292` | PAT |
 | F-14 | 一括更新の実行順 | 行をバッチキーで並べ替え、キー区切りでバッチ表へ制御レコードを挿入し、明細を1行ずつ更新する。その後、バッチ表の`AC`スクリプトと、バッチレコードごとの機能を実行する | 一括更新を、制御レコードと後処理つきで行える | 途中の失敗で全体をロールバックするが、先に実行した外部機能の効果は戻せない。部分成功を表す結果がない | `D:XF110_SubList.java L1358–1444` | PAT/CORE |
+| F-15 | 一覧の区切り読み込みと自動処理 | `initialReadCount`行ずつ読み、続きの読込みを`DialogCheckRead`で確認する。`ProcessRowIfOnlyOne`が`T`なら、1件のときに自動で処理する | 大きな結果を、利用者の確認つきで段階的に読める | 総件数が分からず、読込みの確認と絞り込み・ページ送りが絡む。1件の自動処理は、意図しない遷移を起こし得る | `D:XF100.java L1009–1147, L1218` | PAT |
+| F-16 | 絞り込みの群とページ送り | `FilterGroup`が同じ条件をOR、異なる群をANDで結合し、`FixedWhere`を別のAND条件として加える。ページ送りは`row_number()`で行番号を振り、範囲で切り出す | 群つきの検索と、位置に依存しないページ送りができる | 群の意味がIDの付け方に依存し、`FixedWhere`は検証されない。並び順が一意でないとページの境界が揺れる | `D:XF100.java L1550–1573, L5676–5708` | PAT/CORE |
 
 #### 4.2.1 機能型ごとの宣言パラメータ
 
