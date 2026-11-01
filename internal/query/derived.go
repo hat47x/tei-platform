@@ -101,6 +101,16 @@ func DeriveFromAnalysis(q EmbeddedSQL, databaseID core.CanonicalID, result analy
 	if len(ir.Scopes) == 0 {
 		ir.Scopes = []QueryScope{{ID: "scope:root", Kind: "root"}}
 	}
+	scopeKinds := make(map[string]string, len(ir.Scopes))
+	scopeParents := make(map[string]string, len(ir.Scopes))
+	duplicateScopes := make(map[string]bool)
+	for _, s := range ir.Scopes {
+		if _, exists := scopeParents[s.ID]; exists {
+			duplicateScopes[s.ID] = true
+		}
+		scopeKinds[s.ID] = s.Kind
+		scopeParents[s.ID] = s.ParentID
+	}
 
 	resolved, total := 0, 0
 	aliases := result.TableAliases
@@ -112,19 +122,26 @@ func DeriveFromAnalysis(q EmbeddedSQL, databaseID core.CanonicalID, result analy
 			continue
 		}
 		total++
-		resolution := "logical"
-		if op.SourceKind == "" || op.SourceKind == "table" {
+		opScopeID := op.ScopeID
+		if opScopeID == "" {
+			opScopeID = "scope:root"
+		}
+
+		resolution := "name-only"
+		if (op.SourceKind == "" || op.SourceKind == "table") && validScopeChain(scopeParents, scopeKinds, duplicateScopes, opScopeID) {
 			resolution = resolveTable(snapshot, databaseID, op.Source)
 			if resolution == "schema-resolved" {
 				resolved++
 			}
-		} else {
-			// A CTE/subquery source is lexically resolved by the analyzer, not by
-			// the physical schema snapshot.
+		} else if op.Binding != "" && !duplicateScopes[op.Binding] && scopeKinds[op.Binding] == op.SourceKind &&
+			bindingScopeCanBeVisible(scopeParents, scopeKinds, duplicateScopes, opScopeID, op.Binding, op.SourceKind) {
+			// Exclude targets outside the lexical hierarchy. Declaration order,
+			// recursion and dialect-specific visibility are not proven here.
+			resolution = "logical"
 			resolved++
 		}
 		ir.Sources = append(ir.Sources, SourceRef{
-			ID: op.ID, ScopeID: op.ScopeID, Database: databaseID, Name: op.Source,
+			ID: op.ID, ScopeID: opScopeID, Database: databaseID, Name: op.Source,
 			SourceKind: defaultSourceKind(op.SourceKind), Binding: op.Binding,
 			Alias: op.Alias, Resolution: resolution,
 		})
@@ -132,7 +149,10 @@ func DeriveFromAnalysis(q EmbeddedSQL, databaseID core.CanonicalID, result analy
 	if len(ir.Sources) == 0 {
 		for i, name := range result.Tables {
 			total++
-			resolution := resolveTable(snapshot, databaseID, name)
+			resolution := "name-only"
+			if validScopeChain(scopeParents, scopeKinds, duplicateScopes, "scope:root") {
+				resolution = resolveTable(snapshot, databaseID, name)
+			}
 			if resolution == "schema-resolved" {
 				resolved++
 			}
@@ -143,7 +163,7 @@ func DeriveFromAnalysis(q EmbeddedSQL, databaseID core.CanonicalID, result analy
 	// Pre-assign output IDs so CTE/subquery references can resolve to an
 	// upstream logical field before physical field occurrences are built.
 	outputIDs := map[string]FieldID{}
-	outputByScopeName := map[string]map[string]FieldID{}
+	outputByScopeName := map[string]map[string][]FieldID{}
 	outputOrdinal := map[string]int{}
 	for _, f := range result.OutputFields {
 		ordinal := outputOrdinal[f.ScopeID]
@@ -152,9 +172,9 @@ func DeriveFromAnalysis(q EmbeddedSQL, databaseID core.CanonicalID, result analy
 		outputIDs[f.ID] = outID
 		if f.Name != "" {
 			if outputByScopeName[f.ScopeID] == nil {
-				outputByScopeName[f.ScopeID] = map[string]FieldID{}
+				outputByScopeName[f.ScopeID] = map[string][]FieldID{}
 			}
-			outputByScopeName[f.ScopeID][strings.ToLower(f.Name)] = outID
+			outputByScopeName[f.ScopeID][strings.ToLower(f.Name)] = append(outputByScopeName[f.ScopeID][strings.ToLower(f.Name)], outID)
 		}
 	}
 
@@ -162,13 +182,21 @@ func DeriveFromAnalysis(q EmbeddedSQL, databaseID core.CanonicalID, result analy
 	if len(result.ColumnRefs) > 0 {
 		for i, c := range result.ColumnRefs {
 			total++
-			physicalSource, resolution := resolveColumn(snapshot, databaseID, ir.Sources, aliases, c.Qualifier, c.Name)
-			logicalSource := FieldID("")
-			if resolution != "schema-resolved" {
-				logicalSource = resolveLogicalField(ir.Sources, c.ScopeID, c.Qualifier, c.Name, outputByScopeName)
-				if logicalSource != "" {
-					resolution = "logical-resolved"
-				}
+			physicalSource, resolution := resolveColumn(snapshot, databaseID, ir.Sources, aliases, c.ScopeID, c.Correlated, c.OuterScopeID, c.Qualifier, c.Name)
+			logicalScopeID := c.ScopeID
+			if logicalScopeID == "" {
+				logicalScopeID = "scope:root"
+			}
+			if c.Correlated {
+				logicalScopeID = c.OuterScopeID
+			}
+			logicalSource, logicalAmbiguous := resolveLogicalField(ir.Sources, logicalScopeID, c.Qualifier, c.Name, outputByScopeName)
+			if !validScopeChain(scopeParents, scopeKinds, duplicateScopes, logicalScopeID) || (c.Correlated && !isStrictScopeAncestor(scopeParents, scopeKinds, duplicateScopes, c.ScopeID, c.OuterScopeID)) || hasUnknownEligibleSource(ir.Sources, logicalScopeID, c.Qualifier) || logicalAmbiguous || (logicalSource != "" && resolution == "schema-resolved") {
+				// A physical table and a CTE (or two CTE outputs) can both
+				// declare the same column. Never infer a preferred source.
+				physicalSource, logicalSource, resolution = "", "", "name-only"
+			} else if logicalSource != "" {
+				resolution = "logical-resolved"
 			}
 			if resolution == "schema-resolved" || resolution == "logical-resolved" {
 				resolved++
@@ -188,7 +216,7 @@ func DeriveFromAnalysis(q EmbeddedSQL, databaseID core.CanonicalID, result analy
 			if dot := strings.LastIndex(name, "."); dot >= 0 {
 				source, col = name[:dot], name[dot+1:]
 			}
-			physicalSource, resolution := resolveColumn(snapshot, databaseID, ir.Sources, aliases, source, col)
+			physicalSource, resolution := resolveColumn(snapshot, databaseID, ir.Sources, aliases, "scope:root", false, "", source, col)
 			if resolution == "schema-resolved" {
 				resolved++
 			}
@@ -210,11 +238,13 @@ func DeriveFromAnalysis(q EmbeddedSQL, databaseID core.CanonicalID, result analy
 
 	for _, op := range result.Operations {
 		n := RelNode{ID: op.ID, Kind: RelNodeKind(op.Kind), ScopeID: op.ScopeID, Inputs: append([]string(nil), op.Inputs...), Source: op.Source, SourceKind: defaultSourceKind(op.SourceKind), Binding: op.Binding, Alias: op.Alias, JoinKind: op.JoinKind, Expressions: append([]string(nil), op.Expressions...)}
+
 		if n.Kind == RelSource {
-			if n.SourceKind == "table" {
-				n.Resolution = resolveTable(snapshot, databaseID, op.Source)
-			} else {
-				n.Resolution = "logical"
+			for _, src := range ir.Sources {
+				if src.ID == op.ID {
+					n.Resolution = src.Resolution
+					break
+				}
 			}
 		}
 		ir.Relational.Nodes = append(ir.Relational.Nodes, n)
@@ -288,79 +318,181 @@ func firstAliasFor(aliases map[string]string, target string) string {
 	return keys[0]
 }
 
-func resolveLogicalField(sources []SourceRef, scopeID, qualifier, column string, outputs map[string]map[string]FieldID) FieldID {
+func resolveLogicalField(sources []SourceRef, scopeID, qualifier, column string, outputs map[string]map[string][]FieldID) (FieldID, bool) {
+	if scopeID == "" {
+		scopeID = "scope:root"
+	}
 	var matches []FieldID
+	ambiguous := false
 	for _, src := range sources {
-		if src.ScopeID != scopeID || (src.SourceKind != "cte" && src.SourceKind != "subquery") || src.Binding == "" {
+		if src.ScopeID != scopeID || (src.SourceKind != "cte" && src.SourceKind != "subquery") ||
+			src.Resolution != "logical" || src.Binding == "" {
 			continue
 		}
 		if qualifier != "" && !strings.EqualFold(src.Alias, qualifier) && !strings.EqualFold(src.Name, qualifier) {
 			continue
 		}
-		if id := outputs[src.Binding][strings.ToLower(column)]; id != "" {
-			matches = append(matches, id)
+		ids := outputs[src.Binding][strings.ToLower(column)]
+		if len(ids) > 1 {
+			ambiguous = true
+		}
+		if len(ids) == 1 {
+			matches = append(matches, ids[0])
 		}
 	}
-	if len(matches) == 1 {
-		return matches[0]
+	if ambiguous || len(matches) > 1 {
+		return "", true
 	}
-	return ""
+	if len(matches) == 1 {
+		return matches[0], false
+	}
+	return "", false
 }
 
-func resolveColumn(snapshot *physical.SchemaSnapshot, databaseID core.CanonicalID, sources []SourceRef, aliases map[string]string, source, column string) (string, string) {
+// An unresolved source may expose the requested column. It cannot be ignored
+// when proving uniqueness, but an unrelated qualified source need not block a
+// known explicit alias.
+func bindingScopeCanBeVisible(parents, kinds map[string]string, duplicate map[string]bool, source, target, kind string) bool {
+	parent, ok := parents[target]
+	if !ok || parent == "" || duplicate[target] || target == source {
+		return false
+	}
+	if kind == "subquery" {
+		return parent == source && validScopeChain(parents, kinds, duplicate, source)
+	}
+	if kind == "cte" {
+		return (parent == source && validScopeChain(parents, kinds, duplicate, source)) || isStrictScopeAncestor(parents, kinds, duplicate, source, parent)
+	}
+	return false
+}
+
+func validScopeChain(parents, kinds map[string]string, duplicate map[string]bool, scope string) bool {
+	seen := make(map[string]bool)
+	for scope != "" && !seen[scope] && !duplicate[scope] {
+		seen[scope] = true
+		parent, ok := parents[scope]
+		if !ok {
+			return false
+		}
+		if parent == "" {
+			return kinds[scope] == "root"
+		}
+		if kinds[scope] == "root" {
+			return false
+		}
+		scope = parent
+	}
+	return false
+}
+
+func isStrictScopeAncestor(parents, kinds map[string]string, duplicate map[string]bool, child, ancestor string) bool {
+	if child == "" || ancestor == "" || child == ancestor || duplicate[ancestor] {
+		return false
+	}
+	seen := make(map[string]bool)
+	found := false
+	for child != "" && !seen[child] && !duplicate[child] {
+		seen[child] = true
+		parent, ok := parents[child]
+		if !ok || duplicate[parent] {
+			return false
+		}
+		if parent == "" {
+			return found && kinds[child] == "root"
+		}
+		if kinds[child] == "root" {
+			return false
+		}
+		if parent == ancestor {
+			found = true
+		}
+		child = parent
+	}
+	return false
+}
+
+func hasUnknownEligibleSource(sources []SourceRef, scopeID, qualifier string) bool {
+	if scopeID == "" {
+		scopeID = "scope:root"
+	}
+	for _, src := range sources {
+		if src.ScopeID != scopeID || src.Resolution == "schema-resolved" || src.Resolution == "logical" {
+			continue
+		}
+		if qualifier == "" || strings.EqualFold(src.Alias, qualifier) || strings.EqualFold(src.Name, qualifier) {
+			return true
+		}
+		if src.Alias == "" {
+			if dot := strings.LastIndex(src.Name, "."); dot >= 0 && strings.EqualFold(src.Name[dot+1:], qualifier) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// resolveColumn uses the source occurrence in the column's lexical scope.
+// Physical table identity alone is insufficient: a self-join has two
+// occurrences even if both point to the same table.
+func resolveColumn(
+	snapshot *physical.SchemaSnapshot,
+	databaseID core.CanonicalID,
+	sources []SourceRef,
+	aliases map[string]string,
+	scopeID string,
+	correlated bool,
+	outerScopeID, source, column string,
+) (string, string) {
 	if snapshot == nil || snapshot.Database != databaseID {
 		return "", "name-only"
 	}
-	if source != "" {
-		physicalSource := source
-		if target, ok := aliases[source]; ok {
-			physicalSource = target
+	if scopeID == "" {
+		scopeID = "scope:root"
+	}
+	if correlated {
+		if outerScopeID == "" {
+			return "", "name-only"
 		}
-		// A qualifier can be an alias in the specific source occurrence even if
-		// it was not present in the legacy flat alias map.
-		for _, src := range sources {
-			if strings.EqualFold(src.Alias, source) && src.SourceKind == "table" {
-				physicalSource = src.Name
-				break
-			}
-		}
-		if table, ok := snapshot.Table(physicalSource); ok {
-			if _, ok := table.Column(column); ok {
-				return table.QualifiedName(), "schema-resolved"
-			}
-		}
-		return physicalSource, "name-only"
+		scopeID = outerScopeID
+	}
+	if hasUnknownEligibleSource(sources, scopeID, source) {
+		return "", "name-only"
 	}
 
 	var matches []string
 	for _, src := range sources {
-		if src.SourceKind != "table" {
+		if src.ScopeID != scopeID || src.SourceKind != "table" {
 			continue
+		}
+		if source != "" {
+			matched := strings.EqualFold(src.Alias, source)
+			if src.Alias == "" {
+				matched = matched || strings.EqualFold(src.Name, source)
+				if dot := strings.LastIndex(src.Name, "."); dot >= 0 {
+					matched = matched || strings.EqualFold(src.Name[dot+1:], source)
+				}
+				// The legacy flat alias map is only a fallback tied to an
+				// occurrence in this lexical scope, never a global resolver.
+				if target, ok := aliases[source]; ok && strings.EqualFold(target, src.Name) {
+					matched = true
+				}
+			}
+			if !matched {
+				continue
+			}
 		}
 		table, ok := snapshot.Table(src.Name)
 		if !ok {
 			continue
 		}
 		if _, ok := table.Column(column); ok {
+			// Do not deduplicate by physical table: each occurrence counts.
 			matches = append(matches, table.QualifiedName())
 		}
 	}
-	matches = uniqueStrings(matches)
 	if len(matches) == 1 {
 		return matches[0], "schema-resolved"
 	}
+	// Unknown and ambiguous bindings are never represented as known sources.
 	return "", "name-only"
-}
-
-func uniqueStrings(in []string) []string {
-	seen := map[string]bool{}
-	out := make([]string, 0, len(in))
-	for _, v := range in {
-		k := strings.ToLower(v)
-		if !seen[k] {
-			seen[k] = true
-			out = append(out, v)
-		}
-	}
-	return out
 }
