@@ -103,6 +103,7 @@ TEIが引き継ぐ価値があるのは、この五つが**何を可能にした
 | M-4 | `FormatVersion`を文書に持つ | 形式の世代を判定できる | 版の比較と内容の移行が一か所にない。欠落・非数値の扱いが経路で異なる | 既存[機能移植対応表](../design/AUTHORING_TOOL_FEATURE_TRANSFER_MAP_2026-10.md)§6、[#1920](https://github.com/hat47x/tei-platform/issues/1920) | RQ |
 | M-5 | 項目に`PhysicalID`を持ち、論理名と物理列名を対応させる | 意味上の名前を変えずに物理スキーマへ対応づけられる | 対応は項目属性で、表全体の対応や移行は別。物理名の重複検査は別 | `D:XFTableOperator.java L216–221, L292–295` | CORE/PLG |
 | M-6 | `Subsystem`が表と機能の所有境界になる。他`DB`の表は`SubDB`として読み取り専用で接続する | 参照系の別DBを混ぜずに扱える | 所有境界を越える更新は実行時に拒否されるが、設計時の診断は別 | `D:Session.java L619–642, L691–750`、`D:XFTableOperator.java L656–662` | CORE |
+| M-7 | 画面資源を言語別のリソース（`Res`、`Res_ja`、`Res_ko`）に分け、起動時に選ぶ | 画面の文言を、モデルを変えずに多言語化できる | モデル内の名称・説明・注記は一つの言語のままで、意味の多言語化は別 | `E:Res.java`・`E:Res_ja.java`・`E:Res_ko.java`、`M`と`D`にも同様の資源 | STU/CORE |
 
 ### 4.2 機能型と対話パターン（F）
 
@@ -122,6 +123,7 @@ X-TEAの機能型は8種です（`D:help/FunctionList.HTML`、`E:Editor.java L11
 | F-10 | 機能の呼出し関係 | `FunctionUsedByThis`（起動契機つき）と、ボタン・項目・明細からの起動を別に持つ | 機能間の依存を、呼出し元の種類つきで表せる | 呼出しの解析は文字列（`CALL(`等）の走査で、意味の参照ではない | `E:Editor.java L11976–12176` | PAT/STU |
 | F-11 | 機能型の直積分解 | 8型は独立した型ではなく、複数性（単票・一覧・見出し明細）、編集性（参照のみ・保守）、出力形態（画面・印刷）の組合せとして説明できる。型固有の属性も、この軸に対応する | 型の追加を、軸の組合せとして考えられる | 組合せの一部（一覧の印刷など）は存在しない。型ごとの実装は直積を共有しない | `D:XF100.java`〜`D:XF390.java`の属性抽出（下表） | PAT |
 | F-12 | 見出し明細表示の構造ツリー | `StructureTable`、`StructureUpperKeys`、`StructureChildKeys`、`StructureOrderBy`、`StructureRootText`、`StructureNodeText`、`StructureNodeIcons`で、自己参照する階層を見出しの下にツリー表示する | 組織・部品表・勘定科目のような階層を、専用画面を作らずに辿れる | 階層の意味は表の自己参照とキー項目に依存し、深さ・循環・権限の扱いが属性にない | `D:XF300.java L7772–7831, L1835–1874` | PAT/GEN |
+| F-13 | 一括更新の値パネル | `BatchTable`、`BatchField`、`BatchWithKeyFields`、`BatchRecordFunction`で、選択行に適用する値をまとめて入力する。選択行のキー値が同じ項目は自動で埋める | 複数行の一括更新を、専用の値パネルで行える | 適用範囲と上書きの規則が属性と選択状態に依存し、部分成功の扱いが定まらない | `D:XF110_SubList.java L546–652, L766–886` | PAT |
 
 #### 4.2.1 機能型ごとの宣言パラメータ
 
@@ -185,6 +187,7 @@ X-TEAの機能型は8種です（`D:help/FunctionList.HTML`、`E:Editor.java L11
 | D-6 | 実行エラーを握りつぶし、更新件数を`-1`にして返す経路がある | 呼出し側が件数だけを見て成功と誤認しない前提 | 失敗が件数に潰れる。ログだけが残る | `D:XFTableOperator.java L630–648` | RQ/EVI |
 | D-7 | 別DB（`SubDB`）は読み取り専用で接続し、更新系は例外にする | 参照系DBの誤更新を防ぐ | 読み取り専用の判定は実行時で、設計・検証の段では別 | `D:Session.java L715–724`、`D:XFTableOperator.java L656–662` | CORE |
 | D-8 | 画面を閉じるときの確定が、型によって異なる。XF100/290/300/390は閉じると確定し、XF110/200/310は操作ごとに確定し、XF000は確定しない | 型ごとの使い方に合わせた確定ができる | 同じ「画面を閉じる」操作が、型によって確定にも取消にもなる。取引の境界が業務ではなく画面の種類で決まる | `D:XF100.java L833–846`、`D:XF290.java L321`、`D:XF300.java L1169`、`D:XF390.java L499`、`D:XF110.java L768`、`D:XF200.java L896`、`D:XF310.java L1069`、`D:XF000.java L616–624` | RQ/CORE |
+| D-9 | 定義に残るが実行されない属性がある。XF110の`RangeKey`は、範囲キーの検査がコメントアウトされており、実行時に効かない | 旧い定義を読み込んでも壊れない | 定義にある値と実行時の意味が一致しない。利用者は設定した効果を期待する | `D:XF110.java L4735–4741, L4781–4786`（コメントアウト） | RQ |
 
 ### 4.6 標準業務ライブラリ（S）
 
@@ -238,6 +241,7 @@ X-TEAの機能型は8種です（`D:help/FunctionList.HTML`、`E:Editor.java L11
 | P-2 | `AppServerName`がある場合、画面のSQLと確定をHTTPでサーバへ委ねる | SQLの実行主体をサーバへ移せる | 起動時には端末側でも主DBと`SubDB`へ接続する（接続処理は`AppServerName`で分岐しない）。遠隔呼出しの単位はSQL文字列で、操作の意味・認可・型が境界にない | `D:Session.java L691–750, L3297–3357`、`S:DBMethod.java L404–455` | PLG/RQ |
 | P-3 | サーバの`Service`が機能IDと呼出しパラメータを受けて機能を実行する | 画面なしの機能実行を遠隔から行える | 認証は利用者IDとパスワード。機能ごとの実行権限の検査は、この経路では確認できない | `S:Service.java L116–193` | PLG |
 | P-4 | 保守ログ・機能の開始終了ログ・SQLログを残す | 実行の追跡ができる | SQLは1000文字で切られ、失敗が件数に潰れる経路と組み合わさる | `D:Session.java L2662–2679`、`D:XFTableOperator.java L630–639` | EVI |
+| P-5 | `Menu`が`Name`、`HelpURL`、`FunctionsToBeLoaded`、`Option`（`Index`、`FunctionID`、`OptionName`）を持ち、ログアウトを固定の項目として加える | メニュー構成と起動時のプリロードを宣言できる | メニューが認可の唯一の手段になり、プリロードの失敗や順序が起動に影響する | `D:Session.java L1196–1252, L1182–1189` | PLG/RQ |
 
 ## 5. 横断して見えた設計知見
 
