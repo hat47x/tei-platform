@@ -9,6 +9,17 @@
 
 同じ規則を複数の対象へ適用できるが、対象の認可・NULL・評価文脈が同一だと推測しない。規則は保存値を暗黙に更新しない。既存の `semantic.Attribute`、`Relation`、#988 の演算子、#1120 の安定参照を利用し、新しいCanonical型や式言語を先に固定しない。
 
+## 型付きの確認
+
+`internal/semantic/derivationref` の参照実装は、規則の任意の型付き契約（`InputTypes`・`OutputType`）と、適用先の`TargetType`を検査する。型の不一致は`ErrType`、未対応の演算子は`ErrOperator`として区別し、名前や位置の一致で型を推測しない。
+
+- 規則の型付き契約が揃っているとき、`multiply`は数値型（`decimal`・`integer`）の2入力と数値の結果型を要求する
+- 適用先の`TargetType`が規則の`OutputType`と異なる場合は拒否する
+- 一つの規則を複数の適用先へ結び付けられる。適用先を変えても規則は変わらない
+- `InputTypes`・`OutputType`・`TargetType`は任意であり、指定しない既存の呼出しは従来どおり動く
+
+これは参照用の宣言であり、Coreの型体系や新しい式言語を固定しない。
+
 ## 評価結果と診断の最小区別
 
 | 状態 | 意味 | 期待する処理 |
