@@ -10,7 +10,7 @@ viewintent.Interpret は参照用の純粋関数であり、実行・永続化�
 - **実体の変更と Relation occurrence の変更**：明示 edge ID を持つ unlink は relation が対象であり、端点ノードの delete に変換しない。edge が識別できなければ未解決。
 - **集計結果と元データの可逆な属性**：集計点の変更から元明細への配賦を推定しない。業務用の明示配賦 Action は別件。
 - **全件を必要とする検証と明示 ID の一件操作**：既知の部分取得を全件検証へ使わない。一件候補を返せても実処理での Authority/Rule/Version/Commit/Receipt は別。
-- **View時点と現在の意味・Action版**：意味改版（[#2505](https://github.com/hat47x/tei-platform/issues/2505)）や選択 epoch 変更後の旧Changeを無条件に再解釈しない。別版への rebase は設計・Ownerの明示判断を要する。
+- **View時点と現在の意味・Action版**：意味改版（[#2505](https://github.com/hat47x/tei-platform/issues/2505)）やContext Instance/選択 epoch 変更後の旧Changeを無条件に再解釈しない。別版への rebase は設計・Ownerの明示判断を要する。
 
 ## 限定試験
 
@@ -22,4 +22,4 @@ viewintent.Interpret は参照用の純粋関数であり、実行・永続化�
 
 この試作は candidate を返せるだけで、値の型検証、Sourceの真正性、現在権限、Ownerの意味受理、実Effect、Business Completion、Commit応答喪失後の状態は保証しない。後段は #1127/#1129/#1174/#1163 が所有する。
 
-**実測記録**：作成者の隔離ディレクトリ（Go 1.23.2／モジュールモード無効）でこの3ファイルの focused test 10件、race、vet を実行し成功。リポジトリが指定する Go 1.26.10 による full health、CI、実Target・Host試験は未実施。PRの exact head と統合判定は別途確認する。
+**実測記録**：作成者の隔離ディレクトリ（Go 1.23.2／モジュールモード無効）でこの3ファイルの focused test 12件、race、vet を実行し成功。リポジトリが指定する Go 1.26.10 による full health、CI、実Target・Host試験は未実施。PRの exact head と統合判定は別途確認する。
