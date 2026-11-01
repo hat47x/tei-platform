@@ -102,8 +102,14 @@ func DeriveFromAnalysis(q EmbeddedSQL, databaseID core.CanonicalID, result analy
 		ir.Scopes = []QueryScope{{ID: "scope:root", Kind: "root"}}
 	}
 	scopeKinds := make(map[string]string, len(ir.Scopes))
+	scopeParents := make(map[string]string, len(ir.Scopes))
+	duplicateScopes := make(map[string]bool)
 	for _, s := range ir.Scopes {
+		if _, exists := scopeParents[s.ID]; exists {
+			duplicateScopes[s.ID] = true
+		}
 		scopeKinds[s.ID] = s.Kind
+		scopeParents[s.ID] = s.ParentID
 	}
 
 	resolved, total := 0, 0
@@ -123,7 +129,7 @@ func DeriveFromAnalysis(q EmbeddedSQL, databaseID core.CanonicalID, result analy
 			if resolution == "schema-resolved" {
 				resolved++
 			}
-		} else if op.Binding != "" && scopeKinds[op.Binding] == op.SourceKind {
+		} else if op.Binding != "" && !duplicateScopes[op.Binding] && scopeKinds[op.Binding] == op.SourceKind {
 			// A CTE/subquery source is lexically bound only when its target exists
 			// and has the declared kind. An unchecked binding is not a resolved fact.
 			resolution = "logical"
@@ -178,7 +184,7 @@ func DeriveFromAnalysis(q EmbeddedSQL, databaseID core.CanonicalID, result analy
 				logicalScopeID = c.OuterScopeID
 			}
 			logicalSource, logicalAmbiguous := resolveLogicalField(ir.Sources, logicalScopeID, c.Qualifier, c.Name, outputByScopeName)
-			if (c.Correlated && c.OuterScopeID == "") || hasUnknownEligibleSource(ir.Sources, logicalScopeID, c.Qualifier) || logicalAmbiguous || (logicalSource != "" && resolution == "schema-resolved") {
+			if (c.Correlated && !isStrictScopeAncestor(scopeParents, duplicateScopes, c.ScopeID, c.OuterScopeID)) || hasUnknownEligibleSource(ir.Sources, logicalScopeID, c.Qualifier) || logicalAmbiguous || (logicalSource != "" && resolution == "schema-resolved") {
 				// A physical table and a CTE (or two CTE outputs) can both
 				// declare the same column. Never infer a preferred source.
 				physicalSource, logicalSource, resolution = "", "", "name-only"
@@ -339,6 +345,29 @@ func resolveLogicalField(sources []SourceRef, scopeID, qualifier, column string,
 // An unresolved source may expose the requested column. It cannot be ignored
 // when proving uniqueness, but an unrelated qualified source need not block a
 // known explicit alias.
+func isStrictScopeAncestor(parents map[string]string, duplicate map[string]bool, child, ancestor string) bool {
+	if child == "" || ancestor == "" || child == ancestor || duplicate[ancestor] {
+		return false
+	}
+	seen := make(map[string]bool)
+	found := false
+	for child != "" && !seen[child] && !duplicate[child] {
+		seen[child] = true
+		parent, ok := parents[child]
+		if !ok || duplicate[parent] {
+			return false
+		}
+		if parent == "" {
+			return found
+		}
+		if parent == ancestor {
+			found = true
+		}
+		child = parent
+	}
+	return false
+}
+
 func hasUnknownEligibleSource(sources []SourceRef, scopeID, qualifier string) bool {
 	if scopeID == "" {
 		scopeID = "scope:root"

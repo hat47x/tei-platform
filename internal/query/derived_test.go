@@ -400,6 +400,71 @@ func TestDerivedQueryIRUnknownSourceAndMissingOuterScopeStayUnresolved(t *testin
 	}
 }
 
+func TestDerivedQueryIRRejectsCorrelatedSiblingScope(t *testing.T) {
+	q := query.EmbeddedSQL{ID: core.MustCanonicalID("app.correlated_sibling"), Datasource: core.MustLocalName("sales")}
+	result := analyzer.Result{
+		ProtocolVersion: 1, Status: "ok", Query: q.ID,
+		Scopes: []analyzer.Scope{
+			{ID: "scope:root", Kind: "root"},
+			{ID: "scope:left", Kind: "subquery", ParentID: "scope:root"},
+			{ID: "scope:right", Kind: "subquery", ParentID: "scope:root"},
+		},
+		ColumnRefs: []analyzer.ColumnOccurrence{{ID: "col:0", ScopeID: "scope:left", Qualifier: "r", Name: "order_id", Correlated: true, OuterScopeID: "scope:right"}},
+		Operations: []analyzer.Operation{{ID: "source:right", Kind: "source", ScopeID: "scope:right", Source: "public.orders", SourceKind: "table", Alias: "r"}},
+	}
+	snap := physical.SchemaSnapshot{Database: core.MustCanonicalID("sales_core"), Tables: []physical.Table{{Schema: "public", Name: "orders", Columns: []physical.Column{{Name: "order_id"}}}}}
+	got := query.DeriveFromAnalysis(q, snap.Database, result, &snap)
+	if len(got.Fields) != 1 || got.Fields[0].Resolution != "name-only" || got.Fields[0].PhysicalSource != "" {
+		t.Fatalf("sibling scope was treated as outer: %#v", got.Fields)
+	}
+}
+
+func TestDerivedQueryIRDuplicateBindingScopeIsUnresolved(t *testing.T) {
+	q := query.EmbeddedSQL{ID: core.MustCanonicalID("app.duplicate_scope"), Datasource: core.MustLocalName("sales")}
+	result := analyzer.Result{
+		ProtocolVersion: 1, Status: "ok", Query: q.ID,
+		Scopes: []analyzer.Scope{
+			{ID: "scope:root", Kind: "root"},
+			{ID: "scope:cte:x", Kind: "cte", ParentID: "scope:root"},
+			{ID: "scope:cte:x", Kind: "cte", ParentID: "scope:root"},
+		},
+		OutputFields: []analyzer.OutputField{{ID: "out:0", ScopeID: "scope:cte:x", Name: "v"}},
+		ColumnRefs:   []analyzer.ColumnOccurrence{{ID: "col:0", ScopeID: "scope:root", Qualifier: "x", Name: "v"}},
+		Operations:   []analyzer.Operation{{ID: "source:0", Kind: "source", ScopeID: "scope:root", Source: "x", SourceKind: "cte", Alias: "x", Binding: "scope:cte:x"}},
+	}
+	got := query.DeriveFromAnalysis(q, core.MustCanonicalID("sales_core"), result, nil)
+	if len(got.Sources) != 1 || got.Sources[0].Resolution != "name-only" || len(got.Fields) != 1 || got.Fields[0].Resolution != "name-only" {
+		t.Fatalf("duplicate binding scope resolved: sources=%#v fields=%#v", got.Sources, got.Fields)
+	}
+}
+
+func TestDerivedQueryIRCorrelatedScopeHierarchy(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		scopes []analyzer.Scope
+		want   string
+	}{
+		{"nested-ancestor", []analyzer.Scope{{ID: "scope:root", Kind: "root"}, {ID: "middle", ParentID: "scope:root"}, {ID: "inner", ParentID: "middle"}}, "schema-resolved"},
+		{"cycle", []analyzer.Scope{{ID: "scope:root", ParentID: "inner"}, {ID: "inner", ParentID: "scope:root"}}, "name-only"},
+		{"duplicate", []analyzer.Scope{{ID: "scope:root", Kind: "root"}, {ID: "inner", ParentID: "scope:root"}, {ID: "inner", ParentID: "scope:root"}}, "name-only"},
+		{"missing-parent", []analyzer.Scope{{ID: "scope:root", Kind: "root"}, {ID: "inner", ParentID: "missing"}}, "name-only"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			q := query.EmbeddedSQL{ID: core.MustCanonicalID("app.scope_hierarchy"), Datasource: core.MustLocalName("sales")}
+			result := analyzer.Result{
+				ProtocolVersion: 1, Status: "ok", Query: q.ID, Scopes: tc.scopes,
+				ColumnRefs: []analyzer.ColumnOccurrence{{ID: "col:0", ScopeID: "inner", Qualifier: "o", Name: "order_id", Correlated: true, OuterScopeID: "scope:root"}},
+				Operations: []analyzer.Operation{{ID: "source:0", Kind: "source", ScopeID: "scope:root", Source: "public.orders", SourceKind: "table", Alias: "o"}},
+			}
+			snap := physical.SchemaSnapshot{Database: core.MustCanonicalID("sales_core"), Tables: []physical.Table{{Schema: "public", Name: "orders", Columns: []physical.Column{{Name: "order_id"}}}}}
+			got := query.DeriveFromAnalysis(q, snap.Database, result, &snap)
+			if len(got.Fields) != 1 || got.Fields[0].Resolution != tc.want {
+				t.Fatalf("resolution=%#v want=%s", got.Fields, tc.want)
+			}
+		})
+	}
+}
+
 func TestDerivedQueryIRCorrelatedCTEColumnUsesExplicitOuterScope(t *testing.T) {
 	q := query.EmbeddedSQL{ID: core.MustCanonicalID("app.correlated_cte"), Datasource: core.MustLocalName("sales")}
 	result := analyzer.Result{
