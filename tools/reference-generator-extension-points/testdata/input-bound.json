@@ -1,0 +1,76 @@
+{
+  "schema": "tei.reference.generator-extension-points-input/v0",
+  "generator": {
+    "id": "std.order.generator",
+    "version": "1.0.0",
+    "extensionPoints": [
+      {
+        "id": "compute-derived",
+        "version": "1",
+        "order": 10,
+        "inputs": ["amount"],
+        "outputs": ["derivedAmount"],
+        "default": "amount"
+      },
+      {
+        "id": "before-save",
+        "version": "1",
+        "order": 20,
+        "inputs": ["record"],
+        "outputs": ["decision"],
+        "default": "allow"
+      }
+    ],
+    "artifact": [
+      {
+        "path": "generated/order.go",
+        "content": "package generated\n\n// generated order\n"
+      },
+      {
+        "path": "generated/defaults.go",
+        "content": "package generated\n\nconst DefaultDerived = \"amount\"\n"
+      }
+    ],
+    "outcomes": [
+      {
+        "point": "compute-derived",
+        "outcome": "order-total",
+        "default": "100",
+        "withExtension": "120"
+      },
+      {
+        "point": "before-save",
+        "outcome": "save-decision",
+        "default": "allow",
+        "withExtension": "deny-negative"
+      }
+    ]
+  },
+  "caseExtensions": [
+    {
+      "point": "compute-derived",
+      "path": "case/derived.go",
+      "content": "package caseext\n\nfunc Derived(amount int) int { return amount + 20 }\n",
+      "contract": {
+        "version": "1",
+        "order": 10,
+        "inputs": ["amount"],
+        "outputs": ["derivedAmount"]
+      }
+    }
+  ],
+  "workspaceFiles": [
+    {
+      "path": "generated/order.go",
+      "content": "package generated\n\n// generated order\n"
+    },
+    {
+      "path": "generated/defaults.go",
+      "content": "package generated\n\nconst DefaultDerived = \"amount\"\n"
+    },
+    {
+      "path": "case/derived.go",
+      "content": "package caseext\n\nfunc Derived(amount int) int { return amount + 20 }\n"
+    }
+  ]
+}
