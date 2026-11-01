@@ -66,6 +66,12 @@
 
 これは[TAI #232](https://github.com/hat47x/tai-pleroma/issues/232)の新しい**具体的なProtocol egress負例**であり、新たな中央DLP/Authorization Serviceを一律に設ける提案ではない。
 
+### 2.4 追加観測（2026-11-02）：実験的Agent Teamsの有無で並列構成を分ける
+
+当初の本書はGoalと独立Sessionを主に扱った。DSH指定版には[実験的Agent Teams](https://github.com/deepseek-ai/deepseek-harness/blob/ce7073d51254c26cd63b22a60835b8f948deb447/packages/experimental/agent-team/README.md)が存在する。**標準Profileでは無効**で、Lead＋teammate・メッセージ・Revision付きTask DAGを提供する一方、**同一Checkoutを共有し、writeScopesは競合警告だけ**である。自動Owner解放、Message再送/重複防止、別Processやworktreeの分離を含まない。Roster/Taskの全体情報が別Session表示中のBrowserへbroadcastされる仕様も、用途別情報開示に対する圧力となる。
+
+したがって並列方式は「Goal一件 vs 独立Session」だけでなく、**A=単一Agent、B=opt-in Team、C=独立Session×worktree、D=ハイブリッド**で比較する。詳細と独立の反証可能なT-01〜T-12は[Agent Teams×Construction Context×専門家連携](DSH_AGENT_TEAMS_CONTEXT_EXPERT_HANDOFF_2026-11-02.md)へ集約し、実測は既存[TEI #2509](https://github.com/hat47x/tei-platform/issues/2509)、[TAI #234](https://github.com/hat47x/tai-pleroma/issues/234)、[#2515](https://github.com/hat47x/tei-platform/issues/2515)/[#2516](https://github.com/hat47x/tei-platform/issues/2516)のOwnerへ渡す。**Source静的確認のみ／実Team起動NOT RUN**。
+
 ## 4. 安価なトークンによる大規模並列開発の設計
 
 **IssueとRequirementの探索空間は積極的に広げる。受理と実行の権限は従来通り厳密に扱う。** 競合の少ない単位へ分解し、比較・実証の並列度を拡大する。
