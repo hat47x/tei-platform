@@ -24,10 +24,12 @@ type View struct {
 	Navigations   []Navigation            `json:"navigations,omitempty"`
 }
 
-// Itemは、対話に現れる項目と、その型・参照先を表す。
+// Itemは、対話に現れる項目と、その型・表示名・入力部品・参照先を表す。
 type Item struct {
 	Attribute core.CanonicalID `json:"attribute"`
 	Type      core.CanonicalID `json:"type,omitempty"`
+	Label     string           `json:"label,omitempty"`
+	Input     string           `json:"input,omitempty"`
 	Lookup    *Lookup          `json:"lookup,omitempty"`
 }
 
@@ -61,7 +63,7 @@ func Build(world ir.World, applicationID, patternID core.CanonicalID) (View, err
 	}
 
 	patterns := map[core.CanonicalID]application.Pattern{}
-	dataAttributes := map[core.CanonicalID]map[core.CanonicalID]core.CanonicalID{}
+	dataAttributes := map[core.CanonicalID]map[core.CanonicalID]semantic.Attribute{}
 	relations := map[core.CanonicalID]semantic.Relation{}
 	for _, candidate := range world.Applications {
 		for _, pattern := range candidate.Patterns {
@@ -72,9 +74,9 @@ func Build(world ir.World, applicationID, patternID core.CanonicalID) (View, err
 	}
 	for _, namespace := range world.Semantics {
 		for _, data := range namespace.Data {
-			attributes := map[core.CanonicalID]core.CanonicalID{}
+			attributes := map[core.CanonicalID]semantic.Attribute{}
 			for _, attribute := range data.Attributes {
-				attributes[attribute.ID] = attribute.TypeRef
+				attributes[attribute.ID] = attribute
 			}
 			dataAttributes[data.ID] = attributes
 			for _, relation := range data.Relations {
@@ -108,11 +110,16 @@ func Build(world ir.World, applicationID, patternID core.CanonicalID) (View, err
 		Data:          pattern.Data,
 	}
 	for _, item := range pattern.Interaction.Items {
-		attributeType, ok := attributes[item.Attribute]
+		attribute, ok := attributes[item.Attribute]
 		if !ok {
 			return View{}, fmt.Errorf("interaction item %sは%sのattributeではありません", item.Attribute, pattern.Data)
 		}
-		resolved := Item{Attribute: item.Attribute, Type: attributeType}
+		resolved := Item{
+			Attribute: item.Attribute,
+			Type:      attribute.TypeRef,
+			Label:     labelOf(attribute),
+			Input:     inputKind(attribute.TypeRef),
+		}
 		if item.Lookup != nil {
 			target, ok := patterns[item.Lookup.Pattern]
 			if !ok {
@@ -129,7 +136,7 @@ func Build(world ir.World, applicationID, patternID core.CanonicalID) (View, err
 			if !ok {
 				return View{}, fmt.Errorf("relation target %sが見つかりません", relation.Target)
 			}
-			targetType, ok := targetAttributes[item.Lookup.TargetAttribute]
+			targetAttribute, ok := targetAttributes[item.Lookup.TargetAttribute]
 			if !ok {
 				return View{}, fmt.Errorf("lookup target %sは%sのattributeではありません", item.Lookup.TargetAttribute, relation.Target)
 			}
@@ -137,7 +144,7 @@ func Build(world ir.World, applicationID, patternID core.CanonicalID) (View, err
 				Pattern:         target.ID,
 				Kind:            target.Kind,
 				TargetAttribute: item.Lookup.TargetAttribute,
-				TargetType:      targetType,
+				TargetType:      targetAttribute.TypeRef,
 			}
 		}
 		view.Items = append(view.Items, resolved)
@@ -157,4 +164,31 @@ func Build(world ir.World, applicationID, patternID core.CanonicalID) (View, err
 		})
 	}
 	return view, nil
+}
+
+func labelOf(attribute semantic.Attribute) string {
+	if attribute.Display != "" {
+		return attribute.Display
+	}
+	if attribute.Symbol != "" {
+		return attribute.Symbol
+	}
+	return string(attribute.ID)
+}
+
+func inputKind(typeRef core.CanonicalID) string {
+	switch typeRef {
+	case "std.integer", "std.decimal", "std.money":
+		return "number"
+	case "std.date":
+		return "date"
+	case "std.datetime":
+		return "datetime-local"
+	case "std.time":
+		return "time"
+	case "std.boolean":
+		return "checkbox"
+	default:
+		return "text"
+	}
 }

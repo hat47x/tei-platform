@@ -42,8 +42,8 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 		*patternID != strings.TrimSpace(*patternID) {
 		return fail("INVALID_ARGUMENT", "view requires exact -workspace, -application and -pattern, without positional arguments", 2)
 	}
-	if *format != "text" && *format != "json" {
-		return fail("INVALID_ARGUMENT", "view -format must be text or json", 2)
+	if *format != "text" && *format != "json" && *format != "html" {
+		return fail("INVALID_ARGUMENT", "view -format must be text, json, or html", 2)
 	}
 
 	loaded, err := workspace.Load(*root)
@@ -56,10 +56,21 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 	}
 	report.OK = true
 	report.Result = &view
-	if *format == "json" {
+	switch *format {
+	case "json":
 		return writeViewReport(out, report, 0)
+	case "html":
+		html, err := applicationview.RenderHTML(view)
+		if err != nil {
+			return fail("VIEW_FAILED", err.Error(), 1)
+		}
+		if _, err := fmt.Fprint(out, html); err != nil {
+			return 2, err
+		}
+		return 0, nil
+	default:
+		return writeViewText(out, view)
 	}
-	return writeViewText(out, view)
 }
 
 func writeViewReport(out io.Writer, report cliViewReport, exitCode int) (int, error) {

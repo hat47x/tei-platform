@@ -144,3 +144,23 @@ func TestViewCommandRejectsMissingFlags(t *testing.T) {
 		t.Fatalf("unexpected report: %+v", report)
 	}
 }
+
+func TestViewCommandRendersHTMLForm(t *testing.T) {
+	root := viewWorkspace(t)
+	var out bytes.Buffer
+	code, err := runViewCommand([]string{
+		"-workspace", root,
+		"-application", "order_entry",
+		"-pattern", "order_entry.order_record",
+		"-format", "html",
+	}, &out)
+	if err != nil || code != 0 {
+		t.Fatalf("exit=%d err=%v body=%s", code, err, out.String())
+	}
+	html := out.String()
+	for _, want := range []string{"<!doctype html>", `name="sales.order.order_id"`, "参照: order_entry.customer_reference"} {
+		if !strings.Contains(html, want) {
+			t.Fatalf("html does not contain %q: %s", want, html)
+		}
+	}
+}
