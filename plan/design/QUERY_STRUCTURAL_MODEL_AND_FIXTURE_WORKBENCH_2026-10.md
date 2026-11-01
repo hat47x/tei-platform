@@ -395,6 +395,35 @@ main `fd59b6b1bac340b67244f9441a492c460921671a` の`internal/query/relational.go
 **停止条件**：`RelNode.Kind`や`Expressions`を文字列として読むだけでPredicate/EXISTS/Window/Recursive・Operation Lawの意味が正しいと宣言しない。初回のM0で不足する情報を実測した後、既存`analyzer.Result`の対象限定拡張かConsumerの別説明候補かを比較する。新Core kind、SQL書換え、第二のEvaluator・Provider完全性証明器、可視化が動いただけのMeaning受理を導入しない。
 
 
+### 7.9 QX-17：現行RelationalIRに対する構造依存トレースを実測（2026-11-02）
+
+**追加実装（Draft #2388の同一ブランチ、既存Query Core・Worker・Go実装への変更なし）**：前節QX-16で固定した手書き演算依存を、実際に存在する`internal/query/relational.go`のJSON shapeへ投影した3種類の合成`RelationalIR`と、`RelNode.Inputs`を保守的に追うread-only Pythonプローブを[既存fixtureディレクトリ](https://github.com/hat47x/tei-platform/tree/work/query-structural-fixture-design-20261030/plan/fixtures/query-workbench-f0)へ追加。
+
+main参照：`2197baaedbde178a042a280ea1bd1d534617bfc7`。現行`relational.go`のblobは`4a91112b557585a4799b681c6348b46d85698f59`。手書き3例の型・JSONタグはこの構造を基準とする。**SQL worker生成済みResultやGo DeriveFromAnalysis実行物ではない**。
+
+| QX-17ケース／対象 | 保守的な構造トレースの結果 | 意図的に未確定へ残すもの |
+| --- | --- | --- |
+| `aggregate_before_join` | 明細集約`agg_l`はline Source occurrenceのみ、後続`join_groups`はline+delivery | SUM対象の正確な式意味、GROUP key/業務識別、演算で求められるInput completeness |
+| `join_before_aggregate` | `join_rows`がline+delivery、後段`agg_after`も両集合への依存を持つ | JOIN pairとGroupの実際の行値・数量、正しい業務明細総額というClaim |
+| `left_join_filter` | `outer_join`と`anti_filter`はheader+deliveryに依存 | 右集合の全件性と`IS NULL`の意味。`(H,NULL)`を実業務の不在へ自動受理しない |
+| 同一物理Sourceの二出現 | Source名`line`が同じでもOperation ID別に2 occurrenceを保持 | 相関・Scopeごとの正しい束縛や受理されたRelation |
+| 負例（欠落、循環、重複、未知演算、異Scope、CTE、Arity、Root欠落） | `unresolved`と局所diagnosticに分類。cross-scopeは即時不正とせず`unverified` | Worker/SQL方言で正当な可視性を満たすか、補完できるか |
+
+**実測の範囲**：
+- Python 3.13.5：`test_probe_relational_ir.py` **13件PASS**。`probe_relational_ir.py`は3例をJSONに投影し、Root構造候補と各ノードのSource operation ID・grain候補・unverified式を出力。
+- GitHubに保存した3ファイルとローカルで実行したファイルの**Git blob SHA一致**：`probe_relational_ir.py = 0166c89dc5b85d6ff721a959a2f242e82b50c770`、`relational_ir_synthetic.json = 9a47ab095e504798726976239dbf2c56dd123ce5`、`test_probe_relational_ir.py = 1edcce76f59982055603134eaaca7b6955c1a196`。
+- Go 1.23.2の隔離テストでは、現mainの`relational.go`と**バイト同一の型定義**を使用し、3種類の合成IRの`encoding/json.Unmarshal/Marshal`往復1件PASS。これは*Go型とJSON shapeの限定照合*。型ファイルをRepoへ複製・導入していない。repo指定Go toolchainでの正式`go test`や`DeriveFromAnalysis`、worker/実Provider/GUI/SHOは未実行。
+
+**構造を読めることとClaimが成立することの間の欠落**：
+1. `RelNode.Inputs`は演算Node ID、`OutputField.Inputs`はColumnOccurrence IDに由来するField Lineage。**出力Field→どのRelNodeの演算・GROUP/WHERE条件で成立したか**を現IRだけで自動認定する追加根拠は未確認。2種類のIDを短絡して結ばない。
+2. `RelNode.Expressions`は文字列配列。SQLの比較や`EXISTS`のPredicate、`SUM`の対象/NULL・非負値域型、Window/Recursive、SQL dialectを型付きで十分説明したと推定しない。プローブの`expressionSemantics`は`unverified`、`claimConclusionPresence`は常に`not-established`。
+3. `RelNode.Resolution`や`Coverage.Full`が仮に存在しても、Provider read-set、必要なsnapshotの一致、Ownerの業務Meaning/受理、Host実行・開示許可の証拠にはならない。source scopeの判定はDraft #2454、worker応答ID/版はDraft #2471、同一Query IDのSQL原byte変化はQX-14の未解決課題。
+
+**次のM1判定方法（未実行）**：既存Queryパッケージの合成`analyzer.Result`から`DeriveFromAnalysis`→`RelationalIR`を**実際のGo呼出しで生成した結果**を、今回のQX-17プローブへ入力。3例の「Scope→Source occurrence→Operation Inputs→OutputFields」を別々に照合し、(a)同じ依存を辿れる、(b)構造は辿れるが出力Field接合は無根拠、(c)未表現／`opaque`、(d)誤った`Full`の4群へ分類する。現在のIRで説明の成立条件が表せない場合は、まず具体的な欠落字段を記録し、第二のParser/SQL Evaluator/新Core Provenance正本を作る前に既存Owner #2387/#988/#2506で接続を評価する。
+
+**同時に満たすべき横断要件**：#2506のData Context Instance/選択epochと#2500のAction対象IDは、本QX-17 Source operation IDと別のID。部分取得・JOINの行増幅・集約の操作不可をModeler/SHO/外部Consumerへ説明する際は、構造観測→対象束縛→当前性→Authority/Effectをそれぞれ独立に扱う。QX-17はread-only構造候補のStageに留め、業務完成・Commit・GenerationのPASSへ昇格しない。
+
+
 ## 8. 実装順・担当引継ぎ（提案）
 
 | 段階 | 所有 | 実施 | 完了の根拠 |
