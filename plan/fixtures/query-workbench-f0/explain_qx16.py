@@ -35,9 +35,15 @@ CASES = {
 }
 
 
-def _claim(status, observed, *, conclusion=None, conditions=()):
+_UNSET = object()
+
+
+def _claim(status, observed, *, conclusion=_UNSET, conditions=()):
+    # JSON null as an actual SQL value is different from no qualified claim.
+    presence = "not-established" if conclusion is _UNSET else "sql-null" if conclusion is None else "value"
     return {"status": status, "observedSliceValue": observed,
-            "conclusion": conclusion, "conditions": list(conditions)}
+            "conclusion": None if conclusion is _UNSET else conclusion,
+            "conclusionPresence": presence, "conditions": list(conditions)}
 
 
 def evaluate_case(config, observed):
