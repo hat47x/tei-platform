@@ -56,6 +56,15 @@ class QueryExplainQX16Tests(unittest.TestCase):
         self.assertTrue(empty["conclusion"]["unmatched"])
         self.assertFalse(match["conclusion"]["unmatched"])
 
+    def test_each_claim_is_traced_to_a_dependency_node(self):
+        data = build_reference()
+        nodes = data["operationDependencies"]
+        for scenario, record in data["scenarios"].items():
+            for claim_id in record["claims"]:
+                self.assertIn(claim_id, nodes, (scenario, claim_id))
+        self.assertEqual(nodes["line_sum_gte_500"]["inputs"], ["line_sum"])
+        self.assertEqual(nodes["not_exists_500"]["inputs"], ["exists_500"])
+
     def test_no_host_or_provider_acceptance(self):
         data = build_reference()
         self.assertIn("Provider completeness or read snapshot", data["notProven"])
