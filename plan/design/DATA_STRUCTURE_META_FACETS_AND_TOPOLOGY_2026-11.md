@@ -368,7 +368,7 @@ S→TがObserver O1を保存し、T→UがObserver O2を保存するだけでは
 
 最小の試験票は、(a) 個別変換の正例、(b) 情報損失の負例、(c) 合成したときのみ失敗する反例、(d) 同じ物理Targetだが解釈文脈が違う反例を含める。
 
-**所有**：上記の独立な観測・変換試験は[Issue #2498](https://github.com/hat47x/tei-platform/issues/2498)で具体化する。#1806の型分割安全化Draft #2404は継続し、AttributeID→TargetTypeRefの割当意図を失う候補を禁止する。
+**所有**：構造保存写像・Projection・編集逆写像の共通設計は[Issue #2497](https://github.com/hat47x/tei-platform/issues/2497)および[同一Draft上の設計文書](STRUCTURE_PRESERVING_TRANSFORMATIONS_AND_PROJECTIONS_2026-11.md)が担当する。[Issue #2498](https://github.com/hat47x/tei-platform/issues/2498)はArrow/Protobuf/xarray/CRSなど**実際の外部Serialization／Consumerに限定したConformance実証**を担当する。#1806の型分割安全化Draft #2404は継続し、AttributeID→TargetTypeRefの割当意図を失う候補を禁止する。
 
 ## 19. AI大量並列開発時の担当・根拠の分割
 
@@ -377,7 +377,8 @@ S→TがObserver O1を保存し、T→UがObserver O2を保存するだけでは
 | 担当 | 増補できる対象 | 成果物・再利用する基盤 | 他レーンから独立した成立条件 |
 | --- | --- | --- | --- |
 | #2495 メタ概念 | 新しい構成子・facet・公理・多重親の関係 | 本設計文書、#1120参照、#1705の量等 | 既存分類で説明できない具体例と境界を提示 |
-| #2498 観測・変換 | 入力形式、変換、Operation、Observer、失われる情報 | 既存Scenario/Oracle、#1806/#2077 | 変換前後の正負ペア・証拠範囲を提示 |
+| #2497 構造写像・投影 | 構造の保存写像、Observer、UI/SHO Projection、編集の逆写像 | [共通の構造保存設計](STRUCTURE_PRESERVING_TRANSFORMATIONS_AND_PROJECTIONS_2026-11.md)、#1124/#997 | 用途・文脈・保存不変条件／Putbackの反例を提示 |
+| #2498 外部形式Conformance | Arrow／Protobuf／xarray／CRS・Java/.NET Target等の変換・Consumer検証 | 既存Scenario/Oracle、#2056/#2077/#2390 | 形状一致とPresence/Coords/単位等の意味保存を実Consumerで比較 |
 | #2501 Corpus | 科学・業務・外部Protocol・GIS・UI等の多様なPressure | [56ケース台帳](DATA_STRUCTURE_PRESSURE_CORPUS_2026-11.md)、出典、Issue参照 | 既存型と違う要件・反例を収集。対象数の上限なし |
 | #2493 要件ポートフォリオ | 製品領域・異質Consumer・独立PoC・Agent作業票の拡充 | 既存#2017/#1445運用・Issueトリアージ | 独立探索、検証、統合の待ち時間・負担を区別 |
 | #1124/#2354 Consumer | Studio、AI CUIへのread-only説明と同版差分の表示 | Source/Typed Ref/既存CLI・UI Kit | 観測した範囲・鮮度・Disclosure・未対応を明示 |
@@ -388,13 +389,18 @@ S→TがObserver O1を保存し、T→UがObserver O2を保存するだけでは
 
 | 票 | 正例に必要な操作・Observer | 負例：実証で見分けたい失敗 | 実行先 |
 | --- | --- | --- | --- |
-| MP-01 | Sequence→Bag後に重複込みSUMが等しい（固定値・演算規則を明示） | 出現数を落とすSetでSUM一致を誤認 | #1706 / #2498 |
-| MP-02 | Presenceを要求しないConsumerへProto repeatedを渡す | 欠落と空を区別するConsumerで情報が復元可能と断定 | #2056 / #2498 |
-| MP-03 | xarrayのdims/coordsを保った投影でlabel alignment結果を再現 | ndarrayのみで同じshapeの別座標を同じ観測対象へ結合 | #2498 / #2077 |
-| MP-04 | OGC GeometryのCRSを明示し、対応する処理対象で空間演算 | CRS未宣言の座標pairで距離値を確定 | #2498 / #1126 |
-| MP-05 | 温度点の変換・点の差分という合法な演算を区別 | point＋point、差分にoffsetを加える誤換算 | #1705 / #2498 |
-| MP-06 | Source R2の新TypeRefとその結果を新Target/SHOへ固定版で転写 | 固定納品R1の成果物が自動的にR2へ更新済みと表示 | #1803 / #2077 / #2498 |
+| OB-01 | Sequence→Bag後に重複込みSUMが等しい（固定値・演算規則を明示） | 出現数を落とすSetでSUM一致を誤認 | #1706 / #2497 |
+| OB-02 | Presenceを要求しないConsumerへProto repeatedを渡す | 欠落と空を区別するConsumerで情報が復元可能と断定 | #2056 / #2497 |
+| OB-03 | xarrayのdims/coordsを保った投影でlabel alignment結果を再現 | ndarrayのみで同じshapeの別座標を同じ観測対象へ結合 | #2497 / #2077 |
+| OB-04 | OGC GeometryのCRSを明示し、対応する処理対象で空間演算 | CRS未宣言の座標pairで距離値を確定 | #2497 / #1126 |
+| OB-05 | 温度点の変換・点の差分という合法な演算を区別 | point＋point、差分にoffsetを加える誤換算 | #1705 / #2497 |
+| OB-06 | Source R2の新TypeRefとその結果を新Target/SHOへ固定版で転写 | 固定納品R1の成果物が自動的にR2へ更新済みと表示 | #1803 / #2077 / #2497 |
 
 全票は**追加した検証提案であり、ここでの新しいGo/CLI/DB/外部Provider実測はNOT RUN**。元のSource/Scenario/Expected Oracleは既存担当を利用し、値域・意味型・物理型・操作適合・証拠を二重に管理する新しい統合Engineは設けない。
 
 **今回の結論**：M1〜M10のチェックリストと七つの記述役割を上から型継承にするより、広いPressure Corpusを基に「必要なObserverをどの条件で保存できるか」を説明できるモデルが、異質Targetを扱うTEIのメタモデルに向いているかを反証可能な形で検証する。正式な契約採用・Owner意味受理は、その比較結果と既存Product/Target責務を踏まえて別判断とする。
+
+
+### 20.1 並列IssueのOwner境界（同日追補）
+
+[#2497](https://github.com/hat47x/tei-platform/issues/2497)は共通の構造保存写像とUI/文書の編集逆写像を担当する。[#2498](https://github.com/hat47x/tei-platform/issues/2498)はその概念を**外部形式に投影したときの実Target Conformance**に限定し、独立した一般Morphismモデルや新しいLens規則は作らない。両者は同じSource/Contractの版を参照するが、読み取り専用Corpus、変換の観測、編集の更新権限の証拠を混同しない。上表のOB票は共通観測の設計例であり、外部ConsumerのXT-01〜08は#2498の票へ参照させる。多くのAIエージェントを同時に動かす場合も、同じ意味の正本を複数Issueで独立に定義しない。
