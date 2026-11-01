@@ -419,6 +419,49 @@ func TestDerivedQueryIRRejectsCorrelatedSiblingScope(t *testing.T) {
 	}
 }
 
+func TestDerivedQueryIRRejectsCTEFromUnrelatedScope(t *testing.T) {
+	q := query.EmbeddedSQL{ID: core.MustCanonicalID("app.invisible_cte"), Datasource: core.MustLocalName("sales")}
+	result := analyzer.Result{
+		ProtocolVersion: 1, Status: "ok", Query: q.ID,
+		Scopes: []analyzer.Scope{
+			{ID: "scope:root", Kind: "root"},
+			{ID: "scope:other", Kind: "subquery", ParentID: "scope:root"},
+			{ID: "scope:cte:hidden", Kind: "cte", ParentID: "scope:other"},
+		},
+		OutputFields: []analyzer.OutputField{{ID: "out:0", ScopeID: "scope:cte:hidden", Name: "v"}},
+		ColumnRefs:   []analyzer.ColumnOccurrence{{ID: "col:0", ScopeID: "scope:root", Qualifier: "x", Name: "v"}},
+		Operations:   []analyzer.Operation{{ID: "source:0", Kind: "source", ScopeID: "scope:root", Source: "x", SourceKind: "cte", Alias: "x", Binding: "scope:cte:hidden"}},
+	}
+	got := query.DeriveFromAnalysis(q, core.MustCanonicalID("sales_core"), result, nil)
+	if len(got.Sources) != 1 || got.Sources[0].Resolution != "name-only" || len(got.Fields) != 1 || got.Fields[0].Resolution != "name-only" {
+		t.Fatalf("unrelated CTE was treated as visible: sources=%#v fields=%#v", got.Sources, got.Fields)
+	}
+}
+
+func TestDerivedQueryIRBindingHierarchy(t *testing.T) {
+	for _, tc := range []struct {
+		name, source, target, kind string
+		scopes                     []analyzer.Scope
+		want                       string
+	}{
+		{"ancestor-cte", "inner", "cte", "cte", []analyzer.Scope{{ID: "scope:root", Kind: "root"}, {ID: "cte", Kind: "cte", ParentID: "scope:root"}, {ID: "inner", Kind: "subquery", ParentID: "scope:root"}}, "logical"},
+		{"direct-subquery", "scope:root", "sub", "subquery", []analyzer.Scope{{ID: "scope:root", Kind: "root"}, {ID: "sub", Kind: "subquery", ParentID: "scope:root"}}, "logical"},
+		{"unrelated-subquery", "left", "sub", "subquery", []analyzer.Scope{{ID: "scope:root", Kind: "root"}, {ID: "left", Kind: "subquery", ParentID: "scope:root"}, {ID: "sub", Kind: "subquery", ParentID: "scope:root"}}, "name-only"},
+		{"recursive-cte", "cte", "cte", "cte", []analyzer.Scope{{ID: "scope:root", Kind: "root"}, {ID: "cte", Kind: "cte", ParentID: "scope:root"}}, "name-only"},
+		{"cycle", "scope:root", "cte", "cte", []analyzer.Scope{{ID: "scope:root", ParentID: "cte"}, {ID: "cte", Kind: "cte", ParentID: "scope:root"}}, "name-only"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			q := query.EmbeddedSQL{ID: core.MustCanonicalID("app.binding_hierarchy"), Datasource: core.MustLocalName("sales")}
+			result := analyzer.Result{ProtocolVersion: 1, Status: "ok", Query: q.ID, Scopes: tc.scopes,
+				Operations: []analyzer.Operation{{ID: "source:0", Kind: "source", ScopeID: tc.source, SourceKind: tc.kind, Source: "x", Binding: tc.target}}}
+			got := query.DeriveFromAnalysis(q, core.MustCanonicalID("sales_core"), result, nil)
+			if len(got.Sources) != 1 || got.Sources[0].Resolution != tc.want {
+				t.Fatalf("sources=%#v want=%s", got.Sources, tc.want)
+			}
+		})
+	}
+}
+
 func TestDerivedQueryIRDuplicateBindingScopeIsUnresolved(t *testing.T) {
 	q := query.EmbeddedSQL{ID: core.MustCanonicalID("app.duplicate_scope"), Datasource: core.MustLocalName("sales")}
 	result := analyzer.Result{
