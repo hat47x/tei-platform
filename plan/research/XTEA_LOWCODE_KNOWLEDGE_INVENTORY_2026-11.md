@@ -258,6 +258,7 @@ X-TEAの機能型は8種です（`D:help/FunctionList.HTML`、`E:Editor.java L11
 | P-3 | サーバの`Service`が機能IDと呼出しパラメータを受けて機能を実行する | 画面なしの機能実行を遠隔から行える | 認証は利用者IDとパスワード。機能ごとの実行権限の検査は、この経路では確認できない | `S:Service.java L116–193` | PLG |
 | P-4 | 保守ログ・機能の開始終了ログ・SQLログを残す | 実行の追跡ができる | SQLは1000文字で切られ、失敗が件数に潰れる経路と組み合わさる | `D:Session.java L2662–2679`、`D:XFTableOperator.java L630–639` | EVI |
 | P-5 | `Menu`が`Name`、`HelpURL`、`FunctionsToBeLoaded`、`Option`（`Index`、`FunctionID`、`OptionName`）を持ち、ログアウトを固定の項目として加える | メニュー構成と起動時のプリロードを宣言できる | メニューが認可の唯一の手段になり、プリロードの失敗や順序が起動に影響する | `D:Session.java L1196–1252, L1182–1189` | PLG/RQ |
+| P-6 | サーバはDBごとに接続プールを持ち、`DBCP`の`MaxActive`・`MaxIdle`・`MaxWait`で設定する。既定は10・10・5000ms。PostgreSQLは`ReadOnlyEnabled=false`、それ以外はtrueにする | 遠隔のDB操作を、接続プールで処理できる | プール設定と読み取り専用の扱いがXMLに分散し、経路によって異なる。セッションが確定・取消で閉じられないと、プールを枯渇させる | `S:DBMethod.java L190–264` | PLG/RQ |
 
 ## 5. 横断して見えた設計知見
 
