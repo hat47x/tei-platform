@@ -1,0 +1,13 @@
+{
+  "targets": [
+    {"id": "sales.order-line.amount", "type": "amount"},
+    {"id": "query.order-list.line-total", "type": "amount"}
+  ],
+  "bindings": [
+    {"ruleId": "sales.line-amount", "targetId": "sales.order-line.amount"},
+    {"ruleId": "sales.line-amount", "targetId": "query.order-list.line-total"}
+  ],
+  "changes": [
+    {"ruleId": "sales.line-amount", "change": "version-changed", "newVersion": "2"}
+  ]
+}
