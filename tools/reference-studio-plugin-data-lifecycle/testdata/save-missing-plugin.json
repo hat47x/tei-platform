@@ -1,0 +1,15 @@
+{
+  "path": "applications/order.tei",
+  "baseRevision": "r7",
+  "baseFingerprint": "sha256:293a457b4b45c48e2a3a140143762459b3ada46d7f9ffeea15aa14c962baf0ee",
+  "currentRevision": "r7",
+  "currentFingerprint": "sha256:293a457b4b45c48e2a3a140143762459b3ada46d7f9ffeea15aa14c962baf0ee",
+  "original": "<root data-id=\"1\"><name>old</name><x-data q=\"z\"/><ext:note>keep</ext:note></root>",
+  "edited": "<root data-id=\"1\"><name>new</name><x-data q=\"z\"/><ext:note>keep</ext:note></root>",
+  "protected": ["<x-data q=\"z\"/>", "<ext:note>keep</ext:note>"],
+  "pluginAvailability": "missing",
+  "syntaxValid": false,
+  "unresolvedReferences": ["semantic.unknown"],
+  "accepted": false,
+  "executable": false
+}
