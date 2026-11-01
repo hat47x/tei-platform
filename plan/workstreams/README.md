@@ -11,5 +11,6 @@
 - [部分モデルを再検討する条件](SUBSYSTEM_CANONICAL_REOPEN_GATE_2026-09.md)
 - [三視点ローコード実証の計画](TEI_PRODUCT_CRITICAL_PATH_2026-10.md)
 - [Issueの深掘り対象の選定と作業順序](ISSUE_DEEPENING_2026-11.md)
+- [深掘り設計の上流接続](UPSTREAM_CONNECTION_2026-11.md)
 - [上流計画から担当作業への展開](UPSTREAM_BREAKDOWN_2026-09.md)
 - [X-TEA設計を参照する際の代替手順](UPSTREAM_XTEA_DESIGN_FALLBACK_PROTOCOL.md)
