@@ -315,6 +315,46 @@ M0→M1の**説明用入力固定（新Core/Wire schemaの先行採用なし）*
 最初のConsumerはCLI/JSONのread-only一覧（scope→operator→出力grain→独立fixture oracleのexpected→実観測/未実行→元SQL source位置）。Modeler/SHOはこの同じ説明構造を観測者に応じて可視化・文章化する。**SHOの言語的な補正がAccepted SQL/Business Meaningを無断変更することはない**。新しい正式`Grain`公開型やRow provenanceエンジンは、このQX-15小さな試験で採否を判断する。
 
 
+
+### 7.6 QX-16：演算DAG・出力Claimに相対的な入力充足と部分結果の片側判断（2026-11-01追補）
+
+**目的と分担**：[QX-15の同額実体・JOIN増幅](https://github.com/hat47x/tei-platform/issues/2387#issuecomment-6557423877)と[Function Contextの入力依存別完全性](https://github.com/hat47x/tei-platform/issues/2506#issuecomment-6557431216)を受け、**SQLのどの出力・比較Claimが、実際の演算経路上のどの入力集合に依存するか**を読み取り専用Explainで観測する。部分集合から片側の結論が成立し得る数学的前提は[#1063のPM-1〜6](https://github.com/hat47x/tei-platform/issues/1063#issuecomment-6557440885)を参照し、Operatorの数学法則・意味型/単位の受理は同Issue等のOwnerへ委ねる。Query側では**演算形状によって入力集合の包含関係や行の多重度に関する仮定が保たれるか**を検証する。新たな証明器・Evaluatorは導入しない。
+
+#### 三つの依存を分ける
+
+1. **式／値への寄与**：SUM(l.amount)の元金額列など。既存OutputField.InputsとField Lineageは静的な列依存の足場になる。
+2. **行の存在・評価条件への依存**：WHERE/HAVING、JOIN相手、EXISTS/NOT EXISTS、ORDER BY/LIMIT等。**出力列に現れなくても、結果の真偽・件数・粒度に影響する**。Field Lineageだけではこの依存を完全に説明できない。
+3. **当該Claimの確定条件**：Source population、Identity、対象Scope、Predicate、入力の包摂／完全性、bag重複、値域制約、単位・通貨、時点・読取り整合、実際の開示条件。Sourceに関する観測とSQL演算の論理的な結果を別に保持する。
+
+**同じ表示名でも演算経路が違えば値が変わる**。明細二件L1/L2（金額600・500）、配送履歴二件D1/D2なら、明細単独のSUMは1100。明細を受注単位に集約し、配送履歴の件数も独立集約した後で結合する例ではlineTotal=1100を維持する。一方、明細と配送履歴をJOINした**後**で金額SUMを取ると2200。2200というSQL結果が誤計算なのではなく、これを**「重複なしの業務明細総額」**と説明・利用することが誤り。元列Lineageに明細金額のみが示されていても、JOINによる行多重度の依存は消えない。事前集約が常に同値な書換えであるとも主張しない。
+
+#### QX-16：Operator別の条件付き判別票（表示候補／未採用）
+
+| Claim／演算 | 部分取得で成立し得ること | 停止・追加根拠の条件 |
+| --- | --- | --- |
+| EXISTS(P)／NOT EXISTS(P) | 同じ母集団・述語・版の一致行を1件確認できればEXISTS=TRUE、NOT EXISTS=FALSE | 一致行の未観測からEXISTS=FALSE／NOT EXISTS=TRUEを全集合の事実として宣言しない。閉じたfixtureの正常0件は通常どおり確定可能 |
+| 非負値のSUM | RがLに同一Identity・単位・時点で包含され、未観測値にも非負性が保証され、JOIN等で重複増幅しないならSUM(R)はSUM(L)の下界。SUM(R)≥Tから片側の閾値結論 | exact sum、SUM(L)<T、負値許容、NULLの算術規則未決、単位/通貨混合、版ずれ、JOIN fan-outは独立評価 |
+| COUNT(*) | 観測したQuery入力bagの出現数は包含・重複の条件付きで件数の下界となり得る | 業務Entity件数、COUNT(DISTINCT)、JOINの出現行数を同一視しない |
+| MIN／MAX | 比較可能な観測値があれば、全集合MINは観測MIN以下、全集合MAXは観測MAX以上 | 未対応順序・collation・NULL・未取得・時間変化があれば法則の適用を保留。最終極値を確定しない |
+| NOT EXISTS／差集合／反結合 | 実際に条件へ一致するWitnessは不在Claimの反例になり得る | 不在の確定には当該述語・母集団に対する閉じた入力範囲が必要。秘匿範囲を推測表示しない |
+| ORDER BY/LIMIT／Top-N | 観測済み範囲内の順序・順位候補を説明可能 | 未取得候補・タイブレーカー・方言・collationを無視して全体順位を確定しない |
+| 不透明な式・Window・再帰CTE | 既存IRが取得したScope/Source occurrenceを表示 | Window frameや再帰停止条件・演算利用形態が現wireに無ければunsupported/partialに留め、数学的性質を推測しない |
+
+#### 最小判別ケース QX-16a〜f（互いに独立した確認列）
+
+- **a：同一観測と異なる全体**。観測R={A:600}に対しL1={A:600,B:500}はSUM=1100、L2={A:600,B:1000}はSUM=1600。部分観測だけでexact sumや合計<1500を確定しない。非負などの適用条件が受理・確認された場合の「合計≥500」だけは片側の結論となり得る。
+- **b：値域制約変更の反例**。負のB=-200を認める別の値域制約revisionならSUM=400。「SUM」の名前や観測済み値が正であったことを非負Lawの根拠にしない。
+- **c：JOIN fan-out**。A=600/B=500を配送履歴2件とJOINした後でSUMすると2200。これを元の明細総額1100の下界に転用して合計≥1500という業務Claimを成立させるのは誤り。Operator DAG上でJOIN前/後を区別する。
+- **d：存在と不在**。観測R={A:600}でamount≥500のWitnessがあればEXISTS真／NOT EXISTS偽を限定的に示せる。一方、Rが空でも真の全集合は空または未観測Aを含む可能性があり、不在は決まらない。SQL三値論理UNKNOWNと観測不明を区別する。
+- **e：独立依存**。明細の同一必要版・必要Scopeでの全集合2件がそろい、配送履歴は1/2件のみ取得したとき、**明細のみを集約するノード**の正確なSUMは条件付きで使える。配送履歴JOIN後の集計や全配送Countには波及させない。Context全体の単一FULLビットで一律に止める必要もない。
+- **f：現在性と用途**。t0の成立根拠は履歴として保持する。tCommitや表示時に対象・値・規則・認可が変わったら現在のAction完了や実行許可へ自動転用しない。#1708/#1641の整合性、#1125/#1174のBusiness Action、#2516の用途相対Projectionを参照する。
+
+**最小read-onlyの表示案**：Queryの正本rev／OutputField・RelNode／依存するSource occurrence・集合粒度／各入力の読取Scope・Predicate・Snapshot／Claim（exact・条件付き下界・存在Witness等）／仮定と不足／独立Expected・Observed・NOT RUN／Consumer用途。これは必要条件を観測する**表示用の候補**であり、新CoreのClaimProof種別、機械的に自動受理する証明書、第二Provider完全性機構、正式公開APIではない。#2387が演算構造、#1063がOperator Law、#2506がData Context、#2514が独立Oracle、#2497/#2500が表示写像・編集逆対応を所有する。
+
+**現行SSOTの補足**：[docs/architecture.md](https://github.com/hat47x/tei-platform/blob/main/docs/architecture.md)が定める、SQLを直接書く方式ではSQLが正本、図／モデルから記述する方式ではモデルが正本という**著者モード別の正本**を維持する。QX-16の最初の対象はSQL著者モードのread-only Explainであり、全Query表現を一律「SQLが正本」に変更する提案ではない。
+
+**Evidence**：a/b/c/dの数値は、ローカル隔離Python sqlite3上で独立に再構成した合成SQLの参考観測（R:600、L1:1100、L2:1600、負値版:400、二配送JOIN:2200、EXISTS true／NOT EXISTS false）。e/fと数学的条件の製品適用は紙上の設計候補。GitHub保存ファイルの新規exact実行・TEI Query Evaluator・実Worker・実Provider/DB・Function Context/CUI・SHO/GUI・Lean・Owner意味受理は**NOT RUN／未採用**。
+
 ## 8. 実装順・担当引継ぎ（提案）
 
 | 段階 | 所有 | 実施 | 完了の根拠 |
