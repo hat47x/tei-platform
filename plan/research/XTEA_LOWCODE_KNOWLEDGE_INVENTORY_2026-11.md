@@ -103,7 +103,7 @@ TEIが引き継ぐ価値があるのは、この五つが**何を可能にした
 | M-4 | `FormatVersion`を文書に持つ | 形式の世代を判定できる | 版の比較と内容の移行が一か所にない。欠落・非数値の扱いが経路で異なる | 既存[機能移植対応表](../design/AUTHORING_TOOL_FEATURE_TRANSFER_MAP_2026-10.md)§6、[#1920](https://github.com/hat47x/tei-platform/issues/1920) | RQ |
 | M-5 | 項目に`PhysicalID`を持ち、論理名と物理列名を対応させる | 意味上の名前を変えずに物理スキーマへ対応づけられる | 対応は項目属性で、表全体の対応や移行は別。物理名の重複検査は別 | `D:XFTableOperator.java L216–221, L292–295` | CORE/PLG |
 | M-6 | `Subsystem`が表と機能の所有境界になる。他`DB`の表は`SubDB`として読み取り専用で接続する | 参照系の別DBを混ぜずに扱える | 所有境界を越える更新は実行時に拒否されるが、設計時の診断は別 | `D:Session.java L619–642, L691–750`、`D:XFTableOperator.java L656–662` | CORE |
-| M-7 | 画面資源を言語別のリソース（`Res`、`Res_ja`、`Res_ko`）に分け、起動時に選ぶ | 画面の文言を、モデルを変えずに多言語化できる | モデル内の名称・説明・注記は一つの言語のままで、意味の多言語化は別 | `E:Res.java`・`E:Res_ja.java`・`E:Res_ko.java`、`M`と`D`にも同様の資源 | STU/CORE |
+| M-7 | 画面資源を言語別のリソースに分け、起動時に選ぶ。Modelerは`Res`、`Res_ja`、`Res_ko`、EditorとDriverは`Res`と`Res_ja`を持つ | 画面の文言を、モデルを変えずに多言語化できる | モデル内の名称・説明・注記は一つの言語のままで、意味の多言語化は別。対応する言語もアプリごとに違う | `M:Res.java`・`M:Res_ja.java`・`M:Res_ko.java`、`E:Res.java`・`E:Res_ja.java`、`D:Res.java`・`D:Res_ja.java` | STU/CORE |
 
 ### 4.2 機能型と対話パターン（F）
 
