@@ -101,7 +101,9 @@ W1 が前提。W2〜W4 は並行できる。W5 は W2 の後。
 
 W2（表定義書）も追加しました（[`internal/artifact/tabledef.go`](../../internal/artifact/tabledef.go)）。保存の対応と意味のデータから、`table`・`data`・`column`・`primary-key`・`index` の行を、保存の宣言順と索引名順で出します。列に写像されていない属性と、主キーが無い表は、空欄で埋めず `Unresolved` に載せます。形式は仮説H2（行指向のテキスト）で選んでいます（[PoCの仮説](../workstreams/POC_HYPOTHESES_2026-11.md)）。
 
-W3〜W5（機能定義書・対応一覧・DDLとの整合）は [#2482](https://github.com/hat47x/tei-platform/issues/2482) で起票しました。W6（CLI）は未着手です。
+機能定義書（W3）も追加しました（[`internal/artifact/functiondef.go`](../../internal/artifact/functiondef.go)）。`application`・`capability`・`input`・`output`／`outcome`・`effect`・`validation`・`pattern` を決定的に並べ、入力・結果・効果の欠落と、入口（pattern）の無いアプリケーションを未解決に載せます。
+
+対応一覧（W4）は、現在の意味モデルに主題領域・作業・機能の対応を表す宣言が無いため、受理済みの意味からは導出できません。意味を足すか（A4）、対応一覧を手で維持するかの判断待ちです（[#2482](https://github.com/hat47x/tei-platform/issues/2482)）。DDLとの整合（W5）とCLI（W6）は未着手です。
 
 ## 7. 停止条件
 
