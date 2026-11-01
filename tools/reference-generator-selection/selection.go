@@ -78,9 +78,19 @@ type Contract struct {
 }
 
 // ProjectionSpec marks a non-numeric reference contract. Identity keeps the
-// input value; normalize trims surrounding whitespace. Rounding must be absent.
+// input value; normalize trims surrounding whitespace; record projects several
+// named fields. Rounding must be absent.
 type ProjectionSpec struct {
-	Kind string `json:"kind"`
+	Kind   string            `json:"kind"`
+	Fields []ProjectionField `json:"fields,omitempty"`
+}
+
+// ProjectionField maps one input key to one output field.
+type ProjectionField struct {
+	Name      string `json:"name"`
+	Input     string `json:"input"`
+	Attribute string `json:"attribute"`
+	Primitive string `json:"primitive"`
 }
 
 type Case struct {
@@ -359,8 +369,28 @@ func validateContract(contract Contract) error {
 		return fmt.Errorf("contract output primitive is required")
 	}
 	if contract.Projection != nil {
-		if contract.Projection.Kind != "identity" && contract.Projection.Kind != "normalize" {
-			return fmt.Errorf("projection kind must be identity or normalize")
+		switch contract.Projection.Kind {
+		case "identity", "normalize":
+			if len(contract.Projection.Fields) != 0 {
+				return fmt.Errorf("a single-value projection must not declare fields")
+			}
+		case "record":
+			if len(contract.Projection.Fields) == 0 {
+				return fmt.Errorf("a record projection requires fields")
+			}
+			seen := map[string]bool{}
+			for _, field := range contract.Projection.Fields {
+				if strings.TrimSpace(field.Name) == "" || strings.TrimSpace(field.Input) == "" ||
+					strings.TrimSpace(field.Attribute) == "" || strings.TrimSpace(field.Primitive) == "" {
+					return fmt.Errorf("record fields require name, input, attribute, and primitive")
+				}
+				if seen[field.Name] {
+					return fmt.Errorf("record field %q is duplicated", field.Name)
+				}
+				seen[field.Name] = true
+			}
+		default:
+			return fmt.Errorf("projection kind must be identity, normalize, or record")
 		}
 		if contract.Rounding != (Rounding{}) {
 			return fmt.Errorf("projection contracts must not set rounding")
