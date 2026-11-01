@@ -24,6 +24,7 @@ const candidateSchema = "tei.reference.change-candidate/v0"
 var revisionPattern = regexp.MustCompile(`^sha256:[0-9a-f]{64}$`)
 
 var blocking = map[string]bool{
+	"split-candidate-unsupported":       true,
 	"underlying-representation-differs": true,
 	"physical-storage-differs":          true,
 	"unknown-target-type":               true,

@@ -55,3 +55,27 @@ func TestCandidateRefusesBadRevisionAndUnusedMerge(t *testing.T) {
 		t.Fatal("merge with no attribute use accepted")
 	}
 }
+
+// A split impact reuses the merge-shaped display payload. Even with an
+// explicit reassignment, the merge-only Candidate API must refuse it;
+// otherwise it would silently write all attributes to the first target.
+func TestCandidateRefusesSplitImpact(t *testing.T) {
+	w := splitWorld()
+	imp, err := SplitImpact(w, Split{
+		From: "sales.order_id",
+		Into: []string{"sales.order_status"},
+		Reassignment: map[string]string{
+			"sales.order.id": "sales.order_status",
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !codes(imp.Diagnostics)["split-candidate-unsupported"] {
+		t.Fatalf("missing split candidate guard diagnostic: %+v", imp.Diagnostics)
+	}
+	if _, err := Candidate(imp, acceptRev); err == nil ||
+		!strings.Contains(err.Error(), "split-candidate-unsupported") {
+		t.Fatalf("Candidate accepted split Impact or returned wrong error: %v", err)
+	}
+}
