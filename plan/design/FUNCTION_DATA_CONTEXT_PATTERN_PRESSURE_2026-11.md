@@ -145,3 +145,41 @@ S0の探索やS1の比較は、各専門分野について並行してよい。�
 5. 既存X-TEA等の参照資料に由来する機能型の知見と、新しい汎用Pattern候補との意味対応が実際の業務で一致する範囲。
 
 本書は広い機能探索を促進するための設計案であり、機能一覧の完成・既存Issueの完了・Production Releaseの保証を示すものではない。
+
+## 10. 読取り投影と編集可能な投影の分岐
+
+**同じContextを表示できることと、その表示を編集して業務状態へ戻せることは別の能力**である。編集可能性は任意の表示コンポーネントの属性として先に保証せず、Source Dataの識別性・導出の情報損失・Actionの明示Bindingにより決定する。
+
+- 読取り投影：`view = project(context, projectionSpec)`。必要な元Data・版・集計粒度・結果IDと、その表示の依存関係を記録する。
+- 変更要求：`intent = interpret(viewSelection, proposedChange, sourceBinding)`。UIの差分をActionに対応づける。集計・JOIN・重複・ソート・正逆展開から更新先を一意に推定できない場合は、明示Actionまたは未対応とする。
+- 業務状態への反映：`result = invoke(action, intent, authority)`。Validation、Transaction、Receipt、実効果と回復は既存実行契約が所有する。
+- 独立再投影：独立した読取りで、正しい対象・時点・Scopeの結果が表示されるか確認する。
+
+具体的には、編集可能な明細行と、同じ明細をまとめた取引先別売上チャートの集計棒は同じData Contextから派生できるが、チャートの金額を変更することから個々の受注行の更新先は一意に定まらない。対して、Task IDと期間変更Actionを明示束縛した時間軸のdragなら、変更Intentを生成できる可能性がある。
+
+往復性の試験候補：同一Source/Query/Model revisionに対する読取り再現、変更なしの提案で意図せぬEffectが生じないこと、変更後に同じ対象・Scopeを独立読取りすること、二つのRenderer間でAction/ID/Validationの意味が一致すること。情報を失う投影に一般的な可逆性を要求せず、**可逆条件・明示的に非可逆な範囲を型付き診断**として扱う。
+
+## 11. 複数Contextの被覆範囲・時点・権限の合成
+
+「全件取得」は対象母集団が明示されて初めて意味を持つ。例えば `completeWithin(scope, predicate, snapshot)` のように、Scope・Filter・Snapshotに相対的な保証として扱うことを検討する（正式なAPI名ではない）。
+
+必要な観測軸：
+
+- **Coverage**：結果の出所、述語、返されたページ／継続トークン、取得完了が保証される範囲。権限により隠れた行の存在まで開示する要件ではない。
+- **Temporal**：有効時点、取得時点、Event time、到着時点、選択epoch、Provider版の区別。複数Providerの読取を自動的に一つの整合したSnapshotとは扱わない。
+- **Epistemic status**：観測済み値、テスト期待値、意味シミュレーション結果、未観測、未確認を区別。SEIの知識の確信度とは異なる軸として必要な接続のみ行う。
+- **Disclosure**：AIへの渡し方は情報の可視性・列/行scope・機密区分・利用者の許可に従う。データの読取権限を外部LLMへの開示権限と同一視しない。
+
+反証ケース：結果が0件でも、閉じたfixtureにおける確定0件と実際のProviderで返された部分集合0件では保証が異なる。親Contextの版と二つの子Contextの取得時点が異なる場合も、同一業務時点の一貫性を無条件には主張できない。UIで見える行集合と一括Actionが対象とする確定集合の区別は、既存#1127/#1708の固定／遅延Binding契約へ接続する。
+
+## 12. 設計に利用できる外部標準（比較資料）
+
+以下は各標準が扱う特定の意味境界に対する参照資料であり、そのままTEIの仕様採用・実装互換を意味しない。
+
+- [SHACL（W3C）](https://www.w3.org/TR/shacl/)：Node/Property ShapeとProperty Pathの関係。Relation pathと型付き検証の参考。
+- [RDF Data Cube（W3C）](https://www.w3.org/TR/vocab-data-cube/)：Dimension/Measure/Attribute/Observation。集計grainの参考。
+- [PROV-O（W3C）](https://www.w3.org/TR/prov-o/)：Entity/Activity/Agentによる来歴・責任の区別。
+- [Cursor Connections Specification](https://relay.dev/graphql/connections.htm)：Cursor/PageInfoによる結果集合とページ状態。
+- [OGC SensorThings API](https://www.ogc.org/standards/sensorthings/)：Thing/Location/Datastream/Observationと観測・指示の区別。
+- [QUDT](https://data.qudt.org/)：Quantity Kind、Unit、Dimension Vector。量の意味と数値表現の分離。
+- [Apache Arrow Columnar Format](https://arrow.apache.org/docs/format/Columnar.html)：List/Struct/Map/Union等の物理表現とApplication意味の差。
