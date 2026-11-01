@@ -1,6 +1,7 @@
 package typereorg
 
 import (
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"regexp"
@@ -66,6 +67,15 @@ func Candidate(imp Impact, acceptanceBaseRevision string) ([]byte, error) {
 		if blocking[d.Code] {
 			return nil, fmt.Errorf("merge cannot become a candidate: %s (%s)", d.Code, d.Subject)
 		}
+	}
+	// SplitImpact and decoded or manually constructed Impact values do not
+	// carry the in-process merge binding. A changed Impact must be re-analyzed.
+	encoded, err := json.Marshal(imp)
+	if err != nil {
+		return nil, fmt.Errorf("marshal impact: %w", err)
+	}
+	if !imp.candidateBound || sha256.Sum256(encoded) != imp.candidateBinding {
+		return nil, fmt.Errorf("candidate requires an unchanged in-process merge analysis")
 	}
 	if len(imp.AliasTypes) > 0 {
 		return nil, fmt.Errorf("merge cannot become a candidate: %d alias type(s) are based on a merged type", len(imp.AliasTypes))

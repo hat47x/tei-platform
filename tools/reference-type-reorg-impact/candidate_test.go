@@ -55,6 +55,7 @@ func TestCandidateRefusesBadRevisionAndUnusedMerge(t *testing.T) {
 		t.Fatal("merge with no attribute use accepted")
 	}
 }
+
 // A split impact reuses the merge-shaped display payload. Even with an
 // explicit reassignment, the merge-only Candidate API must refuse it;
 // otherwise it would silently write all attributes to the first target.
@@ -76,5 +77,57 @@ func TestCandidateRefusesSplitImpact(t *testing.T) {
 	if _, err := Candidate(imp, acceptRev); err == nil ||
 		!strings.Contains(err.Error(), "split-candidate-unsupported") {
 		t.Fatalf("Candidate accepted split Impact or returned wrong error: %v", err)
+	}
+}
+
+func TestCandidateRefusesSplitAfterDiagnosticsAreRemoved(t *testing.T) {
+	imp, err := SplitImpact(splitWorld(), Split{
+		From: "sales.order_id", Into: []string{"sales.order_status"},
+		Reassignment: map[string]string{"sales.order.id": "sales.order_status"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	imp.Diagnostics = nil
+	if _, err := Candidate(imp, acceptRev); err == nil {
+		t.Fatal("split impact was accepted after its diagnostics were removed")
+	}
+}
+
+func TestCandidateRejectsModifiedOrDeserializedMergeImpact(t *testing.T) {
+	for _, mutate := range []struct {
+		name string
+		edit func(*Impact)
+	}{
+		{"target", func(i *Impact) { i.Merge.Into = "s.item_code" }},
+		{"attribute", func(i *Impact) { i.Attributes[0].Attribute = "s.other.field" }},
+		{"diagnostics", func(i *Impact) { i.Diagnostics = append(i.Diagnostics, Diagnostic{Code: "extra"}) }},
+		{"structure-revision", func(i *Impact) { i.StructureRevision = "bad" }},
+	} {
+		t.Run(mutate.name, func(t *testing.T) {
+			imp, err := Analyze(world(), Merge{From: []string{"s.cust_code"}, Into: "s.client_code"})
+			if err != nil {
+				t.Fatal(err)
+			}
+			mutate.edit(&imp)
+			if _, err := Candidate(imp, acceptRev); err == nil {
+				t.Fatal("modified impact was accepted")
+			}
+		})
+	}
+	imp, err := Analyze(world(), Merge{From: []string{"s.cust_code"}, Into: "s.client_code"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, err := json.Marshal(imp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var decoded Impact
+	if err := json.Unmarshal(raw, &decoded); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Candidate(decoded, acceptRev); err == nil {
+		t.Fatal("deserialized impact was accepted without re-analysis")
 	}
 }

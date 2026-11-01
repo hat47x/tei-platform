@@ -69,6 +69,10 @@ type Impact struct {
 	// matching representation never settles.
 	ReviewRequired bool `json:"reviewRequired"`
 	Applied        bool `json:"applied"`
+	// In-process consistency check only; it is neither a signature nor an
+	// acceptance grant, and is intentionally not serialized.
+	candidateBinding [32]byte
+	candidateBound   bool
 }
 
 func Analyze(world ir.World, m Merge) (Impact, error) {
@@ -279,5 +283,11 @@ func Analyze(world ir.World, m Merge) (Impact, error) {
 		}
 		return out.Diagnostics[i].Subject < out.Diagnostics[j].Subject
 	})
+	encoded, err := json.Marshal(out)
+	if err != nil {
+		return Impact{}, err
+	}
+	out.candidateBinding = sha256.Sum256(encoded)
+	out.candidateBound = true
 	return out, nil
 }
