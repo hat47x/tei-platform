@@ -856,6 +856,7 @@ PoC #2521が実装した範囲と、まだ実装していない範囲を分け�
 | --- | --- |
 | `interaction`ブロックの構文（`item`、`lookup`、`navigate from`） | 実装済み |
 | 項目がDataのattributeか、参照先がreference Patternか、Relation targetのattributeか、型が一致するか | 実装済み |
+| 参照先のSemantic名前空間がApplicationの`uses semantic`に含まれるか | 実装済み（`APPLICATION_PATTERN_INTERACTION_LOOKUP_SEMANTIC_NOT_USED`） |
 | 遷移元が同じDataのbrowse Patternか | 実装済み |
 | 診断コード（`UNKNOWN_APPLICATION_PATTERN_INTERACTION_ITEM`、`APPLICATION_PATTERN_INTERACTION_LOOKUP_TYPE_MISMATCH`など） | 実装済み |
 | crossviewの要求投影への対話参照 | 実装済み |
