@@ -859,8 +859,9 @@ PoC #2521が実装した範囲と、まだ実装していない範囲を分け�
 | 遷移元が同じDataのbrowse Patternか | 実装済み |
 | 診断コード（`UNKNOWN_APPLICATION_PATTERN_INTERACTION_ITEM`、`APPLICATION_PATTERN_INTERACTION_LOOKUP_TYPE_MISMATCH`など） | 実装済み |
 | crossviewの要求投影への対話参照 | 実装済み |
+| CLI `inspect` のCanonical JSONへの投影 | 実装済み（`application-pattern`のJSONに`interaction`が含まれる） |
 | 必須・更新禁止・値域（D3.1） | 未実装 |
-| 操作（Commandの起動）、投影（画面・帳票）、Package、フック | 未実装 |
+| 操作（Commandの起動）、画面・帳票の投影、Package、フック | 未実装 |
 | `reference/workspace`への宣言追加 | 未実施（受理経路が必要） |
 
 実装は、`internal/application/model.go`、`internal/syntax/application_pattern.go`、`internal/validation/application_pattern.go`、`internal/crossview/pattern_requirements.go`と、それぞれの試験です。
