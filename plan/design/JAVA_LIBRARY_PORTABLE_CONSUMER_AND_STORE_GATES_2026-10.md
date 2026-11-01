@@ -138,6 +138,32 @@
 
 試験材料は対話内の隔離ZIPに保全し、repoへ実行バイナリを追加していない。これは製品JDK互換性の保証でも、Owner受理済み契約への格上げでもない。
 
+## 2026-11-01 AI大量並列開発とJava実装レーンの拡充（課題化済み・未採用）
+
+[要件ポートフォリオ #2493](https://github.com/hat47x/tei-platform/issues/2493)により、安価なAIトークンを活用した探索・並列Issue・PoC拡大が設計前提になった。最小縦切りは製品範囲の上限ではなく、**独立実測を比較できる最小単位**として継続する。全体のAI-first CUI→headless E2E順は[Draft #2492](https://github.com/hat47x/tei-platform/pull/2492)のOwnerに残す。
+
+### Java実装に必要な独立した2レーン
+
+| レーン（新Issue） | P0実装・最初の証拠 | 並列化と依存境界 |
+| --- | --- | --- |
+| **[#2512 Java全class ArtifactSet→Store→独立JVM](https://github.com/hat47x/tei-platform/issues/2512)** | 現StoreのB主class欠落を**実Put/Get**で確認→全class Set（相対path/size/digest）取得→**Store-only復元10/10**へ改善。まずは既存テスト拡充の[Draft #2511](https://github.com/hat47x/tei-platform/pull/2511)でA/B/Cを一試行に束ねる | #1102 Build Setと#1105 Store primitiveの正本を再利用。JR-02の保存衝突・旧版回復は#2077/#1105へ別Evidence。新しいStore keyや共通公開schemaを事前固定しない |
+| **[#2513 Java型付きLibrary→独立Consumer C1](https://github.com/hat47x/tei-platform/issues/2513)** | モデル→`BigDecimal`型付き公開計算APIと明示失敗→Go/TEI非依存のJava Consumer一呼出し。**型付き9計算＋JSON入口1**と公開CLI統合10例を別列 | #2512のStore修復を待たず直接javac→外部Consumerを先行できる。Store-only配備の受入は#2512接続後。#2390のC1証拠を**同一試行で参照**し、第二API/Oracle/Hostを作らない |
+
+**第3の横断実装レーンは既存Issueで継続**：[#2077 JR-02〜06](https://github.com/hat47x/tei-platform/issues/2077#issuecomment-6516087790)の同Source/別Build、途中書込み、応答喪失、Put.ReusedとGet/後続実読取不一致は、#1105のcontent identity／旧版保持／reader pinと接続して実装比較する。#2512のclass閉包改修が先に公開schema/keyを決めないよう、**旧Store形式と新成果物集合がどの世代を参照するか**を独立に記録する。
+
+### 並列開発で共通化するのは「証拠のjoin」であって二重の選抜/Hostではない
+
+| 証拠 | #2512 | #2513 | 受入を共有できる範囲 |
+| --- | --- | --- | --- |
+| Contract/Source/Generator | 既存`sales.line-amount/1`、Source closure固定 | 同一意味を使うが**CLI版とLibrary版は別Source/Builder** | 契約/fixture参照は共有、生成Source receiptは別Attempt |
+| 実Buildとclass集合 | `Main.class`と`Main$Input.class`、JDKとClasspath | Library公開API＋その全class | 同一Attemptで一致する物理memberだけ共有。Setの主class一致を全member一致へ拡張しない |
+| StoreおよびConsumer | Store.Put/Get→空classpath復元→実Load | 別Javaプロジェクトから公開メソッド呼出し | 片側の成功をもう片側の成功に代用しない。合流は**Library版全classがStoreから取得できた後** |
+| Meaning/Authority | Public CLI fixtureとの一致、Store integrity | Typed APIの9+1と公開CLI 10、型変換/NULL/欠損分離 | 業務Owner受理、External Hostのcurrent Authority、Plugin提供物全体は別 |
+
+**数理・型の拡張圧力**：[データ構造メタ概念空間 #2495](https://github.com/hat47x/tei-platform/issues/2495)の演算・単位・時間・順序/多重度をJava型付きAPIの将来のConformance候補にする。ただし初回のJPY/piece量・half-up計算のMeaning受理を超えて、複数親の数学的構造・Quantity Kindや温度点/差分まで固定公開型へ一括採用しない。#2390の外部Consumer適合は**Shape/型一致だけで演算やHostの意味が保存されるかを証明しない**との境界を維持する。
+
+**新しいコード実装の状態**：[Draft #2511](https://github.com/hat47x/tei-platform/pull/2511)は既存`TestPutAndGetJavaArtifact`を拡充する**試験コードのみ**（2026-11-01 main `43517af5450aacb2fdd6c48585dc143f52d57da4`から作成）。A全class10件、B実Store-only主class失敗、C全classの別classpath10件を比較する。一時的な**characterization test**でありBの失敗を正式仕様としない。`go test`/CIでの本PR結果は**未確認**、ローカルGo1.23.2はmainのGo1.26.10に不足。**既存10/31の手動テンプレート実行RUN**と、この新しいStore通過試験の結果を混同しない。#2512/#2513の製品機能実装はNOT RUN/NOT IMPLEMENTED。新ABI、Owner意味受理、独自TEI Hostの採用なし。
+
 ## 引渡しと責任
 
 - **#2077／Generator・Java担当**：P0-A/B、Java Source→Build→class集合とConsumerのWitness。新規公開APIの最小形は比較後に決める。
