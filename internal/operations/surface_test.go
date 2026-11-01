@@ -452,4 +452,13 @@ func TestSurfaceWorkspaceStandardCRDFixture(t *testing.T) {
 			t.Fatalf("gap must explain itself: %+v", gap)
 		}
 	}
+
+	update, ok := findOperation(surface, "ledger.update.sales.order")
+	if !ok || update.Binding != "sales.order.cancel" {
+		t.Fatalf("update must bind to the capability that declares the effect: %+v", update)
+	}
+	create, ok := findOperation(surface, "ledger.create.sales.order")
+	if !ok || create.Binding != "" {
+		t.Fatalf("create has no declared capability and must stay unbound: %+v", create)
+	}
 }

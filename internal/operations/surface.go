@@ -71,8 +71,12 @@ type Operation struct {
 	// hypothesis is expected-state comparison; a version attribute would be a
 	// second, declared method (see plan/workstreams/POC_HYPOTHESES_2026-11.md).
 	Concurrency string `json:"concurrency,omitempty"`
-	Autonomy    string `json:"autonomy"`
-	Basis       string `json:"basis"`
+	// Binding names the capability that executes a write operation. The PoC
+	// does not add a generic write executor: a write runs through an existing
+	// capability that declares the same effect on the same data.
+	Binding  string `json:"binding,omitempty"`
+	Autonomy string `json:"autonomy"`
+	Basis    string `json:"basis"`
 }
 
 // SurfaceGap records why a standard operation could not be derived.
@@ -173,6 +177,8 @@ type surfaceIndex struct {
 	data         map[core.CanonicalID]semantic.Data
 	validations  map[core.CanonicalID]semantic.Validation
 	updateIntent map[core.CanonicalID]bool
+	// binding maps "<effect kind>\x00<data>" to the capability that declares it.
+	binding map[string]string
 }
 
 func newSurfaceIndex(world ir.World) surfaceIndex {
@@ -180,6 +186,7 @@ func newSurfaceIndex(world ir.World) surfaceIndex {
 		data:         semanticDataIndex(world),
 		validations:  map[core.CanonicalID]semantic.Validation{},
 		updateIntent: map[core.CanonicalID]bool{},
+		binding:      map[string]string{},
 	}
 	for _, namespace := range world.Semantics {
 		for _, validation := range namespace.Validations {
@@ -188,12 +195,25 @@ func newSurfaceIndex(world ir.World) surfaceIndex {
 			}
 		}
 		for _, capability := range namespace.Capabilities {
-			if capability.Effect != nil && capability.Effect.Kind == semantic.DataEffectUpdate {
+			if capability.Effect == nil {
+				continue
+			}
+			if capability.Effect.Kind == semantic.DataEffectUpdate {
 				index.updateIntent[capability.Effect.Data] = true
+			}
+			key := string(capability.Effect.Kind) + "\x00" + string(capability.Effect.Data)
+			if existing, ok := index.binding[key]; !ok || string(capability.ID) < existing {
+				index.binding[key] = string(capability.ID)
 			}
 		}
 	}
 	return index
+}
+
+// bindingFor returns the capability that executes an operation of this kind on
+// this data, when the workspace declares one.
+func (i surfaceIndex) bindingFor(kind string, data core.CanonicalID) string {
+	return i.binding[kind+"\x00"+string(data)]
 }
 
 func deriveApplicationOperations(
@@ -279,6 +299,7 @@ func deriveApplicationOperations(
 				Inputs:        createInputs(mapping),
 				Preconditions: preconditionsFor(app, element, index),
 				Effects:       []string{"create:" + target},
+				Binding:       index.bindingFor("create", mapping.SemanticData),
 				Autonomy:      "attended",
 				Basis:         basis,
 			})
@@ -295,6 +316,7 @@ func deriveApplicationOperations(
 				Inputs:      key,
 				Effects:     []string{"update:" + target},
 				Concurrency: "expected-state",
+				Binding:     index.bindingFor("update", mapping.SemanticData),
 				Autonomy:    "attended",
 				Basis:       basis,
 			})
