@@ -306,6 +306,29 @@ func main() {
 		writeJSON(w)
 		return
 	}
+	if command == "knowledge-context" {
+		// Two output shapes (context, or disclosure with -disclose); `mode`
+		// distinguishes them the way `source-index` already does.
+		code, err := knowledgeContextJSON(os.Stdout, *workspacePath, *subjectKind, *subjectID,
+			*knowledgeDisclosure, *expectedDataDesignFingerprint, *expectedDisclosureFingerprint, fs.NArg())
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+		}
+		if code != 0 {
+			os.Exit(code)
+		}
+		return
+	}
+	if command == "knowledge-qualify" {
+		code, err := knowledgeQualifyJSON(os.Stdout, *workspacePath, *subjectKind, *subjectID, *qualificationRequirementsPath, fs.NArg())
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+		}
+		if code != 0 {
+			os.Exit(code)
+		}
+		return
+	}
 	if isResultEnvelopeCommand(command) {
 		// requirements, plugin-lock, plugin-resolve, plugin-runtime-plan
 		code, err := resultCommandJSON(os.Stdout, command, *workspacePath, *worldPath, *environmentID, *pluginLockPath, fs.NArg())
@@ -431,58 +454,6 @@ func main() {
 			os.Exit(1)
 		}
 		writeJSON(packet)
-		return
-	}
-	if command == "knowledge-context" {
-		if *workspacePath == "" || *worldPath != "" {
-			fmt.Fprintln(os.Stderr, "knowledge-context requires -workspace and does not accept -world")
-			os.Exit(2)
-		}
-		context, err := buildKnowledgeContext(*workspacePath, *subjectKind, *subjectID)
-		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(2)
-		}
-		if err := checkDataDesignFingerprint(context, *expectedDataDesignFingerprint); err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(1)
-		}
-		if strings.TrimSpace(*knowledgeDisclosure) != "" {
-			disclosure, err := buildKnowledgeDisclosure(context, *knowledgeDisclosure)
-			if err != nil {
-				fmt.Fprintln(os.Stderr, err)
-				os.Exit(2)
-			}
-			if err := checkKnowledgeDisclosureFingerprint(disclosure, *expectedDisclosureFingerprint); err != nil {
-				fmt.Fprintln(os.Stderr, err)
-				os.Exit(1)
-			}
-			writeJSON(disclosure)
-			return
-		}
-		if strings.TrimSpace(*expectedDisclosureFingerprint) != "" {
-			fmt.Fprintln(os.Stderr, "-expected-disclosure-fingerprint requires -disclose")
-			os.Exit(2)
-		}
-		writeJSON(context)
-		return
-	}
-	if command == "knowledge-qualify" {
-		if *workspacePath == "" || *worldPath != "" {
-			fmt.Fprintln(os.Stderr, "knowledge-qualify requires -workspace and does not accept -world")
-			os.Exit(2)
-		}
-		qualification, err := buildKnowledgeQualificationFromFile(
-			*workspacePath,
-			*subjectKind,
-			*subjectID,
-			*qualificationRequirementsPath,
-		)
-		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(2)
-		}
-		writeJSON(qualification)
 		return
 	}
 	if command == "normalize-postgres-plan" {

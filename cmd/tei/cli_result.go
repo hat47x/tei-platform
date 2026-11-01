@@ -43,11 +43,15 @@ const (
 	resultCodePluginPlanFailed    = "PLUGIN_RUNTIME_PLAN_FAILED"
 	resultCodeUnknownEnvironment  = "UNKNOWN_ENVIRONMENT"
 	resultCodeInvalidPluginLock   = "INVALID_PLUGIN_LOCK"
+	resultCodeKnowledgeFailed     = "KNOWLEDGE_BUILD_FAILED"
 )
 
 const (
-	resultModeIndex   = "index"
-	resultModeSubject = "subject"
+	resultModeIndex         = "index"
+	resultModeSubject       = "subject"
+	resultModeContext       = "context"
+	resultModeDisclosure    = "disclosure"
+	resultModeQualification = "qualification"
 )
 
 // isResultEnvelopeCommand reports whether the command wraps its output in the
@@ -60,7 +64,8 @@ const (
 func isResultEnvelopeCommand(command string) bool {
 	switch command {
 	case "workspace-files", "source-index", "requirements",
-		"plugin-lock", "plugin-resolve", "plugin-runtime-plan":
+		"plugin-lock", "plugin-resolve", "plugin-runtime-plan",
+		"knowledge-context", "knowledge-qualify":
 		return true
 	}
 	return false
@@ -226,6 +231,57 @@ func resultCommandJSON(out io.Writer, command, workspacePath, worldPath, environ
 		return emitResult(out, resultEnvelope(command, "", plan), 0)
 	}
 	return resultInvalidArgument(out, command, "unsupported command "+command)
+}
+
+// knowledgeContextJSON wraps knowledge-context in the command envelope. The
+// pre-envelope output had two shapes: the whole Context, or (with -disclose) a
+// DisclosureProjection. `mode` distinguishes them: context | disclosure.
+// Exit codes stay as they were: 2 for argument/build failures, 1 for a
+// fingerprint mismatch the caller asked to enforce.
+func knowledgeContextJSON(out io.Writer, workspacePath, subjectKind, subjectID, disclosure, expectedDataDesignFingerprint, expectedDisclosureFingerprint string, extraArgs int) (int, error) {
+	if workspacePath == "" {
+		return resultInvalidArgument(out, "knowledge-context", "knowledge-context requires -workspace")
+	}
+	if extraArgs != 0 {
+		return resultInvalidArgument(out, "knowledge-context", "knowledge-context does not accept positional arguments")
+	}
+	if disclosure == "" && expectedDisclosureFingerprint != "" {
+		return resultInvalidArgument(out, "knowledge-context", "-expected-disclosure-fingerprint requires -disclose")
+	}
+	context, err := buildKnowledgeContext(workspacePath, subjectKind, subjectID)
+	if err != nil {
+		return emitResult(out, resultFailure("knowledge-context", resultCodeKnowledgeFailed, err), 2)
+	}
+	if err := checkDataDesignFingerprint(context, expectedDataDesignFingerprint); err != nil {
+		return emitResult(out, resultFailure("knowledge-context", resultCodeKnowledgeFailed, err), 1)
+	}
+	if disclosure != "" {
+		projection, err := buildKnowledgeDisclosure(context, disclosure)
+		if err != nil {
+			return emitResult(out, resultFailure("knowledge-context", resultCodeKnowledgeFailed, err), 2)
+		}
+		if err := checkKnowledgeDisclosureFingerprint(projection, expectedDisclosureFingerprint); err != nil {
+			return emitResult(out, resultFailure("knowledge-context", resultCodeKnowledgeFailed, err), 1)
+		}
+		return emitResult(out, resultEnvelope("knowledge-context", resultModeDisclosure, projection), 0)
+	}
+	return emitResult(out, resultEnvelope("knowledge-context", resultModeContext, context), 0)
+}
+
+// knowledgeQualifyJSON wraps knowledge-qualify in the command envelope. The
+// pre-envelope output was one QualificationResult; the envelope has no mode.
+func knowledgeQualifyJSON(out io.Writer, workspacePath, subjectKind, subjectID, requirementsPath string, extraArgs int) (int, error) {
+	if workspacePath == "" {
+		return resultInvalidArgument(out, "knowledge-qualify", "knowledge-qualify requires -workspace and does not accept -world")
+	}
+	if extraArgs != 0 {
+		return resultInvalidArgument(out, "knowledge-qualify", "knowledge-qualify does not accept positional arguments")
+	}
+	qualification, err := buildKnowledgeQualificationFromFile(workspacePath, subjectKind, subjectID, requirementsPath)
+	if err != nil {
+		return emitResult(out, resultFailure("knowledge-qualify", resultCodeKnowledgeFailed, err), 2)
+	}
+	return emitResult(out, resultEnvelope("knowledge-qualify", resultModeQualification, qualification), 0)
 }
 
 func flagPart(command string) string {
