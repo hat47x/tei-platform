@@ -31,6 +31,7 @@ go run ./tools/reference-generator-selection/cmd/tei-generator-select \
   -registry tools/reference-generator-selection/testdata/registry.json
 ```
 
+`projection`を持つ契約では、`-strategy text-template`で文字列投影の候補を生成できます。`identity`は入力をそのまま、`normalize`は前後の空白を除きます。`projection`がないmoney契約は従来のstrategyだけを受け付けます。
 候補sourceは、契約から固定strategyで生成できます。
 
 ```text
