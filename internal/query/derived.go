@@ -128,7 +128,7 @@ func DeriveFromAnalysis(q EmbeddedSQL, databaseID core.CanonicalID, result analy
 		}
 
 		resolution := "name-only"
-		if op.SourceKind == "" || op.SourceKind == "table" {
+		if (op.SourceKind == "" || op.SourceKind == "table") && validScopeChain(scopeParents, scopeKinds, duplicateScopes, opScopeID) {
 			resolution = resolveTable(snapshot, databaseID, op.Source)
 			if resolution == "schema-resolved" {
 				resolved++
@@ -149,7 +149,10 @@ func DeriveFromAnalysis(q EmbeddedSQL, databaseID core.CanonicalID, result analy
 	if len(ir.Sources) == 0 {
 		for i, name := range result.Tables {
 			total++
-			resolution := resolveTable(snapshot, databaseID, name)
+			resolution := "name-only"
+			if validScopeChain(scopeParents, scopeKinds, duplicateScopes, "scope:root") {
+				resolution = resolveTable(snapshot, databaseID, name)
+			}
 			if resolution == "schema-resolved" {
 				resolved++
 			}
@@ -181,11 +184,14 @@ func DeriveFromAnalysis(q EmbeddedSQL, databaseID core.CanonicalID, result analy
 			total++
 			physicalSource, resolution := resolveColumn(snapshot, databaseID, ir.Sources, aliases, c.ScopeID, c.Correlated, c.OuterScopeID, c.Qualifier, c.Name)
 			logicalScopeID := c.ScopeID
+			if logicalScopeID == "" {
+				logicalScopeID = "scope:root"
+			}
 			if c.Correlated {
 				logicalScopeID = c.OuterScopeID
 			}
 			logicalSource, logicalAmbiguous := resolveLogicalField(ir.Sources, logicalScopeID, c.Qualifier, c.Name, outputByScopeName)
-			if (c.Correlated && !isStrictScopeAncestor(scopeParents, scopeKinds, duplicateScopes, c.ScopeID, c.OuterScopeID)) || hasUnknownEligibleSource(ir.Sources, logicalScopeID, c.Qualifier) || logicalAmbiguous || (logicalSource != "" && resolution == "schema-resolved") {
+			if !validScopeChain(scopeParents, scopeKinds, duplicateScopes, logicalScopeID) || (c.Correlated && !isStrictScopeAncestor(scopeParents, scopeKinds, duplicateScopes, c.ScopeID, c.OuterScopeID)) || hasUnknownEligibleSource(ir.Sources, logicalScopeID, c.Qualifier) || logicalAmbiguous || (logicalSource != "" && resolution == "schema-resolved") {
 				// A physical table and a CTE (or two CTE outputs) can both
 				// declare the same column. Never infer a preferred source.
 				physicalSource, logicalSource, resolution = "", "", "name-only"

@@ -226,6 +226,21 @@ func TestDerivedQueryIRUnqualifiedFieldDoesNotSeeNestedScope(t *testing.T) {
 	}
 }
 
+func TestDerivedQueryIRUnknownScopeDoesNotClaimFullResolution(t *testing.T) {
+	q := query.EmbeddedSQL{ID: core.MustCanonicalID("app.unknown_scope"), Datasource: core.MustLocalName("sales")}
+	result := analyzer.Result{
+		ProtocolVersion: 1, Status: "ok", Query: q.ID, Lowering: "full",
+		Scopes:     []analyzer.Scope{{ID: "scope:root", Kind: "root"}},
+		ColumnRefs: []analyzer.ColumnOccurrence{{ID: "col:0", ScopeID: "missing", Qualifier: "o", Name: "order_id"}},
+		Operations: []analyzer.Operation{{ID: "source:0", Kind: "source", ScopeID: "missing", SourceKind: "table", Source: "public.orders", Alias: "o"}},
+	}
+	snap := physical.SchemaSnapshot{Database: core.MustCanonicalID("sales_core"), Tables: []physical.Table{{Schema: "public", Name: "orders", Columns: []physical.Column{{Name: "order_id"}}}}}
+	got := query.DeriveFromAnalysis(q, snap.Database, result, &snap)
+	if len(got.Sources) != 1 || got.Sources[0].Resolution != "name-only" || len(got.Fields) != 1 || got.Fields[0].Resolution != "name-only" || got.Coverage.Resolution == query.CoverageFull {
+		t.Fatalf("unknown scope was treated as resolved: %#v", got)
+	}
+}
+
 func TestDerivedQueryIRUnknownSourceDoesNotProveUniqueColumn(t *testing.T) {
 	q := query.EmbeddedSQL{ID: core.MustCanonicalID("app.unknown_source"), Datasource: core.MustLocalName("sales")}
 	result := analyzer.Result{
