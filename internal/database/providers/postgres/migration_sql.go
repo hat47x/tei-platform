@@ -32,6 +32,51 @@ func validateResolvedMigrationDiff(diff schemadiff.Diff) error {
 	if len(diff.Unresolved) > 0 {
 		return fmt.Errorf("migration SQL rendering requires a fully resolved schema diff: %d unresolved comparison(s)", len(diff.Unresolved))
 	}
+	for _, change := range diff.Changes {
+		switch change.Kind {
+		case schemadiff.AddUniqueConstraint:
+			if change.UniqueConstraint != nil {
+				if err := validateDeclaredConstraintName("unique constraint", change.Table, change.UniqueConstraint.Name); err != nil {
+					return err
+				}
+			}
+		case schemadiff.AddForeignKey:
+			if change.ForeignKey != nil {
+				if err := validateDeclaredConstraintName("foreign key", change.Table, change.ForeignKey.Name); err != nil {
+					return err
+				}
+			}
+		case schemadiff.RenameConstraint:
+			name := ""
+			if change.UniqueConstraint != nil {
+				name = change.UniqueConstraint.Name
+			}
+			if change.ForeignKey != nil {
+				name = change.ForeignKey.Name
+			}
+			if err := validateDeclaredConstraintName("renamed constraint", change.Table, name); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// maxPostgresIdentifierBytes is PostgreSQL's NAMEDATALEN-1. Longer identifiers
+// are silently truncated by PostgreSQL, which would make a declared name
+// differ from the observed one and break convergence, so the provider refuses
+// them instead of truncating.
+const maxPostgresIdentifierBytes = 63
+
+func validateDeclaredConstraintName(kind, table, name string) error {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return nil
+	}
+	if size := len([]byte(name)); size > maxPostgresIdentifierBytes {
+		return fmt.Errorf("%s on %s: declared name %q is %d bytes; PostgreSQL truncates identifiers to %d bytes, so it is refused rather than silently truncated",
+			kind, table, name, size, maxPostgresIdentifierBytes)
+	}
 	return nil
 }
 

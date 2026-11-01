@@ -260,7 +260,9 @@ func uniqueConstraintGroups(constraints []physical.UniqueConstraint) map[string]
 		out[key] = append(out[key], constraint)
 	}
 	for key := range out {
-		sort.Slice(out[key], func(i, j int) bool { return norm(out[key][i].Name) < norm(out[key][j].Name) })
+		sort.SliceStable(out[key], func(i, j int) bool {
+			return constraintNameKey(out[key][i].Name) < constraintNameKey(out[key][j].Name)
+		})
 	}
 	return out
 }
@@ -311,7 +313,9 @@ func foreignKeyGroups(keys []physical.ForeignKey) map[string][]physical.ForeignK
 		out[key] = append(out[key], fk)
 	}
 	for key := range out {
-		sort.Slice(out[key], func(i, j int) bool { return norm(out[key][i].Name) < norm(out[key][j].Name) })
+		sort.SliceStable(out[key], func(i, j int) bool {
+			return constraintNameKey(out[key][i].Name) < constraintNameKey(out[key][j].Name)
+		})
 	}
 	return out
 }
@@ -565,6 +569,15 @@ func pairByName[T any](desired, actual []T, name func(T) string) (pairs []constr
 			restActual = append(restActual, a)
 		}
 	}
+	// Leftovers are paired by a deterministic name order, never by the input
+	// order. The key uses the normalized name first and the raw name as a
+	// tie-break, so names that differ only by case still order stably.
+	sort.SliceStable(restDesired, func(i, j int) bool {
+		return constraintNameKey(name(restDesired[i])) < constraintNameKey(name(restDesired[j]))
+	})
+	sort.SliceStable(restActual, func(i, j int) bool {
+		return constraintNameKey(name(restActual[i])) < constraintNameKey(name(restActual[j]))
+	})
 	n := len(restDesired)
 	if len(restActual) < n {
 		n = len(restActual)
@@ -573,6 +586,12 @@ func pairByName[T any](desired, actual []T, name func(T) string) (pairs []constr
 		pairs = append(pairs, constraintPair[T]{restDesired[i], restActual[i]})
 	}
 	return pairs, restDesired[n:], restActual[n:]
+}
+
+// constraintNameKey orders by the normalized name and then the raw name, so
+// input order never decides the pairing and case-only differences are stable.
+func constraintNameKey(value string) string {
+	return norm(value) + "\x00" + value
 }
 
 // nameDeclaredDifferently reports a name-only difference that is part of the
