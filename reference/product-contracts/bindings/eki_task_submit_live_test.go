@@ -80,4 +80,24 @@ func TestLiveEKITaskSubmitHTTP(t *testing.T) {
 		t.Fatalf("idempotent replay returned task_id %q, want %q", replayedTaskID, taskID)
 	}
 	t.Logf("live replay kept task_id=%s", taskID)
+	conflicting := map[string]any{}
+	if err := json.Unmarshal([]byte(liveTaskRequest), &conflicting); err != nil {
+		t.Fatal(err)
+	}
+	parameters, ok := conflicting["parameters"].(map[string]any)
+	if !ok {
+		t.Fatalf("conflicting request parameters = %T", conflicting["parameters"])
+	}
+	parameters["mode"] = "different"
+	_, err = binding.Invoke(context.Background(), "product_contracts.eki_task_submit", map[string]any{
+		"idempotencyKey": key,
+		"request":        conflicting,
+	})
+	if err == nil {
+		t.Fatal("a different request with the same idempotency key was accepted")
+	}
+	if !strings.Contains(err.Error(), "IDEMPOTENCY_KEY_CONFLICT") {
+		t.Fatalf("error does not carry the idempotency conflict: %v", err)
+	}
+	t.Logf("live idempotency conflict: %v", err)
 }
