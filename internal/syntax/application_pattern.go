@@ -33,7 +33,7 @@ func (p *Parser) ParseApplicationPattern() (application.Pattern, error) {
 		return out, err
 	}
 
-	var hasData, hasRelation, hasQuery, hasCapability, hasDatasource, hasContractQuery bool
+	var hasData, hasRelation, hasQuery, hasCapability, hasDatasource, hasContractQuery, hasInteraction bool
 	for {
 		t, err := p.peek()
 		if err != nil {
@@ -124,8 +124,19 @@ func (p *Parser) ParseApplicationPattern() (application.Pattern, error) {
 				return out, err
 			}
 			out.ContractQuery = invocation
+		case "interaction":
+			if hasInteraction {
+				return out, p.errAt(t, "interactionは一つのPatternで一度だけ定義できます")
+			}
+			hasInteraction = true
+			_, _ = p.next()
+			interaction, err := p.parsePatternInteraction()
+			if err != nil {
+				return out, err
+			}
+			out.Interaction = interaction
 		default:
-			return out, p.errAt(t, "expected data, relation, query, capability, datasource, or contract-query")
+			return out, p.errAt(t, "expected data, relation, query, capability, datasource, contract-query, or interaction")
 		}
 	}
 
@@ -222,6 +233,83 @@ func (p *Parser) ParseApplicationPattern() (application.Pattern, error) {
 	}
 	if err := p.expectEOF(); err != nil {
 		return out, err
+	}
+	return out, nil
+}
+
+// parsePatternInteractionは、Pattern内のinteractionブロックを読み取る。
+// 表示上の幅・部品・配置はここへ入れず、項目の並び・参照入力・遷移だけを構文として固定する。
+func (p *Parser) parsePatternInteraction() (*application.Interaction, error) {
+	if _, err := p.expect(TokenLBrace); err != nil {
+		return nil, err
+	}
+	out := &application.Interaction{}
+	for {
+		t, err := p.peek()
+		if err != nil {
+			return nil, err
+		}
+		if t.Kind == TokenRBrace {
+			_, _ = p.next()
+			break
+		}
+		switch t.Text {
+		case "item":
+			_, _ = p.next()
+			attrTok, err := p.expect(TokenIdent)
+			if err != nil {
+				return nil, err
+			}
+			attr, err := core.ParseCanonicalID(attrTok.Text)
+			if err != nil {
+				return nil, p.errAt(attrTok, err.Error())
+			}
+			item := application.InteractionItem{Attribute: attr}
+			next, err := p.peek()
+			if err != nil {
+				return nil, err
+			}
+			if next.Kind == TokenIdent && next.Text == "lookup" {
+				_, _ = p.next()
+				patternTok, err := p.expect(TokenIdent)
+				if err != nil {
+					return nil, err
+				}
+				pattern, err := core.ParseCanonicalID(patternTok.Text)
+				if err != nil {
+					return nil, p.errAt(patternTok, err.Error())
+				}
+				targetTok, err := p.expect(TokenIdent)
+				if err != nil {
+					return nil, err
+				}
+				target, err := core.ParseCanonicalID(targetTok.Text)
+				if err != nil {
+					return nil, p.errAt(targetTok, err.Error())
+				}
+				item.Lookup = &application.InteractionLookup{Pattern: pattern, TargetAttribute: target}
+			}
+			out.Items = append(out.Items, item)
+		case "navigate":
+			_, _ = p.next()
+			if _, err := p.expectText("from"); err != nil {
+				return nil, err
+			}
+			fromTok, err := p.expect(TokenIdent)
+			if err != nil {
+				return nil, err
+			}
+			from, err := core.ParseCanonicalID(fromTok.Text)
+			if err != nil {
+				return nil, p.errAt(fromTok, err.Error())
+			}
+			out.Navigations = append(out.Navigations, application.InteractionNavigation{From: from})
+		default:
+			return nil, p.errAt(t, "expected item or navigate in interaction")
+		}
+	}
+	if len(out.Items) == 0 && len(out.Navigations) == 0 {
+		return nil, fmt.Errorf("interaction requires at least one item or navigation")
 	}
 	return out, nil
 }
