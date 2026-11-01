@@ -112,3 +112,9 @@
 5. 束縛の解決に失敗する場合（実現を外す、アプリケーションを変える）は `error` になることを確かめる。
 
 この型で書けば、H4（能力への束縛）とH1（拒否を業務結果として返す）を同時に確かめられます。
+### 2026-11-02 — 束縛ありの実行が通った（範囲と限界）
+
+- 通ったこと: 負例の作業領域の `sales.order.cancel` を、宣言済みの実現（`ledger/sales.order.cancel`）へ解決し、偽のアダプタへ渡して `BusinessResult` を受け取った。アダプタの解決失敗は `error` として返り、原因も保持された（`internal/driver/bound_write_test.go`）。
+- 分かったこと: **単一 `output` 契約の能力は、拒否を業務結果として表せない。** `ValidateBusinessResult` は `Mode: output` を要求し、`Outcome` の指定を拒否する。拒否（期待状態の不一致・権限外・検証違反）を `BusinessResult` で返すには、書き込み能力に `outcomes` の宣言が要る。
+- 意味: H1の「拒否を業務結果として返す」は、書き込み能力の `outcomes`（例: `rejected`・`conflict`）として宣言する形になる。能力の出力契約と、拒否の表現が結び付く。
+- 次: 負例の作業領域の `sales.order.cancel` に `outcomes` を足し、拒否の `BusinessResult` が `error` にならないことを試験で固定する。
