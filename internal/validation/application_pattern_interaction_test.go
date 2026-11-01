@@ -5,6 +5,7 @@ import (
 
 	"tei/internal/application"
 	"tei/internal/core"
+	"tei/internal/database"
 	"tei/internal/ir"
 	"tei/internal/semantic"
 )
@@ -137,6 +138,76 @@ func TestValidateApplicationPatternsReportsInteractionOnBrowse(t *testing.T) {
 
 	ds := validateApplicationPatterns(w)
 	if diagnosticByCode(ds, "APPLICATION_PATTERN_INTERACTION_NOT_ALLOWED") == nil {
+		t.Fatalf("diagnostics=%#v", ds)
+	}
+}
+
+func TestValidateApplicationPatternsReportsUnknownLookupPattern(t *testing.T) {
+	w := applicationPatternInteractionWorld()
+	interactionItem(t, &w, "sales.order.customer_id").Lookup.Pattern = "order_entry.missing"
+
+	ds := validateApplicationPatterns(w)
+	if diagnosticByCode(ds, "UNKNOWN_APPLICATION_PATTERN_INTERACTION_LOOKUP_PATTERN") == nil {
+		t.Fatalf("diagnostics=%#v", ds)
+	}
+}
+
+func TestValidateApplicationPatternsReportsLookupApplicationMismatch(t *testing.T) {
+	w := applicationPatternInteractionWorld()
+	w.Applications = append(w.Applications, application.Application{
+		ID:        "other_app",
+		Databases: []application.DatabaseRequirement{{Alias: "master", Access: database.AccessRead}},
+		Patterns: []application.Pattern{{
+			ID:         "other_app.customer_reference",
+			Kind:       application.PatternReference,
+			Relation:   "sales.order.customer",
+			Datasource: "master",
+		}},
+	})
+	interactionItem(t, &w, "sales.order.customer_id").Lookup.Pattern = "other_app.customer_reference"
+
+	ds := validateApplicationPatterns(w)
+	if diagnosticByCode(ds, "APPLICATION_PATTERN_INTERACTION_LOOKUP_APPLICATION_MISMATCH") == nil {
+		t.Fatalf("diagnostics=%#v", ds)
+	}
+}
+
+func TestValidateApplicationPatternsReportsUnknownLookupTargetAttribute(t *testing.T) {
+	w := applicationPatternInteractionWorld()
+	interactionItem(t, &w, "sales.order.customer_id").Lookup.TargetAttribute = "customer.customer.missing"
+
+	ds := validateApplicationPatterns(w)
+	if diagnosticByCode(ds, "UNKNOWN_APPLICATION_PATTERN_INTERACTION_LOOKUP_ATTRIBUTE") == nil {
+		t.Fatalf("diagnostics=%#v", ds)
+	}
+}
+
+func TestValidateApplicationPatternsReportsNavigationApplicationMismatch(t *testing.T) {
+	w := applicationPatternInteractionWorld()
+	w.Applications = append(w.Applications, application.Application{
+		ID:        "other_app",
+		Databases: []application.DatabaseRequirement{{Alias: "sales", Access: database.AccessRead}},
+		Patterns: []application.Pattern{{
+			ID:    "other_app.recent_orders",
+			Kind:  application.PatternBrowse,
+			Data:  "sales.order",
+			Query: "order_entry.recent_orders",
+		}},
+	})
+	w.Applications[0].Patterns[2].Interaction.Navigations[0].From = "other_app.recent_orders"
+
+	ds := validateApplicationPatterns(w)
+	if diagnosticByCode(ds, "APPLICATION_PATTERN_INTERACTION_NAVIGATION_APPLICATION_MISMATCH") == nil {
+		t.Fatalf("diagnostics=%#v", ds)
+	}
+}
+
+func TestValidateApplicationPatternsReportsNavigationDataMismatch(t *testing.T) {
+	w := applicationPatternInteractionWorld()
+	w.Applications[0].Patterns[0].Data = "customer.customer"
+
+	ds := validateApplicationPatterns(w)
+	if diagnosticByCode(ds, "APPLICATION_PATTERN_INTERACTION_NAVIGATION_DATA_MISMATCH") == nil {
 		t.Fatalf("diagnostics=%#v", ds)
 	}
 }

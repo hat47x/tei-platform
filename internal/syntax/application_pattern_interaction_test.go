@@ -79,3 +79,16 @@ func TestParseRecordApplicationPatternInteractionRejectsEmptyBlock(t *testing.T)
 		t.Fatal("空のinteractionを拒否していません")
 	}
 }
+
+func TestParseRecordApplicationPatternInteractionRejectsLookupWithoutTarget(t *testing.T) {
+	src := `pattern order_entry.order_record record {
+    data sales.order
+    interaction {
+        item sales.order.customer_id lookup order_entry.customer_reference
+    }
+}`
+
+	if _, err := syntax.NewParser(src).ParseApplicationPattern(); err == nil {
+		t.Fatal("lookupのtarget attributeがない宣言を拒否していません")
+	}
+}
