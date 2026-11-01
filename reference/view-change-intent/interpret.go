@@ -29,6 +29,7 @@ type Row struct {
 type ReadEvidence struct {
 	MeaningRevision string
 	ContextID       string
+	ContextInstanceID string
 	ContextEpoch    string
 	Anchor          Ref
 	Completeness    string // complete, partial, unfetched, unknown
@@ -42,6 +43,7 @@ type Change struct {
 	MeaningRevision string
 	ActionRevision  string
 	ContextID       string
+	ContextInstanceID string
 	ContextEpoch    string
 	Anchor          Ref
 	OccurrenceIDs   []string
@@ -72,6 +74,7 @@ type Intent struct {
 	FieldRef     string
 	Value        string
 	ContextID    string
+	ContextInstanceID string
 	ActionRev    string
 }
 
@@ -89,13 +92,13 @@ func reject(status, reason string) Decision { return Decision{Status: status, Re
 // A projection can contain several occurrences of one entity (for example
 // after a JOIN); deduplication is by *typed semantic ref*, never by row index.
 func Interpret(read ReadEvidence, change Change, action Action) Decision {
-	if read.ContextID == "" || read.MeaningRevision == "" || read.ContextEpoch == "" || action.Revision == "" || action.MeaningRevision == "" {
+	if read.ContextID == "" || read.ContextInstanceID == "" || change.ContextInstanceID == "" || read.MeaningRevision == "" || read.ContextEpoch == "" || action.Revision == "" || action.MeaningRevision == "" {
 		return reject("unresolved", "missing-binding-evidence")
 	}
 	if change.MeaningRevision != read.MeaningRevision || action.MeaningRevision != read.MeaningRevision || change.ActionRevision != action.Revision {
 		return reject("stale", "meaning-or-action-revision-changed")
 	}
-	if change.ContextID != read.ContextID || action.ContextID != read.ContextID || change.ContextEpoch != read.ContextEpoch || change.Anchor != read.Anchor {
+	if change.ContextID != read.ContextID || action.ContextID != read.ContextID || change.ContextInstanceID != read.ContextInstanceID || change.ContextEpoch != read.ContextEpoch || change.Anchor != read.Anchor {
 		return reject("stale", "context-or-selection-changed")
 	}
 	if !read.Anchor.valid() {
@@ -107,7 +110,7 @@ func Interpret(read ReadEvidence, change Change, action Action) Decision {
 	if action.RequiresCompleteRead && read.Completeness != "complete" {
 		return reject("unresolved", "collection-not-proven-complete")
 	}
-	if read.Completeness == "unfetched" || read.Completeness == "unknown" {
+	if read.Completeness != "complete" && read.Completeness != "partial" {
 		return reject("unresolved", "result-not-qualified")
 	}
 	if len(change.OccurrenceIDs) == 0 {
@@ -178,6 +181,7 @@ func Interpret(read ReadEvidence, change Change, action Action) Decision {
 		FieldRef:     change.FieldRef,
 		Value:        change.Value,
 		ContextID:    read.ContextID,
+		ContextInstanceID: read.ContextInstanceID,
 		ActionRev:    action.Revision,
 	}}
 }
