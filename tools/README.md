@@ -14,6 +14,7 @@
 | [`repository-architecture-check/`](repository-architecture-check/) | パッケージ構成と依存境界の検査 |
 | [`repository-dependency-report/`](repository-dependency-report/) | Goの直接依存関係の一覧作成 |
 | [`repository-plan-check/`](repository-plan-check/) | ADR・Issueの番号や要求と検証表の対応確認、ADR索引とADRファイルの一致・状態の確認（#2343） |
+| [`doc-reference-probe/`](doc-reference-probe/) | 文書中の明示パス参照と暗黙候補を調べる任意実行の限定試作（#2309） |
 | [`repository-node-tests/`](repository-node-tests/) | どのworkflowからも実行されなかったNode.js試験5ファイルをgo testから実行する（#2346） |
 | [`check-public-boundary/`](check-public-boundary/) | 追跡ファイルに、非公開資料の名前・所在のマーカーが入っていないかを検査する（#2342 / #2436） |
 | [`repositoryqualification/`](repositoryqualification/) | リポジトリ検証条件の共通処理 |
