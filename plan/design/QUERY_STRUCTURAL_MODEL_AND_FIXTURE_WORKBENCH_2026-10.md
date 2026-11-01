@@ -243,11 +243,11 @@ M1では既存の意味型・値域制約（型・範囲・列挙値）とRelati
 
 ### 7.2.1 M0の実装修正候補とその資格（2026-10-31）
 
-QX-M0-2/3/4への最初のGo側対策は、先行[Draft PR #2398](https://github.com/hat47x/tei-platform/pull/2398)に**別branch**で分離した。#2388は設計・fixtureのDraft、#2398は`internal/query/derived.go`と`derived_test.go`のみを扱うコードDraftである。双方を同じ完成判定にしない。
+QX-M0-2/3/4への最初のGo側対策は、先行[PR #2398](https://github.com/hat47x/tei-platform/pull/2398)に分離された。その差分と8件の回帰テストは後続[Draft PR #2454](https://github.com/hat47x/tei-platform/pull/2454)が包含することを両headで照合し、**二重マージを避けるため#2398を未統合のままクローズ**（2026-11-01）。実装の現役候補は#2454に一本化する。#2388は引き続き設計/fixtureのみのDraftであり、両者を同じ完成判定にしない。
 
 - コード候補：`ColumnOccurrence.ScopeID`と明示`OuterScopeID`に基づく物理・論理Source occurrence解決、自己JOINにおける出現箇所保持、CTE出力別名重複の後勝ち回避、存在しないCTE Bindingの未解決化、物理＋CTEに同名列がある場合の曖昧性維持。
 - 合成Go回帰テスト（Draftへの追加定義であり**まだ実測ではない**）：同名Alias異Scope、内外の無修飾列、自己JOIN、相関した外側物理列、重複CTE出力、存在しないBinding、物理＋CTE出力衝突、相関した外側CTE列。
-- Goコードの静的な読み直しとGitHub保存は完了。`go test ./internal/query -count=1`と`gofmt`、クリーンcheckoutのwire/worker E2Eは未実行。GitHubを直接cloneできない環境、Go 1.23.2とrepo指定Go 1.26.9の差による制約があるため、結果をPASSへ昇格させない。
+- 先行#2398はGo試験を実行していないが、後続#2454は別環境（Ubuntu 22.04/Go 1.27.3）の限定headで関連3パッケージのrace試験・vet/gofmtが成功した旨を記録。**現head `06c2007b71b3675f4e0bffc35b004a7dda99aed7`のexact検証はこの計画更新時には再取得していない**。実worker/実SQL E2E/実Providerの検証も未実施。過去headの成功を現headのPASSへ昇格させない。
 - 特に残る問題：CTE Bindingの**可視性/名前解決**はtarget scopeの存在・kindのみでは確定しない。SELECT出力のデータ型・NULL可能性、引用識別子の方言別大文字小文字規則、外部workerの出所・runtime・SQLからの実写像も後続Gate。Go側の誤束縛防止が単独でAnalyzerの完全性やSQL実行許可を与えない。
 - 合格条件：exact headのfocused Go testsが再現可能にPASSし、残る未解決/曖昧性を`Resolution/Lineage/Coverage`として説明でき、既存のCTE合成testとD2拒否が後退しないこと。次にQX-M0-1の実worker実体の特定と、実SQL→wire→IRを別の資格として実施する。
 
