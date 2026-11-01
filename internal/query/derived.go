@@ -134,7 +134,7 @@ func DeriveFromAnalysis(q EmbeddedSQL, databaseID core.CanonicalID, result analy
 				resolved++
 			}
 		} else if op.Binding != "" && !duplicateScopes[op.Binding] && scopeKinds[op.Binding] == op.SourceKind &&
-			bindingScopeCanBeVisible(scopeParents, duplicateScopes, opScopeID, op.Binding, op.SourceKind) {
+			bindingScopeCanBeVisible(scopeParents, scopeKinds, duplicateScopes, opScopeID, op.Binding, op.SourceKind) {
 			// Exclude targets outside the lexical hierarchy. Declaration order,
 			// recursion and dialect-specific visibility are not proven here.
 			resolution = "logical"
@@ -185,7 +185,7 @@ func DeriveFromAnalysis(q EmbeddedSQL, databaseID core.CanonicalID, result analy
 				logicalScopeID = c.OuterScopeID
 			}
 			logicalSource, logicalAmbiguous := resolveLogicalField(ir.Sources, logicalScopeID, c.Qualifier, c.Name, outputByScopeName)
-			if (c.Correlated && !isStrictScopeAncestor(scopeParents, duplicateScopes, c.ScopeID, c.OuterScopeID)) || hasUnknownEligibleSource(ir.Sources, logicalScopeID, c.Qualifier) || logicalAmbiguous || (logicalSource != "" && resolution == "schema-resolved") {
+			if (c.Correlated && !isStrictScopeAncestor(scopeParents, scopeKinds, duplicateScopes, c.ScopeID, c.OuterScopeID)) || hasUnknownEligibleSource(ir.Sources, logicalScopeID, c.Qualifier) || logicalAmbiguous || (logicalSource != "" && resolution == "schema-resolved") {
 				// A physical table and a CTE (or two CTE outputs) can both
 				// declare the same column. Never infer a preferred source.
 				physicalSource, logicalSource, resolution = "", "", "name-only"
@@ -346,21 +346,21 @@ func resolveLogicalField(sources []SourceRef, scopeID, qualifier, column string,
 // An unresolved source may expose the requested column. It cannot be ignored
 // when proving uniqueness, but an unrelated qualified source need not block a
 // known explicit alias.
-func bindingScopeCanBeVisible(parents map[string]string, duplicate map[string]bool, source, target, kind string) bool {
+func bindingScopeCanBeVisible(parents, kinds map[string]string, duplicate map[string]bool, source, target, kind string) bool {
 	parent, ok := parents[target]
 	if !ok || parent == "" || duplicate[target] || target == source {
 		return false
 	}
 	if kind == "subquery" {
-		return parent == source && validScopeChain(parents, duplicate, source)
+		return parent == source && validScopeChain(parents, kinds, duplicate, source)
 	}
 	if kind == "cte" {
-		return (parent == source && validScopeChain(parents, duplicate, source)) || isStrictScopeAncestor(parents, duplicate, source, parent)
+		return (parent == source && validScopeChain(parents, kinds, duplicate, source)) || isStrictScopeAncestor(parents, kinds, duplicate, source, parent)
 	}
 	return false
 }
 
-func validScopeChain(parents map[string]string, duplicate map[string]bool, scope string) bool {
+func validScopeChain(parents, kinds map[string]string, duplicate map[string]bool, scope string) bool {
 	seen := make(map[string]bool)
 	for scope != "" && !seen[scope] && !duplicate[scope] {
 		seen[scope] = true
@@ -369,14 +369,14 @@ func validScopeChain(parents map[string]string, duplicate map[string]bool, scope
 			return false
 		}
 		if parent == "" {
-			return true
+			return kinds[scope] == "root"
 		}
 		scope = parent
 	}
 	return false
 }
 
-func isStrictScopeAncestor(parents map[string]string, duplicate map[string]bool, child, ancestor string) bool {
+func isStrictScopeAncestor(parents, kinds map[string]string, duplicate map[string]bool, child, ancestor string) bool {
 	if child == "" || ancestor == "" || child == ancestor || duplicate[ancestor] {
 		return false
 	}
@@ -389,7 +389,7 @@ func isStrictScopeAncestor(parents map[string]string, duplicate map[string]bool,
 			return false
 		}
 		if parent == "" {
-			return found
+			return found && kinds[child] == "root"
 		}
 		if parent == ancestor {
 			found = true

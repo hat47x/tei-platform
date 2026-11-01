@@ -491,6 +491,7 @@ func TestDerivedQueryIRCorrelatedScopeHierarchy(t *testing.T) {
 		{"cycle", []analyzer.Scope{{ID: "scope:root", ParentID: "inner"}, {ID: "inner", ParentID: "scope:root"}}, "name-only"},
 		{"duplicate", []analyzer.Scope{{ID: "scope:root", Kind: "root"}, {ID: "inner", ParentID: "scope:root"}, {ID: "inner", ParentID: "scope:root"}}, "name-only"},
 		{"missing-parent", []analyzer.Scope{{ID: "scope:root", Kind: "root"}, {ID: "inner", ParentID: "missing"}}, "name-only"},
+		{"parent-not-root", []analyzer.Scope{{ID: "scope:root", Kind: "subquery"}, {ID: "inner", ParentID: "scope:root"}}, "name-only"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			q := query.EmbeddedSQL{ID: core.MustCanonicalID("app.scope_hierarchy"), Datasource: core.MustLocalName("sales")}
