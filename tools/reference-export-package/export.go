@@ -22,12 +22,19 @@ type File struct {
 	Path   string `json:"path"`
 	Size   int64  `json:"size"`
 	Digest string `json:"digest"`
+	// Category is set by ExportWithPolicy; the plain Export leaves it empty.
+	Category string `json:"category,omitempty"`
 }
 
 type Manifest struct {
 	Schema string `json:"schema"`
 	Files  []File `json:"files"`
 	Digest string `json:"digest"`
+	// Category lists are set by ExportWithPolicy. They state what the package
+	// carries and what it deliberately leaves out.
+	IncludedCategories []string `json:"includedCategories,omitempty"`
+	ExcludedCategories []string `json:"excludedCategories,omitempty"`
+	EmptyCategories    []string `json:"emptyCategories,omitempty"`
 }
 
 func digestBytes(raw []byte) string {
