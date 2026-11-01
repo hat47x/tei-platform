@@ -88,6 +88,99 @@ func TestValidateWorkspaceJSONSemanticFailure(t *testing.T) {
 	}
 }
 
+func TestValidateWorkspaceJSONDuplicateHasDeclarationCandidates(t *testing.T) {
+	root := t.TempDir()
+	writeWorkspaceFile(t, root, "tei.workspace.yaml", "workspace: duplicate\nsources:\n  - semantic\n")
+	writeWorkspaceFile(t, root, "semantic/intake/request.tei", "namespace intake\ndata Request {\n    attribute status type std.code\n    attribute status type std.code\n}\n")
+	var out bytes.Buffer
+	code, err := validateWorkspaceJSON(&out, root)
+	if err != nil || code != 1 {
+		t.Fatalf("exit=%d err=%v body=%s", code, err, out.String())
+	}
+	report := readValidationReport(t, &out)
+	for _, item := range report.Diagnostics {
+		if item.Diagnostic.Code != "DUPLICATE_SEMANTIC_ELEMENT" {
+			continue
+		}
+		if item.Diagnostic.Subject == nil || item.Diagnostic.Subject.ID != "intake.request.status" || len(item.Sources) != 2 ||
+			item.Sources[0].Range.Start.Line != 3 || item.Sources[1].Range.Start.Line != 4 ||
+			item.Sources[0].Subject == nil || item.Sources[0].Subject.Kind != "semantic-attribute" ||
+			item.Sources[1].Subject == nil || item.Sources[1].Subject.Kind != "semantic-attribute" {
+			t.Fatalf("duplicate diagnostic: %+v", item)
+		}
+		return
+	}
+	t.Fatalf("duplicate diagnostic missing: %+v", report)
+}
+
+func TestValidateWorkspaceJSONCrossKindDuplicateLabelsCandidates(t *testing.T) {
+	root := t.TempDir()
+	writeWorkspaceFile(t, root, "tei.workspace.yaml", "workspace: duplicate\nsources:\n  - semantic\n")
+	writeWorkspaceFile(t, root, "semantic/a.tei", "namespace intake\ntype Request from std.code\n")
+	writeWorkspaceFile(t, root, "semantic/b.tei", "namespace intake\ndata Request {}\n")
+	var out bytes.Buffer
+	code, err := validateWorkspaceJSON(&out, root)
+	if err != nil || code != 1 {
+		t.Fatalf("exit=%d err=%v body=%s", code, err, out.String())
+	}
+	for _, item := range readValidationReport(t, &out).Diagnostics {
+		if item.Diagnostic.Code == "DUPLICATE_SEMANTIC_ELEMENT" {
+			if len(item.Sources) != 2 || item.Sources[0].Subject == nil || item.Sources[0].Subject.Kind != "semantic-type" || item.Sources[1].Subject == nil || item.Sources[1].Subject.Kind != "semantic-data" {
+				t.Fatalf("cross-kind candidates: %+v", item)
+			}
+			return
+		}
+	}
+	t.Fatal("cross-kind diagnostic missing")
+}
+
+func TestValidateWorkspaceJSONDuplicateWithRealImportHasNoPartialSources(t *testing.T) {
+	root := t.TempDir()
+	consumer := filepath.Join(root, "consumer")
+	writeWorkspaceFile(t, consumer, "tei.workspace.yaml", "workspace: consumer\nsources:\n  - semantic\nimports:\n  - alias: external\n    path: ../provider\n    namespace: external\n")
+	writeWorkspaceFile(t, consumer, "semantic/request.tei", "namespace intake\ndata Request {\n attribute status type std.code\n attribute status type std.code\n}\n")
+	provider := filepath.Join(root, "provider")
+	writeWorkspaceFile(t, provider, "tei.workspace.yaml", "workspace: provider\nsources:\n  - semantic\n")
+	writeWorkspaceFile(t, provider, "semantic/external.tei", "namespace external\ntype ExternalId from std.identifier\n")
+	var out bytes.Buffer
+	code, err := validateWorkspaceJSON(&out, consumer)
+	if err != nil || code != 1 {
+		t.Fatalf("exit=%d err=%v body=%s", code, err, out.String())
+	}
+	for _, item := range readValidationReport(t, &out).Diagnostics {
+		if item.Diagnostic.Code == "DUPLICATE_SEMANTIC_ELEMENT" {
+			if item.Diagnostic.Subject == nil || item.Diagnostic.Subject.ID != "intake.request.status" || len(item.Sources) != 0 {
+				t.Fatalf("incomplete candidates: %+v", item)
+			}
+			return
+		}
+	}
+	t.Fatal("duplicate diagnostic missing")
+}
+
+func TestValidateWorkspaceJSONDuplicateWithPreludeHasNoPartialSources(t *testing.T) {
+	root := t.TempDir()
+	writeWorkspaceFile(t, root, "tei.workspace.yaml", "workspace: prelude\nsources:\n  - semantic\n")
+	writeWorkspaceFile(t, root, "semantic/std.tei", "namespace std\ntype Code from std.text\ntype Code from std.text\n")
+	var out bytes.Buffer
+	code, err := validateWorkspaceJSON(&out, root)
+	if err != nil || code != 1 {
+		t.Fatalf("exit=%d err=%v body=%s", code, err, out.String())
+	}
+	count := 0
+	for _, item := range readValidationReport(t, &out).Diagnostics {
+		if item.Diagnostic.Code == "DUPLICATE_SEMANTIC_ELEMENT" && item.Diagnostic.Subject != nil && item.Diagnostic.Subject.ID == "std.code" {
+			count++
+			if len(item.Sources) != 0 {
+				t.Fatalf("prelude candidate set is incomplete: %+v", item)
+			}
+		}
+	}
+	if count == 0 {
+		t.Fatal("prelude duplicate diagnostic missing")
+	}
+}
+
 func TestValidateWorkspaceJSONLoadFailure(t *testing.T) {
 	var out bytes.Buffer
 	code, err := validateWorkspaceJSON(&out, filepath.Join(t.TempDir(), "missing"))

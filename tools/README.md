@@ -15,6 +15,7 @@
 | [`repository-dependency-report/`](repository-dependency-report/) | Goの直接依存関係の一覧作成 |
 | [`repository-plan-check/`](repository-plan-check/) | ADR・Issueの番号や要求と検証表の対応確認、ADR索引とADRファイルの一致・状態の確認（#2343） |
 | [`repository-node-tests/`](repository-node-tests/) | どのworkflowからも実行されなかったNode.js試験5ファイルをgo testから実行する（#2346） |
+| [`check-public-boundary/`](check-public-boundary/) | 追跡ファイルに、非公開資料の名前・所在のマーカーが入っていないかを検査する（#2342 / #2436） |
 | [`repositoryqualification/`](repositoryqualification/) | リポジトリ検証条件の共通処理 |
 | [`reference-cli-trace-benchmark/`](reference-cli-trace-benchmark/) | 合成Workspaceによるtraceの処理段別の時間・メモリ計測と出力不変の確認 |
 | [`reference-change-packet/`](reference-change-packet/) | 変更範囲・危険度・検証・停止条件をJSONで宣言し、範囲確認と検証実行・証拠記録を行う参照（#2017） |
@@ -23,16 +24,19 @@
 | [`reference-generator-artifact-store/`](reference-generator-artifact-store/) | 選抜receiptのGo/Java/WASM/WASI候補source/binaryとPython/JavaScript候補sourceをsource digestでcontent-addressedに保存・取得し、再計算digestで改変を拒否し、receipt/listで言語を返す参照。明示keep setによるlist/prune、成功pruneのhash-chain audit log、ssh-keygenで署名できるaudit checkpointと、署名・store一致を併せて検証するcheckpoint再検証も持つ（#2016） |
 | [`reference-generator-context/`](reference-generator-context/) | 受理済み契約・fixture・Workspace revisionから、生成モデル向けの上限付き文脈を作る参照（#2016 / #2021） |
 | [`reference-generator-revocation-review/`](reference-generator-revocation-review/) | 生成器registryの失効と、registry編集とは別の承認recordの対象一致を検査する参照。承認者のAuthority・trustは検証しない（#2076） |
+| [`reference-generator-extension-points/`](reference-generator-extension-points/) | 生成器が宣言した拡張点に案件側のコードを生成物の外から結び付け、契約変更・再生成での保持・拡張点外の直接編集・業務結果の差を検査する参照（#2090） |
 | [`reference-derived-name-check/`](reference-derived-name-check/) | 要素の名前と、生成器・Providerが作る派生名の衝突、予約語、最大長、使用できない文字を、層ごとの宣言された規則で定義の受理前に検査する参照。規則は参照用の宣言で、実在のProviderや生成器の規則とは未接続（#2094） |
+| [`reference-semantic-domain-coverage/`](reference-semantic-domain-coverage/) | 意味の定義と要素の対応を、受理済み定義だけを根拠に検査する参照。複数一致（一本道の破れ）、未記入の要素、What/Whyの欠落を一覧する（#2095） |
 | [`reference-target-profile/`](reference-target-profile/) | 同じ契約・fixture・候補を複数のTarget Profileで実行し、宣言と実行結果、case別出力の意味一致、oneshot/long-running/batch process model、stdout/stderr/exit-codeの観測、filesystem artifactのreplace/in-place/rolling配備、sqlite artifactの保存・rollback、slot/history指定のrollback、historyの検証・保持件数によるprune、署名済みapprovalによる削除承認、そのhash-chain auditとaudit checkpointを記録する参照（#2019） |
 | [`reference-productivity-benchmark/`](reference-productivity-benchmark/) | 4タスクの計画とrunのcoverageを検証し、3方法×3回の中央値と範囲を集計する参照（#2018） |
 | [`reference-tenant-isolation/`](reference-tenant-isolation/) | SaaS向けに、テナントrootの閉じ込めと越境拒否を提供する基盤pluginの参照（#2020） |
 | [`reference-audit-log/`](reference-audit-log/) | 追記専用のhash chain、改ざん検出、pinned headによる末尾削除検出を提供する監査ログ基盤pluginの参照（#2020） |
+| [`reference-ai-write-window/`](reference-ai-write-window/) | Pluginが宣言した書込み窓にAIの編集が収まっているかを検査し、窓の外の変更を受理前に拒否する参照。未解決と確認済み違反、Target別の可用性、全体生成の境界を分ける（#2092） |
 | [`reference-authentication/`](reference-authentication/) | credentialを発行せず、principalとtenantの認証境界を検証する基盤pluginの参照（#2020） |
 | [`reference-offline-storage/`](reference-offline-storage/) | 個人向けに、root内へ閉じたローカル保存を提供する基盤pluginの参照（#2020） |
 | [`reference-export-package/`](reference-export-package/) | SIer向けに、manifestとdigest付きの配布zipを作る基盤pluginの参照（#2020） |
 | [`reference-delivery-profile/`](reference-delivery-profile/) | 提供形態ごとにpluginを選択し、必須能力が揃っているかを検証する参照（#2020） |
-| [`reference-delivery-bundle/`](reference-delivery-bundle/) | 解決済みprofileとplugin descriptorをzip化し、digest・detached signature・merge/fresh install・activate/rollback・health/start/graceful stop/restart/reconcileを提供する参照（#2020） |
+| [`reference-delivery-bundle/`](reference-delivery-bundle/) | 解決済みprofileとplugin descriptorをzip化し、digest・detached signature・merge/fresh install・activate/rollback・health/start/graceful stop/restart/reconcile/superviseを提供する参照（#2020） |
 | [`reference-change-assurance/`](reference-change-assurance/) | 変更に応じて、過去の検証結果が現在も同じ主張を裏付け得る範囲を、合成データで示す読取り専用の参照（#1445） |
 | [`reference-subproject-impact/`](reference-subproject-impact/) | 確定した二つのコミットの実差分から、プラグイン追加時に既存コアを何か所変更したかを測る参照（#1251） |
 | [`reference-studio-host-boundary/`](reference-studio-host-boundary/) | TEI StudioのWeb接続・失効・要求スコープと、DesktopのDraft・private-resource境界を確認する独立回帰（#1824） |
@@ -56,6 +60,7 @@
 | [`reference-capability-invocation-context/`](reference-capability-invocation-context/) | Capability実行時の文脈境界の確認 |
 | [`reference-capability-mutation-protocol/`](reference-capability-mutation-protocol/) | 変更を伴うCapabilityの手順確認 |
 | [`reference-capability-transport/`](reference-capability-transport/) | Capabilityの伝送形式と境界の確認 |
+| [`reference-capability-degradation/`](reference-capability-degradation/) | 既存DB・Providerが観測された能力と業務操作が要求する保証を照合し、不足時に操作を生成しないか明示の弱い保証を宣言するかを記録する参照。縮退を同等と認証しない（#2096） |
 | [`reference-chat-cli-host/`](reference-chat-cli-host/) | 信頼された開発用Hostの事前診断 |
 | [`reference-cognition-port/`](reference-cognition-port/) | 軽量認知を提案ポートとして扱い、文脈・出所・能力限界・失敗状態を記録する参照。受理・権限・実行を決めない（#2021） |
 | [`reference-cognition-handoff/`](reference-cognition-handoff/) | 軽量認知のpositive validation提案をShared Acceptanceの変更candidateへ変換する参照（#2021） |
@@ -78,6 +83,7 @@
 | [`reference-procedure-expansion/`](reference-procedure-expansion/) | 受理済み手順を非画面・画面・外部・AIの実現先へ展開し、実行可能範囲を分ける参照 |
 | [`reference-procedure-formalization/`](reference-procedure-formalization/) | 業務手順の文章から、形式化を妨げる不足と矛盾を根拠付きの質問として示す読取り専用の参照 |
 | [`reference-purpose-preflight/`](reference-purpose-preflight/) | 開発目的に対する業務規則の未確定・実行時値待ちを合成データで区別 |
+| [`reference-provider-override-update/`](reference-provider-override-update/) | 提供元定義の更新で案件側の上書き・追加を失わないよう、旧版・新版・案件を正本識別子ごとに比較し、`unchanged`/`applicable`/`conflict`/`unresolved`に分類する参照。名前の衝突と更新前への復帰を確認する（#2091） |
 | [`reference-query-input-nullability/`](reference-query-input-nullability/) | Query入力のmissingと明示nullを区別し、NULL可否を契約で明示してSQL実行前に拒否する参照。一時PostgreSQLで許可NULL・省略・空文字・拒否を観測する（#2056） |
 | [`reference-quantity-arith/`](reference-quantity-arith/) | 数量・単価・金額の単位・通貨・丸めの意味注釈を合成入力で検査する読取り専用の参照（#1705） |
 | [`reference-read-consistency/`](reference-read-consistency/) | 一回の導出評価の入力読取り整合・Snapshot保証・競合時の失敗境界を合成入力で判定する読取り専用の参照（#1708） |

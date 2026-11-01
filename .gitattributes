@@ -2,3 +2,14 @@
 /plan/evidence/TEI_E1_SYNTHETIC_MANIFEST_20261012_38267656696.json -text
 /plan/evidence/tei-e1-synthetic-38267656696/*.json -text
 /plan/evidence/TEI_E2A1_REAL_POSTGRES_RECEIPT_38311557882.json -text
+
+# Workspace source trees are fingerprinted byte-wise (sourceIndexFingerprint,
+# modelRevision). Checkout must not rewrite their bytes (#2399).
+/examples/first-capability-effect/** -text
+/examples/first-workspace/** -text
+/reference/plugin-self-build/workspace/** -text
+/reference/product-contracts/** -text
+/reference/sui-adoption/workspace/** -text
+/reference/workspace/** -text
+/tools/reference-data-first-persistence/testdata/overlay/** -text
+/tools/reference-external-adoption-authority/testdata/consumer/** -text

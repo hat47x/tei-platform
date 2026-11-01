@@ -1,0 +1,3 @@
+application product_contracts_flow {
+    uses semantic product_contracts
+}

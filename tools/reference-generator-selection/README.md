@@ -117,7 +117,7 @@ go run ./tools/reference-generator-selection/cmd/tei-generator-model \
   -command 'your-model-cli ... "$TEI_PROMPT" "$TEI_CONTEXT" > "$TEI_SOURCE"'
 ```
 
-`tei-generator-model`は、`TEI_CONTRACT`、`TEI_LANGUAGE`、`TEI_PROMPT`、`TEI_CONTEXT`、`TEI_SOURCE`、`TEI_TMPDIR`、`TEI_PROVIDER`、`TEI_MODEL`を環境変数で渡し、コマンドが`TEI_SOURCE`へ書いたsourceを記録します。`-language python`では`TEI_SOURCE`が`.py`になり、記録先も`main.py`です。`TEI_CONTRACT`は候補の契約digestを求める入力であり、コマンドが別契約向けのsourceを出しても、選抜は現在の契約との不一致として拒否します。特定ベンダーのAPI・認証・課金・モデル版管理は埋め込みません。コマンドは信頼済みのものだけを指定し、秘密情報を出力しないでください。
+`tei-generator-model`は、`TEI_CONTRACT`、`TEI_LANGUAGE`、`TEI_PROMPT`、`TEI_CONTEXT`、`TEI_SOURCE`、`TEI_TMPDIR`、`TEI_PROVIDER`、`TEI_MODEL`を環境変数で渡し、コマンドが`TEI_SOURCE`へ書いたsourceを記録します。`-language python`では`TEI_SOURCE`が`.py`になり、記録先も`main.py`です。`TEI_CONTRACT`は候補の契約digestを求める入力であり、コマンドが別契約向けのsourceを出しても、選抜は現在の契約との不一致として拒否します。特定ベンダーのAPI・認証・課金・モデル版管理は埋め込みません。コマンドは信頼済みのものだけを指定し、秘密情報を出力しないでください。コマンドは`bash -c`で起動し、loginシェル（`~/.profile`等）は読まないため、receiptは利用者のlogin環境に依存しません。コマンドの解決は親プロセスの環境（`PATH`を含む）に依存します。
 
 外部の**生成器**が候補sourceを生成する場合は、生成器を深さ1で実行して記録できます。
 

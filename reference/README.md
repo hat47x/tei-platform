@@ -165,6 +165,12 @@ go run ./tools/reference-deployment-attempt
 
 設計は `../plan/design/SUI_REFERENCE_ADOPTION_DESIGN_2026-09.md`、作業単位は `../plan/issue/000052-sui-reference-adoption-and-plugin-surface-evaluation.md` を参照してください。
 
+## プロダクト契約の型宣言
+
+`reference/product-contracts/`は、TAI配下5製品の主要な契約をTEIの型として並べた参照workspaceです。型の宣言だけを持ち、各製品の実装・権限・検証・受理を置き換えません。位置づけと含める型は[README](product-contracts/README.md)にあります。
+
+`validate`が通ることは、宣言が読めて型名が実在することを示すだけです。能力の出力型と次の入力型の接続は検査しません。`cmd/tei`のGo試験`TestProductContractsReferenceWorkspaceValidates`が、`go test ./cmd/tei`で`validate`の成否を確認します。`worldFingerprint`の固定値は試験に埋め込みません。全PRへの必須検査は増やしません([#2409](https://github.com/hat47x/tei-platform/issues/2409))。
+
 ## 技術検証用サンプルの構成
 
 検証用資産を、業務系システムで頻出するが素朴な設計では破綻しやすい要件(ピーキーな要件)を一つの作業の流れで同時に起こし、基盤に技術的な設計圧力をかける題材として、十一の技術検証用サンプルへ再編する案があります。要件の目録、資産の割当て、各サンプルの失敗注入と通しの完了条件は、[技術検証用サンプルの統合設計](../plan/design/TECH_VALIDATION_SAMPLES_2026-10.md)にまとめています。この設計は採用前の提案で、資産の移動や削除はしておらず、この文書の以降の記述は現在の配置のままです。一方、通しの検証は、`order-workflow`を除く十のサンプルについて、入口の`reference/<サンプルの識別子>/README.md`と実装の`tools/reference-*`が`main`に統合されています。いずれも合成データ、同種のDB、模擬の提供元での確認で、実環境での確認ではありません。サンプルごとの範囲と未成立の事項は、設計文書の[7.3節](../plan/design/TECH_VALIDATION_SAMPLES_2026-10.md#73-段階2-通しの検証の追加)と各入口のREADMEを参照してください。

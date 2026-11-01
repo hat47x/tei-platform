@@ -14,29 +14,15 @@ var goModules = []string{"go.mod", filepath.Join("cmd", "tei-studio", "go.mod")}
 
 // knownUnlistedModules are requirements that THIRD_PARTY_NOTICES.md does not list yet.
 //
-// This is a record of the gap reported in #2330, not a decision. Whether these
+// This is a record of a gap reported in an issue, not a decision. Whether these
 // modules belong in the notices (product binary or reference tool only), and under
 // which license terms, is a human decision (AGENTS.md A4). Remove an entry in the
 // same change that lists the module in THIRD_PARTY_NOTICES.md or records why it is
 // out of scope there. Never add an entry to silence the check for a new dependency.
-var knownUnlistedModules = map[string]bool{
-	"modernc.org/sqlite":               true,
-	"modernc.org/libc":                 true,
-	"modernc.org/mathutil":             true,
-	"modernc.org/memory":               true,
-	"github.com/dustin/go-humanize":    true,
-	"github.com/google/uuid":           true,
-	"github.com/mattn/go-isatty":       true,
-	"github.com/ncruces/go-strftime":   true,
-	"github.com/remyoudompheng/bigfft": true,
-	"golang.org/x/sys":                 true,
-	"github.com/wailsapp/wails/v3":     true,
-	"github.com/adrg/xdg":              true,
-	"github.com/coder/websocket":       true,
-	"github.com/go-ole/go-ole":         true,
-	"github.com/godbus/dbus/v5":        true,
-	"github.com/mattn/go-colorable":    true,
-}
+//
+// Empty since #2330: every module of both go.mod files is now listed in
+// THIRD_PARTY_NOTICES.md, with the license facts read from the exact versions.
+var knownUnlistedModules = map[string]bool{}
 
 type moduleRequirement struct {
 	path, version string

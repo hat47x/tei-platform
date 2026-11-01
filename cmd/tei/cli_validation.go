@@ -38,9 +38,10 @@ type cliValidationItem struct {
 }
 
 type cliValidationSource struct {
-	ArtifactPath string            `json:"artifactPath"`
-	Range        sourceindex.Range `json:"range"`
-	Role         sourceindex.Role  `json:"role,omitempty"`
+	ArtifactPath string               `json:"artifactPath"`
+	Range        sourceindex.Range    `json:"range"`
+	Role         sourceindex.Role     `json:"role,omitempty"`
+	Subject      *sourceindex.Subject `json:"subject,omitempty"`
 }
 
 type cliValidationFailure struct {
@@ -113,11 +114,16 @@ func validateWorkspaceJSON(out io.Writer, root string) (int, error) {
 	for _, projected := range result.Diagnostics {
 		item := cliValidationItem{Diagnostic: projected.Diagnostic}
 		for _, ref := range projected.Sources {
-			item.Sources = append(item.Sources, cliValidationSource{
+			source := cliValidationSource{
 				ArtifactPath: ref.ArtifactPath,
 				Range:        ref.Range,
 				Role:         ref.Role,
-			})
+			}
+			if projected.Diagnostic.Code == "DUPLICATE_SEMANTIC_ELEMENT" {
+				subject := ref.Subject
+				source.Subject = &subject
+			}
+			item.Sources = append(item.Sources, source)
 		}
 		report.Diagnostics = append(report.Diagnostics, item)
 	}

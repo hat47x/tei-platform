@@ -90,7 +90,9 @@ type DerivedIR struct {
 
 func DeriveFromAnalysis(q EmbeddedSQL, databaseID core.CanonicalID, result analyzer.Result, snapshot *physical.SchemaSnapshot) DerivedIR {
 	ir := DerivedIR{Query: q.ID, Datasource: q.Datasource, Database: databaseID}
-	if !result.OK() {
+	// A successful analysis for another Query is not an analysis of q. This
+	// identity check does not prove that same-ID SQL bytes or schemas match.
+	if !result.OK() || q.ID == "" || result.Query != q.ID {
 		ir.Coverage = AnalysisCoverage{Parse: CoverageNone, Resolution: CoverageNone, Lowering: CoverageNone}
 		return ir
 	}

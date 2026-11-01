@@ -121,6 +121,22 @@ func TestProjectDiagnosticsKeepsFindingWhenSourceIsUnavailable(t *testing.T) {
 	}
 }
 
+func TestDuplicateSemanticProjectionDoesNotMisidentifyDeclaration(t *testing.T) {
+	s := subject.Subject{Kind: "semantic-attribute", ID: "intake.request.status"}
+	diagnostic := validation.Diagnostic{Code: "DUPLICATE_SEMANTIC_ELEMENT", Severity: validation.Error, Subject: &s}
+	index := sourceindex.Index{References: []sourceindex.Reference{{
+		Subject: s, ArtifactPath: "semantic/intake/request.tei", Role: sourceindex.RoleDefinition,
+		Range: sourceindex.Range{Start: sourceindex.Position{Line: 6, Column: 15}},
+	}}}
+	got := workspace.ProjectDiagnostics([]validation.Diagnostic{diagnostic}, index)
+	if len(got) != 1 || got[0].Diagnostic.Subject == nil || *got[0].Diagnostic.Subject != s {
+		t.Fatalf("duplicate subject was lost: %#v", got)
+	}
+	if len(got[0].Sources) != 0 {
+		t.Fatalf("duplicate source location is ambiguous: %#v", got[0].Sources)
+	}
+}
+
 func diagnosticByCode(diagnostics []validation.Diagnostic, code string) (validation.Diagnostic, bool) {
 	for _, diagnostic := range diagnostics {
 		if diagnostic.Code == code {
