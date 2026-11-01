@@ -27,29 +27,29 @@ type Row struct {
 }
 
 type ReadEvidence struct {
-	MeaningRevision string
-	ContextID       string
+	MeaningRevision   string
+	ContextID         string
 	ContextInstanceID string
-	ContextEpoch    string
-	Anchor          Ref
-	Completeness    string // complete, partial, unfetched, unknown
-	Rows            []Row
+	ContextEpoch      string
+	Anchor            Ref
+	Completeness      string // complete, partial, unfetched, unknown
+	Rows              []Row
 }
 
 // Change is a recorded editing intention from a specific view/selection epoch.
 // Value is intentionally opaque: typed conversion and business validation
 // belong to the accepted operation and its owner.
 type Change struct {
-	MeaningRevision string
-	ActionRevision  string
-	ContextID       string
+	MeaningRevision   string
+	ActionRevision    string
+	ContextID         string
 	ContextInstanceID string
-	ContextEpoch    string
-	Anchor          Ref
-	OccurrenceIDs   []string
-	Operation       string // update-field or unlink
-	FieldRef        string
-	Value           string
+	ContextEpoch      string
+	Anchor            Ref
+	OccurrenceIDs     []string
+	Operation         string // update-field or unlink
+	FieldRef          string
+	Value             string
 }
 
 // Action is a synthetic operation contract supplied for a fixed fixture.
@@ -68,14 +68,14 @@ type Action struct {
 }
 
 type Intent struct {
-	CapabilityID string
-	Operation    string
-	Target       Ref
-	FieldRef     string
-	Value        string
-	ContextID    string
+	CapabilityID      string
+	Operation         string
+	Target            Ref
+	FieldRef          string
+	Value             string
+	ContextID         string
 	ContextInstanceID string
-	ActionRev    string
+	ActionRev         string
 }
 
 // Decision is an interpretation result, never a runtime authorization,
@@ -175,13 +175,13 @@ func Interpret(read ReadEvidence, change Change, action Action) Decision {
 		return targets[i].ID < targets[j].ID
 	})
 	return Decision{Status: "candidate", Intent: &Intent{
-		CapabilityID: action.CapabilityID,
-		Operation:    change.Operation,
-		Target:       targets[0],
-		FieldRef:     change.FieldRef,
-		Value:        change.Value,
-		ContextID:    read.ContextID,
+		CapabilityID:      action.CapabilityID,
+		Operation:         change.Operation,
+		Target:            targets[0],
+		FieldRef:          change.FieldRef,
+		Value:             change.Value,
+		ContextID:         read.ContextID,
 		ContextInstanceID: read.ContextInstanceID,
-		ActionRev:    action.Revision,
+		ActionRev:         action.Revision,
 	}}
 }
