@@ -198,3 +198,33 @@ Plugin公開基盤の議論で用いるDeclared（宣言）/Resolved（選択・
 
 2026-10-31後続のmain head f89344bfca438a101b7ba93d357911bad8d3b609で、[Graphの入力・更新](../../reference/tei-studio-graph/graph.ts)、[ER/物理Cross-view Projection](../../tools/reference-er-table-crossview/projection.go)、[Business DFD diagram context](../../tools/reference-business-dfd/diagram_context.go)、[modelref](../../internal/modelref/model.go)、[Studio freshness](STUDIO_CONSUMER_FRESHNESS_BOUNDARY_2026-10.md)、[Xead Cross-view](../../tools/reference-xead-cross-view/README.md)を静的照合。#1124/#1125/#1126/#2391の現行Issue本文も再確認。Code/Testの実行、Studioの統合操作、実X-TEA GUI/M50、外部UI制御、Provider効果、Owner acceptanceは未実施。新設のG0〜G5は**提案/NOT RUN**であり、既存Graph単体の過去の合格を新しいConsumer受入とみなさない。
 
+
+
+## 13. 最初の実装結果と三つの鮮度の分離（2026-11-01）
+
+他チャットの[#2352 複合図表・トポロジー設計](https://github.com/hat47x/tei-platform/pull/2352)を再読し、汎用の多項関係・図間対応・不在証拠をこのTEA文書へ再定義しないことを確認した。TEA Method側の独自課題は、方法論の関係種別（FAMILY/REFFER/SUBTYPE）を**既存意味契約へどう解釈するか**と、そのUI Consumerが古いID対応を誤使用しないことである。共通Projectionの標準schema固定は両Draftでまだ行わない。
+
+### 実装候補（別Draft、限定的な成立）
+
+[PR #2457](https://github.com/hat47x/tei-platform/pull/2457)で `reference/tei-studio-graph/qualified-selection.mjs` と小さい負例テストを独立に追加した。PR #2397は引き続き横断設計のみとし、同じコードを取り込まない。
+
+| 鮮度の軸 | #2457が扱うもの | 未実装で他Ownerに残すもの |
+| --- | --- | --- |
+| 1. UI Display | `stage`した表示ID→Qualified Refを、同期Renderer更新成功後だけ`publish`する。更新失敗時は旧map | 実DOM/Workbenchの統合、Graph eventの非同期発火/再描画競合 |
+| 2. Model/Projection | 呼出元が観測した`workspaceId/modelRevision`に紐付け、`observeSource`で変更・ABAを通知されたらmapを無効化 | Projection fingerprint、Semantic Setの現在性、複数資源の原子的Snapshot |
+| 3. Source/Acceptance/Runtime | 何も保証しない。`select`の`resolved`は**観測済みSnapshot内の対応**を返すのみ | Sourceの独立readback、accepted/ledger/owner、Current Authority、Target readiness、Effect |
+
+#### 初回Referenceの合否と不足する事実
+
+- **限定的に確認**: GitHub上の`qualified-selection.mjs` blob `976b6192e2502e5be01d43f1a415ff271f2d5462`と手元再現ファイルのGit blobが一致。Node 22.16.0でsyntax checkとそのファイルへの局所assertion 7件がPASS。
+- **未実行**: GitHub保存済みの`qualified-selection.test.mjs`の全ケース、既存Graphとの実DOM、Workbench、Studio統合、Source Acceptance後の遅延Inspect拒否、外部UI操作。branch checkout・repository-health-check・GUIの資格は未取得。
+- **既存実装の動作事実**: `reference/tei-studio-workbench/main.ts`ではGraphの`onSelect(key)`から現在の`entries.find(subjectKey)`を参照し、`inspect`が再度Graphを更新する。新規Guardを追加しただけでは既存経路を変更せず、#1124のP0は完了しない。
+- **次の最小統合Gate**: 同じWorkspaceでR10→R11、G1 DOMはK→Scope A、G2の候補K→Scope Bを仮置き、`missing_endpoint`でG2更新拒否。旧G1が画面上に残ってもInspector呼出し0、Source locator確定0を実Consumer Spyで確認する。R10がなお現在と独立に確認できる場合のG1正常選択は不必要に失効させない。
+
+**安全性の注記**: `modelRevision`はCallerから供給された観測値であり、真の現在Sourceを発見する仕組みではない。通知を逃した変更、版の再利用/偽装、別Sourceの割込み、現在Authority未確認をGuardが検出する保証はない。Source/Decision ledger readback、現在性、Scope別の権限、開示条件はStudio Consumerと既存OwnerのGate。したがって`resolved`を`accepted/current/ready/authorized`のいずれにも自動変換しない。
+
+### Registry・Plugin構成の横断判断
+
+2026-10-31の分散Registry設計では、公開のContent Identity/Origin/検証Evidenceと、Consumerが実際に選択・利用できるかを分ける方針が強まった。本TEA設計も、Method Definitionを公開Registryから取得できた、あるいはNotation Providerをインストールできたという事実を`Semantic Extension`のAccepted Lockや`Studio Consumer`の現在Authorityに使わない。宣言・解決・観測の各版は、汎用のPlugin/Artifact/Evidence正本に逆参照する。追加のTEA専用Registry、Resolver、Build Lockは作らない。
+
+今後の推奨順は (a) #2457の焦点試験を現行checkoutで確認、(b) #1124 Consumerへ最小結合してG1/G2負例を実行、(c) #1126の方法論固有Relation規則をSource-only fixtureと照合、(d) 図上Intent→Proposal（Source writesなし）を確認、の順。ここを超える意味規則の正式採用・本番Provider接続には別の承認/適合Gateが必要。
