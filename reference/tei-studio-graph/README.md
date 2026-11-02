@@ -123,15 +123,16 @@ node --experimental-strip-types --test reference/tei-studio-graph/graph.test.mjs
 
 - `observeSource({workspaceId, modelRevision})`: 観測したCatalog/Source文脈を指定。異なる版・Workspace、未確認への遷移は現行選択mapを失効。
 - `stage({workspaceId, modelRevision, bindings:[{viewId,scope,kind,id,version?}]})`: 観測済み版だけを受け付け、Scope/Kind/IDを必須にする。複数Occurrenceが同一Subjectを指してよいが、同一Snapshot内の重複viewIdを拒否。ここではまだ選択mapを公開しない。
-- `publish(token, () => graph.update(input))`: **同期・失敗時に旧描画を保持する表示置換**の成功後に限り、新mapを公開する。更新が `missing_endpoint` 等で拒否されれば旧mapのまま。Sourceがその間に変われば公開せずstaleとする。成功したRendererを持つ場合も現在のSource/Authority/Effectを保証しない。
+- `publishGraph(token, graphView, graphInput)`: **Graph専用の推奨入口**。`normalizeGraph`で実描画に渡すnode集合を検証し、binding内の全view IDがGraph Inputのnode ID集合へ含まれる場合のみ同一正規化入力で同期`graphView.update`を呼ぶ。表示しないnodeへのbindingは`binding_not_rendered`で拒否。表示されたunbound nodeはInspectへ進まない。`graphView.update`の失敗・例外・非同期返り値では旧mapも安全側で失効し、pending mapはpublishしない。表示部品がGraph更新時にatomic DOM replacementを行うことは別途必要。
+- `publish(token, render)`: Graph用の完全性証明を持たない低水準試作用入口。同期callbackの戻りとSource版の範囲しか検査しないため、**Graphの現在の選択mapを認証する用途には用いない**。Promiseを返す非同期callbackは拒否・失効。
 - `select(viewId)`: `resolved` の場合のみ、`modelref.Key`相当の `{scope,subject:{kind,id},version?}` を返す。ほかは `stale` / `unbound`。**Source locatorやInspect実行をここで行わない**。呼出側が現在版・権限・開示条件を別途確認する。
 - `invalidate()`: Sourceの現在性を証明できなくなった場合や再接続時に使う。Source改訂の通知が届かない場合の現在性までは証明できず、ABA/同時snapshotの問題もSource Ownerの独立readbackが必要。
 - 初回はGraph node選択とList/Field行のbindingを同じ形式で渡す候補。**Field行クリック、Cross-view UI、実Studioへの結線は未実装**。
 
-focused test（Node 22以上で `graph.ts` を型除去して動かす試験）:
+**Owner依存**: #1124 PR1 [Draft #2583](https://github.com/hat47x/tei-platform/pull/2583)（Catalog曖昧保持＋共通Inspect guard）→PR2（4入口Event wiring）→PR3（Graph stale/UI map）の順。#2457はPR3用の独立候補でありPR1/PR2/P0完了の代替ではない。PR1には埋込BundleとWorkbench snapshot pinの再資格という未解決Gateがある（2026-11-02確認）。Graph/List/Fieldの各surfaceは、表示済みnode集合の照合対象が異なるため**単一のGraph `publishGraph`で全入口を公開したことにしない**。\n\nfocused test（Node 22以上で `graph.ts` を型除去して動かす試験）:
 
 ```sh
 node --experimental-strip-types --test reference/tei-studio-graph/qualified-selection.test.mjs
 ```
 
-このReferenceの試験は、Graphの既存 `normalizeGraph` を通した失敗時の候補map非公開、R10→R11でのG1残存、Scope違い、同一Subject複数Occurrence、ABA、render中Source変化の**小さい単位試験**です。実DOM、WebView2、元X-TEA GUI、Shared Acceptance、外部UIのLocator/操作、実Providerは確認しません。意味上の「完全・不存在」は[#2352の複合図表設計](https://github.com/hat47x/tei-platform/pull/2352)と[TEA設計#2397](https://github.com/hat47x/tei-platform/pull/2397)の別Gateです。正式なConsumer受入は[#1124](https://github.com/hat47x/tei-platform/issues/1124)が所有します。
+このReferenceの試験候補は、view ID集合とGraph node集合の不一致・非同期render拒否・Graphの既存 `normalizeGraph` を通した失敗時の候補map非公開、R10→R11でのG1残存、Scope違い、同一Subject複数Occurrence、ABA、render中Source変化の**小さい単位試験**です。実DOM、WebView2、元X-TEA GUI、Shared Acceptance、外部UIのLocator/操作、実Providerは確認しません。意味上の「完全・不存在」は[#2352の複合図表設計](https://github.com/hat47x/tei-platform/pull/2352)と[TEA設計#2397](https://github.com/hat47x/tei-platform/pull/2397)の別Gateです。正式なConsumer受入は[#1124](https://github.com/hat47x/tei-platform/issues/1124)が所有します。
