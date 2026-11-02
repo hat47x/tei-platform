@@ -783,6 +783,50 @@ QX-23はSQL内のOperatorの同義性／Mutant感度を試した。**QX-24の新
 **状態**：Python＋SQLite局所**12/12 PASS**。TEI SQL Worker/Go Query↔Context↔Providerの同一Attempt、実RDB/非RDB Provider、正式Host/RLS、UI/SHO/外部AI、Owner Meaning/Releaseは**NOT RUN**。
 
 
+### 7.20 QX-25：表示列と「計算に必要な列」と現在の開示資格を分離する（2026-11-02／SQLite Authorizer実測12件）
+
+#### 横断Issueの接合と新しい欠落
+
+[#2624 明示Function Data Context Mapping](https://github.com/hat47x/tei-platform/pull/2624)は宣言したRelation/Fieldの限定Projectionと、未宣言の秘密列の変更に依存しない合成結果を実証し、[#2620 Everything is Data](https://github.com/hat47x/tei-platform/issues/2620)／[#2625 Syntax Normal Form](https://github.com/hat47x/tei-platform/pull/2625)は表層構文を共通データ候補へdesugarする。これらは重要だが、実Queryは**出力列に現れないSourceをFilter、ORDER、EXISTS、JOIN、HAVING、集計、Window等で参照し得る**。公開可能な列名だけからデータ依存・取得必要列・開示安全性を決定できない。
+
+既存の[#2387 QX-17](https://github.com/hat47x/tei-platform/issues/2387)ではValue LineageとExistence/Multiplicity/Selection dependencyの分離、QX-20ではJSON内の機密構造を扱った。今回は**SQLite本体の列参照認可コールバック（`set_authorizer`の`SQLITE_READ`）と、二つのデータ世界の実Query出力を同一試験で比較**する。静的Query IRでも手書きSQLの存在でもない、DB API上の狭い追加観測。あくまでSQLの準備時にSQLiteが確認する列参照であり、**実行時に物理ページや行を読んだ証明ではない**。
+
+#### 四つのFootprint／資格の区別
+
+| 層 | 表現すべきもの／実際の確認先 | 混同による誤判定 |
+| --- | --- | --- |
+| **Declared/semantic need** | Functionの明示MappingとOperator/Queryの入力依存、Scope・出現ID・Grain。出力列だけでなくPredicate/Sort/Join/Exists等の条件列を含む | 画面に`id`しか出ないのでQueryが`hidden_score`を使わない、または暗黙に読取許可済みとする |
+| **Provider/SQL authorization reference** | どのSQL式に対し、どの列について権限判定が要求されたか。SQLite合成例は`SQLITE_READ`で観測 | 列参照がないことを全Provider/実物理row readなしと同一視、SQL authorization hookをHost Authorityへ昇格 |
+| **Observed result/effect** | 実Queryの結果行、順序、Count、未確定/不完全集合、Target実行Attempt、Snapshot | 同じ結果が出たので秘匿列に依存しない、または異なるSQL実行が同じProvider可視Scope/実行許可を持つ |
+| **Consumer disclosure and action** | Resultだけでなくmembership/aggregate/order、Explain/Diagnostic/Reason、Purpose・Caller・現在Grant、Intent/実Effect | 「秘密列を出力していない」だけでSHO/外部AI/標準UIへ開示可能と判断する |
+
+**認可と秘匿の重要な区別**：秘匿Fieldを信頼済みProviderが内部で使用して、明示的に許可された集計だけ返す場合があり得る。この可能性を`全部拒否`へ潰さない。ただし許可済み公開集合や同一ProviderのRLS/Policy／対象Roleから、別のConsumerの公開権限を推論しない（[#1693 D5](https://github.com/hat47x/tei-platform/issues/1693)）。本ReferenceはSQLite内で選択的に拒否した例を示すだけで、認可済み集約のPolicyや差分攻撃防止を実証していない。
+
+#### 検査の設計と実測（同じデータセットで列参照と行結果を比較）
+
+追加：[test_qx25_hidden_read_disclosure.py](https://github.com/hat47x/tei-platform/blob/work/query-structural-fixture-design-20261030/plan/fixtures/query-workbench-f0/test_qx25_hidden_read_disclosure.py)。Python **3.13.5**、SQLite **3.46.1**、`unittest` **12/12 PASS**、`py_compile` PASS。GitHub保存版と実行版のGit blob SHA **`4695728b9d8345ea0eab2a982c9c730f30332852`**一致（6514 bytes）。すべて自作のSQLiteメモリ内表`item(id,visible,hidden_score)`と`link(item_id,hidden_note)`を使用し、秘密ラベルは合成Fixture上の分類である。
+
+| ID | SQLiteで実際に比較したこと | Common Data/Function Contextへの引継ぎ |
+| --- | --- | --- |
+| QX25-01 | `SELECT id ... ORDER BY id`は`item.hidden_score`の列参照を要求しない | 出力・選択・順序の必要Sourceが本当に局所な場合だけ、その部分に限定して理由を説明 |
+| QX25-02〜04 | `SELECT id WHERE hidden_score>0`、秘密列による`ORDER BY`、`COUNT(*) WHERE`が`hidden_score`のSQLITE_READを要求する | Plain Data/Syntax Sugarから`where/order/count`へ変換する際、OutputFieldの元列以外の依存を保持 |
+| QX25-05／11 | `EXISTS`やJOIN Filterで別表`link.hidden_note`を参照する一方、出力は`item.id`のみ | Cross-relationのPredicate dependencyと実Providerで許されるRead範囲を独立に照合 |
+| QX25-06〜07／11 | `SQLITE_READ`のうち秘密列をDENYした場合に、表示列が公開項目だけでもQuery準備・実行がエラーになる | Authorizationが必要なInput dependencyを表示列だけから決めず、denyを黙って空結果へ変換しない |
+| QX25-08〜10 | 秘密Fieldだけを変え、Public ID列を不変にしても、結果membership、COUNT、TOP-1が変化する | 取得Snapshot/Read scope、結果/開示の現在資格。結果の存在／数／順序も開示し得る |
+| QX25-12 | 実際の出力値が同じ`('I1',)`でも、Predicateの有無で`hidden_score`の列参照集合が異なる | 同じSource Query ID／結果値／Data Shapeは依存同一性・公開許可の証拠ではない |
+
+**制約の明示**：SQLite `set_authorizer`はSQLの準備時の列参照検査であり、実表へアクセスした行数、物理IO、実接続時RLS、時刻、Provider実行主体、外部Host認可、許可された集約の公開Policy、OS/Network側の実送信、反復照会の推論漏洩を観測できない。このコールバックをTEIのData Provider共通API／監査APIに固定する提案ではない。`SQLITE_READ`列名の検出を、TEIの正式`read footprint`や完全なQuery依存として自動採用しない。
+
+#### 次の統合受入（新Core/APIではなく既存Ownerの一往復比較票）
+
+1. **M0 Query→Condition**（#2387）：実SQL worker／`DerivedIR`が出力列に加え、Filter/Sort/Exists/Join/GroupのOperandをどこまで保持しているかを固定SQLから検証。Expression文字列だけで全依存を確定できない場合は`unknown`。同じSQL・Schema/Source版・実Attempt・SQLite列参照記録を**異なる観測証拠として**一件に結合する。
+2. **M1 Context Mapping→Provider**（#2624/#2506/#2622）：宣言されたFunction必要Fieldと、Queryが実際に必要とする条件Fieldを比較。Mapping不足の場合はData Context不足／Provider固有の許可された内部計算／実取得観測不可を区別。秘密列を自動追加取得したり、非公開列をRendererへ載せたりしない。物理的な過剰Readの実証はProvider Ownerへ委譲。
+3. **M2 Disclosure→Consumer**（#1693/#1178/#2516）：`SELECT id WHERE hidden_score>0`の行集合、`COUNT(*)`、Sort/Top-N、Query Explain/Errorを公開する先ごとに、処理の許可・結果開示許可・現在のGrantを分離して比較。公開不可の場合でも内部の分析資格を不当に消さず、Consumerには許容された情報だけを投影。
+4. **M3 横断Conformance**（#2625/#988/#2514/#2619）：共通データの`where/order/count`がSQLのOperand/Scope/Truth/Bag・Source列を保つことを試験。有限Fixtureの結果一致と、実Provider権限・業務意味受理は別のGate。合成Syntax normal formが同じでも実読取/開示の条件が違うTargetでは同値ではない。
+
+**現状**：実SQLite AuthorizerとQueryの12件の局所観測をGitHubへ保存済み。**実TEI SQLGlot Worker/Go→Context/Provider/Studio/SHO、実RLS/Host認可、複数Consumer実送信、Owner意味受理は未実施**。QX-17〜24の既存設計、#1640 D2拒否、別Draft #2624/#2625、正式Semantic/Target Ownerを維持する。
+
+
 ## 8. 実装順・担当引継ぎ（提案）
 
 | 段階 | 所有 | 実施 | 完了の根拠 |
