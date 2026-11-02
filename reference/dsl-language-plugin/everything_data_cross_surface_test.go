@@ -34,7 +34,7 @@ func parseFixtureJSONPipeline(source string) (PipelineSyntax, error) {
 	// Deliberately small: fixtures use only unescaped ASCII token IDs and
 	// unambiguous occurrences. Real languages own general span handling.
 	locate := func(token string, from int) (PipelineToken, int, error) {
-		quoted := "\\"" + token + "\\""
+		quoted := string('"') + token + string('"')
 		index := strings.Index(source[from:], quoted)
 		if index < 0 {
 			return PipelineToken{}, from, fmt.Errorf("token %q not found", token)
