@@ -43,7 +43,7 @@ CLIは`cmd/tei/cli_contract.go`の静的Command Catalogと`docs/getting-started.
 - **作用**：Scope、ValidatorのPASS、Skill指示文、MCP annotationは書込み許可でない。write/release/actual Effectは既存Host/Ownerに確認する。
 - **外部実現**：Java Library/Wasm/Process Providerの生成・配布・呼出し適合は#2513/#1861/#2390に渡す。TEI Skill利用が外部Consumerの依存に混入しない。
 
-## 4. 反例を事前に固定する（TS-01〜TS-10）
+## 4. 反例を事前に固定する（TS-01〜TS-15）
 
 以下のケースは[TEI #2605](https://github.com/hat47x/tei-platform/issues/2605)本文を正本とし、本計画では試験の順序と実行経路だけを定める。新しいテスト正本/Oracle/別CLIは作らない。
 
@@ -51,6 +51,14 @@ CLIは`cmd/tei/cli_contract.go`の静的Command Catalogと`docs/getting-started.
 - `SKILL.md`のfrontmatter `name: yi-tei-modeling`とディレクトリ名の対応、参照pathの実在、実CLIとの記述整合を静的確認。
 - TAIの`yi-tai-activity` SkillやMMIの`skills/mmi`をTEI repoへコピーしない。Product専門機能と横断手順を分ける。
 - TAI SK-01のH2（Toolのみ）・H3（Product Skill＋Tool）で**同じ情報条件**を採用する。Skill内に検証用Expectedを埋めない。
+
+### S0b — Product Skillの静的契約点検
+
+Python標準ライブラリのみの`skills/yi-tei-modeling/verify_skill.py`と`tests/test_verify_skill.py`を試作する。実行は`python3 skills/yi-tei-modeling/verify_skill.py`、合成試験は`python3 -m unittest discover -s skills/yi-tei-modeling/tests -v`。
+
+対象はSkill名、Markdown相対リンク、既存read-only Command Catalogと文書内CLI例の整合、Traceページ継続用fingerprintの説明。これは**静的検査であり実TEI CLIの起動・Harness接続・業務意味・実Host権限を検査しない**。孤立した合成fixtureでの7件はローカルPASS、実TEI Checkout全体での検査はNOT RUN。
+
+**TS-11〜15追補**（[Issue #2605](https://github.com/hat47x/tei-platform/issues/2605#issuecomment-6572810341)）：発見時CLIと実呼出しCLIの相違、Trace継続tokenとGraph fingerprintの混同、改行差によるSource byte相違、複数readの異版接合、外部開示範囲を、それぞれ別の負例としてS1/S2で検証する。Consumer向けの証拠接合は#2516 W10へ委ねる。
 
 ### S1 — TEI CLIを実動で検証
 - 同一checkout/Workspaceに対し、`commands`→`model catalog`→`inspect`→`trace`→`validate -json`の順でread-onlyに実行。
@@ -77,4 +85,4 @@ CLIは`cmd/tei/cli_contract.go`の静的Command Catalogと`docs/getting-started.
 | 独立Product SkillはTAIを追加しなくても有用 | TEI単体でH3を成立させ、H5との差分を見る | 横断Skillで説明し、不要な重複配布を避ける |
 | 複数Harness間で手順を移植できる | H6でTool/Capability/Host差を説明できるか | 必要箇所だけHarness Adapterを加える |
 
-**実証状態**：本計画と試作Skillはドキュメント段階。設計として記載したTS-01〜10、S1〜S3、H0〜H6の実行は行っていない。OwnerによるProduct Skill正式採用、実CLI/実Host/別Harness・実OS情報境界の受入は今後。
+**実証状態**：本計画と試作Skillはドキュメント段階。設計として記載したTS-01〜15、S1〜S3、H0〜H6の実行は行っていない。OwnerによるProduct Skill正式採用、実CLI/実Host/別Harness・実OS情報境界の受入は今後。
