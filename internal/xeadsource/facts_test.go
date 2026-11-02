@@ -315,6 +315,42 @@ func TestExtractRelationalSourceFactsPreservesRawRuntimeReferDeclarations(t *tes
 	}
 }
 
+func TestExtractRelationalSourceFactsRejectsForeignNamespaceReferLookalikes(t *testing.T) {
+	input := []byte(`<System xmlns:x="urn:foreign"><Table ID="T1">
+		<x:Refer ID="FOREIGN_NODE" ToTable="T9" WithKeyFields="X" ToKeyFields="Y"/>
+		<Refer x:ID="FOREIGN_ID" x:ToTable="FOREIGN_TABLE" x:TableAlias="FOREIGN_ALIAS"
+			x:ToKeyFields="A" x:WithKeyFields="B"/>
+		<Refer ID="R2" ToTable="T2" TableAlias="GOOD" WithKeyFields="A" ToKeyFields="B"/>
+	</Table></System>`)
+	doc, err := Parse(FormatXeaf, input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(doc.Root.Children) != 1 || len(doc.Root.Children[0].Children) != 3 {
+		t.Fatalf("unexpected raw source tree: %#v", doc.Root)
+	}
+	if doc.Root.Children[0].Children[0].Known {
+		t.Fatal("foreign-namespaced Refer must remain unknown raw source")
+	}
+	facts := ExtractRelationalSourceFacts(doc)
+	if len(facts.RuntimeRefers) != 2 {
+		t.Fatalf("foreign-namespaced Refer was promoted to typed fact: %#v", facts.RuntimeRefers)
+	}
+	first := facts.RuntimeRefers[0]
+	if first.ReferLegacyID != "" || first.ToTableLegacyID != "" || first.TableAlias != "" ||
+		first.ToKeyFieldsRaw != nil || first.WithKeyFieldsRaw != nil ||
+		len(first.ToKeyFields) != 0 || len(first.WithKeyFields) != 0 {
+		t.Fatalf("foreign-namespaced attributes promoted to typed fact: %#v", first)
+	}
+	second := facts.RuntimeRefers[1]
+	if second.ReferLegacyID != "R2" || second.ToTableLegacyID != "T2" ||
+		second.TableAlias != "GOOD" || second.ToKeyFieldsRaw == nil ||
+		*second.ToKeyFieldsRaw != "B" || second.WithKeyFieldsRaw == nil ||
+		*second.WithKeyFieldsRaw != "A" {
+		t.Fatalf("unqualified source declaration was changed: %#v", second)
+	}
+}
+
 func TestExtractRelationalSourceFactsDoesNotInventFactsFromNamesOrTypes(t *testing.T) {
 	doc, err := Parse(FormatXead, []byte(`<System><Table ID="ORDER"><TableField ID="ORDER_ID" Name="Primary Key"/></Table></System>`))
 	if err != nil {
