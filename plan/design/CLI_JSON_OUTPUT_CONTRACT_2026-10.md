@@ -16,9 +16,9 @@
 
 ## 3. 現在の結論（先に要約）
 
-- schemaVersionを持つのは`version -json`、`commands`、`model catalog`、`inspect`、`trace`、`validate -workspace -json`の6系統で、**失敗時も同じ形のJSON（`ok=false`と`error.code`）を返す**。この4コマンドが、機械可読な成功・失敗応答の現行基線である。
-- 残る7系統（`workspace-files`、`source-index`、`knowledge-context`、`world`、`requirements`、`plugin-lock`、`plugin-resolve`、`plugin-runtime-plan`）はschemaVersionを持たず、失敗時は標準エラーの自由文と終了コード2（fingerprint不一致と`plugin-runtime-plan`の構築失敗は1）で終わる。成功時の出力は内部構造体の直接の写しで、`source-index`と`knowledge-context`は対象指定の有無で出力の形が変わる。
-- 実測では、製品CLI（`cmd/tei`）が外部のGo moduleに依存しないのと同様に、**広告された読取りコマンドのうち`tei.cli.*/v0`を持たない出力は、内部構造体の変更がそのまま外部向け変更になる**。版固定が必要な範囲を選ぶことが、この文書の主な未決である。
+- `world`を除く、`tei commands`が広告する読取り専用JSONコマンドは`tei.cli.<command>/v0`を持ち、成功時は`ok: true`と`result`、失敗時は`ok: false`と`error.code`を標準出力のJSON 1件で返す。終了コードの意味（0/1/2）は従来どおり。
+- `world`は例外で、`tei.cli.*`のエンベロープを持たない。`tools/reference-critical-path-evidence-audit/live-r1-smoke.mjs`が`tei world`の生標準出力SHA-256を受理済みDecisionの`derivedWorldSha256`と照合するため、インデントやエンベロープの追加は証跡照合と両立しない。`world`は内部・証跡用途であり、外部の安定JSON契約の対象外とする（2026-11-02 Owner判断）。
+- 実測では、製品CLI（`cmd/tei`）が外部のGo moduleに依存しないのと同様に、**広告された読取りコマンドのうち`tei.cli.*/v0`を持たない出力は、内部構造体の変更がそのまま外部向け変更になる**。`world`はこの例外として扱い、その他のコマンドは投影型で版固定する。
 
 ## 4. 現状の一覧（実測）
 
@@ -41,7 +41,7 @@
 | `knowledge-review-disclose` | `tei.cli.knowledge-review-disclose/v0` | `result`に`knowledgecontext.DisclosureProjection`（`mode=disclosure`） | JSON（`INVALID_ARGUMENT`、`KNOWLEDGE_BUILD_FAILED`。fingerprint不一致は終了コード1） | いいえ（投影型。#2354第三陣） |
 | `knowledge-data-design-candidate-review` | `tei.cli.knowledge-data-design-candidate-review/v0` | `result`に`knowledgecontext.DataDesignCandidateReviewPacket`（`mode=review`） | JSON（`INVALID_ARGUMENT`、`KNOWLEDGE_BUILD_FAILED`。fingerprint不一致は終了コード1） | いいえ（投影型。#2354第三陣） |
 | `validate -workspace`（テキスト） | なし（テキスト） | テキスト | テキスト、終了コード1（診断あり）/2 | - |
-| `world` | なし | `ir.World` | 標準エラー＋終了コード2 | はい（#2354で証跡照合の再設計とセットで判断する） |
+| `world` | なし（証跡照合用の内部出力） | `ir.World` | 標準エラー＋終了コード2 | はい（raw stdoutのSHA-256をlive-r1-smokeが照合するため。#2354 Owner判断で外部契約の対象外） |
 | `requirements` | `tei.cli.requirements/v0` | `result`に`dependency.Derive(w)`の配列 | JSON（`INVALID_ARGUMENT`、`WORKSPACE_LOAD_FAILED`） | いいえ（投影型。#2354第一陣） |
 | `plugin-lock` | `tei.cli.plugin-lock/v0` | `result`に`plugin.Lock`（lock形式自体は`formatVersion: 2`を持つ） | JSON（`INVALID_ARGUMENT`、`WORKSPACE_LOAD_FAILED`、`PLUGIN_LOCK_FAILED`） | いいえ（投影型。#2354第一陣） |
 | `plugin-resolve` | `tei.cli.plugin-resolve/v0` | `result`に`plugin.ResolvedSet` | JSON（`INVALID_ARGUMENT`、`WORKSPACE_LOAD_FAILED`、`UNKNOWN_ENVIRONMENT`、`INVALID_PLUGIN_LOCK`、`PLUGIN_RESOLVE_FAILED`） | いいえ（投影型。#2354第一陣） |
@@ -77,8 +77,8 @@ schemaVersionを持たない現在の出力は、この規則の対象外であ�
 
 既存の欄を変えずに足せるのは、欄の追加が互換な変更だからである。ただし足す対象は、版固定が必要な読み手がいる範囲に限定する。次の三つを比べた。
 
-- **A案（推奨）: 外部契約に上げるコマンドを選び、投影型を挟む。** 対象候補は`workspace-files`、`source-index`、`world`、`requirements`、`plugin-lock`、`plugin-resolve`、`plugin-runtime-plan`、`knowledge-context`のうち、外部の自動化（TAIなど）が機械処理しやすい一覧・索引・lock系。投影型は既存の欄をそのまま写し、`schemaVersion`と既存の出力を`result`として包む形にする。`inspect`と同じ`ok`/`error`の形に揃えれば、失敗時の形式も同時に機械可読になる。既存の出力を直接読んでいる読み手は、包まれた出力をそのまま読み続けられる（包むことは形の変更なので、読み手の告知は必要）。
-- **B案: 現在のまま、内部デバッグ用と宣言する。** `commands`の出力の`output`欄に「json（内部構造、契約外）」と明記し、契約は`tei.cli.*/v0`を持つ6系統に限定する。変更は最小だが、外部読み手が版を判別できない状態が続く。
+- **A案（推奨）: 外部契約に上げるコマンドを選び、投影型を挟む。** 対象候補は`workspace-files`、`source-index`、`requirements`、`plugin-lock`、`plugin-resolve`、`plugin-runtime-plan`、`knowledge-context`のうち、外部の自動化（TAIなど）が機械処理しやすい一覧・索引・lock系。`world`は`live-r1-smoke`の生バイト証跡照合があるため対象外（2026-11-02 Owner判断）。投影型は既存の欄をそのまま写し、`schemaVersion`と既存の出力を`result`として包む形にする。`inspect`と同じ`ok`/`error`の形に揃えれば、失敗時の形式も同時に機械可読になる。既存の出力を直接読んでいる読み手は、包まれた出力をそのまま読み続けられる（包むことは形の変更なので、読み手の告知は必要）。
+- **B案: 現在のまま、内部デバッグ用と宣言する。** `commands`の出力の`output`欄に「json（内部構造、契約外）」と明記し、契約は`tei.cli.*/v0`を持つコマンド群に限定する。変更は最小だが、外部読み手が版を判別できない状態が続く。
 - **C案: すべての広告コマンドに一律にschemaVersionを足す。** 対象の選別が不要な代わりに、契約として維持する意図のない出力まで維持義務を生む。
 
 A案の場合の具体的な足し方（既存の欄を変えない）:
@@ -95,7 +95,7 @@ D案を選んでも、失敗時JSONをstderrでなくstdoutへ出す現在のC1�
 
 ## 8. 結論を出していない範囲
 
-- `world`、`plugin-lock`などを外部契約として扱うか、内部デバッグ用と宣言するか。Issueの未決のままOwner判断を待つ（AGENTS.md A4の意味の受理に当たる）。
+- `world`は2026-11-02のOwner判断で外部契約の対象外とし、生の`ir.World`出力を維持する。エンベロープ化する場合は、`tools/reference-critical-path-evidence-audit/live-r1-smoke.mjs`の生バイト証跡照合（`derivedWorldSha256`）を先に再設計する。`plugin-lock`はlock形式の`formatVersion: 2`を正本として扱い、`tei.cli.plugin-lock/v0`の`result`内に保持する。
 - schemaVersionを足す場合の、v0のまま足すか、新契約としてv1を新設するか。既存の出力を包む場合は読み手への告知が必要で、告知の要否と時期を含めてIssueで決める。
 - 一覧の表と実装の一致を機械検査にするかどうか。`tei commands`の`output`欄と実装の対応は試験で保たれているが、schemaVersionの有無の一覧はこの文書の手動の記録であり、#2354の完了条件には入っていない。
 - 実測は参照作業領域と失敗例の一組だけである。大規模な作業領域での出力の形（配列の空のときの`null`/`[]`の違いなど）は確認していない。
