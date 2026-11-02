@@ -8,6 +8,10 @@
 //	revoke  -store DIR -trust FILE -application APP -decision-ref REF
 //	show    -store DIR -trust FILE -application APP
 //
+// "sign" builds the Source Index only from the bytes captured by Load
+// (workspace.BuildSourceIndexFromLoad): no filesystem re-read, and a Workspace
+// that declares imports is refused (WORKSPACE_IMPORTS_NOT_BOUND).
+//
 // Running "sign" is the act this reference treats as the issuer's decision;
 // the tool does not decide on anyone's behalf. Private keys never belong in
 // the repository, the Store directory, or the trust file.
@@ -169,11 +173,11 @@ func sign(root, application, decisionRef, authority, issuer, keyID, keyPath, out
 	if err != nil || len(seed) != ed25519.SeedSize {
 		return errors.New("PRIVATE_KEY_INVALID")
 	}
-	loaded, err := workspace.Load(root)
+	loaded, err := loadWorkspace(root)
 	if err != nil {
 		return fmt.Errorf("SOURCE_WORKSPACE_LOAD_FAILED: %w", err)
 	}
-	index, err := workspace.BuildSourceIndex(root, loaded)
+	index, err := workspace.BuildSourceIndexFromLoad(root, loaded)
 	if err != nil {
 		return fmt.Errorf("SOURCE_INDEX_BUILD_FAILED: %w", err)
 	}
@@ -204,3 +208,6 @@ func openStore(dir, trust string, create bool) (*hoststore.Store, error) {
 	}
 	return hoststore.Open(dir, policy.Verifier())
 }
+
+// loadWorkspace is a seam for tests only; production always uses workspace.Load.
+var loadWorkspace = workspace.Load
