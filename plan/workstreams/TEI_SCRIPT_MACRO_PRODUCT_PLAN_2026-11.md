@@ -1,7 +1,7 @@
 # スクリプト・利用者マクロの製品化と権限委任の実証計画（2026年11月）
 
 - **状態**：開発計画案・未採用。個々のIssueと既存製品計画の判断境界を維持する。実装・試験・Ownerの受理をこの文書から宣言しない。
-- **設計本文**：[マクロの権限委任と操作対象の接合](../design/SCRIPT_MACRO_AUTHORITY_AND_EFFECT_TARGET_BINDING_2026-11.md)（T-1〜T-44）。本文に仕組みを重複記述せず、ここでは**担当・順序・実証の受渡し**を管理する。
+- **設計本文**：[マクロの権限委任と操作対象の接合](../design/SCRIPT_MACRO_AUTHORITY_AND_EFFECT_TARGET_BINDING_2026-11.md)（T-1〜T-61）。本文に仕組みを重複記述せず、ここでは**担当・順序・実証の受渡し**を管理する。
 - **親計画**：[横断 Critical Path #1119](https://github.com/hat47x/tei-platform/issues/1119)、[大量AI並列開発 #2493](https://github.com/hat47x/tei-platform/issues/2493)、[開発全体計画](../MASTER_PLAN.md)。既存Gate A/B/C、P0-a/P0-bの資格・順序に介入しない。
 - **製品Owner**：[Script/User Macro #2502](https://github.com/hat47x/tei-platform/issues/2502)、[限定委任 #2499](https://github.com/hat47x/tei-platform/issues/2499)、[実行Policy #2504](https://github.com/hat47x/tei-platform/issues/2504)。
 
@@ -176,6 +176,45 @@ go run ./cmd/tei artifacts -workspace reference/standard-crud/workspace -applica
 **最小の異質な反例**：同じ最終回答でも外部Tool名が異なる／同じMarkdownでも実リンク先が異なる／read開始時には許可されていたが返却前に失効／EKI ACKはあるが同AttemptのBody未取得／Quote中の`trusted-script`を正式Roleとして誤採用。内部実装と外部に公開したScopeが違う場合、情報非干渉を最終Answerだけで判定しない。合法に公開するTool名/内部Readまで一律拒否する方式にはしない。
 
 **完了条件と状態**：M0だけを先にCLI製品Sourceへの接続結果として報告し、続くM1/M2/M3/M4は別Ownerの実証を待つ。新しい一律横断Gateは作らない。T-45〜53、今回のM0〜M4実CLI・Skill・実Provider・SHO/EKI Reader統合は**NOT RUN**。mainへ統合した#2587の既存test実績は、その試験範囲だけで保持する。P0-a実PG、P0-b二Function、Gate A/B/Cは不変。
+
+## M0実証票：Source IndexとTrusted受理の間の停止線（2026-11-02追加）
+
+[設計第14章](../design/SCRIPT_MACRO_AUTHORITY_AND_EFFECT_TARGET_BINDING_2026-11.md)のT-54〜61を、#2587統合後のM0を実際に評価する際の**停止条件と受渡し票**に追加する。main`b1c019fec4f05ca65e3d7491608cb849ce523d29`でSourceを静的確認した。
+
+**存在する二つの経路の区別**：
+
+- `operations.SurfaceWorkspace`および`artifact.RenderWorkspace`は、`workspace.Load`の後に**非strict**`BuildSourceIndex`を使う。通常のLoadから渡された解析済み/追加管理ファイルのbytesは優先されるが、範囲外には安全なRoot付きファイル再読込みのfallbackがある。**毎回再読込みしているという記述にしない**。
+- `sourceacceptance.LoadVerifiedWorkspace`、main統合済み[#2642](https://github.com/hat47x/tei-platform/pull/2642)のIssuer署名側は**strict**`BuildSourceIndexFromLoad`を使用。捕捉済みbytes以外へfallbackせず、別Root・未束縛importを受理しない。これはCurrent Host Grant・ビジネス受理を自動作成するものではなく、`ManifestIdentity`の確認・import closure・複数ファイルのatomic snapshotも別。
+- [#2647](https://github.com/hat47x/tei-platform/pull/2647)が改善を試みる`trace`元Source読取りは、固定Root/サイズ上限の**一読取り**の保証と、複数Requestでの同時点Source一致を分ける。Open PRの挙動をmain採用済みとしない。
+
+### M0-1 実測するコマンドと出力の一致（予定、NOT RUN）
+
+既に[M0の実行コマンド](#m0実cliによるheadless-read-only調査最優先独立実施可能)を定義した。**その同じ一巡で**、次をSource/受理/実行の独立Claimとして記録する。
+
+| 観測対象 | 判別する事実／不一致時の扱い |
+| --- | --- |
+| 実TEIバイナリ | `vcsRevision`/`vcsModified`、実OS/Go、実Workspace path・Application、固定checkout。`go run`などで埋込みVCSが欠ける場合は未識別とする |
+| `validate -json` | exit/status、`ok`、Warning/Diagnostics、`worldFingerprint`、`sourceIndexFingerprint`、失敗なら両者の欠損を保持 |
+| `operations` | `schemaVersion`、`worldFingerprint`、`modelRevision`、Ruleの版/指紋、Operations/Gaps/Conflicts/AuthorityLimits |
+| `artifacts` stdout | `inputRevision`、`manifest.inputRevision`、各member、`complete`、`findings`（`-out`時stdoutはManifestのみ）。必要memberと実Readerは別 |
+| 比較 | `validate.worldFingerprint`↔`operations.worldFingerprint`、`operations.modelRevision`↔`artifacts.inputRevision`。両値を得た場合に限って一致/不一致を示す。`validate.sourceIndexFingerprint`を`ModelRevision`と**当然同一の値**とは扱わない |
+| M0→Trusted | `LoadVerifiedWorkspace`のstrict/index/read acceptanceは**M0で未実行**。表示済み`worldFingerprint`やOperation候補だけで`accepted/authorized`へ変換しない |
+| M0→Provider/Consumer | 実Payload/DB/Receipt、署名済み配布物、SHO/EKI実Read、OS Network Egressは**M0では未実施**。未知を`0件/許可済み/完了`へ写さない |
+
+同じ値が返る場合も、独立した複数CLI Processを通じた原子的Snapshotの証明ではない。単独の管理ファイル変更・Rule/Role改版・SourceのABAを、`View=同じ`だけでskip可能にしない。まず再現可能な固定Fixtureで出力を観測し、別の変更後Sourceを使うのは**新しい試行**として分ける。
+
+### M0-2 新しい8反例の担当と実測順序
+
+| 試験群 | 担当・次の実行証拠 | 優先度 |
+| --- | --- | --- |
+| **T-54/55/58** | #2605・#2502が同じ実CLI一巡で、read-only derivation成功、非解釈管理ファイル変更、CLI間Source driftの診断を観測する。Fixtureの予測と実結果を同じ票で対照 | **M0で優先** |
+| **T-56/57/59** | #1017/#2642/#2647でstrict捕捉・import拒否・traceのRoot/個別読取りを検証。実Provider/OS Source側の不足をMacroの合格にしない | **M0並列／Owner別** |
+| **T-60** | #2638/#2605、TAI #270がRole/Plugin依存Pin、Skillの実参照bytes/Tool、現在Grantを保持。read-only Skillと実行マクロを分離 | **M2** |
+| **T-61** | #2482/#2604/#2630/#2633のSet/Publisher/Reader資格をM1、Host Effect/ReceiptはM3で受け取る | **M1→M3** |
+
+**M0受理の最小定義**：mainの実バイナリを固定した同一Workspaceで、成功/Warning/Gap/Findings/Ruleと各Fingerprint・Revisionを記録し、既知の`sales.note`／`sales.order`負例を**独立した期待値と比較**できること。4つのコマンドを実行してexit=0だっただけでは合格にしない。曖昧なSnapshotや同一値だけの一致は、明示した不明残余にする。高機密な元Sourceや診断を公開Issue/AIへ無断転載しない。
+
+**改版・制約**：テストの説明は現在のSource-static観測に基づく。実際のM0試行・strictと非strictの統合照合・import/ABA/Source driftの注入・本番Host/Provider/OS/SHO/EKI・Owner受理はすべて**NOT RUN**。#1119の既存P0/Gateは変更せず、新しいCLI Contract、全局Source Index Engine、実行Host、横断承認Gateを創設しない。
 
 ## テスト証拠の受渡し：1ケースにつき別の保証を保持
 
