@@ -297,7 +297,100 @@ Source span/意味ID/版への逆写像が一意な標準UI編集は、型付き
 
 **統合順**：先行する#1174実PG P0-aと#1129二Function P0-bは維持。P1では#2507のAction適用条件と#988のScript Inspectを#2502のHeadless CUIに接合し、T-14とT-15を既存#2598/#1174の対象整合試験へ委譲する。Studio標準UIとSource編集の実適合は後段のT-16/T-17で検証する。新しいMacro Executor、第二Authority、画面種別別専用DSLを始める契機にはしない。
 
-## 10. 判断を残す点
+## 10. 標準データ構造としてのマクロと明示的なデータ利用契約
+
+### 10.1 データとしての定義と実行能力を分ける
+
+[Everything is Data #2619](https://github.com/hat47x/tei-platform/issues/2619)、[意味役割・自己記述 #2620](https://github.com/hat47x/tei-platform/issues/2620)、[Markdown Authoring #2621](https://github.com/hat47x/tei-platform/issues/2621)、[Data Operations #2622](https://github.com/hat47x/tei-platform/issues/2622)を横断して、利用者マクロを**特別な実行オブジェクトではなく、標準データ構造へ意味役割を適用した処理の組合せ・起動条件・共有条件**として構成できるか検証する。
+
+- **構造**：Record、集合、関係、参照、式、演算子適用、入力・出力・テストなどをデータとして保持。`Function`／`Validation`／`Scenario`／`Macro`といった役割やOperationの意味はPluginが解釈する。複数Roleの適用も候補とし、競合・循環・Plugin版を検査する。
+- **表現**：Markdown表、短い式、簡潔なDSL、既存プログラムのテキストは、それぞれAuthoringの表現。標準データ構造へ解決できた範囲と、原文のSource span・コメント・記法固有情報を区別する。すべての既存言語の完全解析や厳密なLisp式の採用は要求しない。
+- **適用**：モデルの意味受理、Macroの公開承認、個人保存、実ロード物、現在Grant、Hostの実能力とOwner Effectは、それぞれ別の資格。`Macro`というRoleの付与やテストPASSだけで本番実行を許可しない。
+- **UI**：Studio標準のテキスト・表・Tree・Graph・Property・Diffと、AI向けCUIを同じ構造・意味への投影とする。派生した表示を第二の正本へ昇格させず、明示的なSourceと既存Acceptanceへ戻す。
+
+この方針は開発者向けの強力なScriptを廃止するものではない。Native Java/SQL/独自Script等の中身が不透明なら、解釈できた型・入力・出力・効果・実行Bindingだけを標準データとして説明し、未把握の作用は`unknown/opaque`とする。利用者Macroの限定能力はHostが実際に強制する。
+
+### 10.2 構文糖衣と意味同値を区別し、参照の捕捉を検証する
+
+[DSL/Operator #988](https://github.com/hat47x/tei-platform/issues/988)の意味契約に従い、たとえばMarkdown表の「金額 = 数量 × 単価」と別の式・DSL表現が、**同じ型付き参照・Operator ID/版・丸め/NULL/単位/時点の条件**へ解決された場合に限り、当該契約内の同等性を説明する。
+
+構文糖衣の導入時は次の判定を独立に残す。
+
+| 資格 | 判定の対象 |
+| --- | --- |
+| Source同一性 | 元テキストbyte、Source span、Markdown行列、コメント等 |
+| 構造同一性 | 役割適用前の標準データ構造・関係・順序 |
+| 意味同等性 | Role/Operator版、参照Binding、必要Data Context、Law、Owner受理 |
+| Target適合 | 実Provider/Host・実Load・必要な能力とEffect |
+| 現在資格 | 現在Grant、業務判断・公開承認、情報開示 |
+
+Graphviz、関数記法、メソッドチェーン、Markdown表が内部構造の記述を簡潔にしても、文字列や同名変数だけで異なるSubject・Provider・Principalを自動結合しない。**マクロ宣言時の参照、使用時のContext Instance、実行主体のGrant**を分け、マクロ展開による意図しない参照・Privilegeの捕捉を負例にする。これはLisp固有のマクロ評価方式を採用するという意味ではない。
+
+標準UIから元Sourceへの逆写像が一意ならChange Proposal→既存Acceptanceへ。展開された複数Source候補、Source移動、曖昧な同名参照はread-onlyと元SourceへのNavigateを提供する（#1124、[Draft #2617の限定合成試験](https://github.com/hat47x/tei-platform/issues/2617)）。Syntax変換のPASSを意味受理・実行許可へ昇格させない。
+
+### 10.3 Read・Authority・Effect・Disclosureの四範囲は独立する
+
+Data ModelにRelationが存在することは、その先の全データをMacroが暗黙取得できる根拠ではない。[#2506 Function Data Context](https://github.com/hat47x/tei-platform/issues/2506)、#2619/#2621/#2622に従い、**起点Subject、Relation path、Field、grain、対象集合、取得条件、必要な完全性、取得時点**をFunction Data Contextの明示Mappingへ置く。Studio/AIによる補完は候補とし、受理後のMappingを追跡する。
+
+| 範囲 | 定めるもの | 誤った推論の例 |
+| --- | --- | --- |
+| Read scope | Contextが読むEntity・Relation・Field・集合・時点 | Relationがあるから全部取得する |
+| Authority scope | 現在Host/Issuerが許すContract・Action・対象・Tenant/期限 | Macro公開で子Serviceの全権限が使える |
+| Effect footprint | Owner Actionが実際に変更する対象・副作用・Tx境界 | 実効果が画面行IDと同じ／別IDなら全部違法 |
+| Disclosure scope | 現在利用者・Agentへ開示できる値・ID・件数・履歴 | 正当に更新できればRawやReceiptも全開示 |
+
+四つの範囲は**同じ集合でなくてよい**。狭いRead scopeからOwnerの正当な関連効果へ作用する場合があり、Host内部で広い検証が必要でもConsumerの開示範囲を限定できる。そのためには、Ownerが受理した対象変換と現在Grant・Effect Fenceが必要である。
+
+同じMacroを別部門・別Context Instance・別Hostで起動するとき、**作成者のRowIndex/選択Context・Grant・Provider資格を実行時に暗黙継承しない**。FROZEN対象とLIVE述語、tRead/tBind/tCommitでの必要な再検査、部分取得と全件確認をActionごとに扱う（#2499/#2598/#1174）。
+
+### 10.4 多階層データを圧縮表示した場合のLoad/Save
+
+受注→明細→割当の**三階層を、受注→倉庫別割当合計の二階層に表示**する例を考える。次は読みやすい設計例を示すMarkdownで、採用済みTEI構文ではない。
+
+~~~markdown
+## 利用データ
+| Context | 起点 | Relation | Fields | 範囲 |
+| --- | --- | --- | --- | --- |
+| lines | 選択受注 | order.lines | lineId, quantity | 全明細 |
+| allocations | lines | line.allocations | allocationId, warehouse, qty | 対象明細の全割当 |
+
+## 表示と操作
+| 表示 | ロード時 | 更新時 |
+| --- | --- | --- |
+| 倉庫別割当 | allocationsの倉庫別SUM | 明示`allocation.change`と対象ID/配分規則を確認 |
+
+## 独立Expected（説明用）
+| case | 元の割当 | 操作 | Expected |
+| --- | --- | --- | --- |
+| no-change | 東京3／大阪2 | 変更なし | 更新0 |
+| exact-patch | a=東京3、b=大阪2 | a=4、b=1に明示変更 | 2件のID付きPATCH候補 |
+| ambiguous | 東京合計5（元割当複数） | 合計6へ変更 | 配分Actionがなければ対象不確定 |
+~~~
+
+取得・集約・変換はRDB、OData、REST、Graph、File等のData Operationsへ接続できるかを評価する。特殊なSQL/native assetは明示Bindingとして保持する（#2622）。Read成功とSaveの可逆性・原子性は別であり、非可逆な合計から元の行を推測して更新しない。業務Ownerが受理した配分Actionがあれば、現在Grant、元集合の閉包/粒度、実更新対象、部分成功とReceiptをProviderが検証する（#2500/#2597/#1174）。
+
+### 10.5 定義・具体例・独立テストをデータとして接続する
+
+Markdownの説明、Function/Rule定義、Case表、Dataset、Expected、実Actualを共通構造に解決し、Model Instance・CUI検査・SHO説明へ投影できるか評価する。ただし**すべてのMarkdown表を実行定義として解釈するわけではない**。明示Role・Project Profile・元Sourceと独立Oracleが必要（#2621/#1131/#1180/#2514）。
+
+テストのClaimは、Source/Meaning、Input/必要集合、独立Expected、実Target/Hostで投入したPayload、実Effect/Observation、現在の開示資格に分ける。単にScriptテキストが同じ、JSON byteが同じ、CIがPASSしたという理由で業務意味・実Effectの受理を確定させない。標準データ化の効果は、異なるConsumerやDomainでの**専用実装削減・再利用・不足を説明できるか**として比較する。
+
+### 10.6 新たな検証候補（T-19〜T-26、全て新規NOT RUN）
+
+| ケース | 正負例・観測 | 既存Owner |
+| --- | --- | --- |
+| **T-19 意味役割** | 同一構造からFunction/Test等の明示Roleを解決。Role不明/競合/自己再帰で無根拠な一意解釈をしない | #2620/#988 |
+| **T-20 構文糖衣** | 表・式・DSLが同じOperator/型/参照版なら局所同等。Source編集の一意逆写像と曖昧な場合を対照 | #2620/#2621、#2617 |
+| **T-21 明示Context** | `order.lines` Relationがあっても未宣言ならMacroが暗黙全明細取得しない。明示Mapping後だけ指定Field/範囲を読める | #2506/#2622 |
+| **T-22 再利用時の束縛** | 同じMacroを部門A/Bと別Context Instanceで使用。作成時RowIndex/Grantを捕捉せず現在対象/権限を照合 | #2499/#2598/#2502 |
+| **T-23 四範囲の差** | 限定Read→合法な関連更新→最小開示。許可外の子更新/Raw開示を拒否 | #1174/#2499/#2504 |
+| **T-24 多階層Load/Save** | 3層→2層集約、無変更保存0、明示ID付きPATCHは候補、合計だけの編集は配分規則が必要 | #2622/#2500/#2597 |
+| **T-25 多Provider** | RDB系とAPI系に同じ意味Intentを適用し、NULL/集合・更新/atomicityの差を示す。Native SQLも明示接続 | #2622/#951/#1121 |
+| **T-26 テストもデータ** | Markdown説明表と採用済みFixture/独立Expected/実Actualを分け、AIの自己生成結果を自己合格させない | #2621/#2514/#1180 |
+
+**実証順序**：既存P0-a/P0-b維持。S0のread-only設計・Script InspectにT-19〜21/26、S1のIntent対象照合にT-22/24、S2の現在Grant/Owner EffectにT-23、S4の実Target差にT-25を合流させる。新しいCore schema、Macro実行Engine、共通Host、DSL固定構文、第二のMeaning/Authority正本をこの文書から採用しない。範囲の広い探索は#2493と#2619で並列継続する。
+
+## 11. 判断を残す点
 
 - **業務Owner**：各Actionで「元の対象」「関係する対象」「全件の完了」をどのように定義するか。旧X-TEA `sales.order.submit`等の未受理マッピングは推測で補わない。
 - **組織Owner**：固定集合／実行時集合、代理の時点、合議、実行版固定と作用範囲での更新許容、既発行Grantの変更時再判定、結果閲覧をどのPolicyで扱うか。
@@ -309,4 +402,4 @@ Source span/意味ID/版への逆写像が一意な標準UI編集は、型付き
 
 **確認できたこと**：固定mainの既存型・RequestHash・通常Request生成・試験DDLのデータ解釈を静的に確認した。既存IssueにはT-1の具体的な未実行DB負例、Effect replayとResult再投影の未実行負例、EKI出力接続の静的所見がある。
 
-**未実行・未採用**：本書のT-1〜18の実行、信頼済みIssuer/実Grant、利用者Macro実ロード、PostgreSQL負例、Linux/WindowsでのOS隔離、外部EKIの同一Attempt納品、複数Target受入、業務意味の正式受理。新しいCore kind、Grant/Receipt schema、専用Host、共通Workflow Engine、仕様やADRの採用を本書から確定しない。
+**未実行・未採用**：本書のT-1〜26の実行、信頼済みIssuer/実Grant、利用者Macro実ロード、PostgreSQL負例、Linux/WindowsでのOS隔離、外部EKIの同一Attempt納品、複数Target受入、業務意味の正式受理。新しいCore kind、Grant/Receipt schema、専用Host、共通Workflow Engine、仕様やADRの採用を本書から確定しない。
