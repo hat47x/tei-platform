@@ -41,14 +41,15 @@ type ExecutionError struct {
 func (e *ExecutionError) Error() string { return e.Code + ": " + e.Message }
 func (e *ExecutionError) Unwrap() error { return e.Cause }
 
-// Invokerは、宣言とExecutorの間に立ち、入力の検証・実行・結末の照合を行う。
+// Invokerは、宣言とExecutorの間に立ち、入力の検証・実行・結末の照合・取引を行う。
 type Invoker struct {
-	World    ir.World
-	Executor Executor
+	World      ir.World
+	Executor   Executor
+	UnitOfWork UnitOfWork
 }
 
 // Invokeは、Commandを実行する。入力の不備、Executorの不在、実行の失敗、
-// 宣言されていない結末は、いずれもExecutionErrorとして返す。
+// 宣言されていない結末、取引の失敗は、いずれもExecutionErrorとして返す。
 func (i Invoker) Invoke(ctx context.Context, request Request) (Result, error) {
 	plan, err := applicationview.BuildCommandPlan(i.World, request.Application, request.Pattern, request.Capability, request.Inputs)
 	if err != nil {
@@ -66,6 +67,26 @@ func (i Invoker) Invoke(ctx context.Context, request Request) (Result, error) {
 	if i.Executor == nil {
 		return Result{}, &ExecutionError{Code: "COMMAND_EXECUTOR_UNAVAILABLE", Message: "no executor is configured for this command boundary"}
 	}
+	if i.UnitOfWork == nil {
+		return i.execute(ctx, request, plan)
+	}
+	transaction, err := i.UnitOfWork.Begin(ctx)
+	if err != nil {
+		return Result{}, &ExecutionError{Code: "COMMAND_TRANSACTION_BEGIN_FAILED", Message: err.Error(), Cause: err}
+	}
+	result, err := i.execute(ctx, request, plan)
+	if err != nil {
+		_ = transaction.Rollback(ctx)
+		return Result{}, err
+	}
+	if err := transaction.Commit(ctx); err != nil {
+		_ = transaction.Rollback(ctx)
+		return Result{}, &ExecutionError{Code: "COMMAND_COMMIT_FAILED", Message: err.Error(), Cause: err}
+	}
+	return result, nil
+}
+
+func (i Invoker) execute(ctx context.Context, request Request, plan applicationview.CommandPlan) (Result, error) {
 	result, err := i.Executor.Execute(ctx, request)
 	if err != nil {
 		return Result{}, &ExecutionError{Code: "COMMAND_EXECUTION_FAILED", Message: err.Error(), Cause: err}
