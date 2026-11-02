@@ -11,6 +11,36 @@ import (
 	"tei/internal/xeadsource"
 )
 
+// Source facts may retain literal XEAF key declarations; the public report
+// must still expose only aggregated observations, not the source field values.
+func TestBuildReportDoesNotPublishRawRuntimeReferKeyFields(t *testing.T) {
+	const privateFrom = "PRIVATE_FROM_FIELD_0094"
+	const privateTo = "PRIVATE_TO_FIELD_0095"
+	source := []byte(`<System><Table ID="T1"><Refer ID="R1" ToTable="T2" ToKeyFields="` +
+		privateTo + `" WithKeyFields="` + privateFrom + `"/></Table><Table ID="T2"/></System>`)
+	inspection, err := xeadsource.Inspect(xeadsource.FormatXeaf, source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(inspection.RelationalFacts.RuntimeRefers) != 1 {
+		t.Fatalf("internal runtime refer count = %d", len(inspection.RelationalFacts.RuntimeRefers))
+	}
+	refer := inspection.RelationalFacts.RuntimeRefers[0]
+	if refer.ToKeyFieldsRaw == nil || *refer.ToKeyFieldsRaw != privateTo ||
+		refer.WithKeyFieldsRaw == nil || *refer.WithKeyFieldsRaw != privateFrom {
+		t.Fatalf("internal raw declarations not retained: %#v", refer)
+	}
+	public, err := json.Marshal(buildReport(inspection))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, secret := range []string{privateFrom, privateTo} {
+		if bytes.Contains(public, []byte(secret)) {
+			t.Fatalf("public inspection leaked raw Refer field %q: %s", secret, public)
+		}
+	}
+}
+
 func TestBuildReportOmitsRawBusinessIdentifiersAndDetectsDerivedRelationshipKey(t *testing.T) {
 	contract := []byte(`{
 	  "sourceProfiles": {"xead": {"rootKind":"System","supportedFormatVersions":["1.2"]}},
