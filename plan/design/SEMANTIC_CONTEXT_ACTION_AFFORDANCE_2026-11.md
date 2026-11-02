@@ -231,3 +231,44 @@ L1の単一Field PATCHはL1 ID、対象属性、Version等で意味的候補化�
 **測定指標**（#2018）：誤ったOffer再利用件数、必要なOfferの過剰失効件数、再取得回数・時間、Consumerごとの差分、検査できた負依存の割合、同一試行でSource/Provider/Consumer/実Requestが接続した辺の数、Core特殊分岐・Adapter/専用UI量、再利用された既存Validator/Contract数。
 
 **停止線・未決**：Accepted Actionの意味、どのClaimに完全な依存閉包が必要か、Owner側条件検査の公開レベル、Provider Update/Snapshot保証、Operatorプロファイル適合は個別受理待ち。提示の正しさ／開示／現在Grant／実行効果を同一booleanへ縮約しない。新しいReactive Engine/Negative Cache/Claim Solver/Policy/Host/Registryを増設せず、実TEI/DB/GUI/外部AI、Go縦断、Owner意味受理、OA-01〜12の試験は当節としてNOT RUN。
+
+<!-- 20261103-derived-operation-reality-bridge -->
+## 10. 実在するOperation SurfaceからSemantic Action/実Requestへ：製品コード基線の接合（2026-11-03／設計・NOT RUN）
+
+### 10.1 この時点で静的に確認できた既存製品基線
+
+[merged PR #2587](https://github.com/hat47x/tei-platform/pull/2587)は標準操作と成果物導出およびCLI入口をmainへ追加済み。[merged PR #2624](https://github.com/hat47x/tei-platform/pull/2624)の明示Function Mapping/Rule Footprint、[merged PR #2634](https://github.com/hat47x/tei-platform/pull/2634)のGo Query依存特性、[merged PR #2640](https://github.com/hat47x/tei-platform/pull/2640)のContract Query結果意味は、いずれも**統合された個別成果**として区別する。これらのmergeは本書§8 I0〜I5や§9 OA-01〜12を同一Source/Consumer/Hostで実証したものではない。
+
+現行mainのRead-onlyなソース照合から、次が実在する。
+- cmd/tei/main.go のdispatchに operations と artifacts が存在。cmd/tei/cli_operations_artifacts.go の operations は workspace からSurfaceWorkspaceを導出してJSON出力する。artifacts は application 指定を要し、出力先を指定しない場合は成果物集合をJSONで出力する。
+- internal/operations/surface.go は tei.operations.operation-surface/v0 の derived、target-neutral、read-onlyなOperationSurfaceを提供する。worldFingerprint、modelRevision、rule ID/version/fingerprint、operations、gaps、conflicts、authorityLimitsを持つ。Operationにはkind、target、origin、inputs、preconditions、effects、concurrency、binding、autonomy、basisを持つ。ただし**Surface自身のeffect=read-onlyと、列挙されたOperationの作用（create/update等）は別**。autonomyやbindingを現在のRuntime Grantとはみなさない。
+- cmd/tei/cli_contract.go の commands 一覧は selected-read-only-commands の限定列挙で、operations/artifactsが載っていない。「コマンド一覧にない」≠「実mainに実装なし」≠「Skill/Hostで実行が許可済み」。逆に、dispatch分岐やOperation IDが存在しても、対応Action/Capabilityが現在利用できることは意味しない。
+- artifacts の -out は MkdirAll/WriteFile による実ファイル変更。出力ディレクトリが既にある場合の旧ファイル残存や中途失敗を、この関数だけで原子的公開済みとみなさない。Manifest/Findings・実ファイル・実Consumerがロードした版の検査は既存#2604/#2633に委譲する。
+- cmd/tei/main.go には共通loadWorldの後にoperations/artifacts分岐があり、各処理内でWorkspaceを別途Loadするコード経路がある。これは**ソース上の重複Loadの観測**であって、競合・TOCTOU障害が実発生したとの断定ではない。独立CLI呼出しを束ねるときに、一つのWorld/Source版を共有したと自動推論してはならない。受渡し用には実消費Source・版・Source Index fingerprintの一致を再取得して判定する（#1163/#2629/#267）。
+
+### 10.2 三つの異なる発見・束縛の問題
+
+| 段階 | 既存の物証と問い | 本書で追加する判断 | 正本Owner |
+| --- | --- | --- | --- |
+| **D0 Derived Surface** | 受理済みWorldから標準list/read/create/updateとgap/conflictを決定的に導出できたか | Surfaceが表示できること≠Actionが現在適合・実行可能。Rule fingerprint/Source versionを固定し、利用できなかった理由も保持 | #1127/#2485、実main internal/operations |
+| **D1 Context-aware Action** | 特定Function/InstanceのSemantic Subject、Role、Predicate/Rule、対象Scope、Result Slice、取得版、欠損に適合するか | Sourceへの同形Operationを別Contextへ配置しても、意味的Preconditionの充足・現在性は独立。OA-01〜12を再利用し、第二標準Operation Engineを作らない | #2507/#2506/#2582 |
+| **D2 Realization/Consumer** | Capability Binding、Target/Provider、Action/Skill/UI/CUIの露出、実Request・Effectの証拠はあるか | Derivedのbinding候補やCUI tool記述 ≠ 実Invokerが受信したRequest ≠ 現在Grant ≠ Effect/独立read。成果物出力/外部公開も別資格 | #951/#2598/#1174/#2516/#2605/#2649 |
+
+特にD0の標準create/update候補から、Submit/Cancel/Approve等の業務Action目的を**名前やデータShapeだけで補完しない**。特殊なDomain（Document/Event/Simulation/Robot）への拡張は、標準CRUDの成功ではなく#2507の要求Shape/Effect、#2622のProvider実現、#2493の別Pressureで判断する。
+
+### 10.3 最小の実在製品縦切り（試験票、全件NOT RUN）
+
+| ID | 同じ固定Sourceで比較する内容 | 誤成功の停止線 |
+| --- | --- | --- |
+| **OB-01 CLI入口と限定Discovery** | 実CLI commands の限定一覧、operations/artifacts の実dispatch・引数・JSON、CLI版を照合 | commandsの不在を実装不在と判定／dispatch存在を実行許可と判定 |
+| **OB-02 Surfaceの正負と基線** | reference/standard-crud等の既存合成WorkspaceでSurface.operations/gaps/conflicts/ruleFP/modelRevisionを独立期待と比較 | gapsを成功したActionとして表示／Surfaceのeffect=read-onlyを中のwrite Operationに伝染 |
+| **OB-03 対象同一性とAction前提** | Surfaceの標準Operation target/basis/bindingと、#2586 H/D1/D2のContext/Rule/選択epochを**同一Sourceに再構成できる場合だけ**照合 | 同名targetや同じBinding文字列から実Business Action/Owner受理を創作 |
+| **OB-04 Source改版と二重Load** | CLI実呼出しごとにSource Index/World/Model revision、Surface rule fingerprint、Artifact inputRevisionを比較。隔離Fixtureで読取中の入力改版も圧力候補 | 二回のLoad・別CLI実行を一Snapshotと推定。改版途中の実障害は未観測 |
+| **OB-05 Artifact副作用と整合** | artifacts のstdout/出力先指定を別試行とし、manifest/findings、実ディレクトリのMember/版・旧ファイル残存/失敗を記録 | stdoutのみのRead資格を -out に転用／manifestのみで原子的公開・Consumer実ロードを証明 |
+| **OB-06 Skill/External Discovery** | #2649の実CLI/Skill受渡しとD0候補の両方を比較。Action候補のDisclosure、Tool存在、Invocation入力、Host Grantを別記 | Skill load/Tool宣言を意味受理・現在Authority・Operation実行済みに昇格 |
+| **OB-07 Bound capability** | #2485合成Driverの実受信target/input/BusinessResultとD0/ D1候補を同一試行で突合。Field PATCHとReplace、欠損/NULL、Provider版を負例とする | Operation ID/Binding一致のみで対象・業務Effect一致を宣言 |
+| **OB-08 Actual Provider/Receipt** | #1119 P0-a/P0-bと#1163で、実Host認可/Transaction/Receipt/別invocation独立Readを同一Source/対象/時点へ結ぶ | isolated driver PASSやCI mergeを実DB・Owner業務受理に変換 |
+
+**着手順**：OB-01/02を、merged #2587の実main CLIと独立Expectedで先行させる。OB-03は必要なFunction Context/Ruleが同一Workspaceに実在するかを先に調べ、不在なら接続Gapとして報告する。OB-04/05はSource/Artifactの実消費物と副作用の比較、OB-06は#2649 Product Skill担当へ、OB-07/08は既存Driver・Host担当へ渡す。異なるDraftのテストケースをひとつの製品E2Eへ組み替えたと装わない。
+
+**優先順位・受入停止線**：新Operation/CLI ABI、Domain Action enum、Skill実行権限、全コマンド自動発見、共通Runtime/Host/Registry/Tx、原子的Artifact Publisherをこの文書で新設しない。実mainのRead-onlyコード所見と既存PRのmerge状況は確認済みだが、OB-01〜08を実際のCLI/Go/DB/GUI/外部Harnessで実行したものではない。Ownerの意味受理、実Provider効果、#1119 G0〜G4も未取得の範囲を保持する。
