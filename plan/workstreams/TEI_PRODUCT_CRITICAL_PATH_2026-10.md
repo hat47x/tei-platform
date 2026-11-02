@@ -1119,7 +1119,7 @@ G-Rの先行実測は[#2505 11/2独立Headless PoC](https://github.com/hat47x/te
 | **RV-R1** | REFFER 1→2、対照として同数2→2／SUBTYPE | Type固有の構造規則を比較。合致する次数から業務Relation・物理FK生成を自動受理しない | #950／#1126 |
 | **RV-K1** | FAMILY子側のSortKey空・重複・辞書順と数値順の差 | Relationshipのarity先行short-circuitと独立Key順序原因を分離。診断不在≠順序の実証。既存提案patch採否は担当が判断 | #950／#1126 |
 | **RV-C1** | 設計Relation1宣言／runtime Refer2候補、各々別Role・Alias | Source1／Runtime2／対応候補2／Accepted0（synthetic開始時）を別々に数え、Diagramと辺一覧でも区別。自動分割・合成を行わない | #1031／#1126／#982 |
-| **RV-C2** | 複合キー・Referの1 XML属性に複数Field成分 | node／atom／区切り成分の所属・順序を別々に保持し、全atom計上から全意味成分保持を推定しない | #950／#1031／private #4 |
+| **RV-C2** | 複合キー・Referの1 XML属性に複数Field成分。属性なし／明示空／区切り成分付き／外来namespaceも対照 | node／atom／区切り成分の所属・順序を別々に保持。normalized listとraw declarationの存在・字面を分離（[Draft #2603](https://github.com/hat47x/tei-platform/pull/2603)はSource Factの限定修正候補）。全atom計上から全意味成分保持を推定しない | #950／#1031／private #4 |
 | **RV-V1** | 版A→Bのsource-ref変動、移動、同ID異Role、fan-in、view外ZIP member変更 | exact版差と意味差、旧Reviewの履歴と新版Claim適用を区別。旧ViewChangeを新版Actionへ自動rebaseしない | #2505／#2500／#1803 |
 | **RV-D1** | Role付きRelation pathを同じFunctionの複数Context occurrenceで使用。ある集合はcomplete、別集合はpartial | Entity Identity／Path occurrence／結果grain／取得scope／選択epochを保持。閲覧・選択・編集Binding／実Effectの資格を別々に示す | #2506／#2507／#2586 |
 | **RV-H2** | 実Workの同一生成版ZIP・Probe・Producer・Builder・Candidate・Ledger・receipt | 既存2checkerの実exit／原byteに加え、**一つのSource node→実TargetのJ5参照実解決**を確認。個別未解決は保留し、独立PASSを結合PASSと呼ばない | #1121／#Work／#3／private #4 |
