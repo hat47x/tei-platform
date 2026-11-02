@@ -129,3 +129,48 @@ enabled(order.submit) = not exists approval.pending
 **次段の製品受入**：現実の`reference-shared-acceptance decisions`を固定Workspaceで実行し、`modelRevision`とDecisionIndexの実受信byte、CLIのVerify構成、Studioの実読取Source/Consumer開示を同一Runの証拠へ接合する。これは**実行計画であって実証ではない**。#267/#974は署名witness解釈、#1124はModelerのSourceとUI表示、#1824は実Web/Desktop、#2516は用途・Disclosureを引き続き所有する。
 
 本追補は既存#1119のG0〜G4、P0-a/P0-b、#267 Owner意味受理を変更しない。新Host／第二Accepted Source／万能Role enum／専用UIの新増築を不要なものとする。
+
+
+## 8. 非同期応答の順序保証と現在の表示資格は別（2026-11-02 18:38Z追補）
+
+### 8.1 最新mainとの接合点：実Workbenchには順序制御があるが、Policy検証ではない
+
+今回の照合main `a4840b1a54d94f81f2f107c38968605232cd4c66` では、[PR #2583](https://github.com/hat47x/tei-platform/pull/2583) が**merged**。実`reference/tei-studio-workbench/presentation.ts`（blob `06d329bdc8c6356499c3db18dde7b2806d58ef0d`）は、Catalogに残る`ambiguous`を保ち、`inspectEligibility`で識別不能なSubjectのInspectを拒否する。Graph/InspectのContextを意味受理やScope付き対象確定へ自動昇格させない。実`main.ts`（blob `9582c85db4c27c1f89d8594f5b212984d755c9c0`）は対象が曖昧な場合の表示を明示する。
+
+同mainで`reference/tei-studio-workbench/responses.ts`（blob `e1fa0d6b8e07af1158416d6c6d2469a408f64495`）の`createResponseScope`は、`reset()`と`invalidate(lane)`で**古い非同期成功・失敗コールバックの適用を止める**。ただし、このUtilityは[ #1124 AN-RV-D2](https://github.com/hat47x/tei-platform/issues/1124#issuecomment-6579863663)が扱うPolicy資格変更やRole/Operator Lockを監視しない。また、**既に描画されたDOM/Graph/ARIA/Preview/AI向けデータやcacheを自動撤回するAPIではない**。この区別はScript-first標準Studio固有の追加Engineを設けなくても確認できる。
+
+### 8.2 別々に固定すべき三系統の世代と、Consumerの適用条件
+
+同じ選択対象・同じSource内容でも、次の世代は別々に変化する。
+
+1. **Source・選択・Read snapshot**：Source/Model/Workspace revision、Catalog/Inspect fingerprints、選択中Subject／response lane。既存Workbenchの`readInspection`と`createResponseScope`が扱う範囲。
+2. **Meaningの版と依存**：Plugin Role/OperatorのPin、Dependency closure、Interpretation Result・Source occurrence。同じRecord/DSL表示でもOperator差し替えで評価意味が変わり得る（#988/#2620/#2638/#2639）。
+3. **現在のConsumer開示資格**：Audience/Principal、目的/Claim、現在Policy、Scope/時点、実際に公開してよいSlice。元Requestを発行した時点での許可は、後着したResultを画面へ載せる現在許可の証明ではない（#2516/#958/#1124 AN-RV-D2）。
+
+**候補となる適用地点は「Render Commit直前」**：Source/Selection/Meaning/DisclosureがそのConsumerで利用可能な根拠を持つことを既存の各Ownerが確認し、そのConsumerが許可済みSlice**だけ**を描画する。証拠がない場合は情報を適宜秘匿して中立表示・未確定へ退避し、古い結果を現在許可へ読み替えない。**この文書で共通epoch token、Policy Engine、Store、Hostを新設する提案ではない**。
+
+見落としやすい非対称性：`scope.invalidate("inspection")`は同時に待っている`xead`や`catalog`を止めない。全Laneを止める場合は既存`reset()`を明示的に呼ぶ必要がある。さらに`reset()`しても旧DOMは消えないため、**継続表示できない内容の消去/再投影はConsumerの別責務**となる。Policy変更を実際に通知・観測できないConsumerは即時撤回を保証したことにせず、次の許可付きReadや利用前に資格を取り直す。
+
+### 8.3 実行した限定試験：既存Utilityのexact sourceから12ケース
+
+追加した[ `test_async_qualification_boundaries.mjs`](../fixtures/studio-open-world/test_async_qualification_boundaries.mjs)は、**現行Workbenchの実`createResponseScope`をimport**して試すための独立Node testである。設計検証時点ではGitHub保存された`responses.ts`のexact contentsを取得し、**TypeScriptの型注釈のみを試験環境V8向けに除去して同じ関数を実行**、GitHub保存のTest本文のimport文を除いて12/12局所PASSを確認した。これは正式Node test runner／実Browser／実Policy Listenerではない。
+
+| Case | 現行Utilityで検証できること | 別途必要な実製品保証 |
+| --- | --- | --- |
+| AQ-01〜04 | 明示的Lane失効、Grant変更通知がない場合の通過、Lane局所性、全Lane resetの差 | 本物のPolicy/Role変化が適切なLaneへ通知・失効させる |
+| AQ-05・11 | resetしても既に描画された内容は消えない | DOM/Graph/ARIA/Cache/AI Context等の対象別撤回・再投影 |
+| AQ-06〜08 | 同Source・同Workspaceでも表示直前のDisclosure／Meaning Pin確認が別に必要 | 現在資格の実Authority判定と許可済みSliceの取得 |
+| AQ-09〜10 | 古い失敗コールバック、dispose後のpublish防止 | 実UI・外部Consumerへの変更通知・継続利用保証 |
+| AQ-12 | 同じ公開構造でもGrantが違えば表示可能な内容が違う | Provider物理取得・送信・ログ/Timingを含むDisclosure資格 |
+
+**重大な限界**：AQ-02（権限変更をUtilityへ知らせないと古いResultがpublishされる）とAQ-05/AQ-11（旧画面に値が残る）は、**現Utilityが何を保証しないかを明示する特性試験**であって、認可機構の脆弱性を実環境で再現したという主張ではない。AQ-06〜08の`policy`/`role`はテスト専用の合成変数であり、正式TEI Host/PolicyやRuntime Plugin Loaderを呼ばない。
+
+### 8.4 次の製品実証と責務
+
+- **#1124／#1824**：merged #2583のCatalog/Inspect Guardと既存ResponseScopeを実Browser/Workbenchで利用し、同一WorkspaceのままSource/選択、Role、Current Disclosureだけを変える三つの条件を比較。既存DOM/ARIA/Graph、Tooltip/診断、Download、AI JSON、SHO再表示を別々の観測面として扱う。変更通知を提供しない経路は未知として保持。
+- **#988/#2620/#2638/#2639**：Plugin/Operator Pin変更後、同じSource/Structに古い解釈結果を表示できない条件。Role名やソース文字列の一致を許可・意味同一へ昇格させない。
+- **#2516/#958/#2582**：Claimに必要なScope/Field・行集合・時点と、現在閲覧者への開示を既存構成で判断。React/Web/Studioへ公開する前のQualified Projectionが満たせない場合を表示未確定にする。App側のSecret管理を一般UI Parserへ移さない。
+- **#2619/#1163**：Everything is Dataの実CLI Read、Plugin・Provider・Consumerを**同一Run／同一Accepted Revision／実受信byte**で照合する。局所V8 12件、OW16件、NC20件、既存Go/SQLite/Roleの局所PASSを合算して製品E2Eとはしない。
+- **#1017／#267／#2604**：更新後mainの厳格なSource Index／Workspace固定読取、Artifact actual read、Decision Witnessを本件の前提として参照するが、Source読取ガードの成功から現在Consumer Grant・Meaning承認へ昇格させない。
+
+**必要な機能は既存のResponseScope、Source-aware Modeler、Meaning Plugin、Audience別Projectionの組合せで評価**する。新しい共通Host、第二Acceptance、全製品Policy Epoch Service、専用Role/Decision GUIは先行追加しない。
