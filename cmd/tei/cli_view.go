@@ -409,6 +409,16 @@ func writeCommandPlanText(out io.Writer, plan applicationview.CommandPlan) (int,
 			return 2, err
 		}
 	}
+	if len(plan.Invalid) > 0 {
+		if _, err := fmt.Fprintln(out, "invalid:"); err != nil {
+			return 2, err
+		}
+		for _, issue := range plan.Invalid {
+			if _, err := fmt.Fprintf(out, "  - %s: %s\n", issue.Input, issue.Message); err != nil {
+				return 2, err
+			}
+		}
+	}
 	if _, err := fmt.Fprintf(out, "ready: %t\n", plan.Ready); err != nil {
 		return 2, err
 	}
