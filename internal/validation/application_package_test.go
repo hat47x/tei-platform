@@ -98,3 +98,23 @@ func TestValidateApplicationPackageRejectsUnusedRequirement(t *testing.T) {
 		t.Fatal("unused semantic requirement was accepted")
 	}
 }
+
+func TestValidateApplicationPackageRejectsCrossPackageCollision(t *testing.T) {
+	w := packageWorld()
+	first := *packagePattern(&w)
+	second := first
+	second.ID = "order_entry.other_list"
+	second.Members = []application.PackageMember{first.Members[0]}
+	w.Applications[0].Packages = append(w.Applications[0].Packages, second)
+	if diagnosticByCode(validateApplicationPackages(w), "APPLICATION_PACKAGE_MEMBER_COLLISION") == nil {
+		t.Fatal("cross-package member collision was accepted")
+	}
+}
+
+func TestValidateApplicationPackageRejectsDuplicatePackage(t *testing.T) {
+	w := packageWorld()
+	w.Applications[0].Packages = append(w.Applications[0].Packages, w.Applications[0].Packages[0])
+	if diagnosticByCode(validateApplicationPackages(w), "APPLICATION_PACKAGE_DUPLICATE") == nil {
+		t.Fatal("duplicate package was accepted")
+	}
+}

@@ -40,8 +40,14 @@ func validateApplicationPackages(w ir.World) []Diagnostic {
 		for _, namespace := range app.SemanticUses {
 			used[namespace] = true
 		}
+		declaredPackages := map[core.CanonicalID]bool{}
+		memberOwners := map[core.CanonicalID]core.CanonicalID{}
 		for _, pkg := range app.Packages {
 			packageSubject := subject.Subject{Kind: "application-package", ID: string(pkg.ID)}
+			if declaredPackages[pkg.ID] {
+				out = append(out, errFor(packageSubject, "APPLICATION_PACKAGE_DUPLICATE", "application %s declares package %s more than once", app.ID, pkg.ID))
+			}
+			declaredPackages[pkg.ID] = true
 			if !strings.HasPrefix(string(pkg.ID), string(app.ID)+".") {
 				out = append(out, errFor(packageSubject, "APPLICATION_PACKAGE_NAMESPACE_MISMATCH", "package %s is declared under application %s", pkg.ID, app.ID))
 			}
@@ -63,6 +69,11 @@ func validateApplicationPackages(w ir.World) []Diagnostic {
 				}
 				if seen[member.Pattern] {
 					out = append(out, errFor(packageSubject, "APPLICATION_PACKAGE_MEMBER_DUPLICATE", "package %s declares member %s more than once", pkg.ID, member.Pattern))
+				}
+				if owner, exists := memberOwners[member.Pattern]; exists && owner != pkg.ID {
+					out = append(out, errFor(packageSubject, "APPLICATION_PACKAGE_MEMBER_COLLISION", "pattern %s is declared by packages %s and %s; resolve the collision explicitly", member.Pattern, owner, pkg.ID))
+				} else {
+					memberOwners[member.Pattern] = pkg.ID
 				}
 				seen[member.Pattern] = true
 			}
