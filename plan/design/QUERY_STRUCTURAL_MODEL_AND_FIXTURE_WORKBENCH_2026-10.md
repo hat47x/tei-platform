@@ -472,6 +472,30 @@ main参照：`2197baaedbde178a042a280ea1bd1d534617bfc7`。現行`relational.go`�
 **M2最小完了条件（提案）**：A〜Eを少なくとも「構造追跡と式意味の別資格」で比較し、Aの6出現と2業務Entity、Cの入力追加によるretraction、Dの200/600/100、Eの選択変更を独立期待で検査。QX-17実Go→read-only probe→#2506の取得状態という一往復で、説明に必要な情報が欠落した箇所を具体的に報告できること。#2586のHJ-01〜04はこの受渡しの統合Owner、#2582が変更後の局所維持／失効、#2500が更新Intent、#1803/#2516が説明文書、#1174が実効果を所有する。**本節は計画のみ。A〜EのGo/Worker/Context統合試験はNOT RUN**。
 
 
+### 7.12 QX-18：SQL解析結果の実効名前解決環境と可視入力集合（2026-11-02、Target差分・未実行）
+
+[#2387の一次反例・静的根拠](https://github.com/hat47x/tei-platform/issues/2387#issuecomment-6572048044)を本DraftのM0→M2へ反映する。QX-13〜14の「lexical scopeと正しいSource/解析Inputの帰属」、QX-15〜17の「結果Grain・Value/Existence/Multiplicity/Selectionの別資格」が成立しても、**Target DBセッションの名前解決環境と可視行集合**が変われば、同じSQL Source byte・Query ID・Schema定義で異なる結果になる。この二条件は同一の資格ではない。
+
+**一次外部根拠**：PostgreSQL公式の[Schema search path](https://www.postgresql.org/docs/current/ddl-schemas.html)・[search_path/一時Schema](https://www.postgresql.org/docs/current/runtime-config-client.html)・[Row Security Policy](https://www.postgresql.org/docs/current/ddl-rowsecurity.html)・[PREPARE](https://www.postgresql.org/docs/current/sql-prepare.html)。これらは外部DBの仕様であり、TEIでの実PG通し動作を示した証拠ではない。
+
+**現mainの静的境界**：`internal/query/analyzer/model.go`のRequestはQuery ID/Source/Dialect/SchemaContext（Table名と列名）を持つが、`search_path`やsession-local object、principal/RLS policyの**実効条件は現行wireにない**。SourceRef/FieldRefやCoverageに足りない条件は、推測したschema-resolvedではなく未確認として説明する。#2465による別Query IDの拒否は統合済みだが、同一Query IDの別SQL Source・実効Schema探索を結び付けたこととは別。#2454/#2471のDraftを置換しない。
+
+| Case | Source/DB条件 | 変える入力 | 手書き期待（実PG NOT RUN） | 不合格表示 |
+| --- | --- | --- | --- | --- |
+| QX-18a / Path shadow | `tenant_a.orders`=100、`tenant_b.orders`=900が同じSchema Snapshotに存在。SQLは`SELECT SUM(amount) FROM orders`固定 | `SET search_path TO tenant_a,public` vs `tenant_b,public` | 参照実表とSUMが100/900へ変わる | SQL SHA＋Catalog一致だけで同一Sourceと確定 |
+| QX-18b / Temp shadow | `public.orders`とsession-local `pg_temp.orders` | 当該接続のtemp schemaの存在・探索順 | 無修飾`orders`はセッションに応じて別Relationを指し得る | 静的catalogだけで実テーブルを固定 |
+| QX-18c / RLS visible subset | `public.orders`にAlice:100/Bob:900、非ownerのselect可能なロールと`USING(owner=current_user)` policy | Role Alice vs Bob（SQLは`public.orders`明示・同一Snapshot） | 実テーブルは同じ、visible SUMは100/900、DB全体の1000とは異なる | 権限下の0件/合計を全業務母集団の事実と断定 |
+| QX-18d / Explicit target | SQLは`SELECT SUM(amount) FROM tenant_a.orders` | search_pathだけ変更 | Relation束縛は安定。ただしRLS・Snapshot・時刻等は別条件 | schema-qualifiedだけで全件/現在性/認可を保証 |
+
+**M0（Query/Target対応）**：同じQuery ID・SQL byte・Dialect/Schemaの反例a/bを、Targetの実効名前解決条件を固定した場合と未知の場合で比較する。Source occurrence名／意味ModelのEntity ID／実際に束縛した物理Relationの三者を別に扱う。匿名または未知のsearch_pathでは、候補解決と確定解決を区別する。Target固有条件をTEI Coreへ全部取り込む決定は先行せず、既存Plugin/ProviderとExternal Hostの観測可能な条件をinspectする。実効search_pathは`SHOW search_path`と必要に応じて展開結果・実参照先まで、同じConnection/試行に対応付ける。Prepared statementの場合はDB側の再解析条件も対象とする。
+
+**M1（read-only Explain）**：a/bは同じSQLを描いても元の物理TableへのLineage矢印が変わる、cは物理Tableへの矢印が同じでも**visible input population**が変わるという対照。前者は`resolution context unknown`、後者は`visible scope conditional`等の表示候補とし、公開Enum/APIは未決。未知なら`Coverage.Parse=full`のままでも実効物理対応・Claimは未検証とする。Scope/Result/Grainを表示する際、権限・Tenant等の機微情報の表示/開示判断は#1693に委譲する。
+
+**M2（Context/Claim）**：#2586 HJ-01へsource＋実効Relation bindingの一致、HJ-03へContext Result Slice/Scope/epochと実効可視母集団、HJ-04へ`EXISTS`/0件/NOT EXISTS/集計の必要な取得範囲を引き渡す。#2593で同じSUM/AVGの演算が一致しても、Visible SliceとTimeが異なる値を同一Measure観測としない。#2582の再取得/失効と#1803/#2516の資料投影は必要な範囲だけ参照する。外部Hostの認可・Effect(#1174)は別資格として維持。
+
+**次の証拠欄（本書追加時点すべてNOT RUN）**：①外部PostgreSQLの公式仕様、②TEI現在の静的コード、③隔離PG a〜dの期待/実測、④SQL worker実体→Result→Go IR、⑤Headless Query→Context→Claim、⑥GUI/SHO/Host／Owner受理、を独立に記録。実PG試験の前にSQLを文字列置換してSourceを確定したことにしない。正式Dataset/Scenarioは#1131/#1180、Oracleは#2514を使用し、#1119既存G0〜G4へBlocking条件を追加しない。
+
+
 ## 8. 実装順・担当引継ぎ（提案）
 
 | 段階 | 所有 | 実施 | 完了の根拠 |
