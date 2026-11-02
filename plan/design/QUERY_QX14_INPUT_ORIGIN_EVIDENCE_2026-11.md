@@ -45,7 +45,7 @@
 
 **引継ぎ**：#2387は解析入力/IR構造の正本ならぬ証拠の出所を記録、#2506はResult Slice/Selection Epoch、#2582は依存変化/再取得、#1708はRead snapshot、#2516はConsumer開示、#1174はEffect/Host Authority。新しい全域Revision Registryや汎用Reactive Engineは導入しない。
 
-**検証状態**：局所Goコードを`gofmt`で整形し、GitHub保存ファイルとGit blob `ff04bfa265f7a2c8e8fbc89aa711ca10c7dad0d1`が一致した。Go1.26.10 CIの結果は**PR #2657 exact headを確認するまで未確定**。実Provider変更履歴や本番通知の欠落防止は未証明。
+**検証状態**：局所Goコードを`gofmt`で整形し、GitHub保存ファイルとGit blob `fdd8022693360d4a7a0ddf0c6cf9ba2d937a8386`が一致した。Go1.26.10 CIの結果は**PR #2657 exact headを確認するまで未確定**。実Provider変更履歴や本番通知の欠落防止は未証明。
 
 ## 3. 検証と実装順（新Gateなし）
 
