@@ -218,3 +218,64 @@ BC-14の**B側の限定的な旧挙動**は、[統合済み#2154](https://github
 **実行順**：S3／#1125では「必要Witnessの候補と足りない資格」を説明するread-only Consumerを先に作る。P0-a（#1174実PG K/O/Lookup）・P0-b（#1129二Function Owner-write）を優先し、その実測とBC-10/13/14の対象・意味・確定の接合を行う。P1で#2506/#2516のScope相対Consumer、#2604のArtifact公開を独立に接続する。同一runで必要Evidenceを揃えたときだけ#1163の受入証拠に進み、既存#1119 G0〜G4の再定義は行わない。
 
 **取得時点の注意**：本節はSourceと合成テスト設計の追補。各Provider/Java/.NET/WASM Targetでの実行証拠・旧原モデル業務意味・Owner受理は未確認。補充候補が一つ見つかっただけで一般的な十分性・受入済みClaimを宣言しない。
+
+## 11. 複数の真正な証拠を誤って接合しない：証拠間の因果接合（2026-11-02追補）
+
+### 11.1 単独Witnessの資格と、複数Witnessの接合資格は別
+
+§10で、あるClaimの二世界を区別する追加Fieldが見つかっても、取得元・対象scope・期間・開示が適格でなければ利用できないことを確認した。次の独立した問題は、**個々に真正な証拠であっても、別のBusiness Action、別対象、別Operation、別Host/Provider世代で得られたものを一つの「完了証拠」として継ぎ合わせられる**ことである。
+
+例：Ownerが受理した`submit(order-1001)`、`cancel(order-1001)`の実行Receipt、後から別Actorが更新した`order-1001.status=submitted`の現在readは、それぞれ真正であり得る。それらを「同じ提出Actionが確定した」という一件の歴史的証拠へ接合できるかは別。**Receiptの`RequestHash`は提出前の意味型・値・Action purposeの同値性を証明せず**、同じ値が後から観測されても**元OperationのEffectによるもの**とは確定しない（[#2598 IB-14/15の限定Go観測](https://github.com/hat47x/tei-platform/issues/2598#issuecomment-6573334283)、[#1174 Intent↔Actual Effect](https://github.com/hat47x/tei-platform/issues/1174#issuecomment-6572078615)）。
+
+この設計のS3受入票では、同じ「証拠あり」を少なくとも次の**接合可能性の問い**へ分解する。
+
+| 境界 | 接合できるかを確認する情報 | 異なる情報が混入する反例 |
+| --- | --- | --- |
+| Owner意味→Invocation | Accepted Action/purpose・Meaning版、利用箇所U、実Capability/入力、Targetの実Binding | 同じData/Effect型のsubmitとcancelを同じ業務操作として接合 |
+| Invocation→投入Request | 対象ID/Relation role・Provider/Alias、変換版、実送信した不変Payload byte、Scope/O/Hash | 型付きIntentの精度喪失や別byte再直列化を「同一Request」と扱う |
+| Request→Receipt | Scope＋OperationID＋RequestHashと対象Tx/Owner、Receiptの実取得先・実行時版 | 別Scopeの同名Operationや、先のattemptの他RequestのReceiptを流用 |
+| Receipt→独立Effect Observation | 実更新対象E、Provider/DB namespace、観測時点、Receiptとの因果/版の接合証拠 | 別Actor・別Operationの後続更新を元の確定Effectへ帰属 |
+| Effect→Business完了 | Ownerの最終対象集合L、Rule/Invariant、外部Handoff、時点と復旧の正式帰属 | K+でもOwner必要条件が成立しない／現在整合でも初回は部分確定 |
+| 生成物→実Consumer | 正しく固定されたSource/Meaning/Target Build、Artifactの公開一式と実Load byte | 文書だけ新世代、実Driver/GUI/Adapterが旧世代。公開Manifestの完全性とConsumer実Loadを混同 |
+
+特に**Attempt ID、論理OperationID、Business occurrence**は一対一ではない。ACK消失後に別Invocation（別Attempt）で**同じ不変Requestに対する既存Receiptを照会**することは正当な構成になり得る。したがって、単純な`attempt_id同値`をすべての接合に強制するのではなく、**再入場先が元OperationのScope/Hash/Ownerと同じか、実際のReceipt・Effectが元要求に因果的に接合するか**を確認する。必要な根拠が足りなければ`未確認`とする。
+
+**再利用する既存Owner**：#1163は同一改訂/試行のEvidenceと実Consumerへの帰属、#1174は実Effect/Receipt/回復、#2598はAction/Intent/投入Requestの意味・byte、#2597はComposite Save/Tx境界、#1129はOwner-write最終Invariant、#2604はArtifact一式公開、#2505はSource版間対応、#2516/#1178は開示資格、#267はBusiness Meaningの正式受理。第二Evidence Registry、汎用Join Engine、共通Hostや新Gateを設計しない。
+
+### 11.2 有効な接合でも、真の業務完了は別の判断
+
+`Accepted Action↔Invocation↔Request↔Receipt↔Observation`の接合が妥当であっても、次の主張は独立である。
+
+- その一操作の実Effectが、Owner完了述語に必要な**全対象L**と必要なRule・関係・外部処理を満たすこと。
+- 当該Receiptの後の**異なるOperationによる更新・訂正・撤回**が、歴史的完成Claim／現在の確認資格へ与える影響。
+- Composite Saveの全Patchに適切なIntentがあり、各Patchの単独検証がPASSしても、**並行Transactionのwrite skew**で最終Invariantが失われ得ること（[#2597 ES-I1〜5](https://github.com/hat47x/tei-platform/issues/2597#issuecomment-6573266088)）。同一Txと同時実行隔離は別保証であり、実Isolation/Lock/Version/Predicateの効果をDB側で検証する。
+- Snapshot/Receipt/Manifest等がそれぞれ同じ文字列・digestを示しても、**何をhash化したか、どのProvider/Build/時点で生成・利用したか**が違う場合があること。内容一致・証拠の同時性・Owner意味の一致は別の主張。
+
+ここで必要なのは、すべての根拠を同一の物理Transactionで取得する方式ではなく、**各根拠間で検証可能な因果・同一性・適用範囲・現在性の連鎖**である。外部Provider間の共通Snapshotを仮定せず、その環境に実在する別々の証拠と制約をOwnerに提示する。
+
+### 11.3 自作の合成負例と観測資格
+
+[合成fixture：`verify_evidence_join_causality.py`](../fixtures/business-completion-claims/verify_evidence_join_causality.py)で、架空の`Intent/Invocation/Receipt/Observation`4票について、**個別にもっともらしい票の組合せでも、証拠の因果接合は不成立**となることを比較した。Fixtureの`effect_ref`はテスト用の**信頼できる因果参照という仮定**であり、現行`effectcommit.Receipt`や一般DBの独立readに同名Fieldが存在するという主張ではない。実製品で同等の接合が可能かは#1174/#1163の測定対象として残す。
+
+| Case | 合成反例 | このテストでの判別 |
+| --- | --- | --- |
+| **EJ-01〜03** | 同じ対象に見えるが実Actionがcancel／Meaning版が違う／Intent subjectが別 | Business Actionの受理済み意味・実Capability・対象を接合できない |
+| **EJ-04〜07** | 同じOperation文字列でもScope/OperationID/投入Request byte/Receipt Effect参照が違う | 当該不変Requestが生んだReceiptであるとは主張できない |
+| **EJ-08〜10** | 後続readが別Scope/別業務対象/別Effectによるもの（現在値は同じ） | 今回OperationによるEffectという因果帰属を示せない |
+| **EJ-11（正例）** | 完全に接合した合成4票 | あくまで`correlation_candidate`。Business完了PASSではない |
+| **EJ-12（再入場正例）** | Attempt AからAttempt Bへ変わってもScope/O/Hash/Effectの接合が維持 | Attempt ID一致だけを要件にしない |
+| **EJ-13（欠損）** | ReceiptまたはObserverがない | `unresolved`。Effect不存在や失敗の証明ではない |
+
+**限定的に実行済み**：2026-11-02の隔離Python環境で`py_compile`と`python verify_evidence_join_causality.py`。4 `unittest` methodsをPASS（うち十種類の不一致は`subTest`で検査）。実行ローカルのGit blob SHA `5a193d8af05beb988693e5b0df988997af035240`と、GitHubブランチ上の同一ファイルblobが一致することを確認。
+
+**未実行／未採用**：TEI本体の`effectcommit`/Driver/Owner Business Result/GUIへの試験組込み、実PGと並行Txの受入、実Consumer Artifact Load、原X-TEA Business意味、Owner受理。合成`candidate_join`の判定関数は検証用の簡易比較器であり、製品の業務完了判定器やAPI採用ではない。
+
+### 11.4 既存実装計画への追加（S3/P1、P0を優先継続）
+
+- **S3 #1125**：Owner完了票C1〜C6へ`Witnessの単独資格`に加え、`Witness間の因果接合資格`の列を設ける。まずBC-10/13/14/16に対し、**それぞれ適格な証拠が存在しても、別Operationから組み合わせたら同じClaimは成立しない**ことをRead-onlyで説明する。#267の正式受理を代行しない。
+- **P1 #2598/#1163**：投入Request byte・Meaning/Action・実Capability・Effect対象・実消費Artifactを一つの限定Scenarioで接合。再入場時のAttempt変化と同一論理Operationの正例を明示し、原Requestを別byteで再生成しても同じ意味だから自動Retry可とは判定しない。
+- **既存P0-a #1174**：実PG後Commit Result異常→Receipt/独立read/Lookupは先行。観測が本当に**当該K/O/ScopeのEffect**かは別証拠欄で判定する。観測値だけの一致は十分条件としない。
+- **既存P0-b #1129/#1127**：二Function Smart Data同Rule適用は先行。並行write skewやNested Commitの実証は#2597/#1129で別に進め、Rule検証結果からComposite Save/Business completionの成立を自動昇格させない。
+- **独立P1 #2604/#2516**：同じ設計書に記載されたTarget/Ruleと、実ConsumerがロードしたArtifact/Action Bindingの世代を照合する。SHO/MCP/CUIへ展開するとき、説明用の可視性と内部Witnessの利用資格は別。
+
+上記は既存[#1119 Critical Path](https://github.com/hat47x/tei-platform/issues/1119)のS0〜S5/G0〜G4を拡張・改称するものではない。原モデル1→TEI統合モデル1→外部Host向け成果物／SHO設計書という生成の流れの中で、**「生成/保存/読取/観測」それぞれが本当に同じ必要な意味・一式・Actionを扱ったか**をOwner受理可能な範囲で説明するための設計追補である。
