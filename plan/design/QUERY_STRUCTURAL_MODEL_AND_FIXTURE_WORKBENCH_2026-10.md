@@ -911,6 +911,46 @@ QX-20／QX-25／QX-27は、SQLやGo `DerivedIR`の説明能力・Input Lineage�
 **Owner分担と実装順**：#1640/D2 DriverはPreflight/Result返却資格、#1641/D3はCache Witness・Version/鮮度/現在認可、#1174は実Host Current Authority、#2622/#2627は実Provider Read/Completeness、#2586はFunction Context/Claim帰属、#2516/#1178はConsumer別Disclosure、#2514は独立Oracle。最小Go回帰PASS→実Host/ProviderでGrant更新を模擬した同一Attempt→Raw/Derived出力およびConsumer/Sinkの拒否観測へと段階的に進める。
 
 
+### 7.24 QX-28：Data Operatorの多Target同値を「演算名」ではなくValue Semantics／Evaluation Profileで判定する（2026-11-02、SQLite＋Python/Decimal 14件実測）
+
+#### 新差分と横断的な根拠
+
+QX-22〜24はSQL→標準Operator／Provider Pushdown→Local計算の局所同値を扱い、QX-25/27は値に表示されない依存・許可条件、QX-26はページ間のSort/Continuation条件を扱った。しかし、**同じ演算名・同じ入力値・同じ表示型に見えても、Collation・Unicode正規化・NULL配置・数値の内部表現・丸め・整数除算・オーバーフローによって結果・行集合・次ページ・例外が変わる**。TEIで一つのData Operator定義をRDB、非RDB、Goから生成するJava／.NET／WASMの各Targetへ展開するなら、これらの意味を明示して適合判定する必要がある。
+
+既存Ownerは[#988 Operatorの意味契約](https://github.com/hat47x/tei-platform/issues/988)、[#2622 DO-07のRDB/非RDB Provider比較](https://github.com/hat47x/tei-platform/issues/2622)、[#2593 Measure・再集計](https://github.com/hat47x/tei-platform/issues/2593)、[#2077 別言語Target](https://github.com/hat47x/tei-platform/issues/2077)、[#2056 Query inputのMissing/Null](https://github.com/hat47x/tei-platform/issues/2056)、[#2506 Function Data Context](https://github.com/hat47x/tei-platform/issues/2506)、[#2586 同一Function縦断](https://github.com/hat47x/tei-platform/issues/2586)。新しいDecimal型・Collation API・独立Query Evaluator・共通Hostの採用決定ではなく、既存意味契約へ渡す差分の計測。
+
+#### 限定実測：SQLite実Query対Python標準ライブラリ
+
+新規：[test_qx28_value_semantics_cross_target.py](https://github.com/hat47x/tei-platform/blob/work/query-structural-fixture-design-20261030/plan/fixtures/query-workbench-f0/test_qx28_value_semantics_cross_target.py)。Python 3.13.5、SQLite 3.46.1、stdlib `sqlite3/decimal/unicodedata/unittest`。ローカルの**14/14 unittest PASS／py_compile PASS**、実行したUTF-8版とGitHub保存版のblob SHA **`2ef8f46ca02301491ce1ef7426ece88b164e496f`**一致（**7491 bytes**、SHA-256 `4b1f97b2d858dba3506c29820490e26d530074ef1dd1abbe462c63183ffafc54`）。自作・隔離Fixtureのみであり、実TEI Worker／Provider／Java／.NET／WASM実装の試験ではない。
+
+| Case | SQLとPythonの有限観測／負例 | 契約の必要観点 |
+| --- | --- | --- |
+| **QX28-01** | `val`のBINARY Top2はID **4,2**、NOCASE Top2は**1,4** | Sort/Top-NのCollationとTie-breaker、Source/Contextを変えた時の再開資格 |
+| **QX28-02/03** | SQLite標準NOCASEは`Ä`≠`ä`、Python `casefold`では一致。合成文字`é`≠分解文字`e + combining acute`（SQLite BINARY）、NFC後は一致 | UnicodeのCase-fold/Normalizationは暗黙同一視せず、明示Spec/versionとSource由来を別扱い |
+| **QX28-04** | SQLiteの通常ASC NULL先頭に対し`NULLS LAST`では末尾 | NULL/Missing/Absent/Unfetchedの区別とSortのNULL配置。QX-26 Cursor資格にも影響 |
+| **QX28-05/06** | JOIN Key `a`対`A`がBINARYでは0件／NOCASEでは1件。`TEXT '10','2'`の順序は数値順序と逆 | Equality/Join/FilterとSortのType/Collation/Coercionを表示の装飾属性ではなく演算意味として扱う |
+| **QX28-07/09** | SQLite REAL `0.1+0.2`、`SUM(CAST(text AS REAL))`はPython `Decimal('0.3')`と厳密同値にならない | Money等のFixed Point/Decimal・中間演算・集計・Scale・丸め時点を型付き契約で確認する |
+| **QX28-08** | 64bit整数`9007199254740993`はSQL Integer保持、一度REALへCastすると`9007199254740992` | 多言語TargetのBigInt/Decimal/Float移送、JSON Number経由の精度・Identity損失 |
+| **QX28-10** | SQLite `ROUND(2.5,0)=3`、`ROUND(-2.5,0)=-3`、Decimal half-evenは±2 | 業務丸めをSQLite標準やJava BigDecimalのデフォルトへ無根拠に推測しない。Ownerが採用した規則と演算時点が必要 |
+| **QX28-11** | SQLite `5/2=2`、`5/2.0=2.5`、Python Decimal `5/2=2.5` | Operand Type/CoercionとOperator versionが同一でない限り式字面の一致は同値証明ではない |
+| **QX28-12** | SQLite INTEGER `SUM(INT64_MAX,1)`は`integer overflow`、Python `int`のsumは成功 | 成功値だけでなくOverflow/Error/RejectとRaw/Domain/Technical Failureの表現が一致するか |
+| **QX28-13** | BINARYで1ページ目 `B,D`を取得してNOCASE Cursor `>D`で続けると残り0件。NOCASEで最初から読むと`a,B,c,D` | 同じCursor値・不変Datasetでも、Sort/Collation差だけでRead Cohort Completenessを失う |
+| **QX28-14** | SQL空集合 `SUM`はNULL、`TOTAL`は0.0、Python `sum([])`は0 | Empty Set Aggregateの結果は演算名とOutput Type/NULL則で明示し、0と不成立を混同しない |
+
+#### 多Provider／多言語への引継ぎ：用途相対Evaluation Profile（**正式Schema候補ではない**）
+
+1. **Input Value Contract**：値型、整数幅／Decimal precision・scale、NULL／missing／unset、Field presence、Units、Path/Relation Grain、必要な強制変換と失敗を、受理済みSemantic・Query入力へ戻して参照する。型名一致だけで暗黙型変換が一致するとはみなさない。
+2. **Operator Semantics**：Equality/Filter、Sort／Total Order、Join/Group、Null Truth／Null Sort、Unicode Normalization/Collation実装・version、数値演算／中間丸め・Overflow、結果がNULLか0かの規則を、既存#988のOperator/Target実現の**個別適合条件**にする。全Operatorへ常に全属性を強制するのではなく、意味に関係する軸を明示する。
+3. **Execution Placement**：#2622のProvider Pushdown／局所計算／生成先Targetそれぞれが要求される部分契約を満たすときだけ同義候補。Provider Capabilityがない場合にLocalへ戻せるかは、#2506の取得許可・完全性、#1174の権限、#2516の開示で再判定する。コスト最適化は意味とPermissionの成立後の比較。
+4. **Snapshot/Continuation**：#2627／QX-26のPage Cursorは、Source Revision・Query/Mapping・Effective Principal/Scope・Snapshotに加え、**Collation/Normalization/Sort null placement/tie-breakerの意味版**が変われば失効対象。ラベルのbyte一致や`ORDER BY`句の字面一致だけでは保証にならない。
+5. **Independent Oracle**：#1131/#2514の同じ型付きDatasetに、期待値と失敗の独立判定を固定。Java `BigDecimal`の入力変換／NULLやJSON欠落、.NET `decimal`、WASMのint/float、SQL RDBとREST/GraphQLは、それぞれ実Adapter/Providerの行動を別に測定する。丸め・税区分・通貨・時点はOwner判断事項として記録し、未受理の試験値からBusiness Contractへ昇格しない。
+6. **Evidence/Disclosure**：手書きPython/SQLite比較で判明した差→実TEI演算の値／Errorを測定→実Provider/Target毎のRelease資格→SHO用の説明と出典→Owner受理を別欄に保持。新しい中央評価Engine/Renderer正本を増やさない。
+
+**優先実証M1/M2**：M1はQX-27の実Worker出力・DerivedIRと、Sort/Filter/Result型、#2624 Mappingの参照対象から必要Evaluation Profileを列挙するRead-only比較。M2はDO-07で実RDBとAPI系Provider、#2077でJava/.NET/WASMの**同じAccepted Operand/Operator期待値・Error**を独立Oracleで測り、値・Sort/TopN・Error・Read Footprint・Current Authority・Disclosureを別記する。QX-27実Go PR #2634の旧exact headで、GoテストのJSON `>` が `\\u003e`へHTML escapeされることを見落とした**検証コード側の偽失敗**を観測した。比較文字列をIRの式へ変更する修正は別PRの新HEADに提出済みだが、修正版のCI結果は別確認する。#2624も文書一覧への未登録によるCI失敗を旧HEADで観測し、該当Draftへ一覧修正を提出した。**PRの合成テスト結果とCI健全性を必ずexact headで確認し、失敗の種類を区別する**。
+
+**状態**：SQLite/Python local **14/14 PASS**／GitHub blob一致。TEI SQL Worker→Go→Function Context→実Provider、RDB/APIの多ProviderConformance、Java/.NET/WASM、Host/Current Grant・RLS、SHO/UI/外部AIへの実開示、Owner業務意味受理は**NOT RUN**。
+
+
 ## 8. 実装順・担当引継ぎ（提案）
 
 | 段階 | 所有 | 実施 | 完了の根拠 |
