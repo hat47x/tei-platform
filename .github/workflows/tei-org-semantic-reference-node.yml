@@ -58,7 +58,8 @@ jobs:
             reference/org-semantic-views/verify-handoff.mjs \
             reference/org-semantic-views/verify-projection.mjs \
             reference/org-semantic-views/verify-context.mjs \
-            reference/org-semantic-views/verify-acquisition.mjs; do
+            reference/org-semantic-views/verify-acquisition.mjs \
+            reference/org-semantic-views/verify-rule-footprint.mjs; do
             test -f "$file"
             printf 'blob=%s file=%s\n' "$(git hash-object "$file")" "$file"
           done
@@ -73,7 +74,8 @@ jobs:
             reference/org-semantic-views/verify-handoff.mjs \
             reference/org-semantic-views/verify-projection.mjs \
             reference/org-semantic-views/verify-context.mjs \
-            reference/org-semantic-views/verify-acquisition.mjs
+            reference/org-semantic-views/verify-acquisition.mjs \
+            reference/org-semantic-views/verify-rule-footprint.mjs
 
       - name: Assert test workspace remains clean
         if: always()
