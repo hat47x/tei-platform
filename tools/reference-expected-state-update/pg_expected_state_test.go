@@ -80,11 +80,21 @@ func TestPGConflictIsABusinessResultAndKeepsTheFirstUpdate(t *testing.T) {
 	if second.Outcome != OutcomeConflict || second.ExecutionError {
 		t.Fatalf("second outcome=%q executionError=%v", second.Outcome, second.ExecutionError)
 	}
-	if second.Reason != ReasonExpectedMismatch || second.CurrentValue != "A" {
-		t.Fatalf("second reason=%q current=%q", second.Reason, second.CurrentValue)
+	if second.Reason != ReasonExpectedMismatch {
+		t.Fatalf("second reason=%q", second.Reason)
+	}
+	// The raw current value must not be echoed back: the comparison happens in
+	// the database and the result carries no current value.
+	if second.CurrentValue != "" {
+		t.Fatalf("conflict leaked the current value: %q", second.CurrentValue)
 	}
 	if got := second.Observation.LostUpdatesPrevented; got != 1 {
 		t.Fatalf("lostUpdatesPrevented=%d", got)
+	}
+	// Only the supplied expected value is counted; the current value is not
+	// read back into the observation.
+	if got := second.Observation.ComparisonInputBytes; got != len("old") {
+		t.Fatalf("comparisonInputBytes=%d, want %d", got, len("old"))
 	}
 
 	value, ok, err := store.Value(ctx, "order:1")
