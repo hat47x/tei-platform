@@ -29,5 +29,26 @@ func PatternRequirements(app application.Application, pattern application.Patter
 	if pattern.ContractQuery != nil {
 		result = append(result, Requirement{Subject: "contract:" + string(pattern.ContractQuery.Contract) + "/query:" + string(pattern.ContractQuery.Query), Relation: "contract-query-reference", Owner: "validation"})
 	}
+	if pattern.Interaction != nil {
+		seen := map[string]struct{}{}
+		add := func(subject, relation string) {
+			key := relation + "\x00" + subject
+			if _, exists := seen[key]; exists {
+				return
+			}
+			seen[key] = struct{}{}
+			result = append(result, Requirement{Subject: subject, Relation: relation, Owner: "validation"})
+		}
+		for _, item := range pattern.Interaction.Items {
+			add("semantic-attribute:"+string(item.Attribute), "interaction-item-reference")
+			if item.Lookup != nil {
+				add("application-pattern:"+string(item.Lookup.Pattern), "interaction-lookup-reference")
+				add("semantic-attribute:"+string(item.Lookup.TargetAttribute), "interaction-lookup-target-reference")
+			}
+		}
+		for _, navigation := range pattern.Interaction.Navigations {
+			add("application-pattern:"+string(navigation.From), "interaction-navigation-reference")
+		}
+	}
 	return result
 }

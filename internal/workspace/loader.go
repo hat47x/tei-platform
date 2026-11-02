@@ -494,6 +494,19 @@ func loadApplications(root string, r *Result) error {
 			a.Patterns = append(a.Patterns, pattern)
 			r.Sources["application-pattern:"+string(pattern.ID)] = SourceLocation{File: relPath(root, patternPath), Line: 1, Column: 1}
 		}
+		packageFiles, _ := globSorted(filepath.Join(unitDir, "packages", "*.tei"))
+		for _, packagePath := range packageFiles {
+			packageSource, err := readSourceForLoad(root, r, packagePath)
+			if err != nil {
+				return err
+			}
+			pkg, err := syntax.NewParser(string(packageSource)).ParseApplicationPackage()
+			if err != nil {
+				return sourceErr(packagePath, err)
+			}
+			a.Packages = append(a.Packages, pkg)
+			r.Sources["application-package:"+string(pkg.ID)] = SourceLocation{File: relPath(root, packagePath), Line: 1, Column: 1}
+		}
 		r.World.Applications = append(r.World.Applications, a)
 		qfiles, _ := globSorted(filepath.Join(unitDir, "queries", "*.tei"))
 		for _, qpath := range qfiles {

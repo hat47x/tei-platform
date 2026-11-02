@@ -29,6 +29,7 @@ type Type struct {
 	Symbol     string           `json:"symbol"`
 	Kind       TypeKind         `json:"kind"`
 	Underlying core.CanonicalID `json:"underlying,omitempty"`
+	Values     []string         `json:"values,omitempty"`
 }
 
 type Data struct {
@@ -67,6 +68,8 @@ type Attribute struct {
 	Description string           `json:"description,omitempty"`
 	Display     string           `json:"display,omitempty"`
 	TypeRef     core.CanonicalID `json:"type"`
+	Required    bool             `json:"required,omitempty"`
+	Immutable   bool             `json:"immutable,omitempty"`
 }
 
 type Cardinality string
