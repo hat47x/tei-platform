@@ -116,17 +116,27 @@ P1の最初のHeadless確認では、固定した同一配布版に属するXEA[
 
 この縦断票は**設計上の同一Scenario記録形式案**。既存Product CLI/検証器を再利用し、独立Oracle、原典の機密/権利境界、Owner受理、実H2/J5・実Provider/DB/SHO/AIへの送出の実行結果を捏造しない。**これら5つの段を同一RunでE2E検収した実績はまだない。**
 
+### 2026-11-03 追補：FAMILY Source形状の限定実装と実SQL Mapping Witness
+
+**旧Modelerの作成条件と型別診断**：[公開旧Modeler`DialogAddRelationshipOnDatamodel.java`](https://github.com/xead/XeadModeler/blob/68f1535b1c5dd80a327dfced37be401ecd3093c9/src/xeadModeler/DialogAddRelationshipOnDatamodel.java)は、source側Key成分がtarget側のより長いPK/SKの部分集合であり得る場合に`FAMILY`のRelationshipを作る。このコードだけで**任意の既存FAMILYのField対応**は特定できない。Source Factを保持した[#2603（main統合）](https://github.com/hat47x/tei-platform/pull/2603)の次段として、[Draft #2670](https://github.com/hat47x/tei-platform/pull/2670)を**Source-onlyの限定修正候補**として起票した。
+
+**診断の局所変更案**：固定main `2e16b2af9531225b73430a32a6dbb2031e07f4c1`の`diagnostics.go`が発した一律`relationship-key-arity-mismatch`を、`FAMILY`かつ**左成分数>0、左<右、右Key Type=PK/SK**のときだけ`relationship-family-correspondence-unresolved`へ差し替える。この診断は、次数差の存在を一律欠損扱いしないが、**候補対応が未特定であるためlocal/global unresolvedは維持**する。既存の`REFFER/SUBTYPE`や右側がFK／逆向きはarity mismatchのまま。FAMILYでも`orderedLegacyKeyMembers`を両側評価し、右Keyの重複/空`SortKey`原因を別診断に出すが、**対応するFieldの位置比較・型比較は実行しない**。原XML子順だけで一致させない。
+
+**版と診断公開**：候補パッチは`RelationalResolutionPolicyRevision`を`v1→v2`とする。公開Inspection Reportの`ByKind`・診断Code/件数・ordinal/`diagnosticToken`・Resolution/Statusは、旧v1と新v2で**互換不変と仮定しない**。CLI report生成exit 0は診断0やOwner意味受理でない。レビュー時は同一Raw fixtureを両revisionで比較し、既存[#2514](https://github.com/hat47x/tei-platform/issues/2514)の独立Expected、[#2516](https://github.com/hat47x/tei-platform/issues/2516)の公開範囲を使う。単独Keyの順序診断と元原典のField pairing/GUI/Target実解決はなお別タスク。**#2670のmain統合・CI/Owner確認は、本計画更新時には未確定**。
+
+**SQLによる明示Mappingの異質な反例**：[Draft #2665](https://github.com/hat47x/tei-platform/pull/2665)はmain統合済み[#2624](https://github.com/hat47x/tei-platform/pull/2624)の合成Rule/Mapping対照を、Python/SQLiteの実SQLと`SQLITE_READ` callbackの比較へ拡げ、局所14件PASSを報告している。これは**SQL compile時の参照列**であって、Storage Page/Rowの実読取、RLS、Host認可やネットワーク送出の証人ではない。本書のRV-M1では、Function Contextの**Resolved Data Mapping**を設計上の許容Read集合とし、`SQLITE_READ`の要求列集合を独立Witnessとして照合するが、両集合一致だけでProvider実Read Footprintの同値を確定しない。表示同一の`SELECT *`＋Client側秘匿と最小列SELECTを正負対照とする。二ProviderのCohortや変更通知、SHO/AI向けDisclosureはさらに別資格。#2665の14件を本計画の29件実行済みへ算入しない。
+
 ### Case別に失敗原因と検証資格を固定する（本表の29統合ケースは一体実行未完了）
 
 | ケース | 入力・判別条件 | Headlessで照合する期待／禁止事項 | 担当 |
 | --- | --- | --- | --- |
-| **RV-F1** | 合成FAMILY：親Key1成分、子PK2成分。親と対応し得る子成分が一意 | 原文Type・Key全member・余剰member・SortKeyを保持。単純な次数差だけでSource形状不正へ昇格しない。対応の意味受理は別 | #950／#1126 |
+| **RV-F1** | 合成FAMILY：親Key1成分、子PK2成分。親と対応し得る子成分が一意 | 原文Type・Key全member・余剰member・SortKeyを保持。Draft #2670の条件に一致する場合はarity-mismatchでなくfamily-correspondence-unresolved、local/globalは未解決のまま。対応Field/意味受理は別 | #950／#1126 |
 | **RV-F2** | 同FAMILYで対応候補が0件、または複数件 | 長さ差と対応不能・曖昧を別理由で提示。型・名前・Aliasの一致を無断の確定対応へ用いない | #950／#1126 |
 | **RV-R1** | REFFER 1→2、対照として同数2→2／SUBTYPE | Type固有の構造規則を比較。合致する次数から業務Relation・物理FK生成を自動受理しない | #950／#1126 |
-| **RV-K1** | FAMILY子側のSortKey空・重複・辞書順と数値順の差 | Relationshipのarity先行short-circuitと独立Key順序原因を分離。診断不在≠順序の実証。既存提案patch採否は担当が判断 | #950／#1126 |
+| **RV-K1** | FAMILY子側のSortKey空・重複・辞書順と数値順の差 | Draft #2670はFAMILY拡張時も左右SortKeyを独立診断する候補。独立Key（Relation非参照）の順序原因は未対応で別。arityによる未検査を成功と扱わない | #950／#1126 |
 | **RV-K2** | 同一合成snapshotで独立Kは複合SortKey重複、Jは参照・依存を持たない正常Key。Jの原形閲覧、Jの派生説明、K/J全体loweringを同順に要求 | 独立Key診断候補の適用時はK局所unresolved・J局所resolved・global unresolvedを期待。Jのread-only原形は保持し、派生説明は消費閉包、全体loweringはglobalで保留。公開`byKind`件数からJのIDを逆特定しない | #950／#1126／#1124 |
 | **RV-K3** | REFFERの2→2構成で両側SortKey一意、型情報も両側同じ、XML出現順とSortKey順は異なる。対照として片側DataType欠落 | 構造診断0・局所resolvedがあり得ても列pair/Business identityはOwner未受理のまま。欠落型を比較済みとしない。source宣言順・SortKey字面・Validatorが判定した順・意味採用を混同しない | #950／#1126／#267 |
-| **RV-K4** | 同一Source byteを旧/候補の判定規則で比較。独立Kのみの0→非0と、既にR1/R2影響がある非0→非0を別fixtureで実施。FAMILY arity分岐も対照 | 診断Boolean/total/byCode/ordinal/token/global/localとpolicy revisionを差分表に固定。影響件数はarity短絡で変わるため「原因1＋順序影響2」を一般化しない。既存Report CLI exit 0をrelease/meaning PASSとみなさず、旧版判定結果の無言再利用を禁止 | #950／#1126／#2514 |
+| **RV-K4** | 同一Source byteを旧/候補の判定規則で比較。独立Kのみの0→非0と、既にR1/R2影響がある非0→非0を別fixtureで実施。FAMILY arity分岐も対照 | Draft #2670の診断Code変更・SortKey複合診断・policy v1→v2を実験対照に追加。Boolean/total/byCode/ordinal/token/global/localを比較し、原因件数を一般化しない。CLI exit 0で意味PASSとせず、旧版判定結果を再利用しない | #950／#1126／#2514 |
 | **RV-N1** | 外来`x:Refer`／`x:Relationship`／`x:TableKey`／`x:Key`／`x:Table`、通常`Refer`上の`x:ToTable`／`x:ToKeyFields`等の属性類似名、外来Tableの子にある通常Referを対照 | Readerの`Known=false`、修飾名、局所Fact、親Table文脈の伝播を独立に調べる。外来宣言・外来親IDを標準Fact/Relationへ昇格させない。既存[#950 RMP-048/RML-023](https://github.com/hat47x/tei-platform/issues/950)が一般契約。**PR #2603でXEADの`Relationship/TableKey`、XEAFの`Key/Refer`と外来Tableの入れ子Scopeを含む合成テストが最終headでCI 5 workflow success、main統合済み**。Reader層から外部Hostまでの総合Security適合は別証拠。外来宣言を元のField・Tableの意味受理へ転換しない | #950／#1126 |
 | **RV-X1** | 固定同一配布版のXEAD Relationship・XEAF Runtime ReferをSource Factとして独立読取。設計1件→実装候補0／1／複数、同型でもAlias・Role・Field成分が異なる対照 | 現行CrossViewはXEADのみ対応という実装境界を維持。候補グラフG-Vをread-onlyで表示し、原因・多重対応・未解決・元byte/候補Target参照を別出典で照合。次の意味受理・物理FKへ自動昇格しない | #950／#1126／#1031／private #4 |
 | **RV-X2** | 同じ設計Relation R。実装Refer候補0件の対照：(A)固定XEAF全対象nodeを列挙・profile適合・Role/Key条件で照合済み、(B)Reader未対応/探索打切り/一部scope非許可で未観測あり、(C)存在を知るが外部Consumerへ候補情報を開示できない | Aのみ「固定版・探索規則・許可scopeにおける一致候補0」を限定主張。Bは未探索を実在しないと扱わず、Cは非開示をpublic `0`へ変換しない。候補数・source node/atom/属性成分・unknown・列挙完了/非公開の各母数を区別し、業務Relationの非存在・意味Acceptedをいずれも推論しない | #950／#1031／#1126／#2514／#2516 |
