@@ -66,6 +66,38 @@ func readSourceForLoad(root string, result *Result, filename string) ([]byte, er
 	return content, nil
 }
 
+// captureManagedSourceSnapshot reads every managed file that no domain loader
+// consumed through the same pinned Root used by Load. Without this, a managed
+// asset under a forward-compatible source root would be enumerated by Load but
+// absent from the snapshot, and BuildSourceIndex would silently re-read it
+// after Load. Each file is captured independently; this is not an atomic
+// multi-file snapshot, and files can still change in place between reads.
+func captureManagedSourceSnapshot(result *Result) error {
+	if result.sourceSnapshot == nil {
+		return fmt.Errorf("managed source capture requires a Load snapshot")
+	}
+	for _, managed := range result.ManagedFiles {
+		path, err := sourceindex.NormalizeWorkspacePath(managed.Path)
+		if err != nil {
+			return fmt.Errorf("managed source %q: %w", managed.Path, err)
+		}
+		if _, exists := result.sourceSnapshot[path]; exists {
+			continue
+		}
+		var content []byte
+		if result.sourceReadRoot != nil {
+			content, err = readPinnedWorkspaceFile(result.sourceReadRoot, path)
+		} else {
+			content, err = readWorkspaceFile(result.sourceSnapshotRoot, path)
+		}
+		if err != nil {
+			return fmt.Errorf("capture managed source %s: %w", path, err)
+		}
+		result.sourceSnapshot[path] = content
+	}
+	return nil
+}
+
 // readWorkspaceFile opens a source through a traversal-resistant root.
 // Relative symlinks that remain inside the root are supported; escapes are
 // rejected. Targets without a trustworthy rooted-open implementation fail
