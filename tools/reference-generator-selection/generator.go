@@ -65,9 +65,10 @@ var generatorTemplates = map[string]generatorTemplate{
 }
 
 type templateField struct {
-	Name  string
-	Input string
-	Many  bool
+	Name      string
+	Input     string
+	Many      bool
+	Primitive string
 }
 
 type templateData struct {
@@ -173,7 +174,7 @@ func renderCandidateBytes(contractRaw []byte, strategy, version string, world *i
 	if contract.Projection != nil {
 		data.ProjectionKind = contract.Projection.Kind
 		for _, field := range contract.Projection.Fields {
-			data.Fields = append(data.Fields, templateField{Name: field.Name, Input: field.Input, Many: field.Many})
+			data.Fields = append(data.Fields, templateField{Name: field.Name, Input: field.Input, Many: field.Many, Primitive: field.Primitive})
 		}
 	}
 	var rendered strings.Builder

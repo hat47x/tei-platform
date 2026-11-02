@@ -51,6 +51,17 @@ func main() {
 		}
 		record["{{.Name}}"] = values
 	}
+	{{- else if or (eq .Primitive "std.decimal") (eq .Primitive "std.integer") }}
+	if value, ok := in["{{.Input}}"]; !ok {
+		missing = append(missing, "{{.Name}}")
+	} else if value == nil {
+		unresolved = true
+	} else if number, ok := value.(float64); !ok {
+		emit(output{State: "error"})
+		os.Exit(2)
+	} else {
+		record["{{.Name}}"] = number
+	}
 	{{- else }}
 	if value, ok := in["{{.Input}}"]; !ok {
 		missing = append(missing, "{{.Name}}")
