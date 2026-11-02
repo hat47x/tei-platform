@@ -15,6 +15,18 @@
     }
     return map;
   }
+  // In this fixture, tokens stand for exact content identities. Real TEI must
+  // verify bytes via its existing Extension Lock, not trust descriptor claims.
+  function pinFor(d) {
+    return { version: d.version, contract: d.contractFingerprint,
+      implementation: d.implementationFingerprint };
+  }
+  function pinMatches(d, pins) {
+    const pin = pins && pins[d.key];
+    return Boolean(pin && d.contractFingerprint && d.implementationFingerprint &&
+      pin.version === d.version && pin.contract === d.contractFingerprint &&
+      pin.implementation === d.implementationFingerprint);
+  }
   function checkEager(rootKeys, entries, pins) {
     const visited = new Set(), pending = new Set(), path = [];
     function visit(key) {
@@ -25,7 +37,7 @@
       if (visited.has(key)) return null;
       const d = entries.get(key);
       if (!d) return fail("missing-provider", key);
-      if (!pins || pins[key] !== d.version) return fail("missing-or-stale-pin", key);
+      if (!pinMatches(d, pins)) return fail("missing-or-stale-pin", key);
       pending.add(key); path.push(key);
       for (const dependency of d.eager || []) {
         const result = visit(dependency);
@@ -57,7 +69,7 @@
         key = named[0].key;
       }
       if (!key || !entries.has(key)) return fail("missing-provider", key);
-      if (!pins || pins[key] !== entries.get(key).version) return fail("missing-or-stale-pin", key);
+      if (!pinMatches(entries.get(key), pins)) return fail("missing-or-stale-pin", key);
       selected.push(key);
     }
     const depProblem = checkEager(selected, entries, pins);
@@ -84,12 +96,15 @@
     };
   }
   const F1 = { key: "tei.function@v1", version: "v1", name: "Function",
-    required: ["steps"], eager: [], effect: "pure" };
+    required: ["steps"], eager: [], effect: "pure",
+    contractFingerprint: "function-v1-contract", implementationFingerprint: "function-v1-impl" };
   const F2 = { key: "tei.function@v2", version: "v2", name: "Function",
-    required: ["steps", "output"], eager: [], effect: "pure" };
-  const MODEL = { key: "tei.model@v1", version: "v1", name: "Model", required: ["steps"], eager: [] };
+    required: ["steps", "output"], eager: [], effect: "pure",
+    contractFingerprint: "function-v2-contract", implementationFingerprint: "function-v2-impl" };
+  const MODEL = { key: "tei.model@v1", version: "v1", name: "Model", required: ["steps"], eager: [],
+    contractFingerprint: "model-v1-contract", implementationFingerprint: "model-v1-impl" };
   const SOURCE = { active: true, occurrence: "doc.md:10", fields: { steps: [] } };
-  const PINS = { "tei.function@v1": "v1", "tei.model@v1": "v1" };
+  const PINS = { [F1.key]: pinFor(F1), [MODEL.key]: pinFor(MODEL) };
   let passed = 0;
   const cases = [];
   function check(label, observed, predicate) {
@@ -106,14 +121,17 @@
   check("RB-03 missing provider", inspect(SOURCE, [{ key: "missing@v1" }], [F1], PINS),
     x => x.code === "missing-provider");
   check("RB-04 same display name ambiguity", inspect(SOURCE, [{ name: "Function" }], [F1, F2],
-    { ...PINS, [F2.key]: "v2" }), x => x.code === "ambiguous-or-missing-role");
-  const A = { key: "role.A@1", version: "1", name: "A", eager: ["role.B@1"] };
-  const B = { key: "role.B@1", version: "1", name: "B", eager: ["role.A@1"] };
-  check("RB-05 eager cycle", inspect(SOURCE, [{ key: A.key }], [A, B], { [A.key]:"1", [B.key]:"1" }),
+    { ...PINS, [F2.key]: pinFor(F2) }), x => x.code === "ambiguous-or-missing-role");
+  const A = { key: "role.A@1", version: "1", name: "A", eager: ["role.B@1"],
+    contractFingerprint: "A-contract", implementationFingerprint: "A-impl" };
+  const B = { key: "role.B@1", version: "1", name: "B", eager: ["role.A@1"],
+    contractFingerprint: "B-contract", implementationFingerprint: "B-impl" };
+  check("RB-05 eager cycle", inspect(SOURCE, [{ key: A.key }], [A, B], { [A.key]:pinFor(A), [B.key]:pinFor(B) }),
     x => x.code === "eager-cycle" && x.detail.includes("role.B@1"));
-  const TREE = { key: "role.Tree@1", version: "1", name: "Tree", deferred: ["role.Tree@1"] };
+  const TREE = { key: "role.Tree@1", version: "1", name: "Tree", deferred: ["role.Tree@1"],
+    contractFingerprint: "Tree-contract", implementationFingerprint: "Tree-impl" };
   check("RB-06 valid deferred recursive Ref",
-    inspect(SOURCE, [{ key: TREE.key }], [TREE], { [TREE.key]:"1" }),
+    inspect(SOURCE, [{ key: TREE.key }], [TREE], { [TREE.key]:pinFor(TREE) }),
     x => x.status === "role-candidate");
   check("RB-07 independent multiple Roles", one,
     x => x.roles.length === 2 && x.proof === "shape-and-pins-only");
@@ -121,7 +139,7 @@
     inspect({ active: false, occurrence: "quote:7", fields: { role:"trusted-script", command:"run-as-admin" } },
       [{ key: F1.key }], [F1], PINS), x => x.status === "data-only");
   const before = inspect(SOURCE, [{ key: F1.key }], [F1], PINS);
-  const after = inspect(SOURCE, [{ key: F2.key }], [F2], { [F2.key]: "v2" });
+  const after = inspect(SOURCE, [{ key: F2.key }], [F2], { [F2.key]:pinFor(F2) });
   check("RB-09 source unchanged, Role version changes qualification", [before,after],
     xs => xs[0].status === "role-candidate" && xs[1].code === "missing-required-field");
   check("RB-10 effect declaration != actual authorization", before,
@@ -134,23 +152,48 @@
     x => x.status === "role-candidate" && !("tools" in x) && !("accepted" in x));
   check("RB-13 unpinned provider rejected", inspect(SOURCE, [{ key: MODEL.key }], [MODEL], {}),
     x => x.code === "missing-or-stale-pin");
+  const BNoEager = { ...B, eager: [], implementationFingerprint: "B-impl-no-eager" };
+  const BDeferred = { ...BNoEager, deferred: [A.key], implementationFingerprint: "B-impl-deferred-A" };
   check("RB-14 eager + deferred mixed reference", inspect(SOURCE, [{ key:A.key }],
-    [A, { ...B, eager: [], deferred: [A.key] }], { [A.key]:"1", [B.key]:"1" }),
+    [A, BDeferred], { [A.key]:pinFor(A), [B.key]:pinFor(BDeferred) }),
     x => x.status === "role-candidate");
-  check("RB-15 missing required shape", inspect(SOURCE, [{ key:F2.key }], [F2], { [F2.key]:"v2" }),
+  check("RB-15 missing required shape", inspect(SOURCE, [{ key:F2.key }], [F2], { [F2.key]:pinFor(F2) }),
     x => x.code === "missing-required-field");
   check("RB-16 unpinned eager dependency is not silently loaded",
-    inspect(SOURCE, [{ key:A.key }], [A, { ...B, eager: [] }], { [A.key]:"1" }),
+    inspect(SOURCE, [{ key:A.key }], [A, BNoEager], { [A.key]:pinFor(A) }),
     x => x.code === "missing-or-stale-pin" && x.detail === B.key);
   check("RB-17 explicitly pinned eager dependency is qualified",
-    inspect(SOURCE, [{ key:A.key }], [A, { ...B, eager: [] }], { [A.key]:"1", [B.key]:"1" }),
+    inspect(SOURCE, [{ key:A.key }], [A, BNoEager], { [A.key]:pinFor(A), [B.key]:pinFor(BNoEager) }),
     x => x.status === "role-candidate" && x.roles.length === 1);
   check("RB-18 duplicate provider identifier is unresolved",
     inspect(SOURCE, [{ key: F1.key }], [F1, F1], PINS),
     x => x.code === "duplicate-provider");
   check("RB-19 missing eager dependency is unresolved",
-    inspect(SOURCE, [{ key:A.key }], [A], { [A.key]:"1" }),
+    inspect(SOURCE, [{ key:A.key }], [A], { [A.key]:pinFor(A) }),
     x => x.code === "missing-provider" && x.detail === B.key);
+  const changedF1 = { ...F1, implementationFingerprint: "function-v1-changed-impl" };
+  const changedB = { ...BNoEager, implementationFingerprint: "B-impl-changed" };
+  check("RB-20 root same-version implementation drift rejects old Pin",
+    inspect(SOURCE, [{ key:F1.key }], [changedF1], PINS),
+    x => x.code === "missing-or-stale-pin" && x.detail === F1.key);
+  check("RB-21 eager dependency same-version implementation drift rejects old Pin",
+    inspect(SOURCE, [{ key:A.key }], [A,changedB],
+      { [A.key]:pinFor(A), [B.key]:pinFor(BNoEager) }),
+    x => x.code === "missing-or-stale-pin" && x.detail === B.key);
+  check("RB-22 exact updated dependency Pin can qualify its candidate",
+    inspect(SOURCE, [{ key:A.key }], [A,changedB],
+      { [A.key]:pinFor(A), [B.key]:pinFor(changedB) }),
+    x => x.status === "role-candidate");
+  const unrelated = { key: "other.role@1", version: "1", name: "Other",
+    contractFingerprint: "other-contract", implementationFingerprint: "other-impl" };
+  check("RB-23 adding unrelated provider preserves pinned selected result",
+    [inspect(SOURCE, [{ key:F1.key }], [F1], PINS),
+      inspect(SOURCE, [{ key:F1.key }], [unrelated,F1], PINS)],
+    xs => xs[0].status === "role-candidate" &&
+      JSON.stringify(xs[0]) === JSON.stringify(xs[1]));
+  check("RB-24 version-only Pin is insufficient",
+    inspect(SOURCE, [{ key:F1.key }], [F1], { [F1.key]:"v1" }),
+    x => x.code === "missing-or-stale-pin");
   if (typeof console !== "undefined" && typeof console.log === "function") {
     console.log("PASS: " + passed + "/" + cases.length + " bounded Role bootstrap fixture cases");
   }
