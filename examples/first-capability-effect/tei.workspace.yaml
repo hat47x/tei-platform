@@ -1,4 +1,5 @@
 workspace: first_capability_effect
+formatVersion: 1
 sources:
   - semantic
   - applications

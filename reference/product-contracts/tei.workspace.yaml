@@ -1,4 +1,5 @@
 workspace: product_contracts
+formatVersion: 1
 sources:
   - semantic
   - applications
