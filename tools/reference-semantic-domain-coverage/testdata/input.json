@@ -1,0 +1,49 @@
+{
+  "schema": "tei.reference.semantic-domain-coverage-input/v0",
+  "elements": [
+    {"id": "sales.order.total", "name": "total", "what": "sum(line.amount)", "why": "受注金額の合計"},
+    {"id": "sales.order.customer", "name": "customer", "what": "relation", "why": "受注先の顧客"},
+    {"id": "sales.order.line", "name": "line", "what": "relation", "why": "受注明細"},
+    {"id": "sales.line.amount", "name": "amount", "what": "input", "why": "明細金額"},
+    {"id": "sales.line.quantity", "name": "quantity", "what": "input", "why": "数量"},
+    {"id": "sales.line.unit-price", "name": "unitPrice", "what": "input", "why": "単価"},
+    {"id": "sales.customer.code", "name": "code", "what": "input", "why": "顧客コード"},
+    {"id": "sales.customer.name", "name": "name", "what": "input", "why": ""},
+    {"id": "sales.order.status", "name": "status", "what": "input", "why": "受注状態"},
+    {"id": "sales.order.due-date", "name": "dueDate", "what": "derived", "why": "支払期日"},
+    {"id": "sales.order.tax", "name": "tax", "what": "derived", "why": ""},
+    {"id": "sales.order.total-with-tax", "name": "totalWithTax", "what": "derived", "why": ""}
+  ],
+  "domains": [
+    {
+      "id": "domain.money",
+      "name": "金額",
+      "elements": ["sales.order.total", "sales.line.amount", "sales.line.unit-price"],
+      "accepted": true
+    },
+    {
+      "id": "domain.money-total",
+      "name": "金額の合計",
+      "elements": ["sales.order.total"],
+      "accepted": true
+    },
+    {
+      "id": "domain.customer-identity",
+      "name": "顧客の識別",
+      "elements": ["sales.customer.code", "sales.order.customer"],
+      "accepted": true
+    },
+    {
+      "id": "domain.quantity",
+      "name": "数量",
+      "elements": ["sales.line.quantity"],
+      "accepted": true
+    },
+    {
+      "id": "domain.order-status",
+      "name": "受注状態",
+      "elements": ["sales.order.status"],
+      "accepted": false
+    }
+  ]
+}
