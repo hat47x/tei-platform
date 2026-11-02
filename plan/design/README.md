@@ -25,6 +25,7 @@
 
 | 文書 | 対象 |
 | --- | --- |
+| [`ROLE_BOOTSTRAP_AND_SELF_DESCRIPTION_2026-11.md`](ROLE_BOOTSTRAP_AND_SELF_DESCRIPTION_2026-11.md) | Everything is DataにおけるRole/Operator自己記述の有限bootstrap、eager/deferred循環、Pinと実利用資格を分離する設計案（[#2619](https://github.com/hat47x/tei-platform/issues/2619)／[#2620](https://github.com/hat47x/tei-platform/issues/2620)、未採用） |
 | [`APPLICATION_PATTERN_V1_DESIGN.md`](APPLICATION_PATTERN_V1_DESIGN.md) | アプリケーションの構成パターンの設計・実装基準（ISSUE-000005 / ADR-0017 / ADR-0018） |
 | [`LEGACY_AUTH_V1_DESIGN.md`](LEGACY_AUTH_V1_DESIGN.md) | 既存の認証仕様を保ち、認証・認可の機能へ接続する設計（ISSUE-000003 / ADR-0019） |
 | [`CAPABILITY_OUTCOME_V1_DESIGN.md`](CAPABILITY_OUTCOME_V1_DESIGN.md) | 機能の業務結果・名前付きの結果と実行エラーを分離する設計（ISSUE-000009 / ADR-0020） |
