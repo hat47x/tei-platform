@@ -456,3 +456,30 @@ Aは**異なる入力状態を同一の正常1行へ潰す**損失、Bは**同�
 責務参照：#951（Service Contract/Provider/Authority）、#179（Database Query意味）、#2056（入力missing/NULL）、#1121（Lowering/Target）、#2077（別言語生成比較）、#2390/#2513（外部Consumer）、#214（Oracle actual read）、#1803（設計成果物）、#1127/#2497/#2500（取得範囲/表示・編集）、#1174（書込み確定）。
 
 **未実施・未採用**：今回の追補はmainの静的照合と既存Issue/PRの議論に基づく設計更新。新たなGo/Java/.NET/DB/Host試験、正式Service公表、実Provider受理、Owner業務受理、G1移行、旧Kind削除、製品schema/API変更は行っていない。
+
+### 19.6 Function Data Context・Queryの集合意味と実取得/開示の接合（2026-11-02追補）
+
+**追加圧力の由来：** #2506（Result Sliceのgrain/partial/complete）、#2387（Query Lineage/Bag/Hidden dependencies）、#2622（Declared Read→Actual Acquisition→Disclosed Output）、#2627（複数ProviderのRead Cohort合成32件）、#1708（Snapshot整合とread-set）、#2516（Consumer開示）、#2598/#2500（型付きActionへの帰属）。これらは#951のService Contract/Provider結果意味に対する**Consumer条件**であり、#951に第二のContext Model、SQL Analyzer、Disclosure Policy Engineを作る要求ではない。異質Consumerの局所試験PASSを、今回のCustomer Service AdapterのPASSと合算しない。
+
+**結果件数を比較する対象の粒度を先に固定する。** Query Contract `result customer.customer zero-or-one`は、選択されたQueryが返す**契約上のSemantic Customer結果**への件数制約であり、無条件に「物理SQLのraw join行数」「Function Context内の別Collection件数」「画面へ公開した表示行数」へ読み替えない。ただし、複数物理行を一つのCustomerへ**暗黙にdeduplicate**することも不可。明示されたmapping、Identity、候補キー、関係・bag多重度、集計/絞込みの有無を根拠に、結果の粒度と件数を判定する。#2506のH/D1(2件)/D2(3件)→Join投影6行はEntity件数が6という証拠でない。Group/Aggregateの1行も元Entityの1件を意味しない。意味上のCustomerを一意に投影できない場合は、1件と捏造せずunresolved/contract違反の判断材料として保持する。Semantic Key・row identityの業務採否は#1126/#179 Ownerに戻す。
+
+**一つのQuery結果について、下記の観測辺を別々に残す（比較票であり新Schemaではない）。**
+
+| 辺 | 比較する実体 | 守るべき非推論 |
+| --- | --- | --- |
+| Q0 Declared Read | Query/Source revision、必要Relation/Field、Predicate/ORDER/LIMIT、選択DataSource alias・意味Scope | SELECTの表示列だけを必要Read Footprintとせず、WHERE/JOIN/ORDER/演算依存を含む。 |
+| Q1 Actual Acquisition | 実Provider/Instance/環境、実Query/request、取得列・行のScope、Snapshot/Query評価条件、物理Read witness | 表示結果のbyte一致は実Read最小性や認可済み取得の証拠ではない。実Readが未観測なら`unverified`。 |
+| Q2 Semantic Result | Queryの結果grain/identity、0/1/多行、取得complete/partial/failed、missing/null/unknown、値・operator評価規則 | 不完全な0行やraw Joinの行数を正常なSemantic `NotFound`にしない。Shape適合をBusiness Result適合へ昇格しない。 |
+| Q3 Disclosed Projection | Consumerに渡したValue/件数/診断/存在情報、許可Scope、必要な非開示 | フィールドを隠しただけでQ1の過剰Readが無かったと主張しない。開示上の0行は内部Q2の0行と同一とは限らない。 |
+| Q4 Business/Action | Function Context/選択対象、Action Purpose、Target Binding/現在Grant/Effect/Receipt、完了判定 | Readの`NotFound`やUI空表示からAction拒否・実行資格・Owner完了を自動決定しない。 |
+
+**既存CQ-R評価票に追加する比較条件（新Gateを設けない）：**
+
+- **CQ-R5の粒度負例**：CustomerとContactのJoinで同じCustomerが2物理行になり、別の二子集合Joinでは出力が6行になる。Contract結果粒度への明示的な還元が未定なら0/1違反の判断自体を未確定として報告する。「重複だから一意化して1行」も「物理2行だから顧客2件」も独断しない。
+- **CQ-R7の完全部分/Provider負例**：先頭ページが空でも後続未取得、あるいは別Providerに`Snapshot:"s7"`が存在するだけでは、同一Cohortの完全な正常0件を保証しない。#2627の`fixture_consistent / contradicted / not_established`は合成Fixture内の観測分類であり、実DBのSnapshot保証ではない。逆に単純な完了済み単一Query正常0件へ、全Provider横断の数学的不存在証明を一律要求しない。
+- **CQ-R8の演算/Target負例**：同じ`find_by_id`名でも、ID比較のCollation/正規化、NULL、型変換が異なれば0/1が変わり得る。ORDER/LIMIT/集計があるQueryではTie/NULL Order、Overflow/空集合Aggregateの差も別の意味条件。#2387 QX-28の独立SQLite/Python14件PASSは参考であり、顧客Queryの正式2 Provider・Java/.NET/Wasm適合は未実測。Provider PushdownとLocal fallbackを同義とみなすには、そのQueryが実際に使う演算・Scope・完全性条件の証拠が必要。
+- **Q3の開示負例**：内部には1件あるが、Consumerの許可範囲では空表示とする場合、内部結果・開示結果・拒否/非開示理由の混同を避ける。ただし顧客の存在自体が秘密なら、外部への診断文面や件数の露出も#2516/#1178の開示Authorityに従わせる。内部診断を無条件で外部へ渡さない。
+
+**実施優先度：** (1)既存CQ-R2/R4の独立characterization、(2)CQ-R5でraw/semantic/displayのgrain差を固定Fixtureの期待値で比較、(3)CQ-R7/Q0〜Q3の実Provider観測、(4)必要なConsumer/外部Targetへ展開。新しい全件性証明、全SQL最適化、全Target動作を最初のread-only反証の阻害条件にしない。Q0/Q1/Q2/Q3/Q4の証拠が独立に揃う前に「Query→Business E2E」を主張しない。
+
+**Owner境界：** Contractの意味・grain/Identity・nullable/演算条件（#179/#1126/#2495）、Result Sliceと部分取得（#2506）、実SQL/Lineage/物理Read（#2387/#2622）、Provider/Cohort（#2627/#1708）、開示（#2516）、Operation/Effect（#2500/#2598/#1174）、外部Target（#2077/#2390/#2513）は既存の責務を保持。#951は意味的Conformanceを比較して必要な証拠の欠落を指摘する。実Provider・実Host/DB・正式Provider/Meaning受理、Consumer開示テスト、各Target E2Eはいずれも本追補では**NOT RUN**。
