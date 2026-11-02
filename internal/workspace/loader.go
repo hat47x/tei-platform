@@ -131,6 +131,13 @@ func loadWithStackHook(root string, visiting map[string]bool, afterParse func())
 		if parseErr != nil {
 			return Result{}, fmt.Errorf("%s: %w", manifestYAML, parseErr)
 		}
+		// Transitional: the format version is recorded in the manifest and
+		// unknown future versions fail closed. Missing versions remain readable
+		// while existing workspaces and fixtures are migrated (#1920); after
+		// migration, a missing version must be rejected instead of defaulted.
+		if manifest.FormatVersion > 1 {
+			return Result{}, fmt.Errorf("%s: unsupported workspace formatVersion %d (supported: 1)", manifestYAML, manifest.FormatVersion)
+		}
 		roots, imports = manifest.Sources, manifest.Imports
 		manifestID = ManifestIdentity{Path: "tei.workspace.yaml", SHA256: sourceindex.Fingerprint(src)}
 	} else if src, legacyErr := readPinnedWorkspaceFile(sourceRoot, "tei.workspace.tei"); legacyErr == nil {

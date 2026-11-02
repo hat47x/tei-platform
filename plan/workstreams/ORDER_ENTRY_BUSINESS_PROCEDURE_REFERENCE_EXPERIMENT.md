@@ -570,3 +570,74 @@ The current hypothesis is that **the Business Procedure viewpoint is necessary, 
 This is deliberately narrower than the earlier prototype generation that immediately restored `Procedure` as a Surface object.
 
 Lane C will keep the viewpoint unconditionally while re-testing whether the object identity itself belongs in current TEI.
+
+## 15. BP-05 Validation scope and qualified evidence (2026-11-02 plan addendum)
+
+Status: **Lane C read-only design/qualification candidate, not adopted Business meaning; no new runtime, gate, schema, or ADR**. This section refines E5/E7 and the defect candidate in section 12; it does not amend the baseline BP-05 fixture or expand Product Gate G0-G4.
+
+### 15.1 Evidence already present vs claims still unproved
+
+- Existing `tools/reference-business-procedure-check -review-validation-scope` compares the Application's three declared Validation identities with BP-05's two explicit references, returning one `applicationOnly` and `review-needed`. This is **a scope question**, not an automatic missing-rule diagnostic or source mutation. See [#1125 scope review](https://github.com/hat47x/tei-platform/issues/1125#issuecomment-6400716990).
+- `internal/driver/final_gate_b_scenario_test.go` and `gate_b_unified_scenario_test.go` already contain **test-local synthetic positive paths** through three Validations, Authorization, test-only Command and synthetic Observation. The earlier "three-rule path not found" claim was corrected in [#1125](https://github.com/hat47x/tei-platform/issues/1125#issuecomment-6405752403), then rechecked at main `21f4e986581d483b494fe5bdf363a0b4309cf8f8`. Code inspection is not a fresh Go PASS receipt.
+- Third-rule-only rejection **preventing actual Authorization/Command invocation**, full submitted-order line coverage, genuine Provider acquisition, accepted BP-05 responsibility and physical effect remain distinct claims. A `t.Fatalf` in a positive test does not prove the product's negative-side gate.
+- The current test source supplies scalar `lineNumber` and `quantity` from the first row. `lineNumbers` comes from the collection in `final_gate_b`, but is a fixed fixture in `gate_b_unified`. A count of three evaluated rules does not itself prove coverage of every line.
+
+### 15.2 Minimal discriminating inputs (design only; NOT RUN)
+
+Keep stable row identities and one fixed editing target `A`. Use two lines with positive quantities and unique line numbers: `A(id=5001, line=1)`, `B(id=5002, line=0)`. Change **collection order only**, not identities or values:
+
+| Input collection | First-row hypothesis | Fixed edit-target A hypothesis | All-lines-positive hypothesis |
+| --- | --- | --- | --- |
+| P1 = A(1), B(0) | satisfied | satisfied | not-satisfied |
+| P2 = B(0), A(1) | not-satisfied | satisfied | not-satisfied |
+
+These are predicted **third-rule** outcomes, not executed results and not Command gate verdicts. A legitimate edited-row interpretation must bind to a stable row ID, **never** `Rows[0]` by convenience. A third-rule-negative case also needs separate Authorization/Command invocation counts (zero expected if that particular operation's accepted rule makes it a blocking precondition).
+
+**Important SQL qualification:** the Reference `order-line-find-by-order.sql` specifies `ORDER BY line_number, order_line_id`; `line_number` is persisted as required `int64`. Therefore for the two rows above **P2** is consistent with the specified SQL ordering, whereas **P1 is an intentional out-of-order synthetic executor input**, not a claim about actual PostgreSQL output. Under a qualified numeric ascending order, a **complete and relevant nonempty** result set, and preserved row order from the actual Provider to evaluation, checking its minimum line number positive can logically entail positivity of that result set. It does **not** entail that the result set includes every line required by the Business rule, that a read snapshot remains valid at the action boundary, or that all **quantities** are positive (the SQL does not order by quantity). Empty sets require a separate Owner rule; do not equate vacuous truth with an order being ready to submit.
+
+### 15.3 One claim-oriented review record, not a new Canonical type
+
+Retain the existing read-only comparison JSON and Source Index evidence. Attach, as an issue/review evidence packet rather than a new Core schema:
+
+`{rule + rule version, application + step + operation, human scope classification (missing / out-of-scope / alternate / undecided), Business target and quantifier (edited row / selected row / submit cohort / undecided), selection identity, declared logical footprint, actual acquisition route + principal + result slice + completeness + ordering, source/world/fixture/lock revision, positive/negative/test-only/actual evidence, evaluation result, Authorization/Command gating evidence, current rule/target freshness, current disclosure eligibility, Owner answer + authority + acceptance status, residual gaps}`.
+
+A finding of `out-of-scope` or `alternate route` must include its reason and exact operation/scope. Neither finding changes the checker's `review-needed` status unless the actual declared sets change. A change in accepted Business meaning is **proposed through existing Shared Acceptance**, never made by the comparator, the AI reviewer, or a presentation projection.
+
+Cross-lane handoff **without shared implementation**: [#1125](https://github.com/hat47x/tei-platform/issues/1125) owns BP-05 responsibility/quantifier and BP-04 manual readiness; [#267](https://github.com/hat47x/tei-platform/issues/267) owns Owner acceptance; [#1708](https://github.com/hat47x/tei-platform/issues/1708) is a **closed reference** for read-set/snapshot semantics; [#2506](https://github.com/hat47x/tei-platform/issues/2506) and [#2622](https://github.com/hat47x/tei-platform/issues/2622) own the ongoing context/Provider completeness pressure; [#2628](https://github.com/hat47x/tei-platform/pull/2628) concerns actual acquisition evidence; [#1174](https://github.com/hat47x/tei-platform/issues/1174) owns actual Effect and operation authority; [#2516](https://github.com/hat47x/tei-platform/issues/2516) and SHO own audience-specific disclosure/explanation. Do not infer an absence from a failed search (#2196). The newer [#1125 S3 evidence qualification](https://github.com/hat47x/tei-platform/issues/1125#issuecomment-6578813642) is supporting context, **not** proof that the BP-05 condition is accepted.
+
+### 15.4 Order of qualification, owners, and stop conditions
+
+1. **S0 / read-only, Lane C**: preserve existing three-rule synthetic positive code, the two-rule Gate negative, and the `review-validation-scope` row as **separate pieces**. Inspect the current inputs and SQL order, and record P1/P2 hypothesis results as NOT RUN. Do not rebuild a Gate.
+2. **S1 / narrow synthetic negative, Driver owner only if authorized**: reuse existing test seams to establish the actual third-rule failure and check whether Authorization and Command are invoked. Separately test row-order swap against a stable edited-row ID and a complete submitted cohort. Results from independent tests cannot be concatenated into one provenance claim.
+3. **S2 / actual Provider boundary, #2506 / #2622 / #2628 (reuse closed #1708)**: only when product needs the stronger claim, check real SQL order, result mapping/order preservation, visibility/RLS/tenant scope, pagination/completeness, snapshot/read-set freshness and input-to-Command continuity for **one pinned operation**. Provider test PASS is not Owner acceptance or a real Business Effect.
+4. **S3 / Business acceptance and consumer explanation, #1125 / #267 / #2516**: Owner answers **one question**: "For BP-05, which row set must line-number and quantity positivity cover, and is the condition BP-05's own responsibility or an identified alternate route?" Preserve `undecided` until accepted; explain the exact supported claim and hidden evidence only to qualified audiences.
+
+Acceptance for this *design note* means the evidence/unknown distinctions and handoffs are recorded, not that product G1/G2 or the Business Procedure has passed. A synthetic pass, SQL text, content digest, absence of a retrieved counterexample, or a separate effect receipt is **insufficient** to promote an unqualified global or production Claim.
+
+### 15.5 The qualified implication is a claim-specific proof, not a sorting optimization license
+
+For a pinned submit operation, distinguish (a) *the concrete value evaluated*, (b) *the declared Business target cohort*, and (c) *the conclusion asserted to the Consumer*. An acceptable proof of `forall x in L: line_number(x) > 0` may use either explicit per-entity evaluation or a justified minimum-row reduction, **only if** all of these obligations are discharged together:
+
+| Obligation | Minimum-row method: what must be checked | Existing owner / evidence limit |
+| --- | --- | --- |
+| **Q1 — Cohort** | `L` is defined by the still-unaccepted Owner rule (fixed edited row vs all submit lines); the query's parent/tenant/relationship predicate selects precisely that cohort for the claimed time. | #1125/#267 decision; #2506 Function Context. A known result length is not cohort completeness. |
+| **Q2 — Read coverage** | All members required by `L` are present in `R`, with no page/window cap, authorization-hidden rows, missing entity/relationship edge, join-expanded duplicate grain, or failed partial read mistaken for complete. A result of 0 rows also needs its own submit-business rule. | #2506/#2622 and Draft #2627; `requested all` is not `observed complete`. |
+| **Q3 — Ordered-value equivalence** | Physical `ORDER BY line_number, order_line_id` is effective for the executed provider/alias; mapped field remains comparable numeric `int64` (not lexicographic string sort); Driver preserves order until `Rows[0]`; no post-query filter/reorder changes the proof basis. | Existing SQL and test code support a **candidate** inference, not a qualified actual Provider trace. #2387/#2634 own hidden Query sort/predicate dependencies. |
+| **Q4 — Rule and attribute grain** | The selected `positive` Rule/typed attribute version is the one evaluated. Its first-row result supports only the proven *line-number* claim; `quantity_positive` on the first row needs independent all-line coverage because the SQL is not ordered by quantity. `relation-unique` needs the relation keys for the same cohort/grain, not an unrelated fixed array. | Existing `validationeval` is reused; #988/#2619 cover conditional operator laws, not an auto-accepted rewrite. |
+| **Q5 — Time, route and permitted use** | Source/World/Query/Operator/Mapping/Provider/Policy/Result-Slice revision and current scope match the actual operation; read freshness and authorization at commit are separately verified, and the Consumer is allowed to receive the supported explanation. | Closed #1708 remains a reusable snapshot contract; #1174 owns effect-time fence, #2516 disclosure, #2600 selective requalification. |
+
+This is a **conjunction of conditions**, not an arithmetic invariant that can be inferred from the presence of `ORDER BY`. The inference applies to a **nonempty complete numeric ordered cohort**. It does not establish that the accepted business process has approved submission or that `sales.order.submit` caused a durable effect.
+
+### 15.6 Three minimal counter-worlds and selective requalification (NOT RUN)
+
+Use the already-proposed P1/P2 test pair; do not add a new Gate or second comparator. The following are **separate claim-specific witnesses** to explain what changing one dependency invalidates, and do not inherit PASS from unrelated synthetic suites:
+
+| Case | Two worlds / one changed fact | What becomes unproved (other claims remain independently assessed) |
+| --- | --- | --- |
+| **W1 — Missing member** | `L={A(1),B(0)}` in both worlds. Full provider result is `[B(0),A(1)]`, but a partial/RLS-limited result is `[A(1)]`. Both visible evaluations can yield `satisfied` for the latter input. | `minimum(R)>0` no longer implies `forall L>0` until completeness and disclosure-safe scope are established; do not disclose hidden B or infer its existence from an error. |
+| **W2 — Hidden Query dependency** | Same Rule, Mapping and returned fixture for the normal case, but the selected Query changes from `ORDER BY line_number` to `ORDER BY order_line_id` (or loses a membership predicate). Under A(id5001,line1),B(id5002,line0), first-row positivity can be satisfied even though B fails. | Existing minimum-row proof must be selectively **requalified**, despite equal output under a previous passing fixture; Output/Query ID and unchanged model digest are insufficient. |
+| **W3 — Temporal cohort drift** | At read `R0`, complete `L={A(1)}` passes. Before the actual submit action a new B(line0) joins the relevant cohort, or an existing member is renumbered, without an admissible same-operation read/recheck. | Prior `satisfied` remains a historical evaluation of `R0`; it cannot be promoted to the current submitted cohort or commit-time authority. No assumption of shared cross-provider snapshot. |
+
+**Selective invalidation proposal, not a new cache engine:** a change in the Rule/quantifier, relevant attribute grain, SQL predicate/order, mapping, Provider route, RLS/pagination/coverage, membership, read revision, or current Grant invalidates the **dependent proof** for the relevant Consumer/operation. A style-only document change need not invalidate a pinned numeric result, though the delivered SHO/Artifact bytes and current disclosure may still require separate verification. Re-run only the necessary checks through existing #2582/#2600/#2506/#2622/#1174 lanes; successful Build reuse is not Runtime freshness or Business Acceptance.
+
+**Owner packet (one question, unchanged)**: "For BP-05, is line-number/quantity positivity required of the edited row or the entire submitted line cohort, and does BP-05 own that responsibility or an explicitly evidenced other path?" Until answered, the human category stays `undecided`, the existing checker stays `review-needed`, and all Q1-Q5 production claims are unqualified. There is no new acceptance outcome, Owner decision, provider-run receipt, or formal operator law in this addendum. Cross-lane source: [#2619 conditional operator laws](https://github.com/hat47x/tei-platform/issues/2619#issuecomment-6577311485), [#1125 acquired-vs-disclosed qualified Witness](https://github.com/hat47x/tei-platform/issues/1125#issuecomment-6578813642), and [#2619 hidden Query dependencies](https://github.com/hat47x/tei-platform/issues/2619#issuecomment-6578784628).
