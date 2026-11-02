@@ -9,7 +9,7 @@
 
 対象の同一性／構成文法／性質・法則／解釈文脈／利用箇所の要求／主張と根拠／実現と表示。各Pressureの意味に関連するM1〜M10（#2495）は重複して構わないが、**一つの性質を二つの独立な意味正本に保存しない**。
 
-以下の108ケースは**初期の異質性を測るための開始点であり、網羅の完了や上限を意味しない**。新規の構造・数学的性質・分野固有の解釈は追加し続ける。関心事が重複する場合も、操作・利用文脈・失われる情報が異なれば別の反例として保持する。
+以下の120ケースは**初期の異質性を測るための開始点であり、網羅の完了や上限を意味しない**。新規の構造・数学的性質・分野固有の解釈は追加し続ける。関心事が重複する場合も、操作・利用文脈・失われる情報が異なれば別の反例として保持する。
 
 ## A. 値と同一性（PC-01〜07）
 
@@ -193,6 +193,27 @@ TEIの[PR #2576](https://github.com/hat47x/tei-platform/pull/2576)・[#2578](htt
 | PC-108 | Value保持・Scope縮小 | 値の忠実度とClaimの全件性 | 型・byte一致を全件・業務意味一致と誤報 | #2497/#2586 |
 
 **見立て**：単調な入力追加で保存できる結論と、集計・否定・TOP-N・未一致・訂正／削除で撤回を要する結論を分ける。結果の単調性は同じSchema・Universe・Scope・Identityなどの前提に相対的である。現行TEIへ新しいClaim Engine/時間Runtimeを追加することを先行決定しない。
+
+## L. Measure再集計・根拠開示・用途相対Claim（PC-109〜120、2026-11-02追加候補）
+
+[構造保存写像§13](STRUCTURE_PRESERVING_TRANSFORMATIONS_AND_PROJECTIONS_2026-11.md)のAM-01〜12を参照し、[#2593](https://github.com/hat47x/tei-platform/issues/2593)のMeasure意味、[#2516](https://github.com/hat47x/tei-platform/issues/2516)のConstruction Context/Disclosureを交差検証する。全件机上の反証候補、実試験NOT RUN。
+
+| ID | Pressure | 保存すべき意味 | 偽同値・誤成功 | Owner |
+| --- | --- | --- | --- | --- |
+| PC-109 | 平均の再集計 | group sum/count、対象集合 | 平均10/20から単純平均15 | #2593/#2497 |
+| PC-110 | 比率の再集計 | numerator/denominator、母集団 | 50%/80%の単純平均65% | #2593/#1705 |
+| PC-111 | 同値の別Fact | Fact ID、JOIN出現 | `SUM(DISTINCT value)`で重複業務値を消去 | #2593/#2387 |
+| PC-112 | 二部門に所属する同一人物 | distinct ID、集合の重なり | 部門別人数の和を全社Distinct人数とする | #2593/#1126 |
+| PC-113 | 時点Stockと期間Flow | 集計可能な軸と時点 | 二日分の残高を現在高とする | #2593/#2495 |
+| PC-114 | 中央値・分位数の再集計 | 原値/Sketch/誤差条件 | 局所中央値から全体中央値を確定 | #2593/#2544 |
+| PC-115 | 異通貨・異時点の数量 | Quantity Kind、Rate、丸め | Decimal値の一致を加算可能とする | #1705/#2593 |
+| PC-116 | 遅着・訂正を伴う時間窓 | 暫定/確定、retract、watermark | 旧集計を最終結果として保持 | #2582/#2593 |
+| PC-117 | 内部Read可・外部Disclosure不可 | Evidence accessと開示条件 | 内部閲覧資格を外部送信許可とする | #2516/#1178 |
+| PC-118 | 開示可能な要約に必要根拠なし | ClaimとConsumer sufficiency | 同じ結論文で根拠充足を宣言 | #2516/#2497 |
+| PC-119 | Rule/Grant変更、Source byte同じ | Current applicability、Authority | 過去の意味受理/開示資格を自動継承 | #2516/#2505 |
+| PC-120 | CUI成功・SHO/外部未観測 | 実Consumerごとのread/load | 一Consumerの表示成功を全Target適合とする | #2498/#2516 |
+
+**設計判断**：Value Fidelity、合法な再集計、Claimの成立、根拠アクセス、外部開示、Consumerへの実到達は異なる述語。これらを単一のPASS/LOSSLESSへ集約しない。新Measure Runtime、第二Authority/Registry、数学的な全域証明は前提にしない。
 
 ## 外部仕様の照合（2026-11-01読取り）
 
