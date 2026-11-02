@@ -638,7 +638,7 @@ QX-14〜20はSQLの構文・解析入力/版・演算構造と、DBの実効名�
 
 **前節との差**：§7.14では手組みのJSONで秘密の異なる二世界を比較した。今回はその実装隙間を小さくし、**mainの実`query.DeriveFromAnalysis`から生成された`DerivedIR`を、Goの`encoding/json`でシリアライズした出力**を対象にする。正式のDisclosure判断・SQL Worker・実Consumer公開を通した試験ではない。
 
-**独立[Draft PR #2618](https://github.com/hat47x/tei-platform/pull/2618)**：main `9c9ef4d160640908e06ad13afb6c2b45c664c748`起点、`internal/query/derived_qx20_visibility_characterization_test.go` **Goテスト1ファイル**。head更新版 `a54437c3da33b39ff12b919d6c92873f0eb35bdd`（要exact-head再確認）。`go fmt`形状修正コミット済み。PRはDraftのままで、Goテスト/Actionsはコミット後の実結果を確認するまでPASSと表記しない。
+**独立[Draft PR #2618](https://github.com/hat47x/tei-platform/pull/2618)**：main `9c9ef4d160640908e06ad13afb6c2b45c664c748`起点、`internal/query/derived_qx20_visibility_characterization_test.go` **Goテスト1ファイル**。head更新版 `a54437c3da33b39ff12b919d6c92873f0eb35bdd`（要exact-head再確認）。`go fmt`形状修正コミット済み。PRはDraftのまま。2026-11-02追検証で、head `a54437c3da33b39ff12b919d6c92873f0eb35bdd`を含むActions PR merge checkout `ce44843aa`のrepository-health [run 41419226291](https://github.com/hat47x/tei-platform/actions/runs/41419226291)、job `125190478489`について実ログでGo **1.26.10**、`gofmt -l . is empty`、`go vet ./...`、`go test -count=1 -timeout 60m ./...`、`tei/internal/query ok`、job successを確認。これは**PR merge refの全体Go suite PASS**であり、`TestQX20`名指定の単独実行や実Consumer/Disclosure受入を意味しない。
 
 | Go合成Case | 直接確認する境界 | この試験の保証外 |
 | --- | --- | --- |
@@ -655,7 +655,7 @@ QX-14〜20はSQLの構文・解析入力/版・演算構造と、DBの実効名�
 
 **次段の判別試験（M2案）**：同じ固定二世界を、`実SQL→Worker→Go DerivedIR`（Worker実体が入手できる場合）と`実Go DerivedIR→権限付きCLI/CUI→外部Consumerの実受信JSON`の2系統で比較。後者は`Consumer × Claim × Scope × Source/Policy Revision × Destination`ごとに、許可済み公開値・説明不足・公開禁止・実送信/不達を独立列にする。暗号化やハッシュ化だけではSourceの存在件数/秘密の同一性が漏れないことを証明できない。Mock Receiver/Canaryによる観測も検証証拠の再公開に注意する。
 
-**実証・採否**：本節記載時点、実Goテストファイルは独立Draftへ保存済み。**Go指定ツールチェーンによる実行結果/CI、SQLGlot Worker/実DB、正式CUI/SHO/AI Receiver、実Host Authority/OS egress、Owner受理は別々に未確認または未実施**。QX-20の10件Python局所試験からGo3件/本番開示へ自動的にPASSを繰り上げない。#1119 G0〜G4のBlocking条件は追加しない。
+**実証・採否**：本節記載時点、実Goテストファイルは独立Draftへ保存済み。**PR merge refのGo 1.26.10全体CIはrun 41419226291でPASS確認済み。ただしSQLGlot Worker/実DB、正式CUI/SHO/AI Receiver、実Host Authority/OS egress、Owner受理は未実施・未確認**。QX-20の10件Python局所試験からGo3件/本番開示へ自動的にPASSを繰り上げない。#1119 G0〜G4のBlocking条件は追加しない。
 
 
 ### 7.17 QX-22：Native SQLの構造説明と汎用Data Operator/DSLへの移行可能性を分離する（2026-11-02、SQLite限定10件実測）
