@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Isolated reference: explicit per-Function access map; no actual TEI/Provider access."""
 from dataclasses import dataclass
+import copy
 import json
 import unittest
 
@@ -205,6 +206,25 @@ class ExplicitAccessMapTests(unittest.TestCase):
         x = read_explicit(STANDARD, observed_complete={"lines": True})
         self.assertEqual(x["lines"]["completeness"], "complete")
         self.assertEqual(x["notes"]["completeness"], "unknown")
+
+    def test_18_hidden_fields_change_does_not_change_projection(self):
+        a = copy.deepcopy(DATA)
+        b = copy.deepcopy(DATA)
+        b["private_note"] = "other undisclosed value"
+        b["lines"][0]["notes"][0]["internal_flag"] = 999
+        self.assertEqual(read_explicit(STANDARD, root=a), read_explicit(STANDARD, root=b))
+
+    def test_19_unmapped_relation_change_does_not_change_projection(self):
+        a = copy.deepcopy(DATA)
+        b = copy.deepcopy(DATA)
+        b["payments"].append({"id": "P2", "value": 900})
+        self.assertEqual(read_explicit(STANDARD, root=a), read_explicit(STANDARD, root=b))
+
+    def test_20_selected_field_change_does_change_projection(self):
+        a = copy.deepcopy(DATA)
+        b = copy.deepcopy(DATA)
+        b["lines"][0]["amount"] = 101
+        self.assertNotEqual(read_explicit(STANDARD, root=a), read_explicit(STANDARD, root=b))
 
     def test_15_scope_not_inferred(self):
         bad = (Mapping("order", "Order", ("id",), "implicit"),)
