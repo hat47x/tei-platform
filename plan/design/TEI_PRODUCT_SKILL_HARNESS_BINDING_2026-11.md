@@ -73,7 +73,15 @@ Python標準ライブラリのみの`skills/yi-tei-modeling/verify_skill.py`と`
 | **TS-18** `tei validate ... | tee /tmp/...` | CLIはread-onlyでもShell出力をファイル化 | Pipeを含む例として拒否 |
 | **TS-19** `env TEI_ENV=1 tei artifacts -out ...` | 行頭が`env`なので検査対象から漏れる | 非先頭TEI呼出しとして拒否 |
 
-`tests/test_verify_skill.py`へ上記4負例を追加し、旧7件＋新4件で**11件の合成ケース候補**とした。Pythonの分離した`shlex`判別ロジックを**6入力**で実行し、想定した分類6/6を確認したが、これは保存済みの**11件`unittest`をそのまま走らせた証拠ではない**。その11件と実Checkout全体の`verify_skill.py`は**新exact-head CIによる確認前**とする。
+`tests/test_verify_skill.py`へ上記4負例を追加した後、別レーンで以下3件も追加され、旧7件＋7件で**14件の合成ケース候補**となった。Pythonの分離した`shlex`判別ロジックを**6入力**で実行し、想定した分類6/6を確認したが、これは保存済みの**14件`unittest`をそのまま走らせた証拠ではない**。その11件と実Checkout全体の`verify_skill.py`は**新exact-head CIによる確認前**とする。
+
+**TS-20〜22：文書中のCLI引数も正確な契約と照合する（追加のOwner受入候補）**：
+
+- **TS-20**：`tei validate`はread-onlyでも、未確認の`-out`フラグが付いていれば文書内のコマンドを検証済みとみなさない。
+- **TS-21**：`tei validate ... && echo accepted`のような追加プロセスを伴う例を一つのread-only CLI呼出しに正規化しない。
+- **TS-22**：Traceの`-scope`、`-direction`、`-mode`、`-offset`、`-limit`、外側Snapshot用`-expected-fingerprint`など既知の引数を持つ正例は誤拒否しない。
+
+これらに対応して、静的Checkerは**文書内CLI例に限った引数の小さな許可表**を持つ。これは第二のCLI/Capability Registryではなく、正本`cmd/tei`が変われば更新・点検が必要な**検証用の固定例**である。既存CLI実装から引数を自動抽出できたわけではなく、`commands`一覧が完全であるという推定もしない。新11→14件のGitHub保存版Python `unittest` と、実Checkout上での静的Checkerの正否は**新exact-head CI結果を確認するまで未確定**。先に報告した独立Shellの6分類PASSは、追加3件のCLI引数試験を証明しない。
 
 **非保証**：これはMarkdown内の限られた`sh/bash` fenced exampleに対する事故防止の静的点検であって、任意のShell構文の完全解析、実行時Sandbox、OS/RLS/Host Grant、Consumer向け開示判定ではない。例えばShell拡張や間接Commandを全種類形式的に排除する保証はない。外部AgentにこのCheckerのPASSだけをもって任意のCode実行権限を与えない。実作用は既存Host/OS、製品Ownerが定める。
 
@@ -89,12 +97,12 @@ Python標準ライブラリのみの`skills/yi-tei-modeling/verify_skill.py`と`
 
 初回S1を実行可能にするため、`.github/workflows/tei-product-skill-qualification.yml`を候補ブランチに追加した。**当該Workflowの実際のCI結果は対象HEADごとに別途観測する**。手順は次の通り。
 
-1. `python3 -m unittest discover -s skills/yi-tei-modeling/tests`で11件の静的チェッカーの正常/負例を実行し、同じcheckoutの`verify_skill.py`で文書・read-only Command Catalog一致を診断する。文書にある宣言が実CLI実行資格と一致することまでは保証しない。
+1. `python3 -m unittest discover -s skills/yi-tei-modeling/tests`で14件の静的チェッカーの正常/負例を実行し、同じcheckoutの`verify_skill.py`で文書・read-only Command Catalog一致を診断する。文書にある宣言が実CLI実行資格と一致することまでは保証しない。
 2. `go build -o "$RUNNER_TEMP/tei" ./cmd/tei`で**一つの実行物**を作る。`commands`、`model catalog`、`inspect semantic-data:sales.order`、`trace semantic-relation:sales.order.customer`、`validate -json`を同じ`reference/workspace`に対して順に実行する。JSONを読み取り、要求される`worldFingerprint`と`sourceIndexFingerprint`の一致を比較する。Outputはrunner一時領域だけに保存し、repo/元Sourceを変更しない。
 3. 実mainには統合済み[#2587](https://github.com/hat47x/tei-platform/pull/2587)の`operations/artifacts`入口もあるが、`commands`一覧の`selected-read-only-commands`には含まれない。この**非網羅カタログ**と実dispatch・実権限の違いは[Draft #2649](https://github.com/hat47x/tei-platform/pull/2649)がOwnerで、本初期Skillが新操作を宣伝したことにはしない。`artifacts -out`はローカル書込みなのでこのread-only Smokeへ混ぜない。
 4. 静的コマンド参照は**探索候補**であり、実ToolのPath/Argv/Source bytes/OS・Runtimeおよび実際にSkillがinstall/loadされ利用された事実と別。`commands`の一覧成功、CLI exit0、Validation Warning有りはOwnerの意味受理・実行許可・情報外部送出・外部Host効果の証拠ではない。
 
-**実施範囲を過大に主張しない**：S1aのCIが成功しても「単一checkout／単一CLIの選んだread-onlyコマンドと11件検査の成功」が確認できるだけ。並行変更のABA、Source move、検証範囲外のSubjectや全Plugin、Role/Operatorの実依存閉包、実Harnessからのload、現在Grantと開示先の適合、外部Consumer受領は未証明。Source relocationの実CLI証拠は別Ownerの[統合済み#2626](https://github.com/hat47x/tei-platform/pull/2626)を引用し同一Attemptへ合算しない。
+**実施範囲を過大に主張しない**：S1aのCIが成功しても「単一checkout／単一CLIの選んだread-onlyコマンドと14件検査の成功」が確認できるだけ。並行変更のABA、Source move、検証範囲外のSubjectや全Plugin、Role/Operatorの実依存閉包、実Harnessからのload、現在Grantと開示先の適合、外部Consumer受領は未証明。Source relocationの実CLI証拠は別Ownerの[統合済み#2626](https://github.com/hat47x/tei-platform/pull/2626)を引用し同一Attemptへ合算しない。
 
 **S2への新しい引渡し**：[#2638](https://github.com/hat47x/tei-platform/pull/2638)の合成Role/依存Providerのpin識別（RB-20〜24）と[#2639](https://github.com/hat47x/tei-platform/pull/2639)の実Go Language Pluginは、Skillが実在Toolとして何を説明できるかの**上流証拠候補**。Role解釈・Language/Operator版・Source Reader・Tool Discovery・実CLI/Capability・Skill Load・Consumer Disclosure・Host Grantは独立資格。TAI [#271](https://github.com/hat47x/tai-pleroma/issues/271)のH2/H3/異Harness比較は、同じ実行物・入力/Expected・現在資格で行い、結果値が等しいことから外部受信安全を推定しない。
 
@@ -139,4 +147,4 @@ Python標準ライブラリのみの`skills/yi-tei-modeling/verify_skill.py`と`
 | 独立Product SkillはTAIを追加しなくても有用 | TEI単体でH3を成立させ、H5との差分を見る | 横断Skillで説明し、不要な重複配布を避ける |
 | 複数Harness間で手順を移植できる | H6でTool/Capability/Host差を説明できるか | 必要箇所だけHarness Adapterを加える |
 
-**実証状態**：本計画と試作Skillは採用前の設計・検証候補。元7件の合成Python試験について別実行を報告している一方、S0c追加後の11件・実Checkout全体checker・S1実CLIの現HEAD CIは確認前。TS-01〜19の実製品・実Harness受入、S2/S3・H0〜H6の比較は行っていない。OwnerによるProduct Skill正式採用、実CLI/実Host/別Harness・実OS情報境界の受入は今後。
+**実証状態**：本計画と試作Skillは採用前の設計・検証候補。元7件の合成Python試験について別実行を報告している一方、S0c追加後の14件・実Checkout全体checker・S1実CLIの現HEAD CIは確認前。TS-01〜22の実製品・実Harness受入、S2/S3・H0〜H6の比較は行っていない。OwnerによるProduct Skill正式採用、実CLI/実Host/別Harness・実OS情報境界の受入は今後。
