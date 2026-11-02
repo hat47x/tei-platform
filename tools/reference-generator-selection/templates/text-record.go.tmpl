@@ -59,6 +59,15 @@ func main() {
 		}
 		record["{{.Name}}"] = number
 	}
+	{{- else if eq .Primitive "std.boolean" }}
+	if value, ok := in["{{.Input}}"]; ok && value != nil {
+		flag, ok := value.(bool)
+		if !ok {
+			emit(output{State: "error"})
+			os.Exit(2)
+		}
+		record["{{.Name}}"] = flag
+	}
 	{{- else }}
 	if value, ok := in["{{.Input}}"]; ok && value != nil {
 		text, ok := value.(string)
@@ -100,6 +109,17 @@ func main() {
 		os.Exit(2)
 	} else {
 		record["{{.Name}}"] = number
+	}
+	{{- else if eq .Primitive "std.boolean" }}
+	if value, ok := in["{{.Input}}"]; !ok {
+		missing = append(missing, "{{.Name}}")
+	} else if value == nil {
+		unresolved = true
+	} else if flag, ok := value.(bool); !ok {
+		emit(output{State: "error"})
+		os.Exit(2)
+	} else {
+		record["{{.Name}}"] = flag
 	}
 	{{- else }}
 	if value, ok := in["{{.Input}}"]; !ok {
