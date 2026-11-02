@@ -15,7 +15,11 @@ func viewWorld() ir.World {
 			{
 				ID: "sales",
 				Capabilities: []semantic.Capability{
-					{ID: "sales.confirm_order", Symbol: "confirm_order"},
+					{ID: "sales.confirm_order", Symbol: "confirm_order",
+						Inputs:   []semantic.Parameter{{Name: "order_id", Type: "std.identifier"}},
+						Outcomes: []semantic.Outcome{{Name: "confirmed", Payload: "sales.order_confirmed"}},
+						Effect:   &semantic.DataEffect{Kind: semantic.DataEffectUpdate, Data: "sales.order"},
+					},
 				},
 				Data: []semantic.Data{{
 					ID: "sales.order",
@@ -175,5 +179,15 @@ func TestBuildCarriesCommands(t *testing.T) {
 	}
 	if len(view.Commands) != 1 || view.Commands[0].Capability != "sales.confirm_order" || view.Commands[0].Label != "confirm_order" {
 		t.Fatalf("commands=%+v", view.Commands)
+	}
+	command := view.Commands[0]
+	if len(command.Inputs) != 1 || command.Inputs[0].Name != "order_id" || command.Inputs[0].Type != "std.identifier" {
+		t.Fatalf("inputs=%+v", command.Inputs)
+	}
+	if len(command.Outcomes) != 1 || command.Outcomes[0].Name != "confirmed" || command.Outcomes[0].Payload != "sales.order_confirmed" {
+		t.Fatalf("outcomes=%+v", command.Outcomes)
+	}
+	if command.Effect == nil || command.Effect.Kind != "update" || command.Effect.Data != "sales.order" {
+		t.Fatalf("effect=%+v", command.Effect)
 	}
 }

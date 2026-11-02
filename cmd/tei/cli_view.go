@@ -160,6 +160,29 @@ func writeViewText(out io.Writer, view applicationview.View) (int, error) {
 			if _, err := fmt.Fprintf(out, "  - %s (%s)\n", command.Label, command.Capability); err != nil {
 				return 2, err
 			}
+			if len(command.Inputs) > 0 {
+				inputs := make([]string, 0, len(command.Inputs))
+				for _, input := range command.Inputs {
+					inputs = append(inputs, fmt.Sprintf("%s (%s)", input.Name, input.Type))
+				}
+				if _, err := fmt.Fprintf(out, "      入力: %s\n", strings.Join(inputs, ", ")); err != nil {
+					return 2, err
+				}
+			}
+			if len(command.Outcomes) > 0 {
+				outcomes := make([]string, 0, len(command.Outcomes))
+				for _, outcome := range command.Outcomes {
+					outcomes = append(outcomes, fmt.Sprintf("%s → %s", outcome.Name, outcome.Payload))
+				}
+				if _, err := fmt.Fprintf(out, "      結末: %s\n", strings.Join(outcomes, ", ")); err != nil {
+					return 2, err
+				}
+			}
+			if command.Effect != nil {
+				if _, err := fmt.Fprintf(out, "      効果: %s %s\n", command.Effect.Kind, command.Effect.Data); err != nil {
+					return 2, err
+				}
+			}
 		}
 	}
 	return 0, nil

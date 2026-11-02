@@ -29,6 +29,27 @@ type View struct {
 type Command struct {
 	Capability core.CanonicalID `json:"capability"`
 	Label      string           `json:"label,omitempty"`
+	Inputs     []CommandInput   `json:"inputs,omitempty"`
+	Outcomes   []CommandOutcome `json:"outcomes,omitempty"`
+	Effect     *CommandEffect   `json:"effect,omitempty"`
+}
+
+// CommandInputは、Commandが要求する入力を解決した結果である。
+type CommandInput struct {
+	Name string           `json:"name"`
+	Type core.CanonicalID `json:"type"`
+}
+
+// CommandOutcomeは、Commandの正常終了で得られる業務上の結末である。
+type CommandOutcome struct {
+	Name    string           `json:"name"`
+	Payload core.CanonicalID `json:"payload"`
+}
+
+// CommandEffectは、Commandが意図するデータ効果である。実行の許可ではない。
+type CommandEffect struct {
+	Kind string           `json:"kind"`
+	Data core.CanonicalID `json:"data"`
 }
 
 // Itemは、対話に現れる項目と、その型・表示名・入力部品・意味の役割・参照先を表す。
@@ -76,7 +97,7 @@ func Build(world ir.World, applicationID, patternID core.CanonicalID) (View, err
 	dataAttributes := map[core.CanonicalID]map[core.CanonicalID]semantic.Attribute{}
 	relations := map[core.CanonicalID]semantic.Relation{}
 	typeValues := map[core.CanonicalID][]string{}
-	capabilities := map[core.CanonicalID]string{}
+	capabilities := map[core.CanonicalID]semantic.Capability{}
 	for _, candidate := range world.Applications {
 		for _, pattern := range candidate.Patterns {
 			if _, exists := patterns[pattern.ID]; !exists {
@@ -91,11 +112,7 @@ func Build(world ir.World, applicationID, patternID core.CanonicalID) (View, err
 			}
 		}
 		for _, capability := range namespace.Capabilities {
-			label := capability.Symbol
-			if label == "" {
-				label = string(capability.ID)
-			}
-			capabilities[capability.ID] = label
+			capabilities[capability.ID] = capability
 		}
 		for _, data := range namespace.Data {
 			attributes := map[core.CanonicalID]semantic.Attribute{}
@@ -191,11 +208,25 @@ func Build(world ir.World, applicationID, patternID core.CanonicalID) (View, err
 		})
 	}
 	for _, command := range pattern.Interaction.Commands {
-		label, ok := capabilities[command.Capability]
+		capability, ok := capabilities[command.Capability]
 		if !ok {
 			return View{}, fmt.Errorf("interaction command %sはcapabilityではありません", command.Capability)
 		}
-		view.Commands = append(view.Commands, Command{Capability: command.Capability, Label: label})
+		label := capability.Symbol
+		if label == "" {
+			label = string(capability.ID)
+		}
+		resolved := Command{Capability: command.Capability, Label: label}
+		for _, input := range capability.Inputs {
+			resolved.Inputs = append(resolved.Inputs, CommandInput{Name: string(input.Name), Type: input.Type})
+		}
+		for _, outcome := range capability.Outcomes {
+			resolved.Outcomes = append(resolved.Outcomes, CommandOutcome{Name: string(outcome.Name), Payload: outcome.Payload})
+		}
+		if capability.Effect != nil {
+			resolved.Effect = &CommandEffect{Kind: string(capability.Effect.Kind), Data: capability.Effect.Data}
+		}
+		view.Commands = append(view.Commands, resolved)
 	}
 	return view, nil
 }
