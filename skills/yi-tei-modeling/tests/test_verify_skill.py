@@ -80,6 +80,30 @@ go run ./cmd/tei model catalog -workspace reference/workspace
         self.put(str(p.relative_to(self.root)), p.read_text() + "\n```sh\ngo run ./cmd/tei database-migrate -apply\n```\n")
         self.has_error("unverified/read-write TEI example")
 
+    def test_chained_tei_write_cannot_hide_after_read_only_command(self) -> None:
+        p = self.root / "skills/yi-tei-modeling/references/read-only-model-investigation.md"
+        self.put(str(p.relative_to(self.root)), p.read_text() +
+                 "\n```sh\ngo run ./cmd/tei validate -json;go run ./cmd/tei artifacts -out /tmp/out\n```\n")
+        self.has_error("composite TEI shell example")
+
+    def test_shell_and_operator_cannot_hide_write_command(self) -> None:
+        p = self.root / "skills/yi-tei-modeling/references/read-only-model-investigation.md"
+        self.put(str(p.relative_to(self.root)), p.read_text() +
+                 "\n```sh\ntei validate -json && tei artifacts -out /tmp/out\n```\n")
+        self.has_error("composite TEI shell example")
+
+    def test_pipe_from_tei_is_not_automatically_qualified_read_only(self) -> None:
+        p = self.root / "skills/yi-tei-modeling/references/read-only-model-investigation.md"
+        self.put(str(p.relative_to(self.root)), p.read_text() +
+                 "\n```sh\ntei validate -json | tee /tmp/validate.json\n```\n")
+        self.has_error("composite TEI shell example")
+
+    def test_wrapped_tei_invocation_is_not_silently_ignored(self) -> None:
+        p = self.root / "skills/yi-tei-modeling/references/read-only-model-investigation.md"
+        self.put(str(p.relative_to(self.root)), p.read_text() +
+                 "\n```sh\nenv TEI_ENV=1 tei artifacts -out /tmp/out\n```\n")
+        self.has_error("unverified TEI invocation context")
+
     def test_trace_token_roles_are_required(self) -> None:
         p = self.root / "skills/yi-tei-modeling/references/read-only-model-investigation.md"
         self.put(str(p.relative_to(self.root)), p.read_text().replace("result.trace.snapshotFingerprint", "missing"))
