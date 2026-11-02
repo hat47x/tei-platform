@@ -8,6 +8,7 @@
 node reference/org-semantic-views/verify.mjs
 node --test reference/org-semantic-views/verify-change.mjs
 node --test reference/org-semantic-views/verify-handoff.mjs
+node --test reference/org-semantic-views/verify-projection.mjs
 ```
 
 The file is a dependency-free JavaScript module: it computes an in-memory reference and throws on the first unexpected observation. A successful run emits a JSON summary. No DB is created and no files, services, accounts, or business records are changed.
@@ -80,6 +81,27 @@ Evidence used in the checks: Function Instance I1, parent Anchor D2, selection e
 **Recorded test evidence:** An isolated local Node **v22.16.0** process executed `node --test verify-handoff.mjs` with **16/16 PASS, 0 failures, exit 0**. The tested file was 5,954 UTF-8 bytes with SHA-256 `afbc6a7c4cf88c32d327739daaae45e065d3aadc5f3f5f171e3f8b57c698c7a9` and Git object hash `3cce96596672a3581214d1e0ffab3dc9d5f29f4b`; GitHub readback returned **the exact same Git blob SHA**. This establishes equality of the tested and committed source, but **not TEI product E2E**.
 
 Cross-owner integration: [#2598](https://github.com/hat47x/tei-platform/issues/2598) owns candidate-to-actual-Request evidence, [#2597](https://github.com/hat47x/tei-platform/issues/2597) owns Function Editing Session/Save Intent and partial-success semantics, [#2586](https://github.com/hat47x/tei-platform/issues/2586) owns the Query→Context→Claim→Pattern→Intent same-version vertical test; [#1174](https://github.com/hat47x/tei-platform/issues/1174) owns actual Effect/Receipt, and [#1124](https://github.com/hat47x/tei-platform/issues/1124) owns Modeler Source edits. A future adapter should consume the existing contracts rather than reimplement this synthetic comparator as a new product engine.
+
+## Fourth reference: multiple semantic presentations from one source
+
+The file `verify-projection.mjs` reuses a **single in-memory synthetic Organization source revision** (`org-synthetic-r7`) and creates **four read-only presentations**—Table, Graph, department-member Tree/forest and Chart—plus a time-sensitive Position Occupancy lookup. The tests use explicitly authored synthetic assumptions, **not** a TEI model loader, a compiled DSL, or a working UI renderer.
+
+The **same Person P2** appears in two Table rows and two Tree leaves, while Graph has one P2 Person node and two *different* Membership edges A2/A3. The different occurrences never create additional Person identities.
+
+| Presentation | Meaning preserved | Information that is hidden / cannot be inferred |
+| --- | --- | --- |
+| Table | Membership occurrence ID, Person, department, direct provenance | Display row ID is not the business key |
+| Graph | Person/OrgUnit subject IDs, Membership occurrence ID and relation role | A line does not prove a business Rule or action Authority |
+| Tree with all occurrences | Parent department and one view occurrence per membership | Counting Person leaves across departments is not distinct Person count |
+| Collapsed Tree (single displayed parent) | Visible paths and **explicit hidden A3** diagnostic | Hiding a second parent is **lossy and read-only**; cannot write the resulting Tree back as complete organization data |
+| Chart | Per-dept Membership count / Person distinct / explicit FTE allocation and edge provenance; global Person distinct | An aggregate group is not a directly editable source Relation |
+| Occupancy lookup | Position M1 has P2 before July 1 and P3 starting July 1 | Occupying M1 does **not** create a direct Membership(P3,D1) |
+
+**Evidence**: On 2026-11-02 the exact GitHub-readback file was evaluated in a V8 isolate using narrowly compatible `node:test` and `node:assert` shims; **13/13 local assertions PASS** (file Git blob `db7c05f18bf552f9cd91866aa16503d3b17e0726`). This is **not an actual Node CLI, TEI Go, Parser, Function Pattern, UI, Web, Host or Provider execution**. For the exact Node run, CI and built product Evidence, use the subsequent integration stage; do not promote this local result.
+
+**One deliberate limit:** Table/Graph/Tree/Chart functions are locally implemented consumers of a hard-coded synthetic fixture. The reference demonstrates *possible* semantics-preserving view data and detection of one lossy projection; it **does not prove that TEI's generic Data/Relation definitions already cause such views to be derived automatically**. This remains the work of [#1127](https://github.com/hat47x/tei-platform/issues/1127)/[#2507](https://github.com/hat47x/tei-platform/issues/2507), with fidelity owned by [#2497](https://github.com/hat47x/tei-platform/issues/2497).
+
+**Connection to current code, not a second implementation plan:** [Draft #2587](https://github.com/hat47x/tei-platform/pull/2587) contains `internal/operations/surface.go`, whose standard `OperationSurface` lists single-Data `list/read/create/update` operations and declared Capability binding; this does **not yet prove a built-in Relation-occurrence `unlink` operation, or Tree/Graph/Chart generation**. A3 selection is only `select-relation` in this reference. Translating that selection to a business write still requires an explicitly accepted Relation Action/Capability/Host binding under [#2500](https://github.com/hat47x/tei-platform/issues/2500)/[#2598](https://github.com/hat47x/tei-platform/issues/2598), with real effects checked by [#1174](https://github.com/hat47x/tei-platform/issues/1174).
 
 ## Owner boundaries and integration
 
