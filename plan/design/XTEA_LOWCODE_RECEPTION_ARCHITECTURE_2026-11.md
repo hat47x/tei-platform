@@ -580,6 +580,8 @@ X-TEAの実装では、税額は税率表の開始日と税区分で選び、正
 
 **撤回条件.** 帳票の表現力が不足し、案件ごとにテンプレートを正本へ戻す必要が出た場合は、テンプレートを「派生成果物の入力」として明示し、正本との対応を強める（レイアウトを意味へ戻さない）。
 
+**PoCでの実装.** header-detailの解決結果から、A4の印刷用HTML（見出し表と明細5行の繰返し）を出します（`view -format print`、[#2521](https://github.com/hat47x/tei-platform/pull/2521)）。集計・改ページ・テンプレート版の記録は未実装です。
+
 **未解決.**
 
 - 帳票テンプレートの形式（宣言的DSLか、既存の帳票エンジンか）。
@@ -913,6 +915,7 @@ PoC #2521が実装した範囲と、まだ実装していない範囲を分け�
 | 値域（D3.1） | 実装済み（Typeの`values`） |
 | 対話ビュー（項目の型・表示名・入力部品・参照先の解決） | 実装済み（`internal/applicationview`、CLI `view`） |
 | 画面HTMLの投影 | 実装済み（`view -format html`） |
+| 印刷用の用紙面投影 | 実装済み（`view -format print`、A4、明細5行） |
 | header-detailの見出し・明細ビュー | 実装済み（Relationのsourceをheader、targetを明細として解決） |
 | 対話からのCommand起動（宣言・契約解決） | 実装済み（`interaction`の`command`、入力・結末・効果の解決。実行は未実装） |
 | Package（宣言・読込・検証・版束縛・ビュー表示） | 実装済み（衝突は明示エラー、取り外し時のfingerprint比較は未実装） |
@@ -920,6 +923,7 @@ PoC #2521が実装した範囲と、まだ実装していない範囲を分け�
 | `reference/workspace`への宣言追加 | 未実施（受理経路が必要） |
 
 実装は、`internal/application/model.go`、`internal/syntax/application_pattern.go`、`internal/validation/application_pattern.go`、`internal/crossview/pattern_requirements.go`、`internal/applicationview`、`internal/semantic/model.go`、`internal/syntax/parser.go`、`internal/validation/validation.go`と、それぞれの試験です。
+
 
 
 
