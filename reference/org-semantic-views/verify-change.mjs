@@ -3,25 +3,18 @@
  * Run: node --test reference/org-semantic-views/verify-change.mjs
  * No TEI adapter, database, production Rule, authorization or actual refresh.
  */
+import { fixture, baselineMemberships } from './source-fixture.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
 const seed = {
-  people: ['P1', 'P2', 'P3'],
-  departments: { D1: 'Alpha', D2: 'Beta' },
-  versions: [
-    { id: 'A1', person: 'P1', dept: 'D1', validFrom: '2027-01-01', validTo: null, knownFrom: '2027-04-01', knownTo: null },
-    { id: 'A2', person: 'P2', dept: 'D1', validFrom: '2027-01-01', validTo: null, knownFrom: '2027-04-01', knownTo: '2027-07-02' },
-    { id: 'A2', person: 'P2', dept: 'D1', validFrom: '2027-01-01', validTo: '2027-06-01', knownFrom: '2027-07-02', knownTo: null },
-    { id: 'A3', person: 'P2', dept: 'D2', validFrom: '2027-01-01', validTo: null, knownFrom: '2027-04-01', knownTo: null },
-    { id: 'A4', person: 'P3', dept: 'D2', validFrom: '2027-01-01', validTo: null, knownFrom: '2027-04-01', knownTo: null },
-  ],
-  fteBasisPoints: { A1: 100, A2: 60, A3: 40, A4: 100 },
-  occupancy: [
-    { id: 'O1', person: 'P2', position: 'M1', from: '2027-04-01', to: '2027-07-01' },
-    { id: 'O2', person: 'P3', position: 'M1', from: '2027-07-01', to: null },
-  ],
+  people: fixture.persons,
+  departments: Object.fromEntries(fixture.departments.map(d => [d.id, d.label])),
+  versions: fixture.membershipVersions,
+  fteBasisPoints: Object.fromEntries(fixture.allocations.map(a => [a.relation, a.basisPoints])),
+  occupancy: fixture.occupancy,
 };
+
 const within = (point, from, to) => from <= point && (to === null || point < to);
 const relationsAt = (s, validAt, knownAt) => s.versions.filter(x =>
   within(validAt, x.validFrom, x.validTo) && within(knownAt, x.knownFrom, x.knownTo));
