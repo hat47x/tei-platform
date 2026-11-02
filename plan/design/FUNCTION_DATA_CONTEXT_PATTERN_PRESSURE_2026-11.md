@@ -183,3 +183,71 @@ S0の探索やS1の比較は、各専門分野について並行してよい。�
 - [OGC SensorThings API](https://www.ogc.org/standards/sensorthings/)：Thing/Location/Datastream/Observationと観測・指示の区別。
 - [QUDT](https://data.qudt.org/)：Quantity Kind、Unit、Dimension Vector。量の意味と数値表現の分離。
 - [Apache Arrow Columnar Format](https://arrow.apache.org/docs/format/Columnar.html)：List/Struct/Map/Union等の物理表現とApplication意味の差。
+
+
+## 13. 複数Data Contextの反応的な連動（2026-11-02：独立Issue #2582）
+
+### 13.1 なぜ別の検証が必要か
+
+Data Contextが複数のResult SliceとGrainを正しく保持しても、**変更が発生したとき、どのClaimを現在の値として扱えるか**は別途判断が必要である。親の選択変更、関係先の更新、Query/Rule改版、外部通知、業務操作のACK消失が同じ「再表示」イベントに見えるUIは、過剰な再計算と、誤った現在値・誤更新を同時に発生させ得る。
+
+既存の#1706（集合同一性・入力完全性）と#1708（複数読取りの整合）は参照検証を扱い、#1641（導出値・キャッシュ・確定保存値）は鮮度の意味を所有する。#2387のRelationalIR/Query演算依存、#2506のResult Slice、#2500のViewChange→操作候補、#1174の実Effectと独立観測を参照し、**実行時の横断受渡しだけ**を新しい#2582で検証する。
+
+### 13.2 Claim相対の依存と再評価条件
+
+同じData Context内でもClaimごとに必要な入力・時点・意味・操作資格が異なるため、取得完了/有効/無効の一個の共有bitへ畳み込まない。
+
+| 対象Claim | 必要な入力 | D2のみ変更時の判断例 |
+| --- | --- | --- |
+| 明細D1の単独合計 | D1の必要Scope・完全集合性、Rule版、演算単位 | D1の依存が確実に独立していれば維持可能 |
+| D1×D2のJOIN由来集計 | D1とD2のRelation/Query演算、各Snapshot/Predicate/Scope | D2変更の影響を受け得るため再評価 |
+| D2の未一致（LEFT JOIN） | D2全件の十分な観測、JOIN条件、時点 | 新しい一致行により旧未一致行が消え得る |
+| D2が空であるというClaim | 対象Scopeに対する必要な否定条件・完全性 | 一件の取得や部分結果0件では確定不可 |
+| 保存済み確定金額 | 業務確定Actionの歴史的Result・保存値と版 | 現在の元明細計算から自動上書きしない |
+
+影響判定の入力となるのは、**Read Dependencies（対象と必要入力）**、**Change Trigger（何が変わったと実際に分かるか）**、**Current Binding（選択・版・取得Scope・時点）**である。結果は「根拠付き維持」「再確認が必要」「影響判定未確定」のような用途相対の診断候補とし、新しい固定Core enumにはしない。
+
+### 13.3 更新通知は差分の意味に依存する
+
+結果集合の更新は一般に追加だけではない。特に非単調な演算（LEFT JOINの未一致、NOT EXISTS、Top-N、集計、削除を伴う変更）では、後から届いた入力が以前の行を**撤回または置換**し得る。
+
+- **単純再取得を初期の安全な基準**とする。既存Query/ProviderとCUIで比較し、正しい結果の同一性を独立Oracleで確認する。
+- **局所再評価**は既存の演算依存が解決し、必要な入力が適切な版/範囲で揃う場合に限り比較する。
+- **Provider差分購読・増分更新**は専門Pluginが実際に提供するEffect/Change Stream/Changelog契約へ接続する。全DB/外部APIがCDCや強い整合性を持つことは前提としない。
+- **依存が不明な場合**は「無影響」と確定せず、再取得または未確認として扱う。無関係なD1を一律に捨てる過剰無効化と、依存するJOINの旧値を維持する過少無効化を対照する。
+- **送信と確定の分離**：UIの楽観的な表示、Action送信、Provider到達、Commit Receipt、独立readと現在値は異なる観測。ACK消失でEffectが不明なら、表示の再取得で数値が一致しても当該Requestによる効果を証明したと主張しない。古い送信を無条件に再試行しない。
+
+### 13.4 合成Headless受入の追加（#2582 RC-01〜09）
+
+既存FC-01（H→D1 2行、D2 3行）を再利用し、以下の変更のみを投入する。
+
+- **RC-01**：D2変更でD1単独集計は保持できる条件を示す一方、D1×D2のClaimは再評価する。
+- **RC-02**：Query/IRのOpaque依存がある場合に、未知経路を「無影響」と誤診断しない。
+- **RC-03**：同じFunction DefinitionのWindow A/Bは異なるInstance/epochを持ち、片方の親切替と遅延応答が他方へ誤作用しない。
+- **RC-04/05**：LEFT JOIN仮NULLの撤回、NOT EXISTSの消失、集計の更新で、insert-only適用の誤りを検出する。
+- **RC-06**：ACK消失・業務結果不明と、再取得された現在値の因果帰属を分離する。
+- **RC-07**：Ruleの変更、説明・Rendererのみの変更、歴史的確定保存値を別々の再評価範囲とする。
+- **RC-08/09**：別ProviderのSnapshot保証不在、stream後着訂正・Window結果変更を、許される範囲だけで表示する。
+
+結果の診断は、**表示できる／選択できる／Operation Intent候補を作れる／実Hostで実行可能／業務完了を主張可能**という#2507の用途相対条件へ引き渡す。Renderer、AI CUI、SHOへの投影は同じ依存根拠を参照し、Consumerごとの第二正本を作らない。
+
+### 13.5 外部実装との比較（参照資料）
+
+- [Query keyと依存変数](https://tanstack.com/query/latest/docs/framework/react/guides/query-keys)、[変更後の無効化](https://tanstack.com/query/latest/docs/framework/react/guides/invalidations-from-mutations)：Queryパラメータの同一性、選択的な失効と再取得の分離を比較する。
+- [増分化されたDataflowの更新](https://materialize.com/docs/fundamentals/concepts/arrangements/)：結果を(data,time,diff)の多重集合変更として捉え、追加・削除の両方を扱う設計の参考。
+- [Dynamic Table Changelog](https://nightlies.apache.org/flink/flink-docs-release-2.3/docs/learn-flink/table_api/)：INSERT/DELETE/UPDATE_BEFORE/UPDATE_AFTERと集計の撤回・置換を扱う参考。
+
+いずれも外部実装の公開資料に基づく比較であり、TEIが同等の変更ストリーム処理・Incremental View Maintenance Engine・実行時整合保証を備えることの証明ではない。比較から抽出したTEI側要件だけを採用判断候補とする。
+
+## 14. 2026-11-02関連作業との接合と実証範囲
+
+| 既存作業 | 今回再利用する成果 | 境界 |
+| --- | --- | --- |
+| #1706（closed） | 集合の粒度、重複、完全集合・NULLの参照試験 | 製品のFunction Context実装・実Providerを保証しない |
+| #2500／Draft #2517 | 合成ViewChange→型付きOperation Intent候補の局所Go 12試験 | 正式Accepted Action、Go 1.26製品結合、実Commit未確認 |
+| #2387／Draft #2577 | Query演算依存、実Go DeriveFromAnalysisへの合成入力テスト候補 | 実SQL Worker、同版Schema/SQL/Provider入力・業務対象の帰属未確認 |
+| #2495/#2497/#2544 | 多重Facet・保存写像・演算と法則の適合 | 概念適合をTarget上の計算正しさへ昇格させない |
+| #2493／Draft #2492 | 異質なDomain Pressure、AI-first→Headless→GUIの開発順序 | 既存Source/Acceptance/Gateを維持し、Domain別巨大Engineを前提にしない |
+| #2516 | CUI/SHO/外部Consumerへの用途相対のProjection | すべてのConsumerに全Raw/機密情報を送出しない |
+
+標準Plugin開発者が毎回メタ概念の分類やLawを手作業で列挙する必要がないことを目指し、既存Semantic Data/Relation/Ruleから利用可能な意味的性質を読み取る。組織管理などの通常DataへのアクセスはTEI内の一般的なData利用のままとし、特定保護情報の例外・外部送出・実Host Authorityの検証は既存の該当境界へ委譲する。
