@@ -749,6 +749,40 @@ SQLの`WHERE`、LINQ風filter、階層TreeのNode選別、GraphのVertex/Edge Tr
 **状態**：Python/SQLite合成 **9/9局所PASS**まで。正式SQL Worker、Go Query、実DB Provider／RDB＋非RDB比較、DSL desugar、SHO/Studio/外部AI、Ownerによる意味受理は**NOT RUN**。同じSQLの静的Explain／ImportによるSource候補／SQL結果への後続Operator適用の三経路（§7.17）を区別する。
 
 
+### 7.19 QX-24：Function Data Contextの明示Scopeと、Provider Pushdown／局所Data Operator実行の分割が意味を保存する条件（2026-11-02、独立SQLite＋Python 12件）
+
+**横断方針との接続**：[Everything is Data #2620](https://github.com/hat47x/tei-platform/issues/2620)、[Data Operations #2622](https://github.com/hat47x/tei-platform/issues/2622)、[Function Context #2506](https://github.com/hat47x/tei-platform/issues/2506)、[Functionの明示Access Mapping Draft #2624](https://github.com/hat47x/tei-platform/pull/2624)、[Query→Context→Claim #2586](https://github.com/hat47x/tei-platform/issues/2586)から、通常の取得は**Data Model上のRelationを参照しつつ、Function Data Contextが使用するRelation path・Field・Scope・Grainを明示Mappingし、Providerを選ぶ**という方向を採る。SQL Nativeは特殊な必要性がある場合の明示Sourceであり、SQL構造Explainはその説明、標準Data Operatorは取得結果への意味付き演算という別責務。ModelにRelationが存在するだけで関連行を自動的に全取得することは意味しない。
+
+QX-23はSQL内のOperatorの同義性／Mutant感度を試した。**QX-24の新差分は、同じ明示Operator列を「Providerで実行する部分」と「取得済みResult Slice上で実行する部分」に分割したとき、どの条件で同じClaimを成立させられるか**。SQLとプレーンデータの演算値が同じでも、実際に物理的に読んだデータ範囲／Consumerへの開示資格は別。すべてのOperatorをProviderへ押し下げることを要求する設計でも、すべてを局所実行にする設計でもない。
+
+**限定実測の根拠**：[test_qx24_operator_split.py](https://github.com/hat47x/tei-platform/blob/work/query-structural-fixture-design-20261030/plan/fixtures/query-workbench-f0/test_qx24_operator_split.py)、Python **3.13.5**、SQLite **3.46.1**、標準ライブラリ`sqlite3/unittest/json`。ローカル`python3 -m unittest -v /mnt/data/test_qx24_operator_split.py`で **12/12 PASS**、`python3 -m py_compile` PASS、実行したUTF-8ファイルとGitHub保存blobのGit SHA-1 **`172da5ed0f4e91aca718b276ade30c5aab6d337e`**が一致（8636 bytes、SHA-256 `f516bbae26d6c8ace8bd9cb896c4af56951c549a9cf4b875a638b5c66c1b1ce1`）。SQL側は隔離SQLiteを本当に実行し、対照は手書きPython List/JSON計算。ただしPythonの参照計算は**TEIのData Operator実装でも、非RDB Provider実行でもない**。
+
+| Case | 固定した観測結果（合成） | Provider／Context／Claimの必要条件 |
+| --- | --- | --- |
+| **QX24-01** 正常Pushdown/Local | Fullかつ同じauthorized Scopeの入力から、NULL除外＋Filter＋安定Sort/Top2は同じ`A2,A4` | Row Scope、Null Truth、Order/Stable Tie、完全な対象候補、同じSnapshotの仮定を保持すれば局所処理候補として適合 |
+| **QX24-02** Scope→TopとTop→Scope | Scope後Top2 `A1,A2`、Top後Scopeは`A1`だけ | 任意`LIMIT`の前にScope条件が意味上適用されること。後段Filterが同じ対象を復元すると推測しない |
+| **QX24-03** 公開値一致と実Read範囲 | SQLで`tenant=A`を絞った結果と、全A/BをSQLで取得後に局所的にAへ絞った結果は同じ | **値の等価性≠物理Read範囲／Least Privilege／送信許可の等価性**。これはDB Auth/RLSの実証ではなく、両SQLの取得行範囲差の有限観測 |
+| **QX24-04** Partial page→Filter | `tenant=A`の先頭2件を読んでFilterした結果は`A2`、全候補からのTop2は`A2,A4` | `Partial`の後段Filter結果をGlobal Top-NのcompleteとしてClaimしない。追加ページを読んで必要な順位範囲の被覆を証明する方式は別途適合候補 |
+| **QX24-05/06** Child Collection部分取得 | `A1`子先頭2件合計200だが実全3件合計250。`A2`はページに不在でも実子`C4`が存在 | 正例の存在Witnessと、Sum/不存在の完全性をClaimごとに判定。Providerの未取得集合とSQL NULLを区別 |
+| **QX24-07** Page別平均 | 有効値10,20,50。page平均15と50の単純平均は32.5、全集合AVGは26.666…、sum+countの再合成なら一致 | Measure #2593の再集計則。Page境界の`AVG`値だけでは全集合`AVG`へ合成不可 |
+| **QX24-08** 可視Scope集計 | AのSUM=80、世界全体のSUM=1380 | Result Sliceの`Scope`はMeasure Claimの意味の一部。全体SUMをAの可視SUMへラベルだけ付け替えない |
+| **QX24-09** Document Presence | JSONの空children配列／`null`／キー欠落／子1件をSQLite JSON1 `json_type`で区別 | Record/Document providerのMissing/Null/Empty、Property Access、Flattenの演算契約をSQL NULLや未取得へ一括同値化しない |
+| **QX24-10** Path Occurrence | 親A1が1件でも子配列Occurrenceは2件 | Graph/Tree等のPath/Edge occurrenceとEntity Identity、表示行Grainを区別 |
+| **QX24-11** 観測値と現在再利用資格 | SUM=80が同じでもSource revisionが別、Complete属性が別 | QX-21のRevision/Snapshot/Completenessを現在のClaim再利用と混同しない |
+| **QX24-12** 条件付き正常JOIN | 一意キー・同じLine/Name集合では局所join結果とSQLite SQL JOINが一致 | 正例のProvider分割は可能。ただしJoin Key/Occurrence/重複/NULL・時点/実権限が整うことを別検証する |
+
+**Operator配置の意味保存を判別する提案（正式Schemaではない）**：
+1. **要求**：Function Data Contextから明示された`Relation path / selected fields / requested row-scope / grain / claim population / source revision`。Data Modelの全Relationを自動取得対象へ拡大せず、特殊Native SQLは版付きSourceとして明示。
+2. **計画候補**：`pushdown candidate`と`local-after-materialization candidate`を、(a) **Input Read/Disclosure権限**、(b) **物理Read footprint**、(c) **Provider能力とSQL/DSL Null/Bag/Sort/Collation/Effectの一致**、(d) **取得SliceのClaim相対Com-pletenessとSnapshot/epoch**、(e) **Measure law/Join occurrence**という独立資格で比較する。どこまで押し下げるかは実Providerの保証範囲に従う。
+3. **正負双方の条件**：同じ権限で取得した**必要な候補全集合**があるなら純粋なFilter/Group/Sort等の局所評価は同義候補となる。Top-Nは全件Materialize以外にも、同じSnapshotの安定Sort/Keyset Cursorで**必要な順位範囲を取り切った証拠**があれば成立し得る。逆に限定ページや未知Collectionを`complete`に昇格しない。`EXISTS`の正Witnessは部分取得でも成立し得るが、`NOT EXISTS`・COUNT・SUMの全集合主張は閉じた母集団を要する。
+4. **物理境界**：`SQL WHERE tenant=A`を実行した観測と、`SQL SELECT all → local filter A`は最終値が同じでも、先行Read範囲が違う。セキュリティ条件は実DB/Host/Providerの既存Authorityへ委譲し、内部で許可される局所評価・外部AI/SHOへの開示を別資格とする。Claimを公開できてもそのProducerによる物理Readが許されたことにはならない。
+5. **結果資格**：候補Planの静的表現、実Providerで発行されたQuery/Read Footprint、実Observed Result Slice、Claimの十分性、Consumer向け開示、SHO/Artifactの実読取版を別列へ。#2516/#1178/#2515/#2604の既存担当を再利用する。新中央Provider Resolver、TEI独自Host、SQL Evaluator、第二データ正本は増やさない。
+
+**次段M1/M2**：M1は実`analyzer.Result→DerivedIR`のSource/Operationと、#2624の`Function Access Map`から明示されたRead Footprint要求の対応を、同一Functionの1本のHeadless Packetで静的対照する。M2は#2622 DO-07のRDB系／非RDB系**実Provider**で同じRole/Operator契約を通し、実Read発行・Page/Continuation・NULL/Presence・時点・結果・権限／開示を観測。Providerの論理Resultだけ比較して物理取得範囲を証明したことにしない。Owner意味受理とD2 #1640の拒否境界、#1119既存G0〜G4は維持。
+
+**状態**：Python＋SQLite局所**12/12 PASS**。TEI SQL Worker/Go Query↔Context↔Providerの同一Attempt、実RDB/非RDB Provider、正式Host/RLS、UI/SHO/外部AI、Owner Meaning/Releaseは**NOT RUN**。
+
+
 ## 8. 実装順・担当引継ぎ（提案）
 
 | 段階 | 所有 | 実施 | 完了の根拠 |
