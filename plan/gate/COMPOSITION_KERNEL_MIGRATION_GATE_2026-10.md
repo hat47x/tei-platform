@@ -109,6 +109,31 @@ M6の撤去判定では、移行済みConsumerの一覧、旧形式の読取り�
 4. **時間・対象**：現在Provider受理、Host Permission、入力集合/read-set、対象Resource version、Commit fenceはそれぞれ必要な時点で検査する。v1へのpinから、失効後の永続書込み許可を導かない（#1174/#1708）。
 5. **Consumer/開示**：同じ型・値・JSONでもCollectionの被覆範囲、粒度、時刻、失敗・NULL/空集合の意味が異なれば合成適合を保留する。通常の閉じたQueryで0件は正当な結果であり、既知の部分取得・全件主張がある場合にのみ追加の被覆根拠を要求する（#982/#2390）。外部AI/Toolへ非公開の生データや内部Authority診断を渡さない。
 
+### 3補. Contract単体適合からConsumer全体適合への接続条件（設計・反例計画）
+
+**合成したProvider A/Bが個々にPASSしても、Consumerの業務操作・入力集合・間接権限・結果確定が全体としてPASSするとは限らない。** #2390の外部Consumer合成適合、#2485のOperation導出、#2598のIntent→Request、#2611のPersistence Alias、#2514のObservation十分性を参照する。本節はG3/G4の**既存の判定欄に必要な反証観点**を追加するもので、共通Contract/Result型や新しい認証Engineを制定しない。
+
+一つの要求が通過する境界を、少なくとも次の**異なる閉包**として監査する。
+
+| 閉包 | 受理する事実と証拠 | 既存Owner |
+| --- | --- | --- |
+| **意味／Operation** | Accepted Data/Function/Businessとその適用Context、導出されたOperationのRule/Model版、業務Actionの明示Binding、各ProviderのContract/依存・集合被覆条件 | #1127/#2485/#2506/#2507/#951 |
+| **配置／Load** | どのTarget/外部Hostが何のartifact/member/class/importを実際にロードし、どの間接呼出しが到達可能か。byte指紋と実Load setを別欄で保持 | #943/#1370/#2390/#2512/#2513 |
+| **Authority／Invocation** | 外部Hostが固定したApp/Env、呼出し毎の現在Route・Provider受理、委任主体とResource Scope、Generation/Lease、Commit直前の権限 | #951/#1118/#1223/#1174 |
+| **Effect／Consumer Claim** | exact送信Request、OperationID、Receipt、返されたBusinessResult、再照会成否、独立最終観測、利用者/AI/SHOへ開示できる範囲 | #1174/#2598/#2514/#2515 |
+
+以下は**既存E0〜E4へ配賦する最小負例**であり、テストを本書へ複製しない。全ての受入は対象Consumer・Source版・Contract・Scope・Target/Host・時点・独立Oracleを指定して記録する。
+
+| 負例／担当工程 | 比較する条件と期待する停止・限定結果 | 実証Owner／現在の位置づけ |
+| --- | --- | --- |
+| **CB-1（E0→E1）Operationの静かな意味変更** | 同じOperation ID/Basisでも、R1の`submit`からR2で`cancel`へ候補Bindingが変わり得る。旧CUI/UI/AI呼出しはOperation IDだけで実行せず、Rule/Model版・意味Binding・利用資格を再照合。複数DB Aliasが同じSemantic Dataを指す場合も、別Persistence候補を無音で除外しない | #2485 W7-B6〜8／#2611 PM-01〜07。PR #2587は未統合の候補コードに対する静的反例で、実走・Owner受理は未取得 |
+| **CB-2（E2）推移的Providerの局所PASSと集合不足** | Consumer→Provider A→Provider BでA/Bの局所ContractがPASSしても、Bが対象行を部分取得・古いSnapshot・別Scopeで取得したらAの「全対象」Claimを成立させない。通常Queryの正当な0件を一律エラーにせず、全件主張または既知の欠落がある箇所で被覆証拠を要求。異なる原状態が同じProjectionへ潰れClaimだけ変わる識別不能対も比較 | #2390 T1〜T4／#2514 D-01〜04。異質Consumerの実E2Eは未実施 |
+| **CB-3（E4）成果物digest一致と実Load集合の不足** | Javaの`Main.class`だけを保存し、必要な`Main$Input.class`を配らなければ外部JVMでLoad失敗し得る。全class/依存の配布・実Loadと公開型付きAPI、TEI CLI/Go RuntimeなしのConsumer実行を別観測 | #2512のArtifactSet、#2513の型付きJava C1。#2077の独立再構成Java実験を本PRの生成Library製品受入へ流用しない |
+| **CB-4（E3）OperationIDとRequest byte/意味の相違** | 同じOperationIDでも空白・キー順だけ異なるJSON byteは現`RequestHash`上で別Requestとなり得る。逆に異なる厳密値が途中のfloat64変換で同一byteに潰れた場合、Hashは元Intentの差を検出できない。初回のexact送信Requestと型付きIntentの保存を分け、Replay/Lookupと実DB Effectを独立観測 | #2598 IB-14/15・#1174。限定Go標準ライブラリ小実験と現行実装静的照合を、TEI実DB実測へ昇格しない |
+| **CB-5（E1→E3）委任経由の権限増幅** | 一般利用者Macro→Trusted Script→Providerの間接呼出しで、呼出元がScriptの高権限、raw Connection、別TenantのResourceを暗黙継承しない。公開契約へのアクセスと実施可能なEffectを既存Hostの現在Grant/Scopeに戻して照合 | #1129/#951/#1174/#2390。正式Run-as-Service・組織承認Workflow・OS隔離はOwner決定と実証待ち |
+
+採用時に生成する情報は**既存Source locator、適用Contract、Consumer・Target・実行時Scope、試験fixture/Oracle、未確認点への参照**で足りるか先に検証する。新しい横断`Approval`フラグ、独立Conformance Registry、全形式共通の`receipt` SSOTは先決しない。標準データ表現・Semantic Context・Data Operationsの拡張は[#2619](https://github.com/hat47x/tei-platform/issues/2619)の未採用の横断計画を参照し、このGateがそれらの正式DSL/Schemaを制定したとは扱わない。
+
 ### 4. 次に採る最小の縦断Evidence（重複実装しない）
 
 | 順序と担当 | 具体的な反例と観測 | 合格主張の上限／停止条件 |
