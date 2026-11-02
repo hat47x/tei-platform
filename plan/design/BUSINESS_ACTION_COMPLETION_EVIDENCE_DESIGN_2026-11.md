@@ -83,3 +83,57 @@ BC-01は「集合不完全」、BC-04は「完全な集合でも同Tx後続Mutat
 - **確認済み（固定公開mainに対するコード静的照合）**：既存CrossViewのSourceEdgeとpair集約、既存unit testに二利用箇所を区別するassertが存在すること。既存IssueにOwner-write/receiptの証拠・負例設計があり、個別の合成/限定実行結果は各Issueへ帰属する。
 - **今回未実行**：BC-01〜06の新Scenario、Go/Java/Windows/実DB、原モデルの実Candidate J5接合、CUI/SHO Consumer、独立Provider完整性、Owner意味の正式受理。
 - **未採用**：完了述語の具体的なDSL/API/新型、Contextの永続形式、標準ステータス、全Target共通Host、業務上の正しい部分確定/再試行・引継ぎ条件。Sourceや過去のCI/merge、旧Driverのambient Commitから業務意味を自動導出しない。
+
+## 7. Claimごとの証拠充足を評価する（2026-11-02追補）
+
+11月2日の横断Issueでは、対象集合の完全性に加え、**同じ現在表示からは歴史的な事実や元Operationへの帰属を復元できない**反例が増えた。ここでは[#1125 BC-H1/H2/H3](https://github.com/hat47x/tei-platform/issues/1125#issuecomment-6572338466)、[#1125 BC-Q1/Q2/Q3](https://github.com/hat47x/tei-platform/issues/1125#issuecomment-6572333373)、[#1174 Effect Replay≠Result Replay](https://github.com/hat47x/tei-platform/issues/1174#issuecomment-6572369365)、[#1174 Intentと実Effect対象](https://github.com/hat47x/tei-platform/issues/1174#issuecomment-6572078615)、[#2497 View写像の識別不能性](https://github.com/hat47x/tei-platform/issues/2497#issuecomment-6572147884)から、**S3のOwner判断に必要な証拠の充足条件**だけを統合する。具体的なProvider・UI・Query・履歴取得の実装は元Issueが所有する。
+
+### 7.1 同じ「完了」表示で混ざりやすい別々のClaim
+
+| Claim（説明用の呼称） | 時点／対象 | 主張できる根拠 | 混同しやすいもの |
+| --- | --- | --- | --- |
+| **B₀ 初回Action完了** | Business occurrence B1の初回試行／当時の必要条件 | Ownerが受理したB1の完了述語、必要Effect/対象、当時の確定と観測 | 後日、親と明細が整合した現在値 |
+| **B₁ 回復後の業務過程完了** | B1に正式帰属する回復Stepを含む業務過程／回復成立時点 | RecoveryのOwner受理規則、O1/O2の因果・主体・対象、必要条件 | O2が無関係な操作でも偶然同じ現在状態となったこと |
+| **Sₙ 現在状態が条件を満たす** | 現在の対象集合L(t)、Ruleと有効時点 | Scope/Grain/Rule/Provider readと取得完全性・時間資格 | B1の初回成功、確認後の無変更、実Commit時の状態 |
+| **Qₙ 確認を現在利用できる** | 確認対象／確認時点〜現在の関連変更区間 | 有効な業務確認根拠、Ownerの失効規則、値と対象membershipの**履歴被覆**・遅着補正 | 確認recordの存在、#958 reviewの現在状態、現値/hash一致 |
+| **K₀ 過去Operationが確定した** | Scope/O/Hashと実Effect E／Commit時点 | K・対応Owner更新・独立O・必要な要求元対象との接合 | RequestHash一致だけから、UI Intent T=実E、または業務完了と断定 |
+| **R₀ 初回BusinessResultを再現できる** | 当時の結果値/形成Adapter版・Output meaning | 元Resultの信頼できる保存、または当時の意味版・commit-imageによる検証可能な再構成 | ReceiptがReplayedとなり、現在Adapterが改めて作成した表示 |
+| **Pₙ 現在の説明を提示できる** | 現行Consumer/開示権限・Projection版/観測時点 | 現行readと現在の説明/開示契約 | 歴史的Resultや元Action完了の証明 |
+
+B₀/B₁/Sₙ/Qₙ/K₀/R₀/Pₙは**この設計書の見出し**であり、Canonical Type、公開API、実行ResultMode、二番目のStatus体系ではない。各Claimが必要とする根拠と、実際にその根拠が取得・検証された範囲を別に保持する。とくに`Result Replay`はOutput形成の当時版・Result値が保全されていない場合は未保証であり、K₀の成功を代用しない。
+
+### 7.2 反証の共通原理：同一観測・異なる業務結論の二世界
+
+固定した**Claim、Owner仮定、Context、Consumerが閲覧できる証拠E**について、Eと両立する二つの実際の状態（または履歴）`W_a`と`W_b`で、そのClaimの真偽が異なるなら、**Eだけを根拠にそのClaimを確定することはできない**。この命題は、全データを探索して「不存在」を証明する要件ではなく、**誤った十分性を二つの具体例で反証する**ための廉価な設計検査である。あるClaimに必要な根拠を追加した場合は、同じ二世界がなお識別不能か再確認する。
+
+この判定は三つに分ける。
+- **充足を支持**：Owner述語・対象scope・時点を固定し、既存Provider/Source/履歴/独立Observation等の適格な証拠から当該必要条件を支持できる。
+- **不成立を確認**：そのClaimについて信頼できる反例（必要条件の違反、対象不一致、正式な撤回等）が観測された。
+- **根拠不足**：可視データが同じでも異なる結論があり得る。履歴一部欠落・RLSで不可視・取得時点が不一致・Owner述語未受理などは、確認できた事実に応じて内訳を保持する。
+
+これは**Claim相対の人向け判断**であり、特定の業務を全件読み込んで真偽決定する汎用Solverを作る提案ではない。Provider内部で十分な証拠があっても、当該Consumerへ開示できない場合、Consumer向けには「この表示からは判定不能」と示し、非可視対象の件数/存在や機微な訂正を漏らさない。内部監査の判定と閲覧者の判定が異なることは矛盾ではない。
+
+### 7.3 11/2差分の反証ケースと、既存Ownerへの受渡し
+
+| 追加ケース（P1候補） | 観測上等しい二世界 | #2が判定するClaim／必要Evidence | 技術・意味正本 |
+| --- | --- | --- | --- |
+| **BC-07 回復帰属 EC-1** | t0でB1部分確定→t1でO2により親子整合。O2がB1の正式回復Stepか、無関係な別処理かだけ異なる | `Sₙ`は同値でも`B₁`の判定は変わる。初回`B₀`の結果を後から「成功」に改変しない | [#1125 EC-1](https://github.com/hat47x/tei-platform/issues/1125#issuecomment-6557435359)、#1174、#267 |
+| **BC-08 値のABAと確認撤回** | 現在は数量2。世界Aは無変更、Bは2→3→2。確認のreviewのみ撤回／正式業務確認も撤回も別 | 現値`Sₙ`、確認をした履歴、`Qₙ`の利用可能性を分ける。Owner仮説P3下で対象・期間の履歴被覆が必要 | [#1125 BC-H1/H2](https://github.com/hat47x/tei-platform/issues/1125#issuecomment-6572004348)、#958、#1708 |
+| **BC-09 membership ABA/遅着** | 確認時も現在も`{L1,L2}`、世界Bは中間にL3加入→離脱。遅着正式訂正の有無も異なる | 固定集合か動的述語か、値変更だけでなくRelation membershipを含む履歴区間・cutoffの被覆を確認する | [#1125 BC-H3](https://github.com/hat47x/tei-platform/issues/1125#issuecomment-6572338466)、#2582、#2506 |
+| **BC-10 Intent対象とEffect対象** | 画面は「受注1001を確定」、Receiptは同じK。片方は1001、他方はPayloadが1002を更新 | `K₀`が成立しても`B₀(target=1001)`は未成立候補。S→Intent T→Adapter Payload→Provider E→独立Oの対応が必要 | [#1174 AT-1/P1-Payload-2](https://github.com/hat47x/tei-platform/issues/1174#issuecomment-6572078615)、#2391、#2500 |
+| **BC-11 Effect ReplayとOutput再投影** | K1・同O/Hashで書込み増分0だが、初回と再入場のAdapter版またはcurrent readが異なる | `K₀`の再生と`R₀`の歴史的出力再現、`Pₙ`の現在投影を別判定 | [#1174 RR-P1〜P4](https://github.com/hat47x/tei-platform/issues/1174#issuecomment-6572369365)、#2497、#2516 |
+| **BC-12 集計・存在の情報損失** | 同じSUM/Chart（例200）でも元内訳が異なる。表示0件でも実在0件か閲覧Scopeの部分結果かが異なる | `Sₙ`や`B₀`の量化が必要とするEntity/Relation/Measureと単位、存在と全件不存在の証拠非対称性を保つ | [#2497 VP-03/VP-05](https://github.com/hat47x/tei-platform/issues/2497#issuecomment-6572147884)、[#2593 Measure](https://github.com/hat47x/tei-platform/issues/2593#issuecomment-6572012409)、#1063 |
+
+BC-08/09のOwner仮説P3、BC-07の正式回復条件、BC-12の量化/再集計Lawは**未受理**。これらは原典の実業務意味を推定したものではなく、架空のOwner規則を明記する**識別不能性の反例**。選択済みSource ref／旧Driverや合成fixtureの実行と同一視しない。
+
+## 8. PR #2518の追加受入計画：Read-only Claim説明と縦断実証の分離
+
+**S3先行／最小Consumer判別**：BC-01、BC-07、BC-08、BC-09、BC-10から二世界の組を選び、(a)同じConsumer表示、(b)Owner仮説下の異なる真値、(c)判別のために必要な追加Evidence、(d)当該Consumerに開示可能な最小説明、を**同一のClaim・時点・対象Scope**で記録する。既存#1125・#2506・#2500・#2516のread-only票を使用し、追加の共通BusinessResult/Claim APIを作らない。最初の合格候補は、両世界に同じ「完了」を出さず、根拠不足と既知の不成立、表示可能と実行可能を区別できること。
+
+**現行Issueの実測進捗を再利用**：[ #2505 RV-01〜12合成版間追跡](https://github.com/hat47x/tei-platform/issues/2505#issuecomment-6564707324)はSource対応候補の実験結果であってOwner受理ではない。[#2593／Draft #2594](https://github.com/hat47x/tei-platform/pull/2594)はSQLite 6/6の集計反例（別プロジェクトの合成試験）、[#2500／Draft #2517](https://github.com/hat47x/tei-platform/pull/2517)はread-only View→Intentの12試験を持つ。それぞれ**その局所構造の根拠**として参照し、BC-07〜12の業務完了、実Provider、原モデル完全移植のPASSに合算しない。
+
+**既存最優先実証**：#1119 P0-a（#1174実PGのCommit後結果異常→K/O/同ID Lookup）、P0-b（#1129/#1127二Function/同Rule/Owner-write）は順序を維持。業務完了の最終判断を追加するために、この二実証へ新しい共通Engineや要求粒度の全面拡張を持ち込まない。#2518の追加成果は**Ownerが完了を主張する前提を説明するS3/P1の設計**に限定し、#1119 G0〜G4は既存のまま。
+
+**S3 Owner判断の追加項目**：元Actionの初回完了／後続Recoveryによる業務過程完了、確認の存在／現行利用資格、固定cohort／動的cohort、承認された部分確定・遅着訂正の効力時点、Intent対象と確定Effectの必要一致、初回Resultの再取得要否、外部/手作業Handoffを**必要なClaim別**に受理する。採否と実証の正本は#267、#1125、#1174、#1129の担当へ保持する。
+
+**実証資格**：2026-11-02 main `9c9ef4d160640908e06ad13afb6c2b45c664c748`と既存Issue／Draft PRの静的照合。BC-07〜12の新しいBusiness Claim Consumer試験、Go/PG/Java/Windows/SHO/実原モデル、Owner意味受理は**NOT RUN**。既存の合成実測とは独立。採用済みDSL/ABI/Host/共通Status/新Gateなし。
