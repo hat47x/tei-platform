@@ -7,6 +7,7 @@
 ```sh
 node reference/org-semantic-views/verify.mjs
 node --test reference/org-semantic-views/verify-change.mjs
+node --test reference/org-semantic-views/verify-handoff.mjs
 ```
 
 The file is a dependency-free JavaScript module: it computes an in-memory reference and throws on the first unexpected observation. A successful run emits a JSON summary. No DB is created and no files, services, accounts, or business records are changed.
@@ -56,6 +57,29 @@ The file **verify-change.mjs** is a second **read-only synthetic test**. It does
 **Qualifications:** (1) A value staying equal for a particular change does not prove generic dependency independence. Retain a claim only when its relevant dependencies, Scope, Rule, and Source version are understood. (2) This is a closed synthetic fixture, not proof of production completeness or acceptance.
 
 **Ownership:** [#2582](https://github.com/hat47x/tei-platform/issues/2582) owns change impact and refresh; [#2506](https://github.com/hat47x/tei-platform/issues/2506) owns Context scope/epoch; [#2593](https://github.com/hat47x/tei-platform/issues/2593) owns Measure aggregation; [#2597](https://github.com/hat47x/tei-platform/issues/2597)/[Draft #2601](https://github.com/hat47x/tei-platform/pull/2601) own Instance dirty patches and composite saves; [#2500](https://github.com/hat47x/tei-platform/issues/2500) owns Intent; [#2586](https://github.com/hat47x/tei-platform/issues/2586) owns the TEI product end-to-end. Neither synthetic file implements these product modules.
+
+## Third reference: target-preserving read-only handoff (2026-11-02)
+
+`verify-handoff.mjs` adds **16 isolated Node tests** for the transition from a semantically justified organization-view selection to a **candidate** action/request target. **This is a synthetic evidence comparator only**; its `assess()` function does not invoke real TEI Intent, Driver, Authorization, Provider, Receipt or Business completion. Its field list is a test record, **not a new required Core type**.
+
+Evidence used in the checks: Function Instance I1, parent Anchor D2, selection epoch 7, accepted meaning revision org-r7 (hypothetical), Query membership-q1, provider snapshot snap-3, selected occurrence edge-display-3, **Person P2**, **Membership relation A3**. `unlink(A3)` and `delete(P2)` must remain different operations.
+
+| Pressure | Local expected classification |
+| --- | --- |
+| Matching exact read/selection/target evidence | `candidate` **only; never executable authorization** |
+| Changed meaning/epoch/Anchor/Function Instance/snapshot | `unresolved` until current evidence is rechecked |
+| Same Person, different Membership A2 vs A3 | Different relation occurrence; `unresolved` for mismatched target |
+| Request carries A2 although candidate was A3 | `unresolved`; matching OperationID alone would not prove A3 effect |
+| Request operation changes unlink→delete | `unresolved`; a relation unlink is not a Person deletion |
+| Required complete read but first page incomplete | `unresolved` for the all-scope claim (individual known target may have narrower requirements) |
+| Display-only label rename | Does not by itself invalidate an otherwise identical identity binding |
+| Two Function Instances edit the same business relation | Separate dirty-patch ownership and editing contexts |
+| Two provider operations behind one Save button | No atomicity from UI grouping alone |
+| One confirmed effect and one unknown effect | Business completion remains unproven |
+
+**Recorded test evidence:** An isolated local Node **v22.16.0** process executed `node --test verify-handoff.mjs` with **16/16 PASS, 0 failures, exit 0**. The tested file was 5,954 UTF-8 bytes with SHA-256 `afbc6a7c4cf88c32d327739daaae45e065d3aadc5f3f5f171e3f8b57c698c7a9` and Git object hash `3cce96596672a3581214d1e0ffab3dc9d5f29f4b`; GitHub readback returned **the exact same Git blob SHA**. This establishes equality of the tested and committed source, but **not TEI product E2E**.
+
+Cross-owner integration: [#2598](https://github.com/hat47x/tei-platform/issues/2598) owns candidate-to-actual-Request evidence, [#2597](https://github.com/hat47x/tei-platform/issues/2597) owns Function Editing Session/Save Intent and partial-success semantics, [#2586](https://github.com/hat47x/tei-platform/issues/2586) owns the Query→Context→Claim→Pattern→Intent same-version vertical test; [#1174](https://github.com/hat47x/tei-platform/issues/1174) owns actual Effect/Receipt, and [#1124](https://github.com/hat47x/tei-platform/issues/1124) owns Modeler Source edits. A future adapter should consume the existing contracts rather than reimplement this synthetic comparator as a new product engine.
 
 ## Owner boundaries and integration
 
