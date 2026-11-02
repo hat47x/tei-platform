@@ -604,3 +604,50 @@ TAIのQH-01〜18は公開合成Nodeの有限試験であり、TEI実CLI／外部
 ### 19.4 達成・未達と撤回条件
 
 この追補で実施したのは**main/PR状態と特定CIログの照合、既存H0〜H5へ再利用経路と停止点を割り当てる計画変更**。PR #2649の実CI PASS、実SQLGlot Worker V0/V1、Function Context→実Provider→二Consumer→Host/Effectの一体E2Eは**未実施／未確認**。本節から新製品実装・独自中央Engineを導入しない。新しい横断正本が発生する場合は既存#1119/#1163/#2586の受渡しへ戻して撤回する。
+
+
+## 20. Product Skill／動的依存の接合――「結果が同じ」の先にある現在資格（2026-11-03追補）
+
+> 他レーンの[TEI／TAI／SHO横断引継ぎ（2026-11-02 14:25 UTC）]のHC-01〜10と、同日14:37 UTC追補の空集合・ABA・BRC-13〜16を、既存§17〜19の**Owner・実験入口に割り当てるだけ**の差分。新たな正式Schema/共通Host/Capability Registry/Reactive Engine/Negative Cacheを導入しない。TEI/TAI/SHO各製品は独立して利用可能とする。Source・設計文書の編集正本は従来どおり維持する。
+
+### 20.1 一つの成功に合算してはいけない資格
+
+`Source → Syntax/Role/Operator候補 → Accepted Meaning → Function Data Context + Query/Rule依存 → Provider実Read/現在Read資格 → Operation/Action候補 → 実Product CLI/API → Product Skillに固定された実スクリプト → 外部Harnessが発見・ロード・呼出した能力 → Consumer実受領／現在Disclosure → Host実Effect/Receipt`
+
+上記は**証拠照合の順序を説明するもの**であり、全製品が直列に依存する必須Runtimeではない。特に、(i)Roleをデータで書けた、(ii)CLIコマンドが存在した、(iii)Skill文面にコマンドが書かれた、(iv)外部Harnessの候補に表示された、(v)実CLIがその入力を受けた、(vi)現在Grantがある、(vii)実Provider Effectが成立した、は別のClaimである。
+
+- #988/#2620/#2638/#2639：Syntax/Role・推移依存Pin・実Semantic候補。**同じ構造、同じData ID、同じ型付きBinding結果を業務意味・実Executionに昇格しない**。
+- #2506/#2622/#2387/#2582：Value列・非出力WHERE/ORDER/Rule・Relation occurrence・Predicate/Scope/NULL/Grain・Provider read cohort／行集合とFieldの完全性を区別。
+- #2605/#2649：CLIのactual help/dispatchだけでなく、**実行されたbinary・argv・Source・ファイル書込副作用**を確認。特に`artifacts -out`をread-only discoveryと同一資格にしない。Skill文書・依存Script・Loader・actual invocationは別の観測点。
+- TAI #74/#271、TAI Draft #270/#272、SHO #7/#12、TEI #2516/#2604：公開Tool候補、途中Plan、Renderer DOM/a11y、診断、Network/Log、実Reader bytes、現在Audience/Disclosureを、最終回答と別の開示面として検収する。現在のHost Authorityは既存Host側が所有する。
+
+### 20.2 共有する有限Pressure――新しいケースIDを乱発しない
+
+| Owner付き既存Case | 新たに接合する二つの世界 | 追加で必要な実証／不成立の扱い |
+| --- | --- | --- |
+| **HC-01〜04**（#2620/#988/#2605、TAI #271） | Source/Skill記述は同byteでも、推移Role/Operator Pin、依存Script、実CLI実装版が異なる | 実Load/Invokeと依存bytesの実取得がなければ`installed/discoverable`止まり。旧版の意味受理・現在資格を継承しない |
+| **HC-05〜06**（#2516、TAI #272、SHO #7/#12） | Final Answerは同じだが、候補Tool、途中Plan、DOM/anchor/ARIA、診断、Network/Logが異なる | 該当Consumerに開示してよい実観測surfaceだけ比較。実Renderer/Browser・実送出がなければ情報非干渉の合格としない |
+| **HC-07〜08／BRC-13〜15／ND-01〜05**（#2387/#2622/#2582/#2506） | 同じ`[]`、同じ`rows/order`、同じ表示金額でも、predicate・Relation先・Rowset/Field完全性・Provider/時点・Filter/TopN順序が違う | `empty_observation`、`scoped_absence`、`current_absence`、`no_intervening_change`を**比較表の語**として分ける。正式enumではない。否定依存の観測なしなら「不存在の現在Claim」未成立 |
+| **HC-09〜10／BRC-16**（#2604/#2630/#1124/#1174） | ManifestはCompleteでも実Readerが旧memberを読んだ、Window1には旧選択応答後着、Window2は旧選択を維持、現在Grantが失効 | 画面/操作/Artifact/Window単位の資格に限定して失効。適格な別Windowや歴史Receiptを無条件に消さず、現在Grantを履歴成功から再発行しない |
+
+**否定依存を持つ0件の例**：`Order O1`の有効保留が0件であるRuleは、返却Row IDが空でも、対象O1・Predicate・Relation path・認可母集団・Field observation・Rowset completeness・時点・Provider路線・集合変化検知に依存する。H22新規加入またはO1の参照先がC1→C2に変われば、表示金額600が不変でも再評価対象が変わる。0→1→0（ABA）の現在0件と「期間中変更なし」を同一視しない。partial emptyを虚偽のabsenceにしない一方、Scope内の一致行が実観測された場合の片側反例を無意味にunknownへ落とさない。これらの判定は既存Rule/Query/Provider/Contextの**実Read witnessを要する**。
+
+### 20.3 §19の二経路から先へ進む最小手順（P0〜P5の既存番号を再利用）
+
+**P0／Evidence freeze**：公開の同一Source/Workspaceと独立Expected、PinされたLanguage/Role/Operator／CLI/Script/Skillの実byte、Query/Rule/Contextの必要依存、用途相対Audienceを固定。引用したMarkdown表やSQL/DOTは原文を保存し、情報欠落Projectionを正式Roleへ自動採用しない。
+
+**P1／実TEI単独**：§19経路Aの実`tei validate→operations→artifacts→fresh -out`と実Reader証拠を、#2666/#2649の既存スクリプト・CIで検証する。現行`commands`のread-only subsetだけで全CLI可用性を断定せず、実`-out`はファイルwrite境界として区別。結果だけでなくexit/Warning/SourceIndex/ModelRevision/Read bytesを記録。
+
+**P2／Query・Role・閉包**：§19経路Bで実SQL解析Producerを同一Attemptへ接続できた場合のみ、非出力WHERE/ORDER・NOT EXISTS/TopN・動的Relation先を明示Function Contextへ渡す。実Producer未特定なら`NOT RUN: producer-unavailable`。#2665のSQLite `SQLITE_READ`はSQL**コンパイル時列参照**の局所証人で、物理Row/OS I/O、実Policy・Provider Cohortの証拠には昇格しない。
+
+**P3／Skillの増分寄与**：同じTask・Source・CLI・独立Oracleで`CLIのみ`／`CLI+Product Skill`を先に比較し、その後別Harnessを使う。実install/load/invoke・誤Tool選択・repair回数・Token・Wall time・価格を同条件で測る。架空のToolを補完した試行、未実行Tool候補の列挙、Skill-only正答をProduct E2E PASSと数えない。
+
+**P4／公開面・Consumer**：同一低権限公開二世界で、Response JSONだけでなく候補表示・Plan・Renderer・ARIA・ログ・実Network・CUI/SHOのLoaded Byteを観測。実送出・閲覧・Policy資格が未観測なら`unknown/not-tested`。秘匿対象を指定しない一般の組織データに、一律のOS隔離要件は強制しない。
+
+**P5／用途別選択再資格化**：`Source-only`、Role/Operator、Queryの非出力依存、Provider route/read cohort、Artifact member、Skill script、Host/Disclosure Grantを一軸ずつ変更。`BR-FULL`対`BR-SELECTIVE`対`BR-UNVERIFIED`を、**誤再利用率と誤失効率が判別できた後**に時間/Token/費用で比較。生成物を再ビルドする必要と実行時データを再Readする必要は異なる。過去の合格は歴史として保持し、現在Claim/Action資格の自動復元には使わない。
+
+### 20.4 責務とEvidence採否
+
+ここでの完成条件は**既存#1119 P0-a/P0-b／G0〜G4／#1163の同一試行票**に、`Task/Claim`・`Source+Role+Operator依存閉包`・`実バイナリ/Skill/Script byte`・`actual argv/Tool invocation`・`要求と実Provider read`・`Query/Consumer観測面`・`必要memberとReader消費byte`・`現在Grant/Disclosure`・`独立Expected/Effect`・`unknown/not-run`・`人手修復/経過時間/Token/費用`を**同じ試行**で記録できること。新しい全局Claim DB/共通Contract Enumは作らない。
+
+**資格**：この§20は他チャットで作成済みの引継ぎ資料と現行PR/Issueを**既存の横断計画へ配置した設計変更**。ここで新たな実CLI/SQLGlot/Provider/Host/TAI Harness/SHOの結合試験を実行したわけではない。#2639の前HEADに発生したgofmt driftは2026-11-03に修正Commit `98966e85acd2abf5efce976a3d09a97c798d6519`（ファイルBlob `97483b653a1f04ffe919e70dbc075dfcc24d4346`）へ変更済みだが、**本節追記時点でexact-head CI successは再取得待ち**。Main統合・正式意味採用・Owner受理を示すものではない。
