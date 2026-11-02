@@ -1,6 +1,6 @@
 /* Bounded read-only reference for #2620 Role bootstrap / eager vs deferred dependencies.
  * No TEI parser, extension resolver, authority, target or production schema.
- * Run with: node reference/role-bootstrap/check_bootstrap.js
+ * Run with: node plan/fixtures/role-bootstrap/check_bootstrap.js
  */
 (function () {
   "use strict";
