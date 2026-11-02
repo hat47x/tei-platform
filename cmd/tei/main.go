@@ -469,6 +469,18 @@ func main() {
 	}
 
 	switch command {
+	case "operations":
+		if err := runOperationsCommand(*workspacePath, *applicationID); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		return
+	case "artifacts":
+		if err := runArtifactsCommand(*workspacePath, *applicationID); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		return
 	case "validate":
 		ds := validation.Validate(w)
 		hasErr := false

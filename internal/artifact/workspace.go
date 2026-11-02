@@ -14,13 +14,13 @@ import (
 
 // WorkspaceSet is every artifact one application implies, plus their manifest.
 type WorkspaceSet struct {
-	InputRevision string
-	Artifacts     []Artifact
-	Manifest      Manifest
+	InputRevision string     `json:"inputRevision"`
+	Artifacts     []Artifact `json:"artifacts"`
+	Manifest      Manifest   `json:"manifest"`
 	// Findings is the result of CheckSet on this set. A non-empty list means
 	// the artifacts disagree with each other; the set is returned so a caller
 	// can show what was produced, but it must not be read as a consistent set.
-	Findings []Finding
+	Findings []Finding `json:"findings"`
 }
 
 // RenderWorkspace renders the table definitions and the function definition of
@@ -114,6 +114,9 @@ func RenderWorkspace(root, applicationID string) (WorkspaceSet, error) {
 	}
 	set := WorkspaceSet{InputRevision: revision, Artifacts: artifacts, Manifest: manifest}
 	set.Findings = append(CheckSet(set), checkSurfaceTargets(loaded.World, target, artifacts)...)
+	if set.Findings == nil {
+		set.Findings = []Finding{}
+	}
 	return set, nil
 }
 
