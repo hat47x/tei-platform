@@ -60,5 +60,5 @@
 
 1. #2611のPM-02〜07とOpen PR #2587の実Operation導出を同一`ir.World`で比較。合成Referenceの出力を実Productがすでに保証すると誤記しない。
 2. #2622／#2506／#2586で、明示Function Context Read Footprint→Provider経路選択→実Result Sliceの`scope/grain/bag/complete/snapshot`を実データに基づき説明。
-3. #1708で共有Cohortの証人・検証条件を扱い、Read Replicaや複数Providerの`SnapshotToken`衝突に正負を設定。
+3. **Closedの#1708**を既存read-consistency M1 Referenceとして参照し、Replica／複数Providerの実共有Cohort・Snapshot token名前空間の**新しい実証要求**は#2622/#2586の実Provider受入に渡す。Closed Issueの完了を巻き戻さない。
 4. #2598／#1174で読み取った対象から**実Request/Effect対象の因果接続**を実際に検査。比較が`fixture_consistent`であることを業務実行許可に使わない。
