@@ -109,14 +109,27 @@ attribute label type std.text value "受注"
 5. **未知版**: 処理単位の失敗とし、対応版をメッセージに含める。
 6. **要素識別子の必須**: プラグインが出す診断に要素識別子が無ければ、変換全体をエラーにする。
 
-## 6. 残る作業
+## 6. 実装済みの`.tei` Codec
 
-- 実際の`.tei`用`Codec`（Centralへのdecode/encode）。現在の`Registry`は境界と不変条件の実装で、`.tei`のcodecはまだ登録されていない。
-- プラグイン固有形式（#1739の入力プロファイル）のcodec登録口。
-- 隣接版の連鎖を併用するかの再判断。
+`internal/formatversion/teicodec` が実際の`.tei`意味定義をCentralへdecodeし、Centralから`.tei`へencodeする。
 
-## 7. 主張しないこと
+- 対象は`namespace`、`data`、`attribute`宣言の範囲。`type`・`capability`・`validation`・`period`・`relation`・candidate-key・dataのdescription等は**要素識別子付きで拒否**し、黙って落とさない。
+- `attribute`は`type`/`required`/`immutable`/`role`/`description`/`display`/`value`をCentralの属性として保持する。
+- v1 codecはヘッダ任意（未宣言はWorkspaceから継承）。v2 codecはヘッダ必須で、継承された版を`formatVersion 2`として**明示化**し、`IMPLICIT_DEFAULT_MATERIALIZED`警告を出す。
+- v1→v2は、継承版の明示化があるため`SuccessWithWarnings`。ヘッダを既に持つv1→v2は内容が変わらないため`VERSION_ONLY_BUMP`で失敗する。
+- 出力は要素・属性をソートした正規形で、v2→v2はバイト同一（冪等）。
 
-- `.tei`と変換`Registry`はまだ接続していない。`Registry`の試験は合成codecで、`.tei`の実変換の証拠ではない。
-- 版と内容の不一致検出は、宣言版と変換元版の不一致までである。内容の意味と版の整合は変換規則の実装後になる。
+v2 codecは変換境界の検証用で、**製品の受理版はまだ1のまま**（`workspace.Load`は1だけを受け付ける）。
+
+## 7. 残る作業
+
+- 製品としてv2を受理するか、v2の差分を何にするかの決定（現在のv2は「ヘッダ必須＋継承版の明示化」という検証用の差分）
+- プラグイン固有形式（#1739の入力プロファイル）のcodec登録口
+- 対象外の宣言（type/validation/relation等）をCentralで表現する拡張
+- 隣接版の連鎖を併用するかの再判断
+
+## 8. 主張しないこと
+
+- v2は検証用のcodecで、製品の受理済み形式ではない。`workspace.Load`はv1だけを受け付ける。
+- `.tei` codecの対象は意味定義の一部（namespace/data/attribute）で、型・検証・関係は拒否する。
 - 新→旧の変換、業務データの移行、外部形式の取込写像は扱わない。
