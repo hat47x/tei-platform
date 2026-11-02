@@ -157,3 +157,78 @@ CUIで、構造が何に適合するかと、その適合が**名前だけの主
 **最小の次段実証**：LA-01・LA-04・LA-06について、既存Semantic Type/Operator/Validationを読み取ったときの説明可能性を机上照合し、read-onlyで表現できない情報だけをOwnerへ返す。これと並行してLA-02/03/07/08を研究Corpusで拡張可能とする。数学全体の証明器、固定Facet enum、一般的な構造分類Runtime、第二Type Registry、TEI独自Hostを先行要件にしない。
 
 **今回の実際の範囲**：CUE/Alloy/Leanの公開仕様と既存GitHub設計を参照した文書・Issue上の提案。Go/CLI/数学Solver/Lean証明/GUI/Host/実DBはNOT RUN。形式的な法則の採用・Owner意味受理も未実施。
+
+
+## 8. 構造記述の正規化とMECE性の実用的な定義（2026-11-02追補）
+
+当初の「VectorとHashtableが同じ階層に共存する状態を避ける」という設計意図を、**型名の統廃合ではなく、関心の異なる情報が同じ分類レベルに押し込まれず、複数の定義元が同じ意味を独立保有しない**という観測可能な条件として表現する。
+
+### 8.1 「単一の正規形」を過大視しない
+
+TEIで最低限区別する同一性は次のとおり。
+
+| 何を比べるか | 同値・一致の問い | 同一だと直ちに言えないもの |
+| --- | --- | --- |
+| **名目・業務上のIdentity** | 同じType/Subject IDと版におけるSourceの参照か | 同じ型の文字列表現や値域 |
+| **構文的なDescriptor** | 同じConstructor・Ref・Facet/Operation束縛・Constraintとして記述されているか | 業務の同一性・数学的な意味同値性 |
+| **理論・演算のInstance** | 同じCarrier・演算・Law・解釈の束縛か | 演算名が同じだけの別Instance |
+| **制約上の意味の同等性** | 指定された論理・Scopeで値集合やモデルが一致するか | 任意の外部述語・未閉包データの決定可能性 |
+| **観測上の適合性** | ConsumerのOperation/Frameで必要な観測を保存できるか | 全Consumerについてlossless |
+| **物理形式の同一性** | 同じbytes/Schema/Targetの読み取り結果か | 業務Meaning/実行Authority |
+
+正規化した\`Descriptor\`の一致が判定できても、意味上のSourceと受理済み判断は独立に保持する。**意味上の同型関係を全世界で計算して新しいConcept IDへ統合する設計は、一般には決定可能性・計算コスト・出典の面で妥当性がない。**
+
+### 8.2 限定された「比較用正規形」を構想する
+
+仮説：既存Source/Typed Refを別の正本に変換する代わりに、**用途相対に抽出したread-only Structural Descriptor**を比較する。比較の中身は下記に相当する役割であり、公開\`Schema\`や新しい\`Core\`型ではない。
+
+\`\`\`text
+Semantic Type / Subject ID + exact Source/Version
+    ├─ Constructor signature and field roles
+    ├─ Relationship identities and arity
+    ├─ Facet theory IDs + explicitly bound operator IDs
+    ├─ Constraint claims with scope/interpretation
+    ├─ Required context (time/unit/CRS/ownership)
+    └─ Evidence/acceptance references (not new acceptance)
+                    |
+           comparison-only normalization
+                    v
+      candidate equivalence / overlap / difference
+                    |
+                    v
+      owner review / typed change proposal
+\`\`\`
+
+- **順序に依存しない構成情報**（意味上集合であるFacet参照の列など）は、重複した同一参照を除去し固定規則で順序付けできる。ただし重複した根拠・互いに異なるScopeのClaimはまとめない。
+- **順序そのものがMeaning**であるSequence・Tuple・イベント列・Document Block順・Display Orderは整列して正規化しない。
+- **一意性**はKey/Instance identityと使用Contextが宣言されている範囲でのみ判定。UUID・CardID・表示ラベルは等値の単位を混ぜない。
+- **同名の演算**は演算ID・適用Scopeが異なれば別のBinding。二つの親から得られた同名Operatorを黙ってひとつにしない。
+- **Constraintsの結合**は同じ対象集合・量化・時点・開閉世界前提の下でのみ評価。CUE的な順序独立のunificationは参考となるが、業務上の未受理・未取得・矛盾を一つのbottomへ潰さない（[CUE Spec](https://cuelang.org/docs/reference/spec/)）。
+
+### 8.3 正規形に見えるが同じでない反例
+
+| ID | 左右の候補 | なぜ同じに正規化できないか |
+| --- | --- | --- |
+| CN-01 | \`List<A|B>\` vs \`List<A>|List<B>\` | 前者はA/B混在可能、後者は全要素Aまたは全要素BというBranch。分配は一般に成立しない |
+| CN-02 | \`Tuple(A,B)\` vs 名前付き\`Record{a:A,b:B}\` | 要素順・ラベル・意味上の対応を明示しないと自動同型とは扱えない |
+| CN-03 | \`Map<K,Set<V>>\` vs \`Set<(K,V)>\` | 空のValue集合を持つKeyの存在を後者が失う。Mapの入力Key完全集合も別 |
+| CN-04 | \`Sequence<Pair<K,V>>\`と\`Map<K,V>\` | 前者のKey重複/順序、後者のKey一意性・列挙順は別。Ordered Mapでも順序規則を追加要件にする |
+| CN-05 | \`Optional<T>\` vs \`Nullable<T>\` vs \`Missing Input\` | 欠落・明示NULL・Valueの各状態とSource/Use-siteの適用条件が違う |
+| CN-06 | 同じ\`ℕ\`の加法Monoidと乗法Monoid | 演算+Unitの束縛が違い、同一\`Monoid\`名で統合できない |
+| CN-07 | 同一物理次元のEnergyとTorque | 同じ\`N·m\`という単位表記・次元からQuantity Kindや利用演算の互換性を推論できない |
+| CN-08 | valid-timeとtransaction-timeの二つの時点 | 両者を一つの\`timestamp\`へ投影しても同じ意味とはならない |
+| CN-09 | \`Set<T>\`の集合演算と\`Bag<T>\`の多重度 | 値が偶然重複なしで一致しても、保証する操作と将来データの意味は異なる |
+| CN-10 | Tree Projectionと一般Graph Source | 省略したEdge、複数親、Layout・Scopeを失う可能性がある |
+
+CN-01は重要：似た構造子を代数的に並べ替える最適化は、**混在値が存在しうるという意味の違い**を消してしまう可能性がある。CN-03の空Keyも、Bag/SetだけでなくMap/Relationの構造間の保存性を調べる有効な反例である。
+
+### 8.4 MECE性を検査する最小の不変条件
+
+1. **Role uniqueness**：同じMeaning/Sourceに対し、\`is-a\`、\`has-facet\`、\`has-part\`、\`converts-to\`、\`projected-as\`のいずれを表すかが明確であり、混ざった「親」リンクを作らない。
+2. **Semantic single authority**：Facet・Law・Source・Instanceを複数のViewへ投影しても、受理済み意味の二重正本を増やさない。
+3. **Composition coherence**：独立なFacet参照の列挙順を変えても、利用可能な演算束縛・検出する矛盾は変わらない。競合している場合はどちらの順でも曖昧と報告し、勝者を親の列挙順で決めない。
+4. **Information preservation**：変換の保存/喪失はObserver・Context・対象版付き。可逆かどうかを構造名だけで断定しない（#2497）。
+5. **Evidence scope**：構文的記述が同じ、境界付きSolverで反例なし、実Targetでの観測、Owner Meaning Acceptanceは独立の主張。
+6. **Extension stability**：新しい数学・科学・業務例が追加されても、既存の名目型・受理済み意味・Plugin Contractの同一性を自動変更しない。必要なLaw/Operator束縛の追加は新しいClaimとして扱える。
+
+**提案する実証**：CN-01/03/04/06を対照とし、Descriptorの比較結果をAI向けread-only診断として出力する案を既存#1155/#2354に照合。新しい\`DataStructureRegistry\`、\`UniversalCanonicalizer\`、一般論理Solverを採用する前に、既存のTypeRef/Relation/Operator/Sourceでどの区別が表現可能か記録する。実Code/Target・Owner受理は未実施。
