@@ -583,6 +583,57 @@ QX-17 M2の**計画A〜Eに実測の限定証拠を加え**、他チャットで
 - **採用判定**：本節追記時点でPostgreSQL Plan/ANALYZE、実TEI IR/Worker、Provider、OS egress、SHO・外部AIへの実送信、実Host Authority、Owner意味受理は**NOT RUN**。既存#1640 D2のCTE/JOIN実行拒否と#1119既存G0〜G4の優先順位・Blocking条件を変更しない。
 
 
+### 7.15 QX-21：同じ説明・表示値を再利用するための、用途別「根拠の再確認」（2026-11-02、局所15件実測）
+
+#### 横断的な設計判断
+
+QX-14〜20はSQLの構文・解析入力/版・演算構造と、DBの実効名前解決・RLS/View/Function・説明取得時のEffect/情報開示が**別々の根拠**を必要とすることを示している。さらに[#2506](https://github.com/hat47x/tei-platform/issues/2506)のFunction Result Slice、[#2593](https://github.com/hat47x/tei-platform/issues/2593)のMeasure/再集計、[#2582](https://github.com/hat47x/tei-platform/issues/2582)の結果失効、[#2597](https://github.com/hat47x/tei-platform/issues/2597)の未保存Patchと編集セッション、[#2516](https://github.com/hat47x/tei-platform/issues/2516)のSHO/AI/外部Consumer別Projectionを接合する。
+
+**提案する共通原則**：Queryの説明や値の再利用は、「SQL byteが同じ」「Query IDが同じ」「以前の数値表示が同じ」という単一の同値性では決められない。一方、任意の変更ですべてのClaimと編集状態を必ず破棄するのも誤り。**既存の個別Ownerが持つ根拠を、Consumerが必要とする資格ごとにread-onlyで照合する**。この比較票は新しい永続SSOT、実行許可、全Scope共通の版Registryや再計算Engineではない。
+
+| 説明・利用資格の系統 | 根拠を確認する軸（例） | 特に区別する反例 | 所有/参照 |
+| --- | --- | --- | --- |
+| 解析の実入力 | Query ID、SQL exact byte/digest、Dialect、Schema、Analyzer request/responseと実消費物 | 同一Query IDの別SQL／Source検査後に別byteを実消費／別Attemptの解析結果 | #2387/#2471/#2595 |
+| DBの実効対象 | 実Connection/Sessionのsearch_path、temp relation、View/Function定義と有効な実行主体 | 同じSQLで別Tenant物理表を読む、同じView名でdefiner/invoker変更 | #2387 QX-18/19、既存Provider |
+| 可視集合と演算 | RLS/Policy/Principal、Provider Snapshot/可視Scope、RelNodeとOutputField、bag/Group/Sort | RLS下の0件を業務母集団の不存在へ昇格、列LineageだけでTOP-1依存を確定 | #1693/#2506/#2387 |
+| Measure/Claim | 元FactのGrain/Identity、SUM/AVGの集計状態、適用軸、NULL/欠損/未確定、丸め時点、意味Owner | 先集約200を後続JOIN/再SUMすると600、同じDecimal値でround-before/after差 | #2593/#1063/#2497 |
+| Contextの配置と現在表示 | Function Instance、親Anchor、選択epoch、Result Sliceと取得時点 | A→B→Aの古い応答混入、同一Definition二Instanceの誤共有 | #2506/#2582 |
+| 編集の対象帰属 | Dirty Patchの元Subject/Relation occurrence、baseVersion、Instance/Parent Anchor | Bへ再選択した後もAに帰属する未保存Patchを保持。**Bへ付替えたり無音破棄しない** | #2597/#2500/#2598 |
+| Disclosure/Projection | 現在のPurpose/Consumer、Row/Field/Metadata/Trace/Query Planを公開するGrant・出典境界 | RLSに従って計算可能な値を無条件に外部AI/SHOへ開示、hidden sort由来の推論漏洩 | #1693/#1178/#2516/#1656 |
+| 表示・文書の版 | Renderer/SHO Source Reference・保存文書/局所編集と有効なモデル版 | 見た目の変更を業務事実の変更、資料版の一致を現在の実行許可へ同一視 | #1803/#2516 |
+| Operationと実効果 | Intent→実Requestの対象/時点再束縛、Host Grant、Provider commit、receipt/再読込の因果一致 | 同じ数値の再表示を当該Submitのcommit成功と断定 | #2598/#1174 |
+
+**時点の明確化**：業務規則の有効時点、データのProvider Snapshot、Query/Explain実行Attempt、Consumerの表示・開示時点、Contextの選択epochは別の時計/世代。Query構造の意味の再利用と、DB Plan/実行時間/行数の再利用も別（[#2387 EX-07〜11](https://github.com/hat47x/tei-platform/issues/2387#issuecomment-6572850875)）。「説明時のsearch_pathで後日の実行も同じ表を読んだ」とは推測しない。最終的な実行とEffectは既存外部Host/Providerが受け持つ。
+
+#### 局所Reference（実測）／未確認を変更なしにしない
+
+[既存fixture内の test_qx21_evidence_axes.py](https://github.com/hat47x/tei-platform/blob/work/query-structural-fixture-design-20261030/plan/fixtures/query-workbench-f0/test_qx21_evidence_axes.py)を追加し、**Python 3.13.5／標準ライブラリ unittest 15/15 PASS**。GitHub exact blobとローカル実行byteのGit hash一致：`826ddb03242340f5415b33bab44e356a42063a0b`。実行：`cd plan/fixtures/query-workbench-f0 && python3 -m unittest -v test_qx21_evidence_axes.py`。
+
+本Referenceは**19の人工ラベルの比較だけ**を行う。各根拠を実Source/Provider/Hostから取得・証明する機能も、Business Claimを計算する機能も持たない。比較結果の`claim/disclosure/presentation/editing`は*再確認先の候補*であって、正式なTEI enum／認可・失効・使用許可の結果ではない。
+
+| 反証軸 | 局所実測で検証したこと |
+| --- | --- |
+| QX21-A〜E | 同Query IDのSQL版変更、物理Relation/Role Policy/Snapshot/Measure丸め段階変更を別々に検出。表示値一致の偽陽性を防ぐ*比較候補* |
+| QX21-F〜H | A→Bの選択変更は既存AのDirty Patch所有先を変えず、Grant版変更はValue自体の変更と区別、Renderer変更は提示資格のみ再確認 |
+| QX21-I〜J | **証拠軸の欠落/None**は同値ではない。すべてのラベルが一致しても`provesCurrent=false`、`provesDisclosureAllowed=false`、`provesEffectCommitted=false` |
+| QX21-K〜M | Owner review撤回と複合版差を区別。JSONに比較元/先のPrincipal等の**具体値を含めない**（ただし軸名・差の存在自体の公開資格は別） |
+| QX21-N | **当初Referenceの不備を発見・修正**。欠落した`target_binding`とRenderer変更が同時にある場合、「changedだけ」を見ていた判定では必要なClaim/Disclosure/Editing再確認が漏れる。修正版は`unknownAxes`と`unknownQualifications`を独立表示し、**changedとunknown両方の必要再確認を和集合**で報告 |
+| QX21-O | SQL bytes不変でもsearch_pathとAnalyzer invocationの版変更を区別。静的構造説明と実DB物理対象・実行時点の同一資格を混同しない |
+
+とくに **unknown ≠ unchanged** が今回確定した局所設計上の反例。先行実装で比較不能な根拠があれば、差分検出されなかった軸も安全とは扱えない。一方、未知を理由に全履歴Claimを即座に廃棄することもせず、現在の該当用途に対する再確認・提示制約として扱う。これは「キャッシュが使える」「編集Intentを実行できる」と結論する実装ではない。
+
+**表示/開示への注意**：本fixtureは差分を`changedAxes`等の軸名で示し、具体的なPrincipalや秘密Source文字列を出さないが、**どの軸が変更されたかというメタ情報も公開側には機密であり得る**。#2387 QX-20の人工二世界／#1693 D5の開示判断を通さない限り、内部比較票をSHO/AI/外部APIへそのまま配布しない。比較票による再確認候補と、既存Authorityで許可されたConsumer向けProjectionは別。
+
+#### HJ/Consumerへの段階的受入・実行位置
+
+1. **P0／同一Attemptの証拠対応**：#2387はQX-14/QX-18〜20と#2577の`DeriveFromAnalysis`合成Go試験を参照し、SQL source byte・Analyzer呼出し・Target名解決・実効可視集合・Result Source occurrenceを**observed/unknown**で整理。QX21ではversionラベルの真正性を推定しない。実DB EXPLAINと実行付き計測はHost/Provider権限の別要求。
+2. **P1／#2586 HJ-01〜04**：Query演算/Input/Output Fieldを#2506のContext Instance/Slice/Grain/Completenessへ受渡し、QX21で指摘した未観測条件はClaimの適用資格を**未確定**に留める。#2593のMeasure（SUM/AVG/Stock・丸め/再集計）を対象ごとに評価する。QX17-M2のSQLite6件とは**別の製品Go/Worker/Provider統合試験**。
+3. **P2／HJ-05〜07・編集後段**：#2582は既知依存の局所再利用とLEFT JOIN/NOT EXISTS/TOP-Nの撤回、#2597はAのDirty Patch保持、#2598はCandidate→実Requestの対象再束縛を独立受入。画面上同じ値とBusiness Save成功は分離。
+4. **P3／用途別Projectionと性能**：#2516でSHO/Headless/外部APIの情報欠落・開示資格・保存版を比較し、#2600で不要な再計算と誤った省略の両方を測る。独立Oracleは#2514、要件の正式採用・意味承認は各Owner。実SQL Worker/実PG、実Provider/実Authorization、SHO保存、実Effect/Receipt、完全E2Eは**本QX21についてNOT RUN／未受理**。
+
+**アーキテクチャ境界**：TEI独自Host、第二Query Runner、第二Provider、Evidence Registry、万能Policy Gate、新しい公開Core enumは先行導入しない。比較票は既存責務の不足を**実証可能な単位で接合**するための設計参照。QX-20のDB側実行モードを、静的Explainの標準呼出しに自動結合しない。
+
+
 ## 8. 実装順・担当引継ぎ（提案）
 
 | 段階 | 所有 | 実施 | 完了の根拠 |
