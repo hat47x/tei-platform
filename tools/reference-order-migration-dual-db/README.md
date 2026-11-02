@@ -14,7 +14,7 @@
 | 3の確認 | `Status`、`Reconcile`(`status`、`reconcile`) | 計画 | 受注残ごとの二つのDBの状態の分類と、計画の規則による写しと主DBの照合の結果 |
 | 4 並走中の変更の反映 | `ApplyChanges`(`apply-changes`) | 工程2のスロットと写しの時点、工程3の再開地点(全区切りの完了が条件) | 旧DBの取引ごとの処理の記録(`cdc_tx`)、反映した受注残と得意先、保留した変更(`cdc_held`)、マスタの衝突(`master_conflict`) |
 | 4 マスタの正本の切替 | `SwitchFieldOwner`(`switch-owner`)、`UpdateCustomer`、`ResolveMasterConflict` | 計画 | 項目ごとの正本(`master_field_owner`)とその履歴、逆同期の待ち行列(`reverse_outbox`) |
-| 4 得意先の拡張 | `ExpandNameSplit`(`expand-name`)、`CheckContractNameSplit`(`contract-name`) | 計画 | 姓と名の列、段階の記録(`schema_change`、`schema_change_event`)、書き手の版(`schema_client`)、分割できない名前の一覧(`schema_issue`) |
+| 4 得意先の拡張 | `ExpandNameSplit`(`expand-name`)、`CheckContractNameSplit`(`contract-name`) | 計画 | 姓と名の列、段階の記録(`schema_change`、`schema_change_event`)、書き手の版(`schema_client`)、実際に観測した書込みの版(`schema_write`)、分割できない名前の一覧(`schema_issue`) |
 | 4 請求システムへの送信 | `SendBilling`、`ReconcileBilling`(`send-billing`、`reconcile-billing`) | 得意先の変更と同じ取引で書いた送信の記録(`billing_outbox`) | 冪等キーごとの送信の結果、結果不明の照会の結果 |
 | 5 照合と切替の関門 | `Gate`(`gate`) | 工程3・4の結果、工程1の照合の規則と既知の差分 | 関門の記録(`cutover_gate`)。計画の照合値、写しの照合値、照合の結果、待ち行列の件数、切替を止めた理由、関門の照合値。通過した場合だけ、受注の正本と得意先の全項目の正本を主DBへ移す |
 | 6 逆同期 | `ReverseSync`(`reverse-sync`)、`PlaceOrder`、`UpdateOrderStatus` | 関門を通過した主DB | 旧DBへの書込みと受領の記録(`legacy_reverse_applied`)。受領の記録は計画の照合値と関門の照合値を持つ |
@@ -109,7 +109,8 @@ PostgreSQLの論理デコーディング(出力プラグイン`test_decoding`、
 - 旧形式の書込み(氏名だけを変える)は、トリガーが空白(半角または全角)で姓と名に分けます。分けられない氏名は推測で埋めず、姓と名を空値にして`schema_issue`に記録します。
 - 新形式の書込み(姓と名だけを変える)は、トリガーが氏名を組み立てます。両方を食い違う値で書くと拒否します。
 - 旧形式の書き手として、変更記録の反映(`legacy-cdc`、旧システム自身)を登録します。試験では、主DBへ直接書く旧版の連携(`old-integration`)も登録します。
-- `contract-name`は縮約(氏名の列の削除)の可否を判定します。旧形式の書き手が一つでも有効な間、分割できない氏名が残る間、移送の段階を終えていない間は拒否し、拒否を記録します。旧システムは巻戻しの訓練の後も旧形式の書き手として残るので、このサンプルでは縮約に到達しません。列の削除そのものは実装していません。
+- トリガーは、実際に書かれた形(`v1-full-name`または`v2-split-name`)を`schema_write`へ記録します。登録(`schema_client`)は自己申告であり、観測の代わりにしません。
+- `contract-name`は縮約(氏名の列の削除)の可否を判定します。旧形式の書き手が一つでも有効な間、分割できない氏名が残る間、移送の段階を終えていない間は拒否し、拒否を記録します。さらに、`-since`で指定した観測の開始から`-now`(省略時は現在)までの間に、旧形式の書込みが一つでも観測されれば拒否します。観測が一件も無い場合と、新しい形式の書込みが一件も観測されない場合も拒否します。登録が全部無効でも、観測が無ければ縮約は許されません。旧システムは巻戻しの訓練の後も旧形式の書き手として残るので、このサンプルでは縮約に到達しません。列の削除そのものは実装していません。
 
 ## 請求システムへの送信(工程4、P-TX-02)
 
@@ -178,7 +179,7 @@ $CLI reconcile -plan /tmp/plan.json
 $CLI apply-changes -plan /tmp/plan.json
 $CLI switch-owner -plan /tmp/plan.json -field credit_limit -owner primary
 $CLI expand-name -plan /tmp/plan.json
-$CLI contract-name -plan /tmp/plan.json
+$CLI contract-name -plan /tmp/plan.json -since 2026-10-01T00:00:00Z
 $CLI send-billing -plan /tmp/plan.json -billing-url http://127.0.0.1:8080
 $CLI reconcile-billing -plan /tmp/plan.json -billing-url http://127.0.0.1:8080
 $CLI reverse-sync -plan /tmp/plan.json
@@ -200,6 +201,7 @@ $CLI rollback -plan /tmp/plan.json
 | `TestPostgresPMIG02ChangeFeedNoLossNoDuplicate` | P-MIG-02 | 旧DBへ書き続けながら写しと移行を行い、トリガーを止めた一括更新を混ぜる。スロットの作成の後で写しの前に確定した取引は写しに入り、変更記録では`skipped-visible-in-snapshot`になる。写しの時点で実行中だった取引は変更記録から入る。3件目の取引の反映の後にkillしても、再開後に同じ取引を二度処理しない(xidの重複0件)。一括更新はトリガーの記録に0行で、変更記録では全行が反映される。写しに入った一対多の品目コードの受注残は工程3で保留され、判断の後に入る。最後に旧DBと主DBの受注が全規則で一致し、新しい受注残の引当が全件`both-committed`になる |
 | `TestPostgresPINT03FieldOwnersAndCodeMap` | P-INT-03 | 同じ得意先の住所を旧DBで、与信限度を主DBで同時に変えると、両方が両側に届く。主DBが正本でない項目の書込みは拒否される。与信限度を両側で変えると主DBの値が残り(`owner-wins:primary`)、旧DBだけが変えると待ち行列に入る。人の判断の後、得意先の差分が0件になる。一対一の品目コードは変換され、一対多の品目コードの受注残は保留され(後続の変更も保留)、照合で鍵の集合の差分として見える。対応表にないコードの判断は拒否され、正しい判断の後に照合が通る。既知の差分を宣言しない計画では、変換したコードが行ハッシュの差分になる |
 | `TestPostgresPMIG03ExpandWithOldWritersContractRefused` | P-MIG-03 | 拡張と移送の後、旧DBの旧形式の書込み(半角と全角の空白)と旧版の連携の直接の書込みで、姓と名が埋まる。分割できない氏名は空値のまま記録される。縮約は、旧形式の書き手と未解決の氏名がある間は拒否され、旧版の連携を退役させても旧システムが残る間は拒否される。旧形式の書き手を全部無効にした場合だけ許される(試験ではロールバックする)。最後に全行で氏名と姓・名が一致し、旧DBとも一致する |
+| `TestPostgresPMIG03ContractUsesObservedWrites` | P-MIG-03 | 旧形式の直接の書込みが`schema_write`へ`v1-full-name`として記録され、その観測を含む窓では`observed-old-version-write`で縮約が拒否される。旧形式の書き手を全部無効にし、観測の開始後に新しい形式の書込みだけを行うと許可される。登録が全部無効でも、観測の窓に新しい形式の書込みが無ければ`observed-new-version-writes:0`で拒否される。窓の指定が無い場合と空の窓も拒否される |
 | `TestPostgresPTX02BillingTimeoutResendAppliedOnce` | P-TX-02 | 適用の後に応答しない請求システムへの送信が結果不明になり、後の送信が止まる。照会で適用済みと確定する。適用の前に応答しない場合は照会で未受信と分かり、再送される。送信済みの記録を未送信に戻して再送しても、請求システムは同じキーを再適用しない。適用は記録の件数と同じで、キーごとに1回 |
 | `TestPostgresThroughSteps1To6` | 通し(工程1〜6) | 工程1〜6をCLIの別プロセスで順に実行する。旧DBへの書込みを続けながら写しと移行を行い、移行と変更の反映でkillを挟む。項目の正本の切替、拡張、縮約の拒否、請求の結果不明と照会を行う。関門は、保留した受注、待ち行列の衝突、照合の差分がある間は拒否し、正本を移さない。判断の後に関門を通る。作り直した計画は関門で止まる。切替後に主DBで受注の追加、状態の変更、得意先の変更を行い、逆同期の途中でkillしても重複して書かない。巻戻しの訓練で、旧DBと主DBの差分が0件、主DBにだけある受注残が0件になり、旧DBの受領に関門の照合値が残る。巻戻しの後は主DBへの受注の書込みが拒否され、旧DBの書込みが再び主DBへ反映される。計画の照合値が、関門、変更記録の処理の記録、逆同期の待ち行列と受領、巻戻しの訓練の記録まで同じ値で引き継がれる |
 
@@ -212,7 +214,7 @@ $CLI rollback -plan /tmp/plan.json
 - P-DB-02: 参照先が止まったときの方針(上限時間、保留、要再確認の記録)を宣言する手段がありません。上限時間と記録の値は`DispatchOptions`と`effect_outbox.last_outcome`に直接持っています。
 - P-MIG-02: 写しの時点と変更記録の位置を一組で記録する手段、変更記録の取込み、逆同期、正本の切替の宣言がありません。スロットの作成、xidによる写しとの対応づけ、`test_decoding`の出力の解釈、`cdc_tx`、`cdc_held`、目印の表による送り返しの防止、`reverse_outbox`と旧DBの受領、`mig_authority`はサンプル固有です。`test_decoding`は検証用の出力プラグインで、本番での利用を想定したものではありません。捕捉できない変更(DDL、スロットの喪失)の検出は止まるだけで、写し直しの手段はありません。
 - P-INT-03: マスタの項目ごとの正本、衝突の待ち行列、有効期間と多重度を持つコード変換表を宣言する手段がありません。`master_field_owner`、`customer_legacy_base`、`master_conflict`、計画の`itemCodeMap`、`code_decision`はサンプル固有です。変換表に有効期間はありません。
-- P-MIG-03: 拡張、移送、縮約の段階と、旧形式の書込みを新しい列へ写す規則を宣言する手段がありません。トリガー`customer_name_sync`、`schema_change`、`schema_client`、`schema_issue`はサンプル固有です。旧形式の書き手は自己申告の登録で、実際の書込みの版を観測していません。
+- P-MIG-03: 拡張、移送、縮約の段階と、旧形式の書込みを新しい列へ写す規則を宣言する手段がありません。トリガー`customer_name_sync`、`schema_change`、`schema_client`、`schema_write`、`schema_issue`はサンプル固有です。縮約の判断は、自己申告の登録に加えて、トリガーが記録した実際の書込みの版を観測します。ただし観測の開始・終了の窓は呼出し側の指定で、窓の長さ・再開の権限・観測の保存先を基盤の契約にするかは決めていません。旧形式の書込みを新しい列へ写すトリガー自体もサンプル固有です。
 - P-TX-02: 外部への送信に効果識別子を渡す手段と、結果不明を照会で確定させる手順の宣言がありません。`billing_outbox`、冪等キーの形式、照会の手順、模擬の請求システムはサンプル固有です。
 - 照合と切替の関門: 照合の規則、既知の差分、待ち行列の件数を入力にして切替を止める関門を宣言する手段がありません。`Gate`と`cutover_gate`、`RollbackDrill`と`rollback_drill`はサンプル固有です。既知の差分は、品目コードの変換一つだけを名前で照合しています。
 

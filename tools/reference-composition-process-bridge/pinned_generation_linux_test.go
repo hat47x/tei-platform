@@ -17,12 +17,12 @@ import (
 // old invocation is pinned; swapping a file name must not swap either image.
 // This is reference-only Linux behavior, not production authority or sandboxing.
 func TestLinuxPinnedGenerationKeepsOldExecutableUntilDrain(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
-	defer cancel()
 
 	dir := t.TempDir()
-	oldPath, oldDigest := buildPinnedFixture(t, ctx, dir, "old")
-	newPath, newDigest := buildPinnedFixture(t, ctx, dir, "new")
+	oldPath, oldDigest := buildPinnedFixture(t, dir, "old")
+	newPath, newDigest := buildPinnedFixture(t, dir, "new")
+	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
+	defer cancel()
 	if oldDigest == newDigest {
 		t.Fatal("two different executable revisions have the same digest")
 	}

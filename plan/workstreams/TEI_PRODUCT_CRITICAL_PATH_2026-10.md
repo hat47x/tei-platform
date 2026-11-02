@@ -102,11 +102,12 @@ Consumer: #1127、#1129、#1130、#259。最小条件:
 
 ### C4 — Dataset / Scenario / Observation（#1131）
 
-Consumer: #1126、#1129、#1132。最小条件:
+Consumer: #1126、#1129、#1132、#2144（期間）。最小条件:
 
 - Datasetは型・参照・Revisionへ結び付く。Snapshotは具体的な状態であり、Model定義そのものではない。
 - Stage / Presentation order / 実際のAction execution orderを混同しない。
 - 未観測の手作業・外部効果を成功とせず、Scenario fixtureの合成結果をactual Provider Evidenceに格上げしない。
+- 期間（period）は状態と時点の特殊形としてC4で扱う。開始・終了・締め・再開・訂正をDataset / Scenarioの状態と時点へ接続し、締め後の訂正を未承認の成功にしない。基盤の`persist`へ期間列を先に固定せず、実装は#2144、採用判断は#2484 D-2で扱う。
 
 **非Blocking**: 大規模な業務シミュレーター、旧Instance/Slideの完全互換。
 

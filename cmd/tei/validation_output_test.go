@@ -57,6 +57,20 @@ func TestValidateWorkspaceProjectsSemanticDiagnosticToDefinition(t *testing.T) {
 	}
 }
 
+func TestValidateWorkspaceTextDoesNotSelectOneDuplicateCandidate(t *testing.T) {
+	root := t.TempDir()
+	writeWorkspaceFile(t, root, "tei.workspace.yaml", "workspace: duplicate\nsources:\n  - semantic\n")
+	writeWorkspaceFile(t, root, "semantic/intake/request.tei", "namespace intake\ndata Request {\n attribute status type std.code\n attribute status type std.code\n}\n")
+	var out bytes.Buffer
+	code, err := validateWorkspace(&out, root)
+	if err != nil || code != 1 {
+		t.Fatalf("exit=%d err=%v output=%q", code, err, out.String())
+	}
+	if !strings.Contains(out.String(), "error\tDUPLICATE_SEMANTIC_ELEMENT\t") || strings.Contains(out.String(), "semantic/intake/request.tei:") {
+		t.Fatalf("text selected an ambiguous source: %q", out.String())
+	}
+}
+
 func TestValidateWorkspaceKeepsOkForValidSource(t *testing.T) {
 	root := t.TempDir()
 	writeWorkspaceFile(t, root, "tei.workspace.yaml", "workspace: valid\nsources:\n  - semantic\n")

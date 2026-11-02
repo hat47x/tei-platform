@@ -54,14 +54,25 @@ type Unsupported struct {
 	Reason string `json:"reason"`
 }
 
+// EditableSource is a workspace-relative canonical source the user may edit.
+// Artifacts are read-only derivations; editing them never writes back here.
+type EditableSource struct {
+	Path        string `json:"path"`
+	Fingerprint string `json:"fingerprint,omitempty"`
+	Role        string `json:"role,omitempty"`
+}
+
 // Manifest binds every artifact to one accepted Source revision.
 type Manifest struct {
-	Schema         string        `json:"schema"`
-	SourceRevision string        `json:"sourceRevision"`
-	Provider       string        `json:"provider"`
-	Artifacts      []Artifact    `json:"artifacts"`
-	Unsupported    []Unsupported `json:"unsupported,omitempty"`
-	Notes          []string      `json:"notes"`
+	Schema          string             `json:"schema"`
+	SourceRevision  string             `json:"sourceRevision"`
+	Provider        string             `json:"provider"`
+	Format          string             `json:"format"`
+	Artifacts       []Artifact         `json:"artifacts"`
+	EditableSources []EditableSource   `json:"editableSources,omitempty"`
+	Effects         EffectsObservation `json:"effects"`
+	Unsupported     []Unsupported      `json:"unsupported,omitempty"`
+	Notes           []string           `json:"notes"`
 }
 
 type File struct {
@@ -79,62 +90,88 @@ func digestOf(content []byte) string {
 	return "sha256:" + hex.EncodeToString(sum[:])
 }
 
+// Options selects an output-format plugin and, optionally, an effect
+// observation. An empty Format means markdown. Observed effects require
+// EffectsObserved=true; the reference never turns a declaration into an
+// observation.
+type Options struct {
+	Format          string           `json:"format,omitempty"`
+	EffectsObserved bool             `json:"effectsObserved,omitempty"`
+	EffectsSource   string           `json:"effectsSource,omitempty"`
+	ObservedEffects []ObservedEffect `json:"observedEffects,omitempty"`
+}
+
 // Build derives the bundle from one in-memory World and the Source revision it
 // was loaded from. It performs no Workspace or database write.
 func Build(world ir.World, sourceRevision string, provider environment.DatabaseProvider) (Bundle, error) {
+	return BuildWithOptions(world, sourceRevision, provider, Options{}, nil)
+}
+
+// BuildWithOptions is Build with a format plugin and an optional Source Index
+// (used to expose the editable canonical sources). The index never changes the
+// derived documents.
+func BuildWithOptions(world ir.World, sourceRevision string, provider environment.DatabaseProvider, options Options, index *sourceindex.Index) (Bundle, error) {
 	if strings.TrimSpace(sourceRevision) == "" {
 		return Bundle{}, fmt.Errorf("source revision is required")
 	}
 	if provider == "" {
 		provider = environment.ProviderPostgres
 	}
+	format, err := documentFormat(options.Format)
+	if err != nil {
+		return Bundle{}, err
+	}
 	bundle := Bundle{Manifest: Manifest{
-		Schema: Schema, SourceRevision: sourceRevision, Provider: string(provider),
+		Schema: Schema, SourceRevision: sourceRevision, Provider: string(provider), Format: format.Name,
 		Artifacts: []Artifact{},
+		Effects: EffectsObservation{
+			Observed: options.EffectsObserved, Source: options.EffectsSource,
+			Declared: []DeclaredAccess{}, Differences: []string{},
+		},
 		Notes: []string{
 			"受理済みの意味から導出した成果物です。成果物を編集しても、意味の正本には反映されません。",
 			"一覧は宣言された内容であり、実際の副作用・権限・実行結果の観測ではありません。",
 			"導出元の主体は認証していません。sourceRevisionと生成手段だけを記録します。",
+			"成果物は読み取り専用です。編集はeditableSourcesに示す正本の箇所で行います。",
 		},
 	}}
-	add := func(name, kind, schema, structureRevision, path string, content []byte, unresolved []string) {
-		bundle.Files = append(bundle.Files, File{Path: path, Content: content})
-		artifact := Artifact{
-			Name: name, Kind: kind, Schema: schema, Path: path,
-			Bytes: len(content), Digest: digestOf(content),
-			StructureRevision: structureRevision,
-		}
-		if len(unresolved) > 0 {
-			artifact.Unresolved = append([]string(nil), unresolved...)
-			sort.Strings(artifact.Unresolved)
-		}
-		bundle.Manifest.Artifacts = append(bundle.Manifest.Artifacts, artifact)
+	document := func(name, kind, schema, structureRevision, basePath string, markdown []byte, unresolved []string) {
+		content := format.render(string(markdown))
+		addFile(&bundle, name, kind, schema, structureRevision, withExtension(basePath, format.Extension), []byte(content), unresolved)
 	}
 
 	tableDoc, err := tabledoc.Render(world)
 	if err != nil {
 		return Bundle{}, fmt.Errorf("render table definitions: %w", err)
 	}
-	add("table-definitions", "table-definition-document", tabledoc.Schema,
-		tableDoc.StructureRevision, "table-definitions.md", []byte(tableDoc.Markdown), tableDoc.Unresolved)
+	document("table-definitions", "table-definition-document", tabledoc.Schema,
+		tableDoc.StructureRevision, "table-definitions", []byte(tableDoc.Markdown), tableDoc.Unresolved)
 
 	functionDoc, err := funcdoc.Render(world)
 	if err != nil {
 		return Bundle{}, fmt.Errorf("render function definitions: %w", err)
 	}
-	add("function-definitions", "function-definition-document", funcdoc.Schema,
-		functionDoc.StructureRevision, "function-definitions.md", []byte(functionDoc.Markdown), functionDoc.Unresolved)
+	document("function-definitions", "function-definition-document", funcdoc.Schema,
+		functionDoc.StructureRevision, "function-definitions", []byte(functionDoc.Markdown), functionDoc.Unresolved)
 
 	matrix, err := accessmatrix.Derive(world)
 	if err != nil {
 		return Bundle{}, fmt.Errorf("derive declared access matrix: %w", err)
 	}
-	add("application-data-matrix", "declared-access-matrix", accessmatrix.Schema,
-		matrix.StructureRevision, "application-data-matrix.md", []byte(matrix.Markdown), gapStrings(matrix))
+	effects, err := buildEffects(matrix, options.EffectsObserved, options.EffectsSource, options.ObservedEffects)
+	if err != nil {
+		return Bundle{}, err
+	}
+	bundle.Manifest.Effects = effects
+	document("application-data-matrix", "declared-access-matrix", accessmatrix.Schema,
+		matrix.StructureRevision, "application-data-matrix", []byte(matrix.Markdown), gapStrings(matrix))
 
 	inverse := renderDataApplicationMatrix(matrix)
-	add("data-application-matrix", "data-access-matrix", accessmatrix.Schema,
-		matrix.StructureRevision, "data-application-matrix.md", []byte(inverse), gapStrings(matrix))
+	document("data-application-matrix", "data-access-matrix", accessmatrix.Schema,
+		matrix.StructureRevision, "data-application-matrix", []byte(inverse), gapStrings(matrix))
+
+	document("access-vs-effects", "declared-vs-observed-effects", Schema,
+		matrix.StructureRevision, "access-vs-effects", []byte(renderEffectsReport(effects, matrix.StructureRevision)), nil)
 
 	databases := append([]database.Database(nil), world.Databases...)
 	sort.Slice(databases, func(i, j int) bool { return databases[i].ID < databases[j].ID })
@@ -151,7 +188,7 @@ func Build(world ir.World, sourceRevision string, provider environment.DatabaseP
 		for _, u := range result.Unresolved {
 			unresolved = append(unresolved, u.Table+": "+u.Reason)
 		}
-		add("ddl/"+id, "ddl-script", ddlentry.Schema, "",
+		addFile(&bundle, "ddl/"+id, "ddl-script", ddlentry.Schema, "",
 			"ddl/"+id+".sql", renderDDL(result, sourceRevision), unresolved)
 	}
 	bundle.Manifest.Unsupported = append(bundle.Manifest.Unsupported, Unsupported{
@@ -159,7 +196,11 @@ func Build(world ir.World, sourceRevision string, provider environment.DatabaseP
 		Reason: "受理済みのBusiness Procedure sourceがまだ提供されていません（#1125）。" +
 			"業務・機能・データ間の対応一覧は、非CanonicalなDFDや候補から生成しません。",
 	})
+	if index != nil {
+		bundle.Manifest.EditableSources = editableSources(*index)
+	}
 	bundle.Manifest.Notes = append(bundle.Manifest.Notes,
+		fmt.Sprintf("出力の書式は%qです。意味の行は同じで、書式だけを差し替えます。", format.Name),
 		"index.htmlは成果物の一覧とリンクを表示するナビゲーションであり、manifestのartifactには含めません。")
 	sort.Slice(bundle.Manifest.Unsupported, func(i, j int) bool { return bundle.Manifest.Unsupported[i].Name < bundle.Manifest.Unsupported[j].Name })
 	sort.Slice(bundle.Manifest.Artifacts, func(i, j int) bool { return bundle.Manifest.Artifacts[i].Name < bundle.Manifest.Artifacts[j].Name })
@@ -246,24 +287,36 @@ func renderDDL(result ddlentry.Result, sourceRevision string) []byte {
 // leave a partially written bundle. A concurrent creator that appears between
 // the absence check and the Rename is an explicit limitation, not a guarantee.
 func Write(workspaceDir, outDir string, provider environment.DatabaseProvider) (Manifest, error) {
-	return write(workspaceDir, outDir, provider, nil, "", "")
+	return write(workspaceDir, outDir, provider, nil, "", "", Options{})
+}
+
+// WriteWithOptions is Write with a document format and an optional effect
+// observation. The derived meaning and the Source revision are unchanged.
+func WriteWithOptions(workspaceDir, outDir string, provider environment.DatabaseProvider, options Options) (Manifest, error) {
+	return write(workspaceDir, outDir, provider, nil, "", "", options)
 }
 
 // WriteWithGenerator derives documents and one unqualified source candidate
 // from the same loaded World. The contract's composite rule is reference-local;
 // the bundle is provenance, not semantic equivalence or acceptance evidence.
 func WriteWithGenerator(workspaceDir, outDir string, provider environment.DatabaseProvider, contractJSON []byte, strategy, version string) (Manifest, error) {
+	return WriteWithGeneratorWithOptions(workspaceDir, outDir, provider, contractJSON, strategy, version, Options{})
+}
+
+// WriteWithGeneratorWithOptions is WriteWithGenerator with a document format
+// and an optional effect observation.
+func WriteWithGeneratorWithOptions(workspaceDir, outDir string, provider environment.DatabaseProvider, contractJSON []byte, strategy, version string, options Options) (Manifest, error) {
 	if len(contractJSON) == 0 || strings.TrimSpace(strategy) == "" || strings.TrimSpace(version) == "" {
 		return Manifest{}, fmt.Errorf("contract JSON, strategy, and generator version are required")
 	}
-	return write(workspaceDir, outDir, provider, contractJSON, strategy, version)
+	return write(workspaceDir, outDir, provider, contractJSON, strategy, version, options)
 }
 
-func write(workspaceDir, outDir string, provider environment.DatabaseProvider, contractJSON []byte, strategy, version string) (Manifest, error) {
+func write(workspaceDir, outDir string, provider environment.DatabaseProvider, contractJSON []byte, strategy, version string, options Options) (Manifest, error) {
 	if strings.TrimSpace(workspaceDir) == "" || strings.TrimSpace(outDir) == "" {
 		return Manifest{}, fmt.Errorf("workspace and out are required")
 	}
-	bundle, err := buildFromWorkspace(workspaceDir, provider, contractJSON, strategy, version)
+	bundle, err := buildFromWorkspace(workspaceDir, provider, contractJSON, strategy, version, options)
 	if err != nil {
 		return Manifest{}, err
 	}
@@ -323,7 +376,7 @@ func write(workspaceDir, outDir string, provider environment.DatabaseProvider, c
 
 // buildFromWorkspace is shared by publication and read-only verification so
 // both derive from one loaded World with the same generator implementation.
-func buildFromWorkspace(workspaceDir string, provider environment.DatabaseProvider, contractJSON []byte, strategy, version string) (Bundle, error) {
+func buildFromWorkspace(workspaceDir string, provider environment.DatabaseProvider, contractJSON []byte, strategy, version string, options Options) (Bundle, error) {
 	loaded, err := workspace.Load(workspaceDir)
 	if err != nil {
 		return Bundle{}, fmt.Errorf("load Workspace: %w", err)
@@ -332,7 +385,7 @@ func buildFromWorkspace(workspaceDir string, provider environment.DatabaseProvid
 	if err != nil {
 		return Bundle{}, fmt.Errorf("build Source Index: %w", err)
 	}
-	bundle, err := Build(loaded.World, sourceindex.ModelRevision(index), provider)
+	bundle, err := BuildWithOptions(loaded.World, sourceindex.ModelRevision(index), provider, options, &index)
 	if err != nil {
 		return Bundle{}, err
 	}

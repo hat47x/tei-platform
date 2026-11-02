@@ -21,6 +21,16 @@ Issueでは「何を行うか」を管理し、ADRでは「なぜその方針を
 - `置き換え済み`：後続のADRによって判断が更新された
 - `却下`：検討したが採用しなかった
 
+### 状態を変えたときの確認
+
+ADRの状態を変えたら、そのADRを参照している文書（`AGENTS.md`、`CONTRIBUTING.md`、他のADR、Issue）の記述を、同じ変更で確認します。参照元は、リポジトリのルートで次を実行して探します。
+
+```bash
+git grep -n "ADR-0035" -- . ':!plan/adr/0035-autonomy-levels-and-verification-packets.md'
+```
+
+参照元の記述が状態と合わない場合は、同じ変更で直します。直せない場合は、Issueへ残します。
+
 ## 判断履歴
 
 - [ADR-0001: 設計判断と実行作業をADRとIssueに分ける](0001-adr-and-issue-workflow.md)

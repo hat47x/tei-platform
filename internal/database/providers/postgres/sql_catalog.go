@@ -81,7 +81,7 @@ JOIN pg_catalog.pg_namespace ns ON ns.oid = cls.relnamespace
 JOIN generate_subscripts(con.conkey, 1) AS pos(i) ON true
 JOIN pg_catalog.pg_attribute att
   ON att.attrelid = cls.oid AND att.attnum = con.conkey[pos.i]
-WHERE con.contype = 'p'
+WHERE con.contype = 'p' AND con.conparentid = 0
 ORDER BY ns.nspname, cls.relname, pos.i`)
 	if err != nil {
 		return nil, err
@@ -116,7 +116,7 @@ JOIN pg_catalog.pg_index ind ON ind.indexrelid = con.conindid
 JOIN generate_subscripts(con.conkey, 1) AS pos(i) ON true
 JOIN pg_catalog.pg_attribute att
   ON att.attrelid = cls.oid AND att.attnum = con.conkey[pos.i]
-WHERE con.contype = 'u'
+WHERE con.contype = 'u' AND con.conparentid = 0
 ORDER BY ns.nspname, cls.relname, con.conname, pos.i`)
 	if err != nil {
 		return nil, err
@@ -159,7 +159,7 @@ JOIN pg_catalog.pg_attribute src_att
   ON src_att.attrelid = src.oid AND src_att.attnum = con.conkey[pos.i]
 JOIN pg_catalog.pg_attribute dst_att
   ON dst_att.attrelid = dst.oid AND dst_att.attnum = con.confkey[pos.i]
-WHERE con.contype = 'f'
+WHERE con.contype = 'f' AND con.conparentid = 0
 ORDER BY src_ns.nspname, src.relname, con.conname, pos.i`)
 	if err != nil {
 		return nil, err

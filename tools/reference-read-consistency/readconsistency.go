@@ -26,6 +26,7 @@ const (
 	CodeBestEffortNotAccepted  = "BEST_EFFORT_NOT_ACCEPTED"
 	CodeInputUnavailable       = "INPUT_UNAVAILABLE"
 	CodeInputMissing           = "INPUT_MISSING"
+	CodeAbsentRelation         = "ABSENT_RELATION"
 	CodeNullInput              = "NULL_INPUT"
 	CodeRetryRequiresReauth    = "RETRY_REQUIRES_REAUTHORIZATION"
 	CodeAuthorizationDelegated = "AUTHORIZATION_DELEGATED"
@@ -49,9 +50,10 @@ const (
 
 // Read states.
 const (
-	ReadPresent = "present"
-	ReadMissing = "missing"
-	ReadNull    = "null"
+	ReadPresent        = "present"
+	ReadMissing        = "missing"
+	ReadAbsentRelation = "absent-relation"
+	ReadNull           = "null"
 )
 
 // Read is one input read of the evaluation.
@@ -159,6 +161,9 @@ func Evaluate(in Input) Report {
 	for _, read := range in.Reads {
 		if read.State == ReadMissing {
 			return reject(CodeInputMissing, fmt.Sprintf("入力 %q が不在。", read.InputID))
+		}
+		if read.State == ReadAbsentRelation {
+			return reject(CodeAbsentRelation, fmt.Sprintf("入力 %q の参照先に一致する行が無い。", read.InputID))
 		}
 		if read.State == ReadNull {
 			return reject(CodeNullInput, fmt.Sprintf("入力 %q がNULL。0として扱わない。", read.InputID))

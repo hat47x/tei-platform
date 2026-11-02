@@ -5,6 +5,11 @@
 ~~~text
 go run ./tools/reference-partial-import-plan/cmd/tei-partial-import-plan \
   -source <取込み元Workspace> -target <取込み先Workspace> -data <Data ID,...>
+
+# 取込み先が読み取り専用で参照している名前空間と、所有者の境界を渡す
+go run ./tools/reference-partial-import-plan/cmd/tei-partial-import-plan \
+  -source <取込み元> -target <取込み先> -data <Data ID,...> \
+  -reference-only-namespaces shared,sales -source-owner team-a -target-owner team-b
 ~~~
 
 ## 分類
@@ -23,6 +28,8 @@ go run ./tools/reference-partial-import-plan/cmd/tei-partial-import-plan \
 - 更新が、取込み先の他の定義（関連のキー、候補キー）が使う属性を削除・型変更する場合は`dependent-definition-affected`とし、取り込めないと判定します。
 - `importable`は、競合と未解決がない場合だけ`true`です。`applied`は常に`false`です。
 - 取込み元の選択に存在しないIDは`not-in-source`として残します。
+- 取込み先が読み取り専用で参照している名前空間（#1570）の定義は、取込み対象にしません。`referenceOnly`に`reference-only-namespace`として出し、`importable`を偽にします。
+- 取込み元と取込み先の所有者が違う場合は、`different-ownership-boundary`として診断し、取込み不可にします。
 
 ## 受理境界への接続
 
@@ -44,5 +51,4 @@ go run ./tools/reference-shared-acceptance preview -workspace <取込み先> -ca
 - `update`の取込み（受理境界に該当する演算がありません）
 - 型の取込み
 - 型、機能、業務手順など、Data以外の定義
-- 取込み元が別の所有境界にある場合の診断（#1132）
 - 取込み記録の保存

@@ -10,7 +10,7 @@ import (
 
 func TestBuildSourceIndexInspectionReturnsWholeIndex(t *testing.T) {
 	root := testRepositoryRoot(t)
-	got, err := buildSourceIndexInspection(filepath.Join(root, "reference", "workspace"), "", "")
+	got, _, err := buildSourceIndexInspection(filepath.Join(root, "reference", "workspace"), "", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -25,7 +25,7 @@ func TestBuildSourceIndexInspectionReturnsWholeIndex(t *testing.T) {
 
 func TestBuildSourceIndexInspectionFiltersQuerySubjectAndKeepsFingerprints(t *testing.T) {
 	root := testRepositoryRoot(t)
-	got, err := buildSourceIndexInspection(
+	got, _, err := buildSourceIndexInspection(
 		filepath.Join(root, "reference", "workspace"),
 		"query",
 		"order_entry.recent_orders",
@@ -61,10 +61,10 @@ func TestBuildSourceIndexInspectionFiltersQuerySubjectAndKeepsFingerprints(t *te
 }
 
 func TestBuildSourceIndexInspectionRequiresSubjectPair(t *testing.T) {
-	if _, err := buildSourceIndexInspection("unused", "query", ""); err == nil {
+	if _, _, err := buildSourceIndexInspection("unused", "query", ""); err == nil {
 		t.Fatal("subject kind without subject id was accepted")
 	}
-	if _, err := buildSourceIndexInspection("unused", "", "order_entry.recent_orders"); err == nil {
+	if _, _, err := buildSourceIndexInspection("unused", "", "order_entry.recent_orders"); err == nil {
 		t.Fatal("subject id without subject kind was accepted")
 	}
 }

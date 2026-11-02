@@ -18,6 +18,9 @@ func main() {
 	src := flag.String("source", "", "Workspace to import from")
 	tgt := flag.String("target", "", "Workspace to import into")
 	sel := flag.String("data", "", "comma-separated Data IDs to import")
+	refOnly := flag.String("reference-only-namespaces", "", "comma-separated namespaces the target uses read-only (#1570)")
+	srcOwner := flag.String("source-owner", "", "owner of the source Workspace")
+	tgtOwner := flag.String("target-owner", "", "owner of the target Workspace")
 	candOut := flag.String("candidate-out", "", "new file for an add-data change candidate (needs -base-revision)")
 	base := flag.String("base-revision", "", "target model revision from the Shared Acceptance revision command")
 	flag.Parse()
@@ -32,7 +35,11 @@ func main() {
 	if err != nil {
 		fail(fmt.Errorf("load target: %w", err))
 	}
-	plan, err := partialimport.Analyze(s.World, t.World, strings.Split(*sel, ","))
+	opts := partialimport.Options{SourceOwner: *srcOwner, TargetOwner: *tgtOwner}
+	if *refOnly != "" {
+		opts.ReferenceOnlyNamespaces = strings.Split(*refOnly, ",")
+	}
+	plan, err := partialimport.AnalyzeWithOptions(s.World, t.World, strings.Split(*sel, ","), opts)
 	if err != nil {
 		fail(err)
 	}
