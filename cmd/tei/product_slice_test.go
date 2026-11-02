@@ -176,6 +176,36 @@ func TestProductSliceLoadsValidatesAndViews(t *testing.T) {
 		t.Fatalf("command plan=%+v", planReport.Result)
 	}
 
+	var recordHTML bytes.Buffer
+	code, err = runViewCommand([]string{
+		"-workspace", root,
+		"-application", "order_entry",
+		"-pattern", "order_entry.order_record",
+		"-format", "html",
+	}, &recordHTML)
+	if err != nil || code != 0 {
+		t.Fatalf("record html exit=%d err=%v body=%s", code, err, recordHTML.String())
+	}
+	for _, want := range []string{"フック", "未使用の属性", "状態"} {
+		if !strings.Contains(recordHTML.String(), want) {
+			t.Fatalf("record html does not contain %s", want)
+		}
+	}
+
+	var recordPrint bytes.Buffer
+	code, err = runViewCommand([]string{
+		"-workspace", root,
+		"-application", "order_entry",
+		"-pattern", "order_entry.order_record",
+		"-format", "print",
+	}, &recordPrint)
+	if err != nil || code != 0 {
+		t.Fatalf("record print exit=%d err=%v body=%s", code, err, recordPrint.String())
+	}
+	if !strings.Contains(recordPrint.String(), "format: tei.print/v0") {
+		t.Fatal("record print does not carry the receipt")
+	}
+
 	var browse bytes.Buffer
 	code, err = runViewCommand([]string{
 		"-workspace", root,
