@@ -576,7 +576,7 @@ TAIのQH-01〜18は公開合成Nodeの有限試験であり、TEI実CLI／外部
 | [PR #2626](https://github.com/hat47x/tei-platform/pull/2626) | **merged**。現行Go CLIのSource/Model/Inspect/Trace/Validateと複数Consumerの限定的な実読取り・出典移動の実証。 | 別CLIの実同一Snapshotや外部AI/SHO/Hostへの実到達 |
 | [PR #2629](https://github.com/hat47x/tei-platform/pull/2629)、[PR #2634](https://github.com/hat47x/tei-platform/pull/2634) | **merged**。本横断計画・実Go DerivedIRの非出力WHERE/ORDER依存の限定特性。 | 実SQLGlot WorkerとそのSQL/Schema/Dialect実消費との同一Attempt対応 |
 | [PR #2638](https://github.com/hat47x/tei-platform/pull/2638)、[PR #2639](https://github.com/hat47x/tei-platform/pull/2639) | **open/unmerged**。Role BootstrapとGo Language Plugin Referenceの候補。 | 現行Role/Plugin Lockの受理、exact-head試験、同じContext/Consumer |
-| [PR #2649](https://github.com/hat47x/tei-platform/pull/2649) | **open/unmerged**。実Go CLI validate→operations→artifacts→出力ファイル独立Readerの専用スクリプトとCIを保存。 | HEAD 30a486324c6ca1fe0b5cd16d6e358dc7fa5a8fa0 の専用Workflow #41503235605は照合時**queued**。PASSと主張しない |
+| [PR #2649](https://github.com/hat47x/tei-platform/pull/2649) | **open/unmerged**。実Go CLI validate→operations→artifacts→出力ファイル独立Readerの専用スクリプトとCIを保存。 | HEAD 30a486324c6ca1fe0b5cd16d6e358dc7fa5a8fa0 の専用Workflow [#41503235605](https://github.com/hat47x/tei-platform/actions/runs/41503235605) は**completed/success**。実Go1.26.10 CLIをcheckout外にビルドし、ledger のoperations/artifacts/fresh -out・独立Reader byteを確認（manifest 5ファイル、Reader validate true）。同一WorldFingerprintでもSource移動によりrevision/manifest digestが変化し、旧Operation＋新Artifactの結合はqualified=false。Manifest complete=false／gap=4のままなのでProduct全機能・Consumer必要member充足の証拠ではない |
 | [Issue #2387／Draft #2388](https://github.com/hat47x/tei-platform/issues/2387) | Go Client/DerivedIR、Mock Helper負例、SQLite二Provider相当の局所観測はある。 | QX-33 V0/V1の**実SQLGlot解析Producerは対象main tree／実行環境で未特定**。mockを実Workerと呼ばない |
 
 **exact-head CIの実際の失敗例**：PR #2639のHEAD 5fdef5de5956ba0b4996d2861fc1ba4b1d94a222 の [Repository Health #41464532199](https://github.com/hat47x/tei-platform/actions/runs/41464532199)を確認した。Go1.26.10/Linuxで go vet、go test全件、tei validate は**PASS**だが、gofmt -l . は reference/dsl-language-plugin/everything_data_cross_surface_test.go の未整形で**FAIL**。全体run結論はfailure。修正Ownerへ[通知済み](https://github.com/hat47x/tei-platform/pull/2639#issuecomment-6585657796)。以前のHEADのCI成功を最新HEADの成功へ流用しない。
@@ -603,7 +603,7 @@ TAIのQH-01〜18は公開合成Nodeの有限試験であり、TEI実CLI／外部
 
 ### 19.4 達成・未達と撤回条件
 
-この追補で実施したのは**main/PR状態と特定CIログの照合、既存H0〜H5へ再利用経路と停止点を割り当てる計画変更**。PR #2649の実CI PASS、実SQLGlot Worker V0/V1、Function Context→実Provider→二Consumer→Host/Effectの一体E2Eは**未実施／未確認**。本節から新製品実装・独自中央Engineを導入しない。新しい横断正本が発生する場合は既存#1119/#1163/#2586の受渡しへ戻して撤回する。
+この追補で実施したのは**main/PR状態と特定CIログの照合、既存H0〜H5へ再利用経路と停止点を割り当てる計画変更**。PR #2649の専用**実CLI+独立Reader** exact-head workflow は前述の限定範囲でsuccess確認済み。一方で、正規repository-healthの当該head総合結論、実SQLGlot Worker V0/V1、Function Context→実Provider→二Consumer→Host/Effectの一体E2Eは**未実施／未確認**。本節から新製品実装・独自中央Engineを導入しない。新しい横断正本が発生する場合は既存#1119/#1163/#2586の受渡しへ戻して撤回する。
 
 
 ## 20. Product Skill／動的依存の接合――「結果が同じ」の先にある現在資格（2026-11-03追補）
