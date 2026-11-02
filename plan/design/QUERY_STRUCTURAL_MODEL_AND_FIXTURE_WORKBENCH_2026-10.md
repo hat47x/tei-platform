@@ -447,6 +447,31 @@ main参照：`2197baaedbde178a042a280ea1bd1d534617bfc7`。現行`relational.go`�
 **Go本体/他Consumerへの接続順**：#2577の固定head Go試験→#2387のread-only `RelationalIR`構造照合→#2506へのCollection/Result Sliceの**不足情報の受け渡し**→CLI/JSONとSHO/Modelerの同一説明参照。QX-16の手書き片側Claimの数学的法則は#1063、Independent Oracleは#1131/#2514が所有し、Query結果への自動的なAction適用は#2500/#1125/#1174が所有する。分岐を先回りして結合せず、必要な形だけを段階実証する。
 
 
+### 7.11 QX-17 M2：値の由来と「行が現れる条件」を別に扱う（2026-11-02、構造反証計画）
+
+**横断する設計課題**：#2387のQX-17実Go `RelationalIR`構造、#2506のResult Slice/Grain、#2582の反応的Invalidation、#2586のQuery→Context→Claim縦断を結ぶと、同じ「列の依存」の語で少なくとも次の4種を混同しやすい。**Value dependence**（値の計算に使った元列）、**qualification/existence dependence**（WHERE/EXISTS/JOIN等、その出力行・groupが成立する条件）、**multiplicity dependence**（bagとして何回出現するか）、**ordering/selection dependence**（ORDER/LIMIT/Windowによりどの行が選ばれるか）。さらに、Contextでいう業務Entity identityとQueryのrow occurrenceは別である。既存`OutputField.Inputs`は主にColumnOccurrence由来の値のlineage、`RelNode.Inputs`はOperation ID由来の構造経路で、**この4依存の証明書そのものではない**。
+
+**固定反例の対照**（既存F0/QX-15の合成Entity/集合を再利用する。SQL原文・独立期待・結果Grain・完全性は#1131/#2506と照合）：
+
+| ケース | 出力として同じ列/値が見える状況 | 結果の成立・多重度・意味の差 | M2で必要な診断 |
+| --- | --- | --- | --- |
+| QX-17M2-A | `SELECT l.amount FROM line l` と `SELECT l.amount FROM line l JOIN delivery d ON ...` の`l.amount` | 値の元列は同じでも、INNER JOINはdeliveryの存在で行を選別し、複数deliveryがあると同じline値を増殖する | Field lineageがlineのみでも、root結果のexistence/multiplicityはdeliveryに依存。JOIN入力がunknownならoutputの全件性は未確定 |
+| QX-17M2-B | `SELECT h.id FROM header h LEFT JOIN delivery d ON ...` | `h.id`自体の値はheader由来。LEFT JOINは未一致でも行を残すが、右集合の追加で`(H,NULL)`が置換され、出力出現数が変わる | 「値のSource」と「出力行の出現・由来・grain」を切り分ける。未一致NULLを実体NULL・不存在証明へ昇格しない |
+| QX-17M2-C | `LEFT JOIN ... WHERE d.id IS NULL` | 同じheader値でも、deliveryに一致行が追加されると以前のheader出力が消える | Filterの真理条件が文字列表現だけならanti-join/不存在の意味は`unverified`。右集合partialから「なし」を確定しない |
+| QX-17M2-D | `SELECT l.amount`の集合から`SUM(l.amount)`を計算、JOIN前後で順序を変更 | Group単位で値の元列が同じでもJOIN後のSUMはfan-outして変わる。lineを事前集約した値も、後段JOINで出現が増える | Claimの対象が「line全集合に対するSUM」か「JOIN後bagのSUM」かを区別。Column `Inputs`だけで演算上の値依存を完全証明しない |
+| QX-17M2-E | `ORDER BY d.created_at LIMIT 1`で`l.amount`を投影 | 元列はlineでも、結果に選ばれる行はdeliveryと順位条件に依存。入力追加で先頭行が替わる | order/tie-break、必要な母集団、同一Snapshotが不明なら「最初/唯一」の業務主張を保留 |
+
+**ここで新たに置く判定原則**：
+1. `Relational.Root`から到達するSource occurrence集合は、**出力Query全体の構造的な依存候補**として扱う。特定`OutputField`の意味・寄与行・業務Action対象・部分取得でも成立するClaimを、その到達集合から自動決定しない。到達しないSourceが「影響なし」であるとの強い主張には、Operation ID一意性、欠落/循環/opaque/相関/CTE境界、Source版の照合が必要。
+2. **保守的な上界**としてroot到達Source集合を示せても、各出力Fieldの厳密な最小依存集合とは限らない。`OutputField.Inputs`とOperation DAGのIDが異なる点を保持し、対応が未実証なら`field-to-operation-binding: unverified`とする。全root依存に基づく再取得は過剰失効となり得るが、無根拠に局所維持するfalse-positiveより優先する。#2582は独立Claimの依存が証明できた場合に限り局所維持を試す。
+3. 解析の結果が`Parse/Lowering=full`であっても、Value/Existence/Multiplicity/Selectionの4種類のClaim資格は**別欄**。SQL式の型付き意味、Source revision/dialect/schema、必要Collection完全性、Snapshot、認可/Disclosureを満たさないClaimは`not-established`。SQL `NULL`は`sql-null`と分離する。正式な公開Enum/API追加はまだ行わない。
+4. 新たな万能SQL EvaluatorやQuery Plannerを作る代わりに、まず#2577の実Go `DerivedIR`、#2388のPython QX-17プローブ、#2506のContext/Result Slice合成参照を**同一固定入力**で比較し、各行の「確定できる構造／型付き根拠の欠落／誤って確定しそうなClaim」を記録する。受入テストは独立Oracleを#1131/#2514に接続し、手書きOperator対応を実IRの自動Binding成功と呼ばない。
+
+**今回新たに確認したCI証拠（QX-17 M1の限定前進）**：Draft [PR #2577](https://github.com/hat47x/tei-platform/pull/2577) のhead `31a2fc2d6ddd0fe4c343c00df39ccfdb65723a23` を含むGitHub Actionsの**PR merge checkout `f01f4322b3287e277b31c59b02a0f7eda33bc6aa`**で、Ubuntu runner/Go **1.26.10**、`go test -count=1 -timeout 60m ./...`と`go vet ./...`が成功し、`tei/internal/query` は `ok` と記録されている（workflow run `41388183698`、job `125093564871`、2026-11-02 UTC）。このログは`TestQX17`を**名前指定で個別実行した記録ではない**。PR merge refによる関連パッケージの回帰PASSと、PR head単独/実SQL worker/SQLの意味/Provider/SHO/Owner受理を切り分ける。元§7.10の「CI結果待ち」は、本節の観測後には**完了済み**だが、PR本文・Core・製品契約の採用を意味しない。
+
+**M2最小完了条件（提案）**：A〜Eを少なくとも「構造追跡と式意味の別資格」で比較し、Aの6出現と2業務Entity、Cの入力追加によるretraction、Dの200/600/100、Eの選択変更を独立期待で検査。QX-17実Go→read-only probe→#2506の取得状態という一往復で、説明に必要な情報が欠落した箇所を具体的に報告できること。#2586のHJ-01〜04はこの受渡しの統合Owner、#2582が変更後の局所維持／失効、#2500が更新Intent、#1803/#2516が説明文書、#1174が実効果を所有する。**本節は計画のみ。A〜EのGo/Worker/Context統合試験はNOT RUN**。
+
+
 ## 8. 実装順・担当引継ぎ（提案）
 
 | 段階 | 所有 | 実施 | 完了の根拠 |
