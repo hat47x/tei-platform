@@ -48,7 +48,9 @@ type Result struct {
 	SourceContributions         []SourceContribution
 
 	// Private, transient read provenance. Not part of Canonical World or a
-	// serialized Source Index; only Load may populate this snapshot.
+	// serialized Source Index; only Load may populate this snapshot. After a
+	// successful Load it contains every ManagedFile: parsed domain Sources and
+	// forward-compatible assets that no domain loader consumed.
 	sourceSnapshotRoot  string
 	sourceSnapshot      map[string][]byte
 	semanticSourceFiles []string
@@ -173,6 +175,9 @@ func loadWithStack(root string, visiting map[string]bool) (Result, error) {
 		return Result{}, err
 	}
 	if err := loadWorkspaceImports(root, imports, &r, visiting); err != nil {
+		return Result{}, err
+	}
+	if err := captureManagedSourceSnapshot(&r); err != nil {
 		return Result{}, err
 	}
 	Normalize(&r.World)
