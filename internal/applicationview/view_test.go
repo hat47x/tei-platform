@@ -269,3 +269,19 @@ func TestBuildCarriesUnusedAttributes(t *testing.T) {
 		t.Fatalf("unused=%+v", view.Unused)
 	}
 }
+
+func TestBuildAppliesLayoutOrder(t *testing.T) {
+	world := viewWorld()
+	for i := range world.Applications[0].Patterns {
+		if world.Applications[0].Patterns[i].ID == "order_entry.order_record" {
+			world.Applications[0].Patterns[i].Layout = &application.Layout{Order: []core.CanonicalID{"sales.order.customer_id", "sales.order.order_id"}}
+		}
+	}
+	view, err := applicationview.Build(world, "order_entry", "order_entry.order_record")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(view.Items) != 2 || view.Items[0].Attribute != "sales.order.customer_id" || view.Items[1].Attribute != "sales.order.order_id" {
+		t.Fatalf("items=%+v", view.Items)
+	}
+}

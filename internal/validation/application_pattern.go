@@ -222,6 +222,44 @@ func validateApplicationPatterns(w ir.World) []Diagnostic {
 				}
 			}
 
+			if pattern.Layout != nil {
+				switch {
+				case pattern.Kind != application.PatternRecord:
+					out = append(out, errFor(
+						patternSubject,
+						"APPLICATION_PATTERN_LAYOUT_NOT_ALLOWED",
+						"%s pattern %s does not accept layout; layout belongs to record",
+						pattern.Kind,
+						pattern.ID,
+					))
+				default:
+					attributes := semanticDataAttributes[pattern.Data]
+					seen := map[core.CanonicalID]bool{}
+					for _, attribute := range pattern.Layout.Order {
+						if _, ok := attributes[attribute]; !ok {
+							out = append(out, errFor(
+								patternSubject,
+								"UNKNOWN_APPLICATION_PATTERN_LAYOUT_ORDER",
+								"record pattern %s layout refers to %s that is not an attribute of %s",
+								pattern.ID,
+								attribute,
+								pattern.Data,
+							))
+						}
+						if seen[attribute] {
+							out = append(out, errFor(
+								patternSubject,
+								"APPLICATION_PATTERN_LAYOUT_ORDER_DUPLICATE",
+								"record pattern %s layout orders %s more than once",
+								pattern.ID,
+								attribute,
+							))
+						}
+						seen[attribute] = true
+					}
+				}
+			}
+
 			switch pattern.Kind {
 			case application.PatternBrowse:
 				out = append(out, validateBrowsePattern(app, pattern, patternSubject, semanticData, queries)...)

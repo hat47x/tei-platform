@@ -117,6 +117,12 @@ type Pattern struct {
 	Sorts         []Sort                   `json:"sorts,omitempty"`
 	PageSize      int                      `json:"pageSize,omitempty"`
 	PageBreak     *PageBreak               `json:"pageBreak,omitempty"`
+	Layout        *Layout                  `json:"layout,omitempty"`
+}
+
+// Layoutは、対話の項目の並びを宣言する。画面座標ではなく、意味の順序だけを持つ。
+type Layout struct {
+	Order []core.CanonicalID `json:"order,omitempty"`
 }
 
 // PageBreakは、header-detailの印刷で1ページに収める明細行数と、見出しの繰返しを宣言する。

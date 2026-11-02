@@ -171,6 +171,36 @@ func (p *Parser) ParseApplicationPattern() (application.Pattern, error) {
 				return out, p.errAt(sizeTok, "page-size requires an integer")
 			}
 			out.PageSize = size
+		case "layout":
+			_, _ = p.next()
+			if _, err := p.expect(TokenLBrace); err != nil {
+				return out, err
+			}
+			layout := &application.Layout{}
+			for {
+				entry, err := p.peek()
+				if err != nil {
+					return out, err
+				}
+				if entry.Kind == TokenRBrace {
+					_, _ = p.next()
+					break
+				}
+				if entry.Text != "order" {
+					return out, p.errAt(entry, "expected order in layout")
+				}
+				_, _ = p.next()
+				attrTok, err := p.expect(TokenIdent)
+				if err != nil {
+					return out, err
+				}
+				attribute, err := core.ParseCanonicalID(attrTok.Text)
+				if err != nil {
+					return out, p.errAt(attrTok, err.Error())
+				}
+				layout.Order = append(layout.Order, attribute)
+			}
+			out.Layout = layout
 		case "page-break":
 			_, _ = p.next()
 			rowsTok, err := p.expect(TokenIdent)
