@@ -63,7 +63,7 @@ func TestSelectedSemanticViewChecksPrimitiveAndDefinitionChanges(t *testing.T) {
 	plan.Slots[0].Outputs[0].Type.Name = "text"
 	plan.Slots[1].Inputs[0].Type.Name = "text"
 	if report := InspectWithSelectedSemanticView(registry, plan, view); report.Verdict != composition.ProposalUnknown ||
-			!has(report, "selected-semantic-representation-unresolved") || report.Order != nil {
+			!has(report, "selected-semantic-primitive-label-mismatch") || report.Order != nil {
 		t.Fatalf("same ID and wrong primitive must not pass: %+v", report)
 	}
 
@@ -80,7 +80,7 @@ func TestSelectedSemanticViewChecksPrimitiveAndDefinitionChanges(t *testing.T) {
 		}
 	}
 	if report := InspectWithSelectedSemanticView(registry, plan, changed); report.Verdict != composition.ProposalUnknown ||
-			!has(report, "selected-semantic-representation-unresolved") || report.Order != nil {
+			!has(report, "selected-semantic-primitive-label-mismatch") || report.Order != nil {
 		t.Fatalf("modified meaning with unchanged port declaration must not pass: %+v", report)
 	}
 }
