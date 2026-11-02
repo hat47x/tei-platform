@@ -154,8 +154,8 @@
 
 TEIの[PR #2576](https://github.com/hat47x/tei-platform/pull/2576)・[#2578](https://github.com/hat47x/tei-platform/pull/2578)・[#2580](https://github.com/hat47x/tei-platform/pull/2580)・[#2581](https://github.com/hat47x/tei-platform/pull/2581)による実装拡張を、**Primitive/Collection/Presence/Realization/Sourceとの交差**として評価。#2495の七役割、[#2497の詳細設計 §11](STRUCTURE_PRESERVING_TRANSFORMATIONS_AND_PROJECTIONS_2026-11.md)、[#2585](https://github.com/hat47x/tei-platform/issues/2585)のPFC-01〜12と接続。**この表自体は実際のraw入力→生成main.goのテスト結果ではない。**
 
-| ID | Pressure / 参照構造 | 保持したい意味・観測 | 誤認・損失の負例 | 対象Owner |
-| --- | --- | --- | --- | --- |
+| ID | 構成・表現 | Pressure／確認ケース | 保持したい意味・観測 | 誤認・損失の負例 | 対象Owner |
+| --- | --- | --- | --- | --- | --- |
 | PC-85 | required / optional Field と値の存在状態 | required Fieldのmissing/null/empty | 存在状態と有効な空値 | 必須nullを空文字列や未指定と同じ扱いにする | #2585/#2056 |
 | PC-86 | optionalな入力Fieldと送信Payload | optional Fieldのmissing/null | Consumerが区別を要求するか | 出力省略から元のmissing/nullを復元可能とする | #2585/#2497 |
 | PC-87 | boolean Field と存在ビット | optional boolean false/absent | falseという値と存在ビット | falseをdefault扱いで消去・review済みと誤推論 | #2585/#2498 |
@@ -177,8 +177,8 @@ TEIの[PR #2576](https://github.com/hat47x/tei-platform/pull/2576)・[#2578](htt
 
 [構造保存写像設計 §12](STRUCTURE_PRESERVING_TRANSFORMATIONS_AND_PROJECTIONS_2026-11.md)のTP-01〜12と、[#2586](https://github.com/hat47x/tei-platform/issues/2586)（Query→Context→Claim→Patternの縦断）、#2506（Result Slice）、#2505（版間Source）、#1708（Freshness）を接続する。これらは**試験計画**であり、実Provider・GUI・独立Oracleの実測ではない。
 
-| ID | Pressure / 対象構造 | 必要な区別・保持条件 | 誤認の負例 | Owner |
-| --- | --- | --- | --- | --- |
+| ID | 構成・表現 | Pressure／確認ケース | 必要な区別・保持条件 | 誤認の負例 | Owner |
+| --- | --- | --- | --- | --- | --- |
 | PC-97 | ページ化されたRelation Result | ページ内0件 | partial zero / complete zero | 先頭ページ0件から全体不存在を宣言 | #2506/#2586 |
 | PC-98 | 時点付き0件Claimと追加Event | 0件確定後の挿入 | 版・Scope付き不存在 | 過去の不存在を現在へ無条件継承 | #2586/#1708 |
 | PC-99 | 部分集合に対する数値集計 | 非負SUMへの負値追加 | 非負・追加のみの下界条件 | 無条件のSUM下界として保証 | #2586/#1705 |
@@ -198,8 +198,8 @@ TEIの[PR #2576](https://github.com/hat47x/tei-platform/pull/2576)・[#2578](htt
 
 [構造保存写像§13](STRUCTURE_PRESERVING_TRANSFORMATIONS_AND_PROJECTIONS_2026-11.md)のAM-01〜12を参照し、[#2593](https://github.com/hat47x/tei-platform/issues/2593)のMeasure意味、[#2516](https://github.com/hat47x/tei-platform/issues/2516)のConstruction Context/Disclosureを交差検証する。全件机上の反証候補、実試験NOT RUN。
 
-| ID | Pressure | 保存すべき意味 | 偽同値・誤成功 | Owner |
-| --- | --- | --- | --- | --- |
+| ID | 構成・表現 | Pressure／確認ケース | 保存すべき意味 | 偽同値・誤成功 | Owner |
+| --- | --- | --- | --- | --- | --- |
 | PC-109 | 分割済みAggregate(mean, sum, count) | 平均の再集計 | group sum/count、対象集合 | 平均10/20から単純平均15 | #2593/#2497 |
 | PC-110 | 群別比率(num, den)の集約 | 比率の再集計 | numerator/denominator、母集団 | 50%/80%の単純平均65% | #2593/#1705 |
 | PC-111 | Fact identity付き同額行とJOIN | 同値の別Fact | Fact ID、JOIN出現 | `SUM(DISTINCT value)`で重複業務値を消去 | #2593/#2387 |
