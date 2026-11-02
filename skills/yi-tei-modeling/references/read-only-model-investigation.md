@@ -24,6 +24,19 @@ go run ./cmd/tei validate -workspace reference/workspace -json
 - `worldFingerprint`／`sourceIndexFingerprint`は読取り時点の版同一性の手掛かり。実ContentやSource位置の違い、`modelRevision`の意味を区別し、同一ハッシュを現在の許可・人の意味受理へ読み替えない。
 - `go run`ではバイナリにVCS情報が埋め込まれないことがある。ビルド済み実行ファイルの`version -json`、Git HEAD、Working Tree変更、Workspaceの入力バイトを用途に応じて照合する。
 
+
+## 呼出し時の実物・複数Readの接合（TS-11〜TS-15）
+
+**発見したCLIと実際に呼んだCLIを分ける**。最初の`commands`が取得した情報を、後で呼び出した別ビルドや別Working Treeへ無条件に適用しない。再現性を高める場合は、一度ビルドして実行ファイルを固定し、実際に使った絶対パス、artifact bytesのdigest、ビルド元Git revision・Working Tree、呼び出したargv・cwd、Workspace rootと各Readのexit/statusを紐付ける。`go run ./cmd/tei`を繰り返す場合は、各呼出しでGoがソースを読み直し得るため、**すべて同じ実行物を使ったと主張できるわけではない**。観測していないdigestやパスを埋めない。固定しても実Source/Workspaceを同時ロックしたことにはならず、各Readの内容照合は別に必要。
+
+**Traceの二つのfingerprintを取り違えない**。 `trace -mode full -limit <N>`の複数ページを読む場合、次ページの`-offset`には前ページの`result.trace.nextOffset`、`-expected-fingerprint`には**外側**`result.snapshotFingerprint`を使う。内側の`result.trace.snapshotFingerprint`はTrace Graph自体を識別する別の値であり、継続トークンの代用にしない。誤トークンやSource変更により`STALE_SNAPSHOT`となった場合はページを結合しない。次ページの成功と、最初の対象/Scope/版が整合したことをそれぞれ検査する。
+
+**同一ClaimへのRead接合**：`catalog → inspect → trace → validate`の各結果について、実root/Subject/Scope、観測時点、`worldFingerprint`/`sourceIndexFingerprint`の名前空間と値を比較し、差異を保持する。別checkoutでCRLF/LFが異なる場合、同じ論理モデルに見えてもbyte識別値が違うことがある。正規化や一致推定はしない（既存#2399のOwner判断を参照）。異版でも用途によって局所比較できる場合は、何を比較できて何を断定できないかを明示する。
+
+**開示は実行とは別**： `commands`に`knowledge-context`等のread-only入口が載っていても、内部で読めるSource/Metadataと外部Harnessへ送ってよいProjectionは別である。機密性が要求される場合はProduct/Host/OSの実効境界を確認し、Skillに書いたread-onlyや文字列の`-scope`を外部開示資格と同一視しない。
+
+この節のTS-11〜15は[TEI #2605](https://github.com/hat47x/tei-platform/issues/2605)の反証票。**実CLIのTOCTOU/ページング/異改行環境/実OS開示試験はNOT RUN**。
+
 ## 指摘が必要な反例
 
 | 観測 | 解釈・次の確認 |
