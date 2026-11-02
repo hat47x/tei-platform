@@ -136,6 +136,23 @@ P1の最初のHeadless確認では、固定した同一配布版に属するXEA[
 
 **検証結合**：この3件は既存S0/P0-a/P0-b/Consumerの**未取得Evidenceを正確に示す追加の比較票**であり、G0〜G4やOwnerのAccept/Release境界を増設しない。独立Expectedは生成器／検証器が書き出した`want`から独立に用意し、Fixtureで真として与えたGrant／Receipt／Read Cohortを「実測」と呼ばない。下面RV-K5/P3/O4は**計画、NOT RUN**。
 
+### P0-a着手用：Draft #2670のv1→v2診断差分をexact-headで検収する
+
+[既存#950のFAMILY Source構造責務](https://github.com/hat47x/tei-platform/issues/950#issuecomment-6585872832)と[Draft #2670](https://github.com/hat47x/tei-platform/pull/2670)を、**実装候補の採否を判断できる作業票**へ具体化する。本節は既存RV-F1/F2/R1/K1/K4/O1とRV-K5の**実施順序**であり、比較ケースの増設ではない。
+
+**同一入力・異版の比較条件**：まず#2670のbase commit `2e16b2af9531225b73430a32a6dbb2031e07f4c1` のdiagnostic policy v1と、検証するPRの**exact head**（2026-11-03初回観測 `5d3cd1bf6735c2f9068e1e4018091e0f47747a3a`、v2候補）を別々に固定する。同一の公開合成XEAD byte、Reader/Classification/Transcription contract、実行Go版、公開Report入力を比較し、head更新時にはテスト・CI結果を再取得する。`git diff`で変更が既存Source診断とそのテスト・policy revision・公開レポート検証に限られることを先に確認する。
+
+| 固定fixture | v1側の期待 | v2候補側の期待・別途維持する不変条件 |
+| --- | --- | --- |
+| FAMILY／左1・右PKまたはSKの2成分、右SortKey一意 | `relationship-key-arity-mismatch` | `relationship-family-correspondence-unresolved`。両版ともlocal/global `unresolved`。右候補Fieldが型上一意でも**Field pair・業務意味はAcceptedにしない** |
+| 同FAMILYで右SortKey重複または空 | arityで`continue`、当該Relationshipの順序検査は未実施 | family対応未解決と右`relationship-key-order-unresolved`を別々に記録。構成の型・位置比較は依然未実施 |
+| REFFER/SUBTYPE/unknown、FAMILY右FK、FAMILY逆方向 | `relationship-key-arity-mismatch` | 同コードを維持し、FAMILY限定例外の拡大を拒否する |
+| 独立複合Key KのSortKey重複と正常J | Key単独順序診断の不足を限定観測 | **#2670では解決しない**。改善試験は既存RV-K5へ委譲し、今回のv2成果へ誤算入しない |
+
+**一つの検証Attemptで残す項目**：`raw fixture digest / git base・head / 読込contract・policy / private Source FactとRelationalFactResolutions（対象Key・Relationship） / 診断code・side・数・先行short-circuit・型比較実施範囲 / global status / public schema v3・ByCode・ByKind・diagnosticToken / 独立Expectedの出典 / Go test・vet・GitHub exact-head workflow run`。公開データには元ID・Locatorを出さない。**Source digestが同じでも判定rule revisionが異なる**ため、公開tokenや診断件数が不変であることを合格条件にせず、公開出力形状の一致を診断意味の同一性と扱わない。
+
+**P0-a合否と次段の停止**：Source-only patchの評価は「構造上の異形と対応未確定を区別できる」「無関係Jの局所結果を汚染しない」「公開Reportでprivate原典が漏れない」「独立Expectedとexact-head実行が照合できる」まで。これがPASSでも、G-VのXEAD↔XEAF対応、正式H2/J5、実Provider Read、Target関係／FK、OwnerのField対応・Meaning Acceptance、成果物同一世代の実Consumer読取は**別資格**。実Go/CI/正式実体の再実行なしに計画へPASSを記入しない。新Host、別Oracle、独立Key診断の#2670への混入を要求しない。
+
 ### Case別に失敗原因と検証資格を固定する（本表の32統合ケースは一体実行未完了）
 
 | ケース | 入力・判別条件 | Headlessで照合する期待／禁止事項 | 担当 |
