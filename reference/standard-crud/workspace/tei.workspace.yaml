@@ -1,5 +1,4 @@
 workspace: standard_crud
-formatVersion: 1
 sources:
   - semantic
   - applications
