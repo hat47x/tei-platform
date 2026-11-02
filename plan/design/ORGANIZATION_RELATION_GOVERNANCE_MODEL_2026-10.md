@@ -1486,3 +1486,74 @@ TEI #1127が検討する`Semantic Data/Relations → Function Data Context + Ope
 **再現・再利用の制約**：今回の`verify-projection.mjs`は**同じファイル内の合成Sourceを4種類に投影**するRefであり、`verify.mjs`/`verify-change.mjs`/`verify-handoff.mjs`を含むすべての独立試験が**一つのTEI Canonical Source/Fixture**を参照しているわけではない。複数ファイルの自作fixture重複を残したまま「TEI全体で一体モデル→複数Viewを達成」と判断しない。次段は既存#1131 Dataset/Scenarioへ一つの元Data/Relationを固定し、実QueryとProjectionの消費者間で差分が分かる受渡し票をつくる。
 
 **作業優先度**：これは[全体#1119](https://github.com/hat47x/tei-platform/issues/1119)の実PG/Owner-write/SHO正本・文書の受入を妨げない**P1並列検証**。資料の追記はDraft #2389、実行可能な小ReferenceはDraft #2596に分ける。正式Core schema/新図記号体系の採用、GUI実装、PR統合やOwner意味受理の自動化は行わない。
+
+## 45. Everything is Dataを組織可視化で具体化する：共有Source・明示Context・複数Projection（2026-11-02）
+
+### 45.1 一体モデルと利用目的を分ける
+
+11月2日の横断方針[#2619](https://github.com/hat47x/tei-platform/issues/2619)（Everything is Data）、#2620（標準構造＋Role）、#2621（Markdown/Studio）、#2622（Data Operations）によると、Data/Relation/Function/Rule/Script/Scenarioを**標準データ構造と意味Role**で扱い、Markdown表・Graphviz・関数/チェーン・Goa/MukuroL風の簡潔なDSL等を**Authoring上の構文糖衣**とする。
+
+組織モデルでは次の五つを別の意味役割として保持する。
+
+1. **Data/Relationの存在**：P2はA2(P2,D1)とA3(P2,D2)を持つ。Graphで双方を辿れる。
+2. **Functionが宣言するRead footprint**：D1のMembershipからID/Person/Deptを取得する等、Relation path・親Anchor・Field/Grain/要求Scopeを明示する。**Data ModelにRelationがあるだけで、そのFunctionがA3まで自動取得するわけではない**。
+3. **Providerの観測Result Slice**：`all-for-selected-department`は全件取得を**要求する宣言**。実Providerがpartial/unknownなら、全件の人数や不存在を確定しない。取得したP1の存在証人と未取得P2の不存在は別。
+4. **表示目的のProjection**：同じContext/Scope/Source版からTable行とGraph EdgeへA1/A2等の元Relation ID・粒度・選択epoch・取得完全性を保持して投影する。部門別人数2と全体Persons数3、Membership件数4、FTE3.0は別Claim。
+5. **編集Intent・実Request・Effect**：`select-relation(A3)`が得られたことは`unlink(A3)`の実行許可ではない。候補→実Request対象→Host/Providerの実EffectとReceipt、Ownerの意味受理をそれぞれ既存担当で評価する。
+
+**Everything is Dataは、全Relationの暗黙Traversal・全件Fetch・業務意味の自動受理を意味しない。** 構文糖衣は増やせる一方、対象/時点/Scope/Rule/Operator版・現在のObservationが明示された範囲で標準UIを構成する。一般のPlugin作者にメタオントロジーの宣言作業を課さず、共通構造と専門Profileを組み合わせる方針を保持する。
+
+### 45.2 合成Referenceの一体SourceとScenario分離
+
+[独立Draft #2596](https://github.com/hat47x/tei-platform/pull/2596)の4つの検証ファイルは、以前はP1/P2/P3・A1〜A4などを別々に手書きしていた。現在は**一つの合成Datasetを参照する5つの検証ファイル**へ整理した。ただし、これは正式なTEI Canonical Model/DSL Schemaではなく、実現に向けた**試験用の共通入力**である。
+
+| 固定入力 | 内容・目的 |
+| --- | --- |
+| `reference/org-semantic-views/source-fixture.json` | Persons/Organizations、A1〜A4の**5つの記録版**（A2は遡及訂正あり）、Position M1、Occupancy O1/O2、合成FTE配賦、Project。**業務Sourceの試験用データ** |
+| `reference/org-semantic-views/scenario-fixture.json` | `sourceRevisionRef`、業務有効日2027-06-15・既知日2027-07-01、選択epoch/Anchor/Source版/Provider Snapshot、Tree表示Preference。**利用時点・観測・表示条件**でありSourceの意味正本へ混ぜない |
+| `source-fixture.mjs` | 二つのJSONを読み、Source版一致を確認し、valid/known timeでMembershipを抽出するread-only helper |
+| `verify*.mjs` | 同じFixtureを消費し、独立期待値でIdentity/集計/時点/Request候補/Projection/明示Mappingを確認する。テストの名称/形は正式TEI APIではない |
+
+Source Revision不一致でhelperを停止させる。UI選択epoch、Provider Snapshot、Read結果の完全性やTreeの表示Preferenceを**業務Factへ昇格させない**。#1131 Dataset/Scenario、#2505版間対応、#2514 Oracleの適用資格と、Studio/SHOが元Sourceに再解決する契約へ接続できる。
+
+**現行GitHubコードのreadbackを元にした限定V8試験結果**：
+
+| 対象 | 現行共有Fixture版の局所検証 |
+| --- | --- |
+| `verify.mjs`：人物/関係/FTE/JOIN/在任・選択 | **27/27 PASS** |
+| `verify-change.mjs`：valid/known時点、訂正、Claim変更 | **11/11 PASS** |
+| `verify-handoff.mjs`：Instance/epoch、Relation Intent候補/Request対象 | **16/16 PASS** |
+| `verify-projection.mjs`：同一Source→Table/Graph/Tree/Chart | **16/16 PASS** |
+| `verify-context.mjs`：Function別明示Mapping、Scope、Result Slice、二Consumer | **20/20 PASS** |
+
+**合計90/90はV8の局所合成Reference成功**。正式TEI Query/Context/Studio/Hostの製品E2Eは0件（NOT RUN）。旧`verify-change`のNode11件/旧`verify-handoff`のNode16件PASSは**旧ソースSHAにのみ適用**され、現行改版のNode CLI/CI実行は未実施。旧PR報告の実行証拠を現在版の証拠へ無条件に繰り上げない。
+
+### 45.3 明示Function Data Mappingの負例（ORG-FC）
+
+新しい`verify-context.mjs`は[#2624](https://github.com/hat47x/tei-platform/issues/2624)と[#2506](https://github.com/hat47x/tei-platform/issues/2506)の検討を組織モデルへ応用する**read-only Reference**である。
+
+| Case | 期待/拒否する誤成功 |
+| --- | --- |
+| ORG-FC-01 | FunctionがD1 Membershipを指定するとA1/A2だけを取得。存在するが**未Mapping**のD2 A3/A4を暗黙に読むことはない |
+| ORG-FC-02 | D1のcompleteな2件からはD1のCOUNT=2を説明できるが、全組織のCOUNT=4/Persons=3の確定には別Scope証拠が必要 |
+| ORG-FC-03 | D1の1件目だけならP1の存在は観測済み。P2の不在／D1の最終人数はunresolved |
+| ORG-FC-04 | `all-for-selected-department`を要求しても、観測がpartial/unknownならcompleteへ昇格しない |
+| ORG-FC-05 | Relation/Grain/Field/Scope/Model revisionが未宣言・不整合ならunsupported。Graph経路や同名Fieldから自動補完しない |
+| ORG-FC-06 | 同じSliceをTable/Graphへ投影し、A1/A2 Relation ID、Parent Anchor、epoch、Source版、Snapshot、completenessを共有 |
+| ORG-FC-07 | 職位M1の在任者P3から、直接Membership(P3,D1)やFunctionの暗黙取得を導出しない |
+| ORG-FC-08 | 部門ラベルD2変更ではD1の元Relation IDが変わらない。ラベル再表示と業務状態は区別 |
+| ORG-FC-09 | 合成の全件が既知だから、1/2の観測結果にcompleteを偽装した場合の矛盾を検出できる。実Provider全件性の汎用判定器とは主張しない |
+| ORG-FC-10 | Context読取/表示はHost実行Grant、外部Disclosure、Commit/Receiptを発生させない |
+
+**実行済み範囲**：これらの局所検証は**20/20 V8 PASS**。正式TEIのFunction Data Context/Provider/CLI/GUI、Owner意味受理は未接続である。
+
+### 45.4 既存Ownerへ引き渡す製品実証
+
+- **R0 TEI元モデルに対応付け**：#1126/#1131と未統合[PR #2587](https://github.com/hat47x/tei-platform/pull/2587)の実装候補を照合し、既存Semantic Data/RelationのDSL/IRでどこまで記述できるかを確認する。不足ならunsupported/欠落と記録し、合成JSONを正式Core Schemaと認定しない。
+- **R1 Headless Context**：#2506/#2624/#2586が、同版Source/Scope/MappingからD1限定取得、Result Slice、実Queryのrow grainと元Relation occurrenceの対応をCUI/JSONで観測。
+- **R2 標準Projection**：#2497/#2507/#1127が、同一ContextをTable/Graph/Tree/Chartや標準Inspectへ展開し、元ID・隠れた関係・時点・集計粒度・complete/unknownを保存する。単一親Treeの行順依存の選択は拒否。
+- **R3 書戻しとEffect**：#2500/#2598/#2597がA3の候補/Request/Editing Sessionを区別。実Action/Host Authority/Tx/Receiptは#1174、ModelerのSource編集受理は#1124。
+- **R4 SHO・人間可読設計**：#2610/#2516とSHOの元Source参照再解決に同版を渡し、文書での意味説明、元Sourceへの参照、著者の編集、Owner受理を区別する。
+- **R5 独立Oracleの判別能力**：#2514で行順変更、無関係ラベル変更、改版/遡及訂正、partial/unknown、A2/A3のTarget取り違えと隠れたTree edgeを独立負例として再評価する。
+
+#1119の実PG/Owner-write/SHO品質Gateの優先順位は維持。通常組織Dataへの専用ACL、TEI独自Host、第二Semantic/Query/Action Engine、必須Ontology入力UIは増やさない。**本節の資格は合成Referenceと設計・実証計画であり、TEI製品への導入・正式Contract採用・PR merge・Owner意味受理は未。**
