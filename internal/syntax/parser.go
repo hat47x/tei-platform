@@ -1929,6 +1929,7 @@ func (p *Parser) parseSemanticData(namespace core.CanonicalID) (semantic.Data, e
 			disp := ""
 			required := false
 			immutable := false
+			role := ""
 		attributeOptions:
 			for {
 				nt, err := p.peek()
@@ -1956,6 +1957,13 @@ func (p *Parser) parseSemanticData(namespace core.CanonicalID) (semantic.Data, e
 				case "immutable":
 					_, _ = p.next()
 					immutable = true
+				case "role":
+					_, _ = p.next()
+					roleTok, err := p.expect(TokenIdent)
+					if err != nil {
+						return d, err
+					}
+					role = roleTok.Text
 				default:
 					break attributeOptions
 				}
@@ -1965,7 +1973,7 @@ func (p *Parser) parseSemanticData(namespace core.CanonicalID) (semantic.Data, e
 				return d, p.errAt(aSym, err.Error())
 			}
 			aid, _ := core.ParseCanonicalID(string(id) + "." + aseg)
-			d.Attributes = append(d.Attributes, semantic.Attribute{ID: aid, Symbol: aSym.Text, Description: desc, Display: disp, TypeRef: typeRef, Required: required, Immutable: immutable})
+			d.Attributes = append(d.Attributes, semantic.Attribute{ID: aid, Symbol: aSym.Text, Description: desc, Display: disp, TypeRef: typeRef, Required: required, Immutable: immutable, Role: role})
 		case "description":
 			_, _ = p.next()
 			descTok, err := p.expect(TokenString)

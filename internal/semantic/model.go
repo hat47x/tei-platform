@@ -70,6 +70,7 @@ type Attribute struct {
 	TypeRef     core.CanonicalID `json:"type"`
 	Required    bool             `json:"required,omitempty"`
 	Immutable   bool             `json:"immutable,omitempty"`
+	Role        string           `json:"role,omitempty"`
 }
 
 type Cardinality string

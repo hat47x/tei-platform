@@ -81,6 +81,7 @@ type Item struct {
 	Input     string           `json:"input,omitempty"`
 	Required  bool             `json:"required,omitempty"`
 	Immutable bool             `json:"immutable,omitempty"`
+	Role      string           `json:"role,omitempty"`
 	Values    []string         `json:"values,omitempty"`
 	Lookup    *Lookup          `json:"lookup,omitempty"`
 }
@@ -199,6 +200,7 @@ func Build(world ir.World, applicationID, patternID core.CanonicalID) (View, err
 			Input:     inputKind(attribute.TypeRef),
 			Required:  attribute.Required,
 			Immutable: attribute.Immutable,
+			Role:      attribute.Role,
 			Values:    typeValues[attribute.TypeRef],
 		}
 		if item.Lookup != nil {

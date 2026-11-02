@@ -26,7 +26,7 @@ func viewWorld() ir.World {
 				Data: []semantic.Data{{
 					ID: "sales.order",
 					Attributes: []semantic.Attribute{
-						{ID: "sales.order.order_id", Symbol: "order_id", Display: "受注番号", TypeRef: "std.identifier", Required: true, Immutable: true},
+						{ID: "sales.order.order_id", Symbol: "order_id", Display: "受注番号", TypeRef: "std.identifier", Required: true, Immutable: true, Role: "business-key"},
 						{ID: "sales.order.customer_id", TypeRef: "customer.customer_id"},
 						{ID: "sales.order.status", Display: "状態", TypeRef: "std.code"},
 					},
@@ -282,6 +282,16 @@ func TestBuildAppliesLayoutOrder(t *testing.T) {
 		t.Fatal(err)
 	}
 	if len(view.Items) != 2 || view.Items[0].Attribute != "sales.order.customer_id" || view.Items[1].Attribute != "sales.order.order_id" {
+		t.Fatalf("items=%+v", view.Items)
+	}
+}
+
+func TestBuildCarriesAttributeRole(t *testing.T) {
+	view, err := applicationview.Build(viewWorld(), "order_entry", "order_entry.order_record")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(view.Items) != 2 || view.Items[0].Role != "business-key" {
 		t.Fatalf("items=%+v", view.Items)
 	}
 }
