@@ -1019,6 +1019,44 @@ QX-29（§7.25）は同じJava 21処理系の`BigDecimal`・数値変換・例�
 **設計の停止線**：Value Lineage／出力ID／表示値の一致、Query静的ColumnRefs、Read snapshot文字列の一致を、動的Binding・対象Scope・否定的集合のComplete witness／現在Grantの証明にしない。SQL 0件はBusiness false、Provider未取得、開示不可の同義ではない。静的条件／実Provider read／Consumer claim／Host effectを既存#2387/#2506/#2624/#2582/#2622/#2627/#2586/#2516/#1174へ受け渡す。**実TEI SQLGlot→Go IR→Function Context→Provider→SHO/Owner**はNOT RUN。D2拒否・SQL正本・Draftを保持し、新Query Engine／共有Host／Dependency Registryを追加しない。
 
 
+### 7.28 QX-32：二つのProviderが個別には正常でも、一つのFunctionの判断を成立させる「共通の読取り時点」は保証されない（2026-11-03、SQLite 2DB/WAL 13件実測）
+
+#### 横断議論から確定した独立の課題
+
+QX-26（同一SQLite DBの2ページとSnapshot）、QX-31（Relation path再束縛・否定依存）、[#2627 Read Cohort](https://github.com/hat47x/tei-platform/pull/2627)（合成複数Provider Route）、[#2624 Function Access Map](https://github.com/hat47x/tei-platform/pull/2624)（Functionごとの明示Data Mapping）、[#2582 Context Reactive](https://github.com/hat47x/tei-platform/issues/2582)（遅着/再評価）、[#2640 顧客照会のQuery Result](https://github.com/hat47x/tei-platform/pull/2640)を接合すると、**各Providerが自身の現在データを正しく返しても、別々の時点で読んだ値を一つのClaimに合成すると、どの実時点にも存在しなかった結論を作り得る**。
+
+これは、単に「同じSQL/Function版」「Query結果の同じ形」「Providerがそれぞれcomplete」「二つのProviderが同じopaque snapshot labelを返した」という確認では消えない。TEI独自の分散Txや共通Snapshot Managerを導入する話ではなく、**必要な共同Read/Claimを証明できなければ `unresolved / stale / cannot-establish` として保留する**受入条件である。単一ProviderのSQLite WALトランザクション成功を、API/GraphQL/OData等の複数Providerが共有する原子的Snapshotに昇格しない。
+
+#### 再現可能な限定実測（実SQLite DBを二つ使う）
+
+追加：[test_qx32_cross_provider_read_cohort.py](https://github.com/hat47x/tei-platform/blob/work/query-structural-fixture-design-20261030/plan/fixtures/query-workbench-f0/test_qx32_cross_provider_read_cohort.py)。Python 3.13.5、SQLite 3.46.1の標準`sqlite3/unittest/tempfile`で、**異なるSQLite DBファイル（Routing / Policy）、それぞれWriter/Readerを分離し、WALで実コミットを挟む**。手書き期待値と実SQL値を比較し、`python3 -m unittest -v` 13/13 PASS、`py_compile` PASS。GitHub保存blobと実行ソースのGit blob SHAが**`d22bf05866e0cf5af96a3b59e5de450353197ec9`**で一致（**9614 bytes**、SHA-256 `b5aafd34e69e374635f509747f0538ecbc0d96b32dfa0c120f80c527eda83f33`）。合成モデルは架空の`tenant/order→account`と`account→credit ceiling`、Active Holdの関係。正式な与信業務Ruleではない。
+
+| Case | 実SQLite二DBで観測したこと | 条件／不成立の理由 |
+| --- | --- | --- |
+| **QX32-01** | 初期`O1→A1`、A1 ceiling500、amount600でDenied | 同一世界で正しく不成立を示す基準 |
+| **QX32-02** | t0:`O1→A1, A1=500` → t1:Routeだけ`A2`へ変更 → t2:旧A1のceiling700へ変更。各時点ともDenial。しかしt0に読んだA1とt2に読んだA1=700を合成すると**偽のAllow** | **False Positive / Fractured Read**：各Reader個別正常でも合成した値はどの実時点にも一致しない。旧Path＋新Valueの結合を拒否 |
+| **QX32-03** | t0:`A1=700`、t1 Route`A2`（A2も700）、t2旧A1だけ500。各時点ともAllowだが旧Route＋新A1=500を合成すると**偽のDeny** | **False Negative**もある。性能問題でなく意味/判断の誤り |
+| **QX32-04** | RouteのRevisionを読取り前後で比較すると、間のRoute変更を検知 | 明示された単一Providerの単調な実Revisionなら、ある種類の変更検知に利用可能。ただし共同Snapshot証明やABA防止は別 |
+| **QX32-05** | Routing側の実WAL読取トランザクションを`BEGIN`で固定しても、Policy側は新Commitを読めるため偽Allowになり得る | **一方のDBだけSnapshot固定≠二Providerの共同Snapshot**。別Providerへ保証を勝手に拡張しない |
+| **QX32-06** | 人工Token文字列`cohort-1`は不変のまま、双方の実DB Revisionが変わる | Label一致からProvider issuer/取得期間の証拠を推測しない |
+| **QX32-07〜08** | `holds`が0件だった後にActive Hold追加→古い不存在証明を使うと偽Allow。逆に古いActive Hold観測後、削除されると偽Deny | **NOT EXISTS／Exists Witness**にはRelation Path／Predicate／Authority Scope／Read Cohort／実時点と失効が必要 |
+| **QX32-09** | 同じ`account_id=A1`でもTenant Aはceiling500、Tenant Bは1000 | Provider横断IDはAccount名だけでは足りず、**Tenant/Context/Resolved Binding**を一致させる。悪いBindingは偽Allowを導く |
+| **QX32-10** | O2のPathだけ変更すると粗いRouting Revisionは進むがO1の現在Claim値は不変 | Global revisionによる過剰失効と、依存閉包の局所正しさを区別。未照合依存を省略する理由にはしない |
+| **QX32-11** | Active Holdが実在しても、部分取得`LIMIT 0`は空Listを返す。空Listのみで評価すれば偽Allow | `requested all`／`returned empty`／`observed complete`は別。Negative Claimには閉域証拠が必要 |
+| **QX32-12** | 未存在テーブルのProvider SQLは`OperationalError`。同じ世界に実Holdがある | Provider Error→空Collection/0件への変換を禁止。技術失敗・権限拒否・業務不成立は別 |
+| **QX32-13** | Read前の各Revisionが1/1、Read後が2/2であり、その間に偽Allowを構成できる | 単なるVersionの採番/照合では原子的Readを作れない。**同一認証主体・Scope・全入力取得が一つのClaimに適用可能**である根拠が必要 |
+
+#### 既存Ownerへの追加受入条件（正式新Schemaではなく、同一Attemptの比較票）
+
+1. **Logical dependency**（#2506/#2387/#2586）：Function/Queryが読む`tenant,order→account`と`tenant,account→ceiling`、HoldのNegative Predicateを、Source occurrence/Identity/Path/Scope/Output grainで明示。利用しないRelationへ暗黙に拡張しない。QX31の0件依存とQX27の非出力条件も列挙する。
+2. **Per-Provider actual read**（#2622/#2627/#2611）：必要な各Entity/Field/Routeと、実際のQuery/Request/Actor/RLS/Revision/Read interval/CompletenessをProviderごとに記録。`same caller`・`same declared Scope`・`same token`でも、そのProviderでの読取り結果しか主張しない。
+3. **Joint Claim qualification**（#2497/#2582/#2586/#2593）：二つのReadが同時に成立したとみなせる保証がなければ、値が単純なBooleanでも`unresolved`。API ProviderのVersion/ETag/Continuationは意味が違い、同一Snapshot APIが無い場合には再取得・相関版照合・用途別拒否候補を検討し、**Read→Validate→Actの間にさらに変更され得る**ことも保持する。無制限の再試行や誤った強制直列化を提案しない。
+4. **Current Authority/Disclosure**（#1174/#2516/#1178）：結論の正しさと公開可能性/Hostの現在Grant/Effectは独立。旧Claimや古いNegative WitnessからAction許可やSHO/外部LLMへの公開を推定しない。成功したProvider readを完了したBusiness Actionへ昇格させない。
+5. **M1/M2**：まず既存TEI `Query Analyzer→DerivedIR→Function Access Map→Provider Route/Read Cohort→Claim/Pattern`を**一つのFunction/同一Run**で接続し、Routing/Policyの二Providerで上記の正負と`unknown`を記録。次に少なくとも実RDB Provider＋実API Providerで、Connection／Version/ETag／RLS／当該Consumerの可視入力を分けて測る。新たな中央分散Tx Engine・Global Revision・新Host・第二Canonical/Oracle正本は作らない。
+
+**資格と優先順位**：SQLite実DB二つを使った局所13件のみ実測。TEI SQLGlot Worker→Go IR→実Function Context、TEIの二つの実Provider、API/GraphQL/OData横断Read、実Host/Consumer/SHO、Ownerによる業務意味受理は**NOT RUN**。#1640 D2のComplex Query実行拒否、#1119 G0〜G4、外部Host方針を維持。PR #2624（明示Function Context）、#2627（合成Provider Route）、#2634（Go依存）、#2637（D2の読取後Grant再検査）、#2629（横断計画）は**本節更新のGitHub照合ではmerged**。それぞれ局所実装・CI資格を示すにとどまり、単一Function E2Eは別途検証する。
+
+
 ## 8. 実装順・担当引継ぎ（提案）
 
 | 段階 | 所有 | 実施 | 完了の根拠 |
