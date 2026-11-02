@@ -68,3 +68,31 @@ python3 -B plan/fixtures/construction-context/verify_real_cli.py \
 **重要な区別**：上記Markdownは**SHO用の説明素材候補**、JSONは**AI用の構造化素材候補**であり、SHO Composerや外部ハーネスへ実際に渡った証拠ではない。指定した公開用Reference Workspaceだけを検査し、Raw Source本文・非公開列・診断message・Agent内部状態を素材へ入れない。`disclosureStatus=reference-fixture-only-no-policy-grant`を固定し、Host・OS・Policyの外部開示許可を代用しない。
 
 成功の条件は、(1)実binaryのコミット識別、(2)各read-only CLIのSnapshot/Source fingerprint一致、(3)同じ観測を人間/AI表示で型・値とも保持、(4)失われたSource・改変表示・許可の誤昇格を拒否、の**4種を別々に観測**すること。専用GitHub Actionsでは合成15ケース／表示負例群／実Go CLI観測を明示的に分離し、二素材はRUNNER_TEMPへ出力してRepositoryを変更しない。文書納品のManifestとの関連付け・SHO保存・Agent実受領・実Provider・Owner意味受理は後続実験。
+
+## W0c：Source relocation と選択的再資格化
+
+### RC-01：実TEI CLIでSourceの位置だけ変える
+`verify_real_source_relink.py`は、**公開済みの**`reference/workspace`を一時ディレクトリへ複製した後、複製側の`semantic/sales/order.tei`を`semantic/sales/order-relocated.tei`へ移す。元Source byte・WorkspaceやGit checkoutは変更しない。同じ実Go CLIから、移動前後の`model catalog / inspect / trace / validate`を取得する。実際に固定Reference上で観測したのは次の関係である。
+
+- Subject `semantic-relation:sales.order.customer`、Inspect Canonical JSON、`worldFingerprint`が**不変**。
+- `sourceIndexFingerprint`、`trace.snapshotFingerprint`、`inspect.sources.references[].artifactPath`が**変化**。
+- 移動前後に各々、AI JSON・人間Markdownを生成→再読取し、引用先は移動後の実値に更新。昔の引用先を黙って現在Sourceへ昇格させない。
+- 元の公開Reference Workspaceは不変で、移動は`TemporaryDirectory`の中だけ。実行時のGit checkoutもclean。
+
+[Focused CI #41462089469](https://github.com/hat47x/tei-platform/actions/runs/41462089469)（HEAD `84d5bf62804ba5a8fc47e4dc893dddad5c2e2b75`）において、合成／実CLIの両ジョブsuccess、`reference-source-relocation-observed`がログに残った。**これは特定のReferenceでの実Go CLI観測であり、一般的な意味同値証明ではない**。正式Source→Meaning受理、SHO保存済み引用の移行、Owner Reviewは未実行。Trace tokenを楽観的更新認可には使わない。
+
+### RC-02〜05：変更による再資格化を同じ試験語彙へ
+`test_selective_requalification.py`は、意図的に**人工の完備依存表**を与えた公開合成Reference。Source/出典、非表示Rule/SQL WHERE、Provider route、Read cohort、Artifact required members、納品世代、文書template、Owner Review、外部公開Grantを独立に変更した際、`historically-supported-candidate`／`requires-requalification`／`unknown`／`withheld`を区別する。具体的な独立Expectedとの照合と、Hidden Rule／Source occurrenceの依存Edgeを故意に消すmutation、J0全件・J1選択・J2旧PASSそのままの**候補件数**を測る。
+
+**比較可能な範囲**：J0/J1/J2の件数や合成状態は、実装速度・Token・実際のProduct依存探索の品質ではない。`complete=True`や`grant_now=checked-allow`は外部Provider/Host/Policyから実証したものではなく、自作試験への明示入力である。未知依存を無影響へ昇格せず、歴史観測の保持と**現在の利用・公開資格**を分ける。実Data/Query/Hidden Predicate/物理Provider・Grantの変更注入は[#2634](https://github.com/hat47x/tei-platform/pull/2634)／[#2637](https://github.com/hat47x/tei-platform/pull/2637)／[#2628](https://github.com/hat47x/tei-platform/pull/2628)、横断Activityは[TAI #271](https://github.com/hat47x/tai-pleroma/issues/271)、SHOのr1固定／r2明示比較・保存は[SHO #4](https://github.com/hat47x/sho-composer/issues/4)がそれぞれ別のOwner。
+
+```bash
+python3 -B plan/fixtures/construction-context/test_selective_requalification.py
+go build -o /tmp/tei-context-read ./cmd/tei
+python3 -B plan/fixtures/construction-context/verify_real_source_relink.py \
+  --binary /tmp/tei-context-read \
+  --workspace reference/workspace \
+  --expected-head "$(git rev-parse HEAD)"
+```
+
+**受入資格**：W0cの二つの経路（実Source-only変更・人工依存変更）を合わせても、別Consumer/SHO/TAIでの実文書改版・再利用資格、旧Attempt成果物の再送、外部AIへの実送信、実Policy/OS保証、正式Meaning受理は**NOT RUN**。
