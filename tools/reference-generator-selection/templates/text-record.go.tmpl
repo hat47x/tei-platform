@@ -31,6 +31,45 @@ func main() {
 	var missing []string
 	unresolved := false
 	{{- range .Fields }}
+	{{- if .Optional }}
+	{{- if .Many }}
+	if value, ok := in["{{.Input}}"]; ok && value != nil {
+		items, ok := value.([]any)
+		if !ok {
+			emit(output{State: "error"})
+			os.Exit(2)
+		}
+		values := make([]string, 0, len(items))
+		for _, item := range items {
+			text, ok := item.(string)
+			if !ok {
+				emit(output{State: "error"})
+				os.Exit(2)
+			}
+			values = append(values, text)
+		}
+		record["{{.Name}}"] = values
+	}
+	{{- else if or (eq .Primitive "std.decimal") (eq .Primitive "std.integer") }}
+	if value, ok := in["{{.Input}}"]; ok && value != nil {
+		number, ok := value.(float64)
+		if !ok {
+			emit(output{State: "error"})
+			os.Exit(2)
+		}
+		record["{{.Name}}"] = number
+	}
+	{{- else }}
+	if value, ok := in["{{.Input}}"]; ok && value != nil {
+		text, ok := value.(string)
+		if !ok {
+			emit(output{State: "error"})
+			os.Exit(2)
+		}
+		record["{{.Name}}"] = text
+	}
+	{{- end }}
+	{{- else }}
 	{{- if .Many }}
 	if value, ok := in["{{.Input}}"]; !ok {
 		missing = append(missing, "{{.Name}}")
@@ -73,6 +112,7 @@ func main() {
 	} else {
 		record["{{.Name}}"] = text
 	}
+	{{- end }}
 	{{- end }}
 	{{- end }}
 	if unresolved {
