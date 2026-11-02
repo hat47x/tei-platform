@@ -476,6 +476,40 @@ external LLM
 
 最初に追加する負例はLQ-01〜12（§28）。再実行の対象Source/Rule/Query/Provider/Skill/Artifact変更はそれぞれOwnerへ帰属させ、同じ業務Activity/版・Context・Consumerでの実観測が揃うまでは統合PASSを宣言しない。**新しいQuery Engine、グローバル依存Graph、独自Host、別のSemantic SSOT、Gateは追加しない**。Q1〜Q4の実一気通貫／外部Consumer／Owner意味受理は**NOT RUN**。
 
+### 2026-11-02 実mainのCLIを起点とするSource→Operation→Artifact→Reader証拠の最小縦断
+
+従来のEverything is Data横断計画（本節前半／[Draft #2629](https://github.com/hat47x/tei-platform/pull/2629)）は、Syntax→Role→Context→Provider→Consumerの理想的な受渡し条件を示す。一方、**2026-11-02に[#2587](https://github.com/hat47x/tei-platform/pull/2587)がmainへ統合**され、`cmd/tei`に`operations`、`artifacts`（`-out`あり）が実在するため、まず**存在する製品CLIだけを使った限定的な縦切り**から観測を開始できる。実装状況はmainの[`docs/status.md`](../docs/status.md)、操作の限定実証は[`plan/evidence/SURFACE_AND_ARTIFACT_VERIFICATION_2026-11.md`](evidence/SURFACE_AND_ARTIFACT_VERIFICATION_2026-11.md)を参照する。
+
+**固定する初期対象**：main上の`reference/standard-crud/workspace`、Application `ledger`（`applications/ledger/application.tei`に宣言）、既存の合成データと`missing-semantics`／`missing-input`／`conflict`の負例。まずGit SHAと実buildされた`tei version -json`のBinary情報、Workspaceの実Bytes・`sourceIndexFingerprint`・`worldFingerprint`・`modelRevision`の各生成元を固定する。***名称やRevisionを同じ文字列に寄せて比較しない***。具体的な値を取れていない場合は空欄・未確立とし、後から値を創作しない。
+
+実装上、`cmd/tei/main.go`の`operations`・`artifacts`経路はコマンド共通の`loadWorld`を通った後に、それぞれ`SurfaceWorkspace`・`RenderWorkspace`を呼ぶ。**同一コマンド内においてさえ実装が何回どのBytesを読むか／そのSourceが同じかは別途追跡が必要**。複数CLIを順に呼ぶだけで「同じLoad Snapshotから全出力が生成された」とは主張しない。
+
+最小の実コマンド候補（**下記をこのPRで実行したという意味ではない**。実行時は同じ固定checkout・Builder/Go版・実Workspaceを証拠票へ記録する）：
+
+```sh
+go build -o /tmp/tei-eid-verify ./cmd/tei
+/tmp/tei-eid-verify version -json
+/tmp/tei-eid-verify validate -workspace reference/standard-crud/workspace -json
+/tmp/tei-eid-verify operations -workspace reference/standard-crud/workspace -application ledger
+/tmp/tei-eid-verify artifacts -workspace reference/standard-crud/workspace -application ledger
+# -out は別試行：作業用の新しい空ディレクトリを明示し、出力前後のファイル名・digestを記録
+```
+
+| 試行段階 | 具体的に観測するもの | 成立しない主張／追加Owner |
+| --- | --- | --- |
+| C0 CLI/Source read | 実Binary・args・exit/Warning・対象Workspace bytes/Source Index・World版、Loadの回数と時点 | `version -json`は真正な署名・Owner受理でない。実ロード一致は#1163/#2605へ |
+| C1 Operation Surface | `ledger`の導出`list/read/create/update`候補・Gaps、Data/Mapping/Target/Grant未解決を明示 | `operations`のJSON表示だけで実Provider Read/Write／SQL/Rule意味受理はしない（#1127/#2611/#2598） |
+| C2 ArtifactSet | 表・機能・操作面・Manifest・Findings、Expected Memberと実Set、Generator/Templateの版、独立CheckSet | `Manifest.Complete`・同InputRevisionがConsumer期待集合／実ファイル読取済みを保証しない（#2482/#2630） |
+| C3 ファイル公開/読取 | `-out`へ実出力、同一世代の各Path/bytes/digestとManifest、過去の残留ファイル、障害注入、独立Readerが実際に読んだMember | 現`writeArtifactFiles`の順次`os.WriteFile`は一式のAtomic Publish保証でない。#2604/#2630/#2633へ |
+| C4 Source署名/受理 | [#2642](https://github.com/hat47x/tei-platform/pull/2642)統合後の`reference-host-acceptance sign`は`BuildSourceIndexFromLoad`で**Load時に捕捉したBytes**のみを用い、import宣言Workspaceを`WORKSPACE_IMPORTS_NOT_BOUND`で拒否 | これは`sign`内のSourceの限定保証。**別Invocationの`operations/artifacts`が同じSnapshot／Owner受理／実Target認可**とは限らない（#267/#1163） |
+| C5 Meaning/Role/Client | [#2639](https://github.com/hat47x/tei-platform/pull/2639)既存Go Language Plugin Referenceと[#2638](https://github.com/hat47x/tei-platform/pull/2638)のRole bootstrap（いずれもDraft）からSource/候補/Pin/Meaningを照合し、Studio/SHO/外部Consumerで実Read | Go Referenceや合成RoleのPASSは正式TEI DSL、実Studio/SHO、Owner受理、現在の開示/Host EffectのPASSでない（#2619/#2620/#2516） |
+
+**今回特に検証する負例**：①`operations`実行後、`artifacts`実行前にSourceが変更された場合、同じアプリ名でも出力世代が混在し得るか。②あるCLI内で`loadWorld`と`SurfaceWorkspace/RenderWorkspace`の間に管理対象Sourceが変わった場合、出力がどの捕捉版に属すると説明できるか。③`-out`で前の世代のファイルが残り、現Manifestは自己整合でもConsumerが残留を誤読するか。④Role依存PluginのEager Pinだけ改版してもSource bytes同じ場合、現在Meaning候補/Consumerの資格が変わるか。⑤実Read Grant/Consumer Disclosureだけ失効し、生成物は同じ場合、現在利用可能と誤表示しないか。**この5件は未実行の試験候補**。実データ・秘密・本番署名鍵は用いず、合成Workspaceと一時領域に限定する。C4において署名済みと扱う場合もOwner本人の判定を模擬Fixtureへ置換しない。
+
+**優先度・重複解消**：#2629が横断Handoffパケット、#2587が現在のmain実装、#2605が実CLI Product Skill、#2639/#2638がLanguage/Role、#2604/#2630がArtifact公開・Consumer実読取、#1163/#267がSource・受理、#2514が独立Oracle、#2586が実TEI一気通貫を所有する。本計画は**既存CLIによる実在部分をP0として実測し、欠けるSource Snapshot/実Read/Role/Current Authority/Effectを各Ownerへ返すための計測手順**であり、新Host/統合Runner/中央Registryを増設する提案ではない。
+
+**資格**：mainに操作面・生成CLIが存在することは確認したが、C0〜C5の固定checkout一連試験・同一Snapshotの証明・Consumer actual read・Owner意味受理は**NOT RUN**。PR #2638/#2639等の限定Reference CIと[#2642](https://github.com/hat47x/tei-platform/pull/2642)の統合成功を、C0〜C5の合格へ繰り上げない。
+
 ## 現在の優先順
 
 1. （完了、2026-09-19）判定段階Bの最終的な実環境での検証根拠を、同じ版（R = `e5231839`）についてそろえた
