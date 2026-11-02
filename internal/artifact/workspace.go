@@ -80,6 +80,12 @@ func RenderWorkspace(root, applicationID string) (WorkspaceSet, error) {
 	}
 	artifacts = append(artifacts, function)
 
+	surfaceArtifact, err := RenderOperationSurface(loaded.World, applicationID, revision)
+	if err != nil {
+		return WorkspaceSet{}, fmt.Errorf("render operation surface: %w", err)
+	}
+	artifacts = append(artifacts, surfaceArtifact)
+
 	manifest, err := NewManifest(revision, artifacts)
 	if err != nil {
 		return WorkspaceSet{}, fmt.Errorf("build manifest: %w", err)

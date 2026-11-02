@@ -105,6 +105,8 @@ W2（表定義書）も追加しました（[`internal/artifact/tabledef.go`](..
 
 DDLとの整合（W5）は、表定義書の内容を `physical.SchemaSnapshot` に写し、既存の `schemadiff` で望ましいスキーマと突き合わせる形にしました（[`internal/artifact/ddlcheck.go`](../../internal/artifact/ddlcheck.go)）。差分は既存の語彙で返し、成果物側で黙って直しません。**索引は未対応**です。`persist` の宣言にキー・述語が無いため、索引の欠落を差分として報告しません（誤った差分を出さないための制限）。
 
+標準操作の導出結果も成果物として束縛しました（[`internal/artifact/surface.go`](../../internal/artifact/surface.go)）。操作面の JSON を内容とし、**未解決（gap）をそのまま `Unresolved` に写します**。これで「同じ意味から同じ操作面」を照合値で確かめられ、設計書と同じ束縛で扱えます。負例の作業領域では、4件の gap が4件の未解決として目録に載ることを試験で固定しました。
+
 作業領域からの一括生成（`RenderWorkspace`）も追加しました（[`internal/artifact/workspace.go`](../../internal/artifact/workspace.go)）。アプリケーションが到達できる保存の対応ごとに表定義書を作り、機能定義書と合わせて目録にします。入力の版は作業領域のモデル改訂を使うため、同じ意味から作った成果物だけが一つの目録に入ります。負例の作業領域（`ledger`）では表3件・機能1件と未解決が出て、目録は `complete=false` になることを試験で固定しました。
 
 成果物の目録（manifest）も追加しました（[`internal/artifact/manifest.go`](../../internal/artifact/manifest.go)）。複数の成果物から、入力の版が揃っていることを確かめたうえで、種類・照合値・未解決の件数を決定的に並べます。**未解決が一つでもあれば `complete=false`** とし、完成に見せません。入力の版が混ざる場合と、改変された成果物は受け付けません。

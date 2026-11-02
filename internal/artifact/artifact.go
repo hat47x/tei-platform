@@ -24,6 +24,7 @@ const (
 	KindFunctionDefinition Kind = "function-definition"
 	KindCrossReference     Kind = "cross-reference"
 	KindDDL                Kind = "ddl"
+	KindOperationSurface   Kind = "operation-surface"
 )
 
 // Rule identifies the derivation rules that produced an artifact.

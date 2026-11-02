@@ -2,7 +2,10 @@ package artifact
 
 import (
 	"path/filepath"
+	"strings"
 	"testing"
+
+	"tei/internal/operations"
 )
 
 func TestRenderWorkspaceRendersTheNegativeFixture(t *testing.T) {
@@ -15,8 +18,8 @@ func TestRenderWorkspaceRendersTheNegativeFixture(t *testing.T) {
 	if set.InputRevision == "" {
 		t.Fatal("the input revision must come from the workspace")
 	}
-	if len(set.Artifacts) != 4 {
-		t.Fatalf("expected three table definitions and one function definition: %d", len(set.Artifacts))
+	if len(set.Artifacts) != 5 {
+		t.Fatalf("expected three table definitions, one function definition and one operation surface: %d", len(set.Artifacts))
 	}
 	kinds := map[string]int{}
 	for _, artifact := range set.Artifacts {
@@ -25,7 +28,7 @@ func TestRenderWorkspaceRendersTheNegativeFixture(t *testing.T) {
 			t.Fatalf("artifact %s is bound to another revision", artifact.Kind)
 		}
 	}
-	if kinds[string(KindTableDefinition)] != 3 || kinds[string(KindFunctionDefinition)] != 1 {
+	if kinds[string(KindTableDefinition)] != 3 || kinds[string(KindFunctionDefinition)] != 1 || kinds[string(KindOperationSurface)] != 1 {
 		t.Fatalf("unexpected artifact kinds: %+v", kinds)
 	}
 
@@ -37,6 +40,20 @@ func TestRenderWorkspaceRendersTheNegativeFixture(t *testing.T) {
 	var unresolved int
 	for _, artifact := range set.Artifacts {
 		unresolved += len(artifact.Unresolved)
+		if artifact.Kind != string(KindOperationSurface) {
+			continue
+		}
+		if err := artifact.Verify(); err != nil {
+			t.Fatalf("the surface artifact must verify: %v", err)
+		}
+		if !strings.Contains(artifact.Content, operations.OperationSurfaceSchemaVersion) {
+			t.Fatalf("the surface artifact must carry the surface schema:\n%s", artifact.Content)
+		}
+		// The fixture has four gaps: note read/create, order list conflict and
+		// order retire. Each gap becomes one unresolved entry.
+		if len(artifact.Unresolved) != 4 {
+			t.Fatalf("every gap must be carried as unresolved: %+v", artifact.Unresolved)
+		}
 	}
 	if unresolved == 0 {
 		t.Fatal("the negative fixture must carry unresolved entries")
