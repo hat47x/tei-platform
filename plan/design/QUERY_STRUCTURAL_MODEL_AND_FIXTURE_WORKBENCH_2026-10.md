@@ -827,6 +827,37 @@ QX-23はSQL内のOperatorの同義性／Mutant感度を試した。**QX-24の新
 **現状**：実SQLite AuthorizerとQueryの12件の局所観測をGitHubへ保存済み。**実TEI SQLGlot Worker/Go→Context/Provider/Studio/SHO、実RLS/Host認可、複数Consumer実送信、Owner意味受理は未実施**。QX-17〜24の既存設計、#1640 D2拒否、別Draft #2624/#2625、正式Semantic/Target Ownerを維持する。
 
 
+### 7.21 QX-26：ページ取得の継続カーソルと共同Read Cohortの資格を、実トランザクションの前後で検証する（2026-11-02、SQLite WAL 11件実測）
+
+**前節との差と他レーンの接合**：QX-24（§7.19）は`同じSnapshot + 安定Sort + 必要な順位範囲まで取得`でLocal/PushdownのTop-N同値を候補とした。QX-25（§7.20）は表示しないWHERE/ORDER/EXISTS列の依存を分離した。[#2627 Provider Route/Read Cohort](https://github.com/hat47x/tei-platform/pull/2627)の合成Go Referenceは異経路ReadのSlice比較資格、[#2582 Reactive Context](https://github.com/hat47x/tei-platform/issues/2582)はepoch/遅着、[#2506 Function Data Context](https://github.com/hat47x/tei-platform/issues/2506)はRequested Scope vs Observed Completenessを扱う。ここでは**同じSQL・同じTarget・同じPrincipalでも、複数ページの間に書込みがあれば、結合した結果がどの時点にも存在しない偽Snapshotになり得る**ことを、実SQLite二接続とWAL Snapshotの対照で確かめる。ProviderやDB一般のトランザクション仕様は推測しない。
+
+**実測**：[test_qx26_pagination_read_cohort.py](https://github.com/hat47x/tei-platform/blob/work/query-structural-fixture-design-20261030/plan/fixtures/query-workbench-f0/test_qx26_pagination_read_cohort.py) をPython stdlib`sqlite3/tempfile/unittest`で隔離実行。ファイルDBに`reader`と`writer`の別接続を設け、`journal_mode=WAL`で**書込みをページ間に実コミット**する。Python環境の`python3 -m unittest -v /mnt/data/test_qx26_pagination_read_cohort.py`は **11/11 PASS**、`python3 -m py_compile` PASS。手元の実行ソースとGitHub保存blob Git SHA-1 **`1ad11f63c909fb4af37d859e8e6b1121deea1539`**一致（7844 bytes）、SHA-256 `fc4a4f8602690b7cea0560952320b80d83e25d03a59b8a0d59bdee3de321b814`。SQLite WAL/同一DBの事実であり、PostgreSQLやREST/GraphQLのIsolation/Cursorを代弁しない。
+
+| Case | ページ間で固定・変更した入力と実測 | 必要な資格 |
+| --- | --- | --- |
+| **QX26-01** 正常Offset | 静止集合A1〜A4に安定`ORDER BY priority,id`、Offset 0/2を適用し全4件取得 | 有限固定集合では正常なページ連結が成立する正例 |
+| **QX26-02/03** Offsetと先頭へのInsert/Delete | 先頭A0を追加すると`A1,A2`＋`A2,A3`、A1を削除すると`A1,A2`＋`A4` | **重複/未取得**とSource Snapshotの変更を分け、OffsetはConcurrent Write下で全件の証明にならない |
+| **QX26-04** Keyset + 先頭Insert | Keysetの`(priority,id) > (2,A2)`で再開すると旧A1〜A4を取得、現時点のA0を欠落 | Keysetにより重複を回避しても、**現在集合に対するComplete**は独立 |
+| **QX26-05** Keyset + 旧値変更＋新行挿入 | 旧A1.amount=10、次ページで新A25（同priority2だがID順でA2の後）を取得。同時に現在A1.amount=100 | 結合した行値・membershipは**旧Snapshotにも新Snapshotにも同時には存在しない**。同じQuery byte/Keysetだけでは共同Read保証にならない |
+| **QX26-06** WAL read transactionの限定正例 | Reader`BEGIN`→Page1、別WriterがA0追加/A1変更をcommit、Reader Page2とCOUNTは旧A1〜A4・COUNT4を維持。Reader rollback後は新A0を観測 | SQLite WALの**実読取トランザクション**における固定Snapshotと、新しい取引での別Snapshotを区別。RESTページや他RDBへ一般化しない |
+| **QX26-07** キー重複・Tie breaker | priority1のA1/A2で`priority>1`の継続はA2欠落、`(priority,id)>(1,A1)`ならA2取得 | Cursorの安定総順序、同一Collation/NULL/Key Contract/Identity |
+| **QX26-08** Cursor Scope不一致 | Aの継続`after=(2,A2)`をBへ使用するとB1が返らない。B単独全件はB1あり | 継続対象Source/tenant/Filter/Policy/Query版にCursorを束縛し、別Contextへの持越しを再資格化。Fixtureのtoken字句は暗号学的証拠ではない |
+| **QX26-09** Filter改訂 | `amount>=20`のPage1から`amount>=0`で再開しても旧条件で除外したA1を復元できない | 同じTargetでもOperator predicate/Parameter/Rule Versionの変更でCursorの適用資格が失効 |
+| **QX26-10** Count一致の罠 | 旧COUNT4と、旧ページ連結4件が一致しても、ページ間Insert後の現COUNTは5 | `count(rows seen)==old count`は同一Read Cohort・現行Completeの証拠ではない |
+| **QX26-11** Snapshot名だけの一致 | `snapshot='s1'`・同じrevision文字列を持った人工Cursorの前後でDB行集合が変更 | **文字列ラベル一致≠実Providerが継続して同一Snapshotを読んだ証拠**。Token issuerと実Read期間を検証 |
+
+#### 再開可能なQuery/Context/Operatorの契約候補（正式Schemaではない）
+
+- **要求の帰属**：`Source SQL/Operator ID+version, Dialect, Source digest, Target/DB Alias, effective principal/RLS/policy, Mapping/Function Instance, row scope, parameter/predicate, grain, output order+tie-breaker/collation, requested snapshot/freshness`を、既存Source/Context/Hostの正本へ参照する。全フィールドを新中央Packetへ複製しない。
+- **ページ実観測**：各Pageの`Actual Provider/Endpoint, request+continuation, consumed SQL/parameters, result slice+field presence, row identity/order, actual snapshot/transaction evidence, physical read footprint, page termination/continuation`を実Provider側の証拠として対照。**全ページが同じSnapshotとみなせる保証**がない限り、複数ページの結合を`observed_complete`と無条件に昇格しない。`same token`の主張だけではなく実Providerが保障する方法が必要。
+- **Claim-relative application**：部分Pageでも具体的存在Witnessは成立し得る一方、`NOT EXISTS`、全集合`COUNT/SUM`、Global`TopN`、再計算されたValidation、Action全件更新は必要なRead Cohort/Scopeの閉域性を別判定。ABAや非表示Rule入力の変化は#2582/#2624の依存伝播を再利用する。入替えがあれば表示だけでなくRule/Action Candidateの再評価資格にも影響する。
+- **正規の実装分担**：本#2387はSQL Query/Explainの読取意味・Source/Order/Scope前提のみ、[#2506](https://github.com/hat47x/tei-platform/issues/2506)/[#2586](https://github.com/hat47x/tei-platform/issues/2586)はContext→Claimの適用可否、[#2622](https://github.com/hat47x/tei-platform/issues/2622)/[#2627](https://github.com/hat47x/tei-platform/pull/2627)は実ProviderのRead Cohort/Capability、[#2582](https://github.com/hat47x/tei-platform/issues/2582)は異ReadのInvalidation、[#1174](https://github.com/hat47x/tei-platform/issues/1174)は実Host/Effect。#2516/#1178/SHOは同じCorpusを公開可能な範囲だけ投影する。**新Provider/Transaction Manager/Query Executor/共通Host/第二Source正本は追加しない**。
+
+**次段M1/M2**：M1は現行`analyzer.Result→DerivedIR`のSort/Limit/Filter/Source、Function Mapping、Provider Page request/resume条件を**同じFunctionのHeadless Attempt**へ結ぶ。M2は少なくとも実RDB Providerと実API Providerで、それぞれが提供するCursor/Snapshot/ETag/Continuationの能力と、**ページ間更新・Role/Filter改訂・Token再利用**時の正負を独立に計測。RDBのSQLite WAL一例や合成Snapshot文字列を多Providerの同値証拠へ昇格しない。#1640 D2安全拒否・#1119 G0〜G4・Owner意味受理のOwnerと優先順位は維持。
+
+**状態**：Python＋SQLite WAL限定の**11/11 PASS**まで。実TEI SQL Worker/Go Query/Function Context/正式Provider、PostgreSQL/API Cross Provider、Host/RLS、GUI/SHO/外部AI送信、正式Owner Meaning Acceptanceは**NOT RUN**。
+
+
 ## 8. 実装順・担当引継ぎ（提案）
 
 | 段階 | 所有 | 実施 | 完了の根拠 |
