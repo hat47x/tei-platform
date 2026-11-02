@@ -57,6 +57,18 @@ def full_ir(private_name, private_literal, hidden_estimate):
     }
 
 
+def fixture_project_with_explicit_source_grant(raw, granted_source_ids):
+    """Model a caller-supplied source grant; NOT a TEI authorization decision."""
+    return {
+        "query": raw["query"],
+        "explainStatus": "partial",
+        "lineageStatus": "not-disclosed",
+        "publishedSources": [
+            s["name"] for s in raw["sources"] if s["id"] in granted_source_ids
+        ],
+    }
+
+
 class ExplainObservationOracleTest(unittest.TestCase):
     def setUp(self):
         # Same public world, different private relation name, value, and size.
@@ -70,7 +82,10 @@ class ExplainObservationOracleTest(unittest.TestCase):
         }
 
     def test_01_safe_projection_is_identical_across_private_worlds(self):
-        self.assertTrue(same_public_observation(self.public_projection, self.public_projection))
+        a = fixture_project_with_explicit_source_grant(self.world_a, {"source:public"})
+        b = fixture_project_with_explicit_source_grant(self.world_b, {"source:public"})
+        self.assertEqual(a, self.public_projection)
+        self.assertTrue(same_public_observation(a, b))
 
     def test_02_raw_derived_ir_exposes_hidden_source_and_expression(self):
         self.assertFalse(same_public_observation(self.world_a, self.world_b))
