@@ -497,3 +497,27 @@ M1〜M10は既に時間と数学法則を含むが、M7の「いつの値か」�
 | AQ-08 | 同じ循環GraphにDelayと即時制約の2種類を記述 | Graphの形だけでSolver不要・実行可能と確定 | #2495/#2544 |
 
 **状態**：AQ-01〜08は既存Issueのfixtureへ接続するための**反証設計／NOT RUN**。M11の正式採用、時間/Simulationの共通Core型、実Provider/Hostの検証、開示Policyの実装、Owner受理は未実施。広い探索・独立試験を進め、十分な観測結果がある不足に対してのみ具体的なContract追加を判断する。
+
+## 23. 2026-11-02 標準UIへ返すのは「型名」ではなく用途相対の操作可能性（Affordance）
+
+他のFunction Data Context／標準UI／AI向けツールの議論（#1127/#2506/#2507/#997/#2500/#2597）との接点として、**Semantic TypeのKind/多重FacetだけからUI部品と編集権限を一意に決めるのでなく、対象Context・Operation・必要なEvidenceが揃う範囲で、標準UIが候補を提示できる**という考え方を採用前の比較案として明確化する。
+
+### 23.1 「表示できる」「編集候補を出せる」「業務実行できる」は別資格
+
+| 役割 | 判断材料 | 取得できる結果 | まだ保証しないこと |
+| --- | --- | --- | --- |
+| **構造表示可能** | TargetのData Shape、型付きRole、Grain、Source版、Scope、Facet | Table/Form/Tree/Graph/Gantt/Map/文書の表示候補 | 専門Layout/Graphの数学的・業務的意味、全件性 |
+| **Pattern適用候補** | #2507のRequired Shape/Operationと既存#2506のFunction Context、適用すべきRule/Time | 適合・条件付き・曖昧・未対応と不足前提を説明 | 関係/単位/エンティティを型名で自動受理すること |
+| **編集Intent候補** | View Occurrence→Source/Relation Occurrence、Action Ref、base revision、Context Instance、Loss/逆写像条件 | 特定の対象に対するTyped Intent、または複数候補／read-only | 現在HostでのAuthority、Tx成功、Business完了 |
+| **実行・観測** | 既存Host/ProviderのPolicy、Operation Binding、Commit/Receipt、独立再読取 | 実際に観測されたEffectと失敗分類 | 別Host/Target/他版での自動的な成功 |
+| **AI/CUI/SHO用説明** | 同じ受理Sourceに対する用途、開示Scope、Consumer版、根拠/unknown | 許可された範囲の構造説明／操作候補／出典付き文書 | 裏側の機密情報の開示、外部Consumer実受入 |
+
+「数学的にTreeと説明できる」ことと「業務Relationを一つのTreeへ損失なく表示できる」ことは別。DAGを表示する標準Graphは可能でも、単一親を前提とするTree編集が正しいとは限らない。Measureに数値型が付いていても、時点Stockの期間Sumや平均の再平均をChartの標準Aggregationとして提供しない（#2593）。`many`のFieldはListとして表示できても、重複/全件性/個別Relation Identityが不明なら、自動で全件Unlinkする操作を作らない。
+
+### 23.2 TEI DSL／専門Pluginと標準UIの分担
+
+標準のデータ構造・型付きRelation・Operation参照・単純なTEI DSL/Scriptを入力として、Studio/標準UI側は**一般の構造編集・表・図・式の可視化**を提供し、専門Pluginは必要な演算・公理・特別なLayout・外部計算・Providerを追加する。概念上のM1〜M11を普段のPlugin作者がすべて意識・宣言することは要求しない。AIが提案したScriptも同じ標準のSource/受理経路へ戻し、説明可能なAction候補を受理済み意味や本番実行許可へ自動昇格させない。
+
+**Ownerは増設しない**：型とFacetは#2495/#2544、Context・Grainは#2506、Pattern適合は#2507、標準UIは#997/#1124、View→Intentは#2500、複数編集ContextのDirty State・Saveは#2597、実Effect/Hostは#1174、AI/SHO向けDisclosureは#2516。今後の最初の確認は「同じ受注Header/Detailまたは組織所属Contextを、TableとGraph/CUIで説明しても同じSource/Meaningを参照でき、どの編集候補を許さないか説明できるか」とし、既存#2586の統合Fixtureに帰属する。
+
+**状態**：標準UIへの投影を検証するメタモデル上の要件整理。自動Component選択、編集Intent生成、本番Host、デスクトップUIの製品実装やOwner受理は**NOT RUN／未採用**。新しくUI種類ごとのCore型階層や全用途の万能UI Generatorを導入した主張ではない。
