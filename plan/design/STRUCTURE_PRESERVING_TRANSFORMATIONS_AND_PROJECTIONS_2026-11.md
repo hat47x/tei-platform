@@ -803,3 +803,34 @@ SQLを正本とする既存Queryから候補Operatorを生成する場合、元Q
 | NE-12 | CLI read-only成功、Host Effect未実行 | 読取り合格で業務完了と宣言 | #2598/#1174 |
 
 **Evidence区別**：他レーンのQX-31隔離SQLite12件、TAIの合成Harness試験、TEIの限定CLI/CI試験はそれぞれ報告範囲に限定する。NE-01〜12を本節で実行しておらず、実Providerの変更観測・実CLI→Skill→外部Harness・SHO Reader・Host Effect・Owner意味受理はNOT RUN。設計候補の新しいCore型・全域的資格判定Engineは採用しない。
+
+
+## 20. Artifactの意味Envelope・公開byte・実Consumer読取の三層照合（2026-11-03）
+
+### 20.1 Digestの対象を同一視しない
+
+[#2630](https://github.com/hat47x/tei-platform/issues/2630)と[#2604](https://github.com/hat47x/tei-platform/issues/2604)の実コード観測により、設計成果物の`Artifact.Digest`は`Content`だけのraw SHA-256ではなく、`Kind / InputRevision / Rule / Generator / Content / Unresolved`を含む**Envelope fingerprint**である。一方、現行`tei artifacts -out`が出力する個別ファイルは`Content`を保存する。現行Manifest EntryからはEnvelope検証に必要な全入力を復元できない。従って、`Manifest`のdigestを保存ファイルのraw hashと比較するだけでは同一性を判定できず、出力DIRとManifestだけで`Artifact.Verify`を再現できると仮定しない。
+
+この問題を、既存§16の「一式の物理的な公開」と区別する。**(A) Source/Rule/Generator/Unresolvedを含む生成時の意味Envelope、(B) 実際に公開したContent bytesと一式の世代、(C) Consumerが実際に取得・利用したbytesと時点**は異なる証拠。Aの自己整合がBの完全公開を保証せず、Bの整合がCの同一世代読取を保証しない。Cの一致はOwnerによる意味受理・実Host権限・納品先動作を保証しない。
+
+### 20.2 実装のOwnerと必要な最小検証
+
+- **#2482/#2630**：既存Artifact Envelope/CheckSet/Manifestの整合、ExpectedMemberとDeclared/Observed/Consumedの差、Gap→Unresolvedのexact multiset。新しいArtifact正本を別に作らない。
+- **#2604**：公開前の一式構築、途中失敗、旧ファイル残存、読取中の世代切替、Content bytesとManifestの検証可能性。既存`-out`の出力形式・後方互換を確認してから公開方式を選ぶ。
+- **#2516/SHO**：Consumerが実際に読んだArtifactの世代・bytes・Source occurrenceを追跡し、文書引用とClaimの現在性を区別する。
+- **#2605/TAI**：Product Skill/CLIが実際に消費したScript/CLI/Artifact bytesとCommand実行を観測し、説明文のload成功を実消費へ昇格しない。
+
+### 20.3 対照実験（AE-01〜08、当節としてNOT RUN）
+
+| ID | 変更・故障 | 検証すべき差 |
+| --- | --- | --- |
+| AE-01 | Content同一・Ruleのみ変更 | raw Content hash同一でもEnvelope fingerprintは変化し得る |
+| AE-02 | Content同一・Generator版変更 | 生成規則の差をbyte同一で消さない |
+| AE-03 | Content同一・Unresolved説明変更 | 未解決の意味・理由をContent hashだけで同一視しない |
+| AE-04 | Manifest取得後に一部ファイル更新 | Consumerが同じ世代を実読取できたか |
+| AE-05 | 途中失敗で新旧ファイル混在 | 生成側のCompleteと公開一式を区別 |
+| AE-06 | ExpectedMemberと実出力が異なる | 必須成果物の欠落・余分・重複を検出 |
+| AE-07 | SHOが旧Artifactを引用、TEI Source更新 | 固定文書の来歴と現在Claimを区別 |
+| AE-08 | Skill本文同一、依存Script/CLI変更 | 実消費依存閉包の再資格化 |
+
+**実証順序**：まず既存`Artifact.Verify`と`tei artifacts -out`の実保存形式を固定checkoutで確認し、AE-01〜03のbyte/Envelope差を独立Oracleで再現する。次にAE-04〜06の公開障害注入を#2604へ、AE-07〜08の実Consumer/Skill消費をSHO/#2605へ渡す。出力互換・API変更・公開方式はOwner判断待ち。#2633のmain統合済みCharacterization、#2659のDraft修正、#2607のDraft Skill CIを混同せず、別HEADのCI成功を現在HEADへ転用しない。**新規E2E・Windows/SHO/Harness実読取・Owner意味受理は未実施**。
