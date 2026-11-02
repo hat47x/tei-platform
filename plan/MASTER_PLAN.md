@@ -420,6 +420,24 @@ external LLM
 
 汎用的なプラグインの依存解決・構築器の自己構築・AIによる業務実行・複数の実行先など、長期的な能力を否定するものではありません。ただし、それらの完成を最小限の業務実証の前提にする場合は、**どの具体的な不足を解消するか**を明らかにしたうえで採否を判断します。現在の判定段階・各作業の適格性確認・保護された統合条件は変更しません。
 
+## 2026-11-02 Everything is Data横断の証拠接合（提案・既存Gate内）
+
+[#2619](https://github.com/hat47x/tei-platform/issues/2619)のEverything is Data方針は、業務以外の構造・定義体も含めた製品スコープの拡張候補として扱う。実装上は、既存の[#1119](https://github.com/hat47x/tei-platform/issues/1119)のG0〜G4、Source/Owner意味受理、Provider/Hostと独立実測を利用し、**新しい判定段階・第2のCanonical・TEI独自Hostを追加しない**。
+
+最初の**同一試行**で接ぐ対象を次の順に確認する（段階名は検証手順、Gate追加ではない）。
+
+| 接合順 | 明示して比較すること | 採用前の根拠／未確認 |
+| --- | --- | --- |
+| 1. Authoring→標準データ候補 | Markdown表・簡潔な式/DSL・Function形のSyntax差、Source位置、Role/Operator IDと版、候補≠意味受理 | [#2625](https://github.com/hat47x/tei-platform/pull/2625)隔離Python 23件、実TEI Language Plugin未実行 |
+| 2. Context/Rule依存 | Display FootprintとRule Dependency Footprintを分離。利用Relation/Field/Grain/Scopeを明示し、要求した全件性と実取得の全件性を区別 | [#2624](https://github.com/hat47x/tei-platform/pull/2624)隔離Python 20件＋別18件、実TEI Rule/Context未接続 |
+| 3. 複数Provider実現 | 同じSemantic Subjectの異Mapping/DB Alias、Replica/Primary、Snapshot/Cohortの実証責任を区別 | [#2627](https://github.com/hat47x/tei-platform/pull/2627)隔離Go 29件、実`DeriveOperationSurface`・実DB未実行 |
+| 4. Action/実Result | View→Typed Intent→現在Rule/Grant→Request/Effect/Receipt→独立Read。先行Previewを実Effectに昇格させない | #2500/#2597/#2598/#1174、全経路接合未実施 |
+| 5. Consumer展開 | 同じAccepted MeaningからStudio/AI CUI/SHO/外部Target。実読取・開示・Manifest一式公開を別観測 | #2497/#2516/#2604/#2630、実Consumer横断未実行 |
+
+特に、**同じ表示から同じRule/Action結果を推定しない**。画面にOrder.amount=600のみ表示し、非表示の信用上限が700/500の二世界では、画面が同じでもRuleの結論が異なり得る。Ruleへの依存を理由にClient/LLMへの秘密Field取得を自動許可することもない。RDB/API、Primary/Replicaの同じID/数値Revisionが実共有Cohort・同じ更新対象を保証するわけでもない。根拠は[メタ概念設計§25](design/DATA_STRUCTURE_META_FACETS_AND_TOPOLOGY_2026-11.md)のIF-01〜10を参照する。
+
+作業の分担は、Syntax/Meaning Role #988/#2620/#2621、Function/Rule #2506/#1129/#1729、Data Operations/Provider #2622/#2611、縦断 #2586、Effect #1174、Owner意味受理 #267 とする。**AIトークン供給増によって独立Pressureと非同期実証を拡充できても、別々の隔離ReferenceのPASSを製品の統合PASSへ合算しない**。現段階での正式Schema/DSL文法・新Executor/Policy/Host・外部Targetの採用やGate/優先順位の変更はない。
+
 ## 現在の優先順
 
 1. （完了、2026-09-19）判定段階Bの最終的な実環境での検証根拠を、同じ版（R = `e5231839`）についてそろえた
