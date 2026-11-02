@@ -496,6 +496,29 @@ main参照：`2197baaedbde178a042a280ea1bd1d534617bfc7`。現行`relational.go`�
 **次の証拠欄（本書追加時点すべてNOT RUN）**：①外部PostgreSQLの公式仕様、②TEI現在の静的コード、③隔離PG a〜dの期待/実測、④SQL worker実体→Result→Go IR、⑤Headless Query→Context→Claim、⑥GUI/SHO/Host／Owner受理、を独立に記録。実PG試験の前にSQLを文字列置換してSourceを確定したことにしない。正式Dataset/Scenarioは#1131/#1180、Oracleは#2514を使用し、#1119既存G0〜G4へBlocking条件を追加しない。
 
 
+### 7.13 QX-19：View/FunctionのDefiner・Invokerと、Queryから見えない実効依存（2026-11-02、提案・未実行）
+
+[#2387のQX-19原票](https://github.com/hat47x/tei-platform/issues/2387#issuecomment-6572368011)を既存QX-18の後続として接続する。**実テーブルのsearch_pathや直接RLSだけでは説明が閉じない**。同じSQL byteと同じ `reporting.orders_v` でも、Viewの `security_invoker`・所有者・RLS Policy、内部SQL Functionの `SECURITY DEFINER/INVOKER`、権限/Policy版が変われば、可視入力集合と結果Claimは変わる。PostgreSQL [CREATE VIEW](https://www.postgresql.org/docs/current/sql-createview.html)、[Row Security](https://www.postgresql.org/docs/current/ddl-rowsecurity.html)、[CREATE FUNCTION](https://www.postgresql.org/docs/current/sql-createfunction.html)が外部仕様の根拠。これらをTEIで実証済みとの主張ではない。
+
+**既存の実証との非重複**：[#1769](https://github.com/hat47x/tei-platform/issues/1769)・[PR #1791](https://github.com/hat47x/tei-platform/pull/1791)が扱うのは、TEIの明示Tenant SQL Scopeを実Providerへ押し下げた場合のFilter/Sort/Top・列の投影。**DBによるRLS、View owner/invoker、Function definerの実証とは別**。同じ`Tenant`という語で証拠を流用しない。Query構造#2387、データ取得#2506、開示#1693、実行権限/Effect #1174/#1129が既存Owner。
+
+| Case | 隔離DBの入力・変更 | 独立Expected（実PG未実行） | 説明時に保持する不確定性 |
+| --- | --- | --- | --- |
+| QX-19a default View | app_owner所有のbase ordersにalice:100、bob:900。RLS ENABLE、policyは`owner_name=current_user`。Viewもowner所有、既定security_invoker=false、非owner role alice/bobで同じ`SELECT SUM(amount) FROM reporting.orders_v` | owner通常RLSをbypassする前提なら各呼出で1000 | 見えた全額を呼出者のbase table read grantに帰属しない。Viewの開示許可は独立 |
+| QX-19b invoker View | 同名Viewを`security_invoker=true`へ改版、同SQL。利用者へのbase SELECT grantとRLS条件を確保 | alice=100、bob=900 | SQL SHA同じでもeffective inputの版が異なる |
+| QX-19c nested View | 外側は既定View、内側はinvoker View | 内側基礎関係への権限/RLSはinvokerで評価され得る | どの層も無条件に外側View owner主体へまとめない |
+| QX-19d SQL Function | `SELECT reporting.total_amount()`。Function内部がbase ordersをSUMし、SECURITY INVOKER→DEFINERに改版 | invokerなら100/900、base table owner definerなら1000になり得る | Function内部Lineage/volatile/side effectの推測展開をしない |
+| QX-19e policy・owner改版 | SQL、外側View/Function名、base列定義は固定。Policy/owner/FORCE RLSを変える | 以前の値が現在の表示・Claimに適格とは限らない | Source SQL revisionだけをfreshnessの根拠にしない |
+
+**M0実装/試験**：まず既存Analyzerの `SourceKind(table/cte/subquery)` と `Operation.Expressions` の表現範囲を、合成Result・既存Go変換・実SQL Workerの証拠列で分ける。外側View/Function名の参照を内部表のSource occurrenceと自動的に同一視しない。Catalog定義に正当にアクセスできる場合のみ内部定義へのread-only説明を候補とし、定義/権限が取得不可なら`opaque`または未検証へ留める。静的Explainのために任意SQL Functionを**実行しない**。関数の`VOLATILE`や`SECURITY DEFINER`が想定された場合も、既存Hostの実行認可・推移的Effectを省略しない。
+
+**M1/M2のContract判別**：外側SQL Source ref／内部View定義の版／実効権限主体／RLS・Policy版／Result Sliceの可視集合／Claimの必要母集団を**別資格で受渡し**。表示可能なLineageは許可されたSource境界までに制限する。#2586 HJ-01〜04、#2582の改版による条件付き失効、#2593 Measureの合計の意味、#1693 derived aggregateの開示資格、#1803/#2516の文書投影で必要に応じて使用する。正式公開の契約追加・Plugin-ABIの変更は実証後の判断。
+
+**試験環境/合否**：専用の隔離PostgreSQLでrole・grant・base-owner・RLS PolicyとView Option/Function属性を正確に固定する。a〜dは同じfixture値と外側SQLを条件ごとに比較、a→bは明示的なView definition revisionを計測。Postgres catalogのView Option/Policy/owner、実際のRole/Session、出力1000/100/900を観測し、手書きExpectedとの差と不一致原因を記録する。通常のデータアクセス権確認と**Viewによる集約結果の開示許可**は別評価。PGがない環境・Worker不在・権限不足では該当工程を`NOT RUN`とし、合成静的fixtureやSQLの単純模擬でPASSへ代用しない。
+
+**採用状態**：この§7.13は検証計画。実PostgreSQL/TEI Worker/Go変更/正式Function Context/GUI/SHO/Host AuthorityのQX-19試験は未実施。既存#2388 F0/QX-17、Go Draft #2577、Source Scope Draft #2454、worker応答Draft #2471、D2拒否、#1119 G0〜G4は変更しない。
+
+
 ## 8. 実装順・担当引継ぎ（提案）
 
 | 段階 | 所有 | 実施 | 完了の根拠 |
