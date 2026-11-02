@@ -48,3 +48,23 @@ python3 -B plan/fixtures/construction-context/verify_real_cli.py \
 
 **保証の境界**：この実CLIチェックは、固定された参照Sourceを実Goプロセスで読んで同一Subjectの複数のread-only結果を照合するものです。`worldFingerprint`一致は読取時点の全入力を物理的に固定した証明ではありません。各Sourceの同時更新・外部Providerの実読取最小性・Owner意味受理・Tool/Sourceの公開資格・Policy/OS隔離・SHO保存・Function Data Context/実DB・Action/Commitは別Owner/別実験。コマンド応答の生Source内容をConsoleへ公開せず、出力は限定的な検収数値だけとします。
 
+## W0b：一つの実Readから二つのConsumer表示素材へ
+
+#2516 W0bの最小検証として、既存実Go CLIの**同じ一連のread-only結果**から、AI向け`construction-context-ai-reference.json`と、人間向け`construction-context-human-reference.md`を**同一メモリ内の観測票から**生成する。両素材は`consumer_views.py`が一時ディレクトリへ書き、**それぞれ再読取り**して、意味対象・二種類のFingerprint・Model Revision・元Sourceの相対path・参照件数・診断数・実行binary版・明示的な未保証項目を比較する。
+
+```bash
+python3 -B plan/fixtures/construction-context/test_consumer_views.py
+go build -o /tmp/tei-context-read ./cmd/tei
+mkdir -p /tmp/tei-context-views
+python3 -B plan/fixtures/construction-context/verify_real_cli.py \
+  --binary /tmp/tei-context-read \
+  --workspace reference/workspace \
+  --expected-head "$(git rev-parse HEAD)" \
+  --output-dir /tmp/tei-context-views
+```
+
+`test_consumer_views.py`は、期待通りに2表示を生成するほか、Subject差、Source版の欠損、外部秘密Fieldの混入、相対path逸脱、Source重複・順序、`accepted`や`egress authorized`への誤昇格、Markdown側での値改変・余分な行・列構造混入、型変換、件数矛盾などの**有限な負例**を扱う。比較ロジックはSourceの真偽を独立再計算するBusiness Oracleではない。
+
+**重要な区別**：上記Markdownは**SHO用の説明素材候補**、JSONは**AI用の構造化素材候補**であり、SHO Composerや外部ハーネスへ実際に渡った証拠ではない。指定した公開用Reference Workspaceだけを検査し、Raw Source本文・非公開列・診断message・Agent内部状態を素材へ入れない。`disclosureStatus=reference-fixture-only-no-policy-grant`を固定し、Host・OS・Policyの外部開示許可を代用しない。
+
+成功の条件は、(1)実binaryのコミット識別、(2)各read-only CLIのSnapshot/Source fingerprint一致、(3)同じ観測を人間/AI表示で型・値とも保持、(4)失われたSource・改変表示・許可の誤昇格を拒否、の**4種を別々に観測**すること。専用GitHub Actionsでは合成15ケース／表示負例群／実Go CLI観測を明示的に分離し、二素材はRUNNER_TEMPへ出力してRepositoryを変更しない。文書納品のManifestとの関連付け・SHO保存・Agent実受領・実Provider・Owner意味受理は後続実験。
