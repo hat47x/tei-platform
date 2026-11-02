@@ -34,6 +34,19 @@
 
 `analysisRunId`などを設ける場合も、実行の相関子であり暗号学的な証明や新Registryではない。`requestFingerprint`は`Source`/Dialect/Schemaを含むRequestの正規の**バイト列**から算出する。Schemaが外部実DBの状態であれば、Requestに渡したSchemaと実Provider/DBの実効Schema・search_path/RLS/権限はさらに別の観測。QX-18〜20の例外・開示境界を迂回しない。
 
+## 2.1 Request A→B→Aの同一バイト・異Revisionを扱う（QX-14／#2582横断、2026-11-03）
+
+**新たに固定した反例**：2026-11-03の[Goテスト追加](../../internal/query/analyzer/client_qx14_origin_test.go)で、同じQuery ID/Protocol/Source/Schema/Dialectへ戻る`A(r1)→B(r2)→A(r3)`を作る。A(r1)とA(r3)はRequest JSON digestが同一で、Bとは異なる。したがって**入力バイトの一致と、その間に変更が発生しなかったという履歴の証明は別**。この境界は#2582の0→1→0 Read Cohort/ABA、QX-31の同じ出力でも異なるRelation Pathという反例と接続する。
+
+- **観測事実**：`SHA256(Request(A,r1)) == SHA256(Request(A,r3))`、`SHA256(Request(B,r2))`は異なる。これはHash衝突ではなく、まったく同じRequest byteへ戻ったためである。
+- **局所Consumer資格の負例**：テスト内部だけの`requestHash + observedRevision`を、`currentRequest + currentRevision`と比較する。現在版が`r3`または未確認なら、`r1`の実行票を「同じ版の観測」として再利用しない。実環境のRevision識別子の発行・信頼性や現在Readの証明は**本テスト対象外**。
+- **過剰な禁止をしない**：同一SQL/Schema/Dialect/Worker仕様に対する**純粋で決定的な構造解析**の結果は、適切に固定した入力・依存・キャッシュ契約が成立すれば、再利用可能な場合がある。ここで拒否するのは「r1以降変化なし」「現在のRead/開示/実行権限」「現在の業務Claim」といった、バイト一致だけでは言えない**より強い資格**である。
+- **必要Scopeは用途別**：設計書の固定版を閲覧するだけなら当該固定版の由来を示す。現在のFunction Context/Rule/Host/SHO/AIへ公開するなら、要求する現在版、必要Predicate/Relation Path/Read Cohort、現在のGrantを個別に再確認する。古いSourceへの由来表示と現在Sourceへの適格性を一つの`current` boolへ潰さない。
+
+**引継ぎ**：#2387は解析入力/IR構造の正本ならぬ証拠の出所を記録、#2506はResult Slice/Selection Epoch、#2582は依存変化/再取得、#1708はRead snapshot、#2516はConsumer開示、#1174はEffect/Host Authority。新しい全域Revision Registryや汎用Reactive Engineは導入しない。
+
+**検証状態**：局所Goコードを`gofmt`で整形し、GitHub保存ファイルとGit blob `ff04bfa265f7a2c8e8fbc89aa711ca10c7dad0d1`が一致した。Go1.26.10 CIの結果は**PR #2657 exact headを確認するまで未確定**。実Provider変更履歴や本番通知の欠落防止は未証明。
+
 ## 3. 検証と実装順（新Gateなし）
 
 1. **M0**：Goの既存サブプロセスhelperで同Query ID/ProtocolのSQL/Schema/Dialect変更を独立に送信し、Request digestは異なるがResultは同じであることを実測。GitHub Actionsのexact head/実Go toolchainの実行結果を別に確認。失敗は治療するためのGate追加ではなく設計上の証拠。
