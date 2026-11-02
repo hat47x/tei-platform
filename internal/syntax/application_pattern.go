@@ -135,7 +135,16 @@ func (p *Parser) ParseApplicationPattern() (application.Pattern, error) {
 				}
 				operators = append(operators, opTok.Text)
 			}
-			out.Filters = append(out.Filters, application.Filter{Attribute: attribute, Operators: operators})
+			filter := application.Filter{Attribute: attribute, Operators: operators}
+			if nt, _ := p.peek(); nt.Text == "parameter" {
+				_, _ = p.next()
+				paramTok, err := p.expect(TokenIdent)
+				if err != nil {
+					return out, err
+				}
+				filter.Parameter = paramTok.Text
+			}
+			out.Filters = append(out.Filters, filter)
 		case "sort":
 			_, _ = p.next()
 			attrTok, err := p.expect(TokenIdent)

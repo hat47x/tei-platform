@@ -28,7 +28,7 @@ th{background:#f3f3f3}
 {{if .Packages}}<p>packages: {{range .Packages}}{{.ID}} ^{{.Version}} {{end}}</p>{{end}}
 {{if .PageSize}}<p>page-size: {{.PageSize}}</p>{{end}}
 {{if .Sorts}}<p>並び順: {{range .Sorts}}{{.Label}} {{.Direction}}{{end}}</p>{{end}}
-{{if .Filters}}<form class="filters">{{range .Filters}}<label>{{.Label}} <select>{{range .Operators}}<option>{{.}}</option>{{end}}</select><input type="{{.Input}}" name="{{.Attribute}}"></label>{{end}}</form>{{end}}
+{{if .Filters}}<form class="filters">{{range .Filters}}<label>{{.Label}}{{if .Parameter}} ({{.Parameter}}){{end}} <select>{{range .Operators}}<option>{{.}}</option>{{end}}</select><input type="{{.Input}}" name="{{.Attribute}}"></label>{{end}}</form>{{end}}
 <table>
 <thead><tr>{{range .Columns}}<th>{{.Label}}</th>{{end}}</tr></thead>
 <tbody>

@@ -39,6 +39,7 @@ type FilterRef struct {
 	Label     string           `json:"label,omitempty"`
 	Type      core.CanonicalID `json:"type,omitempty"`
 	Input     string           `json:"input,omitempty"`
+	Parameter string           `json:"parameter,omitempty"`
 	Operators []string         `json:"operators,omitempty"`
 }
 
@@ -151,6 +152,7 @@ func BuildBrowse(world ir.World, applicationID, patternID core.CanonicalID) (Bro
 			Label:     labelOf(attribute),
 			Type:      attribute.TypeRef,
 			Input:     inputKind(attribute.TypeRef),
+			Parameter: filter.Parameter,
 			Operators: filter.Operators,
 		})
 	}
