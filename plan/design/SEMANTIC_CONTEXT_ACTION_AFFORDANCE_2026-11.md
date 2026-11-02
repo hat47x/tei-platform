@@ -171,3 +171,63 @@ L1の単一Field PATCHはL1 ID、対象属性、Version等で意味的候補化�
 **計測**（#2018/#2493）：論理Read依存・実Provider取得Field/Request・Consumer公開Field、不要Read数、Adapter/専用UI/特別Core分岐数、再利用した既存Contract数、誤候補と過剰拒否、実対象逸脱、同版でつながったEvidence辺の数。公開Evidenceに秘密値や接続文字列を複製しない。
 
 **状態**：今回の§8は計画の追補のみ。I0〜I5の実TEI結合、実Provider読取・外部送信・Go/DB/GUI試験とOwner受理はNOT RUN。局所Python PASSを製品資格へ昇格させない。新Canonical/Host/Registry/権限Engine/Grammar/新Gateは追加しない。
+
+<!-- action-offer-claim-support-and-invalidation-20261102 -->
+## 9. Action Offerを「用途相対のClaim」として評価する：出力依存・行成立依存・再資格化（2026-11-02／設計候補）
+
+### 9.1 他レーンから判明した不足と今回の位置づけ
+
+[#2624](https://github.com/hat47x/tei-platform/pull/2624)のDisplay Mapping／Rule Inputの局所合成38件（20+18）、[#2387](https://github.com/hat47x/tei-platform/issues/2387)のQuery非出力依存、[#2634](https://github.com/hat47x/tei-platform/pull/2634)の合成Analyzer→実Go DerivedIR特性、[#2582](https://github.com/hat47x/tei-platform/issues/2582)の変更失効、[#2640](https://github.com/hat47x/tei-platform/pull/2640)の「0件と負の依存」、[#2496](https://github.com/hat47x/tei-platform/pull/2496)の構造保存・依存閉包を参照し、**Action Offerが同じ表示値に対して同じ利用資格を維持してよいか**を、別の観点として#2507へ引き渡す。
+
+例：Tableに L1(id,amount=100) が同じように表示される二世界でも、見えていないWHERE/EXISTS条件、与信Rule、Sort/Top-N、Provider read cohort、利用主体・版が違えば、Submit、編集、一括操作の候補が同じとは限らない。逆に無関係D2に変更があっても、D1だけに依存するL1表示・read-only説明を無条件に失効させる必要はない。**描画値一致／同じOutput Field Lineage／Query ID一致は、Action適用条件の成立根拠の一致を意味しない。**
+
+従来の§8は「宣言Read・実取得・公開」の三境界を示した。本節は、その内部で**各Action/Claimを成立させる依存の種類と、変更後も成立する証拠**を整理する。SQL構造抽出は#2387、Data/Rule/Providerは#2506/#2622/#1129、増分失効は#2582、実Request/Authorityは#2598/#1174、独立Oracleは#2514のOwnerに残す。第二Dependency Engine、Negative Cache Engine、Policy/Host/Registryは作らない。
+
+### 9.2 Action Offerが依存する七つの異質な根拠（固定Core schemaではない）
+
+| 用途別の根拠 | 何を判定するか | 典型的な見落とし／委譲先 |
+| --- | --- | --- |
+| **Value/Type** | 出力値・Presence、数量/金額の単位・演算法則、丸め時点、型/版 | 出力値の一致だけで丸め・入力欠落・非表示依存の一致とする。#1705/#2593/#988 |
+| **Membership/Predicate** | 行が存在する条件、JOIN/EXISTS/WHERE/HAVING、Relation occurrence、対象絞り込み | SELECT列のLineageだけを見る／行が0なら依存は空だとする。#2387/#1706 |
+| **Order/Window/Quantifier** | 並び順、LIMIT/Top-N、集計・Not Existsの全件条件、ページ/時間窓と負の依存 | Orderを変えても表示項目が同じだからClaimは安定／partialを全件にする。#2387/#2506/#2593 |
+| **Rule/Action Precondition** | Validation、業務状態、関連データ、Owner Serviceでの限定的な条件判定 | Display MapにないAccount/Payment依存を無視してSubmit可能とする。#1129/#2624/#2507 |
+| **Provider/Time/Target** | 検査と実行に使った実際のProvider/DB alias、RLS/Principal、Snapshot/Query/Operator profile、現在の時点 | 同じSQL/意味ID/alias文字列や同名Snapshotから同じ母集団と断言。#2611/#2622/#1708 |
+| **Change/Evidence Validity** | 取得・選択・Rule/Source/Provider改版後、今も根拠が利用できるか／無影響を言えるか | 結果がA→B→Aと戻っただけで途中変更なしと主張、通知がないから不変とする。#2582/#1641/#2505 |
+| **Authority/Disclosure/Effect** | OfferをこのConsumerへ公開してよいか、実行時の許可・対象一致・実Effectを何で確認するか | disabled=falseをHost Grantと同一視、非公開Action件数や失敗理由を漏らす。#2516/#2598/#1174 |
+
+この七分類は**受入票の質問集合**であり、全Actionが一律に七種の全入力を必要とするわけではない。ActionごとのPurpose、要求量化（1件／全件／存在／不存在）、Read Set/Effect Footprint、指定Owner Serviceの契約から**必要なものだけ**を選ぶ。未知のQuery/Provider依存は推測で補完せず、当該用途について未確立とする。Value lineageが空でも、0件・不存在ClaimにはPredicate/Read Scope/完全集合性の「負の依存」が残る。
+
+### 9.3 Offerの提示・再利用・実行は別の資格
+
+- **定義上の候補**：受理済みAction/Patternが指定Semantic/Shapeに適合するか。実際に値を読めたか、現在Grantがあるかとは独立する。
+- **現在の証拠付き適用候補**：必要なPredicate/Rule/Collection・Version/Snapshot/Selection条件が、実際にその時点で満たされると主張できる範囲に限定する。証拠不足は未確立、反証がある場合は不適合/失効。過度な一律全面失効と誤った再利用を両方評価する。
+- **開示可能なOffer**：Consumerごとの公開許可を別に検査。拒否理由/候補数/所要時間も観測可能な情報。信頼済みreleased actionsや非公開情報境界のOwnerを参照し、新公開用Policyを作らない。
+- **実行要求**：Offerをキャッシュして再表示しても、対象・作用・Version Fence・現在Grant・Owner Serviceの必要条件は実行地点で再照合する。OfferのepochやTTLはOperation/Receipt/現在Policyの代替にならない。
+- **歴史説明の保存**：旧版で何を確認できたかは監査用に残せるが、「当時妥当だった」から「いま操作可能」への再利用は別Claimとする。現在表示・履歴証拠・編集準備を一個のstaleフラグで同時に制御しない。
+
+用途相対の依存閉包を用いる際は、**値を作る依存**、**その結果が選ばれる／存在する依存**、**判断に必要な業務Rule**、**実行先の束縛・権限・観測**を区別する。前二者はSQL/Operatorの構造から参照できても、現行DerivedIRのValue Lineageだけで「すべて取得済み」と証明しない（#2634）。実Providerの読取りやBusiness Acceptanceまで構造解析から推測しない。
+
+### 9.4 既存Fixtureに接続する新しい反例（OA-01〜12、当節としてNOT RUN）
+
+| ケース | 入力・変化 | 判別したい適用判断／証拠 |
+| --- | --- | --- |
+| **OA-01 非表示WHERE** | L1表示(amount=100)は同じ、hidden credit_scoreの条件閾値または実値だけ変化 | 表示値Lineageが不変でも、行が選択された理由・Actionの適用Claimを再確認。#2387/#2634 |
+| **OA-02 空集合の負依存** | t0配送=0→t1でP1追加→t2削除して再び0（ABA） | t0時点の0件、現在の0件、期間中に変更なしは別。0件だから依存空という最適化を拒否。#2582/#1641 |
+| **OA-03 TOP-N・演算順** | Filter→Sort→LIMIT 1 と LIMIT 1→局所Filter、非表示rank変更 | 同じ演算名であっても部分結果/実行順でClaimが変化。Provider pushdownとローカル処理の同義性を限定比較。#2387/#2622 |
+| **OA-04 Rule入力と表示** | 表示Order.amount=600同値、Account.credit_limitが700と500 | Display Footprintだけの一致からSubmit候補同値を導かない。必要Rule入力・Owner Serviceの検査と結果開示は別。#2624/#1129/#2516 |
+| **OA-05 依存局所維持** | HにD1=2件（全件）、D2=3件（部分）。D2のみ更新 | D1-only表示・合計は依存独立が示せれば維持、D2/Join依存Claimは再確認。全Context一律staleを避ける。#2582 |
+| **OA-06 存在／不存在の非単調性** | NOT EXISTS、LEFT JOIN未一致、追加の右側一致、遅着Event | 追加で旧結果のretract/replaceが必要。insert-onlyの表示更新を不適用と診断。#2387/#2582 |
+| **OA-07 多Providerの時点** | D1はPrimary snapshot s1、D2はReplica snapshot s1という同名ラベル | 同じ名称で全体の一貫したRead Cohortを推測しない。Commit前のOwner条件に必要な一致証拠がないなら保留。#2622/#1708 |
+| **OA-08 Operator意味Profile差** | 同じ表示数値でもSQL/JavaのNULL、Collation、十進丸め時点・中間精度が異なる | Operator/Targetの実意味契約が適合する範囲だけRule/Measure/Action候補を維持。#2387 QX-28/29、#988/#2077 |
+| **OA-09 部分行と部分Field** | Row setはcompleteでもprivateCost fieldがabsent、別Responseではnull | 全行取得の主張から必要属性の観測完全性を導かず、未取得・NULL・欠落を区別。#2506/#2627 |
+| **OA-10 旧Offerから実Requestへ** | AでOffer生成→B選択/Source版変更→古いA候補をMacro/GUIが再送 | #2598の実対象/版/Authority照合で拒否または明示再解決。新Operationで無確認再試行しない。#2597/#1174 |
+| **OA-11 開示と判定差** | 非公開Payment/Action有無が違う二世界、公開すべき項目は同じ | 公開不可Consumerの候補ID・個数・診断差の漏えいを防ぐ。有限JSON比較はOS/Timing/Egress非干渉の証明でない。#2516/#2515 |
+| **OA-12 独立Oracleと継続資格** | Source/Operator/Rule改版、旧Expectedと新実行で偶然同値 | 値一致だけで旧Oracleの独立性や現行適用を認定せず、Source→Expected→Actualの由来と資格を別確認。#2514/#1163 |
+
+**受入順序**：既存#2634の実Go DerivedIRには合成Analyzer入力、#2624は独立PythonのDisplay/Rule入力がある。この二つを同じRead Contextに「つなげられるか」を最初の静的・read-only Gapとして測定する。次に#2582の依存失効Refと#2507のA/G/Action Offerを二Consumerへ接続し、最後に#2598/#1174の実Request・Effectへ渡す。新しい並列OracleのPASSを一つの結合PASSとして数えない。
+
+**具体的な比較票**：Action purpose/受理版、Function Definition+Instance/epoch、Declared Required Read、Query operation・Predicate/Sort/anti-join/Rule依存、実Provider alias・profile/Scope/観測時点、Row/Field completeness、対象Identity/Grain、Owner前提、公開Consumer、Offerの診断、変更/失効理由、実Request target/grant/Receipt、独立Expected/Actual、必要な再確認箇所。既存#1131/#1163/各Ownerの情報を参照する**比較列**であり、共通ABI/Signature/Claim Certificateの新形式ではない。
+
+**測定指標**（#2018）：誤ったOffer再利用件数、必要なOfferの過剰失効件数、再取得回数・時間、Consumerごとの差分、検査できた負依存の割合、同一試行でSource/Provider/Consumer/実Requestが接続した辺の数、Core特殊分岐・Adapter/専用UI量、再利用された既存Validator/Contract数。
+
+**停止線・未決**：Accepted Actionの意味、どのClaimに完全な依存閉包が必要か、Owner側条件検査の公開レベル、Provider Update/Snapshot保証、Operatorプロファイル適合は個別受理待ち。提示の正しさ／開示／現在Grant／実行効果を同一booleanへ縮約しない。新しいReactive Engine/Negative Cache/Claim Solver/Policy/Host/Registryを増設せず、実TEI/DB/GUI/外部AI、Go縦断、Owner意味受理、OA-01〜12の試験は当節としてNOT RUN。
