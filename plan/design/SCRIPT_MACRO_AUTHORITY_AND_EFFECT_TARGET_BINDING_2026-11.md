@@ -3,6 +3,7 @@
 - **状態**：設計提案・未採用（2026-11-02）。この文書は仕様の正式採用、実装完了、権限付与、本番利用の許可を意味しない。
 - **担当課題**：[Delegated Authority Bridge #2499](https://github.com/hat47x/tei-platform/issues/2499)（業務判断から限定権限への受渡し）、[Script / User Macro #2502](https://github.com/hat47x/tei-platform/issues/2502)（製品体験）、[Script Execution Policy #2504](https://github.com/hat47x/tei-platform/issues/2504)（実行隔離）。
 - **実行・意味の正本**：[Effect Fence #1174](https://github.com/hat47x/tei-platform/issues/1174)、[Data lifecycle #1129](https://github.com/hat47x/tei-platform/issues/1129)、[組織意味 #2386](https://github.com/hat47x/tei-platform/issues/2386)、[Service Contract #951](https://github.com/hat47x/tei-platform/issues/951)、[Execution Context #1118](https://github.com/hat47x/tei-platform/issues/1118)。
+- **製品化の実証計画**：[スクリプト・利用者マクロの製品化と権限委任の実証計画](../workstreams/TEI_SCRIPT_MACRO_PRODUCT_PLAN_2026-11.md)（S0〜S4と担当・受渡し）。本書は意味・権限・効果を扱い、計画は実証順序を扱う。
 - **計画との関係**：[横断計画 #1119](https://github.com/hat47x/tei-platform/issues/1119)、[拡張ポートフォリオ #2493](https://github.com/hat47x/tei-platform/issues/2493)。既存P0-a/P0-bとGate A/B/Cは変更しない。
 - **参照した現行コード**：main `9c9ef4d160640908e06ad13afb6c2b45c664c748` の `internal/security/effectcommit/commit.go`、`tools/reference-first-web-target/runner_order_submit_store.go`、`runner_order_submit_postgres_test.go`（静的確認）。
 - **外部連携**：[TEI Batch #1130](https://github.com/hat47x/tei-platform/issues/1130)、[TAI機密境界 #232](https://github.com/hat47x/tai-pleroma/issues/232)、[EKIの同一Attempt出力断絶 #465](https://github.com/hat47x/eki-fabric/issues/465)。
