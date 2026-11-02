@@ -10,11 +10,12 @@ import (
 
 // ManifestEntry is one artifact's identity inside a set.
 type ManifestEntry struct {
-	Kind       string `json:"kind"`
-	Rule       string `json:"rule"`
-	Version    string `json:"version"`
-	Digest     string `json:"digest"`
-	Unresolved int    `json:"unresolved"`
+	Kind        string `json:"kind"`
+	Rule        string `json:"rule"`
+	Version     string `json:"version"`
+	Fingerprint string `json:"fingerprint"`
+	Digest      string `json:"digest"`
+	Unresolved  int    `json:"unresolved"`
 }
 
 // Manifest is a deterministic set of derived artifacts that share one input
@@ -52,11 +53,12 @@ func NewManifest(inputRevision string, artifacts []Artifact) (Manifest, error) {
 	complete := true
 	for _, artifact := range artifacts {
 		entries = append(entries, ManifestEntry{
-			Kind:       artifact.Kind,
-			Rule:       artifact.Rule.ID,
-			Version:    artifact.Rule.Version,
-			Digest:     artifact.Digest,
-			Unresolved: len(artifact.Unresolved),
+			Kind:        artifact.Kind,
+			Rule:        artifact.Rule.ID,
+			Version:     artifact.Rule.Version,
+			Fingerprint: artifact.Rule.Fingerprint,
+			Digest:      artifact.Digest,
+			Unresolved:  len(artifact.Unresolved),
 		})
 		if len(artifact.Unresolved) > 0 {
 			complete = false
@@ -94,7 +96,7 @@ func fingerprintManifest(m Manifest) string {
 	b.WriteString("tei.artifact.manifest/v0\n")
 	b.WriteString(m.InputRevision + "\n")
 	for _, entry := range m.Entries {
-		fmt.Fprintf(&b, "%s\t%s\t%s\t%s\t%d\n", entry.Kind, entry.Rule, entry.Version, entry.Digest, entry.Unresolved)
+		fmt.Fprintf(&b, "%s\t%s\t%s\t%s\t%s\t%d\n", entry.Kind, entry.Rule, entry.Version, entry.Fingerprint, entry.Digest, entry.Unresolved)
 	}
 	b.WriteString(fmt.Sprintf("complete=%t\n", m.Complete))
 	return sourceindex.Fingerprint([]byte(b.String()))
