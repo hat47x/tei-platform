@@ -494,6 +494,8 @@ X-TEAの戻り値とTEIの分類の対応（案）は、次のとおりです。
 
 **撤回条件.** 結果型が増えすぎて、呼出し側の分岐が実装負担になる場合は、結果の分類を業務結果と実行結果の二層に整理します（[Business Effect Lifecycle](BUSINESS_EFFECT_LIFECYCLE_DESIGN_2026-10.md)との整合）。
 
+**PoCでの実装.** `interaction`の`command`でCapabilityを参照し、対話ビューが入力・結末・効果を解決します（[#2521](https://github.com/hat47x/tei-platform/pull/2521)）。実行境界、Outcomeの返却、ロールバックは未実装です。
+
 **未解決.**
 
 - 削除の効果をどう表すか。現在の`DataEffect`は`create`と`update`だけで、`delete`を持たない（`internal/semantic/model.go` L140–144）。Business Effect Lifecycleと合わせて決める。
@@ -910,11 +912,12 @@ PoC #2521が実装した範囲と、まだ実装していない範囲を分け�
 | 対話ビュー（項目の型・表示名・入力部品・参照先の解決） | 実装済み（`internal/applicationview`、CLI `view`） |
 | 画面HTMLの投影 | 実装済み（`view -format html`） |
 | header-detailの見出し・明細ビュー | 実装済み（Relationのsourceをheader、targetを明細として解決） |
-| 対話からのCommand起動（宣言・表示） | 実装済み（`interaction`の`command`、実行は未実装） |
+| 対話からのCommand起動（宣言・契約解決） | 実装済み（`interaction`の`command`、入力・結末・効果の解決。実行は未実装） |
 | 操作（Commandの起動）、帳票の投影、Package、フック | 未実装 |
 | `reference/workspace`への宣言追加 | 未実施（受理経路が必要） |
 
 実装は、`internal/application/model.go`、`internal/syntax/application_pattern.go`、`internal/validation/application_pattern.go`、`internal/crossview/pattern_requirements.go`、`internal/applicationview`、`internal/semantic/model.go`、`internal/syntax/parser.go`、`internal/validation/validation.go`と、それぞれの試験です。
+
 
 
 
