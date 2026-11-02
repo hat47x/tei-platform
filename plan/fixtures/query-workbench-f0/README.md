@@ -121,3 +121,21 @@ python3 -m unittest -v test_qx21_evidence_axes.py
 - 比較結果は`changedAxes`等の軸名しか含まず具体Principal値を含めないが、**差分の存在自体が漏洩となり得る**。既存AuthorityによるConsumer別投影が確認されるまでは内部read-only説明候補であり、外部SHO/AI向けの安全な公開契約ではない。
 
 設計・次段のOwner/未実施範囲は[Draft #2388計画 §7.15](https://github.com/hat47x/tei-platform/blob/work/query-structural-fixture-design-20261030/plan/design/QUERY_STRUCTURAL_MODEL_AND_FIXTURE_WORKBENCH_2026-10.md)。#2506/#2582/#2593/#2597/#2598/#2516/#2586との統合、実SQL Worker/実PG/Host認可・Effect/Owner意味受理は**NOT RUN**。本Referenceは新Core enum/第二Evidence SSOT/新Policy Engineを導入しない。
+
+
+## QX-22：Native SQLと汎用Data Operatorの意味境界（2026-11-02）
+
+他チャットの#2620（Everything is Data／構文シュガー）、#2622（Data Operations/Provider）、#988（DSL/Operator）、#2621（Markdown/Studio authoring）を、現行#2387のSQL構造説明に接続するため、**SQL同士の演算・配置非同値を実測する**参照fixtureを追加。
+
+```sh
+cd plan/fixtures/query-workbench-f0
+python3 -m unittest -v test_qx22_sql_operator_boundaries.py
+```
+
+- Python **3.13.5**／SQLite **3.46.1**（標準ライブラリsqlite3、JSON1）。**10/10 PASS**、ローカル実行バイトとGitHub保存バイトの**exact Git blob SHA `d9f887716db2b785a2424737e00fbff3fe4786dd`一致**。ファイルサイズ5400 bytes。
+- **非同値の8例**：LEFT JOINのON/WHERE配置、JOINとEXISTSのbag、nullable右列に対するIS NULLとNOT EXISTS、SQL NULLの三値論理、FilterとLIMIT、WHEREとHAVING、SUM(DISTINCT value)と実体合計、自己JOINのSource occurrence。**QX22-09**はSQLite JSON1でmissing/null/emptyとunnestの差を比較する。**QX22-10**は限定的なINNER JOIN ON/WHERE同値の正例。
+- Expectedは自作合成データに対する独立手書き値。SQLiteの結果一致をSQL→TEI DSL変換、RDB/Graph/Document全Targetの同値、実Worker解析、Owner意味受理へ昇格させない。
+
+**三つのSource経路を分離**：(A) SQL NativeのSourceを正本としてread-only DerivedIR/標準UIを表示、(B) SQLを解析してDSL Sourceへの**明示的な移管候補**を作り独立比較後にOwner判断、(C) SQL取得済みResult Sliceから別のData Operatorで変換。標準的な `where`/filter はQuery/Path/Graph/JSONのRole・grain・bag・NULL/未取得/開示・適用時点/Operator法則と結びつく。第二SQL parser/evaluatorや自動的なSQL書戻し権限を先に作らない。
+
+[Draft PR #2388 計画 §7.17](https://github.com/hat47x/tei-platform/blob/work/query-structural-fixture-design-20261030/plan/design/QUERY_STRUCTURAL_MODEL_AND_FIXTURE_WORKBENCH_2026-10.md)に試験票・引継ぎM0〜M3を記録。**TEI Go DeriveFromAnalysis、実SQLGlot Worker、実PostgreSQL、Data Provider、共通DSL Parser、UI/SHO、Host/Owner受理はこの10件で未実施。**
