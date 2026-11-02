@@ -176,13 +176,13 @@ TEIで最低限区別する同一性は次のとおり。
 | **観測上の適合性** | ConsumerのOperation/Frameで必要な観測を保存できるか | 全Consumerについてlossless |
 | **物理形式の同一性** | 同じbytes/Schema/Targetの読み取り結果か | 業務Meaning/実行Authority |
 
-正規化した\`Descriptor\`の一致が判定できても、意味上のSourceと受理済み判断は独立に保持する。**意味上の同型関係を全世界で計算して新しいConcept IDへ統合する設計は、一般には決定可能性・計算コスト・出典の面で妥当性がない。**
+正規化した`Descriptor`の一致が判定できても、意味上のSourceと受理済み判断は独立に保持する。**意味上の同型関係を全世界で計算して新しいConcept IDへ統合する設計は、一般には決定可能性・計算コスト・出典の面で妥当性がない。**
 
 ### 8.2 限定された「比較用正規形」を構想する
 
-仮説：既存Source/Typed Refを別の正本に変換する代わりに、**用途相対に抽出したread-only Structural Descriptor**を比較する。比較の中身は下記に相当する役割であり、公開\`Schema\`や新しい\`Core\`型ではない。
+仮説：既存Source/Typed Refを別の正本に変換する代わりに、**用途相対に抽出したread-only Structural Descriptor**を比較する。比較の中身は下記に相当する役割であり、公開`Schema`や新しい`Core`型ではない。
 
-\`\`\`text
+```text
 Semantic Type / Subject ID + exact Source/Version
     ├─ Constructor signature and field roles
     ├─ Relationship identities and arity
@@ -197,7 +197,7 @@ Semantic Type / Subject ID + exact Source/Version
                     |
                     v
       owner review / typed change proposal
-\`\`\`
+```
 
 - **順序に依存しない構成情報**（意味上集合であるFacet参照の列など）は、重複した同一参照を除去し固定規則で順序付けできる。ただし重複した根拠・互いに異なるScopeのClaimはまとめない。
 - **順序そのものがMeaning**であるSequence・Tuple・イベント列・Document Block順・Display Orderは整列して正規化しない。
@@ -209,26 +209,26 @@ Semantic Type / Subject ID + exact Source/Version
 
 | ID | 左右の候補 | なぜ同じに正規化できないか |
 | --- | --- | --- |
-| CN-01 | \`List<A|B>\` vs \`List<A>|List<B>\` | 前者はA/B混在可能、後者は全要素Aまたは全要素BというBranch。分配は一般に成立しない |
-| CN-02 | \`Tuple(A,B)\` vs 名前付き\`Record{a:A,b:B}\` | 要素順・ラベル・意味上の対応を明示しないと自動同型とは扱えない |
-| CN-03 | \`Map<K,Set<V>>\` vs \`Set<(K,V)>\` | 空のValue集合を持つKeyの存在を後者が失う。Mapの入力Key完全集合も別 |
-| CN-04 | \`Sequence<Pair<K,V>>\`と\`Map<K,V>\` | 前者のKey重複/順序、後者のKey一意性・列挙順は別。Ordered Mapでも順序規則を追加要件にする |
-| CN-05 | \`Optional<T>\` vs \`Nullable<T>\` vs \`Missing Input\` | 欠落・明示NULL・Valueの各状態とSource/Use-siteの適用条件が違う |
-| CN-06 | 同じ\`ℕ\`の加法Monoidと乗法Monoid | 演算+Unitの束縛が違い、同一\`Monoid\`名で統合できない |
-| CN-07 | 同一物理次元のEnergyとTorque | 同じ\`N·m\`という単位表記・次元からQuantity Kindや利用演算の互換性を推論できない |
-| CN-08 | valid-timeとtransaction-timeの二つの時点 | 両者を一つの\`timestamp\`へ投影しても同じ意味とはならない |
-| CN-09 | \`Set<T>\`の集合演算と\`Bag<T>\`の多重度 | 値が偶然重複なしで一致しても、保証する操作と将来データの意味は異なる |
+| CN-01 | `List<A|B>` vs `List<A>|List<B>` | 前者はA/B混在可能、後者は全要素Aまたは全要素BというBranch。分配は一般に成立しない |
+| CN-02 | `Tuple(A,B)` vs 名前付き`Record{a:A,b:B}` | 要素順・ラベル・意味上の対応を明示しないと自動同型とは扱えない |
+| CN-03 | `Map<K,Set<V>>` vs `Set<(K,V)>` | 空のValue集合を持つKeyの存在を後者が失う。Mapの入力Key完全集合も別 |
+| CN-04 | `Sequence<Pair<K,V>>`と`Map<K,V>` | 前者のKey重複/順序、後者のKey一意性・列挙順は別。Ordered Mapでも順序規則を追加要件にする |
+| CN-05 | `Optional<T>` vs `Nullable<T>` vs `Missing Input` | 欠落・明示NULL・Valueの各状態とSource/Use-siteの適用条件が違う |
+| CN-06 | 同じ`ℕ`の加法Monoidと乗法Monoid | 演算+Unitの束縛が違い、同一`Monoid`名で統合できない |
+| CN-07 | 同一物理次元のEnergyとTorque | 同じ`N·m`という単位表記・次元からQuantity Kindや利用演算の互換性を推論できない |
+| CN-08 | valid-timeとtransaction-timeの二つの時点 | 両者を一つの`timestamp`へ投影しても同じ意味とはならない |
+| CN-09 | `Set<T>`の集合演算と`Bag<T>`の多重度 | 値が偶然重複なしで一致しても、保証する操作と将来データの意味は異なる |
 | CN-10 | Tree Projectionと一般Graph Source | 省略したEdge、複数親、Layout・Scopeを失う可能性がある |
 
 CN-01は重要：似た構造子を代数的に並べ替える最適化は、**混在値が存在しうるという意味の違い**を消してしまう可能性がある。CN-03の空Keyも、Bag/SetだけでなくMap/Relationの構造間の保存性を調べる有効な反例である。
 
 ### 8.4 MECE性を検査する最小の不変条件
 
-1. **Role uniqueness**：同じMeaning/Sourceに対し、\`is-a\`、\`has-facet\`、\`has-part\`、\`converts-to\`、\`projected-as\`のいずれを表すかが明確であり、混ざった「親」リンクを作らない。
+1. **Role uniqueness**：同じMeaning/Sourceに対し、`is-a`、`has-facet`、`has-part`、`converts-to`、`projected-as`のいずれを表すかが明確であり、混ざった「親」リンクを作らない。
 2. **Semantic single authority**：Facet・Law・Source・Instanceを複数のViewへ投影しても、受理済み意味の二重正本を増やさない。
 3. **Composition coherence**：独立なFacet参照の列挙順を変えても、利用可能な演算束縛・検出する矛盾は変わらない。競合している場合はどちらの順でも曖昧と報告し、勝者を親の列挙順で決めない。
 4. **Information preservation**：変換の保存/喪失はObserver・Context・対象版付き。可逆かどうかを構造名だけで断定しない（#2497）。
 5. **Evidence scope**：構文的記述が同じ、境界付きSolverで反例なし、実Targetでの観測、Owner Meaning Acceptanceは独立の主張。
 6. **Extension stability**：新しい数学・科学・業務例が追加されても、既存の名目型・受理済み意味・Plugin Contractの同一性を自動変更しない。必要なLaw/Operator束縛の追加は新しいClaimとして扱える。
 
-**提案する実証**：CN-01/03/04/06を対照とし、Descriptorの比較結果をAI向けread-only診断として出力する案を既存#1155/#2354に照合。新しい\`DataStructureRegistry\`、\`UniversalCanonicalizer\`、一般論理Solverを採用する前に、既存のTypeRef/Relation/Operator/Sourceでどの区別が表現可能か記録する。実Code/Target・Owner受理は未実施。
+**提案する実証**：CN-01/03/04/06を対照とし、Descriptorの比較結果をAI向けread-only診断として出力する案を既存#1155/#2354に照合。新しい`DataStructureRegistry`、`UniversalCanonicalizer`、一般論理Solverを採用する前に、既存のTypeRef/Relation/Operator/Sourceでどの区別が表現可能か記録する。実Code/Target・Owner受理は未実施。
