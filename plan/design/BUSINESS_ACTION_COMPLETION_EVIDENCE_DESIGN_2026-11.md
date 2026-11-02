@@ -81,7 +81,8 @@ BC-01は「集合不完全」、BC-04は「完全な集合でも同Tx後続Mutat
 ## 6. 実証済み・未実証・採否の線引き
 
 - **確認済み（固定公開mainに対するコード静的照合）**：既存CrossViewのSourceEdgeとpair集約、既存unit testに二利用箇所を区別するassertが存在すること。既存IssueにOwner-write/receiptの証拠・負例設計があり、個別の合成/限定実行結果は各Issueへ帰属する。
-- **実施済みの限定合成反証（2026-11-02追補）**：下記 §8.1 の自作two-world fixtureをPython 3.13.5で実行し、1 unittest／8 subTest caseをPASS。これは業務・Providerの実装試験ではない。\n- **今回未実行**：BC-01〜12の実TEI Consumer/実業務縦断、Go/Java/Windows/実DB、原モデルの実Candidate J5接合、CUI/SHO Consumer、独立Provider完全性、Owner意味の正式受理。
+- **実施済みの限定合成反証（2026-11-02追補）**：下記 §8.1 の自作two-world fixtureをPython 3.13.5で実行し、1 unittest／8 subTest caseをPASS。これは業務・Providerの実装試験ではない。
+- **今回未実行**：BC-01〜12の実TEI Consumer/実業務縦断、Go/Java/Windows/実DB、原モデルの実Candidate J5接合、CUI/SHO Consumer、独立Provider完全性、Owner意味の正式受理。
 - **未採用**：完了述語の具体的なDSL/API/新型、Contextの永続形式、標準ステータス、全Target共通Host、業務上の正しい部分確定/再試行・引継ぎ条件。Sourceや過去のCI/merge、旧Driverのambient Commitから業務意味を自動導出しない。
 
 ## 7. Claimごとの証拠充足を評価する（2026-11-02追補）
