@@ -9,7 +9,7 @@
 
 対象の同一性／構成文法／性質・法則／解釈文脈／利用箇所の要求／主張と根拠／実現と表示。各Pressureの意味に関連するM1〜M10（#2495）は重複して構わないが、**一つの性質を二つの独立な意味正本に保存しない**。
 
-以下の144ケースは**初期の異質性を測るための開始点であり、網羅の完了や上限を意味しない**。新規の構造・数学的性質・分野固有の解釈は追加し続ける。関心事が重複する場合も、操作・利用文脈・失われる情報が異なれば別の反例として保持する。
+以下の156ケースは**初期の異質性を測るための開始点であり、網羅の完了や上限を意味しない**。新規の構造・数学的性質・分野固有の解釈は追加し続ける。関心事が重複する場合も、操作・利用文脈・失われる情報が異なれば別の反例として保持する。
 
 ## A. 値と同一性（PC-01〜07）
 
@@ -242,8 +242,8 @@ TEIの[PR #2576](https://github.com/hat47x/tei-platform/pull/2576)・[#2578](htt
 
 [構造保存写像§14](STRUCTURE_PRESERVING_TRANSFORMATIONS_AND_PROJECTIONS_2026-11.md)のCR-01〜12、[#2516](https://github.com/hat47x/tei-platform/issues/2516)のW8/DP-M4a/b、SHO #4/#6のDocument Occurrenceを接続する。**全件机上の反例候補、実Comparator/SHO/OS/AI試験NOT RUN**。
 
-| ID | Pressure | 保持・比較する意味 | 誤成功 | Owner |
-| --- | --- | --- | --- | --- |
+| ID | Pressure | 構成・表現 | 保持・比較する意味 | 誤成功 | Owner |
+| --- | --- | --- | --- | --- | --- |
 | PC-133 | 売上200と在庫200 | 互いに異なるQuantity KindとClaim Subject | Claim対象/Quantity Kind | 値一致で意味同値とする | #2516/#2497 |
 | PC-134 | 部分100と全件200 | 異なるDataset Scopeの2 Observation | Scope/Completeness/時点 | 値不一致で片方を誤りと断定 | #2516/#2506 |
 | PC-135 | 同一Claim/版で200と201 | 同じSource/Scope/Grainを主張する2 Claim | 真に比較可能な不一致 | AI多数決で正解を決定 | #2516/#2514 |
@@ -258,6 +258,27 @@ TEIの[PR #2576](https://github.com/hat47x/tei-platform/pull/2576)・[#2578](htt
 | PC-144 | CUI PASS、SHO実表示未確認 | 同じClaimのCUI/SHO別Consumer Read | Consumer別actual read/load | 一Consumer成功を全成果物の実受入へ拡張 | #2498/#2516 |
 
 **比較原則**：`same value`、`same Claim`、`same Source`、`same Document Occurrence`、`same edit`、`same disclosure rights`を別の関係として扱う。比較可能性の前提が不明な場合、値の同値/異値だけで正否を決定しない。公開できない根拠を不存在へ変換しない。
+
+## O. Everything is Data・意味Role・表記糖衣・Data Operations（PC-145〜156、2026-11-02追加候補）
+
+新設された[#2619](https://github.com/hat47x/tei-platform/issues/2619)の横断方針と[#2620](https://github.com/hat47x/tei-platform/issues/2620)、[#2621](https://github.com/hat47x/tei-platform/issues/2621)、[#2622](https://github.com/hat47x/tei-platform/issues/2622)を圧力試験に接続する。関数・パイプライン・メソッド・Markdown表・Graph等の**構文上の違い**と、解釈Role・Operator束縛・型・Context・Target能力による**意味上の違い**を分離する。詳細な責務境界は[メタ概念設計§24](DATA_STRUCTURE_META_FACETS_AND_TOPOLOGY_2026-11.md)に記載。
+
+| ID | Pressure | 構成・表現 | 保持・比較する意味 | 誤成功 | Owner |
+| --- | --- | --- | --- | --- | --- |
+| PC-145 | 関数形とPipeline風のwhere | 同じOperandとPredicateを持つ演算適用 | Operator ID/version/Type/Truth semanticsとSource span | 同じ綴りなので別Providerでも同じ作用と確定 | #2619/#2620/#988 |
+| PC-146 | Method形式と関数形式の同名where | Namespaceの異なるOperator解決 | Role/Operator binding・Scope・Effect | 受入順・import順により意味の違う演算を暗黙選択 | #2620/#2544 |
+| PC-147 | Filter→Limit と Limit→Filter | 同じ2演算のPipeline異順序 | 順序とResult Scope、要素の選択条件 | 同じ演算集合なので同じ結果と正規化 | #988/#2387/#2622 |
+| PC-148 | SQL WHEREとGraph辺Filter | RDB bagのRowとGraphのEdge/Path | Cardinality・Traversal/時点・NULL/重複 | 同名Operatorから同一のIterator/Traversalを推定 | #2622/#2387 |
+| PC-149 | Tree/Graphの再帰where | 循環Graphと遅延・深さ制限 | Termination、Visited ID、Path occurrence、完全性 | 有限Prefixの取得から全件の一致を宣言 | #2622/#2495 |
+| PC-150 | 意味ModelのRelationとFunctionの利用集合 | Data Model Relation／Context Mapping | 起点・path・Field・Grain・Read Scope・完全性 | モデルにRelationがあるので全関連Dataを暗黙取得 | #2506/#2622 |
+| PC-151 | Markdownの説明表と関数定義表 | 同型のMarkdown Tableと別Interpretation Role | Source span／Role/Owner受理／実行候補 | 全表の見た目一致を自動実行の許可とする | #2621/#2620 |
+| PC-152 | 関数表・式・DSLの同じ計算候補 | 量と数値の型付きExpression／複数Authoring | Operator ID・単位・丸め・NULL・出典と独立Oracle | 字句が違うので意味別正本を重複生成 | #2619/#2621/#1705 |
+| PC-153 | 同一Recordに複数Interpretation Role | 構造Record＋Function/Test Roleの束縛 | Required Shape・適用順・Operator競合・版 | Roleの配列順で評価意味を暗黙確定 | #2620/#2544 |
+| PC-154 | 自己記述Pluginの依存循環 | Role/Operatorメタ宣言＋bootstrap Reference | 起点となる基本構造・Cycle/Version/Plugin解決 | 自己記述できるから全依存解決済みと表示 | #2620/#1018 |
+| PC-155 | Provider pushdown とローカルwhere | 同じData ContextのQuery→Result候補 | 三値論理・Collation・粒度・権限・部分取得 | 少数の値が一致しただけで全Target等価を断定 | #2622/#2498/#2387 |
+| PC-156 | Derived Dataset/文書/コードへの同版Projection | 一つのSource＋複数意味Role/Consumer | Semantic Subject・Source/Rule/Artifact/Consumer版・Loss | 生成した表/SHO/Codeの成功を実Consumer/Owner受理へ昇格 | #2619/#2497/#2604 |
+
+**受入と状態**：12件はすべて**提案・NOT RUN**。現在のTEIがTypeScript系、Pipeline構文、Markdown自動解釈やGraph/Treeの全Queryをサポート済みという意味ではない。RDB・Graph・文書など異質なConsumerで、**明示Operator/RoleとContextの条件が揃えば共通構造へ投影できるか／異なるときは何を未解決と表示するか**を検証する。Core TypeKind、新Parser・Data Engine、第二Semantic SSOT、独自Hostの先行追加を求めない。
 
 ## 外部仕様の照合（2026-11-01読取り）
 
