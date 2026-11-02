@@ -18,7 +18,7 @@
 
 ## 2. QX-33の実Goプロトコル特性試験
 
-[**client_qx33_request_binding_characterization_test.go**](../../internal/query/analyzer/client_qx33_request_binding_characterization_test.go) を既存#2388ブランチへ追加。**テスト本体のローカル`gofmt -l`は空**。ローカルで整形したソースとGitHub blobのGit SHA-1 **`170806331c8d86f2eff3f10450316d51c87044b8`**一致（3443 bytes）。
+[**client_qx33_request_binding_characterization_test.go**](../../internal/query/analyzer/client_qx33_request_binding_characterization_test.go) を既存#2388ブランチへ追加。**テスト本体のローカル`gofmt -l`は空**。ローカルで整形したソースとGitHub blobのGit SHA-1 **`f0c6113ca2ff5a3fd3b3febe8faf18c6855d1cb2`**一致（3443 bytes）。
 
 現時点では**GitHubへのGoテストソース保存と整形・byte一致の確認まで**。PR headの`go test`/Actions成功はこの設計書保存時点では**NOT VERIFIED**。Go実テストは実CI/実行ログ確認後に限って成功と記す。ここで「4/4 PASS」等の推測をしない。
 
