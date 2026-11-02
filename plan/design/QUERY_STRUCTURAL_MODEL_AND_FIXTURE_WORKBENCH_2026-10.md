@@ -636,6 +636,9 @@ QX-14〜20はSQLの構文・解析入力/版・演算構造と、DBの実効名�
 
 ### 7.16 QX-20 M1：実Go DerivedIR→JSONを用いた「説明できる／公開できる」の別資格（2026-11-02、独立Draft）
 
+**後続CI確認（2026-11-02）**：PR #2618のexact head `a54437c3da33b39ff12b919d6c92873f0eb35bdd`で、[Actions run 41419226291](https://github.com/hat47x/tei-platform/actions/runs/41419226291) の`repository-health` job 125190478489がsuccess。全体健全性・E1回帰・候補HEAD検証stepもsuccess。**QX-20の合成Go IRテストを含むPR回帰資格**であり、実SQL worker、正式Disclosure、実Consumer送信・Host/OSの合格とは別。下記の「Go/CI結果待ち」は起票当時の状態としてこの注記で更新する。
+
+
 **前節との差**：§7.14では手組みのJSONで秘密の異なる二世界を比較した。今回はその実装隙間を小さくし、**mainの実`query.DeriveFromAnalysis`から生成された`DerivedIR`を、Goの`encoding/json`でシリアライズした出力**を対象にする。正式のDisclosure判断・SQL Worker・実Consumer公開を通した試験ではない。
 
 **独立[Draft PR #2618](https://github.com/hat47x/tei-platform/pull/2618)**：main `9c9ef4d160640908e06ad13afb6c2b45c664c748`起点、`internal/query/derived_qx20_visibility_characterization_test.go` **Goテスト1ファイル**。head更新版 `a54437c3da33b39ff12b919d6c92873f0eb35bdd`（要exact-head再確認）。`go fmt`形状修正コミット済み。PRはDraftのまま。2026-11-02追検証で、head `a54437c3da33b39ff12b919d6c92873f0eb35bdd`を含むActions PR merge checkout `ce44843aa`のrepository-health [run 41419226291](https://github.com/hat47x/tei-platform/actions/runs/41419226291)、job `125190478489`について実ログでGo **1.26.10**、`gofmt -l . is empty`、`go vet ./...`、`go test -count=1 -timeout 60m ./...`、`tei/internal/query ok`、job successを確認。これは**PR merge refの全体Go suite PASS**であり、`TestQX20`名指定の単独実行や実Consumer/Disclosure受入を意味しない。
@@ -714,6 +717,36 @@ SQLの`WHERE`、LINQ風filter、階層TreeのNode選別、GraphのVertex/Edge Tr
 3. **QX22-M2 / #2622/#2506/#1121**：SQL Native→取得Result Slice→型付きData Operator（Data Provider依存）を一件通し、RDB/Document/Graphそれぞれ1例で適合/不適合・Target境界を調べる。元SQLへの自動書換え、Provider pushdownは対象Targetでの実証まで候補。
 4. **QX22-M3 / #2621/#2497/#1124/#2516**：Markdown/Studio/SHOへ説明・Diff・Source navigationを共通投影。SQL Native由来の図/表の変更をSourceへ書き戻す場合、**一意なSource spanとOwner受理できる意味差分**が確認された箇所だけtyped patch候補。他のProjectionはread-only、曖昧なJOIN/Group/WindowやCTEはSourceへnavigate。
 5. **採用判断**：#2514独立Oracleと#1131/#1180 Fixture、#1693/#1178開示、#1174実Effectを分担。新共通Parser・SQL executor・独自Hostを先行採用せず、構造的等価性・実Target同値・Owner意味受理・実Consumer受信を異なる証拠として保持する。
+
+
+### 7.18 QX-23：SQL→共通Data Operatorの「局所的な一致」と「一般的な同義性」を分離する反証検査（2026-11-02、独立Oracle実測）
+
+**他チャットからの接合**：[#2620 Everything is Data](https://github.com/hat47x/tei-platform/issues/2620)、[#2621 Markdown/Studio Authoring](https://github.com/hat47x/tei-platform/issues/2621)、[#2622 Data Operations](https://github.com/hat47x/tei-platform/issues/2622)、[#2625 Syntax Sugar](https://github.com/hat47x/tei-platform/pull/2625) の「複数表層を標準データ構造＋Role/Operator版へ解決する」方針を、前節QX-22のSQL構造理解へ接続する。QX-22の10件はSQL対SQLの固定期待比較だったため、**Native SQL実測と、SQLを呼ばない手書きPythonのPlain Data Operator参照計算の結果を対照し、誤った同義化を退ける変異（mutant）に反応するか**を追加検査した。Parser/Importer/DSLの新正本・共通Executorは導入しない。
+
+**固定した局所実測**：[test_qx23_sql_operator_metamorphic.py](https://github.com/hat47x/tei-platform/blob/work/query-structural-fixture-design-20261030/plan/fixtures/query-workbench-f0/test_qx23_sql_operator_metamorphic.py) をPython stdlib `sqlite3/unittest`で実行して**9/9 PASS**、`py_compile` PASS。自作Line・Deliveryだけを用い、Null/0/2の3値×3行による27通り、Right 0〜3件、LEFT JOINの優先度パターン、NULL/重複の集約などを比較。**手元実行ファイルとGitHub保存のGit blob SHA `324e1a8594663ecdd6084040ca144e14b10ff69e`、bytes `7263`が一致**。Go/SQLGlot Worker/TEI DSL/Providerの実行証拠ではない。
+
+| Pressure | SQL実測と独立Referenceの結果 | **潰すべき誤同義化** |
+| --- | --- | --- |
+| QX23-M1：JOIN bag対存在判定 | Right件数0〜3に対し、物理JOINの(row L, row D)多重集合を手書き直積＋条件で再現 | 1一致時の出力が等しくても、2一致の追加で`JOIN→EXISTS`は行多重度を失う |
+| QX23-M2：限定的な正例 | このfixtureの非NULL一意Line IDについて、`WHERE EXISTS`と`JOIN→DISTINCT line.id`はRight0/1/2で一致 | 正例を全SQL方言・非純粋式・任意結果列・未確認Providerへ一般化する |
+| QX23-M3：三値論理 | NULL/0/2の全27配列で`WHERE value != 0`と「NULL除外後の比較」を一致させる | Pythonの`None != 0`（True）をSQL UNKNOWNに対するTRUEとして扱う |
+| QX23-M4：LEFT JOIN | 右の0件・NULL・priority 0/正値に対するLEFT JOIN/ONを手書きoptional-matchで再現 | ON内条件を外側WHEREへ動かし、右未一致行を消す |
+| QX23-M5：Aggregate/Identity | GROUP SUM、空とNULL-onlyのSUM、COUNT(*)、COUNT(nonNULL)、SUM DISTINCTを独立計算 | 空SUM→0、SUM DISTINCTを業務Factの重複解消と扱う |
+| QX23-M6：否定存在 | NOT EXISTSを手書き「右一致0件」と一致させる | nullableな右列の`IS NULL`を「右Relation不存在」と扱う |
+| QX23-M7：順序 | Filter後ORDER/LIMITを別評価し、順序入替の誤結果を検出 | `filter∘limit`と`limit∘filter`の無条件同値 |
+| QX23-M8：構文/Role候補 | 1一致時に出力値が等しくても、`join@v1/bag`と`exists@v1/set`の契約が別であることを明示 | 「実測の値一致」だけでRole/Operator identityを統合・Owner意味受理する |
+
+**採用候補の重要原則：Operator意味の局所Conformance Packet**。最初から新Core Schemaを固定せず、各SQL→Plain Data変換候補に対し既存契約の参照として次の四層を並べる：(a) `Native Source bytes/Dialect/Schema/実効Target binding/Policy版`、(b) `明示Role・Operator ID/Version、入力と出力のGrain、Bag/Set/Sequence、Truth/NULL/Presence、演算順序・Effect`、(c) `Fixture と独立Expected、同義を破るMutant、観測値、不明な母集団/時点`、(d) `Target Provider/Consumer/Ownerの別資格`。**Mutantをkillできないfixtureは同義受入の証明力が不足**。Mutantに成功してもテストした有限値の判別力だけを示し、全入力・Targetの数学的同値は別証拠とする。
+
+**実装・Owner分担**：
+- #2387/#1640：Native SQLが正本のまま構造候補をExplainし、実Worker/Go解析が同じOperator情報を保持できるかの照合。D2が拒否するJOIN等の実行範囲を緩めない。
+- #2620/#988/#2625：同じ候補をMarkdown表・Goa/MukuroL風・chain・Typed DOT・Plain Dataで記述し、Role/Operator版/参照・Source spanが保持されたか比較。**Source byteの違い／解釈候補の同値／Owner Accepted Meaning**を区別する。
+- #2622/#2506/#2593：Provider pushdownまたはData Context内でのData Operator適用に対して、実Result Slice・取得Scope/Grain・再集計条件を取得して照合。Data Operationsが追加で読んだFactと、明示Mappingから要求された領域を分ける。#2611の複数DB alias同一Semantic対象は選択された実Targetまで確認。
+- #2514/#1131/#1180：独立Oracle/Scenarioの所有。今のPython関数は実ProviderのTarget互換を自動判定する正式ルールではない。#2497/#2516/#1178はMeaning/Projection/Disclosure、#1174は現在Hostの実行/effect権限、#2604は固定版成果物の実Consumer読取を保持する。
+
+**次段の2つのGate**：M1に`実SQLGlot Worker→Go RelationalIR→明示Operator Candidate`のうち**未対応・不明を残した受渡し**、M2に同じ受理済みRole/Operator契約を`RDB Provider + 非RDB Provider`で照合（物理Read、NULL/Missing、Bag、Order、Snapshot、権限、結果/Explain出所）する。両Providerで局所値が一致しても現在のCredential/Disclosure/Effectは別判定。新Parser・万能SQL Evaluator・独自Host・新正本を作らず、#1119 G0〜G4のBlocking条件を変更しない。
+
+**状態**：Python/SQLite合成 **9/9局所PASS**まで。正式SQL Worker、Go Query、実DB Provider／RDB＋非RDB比較、DSL desugar、SHO/Studio/外部AI、Ownerによる意味受理は**NOT RUN**。同じSQLの静的Explain／ImportによるSource候補／SQL結果への後続Operator適用の三経路（§7.17）を区別する。
 
 
 ## 8. 実装順・担当引継ぎ（提案）
