@@ -1093,7 +1093,7 @@ G0/G1/G2は**全面的な直列開発を要求しない**。DB fixtureとProvide
 この節は[#1124](https://github.com/hat47x/tei-platform/issues/1124)の**Studio固有のP0〜P2**と、[#1180](https://github.com/hat47x/tei-platform/issues/1180)・[#2391](https://github.com/hat47x/tei-platform/issues/2391)の**全Target向けE0〜E4**を別軸の計画として接続する。既存G0〜G4・S01/S02やOwnerの受理基準を変更せず、本文の過去の時点別判定も遡及変更しない。
 
 - **方針**：TEI独自共通Hostは必須ではなく、StudioはTEIのAuthoring / Observation Workbenchである。Wails/WebView・Theiaは必須アーキテクチャではなく、過去のPoC A/B/Cは固定Targetでの限定証拠。Host非必須化を文書化する[Draft #2226](https://github.com/hat47x/tei-platform/pull/2226)、ADR改番の[Draft #2426](https://github.com/hat47x/tei-platform/pull/2426)と[#2341](https://github.com/hat47x/tei-platform/issues/2341)は**別の文書・Owner手続きレーン**。これらのmergeをStudio P0の先行条件としない。
-- **照合版**：main [`3784a4432a28502ca04057325689e409d14d9140`](https://github.com/hat47x/tei-platform/commit/3784a4432a28502ca04057325689e409d14d9140)、[PR1 Draft #2583](https://github.com/hat47x/tei-platform/pull/2583)の報告head `dc7b44750279d8f9e4c4e4b797c054b865021c1a`。PRとmainの資格を混ぜない。新たな実行・Owner採用は本節では**NOT RUN**。
+- **照合版**：main [`3784a4432a28502ca04057325689e409d14d9140`](https://github.com/hat47x/tei-platform/commit/3784a4432a28502ca04057325689e409d14d9140)、[PR1 Draft #2583](https://github.com/hat47x/tei-platform/pull/2583)の当初報告head `dc7b44750279d8f9e4c4e4b797c054b865021c1a`（後続更新あり）。PRとmainの資格を混ぜない。新たな実行・Owner採用は本節では**NOT RUN**。
 
 ### Studio内の依存順（PR番号は分割単位であって既存PRの番号ではない）
 
@@ -1114,3 +1114,23 @@ G0/G1/G2は**全面的な直列開発を要求しない**。DB fixtureとProvide
 | **E4 — #2391（opt-in）** | 同一Scenarioから対象UI操作を派生。外部Runnerを第一候補とし、必要なアプリ内InstrumentationのみTest/Developmentで任意追加。Wails内蔵MCPは特定Targetの比較候補 | 実UI E2Eと独立Effect、Test／Productionそれぞれの**検査対象Artifactと実配布・起動Artifactの同一性**照合、Production専用制御面の物理除去、通常UI/a11y保持。表示・クリック・MCP Tool一覧はOwner意味受理や権限の証拠でない |
 
 **停止・非重複原則**：PR1のsource test PASS、PR3の独立qualified選択PASS、E3のCLI PASS、E4のUI PASS、ADR改番CI PASSをそれぞれ別の証拠とする。#1120のtyped Identity、#267のAcceptance、#1174のEffect/Receipt、#1180のScenario SSOTを再実装しない。#2391は独立したHost/Authority/MCP ABIを新設しない。実行していないConsumer/GUI/Production除去・Owner受理を達成と表記しない。
+
+### PR1/PR2/PR3の反証優先試験とexact-head引渡し（2026-11-02追補）
+
+[PR1 #2583](https://github.com/hat47x/tei-platform/pull/2583)の11月2日確認headは `c71d1b8ca56dc366e4581563c4de0ab5c74f861d`（**Draft・main未統合**）。差分は当初のWorkbench 3 source pathに加え `.github/workflows/tei-studio-workbench-embed-ci.yml` の計4 path。旧head `dc7b447...` のNode 18/18・型検査・build PASSを現headの全ジョブPASSとして転用しない。現headのWorkflow確認時はWorkbench embedded bundleとPoC Aが **failure**、Studio #8 independent consumerと依存監査が **success**、repository-healthは **in_progress**。Workflowでの生成artifact採取は更新候補であり、埋込みbyte一致・新Consumer snapshot資格はまだ証明していない。
+
+[PR3参考 #2457](https://github.com/hat47x/tei-platform/pull/2457)の11月2日確認headは `b90afac103f60f222c5c8397741a2c8978947d77`（**Draft・main未統合**）。当初の一般 `publish(token, render)` に加え、`publishGraph(token, graphView, graphInput)` は `normalizeGraph` 後の可視node集合にBinding対象の全 `viewId` が含まれることを確認し、`binding_not_rendered` を拒否する。未結合の装飾nodeは `unbound` として残せる。Graph更新失敗・非同期renderもfail-closedにする局所Referenceだが、実DOM／Workbenchのイベント結合・Source readback・Inspect RPCの0回証拠ではない。
+
+| 反証fixture・順序 | 直接のassertionと証拠 | 未成立なら |
+| --- | --- | --- |
+| **PR1-A：namespaceで1件に絞ったglobal ambiguous** | `ambiguous=true` 候補は一覧に保持し、同じ `{kind,id}` のunqualified `InspectSubject` transport **0回**。理由はConsumer側の `SUBJECT_AMBIGUOUS` とし、未送信のRPC結果を捏造しない | PR1未達。単体predicate PASSだけではtransport 0回を保証しない |
+| **PR1-B：同一kind/IDの複数Occurrenceと一意対照** | 全Occurrenceがambiguousなら候補を落とさず選択拒否。矛盾するflagはCatalog不正。一意で有効なSubjectは**実transport 1回**。選択変更前の旧Inspect成功／失敗が表示を汚さない | 候補の誤一意化・重複消去・正常系の過拒否を失敗として分ける |
+| **PR2：Graph / list / initial / command** | **各入口の実イベント**で曖昧0回、一意1回（意図した各選択ごと）、保留理由・候補保持・選択epochを観測。初期自動Inspect失敗でも独立Validationを妨げない。旧selectedをCommandが再使用しない | `inspect()`共通関数の静的guard確認だけではPR2未達 |
+| **PR3-A：成功したG1→G2、同じview ID Kの再利用** | 新描画のnode ID集合とBindingが同じsnapshot。旧DOMクリックからInspect 0回、新DOMはqualified Key一意＋Catalog全体でunqualified APIの対象一意と現在版が確認された場合に限り1回 | view ID、label、rowIndex、旧mapをSource locatorやAuthorityと同一視しない |
+| **PR3-B：R10/G1→R11、G2 `missing_endpoint` 拒否** | 可視G1が残ってもM2を公開せず、旧G1クリックはInspect 0回／Source locator確定0回／stale診断維持。Sourceが不変でも描画失敗後のmap適用資格を別途確認 | Renderer単体の旧SVG保持・`publishGraph`単体の拒否はConsumer結合PASSに転用不可 |
+| **PR3-C：Source ABA・描画途中更新・binding_not_rendered** | 旧stage tokenは失効、未描画nodeへのBindingを公開しない。意図した未結合nodeは `unbound`。旧成功表示から `ready`／authorizedを推定しない | Source revision観測だけで原子的readback・現在Authorityは証明できない |
+| **P1接続：Accept部分成功＋旧応答後着** | `accepted=true, sourceChanged=true, DECISION_RECORD_FAILED` とR10旧Inspectの合流で、旧schema/readiness失効、Source/ledger別readback（R12ならR12優先）、自動再Accept 0回 | Source受理・ledger記録・Decision witness・Owner意味受理・Runtime Effectを単一successに圧縮しない |
+
+**引渡し単位**：各fixtureのSource/Catalog/Graph観測revision、UI入口、selection epoch、qualified Ref／候補集合、Inspect spy、表示された診断と公開可否、実行asset/build SHA、exact-head run IDを残す。UI selection S、Invocation T、確定Effect EはOwnerにより受理された対応規則がない限り等号で結ばない。Decision witness、Source鮮度、独立Effect/Observation、Ownerの意味受理も別のread-only表示レーン候補であり、証拠が欠けた場合は `unknown/not-verified` とする。四レーンの追加表示は#1124の別段階で評価し、PR1の変更対象に含めない。
+
+**移行停止条件**：#2583の埋込みasset／生成bundle byte一致と、新しいexact Workbench sourceの依存集合・資格付きpin追加を確認する。旧snapshot pinを削除・緩和しない。#2457は汎用`publish`の成功をGraph表示ID対応の証拠として扱わず、可能なら`publishGraph`の実Graph.update経由で受入する。両Draftの現headに対してはfocused/full CI、ブラウザー・WebView2、Owner採用をこの文書作業で実行していない。
