@@ -124,11 +124,12 @@ func ExtractRelationalSourceFacts(doc Document) RelationalSourceFacts {
 
 	var walk func(Node, string)
 	walk = func(n Node, tableLegacyID string) {
-		if localName(n.Name) == "Table" {
+		if n.Known && n.Name == "Table" {
 			tableLegacyID = attributeValue(n, "ID")
 		}
 
-		switch localName(n.Name) {
+		if n.Known {
+			switch n.Name {
 		case "TableKey":
 			key := LegacyKeyFact{
 				Locator:         n.Locator,
@@ -139,7 +140,7 @@ func ExtractRelationalSourceFacts(doc Document) RelationalSourceFacts {
 				AuthorityLimits: cloneStrings(legacyKeyAuthorityLimits),
 			}
 			for i, child := range n.Children {
-				if localName(child.Name) != "TableKeyField" {
+				if !child.Known || child.Name != "TableKeyField" {
 					continue
 				}
 				fieldLegacyID := attributeValue(child, "FieldID")
@@ -209,18 +210,21 @@ func ExtractRelationalSourceFacts(doc Document) RelationalSourceFacts {
 					AuthorityLimits:     cloneStrings(runtimeReferAuthorityLimits),
 				})
 			}
+			}
 		}
 
+		if n.Known {
 		if raw := attributeValue(n, "KeyFields"); raw != "" {
 			fields := splitLegacyFieldList(raw)
 			facts.DeclaredKeyFields = append(facts.DeclaredKeyFields, DeclaredKeyFieldsFact{
 				Locator:         n.Locator,
-				SourceName:      localName(n.Name),
+				SourceName:      n.Name,
 				OwnerLegacyID:   attributeValue(n, "ID"),
 				Fields:          fields,
 				Nature:          SourceFactNature,
 				AuthorityLimits: cloneStrings(declaredKeyFieldsAuthorityLimits),
 			})
+		}
 		}
 
 		for _, child := range n.Children {
@@ -270,7 +274,7 @@ func indexTableFieldIdentity(root Node) tableFieldIdentityIndex {
 	}
 	var walk func(Node)
 	walk = func(n Node) {
-		if localName(n.Name) == "Table" {
+		if n.Known && n.Name == "Table" {
 			tableID := attributeValue(n, "ID")
 			out.TableCounts[tableID]++
 			out.TableLocators[tableID] = append(out.TableLocators[tableID], n.Locator)
@@ -285,11 +289,10 @@ func indexTableFieldIdentity(root Node) tableFieldIdentityIndex {
 			var collectFields func(Node)
 			collectFields = func(current Node) {
 				for _, child := range current.Children {
-					childName := localName(child.Name)
-					if childName == "Table" {
+					if child.Known && child.Name == "Table" {
 						continue
 					}
-					if childName == "TableField" || childName == "Field" {
+					if child.Known && (child.Name == "TableField" || child.Name == "Field") {
 						fieldID := attributeValue(child, "ID")
 						if _, ok := out.FieldCounts[tableID]; !ok {
 							out.FieldCounts[tableID] = map[string]int{}
@@ -320,12 +323,8 @@ func indexTableFieldIdentity(root Node) tableFieldIdentityIndex {
 }
 
 func attributeValue(n Node, name string) string {
-	for _, attribute := range n.Attributes {
-		if localName(attribute.Name) == name {
-			return attribute.Value
-		}
-	}
-	return ""
+	// Source Fact lookup must not promote a foreign-namespaced lookalike.
+	return exactAttributeValue(n, name)
 }
 
 // exactAttributeValue reads only the unqualified declaration used by a
