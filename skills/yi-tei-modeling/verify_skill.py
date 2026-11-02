@@ -84,16 +84,31 @@ def check_repository(root: Path) -> list[str]:
                 if not line or line.startswith("#"):
                     continue
                 try:
-                    args = shlex.split(line)
+                    # Split shell operators even when no whitespace surrounds
+                    # them. A valid first command must not hide a chained write.
+                    lex = shlex.shlex(line, posix=True, punctuation_chars=";&|<>")
+                    lex.whitespace_split = True
+                    lex.commenters = ""
+                    args = list(lex)
                 except ValueError as exc:
                     errors.append(f"{relative}: invalid shell example: {exc}")
                     continue
-                if args[:3] == ["go", "run", "./cmd/tei"]:
-                    tail = args[3:]
-                elif args and args[0] in ("tei", "./tei"):
-                    tail = args[1:]
-                else:
+                go_tei = args[:3] == ["go", "run", "./cmd/tei"]
+                bin_tei = bool(args) and args[0] in ("tei", "./tei")
+                mentions_tei = any(
+                    args[i:i + 3] == ["go", "run", "./cmd/tei"] or
+                    args[i] in ("tei", "./tei", "./cmd/tei")
+                    for i in range(len(args))
+                )
+                if mentions_tei and not (go_tei or bin_tei):
+                    errors.append(f"{relative}: unverified TEI invocation context: {line}")
                     continue
+                if not (go_tei or bin_tei):
+                    continue
+                if any(re.fullmatch(r"[;&|<>]+", token) for token in args):
+                    errors.append(f"{relative}: composite TEI shell example: {line}")
+                    continue
+                tail = args[3:] if go_tei else args[1:]
                 match = next((name for name in available if tail[: len(name.split())] == name.split()), None)
                 if match is None:
                     errors.append(f"{relative}: unverified/read-write TEI example: {line}")
