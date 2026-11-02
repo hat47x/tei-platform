@@ -83,6 +83,12 @@ jobs:
           test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
           go build -o "$RUNNER_TEMP/tei" ./cmd/tei
           "$RUNNER_TEMP/tei" version -json
+          # RC-01 uses a temporary copy only; changing source locations
+          # must not mutate the actual Reference Workspace or checkout.
+          python3 -B plan/fixtures/construction-context/verify_real_source_relink.py \
+            --binary "$RUNNER_TEMP/tei" \
+            --workspace reference/workspace \
+            --expected-head "$EXPECTED_HEAD"
           test -z "$(git status --porcelain=v1 --untracked-files=all)"
           echo "real-cli-candidate-head=$EXPECTED_HEAD"
           echo "real-cli-checker-blob=$(git rev-parse HEAD:plan/fixtures/construction-context/verify_real_cli.py)"
