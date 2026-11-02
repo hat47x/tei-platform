@@ -471,6 +471,11 @@ func writeApplicationText(out io.Writer, view applicationview.ApplicationView) (
 	if _, err := fmt.Fprintf(out, "application %s\n", view.Application); err != nil {
 		return 2, err
 	}
+	for _, period := range view.Periods {
+		if _, err := fmt.Fprintf(out, "period %s data %s states %s\n", period.ID, period.Data, strings.Join(period.States, ",")); err != nil {
+			return 2, err
+		}
+	}
 	for _, use := range view.SemanticUses {
 		if _, err := fmt.Fprintf(out, "uses %s\n", use); err != nil {
 			return 2, err
