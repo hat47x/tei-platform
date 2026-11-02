@@ -97,3 +97,35 @@ TEIの「Everything is Data」[#2619](https://github.com/hat47x/tei-platform/iss
 - **#2598/#1174/#2515**：外部Hostの実Target/Grant/Effect/OS/Networkの権限と開示を実測。
 
 **採否に必要な実証**は同一実HEAD/Workspace/Source/Role/Provider/Skill実ロード版/Consumer用途に対する、候補提示→実CLI/Tool実出力→実Consumer読取、必要時の現Host作用を独立に結ぶこと。単にProduct Skillを増やしたという量的評価や、命令を短くしたことだけをAIフレンドリー性の達成としない。
+
+
+## 7. 2026-11-03：同一モデル版での複数CLI・実ファイル受領の受入を実行可能な試行へ
+
+[TEI #1163](https://github.com/hat47x/tei-platform/issues/1163#issuecomment-6579990791)および[#2604](https://github.com/hat47x/tei-platform/issues/2604#issuecomment-6579992378)の現main根拠から、C2実CLIとC4実Consumerを接続する際の**残余**を特定した。
+
+- `tei validate`、`tei operations`、`tei artifacts`は**異なるプロセス実行**であり、各出力の整合が独立に成立しても一つのSource snapshotを共有した証明にはならない。
+- `main.go`は`loadWorld`の後に`operations.SurfaceWorkspace`／`artifact.RenderWorkspace`を呼び、これらは自身で`workspace.Load`する。**一つのCLI呼出しの内部でも複数回のSource取得があり得る**。各Commandの`modelRevision`が等しいことは、途中で一時的なABA/複数ファイル不整合がなかったことの証明ではない。
+- `artifacts -out`は一式の成果物と`manifest.json`を逐次書き込みするため、`manifest.complete`は**意味上の未解決事項**の区別であり、`ExpectedMemberが本当にReaderに到達したか`や`Directoryの原子的公開`の証明ではない。
+- [#2642](https://github.com/hat47x/tei-platform/pull/2642)でAcceptance issuerの`sign`に関するLoad時Source捕捉が改善されたことは別経路の局所実装成果である。`sign`と`validate/operations/artifacts`でAtomic Snapshotを共有する保証に流用しない。
+
+### 7.1 追加した実CLI検証入口（PR #2649候補）
+
+[実バイナリ呼出しPython](../fixtures/capability-handoff/verify_real_cli_revision.py)と[Focused GitHub Actions Workflow](../../.github/workflows/tei-one-revision-capability.yml)を候補として追加。GitHub Actionsは`go.mod`のGoを利用し**exact candidate HEADをCheckout→実go build→実binary version確認**を行い、`reference/standard-crud/workspace`のコピーを使う。元の公開Referenceは変更しない。
+
+| 試行 | 実際に比較する条件 | 製品受入上の意味 |
+| --- | --- | --- |
+| **MR-01 正常の同版CLI** | copied Workspaceのbyte tree digestをコマンド群の前後で比較し、`validate -json`、`operations -application ledger`、`artifacts -application ledger`の実出力を取得。Operation `modelRevision`／ArtifactSet／Manifest／全Artifact Member `inputRevision`を照合 | 特定の静止したコピーと実Tool版について、**各呼出しの報告版をjoinできる条件**を限定確認。Sourceの実中断競合や単一atomic readは未証明 |
+| **MR-02 ファイルに書いたArtifactを独立Readerで読む** | 新規の一時出力dirへ`artifacts -out`を実呼出し。別のPython Readerが`manifest.json`を開き、stdout Manifest、Member digest、ファイル実bytesとstdin取得Artifact Contentを比較 | Producer内のManifest成立と**Readerで見えたbytes**を別証拠にする。ただし一瞬も混在を見せないAtomic Publicationの保証は未実証 |
+| **MR-03 正当なSource-only移動** | 同じtemp Workspaceで`semantic/sales/order.tei`をcontent不変で移動。旧/新`operations`の`worldFingerprint`同一・`modelRevision`差と、新`artifacts`のRevisionを観測 | 実World Projection同一でもSource版が変わることを、同一Subjectの別Command結果で判別 |
+| **MR-04 意図的な異版Join拒否** | 移動前のOperation Revisionと移動後のManifest Revisionを比較 | 両Commandが個別成功でも一つのRevisionとして報告しない。以前のOperationの正しさ自体を消さない |
+
+**観測範囲を厳密に限定**：MR-01〜04は本PRの**新規コードとCI実行用入口**であり、CI jobの`success`と固定HEADの実出力が取れるまでは**NOT RUN**。Case IDは新しいProduct Gate/Schemaではない。実RuntimeでAssertionが失敗した場合は、期待した契約を確証できなかったという**Characterization結果**として記録し、PASSへ改竄しない。
+
+### 7.2 現在の設計上の停止線
+
+- **実際のSource snapshotの同時点性**：各コマンドの前後hashが一致しても中間のABAを否定できない。Mid-command edit、multi-file mix、Lock/atomic snapshot/OS reader、`sign`/Host acceptanceは[#1017](https://github.com/hat47x/tei-platform/issues/1017)/[#2571](https://github.com/hat47x/tei-platform/issues/2571)/[#1163](https://github.com/hat47x/tei-platform/issues/1163)の実観測で別判定。
+- **実公開の現在性**：Fresh output dirの読み取り成功が、古いDirectory残留、半書込Manifest、同時Reader、異世代Memberの混在を排除するわけではない。#2604/#2630で独立異常注入。
+- **外部Userへの意味・実作用**：`OperationSurface`にはGapがあってよく、`ArtifactSet.Findings`と`Manifest.Complete`を別に記録する。Owner意味受理、Java/.NET/Wasm実Load、実Provider/DB/Host Grant、Business Completion/実SHO保存は本試行の範囲外。
+- **既存Critical Path**：TEI #1119 P0-a/P0-b・G0〜G4、TAI #271の実Skill/Harness、SHO #4のD1/D2実保存を維持し、この最小Headless試行を重複実装・追加Mandatory Gateにしない。
+
+**受渡し**：#2605には実Tool/Skillの接点、#1163には同RevisionのSource/Consumer証拠、#2604には実Reader byte、#2516にはConsumer Claimの現在性、#2619にはRole→Capability→実Artifactまでの限定試行を返す。成果物間の正本性は各Ownerが保持。
