@@ -504,7 +504,7 @@ X-TEAの戻り値とTEIの分類の対応（案）は、次のとおりです。
 
 **未解決.**
 
-- 削除の効果をどう表すか。現在の`DataEffect`は`create`と`update`だけで、`delete`を持たない（`internal/semantic/model.go` L140–144）。Business Effect Lifecycleと合わせて決める。
+- 削除の効果の意味。`DataEffect`は`delete`を宣言できるようになったが、参照の制限・連鎖・保留の扱いをどう表すかは未決で、Business Effect Lifecycleと合わせて決める。
 - 削除時の参照の扱い（制限・連鎖・保留）を、Relationの意味として宣言するか、規則Pluginに置くか。X-TEAの削除前検査は外向きの参照だけを確認していた（知識目録D-11）。
 - 見出しと明細を一つの操作で更新するときの、効果のまとまり（同一取引とするか、補償で表すか）。
 - 画面を閉じる・取消す操作と、Commandの取消・補償の対応。
@@ -940,6 +940,7 @@ PoC #2521が実装した範囲と、まだ実装していない範囲を分け�
 | command Patternのビュー | 実装済み（能力・入力・結末・効果を`view`で表示） |
 | Commandの実行境界（Executor契約・結末照合） | 実装済み（`internal/command`、実Providerは未接続） |
 | Commandの取引境界（Unit of Work・Commit/Rollback） | 実装済み（境界のみ、実Providerは未接続） |
+| 削除の効果（`delete`） | 実装済み（Capabilityの`effect delete <data>`宣言） |
 | フックの宣言（位相・読み書き・失敗時） | 実装済み（`hook`、実装Pluginは未接続） |
 | フックの実行境界（Implementation契約・reject/warn） | 実装済み（`internal/hook`、実Pluginは未接続） |
 | 未使用属性の表示（D8・G-7） | 実装済み（recordビューの`unused`） |
@@ -951,6 +952,7 @@ PoC #2521が実装した範囲と、まだ実装していない範囲を分け�
 | `reference/workspace`への宣言追加 | 未実施（受理経路が必要） |
 
 実装は、`internal/application/model.go`、`internal/syntax/application_pattern.go`、`internal/validation/application_pattern.go`、`internal/crossview/pattern_requirements.go`、`internal/applicationview`、`internal/semantic/model.go`、`internal/syntax/parser.go`、`internal/validation/validation.go`と、それぞれの試験です。
+
 
 
 
