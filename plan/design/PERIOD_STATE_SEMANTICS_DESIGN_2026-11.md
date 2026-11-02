@@ -223,3 +223,14 @@ go run ./cmd/tei validate -workspace reference/workspace      # 既存の作業�
 
 - P1 で、既存の `data`・`attribute` の宣言と衝突する（同じ名前・同じ位置に別の意味を置く必要が出る）場合は、構文の案を設計へ戻す。
 - P2 で、`human-gated` にすることが実行の拒否と混同される場合は、自律区分の意味を設計へ戻す。
+### P1 の実装状況（2026-11-03）
+
+P1（モデル・構文・検証）を実装しました。
+
+- `semantic.Period` と `Namespace.Periods` を追加（`internal/semantic/model.go`）。
+- `period` ブロックを解析する（`data`・`business-date`・`states`・`close-requires`・`closed-rejects`・`correction via`）。一覧は空白区切りで、次のキーワードで止まる（`internal/syntax/parser.go`、`period_test.go`）。
+- 検証を追加（`internal/validation/period.go`）: 対象データの実在、業務日付が対象データの属性であること、`open`・`closing`・`closed` の三状態、`close-requires`・`correction` の能力実在、`closed-rejects` の操作種別。診断コードは `PERIOD_UNKNOWN_DATA`・`PERIOD_UNKNOWN_BUSINESS_DATE`・`PERIOD_STATES_INCOMPLETE`・`PERIOD_UNKNOWN_CAPABILITY`・`PERIOD_UNKNOWN_CLOSED_REJECT`。
+
+検証: `go test ./internal/syntax ./internal/validation ./internal/semantic ./internal/operations` が通り、`validate -workspace reference/workspace` も `ok`（期間を宣言していない作業領域に影響しない）。
+
+**未着手**: P2（操作面との接続）と P3（成果物への反映）。
