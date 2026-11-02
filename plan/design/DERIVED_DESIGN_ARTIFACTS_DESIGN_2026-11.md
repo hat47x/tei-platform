@@ -129,7 +129,7 @@ DDLとの整合（W5）は、表定義書の内容を `physical.SchemaSnapshot` 
 
 成果物の目録（manifest）も追加しました（[`internal/artifact/manifest.go`](../../internal/artifact/manifest.go)）。複数の成果物から、入力の版が揃っていることを確かめたうえで、種類・照合値・未解決の件数を決定的に並べます。各項目は**規則の識別子・版・指紋**も持ちます（何が作ったか、規則の中身が変わったかまで辿れる）。**未解決が一つでもあれば `complete=false`** とし、完成に見せません。入力の版が混ざる場合と、改変された成果物は受け付けません。
 
-W6（CLI）の読み取り部分も追加しました。`tei artifacts -workspace <root> -application <id>` が成果物一式（内容・照合値・未解決・目録・整合検査の `findings`）を JSON で出します。未解決が残る場合は `complete: false`、整合検査の違反は `findings` に並びます。保存・公開は行いません。
+W6（CLI）の読み取りと書き出しを追加しました。`tei artifacts -workspace <root> -application <id>` が成果物一式（内容・照合値・未解決・目録・整合検査の `findings`）を JSON で出します。`-out <dir>` を付けると、成果物ごとに1ファイル（表は `table-<table>.md`、機能は `function-<app>.md`、操作面は `operation-surface.json`）と `manifest.json` を書き、目録を標準出力へ出します。同じ意味からは同じファイル名になり、同名で中身が違う場合は上書きせず停止します。未解決が残る場合は `complete: false`、整合検査の違反は `findings` に並びます。
 
 対応一覧（W4）は、現在の意味モデルに主題領域・作業・機能の対応を表す宣言が無いため、受理済みの意味からは導出できません。意味を足すか（A4）、対応一覧を手で維持するかの判断待ちです（[#2482](https://github.com/hat47x/tei-platform/issues/2482)）。DDLとの整合（W5）とCLI（W6）は未着手です。
 
