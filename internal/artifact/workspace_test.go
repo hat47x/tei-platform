@@ -1,11 +1,16 @@
 package artifact
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	"tei/internal/application"
+	"tei/internal/database"
+	"tei/internal/database/persistence"
+	"tei/internal/ir"
 	"tei/internal/operations"
 )
 
@@ -103,5 +108,35 @@ func TestRenderWorkspaceListsOnlyUsedNamespaces(t *testing.T) {
 	}
 	if strings.Contains(content, "capability unused.other.touch") {
 		t.Fatalf("a namespace the application does not use must not appear:\n%s", content)
+	}
+}
+func TestCheckSurfaceTargetsReportsAnUnreachableData(t *testing.T) {
+	payload, err := json.MarshalIndent(operationSurfacePayload{
+		SchemaVersion: "tei.operations.operation-surface/v0",
+		Operations: []operations.Operation{
+			{ID: "app.list.sales.order", Kind: "list", Target: "sales.order", Autonomy: "unattended", Basis: "persist"},
+			{ID: "app.list.ghost.data", Kind: "list", Target: "ghost.data", Autonomy: "unattended", Basis: "persist"},
+		},
+	}, "", "  ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	artifact, err := New(KindOperationSurface, Rule{ID: OperationSurfaceRuleID, Version: OperationSurfaceRuleVersion, Fingerprint: "sha256:rule"}, OperationSurfaceGenerator, "sha256:input", string(payload)+"\n", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	world := ir.World{
+		Applications: []application.Application{{
+			ID:        "app",
+			Databases: []application.DatabaseRequirement{{Alias: "sales", TargetDatabase: "sales_core", Access: database.AccessReadWrite}},
+		}},
+		Persistence: []persistence.Mapping{{
+			ID: "sales_core.order", Database: "sales_core", SemanticData: "sales.order", Table: "orders",
+		}},
+	}
+
+	findings := checkSurfaceTargets(world, world.Applications[0], []Artifact{artifact})
+	if len(findings) != 1 || findings[0].Code != FindingSurfaceTargetUnreachable || findings[0].Subject != "app.list.ghost.data" {
+		t.Fatalf("unexpected findings: %+v", findings)
 	}
 }

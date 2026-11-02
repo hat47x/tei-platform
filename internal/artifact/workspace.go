@@ -6,6 +6,7 @@ import (
 	"tei/internal/application"
 	"tei/internal/core"
 	"tei/internal/database/persistence"
+	"tei/internal/ir"
 	"tei/internal/semantic"
 	"tei/internal/sourceindex"
 	"tei/internal/workspace"
@@ -112,7 +113,7 @@ func RenderWorkspace(root, applicationID string) (WorkspaceSet, error) {
 		return WorkspaceSet{}, fmt.Errorf("build manifest: %w", err)
 	}
 	set := WorkspaceSet{InputRevision: revision, Artifacts: artifacts, Manifest: manifest}
-	set.Findings = CheckSet(set)
+	set.Findings = append(CheckSet(set), checkSurfaceTargets(loaded.World, target, artifacts)...)
 	return set, nil
 }
 
@@ -145,4 +146,35 @@ func persistenceForApplication(mappings []persistence.Mapping, app application.A
 		}
 	}
 	return out
+}
+
+// checkSurfaceTargets verifies that every operation names a data the
+// application can reach through the mappings it may use. The derivation builds
+// the surface from those mappings, so a mismatch means the surface and the
+// persistence disagree.
+func checkSurfaceTargets(world ir.World, app application.Application, artifacts []Artifact) []Finding {
+	reachable := map[core.CanonicalID]bool{}
+	for _, mapping := range persistenceForApplication(world.Persistence, app) {
+		reachable[mapping.SemanticData] = true
+	}
+	var findings []Finding
+	for _, artifact := range artifacts {
+		if artifact.Kind != string(KindOperationSurface) {
+			continue
+		}
+		payload, err := decodeOperationSurface(artifact.Content)
+		if err != nil {
+			continue
+		}
+		for _, operation := range payload.Operations {
+			if !reachable[core.CanonicalID(operation.Target)] {
+				findings = append(findings, Finding{
+					Code:    FindingSurfaceTargetUnreachable,
+					Subject: operation.ID,
+					Detail:  "the application can not reach " + operation.Target,
+				})
+			}
+		}
+	}
+	return findings
 }

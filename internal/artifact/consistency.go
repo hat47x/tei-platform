@@ -38,6 +38,9 @@ const (
 	FindingManifestEntryStale = "MANIFEST_ENTRY_STALE"
 	// FindingManifestTampered: the manifest digest does not match its entries.
 	FindingManifestTampered = "MANIFEST_DIGEST_MISMATCH"
+	// FindingSurfaceTargetUnreachable: an operation names a data that the
+	// application can not reach through its persistence.
+	FindingSurfaceTargetUnreachable = "SURFACE_TARGET_UNREACHABLE"
 )
 
 // CheckSet verifies the internal consistency of a rendered set: every artifact
