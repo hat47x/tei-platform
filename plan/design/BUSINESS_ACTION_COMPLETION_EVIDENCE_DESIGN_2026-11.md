@@ -395,3 +395,41 @@ Markdown表、構造化Record、インデントDSL、Typed Graphviz、メソッ�
 - **#1174/#1129/#1163**：歴史的Effectの真正性・当時Request接合、実Submit時点のGrant/Rule/Txを既存P0-a/P0-bの実証へ戻す。Consumerの現在開示資格変化を元Effectの再Commit/自動補償の引き金にしない。
 
 **実行順**：P0-a実PG Result異常→Receipt/独立O/Lookup、P0-b二Function同Rule Owner-writeは従来どおり先行。S3/P1としてまずCQ-02/03/07/10を既存read-only Consumerへ投影し、「旧証拠の存在」「今回の再点検」「現在提示／Action利用可否」「根拠不足」を別々に表示できるか確認する。#1119 G0〜G4の追加・改称、独自TEI Host/Policy Engine/Registry、Owner Meaningの自動採用は行わない。
+
+## 14. Claim依存の閉包と、変更観測窓の被覆は別：選択的再資格化のTemporal Witness（2026-11-02追補）
+
+### 14.1 CQ-01〜13の前提を実運用で検証する
+
+§13の`reuse-candidate-for-this-change`は「*入力として与えられた一変更*が、閉じた依存集合に影響しない」という限定的な分類である。依存の列挙が閉じていても、**確認の根拠を取得してから現在の説明・Action候補を決めるまでの全変更を実際に観測できた**ことにはならない。とくに変更通知に欠落・遅延・再接続による穴があると、観測された変更が全て無関係でも、未観測の対象行加入・Relation retarget・Rule改版を見落とし得る。
+
+選択的再点検の省略**候補**を説明するには、少なくとも以下を個別に照合する（正式APIや一般的な履歴完全性証明を要求するものではない）。
+
+1. **Claimと依存**：Owner受理された必要条件のうち、Queryの非出力Predicate/ORDER/NOT EXISTS、Relation path、空集合への新規加入も含めて、実際に利用した依存が閉じているか（#2506/#2387/#2582）。閉包が不明なら`unresolved-impact`。
+2. **観測対象と時点**：当初証拠のCheckpointから、今回の判断時点のCutまで、どの**実Provider/tenant/alias/schema/route**のどのChange Streamに依拠したか。Provider AとBの連番・文字列Snapshotが同じでも同じ時点とは仮定しない（#2622/#2627/#1708）。
+3. **変更窓の被覆**：各必要Streamで、区間全体が欠落・遅延・未処理・再購読漏れなく被覆されたことを**実取得の証拠**で確認できるか。単なる現在値一致、受信したイベント0件、watermark文字列、Consumerの`last_seen`だけでは無変更の保証にならない。欠落を検知したら最新の適格な再Readへ進むか`unresolved`に留める。
+4. **変更と依存の交差**：各変更の型・対象・実Scope/Predicate/Relation bindingが当該Claimと無関係であると*証拠付きで*確認する。行IDが異なるだけでは全件集合・共有Rule・否定条件への無影響を証明できない。1件でも既知の影響があれば再検査、無関係性が不明なら`unresolved`。
+5. **判断後の資格**：この比較から得られるのは「あるCutまでの、あるClaimに対する再点検省略候補」のみ。Cut以降の変更と、現在のConsumer開示Grant・実Action/Commit Authority・Receipt真正性は別。開示直前／確定直前に必要な検査は#2516/#1174の既存Ownerに委譲し、検査と送信・外部副作用の原子性を仮定しない。
+
+### 14.2 CWT-01〜12 合成反例（Product E2Eではない）
+
+[独立fixture `verify_claim_change_coverage.py`](../fixtures/business-completion-claims/verify_claim_change_coverage.py)は、§13の一変更判定を**変更窓の被覆条件を与えた合成比較**へ拡張する。架空の`StreamNeed(checkpoint, decision_position, binding)`、`StreamCoverage(first,last,gapless,event_set_complete)`、`Change(category,relation,position)`を入力し、次を反証する。
+
+| Case | 期待する限定結果 |
+| --- | --- |
+| CWT-01/10 | 閉じた依存＋同じ実Bindingで完全に被覆された変更窓に、無関係と示された変更しかない → 当該窓に限る`reuse-candidate` |
+| CWT-02/03/11 | 通知Gap／Cut前のwatermark遅延／受信イベント集合の完全性未確認 → `unresolved`。空イベント配列は無変更の証明ではない |
+| CWT-04/12 | membershipの加入→脱退、またはOwner Ruleの既知変更が観測された → `recheck`。最終値復帰でも履歴Claimを自動維持しない |
+| CWT-05/08/09 | 依存Predicateが未閉包／Scope交差が不明／イベント分類不能 → `unresolved` |
+| CWT-06/07 | 必要な二番目のProvider窓がない／同Stream名でも実tenant/Bindingが異なる → `unresolved` |
+
+**本fixtureの重要な非保証**：`dependencies_closed`、`gapless`、`event_set_complete`、`proven-disjoint`はテスト作者が真偽を注入する**仮定**であって、実TEIのChange Detector/SQL/DB/Providerがその性質を持つことの観測ではない。`decision_position`も外部Provider間の共通時計・線形化時点を提供しない。この試験は**分類が楽観的に`reuse`へ倒れる条件を明示するのみ**で、現在のBusiness completion/Disclosure/Submit許可を計算するEngineではない。
+
+### 14.3 S3の引渡しと最小実証順
+
+- **#1125 S3／#267**：Ownerへ返す判定票に`Claim/as-of`・対象集合L・元Evidence・依存閉包の出所・必要Stream/Checkpoint/Cut・観測Gap・`影響あり／局所無関係候補／不明`・未受理条件を分離する。歴史的K/Effectを現在のGrant失効で消去しない。
+- **#2582/#2506/#2387**：Query非出力依存、空集合への負の依存、Relation pathの再束縛、membership ABAを**実データの変更観測**へ接続する。合成CWT-04を本番で被覆できるとは仮定しない。
+- **#2622/#2627/#1708**：Provider毎の実Read Scope/Route/時点と、変化検知の完全性が主張可能かを別に実証する。複数Providerに共通Snapshotや全履歴CDCを必須にするのではなく、**保証できるClaim範囲だけ**残す。
+- **#1174/#2598/#2516/#2604**：変更窓Cut後のAction Request再束縛、Commit時Grant/Receipt、開示直前の資格、実ロード成果物の版を別資格として検査する。
+- **#1119**：P0-a実PG K/O/Lookup、P0-b二Function Owner-write、S0/J5およびG0〜G4を先行。P1の最小製品実証はまず一Provider・一Claimで「既知変更」「観測Gap」「完全性不明」をread-only診断し、次に異Providerと開示Consumerへ接続する。新Host/新中央Claim Engine/共通Event Registry/新Gateは追加しない。
+
+**検証状態**：この追補は隔離した自作Python有限fixtureのみ。実TEI Go/Provider・Change Stream・PG/DB・元X-TEA意味・SHO/AI/外部Target・Owner正式受理は**NOT RUN/NOT ACCEPTED**。既存§13のCQ-01〜13の結果を製品資格へ昇格しない。
