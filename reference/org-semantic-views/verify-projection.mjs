@@ -50,14 +50,22 @@ function graphView() {
   };
 }
 // A forest-style view; a projection can occur multiple times for one Person.
-function treeView({ collapseDuplicatePerson = false } = {}) {
-  const seen = new Set(), hiddenRelations = [], leaves = [];
-  for (const m of source.memberships) {
-    if (collapseDuplicatePerson && seen.has(m.person)) {
-      hiddenRelations.push(m.id);
-      continue;
+function treeView({ collapseDuplicatePerson = false, preferredRelationByPerson = {},
+                    membershipRows = source.memberships } = {}) {
+  const counts = new Map(), hiddenRelations = [], unresolvedSubjects = [], leaves = [];
+  for (const m of membershipRows) counts.set(m.person, (counts.get(m.person) || 0) + 1);
+  for (const m of membershipRows) {
+    if (collapseDuplicatePerson && counts.get(m.person) > 1) {
+      const chosen = preferredRelationByPerson[m.person];
+      const validChoice = membershipRows.some(x => x.person === m.person && x.id === chosen);
+      if (!validChoice) {
+        if (!unresolvedSubjects.includes(m.person)) unresolvedSubjects.push(m.person);
+        // Ambiguity: show all source edges, rather than choosing a parent by row order.
+      } else if (m.id !== chosen) {
+        hiddenRelations.push(m.id);
+        continue;
+      }
     }
-    seen.add(m.person);
     leaves.push({
       viewId: 'tree:' + m.dept + ':' + m.id,
       subject: m.person, relation: m.id, parent: m.dept,
@@ -65,9 +73,9 @@ function treeView({ collapseDuplicatePerson = false } = {}) {
   }
   return {
     evidence: evidence('Membership occurrence', 'department-member forest'),
-    leaves, hiddenRelations,
+    leaves, hiddenRelations, unresolvedSubjects,
     projectionIsLossy: hiddenRelations.length > 0,
-    editMode: hiddenRelations.length ? 'read-only' : 'candidate-only',
+    editMode: collapseDuplicatePerson ? 'read-only' : 'candidate-only',
   };
 }
 function chartView() {
@@ -124,12 +132,37 @@ test('tree displays P2 twice without creating another Person', () => {
     ['A2','A3']);
   assert.equal(new Set(tree.leaves.map(x => x.subject)).size, 3);
 });
-test('collapsed tree advertises lost A3 and becomes read-only', () => {
+test('collapsed tree requires an explicit view preference, not source row order', () => {
   const tree = treeView({ collapseDuplicatePerson: true });
+  assert.deepEqual(tree.unresolvedSubjects, ['P2']);
+  assert.deepEqual(tree.hiddenRelations, []);
+  assert.deepEqual(tree.leaves.filter(x => x.subject === 'P2').map(x => x.relation), ['A2','A3']);
+  assert.equal(tree.editMode, 'read-only');
+});
+test('explicitly preferred A2 can hide A3 but reports loss and remains read-only', () => {
+  const tree = treeView({
+    collapseDuplicatePerson: true, preferredRelationByPerson: { P2: 'A2' },
+  });
   assert.deepEqual(tree.hiddenRelations, ['A3']);
+  assert.deepEqual(tree.unresolvedSubjects, []);
   assert.equal(tree.projectionIsLossy, true);
   assert.equal(tree.editMode, 'read-only');
   assert.equal(source.memberships.length, 4);
+});
+test('valid preferred relation remains stable under source row reordering', () => {
+  const opts = { collapseDuplicatePerson: true, preferredRelationByPerson: { P2: 'A2' } };
+  const original = treeView(opts);
+  const reordered = treeView({ ...opts, membershipRows: [...source.memberships].reverse() });
+  assert.deepEqual(original.hiddenRelations, reordered.hiddenRelations);
+  assert.deepEqual(original.leaves.map(x => x.relation).sort(),
+    reordered.leaves.map(x => x.relation).sort());
+});
+test('unknown preferred relation leaves ambiguity visible', () => {
+  const tree = treeView({
+    collapseDuplicatePerson: true, preferredRelationByPerson: { P2: 'A99' },
+  });
+  assert.deepEqual(tree.unresolvedSubjects, ['P2']);
+  assert.deepEqual(tree.hiddenRelations, []);
 });
 test('chart keeps membership count separate from global distinct Persons', () => {
   const chart = chartView();
