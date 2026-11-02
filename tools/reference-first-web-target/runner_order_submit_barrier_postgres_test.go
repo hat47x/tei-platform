@@ -23,14 +23,13 @@ import (
 //
 // From the test DDL: lock_authority takes SELECT ... FOR UPDATE on the authority
 // row inside the Runner's transaction, and that lock is held until Commit. An
-// UPDATE of the same row from another connection therefore should wait. The test
+// UPDATE of the same row from another connection therefore must wait. The test
 // holds the Runner's transaction right after the real CheckAuthority returned,
-// issues the authority change from a second connection, and RECORDS what it
-// observes (a lock wait on the second backend, or not). It asserts only the
-// ordering it actually observed; it does not assume one. If the change does not
-// block, the test reports that interleaving as found (a TOCTOU window) and still
-// checks the end state. It covers one hold-after-CheckAuthority interleaving on
-// the synthetic fixture and does not claim atomicity.
+// issues the authority change from a second connection, and REQUIRES (t.Fatalf
+// otherwise) that the change is seen waiting on a lock and completes only after
+// the release event, then checks the end state. Removing FOR UPDATE from the
+// fixture therefore fails this test. It covers one hold-after-CheckAuthority
+// interleaving on the synthetic fixture and does not claim atomicity.
 
 type barrierProvider struct {
 	inner   effectcommit.Provider
@@ -204,14 +203,17 @@ func TestRunnerOrderSubmitRealPostgresBarrierAuthorityChangeVersusHeldTransactio
 				t.Fatal("timeout waiting for the change")
 			}
 
-			if blocked {
-				// Only asserted because it was observed: the change could not finish
-				// before the held transaction was released and committed.
-				if log.get("change-completed") < log.get("release") {
-					t.Fatalf("change completed before release: %v", log.events)
-				}
-			} else {
-				t.Logf("FOUND: the authority change did not wait for the held transaction (TOCTOU window); events=%v", log.events)
+			// HARD assertions for this fixture: lock_authority holds FOR UPDATE until
+			// Commit, so the authority change MUST wait for the held transaction. If it
+			// did not wait, the fixture lost its lock (a TOCTOU window) and the test fails.
+			if !blocked || finishedEarly {
+				t.Fatalf("authority change did not wait for the held transaction (blocked=%v completedBeforeRelease=%v); events=%v", blocked, finishedEarly, log.events)
+			}
+			if log.get("change-observed-waiting") == 0 || log.get("release") == 0 || log.get("change-completed") == 0 {
+				t.Fatalf("missing ordering evidence: events=%v", log.events)
+			}
+			if log.get("change-completed") < log.get("release") {
+				t.Fatalf("change completed before release: %v", log.events)
 			}
 
 			// End state that does not depend on the interleaving: the held
