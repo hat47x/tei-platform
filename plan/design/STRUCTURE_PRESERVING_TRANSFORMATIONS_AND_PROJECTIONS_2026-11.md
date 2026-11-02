@@ -546,3 +546,63 @@ SHOが文書の正本、TEIが受理済み意味の正本、MMIがSource/Candida
 **受入経路**：Consumer間の実比較は#2516 W8、実Record値忠実度は#2585、Functionの同一Fixtureは#2586、SHO文書のOccurrence/編集・レビューはSHO #4/#6、MMIの原本再解決はMMI C-01/T2、開示Policyと隔離は#1178/#2515。#2497は構造保存の一般条件とLossの説明を所有し、第二の文書正本・Comparator・権限機構は設けない。
 
 **状態**：設計文書と反例の追加。CR-01〜12の比較実行、実SHO/OS/AI/Provider/GUI試験、正式な意味受理はNOT RUN。
+
+## 14. 2026-11-02 逆写像の不可能性・集計可換性・情報非干渉を独立した保存義務へ
+
+この節は#2497が所有する**構造写像の成立条件**を、他レーンで実際に遭遇した値・関係・編集・開示の具体例で反証可能にする。新しい共通TypeKind、Lens Engine、Metric Engine、Authorization/Hostを実装する仕様ではない。
+
+### 14.1 情報を潰したProjectionに、自動的な完全逆写像は存在しない
+
+Source集合をS、read-only ProjectionをP:S→Vとする。もし異なるSource状態s1≠s2についてP(s1)=P(s2)なら、表示Vだけを入力する決定的な関数R:V→Sが**全てのsについて**R(P(s))=sを満たすことは不可能。Rは同じ入力P(s1)=P(s2)へ異なる値s1とs2を同時に返せないためである。
+
+これは部分取得・丸め・集計・一部Fieldだけの表示で共通に成立する、限定された数学的事実。具体例は以下。
+
+| Sourceの相違 | 同じProjectionが生じる理由 | 誤った編集／逆写像 | 既存Owner |
+| --- | --- | --- | --- |
+| `9007199254740992`と`9007199254740993` | いずれもJavaScript `float64`で同じ近似数へ落ち得る | 表示数から正確なInteger IDを復元したと断定 | #2585/#1705 |
+| Personの所属Event AとB、同じ「部門人数2」 | 集計はOccurrence/人のIdentityを捨てる | 人数を1増やす編集を特定PersonのLinkへ黙って逆写像 | #2386/#2596/#2500 |
+| 空の配列と未取得のRelation、表示上ともに空 | 完全性・Presenceの根拠を落としている | `[]`を受け取り全所属をUnlinkしてよいと断定 | #1706/#2497/#2597 |
+| 旧版と新版で同じSHO本文 | 同じ表示ByteがSemantic revisionを表現しない | 文書保存成功から元TEI意味を既に改版済みと宣言 | #2505/SHO #6 |
+| 非公開のEvidenceを含む内部状態が異なる | 公開Consumerへ許可された要約が同じ | 表示上の一致を現在の秘密状態一致へ拡張 | #2516/#1178 |
+
+**誤解しない点**：Pが非単射であっても、すべての編集が不可能なわけではない。既存のSource状態sとbase revision、Consumerが出した**型付きAction/Intent**、補足された対象Identity/Parent Role、現在のAuthority、Conflict/Commit/Receiptを用いる`putback(s, intent)`なら、対象操作を限定した書戻しは成立し得る。これを無条件の`inverse(P(view))`やSource/Effectの自動受理へ昇格させない。
+
+### 14.2 二経路が同じ観測を生む条件（commuting comparison）
+
+同じ受理済みSource revision Rと適用Scope Kから、経路A（Query→Context→Measure）と経路B（別Projection→Consumer）へ派生するとき、数値・表示だけを比較して「両経路は可換」とは宣言しない。比較可能な**観測o**（例：PersonのDistinct件数、Membership Occurrence数、FTE、Measure Value）を指定し、Source identity、grain、対象集合、時間、Unit/Rule、消費先での可視範囲を揃える。満たされて初めて`o(A(R,K)) ≈ o(B(R,K))`を有限fixtureで比較できる。
+
+- **別grainの正当な違い**：合成組織例では「Person 3、Membership 4、FTE 3.0、JOIN行4」のように、値が異なっても各観測は別のものを数えている。互いに矛盾と断定しない。
+- **同grainでの不一致**：両経路が同じSnapshotのDistinct Person Countを返すと約束しながら3と4なら、Operator/Scope/重複/Source結合かTarget実装を調査し、AIの多数決で正しい方を選ばない。
+- **再集計で必要な情報**：グループ平均だけを次元横断の平均へ単純平均できない。合成SQLite例では2件平均10と8件平均20から得る全体平均は18であり、算術平均15を排除。JOIN重複はSUMとSUM(DISTINCT value)の両方を誤らせる場合がある。原Fact identityとsum/countを含む観測契約が必要。
+- **変化と撤回**：一方のConsumerのみ再描画された場合、もう一方の古いClaimが保持可能とは限らない。旧Claimの依存条件と実Consumerの読込み・再評価を独立に記録する。
+- **正常な非可換性**：PresentationのLayout/省略、公開向けのRedaction、ある用途で認める浮動小数近似などは、保存対象となるObserverが異なる。失われる情報を明示したまま一部Observationについて同値なら、それを「全意味一致」とは呼ばない。
+
+**利用できる既存の合成Reference**：[組織Semantic Viewsの独立JS Oracle／Draft #2596](https://github.com/hat47x/tei-platform/pull/2596)は当該PR説明で**独立JS実行27/27**と報告。Person／Membership／FTE／Joinのgrain差を反例として示す。[Measure集計の独立SQLite Oracle／Draft #2594](https://github.com/hat47x/tei-platform/pull/2594)は同PR説明で**独立SQLite 6/6**と報告。どちらも**TEI Query→Data Context→UI/SHO→Hostの製品経路ではなく、計算と期待値を持つ隔離合成Reference**である。両Referenceの出力を同一Sourceに基づく統合E2EのPASSとして合算しない。
+
+### 14.3 開示可能なProjectionでは、表示内容以外も観測対象になる
+
+内部状態s1・s2が、あるConsumerへ**公開を許された情報に関して区別不能**であるなら、そのConsumerが見られるProjection/Diagnostic/Traceの違いから非公開情報の存在・件数・形を推測できないことが理想的な情報非干渉の条件である。ただしすべての応答・時間・副作用についてこの条件を証明したものではない。ここでは**独立の検査義務の提案**として扱う。
+
+例えば、二つの内部状態がどちらも外部向けに「公開可能な所属数2」と表示される場合、内部の未公開の審査対象が追加されたときに、外部向けの`unresolved: hidden member count=1`や返却件数、例外の詳細、候補の順序が変われば、本文をRedactしていても秘密を漏らし得る。
+
+**同じClaimの正しさ、根拠へアクセスする権限、現在のConsumerへ開示する資格、実際にConsumerが受信できたことは別々**。合法な公開結果でも、反復照会・表示候補数の変化が組み合わせによる漏洩につながり得るため、単一Requestの本文比較だけで十分とは言わない。
+
+- #2516/#1178/#2515の既存Policy・Disclosureの担当を利用。通常の業務データアクセスへTEI独自の新Authorityを被せない。
+- Error分類・Missing/Hidden/Unknownを内部では保持し、低開示Consumerへ出す表現はPolicyが認める情報に縮約する。**低権限向けの理由説明自体にsecret factを含めない**。
+- 外部向けに十分な根拠を開示できない場合、「内部的には正しいから外部へ全て開示可」とせず、そのConsumer用のClaimの提示を保留・制限する。
+- Leak検証は公開可能な値を等しく保ち、非公開だけを変えた**二つの合成世界**を使い、レスポンス本文・コード・件数・候補・エラーメッセージ・試行間の差を比較する。実Policyの実効境界を伴わない資料上の比較は説明候補に過ぎない。
+
+### 14.4 Headless-firstでの最小反証セット（独立Oracleを増設しない）
+
+| ID | 読み取り・編集・開示を比較する対 | 保存／非保存の判別条件 | 検証担当 |
+| --- | --- | --- | --- |
+| ND-01 | 二つの厳密なInteger→同一float64表示 | 表示が同値でもSource IDの逆復元はできない | #2585 |
+| ND-02 | 同じ部門人数を生む異なるMembership | CountだけのViewから個々のLink/Unlinkを自動復元しない | #2386/#2596/#2500 |
+| ND-03 | 同じPerson集合で異なるRelation出現数 | Count PersonとCount Relationの観測grainを比較 | #2596/#2586 |
+| ND-04 | 同じRaw Fact、JOINを変えたSUM | Fact ID/Query pathを元の数値grainへ適合させ、DISTINCT valueだけで修正しない | #2594/#2593 |
+| ND-05 | 部分Relationと空確定を同じ空UIへ表示 | Retrieval ScopeとPatch Targetを分け、全Unlinkの自動書戻しを拒否 | #2597/#2500 |
+| ND-06 | 外部向け同値、秘密のReview状態だけ異なる | Error/候補数/Traceの漏れを含めてDisclosureを比較 | #2516/#1178 |
+| ND-07 | 二Consumers同じClaim→一方だけ更新 | Claim版・refresh受領とold displayの現在性を区別 | #2582/#2516 |
+| ND-08 | 過去のReceiptと現在の表示Adapter | Effectの歴史的記録と現在版でのResult再投影を分ける | #1174/#2390 |
+
+この8件は**既存Issueへ紐付ける判別票であり新しいScenario正本ではない**。ND-01〜08のTEI製品上の横断試験、情報非干渉の実Policy検査、二Target一致、正式な逆写像契約の受理は**NOT RUN**。先に独立ReferenceのOracleとOwnerの既存テストに接続し、対応するSource/Contract/Scopeを固定した縦断実証#2586で不足する前提だけを実装候補へ返す。
