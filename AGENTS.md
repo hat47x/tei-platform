@@ -6,6 +6,10 @@
 
 - ルートの[README](README.md)と、変更対象のREADMEを読みます。
 - 現行構成は[docs/architecture.md](docs/architecture.md)、実装の成立状況は[docs/status.md](docs/status.md)で確認します。
+- **プロジェクトの基本開発方針・優先順序**は[開発全体計画の「基本開発方針」](plan/MASTER_PLAN.md)を確認します。外部要件による机上評価と基盤構造の検討を先行し、生成AI向けCUIと標準プラグインを並行開発してヘッドレス一気通貫で実証した後、人間向けGUIを構築します。方針と現行の実装状況を区別します。
+- 外部AIハーネス（DeepSeek Harness等）を使うときは[DSHの構成・Headless・MCP/ToolとTEIの責務比較](plan/research/DEEPSEEK_HARNESS_TEI_CROSS_PRODUCT_ADOPTION_2026-11-01.md)を**研究上の参照**として確認します。既存[ADR-0032](plan/adr/0032-composition-kernel-replacement.md)の受理済みKernel方向性と、未受理の具体的Plugin/Host/MCP実装を分け、AI向けTool成功を意味・権限・外部Effectの証拠へ昇格させません。
+- DSHを実起動する前に[Goal・Schedule・外部送信・大規模並列の調査](plan/research/DSH_SCALE_GOAL_SCHEDULE_EGRESS_RESEARCH_2026-11-01.md)を参照し、実Profileの`sandbox-policy`と`dsh_session_log`の送出設定、Credential/Rawデータ到達権限、再有効化時の未送信Logに注意します。`sdk-minimal`の宣言既定は`danger-full-access`であり、モデルのTool権限とOSの隔離は別です。現時点の比較試験は**秘密・顧客資料を含まない合成の隔離環境**を前提とし、許可した送信先/通信内容を実測するまで安全な本番運用と呼びません。
+- DSH Experimental Agent Teamsによる並列開発・専門家連携を計画するときは[Team Scope・共有Checkout・CAS/Task・SEI専門照会・用途別Contextの研究](plan/research/DSH_AGENT_TEAMS_CONTEXT_EXPERT_HANDOFF_2026-11-02.md)を参照します。Teamの`writeScopes`は警告であり書込禁止の強制ではありません。AgentによるTask完了やメッセージ受付は、Git実差分・独立テスト・正式な意味受理・外部Providerの完了を示しません。実効権限/送出は既存[#2515](https://github.com/hat47x/tei-platform/issues/2515)、文脈Projectionは[#2516](https://github.com/hat47x/tei-platform/issues/2516)の担当で検証します。
 - 関連するIssue・PR・ADRを読みます。設計判断が矛盾している場合は、解決するまで統合しません。
 - `reference/workspace`は、**Gate B / Gate Cで固定した版**と、**現在の参照用作業領域**を区別して扱います。固定版は、Gate Bが固定したcommit `e5231839a5dcc62cce1181a2731fcb7c70d16736`（Gate Cのbaseline Rも同じ値）と、Gate Cが固定したtarget build `0ba87a4e0a96f70a198b03ff7652fb00e3826abe`（T）です。固定版は履歴から参照し、現在の作業領域の内容を固定版として引用しません。現在の作業領域を変更する場合は、Issue番号と理由をPRへ明記し、`reference-shared-acceptance`の受理経路（`-allow-reference-baseline`付き）を使います。`.tei`ファイルを手編集しません。受理した変更は`.tei/decisions/*.json`のDecisionに記録されるため、PRはそのファイルのパスを引用します。
 - 秘密情報、顧客データ、未公開資料を、コミット・Issue・PR・ログへ入れません。
@@ -53,6 +57,7 @@
 現工程は、既存設計の完成ではなく、実効性のある抽象構造を見つけるPoCです。判断に迷ったら[PoC工程の横断基準 #1973](https://github.com/hat47x/tei-platform/issues/1973)を参照します。
 
 - 新しい抽象概念は、「従来できなかった何が可能になるか」「どう観測するか」「効果がなければどう撤回するか」で評価します。
+- 中核の基本データ構造・プラグイン契約などを固定する前に、外部の設計・製品に由来する多様な要件への表現力を机上で照合し、対応先・失われる意味・未解決点・検証方法を残します。基本データ構造の設計では[構造トポロジー・多重分類・数学・単位の横断検討](plan/design/FOUNDATIONAL_DATA_CONCEPT_SPACE_2026-11.md)を参照し、プログラミングの型、意味上の構造、数学的法則、単位、物理実現を区別します。概念の複数親は許容する一方、その関係（is-a／適合／構成／実現）を明示し、同じ意味の重複正本や矛盾する制約を避けます。既存の移植調査と検証資産を使い、資料や机上評価を実証済みの証拠として扱いません。
 - 提案、採用、実装、合成試験、実環境での確認を混同しません。合成データやモックの成功を、実際のProviderや本番環境で動く証拠にしません。
 - 既存ADR、受入条件、確認済み証拠の扱いを維持します。効果が確認できない場合は、抽象を撤回するか、参照実装の範囲へ戻します。
 
