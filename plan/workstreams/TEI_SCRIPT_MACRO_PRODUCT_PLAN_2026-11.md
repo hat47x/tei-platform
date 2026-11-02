@@ -95,7 +95,25 @@ Java/.NET/Wasm/Process等の外部Hostへ同一Script/Action/Contractを接続�
 
 **実証方法の原則**：既存の#2617合成14件や#2613合成20件などを、Macro製品のE2E合格へ自動昇格させない。試験済み実装のSource・対象版・Consumerと、将来Macro側が使う実データを分けて確認する。標準構造を採用する価値は、固定Core kindや専用GUIを増やさず、意味契約の再利用、明示Mapping、独立Expected、診断の一貫性を確かめられるかで評価する。
 
-**現状**：T-19〜26、実Script/Context/Provider結合、Studio・SHO・実Hostでの製品受入はNOT RUN。#2619〜#2622はいずれも横断設計案であり、名称（Data Operations等）、新Core形式、DSL構文、Owner意味受理は未採用。既存#1119 P0-a/P0-bやGateの基準を変更しない。
+**現状**：T-19〜34、実Script/Context/Provider結合、Studio・SHO・実Hostでの製品受入はNOT RUN。#2619〜#2622はいずれも横断設計案であり、名称（Data Operations等）、新Core形式、DSL構文、Owner意味受理は未採用。既存#1119 P0-a/P0-bやGateの基準を変更しない。
+
+## 実経路と取得証拠の受渡し（2026-11-02追補）
+
+[設計第11章](../design/SCRIPT_MACRO_AUTHORITY_AND_EFFECT_TARGET_BINDING_2026-11.md)のT-27〜34は、[#2611](https://github.com/hat47x/tei-platform/issues/2611)、[#2622](https://github.com/hat47x/tei-platform/issues/2622)、[Draft #2627](https://github.com/hat47x/tei-platform/pull/2627)、[Draft #2628](https://github.com/hat47x/tei-platform/pull/2628)の既存結果をScript/MacroというConsumerへ接続する。新しい共通実行機構の作成は要件に含めない。
+
+| レーン | 追加する判別対象 | 既存Owner |
+| --- | --- | --- |
+| S0 | T-27/29：宣言した取得範囲、実Request、観測できた実読取り、返却値を別に説明する | #2506/#2622、Draft #2628 |
+| S1 | T-30/31：同じ意味データの複数Alias、ReplicaとPrimaryの時点・対象を区別 | #2611/#2598/#1174、Draft #2627 |
+| S2 | T-28/32：正当な内部検証用読取りと不要な取得、経路切替時の現在委任資格・確定状態を分離 | #2499/#2504/#1174/#1130 |
+| S3 | T-34：利用者へ見せる値、内部読取り、実際の出力先を区別 | #2515/#2516、TAI #232 |
+| S4 | T-33：標準Data OperationsとNative SQLの演算順序・NULL・bag・集約の適合を比較 | #2387/#2622/#2514 |
+
+**横断受渡しの列**：Semantic SubjectとAction版／Function Data Contextの取得宣言／Provider・Endpoint・Mapping・Purpose候補／選択した実経路・要求／実アクセスを観測した範囲／Result Sliceの時点・完全性／Operation Intentと実更新対象／現在のGrant・Commit・Receipt／開示の範囲。候補があること、実際に選んだこと、呼び出せる権限があること、業務作用を確定したことを別の判定として残す。
+
+**初期作業**：同じ合成Actionに対し、狭い取得、同一結果を返す余分な取得、古いReplicaの読取り、許可されない別経路への切替を別試行として比較する。既存の局所参照試験は再利用するが、それぞれの合格をMacro製品の統合合格へ移さない。Provider内部アクセスの観測が不足する場合は、当該保証を不明として記録する。
+
+既存#1119 P0-a/P0-bとGateを維持し、各レーンは並行調査できる。**T-27〜34、実Macro・実Provider接続、実OS/開示・Owner受理はNOT RUN**。実装や正式契約の採用は別判断。
 
 ## テスト証拠の受渡し：1ケースにつき別の保証を保持
 
