@@ -725,3 +725,83 @@ Rowset Closure、Field Observation、Cohortは直列に全部一致させる単�
 | QF-12 | 同じSourceでSHO用生成物の一部未公開 | Producerの成功をConsumer全ArtifactSetの読込へ昇格 | #2630/#2604 |
 
 **Owner接合順**：#2619/#2620 Source/Role → #2506 Required Context/Result Slice → #1129/#1729 Rule依存 → #2611/#2622 実Provider/Read/Scope → #2507 Action Offer → #2516開示 → #2598 Request/現在条件 → #1174 Effect/Receipt → #2630/#2604 Consumer実Read。#2586が同一試行で接続し、#1119の既存Gateを使用する。QF-01〜12は**検査案／正式TEI製品上でNOT RUN**。各独立PRの合成PASSは組み合わせた実Product PASSではなく、Owner意味受理も未取得。
+
+## 27. 2026-11-02 横断Claimの合成・選択的再資格化・未知の意味の保持
+
+§22の単一Contextに対するClaim寿命、§25のDisplay/Rule/Provider依存、§26の観測閉包・公開資格を、**TEIだけでなくSEIの判断、TAI/外部HarnessのTool利用、SHOの文書成果、EKIの配送**などへまたがる*一つの目的の達成Claim*に接続する。[TEI #2582](https://github.com/hat47x/tei-platform/issues/2582)の変更影響、[#2516](https://github.com/hat47x/tei-platform/issues/2516)の用途相対ClaimとDisclosure、[#2630](https://github.com/hat47x/tei-platform/issues/2630)のConsumer相対ArtifactSet、[#2600](https://github.com/hat47x/tei-platform/issues/2600)のBuild Evidenceと現在資格を再利用する。横断のClaim説明を追加することで新しい全製品共通Claim Store、権限Engine、Host、統合Schedulerを必須にするものではない。
+
+### 27.1 「各部分が成功」と「組合せが現在有効」は異なる
+
+概念例：「受理済み注文Ruleに照らして現在の注文を判断し、その理由を許可された資料へ記し、実際の配布先へ届けた」という複合Claimを考える。
+
+- TEIのFunction/Query・Rule評価が、**同じSource/Meaning/Rule/Context/Provider Cohort**で成立したこと。
+- SEI/AIの判断が、どの限定された根拠を利用し、何を仮説・未確認として残したかを区別していること。
+- TAI/外部HarnessのSkillやToolが、単に配布・宣言済みというだけでなく、呼出し対象、現在Version、Tool/Hostの実権限、実行結果が同じ活動に結び付いていること。
+- SHOへ渡す説明がそのConsumerへ開示可能であり、期待されたArtifactSetの同一公開世代を実際に読めたこと。
+- EKI等の配送が、あるAttemptについて発生・受領されたことと、対象の最終業務結果が成立したことを別の観測として保持していること。
+
+個々の合成Reference、Skill配布、Manifest検証、Action Preview、配送Receiptは、**それぞれが証明する事実の範囲で再利用**する。複合Claimの合成には「同じ活動/対象に属する」「版とSnapshot/時点が整合」「必要前提を満たす」「対象Consumerへの開示が現在許可される」「必要な外部観測を実際に取得した」などの*追加の接合根拠*が要る。
+
+### 27.2 受渡しの比較項目：資格と版を一つの数字へ畳まない
+
+以下は既存Issue間の受渡しを比較するための列であり、**提案APIやグローバルSchemaではない**。
+
+| 証拠の役割 | 例として固定する識別・版 | 実測・受理の境界 |
+| --- | --- | --- |
+| **Meaning/Source** | Semantic Subject、Source locator、Accepted Meaning revision、Owner Acceptance | Source byte一致と業務意味受理は別 |
+| **Rule/Context** | Rule/Operator ID・版、Function Context Instance、Read/Rule/Action依存、Selection epoch | 表示同値とRule成立条件は別 |
+| **Provider/Observation** | Provider/Mapping/Query binding、Snapshot issuer/Cohort、実Rowset/Field completeness、Access Witness | Read要求・実取得・Consumer公開の範囲を別列に |
+| **Action/Host** | Typed Intent、Execution Request ID、Current Grant/Authority、Commit/Receipt、独立Read | Candidate/Preview/実Commit/最終Effectを別資格に |
+| **Skill/Tool** | Skill Package/Manifest、実ロードPlugin、Tool/CLI target・args・Binary、実呼出Attempt | インストール済み・Tool発見済み・実行可能・実行成功を区別 |
+| **Document/Artifact** | Source revision、Generator/Template版、Expected ArtifactSet、Manifest/digest、Consumer actual read | Manifest整合・期待集合充足・同一公開世代・Readerの受信を区別 |
+| **Disclosure/Egress** | 実Principal、Audience、現在Policy/Grant、公開したValue/Action名/診断、送出先の観測範囲 | 内部で成立したClaimと外部説明の資格は別 |
+| **Cross-product handoff** | 同じ活動・対象・前提・入力/出力を指すリンク、Consumerが受理したEvidence | 異なるPRの成功件数と因果的に結合された一試行を区別 |
+
+全列がすべての操作で必要なわけではない。**Claimが要求する前提だけを型付きに辿り、欠けた必須前提を示す**。別の論理版番号がたまたま同じ数値でも同じ実行時点とはいえない。HistoryとしてのAccepted/Receiptを保管することと、現在Audienceへその内容を開示できることも別。
+
+### 27.3 再資格化は変更した依存と要求する観測から決める
+
+概念上、各Claim Cに「読んだ／意味として参照した／評価に必要／開示した／実効果を要求した」などの**用途付きの依存**を結び付ける。変更Δを受けたら、関係が分かる範囲では到達する下流Claimの再評価候補を抽出し、到達しないことの根拠がある独立Claimは保持できる。依存が不透明／外部Providerが不明な部分は**未確立／再読取対象**として扱う。これは#2582/#2600への影響比較の考え方であり、強制的な新しいGlobal Dependency Graphを実装すると決めるものではない。
+
+| 変更Δ | 維持を検討できる内容 | 再評価・公開制限を求める内容 |
+| --- | --- | --- |
+| Markdown装飾・行移動のみ | 安定Subject/Operator/Contextへ正しく再解決できる場合の受理済み意味 | Source span・文書Occurrenceの対応、局所書戻し対象 |
+| RuleまたはOperatorの意味版 | 元のFact・歴史的な観測値 | 依存RuleのClaim、Action適用条件、必要なTarget再計算 |
+| あるDataset/Fieldへの訂正 | 既知の独立DatasetのみのClaim | 訂正範囲に依存するResult、JOIN/AVG/TOP-N/NOT EXISTS等の非単調演算結果 |
+| Provider Mapping/Snapshot/Read資格 | 意味Model/受理済み定義そのもの | 新Read Slice・Cohort・実Alias・Rowset/Field完全性を使うClaim |
+| Action Context epoch/Grantの変化 | 元のReadという歴史事実 | 現在のOffer、保存時のRule/Grant、未完了Request/実Effect |
+| Skill実ロード・Tool対象/版の変更 | 過去のSkill文書・過去の実行Receipt | 現在そのToolを呼べるか、出力と公開条件が満たせるか |
+| Consumer/Audience・Policy変更 | 計算済み内部根拠、歴史的なReceipt | **現在の送出・提示資格**、Tool候補/エラー/件数を含むDisclosure |
+| Generator/ArtifactSet・公開世代変更 | 意味が不変と独立確認されたSource/Rule | 必要Memberの充足、同版実Read、署名/内容差分、SHO/TargetのConsumer実受入 |
+| 未知の新Interpretation Role | 元データ・Role/Attribute/Sourceの所在 | 新Roleの操作適合・編集逆写像・実行効果。標準Studioではread-only表示・診断を優先 |
+
+**完全性と単調性の注意**：肯定の存在証人などは追加に対して維持し得る場合がある一方、NOT EXISTS・TOP-N・LEFT JOIN未一致行・AVG/中央値・全件Claimは追加だけでも失効し得る。Snapshot/Field観測の不確かさやRuleの負例を単なる数値比較の問題へ押し込めない。合成Fixtureでの局所一致と一般のデータ更新下での保存可能性を区別する。
+
+### 27.4 資格判定の複数軸と、公開側での説明
+
+内部の比較票には、少なくとも次の**別の問い**を残す：①Meaning/演算が適用可能か、②必要な観測が十分か、③いまの時点で新鮮か、④実Host/Toolへ到達できるか、⑤そのConsumerへ出力してよいか、⑥実結果を観測したか。
+
+「十分に確認された」「反証が見つかった」「必要な証拠が欠ける」「時間や版の変更で再確認が必要」「そのConsumerへの開示が許可されない」を、内部では根拠付きで分ける。ただし**低開示Consumerへ内部の失敗理由・隠れた入力件数・秘密Actionの存在をそのまま伝えない**。内部理由を伏せる場合も、正しい値がないことと情報の不存在を混同しない。
+
+標準Studioへ未知Roleが来た場合は、構造・元Source/属性・未対応Reasonをread-onlyで提示する候補を維持する。[Draft #2631](https://github.com/hat47x/tei-platform/pull/2631)のopen-world標準UI有限JS Referenceは16 assertions PASSと報告するが、正式TEI Studioの実装済み機能とみなさない。未知Roleを解釈できるようになっても、Sourceからの逆写像・Actionの許可は改めて確認する。
+
+### 27.5 横断の反証・Evidence接合票
+
+| ID | 変更／合成パターン | 誤った総合判定 | Owner |
+| --- | --- | --- | --- |
+| CQ-01 | TEI Readは成立、Ruleの非表示入力が別版 | 画面が同じなのでSEI/SHOの判断も現在正しい | #2506/#1129/#2586 |
+| CQ-02 | CUI表示は不変、Providerだけ秘密Fieldを過剰Read | 公開JSON同値を実物理アクセス最小性の証拠とする | #2622/#2515 |
+| CQ-03 | Rowset Complete、Credit Field absent | 全件取得なので全Rule判定済み・全件Claim成立 | #2627/#2516 |
+| CQ-04 | Skill配布・Tool一覧は存在、実ロード先またはGrant失効 | 既存Skillと選択したToolだけで現在の実行権限成立 | #2605/#2515/#2504 |
+| CQ-05 | TEI/SEI/TAIの個別合成PASS、Source/Activityが異なる | 別試行のPASS件数合算で一業務成果を完了扱い | #1119/#1163/#2586 |
+| CQ-06 | Rule変更・独立データ集合D1のみの表示Claim | 全Claimを失効、またはRule依存Claimを保持 | #2582/#2600 |
+| CQ-07 | 追加Eventで旧NOT EXISTS/LEFT JOIN未一致が変わる | 追加のみなので旧全件Claimを保持できると確定 | #2582/#2593 |
+| CQ-08 | Consumer Audience/Grant失効後に過去Receiptを配送 | 過去の成功Receiptを今の送出許可として利用 | #2516/#2515 |
+| CQ-09 | Skill/Toolに新しいRole、StudioはRoleを解釈できない | 未知Roleを破棄または編集/実行可能な既知Roleへ偽装 | #2620/#1124/#2631 |
+| CQ-10 | 同じSourceへSHO/Targetを生成、Artifact Memberが1つ欠落 | Manifestの内容自己整合から期待一式の実Readが完了 | #2630/#2604 |
+| CQ-11 | EKI配送AttemptのACKが不明、外部結果は同値 | 結果値一致を同一AttemptのEffect/配達完了Receiptと断定 | #1174/#1163 |
+| CQ-12 | UI・Policyだけ変わり、純粋計算結果・受理済みMeaningは同じ | 一律全Target再実行または現在公開資格を無検証継承 | #2600/#2516 |
+
+これらは既存#2582のRCケース、#2516のW8〜W10、#2630のAS、#2600の増分Build/資格へ**担当を渡す設計検査票**であって、第二のScenario SSOTではない。最初の共同実証は合成の受注額600／与信上限700対500／部分Provider Read／秘密Action／SHO公開版を固定し、**実際に同じ活動・Source/Rule/Mapping/Grant/Consumerを指す証拠**を一回の試行で接合する。全再評価と依存選択的再評価の結果差、誤維持、過剰失効、Provider/Tool再呼出数、必要時間を比較する。
+
+**現状**：横断比較・実証計画のみ。TEI製品のClaim合成、外部Harness Tool実呼出、SHO実Consumer/EKI実配送、OS/DBの機密強制、正式Owner意味受理は**NOT RUN**。#2631、#2628、#2627、#2613等の隔離PASSは各PRの固定Fixtureに限る。採否は各Ownerが証拠に基づき判断する。
