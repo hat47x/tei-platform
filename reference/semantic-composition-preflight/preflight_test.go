@@ -38,13 +38,13 @@ func selectedSemanticFixture(t *testing.T) ([]semantic.Namespace, []semantic.Nam
 	provider := filepath.Join(root, "provider")
 	consumer := filepath.Join(root, "consumer")
 	writeSemanticFixture(t, filepath.Join(provider, "tei.workspace.yaml"),
-		"workspace: provider\nsources:\n  - semantic\n")
+		"workspace: provider\nformatVersion: 1\nsources:\n  - semantic\n")
 	writeSemanticFixture(t, filepath.Join(provider, "semantic", "common.tei"),
 		"namespace common\n\ntype MachineId from std.identifier\n")
 	writeSemanticFixture(t, filepath.Join(provider, "semantic", "os.tei"),
 		"namespace os\n\ntype ProcessId from common.machine_id\n\ndata Process {\n    attribute id type os.process_id\n}\n")
 	writeSemanticFixture(t, filepath.Join(consumer, "tei.workspace.yaml"),
-		"workspace: consumer\nsources:\n  - semantic\n")
+		"workspace: consumer\nformatVersion: 1\nsources:\n  - semantic\n")
 	writeSemanticFixture(t, filepath.Join(consumer, "semantic", "watch.tei"),
 		"namespace monitoring\n\ndata Watch {\n    attribute process type os.process_id\n}\n")
 	loadedProvider, err := workspace.Load(provider)

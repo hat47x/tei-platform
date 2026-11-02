@@ -59,7 +59,7 @@ func TestTraceSubjectSourcesRejectsMissingIdentity(t *testing.T) {
 
 func TestTraceSubjectSourcesReadOnly(t *testing.T) {
 	root := t.TempDir()
-	writeWorkspaceFixture(t, root, "tei.workspace.yaml", "workspace: trace\nsources:\n  - semantic\n")
+	writeWorkspaceFixture(t, root, "tei.workspace.yaml", "workspace: trace\nformatVersion: 1\nsources:\n  - semantic\n")
 	writeWorkspaceFixture(t, root, "semantic/a.tei", "namespace sales\n")
 	_, err := TraceSubjectSources(root, sourceindex.Subject{Kind: "semantic", ID: "sales"})
 	if err != nil {

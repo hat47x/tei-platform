@@ -192,7 +192,11 @@ func TestHistoricalProcessPluginRunnerEvidenceParity(t *testing.T) {
 		t.Helper()
 		cmd := exec.Command(executable, "-repo", checkout, "-go", goPath)
 		cmd.Dir = checkout
-		cmd.Env = append(os.Environ(), "GOENV=off", "GOWORK=off", "GOFLAGS=", "GOTOOLCHAIN=local", "GOPROXY=off")
+		// The frozen comparison tree intentionally predates formatVersion, so
+		// the current runner needs the explicit frozen-artifact opt-in. The
+		// historical runner ignores the variable.
+		cmd.Env = append(os.Environ(), "GOENV=off", "GOWORK=off", "GOFLAGS=", "GOTOOLCHAIN=local", "GOPROXY=off",
+			"TEI_WORKSPACE_ALLOW_UNSPECIFIED_FORMAT=1")
 		var stdout, stderr bytes.Buffer
 		cmd.Stdout, cmd.Stderr = &stdout, &stderr
 		if err := cmd.Run(); err != nil {

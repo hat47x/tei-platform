@@ -193,7 +193,7 @@ func TestReadWorkspaceSourceFailsAfterClose(t *testing.T) {
 // Resolver must fail explicitly and no outside byte may be returned.
 func TestSourceResolverFailsClosedWhenSourceDirectoryIsRetargetedOutsideAfterIndex(t *testing.T) {
 	root := t.TempDir()
-	writeTestFile(t, filepath.Join(root, "tei.workspace.yaml"), "workspace: trace\nsources:\n  - semantic\n")
+	writeTestFile(t, filepath.Join(root, "tei.workspace.yaml"), "workspace: trace\nformatVersion: 1\nsources:\n  - semantic\n")
 	writeTestFile(t, filepath.Join(root, "semantic", "one.tei"), pinnedReadTei)
 	loaded, err := workspace.Load(root)
 	if err != nil {

@@ -102,7 +102,7 @@ func TestBuildSourceIndexFromLoadUnknownRootAsset(t *testing.T) {
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		t.Fatal(err)
 	}
-	manifest := "workspace: demo\nsources:\n  - custom-assets\n"
+	manifest := "workspace: demo\nformatVersion: 1\nsources:\n  - custom-assets\n"
 	if err := os.WriteFile(filepath.Join(root, "tei.workspace.yaml"), []byte(manifest), 0o600); err != nil {
 		t.Fatal(err)
 	}

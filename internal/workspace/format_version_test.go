@@ -15,7 +15,7 @@ func TestParseWorkspaceManifestFormatVersion(t *testing.T) {
 		wantErr string
 	}{
 		{name: "version one", src: "workspace: test\nformatVersion: 1\nsources:\n  - semantic\n", version: 1},
-		{name: "version missing is transitional", src: "workspace: test\nsources:\n  - semantic\n", version: 0},
+		{name: "version missing parses to zero", src: "workspace: test\nsources:\n  - semantic\n", version: 0},
 		{name: "zero rejected", src: "workspace: test\nformatVersion: 0\nsources:\n  - semantic\n", wantErr: "positive integer"},
 		{name: "negative rejected", src: "workspace: test\nformatVersion: -1\nsources:\n  - semantic\n", wantErr: "positive integer"},
 		{name: "non numeric rejected", src: "workspace: test\nformatVersion: one\nsources:\n  - semantic\n", wantErr: "positive integer"},
@@ -63,19 +63,25 @@ func TestLoadRejectsUnsupportedWorkspaceFormatVersion(t *testing.T) {
 	}
 }
 
-func TestLoadAcceptsVersionOneAndMissingDuringMigration(t *testing.T) {
-	for _, tc := range []struct {
-		name     string
-		manifest string
-	}{
-		{name: "version one", manifest: "workspace: test\nformatVersion: 1\nsources:\n  - semantic\n"},
-		{name: "missing transitional", manifest: "workspace: test\nsources:\n  - semantic\n"},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			root := writeFormatVersionWorkspace(t, tc.manifest)
-			if _, err := Load(root); err != nil {
-				t.Fatalf("Load failed: %v", err)
-			}
-		})
+func TestLoadAcceptsVersionOne(t *testing.T) {
+	root := writeFormatVersionWorkspace(t, "workspace: test\nformatVersion: 1\nsources:\n  - semantic\n")
+	if _, err := Load(root); err != nil {
+		t.Fatalf("Load failed: %v", err)
+	}
+}
+
+func TestLoadRejectsMissingFormatVersion(t *testing.T) {
+	root := writeFormatVersionWorkspace(t, "workspace: test\nsources:\n  - semantic\n")
+	_, err := Load(root)
+	if err == nil || !strings.Contains(err.Error(), "missing formatVersion") {
+		t.Fatalf("missing format version was accepted: %v", err)
+	}
+}
+
+func TestLoadAllowsMissingFormatVersionOnlyWithExplicitFrozenOptIn(t *testing.T) {
+	t.Setenv("TEI_WORKSPACE_ALLOW_UNSPECIFIED_FORMAT", "1")
+	root := writeFormatVersionWorkspace(t, "workspace: test\nsources:\n  - semantic\n")
+	if _, err := Load(root); err != nil {
+		t.Fatalf("explicit frozen opt-in did not load the legacy manifest: %v", err)
 	}
 }
