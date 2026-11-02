@@ -228,3 +228,39 @@ Plugin公開基盤の議論で用いるDeclared（宣言）/Resolved（選択・
 2026-10-31の分散Registry設計では、公開のContent Identity/Origin/検証Evidenceと、Consumerが実際に選択・利用できるかを分ける方針が強まった。本TEA設計も、Method Definitionを公開Registryから取得できた、あるいはNotation Providerをインストールできたという事実を`Semantic Extension`のAccepted Lockや`Studio Consumer`の現在Authorityに使わない。宣言・解決・観測の各版は、汎用のPlugin/Artifact/Evidence正本に逆参照する。追加のTEA専用Registry、Resolver、Build Lockは作らない。
 
 今後の推奨順は (a) #2457の焦点試験を現行checkoutで確認、(b) #1124 Consumerへ最小結合してG1/G2負例を実行、(c) #1126の方法論固有Relation規則をSource-only fixtureと照合、(d) 図上Intent→Proposal（Source writesなし）を確認、の順。ここを超える意味規則の正式採用・本番Provider接続には別の承認/適合Gateが必要。
+
+
+## 14. 三要素×分析層と帰納・演繹の証拠境界（2026-11-02）
+
+2026-11-02に[三要素分析法の説明記事](https://atmarkit.itmedia.co.jp/fbiz/cbuild/complete/doa/01/02.html)と現在のTEI main `3784a4432a28502ca04057325689e409d14d9140`、Studio [Draft PR1 #2583](https://github.com/hat47x/tei-platform/pull/2583)、[Draft #2457](https://github.com/hat47x/tei-platform/pull/2457)を照合した。出典記事は「データ構成・機能構成・業務構成」という三つの観点と、論理要件／物理制約／実装を区別している。**それは歴史的な方法論の紹介であり、TEIの既存Semantic schemaやX-TEA M49の全挙動を検証した証拠ではない**。三要素を一つの図法に平坦化しないためのPressureとして使う。
+
+| 各観点の独立軸 | 論理要件・設計意味 | 物理制約・実現の構成 | 実装・観測結果 |
+| --- | --- | --- | --- |
+| Data | 論理的なEntity/Key/FD/Relationと業務識別 | DB schema、型、制約、Provider mapping | 生成されたschema、Actual DBの観測 |
+| Function | 動作の宣言、入力/出力・参照、機能境界 | Target Capability・Invocation/構成・操作binding | Function実行の観測、結果・Effect witness |
+| Business | Manual/External Step、Actor、Trigger、Handoff、手順宣言 | 実施主体、UI・外部接続、実現上の制限 | 実際の作業記録・結果、Ownerによる別途受理 |
+
+これは**一つのStandard Matrix schemaの新設を要求しない**。Data/Function/Businessの全セルに必ず実装値があるという主張でもない。既存Semantic / Mapping / Actual / Evidenceの各Ownerへtyped referenceで接続し、未対応セルを`unknown/not-observed`として残す。
+
+### 帰納・演繹をMethod出力の権限と混同しない
+
+他チャットのCSWの議論を設計Pressureとして、出力ごとに「どの材料から何が言えるか」を識別する。追加の`Authority` enumを設けず、既存`modelref.Evidence`（accepted / proposal / source-observation / derived）、qualified identity、Artifact/Rule fingerprintと表示用説明を組み合わせる。
+
+- **Source観測**: 旧X-TEA/XML/図法上の宣言・名称・関係型。Source profileと版に固定。TEIの業務意味正本へ自動昇格しない。
+- **演繹的導出**: 明示的な前提、Rule/version、適用Scope、導出経路から結果を再現できる場合。主張の範囲は前提と規則の範囲内に限る。Ruleに照らして正しいことは、元の業務命題が真であることと別。
+- **帰納的候補**: 複数モデルのパターン、具体例、X-TEA観測、生成AIが提示した新しいRelation/Method Rule案。曖昧・矛盾・未知の反例を維持した`proposal`であり、MethodのinstallやNotation切替による暗黙の意味変更を禁止。
+- **Owner受理・実観測**: 人の意味受理と実ProviderのEffect観測は導出・提案とは別のAxis。Ruleの型検証や試験成功をOwner-Accepted/current-ready/authorizedへ変換しない。
+
+例えば、M49の静的コード上の`FAMILY/REFFER/SUBTYPE`分類が入力Key形状から追えるとしても、それは**旧分類アルゴリズムの導出**であり、TEIの論理Relationが業務上正しい、DBの実FKが存在する、Functionや業務Actionがその関係を実際に利用した、という四つの主張を導かない。
+
+**反例の最小組**: (1) M49 Key形状の分類が一致しても業務IDは未受理、(2) 物理FKが観測されても論理FD・Business identityは推定不能、(3) 同じ意味Worldに別Notationを入れてもSemantic Lockは不変、(4) 演繹規則の入力Source/provenanceが欠落したら関係を`verified`ではなく`unresolved`、(5) AIによるパターン仮説からのSemantic Source writeは0。これらが新Core型なしに既存Evidenceへ紐付けられるかを評価する。
+
+### Studio ConsumerのP0順序と表示の同一性Witness
+
+本設計の前節G0〜G5はTEA固有の横断検証項目であり、**Studio P0 PRの実装順序ではない**。2026-11-02現在、先に[#1124 PR1 Draft #2583](https://github.com/hat47x/tei-platform/pull/2583)（Catalog ambiguity保持＋共通Inspect guard）、次にPR2（Graph/list/initial/commandの4入口結合）、次にPR3（Graph stale/表示epochとqualified binding）を通す。PR1はNode focused/typecheckが合格した一方、embedded bundleとWorkbench snapshot pinによるCI failureが残り、未統合。PR1/2/3を`#2457`単独の採用に読み替えない。
+
+[#2457](https://github.com/hat47x/tei-platform/pull/2457)は**実Graph inputとselection bindingの同一性不足**を確認し、`publishGraph(token, graphView, graphInput)`を追加した。正規化したGraph Inputに**存在しないview IDへのbindingを拒否**し、非同期renderer・renderer例外では旧mapを失効する。表示上のunbound nodeはInspectを許さない。原案の`publish(token, render)`はGraph node集合を照合しない低水準入口であり、Graphの現在のbinding資格には使わない。
+
+**限定検証**: GitHub blob `30f1b0133693c421cc2826028790ed90baf96344`をV8内で実行（Graph `normalizeGraph`はtest double）し、表示外ID、G2失敗、ABA、別Scope、非同期戻り値等10 assertionがPASS。**PR保存済みNode試験一式、実DOM、Graph/Workbench/4入口E2E、Source readback、Accepted/Effect、M50はNOT RUN**。この限定検証を本番GraphやSourceの保証へ昇格しない。既存Draft PR #2457の旧CI successful checksも**新headの資格として流用しない**。
+
+将来のPR3で実証すべき同一性の式は、`PublishedBinding.viewIds ⊆ normalizedGraph.nodes[*].id`、`PublishedBinding.version = acceptedDisplaySnapshot.version`、`Source現在性・権限・Inspect eligibilityは別Gate`。一図面の境界で成立させてから、複合図表（複数Graph/List/Field）のsurface別snapshot/epochと図表間対応（#2352）を評価する。
