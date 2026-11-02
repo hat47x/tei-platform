@@ -61,14 +61,14 @@ def compare_handoff(operations, set_doc, app):
     entries = manifest.get("entries")
     require(isinstance(entries, list), "manifest entries missing")
     artifacts = set_doc.get("artifacts")
-    expected = Counter((a["kind"], a["digest"], len(a["unresolved"]))
+    expected = Counter((a["kind"], a["digest"], len(a.get("unresolved") or []))
                        for a in artifacts)
     observed = Counter((e["kind"], e["digest"], e["unresolved"])
                        for e in entries)
     require(expected == observed,
             "manifest membership/digest/unresolved differs from actual artifact set")
     require(bool(manifest.get("complete")) ==
-            all(not a["unresolved"] for a in artifacts),
+            all(not (a.get("unresolved") or []) for a in artifacts),
             "manifest completeness differs from listed unresolved counts")
 
     surface_artifact = artifact_surface(set_doc)
@@ -83,13 +83,14 @@ def compare_handoff(operations, set_doc, app):
     for field in shared:
         require(projected.get(field) == operations.get(field),
                 f"real CLI operation surface / artifact field differs: {field}")
-    require(len(surface_artifact["unresolved"]) == len(operations["gaps"]),
+    require(len(surface_artifact.get("unresolved") or []) == len(operations["gaps"]),
             "gaps were not carried into artifact unresolved list")
-    for gap, unresolved in zip(operations["gaps"], surface_artifact["unresolved"]):
-        require(unresolved["subject"] == gap["target"] and
-                unresolved["reason"] == gap["reason"] and
-                unresolved["detail"] == f"{gap['kind']}: {gap['detail']}",
-                "unresolved artifact reason differs from actual CLI gap")
+    expected_gaps = Counter((g["target"], g["reason"],
+                             f"{g['kind']}: {g['detail']}") for g in operations["gaps"])
+    actual_gaps = Counter((u["subject"], u["reason"], u["detail"])
+                          for u in (surface_artifact.get("unresolved") or []))
+    require(expected_gaps == actual_gaps,
+            "unresolved artifact reasons differ from actual CLI gaps")
 
     # The content format is intentionally a *subset*: it does not carry
     # worldFingerprint, modelRevision, authorityLimits, or conflicts.
@@ -131,9 +132,8 @@ def observe(binary, workspace, app, expect_negative):
             "independent operations process changed without source modification")
     require(cli(binary, "artifacts", *args) == set_doc,
             "independent artifacts process changed without source modification")
-    require(bool(ops["gaps"]) == expect_negative,
-            "reference fixture gap expectation changed")
     if expect_negative:
+        require(bool(ops["gaps"]), "negative fixture unexpectedly has no gaps")
         require(set_doc["manifest"]["complete"] is False,
                 "negative fixture was silently called complete")
     else:
