@@ -177,3 +177,19 @@ func TestTableDefinitionSnapshotCarriesUniqueConstraints(t *testing.T) {
 		t.Fatalf("unique constraint not resolved: %+v", table.UniqueConstraints[0])
 	}
 }
+func TestCompareTableDefinitionDetectsAMissingUniqueConstraint(t *testing.T) {
+	mapping := ddlCheckMapping()
+	mapping.UniqueConstraints = []persistence.UniqueConstraintMapping{{
+		Name:       "orders_status_key",
+		Attributes: []core.CanonicalID{"sales.order.status"},
+	}}
+	target := TableDefinitionSnapshot(ddlCheckMapping(), semanticData())
+
+	diff, err := CompareTableDefinition(mapping, semanticData(), target)
+	if err != nil {
+		t.Fatalf("compare: %v", err)
+	}
+	if len(diff.Changes) == 0 {
+		t.Fatal("a missing unique constraint must be reported")
+	}
+}
