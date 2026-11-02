@@ -267,3 +267,49 @@ func TestInspectionResolvesEveryCatalogKindAndRejectsDuplicateIdentity(t *testin
 		inspectionCode(t, err, InspectionNotFound)
 	}
 }
+
+func TestInspectApplicationPatternProjectsInteraction(t *testing.T) {
+	pattern := application.Pattern{
+		ID:   "order_entry.order_record",
+		Kind: application.PatternRecord,
+		Data: "sales.order",
+		Interaction: &application.Interaction{
+			Items: []application.InteractionItem{
+				{Attribute: "sales.order.order_id"},
+				{
+					Attribute: "sales.order.customer_id",
+					Lookup: &application.InteractionLookup{
+						Pattern:         "order_entry.customer_reference",
+						TargetAttribute: "customer.customer.customer_id",
+					},
+				},
+			},
+			Navigations: []application.InteractionNavigation{{From: "order_entry.recent_orders"}},
+		},
+	}
+	world := ir.World{Applications: []application.Application{{
+		ID:       "order_entry",
+		Patterns: []application.Pattern{pattern},
+	}}}
+
+	raw, err := inspectCanonical(world, sourceindex.Subject{Kind: "application-pattern", ID: string(pattern.ID)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var decoded map[string]any
+	if err := json.Unmarshal(raw, &decoded); err != nil {
+		t.Fatal(err)
+	}
+	interaction, ok := decoded["interaction"].(map[string]any)
+	if !ok {
+		t.Fatalf("interactionがprojectionにありません: %s", raw)
+	}
+	items, ok := interaction["items"].([]any)
+	if !ok || len(items) != 2 {
+		t.Fatalf("items=%#v", interaction["items"])
+	}
+	navigations, ok := interaction["navigations"].([]any)
+	if !ok || len(navigations) != 1 {
+		t.Fatalf("navigations=%#v", interaction["navigations"])
+	}
+}
