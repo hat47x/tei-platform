@@ -120,7 +120,7 @@ func TestViewCommandRejectsUnsupportedKind(t *testing.T) {
 	code, err := runViewCommand([]string{
 		"-workspace", root,
 		"-application", "order_entry",
-		"-pattern", "order_entry.recent_orders",
+		"-pattern", "order_entry.customer_reference",
 	}, &out)
 	if err != nil {
 		t.Fatal(err)
