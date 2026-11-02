@@ -2,9 +2,11 @@ import copy
 import json
 import sys
 import unittest
+import tempfile
+from unittest.mock import patch
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
-from verify_cli_surface_artifact import compare, artifact_digest, manifest_digest, WitnessError
+from verify_cli_surface_artifact import compare, artifact_digest, manifest_digest, WitnessError, main
 
 
 def sample():
@@ -122,6 +124,42 @@ class EvidenceJoinCases(unittest.TestCase):
     def test_14_wrong_surface_schema(self):
         self.a['schemaVersion'] = 'unknown'
         self.err('surface_schema_unknown')
+
+
+class RealCommandHandoffShape(unittest.TestCase):
+    def test_15_calls_actual_command_names_without_writes(self):
+        a, b = sample()
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            binary = root / 'tei'
+            binary.touch()
+            ws = root / 'workspace'
+            ws.mkdir()
+            (ws / 'tei.workspace.yaml').write_text('fixture: true', encoding='utf-8')
+            revision = 'a' * 40
+            with patch('verify_cli_surface_artifact.run_cli', side_effect=[{'vcsRevision': revision}, a, b]) as run:
+                with patch('builtins.print') as emit:
+                    main(['--binary', str(binary), '--workspace', str(ws),
+                          '--application', 'order_entry', '--expected-head', revision])
+                self.assertEqual(run.call_count, 3)
+                self.assertEqual(run.call_args_list[0].args[1:], ('version', '-json'))
+                self.assertEqual(run.call_args_list[1].args[1:3], ('operations', '-workspace'))
+                self.assertEqual(run.call_args_list[2].args[1:3], ('artifacts', '-workspace'))
+                self.assertTrue(json.loads(emit.call_args.args[0])['actionReady'] is False)
+
+    def test_16_wrong_binary_revision_stops_before_workspace_read(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            binary = root / 'tei'
+            binary.touch()
+            ws = root / 'workspace'
+            ws.mkdir()
+            (ws / 'tei.workspace.yaml').touch()
+            with patch('verify_cli_surface_artifact.run_cli', return_value={'vcsRevision': 'b' * 40}) as run:
+                with self.assertRaisesRegex(WitnessError, 'binary_head_mismatch'):
+                    main(['--binary', str(binary), '--workspace', str(ws),
+                          '--application', 'order_entry', '--expected-head', 'a' * 40])
+                self.assertEqual(run.call_count, 1)
 
 
 if __name__ == '__main__':
