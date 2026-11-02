@@ -175,3 +175,68 @@ test('VF-18 sourceChanged even with nonzero exit does not count as Source unchan
   const current=context({sourceRevision:'org-synthetic-r8'});
   assert.equal(compareReadToken(readToken(context()),readToken(current)),'stale-meaning');
 });
+
+/*
+ * Distinguish late-response rejection from revoking content already shown,
+ * and current-empty from an event-complete historical claim. These are
+ * simulated evidence decisions, NOT a standard TEI UI/Host protocol.
+ */
+function existingDisplayQualification({ paintedToken, current, dependencies, changes }) {
+  if (!paintedToken) return 'not-displayed';
+  if (compareReadToken(paintedToken, readToken(current)) !== 'matches-read-context')
+    return 'revoke-current-qualification';
+  if (!Array.isArray(dependencies)) return 'unverified-dependencies';
+  if (changes.some(x => dependencies.includes(x))) return 'recheck-and-mark-stale';
+  return 'retain-current-qualification-if-dependency-closure-proven';
+}
+function historyClaim({ currentRows, observedTransitions, completeInterval, rule }) {
+  if (rule === 'current-empty') return currentRows.length === 0 ? 'current-empty-for-fixture' : 'not-empty';
+  if (rule !== 'never-had-owner') return 'unresolved-owner-rule';
+  if (!completeInterval || !Array.isArray(observedTransitions)) return 'unverified-history';
+  return observedTransitions.some(s => s.owners > 0) ? 'violated-by-intermediate-event' : 'no-owner-in-closed-interval';
+}
+function multiClaimCohort(a, b) {
+  if (!a || !b || !a.physicalWitness || !b.physicalWitness) return 'unverified';
+  if (a.snapshot===b.snapshot && a.provider===b.provider && a.knownAt===b.knownAt &&
+    a.readSession===b.readSession) return 'same-synthetic-read-session';
+  return 'distinct-cohorts';
+}
+test('VF-19 an already displayed qualified claim must be retracted on route change',()=>{
+  const painted=readToken(context());
+  assert.equal(existingDisplayQualification({
+    paintedToken:painted,current:context({routeId:'primary'}),
+    dependencies:['Membership:D1'],changes:[]}), 'revoke-current-qualification');
+});
+test('VF-20 old response rejection and existing display revocation are different obligations',()=>{
+  const old=readToken(context()), current=context({epoch:8});
+  assert.equal(qualifyForDisplay({token:old},current,READ_COMPLETE).state,'discard');
+  assert.equal(existingDisplayQualification({
+    paintedToken:old,current,dependencies:['Membership:D1'],changes:[]}),
+    'revoke-current-qualification');
+});
+test('VF-21 final zero cannot prove no intermediate responsibility event',()=>{
+  assert.equal(historyClaim({currentRows:[],observedTransitions:null,completeInterval:false,
+    rule:'never-had-owner'}),'unverified-history');
+  assert.equal(historyClaim({currentRows:[],observedTransitions:[
+    {owners:0},{owners:1},{owners:0}],completeInterval:true,
+    rule:'never-had-owner'}),'violated-by-intermediate-event');
+});
+test('VF-22 current-empty and throughout-empty are distinct Owner Rule semantics',()=>{
+  const transitions=[{owners:0},{owners:1},{owners:0}];
+  assert.equal(historyClaim({currentRows:[],observedTransitions:transitions,completeInterval:false,
+    rule:'current-empty'}),'current-empty-for-fixture');
+  assert.equal(historyClaim({currentRows:[],observedTransitions:transitions,completeInterval:false,
+    rule:'never-had-owner'}),'unverified-history');
+});
+test('VF-23 identical snapshot labels do not prove shared multi-claim Cohort',()=>{
+  assert.equal(multiClaimCohort({
+    provider:'db-replica',snapshot:'s7',knownAt:'2027-07-01',readSession:'read-1',physicalWitness:true
+  },{
+    provider:'db-primary',snapshot:'s7',knownAt:'2027-07-03',readSession:'read-2',physicalWitness:true
+  }),'distinct-cohorts');
+});
+test('VF-24 one toy read-session can be paired without proving an actual Provider read',()=>{
+  const common={provider:'db-replica',snapshot:'s7',knownAt:'2027-07-01',
+    readSession:'read-1',physicalWitness:'synthetic-assumption'};
+  assert.equal(multiClaimCohort(common,{...common}), 'same-synthetic-read-session');
+});
