@@ -888,6 +888,29 @@ QX-25（§7.20、SQLite Authorizer 12件）は、`SELECT id`でもWHERE/ORDER/EX
 **未実証**：本DraftのGoテスト実行結果はCI確認まで未確定。実SQL Worker、実PostgreSQL/API、Function Data Context結合、Windows/SHO/AI実Receiver、Owner MeaningはNOT RUN。
 
 
+### 7.23 D2AF：Provider読取り後のHost項目認可再確認を、Query Result公開境界へ接続する（2026-11-02、実Go Driver回帰候補）
+
+#### 他レーンの成熟結果から発見したD2／D3の違い
+
+QX-20／QX-25／QX-27は、SQLやGo `DerivedIR`の説明能力・Input Lineage・Raw JSONと、実Consumerへの公開資格を分けた。QX-24／QX-26は`Provider Read`と`Result Slice / Claim`が別の段階・時点の観測であると確認した。これらを実際のGo Driver実装で照合すると、**D2通常の`ExecuteDerivedBrowseQuery`がProvider実読取り前に`ValidateDerivedSelect`を実行しても、RawとDerivedの値を返す直前には現在のHost項目読取権限を再検証していない**。一方、既存のD3 `DerivedMemo.Resolve`は非cache/計算後やSource witnessの再確認時に`ValidateDerivedSelect`を再実行する。この相違は`Query結果の取得を始めてよい`と`取得した結果を呼出側へ返してよい`の間の失効条件として具体化できる。
+
+**局所変更候補**：[独立Draft #2637](https://github.com/hat47x/tei-platform/pull/2637)は、現行main `9c9ef4d160640908e06ad13afb6c2b45c664c748`からDriver本体の最小変更＋Goテスト1ファイルだけを追加した。SQL/Query/ResultColumnMappingやD2 `ValidateDerivedSelect`の制約、`CompleteBrowseQueryExecutor`の契約を変更せず、現在Hostの`FieldReadAuthorization`を**dispatch前とDerived Resultを返す直前**の二地点で確認する。既存Derived Result側のRaw/Derived項目、Operator、Snapshot/Target/Consumer公開の権限正本を増やさない。
+
+| Case | 合成Host／Providerで行う具体的変化 | 期待する受入 |
+| --- | --- | --- |
+| **D2AF-01 Raw input** | Preflightでは`inventory.product.stock`のHost Readを許可。Providerのbounded complete read callbackでそのGrantを失効させる | 実Provider callbackは1度だけ。**Raw Result/Derived Resultを返さず**`ErrDerivedUnauthorized`となる |
+| **D2AF-02 Derived target** | Preflightでは導出項目`inventory.product.available`を許可、Provider read中に失効 | Query/Raw値の取得が完了しても、導出結果の公開直前に拒否。生データと導出値を異なる公開資格に昇格しない |
+| **D2AF-03 Unchanged authority** | 全Mapped Raw項目とDerived TargetのHost Readがread前後に維持される | 同じ既存D2源データの計算結果を返せる。既存Preflight拒否テストを維持 |
+| **D2AF-04／今後** | 実HostのAuthority Stateが途中でrevoked/ABA、別Principal、別Provider/DB Sessionに切替 | 二地点のCallback試験だけでは決定不能。Hostの認可取得時点／原子性・実Provider Readの帰属を別証拠にする |
+| **D2AF-05／今後** | Providerが返却するRawに非表示Field/Rule Inputが含まれ、SHO/外部AIへ後段公開 | Driverでread許可が成立してもConsumer目的/PolicyとOS/Network実Receiverの公開資格を別検収 |
+
+**今回の変更の正確な範囲**：`ValidateDerivedSelect`の後段再検査は、Provider callback中に失効しその状態が続いた場合を識別する**現在Grantのフェンス**であり、トランザクション単位の権限Snapshot、ABA（失効→復活）、DB/RLSを含む一貫したRead Cohort、ConsumerのDisclosure、Hostが既に外部へ送出した情報の巻戻しまで保証しない。元の`canRead` CallbackのAuthorityは外部Host／Provider側に帰属し、TEI内に独自Host・Policy Engineは設けない。
+
+**受入状態**：実Go Driverの変更と合成Callback試験は[Draft #2637](https://github.com/hat47x/tei-platform/pull/2637)にGitHub保存済み。**本節追記時点でActions exact-headはqueued、Go PASS未確認**。実DB Provider、Host Grant変更同時実行、Wails/SHO/AI実送出、RLS、Owner意味受理はNOT RUN。#1640のD2実行範囲（単一raw simple projectionのみ）の拒否と#1119 G0〜G4を維持する。
+
+**Owner分担と実装順**：#1640/D2 DriverはPreflight/Result返却資格、#1641/D3はCache Witness・Version/鮮度/現在認可、#1174は実Host Current Authority、#2622/#2627は実Provider Read/Completeness、#2586はFunction Context/Claim帰属、#2516/#1178はConsumer別Disclosure、#2514は独立Oracle。最小Go回帰PASS→実Host/ProviderでGrant更新を模擬した同一Attempt→Raw/Derived出力およびConsumer/Sinkの拒否観測へと段階的に進める。
+
+
 ## 8. 実装順・担当引継ぎ（提案）
 
 | 段階 | 所有 | 実施 | 完了の根拠 |
