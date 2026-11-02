@@ -37,3 +37,7 @@ jobs:
           name: knowledge-portability-reference-evidence
           path: knowledge-portability-reference-test.txt
           if-no-files-found: warn
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true

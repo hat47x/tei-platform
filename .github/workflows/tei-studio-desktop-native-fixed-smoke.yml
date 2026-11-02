@@ -181,3 +181,7 @@ jobs:
             ${{ runner.temp }}/tei-studio-desktop-native-*.png
           retention-days: 7
           if-no-files-found: ignore
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true

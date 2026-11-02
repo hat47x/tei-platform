@@ -44,3 +44,7 @@ jobs:
           node --check tools/reference-project-advice-lit/web/advice-element.mjs
           node --check tools/reference-project-advice-lit/web/order-entry-context.mjs
           node --test tools/reference-project-advice-lit/web/*.test.mjs
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
