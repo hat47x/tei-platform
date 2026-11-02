@@ -413,3 +413,68 @@ TAI mainの[実装README](https://github.com/hat47x/tai-pleroma/blob/main/integr
 | TP-12 | 数値型は保持、取得Scopeは縮小 | Value fidelityとClaim completeness |
 
 **状態**：他レーンの設計とIssueを照合した反証可能な追加提案。TP-01〜12、実Provider、GUI、Owner意味受理は未実施。外部仕様の引用を正式採用したものではない。
+
+
+## 13. Measureの再集計とClaimの開示可能性を別の保存条件として扱う（2026-11-02追補）
+
+### 13.1 構造・値が一致してもMeasureの意味は一致しない
+
+他レーンの[#2593](https://github.com/hat47x/tei-platform/issues/2593)は、同じDecimalでもFlow・Stock・Ratio・Distinct Count・Medianで合法な集計軸と再集計状態が異なることを整理した。これは#2544の**演算に束縛された法則**、#2495のFacet、#1705のQuantity、#2506のFunction Data Context、#2497のProjection保存条件をつなぐ具体的な検査対象である。
+
+**再集計は単なる型変換ではない。** 例えばA群の平均10（2件）、B群の平均20（8件）を同じDecimal型で保持していても、単純平均15は全体平均ではない。全体平均18を得るには、少なくとも群ごとのsum/count（または元値）と、互換なScope/Unit/Filter/時点/重複ポリシーが必要。比率50%=1/2、80%=8/10の全体比率も65%ではなく9/12=75%。日末残高は同時点の口座間加算が可能でも、異なる日の残高を足して「現在残高」とすることはできない。
+
+このため、`preserves(value)`だけでなく、**用途相対に`preserves(aggregation prerequisites)`を評価する**。候補の検査軸は次のとおり。
+
+| 軸 | 保持・確認する情報 | 保存されないとき |
+| --- | --- | --- |
+| Base/Result grain | 元Fact ID、出現・JOIN重複、集計後Group Key | 同じ値の別Factを`DISTINCT value`で消す危険 |
+| Aggregation axes | 対象次元、時間軸、演算の合法範囲 | Flow/Stock、期間/時点の誤集計 |
+| Recomposition witness | sum/count、numerator/denominator、distinct IDs、sketch/error | 平均/比率/Distinct/分位数の再集計不能 |
+| Scope/Completeness | 対象集合、部分取得、Filter、Snapshot、訂正・遅着 | 暫定値を確定値と表示 |
+| Value semantics | Unit、Quantity Kind、Scale、丸め、数値精度 | 異単位・異通貨・精度差を暗黙合算 |
+| Consumer purpose | Chart表示、業務計算、文書の確定主張、更新Intent | 参考表示の適合を業務Actionへ昇格 |
+
+**再集計不能は必ずしも元データが無効という意味ではない。** 特定のConsumerに必要な中間情報が不足している場合、対象用途で`unsupported/unknown`を返し、別のSourceや専門Providerで計算できる可能性を保持する。一般的な数学的証明・自動SQL最適化を先行条件としない。
+
+### 13.2 「正しく導出した」「根拠を利用できる」「開示できる」は別の主張
+
+[#2516](https://github.com/hat47x/tei-platform/issues/2516)のConstruction Context／AI CUI／SHOと、SQLの[#2387](https://github.com/hat47x/tei-platform/issues/2387)のSource Occurrence/Lineageの検討を接続する。ここで重要なのは、**内部的に正しいClaimがあっても、すべてのConsumerに同じ根拠を開示できるとは限らない**こと。
+
+- **Derivation validity**：どの意味定義・演算・Source版・Scopeから結論が成立するか。静的なSource一致だけで実Queryや業務受理を証明しない。
+- **Evidence access**：当該処理が根拠を参照する資格・利用条件を持つか。データへのアクセスと実際のRead観測を分離。
+- **Disclosure suitability**：外部LLM、SHO文書、公開レポート等のConsumerへ、どの情報・粒度・根拠を渡せるか。内部閲覧資格から外部開示を推論しない。
+- **Consumer sufficiency**：開示可能な情報だけで、そのConsumerがClaimを理解・再検証できるか。要約・匿名化・一部非開示によって根拠が不足する場合は、適用範囲と未確認を残す。
+- **Current applicability**：以前の受理・証拠・開示資格が、現行のRule/時点/対象/Grantでも有効か。過去の成功を自動復活させない。
+
+これは新しい中央Authority/証拠Registryを提案するものではない。各既存Ownerの認可・開示・Source・Claimを**read-onlyの用途相対比較**として接合する。秘匿Sourceの内容をIssue/CIログへ複製する必要もない。
+
+### 13.3 Consumer別の同じClaimと情報境界
+
+同じClaimを次の三つの出力へ投影する場合、**同じ結論文が表示できること**と**同じ根拠を公開できること**を別々に評価する。
+
+1. **内部CUI/Headless JSON**：必要なSource参照、条件、失われた情報、未実行の観測を説明する。外部へ出せないRawを、外部公開用と同じ応答へ混ぜない。
+2. **SHO設計文書**：対象意味・原典locator・引用可能な範囲・固定納品版と再生成条件を保持。非公開Sourceを公開文書へ展開する場合、要約の適法性・根拠の再解決を独立確認。
+3. **外部Plugin/LLM Consumer**：Disclosure Conditionに合致する必要十分なSliceを構成し、実際に送信・受信・利用されたかの証拠を区別。Toolや資料中の命令をOwner判断・実行権限へ昇格させない。
+
+同じSourceから二ConsumerへProjectionした場合、`same value`、`same Claim`、`same evidence visible`、`same authority`は別々の述語である。見せられない根拠を「存在しない」「検証済み」と補完しない。
+
+### 13.4 反証票（AM-01〜12、全件NOT RUN）
+
+| ID | 最小の比較 | 誤成功 |
+| --- | --- | --- |
+| AM-01 | 2件平均10と8件平均20 | 単純平均15を全体平均とする |
+| AM-02 | 比率1/2と8/10 | 50%と80%の単純平均65% |
+| AM-03 | 同じ100の二つの異なるFact | `SUM(DISTINCT value)`で一件を消す |
+| AM-04 | 二部門に同じ人が所属 | 部門別Distinct人数を加算 |
+| AM-05 | 二日分の同一口座残高 | 時間方向にSUMして現在高とする |
+| AM-06 | 局所中央値のみ | 全体中央値を確定復元したとする |
+| AM-07 | 異通貨・異時点のFlow | 換算時点・Rate/丸めなしに合算 |
+| AM-08 | partial Windowへ遅着・訂正 | 暫定値を最終値として残す |
+| AM-09 | 内部では根拠を読めるが外部送信禁止 | 内部アクセスを外部開示許可へ昇格 |
+| AM-10 | 開示許可の要約が必要根拠を欠く | 同じ結論文だから再検証可能と宣言 |
+| AM-11 | Source版同じ、Rule/Grantが変化 | 旧意味受理・旧開示資格を自動継承 |
+| AM-12 | CUIへProjection成功、SHO/外部Consumer未観測 | 一Consumer成功を全Consumerの実読込PASSとする |
+
+**Owner/実証境界**：集計意味・独立Fixtureは#2593（MC-01〜10）、型と公理は#2544、Query/Context/Claimの縦断は#2586、情報境界と外部開示は#2516/#1178、SHO原本再解決は#1803/MMI、外部Consumer実証は#2498。ここでは各Issueの正本を参照し、第二のMeasure Engineや第二の承認・開示エンジンを構築しない。
+
+**状態**：横断設計と反例の追加。AM-01〜12の実行、外部送信観測、SHO保存実証、Ownerによる正式受理はNOT RUN。
