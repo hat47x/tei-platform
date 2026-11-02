@@ -561,3 +561,46 @@ Everything is Dataが十分に成熟するには、**同じプレーンなデー
 [TAI #271](https://github.com/hat47x/tai-pleroma/issues/271)／[Draft #270](https://github.com/hat47x/tai-pleroma/pull/270)では、Product間のEvidence変更影響と**現在Consumer／権限の資格**を分ける計画がある。TEIは`Source/Role/Operator Pin／明示Context/Scope/Read witness／Result & Unknown／Claim資格／Provider Route／Consumerへの開示区分`という**実際に確かめた範囲だけ**をProduct Skill・SHO等へ受け渡す。外部Harness/AgentがDSLの`role`や`tool`文字列を見つけても実操作Commandとして採用しない。
 
 TAIのQH-01〜18は公開合成Nodeの有限試験であり、TEI実CLI／外部ネットワーク送出／SHOの保存・配送／Host Grantの実証とは別。TEIのSource/Meaning/Provider・独立OracleはTEIの既存Ownerに残し、TAIに第二のMeaning/Authorityを設けない。現時点で新しいProduct跨ぎの実行試験は**NOT RUN**。
+
+
+## 19. 実製品の一改訂・一Attemptに収束する実証順序（2026-11-03）
+
+> 位置づけ：既存の§4 S1〜S8、§6 H0〜H5、§7、§14、§17、§18の実行優先順位とOwnerを**現在のGitHub証拠で再資格化**する差分。新しい共通Host、第二Canonical／Rule／Query／Evidence Engine、中央Registry、新Gateを提案しない。この追補では新規TEI製品試験を実行していない。
+
+### 19.1 mainに入った資産と未統合候補を区別
+
+| 既存資産 | 再取得した状態・実証範囲 | 同一Runに不足するもの |
+| --- | --- | --- |
+| [PR #2587](https://github.com/hat47x/tei-platform/pull/2587) | **merged**。Operation Surface、CLI operations/artifacts、決定的Artifact生成。 | Function Context/Ruleへの実束縛と実Provider／現在Authority |
+| [PR #2624](https://github.com/hat47x/tei-platform/pull/2624) | **merged**。明示Mappingと非表示Rule依存、合成20＋18テストの資産。 | 実TEI Context・物理Read／実Rule／開示Policy |
+| [PR #2626](https://github.com/hat47x/tei-platform/pull/2626) | **merged**。現行Go CLIのSource/Model/Inspect/Trace/Validateと複数Consumerの限定的な実読取り・出典移動の実証。 | 別CLIの実同一Snapshotや外部AI/SHO/Hostへの実到達 |
+| [PR #2629](https://github.com/hat47x/tei-platform/pull/2629)、[PR #2634](https://github.com/hat47x/tei-platform/pull/2634) | **merged**。本横断計画・実Go DerivedIRの非出力WHERE/ORDER依存の限定特性。 | 実SQLGlot WorkerとそのSQL/Schema/Dialect実消費との同一Attempt対応 |
+| [PR #2638](https://github.com/hat47x/tei-platform/pull/2638)、[PR #2639](https://github.com/hat47x/tei-platform/pull/2639) | **open/unmerged**。Role BootstrapとGo Language Plugin Referenceの候補。 | 現行Role/Plugin Lockの受理、exact-head試験、同じContext/Consumer |
+| [PR #2649](https://github.com/hat47x/tei-platform/pull/2649) | **open/unmerged**。実Go CLI validate→operations→artifacts→出力ファイル独立Readerの専用スクリプトとCIを保存。 | HEAD 30a486324c6ca1fe0b5cd16d6e358dc7fa5a8fa0 の専用Workflow #41503235605は照合時**queued**。PASSと主張しない |
+| [Issue #2387／Draft #2388](https://github.com/hat47x/tei-platform/issues/2387) | Go Client/DerivedIR、Mock Helper負例、SQLite二Provider相当の局所観測はある。 | QX-33 V0/V1の**実SQLGlot解析Producerは対象main tree／実行環境で未特定**。mockを実Workerと呼ばない |
+
+**exact-head CIの実際の失敗例**：PR #2639のHEAD 5fdef5de5956ba0b4996d2861fc1ba4b1d94a222 の [Repository Health #41464532199](https://github.com/hat47x/tei-platform/actions/runs/41464532199)を確認した。Go1.26.10/Linuxで go vet、go test全件、tei validate は**PASS**だが、gofmt -l . は reference/dsl-language-plugin/everything_data_cross_surface_test.go の未整形で**FAIL**。全体run結論はfailure。修正Ownerへ[通知済み](https://github.com/hat47x/tei-platform/pull/2639#issuecomment-6585657796)。以前のHEADのCI成功を最新HEADの成功へ流用しない。
+
+### 19.2 実行可能な最初の二経路と停止位置
+
+**経路A：現行Go CLIで実行できるものを先に横断する（#1163／#2649）**。同じ固定checkoutでビルドしたGoバイナリと、非機密Reference workspaceの隔離コピーを用いる。実 argv と exit、Source tree hash before/after、operationsのmodelRevision、artifacts／Manifest／各MemberのinputRevision、freshな -out directory と別Readerが開いた各file byteを一つの試行として記録。具体的な既存スクリプトは [verify_real_cli_revision.py](https://github.com/hat47x/tei-platform/blob/docs/meaning-to-capability-skill-witness-20261102/plan/fixtures/capability-handoff/verify_real_cli_revision.py) にあるので再実装しない。Source本文byteを保ってファイルを移動する負例では、意味上の出力同値とSource Index/locatorの現在性を区別する。前後tree hash/同一revisionの一致は、Command間atomic snapshot、ABA不在、Host権限、業務受理を証明しない。
+
+**経路B：実SQL解析Producerの所在を確定してから進む（#2387／QX-33）**。先に [Worker実体・起動・依存・受入票](https://github.com/hat47x/tei-platform/blob/work/query-structural-fixture-design-20261030/plan/design/QUERY_QX33_V0_V1_WORKER_READINESS_AND_ACCEPTANCE_2026-11.md) の所在・実artifact hashとInterpreter/依存版、実stdin/stdout、SQL Source/Schema/Dialect、Go DeriveFromAnalysis、非出力Predicate/Diagnosticsを**同一Process Attempt**に結び付ける。所在不明なら V0/V1 = NOT RUN: producer-unavailable を維持。QX-14の模擬subprocess、SQLite Oracle、ResultのQuery ID/Protocol一致は、実WorkerのSQL消費を証明しない。まず active=1 と同Query IDの active=0、同SQL/別Schema、unsupported の差を独立Expectedで比較する。実Producerを確認できた分だけ #2506 Function Context、#1729 Rule入力、#2582動的依存、#2622 Provider、#2516開示へ段階的に渡す。
+
+**優先度の変更**：既に合成試験が豊富な領域は、同形のmock/fixture件数を増やすより**実Go CLI／実Worker／実Provider／実Consumerの隣接境界を一つだけ接合**する実験へ作業時間を振り向ける。異質Domainへの要件探索・独立Oracleの拡張自体は継続してよいが、その件数を横断E2Eの進捗へ加算しない。
+
+### 19.3 既存受入票への追加列（第二の証拠Schemaではない）
+
+| 主張 | 同一Runで必要な観測 | 代表的な反証／停止 |
+| --- | --- | --- |
+| **Source／実装入力の帰属** | exact checkout、実ロードSource/Schema/Dialect/Role/Operator Pin、Process/binaryと元byte | 同じQuery ID・同じSource digestでも別Schema、旧Worker、ABA |
+| **必要入力の閉包** | 明示Context、非出力WHERE/ORDER、Rule依存、中間Relation edge、NOT EXISTSの否定依存、要求母集団 | 出力列が同じ、0件だから依存なし、と判定 |
+| **Providerに相対的な現在Claim** | Target/tenant/Scope、各Providerの実Read cohort、Rowset/Field完全性・時点、現在Grant | 二Providerが個別にfullでも共同Snapshotの根拠なし、同名snapshotラベル |
+| **実Consumerの受領・開示** | CUI/SHO/AIの実ロード元、公開に使ったSource/Artifact byte、用途別のDisclosure | Skill記述／CLI Catalogの存在だけで実Tool利用・秘密送出資格を主張 |
+| **書込み・業務完了** | Accepted Action purpose、Request/実対象/ExpectedState、Host現在Grant、Provider Effect、Receipt、独立Read、Owner判断 | Intent候補、ACK、Receipt ReplayだけからBusiness Completionと判定 |
+
+必要なSQL Worker／Provider／Consumerが未実行、Sourceと解析結果が結び付かない、非出力・否定・Rule依存が不足、Read Cohortが不明、開示・Grantの根拠がないときは、**当該用途のClaimだけをunknown／未実証に戻す**。他用途の読み取り成功や過去のReceiptを取り消す主張ではない。
+
+### 19.4 達成・未達と撤回条件
+
+この追補で実施したのは**main/PR状態と特定CIログの照合、既存H0〜H5へ再利用経路と停止点を割り当てる計画変更**。PR #2649の実CI PASS、実SQLGlot Worker V0/V1、Function Context→実Provider→二Consumer→Host/Effectの一体E2Eは**未実施／未確認**。本節から新製品実装・独自中央Engineを導入しない。新しい横断正本が発生する場合は既存#1119/#1163/#2586の受渡しへ戻して撤回する。
