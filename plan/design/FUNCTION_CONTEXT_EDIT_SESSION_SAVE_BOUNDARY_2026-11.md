@@ -103,7 +103,7 @@ D1明細の値がD2の参照情報を必要とする場合、D2が部分取得�
 
 Rule実行に必要な関係のRole、集合、時点、値域、必要な完全集合性を照合する（#1706/#1708/#2593）。Ruleは現行Host側の実Execution/Authority境界へ引渡し、UIが別の業務Validator正本を所有する形を避ける。
 
-## 5. 自作合成Fixtureと受入の正負対照（すべてNOT RUN）
+## 5. 自作合成Fixtureと受入の正負対照（TEI統合実証はNOT RUN）
 
 - **Function Definition**：複数Contextを表示できる同じ定義Fを二配置 I1/I2。
 - **親**：A、B。Aの明細D1はL1=100、L2=100。独立集合D2はX1/X2/X3。
@@ -181,3 +181,12 @@ Rule実行に必要な関係のRole、集合、時点、値域、必要な完全
 - **UI操作と特定業務確認の距離**：編集値が変わらなくても確認撤回・権限失効があり得る。確認・受理・実Commitの責務は既存#1125/#1174へ。
 
 本書が記録するのは、TEIの機能合成によって実現したい**業務データ編集セッションの意味**と、それを既存契約で表現・実行できるかという検証方針である。実装済みの機能や本番利用の保証ではない。
+
+## 10. 局所参照試験の記録（2026-11-02）
+
+孤立したPython標準ライブラリの合成Referenceとして、`plan/fixtures/function-edit-session/verify_edit_sessions.py` を追加した。**TEI製品コード・正式なEditing Session API・実Provider/Driver/Transactionではない。**
+
+- **実測**：隔離コンテナで `python3 verify_edit_sessions.py` を実行し、ES-01/02/03/04/05/06/09/10/11/13に対応する`unittest` 10件すべてPASS。`python3 -m py_compile`もPASS。
+- **同一性**：実行ファイルの長さ6917バイト、SHA-256 `009faf31172e7993456bf7e563974f56b92a3ff5d7df9902eae94640b94336dc`、Adler32 `3645067705`。GitHub新規保存入力の長さ・Adler32は同値と確認した。実Target artifactやTEIの実行版保証に拡張しない。
+- **未実施**：ES-07/08/12は局所試験未実装。ES-01〜13の正式TEI Context/Query/Action/Driver、実DB/Host、GUI、二Consumer、現在Grant、業務完了の検証とOwner意味受理はすべて**NOT RUN**。
+- **境界**：局所`classify_save`は架空Provider識別とFixture中の原子性宣言を分類するだけで、実Transaction・現在権限・因果的Receiptを証明しない。実Effectは#1174/#2485、統合Scenarioは#1180/#2586の既存Ownerへ引き渡す。
