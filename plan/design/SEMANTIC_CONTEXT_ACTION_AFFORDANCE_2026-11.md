@@ -272,3 +272,44 @@ L1の単一Field PATCHはL1 ID、対象属性、Version等で意味的候補化�
 **着手順**：OB-01/02を、merged #2587の実main CLIと独立Expectedで先行させる。OB-03は必要なFunction Context/Ruleが同一Workspaceに実在するかを先に調べ、不在なら接続Gapとして報告する。OB-04/05はSource/Artifactの実消費物と副作用の比較、OB-06は#2649 Product Skill担当へ、OB-07/08は既存Driver・Host担当へ渡す。異なるDraftのテストケースをひとつの製品E2Eへ組み替えたと装わない。
 
 **優先順位・受入停止線**：新Operation/CLI ABI、Domain Action enum、Skill実行権限、全コマンド自動発見、共通Runtime/Host/Registry/Tx、原子的Artifact Publisherをこの文書で新設しない。実mainのRead-onlyコード所見と既存PRのmerge状況は確認済みだが、OB-01〜08を実際のCLI/Go/DB/GUI/外部Harnessで実行したものではない。Ownerの意味受理、実Provider効果、#1119 G0〜G4も未取得の範囲を保持する。
+
+<!-- 20261103-transitive-invocation-effects-and-skill-evaluation -->
+## 11. Semantic Action Offerから実CLI/Skill Invocationへ：合成実行の作用と、効果測定の資格（2026-11-03）
+
+### 11.1 操作の「意味的な作用」と、実呼出し経路の「観測される作用」を分ける
+
+直前の§10で、実mainのOperation Surfaceはread-onlyな**導出結果**であり、中に列挙されたcreate/update等の作用と別だと確認した。さらに、[#2607 Product Skill Draft](https://github.com/hat47x/tei-platform/pull/2607)のS0cでは、Markdownに現れる最初の tei validate 等のread-only例だけを静的判別すると、後続の shell 連結や pipe/tee による作用を見落とし得ることが具体化された。既存Verifierに TS-16〜19 を追加したが、**6入力の限定分類が報告された段階であり、更新後の11テスト全件、実CLI・外部Harness・OS書込みは独立資格**である。
+
+同じ「read-only」という語でも、少なくとも次は独立に確認する。
+1. **意味的Action Effect**：Accepted Operation/Service ContractのPurpose、対象、Read/Write/Append/Compute、Rule Phase、Business Result。#1127/#2507/#1129が意味の適合を所有し、OperationSurfaceの effect=read-only は**候補を説明するコマンド自体**の属性。
+2. **Tool Invocation Footprint**：実CLI binary、argv全体、環境設定、shell wrapper/chain/redirect/pipe、参照ScriptやTool側の再呼出し、対象Workspace/Path、実File/Process/Networkの効果。Tool説明・Markdownコードフェンス・静的Verifierの合格だけでは物理的副作用なしを保証しない。#2605/#2607/#2649、外部Harnessの実Tool観測はTAI #270/#271、OS情報境界は#2515。
+3. **Consumer Observation/Disclosure**：CLI stdout、stderr、status、Tool候補一覧、実HTTP受信、ログ/Diagnostic、SHO/AIへ渡した値と用途別許可。最終回答が同じでも観測面は同じとは限らない。#2516/#1178/#2515。
+4. **Business Completion**：実Owner Service/Providerが実際に処理したRequest、対象Identity、Commit/Receipt、別invocation独立Read、Owner意味受理。#2598/#1174/#1163。CLI成功、Artifact生成、Skillの実Loadをこの資格へ自動昇格させない。
+
+**承認判断は実際に実行する連鎖に相対的**であり、単一のコマンド名またはOperation IDに静的な「安全」フラグを付けて終わらない。たとえば初回Read-only Product Skill Profileでは tei commands/model catalog/inspect/trace/validate -json を限定候補として扱う一方、tei artifacts -out や tee/redirect 等のファイル書込み、外部送出、複合shellはそのProfileへ黙って追加しない。tei operations はRead-onlyなSurface表示を実装するが、selected-read-only discoveryで列挙されないため、存在と**今回のTool Profileに含めること**を別の判断とする。Sandbox/Hostの実write・network権限は既存実行環境が制御し、TEIに第二Sandbox/Authority Engineを追加しない。
+
+**開示の負例**：機密Actionの存在をButtonに出さなくても、Tool discoveryの数、Plan、diagnosticsや拒否理由が異なるだけで秘匿状態が推測できる可能性がある。ただし合成JSONの同値や静的shell文字列検査を、Timing/OS/Networkまで含めた非干渉証明とは呼ばない。
+
+### 11.2 実証を増やすより、最初の単一Taskを固定して比較する
+
+直近の確定基線は[merged TEI #2626](https://github.com/hat47x/tei-platform/pull/2626)の実Go CLI（[Focused CI #41462654810](https://github.com/hat47x/tei-platform/actions/runs/41462654810)）である。公開Referenceの catalog/inspect/trace/validate、二表現の再読取、同byte Source移動による WorldFP 不変と SourceIndexFP/Trace/引用位置変更は限定実行済み。**Product Skill install/load・外部Harness実受信は未実施**。同様に、[TAI Draft #270 SK-02](https://github.com/hat47x/tai-pleroma/pull/270)の4 Session H2→H3→H3→H2 の適格性Checkerは公開合成E01〜32の別の局所報告であり、Skillの正答・改善率は not-evaluated。
+
+本PRが増やすのは新Benchmark/Runnerではなく、#2605（実Tool/Skill）、TAI #270（比較適格性）、#2018（独立品質・費用比較）、#2514（独立Expected）へ渡す**同一Taskの検収票**である。
+
+| 接合 | 最初の対象 | 前進と呼べる条件 | 不可とする誤昇格 |
+| --- | --- | --- | --- |
+| **E0 実製品のread-only対照** | 合成公開Workspaceで特定Subjectを型付きIDで検出し、Trace/Source位置/Warningを回答 | 実CLI binary+argv+exit+Model/SourceIndex/Trace版、必要Sourceと診断の引用が一致 | 以前のfocused CLI PASSを現在checkout/Skill全機能へ転用 |
+| **E1 H2/H3 Product Skill差** | **同じTaskとCLI**をSkill無しH2／実Load済みH3で実行 | 4独立Sessionのbinary、Task、Prompt、Tool Profile、Grant/Disclosure、Skill+依存Script bytesの条件を事前照合し、その後**独立Expectedで正答を採点** | checker eligible-to-score を正答・Skill効率改善と呼ぶ／H3未LoadやH2 Skill混入を許す |
+| **E2 実Invokeの作用** | 許可したread-onlyのみ、複合Shellと artifacts -out は負例 | 実argv全体、実File/Network/OS observerの可視範囲、失敗・unsupported・not-runを分ける | 先頭 read-only コマンドで全lineの作用を決定／静的検査でOS非漏えいを証明 |
+| **E3 多Consumerと再資格化** | Source同byte移動、非表示Rule/Predicate更新、Skill依存Script改版を**一軸ずつ** | 意味再計算の要否と、Source出典・Tool/Consumer公開・現在Grantの再資格化を別欄にする。依存Edge不明ならunknown | WorldFP不変から引用/Skill/Actionが現在有効と判断／旧PASS全採用 |
+| **E4 意味的Actionと実Effect** | 同じMeaning/Targetに対するBound Operationと実Host/Provider | #2598の実Request target/payload/版、#1174のReceipt/独立read、業務Ownerの意味受理を同一試行で照合 | Skill/Tool成功→DB更新・Business完了と断定 |
+
+**最小の進め方**：まずE0/E1を#2605とTAIの既存試験で成立させ、E2で実際の副作用を確認する。E3は#2600 IB-11〜14/#2516 W0cに同じSource版の証拠を渡す。E4は#1119のP0-a/P0-b/G0〜G4をOwnerが満たすまで未達。新しい大規模なScenario群を増設せず、既存の#2616 I0〜I5/OB-01〜08から必要な検査だけを参照する。
+
+### 11.3 正しさと開発生産性の独立評価
+
+**比較の一次結果は「当該Taskを正しく完了したか」**である。その後に、#2018の既存BRC-09〜12/BRC-10 H2/H3事前登録に沿って、実Tool回数、架空コマンド、Source/Scope/Warning/Grantの誤昇格、追加Skill/Adapter保守費、Token/Tool費、wall time、人手レビュー・手戻りを取得する。初期配布費とN件目の限界費用を別記し、分母を「採点可能だったTask/Session」と「正答完了Task」で混同しない。4 Sessionだけではp95や全Harnessへの一般化を主張せず、未測定の価格や時間はunknownとする。
+
+**資格表示**：static-inspected、synthetic-test-passed、actual-cli-observed、harness-load-observed、tool-invocation-observed、consumer-observed、provider-effect-observed、owner-accepted を単一progress数値へ圧縮しない。これは既存Evidenceへの**説明ラベル案**であり、正式enum/新Gate/Registryを採用する提案ではない。unsupported、not_run、insufficient-evidence、fail、successは根拠と対象を明記し、成功/失敗の二値へ丸めない。
+
+**停止線と現状**：E0の既存TEI限定Read-only実証は#2626の根拠を参照。#2607のTS-16〜19の新全体11件/実checkout/CI、TAI SK-02の実4 Session、実Tool/OS/Networkの観測、同Taskの正答・費用改善、Action→Provider Effect、Owner意味受理は**本節としてNOT RUN**。外部HarnessをTEI Target生成物の実行必須条件にしない。新Host/Policy/Skill Runner/Universal Shell Parser/Benchmark Engine/Authorityの第二正本を設けない。
