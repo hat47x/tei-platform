@@ -1,0 +1,6 @@
+workspace: organization_reference
+formatVersion: 1
+sources:
+  - semantic
+  - applications
+  - databases
