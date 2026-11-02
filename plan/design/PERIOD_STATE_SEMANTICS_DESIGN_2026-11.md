@@ -243,3 +243,10 @@ P2（操作面との接続）のうち、**期間の参照と閉じた期間が�
 - 自律区分は変えない。**閉じた期間は実行時に拒否される**という事実を、操作面に載せる形にした（`human-gated` に読み替えない。自律区分は「誰が判断するか」、期間の状態は「いつ実行できるか」で、別の軸のため）。
 
 **未着手**: 閉じた期間の拒否を実行時に強制する仕組み（P2 の残り）と、P3（成果物への反映）。
+### P3 の実装状況（2026-11-03）
+
+P3（成果物への反映）のうち、**機能定義書への期間の行**を実装しました。
+
+- `FunctionDefinitionInput` に `Periods` を追加し、`uses semantic` の名前空間の期間を `period <id> data <data> states <open,closing,closed>` の行で出す（`internal/artifact/functiondef.go`）。
+- 生成規則（`function-definition/v1`）の行種別に `period` を追加。並びは期間の識別子順。
+- 作業領域からの一括生成で、名前空間の期間を渡す（`internal/artifact/workspace.go`）。
