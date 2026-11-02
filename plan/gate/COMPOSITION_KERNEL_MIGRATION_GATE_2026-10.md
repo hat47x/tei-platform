@@ -74,6 +74,55 @@ M2〜M4を製品の成立として判定する前に、次の根拠を要求す�
 
 M6の撤去判定では、移行済みConsumerの一覧、旧形式の読取り・書込み・解決経路の残存一覧、移行前後の回帰結果をそろえる。互換入口を残す場合は一方向の変換と撤去条件を定め、二つの正本やAuthorityを恒久化しない。
 
+## 横断追補（2026-11-02）：外部Hostと製品Consumerの適用条件
+
+**状態：G3/G4の受入計画を具体化する検討差分。実装・業務意味の受理・新しいGateの採用ではない。** 対象は#1223、#951、#2390、#259、#1119。TEI独自の常駐Host、中央Registry、第二Contract Resolver、第二Authority、統一Plugin ABIを新設しない。外部Harness（DSH等）は開発・観測を担うConsumer候補であり、TEIの業務意味や実行権限の発行元ではない。
+
+### 1. G3/G4が適用される実行形態を最初に分ける
+
+| Consumerと配備形態 | 必須の検証 | 適用しない一般化 |
+| --- | --- | --- |
+| **動的な常駐Service**（既存Host内のProcess/Wasm） | G3：実Providerのv1/v2併走、二Consumer、Ready、切替、旧in-flight、容量、Drain、故障とSLOを実測 | 一つの子Processの起動成功を無停止性としない |
+| **静的Library/.NET assembly/Java JAR/単一Wasm** | G4：受理済み意味からのTarget別生成、必要な依存閉包、実リンク成果物と独立Consumerでの適合を確認 | 常駐Coordinator・世代Router・動的Loaderの導入を合格条件にしない |
+| **単独のネイティブ実行ファイル** | G4：入口、実際の組込み機能、実OS上の効果、再構築/交換・停止手順を計測 | 動的Plugin機構を要求しない |
+| **外部Harness／headless CUI／MCP薄いAdapter** | #2390/#1118：操作に必要な意味、Scope、公開可能な情報、Tool/Providerの現在の許可を既存Host/OSで確認 | Tool一覧、MCP呼出し成功、AIの判断をContract適合・権限・業務完了としない |
+
+同じ論理Service Contractを複数方式で実現してよいが、Java/.NET等で外部Hostが利用する生成物にTEIのGo製`internal/servicehost`やCLIを必須依存として持ち込まない。各HostのDI、認証・認可、Transaction、OS隔離、ライフサイクルに必要な薄いBindingだけを接続する。**G3は動的配備の継続運用資格、G4はTarget/静的縮退・移植資格であり、一方の不合格から別方式の不可能性を推定しない。** ADR-0032/0033の当時の設計判断は履歴として保持し、独自Host非必須の正式な文書整理はDraft [#2226](https://github.com/hat47x/tei-platform/pull/2226)のレビュー対象とする。
+
+### 2. 「接続済み」の主張を段階別に固定する
+
+| 辺／時点 | 現在の確認に利用できる既存実装・証拠 | 製品受入までに必要な別証拠 |
+| --- | --- | --- |
+| Web Action → Canonical認可 | `reference/web-composition/go-host/canonical_generation_service_handoff_test.go`（PR #1760/#2275） | 本物のPrincipal/SubjectLink/Policy、正規のOperationと業務意味のOwner受理 |
+| 選択 → Generation Lease → Host current Route | `composition.NewSelectedCoordinator`、`servicehost.NewSelectedServiceCarrierInvoker`、`BindHostApplicationEnvironmentRoute`（#1736/#1785/#2275） | 正式なApplication/Environmentの利用資格と現在Deployment revisionを外部の正本から取得 |
+| Route → Service current Acceptance → Runtime | `pruntime.Registry.InvokeSelectedServiceCarrier`と`ServiceAcceptanceReader` | Publisher/Providerの現在受理・失効を持つ信頼済みSource、実Artifact/実起動対象byteとの束縛 |
+| Runtime → 結果 | 合成ProcessとRuntime provenance | 同じContractのrequest/result/failure意味を独立Oracleで検証し、0件・NULL・欠損・部分取得・Snapshotと不確実性を区別 |
+| 書込み要求 → Effect確定と再照会 | `internal/security/effectcommit.Runner`、`driver_binding_reference_test.go`（PR #2273） | 正式CallerとGrant、同一DBのAuthority/Resource/Receipt、Commit ACK喪失・再起動・同じOperationID再試行・独立観測 |
+
+第2・第3行の`Host`は**既存の実行環境が所有する呼出し責務**であり、TEI独自の製品Hostを追加する指定ではない。PR #2275は`currentRoute`の取込み口とEnvironment不一致の拒否を合成試験で示すが、`currentRoute`の真正なProviderや正式な業務DBを実証しない。PR #2273のDriver→Runner試験もmemory Providerと合成Grantであり、結果の形が適合しなくても既にCommitが成立し得る負例を含む。**CI/merge、byte digest、Provider宣言、Ownerの意味受理、実行許可、DB最終効果を一つの「成功」に畳まない。**
+
+### 3. 相互に独立な識別子・時点・証拠を残す
+
+1. **意味**：Data/Function/BusinessのAccepted modelとService Contractを正本とする。仕様候補、生成AIによる提案、SHO設計書、生成コードは意味の受理ではない。
+2. **実現**：論理Provider/物理Plugin/Implementation/Artifact/TargetとApplication/Environment Routeを分離する。BuildPlan fingerprint、Artifact digest、選抜receiptは現在Authorityや実行許可ではない（ADR-0041）。
+3. **Invocation**：Generation Leaseは実行中の実装束縛、RequestIDは呼出し追跡、OperationIDは永続的な副作用再試行の同一性である。Lease解放、Requestの応答、Effect receipt、独立した最終Observationは別証拠とする。
+4. **時間・対象**：現在Provider受理、Host Permission、入力集合/read-set、対象Resource version、Commit fenceはそれぞれ必要な時点で検査する。v1へのpinから、失効後の永続書込み許可を導かない（#1174/#1708）。
+5. **Consumer/開示**：同じ型・値・JSONでもCollectionの被覆範囲、粒度、時刻、失敗・NULL/空集合の意味が異なれば合成適合を保留する。通常の閉じたQueryで0件は正当な結果であり、既知の部分取得・全件主張がある場合にのみ追加の被覆根拠を要求する（#982/#2390）。外部AI/Toolへ非公開の生データや内部Authority診断を渡さない。
+
+### 4. 次に採る最小の縦断Evidence（重複実装しない）
+
+| 順序と担当 | 具体的な反例と観測 | 合格主張の上限／停止条件 |
+| --- | --- | --- |
+| **E0：既存呼出し棚卸し（#951/#1223）** | Web read-only quote、Driver submit、Service Carrierの各Callerから、Source→選択→Host/Target→Provider→結果の実際の辺をSource locator/固定SHAで列挙 | 静的探索は実結線ではない。存在しない辺を新Hostで埋めず、既存Resolver/Caller所有者を記録 |
+| **E1：現在Route/受理の実Source接続（#951/#1118）** | Hostが固定したApp/Env、現在Deployment rev、Publisher/Provider受理の失効を各段階で注入。自分で整合化した別EnvironmentのPlanや旧受理も拒否 | 合成`currentRoute`/Readerだけでは不足。実Sourceの提供元、版、取消時の権限、非公開診断の開示境界を確認できなければ未合格 |
+| **E2：読み取りConsumer（#2390/#1708）** | 同一ContractをTEI内部と外部Hostの各1 Consumerで呼ぶ。全件／既知部分取得、0件／NULL／欠損、Snapshot時点とread-setがConsumer要求に合うか比較 | 型・レスポンス一致だけで意味適合にしない。実際の外部Hostで実行できなければ「外部利用可能」を主張しない |
+| **E3：書込みの確定境界（#1174/#1129）** | 同一OperationIDでcommit→ACK喪失→再起動→Lookup、権限失効・CAS衝突、post-commit不正Result。DB状態とReceiptを別Connectionで観測 | `Committed`と`Unknown`を区別。Generation/HostのDrainをDB rollbackとしない。Owner未受理のDenied/Outcomeを創作しない |
+| **E4：動的／静的Target比較（#1223/#259/#2390）** | 動的形態はG3の実2 Consumer/常駐v1/v2/容量/失敗復旧/SLO、静的形態はG4の実リンクされた依存閉包・サイズ/起動/RAM・外部HostでのContract回帰 | 片方の結果を他方へ流用しない。Studio Wails Hostを第二Application Targetとして数えない |
+
+AI-first/Headless-firstの実施順序（外部要求の机上評価→既存機構の最小結線→CUI/標準Plugin並行→headless縦断→必要なGUI）は全体計画Draft [#2492](https://github.com/hat47x/tei-platform/pull/2492)を参照し、本Gateで独立の新開発プロセスを発明しない。DSH/TAI/SEI/SHO等への投影では、準備・送付・生成・保存・独立確認の各事実がどこまで観測されたかを表示する。Tool呼出し、構文適合、バイト一致、AIの説明文を独立OracleやOwner受理の代用にしない。
+
+**採否の停止条件**：現在のTrust/Authority正本を特定できない、Consumer間で意味・開示Scopeが一致しない、外部Hostへの権限伝播を未検証、Commit結果が不明、又は旧ABI撤去の全Callerを列挙できない場合、該当する受入だけを保留する。別レーンの局所的な実装・試験は継続できる。新しい共通Host/Resolver/Authority/Manifestを増やす必要性は、既存の不足辺と独立Consumerの反例が示すまで未立証とする。
+
 ## 判定記録に残す情報
 
 対象head、対象main、Health runnerのGit blob、GoとOS・Target、実行コマンドと終了状態、前後のclean状態、ログの保存先とSHA-256を記録する。G2以降では実成果物の指紋、世代とProviderの対応、合成した入力・権限の範囲、実施していない確認も記す。性能値には測定環境、反復数、負荷を添え、比較対象が無い測定から改善率を算出しない。
