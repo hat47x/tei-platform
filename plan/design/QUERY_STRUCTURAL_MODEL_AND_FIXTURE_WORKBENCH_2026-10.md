@@ -1010,6 +1010,15 @@ QX-29（§7.25）は同じJava 21処理系の`BigDecimal`・数値変換・例�
 **状態の区別**：実Java外部Consumer、二版classの実Build/実Load、仮の全class集合fingerprint、反例を含む**12/12 RUN PASS**。既存TEI製品の`ArtifactSet`/Store Put/Get・生成Java JAR/正式JSON Adapter、同一受理モデル・実Provider・Host/Trust/SHO、Owner意味受理は**NOT RUN**。本書/PRはDraft/Openであり、#1640 D2の実行拒否境界、#1119既存G0〜G4、TEI独自Host非採用を維持。
 
 
+### 7.27 QX-31：実SQLのRelation path再束縛と否定的集合依存を、現在Claimへ接続する（2026-11-02、SQLite12件実測）
+
+詳細な実証票／独立期待値／引継ぎは、追加文書 [**QUERY_QX31_DYNAMIC_PATH_AND_NEGATIVE_DEPENDENCY_2026-11.md**](./QUERY_QX31_DYNAMIC_PATH_AND_NEGATIVE_DEPENDENCY_2026-11.md) に切り出す（既存計画の長大化と同時編集を抑えるため）。[実行済みFixture](../fixtures/query-workbench-f0/test_qx31_relation_path_negative_read.py)はPython **3.13.5**／SQLite **3.46.1**、`unittest 12/12 PASS`／`py_compile PASS`。実行した6298-byte sourceとGitHub保存Git blob **`187277b93fb61e7e715c1f39fe9d2c362925567c`**一致。
+
+[#2582の動的依存・0件否定依存DC-01〜12](https://github.com/hat47x/tei-platform/issues/2582#issuecomment-6579762087)と[#951顧客照会の0件・ABA追補](https://github.com/hat47x/tei-platform/pull/2640)を、**実SQLiteの`orders→customer→account` JOIN／相関`NOT EXISTS holds`**で独立比較した。O1の表示金額と旧A1与信上限を固定してO1.customerRefをC1→C2へ再束縛すると、実入力はA2へ移りResultが撤回される。現在Hold0件に行IDが無くてもActive Hold追加でResultは消える。逆にO2 Hold追加はこの合成O1 SQLを変えず、**過大失効と過少失効を同一Fixtureで分けた**。0→1→0のABA、同じResultでも別Relation path、部分ページで見えないHoldからの偽`NOT EXISTS`、NULLによるUNKNOWNも検査。
+
+**設計の停止線**：Value Lineage／出力ID／表示値の一致、Query静的ColumnRefs、Read snapshot文字列の一致を、動的Binding・対象Scope・否定的集合のComplete witness／現在Grantの証明にしない。SQL 0件はBusiness false、Provider未取得、開示不可の同義ではない。静的条件／実Provider read／Consumer claim／Host effectを既存#2387/#2506/#2624/#2582/#2622/#2627/#2586/#2516/#1174へ受け渡す。**実TEI SQLGlot→Go IR→Function Context→Provider→SHO/Owner**はNOT RUN。D2拒否・SQL正本・Draftを保持し、新Query Engine／共有Host／Dependency Registryを追加しない。
+
+
 ## 8. 実装順・担当引継ぎ（提案）
 
 | 段階 | 所有 | 実施 | 完了の根拠 |
