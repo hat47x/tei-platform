@@ -470,7 +470,98 @@ Fallbackは**当該Operationの意味・Owner目的と、現在のHost/Provider�
 
 **既報と新規の区分**：#2627のGo12件、#2628のPython12件、#2387 QX-23の9件は**それぞれ異なる局所Referenceの既報**であり、今回新たに走らせていない。T-27〜34のMacro→Data Context→実Provider→Grant→Effect→Disclosureを通じた製品実験は全てNOT RUN。合成結果を実Providerの全I/O証拠や、OSレベルの秘密保護・権限保証に昇格させない。新しいProvider Resolver、共通Host、実行権限の第二正本、全情報流Checkerは設けない。
 
-## 12. 判断を残す点
+## 12. 非出力依存と選択的再資格化：同じ結果・同じSourceでも、現在の利用資格は別
+
+### 12.1 Resultの値に出ない依存を、Macroの判断と変更影響へ接続する
+
+[Query Explain #2387](https://github.com/hat47x/tei-platform/issues/2387)のSQLite読取り比較と[実Go DerivedIRの局所特性Draft #2634](https://github.com/hat47x/tei-platform/pull/2634)（Goテスト保存、実行はIssue記録に従って別確認）、[#2506](https://github.com/hat47x/tei-platform/issues/2506)/[Function依存 #2582](https://github.com/hat47x/tei-platform/issues/2582)を、Script/Macroの公開・実行・結果・更新判断へ結ぶ。
+
+例えば、Macroが「承認対象の注文ID」を返すQueryを使う場合：
+
+~~~sql
+SELECT order_id
+FROM orders
+WHERE secret_score > 50
+ORDER BY secret_rank DESC
+LIMIT 1
+~~~
+
+`order_id`だけが出力Fieldでも、`secret_score`は**行が結果に含まれる条件**、`secret_rank`は**どの行が選ばれるか**を左右する。`secret_score > 50`から`> 70`へ変更しても、固定Fixtureでは同じ`order_id`が返り得る。一方、別の値・時点・対象集合では違う結果になる。このため、出力byte・OutputField.Inputs・Query IDだけでは、Macroが依存する行集合や将来の選択条件の不変性は証明できない。
+
+主張を少なくとも次の観点で区別する（以下は設計用分類であり、新Core enumではない）。
+
+| 依存の種類 | 意味すること | 変更時の扱い |
+| --- | --- | --- |
+| **Value lineage** | 表示値を計算する直接入力・導出Rule | 当該値・Ruleの再評価 |
+| **Membership/predicate** | 行が存在・採用・拒否される条件。WHERE/EXISTS/反結合等 | 結果集合・Action対象・必要な全件性を再評価 |
+| **Ordering/selection** | SORT/TOP-N/LIMIT、選択epoch、UI occurrence | 選択した業務対象を再対応付け |
+| **Aggregation/grain** | JOIN多重度、Group/Measure、単位・丸め | 合計等の意味・処理順序・独立Oracleを再評価 |
+| **Data source realization** | Provider/Endpoint/Mapping/Storage/Role/Read witness | 実経路、入力型・鮮度・Authority・取得範囲を再照合 |
+| **Business/Effect qualification** | MacroのAction、Decision/Grant、実ロードScript、Owner Effect | 今後の実行/Commit資格を現在の条件で確認 |
+| **Consumer disclosure** | 表示・SHO・ログ・AI送出への公開範囲 | 現在の閲覧者・用途の開示資格を再評価 |
+
+SQLの現行Go DerivedIRで`OutputField.Inputs`に現れないFilter/Sortの生Expressionを、Consumerが閲覧してよいと解釈しない。依存の存在・Role・Sensitivityや検査結果を必要な粒度で示し、具体Predicateや値は#2516/#2504の開示条件に従う。`Lowering=full`等の解析Coverage表示も、入力Analyzerの参照が実際に十分だった証明と分ける。未知の依存を「影響なし」と確定するのではなく`not-established`として次段へ渡す。
+
+### 12.2 歴史的に成功したEvidenceと、現在のClaim資格を区別する
+
+[#2600 増分再利用](https://github.com/hat47x/tei-platform/issues/2600)、[実験手順Draft #2636](https://github.com/hat47x/tei-platform/pull/2636)、[#2582のClaim単位の変化](https://github.com/hat47x/tei-platform/issues/2582)、[ArtifactSet用途別網羅 Draft #2630](https://github.com/hat47x/tei-platform/pull/2630)を接続する。**過去の試験結果・Receiptは履歴事実として保存できるが、現在のMacro実行許可・業務結果・利用者への開示に再利用できるかは別のClaim**である。
+
+例えば、受注確定Macro`M@v1`の出力を昨日受理したとしても、今日は以下のいずれかが変化している可能性がある。
+
+- Script自体、呼出し先Function、Rule/Query predicate、Operatorの意味・版。
+- Function Data Contextの関係・対象集合・評価時点、Provider経路・Mapping・Storage、実際に読み出した内容・完全性。
+- 生成Library、依存classやPlugin、Builder/Toolchain、実ロードしているArtifact一式。
+- 組織Policy、Issuer/Grant、主体と委任対象、Owner Actionが持つ実Effect契約。
+- 出力説明・SHOのSource参照、閲覧者/AI Harnessの開示条件、Tool/OS/Networkの到達経路。
+
+`same Source bytes`／`same Operation ID`／`same Output JSON`／`same Artifact digest`の**それぞれから他段階の同等性を推定しない**。ただし、無関係のSHO説明文や、D1のみ依存する値へのD2の局所更新を理由に、すべてのMacro・全Artifact・全Reviewの無条件再実行を要求する必要もない。
+
+変更された入力と**既に判明している実依存閉包**、受理済みMeaning/Owner不変条件、現在Consumer目的から、再確認を要するClaimを選ぶ。依存根拠が不足している部分は局所`unknown`として保持し、必要な再読取・再評価・Owner判断へ渡す。意味受理・組織の再承認Workflowの発火条件は各Ownerが定義する。単にモデルの1文字が変わるたびに中央の固定承認Engineを起動する設計ではない。
+
+### 12.3 MacroのArtifact一式：生成・公開・実読取りの資格を別に持つ
+
+Script AuthoringのSourceと、正式に公開したMacro/Library/依存Plugin、外部Hostで**実際にロードしたbyte集合**を別に追う。[Manifest/内部整合 #2482](https://github.com/hat47x/tei-platform/issues/2482)、[物理公開の版一貫性 #2604](https://github.com/hat47x/tei-platform/issues/2604)、[用途別ArtifactSetの期待member #2630](https://github.com/hat47x/tei-platform/pull/2630)、[実Artifact Go特性Draft #2633](https://github.com/hat47x/tei-platform/pull/2633)を本製品のDelivery/Invocationの受入先とする。
+
+複数ファイルのMacro配布で`manifest.json`が内部整合していても、Consumerの対象Applicationに必要なScript本体・子Library・契約・Resource全件が含まれる保証や、ConsumerがManifestに記載された実byteを一式同世代で読んだ保証とは異なる。公開途中のR1/R2混合、旧Resource残留、同じNameに正規化される別Subject、別ApplicationのMember混入、Readerが解釈できない形式を、正式配布済みと誤認しない。
+
+**公開の操作と、Macroの本番実行資格の間には、少なくとも**以下を別に確認する必要がある。
+
+1. **Expected set**：このConsumer/Action/Hostが必要とする全Memberと版・役割・意味IDを、対象Scopeから決めたか。
+2. **Produced set**：生成した各MemberとManifestのbyte/Role/Source・依存の整合。
+3. **Published generation**：実際に公開された場所・世代・途中失敗・残存物の扱い。
+4. **Read/Loaded set**：Macro利用者/外部Hostが本当に読んでロードしたbyteとMember閉包。検証前に推測しない。
+5. **Current qualification**：組織が受理した版/Effect契約・現在Grant・目的/Target・Consumer別公開資格。
+
+ただし、この五段階を一つの中央配布Store/Registryへ実装する必要はない。外部Host・Package Manager・Versioned directory・Manifest Reader等の実現を許し、#2604/#2630が実証する必要範囲だけをContractへ還元する。SHO文書の公開とMacroの実コード配布は必要Member/開示先が異なるため、同じ`Manifest.Complete`真偽値で両方の納品・実行適格性を宣言しない。
+
+### 12.4 選択的再資格化と実行再試行は別の操作
+
+評価対象を**純粋な再評価／再ビルド／過去Evidenceの照合／現行Authorization照合／実Owner Effect**に分解する。履歴の計算値やScript byteを再利用できても、失効Grantで副作用を再実行することはできない。逆に、Owner Commit済みでReceiptがある場合に、再証明のために業務Actionを再Submitすることも適切とは限らない。Effect未確定時は#1174/#1130のReceipt照会・独立Observation・業務Ownerの回復判断を利用する。
+
+選択的再資格化は、毎回過去のEvidenceと**今回の対象・Scope/時点・Consumer目的・現行Grant**との一致を検査する。評価の状態は「以前の試行で成立した」「現在のClaimへ再利用可能」「再確認が必要」「証拠不足」「このTargetでは非対応」などを説明票として区別するが、正式なCore enumやUniversal Claim Engineはこの段階で採用しない。
+
+[実験プロトコル #2636](https://github.com/hat47x/tei-platform/pull/2636)の`F0`（基準全実行）・`F1`（変更後全実行）・`S1`（選択的再実行）・`S2`（負例）と、`J0/J1/J2`（再確認方針の費用対照）をMacroの同一Fixtureへ適用する。**正しい再利用と、不要な再検査を減らすことを両方測る**。実時間短縮は#2600/#2018の測定を伴って初めて主張する。
+
+### 12.5 追加する反証ケース（T-35〜T-44、全てMacro縦断はNOT RUN）
+
+| Case | 同じに見えるものと実際に変わるもの／期待する判別 | 既存Owner |
+| --- | --- | --- |
+| **T-35 非出力WHERE依存** | 同じ`order_id`が返ってもPredicate閾値50→70で意味上の対象集合が変わる。出力byte一致だけで旧Action選択資格を再利用しない | #2387 QX-25/27、#2582/#2514、Draft #2634 |
+| **T-36 非出力Sort/Existence** | 非表示Sort/EXISTS/NOT EXISTSに依存するTOP-N・採否が入力追加で変化。値Lineageだけのキャッシュが旧Claimを確定扱いしない | #2387/#1706/#2582/#2622 |
+| **T-37 解析Coverage不完全** | ColumnRefs/依存閉包の一部が欠損しても`full`等の文字列だけで十分性PASSにしない。unknownな範囲は必要な再評価へ | #2387、#2634/#2514 |
+| **T-38 Mapping変更とBasis** | 同じOperation ID/Basisでも、選抜Mappingの非PK列やStorage型が変わると必要Inputs/実Read・Target適合が変わり得る。修正前挙動は#2632のGo特性候補で検証 | #2611/#2632/#2600/#2598 |
+| **T-39 必要Member欠落** | 全Memberの内部整合がPASSでもMacro/ConsumerのExpected Script/Plugin/Resourceが欠落。Result/Runnable資格を区別 | #2482/#2630/#2633、#2502 |
+| **T-40 公開中世代切替** | ManifestはR1、子Artifactの一部がR2等の途中公開に遭遇。Consumerが同世代byteを実読取するか不一致を明示する | #2604/#2630、#943/#2390 |
+| **T-41 履歴Receiptと失効Grant** | 初回の業務Effectは確定・履歴Receiptも存在。後日Grant失効しても歴史を改ざんせず、今のMacro再実行・閲覧資格を別評価 | #1174/#2499/#2516 |
+| **T-42 無関係変更の局所維持** | D1だけに依存する計算値に対しD2の説明/一部Dataだけ更新。依存閉包が既知なら該当Claimの証拠を保持し、全失効を避ける | #2582/#2600/#2514 |
+| **T-43 F0/F1/S1/S2の負例比較** | Query Rule/Provider/Artifactの1要素変更後、fullとselectiveの観測対象・期待値・実Loaded member・再検査費用を比較。誤った再利用と過剰失効を両方数える | #2600/#2636/#2018 |
+| **T-44 ABAとCurrent Disclosure** | Script/RuleがR1→R2→R1へ戻りbyte同一でも、組織Policy/開示先/Grantは旧状態へ復活しない。現在Consumerだけの再資格を行う | #2600/#2582/#2499/#2516 |
+
+**担当への受渡し**：S0でT-35〜37/42（依存の説明と選択的影響）、S1でT-38（Source→Mapping→Intent）、S2でT-41/44（現行権限と歴史）、S3でT-39/40（Macro公開・実Loadと開示）、S4でT-43（他Target・多Consumer・再利用費用）を既存Ownerへ接続する。#1119のP0-a/P0-bは維持。新規の共通Graph/Parser/Cache/Receipt/Workflow/Authority Engineをここに創設しない。
+
+**資格**：QX-25の局所SQLite実測、#2634/#2632/#2633の実Goテスト候補、#2600/#2636の文書手順は、実行場所・exact head・対象が異なる。全T-35〜44のMacro〜実Host/Provider〜Publisher〜Disclosure縦断、正式意味受理、配布・性能試験は**NOT RUN**。個別Issueの実測を横断PASSと合算しない。
+
+## 13. 判断を残す点
 
 - **業務Owner**：各Actionで「元の対象」「関係する対象」「全件の完了」をどのように定義するか。旧X-TEA `sales.order.submit`等の未受理マッピングは推測で補わない。
 - **組織Owner**：固定集合／実行時集合、代理の時点、合議、実行版固定と作用範囲での更新許容、既発行Grantの変更時再判定、結果閲覧をどのPolicyで扱うか。
@@ -482,4 +573,4 @@ Fallbackは**当該Operationの意味・Owner目的と、現在のHost/Provider�
 
 **確認できたこと**：固定mainの既存型・RequestHash・通常Request生成・試験DDLのデータ解釈を静的に確認した。既存IssueにはT-1の具体的な未実行DB負例、Effect replayとResult再投影の未実行負例、EKI出力接続の静的所見がある。
 
-**未実行・未採用**：本書のT-1〜34の実行、信頼済みIssuer/実Grant、利用者Macro実ロード、PostgreSQL負例、Linux/WindowsでのOS隔離、外部EKIの同一Attempt納品、複数Target受入、業務意味の正式受理。新しいCore kind、Grant/Receipt schema、専用Host、共通Workflow Engine、仕様やADRの採用を本書から確定しない。
+**未実行・未採用**：本書のT-1〜44の実行、信頼済みIssuer/実Grant、利用者Macro実ロード、PostgreSQL負例、Linux/WindowsでのOS隔離、外部EKIの同一Attempt納品、複数Target受入、業務意味の正式受理。新しいCore kind、Grant/Receipt schema、専用Host、共通Workflow Engine、仕様やADRの採用を本書から確定しない。
