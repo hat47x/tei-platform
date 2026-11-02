@@ -603,3 +603,72 @@ where／select／join／traverse／aggregate等のOperatorが合成できる場�
 | #2514/#2586/#1174 | 独立Oracle→同版Headless→外部Host Effectの証拠が段階別に示されるか | 設計／未実行 |
 
 **現状**：他チャットおよびGitHub #2619〜22の横断設計をメタ概念空間へ接続した**採用前の設計比較**。Role解決、構文同等性、Provider pushdown、Studio/SHO/CUI実読込、外部Host、Ownerの意味受理は**NOT RUN**。本#2495で新Parser・Runtime・全用途のOperation Engineを重複実装しない。
+
+## 25. 2026-11-02 同じ表示からの判断を成立させる依存閉包・Provider Cohort・意味束縛
+
+Everything is Dataの横断実証が進んだ結果、**表記構造が同じこと、表示結果が同じこと、Rule/Actionの結論が同じこと、実Providerが同じ対象を読んだこと**が相互に独立だと分かった。以下は[Syntax正規化の隔離Reference／Draft #2625](https://github.com/hat47x/tei-platform/pull/2625)、[明示Function MappingとRule依存の隔離Reference／Draft #2624](https://github.com/hat47x/tei-platform/pull/2624)、[複数Provider経路の隔離Reference／Draft #2627](https://github.com/hat47x/tei-platform/pull/2627)の**独立して検証済みと報告された範囲**をつなぐ、追加の契約候補である。三PRの試験件数を一つのTEI統合試験PASSへ合算しない。
+
+### 25.1 同一性は段階ごとに照合する
+
+| 段階 | 同じと言うための対象 | 同一性を保証しない条件 |
+| --- | --- | --- |
+| **Source表現** | Document/Scriptのファイル・Occurrence・Span・Revision | 表記が違っても構造候補は同じ場合がある |
+| **標準データ候補** | Record/Ref/Application、明示Role/Operator ID/版、引数と順序 | CandidateのByte一致はOwner意味受理や実行許可でない |
+| **受理済み意味** | Semantic Subject・型、Rule/演算の契約、Meaning Version | 同じ意味でも各Consumerの入力取得Scope/版が異なり得る |
+| **Function利用文脈** | 起点、Relation Path、Field/Grain、Read/Rule/Actionの用途 | 同じ画面を表示してもRuleに必要な非表示Dataが異なり得る |
+| **実Provider Read** | route、Binding、Query実効Scope、取得Slice、Cohort、完全性 | 同じBusiness ID/同じ数値Revisionで異Providerの同一Snapshotは証明できない |
+| **Consumer結果** | Claim、Visibility、使用したArtifact set、実Read・Disclosure | 同じ文字列や画面表示で同じClaim・実Host Effectとはいえない |
+
+この表は新しい公開Canonical／統合Registryを提案するものではない。既存Source Index、Role、Function Context、Operation Surface、Artifact/Providerの**現在の責務を分けて参照するための受渡し票**である。
+
+### 25.2 Display Read、Rule Dependency、Action Requirementを別のFootprintとして扱う
+
+あるFunction Fで、表示に必要な要素を **D(F)**、受理済みRule Rの評価に必要な要素を **V(F,R)**、Operationの事前条件や更新対象に必要な要素を **A(F,Action)** と呼ぶ。集合記法は概念を比較する仮記号であり、正式な依存グラフ/Query Plannerの実装宣言ではない。
+
+- Dは表示に使う値と構造の**宣言された**範囲。#2506のFunction Data Contextが明示し、存在するRelation全てを暗黙取得しない。
+- VはRuleが評価する条件の依存。**Dと同一である必要はなく、Dに含まれるとも限らない。** #1129/#1729から必要なField、Relation、時点、NULL/completeを追跡する。
+- Aは対象ID、関連する更新不可変条件、base revision、現在Grant、Effect/Receipt等を含む操作の要求。Vを満たすPreviewが、保存時点でAを満たす証拠にはならない。
+- データを読むための実効資格と、得られた値／Rule結果／診断を別Consumerへ開示する資格も別。依存集合の和 D∪V∪A を計算することは**それらを一つのClientやLLMへ取り寄せてよいという許可ではない**。
+
+**合成反例（別PRの隔離Fixtureに対応）**：表示対象は Order.amount=600 のみ。非表示の Account.credit_limit が700の世界と500の世界では、表示Projectionが同じでも、受理済みの「amount ≤ credit_limit」Ruleを実際に評価できる条件なら判定は異なる。Dしか見ないParser/Studio/AIが「同じFunction状態なのでAction Offer・Validationも一致」と断定すれば誤り。反対にRule結果が非公開のConsumerへ「閾値超過」「隠し上限との差」を返すことも不適切となり得る。既存Host/Policyに許可された結果だけを送る必要がある。
+
+### 25.3 必要データの宣言、実Readの完全性、現在Ruleの適用可能性
+
+- **Declared**：Function/RuleがどのScope・Field・Grain・必要な完全性を要求したか。全件要求は全件観測の証拠と異なる。
+- **Bound**：実Provider/Mapping/Scope/Version候補がどれか。Candidateが1つでも当該Routeへの実Grant、Source/Time整合、最新データを保証しない。
+- **Observed**：各Readが実際に返したBag/Identity/NULL・Absent/Redacted、Complete/Partial/Unknown、Snapshot/Read-set等のEvidence。主張されただけの共通Cohortは実共有Snapshotでない。
+- **Evaluated**：当該Data/Rule/Operator版と評価時点に対する結果、未評価・Rule失敗・入力資格不足・業務拒否の区別。
+- **Delivered**：表示・診断を公開できるConsumer/Scopeと実読込の証拠。CUIに渡せたことからSHOや外部Harnessへ自動開示しない。
+
+データ取得の**経路が複数**なら、同じSemantic SubjectでもProvider/Endpoint/Mapping/Mapping Revision/Scope/Purposeが異なる候補は区別する。Alias名が違っても**同一物理Routeだと確認された場合の**グループ化は可能だが、辞書順先頭のAliasへ寄せて別候補を失わせない（#2611）。ReaderのReplicaとWriterのPrimaryではSnapshot・Effect対象が違い得る。
+
+二つのProviderで観測した値が一致した場合も、別Cohort、異なるRLS/Query Binding、partial、bag重複、Unknownのいずれかがあれば「同じ全体集合が読まれた」と断定しない。逆に不一致値だけからデータ競合と判断せず、比較可能なScope/Time/Query/Grainの資格を先に確認する。
+
+### 25.4 局所Referenceをつなぐ最初の実証（同一試行で行う必要がある）
+
+| 票 | 固定する入力・観測 | 同じと誤るもの | 既存Owner |
+| --- | --- | --- | --- |
+| IF-01 | Markdown表・Chain・Function等を同一Operator/Role候補へ解決 | 表記候補同値から受理済みMeaningや実Rule実装まで同一と断定 | #988/#2620/#2621・PR #2625 |
+| IF-02 | Order.amount=600を同じ表示にし、Credit Limit 700/500だけ変える | Display Footprintが同じなのでRule結果も同じとする | #2506/#1129/#1729・PR #2624 |
+| IF-03 | Ruleの非表示Fieldだけ欠落、または部分取得 | 入力不足をRule false／業務拒否と断定 | #1729/#2586・PR #2624 |
+| IF-04 | OrderとCreditを別Provider/Replicaから読む | 数値のversionが等しいから共有Cohortと断定 | #2611/#2506/#2622・PR #2627 |
+| IF-05 | 同一Semantic Subjectへ2つのMapping/Route候補 | Operation ID一致で実Write対象を無音統合 | #2611/#2598・PR #2627 |
+| IF-06 | 未Mappingの秘密Fieldだけ変え、Ruleへの依存は別に扱う | 表示不変性を実OS／DB非読取や全機密非干渉の証明とする | #2516/#2515・PR #2624 |
+| IF-07 | ViewからTyped Intentへ引継ぎ後、保存直前にRule/Grantが更新 | 読取り時のPreview成功を現在のCommit許可へ昇格 | #2500/#2597/#1174 |
+| IF-08 | 同じ受理SourceをSHO/AI向け成果物へ出す | Artifactの生成成功から同一版の実読取・公開可まで断定 | #2604/#2630/#2516 |
+| IF-09 | 異種Providerの同一Queryをpushdown／local評価 | 一部Fixture一致からNULL/Bag/Collation/RLSの全入力同値を主張 | #2622/#2387/#2498 |
+| IF-10 | 関数のContextを限定してActionを取り消す/保存する | 前提のread-only説明からOwnerの業務完了を保証 | #2598/#1174/#2514 |
+
+**最初の最小縦断**はIF-01→IF-02/03→IF-04/05→IF-07→IF-08。#2586がOwnerとして同じ固定Source/Rule/Model/Build版、実Provider Input/Output、実Context Instance、実Consumerを一枚のEvidence Packetへ接合する。#1119のG1/G2を新しい横断Gateへ置換しない。実Provider／Hostを接続していない段階では、上流の独立合成PASSを加算して「製品上の縦断が成立」と宣言しない。
+
+### 25.5 実際に存在する証拠の使い方
+
+| 独立Reference | PRに記録された限定実測 | 当該成果からは未実証 |
+| --- | --- | --- |
+| [#2625](https://github.com/hat47x/tei-platform/pull/2625) | 限定Syntax→plain-data Normal FormのPython 23/23 PASS、複数表層の有限正負例 | 正式TEI Language Plugin、全DSL、Owner意味受理、実Target |
+| [#2624](https://github.com/hat47x/tei-platform/pull/2624) | 明示Data Mapping 20/20、Rule依存の別Fixture 18/18 PASS（いずれも隔離Python） | 本物のTEI Rule/Context、実Providerの取得制約、実OS/LLM開示、実Action |
+| [#2627](https://github.com/hat47x/tei-platform/pull/2627) | Provider Route 12件＋Read Slice比較17件、隔離Go計29/29 PASS／race/vet報告 | 実TEI DeriveOperationSurface、Provider共有Cohort、実DB/RLS、Host Effect |
+
+これらは**異なる試験対象の局所Reference**である。単に23+20+18+29という件数を加算して統合機能が90件通過したとは表示しない。各PRに記載された試験機・版と、現在のTEI mainでの実行結果も同一資格ではない。合流時はテストを実際のTEI Source→Context→Rule→Provider→Action/Consumerへ接続し、各段階で支持できた範囲と未取得の証拠を別々に記録する。
+
+**採否**：#2620は意味Role、#2621はAuthoring、#2506はRead Mapping、#1129/#1729はRule依存、#2611/#2622は多Provider、#2497は保存性、#2516はDisclosure、#2586は縦断、#1174はEffectを所有する。本#2495は**型・Facet・動的意味の説明から、なぜ同じStructureでも利用資格が違うかを示す**。新しい共通Footprint Runtimeや独立Meta Schemaは先に設けない。IF-01〜10の正式製品試験、Provider/Host/SHO実観測、Owner意味受理は**NOT RUN**。
