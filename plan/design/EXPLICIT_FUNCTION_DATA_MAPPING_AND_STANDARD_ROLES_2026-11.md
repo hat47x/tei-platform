@@ -75,9 +75,9 @@ Query Source/Workerの解析からのLineageだけでは、RuntimeのRLS/search_
 
 `plan/fixtures/function-access-map/test_explicit_mapping.py`は**Python 3.13.5＋標準ライブラリのみ**の自作・架空データReference。実行したファイルの状態：
 
-- `python3 test_explicit_mapping.py`：**17/17 PASS**。
+- `python3 test_explicit_mapping.py`：**20/20 PASS**。
 - `python3 -m py_compile test_explicit_mapping.py`：**PASS**。
-- **8935 bytes**、SHA-256 `bc7285b038033ddaa53a2186a17a6256a2cfca3628807c204351d114754bdfdc`、Git blob SHA-1 `f9f17d2d003cf91fcd8c7a6a64c65a9d0d62e6f1`。GitHub保存Blobと実行ファイルが一致。
+- **9838 bytes**、SHA-256 `6cf199ac600dfdb01dfe822137ac5f7adfab36d10fe7c7217b63ff2fc72b84ba`、Git blob SHA-1 `e26bdc5406339c177393470d177366834bdd9684`。GitHub保存Blobと実行ファイルが一致。
 
 | 試験 | 意味 |
 | --- | --- |
@@ -88,8 +88,16 @@ Query Source/Workerの解析からのLineageだけでは、RuntimeのRLS/search_
 | EM-12〜13 | Mappingが妥当でもHost許可や実Provider Bindingは証明しない |
 | EM-14〜15 | Markdown列曖昧／取得Scope省略を拒否 |
 | EM-16〜17 | **取得要求が全件でも実観測根拠なければUnknown**、同じFunction内のContext別complete/unknownを区別 |
+| EM-18〜20 | 未宣言秘密Field・別Relationだけが異なる二世界で投影が同一。選択済みFieldの値が異なると出力が変わる |
 
 **正確な到達範囲**：自作データモデルをPython辞書で探索し、宣言されたField/Relationを抽出しただけ。実TEI World/Plugin/Query Worker/Provider呼出し、Studio/SHO/Java/.NET/外部Consumer、実RLS/権限・情報流、実DBへの過剰アクセス、Owner受理は**NOT RUN**。試料中の`observed_complete`は固定された信頼済みFixture入力で、実Providerの全件性や正しい母集団を証明しない。実環境には既存Data ContextのScope/Claim資格を適用する必要がある。
+
+
+### 4.1 自作二世界の感度・非感度の意味
+
+`EM-18`では未宣言の`private_note/internal_flag`だけを変更、`EM-19`では未宣言`Order.payments`にレコードを追加する。どちらも**限定Referenceの投影結果が同一**であることを確認。`EM-20`は明示された`Order.lines.amount`だけを変更した二世界で、逆に投影結果が異なることを確認する。これは「明示Mapで選んだ対象だけがこの合成Projectionの情報依存となる」という有限の感度試験である。
+
+**この局所二世界試験は、実DB/APIで未選択データを物理的に取得していないことや、実RLS・Error/Status・Timing・反復問い合わせ・Providerログ・AI egressの非干渉を証明しない。** さらに、Content Projectionの同一性はSource/Meaning Revision/実行Grantの同一性を保証しない。実Provider経路とConsumer開示の試験は#2622/#2516/#2515へ引き渡す。
 
 ## 5. 次の段階への接続計画
 
