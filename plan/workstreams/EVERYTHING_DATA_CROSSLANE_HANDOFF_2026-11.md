@@ -492,3 +492,72 @@ Everything is Dataが十分に成熟するには、**同じプレーンなデー
 - **H5/C5：増分とAI生産性**。QDC-01〜10を clean全工程・選択実行の両条件で比較し、**False reuse／False invalidation／実行時間／AIの修正差分**を#2600/#2018に還流。Cache命中率ではなく、現在の意味適合とConsumerに必要なArtifactの充足を採否条件とする。
 
 **今回の資格境界**：この§16は既存Draftの観測・特性試験予定・限定実績から導いた横断検証案であり、製品の新Core契約、実Go試験PASS、新Studio、Manifest脆弱性確定、正式Meaning受理を宣言しない。誤再利用が疑われることと、本番事故が確認されたことを分ける。
+
+
+## 17. 自己記述Roleと現行Go Language Pluginを接続する実証（2026-11-02、他チャット成熟差分）
+
+### 17.1 設計上の到達点と現在の製品境界
+
+「Every Definition is Data」が製品機能になる最小の経路は**新しいDSL Parserを先に作ること**ではなく、既存Language Plugin／Operator／Worldの実入口へ、自己記述的Role候補と複数表層のSourceをつなぐこと。関連Draft：
+
+- [#2638：Role bootstrap](https://github.com/hat47x/tei-platform/pull/2638)。plain DataでRoleの必要Shape・依存・Version Pinを記述する**限定合成19ケース**（V8実行・保存Blob照合PASSと報告）。Eagerに解釈するための循環と、Graph/Tree等に普通にある遅延Ref循環を区別する。Root RoleだけPinしても必須依存RoleがPinされないなら解釈をqualifiedとしない。同名別Providerや引用された`role`文字列は自動採用しない。
+- [#2639：既存Go Language Plugin Referenceへの接続](https://github.com/hat47x/tei-platform/pull/2639)。`ParseSelected`／`ParsePipelineSyntax`／`LowerPinnedPipeline`／`ResolveOperator`を用いたtest-only JSON language対Pipe syntaxの限定比較。現HeadにSource／Plain Data Candidate／実Semantic Parserによる束縛差のGoテスト9関数を確認。**test-only JSON語彙・fixture plain-dataは正式Core schemaやAccepted Meaningではない**。
+- [#2644：意味定義と要素の対応](https://github.com/hat47x/tei-platform/pull/2644)／[閉鎖済み#2095](https://github.com/hat47x/tei-platform/issues/2095)。同じ要素に複数の受理済み意味定義が結び付く場合の曖昧性や未記入を、**受理済み定義だけ**に対して列挙する別Reference。要素の**業務的/意味的な一意帰属**は、共通Data CarrierへFunction/Test等の**複数解釈Roleを適用可能**という#2620の設計と矛盾しない。前者はどの意味定義が正本か、後者は同じデータをどの目的で使うかという別軸。
+- [#2587：Data-first実装](https://github.com/hat47x/tei-platform/pull/2587)は**mainへ統合済み**。標準Operation/Artifactの既存製品経路は、未統合候補という扱いから、exact mainを確認して検証する接続先へ進める。一方、実Domain Meaning・複数Provider・Consumer必要Member・Host認可の資格は統合そのものから導かない。
+
+**CI観測（版の区別）**：#2638のHead `47b52240b7dff18706e83a7e89af63e6fb4a3c49` ではRepository Health／依存脆弱性確認のActionsがcompleted/success。#2639の**旧Head** `5be242b664e1cb77d4af2f97930e52a7681fe480` にも同2 Workflowのsuccessがあり、Repository Healthログで`go test -count=1 -timeout 60m ./...` PASSを確認。ただし#2639は**現Head `f94fb90f9379aba0e309461be511052c4b183921`に更新され、新しい2 Workflowは確認時点でqueued**。旧HeadのPASSを現Headに転用しない。CI PASSはProduct CLI・Studio・外部Hostでの意味受理を証明しない。
+
+### 17.2 小さな接合試験パケット：PB-01〜10（横断の新実行はNOT RUN）
+
+| Case | 入力の変化／接続 | 完了条件と担当 |
+| --- | --- | --- |
+| **PB-01** | 同じFunctionをPipeとJSON test-languageで記述 | 実Language Plugin上のSource occurrence／Span／Pin付きOperator解決を分離して一致条件を説明。#988/#2639 |
+| **PB-02** | 同じSourceだがOperator/Role Plugin v1→v2 | lock/version固定と現在のMeaning資格を再評価。文字列同一を旧受理の継承理由にしない。#988/#2638 |
+| **PB-03** | Root Role Pinのみ残し必須Eager Role依存を欠落 | 部分的な適用候補と解釈完了を区別し、解決不能を明示。#2620/#2638 |
+| **PB-04** | Eager A→B→A と、Deferred graph Ref A↔Bを比較 | 前者を循環未解決、後者を用途条件付きで解釈可能として区別。#2620/#2544 |
+| **PB-05** | 文書引用内の`role: function`、AI Skillの実行要求テキスト | Source上のData／Role候補／正式Meaning／Tool呼出／現在Grantは別。#2621/#2605/#2515 |
+| **PB-06** | 同一CarrierにFunction／Test／Documentationの3 Role | 多用途の構造共有と、受理済み要素意味定義の競合を別判定。#2620/#2095 |
+| **PB-07** | 引数名／同名別ID／局所束縛／Operator effectを変える | Plain Dataの同形や値一致だけではMeaning同値を主張しない。#988/#2639 |
+| **PB-08** | 対象の異なる構文表層ReferenceとData Mapping Referenceを同時に使用 | 両者を同じSubject／Source revision／Context IDへ実接続した証拠がなければ横断PASSと呼ばない。#2639/#2624/#2586 |
+| **PB-09** | 新Role Pluginが増え、旧RoleのEager依存が変化 | 必要なSource/Meaning/Artifact/Studioの段階だけ再資格化し、影響不明は保留。#2638/#2600/#2631 |
+| **PB-10** | 承認済みMeaningを生成Target/外部Consumerへ出力 | 実ロードArtifact・Source Index・対象Role/Provider・現在開示/実Grantを確認する。#2587/#2604/#2516/#1174 |
+
+### 17.3 現実的な接続順
+
+1. **B0（read-only）**：#2638の必要依存Closureと#2639の実Go Language Pluginの入力・出力を比較する。Fixtureが異なるので、まず一つのSource/Operator/Role Pin対応表を作る。合法なDeferred Ref、Source span、引用、実CLIに露出する範囲を明示。
+2. **B1（現実のParser／World）**：#988の既存`ParseSelected`とSemantic Parserが何を受け取り、どこでplain Data Candidateから受理済みMeaningへの境界があるかを実試験で確かめる。ない機能は「未実装／候補」として記録する。
+3. **B2（Context/Operation）**：同じSubjectを#2506の明示Read Mapping→#2622 Data Operations→mainに入った#2587標準Operationへ渡す。Roleで解釈できることと実Providerを一意に選べることを分ける。
+4. **B3（Consumerと資格）**：同じ固定Source/Meaning候補をCUI/標準Studio/SHO/実Targetで比較し、出典、Role不明の退避、Manifest必要Member、開示、Host Authority、独立Oracleの不足を列に残す。
+5. **B4（選択的再資格化）**：固定Pluginの一版だけ、またはRole依存だけを変え、実消費依存を確認した範囲でBuild skip／Runtime Rule再評価／Grant再照合を判定する。過去のCI成功を現在資格に自動継承しない。
+
+以上は**#2619の既存H0〜H5／C0〜C5へ受渡す作業であり、新Gate/実装API/Compiler/Registryを追加しない**。新実行のある段階のみ、exact Source/Command/CI run/実Consumerの証拠を添える。
+
+## 18. 正常0件・否定依存・ABAをEverything is Dataの再評価へ接続
+
+### 18.1 問題：0件も条件と取得証拠に依存するデータである
+
+[顧客照会の移行設計 Draft #2640](https://github.com/hat47x/tei-platform/pull/2640) と [#2582のContext再評価](https://github.com/hat47x/tei-platform/issues/2582)の別レーンで、**結果0件なのに依存なしと判定する誤り**が具体化した。
+
+「結果行が0件」という値は、`Predicate／Relation path／Provider route／Scope／Read Cohort／Rowset completeness／取得時点`の資格に依存する。要素IDが無いから依存Edgeが0本とは限らない。`NOT EXISTS`、`COUNT=0`、`all`、`TopN`、未取得ページは特に注意する。**Rowsetがcompleteでも個別Fieldがabsentなら、NULL/0と同一には扱えない**（#2627）。Native SQL／Provider pushdown後の`WHERE/ORDER/LIMIT`とLocal filterの順序差も偽の正常0件を生む可能性がある（#2640の限定SQLite実験）。
+
+**ABAの反例**：時点t0で0件、t1で対象Aを追加、t2でAを削除して再び0件。現在の値だけを比較すればt0とt2は同じでも、「変化なし」「古いReadを再利用してよい」「過去の業務確認が有効」のいずれも自動的には成立しない。Source/Context/Read/Rule/Consumerごとに必要な現在性を検証する。
+
+### 18.2 否定依存・現在性の受入セット：ND-01〜07（新実行NOT RUN）
+
+| Case | 状況 | 期待される判別 |
+| --- | --- | --- |
+| **ND-01** | 元件数0、未Mapping Relationに一致行を追加 | Mapping対象外なら表示は影響なしでも、Ruleが対象Relationに依存するなら再評価候補。#2506/#2582 |
+| **ND-02** | 完全Readの0件→追加→削除→0件（ABA） | t0/t2の値同一とRead/Rule/Owner確認の現在資格を区別。#2582/#1125 |
+| **ND-03** | page1のみ0件、page2は未取得 | 全件不存在・all/noneの真偽へ確定しない。#1706/#2627 |
+| **ND-04** | `Filter(active)→Limit(1)` と `Limit(1)→Local Filter(active)` | 0件/1件が変わる負例で非可換性・Provider pushdown法則を検査。#2387/#2622/#2640 |
+| **ND-05** | 同じRowsetでField absent→observed null | 欠落／未観測／明示NULL／0を区別して意味と開示を再評価。#2627/#2516 |
+| **ND-06** | Window A→B後にAの0件応答が遅着、Window2はAのまま | 遅着応答をWindow1に採用しない。無関係Consumer/歴史的Receiptは無条件失効させない。#1124/#2582 |
+| **ND-07** | SourceのQuery Shape/Roleは不変でProvider Route/Snapshotが変わる | 同値の結果でもCohort・実物理Read・現在Grant・Consumer開示を再資格化。#2627/#2516/#1174 |
+
+**設計の帰結**：定義と結果はEverything is Dataで表せるが、**「存在しない」という判断も、何を探し、どの範囲・時点・Providerで探したかという依存情報が必要**。必要情報は既存Query/Data Context/Rule/Provider/Evidenceに保持し、新しいNegative Dependency Engine、全局Cache、Reactive Hostを追加しない。#2600の増分ビルドと#2582の実行時再評価は、それぞれのOwnerで別に判断する。
+
+### 18.3 外部AI Harness／文書Consumerへの最小受渡し
+
+[TAI #271](https://github.com/hat47x/tai-pleroma/issues/271)／[Draft #270](https://github.com/hat47x/tai-pleroma/pull/270)では、Product間のEvidence変更影響と**現在Consumer／権限の資格**を分ける計画がある。TEIは`Source/Role/Operator Pin／明示Context/Scope/Read witness／Result & Unknown／Claim資格／Provider Route／Consumerへの開示区分`という**実際に確かめた範囲だけ**をProduct Skill・SHO等へ受け渡す。外部Harness/AgentがDSLの`role`や`tool`文字列を見つけても実操作Commandとして採用しない。
+
+TAIのQH-01〜18は公開合成Nodeの有限試験であり、TEI実CLI／外部ネットワーク送出／SHOの保存・配送／Host Grantの実証とは別。TEIのSource/Meaning/Provider・独立OracleはTEIの既存Ownerに残し、TAIに第二のMeaning/Authorityを設けない。現時点で新しいProduct跨ぎの実行試験は**NOT RUN**。
