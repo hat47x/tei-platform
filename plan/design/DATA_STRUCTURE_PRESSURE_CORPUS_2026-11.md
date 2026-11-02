@@ -9,7 +9,7 @@
 
 対象の同一性／構成文法／性質・法則／解釈文脈／利用箇所の要求／主張と根拠／実現と表示。各Pressureの意味に関連するM1〜M10（#2495）は重複して構わないが、**一つの性質を二つの独立な意味正本に保存しない**。
 
-以下の96ケースは**初期の異質性を測るための開始点であり、網羅の完了や上限を意味しない**。新規の構造・数学的性質・分野固有の解釈は追加し続ける。関心事が重複する場合も、操作・利用文脈・失われる情報が異なれば別の反例として保持する。
+以下の108ケースは**初期の異質性を測るための開始点であり、網羅の完了や上限を意味しない**。新規の構造・数学的性質・分野固有の解釈は追加し続ける。関心事が重複する場合も、操作・利用文脈・失われる情報が異なれば別の反例として保持する。
 
 ## A. 値と同一性（PC-01〜07）
 
@@ -172,6 +172,27 @@ TEIの[PR #2576](https://github.com/hat47x/tei-platform/pull/2576)・[#2578](htt
 **比較の見通し**：`std.decimal`のJSON出力は表示座標では許容できる場合がある一方、金額や厳密な識別番号では基底の数値保存契約へ違反し得る。値の同一性・JSON字句の同一性・意味上の精度・業務的受理は別の条件。optionalの省略は**意図したlossy表示**として成立し得るが、Patch/writebackが同じ損失を許すかは再評価する。
 
 外部の一次資料：[Go encoding/json](https://pkg.go.dev/encoding/json)（interfaceへの数値decode）と[Protobuf Field Presence](https://protobuf.dev/programming-guides/field_presence/)（明示・暗黙の存在区別）。TEI/TAIのコード証拠は各PRの実際の実装・対象SHAを確認する。契約が正式に型保証を追加したわけではない。
+
+## K. 時間・増分観測・Claim撤回（PC-97〜108、2026-11-02追加候補）
+
+[構造保存写像設計 §12](STRUCTURE_PRESERVING_TRANSFORMATIONS_AND_PROJECTIONS_2026-11.md)のTP-01〜12と、[#2586](https://github.com/hat47x/tei-platform/issues/2586)（Query→Context→Claim→Patternの縦断）、#2506（Result Slice）、#2505（版間Source）、#1708（Freshness）を接続する。これらは**試験計画**であり、実Provider・GUI・独立Oracleの実測ではない。
+
+| ID | Pressure / 対象構造 | 必要な区別・保持条件 | 誤認の負例 | Owner |
+| --- | --- | --- | --- | --- |
+| PC-97 | ページ内0件 | partial zero / complete zero | 先頭ページ0件から全体不存在を宣言 | #2506/#2586 |
+| PC-98 | 0件確定後の挿入 | 版・Scope付き不存在 | 過去の不存在を現在へ無条件継承 | #2586/#1708 |
+| PC-99 | 非負SUMへの負値追加 | 非負・追加のみの下界条件 | 無条件のSUM下界として保証 | #2586/#1705 |
+| PC-100 | JOIN重複と集計 | Entity/Relation Grain、重複 | 2×3 JOIN行を元Entity6件と数える | #2387/#2506 |
+| PC-101 | LEFT JOINの仮NULL撤回 | SQL NULL/未一致/後続一致 | 旧仮NULL行を確定として残す | #2387/#2586 |
+| PC-102 | TOP-Nの置換 | 追加と撤回の双方 | 新規上位行だけ足して旧下位行を残す | #2586/#2497 |
+| PC-103 | Selection epochと非同期応答 | UI世代/Business Identity | 旧A応答を新B選択へ混入 | #2506/#1708 |
+| PC-104 | Event/Processing/Observation Time | 時刻の役割と順序 | 処理時刻の順序をイベント順と断定 | #2497/#2507 |
+| PC-105 | 同一タイムスタンプ異Snapshot | 時刻一致とRead-set整合 | 時刻文字列だけでSnapshot一致を宣言 | #1708/#2506 |
+| PC-106 | Model改版と同じlocator | 版間意味対応の証拠 | locator一致でOwner意味受理を継承 | #2505/#2497 |
+| PC-107 | 片側Consumerのみ再描画 | 更新通知と実受信/描画 | 片側の成功で全Consumer同期を保証 | #2498/#2516 |
+| PC-108 | Value保持・Scope縮小 | 値の忠実度とClaimの全件性 | 型・byte一致を全件・業務意味一致と誤報 | #2497/#2586 |
+
+**見立て**：単調な入力追加で保存できる結論と、集計・否定・TOP-N・未一致・訂正／削除で撤回を要する結論を分ける。結果の単調性は同じSchema・Universe・Scope・Identityなどの前提に相対的である。現行TEIへ新しいClaim Engine/時間Runtimeを追加することを先行決定しない。
 
 ## 外部仕様の照合（2026-11-01読取り）
 
