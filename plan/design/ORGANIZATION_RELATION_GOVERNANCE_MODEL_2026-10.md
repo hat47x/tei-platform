@@ -1984,3 +1984,37 @@ Source Revision不一致でhelperを停止させる。UI選択epoch、Provider S
 - [Draft #2655](https://github.com/hat47x/tei-platform/pull/2655)に`reference/org-semantic-views/verify-field-observation.mjs`を追加（コミット`e0c3d1945690dd1e2f98fee68c6da62184872b11`）。FO-01〜16を**純粋合成fixture**で検査する。確認済みはV8互換シムによる**16/16局所PASS**（test/assert importを局所置換して実行）。これはNodeの`node --test`、Provider実Readや標準TEI Contextの結果ではない。
 - exact-head Node合成Workflowに新ファイルを追加（コミット`53fb6a16030e9f6d63a43f280629fa548f1c1e82`）。この版に対する[Actions #41505887674](https://github.com/hat47x/tei-platform/actions/runs/41505887674)は参照時点で**queued**。完了ログとrunのhead SHAを確認する前はCI PASSと記録しない。
 - 既存の組織PR #2596（main統合済み）、#2655内のORG-OC/RC/VF合成試験と、今回のFOの結果は、たとえ別々に成功しても正式TEI Query/Context/Provider/Studio/SHO/Hostの一気通貫証拠に合算しない。Owner意味受理・本番資格も未取得。
+
+## 54. 合成OracleからTEI実Authoringへ：組織の第一Native縦断と不足意味の隔離（2026-11-03、既存#2586の実装前段）
+
+### 54.1 今回、実経路へ移した部分と移していない部分
+
+§39〜53と#2655は、多数の組織反例を独立合成モデルで実証/計画化したが、正式なTEI Parser→Semantic World→Operation Surfaceを通したという証拠ではなかった。他チャットで成熟したEverything is Data、Source→正式意味→操作導出→成果物→独立Readerという優先順（#2619/#1119、Draft #2667）を採用し、**新しい組織専用Coreを作らず、既存TEIの最短のNative入出力を先に通す**方針へ移す。
+
+独立[Draft #2681](https://github.com/hat47x/tei-platform/pull/2681)に以下を追加した（現状は**実行結果待ち**）。
+- `reference/org-headless-workspace/`：実際の`.tei` authoringソース。Person/OrgUnit/Membership/Position/Occupancyを別Dataとして宣言し、Membership→Person/OrgUnit、Occupancy→Person/Positionを通常の型付きRelationで宣言。Membershipの独立IDをPersistenceのPrimary Keyに結合し、Orgの照会Applicationをread-onlyにした。
+- `internal/operations/org_headless_characterization_test.go`：独立JSON toyではなく既存`workspace.Load`/`SurfaceWorkspace`を消費し、Membershipの`list/read`とreadの入力が`membership_id`（Person IDや表示位置ではない）であること、OccupancyとMembershipのRelationが別であること、無根拠な書込Capability/権限が導出されないことを検査するGo試験。
+- `.github/workflows/tei-org-headless-native-ci.yml`：候補commitの固定SHAをcheckoutし、`go test`、実CLI`tei validate`、`tei operations`、`tei artifacts`の順に実行し、`operations`のJSONを別Python Readerで点検する計画済みCI。Actions [#41510637322](https://github.com/hat47x/tei-platform/actions/runs/41510637322)は照会時**queued**。完了したrun/実際のログを確認するまでCLI・Go PASSを主張しない。
+
+**重要な限定**：`.tei`に`validFrom`/`knownFrom`という通常Attributeを持つだけでは、bitemporal/as-of/遡及改訂の意味は実装されない。同じく`Position`と`Occupancy`のRelationから`Membership`を自動導出しない。`list/read`がread-only Applicationに導出されても実Provider Read、Role/Owner Rule、Case移管、権限・commitの証明にならない。今回のReferenceは実TEIモデルの第一段階であり、SQL/DB/実User操作/SHOまで到達していない。
+
+### 54.2 E0〜E4の具体的昇格経路を固定し、合成試験の積算を停止
+
+| 段階 | 今回観測対象 | 必須の不足証拠 / Owner |
+| --- | --- | --- |
+| E0：独立合成Reference | #2596はmain統合済み、#2655のOC/RC/VF/FOはV8局所合成・CI別確認 | 独立Oracleの期待値と操作的意味、公開実データではないこと / #2386/#2510 |
+| **E1：TEI Authoring/Source** | #2681の実TEI Workspace→Loader→World/Relation→Operation Surface/Artifact | 候補固定SHA・実Go/CLI実行・2nd Readerの結果。業務有効時点や委任Ruleは未実装 / #1126/#2620/#1127 |
+| E2：TEI Function/Query実利用 | 同じWorkspaceのSemantic IDを用い、実Query Analyzer（SQLGlot Worker）→DerivedIR、明示Function Context/Context Sliceを実結合 | WHERE/ORDER/EXISTS等の非出力依存、実Context Binding、行とFieldの取得状態、実Provider route・cohort / #2387/#2635/#2506/#2628/#2586 |
+| E3：Consumerの実読み取り | Table/Graph/SHO/外部Consumerが同じ版のSubject/Relation occurrence/Claim/grain/時点を読み直す | 表示済み撤回、過去報告のR1再現とR2再計算、独立Readerの実利用、旧A2を新A2newに誤束縛しない / #1124/#1803/#2497/#2631 |
+| E4：実Action/Effect | 受理済み業務Actionと現在Grant/SoDの下で実Request→post-image/Receipt→別Reader | Commit後の最終状態、複数Provider部分成功/再試行、Owner受理 / #2598/#1129/#1174 |
+
+**試行の接続条件**：一つの固定`Source/Meaning/Role revision`＋`Query/Context/Provider/valid-at/known-at`＋`Consumer Artifact/Target`を参照可能にして、同じ試行をE1〜E4へ段階的に進める。合成DatasetのR1/R2の結果を`.tei` Schemaへ入力しただけで実DBデータにしたと称しない。次段のE2では、必要であれば**既存のScenario/Data fixture契約**を利用して明示的なレコードを流す。新たなOrg専用Provider、第二Parser、Universal Event Storeは作らない。
+
+### 54.3 最小実行結果の採否票
+
+- **Native正例**：TEIの実Loaderが五種類のData・所属/在任の別Relationを読み、`org_view`のread-only OperationSurfaceがMembership occurrence keyを保持する。CLI/Artifactの出力を実際に別Readerが確認できる。
+- **Native負例**：Person P2の同じIDを理由にMembership A2/A3を単一occurrenceへ潰さない。`Occupancy ⇒ Membership`、`successor ⇒ Grant`、`read-only list ⇒ update permission`、`validFrom attribute ⇒ fully implemented bitemporal`、`unobserved field ⇒ null/zero`等の昇格をしない。
+- **未成熟を明示**：現行Native ReferenceはData型・Relation/Operation導出までであり、R1/R2の実レコード・SQL Worker・Provider cohort・Rule capacity・SHO資料・実Host Effectの成功は何も示さない。`operations`のderived`create/update`が別モデルで現れたとしても実Capability Bindingのない実行許可ではない。
+- **統合判定**：mainの正本コードとDraft #2681の差分・CI結果をレビュー後、#2586の同一固定試行へ引き渡す。#2655のNode synthetic CIと#2681のGo native CIは**別試行**であり、別々の成功を合成してE2E達成としない。#1119既存S0/J5・P0-a/P0-b等のGateや実DB優先度を変更しない。
+
+**状態**：設計・native入力/試験/WorkflowをDraftに保存した段階。E1の実CLI/Go結果、E2〜E4の実Provider/Studio/SHO/Host、Owner意味受理は**未確認**。通常の組織Dataへの専用ACL、新Core固定種別、TEI独自Host、第二のRule/Workflow Engineは追加しない。
