@@ -34,6 +34,8 @@
 
 **構造のMECE性・複数Projectionの整合**については、固定のData Type列挙より、名目ID／構成子／Facet／演算束縛／制約／解釈文脈／出典を区別し、各判断の適用範囲と具体的反例を残します。比較のための正規形が計算できても、それを業務意味の同一性・Owner受理へ昇格させません。異なる構造が同じ意味を投影する場合（例：[TEIの多値Record投影 #2576](https://github.com/hat47x/tei-platform/pull/2576)と[SUIの所属表現](https://github.com/hat47x/tai-pleroma/pull/253)）は、**どのRelation/Sourceを正本とするか、列挙順・重複・完全性・Version・更新Intentをどう保存するか**を別に判断します。既存[#2495](https://github.com/hat47x/tei-platform/issues/2495)/[#2544](https://github.com/hat47x/tei-platform/issues/2544)/[#2497](https://github.com/hat47x/tei-platform/issues/2497)と[Draft PR #2496](https://github.com/hat47x/tei-platform/pull/2496)が比較・反例の担当です。実Targetで意味が保存されたことや両表現の意味上の等価性は未実証です。
 
+**Projectionの値忠実度と対象範囲**も、基本データ構造の机上評価からCUI/標準Plugin・実Target検証へ引き渡す項目です。Fieldの値型、必須/任意と未設定・明示NULL・空、単一/多値、重複・順序・完全集合性、数値精度・単位、Source/Consumer、編集時の変更Intentを区別し、特定の用途で許容する情報損失を明示します。既に実装された[Record Projectionの多値・数値・optional・boolean（#2576/#2578/#2580/#2581）](https://github.com/hat47x/tei-platform/pull/2578)を[#2585](https://github.com/hat47x/tei-platform/issues/2585)の局所Conformanceで検証し、[#2497](https://github.com/hat47x/tei-platform/issues/2497)の構造保存条件と[#2498](https://github.com/hat47x/tei-platform/issues/2498)の実Consumer適合へ接続します。SUIの読み取り専用artifactと既存SUI元データのような**部分Projection／複数Source合成**では、フィールドごとの正本・未投影項目・時点・版を説明できるかを確認します。厳密な金額計算の型契約は#1705、業務DBのmissing/nullは#2056の成果を再利用し、GUIやProviderの正式な意味適合は別途実証します。現在の追加項目は受入設計であり、実装・実証完了を宣言するものではありません。
+
 ### 外部要件を先に受け止める（要求・構造の机上評価）
 
 CUIやGUIの実装に入る前に、**データ構造、意味上の識別・型・値域・関係・制約、操作・状態・副作用、プラグインの契約・合成・ライフサイクル、Target/Hostとの境界**など、後戻りの費用が大きい基本構造を十分に検討します。
