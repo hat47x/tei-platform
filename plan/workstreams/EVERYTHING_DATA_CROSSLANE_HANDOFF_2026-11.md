@@ -651,3 +651,80 @@ TAIのQH-01〜18は公開合成Nodeの有限試験であり、TEI実CLI／外部
 ここでの完成条件は**既存#1119 P0-a/P0-b／G0〜G4／#1163の同一試行票**に、`Task/Claim`・`Source+Role+Operator依存閉包`・`実バイナリ/Skill/Script byte`・`actual argv/Tool invocation`・`要求と実Provider read`・`Query/Consumer観測面`・`必要memberとReader消費byte`・`現在Grant/Disclosure`・`独立Expected/Effect`・`unknown/not-run`・`人手修復/経過時間/Token/費用`を**同じ試行**で記録できること。新しい全局Claim DB/共通Contract Enumは作らない。
 
 **資格**：この§20は他チャットで作成済みの引継ぎ資料と現行PR/Issueを**既存の横断計画へ配置した設計変更**。ここで新たな実CLI/SQLGlot/Provider/Host/TAI Harness/SHOの結合試験を実行したわけではない。#2639の前HEADに発生したgofmt driftは2026-11-03に修正Commit `98966e85acd2abf5efce976a3d09a97c798d6519`（ファイルBlob `97483b653a1f04ffe919e70dbc075dfcc24d4346`）へ変更済みだが、**本節追記時点でexact-head CI successは再取得待ち**。Main統合・正式意味採用・Owner受理を示すものではない。
+
+## 21. 汎用基盤と用途相対の意味契約――#2639 EG-09からADR・回帰へ（2026-11-03）
+
+> **位置づけ**：2026-11-03の「汎用基盤性」横断レビューを§17〜20と既存Ownerの実験へ引き継ぐ、採用前のADR判断候補。新Canonical／Meaning Registry／同値判定Engine／全局Dependency Graph／TEI独自Hostは導入しない。既存ADRの改訂・新ADR採用・Owner受理・実装成功の宣言ではない。
+
+### 21.1 四つの「同じ」を使い分ける
+
+| 比較する層 | 汎用機構が照合できる範囲 | それだけで成立しないClaim |
+| --- | --- | --- |
+| **Authoring Source / occurrence** | 元のbyte・元の構文糖衣・出典位置・読込版・Parser選択 | byte/Meaningが同じことからの引用Locator/SHO Reviewの現在性 |
+| **Structural Candidate** | Data/Attribute ID、型、Key/Relation、Role/Operator候補・依存Pin | 税区分・単位・丸め・時点・対象集合・業務上の同一性 |
+| **Accepted Meaning / 用途別互換** | 受理済みMeaning/Rule/Operator契約、依存、対象Functionの前提条件 | 別目的への無条件の代入可能性、実Provider取得・現在Grant |
+| **Observation / Current Qualification** | 実Query/ProviderのScope・Rowset/Field完全性、Readerが読んだArtifactと版 | 結果が同じことからの現在の不存在、実Action許可、業務完了 |
+
+**汎用性の中心は用途相対の互換性**。たとえば sales.order.amount／std.decimal／1000 が同じでも、税抜金額から税込金額へ意味が変わった場合、画面表示の数値一致と請求Ruleへの代入互換は別。互換性Claimは purpose／accepted meaning & rule／subject & grain／Context & read scope／Provider & time／Consumer の限定条件に結び付ける。これは**既存受入票の列**であり、全Domain共通の意味同値bool/APIを新設するものではない。
+
+**現行実装と反例**：main の reference/dsl-language-plugin/pinned_semantic_binding.go は Namespace 内の指定Data ID一意性と、暫定 rows/<id> 型でのexact-pinned Operator合成を確認する。Attributeの業務意味や全Attribute依存・Source occurrenceの互換性は契約外。未統合[PR #2639](https://github.com/hat47x/tei-platform/pull/2639)のEG-08は実Semantic Parserとtest-only JSON adapterの限定接合、EG-09は同Data ID/限定Binder出力で属性TypeRef差が検出対象外になる反例。**Binderの成功は意味同値やBuild再利用の証明ではない**。main の internal/semantic/model.go のCandidateKey/FunctionalDependencyも業務Assertionの宣言であり、実DB検証/Owner意味受理ではない。
+
+**別Domain圧力**：[Draft #2681](https://github.com/hat47x/tei-platform/pull/2681)のPerson/OrgUnit/Membership/Position/OccupancyではMembershipとOccupancyを別identity/Roleとして扱い、同型の状態列から就任・組織承認・実Grantを自動生成しない。Graph/ゲーム/ロボットの時間粒度や物理単位にも同じ原則を適用する。
+
+### 21.2 既存INV-1〜7の横断停止条件（新Status型ではない）
+
+| INV | 既存担当と比較境界 | 不足時の停止 |
+| --- | --- | --- |
+| **1 意味資格** | #2620/#988/#2514、ADR-0022、受理済み定義対応#2644 | ID/型/値一致はMeaning受理不可。AI候補やSyntaxの自己宣言から正式受理を推定しない |
+| **2 推移Pin** | #2638 Root/Eager Roleと#2639 Language/Operator | Rootの版名だけ一致してもContract/実装Fingerprintと推移依存不足なら再資格化。合法Deferred Ref循環とEager循環は別 |
+| **3 取得Scope** | #2506明示Function Mapping→#2387/#2622 Query→#2611実Provider | Declared read、SQLITE_READ列参照、実Acquisition、結果、公開Projectionを混同しない。Rowset完全でも必要Field未観測ならRule unknown |
+| **4 不存在** | #2582/#2627、独立Expected#2514 | 0件/未取得/partial/completeと現在不存在Claimを分離。Predicate/Relation/母集団/時点/Providerと変化検知の裏付けが必要 |
+| **5 動的依存／再利用** | #2582 Relation付替・集合membership・ABA、#2600 Build reuse | Output digestや終端0件が同じでも期間無変更とは限らない。Build再生成とRuntime再Readは別判断。不要な全局失効も避ける |
+| **6 Consumer** | #2604/#2630必要Artifact Member、#2516開示、#1124 Source追跡 | Artifact CheckSet内部一致/Manifest Completeだけで必須Member・同世代・実Reader取得・現行開示資格を代用しない |
+| **7 実行資格** | #2598 typed Intent、#1174既存Host/Provider、#2637二地点Grant | Action候補/過去Grant/ACK/Receiptから現在権限・Commit後業務完了を導かない。不明Commitは不明を維持 |
+
+**量化と非単調性**：結果 [] でも WHERE/NOT EXISTS/TopNのPredicate、Relation occurrence、フィルタ対象母集団、RowsetとFieldの完全性、Provider route/read cohort、時点への**否定依存**が残る。0→1→0（ABA）で現在0件は再確認できても「期間中変更なし」は推定できない。partialでもScopeに属する一致行を明確に観測した場合は片側反例を保持できる。Filter→ORDER→LIMITとLIMIT→local Filterの交換は、条件なしに合法としない。異Providerの同名snapshotラベルは共同Snapshotの証拠ではない。
+
+### 21.3 ADRへ記録する判断候補／保留
+
+[採用済ADR-0022](https://github.com/hat47x/tei-platform/blob/main/plan/adr/0022-ai-proposal-canonical-acceptance-boundary.md)のAI/Editor/CLI Proposal→Shared Acceptance、AIのautonomy≠authorityを**既決事項として再利用**する。
+
+| 判断案（提案・未採用） | 固定すべき原則 | Owner |
+| --- | --- | --- |
+| G-D1 構造≠意味 | Everything is Dataは表現と意味解釈部品の合成の汎用化。業務意味の自動統一ではない | #2619/#2620/#988 |
+| G-D2 用途相対互換 | ID/Type/値/限定Binder出力の一致は意味同値の十分条件でない。受理済みMeaningと用途/Rule/時点を要求 | #2620/#2506/#2514 |
+| G-D3 Read/Claim分離 | 明示取得、Provider実Read、Rowset/Field完全性、Disclosureを独立に照合。0件と未取得を同一視しない | #2506/#2622/#2582/#2516 |
+| G-D4 Reuseの条件 | 推移Role Pin、動的Relation/Predicate/非出力Query、集合membershipまで必要依存閉包を確認。BuildとRuntimeを別失効 | #2638/#2387/#2582/#2600 |
+| G-D5 Source Fidelity | SourceのMarkdown/DSL糖衣を普通の保存で全展開・無断整形しない。Meaning不変でもSource locator/文書Reviewは別に再資格化 | [main統合 #2674](https://github.com/hat47x/tei-platform/pull/2674)、#2621/#1124 |
+| G-D6 Consumer/Authority | Role/CLI/Skill/Artifact候補≠実Consumer受領/現在Grant/実Effect。外部Hostの既存仕組みに委譲 | #2649/#2604/#1174/#2516 |
+
+**判断保留**：汎用Semantic Equivalence Schema/API、共通Dependency Closure型、Native SQLと標準Operatorの完全一般同値、全Provider共通Snapshot契約、全Consumer共通Grant Token、Go単一バイナリに対するPlugin配備方式の固定、万能Lossless CST/Writer、業務Ruleの暗黙の税/丸め/単位/有効時点、正式DSL Grammar。未実証のため新Engine/Registry/Hostを前提にしない。
+
+### 21.4 最小回帰GR-01〜10（既存OwnerのFixtureへ割付、横断実行NOT RUN）
+
+| GR | 一軸変更の比較 | 検出を担う既存Case／不足 |
+| --- | --- | --- |
+| **01** | Data/Attribute ID、std.decimal、値1000不変で税抜→税込Meaning変更 | #2620/#2514：業務Owner受理なしに同値扱いしない |
+| **02** | EG-09の同Data IDでAttribute TypeRef decimal→string | #2639 EG-09：限定Binder output一致≠Meaning・増分再利用同値 |
+| **03** | Root Role版は同じ、Eager依存Operator実装Fingerprintだけ変更 | #2638 RB-20〜24：依存実装のPin漏れで旧受理を継承しない |
+| **04** | 同じ [] でも全page/必要Field complete vs 未取得 | #2582 ND-03/#2627/#2665：後者は不存在not-established |
+| **05** | 結果が0→1→0、最終値は初期と同じ | #2582 DC-07/BRC-14：現在値と履歴無変更を区別 |
+| **06** | Filter→ORDER→LIMIT1 vs ORDER→LIMIT1→local Filter | #2387/#2622/#2640：非可換の反例、黙示Pushdown禁止 |
+| **07** | O1.amount=600不変、customerRef C1→C2で信用限度700→500 | #2582 DC-02/#2506：動的関係先再解決、無関係画面の過剰失効なし |
+| **08** | Primary→Replica、文字列Snapshot s7は同じ | #2627/#1708：共同Read Cohortを推定しない |
+| **09** | Artifact内部整合OK、Consumer必須Member欠落/Reader異世代 | #2630/#2659/#2649：実Readerと必要Memberを照合 |
+| **10** | Provider Read中Grant失効/Consumerへの実送出scope変更 | #2637/#2516/#1174：二地点再確認はABA・物理開示の完全保証ではない |
+
+**既存ケースの横断適用**：[main #2674](https://github.com/hat47x/tei-platform/pull/2674) SF-01/07/13/17のNo-op Source byte／二Occurrence／Source移動／AI全Format候補をGR-01/02/09のSource境界へ接続。#2681のMembership/OccupancyをGR-01/07/10へ置換し、組織上の状態から実権限を自動推論しない。SQL/DDLのFK/Statusの構造事実から業務Transitionや実Migration成功を推測しない（#1126/#1129/#2622）。既存Fixtureと独立Expectedを再利用し、10件の別製品実装・第二Oracle Engineは増やさない。
+
+### 21.5 実証順と現在の停止点
+
+- **E0 局所Reference**：#2639 Go Binder、#2638依存Pin、#2674 Source Fidelity（設計法則は実Writer NOT RUN）、#2665 SQLiteコンパイル時READ、#2659 Artifact CheckSetを**別々の版・環境・局所資格**として記録。局所PASS件数を合算しない。
+- **E1 実Go CLI**：§19経路A・#1163・#2649の実バイナリ/実Source/argv/Operation/Artifact/独立Readerを利用。同じ固定Sourceで受理Meaningと実Contextまで接合したと推定しない。
+- **E2 実Query/Context/Provider**：実SQL解析Producerのexact artifact・起動・SQL/Schema/Dialect/Go DerivedIRを確認してから、非出力/否定依存を明示Context/Providerへ接続。実Producer不明なら NOT RUN: producer-unavailable。SQLITE_READはコンパイル時列参照で、実物理Read/OS開示ではない。
+- **E3 ConsumerとBuild/Runtimeの再資格化**：対象Claim別にRequired Member・Reader実byte/世代、Source Locator、現在Audience/Grantを比較。GR-05/07/09でBR-FULL／BR-SELECTIVE／BR-UNVERIFIEDの誤再利用・過剰失効を測る。
+- **E4 実EffectとOwner**：実Request Target/Expected State/現在Host Authority/Commit unknown/Receipt/独立Readと業務Meaning受理を分離。#1119 P0-a/P0-b/G0〜G4の優先順位は変更しない。
+
+**既存#1163 Evidence票に残す最小列**：Source元byte・Occurrence・改訂/Parser版、Data/Attribute/Relation identity、Type/必要Facet、受理Meaning/Rule/Role/Operator依存Pin、purpose/subject/grain/Scope、宣言/実Provider取得とRowset/Field completeness/epoch、動的Relation/negative dependency、必要ArtifactとReader実消費byte/世代、現在Consumer/Disclosure/Host Grant、独立Expected・Actual、established/contradicted/not-established/not-run、必要なBuild再生成・Runtime再Read・Owner再受理の範囲。**新共通Evidence Schemaではない**。
+
+**2026-11-03再照合の証拠状態**：Draft #2639 head 98966e85acd2abf5efce976a3d09a97c798d6519 のgofmt修正Blobは保存済みだが、PR-triggered workflow取得結果は空で、このHEADの正規CI成功は未確認。Draft #2667の追補前head 0e9ea97ccbe47067b2143287736e12682b4985f7 の[Repository Health #41510572157](https://github.com/hat47x/tei-platform/actions/runs/41510572157) は **failure**：ログ上は internal/validation/validation.go のgofmt drift。Docs追補の意味試験FAILや他のGo test全体PASSへは読み替えない。この§21による新Product/Provider/SHO/Host統合試験はNOT RUN。別OwnerのGoコードやADR本体は変更せず、Draftのままレビューする。
