@@ -32,3 +32,33 @@
 4. [#2622](https://github.com/hat47x/tei-platform/issues/2622)でDBとAPI系Providerを比較する際は、NULL/Bag/集合完全性、as-of、PATCH/Replace、version、idempotency/Receipt等を**個々のProviderの実Contract**で評価する。
 
 **ステータス**：独立合成Go単体テストのみ。Source/Meaning/Owner受理、実TEI統合、実DB/外部Host、正式API、PRのマージは未確認。
+
+## Read Sliceの独立比較（RC-01〜17／追加）
+
+`read_compare.go` は**実Providerが返したと仮定した合成Read Slice**を比較するための検証補助。経路列挙の`Explain`とは別の義務を説明する。
+
+| 判定 | 意味 | 適用範囲 |
+| --- | --- | --- |
+| `fixture_consistent` | 独立Fixtureが**同一読取Cohortで比較可能**と明示し、同一Subject/Scope/Grain/Query契約・完全なbagが一致 | 有限Fixture内の整合のみ。実Provider同値やBusiness Acceptanceではない |
+| `contradicted` | 上記の比較前提のもとで、完全なbagの値・NULL・出現数・識別子が異なる | 合成Oracleの反証。実DBの誤動作と同義ではない |
+| `not_established` | 同じSnapshot tokenでも独立Cohort証拠がない、部分取得、Scope/Grain/Query/Subject不一致、必要な行Identityが未解決 | 比較資格の未確立。値が不一致／一致という断定を保留 |
+
+**重要な二世界反例**：PrimaryとReplicaが同じ`SnapshotToken=s7`を持ち、同じ1行を返すとしても、**異Provider間のトランザクションスナップショットが同じことを、その文字列一致から証明できない**（#1708のread-set/freshness課題）。このReferenceは`AssertedCommonCohort`を**独立Fixtureが仮定する場合だけ** bag比較へ進む。`EstablishedByFixture`と`EvidenceLabel`はテスト前提の明示であり、真正性の検証・Provider契約・Host許可を実装するものではない。実製品がこのboolを実行資格として使うことはできない。
+
+別の反例：同じEntity identityのレコードがJOIN結果で2回出現したとき、SQL Bagの重複を集合へ縮約すると結果が一致しているように見え得る。RC-06は重複数を比較する。`NULL`、`absent`、未知の`redacted`を区別し、現Fixtureの`ReadRow.Value`は値byteの一致だけを見る。数値単位・Decimal/rounding・型付きNULL・RLS・照会predicateの厳密な意味・取得の完全性は**製品側に未接続**。
+
+### 追加実測（2026-11-02）
+
+隔離した実Go byteで`GO111MODULE=off go test -count=1` **合計29/29 PASS**（経路PR-01〜12、読取比較RC-01〜17）、`go test -race -count=1` PASS、`go vet ./...` PASS。Go 1.23.2/Linux。GitHubの保存Blobと一致：
+
+- `read_compare.go`: Git blob `0279a75e6aa9f8fdc91715075e7b2de41c32f268`、SHA256 `8838bea0839f433b2fe9619d3b8703191d8c0d89982d69882037441b303468b6`
+- `read_compare_test.go`: Git blob `a5ff3956d259cc7463889aaba8e7b29a97b21158`、SHA256 `8aa6f55a2d2c2de541c2a9d9a24982f8828d3f43fc7465f3b9a2ec1203036991`
+
+**継続する境界**：この合成29件は実`DeriveOperationSurface`、`Query`/Function Data Context、SQL Worker・実DB Snapshot/RLS、実OData/Read Session、Provider間の実Cohort証明、実Target/Host権限、Ownerの受理を試験しない。#1708のSource実装を変更せず、問題を独立反例として次段の実Provider受入へ渡す。
+
+### 次の合流順序（既存Owner分担）
+
+1. #2611のPM-02〜07とOpen PR #2587の実Operation導出を同一`ir.World`で比較。合成Referenceの出力を実Productがすでに保証すると誤記しない。
+2. #2622／#2506／#2586で、明示Function Context Read Footprint→Provider経路選択→実Result Sliceの`scope/grain/bag/complete/snapshot`を実データに基づき説明。
+3. #1708で共有Cohortの証人・検証条件を扱い、Read Replicaや複数Providerの`SnapshotToken`衝突に正負を設定。
+4. #2598／#1174で読み取った対象から**実Request/Effect対象の因果接続**を実際に検査。比較が`fixture_consistent`であることを業務実行許可に使わない。
