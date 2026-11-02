@@ -256,11 +256,15 @@ secret、network endpoint、filesystem path等のHost materialをCanonical defin
 
 AI、Editor、generated code、automationも同じ権限・Resource境界を迂回してはいけません。AI actorであることや自律度が高いことから、write、Capability invocation、secret / network / filesystem access等のauthorityを暗黙に付与してはいけません。
 
+自律実行の範囲は、Hostが受理した宣言で明示します。宣言にない操作、判断が必要な操作、権限が不足する操作は人へ返し、自律度の高さから権限を補いません。
+
 ## RQ-020 再実行・takeover・unknownを安全に扱えること
 
 外部Runtimeの状態が不明なときに、同じ副作用を自動replayしてはいけません。
 
 ownership、fencing、durable handle、observation等を用いて、誰が現在の実行を調停する権限を持つかと、外部Runtimeがどのgenerationを受理したかを区別できる必要があります。
+
+再実行・takeoverの許可範囲も宣言し、許可されていない操作の自動再実行を拒否する試験を持つ必要があります。unknown outcomeを成功や取消として扱いません。
 
 ## RQ-021 ReferenceとConformanceで再現可能性を示すこと
 
@@ -400,6 +404,8 @@ AIエージェントは、少なくとも次を区別できなければなりま
 - completion / failure / unresolved
 
 TEI成果物を読めること、Business Procedureを理解できること、AIのautonomy levelが高いことは、それだけでwrite / invoke / secret / network / external side effect authorityを与えません。
+
+AIは、自分が実行可能な操作と人間判断が必要な操作を区別し、後者を自動実行しません。実行可能な範囲の宣言は、権限の付与そのものではありません。
 
 Agentが行った業務もRQ-018〜RQ-020のCommand / Observation / Resource / retry / unknown境界を迂回してはいけません。
 
