@@ -505,7 +505,7 @@ Everything is Dataが十分に成熟するには、**同じプレーンなデー
 - [#2644：意味定義と要素の対応](https://github.com/hat47x/tei-platform/pull/2644)／[閉鎖済み#2095](https://github.com/hat47x/tei-platform/issues/2095)。同じ要素に複数の受理済み意味定義が結び付く場合の曖昧性や未記入を、**受理済み定義だけ**に対して列挙する別Reference。要素の**業務的/意味的な一意帰属**は、共通Data CarrierへFunction/Test等の**複数解釈Roleを適用可能**という#2620の設計と矛盾しない。前者はどの意味定義が正本か、後者は同じデータをどの目的で使うかという別軸。
 - [#2587：Data-first実装](https://github.com/hat47x/tei-platform/pull/2587)は**mainへ統合済み**。標準Operation/Artifactの既存製品経路は、未統合候補という扱いから、exact mainを確認して検証する接続先へ進める。一方、実Domain Meaning・複数Provider・Consumer必要Member・Host認可の資格は統合そのものから導かない。
 
-**CI観測（版の区別）**：#2638のHead `47b52240b7dff18706e83a7e89af63e6fb4a3c49` ではRepository Health／依存脆弱性確認のActionsがcompleted/success。#2639の**旧Head** `5be242b664e1cb77d4af2f97930e52a7681fe480` にも同2 Workflowのsuccessがあり、Repository Healthログで`go test -count=1 -timeout 60m ./...` PASSを確認。ただし#2639は**現Head `f94fb90f9379aba0e309461be511052c4b183921`に更新され、新しい2 Workflowは確認時点でqueued**。旧HeadのPASSを現Headに転用しない。CI PASSはProduct CLI・Studio・外部Hostでの意味受理を証明しない。
+**CI観測（版の区別）**：#2638のHead `47b52240b7dff18706e83a7e89af63e6fb4a3c49` ではRepository Health／依存脆弱性確認のActionsがcompleted/success。#2639の**旧Head** `5be242b664e1cb77d4af2f97930e52a7681fe480` にも同2 Workflowのsuccessがあり、Repository Healthログで`go test -count=1 -timeout 60m ./...` PASSを確認。ただし#2639はその後もHEADが更新されているため、**実行時に最新Headと同一SHAのWorkflow結果を再取得**する。2026-11-02に観測した後続Head `f94fb90f9379aba0e309461be511052c4b183921`、さらに `5fdef5de5956ba0b4996d2861fc1ba4b1d94a222` は、各観測時点でWorkflowがqueuedだった。**旧HeadのPASSを新版へ転用しない**。CI PASSはProduct CLI・Studio・外部Hostでの意味受理を証明しない。
 
 ### 17.2 小さな接合試験パケット：PB-01〜10（横断の新実行はNOT RUN）
 
