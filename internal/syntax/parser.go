@@ -1830,7 +1830,7 @@ func (p *Parser) parseSemanticType(namespace core.CanonicalID) (semantic.Type, e
 	if err != nil {
 		return semantic.Type{}, p.errAt(underTok, err.Error())
 	}
-	values := []string{}
+	var values []string
 	if nt, _ := p.peek(); nt.Text == "values" {
 		_, _ = p.next()
 		if _, err := p.expect(TokenLBrace); err != nil {
