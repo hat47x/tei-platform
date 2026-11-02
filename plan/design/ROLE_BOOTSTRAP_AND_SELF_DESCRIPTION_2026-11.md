@@ -52,7 +52,7 @@ Layer 3   CUI／Studio／Skill／SHO／Targetへの用途別Projection
 - 同じData byteでもRole/Operator/Syntax PluginのPinが変われば**意味資格の再評価候補**になる。Source byteが変わらないこと、Role名が同じこと、独立Fixtureで同じ値が出たことは、旧Meaning Acceptanceや現在のHost Grantを引き継ぐ根拠にならない。
 - 構文／RoleからSkillやTool説明を生成できる場合も、そのSkillが指す**実CLI/API/MCP入口・版**を別に検査（#2605）。未導入Providerの`effect: read-only`宣言で、秘密Sourceの外部開示や自動実行資格を付与しない。
 
-## 4. 独立Reference：RB-01〜RB-19（有界合成の実行済み、実TEI試験はNOT RUN）
+## 4. 独立Reference：RB-01〜RB-24（有界合成の実行済み、実TEI試験はNOT RUN）
 
 初期は`plain data候補 + pinned descriptor候補 + eager/deferred依存`を有限な入力として**read-onlyで**比較する。独立Fixtureの出力Schemaを正式なCore Meta Schemaへ昇格させない。
 
@@ -85,9 +85,48 @@ Layer 3   CUI／Studio／Skill／SHO／Targetへの用途別Projection
 | **RB-18** 同じProvider IDの重複 | 同名・同ID重複は不成立、先勝ち/後勝ちをしない |
 | **RB-19** 存在しないeager依存先 | rootが有効でも依存先がなければ未解決 |
 
-**実行済みの限定証拠**：`plan/fixtures/role-bootstrap/check_bootstrap.js`の独立合成Referenceを、コード実行環境のV8 JavaScript isolateで**19/19 PASS**。GitHubへ保存し、保存版を再取得して再実行・SHA照合する。**実Nodeテスト、GitHub CI、TEI Language Plugin/Operator/Extension Lockの実結合はこの試行では未実行**。そもそもFixtureの`registry`は、実TEIのPlugin resolverを模擬している小さな比較器であり、新Resolverのプロダクション実装を提案しない。
+**実行済みの限定証拠**：`plan/fixtures/role-bootstrap/check_bootstrap.js`の独立合成Referenceを、コード実行環境のV8 JavaScript isolateで当初**19/19 PASS**、Contract/実装identity比較を加えて**24/24 PASS**。GitHubへ保存し、保存版を再取得して再実行・SHA照合する。**実Nodeテスト、GitHub CI、TEI Language Plugin/Operator/Extension Lockの実結合はこの試行では未実行**。そもそもFixtureの`registry`は、実TEIのPlugin resolverを模擬している小さな比較器であり、新Resolverのプロダクション実装を提案しない。
 
 この有界Referenceが実証できるのは、指定したデータ・ピン・eager/deferred有界例を区別する**合成アルゴリズムの判別**だけ。Roleの意味付与、可逆Source操作、循環した実行型の一般的許容性、正式Trusted Provider契約、Runtime/Hostの権限、Owner意味受理は証明していない。
+
+### 4.2 Exact implementation identityへの強化（RB-20〜24）
+
+[#2620 RE-01〜10](https://github.com/hat47x/tei-platform/issues/2620)と[TAI #271 QH-01〜18](https://github.com/hat47x/tai-pleroma/issues/271)の横断研究から、**同じRole ID/versionでも実装内容が変わり得る**という受入条件を具体化した。前段ReferenceはRoot/Eager依存先について**版文字列だけを比較**していたため、同じ版の実装差を見逃すという、あくまで**このFixture自身の不足**があった。正式TEI製品に当該欠陥があると断定するものではない。
+
+そこで、各Role DescriptorとPinを、`version + contract fingerprint + actual implementation fingerprint`という**比較用の3軸**に拡張。Rootと推移するEager依存先の双方でexact照合を要求する。Fixtureのfingerprint文字列は**テストが与えたラベル**であり、現物バイトをSHA-256計算した真正なLock証拠ではない。実TEIへの接続時には、既存Extension Lock／Language Selectionが検証する**実Provider物・Pin対象・Implementation fingerprint**を利用し、自己申告Stringを信用しない。
+
+| Case | 比較する誤成功・性質 |
+| --- | --- |
+| **RB-20** | Role ID/version不変、Root実装fingerprintだけ変更→旧Pinを拒否 |
+| **RB-21** | Rootのexact pinは不変、Eager依存先の同版実装だけ変更→旧依存Pinを拒否 |
+| **RB-22** | 変更後の依存先実装に**明示的にPinを更新**→shape/循環条件が揃うならRole候補として再資格化可能。旧Meaning受理の自動継承はしない |
+| **RB-23** | 無関係なRole Provider追加→既存exact-selected Roleの合成出力は変化せず（公開候補発見自体の比較は別#2620 RE） |
+| **RB-24** | version文字列だけのPin→実装内容未照合として不成立 |
+
+**限定実行記録**：GitHub PR #2638ブランチで変更した`check_bootstrap.js`をV8で**24/24 PASS**。実際のTEI Provider/Plugin byte digestを計算したものではなく、正式Conformanceも未取得。これは新Resolverの提案ではなく、既存Versioned Selectionの**抜けを検出する受入視点**である。
+
+### 4.3 Roleの変更影響と動的Read依存を一つの「全局依存Graph」にしない
+
+[#2582 DC-01〜12](https://github.com/hat47x/tei-platform/issues/2582)では、同じAmount・同じ出力Fieldでも`Order.customerRef`の再束縛で必要なAccount.limitが変わる例、既存Row IDが0件の`NOT EXISTS`や`Hold`の追加で真理値が撤回される例を扱っている。これは**Runtime Read/Claim資格**であり、本ReferenceのEager Role Provider bootstrapとは異なる。共通概念として言えるのは、「**依存閉包を列挙できなければ不変と断言しない**」という条件のみ。
+
+| 変化 | 確認する依存 | Owner／既存成果 |
+| --- | --- | --- |
+| Role/Operator自身の同版実装差 | Root＋Eager依存Providerの実byte/Lock、解釈済Meaning、関連Artifact | #2620／#988／本RB-20〜24 |
+| FieldのValue不変だがRelation Bindingだけ変更 | Predicate、Relation occurrence、選び直した実入力、Read cohort／completeness | #2582 DC-02、#2506 |
+| 0件の否定結果へ新しいMatching rowが加入 | 結果中のRow IDではなく**未出現行を含むPredicate/Scope**と変化観測 | #2582 DC-04〜07、#2387 |
+| Provider route／Query semantics変更 | Read witness、NULL/Bag/Sort/Limit、実RDB/API、Consumer用途 | #2622／#2611／#2627／#2628 |
+| Consumer開示・Host Grantだけ変更 | 現在の公開・実行資格。歴史的なSource/Role/Receiptは変更しない | #2516／TAI #271／#1174 |
+
+ここで**Identity/Meaning/Build/Runtime Claim/Consumer資格を単一のフラグやglobal revisionで表さない**。同じ見かけの数値でも、歴史的「その期間に変化なし」のClaimと現在値のClaimは異なる（0→1→0のABA）。この表は新しいMeta Schemaや実行時Dependency Engineではなく、各Ownerの試験結果を照合するためのP1受渡し票である。
+
+### 4.4 「実Goに到達した部分」を踏まえた次の一体試行
+
+現行mainは初期基準`9c9ef4d...`から進み、[#2587](https://github.com/hat47x/tei-platform/pull/2587)は**mainへ統合済み**。従って新たなP1統合試験は旧mainを固定したまま現在の既存CLI能力が無いと仮定しない。開始時にmain exact commit・選択された実Executable/argv/Workspace/Source bytes・Extension Lock・Skill bytesを固定し直す。
+
+- **実Language/Operator Reference**：[Draft #2639](https://github.com/hat47x/tei-platform/pull/2639)は**既存Goの**`ParseSelected`/`ParsePipelineSyntax`/`LowerPinnedPipeline`を使い、別表層から同じ限定candidateを得る7件のテストを追加している。ただしSource/Role accepted meaningやFunction Contextの実結合ではなく、**そのPRのexact headのCI結果を別に確認**する。本RB Fixtureの`pinFor`はそのGo Selectionを代替しない。
+- **実CLI→Consumer Witness**：[Draft #2626](https://github.com/hat47x/tei-platform/pull/2626)には実Go CLIで公開Reference Workspaceを読んでSource relocation時の意味指紋とSource Index/Trace/引用先が異なることを確認した既報がある。公開Referenceの実Readの根拠と、別SourceのRole解釈・実Studio/SHO Clientの実Loaded bytesは**異なる試行**。これをEI-01〜08の一体PASSに合算しない。
+- **最初のB1の判別対象**：実Go Selectionが`ImplementationFingerprint`を持つ場合、(A)固定Lockと実内容byte一致、(B)Rootだけ一致／Eager依存Bは同版だが実体不一致、(C)無関係Providerを追加、(D)未実装RoleのScopeに入ることを区別。実GoがRoleのEager依存という概念を現時点で表現しないなら**unsupported/gap**として報告し、新Role Resolverを先行実装しない。
+- **P1継続条件**：Schema/Profileの選択／独立Expected／必要なRead/Role/Source参照が固定できた1モデルだけを、headless →二Consumer→Providerへ段階展開。OwnerのP0-a実DB・P0-b Owner-write・S0/J5/S3と既存Gateは従来どおり優先。
 
 ## 5. 最短の既存TEIへの接続
 
