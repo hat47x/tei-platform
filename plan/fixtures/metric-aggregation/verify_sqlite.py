@@ -49,10 +49,10 @@ def main():
     assert correct == 100 + 100 == 200 and fanout == 600 and by_value == 100
     out.append(case("MC-01 fanout", correct, 100 + 100, fanout, "SUM DISTINCT value is also wrong: " + str(by_value)))
 
-    means = db.execute("SELECT group_id, AVG(val), COUNT(*) FROM member_value GROUP BY group_id ORDER BY group_id").fetchall()
-    assert [(x[0],x[2]) for x in means] == [("A",2),("B",8)]
-    weighted = Fraction(sum(round(m[1]) * m[2] for m in means), sum(m[2] for m in means))
-    naive = Fraction(sum(round(m[1]) for m in means), len(means))
+    means = db.execute("SELECT group_id, SUM(val), COUNT(*) FROM member_value GROUP BY group_id ORDER BY group_id").fetchall()
+    assert means == [("A",20,2),("B",160,8)]
+    weighted = Fraction(sum(m[1] for m in means), sum(m[2] for m in means))
+    naive = sum(Fraction(m[1],m[2]) for m in means)/len(means)
     out.append(case("MC-02 weighted average", weighted, Fraction(2*10+8*20,10), naive, "roll up SUM and COUNT, not AVG of AVG"))
 
     numer, denom = db.execute("SELECT SUM(positive),SUM(total) FROM fraction_group").fetchone()
