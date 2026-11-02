@@ -139,3 +139,23 @@ python3 -m unittest -v test_qx22_sql_operator_boundaries.py
 **三つのSource経路を分離**：(A) SQL NativeのSourceを正本としてread-only DerivedIR/標準UIを表示、(B) SQLを解析してDSL Sourceへの**明示的な移管候補**を作り独立比較後にOwner判断、(C) SQL取得済みResult Sliceから別のData Operatorで変換。標準的な `where`/filter はQuery/Path/Graph/JSONのRole・grain・bag・NULL/未取得/開示・適用時点/Operator法則と結びつく。第二SQL parser/evaluatorや自動的なSQL書戻し権限を先に作らない。
 
 [Draft PR #2388 計画 §7.17](https://github.com/hat47x/tei-platform/blob/work/query-structural-fixture-design-20261030/plan/design/QUERY_STRUCTURAL_MODEL_AND_FIXTURE_WORKBENCH_2026-10.md)に試験票・引継ぎM0〜M3を記録。**TEI Go DeriveFromAnalysis、実SQLGlot Worker、実PostgreSQL、Data Provider、共通DSL Parser、UI/SHO、Host/Owner受理はこの10件で未実施。**
+
+
+## QX-25：公開列に現れないSQL入力依存（SQLite Authorizer／2026-11-02）
+
+[#2624](https://github.com/hat47x/tei-platform/pull/2624)の明示Function Context Mappingや[#2625](https://github.com/hat47x/tei-platform/pull/2625)のSyntax Normal Formと連携し、出力の列名だけではRead依存・開示条件を説明できない負例を**実SQLiteの列参照認可Hook**で固定した。
+
+```sh
+cd plan/fixtures/query-workbench-f0
+python3 -m unittest -v test_qx25_hidden_read_disclosure.py
+python3 -m py_compile test_qx25_hidden_read_disclosure.py
+```
+
+- Python **3.13.5**、SQLite **3.46.1**、**12/12 PASS**、`py_compile` PASS。実行した6514 bytesファイルとGitHubのGit blob **`4695728b9d8345ea0eab2a982c9c730f30332852`**が一致。
+- `SELECT id`であっても、`WHERE hidden_score>0`／`ORDER BY hidden_score`／`COUNT WHERE`／別Relationの`EXISTS/JOIN`が秘密扱いの列へ依存することを`sqlite3.set_authorizer`の`SQLITE_READ`で観測。
+- 該当列の`SQLITE_READ`をDENYすると、公開列のみをSELECTしたSQLでもErrorになる。**Errorを0件・NULL・業務拒否へ黙って置換しない**。
+- 秘密扱い列の値だけ変更しても、公開IDのmembership、COUNT、TOP-1が変わる。逆に**同じ`I1`が返っても、別SQLのPredicate有無で列参照集合が異なる**。
+- **厳密な限界**：`set_authorizer`の出力はSQLiteが**SQL準備時に権限判定を要求する列参照**であり、物理行/IO、実RLS、他ProviderのRead Footprint、Host Grant、Consumerの開示Permission、実OS送信を観測・証明しない。検査用のDENY設定も正式TEI Policy/Authorityではない。
+- Queryの出力値Lineage／Predicate・Sort・Existence等の入力依存／Function Context宣言／実Provider取得／Consumer Disclosure・Effectをそれぞれ別資格とする。実Worker→DerivedIR→Context→SHO/外部AIの縦断はNOT RUN。
+
+詳細は[Draft #2388計画§7.20](https://github.com/hat47x/tei-platform/blob/work/query-structural-fixture-design-20261030/plan/design/QUERY_STRUCTURAL_MODEL_AND_FIXTURE_WORKBENCH_2026-10.md)。#1693/#1178の開示Owner、#2624のContext Mapping、#2622のData Operations、#988/#2625のDSL Normal Formに引き継ぐ。新SQL Executor/Host/Policy Engineは追加しない。
