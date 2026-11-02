@@ -149,3 +149,34 @@ BC-08/09のOwner仮説P3、BC-07の正式回復条件、BC-12の量化/再集計
 - **次に必要な製品接続**：#2506/#2500/#2516の実read-only Consumerと、#1174/#1129が所有する実Provider/Effect証拠に対し、合成の同一表示ケースを投入し、「根拠不足」の説明と実行許可が適切に分離することを観測する。実原モデル・Owner判断は#1125/#267に留める。
 
 このfixtureは**計画の十分性を反証する補助証拠**であり、第二のBusiness Rule Engine／汎用Oracle/Runtime Acceptanceを構成しない。追加の合成Case数を製品Gate PASSへ加算しない。
+
+
+## 9. 操作意味と共有確定境界の二世界（2026-11-02追補・Claim別反証）
+
+### 9.1 この追補だけの不足：対象・結果の一致では閉じない二つの穴
+
+既存BC-10は「Intent対象1001／Payload・実Effect対象1002」、BC-11は「Effect Replay／歴史的Output再投影」を扱う。今回の**BC-13は対象1001・型・書込み種別がすべて一致したまま、選択されたBusiness Actionだけが変わる**反例であり、BC-10を再実装しない。**BC-14は画面の閉じる・取消・RETURN_CODEが一致しても、子Functionの共有TransactionへのCommit権限で親の保留Effectが確定する**反例であり、単なる書込み成功と異なる。
+
+正本の責務は次のように保持する：[#2598 IB-12](https://github.com/hat47x/tei-platform/issues/2598)はIntent候補→導出Surface→実Requestの**Action Meaning束縛**、[#2485](https://github.com/hat47x/tei-platform/issues/2485)は導出Binding選択、[#1129](https://github.com/hat47x/tei-platform/issues/1129)はTransaction OwnerとNested Function Effect、[#1174](https://github.com/hat47x/tei-platform/issues/1174)はCommit・Request/Receipt・確定時Authority、[#940](https://github.com/hat47x/tei-platform/issues/940)は旧Driver実動、[#1163](https://github.com/hat47x/tei-platform/issues/1163)は同一実行の証拠接合。本書の責務は**OwnerのB₀完了Claimを支えるには何の根拠が不足するか**の説明のみ。
+
+| Case | 可視情報が同じ二世界（自作架空データ） | その情報だけでは成立しないClaim | 判別に必要な証拠 |
+| --- | --- | --- | --- |
+| **BC-13 同じ対象／異なるAction意味** | UI Intentは「受注1001を提出」、表示は同じ受注ID・更新済み・Receipt K1。Aでは実呼出しCapabilityが受理されたsubmit、Bでは同じ `update sales.order` に対応するcancel。双方の更新対象・書込み種類は一致 | **B₀「提出Actionが成立」**は、対象ID・Generic Operation ID・単なる更新Receiptからは導けない | Intentの受理済みAction/Revision → 生成Surfaceの選択Binding・Rule/World Revision → Actual InvocationのCapability・入力対象/値 → Owner受理済み意味とEffect/Receiptの一試行対応。辞書順で選ばれたBindingを意味同一として受理しない |
+| **BC-14 同じ取消UI／異なるAmbient Commit** | 子一覧Functionが選択なしでClose（戻りコード01）、その後親でRollbackを選ぶ画面上の列は同じ。Aでは子は親の未確定更新を確定せず、Bでは子の共有Commitが親の保留更新を先に確定する | **B₀に付随する「親取消後に当該更新が未確定」Claim**は、子の直接Write件数0・RETURN_CODE01・親Rollback操作の記録からは導けない | 親Pendingの存在、同じConnection/Transaction参加・子のCommit呼出しと実効、親Rollback前後の**別Connection**での観測・Resource版、対象Operation/Effectへの帰属。禁止すべきかはOwner判断 |
+
+BC-13の技術的手掛かりは[#2598 IB-12](https://github.com/hat47x/tei-platform/issues/2598#issuecomment-6572593885)と未統合[#2587](https://github.com/hat47x/tei-platform/pull/2587)の固定Source所見。単に`sales.order.submit`と`sales.order.cancel`の文字列を比較すれば業務意味が自動受理されるわけではなく、Application／Capability／対象契約／モデル版／Ownerの受理済み対応が必要になる。
+
+BC-14の**B側の限定的な旧挙動**は、[統合済み#2154](https://github.com/hat47x/tei-platform/pull/2154)の配布Driver＋合成XEAF／H2の実動記録（子XF100を選択せず閉じる→親Rollback後も親更新が残る）を参照できる。A側は**比較のための仮説世界**であり、旧Driverで両世界を実行したという主張ではない。旧配布JARと公開Java Sourceには版差があるため、元業務モデル・全Runtimeへの外挿やD01発生の証明としない。旧Driverの合成実動に対応する正式Business Actionの意味は未受理。
+
+### 9.2 判別順序：PurposeとTransactionの二軸を独立に閉じる
+
+1. **P1／Intent→Requestの意味束縛**：#2598の既存IB-12へBC-13をOwner Claim Consumerとして渡す。対象S=T=Eでも実際に選ばれたCapabilityが受理済みActionと異なるなら、B₀を「業務完了」にしない。Rule FingerprintやOperation IDが不変でもBindingだけ変わる版間差をSource/R1-R2・実Request側で検査する（#2485 B6〜B8を再利用）。
+2. **P0-b／Nested TransactionのOwner確定**：#1129の既存二Function/同Rule/Owner-writeと#940の旧Driver証拠を利用し、BC-14では子Function自身の直接DML、**親Pendingへの確定波及**、外部PDF等の別Effectを分ける。新Host、汎用Tx Coordinator、独立Driverエージェントは作らない。Commit Request／実JDBC ACK／確定DB readを別列にする。
+3. **P1／複合SaveとTxを混同しない**：[#2597](https://github.com/hat47x/tei-platform/issues/2597)・[Draft #2601](https://github.com/hat47x/tei-platform/pull/2601)の依存順序／atomicity-group／SQLite局所3ケースを参照する。正しい実行順だけで一括原子性は保証されず、対象Targetが提供する実Tx所有・Savepoint・子のCommit権限を確認する。同Fixtureの局所PASSをTEI実Target全体の保証へ変換しない。
+4. **S3／Owner受理票**：完成Claimを「対象」「Action Purpose」「必要な検査集合」「確定するEffect集合」「確定境界」「結果・回復」の列で評価。BC-13/14ともB₀とK₀を混同せず、B₀の正しい条件はOwner未受理を保つ。#267の第二Meaning Acceptanceや#1119新Gateを作らない。
+
+### 9.3 合成反証と製品受入の線引き
+
+既存の[自作two-world fixture](../fixtures/business-completion-claims/verify_claim_projections.py)へBC-13/14の二組を追加する。まず同一の公開Projectionに対し架空OracleのB₀/取消Claimが逆になることだけを検証する。その後、**BC-13**は#2598でIntent→Actual Capability/Request、**BC-14**は#1129/1174で子Function→親Pending→独立DB readを同じCase/Revisionで結合する。実Effect帰属や正式Owner意味の判定は、#1163同一Runの証拠が得られるまで保留する。
+
+**今回の資格**：本追加は設計候補と自作合成反例であり、旧Driver/実PG/製品Web/Windows/SHO/正式Owner受理を新しく実行・採用したものではない。#2154の既存実動、#2597のSQLite局所結果、#2598/#2485の設計所見は、それぞれの固定版・範囲に限る。成果物のPublish/Manifest一式整合は独立した[#2604](https://github.com/hat47x/tei-platform/issues/2604)が所有し、設計書のbyte/公開成功をAction Meaning受理へ昇格させない。
