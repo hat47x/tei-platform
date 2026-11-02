@@ -33,7 +33,7 @@
 
 **ステータス**：独立合成Go単体テストのみ。Source/Meaning/Owner受理、実TEI統合、実DB/外部Host、正式API、PRのマージは未確認。
 
-## Read Sliceの独立比較（RC-01〜17／追加）
+## Read Sliceの独立比較（RC-01〜20／追加）
 
 `read_compare.go` は**実Providerが返したと仮定した合成Read Slice**を比較するための検証補助。経路列挙の`Explain`とは別の義務を説明する。
 
@@ -45,14 +45,14 @@
 
 **重要な二世界反例**：PrimaryとReplicaが同じ`SnapshotToken=s7`を持ち、同じ1行を返すとしても、**異Provider間のトランザクションスナップショットが同じことを、その文字列一致から証明できない**（#1708のread-set/freshness課題）。このReferenceは`AssertedCommonCohort`を**独立Fixtureが仮定する場合だけ** bag比較へ進む。`EstablishedByFixture`と`EvidenceLabel`はテスト前提の明示であり、真正性の検証・Provider契約・Host許可を実装するものではない。実製品がこのboolを実行資格として使うことはできない。
 
-別の反例：同じEntity identityのレコードがJOIN結果で2回出現したとき、SQL Bagの重複を集合へ縮約すると結果が一致しているように見え得る。RC-06は重複数を比較する。`NULL`、`absent`、未知の`redacted`を区別し、現Fixtureの`ReadRow.Value`は値byteの一致だけを見る。数値単位・Decimal/rounding・型付きNULL・RLS・照会predicateの厳密な意味・取得の完全性は**製品側に未接続**。
+別の反例：同じEntity identityのレコードがJOIN結果で2回出現したとき、SQL Bagの重複を集合へ縮約すると結果が一致しているように見え得る。RC-06は重複数を比較する。`NULL`は観測済みNULL、`absent`は未取得Fieldとして区別し、**completeなRowsetでもunobserved Fieldが残れば値同値はnot_established**とする。未知の`redacted`も保留し、現Fixtureの`ReadRow.Value`は値byteの一致だけを見る。数値単位・Decimal/rounding・型付きNULL・RLS・照会predicateの厳密な意味・取得の完全性は**製品側に未接続**。
 
 ### 追加実測（2026-11-02）
 
-隔離した実Go byteで`GO111MODULE=off go test -count=1` **合計29/29 PASS**（経路PR-01〜12、読取比較RC-01〜17）、`go test -race -count=1` PASS、`go vet ./...` PASS。Go 1.23.2/Linux。GitHubの保存Blobと一致：
+隔離した実Go byteで`GO111MODULE=off go test -count=1` **合計32/32 PASS**（経路PR-01〜12、読取比較RC-01〜20）、`go test -race -count=1` PASS、`go vet ./...` PASS。Go 1.23.2/Linux。GitHubの保存Blobと一致：
 
-- `read_compare.go`: Git blob `0279a75e6aa9f8fdc91715075e7b2de41c32f268`、SHA256 `8838bea0839f433b2fe9619d3b8703191d8c0d89982d69882037441b303468b6`
-- `read_compare_test.go`: Git blob `a5ff3956d259cc7463889aaba8e7b29a97b21158`、SHA256 `8aa6f55a2d2c2de541c2a9d9a24982f8828d3f43fc7465f3b9a2ec1203036991`
+- `read_compare.go`: Git blob `96a50371a7f35dd03124b6933b71d3c6ad5b0b97`、SHA256 `50f45b648bbc27bd0d6c0bf9bb1f76b86396a93d37eb6604324af537085fb340`
+- `read_compare_test.go`: Git blob `29478344212e3d88e98d39759020da7dcc0423d5`、SHA256 `be67e3c844ee3c090a6d1c5f6e429da2d7de8710b75f056ed6f2dd515ed5067b`
 
 **継続する境界**：この合成29件は実`DeriveOperationSurface`、`Query`/Function Data Context、SQL Worker・実DB Snapshot/RLS、実OData/Read Session、Provider間の実Cohort証明、実Target/Host権限、Ownerの受理を試験しない。#1708のSource実装を変更せず、問題を独立反例として次段の実Provider受入へ渡す。
 
