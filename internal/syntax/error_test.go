@@ -1,4 +1,4 @@
-﻿package syntax_test
+package syntax_test
 
 import (
 	"testing"
@@ -39,4 +39,3 @@ func TestLexerErrorRangeHighlightsUnexpectedByte(t *testing.T) {
 		t.Fatalf("range text=%q start=%+v end=%+v", got, start, end)
 	}
 }
-

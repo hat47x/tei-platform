@@ -1,4 +1,4 @@
-﻿package workspace_test
+package workspace_test
 
 import (
 	"os"
@@ -72,4 +72,3 @@ func TestWorkspaceLexerErrorBecomesSourceDiagnosticWithoutSyntheticSubject(t *te
 		t.Fatalf("range text=%q range=%+v", got, diagnostic.Source.Range)
 	}
 }
-
