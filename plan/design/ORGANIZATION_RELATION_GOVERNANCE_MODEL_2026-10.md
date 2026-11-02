@@ -1662,3 +1662,55 @@ Source Revision不一致でhelperを停止させる。UI選択epoch、Provider S
 5. **#2598/#1174/#1119**：Rule結果を実Operationの許可証へ昇格させず、既存Actionの受理、実Request、Grant、Effect/独立Observation、Owner意味受理へ対応付ける。#1119 P0の実PostgreSQL・Owner-writeが優先。
 
 この成果は**標準構造・専門Ruleの合成に必要な意味境界と受入票**であり、新しい固定型体系、第二Rule Engine、汎用権限管理、専用Hostの製品採用・統合を意味しない。
+
+## 48. 非出力Query依存と組織Claimの再評価閉包（2026-11-02：Go Query IR横断）
+
+### 48.1 新たな設計問題：表示値のLineageはQuery結果の全依存ではない
+
+[実Go Query IRの特性試験Draft #2634](https://github.com/hat47x/tei-platform/pull/2634)／[#2635](https://github.com/hat47x/tei-platform/issues/2635)では、現行候補の`query.DeriveFromAnalysis`が合成`analyzer.Result`を受け取ったとき、**OutputField.Inputsは表示値の入力**として保たれる一方、WHEREの非表示列参照・比較定数はRelational Filter Expression等の別箇所に残る、とcharacterizationした。これは*情報がIRから完全消失したとする主張への反例*であり、**それらがTyped Control/Existence/Ordering Dependencyとして横断Consumerに受け渡されることを立証したものではない**。実SQLGlot Worker・Provider/DB・正しい行集合・外部公開の検証も別である。
+
+この区別を組織の同一Sourceへ適用し、**Queryで結果行が存在する条件・並び順・集合の不在・業務Ruleの入力依存を、表示フィールドの値Lineageと混同しない**。特に次の比較を既存[#2629](https://github.com/hat47x/tei-platform/pull/2629) §16のDependency Closure、[#2582](https://github.com/hat47x/tei-platform/issues/2582)のClaim相対な失効、[#2600](https://github.com/hat47x/tei-platform/issues/2600)の増分再生成へ渡す。
+
+| 条件と利用先 | 表示値（元Relation） | 非出力依存 | 変化の際に何を再資格化するか |
+| --- | --- | --- | --- |
+| D1の通常Membership表 | A1/A2、`id/person/dept` | Membershipの集合/時点/Scope | Relation・Scopeを変更したときの行集合と現Provider時点 |
+| D1の`Allocation >= 50`で絞り込む表 | A1/A2が表示 | **Allocation.basisPoints**（WHERE非出力） | A2配賦60→40ならA2が**消える**。表示Fieldの型/列名が同じでも旧行集合を再利用しない |
+| D1を配賦降順で並べる表 | A1/A2の同じ集合 | **Allocation.basisPoints**（ORDER BY非出力） | A2が120になればA2→A1に**順序が変わる**。集合が同一でも並べ替え・ページは旧資格でない |
+| `EXISTS(Project at D1)` | Project Fieldを出さずA1/A2 | **Project集合の存在条件** | J1/J2が両方消えたら既存A1/A2を**retract** |
+| `NOT EXISTS(Project at D1)` | Project Fieldを出さず対象なし | **Project集合全体の不存在条件** | J1/J2が両方消えたらA1/A2を**追加**。Project部分取得では不存在確定不可 |
+| D1容量Rule | 同じA1/A2表示 | Membership/Allocation/DepartmentCapacity・Rule/Operator版 | Capacity180→150は**表示不変・Rule結果逆転**。Ruleだけ再評価候補、ただし実Provider/Read時点/Grantは再資格化 |
+| 外部Consumerへの表/説明 | 公開可能なDisplay値 | 隠れたFilter・Rule/Diagnosticが外部へ推測させる情報 | 非表示Fieldの実Provider取得と、Result/Cardinality/Order/Timing/Diagnosticの**開示資格**を分ける |
+
+**Query Read Footprintを二種類だけに簡略化しない**：値の出力元（Value Lineage）、結果を左右する演算の条件（Predicate/Join/Existence/Sort/Group/WindowのDependencies）、実Providerで読まれたもの（Acquisition Witness）、Consumerに渡したもの（Disclosure Evidence）は、同じ意味Sourceを基底に持っても**別の証拠**である。実IRの`Filter.Expression`が保持されても、FieldRefやSource Columnが存在するというだけでOperator Law、未取得関連集合の完全性、受理済みRule評価や権限を推測しない。
+
+### 48.2 独立合成Reference ORG-QD-01〜12
+
+[Draft #2596](https://github.com/hat47x/tei-platform/pull/2596)の`verify-query-dependencies.mjs`を共通`source-fixture.json`／`scenario-fixture.json`の**第8のread-only独立検証**として追加した。**新しいSQL parser/Query Executorの製品実装ではない**。現行既知のA1=100/A2=60 FTE配賦、D1のProject J1/J2、Replica/Primaryのvalid/known時点を再利用する。以下の期待値はテストで明示し、評価関数の出力そのままをExpectedにしない。ただし同一合成Fixtureからの比較であり、Owner受理済みの独立Oracleや秘匿Holdoutには該当しない。
+
+| ID | 差分・前提 | 必ず判別する誤り |
+| --- | --- | --- |
+| QD-01 | WHERE配賦 >= 50：A1/A2、>=70：A1のみ | OutputField/Query IDの一致から行集合の同一性を断言 |
+| QD-02 | A2配賦60→40、Membership ID・Person/Deptは不変 | 非出力WHERE依存に変更が無いと見なして旧結果を再利用 |
+| QD-03 | ORDER BY配賦降順、A2を120へ変更 | Relation IDの**集合が同じ**だけで結果順序やページを再利用 |
+| QD-04 | 隠れたAllocationが欠損 | WHERE/ORDERの真偽を0や既定ID順で補ってしまう |
+| QD-05 | D1 Project J1/J2から0件へ変更 | `EXISTS`の2件→0件、`NOT EXISTS`の0件→2件を別々に検出 |
+| QD-06 | Projectがpartial/unknown | `NOT EXISTS`の不存在を確定して誤って行を増やす |
+| QD-07 | Membership取得がpartial/unknown | 結果リストの全件/完全ORDERと読み替えない |
+| QD-08 | Replica/PrimaryでSnapshot文字列`s7`、known-atが異なる | 同名Snapshotや同じSemantic Source版から同一行集合を主張 |
+| QD-09 | 同じ行集合を別observationで取得 | Data現在値/CacheキーをSource意味Revisionや表示列一覧だけで確定 |
+| QD-10 | Change: Allocationだけ／Capacityだけ／Projectだけ | Plain Display/Filtered/Sorted/Capacity Rule/Existsの**用途別失効**候補を区別 |
+| QD-11 | 未観測Change/Scope不明/Read Cohort資格不明 | 無影響と判定せず`unresolved`。形式上のDependencyが少ないだけでは実Cache再利用可としない |
+| QD-12 | Query候補が一致・Ruleがsatisfied | 物理取得済み・外部開示可・実Action/Host Grant・独立DB Effectのいずれにも昇格しない |
+
+**検証**：同ファイルのGitHub Blob `8e08f5f5f301303b9f9435e5a43eb218021b8559`を再取得して**25/25 V8互換Runner局所PASS**。旧7ファイルの合成確認141件＋この25件で**166件の局所合成チェック**。この追加ファイルを[既存ReferenceのNode固定版Workflow](https://github.com/hat47x/tei-platform/pull/2596)の検証対象に入れたが、**この改版を含むexact HEADでのNative Node/CIは実Runの成功を確認するまで未資格**。旧141件の実Node成功は[Actions #41456286651](https://github.com/hat47x/tei-platform/actions/runs/41456286651)、対象`a01a2addc680bc33c5ceee782e8b48e3a77a736f`に限る。合成Expectationの判別力/モデル内の独立性評価は#2514が継続してOwnerを持つ。
+
+### 48.3 再生成と再評価を混同しない最小契約
+
+「意味Source／Authoring／Rule/Operator定義を変更した」事象と「同じ意味Revisionの下で実Data集合・Provider時点・Consumerの現在資格が変化した」事象は違う。
+
+- **生成時**：Source/DSL/IR/Template/Target・生成器版、OperationSurface/Rule依存Manifestの影響を[#2600](https://github.com/hat47x/tei-platform/issues/2600)/[#2630](https://github.com/hat47x/tei-platform/issues/2630)/[#2633](https://github.com/hat47x/tei-platform/pull/2633)の成果物・再生成受入へ伝える。OutputField一覧だけを使ってQuery変更を「意味不変」としない。
+- **実行/観測時**：実DataのA2配賦やJ1/J2 Project変更、Provider known-at／Route／Read Cohort変更があれば、Query行集合・ORDER・EXISTS/NOT EXISTS・Rule結果・Consumer表示を、**そのClaimに必要な依存閉包**に沿って失効/再取得候補にする。未知依存があれば`unresolved`として局所無影響を保証しない。
+- **実Action時**：Queryが同じ結果を返しても、View occurrence→業務Relation target→受理済みAction→現在Host Authority/Effect fence→Commit/Receipt→独立観測は別途適用する（#2598/#1174）。Resultが表示できることを編集許可や完了へ転化しない。
+- **開示時**：公開列に秘密のFieldがなくても、WHERE閾値の変更で行が出たり消えたりすることが、非表示入力の推測を可能にする場合がある。これは`verified noninterference`ではなく、#2516/#1178にConsumer別Output・件数・順序・診断・Timing/ログを渡して検査するべきPressureである。通常の組織Data全体を機密扱いすることとは異なる。
+
+**実装順の変更は最小限**：#2634の現行Go特性試験の結果を参照し、#2586が受理済みFunction/Query/Context/Patternにこの隠れた依存を実際に渡せるかを一試行で確認。#2582は差分再取得、#2600は生成キャッシュ、#2516は公開の資格、#2514は期待Oracle独立性を担当する。新しい共通Dependency Graph Registry、Query Executor、Cache/Host/権限Engineは本節から導入しない。正式TEI Query/Provider、Studio/SHO、外部Consumer、Owner意味受理は引き続き**NOT RUN**。
