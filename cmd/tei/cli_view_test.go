@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
+
+	"tei/internal/applicationview"
 )
 
 func viewWorkspace(t *testing.T) string {
@@ -66,15 +68,15 @@ func TestViewCommandReturnsResolvedInteractionAsJSON(t *testing.T) {
 	if err != nil || code != 0 {
 		t.Fatalf("exit=%d err=%v body=%s", code, err, out.String())
 	}
-	var report cliViewReport
+	var report struct {
+		OK     bool                 `json:"ok"`
+		Result applicationview.View `json:"result"`
+	}
 	if err := json.Unmarshal(out.Bytes(), &report); err != nil {
 		t.Fatal(err)
 	}
-	if !report.OK || report.Result == nil {
+	if !report.OK || len(report.Result.Items) != 2 || report.Result.Items[1].Lookup == nil {
 		t.Fatalf("unexpected report: %+v", report)
-	}
-	if len(report.Result.Items) != 2 || report.Result.Items[1].Lookup == nil {
-		t.Fatalf("items=%+v", report.Result.Items)
 	}
 	if report.Result.Items[1].Lookup.TargetType != "customer.customer_id" {
 		t.Fatalf("lookup=%+v", report.Result.Items[1].Lookup)
@@ -104,7 +106,7 @@ func TestViewCommandRendersTextForm(t *testing.T) {
 	}
 }
 
-func TestViewCommandFailsClosedWithoutInteraction(t *testing.T) {
+func TestViewCommandRejectsUnsupportedKind(t *testing.T) {
 	root := viewWorkspace(t)
 	var out bytes.Buffer
 	code, err := runViewCommand([]string{
@@ -122,7 +124,7 @@ func TestViewCommandFailsClosedWithoutInteraction(t *testing.T) {
 	if err := json.Unmarshal(out.Bytes(), &report); err != nil {
 		t.Fatal(err)
 	}
-	if report.OK || report.Error == nil || report.Error.Code != "VIEW_FAILED" {
+	if report.OK || report.Error == nil || report.Error.Code != "VIEW_UNSUPPORTED" {
 		t.Fatalf("unexpected report: %+v", report)
 	}
 }
@@ -162,5 +164,64 @@ func TestViewCommandRendersHTMLForm(t *testing.T) {
 		if !strings.Contains(html, want) {
 			t.Fatalf("html does not contain %q: %s", want, html)
 		}
+	}
+}
+
+func headerDetailWorkspace(t *testing.T) string {
+	t.Helper()
+	root := t.TempDir()
+	writeWorkspaceFile(t, root, "tei.workspace.yaml", "workspace: header_detail_view\nsources:\n  - semantic\n  - applications\n")
+	writeWorkspaceFile(t, root, "semantic/sales/order.tei", `namespace sales
+
+data Order {
+    attribute orderId type std.identifier
+    attribute customerId type std.identifier
+    relation lines to sales.order_line many
+}
+
+data OrderLine {
+    attribute orderLineId type std.identifier
+    attribute quantity type std.decimal display "数量"
+}
+`)
+	writeWorkspaceFile(t, root, "applications/order-entry/application.tei", `application order_entry {
+    uses semantic sales
+}
+`)
+	writeWorkspaceFile(t, root, "applications/order-entry/patterns/order-lines.tei", `pattern order_entry.order_lines header-detail {
+    relation sales.order.lines
+}
+`)
+	return root
+}
+
+func TestViewCommandRendersHeaderDetail(t *testing.T) {
+	root := headerDetailWorkspace(t)
+	var out bytes.Buffer
+	code, err := runViewCommand([]string{
+		"-workspace", root,
+		"-application", "order_entry",
+		"-pattern", "order_entry.order_lines",
+		"-format", "html",
+	}, &out)
+	if err != nil || code != 0 {
+		t.Fatalf("exit=%d err=%v body=%s", code, err, out.String())
+	}
+	html := out.String()
+	if !strings.Contains(html, "<table>") || !strings.Contains(html, "数量") {
+		t.Fatalf("header-detail html=%s", html)
+	}
+
+	out.Reset()
+	code, err = runViewCommand([]string{
+		"-workspace", root,
+		"-application", "order_entry",
+		"-pattern", "order_entry.order_lines",
+	}, &out)
+	if err != nil || code != 0 {
+		t.Fatalf("text exit=%d err=%v body=%s", code, err, out.String())
+	}
+	if !strings.Contains(out.String(), "detail:") {
+		t.Fatalf("text=%s", out.String())
 	}
 }

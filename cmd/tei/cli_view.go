@@ -7,6 +7,7 @@ import (
 	"io"
 	"strings"
 
+	"tei/internal/application"
 	"tei/internal/applicationview"
 	"tei/internal/core"
 	"tei/internal/workspace"
@@ -15,7 +16,7 @@ import (
 type cliViewReport struct {
 	SchemaVersion string                `json:"schemaVersion"`
 	OK            bool                  `json:"ok"`
-	Result        *applicationview.View `json:"result,omitempty"`
+	Result        any                   `json:"result,omitempty"`
 	Error         *cliInspectionFailure `json:"error,omitempty"`
 }
 
@@ -50,17 +51,40 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 	if err != nil {
 		return fail("WORKSPACE_LOAD_FAILED", err.Error(), 2)
 	}
-	view, err := applicationview.Build(loaded.World, core.CanonicalID(*applicationID), core.CanonicalID(*patternID))
+	kind, err := applicationview.PatternKind(loaded.World, core.CanonicalID(*applicationID), core.CanonicalID(*patternID))
 	if err != nil {
 		return fail("VIEW_FAILED", err.Error(), 1)
 	}
+	var result any
+	switch kind {
+	case application.PatternRecord:
+		view, err := applicationview.Build(loaded.World, core.CanonicalID(*applicationID), core.CanonicalID(*patternID))
+		if err != nil {
+			return fail("VIEW_FAILED", err.Error(), 1)
+		}
+		result = view
+	case application.PatternHeaderDetail:
+		view, err := applicationview.BuildHeaderDetail(loaded.World, core.CanonicalID(*applicationID), core.CanonicalID(*patternID))
+		if err != nil {
+			return fail("VIEW_FAILED", err.Error(), 1)
+		}
+		result = view
+	default:
+		return fail("VIEW_UNSUPPORTED", fmt.Sprintf("view does not support pattern kind %s", kind), 1)
+	}
 	report.OK = true
-	report.Result = &view
+	report.Result = result
 	switch *format {
 	case "json":
 		return writeViewReport(out, report, 0)
 	case "html":
-		html, err := applicationview.RenderHTML(view)
+		var html string
+		switch value := result.(type) {
+		case applicationview.View:
+			html, err = applicationview.RenderHTML(value)
+		case applicationview.HeaderDetailView:
+			html, err = applicationview.RenderHeaderDetailHTML(value)
+		}
 		if err != nil {
 			return fail("VIEW_FAILED", err.Error(), 1)
 		}
@@ -69,7 +93,13 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 		}
 		return 0, nil
 	default:
-		return writeViewText(out, view)
+		switch value := result.(type) {
+		case applicationview.View:
+			return writeViewText(out, value)
+		case applicationview.HeaderDetailView:
+			return writeHeaderDetailText(out, value)
+		}
+		return 2, fmt.Errorf("unhandled view result %T", result)
 	}
 }
 
@@ -120,6 +150,36 @@ func writeViewText(out io.Writer, view applicationview.View) (int, error) {
 	for _, navigation := range view.Navigations {
 		if _, err := fmt.Fprintf(out, "  - %s (%s) data=%s\n", navigation.From, navigation.Kind, navigation.Data); err != nil {
 			return 2, err
+		}
+	}
+	return 0, nil
+}
+
+func writeHeaderDetailText(out io.Writer, view applicationview.HeaderDetailView) (int, error) {
+	if _, err := fmt.Fprintf(out, "pattern %s (%s)\n", view.Pattern, view.Kind); err != nil {
+		return 2, err
+	}
+	if _, err := fmt.Fprintf(out, "relation %s — %s -> %s\n", view.Relation, view.Header, view.Detail); err != nil {
+		return 2, err
+	}
+	for _, section := range []struct {
+		label string
+		items []applicationview.Item
+	}{
+		{"header", view.HeaderItems},
+		{"detail", view.DetailColumns},
+	} {
+		if _, err := fmt.Fprintf(out, "%s:\n", section.label); err != nil {
+			return 2, err
+		}
+		for i, item := range section.items {
+			line := fmt.Sprintf("  %d. %s : %s", i+1, item.Label, item.Type)
+			if len(item.Values) > 0 {
+				line += fmt.Sprintf(" [%s]", strings.Join(item.Values, "|"))
+			}
+			if _, err := fmt.Fprintln(out, line); err != nil {
+				return 2, err
+			}
 		}
 	}
 	return 0, nil
