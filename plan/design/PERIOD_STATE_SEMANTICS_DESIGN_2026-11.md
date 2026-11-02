@@ -182,3 +182,44 @@ W1・W2 が前提。W3 と W4 は別の層なので並行できる。W4 の規�
 2. 期間の状態を、`period` の宣言（本稿）にするか、`capability` の状態遷移（[BUSINESS_LIFECYCLE_V1](BUSINESS_LIFECYCLE_V1_DESIGN.md)）の一例として表すか。後者なら新しい宣言を足さずに済む可能性がある。
 3. `closed` の期間での `create` を許すか（翌期への計上）。本稿は `late-arrival` と合わせて選ぶ案にしている。
 4. 締めの切り出しの時点を、評価文脈（#1720）と期間の状態のどちらが持つか。
+## 15. 実装計画（2026-11-03、仮承認D-2に基づく）
+
+期間の状態は意味の層に閉じます（D-2 仮承認）。CLI の段階は増やしません。次の順で、段階ごとに試験を通します。
+
+| 段階 | 範囲 | 変更する場所 | 完了条件 |
+| --- | --- | --- | --- |
+| P1 | モデル・構文・検証 | `internal/semantic`（`Period` 型、パーサ）、`internal/validation` | `period` を宣言でき、対象データ・業務日付属性の実在と、`open`・`closing`・`closed` の三状態を検査する。負例（未定義のデータ、日付でない属性、状態の欠落）で診断が出る |
+| P2 | 操作面との接続 | `internal/operations` | `closed` の期間を持つデータは `create`・`update` を `human-gated` にし、`retire` の未解決を期間の宣言で解消する。決定性を保つ |
+| P3 | 成果物への反映 | `internal/artifact` | 機能定義書に期間の行を出し、整合検査（`CheckSet`）の対象に加える |
+
+### P1 の形（案）
+
+```text
+period sales.month {
+    data sales.order
+    business-date sales.order.order_date
+    states open, closing, closed
+    close-requires sales.period.close
+    closed-rejects create, update
+    correction via sales.period.correct
+}
+```
+
+- `states` は三状態をすべて含むことを要求する（順序は問わない）。
+- `business-date` は対象データの属性で、型が日付（`std.date` 系）であることを要求する。
+- `close-requires`・`correction` は能力の識別子で、同じ名前空間に実在することを要求する。
+- `closed-rejects` は操作種別（`create`・`update`・`delete`）の列挙とし、未知の種別を拒否する。
+
+### 各段階の検証
+
+```sh
+go test ./internal/semantic ./internal/validation -count=1   # P1
+go test ./internal/operations -count=1                        # P2
+go test ./internal/artifact ./internal/operations -count=1    # P3
+go run ./cmd/tei validate -workspace reference/workspace      # 既存の作業領域を壊さない
+```
+
+### 戻る条件
+
+- P1 で、既存の `data`・`attribute` の宣言と衝突する（同じ名前・同じ位置に別の意味を置く必要が出る）場合は、構文の案を設計へ戻す。
+- P2 で、`human-gated` にすることが実行の拒否と混同される場合は、自律区分の意味を設計へ戻す。
