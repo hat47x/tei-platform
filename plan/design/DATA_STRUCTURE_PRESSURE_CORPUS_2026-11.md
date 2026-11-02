@@ -9,7 +9,7 @@
 
 対象の同一性／構成文法／性質・法則／解釈文脈／利用箇所の要求／主張と根拠／実現と表示。各Pressureの意味に関連するM1〜M10（#2495）は重複して構わないが、**一つの性質を二つの独立な意味正本に保存しない**。
 
-以下の180ケースは**初期の異質性を測るための開始点であり、網羅の完了や上限を意味しない**。新規の構造・数学的性質・分野固有の解釈は追加し続ける。関心事が重複する場合も、操作・利用文脈・失われる情報が異なれば別の反例として保持する。
+以下の192ケースは**初期の異質性を測るための開始点であり、網羅の完了や上限を意味しない**。新規の構造・数学的性質・分野固有の解釈は追加し続ける。関心事が重複する場合も、操作・利用文脈・失われる情報が異なれば別の反例として保持する。
 
 ## A. 値と同一性（PC-01〜07）
 
@@ -321,6 +321,25 @@ TEIの[PR #2576](https://github.com/hat47x/tei-platform/pull/2576)・[#2578](htt
 | PC-180 | UI保存成功、独立read-backなし | Actual Effect/Business Result | 表示成功で業務完了 | #1174/#1119 |
 
 **注意**：SQL→Data Operatorは既存SQL正本の置換を意味せず、編集Session合成は共通Transaction Engineの導入を意味しない。既存Ownerの隔離SQLite試験を横断製品E2Eへ合算しない。
+
+## R. 空結果の否定依存・再資格化・Product Skill実利用（PC-181〜192、2026-11-02追加候補）
+
+[構造保存§19](STRUCTURE_PRESERVING_TRANSFORMATIONS_AND_PROJECTIONS_2026-11.md)のNE-01〜12に対応。**設計反例であり、本Corpusでの実行はNOT RUN**。
+
+| ID | Pressure | 保持する意味・証拠 | 誤成功 | Owner |
+| --- | --- | --- | --- | --- |
+| PC-181 | NOT EXISTS 0件→追加 | Predicate/Negative Dependency | 0件を依存なしとする | #2387/#2582 |
+| PC-182 | 0→1→0のABA | Change Observation Window | 最終値同一で無変更とする | #2582/SHO #6 |
+| PC-183 | 非表示WHERE Field変更 | Predicate Lineage | Display Fieldだけで再利用可 | #2387/#2624 |
+| PC-184 | Relation付替え・同値集合 | Relation Path Binding | Value同値で同じ関係とする | #2506/#2387 |
+| PC-185 | Partial 0件・全件未確認 | Read Completeness | 全件不存在とする | #2506/#2516 |
+| PC-186 | 別Provider同名Snapshot | Cohort Issuer/Scope | Token字句で同一Snapshot | #2611/#2622 |
+| PC-187 | 無関係変更と依存変更 | 選択的Invalidation証拠 | 全失効または全再利用 | #2582/#2018 |
+| PC-188 | 意味不変・開示Policy変更 | Current Consumer Eligibility | 意味再利用で公開許可 | #2516/#1178 |
+| PC-189 | Role定義あり、CLI未確認 | Capability実装証拠 | Roleで利用可と宣言 | #2619/#2605 |
+| PC-190 | Skill読込、Tool未呼出し | Harness実Invocation | Skill loadで成功とする | #2605/TAI #271 |
+| PC-191 | 回答同値、Tool候補/送信異なる | Planner/egress開示 | 最終回答同値で安全とする | #2516/TAI #271 |
+| PC-192 | CLI read-only PASS、Effect未実行 | Consumer/Host実Effect | 読取り合格で業務完了 | #2598/#1174 |
 
 ## 外部仕様の照合（2026-11-01読取り）
 
