@@ -1,6 +1,7 @@
 package artifact
 
 import (
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -69,5 +70,38 @@ func TestRenderWorkspaceRefusesAnUnknownApplication(t *testing.T) {
 	root := filepath.Join("..", "..", "reference", "standard-crud", "workspace")
 	if _, err := RenderWorkspace(root, "missing"); err == nil {
 		t.Fatal("an application that the workspace does not declare must be refused")
+	}
+}
+func TestRenderWorkspaceListsOnlyUsedNamespaces(t *testing.T) {
+	root := t.TempDir()
+	write := func(path, content string) {
+		full := filepath.Join(root, path)
+		if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(full, []byte(content), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write("tei.workspace.yaml", "workspace: scoped\nsources:\n  - semantic\n  - applications\n")
+	write("semantic/used/data.tei", "namespace used\n\ndata Item {\n    attribute id type std.identifier\n}\n\ncapability used.item.touch {\n    input item used.item\n    outcome touched used.item\n}\n")
+	write("semantic/unused/data.tei", "namespace unused\n\ndata Other {\n    attribute id type std.identifier\n}\n\ncapability unused.other.touch {\n    input other unused.other\n    outcome touched unused.other\n}\n")
+	write("applications/app/application.tei", "application app {\n    uses semantic used\n}\n")
+
+	set, err := RenderWorkspace(root, "app")
+	if err != nil {
+		t.Fatalf("render workspace: %v", err)
+	}
+	var content string
+	for _, artifact := range set.Artifacts {
+		if artifact.Kind == string(KindFunctionDefinition) {
+			content = artifact.Content
+		}
+	}
+	if !strings.Contains(content, "capability used.item.touch") {
+		t.Fatalf("the used namespace must appear:\n%s", content)
+	}
+	if strings.Contains(content, "capability unused.other.touch") {
+		t.Fatalf("a namespace the application does not use must not appear:\n%s", content)
 	}
 }

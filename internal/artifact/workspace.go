@@ -44,15 +44,23 @@ func RenderWorkspace(root, applicationID string) (WorkspaceSet, error) {
 	data := make(map[core.CanonicalID]semantic.Data)
 	capabilities := make(map[core.CanonicalID]semantic.Capability)
 	validations := make(map[core.CanonicalID]semantic.Validation)
+	used := map[core.CanonicalID]bool{}
+	for _, namespace := range target.SemanticUses {
+		used[namespace] = true
+	}
 	for _, namespace := range loaded.World.Semantics {
 		for _, element := range namespace.Data {
 			data[element.ID] = element
 		}
-		for _, capability := range namespace.Capabilities {
-			capabilities[capability.ID] = capability
-		}
-		for _, validation := range namespace.Validations {
-			validations[validation.ID] = validation
+		// Only the namespaces the application uses contribute functions: an
+		// application must not appear to provide a capability it does not use.
+		if used[namespace.ID] {
+			for _, capability := range namespace.Capabilities {
+				capabilities[capability.ID] = capability
+			}
+			for _, validation := range namespace.Validations {
+				validations[validation.ID] = validation
+			}
 		}
 	}
 
