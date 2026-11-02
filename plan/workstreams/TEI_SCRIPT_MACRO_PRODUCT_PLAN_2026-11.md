@@ -142,6 +142,41 @@ Java/.NET/Wasm/Process等の外部Hostへ同一Script/Action/Contractを接続�
 
 **実証状況**：この追補は設計/Workstreamの接合案。#2632/#2633/#2634の実Go候補ファイルが存在することと、その正確なHeadでのGo/CI PASSを別に確認する。T-35〜44のMacro Producer→Consumer→Host→Result/開示の同一試行、外部Reader、性能測定、Owner意味受理は**NOT RUN**。他OwnerのDraftやCritical Path P0-a/P0-b・Gate A/B/Cは変更しない。
 
+## 実CLI起点の最短Consumer縦断 M0〜M4（2026-11-02追加）
+
+[設計第13章](../design/SCRIPT_MACRO_AUTHORITY_AND_EFFECT_TARGET_BINDING_2026-11.md)のT-45〜53を、**既にmainへ統合された実TEI CLIから開始する最初の接続実験**とする。[PR #2587](https://github.com/hat47x/tei-platform/pull/2587)はmerge commit `8464db0bbbac216ede15d3344e72b7e8bd90cb65`で統合され、[#2643](https://github.com/hat47x/tei-platform/pull/2643)のstatus更新を含む参照mainは`d8f5114f17793354bbab0c766190699ad2b5d60b`。従来の`9c9ef4d...`に基づく未統合候補の記述は履歴・設計の根拠であり、**現在のCLI実在性を示すものではない**。一方、統合済みはMacroや実DB/外部Host/Owner受理の完了ではない。
+
+### M0：実CLIによるHeadless read-only調査（最優先・独立実施可能）
+
+実行対象：mainの`reference/standard-crud/workspace`／Application`ledger`。テストの前に**固定checkoutと実行物**を確かめる。以下は既存CLIの構成から導ける**実行予定のコマンド**であり、この文書追加時に新実行した記録ではない。
+
+~~~sh
+go run ./cmd/tei commands
+go run ./cmd/tei validate -workspace reference/standard-crud/workspace -json
+go run ./cmd/tei operations -workspace reference/standard-crud/workspace -application ledger
+go run ./cmd/tei artifacts -workspace reference/standard-crud/workspace -application ledger
+~~~
+
+- `commands`の`tei.cli.discovery/v0`は限定された`selected-read-only-commands`。`operations/artifacts`のdispatchがmainにあっても現在このCatalogには無い。**カタログの非掲載・Capabilityの不在・現在実行権限**を同一視しない（#2605）。
+- `validate`のexit/status/`ok`/Warning/Source fingerprint、`operations`のOperations/Gaps、`artifacts`のManifest/Findingsを**同一Source版で**記録。Fingerprintが出ない・不一致ならSnapshot一貫性を主張しない。
+- `artifacts`の`-out`はローカルディレクトリへ書く。上記read-only調査とは別のM1として明示した隔離出力先で試す。現在の`-out`時標準出力はManifestのみで、書かれた`manifest.json`中のFindingsをstdoutで読めたとはしない。
+- M0の成功は、**実Commandの出力と不足をread-onlyで再現可能に記録したこと**。Operationの公開・Macro実行・業務効果やSHO納品を意味しない。#2587の合成既報のPASSを新たな同一試行へ転記しない。
+
+### M1〜M4：同じSource/用途に対する段階別Consumer試験
+
+| Packet | 接合点・必要な成果物 | Owner／禁止する飛躍 |
+| --- | --- | --- |
+| **M1 Artifact Reader** | M0と同じ版の`tei artifacts`を隔離ディレクトリへ明示出力、実Member/Manifest/Findings/必要Application Scopeを読み直し、公開世代とReader bytesを検査 | #2482/#2604/#2630、#2633。`-out`の完了≠一式の読取成功 |
+| **M2 TEI Product SkillとTAI** | 同じ読取り専用CLI調査をSkillなし/ありで比較し、実Tool/Command、公開候補名、Source版・Warning/Unknownの差を測る。TAI無しTEI単独条件を保つ | #2605、[TAI #270](https://github.com/hat47x/tai-pleroma/pull/270)/[#271](https://github.com/hat47x/tai-pleroma/issues/271)/[#272](https://github.com/hat47x/tai-pleroma/pull/272)。Skill load≠Host権限 |
+| **M3 Macroと実作用** | `Operation Surface`候補→typed Intent→選抜Provider/現在Grant→実Request/Owner Effect/Receipt。読取途中で権限失効するD2負例は専門実装へ | #2598/#2499/#1174、#2637。候補/Preview≠実DB更新 |
+| **M4 SHO/EKI成果物** | 同一Version/SourceでSHOの説明・出典/保存、EKIの同Attempt Body/digest/実Reader取得を別観測。最終回答とRenderer/a11y/Tool/Log/送出の公開面を比較 | #2516、SHO #10、EKI #465/#409、TAI #272。ACK≠Body納品 |
+
+**共有の受渡し票**：実CLI/Skill/Host/Consumer名・Version／Source/Meaning/Role/Operator/Plugin版／Function Context InstanceとScope／Operation候補・Gap／実Provider/Request/現在Grant／Artifactの必要Member・実Loaded byte／Provider Effect/Receipt／Output/Rendered DOM/ログ・Network/外部送出・実Reader／Expected/Observed/未観測/Owner判断。
+
+**最小の異質な反例**：同じ最終回答でも外部Tool名が異なる／同じMarkdownでも実リンク先が異なる／read開始時には許可されていたが返却前に失効／EKI ACKはあるが同AttemptのBody未取得／Quote中の`trusted-script`を正式Roleとして誤採用。内部実装と外部に公開したScopeが違う場合、情報非干渉を最終Answerだけで判定しない。合法に公開するTool名/内部Readまで一律拒否する方式にはしない。
+
+**完了条件と状態**：M0だけを先にCLI製品Sourceへの接続結果として報告し、続くM1/M2/M3/M4は別Ownerの実証を待つ。新しい一律横断Gateは作らない。T-45〜53、今回のM0〜M4実CLI・Skill・実Provider・SHO/EKI Reader統合は**NOT RUN**。mainへ統合した#2587の既存test実績は、その試験範囲だけで保持する。P0-a実PG、P0-b二Function、Gate A/B/Cは不変。
+
 ## テスト証拠の受渡し：1ケースにつき別の保証を保持
 
 | 試験証拠 | 最初の取得先 | 後段へ渡せる範囲 |
