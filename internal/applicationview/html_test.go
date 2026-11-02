@@ -27,6 +27,9 @@ func TestRenderHTMLEscapesLabelsAndRendersInputs(t *testing.T) {
 	if !strings.Contains(html, `<button type="button" data-capability="sales.confirm_order">confirm_order</button>`) {
 		t.Fatalf("command was not rendered: %s", html)
 	}
+	if !strings.Contains(html, "未使用の属性") || !strings.Contains(html, "状態") {
+		t.Fatalf("unused attributes were not rendered: %s", html)
+	}
 	if !strings.Contains(html, "フック") || !strings.Contains(html, "before-update") {
 		t.Fatalf("hook was not rendered: %s", html)
 	}

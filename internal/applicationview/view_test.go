@@ -28,6 +28,7 @@ func viewWorld() ir.World {
 					Attributes: []semantic.Attribute{
 						{ID: "sales.order.order_id", Symbol: "order_id", Display: "受注番号", TypeRef: "std.identifier", Required: true, Immutable: true},
 						{ID: "sales.order.customer_id", TypeRef: "customer.customer_id"},
+						{ID: "sales.order.status", Display: "状態", TypeRef: "std.code"},
 					},
 					Relations: []semantic.Relation{{
 						ID:          "sales.order.customer",
@@ -256,5 +257,15 @@ func TestBuildCarriesHooks(t *testing.T) {
 	hook := view.Hooks[0]
 	if hook.Phase != "before-update" || len(hook.Reads) != 1 || len(hook.Uses) != 1 || len(hook.Produces) != 1 || hook.Failure != "reject" {
 		t.Fatalf("hook=%+v", hook)
+	}
+}
+
+func TestBuildCarriesUnusedAttributes(t *testing.T) {
+	view, err := applicationview.Build(viewWorld(), "order_entry", "order_entry.order_record")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(view.Unused) != 1 || view.Unused[0].Attribute != "sales.order.status" || view.Unused[0].Label != "状態" {
+		t.Fatalf("unused=%+v", view.Unused)
 	}
 }

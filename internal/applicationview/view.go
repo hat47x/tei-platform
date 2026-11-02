@@ -26,6 +26,7 @@ type View struct {
 	Packages            []PackageRef            `json:"packages,omitempty"`
 	SemanticFingerprint string                  `json:"semanticFingerprint,omitempty"`
 	Hooks               []HookRef               `json:"hooks,omitempty"`
+	Unused              []Item                  `json:"unused,omitempty"`
 }
 
 // PackageRefは、このPatternを含むPackageへの参照である。
@@ -115,6 +116,7 @@ func Build(world ir.World, applicationID, patternID core.CanonicalID) (View, err
 
 	patterns := map[core.CanonicalID]application.Pattern{}
 	dataAttributes := map[core.CanonicalID]map[core.CanonicalID]semantic.Attribute{}
+	dataAttributeOrder := map[core.CanonicalID][]semantic.Attribute{}
 	relations := map[core.CanonicalID]semantic.Relation{}
 	typeValues := map[core.CanonicalID][]string{}
 	capabilities := map[core.CanonicalID]semantic.Capability{}
@@ -140,6 +142,7 @@ func Build(world ir.World, applicationID, patternID core.CanonicalID) (View, err
 				attributes[attribute.ID] = attribute
 			}
 			dataAttributes[data.ID] = attributes
+			dataAttributeOrder[data.ID] = append([]semantic.Attribute(nil), data.Attributes...)
 			for _, relation := range data.Relations {
 				if _, exists := relations[relation.ID]; !exists {
 					relations[relation.ID] = relation
@@ -240,6 +243,15 @@ func Build(world ir.World, applicationID, patternID core.CanonicalID) (View, err
 			Kind: source.Kind,
 			Data: source.Data,
 		})
+	}
+	usedAttributes := map[core.CanonicalID]bool{}
+	for _, item := range pattern.Interaction.Items {
+		usedAttributes[item.Attribute] = true
+	}
+	for _, attribute := range dataAttributeOrder[pattern.Data] {
+		if !usedAttributes[attribute.ID] {
+			view.Unused = append(view.Unused, itemFor(attribute, typeValues))
+		}
 	}
 	for _, hook := range pattern.Interaction.Hooks {
 		view.Hooks = append(view.Hooks, HookRef{

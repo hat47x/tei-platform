@@ -617,6 +617,8 @@ X-TEAの実装では、税額は税率表の開始日と税区分で選び、正
 
 **撤回条件.** 診断の維持コストが、見つかる問題の価値を上回る場合は、対象を未定義参照と三視点の抜けに絞ります。
 
+**PoCでの実装.** recordビューが、Dataの属性のうちinteractionに現れないものを`unused`として表示します（D-9・G-7）。重要度の分類と受理版への束縛は未実装です。
+
 **未解決.**
 
 - 診断の重要度（エラー・警告・情報）の分類。
@@ -933,11 +935,13 @@ PoC #2521が実装した範囲と、まだ実装していない範囲を分け�
 | Commandの起動計画（入力の過不足・値の形） | 実装済み（`view -command`、実行は未実装） |
 | Commandの実行境界（Executor契約・結末照合） | 実装済み（`internal/command`、実Providerは未接続） |
 | フックの宣言（位相・読み書き・失敗時） | 実装済み（`hook`、実装Pluginは未接続） |
+| 未使用属性の表示（D8・G-7） | 実装済み（recordビューの`unused`） |
 | Package（宣言・読込・検証・版束縛・ビュー表示） | 実装済み（衝突は明示エラー、取り外しはSemantic fingerprintを変えない） |
 | Commandの実行境界、改ページ、フックのDSL | 未実装 |
 | `reference/workspace`への宣言追加 | 未実施（受理経路が必要） |
 
 実装は、`internal/application/model.go`、`internal/syntax/application_pattern.go`、`internal/validation/application_pattern.go`、`internal/crossview/pattern_requirements.go`、`internal/applicationview`、`internal/semantic/model.go`、`internal/syntax/parser.go`、`internal/validation/validation.go`と、それぞれの試験です。
+
 
 
 
