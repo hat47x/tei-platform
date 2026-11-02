@@ -96,12 +96,12 @@ func InspectWithSelectedSemanticView(
 				add("selected-semantic-type-unresolved", endpoint.ref.Slot, endpoint.ref.Field)
 				continue
 			}
-			// std's existing primitive IDs provide a known nominal label.
-			// Do not infer Representation or an arbitrary user primitive's
-			// wire format from a Semantic alias or Symbol.
+			// For the existing std prelude only, check the fixture's declared
+			// primitive label against the alias chain. This is not a wire
+			// Representation, encoding, or conversion validation.
 			if strings.HasPrefix(string(primitive), "std.") &&
 				field.Type.Name != strings.TrimPrefix(string(primitive), "std.") {
-				add("selected-semantic-representation-unresolved", endpoint.ref.Slot, endpoint.ref.Field)
+				add("selected-semantic-primitive-label-mismatch", endpoint.ref.Slot, endpoint.ref.Field)
 			}
 		}
 	}
