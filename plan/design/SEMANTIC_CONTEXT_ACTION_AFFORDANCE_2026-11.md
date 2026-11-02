@@ -73,3 +73,61 @@ X-TEA由来SmartDBは業務データアクセス以外も対象になり得る**
 - **M4 汎用性評価**：業務Dataだけでなく非業務の独立Data/Relationにも、追加専用画面なしでActionを発見できるか。専門UI/Adapterはその追加価値が検証されたときの任意選択。TEI Product Skill（#2605）とTAI Skill（TAI #168）は実在Toolだけを案内し、概念Actionを実コマンドと偽らない。
 
 **未決**：SmartDB移植の具体語彙、正式Operation IDとDomain Pluginの対応、固定対象/遅延述語対象のAction契約、要求Collection completeness、適用状態の診断の公開形式、Script/DSL公開Syntax、UI共通Presenterの最小メタ情報、Ownerの業務Action意味。既存#1119 P0/G0〜G4と実DB・Host縦切りの優先順位は変更しない。実Go/SQL/GUI/Provider/外部Host/Owner受理は今回NOT RUN。
+
+<!-- 20261102-crosslane-everything-data-action-plan -->
+## 6. 11/2横断統合：Everything is DataからSemantic Actionを構成する（設計候補）
+
+この節は#2619/#2620/#2621/#2622のデータ中心設計、#988/#2617のScript-first標準UI、#2507 Draft #2613のA/G適合、#2597 Draft #2601のEditing Session、#2598のRequest束縛、#2502 Draft #2602のMacro委任を**参照**し、Action発見に必要な接合点だけを記録する。各Draftの内容を製品の採用済み契約や実動証拠として扱わず、各Ownerのファイルを変更しない。
+
+### 6.1 静的な定義と利用時の文脈を混合しない
+
+1. **Authoritative Definition**：Function、Action、Rule、Provider適合要件、Presentation Bindingは、Roleと安定参照を持つ標準データ構造として記述する。Role/Operatorを解釈する既存PluginのID・版を参照する。Action目的とEffectsは、表示要素や物理SQL名から推測しない。
+2. **Dynamic Context Evidence**：Function InstanceとSelection epoch、Entity/Relation/Path occurrence/Groupのgrain、Result Sliceと権限付きscope、Read revision/time、Editing SessionのPatch/dirty、QueryのLoss/Unknownは**利用時の入力**であり、Definitionの一部として正本化しない。
+3. **Derived Action Offer**：上記1と2の型付き参照を用いて、候補・不適合理由・不足情報を用途別に投影する**再計算可能な結果**。定義・現在の実行許可・持続的なBusiness Request・OperationIDのいずれでもない。古いOfferにTTLだけを付けても権限の再確認を省略できない。
+4. **Interaction/Editing Intent**：UI変更やMacro呼出しから生じる候補は#2500/#2597が解釈し、#2598が現在の対象・時点・根拠を実Requestへ束縛する。**Editor上の一つの保存ボタン＝一つのDB transaction**とはしない。
+5. **Authority/Effect**：外部Host・Providerの現在Grantと実対象/副作用を#1174/#1129で検証。受理されたBusiness Actionの存在と現在Grantの存在は別。Action Offerを公開する権利も#2516/#1178で独立に扱う。
+
+比較用表記：OfferCandidate = Project(Applicability(Definition, ContextEvidence), ConsumerProfile, DisclosureScope)。**API/型名の採用ではない。** 意味的な構造適合、対象解決の確実性、Provider実装可否、現在Grant、結果観測は異なる述語とし、一つのbooleanにしない。
+
+### 6.2 複数の構文は一つの意味解釈へ向ける
+
+Markdown表、Graphviz記述、関数式、メソッドチェーン、簡潔なUI制御式などは、#2620/#2621で検討している**標準データ構造へのsyntax projection/sugar**として比較する。特定の構文をCore実行権限や意味正本へ直接昇格させない。
+
+- 正規化前後に必要：Stable Semantic ID、型/Role、Operator/Plugin版、参照と依存、入力・出力のgrain、null/presence/quantity/time、effects、Source location/spanと解釈の根拠。見た目が一致するだけで意味一致とはしない。
+- **二つの表記が等価となる条件**は、単なる同形JSONではなく、同じ受理済みMeaning/Plugin/Source条件の下で、各Claimが必要とする区別を保持していること（#2497/#2516）。未解決Role・曖昧Binding・循環・順序依存を黙って最初の候補へ解決しない。
+- TEI StudioはText、Property、Table、Tree、Graph、Diffの**標準Projection**を使用し、Role Pluginが補完・制約・診断を追加。専用Node/Function-type Editorは強制しない。往復でSource byte/spanの一意性がない表示はread-onlyにし、編集候補は既存Source Acceptanceへ接続する（#1124/#2617）。
+- UI visible/enabledを短いDSLで記述可能とするが、表示評価はread-onlyのExpression、権限はHost、EffectはOperationへ分離。非表示でもAction定義が存在し得るし、enabled=trueでも実行許可にはならない。
+- Data-attached Ruleは#2622 Data Operationsの適用先と#1129のphaseを介して接続。Rule Definition/Attachmentの意味をUI要素やForm用Scriptへ二重定義しない。
+
+### 6.3 Actionは画面へ配置するだけでなく、複合・Macro・外部呼出しにも使う
+
+同じSemantic Action/Operator参照を（A）Table/Form/Menu/Graph等のUI Affordance、（B）CUI/AI/外部Hostの明示呼出し、（C）Script/Macroが構成する高次Actionに投影する。ただし複合ActionのA/G・部分成功・Commit後取消不能・再試行安全性は#2507/#2597/#1174が検査し、UI複数配置による意味の同一性だけで**複合処理のatomicity/業務完了**は主張しない。
+
+委任Macroの権限範囲は#2502/#2499の既存出版/委任契約と現行Hostに委ねる。対象意図Order Aと実Payload/実Effect Order Bの不一致、非公開列を省略した限定PATCHと全置換の違い、同じ定義の二Instanceにおけるdirty/epochの独立性は、既存#2598/#2597の負例を再利用する。
+
+## 7. 追加の横断反証と最小受渡し（旧SA-01〜12の再実装をしない）
+
+| ID | 新たな接合点 | 誤りとして検出するもの | 正本Owner / 最小観測 |
+| --- | --- | --- | --- |
+| XA-01 | Markdown表 / 式 / メソッドチェーン → Action Definition Role | 構文一致だけで同一意味、丸め/NULL/Effect欠落 | #2620/#2621/#988：意味参照・Source差分のread-only比較 |
+| XA-02 | Script visible/enabled → 標準Studio UIとCUI候補 | enabled=true→実権限付与、非表示→Action消滅 | #2617/#997/#2507：同一Definition・別Consumerでの分離 |
+| XA-03 | Action Definition共通 / Context Instance I1・I2独立 | 親Aの旧結果・dirtyを親Bへ転写 | #2597/#2506：anchor、epoch、Patch別の診断 |
+| XA-04 | Data Rule + Operator + Provider別実現 | DB由来Ruleが実装先を変えると順序・Effectが変わる | #1129/#2622：phaseとCapabilityの適合差、actual Effectは別 |
+| XA-05 | Macro → Action候補 → 実Request | 候補の公開と現行Grant、意図した対象と実Payload対象の取り違え | #2502/#2598/#1174：Request/Grant/Effectの別証拠 |
+| XA-06 | Composite ActionとSave Intent | 同一Button・複数Patchを必ず一Txと推定 | #2507/#2597：A/G・部分/unknown・独立Receipt |
+| XA-07 | 非RDB/業務外PluginとCUI | 全DomainにCRUDを自動付与、Provider非対応を意味不在と誤認 | #2493/#2622：Append/Compute等の明示Contractの比較 |
+| XA-08 | Action候補公開の情報境界 | 非公開Actionの存在/件数や拒否理由を低権限へ開示 | #2516/#1178：公開許可済み投影のみ比較 |
+
+### 同一試験の接合段階と測定対象
+
+- **A0: Definition比較** — 現行#2620/#2621と#988のSyntax→標準Structure→Role参照で、Actionの必要条件・Source/Plugin版が残るかを観測（実正式DSL parseは未達）。
+- **A1: Headless Applicability** — #2506/#2586の固定H/D1/D2と#2507 Draft #2613の既存A/G・SA局所試験を基線とし、同一Definition/Contextを消費した結果の差分を測る。局所42件PASSを実TEI縦断PASSと数えない。
+- **A2: Multi-consumer** — CUI/JSONとTable/Formまたは標準Studioを同じMeaning/epoch/Scopeで比較。UI固有Action Rule数、Bindingに要した追加設定/コード量、unsupported理由と開示差を記録する。
+- **A3: Request-bound Integration** — #2500/#2597/#2598のViewChange→Intent→Target bindingを既存#2485 Operation Surfaceへ渡し、Requestに使われた対象・版・Providerが元の用途と一致するかを検証。見かけのUI操作成功を保存成功としない。
+- **A4: Effect/Actual Consumer** — #1174/#1163/#1119の現行P0・既存Scenarioに従い、実Provider/DB、現在Grant、Receipt、独立readを同一試行で確認。外部HostとMacro公開は別資格。新Gateを設けない。
+
+**評価指標**（#2018へ）：定義1件からの異種Consumer数、Source/Role/Actionの意味的重複、必要なCore特殊分岐、独立Adapterコード/設定量、実Plugin互換差、誤適用/過剰拒否、秘密開示、request対象逸脱、再確認時間、AIに渡した実文脈量。試験の完了と実Target証拠を別台帳にしない（既存Evidence/Scenario参照）。
+
+**停止条件**：業務Action identityを構文/画面名から推測、Context部分集合を全件扱い、Macroの効果を隠蔽、単一OfferにHost Grantを内包、Providerのatomicityを推測、既存正本を複製、未確認の実DB/Business受理をPASS化した場合は対象の採用判断を保留する。
+
+この節は横断**設計・実証受渡しの計画のみ**。#2619/#2620/#2621/#2622、#2613/#2617/#2602/#2601は独立Draft/Issueであり、統合・採用・実TEI/GUI/DB試験・Owner受理は今回の成果ではない。
