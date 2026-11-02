@@ -691,3 +691,83 @@ GraphTraceConformant(G, Evidence)
 **実証の優先度**：#1103のBuild Graph Referenceに対してGC-01/02/03/09で工程の閉包を、既存#1121 Lowering ReferenceでGC-05/07/08を、実外部実装の許可境界ではGC-04/06/10を別々に検証する。最初から全Domainの普遍的「完全性証明」を設計しない。
 
 **撤回/縮小条件**：#1103/#1121の既存Graph/Lowering/Runtime Authorityと、Target個別のOS/Adapter制約で必要な範囲を検査できる場合、本節を独立したGraph Runtime/専用Manifest/第二Lockの新設理由にしない。新しい抽象化を採用するなら、二つの独立Consumer・異なるTargetでの隠れ依存/Effect検出の改善を実測してからにする。
+
+---
+
+## 16. 分散Registryの公開証拠とConsumer採用資格の接続（2026-11-02、横断設計提案）
+
+### 16.1 他領域との照合と今回だけの不足
+
+- 複合図表・メタ生成は[Draft #2352](https://github.com/hat47x/tei-platform/pull/2352)の[Topology / Composite Views設計](https://github.com/hat47x/tei-platform/blob/2f280d610e24d5680864f36842215b4e5b299ef0/plan/design/TOPOLOGY_COMPOSITE_VIEWS_AND_PIPELINE_2026-10.md)が**構造・Projection・限定的不在証拠**を担当。本書の第14〜15節を第二のGraph/Projection正本にせず、参照だけを接続する。
+- 三要素分析MethodとDiagram Navigationは[Draft #2397](https://github.com/hat47x/tei-platform/pull/2397)がMethod Profile、意味規則、Notation/Occurrence、Qualified Ref/描画鮮度を分離。RegistryでMethodやNotationが公開済みでも、採用済みSemantic Set、Studioの正しい選択/受理/実行権限にはならない。
+- Studioは[#1124](https://github.com/hat47x/tei-platform/issues/1124)のQualified Consumer P0を先に検証。外部UI制御[#2391](https://github.com/hat47x/tei-platform/issues/2391)はHeadless-firstと後続Opt-in Gateを混同しない。
+- **Host非必須は2026-10-24のOwner設計判断として既決**。[ADR-0043候補 Draft #2426](https://github.com/hat47x/tei-platform/pull/2426)の文書改番・統合は未完了。本書は「Hostを廃止するか」を未決へ戻さず、Target固有の現在Authority/Effect境界だけを保持する。
+
+残る横断的な欠落は、**分散Registryが検証済みと呼ぶReleaseと、Consumerが現在利用してよいImplementation/Contractの間を、どの独立証拠で接続するか**である。既存[#951](https://github.com/hat47x/tei-platform/issues/951)のContract / Provider Conformance / Publisher Authority、[#943](https://github.com/hat47x/tei-platform/issues/943)のBuild/Artifact/Lock、[#267](https://github.com/hat47x/tei-platform/issues/267)のSemantic Acceptanceを第二実装しない。
+
+### 16.2 名前予約は公開する資格、配布・適合・採用は別
+
+外部NamespaceにJava型の逆ドメイン名を義務付けない。Registryで名前を予約し、発行者とSource Repositoryの関係を確認し、**最初の形式適合したRelease**で正規IDの確定に進む方式を評価する。実体はGitHub Releases等の外部配布に残し、Registryは検証されたManifest、参照、内容Digest、署名/来歴・検査記録を提供する。何をいつ誰が確定・失効できるかの制度設計は未決。
+
+| 区別する情報 | 何が分かるか | そこから推論してはいけないこと |
+| --- | --- | --- |
+| Namespace reservation / delegation | 当該名前の予約主体と管理範囲 | Contract適合、Pluginの安全性、TEI標準性 |
+| Linked repository / origin | 発行者が登録したSource/Releaseの参照先 | Sourceが正しい、成果物がSourceから生成された |
+| Release manifest / verified content digest | 指定Releaseの配布内容が検査時の対象と同じ | Builder provenance、署名者の現在信頼、依存閉包 |
+| Package conformance / Contract evidence | 特定のProfile・Fixture等の検査を満たした | 別Consumer・Target・未試験実装でも適合する |
+| Consumer selection + accepted lock | 今回の構成がどのContract/Provider/Artifactを選択したか | Ownerの業務Acceptanceや現在の実行認可 |
+| Target-specific current admission / observations | 対象環境で行った特定時点の権限・実行・効果確認 | 公開名前空間全体・全実行パスの安全性 |
+
+Registryの画面やAPIに単一の`verified=true`を置いて、上記をすべて証明したと扱わない。各検査にはissuer、exact subject/fingerprint、対象scope、検査内容・時点・限界・失効または不明の情報が必要。検証できた形式/内容の範囲と、まだ存在しないConformance/実Provider/Runtime Evidenceを分ける。検証結果の移管・共有は可能だが、**検証者の権限とConsumerの採用Authorityは別**。
+
+Namespaceの`tei.std.*` / `tei.experimental.*` / `tei.contrib.*`は、名称の管理・由来の区別であって、能力の継承、採用済み業務意味、実行許可の等級ではない。`experimental`（成熟度）と`contrib`（保守・公開元）の軸を混同しない。標準Contractを外部Implementationが実現でき、Domain Methodが標準Notationを再利用できる。
+
+### 16.3 Release Identityと利用Bindingの分離（擬似参照）
+
+```yaml
+# Conceptual evidence links only; NOT a proposed production manifest/schema.
+namespaceReservation: example.storage
+publisherGrantRef: registry-record/...
+sourceRepositoryRef: github-repo/...
+packageRelease:
+  packageId: example.storage.s3-adapter
+  version: 1.2.0
+  artifactDigest: sha256:...
+  releaseVerificationRef: registry-check/...
+contractEvidence:
+  claimed: tei.std.storage/BlobWriter@1
+  conformanceEvidenceRef: conformance-run/...
+consumerUse:
+  compositionBindingRef: application/...
+  selectedArtifactDigest: sha256:...
+  selectedContractFingerprint: sha256:...
+  acceptanceRef: separate-owner/...
+runtime:
+  currentAuthorityRef: target-bound-external-gate
+```
+
+いずれも既存Ownerの正本への**参照イメージ**であり、この全項目を持つ新しい統一Manifest、Registry DB、TEI Core型を作る提案ではない。特に`acceptanceRef`はRegistryが発行する承認ではなく、Consumer/Owner側で受理が必要な場合にのみ用いる。単純なCSV Batchなどに業務Principal・Shared Acceptanceを無条件導入しない。
+
+- 名前予約→Repository紐付け→初回Verified Release→正式ID確定は、名前の登録手順の候補であり、検証の強さが一方向に増す万能状態機械ではない。
+- Releaseの検査済みFingerprintが同じでも、Package Version、Contract definition、Provider Conformance、Artifact signer trust、Consumer Lock、Source/Scope、実行Authorityは独立する。Registryを更新しただけで既存Accepted Lockを再解決せず、正式な契約昇格や旧`std.*`の改名は明示移行で扱う。
+- 公開Registryは分散した配布物と証拠を探索する入口であり、TEI Coreのオンライン起動条件、第二Contract Resolver、第二Build Lock、第二Business Acceptance Authorityにはしない。ローカル/閉域/オフラインで利用する場合は、取得済みArtifactと固定参照を使い、現在性を要求する権限が取得不能な状況を安全と推定しない。
+- 外部Registryの説明文・README・宣言は生成AIにとって**未信頼の入力**。AIがそれを実行命令や採用権限として受け入れてはいけない。静的Manifest検査、隔離したConformance/Code review、Human/Ownerの採用判断をそれぞれ維持する。
+
+### 16.4 非重複の受入候補（すべて未実行）
+
+| Case | 条件 | 判定候補 |
+| --- | --- | --- |
+| RG-01 | Namespace予約済み、紐付くRepositoryなし | 名前は予約状態。正式Release/適合/利用可能としない |
+| RG-02 | Repository連携済み、初回Releaseの形式検証失敗 | 正式ID確定・Verifiedの誤表示を拒否 |
+| RG-03 | 同じ名前とVersionで異なるDigestのReleaseが存在 | 一方をload順や最新更新時刻で採用しない |
+| RG-04 | 内容Digest一致、Builder provenance未確認 | Content integrityと再現可能性・起源を別表示 |
+| RG-05 | Registry上のContract宣言だけあり、Conformance実証なし | Provider適合を自己申告だけで確定しない |
+| RG-06 | 正式なRegistry releaseをStudioで発見、Source/選択が旧scope | Qualified selection/Acceptanceを迂回しない |
+| RG-07 | PackageとContractは固定、発行者Grant/実行Authorityが失効 | 固定Digestだけで利用・Commitを復権しない |
+| RG-08 | 名称を`tei.experimental.*`から`tei.std.*`へ変更 | Consumerの保存済みLockを無言で更新しない |
+| RG-09 | 外部Manifestに悪意あるAI向け命令文が混在 | 信頼できない入力として解析し、指示や権限へ昇格しない |
+| RG-10 | Registryへ到達不能、オフライン取得済みArtifactは存在 | 正確な内容参照は検査可能。ただしfresh authorityの保証を捏造しない |
+
+**検証順**：最初はRG-01/02/03/04/05/08の静的ReferenceでNamespace/Release/Contract/Use Bindingを分離し、#951/#943の既存機構で表現できない差分だけを記録する。次に#1124のQualified Consumer、#2352のProjection非存在証拠、#2397のMethod/Notationで同じ独立証拠を読めるかを比較する。最後に対象Targetに応じた現在Authority/Effectを検証する。いずれも既存Issueの実行Gateを越えない。
+
+**撤回/縮小**：既存のRegistry/Lock/Conformanceと各ConsumerのSource/Acceptance境界だけで必要な接続を説明・検証できるなら、新Namespace Authority Service、新`EvidenceLevel` Core enum、独立Registry runtimeは作らない。Registryが単一の安全ランクでConsumer利用を判定する方式は採らない。公開Registryの運用者・命名文法・Trust root・最初のVerified Releaseの具体的審査方法は未決であり、文書が実運用の確立を意味しない。
