@@ -19,9 +19,14 @@ const (
 // single compare-and-swap statement, and zero affected rows is a business
 // conflict rather than an execution error.
 //
+// The Owner decision for #2564 item 3 is server-side comparison of the supplied
+// expected value: the caller sends the expected value over the protected request
+// path, the database compares it inside the CAS statement, and the raw current
+// value is never echoed in the result or the observation.
+//
 // It is a verification reference, not a product persistence layer. It does not
-// implement digest comparison (that needs server-side hashing and a decision
-// about sensitive values), distributed coordination or automatic retry.
+// implement digest comparison (the adopted design does not require it),
+// distributed coordination or automatic retry.
 type PGStore struct {
 	db   *sql.DB
 	opts *sql.TxOptions
@@ -107,11 +112,10 @@ func (s *PGStore) Apply(ctx context.Context, req UpdateRequest) (Result, error) 
 		return invalid, nil
 	}
 	if mode == CompareDigest {
-		// Digest comparison in SQL needs either pgcrypto or a read-then-write,
-		// and the choice depends on how sensitive values are handled (#2564
-		// item 3 is an Owner decision). Refuse instead of silently comparing raw
-		// values.
-		return Result{}, fmt.Errorf("digest comparison is not implemented for the PostgreSQL store: see #2564")
+		// #2564 item 3 adopted server-side comparison of the supplied expected
+		// value. Digest comparison is therefore not part of the adopted design;
+		// refuse instead of silently comparing raw values.
+		return Result{}, fmt.Errorf("digest comparison is not adopted for the PostgreSQL store: see #2564")
 	}
 	result := Result{Schema: Schema, Key: req.Key}
 	if !req.Authorized {
@@ -185,21 +189,23 @@ func (s *PGStore) Apply(ctx context.Context, req UpdateRequest) (Result, error) 
 	}
 
 	// Zero affected rows: the record is gone or the value changed. The caller
-	// gets a business result, not an execution error.
-	var current string
-	err = tx.QueryRowContext(ctx, `SELECT value FROM `+PGRecordTable+` WHERE key = $1`, req.Key).Scan(&current)
+	// gets a business result, not an execution error. The current value is not
+	// echoed: the Owner decision for #2564 item 3 is server-side comparison of
+	// the supplied expected value, so the raw current value must not reach the
+	// result, the observation, or a log.
+	var exists int
+	err = tx.QueryRowContext(ctx, `SELECT 1 FROM `+PGRecordTable+` WHERE key = $1`, req.Key).Scan(&exists)
 	if errors.Is(err, sql.ErrNoRows) {
 		result.Outcome, result.Reason = OutcomeMissing, ReasonMissingRecord
 		result.Observation.MissingRecords = 1
 		return result, nil
 	}
 	if err != nil {
-		return Result{}, fmt.Errorf("read current value after conflict: %w", err)
+		return Result{}, fmt.Errorf("read record presence after conflict: %w", err)
 	}
 	result.Outcome, result.Reason = OutcomeConflict, ReasonExpectedMismatch
-	result.CurrentValue = current
 	result.Observation.ConflictRejections = 1
 	result.Observation.LostUpdatesPrevented = 1
-	result.Observation.ComparisonInputBytes = len(req.Expected) + len(current)
+	result.Observation.ComparisonInputBytes = len(req.Expected)
 	return result, nil
 }
