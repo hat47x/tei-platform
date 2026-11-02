@@ -31,6 +31,12 @@ type Diagnostic struct {
 	Subject  *subject.Subject `json:"subject,omitempty"`
 }
 
+var attributeRoles = map[string]bool{
+	"key": true, "business-key": true, "due-date": true, "period": true,
+	"quantity": true, "amount": true, "status": true, "timestamp": true,
+	"name": true, "code": true, "note": true, "description": true,
+}
+
 func Validate(w ir.World) []Diagnostic {
 	out := validateApplicationPatterns(w)
 	out = append(out, validateApplicationPackages(w)...)
@@ -285,6 +291,9 @@ func Validate(w ir.World) []Diagnostic {
 	for _, a := range semanticAttributes {
 		if _, ok := semanticTypes[a.TypeRef]; !ok {
 			out = append(out, errFor(subject.Subject{Kind: "semantic-attribute", ID: string(a.ID)}, "UNKNOWN_SEMANTIC_ATTRIBUTE_TYPE", "attribute %s refers to unknown semantic type %s", a.ID, a.TypeRef))
+		}
+		if a.Role != "" && !attributeRoles[a.Role] {
+			out = append(out, errFor(subject.Subject{Kind: "semantic-attribute", ID: string(a.ID)}, "SEMANTIC_ATTRIBUTE_ROLE_UNSUPPORTED", "attribute %s uses unsupported role %s", a.ID, a.Role))
 		}
 	}
 	for _, r := range semanticRelations {

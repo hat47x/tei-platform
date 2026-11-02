@@ -919,6 +919,7 @@ PoC #2521が実装した範囲と、まだ実装していない範囲を分け�
 | CLI `inspect` のCanonical JSONへの投影 | 実装済み（`application-pattern`のJSONに`interaction`が含まれる） |
 | 必須・更新禁止（D3.1） | 実装済み（Attributeの`required`・`immutable`） |
 | 値域（D3.1） | 実装済み（Typeの`values`） |
+| 属性の役割（D3.1） | 実装済み（`role`、表示名の隣に表示） |
 | 対話ビュー（項目の型・表示名・入力部品・参照先の解決） | 実装済み（`internal/applicationview`、CLI `view`） |
 | 画面HTMLの投影 | 実装済み（`view -format html`） |
 | 印刷用の用紙面投影 | 実装済み（`view -format print`、A4、明細5行） |
@@ -946,6 +947,7 @@ PoC #2521が実装した範囲と、まだ実装していない範囲を分け�
 | `reference/workspace`への宣言追加 | 未実施（受理経路が必要） |
 
 実装は、`internal/application/model.go`、`internal/syntax/application_pattern.go`、`internal/validation/application_pattern.go`、`internal/crossview/pattern_requirements.go`、`internal/applicationview`、`internal/semantic/model.go`、`internal/syntax/parser.go`、`internal/validation/validation.go`と、それぞれの試験です。
+
 
 
 
