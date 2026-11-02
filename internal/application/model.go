@@ -125,6 +125,7 @@ type Sort struct {
 type Filter struct {
 	Attribute core.CanonicalID `json:"attribute"`
 	Operators []string         `json:"operators,omitempty"`
+	Parameter string           `json:"parameter,omitempty"`
 }
 
 // Aggregateは、header-detailの明細に対する集計の宣言である。

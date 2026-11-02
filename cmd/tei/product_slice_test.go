@@ -56,7 +56,7 @@ data Customer {
 	writeWorkspaceFile(t, root, "applications/order-entry/patterns/recent-orders.tei", `pattern order_entry.recent_orders browse {
     data sales.order
     query order_entry.recent_orders
-    filter sales.order.status { eq ne }
+    filter sales.order.status { eq ne } parameter status
     sort sales.order.status asc
     page-size 20
 }
@@ -67,6 +67,7 @@ data Customer {
 }
 `)
 	writeWorkspaceFile(t, root, "applications/order-entry/queries/recent_orders.tei", `query order_entry.recent_orders {
+    input status sales.status
     datasource sales
     sql postgres file "recent_orders.sql"
     result {
@@ -179,7 +180,7 @@ func TestProductSliceLoadsValidatesAndViews(t *testing.T) {
 	if err != nil || code != 0 {
 		t.Fatalf("browse view exit=%d err=%v body=%s", code, err, browse.String())
 	}
-	if !strings.Contains(browse.String(), "<th>受注番号</th>") || !strings.Contains(browse.String(), "<option>eq</option>") || !strings.Contains(browse.String(), "並び順") || !strings.Contains(browse.String(), "page-size: 20") {
+	if !strings.Contains(browse.String(), "<th>受注番号</th>") || !strings.Contains(browse.String(), "<option>eq</option>") || !strings.Contains(browse.String(), "並び順") || !strings.Contains(browse.String(), "page-size: 20") || !strings.Contains(browse.String(), "状態 (status)") {
 		t.Fatalf("browse html=%s", browse.String())
 	}
 

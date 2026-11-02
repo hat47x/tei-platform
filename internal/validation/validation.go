@@ -1,4 +1,4 @@
-package validation
+﻿package validation
 
 import (
 	"fmt"
@@ -35,6 +35,7 @@ func Validate(w ir.World) []Diagnostic {
 	out := validateApplicationPatterns(w)
 	out = append(out, validateApplicationPackages(w)...)
 	out = append(out, validateQueryResultMappings(w)...)
+	out = append(out, validateQueryInputs(w)...)
 	out = append(out, validateSemanticBusinessValidations(w)...)
 	out = append(out, validateSemanticBusinessRules(w)...)
 	out = append(out, validateCapabilityOutcomes(w)...)
@@ -1147,3 +1148,4 @@ func errFor(s subject.Subject, code, format string, args ...any) Diagnostic {
 func warnd(code, format string, args ...any) Diagnostic {
 	return Diagnostic{Code: code, Severity: Warning, Message: fmt.Sprintf(format, args...)}
 }
+

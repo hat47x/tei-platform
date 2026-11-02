@@ -81,6 +81,7 @@ func validateApplicationPatterns(w ir.World) []Diagnostic {
 	}
 
 	queries := map[core.CanonicalID]applicationPatternQueryRef{}
+	queryInputs := map[core.CanonicalID]map[string]core.CanonicalID{}
 	for _, query := range w.Queries {
 		if _, exists := queries[query.ID]; exists {
 			// Query自身の重複は既存Validationが報告する。
@@ -91,6 +92,11 @@ func validateApplicationPatterns(w ir.World) []Diagnostic {
 			Application: query.Application,
 			Datasource:  query.Datasource,
 		}
+		inputs := map[string]core.CanonicalID{}
+		for _, input := range query.Inputs {
+			inputs[string(input.Name)] = input.Type
+		}
+		queryInputs[query.ID] = inputs
 	}
 
 	seenPatternIDs := map[core.CanonicalID]core.CanonicalID{}
@@ -151,7 +157,7 @@ func validateApplicationPatterns(w ir.World) []Diagnostic {
 			}
 
 			if pattern.Kind == application.PatternBrowse {
-				out = append(out, validateBrowseFilters(pattern, patternSubject, semanticDataAttributes)...)
+				out = append(out, validateBrowseFilters(pattern, patternSubject, semanticDataAttributes, queryInputs)...)
 				out = append(out, validateBrowseSorts(pattern, patternSubject, semanticDataAttributes)...)
 			} else {
 				if len(pattern.Filters) > 0 {
@@ -900,6 +906,7 @@ func validateBrowseFilters(
 	pattern application.Pattern,
 	patternSubject subject.Subject,
 	semanticDataAttributes map[core.CanonicalID]map[core.CanonicalID]core.CanonicalID,
+	queryInputs map[core.CanonicalID]map[string]core.CanonicalID,
 ) []Diagnostic {
 	var out []Diagnostic
 	attributes := semanticDataAttributes[pattern.Data]
@@ -916,6 +923,15 @@ func validateBrowseFilters(
 			case "eq", "ne", "ge", "gt", "le", "lt", "scan", "generic":
 			default:
 				out = append(out, errFor(patternSubject, "APPLICATION_PATTERN_FILTER_OPERATOR_UNSUPPORTED", "browse pattern %s filter %s uses unsupported operator %s", pattern.ID, filter.Attribute, operator))
+			}
+		}
+		if filter.Parameter != "" {
+			inputs := queryInputs[pattern.Query]
+			parameterType, ok := inputs[filter.Parameter]
+			if !ok {
+				out = append(out, errFor(patternSubject, "UNKNOWN_APPLICATION_PATTERN_FILTER_PARAMETER", "browse pattern %s filter %s binds unknown query input %s", pattern.ID, filter.Attribute, filter.Parameter))
+			} else if attributeType, exists := attributes[filter.Attribute]; exists && attributeType != parameterType {
+				out = append(out, errFor(patternSubject, "APPLICATION_PATTERN_FILTER_PARAMETER_TYPE_MISMATCH", "browse pattern %s filter %s has type %s but query input %s has type %s", pattern.ID, filter.Attribute, attributeType, filter.Parameter, parameterType))
 			}
 		}
 		if seen[filter.Attribute] {
