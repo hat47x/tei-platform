@@ -55,7 +55,9 @@ def execute(binary, workspace, expected_head):
     require(version.get("schemaVersion") == "tei.cli.version/v0", "unexpected CLI version schema")
     require(version.get("source") == "build-info", "missing actual executable build identity")
     require(version.get("vcsRevision") == expected_head, "executed binary differs from checked HEAD")
-    require(version.get("vcsModified") is False, "binary was built with modified sources")
+    # cli_version.go uses omitempty: clean binaries omit vcsModified.
+    require(version.get("vcsModified", False) is False,
+            "binary was built with modified sources")
 
     discovery = run_cli(binary, "commands")
     require(discovery.get("schemaVersion") == "tei.cli.discovery/v0", "discovery schema changed")
