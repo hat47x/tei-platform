@@ -404,3 +404,96 @@ S→TがObserver O1を保存し、T→UがObserver O2を保存するだけでは
 ### 20.1 並列IssueのOwner境界（同日追補）
 
 [#2497](https://github.com/hat47x/tei-platform/issues/2497)は共通の構造保存写像とUI/文書の編集逆写像を担当する。[#2498](https://github.com/hat47x/tei-platform/issues/2498)はその概念を**外部形式に投影したときの実Target Conformance**に限定し、独立した一般Morphismモデルや新しいLens規則は作らない。両者は同じSource/Contractの版を参照するが、読み取り専用Corpus、変換の観測、編集の更新権限の証拠を混同しない。上表のOB票は共通観測の設計例であり、外部ConsumerのXT-01〜08は#2498の票へ参照させる。多くのAIエージェントを同時に動かす場合も、同じ意味の正本を複数Issueで独立に定義しない。
+
+## 21. 2026-11-02 動的意味の検討：構造・法則に加えて「どう進むか」を記述する
+
+[Pressure Corpus PC-121〜132](DATA_STRUCTURE_PRESSURE_CORPUS_2026-11.md)で、静的なStructureだけでは説明が足りない例を拡張した。**同じGraph/データ型・同じOperator signatureを持っていても、どの時間の進み方、状態保持、評価順、Solver、外部入力に従うかによって動作の意味は異なる。**
+
+M1〜M10は既に時間と数学法則を含むが、M7の「いつの値か」とM5の「どんな公理か」だけでは、遅延付きfeedback、連続系Solver、非同期イベントの実行モデルを比較しにくい。そこで**M11候補（Model of Computation／動的意味）**を探索上の追加質問として提案する。**正式な11番目のCore TypeKindやRuntime種別の採用を意味しない。** 
+
+| 観点 | 区別する問い | 既存責務／仮説 |
+| --- | --- | --- |
+| Structure／M2・M4 | 何がどの辺・Port・Relationでつながるか | #1126、#2495 |
+| Law／M5・#2544 | 何の演算束縛・不変条件を満たすか | #988、#2544 |
+| Time／M7 | Event time、valid time、処理時刻のどれを指すか | #2506、#2582 |
+| **Dynamics／M11候補** | 値と状態が**いつ・何を契機に・どの評価規則で**進むか | 専門Plugin／#988/#2507。実証不足を先に評価 |
+| Realization／M10 | どの外部Solver/Engine/Hostが実現・観測するか | #951/#2077。TEI独自Hostは前提にしない |
+
+### 21.1 同じ循環Graphの異なる動的意味
+
+1. **即時の代数ループ**：同時刻における二つの変数の拘束。逐次1回評価だけでは確定値を求められない場合があり、Solver、初期値、解の存在・一意性、収束・精度条件が必要。
+2. **Delayを持つfeedback**：一方の辺が前tickのStateを参照する。循環を即時計算の矛盾とせず、Stateの初期化、tick基準、更新の原子性と版を宣言する。
+3. **非同期Event循環**：入力Eventが後続Eventを発行する。時刻・順序・重複・取消・副作用/Receiptにより、同じGraphでも違う観測が生じる。
+
+同じGraphであることから三者を自動分類・実行しない。関係の役割（構造的参照、Dataflow、Event因果、制約、Operation/副作用）と使用するModel of Computationを区別する。実装では専門Pluginの演算・状態・時間の能力宣言を参照する案を比較し、Coreが全てのSolverやスケジューラを内蔵する構成を前提としない。
+
+### 21.2 異周期とSimulation Timeの統合負例
+
+合成例：Physics 60Hz、CPU推論10Hzで姿勢・認知状態を更新。物理側が6回tickする間に推論の新値がない場合、**最後の値を保持するのか、古い値を無効とするのか、補間/予測するのか**を利用条件として記述する。表示Frameのレート、物理tick、CPU推論周期、Simulation Time、Wall Time、外部Hostのタイムアウトは別の時計である。
+
+速度を落としてAI Botを動かす試験により入力を間に合わせられても、通常速度での性能・精度・実Hostの応答期限を保証したことにはならない。異周期のリサンプリングでLossが生じる対象は、#2497の用途相対の保存性と#2514の独立Oracleへ渡す。
+
+**外部比較元**：[FMI 3.0.2](https://fmi-standard.org/docs/3.0.2/)はModel Exchange・Co-Simulation・Scheduled ExecutionでSolver/Schedulerの所有を分ける。[Godotの物理補間](https://docs.godotengine.org/en/stable/tutorials/physics/interpolation/physics_interpolation_introduction.html)は物理tickと描画Frameの差を説明する。これはTEIのFMI適合・Godot本体機能の実装完了を主張するものではない。
+
+## 22. Claimの成立条件を「意味の前提」と「観測の前提」に分け、変更後の再評価へ接続する
+
+意味型やFacetについて**演算が可能だという宣言**と、ある結果値が**現在の範囲で正しいというClaim**は、変更による失効条件が違う。この差が、#2582の増分観測、#2593のMeasure再集計、#2516の用途相対Construction Context、#2586のQuery→Context→Claim→Pattern縦断を結ぶ。
+
+### 22.1 何の版を保持するか（単一のglobal revisionを強制しない）
+
+| 成立対象 | 必要となる固定条件 | 内容が変わったときの問題 |
+| --- | --- | --- |
+| 構造・Lawの主張 | Semantic Type/FacetとOperator束縛・制約・解釈版 | 旧Lawが新しい演算実装に適用可能か |
+| 派生Measureの値 | Data Slice/Fact identity、Relation grain、Snapshot/Read-set、評価時点・丸め条件 | 集計の母集団・重複・再集計可能性が変わる |
+| Query/Contextに関するClaim | Query Source/パラメータ、Context Instance/選択epoch、取得Scope・完全性 | 局所結果と全件結果の範囲が変わる |
+| ConsumerのProjection | Claim参照、用途、表示する粒度、Consumer版、開示ルール | 同じ正しい結論でも表示・開示できる範囲が変わる |
+| 実Hostでの効果 | Host Authorityの現在値、実Provider/Commit/Receipt・独立観測 | 型検証・解析成功から実行結果へ昇格できない |
+
+**変更の発生箇所だけを見て全てのClaimを一律に無効化する方式も、byteが同じだから全て有効なままにする方式も採らない。** Claimが依存するSubject・法則・Dataset・時点・Scope・Consumer・Authorityの**既知の関係の範囲**で差分を伝播し、不明な依存は未確認として残す（#2497/#2505/#2582）。
+
+### 22.2 再評価の条件（設計用対照表）
+
+| 変化 | 維持し得ること | 再評価・撤回が必要なこと |
+| --- | --- | --- |
+| 型のUnderlyingだけ変更 | 名目ID・業務上の宣言が同じことはあり得る | Target表現、Generator適合、実Data/Consumer。型の意味一致は別判断 |
+| Operator束縛・丸め規則変更 | 元のFactとSource provenance | Law適合、計算結果、Target fixture、SHO内の計算説明 |
+| データに追加入力（挿入のみ） | 固定された過去Scopeの正の存在Claim等は維持可能 | COUNT/AVG/TOP-N、全件不存在、閉じていない窓の最終値 |
+| 訂正・取消・retract | 変更が及ばない独立Subjectの主張 | 旧SUM・平均・存在/不存在・JOIN仮NULL・行のSelection |
+| Query/Contextの取得範囲縮小 | 既に得た個々の値の字句は同じ場合がある | 全件性、対象母集団、集計grain、外部への開示対象 |
+| UI選択epoch変更 | Business ID・Sourceの型宣言 | 古い非同期応答の表示先と操作候補 |
+| Disclosure Policy/Grant変更 | 内部的な計算根拠・歴史的な受理済み意味 | **現在Consumerへの送出資格**。非公開根拠の値/件数を漏らさない |
+| Target/Build版変更 | 固定されたAccepted Source意味 | そのTarget実物でのLaw・Serialization・外部Consumer適合 |
+| 文書説明・テンプレートだけ変更 | Sourceの型/演算意味 | 文書の出力版・引用/表示依存。実Targetを一律に再実行する理由にはしない |
+
+### 22.3 具体例：平均の値とその主張の寿命
+
+独立の合成Oracle（[#2593](https://github.com/hat47x/tei-platform/issues/2593)を再利用）：
+
+- グループA：2件、平均10 → sum=20。
+- グループB：8件、平均20 → sum=160。
+- 同じUnit/対象集合・互いに重ならないFact ID・同一Snapshotという条件下で、全体平均は **(20+160)/(2+8) = 18**。局所平均を単純平均して15とするのは不正。
+- Bの8件中1件が20→30に訂正されれば、**sum=170、全体平均19**。型・Operator・集計Formulaが不変でも、以前の「平均18」は旧Snapshotに限定された履歴Claimであり、現在の結果として表示すべき値ではない。
+- さらにBの取得が途中ページのみだったなら、18/19という数値が一部データに対して算出できても、**全対象の平均**というClaimの必要条件は未確認。表示上の精度の問題と、集計母集団の完全性の問題を区別する。
+
+#2593はMeasure/reaggregation、#2582は差分・retract、#2586はHeadless縦断、#2514はOracleの正本、#2516はConsumer毎の開示資格を所有する。本Issueは**これらの結果を意味型のFacet・Law・必要なContextへ接続する抽象の不足**を扱う。同じ計算器や異なるApproval/Claim Engineをもう一つ実装する提案ではない。
+
+### 22.4 AI向けCUIとSHO向けの出力資格を分ける
+
+同一のClaimが内部CUIで根拠付きで提示可能でも、SHOの外部配布版へ必要な出典・値・件数を転送できるとは限らない。独立して評価するのは (a) 導出条件の適合、(b) 参照する証拠のScope・Freshness、(c) Consumerの表示目的に対する十分性、(d) Disclosure Policyの現在値、(e) 実Consumerの読込み・表示観測である。
+
+公開向けの説明は未開示のData Slice、内部権限規則、非公開の件数を推測可能にすることもある。**送出を許された情報だけで同じClaimを支持できるか**を検証し、支持できない場合は未確定・保留／要約変更とする。どの詳細を開示できないかについても、内部のPolicy情報を外部へ漏らさない。
+
+### 22.5 最小の統合反証（新しいTest SSOTにしない）
+
+| ID | 既存の独立Fixtureに追加する操作 | 誤った成功として排除すること | 実行Owner |
+| --- | --- | --- | --- |
+| AQ-01 | 同じType・Law版でFactを1件訂正する | 型と式が同じなので現在のAverage Claimも不変 | #2593/#2582 |
+| AQ-02 | D1完全／D2途中ページからSummaryを要求 | 取得済み値だけで全件平均・全件不存在を確定 | #2506/#2586 |
+| AQ-03 | 非同期A応答の後にBを選択 | 古いContext epochのClaimをBへ表示・編集 | #2506/#2500 |
+| AQ-04 | Operatorの丸め方式だけ変更 | 旧Source byte一致や古いfixture PASSで新Contract適合を宣言 | #1705/#2514 |
+| AQ-05 | 内部CUI→外部SHOでPolicyを変更 | 技術的に導出済みなら実値・根拠を無条件送出 | #2516/#1178 |
+| AQ-06 | 型・Data固定でRuntime成果物を差し替える | CIやSchema検査が成功したので実Hostの業務効果も成立 | #2077/#2390 |
+| AQ-07 | 物理60Hz、認知10Hz、試験の時間倍率を変える | Tickを同一視し、通常速度のリアルタイム適合へ昇格 | #2497/#2507 |
+| AQ-08 | 同じ循環GraphにDelayと即時制約の2種類を記述 | Graphの形だけでSolver不要・実行可能と確定 | #2495/#2544 |
+
+**状態**：AQ-01〜08は既存Issueのfixtureへ接続するための**反証設計／NOT RUN**。M11の正式採用、時間/Simulationの共通Core型、実Provider/Hostの検証、開示Policyの実装、Owner受理は未実施。広い探索・独立試験を進め、十分な観測結果がある不足に対してのみ具体的なContract追加を判断する。
