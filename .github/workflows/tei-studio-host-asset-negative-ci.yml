@@ -121,7 +121,3 @@ jobs:
           set -e
           go vet -tags tei_studio_host_integration ./tools/reference-studio-host-boundary
           exit "$test_result"
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true

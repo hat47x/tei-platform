@@ -208,7 +208,3 @@ jobs:
             ${{ runner.temp }}/tei-studio-workbench-windows-bundle-hash.txt
           retention-days: 7
           if-no-files-found: ignore
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true

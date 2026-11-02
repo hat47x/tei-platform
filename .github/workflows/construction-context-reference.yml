@@ -106,7 +106,3 @@ jobs:
             --workspace reference/workspace \
             --expected-head "$EXPECTED_HEAD"
           test -z "$(git status --porcelain=v1 --untracked-files=all)"
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true

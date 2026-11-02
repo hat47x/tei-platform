@@ -141,7 +141,3 @@ jobs:
             ${{ runner.temp }}/historical-posthoc-receipt.json
           if-no-files-found: error
           retention-days: 7
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
