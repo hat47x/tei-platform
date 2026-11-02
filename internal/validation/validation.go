@@ -193,6 +193,17 @@ func Validate(w ir.World) []Diagnostic {
 			if !typ.Kind.Valid() {
 				out = append(out, errd("INVALID_SEMANTIC_TYPE_KIND", "type %s has invalid kind %q", typ.ID, typ.Kind))
 			}
+			seenValues := map[string]bool{}
+			for _, value := range typ.Values {
+				if value == "" {
+					out = append(out, errFor(subject.Subject{Kind: "semantic-type", ID: string(typ.ID)}, "SEMANTIC_TYPE_VALUE_EMPTY", "type %s has an empty value", typ.ID))
+					continue
+				}
+				if seenValues[value] {
+					out = append(out, errFor(subject.Subject{Kind: "semantic-type", ID: string(typ.ID)}, "SEMANTIC_TYPE_VALUE_DUPLICATE", "type %s declares value %q more than once", typ.ID, value))
+				}
+				seenValues[value] = true
+			}
 			addSemanticElement(typ.ID, "type")
 			semanticTypes[typ.ID] = typ
 			semanticTypeDefs = append(semanticTypeDefs, typ)

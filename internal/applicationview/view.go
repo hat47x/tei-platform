@@ -32,6 +32,7 @@ type Item struct {
 	Input     string           `json:"input,omitempty"`
 	Required  bool             `json:"required,omitempty"`
 	Immutable bool             `json:"immutable,omitempty"`
+	Values    []string         `json:"values,omitempty"`
 	Lookup    *Lookup          `json:"lookup,omitempty"`
 }
 
@@ -67,6 +68,7 @@ func Build(world ir.World, applicationID, patternID core.CanonicalID) (View, err
 	patterns := map[core.CanonicalID]application.Pattern{}
 	dataAttributes := map[core.CanonicalID]map[core.CanonicalID]semantic.Attribute{}
 	relations := map[core.CanonicalID]semantic.Relation{}
+	typeValues := map[core.CanonicalID][]string{}
 	for _, candidate := range world.Applications {
 		for _, pattern := range candidate.Patterns {
 			if _, exists := patterns[pattern.ID]; !exists {
@@ -75,6 +77,11 @@ func Build(world ir.World, applicationID, patternID core.CanonicalID) (View, err
 		}
 	}
 	for _, namespace := range world.Semantics {
+		for _, typ := range namespace.Types {
+			if len(typ.Values) > 0 {
+				typeValues[typ.ID] = typ.Values
+			}
+		}
 		for _, data := range namespace.Data {
 			attributes := map[core.CanonicalID]semantic.Attribute{}
 			for _, attribute := range data.Attributes {
@@ -123,6 +130,7 @@ func Build(world ir.World, applicationID, patternID core.CanonicalID) (View, err
 			Input:     inputKind(attribute.TypeRef),
 			Required:  attribute.Required,
 			Immutable: attribute.Immutable,
+			Values:    typeValues[attribute.TypeRef],
 		}
 		if item.Lookup != nil {
 			target, ok := patterns[item.Lookup.Pattern]

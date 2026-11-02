@@ -29,6 +29,7 @@ type Type struct {
 	Symbol     string           `json:"symbol"`
 	Kind       TypeKind         `json:"kind"`
 	Underlying core.CanonicalID `json:"underlying,omitempty"`
+	Values     []string         `json:"values,omitempty"`
 }
 
 type Data struct {

@@ -1830,7 +1830,29 @@ func (p *Parser) parseSemanticType(namespace core.CanonicalID) (semantic.Type, e
 	if err != nil {
 		return semantic.Type{}, p.errAt(underTok, err.Error())
 	}
-	return semantic.Type{ID: id, Symbol: symTok.Text, Kind: semantic.TypeAlias, Underlying: under}, nil
+	values := []string{}
+	if nt, _ := p.peek(); nt.Text == "values" {
+		_, _ = p.next()
+		if _, err := p.expect(TokenLBrace); err != nil {
+			return semantic.Type{}, err
+		}
+		for {
+			t, err := p.peek()
+			if err != nil {
+				return semantic.Type{}, err
+			}
+			if t.Kind == TokenRBrace {
+				_, _ = p.next()
+				break
+			}
+			value, err := p.expect(TokenString)
+			if err != nil {
+				return semantic.Type{}, err
+			}
+			values = append(values, value.Text)
+		}
+	}
+	return semantic.Type{ID: id, Symbol: symTok.Text, Kind: semantic.TypeAlias, Underlying: under, Values: values}, nil
 }
 
 func (p *Parser) parseSemanticData(namespace core.CanonicalID) (semantic.Data, error) {
