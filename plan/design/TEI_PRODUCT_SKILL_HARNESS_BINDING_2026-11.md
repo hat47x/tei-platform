@@ -58,6 +58,8 @@ Python標準ライブラリのみの`skills/yi-tei-modeling/verify_skill.py`と`
 
 対象はSkill名、Markdown相対リンク、既存read-only Command Catalogと文書内CLI例の整合、Traceページ継続用fingerprintの説明。これは**静的検査であり実TEI CLIの起動・Harness接続・業務意味・実Host権限を検査しない**。孤立した合成fixtureでの7件は**試験コードを保存済み**。以前の「ローカルPASS」は独立の実行ログで裏付けられていなかったため、現時点の試験実績としては撤回する。GitHub Actionsで実行し、対象コミットとログを確認できた時点でPASSへ更新する。
 
+**2026-11-03の独立した再実行（7/7 PASS）**：上の古い「ローカルPASS」主張を一度撤回した上で、GitHubの保存Sourceと一致する`verify_skill.py`（git blob `c5e18e7a5a1b881c24b0214611fa111ab4d12a94`）と`tests/test_verify_skill.py`（`fde1599106476955da97d03cb3864279f9fa9fc4`）の**正確な全文**を隔離一時Dirに配置し、双方の`git hash-object`一致を確認した。Python **3.13.5**の`python3 -m unittest discover -s ... -p 'test_*.py' -v`を**実行し、7 tests / OK**。同じ二ファイルの`py_compile`もPASS。この実行は**合成fixtureだけ**であり、TEI実WorkspaceのCLI/実Host/Harness Testではない。新PR HEADのCI・現在checkout全体に対する静的checkは別確認。
+
 **TS-11〜15追補**（[Issue #2605](https://github.com/hat47x/tei-platform/issues/2605#issuecomment-6572810341)）：発見時CLIと実呼出しCLIの相違、Trace継続tokenとGraph fingerprintの混同、改行差によるSource byte相違、複数readの異版接合、外部開示範囲を、それぞれ別の負例としてS1/S2で検証する。Consumer向けの証拠接合は#2516 W10へ委ねる。
 
 ### S1 — TEI CLIを実動で検証
