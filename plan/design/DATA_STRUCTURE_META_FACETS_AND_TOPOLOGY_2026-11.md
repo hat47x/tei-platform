@@ -667,8 +667,61 @@ Everything is Dataの横断実証が進んだ結果、**表記構造が同じこ
 | --- | --- | --- |
 | [#2625](https://github.com/hat47x/tei-platform/pull/2625) | 限定Syntax→plain-data Normal FormのPython 23/23 PASS、複数表層の有限正負例 | 正式TEI Language Plugin、全DSL、Owner意味受理、実Target |
 | [#2624](https://github.com/hat47x/tei-platform/pull/2624) | 明示Data Mapping 20/20、Rule依存の別Fixture 18/18 PASS（いずれも隔離Python） | 本物のTEI Rule/Context、実Providerの取得制約、実OS/LLM開示、実Action |
-| [#2627](https://github.com/hat47x/tei-platform/pull/2627) | Provider Route 12件＋Read Slice比較17件、隔離Go計29/29 PASS／race/vet報告 | 実TEI DeriveOperationSurface、Provider共有Cohort、実DB/RLS、Host Effect |
+| [#2627](https://github.com/hat47x/tei-platform/pull/2627) | Provider Route 12件＋Read Slice比較20件、隔離Go計32/32 PASS／race/vet報告（RC-18〜20で行集合完全性とField観測を分離） | 実TEI DeriveOperationSurface、Provider共有Cohort、実DB/RLS、Host Effect |
 
 これらは**異なる試験対象の局所Reference**である。単に23+20+18+29という件数を加算して統合機能が90件通過したとは表示しない。各PRに記載された試験機・版と、現在のTEI mainでの実行結果も同一資格ではない。合流時はテストを実際のTEI Source→Context→Rule→Provider→Action/Consumerへ接続し、各段階で支持できた範囲と未取得の証拠を別々に記録する。
 
 **採否**：#2620は意味Role、#2621はAuthoring、#2506はRead Mapping、#1129/#1729はRule依存、#2611/#2622は多Provider、#2497は保存性、#2516はDisclosure、#2586は縦断、#1174はEffectを所有する。本#2495は**型・Facet・動的意味の説明から、なぜ同じStructureでも利用資格が違うかを示す**。新しい共通Footprint Runtimeや独立Meta Schemaは先に設けない。IF-01〜10の正式製品試験、Provider/Host/SHO実観測、Owner意味受理は**NOT RUN**。
+
+## 26. 2026-11-02 観測完全性は多次元：要求・物理取得・開示・Action適合を別に証明する
+
+[複数Provider Readの隔離Reference／Draft #2627](https://github.com/hat47x/tei-platform/pull/2627)は、初回の12＋17件から**12＋20件、32件の合成Go Reference PASS**へ増補された。同ReferenceのRC-18〜20では、完全なRowsetであってもFieldが未観測（absent）なら値の同値は未確立とするよう修正した。観測済みSQL NULLと、値の取得・定義・可視性が未確立なabsentを別扱いにする。以下は[Semantic Context Action設計 #2616](https://github.com/hat47x/tei-platform/issues/2616)のI0〜I5、[Function Pattern A/G・Action Offer #2613](https://github.com/hat47x/tei-platform/pull/2613)の隔離合成42件と、既存#2506/#2516/#2622に対する**共通の反証可能な設計問い**である。新しいプライバシーEngineや汎用Read Plannerを導入した主張ではない。
+
+### 26.1 三つのFootprintと、Rowset/Field/Timeの成立を分離
+
+| 比較対象 | 内容・必要な証拠 | 早合点してはいけないこと | Owner |
+| --- | --- | --- | --- |
+| **Logical Required Footprint** | Functionの明示Mapping（表示D）、Rule依存V、Action前提データA_data；起点/Path/Field/Grain/Scope/時点 | この宣言があればProviderが実際にその範囲だけ取得したという主張 | #2506/#1129/#1729 |
+| **Physical Acquisition Footprint** | Query Worker/Providerが実際に読んだRow/Column/Relation、実Alias/Mapping、RLS/Scope、Fetch/Cache/Log/転送経路と実行版 | 出力JSONから物理Readの最小性を証明したり、Provider自己申告だけで実効Authorityを証明 | #2622/#2611/#2387/#1769 |
+| **Consumer Disclosure Footprint** | Consumerごとに実際に公開したData/Action名・候補数/診断/Trace、実Recipient/転送・開示Policy | 値を隠しただけでActionの存在・否定理由・件数まで秘匿済みと推論 | #2516/#1178/#2515 |
+| **Rowset Closure** | 対象Query/Scope/Grain/時点に対し全行/Bagを観測した根拠 | 行集合Completeから全Field値・全Relation・他Providerの完全性を推論 | #2506/#1706/#2627 |
+| **Field Observation** | 各Fieldの観測済みValue / 観測済みNULL / absent・unknown / withheldの根拠、Field単位のSchema/Provider条件 | Rowset Completeかつ両者absentから値が等しいと確定、NULLと未観測を同一視 | #2585/#2056/#2627 |
+| **Cohort/Temporal Consistency** | Snapshot issuer/実Read-set/as-of、RuleとDataの版適用性、別Provider間の実共有Cohort | 同じSnapshot token文字列や数値Revisionを、別発行者の共有Snapshot保証とみなす | #2611/#2582/#2622 |
+| **Action Offer/Effect Qualification** | Accepted Action identity/目的、Pattern A/G、Source/Context/Rule、実Provider/Grant/Commit/Receipt | Functionのread-only候補提示またはUI表示の成功をBusiness Actionの実行可と扱う | #2507/#2598/#1174 |
+
+D∪V∪A_dataは**論理的な必要入力候補**であり、実際に何を取得するかは物理Provider/Rule実行主体が決める。同じ入力が必要でも権限上許されない場合は、未確立・非対応と適切な拒否を区別する。データが必要であるという説明から、そのデータのClient/外部Harness送出資格を派生させない。
+
+### 26.2 結果値の「同じ」と、どこまで知ったかの「同じ」
+
+Rowset Closure、Field Observation、Cohortは直列に全部一致させる単純なboolではなく、**比較対象とClaimが要求する情報に相対的な証拠**として扱う。例えば全Order行のIDが列挙済みでも、credit_limitが未取得なら、全件の与信判定を完了したとは言えない。片側が観測済みNULL、他方がabsentなら、それだけでは実値の矛盾を確定できない。
+
+**比較の区分**：条件を満たす独立Fixtureで行・値が一致すれば「fixture範囲で一致」、同じ前提の下で観測済み値・Bagが矛盾すれば「反証」、必要な観測・共通Cohort・開示資格が欠ければ「未確立」。#2627のfixture_consistent / contradicted / not_establishedはこの限定的な参照であり、そのまま新しいCore status enumに採用する提案ではない。
+
+さらに、Queryの全行取得と更新用の現在Snapshotは異なる資格である。RuleのSnapshot・Grant・対象Readが変更されれば、表示とPreviewが不変でもOwner Actionの保存条件を再評価する。独立Readで最終Effectが確認できない場合は成功へ昇格させず、Unknown Commitと再送の副作用防止は#1174/#1130へ委譲する。
+
+### 26.3 開示の非干渉はValueだけでなくAction存在・診断にも及ぶ
+
+[Pattern/Action Offer独立Reference #2613](https://github.com/hat47x/tei-platform/pull/2613)は、20件のA/G反例に、22件のAction applicability正負例（計42件隔離Python PASS）を追加し、Consumerに公開できるActionのIDを信頼済みfixture入力として扱う。**Action候補として内部に存在すること、現在の条件に適合すること、Consumerへ候補名の存在を知らせてよいこと**は別。
+
+秘密Actionが存在する内部世界と存在しない世界で、公開Consumer向け候補一覧に差が出れば、Action名そのものを明示しなくても候補数・順序・ステータスが機密の手掛かりになり得る。さらに実Providerが余分な秘密Dataを取得しているかどうかは、公開結果が同じという二世界実験だけでは分からない。このため物理Readトレース・公開結果・外部送出の各観測は別受入とする。
+
+**二つの非干渉候補は別**：Output Noninterference（秘密だけを変えた二世界で、低開示Consumerの可視出力が変わらないか）と、Acquisition Minimization（宣言した必要範囲を超えてProvider/Query/Cache/Logが実際に読まないか）。前者の有限試験がPASSしても、後者の物理的抑制やタイミング／反復照会の情報非干渉の一般証明にはならない。
+
+### 26.4 追加の判別票（既存Ownerへ配る。第二Scenario正本ではない）
+
+| ID | 独立して比較する二つの世界・観測 | 誤った成功判定 | 主Owner |
+| --- | --- | --- | --- |
+| QF-01 | 両者Rowset Complete、同じFieldがabsent | 全行が読めたのでField値も等しい | #2627/#2585 |
+| QF-02 | 一方FieldのNULL観測、他方absent | NULL≠absentからデータ矛盾が確定 | #2627/#2056 |
+| QF-03 | 同一Semantic Subject・同じSnapshot token、別発行Provider | token文字列一致で実共有Cohortを認定 | #2611/#2622 |
+| QF-04 | 類似する二Read、片側だけRelation全件を取得 | Partialを全件不存在・全件一致へ昇格 | #2506/#1706 |
+| QF-05 | 表示値同じ・非表示Rule入力だけ変更 | Displayの一致からAction/Validation一致を主張 | #2624/#1729 |
+| QF-06 | 同一公開結果、秘密FieldをProviderが過剰Read | 公開JSON一致から物理アクセス最小化を証明 | #2622/#2515 |
+| QF-07 | 公開可能なSubject同じ・秘密Actionだけ追加 | Action候補数/Status差から内部Actionを漏らす | #2613/#2516 |
+| QF-08 | 旧Rule入力でPreview成立・保存直前Rule/Grant更新 | Preview成功を現在の保存許可とする | #2598/#1174 |
+| QF-09 | Field単位では比較可能だが別ProviderのRLS実効範囲が相違 | 値一致で全件・同Scopeと断定 | #1769/#2622 |
+| QF-10 | 全必要Dataは揃うが外部ConsumerでAction名の公開不可 | Capability/Action存在をConsumerの適用候補に無条件掲載 | #2507/#2516 |
+| QF-11 | 同じOutput Data、表示/Rule/Actionの依存粒度が違う | 一つのSource revisionで全Claimの鮮度一致を断定 | #2582/#2593 |
+| QF-12 | 同じSourceでSHO用生成物の一部未公開 | Producerの成功をConsumer全ArtifactSetの読込へ昇格 | #2630/#2604 |
+
+**Owner接合順**：#2619/#2620 Source/Role → #2506 Required Context/Result Slice → #1129/#1729 Rule依存 → #2611/#2622 実Provider/Read/Scope → #2507 Action Offer → #2516開示 → #2598 Request/現在条件 → #1174 Effect/Receipt → #2630/#2604 Consumer実Read。#2586が同一試行で接続し、#1119の既存Gateを使用する。QF-01〜12は**検査案／正式TEI製品上でNOT RUN**。各独立PRの合成PASSは組み合わせた実Product PASSではなく、Owner意味受理も未取得。
