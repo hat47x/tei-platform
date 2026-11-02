@@ -2,7 +2,6 @@ package operations
 
 import (
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"sort"
@@ -200,40 +199,45 @@ func buildSourceIndexSide(root string, loaded workspace.Result) sourceIndexSide 
 	return side
 }
 
-// Keep path normalization, symlink containment and regular-file checks at
-// this read boundary. The index validator detects drift using fingerprints,
-// but it does not provide a filesystem transaction or close the documented
-// symlink-swap race (#1017).
+// maxWorkspaceSourceBytes bounds the bytes one Source read may retain. A Source
+// file above it is refused, never truncated. It is a variable only so a test
+// can lower it; production code never assigns it.
+var maxWorkspaceSourceBytes int64 = 64 << 20
+
+// readWorkspaceSource returns the byte reader behind the Source Index
+// Resolver. Each read goes through workspace.ReadSource: one traversal-resistant
+// os.Root open, then a regular-file Stat and a bounded read on that same
+// handle. There is no EvalSymlinks followed by os.Open, so a path component
+// replaced by a symlink between a check and the open cannot redirect the read
+// outside the Workspace (#1017).
+//
+// The root is canonicalized once, here, so an alias of the Workspace root
+// (a symlink or junction) retargeted after the Source Index was built cannot
+// redirect later reads either. This is still not a filesystem transaction:
+// the index validator detects an in-place content change by fingerprint, and
+// each read opens its own root, so the reader is not a pinned multi-file
+// snapshot.
 func readWorkspaceSource(root string) (func(string) ([]byte, error), error) {
 	rootReal, err := filepath.EvalSymlinks(root)
 	if err != nil {
 		return nil, fmt.Errorf("resolve Workspace root: %w", err)
+	}
+	// EvalSymlinks does not resolve a Windows directory junction, so also
+	// remember which directory the root was. A root alias retargeted later
+	// fails the read instead of redirecting it. This narrows the window only;
+	// the pinned open below is what contains each read.
+	rootInfo, err := os.Stat(rootReal)
+	if err != nil {
+		return nil, fmt.Errorf("stat Workspace root: %w", err)
 	}
 	return func(raw string) ([]byte, error) {
 		relative, err := sourceindex.NormalizeWorkspacePath(raw)
 		if err != nil {
 			return nil, err
 		}
-		physical, err := filepath.EvalSymlinks(filepath.Join(rootReal, filepath.FromSlash(relative)))
-		if err != nil {
-			return nil, err
+		if now, err := os.Stat(rootReal); err != nil || !os.SameFile(rootInfo, now) {
+			return nil, fmt.Errorf("Workspace root changed after the Source Index was built")
 		}
-		within, err := filepath.Rel(rootReal, physical)
-		if err != nil || within == ".." || strings.HasPrefix(within, ".."+string(os.PathSeparator)) {
-			return nil, fmt.Errorf("source %q resolves outside Workspace", raw)
-		}
-		file, err := os.Open(physical)
-		if err != nil {
-			return nil, err
-		}
-		defer file.Close()
-		info, err := file.Stat()
-		if err != nil {
-			return nil, err
-		}
-		if !info.Mode().IsRegular() {
-			return nil, fmt.Errorf("source %q is not a regular file", raw)
-		}
-		return io.ReadAll(file)
+		return workspace.ReadSource(rootReal, relative, maxWorkspaceSourceBytes)
 	}, nil
 }
