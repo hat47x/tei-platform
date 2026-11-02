@@ -62,6 +62,18 @@ func TableDefinitionSnapshotWith(mapping persistence.Mapping, element semantic.D
 		}
 		table.Indexes = append(table.Indexes, entry)
 	}
+	for _, unique := range mapping.UniqueConstraints {
+		entry := physical.UniqueConstraint{Name: unique.Name}
+		for _, attribute := range unique.Attributes {
+			if column, ok := columnOf[attribute]; ok {
+				entry.Columns = append(entry.Columns, column)
+			} else {
+				entry.Columns = append(entry.Columns, string(attribute))
+			}
+		}
+		table.UniqueConstraints = append(table.UniqueConstraints, entry)
+	}
+
 	foreignKeys := append([]persistence.ForeignKeyMapping(nil), mapping.ForeignKeys...)
 	sort.Slice(foreignKeys, func(i, j int) bool { return foreignKeys[i].Name < foreignKeys[j].Name })
 	for _, foreignKey := range foreignKeys {

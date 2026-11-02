@@ -155,3 +155,18 @@ func TestRenderTableDefinitionShowsForeignKeys(t *testing.T) {
 		t.Fatalf("artifact must verify: %v", err)
 	}
 }
+func TestRenderTableDefinitionShowsUniqueConstraints(t *testing.T) {
+	input := tableDefinitionInput()
+	input.Mapping.UniqueConstraints = []persistence.UniqueConstraintMapping{{
+		Name:       "orders_status_key",
+		Attributes: []core.CanonicalID{"sales.order.status"},
+	}}
+
+	rendered, err := RenderTableDefinition(input)
+	if err != nil {
+		t.Fatalf("render: %v", err)
+	}
+	if !strings.Contains(rendered.Content, "unique orders_status_key sales.order.status\n") {
+		t.Fatalf("content lost the unique constraint:\n%s", rendered.Content)
+	}
+}

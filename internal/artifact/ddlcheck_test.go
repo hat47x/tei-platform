@@ -161,3 +161,19 @@ func TestCompareTableDefinitionDetectsAMissingForeignKey(t *testing.T) {
 		t.Fatal("a missing foreign key must be reported")
 	}
 }
+func TestTableDefinitionSnapshotCarriesUniqueConstraints(t *testing.T) {
+	mapping := ddlCheckMapping()
+	mapping.UniqueConstraints = []persistence.UniqueConstraintMapping{{
+		Name:       "orders_status_key",
+		Attributes: []core.CanonicalID{"sales.order.status"},
+	}}
+
+	snapshot := TableDefinitionSnapshot(mapping, semanticData())
+	table := snapshot.Tables[0]
+	if len(table.UniqueConstraints) != 1 {
+		t.Fatalf("unique constraint lost: %+v", table.UniqueConstraints)
+	}
+	if table.UniqueConstraints[0].Name != "orders_status_key" || len(table.UniqueConstraints[0].Columns) != 1 || table.UniqueConstraints[0].Columns[0] != "status" {
+		t.Fatalf("unique constraint not resolved: %+v", table.UniqueConstraints[0])
+	}
+}

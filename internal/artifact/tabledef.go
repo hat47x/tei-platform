@@ -24,7 +24,7 @@ const (
 )
 
 const tableDefinitionRulePolicy = `table-definition/v1
-lines: table, data, column (<column> <attribute> <storage> <nullability> [pk]), primary-key, foreign-key, index
+lines: table, data, column (<column> <attribute> <storage> <nullability> [pk]), primary-key, unique, foreign-key, index
 order: columns in the authored persistence order, indexes by name
 unresolved: unmapped semantic attribute, missing primary key`
 
@@ -87,6 +87,16 @@ func renderTableDefinition(mapping persistence.Mapping, element semantic.Data, t
 			keys = append(keys, string(attribute))
 		}
 		fmt.Fprintf(&b, "primary-key %s\n", strings.Join(keys, ","))
+	}
+
+	uniques := append([]persistence.UniqueConstraintMapping(nil), mapping.UniqueConstraints...)
+	sort.Slice(uniques, func(i, j int) bool { return uniques[i].Name < uniques[j].Name })
+	for _, unique := range uniques {
+		columns := make([]string, 0, len(unique.Attributes))
+		for _, attribute := range unique.Attributes {
+			columns = append(columns, string(attribute))
+		}
+		fmt.Fprintf(&b, "unique %s %s\n", unique.Name, strings.Join(columns, ","))
 	}
 
 	foreignKeys := append([]persistence.ForeignKeyMapping(nil), mapping.ForeignKeys...)
