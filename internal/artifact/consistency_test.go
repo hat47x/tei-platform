@@ -92,3 +92,22 @@ func TestCheckSetReportsAnUnknownRule(t *testing.T) {
 		t.Fatalf("an artifact naming another rule must be reported: %+v", findings)
 	}
 }
+func TestCheckSetReportsMissingRequiredLines(t *testing.T) {
+	set := negativeFixtureSet(t)
+	for i := range set.Artifacts {
+		if set.Artifacts[i].Kind == string(KindTableDefinition) {
+			set.Artifacts[i].Content = "columns only\n"
+		}
+	}
+
+	findings := CheckSet(set)
+	found := false
+	for _, finding := range findings {
+		if finding.Code == FindingContentIncomplete {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("an artifact that lost its table line must be reported: %+v", findings)
+	}
+}

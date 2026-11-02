@@ -2,6 +2,7 @@ package artifact
 
 import (
 	"fmt"
+	"strings"
 
 	"tei/internal/operations"
 )
@@ -26,6 +27,8 @@ const (
 	FindingCompleteWithUnresolved = "COMPLETE_WITH_UNRESOLVED"
 	// FindingUnknownRule: an artifact names a rule that does not belong to its kind.
 	FindingUnknownRule = "ARTIFACT_RULE_UNKNOWN"
+	// FindingContentIncomplete: an artifact of a kind lost a line its reader relies on.
+	FindingContentIncomplete = "ARTIFACT_CONTENT_INCOMPLETE"
 )
 
 // CheckSet verifies the internal consistency of a rendered set: every artifact
@@ -80,6 +83,15 @@ func CheckSet(set WorkspaceSet) []Finding {
 	}
 
 	for _, artifact := range set.Artifacts {
+		for _, required := range requiredLines(artifact.Kind) {
+			if !strings.Contains(artifact.Content, required) {
+				findings = append(findings, Finding{
+					Code:    FindingContentIncomplete,
+					Subject: artifact.Kind,
+					Detail:  fmt.Sprintf("content lost %q", required),
+				})
+			}
+		}
 		expected, ok := ruleForKind(artifact.Kind)
 		if !ok {
 			continue
@@ -131,4 +143,18 @@ func ruleForKind(kind string) (string, bool) {
 		return OperationSurfaceRuleID, true
 	}
 	return "", false
+}
+
+// requiredLines names the line each kind must keep. A reader relies on these
+// lines, so losing one is reported even when the artifact still verifies.
+func requiredLines(kind string) []string {
+	switch Kind(kind) {
+	case KindTableDefinition:
+		return []string{"table ", "data "}
+	case KindFunctionDefinition:
+		return []string{"application "}
+	case KindOperationSurface:
+		return []string{operations.OperationSurfaceSchemaVersion}
+	}
+	return nil
 }
