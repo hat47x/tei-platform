@@ -1286,3 +1286,35 @@ TEI #1127が検討する`Semantic Data/Relations → Function Data Context + Ope
 **差分の所有**：#2386/本書は組織の反例・独立Oracleと利用目的を供給、#2497はProjection保存条件、#2506/#2507/#2593は一般ConsumerのData/Pattern/Measure、#2500はIntent、#2586は縦断受渡し、#1124はGUI。新規Core enum、永続的メタfacet入力UI、全域Ontology、TEI独自Hostや第二Semantic SSOTは採用しない。
 
 **成果区分**：本節は2026-11-02現行main `9c9ef4d160640908e06ad13afb6c2b45c664c748`、関連Issue/DraftのGitHub記録、および手計算した合成例を比較して作った計画である。組織参照fixtureの実装、Go/SQLite/GUI/Hostの実行、Owner受理、PR統合は**未実施**。別作業レーンで実測済みの局所試験とは区別する。
+
+## 41. 合成Oracleの実証を設計受入票へ還流（2026-11-02：限定実行証拠）
+
+### 41.1 初めて「手計算期待」から独立した小Reference実行へ進めた範囲
+
+[Draft PR #2596](https://github.com/hat47x/tei-platform/pull/2596)では、`reference/org-semantic-views/verify.mjs`と`README.md`を**2026-11-02 main `9c9ef4d160640908e06ad13afb6c2b45c664c748`起点の別Draft branch**に新規作成した。#2389は引き続き計画文書だけを更新するDraftのままにし、#2596とは**コード上の親子依存や自動mergeを前提にしない**。
+
+- **実行観測**：合成Datasetを持つ純粋なJavaScriptの検証関数は、このチャットの実行環境で**27/27 checks PASS**。GitHubから取り直したファイルの同関数もV8 isolateで**27/27 PASS**と再確認した。
+- **まだ実行していないもの**：Node CLIの実行、当該PRのGitHub CI、正式なTEI Go/CLI/Query、SQL Worker、Function Data Context、Pattern、Studio/SHO、実Provider/DB/Host、Effect、Owner意味受理。Node CLIで実行可能な構成としたが、この時点でNode CLIのexit codeは未収集。
+- **証拠の種類**：合成データに対する**read-onlyな局所演算とOperation Intent候補の識別**のみ。Sourceを実装したり、TEIの現在のSemantic IRから自動生成したり、ビジネス更新したりした証拠ではない。
+
+### 41.2 新たに明確化した「同じ線の見た目では判断できない」二つの反例
+
+**反例A：職位に在任しても部門所属とは限らない。** Syntheticの`P3`は2027-07-01に`D1`内の職位`M1`を占めるが、直接`Membership(P3,D1)`は**false**（P3の直接所属はD2のみ）。これは矛盾ではない。特定業務Profileが`Occupancy + PositionIn ⇒ Membership`を受理した場合だけ、**Rule由来であることを明示した別の派生関係**として表示できる。標準UIが`PositionIn`やGraph経路から直接所属を勝手に生成することを防ぐ。
+
+**反例B：同一人物の線2本は、人物2人でも1本の関係でもない。** `P2`の直接Membershipは`A2(P2,D1)`と`A3(P2,D2)`の**二つの独立した関係出現**。Personノードの選択（対象P2）とA3線の解除候補（対象A3）は異なる。表示上のTreeへ一方の線を隠しても、元のA3を業務上削除したとは言えない。
+
+ここから、可視化の意味保存は「表示する図形の数」ではなく、**対象同一性・Relation occurrence・Rule由来・主張の粒度・時間・選択したContext**に相対的に判断する必要があると分かる。
+
+### 41.3 現在の受入マップ（実証と計画の厳格な分離）
+
+| 試験・責務 | 今回得た限定証拠 | 次に必要な実証 | 主担当 |
+| --- | --- | --- | --- |
+| **ORG-E0：合成Oracle** | V8 read-only **27/27 PASS**：人物3、関係4、明示配賦FTE3.0、D1 JOIN4行、O1→O2時点切替、P3の直接D1所属false、A3 edge/Person nodeの操作候補分離 | Node CLIのversion/exit/commitで追試、CI受入条件として固定できるか検討 | #2386／Draft #2596 |
+| **ORG-E1：標準TEIモデルによる同じ意味表現** | **NOT RUN**。Referenceの配列は正式なSemantic Data/Relation実体ではない | 宣言とインスタンスを区別し、既存Semantic IRとDataset/ScenarioでP1/P2/P3/A1〜A4を表す。Schema変更が必要なら欠落を記録 | #1126／#1131 |
+| **ORG-E2：標準Query/Context/Claim連結** | **NOT RUN**。JSのJOINはSQL Parser/Provider実行の証拠ではない | 同一Source/Rule/時点/Query版でQuery結果行、Person/Relation grain、Result Sliceの完全性を照合 | #2387／#2506／#2586 |
+| **ORG-E3：Function Pattern/表示・編集Intent** | **未統合**。JSのcandidate/unsupported/unresolved/staleはReference局所のテスト値 | 標準Table/Graph/Chart/CUIの適合性、Context selection/epoch、Typed Operation Intentの既存Referenceとの受渡し | #2507／#2500／#2497／#1127 |
+| **ORG-E4：実変更/確認・利用者理解** | **NOT RUN**。表示意図は業務Actionの認可・確定ではない | 既存Owner-write/Host Authority/Commit/Receipt/独立Observationと、意味の読み分けを実測 | #1124／#1129／#1174 |
+
+**主張の範囲はClaimとSource範囲に相対的**：局所Referenceの`3 Persons`は合成Datasetを完全に記述したことを前提とする。実Providerで一部Pageしか取得できない場合は、`COUNT DISTINCT=3`を「業務世界全体の人数」としては確定できない。存在を示す具体的な行や、限定されたScopeに対する値は別。#2506（Result Slice）、#2593（Measure/Grain）、#2582（変化に伴うClaim再評価）へ接続する。
+
+**Open Issueへの効果**：#2386のP0-Mは抽象反例だけでなく、動かせる小Oracleを得た。P0-Vは未実施のまま。機能UI/SQL/Executionの未接続部分を埋める前に、この局所PASSを製品全体の達成/意味受理/実行許可へ昇格させない。通常の組織Dataには専用の閲覧制御を追加せず、特別保護対象だけ別に検討するという§2.4/§36.3のOwner方針も維持する。
