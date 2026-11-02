@@ -916,6 +916,7 @@ PoC #2521が実装した範囲と、まだ実装していない範囲を分け�
 | 対話ビュー（項目の型・表示名・入力部品・参照先の解決） | 実装済み（`internal/applicationview`、CLI `view`） |
 | 画面HTMLの投影 | 実装済み（`view -format html`） |
 | 印刷用の用紙面投影 | 実装済み（`view -format print`、A4、明細5行） |
+| 統合試験（Semantic→Application→Package→view/print） | 実装済み（`cmd/tei/product_slice_test.go`） |
 | header-detailの見出し・明細ビュー | 実装済み（Relationのsourceをheader、targetを明細として解決） |
 | 対話からのCommand起動（宣言・契約解決） | 実装済み（`interaction`の`command`、入力・結末・効果の解決。実行は未実装） |
 | Package（宣言・読込・検証・版束縛・ビュー表示） | 実装済み（衝突は明示エラー、取り外しはSemantic fingerprintを変えない） |
@@ -923,6 +924,7 @@ PoC #2521が実装した範囲と、まだ実装していない範囲を分け�
 | `reference/workspace`への宣言追加 | 未実施（受理経路が必要） |
 
 実装は、`internal/application/model.go`、`internal/syntax/application_pattern.go`、`internal/validation/application_pattern.go`、`internal/crossview/pattern_requirements.go`、`internal/applicationview`、`internal/semantic/model.go`、`internal/syntax/parser.go`、`internal/validation/validation.go`と、それぞれの試験です。
+
 
 
 
