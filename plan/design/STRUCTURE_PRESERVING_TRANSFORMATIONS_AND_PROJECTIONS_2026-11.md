@@ -478,3 +478,71 @@ TAI mainの[実装README](https://github.com/hat47x/tai-pleroma/blob/main/integr
 **Owner/実証境界**：集計意味・独立Fixtureは#2593（MC-01〜10）、型と公理は#2544、Query/Context/Claimの縦断は#2586、情報境界と外部開示は#2516/#1178、SHO原本再解決は#1803/MMI、外部Consumer実証は#2498。ここでは各Issueの正本を参照し、第二のMeasure Engineや第二の承認・開示エンジンを構築しない。
 
 **状態**：横断設計と反例の追加。AM-01〜12の実行、外部送信観測、SHO保存実証、Ownerによる正式受理はNOT RUN。
+
+
+## 14. Consumer間のClaim比較とDocument Occurrenceの独立性（2026-11-02追補）
+
+### 14.1 同じ表示値は同じClaimを意味しない
+
+[#2516](https://github.com/hat47x/tei-platform/issues/2516)のW8（Cross-Consumer Claim Reconciliation）では、同値・異値だけでConsumer間の整合を判定できないことが明確になった。これを#2497の構造保存条件として取り込む。
+
+- **同値でも比較不能**：CUIとSHOがともに`200`を表示していても、片方が売上合計、他方が在庫数量、または異なる対象集合・時点・通貨なら同一Claimではない。
+- **異値でも両方正当**：同じMeasureでも、CUIが部分取得の100、SHOが確定済み全件200を示す場合、それぞれのScopeと暫定／確定資格に相対的には正しい可能性がある。
+- **比較可能で異値**：同じSemantic Subject/Operator、同じ対象集合・Grain、Snapshot、必要なSource/Rule/Projection版と完全性が一致し、CUIが200、SHOが201なら、初めて真正の不一致候補として独立Oracleへ戻す。
+- **同値でも異なる元状態**：optionalのmissing/nullがともに省略、または`float64`で別の整数が同じ数値に写る場合、値の一致からSource状態を復元できない。read-onlyの表示適合と監査／編集適合を分ける。
+
+比較可能性は、少なくとも`subject + role + operator + grain + scope/completeness + effective time/snapshot + source/meaning revision + consumer purpose`を照合した**Claim相対の関係**として扱う。これは比較用の記法であり、新しい全域ComparatorやClaim Registryではない。必要条件を満たす場合でも、独立Oracleや実Consumerの観測が欠ければ値の正しさは未確定。
+
+### 14.2 観測同値・意味同値・出典同値・編集同値を分ける
+
+投影`p`について、`p(s1)=p(s2)`から`s1=s2`は一般に導けない。逆向きの推論が成立するには、Consumerが要求する区別に関して`p`が単射である、または失われた情報を独立のSource/証拠から補える等の条件が必要。
+
+| 同値性 | 比較するもの | 値一致だけで保証できないこと |
+| --- | --- | --- |
+| 観測同値 | 同じConsumerの見える結果 | 元状態の同一性、完全性 |
+| Claim同値 | 同じ対象・条件・演算・時点の主張 | 証拠の現在性、業務Owner受理 |
+| Source同値 | 同じ原本/locator/版/由来 | 同bytes別所在、版間意味対応 |
+| Document Occurrence同値 | 文書中の一出現と他の出現 | 同一TEI要素でも同一の局所編集・レビューではない |
+| 編集同値 | View変更が同じSource更新を意味するか | 書戻し先、差分、許可、実Effect |
+| Disclosure同値 | 同じ情報をConsumerへ出せるか | 内部参照可と外部送信可の同一視 |
+
+### 14.3 TEI→SHOの一対多Projectionと局所編集
+
+SHO側のDocument Occurrence検討（SHO [#4](https://github.com/hat47x/sho-composer/issues/4)、[#6](https://github.com/hat47x/sho-composer/issues/6)）では、同じTEI要素を文書の複数箇所へ出現させ、**出現ごとの説明・配置・局所編集・レビュー状態**を区別する。元のSemantic IDと文書内Occurrence IDを分離することが重要。
+
+比較例：TEIの同じ業務項目`X`を文書Aの第1章と第4章へ投影し、第4章だけ著者が説明を上書きした。その後、TEI側で`X`の意味定義が改訂されたとき、
+
+1. TEI意味定義の版と、二つのDocument Occurrenceの投影元を追跡する。
+2. 局所上書きは文書内の独立編集として保持し、元モデルへの変更提案と区別する。
+3. 第1章が再生成できても、第4章の説明が現行意味と整合するとは自動判定しない。
+4. 文書ファイルの保存成功・Source再解決・読者向け説明の成立・レビュー現在性・納品版固定を別々に扱う。
+5. 文書の局所編集をTEIの受理済み意味へ自動逆反映しない。明示的な変更IntentとOwner判断が必要。
+
+SHOが文書の正本、TEIが受理済み意味の正本、MMIがSource/Candidate/Provenanceの再利用可能な処理を担う既存責務を維持する。SHO側の実装・保存再開、MMI C-01/T2の実機受入はこの設計から完了と推定しない。
+
+### 14.4 開示条件を含む比較の非干渉性
+
+[#2516](https://github.com/hat47x/tei-platform/issues/2516)で追加されたDP-M4a/b、DP-M5a/bの問題は、**非公開の情報を見せないだけでなく、比較結果や拒否理由を通じて非公開情報の有無・件数を推測させない**ことにある。
+
+同じ低権限Consumerに見える公開データを持つ二つの世界で、秘密のデータだけが異なる場合、許可された明示的な集計等を除き、Consumerへの出力・比較診断・失敗理由・Traceが秘密差を明らかにしないか検査する。これは設計上の非干渉性の比較候補であり、正式なPolicyやOS隔離が成立したという主張ではない。外部AIへの実送信、反復照会、ログの公開範囲は#2516/#1178等のOwnerが検証する。
+
+### 14.5 反証票（CR-01〜12、全件NOT RUN）
+
+| ID | 最小比較 | 判定したい差 |
+| --- | --- | --- |
+| CR-01 | CUI売上200、SHO在庫200 | 値一致とClaim不一致 |
+| CR-02 | CUI部分100、SHO全件200 | 値不一致と双方のScope相対の正当性 |
+| CR-03 | 同一Contract/SnapshotでCUI200、SHO201 | 比較可能な真の不一致候補 |
+| CR-04 | 旧版SHO200、新版CUI220 | 文書保存版と現在意味版 |
+| CR-05 | optional missing/nullをともに省略 | 表示同値と原状態同値の差 |
+| CR-06 | 異なる大整数がfloat64で同値 | 値投影の非単射性と厳密ID不適合 |
+| CR-07 | 同じSQL文字列、RLS/Scopeが異なる | 字句一致と実効集合の差 |
+| CR-08 | 同一TEI要素→文書内二Occurrence | 意味対象同一と編集対象の相違 |
+| CR-09 | 一Occurrenceだけ説明を局所上書き | 再生成・レビュー・意味変更提案の分離 |
+| CR-10 | TEI改版、文書表示は同じ | 意味変更と表示byte不変 |
+| CR-11 | 公開情報同一、秘密情報だけ異なる二世界 | 比較結果・拒否理由・Traceからの漏出 |
+| CR-12 | CUI結果PASS、SHOは保存のみで実表示未確認 | 一Consumer観測と全Consumer受入の差 |
+
+**受入経路**：Consumer間の実比較は#2516 W8、実Record値忠実度は#2585、Functionの同一Fixtureは#2586、SHO文書のOccurrence/編集・レビューはSHO #4/#6、MMIの原本再解決はMMI C-01/T2、開示Policyと隔離は#1178/#2515。#2497は構造保存の一般条件とLossの説明を所有し、第二の文書正本・Comparator・権限機構は設けない。
+
+**状態**：設計文書と反例の追加。CR-01〜12の比較実行、実SHO/OS/AI/Provider/GUI試験、正式な意味受理はNOT RUN。
