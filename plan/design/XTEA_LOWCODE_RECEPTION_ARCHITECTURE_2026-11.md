@@ -126,7 +126,7 @@ X-TEAのスクリプトAPIは、SQL・確定・機能呼出しを同じ面に置
 | 診断 | 既存のValidationがある | `internal/semantic/model.go` L118–121 | 三視点の抜け・未被呼出しはD8で追加する |
 | パッケージ | Pluginの合成はあるが、Patternパッケージはない | `internal/plugin/model.go` | D1でPlugin種別として設計する |
 
-この表から、D1のパッケージは「Kindを増やす」のではなく「5種の組合せと対話契約を追加する」方向が、現行実装と衝突しにくいと分かります。一覧の区切り読み込み・1件の自動処理（知識目録F-15）や、絞り込みの群とページ送り（F-16）、見出し明細の複数タブ（F-17）も、Queryと対話契約の属性として表します。並び替えは、X-TEAでは読み込み済みの行を画面上で並べ替えていましたが（I-21）、TEIではQueryの並び順として宣言し、ページ送りと一貫させます。絞り込みの演算子（`EQ`、`GE`、`LIKE`など）も画面の切替えに閉じず（I-22）、Queryが受け付ける条件として宣言します。PoCでは`filter <attribute> { eq ne }`として宣言し、一覧の絞り込み欄へ投影します。起動処理は画面内のタイマーで動いていましたが（F-22）、TEIでは起動の契機をCommandの外に置き、スケジューラを提供元とします。D5も、新しい結果型を増やすのではなく、既存の`Outcome`とerrorの分担に合わせるべきです。
+この表から、D1のパッケージは「Kindを増やす」のではなく「5種の組合せと対話契約を追加する」方向が、現行実装と衝突しにくいと分かります。一覧の区切り読み込み・1件の自動処理（知識目録F-15）や、絞り込みの群とページ送り（F-16）、見出し明細の複数タブ（F-17）も、Queryと対話契約の属性として表します。並び替えは、X-TEAでは読み込み済みの行を画面上で並べ替えていましたが（I-21）、TEIではQueryの並び順として宣言し、ページ送りと一貫させます。PoCでは`sort <attribute> asc|desc`として宣言します。絞り込みの演算子（`EQ`、`GE`、`LIKE`など）も画面の切替えに閉じず（I-22）、Queryが受け付ける条件として宣言します。PoCでは`filter <attribute> { eq ne }`として宣言し、一覧の絞り込み欄へ投影します。起動処理は画面内のタイマーで動いていましたが（F-22）、TEIでは起動の契機をCommandの外に置き、スケジューラを提供元とします。D5も、新しい結果型を増やすのではなく、既存の`Outcome`とerrorの分担に合わせるべきです。
 
 なお、`Hook`、`Interaction`、`Presentation`という型は、現行のGoコードの`internal/`と`core/`の静的検索では見つかりません。D2（フック）、D3（項目の役割）、D4（表示意図）、D7（帳票・出力投影）は、既存の型を再利用するのではなく、新しい層を追加する設計になります。
 
@@ -922,6 +922,7 @@ PoC #2521が実装した範囲と、まだ実装していない範囲を分け�
 | header-detailの見出し・明細ビュー | 実装済み（Relationのsourceをheader、targetを明細として解決） |
 | 一覧（browse）ビュー | 実装済み（Query結果列を表示名・型で解決） |
 | 一覧の絞り込み（項目・演算子） | 実装済み（`filter <attribute> { eq ne }`、HTMLの絞り込み欄） |
+| 一覧の並び順（`sort`） | 実装済み（`sort <attribute> asc|desc`、HTMLの並び順表示） |
 | 対話からのCommand起動（宣言・契約解決） | 実装済み（`interaction`の`command`、入力・結末・効果の解決。実行は未実装） |
 | Command入力の対話項目への結びつけ | 実装済み（`command { input <name> <attribute> }`、項目の表示名へ解決） |
 | Package（宣言・読込・検証・版束縛・ビュー表示） | 実装済み（衝突は明示エラー、取り外しはSemantic fingerprintを変えない） |
@@ -929,6 +930,7 @@ PoC #2521が実装した範囲と、まだ実装していない範囲を分け�
 | `reference/workspace`への宣言追加 | 未実施（受理経路が必要） |
 
 実装は、`internal/application/model.go`、`internal/syntax/application_pattern.go`、`internal/validation/application_pattern.go`、`internal/crossview/pattern_requirements.go`、`internal/applicationview`、`internal/semantic/model.go`、`internal/syntax/parser.go`、`internal/validation/validation.go`と、それぞれの試験です。
+
 
 
 

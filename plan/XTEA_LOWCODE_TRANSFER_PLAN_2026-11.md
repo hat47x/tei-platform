@@ -329,6 +329,7 @@ WP10 統合と引継ぎ
 | header-detail（見出し・明細） | 実装 | 付録C.5 |
 | 一覧（browse）ビュー | 実装 | 付録C.5 |
 | 一覧の絞り込み（項目・演算子） | 実装 | 付録C.5 |
+| 一覧の並び順（`sort`） | 実装 | 付録C.5 |
 | Package（宣言・検証・版束縛・衝突・ビュー表示） | 実装 | 付録C.5、`internal/application`・`internal/validation` |
 | Semantic fingerprint（投影の意味の版） | 実装 | 付録C.5、`internal/semantic` |
 | 統合試験（Semantic→Application→Package→view/print） | 実装 | `cmd/tei/product_slice_test.go` |
@@ -363,6 +364,7 @@ WP10 統合と引継ぎ
 **PRの関係.** 文書は[#2519](https://github.com/hat47x/tei-platform/pull/2519)、対話契約のPoCは[#2521](https://github.com/hat47x/tei-platform/pull/2521)です。PoCは文書のD1・D3.1の最小部分を実装し、`main`には未統合です。
 
 **統合の条件.** 要求・設計の採否が決まり、PRがDraftでなくなり、CIとレビューが通ることです。Draftのままでは統合しません。
+
 
 
 
