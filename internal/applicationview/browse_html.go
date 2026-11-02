@@ -18,12 +18,15 @@ small{font-weight:normal;color:#666}
 table{width:100%;border-collapse:collapse;margin-top:1rem}
 th,td{border:1px solid #bbb;padding:.4rem .5rem;text-align:left;font-size:.9rem}
 th{background:#f3f3f3}
+.filters{display:flex;gap:1rem;flex-wrap:wrap;margin:1rem 0}
+.filters label{display:flex;gap:.35rem;align-items:center}
 </style>
 </head>
 <body>
 <h1>{{.Pattern}} <small>({{.Kind}})</small></h1>
 <p>data: {{.Data}} — query: {{.Query}}</p>
 {{if .Packages}}<p>packages: {{range .Packages}}{{.ID}} ^{{.Version}} {{end}}</p>{{end}}
+{{if .Filters}}<form class="filters">{{range .Filters}}<label>{{.Label}} <select>{{range .Operators}}<option>{{.}}</option>{{end}}</select><input type="{{.Input}}" name="{{.Attribute}}"></label>{{end}}</form>{{end}}
 <table>
 <thead><tr>{{range .Columns}}<th>{{.Label}}</th>{{end}}</tr></thead>
 <tbody>

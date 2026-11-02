@@ -20,6 +20,7 @@ func browseWorld() ir.World {
 				Attributes: []semantic.Attribute{
 					{ID: "sales.order.order_id", Display: "受注番号", TypeRef: "std.identifier"},
 					{ID: "sales.order.customer_id", Display: "顧客", TypeRef: "customer.customer_id"},
+					{ID: "sales.order.status", Display: "状態", TypeRef: "std.code"},
 				},
 			}},
 		}},
@@ -38,6 +39,10 @@ func browseWorld() ir.World {
 				Kind:  application.PatternBrowse,
 				Data:  "sales.order",
 				Query: "order_entry.recent_orders",
+				Filters: []application.Filter{{
+					Attribute: "sales.order.status",
+					Operators: []string{"eq", "ne"},
+				}},
 			}},
 		}},
 	}
@@ -53,6 +58,9 @@ func TestBuildBrowseResolvesQueryColumns(t *testing.T) {
 	}
 	if view.Columns[0].Label != "受注番号" || view.Columns[0].Type != "std.identifier" {
 		t.Fatalf("column=%+v", view.Columns[0])
+	}
+	if len(view.Filters) != 1 || view.Filters[0].Label != "状態" || len(view.Filters[0].Operators) != 2 {
+		t.Fatalf("filters=%+v", view.Filters)
 	}
 }
 

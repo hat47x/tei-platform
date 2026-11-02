@@ -19,8 +19,18 @@ type BrowseView struct {
 	Data                core.CanonicalID        `json:"data,omitempty"`
 	Query               core.CanonicalID        `json:"query,omitempty"`
 	Columns             []Item                  `json:"columns,omitempty"`
+	Filters             []FilterRef             `json:"filters,omitempty"`
 	Packages            []PackageRef            `json:"packages,omitempty"`
 	SemanticFingerprint string                  `json:"semanticFingerprint,omitempty"`
+}
+
+// FilterRefは、一覧の絞り込みに使う項目と演算子を解決した結果である。
+type FilterRef struct {
+	Attribute core.CanonicalID `json:"attribute"`
+	Label     string           `json:"label,omitempty"`
+	Type      core.CanonicalID `json:"type,omitempty"`
+	Input     string           `json:"input,omitempty"`
+	Operators []string         `json:"operators,omitempty"`
 }
 
 // BuildBrowseは、browse PatternのQuery結果の列を、Semanticの型と表示名で解決する。
@@ -113,6 +123,19 @@ func BuildBrowse(world ir.World, applicationID, patternID core.CanonicalID) (Bro
 		}
 		item := itemFor(attribute, typeValues)
 		view.Columns = append(view.Columns, item)
+	}
+	for _, filter := range pattern.Filters {
+		attribute, ok := attributes[filter.Attribute]
+		if !ok {
+			return BrowseView{}, fmt.Errorf("browse pattern %s filter refers to unknown attribute %s", pattern.ID, filter.Attribute)
+		}
+		view.Filters = append(view.Filters, FilterRef{
+			Attribute: filter.Attribute,
+			Label:     labelOf(attribute),
+			Type:      attribute.TypeRef,
+			Input:     inputKind(attribute.TypeRef),
+			Operators: filter.Operators,
+		})
 	}
 	return view, nil
 }

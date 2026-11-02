@@ -296,6 +296,16 @@ func writeBrowseText(out io.Writer, view applicationview.BrowseView) (int, error
 			return 2, err
 		}
 	}
+	if len(view.Filters) > 0 {
+		if _, err := fmt.Fprintln(out, "filters:"); err != nil {
+			return 2, err
+		}
+		for _, filter := range view.Filters {
+			if _, err := fmt.Fprintf(out, "  - %s: %s\n", filter.Label, strings.Join(filter.Operators, ", ")); err != nil {
+				return 2, err
+			}
+		}
+	}
 	if _, err := fmt.Fprintln(out, "columns:"); err != nil {
 		return 2, err
 	}

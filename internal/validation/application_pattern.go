@@ -150,6 +150,18 @@ func validateApplicationPatterns(w ir.World) []Diagnostic {
 				))
 			}
 
+			if pattern.Kind == application.PatternBrowse {
+				out = append(out, validateBrowseFilters(pattern, patternSubject, semanticDataAttributes)...)
+			} else if len(pattern.Filters) > 0 {
+				out = append(out, errFor(
+					patternSubject,
+					"APPLICATION_PATTERN_FILTERS_NOT_ALLOWED",
+					"%s pattern %s does not accept filters; filters belong to browse",
+					pattern.Kind,
+					pattern.ID,
+				))
+			}
+
 			switch pattern.Kind {
 			case application.PatternBrowse:
 				out = append(out, validateBrowsePattern(app, pattern, patternSubject, semanticData, queries)...)
@@ -827,5 +839,35 @@ func validateHeaderDetailPattern(
 		}
 	}
 
+	return out
+}
+
+func validateBrowseFilters(
+	pattern application.Pattern,
+	patternSubject subject.Subject,
+	semanticDataAttributes map[core.CanonicalID]map[core.CanonicalID]core.CanonicalID,
+) []Diagnostic {
+	var out []Diagnostic
+	attributes := semanticDataAttributes[pattern.Data]
+	seen := map[core.CanonicalID]bool{}
+	for _, filter := range pattern.Filters {
+		if _, ok := attributes[filter.Attribute]; !ok {
+			out = append(out, errFor(patternSubject, "UNKNOWN_APPLICATION_PATTERN_FILTER_ATTRIBUTE", "browse pattern %s filter refers to %s that is not an attribute of %s", pattern.ID, filter.Attribute, pattern.Data))
+		}
+		if len(filter.Operators) == 0 {
+			out = append(out, errFor(patternSubject, "APPLICATION_PATTERN_FILTER_OPERATORS_REQUIRED", "browse pattern %s filter %s requires at least one operator", pattern.ID, filter.Attribute))
+		}
+		for _, operator := range filter.Operators {
+			switch operator {
+			case "eq", "ne", "ge", "gt", "le", "lt", "scan", "generic":
+			default:
+				out = append(out, errFor(patternSubject, "APPLICATION_PATTERN_FILTER_OPERATOR_UNSUPPORTED", "browse pattern %s filter %s uses unsupported operator %s", pattern.ID, filter.Attribute, operator))
+			}
+		}
+		if seen[filter.Attribute] {
+			out = append(out, errFor(patternSubject, "APPLICATION_PATTERN_FILTER_DUPLICATE", "browse pattern %s declares filter %s more than once", pattern.ID, filter.Attribute))
+		}
+		seen[filter.Attribute] = true
+	}
 	return out
 }

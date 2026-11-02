@@ -102,6 +102,14 @@ type Pattern struct {
 	ContractQuery *ContractQueryInvocation `json:"contractQuery,omitempty"`
 	Interaction   *Interaction             `json:"interaction,omitempty"`
 	Aggregates    []Aggregate              `json:"aggregates,omitempty"`
+	Filters       []Filter                 `json:"filters,omitempty"`
+}
+
+// Filterは、一覧の絞り込みに使う項目と演算子の宣言である。
+// 演算子は画面の切替えではなく、Queryが受け付ける条件として宣言する。
+type Filter struct {
+	Attribute core.CanonicalID `json:"attribute"`
+	Operators []string         `json:"operators,omitempty"`
 }
 
 // Aggregateは、header-detailの明細に対する集計の宣言である。

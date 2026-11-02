@@ -105,6 +105,36 @@ func (p *Parser) ParseApplicationPattern() (application.Pattern, error) {
 				return out, err
 			}
 			out.Aggregates = append(out.Aggregates, application.Aggregate{Name: nameTok.Text, Attribute: attribute, Function: fnTok.Text})
+		case "filter":
+			_, _ = p.next()
+			attrTok, err := p.expect(TokenIdent)
+			if err != nil {
+				return out, err
+			}
+			attribute, err := core.ParseCanonicalID(attrTok.Text)
+			if err != nil {
+				return out, p.errAt(attrTok, err.Error())
+			}
+			if _, err := p.expect(TokenLBrace); err != nil {
+				return out, err
+			}
+			operators := []string{}
+			for {
+				entry, err := p.peek()
+				if err != nil {
+					return out, err
+				}
+				if entry.Kind == TokenRBrace {
+					_, _ = p.next()
+					break
+				}
+				opTok, err := p.expect(TokenIdent)
+				if err != nil {
+					return out, err
+				}
+				operators = append(operators, opTok.Text)
+			}
+			out.Filters = append(out.Filters, application.Filter{Attribute: attribute, Operators: operators})
 		case "capability":
 			if hasCapability {
 				return out, p.errAt(t, "capability is declared more than once")
