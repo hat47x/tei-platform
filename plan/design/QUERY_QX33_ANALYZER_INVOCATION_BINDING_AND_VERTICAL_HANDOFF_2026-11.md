@@ -62,3 +62,44 @@
 - **確認済み（本ドキュメントの作業）**：現Go`RunPythonWorker`のID/Protocol照合範囲とRequest/Result型、#2471/#2634/#2637がmerged、QX-33のGoテストSource保存・整形・exact Git blob一致。加えて**Go 1.23.2隔離module**で実Client実装byte一致＋Stubの周辺型に対する4 subtest／Helper、race、vetを局所実行してPASS。
 - **未確認／NOT RUN**：**TEIリポジトリ全体のexact-head Go suite/CI**、実SQLGlot Workerの動作・プロトコルレスポンスのSource完全性、SQLGlot→Go→正式Function Contextの同一Attempt、実DB/PostgreSQL/API/Policy、正式Reactive Runtime、Consumer実送信、実Host/Receipt、Owner意味受理。
 - **Owner判断待ち**：既存Worker wireにSource/Schema bindingを**追加フィールドとして採用するか**、当面はCallerが保管するInvocation envelope／受理済みSource版／Worker実行記録を用いるか。Hashを返すだけでは真正な実消費やWorkerの完全な解析を証明できない。API/Schemaを本Referenceから先行採用しない。
+
+
+## 6. QX-33横断追補：不変の解析成果を再利用できることと、現在のClaimを再利用できることは別（2026-11-03／計画、製品E2E未実行）
+
+QX-14の**同一Request byteへ戻るA(r1)→B(r2)→A(r3)**、#2582のRelation path再束縛と0件否定依存、QX-27の非出力Predicate/Sort、QX-32の二Provider Read Cohort分断、SHO/TAIの版付きConsumerを同じ一つの「有効/無効」フラグへ押し込まない。**これらは既存Ownerの証拠を用途別に照合する受入票であり、新しいCore Evidence Schema／全域Cache／Query Registryではない**。
+
+### 6.1 再利用の資格を五つの独立判断として扱う
+
+| 資格候補 | 比較する根拠 | 認め得る利用 | この資格だけで許されない利用 |
+| --- | --- | --- | --- |
+| **S: 構造解析再利用** | 固定したSQL著者入力・展開後SQL（該当時）・Dialect・SchemaContext・Worker artifact/依存版・解析設定と、実RunのRequest/Result帰属 | 同じ解析入力に対して**決定的で再現可能な**DerivedIRを読み直す候補 | Query現在版の確定、実DBにおける名前解決・実Provider read、現在の業務Meaning |
+| **C: Context適用** | Function mapping/Rule版・Selected EntityとRelation pathの現在Binding・選択epoch・必要Predicate/Field/Grain | 現Contextに対する「依存がそろった」候補 | SQL構造が同じという理由だけの現行Value/Row/Rule成立 |
+| **R: Read／Claim成立** | Provider/Principal・必要集合Scope・実Readの全件性/Field presence・Read Cohortと鮮度・否定的依存・変化の観測 | 当該Scopeと時点に相対的なClaimの限定判断 | 異Providerの`snapshot`文字列一致だけで共同Snapshot保証。0件部分Pageを不存在と断定 |
+| **D: Consumer公開** | Caller/Purpose・現在のField/Row/SQL詳細の開示資格、実受取byte、Source/Ruleの引用版 | 安全に縮約したread-only説明の公開 | Raw IRや隠れたWHERE/ORDER/Rule条件の無断送出、公開許可の実行許可への昇格 |
+| **E: 実Action/Effect** | 現在のHost/Provider Grant、Intent対象束縛、実Tx/Commit/Receipt | 許されたActionと完了証拠の限定判断 | 内部解析・UI成功・D2読取成功から書込許可や業務Commitを推定 |
+
+Sにおける**「同じ入力byte」だけでは再現可能性が自動成立しない**。Workerの実体／設定／依存と、その内容を実際に解析したというProducer側の観測が必要である。現在の実Producer不在によりSも**製品としては未確認**。この五区分の名称は**計画上の表記**であり公開API enumではない。
+
+### 6.2 不一致が起きたとき、どの資格だけを失効候補にするか
+
+| 反証ケース | 失効・再確認するもの | 失効させると断定しないもの |
+| --- | --- | --- |
+| **A→B→A**：SQLのRequest byteはr1とr3で完全同一 | 「その間の変更なし」「現在Revision r1」「古いRunの現在性」資格。C/R/D/Eは当該現在時点で再確認 | **純粋・決定的**な構造解析Sのcontent-addressedな再計算省略は、Worker/Schema等を固定し同等性が検証された範囲なら条件付き候補として残る |
+| 同Query IDでSchema/Dialect/Worker artifact変更 | 構造Sの入力帰属、Column/Scope/Operation Bindingと下流依存を再検証 | 過去のr1固定版の説明を、その過去版の記録として保存すること |
+| SQL/Result出力値は同じだがCustomer→AccountのRelation path再束縛 | C/Rの動的Target/必要入力、Rule/Queryの成立を再評価（QX-31/#2582） | SQL Source byte不変なら、SQL構造を必ず再解析するとは限らない |
+| 旧結果0件、後からHoldが加入／取得Pageがpartial | Rの不存在／NOT EXISTS／LEFT JOIN未一致のClaim。Predicate/Scope/Complete witnessを再確認 | 取得済み観測そのものの履歴記録 |
+| 異なる二Providerの各Readが個別には成功 | 共同RのSnapshot／整合性を**unresolved**へ留める（QX-32、#2627） | 両Readそれぞれの限定的な観測事実 |
+| 結果Schema・表示値不変のまま非出力Predicate/Sort/相関条件が変化 | C/Rの必要依存・表示集合/順序を再評価（QX-27） | 非表示Fieldを当然にD許可で公開できるという判断を**そもそもしない** |
+| 解析後にGrantが失効／Caller・用途が変化 | Dと必要ならEの現在資格を別に判定。Raw IR・診断・SQLテキストの漏えいを防ぐ | Sの内部生成物・歴史的な解析事実 |
+
+反証票の結論は**`candidate`／`unresolved`／`denied`／`historical-only`**など、説明用の状態で扱う。単一の`valid=true`、`CoverageFull`、`latest=true`、`exit=0`にまとめない。候補状態をそのまま実行や開示の許可に変換する機能は追加しない。
+
+### 6.3 実際の縦断で最初に要求する観測の順番
+
+1. **V0停止線を守る**：まず既存SQLGlot Producerの所在／配布SHA・実行Protocol／依存を確認する。見つからなければ`NOT RUN: producer-unavailable`を維持し、別の合成Workerを正式Producerとして置き換えない。
+2. V01-A/B/Cの**同一Attempt**でGoが送信したstdin byte/Schema/Dialectと受信stdout/診断、Worker固定版を対応させる。Query IDの同一性とSource/Schemaの同一性を別列にする。
+3. 実Go`DeriveFromAnalysis`→QX-27の**Output以外のPredicate/Sort依存**を独立Expectedと比較。Workerが依存を送出しなければ、Go変換成功でも`unresolved`のまま#2506へ渡す。
+4. 一つのFunction Context/Selected Entityへ接続する**最初のC試験**では、QX-31のRelation path再束縛・0件否定依存、QX-32の複数Providerを**別ケース**とする。両方を一度に通したと見なさない。
+5. R/D/Eは既存#2506/#2582/#2627/#2516/#1174で実行する。SHOとAIハーネスへは、内部SQL／Predicate／診断を自動配布せず、**目的別に資格を再確認したProjectionの実受信byte**を比較する。
+
+**判定**：本追補は既に得られた局所反例から引き出した**横断受入条件の採用候補**。この追記によってQX-33のV0/V1がPASSになるわけではない。QX-14b/c[#2657]・QX-14d[#2661]のテストはDraft、それらの隔離Go PASSと製品exact-head CIを混同しない。
