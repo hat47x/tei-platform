@@ -58,7 +58,16 @@ P1の最初のHeadless確認では、固定した同一配布版に属するXEA[
 
 **検証未実行に関する注意**：`diagnostics.go`はRelationshipのarity mismatchで`continue`しSortKey/型比較を**未実施**とする。左右の型情報が片方でも空なら`relationship-key-data-type-mismatch`検査を飛ばす。したがって個別診断が0でも「全ての比較条件にPASSした」とみなさない。FAMILYの許容され得る非対称形状を無条件の構造失敗にも、無条件の解決済みにも昇格しない。Source記録・型別の比較可能性・構造診断・Meaning Acceptanceは別々のEvidence欄に記す。
 
-### Case別に失敗原因と検証資格を固定する（本表の15統合ケースは未実行）
+### 検証器自体の判別力：独立Expected・到達範囲・Consumer観測の三点照合
+
+[#2514の独立Oracleと観測上の十分性](https://github.com/hat47x/tei-platform/issues/2514#issuecomment-6572161189) を、この移植作業に限定して適用する。診断の有無をExpectedとしてコピーする「実装と同じ実装での自己証明」は避ける。期待値は**合成fixtureの明示宣言、検証すべきClaim、公開旧Modelerの固定ソースにより説明可能な構造条件**から先に手作業で作り、現行`DiagnoseRelationalSourceFacts`の出力をExpectedに転記しない。旧ModelerのType分岐はSource構造の参照であり、業務列pairやOwner meaning AcceptedのOracleではない。
+
+- **判定到達範囲の検査票（テスト用であり新製品enum/APIではない）**：各fixtureについて `input observed / precondition met / compared / rejected / skipped by prior check / no authority to decide` を明示し、該当する入力と理由を別列に書く。既存`RelationalDiagnostic`や`RelationalFactResolution`がこれら全状態を公開表現できるとは主張しない。特に`arity-mismatch`で`continue`したSortKey・型比較、および型情報が空でskipした比較を「一致」と数えない。
+- **誤判定を見破れるか**：FAMILY非対称形状を常にrejectする誤実装、FAMILYをTypeだけで常にpassする誤実装、独立Keyの重複SortKeyをRelationship依存時にだけ検知する誤実装、Source属性の`missing`と`present-empty`を混同する誤実装を、それぞれ別の意図的Mutantとして仮定する。正例と負例の両方で区別できるExpectedを要求する。Mutantの実装／実行は**NOT RUN**であり、殺せると確認済みではない。
+- **観測上の識別不能対**：同じSourceのK=局所unresolvedとJ=局所resolvedについて、公開`ByKind`件数は共通であり、Consumerの選択対象がKかJかを区別できない。公開集計だけを入力とする「Jの操作可否Oracle」は成立しない。同様に`ToKeyFields`の正規化配列`[]`だけでは、原属性の欠落と明示空を区別できない。元XMLのprivate raw declaration／`Node.Known`・exact属性、当該Factの局所Resolutionを必要範囲で参照し、公開Reportのsource SHAや件数を個別Factの識別子へ昇格させない。
+- **範囲限定**：独立Oracle、Source一致、Owner意味確認、公開適格性、実Work H2/J5 Target参照は別の検証。実Go/GUIでのMutant試験や正式Acceptanceを新しく行ったものではない。#2514のOracle/Conformance Profileと#950のSource Fact保持のOwnerを変えず、本書はRelationship固有のfixture入力・Expected・識別不能対だけを管理する。
+
+### Case別に失敗原因と検証資格を固定する（本表の17統合ケースは未実行）
 
 | ケース | 入力・判別条件 | Headlessで照合する期待／禁止事項 | 担当 |
 | --- | --- | --- | --- |
@@ -76,6 +85,8 @@ P1の最初のHeadless確認では、固定した同一配布版に属するXEA[
 | **RV-E1** | 一つの表示線が設計Relation1／実装Refer2候補を縮約。片側だけ変更するUI操作と、一意なSource span/Roleを指定する操作を対照 | generic inspectorからSource/Role/候補0..Nを読めること。表示線だけの曖昧な変更はread-only・navigationへ留め、一意なType/Role/Source/MeaningRevisionのときだけTyped Edit Proposalへ。Proposal→受理→権限→Effectを別々に確認 | #1124／#2497／#2500／#2391 |
 | **RV-V1** | 版A→Bのsource-ref変動、移動、同ID異Role、fan-in、view外ZIP member変更 | exact版差と意味差、旧Reviewの履歴と新版Claim適用を区別。旧ViewChangeを新版Actionへ自動rebaseしない | #2505／#2500／#1803 |
 | **RV-D1** | Role付きRelation pathを同じFunctionの複数Context occurrenceで使用。ある集合はcomplete、別集合はpartial | Entity Identity／Path occurrence／結果grain／取得scope／選択epochを保持。閲覧・選択・編集Binding／実Effectの資格を別々に示す | #2506／#2507／#2586 |
+| **RV-O1** | 同じ親1／子2の合成構成で`FAMILY`を正例に、`REFFER`へTypeだけ変えた場合、子のSortKeyを重複にした場合、同じTypeで対応候補0件／複数件の場合を別対照とする | 独立Expectedが「非対称は一律reject」「FAMILYなら無条件pass」「重複SortKeyでも順序成功」「曖昧なのに先頭候補Accept」のMutantを区別できること。診断0≠比較実施済み、Source形状の許容≠業務列pair受理。Type分岐に関する正負Expectedは旧固定Sourceと自作fixtureから記述し、現行TEI診断をOracleにしない | #950／#1126／#2514 |
+| **RV-O2** | 同一snapshotでKとJのlocal状態が異なるがpublic`ByKind`が集計だけのケース、およびXEAF Referの原属性`missing`／`present-empty`／外来namespaceを正規化配列だけで見たケース | 各Consumerの実入力Projectionを固定し、区別すべきClaimに必要なSource presence／owner scope／対象Factのlocal Resolutionが**その入力に存在するか**を比較。存在しなければ「検証器失敗」以前の入力観測不足として保留。raw保持の修正候補[Draft #2603](https://github.com/hat47x/tei-platform/pull/2603)は最新head試験の資格を別計上し、公開Reportの件数からprivate対象を逆同定しない | #950／#1124／#2514／#2516 |
 | **RV-H2** | 実Workの同一生成版ZIP・Probe・Producer・Builder・Candidate・Ledger・receipt | 既存2checkerの実exit／原byteに加え、**一つのSource node→実TargetのJ5参照実解決**を確認。個別未解決は保留し、独立PASSを結合PASSと呼ばない | #1121／#Work／#3／private #4 |
 
 `RV-*` は本節の比較票内の仮ラベルであり、#2505の実装済みRV試験番号／新たな共通Schema・Gate・APIではない。期待は実行済みPASSではなく反証可能な受入候補である。原実体の利用が必要なケースはprivate固定版と使い捨て環境で検査し、原本変更・内容公開を行わない。
