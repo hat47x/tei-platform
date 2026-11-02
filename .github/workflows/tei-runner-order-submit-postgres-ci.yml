@@ -95,6 +95,10 @@ jobs:
             'TestRunnerOrderSubmitRealPostgresSharedConstraintHappyPathAndRepeat/web'
             'TestRunnerOrderSubmitRealPostgresSharedConstraintHappyPathAndRepeat/cli'
             'TestRunnerOrderSubmitRealPostgresSharedConstraintEpochBumpAndRevoke'
+            'TestRunnerOrderSubmitRealPostgresSharedConstraintEpochBumpAndRevoke/epoch-bump/web'
+            'TestRunnerOrderSubmitRealPostgresSharedConstraintEpochBumpAndRevoke/epoch-bump/cli'
+            'TestRunnerOrderSubmitRealPostgresSharedConstraintEpochBumpAndRevoke/revoked/web'
+            'TestRunnerOrderSubmitRealPostgresSharedConstraintEpochBumpAndRevoke/revoked/cli'
             'TestRunnerOrderSubmitRealPostgresSharedConstraintAckLossThenLookup'
             'TestRunnerOrderSubmitRealPostgresSharedConstraintAckLossThenLookup/web'
             'TestRunnerOrderSubmitRealPostgresSharedConstraintAckLossThenLookup/cli'
@@ -105,9 +109,19 @@ jobs:
           for name in "${required[@]}"; do
             grep -Eq -- "^[[:space:]]*--- PASS: ${name} \(" "$log" || { echo "required test did not PASS: ${name}" >&2; exit 1; }
           done
-          # SKIPはサブ試験（行頭が空白）も含めて一致させる。
-          ! grep -q -- '--- SKIP: TestRunnerOrderSubmit' "$log"
-          ! grep -q -- '--- FAIL' "$log"
+          # SKIPとFAILは、サブ試験（行頭が空白）も含めて一致させる。
+          # 否定した grep（! grep）は set -e では失敗扱いにならず、検査が働かない
+          # （最後の1行だけが終了コードを決める）。明示的に if で判定して終了する。
+          if grep -Eq -- '^[[:space:]]*--- SKIP:' "$log"; then
+            echo "unexpected SKIP in the real-PG run:" >&2
+            grep -E -- '^[[:space:]]*--- SKIP:' "$log" >&2
+            exit 1
+          fi
+          if grep -Eq -- '^[[:space:]]*--- FAIL:' "$log"; then
+            echo "unexpected FAIL in the real-PG run:" >&2
+            grep -E -- '^[[:space:]]*--- FAIL:' "$log" >&2
+            exit 1
+          fi
       - name: 実行後のhead・checkoutを再検証
         if: always()
         shell: bash
