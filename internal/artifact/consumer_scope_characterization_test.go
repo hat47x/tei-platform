@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-// These are CHARACTERIZATION tests of PR #2587's generic ArtifactSet contract.
+// These are CHARACTERIZATION tests of the generic ArtifactSet contract (merged PR #2587).
 // They intentionally do not declare the observed omissions acceptable behavior.
 // Once the owning issues adopt a consumer-scoped qualification policy, replace
 // the corresponding expectations with the positive acceptance tests.
@@ -45,6 +45,18 @@ func TestCharacterizeAS01SameRevisionDifferentApplications(t *testing.T) {
 	if !strings.Contains(a.Content, "application order_entry") || !strings.Contains(b.Content, "application other_application") {
 		t.Fatalf("the two applications are not represented as intended: %q / %q", a.Content, b.Content)
 	}
+	// This independent consumer expectation is not taken from the manifest.
+	// A generic set may contain a valid artifact that the consumer did not ask for.
+	expectedForOrderEntry := map[string]bool{a.Digest: true}
+	unexpected := 0
+	for _, artifact := range set.Artifacts {
+		if !expectedForOrderEntry[artifact.Digest] {
+			unexpected++
+		}
+	}
+	if unexpected != 1 {
+		t.Fatalf("consumer scope oracle should detect one foreign member, got %d", unexpected)
+	}
 }
 
 func TestCharacterizeAS02SubsetCanHaveACompleteManifest(t *testing.T) {
@@ -68,6 +80,15 @@ func TestCharacterizeAS02SubsetCanHaveACompleteManifest(t *testing.T) {
 	// report that the consumer's original two-member requirement was unmet.
 	if len(manifest.Entries) != 1 {
 		t.Fatalf("expected a valid singleton manifest: %+v", manifest.Entries)
+	}
+	// The consumer's original expected member inventory is held separately
+	// from the output manifest, which cannot certify its own completeness.
+	expectedMembers := map[string]bool{full[0].Digest: true, full[1].Digest: true}
+	for _, entry := range manifest.Entries {
+		delete(expectedMembers, entry.Digest)
+	}
+	if len(expectedMembers) != 1 || !expectedMembers[full[1].Digest] {
+		t.Fatalf("the independent oracle should report the missing member: %+v", expectedMembers)
 	}
 }
 
