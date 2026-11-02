@@ -48,6 +48,11 @@ func TestNewManifestIsDeterministicAndSortsEntries(t *testing.T) {
 	if len(first.Entries) != 2 || first.Entries[0].Kind != string(KindFunctionDefinition) {
 		t.Fatalf("entries must be sorted by kind: %+v", first.Entries)
 	}
+	for _, entry := range first.Entries {
+		if entry.Rule == "" || entry.Version == "" {
+			t.Fatalf("every entry must name the rule that produced it: %+v", entry)
+		}
+	}
 }
 
 func TestManifestIsNotCompleteWhenAnArtifactIsUnresolved(t *testing.T) {
@@ -79,5 +84,26 @@ func TestManifestRefusesTamperedArtifacts(t *testing.T) {
 	artifacts[0].Content = "tampered"
 	if _, err := NewManifest("sha256:input", artifacts); err == nil {
 		t.Fatal("a tampered artifact must be refused")
+	}
+}
+func TestManifestDigestDependsOnTheRule(t *testing.T) {
+	artifacts := manifestArtifacts(t, 0)
+	base, err := NewManifest("sha256:input", artifacts)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	otherRule := artifacts[0].Rule
+	otherRule.Version = "v2"
+	revisioned, err := New(Kind(artifacts[0].Kind), otherRule, artifacts[0].Generator, artifacts[0].InputRevision, artifacts[0].Content, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	changed, err := NewManifest("sha256:input", []Artifact{revisioned, artifacts[1]})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if base.Digest == changed.Digest {
+		t.Fatal("a different rule version must change the manifest digest")
 	}
 }
