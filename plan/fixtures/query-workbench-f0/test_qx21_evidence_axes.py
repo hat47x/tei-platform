@@ -45,7 +45,10 @@ def evidence_diff(previous, current):
                      or previous[k] is None or current[k] is None)
     changed = sorted(k for k in RECHECK if k not in unknown
                      and previous[k] != current[k])
-    checks = sorted({kind for k in changed for kind in RECHECK[k]})
+    # Unknown axes need rechecking too; a consumer inspecting only the verdict
+    # must not mistake missing metadata for a safe, unchanged dependency.
+    unknown_checks = sorted({kind for k in unknown for kind in RECHECK[k]})
+    checks = sorted({kind for k in changed + unknown for kind in RECHECK[k]})
     return {
         "comparison": "evidence-changed" if changed else
                       "missing-evidence" if unknown else
@@ -53,6 +56,7 @@ def evidence_diff(previous, current):
         "changedAxes": changed,
         "unknownAxes": unknown,
         "recheckQualifications": checks,
+        "unknownQualifications": unknown_checks,
         "provesCurrent": False,
         "provesDisclosureAllowed": False,
         "provesEffectCommitted": False,
@@ -133,6 +137,8 @@ class QX21ReadOnlyEvidenceAxisTests(unittest.TestCase):
         diff = evidence_diff(self.old, new)
         self.assertEqual(diff["comparison"], "missing-evidence")
         self.assertEqual(diff["unknownAxes"], ["view_function_revision"])
+        self.assertEqual(diff["unknownQualifications"], ["claim", "disclosure", "presentation"])
+        self.assertEqual(diff["recheckQualifications"], diff["unknownQualifications"])
         self.assertFalse(diff["provesCurrent"])
         new["view_function_revision"] = None
         self.assertEqual(evidence_diff(self.old, new)["unknownAxes"],
@@ -158,6 +164,29 @@ class QX21ReadOnlyEvidenceAxisTests(unittest.TestCase):
         self.assertEqual(len(diff["changedAxes"]), 3)
         self.assertEqual(diff["recheckQualifications"],
                          ["claim", "disclosure", "editing", "presentation"])
+
+    def test_n_missing_and_changed_rechecks_are_both_retained(self):
+        new = deepcopy(self.old)
+        new["render_revision"] = "renderer:v2"
+        del new["target_binding"]
+        diff = evidence_diff(self.old, new)
+        self.assertEqual(diff["changedAxes"], ["render_revision"])
+        self.assertEqual(diff["unknownAxes"], ["target_binding"])
+        self.assertEqual(diff["recheckQualifications"],
+                         ["claim", "disclosure", "editing", "presentation"])
+        self.assertEqual(diff["unknownQualifications"],
+                         ["claim", "disclosure", "editing", "presentation"])
+        self.assertFalse(diff["provesCurrent"])
+
+    def test_o_search_path_and_plan_invocation_recheck_without_source_edit(self):
+        new = deepcopy(self.old)
+        new["search_path_context"] = "path:b"
+        new["analysis_invocation"] = "worker:a2"
+        diff = evidence_diff(self.old, new)
+        self.assertEqual(diff["changedAxes"],
+                         ["analysis_invocation", "search_path_context"])
+        self.assertIn("claim", diff["recheckQualifications"])
+        self.assertNotIn("editing", diff["recheckQualifications"])
 
     def test_m_json_output_contains_only_axis_names_not_secret_values(self):
         new = deepcopy(self.old)
