@@ -224,3 +224,44 @@ QP-08〜10は[#2582](https://github.com/hat47x/tei-platform/issues/2582)・[#258
 **追加受入条件**：少なくとも「空結果の誤再利用」「値/ID同一でもRelationや対象集合変更」「依存Plugin変更」「全class set差」の四種類で、既存物の**内容を保持すること**と**現在のClaimに使えること**が別々に判定されること。既存#2600のIB/QDC/PLケースへ割り当て、新たな依存Engine、Negative-Cache、Source Registry、Host、Oracle Engineは作らない。
 
 **実証状態**：本節は既存チャットとGitHubの設計・局所試験の統合。QP-08〜12の本手順での実TEI F0/F1/S1/S2、実Provider、外部Consumer、Java生成物一式、性能測定、Owner意味受理は**NOT RUN**。main/PRの更新状況は観測時点に依存し、各局所CIの成功をこの一巡のPASSとしない。
+
+## 12. 2026-11-02夜追補：意味不変のSource移動と「実際に到達した」資格の分離
+
+**観測main** `2e16b2af9531225b73430a32a6dbb2031e07f4c1`。[#2626](https://github.com/hat47x/tei-platform/pull/2626)と[#2637](https://github.com/hat47x/tei-platform/pull/2637)は統合済み。[Draft #2660](https://github.com/hat47x/tei-platform/pull/2660)はSource→Operation→Artifact、保護Web Action→Service Carrier、Provider Read→Consumerの三つを**別々の縦断実証**とする提案。統合済み局所保証を本P1の共同PASSへ昇格しない。
+
+### 12.1 三つの同一性を再利用判定票に追加
+
+| 同一性 | 具体的に観測するもの | 変化時の判断 |
+| --- | --- | --- |
+| **Source occurrence / Trace** | 元ファイルのbyte、相対位置、出典参照、Source Index、ロード時の観測時点 | 文書引用・レビュー・Traceは再資格化。意味の変更とは直結させない |
+| **Semantic / Function identity** | 受理済みMeaning/Role/Operator、正規化された内容、版・依存Pin、必要入力閉包 | 受理と依存が維持されたことを独立確認できる場合だけ計算再利用候補 |
+| **Consumer execution / qualification** | 実CLI/Skill/Plugin選択と引数、actual consumed bytes、必要ArtifactSet、実Host Grant、Provider Read、実Consumer read/egress | 同じSemantic fingerprintだけで実行資格・副作用・公開資格を引き継がない |
+
+**S2-SR01（Source移動）**：内容・受理Meaningを固定し、Sourceファイルの場所だけを変更する。実CLIでCanonical Model/World Fingerprintが維持されても、Source Index/Traceが変わるケースを対照にする。計算省略を許せる場合でもSHO引用・レビューは再確認。#2626統合は限定Fixtureの実CLI観測であり、全SHO納品の受理ではない。
+
+**S2-SR02（同じWorkspaceの二回Load）**：`tei operations`と`tei artifacts`を同じパスで順次呼び、間にSourceを変更する。両コマンドのLoad/実消費Source版を記録し、同一パスだけで同一Snapshotを主張しない。両方のArtifact/Operationを同一Runの共同証拠として束ねるには、実byte・Revision・Rule/Tool版・Consumer範囲の一致を示す。
+
+### 12.2 Evidence強度を段階として記録し、段階飛躍を禁止
+
+`E0=宣言・設定・選択候補`、`E1=実際のTool/CLI起動とその入出力を観測`、`E2=対象Consumerの実読取・結果・必要な現在資格まで観測`を**この計画だけの観測ラベル**として用いる。これらは既存IssueのE0/E1/E2用語との正式な互換・製品enumを宣言しない。
+
+| 観測 | 許される主張 | 追加証拠なしに許されない主張 |
+| --- | --- | --- |
+| E0 | Tool/Skill/Roleの候補が存在 | そのToolを実際に呼び出した、権限がある |
+| E1 | 固定条件で当該CLI/Toolが起動し結果を返した | 別CLIと同Source、実Host効果、Consumerの必要member完備 |
+| E2 | 特定Consumerが必要物を読んで期待結果を得た | 別Consumer・別Grant・別Snapshotへの一般化 |
+
+**S2-SR03（CLI/Skill/Hostの混同）**：Roleが解決しSkill文書に操作が載っていても、CLI commandの存在、Tool discovery、実呼出し、Host Grant、効果/receiptを別列にする。Skillの記述を実行資格へ昇格させない。参照先[#2649](https://github.com/hat47x/tei-platform/pull/2649)、[#2605](https://github.com/hat47x/tei-platform/issues/2605)。
+
+**S2-SR04（Read途中のGrant失効）**：Provider Field Read開始時のGrantは有効、応答直前に失効。[#2637](https://github.com/hat47x/tei-platform/pull/2637)はD2 Field Readの返却直前再確認をmainに統合済みだが、実Hostの同時失効、ABA、外部egressの一般保証ではない。結果byteが同じでも現在の返却資格を別に確認する。
+
+### 12.3 次に実行する順序と受入線
+
+1. **基準を再固定**：#2636は旧main `9c9ef4d...`から起票されたDraft。実行時のmain `2e16b2a...`との差分を列挙し、統合済み#2626/#2637/#2633の現行保証とDraft差分を別記。必要な試験を固定HEADで再実行するまでは「現在mainでPASS」を推測しない。
+2. **最小の縦断**：最初はSource→Operation→Artifactのread-only合成Fixtureを一つ固定し、F0/F1/S1とS2-SR01/02を結ぶ。保護Action→Service Carrier、Provider Read→Consumerは独立Ownerの[#2660](https://github.com/hat47x/tei-platform/pull/2660)で後続検証。異なるRunの成功を一つのE2と呼ばない。
+3. **必要な証拠**：実Source byte・Source occurrence・Meaning/Role/Operator pin・CLI版と引数・実Tool実行・Artifact必要member・公開世代・Consumer実Read・独立Expected・現在Grant・Evidence levelを、各対象Claimについて記録する。
+4. **性能測定**：意味不変のSource移動では、計算省略ができてもTrace/SHOレビュー更新に費用がかかる。Buildだけの時間と、**利用可能な成果物・レビュー・現在資格が揃うまで**の時間を別々に測る。
+
+**停止線**：PR #2626/#2637/#2633のmerge、局所GoテストPASS、World Fingerprint不変、Role/Skill候補表示、Sourceパス一致、Manifest内部整合のいずれも、単独ではE2共同Consumer PASSの十分条件ではない。Owner受理・実Host副作用・実Provider同一Snapshot・外部SHO納品の合格は別。
+
+**状態**：本節はGitHubのmain/PRと他チャットの限定観測を受けた**実証計画**。S2-SR01〜04の本件でのF0/F1/S1/S2実行、CI、性能測定、E2の共同成立、正式Contract/Owner受理は**NOT RUN／NOT ADOPTED**。新Host・共通Registry・第二Canonical/Resolver・第二Build Graphを設けない。
