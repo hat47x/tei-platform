@@ -212,6 +212,109 @@ func TestExtractRelationalSourceFactsPreservesXeafRuntimeKeyAndReferMappings(t *
 	}
 }
 
+func TestExtractRelationalSourceFactsPreservesRawRuntimeReferDeclarations(t *testing.T) {
+	literal := func(value string) *string { return &value }
+	cases := []struct {
+		name         string
+		attributes   string
+		wantTo       *string
+		wantWith     *string
+		wantToItems  []string
+		wantWithItems []string
+	}{
+		{
+			name: "explicit blank both",
+			attributes: `ToKeyFields="" WithKeyFields=""`,
+			wantTo: literal(""), wantWith: literal(""),
+			wantToItems: []string{}, wantWithItems: []string{},
+		},
+		{
+			name: "absent both",
+			attributes: ``,
+			wantToItems: []string{}, wantWithItems: []string{},
+		},
+		{
+			name: "literal component separators and whitespace",
+			attributes: `ToKeyFields=" A ; B; " WithKeyFields=" T1.X; T1.Y;"`,
+			wantTo: literal(" A ; B; "), wantWith: literal(" T1.X; T1.Y;"),
+			wantToItems: []string{"A", "B"}, wantWithItems: []string{"T1.X", "T1.Y"},
+		},
+		{
+			name: "mixed presence",
+			attributes: `WithKeyFields=""`,
+			wantWith: literal(""),
+			wantToItems: []string{}, wantWithItems: []string{},
+		},
+		{
+			name: "foreign namespace lookalike",
+			attributes: `x:ToKeyFields="A" x:WithKeyFields="B"`,
+			wantToItems: []string{}, wantWithItems: []string{},
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			input := `<System xmlns:x="urn:foreign"><Table ID="T1"><Refer ID="R1" ` + tc.attributes + `/></Table></System>`
+			doc, err := Parse(FormatXeaf, []byte(input))
+			if err != nil {
+				t.Fatal(err)
+			}
+			facts := ExtractRelationalSourceFacts(doc)
+			if len(facts.RuntimeRefers) != 1 {
+				t.Fatalf("runtime refer count = %d", len(facts.RuntimeRefers))
+			}
+			refer := facts.RuntimeRefers[0]
+			for _, pair := range []struct {
+				name string
+				got  *string
+				want *string
+			}{
+				{"ToKeyFieldsRaw", refer.ToKeyFieldsRaw, tc.wantTo},
+				{"WithKeyFieldsRaw", refer.WithKeyFieldsRaw, tc.wantWith},
+			} {
+				if (pair.got == nil) != (pair.want == nil) ||
+					(pair.got != nil && *pair.got != *pair.want) {
+					t.Errorf("%s: got %v, want %v", pair.name, pair.got, pair.want)
+				}
+			}
+			if !reflect.DeepEqual(refer.ToKeyFields, tc.wantToItems) ||
+				!reflect.DeepEqual(refer.WithKeyFields, tc.wantWithItems) {
+				t.Fatalf("normalized refer fields changed: %#v", refer)
+			}
+			encoded, err := json.Marshal(refer)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var object map[string]json.RawMessage
+			if err := json.Unmarshal(encoded, &object); err != nil {
+				t.Fatal(err)
+			}
+			for _, pair := range []struct {
+				name string
+				want *string
+			}{
+				{"toKeyFieldsRaw", tc.wantTo},
+				{"withKeyFieldsRaw", tc.wantWith},
+			} {
+				value, exists := object[pair.name]
+				if pair.want == nil {
+					if exists {
+						t.Errorf("absent %s invented in JSON: %s", pair.name, encoded)
+					}
+					continue
+				}
+				if !exists {
+					t.Errorf("declared %s missing in JSON: %s", pair.name, encoded)
+					continue
+				}
+				var actual string
+				if err := json.Unmarshal(value, &actual); err != nil || actual != *pair.want {
+					t.Errorf("%s = %q, want %q (err=%v)", pair.name, actual, *pair.want, err)
+				}
+			}
+		})
+	}
+}
+
 func TestExtractRelationalSourceFactsDoesNotInventFactsFromNamesOrTypes(t *testing.T) {
 	doc, err := Parse(FormatXead, []byte(`<System><Table ID="ORDER"><TableField ID="ORDER_ID" Name="Primary Key"/></Table></System>`))
 	if err != nil {
