@@ -29,3 +29,22 @@
 ## 実行記録
 
 2026-11-02：隔離環境で `python3 verify_synthetic.py` を実行し、**15 tests PASS**。これは当該Pythonの公開合成関数と検証ケースのみを対象とします。TEI repository の `go test`、CI、CLI、実DB、SHO、外部Hostは **NOT RUN** です。
+
+## 実際のTEI CLIを読むW0aチェック
+
+合成15ケースとは**独立した検証**として、既存TEI CLIを実際のプロセスとして呼び、同一Workspace・同一Subjectの出典・版・ページ取得を照合します。新しいTEI CLI Commandは追加しません。
+
+```bash
+go build -o /tmp/tei-context-read ./cmd/tei
+python3 -B plan/fixtures/construction-context/verify_real_cli.py \
+  --binary /tmp/tei-context-read \
+  --workspace reference/workspace \
+  --expected-head "$(git rev-parse HEAD)"
+```
+
+実行するのは公開できる既存Reference Workspaceだけです。チェックは`version -json`の実binary revision、`commands`の限定read-only発見、`model catalog`の`semantic-relation:sales.order.customer`、`inspect`、`trace`要約と全件ページ、`validate -json`。四読取での`worldFingerprint`と`sourceIndexFingerprint`が対応しているか、`trace`の継続にはGraph側でなく外側`result.snapshotFingerprint`を使うか、誤った継続tokenが`STALE_SNAPSHOT`として拒否されるかを確認します。
+
+専用GitHub Actions `.github/workflows/construction-context-reference.yml` の`observed-tei-cli-read`ジョブは、PRの**実HEAD**でGo binaryを生成し、生成物をcheckoutの外へ置き、Pythonを実行します。`synthetic-construction-context`ジョブの合成15ケースと**別々に**合否を記録します。
+
+**保証の境界**：この実CLIチェックは、固定された参照Sourceを実Goプロセスで読んで同一Subjectの複数のread-only結果を照合するものです。`worldFingerprint`一致は読取時点の全入力を物理的に固定した証明ではありません。各Sourceの同時更新・外部Providerの実読取最小性・Owner意味受理・Tool/Sourceの公開資格・Policy/OS隔離・SHO保存・Function Data Context/実DB・Action/Commitは別Owner/別実験。コマンド応答の生Source内容をConsoleへ公開せず、出力は限定的な検収数値だけとします。
+
