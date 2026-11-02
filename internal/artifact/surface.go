@@ -73,3 +73,14 @@ func RenderOperationSurface(world ir.World, applicationID, inputRevision string)
 		unresolved,
 	)
 }
+
+// decodeOperationSurface reads the derived surface back from the artifact. The
+// artifact content is the contract, so consistency checks read the same bytes a
+// consumer would.
+func decodeOperationSurface(content string) (operationSurfacePayload, error) {
+	var payload operationSurfacePayload
+	if err := json.Unmarshal([]byte(content), &payload); err != nil {
+		return operationSurfacePayload{}, fmt.Errorf("decode operation surface: %w", err)
+	}
+	return payload, nil
+}
