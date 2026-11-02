@@ -1181,3 +1181,108 @@ TEI #1127が検討する`Semantic Data/Relations → Function Data Context + Ope
 - **TAI #165/#232/#233、SEI #677**：組織AIの用途・必要な場合の特別保護・意志/仮説の価値比較は各製品Ownerが管理する。組織Data自体を一律機密とする要件は置かない。
 
 **進捗条件**：課題の数や組織Profileの種類は大きく広げてよいが、正式なSemantic Profileの受理・Function/Provider実装・業務Effect、ならびに**個別保護が必要な場合のみ**実Host分離等の保証は、具体的なScopeの実測とOwner判断が揃った場合に限る。今回の#2510作成は上記実証の達成ではない。
+
+## 39. 意味に基づく標準可視化の結合試験：同一Person・多経路・在任・集計（2026-11-02横断追補）
+
+**今回の新しい設計判断**：構造のTopologyと意味的な可視化は**対立概念ではなく、異なる情報源**である。標準Data/Relation/Key/Operationが明示する「同一性・関係の粒度・意味型・期間・根拠」と、利用目的・業務Ruleから決まる「何を数え、何を選択し、何を変更したいか」を、標準Consumerが用途に応じて合成する。Plugin作者が抽象Ontological Facetを毎回設定する方式にしない（§33.3〜33.4）。
+
+### 39.1 観測は「同じ図を描けるか」より「何を主張する図か」
+
+可視化・文書・集計は、同じ正本モデルからの**利用目的に相対的なProjection**である。同じ対象を示していても、組織図、人事在任表、FTE配賦チャート、承認候補図が主張する内容は異なる。
+
+| 何を主張するか | 必要な元の意味 | 図の解釈に必須の区別 |
+| --- | --- | --- |
+| 所属する人物の一覧 | Personの同一性、対象の組織軸、時点、採用した所属Rule | 直接所属／配置から導出された所属、兼務と同一人物 |
+| 職位の在任状況 | PositionとOccupancyの独立ID・有効期間 | 空席・交替、PersonとPositionの存続性 |
+| 組織の人員数 | 何を1件と数えるか（Person／Membership／Assignment）、集合範囲 | Graphのノード数、経路数、Relation件数の混同 |
+| 部門別FTE | 期間・比率・配賦先・配賦Rule・集計軸 | 重複所属の人数と加算可能なFTEは別Measure |
+| 責任者/承認候補 | Role/Position/業務規範、候補選定の文脈、評価時点 | 候補・未確定・実行後Effect・現在Host Grantは別 |
+| 組織改編前後 | Person/Position/Assignmentの同一性と時点別Revision | 表示から消えた節点や線＝削除済み業務対象、と推定しない |
+
+一般Graphのnode/edge layoutだけではこれらの差を十分に定義できない。一方、Rule等が存在しない場合はL0の汎用Relation表示にとどまることも正当な結果である。
+
+### 39.2 一つの合成Datasetと手計算Oracle（**NOT RUN**）
+
+**業務意味はこのfixture内の明示的な仮定**。実企業や既存TEIの受理済みRuleを意味しない。日付はいずれも合成。
+
+- Person：`P1, P2, P3`（Person subject IDは3件）。
+- Org Unit：`D1, D2`（異なる部門）。同一TEI世界の通常Data。部門間の参照/集計に特別なアクセス保護は不要。
+- 独立したMembership関係出現：`A1=(P1,D1)`, `A2=(P2,D1)`, `A3=(P2,D2)`, `A4=(P3,D2)`、いずれも当該fixtureで直接受理済みの関係と仮定。
+- Position：`M1`はD1所属の職位、`Occupancy O1=(P2,M1,[2027-04-01,2027-07-01))`, `O2=(P3,M1,[2027-07-01,...))`。PersonとPositionは在任の切替で同一性を失わない。Occupancyだけから一般のMembershipを自動推論しない（§32.1）。
+- **配賦ルールを仮定した場合のみ**、P1@D1=1.0、P2@D1=0.6、P2@D2=0.4、P3@D2=1.0 FTE。これらは雇用率・法的労働時間を自動意味付けする値ではなく、この合成事例の宣言済みMeasure。
+- Queryの追加圧力：A1/A2のD1所属2関係に対して、D1の別集合Projectsが2行なら単純JOINのD1局所結果は**4行**になり得る。Membershipが4件から6件に増えたわけではない。
+
+| 照会／View | 手計算期待値 | 典型的な誤成功 |
+| --- | --- | --- |
+| 全部門を通じた人物のユニーク数 | **3 Persons** | A1〜A4の**4**関係出現を4人と数える |
+| 部門別の所属人物数 | D1=2、D2=2 | 部門別2+2=4を全部門のユニーク人数と称する |
+| Membership/Assignment出現件数 | **4 occurrences** | 重複Personを無条件にDISTINCTして関係を3件へ減らす |
+| 部門別FTE（上記配賦Ruleを採用した場合） | D1=1.6、D2=1.4、合計=3.0 | 各部門の重複排除人数をFTEと表示する、比率の適用条件を省く |
+| 職位M1の在任者 `2027-06-30` | **P2** | 現在の所属・Person IDから在任を推測する |
+| 職位M1の在任者 `2027-07-01` | **P3** | O1/O2の境界を無視し、候補をP2に固定する |
+| D1のMembership 2件×Projects 2件のJOIN表示 | **4 Query row occurrences**、Membership SubjectはA1/A2のまま | Query行数を人員数やMembership件数として表示する |
+| A3の表示線を選択 | **Person P2 と Relation occurrence A3 を区別して特定** | P2のD1側A2まで同一「線」と見なす |
+
+上の人数・FTE・JOIN行数はそれぞれ異なる**表示対象の粒度（grain）**と計算契約に属する。グラフのノード数も部門別チャートの足し算も、単独では「組織の人数」を定義しない。合成OracleはTEIによる実計算・SQL Providerの結果ではない。
+
+### 39.3 表示・選択・編集の「意味保存」を分離して検査
+
+標準Consumerへ引き渡す際に照合したい情報を**表示/診断用の検証列**として整理する（これらをそのまま新Core structや必須Plugin Manifestへ採用する案ではない）。
+
+| 検証列 | 意味 | 別の情報と取り違えると生じる事故 |
+| --- | --- | --- |
+| Canonical Subject／Relation ID | P2・A3・M1・O1等、どの業務対象か | 描画上のPoint/Row/Edge IDを正本IDとして使う |
+| View occurrence／Relation path | なぜ同一Subjectが複数行や経路に現れるか | 同一Personを二人扱い／関連Edgeの一方だけ消すべきところで全削除 |
+| Context Scope／Temporal／Model版 | どの組織軸・有効日・記録時点・Rule/Source版のViewか | 過去の在任や古いClient selectionで現在の操作を実行する |
+| Claim／Grain／Measure | Person数・関係数・FTEのどの主張か | 行増幅、比率の誤再集計、Chartから集計値を明細へ書戻す |
+| Direct/Derived/Proposedと出所 | Relationが直接受理・Rule導出・未受理候補のいずれか | 派生線・AI案を元の正本のFieldとして編集する |
+| Editable Source／Operation Intent | 表示操作をどの元対象/Relation/業務Actionへ対応させるか | 「所属線を解除」→Person削除、drag→無確認Commit |
+| Result slice／Completeness／Selection epoch | 部分取得・旧選択・最新Contextとの一致 | 空表示を不在確定、旧Query応答を新選択に混入 |
+
+**具体的な編集対照**：
+- Person P2ノードの選択＝P2という対象の選択。Membership A3線の選択＝P2とD2の特定の関係出現の選択。両者を別のOperation Intent候補へ解釈できる必要がある。
+- A3線をD2から別組織へ移す操作は、**既存の業務ActionとそのOwner規則があるなら**関係の変更候補として提案する。単なる画面dragから、Person削除・別のA2解除・直接DB書込みを推測しない。
+- `memberOf(P,D)`がO1等から導出されている表示線の場合、どの元関係を変更すべきか一意でないことがある。候補・read-only・根拠へdrill-downを明示し、可逆性がない変更を自動書戻ししない。
+- 全部門ユニーク人数=3というChartの棒を4に編集しても、変更すべきPerson/Relationは一意でないため、単一業務更新へ自動変換しない。
+- 「組織構造のModeler上の定義編集」は#1124/#1143のSource Acceptance、「運用Dataの関係を変えるFunction操作」は#2500のIntent→#1129/#1174のEffectへ。両者は別の変更である。
+
+### 39.4 P0の成功条件を三段階のEvidenceで記録する
+
+1. **P0-M（意味/静的・read-only）**：同一fixtureを使うTable/Tree/Graph/Chart/CUIの意味対象・Relation occurrence・grain・時点・直接/派生を同一Sourceへ遡れるか。二経路のPersonと所属4件、FTE3.0、時点で変わるO1/O2を、単純な図形同型にもかかわらず区別する。標準構造を定義したPlugin作者へオントロジーfacetの追加設定を要求しない。
+2. **P0-U（Consumer利用・追加圧力）**：#2507が必要Shape・Operation・Rendererへの適合候補を説明し、#2506がContext/Result slice/epochを提示できるか。#2500のread-only Intent解釈でP2 nodeとA3 edgeを区別し、集計棒の非可逆更新を拒否できるか。**既存P0とは別の全体Gateを新設しない**。
+3. **P0-V（実Effectは既存担当）**：実行が必要なRelation変更や承認操作では、最後の関連Mutation、Ruleの依存集合、現在Host Grant、Commit/Receipt/独立readを別に検証。**表示が正しいことやIntent Candidateが存在することだけで業務上の結果を成功扱いしない**。
+
+既存の独立試験証拠との関係（2026-11-02時点）：
+- [Draft #2517](https://github.com/hat47x/tei-platform/pull/2517)には合成ViewChange→Intentの隔離Go 1.23.2局所試験12件PASSと記録されている。**実Context/TEI CLI/Host統合ではない**。
+- [Draft #2594](https://github.com/hat47x/tei-platform/pull/2594)には合成SQLiteによるMeasure反例6件PASSと記録されている。**TEI Query/Provider/Chart上の再集計成立ではない**。
+- [Draft #2577](https://github.com/hat47x/tei-platform/pull/2577)はPR merge refのGo 1.26.10全体回帰PASSを報告するが、実SQL Worker/ProviderとContextをつなぐ意味・操作の一致は未検証。
+- 組織fixture（本節）のTable/Graph/Chart、実GUI、実Query、実Action、認可/Effect、実利用者の理解試験は**NOT RUN**。別PRの局所PASSを本節のPASSへ流用しない。
+
+### 39.5 関連Issueへの責務委譲と採用前の最低条件
+
+| 既存Owner | この組織fixtureが供給する反例・比較 | 必要な結果 |
+| --- | --- | --- |
+| #2495／#2497 | 意味が異なるRelation／構造→表示の片方向写像、何が失われるか | 一般メタ構造とProjection保存則の違いを保持 |
+| #1126／#2386 | Person/Membership/Position/Occupancyの同一性、業務上の導出規則 | 一つのAccepted意味モデル。中身はProfileで必要時具体化 |
+| #2506／#2586 | P2二所属、A3 edge occurrence、2×2 JOIN、Context版/Scope | Query row ≠ Entity/Relationと旧選択混入を診断 |
+| #2507／#1127／#997 | Tree/Graph/Table/Chartの適合条件と標準利用、意味的な視覚表現 | 用途によって表示を選択。標準Dataだけの基本UIを維持 |
+| #2593／#2594 | Person distinct、Membership件数、FTEのMeasure/軸/演算 | 同じ数値でも集計の合法性を分ける |
+| #2500／Draft #2517 | Person node vs relation edge、派生線・集計棒の非可逆編集 | 識別可能なIntentのみ候補。Runtime操作は別資格 |
+| #1124／#1803 | 組織図・表・SHOの同一Subjectへの追跡、出所/版/意味編集 | 表示を第二正本にしない。Source編集と業務データ操作を分離 |
+| #1129／#1174 | 規範の最終Post-Image・実Effectと実行時権限 | 描画成功から認可/確定効果を自動推論しない |
+
+**最小の否定的受入条件**：①同一Personを複数人と誤計上、②集計やJOIN行を業務Entityとして編集、③派生Relationを無条件に逆構成、④職位をPersonへ同化、⑤時点を省いて異動前後を混同、⑥表示用のGraph/Treeの刈り込みを業務削除へ昇格、⑦通常の組織Dataへ独自ACLを付けて標準参照を阻害、⑧局所テストPASSを実Host/Owner受理へ昇格。少なくともこれらが負例として説明できなければ、組織意味を活かした標準UIの適合を主張しない。
+
+## 40. 次に行う最小縦断試験と統合順（計画のみ）
+
+新たな組織用のQuery Worker/Renderer/Action Executorの実装を開始条件としない。先行するのは、**一つの合成Source＋二つのView（Table/Graph）＋二種類の主張（Person distinct/Membership count）＋一つのEdge edit候補＋一つの時点cut**というheadless比較である。
+
+1. **E0 構成票**：Person P1/P2/P3、D1/D2、A1〜A4、M1/O1/O2の意味IDと版、直接/導出、独立Oracleを固定。簡単な標準Data/Relation定義だけを出発点とし、Plugin作者へOntoClean等の宣言を求めない。
+2. **E1 Read-only**：同じSourceからTableとGraphの各View Claimを構成し、P2の二表示が同一Personだと説明。双方のMembershipは別Occurrence。人数3・関係4・在任者切替を一致させる。取込/Queryが部分取得なら実際の取得範囲を表示。
+3. **E2 選択/編集意図**：P2ノードとA3線を別に選択し、表示変更を#2500のTyped Intent候補へ解釈。派生線/集計棒は逆対応の根拠不足を表示する。古いSelection epoch/Action版ならstaleと診断。
+4. **E3 統合資格**：#2586の同版CUI/JSON受渡しにより、#2387 Query→#2506 Context→#2507 Pattern→#2500 Intentが実際に接続したことを観測。既存の個別Go/SQLite PASSからこのE3が成立したと仮定しない。
+5. **E4 GUI/Host**：上記が成立した後、既存#1124/#997/#1174のOwnerによる実View・実Provider・更新前後独立観測と、人間が「同一Person/複数Relation/在任切替」を読み分けられるかの利用者試験を別に行う。人の理解度は図が表示された事実で代用しない。
+
+**差分の所有**：#2386/本書は組織の反例・独立Oracleと利用目的を供給、#2497はProjection保存条件、#2506/#2507/#2593は一般ConsumerのData/Pattern/Measure、#2500はIntent、#2586は縦断受渡し、#1124はGUI。新規Core enum、永続的メタfacet入力UI、全域Ontology、TEI独自Hostや第二Semantic SSOTは採用しない。
+
+**成果区分**：本節は2026-11-02現行main `9c9ef4d160640908e06ad13afb6c2b45c664c748`、関連Issue/DraftのGitHub記録、および手計算した合成例を比較して作った計画である。組織参照fixtureの実装、Go/SQLite/GUI/Hostの実行、Owner受理、PR統合は**未実施**。別作業レーンで実測済みの局所試験とは区別する。
