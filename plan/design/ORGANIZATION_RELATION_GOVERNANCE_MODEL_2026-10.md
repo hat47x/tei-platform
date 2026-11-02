@@ -1757,3 +1757,58 @@ Source Revision不一致でhelperを停止させる。UI選択epoch、Provider S
 | OC-08 承継からのAction | 後継部門の担当へ旧D1決裁権を移す | Owner Ruleと実Host Grant/Target/commitを再検証。承継はGrantではない | #2598/#1174 |
 
 **段階別証拠**：手計算表はE0期待のみ（本追補の新規fixture・試験は**NOT RUN**）。Draft #2596の**固定HEAD `f2a8be6b9fed1e59b59eec86b06c1c7862ab62b6`に対するNode合成166件SUCCESS**は既存反例の限定証拠であり、ORG-OC-01〜08の実行証拠ではない。最初に独立FixtureでR1/R2の再現性と明示Bridgeなしの拒否を検証し、次に#2586で実TEI Data/Relation→Query→Context/Measure→複数Consumerの同一試行を確かめる。最後に#2386 S3/P0-Vと#1174の実Provider/Effectへ引き渡す。通常組織Dataに専用ACLを加えず、保護指定された個別項目のみ既存の保護契約に従う。Ownerの業務意味受理、現在mainでの統合適合、実DB/Studio/SHO/Hostの受入はいずれも**未確認**。
+## 50. 組織承継の固定版から現在の操作へ：Role依存・取得経路・再束縛を独立に資格化（2026-11-03、他Workstream横断の採用前設計）
+
+### 50.1 重要な更新：Reference #2596はmain統合済み、次の合成段階は別Draft #2655
+
+2026-11-02 18:33Zに[PR #2596](https://github.com/hat47x/tei-platform/pull/2596)は**merged**へ変化した（merge commit `3d7819de52e135972c377cbbf337801af7016165`）。前節までの「#2596はDraft」はその時点の履歴記述であり、現在状態ではない。#2596の固定HEAD `f2a8be6...`に対するNode 166件成功は、その候補の**合成Reference資格**の範囲に限られる。main統合は正式なTEI Canonical/Query/Provider/Studio/Hostの縦断成功や業務Ownerの意味受理を意味しない。
+
+§49の組織分割・承継を実行可能な局所反例に進める[別Draft #2655](https://github.com/hat47x/tei-platform/pull/2655)を、mainの既存Referenceを改変せずに作成した。単独 `verify-succession.mjs`の**16件のV8局所Dry-run成功**は、Node CIの成功とは区別する。Node exact-head・TEI製品接続は別照合する。
+
+### 50.2 横断の中心問題：同じ組織図/表示結果でも、今使える根拠は同じとは限らない
+
+一つのAccepted Sourceからの設計、通常組織Dataの運用Read、Owner Rule、外部Providerの実取得、表示/SHO文書、更新対象、実Effectを**別の資格**として比較する。Everything is Dataの一般Role/標準Data構造（#2619/#2620）、表層→意味候補（#988/#2625/#2639）、明示Data Mapping（#2506/#2624）、Provider Binding（#2611/#2622/#2628）、Context/Pattern（#2507）、Claim再評価（#2582）、対象Intent（#2598）、Effect（#1174）、消費物の固定（#1803/SHO）の**既存担当**を接続するだけであり、本Issueに第二正本を作らない。
+
+| 別々に固定・確認するもの | 組織改編の反例 | 失ってはならない区別 |
+| --- | --- | --- |
+| Authoring Source / Accepted Meaning / Role依存Pin | D1→D1a/D1bとBridge規則の版、同じDisplay名・異なるRole定義 | 表層記述/Plugin候補≠受理済み意味。Role依存の旧版利用を現行資格に昇格しない |
+| 外部IDのissuer/scope/時点とTEI Subject/Relation occurrence | 人事コード`C42`を旧D1・新D1bで再利用、旧A2と新A2new | コード・氏名・組織名・レコード位置から同一性を自動確定しない |
+| Function宣言とProvider実Route/Read Witness/Cohort | ReplicaではR1、PrimaryではR2。両方のsnapshotラベルが`s7` | Query/Mapping一致≠実読み取り母集団一致。報告値の等しさ≠物理取得の正しさ |
+| Query全依存/必要集合/Claim/grain | D1b 0行、非表示AllocationでFilter/Sort/EXISTS、Person対FTE | 出力値Lineageだけで再評価しない。部分0件≠組織不在、複数経路≠複数Person |
+| Projection/資料の版と公開状態 | R1公開報告は当時のR1値、R2は遡及改訂版 | 過去の公開物の再現と現時点評価/再発行は別のArtifact/Claim |
+| Selection/Intent/Request/実Effect | 旧A2の画面選択→新A2newの更新候補、同じPerson P2 | Relationの承継で書込対象は自動移動しない。Owner Rule・最新Host Grant・実Target照合を別実施 |
+
+**反例世界A/B**：同一の改編後valid日2027-07-01、同一Person P1/P2/P3、同一旧D1後継定義でも、known-at R1ではD1b所属A2newがありFTE0.6、R2では遡及訂正でA2newがなくD1b FTE0である。R1由来の選択A2new、承認候補、比較図、SHO文書をR2の現在資格に無条件で再使用しない。同時に無関係なD2 Person P3の恒常ID・通常Data読取りを過剰失効/遮断しない。
+
+### 50.3 比較Bridge・Update Mapping・Authorityを混ぜない
+
+- **Compare Bridge**：例えば`old D1 → new D1a+D1b`を、案件Ownerが受理したときだけ**FTE × 範囲 × 時点 × 集計grain × 版**を限定して比較する。FTEの旧160/新160一致から`sameOrg`、Person数同一、Ruleの意味適合、決裁権継承を主張しない。別Measureで比較するなら別根拠。
+- **Read/Context Mapping**：通常のTEI組織Dataを標準Data/Relationとして、Functionが明示選択した範囲を読み込む。宣言の全件取得≠実Providerの全件証明。外部Sourceの権威は項目ごと・期間ごとに異なる場合があり、`C42`再利用を誤結合させない。通常Dataへ組織専用ACLは足さない。
+- **Write/Operation Mapping**：旧A2の削除Intentと新A2newの変更Intentは別。Source/Meaning/Context epoch/Anchor/Relation occurrence/Provider/期待版を既存Evidenceから再解決できない場合、暗黙の逆投影や`unlink`を実行しない。手書きResolverやOperationID Registryを重複実装しない。
+- **現在のAuthority/Effect**：人事の業務責任と現在の実Principal/Grantを別に照合する。旧責任者のApprovalを再配置しただけでEffect済みとしない。複数Provider・非同期ACK/部分成功の場合、単一画面Saveで全体原子性を偽装しない。
+
+### 50.4 使用目的に相対的な再評価（局所維持と必須失効の比較）
+
+**変更源を区別**：1) Source/Role定義の変更、2) 業務valid/recorded訂正、3) QueryのWHERE/ORDER/EXISTSや非表示入力、4) Context Mapping/Provider route・cohort、5) Bridge/Measure/Owner Rule、6) Selection epoch、7) 現在のGrant/Effect。これらを単一の「変更があったら全UI無効」へ潰さない。
+
+| 変更 | 局所維持の候補 | 再資格化・拒否が必要な候補 |
+| --- | --- | --- |
+| R1→R2のA2new消滅 | 同一Person P3のIDと、影響がないと確認された無関係なD2表示 | D1bの所属/人数/FTE、後継D1比較、A2new選択、依存するApproval/SHO現在版 |
+| D1a表示名のみ変更 | Member ID/Relation/値が不変で依存を確認できたMeasure | 名前を出力するTable/Diagram/Published Artifact、テキスト検索の条件 |
+| Bridge規則・Role依存Pinの変更 | 独立した元Membershipの参照 | 比較Claimの現行意味適合とそのArtifact。既往R1 publicationの固定版は別保存 |
+| Provider routeがReplica→Primary | Meaningの受理済みRelation定義 | 実Read/完全性/時点/結果とClaim、Operationの利用時資格 |
+| Grant失効のみ | 通常の組織Data意味と過去の監査記録 | 今後の更新/承認可否。過去Effectの取り消しと混同しない |
+
+**局所維持の立証責任**：必要Dependencyの関係経路・否定依存（空集合）・Ruleの非表示入力・未解析領域・集計grain・source/role/adapter版を把握できた範囲のみ。unknown/opaque/部分取得では`unverified`として、値同一や同じ図形から同値を宣言しない。詳細は#2582/#2635/#2586へ。
+
+### 50.5 検証の実装経路・Owner受入票
+
+1. **既存合成Referenceの継続**：#2655（Draft）でORG-OCのうち組織ID、R1/R2の時間、Person/Relation/FTE、明示Bridge、Unknown Read、外部コード再利用、旧選択の不適合を16件で識別する。Oracleは**自作の閉じたFixtureでの限定期待値**。Source/Provider実取得の真実性は証明しない。将来の独立Oracle/Mutationで誤成功が落ちるか比較する（#2510/#2514）。
+2. **標準Role/Meaningへの再束縛**：#2620/#2638のRole Pin候補、#2625/#2639の表層意味候補と、標準Data/Relationの実Semantic IDを結ぶ。Plugin更新による候補発見と明示選択済み意味の変更を混同しない。採用前にCore enum/Plugin手入力Ontologyは増やさない。
+3. **実TEI縦断**：#2586へ同一固定Source/Scenarioの`validAt+knownAt+scope+Mapping+Route+Rule/Bridge+Consumer`を渡し、Query→Function Context→Claim/Measure→Table/SHOと、旧A2newに対するIntent候補を再束縛できるかHeadlessで確認。可視出力とQueryの非出力依存を照合し、現在実Readが観測されない経路は`unverified`。
+4. **実Effectの別検証**：#2598/#1174へ現行対象と最終post-imageの照合を移す。P0-Vでは組織承継の候補選定と最終状態保証を分離し、影響するOwner Ruleが対象Tx中で破られた場合の拒否を観測。R1の既往確定EffectをR2の意味適合・現在Grantへ昇格しない。
+5. **複数Consumerの固定成果物**：#1803/SHOへR1公開版の再現資料、R2再計算資料、用途限定Bridgeの出典/受理版、対象Sliceの完全性状態を渡す。Diagram/Graphvizは共有Data Contextからの用途別Projectionであり別Model正本としない（#2497/#1124/#2619）。
+
+**記録票の最小列**：Trial ID、固定Model/Source/Role Pin/Rule/Bridge版、validAt/knownAt/publication revision、Person/Org/Relation ID、Query非出力依存、Function宣言、Provider実Route/Read Witness/Cohort、Measure/grain、Consumer/Artifact版、Intent選択・Driver Request・Effect Receipt・独立Read、試験Tool/Runner/head SHA、Oracle作成者、Owner採否、`unverified`理由。それぞれ必要な範囲だけ既存Evidenceへの参照で保持し、新たな巨大Context structを標準化しない。
+
+**判定境界**：#2596のmain統合はE0局所合成Referenceの履歴事実。#2655新規16件は今回V8局所成功のみで、Node exact-head/CIは未確認。以上を実TEI Data/Relation、実Query/Provider/Host/SHO、改編業務Owner受理、配備資格のPASSに合算しない。組織Data通常利用を妨げる特別ACL、TEI独自Host、第二Rule/Workflow/Authorization/Source正本を採用しない。
