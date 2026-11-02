@@ -426,6 +426,27 @@ main参照：`2197baaedbde178a042a280ea1bd1d534617bfc7`。現行`relational.go`�
 **同時に満たすべき横断要件**：#2506のData Context Instance/選択epochと#2500のAction対象IDは、本QX-17 Source operation IDと別のID。部分取得・JOINの行増幅・集約の操作不可をModeler/SHO/外部Consumerへ説明する際は、構造観測→対象束縛→現在性→Authority/Effectをそれぞれ独立に扱う。QX-17はread-only構造候補のStageに留め、業務完成・Commit・GenerationのPASSへ昇格しない。
 
 
+### 7.10 QX-17 M1：実Go `DeriveFromAnalysis`への最小縦切り（2026-11-02、別Draftで実装）
+
+**他チャットとの接続**：AI-first/Headless-first（#2492のDraft）、Function Data ContextのDefinition/Instance/Result Slice・各集合の取得Scope（#2506）、表示と更新逆写像を分離する#2497/#2500、異なるConsumerで同じSource/OutputField/Grainを保持するSHO/Modeler/外部Consumer（#1803/#2516）、宣言Sourceと実消費・Build/Worker証拠の帰属（#1103/#2514）を横断。この節の当面のOwnerは**Queryの構造導出 #2387**であり、Function ContextやMorphism、実Host/Provider側の契約を二重化しない。
+
+**Go実行候補の配置**：現main `98e08841ccd03574690fc6195e2cce62454a5fa3`から新枝を作り、[Draft PR #2577](https://github.com/hat47x/tei-platform/pull/2577)に`internal/query/derived_qx17_characterization_test.go`を追加。旧Draft #2388の資料・固定fixtureをmainへrebaseして混ぜず、**このPRはGoテスト1ファイルだけ**。Go実装の`DeriveFromAnalysis`を、3種類の手書き合成`analyzer.Result`から直接呼ぶ。
+
+| 合成Resultの演算形状 | Goから確認したい構造 | 意味・実行の未確認 |
+| --- | --- | --- |
+| `Source(line)→Aggregate(line)`, `Source(delivery)→Aggregate(delivery)`→JOIN | line Aggregateはline Source occurrenceだけ、最終JOINは双方 | 集約SQLの正確性・JOINのCardinality・データ集合の全件性 |
+| `Source(line)`, `Source(delivery)`→JOIN→Aggregate | 最終Aggregateはline・deliveryの両Source occurrenceへ参照を持つ | 値だけのLineageで行多重度を説明したとみなさない。SUMの業務総額は別 |
+| `Source(header)`, `Source(delivery)`→LEFT JOIN→Filter | 最終Filterの入力が双方へ連なる | `d.id IS NULL`での不存在確定には右側の必要全集合を確認。Expression文字列だけでNULL/不在法則を受理しない |
+
+このテストでは、`Lowering=full`が得られても`Snapshot=nil`により物理Schemaの`Resolution=none`となることを**別軸で観測**する。`OutputField.Inputs`は列Occurrence/Field ID由来、`RelNode.Inputs`は演算IDであり、**Field→Operatorの型付き関連付けが実装済みと推定しない**。JSON marshal/unmarshalの往復はデータ構造保持の試験であって、ModelerやSHOの設計書が業務意味を理解した証拠ではない。
+
+**現在の限定確認**：Go 1.23.2のローカル`gofmt -l`でフォーマット差分なし、GitHub保存した同テストのblob `7170f6e2eeb1d6b90b121474ba8e1b8b27a0d44d`がローカル実行予定のテスト内容と一致した。リポジトリ指定Go 1.26.10による実テストはGitHub Actions起動を確認し、**結果待ち**（完了結果を確認してから本節へ追記）。従来のQX-17のPython14件・構造の4点照合は別工程の証拠である。
+
+**主な反証点・次段の観測**：(i)実Go結果と手書きIRでNode ID・入力依存が一致するか、(ii)同一`OutputField.Inputs`のまま演算順を変えると最終依存が変わるか、(iii)Analyzerの`Lowering=full`と実構造の参照整合、Source byte/Schema/Worker正統性、Output Field bindingの欠落がどこで検査されるか。(iii)は**QX-14b/c未解決**として、同一Query IDの再利用で旧SQL解析結果を意味受理へ持ち込まない。業務Entity Key/Path/Owner受理、Functionのselection epoch、Provider snapshot、Go/Java/.NET別TargetおよびHost実行権限も本テストでは証明できない。
+
+**Go本体/他Consumerへの接続順**：#2577の固定head Go試験→#2387のread-only `RelationalIR`構造照合→#2506へのCollection/Result Sliceの**不足情報の受け渡し**→CLI/JSONとSHO/Modelerの同一説明参照。QX-16の手書き片側Claimの数学的法則は#1063、Independent Oracleは#1131/#2514が所有し、Query結果への自動的なAction適用は#2500/#1125/#1174が所有する。分岐を先回りして結合せず、必要な形だけを段階実証する。
+
+
 ## 8. 実装順・担当引継ぎ（提案）
 
 | 段階 | 所有 | 実施 | 完了の根拠 |
