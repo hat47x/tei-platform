@@ -9,11 +9,25 @@ node reference/org-semantic-views/verify.mjs
 node --test reference/org-semantic-views/verify-change.mjs
 node --test reference/org-semantic-views/verify-handoff.mjs
 node --test reference/org-semantic-views/verify-projection.mjs
+node --test reference/org-semantic-views/verify-context.mjs
 ```
 
-The file is a dependency-free JavaScript module: it computes an in-memory reference and throws on the first unexpected observation. A successful run emits a JSON summary. No DB is created and no files, services, accounts, or business records are changed.
+The test files use JavaScript and Node built-ins only. `source-fixture.mjs` loads plain JSON from this directory; no database, external service, or business record is changed.
 
-**Evidence recorded during preparation:** `verify.mjs` returned **27/27 PASS** in the execution tool's V8 isolate and **27/27 PASS** when the committed GitHub source was read back and re-evaluated. The new `verify-change.mjs` returned **11/11 PASS** in the same V8 execution tool using a narrowly compatible `node:test`/`node:assert` shim after readback of its exact source. **Separately, the exact `verify-change.mjs` source was reproduced in an isolated Node v22.16.0 environment and `node --test` completed with exit code 0, 11/11 PASS.** Source identity: 5,582 ASCII bytes / FNV-1a 32 `0x6cb1c9d8`, matching the read-back source; SHA-256 `8156207199ada4ac1f01e911548aecfdc3bb13094bf525d20cd7b9f22489a27d`. `verify.mjs` itself has *not* been exercised in the Node CLI (27/27 V8 only). Repository CI, official TEI Go tests, SQL Worker, Context/Pattern binding, browser/Windows, actual Host/Provider, and Owner meaning acceptance remain NOT RUN.
+**Current exact-source evidence (2026-11-02):** all five current test files were fetched from GitHub after the refactor; a restricted V8 local runner, with compatible Node test/assert shims and the shared JSON loader supplied explicitly, reported **27 + 11 + 16 + 16 + 20 = 90/90 local checks PASS**. **Current-HEAD Node CLI, GitHub CI, formal TEI Go/Query/Context/Pattern/UI, Provider, Host and Owner meaning acceptance are NOT RUN.** Earlier Node v22.16.0 evidence of 11/11 for `verify-change.mjs` and 16/16 for `verify-handoff.mjs` applies **only to their prior, pre-refactor source blobs**, not the newly shared-fixture versions. Do not carry former Node success across the changed source identity.
+
+## One synthetic dataset, distinct observation scenario and five independent consumers
+
+- **`source-fixture.json`** is the single **test-only semantic dataset**: Persons P1/P2/P3, Organizations D1/D2, time/version-qualified Membership A1-A4 (five version records for four stable relations), Position M1, Occupancy O1/O2, hypothetical FTE allocations, and D1 Projects J1/J2.
+- **`scenario-fixture.json`** contains the scenario's `sourceRevisionRef`, `validAt=2027-06-15`, `knownAt=2027-07-01`, read-selection/Context evidence and one explicit example of Tree display preference. The scenario is **not** the model. Its `sourceRevisionRef` must match the source model revision; otherwise the loader stops.
+- **`source-fixture.mjs`** reads both JSON files and resolves membership versions under **valid and recorded/known time**. Each of the five test files consumes the same dataset, directly or through the helper. Model content and a selected UI/Provider observation are separate objects; UI selection/epoch does not become a Canonical Semantic fact.
+- **`verify.mjs`** checks identity, membership occurrences, FTE, join fanout, Occupancy and candidate scope.
+- **`verify-change.mjs`** checks read/change dependency, valid/recorded time, correction, incomplete/non-monotone claims.
+- **`verify-handoff.mjs`** checks relation occurrence target, selection/Request evidence, Instance and Save Intent boundaries.
+- **`verify-projection.mjs`** checks Table/Graph/Tree/Chart from the shared baseline slice and read-only selection coherence.
+- **`verify-context.mjs`** checks explicit Function Context mapping, scope, requested vs observed completeness, revision binding, two read-only Consumer projections, and missing/unknown.
+
+This change **eliminates the prior four independent handwritten copies of the synthetic source**; it does **not** create a production TEI Canonical Source or implement the TEI parser, Data Model DSL, normalized IR, Context/Provider, Renderer, Source Acceptance, or shared product Scenario registry. The JSON shapes are provisional Reference data, not a newly approved Core schema. All business meaning remains hypothetical until accepted by the appropriate Owner.
 
 ## Fixed synthetic inputs and independent expectations
 
@@ -78,7 +92,7 @@ Evidence used in the checks: Function Instance I1, parent Anchor D2, selection e
 | Two provider operations behind one Save button | No atomicity from UI grouping alone |
 | One confirmed effect and one unknown effect | Business completion remains unproven |
 
-**Recorded test evidence:** An isolated local Node **v22.16.0** process executed `node --test verify-handoff.mjs` with **16/16 PASS, 0 failures, exit 0**. The tested file was 5,954 UTF-8 bytes with SHA-256 `afbc6a7c4cf88c32d327739daaae45e065d3aadc5f3f5f171e3f8b57c698c7a9` and Git object hash `3cce96596672a3581214d1e0ffab3dc9d5f29f4b`; GitHub readback returned **the exact same Git blob SHA**. This establishes equality of the tested and committed source, but **not TEI product E2E**.
+**Historical test evidence for the prior, pre-refactor file only:** An isolated local Node **v22.16.0** process executed `node --test verify-handoff.mjs` with **16/16 PASS, 0 failures, exit 0**. The tested file was 5,954 UTF-8 bytes with SHA-256 `afbc6a7c4cf88c32d327739daaae45e065d3aadc5f3f5f171e3f8b57c698c7a9` and Git object hash `3cce96596672a3581214d1e0ffab3dc9d5f29f4b`; GitHub readback returned **the exact same Git blob SHA**. This establishes equality of the tested and committed source, but **not TEI product E2E**.
 
 Cross-owner integration: [#2598](https://github.com/hat47x/tei-platform/issues/2598) owns candidate-to-actual-Request evidence, [#2597](https://github.com/hat47x/tei-platform/issues/2597) owns Function Editing Session/Save Intent and partial-success semantics, [#2586](https://github.com/hat47x/tei-platform/issues/2586) owns the Query→Context→Claim→Pattern→Intent same-version vertical test; [#1174](https://github.com/hat47x/tei-platform/issues/1174) owns actual Effect/Receipt, and [#1124](https://github.com/hat47x/tei-platform/issues/1124) owns Modeler Source edits. A future adapter should consume the existing contracts rather than reimplement this synthetic comparator as a new product engine.
 
@@ -97,13 +111,29 @@ The **same Person P2** appears in two Table rows and two Tree leaves, while Grap
 | Chart | Per-dept Membership count / Person distinct / explicit FTE allocation and edge provenance; global Person distinct | An aggregate group is not a directly editable source Relation |
 | Occupancy lookup | Position M1 has P2 before July 1 and P3 starting July 1 | Occupying M1 does **not** create a direct Membership(P3,D1) |
 
-**Evidence**: On 2026-11-02 the exact GitHub-readback file's original 13 assertions passed in a V8 isolate using narrowly compatible `node:test` and `node:assert` shims. A subsequent revision added the explicit Tree-parent preference and ambiguity tests; **16/16 assertions PASS** in that same type of V8 local runner (file Git blob `5c0f88ab3f9214c7b283f2d8ee64f1df7753e9f4`). This is **not an actual Node CLI, TEI Go, Parser, Function Pattern, UI, Web, Host or Provider execution**. For the exact Node run, CI and built product Evidence, use the subsequent integration stage; do not promote this local result.
+**Evidence**: On 2026-11-02 the original 13 assertions and then the expanded 16-case Tree-preference reference passed in an isolated V8 test runner. **The current shared-fixture version also passed 16/16 V8 local checks**, after GitHub readback. Git blob `5c0f88ab3f9214c7b283f2d8ee64f1df7753e9f4` identifies only the earlier **pre-refactor** version, not the current exact file. This is **not an actual Node CLI, TEI Go, Parser, Function Pattern, UI, Web, Host or Provider execution**. For the exact Node run, CI and built product Evidence, use the subsequent integration stage; do not promote this local result.
 
 **Meaning nuance uncovered by the negative Tree case:** first-in-source-row order is not an accepted managerial reporting line, a preferred parent, or an authorization chain. A single-parent Tree layout requires a **declared view preference** (not necessarily a business fact), while the underlying model retains *all* relations. If a preference is missing/invalid, the reference keeps both P2 edges visible and marks the choice unresolved rather than selecting one arbitrarily. It may choose one for visual convenience only if the choice is explicitly supplied, labels the hidden edge, and disables inverse edits.
 
 **One deliberate limit:** Table/Graph/Tree/Chart functions are locally implemented consumers of a hard-coded synthetic fixture. The reference demonstrates *possible* semantics-preserving view data and detection of one lossy projection; it **does not prove that TEI's generic Data/Relation definitions already cause such views to be derived automatically**. This remains the work of [#1127](https://github.com/hat47x/tei-platform/issues/1127)/[#2507](https://github.com/hat47x/tei-platform/issues/2507), with fidelity owned by [#2497](https://github.com/hat47x/tei-platform/issues/2497).
 
 **Connection to current code, not a second implementation plan:** [Draft #2587](https://github.com/hat47x/tei-platform/pull/2587) contains `internal/operations/surface.go`, whose standard `OperationSurface` lists single-Data `list/read/create/update` operations and declared Capability binding; this does **not yet prove a built-in Relation-occurrence `unlink` operation, or Tree/Graph/Chart generation**. A3 selection is only `select-relation` in this reference. Translating that selection to a business write still requires an explicitly accepted Relation Action/Capability/Host binding under [#2500](https://github.com/hat47x/tei-platform/issues/2500)/[#2598](https://github.com/hat47x/tei-platform/issues/2598), with real effects checked by [#1174](https://github.com/hat47x/tei-platform/issues/1174).
+
+## Fifth reference: explicit Function Data Context versus an available relation
+
+`verify-context.mjs` consumes the **same synthetic source and scenario**. Its selected-Department Function definition explicitly binds the `Membership` relation path, `Relation occurrence` grain, `id/person/dept` fields, parent anchor `D1`, requested result scope and model revision.
+
+The read-only local comparison checks:
+- Mapping only D1 yields A1/A2, **not** the available but unmapped D2 relationships A3/A4. An extra Position Occupancy path is not an implied Function read or a direct Membership.
+- The authored request `all-for-selected-department` is **not itself observed completeness**. A partial/unknown Provider Result cannot prove full count, total distinct persons or universal absence. One actually observed entity can support a positive existence claim.
+- A synthetic completeness assertion contradictory to the closed oracle yields `inconsistent` (this is the closed fixture's independent knowledge, **not** a production Provider verifier).
+- An absent/unresolved path, role, scope, grain, model revision or undeclared field is `unsupported`; no UI/DSL method chain or Graph topology implicitly fills it in.
+- Two read-only UI-consumer projections (table rows/graph edges) preserve the **same relation IDs, anchor, Source revision, selection epoch, snapshot and result completeness**.
+- The read map conveys no new Host grant, commit, authorization, disclosure permission or effect.
+
+**Current evidence:** the GitHub-readback `verify-context.mjs` returned **20/20 PASS** in the restricted local V8 compatibility runner. Exact current-file Node CLI and actual TEI Data/Relation→Function Data Context→Query/Provider→UI/Action **NOT RUN**.
+
+**Relevant current other threads:** [#2619](https://github.com/hat47x/tei-platform/issues/2619) (Everything is Data), [#2624](https://github.com/hat47x/tei-platform/issues/2624) (explicit Function Data Mapping), [#2506](https://github.com/hat47x/tei-platform/issues/2506) (Data Context owner), [#2507](https://github.com/hat47x/tei-platform/issues/2507) (Pattern), [#2586](https://github.com/hat47x/tei-platform/issues/2586) (single-version vertical test). These remain the owners of real TEI product integration. No novel TEI Context runtime, permission gate, SQL engine or Graph renderer is introduced by this reference.
 
 ## Owner boundaries and integration
 
