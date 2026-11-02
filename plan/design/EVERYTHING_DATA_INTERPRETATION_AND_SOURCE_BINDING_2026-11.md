@@ -111,3 +111,57 @@ derived View, Scenario, SHO document, generated code, read-only Intent candidate
 ### 状態
 
 この文書・上記ケースは採用前の**設計／評価計画のみ**。正式Role runtime、Grammar、Canonical schema、CI、Go/Java/DB/GUI、外部Harness/OS、独立Owner意味受理は今回NOT RUN。既存P0実DB・Host縦切り、#1119 S0/G0〜G4、MMI G0-0、SHO S0を延期させない。専門UI/Parser/Registry/Trust Engine/Hostの第二実装を先行提案しない。
+
+
+## 6. 2026-11-02 横断追加：意味正規化と再利用・実行資格の影響次元を分ける
+
+[#2619横断接合計画／Draft #2629](https://github.com/hat47x/tei-platform/pull/2629)、[#2600増分ビルド](https://github.com/hat47x/tei-platform/issues/2600)、[#2624 Function Mapping/Rule Footprint](https://github.com/hat47x/tei-platform/pull/2624)、[#2627 Provider Route](https://github.com/hat47x/tei-platform/pull/2627)、[#2604 Artifact公開](https://github.com/hat47x/tei-platform/issues/2604)に接続する新しい判別条件は、**Sourceと意味が同じでも、Read、現在の実行権限、文書、公開世代の資格は同一とは限らない**ことである。
+
+### 6.1 段階別の資格と再利用の限界
+
+| 比較軸 | 変更例と少なくとも見直す資格 |
+| --- | --- |
+| Source/Occurrence | 原文byte、引用位置、ファイル所在、参照解決、SHO編集元 |
+| Syntax/Role/Meaning | Language/Operator Plugin版、ProjectによるRole Binding、Lexical Scope、Accepted Meaning |
+| Function/Rule inputs | Function Data Context Mapping、取得範囲、**非表示でも受理済みRuleが要求する**別入力、selection epoch |
+| Provider/physical route | Primary/Archive/OData、実Read、現在のBinding、Provider世代、Result/Effectの対象 |
+| Authority/Effect | Grant/Principal/Scopeの現在性、対象への作用、独立Receipt、業務完了 |
+| Document/Delivery | 編集上の説明、SHO Review、ManifestからPathと実読取byte、公開Generation、開示先 |
+
+一つのFingerprintで全段階の一致を主張する代わりに、既存Source/Meaning/Dependency/Artifact/Resultの証拠を**用途相対に照合**する。Roleだけを変更した場合は原文byteが不変でも解釈は変わり得る。一方、Host Grant失効では意味やCodeを再生成することより、実行前の現在資格の再確認が重要になる。表示額600が同じでも、別の与信Ruleが参照する上限500/700は判断を変える（#2624 RF-01〜18）。古い成功Receiptがあっても新しい実行許可は自明でない。
+
+### 6.2 一軸変更の反証票 EI-I01〜I13（実TEIの新試験はNOT RUN）
+
+| ID | 変更する軸 | 影響を分ける狙い |
+| --- | --- | --- |
+| I01 | Source byteのみ | 再parse/Source出典とMeaning同値の証明を区別 |
+| I02 | Syntax Plugin版のみ | Source同一でも現行Parser結果は再確認 |
+| I03 | Project Role Bindingのみ | 同じ文面が引用例からFunctionへ変わり得る |
+| I04 | Operator ID/versionのみ | 同名式の型/順序/NULL/Effect意味を再確認 |
+| I05 | Function Mappingの全件→部分のみ | Read/Completeness/Claim/Action資格を再確認 |
+| I06 | 非表示Rule Dependencyのみ | 同じ表示値から別のValidation結果が出る |
+| I07 | Primary→Archive Providerのみ | Meaning同一でも物理Read/Write対象が異なる |
+| I08 | Context selection epochのみ | 旧Intentの対象・Anchor・時点を再照合 |
+| I09 | Host Grant許可→失効のみ | Code/Meaning同一でも実行可否は変わる |
+| I10 | SHO編集上の説明のみ | Code同一候補でも文書/Review資格は変わる |
+| I11 | Publication Generationのみ | Manifest→Path→実読取byteの一致を再検査 |
+| I12 | Consumer開示Profileのみ | 実Truth同じでも新たな外部Delivery資格は別 |
+| I13 | Source所在のみ（本文同一） | Source locator再解決。相対Import等が変わる場合Meaningも再検査 |
+
+これらは**何を再確認するか**の条件であり、必ず全段階を再コンパイルするという規約ではない。旧新Dependency Graphと変更前後のSelection述語、実消費Sourceの閉包が完全な場合に限り、Claim相対のSelective Reuseを検証する（#1103/#2600）。依存不明なら必要範囲で保守的な全再検査かunknownを示す。元原文の内容変更でMeaning同値を主張するには、独立の正規化・解釈照合が必要。
+
+### 6.3 隔離Reference（実TEI Cache/Provider試験とは別）
+
+[Python stdlibの独立Fixture](../fixtures/everything-data-impact/check_phase_impact.py) を追加した。Source、Parsed、Meaning、Read、Runtime、Document、Publicationの**試験用Signature**に対し、13次元の単独変更、およびSourceやMeaningが同じでも下流資格が変わる反例を記述。隔離環境で **unittest 3 methods PASS、py_compile PASS**（内部subTestは13+7+5ケース、実製品を実行していない）。
+
+Fixtureは意図的に**保守的な影響判定**を行う。Source byteが変われば意味検査を再実施する前提とし、Semantic Equalityが独立に証明できた後の高速skipまでは実装しない。Source所在変更でParsed/Meaningが不変という合成ケースは、Import/相対Refが意味へ影響しないと限定された環境だけの例である。Signatureそのものを製品Cache Key・ABI/Manifestへ採用する提案ではない。
+
+### 6.4 既存計画への受渡し
+
+- **#2620/#988／H0〜H1**：I02/I03/I04のRole/Operator/Plugin版の独立変更を取り込み、SourceだけをCache Keyとする誤成功を検証。
+- **#2621／SHO**：I01/I10/I13で原典・Meaning・文書Reviewの現在性を独立に照合。
+- **#2624/#2622/#2627／H2**：I05/I06/I07を組み合わせず単独比較し、暗黙なRule Readと誤ったProvider Targetを区別。
+- **#2598/#1174/#2604／H4**：I08/I09/I11/I12を、実Request・Grant・現行公開・実Consumer読取の個別資格として扱う。
+- **#2600 増分ビルド**：I01〜I13を既存IB-01〜14の追加Pressureへ引き渡し、**誤再利用、過剰無効化、旧版誤公開、不要なCurrent Authority再利用**を別集計。高速化の実測、SHO実描画、実DB/Host/Owner受理はNOT RUN。
+
+既存#1119 P0、正式Owner意味受理、現行Host/Provider Authorityの順序を維持する。新Cache Engine、共通Host/Registry、別の意味正本、追加の公式Gateは設けない。
