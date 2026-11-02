@@ -126,7 +126,7 @@ M6の撤去判定では、移行済みConsumerの一覧、旧形式の読取り�
 
 | 負例／担当工程 | 比較する条件と期待する停止・限定結果 | 実証Owner／現在の位置づけ |
 | --- | --- | --- |
-| **CB-1（E0→E1）Operationの静かな意味変更** | 同じOperation ID/Basisでも、R1の`submit`からR2で`cancel`へ候補Bindingが変わり得る。旧CUI/UI/AI呼出しはOperation IDだけで実行せず、Rule/Model版・意味Binding・利用資格を再照合。複数DB Aliasが同じSemantic Dataを指す場合も、別Persistence候補を無音で除外しない | #2485 W7-B6〜8／#2611 PM-01〜07。PR #2587は未統合の候補コードに対する静的反例で、実走・Owner受理は未取得 |
+| **CB-1（E0→E1）Operationの静かな意味変更** | 同じOperation ID/Basisでも、R1の`submit`からR2で`cancel`へ候補Bindingが変わり得る。旧CUI/UI/AI呼出しはOperation IDだけで実行せず、Rule/Model版・意味Binding・利用資格を再照合。複数DB Aliasが同じSemantic Dataを指す場合も、別Persistence候補を無音で除外しない | #2485 W7-B6〜8／#2611 PM-01〜07。PR #2587は2026-11-02にmain統合済み。`internal/operations/surface.go`の実際の候補選択・重複省略に基づく静的反例であり、複数候補の再現試験・Owner意味受理は別途未取得 |
 | **CB-2（E2）推移的Providerの局所PASSと集合不足** | Consumer→Provider A→Provider BでA/Bの局所ContractがPASSしても、Bが対象行を部分取得・古いSnapshot・別Scopeで取得したらAの「全対象」Claimを成立させない。通常Queryの正当な0件を一律エラーにせず、全件主張または既知の欠落がある箇所で被覆証拠を要求。異なる原状態が同じProjectionへ潰れClaimだけ変わる識別不能対も比較 | #2390 T1〜T4／#2514 D-01〜04。異質Consumerの実E2Eは未実施 |
 | **CB-3（E4）成果物digest一致と実Load集合の不足** | Javaの`Main.class`だけを保存し、必要な`Main$Input.class`を配らなければ外部JVMでLoad失敗し得る。全class/依存の配布・実Loadと公開型付きAPI、TEI CLI/Go RuntimeなしのConsumer実行を別観測 | #2512のArtifactSet、#2513の型付きJava C1。#2077の独立再構成Java実験を本PRの生成Library製品受入へ流用しない |
 | **CB-4（E3）OperationIDとRequest byte/意味の相違** | 同じOperationIDでも空白・キー順だけ異なるJSON byteは現`RequestHash`上で別Requestとなり得る。逆に異なる厳密値が途中のfloat64変換で同一byteに潰れた場合、Hashは元Intentの差を検出できない。初回のexact送信Requestと型付きIntentの保存を分け、Replay/Lookupと実DB Effectを独立観測 | #2598 IB-14/15・#1174。限定Go標準ライブラリ小実験と現行実装静的照合を、TEI実DB実測へ昇格しない |
@@ -154,6 +154,24 @@ G3のv2公開判定に加える最小の**反証ケース**を既存Ownerへ割�
 - **CB-8：Source表現から実利用までの資格の分断（E0→E2/G4、#2625/#2629/#2390）。** Markdown/DOT/DSLから同じplain Dataを得ても、引用・文字列・実行Role、意味版、参照Scopeが異なる場合は同じ実行Contractとみなさない。外部Consumerが実ロードしたLibrary/ArtifactSet、現在Host権限、実際のResult/Disclosureを別々に観測する。構文変換の局所PASSは外部製品での実利用資格ではない。
 
 各Caseの**実証は対応Issue／既存Scenario／独立Oracle**が所有する。#1223ではGeneration/Hostを横断する結果だけを照合する。必要な確認にはSource/Meaning revision、Instance IDと状態、選択済みProvider/Artifact、Read Scope/時点/観測Field、Request/Effect ID、実Target、現在Authority、Consumerが受け取ったDisclosureを、**既存正本への参照として**一行ずつ結び付ける。共通Clock API、状態移行Engine、全情報流Checker、第二Source正本は導入しない。観測の欠落は当該Claimの`unproven`として残し、別レーンの実行可能な仕事は継続する。
+
+### 3再. 変更後の再資格化をBuild再利用・Consumer Claim・現在権限で分ける
+
+**2026-11-02の実装状態を修正**：標準Operationの導出・束縛実行・設計成果物・CLIのPR [#2587](https://github.com/hat47x/tei-platform/pull/2587)はmainへ統合（merge `8464db0bbbac216ede15d3344e72b7e8bd90cb65`）。固定して照合したmain `b1c019fec4f05ca65e3d7491608cb849ce523d29` の `internal/operations/surface.go`（blob `e1024a56e060c2dda4e64343d4eaae647782f84b`）は、同じEffect/DataのCapabilityから辞書順最小IDをBindingに選び、Alias順に導出した同一Operation IDの後続候補を内容比較せず省略する。**現行選択規則が持つ静的反例**であり、異なる実DBへの誤更新を再現した証拠ではない。#2485/#2611の複数Capability・Mapping検証を引き続き利用する。
+
+既存G3/G4の受入時、変更の種類ごとに**過去Evidenceの適用資格**と**現在の利用資格**を区別する。具体的な全再生成／選択的再利用のコスト比較は[#2600のDraft #2636](https://github.com/hat47x/tei-platform/pull/2636)へ委譲し、本節はComposition・外部Consumer固有の資格に限る。
+
+| 変更対象 | 再照合する事実 | 安全に言えないこと |
+| --- | --- | --- |
+| 構文・表示位置だけの変更 | Source locator・Role・Operator版・実依存閉包とSHOレビュー対象 | 意味依存が不変との確認なしに旧Claimを再利用／無関係な実行Artifactまで必ず再生成 |
+| Capability・Alias・Action追加 | Operation ID、Basis、**実Bindingと候補集合**、Rule/Meaning版、選択したPersistence、Consumer保持Intent | ID/Basis不変を意味同一や現在の実行資格に昇格。別Scopeまで一律失効 |
+| 表示に現れないRule/Query条件の変更 | WHERE・ORDER BY・Hidden Field、Function Contextの実Read footprint、Provider Scope、独立Oracle | 表示値/出力列の一致を同一Claimや未取得データへの許可とみなす |
+| Artifact/Target/Hostの改版 | 対象Consumerのrequired member・実ロードbyte、Generation、Hostの現在Route | 単一Manifest/digestや過去のLoad成功で現在配備・外部Host適合を証明 |
+| Provider/Host Grant・開示資格の失効 | Invocation時、送信/Result公開直前、不可逆EffectのCommit直前の該当Ownerの現在条件 | 以前の署名・CI・Receiptを現在Authorityとみなす。旧世代のLease解放でDB効果を取り消す |
+
+**CB-9：取得と公開の間のAuthority変化（E1→E3、試験未実施）**。T0でProviderのField Readが許可され値を得た後、T1でHostのField Grant/Consumer Disclosureが失効し、T2でResponse公開しようとする。T0時点の許可だけでT2の外部送出を成功扱いしない。既存[Draft #2637](https://github.com/hat47x/tei-platform/pull/2637)はDerived QueryのProvider前と返却直前でGrantを再照合する**未統合候補**であり、実Host同時失効・ABA・送出後の撤回保証ではない。Result公開とDB Commit、内部診断の外部開示をそれぞれ別判断にする。拒否診断から非公開項目の存在や内部権限状態を外部へ漏らさない。
+
+再資格化票は`Consumer/Claim、元Source・意味版、依存辺の変更、必要な再取得・Oracle、保持できる過去Evidence、利用時点のHost/Disclosure、未確認理由`を既存正本への参照で示す。**共通キャッシュ・新しいAuthority・全局Revision・新Gateは追加しない**。局所的に無関係なConsumerの再実証を自動要求せず、影響範囲不明の場合だけ当該Claimを`unknown`とする。
 
 ### 4. 次に採る最小の縦断Evidence（重複実装しない）
 
