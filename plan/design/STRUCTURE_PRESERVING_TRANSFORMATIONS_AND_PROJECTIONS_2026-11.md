@@ -221,3 +221,62 @@ EmbeddingやGraphによる近接、推定した分類と、Sourceの厳密な同
 5. Graph/Tree/KJ・時系列・集計のような表示・編集の異質なConsumerが、同じ最小Contractを再利用する際にどの追加概念を要求するか。
 
 **最初に決めるべきことは、名前やCoreの新しい型階層ではなく、構造の変換・表示・操作のうち何が保存されるかを説明できる最小の関係と検証義務である。** 設計案と実装採用の区別は#2495/#2497のOwner判断を待つ。
+
+
+## 10. 実Consumer：SUIの所属Relationと多値Fieldが共存するとき（2026-11-02追補）
+
+これは#2497の「構造保存写像」と「同じ意味を複数Projectionで表す」具体的な圧力である。主に以下の公開コード・PRを固定した静的観測を出発点とし、**SUIでの正本・意味的一致はOwner未受理**とする。
+
+- TEI main [\`generator.go\`](https://github.com/hat47x/tei-platform/blob/main/tools/reference-generator-selection/generator.go)、[\`text-record.go.tmpl\`](https://github.com/hat47x/tei-platform/blob/main/tools/reference-generator-selection/templates/text-record.go.tmpl)、[\`record_projection_test.go\`](https://github.com/hat47x/tei-platform/blob/main/tools/reference-generator-selection/record_projection_test.go)：Record Projection Fieldの\`many\`指定により、文字列配列をJSON配列として出力する候補生成。**\`many\`は表示/入力形状の条件であり、全件・一意性・順序の業務保証を与えるものではない。**
+- TAI main [\`sui.island.record\` v4](https://github.com/hat47x/tai-pleroma/blob/main/integrations/pilot-sui-document/candidates/island-record/contract.json)：\`Island.cardIds\`が\`many:true\`の\`std.identifier\`。
+- TAI main [\`sui.affiliation.record\` v1](https://github.com/hat47x/tai-pleroma/blob/main/integrations/pilot-sui-document/candidates/affiliation-record/contract.json)：\`Affiliation(id,cardId,islandId)\`はCardとIslandの多対多所属を表す。
+- TAI main [\`document_assembler.py\`](https://github.com/hat47x/tai-pleroma/blob/main/integrations/pilot-sui-document/assembler/document_assembler.py)：\`Island.cardIds\`の各Card存在と、各Affiliationの両Endpoint存在を**それぞれ**検査する。**両表現の所属が一致するかの横断チェックは現在の関数には見当たらない。** TAI [PR #253](https://github.com/hat47x/tai-pleroma/pull/253)は空配列・欠落・nullの区別と既知Cardの参照を説明しているが、所属表現間の一致までを実証したとは主張していない。
+
+### 10.1 同じ概念の異なるShapeか、別のMeaningかを最初に識別する
+
+前提として、\`Island.cardIds\`と\`Affiliation\`が**同一の所属関係を表す**のか、異なる意味（例：直接表示するCardと実際の所属、任意の表示順、継承された所属）なのかは、元のSUI Contract／Ownerの意図による。
+
+同一の所属関係を表し、同じDocument/Scope/Snapshotで双方とも**全件取得済み**で、各IslandのCard重複が無効と宣言されている場合に限り、次の集合上の関係が要求候補になる。
+
+\[
+\operatorname{set}(\mathrm{Island.cardIds}(i)) 
+= \{a.cardId \mid a\in\mathrm{Affiliation},\ a.islandId=i\}
+\]
+
+この式は**TEI現行DSLに追加された法則ではなく、同一意味だという仮説を検査する独立Oracleの例**である。
+
+- CardIDを集合へ変換すると、\`cardIds\`の重複数と順序は失われる。順序がMeaningなら集合一致だけでは不足する。Affiliationの個別ID・来歴も集合変換からは復元できない。
+- Arrayの\`[]\`は取得済みの空集合かもしれないが、\`missing\`（Key欠落）、\`null\`（unresolved候補）、関係先の未取得、別Scopeの遮蔽とは区別する。TEIの\`many\`テンプレートによる\`present/missing/unresolved\`は、これらを完全なDomain状態として列挙したものではない。
+- 一方のProjectionが部分取得なら、全件一致を要求する前にフィルタ・権限・時間・行選択と、部分集合側の包含条件を定める。単に「片方に現れない」を不存在としない。
+- 二つのShapeを保存していることだけで、\`Affiliation\`と\`cardIds\`のどちらが正本か決まるわけではない。正本が一つで他方がDerivedなら、どこから再導出するかを宣言する。両者が独立の業務意味なら、対応する関係の種類を分ける。
+
+### 10.2 判別対：参照整合が通ってもProjection整合が未確認となる
+
+合成データ（**テスト未実行**）：
+
+| ケース | CardとIsland | \`Island.cardIds\` | \`Affiliation\` | 判別点 |
+| --- | --- | --- | --- | --- |
+| SU-01 一致候補 | Cards \`c1,c2\`, Island \`i1\` | \`["c1"]\` | \`a1(c1,i1)\` | 同一Meaning・同時点・全件なら集合一致 |
+| SU-02 矛盾候補 | 同上 | \`["c1"]\` | \`a1(c2,i1)\` | 両端点が実在しても、所属一致という追加契約は満たさない |
+| SU-03 多重性 | 同上 | \`["c1","c1"]\` | \`a1(c1,i1)\` | Set変換後に一致しても配列の重複意味を判定すべき |
+| SU-04 空と未取得 | 同上 | \`[]\`／\`missing\`／\`null\` | \`[]\` | 三状態を同じ「所属0件」とは断定できない |
+| SU-05 順序 | 同上 | \`["c2","c1"]\` | \`a1(c1,i1),a2(c2,i1)\` | 表示順の意味契約がないならRelationから順序を復元できない |
+| SU-06 時点不一致 | 同上 | R2から取得 | R1から取得 | 数値・識別子が一致しても両版の真理を連結できない |
+| SU-07 部分集合 | 同上 | 権限・ページ限定の\`["c1"]\` | 全件\`c1,c2\` | 完全性が違えば等号より包含の条件を検討 |
+| SU-08 編集Intent | 同上 | UI上で\`c2\`を追加 | 関係レコード未変更 | Arrayの更新が所属を作るのか、表示専用編集なのかをTyped Actionで定義 |
+
+重要な差分は、現在のAssemblerが**個別の参照先実在性**を検査することと、これらの**二つの所属表現の相互一致**を要求することが別の検査である点。SU-02のような入力を実際に実行した試験結果はここでは取得していない。正しく表すべきMeaningが一致する場合の**新しい検証候補**に留める。
+
+### 10.3 拡張可能なUI・標準Pluginへ還元する場合
+
+AI向けCUI、SUIキャンバス、SHO文書、標準Table/Graph投影が同じ関係を表示する場合、次を最低限説明できるかを既存Consumerへ返す。
+
+1. **Subject/Grain**：Card・Island・Affiliation・投影されたCardID要素のどれに対応するか。Affiliation IDとCard IDを混同しない。
+2. **Relationship/Derivation**：多値Fieldは一次のデータ定義か、RelationからのDerived Viewか、別の意味か。対応元・Scopeと版を残す。
+3. **Order/Multiplicity/Completeness**：一覧の順序・重複・ページ/窓/権限による可視範囲。形状\`many\`だけから推論しない。
+4. **Editing**：操作が\`Island.cardIds\`の表示用配列を編集するのか、AffiliationのLink/Unlinkを発行するのか。現在のAuthority・CAS/Revision・結果・独立再取得は実行担当に委譲する。
+5. **Projection一致**：Sourceから二つの表示を派生するなら、同じSnapshot/意味バージョンと対応する不変条件・不一致理由を示す。
+
+UIを実装する各Pluginが高次概念を手で宣言するのではなく、標準のRelation／Array形状／Source Reference／Operation契約から**必要な情報を組み立てる**構成を評価する。新しい「Island型」「Collection所属型」のCore列挙を先に追加するのではなく、既存のReferenceが保持する情報と、不足している推論/適合項目を個別に計測する。
+
+**担当境界**：#2497はこのような変換と投影の保存義務、#2495/#2544は構造の分類と演算・Law束縛、#2501はPressure Corpus、#2506/#2507はFunction Data ContextとPattern、#2500はView変更→Typed Intent、TAI SUIはDomain上のMeaningを扱う。二つのGitHub Repoのモデル正本や実装をこの文書から変更しない。
