@@ -1910,3 +1910,10 @@ Source Revision不一致でhelperを停止させる。UI選択epoch、Provider S
 - **実製品への引渡し**：#2631/#1124へ実Workbenchの表示後失効と後着応答、#2597/#2601へSession/Dirty Patch/Save Group、#2506/#2582/#2635へSource/Role/Query非出力依存、#2628/#2611へ実Provider/cohort、#2516へConsumer別開示、#2586へ同一固定Scenario E2E、#2598/#1174へ実Request/Effect。TEI実製品の一気通貫、実Host/DB/Studio/SHO、業務Owner受理は**NOT RUN**。
 
 **採否・拡張の停止線**：標準Dataを普通に使えるL0ケースを退行させず、Type/Relation/Roleの明示情報の深さに応じて説明の精度を上げる。開発者へ追加Ontology記入を義務化しない。新Core kind/公開Context巨大struct/専用組織ACL/第二Query・UI・Event Store/独自Hostを先行実装しない。ここでのV8 fixtureの`witnessed`は合成条件であり、実Providerの物理取得を証明しない。
+
+
+### 52.5 2026-11-03のmain統合済み部品と未接続箇所
+
+関連する別PRの**GitHub実状態**を確認したところ、組織合成Reference #2596のほか、標準Function別Mapping/Rule Footprintの[PR #2624](https://github.com/hat47x/tei-platform/pull/2624)、Provider route/cohort合成の[PR #2627](https://github.com/hat47x/tei-platform/pull/2627)、CLIからConsumer・Source資格までの[PR #2626](https://github.com/hat47x/tei-platform/pull/2626)、Everything is Data横断受入の[PR #2629](https://github.com/hat47x/tei-platform/pull/2629)は**merged**。これは「個別Component/Referenceがmainにある」という状態に限る。反対に、実Workbench/open-world表示資格[PR #2631](https://github.com/hat47x/tei-platform/pull/2631)、複数Editing Context[PR #2601](https://github.com/hat47x/tei-platform/pull/2601)、追加組織RC/VF [PR #2655](https://github.com/hat47x/tei-platform/pull/2655)は**Draft/未統合**（2026-11-03再照合時）。#2586で同じMeaning/Query/Context/実Provider/Consumer/Actionを通した一つの試行による適合をまだ確認していない。
+
+**統合順**：まず#2586の一固定組織Scenarioを用い、mainにあるReference/実CLIの受渡し可能なID・実API・欠落Edgeを静的照合する。次に実Query/Providerから得たread witnessがない箇所を`unverified`として保持し、Table/Graph/SHO・編集Sessionの旧選択/既表示資格を照合する。最後に同じScenarioで実Request/Host Grant/Effectと独立readを照合する。**merge済み部品の存在、複数PRの各局所PASS、表示値一致だけを足し算して製品E2E成功へ昇格しない**。#1119の既存Priority/Gateを変えず、未成熟な追加Engineや完全な組織専用Schemaの導入は避ける。
