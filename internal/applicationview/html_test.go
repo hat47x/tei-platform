@@ -24,6 +24,9 @@ func TestRenderHTMLEscapesLabelsAndRendersInputs(t *testing.T) {
 	if !strings.Contains(html, "参照: order_entry.customer_reference") {
 		t.Fatalf("lookup was not rendered: %s", html)
 	}
+	if !strings.Contains(html, `<button type="button" data-capability="sales.confirm_order">confirm_order</button>`) {
+		t.Fatalf("command was not rendered: %s", html)
+	}
 	if strings.Contains(html, "<script>alert(1)</script>") {
 		t.Fatal("label was not escaped")
 	}

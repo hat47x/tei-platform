@@ -142,14 +142,24 @@ func writeViewText(out io.Writer, view applicationview.View) (int, error) {
 		if _, err := fmt.Fprintln(out, "navigations: (none)"); err != nil {
 			return 2, err
 		}
-		return 0, nil
-	}
-	if _, err := fmt.Fprintln(out, "navigations:"); err != nil {
-		return 2, err
-	}
-	for _, navigation := range view.Navigations {
-		if _, err := fmt.Fprintf(out, "  - %s (%s) data=%s\n", navigation.From, navigation.Kind, navigation.Data); err != nil {
+	} else {
+		if _, err := fmt.Fprintln(out, "navigations:"); err != nil {
 			return 2, err
+		}
+		for _, navigation := range view.Navigations {
+			if _, err := fmt.Fprintf(out, "  - %s (%s) data=%s\n", navigation.From, navigation.Kind, navigation.Data); err != nil {
+				return 2, err
+			}
+		}
+	}
+	if len(view.Commands) > 0 {
+		if _, err := fmt.Fprintln(out, "commands:"); err != nil {
+			return 2, err
+		}
+		for _, command := range view.Commands {
+			if _, err := fmt.Fprintf(out, "  - %s (%s)\n", command.Label, command.Capability); err != nil {
+				return 2, err
+			}
 		}
 	}
 	return 0, nil

@@ -18,6 +18,7 @@ small{font-weight:normal;color:#666}
 .entry label{text-align:right;color:#333}
 .entry input{max-width:24rem;padding:.25rem}
 .lookup{grid-column:2;color:#666;font-size:.85rem}
+.actions{display:flex;gap:.5rem;margin-top:1rem}
 nav{margin-top:2rem;border-top:1px solid #ddd;padding-top:1rem}
 </style>
 </head>
@@ -30,7 +31,7 @@ nav{margin-top:2rem;border-top:1px solid #ddd;padding-top:1rem}
 {{if .Values}}<select id="{{.Attribute}}" name="{{.Attribute}}"{{if .Immutable}} disabled{{end}}>{{range .Values}}<option value="{{.}}">{{.}}</option>{{end}}</select>{{else}}<input id="{{.Attribute}}" name="{{.Attribute}}" type="{{.Input}}"{{if .Required}} required{{end}}{{if or .Immutable .Lookup}} readonly{{end}}>{{end}}
 {{if .Lookup}}<span class="lookup">参照: {{.Lookup.Pattern}} → {{.Lookup.TargetAttribute}} ({{.Lookup.TargetType}})</span>{{end}}
 </div>
-{{end}}</form>
+{{end}}{{if .Commands}}<div class="actions">{{range .Commands}}<button type="button" data-capability="{{.Capability}}">{{.Label}}</button>{{end}}</div>{{end}}</form>
 {{if .Navigations}}<nav>
 <h2>遷移元</h2>
 <ul>{{range .Navigations}}<li>{{.From}} ({{.Kind}}){{if .Data}} — data: {{.Data}}{{end}}</li>{{end}}</ul>

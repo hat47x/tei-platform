@@ -304,12 +304,23 @@ func (p *Parser) parsePatternInteraction() (*application.Interaction, error) {
 				return nil, p.errAt(fromTok, err.Error())
 			}
 			out.Navigations = append(out.Navigations, application.InteractionNavigation{From: from})
+		case "command":
+			_, _ = p.next()
+			capabilityTok, err := p.expect(TokenIdent)
+			if err != nil {
+				return nil, err
+			}
+			capability, err := core.ParseCanonicalID(capabilityTok.Text)
+			if err != nil {
+				return nil, p.errAt(capabilityTok, err.Error())
+			}
+			out.Commands = append(out.Commands, application.InteractionCommand{Capability: capability})
 		default:
-			return nil, p.errAt(t, "expected item or navigate in interaction")
+			return nil, p.errAt(t, "expected item, navigate, or command in interaction")
 		}
 	}
-	if len(out.Items) == 0 && len(out.Navigations) == 0 {
-		return nil, fmt.Errorf("interaction requires at least one item or navigation")
+	if len(out.Items) == 0 && len(out.Navigations) == 0 && len(out.Commands) == 0 {
+		return nil, fmt.Errorf("interaction requires at least one item, navigation, or command")
 	}
 	return out, nil
 }

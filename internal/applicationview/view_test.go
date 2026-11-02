@@ -14,6 +14,9 @@ func viewWorld() ir.World {
 		Semantics: []semantic.Namespace{
 			{
 				ID: "sales",
+				Capabilities: []semantic.Capability{
+					{ID: "sales.confirm_order", Symbol: "confirm_order"},
+				},
 				Data: []semantic.Data{{
 					ID: "sales.order",
 					Attributes: []semantic.Attribute{
@@ -59,6 +62,7 @@ func viewWorld() ir.World {
 							},
 						},
 						Navigations: []application.InteractionNavigation{{From: "order_entry.recent_orders"}},
+						Commands:    []application.InteractionCommand{{Capability: "sales.confirm_order"}},
 					},
 				},
 			},
@@ -161,5 +165,15 @@ func TestBuildCarriesRequiredAndImmutable(t *testing.T) {
 	}
 	if view.Items[1].Required || view.Items[1].Immutable {
 		t.Fatalf("item=%+v", view.Items[1])
+	}
+}
+
+func TestBuildCarriesCommands(t *testing.T) {
+	view, err := applicationview.Build(viewWorld(), "order_entry", "order_entry.order_record")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(view.Commands) != 1 || view.Commands[0].Capability != "sales.confirm_order" || view.Commands[0].Label != "confirm_order" {
+		t.Fatalf("commands=%+v", view.Commands)
 	}
 }

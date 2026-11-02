@@ -69,10 +69,17 @@ type InteractionNavigation struct {
 }
 
 // Interactionは、Patternが持つ対話の宣言を表す。
-// Pattern Kindを増やさず、項目の並び・参照入力・遷移だけを保持する。
+// Pattern Kindを増やさず、項目の並び・参照入力・遷移・起動を保持する。
 type Interaction struct {
 	Items       []InteractionItem       `json:"items,omitempty"`
 	Navigations []InteractionNavigation `json:"navigations,omitempty"`
+	Commands    []InteractionCommand    `json:"commands,omitempty"`
+}
+
+// InteractionCommandは、対話から起動できるCapabilityへの参照である。
+// 効果や結末はCapability側に置き、ここでは起動の意図だけを持つ。
+type InteractionCommand struct {
+	Capability core.CanonicalID `json:"capability"`
 }
 
 // PatternにはApplication上の意図だけを保持する。

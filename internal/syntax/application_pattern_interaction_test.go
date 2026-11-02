@@ -92,3 +92,22 @@ func TestParseRecordApplicationPatternInteractionRejectsLookupWithoutTarget(t *t
 		t.Fatal("lookupのtarget attributeがない宣言を拒否していません")
 	}
 }
+
+func TestParseRecordApplicationPatternInteractionCommand(t *testing.T) {
+	src := `pattern order_entry.order_record record {
+    data sales.order
+    interaction {
+        command sales.confirm_order
+    }
+}`
+	got, err := syntax.NewParser(src).ParseApplicationPattern()
+	if err != nil {
+		t.Fatalf("parse pattern: %v", err)
+	}
+	if got.Interaction == nil || len(got.Interaction.Commands) != 1 {
+		t.Fatalf("commands=%#v", got.Interaction)
+	}
+	if got.Interaction.Commands[0].Capability != core.CanonicalID("sales.confirm_order") {
+		t.Fatalf("command=%#v", got.Interaction.Commands[0])
+	}
+}

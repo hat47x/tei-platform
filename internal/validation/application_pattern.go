@@ -42,7 +42,7 @@ func validateApplicationPatterns(w ir.World) []Diagnostic {
 	semanticData := map[core.CanonicalID]struct{}{}
 	semanticDataAttributes := map[core.CanonicalID]map[core.CanonicalID]core.CanonicalID{}
 	semanticRelations := map[core.CanonicalID]applicationPatternRelationRef{}
-	semanticCapabilities := map[core.CanonicalID]struct{}{}
+	semanticCapabilities := map[core.CanonicalID]core.CanonicalID{}
 	for _, ns := range w.Semantics {
 		for _, data := range ns.Data {
 			semanticData[data.ID] = struct{}{}
@@ -70,7 +70,7 @@ func validateApplicationPatterns(w ir.World) []Diagnostic {
 				// Pattern側では存在確認だけを行い、同じ原因のDiagnosticを増やさない。
 				continue
 			}
-			semanticCapabilities[capability.ID] = struct{}{}
+			semanticCapabilities[capability.ID] = ns.ID
 		}
 	}
 
@@ -138,7 +138,7 @@ func validateApplicationPatterns(w ir.World) []Diagnostic {
 			case application.PatternBrowse:
 				out = append(out, validateBrowsePattern(app, pattern, patternSubject, semanticData, queries)...)
 			case application.PatternRecord:
-				out = append(out, validateRecordPattern(app, pattern, patternSubject, semanticData, semanticDataAttributes, patterns, semanticRelations)...)
+				out = append(out, validateRecordPattern(app, pattern, patternSubject, semanticData, semanticDataAttributes, patterns, semanticRelations, semanticCapabilities)...)
 			case application.PatternReference:
 				out = append(out, validateReferencePattern(app, pattern, patternSubject, semanticRelations)...)
 			case application.PatternCommand:
@@ -262,6 +262,7 @@ func validateRecordPattern(
 	semanticDataAttributes map[core.CanonicalID]map[core.CanonicalID]core.CanonicalID,
 	patterns map[core.CanonicalID]applicationPatternRef,
 	semanticRelations map[core.CanonicalID]applicationPatternRelationRef,
+	semanticCapabilities map[core.CanonicalID]core.CanonicalID,
 ) []Diagnostic {
 	var out []Diagnostic
 
@@ -281,7 +282,7 @@ func validateRecordPattern(
 			pattern.Data,
 		))
 	} else {
-		out = append(out, validateRecordPatternInteraction(app, pattern, patternSubject, semanticDataAttributes, patterns, semanticRelations)...)
+		out = append(out, validateRecordPatternInteraction(app, pattern, patternSubject, semanticDataAttributes, patterns, semanticRelations, semanticCapabilities)...)
 	}
 
 	if pattern.Relation != "" {
@@ -327,6 +328,7 @@ func validateRecordPatternInteraction(
 	semanticDataAttributes map[core.CanonicalID]map[core.CanonicalID]core.CanonicalID,
 	patterns map[core.CanonicalID]applicationPatternRef,
 	semanticRelations map[core.CanonicalID]applicationPatternRelationRef,
+	semanticCapabilities map[core.CanonicalID]core.CanonicalID,
 ) []Diagnostic {
 	var out []Diagnostic
 	if pattern.Interaction == nil {
@@ -442,6 +444,35 @@ func validateRecordPatternInteraction(
 				itemType,
 				item.Lookup.TargetAttribute,
 				targetType,
+			))
+		}
+	}
+
+	usedSemantics := map[core.CanonicalID]bool{}
+	for _, namespace := range app.SemanticUses {
+		usedSemantics[namespace] = true
+	}
+	for _, command := range pattern.Interaction.Commands {
+		namespace, ok := semanticCapabilities[command.Capability]
+		if !ok {
+			out = append(out, errFor(
+				patternSubject,
+				"UNKNOWN_APPLICATION_PATTERN_INTERACTION_COMMAND",
+				"record pattern %s declares interaction command %s that is not a capability",
+				pattern.ID,
+				command.Capability,
+			))
+			continue
+		}
+		if !usedSemantics[namespace] {
+			out = append(out, errFor(
+				patternSubject,
+				"APPLICATION_PATTERN_INTERACTION_COMMAND_SEMANTIC_NOT_USED",
+				"record pattern %s declares interaction command %s from namespace %s that application %s does not use",
+				pattern.ID,
+				command.Capability,
+				namespace,
+				app.ID,
 			))
 		}
 	}
@@ -592,7 +623,7 @@ func validateReferencePattern(
 func validateCommandPattern(
 	pattern application.Pattern,
 	patternSubject subject.Subject,
-	semanticCapabilities map[core.CanonicalID]struct{},
+	semanticCapabilities map[core.CanonicalID]core.CanonicalID,
 ) []Diagnostic {
 	var out []Diagnostic
 

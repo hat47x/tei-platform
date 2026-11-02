@@ -22,6 +22,13 @@ type View struct {
 	Data          core.CanonicalID        `json:"data,omitempty"`
 	Items         []Item                  `json:"items,omitempty"`
 	Navigations   []Navigation            `json:"navigations,omitempty"`
+	Commands      []Command               `json:"commands,omitempty"`
+}
+
+// Commandは、対話から起動できるCapabilityを解決した結果である。
+type Command struct {
+	Capability core.CanonicalID `json:"capability"`
+	Label      string           `json:"label,omitempty"`
 }
 
 // Itemは、対話に現れる項目と、その型・表示名・入力部品・意味の役割・参照先を表す。
@@ -69,6 +76,7 @@ func Build(world ir.World, applicationID, patternID core.CanonicalID) (View, err
 	dataAttributes := map[core.CanonicalID]map[core.CanonicalID]semantic.Attribute{}
 	relations := map[core.CanonicalID]semantic.Relation{}
 	typeValues := map[core.CanonicalID][]string{}
+	capabilities := map[core.CanonicalID]string{}
 	for _, candidate := range world.Applications {
 		for _, pattern := range candidate.Patterns {
 			if _, exists := patterns[pattern.ID]; !exists {
@@ -81,6 +89,13 @@ func Build(world ir.World, applicationID, patternID core.CanonicalID) (View, err
 			if len(typ.Values) > 0 {
 				typeValues[typ.ID] = typ.Values
 			}
+		}
+		for _, capability := range namespace.Capabilities {
+			label := capability.Symbol
+			if label == "" {
+				label = string(capability.ID)
+			}
+			capabilities[capability.ID] = label
 		}
 		for _, data := range namespace.Data {
 			attributes := map[core.CanonicalID]semantic.Attribute{}
@@ -174,6 +189,13 @@ func Build(world ir.World, applicationID, patternID core.CanonicalID) (View, err
 			Kind: source.Kind,
 			Data: source.Data,
 		})
+	}
+	for _, command := range pattern.Interaction.Commands {
+		label, ok := capabilities[command.Capability]
+		if !ok {
+			return View{}, fmt.Errorf("interaction command %sはcapabilityではありません", command.Capability)
+		}
+		view.Commands = append(view.Commands, Command{Capability: command.Capability, Label: label})
 	}
 	return view, nil
 }
