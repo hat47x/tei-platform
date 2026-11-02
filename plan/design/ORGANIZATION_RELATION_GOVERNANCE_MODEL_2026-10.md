@@ -1650,7 +1650,7 @@ Source Revision不一致でhelperを停止させる。UI選択epoch、Provider S
 
 - **新規29/29 PASS**：最新GitHub Blob `69f8c6d40b7cea7335bdb417ac1535f177bc63ff`のテスト本体をV8互換Runnerで確認。表示行とRule結果の反例、必要なRule経路・Scope・版・Cohort、既知の全件期待と物理Read不足、合成Disclosureの負例を含む。
 - **現行合成Reference全体141/141 PASS**：同一の共通Source/Scenarioを読む7ファイルについてGitHub readback後に再評価（27+11+16+16+20+22+29）。
-- **Native Node/GitHub Actionsは今後の観測対象**：`.github/workflows/tei-org-semantic-reference-node.yml`は新しい`verify-rule-footprint.mjs`も実行対象へ追加した。実Workflow runの対象SHA・exit・logが確認されるまでCI成功と言わない。
+- **実Node CI（限定の実測）**：合成Reference候補 commit `a01a2addc680bc33c5ceee782e8b48e3a77a736f` について、[GitHub Actions #41456286651](https://github.com/hat47x/tei-platform/actions/runs/41456286651) の `synthetic-node` job #125313679792が**SUCCESS**。Node **v22.16.0**、exact HEAD/clean pre-postのStep合格、`verify.mjs` **27件PASS**、`node --test` **114件PASS・fail 0**（合計141件の独立合成チェック）をjob logで確認。Code Blob `verify-rule-footprint.mjs`=`69f8c6d40b7cea7335bdb417ac1535f177bc63ff`も同jobで照合。**この結果は当該コミット版だけの資格**であり、その後のREADMEやReference修正を含む新しいHEADは、再実行の対象SHAを確認するまで未資格。製品Query/Rule/Provider/Host・Owner意味受理は別のNOT RUN。
 - **正式TEI製品試験はNOT RUN**：`internal/semantic`・正式Rule/Validation、`internal/operations`、Query/Context、実DB/API/Replica、Consumer egress、Studio/SHO、現在のHost/Grant、Ownerによる業務意味受理はこの合成テストで実行していない。
 
 ### 47.4 他担当へ渡す次の最小縦断
