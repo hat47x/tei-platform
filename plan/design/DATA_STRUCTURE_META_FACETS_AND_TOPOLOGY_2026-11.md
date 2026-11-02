@@ -521,3 +521,85 @@ M1〜M10は既に時間と数学法則を含むが、M7の「いつの値か」�
 **Ownerは増設しない**：型とFacetは#2495/#2544、Context・Grainは#2506、Pattern適合は#2507、標準UIは#997/#1124、View→Intentは#2500、複数編集ContextのDirty State・Saveは#2597、実Effect/Hostは#1174、AI/SHO向けDisclosureは#2516。今後の最初の確認は「同じ受注Header/Detailまたは組織所属Contextを、TableとGraph/CUIで説明しても同じSource/Meaningを参照でき、どの編集候補を許さないか説明できるか」とし、既存#2586の統合Fixtureに帰属する。
 
 **状態**：標準UIへの投影を検証するメタモデル上の要件整理。自動Component選択、編集Intent生成、本番Host、デスクトップUIの製品実装やOwner受理は**NOT RUN／未採用**。新しくUI種類ごとのCore型階層や全用途の万能UI Generatorを導入した主張ではない。
+
+## 24. 2026-11-02 Everything is Data：標準構造・意味Role・構文糖衣・実行を接続する
+
+新しい横断親[#2619](https://github.com/hat47x/tei-platform/issues/2619)、担当[#2620](https://github.com/hat47x/tei-platform/issues/2620)（標準構造と意味解釈）、[#2621](https://github.com/hat47x/tei-platform/issues/2621)（Markdown Authoring）、[#2622](https://github.com/hat47x/tei-platform/issues/2622)（Data Operations）との関係を確認した。M1〜M10と動的意味M11候補は、新Core型Kindの一覧でなく、標準データ構造へRoleを適用する際に**意味・保存性・利用条件を問う分析項目**として使う。
+
+### 24.1 「全てがデータ」と「全てが同じ意味」を分離
+
+Everything is Dataは、Function、Model、Rule、Test、Scenario、Projection、Generator等の定義を標準構造（Record、Sequence、Relation、Expression、Referenceなど）の組合せとして**記述・編集・追跡できる**ことを指す。全てを同じPrimitive型に変えるのでも、全ての記述を実行可能コードにするのでもない。
+
+| 記述側の役割（候補） | 保存する対象 | 意味が成立するための追加条件 |
+| --- | --- | --- |
+| Value / Literal | 入力値・Record・例示 | 元値・Presence・型・出現とScope |
+| Definition / Declaration | Function、Data Model、Rule等 | 安定ID・Namespace・Source span・版・Owner |
+| Reference / Binding | TypeRef、OperatorRef、Relation path、Plugin | 解決先・Scope・曖昧性・版 |
+| Expression / Application | Filter、演算、Query、変換 | Operator束縛・引数・型/Effect・評価文脈 |
+| Interpretation Role | Function/Test/Model等の意味の付与 | Required Shape・Role/Operator ID・Version・依存関係 |
+| Evidence / Acceptance | 形式主張・Expected・Observed・意味受理 | asserted/derived/tested/observed/acceptedを別記録 |
+
+表の**Interpretation Role**は、§10の七つの「対象・構成・性質・文脈・利用条件・根拠・実現」という**説明上の役割**とは別概念。前者は意味解釈部品が構造へ与えるRole、後者は同じ情報を二重正本へ保存しないための整理である。同じRecord shape・同名Functionから同じ意味IDや許可を推論しない。
+
+複数Roleは適用可能とし、同一Carrierに対する複数の演算構造・異なるLaw・同名Operator競合・適用条件の矛盾は#2544のOperator束縛へ返す。意味Roleの適用だけからOwnerの意味受理、Hostの実行能力、実Providerの副作用資格へ昇格させない。
+
+### 24.2 構文糖衣は同じ意味束縛へ到達したときだけ統合する
+
+関数形式・パイプライン形式・メソッドチェーン・Markdown表／式・Graphの構文は、**明示された同じOperatorとOperandへ解決した場合に限り**同じ型付きExpressionへ投影できるという仮説を検証する。
+
+比較のための擬似Authoring（現行TEI Script構文として採用済みという意味ではない）：
+
+    where(orders, isOpen)             // function
+    orders |> where(isOpen)           // pipeline
+    orders.where(isOpen)              // method
+    | result | operator | input  | predicate |
+    | active | where    | orders | isOpen   |
+
+解決の正本候補は字句としての「where」でなく、**Operator ID/versionと引数Role、Source Reference、型／Effectを持つApplication**。構文違いを消してもSource span、文書上のOccurrence、提示順、記述者の意図、未受理状態は失わない。
+
+同じ意味と呼ぶために確認すること：
+1. 入出力のSemantic Subject、Operator namespace/ID/version、引数の型と束縛の一意性。
+2. Boolean／三値論理／missing/null、Providerのcollation、精度と丸め、時点とEffect/Purity。
+3. 対象集合のset/bag/sequence、順序・重複、Grain、Relation path、取得範囲・完全性、Limit/Sort/Joinとの評価順。
+4. Provider pushdownとローカル実行の同等性・未対応・必要な独立Oracle。
+5. Source spanと意味版、Syntax修正／意味変更／Target再生成の差分。
+
+RDB行のwhereとGraphの辺・Pathのwhere、Treeの再帰探索、SQLのWHEREという同じ字句を、必ず同じOperationとして推論しない。何をFilterするか、時点・可視範囲・重複・無限性が一致しない場合はRole解決を保留する。**表の一列にwhereと書いてあるだけでその表を実行コードにしない**（#2621）。
+
+別チャットでは既存言語構文を活かす方向（TypeScript系が第一候補、Starlark/CEL等を比較）を議論している。これは**検討中のAuthoring候補**であって、TEI言語の正式採用ではない。TEI固有の価値はSyntaxの独自性ではなく、Semantic Context、Facet、Relation、Operator、Plugin、Loweringとその出典/意味保存へ置く（#988/#1018/#1063）。AIフレンドリー性は可読性に加え、曖昧なBindingと未対応ReasonをCUI/JSONで説明できるかで評価する。
+
+### 24.3 意味解釈部品の自己記述とbootstrap
+
+Role/Operatorの解釈部品自身をRequired Shape・適用条件・Operator/Law・Effect・Version・Target条件という標準データで表現する案は#2620が所有する。検証の出発点は次の段階を分けること：
+
+- **最小bootstrap**：Literal、Record/Sequenceの最低限の構成、安定Reference、Source span、Plugin解決の規則。
+- **Role候補解決**：必要なShapeとScope、依存するRole/Operatorと版、未提供Plugin・曖昧な候補。
+- **意味解釈**：型付きExpression、Lawの適用条件、EvidenceとOwnerによる意味受理を明示。
+- **Target実現**：Provider capability、Lowering、実Host/Authority、Effect/Receiptを独立に確認。
+
+依存循環、二Roleの同じOperator名の衝突、Plugin版の非一致で、暗黙の優先順位・デフォルト実装への置換により成功したと見せない。新しい共通Runtimeや第二Semantic Registryをこの比較の前提にしない。
+
+### 24.4 Data Operationsを非RDBも含む圧力として使う
+
+#2622のData Operations候補は、Data Modelの構造・Function Data Contextの使用範囲・Providerの物理実現を分ける比較場となる。Data ModelにRelationが存在することと、あるFunctionがそれを取得することは異なる。**利用する起点・Relation path・Field・grain・Read Scope／完全性・選択Snapshotを明示Mapping**する（#2506/#2622）。
+
+where／select／join／traverse／aggregate等のOperatorが合成できる場合でも、RDBのbag/JOIN・SQL NULL、Graphの巡回とCycle、Treeの子探索、Streamの未完全集合では、保持できるObserverが異なることを示す。特殊なSQL/native Queryは明示Bindingで保ち、Queryの正本とLineageを失わない（#2387）。ProviderにPushdownした演算がローカルの結果と同等とされるのは対象Scope/Oracleで観測した場合に限る。書込みは#2500/#2597のTyped Intentから既存Owner Action/Hostへ接続し、read-only Derived Datasetや集約表から暗黙の全件置換を起こさない。
+
+### 24.5 Markdown・表テスト・Studio／SHOへの投影
+
+#2621に合わせ、自由文章、モデル定義表、Function表、独立Expected表、単なる例示、コードフェンス、数式を、Profile・明示Role・Source位置によって分類する。表や式の形が同じという理由だけで意味定義・テスト・実行を同一視しない。Source／出典・Meaning／受理・Expected／独立Oracle・Target実測は別。
+
+同じ安定Subject ID/版から、標準Studioの表・図・式、CUI構造説明、コード/Target、SHO文書、Scenario Example/Testを出しても、**生成成功と各Consumerのactual read/load成功は別**（#2497/#2516/#2604）。文書上の同一TEI参照の複数Occurrenceと局所説明上書きを区別し、意味への変更は受理済みSourceの更新経路へ渡す。文書の見た目とモデルの業務意味の一致も別検査とする。
+
+### 24.6 既存Ownerへ渡す具体的実証
+
+| 担当 | 最小の反証可能な問い | 資格 |
+| --- | --- | --- |
+| #2620 | Function/Model/Rule/Test/Projectionの5定義を標準構造とRoleで説明できるか。複数Role・循環・版衝突の負例 | 設計／未実行 |
+| #988/#1018/#1063 | 関数形・Pipeline・Markdown演算表が同じ型付き束縛へ到達する条件、異なるときの診断 | 設計／未実行 |
+| #2621 | 表の行順・Markdown装飾・ファイル移動でSource位置が変わっても意味IDを保持し再解決できるか | 設計／未実行 |
+| #2622/#2387/#2506 | RDB・Graph/Tree・RESTで演算を合成する場合のbag/grain/NULL/Scope/Provider差の報告 | 設計／未実行 |
+| #2497/#2500/#2597 | 集約・Display Projectionの情報損失を説明し、Typed Edit候補の必要前提を示すか | 設計／未実行 |
+| #2514/#2586/#1174 | 独立Oracle→同版Headless→外部Host Effectの証拠が段階別に示されるか | 設計／未実行 |
+
+**現状**：他チャットおよびGitHub #2619〜22の横断設計をメタ概念空間へ接続した**採用前の設計比較**。Role解決、構文同等性、Provider pushdown、Studio/SHO/CUI実読込、外部Host、Ownerの意味受理は**NOT RUN**。本#2495で新Parser・Runtime・全用途のOperation Engineを重複実装しない。
