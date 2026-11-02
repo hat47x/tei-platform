@@ -109,3 +109,80 @@ Discrete / fixed-step / event-driven / continuousの分類、Actor・Operatorの
 **設計判断待ち**：比較票のどの欄を既存Context/Typed Reference/Service Contractから参照すべきか、Port/Connectorとして公開すべき最小部分、静的資格と実Target資格の照合点、Nested/Flatteningで保存する外部観測の定義、Plugin差替え時の再資格化条件。
 
 **撤回条件**：A/G用の独立SSOTが増えてMeaning/Action/Contextを複製し始める、標準Plugin作者に無用なFacet/Clock宣言を強制する、有限PASSを一般証明・実Host Effectへ自動昇格する、新しいTEI独自Hostを必要とする設計になった場合。これらが現れれば既存契約への参照設計へ戻し、反例と不足情報をOwnerへ還元する。
+
+## 6. 2026-11-02追補：Semantic Contextから汎用Actionを適用する（設定主体・UI非依存）
+
+### 6.1 「機能タイプ別のボタン」から「意味に合うAction候補の適用」へ
+
+業務システム向け標準操作、グラフ上の関係操作、表・Chart・Gantt、CUI／外部Consumerは、同じ**受理済みSemantic Action/Service Contract**を利用できる。差し替え対象は画面Kindではなく、**選択されたFunction Data ContextのSubject/Relation Role・Result Grain・取得Scope・Operation目的**である。
+
+比較の考え方：
+
+`Accepted Action Contract + Semantic Subject/Relation/Typed Role + Context/Result Evidence + Required A/G + Target Capability ⇒ Action applicability candidate + diagnostics`
+
+さらに表示時に、`Action candidate + UI Element/Interaction capability ⇒ Presentation affordance`として、標準Table/Form/Chart/Graph/Tree／CUIに投影する。
+
+ここで`candidate`は実行許可ではない。**実Request/現在Host Authorization/Provider Commit/業務完了は既存実行境界**（#2598/#1174）に残す。Studio/Modeler側のSource編集と実業務データ更新を同じActionへ混ぜない。標準UIは既存の意味・構造から導出し、専門的な表示のためだけに新しい専用Core UIや独自Hostを要求しない。
+
+| Contextまたは操作要求 | 標準Action適用の判断候補 | 重要な負例 |
+| --- | --- | --- |
+| **一意に識別したEntity** | 元Readの対象ID・Versionと受理済み限定PATCHがある場合、部分ページでも当該Entityの変更候補を提示 | 別行への転写、全体Replace、元版の欠落、別Action目的 |
+| **JOIN結果の重複出現** | 明示した業務Entity IDへ帰属できれば1対象候補 | 出現した3行を3件の独立更新とみなす |
+| **Aggregate Grain** | 読取り／drill-down／Measureの合法な再集計候補。必要なら`sum,count`等の中間状態を要求 | 集計点を直接個別行へ書き戻す |
+| **Relation occurrence** | `link/unlink/reparent`等、Relation/Edgeの対象が明示された操作 | GraphのNode選択を相手Entityの削除に読み替える |
+| **子集合の一括処理** | **Actionが要求する母集団・Scope・時点の完全性**が根拠付きで成立する場合のみ候補 | UI表示1ページやRLS可視集合だけから全体を確定 |
+| **親に紐づく新規子Entity** | Parent Anchor/Relation Roleと受理済みActionに基づくcreate候補 | 親不明／暫定IDのScope曖昧なままProvider Keyを作る |
+| **外部Consumer/CUI** | 同じ意味対象・Action revisionから型付き候補。表示を各Consumerが選択 | Consumerごとの暗黙別Action、AI側でGrantを発行 |
+
+対象Actionの**業務目的**は明示される必要がある。現行の候補Operation Surfaceが同じEffect/Dataに対し複数Capabilityから辞書順で一つのBindingを選ぶことがあるという[#2598 IB-12](https://github.com/hat47x/tei-platform/issues/2598#issuecomment-6572593885)は、`submit`と`cancel`の意味を取り違える可能性を示す**静的な設計上の負例**。Action適用は対象IDや同じ書込み型が合うだけで肯定しない。実Driverへの対応が不確かな場合は候補併記／未解決を返し、勝手に辞書順最小を正式業務Actionへ採用しない。
+
+### 6.2 三つの資格：意味適用・Target実現・現在実行権限
+
+1. **Semantic Applicability**：受理済みActionのpurpose/role、Context identity、Grain/Scope/Completeness、Presence・Field型・NULL/欠損・期待版、単位・時点などに対して候補が整合するか。
+2. **Target Realizability**：そのActionを実行先のPlugin/Service/Provider/外部Hostで提供できるか。Binding不足・必須Capability未接続・契約版違いは`unsupported/unresolved`として説明する。
+3. **Actual Execution Qualification**：現在の主体/Account/Resource/Grant、Commit時の期待状態とPolicy版、Resourceの実状態、Receipt等。これは画面や静的Contractでは決定できない。実行直前・確定境界は#1174のOwner。
+
+そのため、標準UIのButton表示・enable、CUIの操作候補、ClientのDirty Patchは、**実際の保存成功や認可資格ではない**。候補のシリアライズ・再利用ではSource/Context epoch/Action revision/Target bindingの再照合を要求する（#2598）。
+
+### 6.3 開示と適合診断を独立に制御する
+
+内部のContextと、AI/SHO/CLI/GUIなどのConsumerへ**公開してよい説明**には別の資格がある。Data Contextの取得完全性が`unknown`か、RLS等により一部の存在を伏せる必要があるかを内部で区別しても、低権限Consumer向けに`4件非表示`・`非公開部署の追加Actionあり`・内部Relation/Provider名を返せば情報漏えいになり得る。
+
+- **内部判定**は`unresolved: entire_action_scope_not_established`等の根拠を保持し、必要なOwner再検証へ戻す。
+- **開示用Projection**は、すでに許可されたSubject/Actionラベルと開示可能な診断に限る。秘密を理由とするUnknown/Deniedを、秘密の存在・件数・構造が推測できる固有メッセージへ翻訳しない。
+- **候補公開**は実行Grantではなく、ボタンを隠すことも実行禁止の強制ではない。現在権限と操作実行は外部Host/Providerへ委譲する。
+- **二世界試験**では公開可能なSubject/Ruleが同じで、内部の非公開件数だけが違う二つの人工世界のConsumer出力JSON（候補配列、Status、理由出力の有無）を比較する。
+
+ConsumerごとのProjection・Disclosure適合は#2516、実CLI/inspectの開示とPolicyは#1178、外部Harness隔離は#2515がそれぞれ所有する。今回の比較ロジックは**正式情報フロー制御器や認可Engineではない**。
+
+### 6.4 追加した自作の有限試験と実測
+
+新しい`plan/fixtures/function-pattern-ag/check_action_applicability.py`を独立Python標準ライブラリで実行した。
+
+| ID | 局所検査 | 備考 |
+| --- | --- | --- |
+| SA-01〜04 | Table/GraphのUI差、JOIN重複→単一Entity、Aggregateの更新拒否、partialでも一意Entity Patch | Contextの意味対象とUI row数を分離 |
+| SA-05〜06 | 一括変更にはAction Scopeの完全集合性を要求し、可視Page完全と区別 | 本番のRLS/Provider母集団の完全性は未実証 |
+| SA-07〜08 | Relation occurrenceのunlinkとNode選択を区別 | Entity deleteへの暗黙変換を拒否 |
+| SA-09〜13 | 未受理Action、欠損≠Clear、Nullable/期待版/Target Binding | 意味・部分更新・実現条件の分離 |
+| SA-14〜16 | Candidate≠Host Grant、Instance/Key、AVGのsum/count中間状態 | #1174/#2597/#2593と区別 |
+| SA-17〜18 | 秘密件数だけ違う二世界／非公開対象で公開JSON一致 | 有限の候補配列・Statusのみに関する局所的な判別 |
+| SA-19〜20 | 表/単票/Chart/CUI/Nativeの同じ候補と親ID前提 | 実UI/App接続ではない |
+
+**隔離実測**：`python3 check_action_applicability.py`（20/20 PASS）／`python3 -m py_compile`（PASS）。実行したソース9985バイト、SHA-256 `55fa8340ebec73359fd422c3de8d76eb8cf30b59716c5f10a76442a8d518c372`、Git Blob `a8e18aa872aba2608eb5b7bff19f4350c6bd2f0c`。GitHub保存内容と実行ファイルの長さ・Adler32・Git Blobが一致。
+
+本`check_action_applicability.py`の`DataContext`／`Operation`／`Decision`／`public_projection`は**説明用Fixtureの独自型**で、製品TEIの標準型、実Action Provider、現在Grant、開示済みレコードの検証とは異なる。`visible`は信頼された固定入力という仮定であり、実認可判定そのものを実装していない。また、秘密件数の二世界一致20件中2ケースは、一般的な非干渉・Timing/反復問い合わせ/Target違いを証明しない。
+
+先行の合成AG-01〜20と合わせて、このDraftの**自作有限Reference合計40件PASS**。**TEI本体での正式Function/Context/Operation/Driver/Standard UI/External Consumer連携はNOT RUN**、Ownerの業務意味受理も未。
+
+### 6.5 次の製品実証と受入の接続順序
+
+**A0（現行Source照合）**：#1127/#2485の標準Operation Surface・Driver、#2506のContext候補、#2500/#2598のView Change/Intent、#2507のPattern適合票から、現行Semantic/Operation/Contextの参照でAction候補適合を記述できる欄を照合する。**DSL構文は標準Plugin側の能力として扱い、Coreへ独自Parser/固定Action Kindを先行追加しない**。
+
+**A1（Headless）**：同じH/D1/D2の自作合成Fixtureで、(1)直接Entity PATCH候補、(2)Relation unlink、(3)partial集合の一括更新未解決、(4)非可逆Aggregate、(5)同じ対象への異なるAction Purpose（submit/cancel）を**同じSource/Meaning/Context revision**からCUI/JSONへ投影。既存Query/Operation Referenceを実接続し、手書き再宣言を合格としない。
+
+**A2（Consumer）**：同じAction候補を標準Table/Formと外部Host/CLIの少なくとも二Consumerへ提供。UIのButton/Command配置は各Renderer/Pluginの関心事とし、標準モデル構造から得られるMeaningを優先して利用する。開示済みProjectionの同一性は#2516へ、現行Grant/実Effectは#1174へ別資格で渡す。
+
+**A3（運用機能圧力）**：Smart Data的な依存規則・自動操作、組織Membership、複数Providerの複合Save、Sensor→Cognition→Motion、Gantt、文書の構造編集などを追加。各専門Providerの実装と業務正本を分離し、汎用Action適用票の再利用率／追加Adapter・Core Type／誤提示・過少提示率を#2018へ返す。
+
+**採否の判断基準**：提示できる標準操作が増えること、意味対象の誤更新が減ること、UI別の業務規則複製が減ること、失敗/unknown/権限/開示を偽装しないこと、標準データ構造から自然に構成できることを、実Consumerで比較する。正式APIやPlugin Manifestの固定は実証後のOwner判断とする。
