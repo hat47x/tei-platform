@@ -280,3 +280,62 @@ AI向けCUI、SUIキャンバス、SHO文書、標準Table/Graph投影が同じ�
 UIを実装する各Pluginが高次概念を手で宣言するのではなく、標準のRelation／Array形状／Source Reference／Operation契約から**必要な情報を組み立てる**構成を評価する。新しい「Island型」「Collection所属型」のCore列挙を先に追加するのではなく、既存のReferenceが保持する情報と、不足している推論/適合項目を個別に計測する。
 
 **担当境界**：#2497はこのような変換と投影の保存義務、#2495/#2544は構造の分類と演算・Law束縛、#2501はPressure Corpus、#2506/#2507はFunction Data ContextとPattern、#2500はView変更→Typed Intent、TAI SUIはDomain上のMeaningを扱う。二つのGitHub Repoのモデル正本や実装をこの文書から変更しない。
+
+
+## 11. 実Projectionで見えた値忠実度と部分被覆（2026-11-02追補）
+
+**対象・ステータス**：TEI mainで既に追加されたReference Generator Selectionの`record`投影を、基本構造の構成／Presence／数値／多値／Source責務の異なるFacetが交差する圧力として読む。実装上の所有・局所Conformanceは[#2585](https://github.com/hat47x/tei-platform/issues/2585)、一般的な変換・Projectionの意味保存は本#2497、外部形式・Targetの実Consumer実証は#2498、数量の計算上の意味は#1705に残す。
+
+### 11.1 最新mainの具体的な実装と確認できる範囲
+
+- [TEI PR #2576](https://github.com/hat47x/tei-platform/pull/2576)、[#2578](https://github.com/hat47x/tei-platform/pull/2578)、[#2580](https://github.com/hat47x/tei-platform/pull/2580)、[#2581](https://github.com/hat47x/tei-platform/pull/2581)により、多値文字列・数値・optional・booleanのReference Field投影が追加された。
+- [`selection.go`](https://github.com/hat47x/tei-platform/blob/main/tools/reference-generator-selection/selection.go)のFieldは`Primitive/Many/Optional`を別属性として持つ。現行`validateContract`はfield名・入力名・Attribute・Primitiveの存在と重複Field名を検査するが、`many×primitive`のサポート行列と各Projection.Field.InputがContract.Inputsで宣言された入力に一致するかの検査は、当該関数内に見当たらない。`validateAgainstWorkspace`はContract.InputsのPrimitiveをTypeRefに照合するが、Field.Inputの参照に対する同一検査は別途必要。
+- [`text-record.go.tmpl`](https://github.com/hat47x/tei-platform/blob/main/tools/reference-generator-selection/templates/text-record.go.tmpl)は、`many`を各要素`string`の配列として処理する。多値の数値やbooleanに相当するContractを宣言できても、その形に対応した生成コードを出すとは確認できない。
+- 同テンプレートで`std.integer/std.decimal`の単独値は、`map[string]any`を経由して`float64`へcastされる。Go公式[`encoding/json`](https://pkg.go.dev/encoding/json)でも、一般の`interface{}`へ入力されたJSON数値は既定で`float64`。したがって、JSON数値形状の保持は**正確な整数・十進数の値・桁/scaleが保持されたこと**を意味しない。
+- `optional`の欠落と明示`null`はともにフィールド出力を省略する。必須の場合は欠落を`missing`、明示nullを`unresolved`として扱う。つまり**同じ入力値状態でも、利用箇所によって区別が表示される場合と失われる場合がある**。optional booleanの`false`は未設定ではなく、値として保持される。
+- 新規[`record_projection_test.go`](https://github.com/hat47x/tei-platform/blob/main/tools/reference-generator-selection/record_projection_test.go)には、それぞれの生成sourceに指定のcast/分岐が存在するかの確認がある。**異質フィールドの全組合せ、raw numericの厳密性、入力バイトから生成された実行体までの全値比較を網羅した証拠とは異なる。**
+
+### 11.2 多重Facetの組合せを、名前の分類から利用条件へ移す
+
+データ項目を意味上説明するとき、次の関心事を別々に評価する。これは新しい公開Schemaを採用するものではなく、既存TypeRef/Relation/Operator/Projectionを読んで比較するための表現である。
+
+| 項目 | 独立した質問 | 同じ`Primitive`だけでは答えられないこと |
+| --- | --- | --- |
+| Value/Quantity | どの値・Quantity Kindか | decimalの正確な尺度・範囲・単位、codeの発行体系 |
+| Presence | 入力・出力で未指定・null・値・未取得をどう表すか | optionalで情報を省略してよいか、Patchでclear可能か |
+| Cardinality | 単一か、任意個か、最低件数/上限があるか | `many:true`が何件の業務Relationを保証するか |
+| Collection semantics | sequence/set/bagのどれか | 順序・多重度・Key一意性・全件性 |
+| Element encoding | 要素ごとに何の物理型を使うか | `many:true`が数値/boolean配列へ対応するか |
+| Realization | どのTarget/Generator版で変換するか | 字句・精度・形式の損失、実行体とSourceの対応 |
+| Provenance/Authority | 誰のどの版・どのScopeの主張か | Derived Viewの未表示属性、独立のEffectやMeaningの受理 |
+
+これらは**相互に必要な制約を持つため、完全に独立したチェックボックスの直積とは限らない**。例えば`optional`は出力の欠落を許す表示上の性質だが、入力契約のNullable、Queryの未取得、編集Intentの`clear`を自動定義するものではない。`many`は配列形状を指定するが、要素の型とCollection Lawの適用は追加の検査を要する。
+
+### 11.3 用途相対のLoss Budgetと書戻し条件
+
+Projection `p : S→V`を観測するConsumer `C`について、必要な観測集合`O(C)`（例：構造/Presence/整数同一性/Quantity/時点/全件性）を定める。各観測について`p`が保持・消失・未判定のどれであるかを説明し、Consumerが**要求する観測がすべて保存される場合にだけ**当該用途のConformanceを主張する。
+
+- **表示・参考グラフ**：任意の属性の欠落や座標の表示誤差をConsumerが許す場合、結果を限定用途で利用できる。画像座標の誤差許容と金額の十進正確性は別。
+- **厳密な金額・業務IDの保存**：`float64`を経由するReferenceの`std.integer/std.decimal`を、正確性を要求するContractへ自動適合させない。例：`9007199254740993`は二進64bit浮動小数で整数として完全には表現できない。値・字句・scaleの保存を何で要求するかは業務とTargetの契約に従う。
+- **差分・Patch・編集**：欠落とnullを区別する更新要求や、`false`／`0`への明示的変更を扱うには、`optional`による省略だけでは十分でないことがある。元のSourceを参照したTyped IntentやFieldMask相当の明示的な更新範囲が必要かを#2500で判断する（[Protobuf Field Presence](https://protobuf.dev/programming-guides/field_presence/)の比較を参照）。
+- **複合文書の読み取り**：対象Fieldの一部だけをTEIで投影し、他の属性を元のSUI Dataから補う場合、結果のDocumentが全てTEI由来だと推論しない。出所・版・FieldごとのOwnerと、各Consumerが最終的に観測した範囲を区別する。
+
+ここでいうLoss Budgetは**用途に応じて許容する損失の契約**を指し、数値的な普遍スコアや二重の権限エンジンではない。
+
+### 11.4 SUI/TAI実Consumerで「全体の一部だけ」を明示する
+
+TAI mainの[実装README](https://github.com/hat47x/tai-pleroma/blob/main/integrations/pilot-sui-document/README.md)および[移行計画](https://github.com/hat47x/tai-pleroma/blob/main/docs/tei-construction-migration-plan.md)には、Card座標`x/y`（[TAI PR #258](https://github.com/hat47x/tai-pleroma/pull/258)）、optionalな`claimType/holdState`（[#259](https://github.com/hat47x/tai-pleroma/pull/259)）、optional `textReviewed` boolean（[#260](https://github.com/hat47x/tai-pleroma/pull/260)）、artifact形状の検証（[#261](https://github.com/hat47x/tai-pleroma/pull/261)）がある。`critiqueHistory`のような構造体配列、`transform`、`createdAt/updatedAt`などは今回の投影対象外とし、**SUI側の元データを正本とする暫定設計**である。DocumentV1の書込みよりread-only artifactを先行する（[#254](https://github.com/hat47x/tai-pleroma/pull/254)）。
+
+ここには少なくとも三つの正当な変換形式がある。
+
+1. **完全な同一意味の転写**：対象の全FieldとRequired Lawが保持される（ConsumerとContractの範囲を限定）。
+2. **用途相対の部分Projection**：表示や検討に必要なFieldだけを保持し、省略項目のSource／復帰経路・欠落理由を示す。
+3. **複数Sourceからの合成**：異なるSubject/Version/Authority由来の値を、元Sourceを残して同じ表示へ合わせる。
+
+どれを採用するかはConsumerの目的に依存する。**表示可能という事実から、全属性をTEIから復元できること、編集Intentを安全に再適用できること、単一のDelivery正本が成立することは導かれない。** Compositionや部分Projectionの意味はTEI/TAI双方のOwnerへ帰属させる。
+
+### 11.5 受入候補（#2585を実行先とする）
+
+`PFC-01〜12`はIssue #2585に定義。特に、`optional × required`によるPresence差、`many × numeric/bool`の対応範囲、`float64`の数値忠実度、Field→Input→TypeRefの検査、read-only artifactとSUIの非投影Fieldを**同じ固定Versionで別々に**比較する。最初は現行の小さな生成Templateを実行し、Source文字列存在テストを越えて実際のraw JSON出力と終了コードを観測する。
+
+**今回の資格**：source codeとTAIの静的資料を照合した設計仮説。上記PFCを実行した結果やOwnerによる正式な意味受理ではない。標準Core TypeKind・新共通Runtime/Host・独立Source正本の追加は提案していない。
