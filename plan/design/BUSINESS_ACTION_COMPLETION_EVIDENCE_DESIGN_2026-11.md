@@ -279,3 +279,61 @@ BC-14の**B側の限定的な旧挙動**は、[統合済み#2154](https://github
 - **独立P1 #2604/#2516**：同じ設計書に記載されたTarget/Ruleと、実ConsumerがロードしたArtifact/Action Bindingの世代を照合する。SHO/MCP/CUIへ展開するとき、説明用の可視性と内部Witnessの利用資格は別。
 
 上記は既存[#1119 Critical Path](https://github.com/hat47x/tei-platform/issues/1119)のS0〜S5/G0〜G4を拡張・改称するものではない。原モデル1→TEI統合モデル1→外部Host向け成果物／SHO設計書という生成の流れの中で、**「生成/保存/読取/観測」それぞれが本当に同じ必要な意味・一式・Actionを扱ったか**をOwner受理可能な範囲で説明するための設計追補である。
+
+## 12. 業務完了証拠を支えるデータ取得の資格：Everything is Dataから実Provider／Consumerへ
+
+### 12.1 本節が補う境界：正しい業務結果と適格なデータ取得は別
+
+[Everything is Data #2619](https://github.com/hat47x/tei-platform/issues/2619)／[標準データRole #2620](https://github.com/hat47x/tei-platform/issues/2620)／[明示Context Mapping #2624](https://github.com/hat47x/tei-platform/pull/2624)／[Providerの実Read Trace #2628](https://github.com/hat47x/tei-platform/pull/2628)／[複数Provider経路 #2627](https://github.com/hat47x/tei-platform/pull/2627)／[Syntax sugar #2625](https://github.com/hat47x/tei-platform/pull/2625)により、Sourceの意味上のData依存から実Readへ進む際に**複数の異なる保証**があることが明確になった。
+
+§10は単独Witnessの出所・対象・期間・開示、§11は真正な複数Witnessを一つのOperationへ因果接合するための証拠である。本節ではさらに、**(a) 業務Claimが成立したか、(b) 何のデータを要求したか、(c) Providerが実際にどれを読んだか、(d) 取得が許容されたか、(e) その結果や証拠を誰に説明できるか**を別の判定欄とする。
+
+業務上正しい結果が生成されても、読取時の情報取得に問題がある可能性がある。逆に許容された取得であっても、そのデータだけで「業務完了」を証明できるとは限らない。閲覧者への開示を控えることは、内部で証拠が存在しないことも、業務失敗も意味しない。
+
+| 境界 | 主張できる範囲 | 不足または異なる場合 |
+| --- | --- | --- |
+| **Business requirement**（#1125/#267） | Owner受理済みRule・対象集合L・必要な履歴/Final Invariant/外部Handoffを特定 | 真の完了条件・量化・時点が未受理ならBusiness completionは未確定 |
+| **Declared logical footprint**（#2506/#2624） | Function Data Contextに明示したRelation/Field/Role/Grain/Read Scope、要求complete | `Relation`がモデルにあるだけで自動的に取得対象へ加えない。宣言された範囲≠実Read≠実取得complete |
+| **Actual physical acquisition**（#2622/#2628/#2387） | 実Providerが実際にアクセスしたField/Relation/Query対象/Principal/時点・取得証拠 | 表示JSONが同値でも未宣言の機微Fieldを余分に読んだ可能性。Trace欠損は「無アクセス」ではなく**取得状況未確認** |
+| **Provider route / temporal qualification**（#2611/#2627/#1708） | Primary/Replica/Archive/OData等、実Alias/namespace、実Readの時点・取得可能な保証 | 同じ`sales.order`の値でも、異Providerで同等のcurrent snapshot/commit fenceを推論できない |
+| **Acquisition authorization**（既存Host/Provider Authority） | 実際の読取が当該Purpose/Principal/Policyに許されたか | 過剰読取の存在が即Policy違反とは限らない。補助join-key等は**許可と必要性**の実証次第。TEI独自中央認可器を追加しない |
+| **Consumer-facing disclosure**（#2516/#1178） | 当該SHO/Studio/CUI/AI Consumerへ伝えられる値・Claim・根拠要約 | 内部で十分なWitnessを持っていても、個別行や差分件数の開示が許可されたことにはならない |
+| **Executed effect / outcome**（#1174/#1129/#1163） | 当該ActionのRequest→Receipt→独立Effectの因果とOwner完了条件 | Read資格・Rule役割がPASSでも実Commit、対象一致、業務完了を代替しない |
+
+**Data minimizationも別の問い**：宣言通りの出力を得たという有限感度検査（#2624）は、「余分な物理Readがなかった」証拠ではない。一方、実Readに宣言外の補助Fieldが含まれたという事実だけでも、許容の有無や漏洩の有無は確定しない。実Providerのアクセス、Policy適合、Consumerへの情報送出をそれぞれ比較する。Observerに許されない機微なField名や対象件数は説明文へ漏らさない。
+
+### 12.2 Source Roleを業務Ruleに接合する際の確認
+
+Markdown表、構造化Record、インデントDSL、Typed Graphviz、メソッドチェーンは、同じ標準的な構造候補へ正規化できる場合がある（#2625の局所23件）。しかし**構文同値／Role候補／Owner Accepted Meaning／実Run Evidenceは別**。
+
+たとえば`| quantity | positive |`という表が、受理済みValidation Rule・文書内の引用例・独立Expectedのどれに当たるかは、Source occurrence、意味Role/Operator版、Ownerの受理済み対応を参照して決める。意味モデルに付与した`Rule`という役割だけで、原業務のOwner完了述語や実Hostの書込み権限を得たことにはならない。引用文書や未受理のAI提案をActionの実行根拠にしない。
+
+同じBusiness Claimに使用する`Source/Meaning`・`Function Context Mapping`・`Provider Route/Actual Acquisition`・`Evidence Witness`・`Consumer Disclosure`を**既存ID/Refで照合する比較票**を用いる。ここで別のCanonical Claim/Trace/Policy schemaや監査Registryの導入を先決しない。原モデル1→統合モデル1→外部Host LibraryとSHO設計書の導出に、実際に消費したSource/Artifact版を重ねて検証する。
+
+### 12.3 自作合成Reference：AC-01〜06（限定実行済み）
+
+[fixture `verify_claim_evidence_acquisition.py`](../fixtures/business-completion-claims/verify_claim_evidence_acquisition.py)は、**同じ表示値・合成完了Witnessの真値でも取得・利用・開示の資格が異なる**ことを説明する有限比較である。
+
+| ID | 合成観測・期待 | 誤認を防ぐ対象 |
+| --- | --- | --- |
+| **AC-01** | `order.id/status`だけ読む世界と、許可されない`customer.private_note`も取得する世界は同じ表示と完了Witnessを持つ。架空Policy下では取得資格が異なる | 同じResult/業務完了なら物理Readが許容された、と判断する |
+| **AC-02** | ProviderのRead Traceが欠落したとき`unknown` | 取得証拠がないことを「読んでいない」／「違反した」へ変える |
+| **AC-03** | 同じ値のPrimary currentと時点保証が確認できないReplica | Route/時点の資格を値一致やSource IDから継承する |
+| **AC-04** | 同じ形の「受理済みRule」と「引用されたExample」 | Markdown表・データRoleだけでOwner Ruleの受理とみなす |
+| **AC-05** | 内部の証拠は同じだがConsumerへの開示資格が異なる | 内部Witnessの存在から外部共有を自動許可する |
+| **AC-06** | 合成Policyで許可された`order.join_key`を物理補助列として読み、表示対象は不変 | 宣言外のReadを常に違反、あるいは常に許容と機械判定する |
+
+**実行の証拠**：隔離Python **3.13.5**で`python -m py_compile verify_claim_evidence_acquisition.py`をPASS、`python verify_claim_evidence_acquisition.py`を実行して**6/6 unittest PASS**。ローカル実行ファイルのGit blob `5fbb01ba5a657badb5ec76ebf2167d1014d5b619`＝GitHub branch上の保存Blobを確認。SHA256 `ac6b351e60d7d6baeab2781b8f8d5c8bd04ba7d262633c7339126ae89aa3bec9`。
+
+**証明の限界**：このfixtureの`allowed_fields`、`source_role`、`completion_witness`、`provider_route`などは自作入力の仮定である。実TEI ProviderがどのFieldを読んだか、実Policyでアクセスが認められるか、業務Ownerが完了を認めるか、外部Consumerへデータを送信したかを測定していない。実SQL/RDB/OData、Studio/SHO、外部Host、製品Goの結合テスト、正式Owner受理は**NOT RUN**。6件は**分類上の独立性の実測**であり、Business Claim Conformanceや情報非干渉のPASSではない。
+
+### 12.4 既存計画への具体的な追加（S3の判定欄とP1の証拠接合）
+
+- **#1125 S3／#267 Owner判断**：C1〜C6のOwner判断票に、`当該Claimの証拠充足`／`取得根拠と現在性`／`取得の適格性`／`Consumerへの開示資格`を**別列**として追補。拒否事実・根拠不足・非開示を混同しない。Owner意味受理の代行はしない。
+- **#2506/#2624／#2586**：同一固定Meaning/Contextで宣言されたRelation/Field/Grain/Scopeと、実Provider Readの実対象・完全性の取得可能範囲を接合。#2624の20件合成感度試験を、物理Read不存在の証明に合算しない。
+- **#2622/#2627/#2628/#2387**：実ProviderごとのQuery/Request・Raw Read trace・Principal/Route/時点・場合による補助列を既存Adapter/Hostの契約範囲で観測。取得不足と過剰取得、取得時点の違いを残す。#2627独立Go12件と#2628合成Python12件は**局所Reference**であり、TEI製品Providerの証拠は別に必要。
+- **#2620/#2621/#2625、#2516/#1178**：Source Role/構文のAuthorityと、開示の資格を各Consumerに保つ。信頼できない引用文書の表が見えても業務Ruleへ昇格させず、未開示の存在や件数を説明文へ漏らさない。
+- **#1174/#1129/#1163・#2604**：既存のEffect Commit/Receipt、複合Tx・Rule実行、同一Run／実Loaded Artifactの証拠を継続。今回の合成fixtureがActionの本番実行・Grantを与えることはない。
+- **実行順**：P0-a 実PGのpost-commit異常→K/O/Lookup、P0-b 二FunctionのOwner-writeを優先維持。S3/P1としてまずAC-01/02/03/05をread-only Consumerから説明できるか検証し、後続で実Provider Read TraceとSHO/AI向け開示を接続。#1119のG0〜G4・既存担当Issueの受入資格を変更しない。
+
+以上は**Business Actionの完了と、その証拠の取扱いの適格性を分ける、既存構造の上で成立する設計条件**として計画へ組み込む。新Central Host/Registry/Provider Capability/Result Status/Policy Engine・正式DSLの採用を行わない。
