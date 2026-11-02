@@ -456,6 +456,8 @@ lookup customer_lookup on order_entry.order_record.customerId
 
 **撤回条件.** 表示意図だけでは業務上の読み順を表せず、案件ごとに座標を正本へ戻す必要が頻発する場合は、表示意図の語彙を増やします（座標そのものは戻しません）。
 
+**PoCでの実装.** recordの`layout { order <attribute> }`として、画面座標ではなく項目の並びだけを宣言し、対話ビューへ反映します。絶対配置・画面サイズ・複数画面の合成は未実装です。
+
 **未解決.**
 
 - 帳票の改ページ・集計・繰返しを、表示意図の語彙で表せるか、帳票テンプレートPluginへ渡すか。
@@ -938,11 +940,13 @@ PoC #2521が実装した範囲と、まだ実装していない範囲を分け�
 | フックの宣言（位相・読み書き・失敗時） | 実装済み（`hook`、実装Pluginは未接続） |
 | フックの実行境界（Implementation契約・reject/warn） | 実装済み（`internal/hook`、実Pluginは未接続） |
 | 未使用属性の表示（D8・G-7） | 実装済み（recordビューの`unused`） |
+| 項目の並び（D4） | 実装済み（recordの`layout { order ... }`、座標ではない） |
 | Package（宣言・読込・検証・版束縛・ビュー表示） | 実装済み（衝突は明示エラー、取り外しはSemantic fingerprintを変えない） |
 | Commandの実行境界、改ページ、フックのDSL | 未実装 |
 | `reference/workspace`への宣言追加 | 未実施（受理経路が必要） |
 
 実装は、`internal/application/model.go`、`internal/syntax/application_pattern.go`、`internal/validation/application_pattern.go`、`internal/crossview/pattern_requirements.go`、`internal/applicationview`、`internal/semantic/model.go`、`internal/syntax/parser.go`、`internal/validation/validation.go`と、それぞれの試験です。
+
 
 
 

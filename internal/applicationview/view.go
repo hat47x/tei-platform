@@ -244,6 +244,26 @@ func Build(world ir.World, applicationID, patternID core.CanonicalID) (View, err
 			Data: source.Data,
 		})
 	}
+	if pattern.Layout != nil {
+		byAttribute := map[core.CanonicalID]Item{}
+		for _, item := range view.Items {
+			byAttribute[item.Attribute] = item
+		}
+		ordered := make([]Item, 0, len(view.Items))
+		seen := map[core.CanonicalID]bool{}
+		for _, attribute := range pattern.Layout.Order {
+			if item, ok := byAttribute[attribute]; ok {
+				ordered = append(ordered, item)
+				seen[attribute] = true
+			}
+		}
+		for _, item := range view.Items {
+			if !seen[item.Attribute] {
+				ordered = append(ordered, item)
+			}
+		}
+		view.Items = ordered
+	}
 	usedAttributes := map[core.CanonicalID]bool{}
 	for _, item := range pattern.Interaction.Items {
 		usedAttributes[item.Attribute] = true
