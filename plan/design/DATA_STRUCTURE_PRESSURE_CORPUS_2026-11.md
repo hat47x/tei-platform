@@ -9,7 +9,7 @@
 
 対象の同一性／構成文法／性質・法則／解釈文脈／利用箇所の要求／主張と根拠／実現と表示。各Pressureの意味に関連するM1〜M10（#2495）は重複して構わないが、**一つの性質を二つの独立な意味正本に保存しない**。
 
-以下の84ケースは**初期の異質性を測るための開始点であり、網羅の完了や上限を意味しない**。新規の構造・数学的性質・分野固有の解釈は追加し続ける。関心事が重複する場合も、操作・利用文脈・失われる情報が異なれば別の反例として保持する。
+以下の96ケースは**初期の異質性を測るための開始点であり、網羅の完了や上限を意味しない**。新規の構造・数学的性質・分野固有の解釈は追加し続ける。関心事が重複する場合も、操作・利用文脈・失われる情報が異なれば別の反例として保持する。
 
 ## A. 値と同一性（PC-01〜07）
 
@@ -149,6 +149,29 @@
 **反例の具体化**：Cards \`c1,c2\`、Island \`i1\`が存在し、\`i1.cardIds=["c1"]\`と\`Affiliation(id="a1",cardId="c2",islandId="i1")\`が共存する合成入力では、各参照先の存在を確認するだけでは両所属表現の一致は判定できない。TAIの[\`document_assembler.py\`](https://github.com/hat47x/tai-pleroma/blob/main/integrations/pilot-sui-document/assembler/document_assembler.py)には各参照先の存在検査がある一方、両者が同一の所属意味かどうかを判定する契約は別の検討を要する。**入力の実行結果を今回取得したわけではない。**
 
 参照：[構造保存写像・Projection設計 §10](STRUCTURE_PRESERVING_TRANSFORMATIONS_AND_PROJECTIONS_2026-11.md)、[多重FacetのLawと比較正規形 §8](FACET_LAW_BINDING_AND_COHERENCE_2026-11.md)、[#2500 View変更からTyped Intent](https://github.com/hat47x/tei-platform/issues/2500)。新しい配列生成器の実装は#2576、SUI個別Meaning/AssemblerはTAI Repo側のOwnerとする。
+
+## J. 実Record Projectionの値忠実度・構造の直積（PC-85〜96、2026-11-02追加候補）
+
+TEIの[PR #2576](https://github.com/hat47x/tei-platform/pull/2576)・[#2578](https://github.com/hat47x/tei-platform/pull/2578)・[#2580](https://github.com/hat47x/tei-platform/pull/2580)・[#2581](https://github.com/hat47x/tei-platform/pull/2581)による実装拡張を、**Primitive/Collection/Presence/Realization/Sourceとの交差**として評価。#2495の七役割、[#2497の詳細設計 §11](STRUCTURE_PRESERVING_TRANSFORMATIONS_AND_PROJECTIONS_2026-11.md)、[#2585](https://github.com/hat47x/tei-platform/issues/2585)のPFC-01〜12と接続。**この表自体は実際のraw入力→生成main.goのテスト結果ではない。**
+
+| ID | Pressure / 参照構造 | 保持したい意味・観測 | 誤認・損失の負例 | 対象Owner |
+| --- | --- | --- | --- | --- |
+| PC-85 | required Fieldのmissing/null/empty | 存在状態と有効な空値 | 必須nullを空文字列や未指定と同じ扱いにする | #2585/#2056 |
+| PC-86 | optional Fieldのmissing/null | Consumerが区別を要求するか | 出力省略から元のmissing/nullを復元可能とする | #2585/#2497 |
+| PC-87 | optional boolean false/absent | falseという値と存在ビット | falseをdefault扱いで消去・review済みと誤推論 | #2585/#2498 |
+| PC-88 | JSON integerの境界 | `9007199254740993`の正確な整数値 | `float64`の約数に変換しても同値と宣言 | #2585/#1705 |
+| PC-89 | JSON decimalとscale | `0.10000000000000001`・`1.005`の値・字句・精度 | 同じ数値見た目なら十進契約・丸めも同じとする | #2585/#1705 |
+| PC-90 | `many` × numeric/boolean | 構文上の宣言とruntimeの要素型 | `many`があるため全Primitive配列が動作すると推測 | #2585/#2495 |
+| PC-91 | Field.Input→Inputs→Semantic TypeRef | 型・参照の結合とNamespace | Field定義のPrimitiveが合っても誤Input参照を許容 | #2585/#1806 |
+| PC-92 | raw JSON duplicate/trailing values | 単一入力として受理したbyte範囲 | 部分Decodeの成功を入力全体の検査成功にする | #2585/#2514 |
+| PC-93 | 文字列配列と業務Relation | 重複・順序・Key・全件Scope | `[]`と`many`だけでBusiness Setの全件と断定 | #2497/#2585 |
+| PC-94 | SUI Cardのx/y値と業務Decimal | 表示用座標の精度と金額の精度の異なる用途 | 全てのDecimalへ同じ精度劣化を許容 | #2498/#1705 |
+| PC-95 | 既存SUI原本とTEI部分Projection | `critiqueHistory/transform/time`のOwnerと復元経路 | read-only artifactを完全なDocumentV1 Sourceと誤認 | #2497/#2516 |
+| PC-96 | Read-only ViewからTyped Change | optional省略/false/0/複数Sourceの変更Intent | 表示値の編集でSourceのclear/Link/Unlinkを暗黙実施 | #2500/#2497 |
+
+**比較の見通し**：`std.decimal`のJSON出力は表示座標では許容できる場合がある一方、金額や厳密な識別番号では基底の数値保存契約へ違反し得る。値の同一性・JSON字句の同一性・意味上の精度・業務的受理は別の条件。optionalの省略は**意図したlossy表示**として成立し得るが、Patch/writebackが同じ損失を許すかは再評価する。
+
+外部の一次資料：[Go encoding/json](https://pkg.go.dev/encoding/json)（interfaceへの数値decode）と[Protobuf Field Presence](https://protobuf.dev/programming-guides/field_presence/)（明示・暗黙の存在区別）。TEI/TAIのコード証拠は各PRの実際の実装・対象SHAを確認する。契約が正式に型保証を追加したわけではない。
 
 ## 外部仕様の照合（2026-11-01読取り）
 
