@@ -229,6 +229,8 @@ WP10 統合と引継ぎ
 | --- | --- | --- |
 | X-TEAの出典参照 | 152件。ファイルの欠落0、行範囲の超過0 | `D:`/`E:`/`M:`/`S:`のファイル存在と行数を照合。内容の意味的な正しさは別に読む |
 | 現行TEIの参照 | 21件。ファイルの欠落0、行範囲の超過0 | `internal/`のGoファイル存在と行数を照合 |
+| 文書PRの状態 | #2519、head `0a54c2d86`、CI全項目pass、`MERGEABLE`/`CLEAN` | 2026-11-02時点。Draftのまま、mainへは未統合 |
+| PoC PRの状態 | #2521、head `5a39f73a6`、CI全項目pass、`MERGEABLE`/`CLEAN` | 2026-11-02時点。`go test ./internal/application ./internal/applicationview ./internal/semantic ./internal/syntax ./internal/validation ./cmd/tei`が成功 |
 | 相対リンク | 切れ0 | リンク先のパス存在を確認。アンカーと外部URLの到達は未確認 |
 | 表の列数 | 不整合0 | 連続する表の列数を比較 |
 | 改行 | LFで統一 | CRLFの混入を確認 |
