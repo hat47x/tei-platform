@@ -18,7 +18,7 @@ func TestBuildReportDoesNotPublishRawRuntimeReferKeyFields(t *testing.T) {
 	const privateTo = "PRIVATE_TO_FIELD_0095"
 	source := []byte(`<System><Table ID="T1"><Refer ID="R1" ToTable="T2" ToKeyFields="` +
 		privateTo + `" WithKeyFields="` + privateFrom + `"/></Table><Table ID="T2"/></System>`)
-	inspection, err := xeadsource.Inspect(xeadsource.FormatXeaf, source)
+	inspection, err := xeadsource.Inspect(xeadsource.FormatXeaf, source, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
