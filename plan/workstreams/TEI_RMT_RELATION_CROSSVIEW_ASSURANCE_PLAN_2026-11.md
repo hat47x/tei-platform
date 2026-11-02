@@ -1,10 +1,10 @@
 # 参照モデルRelationship移植：Type固有構造・CrossView・証拠接合の実証計画（2026-11-02）
 
-> **状態：実証計画／Draft #2599候補。** 根拠の版・実行資格を分離する。原典固有情報はprivateに保持（#941）。
+> **状態：計画文書をPR #2599でmain統合済み（2026-11-02）。** 以下のRVケースの**実証・Owner意味受理は別途未完了**。本更新は2026-11-03の追加受入候補であり、原典固有情報はprivateに保持（#941）。
 >
-> **関係する正本**：[Critical Path §32](TEI_PRODUCT_CRITICAL_PATH_2026-10.md)／[横断設計Script-first Draft #2610](https://github.com/hat47x/tei-platform/pull/2610)／[#950 Source Adapter](https://github.com/hat47x/tei-platform/issues/950)／[#1126 ERモデル](https://github.com/hat47x/tei-platform/issues/1126)／[Source改版 Draft #2615](https://github.com/hat47x/tei-platform/pull/2615)。本書の内容はOwner判断・正式Gate・製品資格を追加しない。
+> **関係する正本**：[Critical Path §32](TEI_PRODUCT_CRITICAL_PATH_2026-10.md)／[横断設計Script-first PR #2610（main統合済み）](https://github.com/hat47x/tei-platform/pull/2610)／[#950 Source Adapter](https://github.com/hat47x/tei-platform/issues/950)／[#1126 ERモデル](https://github.com/hat47x/tei-platform/issues/1126)／[Source改版 Draft #2615](https://github.com/hat47x/tei-platform/pull/2615)。本書の内容はOwner判断・正式Gate・製品資格を追加しない。
 
-本書はCritical Pathの[§32](TEI_PRODUCT_CRITICAL_PATH_2026-10.md)における **S0 Source／包含範囲** と **S1 synthetic read-only** の実証項目を具体化する独立作業計画である。[Draft #2610](https://github.com/hat47x/tei-platform/pull/2610) が同じCritical Path本文の§33/34で横断設計・Script-first Studioの接合を担当しているため、そこでの節番号・編集経路を維持し、本書がRelationship固有の技術詳細を所有する。既存G0〜G4／S0〜S5、#1163の一改訂Evidence、#1174/#1129の実Effect P0、#267のOwner Acceptanceを維持する。実装順は外部要件の机上評価→意味・Plugin→CUI/標準Plugin並行→Headless Driver/Provider→GUIとし、[Draft #2492](https://github.com/hat47x/tei-platform/pull/2492)の提案と整合させる（Draftの採用・統合済みという意味ではない）。
+本書はCritical Pathの[§32](TEI_PRODUCT_CRITICAL_PATH_2026-10.md)における **S0 Source／包含範囲** と **S1 synthetic read-only** の実証項目を具体化する独立作業計画である。[PR #2610](https://github.com/hat47x/tei-platform/pull/2610) も2026-11-02に独立の横断計画としてmain統合され、Critical Path本文の§33/34の検討内容はその計画の§1/§2へ移された。本書はRelationship固有の技術詳細のみを所有する。既存G0〜G4／S0〜S5、#1163の一改訂Evidence、#1174/#1129の実Effect P0、#267のOwner Acceptanceを維持する。実装順は外部要件の机上評価→意味・Plugin→CUI/標準Plugin並行→Headless Driver/Provider→GUIとし、[Draft #2492](https://github.com/hat47x/tei-platform/pull/2492)の提案と整合させる（Draftの採用・統合済みという意味ではない）。
 
 ### 観測済みの差分と判断の上限
 
@@ -29,7 +29,7 @@ G-VとG-Rは **異なる母集団・異なる用途** に対する証拠であ�
 
 P1の最初のHeadless確認では、固定した同一配布版に属するXEA[D]/XEAFの**原文SourceRef・構造Key・Field成分とRefer Alias/Role**をread-onlyで観測し、対応候補の理由・不一致・未解決を別々に記録する。設計Relation1件→Runtime Refer複数件の対応は候補辺の集合として保持し、実XEA[D]/XEAFのRelation対応が完全に自動解決できたとの主張を避ける。Raw bytes/probe/receiptの同一版条件とTargetの参照実在性はS0 P0-bの既存H2/J5に委譲する。
 
-`attributeValue(localName)` による他の型付きSource Factへの外来namespace混入も、Refer固有の成功だけで安全とみなせない。[Draft #2603](https://github.com/hat47x/tei-platform/pull/2603)にTable/Key/Relationship/KeyFields全般の **Reader Known + exact attribute** を確認する合成テストを追加した。**当該追加headのCI結果はまだ未確定**。最新headによる同種別・異種別の回帰PASSを確認してから、#950のsource-only品質判断へ送る。
+`attributeValue(localName)` による他の型付きSource Factへの外来namespace混入も、Refer固有の成功だけで安全とみなせない。[PR #2603](https://github.com/hat47x/tei-platform/pull/2603)でTable/Key/Relationship/KeyFields全般の **Reader Known + exact attribute** を確認する合成テストを追加し、2026-11-02にmainへ統合済み（merge commit `1fd1ac214a83aa90e66ce0b5ee45264b3c05ca8b`）。最終head `7352ee76ad93529c1f02f61ba0b3d707ab7f4a21` のRepository Health、Go self-build、Wails smoke/PoC、依存監査が**同一headの5 workflowでsuccess**。この限定品質を原典の意味対応・Rule/Host・Owner Acceptanceへ昇格しない。
 
 ### 追加の横断結論：1対多Relationの「見える線」と「書き戻せる対象」は別
 
@@ -73,7 +73,7 @@ P1の最初のHeadless確認では、固定した同一配布版に属するXEA[
 
 1. **変換前後に保存すべき主張を限定する**：同じ二Fieldの`SortKey=010/020`を固定してXML上の出現順だけを交換すると、`SourceOrdinal`・source digest・raw locator等は変化し得る一方、現行のSortKey比較で確定する**順序付きField組とKey局所readiness**は、同じ独立Key・同じ検証規則のもとでは不変であるはず。さらに無関係Jの追加で公開`byKind`総数・Source SHA・`diagnosticToken`は変化しても、依存しないKの局所結果は変わらないはず。**何を不変とするかをClaimごとに指定**し、raw差分・公開tokenの不変までは要求しない。SortKeyが`"2"/"10"`なら文字列順と数値順の違いを別の独立Expectedで検証する。
 2. **表示範囲とRule/Query依存を区別する**：同じRelation図・同じJの表示Fieldから、Relation pathのRole、非表示WHERE/EXISTS入力、Validation Rule入力、Action対象を復元できるとは限らない。FunctionごとのRoot/Relation Path/Field/Scope/Grainは明示Mappingで定義・追跡し、表示の簡略化から暗黙のRead Grantを作らない。部分取得で`exists` Witnessは確認できても`NOT EXISTS`・全件SUM・全件Validationは成立しない場合がある。入力不足は業務拒否（false）でなく未確定として記録する。
-3. **宣言・物理取得・Materialize・開示の分離**：同じFunction要求/Result Slice/表示であっても、Providerが別Role/秘密Fieldを余計に読んだ世界とは**実Read Footprint**が異なる。Source/Design RMTで言えるのは要求候補の由来までであり、実Provider SQL/HTTP/read trace、同期snapshot、現在Principalの権限、Consumerへ実際に送ったbyte/fieldsはそれぞれ#2622/#2611/#2506/#2516/実Host担当が観測する。必要な補助Readもあり得るので、`DisplayFields == PhysicalReadFields`を一律に強制しない。Sourceが適切でも過剰取得/開示が安全と自動確定しない。
+3. **宣言・物理取得・Materialize・開示の分離**：同じFunction要求/Result Slice/表示であっても、Providerが別Role/秘密Fieldを余計に読んだ世界とは**実Read Footprint**が異なる。Source/Design RMTで言えるのは要求候補の由来までであり、実Provider SQL/HTTP/read trace、同期snapshot、現在Principalの権限、Consumerへ実際に送ったbyte/fieldsはそれぞれ#2622/#2611/#2506/#2516/実Host担当が観測する。必要な補助Readが表示Field以外に存在しても、**Function Contextに明示されたRule/Query/Action依存とData Mappingの範囲内でのみ取得**できる。`DisplayFields == PhysicalReadFields`を強制しないことは、暗黙の取得を許可することではない。Sourceが適切でも過剰取得/開示が安全と自動確定しない。
 
 本節は**計画上の判別条件**であり、定義・Data Context、Provider、Rule、公開・実Effectの新しいOwner、第二Oracle、Runtime Host、製品enum/APIを作らない。固定Source/Policy/Function Context、Claim、独立Expected、検証到達範囲、実入力を試験票に記録する。Mutant/MetamorphicのTEI製品実行、実Provider/実GUI/Owner意味受理は**NOT RUN**。
 
@@ -97,7 +97,26 @@ P1の最初のHeadless確認では、固定した同一配布版に属するXEA[
 
 この接続は既存Issueの**試験入力と引渡し条件**であり、正式Reactive Engine、共通Changefeed/Host、生成物の新しい権限Schemaを導入しない。TEIの実Query・Provider変更追跡・Artifact Reader・SHOレビュー・Owner受理は**未実行**。
 
-### Case別に失敗原因と検証資格を固定する（本表の25統合ケースは未実行）
+### 2026-11-03更新：Source資格・明示Mapping・現在Grant・成果物実読取の同一試行
+
+**変更前提の固定（main `a4840b1a54d94f81f2f107c38968605232cd4c66`）**：Source Factの名前空間/欠落・明示空保持（#2603）、横断設計（#2610）、明示Function Mappingの合成検証計画（#2624）、Load時byteに束縛したHost署名入口（#2642）、Derived SelectのProvider呼出し前と返却前のField Read再検査（#2637）は、それぞれ**2026-11-02にmain統合済み**。これらを一体の移植E2E完了とみなさない。旧XMLの実Source対応とTEI Workspaceの署名済みSource Indexは**異なる対象**であり、同じdigest/IDという記法だけで同一原本を推定しない。
+
+**取得境界を確定**：Functionが必要とするDataは、表示、検証Rule、Query Filter/Sort/Existence、Action前提、例外的な補助取得を含め、**Function Context内の明示的Data Mapping**から収集しなければならない。Modeler/Studioの提案はMapping補完候補であって、Ownerに無断で暗黙のJoinや未宣言Field/RelationをProviderへ読み出してよいことにはならない。Role/Path/Field/Scope/Grainと選択Physical Mapping（列・Store・版）の両方を確認し、利用目的とGrantを交差させる。SQLはモデルでは表せない例外的処理に限定し、SQL記述がData Model/Meaning Acceptanceの代替にならない（#1126/#2506/#2624/#2611）。実Providerからの物理Read footprintの計測は#2622等の担当へ委ねる。
+
+**ロード・承認・読取を混ぜない**：`workspace.BuildSourceIndex(root, result)` はRead-only解析用のsource projectionであり、必要時にfilesystemを読む可能性がある。`BuildSourceIndexFromLoad` はLoad時に捕捉したmanaged file byteのみを使い、未捕捉パス・imports宣言を拒否するHost署名経路（#2642）。ただし**原子的な複数ファイルsnapshot／workspace manifestの束縛／外部Xead ZIPとTEIモデルの正しい対応**を証明しない。別途#950/#1121のH2/J5現物、#267 Owner Source Acceptance、#2482/#2604の生成/公開と#2630のConsumedMembersを確認する。
+
+**Read認可の時間的境界**：mainの`internal/driver/derived_query_execution.go`は、`query.ValidateDerivedSelect`をProvider実行前と返却直前に呼び、許可失効時にBrowse+Derived値の返却を拒否する構成（#2637）。これは**当該同期コードパスの返却前fence**であり、Provider自身による未宣言Field取得、実ネットワークへの先行送出、同時Grant切替（ABA）、実Tx snapshot、他Consumerへの発行、Row-level RLSを保証しない。Function Data Mapping適合、Actual Read、Current Grant、Consumer Disclosureを独立証拠として照合する。
+
+**最低一件の縦断受入票（新Gate／Schemaではない）**：既存S0/S1/S3・P0-a/P0-bを守り、同一Scenarioの記録で次を順に固定する。
+1. **原典入口**：固定XEAD/XEAFの原byte・Profile・`Known`とraw/normalized Fact・独立Expected（#950）。設計Relation1とRefer候補0..N、対応不確定を明示（G-V）。formal Source→TargetのJ5解決が未実施ならそこだけunknownとする。
+2. **TEI意味入口**：提案されたEntity/Relation/Role/Path occurrenceとOwner Accepted MeaningRevision、TEI WorkspaceのLoad時Source Index／必要なCurrent Applicabilityを独立に固定（#267/#2642/#2505）。元Xeadの原文照合からTEI Source Indexの同一性を勝手に導かない。
+3. **Function実消費**：明示MappingのRole/Field/Scope/Rule/Query/Action依存、選択Physical Mapping、Provider実Read・完全性・Cohort、関係再束縛／否定依存／Gap/ABAの変更観測を独立に記録（#2506/#2622/#2582）。未宣言Readは合成例で禁止し、実際のRead証拠がなければ「検証済み」としない。
+4. **権限・実効果**：Provider呼出し前／結果返却前のHost Read Grant、Operation対象/ExpectedVersion、書込前の現Grant、実Commit/Receipt/独立Observation（#2637/#2598/#1174）。一地点のAllowやRequest hashだけでは未来の再利用資格としない。
+5. **生成・利用**：同一意味・Source/Generator版のLibrary/SHO用Artifact、Manifestの構造内整合、Published set、Consumer別Required set、実際のLoaded file bytes・公開資格（#2482/#2604/#2630/#2516）。Consumer用途別に未充足ならdelivery/completionを保留する。
+
+この縦断票は**設計上の同一Scenario記録形式案**。既存Product CLI/検証器を再利用し、独立Oracle、原典の機密/権利境界、Owner受理、実H2/J5・実Provider/DB/SHO/AIへの送出の実行結果を捏造しない。**これら5つの段を同一RunでE2E検収した実績はまだない。**
+
+### Case別に失敗原因と検証資格を固定する（本表の29統合ケースは一体実行未完了）
 
 | ケース | 入力・判別条件 | Headlessで照合する期待／禁止事項 | 担当 |
 | --- | --- | --- | --- |
@@ -121,10 +140,14 @@ P1の最初のHeadless確認では、固定した同一配布版に属するXEA[
 | **RV-O2** | 同一snapshotでKとJのlocal状態が異なるがpublic`ByKind`が集計だけのケース、およびXEAF Referの原属性`missing`／`present-empty`／外来namespaceを正規化配列だけで見たケース | 各Consumerの実入力Projectionを固定し、区別すべきClaimに必要なSource presence／owner scope／対象Factのlocal Resolutionが**その入力に存在するか**を比較。存在しなければ「検証器失敗」以前の入力観測不足として保留。raw保持の修正候補[Draft #2603](https://github.com/hat47x/tei-platform/pull/2603)は最新head試験の資格を別計上し、公開Reportの件数からprivate対象を逆同定しない | #950／#1124／#2514／#2516 |
 | **RV-O3** | 二memberの独立Kで`SortKey=010/020`を固定しXML子出現順だけ反転。別対照で正常・無依存Jを追加。文字列`"2"/"10"`の対照は別fixtureに固定 | 独立Expectedは明示SortKeyで確定するKのordered member/局所readinessのみ不変とする。SourceOrdinal/raw XML/digest、公開総数・Tokenは変化可能と明示。無関係J追加でKの局所結果が変わるMutant、XML順をSortKey順に取り違えるMutantを判別し、旧Source版の判定を新Sourceへ自動再利用しない | #950／#1126／#2514 |
 | **RV-D2** | 一つのRelation pathを持つFunctionで表示Field/Graphが同じ。非表示Rule input又はEXISTS条件の値・Path Role・評価Scopeだけ変え、全件と部分Pageを対照 | Display MappingだけでRule/Query/Action Claimを判定しない。Root/Relation Path/Field/Scope/Grain、表示D・選択S・検証V・Action Aの依存由来を区別。部分Pageから不存在/全件SUM/全称Validationを確定しない。非表示入力が変わるとRule結果が変わる独立Expectedを用意し、Read Grantは自動拡大しない | #1126／#2506／#2507／#2586 |
-| **RV-D3** | 同一Mapping・同一Result Slice・同一画面で、Provider P1は宣言されたRole/Fieldだけ、P2は追加の秘密Field/未宣言Relationも実読取してから同じ結果を返す（合成） | 同じOutput/Rule結果・Provider応答成功を物理Readの同一性、取得権限、開示許可に昇格しない。Declared Read／Actual Provider Read／Context Materialized Slice／Consumer Disclosedを別Evidenceで照合し、必要な補助Readは許可・目的条件で個別判断。現Source診断やCrossViewから実Provider read/OS隔離実証を主張しない | #2506／#2622／#2611／#2516／#2514 |
+| **RV-D3** | 同一Mapping・同一Result Slice・同一画面で、Provider P1は宣言されたRole/Fieldだけ、P2は追加の秘密Field/未宣言Relationも実読取してから同じ結果を返す（合成） | 同じOutput/Rule結果・Provider応答成功を取得権限へ昇格しない。**Function Contextで明示MappingしていないRelation/Fieldの取得は拒否対象**。必要な補助ReadもFunction側へ明示Mappingし、用途・Scope・現在Grantを検証したもののみ計画へ含める。Declared Read／Actual Provider Read／Materialized Slice／Consumer Disclosedを独立に照合し、現Source診断から実Provider read/OS隔離成功を主張しない | #2506／#2622／#2611／#2516／#2514 |
 | **RV-D4** | O1表示amount=600不変でcustomerRef C1→C2、Rule入力A1.limit700→A2.limit500、別対照で有効Hold0件→新規1件、0件complete/partialを変える | Relation pathの元IDではなく再束縛先・実評価Scope・Predicate・Read Cohort・Rule Claimを再観測。既存行IDのない否定依存を保持し、表示の継続とRule/Actionの失効を別判定 | #2582／#2586／#2506／#2514 |
 | **RV-D5** | Relation/Rule依存閉包は固定。ただし変更通知WindowにGap/Lag、又はC1→C2→C1のABAを注入する | 実Change Witnessの被覆がない場合、Value再一致や閉じた依存集合だけでcurrent/reuse許可を出さない。現時点のRead再評価と「期間を通じて不変」を別Claimにする | #1125／#2582／#2622／#1708 |
 | **RV-P1** | 同じAcceptedモデルからLibrary／SHO document／Manifestを別世代で生成し、(A)file byteは揃うがConsumer不足member、(B)旧file残存、(C)途中manifest切替、(D)正常一式pinを対照 | Generator internally consistent／publish generation atomicity／ExpectedMembers(Consumer)充足／実Reader consumed bytesを別々に照合。意味・版が同じだけで納品済み、読取済み、実行可能を宣言しない | #2482／#2604／#2630／SHO／#1803 |
+| **RV-M1** | 表示に必要なDと隠れたRule入力Vを明示MappingしたP1と、V又は補助Readを未宣言のままProviderが暗黙取得したP2を対照。物理MappingのField→Columnだけを変える対照も実施 | Provider実Readは明示Function Context Data Mapping/Scope/用途/Grant内のみ許可。単なる同一表示・同一Result/Field IDでは物理ReadやMeaning版一致を主張しない。未宣言Readは拒否対象、必要ならMappingを提案→受理して再評価 | #2506／#2624／#2611／#2622／#2516 |
+| **RV-S1** | TEI Workspaceの管理ファイルをLoad後に変更し通常`BuildSourceIndex`とstrict`BuildSourceIndexFromLoad`を対照。imports宣言、未捕捉Path、manifest未束縛も独立対照 | Host署名はLoad byte基準の範囲でのみ資格付け。filesystem再読とLoad snapshot、manifest/外部ZIP、同版物理公開を同一視しない。原子的Multi-file source snapshotやSource→Target意味保存を偽証しない | #267／#2642／#1017／#1121 |
+| **RV-A1** | Derived SelectでP1=preflight Granted／Provider後Revoke、P2=preflight Denied、P3=両地点Granted、P4=途中Revoke→Regrant、P5=未宣言秘密FieldのProvider取得 | mainの二地点fenceの返却拒否と限界を区別。P1/P2でRaw/Derived値を返さず、P4は二地点成功でも期間を通じたGrantの継続を証明しない。P5はFunction Mapping違反として返却結果以外のActual Read/外部送出も追跡（未実証） | #2637／#2506／#2622／#2516／#1174 |
+| **RV-P2** | 同じMeaningRevisionでもLoad時TEI SourceとGenerator入力の版が異なる／Manifest一式は正しいが別Consumerが旧Memberを読む／SHOの説明とLibraryの実ロード対象が違う | Source acceptance、Generated、Published、Required/ConsumedMemberを同じ根拠束とみなさず、各実byte・版・Reader時点とOwner承認の適用性を別判定。旧Receipt／成功CIを現在Consumerの受領証明にしない | #2642／#2482／#2604／#2630／SHO／#2516 |
 | **RV-H2** | 実Workの同一生成版ZIP・Probe・Producer・Builder・Candidate・Ledger・receipt | 既存2checkerの実exit／原byteに加え、**一つのSource node→実TargetのJ5参照実解決**を確認。個別未解決は保留し、独立PASSを結合PASSと呼ばない | #1121／#Work／#3／private #4 |
 
 `RV-*` は本節の比較票内の仮ラベルであり、#2505の実装済みRV試験番号／新たな共通Schema・Gate・APIではない。期待は実行済みPASSではなく反証可能な受入候補である。原実体の利用が必要なケースはprivate固定版と使い捨て環境で検査し、原本変更・内容公開を行わない。
@@ -136,6 +159,6 @@ P1の最初のHeadless確認では、固定した同一配布版に属するXEA[
 3. **並列P1（#1126/#1031/#2505）**：CrossView候補グラフと版間候補グラフをread-only CLIで比較し、両者の曖昧性・fan-in/out・Coverage母数・開示範囲を別々に表示。#1805はClosedの既存部分取込み責務として参照し、二重実装・再起票をしない。
 4. **設計書／Functionの後段（#1803／SHO／#2506/#2507）**：原典宣言・実装候補・受理済み意味を、図＋一覧・説明の根拠版で区別。意味構造（Entity/Relation/Role/Path occurrence）と簡潔なTEI Script/DSLを標準データ構造として保持し、Modeler/Studioの標準UIで可視化する。操作・表示の条件も用途に応じた標準Projectionとして表現し、専用ノード画面や各機能タイプ専用UIを初期要件にしない。SHOの文書正本とTEIの意味正本は独立、MMIのSource Reference再解決・完成版納品の実証は別途必要。構造的に表示可能でも、編集可能／現在資格あり／業務完了とは扱わない。
 
-**CIで判別した追加のSource Fact境界**：2026-11-02の[Draft #2603](https://github.com/hat47x/tei-platform/pull/2603)では、合成`x:ToKeyFields`／`x:WithKeyFields`が旧`attributeValue(localName)`で正規化済みのtyped Refer Factへ取り込まれる反例をGitHub CIで確認した（旧headのRepository HealthはFAIL）。新しい候補パッチはraw Presenceと通常属性の厳密一致を分離し、外来`x:Refer`ノードもtyped Fact対象から外す。**先行したRefer限定head `f68dd486f85e01b9e060535c0443d4792ffa3730`では5ワークフローすべてsuccess**。追加のnamespace・Table scope負例を加えたhead `1ad75599b418520f9a3f3d492c04fe4352494fda` のRepository Healthは **gofmtのみFAIL**、同runのGo vet・全Go test・workspace validateはPASS。gofmt fixture整列を修正した**現行候補head `7352ee76ad93529c1f02f61ba0b3d707ab7f4a21`は改めてCI結果を確認する**（確認時点で未完了）。これはsynthetic code及びCI実行版の資格であり、原典意味・実Work H2/J5・Owner Acceptanceを証明しない。raw Source Fact保持が進んでも、CrossViewの業務意味、宣言を利用するFunction Context、外部AIへの開示権限は自動的に成立しない。#950/#2516/#941の既存境界を維持する。
+**CIで判別した追加のSource Fact境界（変更履歴）**：2026-11-02の[PR #2603（main統合済み）](https://github.com/hat47x/tei-platform/pull/2603)では、合成`x:ToKeyFields`／`x:WithKeyFields`が旧`attributeValue(localName)`で正規化済みのtyped Refer Factへ取り込まれる反例をGitHub CIで確認した（旧headのRepository HealthはFAIL）。新しい候補パッチはraw Presenceと通常属性の厳密一致を分離し、外来`x:Refer`ノードもtyped Fact対象から外す。**先行したRefer限定head `f68dd486f85e01b9e060535c0443d4792ffa3730`では5ワークフローすべてsuccess**。追加のnamespace・Table scope負例を加えたhead `1ad75599b418520f9a3f3d492c04fe4352494fda` のRepository Healthは **gofmtのみFAIL**、同runのGo vet・全Go test・workspace validateはPASS。gofmt fixture整列を修正した**最終head `7352ee76ad93529c1f02f61ba0b3d707ab7f4a21` は2026-11-02に5 workflow全てsuccess確認済み、その後main統合済み**。これはsynthetic code及びCI実行版の資格であり、原典意味・実Work H2/J5・Owner Acceptanceを証明しない。raw Source Fact保持が進んでも、CrossViewの業務意味、宣言を利用するFunction Context、外部AIへの開示権限は自動的に成立しない。#950/#2516/#941の既存境界を維持する。
 
 **Owner未決**：旧FAMILYの各Role・対応FieldとTEI Semantic Relationの個数、条件付きの任意性・cardinality、物理FK/DDL・SQLによる実現、業務Actionの対象・失敗/Commit意味、旧版Reviewの新版適用と公開権利。これらはSource構造診断の改善や合成PoC成功で自動受理しない。**本書初版時にGo実原典試験・既存正式H2 receipt/gate・Work Candidate実体再読・旧GUI/DB・Owner正式受理は実施していない**。
