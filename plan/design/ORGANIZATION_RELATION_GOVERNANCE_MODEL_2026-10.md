@@ -1978,3 +1978,9 @@ Source Revision不一致でhelperを停止させる。UI選択epoch、Provider S
 **Owner**：組織意味#2386、Profile Corpus#2510、一般メタfacet#2495、Read#2622/#2628、Rule#2624、Query#2387/#2635、Context#2506、Claim#2582、Consumer E2E#2586、Operation#2598、Effect#1174。新Core FieldEvidence enum、新共通Host、新Query/Rule実行器、新納品Registry・組織専用ACLは採用しない。
 
 **計測用受入票**：Case ID／Source/Meaning/Role Pin／Query/Rule/Operator／valid/known／Provider Route・Read Attempt／(a)行集合Scope+complete、(b)必要Fieldごとの実観測状態、(c)表示/Rule/Action各Dependency、(d)Consumer公開範囲、(e)実Target・Effect／独立Oracle／実行Runtime+SHA／Owner採否。記録は既存の型付きEvidenceへの参照で足りればよく、正式Schema拡張を先行決定しない。
+
+### 53.5 新規合成Reference実装と検証結果（固定版限定）
+
+- [Draft #2655](https://github.com/hat47x/tei-platform/pull/2655)に`reference/org-semantic-views/verify-field-observation.mjs`を追加（コミット`e0c3d1945690dd1e2f98fee68c6da62184872b11`）。FO-01〜16を**純粋合成fixture**で検査する。確認済みはV8互換シムによる**16/16局所PASS**（test/assert importを局所置換して実行）。これはNodeの`node --test`、Provider実Readや標準TEI Contextの結果ではない。
+- exact-head Node合成Workflowに新ファイルを追加（コミット`53fb6a16030e9f6d63a43f280629fa548f1c1e82`）。この版に対する[Actions #41505887674](https://github.com/hat47x/tei-platform/actions/runs/41505887674)は参照時点で**queued**。完了ログとrunのhead SHAを確認する前はCI PASSと記録しない。
+- 既存の組織PR #2596（main統合済み）、#2655内のORG-OC/RC/VF合成試験と、今回のFOの結果は、たとえ別々に成功しても正式TEI Query/Context/Provider/Studio/SHO/Hostの一気通貫証拠に合算しない。Owner意味受理・本番資格も未取得。
