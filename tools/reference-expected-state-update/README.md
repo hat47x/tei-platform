@@ -75,6 +75,43 @@ go run ./tools/reference-expected-state-update/cmd/tei-expected-state-update \
 
 `digest`は最終状態と観測の正規化JSONのSHA-256です。同じ入力から同じ`state`・`results`・`digest`になります。時刻・乱数・環境依存の値を混ぜません。
 
+## 実DBでのcompare-and-swap（#2564）
+
+`PGStore`は、同じ判定を**実PostgreSQLのcompare-and-swap**として実行する検証用の経路です。合成入力の`Apply`と同じ結果コードを使いますが、状態はDBの行にあります。
+
+```sql
+UPDATE public.tei_expected_state
+   SET value = $3
+ WHERE key = $1 AND value = $2
+```
+
+影響行数が1なら`APPLIED`、0なら現在値を読み直して`CONFLICT`または`MISSING`を返します。競合は業務結果であり、実行エラーではありません。
+
+実行（使い捨てDB専用。試験は2つの固定テーブルをTRUNCATEします）:
+
+```bash
+CREATE DATABASE tei_expected_state_e2e;
+
+TEI_EXPECTED_STATE_PG_DSN='postgres://.../tei_expected_state_e2e?sslmode=disable' \
+TEI_EXPECTED_STATE_PG_CONFIRM_ISOLATED=tei_expected_state_e2e \
+  go test ./tools/reference-expected-state-update/ -run TestPG -v
+```
+
+実PostgreSQL 14.24（WSL2、使い捨てクラスタ）で確認したこと:
+
+- 同じ期待値に対する2接続の同時更新で、**ちょうど1件だけ**`APPLIED`、他は`CONFLICT`。先の更新が残る
+- `READ COMMITTED`の単一文CASは**アプリ側の再試行を必要としない**。8接続同時でも実行エラーは出ず、適用は1件
+- 対照として、`REPEATABLE READ`で**読んでから書く**とSQLSTATE `40001`（serialization failure）になり、呼び出し側の再試行が必要になる。だから実装は単一文CASにしている
+- 冪等キーは主キーinsertで先に確保する。同じ要求の再送は`IDEMPOTENT_REPLAY`、別の更新への再利用は`REJECTED`
+- 権限・検証の拒否は書き込み前に返し、冪等キーを消費しない
+- 不在（`MISSING`）と競合（`CONFLICT`）は別の結果で、不在は冪等キーを残さない
+
+### 実DB経路で実装していないこと
+
+- `compare=digest`は**拒否**する。正式採用は「サーバ側で生値を比較」であり、実DB経路は`value`比較だけを提供する。比較はSQLのCAS文の中で行い、**現在値を結果・観測・ログへ返さない**（#2564項目3の判断）。
+- 製品Runtime（#1127の標準CRUD・#1129の実行時段階）への接続
+- 分散ノード間の調停（#2146）、自動再試行、観測の永続保存と保持期間
+
 ## 試験
 
 ```bash
@@ -92,8 +129,9 @@ go test ./tools/reference-expected-state-update/... -count=1
 
 ## 範囲と非主張
 
-- 合成入力に対する静的な判定であり、実DB・実トランザクション・分散ノードの証拠ではない
+- 合成入力の`Apply`は静的な判定であり、実DBの証拠ではない。実DBの証拠は`PGStore`の試験で別に取得する
 - 版属性（`version`）による比較、自動再試行、複数ノード間の調停は扱わない
 - 所有と世代は#2146、実行時の段階と不明の扱いは#1129が所有する
-- 秘密項目は`digest`比較で扱えるが、ハッシュの強度・鍵付きハッシュ・監査は未検証
-- 実装の製品接続・実DBでの競合試験は未実施
+- 秘密項目は「サーバ側で生値を比較」する方針を採用した。期待値は保護された要求経路で送り、DBのCAS文で比較する。現在値は結果・観測へ返さない。鍵付きハッシュ・監査ログの保持期間・マスキングは未実装
+- 実DB経路は製品Runtimeに接続していない。#1127の標準CRUDと#1129の実行時段階への写像は未実施
+- 観測の永続保存・保持期間・監査は未決

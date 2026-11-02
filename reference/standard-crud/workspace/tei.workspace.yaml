@@ -1,0 +1,5 @@
+workspace: standard_crud
+sources:
+  - semantic
+  - applications
+  - databases

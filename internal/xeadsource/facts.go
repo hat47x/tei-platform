@@ -98,8 +98,13 @@ type RuntimeReferFact struct {
 	TableAlias          string   `json:"tableAlias,omitempty"`
 	ToKeyFields         []string `json:"toKeyFields,omitempty"`
 	WithKeyFields       []string `json:"withKeyFields,omitempty"`
-	Nature              string   `json:"nature"`
-	AuthorityLimits     []string `json:"authorityLimits"`
+	// Preserve the literal declarations independently of normalized field lists.
+	// A nil pointer means the attribute was absent; a non-nil empty value
+	// means it was explicitly declared as empty in the source.
+	ToKeyFieldsRaw   *string  `json:"toKeyFieldsRaw,omitempty"`
+	WithKeyFieldsRaw *string  `json:"withKeyFieldsRaw,omitempty"`
+	Nature           string   `json:"nature"`
+	AuthorityLimits  []string `json:"authorityLimits"`
 }
 
 type RelationalSourceFacts struct {
@@ -119,11 +124,23 @@ func ExtractRelationalSourceFacts(doc Document) RelationalSourceFacts {
 
 	var walk func(Node, string)
 	walk = func(n Node, tableLegacyID string) {
-		if localName(n.Name) == "Table" {
+		if !n.Known {
+			// Preserve unknown nodes in the raw Reader. A foreign Table
+			// lookalike is an ownership boundary: its known children must
+			// not inherit the enclosing real Table's identity.
+			if localName(n.Name) == "Table" {
+				tableLegacyID = ""
+			}
+			for _, child := range n.Children {
+				walk(child, tableLegacyID)
+			}
+			return
+		}
+		if n.Name == "Table" {
 			tableLegacyID = attributeValue(n, "ID")
 		}
 
-		switch localName(n.Name) {
+		switch n.Name {
 		case "TableKey":
 			key := LegacyKeyFact{
 				Locator:         n.Locator,
@@ -134,7 +151,7 @@ func ExtractRelationalSourceFacts(doc Document) RelationalSourceFacts {
 				AuthorityLimits: cloneStrings(legacyKeyAuthorityLimits),
 			}
 			for i, child := range n.Children {
-				if localName(child.Name) != "TableKeyField" {
+				if !child.Known || child.Name != "TableKeyField" {
 					continue
 				}
 				fieldLegacyID := attributeValue(child, "FieldID")
@@ -177,15 +194,29 @@ func ExtractRelationalSourceFacts(doc Document) RelationalSourceFacts {
 				})
 			}
 		case "Refer":
+			// A foreign-namespaced lookalike is an unknown source node,
+			// not a typed XEAF runtime Refer declaration.
 			if doc.Format == FormatXeaf {
+				toKeyFieldsRaw := exactOptionalAttribute(n, "ToKeyFields")
+				withKeyFieldsRaw := exactOptionalAttribute(n, "WithKeyFields")
+				toKeyFields := ""
+				withKeyFields := ""
+				if toKeyFieldsRaw != nil {
+					toKeyFields = *toKeyFieldsRaw
+				}
+				if withKeyFieldsRaw != nil {
+					withKeyFields = *withKeyFieldsRaw
+				}
 				facts.RuntimeRefers = append(facts.RuntimeRefers, RuntimeReferFact{
 					Locator:             n.Locator,
-					ReferLegacyID:       attributeValue(n, "ID"),
+					ReferLegacyID:       exactAttributeValue(n, "ID"),
 					SourceTableLegacyID: tableLegacyID,
-					ToTableLegacyID:     attributeValue(n, "ToTable"),
-					TableAlias:          attributeValue(n, "TableAlias"),
-					ToKeyFields:         splitLegacyFieldList(attributeValue(n, "ToKeyFields")),
-					WithKeyFields:       splitLegacyFieldList(attributeValue(n, "WithKeyFields")),
+					ToTableLegacyID:     exactAttributeValue(n, "ToTable"),
+					TableAlias:          exactAttributeValue(n, "TableAlias"),
+					ToKeyFields:         splitLegacyFieldList(toKeyFields),
+					WithKeyFields:       splitLegacyFieldList(withKeyFields),
+					ToKeyFieldsRaw:      toKeyFieldsRaw,
+					WithKeyFieldsRaw:    withKeyFieldsRaw,
 					Nature:              SourceFactNature,
 					AuthorityLimits:     cloneStrings(runtimeReferAuthorityLimits),
 				})
@@ -196,7 +227,7 @@ func ExtractRelationalSourceFacts(doc Document) RelationalSourceFacts {
 			fields := splitLegacyFieldList(raw)
 			facts.DeclaredKeyFields = append(facts.DeclaredKeyFields, DeclaredKeyFieldsFact{
 				Locator:         n.Locator,
-				SourceName:      localName(n.Name),
+				SourceName:      n.Name,
 				OwnerLegacyID:   attributeValue(n, "ID"),
 				Fields:          fields,
 				Nature:          SourceFactNature,
@@ -251,7 +282,7 @@ func indexTableFieldIdentity(root Node) tableFieldIdentityIndex {
 	}
 	var walk func(Node)
 	walk = func(n Node) {
-		if localName(n.Name) == "Table" {
+		if n.Known && n.Name == "Table" {
 			tableID := attributeValue(n, "ID")
 			out.TableCounts[tableID]++
 			out.TableLocators[tableID] = append(out.TableLocators[tableID], n.Locator)
@@ -266,11 +297,12 @@ func indexTableFieldIdentity(root Node) tableFieldIdentityIndex {
 			var collectFields func(Node)
 			collectFields = func(current Node) {
 				for _, child := range current.Children {
-					childName := localName(child.Name)
-					if childName == "Table" {
+					// A nested foreign Table must not donate its Field
+					// declarations to the enclosing real Table.
+					if localName(child.Name) == "Table" {
 						continue
 					}
-					if childName == "TableField" || childName == "Field" {
+					if child.Known && (child.Name == "TableField" || child.Name == "Field") {
 						fieldID := attributeValue(child, "ID")
 						if _, ok := out.FieldCounts[tableID]; !ok {
 							out.FieldCounts[tableID] = map[string]int{}
@@ -301,12 +333,15 @@ func indexTableFieldIdentity(root Node) tableFieldIdentityIndex {
 }
 
 func attributeValue(n Node, name string) string {
-	for _, attribute := range n.Attributes {
-		if localName(attribute.Name) == name {
-			return attribute.Value
-		}
-	}
-	return ""
+	// Source Fact lookup must not promote a foreign-namespaced lookalike.
+	return exactAttributeValue(n, name)
+}
+
+// exactAttributeValue reads only the unqualified declaration used by a
+// typed Source Fact. Foreign-namespaced lookalikes remain on the raw Node.
+func exactAttributeValue(n Node, name string) string {
+	value, _ := exactAttribute(n, name)
+	return value
 }
 
 // exactOptionalAttribute keeps a declared empty source value distinct from absence.

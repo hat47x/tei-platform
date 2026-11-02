@@ -1,0 +1,7 @@
+persist sales_core.note {
+    database sales_core
+    semantic sales.note
+    table public.notes
+
+    column sales.note.body -> body storage text optional
+}
