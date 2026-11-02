@@ -136,7 +136,7 @@ M6の撤去判定では、移行済みConsumerの一覧、旧形式の読取り�
 
 ### 3追. Generation固定の外側にあるFunction StateとRead Witness（2026-11-02横断接合）
 
-**適用対象：G3の動的切替とG4の外部Consumer資格。追加の採用済み仕様・新Gateではない。** [Composite Functionの版・状態進化 Draft #2612](https://github.com/hat47x/tei-platform/pull/2612)、[Read Cohort/Field観測 Draft #2627](https://github.com/hat47x/tei-platform/pull/2627)、[Function Mapping/Rule依存 Draft #2624](https://github.com/hat47x/tei-platform/pull/2624)、[Everything is Dataの同一版接合 Draft #2629](https://github.com/hat47x/tei-platform/pull/2629)の**独立した設計・合成成果**を、#1223が実際に必要とするHost側の継続性／資格判断に接続する。各Draftの試験成功を合算して製品G3/G4合格とは扱わない。
+**適用対象：G3の動的切替とG4の外部Consumer資格。追加の採用済み仕様・新Gateではない。** [Composite Functionの版・状態進化 Draft #2612](https://github.com/hat47x/tei-platform/pull/2612)、[Read Cohort/Field観測 Draft #2627](https://github.com/hat47x/tei-platform/pull/2627)、[Function Mapping/Rule依存 Draft #2624](https://github.com/hat47x/tei-platform/pull/2624)、[Everything is Dataの同一版接合 #2629](https://github.com/hat47x/tei-platform/pull/2629)（main統合済みの受入計画。正式なDSL/業務意味受理は未実施）の**独立した設計・合成成果**を、#1223が実際に必要とするHost側の継続性／資格判断に接続する。各Draftの試験成功を合算して製品G3/G4合格とは扱わない。
 
 一つのInvocationについて、固定された**実装**と、時間とともに更新される**意味・状態・取得データ・現在権限**を次のように別の証拠として扱う。
 
@@ -169,7 +169,7 @@ G3のv2公開判定に加える最小の**反証ケース**を既存Ownerへ割�
 | Artifact/Target/Hostの改版 | 対象Consumerのrequired member・実ロードbyte、Generation、Hostの現在Route | 単一Manifest/digestや過去のLoad成功で現在配備・外部Host適合を証明 |
 | Provider/Host Grant・開示資格の失効 | Invocation時、送信/Result公開直前、不可逆EffectのCommit直前の該当Ownerの現在条件 | 以前の署名・CI・Receiptを現在Authorityとみなす。旧世代のLease解放でDB効果を取り消す |
 
-**CB-9：取得と公開の間のAuthority変化（E1→E3、試験未実施）**。T0でProviderのField Readが許可され値を得た後、T1でHostのField Grant/Consumer Disclosureが失効し、T2でResponse公開しようとする。T0時点の許可だけでT2の外部送出を成功扱いしない。既存[Draft #2637](https://github.com/hat47x/tei-platform/pull/2637)はDerived QueryのProvider前と返却直前でGrantを再照合する**未統合候補**であり、実Host同時失効・ABA・送出後の撤回保証ではない。Result公開とDB Commit、内部診断の外部開示をそれぞれ別判断にする。拒否診断から非公開項目の存在や内部権限状態を外部へ漏らさない。
+**CB-9：取得と公開の間のAuthority変化（E1→E3、試験未実施）**。T0でProviderのField Readが許可され値を得た後、T1でHostのField Grant/Consumer Disclosureが失効し、T2でResponse公開しようとする。T0時点の許可だけでT2の外部送出を成功扱いしない。[PR #2637](https://github.com/hat47x/tei-platform/pull/2637)はmain統合済みで、Derived QueryのProvider取得前と結果返却直前のField Read Grant再照合を実装した。ただし合成Callbackでの二地点確認であり、実Hostの並行失効・ABA・送出後の撤回保証ではない。**CB-9の実Host/Consumer公開の一体試験はNOT RUN**。Result公開とDB Commit、内部診断の外部開示をそれぞれ別判断にする。拒否診断から非公開項目の存在や内部権限状態を外部へ漏らさない。
 
 再資格化票は`Consumer/Claim、元Source・意味版、依存辺の変更、必要な再取得・Oracle、保持できる過去Evidence、利用時点のHost/Disclosure、未確認理由`を既存正本への参照で示す。**共通キャッシュ・新しいAuthority・全局Revision・新Gateは追加しない**。局所的に無関係なConsumerの再実証を自動要求せず、影響範囲不明の場合だけ当該Claimを`unknown`とする。
 
@@ -182,6 +182,60 @@ G3のv2公開判定に加える最小の**反証ケース**を既存Ownerへ割�
 | **E2：読み取りConsumer（#2390/#1708）** | 同一ContractをTEI内部と外部Hostの各1 Consumerで呼ぶ。全件／既知部分取得、0件／NULL／欠損、Snapshot時点とread-setがConsumer要求に合うか比較 | 型・レスポンス一致だけで意味適合にしない。実際の外部Hostで実行できなければ「外部利用可能」を主張しない |
 | **E3：書込みの確定境界（#1174/#1129）** | 同一OperationIDでcommit→ACK喪失→再起動→Lookup、権限失効・CAS衝突、post-commit不正Result。DB状態とReceiptを別Connectionで観測 | `Committed`と`Unknown`を区別。Generation/HostのDrainをDB rollbackとしない。Owner未受理のDenied/Outcomeを創作しない |
 | **E4：動的／静的Target比較（#1223/#259/#2390）** | 動的形態はG3の実2 Consumer/常駐v1/v2/容量/失敗復旧/SLO、静的形態はG4の実リンクされた依存閉包・サイズ/起動/RAM・外部HostでのContract回帰 | 片方の結果を他方へ流用しない。Studio Wails Hostを第二Application Targetとして数えない |
+
+### 4.1 統合済み部品から始める最初の実証パケット（2026-11-02最終main照合、実行未実施）
+
+**この手順はE0〜E2の入口であり、新Gateや新製品APIではない。** #2587（標準Operation/Artifact/CLI）、#2275（Host Application Route/Service Carrier合成）、#2637（D2 Field Grantの二地点検査）はmain統合済み。**三つは異なるContract/Callerを持つ独立試験で、同一業務RequestのE2Eではない。** 意味Role・Source・Contextの横断接合は[#2629](https://github.com/hat47x/tei-platform/pull/2629)の統合済み計画、AI向け操作案内は[#2605](https://github.com/hat47x/tei-platform/issues/2605)の別Ownerを参照する。
+
+| 現在実行できる局所経路 | 実行・記録する最小証拠 | ここでは成立しない接続 |
+| --- | --- | --- |
+| **A：Source→Operation→Artifact** | `reference/standard-crud/workspace`を固定し、`tei validate`、`tei operations -application ledger`、`tei artifacts -application ledger`からOperation ID/Basis/Binding/Rule、Gap/Unresolved、Manifestと必要memberを同一版で照合。既存`TestSurfaceWorkspaceStandardCRDFixture`を使う。 | `ledger.update.sales.order`の表示・束縛候補をHostの現在Service Route／正式Owner受理／実DB保存の証拠にしない。Alias複数経路の反例は#2611担当。 |
+| **B：保護Web Action→Host Route→Service Carrier** | `TestCanonicalQuoteActionUsesHostOwnedGenerationServiceRoute`の合成Scope、Generation、環境不一致／失効拒否、Process呼出し数を固定。 | 見積りAction `order_entry.preview_order_quote`とAの`ledger.update.sales.order`を同じOperation/Providerと偽って接合しない。正式current Source／実起動成果物は未確認。 |
+| **C：Provider Read→Consumerへ返却** | `TestD2DriverRechecksAuthorityAfterCompleteSourceRead`で、Provider取得中にField Grantが失効した場合の空戻り・拒否を確認。 | D2の独立合成ReadをBのService実装、HTTP送出の原子的な開示、実DB Snapshot/Commitへ転用しない。 |
+
+最初は**変更していない同じcheckout**で、次を独立の局所回帰として実行・採取する（本書の編集では未実行）。`tei operations`と`tei artifacts`は**別プロセス／別Load**なので、同じパス名だけから同一Source Snapshotを仮定しない。対象HEAD・前後clean・参照Sourceの実byte／Source IndexまたはWorldFingerprint/ModelRevisionを記録し、同一入力・同一Rule版か照合する。コマンド成功だけを正しい業務意味の受理としない。
+
+```sh
+git rev-parse HEAD
+git status --porcelain=v1 --untracked-files=all
+go run ./cmd/tei validate -workspace reference/standard-crud/workspace
+go run ./cmd/tei operations -workspace reference/standard-crud/workspace -application ledger
+go run ./cmd/tei artifacts -workspace reference/standard-crud/workspace -application ledger
+go test ./internal/operations -run '^TestSurfaceWorkspaceStandardCRDFixture（外部要求の机上評価→既存機構の最小結線→CUI/標準Plugin並行→headless縦断→必要なGUI）は全体計画Draft [#2492](https://github.com/hat47x/tei-platform/pull/2492)を参照し、本Gateで独立の新開発プロセスを発明しない。DSH/TAI/SEI/SHO等への投影では、準備・送付・生成・保存・独立確認の各事実がどこまで観測されたかを表示する。Tool呼出し、構文適合、バイト一致、AIの説明文を独立OracleやOwner受理の代用にしない。
+
+**採否の停止条件**：現在のTrust/Authority正本を特定できない、Consumer間で意味・開示Scopeが一致しない、外部Hostへの権限伝播を未検証、Commit結果が不明、又は旧ABI撤去の全Callerを列挙できない場合、該当する受入だけを保留する。別レーンの局所的な実装・試験は継続できる。新しい共通Host/Resolver/Authority/Manifestを増やす必要性は、既存の不足辺と独立Consumerの反例が示すまで未立証とする。
+
+## 判定記録に残す情報
+
+対象head、対象main、Health runnerのGit blob、GoとOS・Target、実行コマンドと終了状態、前後のclean状態、ログの保存先とSHA-256を記録する。G2以降では実成果物の指紋、世代とProviderの対応、合成した入力・権限の範囲、実施していない確認も記す。性能値には測定環境、反復数、負荷を添え、比較対象が無い測定から改善率を算出しない。
+
+G1、G2、G3、G4の結果を別々に判定する。#1223はADR-0032の破壊的移行と無停止更新も担当するため、G1の合格や一つのPRの統合だけでIssue全体を完了にしない。
+ -count=1
+go test ./reference/web-composition/go-host -run '^TestCanonicalQuoteActionUsesHostOwnedGenerationServiceRoute（外部要求の机上評価→既存機構の最小結線→CUI/標準Plugin並行→headless縦断→必要なGUI）は全体計画Draft [#2492](https://github.com/hat47x/tei-platform/pull/2492)を参照し、本Gateで独立の新開発プロセスを発明しない。DSH/TAI/SEI/SHO等への投影では、準備・送付・生成・保存・独立確認の各事実がどこまで観測されたかを表示する。Tool呼出し、構文適合、バイト一致、AIの説明文を独立OracleやOwner受理の代用にしない。
+
+**採否の停止条件**：現在のTrust/Authority正本を特定できない、Consumer間で意味・開示Scopeが一致しない、外部Hostへの権限伝播を未検証、Commit結果が不明、又は旧ABI撤去の全Callerを列挙できない場合、該当する受入だけを保留する。別レーンの局所的な実装・試験は継続できる。新しい共通Host/Resolver/Authority/Manifestを増やす必要性は、既存の不足辺と独立Consumerの反例が示すまで未立証とする。
+
+## 判定記録に残す情報
+
+対象head、対象main、Health runnerのGit blob、GoとOS・Target、実行コマンドと終了状態、前後のclean状態、ログの保存先とSHA-256を記録する。G2以降では実成果物の指紋、世代とProviderの対応、合成した入力・権限の範囲、実施していない確認も記す。性能値には測定環境、反復数、負荷を添え、比較対象が無い測定から改善率を算出しない。
+
+G1、G2、G3、G4の結果を別々に判定する。#1223はADR-0032の破壊的移行と無停止更新も担当するため、G1の合格や一つのPRの統合だけでIssue全体を完了にしない。
+ -count=1
+go test ./internal/driver -run '^TestD2DriverRechecksAuthorityAfterCompleteSourceRead（外部要求の机上評価→既存機構の最小結線→CUI/標準Plugin並行→headless縦断→必要なGUI）は全体計画Draft [#2492](https://github.com/hat47x/tei-platform/pull/2492)を参照し、本Gateで独立の新開発プロセスを発明しない。DSH/TAI/SEI/SHO等への投影では、準備・送付・生成・保存・独立確認の各事実がどこまで観測されたかを表示する。Tool呼出し、構文適合、バイト一致、AIの説明文を独立OracleやOwner受理の代用にしない。
+
+**採否の停止条件**：現在のTrust/Authority正本を特定できない、Consumer間で意味・開示Scopeが一致しない、外部Hostへの権限伝播を未検証、Commit結果が不明、又は旧ABI撤去の全Callerを列挙できない場合、該当する受入だけを保留する。別レーンの局所的な実装・試験は継続できる。新しい共通Host/Resolver/Authority/Manifestを増やす必要性は、既存の不足辺と独立Consumerの反例が示すまで未立証とする。
+
+## 判定記録に残す情報
+
+対象head、対象main、Health runnerのGit blob、GoとOS・Target、実行コマンドと終了状態、前後のclean状態、ログの保存先とSHA-256を記録する。G2以降では実成果物の指紋、世代とProviderの対応、合成した入力・権限の範囲、実施していない確認も記す。性能値には測定環境、反復数、負荷を添え、比較対象が無い測定から改善率を算出しない。
+
+G1、G2、G3、G4の結果を別々に判定する。#1223はADR-0032の破壊的移行と無停止更新も担当するため、G1の合格や一つのPRの統合だけでIssue全体を完了にしない。
+ -count=1
+git status --porcelain=v1 --untracked-files=all
+git rev-parse HEAD
+```
+
+**製品としての次の一辺**は、Aの選択されたBusiness Action/Contractを、Bと同じ実Hostの現在Route／Service Acceptance／実Providerへ一つのRequest identityで渡す**実在Caller**を特定し、Source/Meaning版、Application/Environment、Operation ID＋明示Binding、Contract/Provider/Artifact、現在Grant、Resultを一行に結ぶこと。既存経路にその辺が無ければ**「未接続」**と記録し、A/B/Cの局所PASSを結合成功と数えない。Read-onlyで同一Contractを固定できるConsumerから着手し、書込みCommit/Receipt/実DBは既存E3・#1174へ委ねる。外部Java/.NET/Wasmの実LoadとTarget固有適合はE4・#2390を維持する。
 
 AI-first/Headless-firstの実施順序（外部要求の机上評価→既存機構の最小結線→CUI/標準Plugin並行→headless縦断→必要なGUI）は全体計画Draft [#2492](https://github.com/hat47x/tei-platform/pull/2492)を参照し、本Gateで独立の新開発プロセスを発明しない。DSH/TAI/SEI/SHO等への投影では、準備・送付・生成・保存・独立確認の各事実がどこまで観測されたかを表示する。Tool呼出し、構文適合、バイト一致、AIの説明文を独立OracleやOwner受理の代用にしない。
 
