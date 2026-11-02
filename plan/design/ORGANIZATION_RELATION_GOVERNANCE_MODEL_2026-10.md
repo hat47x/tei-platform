@@ -1557,3 +1557,53 @@ Source Revision不一致でhelperを停止させる。UI選択epoch、Provider S
 - **R5 独立Oracleの判別能力**：#2514で行順変更、無関係ラベル変更、改版/遡及訂正、partial/unknown、A2/A3のTarget取り違えと隠れたTree edgeを独立負例として再評価する。
 
 #1119の実PG/Owner-write/SHO品質Gateの優先順位は維持。通常組織Dataへの専用ACL、TEI独自Host、第二Semantic/Query/Action Engine、必須Ontology入力UIは増やさない。**本節の資格は合成Referenceと設計・実証計画であり、TEI製品への導入・正式Contract採用・PR merge・Owner意味受理は未。**
+
+## 46. 組織DataのDeclared／Acquired／Disclosedと多Provider Read Cohort（2026-11-02：他チャットの最新差分）
+
+### 46.1 組織図が正しく描かれても、取得の正しさは別のClaimである
+
+[Everything is Data #2619](https://github.com/hat47x/tei-platform/issues/2619)の直近更新、[#2622](https://github.com/hat47x/tei-platform/issues/2622)（Data Operations）、[#2611](https://github.com/hat47x/tei-platform/issues/2611)（同Semantic Dataの複数DB Alias/Mapping）、[Draft #2627](https://github.com/hat47x/tei-platform/pull/2627)（Route/Read Cohort）、[Draft #2628](https://github.com/hat47x/tei-platform/pull/2628)（物理Read Witness）との照合から、組織モデルの意味的可視化では**次の五つの証拠の受渡し**が必要と分かる。
+
+| 証拠の段階 | 組織モデルでの例 | 識別するもの |
+| --- | --- | --- |
+| **F1 Declared** | FunctionはD1のMembership ID/Person/Deptだけを取得する、gr​​ain=Relation occurrence | 業務意味に基づく論理Read footprint。組織モデルにA3/A4やPositionが存在することはRead要求ではない |
+| **F2 Realized request** | どのDB Alias/Provider/Mapping/Read時点へ取得を束縛したか | 実在する候補の選択。Aliasの辞書順や同一Semantic Data名はTarget同一性でない |
+| **F3 Actual acquisition** | Providerが物理的に読んだField/Relation、行・範囲・実Query/Endpoint/Principal/RLS/Snapshot | 見えない内部Readも含む実取得証人。Outputが限定されているだけでは狭いReadの証明にならない |
+| **F4 Result Slice/Claim** | D1の取得済みA1/A2、complete/partial/unknown、Person/Relation grain、同一Cohort資格 | 何を実際に観測したか、何を数えられるか。要求`all`≠実complete |
+| **F5 Disclosed output** | 標準Table/Graph、SHO、AI CUIに渡したValue/説明/Action候補 | 表示/開示内容の範囲。物理Readの範囲、外部への送出許可、実Action許可とは別 |
+
+**派生する設計判断**：UIで`P2→D1`のA2が正しく見えていることだけでは、`D1`以外の関係A3や在任O1/O2をProvider内部で取得していないことは分からない。特定のData Contextの論理Readを守りながら、物理Provider側でJOIN用キーや補助Fieldを読むこと自体が正当な場合もあり得る。必要なのは**過剰取得の証拠と必要性の説明**であり、外形的に`requestedFields==physicalReadFields`だけを強制するものではない。実際に読んだ証拠がunknownなら、狭いReadが成立したと宣言しない。
+
+### 46.2 同じMembershipを二つのProviderから読む反例（ORG-PR）
+
+同じ`source-fixture.json`／`scenario-fixture.json`を用い、[Draft #2596](https://github.com/hat47x/tei-platform/pull/2596)に`verify-acquisition.mjs`を追加。実DB/APIは使わず、**合成の物理取得ログ**を作って独立に比較する。Provider経路は組織の意味Sourceへ埋めず、**観測Scenario内の`syntheticProviderRoutes`**へ配置した。
+
+- `replica`：`db-replica`／`membership-read-v1`、`validAt=2027-06-15, knownAt=2027-07-01`。D1にはA1/A2がある。
+- `primary`：`db-primary`／`membership-write-v2`、`validAt=2027-06-15, knownAt=2027-07-03`。2027-07-02に記録された遡及訂正によりD1にはA1だけが残る。
+- 両Providerの合成Snapshot識別文字列は意図的に同じ`s7`。**別Providerの同じ文字列は、共有Snapshot/Cohortの独立証人ではない。** Source revisionも同一であり、そこから同一の現在の集合を主張できない。
+- 合成で独立した共有Cohort根拠を与え、両Sliceが必要Scopeでcompleteなときだけ、異なるBagを`fixture contradiction`として報告できる。実Provider同一時点の有効な証明・訂正適用のOwner意味受理とは別。片方がpartial、Cohort証拠がunknownなら`not_established`。
+- 同じSemantic Data・Person・Relation IDでも、読み取りReplicaのRead SliceをPrimary書込みのTarget/Grantとして自動採用しない。Aliasの改名は安定した経路Identityの意味を変えるべきでない。
+
+これは[#2611](https://github.com/hat47x/tei-platform/issues/2611)が未統合[PR #2587](https://github.com/hat47x/tei-platform/pull/2587)で静的確認した`operationID=<application>.<kind>.<semantic data>`による異Mapping候補の無音重複排除の懸念を、**組織DataのRead Cohort側**から検証する別反例である。標準Operationの実修正・受理は#2611/#2485がOwnerであり、本書で操作面のContractを再定義しない。
+
+### 46.3 同じ表示、違う取得という反例（ORG-PA）
+
+合成Providerに、指定`id/person/dept`に加えて`provenance`を取得する経路、または未Mappingの`Occupancy`を同時に参照する経路を置いた場合、**Table/Graphに見える行は同一**でも、物理Read footprintの証拠は異なる。
+
+| 合成観測 | UIへ渡したD1所属 | 取得Witnessから言えること |
+| --- | --- | --- |
+| 明示したMembership/3 Fieldだけの取得 | A1/A2 | 合成ログ上で宣言範囲と一致 |
+| 追加の`provenance` Field取得 | A1/A2（同じ） | 追加Fieldを取得した合成ログ。理由/利用契約を確認すべき |
+| 未Mappingの`Occupancy`の内部読取り | A1/A2（同じ） | 標準UI Outputの一致だけでは内部でO1/O2を読んだことを隠せる |
+| 取得ログが不完全またはunknown | A1/A2（同じ） | **狭いReadの証明は`unverified`**。結果の同一性で代用しない |
+
+**保護・開示の位置づけ**：通常の組織Dataは同一TEI世界で一般Dataとして利用できる、というOwner方針は維持する。上の合成追加Fieldは特別な個人情報の例ではない。物理ReadとConsumer開示は責務として区別するが、組織管理モジュール全体を特別ACL/RLS/OS隔離対象に自動分類しない。実際に保護すべきField、外部送出、Providerの現行Grantがある場合は[#2516](https://github.com/hat47x/tei-platform/issues/2516)/#1178/#1174の既存契約へ接続する。
+
+### 46.4 局所Reference結果と実製品への次の引継ぎ
+
+- 新設`verify-acquisition.mjs`は**22/22 V8互換の局所検証PASS**。Source/Scenario JSONをGitHubから再読込した同版で、Providerルートの時点差・Cohortの不確定/合成矛盾、Declared vs simulated acquisition vs disclosed、取得Trace unknown、安定Route IDとAlias改名、read-only境界を確認。
+- §45の既存5ファイル**90/90 V8局所PASS**と合わせ、**112個の合成期待確認**。ただしこれらのFixtureは**実Providerへの物理アクセスではなく、外形の検証が意味的に十分かどうかを識別する自作の証人**である。独立Oracleであることを仮定しても、正式TEI Query/Providerや実際の情報流全体を検証したことにはならない。
+- 現行branchに`.github/workflows/tei-org-semantic-reference-node.yml`を追加し、**PR exact head・Node v22.16.0・source Blob・全Reference・clean pre/post**の実行を要求する独立のCIを設定した。**Workflowが成功した証拠は実際のrun結果が確認できた場合にだけ記載する**。新しい製品受入Gateではなく、合成Referenceの再現性確認である。
+- **次の実製品検証：** #2506/#2624がDeclared Read、#2611/#2627がAlias/Mapping経路・Cohort、#2622/#2628が実Query/API/SQLのRead Witness、#2516が外部Consumerへ実際に渡した情報、#2586が同一Function/Source版の縦断、#2598/#1174が実Request/Effectを所有する。これらを**同一試行**のEvidenceとして結べるかが製品受入条件となる。
+
+**未実証：** 既存TEI Go/Query/Function Context・実DB/API/Replica・実ProviderアクセスTrace・Client/LLMへの開示・Studio/SHO/UI/外部Host・Owner意味受理。現実のDataset/Scenario・Provider Readerから合成ログを直接計測しているわけではない。Source/Scenario/Roleの正式Schema・新共通Provider Resolver/Host/認可Engineは採用しない。既存#1119のP0優先順位と通常組織Dataの利用方針を維持する。
