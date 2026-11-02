@@ -529,7 +529,7 @@ Customer Queryへ転用する際には次を混同しない。
 | **CQ-P1 演算順序**（別の汎用Query Consumer） | Filter→LimitとLimit→Local Filterが異なる。ProviderでPushdown不可でも誤った正常0件を返さない | #2387/#2622が演算/取得のOwner。**独立SQLite 3.46.1の局所実測のみ**。TEI/実Provider/Owner未実施 |
 | **CQ-P2 行集合 vs 属性観測** | Complete Rowsetでも一属性absentならそのFieldの値同等性は未確定。absent/null/0/空文字を区別 | #2506/#2627がResult Slice/Read Cohort、#179/#1126がQuery/Data意味。#2627の合成PASSを正式Customer Contractへ流用しない |
 | **CQ-P3 Measure/集約**（将来の別Consumer） | Join後の重複・Groupの1行・AVGの再平均やsemi-additiveな時間軸をCustomer Entity件数と混ぜない | #2593が集計軸・単位・時間のOwner。Draft #2594の局所FixtureはService Conformanceを実証しない |
-| **CQ-P4 要求と実Readのずれ** | 同じ出力でも、実取得した隠れField/Scope、RLS/Permission/成本が異なる。説明と開示は別 | #2622 Q0/Q1、#2516 Q3、#1174等の実Host。未観測を`least-read proven`としない |
+| **CQ-P4 要求と実Readのずれ** | 同じ出力でも、実取得した隠れField/Scope、RLS/Permission/取得コストが異なる。説明と開示は別 | #2622 Q0/Q1、#2516 Q3、#1174等の実Host。未観測を`least-read proven`としない |
 
 **優先を変えない：** 最初は既存CQ-R2（試験Adapterの欠損/null）とCQ-R4（Generic `Rows:nil`）を二経路で独立実測する。その後、CQ-R5/R7/R8で必要となるContext/QueryだけにCQ-P1/P2を適用する。CQ-P3は別のMeasure Consumerの検証待ち。成熟した比較条件を#951の契約適合票へ**参照可能にすること**と、#951内に新実装・Gateを追加することは異なる。Source/Provider/Host/Resultの同一Attemptが未接続なら、SQLite正常系・Reference PASS・Shape PASSを一件のE2Eへ合算しない。
 
