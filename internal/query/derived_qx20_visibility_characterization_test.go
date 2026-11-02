@@ -97,7 +97,7 @@ func TestQX20GoIRSameQueryIDAndFieldIDDoNotProvePublicObservationalEquality(t *t
 	// The real Consumer projection is owned by the existing disclosure lane.
 	approvedSummary := func(ir DerivedIR) string {
 		summary, err := json.Marshal(struct {
-			Query string
+			Query  string
 			Status string
 		}{Query: string(ir.Query), Status: "withheld"})
 		if err != nil {
