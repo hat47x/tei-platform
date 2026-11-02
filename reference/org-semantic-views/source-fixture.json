@@ -116,22 +116,5 @@
       "from": "2027-07-01",
       "to": null
     }
-  ],
-  "readEvidence": {
-    "instance": "I1",
-    "anchor": "D2",
-    "epoch": 7,
-    "meaning": "org-r7",
-    "query": "membership-q1",
-    "readVersion": "snap-3",
-    "complete": true,
-    "occurrence": "edge-display-3",
-    "subject": "P2",
-    "edge": "A3",
-    "edgeKind": "Membership"
-  },
-  "baseline": {
-    "validAt": "2027-06-15",
-    "knownAt": "2027-07-01"
-  }
+  ]
 }
