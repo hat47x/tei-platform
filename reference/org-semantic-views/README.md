@@ -10,12 +10,12 @@ node --test reference/org-semantic-views/verify-change.mjs
 node --test reference/org-semantic-views/verify-handoff.mjs
 node --test reference/org-semantic-views/verify-projection.mjs
 node --test reference/org-semantic-views/verify-context.mjs
+node --test reference/org-semantic-views/verify-acquisition.mjs
 ```
 
 The test files use JavaScript and Node built-ins only. `source-fixture.mjs` loads plain JSON from this directory; no database, external service, or business record is changed.
 
-**Current exact-source evidence (2026-11-02):** all five current test files were fetched from GitHub after the refactor; a restricted V8 local runner, with compatible Node test/assert shims and the shared JSON loader supplied explicitly, reported **27 + 11 + 16 + 16 + 20 = 90/90 local checks PASS**. **Current-HEAD Node CLI, GitHub CI, formal TEI Go/Query/Context/Pattern/UI, Provider, Host and Owner meaning acceptance are NOT RUN.** Earlier Node v22.16.0 evidence of 11/11 for `verify-change.mjs` and 16/16 for `verify-handoff.mjs` applies **only to their prior, pre-refactor source blobs**, not the newly shared-fixture versions. Do not carry former Node success across the changed source identity.
-
+**Latest exact-source evidence (2026-11-02):** the five shared-fixture semantic reference files were re-fetched from GitHub and evaluated by a narrowly compatible V8 runner: **90/90 PASS** (27+11+16+16+20). The new `verify-acquisition.mjs` was also fetched back and returned **22/22 PASS** with the same V8 shim. **112 synthetic local checks PASS in total**, but **the currently committed exact-head native Node runner, GitHub workflow, real TEI Query/Context/Studio/Provider/Host and Owner business meaning acceptance have not yet been observed to PASS**. Prior native Node 11/16 successes relate to **pre-refactor source blobs only**. A dedicated workflow `.github/workflows/tei-org-semantic-reference-node.yml` was created to run the current suite with Node 22.16.0, exact-head checkout, source hashes and clean working tree; its CI status must be observed separately and at the same commit.
 ## One synthetic dataset, distinct observation scenario and five independent consumers
 
 - **`source-fixture.json`** is the single **test-only semantic dataset**: Persons P1/P2/P3, Organizations D1/D2, time/version-qualified Membership A1-A4 (five version records for four stable relations), Position M1, Occupancy O1/O2, hypothetical FTE allocations, and D1 Projects J1/J2.
@@ -134,6 +134,26 @@ The read-only local comparison checks:
 **Current evidence:** the GitHub-readback `verify-context.mjs` returned **20/20 PASS** in the restricted local V8 compatibility runner. Exact current-file Node CLI and actual TEI Data/Relation→Function Data Context→Query/Provider→UI/Action **NOT RUN**.
 
 **Relevant current other threads:** [#2619](https://github.com/hat47x/tei-platform/issues/2619) (Everything is Data), [#2624](https://github.com/hat47x/tei-platform/issues/2624) (explicit Function Data Mapping), [#2506](https://github.com/hat47x/tei-platform/issues/2506) (Data Context owner), [#2507](https://github.com/hat47x/tei-platform/issues/2507) (Pattern), [#2586](https://github.com/hat47x/tei-platform/issues/2586) (single-version vertical test). These remain the owners of real TEI product integration. No novel TEI Context runtime, permission gate, SQL engine or Graph renderer is introduced by this reference.
+
+## Sixth reference: declared footprint, synthetic acquisition witness and disclosed UI output
+
+`verify-acquisition.mjs` is an **Organization-specific** pressure case for the five-stage distinction introduced in [#2619](https://github.com/hat47x/tei-platform/issues/2619), [#2622](https://github.com/hat47x/tei-platform/issues/2622), [#2611](https://github.com/hat47x/tei-platform/issues/2611), [Draft #2627](https://github.com/hat47x/tei-platform/pull/2627) and [Draft #2628](https://github.com/hat47x/tei-platform/pull/2628).
+
+| Evidence layer | Example in this finite source | What is still unknown |
+| --- | --- | --- |
+| **Declared** Function mapping | Membership/D1, fields id/person/dept, Relation-occurrence grain | This is a request, not proof of physical acquisition |
+| **Realized** route selection (synthetic) | Scenario chooses `replica` or `primary` with distinct provider/mapping/alias | Which actual Provider/DB session will service a real TEI Action |
+| **Acquisition witness** (synthetic) | A log of requested physical fields, paths, route, recorded-time and read row IDs | This deliberately modeled trace does not inspect actual DB I/O, caches, query pushdown, driver internals or OS/network |
+| **Result Slice** | D1 A1/A2 on replica known-at July 1; A1 on primary known-at July 3 (retroactive A2 correction) | Shared snapshot/cohort, current completeness, cross-source identity, RLS and effective record scope |
+| **Disclosed** Table/Graph value | Both views preserve obtained ID/person/dept and scope | External AI disclosure policy, logging/timing channels, and execution grant are separate concerns |
+
+**The changed domain-specific pressure** is **Person P2 / Membership A2**. The same Semantic Membership type and even the same snapshot token `s7` occur on two synthetic routes, but their recorded-time cutoffs differ. **Source version equality and snapshot token string equality do not prove same read cohort**. A finite independent witness of equal scope/cohort lets a mismatch be reported as a *fixture contradiction*, without claiming that the actual providers are inconsistent. If one route is incomplete or the common witness is absent, the result is `not_established`.
+
+**Overfetch witness:** the simulated Provider can read `provenance` or the unmapped `Occupancy` Relation and return the same Table/Graph rows. The two outputs are intentionally equivalent while the modelled acquisition traces differ. This is a diagnostic that a **physical acquisition witness must be evaluated separately**, not evidence that the chosen Query implementation performed a real overfetch. A Provider may have legitimate auxiliary-key or filtering reads; the meaning/policy of extras needs an explicit explanation. When the synthetic access trace is unknown, the comparator returns `unverified`, even if the visible result looks narrow.
+
+**Routes are scenario data, not semantic Source:** `scenario-fixture.json` now includes two `syntheticProviderRoutes` with distinct stable route IDs, aliases, provider/map identities and known-at cutoffs. Changing an alias label while keeping the route ID cannot silently select another route. Nothing in the `source-fixture.json` semantic Dataset assigns a universal physical Provider to all Person/Membership relationships.
+
+**Latest evidence**: the exact GitHub-readback `verify-acquisition.mjs` code returned **22/22 PASS** in a V8 local test shim, including the route, temporal, incomplete, overfetch, unknown-trace, disclosure and read-only cases. **Current-HEAD native Node CI and real TEI Provider tracing are not yet qualified**. This is an independent fixture, not a new Data Operations/Provider Resolver/Authorization engine. Follow-up product tests belong to [#2622](https://github.com/hat47x/tei-platform/issues/2622)/[#2628](https://github.com/hat47x/tei-platform/pull/2628) (actual access), [#2611](https://github.com/hat47x/tei-platform/issues/2611)/[#2627](https://github.com/hat47x/tei-platform/pull/2627) (route/cohort identity), [#2506](https://github.com/hat47x/tei-platform/issues/2506) (Context), [#2516](https://github.com/hat47x/tei-platform/issues/2516) (external disclosure), and [#1174](https://github.com/hat47x/tei-platform/issues/1174) (effect).
 
 ## Owner boundaries and integration
 
