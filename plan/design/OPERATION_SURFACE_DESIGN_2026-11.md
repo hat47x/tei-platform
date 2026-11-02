@@ -282,7 +282,7 @@ type SurfaceGap struct {
 
 W1 → W2 →（W3・W4 は並行）→ W5 → W6 の順に進めます。W1・W2 は #1127 の W1・W2 と同じ作業になるため、別々に実装しません。
 
-**実装状況（2026-11-01）。** W1・W2 の参照実装を [`internal/operations/surface.go`](../../internal/operations/surface.go) に追加しました。`list`・`read` の導出、キーの優先順位、未解決（`missing-semantics`・`conflict`）の分類、決定性の試験を含みます。標準操作の `create` と、`update`・`retire` の未解決は、[#1127の設計](DERIVED_CRUD_OPERATION_DESIGN_2026-11.md)のW3・W4に従って同じ実装で扱います。`go test ./internal/operations -run Surface` が通ります。W5（CLI）の読み取り部分を追加しました。`tei operations -workspace <root> -application <id>` が操作面（操作・gap・集計・規則）を JSON で出します。書き込みは行わず、実行の可否判定には使いません（15章の未決のまま）。W3（上書き）・W4（書込みの自律区分）・W6（実行時の照合）は未着手です。
+**実装状況（2026-11-01）。** W1・W2 の参照実装を [`internal/operations/surface.go`](../../internal/operations/surface.go) に追加しました。`list`・`read` の導出、キーの優先順位、未解決（`missing-semantics`・`conflict`）の分類、決定性の試験を含みます。標準操作の `create` と、`update`・`retire` の未解決は、[#1127の設計](DERIVED_CRUD_OPERATION_DESIGN_2026-11.md)のW3・W4に従って同じ実装で扱います。`go test ./internal/operations -run Surface` が通ります。W5（CLI）の読み取り部分を追加しました。`tei operations -workspace <root> -application <id>` が操作面（操作・gap・集計・規則）を JSON で出します。`-out <file>` を付けると、その JSON をファイルへ書きます。書き込みは行わず、実行の可否判定には使いません（15章の未決のまま）。W3（上書き）・W4（書込みの自律区分）・W6（実行時の照合）は未着手です。
 
 ## 15. 未決（Owner判断が要る点）
 
