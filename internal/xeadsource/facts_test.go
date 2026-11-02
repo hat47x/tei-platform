@@ -398,6 +398,53 @@ func TestExtractRelationalSourceFactsPreservesNamespaceBoundaryAcrossLegacyKeyAn
 	}
 }
 
+func TestExtractRelationalSourceFactsForeignTableDoesNotInheritParentOwnership(t *testing.T) {
+	doc, err := Parse(FormatXeaf, []byte(`<System xmlns:x="urn:foreign">
+		<Table ID="OUTER">
+			<Field ID="LIVE"/>
+			<x:Table ID="FOREIGN">
+				<Field ID="HIDDEN"/>
+				<Key ID="INSIDE" Fields="HIDDEN"/>
+				<Refer ID="INSIDE_REFER" ToTable="OUTER" ToKeyFields="LIVE" WithKeyFields="HIDDEN"/>
+			</x:Table>
+			<Key ID="OUTSIDE" Fields="HIDDEN"/>
+		</Table>
+	</System>`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	facts := ExtractRelationalSourceFacts(doc)
+	if len(facts.RuntimeKeys) != 2 || len(facts.RuntimeRefers) != 1 {
+		t.Fatalf("unexpected typed fact count: %#v", facts)
+	}
+	byID := map[string]RuntimeKeyFact{}
+	for _, key := range facts.RuntimeKeys {
+		byID[key.KeyLegacyID] = key
+	}
+	if inside := byID["INSIDE"]; inside.TableLegacyID != "" {
+		t.Fatalf("foreign wrapper donated or inherited a Table identity: %#v", inside)
+	}
+	if outside := byID["OUTSIDE"]; outside.TableLegacyID != "OUTER" {
+		t.Fatalf("legitimate enclosing Table changed: %#v", outside)
+	}
+	if refer := facts.RuntimeRefers[0]; refer.SourceTableLegacyID != "" ||
+		refer.ReferLegacyID != "INSIDE_REFER" {
+		t.Fatalf("foreign wrapper leaked parent table to nested Refer: %#v", refer)
+	}
+	got := DiagnoseRelationalSourceFacts(doc, facts)
+	foundMissing := false
+	for _, d := range got {
+		if d.Code == "runtime-key-field-not-found" &&
+			d.TableLegacyID == "OUTER" &&
+			d.FieldLegacyID == "HIDDEN" {
+			foundMissing = true
+		}
+	}
+	if !foundMissing {
+		t.Fatalf("foreign nested Field incorrectly satisfied enclosing Table Key: %#v", got)
+	}
+}
+
 func TestExtractRelationalSourceFactsRejectsUnknownDefaultNamespace(t *testing.T) {
 	for _, tc := range []struct {
 		name string
