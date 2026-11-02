@@ -688,7 +688,39 @@ strict方式でも`workspace.Load`自身のscan/各Sourceの読取り・追加�
 
 **証拠水準**：#1017/#2642のmain統合を確認したことと、Sourceに関する上の静的判別ができることを区別する。#2647のOpen PRの現行Windows試験や#2638の合成Role Referenceの結果は各Ownerの記録だけに帰属する。T-54〜61・Macroが実Source受理から業務Effect/外部開示へ到達する一巡・実Harness/OS/実Providerは**NOT RUN**。
 
-## 15. 判断を残す点
+## 15. 空結果からの不存在判断と実証の接合
+
+### 15.1 0件という表示と、業務上の「存在しない」は別
+
+[#2586](https://github.com/hat47x/tei-platform/issues/2586)／[#2582](https://github.com/hat47x/tei-platform/issues/2582)の片側Claimと非出力依存を、マクロの業務Actionへ接続する。例えば「未処理の割当が無ければ受注を確定する」とき、画面に0行しか表示されないという観測だけでは、条件を満たす割当が実際に存在しないとは限らない。
+
+比較する内容は`U = 必要な業務対象集合`、`P = 未処理と判定する述語`、`R = 実Providerが返した集合`、`t = 観測時点`である。例示記号であり新しいTEI内部Schema/数理APIを提案しない。
+
+- **存在の証人**：信頼できる`R`の中に`P`を満たす実体が1件あれば、同じScope/時点における「該当なし」は否定できる。全件読取りは必要とは限らない。
+- **不存在の成立候補**：`R=∅`だけでは不足。`P`が要求する`U`の完全取得、適切なTenant・Relation・粒度、Query/Providerの実読取り条件、時間・RLS/権限制約が満たされて初めて「`t`における不存在」を候補にできる。
+- **部分取得・不明**：検索結果0件、ページ打切り、未ロードRelation、RLSにより除外された行の有無を確認できないなら`not-established`を保持する。表示上の空と、業務Universeの空を同一視しない。
+- **現在の実行資格**：`t`時点で完全だったとしても、`tCommit`までに新しい割当が作られる可能性がある。Ownerの現在Action条件、適切なDB制約/Tx/並行更新検査なしに、過去の不存在を確定判断へ転用しない。
+- **限定開示**：Hostが非公開行を用いて業務条件を確かめることと、利用者へその行や件数を開示することは別。Secretを含む診断・競合時の現在値をResultに出さない正当な設計を許す。
+
+この区別を`NOT EXISTS`、反結合、空のJSON配列、Graphの「子がいない」、文書索引の「見つからない」、AIの「証拠未発見」まで広げて評価する。各Domainで`U/P/t`と検索の十分性は異なるため、単純な`exists/absent`の真偽値へ統一して十分性を失わせない。
+
+### 15.2 実PostgreSQL CASが確認したことと、集合条件への不足を分ける
+
+[#2651](https://github.com/hat47x/tei-platform/pull/2651)・[#2653](https://github.com/hat47x/tei-platform/pull/2653)の局所実証では、`tools/reference-expected-state-update`のPostgreSQL 14.24に対する単行`UPDATE ... WHERE key=$1 AND value=$2`、競合・不存在・冪等の分離、現在のRaw値を競合結果へ返さない方針が確認された（担当Issueの隔離DB8件の実行記録）。これは**実DBの限定された一行更新の根拠**であり、#1174の実Owner Effect Fenceや、多行の「該当なし」の現在性まで実証したものではない。
+
+次の縦切りは、`order1001`の現在Statusだけを比較して更新できても、未処理割当が存在しない保証にはならないことを正例/負例で示す。Owner受理済みBusiness Actionの必要条件が集合に及ぶ場合、その処理の実Transaction/DB制約と独立Observationで検査する。現在値非開示は守り、内部比較用Rawを無条件にAI/Studioへ戻さない。
+
+### 15.3 M0を実コマンド・実Fixtureに接続した独立Draft
+
+これまでM0はCLIからのread-only受渡し計画だった。今回、[実装実証Draft #2678](https://github.com/hat47x/tei-platform/pull/2678)を新設し、mainで実在する`tei operations`／`tei artifacts`を`reference/standard-crud/workspace`の`ledger`に適用する検査器・合成負例11件・exact-head GitHub Actionsを**既存CLIに依存する別レーン**として保存した。
+
+M0は`validate/operations/artifacts`のWorld版・Rule/Gap・Manifestを照合し、`-out`書込みや実Providerは実行しない。[#2626](https://github.com/hat47x/tei-platform/pull/2626)の実Go CLI→人/AI二表示→Source移動の成功実測とは対象とScopeが異なる。**どちらの局所PASSも、今回のM0実行結果・Owner意味受理・Macro実権限へ自動昇格しない**。
+
+後続のM1実Consumer全Memberは[#2630](https://github.com/hat47x/tei-platform/pull/2630)を参照し、JavaのStore閉包は[#2652](https://github.com/hat47x/tei-platform/pull/2652)の実JVM独立6試験（復元class集合から公開10 Fixture）を異Targetの正例として利用する。Main.class単体のDigestは全class依存の完備を示さない。M3実Grant/DBとM4文書・Body実受領は既存Ownerの受入へ渡す。
+
+**追加のCore設計判断は行わない**。既存T-35/36（非表示Predicate・結果選択）、T-41（過去のReceiptと現在資格）、T-54/58（CLI ScopeとSource版）、T-61（実成果物の閉包）の受入条件を、今回の具体Fixtureに結び付ける。Macroの`NOT EXISTS`に必要な正負/時点条件は実Provider・Ownerを接合してから判断する。
+
+## 16. 判断を残す点
 
 - **業務Owner**：各Actionで「元の対象」「関係する対象」「全件の完了」をどのように定義するか。旧X-TEA `sales.order.submit`等の未受理マッピングは推測で補わない。
 - **組織Owner**：固定集合／実行時集合、代理の時点、合議、実行版固定と作用範囲での更新許容、既発行Grantの変更時再判定、結果閲覧をどのPolicyで扱うか。
