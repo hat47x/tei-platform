@@ -73,3 +73,22 @@ func TestCheckSetReportsAMissingManifestEntry(t *testing.T) {
 		}
 	}
 }
+func TestCheckSetReportsAnUnknownRule(t *testing.T) {
+	set := negativeFixtureSet(t)
+	for i := range set.Artifacts {
+		if set.Artifacts[i].Kind == string(KindTableDefinition) {
+			set.Artifacts[i].Rule.ID = "tei.artifact.typo"
+		}
+	}
+
+	findings := CheckSet(set)
+	found := false
+	for _, finding := range findings {
+		if finding.Code == FindingUnknownRule {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("an artifact naming another rule must be reported: %+v", findings)
+	}
+}

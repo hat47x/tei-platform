@@ -24,6 +24,8 @@ const (
 	// FindingCompleteWithUnresolved: the set claims completeness while an
 	// artifact still has unresolved entries.
 	FindingCompleteWithUnresolved = "COMPLETE_WITH_UNRESOLVED"
+	// FindingUnknownRule: an artifact names a rule that does not belong to its kind.
+	FindingUnknownRule = "ARTIFACT_RULE_UNKNOWN"
 )
 
 // CheckSet verifies the internal consistency of a rendered set: every artifact
@@ -77,6 +79,20 @@ func CheckSet(set WorkspaceSet) []Finding {
 		}
 	}
 
+	for _, artifact := range set.Artifacts {
+		expected, ok := ruleForKind(artifact.Kind)
+		if !ok {
+			continue
+		}
+		if artifact.Rule.ID != expected {
+			findings = append(findings, Finding{
+				Code:    FindingUnknownRule,
+				Subject: artifact.Kind,
+				Detail:  fmt.Sprintf("artifact names rule %s, expected %s", artifact.Rule.ID, expected),
+			})
+		}
+	}
+
 	if set.Manifest.Complete {
 		for _, artifact := range set.Artifacts {
 			if len(artifact.Unresolved) > 0 {
@@ -100,4 +116,19 @@ func surfaceGaps(artifact Artifact) []operations.SurfaceGap {
 		return nil
 	}
 	return payload.Gaps
+}
+
+// ruleForKind names the one rule that may produce each kind. An artifact that
+// names another rule is not rejected, but the mismatch is reported: a typo in a
+// rule identifier would otherwise hide which rules produced the set.
+func ruleForKind(kind string) (string, bool) {
+	switch Kind(kind) {
+	case KindTableDefinition:
+		return TableDefinitionRuleID, true
+	case KindFunctionDefinition:
+		return FunctionDefinitionRuleID, true
+	case KindOperationSurface:
+		return OperationSurfaceRuleID, true
+	}
+	return "", false
 }
