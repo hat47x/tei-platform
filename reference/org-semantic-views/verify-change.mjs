@@ -3,7 +3,7 @@
  * Run: node --test reference/org-semantic-views/verify-change.mjs
  * No TEI adapter, database, production Rule, authorization or actual refresh.
  */
-import { fixture, baselineMemberships } from './source-fixture.mjs';
+import { fixture, scenario } from './source-fixture.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
@@ -30,7 +30,7 @@ function claims(s, validAt, knownAt) {
     d1Members: count('D1'), d2Members: count('D2'),
     d1Fte: fte('D1'), d2Fte: fte('D2'), incumbent };
 }
-const query = (s, at = '2027-06-15', known = '2027-07-01') => claims(s, at, known);
+const query = (s, at = scenario.baseline.validAt, known = scenario.baseline.knownAt) => claims(s, at, known);
 
 test('baseline: three people but four membership occurrences', () => {
   assert.deepEqual(query(seed), { members: 4, people: 3, d1Members: 2, d2Members: 2,
