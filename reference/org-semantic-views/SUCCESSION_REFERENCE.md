@@ -35,3 +35,12 @@ They distinguish Org succession vs Case migration; an explicit single-responsibl
 Rule acceptance, cohort completeness, Grant, post-image, and receipt in this file are **test-only injected inputs**. This suite must not be used to assert real Provider acquisition, Owner Business Rule adoption, actual Commit fencing, end-to-end TEI Function/Query/SHO/Studio functionality, or production deployment qualification. The existing workflow executes this same `verify-succession.mjs` file; exact-head Node CI status must be confirmed separately before citing any new success.
 
 Related owners: organizational meaning #2386 and [design Draft #2389 §51](https://github.com/hat47x/tei-platform/pull/2389); corpus #2510; shared headless integration #2586; actual Read #2628; Owner-write coverage #1129; effect fence #1174; scenario and oracle #1131/#2514. No second Org/Case schema, central Responsibility Registry, Host, Workflow or Authorization engine is introduced.
+
+
+## Cross-view response freshness and negative dependency (VF-01–24)
+
+The add-on `verify-consumer-freshness.mjs` **imports the merged shared org fixture** and simulates two Provider routes. It tests distinct obligations for rejecting late responses and retracting an already-painted result after Context/Source/Role/Provider changes; required read evidence; partial/unknown empty results; non-output WHERE/ORDER/EXISTS and changed Rule dependencies; dirty Patch retention when selected occurrence/anchor changes; multi-claim read cohorts; 0→1→0 responsibility history; and non-atomic multi-Provider SaveGroup.
+
+The requalification output is **test-only**. `synthetic-assumed`, `witnessed`, `same-synthetic-read-session`, `candidate-only`, `partial-only` are synthetic labels, not production TEI public interfaces or authoritative Provider/Grant/Effect proof. An ordinary organization's Data remains accessible under normal Data rules; this is not a new organization-specific ACL.
+
+At GitHub Blob `160cc7ef8f141923516bfc446533b6bc92b9d3bc`, a V8-compatible runner with the **actual shared JSON fixture contents** and its imports replaced completed **24/24 synthetic checks PASS**. The exact-head Node CI and real Workbench/Query/Provider/SHO/Host integrated behavior require separate evidence. Design [Draft #2389 §52](https://github.com/hat47x/tei-platform/pull/2389), specialized UI handoff #2631, Context/Claim #2506/#2582, editing #2597/#2601, physical Read #2628, vertical #2586, Intent/Effect #2598/#1174.
