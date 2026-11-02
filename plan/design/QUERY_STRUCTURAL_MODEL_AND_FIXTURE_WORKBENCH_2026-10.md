@@ -545,6 +545,44 @@ QX-17 M2の**計画A〜Eに実測の限定証拠を加え**、他チャットで
 **採用状態**：この§7.13は検証計画。実PostgreSQL/TEI Worker/Go変更/正式Function Context/GUI/SHO/Host AuthorityのQX-19試験は未実施。既存#2388 F0/QX-17、Go Draft #2577、Source Scope Draft #2454、worker応答Draft #2471、D2拒否、#1119 G0〜G4は変更しない。
 
 
+### 7.14 QX-20：Explain取得の実行効果と公開される観測の二つの安全境界（2026-11-02／局所fixture実測）
+
+**一次Owner**：[#2387のQX-EX1〜06](https://github.com/hat47x/tei-platform/issues/2387#issuecomment-6572575006)を参照。この節は前節QX-18/19の実効Target・View/Function依存に、**説明取得の操作自体の性質**と、**説明を消費者へ渡す際に観測可能な情報**を付け加える。実SQL ExecuteのHost・Provider権限、Result Slice、Consumer別Disclosureは引き続き別Ownerとし、第二のSQL Executor・新Host・新認可基盤を増やさない。
+
+#### QX-20a：取得モードの違いを契約に明示
+
+| 要求した説明 | 実行対象と実測の有無 | 効果と開示の扱い |
+| --- | --- | --- |
+| TEI静的Query構造（既存DerivedIR/RelationalIR） | 与えたSQL、Schema Model、解析結果の読取り／図表化。**対象DBを実行していない** | Source文・構造・定数・診断が機密情報であり得る。解析器に実SQL実行許可を付与しない。DB物理Plan/可視行・実測時間は未観測 |
+| DBの通常`EXPLAIN` | DBの計画器に問い合わせる。通常は対象Queryを実行せず計画を表示 | 外部DB操作・接続・権限・内部関数やlock/リソース・Plan情報開示の条件をTarget別に審査。名前に`EXPLAIN`が含まれるだけで全般の副作用なしを保証しない |
+| DBの`EXPLAIN ANALYZE` | PostgreSQLでは**対象SQLを実行**して計測する | INSERT/UPDATE等の副作用、SELECT中の副作用関数、外部呼出し、lock、資源消費を実行境界で扱う。`BEGIN; ...; ROLLBACK;`だけでは`nextval/setval`によるSequence更新等の残存Effectや外部作用の不存在を保証しない |
+
+外部仕様：PostgreSQL [EXPLAIN](https://www.postgresql.org/docs/current/sql-explain.html)、[Using EXPLAIN](https://www.postgresql.org/docs/current/using-explain.html)、[Sequence関数](https://www.postgresql.org/docs/current/functions-sequence.html)。`EXPLAIN ANALYZE`はSELECT出力行をClientへ返さなくてもQueryの実処理が行われる。`EXPLAIN`実行を含むDBアクセスは既存Host/Providerの権限に従い、静的ExplainのCLI/SHO利用から自動許可されない。実測時間やRowsを、計画値や手書き期待から生成して`observed`と記録しない。
+
+#### QX-20b：秘密の行値を載せなくてもExplainを通じて情報を漏らし得る
+
+**既存型の静的確認**：`internal/query/derived.go`の`SourceRef.Name`、`FieldRef.PhysicalSource`、`OutputField.Expression`、`Lineage`、`internal/query/relational.go`の`RelNode.Expressions`、Analyzerの`Diagnostics`がある。これらは開示可能性を自動判断するフィールドではない。DB物理PlanもRelation名・推定件数・式等を含み得るため、`row valuesを除いたJSON`を安全な公開Projectionと見なさない。
+
+**保存した独立合成テスト**：[test_qx20_explain_observation.py](https://github.com/hat47x/tei-platform/blob/work/query-structural-fixture-design-20261030/plan/fixtures/query-workbench-f0/test_qx20_explain_observation.py) は、同じ公開入力 `public.orders` を持ちながら、非公開のRelation名・Filter定数・推定件数だけが異なる二つの**人工世界**を作る。Python標準ライブラリだけの`unittest` 10件を実行し、**10/10 PASS**。実行バイトとGitHub保存blobは SHA `18302f39d3366665681553424815f3ea4aa61f5a` で一致。これは**人工JSONの観測同値・差分検出試験**であり、TEIの実IR→Consumer公開処理や開示認可が実装済み／PASSという証拠ではない。
+
+| 比較項目 | 局所テストで検出・確認したこと | 製品側で別途必要な根拠 |
+| --- | --- | --- |
+| 明示的に許されたSource IDからの合成Projection | 非公開世界が変わっても、投影後のJSONが一致 | Source grantの真正性／実Consumerの開示権限（既存#1178/#2516） |
+| 生IR／秘密のExpression／診断文 | 公開される文字列が変わることを検出 | Source本文・内部参照・Error・TraceをConsumerごとに公開できるか |
+| 非公開Source数のplaceholder／Plan Rows／Status／配列順 | **値をマスクしても**要素数・推定件数・診断Status・配列順の差が観測可能 | 開示可否が未定のときは「非公開の数」や内訳からも推論されない出力設計 |
+| 明示許可した一つの集計値だけが異なる二世界 | 集計値の差だけを`authorized release`として比較から除くと、残る差の有無を検査可能。別のdebug差があれば拒否 | **releaseの許可そのもの**はテスト関数の引数で仮定しており、Policy/Host/Owner/Consumer別の認可判定は未実装 |
+
+**重要な限界**：この観測同値チェックは固定した一組の二世界とJSON文字列に関する**必要条件の検査手法**である。すべての秘密状態・タイミング・例外・通信/ファイル送出・反復照会に対する非干渉の数学的証明ではない。また、テスト内`granted_source_ids`と`released_keys`は**あらかじめ許可済みと仮定した入力**であり、名称が`public.`だから自動で公開許可されるという意味ではない。許可の根拠は既存のHost/Authority/Disclosureに委ねる。
+
+#### QX-20の段階別受入・停止線
+
+- **M0／source inspect**：現在の静的IRに含まれるSource/Expression/診断がConsumerから見える実出力Pathを棚卸しする。実際のTEI ConsumerでどのJSON・ログが外部へ送られるか確認できなければ`unverified`。新しいCore Provenance/Disclosure engineやグローバルな`safe`フラグを作らない。
+- **M1／説明取得の資格**：同じSQLに対し`structural` / `planner` / `execute-and-measure`を出所・実行済み/未実行・権限・取得範囲の異なる要求として検証。前2者も相応のProvider/Schema/Info権限が必要。危険な実行モードを単なる解析の上位オプションとして自動有効化しない。必要な実PG試験は隔離DB・接続・Resource/Effect観測・Owner許可の条件を固定する。
+- **M2／Consumer投影**：#2516の観測同値・Consumer用途別開示に本局所oracleを提供。#1178でのMetadata/Trace/Diagnostic開示判定、#1693での許可された集計のみの公開、#2586のQuery→Context→Claimで必要なScope、SHO #1803の固定版資料に引渡す。ただしAI用に必要なLineageを全削除して意味情報が失われた場合は`unsupported/withheld`とし、「説明できた」と主張しない。
+- **M3／実出力E2E**：保存済みPython fixtureではなく、実際のTEI static IRから（許可された）CLI/SHO/外部AI Consumerへ投影したJSONを対象とし、秘密部分だけを変えた二世界差分を比較する。Logging/例外/ツール戻り値/ファイル成果物の観測も別ゲート。外部AIのOSファイル権限・egress隔離は#2017/#2515がOwner。
+- **採用判定**：本節追記時点でPostgreSQL Plan/ANALYZE、実TEI IR/Worker、Provider、OS egress、SHO・外部AIへの実送信、実Host Authority、Owner意味受理は**NOT RUN**。既存#1640 D2のCTE/JOIN実行拒否と#1119既存G0〜G4の優先順位・Blocking条件を変更しない。
+
+
 ## 8. 実装順・担当引継ぎ（提案）
 
 | 段階 | 所有 | 実施 | 完了の根拠 |
