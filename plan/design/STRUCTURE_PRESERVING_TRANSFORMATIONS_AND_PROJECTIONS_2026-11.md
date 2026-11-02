@@ -753,3 +753,53 @@ SQLを正本とする既存Queryから候補Operatorを生成する場合、元Q
 | OP-12 | UIは保存成功、独立post-read無し | Effect/業務完了を確定 | #1174/#1119 |
 
 **証拠の境界**：#2387 QX-23では隔離SQLite 9件の成功が報告され、#2601ではSQLite局所Transaction 3件の成功が報告されているが、この節で再実行していない。これらを足してTEIのQuery→Function→Host→DBの12件E2E PASSとはしない。#2497は演算保存の条件を記述し、SQL/Operator実証は#2387/#2622、編集合成は#2597、実Effect/Recoveryは#1174、独立期待は#2514が所有する。
+
+
+## 19. 空集合の依存・選択的再資格化・Product Skill実利用の三つの時間境界（2026-11-02）
+
+### 19.1 空結果は「依存がない」ことの証拠ではない
+
+[#2582](https://github.com/hat47x/tei-platform/issues/2582)、[#2387](https://github.com/hat47x/tei-platform/issues/2387)の動的Lineage検討と、SHO #6のClaim再評価を接続する。Queryが0件を返しても、`WHERE`、`NOT EXISTS`、JOIN経路、関連するRelation membership、RLS/Scope、時点・Windowに対する**否定的依存**は残る。0件は指定条件下の観測結果であり、全宇宙での不存在・将来の不変性ではない。
+
+例えば`not exists(select 1 from allocations where order_id=O1)`が真であった後に、同じOrderへAllocationが追加されれば結論は変わる。再び削除されて0件に戻っても、途中で変更がなかったことは導けない（ABA）。同じ結果値・同じ集合・同じDigestは、観測間のイベント履歴やRule/Grantの変化を証明しない。
+
+必要な依存は、単なる表示Fieldだけでなく、`Value lineage / Predicate dependency / Relation path binding / Negative dependency / Read cohort and completeness / Change observation window`を**既存Query・Function Context・Provider・Reactive Contextの参照証拠**として扱う。新しいNegative Cache、Snapshot Manager、共通Reactive Engineを設けない。
+
+### 19.2 変更影響と現在の利用資格を分離する
+
+変更が検出されたとき、影響を受けるClaim/Consumerだけを再評価する候補はある。しかし、依存集合・Change Observation Window・Source版・実Provider Scopeが未確認なら「影響なし」と確定しない。逆に、無関係な変更を理由に全Claimを常に失効させると、増分再利用の価値を失う。
+
+**Change Impact**（どの依存に触れたか）と**Current Eligibility**（現時点・当該Consumerで利用可能か）は異なる。Claimの意味・取得完全性・証拠現在性・開示Policy・実行Grant・納品物の実ロードはそれぞれ別の資格である。意味上再利用できる固定Artifactであっても、現在のPrincipalに開示・実行できるとは限らない。
+
+選択的再資格化は、十分な依存証拠がある範囲でのみ適用する。未知の依存は`unverified`として留め、値の一致を「変更なし」の証拠にしない。#2582がChange/Invalidation、#2516がConsumer Claim、#2018が再利用・配布の資格、TAI #271がHarness側の継続資格を所有する。
+
+### 19.3 Capability発見、Skill呼出し、実行効果を別の段階として観測する
+
+[#2619](https://github.com/hat47x/tei-platform/issues/2619)、[#2605](https://github.com/hat47x/tei-platform/issues/2605)とTAI #271の横断検討では、意味Role→Operation→CLI→Product Skill→Consumer→実Effectを同一視しない。
+
+- Model/RoleにOperation候補が存在しても、当該TargetでCLI・APIが実装済みとは限らない。
+- CLIにCommandが存在しても、SkillがそのCommandを実際に呼べる、正しい引数・Workspace・版で呼んだとは限らない。
+- Skillの説明が読み込まれても、HarnessがそのSkillを選択し実行したとは限らない。
+- Tool候補が内部に存在しても、外部Consumerへ存在・件数・Errorを開示してよいとは限らない。
+- CLI/Toolが成功しても、Provider・外部Host・業務Effectが成立したとは限らない。
+
+最小の受入は、同じ固定Source/Revisionから`commands → model catalog → inspect → trace → validate -json`等の**実read-only CLI**を確認し、次にSkill経由の実呼出し・同一AttemptのInput/Output/Consumed Artifact・中断後の再資格化を確認する。正式なCommand列やSkill公開仕様をここで新設しない。SHO文書Reader、外部LLMへの送信、OS隔離、実Host Actionは後段の独立証拠。
+
+### 19.4 反証票（NE-01〜12、当節としてNOT RUN）
+
+| ID | 二条件の比較 | 誤った昇格 | Owner |
+| --- | --- | --- | --- |
+| NE-01 | NOT EXISTSで0件→追加1件 | 空集合を依存なしと扱う | #2387/#2582 |
+| NE-02 | 0→1→0、両端の表示同値 | 履歴変化なしと断定 | #2582/SHO #6 |
+| NE-03 | WHERE条件にだけ現れる非表示Field変更 | 表示Lineageだけで影響なし | #2387/#2624 |
+| NE-04 | Relation付替え、同じValue集合 | 関係経路の変更を無視 | #2387/#2506 |
+| NE-05 | 取得一部で0件、全件未確認 | 全対象不存在と断定 | #2506/#2516 |
+| NE-06 | 異Providerの同名Snapshot token | 同じRead Cohortと宣言 | #2611/#2622 |
+| NE-07 | 無関係Source更新と依存Source更新 | 両方を一律失効／両方再利用 | #2582/#2018 |
+| NE-08 | Claim意味不変、Disclosure Policy変更 | 意味再利用から公開資格を推定 | #2516/#1178 |
+| NE-09 | Roleは存在、CLI Command未確認 | 意味定義から製品利用可と宣言 | #2619/#2605 |
+| NE-10 | Skill文書は読んだがTool未呼出し | Skill loadを実行成功と宣言 | #2605/TAI #271 |
+| NE-11 | 同じ最終回答、異なるTool候補/送信 | 回答同値で情報流同値とする | #2516/TAI #271 |
+| NE-12 | CLI read-only成功、Host Effect未実行 | 読取り合格で業務完了と宣言 | #2598/#1174 |
+
+**Evidence区別**：他レーンのQX-31隔離SQLite12件、TAIの合成Harness試験、TEIの限定CLI/CI試験はそれぞれ報告範囲に限定する。NE-01〜12を本節で実行しておらず、実Providerの変更観測・実CLI→Skill→外部Harness・SHO Reader・Host Effect・Owner意味受理はNOT RUN。設計候補の新しいCore型・全域的資格判定Engineは採用しない。
