@@ -35,6 +35,9 @@ type cliValidationReport struct {
 type cliValidationItem struct {
 	Diagnostic validation.Diagnostic `json:"diagnostic"`
 	Sources    []cliValidationSource `json:"sources,omitempty"`
+	// UnresolvedSourceOrigins marks declarations whose position is unknown,
+	// such as the in-process standard prelude. It is never a path placeholder.
+	UnresolvedSourceOrigins []string `json:"unresolvedSourceOrigins,omitempty"`
 }
 
 type cliValidationSource struct {
@@ -113,6 +116,9 @@ func validateWorkspaceJSON(out io.Writer, root string) (int, error) {
 	report.SourceIndexFingerprint = result.SourceIndexFingerprint
 	for _, projected := range result.Diagnostics {
 		item := cliValidationItem{Diagnostic: projected.Diagnostic}
+		if len(projected.UnresolvedSourceOrigins) > 0 {
+			item.UnresolvedSourceOrigins = append([]string{}, projected.UnresolvedSourceOrigins...)
+		}
 		for _, ref := range projected.Sources {
 			source := cliValidationSource{
 				ArtifactPath: ref.ArtifactPath,
