@@ -24,7 +24,7 @@ const (
 )
 
 const tableDefinitionRulePolicy = `table-definition/v1
-lines: table, data, column (<column> <attribute> <storage> <nullability> [pk]), primary-key, index
+lines: table, data, column (<column> <attribute> <storage> <nullability> [pk]), primary-key, foreign-key, index
 order: columns in the authored persistence order, indexes by name
 unresolved: unmapped semantic attribute, missing primary key`
 
@@ -40,7 +40,14 @@ type TableDefinitionInput struct {
 // mapping. A missing column or key is reported as unresolved instead of being
 // filled with a default.
 func RenderTableDefinition(input TableDefinitionInput) (Artifact, error) {
-	content, unresolved := renderTableDefinition(input.Mapping, input.Data)
+	return RenderTableDefinitionWith(input, nil)
+}
+
+// RenderTableDefinitionWith also resolves referenced tables, so the definition
+// shows the foreign keys the mapping declares. A nil resolver keeps the
+// definition to one table.
+func RenderTableDefinitionWith(input TableDefinitionInput, tableOf func(core.CanonicalID) (string, bool)) (Artifact, error) {
+	content, unresolved := renderTableDefinition(input.Mapping, input.Data, tableOf)
 	return New(
 		KindTableDefinition,
 		Rule{
@@ -55,7 +62,7 @@ func RenderTableDefinition(input TableDefinitionInput) (Artifact, error) {
 	)
 }
 
-func renderTableDefinition(mapping persistence.Mapping, element semantic.Data) (string, []Unresolved) {
+func renderTableDefinition(mapping persistence.Mapping, element semantic.Data, tableOf func(core.CanonicalID) (string, bool)) (string, []Unresolved) {
 	var b strings.Builder
 	fmt.Fprintf(&b, "table %s\n", mapping.Table)
 	fmt.Fprintf(&b, "data %s\n", mapping.SemanticData)
@@ -80,6 +87,26 @@ func renderTableDefinition(mapping persistence.Mapping, element semantic.Data) (
 			keys = append(keys, string(attribute))
 		}
 		fmt.Fprintf(&b, "primary-key %s\n", strings.Join(keys, ","))
+	}
+
+	foreignKeys := append([]persistence.ForeignKeyMapping(nil), mapping.ForeignKeys...)
+	sort.Slice(foreignKeys, func(i, j int) bool { return foreignKeys[i].Name < foreignKeys[j].Name })
+	for _, foreignKey := range foreignKeys {
+		table := string(foreignKey.ReferencedMapping)
+		if tableOf != nil {
+			if resolved, ok := tableOf(foreignKey.ReferencedMapping); ok {
+				table = resolved
+			}
+		}
+		columns := make([]string, 0, len(foreignKey.Attributes))
+		for _, attribute := range foreignKey.Attributes {
+			columns = append(columns, string(attribute))
+		}
+		referenced := make([]string, 0, len(foreignKey.ReferencedAttributes))
+		for _, attribute := range foreignKey.ReferencedAttributes {
+			referenced = append(referenced, string(attribute))
+		}
+		fmt.Fprintf(&b, "foreign-key %s %s -> %s(%s)\n", foreignKey.Name, strings.Join(columns, ","), table, strings.Join(referenced, ","))
 	}
 
 	indexes := append([]persistence.IndexMapping(nil), mapping.Indexes...)

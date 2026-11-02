@@ -99,7 +99,7 @@ W1 が前提。W2〜W4 は並行できる。W5 は W2 の後。
 - `Verify` は、保存された成果物の内容・規則・未解決が変わっていないことを確かめます。
 - 識別情報が欠けた成果物は作りません（規則の版・照合値・生成器・入力の版は必須）。
 
-W2（表定義書）も追加しました（[`internal/artifact/tabledef.go`](../../internal/artifact/tabledef.go)）。保存の対応と意味のデータから、`table`・`data`・`column`・`primary-key`・`index` の行を、保存の宣言順と索引名順で出します。列に写像されていない属性と、主キーが無い表は、空欄で埋めず `Unresolved` に載せます。形式は仮説H2（行指向のテキスト）で選んでいます（[PoCの仮説](../workstreams/POC_HYPOTHESES_2026-11.md)）。
+W2（表定義書）も追加しました（[`internal/artifact/tabledef.go`](../../internal/artifact/tabledef.go)）。保存の対応と意味のデータから、`table`・`data`・`column`・`primary-key`・`foreign-key`・`index` の行を、保存の宣言順・索引名順・外部キー名順で出します。外部キーは参照先の表名まで解決して出し、参照先が分からない場合は宣言の識別子をそのまま残します。列に写像されていない属性と、主キーが無い表は、空欄で埋めず `Unresolved` に載せます。形式は仮説H2（行指向のテキスト）で選んでいます（[PoCの仮説](../workstreams/POC_HYPOTHESES_2026-11.md)）。
 
 機能定義書（W3）も追加しました（[`internal/artifact/functiondef.go`](../../internal/artifact/functiondef.go)）。`application`・`capability`・`input`・`output`／`outcome`・`effect`・`validation`・`pattern` を決定的に並べ、入力・結果・効果の欠落と、入口（pattern）の無いアプリケーションを未解決に載せます。
 

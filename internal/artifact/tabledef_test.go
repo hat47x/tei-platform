@@ -129,3 +129,29 @@ func contains(values []string, want string) bool {
 	}
 	return false
 }
+func TestRenderTableDefinitionShowsForeignKeys(t *testing.T) {
+	input := tableDefinitionInput()
+	input.Mapping.ForeignKeys = []persistence.ForeignKeyMapping{{
+		Name:                 "orders_customer_fk",
+		Attributes:           []core.CanonicalID{"sales.order.customer_id"},
+		ReferencedMapping:    "sales_core.customer",
+		ReferencedAttributes: []core.CanonicalID{"sales.customer.customer_id"},
+	}}
+
+	rendered, err := RenderTableDefinitionWith(input, func(id core.CanonicalID) (string, bool) {
+		if id == "sales_core.customer" {
+			return "public.customers", true
+		}
+		return "", false
+	})
+	if err != nil {
+		t.Fatalf("render: %v", err)
+	}
+	want := "foreign-key orders_customer_fk sales.order.customer_id -> public.customers(sales.customer.customer_id)\n"
+	if !strings.Contains(rendered.Content, want) {
+		t.Fatalf("content lost the foreign key:\n%s", rendered.Content)
+	}
+	if err := rendered.Verify(); err != nil {
+		t.Fatalf("artifact must verify: %v", err)
+	}
+}

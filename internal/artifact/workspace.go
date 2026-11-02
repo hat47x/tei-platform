@@ -56,16 +56,25 @@ func RenderWorkspace(root, applicationID string) (WorkspaceSet, error) {
 		}
 	}
 
+	mappingByID := map[core.CanonicalID]persistence.Mapping{}
+	for _, candidate := range loaded.World.Persistence {
+		mappingByID[candidate.ID] = candidate
+	}
 	var artifacts []Artifact
 	for _, mapping := range persistenceForApplication(loaded.World.Persistence, target) {
 		element, ok := data[mapping.SemanticData]
 		if !ok {
 			continue
 		}
-		table, err := RenderTableDefinition(TableDefinitionInput{
+		table, err := RenderTableDefinitionWith(TableDefinitionInput{
 			InputRevision: revision,
 			Mapping:       mapping,
 			Data:          element,
+		}, func(id core.CanonicalID) (string, bool) {
+			if referenced, ok := mappingByID[id]; ok {
+				return referenced.Table, true
+			}
+			return "", false
 		})
 		if err != nil {
 			return WorkspaceSet{}, fmt.Errorf("render table definition %s: %w", mapping.ID, err)
