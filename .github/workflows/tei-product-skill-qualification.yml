@@ -12,6 +12,9 @@ on:
       - "docs/tei-portable-modeling-skill-*"
   workflow_dispatch:
 
+env:
+  PYTHONDONTWRITEBYTECODE: "1"
+
 permissions:
   contents: read
 
@@ -38,6 +41,9 @@ jobs:
         run: |
           set -euo pipefail
           cli="$RUNNER_TEMP/tei"
+          printf "checkout=%s\\n" "$(git rev-parse HEAD)"
+          go version
+          sha256sum "$cli"
           workspace="reference/workspace"
           "$cli" commands > "$RUNNER_TEMP/commands.json"
           "$cli" model catalog -workspace "$workspace" > "$RUNNER_TEMP/catalog.json"
