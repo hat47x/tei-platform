@@ -1108,7 +1108,7 @@ G0/G1/G2は**全面的な直列開発を要求しない**。DB fixtureとProvide
 
 G-VとG-Rは **異なる母集団・異なる用途** に対する証拠である。一方の辺を他方の確定したIdentityへ自動写像しない。実装Referの複数候補を単一の `target_ref` へ押し込まず、既存Source node／attribute atom・成分位置、候補の根拠とTargetの実参照を個別に追跡する。候補集合の数、Source node数、XML atom数、区切り成分数、実Candidate要素数、Owner Accepted Claim数は別のCoverage母数とする。
 
-G-Rの先行実測は[#2505 11/2独立Headless PoC](https://github.com/hat47x/tei-platform/issues/2505#issuecomment-6564707324)：合成Go 1.23.2 standalone 10 test・race・vetが局所PASS。**GitHub製品コード・Go 1.26系・正式H2/J5・実原典・Owner受理は未実証**。合成PoCをS0の正式検収器へ代入しない。
+G-Rの先行実測は[#2505 11/2独立Headless PoC](https://github.com/hat47x/tei-platform/issues/2505#issuecomment-6573011380)：合成Go 1.23.2 standaloneは三版A→B→Cの候補経路まで拡張され、**15 top-level test・race・vetが局所PASS**。対応候補の連鎖は意味上の同一性や旧操作の再利用許可にはならない。版間比較・Claim別適用・生成/公開の後段Consumerへの計画は[既存Draft #2615](https://github.com/hat47x/tei-platform/pull/2615)が担当し、本節は**同版CrossViewとの異なる母集団・接合点**に限定する。**GitHub製品コード・Go 1.26系・正式H2/J5・実原典・Owner受理は未実証**。合成PoCをS0の正式検収器へ代入しない。
 
 ### Case別に失敗原因と検証資格を固定する（全ケース未実行の計画）
 
