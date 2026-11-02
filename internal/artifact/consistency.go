@@ -32,6 +32,10 @@ const (
 	// FindingOperationIncomplete: a derived operation lost its basis or its
 	// autonomy class.
 	FindingOperationIncomplete = "SURFACE_OPERATION_INCOMPLETE"
+	// FindingDuplicateArtifact: the same artifact appears twice in a set.
+	FindingDuplicateArtifact = "ARTIFACT_DUPLICATE"
+	// FindingManifestEntryStale: the manifest lists an entry no artifact produces.
+	FindingManifestEntryStale = "MANIFEST_ENTRY_STALE"
 )
 
 // CheckSet verifies the internal consistency of a rendered set: every artifact
@@ -55,6 +59,27 @@ func CheckSet(set WorkspaceSet) []Finding {
 	listed := map[string]bool{}
 	for _, entry := range set.Manifest.Entries {
 		listed[entry.Kind+"\x00"+entry.Digest] = true
+	}
+	produced := map[string]bool{}
+	for _, artifact := range set.Artifacts {
+		key := artifact.Kind + "\x00" + artifact.Digest
+		if produced[key] {
+			findings = append(findings, Finding{
+				Code:    FindingDuplicateArtifact,
+				Subject: artifact.Kind,
+				Detail:  "the same artifact appears twice in the set",
+			})
+		}
+		produced[key] = true
+	}
+	for _, entry := range set.Manifest.Entries {
+		if !produced[entry.Kind+"\x00"+entry.Digest] {
+			findings = append(findings, Finding{
+				Code:    FindingManifestEntryStale,
+				Subject: entry.Kind,
+				Detail:  "the manifest lists an artifact the set does not contain",
+			})
+		}
 	}
 	for _, artifact := range set.Artifacts {
 		if !listed[artifact.Kind+"\x00"+artifact.Digest] {

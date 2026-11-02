@@ -144,3 +144,36 @@ func TestCheckSetReportsAnOperationWithoutBasis(t *testing.T) {
 		}
 	}
 }
+func TestCheckSetReportsADuplicateArtifact(t *testing.T) {
+	set := negativeFixtureSet(t)
+	set.Artifacts = append(set.Artifacts, set.Artifacts[0])
+
+	findings := CheckSet(set)
+	found := false
+	for _, finding := range findings {
+		if finding.Code == FindingDuplicateArtifact {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("a duplicated artifact must be reported: %+v", findings)
+	}
+}
+
+func TestCheckSetReportsAStaleManifestEntry(t *testing.T) {
+	set := negativeFixtureSet(t)
+	set.Manifest.Entries = append(set.Manifest.Entries, ManifestEntry{
+		Kind: "ghost", Rule: "ghost", Version: "v1", Fingerprint: "sha256:x", Digest: "sha256:ghost",
+	})
+
+	findings := CheckSet(set)
+	found := false
+	for _, finding := range findings {
+		if finding.Code == FindingManifestEntryStale {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("a manifest entry without an artifact must be reported: %+v", findings)
+	}
+}
