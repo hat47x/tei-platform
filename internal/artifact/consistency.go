@@ -36,6 +36,8 @@ const (
 	FindingDuplicateArtifact = "ARTIFACT_DUPLICATE"
 	// FindingManifestEntryStale: the manifest lists an entry no artifact produces.
 	FindingManifestEntryStale = "MANIFEST_ENTRY_STALE"
+	// FindingManifestTampered: the manifest digest does not match its entries.
+	FindingManifestTampered = "MANIFEST_DIGEST_MISMATCH"
 )
 
 // CheckSet verifies the internal consistency of a rendered set: every artifact
@@ -52,6 +54,16 @@ func CheckSet(set WorkspaceSet) []Finding {
 				Code:    FindingRevisionMismatch,
 				Subject: artifact.Kind,
 				Detail:  fmt.Sprintf("artifact was derived from %s, set is %s", artifact.InputRevision, set.InputRevision),
+			})
+		}
+	}
+
+	if set.Manifest.Digest != "" {
+		if err := set.Manifest.Verify(); err != nil {
+			findings = append(findings, Finding{
+				Code:    FindingManifestTampered,
+				Subject: "manifest",
+				Detail:  err.Error(),
 			})
 		}
 	}

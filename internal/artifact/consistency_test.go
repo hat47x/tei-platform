@@ -65,13 +65,14 @@ func TestCheckSetReportsAMissingManifestEntry(t *testing.T) {
 	set.Manifest.Entries = set.Manifest.Entries[:1]
 
 	findings := CheckSet(set)
-	if len(findings) == 0 {
-		t.Fatal("an artifact missing from the manifest must be reported")
-	}
+	found := false
 	for _, finding := range findings {
-		if finding.Code != FindingManifestEntryMissing {
-			t.Fatalf("unexpected finding: %+v", finding)
+		if finding.Code == FindingManifestEntryMissing {
+			found = true
 		}
+	}
+	if !found {
+		t.Fatalf("an artifact missing from the manifest must be reported: %+v", findings)
 	}
 }
 func TestCheckSetReportsAnUnknownRule(t *testing.T) {
@@ -175,5 +176,22 @@ func TestCheckSetReportsAStaleManifestEntry(t *testing.T) {
 	}
 	if !found {
 		t.Fatalf("a manifest entry without an artifact must be reported: %+v", findings)
+	}
+}
+func TestCheckSetReportsATamperedManifest(t *testing.T) {
+	set := negativeFixtureSet(t)
+	set.Manifest.Entries = append(set.Manifest.Entries, ManifestEntry{
+		Kind: "ghost", Rule: "ghost", Version: "v1", Fingerprint: "sha256:x", Digest: "sha256:ghost",
+	})
+
+	findings := CheckSet(set)
+	found := false
+	for _, finding := range findings {
+		if finding.Code == FindingManifestTampered {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("a manifest whose entries changed must be reported: %+v", findings)
 	}
 }
