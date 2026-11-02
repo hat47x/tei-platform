@@ -9,7 +9,7 @@
 
 対象の同一性／構成文法／性質・法則／解釈文脈／利用箇所の要求／主張と根拠／実現と表示。各Pressureの意味に関連するM1〜M10（#2495）は重複して構わないが、**一つの性質を二つの独立な意味正本に保存しない**。
 
-以下の72ケースは**初期の異質性を測るための開始点であり、網羅の完了や上限を意味しない**。新規の構造・数学的性質・分野固有の解釈は追加し続ける。関心事が重複する場合も、操作・利用文脈・失われる情報が異なれば別の反例として保持する。
+以下の84ケースは**初期の異質性を測るための開始点であり、網羅の完了や上限を意味しない**。新規の構造・数学的性質・分野固有の解釈は追加し続ける。関心事が重複する場合も、操作・利用文脈・失われる情報が異なれば別の反例として保持する。
 
 ## A. 値と同一性（PC-01〜07）
 
@@ -126,6 +126,29 @@
 | PC-72 | 純粋関数と効果を持つAction | 同じ入力・出力型で異なるEffect | 数学的対応と実行Authority・Receipt | `A→B`が一致するだけで副作用や再試行安全性が等価と断定 | #988/#1174 |
 
 対応する数理上の参考：[Lean Type Classes](https://lean-lang.org/doc/reference/latest/Type-Classes/)（演算と公理）、[mathlib hierarchy design](https://leanprover-community.github.io/mathlib4_docs/Mathlib/Algebra/HierarchyDesign)（代数・順序・位相の交差による構造増殖）、[CUE Specification](https://cue.dev/docs/reference/spec/)（Constraintの結合とbottom）、[Alloy](https://alloytools.org/spec.html)（有限Scopeの構造例と反例）。いずれもTEIの標準Runtime・Proof Engineの選定ではない。
+
+## I. 正規形・同じ意味の複数Projection（PC-73〜84、2026-11-02追加候補）
+
+この節は「型や構造を一つの平坦な分類に押し込むと意味が失われる」反例と、実Consumerの投影例を比較する。特にTEI mainの[record projection \`many\`](https://github.com/hat47x/tei-platform/blob/main/tools/reference-generator-selection/generator.go)と、TAI mainの[\`Island.cardIds\`](https://github.com/hat47x/tai-pleroma/blob/main/integrations/pilot-sui-document/candidates/island-record/contract.json)／[\`Affiliation\`](https://github.com/hat47x/tai-pleroma/blob/main/integrations/pilot-sui-document/candidates/affiliation-record/contract.json)は、**同じ所属を指すかどうかをOwnerに確認する必要がある**現実の検討素材となる。新しい共通型やE2E合格の根拠とはしない。
+
+| ID | Pressure / 資料上の構造 | 構成・表現 | 分けて問う性質 | 誤認・損失の負例 | 既存Owner |
+| --- | --- | --- | --- | --- | --- |
+| PC-73 | SUI Island.cardIdsとAffiliation | 多値Identifier投影／所属Relation Record | 同一意味なのか・双方向整合・Snapshot | 各Cardが存在すれば二つの所属表現が一致すると断定 | #2497/#2501 |
+| PC-74 | \`many:true\`と集合・列の性質 | \`[]string\` JSON配列 | Cardinality/順序/重複/完全性・参照先 | 配列型があるだけでSet・重複禁止・全件取得と推論 | #2495/#2497 |
+| PC-75 | SUI所属の時点/可視範囲 | Island/Card/Affiliationの異なるRead | 対象版・Scope・権限・Partial vs Complete | 部分的に欠ける所属を業務上の不存在と推定 | #2497/#2516 |
+| PC-76 | 異種Endpointを持つEdge | \`fromKind/toKind + fromId/toId\` | Type-tagged Reference・Graph incidence | IDが一致するのでCard/Islandの区別を消す | #2495/#1126 |
+| PC-77 | SUIの表示用関係と編集Intent | Card列挙とLink/Unlink Action | 投影の逆写像・現在権限・競合 | 表示配列の変更をAffiliation DB更新完了とみなす | #2497/#2500 |
+| PC-78 | SUIキャンバスの座標と所属 | Layout coordinates＋Graph/Relation | 空間的近さと意味上のRelation | Cardを近くへ動かしたので所属関係を自動変更 | #2497/#997 |
+| PC-79 | \`Map<K,Set<V>>\` vs \`Set<(K,V)>\` | 対応Mapとペア集合 | Valueが空のKeyの存在と保存 | 値が0件のKeyまで完全な同型と断定 | #2544/#2497 |
+| PC-80 | \`List<A|B>\` vs \`List<A>|List<B>\` | CollectionとTagged Unionの構成順 | 異種混在可能性と分岐制約 | 構造子を分配して両者を等価に正規化 | #2544/#2495 |
+| PC-81 | \`Tuple(A,B)\`とNamed Record | 位置・ラベルの異なる積構造 | 要素順・属性名・Source identity | 同じ二つのPrimitiveだから無条件の同一型 | #2544/#1806 |
+| PC-82 | エネルギーとトルク | 同じ物理次元・単位 \`N·m\` | Quantity Kind・意味上の演算 | UnitとDimension一致で同じ量として扱う | #1705/#2544 |
+| PC-83 | 同じ値を異なるSourceへ投影 | 同じJSON・別Source/Version | 意味同一性・Provenance・現在受理 | 見た目一致/字句一致でSourceや意味の版を同一視 | #2497/#2516 |
+| PC-84 | SUI記録をJSON→CUI/文書へ | \`present/missing/unresolved\`と説明 | 入力形状・未解決・Consumer側の完全性 | JSON出力成功・全Field検査をDomain全件保証に昇格 | #2498/#2516 |
+
+**反例の具体化**：Cards \`c1,c2\`、Island \`i1\`が存在し、\`i1.cardIds=["c1"]\`と\`Affiliation(id="a1",cardId="c2",islandId="i1")\`が共存する合成入力では、各参照先の存在を確認するだけでは両所属表現の一致は判定できない。TAIの[\`document_assembler.py\`](https://github.com/hat47x/tai-pleroma/blob/main/integrations/pilot-sui-document/assembler/document_assembler.py)には各参照先の存在検査がある一方、両者が同一の所属意味かどうかを判定する契約は別の検討を要する。**入力の実行結果を今回取得したわけではない。**
+
+参照：[構造保存写像・Projection設計 §10](STRUCTURE_PRESERVING_TRANSFORMATIONS_AND_PROJECTIONS_2026-11.md)、[多重FacetのLawと比較正規形 §8](FACET_LAW_BINDING_AND_COHERENCE_2026-11.md)、[#2500 View変更からTyped Intent](https://github.com/hat47x/tei-platform/issues/2500)。新しい配列生成器の実装は#2576、SUI個別Meaning/AssemblerはTAI Repo側のOwnerとする。
 
 ## 外部仕様の照合（2026-11-01読取り）
 
