@@ -85,6 +85,22 @@ Python標準ライブラリのみの`skills/yi-tei-modeling/verify_skill.py`と`
 
 **非保証**：これはMarkdown内の限られた`sh/bash` fenced exampleに対する事故防止の静的点検であって、任意のShell構文の完全解析、実行時Sandbox、OS/RLS/Host Grant、Consumer向け開示判定ではない。例えばShell拡張や間接Commandを全種類形式的に排除する保証はない。外部AgentにこのCheckerのPASSだけをもって任意のCode実行権限を与えない。実作用は既存Host/OS、製品Ownerが定める。
 
+### S0d — 既知Command名とShell全体・flagの資格を分離（TS-20〜22、独立再実行済み）
+
+S0cまでに発見した複合Shellの誤認に加え、**既知read-only Command名に未知のflagを付けても、旧Checkerがコマンド名だけで受理していた**追加反例を確認した。たとえば`go run ./cmd/tei validate -workspace reference/workspace -out /tmp/result`は、通常のValidate入口でない文書上の引数を含むにもかかわらず、旧Checkerで`errors=[]`だった。さらに`validate ... && echo accepted`も、先頭名だけの確認から漏れていた。これらは文書静的検査の不足であり、実Host/CLIが書込みを実行した証拠ではない。
+
+`verify_skill.py`にはread-only手順の**ドキュメント例限定**の`EXAMPLE_FLAGS`照合と、複合Shell演算・不明な呼出し文脈の拒否を追加した。Commandの真のflag定義・Effect・現在権限は既存`cmd/tei`／Host側にあり、この小さなallowlistを第二CLI Catalog／Permission Engineとして公開しない。CLIの引数仕様変更時にはSkill文書の見直しが必要となる。
+
+| 新規回帰Case | 判別 |
+| --- | --- |
+| **TS-20** 既知`validate`名＋未確認の`-out` | `unverified CLI flag/argument`として拒否 |
+| **TS-21** `validate`＋`&& echo` | 複合Shellとして拒否。後続が別TEI Commandでなくても先頭Commandのread-onlyを行全体へ拡大しない |
+| **TS-22** 既存`trace`の`-scope/-direction/-mode/-limit/-offset/-expected-fingerprint` | 当該限定手順の正常コマンド例は受理し、過剰な全拒否を防ぐ |
+
+**新たに実行した厳密な局所証拠（2026-11-03）**：GitHub保存版の`verify_skill.py`（Git blob **`d0b1b6ee0fa3f479d01f9e4dff6163f68c872185`**）と`tests/test_verify_skill.py`（Git blob **`0f89ad2dccf836a1e13d2a1475eade1b07f4da3f`**）を隔離作業環境へ再現し、`git hash-object`を双方照合。**Python 3.13.5 / `unittest discover -p 'test_*.py' -v`で14 tests / OK、`py_compile` PASS**。これは旧7件、S0c追加4件、TS-20〜22追加3件を合算した**同じ保存済みコードに対する新規独立実行結果**である。前段S0cで「11件は未実行」と記したのは当該先行時点の状態であり、この14件の実行後の現在状態には適用しない。
+
+**未成立**：14件は合成CLI declaration／文書fixtureの検証であり、実TEI checkout全体の文書整合、CLI binaryのread-only smoke、実Skill load、TAI SK-02の4独立Harness Session、実Provider/OS/外部送出やOwner意味受理は**この14件でNOT RUN**。異なる実行物／Source版・指紋を混在させないS1a、および比較適格性を固定するS2aへ進む。Workflowの結果は更新後exact-head Actionsを観測して記録する。
+
 **TS-11〜15追補**（[Issue #2605](https://github.com/hat47x/tei-platform/issues/2605#issuecomment-6572810341)）：発見時CLIと実呼出しCLIの相違、Trace継続tokenとGraph fingerprintの混同、改行差によるSource byte相違、複数readの異版接合、外部開示範囲を、それぞれ別の負例としてS1/S2で検証する。Consumer向けの証拠接合は#2516 W10へ委ねる。
 
 ### S1 — TEI CLIを実動で検証
