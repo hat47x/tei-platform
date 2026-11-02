@@ -215,39 +215,39 @@ func TestExtractRelationalSourceFactsPreservesXeafRuntimeKeyAndReferMappings(t *
 func TestExtractRelationalSourceFactsPreservesRawRuntimeReferDeclarations(t *testing.T) {
 	literal := func(value string) *string { return &value }
 	cases := []struct {
-		name         string
-		attributes   string
-		wantTo       *string
-		wantWith     *string
-		wantToItems  []string
+		name          string
+		attributes    string
+		wantTo        *string
+		wantWith      *string
+		wantToItems   []string
 		wantWithItems []string
 	}{
 		{
-			name: "explicit blank both",
+			name:       "explicit blank both",
 			attributes: `ToKeyFields="" WithKeyFields=""`,
-			wantTo: literal(""), wantWith: literal(""),
+			wantTo:     literal(""), wantWith: literal(""),
 			wantToItems: []string{}, wantWithItems: []string{},
 		},
 		{
-			name: "absent both",
-			attributes: ``,
+			name:        "absent both",
+			attributes:  ``,
 			wantToItems: []string{}, wantWithItems: []string{},
 		},
 		{
-			name: "literal component separators and whitespace",
+			name:       "literal component separators and whitespace",
 			attributes: `ToKeyFields=" A ; B; " WithKeyFields=" T1.X; T1.Y;"`,
-			wantTo: literal(" A ; B; "), wantWith: literal(" T1.X; T1.Y;"),
+			wantTo:     literal(" A ; B; "), wantWith: literal(" T1.X; T1.Y;"),
 			wantToItems: []string{"A", "B"}, wantWithItems: []string{"T1.X", "T1.Y"},
 		},
 		{
-			name: "mixed presence",
-			attributes: `WithKeyFields=""`,
-			wantWith: literal(""),
+			name:        "mixed presence",
+			attributes:  `WithKeyFields=""`,
+			wantWith:    literal(""),
 			wantToItems: []string{}, wantWithItems: []string{},
 		},
 		{
-			name: "foreign namespace lookalike",
-			attributes: `x:ToKeyFields="A" x:WithKeyFields="B"`,
+			name:        "foreign namespace lookalike",
+			attributes:  `x:ToKeyFields="A" x:WithKeyFields="B"`,
 			wantToItems: []string{}, wantWithItems: []string{},
 		},
 	}
