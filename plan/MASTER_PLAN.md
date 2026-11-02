@@ -32,6 +32,8 @@
 
 特に、同じ値集合が**異なる演算の束縛によって同種の数学的構造を複数持つ**場合（例：自然数の加法・乗法モノイド）、Facet名や多重親の列挙だけで演算・公理・適合を決定しません。数学的Theoryの要件、具体的OperatorへのBinding、成立するLaw、解釈Scope、根拠の種類を区別し、[多重Facetの整合と公理の検証 #2544](https://github.com/hat47x/tei-platform/issues/2544)に具体的反例を管理します。広域の構造探索は[#2501 Corpus](https://github.com/hat47x/tei-platform/issues/2501)、構造保存・編集逆写像は[#2497](https://github.com/hat47x/tei-platform/issues/2497)、分類そのものは[#2495](https://github.com/hat47x/tei-platform/issues/2495)を利用します。現段階はいずれも未採用の検証計画です。
 
+**構造のMECE性・複数Projectionの整合**については、固定のData Type列挙より、名目ID／構成子／Facet／演算束縛／制約／解釈文脈／出典を区別し、各判断の適用範囲と具体的反例を残します。比較のための正規形が計算できても、それを業務意味の同一性・Owner受理へ昇格させません。異なる構造が同じ意味を投影する場合（例：[TEIの多値Record投影 #2576](https://github.com/hat47x/tei-platform/pull/2576)と[SUIの所属表現](https://github.com/hat47x/tai-pleroma/pull/253)）は、**どのRelation/Sourceを正本とするか、列挙順・重複・完全性・Version・更新Intentをどう保存するか**を別に判断します。既存[#2495](https://github.com/hat47x/tei-platform/issues/2495)/[#2544](https://github.com/hat47x/tei-platform/issues/2544)/[#2497](https://github.com/hat47x/tei-platform/issues/2497)と[Draft PR #2496](https://github.com/hat47x/tei-platform/pull/2496)が比較・反例の担当です。実Targetで意味が保存されたことや両表現の意味上の等価性は未実証です。
+
 ### 外部要件を先に受け止める（要求・構造の机上評価）
 
 CUIやGUIの実装に入る前に、**データ構造、意味上の識別・型・値域・関係・制約、操作・状態・副作用、プラグインの契約・合成・ライフサイクル、Target/Hostとの境界**など、後戻りの費用が大きい基本構造を十分に検討します。
