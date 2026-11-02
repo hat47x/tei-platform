@@ -56,7 +56,7 @@ CLIは`cmd/tei/cli_contract.go`の静的Command Catalogと`docs/getting-started.
 
 Python標準ライブラリのみの`skills/yi-tei-modeling/verify_skill.py`と`tests/test_verify_skill.py`を試作する。実行は`python3 skills/yi-tei-modeling/verify_skill.py`、合成試験は`python3 -m unittest discover -s skills/yi-tei-modeling/tests -v`。
 
-対象はSkill名、Markdown相対リンク、既存read-only Command Catalogと文書内CLI例の整合、Traceページ継続用fingerprintの説明。これは**静的検査であり実TEI CLIの起動・Harness接続・業務意味・実Host権限を検査しない**。孤立した合成fixtureでの7件はローカルPASS、実TEI Checkout全体での検査はNOT RUN。
+対象はSkill名、Markdown相対リンク、既存read-only Command Catalogと文書内CLI例の整合、Traceページ継続用fingerprintの説明。これは**静的検査であり実TEI CLIの起動・Harness接続・業務意味・実Host権限を検査しない**。孤立した合成fixtureでの7件は**試験コードを保存済み**。以前の「ローカルPASS」は独立の実行ログで裏付けられていなかったため、現時点の試験実績としては撤回する。GitHub Actionsで実行し、対象コミットとログを確認できた時点でPASSへ更新する。
 
 **TS-11〜15追補**（[Issue #2605](https://github.com/hat47x/tei-platform/issues/2605#issuecomment-6572810341)）：発見時CLIと実呼出しCLIの相違、Trace継続tokenとGraph fingerprintの混同、改行差によるSource byte相違、複数readの異版接合、外部開示範囲を、それぞれ別の負例としてS1/S2で検証する。Consumer向けの証拠接合は#2516 W10へ委ねる。
 
@@ -65,6 +65,19 @@ Python標準ライブラリのみの`skills/yi-tei-modeling/verify_skill.py`と`
 - `exit code`と`ok/diagnostics/error`を別に観測。対象SubjectのID、Source所在とcontent fingerprint、Working Tree、実CLIのバージョンを残す。
 - 関連する反例としてambiguous、Source更新直後のstale、Warning付き成功、未対応Subject、存在しないCommand、`trace`のscope偽Authorityを固定。
 - 生成AIが成功と報告しても、コマンド未実行ならNot-run。CLIのread-only PASSは外部Host・Product Releaseを保証しない。
+
+### S1a — 同一checkout・単一実行物でCLIをread-only実測する
+
+初回S1を実行可能にするため、`.github/workflows/tei-product-skill-qualification.yml`を候補ブランチに追加した。**当該Workflowの実際のCI結果は対象HEADごとに別途観測する**。手順は次の通り。
+
+1. `python3 -m unittest discover -s skills/yi-tei-modeling/tests`で7件の静的チェッカーの正常/負例を実行し、同じcheckoutの`verify_skill.py`で文書・read-only Command Catalog一致を診断する。文書にある宣言が実CLI実行資格と一致することまでは保証しない。
+2. `go build -o "$RUNNER_TEMP/tei" ./cmd/tei`で**一つの実行物**を作る。`commands`、`model catalog`、`inspect semantic-data:sales.order`、`trace semantic-relation:sales.order.customer`、`validate -json`を同じ`reference/workspace`に対して順に実行する。JSONを読み取り、要求される`worldFingerprint`と`sourceIndexFingerprint`の一致を比較する。Outputはrunner一時領域だけに保存し、repo/元Sourceを変更しない。
+3. 実mainには統合済み[#2587](https://github.com/hat47x/tei-platform/pull/2587)の`operations/artifacts`入口もあるが、`commands`一覧の`selected-read-only-commands`には含まれない。この**非網羅カタログ**と実dispatch・実権限の違いは[Draft #2649](https://github.com/hat47x/tei-platform/pull/2649)がOwnerで、本初期Skillが新操作を宣伝したことにはしない。`artifacts -out`はローカル書込みなのでこのread-only Smokeへ混ぜない。
+4. 静的コマンド参照は**探索候補**であり、実ToolのPath/Argv/Source bytes/OS・Runtimeおよび実際にSkillがinstall/loadされ利用された事実と別。`commands`の一覧成功、CLI exit0、Validation Warning有りはOwnerの意味受理・実行許可・情報外部送出・外部Host効果の証拠ではない。
+
+**実施範囲を過大に主張しない**：S1aのCIが成功しても「単一checkout／単一CLIの選んだread-onlyコマンドと7件検査の成功」が確認できるだけ。並行変更のABA、Source move、検証範囲外のSubjectや全Plugin、Role/Operatorの実依存閉包、実Harnessからのload、現在Grantと開示先の適合、外部Consumer受領は未証明。Source relocationの実CLI証拠は別Ownerの[統合済み#2626](https://github.com/hat47x/tei-platform/pull/2626)を引用し同一Attemptへ合算しない。
+
+**S2への新しい引渡し**：[#2638](https://github.com/hat47x/tei-platform/pull/2638)の合成Role/依存Providerのpin識別（RB-20〜24）と[#2639](https://github.com/hat47x/tei-platform/pull/2639)の実Go Language Pluginは、Skillが実在Toolとして何を説明できるかの**上流証拠候補**。Role解釈・Language/Operator版・Source Reader・Tool Discovery・実CLI/Capability・Skill Load・Consumer Disclosure・Host Grantは独立資格。TAI [#271](https://github.com/hat47x/tai-pleroma/issues/271)のH2/H3/異Harness比較は、同じ実行物・入力/Expected・現在資格で行い、結果値が等しいことから外部受信安全を推定しない。
 
 ### S2 — Product Skillの増分価値
 - TAI #270 SK-01のH0（Harnessのみ）／H2（Toolのみ）／H3（Tool+TEI Skill）に同一の入力を渡し、作業成功・Source対応・未決保持・正しく拒否した誤操作・Tool呼出回数・渡したtoken/内容・人間確認数を比較。
