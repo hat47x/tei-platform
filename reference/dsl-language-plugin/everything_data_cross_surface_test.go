@@ -318,7 +318,7 @@ func TestEverythingDataBoundDataIDCannotProveModelSemanticEquality(t *testing.T)
 		Data: []semantic.Data{{
 			ID: core.CanonicalID("sales.order"),
 			Attributes: []semantic.Attribute{{
-				ID: core.CanonicalID("sales.order.amount"),
+				ID:      core.CanonicalID("sales.order.amount"),
 				TypeRef: core.CanonicalID("std.decimal"),
 			}},
 		}},
@@ -328,7 +328,7 @@ func TestEverythingDataBoundDataIDCannotProveModelSemanticEquality(t *testing.T)
 		Data: []semantic.Data{{
 			ID: core.CanonicalID("sales.order"),
 			Attributes: []semantic.Attribute{{
-				ID: core.CanonicalID("sales.order.amount"),
+				ID:      core.CanonicalID("sales.order.amount"),
 				TypeRef: core.CanonicalID("std.string"),
 			}},
 		}},
