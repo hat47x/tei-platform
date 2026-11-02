@@ -580,7 +580,7 @@ X-TEAの実装では、税額は税率表の開始日と税区分で選び、正
 
 **撤回条件.** 帳票の表現力が不足し、案件ごとにテンプレートを正本へ戻す必要が出た場合は、テンプレートを「派生成果物の入力」として明示し、正本との対応を強める（レイアウトを意味へ戻さない）。
 
-**PoCでの実装.** header-detailの解決結果から、A4の印刷用HTML（見出し表と明細5行の繰返し）を出します（`view -format print`、[#2521](https://github.com/hat47x/tei-platform/pull/2521)）。投影にはSemantic fingerprintを付し、どの意味の版から出たかを追えます。集計はheader-detailの`aggregate`として宣言し（`sum`・`count`・`min`・`max`・`avg`）、印刷の集計欄へ投影します。改ページとテンプレート版の記録は未実装です。
+**PoCでの実装.** header-detailの解決結果から、A4の印刷用HTML（見出し表と明細5行の繰返し）を出します（`view -format print`、[#2521](https://github.com/hat47x/tei-platform/pull/2521)）。投影にはSemantic fingerprintを付し、どの意味の版から出たかを追えます。集計はheader-detailの`aggregate`として宣言し（`sum`・`count`・`min`・`max`・`avg`）、印刷の集計欄へ投影します。改ページは`page-break <行数> [repeat-header]`として宣言し、印刷の明細行数へ反映します。テンプレート版の記録は未実装です。
 
 **未解決.**
 
@@ -916,6 +916,7 @@ PoC #2521が実装した範囲と、まだ実装していない範囲を分け�
 | 対話ビュー（項目の型・表示名・入力部品・参照先の解決） | 実装済み（`internal/applicationview`、CLI `view`） |
 | 画面HTMLの投影 | 実装済み（`view -format html`） |
 | 印刷用の用紙面投影 | 実装済み（`view -format print`、A4、明細5行） |
+| 印刷の改ページ（`page-break`） | 実装済み（行数・見出し繰返し、印刷の明細行数へ反映） |
 | 統合試験（Semantic→Application→Package→view/print） | 実装済み（`cmd/tei/product_slice_test.go`） |
 | 集計（`sum`・`count`・`min`・`max`・`avg`） | 実装済み（header-detailの宣言、印刷の集計欄） |
 | 投影のSemantic fingerprint | 実装済み（JSONの`semanticFingerprint`、HTMLのmeta、text） |
@@ -932,6 +933,7 @@ PoC #2521が実装した範囲と、まだ実装していない範囲を分け�
 | `reference/workspace`への宣言追加 | 未実施（受理経路が必要） |
 
 実装は、`internal/application/model.go`、`internal/syntax/application_pattern.go`、`internal/validation/application_pattern.go`、`internal/crossview/pattern_requirements.go`、`internal/applicationview`、`internal/semantic/model.go`、`internal/syntax/parser.go`、`internal/validation/validation.go`と、それぞれの試験です。
+
 
 
 
