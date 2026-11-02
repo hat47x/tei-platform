@@ -144,6 +144,30 @@ class ProbeTest(unittest.TestCase):
             self.assertEqual(run.returncode, 1, run.stderr)
             self.assertEqual(json.loads(run.stdout)["allowlist_audit"]["document_count"], 3)
 
+    def test_cli_unresolved_exception_and_stale_lifecycle(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "docs").mkdir()
+            document = root / "docs" / "example.md"
+            document.write_text("`ref:docs/missing` `docs/implicit-missing`", encoding="utf-8")
+            allowlist = root / "allowlist.json"
+            entry = {"document": "docs/example.md", "name": "docs/missing", "reason": "tracking", "issue": 2309}
+            allowlist.write_text(json.dumps({"baseline_count": 1, "entries": [entry]}), encoding="utf-8")
+            command = [sys.executable, str(Path(__file__).with_name("probe.py")), "--root", str(root)]
+            def run(*args):
+                return subprocess.run(command + list(args) + ["docs/example.md"],
+                                      capture_output=True, text=True, check=False)
+            initial = run()
+            self.assertEqual(initial.returncode, 1, initial.stderr)
+            self.assertEqual([r["severity"] for r in json.loads(initial.stdout)["records"]], ["error", "warning"])
+            permitted = run("--allowlist", str(allowlist))
+            self.assertEqual(permitted.returncode, 0, permitted.stderr)
+            self.assertEqual(json.loads(permitted.stdout)["records"][0]["result"], "allowlisted-unresolved")
+            (root / "docs" / "missing").write_text("", encoding="utf-8")
+            stale = run("--allowlist", str(allowlist), "--audit-allowlist")
+            self.assertEqual(stale.returncode, 1, stale.stderr)
+            self.assertEqual(json.loads(stale.stdout)["allowlist"]["issues"][0]["result"], "stale-allowlist")
+
 
 if __name__ == "__main__":
     unittest.main()
