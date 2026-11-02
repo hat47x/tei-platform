@@ -1,0 +1,61 @@
+{
+  "scenarioFormat": "tei.reference.org-scenario/v0",
+  "sourceRevisionRef": "org-synthetic-r7",
+  "baseline": {
+    "validAt": "2027-06-15",
+    "knownAt": "2027-07-01"
+  },
+  "readEvidence": {
+    "instance": "I1",
+    "anchor": "D2",
+    "epoch": 7,
+    "meaning": "org-synthetic-r7",
+    "query": "membership-q1",
+    "readVersion": "snap-3",
+    "complete": true,
+    "occurrence": "edge-display-3",
+    "subject": "P2",
+    "edge": "A3",
+    "edgeKind": "Membership"
+  },
+  "treePreferenceExample": {
+    "P2": "A2"
+  },
+  "syntheticProviderRoutes": [
+    {
+      "id": "replica",
+      "alias": "org_read_replica",
+      "provider": "db-replica",
+      "mapping": "membership-read-v1",
+      "snapshot": "s7",
+      "knownAt": "2027-07-01",
+      "validAt": "2027-06-15"
+    },
+    {
+      "id": "primary",
+      "alias": "org_write_primary",
+      "provider": "db-primary",
+      "mapping": "membership-write-v2",
+      "snapshot": "s7",
+      "knownAt": "2027-07-03",
+      "validAt": "2027-06-15"
+    }
+  ],
+  "syntheticConsumerPolicies": [
+    {
+      "id": "local-member-list",
+      "canReadCapacity": false,
+      "canReadRuleOutcome": false
+    },
+    {
+      "id": "local-capacity-review",
+      "canReadCapacity": true,
+      "canReadRuleOutcome": true
+    },
+    {
+      "id": "external-summary",
+      "canReadCapacity": false,
+      "canReadRuleOutcome": false
+    }
+  ]
+}
