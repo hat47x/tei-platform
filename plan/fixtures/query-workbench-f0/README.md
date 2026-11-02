@@ -176,3 +176,14 @@ python3 -m py_compile test_qx31_relation_path_negative_read.py
 - **停止線**：これは自作SQLite DB上のSQL結果と手書きExpectedの比較。実TEI SQLGlot/Go DerivedIR/Context/Rule・実Provider/Read Cohort・実Host認可/Disclosure/Effect・Owner業務意味は**NOT RUN**。SQL 0件は自動的にBusiness false、現在の全件不存在、期間無変化を証明しない。
 
 詳細は[設計計画 §7.27](https://github.com/hat47x/tei-platform/blob/work/query-structural-fixture-design-20261030/plan/design/QUERY_STRUCTURAL_MODEL_AND_FIXTURE_WORKBENCH_2026-10.md)および[QX-31独立計画](https://github.com/hat47x/tei-platform/blob/work/query-structural-fixture-design-20261030/plan/design/QUERY_QX31_DYNAMIC_PATH_AND_NEGATIVE_DEPENDENCY_2026-11.md)。[#2582 DC-01〜12](https://github.com/hat47x/tei-platform/issues/2582#issuecomment-6579762087)や[#951顧客照会Draft #2640](https://github.com/hat47x/tei-platform/pull/2640)とは比較するが、局所テスト結果を加算してE2E合格としない。
+
+
+## QX-33：実Go Analyzerの入力帰属・Query ID照合（2026-11-03）
+
+[実Go client特性試験](../../../../internal/query/analyzer/client_qx33_request_binding_characterization_test.go)と[QX-33受渡し計画](../../design/QUERY_QX33_ANALYZER_INVOCATION_BINDING_AND_VERTICAL_HANDOFF_2026-11.md)を追加。QX-32の**二Provider共同Read Cohort**とは異なる依存境界。
+
+- 本体の`RunPythonWorker`はQuery IDとProtocolVersionの照合を行う。Source SQL／Schemaを応答単体へ同一版でbind・証明する契約ではない（#2471 merged）。
+- 本試験は現在の実Go clientを、**SQL/Schemaを故意に無視するテストHelper**で呼び、固定入力／Predicate改訂／Relation改訂／Schema改訂の4 subtestを比較。HelperはSQLGlotではなく、実Workerのバグを示すものではない。
+- **ソース照合**：test 3443 bytes、Git blob `f0c6113ca2ff5a3fd3b3febe8faf18c6855d1cb2`がGitHub保存とローカル整形版で一致。実`client.go`も Git blob `9620cd9e2ad6d7b041ca868318a3f45da09fc59d` で一致。
+- **局所実行済み**：Go **1.23.2**、隔離`module tei`へ実clientとテストをexact複写、`model`の必要な型・`core`／`environment`をstub化して`go test -count=1 -v ./internal/query/analyzer`で**4 subtest＋Helper PASS**、`go test -race`と`go vet`もPASS。**正式TEIリポジトリ全体のGo CIではない**。実SQLGlot Worker／SQL Host／Provider／SHO／Owner受理はNOT RUN。
+- **重点の変更**：以後は局所SQL/DSL人工Fixtureの追加件数より、**同一Authored SQL/Schema/Worker・同一Attemptの実SQLGlot→Go DerivedIR→Function Context**の一往復を優先する。SQL Workerが解析できない場合はunknownとして報告し、第二SQL Evaluatorを作らない。
