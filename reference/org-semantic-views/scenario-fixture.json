@@ -40,5 +40,22 @@
       "knownAt": "2027-07-03",
       "validAt": "2027-06-15"
     }
+  ],
+  "syntheticConsumerPolicies": [
+    {
+      "id": "local-member-list",
+      "canReadCapacity": false,
+      "canReadRuleOutcome": false
+    },
+    {
+      "id": "local-capacity-review",
+      "canReadCapacity": true,
+      "canReadRuleOutcome": true
+    },
+    {
+      "id": "external-summary",
+      "canReadCapacity": false,
+      "canReadRuleOutcome": false
+    }
   ]
 }
