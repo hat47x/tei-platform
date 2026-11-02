@@ -263,7 +263,7 @@ enabled(submitAction) = order.valid && !interaction.busy
 offer(recalculateAction) = context.grain == "aggregate" && measure.defined
 ~~~
 
-表示や活性を決める式は、型・依存・Context Instanceと選択epoch・NULL/未取得・意味版・Rule変更に従って評価する。§enabled=true§でも実行Grantが失効していればEffectは拒否される。§enabled=false§はUI側の状態であり、業務Serviceの現在認可や外部Consumerの実行資格を直接書き換えるものではない。Actionの候補提示・起動・認可・確定・開示を一つの真偽値へ丸めない。
+表示や活性を決める式は、型・依存・Context Instanceと選択epoch・NULL/未取得・意味版・Rule変更に従って評価する。`enabled=true`でも実行Grantが失効していればEffectは拒否される。`enabled=false`はUI側の状態であり、業務Serviceの現在認可や外部Consumerの実行資格を直接書き換えるものではない。Actionの候補提示・起動・認可・確定・開示を一つの真偽値へ丸めない。
 
 ### 9.3 標準データ構造とSource編集の往復
 
@@ -290,7 +290,7 @@ Source span/意味ID/版への逆写像が一意な標準UI編集は、型付き
 | ケース | 正負例・観測 | 既存Owner |
 | --- | --- | --- |
 | **T-14 同一Action複数Consumer** | 同じL1限定PATCHをCUI/標準表UI/利用者Macroに結び付け、表示位置は違っても対象・業務Action・Owner効果が同一に保たれるか | #2506/#2507、#997/#2502、#2598/#1174 |
-| **T-15 活性表示と実認可** | UIで§enabled=true§でもGrant失効時に実Effect拒否。UIで§enabled=false§が別Hostからの適法な起動を無条件に消さない | #988/#1124、#2499/#1174 |
+| **T-15 活性表示と実認可** | UIで`enabled=true`でもGrant失効時に実Effect拒否。UIで`enabled=false`が別Hostからの適法な起動を無条件に消さない | #988/#1124、#2499/#1174 |
 | **T-16 新DSL Pluginの標準UI投影** | 新しい構文を追加しても標準inspect/Tree/Property/Diffが機能し、未知Effectはunknownと表示する | #988/#1124/#1824、#2502 |
 | **T-17 Source編集の往復** | 一意Sourceへの編集はChange Proposalへ、展開/曖昧ノードはread-onlyとNavigationへ。別のScript正本を作らない | #988/#1124/#267、#2502 |
 | **T-18 起動契機と現在のContext** | 同じActionを手動/イベント/予約で利用し、旧epoch・LIVE対象集合変更・実Load版差・失効Grantを再照合する | #2502/#1130、#2582/#2499/#943/#1174 |
