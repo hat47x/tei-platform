@@ -254,6 +254,8 @@ package order_entry.list_to_record ^1 {
 - Patternの定義を上書きしない。上書きが必要なら、別のPatternを作る。
 - 投影のレイアウトを持たない。テンプレートとProfileは生成器の入力に残す。
 
+**PoCでの実装.** `applications/<app>/packages/*.tei` の宣言を読み、Patternの存在・種別・重複と、`requires` のSemantic参照を検査します（[#2521](https://github.com/hat47x/tei-platform/pull/2521)）。版の束縛、衝突解決、取り外し時のfingerprint比較は未実装です。
+
 **未解決.**
 
 - 役割名（`entry`など）を宣言するか、並び順だけで表すか。
@@ -913,10 +915,12 @@ PoC #2521が実装した範囲と、まだ実装していない範囲を分け�
 | 画面HTMLの投影 | 実装済み（`view -format html`） |
 | header-detailの見出し・明細ビュー | 実装済み（Relationのsourceをheader、targetを明細として解決） |
 | 対話からのCommand起動（宣言・契約解決） | 実装済み（`interaction`の`command`、入力・結末・効果の解決。実行は未実装） |
+| Package（宣言・読込・検証） | 実装済み（版の束縛、衝突解決、取り外し時のfingerprint比較は未実装） |
 | 操作（Commandの起動）、帳票の投影、Package、フック | 未実装 |
 | `reference/workspace`への宣言追加 | 未実施（受理経路が必要） |
 
 実装は、`internal/application/model.go`、`internal/syntax/application_pattern.go`、`internal/validation/application_pattern.go`、`internal/crossview/pattern_requirements.go`、`internal/applicationview`、`internal/semantic/model.go`、`internal/syntax/parser.go`、`internal/validation/validation.go`と、それぞれの試験です。
+
 
 
 
