@@ -10,6 +10,7 @@ import (
 	"tei/internal/core"
 	"tei/internal/ir"
 	"tei/internal/semantic"
+	"tei/internal/stdlib"
 	"tei/internal/validation"
 )
 
@@ -37,9 +38,20 @@ func InspectWithSelectedSemanticView(
 		return unknown("selected-semantic-view-missing", "", "")
 	}
 
-	// Validate the Semantic view alone, as in the existing E4d preflight.
-	// This is deliberately not an authority or acceptance verification.
-	view := ir.World{Semantics: append([]semantic.Namespace(nil), selected...)}
+	// The existing E4d preflight supplies TEI's standard prelude itself;
+	// caller-provided namespace bytes cannot override that declaration.
+	// Future authority/namespace migration remains a separate decision.
+	for _, ns := range selected {
+		if ns.ID == "std" {
+			return unknown("selected-semantic-standard-prelude-overridden", "", "")
+		}
+	}
+	// Validate the Semantic view alone, not a synthetic Application world.
+	// The prelude is code-owned, not a trusted claim from the selected assets.
+	view := ir.World{Semantics: append(
+		[]semantic.Namespace{stdlib.SemanticNamespace()},
+		selected...,
+	)}
 	if validation.HasErrors(validation.Validate(view)) {
 		return unknown("selected-semantic-view-invalid", "", "")
 	}
@@ -52,7 +64,7 @@ func InspectWithSelectedSemanticView(
 	// A temporary local index over the validated caller-selected view is not
 	// a second registry or resolver. No namespaces are auto-imported.
 	definitions := make(map[core.CanonicalID]semantic.Type)
-	for _, namespace := range selected {
+	for _, namespace := range view.Semantics {
 		for _, typ := range namespace.Types {
 			definitions[typ.ID] = typ
 		}
