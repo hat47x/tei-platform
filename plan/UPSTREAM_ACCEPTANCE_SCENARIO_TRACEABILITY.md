@@ -662,3 +662,17 @@ PAS-07で業務手順を検証する場合も、業務固有の意味は元の�
 | [#1803](https://github.com/hat47x/tei-platform/issues/1803) 設計成果物 | RQ-017（主）、002・010・028 | PAS-01 | PAS-04 | なし |
 
 この追補は、5件の設計が提案段階であることを変えません。5件を PAS の検証根拠として数えるには、各設計の受入（負例を含む）が参照事例で成立している必要があります。
+## 17. 実装の根拠（2026-11-02）
+
+深掘り5件のうち、意味から決まる部分は実装と試験で確かめた範囲があります。判定の材料として、対応するファイルを挙げます。
+
+| 設計 | 実装・試験 | 確かめた範囲 |
+| --- | --- | --- |
+| #1127 標準CRUD | `internal/operations/surface.go`、`surface_test.go` | `list`・`read`・`create`・`update` の導出、未解決の分類、能力への `binding` |
+| #1127 実行（束縛） | `internal/driver/bound_write_test.go` | create・update が実現へ解決して実行され、拒否が `BusinessResult` で返り、行が変わらないこと（**合成の保存領域**） |
+| #1803 設計成果物 | `internal/artifact/`（`artifact.go`・`tabledef.go`・`functiondef.go`・`surface.go`・`manifest.go`・`workspace.go`・`consistency.go`） | 表・機能・操作面・目録の生成、11種類の整合検査、DDL 整合（列・主キー・一意制約・外部キー・索引の列名） |
+| #1127 負例の固定 | `reference/standard-crud/`、`internal/operations/surface_test.go` | キー欠落・ライフサイクル欠落・書込み専用別名・拒否の表現 |
+| #1130・#1129・#2144 | 設計のみ（実装なし） | — |
+| 実DBの競合 | `tools/reference-expected-state-concurrency/` | 枠組みのみ（`TEI_TEST_POSTGRES_DSN` 未設定のため**未実行**） |
+
+この表は「確かめた範囲」と「確かめていない範囲」を分けるためのものです。実装があることを、受入シナリオの達成や意味の受理の証拠にしません。

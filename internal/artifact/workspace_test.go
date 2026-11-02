@@ -140,3 +140,37 @@ func TestCheckSurfaceTargetsReportsAnUnreachableData(t *testing.T) {
 		t.Fatalf("unexpected findings: %+v", findings)
 	}
 }
+func TestRenderWorkspaceKeepsTheReferenceWorkspaceConsistent(t *testing.T) {
+	root := filepath.Join("..", "..", "reference", "workspace")
+	set, err := RenderWorkspace(root, "order_entry")
+	if err != nil {
+		t.Fatalf("render the reference workspace: %v", err)
+	}
+	if set.InputRevision == "" {
+		t.Fatal("the reference workspace must yield an input revision")
+	}
+	if len(set.Findings) != 0 {
+		t.Fatalf("the reference workspace must stay consistent: %+v", set.Findings)
+	}
+	if !set.Manifest.Complete {
+		var unresolved int
+		for _, artifact := range set.Artifacts {
+			unresolved += len(artifact.Unresolved)
+		}
+		if unresolved == 0 {
+			t.Fatalf("an incomplete manifest must name at least one unresolved entry: %+v", set.Manifest)
+		}
+	}
+	var surface bool
+	for _, artifact := range set.Artifacts {
+		if artifact.Kind == string(KindOperationSurface) {
+			surface = true
+			if !strings.Contains(artifact.Content, "order_entry.update.sales.order") {
+				t.Fatalf("the reference surface must derive the standard update:\n%s", artifact.Content)
+			}
+		}
+	}
+	if !surface {
+		t.Fatal("the reference set must include the operation surface")
+	}
+}
