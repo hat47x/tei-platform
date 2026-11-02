@@ -23,6 +23,14 @@ G-VとG-Rは **異なる母集団・異なる用途** に対する証拠であ�
 
 #2505版間差分との非重複を明確にする。G-Rの先行実測は[#2505 11/2独立Headless PoC](https://github.com/hat47x/tei-platform/issues/2505#issuecomment-6573011380)：合成Go 1.23.2 standaloneは三版A→B→Cの候補経路まで拡張され、**15 top-level test・race・vetが局所PASS**。対応候補の連鎖は意味上の同一性や旧操作の再利用許可にはならない。版間比較・Claim別適用・生成/公開の後段Consumerへの計画は[既存Draft #2615](https://github.com/hat47x/tei-platform/pull/2615)が担当し、本節は**同版CrossViewとの異なる母集団・接合点**に限定する。**GitHub製品コード・Go 1.26系・正式H2/J5・実原典・Owner受理は未実証**。合成PoCをS0の正式検収器へ代入しない。
 
+### 現行CrossView実装と、設計対実装Relation候補の実証範囲
+
+固定mainの `internal/xeadsource/crossview.go` `BuildCrossViewProjection` は、`InspectWithContract` の後で **`FormatXead` のみを受け付ける**構造になっている。現在のCrossView実装はXEAD Task/Action/Function等の候補を投影するもので、**XEAD RelationshipとXEAF Runtime Referを一つの実行から照合した製品機能の証明ではない**。本書のG-Vは、両形式を別々にSource Factとして保持した後に検査する **同版対応グラフの設計・実証候補**とする。
+
+P1の最初のHeadless確認では、固定した同一配布版に属するXEA[D]/XEAFの**原文SourceRef・構造Key・Field成分とRefer Alias/Role**をread-onlyで観測し、対応候補の理由・不一致・未解決を別々に記録する。設計Relation1件→Runtime Refer複数件の対応は候補辺の集合として保持し、実XEA[D]/XEAFのRelation対応が完全に自動解決できたとの主張を避ける。Raw bytes/probe/receiptの同一版条件とTargetの参照実在性はS0 P0-bの既存H2/J5に委譲する。
+
+`attributeValue(localName)` による他の型付きSource Factへの外来namespace混入も、Refer固有の成功だけで安全とみなせない。[Draft #2603](https://github.com/hat47x/tei-platform/pull/2603)にTable/Key/Relationship/KeyFields全般の **Reader Known + exact attribute** を確認する合成テストを追加した。**当該追加headのCI結果はまだ未確定**。最新headによる同種別・異種別の回帰PASSを確認してから、#950のsource-only品質判断へ送る。
+
 ### 追加の横断結論：1対多Relationの「見える線」と「書き戻せる対象」は別
 
 [#2610 §34](https://github.com/hat47x/tei-platform/pull/2610)のScript-first/generic Studio、[#2497](https://github.com/hat47x/tei-platform/issues/2497)の構造保存Projection、[#2500](https://github.com/hat47x/tei-platform/issues/2500)のView→Typed Intentを、このRelation移植の一事例に接続する。
@@ -37,7 +45,7 @@ G-VとG-Rは **異なる母集団・異なる用途** に対する証拠であ�
 
 この判断は**設計・受入条件であり、実UI/Putback実装成功ではない**。今後のCode/GUI/Ownerはそれぞれの既存Issueを使用する。
 
-### Case別に失敗原因と検証資格を固定する（本表の11統合ケースは未実行）
+### Case別に失敗原因と検証資格を固定する（本表の12統合ケースは未実行）
 
 | ケース | 入力・判別条件 | Headlessで照合する期待／禁止事項 | 担当 |
 | --- | --- | --- | --- |
@@ -46,6 +54,7 @@ G-VとG-Rは **異なる母集団・異なる用途** に対する証拠であ�
 | **RV-R1** | REFFER 1→2、対照として同数2→2／SUBTYPE | Type固有の構造規則を比較。合致する次数から業務Relation・物理FK生成を自動受理しない | #950／#1126 |
 | **RV-K1** | FAMILY子側のSortKey空・重複・辞書順と数値順の差 | Relationshipのarity先行short-circuitと独立Key順序原因を分離。診断不在≠順序の実証。既存提案patch採否は担当が判断 | #950／#1126 |
 | **RV-N1** | 外来`x:Refer`／`x:Relationship`／`x:TableKey`／`x:Key`／`x:Table`、通常`Refer`上の`x:ToTable`／`x:ToKeyFields`等の属性類似名、外来Tableの子にある通常Referを対照 | Readerの`Known=false`、修飾名、局所Fact、親Table文脈の伝播を独立に調べる。外来宣言・外来親IDを標準Fact/Relationへ昇格させない。既存[#950 RMP-048/RML-023](https://github.com/hat47x/tei-platform/issues/950)が一般契約。**Draft #2603はXEAF Referに限定した合成CI成功であり他種別／入れ子までの実証ではない**。残る`attributeValue(localName)`呼出しをOwnerが限定テスト | #950／#1126 |
+| **RV-X1** | 固定同一配布版のXEAD Relationship・XEAF Runtime ReferをSource Factとして独立読取。設計1件→実装候補0／1／複数、同型でもAlias・Role・Field成分が異なる対照 | 現行CrossViewはXEADのみ対応という実装境界を維持。候補グラフG-Vをread-onlyで表示し、原因・多重対応・未解決・元byte/候補Target参照を別出典で照合。次の意味受理・物理FKへ自動昇格しない | #950／#1126／#1031／private #4 |
 | **RV-C1** | 設計Relation1宣言／runtime Refer2候補、各々別Role・Alias | Source1／Runtime2／対応候補2／Accepted0（synthetic開始時）を別々に数え、Diagramと辺一覧でも区別。自動分割・合成を行わない | #1031／#1126／#982 |
 | **RV-C2** | 複合キー・Referの1 XML属性に複数Field成分。属性なし／明示空／区切り成分付き／外来namespaceも対照 | node／atom／区切り成分の所属・順序を別々に保持。normalized listとraw declarationの存在・字面を分離（[Draft #2603](https://github.com/hat47x/tei-platform/pull/2603)はSource Factの限定修正候補）。全atom計上から全意味成分保持を推定しない | #950／#1031／private #4 |
 | **RV-E1** | 一つの表示線が設計Relation1／実装Refer2候補を縮約。片側だけ変更するUI操作と、一意なSource span/Roleを指定する操作を対照 | generic inspectorからSource/Role/候補0..Nを読めること。表示線だけの曖昧な変更はread-only・navigationへ留め、一意なType/Role/Source/MeaningRevisionのときだけTyped Edit Proposalへ。Proposal→受理→権限→Effectを別々に確認 | #1124／#2497／#2500／#2391 |
