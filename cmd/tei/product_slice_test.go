@@ -201,6 +201,27 @@ func TestProductSliceLoadsValidatesAndViews(t *testing.T) {
 		t.Fatalf("command view=%+v", commandReport.Result)
 	}
 
+	var packageView bytes.Buffer
+	code, err = runViewCommand([]string{
+		"-workspace", root,
+		"-application", "order_entry",
+		"-package", "order_entry.list_to_record",
+		"-format", "json",
+	}, &packageView)
+	if err != nil || code != 0 {
+		t.Fatalf("package view exit=%d err=%v body=%s", code, err, packageView.String())
+	}
+	var packageReport struct {
+		OK     bool                        `json:"ok"`
+		Result applicationview.PackageView `json:"result"`
+	}
+	if err := json.Unmarshal(packageView.Bytes(), &packageReport); err != nil {
+		t.Fatal(err)
+	}
+	if !packageReport.OK || packageReport.Result.Version != "1" || !packageReport.Result.Bound || len(packageReport.Result.Members) != 4 {
+		t.Fatalf("package view=%+v", packageReport.Result)
+	}
+
 	var recordHTML bytes.Buffer
 	code, err = runViewCommand([]string{
 		"-workspace", root,
