@@ -159,3 +159,20 @@ python3 -m py_compile test_qx25_hidden_read_disclosure.py
 - Queryの出力値Lineage／Predicate・Sort・Existence等の入力依存／Function Context宣言／実Provider取得／Consumer Disclosure・Effectをそれぞれ別資格とする。実Worker→DerivedIR→Context→SHO/外部AIの縦断はNOT RUN。
 
 詳細は[Draft #2388計画§7.20](https://github.com/hat47x/tei-platform/blob/work/query-structural-fixture-design-20261030/plan/design/QUERY_STRUCTURAL_MODEL_AND_FIXTURE_WORKBENCH_2026-10.md)。#1693/#1178の開示Owner、#2624のContext Mapping、#2622のData Operations、#988/#2625のDSL Normal Formに引き継ぐ。新SQL Executor/Host/Policy Engineは追加しない。
+
+
+## QX-31：Relation path再束縛／0件集合への否定的依存（2026-11-02）
+
+```sh
+cd plan/fixtures/query-workbench-f0
+python3 -m unittest -v test_qx31_relation_path_negative_read.py
+python3 -m py_compile test_qx31_relation_path_negative_read.py
+```
+
+- **実行済み**：Python 3.13.5、SQLite 3.46.1、`unittest 12/12 PASS`、`py_compile PASS`。実行した6298-byteファイルのGit blobとGitHub保存blob **`187277b93fb61e7e715c1f39fe9d2c362925567c`**が一致。
+- O1.amount600を不変にしてO1.customerRef C1→C2／C1.accountRef A1→A2へ変更すると、Join先のA1.limit700からA2.limit500に解決先が移り、合成SQLのO1出力が消える。**旧Field値が不変でも経由するRelationのBinding再解決が必要**。
+- Scoped `NOT EXISTS holds`は現在Holdが0件でもPredicateとScopeに依存し、O1 Active Holdの追加で行が消える。一方O2 Hold追加ではこのO1 SQL結果を変えない。全Hold先頭1ページにO1 Holdが見えなくても、後続範囲に存在すれば否定結果は成立しない。
+- Hold 0→1→0のABA、同じ結果のままPath変更、SQL NULLによるUNKNOWN／無行出力、相関`order_id`条件を落とした誤SQL、SQLite `SQLITE_READ`でのprepare時参照も比較。
+- **停止線**：これは自作SQLite DB上のSQL結果と手書きExpectedの比較。実TEI SQLGlot/Go DerivedIR/Context/Rule・実Provider/Read Cohort・実Host認可/Disclosure/Effect・Owner業務意味は**NOT RUN**。SQL 0件は自動的にBusiness false、現在の全件不存在、期間無変化を証明しない。
+
+詳細は[設計計画 §7.27](https://github.com/hat47x/tei-platform/blob/work/query-structural-fixture-design-20261030/plan/design/QUERY_STRUCTURAL_MODEL_AND_FIXTURE_WORKBENCH_2026-10.md)および[QX-31独立計画](https://github.com/hat47x/tei-platform/blob/work/query-structural-fixture-design-20261030/plan/design/QUERY_QX31_DYNAMIC_PATH_AND_NEGATIVE_DEPENDENCY_2026-11.md)。[#2582 DC-01〜12](https://github.com/hat47x/tei-platform/issues/2582#issuecomment-6579762087)や[#951顧客照会Draft #2640](https://github.com/hat47x/tei-platform/pull/2640)とは比較するが、局所テスト結果を加算してE2E合格としない。
