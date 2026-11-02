@@ -2,7 +2,6 @@ package query
 
 import (
 	"encoding/json"
-	"strings"
 	"testing"
 
 	"tei/internal/query/analyzer"
@@ -80,7 +79,7 @@ func TestQX27VisibleProjectionIdentityCannotProvePredicateEquality(t *testing.T)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if string(fullA) == string(fullB) || !strings.Contains(string(fullB), "secret_score > 70") {
+	if string(fullA) == string(fullB) || b.Relational.Nodes[1].Expressions[0] != "o.secret_score > 70" {
 		t.Fatalf("same projection must not imply same condition inputs and predicate: %s vs %s", fullA, fullB)
 	}
 }
