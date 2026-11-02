@@ -20,7 +20,7 @@
 
 [**client_qx33_request_binding_characterization_test.go**](../../internal/query/analyzer/client_qx33_request_binding_characterization_test.go) を既存#2388ブランチへ追加。**テスト本体のローカル`gofmt -l`は空**。ローカルで整形したソースとGitHub blobのGit SHA-1 **`f0c6113ca2ff5a3fd3b3febe8faf18c6855d1cb2`**一致（3443 bytes）。
 
-現時点では**GitHubへのGoテストソース保存と整形・byte一致の確認まで**。PR headの`go test`/Actions成功はこの設計書保存時点では**NOT VERIFIED**。Go実テストは実CI/実行ログ確認後に限って成功と記す。ここで「4/4 PASS」等の推測をしない。
+**追加の限定ローカル実測**：Go **1.23.2**の隔離一時module（`module tei`）にGitHub mainの実`internal/query/analyzer/client.go`を**byte一致で複写**（Git blob `9620cd9e2ad6d7b041ca868318a3f45da09fc59d`）、GitHub保存とbyte一致する本QX-33試験（`f0c6113ca2ff5a3fd3b3febe8faf18c6855d1cb2`）を配置し、`model.go`の必要な型定義、`core`のCanonicalID、`environment`のDatabaseProviderのみ**ローカル用stub**で再現した。隔離`go test -count=1 -v ./internal/query/analyzer`はTest本体・`same-source / changed-predicate / changed-referenced-table / changed-schema`四つのsubtestとHelperが**すべてPASS**、`go test -race -count=1 ./internal/query/analyzer`と`go vet ./internal/query/analyzer`もPASS。これは**実Go worker clientのソース・テストの局所実行**であり、TEI repo本体のexact-head CI、実SQLGlot Worker、実CanonicalID/Environmentの全実装・Source/Schema真正性・製品Query E2EのPASSではない。PR headの`go test ./...`／Actionsは**未確認**。
 
 現行本体`RunPythonWorker`を呼ぶサブプロセス用テストHelperが、異なるSQL Source/Schemaを**意図的に無視**して同じ分析Resultを返す。Sourceの誤解析を実Workerで再現したものではない。
 
@@ -59,6 +59,6 @@
 
 ## 5. 状態・Owner・保留判断
 
-- **確認済み（本ドキュメントの作業）**：現Go`RunPythonWorker`のID/Protocol照合範囲とRequest/Result型、#2471/#2634/#2637がmerged、QX-33のGoテストSource保存・整形・exact Git blob一致。
-- **未確認／NOT RUN**：QX-33 exact-head Go test/CI、実SQLGlot Workerの動作・プロトコルレスポンスのSource完全性、SQLGlot→Go→正式Function Contextの同一Attempt、実DB/PostgreSQL/API/Policy、正式Reactive Runtime、Consumer実送信、実Host/Receipt、Owner意味受理。
+- **確認済み（本ドキュメントの作業）**：現Go`RunPythonWorker`のID/Protocol照合範囲とRequest/Result型、#2471/#2634/#2637がmerged、QX-33のGoテストSource保存・整形・exact Git blob一致。加えて**Go 1.23.2隔離module**で実Client実装byte一致＋Stubの周辺型に対する4 subtest／Helper、race、vetを局所実行してPASS。
+- **未確認／NOT RUN**：**TEIリポジトリ全体のexact-head Go suite/CI**、実SQLGlot Workerの動作・プロトコルレスポンスのSource完全性、SQLGlot→Go→正式Function Contextの同一Attempt、実DB/PostgreSQL/API/Policy、正式Reactive Runtime、Consumer実送信、実Host/Receipt、Owner意味受理。
 - **Owner判断待ち**：既存Worker wireにSource/Schema bindingを**追加フィールドとして採用するか**、当面はCallerが保管するInvocation envelope／受理済みSource版／Worker実行記録を用いるか。Hashを返すだけでは真正な実消費やWorkerの完全な解析を証明できない。API/Schemaを本Referenceから先行採用しない。
