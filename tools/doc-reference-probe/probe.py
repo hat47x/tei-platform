@@ -129,7 +129,7 @@ def apply_allowlist(report, data, today):
                            "entry_keys": sorted(seen), "issues": issues}
 
 
-def compare_allowlists(report, baseline, today):
+def compare_allowlists(report, baseline, current_data, today):
     # Validate the baseline with the same schema without inspecting any document.
     baseline_report = {"document": "", "records": []}
     apply_allowlist(baseline_report, baseline, today)
@@ -144,6 +144,12 @@ def compare_allowlists(report, baseline, today):
     for document, name in sorted(set(current["entry_keys"]) - baseline_keys):
         current["issues"].append({"document": document, "name": name,
                                   "result": "allowlist-entry-added", "severity": "error"})
+    baseline_entries = {(entry["document"], entry["name"]): entry for entry in baseline["entries"]}
+    for entry in current_data["entries"]:
+        key = (entry["document"], entry["name"])
+        if key in baseline_entries and entry != baseline_entries[key]:
+            current["issues"].append({"document": key[0], "name": key[1],
+                                      "result": "allowlist-entry-changed", "severity": "error"})
 
 
 def audit_allowlist(root, data, today):
@@ -202,7 +208,7 @@ def main():
                 baseline_digest = hashlib.sha256(baseline_bytes).hexdigest()
                 if args.baseline_sha256 and not hmac.compare_digest(baseline_digest, args.baseline_sha256):
                     raise ValueError("baseline SHA-256 mismatch")
-                compare_allowlists(report, json.loads(baseline_bytes.decode("utf-8")), today)
+                compare_allowlists(report, json.loads(baseline_bytes.decode("utf-8")), allowlist, today)
                 report["allowlist"]["baseline_sha256"] = baseline_digest
                 report["allowlist"]["baseline_digest_verified"] = bool(args.baseline_sha256)
             if args.audit_allowlist:

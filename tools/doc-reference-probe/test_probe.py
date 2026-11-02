@@ -90,12 +90,12 @@ class ProbeTest(unittest.TestCase):
             current = {"baseline_count": 2, "entries": [entry, dict(entry, name="docs/other")]}
             report = check(Path(tmp), "docs/example.md", "`ref:docs/missing` `ref:docs/other`")
             apply_allowlist(report, current, date(2026, 11, 1))
-            compare_allowlists(report, baseline, date(2026, 11, 1))
+            compare_allowlists(report, baseline, current, date(2026, 11, 1))
             self.assertEqual([i["result"] for i in report["allowlist"]["issues"]],
                              ["allowlist-increased", "allowlist-limit-increased", "allowlist-entry-added"])
             same = check(Path(tmp), "docs/example.md", "`ref:docs/missing`")
             apply_allowlist(same, baseline, date(2026, 11, 1))
-            compare_allowlists(same, baseline, date(2026, 11, 1))
+            compare_allowlists(same, baseline, baseline, date(2026, 11, 1))
             self.assertEqual(same["allowlist"]["issues"], [])
 
     def test_cli_rejects_increase_even_when_local_limit_is_raised(self):
@@ -123,13 +123,38 @@ class ProbeTest(unittest.TestCase):
             new = dict(old, name="docs/new")
             report = check(Path(tmp), "docs/example.md", "`ref:docs/new`")
             apply_allowlist(report, {"baseline_count": 1, "entries": [new]}, date(2026, 11, 1))
-            compare_allowlists(report, {"baseline_count": 1, "entries": [old]}, date(2026, 11, 1))
+            compare_allowlists(report, {"baseline_count": 1, "entries": [old]},
+                               {"baseline_count": 1, "entries": [new]}, date(2026, 11, 1))
             self.assertEqual(report["allowlist"]["issues"], [{"document": "docs/example.md", "name": "docs/new",
                                                             "result": "allowlist-entry-added", "severity": "error"}])
             removed = check(Path(tmp), "docs/example.md", "")
             apply_allowlist(removed, {"baseline_count": 1, "entries": []}, date(2026, 11, 1))
-            compare_allowlists(removed, {"baseline_count": 1, "entries": [old]}, date(2026, 11, 1))
+            compare_allowlists(removed, {"baseline_count": 1, "entries": [old]},
+                               {"baseline_count": 1, "entries": []}, date(2026, 11, 1))
             self.assertEqual(removed["allowlist"]["issues"], [])
+
+    def test_allowlist_metadata_change_is_reported(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            old = {"document": "docs/example.md", "name": "docs/missing", "reason": "tracking",
+                   "issue": 2309, "expires": "2026-12-01"}
+            new = dict(old, expires="2027-12-01")
+            baseline = {"baseline_count": 1, "entries": [old]}
+            current = {"baseline_count": 1, "entries": [new]}
+            report = check(Path(tmp), "docs/example.md", "`ref:docs/missing`")
+            apply_allowlist(report, current, date(2026, 11, 1))
+            compare_allowlists(report, baseline, current, date(2026, 11, 1))
+            self.assertEqual(report["allowlist"]["issues"][0]["result"], "allowlist-entry-changed")
+            root = Path(tmp)
+            (root / "docs").mkdir()
+            (root / "docs" / "example.md").write_text("`ref:docs/missing`", encoding="utf-8")
+            (root / "baseline.json").write_text(json.dumps(baseline), encoding="utf-8")
+            (root / "current.json").write_text(json.dumps(current), encoding="utf-8")
+            run = subprocess.run([sys.executable, str(Path(__file__).with_name("probe.py")), "--root", str(root),
+                                  "--allowlist", str(root / "current.json"), "--baseline-allowlist",
+                                  str(root / "baseline.json"), "docs/example.md"],
+                                 capture_output=True, text=True, check=False)
+            self.assertEqual(run.returncode, 1, run.stderr)
+            self.assertIn("allowlist-entry-changed", [i["result"] for i in json.loads(run.stdout)["allowlist"]["issues"]])
 
     def test_allowlist_audit_checks_other_and_missing_documents(self):
         with tempfile.TemporaryDirectory() as tmp:
