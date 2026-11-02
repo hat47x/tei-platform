@@ -1,0 +1,147 @@
+{
+  "fixtureFormat": "tei.reference.org-synthetic/v0",
+  "sourceRevision": "org-synthetic-r7",
+  "provenance": "synthetic-direct",
+  "persons": [
+    "P1",
+    "P2",
+    "P3"
+  ],
+  "departments": [
+    {
+      "id": "D1",
+      "label": "Alpha"
+    },
+    {
+      "id": "D2",
+      "label": "Beta"
+    }
+  ],
+  "membershipVersions": [
+    {
+      "id": "A1",
+      "person": "P1",
+      "dept": "D1",
+      "provenance": "direct",
+      "validFrom": "2027-01-01",
+      "validTo": null,
+      "knownFrom": "2027-04-01",
+      "knownTo": null
+    },
+    {
+      "id": "A2",
+      "person": "P2",
+      "dept": "D1",
+      "provenance": "direct",
+      "validFrom": "2027-01-01",
+      "validTo": null,
+      "knownFrom": "2027-04-01",
+      "knownTo": "2027-07-02"
+    },
+    {
+      "id": "A2",
+      "person": "P2",
+      "dept": "D1",
+      "provenance": "direct",
+      "validFrom": "2027-01-01",
+      "validTo": "2027-06-01",
+      "knownFrom": "2027-07-02",
+      "knownTo": null
+    },
+    {
+      "id": "A3",
+      "person": "P2",
+      "dept": "D2",
+      "provenance": "direct",
+      "validFrom": "2027-01-01",
+      "validTo": null,
+      "knownFrom": "2027-04-01",
+      "knownTo": null
+    },
+    {
+      "id": "A4",
+      "person": "P3",
+      "dept": "D2",
+      "provenance": "direct",
+      "validFrom": "2027-01-01",
+      "validTo": null,
+      "knownFrom": "2027-04-01",
+      "knownTo": null
+    }
+  ],
+  "allocations": [
+    {
+      "relation": "A1",
+      "basisPoints": 100
+    },
+    {
+      "relation": "A2",
+      "basisPoints": 60
+    },
+    {
+      "relation": "A3",
+      "basisPoints": 40
+    },
+    {
+      "relation": "A4",
+      "basisPoints": 100
+    }
+  ],
+  "projects": [
+    {
+      "id": "J1",
+      "dept": "D1"
+    },
+    {
+      "id": "J2",
+      "dept": "D1"
+    }
+  ],
+  "position": {
+    "id": "M1",
+    "dept": "D1"
+  },
+  "occupancy": [
+    {
+      "id": "O1",
+      "person": "P2",
+      "position": "M1",
+      "from": "2027-04-01",
+      "to": "2027-07-01"
+    },
+    {
+      "id": "O2",
+      "person": "P3",
+      "position": "M1",
+      "from": "2027-07-01",
+      "to": null
+    }
+  ],
+  "departmentCapacities": [
+    {
+      "department": "D1",
+      "basisPoints": 180,
+      "revision": "capacity-r1",
+      "sourceKind": "synthetic-department-policy-data"
+    },
+    {
+      "department": "D2",
+      "basisPoints": 160,
+      "revision": "capacity-r1",
+      "sourceKind": "synthetic-department-policy-data"
+    }
+  ],
+  "syntheticCapacityRules": [
+    {
+      "id": "org.fte-within-capacity",
+      "revision": "cap-rule-r1",
+      "role": "test-only-rule",
+      "relation": "Membership",
+      "measure": "allocationBasisPoints",
+      "limitData": "departmentCapacities",
+      "operator": "lte",
+      "grain": "Department",
+      "requireComplete": true
+    }
+  ]
+}

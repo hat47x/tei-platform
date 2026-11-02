@@ -124,8 +124,33 @@ func (p *Parser) ParseApplication() (application.Application, error) {
 			default:
 				return a, p.errAt(kind, "expected semantic or validation after uses")
 			}
+		case "binds":
+			_, _ = p.next()
+			kind, err := p.expect(TokenIdent)
+			if err != nil {
+				return a, err
+			}
+			if kind.Text != "package" {
+				return a, p.errAt(kind, "expected package after binds")
+			}
+			idTok, err := p.expect(TokenIdent)
+			if err != nil {
+				return a, err
+			}
+			packageID, err := core.ParseCanonicalID(idTok.Text)
+			if err != nil {
+				return a, p.errAt(idTok, err.Error())
+			}
+			if _, err := p.expect(TokenCaret); err != nil {
+				return a, err
+			}
+			versionTok, err := p.expect(TokenIdent)
+			if err != nil {
+				return a, err
+			}
+			a.PackageBindings = append(a.PackageBindings, application.PackageBinding{ID: packageID, Version: versionTok.Text})
 		default:
-			return a, p.errAt(t, "expected database or uses")
+			return a, p.errAt(t, "expected database, uses, or binds")
 		}
 	}
 	return a, p.expectEOF()
@@ -1801,6 +1826,12 @@ func (p *Parser) ParseSemanticFile() (semantic.Namespace, error) {
 				return ns, err
 			}
 			ns.Validations = append(ns.Validations, v)
+		case "period":
+			prd, err := p.parseSemanticPeriod(nsID)
+			if err != nil {
+				return ns, err
+			}
+			ns.Periods = append(ns.Periods, prd)
 		default:
 			return ns, p.errAt(t, "expected type, data, capability, or validation")
 		}
@@ -1830,7 +1861,29 @@ func (p *Parser) parseSemanticType(namespace core.CanonicalID) (semantic.Type, e
 	if err != nil {
 		return semantic.Type{}, p.errAt(underTok, err.Error())
 	}
-	return semantic.Type{ID: id, Symbol: symTok.Text, Kind: semantic.TypeAlias, Underlying: under}, nil
+	var values []string
+	if nt, _ := p.peek(); nt.Text == "values" {
+		_, _ = p.next()
+		if _, err := p.expect(TokenLBrace); err != nil {
+			return semantic.Type{}, err
+		}
+		for {
+			t, err := p.peek()
+			if err != nil {
+				return semantic.Type{}, err
+			}
+			if t.Kind == TokenRBrace {
+				_, _ = p.next()
+				break
+			}
+			value, err := p.expect(TokenString)
+			if err != nil {
+				return semantic.Type{}, err
+			}
+			values = append(values, value.Text)
+		}
+	}
+	return semantic.Type{ID: id, Symbol: symTok.Text, Kind: semantic.TypeAlias, Underlying: under, Values: values}, nil
 }
 
 func (p *Parser) parseSemanticData(namespace core.CanonicalID) (semantic.Data, error) {
@@ -1880,28 +1933,53 @@ func (p *Parser) parseSemanticData(namespace core.CanonicalID) (semantic.Data, e
 			}
 			desc := ""
 			disp := ""
-			if nt, _ := p.peek(); nt.Text == "description" {
-				_, _ = p.next()
-				descTok, err := p.expect(TokenString)
+			required := false
+			immutable := false
+			role := ""
+		attributeOptions:
+			for {
+				nt, err := p.peek()
 				if err != nil {
 					return d, err
 				}
-				desc = descTok.Text
-			}
-			if nt, _ := p.peek(); nt.Text == "display" {
-				_, _ = p.next()
-				dispTok, err := p.expect(TokenString)
-				if err != nil {
-					return d, err
+				switch nt.Text {
+				case "description":
+					_, _ = p.next()
+					descTok, err := p.expect(TokenString)
+					if err != nil {
+						return d, err
+					}
+					desc = descTok.Text
+				case "display":
+					_, _ = p.next()
+					dispTok, err := p.expect(TokenString)
+					if err != nil {
+						return d, err
+					}
+					disp = dispTok.Text
+				case "required":
+					_, _ = p.next()
+					required = true
+				case "immutable":
+					_, _ = p.next()
+					immutable = true
+				case "role":
+					_, _ = p.next()
+					roleTok, err := p.expect(TokenIdent)
+					if err != nil {
+						return d, err
+					}
+					role = roleTok.Text
+				default:
+					break attributeOptions
 				}
-				disp = dispTok.Text
 			}
 			aseg, err := core.SymbolToSegment(aSym.Text)
 			if err != nil {
 				return d, p.errAt(aSym, err.Error())
 			}
 			aid, _ := core.ParseCanonicalID(string(id) + "." + aseg)
-			d.Attributes = append(d.Attributes, semantic.Attribute{ID: aid, Symbol: aSym.Text, Description: desc, Display: disp, TypeRef: typeRef})
+			d.Attributes = append(d.Attributes, semantic.Attribute{ID: aid, Symbol: aSym.Text, Description: desc, Display: disp, TypeRef: typeRef, Required: required, Immutable: immutable, Role: role})
 		case "description":
 			_, _ = p.next()
 			descTok, err := p.expect(TokenString)
@@ -2260,4 +2338,129 @@ func (p *Parser) expectEOF() error {
 }
 func (p *Parser) errAt(t Token, msg string) error {
 	return &ParseError{Pos: t.Start, End: t.End, Msg: msg}
+}
+
+func (p *Parser) parseSemanticPeriod(namespace core.CanonicalID) (semantic.Period, error) {
+	_, _ = p.next() // period
+	symTok, err := p.expect(TokenIdent)
+	if err != nil {
+		return semantic.Period{}, err
+	}
+	var id core.CanonicalID
+	if strings.Contains(symTok.Text, ".") {
+		id, err = core.ParseCanonicalID(symTok.Text)
+		if err != nil {
+			return semantic.Period{}, p.errAt(symTok, err.Error())
+		}
+		if !strings.HasPrefix(string(id), string(namespace)+".") {
+			return semantic.Period{}, p.errAt(symTok, "period canonical id must belong to the declared semantic namespace")
+		}
+	} else {
+		seg, err := core.SymbolToSegment(symTok.Text)
+		if err != nil {
+			return semantic.Period{}, p.errAt(symTok, err.Error())
+		}
+		id, _ = core.ParseCanonicalID(string(namespace) + "." + seg)
+	}
+	period := semantic.Period{ID: id}
+	if _, err := p.expect(TokenLBrace); err != nil {
+		return period, err
+	}
+	for {
+		t, err := p.peek()
+		if err != nil {
+			return period, err
+		}
+		if t.Kind == TokenRBrace {
+			_, _ = p.next()
+			break
+		}
+		switch t.Text {
+		case "data":
+			_, _ = p.next()
+			value, err := p.expectCanonicalReference()
+			if err != nil {
+				return period, err
+			}
+			period.Data = value
+		case "business-date":
+			_, _ = p.next()
+			value, err := p.expectCanonicalReference()
+			if err != nil {
+				return period, err
+			}
+			period.BusinessDate = value
+		case "states":
+			_, _ = p.next()
+			values, err := p.readPeriodNames()
+			if err != nil {
+				return period, err
+			}
+			period.States = values
+		case "closed-rejects":
+			_, _ = p.next()
+			values, err := p.readPeriodNames()
+			if err != nil {
+				return period, err
+			}
+			period.ClosedRejects = values
+		case "close-requires":
+			_, _ = p.next()
+			value, err := p.expectCanonicalReference()
+			if err != nil {
+				return period, err
+			}
+			period.CloseRequires = value
+		case "correction":
+			_, _ = p.next()
+			if _, err := p.expectText("via"); err != nil {
+				return period, err
+			}
+			value, err := p.expectCanonicalReference()
+			if err != nil {
+				return period, err
+			}
+			period.Correction = value
+		default:
+			return period, p.errAt(t, "expected data, business-date, states, close-requires, closed-rejects, or correction")
+		}
+	}
+	return period, nil
+}
+
+// expectCanonicalReference reads one canonical identifier.
+func (p *Parser) expectCanonicalReference() (core.CanonicalID, error) {
+	tok, err := p.expect(TokenIdent)
+	if err != nil {
+		return "", err
+	}
+	value, err := core.ParseCanonicalID(tok.Text)
+	if err != nil {
+		return "", p.errAt(tok, err.Error())
+	}
+	return value, nil
+}
+
+// readPeriodNames reads a space-separated list of names and stops at the next
+// period block keyword or at the closing brace.
+func (p *Parser) readPeriodNames() ([]string, error) {
+	stop := map[string]bool{
+		"data": true, "business-date": true, "states": true,
+		"close-requires": true, "closed-rejects": true, "correction": true,
+	}
+	var values []string
+	for {
+		t, err := p.peek()
+		if err != nil {
+			return nil, err
+		}
+		if t.Kind == TokenRBrace || t.Kind == TokenEOF {
+			return values, nil
+		}
+		if t.Kind != TokenIdent || stop[t.Text] {
+			return values, nil
+		}
+		_, _ = p.next()
+		values = append(values, t.Text)
+	}
 }

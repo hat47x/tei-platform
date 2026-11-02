@@ -20,7 +20,7 @@ func writeWorkspaceFixture(t *testing.T, root, name, body string) {
 
 func TestValidateWorkspaceAsTypedReadOperation(t *testing.T) {
 	root := t.TempDir()
-	writeWorkspaceFixture(t, root, "tei.workspace.yaml", "workspace: typed_validation\nsources:\n  - semantic\n")
+	writeWorkspaceFixture(t, root, "tei.workspace.yaml", "workspace: typed_validation\nformatVersion: 1\nsources:\n  - semantic\n")
 	writeWorkspaceFixture(t, root, "semantic/sales/order.tei", "namespace sales\n")
 
 	valid, err := ValidateWorkspace(root)

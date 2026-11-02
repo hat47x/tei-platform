@@ -79,7 +79,13 @@ func headerDetailPatternWorld() ir.World {
 						{ID: "sales.order.lines", Target: "sales.order_line", Cardinality: semantic.CardinalityMany},
 					},
 				},
-				{ID: "sales.order_line"},
+				{
+					ID: "sales.order_line",
+					Attributes: []semantic.Attribute{
+						{ID: "sales.order_line.amount", TypeRef: "std.money"},
+						{ID: "sales.order_line.quantity", TypeRef: "std.decimal"},
+					},
+				},
 			},
 		}},
 		Applications: []application.Application{{
@@ -106,5 +112,56 @@ func assertHeaderDetailSubject(t *testing.T, d *Diagnostic) {
 	t.Helper()
 	if d.Subject == nil || d.Subject.Kind != "application-pattern" || d.Subject.ID != "order_entry.order_lines" {
 		t.Fatalf("header-detail DiagnosticのSubjectが期待値と異なります: %#v", d.Subject)
+	}
+}
+
+func TestValidateApplicationPatternsAcceptsHeaderDetailAggregates(t *testing.T) {
+	w := headerDetailPatternWorld()
+	w.Applications[0].Patterns[0].Aggregates = []application.Aggregate{{
+		Name:      "total",
+		Attribute: "sales.order_line.amount",
+		Function:  "sum",
+	}}
+	for _, diagnostic := range validateApplicationPatterns(w) {
+		t.Fatalf("unexpected diagnostic: %s %s", diagnostic.Code, diagnostic.Message)
+	}
+}
+
+func TestValidateApplicationPatternsRejectsInvalidHeaderDetailAggregates(t *testing.T) {
+	cases := []struct {
+		name      string
+		aggregate application.Aggregate
+		code      string
+	}{
+		{
+			name:      "unknown attribute",
+			aggregate: application.Aggregate{Name: "total", Attribute: "sales.order_line.missing", Function: "sum"},
+			code:      "UNKNOWN_APPLICATION_PATTERN_AGGREGATE_ATTRIBUTE",
+		},
+		{
+			name:      "unsupported function",
+			aggregate: application.Aggregate{Name: "median", Attribute: "sales.order_line.amount", Function: "median"},
+			code:      "APPLICATION_PATTERN_AGGREGATE_FUNCTION_UNSUPPORTED",
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			w := headerDetailPatternWorld()
+			w.Applications[0].Patterns[0].Aggregates = []application.Aggregate{tc.aggregate}
+			if headerDetailDiagnosticByCode(validateApplicationPatterns(w), tc.code) == nil {
+				t.Fatalf("aggregate %s was accepted", tc.name)
+			}
+		})
+	}
+}
+
+func TestValidateApplicationPatternsRejectsDuplicateAggregates(t *testing.T) {
+	w := headerDetailPatternWorld()
+	w.Applications[0].Patterns[0].Aggregates = []application.Aggregate{
+		{Name: "total", Attribute: "sales.order_line.amount", Function: "sum"},
+		{Name: "total", Attribute: "sales.order_line.quantity", Function: "sum"},
+	}
+	if headerDetailDiagnosticByCode(validateApplicationPatterns(w), "APPLICATION_PATTERN_AGGREGATE_DUPLICATE") == nil {
+		t.Fatal("duplicate aggregate was accepted")
 	}
 }
