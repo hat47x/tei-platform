@@ -459,6 +459,23 @@ external LLM
 
 **段階**：R0=read-only依存・版照合／R1=既存合成Referenceへ固定負例追加／R2=実TEI Function/Rule/Providerの一試行／R3=実Consumer・現行Policy/Tool/Host・Receipt／R4=フル再評価と選択的再評価の一致、誤維持、不要失効、再評価量を計測。Owner意味受理・実Provider・実Studio/SHO・外部Harness・本番Effectと全実行経路の証明は、各担当の観測が揃うまで**NOT RUN**。この追加計画はGateの合格・正式仕様採用・main反映を意味しない。
 
+
+### 2026-11-02 非出力Query依存からIncremental・Disclosure・Current Grantまで接合
+
+[メタ概念設計§28](design/DATA_STRUCTURE_META_FACETS_AND_TOPOLOGY_2026-11.md)で、同じ出力値を生成するExpressionでも、行の**成立/不在・JOIN多重度・選択順位/Limit・Ruleの評価条件**が変化するとResult Slice/Claimが変わり得ることを明示した。これを従来の#2582 Reactive Data Context、#2600 Incremental Build、#2387 Query Explain、#2514独立Oracleと接続する。SQLの`SELECT id WHERE secret_score > 50 ORDER BY secret_rank LIMIT 1`では、`id`の値Lineageが同一でも秘密Predicateや非表示順位が出力する行を変え得る。
+
+| 接合順 | 既存Ownerと実際に必要な観測 | 不十分な根拠／判定保留 |
+| --- | --- | --- |
+| Q0 静的Query依存 | #2387／[Go Characterization #2634](https://github.com/hat47x/tei-platform/pull/2634)・[#2635](https://github.com/hat47x/tei-platform/pull/2635)：Output Value Inputs、WHERE/EXISTS、ORDER/LIMIT、Join/Bag、Source/Operator版とCoverageを別列 | OutputField ID/Value lineage一致だけ、`Lowering=full`の入力値だけでは説明の完全性を証明しない。重複Draftは同じOracleとして加算しない |
+| Q1 実Analyzer連結 | #2387/#2622：**実SQLGlot Worker→Go DerivedIR**と、SQL Source bytes/Schema/Parameter/Query bindingを照合 | 手製`analyzer.Result`でのGo test PASSは実WorkerのColumnRefs網羅を保証しない |
+| Q2 実Query/Context | #2506/#2624/#2611：実Provider Request/Read Witness、RowsetとField完全性、Snapshot issuer・Cohort・非表示Rule入力を固定 | 見えている値・列の一致からDBの不要Readや全件性、RLSの同Scopeを主張しない |
+| Q3 送出・権限 | #2516/#1178/#1769と[限定D2修正 #2637](https://github.com/hat47x/tei-platform/pull/2637)：preflight/post-loadの実Read Grant、返却後のConsumer向け開示、現在Policyと非公開条件/Tool | 二地点検査は失効/復活ABAや返却後のEgressまで一括保証しない |
+| Q4 再実行/Oracle/性能 | [F0/F1/S1/S2計画 #2636](https://github.com/hat47x/tei-platform/pull/2636)のBaseline/Changed Full/Selective/Negative対照、#2514の独立Expected、#2582/#2600の失効選択と待ち時間 | FullとSelectiveの偶然のByte一致や同一Generator由来のWantでは、一般的な安全skipや意味受理を保証しない |
+
+**順序と資格**：先に#2387が二つのQX-27 Go Characterizationを同一Ownerの負例へ整理し、まだ型付きRow-membership edgeやPredicate/Order completenessの製品契約を採用しない。次にQ1〜Q3で**解析に必要な非出力Fieldを保持することと、それを外部へ開示できること**を分ける。#2637の現在Grant二地点再確認は既存D2拒否を維持した限定修正候補として扱い、実DB/Host/OSの継続的強制は別資格。Q4ではF1とS1の**結果同値・選択的再計算の正しさ・再利用Evidence・速度改善を別々に検査**する。
+
+最初に追加する負例はLQ-01〜12（§28）。再実行の対象Source/Rule/Query/Provider/Skill/Artifact変更はそれぞれOwnerへ帰属させ、同じ業務Activity/版・Context・Consumerでの実観測が揃うまでは統合PASSを宣言しない。**新しいQuery Engine、グローバル依存Graph、独自Host、別のSemantic SSOT、Gateは追加しない**。Q1〜Q4の実一気通貫／外部Consumer／Owner意味受理は**NOT RUN**。
+
 ## 現在の優先順
 
 1. （完了、2026-09-19）判定段階Bの最終的な実環境での検証根拠を、同じ版（R = `e5231839`）についてそろえた
