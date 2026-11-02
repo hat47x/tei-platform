@@ -91,6 +91,7 @@ type ProjectionField struct {
 	Input     string `json:"input"`
 	Attribute string `json:"attribute"`
 	Primitive string `json:"primitive"`
+	Many      bool   `json:"many,omitempty"`
 }
 
 type Case struct {

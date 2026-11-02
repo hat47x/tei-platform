@@ -27,10 +27,31 @@ func main() {
 		emit(output{State: "error"})
 		os.Exit(2)
 	}
-	record := map[string]string{}
+	record := map[string]any{}
 	var missing []string
 	unresolved := false
 	{{- range .Fields }}
+	{{- if .Many }}
+	if value, ok := in["{{.Input}}"]; !ok {
+		missing = append(missing, "{{.Name}}")
+	} else if value == nil {
+		unresolved = true
+	} else if items, ok := value.([]any); !ok {
+		emit(output{State: "error"})
+		os.Exit(2)
+	} else {
+		values := make([]string, 0, len(items))
+		for _, item := range items {
+			text, ok := item.(string)
+			if !ok {
+				emit(output{State: "error"})
+				os.Exit(2)
+			}
+			values = append(values, text)
+		}
+		record["{{.Name}}"] = values
+	}
+	{{- else }}
 	if value, ok := in["{{.Input}}"]; !ok {
 		missing = append(missing, "{{.Name}}")
 	} else if value == nil {
@@ -41,6 +62,7 @@ func main() {
 	} else {
 		record["{{.Name}}"] = text
 	}
+	{{- end }}
 	{{- end }}
 	if unresolved {
 		emit(output{State: "unresolved"})

@@ -77,3 +77,35 @@ func TestTextTemplateRejectsRecordContract(t *testing.T) {
 		t.Fatal("a record projection was accepted by text-template")
 	}
 }
+
+func TestRecordTemplateGeneratesArrayField(t *testing.T) {
+	contract := `{
+  "schema": "tei.reference.generator-contract/v0",
+  "id": "sui.island.record",
+  "version": "4",
+  "status": "reference-local",
+  "inputs": [{"attribute": "sui.island.card_id", "primitive": "std.identifier"}],
+  "output": {"primitive": "std.text"},
+  "projection": {
+    "kind": "record",
+    "fields": [
+      {"name": "cardIds", "input": "cardIds", "attribute": "sui.island.card_id", "primitive": "std.identifier", "many": true}
+    ]
+  }
+}`
+	path := filepath.Join(t.TempDir(), "contract.json")
+	if err := os.WriteFile(path, []byte(contract), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	out := filepath.Join(t.TempDir(), "candidate")
+	if _, err := Generate(path, "text-record-template", out); err != nil {
+		t.Fatal(err)
+	}
+	source, err := os.ReadFile(filepath.Join(out, "main.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(source), "make([]string") {
+		t.Fatal("generated source does not handle an array field")
+	}
+}
