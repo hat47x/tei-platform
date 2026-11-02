@@ -195,6 +195,27 @@ func validateApplicationPatterns(w ir.World) []Diagnostic {
 				}
 			}
 
+			if pattern.PageBreak != nil {
+				switch {
+				case pattern.Kind != application.PatternHeaderDetail:
+					out = append(out, errFor(
+						patternSubject,
+						"APPLICATION_PATTERN_PAGE_BREAK_NOT_ALLOWED",
+						"%s pattern %s does not accept page-break; page-break belongs to header-detail",
+						pattern.Kind,
+						pattern.ID,
+					))
+				case pattern.PageBreak.Rows < 1 || pattern.PageBreak.Rows > 1000:
+					out = append(out, errFor(
+						patternSubject,
+						"APPLICATION_PATTERN_PAGE_BREAK_INVALID",
+						"header-detail pattern %s page-break rows %d is outside 1..1000",
+						pattern.ID,
+						pattern.PageBreak.Rows,
+					))
+				}
+			}
+
 			switch pattern.Kind {
 			case application.PatternBrowse:
 				out = append(out, validateBrowsePattern(app, pattern, patternSubject, semanticData, queries)...)

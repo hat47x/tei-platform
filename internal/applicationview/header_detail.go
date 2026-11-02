@@ -22,8 +22,16 @@ type HeaderDetailView struct {
 	HeaderItems         []Item                  `json:"headerItems,omitempty"`
 	DetailColumns       []Item                  `json:"detailColumns,omitempty"`
 	Aggregates          []AggregateRef          `json:"aggregates,omitempty"`
+	PageBreak           *PageBreakRef           `json:"pageBreak,omitempty"`
+	DetailRows          []int                   `json:"-"`
 	Packages            []PackageRef            `json:"packages,omitempty"`
 	SemanticFingerprint string                  `json:"semanticFingerprint,omitempty"`
+}
+
+// PageBreakRefは、header-detailの印刷の改ページを解決した結果である。
+type PageBreakRef struct {
+	Rows         int  `json:"rows"`
+	RepeatHeader bool `json:"repeatHeader,omitempty"`
 }
 
 // AggregateRefは、header-detailの明細に対する集計の宣言を解決した結果である。
@@ -132,6 +140,16 @@ func BuildHeaderDetail(world ir.World, applicationID, patternID core.CanonicalID
 		return HeaderDetailView{}, err
 	}
 	view.SemanticFingerprint = fingerprint
+	if pattern.PageBreak != nil {
+		view.PageBreak = &PageBreakRef{Rows: pattern.PageBreak.Rows, RepeatHeader: pattern.PageBreak.RepeatHeader}
+	}
+	rows := 5
+	if view.PageBreak != nil && view.PageBreak.Rows > 0 && view.PageBreak.Rows <= 50 {
+		rows = view.PageBreak.Rows
+	}
+	for i := 0; i < rows; i++ {
+		view.DetailRows = append(view.DetailRows, i)
+	}
 	for _, pkg := range app.Packages {
 		for _, member := range pkg.Members {
 			if member.Pattern != pattern.ID {

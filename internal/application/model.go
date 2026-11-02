@@ -105,6 +105,13 @@ type Pattern struct {
 	Filters       []Filter                 `json:"filters,omitempty"`
 	Sorts         []Sort                   `json:"sorts,omitempty"`
 	PageSize      int                      `json:"pageSize,omitempty"`
+	PageBreak     *PageBreak               `json:"pageBreak,omitempty"`
+}
+
+// PageBreakは、header-detailの印刷で1ページに収める明細行数と、見出しの繰返しを宣言する。
+type PageBreak struct {
+	Rows         int  `json:"rows"`
+	RepeatHeader bool `json:"repeatHeader,omitempty"`
 }
 
 // Sortは、一覧の並び順をQueryの契約として宣言する。

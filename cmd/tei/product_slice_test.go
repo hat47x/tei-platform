@@ -89,6 +89,7 @@ data Customer {
 `)
 	writeWorkspaceFile(t, root, "applications/order-entry/patterns/order-lines.tei", `pattern order_entry.order_lines header-detail {
     relation sales.order.lines
+    page-break 3 repeat-header
 }
 `)
 	writeWorkspaceFile(t, root, "applications/order-entry/packages/list-to-record.tei", `package order_entry.list_to_record ^1 {
@@ -208,7 +209,7 @@ func TestProductSliceLoadsValidatesAndViews(t *testing.T) {
 	if err != nil || code != 0 {
 		t.Fatalf("print view exit=%d err=%v body=%s", code, err, printed.String())
 	}
-	if !strings.Contains(printed.String(), "@page") {
+	if !strings.Contains(printed.String(), "@page") || !strings.Contains(printed.String(), "3行/ページ") {
 		t.Fatalf("print output is not a print sheet: %s", printed.String())
 	}
 }

@@ -162,6 +162,22 @@ func (p *Parser) ParseApplicationPattern() (application.Pattern, error) {
 				return out, p.errAt(sizeTok, "page-size requires an integer")
 			}
 			out.PageSize = size
+		case "page-break":
+			_, _ = p.next()
+			rowsTok, err := p.expect(TokenIdent)
+			if err != nil {
+				return out, err
+			}
+			rows, err := strconv.Atoi(rowsTok.Text)
+			if err != nil {
+				return out, p.errAt(rowsTok, "page-break requires an integer")
+			}
+			pageBreak := &application.PageBreak{Rows: rows}
+			if nt, _ := p.peek(); nt.Text == "repeat-header" {
+				_, _ = p.next()
+				pageBreak.RepeatHeader = true
+			}
+			out.PageBreak = pageBreak
 		case "capability":
 			if hasCapability {
 				return out, p.errAt(t, "capability is declared more than once")

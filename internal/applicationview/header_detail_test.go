@@ -49,9 +49,10 @@ func headerDetailWorld() ir.World {
 				},
 			}},
 			Patterns: []application.Pattern{{
-				ID:       "order_entry.order_lines",
-				Kind:     application.PatternHeaderDetail,
-				Relation: "sales.order.order_lines",
+				ID:        "order_entry.order_lines",
+				Kind:      application.PatternHeaderDetail,
+				Relation:  "sales.order.order_lines",
+				PageBreak: &application.PageBreak{Rows: 3, RepeatHeader: true},
 				Aggregates: []application.Aggregate{{
 					Name:      "total",
 					Attribute: "sales.order_line.amount",
@@ -133,5 +134,18 @@ func TestBuildHeaderDetailCarriesAggregates(t *testing.T) {
 	aggregate := view.Aggregates[0]
 	if aggregate.Name != "total" || aggregate.Function != "sum" || aggregate.Label != "金額" || aggregate.Type != "std.money" {
 		t.Fatalf("aggregate=%+v", aggregate)
+	}
+}
+
+func TestBuildHeaderDetailCarriesPageBreak(t *testing.T) {
+	view, err := applicationview.BuildHeaderDetail(headerDetailWorld(), "order_entry", "order_entry.order_lines")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if view.PageBreak == nil || view.PageBreak.Rows != 3 || !view.PageBreak.RepeatHeader {
+		t.Fatalf("page-break=%+v", view.PageBreak)
+	}
+	if len(view.DetailRows) != 3 {
+		t.Fatalf("detail rows=%d", len(view.DetailRows))
 	}
 }

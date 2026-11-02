@@ -32,12 +32,12 @@ func TestRenderHeaderDetailPrintHTML(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{"@page", "明細", "<thead>", "数量", "集計"} {
+	for _, want := range []string{"@page", "明細", "<thead>", "数量", "集計", "3行/ページ"} {
 		if !strings.Contains(html, want) {
 			t.Fatalf("print html does not contain %q: %s", want, html)
 		}
 	}
-	if strings.Count(html, "<tr><td></td><td></td><td></td></tr>") != 5 {
+	if strings.Count(html, "<tr><td></td><td></td><td></td></tr>") != 3 {
 		t.Fatalf("detail rows are not repeated: %s", html)
 	}
 }

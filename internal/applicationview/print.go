@@ -50,15 +50,12 @@ th{background:#eee;font-weight:600}
 {{range .HeaderItems}}<tr><th>{{.Label}}</th><td></td></tr>
 {{end}}</table>
 <h2>明細</h2>
+{{if .PageBreak}}<p>{{.PageBreak.Rows}}行/ページ{{if .PageBreak.RepeatHeader}}、見出し繰返し{{end}}</p>{{end}}
 <table>
 <thead><tr>{{range .DetailColumns}}<th>{{.Label}}</th>{{end}}</tr></thead>
 <tbody>
-<tr>{{range .DetailColumns}}<td></td>{{end}}</tr>
-<tr>{{range .DetailColumns}}<td></td>{{end}}</tr>
-<tr>{{range .DetailColumns}}<td></td>{{end}}</tr>
-<tr>{{range .DetailColumns}}<td></td>{{end}}</tr>
-<tr>{{range .DetailColumns}}<td></td>{{end}}</tr>
-</tbody>
+{{range .DetailRows}}<tr>{{range $.DetailColumns}}<td></td>{{end}}</tr>
+{{end}}</tbody>
 </table>
 {{if .Aggregates}}<h2>集計</h2>
 <table>
