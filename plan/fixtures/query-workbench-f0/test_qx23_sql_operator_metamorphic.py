@@ -4,6 +4,7 @@ SQLite + hand-written, non-SQL Python expectations. No TEI SQL parser,
 DSL evaluator, Target/Provider conformance, or universal equivalence proof.
 """
 import itertools
+from contextlib import closing
 import sqlite3
 import unittest
 
@@ -47,7 +48,7 @@ class SQLToDataOperationOracle(unittest.TestCase):
         for n in range(4):
             delivery = [(f'D{i}','H1',None,i) for i in range(n)]
             with self.subTest(matches=n):
-                with fixture(lines,delivery) as db:
+                with closing(fixture(lines,delivery)) as db:
                     result = db.execute('SELECT l.id,d.id FROM line l JOIN delivery d ON l.parent=d.parent ORDER BY l.id,d.id').fetchall()
                     self.assertEqual(result, inner_bag(lines,delivery))
 
@@ -62,7 +63,7 @@ class SQLToDataOperationOracle(unittest.TestCase):
         lines = [('L1','H1',1),('L2','H1',1),('L3','H2',None)]
         for n in (0,1,2):
             ds = [(f'D{i}','H1',None,i) for i in range(n)]
-            with fixture(lines,ds) as db:
+            with closing(fixture(lines,ds)) as db:
                 observed = db.execute('SELECT l.id FROM line l WHERE EXISTS(SELECT 1 FROM delivery d WHERE d.parent=l.parent) ORDER BY l.id').fetchall()
                 rewritten = db.execute('SELECT DISTINCT l.id FROM line l JOIN delivery d ON d.parent=l.parent ORDER BY l.id').fetchall()
                 self.assertEqual(observed, exists_rows(lines,ds))
@@ -72,7 +73,7 @@ class SQLToDataOperationOracle(unittest.TestCase):
         for trio in itertools.product((None,0,2),repeat=3):
             rows = [(f'L{i}','H1',v) for i,v in enumerate(trio)]
             with self.subTest(values=trio):
-                with fixture(rows) as db:
+                with closing(fixture(rows)) as db:
                     actual = db.execute('SELECT id FROM line WHERE value != 0 ORDER BY id').fetchall()
                     expected = [(r[0],) for r in rows if r[2] is not None and r[2] != 0]
                     self.assertEqual(actual,expected)
@@ -82,10 +83,10 @@ class SQLToDataOperationOracle(unittest.TestCase):
         lines = [('L1','H1',10),('L2','H2',20)]
         for priorities in ((),(None,),(0,),(1,),(None,1),(1,2)):
             ds = [(f'D{i}','H1',None,p) for i,p in enumerate(priorities)]
-            with fixture(lines,ds) as db:
+            with closing(fixture(lines,ds)) as db:
                 result = db.execute('SELECT l.id,d.id FROM line l LEFT JOIN delivery d ON l.parent=d.parent AND d.priority>0 ORDER BY l.id,d.id').fetchall()
                 self.assertEqual(result,left_on_positive(lines,ds))
-        with fixture(lines,[('D1','H1',None,0)]) as db:
+        with closing(fixture(lines,[('D1','H1',None,0)])) as db:
             on = db.execute('SELECT l.id FROM line l LEFT JOIN delivery d ON l.parent=d.parent AND d.priority>0 ORDER BY l.id').fetchall()
             where = db.execute('SELECT l.id FROM line l LEFT JOIN delivery d ON l.parent=d.parent WHERE d.priority>0 ORDER BY l.id').fetchall()
             self.assertEqual(on,[('L1',),('L2',)])
@@ -94,12 +95,12 @@ class SQLToDataOperationOracle(unittest.TestCase):
     def test_sum_group_null_empty_and_value_distinct_mutants(self):
         for pair in itertools.product((None,0,2),repeat=2):
             rows = [('L1','H1',pair[0]),('L2','H1',pair[1]),('L3','H2',None)]
-            with fixture(rows) as db:
+            with closing(fixture(rows)) as db:
                 got = db.execute('SELECT parent,SUM(value) FROM line GROUP BY parent ORDER BY parent').fetchall()
                 self.assertEqual(got,[('H1',sql_sum(pair)),('H2',None)])
         for vals in ((),(None,),(0,),(2,2)):
             rows = [(f'L{i}','H1',v) for i,v in enumerate(vals)]
-            with fixture(rows) as db:
+            with closing(fixture(rows)) as db:
                 result = db.execute('SELECT SUM(value),COUNT(*),COUNT(value),SUM(DISTINCT value) FROM line').fetchone()
                 unique = set(v for v in vals if v is not None)
                 self.assertEqual(result,(sql_sum(vals),len(vals),sum(v is not None for v in vals),sql_sum(unique)))
@@ -109,7 +110,7 @@ class SQLToDataOperationOracle(unittest.TestCase):
     def test_not_exists_is_not_null_note_filter(self):
         rows = [('L1','H1',5),('L2','H2',8)]
         ds = [('D1','H1',None,1)]
-        with fixture(rows,ds) as db:
+        with closing(fixture(rows,ds)) as db:
             actual = db.execute('SELECT l.id FROM line l WHERE NOT EXISTS(SELECT 1 FROM delivery d WHERE d.parent=l.parent) ORDER BY l.id').fetchall()
             mutant = db.execute('SELECT DISTINCT l.id FROM line l LEFT JOIN delivery d ON l.parent=d.parent WHERE d.note IS NULL ORDER BY l.id').fetchall()
             self.assertEqual(actual,exists_rows(rows,ds,negate=True))
@@ -117,7 +118,7 @@ class SQLToDataOperationOracle(unittest.TestCase):
 
     def test_filter_limit_sequence_mutant(self):
         rows = [('L1','H1',0),('L2','H1',2)]
-        with fixture(rows) as db:
+        with closing(fixture(rows)) as db:
             correct = db.execute('SELECT id FROM line WHERE value>0 ORDER BY id LIMIT 1').fetchall()
             mutant = db.execute('SELECT id FROM (SELECT id,value FROM line ORDER BY id LIMIT 1) WHERE value>0').fetchall()
             self.assertEqual(correct,[('L2',)])
