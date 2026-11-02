@@ -619,7 +619,76 @@ mainの`cmd/tei/main.go`／`cli_operations_artifacts.go`／`cli_contract.go`を�
 
 **停止線・引継ぎ**：初回の最小実行はM0→M1のread-only CLI（実`reference/standard-crud`を利用）だけを#2605/#2502が共有。実業務書込みP0-a、二Function Rule P0-bは#1119のOwnerを優先し、新しいGateとして追加しない。M2のSkill実Harness試験、M3の実Host/Effect、M4の文書・Body受領は各Ownerが実装し、同じ版・対象・Consumerの証拠が得られるまで`NOT RUN`／`unknown`で接続する。新YI中央Host/Registry・TEI専用Skill実行Runtime・第二認可/Role Resolver/Document Storeは追加しない。
 
-## 14. 判断を残す点
+## 14. Source取得時点と受理境界の限定証拠：モデルを読めたことを、実行資格へ昇格させない
+
+### 14.1 統合済みSource Indexにある「読取り用」と「受理用」の差を明示する
+
+[#1017のLoadとSource Indexの結合](https://github.com/hat47x/tei-platform/issues/1017)、[issuer側修正 #2642](https://github.com/hat47x/tei-platform/pull/2642)、[trace Source読取り #2647](https://github.com/hat47x/tei-platform/pull/2647)を、MacroのM0〜M4に関わる**Source取得資格の相違**として整理する。照合した現mainは`b1c019fec4f05ca65e3d7491608cb849ce523d29`（2026-11-02）。`#2647`は取得時点でOpenであり、mainに取り込まれた扱いにはしない。
+
+現mainの具体的な分岐：
+
+| 入口 | Source Index構築・観測 | ここから言えないこと |
+| --- | --- | --- |
+| `tei operations`：`internal/operations/surface.go::SurfaceWorkspace` | `workspace.Load(root)`→`workspace.BuildSourceIndex(root, loaded)`→World/ModelRevision/Operation候補。read-only。 | 正式受理済みのSource、現在Grant、実Provider選抜・実Effect |
+| `tei artifacts`：`internal/artifact/workspace.go::RenderWorkspace` | 同じく`Load`→**非strict**`BuildSourceIndex`→生成Manifest/Findings。`-out`のみ実ファイル書込み。 | 外部Consumer必要Member・同世代の実読取り・納品済み |
+| `sourceacceptance.LoadVerifiedWorkspace` | `Load`→**strict**`BuildSourceIndexFromLoad`→Trusted Readerの現在Source受理を確認。`ManifestIdentity`は別に保持。 | 複数ファイルの原子的Snapshot、import先一式の束縛、実Host/Provider能力 |
+| `reference-host-acceptance sign` | #2642統合により`BuildSourceIndexFromLoad`を使用。import宣言Workspaceは、対象が未束縛なので**署名を拒否**する。 | 署名作業だけで業務意味を承認した、Provider実Effectを許可したという主張 |
+| `trace`の元Source解決 | #2647の**未統合候補**では`workspace.ReadSource`の固定Root・上限・個別再読取りを検証。 | 毎回のRoot保護から、複数読取りを一回の不可変Snapshotと推定 |
+
+**注意すべき現行コードの事実**：`BuildSourceIndex`は非strictでも、`workspace.Load`から渡された**解析済みSource SnapshotやLoad時に捕捉した管理対象外解析ファイルのbytesが存在すればそれを優先**する。捕捉範囲の外はルートに拘束したファイル読取りへfallbackできる。一方、`BuildSourceIndexFromLoad`はfallback不可・ResultがLoad由来であること・同Root・import未束縛を確認する。したがって「`operations/artifacts`は常にSourceを再読込みしている」と主張してはならない。保証の差は**strict fallback拒否とimport/manifestの束縛範囲**にある。
+
+strict方式でも`workspace.Load`自身のscan/各Sourceの読取り・追加管理ファイル取得は別時点であり、**複数ファイルを原子的に同一時点で取得した証明ではない**。`ModelRevision`やFingerprintが得られたこと、`sourceacceptance`で過去の受理recordが存在することも、実業務効果の現在認可とは別である。
+
+### 14.2 三つの時点と一つのConsumer観測を混ぜない
+
+ここでは新Clock APIを定義せず、既存のSource/Attempt/Context/Receiptを用いて時点別の受渡し票を作る。
+
+1. **Authoring/Source時点**：入力の実bytes、Loader解析済み集合、ManagedFiles/Extra、Manifest/Imports、Role/Operator/Rule Source、Source Index。読み損ね・未知経路を`complete`にしない。
+2. **Accepted/Published時点**：Ownerの意味受理/組織公開対象、Issuerが検査したSource、Script/Plugin依存閉包、実Artifact一式と実Loaded bytes。同じSource文字列を含んでもRole版・Plugin版・Manifest受理は別。
+3. **Invocation/Commit時点**：Macroを起動する主体/Context Instance/選択epoch、現在Grant・実Provider/物理Read・Operation Intent/実Request/実Effect・Receipt。過去のAccepted recordから現在Provider/Scope/時点を補完しない。
+4. **Consumer観測時点**：CUI/Studio/AI/SHO/EKIの実Readerが見たProjection、診断、隠された候補の有無、Rendered DOM・Network/Log・同Attempt Bodyの到達。生成時点の`Manifest.Complete`やTask ACKを納品・開示適格性へ格上げしない。
+
+この四者は**同じ時点を要求するのではなく、Consumerが今主張しようとするClaimに必要なJoin条件を実際に満たすか**で接続する。例えば次を区別する。
+
+- `WorldFingerprint`一致でも、管理ファイルの位置・README等の非解釈管理内容、Manifest/Import、Provider Policyが変わればSource/採用資格は異なり得る。
+- `ModelRevision`はSource Indexに由来し、`sourceIndexFingerprint`は別形式の観測値。値が異なるから不一致とする**無根拠な等号比較**をしない。`operations.modelRevision`と`artifacts.inputRevision`は同一Source版を比較する候補だが、別CLI呼出しで一回のSnapshotを共有した証明ではない。
+- 同じ`Rule/Operator/Script`のbyteでも、Eagerな依存Role/Pluginが変わる可能性がある。[#2638 Role bootstrap](https://github.com/hat47x/tei-platform/pull/2638)の依存Pinと循環診断を受渡し条件とし、Referenceの自己記述やQuote中のRole名からTrustを生成しない。
+- `read-only` CLIの実成功を、`sign`やTrusted Readerへの自動引継ぎとしない。import未束縛のTargetでは、read-only表示は可能でも受理・実行の証拠が不足する場合がある。
+
+### 14.3 M0の証拠票を「値の一致」から「理由を説明できる関係」へ
+
+固定対象は`reference/standard-crud/workspace`の`ledger`。独立の[既存検証記録](https://github.com/hat47x/tei-platform/blob/main/plan/evidence/SURFACE_AND_ARTIFACT_VERIFICATION_2026-11.md)を期待の一部として参照しつつ、**今回のM0は別試行**で実測・記録する。最低限の票は次を持つ。
+
+| 段階 | 記録する証拠 | 受入条件・未知の扱い |
+| --- | --- | --- |
+| 実行物 | main exact SHA、実binary版`vcsRevision/vcsModified`、Go/OS、実行引数、CLI終了コード | 未識別実行物をmain同一としない |
+| CLI発見 | `commands`のscope、実`main.go` dispatch、`operations/artifacts`の可否・非掲載 | 限定Catalog≠全Capability一覧、実装≠許可 |
+| Source | `validate`の`ok`/Diagnostics、`worldFingerprint`・`sourceIndexFingerprint`、実Input Scope | Warning/parse errorを隠さず、別呼出しsnapshotは未束縛と記録 |
+| Operation | `operations.schemaVersion`、`worldFingerprint`、`modelRevision`、`rule`、Operations/Gaps/Conflicts | Gapありでも`validate ok`。候補/Gap/Conflictを現在Capabilityへ変換しない |
+| Artifact | `artifacts.inputRevision`、`manifest.inputRevision`、`manifest.entries`、`findings`、`complete` | 同Revision候補を比較し、内部整合/全Consumer member/納品を別資格化 |
+| Source受理 | Trusted Readerでの`BuildSourceIndexFromLoad`とimport/manifestの条件、今の受理record | M0 read-onlyだけでは観測できない→**NOT RUN**を保持 |
+| 実行・開示 | 現在Grant、実Provider Request/Effect/Receipt、各Consumer実Read/送出 | M0は観測しない→**NOT RUN**。実Host以外で推測しない |
+
+**手順と結果を分離**：M0では実コマンドを記録し、各結果を生Sourceの再配布にならない場所へ保存する。`sourceIndexFingerprint`と`modelRevision`を無理に文字列比較せず、同じ対象・同じ定義時点に由来するかの説明と、`operations.modelRevision == artifacts.inputRevision`の比較可否を記録する。比較対象が欠落・別版・Opaqueの場合は、同一性を`unknown`とし、値合わせのためにSource/Grantを変更しない。これはコマンドを追加実行して得た結果報告ではない。
+
+### 14.4 追加する境界反例（T-54〜T-61、すべて新規Macro縦断NOT RUN）
+
+| ケース | 正負対・判別 | 主担当 |
+| --- | --- | --- |
+| **T-54 Read-onlyとVerifiedの区別** | `operations/artifacts`で導出成功。`LoadVerifiedWorkspace`のTrusted Reader/受理条件が不明なら実行受理済みとはしない。正当なVerified Sourceでは両者の差を説明 | #1017/#2605/#2499 |
+| **T-55 非解釈の管理ファイル変更** | Worldの構造は不変だが、管理対象README等のSource bytesが変わる。Source Index/ModelRevisionの影響と業務Meaningの変化なしを区別 | #1017/#2600/#2516 |
+| **T-56 Load後変更とstrict fallback** | Load直後のディスク変更、捕捉されていない管理ファイル、別RootのResultを組み合わせる。strictは再読込みで修復せず明示拒否。非strictで成功しても同資格としない | #1017/#2642/#2595 |
+| **T-57 import/manifestの束縛範囲** | import宣言のSource受理/署名は未束縛として拒否。manifest identityを別に見てもimport先や複数ファイルatomic Snapshotを受理済みとしない | #1017/#2642/#943 |
+| **T-58 M0別呼出しのSource drift** | `validate`→`operations`→`artifacts`間でSource変更。`WorldFP`/`ModelRevision`/Artifact入力版の既知比較と、途中のABA検知不能を分ける | #2605/#2600/#2514 |
+| **T-59 trace個別読取り** | 固定Root/上限付き`ReadSource`の安全性と、複数ファイルを同時点に読む保証を区別。#2647の未統合候補のClaimをmainの既定挙動にしない | #1017/#2647/#2516 |
+| **T-60 Role/Skill依存の実ロード** | Source byte同一でRole Plugin/Skill参照Script変更。依存版Pin・実Tool/Loader・Host Current Grantが揃わなければ公開や自動実行は不可 | #2638/#2605/#2499、TAI #270 |
+| **T-61 実成果物/消費者の閉包** | `artifacts`の`complete=true`とstdout/`-out`表示が一致しても、Readerが必要memberを同世代で取得したかとOwner現在権限を別評価 | #2604/#2630/#2633/#1174 |
+
+**接続順**：M0の直接対象はT-54/55/58のread-onlyな出力比較と、実Source範囲を明記する票の作成。T-56/57/59は#1017/#2642/#2647のOwnerが実Source/OS差分を確認。T-60はRole/Skillの既存Owner、T-61はArtifact/Readerと実Hostの既存Ownerへ引き継ぐ。これらの試験は問題を一般的に証明するための新Gateではなく、**M0からM4への不正な資格昇格を発見する具体的な負例**である。P0-a/P0-bは不変。
+
+**証拠水準**：#1017/#2642のmain統合を確認したことと、Sourceに関する上の静的判別ができることを区別する。#2647のOpen PRの現行Windows試験や#2638の合成Role Referenceの結果は各Ownerの記録だけに帰属する。T-54〜61・Macroが実Source受理から業務Effect/外部開示へ到達する一巡・実Harness/OS/実Providerは**NOT RUN**。
+
+## 15. 判断を残す点
 
 - **業務Owner**：各Actionで「元の対象」「関係する対象」「全件の完了」をどのように定義するか。旧X-TEA `sales.order.submit`等の未受理マッピングは推測で補わない。
 - **組織Owner**：固定集合／実行時集合、代理の時点、合議、実行版固定と作用範囲での更新許容、既発行Grantの変更時再判定、結果閲覧をどのPolicyで扱うか。
@@ -631,4 +700,4 @@ mainの`cmd/tei/main.go`／`cli_operations_artifacts.go`／`cli_contract.go`を�
 
 **確認できたこと**：固定mainの既存型・RequestHash・通常Request生成・試験DDLのデータ解釈を静的に確認した。既存IssueにはT-1の具体的な未実行DB負例、Effect replayとResult再投影の未実行負例、EKI出力接続の静的所見がある。
 
-**未実行・未採用**：本書のT-1〜53の実行、信頼済みIssuer/実Grant、利用者Macro実ロード、PostgreSQL負例、Linux/WindowsでのOS隔離、外部EKIの同一Attempt納品、複数Target受入、業務意味の正式受理。新しいCore kind、Grant/Receipt schema、専用Host、共通Workflow Engine、仕様やADRの採用を本書から確定しない。
+**未実行・未採用**：本書のT-1〜61の実行、信頼済みIssuer/実Grant、利用者Macro実ロード、PostgreSQL負例、Linux/WindowsでのOS隔離、外部EKIの同一Attempt納品、複数Target受入、業務意味の正式受理。新しいCore kind、Grant/Receipt schema、専用Host、共通Workflow Engine、仕様やADRの採用を本書から確定しない。
