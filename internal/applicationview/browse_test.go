@@ -47,6 +47,7 @@ func browseWorld() ir.World {
 					Attribute: "sales.order.order_id",
 					Direction: "asc",
 				}},
+				PageSize: 20,
 			}},
 		}},
 	}
@@ -65,6 +66,9 @@ func TestBuildBrowseResolvesQueryColumns(t *testing.T) {
 	}
 	if len(view.Filters) != 1 || view.Filters[0].Label != "状態" || len(view.Filters[0].Operators) != 2 {
 		t.Fatalf("filters=%+v", view.Filters)
+	}
+	if view.PageSize != 20 {
+		t.Fatalf("page-size=%d", view.PageSize)
 	}
 	if len(view.Sorts) != 1 || view.Sorts[0].Label != "受注番号" || view.Sorts[0].Direction != "asc" {
 		t.Fatalf("sorts=%+v", view.Sorts)
@@ -88,7 +92,7 @@ func TestRenderBrowseHTMLAndPrint(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(html, "<th>受注番号</th>") || !strings.Contains(html, "並び順") || strings.Count(html, "<tr><td></td><td></td></tr>") != 5 {
+	if !strings.Contains(html, "<th>受注番号</th>") || !strings.Contains(html, "page-size: 20") || !strings.Contains(html, "並び順") || strings.Count(html, "<tr><td></td><td></td></tr>") != 5 {
 		t.Fatalf("browse html=%s", html)
 	}
 	printed, err := applicationview.RenderBrowsePrintHTML(view)

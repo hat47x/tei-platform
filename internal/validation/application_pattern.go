@@ -174,6 +174,27 @@ func validateApplicationPatterns(w ir.World) []Diagnostic {
 				}
 			}
 
+			if pattern.PageSize != 0 {
+				switch {
+				case pattern.Kind != application.PatternBrowse:
+					out = append(out, errFor(
+						patternSubject,
+						"APPLICATION_PATTERN_PAGE_SIZE_NOT_ALLOWED",
+						"%s pattern %s does not accept page-size; page-size belongs to browse",
+						pattern.Kind,
+						pattern.ID,
+					))
+				case pattern.PageSize < 1 || pattern.PageSize > 1000:
+					out = append(out, errFor(
+						patternSubject,
+						"APPLICATION_PATTERN_PAGE_SIZE_INVALID",
+						"browse pattern %s page-size %d is outside 1..1000",
+						pattern.ID,
+						pattern.PageSize,
+					))
+				}
+			}
+
 			switch pattern.Kind {
 			case application.PatternBrowse:
 				out = append(out, validateBrowsePattern(app, pattern, patternSubject, semanticData, queries)...)

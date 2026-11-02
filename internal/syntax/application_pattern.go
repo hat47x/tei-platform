@@ -2,6 +2,7 @@ package syntax
 
 import (
 	"fmt"
+	"strconv"
 
 	"tei/internal/application"
 	"tei/internal/core"
@@ -150,6 +151,17 @@ func (p *Parser) ParseApplicationPattern() (application.Pattern, error) {
 				return out, err
 			}
 			out.Sorts = append(out.Sorts, application.Sort{Attribute: attribute, Direction: dirTok.Text})
+		case "page-size":
+			_, _ = p.next()
+			sizeTok, err := p.expect(TokenIdent)
+			if err != nil {
+				return out, err
+			}
+			size, err := strconv.Atoi(sizeTok.Text)
+			if err != nil {
+				return out, p.errAt(sizeTok, "page-size requires an integer")
+			}
+			out.PageSize = size
 		case "capability":
 			if hasCapability {
 				return out, p.errAt(t, "capability is declared more than once")

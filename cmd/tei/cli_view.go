@@ -318,6 +318,11 @@ func writeBrowseText(out io.Writer, view applicationview.BrowseView) (int, error
 			return 2, err
 		}
 	}
+	if view.PageSize > 0 {
+		if _, err := fmt.Fprintf(out, "page-size: %d\\n", view.PageSize); err != nil {
+			return 2, err
+		}
+	}
 	if len(view.Sorts) > 0 {
 		if _, err := fmt.Fprintln(out, "sorts:"); err != nil {
 			return 2, err

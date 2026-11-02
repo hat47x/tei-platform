@@ -104,6 +104,7 @@ type Pattern struct {
 	Aggregates    []Aggregate              `json:"aggregates,omitempty"`
 	Filters       []Filter                 `json:"filters,omitempty"`
 	Sorts         []Sort                   `json:"sorts,omitempty"`
+	PageSize      int                      `json:"pageSize,omitempty"`
 }
 
 // Sortは、一覧の並び順をQueryの契約として宣言する。
