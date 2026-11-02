@@ -43,8 +43,8 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 		*patternID != strings.TrimSpace(*patternID) {
 		return fail("INVALID_ARGUMENT", "view requires exact -workspace, -application and -pattern, without positional arguments", 2)
 	}
-	if *format != "text" && *format != "json" && *format != "html" {
-		return fail("INVALID_ARGUMENT", "view -format must be text, json, or html", 2)
+	if *format != "text" && *format != "json" && *format != "html" && *format != "print" {
+		return fail("INVALID_ARGUMENT", "view -format must be text, json, html, or print", 2)
 	}
 
 	loaded, err := workspace.Load(*root)
@@ -77,13 +77,21 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 	switch *format {
 	case "json":
 		return writeViewReport(out, report, 0)
-	case "html":
+	case "html", "print":
 		var html string
 		switch value := result.(type) {
 		case applicationview.View:
-			html, err = applicationview.RenderHTML(value)
+			if *format == "print" {
+				html, err = applicationview.RenderPrintHTML(value)
+			} else {
+				html, err = applicationview.RenderHTML(value)
+			}
 		case applicationview.HeaderDetailView:
-			html, err = applicationview.RenderHeaderDetailHTML(value)
+			if *format == "print" {
+				html, err = applicationview.RenderHeaderDetailPrintHTML(value)
+			} else {
+				html, err = applicationview.RenderHeaderDetailHTML(value)
+			}
 		}
 		if err != nil {
 			return fail("VIEW_FAILED", err.Error(), 1)

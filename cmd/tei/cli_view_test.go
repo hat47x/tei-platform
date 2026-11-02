@@ -233,3 +233,20 @@ func TestViewCommandRendersHeaderDetail(t *testing.T) {
 		t.Fatalf("text=%s", out.String())
 	}
 }
+
+func TestViewCommandRendersPrintFormat(t *testing.T) {
+	root := viewWorkspace(t)
+	var out bytes.Buffer
+	code, err := runViewCommand([]string{
+		"-workspace", root,
+		"-application", "order_entry",
+		"-pattern", "order_entry.order_record",
+		"-format", "print",
+	}, &out)
+	if err != nil || code != 0 {
+		t.Fatalf("exit=%d err=%v body=%s", code, err, out.String())
+	}
+	if !strings.Contains(out.String(), "@page") || !strings.Contains(out.String(), "<table>") {
+		t.Fatalf("print output=%s", out.String())
+	}
+}
