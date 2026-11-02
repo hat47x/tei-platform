@@ -165,3 +165,53 @@ Fixtureは意図的に**保守的な影響判定**を行う。Source byteが変�
 - **#2600 増分ビルド**：I01〜I13を既存IB-01〜14の追加Pressureへ引き渡し、**誤再利用、過剰無効化、旧版誤公開、不要なCurrent Authority再利用**を別集計。高速化の実測、SHO実描画、実DB/Host/Owner受理はNOT RUN。
 
 既存#1119 P0、正式Owner意味受理、現行Host/Provider Authorityの順序を維持する。新Cache Engine、共通Host/Registry、別の意味正本、追加の公式Gateは設けない。
+
+
+## 7. 2026-11-02追加：操作経路の一意性とConsumerの候補可視性を分離する
+
+既存[#2611 複数Persistence Mapping](https://github.com/hat47x/tei-platform/issues/2611)の現行[Draft #2587](https://github.com/hat47x/tei-platform/pull/2587)静的所見、および[実Operation向けcharacterization Draft #2632](https://github.com/hat47x/tei-platform/pull/2632)、[#2627](https://github.com/hat47x/tei-platform/pull/2627) Provider候補、[#2516](https://github.com/hat47x/tei-platform/issues/2516) Consumer相対開示、[#2507](https://github.com/hat47x/tei-platform/issues/2507) Action discoveryを横断する。新しい検証条件は、**利用者が見えるOperation経路が一つであることは、実際に利用可能な意味上の経路が一意である証拠ではない**こと。
+
+### 7.1 競合する「一意性」の意味
+
+同じ `sales.order`／`order_entry.update.sales.order` に対し、`archive-db` と `primary-db` の二つの異なるMappingがある自作世界を考える。Archive RouteをConsumerが知る資格はないが、Primary Routeだけが画面／Agentに提示されたとする。
+
+- **Semantic candidate universe**：正式Data Model/Function Context/目的・Action・Route Mappingが対象とする候補集合。Consumer向け表示から逆算して作らない。
+- **Route equivalence**：Alias名ではなく、実Endpoint/Mapping版/Scope/Action purpose/認可契約と必要なRead/Write意味が一致することを確認した範囲だけを同一クラス候補にできる。二つのAliasが同じDB名を指すというだけで完全な実行資格を主張しない。Aliasに応じたGrant等の差も保持する。
+- **Selection**：Accepted Action/明示Binding/Ownerの正当なRoute Policyが経路を指定するか、同等性を確認した候補群が一意の場合だけ単一候補になり得る。**「閲覧可能なものが一件」「今Grantがあるものが一件」「辞書順先頭」から業務上の経路を推定しない**。
+- **Current execution**：選んだ経路について現Host/Providerが現Grant・expected-state・実Targetを再検査する。選択済みのPrimaryがdenied/staleでも、別Archiveへ暗黙fallbackしない。合法なPurposeごとのReplica Read/Primary Writeを明示的に組み合わせる構成は可能だが、共有Snapshot・commit資格は別。
+- **Consumer disclosure**：利用者／外部AIには、許される対象名、候補数、Rule/診断の範囲だけを提示。非公開経路の存在、名称、拒否理由、内部表の数なども開示に該当する。内部の `ambiguous`、`denied`、`unresolved` がConsumerへ同じ `unavailable` として投影される場合がある。開示の粒度は#2516/実Host PolicyのOwnerで判断。
+
+形式的には、**内部で意味的に解決する対象**と、**その解決結果をConsumerに公開できる情報**は異なる関数である。候補の開示Projectionを変更しても、同一受理意味・実Provider設定の内部操作対象が変わるべきではない。逆にGrant・Routeの変更をUI側で隠したからといって実対象資格が維持されるわけではない。
+
+### 7.2 有限合成Reference RD-01〜12
+
+[Python stdlib 12-test Reference](../fixtures/everything-data-impact/test_route_disclosure.py)で、以下の正負例を固定した。試験用 `Route` と `resolve/publish` は**製品APIや正式な権限／開示実装ではない**。
+
+| ID | 独立に比較する条件 | 期待 |
+| --- | --- | --- |
+| RD-01 | 同じ実Route・Mapping/Scope/Purpose/Policyの別Alias | 同一候補クラスになり得る |
+| RD-02 | Visible一件だがHidden別Routeあり | 内部の一意なSelectionへ自動昇格しない |
+| RD-03 | Grant一件だがSemantic Route二件 | Grantを業務目的のRoute選択として使わない |
+| RD-04 | Alias辞書順だけ変更 | 選択結果・Unresolvedが順序で変わらない |
+| RD-05 | 明示Targetが存在し、公開可能名は隠す | 内部で候補を解決し、Consumerへ必要最小結果を投影可能 |
+| RD-06 | 明示Primaryがdenied、Archiveは許可 | Archiveへ暗黙fallbackしない |
+| RD-07 | 同じSemantic SubjectでもPurposeがread/updateで異なる | 当該Operation目的に限定して候補を区別 |
+| RD-08 | Replica readはfreshだがPrimary updateはstale | Readの成立をWriteの現在状態一致へ転用しない |
+| RD-09 | Hidden曖昧とDeniedの外部診断 | 開示不可なら双方Generic `unavailable` 候補（Timingの機密性は未実証） |
+| RD-10 | 同じEndpointでもMapping versionが異なる | 単なる同名で経路を統合しない |
+| RD-11 | 同じEndpointでもTenant Scopeが異なる | 同じ操作対象群と推定しない |
+| RD-12 | Disclosure権限だけ反転 | 内部の意味的Resolutionを変えない |
+
+**実測**：Python stdlib `unittest discover` **12/12 PASS**、`py_compile` PASS。GitHub保存blob `1373754109ff7c1bd6b305bb29eb0b6eeed8a8aa`は、ローカル実測ファイルのgit blobと完全一致。この実測が意味するのは、固定された合成判別ルールが期待ケースを満たしたことのみ。**本物のTEI `DeriveOperationSurface`／World Validator／SQL/Provider・Grant／Policy／外部Consumerに適用した証拠ではない**。
+
+また、Generic Errorを一つにまとめるだけでは、Response timing、エラー種別の差、繰返し照会、件数依存の性能差による情報漏えいは証明できない。実際の情報非干渉/開示の判定は#2516/#2515とHost/OSが担当する。
+
+### 7.3 P1の接合順序と増分ビルドに対する影響
+
+1. **#2611 / Draft #2632**：最初に本物の `DeriveOperationSurface` の4件characterizationを実Goテストし、多Mappingが正式World Validatorの有効な入力かを判定。現候補の重複消失/辞書順依存という特性と、Ownerが採用すべき仕様を混同しない。
+2. **#2507/#2622**：既存Pattern/Action Purpose/Mapping資格と、read-only discoveryをConsumer別の閲覧Projectionと独立させる。新Registry/専用UI/第二Resolverを増やさず、現在のContractへ接続。
+3. **#2598/#1174**：選択されたProvider/Mapping/Request Targetを実Hostで照合。Primary/Replica等の時点、失効、Result/Receipt、実Write後の独立Readを一試行で結ぶ。候補だけの成功を実EffectやBusiness Completionとして扱わない。
+4. **#2516/#1178／TAI**：外部Harness/SHO向けの説明は同じ内部対象を基にした用途限定Projectionとし、Hidden Routeの件数／存在を漏らさない条件を別Ownerが検証する。Productが開示を認めた要約と、Raw/内部Policyへのアクセスは別。
+5. **#2600／Everything is Data**：Alias改名、Mapping変更、Purpose/Route変更、Disclosure Profile更新、Current Grant失効を、**別々の変更影響と再資格**として計測。明示的Route BindingとSource/Operation IDが同じでも実Provider対象が違い得る。Code再生成/意味再解決/実行前検査/Consumer再公開を用途別に扱う。
+
+現行の#1119 P0実DB/Host縦切りを維持し、本§7は**P1 Reference・設計接合のみ**。正式Operation導出の修正、Runtime Resolver、Host認可、本番開示、Go製品試験、Owner意味受理は本件ではNOT RUN／未採用。
