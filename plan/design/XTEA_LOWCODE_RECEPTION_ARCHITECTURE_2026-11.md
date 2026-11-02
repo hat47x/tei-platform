@@ -362,6 +362,8 @@ lookup customer_lookup on order_entry.order_record.customerId
 
 **撤回条件.** フック種別が増え、Coreの小さな定義が機能型の再実装になる場合は、B（Pluginの契約）へ寄せ、ApplicationはPluginの選択だけを持ちます。
 
+**PoCでの実装.** record対話の`hook <phase> { reads ... uses ... produces ... on-failure ... }`として宣言を実装しました。位相・読み書き・失敗時の扱いを検証し、対話ビューへ表示します。実装Pluginの接続は未実装です。
+
 ### D3 項目の「意味の役割」と「表示・入力支援」を分ける
 
 **問題.** X-TEAは、`TypeOptions`と`FieldOptions`の文字列に、必須・参照・導出・自動採番・仮想項目・区分値・値集合・編集コード・バーコード・郵便番号・幅・行数・配置・参照ダイアログ・関連呼出しをまとめて入れていました（知識目録I-2、I-3）。このため、同じ「参照」でも、意味の参照と画面の参照ダイアログが区別できず、実行先を変えると再設計になります。
@@ -930,11 +932,13 @@ PoC #2521が実装した範囲と、まだ実装していない範囲を分け�
 | Command入力の対話項目への結びつけ | 実装済み（`command { input <name> <attribute> }`、項目の表示名へ解決） |
 | Commandの起動計画（入力の過不足・値の形） | 実装済み（`view -command`、実行は未実装） |
 | Commandの実行境界（Executor契約・結末照合） | 実装済み（`internal/command`、実Providerは未接続） |
+| フックの宣言（位相・読み書き・失敗時） | 実装済み（`hook`、実装Pluginは未接続） |
 | Package（宣言・読込・検証・版束縛・ビュー表示） | 実装済み（衝突は明示エラー、取り外しはSemantic fingerprintを変えない） |
 | Commandの実行境界、改ページ、フックのDSL | 未実装 |
 | `reference/workspace`への宣言追加 | 未実施（受理経路が必要） |
 
 実装は、`internal/application/model.go`、`internal/syntax/application_pattern.go`、`internal/validation/application_pattern.go`、`internal/crossview/pattern_requirements.go`、`internal/applicationview`、`internal/semantic/model.go`、`internal/syntax/parser.go`、`internal/validation/validation.go`と、それぞれの試験です。
+
 
 
 

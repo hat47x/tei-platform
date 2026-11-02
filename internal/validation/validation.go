@@ -1,4 +1,4 @@
-﻿package validation
+package validation
 
 import (
 	"fmt"
@@ -1148,4 +1148,3 @@ func errFor(s subject.Subject, code, format string, args ...any) Diagnostic {
 func warnd(code, format string, args ...any) Diagnostic {
 	return Diagnostic{Code: code, Severity: Warning, Message: fmt.Sprintf(format, args...)}
 }
-

@@ -334,6 +334,7 @@ WP10 統合と引継ぎ
 | 一覧のページ件数（`page-size`） | 実装 | 付録C.5 |
 | Commandの起動計画（入力の過不足） | 実装 | 付録C.5 |
 | Commandの実行境界（Executor契約） | 実装 | 付録C.5 |
+| フックの宣言（位相・読み書き・失敗時） | 実装 | 付録C.5 |
 | 印刷の改ページ（`page-break`） | 実装 | 付録C.5 |
 | Package（宣言・検証・版束縛・衝突・ビュー表示） | 実装 | 付録C.5、`internal/application`・`internal/validation` |
 | Semantic fingerprint（投影の意味の版） | 実装 | 付録C.5、`internal/semantic` |
@@ -369,6 +370,7 @@ WP10 統合と引継ぎ
 **PRの関係.** 文書は[#2519](https://github.com/hat47x/tei-platform/pull/2519)、対話契約のPoCは[#2521](https://github.com/hat47x/tei-platform/pull/2521)です。PoCは文書のD1・D3.1の最小部分を実装し、`main`には未統合です。
 
 **統合の条件.** 要求・設計の採否が決まり、PRがDraftでなくなり、CIとレビューが通ることです。Draftのままでは統合しません。
+
 
 
 

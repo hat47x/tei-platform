@@ -74,6 +74,7 @@ type Interaction struct {
 	Items       []InteractionItem       `json:"items,omitempty"`
 	Navigations []InteractionNavigation `json:"navigations,omitempty"`
 	Commands    []InteractionCommand    `json:"commands,omitempty"`
+	Hooks       []Hook                  `json:"hooks,omitempty"`
 }
 
 // InteractionCommandは、対話から起動できるCapabilityへの参照である。
@@ -81,6 +82,16 @@ type Interaction struct {
 type InteractionCommand struct {
 	Capability core.CanonicalID      `json:"capability"`
 	Inputs     []CommandInputBinding `json:"inputs,omitempty"`
+}
+
+// Hookは、対話の前後に差し込む処理の宣言である。
+// 実装はL4のPlugin・Providerに置き、ここでは位相・読み書き・失敗時の扱いだけを持つ。
+type Hook struct {
+	Phase    string             `json:"phase"`
+	Reads    []core.CanonicalID `json:"reads,omitempty"`
+	Uses     []core.CanonicalID `json:"uses,omitempty"`
+	Produces []core.CanonicalID `json:"produces,omitempty"`
+	Failure  string             `json:"failure,omitempty"`
 }
 
 // CommandInputBindingは、Commandの入力を対話の項目へ結びつける。

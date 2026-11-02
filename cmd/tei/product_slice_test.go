@@ -85,6 +85,12 @@ data Customer {
         command sales.submit_order {
             input order sales.order.order_id
         }
+        hook before-update {
+            reads sales.order.status
+            uses sales.submit_order
+            produces sales.order.customer_id
+            on-failure reject
+        }
     }
 }
 `)
