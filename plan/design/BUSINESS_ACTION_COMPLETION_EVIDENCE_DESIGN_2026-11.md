@@ -337,3 +337,61 @@ Markdown表、構造化Record、インデントDSL、Typed Graphviz、メソッ�
 - **実行順**：P0-a 実PGのpost-commit異常→K/O/Lookup、P0-b 二FunctionのOwner-writeを優先維持。S3/P1としてまずAC-01/02/03/05をread-only Consumerから説明できるか検証し、後続で実Provider Read TraceとSHO/AI向け開示を接続。#1119のG0〜G4・既存担当Issueの受入資格を変更しない。
 
 以上は**Business Actionの完了と、その証拠の取扱いの適格性を分ける、既存構造の上で成立する設計条件**として計画へ組み込む。新Central Host/Registry/Provider Capability/Result Status/Policy Engine・正式DSLの採用を行わない。
+
+## 13. 完了の歴史的証拠と現在の利用資格：Claimごとの選択的再資格化
+
+### 13.1 §12からの新しい問い：正しかった証拠が「今も使える」条件
+
+§10の単独Witness、§11の因果接合、§12の実取得・開示適格性を満たしたという**過去の記録**と、現在のConsumer/Business Actionが同じEvidenceを**利用・再説明・実行判断へ採用できる資格**は異なる。[#1125 BC-TOU1](https://github.com/hat47x/tei-platform/issues/1125#issuecomment-6578854995)が指摘する取得時と開示時のGrantの別時点、[#2600 増分ビルドとEvidence再利用](https://github.com/hat47x/tei-platform/issues/2600)、[#2638 Role Plugin依存Pin](https://github.com/hat47x/tei-platform/pull/2638)、[#2604 複数Artifactの一式公開](https://github.com/hat47x/tei-platform/issues/2604)を踏まえ、**何が変わったらどのClaimだけを再資格化するか**というS3の受入票を追加する。
+
+例：t0に受注1001のEffect K1が実際に確定し、t1でそのConsumerの開示Grantが失効した場合、t0に起きたK1を遡及して「未確定」と書き換えない。ただしt2のSHO/AIへK1の機微な証拠を説明・送出してよい資格は独立に再評価する。また確認後の対象集合membershipが「加入→脱退」と変化して現在値が戻っても、Ownerの仮説P3では確認の現在利用資格は変わり得る。現在のRead snapshot/画面表示一致は区間履歴の被覆を代用しない。
+
+逆に文書の純粋な説明文だけが変わった場合、当該Business Claimがその説明文に依存せず、**依存が閉じていると実証できる場合に限り**、過去Receiptや独立Effectの資格再検査を省略する候補にできる。文書変更一般が安全という意味ではない。Markdownは実行RoleやOwner Ruleにもなり得るため、変更が純粋な説明である根拠が必要になる。
+
+### 13.2 Claim相対の小さな影響判定票（新Core APIではない）
+
+| 歴史的／現在のClaim | 証拠の保存と現在再利用 | 変更時に必要な限定再検査 |
+| --- | --- | --- |
+| **過去の確定Effect `K₀`** | 過去Receipt・独立Effect観測は過去時点の証拠として保存。現在Host GrantやConsumer開示が変わっても歴史的結果は消さない | Receipt真正性やEffect帰属に関わる**実際の証拠破損・取り違え**があれば、その歴史的主張自体を再点検。リプレイ可能性や現在の閲覧権は別 |
+| **確認の現在利用資格 `Qₙ`** | 確認を行った歴史的事実と、いまSubmitに使えるかを別にする | Owner Rule改版、対象値・Relation membershipの履歴、Provider Route/時点の依存が影響するか点検。対象区間の変更履歴・閉包がunknownなら利用可を宣言しない |
+| **現在の開示資格 `Dₙ`** | 過去の取得適格性と現在の開示を別にする | Consumer/目的/経路に対するDisclosure Grant、Source Role、実ロードArtifact世代の変化。内部Witnessの存在やt0取得Grantだけで現在開示を許可しない |
+| **現在のSubmit候補資格 `Iₙ`** | 保存済みIntent候補と現在Host上の実行許可は別 | Rule/Action Binding、確認の現在利用、Provider Route/対象、現GrantとCommit時の前提。過去の検査成功と実行直前の保証を混同しない |
+
+この票の`K₀/Qₙ/Dₙ/Iₙ`と依存分類は**比較用**であり正式schema、独立Revalidation Engine、全世界で通用する履歴/Policy依存マップではない。Owner固有のRule/意味、具体ProviderのResource版・時点、Runtime実Grant検査を既存Issueのまま保持する。
+
+**判定候補は三つ**：
+1. **`recheck-affected-claim`**：変更が当該Claimの既知の依存と同Scopeに当たる。以前の結論を現在へ無条件に再使用せず、該当する既存Ownerに渡す。これは「業務失効が確定」ではない。
+2. **`reuse-candidate-for-this-change`**：依存集合の閉包と変更対象の無関係性が十分に確認できる場合、**今回の変更による再検査を省略できる候補**。他の未観測変更、履歴期間、実Grant、Owner承認が有効という証明ではない。
+3. **`unresolved-impact`**：依存関係の列挙自体が不足、変更種類が未分類、Scopeが曖昧、対象外の根拠がない場合。**全Claim強制失効／すべて自動再利用**の双方を避け、該当範囲を追加観測する。
+
+同じSemantic IDを持つ別Providerの時点、異Alias/tenant、同じ名前の別Artifact、QueryのWHERE/ORDER等の非表示依存を**機械的な「無関係」**へ変換しない。反対に変更対象が別IDでも、共通Rule、関係述語、全件集計、親子の区間変更がそのClaimへ影響する可能性を考慮する。Scope非重複は単にID文字列が違うことではなく、対象となる依存関係が不交差であることの確認が必要である。
+
+### 13.3 CQ-01〜13：自作の限定合成実測と証明できないこと
+
+[Pythonの自作fixture `verify_claim_requalification.py`](../fixtures/business-completion-claims/verify_claim_requalification.py)は、架空の4種類のClaim（歴史的Effect、現在確認、現在開示、Submit候補）と、明示的な合成依存集合・Changeを固定し、**どのClaimを再点検候補にするか**を比較する。
+
+| Case | 反証／期待 |
+| --- | --- |
+| **CQ-01** | 既知の説明文だけの変更で、依存閉包が確認できるClaimは選択的再点検省略候補。全ての文書変更を安全とは扱わない |
+| **CQ-02** | 開示Grant失効→現在開示は再点検、過去の確定Effectを改竄しない |
+| **CQ-03** | 明細対象の加入→離脱→現在値復帰でも、現在確認とSubmit候補を再点検。過去確定Effectは別 |
+| **CQ-04** | Source Role / Plugin改版→現行説明の解釈資格を再点検。Receiptの歴史的byte/Effectと同一視しない |
+| **CQ-05** | Provider Route変更→現在に相対的な確認/SubmitのWitnessを再点検、過去確定Effectと区別 |
+| **CQ-06** | Consumer Artifact版変更→現在開示・実ロードの確認を再点検。歴史的K1は維持 |
+| **CQ-07〜08** | 依存集合が閉じていない、または変更Scopeが不明なら`unresolved-impact` |
+| **CQ-09〜10** | 依存上の対象外と**証明できる場合**に限って省略候補。別IDというだけでは`unresolved-impact` |
+| **CQ-11** | 変更種別がunknownなら無変更と推定しない |
+| **CQ-12** | 実Host Grant変更→現在Submit資格を再点検。既存K1を取り消さない |
+| **CQ-13** | Receipt真正性の問題なら**歴史的Effectの根拠**を再点検。現在確認Claimへ影響すると無条件に推定しない |
+
+**限定実行済み**：隔離Python **3.13.5**で`py_compile`と`python verify_claim_requalification.py`を実行し、**13 unittest PASS**。実行ファイルとブランチ保存ファイルのGit blob SHA **`c67ac134aaf5fdf6c05375299fad4f7ef0ad961a`**の一致を照合。これは*仮の依存閉包／Scope非重複が真であるとした場合の、表の論理的な使い分け*しか検証していない。実TEIのDependency Graph、実Queryの隠れた述語、実Provider/Grant、実履歴、Plugin pinの再解決、AI/SHO/Studio実ロードの検証は**NOT RUN**。既存の取引真正性を保証する暗号/信頼チェーンは新設しない。
+
+### 13.4 既存計画への反映：変更種類から再実証先を選び、P0は維持
+
+- **#1125 S3／#267**：Owner判定票に`Claim/as-of`、`当時の証拠と現在の利用目的`、`証拠依存の閉包の根拠`、`変更内容/Scope/期間`、`今回の再点検対象`、`業務上の失効条件はOwner未受理か`を追加。§7のClaim別資格と§12の取得・開示を再利用し、第二のCompletion Statusを作らない。BC-TOU1は今回CQ-02のConsumer向け具体例として保持。
+- **#2600/#2595/#2638**：Build/Artifact選択的再実行と、Business Claimの**現在再資格化**を別契約で測定。旧Result byteの再利用、履歴Evidenceの保持、現在Grant/Rule/Role Pluginの再検査を別欄にする。閉包が不明ならReuse PASSへ昇格しない。新Cache Scheduler/Role Resolverはこの設計書で作らない。
+- **#1708/#2506/#2582/#2622/#2628**：Claim依存に含まれるSnapshot、値・membership区間履歴、Query predicate、実Provider Route/Read Scopeを実証し、ID違いだけで無関係とは宣言しない。
+- **#2516/#1178/#2604/#2631**：現在のConsumer開示/標準Studio表示/実ロードArtifactで、再提示に必要な再資格化を観測。AIやSHOへの以前の送信履歴と今回の開示を混同しない。
+- **#1174/#1129/#1163**：歴史的Effectの真正性・当時Request接合、実Submit時点のGrant/Rule/Txを既存P0-a/P0-bの実証へ戻す。Consumerの現在開示資格変化を元Effectの再Commit/自動補償の引き金にしない。
+
+**実行順**：P0-a実PG Result異常→Receipt/独立O/Lookup、P0-b二Function同Rule Owner-writeは従来どおり先行。S3/P1としてまずCQ-02/03/07/10を既存read-only Consumerへ投影し、「旧証拠の存在」「今回の再点検」「現在提示／Action利用可否」「根拠不足」を別々に表示できるか確認する。#1119 G0〜G4の追加・改称、独自TEI Host/Policy Engine/Registry、Owner Meaningの自動採用は行わない。
