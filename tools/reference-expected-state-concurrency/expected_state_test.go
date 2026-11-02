@@ -74,51 +74,63 @@ func updateGuarded(ctx context.Context, tx *sql.Tx, orderID, expected, next stri
 	return result.RowsAffected()
 }
 
-// TestExpectedStateStopsTheSecondWriter fixes H1 on a real database: the second
-// writer, which read the old status, changes zero rows and the first writer's
-// value survives.
+// TestExpectedStateStopsTheSecondWriter fixes H1 on a real database: two
+// transactions start from the same state and apply their guarded update at the
+// same time. Exactly one changes the row; the other changes none, and the value
+// of the winner survives.
 func TestExpectedStateStopsTheSecondWriter(t *testing.T) {
 	db := throwawayDB(t, realDSN(t))
 	setupOrders(t, db)
 	ctx := context.Background()
 
-	first, err := db.BeginTx(ctx, nil)
-	if err != nil {
-		t.Fatal(err)
+	start := make(chan struct{})
+	results := make(chan int64, 2)
+	for _, next := range []string{"confirmed", "cancelled"} {
+		go func(next string) {
+			tx, err := db.BeginTx(ctx, nil)
+			if err != nil {
+				results <- -1
+				return
+			}
+			// Both writers read the same state before either writes.
+			var current string
+			if err := tx.QueryRowContext(ctx, `SELECT status FROM orders WHERE order_id = 'O-1'`).Scan(&current); err != nil {
+				tx.Rollback()
+				results <- -1
+				return
+			}
+			<-start
+			changed, err := updateGuarded(ctx, tx, "O-1", current, next)
+			if err != nil {
+				tx.Rollback()
+				results <- -1
+				return
+			}
+			if changed == 1 {
+				if err := tx.Commit(); err != nil {
+					results <- -1
+					return
+				}
+			} else if err := tx.Rollback(); err != nil {
+				results <- -1
+				return
+			}
+			results <- changed
+		}(next)
 	}
-	second, err := db.BeginTx(ctx, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	close(start)
 
-	firstChanged, err := updateGuarded(ctx, first, "O-1", "new", "confirmed")
-	if err != nil {
-		t.Fatalf("first update: %v", err)
-	}
-	if firstChanged != 1 {
-		t.Fatalf("the first writer must change the row: %d", firstChanged)
-	}
-	if err := first.Commit(); err != nil {
-		t.Fatalf("commit the first writer: %v", err)
-	}
-
-	secondChanged, err := updateGuarded(ctx, second, "O-1", "new", "cancelled")
-	if err != nil {
-		t.Fatalf("second update: %v", err)
-	}
-	if secondChanged != 0 {
-		t.Fatalf("the second writer read the old state, so it must change nothing: %d", secondChanged)
-	}
-	if err := second.Rollback(); err != nil {
-		t.Fatal(err)
+	first, second := <-results, <-results
+	if first+second != 1 {
+		t.Fatalf("exactly one writer must change the row: %d and %d", first, second)
 	}
 
 	var status string
 	if err := db.QueryRowContext(ctx, `SELECT status FROM orders WHERE order_id = 'O-1'`).Scan(&status); err != nil {
 		t.Fatal(err)
 	}
-	if status != "confirmed" {
-		t.Fatalf("the first writer's value must survive: %s", status)
+	if status != "confirmed" && status != "cancelled" {
+		t.Fatalf("the winner's value must survive: %s", status)
 	}
 }
 

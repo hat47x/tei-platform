@@ -10,7 +10,7 @@
 
 | 試験 | 確かめること |
 | --- | --- |
-| `TestExpectedStateStopsTheSecondWriter` | 先の書き手が確定した後、古い状態を読んだままの第二の書き手は**0行**しか更新できず、先の値が残る |
+| `TestExpectedStateStopsTheSecondWriter` | 二つのトランザクションが同じ状態を読み、**同時に**更新を試みる。片方だけが1行を更新し、もう片方は**0行**。勝った側の値が残る |
 | `TestExpectedStateAllowsTheSecondWriterAfterAReRead` | 現在の状態を読み直せば、第二の書き手は正しく1行を更新できる |
 
 ```sql
@@ -28,5 +28,5 @@ TEI_TEST_POSTGRES_DSN='postgres://...' go test ./tools/reference-expected-state-
 ## 限界
 
 - 扱うのは一つの行と、`READ COMMITTED` の分離水準です。直列化異常（`SERIALIZABLE` の書き込み衝突）は扱いません。
-- 二つのトランザクションを**順に**実行しており、真の同時実行（同じ瞬間の競合）は再現していません。確かめているのは「古い期待状態での更新が成立しない」ことです。
+- 二つのトランザクションは同時に更新を試みますが、実際に並ぶ時刻はPostgreSQLの排他制御に依存します。確かめているのは「古い期待状態での更新が成立しない」ことです。
 - 実際のアプリケーションの実行経路（能力の呼出し・Driver）を通していません。SQLの意味だけを確かめる参照試験です。
