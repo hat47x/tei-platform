@@ -534,3 +534,45 @@ Customer Queryへ転用する際には次を混同しない。
 **優先を変えない：** 最初は既存CQ-R2（試験Adapterの欠損/null）とCQ-R4（Generic `Rows:nil`）を二経路で独立実測する。その後、CQ-R5/R7/R8で必要となるContext/QueryだけにCQ-P1/P2を適用する。CQ-P3は別のMeasure Consumerの検証待ち。成熟した比較条件を#951の契約適合票へ**参照可能にすること**と、#951内に新実装・Gateを追加することは異なる。Source/Provider/Host/Resultの同一Attemptが未接続なら、SQLite正常系・Reference PASS・Shape PASSを一件のE2Eへ合算しない。
 
 **未実施・未採用：** 新Go/Java/.NET/Wasm/実PG/Oracle/Host/TEI Query試験、二Providerの物理Read比較、Rowset完全性の実観測、標準SQL/DSL境界の決定、正式Customer Query Service Result Shape・Owner意味受理、G1/G2変更はすべて未実施／未決。今回の実測は上記2行の**独立SQLite合成例のみ**。
+
+### 19.8 正常0件の否定依存と時間的な利用資格（2026-11-02追補）
+
+**新たに区別すべき義務：** §19.3/19.6の「指定Scope・時点で0件と観測された」が成立しても、**後の利用時点で0件のまま**とは自動的に言えない。#2582のRC-01〜09、[DC-01〜12の独立合成負例](https://github.com/hat47x/tei-platform/issues/2582#issuecomment-6579762087)、#1124のR10→R11遅延応答・用途相対再検証、#1641のキャッシュ鮮度、#1708の同時点読取を、#951に属するService結果の**再利用・失効に関するConsumer必要条件**として接続する。新たなCache/Reactive Engineや現在状態のAuthorityは#951で作らない。
+
+#### 19.8.1 0件にも対象集合への依存がある
+
+顧客`find_by_id(C42)`の正常0件には、**該当レコードIDが存在しないから依存行は空**という推論を使わない。結果に行IDが無くても、Queryの選択Predicate、対象集合/Relation path、Scope、Query/Meaning版、選択されたProvider/Instance、取得条件・Snapshot/Read Cohort、必要な全件性に依存する。変更観測が必要かはConsumerの要求する現在性に依存し、常にCDCや全世界監視を要求するものではない。
+
+- **時点t0**：`find_by_id(C42)`があるScope/Instanceで完了、0件（正常な履歴的結果）。
+- **時点t1**：そのScopeにCustomer C42が追加される。新しい同条件Queryは1件になり得る。旧t0の0件は履歴として保持できるが、**t1現在の未存在証明ではない**。
+- **時点t2**：C42が削除され再び0件となる（ABA）。t0とt2の値が同じでも「t0以来対象が変化していない」とは言えない。最終Value一致と変化履歴は別Claim。
+- **別経路**：実際に一致するC42の1件を権限内で観測できれば、そのScope/時点の**存在側**は部分取得から裏付けられ得る。しかし、部分取得で一致が観測されないことを**不存在側**へ変えるには、必要な集合の取得完了証拠が不足する。
+
+同じことは`NOT EXISTS(ActiveHold for Customer)`、LEFT JOINの未一致、Filter、Top-N、集合差の結果にも適用される。新行の加入が旧未一致結果を撤回し、古い0件を1件へ反転させる。差分更新を`append-only`と仮定しない。必要なPredicate/Relation path/順序依存をOutputFieldの値Lineageだけから復元したと主張しない（#2387 QX-27/#2582）。
+
+#### 19.8.2 取得・表示・再利用・Actionの時点を分ける
+
+| 消費目的と時点 | 既存0件の利用可否 | 追加で確認するもの |
+| --- | --- | --- |
+| **t0を説明する監査・固定版SHO** | 当時の証拠として保持候補。後のbranch r2が存在するだけで、明示されたr1/t0の説明が誤りとはしない | 利用者が指定した説明対象版、当時のSource/Query/Instance/Scope・Reader開示権限、歴史的Evidenceの実在と一致 |
+| **t1の現在値を表示するConsumer** | 旧0件を`current`と自動表示しない。観測済みの関係変更/選択変更なら表示資格を失効させ、未観測なら「変更なしを証明済み」と言わない | Function Context Instance ID、selection epoch、Query/Source/Rule revision、Result Slice/Provider read witness、Change観測の適用範囲 |
+| **t1以降に到着するt0の遅延Query/Inspect応答** | 受信できたことと現在表示へ採用することを分離。Consumerの対象Binding/epoch不一致なら現在結果へ混入させない | 起動時に固定されたInput/Instance/epochと、適用先の現在Binding/epoch。別Windowが同じ旧対象を選択中ならそのWindowの資格は個別判断 |
+| **t1の結果をCache/差分更新で再利用** | 当該Claimの依存・有効期間・許容Freshness/Consistencyを証拠で示せる範囲だけ再利用候補。不明なら再読込/未確定 | Query Predicate/Relation path/Hidden ORDER/Scope、Provider change observation/通知欠落、Rule版、選択されたReaderの用途 |
+| **Action候補→実Request/Commit** | 画面上の旧0件や歴史的成功を現在の実行資格へ自動昇格しない | #2598のRequest対象/時点、#1174のHost現在Grant/Effect/Receipt、Business Ownerの完了判定 |
+
+**重要な限定**：失効した「現在表示の資格」と、履歴的な結果の真正性は別。UIの古い成功応答を拒否することと、表示済み値を失効させることも別の実装上の操作。実ConsumerがSource変更を観測できる範囲を超えて`current`を保証しない。一方、無関係な別Relation/別Instanceの変更だけで、固定された独立Claimをすべて失効させる必要もない。局所再利用には**依存閉包が十分である根拠**が必要。
+
+#### 19.8.3 最小の追加負例（CQ-R2/R4の優先は維持）
+
+| ID | 同じContract意味の入力変化 | 必要な判別／担当 | 検証 |
+| --- | --- | --- | --- |
+| CQ-T1 **Negative membership** | C42未存在（完了0件）→C42追加 | 旧0件の履歴保存と新しい現在0件Claimを分ける。空のrow ID集合を「依存なし」にしない／#2582・#2506 | 既存合成DC-04〜06を参照。Customer Provider実実行NOT RUN |
+| CQ-T2 **ABA** | C42の加入→削除、最終0件に復帰 | 値の再一致と「変化無し」/旧Snapshotの継承を分離／#2582・#1641 | 設計比較、製品NOT RUN |
+| CQ-T3 **Late response** | Window1で選択A→B、Aの0件成功が後着。Window2はAを選択したまま | Window1の現在BへA結果を注入しない。Window2の既存Aを一律失効させない／#1124・#2582 | Consumerブラウザー/Windows NOT RUN |
+| CQ-T4 **Unobserved change** | Provider内部では対象更新、Consumerは変更通知を未受信/Read Cohort不明 | 旧0件を`current`と実証済みにしない。実観測不能を「実際に未変更」に変換しない／#1708・#2582 | 実Provider/通知欠落試験NOT RUN |
+| CQ-T5 **Selective retention** | 無関係なCustomer C99のみ追加。QueryはC42、十分な依存範囲が判明 | 局所的に利用できる候補と過剰失効を比較。未探索依存を無影響確定にはしない／#2582 | 局所証拠の資格、製品NOT RUN |
+| CQ-T6 **Safe disclosure** | 低権限ConsumerにC42の実在や変更を示してはならない | 内部の未確定・不許可・理由を区別しても外部の件数/診断/Latency等を無条件に変えない／#2516・#1124 | 実Policy/二世界テストNOT RUN |
+
+**再評価の順序と既存資産**：最初のCQ-R2/R4で**一回のRequest/Result変換**の意味喪失を固定。その後、CQ-T1/T3だけを一つのFunction Context/Consumerに適用し、負例の再現を独立Oracle/既存#1131/#1180 Scenarioへ接続。T2/T4/T5/T6は局所キャッシュ・Provider観測・Disclosureを検証する別Ownerの圧力条件。#2582で報告済みの独立Python3 DC-01〜12 **12/12 PASS**は著者の合成Worldであり、本Customer Query/実Source通知/Provider/Hostの実観測には転用しない。
+
+**表現上の制約：** このT1〜T6や比較表は新Core型・汎用Token/Negative Cache・Subscription/Watch Broker、Release-wide`stale` flag、Provider共通Snapshot API、第二Authority/Resolver/Gateの追加案ではない。履歴・現在・表示・Actionは用途別のClaimとして扱い、既存#951/#1124/#1641/#2582/#2516/#1174の責務を保持する。正式Ownerの意味受理、実Customer Query/実Provider実行、Host現在権限、実UI/SHO Reader、長期Cache・通知欠落検証は**未実施・未受理**。
