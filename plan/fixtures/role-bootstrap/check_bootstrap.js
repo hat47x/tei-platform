@@ -15,7 +15,7 @@
     }
     return map;
   }
-  function checkEager(rootKeys, entries) {
+  function checkEager(rootKeys, entries, pins) {
     const visited = new Set(), pending = new Set(), path = [];
     function visit(key) {
       if (pending.has(key)) {
@@ -25,6 +25,7 @@
       if (visited.has(key)) return null;
       const d = entries.get(key);
       if (!d) return fail("missing-provider", key);
+      if (!pins || pins[key] !== d.version) return fail("missing-or-stale-pin", key);
       pending.add(key); path.push(key);
       for (const dependency of d.eager || []) {
         const result = visit(dependency);
@@ -43,7 +44,8 @@
     // Source content and role declarations can be displayed without evaluating it.
     if (!source || typeof source !== "object") return fail("invalid-data");
     if (!source.active) return { status: "data-only", occurrence: source.occurrence || "" };
-    if (!Array.isArray(requested) || !requested.length) return fail("no-role-binding");
+    if (!Array.isArray(requested)) return fail("invalid-role-binding");
+    if (!requested.length) return { status: "data-only", occurrence: source.occurrence || "" };
     const entries = registry(declarations);
     if (!(entries instanceof Map)) return entries;
     const selected = [];
@@ -58,7 +60,7 @@
       if (!pins || pins[key] !== entries.get(key).version) return fail("missing-or-stale-pin", key);
       selected.push(key);
     }
-    const depProblem = checkEager(selected, entries);
+    const depProblem = checkEager(selected, entries, pins);
     if (depProblem) return depProblem;
     for (const key of selected) {
       const d = entries.get(key);
@@ -95,7 +97,7 @@
     passed++; cases.push(label);
   }
 
-  check("RB-01 plain data without Role", inspect(SOURCE, [], [], {}), x => x.code === "no-role-binding");
+  check("RB-01 plain data without Role", inspect(SOURCE, [], [], {}), x => x.status === "data-only");
   const one = inspect(SOURCE, [{ key: F1.key }, { key: MODEL.key }], [F1, MODEL], PINS);
   const swapped = inspect(SOURCE, [{ key: MODEL.key }, { key: F1.key }], [MODEL, F1], PINS);
   check("RB-02 provider/order determinism", [one, swapped],
@@ -107,7 +109,7 @@
     { ...PINS, [F2.key]: "v2" }), x => x.code === "ambiguous-or-missing-role");
   const A = { key: "role.A@1", version: "1", name: "A", eager: ["role.B@1"] };
   const B = { key: "role.B@1", version: "1", name: "B", eager: ["role.A@1"] };
-  check("RB-05 eager cycle", inspect(SOURCE, [{ key: A.key }], [A, B], { [A.key]:"1" }),
+  check("RB-05 eager cycle", inspect(SOURCE, [{ key: A.key }], [A, B], { [A.key]:"1", [B.key]:"1" }),
     x => x.code === "eager-cycle" && x.detail.includes("role.B@1"));
   const TREE = { key: "role.Tree@1", version: "1", name: "Tree", deferred: ["role.Tree@1"] };
   check("RB-06 valid deferred recursive Ref",
@@ -133,10 +135,22 @@
   check("RB-13 unpinned provider rejected", inspect(SOURCE, [{ key: MODEL.key }], [MODEL], {}),
     x => x.code === "missing-or-stale-pin");
   check("RB-14 eager + deferred mixed reference", inspect(SOURCE, [{ key:A.key }],
-    [A, { ...B, eager: [], deferred: [A.key] }], { [A.key]:"1" }),
+    [A, { ...B, eager: [], deferred: [A.key] }], { [A.key]:"1", [B.key]:"1" }),
     x => x.status === "role-candidate");
   check("RB-15 missing required shape", inspect(SOURCE, [{ key:F2.key }], [F2], { [F2.key]:"v2" }),
     x => x.code === "missing-required-field");
+  check("RB-16 unpinned eager dependency is not silently loaded",
+    inspect(SOURCE, [{ key:A.key }], [A, { ...B, eager: [] }], { [A.key]:"1" }),
+    x => x.code === "missing-or-stale-pin" && x.detail === B.key);
+  check("RB-17 explicitly pinned eager dependency is qualified",
+    inspect(SOURCE, [{ key:A.key }], [A, { ...B, eager: [] }], { [A.key]:"1", [B.key]:"1" }),
+    x => x.status === "role-candidate" && x.roles.length === 1);
+  check("RB-18 duplicate provider identifier is unresolved",
+    inspect(SOURCE, [{ key: F1.key }], [F1, F1], PINS),
+    x => x.code === "duplicate-provider");
+  check("RB-19 missing eager dependency is unresolved",
+    inspect(SOURCE, [{ key:A.key }], [A], { [A.key]:"1" }),
+    x => x.code === "missing-provider" && x.detail === B.key);
   if (typeof console !== "undefined" && typeof console.log === "function") {
     console.log("PASS: " + passed + "/" + cases.length + " bounded Role bootstrap fixture cases");
   }
