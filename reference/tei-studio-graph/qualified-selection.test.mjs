@@ -28,7 +28,12 @@ test("different scopes and repeated occurrences retain qualified identity", () =
   const token = guard.stage(input);
   assert.deepEqual(guard.select("diagram-A:K"), {status: "stale"});
   input.bindings[0].scope = "attacker-mutated";
-  assert.deepEqual(guard.publish(token, () => normalizeGraph(graph("diagram-A:K"))),
+  const threeNodes = {...graph("diagram-A:K"), nodes: [
+    {id: "diagram-A:K", label: "A", x: 50, y: 50},
+    {id: "diagram-B:K", label: "B", x: 150, y: 50},
+    {id: "diagram-C:K", label: "C", x: 250, y: 50},
+  ]};
+  assert.deepEqual(guard.publishGraph(token, {update: normalizeGraph}, threeNodes),
     {status: "published"});
   assert.deepEqual(guard.select("diagram-A:K"), {status: "resolved", ref: {
     scope: "scope-one", subject: {kind: "semantic-data", id: "sales.order"},
@@ -42,13 +47,15 @@ test("different scopes and repeated occurrences retain qualified identity", () =
 test("failed graph replacement never publishes a new map while R10 remains current", () => {
   const guard = createQualifiedSelectionGuard();
   guard.observeSource(source("R10"));
-  assert.deepEqual(guard.publish(guard.stage(binding("R10", "scope-one")), () =>
-    normalizeGraph(graph())), {status: "published"});
+  assert.deepEqual(guard.publishGraph(guard.stage(binding("R10", "scope-one")),
+    {update: normalizeGraph}, graph()), {status: "published"});
   const attempted = guard.stage(binding("R10", "scope-two"));
   const bad = {...graph(), edges: [{id: "e", source: "K", target: "not-there"}]};
-  assert.throws(() => guard.publish(attempted, () => normalizeGraph(bad)),
+  assert.throws(() => guard.publishGraph(attempted, {update: normalizeGraph}, bad),
     err => err instanceof GraphViewError && err.code === "missing_endpoint");
-  assert.equal(guard.select("K").ref.scope, "scope-one");
+  // Cannot independently prove an atomic display after the failed attempt:
+  // the old visual may survive, but it is not navigable until revalidated.
+  assert.deepEqual(guard.select("K"), {status: "stale"});
   assert.throws(() => guard.publish(attempted, () => normalizeGraph(graph())),
     /unknown_selection_candidate/);
 });
@@ -58,15 +65,16 @@ test("R10 to R11 invalidates G1 selection even if G2 render fails", () => {
   let visible = "G1";
   let inspectCalls = 0;
   guard.observeSource(source("R10"));
-  guard.publish(guard.stage(binding("R10", "scope-one")), () => normalizeGraph(graph()));
+  guard.publishGraph(guard.stage(binding("R10", "scope-one")),
+    {update: normalizeGraph}, graph());
   const oldSelected = guard.select("K");
   assert.equal(oldSelected.ref.scope, "scope-one");
 
   guard.observeSource(source("R11")); // same workspace, newer Source
   const g2 = guard.stage(binding("R11", "scope-two"));
-  assert.throws(() => guard.publish(g2, () => normalizeGraph({
+  assert.throws(() => guard.publishGraph(g2, {update: normalizeGraph}, {
     ...graph(), edges: [{id: "bad", source: "K", target: "absent"}],
-  })), /missing_endpoint/);
+  }), /missing_endpoint/);
   if (guard.select("K").status === "resolved") inspectCalls++;
   assert.equal(visible, "G1");
   assert.deepEqual(guard.select("K"), {status: "stale"});
@@ -118,4 +126,48 @@ test("invalid/unqualified, duplicate and unobserved candidate bindings fail clos
   assert.deepEqual(guard.select("K"), {status: "stale"});
   guard.dispose();
   assert.throws(() => guard.observeSource(source("R10")), /selection_guard_disposed/);
+});
+
+test("a binding not present in displayed Graph nodes is rejected before update", () => {
+  const guard = createQualifiedSelectionGuard();
+  guard.observeSource(source("R10"));
+  const token = guard.stage({...source("R10"), bindings: [
+    {viewId: "diagram-A:K", scope: "one", kind: "semantic-data", id: "sales.order"},
+    {viewId: "diagram-B:K", scope: "two", kind: "semantic-data", id: "sales.order"},
+  ]});
+  let updates = 0;
+  assert.throws(() => guard.publishGraph(token, {
+    update() { updates++; },
+  }, graph("diagram-A:K")), /binding_not_rendered/);
+  assert.equal(updates, 0);
+  assert.deepEqual(guard.select("diagram-A:K"), {status: "stale"});
+});
+
+test("the Graph can show intentionally unbound nodes without granting inspect", () => {
+  const guard = createQualifiedSelectionGuard();
+  guard.observeSource(source("R10"));
+  const withDecoration = {...graph("K"), nodes: [
+    ...graph("K").nodes,
+    {id: "annotation", label: "unbound", x: 200, y: 80},
+  ]};
+  assert.deepEqual(guard.publishGraph(guard.stage(binding("R10", "one")),
+    {update: normalizeGraph}, withDecoration), {status: "published"});
+  assert.equal(guard.select("K").ref.scope, "one");
+  assert.deepEqual(guard.select("annotation"), {status: "unbound"});
+});
+
+test("async render callback cannot publish a binding", () => {
+  const guard = createQualifiedSelectionGuard();
+  guard.observeSource(source("R10"));
+  const token = guard.stage(binding("R10", "one"));
+  assert.throws(() => guard.publish(token, () => Promise.resolve()), /async_render_unsupported/);
+  assert.deepEqual(guard.select("K"), {status: "stale"});
+});
+
+test("graph view must have a synchronous update method", () => {
+  const guard = createQualifiedSelectionGuard();
+  guard.observeSource(source("R10"));
+  const token = guard.stage(binding("R10", "one"));
+  assert.throws(() => guard.publishGraph(token, null, graph()), /invalid_graph_view/);
+  assert.deepEqual(guard.select("K"), {status: "stale"});
 });
