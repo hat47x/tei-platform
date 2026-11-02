@@ -89,6 +89,12 @@ type Attribute struct {
 	Required    bool             `json:"required,omitempty"`
 	Immutable   bool             `json:"immutable,omitempty"`
 	Role        string           `json:"role,omitempty"`
+	// Value is the optional declared value written as `value "..."`. A nil
+	// pointer means the attribute has no value clause (Absent), a pointer to an
+	// empty string means an explicitly empty value (Empty), and any other
+	// pointer is a value (Value). This is the format-level tri-state, separate
+	// from whether the attribute is required at runtime.
+	Value *string `json:"value,omitempty"`
 }
 
 type Cardinality string
