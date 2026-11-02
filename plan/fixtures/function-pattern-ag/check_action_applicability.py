@@ -85,14 +85,16 @@ def decide(ctx: DataContext, op: Operation) -> Decision:
     return Decision("unsupported", ("action_not_implemented_in_fixture",))
 
 
-def public_projection(ctx: DataContext, operations: tuple[Operation, ...], *, visible: bool) -> str:
+def public_projection(ctx: DataContext, operations: tuple[Operation, ...], *, visible: bool,
+                      released_actions: frozenset[str]) -> str:
     """Two-world test projection: never serialize hidden counts/reason/diagnostic detail.
 
     `visible` is a trusted caller-supplied *fixture assumption*, not a security check.
     """
     if not visible:
         return json.dumps({"actions": [], "status": "unavailable"}, sort_keys=True)
-    labels = sorted(op.action for op in operations if decide(ctx, op).status == "candidate_only")
+    labels = sorted(op.action for op in operations
+                    if op.action in released_actions and decide(ctx, op).status == "candidate_only")
     return json.dumps({"actions": labels, "status": "candidate_only_not_authorized"}, sort_keys=True)
 
 
@@ -167,17 +169,33 @@ class SemanticActionTests(unittest.TestCase):
 
     def test_sa17_hidden_world_variation_cannot_change_public_projection(self):
         ops = (self.patch, Operation("delete_all"), Operation("create_child"))
-        a = public_projection(replace(self.ctx, hidden_record_count=0), ops, visible=True)
-        b = public_projection(replace(self.ctx, hidden_record_count=999), ops, visible=True)
+        a = public_projection(replace(self.ctx, hidden_record_count=0), ops, visible=True, released_actions=frozenset({"patch_amount", "create_child"}))
+        b = public_projection(replace(self.ctx, hidden_record_count=999), ops, visible=True, released_actions=frozenset({"patch_amount", "create_child"}))
         self.assertEqual(a, b)
         self.assertNotIn("999", a)
 
     def test_sa18_denied_world_produces_no_distinguishing_diagnostics(self):
         ops = (self.patch, Operation("delete_all"))
-        a = public_projection(replace(self.ctx, hidden_record_count=0), ops, visible=False)
-        b = public_projection(replace(self.ctx, hidden_record_count=6), ops, visible=False)
+        a = public_projection(replace(self.ctx, hidden_record_count=0), ops, visible=False, released_actions=frozenset({"patch_amount", "create_child"}))
+        b = public_projection(replace(self.ctx, hidden_record_count=6), ops, visible=False, released_actions=frozenset({"patch_amount", "create_child"}))
         self.assertEqual(a, b)
         self.assertNotIn("reason", a)
+
+    def test_sa21_secret_action_identity_must_not_leak_through_candidate_list(self):
+        ops = (self.patch, Operation("create_child"), Operation("unlink"))
+        released = frozenset({"patch_amount", "create_child"})
+        a = public_projection(replace(self.ctx, accepted=frozenset({"patch_amount", "create_child"})),
+                              ops, visible=True, released_actions=released)
+        b = public_projection(replace(self.ctx, accepted=frozenset({"patch_amount", "create_child", "unlink"})),
+                              ops, visible=True, released_actions=released)
+        self.assertEqual(a, b)
+        self.assertNotIn("unlink", a)
+
+    def test_sa22_visible_context_needs_per_action_release(self):
+        ops = (self.patch, Operation("create_child"))
+        a = public_projection(self.ctx, ops, visible=True, released_actions=frozenset())
+        self.assertEqual(json.loads(a)["actions"], [])
+        self.assertNotIn("create_child", a)
 
     def test_sa19_ui_widget_choice_has_no_effect_on_candidate_semantics(self):
         widgets = ("form", "table", "chart", "cui", "native")
