@@ -81,6 +81,22 @@ Java/.NET/Wasm/Process等の外部Hostへ同一Script/Action/Contractを接続�
 
 **対象拡張の例**：業務受注/在庫、組織代理、科学/数理Data加工、ドキュメントの構造編集、バッチ帳票、IoTイベント、別製品による作業代行。すべての領域で同じUI/Script言語/Host保証を要求せず、意味Actionと必要なAdapterの共通性を測る。
 
+## Everything is DataとMacroの接合（2026-11-02追加）
+
+[横断Issue #2619](https://github.com/hat47x/tei-platform/issues/2619)で提案された「標準データ構造に意味役割を与える」構成を、利用者マクロの独立Consumerとして検証する。詳細は[設計文書10章](../design/SCRIPT_MACRO_AUTHORITY_AND_EFFECT_TARGET_BINDING_2026-11.md)。特に、単純なScript表現だけを増やすのでなく、**Source/構造・意味Role、Function Data Contextの明示Mapping、汎用Action、現在Authority、Owner Effect、結果開示**の対応を残す。
+
+| 計画段階 | 追加する成果と試験 | 既存主担当 |
+| --- | --- | --- |
+| **S0：read-only基盤** | T-19〜21/26。Markdown表・式・DSL→標準構造とRoleを比較、意味参照/Source位置・Operator版・未解決を示す。明示Contextの範囲外を暗黙取得しない。テスト表のExpectedと説明文を区別する | [#2620](https://github.com/hat47x/tei-platform/issues/2620)、[#2621](https://github.com/hat47x/tei-platform/issues/2621)、[#988](https://github.com/hat47x/tei-platform/issues/988)、[#2506](https://github.com/hat47x/tei-platform/issues/2506) |
+| **S1：実対象** | T-22/24。3層→2層Derived DatasetのLoad/Save、無変更更新0、ID付き限定PATCHと非一意な集計編集を分ける。作成者Context/RowIndexを実行者へ暗黙継承しない | [#2622](https://github.com/hat47x/tei-platform/issues/2622)、[#2500](https://github.com/hat47x/tei-platform/issues/2500)、[#2598](https://github.com/hat47x/tei-platform/issues/2598)、[#2597](https://github.com/hat47x/tei-platform/issues/2597) |
+| **S2：委任・作用** | T-23。Read scope、Authority scope、Effect footprint、Disclosure scopeの非一致を正例/拒否例の両方で検証。合法な関連更新を不必要に拒否せず、未委任子作用とRaw開示を拒否する | [#2499](https://github.com/hat47x/tei-platform/issues/2499)、[#1174](https://github.com/hat47x/tei-platform/issues/1174)、[#2504](https://github.com/hat47x/tei-platform/issues/2504) |
+| **S3：Studio標準投影** | 同一Role/SourceのCUI・標準表/Tree/Diff・SHO設計説明の二Consumer以上を比較。Sourceへの一意な逆写像、曖昧な箇所のread-onlyを分け、説明・編集・受理を同じ状態にしない | [#2620](https://github.com/hat47x/tei-platform/issues/2620)、[#1124](https://github.com/hat47x/tei-platform/issues/1124)、[#2617](https://github.com/hat47x/tei-platform/issues/2617) |
+| **S4：Provider/Domain差** | T-25。RDB系とAPI系の同意味Intentの差、native SQLの明示Binding。受注/在庫に加え文書または科学データ処理等の異なるDomainで標準OperatorとMacro役割の再利用・特別実装量を比較 | [#2622](https://github.com/hat47x/tei-platform/issues/2622)、[#951](https://github.com/hat47x/tei-platform/issues/951)、[#2493](https://github.com/hat47x/tei-platform/issues/2493) |
+
+**実証方法の原則**：既存の#2617合成14件や#2613合成20件などを、Macro製品のE2E合格へ自動昇格させない。試験済み実装のSource・対象版・Consumerと、将来Macro側が使う実データを分けて確認する。標準構造を採用する価値は、固定Core kindや専用GUIを増やさず、意味契約の再利用、明示Mapping、独立Expected、診断の一貫性を確かめられるかで評価する。
+
+**現状**：T-19〜26、実Script/Context/Provider結合、Studio・SHO・実Hostでの製品受入はNOT RUN。#2619〜#2622はいずれも横断設計案であり、名称（Data Operations等）、新Core形式、DSL構文、Owner意味受理は未採用。既存#1119 P0-a/P0-bやGateの基準を変更しない。
+
 ## テスト証拠の受渡し：1ケースにつき別の保証を保持
 
 | 試験証拠 | 最初の取得先 | 後段へ渡せる範囲 |
