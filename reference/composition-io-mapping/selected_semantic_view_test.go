@@ -19,7 +19,13 @@ func selectedViewFixture(t *testing.T) (*composition.Registry, Plan, []semantic.
 	registry, plan := fixture(t)
 	plan.Slots[0].Outputs[0] = semanticIDField("value", "sales.order_id")
 	plan.Slots[1].Inputs[0] = semanticIDField("value", "sales.order_id")
-	return registry, plan, loaded.World.Semantics
+	selected := make([]semantic.Namespace, 0, len(loaded.World.Semantics))
+	for _, ns := range loaded.World.Semantics {
+		if ns.ID != "std" {
+			selected = append(selected, ns)
+		}
+	}
+	return registry, plan, selected
 }
 
 func TestSelectedSemanticViewRejectsUnknownAndMixedRefs(t *testing.T) {
@@ -90,6 +96,18 @@ func TestSelectedSemanticViewDoesNotResolveInvalidDeclarations(t *testing.T) {
 	if report := InspectWithSelectedSemanticView(registry, plan, nil); report.Verdict != composition.ProposalUnknown ||
 			!has(report, "selected-semantic-view-missing") || report.Order != nil {
 		t.Fatalf("missing selected view: %+v", report)
+	}
+	// The standard prelude is injected by the Reference, never adopted from
+	// arbitrary selected Namespace bytes.
+	spoofed := append(append([]semantic.Namespace(nil), view...), semantic.Namespace{
+		ID: "std",
+		Types: []semantic.Type{{
+			ID: "std.identifier", Kind: semantic.TypeAlias, Underlying: "std.text",
+		}},
+	})
+	if report := InspectWithSelectedSemanticView(registry, plan, spoofed); report.Verdict != composition.ProposalUnknown ||
+		!has(report, "selected-semantic-standard-prelude-overridden") || report.Order != nil {
+		t.Fatalf("caller-selected standard prelude must not override stdlib: %+v", report)
 	}
 	// Duplicate canonical namespace definitions must not use last-wins.
 	invalid := append(append([]semantic.Namespace(nil), view...), view[0])
