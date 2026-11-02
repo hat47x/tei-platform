@@ -1132,6 +1132,8 @@ G-Rの先行実測は[#2505 11/2独立Headless PoC](https://github.com/hat47x/te
 1. **S0 P0-a（#950）**：既存Reader・Diagnosticsをexact mainで合成対照し、診断の原因／局所Resolution／全体Status／欠落・明示空の保持を固定する。改善を行う場合はSource-only診断の限定PRとし、Owner Semantic Relationの採用とは別。
 2. **S0 P0-b（#Work/#3/#8）**：同じH2生成機会の原byte・正式candidate receipt・正式処遇Ledger・target-ref実解決を、privateの既存ツールと手動J5一行で確かめる。元の別checkpointでの成功を流用しない。
 3. **並列P1（#1126/#1031/#2505）**：CrossView候補グラフと版間候補グラフをread-only CLIで比較し、両者の曖昧性・fan-in/out・Coverage母数・開示範囲を別々に表示。#1805はClosedの既存部分取込み責務として参照し、二重実装・再起票をしない。
-4. **設計書／Functionの後段（#1803／SHO／#2506/#2507）**：原典宣言・実装候補・受理済み意味を、図＋一覧・説明の根拠版で区別。SHOの文書正本とTEIの意味正本は独立、MMIのSource Reference再解決・完成版納品の実証は別途必要。構造的に表示可能でも、編集可能／現在資格あり／業務完了とは扱わない。
+4. **設計書／Functionの後段（#1803／SHO／#2506/#2507）**：原典宣言・実装候補・受理済み意味を、図＋一覧・説明の根拠版で区別。意味構造（Entity/Relation/Role/Path occurrence）と簡潔なTEI Script/DSLを標準データ構造として保持し、Modeler/Studioの標準UIで可視化する。操作・表示の条件も用途に応じた標準Projectionとして表現し、専用ノード画面や各機能タイプ専用UIを初期要件にしない。SHOの文書正本とTEIの意味正本は独立、MMIのSource Reference再解決・完成版納品の実証は別途必要。構造的に表示可能でも、編集可能／現在資格あり／業務完了とは扱わない。
+
+**CIで判別した追加のSource Fact境界**：2026-11-02の[Draft #2603](https://github.com/hat47x/tei-platform/pull/2603)では、合成`x:ToKeyFields`／`x:WithKeyFields`が旧`attributeValue(localName)`で正規化済みのtyped Refer Factへ取り込まれる反例をGitHub CIで確認した（旧headのRepository HealthはFAIL）。新しい候補パッチはraw Presenceと通常属性の厳密一致を分離し、外来`x:Refer`ノードもtyped Fact対象から外す。**当該PRの最新head CI成功は別途確認するまで未確定**。raw Source Fact保持が進んでも、CrossViewの業務意味、宣言を利用するFunction Context、外部AIへの開示権限は自動的に成立しない。#950/#2516/#941の既存境界を維持する。
 
 **Owner未決**：旧FAMILYの各Role・対応FieldとTEI Semantic Relationの個数、条件付きの任意性・cardinality、物理FK/DDL・SQLによる実現、業務Actionの対象・失敗/Commit意味、旧版Reviewの新版適用と公開権利。これらはSource構造診断の改善や合成PoC成功で自動受理しない。**本節作成時にGo実原典試験・既存正式H2 receipt/gate・Work Candidate実体再読・旧GUI/DB・Owner正式受理は実施していない**。
