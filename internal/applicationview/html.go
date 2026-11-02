@@ -9,6 +9,7 @@ var htmlTemplate = template.Must(template.New("application-view").Parse(`<!docty
 <html lang="ja">
 <head>
 <meta charset="utf-8">
+{{if .SemanticFingerprint}}<meta name="tei-semantic-fingerprint" content="{{.SemanticFingerprint}}">{{end}}
 <title>{{.Pattern}}</title>
 <style>
 body{font-family:system-ui,sans-serif;max-width:52rem;margin:2rem auto;padding:0 1rem;color:#222}

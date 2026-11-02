@@ -15,15 +15,16 @@ const SchemaVersion = "tei.applicationview/v0"
 // Viewは、Application Patternの対話契約を、表示側が使える形に解決した投影である。
 // 意味を複製せず、PatternとSemanticのidentityを型付きで参照する。
 type View struct {
-	SchemaVersion string                  `json:"schemaVersion"`
-	Application   core.CanonicalID        `json:"application"`
-	Pattern       core.CanonicalID        `json:"pattern"`
-	Kind          application.PatternKind `json:"kind"`
-	Data          core.CanonicalID        `json:"data,omitempty"`
-	Items         []Item                  `json:"items,omitempty"`
-	Navigations   []Navigation            `json:"navigations,omitempty"`
-	Commands      []Command               `json:"commands,omitempty"`
-	Packages      []PackageRef            `json:"packages,omitempty"`
+	SchemaVersion       string                  `json:"schemaVersion"`
+	Application         core.CanonicalID        `json:"application"`
+	Pattern             core.CanonicalID        `json:"pattern"`
+	Kind                application.PatternKind `json:"kind"`
+	Data                core.CanonicalID        `json:"data,omitempty"`
+	Items               []Item                  `json:"items,omitempty"`
+	Navigations         []Navigation            `json:"navigations,omitempty"`
+	Commands            []Command               `json:"commands,omitempty"`
+	Packages            []PackageRef            `json:"packages,omitempty"`
+	SemanticFingerprint string                  `json:"semanticFingerprint,omitempty"`
 }
 
 // PackageRefは、このPatternを含むPackageへの参照である。
@@ -157,6 +158,11 @@ func Build(world ir.World, applicationID, patternID core.CanonicalID) (View, err
 		Kind:          pattern.Kind,
 		Data:          pattern.Data,
 	}
+	fingerprint, err := fingerprintForApp(world, *app)
+	if err != nil {
+		return View{}, err
+	}
+	view.SemanticFingerprint = fingerprint
 	for _, pkg := range app.Packages {
 		for _, member := range pkg.Members {
 			if member.Pattern != pattern.ID {
@@ -272,4 +278,26 @@ func inputKind(typeRef core.CanonicalID) string {
 	default:
 		return "text"
 	}
+}
+
+// fingerprintForAppは、Applicationが使うSemantic名前空間だけの指紋を返す。
+// 投影が、どの意味の版から出たかを追えるようにする。
+func fingerprintForApp(world ir.World, app application.Application) (string, error) {
+	if len(app.SemanticUses) == 0 {
+		return "", nil
+	}
+	used := map[core.CanonicalID]bool{}
+	for _, namespace := range app.SemanticUses {
+		used[namespace] = true
+	}
+	namespaces := make([]semantic.Namespace, 0, len(app.SemanticUses))
+	for _, namespace := range world.Semantics {
+		if used[namespace.ID] {
+			namespaces = append(namespaces, namespace)
+		}
+	}
+	if len(namespaces) == 0 {
+		return "", nil
+	}
+	return semantic.Fingerprint(namespaces)
 }

@@ -12,16 +12,17 @@ import (
 // HeaderDetailViewは、header-detail PatternのRelationを、見出し部と明細部に解決した投影である。
 // 項目はPatternのinteractionではなく、Relationのsource Dataとtarget Dataの属性から取る。
 type HeaderDetailView struct {
-	SchemaVersion string                  `json:"schemaVersion"`
-	Application   core.CanonicalID        `json:"application"`
-	Pattern       core.CanonicalID        `json:"pattern"`
-	Kind          application.PatternKind `json:"kind"`
-	Relation      core.CanonicalID        `json:"relation"`
-	Header        core.CanonicalID        `json:"header"`
-	Detail        core.CanonicalID        `json:"detail"`
-	HeaderItems   []Item                  `json:"headerItems,omitempty"`
-	DetailColumns []Item                  `json:"detailColumns,omitempty"`
-	Packages      []PackageRef            `json:"packages,omitempty"`
+	SchemaVersion       string                  `json:"schemaVersion"`
+	Application         core.CanonicalID        `json:"application"`
+	Pattern             core.CanonicalID        `json:"pattern"`
+	Kind                application.PatternKind `json:"kind"`
+	Relation            core.CanonicalID        `json:"relation"`
+	Header              core.CanonicalID        `json:"header"`
+	Detail              core.CanonicalID        `json:"detail"`
+	HeaderItems         []Item                  `json:"headerItems,omitempty"`
+	DetailColumns       []Item                  `json:"detailColumns,omitempty"`
+	Packages            []PackageRef            `json:"packages,omitempty"`
+	SemanticFingerprint string                  `json:"semanticFingerprint,omitempty"`
 }
 
 // PatternKindは、Application Patternの種別だけを返す。viewコマンドの分岐に使う。
@@ -116,6 +117,11 @@ func BuildHeaderDetail(world ir.World, applicationID, patternID core.CanonicalID
 		Header:        header,
 		Detail:        relation.Target,
 	}
+	fingerprint, err := fingerprintForApp(world, *app)
+	if err != nil {
+		return HeaderDetailView{}, err
+	}
+	view.SemanticFingerprint = fingerprint
 	for _, pkg := range app.Packages {
 		for _, member := range pkg.Members {
 			if member.Pattern != pattern.ID {

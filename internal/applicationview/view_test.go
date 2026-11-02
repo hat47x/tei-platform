@@ -1,10 +1,12 @@
 package applicationview_test
 
 import (
+	"strings"
 	"testing"
 
 	"tei/internal/application"
 	"tei/internal/applicationview"
+	"tei/internal/core"
 	"tei/internal/ir"
 	"tei/internal/semantic"
 )
@@ -46,7 +48,8 @@ func viewWorld() ir.World {
 			},
 		},
 		Applications: []application.Application{{
-			ID: "order_entry",
+			ID:           "order_entry",
+			SemanticUses: []core.CanonicalID{"sales", "customer"},
 			Packages: []application.Package{{
 				ID:      "order_entry.list_to_record",
 				Version: "1",
@@ -207,5 +210,24 @@ func TestBuildCarriesPackages(t *testing.T) {
 	}
 	if len(view.Packages) != 1 || view.Packages[0].ID != "order_entry.list_to_record" || view.Packages[0].Version != "1" {
 		t.Fatalf("packages=%+v", view.Packages)
+	}
+}
+
+func TestBuildCarriesSemanticFingerprint(t *testing.T) {
+	view, err := applicationview.Build(viewWorld(), "order_entry", "order_entry.order_record")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.HasPrefix(view.SemanticFingerprint, "sha256:") {
+		t.Fatalf("fingerprint=%q", view.SemanticFingerprint)
+	}
+	changed := viewWorld()
+	changed.Semantics[0].Data[0].Attributes = append(changed.Semantics[0].Data[0].Attributes, semantic.Attribute{ID: "sales.order.status", TypeRef: "std.code"})
+	after, err := applicationview.Build(changed, "order_entry", "order_entry.order_record")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if after.SemanticFingerprint == view.SemanticFingerprint {
+		t.Fatal("semantic change did not change the view fingerprint")
 	}
 }

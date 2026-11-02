@@ -6,6 +6,7 @@ import (
 
 	"tei/internal/application"
 	"tei/internal/applicationview"
+	"tei/internal/core"
 	"tei/internal/ir"
 	"tei/internal/semantic"
 )
@@ -38,7 +39,8 @@ func headerDetailWorld() ir.World {
 			},
 		}},
 		Applications: []application.Application{{
-			ID: "order_entry",
+			ID:           "order_entry",
+			SemanticUses: []core.CanonicalID{"sales"},
 			Packages: []application.Package{{
 				ID:      "order_entry.order_lines",
 				Version: "1",
@@ -102,5 +104,15 @@ func TestBuildHeaderDetailCarriesPackages(t *testing.T) {
 	}
 	if len(view.Packages) != 1 || view.Packages[0].ID != "order_entry.order_lines" || view.Packages[0].Version != "1" {
 		t.Fatalf("packages=%+v", view.Packages)
+	}
+}
+
+func TestBuildHeaderDetailCarriesSemanticFingerprint(t *testing.T) {
+	view, err := applicationview.BuildHeaderDetail(headerDetailWorld(), "order_entry", "order_entry.order_lines")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.HasPrefix(view.SemanticFingerprint, "sha256:") {
+		t.Fatalf("fingerprint=%q", view.SemanticFingerprint)
 	}
 }
