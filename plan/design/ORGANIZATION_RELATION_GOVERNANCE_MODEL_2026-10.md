@@ -1702,7 +1702,7 @@ Source Revision不一致でhelperを停止させる。UI選択epoch、Provider S
 | QD-11 | 未観測Change/Scope不明/Read Cohort資格不明 | 無影響と判定せず`unresolved`。形式上のDependencyが少ないだけでは実Cache再利用可としない |
 | QD-12 | Query候補が一致・Ruleがsatisfied | 物理取得済み・外部開示可・実Action/Host Grant・独立DB Effectのいずれにも昇格しない |
 
-**検証**：同ファイルのGitHub Blob `8e08f5f5f301303b9f9435e5a43eb218021b8559`を再取得して**25/25 V8互換Runner局所PASS**。旧7ファイルの合成確認141件＋この25件で**166件の局所合成チェック**。この追加ファイルを[既存ReferenceのNode固定版Workflow](https://github.com/hat47x/tei-platform/pull/2596)の検証対象に入れたが、**この改版を含むexact HEADでのNative Node/CIは実Runの成功を確認するまで未資格**。旧141件の実Node成功は[Actions #41456286651](https://github.com/hat47x/tei-platform/actions/runs/41456286651)、対象`a01a2addc680bc33c5ceee782e8b48e3a77a736f`に限る。合成Expectationの判別力/モデル内の独立性評価は#2514が継続してOwnerを持つ。
+**検証**：同ファイルのGitHub Blob `8e08f5f5f301303b9f9435e5a43eb218021b8559`を再取得して**25/25 V8互換Runner局所PASS**。さらに[GitHub Actions #41462231920](https://github.com/hat47x/tei-platform/actions/runs/41462231920)、`synthetic-node` job #125333927789は、**固定commit `7eaf1afca3a18a42eb7deb090b6a8be9150c8bca`に対してSUCCESS**。Node **v22.16.0**、exact HEAD/clean pre/post、`verify.mjs` **27件PASS**と `node --test` **139件PASS（fail 0）**を実Jobログから確認。**合計166件の合成チェックは当該コミットについて実Node CIでも成功**した。旧141件の実Node成功は[Actions #41456286651](https://github.com/hat47x/tei-platform/actions/runs/41456286651)、対象`a01a2addc680bc33c5ceee782e8b48e3a77a736f`に限る。Referenceの後続README更新を含む**現在のHEADへ固定CI資格を自動継承しない**。正式TEI Query/Provider/Consumer/Owner意味受理は未実施、合成Expectationの判別力/根拠独立性評価は#2514がOwner。
 
 ### 48.3 再生成と再評価を混同しない最小契約
 
@@ -1712,5 +1712,7 @@ Source Revision不一致でhelperを停止させる。UI選択epoch、Provider S
 - **実行/観測時**：実DataのA2配賦やJ1/J2 Project変更、Provider known-at／Route／Read Cohort変更があれば、Query行集合・ORDER・EXISTS/NOT EXISTS・Rule結果・Consumer表示を、**そのClaimに必要な依存閉包**に沿って失効/再取得候補にする。未知依存があれば`unresolved`として局所無影響を保証しない。
 - **実Action時**：Queryが同じ結果を返しても、View occurrence→業務Relation target→受理済みAction→現在Host Authority/Effect fence→Commit/Receipt→独立観測は別途適用する（#2598/#1174）。Resultが表示できることを編集許可や完了へ転化しない。
 - **開示時**：公開列に秘密のFieldがなくても、WHERE閾値の変更で行が出たり消えたりすることが、非表示入力の推測を可能にする場合がある。これは`verified noninterference`ではなく、#2516/#1178にConsumer別Output・件数・順序・診断・Timing/ログを渡して検査するべきPressureである。通常の組織Data全体を機密扱いすることとは異なる。
+
+**現行main差分**：2026-11-02の再取得時、mainは`d8f5114f17793354bbab0c766190699ad2b5d60b`へ進行。組織設計Draft #2389のbaseは`2503a25fee9ffa47592d47818c2bb35c0a2c50ab`、合成Reference Draft #2596のbaseは`9c9ef4d160640908e06ad13afb6c2b45c664c748`であり、現mainとの収束・trusted checkout・実Go/Provider接続を確認するまでDraftを解除/mergeしない。mainが進行したこと自体はこの合成観測の成否を変更しないが、製品採用資格の確認範囲は別である。
 
 **実装順の変更は最小限**：#2634の現行Go特性試験の結果を参照し、#2586が受理済みFunction/Query/Context/Patternにこの隠れた依存を実際に渡せるかを一試行で確認。#2582は差分再取得、#2600は生成キャッシュ、#2516は公開の資格、#2514は期待Oracle独立性を担当する。新しい共通Dependency Graph Registry、Query Executor、Cache/Host/権限Engineは本節から導入しない。正式TEI Query/Provider、Studio/SHO、外部Consumer、Owner意味受理は引き続き**NOT RUN**。
