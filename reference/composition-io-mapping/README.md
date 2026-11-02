@@ -35,7 +35,7 @@
 
 ### 選択済みSemanticビューでの限定照合（E2a候補）
 
-`InspectWithSelectedSemanticView` は、呼出元から明示された `[]semantic.Namespace` を対象に、既存の `validation.Validate` により意味構造を検査した後、既存の `Inspect` の候補判定に型の存在・Aliasから辿る標準primitiveと名目的な項目型の整合を加える。別のProvider Resolver、型Registry、標準primitive、契約構文は追加しない。
+`InspectWithSelectedSemanticView` は、呼出元から明示された `[]semantic.Namespace`（標準の `std` は除く）へ **既存の `stdlib.SemanticNamespace()` を独立に追加**し、`validation.Validate` により意味構造を検査した後、既存の `Inspect` の候補判定に型の存在・Aliasから辿る標準primitiveと名目的な項目型の整合を加える。呼出元が `std` 名前空間を注入・上書きする提案は未判定として拒否する。これは既存の外部Semantic Preflightと同じ境界であり、標準NamespaceのPublisher/Accepted Authorityが成立したという主張ではない。別のProvider Resolver、型Registry、標準primitive、契約構文は追加しない。
 
 - **候補**：正負の検証対象となる接続項目の両側にTypeRefがあり、その型が選択ビュー内に存在し、既存の型ID・多重度・単位検査と矛盾しない場合。関係しない未接続出力のTypeRefは必須にしない。
 - **保留**：選択ビューの欠落・検証エラー、未知の型、TypeRef欠落、既存標準primitiveと申告された表現名との矛盾がある場合。`Order`と`ContributionOrder`を返さず、使用可能な接続計画と誤認させない。
