@@ -1129,7 +1129,7 @@ G0/G1/G2は**全面的な直列開発を要求しない**。DB fixtureとProvide
 | **PR3-A：成功したG1→G2、同じview ID Kの再利用** | 新描画のnode ID集合とBindingが同じsnapshot。旧DOMクリックからInspect 0回、新DOMはqualified Key一意＋Catalog全体でunqualified APIの対象一意と現在版が確認された場合に限り1回 | view ID、label、rowIndex、旧mapをSource locatorやAuthorityと同一視しない |
 | **PR3-B：R10/G1→R11、G2 `missing_endpoint` 拒否** | 可視G1が残ってもM2を公開せず、旧G1クリックはInspect 0回／Source locator確定0回／stale診断維持。Sourceが不変でも描画失敗後のmap適用資格を別途確認 | Renderer単体の旧SVG保持・`publishGraph`単体の拒否はConsumer結合PASSに転用不可 |
 | **PR3-C：Source ABA・描画途中更新・binding_not_rendered** | 旧stage tokenは失効、未描画nodeへのBindingを公開しない。意図した未結合nodeは `unbound`。旧成功表示から `ready`／authorizedを推定しない | Source revision観測だけで原子的readback・現在Authorityは証明できない |
-| **P1接続：Accept部分成功＋旧応答後着** | `accepted=true, sourceChanged=true, DECISION_RECORD_FAILED` とR10旧Inspectの合流で、旧schema/readiness失効、Source/ledger別readback（R12ならR12優先）、自動再Accept 0回 | Source受理・ledger記録・Decision witness・Owner意味受理・Runtime Effectを単一successに圧縮しない |
+| **P1接続：Accept部分成功＋旧応答後着** | `decision=accepted, sourceChanged=true, DECISION_RECORD_FAILED` とR10旧Inspectの合流で、旧schema/readiness失効、Source/ledger別readback（R12ならR12優先）、自動再Accept 0回 | Source受理・ledger記録・Decision witness・Owner意味受理・Runtime Effectを単一successに圧縮しない |
 
 **引渡し単位**：各fixtureのSource/Catalog/Graph観測revision、UI入口、selection epoch、qualified Ref／候補集合、Inspect spy、表示された診断と公開可否、実行asset/build SHA、exact-head run IDを残す。UI selection S、Invocation T、確定Effect EはOwnerにより受理された対応規則がない限り等号で結ばない。Decision witness、Source鮮度、独立Effect/Observation、Ownerの意味受理も別のread-only表示レーン候補であり、証拠が欠けた場合は `unknown/not-verified` とする。四レーンの追加表示は#1124の別段階で評価し、PR1の変更対象に含めない。
 
