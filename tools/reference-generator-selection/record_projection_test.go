@@ -109,3 +109,35 @@ func TestRecordTemplateGeneratesArrayField(t *testing.T) {
 		t.Fatal("generated source does not handle an array field")
 	}
 }
+
+func TestRecordTemplateGeneratesNumericField(t *testing.T) {
+	contract := `{
+  "schema": "tei.reference.generator-contract/v0",
+  "id": "sui.card.record",
+  "version": "5",
+  "status": "reference-local",
+  "inputs": [{"attribute": "sui.card.x", "primitive": "std.decimal"}],
+  "output": {"primitive": "std.text"},
+  "projection": {
+    "kind": "record",
+    "fields": [
+      {"name": "x", "input": "x", "attribute": "sui.card.x", "primitive": "std.decimal"}
+    ]
+  }
+}`
+	path := filepath.Join(t.TempDir(), "contract.json")
+	if err := os.WriteFile(path, []byte(contract), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	out := filepath.Join(t.TempDir(), "candidate")
+	if _, err := Generate(path, "text-record-template", out); err != nil {
+		t.Fatal(err)
+	}
+	source, err := os.ReadFile(filepath.Join(out, "main.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(source), "value.(float64)") {
+		t.Fatal("generated source does not handle a numeric field")
+	}
+}
