@@ -858,6 +858,36 @@ QX-23はSQL内のOperatorの同義性／Mutant感度を試した。**QX-24の新
 **状態**：Python＋SQLite WAL限定の**11/11 PASS**まで。実TEI SQL Worker/Go Query/Function Context/正式Provider、PostgreSQL/API Cross Provider、Host/RLS、GUI/SHO/外部AI送信、正式Owner Meaning Acceptanceは**NOT RUN**。
 
 
+### 7.22 QX-27：非出力Predicate・Sort・相関条件の依存と、Go DerivedIRのCoverage信頼境界（2026-11-02、独立Go Draft）
+
+#### QX-25（実SQLite）から一段進めた実Goの検証点
+
+QX-25（§7.20、SQLite Authorizer 12件）は、`SELECT id`でもWHERE/ORDER/EXISTS/JOIN/HAVINGなど**出力しない列の参照**により、集合の存在・件数・順序が変化することを確認した。[#2624 Function Context](https://github.com/hat47x/tei-platform/pull/2624)では表示依存とRule/Validation入力依存を区別し、[#2622 Data Operations](https://github.com/hat47x/tei-platform/issues/2622)では論理要求／実物理Read／Consumer開示を分割した。
+
+**新しい狭い確認**：[Draft #2634](https://github.com/hat47x/tei-platform/pull/2634)の[test `internal/query/derived_qx27_dependency_characterization_test.go`](https://github.com/hat47x/tei-platform/blob/work/qx27-go-hidden-dependency-20261102/internal/query/derived_qx27_dependency_characterization_test.go)は、現行main `9c9ef4d`の実Go `DeriveFromAnalysis`を、**手製の`analyzer.Result`**から呼ぶ5テストだけを加える。本体の`DerivedIR`/契約やRuntimeには変更を加えず、SQL Authoring Sourceを正本、IRを導出Projectionとして扱う。
+
+| Go特性確認 | 与えた合成Analyzer入力と判別点 | 一般化する前に要る証拠 |
+| --- | --- | --- |
+| **QX27-M1** 非出力WHERE | 出力`o.id`だけが`OutputFields[0].Inputs`に載り、`o.secret_score`は`Fields`の別occurrenceと`RelFilter.Expressions`に残る | **Output値Lineageと全Input Read Dependencyを同一視しない**。条件列へのSource/Scope束縛・存在/選択への影響は別 |
+| **QX27-M2** 同じOutputでも違うPredicate | 同じQuery ID／OutputField ID・Inputsのまま、`secret_score>50`↔`>70`で`RelationalIR`全JSONが異なる | 画面に出たField ID・Projection JSON一致だけでRule/Claim依存不変や公開許可を保証しない |
+| **QX27-M3** 非出力ORDER | `o.id`だけ出力、`secret_rank`は列OccurrenceとSort Expressionに残る | Sortの値・比較規則/NULL・総順序/選択TopNを別依存として保持。QX-26 Page/Continuationに接合 |
+| **QX27-M4** 相関EXISTS相当 | root出力と、subqueryの非出力`hidden_flag`、outer相関`o.id`を別Scope/Occurrenceで保持。root Relational Rootはsubquery列挙で置き換わらない | 相関Field・Parent Scopeの構造記述と、実SQL Workerが存在/否定の意味を正しくLowerすることは別 |
+| **QX27-M5** Coverageの入力信頼 | 故意に`secret_score`の`ColumnRefs`だけを落とした手製の`analyzer.Result`でも、`Lowering=full`はGo側で`CoverageFull`として残る | **実Workerが欠落する証拠ではない**。Go LayerのCoverage表示は独立の入力列依存完全性／実Read/開示資格の検査ではない |
+
+**証拠状態**：テストは`gofmt -l`空出力、実行前のローカルGoソースとGitHub保存Blob `04ef05606fae03e96d60c3e52d8be5d4bdced021`一致（7400 bytes）。[Draft #2634](https://github.com/hat47x/tei-platform/pull/2634) exact head `0485441f3c6a8dec718e63548c68abce069bb02a`のGitHub ActionsはPR起票後の観測で**queued**。この時点ではGoテストを実行したPASSは宣言しない。#2618のQX-20 Raw JSON特性試験は別PRとして維持する。
+
+#### 後続への引渡し：Column dependencyの用途別表現
+
+- **Display/Output Dependency**：出力値への直接Lineage（`OutputField.Inputs`）を表示する。
+- **Selection/Existence/Order Dependency**：WHERE/HAVING/JOIN/EXISTS/ORDER/LIMIT/Window/GroupのInput Field/Relation/Scopeを、SQL解析が明示できた範囲で説明する。`ColumnRefs`存在と、条件式への厳密なDataflow Role解決は別。式文字列から全依存を正確に復元できる保証はない。
+- **Rule/Decision Dependency**：[#2624](https://github.com/hat47x/tei-platform/pull/2624)のFunction Rule Definition/Attachmentと[#2506](https://github.com/hat47x/tei-platform/issues/2506)の明示Contextから要求。Displayに見えないRule Fieldを実依存から除外せず、かつ未宣言Relationを黙って取得しない。入力欠落／版/Scope不整合は`unresolved`、業務Rule falseとは区別。
+- **Actual Read Footprint/Disclosure**：SQL Layerが参照可能と示した列と、実Providerが読んだ列・行・Snapshot、外部Consumerに開示できる集合は異なる。#2622/#1174/#1178/#2516/#2515の既存Ownerで別証拠を確認。Raw Go IRの直接公開を安全とみなさない。
+
+**次段M1/M2**：M1は実Python SQL Workerから生成した`analyzer.Result`の正負`ColumnRefs`と`Operations`／Coverageを、SQLite QX-25の列参照・行結果と同一Source/版/SQL上で比較。M2は実Go IR → Function Access Map → Data Operations/Validation → Reader/Consumerの**同一Attempt**で入力依存、部分Read、Snapshot/Disclosureの資格を確認。Go test CharacterizationからSQL全面同義・実Provider適合・Owner受理には昇格しない。#1640 D2の拒否と#1119 G0〜G4は維持し、新Query Executor/中央Host/第二Policy Engineを追加しない。
+
+**未実証**：本DraftのGoテスト実行結果はCI確認まで未確定。実SQL Worker、実PostgreSQL/API、Function Data Context結合、Windows/SHO/AI実Receiver、Owner MeaningはNOT RUN。
+
+
 ## 8. 実装順・担当引継ぎ（提案）
 
 | 段階 | 所有 | 実施 | 完了の根拠 |
