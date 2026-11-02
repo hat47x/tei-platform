@@ -661,3 +661,46 @@ Bridgeを記述するための**比較票**は、`source claim + target claim / 
 | BR-07 | 低開示Consumerへ境界Claimを出す | 内部母集団の数・非可視存在を境界説明で漏らす | #2516/#1178 |
 
 BR-01〜07は**既存IssueのFixture・Acceptanceを共有する連結検討票**であり独立Scenario正本ではない。外部Consumer上でのBridge、公開の障害注入、TEI Query/SHO実読込、編集/Effectの実証、Owner意味受理はいずれも**NOT RUN**。#2497は構造保存・逆写像の説明、#2516はConsumer別の条件付きClaim Bridge、#2604は物理的な公開一式、#2586は同版の実Headless縦断を所有する。
+
+
+## 17. 依存閉包と実際の読取りを、同じProjectionの別の証明義務にする（2026-11-02）
+
+### 17.1 表示の意味保存だけではFunction全体を保証しない
+
+[#2624](https://github.com/hat47x/tei-platform/issues/2624)の合成Read Mapping/Rule依存、[#2628](https://github.com/hat47x/tei-platform/issues/2628)のProvider Read Witness、[#2598](https://github.com/hat47x/tei-platform/issues/2598)のView→Request束縛を接合する。表示されたFieldの値が正しいことと、Ruleを評価するのに必要なデータが揃うこと、実Providerが必要以上のデータを読んでいないこと、保存Actionが正しい対象へ適用されたことは**独立した検証義務**である。
+
+同じ公開表示`Order.amount=600`でも、非表示の`Account.credit_limit`が500と700の世界では、受理済みの与信Ruleの判定が変わり得る。表示だけの依存集合`D_display`と、受理済みRuleが実際に必要とする`D_rule`を区別する。保存Actionの実行前提`D_action`、Providerが物理的に読んだ`D_actual`、Consumerへ開示可能な`D_disclose`も別。
+
+これらの集合には**一般的な単純包含関係を仮定しない**。例えばRule入力が表示より広くても、実ProviderのOverfetchはRuleの正当な依存とは限らず、開示可能集合は必要依存集合と一致しない。静的な宣言集合と実行時に条件分岐で参照した集合も異なる。各集合の要素は単なるField名ではなく、必要に応じて`Source/Relation path + role + grain + scope + revision + principal/binding`で識別する。
+
+### 17.2 依存閉包の最小判定
+
+- **Declared**：Functionの明示Data Mapping、Rule Attachment、Action前提、Source/Target Bindingが何を要求するか。Markdown表・DSL・Studio表示が同じMeaningを指しているかは#2621のAuthoring契約で検証する。
+- **Required**：特定の`Claim/Operation/Consumer`を成立させるための依存。条件分岐・時間・集計・外部呼出し・非表示Ruleを含め、Sourceの意味受理済み定義へ遡る。未解決依存は`unknown`であって成功ではない。
+- **Realized**：Providerへ渡した実Request/Query、実効Alias/RLS/Principal/Scope、実際に読まれたField/Row/Relation。合成Providerの呼出しTraceと、実DB/OSのI/O観測を同一証拠にしない。
+- **Available**：返却Result Sliceで必要なFieldが観測済みか、行集合・Relationの完全性が十分か。Rowset completeでも特定Field absentはあり得る。SQL NULL、未取得、optional missingを混同しない。
+- **Disclosable**：Rule結果、Action候補の存在、エラー、Traceを含め、Consumerへ何を開示できるか。値を隠しても候補件数や拒否理由で秘密を漏らさない。
+- **Effect-bound**：選択したView Occurrenceが、現行のSource/Target/Operation ID/Grant/Requestへ束縛され、実Effectと独立read-backで同じ対象を観測できるか。PreviewやIntentだけで業務完了を宣言しない。
+
+この6項目を**既存Ownerをまたぐ試験観測票**として利用する。新しいDependency Runtime、全域的な静的情報流解析器、第二のData Context正本を導入するものではない。
+
+### 17.3 安全性と最小性は別の性質
+
+必要なRule入力がすべて得られたとしても、Providerが秘密Fieldを余分に読んでいれば物理的な最小性は保証されない。逆に、Providerが宣言通り狭く取得していても、必要なRule依存がMappingから漏れていれば意味的な完全性は保証されない。
+
+**二世界比較**：公開データが同じで秘密データだけが異なる二世界を用意する。公開Projectionが同じでも、Providerの実Read、Rule結果、Action候補、Error/Trace、外部Toolへの送出が異なる可能性を独立に観測する。非干渉性を主張するには、出力の比較対象と観測できるチャネル、Policyで許可された例外、攻撃者の権限・反復可能性を限定する。有限合成FixtureのPASSを実OS/Network隔離の証明にしない。
+
+### 17.4 負例と受入境界（DC-01〜08、全件この節としてはNOT RUN）
+
+| ID | 対照する二条件 | 検証対象とOwner |
+| --- | --- | --- |
+| DC-01 | 表示値同じ、非表示Rule入力違い | Rule必要依存の閉包。#2624/#1129 |
+| DC-02 | 同じ公開JSON、狭いReadと秘密Overfetch | 出力同値と物理Read最小性。#2628/#2622 |
+| DC-03 | 全行取得、Rule Fieldはabsent | Rowset完全性とField観測。#2506/#2627 |
+| DC-04 | Mappingはall宣言、実Providerはpartial | 宣言完全性と観測完全性。#2506/#2628 |
+| DC-05 | 同じSQL ID、実RLS/Principalが異なる | 実効Source/対象集合。#2387/#2611 |
+| DC-06 | 表示対象L1、実Request Payload対象L2 | Intentと実Effect対象。#2598/#1174 |
+| DC-07 | 最終回答同じ、秘密Action候補の件数が違う | Planner/Tool候補の開示。#2516/#1178/SEI |
+| DC-08 | Markdownの説明表を実Ruleとして誤解釈 | Authoring Roleと正式意味受理。#2621/#2626 |
+
+**既存Evidenceの限定**：#2624は隔離合成Mapping20件＋Rule Preview18件、#2628は隔離Synthetic Provider Read Witness12件を報告している。これらの試験は独立に存在し、ここで再実行したものではない。実TEI Rule/Provider、実RLS/OS、外部AI egress、DB Commit/Receipt、SHO/Studioでの受入は別Ownerの未実施条件。#2497は各段階で何を保存・喪失したかを説明し、実Providerは#2622、Contextは#2506、Ruleは#2624/#1129、開示は#2516、書込みは#2598/#1174、Authoringは#2621へ戻す。
