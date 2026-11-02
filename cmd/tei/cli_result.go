@@ -5,9 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strings"
 
 	"tei/internal/core"
 	"tei/internal/dependency"
+	"tei/internal/knowledgecontext"
 	"tei/internal/plugin"
 	pluginruntime "tei/internal/plugin/runtime"
 	"tei/internal/validation"
@@ -43,11 +45,18 @@ const (
 	resultCodePluginPlanFailed    = "PLUGIN_RUNTIME_PLAN_FAILED"
 	resultCodeUnknownEnvironment  = "UNKNOWN_ENVIRONMENT"
 	resultCodeInvalidPluginLock   = "INVALID_PLUGIN_LOCK"
+	resultCodeKnowledgeFailed     = "KNOWLEDGE_BUILD_FAILED"
 )
 
 const (
-	resultModeIndex   = "index"
-	resultModeSubject = "subject"
+	resultModeIndex         = "index"
+	resultModeSubject       = "subject"
+	resultModeContext       = "context"
+	resultModeDisclosure    = "disclosure"
+	resultModeQualification = "qualification"
+	resultModePlan          = "plan"
+	resultModeHandoff       = "handoff"
+	resultModeReview        = "review"
 )
 
 // isResultEnvelopeCommand reports whether the command wraps its output in the
@@ -60,7 +69,10 @@ const (
 func isResultEnvelopeCommand(command string) bool {
 	switch command {
 	case "workspace-files", "source-index", "requirements",
-		"plugin-lock", "plugin-resolve", "plugin-runtime-plan":
+		"plugin-lock", "plugin-resolve", "plugin-runtime-plan",
+		"knowledge-context", "knowledge-qualify",
+		"knowledge-review-plan", "knowledge-review-handoff",
+		"knowledge-review-disclose", "knowledge-data-design-candidate-review":
 		return true
 	}
 	return false
@@ -226,6 +238,152 @@ func resultCommandJSON(out io.Writer, command, workspacePath, worldPath, environ
 		return emitResult(out, resultEnvelope(command, "", plan), 0)
 	}
 	return resultInvalidArgument(out, command, "unsupported command "+command)
+}
+
+// knowledgeContextJSON wraps knowledge-context in the command envelope. The
+// pre-envelope output had two shapes: the whole Context, or (with -disclose) a
+// DisclosureProjection. `mode` distinguishes them: context | disclosure.
+// Exit codes stay as they were: 2 for argument/build failures, 1 for a
+// fingerprint mismatch the caller asked to enforce.
+func knowledgeContextJSON(out io.Writer, workspacePath, subjectKind, subjectID, disclosure, expectedDataDesignFingerprint, expectedDisclosureFingerprint string, extraArgs int) (int, error) {
+	if workspacePath == "" {
+		return resultInvalidArgument(out, "knowledge-context", "knowledge-context requires -workspace")
+	}
+	if extraArgs != 0 {
+		return resultInvalidArgument(out, "knowledge-context", "knowledge-context does not accept positional arguments")
+	}
+	if disclosure == "" && expectedDisclosureFingerprint != "" {
+		return resultInvalidArgument(out, "knowledge-context", "-expected-disclosure-fingerprint requires -disclose")
+	}
+	context, err := buildKnowledgeContext(workspacePath, subjectKind, subjectID)
+	if err != nil {
+		return emitResult(out, resultFailure("knowledge-context", resultCodeKnowledgeFailed, err), 2)
+	}
+	if err := checkDataDesignFingerprint(context, expectedDataDesignFingerprint); err != nil {
+		return emitResult(out, resultFailure("knowledge-context", resultCodeKnowledgeFailed, err), 1)
+	}
+	if disclosure != "" {
+		projection, err := buildKnowledgeDisclosure(context, disclosure)
+		if err != nil {
+			return emitResult(out, resultFailure("knowledge-context", resultCodeKnowledgeFailed, err), 2)
+		}
+		if err := checkKnowledgeDisclosureFingerprint(projection, expectedDisclosureFingerprint); err != nil {
+			return emitResult(out, resultFailure("knowledge-context", resultCodeKnowledgeFailed, err), 1)
+		}
+		return emitResult(out, resultEnvelope("knowledge-context", resultModeDisclosure, projection), 0)
+	}
+	return emitResult(out, resultEnvelope("knowledge-context", resultModeContext, context), 0)
+}
+
+// knowledgeQualifyJSON wraps knowledge-qualify in the command envelope. The
+// pre-envelope output was one QualificationResult; the envelope has no mode.
+func knowledgeQualifyJSON(out io.Writer, workspacePath, subjectKind, subjectID, requirementsPath string, extraArgs int) (int, error) {
+	if workspacePath == "" {
+		return resultInvalidArgument(out, "knowledge-qualify", "knowledge-qualify requires -workspace and does not accept -world")
+	}
+	if extraArgs != 0 {
+		return resultInvalidArgument(out, "knowledge-qualify", "knowledge-qualify does not accept positional arguments")
+	}
+	qualification, err := buildKnowledgeQualificationFromFile(workspacePath, subjectKind, subjectID, requirementsPath)
+	if err != nil {
+		return emitResult(out, resultFailure("knowledge-qualify", resultCodeKnowledgeFailed, err), 2)
+	}
+	return emitResult(out, resultEnvelope("knowledge-qualify", resultModeQualification, qualification), 0)
+}
+
+// knowledgeReviewPlanJSON wraps knowledge-review-plan in the command envelope.
+// The pre-envelope output was one BuilderReviewPlan; the envelope has no flag-
+// selected second shape, and `mode` names the result type the way the other
+// knowledge commands do.
+func knowledgeReviewPlanJSON(out io.Writer, workspacePath, subjectKind, subjectID, expectedReviewPlanFingerprint string, extraArgs int) (int, error) {
+	if workspacePath == "" {
+		return resultInvalidArgument(out, "knowledge-review-plan", "knowledge-review-plan requires -workspace and does not accept -world")
+	}
+	if extraArgs != 0 {
+		return resultInvalidArgument(out, "knowledge-review-plan", "knowledge-review-plan does not accept positional arguments")
+	}
+	plan, err := buildBuilderReviewPlan(workspacePath, subjectKind, subjectID)
+	if err != nil {
+		return emitResult(out, resultFailure("knowledge-review-plan", resultCodeKnowledgeFailed, err), 2)
+	}
+	if err := checkBuilderReviewPlanFingerprint(plan, expectedReviewPlanFingerprint); err != nil {
+		return emitResult(out, resultFailure("knowledge-review-plan", resultCodeKnowledgeFailed, err), 1)
+	}
+	return emitResult(out, resultEnvelope("knowledge-review-plan", resultModePlan, plan), 0)
+}
+
+// knowledgeReviewHandoffJSON wraps knowledge-review-handoff. The pre-envelope
+// output was one BuilderReviewHandoff; `mode=handoff` lets a caller tell a
+// handoff file from a qualification file when both feed the same decoder.
+func knowledgeReviewHandoffJSON(out io.Writer, workspacePath, subjectKind, subjectID, requirementsPath, expectedReviewHandoffFingerprint string, extraArgs int) (int, error) {
+	if workspacePath == "" {
+		return resultInvalidArgument(out, "knowledge-review-handoff", "knowledge-review-handoff requires -workspace and does not accept -world")
+	}
+	if extraArgs != 0 {
+		return resultInvalidArgument(out, "knowledge-review-handoff", "knowledge-review-handoff does not accept positional arguments")
+	}
+	handoff, err := buildBuilderReviewHandoffFromFile(workspacePath, subjectKind, subjectID, requirementsPath)
+	if err != nil {
+		return emitResult(out, resultFailure("knowledge-review-handoff", resultCodeKnowledgeFailed, err), 2)
+	}
+	if err := checkBuilderReviewHandoffFingerprint(handoff, expectedReviewHandoffFingerprint); err != nil {
+		return emitResult(out, resultFailure("knowledge-review-handoff", resultCodeKnowledgeFailed, err), 1)
+	}
+	return emitResult(out, resultEnvelope("knowledge-review-handoff", resultModeHandoff, handoff), 0)
+}
+
+// knowledgeReviewDiscloseJSON wraps knowledge-review-disclose. The pre-envelope
+// output was one DisclosureProjection; `mode=disclosure` matches the value
+// knowledge-context -disclose uses for the same result shape.
+func knowledgeReviewDiscloseJSON(out io.Writer, workspacePath, subjectKind, subjectID, reviewHandoffPath, expectedReviewHandoffFingerprint, expectedDisclosureFingerprint string, extraArgs int) (int, error) {
+	if workspacePath == "" {
+		return resultInvalidArgument(out, "knowledge-review-disclose", "knowledge-review-disclose requires -workspace and does not accept -world")
+	}
+	if extraArgs != 0 {
+		return resultInvalidArgument(out, "knowledge-review-disclose", "knowledge-review-disclose does not accept positional arguments")
+	}
+	disclosure, handoff, err := buildBuilderReviewDisclosureFromFile(workspacePath, subjectKind, subjectID, reviewHandoffPath)
+	if err != nil {
+		return emitResult(out, resultFailure("knowledge-review-disclose", resultCodeKnowledgeFailed, err), 2)
+	}
+	if err := checkBuilderReviewHandoffFingerprint(handoff, expectedReviewHandoffFingerprint); err != nil {
+		return emitResult(out, resultFailure("knowledge-review-disclose", resultCodeKnowledgeFailed, err), 1)
+	}
+	if err := checkKnowledgeDisclosureFingerprint(disclosure, expectedDisclosureFingerprint); err != nil {
+		return emitResult(out, resultFailure("knowledge-review-disclose", resultCodeKnowledgeFailed, err), 1)
+	}
+	return emitResult(out, resultEnvelope("knowledge-review-disclose", resultModeDisclosure, disclosure), 0)
+}
+
+// knowledgeDataDesignCandidateReviewJSON wraps
+// knowledge-data-design-candidate-review. The pre-envelope output was one
+// candidate review packet.
+func knowledgeDataDesignCandidateReviewJSON(out io.Writer, workspacePath, subjectKind, subjectID, candidateKind, candidateFingerprint, expectedDataDesignFingerprint, expectedEvidenceRequirementFingerprint, expectedReviewFingerprint string, extraArgs int) (int, error) {
+	if workspacePath == "" {
+		return resultInvalidArgument(out, "knowledge-data-design-candidate-review", "knowledge-data-design-candidate-review requires -workspace and does not accept -world")
+	}
+	if extraArgs != 0 {
+		return resultInvalidArgument(out, "knowledge-data-design-candidate-review", "knowledge-data-design-candidate-review does not accept positional arguments")
+	}
+	if strings.TrimSpace(candidateKind) == "" || strings.TrimSpace(candidateFingerprint) == "" {
+		return resultInvalidArgument(out, "knowledge-data-design-candidate-review",
+			"knowledge-data-design-candidate-review requires -data-design-candidate-kind and -data-design-candidate-fingerprint")
+	}
+	context, err := buildKnowledgeContext(workspacePath, subjectKind, subjectID)
+	if err != nil {
+		return emitResult(out, resultFailure("knowledge-data-design-candidate-review", resultCodeKnowledgeFailed, err), 2)
+	}
+	if err := checkDataDesignFingerprint(context, expectedDataDesignFingerprint); err != nil {
+		return emitResult(out, resultFailure("knowledge-data-design-candidate-review", resultCodeKnowledgeFailed, err), 1)
+	}
+	packet, err := knowledgecontext.BuildDataDesignCandidateReview(context, candidateKind, candidateFingerprint, expectedEvidenceRequirementFingerprint)
+	if err != nil {
+		return emitResult(out, resultFailure("knowledge-data-design-candidate-review", resultCodeKnowledgeFailed, err), 1)
+	}
+	if err := checkDataDesignCandidateReviewFingerprint(packet, expectedReviewFingerprint); err != nil {
+		return emitResult(out, resultFailure("knowledge-data-design-candidate-review", resultCodeKnowledgeFailed, err), 1)
+	}
+	return emitResult(out, resultEnvelope("knowledge-data-design-candidate-review", resultModeReview, packet), 0)
 }
 
 func flagPart(command string) string {

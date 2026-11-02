@@ -30,6 +30,7 @@
 | pureな規則に副作用を要求 | 拒否 | `IMPURE_REALIZATION` |
 | 未登録Plugin | 黙って落とさない | `REALIZATION_NOT_REGISTERED` |
 | 固定版の欠落／版不一致 | 拒否 | `REALIZATION_LOCK_MISSING`／`REALIZATION_VERSION_MISMATCH` |
+| 現在の権限・能力で実行できない | 別実装へ黙って落とさない | `REALIZATION_NOT_PERMITTED` |
 
 ## 合成Fixture
 
@@ -45,6 +46,8 @@
 | `half-up` を宣言した実現 | `MEANING_MISMATCH`（同等差替えを認めない） |
 | Go と SQL が同じ集合と結果 | `COMPLIANT`、`implementations=[go,sql]`、`equivalenceUnproven=false` |
 | coverage が異なる二実現 | `EQUIVALENCE_UNPROVEN` |
+| 規則identityを固定したまま実装identity（plugin・版・言語）を入替え | 同じ規則のfixtureで検査し、`RuleID`は変わらない |
+| 現在の権限・能力で実行できない実現 | `REALIZATION_NOT_PERMITTED`（別実装へ落とさない） |
 
 ## 実行方法
 

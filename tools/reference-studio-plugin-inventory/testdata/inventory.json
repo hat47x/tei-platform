@@ -1,0 +1,106 @@
+{
+  "scan": {
+    "state": "complete",
+    "observedAt": "2026-11-01T10:00:00Z",
+    "settingsVersion": "settings-7",
+    "allowedTargets": ["enabled-plugin", "multi", "unreadable", "providerless", "version-old"]
+  },
+  "plugins": [
+    {
+      "id": "enabled-plugin",
+      "version": "1",
+      "installed": true,
+      "enabled": true,
+      "permission": "allowed",
+      "supportedVersions": ["1"],
+      "namespaces": ["alpha"],
+      "readState": "readable",
+      "files": 5
+    },
+    {
+      "id": "disabled-plugin",
+      "version": "1",
+      "installed": true,
+      "enabled": false,
+      "permission": "allowed",
+      "supportedVersions": ["2"],
+      "namespaces": ["beta"],
+      "readState": "readable",
+      "files": 2,
+      "pastFiles": 4
+    },
+    {
+      "id": "not-installed",
+      "version": "1",
+      "installed": false,
+      "enabled": false,
+      "permission": "allowed",
+      "supportedVersions": ["1"],
+      "namespaces": ["theta"],
+      "readState": "not-read"
+    },
+    {
+      "id": "version-old",
+      "version": "1",
+      "installed": true,
+      "enabled": true,
+      "permission": "allowed",
+      "supportedVersions": ["1", "2"],
+      "namespaces": ["gamma"],
+      "readState": "readable",
+      "files": 1
+    },
+    {
+      "id": "multi",
+      "version": "1",
+      "installed": true,
+      "enabled": true,
+      "permission": "allowed",
+      "supportedVersions": ["1"],
+      "namespaces": ["epsilon"],
+      "readState": "readable",
+      "files": 3
+    },
+    {
+      "id": "unreadable",
+      "version": "1",
+      "installed": true,
+      "enabled": true,
+      "permission": "allowed",
+      "supportedVersions": ["1"],
+      "namespaces": ["zeta"],
+      "readState": "unreadable",
+      "files": 7
+    },
+    {
+      "id": "providerless",
+      "version": "1",
+      "installed": true,
+      "enabled": true,
+      "permission": "allowed",
+      "supportedVersions": ["1"],
+      "namespaces": ["delta"],
+      "readState": "readable"
+    },
+    {
+      "id": "denied",
+      "version": "1",
+      "installed": true,
+      "enabled": true,
+      "permission": "denied",
+      "supportedVersions": ["1"],
+      "namespaces": ["iota"],
+      "readState": "readable",
+      "files": 9
+    }
+  ],
+  "areas": [
+    {"key": "area-a", "formatId": "fmt", "namespace": "alpha", "version": "1", "providers": ["enabled-plugin"], "readState": "readable"},
+    {"key": "area-b", "formatId": "fmt", "namespace": "beta", "version": "2", "providers": ["disabled-plugin"], "readState": "readable"},
+    {"key": "area-c", "formatId": "fmt", "namespace": "gamma", "version": "3", "providers": ["version-old"], "readState": "readable"},
+    {"key": "area-d", "formatId": "fmt", "namespace": "delta", "version": "1", "readState": "readable"},
+    {"key": "area-e", "formatId": "fmt", "namespace": "epsilon", "version": "1", "providers": ["multi", "other"], "readState": "readable"},
+    {"key": "area-f", "formatId": "fmt", "namespace": "zeta", "version": "1", "providers": ["unreadable"], "readState": "readable"},
+    {"key": "area-g", "formatId": "fmt", "namespace": "eta", "version": "1", "providers": ["ghost"], "readState": "readable"}
+  ]
+}
