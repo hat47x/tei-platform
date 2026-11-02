@@ -1812,3 +1812,63 @@ Source Revision不一致でhelperを停止させる。UI選択epoch、Provider S
 **記録票の最小列**：Trial ID、固定Model/Source/Role Pin/Rule/Bridge版、validAt/knownAt/publication revision、Person/Org/Relation ID、Query非出力依存、Function宣言、Provider実Route/Read Witness/Cohort、Measure/grain、Consumer/Artifact版、Intent選択・Driver Request・Effect Receipt・独立Read、試験Tool/Runner/head SHA、Oracle作成者、Owner採否、`unverified`理由。それぞれ必要な範囲だけ既存Evidenceへの参照で保持し、新たな巨大Context structを標準化しない。
 
 **判定境界**：#2596のmain統合はE0局所合成Referenceの履歴事実。#2655新規16件は今回V8局所成功のみで、Node exact-head/CIは未確認。以上を実TEI Data/Relation、実Query/Provider/Host/SHO、改編業務Owner受理、配備資格のPASSに合算しない。組織Data通常利用を妨げる特別ACL、TEI独自Host、第二Rule/Workflow/Authorization/Source正本を採用しない。
+
+## 51. 組織改編中の業務責任Coverageと進行中Caseの移管：承継・担当・実行許可を分離する（2026-11-03：他Workstream横断、採用前）
+
+### 51.1 §49〜50の残課題：組織承継≠進行中Caseの責任移管
+
+旧D1を2027-07-01にD1a/D1bへ分割する§49〜50の例では、FTE比較Bridgeや後継Relationがあっても、改編前から進行中の購買申請Q1を誰が引き継ぐかは未定である。旧D1の組織図をD1a/D1bへ張り替えただけでCase担当・決裁候補・実行Authorityまで移すと、責任の空白や二重決裁を見逃す。逆に全Domainへ単一責任組織を強制すると、共同責任・合議制・学際プロジェクトを破壊する。
+
+**Responsibility Coverage（責任充足）を新しい固定Core型ではなく、既存Data/Relation/受理済みRuleを用途・時点・取得Scopeで評価したClaimとして扱う**。意味と資格を分ける：
+
+| 区別 | 契約上の意味 | そこから自動推論しないもの |
+| --- | --- | --- |
+| Org succession | D1→D1a/D1b。軸・valid/known・Sourceがある関係 | 同一OrgUnit、全Case移管、Person/Position、Grant |
+| Case accountability | Q1→D1等、個別Case・期間・目的に対する責任Relation occurrence | 部門の後継線だけから移管完了 |
+| Responsibility rule | Ownerが選ぶ「単一責任」「共同責任」「合議体」「責任不要」等の基準・多重度 | 全組織/全業務に共通の単一責任者 |
+| Candidate resolver | 指揮・案件担当・代理など目的別の候補導出 | 認証済みPrincipal、現在Grant、最終承認 |
+| Effect / observation | 現在Target・post-image・Receipt・独立Read | Preview・同一画面Save・ACKのみからの完了認定 |
+
+組織Dataは他の標準Dataと同様に参照し、モジュール全体への特殊ACLは追加しない。保護指定された特定項目と実外部HostのAuthorityは、既存の個別契約で扱う。中央責任Registry、第二Workflow Engine、独自Hostは作らない。
+
+### 51.2 Coverageの成立・不成立・不明を区別する
+
+説明用記法 Coverage(Q1, purpose, validAt, knownAt, ruleRevision, scope, readEvidence) は正式API名やDSL構文の採用ではない。最初にOwner受理済みの期待多重度・対象Relation軸・発効日・旧案件取扱いを選び、必要なRelation集合とCase母集団の観測資格を別に確認する。
+
+- **established-for-scope**：同じ用途・Rule版・時点と確認した観測Scope内で、Ownerが選んだ多重度を満たす。実Operation許可・全Case移管済みは意味しない。
+- **ambiguous/violated**：単一責任を要求するRuleの下で、同時有効な異なる責任先2件を実観測すれば、partial Pageでも違反の正の証人になり得る。共同責任Ruleであれば同じ2件は違反でない。
+- **unassigned-for-scope**：責任必須のRuleで、必要なRelation集合が閉じていると確認できて初めて対象Scope内の責任先なしを断言できる。0件Page・古いReplica・候補なし表示だけでは成立しない。
+- **unresolved/unverified**：移管Rule未受理、Scope・非出力条件・Provider Cohort未確認、Rule版不一致、読取証拠なし。未割当て・業務拒否・技術失敗を一つのfalseへ潰さない。
+
+**2件存在**という多重度違反には正の証人が使える一方、**0件**や**全件移管済み**には対象集合の完全性が必要となる。#2387のEXISTS/NOT EXISTS、#2628実取得、#2582のClaim相対再評価と同じ非対称性であり、別の汎用証明器を作らない。閉じた小Fixtureでは手書きOracleと明示0件解釈で検証し、万能な全件証明を義務化しない。
+
+### 51.3 既存§49のR1/R2へ進行中Q1を重ねる手計算Oracle（**NOT RUN**）
+
+§49のP1/P2/P3、A1〜A4、旧D1→D1a/D1bと、R1（valid=2027-07-01, known=07-01）・R2（valid=同日, known=07-03）を使う。Q1は2027-06-30に旧D1責任で申請中と仮定する。FTE比較BridgeはCase移管の根拠でない。
+
+| 反例 | 入力・変更 | 独立Expectation（設計候補） |
+| --- | --- | --- |
+| ORG-RC-01 | 7/1にD1a/D1bへ分割、successionのみ | Q1移管先はunresolved。見た目のTree親やFTE比率で選ばない |
+| ORG-RC-02 | Owner受理済み単一責任Rule、Q1→D1aの有効Relation、同版の閉じた観測 | D1a責任のScope内Claimのみ成立候補。D1a担当者の現在Grantは別 |
+| ORG-RC-03 | Q1→D1aとQ1→D1bが同時有効、Ruleは単一責任 | 多重度違反。表示Treeで片側を隠しても消えない |
+| ORG-RC-04 | RC-03の2関係、Ruleは受理済み共同責任 | 多重度違反とは判定しない。共同承認の成立は別Rule |
+| ORG-RC-05 | Q1責任関係が部分Pageで0件、またはReplica/Primaryのknown-atに差 | unassignedや完了を断言せず、scope/cohort/否定依存が未知ならunresolved |
+| ORG-RC-06 | 申請は改編前、承認実行は改編後 | 申請時固定／承認時再解決／明示移管待ちのいずれを採るかOwner選択。暗黙切替禁止 |
+| ORG-RC-07 | R1時点のQ1移管説明を公開後、R2で遡及訂正 | R1成果物を固定再現。R2は別Claim/改訂文書。既往Effectの自動巻戻しなし |
+| ORG-RC-08 | Q1→D1a候補確認後、同一Txの後続Mutationで責任Rule前提が破れる | Owner-write条件が最終post-imageで偽なら、保証可能なAdapterではCommit拒否 |
+| ORG-RC-09 | 兼務・代理を根拠に自己承認、旧Grant失効、候補は表示可 | 業務上のSoD、実Principal・現在Grant/epoch、委任Scope、実Targetは個別再確認 |
+| ORG-RC-10 | Caseの母集団が部分取得、画面上の数件が移管済み | Case一覧の完全性と個別CaseのCoverageを区別し全件完了Claimを保留 |
+
+通常の部門図・FTE・Person IDが同じでも、Case ID、責任Relation occurrence、Owner Rule版、現在Grant、実書込Targetは同じとは限らない。R1公開説明・R2現行照会・その後のEffectを別々の資格として記録する。
+
+### 51.4 計画への引渡しと順序（新Gateなし）
+
+1. **P0-M／意味（#2386/#1126/#2510）**：既存Data/Relation/RuleでQ1の旧責任Relationと新責任Relation、successionとの違いを表現。RC-01〜07は既存ORG-OCの共有Sourceに追加するScenario/Expectedとし、新Org専用Schemaや第二Rule Engineを追加しない。
+2. **Query・取得（#2387/#2506/#2622/#2628/#2586）**：責任関係の正負の依存、非出力WHERE/NOT EXISTS、valid/known/Route/read cohort、Function Data Mappingを同一試行で結ぶ。さらに「対象Caseの全件」と「各Caseの責任Relation全件」の二つのScopeを別に観測。暗黙のProvider Fetchや架空CLI/APIを作らない。
+3. **再評価・標準UI・SHO（#2582/#2507/#2497/#1124/#1803）**：RC-01〜07の変更に対し依存する候補/未割当て/図表/SHO現在Claimだけを再評価し、無関係なPerson/Caseを根拠なく全失効しない。公開R1成果物をR2で上書きせず、標準Table/Tree/Graph/差分に未決関係と根拠を投影する。
+4. **P0-V／実行（#1129/#2598/#1174/#2499）**：Case移管候補→Owner受理→実Request Target→現在Grant/SoDと最終post-image→Receipt→独立Readを分離する。低水準Script・他ProviderのEnforcement Coverageは実証までunknown。複数Providerの一括Saveに架空の原子性を与えない。
+5. **検証と横断優先順位（#1131/#2514/#1119）**：既存§49〜50の合成Sourceと別ScenarioにRCの独立手書きExpectedを固定し、局所Reference→正式TEI Loader/Query/Context→実Provider/Effect→複数Consumerの順に比較する。#1119の実DB/PostgreSQLとOwner-writeの優先度は維持。既存#2596のmain統合・#2655の局所succession試験は新RC項目のPASSではない。
+
+**共通証拠票**：Case/責任Relation occurrence、Source/Role/Rule版、valid/known/publication、Org successorとCase migrationの別根拠、Ownerの単一/共同責任選択、Case母集団・責任関係の実取得Scope/cohort/complete、候補と実Principal/Grant、Consumer/Artifact、実Request/Effect/独立Read、固定run/headと独立Oracle、Owner採否・未実施理由。巨大な共通Context structを作らず既存証拠を参照する。
+
+**未決事項**：進行中Caseの申請時固定／承認時再解決／明示移管、単一/共同責任の範囲、遡及訂正の業務効果、未割当て処理は各業務Owner判断。本節は**採用前計画**であり、ORG-RC-01〜10は**実装・実行・実TEI/DB/Host/Owner受理ともNOT RUN**。組織Data専用ACL、TEI独自Host、第二Workflow/Authorization/Canonicalを増設しない。
