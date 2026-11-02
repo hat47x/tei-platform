@@ -134,6 +134,27 @@ M6の撤去判定では、移行済みConsumerの一覧、旧形式の読取り�
 
 採用時に生成する情報は**既存Source locator、適用Contract、Consumer・Target・実行時Scope、試験fixture/Oracle、未確認点への参照**で足りるか先に検証する。新しい横断`Approval`フラグ、独立Conformance Registry、全形式共通の`receipt` SSOTは先決しない。標準データ表現・Semantic Context・Data Operationsの拡張は[#2619](https://github.com/hat47x/tei-platform/issues/2619)の未採用の横断計画を参照し、このGateがそれらの正式DSL/Schemaを制定したとは扱わない。
 
+### 3追. Generation固定の外側にあるFunction StateとRead Witness（2026-11-02横断接合）
+
+**適用対象：G3の動的切替とG4の外部Consumer資格。追加の採用済み仕様・新Gateではない。** [Composite Functionの版・状態進化 Draft #2612](https://github.com/hat47x/tei-platform/pull/2612)、[Read Cohort/Field観測 Draft #2627](https://github.com/hat47x/tei-platform/pull/2627)、[Function Mapping/Rule依存 Draft #2624](https://github.com/hat47x/tei-platform/pull/2624)、[Everything is Dataの同一版接合 Draft #2629](https://github.com/hat47x/tei-platform/pull/2629)の**独立した設計・合成成果**を、#1223が実際に必要とするHost側の継続性／資格判断に接続する。各Draftの試験成功を合算して製品G3/G4合格とは扱わない。
+
+一つのInvocationについて、固定された**実装**と、時間とともに更新される**意味・状態・取得データ・現在権限**を次のように別の証拠として扱う。
+
+| 検査する事実 | 必要な固定・照合の対象 | Generationをpinしても残る不確実性 |
+| --- | --- | --- |
+| **意味・構造** | Accepted meaning/Rule、Source locator・Role・Operator版、Function Definition/Instance、明示Data Context | Syntaxの正規化一致や同じOperation IDだけではAction意味・改版後の適用資格を説明できない（#2619/#2620/#2598） |
+| **実行・状態** | 選択済みContract/Provider/実ロードArtifactとHost-local Generation、Instance state/version、移行候補の事前条件 | v1のin-flight保持は、状態付きFunctionのv1→v2変換可能性・rollback・Domain有効時点を保証しない（#2612/#1223） |
+| **入力・観測** | Consumerが要求するRead footprint、実Provider/Scope/Source版/取得時刻、Read cohort、Rowsetの被覆と各Fieldのobserved/value/null/absent | 同じSnapshot名、行集合`complete`、同じ表示値でも、別Provider・隠れた絞込項目・未観測Fieldを同一観測と証明できない（#2624/#2627/#2628） |
+| **利用・確定** | 呼出し時の現在Service Acceptance/Host Grant、exact送信Request/OperationID、Commit時Fence、Receiptと独立Effect観測、Consumer向け開示条件 | 旧Lease保持・Tool/Skill成功・Receipt照会失敗を現在の実行許可、永続作用の成功、適切な開示と同一視できない（#1174/#2390/#2605） |
+
+G3のv2公開判定に加える最小の**反証ケース**を既存Ownerへ割り当てる（本PRではいずれも**NOT RUN**）。
+
+- **CB-6：State移行とGeneration切替の非同値（E4/G3、#2612）。** Stateを持つFunction v1の処理を保持したままv2をReadyにしても、新版Stateに必須な旧履歴・発効日・Contextが失われるなら、当該Instanceの移行／旧版への復元を成功としない。必要な状態移行を`M: S1 ⇀ S2`という条件付き部分写像として比較し、切替可能なServiceと移行不能なInstanceを別列で記録。無状態のProvider交換では状態移行を必須としない。
+- **CB-7：Read CohortとField観測の相違（E2→E3、#2627/#2506）。** 同名Snapshot・同じ行ID集合で`Complete=true`でも、一方のProviderの対象Fieldが`absent`なら明示`NULL`や同一値と断定しない。非公開のFilter Fieldを物理Readした場合はConsumerの開示範囲とProviderの取得権限を独立照合。得られるClaimの十分性だけを判断し、欠落値を外部Harnessへ補完送出しない。
+- **CB-8：Source表現から実利用までの資格の分断（E0→E2/G4、#2625/#2629/#2390）。** Markdown/DOT/DSLから同じplain Dataを得ても、引用・文字列・実行Role、意味版、参照Scopeが異なる場合は同じ実行Contractとみなさない。外部Consumerが実ロードしたLibrary/ArtifactSet、現在Host権限、実際のResult/Disclosureを別々に観測する。構文変換の局所PASSは外部製品での実利用資格ではない。
+
+各Caseの**実証は対応Issue／既存Scenario／独立Oracle**が所有する。#1223ではGeneration/Hostを横断する結果だけを照合する。必要な確認にはSource/Meaning revision、Instance IDと状態、選択済みProvider/Artifact、Read Scope/時点/観測Field、Request/Effect ID、実Target、現在Authority、Consumerが受け取ったDisclosureを、**既存正本への参照として**一行ずつ結び付ける。共通Clock API、状態移行Engine、全情報流Checker、第二Source正本は導入しない。観測の欠落は当該Claimの`unproven`として残し、別レーンの実行可能な仕事は継続する。
+
 ### 4. 次に採る最小の縦断Evidence（重複実装しない）
 
 | 順序と担当 | 具体的な反例と観測 | 合格主張の上限／停止条件 |
