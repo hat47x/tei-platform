@@ -1439,3 +1439,50 @@ TEI #1127が検討する`Semantic Data/Relations → Function Data Context + Ope
 これらは**単一の新Common Host/認可Layerを追加する順序ではない**。既存専門部品を保ったまま、同一Source/Query/Action/Request/Outcomeの紐付けがどこまで実在するかを分かるようにする順序である。
 
 **残る実証不足**：Orgの正式Semantic宣言・Dataset/Scenario再利用、正式`tei` Query/Function Context、既存Go Intent Referenceから実Driverへの受渡し、実Provider/DB/Host、GUIの操作とSHO反映。負例に対応する機能が実装済みとは言わず、#2586縦断と#2598 Request束縛の結果を待ち、必要な時だけ本書の受入票を更新する。通常の組織Dataに特殊ACLを標準追加せず、特別な保護対象は別条件で扱う。
+## 44. 単一Sourceから複数Viewへの意味保存：専用オントロジー不要の標準可視化Pressure（2026-11-02）
+
+### 44.1 今回の差分：計数/操作の反例から、複数Viewの同時導出へ
+
+他チャットの#2495/#2497（メタ構造・Projection保存条件）、#2506/#2507（Function Data Context・Pattern）、#2593（Measure）、#2598/#2597（Intent→Request・Editing Session）、#2610（**人が読める業務設計**とHeadless/Effect/SHOの接続）を、**同じモデルから複数の表示を構成する**という一つの実証課題として結ぶ。
+
+**[Draft #2596](https://github.com/hat47x/tei-platform/pull/2596) の `verify-projection.mjs`**は、単一の合成Organization Source `org-synthetic-r7` を入力として、Table・Graph・部門所属Tree/forest・ChartとPositionの時点照会をread-onlyに構成する。以下の事実を利用する。
+
+| Sourceに明示したもの | Table | Graph | Tree/forest | Chart・Timeline |
+| --- | --- | --- | --- | --- |
+| Person `P1/P2/P3`、Membership `A1〜A4` | 4行、P2は2行、行ID≠Person ID | Personノード3件、Membership Edge4本、P2から2本 | P2は2つの異なるRelation出現を持つ葉として表示可能 | 世界全体のユニークPersonは3、所属出現4を別々に集計 |
+| 所属のSource ID、関係種別、直接根拠 | 行へRelation IDを付与 | Edgeに原Relation IDとRoleを付与 | 表示Occurrenceと元Edge IDを別に保持 | Departmentの集計根拠Edge IDを残す |
+| 明示的配賦 `1.0/0.6/0.4/1.0` | 基礎Relationを参照 | Relation自体をFTEと同義にしない | Person葉の数を合計FTEへ換算しない | D1 1.6、D2 1.4、合計3.0の別Measure |
+| Position `M1`、Occupancy `O1/O2`（有効期間） | 在任を直接所属と混同しない | Position/OccupancyはPerson/MemberOfとは別Relation | 職位の空席/在任切替を所属木から自動推論しない | 2027-07-01の在任者P2→P3。D1直接所属の追加は無し |
+
+**このReferenceで明示的に解決した問題**：Treeには単一親表示の需要があるが、P2のA2/A3という二つの所属から、**先に現れた行を『本務/主たる親』として暗黙選択する根拠はない**。したがって、単一親表示を要求しながら表示上の優先Relationが指定されなければ、両方の所属出現を保持して`unresolved`とする。表示目的の明示的Preferenceが`P2→A2`を選んだときだけA3を**非表示の関係として明示記録**し、Viewを**lossy/read-only**にする。このPreferenceは組織上の本務や指揮命令系統が業務的に受理されたという意味ではない。
+
+**デザイン原則**：Graph/Treeの形が違っても、実体とRelationの元ID・時点・集計の粒度・直接/派生の根拠を一致させる。UserがTree上の表示出現を削除・移動しても、隠れたA3がSourceから消滅したと解釈しない。意味の選択根拠が足りなければ**図を単純化しないこと**も適切な標準UIの応答である。
+
+### 44.2 標準Operationの現実の適用限界（GitHubの実候補コードとの照合）
+
+2026-11-02の[PR #2587](https://github.com/hat47x/tei-platform/pull/2587)は、候補Head `dc2842d241082d6dee89343cfbd9294153d0d403` に`internal/operations/surface.go`（blob `e1024a56e060c2dda4e64343d4eaae647782f84b`）を含む。**これはmainへ統合済みという意味ではない**。同ファイルの`OperationSurface`は、一般的なData単位の`list/read/create/update`などを、SourceのData/Key・Persistence Mapping・既存Capability Effect Bindingに基づき**read-onlyに導出**する仕組みである。そこには`unlink(Membership A3)`のRelation occurrenceの一般導出・実行、Graph/Tree/Chart自動構成は確認できない。
+
+- **この段階で標準化されている可能性のあるもの**：DataのSource/Keyと既存Capabilityの対応、read-onlyな操作候補/不足診断、明示Effect/Bindingに基づくcreate/update実行接続（詳細な成功資格は#2485がOwner）。
+- **本Referenceで局所的に示したこと**：`select-relation(A3)`をTable/Graphという異なるViewから、同じ元Relation occurrenceへ対応させられること。Sourceの単なる同一表示行やPerson名だけを根拠にしないこと。
+- **これから製品で実証すべきこと**：標準Data/Relation宣言と受理済みActionから、表示候補と`unlink`等の適用可能な操作を#2507/#2500が認識し、既存Capability/Driverへの対象Bindingを#2598で確認できるか。実Effect/Receiptは#1174へ委ねる。
+- **拡張の判断方法**：現行標準構造・Pattern/Pluginで表現可能か先に確かめ、反例で不足が確定したときだけ必要な共通意味契約を整理する。全Pluginへ特別なMeta DSL/Facetの登録義務、新Common Host、別のQuery/Action Engineを設ける方向には進まない。
+
+ここから、**標準UIが表示可能であること ≠ 業務上のRelation Actionを標準操作として持つこと ≠ 現在のHostで実行可能なこと**を明示する。開発者向けの通常のData/Relation/Rule宣言は簡潔なままでよい。TEI DSLの文字列表現・Table/Graph記法・モデル作成方法が異なっても、元のData構造と受理済み意味の正本を共有する。
+
+### 44.3 証拠区分、実運用の反証点と並列開発順序
+
+| 層 | 2026-11-02までに確認したこと | 次の不足とOwner |
+| --- | --- | --- |
+| E0a 組織の意味Oracle | `verify.mjs`：27件V8局所PASS | Type/Relation/Ruleの正式TEI表現、#2386/#1126 |
+| E0b 時点・Claim差分 | `verify-change.mjs`：11件Node v22.16.0局所PASS | 実Query/Providerのvalid/recorded時点と変化依存、#2582/#2506 |
+| E0c 意図→Requestの受渡し比較 | `verify-handoff.mjs`：16件Node v22.16.0局所PASS | #2598の実Go Intent→Driver Request/実更新対象 |
+| E0d 単一Source→異なるView | `verify-projection.mjs`：**16件V8互換Runner局所PASS**（GitHub head内で新追加）。Treeの暗黙主親選択を修正し、欠落Preferenceはunresolved、明示Preferenceでも非表示Edgeを記録してread-only。 | **実Node CLIはNOT RUN**。正式Data/Relationからの一般Pattern導出、#2497/#2507/#1127 |
+| E1 Headless結合 | Query/Context/Pattern/Intentの同版受渡しは**NOT RUN** | #2586が同一Source/Scope/Meaning/Versionで直接照合 |
+| E2 GUI・SHO・CUI | 作成済みなのはUIデータ風の局所Projectionであり、**実Renderer/ユーザー操作/文書保存後の参照再解決ではない** | #1124/#997/#2516、SHO/MMIの出典再解決 |
+| E3 実Action/Host | 実Command/権限/Commit/独立Read/Owner受理の組織ケースは**NOT RUN** | #2598/#2597/#1174/#1119 |
+
+**追加の受入負例**：`collapseDuplicatePerson`でP2の先頭所属を本務扱いして他方を暗黙削除する、未確定の主親Preferenceを業務上の指揮命令として使う、Sourceへ戻せない単一親Treeを直接編集可能にする、Graphノード・Table行・Chart棒を一律のUpdate対象にする、集計値と元Relationshipの粒度を同一視する、局所Test PASSをFunction/Query/Host全体のPASSと称する――いずれも失敗として扱う。
+
+**再現・再利用の制約**：今回の`verify-projection.mjs`は**同じファイル内の合成Sourceを4種類に投影**するRefであり、`verify.mjs`/`verify-change.mjs`/`verify-handoff.mjs`を含むすべての独立試験が**一つのTEI Canonical Source/Fixture**を参照しているわけではない。複数ファイルの自作fixture重複を残したまま「TEI全体で一体モデル→複数Viewを達成」と判断しない。次段は既存#1131 Dataset/Scenarioへ一つの元Data/Relationを固定し、実QueryとProjectionの消費者間で差分が分かる受渡し票をつくる。
+
+**作業優先度**：これは[全体#1119](https://github.com/hat47x/tei-platform/issues/1119)の実PG/Owner-write/SHO正本・文書の受入を妨げない**P1並列検証**。資料の追記はDraft #2389、実行可能な小ReferenceはDraft #2596に分ける。正式Core schema/新図記号体系の採用、GUI実装、PR統合やOwner意味受理の自動化は行わない。
