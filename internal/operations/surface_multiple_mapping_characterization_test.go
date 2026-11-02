@@ -119,3 +119,46 @@ func TestCharacterizeUnselectedMappingChangesDoNotAppearInDerivedSurface(t *test
 	}
 	t.Log("CHARACTERIZATION: derived Surface is insensitive to a change in a discarded mapping (Workspace ModelRevision may still change)")
 }
+
+func TestCharacterizeSelectedMappingColumnChangesInputsButNotBasis(t *testing.T) {
+	w := multipleMappingWorld()
+	before := DeriveOperationSurface(w, "order_entry")
+	a, ok := findOperation(before, "order_entry.create.sales.order")
+	if !ok {
+		t.Fatal("before create not derived")
+	}
+
+	// The archive mapping is currently the selected first alias. Add one
+	// persisted field without changing the mapping ID, table or primary key.
+	w.Persistence[1].Columns = append(w.Persistence[1].Columns, persistence.ColumnMapping{
+		Attribute:   "sales.order.status",
+		Column:      "status",
+		Storage:     persistence.StorageVarchar,
+		Nullability: persistence.Required,
+	})
+	after := DeriveOperationSurface(w, "order_entry")
+	b, ok := findOperation(after, "order_entry.create.sales.order")
+	if !ok {
+		t.Fatal("after create not derived")
+	}
+	if a.ID != b.ID || a.Basis != b.Basis {
+		t.Fatalf("current mapping basis unexpectedly changed: before=%+v after=%+v", a, b)
+	}
+	if len(a.Inputs) != 1 || len(b.Inputs) != 2 {
+		t.Fatalf("a source mapping field must change derived inputs: before=%+v after=%+v", a.Inputs, b.Inputs)
+	}
+	t.Log("CHARACTERIZATION: create inputs differ while operation ID and mapping Basis remain identical")
+}
+
+func TestCharacterizeStorageTypeChangeInvisibleToPureDerivedSurface(t *testing.T) {
+	w := multipleMappingWorld()
+	a := DeriveOperationSurface(w, "order_entry")
+	// Change the physical type of an already selected archive column.
+	// The currently projected operation inputs remain attribute IDs.
+	w.Persistence[1].Columns[0].Storage = persistence.StorageVarchar
+	b := DeriveOperationSurface(w, "order_entry")
+	if !reflect.DeepEqual(a, b) {
+		t.Fatalf("storage-only change now affects derived surface: before=%+v after=%+v", a, b)
+	}
+	t.Log("CHARACTERIZATION: physical storage change invisible to pure Operation Surface (workspace fingerprint not checked)")
+}
