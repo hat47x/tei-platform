@@ -81,8 +81,18 @@ jobs:
           python3 - "$RUNNER_TEMP/org-artifacts.json" <<'PY'
           import json,sys
           a=json.load(open(sys.argv[1]))
-          assert a, "artifacts must be non-empty"
-          print("native TEI artifact JSON generated; semantic Owner review remains separate")
+          items=a["artifacts"]
+          rev=a["inputRevision"]
+          manifest=a["manifest"]
+          assert rev and items and rev==manifest["inputRevision"]
+          assert all(x["inputRevision"]==rev and x["digest"] and x["rule"]["fingerprint"] for x in items)
+          assert sorted((x["kind"],x["digest"]) for x in items)==sorted((x["kind"],x["digest"]) for x in manifest["entries"])
+          surface=next(x for x in items if x["kind"]=="operation-surface")
+          content=json.loads(surface["content"])
+          assert set(x["id"] for x in content["operations"])=={"org_view.list.organization.membership","org_view.read.organization.membership"}
+          assert isinstance(a["findings"],list)
+          print("native artifacts / manifest / surface cross-read: PASS", "findings=",len(a["findings"]), "complete=",manifest["complete"])
+          # Findings/complete are reported rather than silently converted into meaning acceptance.
           PY
       - name: Verify workspace remains unmodified
         if: always()
