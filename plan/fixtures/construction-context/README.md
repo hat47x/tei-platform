@@ -17,7 +17,7 @@
 | W10 J-02/J-06 | Skillが見つけたバイナリと実行したバイナリの違い、Manifestとファイル版混合 | #2605/#2604 |
 | W2 DP-M4 | 公開行が同じ二世界で、非公開行だけ変えた場合に可視範囲の応答が同じ | #1178/#2515 |
 
-コードは小さな**判別反例**を再現するだけです。`Observation.snapshot_guaranteed`、`verified_read`、`subset_verified`、`disclose_total`は**Fixtureの仮定**であり、Provider/Hostの実保証・公開Policy・Oracle結果を取得した事実ではありません。`comparable`が示す`agree/disagreement/not_comparable/unverified`も合成入力の観測列であり、現行製品の状態名やBusiness Decisionではありません。
+コードは小さな**判別反例**を再現するだけです。必要なReadの観測資格は既定でfalseとし、未確認Read・重複key・欠けた比較条件を成功扱いしません。`Observation.snapshot_guaranteed`、`verified_read`、`subset_verified`、`disclose_total`は**Fixtureの仮定**であり、Provider/Hostの実保証・公開Policy・Oracle結果を取得した事実ではありません。`comparable`が示す`agree/disagreement/not_comparable/unverified`も合成入力の観測列であり、現行製品の状態名やBusiness Decisionではありません。
 
 ## 検証の境界
 
@@ -28,4 +28,4 @@
 
 ## 実行記録
 
-2026-11-02：隔離環境で `python3 verify_synthetic.py` を実行し、**14 tests PASS**。これは当該Pythonの公開合成関数と検証ケースのみを対象とします。TEI repository の `go test`、CI、CLI、実DB、SHO、外部Hostは **NOT RUN** です。
+2026-11-02：隔離環境で `python3 verify_synthetic.py` を実行し、**15 tests PASS**。これは当該Pythonの公開合成関数と検証ケースのみを対象とします。TEI repository の `go test`、CI、CLI、実DB、SHO、外部Hostは **NOT RUN** です。
