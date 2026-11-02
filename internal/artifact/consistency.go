@@ -29,6 +29,9 @@ const (
 	FindingUnknownRule = "ARTIFACT_RULE_UNKNOWN"
 	// FindingContentIncomplete: an artifact of a kind lost a line its reader relies on.
 	FindingContentIncomplete = "ARTIFACT_CONTENT_INCOMPLETE"
+	// FindingOperationIncomplete: a derived operation lost its basis or its
+	// autonomy class.
+	FindingOperationIncomplete = "SURFACE_OPERATION_INCOMPLETE"
 )
 
 // CheckSet verifies the internal consistency of a rendered set: every artifact
@@ -70,6 +73,18 @@ func CheckSet(set WorkspaceSet) []Finding {
 		carried := map[string]bool{}
 		for _, unresolved := range artifact.Unresolved {
 			carried[unresolved.Subject] = true
+		}
+		payload, err := decodeOperationSurface(artifact.Content)
+		if err == nil {
+			for _, operation := range payload.Operations {
+				if operation.Basis == "" || !knownAutonomy(operation.Autonomy) {
+					findings = append(findings, Finding{
+						Code:    FindingOperationIncomplete,
+						Subject: operation.ID,
+						Detail:  fmt.Sprintf("basis=%q autonomy=%q", operation.Basis, operation.Autonomy),
+					})
+				}
+			}
 		}
 		for _, gap := range surfaceGaps(artifact) {
 			if !carried[gap.Target] {
@@ -157,4 +172,14 @@ func requiredLines(kind string) []string {
 		return []string{operations.OperationSurfaceSchemaVersion}
 	}
 	return nil
+}
+
+// knownAutonomy lists the autonomy classes a surface may declare. An unknown
+// value would be read as "no gate" by a consumer, so it is reported.
+func knownAutonomy(value string) bool {
+	switch value {
+	case "unattended", "attended", "human-gated":
+		return true
+	}
+	return false
 }

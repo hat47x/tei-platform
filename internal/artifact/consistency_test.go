@@ -1,6 +1,7 @@
 package artifact
 
 import (
+	"encoding/json"
 	"path/filepath"
 	"testing"
 )
@@ -109,5 +110,37 @@ func TestCheckSetReportsMissingRequiredLines(t *testing.T) {
 	}
 	if !found {
 		t.Fatalf("an artifact that lost its table line must be reported: %+v", findings)
+	}
+}
+func TestCheckSetReportsAnOperationWithoutBasis(t *testing.T) {
+	set := negativeFixtureSet(t)
+	for i := range set.Artifacts {
+		if set.Artifacts[i].Kind != string(KindOperationSurface) {
+			continue
+		}
+		payload, err := decodeOperationSurface(set.Artifacts[i].Content)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(payload.Operations) == 0 {
+			t.Fatal("the fixture must derive operations")
+		}
+		payload.Operations[0].Basis = ""
+		payload.Operations[1].Autonomy = "whatever"
+		encoded, err := json.MarshalIndent(payload, "", "  ")
+		if err != nil {
+			t.Fatal(err)
+		}
+		set.Artifacts[i].Content = string(encoded) + "\n"
+	}
+
+	findings := CheckSet(set)
+	if len(findings) < 2 {
+		t.Fatalf("a missing basis and an unknown autonomy must both be reported: %+v", findings)
+	}
+	for _, finding := range findings {
+		if finding.Code != FindingOperationIncomplete {
+			t.Fatalf("unexpected finding: %+v", finding)
+		}
 	}
 }
