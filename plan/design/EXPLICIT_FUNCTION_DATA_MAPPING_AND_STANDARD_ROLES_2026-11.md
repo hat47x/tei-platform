@@ -108,3 +108,54 @@ Query Source/Workerの解析からのLineageだけでは、RuntimeのRLS/search_
 5. **A4：異質Domainと生産性**。業務データ以外にもGame World、組織、文書などで、FunctionごとのAccess Mapが利用できるか圧力を追加。Core特殊型・専用Editor・UI固有業務Rulesの追加数、明示Map定義量、生成AI補完の必要修正、実過剰取得・誤実行を測定（#2018/#2493）。
 
 採否は**実TEI経路が新しい意味正本・専用パーサ・独自Hostなしで成立するか**を基準とする。共通A/G/Roleから導出できるものは既存Ownerへ戻し、差分を最小のConformanceへする。Draft/局所PASSだけでMeaning受理・実Provider適合・情報保護の保証へ昇格させない。
+
+## 6. 2026-11-02追補：表示MappingとRule評価依存を分離する（RF-01〜18）
+
+### 6.1 前節のRead Footprintの厳密化
+
+これまでのEM-01〜20は、**Functionに明示された表示／読取りデータの構成**に含まれないField・Relationを、合成Projectionに自動追加しないことを確認した。一方、業務上の保存・操作可否を判断するためには、表示していないデータを**別のRuleが正当に必要とする**場合がある。この境界を整理すると、明示Mappingだけで全データ依存を閉じたものとみなすことはできない。
+
+例：受注金額`Order.amount=600`を表示するFunctionが、受理済み`rule.order.credit`で`Account.credit_limit`（与信上限）を参照して操作候補のValidation結果を求める場合。画面は上限値を表示しなくてもよいが、評価するRuleにはその値または既存Host/Providerの信頼できる評価結果が必要になる。**表示のRead footprint**と、**ValidationのRule dependency footprint**を別の参照として保存し、実Providerがどこでどの入力を処理したかの資格を確認する。
+
+| 独立した観点 | 何を含むか | 依存・Owner |
+| --- | --- | --- |
+| **Display / Function Context Map** | Functionが選択して表示／変換へ利用するSemantic Path、Field、Scope、Grain | #2506/#2620/#2621 |
+| **Rule Dependency Footprint** | Ruleの定義と適用先から導かれる必要入力、Rule/Operator版、評価時点、入力集合の完全性、必要な派生Rule | #1129/#1729/#1720/#1637/#1708 |
+| **Target Read / Execution Binding** | 実Providerに要求した物理Input、取得の真のScope/版、Provider側の隠された計算、現在の実Authority | #2622/#2387/#2611/#1174 |
+| **Action Write / Effect Footprint** | どのEntity/Relation/FieldへどのOperation/Effectが及ぶか、Transaction/Result | #2500/#2597/#2598/#1129/#1174 |
+| **Consumer Disclosure** | 誰にどのField／Action名／Rule結果・理由を公開できるか。値と**判定結果自体**を別に開示判定 | #2516/#1178/#2515 |
+
+**機能が宣言した表示範囲をRule入力のために暗黙拡大することはしない。** 必要なRuleはそのSourceで参照される既存の受理済みRule Definition/Attachmentから解決し、追加の入力依存を明示する。生の秘密入力をClientやAIへ返さなくても、Host側の既存ProviderでValidationを評価して**開示資格のある判定結果のみ**を返す構成を検証する。
+
+したがって、物理的な取得対象、評価可能性、表示可能性、実行許可を一つの`allowed`へまとめない。Rule入力の取得や評価を許可できなければ`unresolved/not_established`であり、「業務上のValidation不成立」とは違う。Ruleが純粋評価であっても、その評価が可能なことは書込みActionのGrantやCommit成功を意味しない。
+
+### 6.2 同じ画面、異なる世界の三つの対照
+
+1. **RF-04：同じ表示と異なるRule結果**。`Order.amount=600`は同じでも、与信上限700なら合成Ruleは成立、上限500なら不成立。**表示Projectionの同値≠操作前提/Validationの同値**。
+2. **RF-05〜07/10〜13：Rule入力の品質**。与信上限が未提供、利用資格不足、部分観測、Rule版/入力版不一致、読取りepoch不一致、Scope不一致、NULL方針不足なら、合成Validatorは`unresolved`にとどめる。`not_satisfied`へ無音変換しない。
+3. **RF-14/15：判定結果も開示対象**。上限値を出さなくても「与信不足」という判定が秘密上限の情報を推測させることがある。結果の開示が許可されないConsumerには、異なる二世界でも同じ`unavailable`を出す。開示が許可されたConsumerに限定して、合成Previewの成立／不成立を出せる。
+
+この対照から、#2582のReactive Invalidationで監視する必要がある依存も明らかになる。未表示の`Account.credit_limit`が更新されれば、受注金額の表示値は再利用可能でも**Validation/Action候補の資格は再評価対象**。未使用の`Order.payments`が変化しただけなら、そのRule/Contextに根拠を持たない失効を無条件に広げない。実依存Graph・Invalidation Plannerは#2582/#1641が所有し、本PRに第二CacheやObserverは設けない。
+
+### 6.3 自作Fixtureと実測の限定範囲
+
+`plan/fixtures/function-access-map/test_rule_footprint.py` を追加し、Python標準ライブラリだけで**RF-01〜18の18/18 PASS**、`python3 -m py_compile` **PASS**を隔離コンテナで実測した。
+
+- 描画対象の`Order.amount`と、評価にだけ必要な`Account.credit_limit`を独立宣言として照合。
+- 合成Validationの`satisfied / not satisfied / unresolved`を区別し、入力欠損・現行資格不足の表現・NULL/版/epoch/Scope不一致・重複・未知Rule意味の負例を固定。
+- `after_commit`のEffect Ruleを純粋Validationとして扱わず、局所成立を実行Grantへ昇格しない。
+- 同じ公開表示でも秘密Rule入力の変化によりValidationが変わる反例、および**判定結果そのものの開示許可**によるConsumer向け出力差を観測。
+
+**exact tested file**：7969 bytes／SHA-256 `ab19fea1d2097b9451776d05431092c276bf1f3b89a56868dd4d97fe775f651e`／Git blob `a7b028dff2c0fb3d1859fd67366e4179639c8083`（GitHubに保存したBlobと一致）。
+
+`Rule.accepted`、`Evidence.permitted_for_rule`、`allowed_result`、`complete`、`revision`、`epoch`は**すべて合成Fixtureの信頼済み仮定**。正式なTEI Owner Rule受理、実Provider Authority、複数実DB snapshotの同一性、実行時Data/Rule版適合を保証しない。今回の同一`epoch`/同一数値`revision`検査は**限定Fixtureの保守的な比較方法**であって、製品全体がRule版とData版の数値一致を要求する設計ではない。実ReaderのSnapshot整合は#1708、Rule入力→Validationは#1729、Effectの真正性は#1174に戻す。
+
+**既存EM-01〜20との合計は独立Python合成38件PASS**。実TEIのFunction Context→Rule Attachment→Validation→Driver/Host→独立Read/SHO/AI Consumerを同一試行で接続した試験は**NOT RUN**。実行した二つのReferenceのPASS数を製品の受入数として合算しない。
+
+### 6.4 開発計画への差分
+
+- **A0 read-only照合**：既存#2506 Data Context Mappingと#1129 Rule Definition/Attachment／#1729 Validationの間で、実際に取り出せる入力依存・適用先・版・Scopeを一枚の受渡し票へ整理する。画面表示FieldだけでRule全体のRead Footprintとみなさない。
+- **A1 Headless縦断**：同一`Order.amount`から、与信上限の入力欠損・不許可・変更・版ずれ・完全性不足を含むRule結果を、正式TEI Rule/Context/Validationの既存実装を通して試す（独立Synthetic Referenceをそのまま製品へ移植することを合格条件にしない）。
+- **A2 Provider/Consumer**：Server側で評価し、上限値は非公開のまま結果だけを限定開示する構成を、既存Hostと二Consumerで検証。`not_satisfied`が推測する情報について現行Disclosure Policy・Authorityを検査する。
+- **A3 Action/Effect**：未保存Previewで成立しても、保存時点の実Value/Rule/Grantが異なる場合、Owner Action側で再評価・Expected State/Commit Fenceを適用する。#2597のSave Sessionと#1174の実Effect・Receiptを再実装しない。
+- **A4 Cross-Domain**：同型の依存を、組織Membership Rule、センサー閾値、ゲームWorldの認知・行動判断、文書Lintへ展開し、Role/Rule/Contextの再利用率、追加Core数、UI専用Business Ruleの削減を#2018で測る。
