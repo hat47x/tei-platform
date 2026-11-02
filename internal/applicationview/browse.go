@@ -22,6 +22,7 @@ type BrowseView struct {
 	Filters             []FilterRef             `json:"filters,omitempty"`
 	Sorts               []SortRef               `json:"sorts,omitempty"`
 	PageSize            int                     `json:"pageSize,omitempty"`
+	PrintTemplate       string                  `json:"printTemplate,omitempty"`
 	Packages            []PackageRef            `json:"packages,omitempty"`
 	SemanticFingerprint string                  `json:"semanticFingerprint,omitempty"`
 }
@@ -113,6 +114,7 @@ func BuildBrowse(world ir.World, applicationID, patternID core.CanonicalID) (Bro
 		Data:          pattern.Data,
 		Query:         pattern.Query,
 		PageSize:      pattern.PageSize,
+		PrintTemplate: pattern.PrintTemplate,
 	}
 	fingerprint, err := fingerprintForApp(world, *app)
 	if err != nil {

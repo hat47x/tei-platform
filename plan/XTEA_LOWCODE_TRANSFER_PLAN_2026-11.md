@@ -343,6 +343,7 @@ WP10 統合と引継ぎ
 | 属性の役割（role） | 実装 | 付録C.5 |
 | 項目の並び（layout） | 実装 | 付録C.5 |
 | 印刷の受領票 | 実装 | 付録C.5 |
+| 帳票テンプレートの版 | 実装 | 付録C.5 |
 | Packageのビュー | 実装 | 付録C.5 |
 | Applicationのビュー | 実装 | 付録C.5 |
 | 印刷の改ページ（`page-break`） | 実装 | 付録C.5 |
@@ -380,6 +381,7 @@ WP10 統合と引継ぎ
 **PRの関係.** 文書は[#2519](https://github.com/hat47x/tei-platform/pull/2519)、対話契約のPoCは[#2521](https://github.com/hat47x/tei-platform/pull/2521)です。PoCは文書のD1・D3.1の最小部分を実装し、`main`には未統合です。
 
 **統合の条件.** 要求・設計の採否が決まり、PRがDraftでなくなり、CIとレビューが通ることです。Draftのままでは統合しません。
+
 
 
 

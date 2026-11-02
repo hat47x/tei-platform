@@ -27,6 +27,7 @@ type View struct {
 	SemanticFingerprint string                  `json:"semanticFingerprint,omitempty"`
 	Hooks               []HookRef               `json:"hooks,omitempty"`
 	Unused              []Item                  `json:"unused,omitempty"`
+	PrintTemplate       string                  `json:"printTemplate,omitempty"`
 }
 
 // PackageRefは、このPatternを含むPackageへの参照である。
@@ -179,6 +180,7 @@ func Build(world ir.World, applicationID, patternID core.CanonicalID) (View, err
 		return View{}, err
 	}
 	view.SemanticFingerprint = fingerprint
+	view.PrintTemplate = pattern.PrintTemplate
 	for _, pkg := range app.Packages {
 		for _, member := range pkg.Members {
 			if member.Pattern != pattern.ID {
