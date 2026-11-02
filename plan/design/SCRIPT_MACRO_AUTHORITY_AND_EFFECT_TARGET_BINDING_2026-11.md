@@ -561,7 +561,65 @@ Script AuthoringのSourceと、正式に公開したMacro/Library/依存Plugin�
 
 **資格**：QX-25の局所SQLite実測、#2634/#2632/#2633の実Goテスト候補、#2600/#2636の文書手順は、実行場所・exact head・対象が異なる。全T-35〜44のMacro〜実Host/Provider〜Publisher〜Disclosure縦断、正式意味受理、配布・性能試験は**NOT RUN**。個別Issueの実測を横断PASSと合算しない。
 
-## 13. 判断を残す点
+## 13. 実CLIから外部Consumerへの最小縦断：発見・表示・実行・受領を混同しない
+
+### 13.1 2026-11-02にmainへ統合された実装を、新しい検証起点にする
+
+前節までのSource-staticな基点`9c9ef4d...`と区別し、**[#2587](https://github.com/hat47x/tei-platform/pull/2587)は2026-11-02にmainへ統合済み**（merge commit `8464db0bbbac216ede15d3344e72b7e8bd90cb65`）。[Status更新 #2643](https://github.com/hat47x/tei-platform/pull/2643)を含む参照mainは`d8f5114f17793354bbab0c766190699ad2b5d60b`。これは#2587で実装したread-only Operation Surface・Artifact導出と既存Capabilityへの合成束縛が**製品コードへ存在すること**を意味するが、P0-aの実PostgreSQL並行更新やMacro実ロード、Owner業務意味受理を意味しない。
+
+mainの`cmd/tei/main.go`／`cli_operations_artifacts.go`／`cli_contract.go`を再確認すると：
+
+- `tei operations -workspace <root> [-application <id>]`は`operations.SurfaceWorkspace`を呼び、導出した操作と不足・衝突をJSONで返す。Sourceからのread-only導出であって、そのまま実行許可や利用可能な全操作を示すものではない。
+- `tei artifacts -workspace <root> -application <id>`はArtifact Set（Manifest/Findingsを含む）をJSONで標準出力へ出す。`-out <dir>`を指定すると**ローカルファイルを変更する**。その場合、標準出力は`set.Manifest`のみとなり、実際に書かれる`manifest.json`には`{manifest, findings}`が含まれる。`-out`は「read-onlyな情報取得」と同じ扱いにしない。
+- `tei commands`の`tei.cli.discovery/v0`は明示的に`selected-read-only-commands`という**限定カタログ**で、現在の`operations`と`artifacts`は列挙されていない。一方、`main.go`のコマンドdispatchには両者が実装されている。**カタログへの非掲載≠CLI未実装**、また**実装存在≠Skill/利用者に対する実行資格**。Skillは実Version/Help/契約を発見し、存在しない命令を創作せず、対応差を報告する。
+- [`reference/standard-crud/workspace`](https://github.com/hat47x/tei-platform/tree/main/reference/standard-crud/workspace)のApplication`ledger`は`sales.note`の`read/create missing-semantics`、`sales.order`の`retire missing-input`などを持つ合成負例。`validate`が`ok`でも、Operation SurfaceのGapsは残り得る。
+- [#2587の保存済み検証記録](https://github.com/hat47x/tei-platform/blob/main/plan/evidence/SURFACE_AND_ARTIFACT_VERIFICATION_2026-11.md)ではGo build/vetとFocused test、二Workspaceのvalidate成功を報告。実DB競合の試験は`TEI_TEST_POSTGRES_DSN`未設定でSKIP。今回の新Consumer接合のGo/CLI実行とは区別する。
+
+この既存main実装を最初の**製品Sourceに接続できるread-only縦切り**とし、未統合の複数Mapping負例Draft #2632/#2633等の特性記述を、既にmainで修正済みという意味にしない。
+
+### 13.2 最短の一件：同じSubjectを「実コマンド→結果→用途別Consumer」に接合する
+
+**M0（Product CLI確認）**：固定checkoutで`go build ./cmd/tei`または同じソースへの明示実行を選択し、`version -json`・`commands`・`validate -workspace reference/standard-crud/workspace -json`・`operations -workspace reference/standard-crud/workspace -application ledger`を別呼出しで観測する。実バイナリ/Revision、Workspace/Source fingerprints、exit/diagnostics、Operation IDとGaps、`commands`への非掲載を一枚に並べる。異なる呼出しで同一Snapshotを保証できない場合は、そのClaimを限定する。**これは実行手順案であり、今回これらのコマンドを新たに実行していない。**
+
+**M1（安全なArtifact Consumer）**：同じApplicationで`artifacts`の標準出力を取得し、Manifest/Findings/Operation Surfaceの対応を読取り専用で確認する。`-out`を試す場合は明示した隔離ディレクトリを用い、実際に書かれたファイル・manifestの全Member・必要Applicationの範囲を読み直して照合する。Manifest内部整合、期待Memberの充足、物理公開の同一世代、Readerが本当に読んだbytesを別欄にする（#2482/#2604/#2630）。`-out`の既存ディレクトリへの無条件再実行を安全なread-only手順としない。
+
+**M2（Product Skillの正当な案内）**：[TEI Product Skill #2605](https://github.com/hat47x/tei-platform/issues/2605)は現在の`yi-tei-modeling`読取り専用調査の説明・検査を担当する。Skillを使わない同じCLIと、Skill/外部Harnessを使ったread-only調査で、実コマンド・Source・診断の一致、漏れるTool名/Schema/Warning、現在のDisclosureを比較する。[TAI Draft #270](https://github.com/hat47x/tai-pleroma/pull/270)・[TAI #271](https://github.com/hat47x/tai-pleroma/issues/271)・[TAI #272](https://github.com/hat47x/tai-pleroma/pull/272)へ引き継ぐ。**Toolの発見・Skill文書の記述はCapability発行ではない**。User Macroの起動/更新は#2499/#1174が別途認可する。TAIの導入がTEI単独CLIの必須前提になってはならない。
+
+**M3（Operation実作用の別資格）**：read-only Surfaceに現れた`ledger.update.sales.order`はAction候補であり、実Host RequestでもCommit完了でもない。利用者Macro→typed Intent→実Provider経路/現在Grant→Owner Effect→独立Receiptの同一ケースに、#2598/#2499/#1174の既存受入を接合する。データ取得中に権限が変わる負例は[#2637 D2のpreflightとpost-load確認](https://github.com/hat47x/tei-platform/pull/2637)へ委譲する。後段の再確認があっても、その前にRawをOS/Networkへ送った可能性、読取中ABA、実DB Snapshotまで安全と主張しない。
+
+**M4（説明と成果物の実受領）**：業務上確定したEffect・初回BusinessResult・現在の説明・SHOの保存設計書・外部EKI成果物の納品は別。SHO/外部Consumerのread-only引用は#2516/SHO #10、実Reader/Source再解決はMMI C-01/T2と#2604、EKIのAttempt Bodyは[#465](https://github.com/hat47x/eki-fabric/issues/465)/[#409](https://github.com/hat47x/eki-fabric/issues/409)が検証する。**Claim ACK＝同じAttemptのBody受領＝元依頼者の実Read＝納品完了、とはしない**。
+
+最初にM0/M1の同一実Application read-only evidenceを成立させ、その後M2/M3/M4を相互独立のConsumer資格として段階接続する。すべてを一回の巨大な新Runtime/E2Eを作る前提にはしない。
+
+### 13.3 最終回答に現れない「観測可能な面」を分ける
+
+[TAI #272の横断計画](https://github.com/hat47x/tai-pleroma/pull/272)では、**最終Answerが同じでも**実行前のTool候補、UI/SHO Rendererのリンク構造、Accessibility Tree、Session/Network Log、実Reader/出力Bodyが異なり得る合成比較を行っている。Macro/Skill/SHO Consumerでも、次を別の観測面とする。
+
+1. **Source/Role判定**：引用や例示にある`role: trusted-script`、`op=delete`等を、正式Role/実行命令へ昇格させない。[#2638 Role bootstrap](https://github.com/hat47x/tei-platform/pull/2638)の依存Pin・Eager cycleと正当な遅延Refを区別し、Role/Plugin版の自己申告だけでTrustを得ない。
+2. **候補の外部表示**：未公開Tool名やMacro/Action名、利用可能性の差、内部検証のBoolean、失敗件数や診断で非公開の存在を漏らす可能性を評価。意図的に許した公開と秘匿Profileを区別する。
+3. **Rendererの実出力**：Markdown文字列の一致ではなく、実DOMのリンク、Accessibility、コピーされた文字列、保存されたSHO文書の表示・Source linkをConsumer別に検査。表示文書の適合はマクロの実行Permissionと別。
+4. **実呼出しと送出**：実Tool名/args、実PayloadとProvider、OS/Networkへのbyte/送信先、実Grantと拒否箇所を確認。read-only宣言、UI`enabled`、Tool説明をOS隔離の証拠にしない。
+5. **結果の回収とDelivery**：Task/Run/Claim/ACKと、同一Attemptの実Body/digest・受信者のRead・現在Disclosureを別に扱う。空の正当Resultと未受領/Reader失敗を同一視しない。
+
+**公開の非干渉を主張する場合**、保護された値・Tool可用性・Source注記だけを変えた二世界について、**対象Consumerに実際に観測される全ての公開面**を比較しなければならない。最終Answer本文だけの一致からTool候補やログの秘密非流出を主張しない。ただしTool候補の差を一律禁止するのではなく、そのConsumerに許した公開範囲と判定する。OS/実Browser/実Harnessの確認はTAI #232・TEI #2515へ委譲する。
+
+### 13.4 M0〜M4に対応する独立受入（T-45〜T-53、全て新規NOT RUN）
+
+| Case | 正負対と観測する事実 | 既存Owner |
+| --- | --- | --- |
+| **T-45 実CLIと限定Catalog** | main`commands`は`operations/artifacts`を載せず、実dispatchは持つ。非掲載=不存在/実行許可と誤推論せず、実Versionとhelp/コード・具体Contractを照合 | #2605、#1155/#2354 |
+| **T-46 Operation Gaps** | `standard-crud`の`validate ok`と`missing-semantics/missing-input`を同時保持。操作候補から現在の実行権限を生成しない | #1127/#2611/#2502 |
+| **T-47 Artifact取得方式** | `artifacts` read-only stdoutと`-out`ファイル変更を区別。stdout Manifestだけから実`findings`/必要Member/公開世代をPASSにしない | #2482/#2604/#2630、#2605 |
+| **T-48 Source引用とRole依存** | 説明Markdown内の`trusted-script`文字列、RootだけpinしたRole依存、Eager cycleを正式Macroとして公開・実行しない。正当な再帰Refは別評価 | #2620/#2621/#2638、#2502 |
+| **T-49 読取中のGrant失効** | 取得開始時に許可、その後失効→返却直前の再確認で拒否。保持中の旧認可からRaw/Derived結果を返さず、既往OS送信やABAまでは保証しない | #2637/#1640/#2515 |
+| **T-50 同じAnswer・異なる候補面** | 最終回答同一でも非公開Tool/Actionの候補名・Error/件数が外部へ出るか。許された公開と保護された面を区別 | TAI #272、#2516/#2504 |
+| **T-51 Renderer/SHOの実リンク** | 同じMarkdownのテキストでもRenderer構成が違うと実DOM/a11y/出典リンクが変化。本文・Render・保存/公開資格を区別 | TAI #272、SHO #7/#10、#2516 |
+| **T-52 ACKと同AttemptのBody** | EKI Claim ACK後も実Bodyが未送達ならMacro成果物納品済みとしない。Body失敗時に業務Actionを新Attemptで無確認再実行しない | EKI #465/#409、#1130 |
+| **T-53 二Consumerの根拠接合** | 同一Source/版/SubjectのCLIとAI/SHO Consumerを比較。別Snapshotや開示条件、実Loader版が不明なら部分一致を全体PASSへ昇格させない | #2516/#2605、TAI #271、SHO #10 |
+
+**停止線・引継ぎ**：初回の最小実行はM0→M1のread-only CLI（実`reference/standard-crud`を利用）だけを#2605/#2502が共有。実業務書込みP0-a、二Function Rule P0-bは#1119のOwnerを優先し、新しいGateとして追加しない。M2のSkill実Harness試験、M3の実Host/Effect、M4の文書・Body受領は各Ownerが実装し、同じ版・対象・Consumerの証拠が得られるまで`NOT RUN`／`unknown`で接続する。新YI中央Host/Registry・TEI専用Skill実行Runtime・第二認可/Role Resolver/Document Storeは追加しない。
+
+## 14. 判断を残す点
 
 - **業務Owner**：各Actionで「元の対象」「関係する対象」「全件の完了」をどのように定義するか。旧X-TEA `sales.order.submit`等の未受理マッピングは推測で補わない。
 - **組織Owner**：固定集合／実行時集合、代理の時点、合議、実行版固定と作用範囲での更新許容、既発行Grantの変更時再判定、結果閲覧をどのPolicyで扱うか。
@@ -573,4 +631,4 @@ Script AuthoringのSourceと、正式に公開したMacro/Library/依存Plugin�
 
 **確認できたこと**：固定mainの既存型・RequestHash・通常Request生成・試験DDLのデータ解釈を静的に確認した。既存IssueにはT-1の具体的な未実行DB負例、Effect replayとResult再投影の未実行負例、EKI出力接続の静的所見がある。
 
-**未実行・未採用**：本書のT-1〜44の実行、信頼済みIssuer/実Grant、利用者Macro実ロード、PostgreSQL負例、Linux/WindowsでのOS隔離、外部EKIの同一Attempt納品、複数Target受入、業務意味の正式受理。新しいCore kind、Grant/Receipt schema、専用Host、共通Workflow Engine、仕様やADRの採用を本書から確定しない。
+**未実行・未採用**：本書のT-1〜53の実行、信頼済みIssuer/実Grant、利用者Macro実ロード、PostgreSQL負例、Linux/WindowsでのOS隔離、外部EKIの同一Attempt納品、複数Target受入、業務意味の正式受理。新しいCore kind、Grant/Receipt schema、専用Host、共通Workflow Engine、仕様やADRの採用を本書から確定しない。
