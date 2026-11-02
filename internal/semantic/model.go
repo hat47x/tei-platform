@@ -16,13 +16,13 @@ type Namespace struct {
 // Period binds one data to a business date and to the states a closing period
 // passes through. It declares meaning; it does not execute a close.
 type Period struct {
-	ID            core.CanonicalID   `json:"id"`
-	Data          core.CanonicalID   `json:"data"`
-	BusinessDate  core.CanonicalID   `json:"businessDate"`
-	States        []string           `json:"states,omitempty"`
-	CloseRequires core.CanonicalID   `json:"closeRequires,omitempty"`
-	ClosedRejects []string           `json:"closedRejects,omitempty"`
-	Correction    core.CanonicalID   `json:"correction,omitempty"`
+	ID            core.CanonicalID `json:"id"`
+	Data          core.CanonicalID `json:"data"`
+	BusinessDate  core.CanonicalID `json:"businessDate"`
+	States        []string         `json:"states,omitempty"`
+	CloseRequires core.CanonicalID `json:"closeRequires,omitempty"`
+	ClosedRejects []string         `json:"closedRejects,omitempty"`
+	Correction    core.CanonicalID `json:"correction,omitempty"`
 }
 
 type TypeKind string
