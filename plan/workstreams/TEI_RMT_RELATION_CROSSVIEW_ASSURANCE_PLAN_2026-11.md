@@ -77,7 +77,17 @@ P1の最初のHeadless確認では、固定した同一配布版に属するXEA[
 
 本節は**計画上の判別条件**であり、定義・Data Context、Provider、Rule、公開・実Effectの新しいOwner、第二Oracle、Runtime Host、製品enum/APIを作らない。固定Source/Policy/Function Context、Claim、独立Expected、検証到達範囲、実入力を試験票に記録する。Mutant/MetamorphicのTEI製品実行、実Provider/実GUI/Owner意味受理は**NOT RUN**。
 
-### Case別に失敗原因と検証資格を固定する（本表の20統合ケースは未実行）
+### G-V候補0件の証明可能範囲と候補集合の変化（Claim相対／非採用）
+
+[#2514のConsumer観測上の十分性](https://github.com/hat47x/tei-platform/issues/2514#issuecomment-6572161189)と[#2505の版間候補・Claim相対再資格化](https://github.com/hat47x/tei-platform/issues/2505#issuecomment-6572493377)を、**同一版G-V（設計Relationship→実装Refer候補）固有の列挙・選択**に限定して取り込む。[#2516の用途別Consumer確認](https://github.com/hat47x/tei-platform/issues/2516#issuecomment-6579615015)も参照するが、第二のEvidence/Authority体系を作らない。
+
+**否定Claimの範囲を固定する**：設計Relation Rについて「候補辺0件」と「対応する実装Referが存在しない」は同値でない。候補探索の根拠として、(a) exactな設計XEAD・実装XEAFそれぞれのsource version/byte、(b) Reader/profile適合・外来namespaceとunknown/unsupportedの隔離、(c) 対象Table/Key/Role/Alias/属性成分の探索集合と**列挙完了範囲**、(d) 候補生成Rule/Policy revision・省略／打切り／非公開の有無、(e) 当該Consumerが見られる証拠を記録する。**対象集合の完全性が検証できる場合だけ「そのSource版・規則・scopeでは一致候補0件」**と言える。これでも原典に「業務的Relationが存在しない」ことは証明せず、実施した候補照合規則で発見できなかったことの限定的な主張である。未探索・アクセス不可・抽出未対応なら `not observed / incomplete / undisclosed` と説明上区別する（製品state型を新設しない）。private candidate数が秘匿されるConsumerにpublic `0`を返す設計は採らず、開示資格に応じて非表示・判断保留にする。
+
+**Open-world候補増加を再検証の契機にする**：同一Source byteでもRole照合規則・候補列挙範囲の拡大によって、RのRefer候補集合が `{a}`→`{a,b}` に変わり得る。「候補が一意だった」という旧**機械的仮説**を新版の確定対応として引き継がず、Source/Policy/探索範囲を固定した当時の説明と現在の候補集合を並置する。逆に、以前Ownerが明示的に受理した「特定aを対象とする意味」は、新候補bの発見だけで歴史的に取り消さない。**現在の編集・生成・Actionへ受理済み証拠を適用できるか**は、選択aのTarget/Role/MeaningRevision、最新Sourceと現在Authorityの再照合で判断する（[#2500](https://github.com/hat47x/tei-platform/issues/2500)・[#2505](https://github.com/hat47x/tei-platform/issues/2505)へ委譲）。一つの描画線から複数参照を自動編集しないRV-E1を維持する。
+
+これはRMT専用の**合成検証計画**である。現行`internal/xeadsource/crossview.go`の`BuildCrossViewProjection`がXEAD-onlyである事実は変わらず、XEAD↔XEAFのG-V列挙・候補集合増加・Current Owner判定は**製品機能として未実証**。実Work H2/J5、旧GUI、正式Owner受理・公開/配布・外部Harness実消費もNOT RUN。
+
+### Case別に失敗原因と検証資格を固定する（本表の22統合ケースは未実行）
 
 | ケース | 入力・判別条件 | Headlessで照合する期待／禁止事項 | 担当 |
 | --- | --- | --- | --- |
@@ -90,6 +100,8 @@ P1の最初のHeadless確認では、固定した同一配布版に属するXEA[
 | **RV-K4** | 同一Source byteを旧/候補の判定規則で比較。独立Kのみの0→非0と、既にR1/R2影響がある非0→非0を別fixtureで実施。FAMILY arity分岐も対照 | 診断Boolean/total/byCode/ordinal/token/global/localとpolicy revisionを差分表に固定。影響件数はarity短絡で変わるため「原因1＋順序影響2」を一般化しない。既存Report CLI exit 0をrelease/meaning PASSとみなさず、旧版判定結果の無言再利用を禁止 | #950／#1126／#2514 |
 | **RV-N1** | 外来`x:Refer`／`x:Relationship`／`x:TableKey`／`x:Key`／`x:Table`、通常`Refer`上の`x:ToTable`／`x:ToKeyFields`等の属性類似名、外来Tableの子にある通常Referを対照 | Readerの`Known=false`、修飾名、局所Fact、親Table文脈の伝播を独立に調べる。外来宣言・外来親IDを標準Fact/Relationへ昇格させない。既存[#950 RMP-048/RML-023](https://github.com/hat47x/tei-platform/issues/950)が一般契約。**Draft #2603の先行headはRefer限定のCI成功**。追加headではXEA[D]の`Relationship/TableKey`、XEAFの`Key/Refer`と外来Tableの入れ子Scopeを合成テストへ拡張したが、**最新headのCI結果は別途判定**。外来宣言を元のField・Tableの意味受理へ転換しない | #950／#1126 |
 | **RV-X1** | 固定同一配布版のXEAD Relationship・XEAF Runtime ReferをSource Factとして独立読取。設計1件→実装候補0／1／複数、同型でもAlias・Role・Field成分が異なる対照 | 現行CrossViewはXEADのみ対応という実装境界を維持。候補グラフG-Vをread-onlyで表示し、原因・多重対応・未解決・元byte/候補Target参照を別出典で照合。次の意味受理・物理FKへ自動昇格しない | #950／#1126／#1031／private #4 |
+| **RV-X2** | 同じ設計Relation R。実装Refer候補0件の対照：(A)固定XEAF全対象nodeを列挙・profile適合・Role/Key条件で照合済み、(B)Reader未対応/探索打切り/一部scope非許可で未観測あり、(C)存在を知るが外部Consumerへ候補情報を開示できない | Aのみ「固定版・探索規則・許可scopeにおける一致候補0」を限定主張。Bは未探索を実在しないと扱わず、Cは非開示をpublic `0`へ変換しない。候補数・source node/atom/属性成分・unknown・列挙完了/非公開の各母数を区別し、業務Relationの非存在・意味Acceptedをいずれも推論しない | #950／#1031／#1126／#2514／#2516 |
+| **RV-X3** | 同じexact Source byte・設計Relation Rで、探索Rule/対象Role範囲を拡張し候補集合`{a}`→`{a,b}`。旧UIはaを選択済み。別枝ではaに明示Owner判断履歴あり | 旧「候補一意」という導出仮説を新しい列挙規則の現行一意性に昇格させない。aをTargetとしていた歴史的Accepted判断はbの発見だけで自動取消しないが、**現在のProposal/Putback/発行**はpinしたSource・Policy・候補集合・Role/対象・MeaningRevision・現在権限の適用を再照合。見た目の一線/SourceRef一致だけでbを無断採用しない | #1126／#2500／#2505／#2514／#1124 |
 | **RV-C1** | 設計Relation1宣言／runtime Refer2候補、各々別Role・Alias | Source1／Runtime2／対応候補2／Accepted0（synthetic開始時）を別々に数え、Diagramと辺一覧でも区別。自動分割・合成を行わない | #1031／#1126／#982 |
 | **RV-C2** | 複合キー・Referの1 XML属性に複数Field成分。属性なし／明示空／区切り成分付き／外来namespaceも対照 | node／atom／区切り成分の所属・順序を別々に保持。normalized listとraw declarationの存在・字面を分離（[Draft #2603](https://github.com/hat47x/tei-platform/pull/2603)はSource Factの限定修正候補）。全atom計上から全意味成分保持を推定しない | #950／#1031／private #4 |
 | **RV-E1** | 一つの表示線が設計Relation1／実装Refer2候補を縮約。片側だけ変更するUI操作と、一意なSource span/Roleを指定する操作を対照 | generic inspectorからSource/Role/候補0..Nを読めること。表示線だけの曖昧な変更はread-only・navigationへ留め、一意なType/Role/Source/MeaningRevisionのときだけTyped Edit Proposalへ。Proposal→受理→権限→Effectを別々に確認 | #1124／#2497／#2500／#2391 |
