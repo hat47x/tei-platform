@@ -42,6 +42,7 @@ jobs:
           set -euo pipefail
           python3 --version
           python3 -B plan/fixtures/construction-context/verify_synthetic.py
+          python3 -B plan/fixtures/construction-context/test_consumer_views.py
           python3 -B -c 'import ast, pathlib; ast.parse(pathlib.Path("plan/fixtures/construction-context/verify_synthetic.py").read_text(encoding="utf-8"))'
 
       - name: Verify read-only result and unchanged source
@@ -95,5 +96,6 @@ jobs:
           python3 -B plan/fixtures/construction-context/verify_real_cli.py \
             --binary "$RUNNER_TEMP/tei" \
             --workspace reference/workspace \
-            --expected-head "$EXPECTED_HEAD"
+            --expected-head "$EXPECTED_HEAD" \
+            --output-dir "$RUNNER_TEMP"
           test -z "$(git status --porcelain=v1 --untracked-files=all)"
