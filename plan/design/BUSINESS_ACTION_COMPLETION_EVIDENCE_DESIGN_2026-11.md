@@ -81,7 +81,7 @@ BC-01は「集合不完全」、BC-04は「完全な集合でも同Tx後続Mutat
 ## 6. 実証済み・未実証・採否の線引き
 
 - **確認済み（固定公開mainに対するコード静的照合）**：既存CrossViewのSourceEdgeとpair集約、既存unit testに二利用箇所を区別するassertが存在すること。既存IssueにOwner-write/receiptの証拠・負例設計があり、個別の合成/限定実行結果は各Issueへ帰属する。
-- **今回未実行**：BC-01〜06の新Scenario、Go/Java/Windows/実DB、原モデルの実Candidate J5接合、CUI/SHO Consumer、独立Provider完整性、Owner意味の正式受理。
+- **実施済みの限定合成反証（2026-11-02追補）**：下記 §8.1 の自作two-world fixtureをPython 3.13.5で実行し、1 unittest／8 subTest caseをPASS。これは業務・Providerの実装試験ではない。\n- **今回未実行**：BC-01〜12の実TEI Consumer/実業務縦断、Go/Java/Windows/実DB、原モデルの実Candidate J5接合、CUI/SHO Consumer、独立Provider完全性、Owner意味の正式受理。
 - **未採用**：完了述語の具体的なDSL/API/新型、Contextの永続形式、標準ステータス、全Target共通Host、業務上の正しい部分確定/再試行・引継ぎ条件。Sourceや過去のCI/merge、旧Driverのambient Commitから業務意味を自動導出しない。
 
 ## 7. Claimごとの証拠充足を評価する（2026-11-02追補）
@@ -130,10 +130,21 @@ BC-08/09のOwner仮説P3、BC-07の正式回復条件、BC-12の量化/再集計
 
 **S3先行／最小Consumer判別**：BC-01、BC-07、BC-08、BC-09、BC-10から二世界の組を選び、(a)同じConsumer表示、(b)Owner仮説下の異なる真値、(c)判別のために必要な追加Evidence、(d)当該Consumerに開示可能な最小説明、を**同一のClaim・時点・対象Scope**で記録する。既存#1125・#2506・#2500・#2516のread-only票を使用し、追加の共通BusinessResult/Claim APIを作らない。最初の合格候補は、両世界に同じ「完了」を出さず、根拠不足と既知の不成立、表示可能と実行可能を区別できること。
 
-**現行Issueの実測進捗を再利用**：[ #2505 RV-01〜12合成版間追跡](https://github.com/hat47x/tei-platform/issues/2505#issuecomment-6564707324)はSource対応候補の実験結果であってOwner受理ではない。[#2593／Draft #2594](https://github.com/hat47x/tei-platform/pull/2594)はSQLite 6/6の集計反例（別プロジェクトの合成試験）、[#2500／Draft #2517](https://github.com/hat47x/tei-platform/pull/2517)はread-only View→Intentの12試験を持つ。それぞれ**その局所構造の根拠**として参照し、BC-07〜12の業務完了、実Provider、原モデル完全移植のPASSに合算しない。
+**現行Issueの実測進捗を再利用**：[ #2505 RV-01〜12のうち合成10件の隔離実測](https://github.com/hat47x/tei-platform/issues/2505#issuecomment-6564707324)はSource対応候補の実験結果であってOwner受理ではない。[#2593／Draft #2594](https://github.com/hat47x/tei-platform/pull/2594)はSQLite 6/6の集計反例（別プロジェクトの合成試験）、[#2500／Draft #2517](https://github.com/hat47x/tei-platform/pull/2517)はread-only View→Intentの12試験を持つ。それぞれ**その局所構造の根拠**として参照し、BC-07〜12の業務完了、実Provider、原モデル完全移植のPASSに合算しない。
 
 **既存最優先実証**：#1119 P0-a（#1174実PGのCommit後結果異常→K/O/同ID Lookup）、P0-b（#1129/#1127二Function/同Rule/Owner-write）は順序を維持。業務完了の最終判断を追加するために、この二実証へ新しい共通Engineや要求粒度の全面拡張を持ち込まない。#2518の追加成果は**Ownerが完了を主張する前提を説明するS3/P1の設計**に限定し、#1119 G0〜G4は既存のまま。
 
 **S3 Owner判断の追加項目**：元Actionの初回完了／後続Recoveryによる業務過程完了、確認の存在／現行利用資格、固定cohort／動的cohort、承認された部分確定・遅着訂正の効力時点、Intent対象と確定Effectの必要一致、初回Resultの再取得要否、外部/手作業Handoffを**必要なClaim別**に受理する。採否と実証の正本は#267、#1125、#1174、#1129の担当へ保持する。
 
 **実証資格**：2026-11-02 main `9c9ef4d160640908e06ad13afb6c2b45c664c748`と既存Issue／Draft PRの静的照合。BC-07〜12の新しいBusiness Claim Consumer試験、Go/PG/Java/Windows/SHO/実原モデル、Owner意味受理は**NOT RUN**。既存の合成実測とは独立。採用済みDSL/ABI/Host/共通Status/新Gateなし。
+
+### 8.1 自作two-world fixture：表示の同一性だけではClaimを確定できない（限定実行）
+
+[合成fixture `verify_claim_projections.py`](../fixtures/business-completion-claims/verify_claim_projections.py)を、[BC-01/05/07〜12の設計票](#73-112差分の反証ケースと既存ownerへの受渡し)に対する**極小の反証データ**として追加した。
+
+- **実行**：`python -m py_compile plan/fixtures/business-completion-claims/verify_claim_projections.py`、`python plan/fixtures/business-completion-claims/verify_claim_projections.py`。2026-11-02の隔離環境 Python 3.13.5で`Ran 1 test ... OK`、8個の`subTest`対象は全てPASS。GitHub branch上のファイルblob `e9da92a845d3ffa4203b0969c4ee411b07547106`と、試験を実行したローカルファイルの`git hash-object`一致を確認。
+- **検証した条件**：各例で`visible(worldA)==visible(worldB)`かつ、**明示した合成Claimの期待真偽**がA=true／B=falseになる。対象は全件の一部取得、外部受領、正式Recoveryの帰属、値・membershipのABA、IntentとEffect対象、Receipt再生と歴史的Output、SUMの内訳である。
+- **証明範囲**：与えられた情報を失うProjectionだけからは、二世界に異なるClaimを正しく判定することが不可能、という*有限個の合成反例*。見えない値が実際にあること、OwnerのP3/Recovery規則が受理済みであること、TEI Consumerが現在誤判定していること、過去のReceiptや外部効果を実測したことは証明していない。
+- **次に必要な製品接続**：#2506/#2500/#2516の実read-only Consumerと、#1174/#1129が所有する実Provider/Effect証拠に対し、合成の同一表示ケースを投入し、「根拠不足」の説明と実行許可が適切に分離することを観測する。実原モデル・Owner判断は#1125/#267に留める。
+
+このfixtureは**計画の十分性を反証する補助証拠**であり、第二のBusiness Rule Engine／汎用Oracle/Runtime Acceptanceを構成しない。追加の合成Case数を製品Gate PASSへ加算しない。
