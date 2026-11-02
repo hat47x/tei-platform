@@ -149,7 +149,7 @@ Discrete / fixed-step / event-driven / continuousの分類、Actor・Operatorの
 内部のContextと、AI/SHO/CLI/GUIなどのConsumerへ**公開してよい説明**には別の資格がある。Data Contextの取得完全性が`unknown`か、RLS等により一部の存在を伏せる必要があるかを内部で区別しても、低権限Consumer向けに`4件非表示`・`非公開部署の追加Actionあり`・内部Relation/Provider名を返せば情報漏えいになり得る。
 
 - **内部判定**は`unresolved: entire_action_scope_not_established`等の根拠を保持し、必要なOwner再検証へ戻す。
-- **開示用Projection**は、すでに許可されたSubject/Actionラベルと開示可能な診断に限る。秘密を理由とするUnknown/Deniedを、秘密の存在・件数・構造が推測できる固有メッセージへ翻訳しない。
+- **開示用Projection**は、すでに許可されたSubjectと、**別途公開許可されたAction ID/ラベル**と、開示可能な診断に限る。秘密を理由とするUnknown/Deniedを、秘密の存在・件数・構造が推測できる固有メッセージへ翻訳しない。
 - **候補公開**は実行Grantではなく、ボタンを隠すことも実行禁止の強制ではない。現在権限と操作実行は外部Host/Providerへ委譲する。
 - **二世界試験**では公開可能なSubject/Ruleが同じで、内部の非公開件数だけが違う二つの人工世界のConsumer出力JSON（候補配列、Status、理由出力の有無）を比較する。
 
@@ -168,12 +168,13 @@ ConsumerごとのProjection・Disclosure適合は#2516、実CLI/inspectの開示
 | SA-14〜16 | Candidate≠Host Grant、Instance/Key、AVGのsum/count中間状態 | #1174/#2597/#2593と区別 |
 | SA-17〜18 | 秘密件数だけ違う二世界／非公開対象で公開JSON一致 | 有限の候補配列・Statusのみに関する局所的な判別 |
 | SA-19〜20 | 表/単票/Chart/CUI/Nativeの同じ候補と親ID前提 | 実UI/App接続ではない |
+| SA-21〜22 | 秘密Actionの追加によって公開候補が増えないこと、Context可視性とAction個別開示許可の分離 | 開示許可されたAction ID集合はFixtureの信頼済み入力 |
 
-**隔離実測**：`python3 check_action_applicability.py`（20/20 PASS）／`python3 -m py_compile`（PASS）。実行したソース9985バイト、SHA-256 `55fa8340ebec73359fd422c3de8d76eb8cf30b59716c5f10a76442a8d518c372`、Git Blob `a8e18aa872aba2608eb5b7bff19f4350c6bd2f0c`。GitHub保存内容と実行ファイルの長さ・Adler32・Git Blobが一致。
+**隔離実測（2026-11-02再実行）**：`python3 check_action_applicability.py`（22/22 PASS）／`python3 -m py_compile`（PASS）。実行したソース11313バイト、SHA-256 `12fc3a07c82ffad30ea7267d772bd6215d9af1aa8c09995380b2fa9959b31d63`、Git Blob `d8207e726c46fde2a6b105d86d9592a8fbadd243`。GitHub保存内容と実行ファイルの長さ・Adler32・Git Blobが一致。
 
-本`check_action_applicability.py`の`DataContext`／`Operation`／`Decision`／`public_projection`は**説明用Fixtureの独自型**で、製品TEIの標準型、実Action Provider、現在Grant、開示済みレコードの検証とは異なる。`visible`は信頼された固定入力という仮定であり、実認可判定そのものを実装していない。また、秘密件数の二世界一致20件中2ケースは、一般的な非干渉・Timing/反復問い合わせ/Target違いを証明しない。
+本`check_action_applicability.py`の`DataContext`／`Operation`／`Decision`／`public_projection`は**説明用Fixtureの独自型**で、製品TEIの標準型、実Action Provider、現在Grant、開示済みレコードの検証とは異なる。`visible`および**`released_actions`は信頼された固定入力という仮定**であり、実認可判定・実開示Policyの実装ではない。公開Contextが同じでも内部に非公開Actionが追加され得るため、候補表示はConsumerに明示開示されたAction IDだけに制限する。**対象が見えることと、そこで利用可能なAction名まで公開してよいことは独立**である。人工二世界の秘密件数・Action名に関する有限4ケースは、一般的な非干渉・Timing/反復問い合わせ/Target違いを証明しない。
 
-先行の合成AG-01〜20と合わせて、このDraftの**自作有限Reference合計40件PASS**。**TEI本体での正式Function/Context/Operation/Driver/Standard UI/External Consumer連携はNOT RUN**、Ownerの業務意味受理も未。
+先行の合成AG-01〜20と合わせて、このDraftの**自作有限Reference合計42件PASS**。**TEI本体での正式Function/Context/Operation/Driver/Standard UI/External Consumer連携はNOT RUN**、Ownerの業務意味受理も未。
 
 ### 6.5 次の製品実証と受入の接続順序
 
