@@ -390,7 +390,87 @@ Markdownの説明、Function/Rule定義、Case表、Dataset、Expected、実Actu
 
 **実証順序**：既存P0-a/P0-b維持。S0のread-only設計・Script InspectにT-19〜21/26、S1のIntent対象照合にT-22/24、S2の現在Grant/Owner EffectにT-23、S4の実Target差にT-25を合流させる。新しいCore schema、Macro実行Engine、共通Host、DSL固定構文、第二のMeaning/Authority正本をこの文書から採用しない。範囲の広い探索は#2493と#2619で並列継続する。
 
-## 11. 判断を残す点
+## 11. 実際の読取りとProvider経路を、マクロの権限委任・業務結果へ接続する
+
+### 11.1 同じ出力でも、実際に読んだ情報は同じとは限らない
+
+[明示Data Mappingの局所Reference Draft #2624](https://github.com/hat47x/tei-platform/pull/2624)では、未宣言Field/Relationを変更しても**合成出力が変わらない**という有限試験がある。一方、[実アクセスの比較 Draft #2628](https://github.com/hat47x/tei-platform/pull/2628)では、**出力が完全に一致しても、内部で秘密Fieldや無関係Relationを余分に読んだProviderと、狭い対象だけを読んだProviderは別である**ことを12件の合成試験で比較した（隔離Python unittest 12/12 PASSという既存Issue報告）。この二つは互いを置き換える証拠ではない。
+
+利用者マクロで`GetOrderLabel(1001)`という同じ結果を得ても、内部Providerがどの項目を読んだかは別問題になる。
+
+~~~text
+宣言したData Context:       order.id, order.label
+Narrow Provider呼出し:      order.id, order.label を取得
+Overfetch Provider呼出し:   order.id, order.label, order.secretNote を取得
+外向きMacro Result:         { id:1001, label:"A" } （どちらも一致）
+~~~
+
+**結果値・表示の同値性から、内部で行われたデータアクセスの最小性やOS隔離を推論できない。** ただし、JOINキー、Row-level security、現在の権限評価、業務不変条件に必要な内部読取りなど、表示対象外の情報を正当に参照する場合もある。実Providerが実際に読んだ項目と、利用者へ開示した項目を単純に等しくする一律制約ではなく、Owner/Hostが認める内部目的・データ範囲と照合する。
+
+最低限、以下の五つを受入票の別列として保持する。新しいCore型や共通Trace Engineの追加は、この段階の前提ではない。
+
+| 証拠の段階 | 内容 | 混同する危険 |
+| --- | --- | --- |
+| **Declared access** | Function Data Contextが明示したSubject/Relation/Field/Scope/時点と必要な完全性 | 宣言があるだけで実取得済みとする |
+| **Realized request** | 選択されたProvider/Endpoint/Mappingに実際に発行したQuery/API要求・実効Principal | 読取成功なら望んだ範囲だけを読んだとする |
+| **Executed read witness** | 実Provider/DB/OS等が観測可能な範囲で示す読取り・利用・拒否の証拠 | Adapterのメソッドログだけで全DB内部I/Oを証明する |
+| **Result/Claim** | Consumerへ渡るResult Sliceとgrain/Scope/時点・completeness | 出力同一なら読取経路/全件性も同じとする |
+| **Disclosure/egress** | 実際のTool/Host/AI/利用者へ開示されたField・件数・ログ・転送先 | Scriptが返さなければSecretが他経路にも漏れないとする |
+
+実Read witnessが得られないProviderでは`unknown`を保持する。そのようなProviderを一律に全業務で禁止するのではなく、求める保証水準を明示してTarget/業務Ownerが判断する。**「Provider内部で余分な情報を読んでいない」という保証を、その証拠なしにPASSにすることはできない**。実Host/OS/Networkに関する拒否証拠は#2504/#2515/TAI #232が担当し、ScriptやUIの宣言で代用しない。
+
+### 11.2 同じSemantic Dataの複数経路は、選択した実Targetまで別に確認する
+
+[複数Persistence/Alias #2611](https://github.com/hat47x/tei-platform/issues/2611)と[独立Go Reference Draft #2627](https://github.com/hat47x/tei-platform/pull/2627)で、同じ`sales.order`への複数経路（Primary/Replica/Archive/OData/別Mapping）の問題を具体化した。既存報告ではGo1.23.2の合成Reference 12/12、race、vetがPASS。ただし**実TEIの`DeriveOperationSurface`、既存World Validator、実Providerの受入試験ではない**。
+
+マクロのAction・Read側で区別すべきものは次のとおり。
+
+- **業務上のSubject同一性**：同じ`sales.order`が参照されても、同じレコード集合・時点・書込みOwnerの保証とは限らない。
+- **経路の同一性**：Provider、Endpoint、Persistence Mapping/Revision、Tenant/Organization Scope、Purpose（Current/History/Replicaなど）、実行資格が同じか。正確に同じ物理経路を指す複数Aliasは統合候補にできるが、元Alias・用途と拒否理由を追跡する。
+- **候補の可用性**：Archiveが読めないことと、Primaryからは読めることは両立する。一つのAliasのGapをApplication全体の不可にせず、別Aliasの存在でそのGapを消去しない。
+- **実際の選択**：候補集合を並べられることと、どの経路でデータを取得し、どの経路へ書き込むかを受理したことを分離する。Aliasの名前・列挙順だけで実選択が変わる状態を、静かな成功として扱わない。
+
+例えば、`archive`が受注1001の歴史状態を返し、`primary`が現在の受注1001を更新する場合、同じ`operationID`や受注IDの文字列から、Historyの読取りをCurrent writeの前提へ自動転用しない。Business ActionとData Contextが要求するPurpose・時点・対象集合・権限を満たす経路が選べるかを別々に評価する。
+
+[PR #2587の候補コードに関する#2611の静的所見](https://github.com/hat47x/tei-platform/issues/2611)は、`operationID`の重複を内容比較なく消す可能性を指摘する。これを製品で再現したという事実にはせず、当該PRとWorld Validatorの**exact版**を固定した実試験へ渡す。#2602のMacro設計は正式なOperation ID形式や新Provider Resolverを決定しない。
+
+### 11.3 Replicaで読んでPrimaryへ書く場合：対象同一性と鮮度を分離する
+
+「Replicaから取得した受注1001を表示し、利用者マクロがPrimaryで受注を確定する」処理を考える。ReplicaとPrimaryが同じ意味IDを扱っていても、Replicaで観測した版、所属Relation、未確定の明細集合、現在Grantの適用時点がPrimaryのCommit時点と一致するとは限らない。
+
+- **候補作成**：Replicaのreadは、取得したSnapshotと有効な範囲で候補・説明を提供し得る。`complete`の宣言と実取得完全性は別。
+- **作用準備**：Owner Actionが必要な基準値・対象集合・資源版・組織関係を明示する。Replicaの旧StateをCurrent Truthとして無条件に流用しない。
+- **確定**：Primary/Ownerの実Providerが、その業務操作に必要な現在Authority・資源版・作用対象をCommitの条件へ結び付けられるかを試す。別DBの全読取りと現在の書込みを原子的にできない場合は、その制約を`unsupported/unknown`として説明し、暫定結果を「全件確認済み」としない。
+- **回復**：Commit結果が不明なら#1174のOperation/Receipt/独立Readと#1130の再開契約を使う。別Replicaの同じ表示を、追加writeなしの保証や初回BusinessResultの忠実再現とはしない。
+
+データの鮮度を要求しない業務ActionにはReplicaを合法に使う余地がある。したがって「Replicaだから全Actionを禁止」ではなく、**Actionが要求する時点・完全性・Owner不変条件と、実経路が提供できる保証の適合**で判定する。
+
+### 11.4 Failover・Pushdownの「意味を保った実現」を独立に検証する
+
+同じMacroを実行するとき、Primary→Replica、RDB→OData、現行DB→ArchiveなどへFallbackする場合、Providerが同じ型のJSONを返しても、対象集合・最新性・認可・操作種別・部分失敗の保証が異なる可能性がある。
+
+Fallbackは**当該Operationの意味・Owner目的と、現在のHost/Providerが許した経路**に従う。読取りが継続できる経路があっても、書込みの安全性や正しい結果を同じ範囲で保証できるとは限らない。別Providerへの再試行では、前回送信が未確定の場合の重複作用を考慮し、#1174のReceipt/Recoveryを優先する。
+
+同様に、標準Data OperationsのSQL/APIへの`pushdown`とローカル実行では、演算子名が同じでもBag/Set/Sequence、JOIN多重度、Truth/NULL/欠損、FilterとLimitの順序、Group/粒度、SUM/AVG・丸め、時点が異なり得る。[#2387 QX-23のSQL対手書きData Operator限定対照](https://github.com/hat47x/tei-platform/issues/2387)（独立SQLite/Python9件の既報）は意味保存の反例として利用し、Macro→実Provider/他Targetの同値成立へは自動昇格させない。Native SQL資産は明示Bindingとして保持する（#2622/#988）。
+
+### 11.5 追加する既存Reference接続試験（T-27〜T-34、全てMacro側はNOT RUN）
+
+| ケース | 正負対と必要な証拠 | 既存Ownerと参照実験 |
+| --- | --- | --- |
+| **T-27 同じ結果・異なる実読取り** | 宣言された`id/label`と出力JSONが同じでも、隠れた`secretNote`を余分に読むProviderを判別。Outputの同値から最小性PASSを導かない | #2622/#2506、Draft #2628 RW |
+| **T-28 合法な補助Readと過剰Read** | JOINキー/認可条件の内部Readは目的と許可範囲に応じて合法候補。無関係Payment/Secret読取りを、結果へ表示しなかっただけで許可扱いしない | #2622/#2504、#2628 |
+| **T-29 Trace不完全と開示** | Adapter Read callのみ観測できるTargetと、実DB/OS拒否まで観測できるTargetを区別。前者の「物理Overfetchなし」資格はunknown、Consumerへの漏出は別に検査 | #2622/#2515/#2516、#2628 |
+| **T-30 複数AliasのOperation経路** | 同じSemantic DataをArchive/Primaryで異Mapping参照。辞書順・Alias改名・片経路Gapの違いで実選択が黙って変わらない。正確に同じ物理経路への複数Aliasは統合候補 | #2611 PM-01〜07、Draft #2627 |
+| **T-31 Replica→Primaryと古い前提** | Replicaの`order1001=version1`で操作候補を作り、その後Primaryがversion2に変更。現在のOwnerの要求条件を再検査し、旧Snapshotだけで更新完了を主張しない | #2611/#2598/#1174、#2627 |
+| **T-32 別経路へのFallbackと委任** | 許可済みCurrent read経路の停止後、別Tenant/HistoryのAPIが利用可能でも自動対象拡大しない。許された同等経路があれば限定継続。未確定writeは盲目的に再送しない | #2611/#2499/#1130/#1174 |
+| **T-33 Data Operator実現差** | SQL/nativeとData Operationsの同形結果だけで、JOIN bag/NULL/Filter-Limit/Group/時点の意味保存を認定しない。独立OracleとTarget別適合を照合 | #2387 QX-23/#2622/#2514 |
+| **T-34 Outputと実アクセスと外向きEgress** | Macro結果の狭いProjection、内部Read、UI/log/Tool/Sessionの出力経路を三者で対照。閲覧拒否/送出拒否を実Host/OS側で確認 | #2504/#2515/TAI #232、#2628 |
+
+**初期の接続順**：S0にT-27/29のread-only受渡し票、S1にT-30/31のProvider選択とIntent対象資格、S2にT-28/32の現在Grant・実Owner作用・回復、S3にT-34の用途別説明・開示、S4にT-33の別Provider/Target意味保存を割り当てる。既存P0-a/P0-bを維持する。
+
+**既報と新規の区分**：#2627のGo12件、#2628のPython12件、#2387 QX-23の9件は**それぞれ異なる局所Referenceの既報**であり、今回新たに走らせていない。T-27〜34のMacro→Data Context→実Provider→Grant→Effect→Disclosureを通じた製品実験は全てNOT RUN。合成結果を実Providerの全I/O証拠や、OSレベルの秘密保護・権限保証に昇格させない。新しいProvider Resolver、共通Host、実行権限の第二正本、全情報流Checkerは設けない。
+
+## 12. 判断を残す点
 
 - **業務Owner**：各Actionで「元の対象」「関係する対象」「全件の完了」をどのように定義するか。旧X-TEA `sales.order.submit`等の未受理マッピングは推測で補わない。
 - **組織Owner**：固定集合／実行時集合、代理の時点、合議、実行版固定と作用範囲での更新許容、既発行Grantの変更時再判定、結果閲覧をどのPolicyで扱うか。
@@ -402,4 +482,4 @@ Markdownの説明、Function/Rule定義、Case表、Dataset、Expected、実Actu
 
 **確認できたこと**：固定mainの既存型・RequestHash・通常Request生成・試験DDLのデータ解釈を静的に確認した。既存IssueにはT-1の具体的な未実行DB負例、Effect replayとResult再投影の未実行負例、EKI出力接続の静的所見がある。
 
-**未実行・未採用**：本書のT-1〜26の実行、信頼済みIssuer/実Grant、利用者Macro実ロード、PostgreSQL負例、Linux/WindowsでのOS隔離、外部EKIの同一Attempt納品、複数Target受入、業務意味の正式受理。新しいCore kind、Grant/Receipt schema、専用Host、共通Workflow Engine、仕様やADRの採用を本書から確定しない。
+**未実行・未採用**：本書のT-1〜34の実行、信頼済みIssuer/実Grant、利用者Macro実ロード、PostgreSQL負例、Linux/WindowsでのOS隔離、外部EKIの同一Attempt納品、複数Target受入、業務意味の正式受理。新しいCore kind、Grant/Receipt schema、専用Host、共通Workflow Engine、仕様やADRの採用を本書から確定しない。
