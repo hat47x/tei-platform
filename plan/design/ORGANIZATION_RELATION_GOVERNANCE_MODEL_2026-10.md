@@ -1385,10 +1385,57 @@ TEI #1127が検討する`Semantic Data/Relations → Function Data Context + Ope
 
 ### 42.5 実証証拠・次に接続する層
 
-[Draft #2596](https://github.com/hat47x/tei-platform/pull/2596) の変更差分Oracleは`verify-change.mjs`で定義。GitHubから再取得した同ファイルのテスト本体をこの作業の**V8 isolate上で`node:test`/assert互換の簡易Runner**により実行した結果は**11/11 PASS**。これは**実Node CLIやGitHub Actionsでの実行ではない**。既存の`verify.mjs`の27/27 V8 PASSと合わせて**38個の独立合成検証項目**であるが、どちらも正式TEI実装の適合を意味しない。
+[Draft #2596](https://github.com/hat47x/tei-platform/pull/2596) の差分Oracle `verify-change.mjs` は、取得した同ソースに対して**V8互換Runnerで11/11 PASS**、さらに隔離Node **v22.16.0** の **`node --test` で11/11 PASS（exit 0）**が別途確認された。source 5,582 bytes/FNV32 `0x6cb1c9d8` はGitHub取得内容と一致し、隔離ファイルのSHA-256は`8156207199ada4ac1f01e911548aecfdc3bb13094bf525d20cd7b9f22489a27d`。既存 `verify.mjs` は **27/27 V8 PASS**（Node CLI未確認）。いずれも**独立したsynthetic局所検証**であり、正式TEI Query/Context/GUIの適合ではない。
 
 関連[Draft #2601](https://github.com/hat47x/tei-platform/pull/2601)は孤立したPython合成18件とSQLite 3件のPASSを報告しているが、そのテストを組織メタモデルの製品E2E成功へ合算しない。
 
-次の具体作業は、(a) Node CLIで本Referenceのexact commitを実行、(b) #1126/#1131に元モデルとDatasetを固定、(c) #2387のQuery/行成立と#2506のResult Slice/Claim・#2582の差分通知を同版CUIで照合、(d) #2507のPatternと#2500のIntent、#2597のEditing Session/Save Intentへ接続すること。**すべてを同時に新規実装するのではなく、既存部品を順番に同版でつなげ、見えていない依存/不支持を明示する**。#2586が縦断実証のOwner、#1174は実EffectのOwner。Referenceの局所判定をHost AuthorityやOwner意味受理に昇格させない。
+次の具体作業は、(a) 残る`verify.mjs`のNode CLIと全ReferenceのGitHub CI/exact headを確認、(b) #1126/#1131に元モデルとDatasetを固定、(c) #2387のQuery/行成立と#2506のResult Slice/Claim・#2582の差分通知を同版CUIで照合、(d) #2507のPatternと#2500のIntent、#2597のEditing Session/Save Intentへ接続すること。**すべてを同時に新規実装するのではなく、既存部品を順番に同版でつなげ、見えていない依存/不支持を明示する**。#2586が縦断実証のOwner、#1174は実EffectのOwner。Referenceの局所判定をHost AuthorityやOwner意味受理に昇格させない。
 
 成果は**設計案と独立したsynthetic局所実行**であり、Core型やGraphエンジンの採用、TEI製品のReactive実装、正式Plugin契約・実DB/GUI/Windows、業務Owner受理、PR統合は未実施。
+
+## 43. 組織ViewからRequestへの根拠束縛：視覚的同一性と実操作の同一性を分ける（2026-11-02）
+
+### 43.1 本節を追加した理由
+
+他チャットの[TEI #2598](https://github.com/hat47x/tei-platform/issues/2598)では、View変更を型付きIntent候補として説明できても、**実Actionへ渡す際にそのCandidateがどのRead/選択/Action版/Request対象を根拠にしているか**は、別に確認を要すると整理された。同じグラフが描けること、同じIntent表記が残っていること、同じOperationIDやRequestHashを持つことは、**正しい業務関係の変更が実際に行われた証拠ではない**。
+
+この区別を組織の最小反例に落とす。TEIの共通Contractへ新しい本体型や必須の全Facet注釈を追加する提案ではなく、既存Referenceの証拠同士を**同一版・同じ試行に属するか照合するための受入票**とする。
+
+### 43.2 直接Relation A3を解除するときの根拠例
+
+- **元の意味**：Person `P2`、組織`D2`、直接Membership occurrence `A3`。P2は別のD1向けMembership `A2`も持つ。A3解除とP2のEntity削除・A2解除は異なる。
+- **Contextの読取根拠**（合成）：Function Instance `I1`、選択Anchor `D2`、selection epoch `7`、meaning revision `org-r7`、Query `membership-q1`、read snapshot `snap-3`、表示Occurrence `edge-display-3`。
+- **View変更候補**：対象を`Person P2`ではなく`Membership A3`の`unlink`と解釈する。これが可能でも、**まだHost/Provider実行可能とは確定しない**。
+- **Requestとの対応**：既存Business Actionと実対象・Relation role・Expected Revision・Scope・必要な現在性の照合が先に必要。候補A3に対して実PayloadがA2を更新するなら対象不一致。別WindowのI2のDirty PatchをI1へ移すのも対象文脈不一致。
+- **実Effectと業務完了**：実Requestに対するHost/Providerの現行Grant、確定境界、実更新先、Receipt、独立Observation、業務完了条件は#1174/#1129/#1125の領域。候補の同定やPayload一致はそこでの受理を代行しない。
+
+この経路の**標準UI上の意味**は、メタレベルの分類を利用者やPlugin開発者に要求することではなく、画面の「線を解除する」という操作が特定のRelation occurrenceへ向かうことを理解できる点にある。
+
+### 43.3 視覚的な変更に対応する異なる失敗例
+
+| 合成Case | 期待する解釈・対応 | 防ぐべき誤成功 |
+| --- | --- | --- |
+| OB-01 選択元と対象がA3に一致 | `Membership A3`の**read-only候補**まで | 候補を許可済み実Operationと表示 |
+| OB-02 epoch 7→8、同じCandidate文字列 | 現在の選択・読取証拠へ再照合 | 以前の表示行/線の選択をそのまま使う |
+| OB-03 meaning r7→r8 | 現行Meaning/業務Rule適用条件の再照合 | 旧Ruleで選択した候補を新Rule下の確定とする |
+| OB-04 Anchor D2→D1、Instance I1→I2 | Targetと編集セッションの文脈を区別 | 同じFunction定義なのでDirty Patchを共有 |
+| OB-05 Source snapshot snap-3→4 | 必要なRead/Expected Revisionの再確認 | 同じ関係線に見えるから現在性を認める |
+| OB-06 A3候補にRequest A2 / delete(P2) | 対象Relation/操作種別の不一致を診断 | 人物が同じなので誤Targetを許す |
+| OB-07 D2名称の表示だけ変更 | 同一Subject/Relationの根拠が残れば元のIdentityを保つ | 画面ラベル変更で全Entity IDも変更 |
+| OB-08 全件前提の操作に部分ページ | 対象集合の完全性未確認を示す | 未取得の関係がないと断定 |
+| OB-09 A2/A3の2操作を一つのSaveから作成 | 実Action/ProviderのTx範囲が分かるまで原子性不明 | 保存ボタン一つ＝DB一体Commit |
+| OB-10 A2効果確定、A3効果不明 | 各Effectと全体業務完了の状態を分離 | 片方成功やOperationID一致で組織改編完了とする |
+
+**局所証拠**：これらを小さな合成Referenceで比較した[Draft #2596](https://github.com/hat47x/tei-platform/pull/2596)の追加ファイル`reference/org-semantic-views/verify-handoff.mjs`は、隔離Node **v22.16.0** の`node --test`で**16/16 PASS・exit 0**。試験ファイルは**5,954 bytes、SHA-256 `afbc6a7c4cf88c32d327739daaae45e065d3aadc5f3f5f171e3f8b57c698c7a9`、Git blob `3cce96596672a3581214d1e0ffab3dc9d5f29f4b`**で、GitHub readbackのBlob SHAも一致した。**型付きIntentの現行Go APIを呼んだ試験ではなく、実Request/Provider/Tx/Receipt/E2EもNOT RUN**。#2598の正式候補→Request資格は未実証。
+
+### 43.4 表示の意味を受入可能な製品能力へ接続する工程
+
+1. **A — 表示根拠**：#1126/#2386がPerson P2・A2・A3を通常Data/Relationとして表し、#2497がTree/Graph/TableのProjectionで失われる経路や意味を説明する。
+2. **B — 操作候補**：#2506/#2507/#2500の既存Context/Pattern/Intentへ、Instance/Anchor/epoch/Rule版/Relation occurrenceを同じSourceから参照して渡す。未受理/派生線は編集先を勝手に逆構成しない。
+3. **C — Request実対象**：#2598が既存Driver/Capability Actionへ届いた実Payloadの対象・演算・現在性を**候補の根拠に結合して**検証する。RequestHashやCI byte一致に業務の同一性を委ねない。
+4. **D — 保存単位**：#2597がEditing Sessionの未保存Patchの所属Instanceと親Anchorを持ち、実Txの裏付けがある場合だけ一体保存、分散処理では部分成功・不明を提示する。
+5. **E — 最終観測**：#1174/#1129がEffectと不変条件、#1125が業務完了を、独立の根拠とOwner意味判断で確認する。実Provider/DBの読み返しを省略しない。
+
+これらは**単一の新Common Host/認可Layerを追加する順序ではない**。既存専門部品を保ったまま、同一Source/Query/Action/Request/Outcomeの紐付けがどこまで実在するかを分かるようにする順序である。
+
+**残る実証不足**：Orgの正式Semantic宣言・Dataset/Scenario再利用、正式`tei` Query/Function Context、既存Go Intent Referenceから実Driverへの受渡し、実Provider/DB/Host、GUIの操作とSHO反映。負例に対応する機能が実装済みとは言わず、#2586縦断と#2598 Request束縛の結果を待ち、必要な時だけ本書の受入票を更新する。通常の組織Dataに特殊ACLを標準追加せず、特別な保護対象は別条件で扱う。
