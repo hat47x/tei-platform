@@ -88,7 +88,7 @@ func TestRenderWorkspaceListsOnlyUsedNamespaces(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	write("tei.workspace.yaml", "workspace: scoped\nsources:\n  - semantic\n  - applications\n")
+	write("tei.workspace.yaml", "workspace: scoped\nformatVersion: 1\nsources:\n  - semantic\n  - applications\n")
 	write("semantic/used/data.tei", "namespace used\n\ndata Item {\n    attribute id type std.identifier\n}\n\ncapability used.item.touch {\n    input item used.item\n    outcome touched used.item\n}\n")
 	write("semantic/unused/data.tei", "namespace unused\n\ndata Other {\n    attribute id type std.identifier\n}\n\ncapability unused.other.touch {\n    input other unused.other\n    outcome touched unused.other\n}\n")
 	write("applications/app/application.tei", "application app {\n    uses semantic used\n}\n")

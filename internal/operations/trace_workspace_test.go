@@ -164,7 +164,7 @@ func TestTraceWorkspaceRejectsDuplicateCanonicalDeclarations(t *testing.T) {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(filepath.Join(root, "tei.workspace.yaml"),
-		[]byte("workspace: trace\nsources:\n  - semantic\n"), 0644); err != nil {
+		[]byte("workspace: trace\nformatVersion: 1\nsources:\n  - semantic\n"), 0644); err != nil {
 		t.Fatal(err)
 	}
 	// Two syntactically valid files declare the same Canonical Subject.

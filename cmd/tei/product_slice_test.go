@@ -14,7 +14,7 @@ import (
 func productSliceWorkspace(t *testing.T) string {
 	t.Helper()
 	root := t.TempDir()
-	writeWorkspaceFile(t, root, "tei.workspace.yaml", "workspace: product_slice\nsources:\n  - semantic\n  - applications\n")
+	writeWorkspaceFile(t, root, "tei.workspace.yaml", "workspace: product_slice\nformatVersion: 1\nsources:\n  - semantic\n  - applications\n")
 	writeWorkspaceFile(t, root, "semantic/sales/order.tei", `namespace sales
 
 type Status from std.code values { "open" "closed" }

@@ -131,12 +131,18 @@ func loadWithStackHook(root string, visiting map[string]bool, afterParse func())
 		if parseErr != nil {
 			return Result{}, fmt.Errorf("%s: %w", manifestYAML, parseErr)
 		}
-		// Transitional: the format version is recorded in the manifest and
-		// unknown future versions fail closed. Missing versions remain readable
-		// while existing workspaces and fixtures are migrated (#1920); after
-		// migration, a missing version must be rejected instead of defaulted.
-		if manifest.FormatVersion > 1 {
-			return Result{}, fmt.Errorf("%s: unsupported workspace formatVersion %d (supported: 1)", manifestYAML, manifest.FormatVersion)
+		// The format version is recorded in the manifest. An unknown future
+		// version fails closed, and a missing version is rejected instead of
+		// defaulted. Frozen artifacts that cannot be rewritten must opt in
+		// explicitly; the historical runner parity test does so for its
+		// pre-formatVersion comparison tree (#1920).
+		if manifest.FormatVersion != 1 {
+			if manifest.FormatVersion == 0 && os.Getenv("TEI_WORKSPACE_ALLOW_UNSPECIFIED_FORMAT") != "1" {
+				return Result{}, fmt.Errorf("%s: missing formatVersion (supported: 1)", manifestYAML)
+			}
+			if manifest.FormatVersion > 1 {
+				return Result{}, fmt.Errorf("%s: unsupported workspace formatVersion %d (supported: 1)", manifestYAML, manifest.FormatVersion)
+			}
 		}
 		roots, imports = manifest.Sources, manifest.Imports
 		manifestID = ManifestIdentity{Path: "tei.workspace.yaml", SHA256: sourceindex.Fingerprint(src)}

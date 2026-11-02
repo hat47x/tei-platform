@@ -17,7 +17,7 @@ func createHostRetargetFixture(t *testing.T, dir, namespace string) {
 	if err := os.MkdirAll(filepath.Join(dir, "semantic"), 0o700); err != nil {
 		t.Fatal(err)
 	}
-	manifest := "workspace: root_boundary_fixture\nsources:\n  - semantic\n"
+	manifest := "workspace: root_boundary_fixture\nformatVersion: 1\nsources:\n  - semantic\n"
 	if err := os.WriteFile(filepath.Join(dir, "tei.workspace.yaml"), []byte(manifest), 0o600); err != nil {
 		t.Fatal(err)
 	}

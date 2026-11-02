@@ -31,11 +31,11 @@ func currentProjectMeaningFixture(t *testing.T) (string, string, workspace.Resul
 	root := t.TempDir()
 	provider, consumer := filepath.Join(root, "provider"), filepath.Join(root, "consumer")
 	writeSemanticFixture(t, filepath.Join(provider, "tei.workspace.yaml"),
-		"workspace: provider\nsources:\n  - semantic\n")
+		"workspace: provider\nformatVersion: 1\nsources:\n  - semantic\n")
 	writeSemanticFixture(t, filepath.Join(provider, "semantic", "process.tei"),
 		"namespace os\n\ntype ProcessId from std.identifier\n")
 	writeSemanticFixture(t, filepath.Join(consumer, "tei.workspace.yaml"),
-		"workspace: consumer\nsources:\n  - semantic\nimports:\n  - alias: os\n    path: ../provider\n    namespace: os\n")
+		"workspace: consumer\nformatVersion: 1\nsources:\n  - semantic\nimports:\n  - alias: os\n    path: ../provider\n    namespace: os\n")
 	writeSemanticFixture(t, filepath.Join(consumer, "semantic", "watch.tei"),
 		"namespace monitoring\n\ndata Watch {\n    attribute process type os.process_id\n}\n")
 	loaded, err := workspace.Load(consumer)
