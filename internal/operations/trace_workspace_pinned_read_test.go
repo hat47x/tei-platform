@@ -52,13 +52,16 @@ func TestReadWorkspaceSourceRefusesOversizedSourceInsteadOfReadingIt(t *testing.
 	maxWorkspaceSourceBytes = 4
 	t.Cleanup(func() { maxWorkspaceSourceBytes = previous })
 	reader, err := readWorkspaceSource(root)
+	if err == nil {
+		t.Cleanup(func() { reader.Close() })
+	}
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got, err := reader("small.tei"); err != nil || string(got) != "abcd" {
+	if got, err := reader.Read("small.tei"); err != nil || string(got) != "abcd" {
 		t.Fatalf("file at the limit = %q, %v", got, err)
 	}
-	if got, err := reader("big.tei"); err == nil {
+	if got, err := reader.Read("big.tei"); err == nil {
 		t.Fatalf("oversized source was read (%d bytes)", len(got))
 	}
 }
@@ -77,18 +80,22 @@ func TestReadWorkspaceSourceRefusesAliasDirectoryEscapingWorkspace(t *testing.T)
 	writeTestFile(t, filepath.Join(outside, "secret.tei"), "OUTSIDE")
 	makeDirAlias(t, filepath.Join(root, "semantic"), outside)
 	reader, err := readWorkspaceSource(root)
+	if err == nil {
+		t.Cleanup(func() { reader.Close() })
+	}
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got, err := reader("semantic/secret.tei"); err == nil {
+	if got, err := reader.Read("semantic/secret.tei"); err == nil {
 		t.Fatalf("read through an escaping alias returned %q", got)
 	}
 }
 
-// Regression guard (passes on the old reader too, which failed closed because
-// its containment check no longer matched): retargeting the Workspace root
-// alias after the reader exists must fail the read, not move it.
-func TestReadWorkspaceSourceFailsWhenRootAliasIsRetargeted(t *testing.T) {
+// Red on the EvalSymlinks/SameFile/path-open reader (it failed closed on the
+// retarget, so it never returned the pinned directory's bytes). The pinned
+// reader keeps reading the directory the alias named when it was created, and
+// never the directory the alias was retargeted to.
+func TestReadWorkspaceSourceStaysPinnedWhenRootAliasIsRetargeted(t *testing.T) {
 	base := t.TempDir()
 	first := filepath.Join(base, "first")
 	second := filepath.Join(base, "second")
@@ -100,12 +107,84 @@ func TestReadWorkspaceSourceFailsWhenRootAliasIsRetargeted(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Cleanup(func() { reader.Close() })
+	if got, err := reader.Read("a.tei"); err != nil || string(got) != "FIRST" {
+		t.Fatalf("read before retarget = %q, %v", got, err)
+	}
 	if err := os.Remove(alias); err != nil {
 		t.Fatal(err)
 	}
 	makeDirAlias(t, alias, second)
-	if got, err := reader("a.tei"); err == nil {
-		t.Fatalf("retargeted root alias was read: %q", got)
+	got, err := reader.Read("a.tei")
+	if strings.Contains(string(got), "SECOND") {
+		t.Fatalf("retargeted root alias redirected the read: %q", got)
+	}
+	if err != nil || string(got) != "FIRST" {
+		t.Fatalf("pinned reader = %q, %v; want the original bytes", got, err)
+	}
+}
+
+// Race loop: while one goroutine flips the root alias between two directories,
+// no read may return the other directory's bytes.
+func TestReadWorkspaceSourceNeverReturnsOtherDirectoryWhileAliasFlips(t *testing.T) {
+	base := t.TempDir()
+	first := filepath.Join(base, "first")
+	second := filepath.Join(base, "second")
+	writeTestFile(t, filepath.Join(first, "a.tei"), "FIRST")
+	writeTestFile(t, filepath.Join(second, "a.tei"), "SECOND")
+	alias := filepath.Join(base, "alias")
+	makeDirAlias(t, alias, first)
+	reader, err := readWorkspaceSource(alias)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { reader.Close() })
+	stop := make(chan struct{})
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		for i := 0; ; i++ {
+			select {
+			case <-stop:
+				return
+			default:
+			}
+			target := second
+			if i%2 == 1 {
+				target = first
+			}
+			if os.Remove(alias) != nil {
+				continue
+			}
+			if runtime.GOOS == "windows" {
+				_ = exec.Command("cmd", "/c", "mklink", "/J", alias, target).Run()
+			} else {
+				_ = os.Symlink(target, alias)
+			}
+		}
+	}()
+	defer func() { close(stop); <-done }()
+	for i := 0; i < 300; i++ {
+		got, err := reader.Read("a.tei")
+		if err != nil || string(got) != "FIRST" {
+			t.Fatalf("read %d = %q, %v; want the pinned original bytes", i, got, err)
+		}
+	}
+}
+
+// After Close the handle is gone: reads fail instead of reopening by path.
+func TestReadWorkspaceSourceFailsAfterClose(t *testing.T) {
+	root := t.TempDir()
+	writeTestFile(t, filepath.Join(root, "a.tei"), "A")
+	reader, err := readWorkspaceSource(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := reader.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if got, err := reader.Read("a.tei"); err == nil {
+		t.Fatalf("read after Close returned %q", got)
 	}
 }
 
@@ -125,6 +204,9 @@ func TestSourceResolverFailsClosedWhenSourceDirectoryIsRetargetedOutsideAfterInd
 		t.Fatal(err)
 	}
 	reader, err := readWorkspaceSource(root)
+	if err == nil {
+		t.Cleanup(func() { reader.Close() })
+	}
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -135,12 +217,12 @@ func TestSourceResolverFailsClosedWhenSourceDirectoryIsRetargetedOutsideAfterInd
 	}
 	makeDirAlias(t, filepath.Join(root, "semantic"), outside)
 
-	if got, err := reader("semantic/one.tei"); err == nil {
+	if got, err := reader.Read("semantic/one.tei"); err == nil {
 		t.Fatalf("reader returned %q after the source directory was retargeted outside", got)
 	}
 	var leaked []byte
 	capture := func(p string) ([]byte, error) {
-		data, err := reader(p)
+		data, err := reader.Read(p)
 		if err == nil {
 			leaked = data
 		}
@@ -157,15 +239,18 @@ func TestSourceResolverFailsClosedWhenSourceDirectoryIsRetargetedOutsideAfterInd
 func TestTraceWorkspaceStillLocatesSourceThroughPinnedReader(t *testing.T) {
 	root := filepath.Join("..", "..", "reference", "workspace")
 	reader, err := readWorkspaceSource(root)
+	if err == nil {
+		t.Cleanup(func() { reader.Close() })
+	}
 	if err != nil {
 		t.Fatal(err)
 	}
-	data, err := reader("semantic/sales/order.tei")
+	data, err := reader.Read("semantic/sales/order.tei")
 	if err != nil || len(data) == 0 {
 		t.Fatalf("pinned read of a reference source: %d bytes, %v", len(data), err)
 	}
 	for _, bad := range []string{"../go.mod", "semantic/../../go.mod", "/etc/passwd", "semantic"} {
-		if got, err := reader(bad); err == nil {
+		if got, err := reader.Read(bad); err == nil {
 			t.Fatalf("unsafe or non-regular source %q returned %d bytes", bad, len(got))
 		}
 	}

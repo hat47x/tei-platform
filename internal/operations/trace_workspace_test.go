@@ -131,11 +131,14 @@ func TestTraceWorkspaceLoadFailureStage(t *testing.T) {
 func TestReadWorkspaceSourceRejectsAbsoluteAndEscapedPaths(t *testing.T) {
 	root := t.TempDir()
 	reader, err := readWorkspaceSource(root)
+	if err == nil {
+		t.Cleanup(func() { reader.Close() })
+	}
 	if err != nil {
 		t.Fatal(err)
 	}
 	for _, path := range []string{"../outside.tei", "/etc/passwd", ""} {
-		if _, err := reader(path); err == nil {
+		if _, err := reader.Read(path); err == nil {
 			t.Fatalf("unsafe source path accepted: %q", path)
 		}
 	}
@@ -150,7 +153,7 @@ func TestReadWorkspaceSourceRejectsAbsoluteAndEscapedPaths(t *testing.T) {
 	if err := os.Symlink(target, filepath.Join(root, "escape.tei")); err != nil {
 		t.Skipf("platform cannot create symlink: %v", err)
 	}
-	if _, err := reader("escape.tei"); err == nil {
+	if _, err := reader.Read("escape.tei"); err == nil {
 		t.Fatal("symlink escaped Workspace read boundary")
 	}
 }
