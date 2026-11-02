@@ -47,6 +47,14 @@
 
 **検証状態**：局所Goコードを`gofmt`で整形し、GitHub保存ファイルとGit blob `fdd8022693360d4a7a0ddf0c6cf9ba2d937a8386`が一致した。Go1.26.10 CIの結果は**PR #2657 exact headを確認するまで未確定**。実Provider変更履歴や本番通知の欠落防止は未証明。
 
+## 2.2 Go1.23.2隔離サブプロセスでexactテストを実行（2026-11-03）
+
+実行したQX-14テスト本体のGit blob=`fdd8022693360d4a7a0ddf0c6cf9ba2d937a8386`、現mainの`RunPythonWorker`実装`internal/query/analyzer/client.go`のGit blob=`9620cd9e2ad6d7b041ca868318a3f45da09fc59d`。**両者のローカル実行版とGitHubのblob SHAがそれぞれ一致**。Go1.23.2/Linuxの隔離`module tei`環境に、この両ファイルとGo worker-helperの最小同等実装を置き、`core.CanonicalID`・`environment.DatabaseProvider`・`analyzer.Request/Result`の型は同じJSON fieldを持つ**縮小stub**で試験。
+
+`GOTOOLCHAIN=local GO111MODULE=on go test -v ./internal/query/analyzer -run '^TestQX14' -count=1` を実行し、**TestQX14SameIdentityResponseDoesNotBindSQLSchemaOrDialect（SQL/Schema/Dialect3 subtest）とTestQX14RequestDigestDoesNotProveNoABA（1 test）の全件PASS**。実Process起動、stdin/stdoutのJSON送受信、Query ID/Protocolの照合、旧Request hash比較、A→B→AとRevision資格の分離を観測。
+
+**Scopeの制約**：`client.go`およびQX-14 testはexactだが、依存型とHelperを縮小しているので、**実repo指定Go1.26.10のmodule test・Schemaモデル全型・実SQLGlot worker・実Providerの統合結果ではない**。実TEIのGo試験成功を名乗るには、Draft #2657の**exact head GitHub Actions**のRun/Job/ログで別に確認する。Request hashも解析の正しさや過去に変更がなかったことを証明しない。
+
 ## 3. 検証と実装順（新Gateなし）
 
 1. **M0**：Goの既存サブプロセスhelperで同Query ID/ProtocolのSQL/Schema/Dialect変更を独立に送信し、Request digestは異なるがResultは同じであることを実測。GitHub Actionsのexact head/実Go toolchainの実行結果を別に確認。失敗は治療するためのGate追加ではなく設計上の証拠。
