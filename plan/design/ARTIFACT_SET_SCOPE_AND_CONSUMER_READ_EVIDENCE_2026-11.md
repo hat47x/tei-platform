@@ -1,7 +1,7 @@
 # ArtifactSetの対象閉包とConsumer実読取の検証計画（2026年11月2日）
 
 - **状態**: 設計・実証計画の提案。公開契約・製品Gate・Owner意味受理は未採用。
-- **確認した基準**: TEI main `9c9ef4d160640908e06ad13afb6c2b45c664c748`、[Data-first PR #2587](https://github.com/hat47x/tei-platform/pull/2587) exact HEAD `dc2842d241082d6dee89343cfbd9294153d0d403`。PRは未統合であり、mainの製品機能として記述しない。
+- **確認した基準**: TEI main `9c9ef4d160640908e06ad13afb6c2b45c664c748`、[Data-first PR #2587](https://github.com/hat47x/tei-platform/pull/2587) exact HEAD `dc2842d241082d6dee89343cfbd9294153d0d403`。照合時点ではPRが未統合だったが、**2026-11-02T14:08:40Zにmainへ統合済み**。以降はそのコミット自体と現在mainの資格を独立確認する（PR #2587統合＝本書のASケース受入ではない）。
 - **局所Owner**: [#2482](https://github.com/hat47x/tei-platform/issues/2482)（Artifact/Manifest/CheckSetの入力・内容・集合）、[#2604](https://github.com/hat47x/tei-platform/issues/2604)（複数ファイルの公開・実Consumer読取）。
 - **連携Owner**: [#2595](https://github.com/hat47x/tei-platform/issues/2595)（実Producerへ渡したSource）、[#2600](https://github.com/hat47x/tei-platform/issues/2600)（増分再利用）、[#2505](https://github.com/hat47x/tei-platform/issues/2505)／[Draft #2615](https://github.com/hat47x/tei-platform/pull/2615)（Source版間対応）、[#2497](https://github.com/hat47x/tei-platform/issues/2497)（Projection意味保存）、[#2516](https://github.com/hat47x/tei-platform/issues/2516)（Consumer別Claim・開示）、[#267](https://github.com/hat47x/tei-platform/issues/267)（意味受理）。
 - **適用範囲**: 人が読む表・機能設計書、Operation Surface、SHO Composerへ渡す設計素材、AI/CUIが参照するread-only説明、外部Targetが使用するArtifact一式。実行の認可やHostの業務効果は各専門契約が担当する。
@@ -139,7 +139,7 @@ Consumerが提出・利用するClaim、対象Application/Subjectと粒度、適
 
 ### 10.1 合成比較から実`internal/artifact`へ
 
-[#2633](https://github.com/hat47x/tei-platform/pull/2633)に、**PR #2587の未統合実装HEADから派生した独立Draft**として`internal/artifact/consumer_scope_characterization_test.go`を追加した。#2587の所有ブランチとmainには変更を加えていない。コード変更はGo testファイル1件（6ケース）のみ。
+[#2633](https://github.com/hat47x/tei-platform/pull/2633)に、**PR #2587の統合前HEADから分岐した独立Draft**として`internal/artifact/consumer_scope_characterization_test.go`を追加した。#2587の所有ブランチとmainには変更を加えていない。コード変更はGo testファイル1件（6ケース）のみ。
 
 | Case | 現実装に対するGo Characterization | 既存Ownerの次の判断 |
 | --- | --- | --- |
@@ -150,11 +150,11 @@ Consumerが提出・利用するClaim、対象Application/Subjectと粒度、適
 | AC-03 | Gap Reasonだけを変えてdigestを再生成した場合のUnresolved照合差 | #2482：Gap→Unresolvedの理由と多重度 |
 | AC-04 | JSONの`schemaVersion`と別フィールド中のschema文字列が異なる場合 | #2482：実SchemaVersion fieldの検証 |
 
-**現在の資格**：#2633はGo test SourceをGitHubに保存して存在と6関数を再取得確認済み、**Go実行・CI未確認**。#2587本体・GitHub mainに結合されたことも未主張。#2633のbaseは`work/upstream-connection-2026-11`であり、既存Repository Health workflowの`pull_request.branches: [main]`に該当しないため、通常のmain向けCI成功を証拠として借用できない。最初の試験成功は実候補HEADへのFocused CIまたは信頼可能なGo checkoutの実測が必要。これらのテストは**現行の穴を特徴づけるもので修正後の仕様として承認したものではない**。将来の最小修正時には修正後の検出を期待する正の回帰試験へ更新する。
+**現在の資格**：#2633はGo test SourceをGitHubに保存して存在と6関数を再取得確認済み、**Go実行・CI結果の取得前に作成した記録**。PR #2587はその後main統合済み。#2633は2026-11-02、baseを`main`へ変更し、独立Consumer ExpectedMemberを明示するGo test追加コミット `244fccde0bc9ad5a40d4dd203157becd856017b9` を保存した。これにより通常の`pull_request.branches: [main]`対象になり、実Goの結果を新Runから取得する段階へ進んだ（テスト結果は後続の実測で確定する）。最初の試験成功は実候補HEADへのFocused CIまたは信頼可能なGo checkoutの実測が必要。これらのテストは**現行の穴を特徴づけるもので修正後の仕様として承認したものではない**。将来の最小修正時には修正後の検出を期待する正の回帰試験へ更新する。
 
 ### 10.2 同Semantic Subjectの複数Mappingを追加圧力にする
 
-[独立Draft #2632](https://github.com/hat47x/tei-platform/pull/2632)は、[#2611](https://github.com/hat47x/tei-platform/issues/2611)／[#2627](https://github.com/hat47x/tei-platform/pull/2627)の多経路合成比較を、PR #2587の**実`internal/operations.DeriveOperationSurface`**に接続した別担当の4ケースGo Characterization候補である。報告された候補Source上の反例は、同じSemantic DataへArchive/Primary 2 Mappingが到達すると第一AliasのMappingだけを選び、後発候補をConflictとして表現しないこと、Alias名の変更だけでOperation Basis/Inputが入れ替わること、選択されなかったMappingだけの変更ではSurface JSONが不変になることなど。#2632のテストは取得時点でGo実行**NOT RUN**であり、独立Oracle／正式Validator／実DB未適合のまま扱う。
+[独立Draft #2632](https://github.com/hat47x/tei-platform/pull/2632)は、[#2611](https://github.com/hat47x/tei-platform/issues/2611)／[#2627](https://github.com/hat47x/tei-platform/pull/2627)の多経路合成比較を、PR #2587の**実`internal/operations.DeriveOperationSurface`**に接続した別担当の7ケースGo Characterization候補（初回4件＋Mapping/Storageの変更3件）である。報告された候補Source上の反例は、同じSemantic DataへArchive/Primary 2 Mappingが到達すると第一AliasのMappingだけを選び、後発候補をConflictとして表現しないこと、Alias名の変更だけでOperation Basis/Inputが入れ替わること、選択されなかったMappingだけの変更ではSurface JSONが不変になることなど。#2632のテストは取得時点でGo実行**NOT RUN**であり、独立Oracle／正式Validator／実DB未適合のまま扱う。
 
 **ArtifactSetとの接点**：`RenderWorkspace`が各Persistence Mappingを表定義書へ生成できても、同じWorldから得たOperation Surfaceが**複数候補の意味をすべて説明した**とは限らない。これはAS-01/02の「Member数が存在する」とは別の`Meaning/Route Coverage`である。Generic Artifact CheckSetの成功を、複数Providerの選択理由・Constraint/Gapの正しさ・実CapabilityのBinding・現在Host Grantへ昇格させない。#2611/#2627が経路候補を、#2485がOperation/Actionの選択意味を、#2598が実Request対象を、#1174が実Effectをそれぞれ検証する。
 
@@ -163,6 +163,40 @@ Consumerが提出・利用するClaim、対象Application/Subjectと粒度、適
 ### 10.3 CIの資格
 
 - **PR #2630初回HEAD** `4d48bfada4d2107e9183b9b6b9c96a2cb440ec40`の[Repository Health #41442614894](https://github.com/hat47x/tei-platform/actions/runs/41442614894)はFAIL。原因は新規設計Markdownを`plan/design/README.md`へ登録していなかったことで、`TestPlanReadmesMentionEveryEntry`が報告した。Readme索引は`9febca20ed3529b5786c502c1be1623f9c03fe88`で修正。
-- **PR #2630後続HEAD** `3262037b177e0536407148dc5a4b8ff06f7eae86`の[Repository Health #41444279121](https://github.com/hat47x/tei-platform/actions/runs/41444279121)は本節記載時点で実行中、[依存脆弱性確認 #41444279151](https://github.com/hat47x/tei-platform/actions/runs/41444279151)はsuccess。CI結果が更新されたらexact HEADと結び付けて判断する。
+- **PR #2630当該HEAD** `3262037b177e0536407148dc5a4b8ff06f7eae86`の[Repository Health #41444279121](https://github.com/hat47x/tei-platform/actions/runs/41444279121)は次のpushでキャンセルされ、後続HEAD `fac313da42736c7b5dda967a8a3fb0fae7a23319`の[Repository Health #41445539469](https://github.com/hat47x/tei-platform/actions/runs/41445539469)と[依存脆弱性確認 #41445539564](https://github.com/hat47x/tei-platform/actions/runs/41445539564)は**いずれもsuccess**。ただしこのRunが検査したのは設計文書・索引であり、#2633の新Goテストを実行した証拠ではない。、[依存脆弱性確認 #41444279151](https://github.com/hat47x/tei-platform/actions/runs/41444279151)はsuccess。CI結果が更新されたらexact HEADと結び付けて判断する。
 - #2630は設計文書・索引のみ、#2633は未統合の実コードへのGo Testのみ、#2632は別Ownerの多経路Go Testで、**それぞれ別PR/別HEAD/別実行証拠**である。PR #2630のREADME/Repository Health PASSが後で確認できても、#2633/#2632のGo試験を実行したことにはならない。
 
+## 11. 2026-11-02 14:40Z 更新：Data-first統合後の実装資格と横断受入
+
+### 11.1 基準Revisionの更新
+
+- PR [#2587](https://github.com/hat47x/tei-platform/pull/2587)は2026-11-02T14:08:40Zに**mainへ統合済み**。以後のArtifact/Manifest/Operationsは、main上の実装が比較基準になる。ただしPR #2587の統合が#2482 AC-01〜04/AS-01〜11の修正完了や、#2604の物理公開保証を意味しない。
+- 2026-11-02T14:26:07Zの照合main `b1c019fec4f05ca65e3d7491608cb849ce523d29`。mainの`internal/artifact/manifest.go`／`consistency.go`は、#2587の読取時検証上の論点が依然として残る版である。対象のBlob版／Goテストを次段階で比較する。
+- [#2633](https://github.com/hat47x/tei-platform/pull/2633)は親PRを変更せず**baseをmainへ変更**。PR差分は`internal/artifact/consumer_scope_characterization_test.go`の1ファイル。変更後の実HEAD `244fccde0bc9ad5a40d4dd203157becd856017b9`では、AS-01/02の期待Member集合を`Manifest`とは別のテストOracleとして保持することを明示した。正式な製品Oracleを新設したわけではない。
+- [#2632](https://github.com/hat47x/tei-platform/pull/2632)の多Mapping試験も7件まで増えた。これは別担当のDraftであり、本書のAS-11に必要な`Operation.ID / Basis / Inputs / Mapping Storage / WorldRevision / Provider`差を共有するが、同一Go Runとしては未結合。
+
+### 11.2 実Source読取・Snapshot・Current資格を混同しない
+
+[#267](https://github.com/hat47x/tei-platform/issues/267)に関係するmainの2026-11-02更新では、issuerの署名Source IndexがLoad時点に固定したbytesを用いるよう変更された（main `b1c019fec…`）。この更新は、**別時点に改めて読み取ったSource bytesを、既に検証した入力とみなさない**ための実装上の進展である。
+
+一方、[#1017](https://github.com/hat47x/tei-platform/issues/1017)の[Draft #2646](https://github.com/hat47x/tei-platform/pull/2646)（Workspace直接Read検出）・[Draft #2647](https://github.com/hat47x/tei-platform/pull/2647)（Trace Sourceを固定ルートReaderで読む）は、なお別Ownerの候補。個別ファイルの固定ルート読取でも複数Sourceの同時Snapshot、実ProviderのReader資格、将来のConsumer実取得が成立したとは限らない。
+
+**試験に残す条件（AS-12候補／NOT RUN）**：Load時点の管理Source bytesを固定してArtifactを生成し、その後同一pathのSourceを変更。Source Index/Artifact Set/Published Generation/Consumer actual read/Owner Acceptanceの**どの版が観測されたか**を別列比較する。個別Sourceが同名・同Digestでも、外部Semantic依存やRule/Provider/Host現在Grantの再資格化を自動省略しない。#267/#1017のI/O境界を重複実装せず、#2600 F0/F1/S1/S2へ渡す。
+
+### 11.3 Product実CLIからSHO/AIまでの接続条件
+
+[Draft #2626](https://github.com/hat47x/tei-platform/pull/2626)では、[Focused CI #41462654810](https://github.com/hat47x/tei-platform/actions/runs/41462654810)が**候補HEAD `42b7ec43fa7901359120008105e812eda7e9d6e7`**で、合成55件と実TEI Go CLIのread-only証拠、Source-only移動の前後観測、Human Markdown/AI JSONの同一局所Witnessからの生成・再読取を行い、二つのjobがSUCCESSと報告されている。ただしTEI設計Artifact `tei artifacts`のManifest/実Body一式をSHOや外部Harnessが取得・保存/再開・引用/レビューした実証ではない。
+
+そこで実Consumerの受入を、次の3レベルとして組み合わせる。
+
+- **L0 実TEI単体**：main exact HEADで`tei artifacts`を実行し、必要なMember期待集合（別Oracle）、個別Artifact.Verify/Manifest.Verify/CheckSet、Contentの読取、実ファイルPathとbyte、公開世代を個別に観測。権限判断や外部Consumerは主張しない。
+- **L1 異質な二Consumer**：Human設計ビューとAI向けJSON/CUIのそれぞれが、同一Manifest世代から対象Memberの実byteを読み、Claim/Scope/Disclosure/Failureを比較。見た目の同値やJSON生成成功は実SHO受理ではない。
+- **L2 SHO／Harness／実Host**：SHOのOccurrence/Review/固定納品、TAI Product Skill/外部送信、Host/Providerの現在資格・実Effectを各Ownerで独立確認する。不存在のAPIや未成熟SHO保存機能を前提にしない。
+
+[#2636](https://github.com/hat47x/tei-platform/pull/2636)／[#2600](https://github.com/hat47x/tei-platform/issues/2600)の増分F0/F1/S1/S2では、**L0で必要Memberを確定し、S1のselective再利用とF1のfull再生成を単純に比較するだけでなく、独立Expected/OracleとReader資格の双方を検査**する。結果一致だけで共通の誤りを見逃さない。時間計測は正しさの確認後。
+
+### 11.4 リリース資格への非昇格
+
+- `main`への製品コード統合、PRの合成CI成功、`Artifact/Manifest Digest`一致、Source移動前後のMeaning不変、同一FunctionのContext合成PASS、Product Skillの説明可能性、SHO文書の存在は**独立した資格**。
+- #2633の新試験は現状の不備の特性記述であり、**検出できない挙動がPASSしたことは修正済みと同義ではない**。
+- 必要Memberが揃わない・Sourceの実Consumed bytesが未特定・外部Provider/Claimのscopeが不明・公開世代が混在・送信権限がない場合、Consumerの`usable`や`approved`を自動的にtrueにしない。
