@@ -131,3 +131,43 @@ Markdown表、Graphviz記述、関数式、メソッドチェーン、簡潔なU
 **停止条件**：業務Action identityを構文/画面名から推測、Context部分集合を全件扱い、Macroの効果を隠蔽、単一OfferにHost Grantを内包、Providerのatomicityを推測、既存正本を複製、未確認の実DB/Business受理をPASS化した場合は対象の採用判断を保留する。
 
 この節は横断**設計・実証受渡しの計画のみ**。#2619/#2620/#2621/#2622、#2613/#2617/#2602/#2601は独立Draft/Issueであり、統合・採用・実TEI/GUI/DB試験・Owner受理は今回の成果ではない。
+
+<!-- crosslane-three-footprints-and-endtoend-packet-20261102 -->
+## 8. 11/2横断追補：Action発見を支える三つのデータ境界と同一試行の証拠（設計・NOT RUN）
+
+[#2624](https://github.com/hat47x/tei-platform/pull/2624)のFunction別明示Mappingは局所合成20件、[#2625](https://github.com/hat47x/tei-platform/pull/2625)のSyntax Sugar正規化は局所合成23件、[#2613](https://github.com/hat47x/tei-platform/pull/2613)のFunction Pattern/Action適用は局所合成42件PASSの報告がある。各Draftは別の入力・模擬解釈・実行環境を用いており、その合計を「Sourceから実Actionを実行した」証拠とはできない。成熟した次の課題は、既存のSource/Context/Operation/Providerを**同じ固定版と実際のConsumer入力で接合すること**である。新しい評価器や第二Scenario保存機構は作らない。
+
+### 8.1 三つの範囲を区別する
+
+| 範囲 | 正確に確認するもの | 不適切な推論 | 主Owner |
+| --- | --- | --- | --- |
+| **Declared/Required Read Footprint** | Function Data Contextで明示された対象Relation path/Field/Scopeと、Actionが成立するために必要とする入力・完全性 | Data ModelにRelationがあるから全件自動取得／未取得前提を不存在扱い | #2506/#2624、#2507、#2622 |
+| **Actual Acquisition Footprint** | Providerが実際に発行したQuery/API Request・読取Field/Relation・実DB Alias・Principal/RLS/search_path・版/時点・Snapshot保証 | 出力JSONに秘密Fieldがないから実Providerも読んでいないと主張 | #2622/#2387/#2611/#951 |
+| **Consumer Disclosure Footprint** | CUI/Studio/SHO/外部AIへ実際に届く値・Action名/件数・診断・結果・それぞれの開示資格 | read-onlyなら外部送信可／候補数や失敗理由から秘密が漏れないと推測 | #2516/#1178/#2515、#997 |
+
+**適用判定への含意**：Actionが要求するReadが明示Mappingで満たされなければ、当該Claimの材料不足として扱う。追加情報の取得が必要なら既存の許可済みResolver/Providerへ要求する設計候補を返せるが、Action Applicability自身が読取権限を発行することはない。ProviderのField Projection未対応で過剰な物理読取が生じた場合、後段で表示を消しても物理取得はなかったことにならない。対象のData Minimization条件に合うか既存Provider/Hostの受入へ返す。出力が同値でもStatus/Timing/Log/反復API呼出し/実LLM Egressの安全性は別実測（#2515）。
+
+### 8.2 画面に見えないがActionが必要とする情報
+
+L1の単一Field PATCHはL1 ID、対象属性、Version等で意味的候補化できる場合がある。一方、注文Submitが未MappingのPayment状態を必要とするなら、非表示・未取得を「未払い」や「確認済み」と解釈せず、当該必要条件は未確立とする。信頼境界内のOwner Serviceがその条件を検査する契約が受理されているなら、秘密の生値をConsumerへ出す代わりに、許可された検査結果と保証範囲を利用する候補を比較する。Action名の存在自体を公開できるかも独立（#2613 SA-21/22、#2516）。どの場合も実行時の現在Grant・対象・版はHostで再確認する。
+
+**Provider能力の非同値性**：Field PATCHのみを求めるActionと、ProviderのFull Replaceしかない場合は同値ではない。自動read-modify-writeは非表示Field消失、余計なRead/Write権限、競合、Snapshot不整合を起こし得る。Ownerの受理、必要な完全Image、Version Fenceなどの保証を確認できなければ安全な代替能力は未確立（#2622 DO-04/05、#2598 IB-03）。同一Semantic IDに複数DB Aliasがあれば、Action OfferやUI選択だけで書込先を決定しない（#2611）。
+
+### 8.3 単一の統合試験へ引き渡す観測表
+
+これは新しい公開Schemaではなく、既存#1131/#1180/#1163 Scenario/Evidenceに対応する**検収時の列**である。基線は#2586のH・D1(L1,L2)・D2(3件)。#2624からPayment/secret Fieldを追加するときは「新しい合成拡張」と明記し、独立DraftのFixtureを同じAccepted Sourceと見なさない。
+
+| 段階 | 実際に同一試行で観測するもの | 主な負例と担当 |
+| --- | --- | --- |
+| **I0 Source/Role** | Source bytes/occurrence・実Language/Role/Operator/Plugin exact版・Resolved Meaning/Acceptance | 説明用表の実行誤昇格・同名Ref誤束縛。#2620/#2621/#988/#1124 |
+| **I1 Context** | 実Consumerが受けた明示Mapping・D1/D2それぞれのgrain/Scope/epoch・Result Sliceの実完全性 | 未MappingのPayment暗黙Read、D2部分1/3を全件に昇格。#2506/#2624/#2586 |
+| **I2 Provider Read** | 実Query/APIと物理Source/alias/Principal、取得Field/Relation・実Provider読取証拠 | JSONで秘密を削除しても、Providerが秘密を過剰取得する。#2622/#2611/#2387 |
+| **I3 Offer/Consumer** | 受理済Action purpose/必要条件、公開した候補IDと理由・Consumer Scope | Payment未取得でSubmit可能、非公開Actionの存在・件数漏洩。#2507/#2516/#997 |
+| **I4 Request** | L1のField PATCH、Context/epoch、Action、Payload/実Target/Provider Binding | L1→L2漂移、PATCH→Replace、JOIN 3出現を3更新に変換。#2500/#2597/#2598/#2485 |
+| **I5 Effect** | 実行時Grant・OperationID/Receipt、実更新対象・独立Invocation read・Business Result | ACK不明を失敗確定、2Provider部分成功を全成功とする。#1174/#1163/#1119 |
+
+**実証順**：I0/I1 read-only → I2 actual Provider read（許可された隔離環境）→ I3 異質な二Consumer → I4 実Request束縛 → I5 Host/Provider Effect。最低限「L1 PATCH候補」「未取得Paymentに依存するSubmitの未確立」「複数Provider aliasの曖昧性拒否」「非公開Actionの開示差分なし」「partialから全件操作を不正導出しない」を独立Expectedとする。I0〜I5の証拠辺が同じ試行で結べなければ、各局所PASSがあっても横断結論は not established。
+
+**計測**（#2018/#2493）：論理Read依存・実Provider取得Field/Request・Consumer公開Field、不要Read数、Adapter/専用UI/特別Core分岐数、再利用した既存Contract数、誤候補と過剰拒否、実対象逸脱、同版でつながったEvidence辺の数。公開Evidenceに秘密値や接続文字列を複製しない。
+
+**状態**：今回の§8は計画の追補のみ。I0〜I5の実TEI結合、実Provider読取・外部送信・Go/DB/GUI試験とOwner受理はNOT RUN。局所Python PASSを製品資格へ昇格させない。新Canonical/Host/Registry/権限Engine/Grammar/新Gateは追加しない。
