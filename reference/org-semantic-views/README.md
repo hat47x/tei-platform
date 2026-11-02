@@ -6,11 +6,12 @@
 
 ```sh
 node reference/org-semantic-views/verify.mjs
+node --test reference/org-semantic-views/verify-change.mjs
 ```
 
 The file is a dependency-free JavaScript module: it computes an in-memory reference and throws on the first unexpected observation. A successful run emits a JSON summary. No DB is created and no files, services, accounts, or business records are changed.
 
-**Evidence recorded during preparation:** the generator's checks returned **27/27 PASS** within the execution tool's V8 isolate, and the exact file fetched back from the GitHub branch was evaluated again with **27/27 PASS**. **Node CLI, repository CI, official TEI Go tests, SQL Worker, Context/Pattern binding, browser/Windows, actual Host/Provider, and Owner meaning acceptance are NOT RUN.** A future test should capture the actual Node version/exit code and the file/commit SHA before claiming Node execution.
+**Evidence recorded during preparation:** `verify.mjs` returned **27/27 PASS** in the execution tool's V8 isolate and **27/27 PASS** when the committed GitHub source was read back and re-evaluated. The new `verify-change.mjs` returned **11/11 PASS** in the same V8 execution tool using a narrowly compatible `node:test`/`node:assert` shim after readback of its exact source. **Neither is evidence of Node CLI execution.** Repository CI, official TEI Go tests, SQL Worker, Context/Pattern binding, browser/Windows, actual Host/Provider, and Owner meaning acceptance are NOT RUN. A future test must capture the actual Node version/exit code and GitHub ref/commit before claiming Node execution.
 
 ## Fixed synthetic inputs and independent expectations
 
@@ -35,6 +36,26 @@ The file is a dependency-free JavaScript module: it computes an in-memory refere
 | Old selection epoch | **stale** | Previous-view row remains actionable after context change |
 
 The checker covers 27 determinate local assertions. These test inputs are *not* database-source data and the expected values are illustrative business assumptions, not an adopted Organization Profile.
+
+## Second reference: temporal and claim-relative changes
+
+The file **verify-change.mjs** is a second **read-only synthetic test**. It does not subscribe to events or implement a reactive cache. Its 11 checks compare explicit snapshots and assess whether a displayed claim could be reused:
+
+| Change pressure | Independent observation | What must not be inferred |
+| --- | --- | --- |
+| Rename department D2 only | Person/Membership counts and allocation FTE unchanged | Displayed D2 name remains current without re-render |
+| Reordering stored rows | Same relational claims | Positional row indexes are semantic identity |
+| A2 correction *recorded* July 2; valid ending June 1 | At valid June 15, known July 1: **4 Memberships**, known July 3: **3 Memberships**; D1 count **2→1**, FTE **1.60→1.00**; Person distinct stays **3** | A single "current" date can replace separate valid/recorded times |
+| Valid May 31 after correction | Four Memberships remain | Recorded correction invalidates every historical snapshot |
+| M1 Occupancy transition on July 1 | P2→P3; P3 has no direct D1 Membership | Position occupancy always creates direct Membership |
+| FTE allocation A2 60→40, A3 40→60 | D1 **1.60→1.40**, D2 **1.40→1.60**; counts unchanged | Changing a measure changes entity identity |
+| Incomplete slice | One observed relation proves existence for the slice; no full count or universal absence | Missing row on first page means no such relation exists |
+| Later matching record | Previously displayed negative claim becomes false | Derived NOT EXISTS results are append-only |
+| Old selection epoch | Old A3 selection cannot become a current Action target | A displayed edge remains actionable after selection change |
+
+**Qualifications:** (1) A value staying equal for a particular change does not prove generic dependency independence. Retain a claim only when its relevant dependencies, Scope, Rule, and Source version are understood. (2) This is a closed synthetic fixture, not proof of production completeness or acceptance.
+
+**Ownership:** [#2582](https://github.com/hat47x/tei-platform/issues/2582) owns change impact and refresh; [#2506](https://github.com/hat47x/tei-platform/issues/2506) owns Context scope/epoch; [#2593](https://github.com/hat47x/tei-platform/issues/2593) owns Measure aggregation; [#2597](https://github.com/hat47x/tei-platform/issues/2597)/[Draft #2601](https://github.com/hat47x/tei-platform/pull/2601) own Instance dirty patches and composite saves; [#2500](https://github.com/hat47x/tei-platform/issues/2500) owns Intent; [#2586](https://github.com/hat47x/tei-platform/issues/2586) owns the TEI product end-to-end. Neither synthetic file implements these product modules.
 
 ## Owner boundaries and integration
 
