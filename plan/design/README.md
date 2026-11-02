@@ -25,7 +25,7 @@
 
 | 文書 | 対象 |
 | --- | --- |
-| [`SCRIPT_MACRO_AUTHORITY_AND_EFFECT_TARGET_BINDING_2026-11.md`](SCRIPT_MACRO_AUTHORITY_AND_EFFECT_TARGET_BINDING_2026-11.md) | Script/MacroのSemantic Action・対象と実Read/Effect・委任・外部Consumerの契約とT-1〜53の未採用検証候補（[#2502](https://github.com/hat47x/tei-platform/issues/2502)、[#2499](https://github.com/hat47x/tei-platform/issues/2499)） |
+| [`SCRIPT_MACRO_AUTHORITY_AND_EFFECT_TARGET_BINDING_2026-11.md`](SCRIPT_MACRO_AUTHORITY_AND_EFFECT_TARGET_BINDING_2026-11.md) | Script/MacroのSemantic Action・対象と実Read/Effect・委任・外部Consumerの契約とT-1〜61の未採用検証候補（[#2502](https://github.com/hat47x/tei-platform/issues/2502)、[#2499](https://github.com/hat47x/tei-platform/issues/2499)） |
 | [`APPLICATION_PATTERN_V1_DESIGN.md`](APPLICATION_PATTERN_V1_DESIGN.md) | アプリケーションの構成パターンの設計・実装基準（ISSUE-000005 / ADR-0017 / ADR-0018） |
 | [`LEGACY_AUTH_V1_DESIGN.md`](LEGACY_AUTH_V1_DESIGN.md) | 既存の認証仕様を保ち、認証・認可の機能へ接続する設計（ISSUE-000003 / ADR-0019） |
 | [`CAPABILITY_OUTCOME_V1_DESIGN.md`](CAPABILITY_OUTCOME_V1_DESIGN.md) | 機能の業務結果・名前付きの結果と実行エラーを分離する設計（ISSUE-000009 / ADR-0020） |
