@@ -316,3 +316,67 @@ order.lines
 | **HF-10** | `result.map`で技術失敗を業務拒否やfalseへ変換 | 失敗分類とSource-located Diagnosticを保持し、Action/Authorityが変化しない |
 
 **担当・再利用**：Operatorの意味とDSL sugar＝[#988](https://github.com/hat47x/tei-platform/issues/988)／[#2620](https://github.com/hat47x/tei-platform/issues/2620)、Dataset/Field/Queryの適用・Provider pushdown＝[#2622](https://github.com/hat47x/tei-platform/issues/2622)／[#2387](https://github.com/hat47x/tei-platform/issues/2387)、集合意味＝[#1706](https://github.com/hat47x/tei-platform/issues/1706)、集計法則＝[#2593](https://github.com/hat47x/tei-platform/issues/2593)、入力Context＝[#2506](https://github.com/hat47x/tei-platform/issues/2506)、Action/Effect＝[#1129](https://github.com/hat47x/tei-platform/issues/1129)／[#1174](https://github.com/hat47x/tei-platform/issues/1174)。HF-01〜10を[#2619](https://github.com/hat47x/tei-platform/issues/2619)のH0/H1/H2/H4/H5へ受渡す。**新しいquery runtime、dataframe engine、第二Core AST、Script if-removal transpilerは提案しない**。
+
+
+## 13. 高階Operatorの書換え条件と検証母集団（2026-11-02、他レーンSV・QX・Rule依存の接合）
+
+### 13.1 成熟判断：`filter`と`validate`と`authorize`を別契約として扱う
+
+高階Operator中心のTEI Scriptでは、生成AIが`if`文の繰り返しを避け、Dataset／Field／Queryの宣言・組成へ寄せられる。しかし**見かけのコード量が減っても、元の対象集合・評価失敗・副作用・秘匿境界の意味を変えないこと**が優先である。最新の[#988 SV-01〜06](https://github.com/hat47x/tei-platform/issues/988#issuecomment-6577015922)（隔離Python 6/6 PASSと報告）、[#2622 DO-07追補](https://github.com/hat47x/tei-platform/issues/2622#issuecomment-6577028330)、[#2586 HJ-SV1/2](https://github.com/hat47x/tei-platform/issues/2586#issuecomment-6577037688)の検討を、横断受入へ受け渡す。
+
+| 意味 | 操作のイメージ | 不変条件／戻り値 |
+| --- | --- | --- |
+| **Select** | `lines.filter(q > 0)` | 元Datasetのうち条件に合う行集合を派生。除外された行は「妥当」と証明されていない |
+| **Validate** | `validateAll(lines, q > 0)` | **検証対象Scopeの全行**に対するルール判定。NotSatisfied／Unresolved／技術失敗を分け、必要なら違反箇所を記録 |
+| **Choose／Derive** | `value.match(...)`／`option.map(...)` | 1値やVariantを条件に応じて導出。条件優先度／未選択枝評価／NULL・missingを契約化 |
+| **Authorize／Act** | 受理済みActionへGuard/Contextを束縛 | 操作の対象・現時点のGrant・Effect/Receiptを別検証。表示側のSelect/Validate PASSから許可を発行しない |
+
+**反例**：提出母集団が`L1(quantity=2)`、`L2(quantity=0)`の場合、`filter(q>0)`の結果が`[L1]`になることと、元`[L1,L2]`の「数量は全件正」の業務検証が失敗することは両立する。どの集合を業務上の判定対象とするかは受理済みRule/Actionが決める。
+
+**失敗の反例**：`visible`がfalseかつ`amount="BAD"`の行H、trueかつ`amount="10"`の行Vに対し、`filter(visible).map(parseAmount)`と`map(parseAmount).filter(visible)`は表示値だけ同じでも失敗が異なり得る。どちらの行を**実際に読む／解釈する資格があるか**も、表示演算の結果では決まらない。
+
+### 13.2 Operatorの「意味同値」の観測範囲を広げる
+
+`map/filter/flatMap/groupBy/aggregate/any/all/partition/window`等の組換え、SQL・ODataへのPushdown、ローカル評価、増分結果の再利用について、単純な結果値一致ではなく次の**比較列を既存受入票に付す**（新固定Schema、第二Optimizer、別Gateの追加ではない）。
+
+- **入力と判断の根拠**：Semantic Subject、Operator ID/version、lexical scope・capture、Function Context Mapping、Rule依存／Action事前条件、評価対象Cohort／Result grain／時点、null/missing/absent/partial。
+- **観測される計算**：Resultの値・Identity・順序・bag multiplicity・集約法則・丸め時点、Error/Diagnostic/Warning・確定／未解決・短絡するかどうか。
+- **アクセスと開示**：実Provider/Query、Field・Predicate依存（公開出力にない隠れたReadも含む）、実Request/Read Trace、Consumer別の開示と結果の有無・件数などによる間接情報流。
+- **作用と資格**：Pure/Effect分類、Action/RequestとHost Grant、Tx境界、Operation/Attempt、Receipt、独立Result観測。Operatorの最適化でEffect・失敗・確認資格が変わる場合は意味保存を主張しない。
+- **再利用の依存**：表示D、Validation V、Action事前読取りA_data、更新対象A_write、実権限A_exec、Provider routeと実Read Cohortを別の依存として記録。表示が不変でもVだけ変わればRule再評価が必要（[#2600 IB-18〜21](https://github.com/hat47x/tei-platform/issues/2600)、[#2582](https://github.com/hat47x/tei-platform/issues/2582)）。
+
+標準的なQuery DSLを高階関数として利用することと、すべての演算順序を交換してよいことは別。特に`filter`↔`take`、`validate`↔`filter`、`map(parse)`↔`filter`、`sum(map(round))`↔`round(sum)`、`groupBy`後のJOIN/再集約は、必要な不変条件の説明と独立Oracleがある範囲のみ同値候補とする（[#2387](https://github.com/hat47x/tei-platform/issues/2387)、[#2593](https://github.com/hat47x/tei-platform/issues/2593)、[#1706](https://github.com/hat47x/tei-platform/issues/1706)）。
+
+### 13.3 新しい横断受入ペア（全件**本PRではNOT RUN**）
+
+| ID | 同じ高階Operatorを使った二つの処理 | 正しい判別・受渡し |
+| --- | --- | --- |
+| **HO-01 Select vs Validate** | 元Scope全件検証と`filter`後の検証 | 除外行の違反が消えない。#988→#2586 |
+| **HO-02 Failure Observation** | `parse→filter` と `filter→parse` | Result値だけでなくError・Diagnostic・読取り根拠を比較。#988/#2622 |
+| **HO-03 Hidden Rule Dependency** | 表示Mapは同じ、検証依存のcredit_limit 700→500 | 表示再利用が可能でもRule/Action判定の再評価は別。#2624/#2600 |
+| **HO-04 Query Predicate Leakage** | `select(id)`は同じ、秘密Fieldのwhereが件数を変える | 必要Read、実アクセス、Consumerが得る件数・存在情報を分離。#2387/#2516 |
+| **HO-05 Page Cohort** | Page1後のWriter Commit、Page2をKeyset/OFFSETで追加 | 見かけ上全件でも同一実Snapshotを証明できなければ全称・SUM/TopNは未確定。#2622/#2586 |
+| **HO-06 Partial Quantifiers** | 一部分だけ取得した`any`/`all` | witnessに基づく片側確定と、全件性が必要な反対側の未解決を区別。#1706 |
+| **HO-07 Operator Fusion/Pushdown** | `filter→map→aggregate`をSQL/Provider/localへ配置 | 値・Failure・Row identity・bag・Read footprint・Scope・開示・Effectの維持を必要範囲で比較。#988/#2622 |
+| **HO-08 Same View, Different Grant** | Operator出力/画面が同じ、Action Grantが失効 | 更新Intentの候補表示と実Host実行資格を区別。#2598/#1174 |
+| **HO-09 DSL Authoring** | Goa風/MukuroL風/Markdown表/チェーンで同じOperator列 | Source忠実度は別、Role/Operator/version/scopeが同じときだけMeaning同義。#2620/#2621 |
+| **HO-10 Non-business Domain** | Sensor/Actor時系列の`filter/window/aggregate`と受注集合の同形DSL | Window時点/遅延/単位、Relation、Rule/Action、必要専用Pluginの差を測り、Core分岐数を記録。#2493/#2018 |
+
+[Draft #2629 §12](#12-高階data-operatorによる条件集約のデータ化2026-11-02追補)のHF-01〜10は基本Operator契約、本§13のHO-01〜10は**同一Scenario上での検証対象・失敗・開示・実Provider・再利用の境界**を検査する追加列であり、同じ試験の二重カウントを行わない。
+
+## 14. 既存成果を一つの実TEI経路へ接続する次の実務パケット
+
+ここまでの独立Draft群の成果は、各担当が維持する。横断Ownerは追加の抽象を増やすよりも、**一つのSourceから同じ意味／Contextを実TEIで解決できるか**を調べる。
+
+| パケット | 最初に確認する実経路 | 終了資格／不成立時の記録 |
+| --- | --- | --- |
+| **C0 語彙とSource固定** | #2625の演算列と#2624のOrder/Line Context、#988の実Language Plugin、#2605の実在CLIコマンドを手動対応させる | Source/Operator ID・version/Role/Context・独立Expectedと、未対応Mappingを固定。**対応表のみ** |
+| **C1 実解析・意味解決** | 既存`tei commands`／`model catalog`／`inspect`／`trace`／`validate`の実利用範囲で解析結果を取得 | どのSyntax/Role/Operatorが正式TEI Worldまで届くかを観測。未実装コマンド名をTool説明から呼ばない |
+| **C2 高階Operator＋Data Context** | 一つのDatasetについて`filter`と`validate`の違い、Rule依存列、部分取得、Query→Data Context、Provider Readの期待/実の差を照合 | ResultだけでなくError/Diagnostics、入力Scope、実Read Trace、Target/Provider版、開示を記録。別のQuery engineは作らない |
+| **C3 標準UI／Source往復** | [#2631](https://github.com/hat47x/tei-platform/pull/2631)のopen-world標準Studio/未知Role表示と[#2617](https://github.com/hat47x/tei-platform/pull/2617)のScript-firstを、同じMeaning候補に適用 | 表示できたこと、編集可能なSourceに一意に戻せること、Role未認識時の退避を別観測。実Studio未接続なら明記 |
+| **C4 Actionと実Effect** | #2500→#2598→#1129/#1174の実Request/Receipt/独立Readへ、同じContextとOperator-derived Intentを接続 | 実Grant、選択epoch、更新前提とOperation Identity、Provider部分確定を照合。局所Intent PASSをDB保存PASSにしない |
+| **C5 改版・AI・異質Domain** | #2600の増分再利用・#2018の生産性測定に、同じScenarioのSyntax-only変更、非表示Rule改版、Provider切替、Sensor/ActorのWindow変更を登録 | Meaning変更・必要再評価・生成AI修正diff・token/所要時間・Core特殊分岐数を比較。異Versionの過去PASSを流用しない |
+
+**優先順位**：既存#1119のP0-a/P0-bとOwner受理を維持し、C0〜C3はread-onlyの実証を平行可能にする。C4はその既存実行資格の成立後に実施する。C0〜C5は新Gate/Runtimeではなく、[本計画H0〜H5](#6-接合の進め方成熟度に応じて並行固定の開発上限ではない)の具体的受渡し作業である。
+
+**現時点の証拠状態**：#988 SV-01〜06のPython6件、#2631のV8 16 assertions、#2627のGo32件、#2624のPython20+18件、SQL/SQLiteの局所実測は各元Issue/PRの独立報告である。このPRで新たにそれらを実行、同一Source・同一World・同一ProviderでE2E接続したわけではない。PR #2629は引き続きDraft。正式Operator API、Data Normal Form、生成Target、Host Grant、Owner意味受理の採用はそれぞれの担当判断に委ねる。
