@@ -24,3 +24,14 @@ A local V8 dry-run of the sixteen self-contained tests passed before creating th
 The required next chain is accepted TEI Data/Relation → derived Query (including non-output conditions) → explicit Function Data Context and verified Provider cohort → Measure/Claim and SHО/Studio consumer → typed Intent/Request/Effect. This reference by itself validates none of those integrated steps.
 
 Design Owner: #2386, Draft #2389 §49–50. Corpus Owner: #2510. Other Owners: #2593 Measure grain, #2582 claim requalification, #2586 vertical handoff, #2628 physical read, #2598 Intent/Request, #1174 Effect. No fixed organization Core, secondary Host, mandatory plugin meta-ontology annotations or organization-specific ACL is proposed.
+
+
+## In-flight Case responsibility pressure (ORG-RC; 2026-11-03)
+
+The same standalone successor fixture now has **10 additional Node tests (RC-01 to RC-10)**, distinct from the original 16 organization succession tests. It introduces toy pending purchase Case Q1, with its old D1 responsibility and mutually superseded R1/R2 Case accountability observations. The 26 tests are **synthetic counterexamples**, not actual organization or authorization processing in TEI.
+
+They distinguish Org succession vs Case migration; an explicit single-responsible-org Rule vs a joint Rule; a **positive witness of two conflicting assignments** vs a **zero-result requiring scoped completeness**; application-time freezing vs approval-time resolution; prior publication vs retrospective correction; checked owner vs synthetic final-post-image mismatch; displayed candidate vs SoD/delegation/current Grant; and the completeness of **Case population** vs the completeness of **each Case's responsibility relations**.
+
+Rule acceptance, cohort completeness, Grant, post-image, and receipt in this file are **test-only injected inputs**. This suite must not be used to assert real Provider acquisition, Owner Business Rule adoption, actual Commit fencing, end-to-end TEI Function/Query/SHO/Studio functionality, or production deployment qualification. The existing workflow executes this same `verify-succession.mjs` file; exact-head Node CI status must be confirmed separately before citing any new success.
+
+Related owners: organizational meaning #2386 and [design Draft #2389 §51](https://github.com/hat47x/tei-platform/pull/2389); corpus #2510; shared headless integration #2586; actual Read #2628; Owner-write coverage #1129; effect fence #1174; scenario and oracle #1131/#2514. No second Org/Case schema, central Responsibility Registry, Host, Workflow or Authorization engine is introduced.
