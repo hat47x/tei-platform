@@ -48,6 +48,8 @@
 
 **空結果の否定依存・選択的再資格化・Product Skillの実利用資格**を分離して検証します。0件のQueryにもWHERE/NOT EXISTS/Relation/Scopeの依存があり、0→1→0の同値観測から途中の変更なしを推定できません。変更影響と現在のConsumer利用資格を別扱いとし、依存証拠のあるClaimのみ選択的再評価を候補とします。さらにSemantic Role、Operation、CLI、Product Skill読込、実Tool呼出し、外部Consumerへの開示、Host Effectを段階別に観測し、Skill説明やCLI存在を実行許可・完了へ昇格させません。[#2497 §19](https://github.com/hat47x/tei-platform/blob/docs/data-structure-meta-facets-20261101/plan/design/STRUCTURE_PRESERVING_TRANSFORMATIONS_AND_PROJECTIONS_2026-11.md)、[#2501 PC-181〜192](https://github.com/hat47x/tei-platform/blob/docs/data-structure-meta-facets-20261101/plan/design/DATA_STRUCTURE_PRESSURE_CORPUS_2026-11.md)へ反例を追加。Change/Queryは#2582/#2387、Consumer資格は#2516、再利用は#2018、Product Skillは#2605/#2619とTAI #271、実Effectは#1174のOwnerを維持します。実Provider/Harness/SHO/Host統合試験は未実施で、新しいNegative Cache/Reactive Engine/独自Hostは設けません。
 
+**Artifact Envelopeの同一性・物理公開一式・実Consumer読取は三つの別資格**として受入を計画します。既存`Artifact.Digest`はContent raw hashではなくKind/InputRevision/Rule/Generator/Content/UnresolvedのEnvelope fingerprintであり、現行`tei artifacts -out`の個別保存byteとManifestだけではEnvelope検証入力を完全復元できません。Content同一でRule/Generator/Unresolvedが変化する負例、Manifest取得中の世代切替、ExpectedMemberの欠落、SHO/Skillの旧版実消費を[#2497 §20](https://github.com/hat47x/tei-platform/blob/docs/data-structure-meta-facets-20261101/plan/design/STRUCTURE_PRESERVING_TRANSFORMATIONS_AND_PROJECTIONS_2026-11.md)のAE-01〜08へ整理しました。Artifact整合は#2482/#2630、公開一式は#2604、SHO/Consumer読取は#2516、Skill消費は#2605へ帰属します。#2633 main統合済みCharacterizationと#2659/#2607 Draftを区別し、別HEADのCI成功を現HEADの証拠にしません。実外部Consumer・障害注入・Owner受理は未実施で、第二Artifact正本や独自Hostは追加しません。
+
 ### 外部要件を先に受け止める（要求・構造の机上評価）
 
 CUIやGUIの実装に入る前に、**データ構造、意味上の識別・型・値域・関係・制約、操作・状態・副作用、プラグインの契約・合成・ライフサイクル、Target/Hostとの境界**など、後戻りの費用が大きい基本構造を十分に検討します。
