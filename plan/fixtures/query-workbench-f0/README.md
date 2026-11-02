@@ -83,3 +83,23 @@ python3 probe_relational_ir.py relational_ir_synthetic.json --compare-qx16 qx16_
 **判定の意味**：`rootStructureTrace=candidate`は演算IDの参照グラフを辿れるという意味に限定する。SQL/Schema/Dialect/workerの入力帰属、Qualified Fieldの解決、`WHERE`/`EXISTS`の述語真偽、JOINのKeyとCardinality、NULL、Snapshot、Result Slice完全性、業務上のGrain/Identity、Action/Host Authorityは**いずれも未確認**。異Scope間のInput edgeは有効なCTE関係である可能性もあるため、直ちに「不正」ではなく`cross-scope-edge-unverified`へ留める。
 
 **次の縦切り**：合成`analyzer.Result`から実際のGo `DeriveFromAnalysis`を経て得た`RelationalIR`を、同じプローブへ入力し、手書き期待との欠落・差異を測る。現行`OutputField.Inputs`は**ColumnOccurrence ID**からの列Lineageであり、`RelNode.Inputs`は**演算ID**である。2種類のInput IDを同一視せず、OutputField→演算ノードの一致が現モデルで表せない場合は`unsupported`。#2454のScopeと#2471のworker応答契約がDraftの間は、この試験を実SQL→Modeler end-to-endのPASSへ昇格しない。
+
+
+## QX-17 M2：値依存と演算依存のSQLite対照（2026-11-02）
+
+QX-17 M1の実Go合成IR構造テストとは別に、SQLの**出力値の由来**と、結果行の**成立/多重度/選択・順位**を分けるための合成Referenceを追加。#2593のMeasure再集計との接点をM2-D/M2-Fで確認する。
+
+```sh
+cd plan/fixtures/query-workbench-f0
+python3 -m unittest -v test_qx17m2_sqlite.py
+```
+
+- 保存先：`test_qx17m2_sqlite.py`。GitHubに保存したexact blob `972720f96e90504b947cdd2e81ec04791d929ea4`がローカル実行ファイル（5062 bytes）のGit blob SHAと**一致**。
+- Python **3.13.5** / SQLite **3.46.1**。ローカル隔離in-memory SQLiteで**6/6 PASS**。純粋に手書きの独立ExpectedとSQL actualを比較した結果。
+- **A**：明細2件と配送3件から6つのJOIN出現行。配送無しでは同じ明細値のJOIN結果は0件。
+- **B/C**：LEFT JOIN仮未一致`(H,NULL)`が一致行`(H,D1)`へ置換され、反結合結果`H`が消える。
+- **D**：独立SUM=200、JOIN後SUM=600、SUM(DISTINCT)=100。**先集約した200をさらにJOINしてSUMすると再び600**となる。先集約すれば常に正しいわけではない。
+- **E**：追加配送の順位でTOP-1の選択が`(L2,200)`から`(L1,100)`へ変更。
+- **F**：明細AVG=150、3:1件のJOIN後AVG=125。元のFieldの値は変化しなくてもMeasureの結果は変わる。
+
+**適用範囲**：TEI Query Parser・`DeriveFromAnalysis`・実SQLGlot worker・Provider・RLS/search_path・正式Function Data Context・Modeler/SHOの実行ではない。#2582のReactivenessや#2586のQuery→Context→ClaimのPASSにも読み替えない。試験は自作の合成SQLite・データ・期待のみであり、Business Rule/Measure/Host実行・開示・Owner意味受理を追加しない。詳細の受入/次段は[Draft #2388設計計画§7.11.1](https://github.com/hat47x/tei-platform/blob/work/query-structural-fixture-design-20261030/plan/design/QUERY_STRUCTURAL_MODEL_AND_FIXTURE_WORKBENCH_2026-10.md)。
