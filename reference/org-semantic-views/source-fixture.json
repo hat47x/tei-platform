@@ -116,5 +116,32 @@
       "from": "2027-07-01",
       "to": null
     }
+  ],
+  "departmentCapacities": [
+    {
+      "department": "D1",
+      "basisPoints": 180,
+      "revision": "capacity-r1",
+      "sourceKind": "synthetic-department-policy-data"
+    },
+    {
+      "department": "D2",
+      "basisPoints": 160,
+      "revision": "capacity-r1",
+      "sourceKind": "synthetic-department-policy-data"
+    }
+  ],
+  "syntheticCapacityRules": [
+    {
+      "id": "org.fte-within-capacity",
+      "revision": "cap-rule-r1",
+      "role": "test-only-rule",
+      "relation": "Membership",
+      "measure": "allocationBasisPoints",
+      "limitData": "departmentCapacities",
+      "operator": "lte",
+      "grain": "Department",
+      "requireComplete": true
+    }
   ]
 }
