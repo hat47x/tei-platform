@@ -12,14 +12,10 @@ const mapping = Object.freeze({
   grain:'Relation occurrence', requestedScope:'all-for-selected-department',
   sourceRevision:fixture.sourceRevision,
 });
-const routes = {
-  replica: {alias:'replica',provider:'db-replica',mapping:'membership-read-v1',
-    snapshot:'s7',knownAt:'2027-07-01',validAt:'2027-06-15'},
-  primary: {alias:'primary',provider:'db-primary',mapping:'membership-write-v2',
-    snapshot:'s7',knownAt:'2027-07-03',validAt:'2027-06-15'},
-};
-function read(routeName, options={}) {
-  const route = routes[routeName];
+// Provider route choices are observation/scenario data, not semantic Person/Relation facts.
+const routes = Object.fromEntries(scenario.syntheticProviderRoutes.map(r => [r.id, r]));
+function read(routeName, options={}, catalog=routes) {
+  const route = catalog[routeName];
   if(!route) return {status:'unsupported',reason:'unresolved-route'};
   if(options.requestedScope==='all-world')
     return {status:'unsupported',reason:'undeclared-scope'};
@@ -32,7 +28,8 @@ function read(routeName, options={}) {
   // These statements deliberately model access, not merely the projected response.
   const acquisition={route:routeName,provider:route.provider,mapping:route.mapping,
     snapshot:route.snapshot,validAt:route.validAt,knownAt:route.knownAt,
-    fields:[...physicalFields],paths:[...physicalPaths],rowIds:rows.map(x=>x.id)};
+    fields:[...physicalFields],paths:[...physicalPaths],rowIds:rows.map(x=>x.id),
+    traceCompleteness:options.traceCompleteness??'complete'};
   if(physicalPaths.includes('Occupancy'))
     acquisition.occupancyRowsInspected=fixture.occupancy.map(x=>x.id);
   const missing=mapping.fields.filter(f=>!physicalFields.includes(f));
@@ -71,6 +68,7 @@ function compareRoutes(a,b,cohortWitness=null) {
 function physicalFootprint(readResult) {
   if(readResult.status!=='ok')return {status:'unresolved'};
   const a=readResult.acquisition;
+  if(a.traceCompleteness!=='complete')return {status:'unverified',reason:'unknown-physical-access'};
   const extraFields=a.fields.filter(f=>!mapping.fields.includes(f));
   const extraPaths=a.paths.filter(p=>p!==mapping.data);
   return {extraFields,extraPaths,
@@ -175,4 +173,17 @@ test('local read-only helper does not mutate accepted Source membership versions
   const initial=JSON.stringify(fixture.membershipVersions);
   read('replica');read('primary');
   assert.equal(JSON.stringify(fixture.membershipVersions),initial);
+});
+
+test('route alias renaming preserves a stable route ID and selected rows',()=>{
+  const catalog={...routes,replica:{...routes.replica,alias:'renamed_alias'}};
+  assert.notEqual(catalog.replica.alias,routes.replica.alias);
+  assert.deepEqual(read('replica',{complete:true},catalog).slice.rows,read('replica',{complete:true}).slice.rows);
+});
+test('absence of an acquisition trace cannot prove narrow read even when output matches',()=>{
+  const observed=read('replica',{traceCompleteness:'unknown',complete:true});
+  const narrow=read('replica',{complete:true});
+  assert.deepEqual(disclose(observed),disclose(narrow));
+  assert.deepEqual(physicalFootprint(observed),
+    {status:'unverified',reason:'unknown-physical-access'});
 });
