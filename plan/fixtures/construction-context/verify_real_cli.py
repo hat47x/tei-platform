@@ -11,6 +11,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+from consumer_views import export_views, make_witness
+
 
 def require(condition, message):
     if not condition:
@@ -50,7 +52,7 @@ def same_projection(expected, observed, label):
     # in this fixture, not that all inputs were atomically read.
 
 
-def execute(binary, workspace, expected_head):
+def execute(binary, workspace, expected_head, output_dir=None):
     version = run_cli(binary, "version", "-json")
     require(version.get("schemaVersion") == "tei.cli.version/v0", "unexpected CLI version schema")
     require(version.get("source") == "build-info", "missing actual executable build identity")
@@ -160,6 +162,15 @@ def execute(binary, workspace, expected_head):
     diagnostics = validation.get("diagnostics", [])
     require(isinstance(diagnostics, list), "validation diagnostics missing")
 
+    # A single in-memory actual CLI observation is used for both view materials.
+    witness = make_witness(
+        subject=candidates[0]["subject"], binary_revision=version["vcsRevision"],
+        catalog=catalog, inspect=inspected, trace=trace,
+        rows=observed_rows, diagnostics=diagnostics,
+    )
+    if output_dir is not None:
+        export_views(witness, output_dir)
+
     # Never log raw source, trace JSON, or private paths. This is a public
     # synthetic/reference Workspace only; an actual external disclosure
     # decision still belongs to the owner and OS/Host.
@@ -170,6 +181,7 @@ def execute(binary, workspace, expected_head):
         "traceRows": observed_rows,
         "validationDiagnostics": len(diagnostics),
         "binaryRevisionMatchesHead": True,
+        "humanAndAIViewParity": "verified" if output_dir is not None else "not-requested",
         "worldAndSourceIndexFingerprintsAligned": True,
         "scope": "reference/workspace only; no business/authorization acceptance",
     }, sort_keys=True))
@@ -180,6 +192,7 @@ def main():
     parser.add_argument("--binary", type=Path, required=True)
     parser.add_argument("--workspace", type=Path, required=True)
     parser.add_argument("--expected-head", required=True)
+    parser.add_argument("--output-dir", type=Path)
     args = parser.parse_args()
     require(args.binary.is_file(), "actual TEI binary path missing")
     require((args.workspace / "tei.workspace.yaml").is_file(),
@@ -187,7 +200,8 @@ def main():
     require(len(args.expected_head) == 40 and
             all(c in "0123456789abcdef" for c in args.expected_head),
             "expected HEAD is not a full SHA")
-    execute(args.binary.resolve(), args.workspace.resolve(), args.expected_head)
+    execute(args.binary.resolve(), args.workspace.resolve(), args.expected_head,
+            args.output_dir.resolve() if args.output_dir is not None else None)
 
 
 if __name__ == "__main__":
