@@ -483,3 +483,54 @@ Aは**異なる入力状態を同一の正常1行へ潰す**損失、Bは**同�
 **実施優先度：** (1)既存CQ-R2/R4の独立characterization、(2)CQ-R5でraw/semantic/displayのgrain差を固定Fixtureの期待値で比較、(3)CQ-R7/Q0〜Q3の実Provider観測、(4)必要なConsumer/外部Targetへ展開。新しい全件性証明、全SQL最適化、全Target動作を最初のread-only反証の阻害条件にしない。Q0/Q1/Q2/Q3/Q4の証拠が独立に揃う前に「Query→Business E2E」を主張しない。
 
 **Owner境界：** Contractの意味・grain/Identity・nullable/演算条件（#179/#1126/#2495）、Result Sliceと部分取得（#2506）、実SQL/Lineage/物理Read（#2387/#2622）、Provider/Cohort（#2627/#1708）、開示（#2516）、Operation/Effect（#2500/#2598/#1174）、外部Target（#2077/#2390/#2513）は既存の責務を保持。#951は意味的Conformanceを比較して必要な証拠の欠落を指摘する。実Provider・実Host/DB・正式Provider/Meaning受理、Consumer開示テスト、各Target E2Eはいずれも本追補では**NOT RUN**。
+
+### 19.7 SQL PushdownとTEI後処理の交換条件・二種類の完全性（2026-11-02追補）
+
+**他レーンからの成熟条件：** Native SQLを直接使う実現と、SQL結果をTEI DSL/Data Operatorで後加工する実現はともに許容する。TEI標準の書き方を新たに必須化するのは、記述の明瞭性・検証性などに**観測可能な優位**がある場合に限る。DB内で処理するか外部Hostで処理するかは性能だけでなく、契約意味・取得範囲・権限・データ開示の境界を伴う。#2387 QX-24〜28、#2622 DO-07、#2506/#2627、#2593の新たな比較条件を、#951の**Provider意味Conformanceに必要な場合のみ**受け渡す。#951自身がSQL OptimizerやData Operatorの第二実装を所有しない。
+
+#### 19.7.1 非可換な演算の最小反例：FilterとLimit
+
+`customers(id,active)` に `('A',0)`, `('B',1)` がある独立した**公開合成Fixture**で、Queryが「activeな顧客をID昇順に並べ先頭1件」と要求する場合：
+
+```sql
+-- 期待意味：先に絞込み、その後に順序・件数制限
+SELECT id FROM customers WHERE active=1 ORDER BY id LIMIT 1;
+-- => B
+
+-- 違反候補：DBから先頭1件だけ取得し、その後TEI側でactiveを選別
+SELECT id,active FROM customers ORDER BY id LIMIT 1;
+-- => A,0 ；この1件をactive=1で後処理すると0件
+```
+
+上記をLinuxの**独立SQLite 3.46.1**で実行し、前者`[('B',)]`、後者の後段Filter結果`[]`を観測。これは非可換な演算順序に起因する**偽の正常0件**であり、Go/TEI製品Query、実Provider、実DB、`master_data.customer/find_by_id`の個別適合を実測したわけではない。現行の`find_by_id`にORDER/LIMITが定義されているとも主張しない。別の汎用Query Consumerにおける意味保持の圧力例である。
+
+**判断：** PushdownとLocal Evaluateの選択は最適化の自由度であって、Source/Operator/契約が規定する`Filter → Sort → Limit`等の順序・bag/identity・NULL/collation・精度・失敗を変更する自由ではない。DB側のLimitを外して全件取得すれば値が合う場合でも、全件物理Readが許可・予算・機微Field最小化・Snapshot完全性を満たすことは別の資格。自動的なFull Read fallbackは採用しない。Pushdownできず局所後処理でも必要な候補集合を取得できないときは、正常な0件ではなく、必要な範囲の`unsupported/unresolved`として根拠を返す候補とする（公開Statusの新設ではない）。
+
+#### 19.7.2 Rowset完全性とField観測完全性は異なる
+
+#2627の既存合成Referenceでは、**Rowset complete**と**比較対象Fieldがobserved**であることを別々に照合する。両Read Sliceの`Complete=true`でも属性`absent`を含めば値の同等性は`not_established`、観測された`NULL`は未観測の`absent`と区別される。PR #2627は合成32件のGo実行/race/vet PASSとexact-head CIを記録するが、実DBのread/NULL保証は未証明。
+
+Customer Queryへ転用する際には次を混同しない。
+
+| 観測 | 言えること | 言えないこと |
+| --- | --- | --- |
+| 0行＋対象ScopeのRowset完了が**実際に立証された** | そのScope/時点/Query/Predicate下で正常な未検出の候補 | 他Scope/別Provider/別時点の不存在 |
+| 1行＋Rowset完了＋`customer_id=42`観測 | 当該行IDの観測 | `name`の値が既知、全属性・型の意味適合、Owner受理 |
+| 1行＋`name`フィールド未観測/absent | 行の存在とname未観測を保持 | `name=null`または空文字と同じにすること |
+| 1行＋`name`を明示`NULL`観測 | NULLを観測した事実 | 当該DataにNULLが許容されるというOwner判断 |
+| 0行＋部分取得/実Provider評価範囲不明 | その断片で観測された0行 | 正常な0件を確定すること |
+
+`Rowset Complete`という自己申告ビットだけで実データの全件取得を証明したことにはしない。必要なWitness（Source/Query/Provider/Instance/selection/snapshot/範囲とその実行観測）を別に確認する。反対に、単一の完了済みLookupに常に全世界の不存在や数学的な完全証明を要求しない。顧客`name`の必須性、`NULL`の意味、情報開示可否はそれぞれ別Ownerが判定する。
+
+#### 19.7.3 CQ評価票への追加接続・作業順
+
+| 比較条件 | 独立期待と反例 | 実装Owner／証拠 |
+| --- | --- | --- |
+| **CQ-P1 演算順序**（別の汎用Query Consumer） | Filter→LimitとLimit→Local Filterが異なる。ProviderでPushdown不可でも誤った正常0件を返さない | #2387/#2622が演算/取得のOwner。**独立SQLite 3.46.1の局所実測のみ**。TEI/実Provider/Owner未実施 |
+| **CQ-P2 行集合 vs 属性観測** | Complete Rowsetでも一属性absentならそのFieldの値同等性は未確定。absent/null/0/空文字を区別 | #2506/#2627がResult Slice/Read Cohort、#179/#1126がQuery/Data意味。#2627の合成PASSを正式Customer Contractへ流用しない |
+| **CQ-P3 Measure/集約**（将来の別Consumer） | Join後の重複・Groupの1行・AVGの再平均やsemi-additiveな時間軸をCustomer Entity件数と混ぜない | #2593が集計軸・単位・時間のOwner。Draft #2594の局所FixtureはService Conformanceを実証しない |
+| **CQ-P4 要求と実Readのずれ** | 同じ出力でも、実取得した隠れField/Scope、RLS/Permission/成本が異なる。説明と開示は別 | #2622 Q0/Q1、#2516 Q3、#1174等の実Host。未観測を`least-read proven`としない |
+
+**優先を変えない：** 最初は既存CQ-R2（試験Adapterの欠損/null）とCQ-R4（Generic `Rows:nil`）を二経路で独立実測する。その後、CQ-R5/R7/R8で必要となるContext/QueryだけにCQ-P1/P2を適用する。CQ-P3は別のMeasure Consumerの検証待ち。成熟した比較条件を#951の契約適合票へ**参照可能にすること**と、#951内に新実装・Gateを追加することは異なる。Source/Provider/Host/Resultの同一Attemptが未接続なら、SQLite正常系・Reference PASS・Shape PASSを一件のE2Eへ合算しない。
+
+**未実施・未採用：** 新Go/Java/.NET/Wasm/実PG/Oracle/Host/TEI Query試験、二Providerの物理Read比較、Rowset完全性の実観測、標準SQL/DSL境界の決定、正式Customer Query Service Result Shape・Owner意味受理、G1/G2変更はすべて未実施／未決。今回の実測は上記2行の**独立SQLite合成例のみ**。
