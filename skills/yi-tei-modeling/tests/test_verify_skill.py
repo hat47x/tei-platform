@@ -104,6 +104,26 @@ go run ./cmd/tei model catalog -workspace reference/workspace
                  "\n```sh\nenv TEI_ENV=1 tei artifacts -out /tmp/out\n```\n")
         self.has_error("unverified TEI invocation context")
 
+    def test_known_read_only_command_with_unverified_flag_is_rejected(self) -> None:
+        p = self.root / "skills/yi-tei-modeling/references/read-only-model-investigation.md"
+        self.put(str(p.relative_to(self.root)), p.read_text() +
+                 "\n```sh\ngo run ./cmd/tei validate -workspace reference/workspace -out /tmp/result\n```\n")
+        self.has_error("unverified CLI flag/argument: -out")
+
+    def test_known_command_with_shell_chaining_is_rejected(self) -> None:
+        p = self.root / "skills/yi-tei-modeling/references/read-only-model-investigation.md"
+        self.put(str(p.relative_to(self.root)), p.read_text() +
+                 "\n```sh\ngo run ./cmd/tei validate -workspace reference/workspace && echo accepted\n```\n")
+        self.has_error("composite TEI shell example")
+
+    def test_documented_trace_flags_are_accepted(self) -> None:
+        p = self.root / "skills/yi-tei-modeling/references/read-only-model-investigation.md"
+        self.put(str(p.relative_to(self.root)), p.read_text() +
+                 "\n```sh\ngo run ./cmd/tei trace -workspace reference/workspace "
+                 "-scope ref -subject-kind semantic-relation -subject-id sales.order.customer "
+                 "-direction both -mode full -limit 10 -offset 0 -expected-fingerprint abc\n```\n")
+        self.assertEqual(checker.check_repository(self.root), [])
+
     def test_trace_token_roles_are_required(self) -> None:
         p = self.root / "skills/yi-tei-modeling/references/read-only-model-investigation.md"
         self.put(str(p.relative_to(self.root)), p.read_text().replace("result.trace.snapshotFingerprint", "missing"))
