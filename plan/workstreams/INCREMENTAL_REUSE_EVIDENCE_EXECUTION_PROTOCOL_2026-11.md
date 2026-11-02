@@ -182,3 +182,45 @@ Metamorphic Relationは補助的な判別試験。関係PASSを独立Expected PA
 **最新実装の位置づけ（2026-11-02 14:26 UTC照合）**：PR #2587はmainへ統合済みだが、全Consumerの必要member、公開世代、実Read/Disclosureの保証までは統合済みとしない。PR #2634は修正HEAD `3dfc140`のCI結果を確認する場合も**合成Analyzerを与える特性テスト**、PR #2633は独立Draft。PR #2642の署名側Source IndexはLoad時捕捉byteへ寄せたが、import/manifest束縛や原子的Snapshot、Build/Generatorの実消費byte一式を保証したわけではない。
 
 **本追補の状態**：GitHubのコード/Issue/PR読取に基づくP0/P1受入案。QP-01〜07の本件での実SQL/TEI/Go Selector/Store/Provider/Host実行、F0/F1/S1、性能比較、Owner受理は**NOT RUN／NOT ADOPTED**。新しいPipeline／Cache／Policy Engine／Oracle Engine／正式Core Schemaを採用しない。
+
+## 11. 2026-11-02後半追補：空結果の否定依存と実Consumer到達を実測へ
+
+### 11.1 `[]`は「依存なし」ではない
+
+**新たなS2の必須反例**：同じ`[]`を返したQueryでも、結果を導いた対象集合、Relation経路、binding、WHERE/EXISTS述語、Provider route、取得Scope/完全性、Snapshot、権限母集団が異なる場合がある。結果byteが同じことは、次回も空でよいという証明にならない。無関係な全Sourceの変更監視も必要とはしない。
+
+| Probe | 最小の入力・変更 | 適切な判断 |
+| --- | --- | --- |
+| **QP-08 0→1→0** | `WHERE score>50`で空→新規該当行A→A削除で空 | 1行追加時の古い空Cacheを拒否。最後に空へ戻っても過去のReview/資格は自動復活しない |
+| **QP-09 Relation付替え** | 親Aに子0件、子Bを親Aへ付替え、表示対象は親Aのまま | 非存在/NOT EXISTSや集計の結果を再評価。表示Field・親ID不変は十分でない |
+| **QP-10 Route/Scope差** | 同じ空結果だがProvider P1は完全Read、P2は部分Read／Snapshot不明 | P2の不存在Claimはunknown。空byte一致を共同Cohort資格へ転写しない |
+| **QP-11 Plugin解釈改版** | Source同byteでSyntax/Role/Operator Plugin pinまたは実装解釈が変更 | 依存するFunction/Ruleだけ再資格化候補。Pin/依存閉包が不明なら局所skipを許さない |
+| **QP-12 Java全クラス** | Main.class不変、Main$Input.class等の依存クラスだけ変更 | Main.class単独digestの一致では実行集合の再利用を許さない。全class set/JAR＋実Consumer結果で判定 |
+
+QP-08〜10は[#2582](https://github.com/hat47x/tei-platform/issues/2582)・[#2586](https://github.com/hat47x/tei-platform/issues/2586)の動的Context/Provider観測を参照する。QP-11は[Draft #2638](https://github.com/hat47x/tei-platform/pull/2638)のRole Bootstrap/Pin検討を利用するが、合成ReferenceのPASSをTEI実Pluginでの資格へ昇格しない。QP-12は[#2512](https://github.com/hat47x/tei-platform/issues/2512)・[#2388](https://github.com/hat47x/tei-platform/pull/2388)のJava全class問題を受け取る。各Ownerの実装・Oracleを重複実装しない。
+
+### 11.2 生成結果から実Consumerまでの閉包を固定する
+
+**Source/生成物を作る時の依存**と、**その後の実行時データを読む時の依存**は別に測る。実行前に次の実観測を固定し、観測できなければ`unknown`とする。
+
+| 段階 | 実際に確認するもの | この段階だけでは保証しないもの |
+| --- | --- | --- |
+| Authoring/Load | Loadで捕捉したSource byte、Role/Operator pin、選択されたInput/Context | すべての後続Toolが同一byteを消費したこと |
+| Tool選択 | **実際に選択された**CLI/Skill/Plugin、引数、Source/Workspace/Target | Tool候補の列挙や説明文だけによる実行資格 |
+| Build/Generate | declared vs actual reads、Toolchain、依存member全件、失敗/未列挙の区別 | 生成物の公開世代・外部Consumerでの利用 |
+| Publish | Manifestとmemberの実byte、既存ファイルの残存、公開操作の結果 | 原子的公開、Readerの同一世代読取 |
+| Consumer | 必要memberと**実際に読んだmember**、外部Host/Providerの取得Scopeと現在Grant、結果/送出 | 実Readなしの利用可能性、Provider Commit/Receipt |
+
+[#2587](https://github.com/hat47x/tei-platform/pull/2587)統合で`tei operations`/`tei artifacts`の実装入口が増えたが、同一Workspaceを指定しただけでは全段階のSource byte同一性を証明しない。[#2642](https://github.com/hat47x/tei-platform/pull/2642)のLoad時byte束縛は署名側の限定保証であり、他のTool/Buildへの自動伝播ではない。Artifact出力の個別書込みとManifest作成を原子的な公開と読み替えない。実Consumerが旧新混在memberを読めるなら、そのClaimを拒否するか、版固定・隔離公開の追加証拠が必要。
+
+### 11.3 F0/F1/S1/S2への割当と停止線
+
+1. **F0/F1**：同一固定fixtureで完全実行。単にOutput `[]`を比較せず、対象集合・Predicate・Relation path・Scope・Provider route・完全性・Target/Role pinを記録。
+2. **S1**：QP-08〜12のうち依存不変が証明できる箇所のみ既存物を使う。今回未実行のNodeを今回`succeeded`へ偽装しない。
+3. **S2**：`0→1→0`、付替え、部分取得、Plugin改版、Java副class変更を一軸ずつ投入。必要な失効と無関係な独立成果物の維持を両方検証。
+4. **J0/J1/J2**：過去PASS/Owner Review/Disclosureを同じOutputに結合する誤りをJ0で再現し、J1/J2では現在のClaim依存だけ再資格化。F1=S1の一致と独立Oracle PASSを別々に確認。
+5. **時間**：`dependency closure + actual read binding + required build + independent oracle + qualification + publish/read`を分け、実Consumerが利用可能になるまで測る。実測前に「高速化済み」と報告しない。
+
+**追加受入条件**：少なくとも「空結果の誤再利用」「値/ID同一でもRelationや対象集合変更」「依存Plugin変更」「全class set差」の四種類で、既存物の**内容を保持すること**と**現在のClaimに使えること**が別々に判定されること。既存#2600のIB/QDC/PLケースへ割り当て、新たな依存Engine、Negative-Cache、Source Registry、Host、Oracle Engineは作らない。
+
+**実証状態**：本節は既存チャットとGitHubの設計・局所試験の統合。QP-08〜12の本手順での実TEI F0/F1/S1/S2、実Provider、外部Consumer、Java生成物一式、性能測定、Owner意味受理は**NOT RUN**。main/PRの更新状況は観測時点に依存し、各局所CIの成功をこの一巡のPASSとしない。
