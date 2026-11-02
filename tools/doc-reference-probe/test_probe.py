@@ -6,7 +6,7 @@ import sys
 from datetime import date
 from pathlib import Path
 
-from probe import apply_allowlist, check, compare_allowlists
+from probe import apply_allowlist, audit_allowlist, check, compare_allowlists
 
 
 class ProbeTest(unittest.TestCase):
@@ -117,6 +117,32 @@ class ProbeTest(unittest.TestCase):
             apply_allowlist(removed, {"baseline_count": 1, "entries": []}, date(2026, 11, 1))
             compare_allowlists(removed, {"baseline_count": 1, "entries": [old]}, date(2026, 11, 1))
             self.assertEqual(removed["allowlist"]["issues"], [])
+
+    def test_allowlist_audit_checks_other_and_missing_documents(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "docs").mkdir()
+            (root / "docs" / "first.md").write_text("`ref:docs/missing`", encoding="utf-8")
+            (root / "docs" / "second.md").write_text("`ref:docs/existing`", encoding="utf-8")
+            (root / "docs" / "existing").write_text("", encoding="utf-8")
+            def entry(doc, name, **extra):
+                return {"document": doc, "name": name, "reason": "tracking", "issue": 2309, **extra}
+            data = {"baseline_count": 3, "entries": [
+                entry("docs/first.md", "docs/missing", expires="2026-10-31"),
+                entry("docs/second.md", "docs/existing"),
+                entry("docs/deleted.md", "docs/missing"),
+            ]}
+            audit = audit_allowlist(root, data, date(2026, 11, 1))
+            self.assertEqual(audit["document_count"], 3)
+            self.assertEqual({i["result"] for i in audit["issues"]},
+                             {"expired-allowlist", "stale-allowlist", "allowlist-document-unavailable"})
+            allowlist = root / "allowlist.json"
+            allowlist.write_text(json.dumps(data), encoding="utf-8")
+            run = subprocess.run([sys.executable, str(Path(__file__).with_name("probe.py")),
+                                  "--root", str(root), "--allowlist", str(allowlist), "--audit-allowlist",
+                                  "docs/second.md"], capture_output=True, text=True, check=False)
+            self.assertEqual(run.returncode, 1, run.stderr)
+            self.assertEqual(json.loads(run.stdout)["allowlist_audit"]["document_count"], 3)
 
 
 if __name__ == "__main__":

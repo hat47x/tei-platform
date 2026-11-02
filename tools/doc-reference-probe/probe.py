@@ -122,15 +122,41 @@ def compare_allowlists(report, baseline, today):
                                   "result": "allowlist-entry-added", "severity": "error"})
 
 
+def audit_allowlist(root, data, today):
+    """Audit every document represented in a validated allowlist."""
+    root = root.resolve()
+    # Validate before using document paths or reading files.
+    apply_allowlist({"document": "", "records": []}, data, today)
+    documents = sorted({entry["document"] for entry in data["entries"]})
+    issues = []
+    for document in documents:
+        path = (root / document).resolve()
+        if not path.is_relative_to(root) or not path.is_file() or path.suffix != ".md":
+            issues.append({"document": document, "result": "allowlist-document-unavailable", "severity": "error"})
+            continue
+        try:
+            report = check(root, document, path.read_text(encoding="utf-8"))
+        except (OSError, UnicodeError) as exc:
+            issues.append({"document": document, "result": "allowlist-document-unreadable",
+                           "severity": "error", "detail": str(exc)})
+            continue
+        apply_allowlist(report, data, today)
+        issues.extend({"document": document, **item} for item in report["allowlist"]["issues"])
+    return {"document_count": len(documents), "issues": issues}
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("document", help="repository-relative Markdown path")
     parser.add_argument("--root", type=Path, default=Path.cwd())
     parser.add_argument("--allowlist", type=Path, help="optional exact-entry JSON allowlist")
     parser.add_argument("--baseline-allowlist", type=Path, help="trusted baseline JSON for increase checks")
+    parser.add_argument("--audit-allowlist", action="store_true", help="audit all allowlist documents")
     args = parser.parse_args()
     if args.baseline_allowlist and not args.allowlist:
         parser.error("--baseline-allowlist requires --allowlist")
+    if args.audit_allowlist and not args.allowlist:
+        parser.error("--audit-allowlist requires --allowlist")
     root = args.root.resolve()
     doc = (root / args.document).resolve()
     if not doc.is_relative_to(root) or not doc.is_file() or doc.suffix != ".md":
@@ -140,13 +166,18 @@ def main():
     if args.allowlist:
         try:
             today = date.today()
-            apply_allowlist(report, json.loads(args.allowlist.read_text(encoding="utf-8")), today)
+            allowlist = json.loads(args.allowlist.read_text(encoding="utf-8"))
+            apply_allowlist(report, allowlist, today)
             if args.baseline_allowlist:
                 compare_allowlists(report, json.loads(args.baseline_allowlist.read_text(encoding="utf-8")), today)
+            if args.audit_allowlist:
+                report["allowlist_audit"] = audit_allowlist(root, allowlist, today)
         except (ValueError, OSError) as exc:
             parser.error(f"invalid allowlist: {exc}")
     print(json.dumps(report, ensure_ascii=False, indent=2))
-    return int(any(item["severity"] == "error" for item in report["records"] + report.get("allowlist", {}).get("issues", [])))
+    issues = report["records"] + report.get("allowlist", {}).get("issues", [])
+    issues += report.get("allowlist_audit", {}).get("issues", [])
+    return int(any(item["severity"] == "error" for item in issues))
 
 
 if __name__ == "__main__":
