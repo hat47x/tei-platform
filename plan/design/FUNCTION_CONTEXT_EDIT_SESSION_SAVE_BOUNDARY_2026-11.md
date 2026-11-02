@@ -239,3 +239,19 @@ Rule実行に必要な関係のRole、集合、時点、値域、必要な完全
 既存#2598（単一Intent→Requestの対象束縛）の確認票に対して、#2597は`SaveGroup / Member Request / Dependency / Result`の**一対多の関連**を、既存のOperation/Receipt/Scenarioを参照して説明できるか検証する。各要求のID、対象Key/Role、期待版、実Provider/Hostの能力、Groupの原子性資格、個別結果と現在適用範囲を別列として渡す。正式Schemaを先に固定せず、既存Source/Contractで説明できた範囲と不足情報を測定する。
 
 **必要な重要区別**：依存関係のDAGがある≠実効資源所有のDAGがある≠同一Txに参加する≠一つの業務として完了した。特にバッチAPIが処理順序を保証するだけの場合、一部成功の結果をそのまま保存・再確認する。
+
+## 12. SQLite限定のTransaction実挙動比較（2026-11-02追補）
+
+合成Plannerだけでは説明できない**実SQL実行における原子性と部分成功**を独立に観測するため、Python標準ライブラリのSQLite in-memoryによる`plan/fixtures/function-edit-session/verify_sqlite_save_boundaries.py`を追加した。
+
+| Case | SQLiteで実際に試したこと | 実観測 |
+| --- | --- | --- |
+| SQL-T1 | `BEGIN`内でParent INSERT成功、Child FK違反後に`ROLLBACK` | Parent 0件／Child 0件 |
+| SQL-T2 | 自動Commitの個別文でParent INSERT成功、次のChild FK違反 | Parent 1件／Child 0件（部分成功） |
+| SQL-T3 | `BEGIN`内でParent INSERT後にSavepoint、Child INSERTをSavepointへRollback後に外側Commit | Parent 1件／Child 0件 |
+
+**隔離SQLiteの`unittest` 3/3 PASS**、`py_compile` PASS。隔離実行ファイル2236バイト、SHA-256 `e80f3a852a33ae422a85acbdadc4d5b2baaaba9b8ed9650587d3f21ec0c19b0f`、Git blob SHA-1 `98c4a93cd07ee641276c0d132732635bea54ae7d`。
+
+これにより、**同じParent→Childという機能依存**でも、実行方式によって全体Rollback／部分成功／部分Rollbackが成立し得ることを、局所SQLiteでは観測した。全般的なDB方言、Provider実API、PostgreSQL/Java/.NET、複数ノード、外部SaaS、TEI Driver/HostのTx保証へ外挿しない。外部仕様の[PostgreSQL Tx/SAVEPOINT説明](https://www.postgresql.org/docs/current/tutorial-transactions.html)は比較資料であり、このSQLite試験の本番移植を証明しない。
+
+**合計で合成Python 18テスト＋局所SQLite実挙動3テスト＝21テストPASS。** 三つの独立Referenceであり、正式TEI Query→Data Context→Intent→Host→Effectの一体テスト件数は**0（NOT RUN）**。Sourceの意味受理や同一試行の実Provider/Owner Evidenceも未。今後、#1174/#2564の実DB資源所有・現行Authority・Commit fence、#2598の候補から実Requestへの対象束縛、#2586の単一Function縦断へ接続する。
