@@ -68,7 +68,9 @@ data Customer {
     interaction {
         item sales.order.order_id
         item sales.order.customer_id lookup order_entry.customer_reference customer.customer.customer_id
-        command sales.submit_order
+        command sales.submit_order {
+            input order sales.order.order_id
+        }
     }
 }
 `)
@@ -122,6 +124,9 @@ func TestProductSliceLoadsValidatesAndViews(t *testing.T) {
 	}
 	if !report.OK || len(report.Result.Items) != 2 || len(report.Result.Commands) != 1 || len(report.Result.Packages) != 1 {
 		t.Fatalf("record view=%+v", report.Result)
+	}
+	if len(report.Result.Commands[0].Inputs) != 1 || report.Result.Commands[0].Inputs[0].Attribute != "sales.order.order_id" {
+		t.Fatalf("command inputs=%+v", report.Result.Commands[0].Inputs)
 	}
 	if report.Result.Items[1].Lookup == nil || report.Result.Items[1].Lookup.TargetType != "customer.customer_id" {
 		t.Fatalf("lookup=%+v", report.Result.Items[1].Lookup)

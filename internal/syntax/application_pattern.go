@@ -333,7 +333,38 @@ func (p *Parser) parsePatternInteraction() (*application.Interaction, error) {
 			if err != nil {
 				return nil, p.errAt(capabilityTok, err.Error())
 			}
-			out.Commands = append(out.Commands, application.InteractionCommand{Capability: capability})
+			command := application.InteractionCommand{Capability: capability}
+			if nt, _ := p.peek(); nt.Kind == TokenLBrace {
+				_, _ = p.next()
+				for {
+					entry, err := p.peek()
+					if err != nil {
+						return nil, err
+					}
+					if entry.Kind == TokenRBrace {
+						_, _ = p.next()
+						break
+					}
+					if entry.Text != "input" {
+						return nil, p.errAt(entry, "expected input in command binding")
+					}
+					_, _ = p.next()
+					nameTok, err := p.expect(TokenIdent)
+					if err != nil {
+						return nil, err
+					}
+					attrTok, err := p.expect(TokenIdent)
+					if err != nil {
+						return nil, err
+					}
+					attribute, err := core.ParseCanonicalID(attrTok.Text)
+					if err != nil {
+						return nil, p.errAt(attrTok, err.Error())
+					}
+					command.Inputs = append(command.Inputs, application.CommandInputBinding{Name: nameTok.Text, Attribute: attribute})
+				}
+			}
+			out.Commands = append(out.Commands, command)
 		default:
 			return nil, p.errAt(t, "expected item, navigate, or command in interaction")
 		}

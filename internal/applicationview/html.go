@@ -36,7 +36,7 @@ nav{margin-top:2rem;border-top:1px solid #ddd;padding-top:1rem}
 </div>
 {{end}}{{if .Commands}}<div class="actions">{{range .Commands}}<button type="button" data-capability="{{.Capability}}">{{.Label}}</button>{{end}}</div>
 {{range .Commands}}<details class="command"><summary>{{.Label}}</summary>
-{{if .Inputs}}<p>入力: {{range .Inputs}}{{.Name}} ({{.Type}}) {{end}}</p>{{end}}
+{{if .Inputs}}<p>入力: {{range .Inputs}}{{.Name}} ({{.Type}}){{if .Attribute}} ← {{.Label}}{{end}} {{end}}</p>{{end}}
 {{if .Outcomes}}<p>結末: {{range .Outcomes}}{{.Name}} → {{.Payload}} {{end}}</p>{{end}}
 {{if .Effect}}<p>効果: {{.Effect.Kind}} {{.Effect.Data}}</p>{{end}}
 </details>{{end}}{{end}}</form>

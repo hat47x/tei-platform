@@ -111,3 +111,25 @@ func TestParseRecordApplicationPatternInteractionCommand(t *testing.T) {
 		t.Fatalf("command=%#v", got.Interaction.Commands[0])
 	}
 }
+
+func TestParseRecordApplicationPatternInteractionCommandInputs(t *testing.T) {
+	src := `pattern order_entry.order_record record {
+    data sales.order
+    interaction {
+        command sales.submit_order {
+            input order sales.order.order_id
+        }
+    }
+}`
+	got, err := syntax.NewParser(src).ParseApplicationPattern()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Interaction == nil || len(got.Interaction.Commands) != 1 {
+		t.Fatalf("commands=%#v", got.Interaction)
+	}
+	command := got.Interaction.Commands[0]
+	if len(command.Inputs) != 1 || command.Inputs[0].Name != "order" || command.Inputs[0].Attribute != "sales.order.order_id" {
+		t.Fatalf("command=%#v", command)
+	}
+}

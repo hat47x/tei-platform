@@ -180,7 +180,7 @@ func writeViewText(out io.Writer, view applicationview.View) (int, error) {
 			if len(command.Inputs) > 0 {
 				inputs := make([]string, 0, len(command.Inputs))
 				for _, input := range command.Inputs {
-					inputs = append(inputs, fmt.Sprintf("%s (%s)", input.Name, input.Type))
+					inputs = append(inputs, fmt.Sprintf("%s (%s)%s", input.Name, input.Type, bindLabel(input.Label, input.Attribute)))
 				}
 				if _, err := fmt.Fprintf(out, "      入力: %s\n", strings.Join(inputs, ", ")); err != nil {
 					return 2, err
@@ -203,6 +203,13 @@ func writeViewText(out io.Writer, view applicationview.View) (int, error) {
 		}
 	}
 	return 0, nil
+}
+
+func bindLabel(label string, attribute core.CanonicalID) string {
+	if attribute == "" {
+		return ""
+	}
+	return fmt.Sprintf(" ← %s", label)
 }
 
 func writeHeaderDetailText(out io.Writer, view applicationview.HeaderDetailView) (int, error) {

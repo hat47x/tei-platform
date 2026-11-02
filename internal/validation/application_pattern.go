@@ -43,6 +43,7 @@ func validateApplicationPatterns(w ir.World) []Diagnostic {
 	semanticDataAttributes := map[core.CanonicalID]map[core.CanonicalID]core.CanonicalID{}
 	semanticRelations := map[core.CanonicalID]applicationPatternRelationRef{}
 	semanticCapabilities := map[core.CanonicalID]core.CanonicalID{}
+	semanticCapabilityInputs := map[core.CanonicalID]map[string]core.CanonicalID{}
 	for _, ns := range w.Semantics {
 		for _, data := range ns.Data {
 			semanticData[data.ID] = struct{}{}
@@ -70,6 +71,11 @@ func validateApplicationPatterns(w ir.World) []Diagnostic {
 				// Pattern側では存在確認だけを行い、同じ原因のDiagnosticを増やさない。
 				continue
 			}
+			inputs := map[string]core.CanonicalID{}
+			for _, input := range capability.Inputs {
+				inputs[string(input.Name)] = input.Type
+			}
+			semanticCapabilityInputs[capability.ID] = inputs
 			semanticCapabilities[capability.ID] = ns.ID
 		}
 	}
@@ -148,7 +154,7 @@ func validateApplicationPatterns(w ir.World) []Diagnostic {
 			case application.PatternBrowse:
 				out = append(out, validateBrowsePattern(app, pattern, patternSubject, semanticData, queries)...)
 			case application.PatternRecord:
-				out = append(out, validateRecordPattern(app, pattern, patternSubject, semanticData, semanticDataAttributes, patterns, semanticRelations, semanticCapabilities)...)
+				out = append(out, validateRecordPattern(app, pattern, patternSubject, semanticData, semanticDataAttributes, patterns, semanticRelations, semanticCapabilities, semanticCapabilityInputs)...)
 			case application.PatternReference:
 				out = append(out, validateReferencePattern(app, pattern, patternSubject, semanticRelations)...)
 			case application.PatternCommand:
@@ -273,6 +279,7 @@ func validateRecordPattern(
 	patterns map[core.CanonicalID]applicationPatternRef,
 	semanticRelations map[core.CanonicalID]applicationPatternRelationRef,
 	semanticCapabilities map[core.CanonicalID]core.CanonicalID,
+	semanticCapabilityInputs map[core.CanonicalID]map[string]core.CanonicalID,
 ) []Diagnostic {
 	var out []Diagnostic
 
@@ -292,7 +299,7 @@ func validateRecordPattern(
 			pattern.Data,
 		))
 	} else {
-		out = append(out, validateRecordPatternInteraction(app, pattern, patternSubject, semanticDataAttributes, patterns, semanticRelations, semanticCapabilities)...)
+		out = append(out, validateRecordPatternInteraction(app, pattern, patternSubject, semanticDataAttributes, patterns, semanticRelations, semanticCapabilities, semanticCapabilityInputs)...)
 	}
 
 	if pattern.Relation != "" {
@@ -339,6 +346,7 @@ func validateRecordPatternInteraction(
 	patterns map[core.CanonicalID]applicationPatternRef,
 	semanticRelations map[core.CanonicalID]applicationPatternRelationRef,
 	semanticCapabilities map[core.CanonicalID]core.CanonicalID,
+	semanticCapabilityInputs map[core.CanonicalID]map[string]core.CanonicalID,
 ) []Diagnostic {
 	var out []Diagnostic
 	if pattern.Interaction == nil {
@@ -484,6 +492,43 @@ func validateRecordPatternInteraction(
 				namespace,
 				app.ID,
 			))
+		}
+		capabilityInputs := semanticCapabilityInputs[command.Capability]
+		seenInputs := map[string]bool{}
+		for _, binding := range command.Inputs {
+			if _, ok := capabilityInputs[binding.Name]; !ok {
+				out = append(out, errFor(
+					patternSubject,
+					"UNKNOWN_APPLICATION_PATTERN_INTERACTION_COMMAND_INPUT",
+					"record pattern %s binds command %s input %s that the capability does not declare",
+					pattern.ID,
+					command.Capability,
+					binding.Name,
+				))
+			}
+			if seenInputs[binding.Name] {
+				out = append(out, errFor(
+					patternSubject,
+					"APPLICATION_PATTERN_INTERACTION_COMMAND_INPUT_DUPLICATE",
+					"record pattern %s binds command %s input %s more than once",
+					pattern.ID,
+					command.Capability,
+					binding.Name,
+				))
+			}
+			seenInputs[binding.Name] = true
+			if _, ok := dataAttributes[binding.Attribute]; !ok {
+				out = append(out, errFor(
+					patternSubject,
+					"UNKNOWN_APPLICATION_PATTERN_INTERACTION_COMMAND_BINDING_ATTRIBUTE",
+					"record pattern %s binds command %s input %s to %s that is not an attribute of %s",
+					pattern.ID,
+					command.Capability,
+					binding.Name,
+					binding.Attribute,
+					pattern.Data,
+				))
+			}
 		}
 	}
 

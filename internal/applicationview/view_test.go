@@ -77,7 +77,10 @@ func viewWorld() ir.World {
 							},
 						},
 						Navigations: []application.InteractionNavigation{{From: "order_entry.recent_orders"}},
-						Commands:    []application.InteractionCommand{{Capability: "sales.confirm_order"}},
+						Commands: []application.InteractionCommand{{
+							Capability: "sales.confirm_order",
+							Inputs:     []application.CommandInputBinding{{Name: "order_id", Attribute: "sales.order.order_id"}},
+						}},
 					},
 				},
 			},
@@ -194,6 +197,9 @@ func TestBuildCarriesCommands(t *testing.T) {
 	command := view.Commands[0]
 	if len(command.Inputs) != 1 || command.Inputs[0].Name != "order_id" || command.Inputs[0].Type != "std.identifier" {
 		t.Fatalf("inputs=%+v", command.Inputs)
+	}
+	if command.Inputs[0].Attribute != "sales.order.order_id" || command.Inputs[0].Label != "受注番号" {
+		t.Fatalf("binding=%+v", command.Inputs[0])
 	}
 	if len(command.Outcomes) != 1 || command.Outcomes[0].Name != "confirmed" || command.Outcomes[0].Payload != "sales.order_confirmed" {
 		t.Fatalf("outcomes=%+v", command.Outcomes)

@@ -20,12 +20,19 @@ func interactionRecordPattern(w *ir.World) *application.Pattern {
 
 func TestValidateInteractionCommand(t *testing.T) {
 	w := applicationPatternInteractionWorld()
-	w.Semantics[0].Capabilities = []semantic.Capability{{ID: "sales.confirm_order", Symbol: "confirm_order"}}
+	w.Semantics[0].Capabilities = []semantic.Capability{{
+		ID:     "sales.confirm_order",
+		Symbol: "confirm_order",
+		Inputs: []semantic.Parameter{{Name: "order", Type: "sales.order"}},
+	}}
 	pattern := interactionRecordPattern(&w)
 	if pattern == nil {
 		t.Fatal("record pattern not found")
 	}
-	pattern.Interaction.Commands = []application.InteractionCommand{{Capability: "sales.confirm_order"}}
+	pattern.Interaction.Commands = []application.InteractionCommand{{
+		Capability: "sales.confirm_order",
+		Inputs:     []application.CommandInputBinding{{Name: "order", Attribute: "sales.order.order_id"}},
+	}}
 	w.Applications[0].SemanticUses = []core.CanonicalID{"sales", "customer"}
 
 	diagnostics := validateApplicationPatterns(w)
@@ -58,5 +65,59 @@ func TestValidateInteractionCommandRejectsUnusedNamespace(t *testing.T) {
 	diagnostics := validateApplicationPatterns(w)
 	if diagnosticByCode(diagnostics, "APPLICATION_PATTERN_INTERACTION_COMMAND_SEMANTIC_NOT_USED") == nil {
 		t.Fatalf("diagnostics=%#v", diagnostics)
+	}
+}
+
+func TestValidateInteractionCommandRejectsUnknownInput(t *testing.T) {
+	w := applicationPatternInteractionWorld()
+	w.Semantics[0].Capabilities = []semantic.Capability{{
+		ID:     "sales.confirm_order",
+		Symbol: "confirm_order",
+		Inputs: []semantic.Parameter{{Name: "order", Type: "sales.order"}},
+	}}
+	pattern := interactionRecordPattern(&w)
+	pattern.Interaction.Commands = []application.InteractionCommand{{
+		Capability: "sales.confirm_order",
+		Inputs:     []application.CommandInputBinding{{Name: "missing", Attribute: "sales.order.order_id"}},
+	}}
+	if diagnosticByCode(validateApplicationPatterns(w), "UNKNOWN_APPLICATION_PATTERN_INTERACTION_COMMAND_INPUT") == nil {
+		t.Fatal("unknown command input was accepted")
+	}
+}
+
+func TestValidateInteractionCommandRejectsDuplicateInputBinding(t *testing.T) {
+	w := applicationPatternInteractionWorld()
+	w.Semantics[0].Capabilities = []semantic.Capability{{
+		ID:     "sales.confirm_order",
+		Symbol: "confirm_order",
+		Inputs: []semantic.Parameter{{Name: "order", Type: "sales.order"}},
+	}}
+	pattern := interactionRecordPattern(&w)
+	pattern.Interaction.Commands = []application.InteractionCommand{{
+		Capability: "sales.confirm_order",
+		Inputs: []application.CommandInputBinding{
+			{Name: "order", Attribute: "sales.order.order_id"},
+			{Name: "order", Attribute: "sales.order.customer_id"},
+		},
+	}}
+	if diagnosticByCode(validateApplicationPatterns(w), "APPLICATION_PATTERN_INTERACTION_COMMAND_INPUT_DUPLICATE") == nil {
+		t.Fatal("duplicate command input binding was accepted")
+	}
+}
+
+func TestValidateInteractionCommandRejectsUnknownBindingAttribute(t *testing.T) {
+	w := applicationPatternInteractionWorld()
+	w.Semantics[0].Capabilities = []semantic.Capability{{
+		ID:     "sales.confirm_order",
+		Symbol: "confirm_order",
+		Inputs: []semantic.Parameter{{Name: "order", Type: "sales.order"}},
+	}}
+	pattern := interactionRecordPattern(&w)
+	pattern.Interaction.Commands = []application.InteractionCommand{{
+		Capability: "sales.confirm_order",
+		Inputs:     []application.CommandInputBinding{{Name: "order", Attribute: "sales.order.missing"}},
+	}}
+	if diagnosticByCode(validateApplicationPatterns(w), "UNKNOWN_APPLICATION_PATTERN_INTERACTION_COMMAND_BINDING_ATTRIBUTE") == nil {
+		t.Fatal("unknown binding attribute was accepted")
 	}
 }

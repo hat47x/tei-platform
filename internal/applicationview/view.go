@@ -44,8 +44,10 @@ type Command struct {
 
 // CommandInputは、Commandが要求する入力を解決した結果である。
 type CommandInput struct {
-	Name string           `json:"name"`
-	Type core.CanonicalID `json:"type"`
+	Name      string           `json:"name"`
+	Type      core.CanonicalID `json:"type"`
+	Attribute core.CanonicalID `json:"attribute,omitempty"`
+	Label     string           `json:"label,omitempty"`
 }
 
 // CommandOutcomeは、Commandの正常終了で得られる業務上の結末である。
@@ -240,7 +242,19 @@ func Build(world ir.World, applicationID, patternID core.CanonicalID) (View, err
 		}
 		resolved := Command{Capability: command.Capability, Label: label}
 		for _, input := range capability.Inputs {
-			resolved.Inputs = append(resolved.Inputs, CommandInput{Name: string(input.Name), Type: input.Type})
+			resolvedInput := CommandInput{Name: string(input.Name), Type: input.Type}
+			for _, binding := range command.Inputs {
+				if binding.Name != string(input.Name) {
+					continue
+				}
+				attribute, ok := attributes[binding.Attribute]
+				if !ok {
+					return View{}, fmt.Errorf("command %s input %s binds %s that is not an attribute of %s", command.Capability, binding.Name, binding.Attribute, pattern.Data)
+				}
+				resolvedInput.Attribute = binding.Attribute
+				resolvedInput.Label = labelOf(attribute)
+			}
+			resolved.Inputs = append(resolved.Inputs, resolvedInput)
 		}
 		for _, outcome := range capability.Outcomes {
 			resolved.Outcomes = append(resolved.Outcomes, CommandOutcome{Name: string(outcome.Name), Payload: outcome.Payload})

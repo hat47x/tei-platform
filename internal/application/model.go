@@ -77,9 +77,16 @@ type Interaction struct {
 }
 
 // InteractionCommandは、対話から起動できるCapabilityへの参照である。
-// 効果や結末はCapability側に置き、ここでは起動の意図だけを持つ。
+// 効果や結末はCapability側に置き、ここでは起動の意図と入力の結びつけだけを持つ。
 type InteractionCommand struct {
-	Capability core.CanonicalID `json:"capability"`
+	Capability core.CanonicalID      `json:"capability"`
+	Inputs     []CommandInputBinding `json:"inputs,omitempty"`
+}
+
+// CommandInputBindingは、Commandの入力を対話の項目へ結びつける。
+type CommandInputBinding struct {
+	Name      string           `json:"name"`
+	Attribute core.CanonicalID `json:"attribute"`
 }
 
 // PatternにはApplication上の意図だけを保持する。
