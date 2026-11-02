@@ -9,7 +9,7 @@
 
 対象の同一性／構成文法／性質・法則／解釈文脈／利用箇所の要求／主張と根拠／実現と表示。各Pressureの意味に関連するM1〜M10（#2495）は重複して構わないが、**一つの性質を二つの独立な意味正本に保存しない**。
 
-以下の156ケースは**初期の異質性を測るための開始点であり、網羅の完了や上限を意味しない**。新規の構造・数学的性質・分野固有の解釈は追加し続ける。関心事が重複する場合も、操作・利用文脈・失われる情報が異なれば別の反例として保持する。
+以下の168ケースは**初期の異質性を測るための開始点であり、網羅の完了や上限を意味しない**。新規の構造・数学的性質・分野固有の解釈は追加し続ける。関心事が重複する場合も、操作・利用文脈・失われる情報が異なれば別の反例として保持する。
 
 ## A. 値と同一性（PC-01〜07）
 
@@ -279,6 +279,27 @@ TEIの[PR #2576](https://github.com/hat47x/tei-platform/pull/2576)・[#2578](htt
 | PC-156 | Derived Dataset/文書/コードへの同版Projection | 一つのSource＋複数意味Role/Consumer | Semantic Subject・Source/Rule/Artifact/Consumer版・Loss | 生成した表/SHO/Codeの成功を実Consumer/Owner受理へ昇格 | #2619/#2497/#2604 |
 
 **受入と状態**：12件はすべて**提案・NOT RUN**。現在のTEIがTypeScript系、Pipeline構文、Markdown自動解釈やGraph/Treeの全Queryをサポート済みという意味ではない。RDB・Graph・文書など異質なConsumerで、**明示Operator/RoleとContextの条件が揃えば共通構造へ投影できるか／異なるときは何を未解決と表示するか**を検証する。Core TypeKind、新Parser・Data Engine、第二Semantic SSOT、独自Hostの先行追加を求めない。
+
+## P. 観測閉包・物理Read・Action開示の三重境界（PC-157〜168、2026-11-02追加候補）
+
+[メタ概念設計§26](DATA_STRUCTURE_META_FACETS_AND_TOPOLOGY_2026-11.md)の根拠を、[独立Go Reference #2627](https://github.com/hat47x/tei-platform/pull/2627)のRC-18〜20（Complete RowsetとField absentの区別）、[#2616](https://github.com/hat47x/tei-platform/issues/2616)の論理要求／実取得／Consumer公開、[Action適用 #2613](https://github.com/hat47x/tei-platform/pull/2613)の公開可能Action候補に接続する。値の表示一致を、実取得の最小性・全Fieldの観測済み・実権限・開示資格へ昇格させない。
+
+| ID | Pressure | 構成・表現 | 保持・比較する意味 | 誤成功 | Owner |
+| --- | --- | --- | --- | --- | --- |
+| PC-157 | Rowsetは全件、対象Fieldはabsent | Complete Bag＋未観測Field | 行集合の完全性とField値の既知性 | 全行を読んだのでField比較も一致 | #2627/#2585 |
+| PC-158 | 片側はSQL NULL、片側はabsent | Observed-nullとUnobserved-value | 観測値の不一致と比較不能の区別 | NULL≠absentを矛盾したDataと確定 | #2627/#2056 |
+| PC-159 | 同じSnapshot token、発行Providerが別 | 異Issuer＋同Token文字列のRead Slice | Cohortの実証・Read-set条件・時点 | token字句が同じなので同一Snapshotと宣言 | #2611/#2622 |
+| PC-160 | PartialとCompleteの二Query | 異なるRowset Closure・同Scope申告 | Read Completeの実証と粒度・Bag | 先頭ページに値がないので全件不存在とする | #2506/#1706 |
+| PC-161 | 同じ表示、非表示Rule依存が異なる | Display Field＋別Rule Input | D／V／A_dataと適用済みRule版 | 表示JSON同値でValidationも一致と宣言 | #2624/#1729 |
+| PC-162 | 出力は同じ、Providerは秘密Fieldを取得 | Logical Map＋Actual Read Trace | データ要求・物理Read・開示の別資格 | 外部JSON一致から過剰Read無しを証明 | #2622/#2515 |
+| PC-163 | 公開Subjectは同じで秘密Actionだけ増える | Action Offer集合とDisclosure Filter | 候補数・Status・Orderの開示資格 | 非公開Actionの存在を候補一覧から漏らす | #2613/#2516 |
+| PC-164 | Preview後にRule/Grantが変更 | Context epochと更新前提の差分 | Read時判断と保存時Authority/Effect | 古いPreview PASSから保存OKと宣言 | #2598/#1174 |
+| PC-165 | 同じ値、別Tenant RLSで観測範囲が異なる | Query Binding＋実RLS Scope | 実Row Visibilityと対象母集団 | 値一致を同じ全件性・同じAudienceとする | #1769/#2622 |
+| PC-166 | Actionが存在しても公開は不可 | Semantic Action ID＋Consumer Policy | 適用可能性とAction存在公開の区別 | Capability存在からAction名を外部提示 | #2507/#2516 |
+| PC-167 | 同一Sourceで異なるClaim粒度・鮮度 | Display/Rule/Action別依存グラフ | 差分InvalidationとCurrent Claim | Source版の数字が等しいので一括現在扱い | #2582/#2593 |
+| PC-168 | 生成物一式の一部をConsumerが読めない | Manifest＋部分Artifact SetとReader | 期待集合の網羅と実Read/公開世代 | 生成成功から外部成果物受入を断定 | #2630/#2604 |
+
+**資格**：PC-157〜168は新しい**設計負例**であり本Corpus内での正式TEI試験はNOT RUN。#2627の独立32件/#2613の独立42件などの局所PASSは、Source→Rule→Provider→Action→実Host/SHOの製品E2Eを示さない。検証の正本・Ownerは既存#2586/#2506/#2611/#2622/#2516/#1174/#2604へ戻す。新しいRead Planner、Policy Engine、Host、固定Core enumを提案するものではない。
 
 ## 外部仕様の照合（2026-11-01読取り）
 
