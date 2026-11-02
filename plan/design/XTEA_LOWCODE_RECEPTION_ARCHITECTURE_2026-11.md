@@ -910,9 +910,11 @@ PoC #2521が実装した範囲と、まだ実装していない範囲を分け�
 | 対話ビュー（項目の型・表示名・入力部品・参照先の解決） | 実装済み（`internal/applicationview`、CLI `view`） |
 | 画面HTMLの投影 | 実装済み（`view -format html`） |
 | header-detailの見出し・明細ビュー | 実装済み（Relationのsourceをheader、targetを明細として解決） |
+| 対話からのCommand起動（宣言・表示） | 実装済み（`interaction`の`command`、実行は未実装） |
 | 操作（Commandの起動）、帳票の投影、Package、フック | 未実装 |
 | `reference/workspace`への宣言追加 | 未実施（受理経路が必要） |
 
 実装は、`internal/application/model.go`、`internal/syntax/application_pattern.go`、`internal/validation/application_pattern.go`、`internal/crossview/pattern_requirements.go`、`internal/applicationview`、`internal/semantic/model.go`、`internal/syntax/parser.go`、`internal/validation/validation.go`と、それぞれの試験です。
+
 
 
