@@ -301,6 +301,8 @@ Function Patternの利用資格は、全Data Contextに同じ`complete`や`stale
 
 ## 16. Data Context横断の単一ヘッドレス縦断シナリオ（統合計画）
 
+- **統合実証の担当**：[Issue #2586](https://github.com/hat47x/tei-platform/issues/2586)。本書のHS-01〜12を、HJ-01〜07の受渡し票で段階的に検査する。個別Component/Driver/Scenarioの正本は各Issueに残す。
+
 ### 16.1 実証対象を固定する
 
 複数担当の独立Referenceがあることと、それらが同一入力・同一意味で接続できることは別である。初回の共通合成Fixtureを**H・D1(2)・D2(3)**に固定し、同じSource/Schema/Query/Model/Rule/Context/Actionの版と来歴を保持する。別々のIssueが既に所有する解析・評価・更新・検証を再実装せず、**受渡し形式、対象Identity、必要な証拠の不足**だけを一枚の試験票で確認する。
