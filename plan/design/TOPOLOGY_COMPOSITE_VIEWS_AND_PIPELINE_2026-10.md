@@ -277,3 +277,67 @@ otherwise:
 **出口条件**: 既存Reader/Graph/Table部品を再利用できる部分と不足を記録し、構造的・領域的・表示上の欠落を分類する。実装と試験の担当を#1124等のOwnerと合意し、P1のread-only完全性すら証明しない段階で、双方向編集・メタ生成・本番Production除去の受入へ進まない。新標準型の採用、AI生成Pluginの安全な実行、Studio複合図表UIの製品化はこのReferenceの成果を見て別途判断する。
 
 **検証状態**: 現行mainと関連Issueの静的照合に基づく設計追補。既存コードに対する新たな自動テスト、real UI/Provider/Target、実際の認知負荷比較、X-TEA三要素のSource互換証明はいずれも **NOT RUN / NOT PROVEN**。
+
+## 11. 2026-11-02 横断レビュー：Projectionの被覆根拠と独立Consumerの実証入口
+
+- **状態**: 本節は他レーンの成熟した設計・限定試験と現行GitHubを照合した**未採用の評価補足**。確認main `9c9ef4d160640908e06ad13afb6c2b45c664c748`。本Draft自身はmainへ未統合であり、下記の他Draftを正式仕様・実装済みとは扱わない。
+- **Ownerとの接続**: [三要素Methodと図法のDraft #2397](https://github.com/hat47x/tei-platform/pull/2397)、[型付き標準SemanticとPlugin I/OのDraft #2592](https://github.com/hat47x/tei-platform/pull/2592)、[任意Compositionと型／Instance分離のDraft #2298](https://github.com/hat47x/tei-platform/pull/2298)、[Studio Catalog曖昧性guard候補 #2583](https://github.com/hat47x/tei-platform/pull/2583)、[選択binding独立候補 #2457](https://github.com/hat47x/tei-platform/pull/2457)。各Draftで定義したMethodの意味規則、標準型候補、実装差分をこの文書へ複製しない。
+
+### 11.1 「表せる」と「欠落なく表せる」と「操作可能」を別々に証明する
+
+汎用構造を増やす判断では、少なくとも以下の**独立した三つの問い**を立てる。
+
+| 問い | 提示すべき根拠 | 禁止する短絡 |
+| --- | --- | --- |
+| 表現可能性 | 型・順序・cardinality・role・端点・出現回数・Sourceを保持した構造対応 | 一枚の見た目が描けたのでlosslessと主張 |
+| 問いに対する完全性 | bounded query、対象集合と関係集合のclosure、非表示・unknown・opaque・参加snapshotの整合 | 図／表が空なので対象は不存在と主張 |
+| 操作資格 | 表示occurrence→qualified keyの同一版対応、編集先OwnerとAcceptance、実行時の独立Authority | 図上で選択できるので書込み・実行が許されると推定 |
+
+**図表の合成では、個別図表の「complete」表示を単純に足して全体completeとはしない。** 例えば図Aは全Operation、図Bは全Artifactを表示していても、両者を結ぶ`produces`のrole/証拠が未表現なら、`produces`関係への不在問い合わせは`unknown`となる。図間関連グラフや対応表はこの欠落を表示できるが、それ自身の表示成功は元の関係集合の完全性証明ではない。
+
+評価用の概念表現（**新製品スキーマではない**）:
+
+~~~text
+ProjectionWitness(query, boundSnapshot) =
+  represented-elements / missing-elements / unknown-elements
+  represented-relations-and-roles / missing-or-unknown-relations
+  view occurrence -> qualified subject + projection revision
+  omitted-or-collapsed coverage
+  derivation / source / plugin-resolution evidence
+  validity boundary (scope, target, environment, effective lock)
+
+Absent(Query) is defensible only for the closed subset proven complete.
+Else absence remains unknown; no universal closed-world assumption.
+~~~
+
+「source上に宣言されたTEI管理Operationが無い」と、「実行された外部Builderがその内部で未知のActionを行わない」とは別である。前者に必要なgraph/closureの被覆証拠、後者に必要な実行環境の観測・enforcementを同一の`complete`へ畳み込まない。これは[#2391](https://github.com/hat47x/tei-platform/issues/2391)のTest/Production物理除去・Artifact同一性・独立効果観測とも別Gateである。
+
+### 11.2 プラグイン型とインスタンスを一つの表示ノードへ混同しない
+
+同じTypeを持つ二つのComponent Instanceは、Binding、Scope、Input、Output、Effect、選択Providerが異なり得る。型レベルの図表、インスタンス構成図、Provider解決図、実行観測図をそれぞれ別Projectionにして、**同じInstanceを指す場合のみ**qualified identityと選択版に基づき結ぶ。
+
+一つのStandard PluginがOperationを宣言しても、それがその案件で採用・解決・配布・実行されたとは限らない。[#951](https://github.com/hat47x/tei-platform/issues/951)のContract/Provider適合、[#943](https://github.com/hat47x/tei-platform/issues/943)のArtifact/Build、[#267](https://github.com/hat47x/tei-platform/issues/267)のAcceptanceと実行Authorityを別に残す。新しいPlugin Registry、Runtime Resolver、Graph正本は本書で追加しない。
+
+### 11.3 Complectを「局所変更の独立性」で検査する
+
+ノード／エッジ数を削減するより、**直交すると期待した変更が本当に局所化されるか**で測る。P1以降のReferenceで、同一モデルに対する次の対照操作を用意する。
+
+| 対照変更 | 本来変わる対象 | 変化したら混線を疑う対象 |
+| --- | --- | --- |
+| 図表レイアウトだけ変更 | view layout / occurrence coordinates | Source意味revision、依存やビルド工程 |
+| Target実装を差替える | Provider binding / Target実現 / Artifact | 受理済みドメイン関係や業務規則 |
+| 依存関係だけ変更 | typed relation / derived order / impact | 無関係な表示ID、Ownerの意味受理記録 |
+| 生成規則だけ差替える | Transformation / derived artifacts | 暗黙の実行認可や外部Effect |
+| 図表のフィルタだけ変更 | visible subset / coverage status | Canonical要素の存在・不存在 |
+
+ただしドメイン上の必然的な影響は失敗ではない。分離後に必要な制約を失わず、意図しないSource/Authority/Effectへの波及だけが減ったか測定する。生成AIのコンテキスト量、変更箇所、修正回数、誤選択・誤推論、再検証範囲を併記し、メタ抽象による探索コスト増加も観測する。
+
+### 11.4 先行するConsumer安全性と、後続の汎用複合図表を分ける
+
+現行の優先順位は、[#1124](https://github.com/hat47x/tei-platform/issues/1124)の**PR1: Catalog ambiguity保持・共通Inspect guard → PR2: Graph/List/initial/command 4入口 → PR3: Graphの旧DOM/qualified map/epochの不一致拒否**を先行させる。Draft #2583の限定CI成功を4入口・旧DOM・Source鮮度までの成功として拡大しない。Draft #2457の限定Graph binding試験も実Workbenchの受入証拠にしない。
+
+本書P0→P1は、PR1の意味的資格を代替・ブロックする新たな汎用UI実装ではなく、**既存のread-only正本参照から図＋表＋関連表を作り、情報の保存・欠落・不明を分類する独立Reference**とする。その後の意味編集、Owner受理、Headless E0→E4、Production物理除去は各Ownerの独立Gateに残す。
+
+**次の最小証拠**: (a)同一qualified要素の複数View occurrence、(b)role付き関係のGraph/Table間の完全往復（描画・意味変更なし）、(c)queryを制限して初めて成立する「不在」の正負例、(d)Layoutのみ変更でSource不変、(e)旧Snapshotまたは曖昧scopeではInspect/Locate呼出し0。まずこの五つのread-only検査を確認し、標準構造不足の観測なしにCoreやStudioフックを追加しない。
+
+**検証状態**: 本追補は既存Issue/PRとコード公開契約に対する静的設計照合である。Reference本体の追加、実GUI、実Provider/Runtime、独立Observation、認知負荷実測、実Production Artifact検査は **NOT RUN / NOT PROVEN**。
