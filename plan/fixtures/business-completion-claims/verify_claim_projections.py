@@ -81,6 +81,24 @@ CASES = (
         lambda w: {"chart_sum": sum(w["amounts"])},
         lambda w: w["amounts"][0] == 100,
     ),
+
+    Pair(
+        "BC-13", "Executed Business Action purpose equals the intended purpose",
+        {"intent_action": "sales.order.submit", "executed_action": "sales.order.submit",
+         "order": "1001", "receipt": "K1", "updated": True},
+        {"intent_action": "sales.order.submit", "executed_action": "sales.order.cancel",
+         "order": "1001", "receipt": "K1", "updated": True},
+        lambda w: {"intent_action": w["intent_action"], "order": w["order"],
+                   "receipt": w["receipt"], "updated": w["updated"]},
+        lambda w: w["executed_action"] == w["intent_action"],
+    ),
+    Pair(
+        "BC-14", "Cancelling the parent leaves its pending write uncommitted",
+        {"child_return": "01", "parent_action": "rollback", "parent_write_committed": False},
+        {"child_return": "01", "parent_action": "rollback", "parent_write_committed": True},
+        lambda w: {"child_return": w["child_return"], "parent_action": w["parent_action"]},
+        lambda w: not w["parent_write_committed"],
+    ),
 )
 
 
