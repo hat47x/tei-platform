@@ -34,10 +34,22 @@ func TestCheckSetReportsADroppedUnresolvedGap(t *testing.T) {
 	if len(findings) == 0 {
 		t.Fatal("dropping the unresolved gaps must be reported")
 	}
+	foundGap := false
 	for _, finding := range findings {
-		if finding.Code != FindingSurfaceGapMissing || finding.Detail == "" {
+		switch finding.Code {
+		case FindingSurfaceGapMissing:
+			foundGap = true
+			if finding.Detail == "" {
+				t.Fatalf("missing gap detail: %+v", finding)
+			}
+		case FindingArtifactTampered:
+			// This mutation changes the unresolved list without rehashing.
+		default:
 			t.Fatalf("unexpected finding: %+v", finding)
 		}
+	}
+	if !foundGap {
+		t.Fatalf("missing gap not reported: %+v", findings)
 	}
 }
 
@@ -139,10 +151,19 @@ func TestCheckSetReportsAnOperationWithoutBasis(t *testing.T) {
 	if len(findings) < 2 {
 		t.Fatalf("a missing basis and an unknown autonomy must both be reported: %+v", findings)
 	}
+	incomplete := 0
 	for _, finding := range findings {
-		if finding.Code != FindingOperationIncomplete {
+		switch finding.Code {
+		case FindingOperationIncomplete:
+			incomplete++
+		case FindingArtifactTampered:
+			// The modified operation content no longer matches its digest.
+		default:
 			t.Fatalf("unexpected finding: %+v", finding)
 		}
+	}
+	if incomplete < 2 {
+		t.Fatalf("expected two operation findings, got: %+v", findings)
 	}
 }
 func TestCheckSetReportsADuplicateArtifact(t *testing.T) {
