@@ -98,6 +98,11 @@ type RuntimeReferFact struct {
 	TableAlias          string   `json:"tableAlias,omitempty"`
 	ToKeyFields         []string `json:"toKeyFields,omitempty"`
 	WithKeyFields       []string `json:"withKeyFields,omitempty"`
+	// Preserve the literal declarations independently of normalized field lists.
+	// A nil pointer means the attribute was absent; a non-nil empty value
+	// means it was explicitly declared as empty in the source.
+	ToKeyFieldsRaw      *string  `json:"toKeyFieldsRaw,omitempty"`
+	WithKeyFieldsRaw    *string  `json:"withKeyFieldsRaw,omitempty"`
 	Nature              string   `json:"nature"`
 	AuthorityLimits     []string `json:"authorityLimits"`
 }
@@ -186,6 +191,8 @@ func ExtractRelationalSourceFacts(doc Document) RelationalSourceFacts {
 					TableAlias:          attributeValue(n, "TableAlias"),
 					ToKeyFields:         splitLegacyFieldList(attributeValue(n, "ToKeyFields")),
 					WithKeyFields:       splitLegacyFieldList(attributeValue(n, "WithKeyFields")),
+					ToKeyFieldsRaw:      exactOptionalAttribute(n, "ToKeyFields"),
+					WithKeyFieldsRaw:    exactOptionalAttribute(n, "WithKeyFields"),
 					Nature:              SourceFactNature,
 					AuthorityLimits:     cloneStrings(runtimeReferAuthorityLimits),
 				})
