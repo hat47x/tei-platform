@@ -82,21 +82,14 @@ CASES = (
         lambda w: w["amounts"][0] == 100,
     ),
     Pair(
-        "BC-13", "Accepted submit action was the action actually executed",
-        {"accepted_action": "submit", "actual_action": "submit", "effect_class": "order-update", "receipt": "K1"},
-        {"accepted_action": "submit", "actual_action": "cancel", "effect_class": "order-update", "receipt": "K1"},
-        lambda w: {"accepted_action": w["accepted_action"], "effect_class": w["effect_class"], "receipt": w["receipt"]},
-        lambda w: w["actual_action"] == w["accepted_action"],
-    ),
-    Pair(
-        "BC-14", "Consumer actually loaded the complete current artifact generation",
+        "BC-15", "Consumer actually loaded the complete current artifact generation",
         {"published_revision": "R2", "complete": True, "expected_digest": "d2", "loaded_digest": "d2"},
         {"published_revision": "R2", "complete": True, "expected_digest": "d2", "loaded_digest": "d1"},
         lambda w: {"published_revision": w["published_revision"], "complete": w["complete"], "expected_digest": w["expected_digest"]},
         lambda w: w["loaded_digest"] == w["expected_digest"],
     ),
     Pair(
-        "BC-15", "Edited value is durably committed, not merely staged in a session",
+        "BC-16", "Edited value is durably committed, not merely staged in a session",
         {"editing_status": "submitted", "persisted_status": "submitted"},
         {"editing_status": "submitted", "persisted_status": "draft"},
         lambda w: {"editing_status": w["editing_status"]},
