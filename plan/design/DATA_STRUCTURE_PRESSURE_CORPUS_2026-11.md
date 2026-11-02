@@ -129,24 +129,24 @@
 
 ## I. 正規形・同じ意味の複数Projection（PC-73〜84、2026-11-02追加候補）
 
-この節は「型や構造を一つの平坦な分類に押し込むと意味が失われる」反例と、実Consumerの投影例を比較する。特にTEI mainの[record projection \`many\`](https://github.com/hat47x/tei-platform/blob/main/tools/reference-generator-selection/generator.go)と、TAI mainの[\`Island.cardIds\`](https://github.com/hat47x/tai-pleroma/blob/main/integrations/pilot-sui-document/candidates/island-record/contract.json)／[\`Affiliation\`](https://github.com/hat47x/tai-pleroma/blob/main/integrations/pilot-sui-document/candidates/affiliation-record/contract.json)は、**同じ所属を指すかどうかをOwnerに確認する必要がある**現実の検討素材となる。新しい共通型やE2E合格の根拠とはしない。
+この節は「型や構造を一つの平坦な分類に押し込むと意味が失われる」反例と、実Consumerの投影例を比較する。特にTEI mainの[record projection `many`](https://github.com/hat47x/tei-platform/blob/main/tools/reference-generator-selection/generator.go)と、TAI mainの[`Island.cardIds`](https://github.com/hat47x/tai-pleroma/blob/main/integrations/pilot-sui-document/candidates/island-record/contract.json)／[`Affiliation`](https://github.com/hat47x/tai-pleroma/blob/main/integrations/pilot-sui-document/candidates/affiliation-record/contract.json)は、**同じ所属を指すかどうかをOwnerに確認する必要がある**現実の検討素材となる。新しい共通型やE2E合格の根拠とはしない。
 
 | ID | Pressure / 資料上の構造 | 構成・表現 | 分けて問う性質 | 誤認・損失の負例 | 既存Owner |
 | --- | --- | --- | --- | --- | --- |
 | PC-73 | SUI Island.cardIdsとAffiliation | 多値Identifier投影／所属Relation Record | 同一意味なのか・双方向整合・Snapshot | 各Cardが存在すれば二つの所属表現が一致すると断定 | #2497/#2501 |
-| PC-74 | \`many:true\`と集合・列の性質 | \`[]string\` JSON配列 | Cardinality/順序/重複/完全性・参照先 | 配列型があるだけでSet・重複禁止・全件取得と推論 | #2495/#2497 |
+| PC-74 | `many:true`と集合・列の性質 | `[]string` JSON配列 | Cardinality/順序/重複/完全性・参照先 | 配列型があるだけでSet・重複禁止・全件取得と推論 | #2495/#2497 |
 | PC-75 | SUI所属の時点/可視範囲 | Island/Card/Affiliationの異なるRead | 対象版・Scope・権限・Partial vs Complete | 部分的に欠ける所属を業務上の不存在と推定 | #2497/#2516 |
-| PC-76 | 異種Endpointを持つEdge | \`fromKind/toKind + fromId/toId\` | Type-tagged Reference・Graph incidence | IDが一致するのでCard/Islandの区別を消す | #2495/#1126 |
+| PC-76 | 異種Endpointを持つEdge | `fromKind/toKind + fromId/toId` | Type-tagged Reference・Graph incidence | IDが一致するのでCard/Islandの区別を消す | #2495/#1126 |
 | PC-77 | SUIの表示用関係と編集Intent | Card列挙とLink/Unlink Action | 投影の逆写像・現在権限・競合 | 表示配列の変更をAffiliation DB更新完了とみなす | #2497/#2500 |
 | PC-78 | SUIキャンバスの座標と所属 | Layout coordinates＋Graph/Relation | 空間的近さと意味上のRelation | Cardを近くへ動かしたので所属関係を自動変更 | #2497/#997 |
-| PC-79 | \`Map<K,Set<V>>\` vs \`Set<(K,V)>\` | 対応Mapとペア集合 | Valueが空のKeyの存在と保存 | 値が0件のKeyまで完全な同型と断定 | #2544/#2497 |
-| PC-80 | \`List<A|B>\` vs \`List<A>|List<B>\` | CollectionとTagged Unionの構成順 | 異種混在可能性と分岐制約 | 構造子を分配して両者を等価に正規化 | #2544/#2495 |
-| PC-81 | \`Tuple(A,B)\`とNamed Record | 位置・ラベルの異なる積構造 | 要素順・属性名・Source identity | 同じ二つのPrimitiveだから無条件の同一型 | #2544/#1806 |
-| PC-82 | エネルギーとトルク | 同じ物理次元・単位 \`N·m\` | Quantity Kind・意味上の演算 | UnitとDimension一致で同じ量として扱う | #1705/#2544 |
+| PC-79 | `Map<K,Set<V>>` vs `Set<(K,V)>` | 対応Mapとペア集合 | Valueが空のKeyの存在と保存 | 値が0件のKeyまで完全な同型と断定 | #2544/#2497 |
+| PC-80 | `List<A\|B>` vs `List<A>\|List<B>` | CollectionとTagged Unionの構成順 | 異種混在可能性と分岐制約 | 構造子を分配して両者を等価に正規化 | #2544/#2495 |
+| PC-81 | `Tuple(A,B)`とNamed Record | 位置・ラベルの異なる積構造 | 要素順・属性名・Source identity | 同じ二つのPrimitiveだから無条件の同一型 | #2544/#1806 |
+| PC-82 | エネルギーとトルク | 同じ物理次元・単位 `N·m` | Quantity Kind・意味上の演算 | UnitとDimension一致で同じ量として扱う | #1705/#2544 |
 | PC-83 | 同じ値を異なるSourceへ投影 | 同じJSON・別Source/Version | 意味同一性・Provenance・現在受理 | 見た目一致/字句一致でSourceや意味の版を同一視 | #2497/#2516 |
-| PC-84 | SUI記録をJSON→CUI/文書へ | \`present/missing/unresolved\`と説明 | 入力形状・未解決・Consumer側の完全性 | JSON出力成功・全Field検査をDomain全件保証に昇格 | #2498/#2516 |
+| PC-84 | SUI記録をJSON→CUI/文書へ | `present/missing/unresolved`と説明 | 入力形状・未解決・Consumer側の完全性 | JSON出力成功・全Field検査をDomain全件保証に昇格 | #2498/#2516 |
 
-**反例の具体化**：Cards \`c1,c2\`、Island \`i1\`が存在し、\`i1.cardIds=["c1"]\`と\`Affiliation(id="a1",cardId="c2",islandId="i1")\`が共存する合成入力では、各参照先の存在を確認するだけでは両所属表現の一致は判定できない。TAIの[\`document_assembler.py\`](https://github.com/hat47x/tai-pleroma/blob/main/integrations/pilot-sui-document/assembler/document_assembler.py)には各参照先の存在検査がある一方、両者が同一の所属意味かどうかを判定する契約は別の検討を要する。**入力の実行結果を今回取得したわけではない。**
+**反例の具体化**：Cards `c1,c2`、Island `i1`が存在し、`i1.cardIds=["c1"]`と`Affiliation(id="a1",cardId="c2",islandId="i1")`が共存する合成入力では、各参照先の存在を確認するだけでは両所属表現の一致は判定できない。TAIの[`document_assembler.py`](https://github.com/hat47x/tai-pleroma/blob/main/integrations/pilot-sui-document/assembler/document_assembler.py)には各参照先の存在検査がある一方、両者が同一の所属意味かどうかを判定する契約は別の検討を要する。**入力の実行結果を今回取得したわけではない。**
 
 参照：[構造保存写像・Projection設計 §10](STRUCTURE_PRESERVING_TRANSFORMATIONS_AND_PROJECTIONS_2026-11.md)、[多重FacetのLawと比較正規形 §8](FACET_LAW_BINDING_AND_COHERENCE_2026-11.md)、[#2500 View変更からTyped Intent](https://github.com/hat47x/tei-platform/issues/2500)。新しい配列生成器の実装は#2576、SUI個別Meaning/AssemblerはTAI Repo側のOwnerとする。
 
@@ -156,18 +156,18 @@ TEIの[PR #2576](https://github.com/hat47x/tei-platform/pull/2576)・[#2578](htt
 
 | ID | Pressure / 参照構造 | 保持したい意味・観測 | 誤認・損失の負例 | 対象Owner |
 | --- | --- | --- | --- | --- |
-| PC-85 | required Fieldのmissing/null/empty | 存在状態と有効な空値 | 必須nullを空文字列や未指定と同じ扱いにする | #2585/#2056 |
-| PC-86 | optional Fieldのmissing/null | Consumerが区別を要求するか | 出力省略から元のmissing/nullを復元可能とする | #2585/#2497 |
-| PC-87 | optional boolean false/absent | falseという値と存在ビット | falseをdefault扱いで消去・review済みと誤推論 | #2585/#2498 |
-| PC-88 | JSON integerの境界 | `9007199254740993`の正確な整数値 | `float64`の約数に変換しても同値と宣言 | #2585/#1705 |
-| PC-89 | JSON decimalとscale | `0.10000000000000001`・`1.005`の値・字句・精度 | 同じ数値見た目なら十進契約・丸めも同じとする | #2585/#1705 |
-| PC-90 | `many` × numeric/boolean | 構文上の宣言とruntimeの要素型 | `many`があるため全Primitive配列が動作すると推測 | #2585/#2495 |
-| PC-91 | Field.Input→Inputs→Semantic TypeRef | 型・参照の結合とNamespace | Field定義のPrimitiveが合っても誤Input参照を許容 | #2585/#1806 |
-| PC-92 | raw JSON duplicate/trailing values | 単一入力として受理したbyte範囲 | 部分Decodeの成功を入力全体の検査成功にする | #2585/#2514 |
-| PC-93 | 文字列配列と業務Relation | 重複・順序・Key・全件Scope | `[]`と`many`だけでBusiness Setの全件と断定 | #2497/#2585 |
-| PC-94 | SUI Cardのx/y値と業務Decimal | 表示用座標の精度と金額の精度の異なる用途 | 全てのDecimalへ同じ精度劣化を許容 | #2498/#1705 |
-| PC-95 | 既存SUI原本とTEI部分Projection | `critiqueHistory/transform/time`のOwnerと復元経路 | read-only artifactを完全なDocumentV1 Sourceと誤認 | #2497/#2516 |
-| PC-96 | Read-only ViewからTyped Change | optional省略/false/0/複数Sourceの変更Intent | 表示値の編集でSourceのclear/Link/Unlinkを暗黙実施 | #2500/#2497 |
+| PC-85 | required / optional Field と値の存在状態 | required Fieldのmissing/null/empty | 存在状態と有効な空値 | 必須nullを空文字列や未指定と同じ扱いにする | #2585/#2056 |
+| PC-86 | optionalな入力Fieldと送信Payload | optional Fieldのmissing/null | Consumerが区別を要求するか | 出力省略から元のmissing/nullを復元可能とする | #2585/#2497 |
+| PC-87 | boolean Field と存在ビット | optional boolean false/absent | falseという値と存在ビット | falseをdefault扱いで消去・review済みと誤推論 | #2585/#2498 |
+| PC-88 | JSON数値字句からtyped Integerへのdecode | JSON integerの境界 | `9007199254740993`の正確な整数値 | `float64`の約数に変換しても同値と宣言 | #2585/#1705 |
+| PC-89 | 十進値の字句／Decimal表現・Scale | JSON decimalとscale | `0.10000000000000001`・`1.005`の値・字句・精度 | 同じ数値見た目なら十進契約・丸めも同じとする | #2585/#1705 |
+| PC-90 | Collection<Numeric/Boolean>の要素型 | `many` × numeric/boolean | 構文上の宣言とruntimeの要素型 | `many`があるため全Primitive配列が動作すると推測 | #2585/#2495 |
+| PC-91 | Input Bindingの型付き参照グラフ | Field.Input→Inputs→Semantic TypeRef | 型・参照の結合とNamespace | Field定義のPrimitiveが合っても誤Input参照を許容 | #2585/#1806 |
+| PC-92 | JSON入力ストリームと構文終端 | raw JSON duplicate/trailing values | 単一入力として受理したbyte範囲 | 部分Decodeの成功を入力全体の検査成功にする | #2585/#2514 |
+| PC-93 | 多値FieldとRelationの別表現 | 文字列配列と業務Relation | 重複・順序・Key・全件Scope | `[]`と`many`だけでBusiness Setの全件と断定 | #2497/#2585 |
+| PC-94 | 2D UI配置座標とDecimal金額 | SUI Cardのx/y値と業務Decimal | 表示用座標の精度と金額の精度の異なる用途 | 全てのDecimalへ同じ精度劣化を許容 | #2498/#1705 |
+| PC-95 | 複数Sourceを持つSUI Document Projection | 既存SUI原本とTEI部分Projection | `critiqueHistory/transform/time`のOwnerと復元経路 | read-only artifactを完全なDocumentV1 Sourceと誤認 | #2497/#2516 |
+| PC-96 | 表示セルとTyped Changeの候補 | Read-only ViewからTyped Change | optional省略/false/0/複数Sourceの変更Intent | 表示値の編集でSourceのclear/Link/Unlinkを暗黙実施 | #2500/#2497 |
 
 **比較の見通し**：`std.decimal`のJSON出力は表示座標では許容できる場合がある一方、金額や厳密な識別番号では基底の数値保存契約へ違反し得る。値の同一性・JSON字句の同一性・意味上の精度・業務的受理は別の条件。optionalの省略は**意図したlossy表示**として成立し得るが、Patch/writebackが同じ損失を許すかは再評価する。
 
@@ -179,18 +179,18 @@ TEIの[PR #2576](https://github.com/hat47x/tei-platform/pull/2576)・[#2578](htt
 
 | ID | Pressure / 対象構造 | 必要な区別・保持条件 | 誤認の負例 | Owner |
 | --- | --- | --- | --- | --- |
-| PC-97 | ページ内0件 | partial zero / complete zero | 先頭ページ0件から全体不存在を宣言 | #2506/#2586 |
-| PC-98 | 0件確定後の挿入 | 版・Scope付き不存在 | 過去の不存在を現在へ無条件継承 | #2586/#1708 |
-| PC-99 | 非負SUMへの負値追加 | 非負・追加のみの下界条件 | 無条件のSUM下界として保証 | #2586/#1705 |
-| PC-100 | JOIN重複と集計 | Entity/Relation Grain、重複 | 2×3 JOIN行を元Entity6件と数える | #2387/#2506 |
-| PC-101 | LEFT JOINの仮NULL撤回 | SQL NULL/未一致/後続一致 | 旧仮NULL行を確定として残す | #2387/#2586 |
-| PC-102 | TOP-Nの置換 | 追加と撤回の双方 | 新規上位行だけ足して旧下位行を残す | #2586/#2497 |
-| PC-103 | Selection epochと非同期応答 | UI世代/Business Identity | 旧A応答を新B選択へ混入 | #2506/#1708 |
-| PC-104 | Event/Processing/Observation Time | 時刻の役割と順序 | 処理時刻の順序をイベント順と断定 | #2497/#2507 |
-| PC-105 | 同一タイムスタンプ異Snapshot | 時刻一致とRead-set整合 | 時刻文字列だけでSnapshot一致を宣言 | #1708/#2506 |
-| PC-106 | Model改版と同じlocator | 版間意味対応の証拠 | locator一致でOwner意味受理を継承 | #2505/#2497 |
-| PC-107 | 片側Consumerのみ再描画 | 更新通知と実受信/描画 | 片側の成功で全Consumer同期を保証 | #2498/#2516 |
-| PC-108 | Value保持・Scope縮小 | 値の忠実度とClaimの全件性 | 型・byte一致を全件・業務意味一致と誤報 | #2497/#2586 |
+| PC-97 | ページ化されたRelation Result | ページ内0件 | partial zero / complete zero | 先頭ページ0件から全体不存在を宣言 | #2506/#2586 |
+| PC-98 | 時点付き0件Claimと追加Event | 0件確定後の挿入 | 版・Scope付き不存在 | 過去の不存在を現在へ無条件継承 | #2586/#1708 |
+| PC-99 | 部分集合に対する数値集計 | 非負SUMへの負値追加 | 非負・追加のみの下界条件 | 無条件のSUM下界として保証 | #2586/#1705 |
+| PC-100 | 元Fact集合とJOIN結果のBag | JOIN重複と集計 | Entity/Relation Grain、重複 | 2×3 JOIN行を元Entity6件と数える | #2387/#2506 |
+| PC-101 | LEFT JOINの未一致行と後続一致 | LEFT JOINの仮NULL撤回 | SQL NULL/未一致/後続一致 | 旧仮NULL行を確定として残す | #2387/#2586 |
+| PC-102 | 動的Top-Nの表示集合 | TOP-Nの置換 | 追加と撤回の双方 | 新規上位行だけ足して旧下位行を残す | #2586/#2497 |
+| PC-103 | 選択対象と非同期UI応答 | Selection epochと非同期応答 | UI世代/Business Identity | 旧A応答を新B選択へ混入 | #2506/#1708 |
+| PC-104 | Event／処理／観測の三時点 | Event/Processing/Observation Time | 時刻の役割と順序 | 処理時刻の順序をイベント順と断定 | #2497/#2507 |
+| PC-105 | 複数RelationのRead-set Snapshot | 同一タイムスタンプ異Snapshot | 時刻一致とRead-set整合 | 時刻文字列だけでSnapshot一致を宣言 | #1708/#2506 |
+| PC-106 | 旧版・新版のSource locator | Model改版と同じlocator | 版間意味対応の証拠 | locator一致でOwner意味受理を継承 | #2505/#2497 |
+| PC-107 | 異なる更新時点の2 Consumer | 片側Consumerのみ再描画 | 更新通知と実受信/描画 | 片側の成功で全Consumer同期を保証 | #2498/#2516 |
+| PC-108 | 同値のValueと狭められたRead Scope | Value保持・Scope縮小 | 値の忠実度とClaimの全件性 | 型・byte一致を全件・業務意味一致と誤報 | #2497/#2586 |
 
 **見立て**：単調な入力追加で保存できる結論と、集計・否定・TOP-N・未一致・訂正／削除で撤回を要する結論を分ける。結果の単調性は同じSchema・Universe・Scope・Identityなどの前提に相対的である。現行TEIへ新しいClaim Engine/時間Runtimeを追加することを先行決定しない。
 
@@ -200,18 +200,18 @@ TEIの[PR #2576](https://github.com/hat47x/tei-platform/pull/2576)・[#2578](htt
 
 | ID | Pressure | 保存すべき意味 | 偽同値・誤成功 | Owner |
 | --- | --- | --- | --- | --- |
-| PC-109 | 平均の再集計 | group sum/count、対象集合 | 平均10/20から単純平均15 | #2593/#2497 |
-| PC-110 | 比率の再集計 | numerator/denominator、母集団 | 50%/80%の単純平均65% | #2593/#1705 |
-| PC-111 | 同値の別Fact | Fact ID、JOIN出現 | `SUM(DISTINCT value)`で重複業務値を消去 | #2593/#2387 |
-| PC-112 | 二部門に所属する同一人物 | distinct ID、集合の重なり | 部門別人数の和を全社Distinct人数とする | #2593/#1126 |
-| PC-113 | 時点Stockと期間Flow | 集計可能な軸と時点 | 二日分の残高を現在高とする | #2593/#2495 |
-| PC-114 | 中央値・分位数の再集計 | 原値/Sketch/誤差条件 | 局所中央値から全体中央値を確定 | #2593/#2544 |
-| PC-115 | 異通貨・異時点の数量 | Quantity Kind、Rate、丸め | Decimal値の一致を加算可能とする | #1705/#2593 |
-| PC-116 | 遅着・訂正を伴う時間窓 | 暫定/確定、retract、watermark | 旧集計を最終結果として保持 | #2582/#2593 |
-| PC-117 | 内部Read可・外部Disclosure不可 | Evidence accessと開示条件 | 内部閲覧資格を外部送信許可とする | #2516/#1178 |
-| PC-118 | 開示可能な要約に必要根拠なし | ClaimとConsumer sufficiency | 同じ結論文で根拠充足を宣言 | #2516/#2497 |
-| PC-119 | Rule/Grant変更、Source byte同じ | Current applicability、Authority | 過去の意味受理/開示資格を自動継承 | #2516/#2505 |
-| PC-120 | CUI成功・SHO/外部未観測 | 実Consumerごとのread/load | 一Consumerの表示成功を全Target適合とする | #2498/#2516 |
+| PC-109 | 分割済みAggregate(mean, sum, count) | 平均の再集計 | group sum/count、対象集合 | 平均10/20から単純平均15 | #2593/#2497 |
+| PC-110 | 群別比率(num, den)の集約 | 比率の再集計 | numerator/denominator、母集団 | 50%/80%の単純平均65% | #2593/#1705 |
+| PC-111 | Fact identity付き同額行とJOIN | 同値の別Fact | Fact ID、JOIN出現 | `SUM(DISTINCT value)`で重複業務値を消去 | #2593/#2387 |
+| PC-112 | 部門間に重なるPerson集合 | 二部門に所属する同一人物 | distinct ID、集合の重なり | 部門別人数の和を全社Distinct人数とする | #2593/#1126 |
+| PC-113 | 時点の残高Stockと期間Flow | 時点Stockと期間Flow | 集計可能な軸と時点 | 二日分の残高を現在高とする | #2593/#2495 |
+| PC-114 | 局所Median／分位数／Sketch | 中央値・分位数の再集計 | 原値/Sketch/誤差条件 | 局所中央値から全体中央値を確定 | #2593/#2544 |
+| PC-115 | 通貨・時点を伴うQuantity | 異通貨・異時点の数量 | Quantity Kind、Rate、丸め | Decimal値の一致を加算可能とする | #1705/#2593 |
+| PC-116 | 時間窓内の訂正付きStream | 遅着・訂正を伴う時間窓 | 暫定/確定、retract、watermark | 旧集計を最終結果として保持 | #2582/#2593 |
+| PC-117 | 内部Evidenceと外部向けProjection | 内部Read可・外部Disclosure不可 | Evidence accessと開示条件 | 内部閲覧資格を外部送信許可とする | #2516/#1178 |
+| PC-118 | 根拠を伏せた要約Claim | 開示可能な要約に必要根拠なし | ClaimとConsumer sufficiency | 同じ結論文で根拠充足を宣言 | #2516/#2497 |
+| PC-119 | Source版とPolicy/Grantの別版 | Rule/Grant変更、Source byte同じ | Current applicability、Authority | 過去の意味受理/開示資格を自動継承 | #2516/#2505 |
+| PC-120 | 同一意味からの複数Consumer出力 | CUI成功・SHO/外部未観測 | 実Consumerごとのread/load | 一Consumerの表示成功を全Target適合とする | #2498/#2516 |
 
 **設計判断**：Value Fidelity、合法な再集計、Claimの成立、根拠アクセス、外部開示、Consumerへの実到達は異なる述語。これらを単一のPASS/LOSSLESSへ集約しない。新Measure Runtime、第二Authority/Registry、数学的な全域証明は前提にしない。
 
