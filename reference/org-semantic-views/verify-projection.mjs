@@ -3,25 +3,18 @@
  * These functions are fixture-local, not production TEI Modeler/UI/Function contracts.
  * Run: node --test reference/org-semantic-views/verify-projection.mjs
  */
+import { fixture, baselineMemberships } from './source-fixture.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
 const source = {
-  sourceVersion: 'org-synthetic-r7',
-  persons: ['P1', 'P2', 'P3'],
-  departments: ['D1', 'D2'],
-  memberships: [
-    { id: 'A1', person: 'P1', dept: 'D1', provenance: 'direct' },
-    { id: 'A2', person: 'P2', dept: 'D1', provenance: 'direct' },
-    { id: 'A3', person: 'P2', dept: 'D2', provenance: 'direct' },
-    { id: 'A4', person: 'P3', dept: 'D2', provenance: 'direct' },
-  ],
-  allocationBasisPoints: { A1: 100, A2: 60, A3: 40, A4: 100 },
-  position: { id: 'M1', dept: 'D1' },
-  occupancy: [
-    { id: 'O1', person: 'P2', position: 'M1', from: '2027-04-01', to: '2027-07-01' },
-    { id: 'O2', person: 'P3', position: 'M1', from: '2027-07-01', to: null },
-  ],
+  sourceVersion: fixture.sourceRevision,
+  persons: fixture.persons,
+  departments: fixture.departments.map(d => d.id),
+  memberships: baselineMemberships(fixture).map(({id,person,dept,provenance})=>({id,person,dept,provenance})),
+  allocationBasisPoints: Object.fromEntries(fixture.allocations.map(a => [a.relation,a.basisPoints])),
+  position: fixture.position,
+  occupancy: fixture.occupancy,
 };
 const evidence = (grain, claim) => ({
   source: source.sourceVersion, scope: 'synthetic-all', complete: true,
