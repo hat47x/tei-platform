@@ -52,6 +52,11 @@ func headerDetailWorld() ir.World {
 				ID:       "order_entry.order_lines",
 				Kind:     application.PatternHeaderDetail,
 				Relation: "sales.order.order_lines",
+				Aggregates: []application.Aggregate{{
+					Name:      "total",
+					Attribute: "sales.order_line.amount",
+					Function:  "sum",
+				}},
 			}},
 		}},
 	}
@@ -114,5 +119,19 @@ func TestBuildHeaderDetailCarriesSemanticFingerprint(t *testing.T) {
 	}
 	if !strings.HasPrefix(view.SemanticFingerprint, "sha256:") {
 		t.Fatalf("fingerprint=%q", view.SemanticFingerprint)
+	}
+}
+
+func TestBuildHeaderDetailCarriesAggregates(t *testing.T) {
+	view, err := applicationview.BuildHeaderDetail(headerDetailWorld(), "order_entry", "order_entry.order_lines")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(view.Aggregates) != 1 {
+		t.Fatalf("aggregates=%+v", view.Aggregates)
+	}
+	aggregate := view.Aggregates[0]
+	if aggregate.Name != "total" || aggregate.Function != "sum" || aggregate.Label != "金額" || aggregate.Type != "std.money" {
+		t.Fatalf("aggregate=%+v", aggregate)
 	}
 }

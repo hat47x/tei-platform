@@ -60,6 +60,10 @@ th{background:#eee;font-weight:600}
 <tr>{{range .DetailColumns}}<td></td>{{end}}</tr>
 </tbody>
 </table>
+{{if .Aggregates}}<h2>集計</h2>
+<table>
+{{range .Aggregates}}<tr><th>{{.Name}}</th><td>{{.Function}} {{.Label}} ({{.Type}})</td></tr>
+{{end}}</table>{{end}}
 </body>
 </html>
 `))

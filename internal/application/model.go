@@ -94,6 +94,14 @@ type Pattern struct {
 	Datasource    core.LocalName           `json:"datasource,omitempty"`
 	ContractQuery *ContractQueryInvocation `json:"contractQuery,omitempty"`
 	Interaction   *Interaction             `json:"interaction,omitempty"`
+	Aggregates    []Aggregate              `json:"aggregates,omitempty"`
+}
+
+// Aggregateは、header-detailの明細に対する集計の宣言である。
+type Aggregate struct {
+	Name      string           `json:"name"`
+	Attribute core.CanonicalID `json:"attribute"`
+	Function  string           `json:"function"`
 }
 
 type Application struct {

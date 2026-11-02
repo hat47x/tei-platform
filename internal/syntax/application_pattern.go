@@ -86,6 +86,25 @@ func (p *Parser) ParseApplicationPattern() (application.Pattern, error) {
 			if err != nil {
 				return out, p.errAt(v, err.Error())
 			}
+		case "aggregate":
+			_, _ = p.next()
+			nameTok, err := p.expect(TokenIdent)
+			if err != nil {
+				return out, err
+			}
+			attrTok, err := p.expect(TokenIdent)
+			if err != nil {
+				return out, err
+			}
+			attribute, err := core.ParseCanonicalID(attrTok.Text)
+			if err != nil {
+				return out, p.errAt(attrTok, err.Error())
+			}
+			fnTok, err := p.expect(TokenIdent)
+			if err != nil {
+				return out, err
+			}
+			out.Aggregates = append(out.Aggregates, application.Aggregate{Name: nameTok.Text, Attribute: attribute, Function: fnTok.Text})
 		case "capability":
 			if hasCapability {
 				return out, p.errAt(t, "capability is declared more than once")

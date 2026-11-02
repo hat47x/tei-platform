@@ -134,6 +134,16 @@ func validateApplicationPatterns(w ir.World) []Diagnostic {
 				))
 			}
 
+			if pattern.Kind != application.PatternHeaderDetail && len(pattern.Aggregates) > 0 {
+				out = append(out, errFor(
+					patternSubject,
+					"APPLICATION_PATTERN_AGGREGATES_NOT_ALLOWED",
+					"%s pattern %s does not accept aggregates; aggregates belong to header-detail",
+					pattern.Kind,
+					pattern.ID,
+				))
+			}
+
 			switch pattern.Kind {
 			case application.PatternBrowse:
 				out = append(out, validateBrowsePattern(app, pattern, patternSubject, semanticData, queries)...)
@@ -144,7 +154,7 @@ func validateApplicationPatterns(w ir.World) []Diagnostic {
 			case application.PatternCommand:
 				out = append(out, validateCommandPattern(pattern, patternSubject, semanticCapabilities)...)
 			case application.PatternHeaderDetail:
-				out = append(out, validateHeaderDetailPattern(pattern, patternSubject, semanticRelations)...)
+				out = append(out, validateHeaderDetailPattern(pattern, patternSubject, semanticRelations, semanticDataAttributes)...)
 			}
 		}
 	}
@@ -684,6 +694,7 @@ func validateHeaderDetailPattern(
 	pattern application.Pattern,
 	patternSubject subject.Subject,
 	semanticRelations map[core.CanonicalID]applicationPatternRelationRef,
+	semanticDataAttributes map[core.CanonicalID]map[core.CanonicalID]core.CanonicalID,
 ) []Diagnostic {
 	var out []Diagnostic
 
@@ -744,6 +755,31 @@ func validateHeaderDetailPattern(
 			"header-detail pattern %s does not accept a datasource because data access remains outside this Pattern contract",
 			pattern.ID,
 		))
+	}
+
+	relation, relationOK := semanticRelations[pattern.Relation]
+	detailAttributes := semanticDataAttributes[relation.Target]
+	seenAggregates := map[string]bool{}
+	for _, aggregate := range pattern.Aggregates {
+		if aggregate.Name == "" {
+			out = append(out, errFor(patternSubject, "APPLICATION_PATTERN_AGGREGATE_NAME_REQUIRED", "header-detail pattern %s has an aggregate without a name", pattern.ID))
+			continue
+		}
+		if seenAggregates[aggregate.Name] {
+			out = append(out, errFor(patternSubject, "APPLICATION_PATTERN_AGGREGATE_DUPLICATE", "header-detail pattern %s declares aggregate %s more than once", pattern.ID, aggregate.Name))
+		}
+		seenAggregates[aggregate.Name] = true
+		switch aggregate.Function {
+		case "sum", "count", "min", "max", "avg":
+		default:
+			out = append(out, errFor(patternSubject, "APPLICATION_PATTERN_AGGREGATE_FUNCTION_UNSUPPORTED", "header-detail pattern %s aggregate %s uses unsupported function %s", pattern.ID, aggregate.Name, aggregate.Function))
+		}
+		if !relationOK {
+			continue
+		}
+		if _, ok := detailAttributes[aggregate.Attribute]; !ok {
+			out = append(out, errFor(patternSubject, "UNKNOWN_APPLICATION_PATTERN_AGGREGATE_ATTRIBUTE", "header-detail pattern %s aggregate %s refers to %s that is not an attribute of %s", pattern.ID, aggregate.Name, aggregate.Attribute, relation.Target))
+		}
 	}
 
 	return out

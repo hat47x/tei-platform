@@ -241,5 +241,15 @@ func writeHeaderDetailText(out io.Writer, view applicationview.HeaderDetailView)
 			}
 		}
 	}
+	if len(view.Aggregates) > 0 {
+		if _, err := fmt.Fprintln(out, "aggregates:"); err != nil {
+			return 2, err
+		}
+		for _, aggregate := range view.Aggregates {
+			if _, err := fmt.Fprintf(out, "  - %s: %s %s (%s)\n", aggregate.Name, aggregate.Function, aggregate.Label, aggregate.Type); err != nil {
+				return 2, err
+			}
+		}
+	}
 	return 0, nil
 }

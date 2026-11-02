@@ -21,8 +21,18 @@ type HeaderDetailView struct {
 	Detail              core.CanonicalID        `json:"detail"`
 	HeaderItems         []Item                  `json:"headerItems,omitempty"`
 	DetailColumns       []Item                  `json:"detailColumns,omitempty"`
+	Aggregates          []AggregateRef          `json:"aggregates,omitempty"`
 	Packages            []PackageRef            `json:"packages,omitempty"`
 	SemanticFingerprint string                  `json:"semanticFingerprint,omitempty"`
+}
+
+// AggregateRefは、header-detailの明細に対する集計の宣言を解決した結果である。
+type AggregateRef struct {
+	Name      string           `json:"name"`
+	Function  string           `json:"function"`
+	Attribute core.CanonicalID `json:"attribute"`
+	Label     string           `json:"label,omitempty"`
+	Type      core.CanonicalID `json:"type,omitempty"`
 }
 
 // PatternKindは、Application Patternの種別だけを返す。viewコマンドの分岐に使う。
@@ -136,6 +146,23 @@ func BuildHeaderDetail(world ir.World, applicationID, patternID core.CanonicalID
 	}
 	for _, attribute := range detailAttributes {
 		view.DetailColumns = append(view.DetailColumns, itemFor(attribute, typeValues))
+	}
+	detailByID := map[core.CanonicalID]semantic.Attribute{}
+	for _, attribute := range detailAttributes {
+		detailByID[attribute.ID] = attribute
+	}
+	for _, aggregate := range pattern.Aggregates {
+		attribute, ok := detailByID[aggregate.Attribute]
+		if !ok {
+			return HeaderDetailView{}, fmt.Errorf("aggregate %s refers to %s that is not an attribute of %s", aggregate.Name, aggregate.Attribute, relation.Target)
+		}
+		view.Aggregates = append(view.Aggregates, AggregateRef{
+			Name:      aggregate.Name,
+			Function:  aggregate.Function,
+			Attribute: aggregate.Attribute,
+			Label:     labelOf(attribute),
+			Type:      attribute.TypeRef,
+		})
 	}
 	return view, nil
 }

@@ -190,6 +190,7 @@ data Order {
 data OrderLine {
     attribute orderLineId type std.identifier
     attribute quantity type std.decimal display "数量"
+    attribute amount type std.money display "金額"
 }
 `)
 	writeWorkspaceFile(t, root, "applications/order-entry/application.tei", `application order_entry {
@@ -198,6 +199,7 @@ data OrderLine {
 `)
 	writeWorkspaceFile(t, root, "applications/order-entry/patterns/order-lines.tei", `pattern order_entry.order_lines header-detail {
     relation sales.order.lines
+    aggregate total sales.order_line.amount sum
 }
 `)
 	return root
@@ -229,7 +231,7 @@ func TestViewCommandRendersHeaderDetail(t *testing.T) {
 	if err != nil || code != 0 {
 		t.Fatalf("text exit=%d err=%v body=%s", code, err, out.String())
 	}
-	if !strings.Contains(out.String(), "detail:") {
+	if !strings.Contains(out.String(), "detail:") || !strings.Contains(out.String(), "aggregates:") {
 		t.Fatalf("text=%s", out.String())
 	}
 }

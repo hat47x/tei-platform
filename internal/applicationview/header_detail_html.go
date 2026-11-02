@@ -39,6 +39,8 @@ h2{font-size:1.05rem;margin-top:1.75rem}
 <thead><tr>{{range .DetailColumns}}<th>{{.Label}}</th>{{end}}</tr></thead>
 <tbody><tr>{{range .DetailColumns}}<td></td>{{end}}</tr></tbody>
 </table>
+{{if .Aggregates}}<h2>集計</h2>
+<ul>{{range .Aggregates}}<li>{{.Name}}: {{.Function}} {{.Label}}</li>{{end}}</ul>{{end}}
 </body>
 </html>
 `))
