@@ -101,10 +101,10 @@ type RuntimeReferFact struct {
 	// Preserve the literal declarations independently of normalized field lists.
 	// A nil pointer means the attribute was absent; a non-nil empty value
 	// means it was explicitly declared as empty in the source.
-	ToKeyFieldsRaw      *string  `json:"toKeyFieldsRaw,omitempty"`
-	WithKeyFieldsRaw    *string  `json:"withKeyFieldsRaw,omitempty"`
-	Nature              string   `json:"nature"`
-	AuthorityLimits     []string `json:"authorityLimits"`
+	ToKeyFieldsRaw   *string  `json:"toKeyFieldsRaw,omitempty"`
+	WithKeyFieldsRaw *string  `json:"withKeyFieldsRaw,omitempty"`
+	Nature           string   `json:"nature"`
+	AuthorityLimits  []string `json:"authorityLimits"`
 }
 
 type RelationalSourceFacts struct {
