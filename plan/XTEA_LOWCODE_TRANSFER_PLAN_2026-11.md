@@ -43,9 +43,10 @@ X-TEAの4アプリケーション（固定したcommit）
 | 成果物 | 状態 | 何を決めたか | 何を決めていないか |
 | --- | --- | --- | --- |
 | [知識目録](research/XTEA_LOWCODE_KNOWLEDGE_INVENTORY_2026-11.md) | 105項目 | 機構・効果・破綻・根拠の一覧 | 全分岐、実行時の挙動、参照モデルでの使われ方 |
-| [受容アーキテクチャ](design/XTEA_LOWCODE_RECEPTION_ARCHITECTURE_2026-11.md) | 設計案 | 受容先の層、D1〜D8とD1.1・D1.2・D2.1・D3.1・D6.1の選択肢と推奨、現行実装との差、適合試験案 | D1〜D8の採用、パッケージの採否と実装、フックのDSL |
+| [受容アーキテクチャ](design/XTEA_LOWCODE_RECEPTION_ARCHITECTURE_2026-11.md) | 設計案 | 受容先の層、D1〜D8とD1.1・D1.2・D2.1・D3.1・D6.1の選択肢と推奨、現行実装との差、適合試験案 | D1〜D8の採用、パッケージの採否、フックのDSL |
 | [受容要件](../requirements/XTEA_LOWCODE_RECEPTION_REQUIREMENTS_2026-11.md) | 候補 | 既存RQの具体化（AC-1〜AC-11）、新規候補（RQ-C1〜C3） | 採用の可否、要求本文への反映 |
 | 本計画 | 計画案 | 作業パッケージと順序、ゲート、停止条件 | 実施の割当、日程、実装ブランチ |
+| [PoC PR](https://github.com/hat47x/tei-platform/pull/2521) | 実装案（Draft） | `interaction`、表示解決、画面HTML・印刷、Package、Semantic fingerprint、統合試験 | 意味の受理、mainへの統合、Commandの実行境界、集計・改ページ |
 
 ## 4. 作業パッケージ
 
@@ -314,7 +315,20 @@ WP10 統合と引継ぎ
 | 受容要件 | AC-1〜AC-11、RQ-C1〜C3、既存要求との重複確認 |
 | 移行計画 | WP1〜WP10、G0〜G5、Issue候補N-1〜N-6、この引継ぎ |
 | 文書PR | [#2519](https://github.com/hat47x/tei-platform/pull/2519)（Draft） |
-| PoC PR | [#2521](https://github.com/hat47x/tei-platform/pull/2521)（Draft、対話契約の最小実装） |
+| PoC PR | [#2521](https://github.com/hat47x/tei-platform/pull/2521)（Draft、対話契約・ビュー・Packageの最小実装） |
+
+**実装済みの範囲（PoC）.**
+
+| 範囲 | 状態 | 参照 |
+| --- | --- | --- |
+| 対話契約（`item`・`lookup`・`navigate`・`command`） | 実装・検証・CLI投影 | 付録C.5、`internal/application` |
+| 表示解決（型・表示名・入力部品・必須・更新禁止・値域） | 実装 | 付録C.5、`internal/applicationview` |
+| 画面HTML・印刷用の用紙面 | 実装 | 付録C.5、`view -format html/print` |
+| header-detail（見出し・明細） | 実装 | 付録C.5 |
+| Package（宣言・検証・版束縛・衝突・ビュー表示） | 実装 | 付録C.5、`internal/application`・`internal/validation` |
+| Semantic fingerprint（投影の意味の版） | 実装 | 付録C.5、`internal/semantic` |
+| 統合試験（Semantic→Application→Package→view/print） | 実装 | `cmd/tei/product_slice_test.go` |
+| Commandの実行境界、集計・改ページ、削除の効果、フック | 未実装 | 付録C.5、D2・D5・D7 |
 
 **文書の読み方.**
 
