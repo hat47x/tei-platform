@@ -180,3 +180,41 @@ BC-14の**B側の限定的な旧挙動**は、[統合済み#2154](https://github
 既存の[自作two-world fixture](../fixtures/business-completion-claims/verify_claim_projections.py)へBC-13/14の二組を追加する。まず同一の公開Projectionに対し架空OracleのB₀/取消Claimが逆になることだけを検証する。その後、**BC-13**は#2598でIntent→Actual Capability/Request、**BC-14**は#1129/1174で子Function→親Pending→独立DB readを同じCase/Revisionで結合する。実Effect帰属や正式Owner意味の判定は、#1163同一Runの証拠が得られるまで保留する。
 
 **今回の資格**：本追加は設計候補と自作合成反例であり、旧Driver/実PG/製品Web/Windows/SHO/正式Owner受理を新しく実行・採用したものではない。#2154の既存実動、#2597のSQLite局所結果、#2598/#2485の設計所見は、それぞれの固定版・範囲に限る。成果物のPublish/Manifest一式整合は独立した[#2604](https://github.com/hat47x/tei-platform/issues/2604)が所有し、設計書のbyte/公開成功をAction Meaning受理へ昇格させない。
+
+
+## 10. 二世界反証から必要証拠の取得資格へ（2026-11-02：限定的なWitness補充試験）
+
+### 10.1 二世界の識別不能性だけでは、正しい「追加証拠」を決められない
+
+§7・§9のBC-01/05/07〜16は、Consumerが読む可視投影 `P(W)` が等しく、Owner仮説に基づくClaim `C(W)` の真偽が異なる二世界を構成した。これは**その可視情報だけではClaimを確定できない**ことの具体的な反証である。しかし「Field Xを足せばよい」という候補と、**実Provider/Owner/Consumerの下でClaimを確定できる証拠を取得した**ことは別である。
+
+形式的には `P(A)=P(B)`、`C(A)≠C(B)` から `P` の不足を示せる。追加投影 `Z` を与えて `(P,Z)(A)≠(P,Z)(B)` となっても、**その二世界を判別できただけ**であり、すべての実世界で `C` が確定する十分性の証明ではない。特に、`Z` が現在のSource/Target/要求/時点から取得でき、必要な範囲を被覆し、当該Consumerに開示できるかは別の検査になる。
+
+この「不足→補充候補→資格確認」を手軽に点検するため、既存二世界fixtureを**変更・複製せず**に読む追加試験
+[ `verify_claim_witness_extensions.py`](../fixtures/business-completion-claims/verify_claim_witness_extensions.py)
+を置く。BC-01/05/07〜16の12例それぞれに、架空二世界を判別する**一つのWitness候補のField／確認すべき取得元／必要な資格**を対応付ける。これは仕様上の必要Evidenceの候補一覧であり、新しいClaim Solver、汎用Provider SPI、正式Evidence schema、第二業務正本ではない。
+
+### 10.2 Witnessの資格は「値が異なる」ことより強い
+
+| ケース | 二世界を区別する追加の手掛かり | 実製品で別途確認する資格とOwner |
+| --- | --- | --- |
+| **BC-01/12** 全件・粒度 | 生明細集合・内訳 | #2506/#1063：Query Scope、Grain、全件の取得被覆、read-setの整合。閲覧可能な集計から元行集合を推定しない |
+| **BC-05/07** 外部受領・回復 | 外部受領記録、Recoveryの帰属 | #1125/#1174：受領先主体、Recovery Operationの因果リンク、Ownerが受理した完了条件 |
+| **BC-08/09** 値／membership ABA | 確認後の値変更・関係変更の履歴 | #1125/#1708：確認対象範囲・期間全体の被覆、遅着訂正と撤回。イベント0件だけで無変更を確定しない |
+| **BC-10/13** 実対象・Action Purpose | Providerの効果対象、実InvocationのCapability | #2598/#1174：Intent/Action→実Request→実Effect、Binding/Meaning Revision、Target認可、Receipt帰属 |
+| **BC-11** 過去Result | 初回Outputまたは当時版による再構成素材 | #1174：当時Adapter/Outputの版・実Result値。Effect ReplayをResult Replayへ読み替えない |
+| **BC-14** Ambient Commit | 親保留更新の実際の確定有無 | #940/#1129：子FunctionのCommitと親Pendingの因果、Transaction境界、独立DB read。旧Driverの実動範囲を限定 |
+| **BC-15** 成果物実ロード | Consumerが読んだArtifact digest | #2604/#2482：Manifestとファイル集合の一式版、実ロードbyteとRuntime世代。Digest一致を業務意味受理へ昇格させない |
+| **BC-16** 編集と永続化 | 実Providerの確定状態 | #2597/#1174：Dirty/SubmitとCommitを区別、元Request/Receipt・観測時点・必要な独立Read |
+
+読み取れた内部Evidenceと、個々の閲覧者が利用できるEvidenceも区別する。存在の非開示、部分集合、履歴欠損、実行ログの欠落、Traceの循環上書き、取得不能を**未実行・不存在・拒否の証拠へ変換しない**。情報公開のOwnerは[#1178](https://github.com/hat47x/tei-platform/issues/1178)、Consumer説明のOwnerは[#2516](https://github.com/hat47x/tei-platform/issues/2516)。
+
+### 10.3 補充試験の成立範囲と受入順
+
+新fixtureには二つの局所検査を設ける。(a) 既存12ケースIDを一対一対応し、可視投影では同一だが、追加するCandidate Fieldに限れば二世界が識別できること。(b) Field値があっても、**Source資格／Scope被覆／期間被覆／Consumer開示資格**のどれかが欠ければ、その値をConsumer向けqualified witnessとして公開しないこと。
+
+これは各Fieldを実際のDB/旧Driver/Host/SHOから取得した試験ではない。また、資格フラグは合成であり、正例フラグが揃ってもOwnerの意味受理、業務上のClaim真値、要求と効果の因果を証明しない。特にBC-08/09で空の履歴を使う場合、実Providerの期間被覆がなければ無変更を主張できない。BC-13ではCapability文字列だけで意味一致とは認定しない。
+
+**実行順**：S3／#1125では「必要Witnessの候補と足りない資格」を説明するread-only Consumerを先に作る。P0-a（#1174実PG K/O/Lookup）・P0-b（#1129二Function Owner-write）を優先し、その実測とBC-10/13/14の対象・意味・確定の接合を行う。P1で#2506/#2516のScope相対Consumer、#2604のArtifact公開を独立に接続する。同一runで必要Evidenceを揃えたときだけ#1163の受入証拠に進み、既存#1119 G0〜G4の再定義は行わない。
+
+**取得時点の注意**：本節はSourceと合成テスト設計の追補。各Provider/Java/.NET/WASM Targetでの実行証拠・旧原モデル業務意味・Owner受理は未確認。補充候補が一つ見つかっただけで一般的な十分性・受入済みClaimを宣言しない。
