@@ -9,7 +9,7 @@
 
 対象の同一性／構成文法／性質・法則／解釈文脈／利用箇所の要求／主張と根拠／実現と表示。各Pressureの意味に関連するM1〜M10（#2495）は重複して構わないが、**一つの性質を二つの独立な意味正本に保存しない**。
 
-以下の168ケースは**初期の異質性を測るための開始点であり、網羅の完了や上限を意味しない**。新規の構造・数学的性質・分野固有の解釈は追加し続ける。関心事が重複する場合も、操作・利用文脈・失われる情報が異なれば別の反例として保持する。
+以下の180ケースは**初期の異質性を測るための開始点であり、網羅の完了や上限を意味しない**。新規の構造・数学的性質・分野固有の解釈は追加し続ける。関心事が重複する場合も、操作・利用文脈・失われる情報が異なれば別の反例として保持する。
 
 ## A. 値と同一性（PC-01〜07）
 
@@ -300,6 +300,27 @@ TEIの[PR #2576](https://github.com/hat47x/tei-platform/pull/2576)・[#2578](htt
 | PC-168 | 生成物一式の一部をConsumerが読めない | Manifest＋部分Artifact SetとReader | 期待集合の網羅と実Read/公開世代 | 生成成功から外部成果物受入を断定 | #2630/#2604 |
 
 **資格**：PC-157〜168は新しい**設計負例**であり本Corpus内での正式TEI試験はNOT RUN。#2627の独立32件/#2613の独立42件などの局所PASSは、Source→Rule→Provider→Action→実Host/SHOの製品E2Eを示さない。検証の正本・Ownerは既存#2586/#2506/#2611/#2622/#2516/#1174/#2604へ戻す。新しいRead Planner、Policy Engine、Host、固定Core enumを提案するものではない。
+
+## Q. SQL Operator意味保存と複数Function編集の合成（PC-169〜180、2026-11-02追加候補）
+
+[構造保存写像§18](STRUCTURE_PRESERVING_TRANSFORMATIONS_AND_PROJECTIONS_2026-11.md)のOP-01〜12に対応する机上Pressure。#2387 QX-23と#2597/#2601の独立Ownerを参照し、**本Corpusでの実試験はNOT RUN**。
+
+| ID | Pressure | 保存・比較する条件 | 誤成功 | Owner |
+| --- | --- | --- | --- | --- |
+| PC-169 | JOINとEXISTS | Bag多重度・存在判定 | 同じFieldで意味同値 | #2387/#2622 |
+| PC-170 | NOT INにNULLとNOT EXISTS | SQL三値論理・NULL | 両者を常に同値とする | #2387/#2514 |
+| PC-171 | LEFT JOIN擬似NULLと実NULL | Row存在・Value来歴 | 表示NULLで同じSource状態 | #2387/#2506 |
+| PC-172 | LIMIT前後のFilter/Sort | 順序・対象集合・Tie | 演算順序を無条件交換 | #2387/#2622 |
+| PC-173 | 同値を持つ別FactへのDISTINCT | Identity・Bag・Grain | Fact IDを値の重複で消す | #2593/#2387 |
+| PC-174 | AVG再集計でsum/count欠落 | 再構成Witness | Decimal型だけで再集計可 | #2593/#2544 |
+| PC-175 | SQLite一致・別Target未観測 | Target意味・独立Oracle | 全Provider適合とする | #2387/#2498 |
+| PC-176 | 同じSQL IDで別RLS | 実効Binding/Scope | SQL字句で同一母集団 | #2611/#2622 |
+| PC-177 | 二Functionの並行別行更新 | Predicate/Tx/業務不変条件 | 個別Commitで全体受理 | #2597/#1174 |
+| PC-178 | Save前のRule/Grant変更 | 現行Rule・Authority | 旧Previewから実行許可 | #2598/#1174 |
+| PC-179 | Commit応答喪失後のRetry | Operation identity/Effect Lookup | 応答不明を未実行と断定 | #1174/#2597 |
+| PC-180 | UI保存成功、独立read-backなし | Actual Effect/Business Result | 表示成功で業務完了 | #1174/#1119 |
+
+**注意**：SQL→Data Operatorは既存SQL正本の置換を意味せず、編集Session合成は共通Transaction Engineの導入を意味しない。既存Ownerの隔離SQLite試験を横断製品E2Eへ合算しない。
 
 ## 外部仕様の照合（2026-11-01読取り）
 
