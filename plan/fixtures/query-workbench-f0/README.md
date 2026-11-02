@@ -103,3 +103,21 @@ python3 -m unittest -v test_qx17m2_sqlite.py
 - **F**：明細AVG=150、3:1件のJOIN後AVG=125。元のFieldの値は変化しなくてもMeasureの結果は変わる。
 
 **適用範囲**：TEI Query Parser・`DeriveFromAnalysis`・実SQLGlot worker・Provider・RLS/search_path・正式Function Data Context・Modeler/SHOの実行ではない。#2582のReactivenessや#2586のQuery→Context→ClaimのPASSにも読み替えない。試験は自作の合成SQLite・データ・期待のみであり、Business Rule/Measure/Host実行・開示・Owner意味受理を追加しない。詳細の受入/次段は[Draft #2388設計計画§7.11.1](https://github.com/hat47x/tei-platform/blob/work/query-structural-fixture-design-20261030/plan/design/QUERY_STRUCTURAL_MODEL_AND_FIXTURE_WORKBENCH_2026-10.md)。
+
+
+## QX-21：説明と値の再利用を「根拠軸」ごとに比較（2026-11-02）
+
+Query解析・Target実効Relation/RLS/View/Function、取得Snapshot、Measure丸め/再集計、Context Instance/選択、Dirty Patch、Consumer Disclosure、Renderer変更を**用途相対の再確認候補**として比較する小さなReferenceを追加。既存のQX-16〜20 SQL評価・Query依存テストを代替するものではない。
+
+```sh
+cd plan/fixtures/query-workbench-f0
+python3 -m unittest -v test_qx21_evidence_axes.py
+```
+
+- 保存物：`test_qx21_evidence_axes.py`、Git blob SHA `826ddb03242340f5415b33bab44e356a42063a0b`（GitHub保存バイト＝ローカル実行バイト）。Python **3.13.5**／標準ライブラリ、**15/15 PASS**。
+- 主な観測：同一Query IDのSQL版差、同SQLのTarget/Policy差、Snapshot差、丸め差、A→B選択変更時のA Dirty Patchの保持、Grant差、Renderer差、Owner撤回、複合変更、Source名等の具体値を返さないJSON。
+- **実測で修正した負例**：未知の`target_binding`を`unknownAxes`に出すだけで、`recheckQualifications`から漏らすと、Consumerが後者だけを見て「再確認不要」と誤解し得る。欠落/Noneを`unknownQualifications`にも明示し、ChangedとUnknownの**両方を再確認候補へ含める**。15件中N/Oで同時変更とsearch_path/解析呼出し版差を確認。
+- **全ラベル一致 ≠ 真正な実消費入力確認／現在使用資格／開示許可／実Commitの証明**。この人工比較は固定ラベルの一致・差だけを判断し、実Query/Policy/Providerから証拠を収集・検証しない。
+- 比較結果は`changedAxes`等の軸名しか含まず具体Principal値を含めないが、**差分の存在自体が漏洩となり得る**。既存AuthorityによるConsumer別投影が確認されるまでは内部read-only説明候補であり、外部SHO/AI向けの安全な公開契約ではない。
+
+設計・次段のOwner/未実施範囲は[Draft #2388計画 §7.15](https://github.com/hat47x/tei-platform/blob/work/query-structural-fixture-design-20261030/plan/design/QUERY_STRUCTURAL_MODEL_AND_FIXTURE_WORKBENCH_2026-10.md)。#2506/#2582/#2593/#2597/#2598/#2516/#2586との統合、実SQL Worker/実PG/Host認可・Effect/Owner意味受理は**NOT RUN**。本Referenceは新Core enum/第二Evidence SSOT/新Policy Engineを導入しない。
