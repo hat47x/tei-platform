@@ -5,9 +5,9 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-// Exact source allowlist. Both entries remain usable in separate, non-merge
-// snapshots. The new Command source is supplied by the snapshot, never loaded
-// by this adapter or selected from a client-controlled input.
+// Exact source allowlist. Historical snapshots remain pinned unchanged;
+// the PR1 candidate is an additional, explicitly qualified snapshot.
+// Command/Graph dependencies must match the selected snapshot exactly.
 export const WORKBENCH_HEAD = '9a290dc61f585dfbf292e9032e5c5bbbad04351a';
 export const WORKBENCH_MAIN_BLOB = '2a65a9f70245068bf2455248d98d280b382b01e4';
 export const WORKBENCH_CURRENT_HEAD = 'c55ad2285268533f5f1c90fbc9fe766bae57f009';
@@ -15,6 +15,9 @@ export const WORKBENCH_CURRENT_MAIN_BLOB = 'cc2644e5a9167dbc3a0b5368ff270276a2ba
 // Current-main consumer pin for the generated Workbench browser gate.
 export const WORKBENCH_MAIN_CONSUMER_HEAD = 'a97046d513eabdada86542e95553eaf450173c3e';
 export const WORKBENCH_MAIN_CONSUMER_BLOB = '11815ab583dbcf6bb28baab83d7854389c1043be';
+// #1124 PR1 candidate: retain historical evidence and reject unknown revisions.
+export const WORKBENCH_PR1_HEAD = 'dc7b44750279d8f9e4c4e4b797c054b865021c1a';
+export const WORKBENCH_PR1_BLOB = '9582c85db4c27c1f89d8594f5b212984d755c9c0';
 export const WORKBENCH_PINS = Object.freeze([
   Object.freeze({head: WORKBENCH_HEAD, mainBlob: WORKBENCH_MAIN_BLOB,
     commandHead: '26f47772ed49f5c4a9e1c50026c335783bc5e153',
@@ -25,6 +28,11 @@ export const WORKBENCH_PINS = Object.freeze([
     responsesBlob: '9fa305e227bee96b66002362121db3878e92327d'}),
   Object.freeze({head: WORKBENCH_MAIN_CONSUMER_HEAD, mainBlob: WORKBENCH_MAIN_CONSUMER_BLOB,
     commandHead: 'a97046d513eabdada86542e95553eaf450173c3e',
+    commandBlob: 'bb56f3dba6387f7d9bf9604de9b519fb68feb50d',
+    responsesBlob: 'e1fa0d6b8e07af1158416d6c6d2469a408f64495',
+    graphBlob: '436c7d07c56802dbbc6d1dfeb1251470fca75cf6'}),
+  Object.freeze({head: WORKBENCH_PR1_HEAD, mainBlob: WORKBENCH_PR1_BLOB,
+    commandHead: WORKBENCH_MAIN_CONSUMER_HEAD,
     commandBlob: 'bb56f3dba6387f7d9bf9604de9b519fb68feb50d',
     responsesBlob: 'e1fa0d6b8e07af1158416d6c6d2469a408f64495',
     graphBlob: '436c7d07c56802dbbc6d1dfeb1251470fca75cf6'}),
