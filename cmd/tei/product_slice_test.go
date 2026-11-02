@@ -14,7 +14,7 @@ import (
 func productSliceWorkspace(t *testing.T) string {
 	t.Helper()
 	root := t.TempDir()
-	writeWorkspaceFile(t, root, "tei.workspace.yaml", "workspace: product_slice\nsources:\n  - semantic\n  - applications\n")
+	writeWorkspaceFile(t, root, "tei.workspace.yaml", "workspace: product_slice\nformatVersion: 1\nsources:\n  - semantic\n  - applications\n")
 	writeWorkspaceFile(t, root, "semantic/sales/order.tei", `namespace sales
 
 type Status from std.code values { "open" "closed" }
@@ -56,7 +56,7 @@ data Customer {
 	writeWorkspaceFile(t, root, "applications/order-entry/patterns/recent-orders.tei", `pattern order_entry.recent_orders browse {
     data sales.order
     query order_entry.recent_orders
-    filter sales.order.status { eq ne }
+    filter sales.order.status { eq ne } parameter status
     sort sales.order.status asc
     page-size 20
 }
@@ -67,6 +67,7 @@ data Customer {
 }
 `)
 	writeWorkspaceFile(t, root, "applications/order-entry/queries/recent_orders.tei", `query order_entry.recent_orders {
+    input status sales.status
     datasource sales
     sql postgres file "recent_orders.sql"
     result {
@@ -84,7 +85,17 @@ data Customer {
         command sales.submit_order {
             input order sales.order.order_id
         }
+        hook before-update {
+            reads sales.order.status
+            uses sales.submit_order
+            produces sales.order.customer_id
+            on-failure reject
+        }
     }
+}
+`)
+	writeWorkspaceFile(t, root, "applications/order-entry/patterns/submit-order.tei", `pattern order_entry.submit_order command {
+    capability sales.submit_order
 }
 `)
 	writeWorkspaceFile(t, root, "applications/order-entry/patterns/order-lines.tei", `pattern order_entry.order_lines header-detail {
@@ -169,6 +180,98 @@ func TestProductSliceLoadsValidatesAndViews(t *testing.T) {
 		t.Fatalf("command plan=%+v", planReport.Result)
 	}
 
+	var commandView bytes.Buffer
+	code, err = runViewCommand([]string{
+		"-workspace", root,
+		"-application", "order_entry",
+		"-pattern", "order_entry.submit_order",
+		"-format", "json",
+	}, &commandView)
+	if err != nil || code != 0 {
+		t.Fatalf("command view exit=%d err=%v body=%s", code, err, commandView.String())
+	}
+	var commandReport struct {
+		OK     bool                               `json:"ok"`
+		Result applicationview.CommandPatternView `json:"result"`
+	}
+	if err := json.Unmarshal(commandView.Bytes(), &commandReport); err != nil {
+		t.Fatal(err)
+	}
+	if !commandReport.OK || commandReport.Result.Capability != "sales.submit_order" || len(commandReport.Result.Outcomes) != 1 {
+		t.Fatalf("command view=%+v", commandReport.Result)
+	}
+
+	var applicationView bytes.Buffer
+	code, err = runViewCommand([]string{
+		"-workspace", root,
+		"-application", "order_entry",
+		"-format", "json",
+	}, &applicationView)
+	if err != nil || code != 0 {
+		t.Fatalf("application view exit=%d err=%v body=%s", code, err, applicationView.String())
+	}
+	var applicationReport struct {
+		OK     bool                            `json:"ok"`
+		Result applicationview.ApplicationView `json:"result"`
+	}
+	if err := json.Unmarshal(applicationView.Bytes(), &applicationReport); err != nil {
+		t.Fatal(err)
+	}
+	if !applicationReport.OK || len(applicationReport.Result.Patterns) < 5 || applicationReport.Result.SemanticFingerprint == "" {
+		t.Fatalf("application view=%+v", applicationReport.Result)
+	}
+
+	var packageView bytes.Buffer
+	code, err = runViewCommand([]string{
+		"-workspace", root,
+		"-application", "order_entry",
+		"-package", "order_entry.list_to_record",
+		"-format", "json",
+	}, &packageView)
+	if err != nil || code != 0 {
+		t.Fatalf("package view exit=%d err=%v body=%s", code, err, packageView.String())
+	}
+	var packageReport struct {
+		OK     bool                        `json:"ok"`
+		Result applicationview.PackageView `json:"result"`
+	}
+	if err := json.Unmarshal(packageView.Bytes(), &packageReport); err != nil {
+		t.Fatal(err)
+	}
+	if !packageReport.OK || packageReport.Result.Version != "1" || !packageReport.Result.Bound || len(packageReport.Result.Members) != 4 {
+		t.Fatalf("package view=%+v", packageReport.Result)
+	}
+
+	var recordHTML bytes.Buffer
+	code, err = runViewCommand([]string{
+		"-workspace", root,
+		"-application", "order_entry",
+		"-pattern", "order_entry.order_record",
+		"-format", "html",
+	}, &recordHTML)
+	if err != nil || code != 0 {
+		t.Fatalf("record html exit=%d err=%v body=%s", code, err, recordHTML.String())
+	}
+	for _, want := range []string{"フック", "未使用の属性", "状態"} {
+		if !strings.Contains(recordHTML.String(), want) {
+			t.Fatalf("record html does not contain %s", want)
+		}
+	}
+
+	var recordPrint bytes.Buffer
+	code, err = runViewCommand([]string{
+		"-workspace", root,
+		"-application", "order_entry",
+		"-pattern", "order_entry.order_record",
+		"-format", "print",
+	}, &recordPrint)
+	if err != nil || code != 0 {
+		t.Fatalf("record print exit=%d err=%v body=%s", code, err, recordPrint.String())
+	}
+	if !strings.Contains(recordPrint.String(), "format: tei.print/v0") {
+		t.Fatal("record print does not carry the receipt")
+	}
+
 	var browse bytes.Buffer
 	code, err = runViewCommand([]string{
 		"-workspace", root,
@@ -179,7 +282,7 @@ func TestProductSliceLoadsValidatesAndViews(t *testing.T) {
 	if err != nil || code != 0 {
 		t.Fatalf("browse view exit=%d err=%v body=%s", code, err, browse.String())
 	}
-	if !strings.Contains(browse.String(), "<th>受注番号</th>") || !strings.Contains(browse.String(), "<option>eq</option>") || !strings.Contains(browse.String(), "並び順") || !strings.Contains(browse.String(), "page-size: 20") {
+	if !strings.Contains(browse.String(), "<th>受注番号</th>") || !strings.Contains(browse.String(), "<option>eq</option>") || !strings.Contains(browse.String(), "並び順") || !strings.Contains(browse.String(), "page-size: 20") || !strings.Contains(browse.String(), "状態 (status)") {
 		t.Fatalf("browse html=%s", browse.String())
 	}
 

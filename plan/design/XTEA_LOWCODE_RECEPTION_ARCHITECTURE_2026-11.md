@@ -126,7 +126,7 @@ X-TEAのスクリプトAPIは、SQL・確定・機能呼出しを同じ面に置
 | 診断 | 既存のValidationがある | `internal/semantic/model.go` L118–121 | 三視点の抜け・未被呼出しはD8で追加する |
 | パッケージ | Pluginの合成はあるが、Patternパッケージはない | `internal/plugin/model.go` | D1でPlugin種別として設計する |
 
-この表から、D1のパッケージは「Kindを増やす」のではなく「5種の組合せと対話契約を追加する」方向が、現行実装と衝突しにくいと分かります。一覧の区切り読み込み・1件の自動処理（知識目録F-15）や、絞り込みの群とページ送り（F-16）、見出し明細の複数タブ（F-17）も、Queryと対話契約の属性として表します。並び替えは、X-TEAでは読み込み済みの行を画面上で並べ替えていましたが（I-21）、TEIではQueryの並び順として宣言し、ページ送りと一貫させます。PoCでは`sort <attribute> asc`・`desc`として宣言し、1ページの件数は`page-size`で宣言します。絞り込みの演算子（`EQ`、`GE`、`LIKE`など）も画面の切替えに閉じず（I-22）、Queryが受け付ける条件として宣言します。PoCでは`filter <attribute> { eq ne }`として宣言し、一覧の絞り込み欄へ投影します。起動処理は画面内のタイマーで動いていましたが（F-22）、TEIでは起動の契機をCommandの外に置き、スケジューラを提供元とします。D5も、新しい結果型を増やすのではなく、既存の`Outcome`とerrorの分担に合わせるべきです。
+この表から、D1のパッケージは「Kindを増やす」のではなく「5種の組合せと対話契約を追加する」方向が、現行実装と衝突しにくいと分かります。一覧の区切り読み込み・1件の自動処理（知識目録F-15）や、絞り込みの群とページ送り（F-16）、見出し明細の複数タブ（F-17）も、Queryと対話契約の属性として表します。並び替えは、X-TEAでは読み込み済みの行を画面上で並べ替えていましたが（I-21）、TEIではQueryの並び順として宣言し、ページ送りと一貫させます。PoCでは`sort <attribute> asc`・`desc`として宣言し、1ページの件数は`page-size`で宣言します。絞り込みの演算子（`EQ`、`GE`、`LIKE`など）も画面の切替えに閉じず（I-22）、Queryが受け付ける条件として宣言します。PoCでは`filter <attribute> { eq ne }`として宣言し、Queryの`input`と`parameter`で結びつけ、一覧の絞り込み欄へ投影します。起動処理は画面内のタイマーで動いていましたが（F-22）、TEIでは起動の契機をCommandの外に置き、スケジューラを提供元とします。D5も、新しい結果型を増やすのではなく、既存の`Outcome`とerrorの分担に合わせるべきです。
 
 なお、`Hook`、`Interaction`、`Presentation`という型は、現行のGoコードの`internal/`と`core/`の静的検索では見つかりません。D2（フック）、D3（項目の役割）、D4（表示意図）、D7（帳票・出力投影）は、既存の型を再利用するのではなく、新しい層を追加する設計になります。
 
@@ -362,6 +362,8 @@ lookup customer_lookup on order_entry.order_record.customerId
 
 **撤回条件.** フック種別が増え、Coreの小さな定義が機能型の再実装になる場合は、B（Pluginの契約）へ寄せ、ApplicationはPluginの選択だけを持ちます。
 
+**PoCでの実装.** record対話の`hook <phase> { reads ... uses ... produces ... on-failure ... }`として宣言を実装しました。位相・読み書き・失敗時の扱いを検証し、対話ビューへ表示します。実装Pluginは`internal/hook`の`Implementation`契約として境界を実装し、`reject`と`warn`を分けます。実Pluginの接続は未実装です。
+
 ### D3 項目の「意味の役割」と「表示・入力支援」を分ける
 
 **問題.** X-TEAは、`TypeOptions`と`FieldOptions`の文字列に、必須・参照・導出・自動採番・仮想項目・区分値・値集合・編集コード・バーコード・郵便番号・幅・行数・配置・参照ダイアログ・関連呼出しをまとめて入れていました（知識目録I-2、I-3）。このため、同じ「参照」でも、意味の参照と画面の参照ダイアログが区別できず、実行先を変えると再設計になります。
@@ -454,6 +456,8 @@ lookup customer_lookup on order_entry.order_record.customerId
 
 **撤回条件.** 表示意図だけでは業務上の読み順を表せず、案件ごとに座標を正本へ戻す必要が頻発する場合は、表示意図の語彙を増やします（座標そのものは戻しません）。
 
+**PoCでの実装.** recordの`layout { order <attribute> }`として、画面座標ではなく項目の並びだけを宣言し、対話ビューへ反映します。絶対配置・画面サイズ・複数画面の合成は未実装です。
+
 **未解決.**
 
 - 帳票の改ページ・集計・繰返しを、表示意図の語彙で表せるか、帳票テンプレートPluginへ渡すか。
@@ -496,7 +500,7 @@ X-TEAの戻り値とTEIの分類の対応（案）は、次のとおりです。
 
 **撤回条件.** 結果型が増えすぎて、呼出し側の分岐が実装負担になる場合は、結果の分類を業務結果と実行結果の二層に整理します（[Business Effect Lifecycle](BUSINESS_EFFECT_LIFECYCLE_DESIGN_2026-10.md)との整合）。
 
-**PoCでの実装.** `interaction`の`command`でCapabilityを参照し、対話ビューが入力・結末・効果を解決します。入力は`input <name> <attribute>`で対話の項目へ結びつけます。起動前の入力計画は`view -command`で確認でき、値の形（整数・数値・日付など）も検査します（[#2521](https://github.com/hat47x/tei-platform/pull/2521)）。実行境界、Outcomeの返却、ロールバックは未実装です。
+**PoCでの実装.** `interaction`の`command`でCapabilityを参照し、対話ビューが入力・結末・効果を解決します。入力は`input <name> <attribute>`で対話の項目へ結びつけます。起動前の入力計画は`view -command`で確認でき、値の形（整数・数値・日付など）も検査します（[#2521](https://github.com/hat47x/tei-platform/pull/2521)）。実行境界は`internal/command`の`Executor`契約として実装し、入力検証・実行失敗・宣言外の結末を`ExecutionError`として分けます。取引は`UnitOfWork`と`Transaction`の契約として境界を実装し、成功時はCommit、実行失敗・宣言外の結末・Commit失敗時はRollbackします。実Providerの接続は未実装です。
 
 **未解決.**
 
@@ -580,7 +584,7 @@ X-TEAの実装では、税額は税率表の開始日と税区分で選び、正
 
 **撤回条件.** 帳票の表現力が不足し、案件ごとにテンプレートを正本へ戻す必要が出た場合は、テンプレートを「派生成果物の入力」として明示し、正本との対応を強める（レイアウトを意味へ戻さない）。
 
-**PoCでの実装.** header-detailの解決結果から、A4の印刷用HTML（見出し表と明細5行の繰返し）を出します（`view -format print`、[#2521](https://github.com/hat47x/tei-platform/pull/2521)）。投影にはSemantic fingerprintを付し、どの意味の版から出たかを追えます。集計はheader-detailの`aggregate`として宣言し（`sum`・`count`・`min`・`max`・`avg`）、印刷の集計欄へ投影します。改ページは`page-break <行数> [repeat-header]`として宣言し、印刷の明細行数へ反映します。テンプレート版の記録は未実装です。
+**PoCでの実装.** header-detailの解決結果から、A4の印刷用HTML（見出し表と明細5行の繰返し）を出します（`view -format print`、[#2521](https://github.com/hat47x/tei-platform/pull/2521)）。投影にはSemantic fingerprintを付し、どの意味の版から出たかを追えます。集計はheader-detailの`aggregate`として宣言し（`sum`・`count`・`min`・`max`・`avg`）、印刷の集計欄へ投影します。改ページは`page-break <行数> [repeat-header]`として宣言し、印刷の明細行数へ反映します。印刷のfooterにはpattern・Semantic fingerprint・format・帳票テンプレートの版（`print-template`）を残します。テンプレート本体の管理は未実装です。
 
 **未解決.**
 
@@ -614,6 +618,8 @@ X-TEAの実装では、税額は税率表の開始日と税区分で選び、正
 - 診断を消すために意味を曲げる必要がない。
 
 **撤回条件.** 診断の維持コストが、見つかる問題の価値を上回る場合は、対象を未定義参照と三視点の抜けに絞ります。
+
+**PoCでの実装.** recordビューが、Dataの属性のうちinteractionに現れないものを`unused`として表示します（D-9・G-7）。重要度の分類と受理版への束縛は未実装です。
 
 **未解決.**
 
@@ -913,6 +919,7 @@ PoC #2521が実装した範囲と、まだ実装していない範囲を分け�
 | CLI `inspect` のCanonical JSONへの投影 | 実装済み（`application-pattern`のJSONに`interaction`が含まれる） |
 | 必須・更新禁止（D3.1） | 実装済み（Attributeの`required`・`immutable`） |
 | 値域（D3.1） | 実装済み（Typeの`values`） |
+| 属性の役割（D3.1） | 実装済み（`role`、表示名の隣に表示） |
 | 対話ビュー（項目の型・表示名・入力部品・参照先の解決） | 実装済み（`internal/applicationview`、CLI `view`） |
 | 画面HTMLの投影 | 実装済み（`view -format html`） |
 | 印刷用の用紙面投影 | 実装済み（`view -format print`、A4、明細5行） |
@@ -920,19 +927,43 @@ PoC #2521が実装した範囲と、まだ実装していない範囲を分け�
 | 統合試験（Semantic→Application→Package→view/print） | 実装済み（`cmd/tei/product_slice_test.go`） |
 | 集計（`sum`・`count`・`min`・`max`・`avg`） | 実装済み（header-detailの宣言、印刷の集計欄） |
 | 投影のSemantic fingerprint | 実装済み（JSONの`semanticFingerprint`、HTMLのmeta、text） |
+| 印刷の受領票（pattern・fingerprint・format） | 実装済み（印刷のfooter） |
+| 帳票テンプレートの版（`print-template`） | 実装済み（宣言と受領票への記録、テンプレート本体は未実装） |
 | header-detailの見出し・明細ビュー | 実装済み（Relationのsourceをheader、targetを明細として解決） |
 | 一覧（browse）ビュー | 実装済み（Query結果列を表示名・型で解決） |
 | 一覧の絞り込み（項目・演算子） | 実装済み（`filter <attribute> { eq ne }`、HTMLの絞り込み欄） |
+| Query入力と絞り込みの結びつけ | 実装済み（`query input <name> <type>`、`filter ... parameter <name>`、型一致を検査） |
 | 一覧の並び順（`sort`） | 実装済み（`sort <attribute> asc`・`desc`、HTMLの並び順表示） |
 | 一覧のページ件数（`page-size`） | 実装済み（1..1000、HTMLの件数表示） |
 | 対話からのCommand起動（宣言・契約解決） | 実装済み（`interaction`の`command`、入力・結末・効果の解決。実行は未実装） |
 | Command入力の対話項目への結びつけ | 実装済み（`command { input <name> <attribute> }`、項目の表示名へ解決） |
 | Commandの起動計画（入力の過不足・値の形） | 実装済み（`view -command`、実行は未実装） |
+| command Patternのビュー | 実装済み（能力・入力・結末・効果を`view`で表示） |
+| Commandの実行境界（Executor契約・結末照合） | 実装済み（`internal/command`、実Providerは未接続） |
+| Commandの取引境界（Unit of Work・Commit/Rollback） | 実装済み（境界のみ、実Providerは未接続） |
+| フックの宣言（位相・読み書き・失敗時） | 実装済み（`hook`、実装Pluginは未接続） |
+| フックの実行境界（Implementation契約・reject/warn） | 実装済み（`internal/hook`、実Pluginは未接続） |
+| 未使用属性の表示（D8・G-7） | 実装済み（recordビューの`unused`） |
+| 項目の並び（D4） | 実装済み（recordの`layout { order ... }`、座標ではない） |
 | Package（宣言・読込・検証・版束縛・ビュー表示） | 実装済み（衝突は明示エラー、取り外しはSemantic fingerprintを変えない） |
+| Packageのビュー（メンバー・前提・版束縛） | 実装済み（`view -package`） |
+| Applicationのビュー（Pattern・Package・意味の版） | 実装済み（`view -application`） |
 | Commandの実行境界、改ページ、フックのDSL | 未実装 |
 | `reference/workspace`への宣言追加 | 未実施（受理経路が必要） |
 
 実装は、`internal/application/model.go`、`internal/syntax/application_pattern.go`、`internal/validation/application_pattern.go`、`internal/crossview/pattern_requirements.go`、`internal/applicationview`、`internal/semantic/model.go`、`internal/syntax/parser.go`、`internal/validation/validation.go`と、それぞれの試験です。
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

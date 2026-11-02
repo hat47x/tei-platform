@@ -26,8 +26,9 @@ func viewWorld() ir.World {
 				Data: []semantic.Data{{
 					ID: "sales.order",
 					Attributes: []semantic.Attribute{
-						{ID: "sales.order.order_id", Symbol: "order_id", Display: "受注番号", TypeRef: "std.identifier", Required: true, Immutable: true},
+						{ID: "sales.order.order_id", Symbol: "order_id", Display: "受注番号", TypeRef: "std.identifier", Required: true, Immutable: true, Role: "business-key"},
 						{ID: "sales.order.customer_id", TypeRef: "customer.customer_id"},
+						{ID: "sales.order.status", Display: "状態", TypeRef: "std.code"},
 					},
 					Relations: []semantic.Relation{{
 						ID:          "sales.order.customer",
@@ -77,6 +78,13 @@ func viewWorld() ir.World {
 							},
 						},
 						Navigations: []application.InteractionNavigation{{From: "order_entry.recent_orders"}},
+						Hooks: []application.Hook{{
+							Phase:    "before-update",
+							Reads:    []core.CanonicalID{"sales.order.status"},
+							Uses:     []core.CanonicalID{"sales.confirm_order"},
+							Produces: []core.CanonicalID{"sales.order.customer_id"},
+							Failure:  "reject",
+						}},
 						Commands: []application.InteractionCommand{{
 							Capability: "sales.confirm_order",
 							Inputs:     []application.CommandInputBinding{{Name: "order_id", Attribute: "sales.order.order_id"}},
@@ -235,5 +243,55 @@ func TestBuildCarriesSemanticFingerprint(t *testing.T) {
 	}
 	if after.SemanticFingerprint == view.SemanticFingerprint {
 		t.Fatal("semantic change did not change the view fingerprint")
+	}
+}
+
+func TestBuildCarriesHooks(t *testing.T) {
+	view, err := applicationview.Build(viewWorld(), "order_entry", "order_entry.order_record")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(view.Hooks) != 1 {
+		t.Fatalf("hooks=%+v", view.Hooks)
+	}
+	hook := view.Hooks[0]
+	if hook.Phase != "before-update" || len(hook.Reads) != 1 || len(hook.Uses) != 1 || len(hook.Produces) != 1 || hook.Failure != "reject" {
+		t.Fatalf("hook=%+v", hook)
+	}
+}
+
+func TestBuildCarriesUnusedAttributes(t *testing.T) {
+	view, err := applicationview.Build(viewWorld(), "order_entry", "order_entry.order_record")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(view.Unused) != 1 || view.Unused[0].Attribute != "sales.order.status" || view.Unused[0].Label != "状態" {
+		t.Fatalf("unused=%+v", view.Unused)
+	}
+}
+
+func TestBuildAppliesLayoutOrder(t *testing.T) {
+	world := viewWorld()
+	for i := range world.Applications[0].Patterns {
+		if world.Applications[0].Patterns[i].ID == "order_entry.order_record" {
+			world.Applications[0].Patterns[i].Layout = &application.Layout{Order: []core.CanonicalID{"sales.order.customer_id", "sales.order.order_id"}}
+		}
+	}
+	view, err := applicationview.Build(world, "order_entry", "order_entry.order_record")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(view.Items) != 2 || view.Items[0].Attribute != "sales.order.customer_id" || view.Items[1].Attribute != "sales.order.order_id" {
+		t.Fatalf("items=%+v", view.Items)
+	}
+}
+
+func TestBuildCarriesAttributeRole(t *testing.T) {
+	view, err := applicationview.Build(viewWorld(), "order_entry", "order_entry.order_record")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(view.Items) != 2 || view.Items[0].Role != "business-key" {
+		t.Fatalf("items=%+v", view.Items)
 	}
 }
