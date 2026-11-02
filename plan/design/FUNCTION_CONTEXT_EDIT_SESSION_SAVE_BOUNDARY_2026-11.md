@@ -190,3 +190,52 @@ Rule実行に必要な関係のRole、集合、時点、値域、必要な完全
 - **同一性**：実行ファイルの長さ6917バイト、SHA-256 `009faf31172e7993456bf7e563974f56b92a3ff5d7df9902eae94640b94336dc`、Adler32 `3645067705`。GitHub新規保存入力の長さ・Adler32は同値と確認した。実Target artifactやTEIの実行版保証に拡張しない。
 - **未実施**：ES-07/08/12は局所試験未実装。ES-01〜13の正式TEI Context/Query/Action/Driver、実DB/Host、GUI、二Consumer、現在Grant、業務完了の検証とOwner意味受理はすべて**NOT RUN**。
 - **境界**：局所`classify_save`は架空Provider識別とFixture中の原子性宣言を分類するだけで、実Transaction・現在権限・因果的Receiptを証明しない。実Effectは#1174/#2485、統合Scenarioは#1180/#2586の既存Ownerへ引き渡す。
+
+## 11. 複合保存の依存関係と原子性保証を分離する（2026-11-02追補）
+
+### 11.1 同じ「まとめて保存」で何が違うか
+
+保存候補は次の**四つの独立した判断**を要求する。
+
+1. **Target binding**：親・子・関係の変更Intentが、それぞれどのSubject/Relation occurrence/期待版に対応するか。対象同一性のOwnerは#2598/#2500。
+2. **Dependency order**：未保存親のcreateが完了して実ID対応が得られてから、その子のcreateへ渡せるか。依存関係の循環・欠落と、同Instanceの一時ID衝突を検出する。
+3. **Atomicity scope**：依存が正しい順序で実行されることと、全変更のall-or-none保証は別。実Host/Providerが明示した単一の業務Action・Tx/atomicity group・Effect境界を検証する（#1174）。
+4. **Result correlation**：部分成功／未試行／不明／失敗の結果が**どの要求**に対応するかを区別する。受付ACK・依存エラー・実Commit/Receipt・独立観測・Business Completionを単一の成功フラグにしない。
+
+外部仕様からの比較：
+
+- [OData 4.01 JSON Batch §19.4](https://docs.oasis-open.org/odata/odata-json-format/v4.01/cos02/odata-json-format-v4.01-cos02.html)：依存要求（`dependsOn`）と原子性グループ（`atomicityGroup`）を区別し、グループ内はall-or-noneを要求する。個別応答のIDで対応を追跡する。これは**その仕様に適合するProviderの能力の例**であり、TEIの全Serviceで保証済みとは扱わない。
+- [GraphQL Mutations](https://graphql.org/learn/mutations/)：上位Mutation fieldの逐次実行はDB Transactionではなく、一部成功・一部失敗が起こり得る。
+- [RFC 6902 JSON Patch](https://www.rfc-editor.org/rfc/rfc6902)：`test`・`add`・`remove`・`replace`等と順序・対象JSON Pointerを定める。JSON文書内のPatch表現は、TEIの業務Entity/Relation ID・権限・Transactionの意味をそのまま定義しない。
+- [PostgreSQL Transaction](https://www.postgresql.org/docs/current/tutorial-transactions.html)：単一DB TxのBEGIN/COMMIT/ROLLBACKやSavepointは有用な実現能力。複数Provider間に無条件で展開する保証にはならない。
+
+### 11.2 自作の合成受入ケース（局所Reference）
+
+追加の試料 `plan/fixtures/function-edit-session/verify_save_composition.py` は**プロバイダを呼び出さない純粋な合成処理**で、次の八件の正例・負例を検査する。
+
+| Case | 検証対象 | 誤成功・未確認のまま保つ内容 |
+| --- | --- | --- |
+| ES-07 | 同じ`tmp-H`でもI1/I2で別の暫定親ID→受信済み物理ID | 親確認前、他Instanceの仮IDを子の確定Keyに流用 |
+| ES-08 | `unlink_relation`は関係出現IDに対する操作 | 人物/取引先等のEntity deleteへ無音変換 |
+| ES-12 | CUI/Web由来の同じ型付き変更は同じ候補表現へ | 実GUI・Action/Hostの一致は未確認 |
+| ES-14 | 親create→子createの依存順序 | 順序が揃えばTx原子性も成立すると主張 |
+| ES-15 | 依存先の欠落・依存循環の拒否 | 循環を自動的に順序付けして成功扱い |
+| ES-16 | 単一Provider/異Providerの原子性宣言を別判定 | 逐次実行・一つのUIボタンを同一Txとみなす |
+| ES-17 | 一件の結果が欠落すればunknown、余分な応答IDは拒否 | 部分的なReceiptを全件成功または全件失敗へ丸める |
+| ES-18 | 局所で全要求の成功を観測できても業務完了とは別 | Business Rule/実Effect/独立Observationを省略 |
+
+この試料の`atomicity_claim`は架空の**Provider一致＋明示グループ＋その能力のFixture宣言**を区別する教育用比較。返値`fixture_declared_only`は実Tx保証を意味しない。実Providerの詳細なTx参加・scope・session・Grant・commit fence・Rollbackは#1174/#2564で再確認する。上流のIntent/Request対象帰属は#2598、複数Action構成は#2597で担当を分ける。
+
+### 11.3 局所試験結果と残余
+
+- `python3 verify_save_composition.py`：Python標準ライブラリ`unittest` **8/8 PASS**。
+- `python3 -m py_compile verify_save_composition.py`：PASS。
+- 保存したファイルのBlob SHA-1は `49a3c3831e93f8aaa7b24b4ac80990ca53ab74c0`。隔離実行の`git hash-object`と一致し、6686バイト、SHA-256 `72981a2330a45327b1c2007f6c9640445046d77a9457b38518112f2be62f5f43`。
+- 既存の`verify_edit_sessions.py` 10件と合わせて**独立合成Reference 18件**を実測。ただし各Referenceの対象と期待は独立しており、正式TEIの同一試行E2Eを示さない。
+- **NOT RUN**：実TEI Function/Context/Action/Driver/Host/DB/Tx、真正のBatch API/GraphQL Adapter、Permission/Authority、GitHub exact-head CI、実Web/外部Consumer、Owner業務意味受理。Case自体の局所成功をこれらへ昇格させない。
+
+### 11.4 追加の統合条件
+
+既存#2598（単一Intent→Requestの対象束縛）の確認票に対して、#2597は`SaveGroup / Member Request / Dependency / Result`の**一対多の関連**を、既存のOperation/Receipt/Scenarioを参照して説明できるか検証する。各要求のID、対象Key/Role、期待版、実Provider/Hostの能力、Groupの原子性資格、個別結果と現在適用範囲を別列として渡す。正式Schemaを先に固定せず、既存Source/Contractで説明できた範囲と不足情報を測定する。
+
+**必要な重要区別**：依存関係のDAGがある≠実効資源所有のDAGがある≠同一Txに参加する≠一つの業務として完了した。特にバッチAPIが処理順序を保証するだけの場合、一部成功の結果をそのまま保存・再確認する。
