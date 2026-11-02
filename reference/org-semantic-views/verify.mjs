@@ -4,6 +4,7 @@
  * Run with: node reference/org-semantic-views/verify.mjs
  * This script checks fixture arithmetic and candidate interpretation, not production correctness.
  */
+import { fixture, baselineMemberships } from './source-fixture.mjs';
 function runFixture() {
   const checks=[];
   function eq(name,actual,expected) {
@@ -11,17 +12,12 @@ function runFixture() {
     checks.push({name,pass:equal,actual,expected});
     if (!equal) throw new Error(`${name}: expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`);
   }
-  const people=["P1","P2","P3"];
-  const memberships=[
-    {id:"A1",person:"P1",dept:"D1"},
-    {id:"A2",person:"P2",dept:"D1"},
-    {id:"A3",person:"P2",dept:"D2"},
-    {id:"A4",person:"P3",dept:"D2"}
-  ];
-  const allocations=[{relation:"A1",basisPoints:100},{relation:"A2",basisPoints:60},{relation:"A3",basisPoints:40},{relation:"A4",basisPoints:100}];
-  const projects=[{id:"J1",dept:"D1"},{id:"J2",dept:"D1"}];
-  const position={id:"M1",dept:"D1"};
-  const occupancy=[{id:"O1",person:"P2",position:"M1",from:"2027-04-01",to:"2027-07-01"},{id:"O2",person:"P3",position:"M1",from:"2027-07-01",to:null}];
+  const people=fixture.persons;
+  const memberships=baselineMemberships(fixture).map(({ id, person, dept })=>({ id, person, dept }));
+  const allocations=fixture.allocations;
+  const projects=fixture.projects;
+  const position=fixture.position;
+  const occupancy=fixture.occupancy;
   const distinct=arr=>[...new Set(arr)].sort();
   const membershipsFor=dept=>memberships.filter(x=>x.dept===dept);
   const fteBasisPoints=dept=>membershipsFor(dept).reduce((acc,m)=>acc+allocations.find(a=>a.relation===m.id).basisPoints,0);
