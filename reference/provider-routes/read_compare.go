@@ -59,6 +59,9 @@ func CompareReadSlices(a, b ReadSlice, cohort AssertedCommonCohort) ReadComparis
 	if !validRows(a.Rows) || !validRows(b.Rows) {
 		return unknown("row-identity-or-presence-unqualified")
 	}
+	if hasUnobservedValue(a.Rows) || hasUnobservedValue(b.Rows) {
+		return unknown("field-value-not-observed")
+	}
 	aRows, bRows := bagSignature(a.Rows), bagSignature(b.Rows)
 	if len(aRows) != len(bRows) {
 		return ReadComparison{Status: "contradicted", Reason: "complete-bags-differ"}
@@ -81,6 +84,17 @@ func validRows(rows []ReadRow) bool {
 		}
 	}
 	return true
+}
+
+// A complete rowset does not guarantee every field was observed. SQL NULL is
+// an observed presence state; "absent" means the field is not known.
+func hasUnobservedValue(rows []ReadRow) bool {
+	for _, row := range rows {
+		if row.Presence == "absent" {
+			return true
+		}
+	}
+	return false
 }
 
 // Use length-prefixing rather than separators because fixture values and IDs
