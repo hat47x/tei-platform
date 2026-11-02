@@ -904,7 +904,7 @@ PoC #2521が実装した範囲と、まだ実装していない範囲を分け�
 
 | 項目 | 状態 |
 | --- | --- |
-| `interaction`ブロックの構文（`item`、`lookup`、`navigate from`） | 実装済み |
+| `interaction`ブロックの構文（`item`、`lookup`、`navigate from`、`command`） | 実装済み |
 | 項目がDataのattributeか、参照先がreference Patternか、Relation targetのattributeか、型が一致するか | 実装済み |
 | 参照先のSemantic名前空間がApplicationの`uses semantic`に含まれるか | 実装済み（`APPLICATION_PATTERN_INTERACTION_LOOKUP_SEMANTIC_NOT_USED`） |
 | 遷移元が同じDataのbrowse Patternか | 実装済み |
@@ -921,10 +921,11 @@ PoC #2521が実装した範囲と、まだ実装していない範囲を分け�
 | header-detailの見出し・明細ビュー | 実装済み（Relationのsourceをheader、targetを明細として解決） |
 | 対話からのCommand起動（宣言・契約解決） | 実装済み（`interaction`の`command`、入力・結末・効果の解決。実行は未実装） |
 | Package（宣言・読込・検証・版束縛・ビュー表示） | 実装済み（衝突は明示エラー、取り外しはSemantic fingerprintを変えない） |
-| 操作（Commandの起動）、帳票の投影、Package、フック | 未実装 |
+| Commandの実行境界、集計・改ページ、フックのDSL | 未実装 |
 | `reference/workspace`への宣言追加 | 未実施（受理経路が必要） |
 
 実装は、`internal/application/model.go`、`internal/syntax/application_pattern.go`、`internal/validation/application_pattern.go`、`internal/crossview/pattern_requirements.go`、`internal/applicationview`、`internal/semantic/model.go`、`internal/syntax/parser.go`、`internal/validation/validation.go`と、それぞれの試験です。
+
 
 
 
