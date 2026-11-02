@@ -1128,3 +1128,38 @@ G0/G1/G2は**全面的な直列開発を要求しない**。DB fixtureとProvide
 - **既存計画との整合**：[#2484 D-4](https://github.com/hat47x/tei-platform/issues/2484)の#982「締めと訂正」追加は保留。periodは採用済みのC4の位置付けを使い、新C5や期間実装を本節で採用しない。[#2226](https://github.com/hat47x/tei-platform/pull/2226)はDraft/Openであり、ADR-0041の番号衝突は未決。TEI独自共通Host/Registry、第二の意味正本、第二のAcceptance/Oracle、追加Gateを作らない。
 
 **本節の完了の意味**：既存Ownerが次の作業・判別入力・必要証拠・Stopを辿れる計画追補としては完成。設計票UI、Headless縦断、実PostgreSQL/Windows、Java/.NET/WASM Consumer、SHO保存、Owner意味受理、G1〜G4製品Gateの新しいPASSを意味しない。過去§31/§32の証拠時点は書き換えない。
+
+## 34. 2026-11-02：Script-first標準Studioと意味Pluginの拡張を、一業務のConsumerへ接続する
+
+**新たに明確になったOwner方針**：[ #988 Script/DSL firstと共通Inspect](https://github.com/hat47x/tei-platform/issues/988#issuecomment-6573241174)／[ #1124 Studioの標準Projection](https://github.com/hat47x/tei-platform/issues/1124#issuecomment-6573251117)（2026-11-02）。本節は§33の「一業務の可読な設計書」を**将来の各DSL/Pluginを導入しても専用画面の追加を前提としない利用体験**へ一般化するための、既存IssueのConsumer接合計画。いずれも方針・設計案であり、新Syntax・公開Schema・製品実装が受理済みと宣言するものではない。照合main `9c9ef4d160640908e06ad13afb6c2b45c664c748`。§31/§32歴史、C0〜C4、G0〜G4、#2484のD-1〜D-4、既存P0-a/P0-b/S0/S3の順序を変更しない。
+
+### 34.1 標準データ構造で完結する最初のStudio価値
+
+| 操作・表示 | 正本・意味の所有 | 共通UI/Consumerが最低限できること | 採用済みとみなせない条件 |
+| --- | --- | --- | --- |
+| Script/DSLの著述 | 該当DSLの正式Source（テキストの場合はtext＋採用済みExtension Lock/Revision、構造Sourceの場合はそのauthoritative schema） | テキストと、parse/resolveで得られるsymbol・source span・型・参照/依存・診断・説明をgeneric table/tree/propertyへ投影 | AST/ノード座標・生成Graphを第二の編集正本としない。全DSLのtext-only化も要求しない |
+| Generic UIでの編集 | [#1124](https://github.com/hat47x/tei-platform/issues/1124)のSource-aware編集、[#2497](https://github.com/hat47x/tei-platform/issues/2497)の可逆性/損失 | 書戻し先Source spanとMeaning Revisionが一意で可逆ならtyped change→Preview→既存Acceptance→reparse/reproject。曖昧/派生/非可逆ならread-only＋原Sourceへnavigation | Preview成功・画面上の「保存済み」をOwnerの意味受理へ変えない。ScriptとGUIで別正本を立てない |
+| 項目のvisible/enabled/required | [#988](https://github.com/hat47x/tei-platform/issues/988)のOperator/DSL評価、[#2506](https://github.com/hat47x/tei-platform/issues/2506)のContext、[#2582](https://github.com/hat47x/tei-platform/issues/2582)の変化再評価 | 小さなtyped predicateとして依存・対象Instance/epoch・入力取得/NULL・未評価/循環を説明し、同じSourceからCLI・Studioへ投影 | UIでenabledでも実AuthorityがなければEffect不可、hiddenでも直接Request/データ取得はHost側で拒否。非開示データの存在や件数を漏らさない（[#2516](https://github.com/hat47x/tei-platform/issues/2516)/[#1178](https://github.com/hat47x/tei-platform/issues/1178)） |
+| Pluginを追加 | [#951](https://github.com/hat47x/tei-platform/issues/951)/[#988](https://github.com/hat47x/tei-platform/issues/988)の意味拡張、[#1824](https://github.com/hat47x/tei-platform/issues/1824)のStudio共通UI、[#997](https://github.com/hat47x/tei-platform/issues/997)の生成アプリUI | 未知のDSL/Operatorでも標準text/inspect/diagnostic/dependency navigationが、専用Studio画面の追加なしに成立するか実証 | Native Canvas等の領域固有UIは正規の追加選択肢。「無限の拡張性」は専用UI種類で拡張上限を固定しない設計目標であり、任意Target・任意Langでの無条件実行保証ではない |
+
+**最初の反証**：[#988 SF-01〜05](https://github.com/hat47x/tei-platform/issues/988#issuecomment-6573241174) と [#1124 SU-01〜05](https://github.com/hat47x/tei-platform/issues/1124#issuecomment-6573251117)を**同じ小さな架空の表示/活性Script**で接合する。最初はtext→typed dependency→CLI generic inspectを固定し、Studio generic property一往復を次のConsumerとして追加。改版後の古いProjection、複数source span、Macro展開、NULL/未取得、UI enabledでもGrant失効の負例で誤書戻し・実効果を拒否する。専用ノードエディターや新Graph Rendererの完成を待たず、真正なUI制御・実Host拒否は別試験にする。
+
+### 34.2 意味Pluginの「利用可能性」を、型だけで判断しない
+
+| 境界 | 統合して得られた区別 | 次の既存Consumerへの確認 |
+| --- | --- | --- |
+| Function Patternの合成 | [#2507 AG-01〜20](https://github.com/hat47x/tei-platform/issues/2507#issuecomment-6572909015)／[Draft #2613](https://github.com/hat47x/tei-platform/pull/2613)で、partial→full、group≠line、AVGの中間状態不足、submit≠cancel、Clock mismatch、nested unknown、Instance状態共有を**Python合成20/20 PASS**で識別。判定語はcontradicted/not_established/fixture_consistent（有限fixtureの結果） | #2507のAssumptions/Guaranteesを[#2586](https://github.com/hat47x/tei-platform/issues/2586)の同一Function/Source/Target縦断へ持ち込む。Go/実Provider/実Host/形式証明・Owner受理は未成立 |
+| DefinitionとPlacement | 同じDefinitionでもInstanceごとにState/Clock/seedが異なる。改版したDefinition・Provider Generation・Domain Ruleの発効時点を一つの版に潰さない | [#2507](https://github.com/hat47x/tei-platform/issues/2507)、[Draft #2612](https://github.com/hat47x/tei-platform/pull/2612)、[#988](https://github.com/hat47x/tei-platform/issues/988)で、状態移行が部分写像のとき「新VersionでもState保存済み」を自動認定しない |
+| Pattern→Action→実Request | 同じData/Effectのsubmit/cancel、Capability追加による暗黙のBinding差替え、同じSemantic Dataの異なるDB Alias/Persistence経路を**別の不一致**として扱う | [#2485 W7-B1〜08](https://github.com/hat47x/tei-platform/issues/2485)、[#2611 PM-01〜07](https://github.com/hat47x/tei-platform/issues/2611)、[#2598](https://github.com/hat47x/tei-platform/issues/2598)で候補・入力写像・実Provider対象を個別に照合。Draft [#2587](https://github.com/hat47x/tei-platform/pull/2587)の選択規則と合成bound-writeを正式なAction意味受理に拡張しない |
+| Data/Measureの利用資格 | 同じDecimal、同じResult列でも、Relation occurrence/Bag/Grain、時点、集計軸、sum/count、丸めの段階で合法な再集計が異なる | [#2593](https://github.com/hat47x/tei-platform/issues/2593)、[#2506](https://github.com/hat47x/tei-platform/issues/2506)、[#2387](https://github.com/hat47x/tei-platform/issues/2387)を共通inspectの診断・Context説明へ投影。Query/SQL Providerの製品PASSは別 |
+| Skillと外部Consumer | [#2614](https://github.com/hat47x/tei-platform/issues/2614)/[Draft #2607](https://github.com/hat47x/tei-platform/pull/2607)は実TEI CLIを案内するProduct Skillの提案。Skillが説明する操作と現在のCLI機能・実装・権限を区別 | #2614はSkillの対象/根拠、[#2515](https://github.com/hat47x/tei-platform/issues/2515)は実OS/開示、[#2016](https://github.com/hat47x/tei-platform/issues/2016)は入出力Witness。TAIの横断SkillとTEI Domain Pluginの第二実装を作らない |
+
+ここでの**構成原理**：同じ型・UI部品・Capability名であっても、適用条件（集合/粒度/時点/Instance/Target/Authority）と、既存のGuaranteeが不足する場合は「その用途で利用可能」と結論しない。意図的な新しいCoreの適合状態enumや一律A/G Engineは先決せず、各OwnerのReferenceと既存Contractへ必要な情報を返す。
+
+### 34.3 文書まで届く際の最後の境界
+
+共通Studioが意味を読めること、ActionがTargetへ束縛されたこと、Artifact/Manifestが内部整合であること、**外部SHO/CLI/人手Consumerが同じ一回の成果物集合を受け取れたこと**は独立の保証。複数Artifactの公開中に旧版残存・途中書込み・異なるManifestが見える反例は[#2604](https://github.com/hat47x/tei-platform/issues/2604)の既存P1へ引き渡す（[#2482](https://github.com/hat47x/tei-platform/issues/2482)の内部整合とは別）。設計書中の引用・図・文書上のReviewと業務Owner Acceptanceは[#2516](https://github.com/hat47x/tei-platform/issues/2516)/SHO担当のまま。Graph、表、文書とNative UIはいずれも同じ意味を使う**用途別Projection**であるが、非可逆投影の編集、未列挙依存、外部開示は自動合格にしない。
+
+**作業配列**：§33のS0/J5、P0-a実DB確定/Lookup、P0-b同Rule二Function、S3 Owner意味受理は引き続き優先。§34のSF/SU/AG/PM/公開Artifact検証は、既存[#2493](https://github.com/hat47x/tei-platform/issues/2493)の並列要件拡大型開発でP1/P2として拡大する。初回各PoCの小ささを製品スコープの上限とせず、実証で見つかった不足を標準Plugin・共通Studioへ還流する。正式の新型/DSL Syntax/Host/Registry/第二受理基盤/新Gateは導入しない。
+
+**証拠状態**：本節は2026-11-02指定mainと既存GitHub Issue/PR、既報の合成試験結果を照合した**計画文書の編集**。#2507のPython20件は別担当の局所報告であって、この追補で再実行していない。TEI Go/実Provider・DB/Studio GUI/生成Target/SHO納品/外部Skill・Owner意味受理は本節では**NOT RUN/NOT ACCEPTED**。
