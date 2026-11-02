@@ -146,3 +146,20 @@ func TestValidateApplicationPackageBindingRejectsDuplicate(t *testing.T) {
 		t.Fatal("duplicate package binding was accepted")
 	}
 }
+
+func TestPackageRemovalDoesNotChangeSemanticFingerprint(t *testing.T) {
+	w := packageWorld()
+	before, err := semantic.Fingerprint(w.Semantics)
+	if err != nil {
+		t.Fatal(err)
+	}
+	w.Applications[0].Packages = nil
+	w.Applications[0].PackageBindings = nil
+	after, err := semantic.Fingerprint(w.Semantics)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if before != after {
+		t.Fatalf("package removal changed the semantic fingerprint: %s != %s", before, after)
+	}
+}
