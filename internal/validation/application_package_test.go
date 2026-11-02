@@ -51,6 +51,10 @@ func packageWorld() ir.World {
 				Projection:  "screen",
 				Conformance: "list_to_record",
 			}},
+			PackageBindings: []application.PackageBinding{{
+				ID:      "order_entry.list_to_record",
+				Version: "1",
+			}},
 		}},
 	}
 }
@@ -116,5 +120,29 @@ func TestValidateApplicationPackageRejectsDuplicatePackage(t *testing.T) {
 	w.Applications[0].Packages = append(w.Applications[0].Packages, w.Applications[0].Packages[0])
 	if diagnosticByCode(validateApplicationPackages(w), "APPLICATION_PACKAGE_DUPLICATE") == nil {
 		t.Fatal("duplicate package was accepted")
+	}
+}
+
+func TestValidateApplicationPackageBindingRejectsUnknownPackage(t *testing.T) {
+	w := packageWorld()
+	w.Applications[0].PackageBindings[0].ID = "order_entry.missing"
+	if diagnosticByCode(validateApplicationPackages(w), "UNKNOWN_APPLICATION_PACKAGE_BINDING") == nil {
+		t.Fatal("unknown package binding was accepted")
+	}
+}
+
+func TestValidateApplicationPackageBindingRejectsVersionMismatch(t *testing.T) {
+	w := packageWorld()
+	w.Applications[0].PackageBindings[0].Version = "2"
+	if diagnosticByCode(validateApplicationPackages(w), "APPLICATION_PACKAGE_BINDING_VERSION_MISMATCH") == nil {
+		t.Fatal("version mismatch was accepted")
+	}
+}
+
+func TestValidateApplicationPackageBindingRejectsDuplicate(t *testing.T) {
+	w := packageWorld()
+	w.Applications[0].PackageBindings = append(w.Applications[0].PackageBindings, w.Applications[0].PackageBindings[0])
+	if diagnosticByCode(validateApplicationPackages(w), "APPLICATION_PACKAGE_BINDING_DUPLICATE") == nil {
+		t.Fatal("duplicate package binding was accepted")
 	}
 }

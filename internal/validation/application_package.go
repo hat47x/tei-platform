@@ -41,6 +41,7 @@ func validateApplicationPackages(w ir.World) []Diagnostic {
 			used[namespace] = true
 		}
 		declaredPackages := map[core.CanonicalID]bool{}
+		packagesByID := map[core.CanonicalID]application.Package{}
 		memberOwners := map[core.CanonicalID]core.CanonicalID{}
 		for _, pkg := range app.Packages {
 			packageSubject := subject.Subject{Kind: "application-package", ID: string(pkg.ID)}
@@ -48,6 +49,7 @@ func validateApplicationPackages(w ir.World) []Diagnostic {
 				out = append(out, errFor(packageSubject, "APPLICATION_PACKAGE_DUPLICATE", "application %s declares package %s more than once", app.ID, pkg.ID))
 			}
 			declaredPackages[pkg.ID] = true
+			packagesByID[pkg.ID] = pkg
 			if !strings.HasPrefix(string(pkg.ID), string(app.ID)+".") {
 				out = append(out, errFor(packageSubject, "APPLICATION_PACKAGE_NAMESPACE_MISMATCH", "package %s is declared under application %s", pkg.ID, app.ID))
 			}
@@ -95,6 +97,22 @@ func validateApplicationPackages(w ir.World) []Diagnostic {
 				if !used[namespace] {
 					out = append(out, errFor(packageSubject, "APPLICATION_PACKAGE_REQUIREMENT_SEMANTIC_NOT_USED", "package %s requires %s %s from namespace %s that application %s does not use", pkg.ID, requirement.Kind, requirement.ID, namespace, app.ID))
 				}
+			}
+		}
+		bound := map[core.CanonicalID]bool{}
+		for _, binding := range app.PackageBindings {
+			bindingSubject := subject.Subject{Kind: "application-package-binding", ID: string(binding.ID)}
+			if bound[binding.ID] {
+				out = append(out, errFor(bindingSubject, "APPLICATION_PACKAGE_BINDING_DUPLICATE", "application %s binds package %s more than once", app.ID, binding.ID))
+			}
+			bound[binding.ID] = true
+			pkg, ok := packagesByID[binding.ID]
+			if !ok {
+				out = append(out, errFor(bindingSubject, "UNKNOWN_APPLICATION_PACKAGE_BINDING", "application %s binds unknown package %s", app.ID, binding.ID))
+				continue
+			}
+			if pkg.Version != binding.Version {
+				out = append(out, errFor(bindingSubject, "APPLICATION_PACKAGE_BINDING_VERSION_MISMATCH", "application %s binds package %s at version %s but the package is version %s", app.ID, binding.ID, binding.Version, pkg.Version))
 			}
 		}
 	}

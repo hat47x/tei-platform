@@ -42,3 +42,17 @@ func TestParseApplicationPackageRequiresMember(t *testing.T) {
 		t.Fatal("package without members was accepted")
 	}
 }
+
+func TestParseApplicationPackageBinding(t *testing.T) {
+	src := `application order_entry {
+    uses semantic sales
+    binds package order_entry.list_to_record ^1
+}`
+	got, err := syntax.NewParser(src).ParseApplication()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got.PackageBindings) != 1 || got.PackageBindings[0].ID != "order_entry.list_to_record" || got.PackageBindings[0].Version != "1" {
+		t.Fatalf("bindings=%+v", got.PackageBindings)
+	}
+}

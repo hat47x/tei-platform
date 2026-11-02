@@ -97,12 +97,19 @@ type Pattern struct {
 }
 
 type Application struct {
-	ID           core.CanonicalID      `json:"id"`
-	SemanticUses []core.CanonicalID    `json:"semanticUses,omitempty"`
-	Validations  []core.CanonicalID    `json:"validations,omitempty"`
-	Databases    []DatabaseRequirement `json:"databases,omitempty"`
-	Patterns     []Pattern             `json:"patterns,omitempty"`
-	Packages     []Package             `json:"packages,omitempty"`
+	ID              core.CanonicalID      `json:"id"`
+	SemanticUses    []core.CanonicalID    `json:"semanticUses,omitempty"`
+	Validations     []core.CanonicalID    `json:"validations,omitempty"`
+	Databases       []DatabaseRequirement `json:"databases,omitempty"`
+	Patterns        []Pattern             `json:"patterns,omitempty"`
+	Packages        []Package             `json:"packages,omitempty"`
+	PackageBindings []PackageBinding      `json:"packageBindings,omitempty"`
+}
+
+// PackageBindingは、Applicationが使うPackageの版を固定する。
+type PackageBinding struct {
+	ID      core.CanonicalID `json:"id"`
+	Version string           `json:"version"`
 }
 
 // Packageは、既存Patternを束ねる派生の宣言である。Patternの定義を複製しない。

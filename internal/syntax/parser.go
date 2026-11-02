@@ -124,8 +124,33 @@ func (p *Parser) ParseApplication() (application.Application, error) {
 			default:
 				return a, p.errAt(kind, "expected semantic or validation after uses")
 			}
+		case "binds":
+			_, _ = p.next()
+			kind, err := p.expect(TokenIdent)
+			if err != nil {
+				return a, err
+			}
+			if kind.Text != "package" {
+				return a, p.errAt(kind, "expected package after binds")
+			}
+			idTok, err := p.expect(TokenIdent)
+			if err != nil {
+				return a, err
+			}
+			packageID, err := core.ParseCanonicalID(idTok.Text)
+			if err != nil {
+				return a, p.errAt(idTok, err.Error())
+			}
+			if _, err := p.expect(TokenCaret); err != nil {
+				return a, err
+			}
+			versionTok, err := p.expect(TokenIdent)
+			if err != nil {
+				return a, err
+			}
+			a.PackageBindings = append(a.PackageBindings, application.PackageBinding{ID: packageID, Version: versionTok.Text})
 		default:
-			return a, p.errAt(t, "expected database or uses")
+			return a, p.errAt(t, "expected database, uses, or binds")
 		}
 	}
 	return a, p.expectEOF()
