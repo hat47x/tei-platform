@@ -547,11 +547,11 @@ SHOが文書の正本、TEIが受理済み意味の正本、MMIがSource/Candida
 
 **状態**：設計文書と反例の追加。CR-01〜12の比較実行、実SHO/OS/AI/Provider/GUI試験、正式な意味受理はNOT RUN。
 
-## 14. 2026-11-02 逆写像の不可能性・集計可換性・情報非干渉を独立した保存義務へ
+## 15. 2026-11-02 逆写像の不可能性・集計可換性・情報非干渉を独立した保存義務へ
 
 この節は#2497が所有する**構造写像の成立条件**を、他レーンで実際に遭遇した値・関係・編集・開示の具体例で反証可能にする。新しい共通TypeKind、Lens Engine、Metric Engine、Authorization/Hostを実装する仕様ではない。
 
-### 14.1 情報を潰したProjectionに、自動的な完全逆写像は存在しない
+### 15.1 情報を潰したProjectionに、自動的な完全逆写像は存在しない
 
 Source集合をS、read-only ProjectionをP:S→Vとする。もし異なるSource状態s1≠s2についてP(s1)=P(s2)なら、表示Vだけを入力する決定的な関数R:V→Sが**全てのsについて**R(P(s))=sを満たすことは不可能。Rは同じ入力P(s1)=P(s2)へ異なる値s1とs2を同時に返せないためである。
 
@@ -567,7 +567,7 @@ Source集合をS、read-only ProjectionをP:S→Vとする。もし異なるSour
 
 **誤解しない点**：Pが非単射であっても、すべての編集が不可能なわけではない。既存のSource状態sとbase revision、Consumerが出した**型付きAction/Intent**、補足された対象Identity/Parent Role、現在のAuthority、Conflict/Commit/Receiptを用いる`putback(s, intent)`なら、対象操作を限定した書戻しは成立し得る。これを無条件の`inverse(P(view))`やSource/Effectの自動受理へ昇格させない。
 
-### 14.2 二経路が同じ観測を生む条件（commuting comparison）
+### 15.2 二経路が同じ観測を生む条件（commuting comparison）
 
 同じ受理済みSource revision Rと適用Scope Kから、経路A（Query→Context→Measure）と経路B（別Projection→Consumer）へ派生するとき、数値・表示だけを比較して「両経路は可換」とは宣言しない。比較可能な**観測o**（例：PersonのDistinct件数、Membership Occurrence数、FTE、Measure Value）を指定し、Source identity、grain、対象集合、時間、Unit/Rule、消費先での可視範囲を揃える。満たされて初めて`o(A(R,K)) ≈ o(B(R,K))`を有限fixtureで比較できる。
 
@@ -579,7 +579,7 @@ Source集合をS、read-only ProjectionをP:S→Vとする。もし異なるSour
 
 **利用できる既存の合成Reference**：[組織Semantic Viewsの独立JS Oracle／Draft #2596](https://github.com/hat47x/tei-platform/pull/2596)は当該PR説明で**独立JS実行27/27**と報告。Person／Membership／FTE／Joinのgrain差を反例として示す。[Measure集計の独立SQLite Oracle／Draft #2594](https://github.com/hat47x/tei-platform/pull/2594)は同PR説明で**独立SQLite 6/6**と報告。どちらも**TEI Query→Data Context→UI/SHO→Hostの製品経路ではなく、計算と期待値を持つ隔離合成Reference**である。両Referenceの出力を同一Sourceに基づく統合E2EのPASSとして合算しない。
 
-### 14.3 開示可能なProjectionでは、表示内容以外も観測対象になる
+### 15.3 開示可能なProjectionでは、表示内容以外も観測対象になる
 
 内部状態s1・s2が、あるConsumerへ**公開を許された情報に関して区別不能**であるなら、そのConsumerが見られるProjection/Diagnostic/Traceの違いから非公開情報の存在・件数・形を推測できないことが理想的な情報非干渉の条件である。ただしすべての応答・時間・副作用についてこの条件を証明したものではない。ここでは**独立の検査義務の提案**として扱う。
 
@@ -592,7 +592,7 @@ Source集合をS、read-only ProjectionをP:S→Vとする。もし異なるSour
 - 外部向けに十分な根拠を開示できない場合、「内部的には正しいから外部へ全て開示可」とせず、そのConsumer用のClaimの提示を保留・制限する。
 - Leak検証は公開可能な値を等しく保ち、非公開だけを変えた**二つの合成世界**を使い、レスポンス本文・コード・件数・候補・エラーメッセージ・試行間の差を比較する。実Policyの実効境界を伴わない資料上の比較は説明候補に過ぎない。
 
-### 14.4 Headless-firstでの最小反証セット（独立Oracleを増設しない）
+### 15.4 Headless-firstでの最小反証セット（独立Oracleを増設しない）
 
 | ID | 読み取り・編集・開示を比較する対 | 保存／非保存の判別条件 | 検証担当 |
 | --- | --- | --- | --- |
@@ -606,3 +606,58 @@ Source集合をS、read-only ProjectionをP:S→Vとする。もし異なるSour
 | ND-08 | 過去のReceiptと現在の表示Adapter | Effectの歴史的記録と現在版でのResult再投影を分ける | #1174/#2390 |
 
 この8件は**既存Issueへ紐付ける判別票であり新しいScenario正本ではない**。ND-01〜08のTEI製品上の横断試験、情報非干渉の実Policy検査、二Target一致、正式な逆写像契約の受理は**NOT RUN**。先に独立ReferenceのOracleとOwnerの既存テストに接続し、対応するSource/Contract/Scopeを固定した縦断実証#2586で不足する前提だけを実装候補へ返す。
+
+## 16. 条件付きClaim Bridgeと公開済み成果物を、別の保存義務として接続する（2026-11-02）
+
+[#2516のW8/W9](https://github.com/hat47x/tei-platform/issues/2516)では、異なるConsumerが記述したClaim同士が「同じか」だけでなく、**あるClaimの限定的な証拠が、別Claimに対してどの方向・条件でどの強さの結論を与えるか**を扱い始めた。これを#2497で扱うProjection保存性と混ぜずに接続する。
+
+### 16.1 三つの関係を区別する
+
+| 関係 | 問うこと | 条件／誤りやすい推論 | Owner |
+| --- | --- | --- | --- |
+| **Projectionの観測保存** | 同じ対象Sourceから別形へ写した際、指定Observerの結果を保存するか | 同じ数値／同じJSONでもSource・粒度・単位・状態が違えば保存とはいえない | #2497 |
+| **Claim間の条件付き導出** | 一方のClaimとその証拠から、別Claimの存在・反証・上限/下限を導けるか | 対象集合の包含、演算の単調性、時間、値域、必要な証拠を明示。一般的な双方向同値ではない | #2516/#2593 |
+| **公開物とConsumerの実読取** | 固定Manifestが指す一式を、同じ世代の実ファイルとしてConsumerが読めたか | Generatorでdigestが一致しても、途中更新／旧ファイル混在／読取中の世代切替を消せない | #2604/#2482 |
+
+Bridgeを記述するための**比較票**は、`source claim + target claim / requested inference / explicit premises / evidence scope / permitted explanation / missing premise / actual consumer`という役割を持てるが、新しい共有Claim Database、万能Comparator、証明Runtimeの提案ではない。
+
+### 16.2 論理の推移性と、条件付きの証拠・近似の推移性は異なる
+
+厳密な論理含意`A ⇒ B`と`B ⇒ C`が**同一の意味論・文脈・同時に満たせる仮定**の下で本当に成立するなら、`A ⇒ C`は成立する。一方、別々のSource版／Read Scope／Unit・Rule／Consumer開示条件の下に観測された二つの「Bridge候補」から、それらの前提が接合できるとは限らない。これは論理の推移性を否定する主張ではなく、**条件付きの根拠の有効範囲を合成前に照合する必要**があるということ。
+
+特に誤差`|x-y|≤ε`で定義する近似一致は、通常は推移的な同値関係ではない。例として`a=0, b=0.006, c=0.012, ε=0.01`ならA≈BとB≈Cは成立するがA≈Cは不成立（#2516 CB-05）。**隣接するConsumerのPairwise PASSを結合して、全Consumerが同一値・同一Claimだと表示しない。** 誤差を積算・伝播するときは`ε`と対象演算の保証、丸め時点、独立基準を明示する。
+
+### 16.3 下界・反証は一方向であり、実観測対象の包含の証拠が要る
+
+同じ時点・対象集合の条件で`R ⊆ L`が確定しているなら、Rで観測した実体`a`はLでの存在証人になり得る。ただし、Rでゼロ件だったことはLでの不存在を示さない。R内で`P(a)=false`の反例が確定していれば、Lの全件Pの反証になり得る。一方、Rでの`∀x.P(x)`の成立だけではL全件の成立は未確認である。
+
+集計に際しても、Rの正しいSUMが30であることだけからLのSUM≥30は一般には導けない。**追加要素が非負・同Unit・集合包含・Identity/重複規則が整合・訂正なし**等を独立根拠として得た場合にのみ、条件付きの下界を候補にできる（#2516 CB-03、#2593）。未知の非公開母集団に対する件数・境界の表示は#1178/#2516の開示資格が必要。
+
+### 16.4 完全な生成結果と、公開された一式は別
+
+[#2604](https://github.com/hat47x/tei-platform/issues/2604)が静的に指摘した設計成果物の直接逐次書込みでは、個々のファイルが正しく生成されていても、Manifestを受け取ったConsumerが**同じ生成世代のArtifact set**を読んだとは限らない。書込途中の失敗や旧ファイル残存は`Manifest.Complete`やDigestから解消できるとはいえない。
+
+したがって、CUIとSHOで「同じClaim」「同じSource版」を比較するための**実読取の証拠**には、必要に応じて各Consumerが使用した`manifest/version/digest + actual read bytes/paths + read time/operation`、固定Artifact setの参照、公開方式の実測が必要。採用候補（immutable世代ディレクトリ／stage→publish／Consumer pin）は#2604で比較し、#2497側では**何を比較する前提が満たされていないか**のみを示す。
+
+これは文書を生成した時点のModel/SHO/Artifactの同版性と、納品後の利用者が実際に読んだ版の同一性を分けることにもつながる。SHA/Digest等は内容・来歴の根拠であって、Ownerの意味受理、実Hostの権限、業務Effect、外部Consumerの理解・受入を保証する資格ではない。
+
+### 16.5 読み取り・Claim Bridge・編集はそれぞれ異なる出口
+
+- **Read**：固定Source/Scope/Consumerに対する観測。必要なFacet・Claimを説明し、損失・欠落・開示条件を明示する。
+- **Bridge**：別Claimへ伝えられる存在証人・反例・境界・比較可能性を限定して説明する。元Claimの現在性と他Consumerへの開示資格は独立。
+- **Edit proposal**：表示からTyped Intentを作り、base revision、Subject/Relation occurrence、未保存Patchの所有者、対象Context Instance、現在Authorityへ渡す。これ自体はCommitではない（#2500/#2597）。
+- **Publish/consume**：一式固定版と実読取の証拠を扱う（#2604）。生成した全ファイルが同じ版を示すことと、Readerが一式を読んだことは別。
+
+### 16.6 独立のOwnerへ渡す反証票
+
+| ID | 固定した条件・操作 | 誤った判定 | 既存Owner |
+| --- | --- | --- | --- |
+| BR-01 | 一部取得RがLの部分集合、Rに存在証人 | Rで未発見→Lで不存在も保証 | #2516 CB-01/02 |
+| BR-02 | 非負のSUM、R⊆Lが証明済み。追加値の符号を変える | 条件削除後もSUMの下界を維持 | #2516 CB-03/#2593 |
+| BR-03 | 隣接Consumer2対がε以内、両端はε超 | 近似一致の推移閉包で全対象を同値扱い | #2516 CB-05/#2514 |
+| BR-04 | R1 ManifestでR1ファイル取得途中にR2更新 | 個々のDigestが正しく見えるので一式同世代と表示 | #2604 AP-01/06 |
+| BR-05 | 旧固定SHOと新CUIが同じ本文・別意味改版 | 見た目同一で現在の意味・レビュー受理を継承 | #2505/SHO #6 |
+| BR-06 | 非単射Projection上で部分編集 | Viewから全Sourceを自動逆復元／完了と宣言 | #2500/#2597 |
+| BR-07 | 低開示Consumerへ境界Claimを出す | 内部母集団の数・非可視存在を境界説明で漏らす | #2516/#1178 |
+
+BR-01〜07は**既存IssueのFixture・Acceptanceを共有する連結検討票**であり独立Scenario正本ではない。外部Consumer上でのBridge、公開の障害注入、TEI Query/SHO実読込、編集/Effectの実証、Owner意味受理はいずれも**NOT RUN**。#2497は構造保存・逆写像の説明、#2516はConsumer別の条件付きClaim Bridge、#2604は物理的な公開一式、#2586は同版の実Headless縦断を所有する。
