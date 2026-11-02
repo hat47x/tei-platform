@@ -472,6 +472,32 @@ main参照：`2197baaedbde178a042a280ea1bd1d534617bfc7`。現行`relational.go`�
 **M2最小完了条件（提案）**：A〜Eを少なくとも「構造追跡と式意味の別資格」で比較し、Aの6出現と2業務Entity、Cの入力追加によるretraction、Dの200/600/100、Eの選択変更を独立期待で検査。QX-17実Go→read-only probe→#2506の取得状態という一往復で、説明に必要な情報が欠落した箇所を具体的に報告できること。#2586のHJ-01〜04はこの受渡しの統合Owner、#2582が変更後の局所維持／失効、#2500が更新Intent、#1803/#2516が説明文書、#1174が実効果を所有する。**本節は計画のみ。A〜EのGo/Worker/Context統合試験はNOT RUN**。
 
 
+### 7.11.1 QX-17 M2のexact SQLite対照を固定し、Measure/Contextへ接続（2026-11-02、局所6件実測）
+
+QX-17 M2の**計画A〜Eに実測の限定証拠を加え**、他チャットで整備された[Measure #2593](https://github.com/hat47x/tei-platform/issues/2593)の非加法・平均再集計の論点を新ケースFとして接合した。既存SQL/TEIに全体的な変更を入れる前に、同じ値由来でも演算DAGにより結果行・bag・Measureがどう変わるかを、独立SQLiteで再現する。
+
+- 新規単一fixture：[test_qx17m2_sqlite.py](https://github.com/hat47x/tei-platform/blob/work/query-structural-fixture-design-20261030/plan/fixtures/query-workbench-f0/test_qx17m2_sqlite.py)、Git blob `972720f96e90504b947cdd2e81ec04791d929ea4`。LinuxのPython **3.13.5** / SQLite **3.46.1**、`python3 -m unittest -v test_qx17m2_sqlite.py`で**6/6 PASS**。GitHub上のexact blobとローカル実行バイトのSHAが一致。合成入力・手書き期待による実測であり、TEI本体・SQLGlot・Provider・Contextは実行していない。
+- このファイルは**既存QX-16/17 fixtureフォルダの補助検証**。既存Scenario/Datasetの第二正本や別SQL Evaluatorを導入しない。
+
+| 局所テスト | SQLite合成実測と独立Expectedの一致 | 設計へ返す判別条件 |
+| --- | --- | --- |
+| M2-A 値とJOIN row | line単独2行（100×2）、delivery 3行とのJOINでは6行、右0行ならJOIN結果0行 | 同じ`l.amount`でもdeliveryの存在・多重度が結果bagを決定 |
+| M2-B LEFT未一致 | `(H,NULL)` →右D1追加後`(H,D1)`。旧仮行は結果に残らない | 部分集合への後続追加はappendだけとは限らず、`retract/replace`を必要とする |
+| M2-C 反結合 | `WHERE d.id IS NULL`でHが1行→右一致D1追加後0行 | 局所未観測の右集合から業務不存在を確定しない |
+| M2-D SUMと再集計 | line合計**200**、結合後SUM**600**、SUM(DISTINCT value)**100**。**先にGROUP BYして200へ縮約した行をその後delivery3件へJOINし、もう一度SUMすると600** | 先集約した事実だけでは、その後の結合と再集計が意味保存するとは限らない。Measureの集計軸・対象Grain・中間状態を#2593で確認 |
+| M2-E 順位選択 | delivery順位の追加で`ORDER BY rank,l.id LIMIT 1`の結果は`(L2,200)`→`(L1,100)` | 出力値の元列がlineでも、選択された行はdeliveryの順位と対象母集団に依存 |
+| M2-F AVG重み | line単独AVG=**150**（100,200）、delivery側の3:1重みのJOIN後AVG=**125** | 同じ値のField Lineageでも、JOIN後のMeasureは異なる。平均を別軸で再集計・比較する際は分母/入力出現数/対象Grainが必要 |
+
+**この差分から得るアーキテクチャ上の結論候補**：
+
+1. *値の出典を示す線*と、*結果の成立・多重度・順位を支える演算上の依存*をModeler/SHO/AI向け説明で区別する。Aggregate後の値にSourceの正しいLineageがあっても、**再集計可能性（#2593）は別の適合条件**。JOIN前集約は一般のSQLで後続集約の安全性を保証する処方ではない。
+2. #2582のReactive更新は、M2-B/C/Eで`insert-only`更新の危険を実測反証。M2-D/Fでは、**変更時に再評価が必要なMeasure Claim**をResult SliceのContext Epoch/対象Grain/必要集合へ結ぶ。業務上の保存値とQuery由来の表示計算値は別。
+3. #2586 HJ-02〜04では**Query全体のSource graph reachability**と、**個別ClaimのMeasure/対象集合への適用資格**を別の証拠欄とする。SQL上の有効な「集約値」と、業務上受理した「測定値の意味」は別。QX-18の検索Path/RLSによる入力母集団の違いも、そのClaim資格に独立に作用する。
+4. 公開API追加や万能依存解析を先決せず、現在の`OutputField.Inputs`（ColumnOccurrence/Field）と`RelNode.Inputs`（Operation）の間で**欠落している根拠**を同一fixtureで表示し、未知のClaimを`not-established`に留める。Provider全件・Targetの実効物理名解決・RLS、業務Identity・Owner受理はSQLite単体実測の範囲外。
+
+**次段の実証Gate**：本ファイルのSQLite6件PASSとは別に、(i) 実Go `DeriveFromAnalysis`の合成IRからA〜FのOperation source occurrenceとOutputFieldを抽出、(ii) 欠落しているField→Operation対応を`unverified`としてHeadless JSONへ運ぶ、(iii) #2506のD1完全集合/D2部分集合を注入し、#2593のMeasure適合、#2582の変更影響、#2586 HJ-01〜04のClaim別結果を比較する。SQL worker実物→Go、実Provider/RLS、SHO/Modeler、Host Authority/Owner Meaningは**NOT RUN**。Go CIの成功（§7.11）やSQLiteの値一致から意味受理を推測しない。
+
+
 ### 7.12 QX-18：SQL解析結果の実効名前解決環境と可視入力集合（2026-11-02、Target差分・未実行）
 
 [#2387の一次反例・静的根拠](https://github.com/hat47x/tei-platform/issues/2387#issuecomment-6572048044)を本DraftのM0→M2へ反映する。QX-13〜14の「lexical scopeと正しいSource/解析Inputの帰属」、QX-15〜17の「結果Grain・Value/Existence/Multiplicity/Selectionの別資格」が成立しても、**Target DBセッションの名前解決環境と可視行集合**が変われば、同じSQL Source byte・Query ID・Schema定義で異なる結果になる。この二条件は同一の資格ではない。
