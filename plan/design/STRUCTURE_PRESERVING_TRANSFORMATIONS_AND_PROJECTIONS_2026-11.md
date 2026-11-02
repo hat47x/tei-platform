@@ -704,3 +704,52 @@ BR-01〜07は**既存IssueのFixture・Acceptanceを共有する連結検討票*
 | DC-08 | Markdownの説明表を実Ruleとして誤解釈 | Authoring Roleと正式意味受理。#2621/#2626 |
 
 **既存Evidenceの限定**：#2624は隔離合成Mapping20件＋Rule Preview18件、#2628は隔離Synthetic Provider Read Witness12件を報告している。これらの試験は独立に存在し、ここで再実行したものではない。実TEI Rule/Provider、実RLS/OS、外部AI egress、DB Commit/Receipt、SHO/Studioでの受入は別Ownerの未実施条件。#2497は各段階で何を保存・喪失したかを説明し、実Providerは#2622、Contextは#2506、Ruleは#2624/#1129、開示は#2516、書込みは#2598/#1174、Authoringは#2621へ戻す。
+
+
+## 18. SQL→Data Operatorの意味保存と、編集トランザクションの合成境界（2026-11-02）
+
+### 18.1 Operator名・構文の一致を意味保存の根拠にしない
+
+[#2387](https://github.com/hat47x/tei-platform/issues/2387)のQX-23はSQLを共通Data Operator候補へ写す際、構文変換と意味的同等性を分離する。[#2622](https://github.com/hat47x/tei-platform/issues/2622)のData Operationsと、[#2514](https://github.com/hat47x/tei-platform/issues/2514)の独立Oracleを接続する。
+
+SQLの`JOIN`、`EXISTS`、`LEFT JOIN`、`NOT EXISTS`、`DISTINCT`、`GROUP BY`、`ORDER BY`、`LIMIT`は、同じ結果列名や値だけで意味を比較できない。保存義務は、**入力Bagの出現・同一性、NULL三値論理、結合の行成立、フィルタ適用順、集計粒度、順序とTie、部分取得、実効Scope/RLS、演算副作用・非決定性**に及ぶ。
+
+- `JOIN`と`EXISTS`は、重複する右側行があるとBagの多重度が異なる。真偽の存在判定と行増幅を混同しない。
+- `NOT IN`と`NOT EXISTS`はNULLを含む入力で異なる場合がある。SQLのunknownを二値falseへ黙って潰さない。
+- `LEFT JOIN`の不一致で生じたNULLと、実在する右側行のNULL、未取得Fieldは別の来歴を持つ。
+- `LIMIT`の前後でFilter/Sortを入れ替えると、対象集合が変わる。順序を指定しない`LIMIT`を安定した先頭集合とみなさない。
+- `DISTINCT`、`GROUP BY`、平均や比率の再集計は、Fact ID/Grain/中間状態を失うと後続演算が一致しない。
+- SQLの字句・IRの同形、合成SQLiteでの一致、実TargetのQuery Plan/実結果、Host/Owner受理は別の証拠である。
+
+### 18.2 変換の可換性は、特定の演算・観測条件に相対的
+
+Source`S`、Projection`p`、演算`op`について、`p(op_S(S)) = op_T(p(S))`が成り立つかは**対象演算、入力条件、Target意味論、Observer**を指定して検証する。値だけの一致ではなく、Bag、NULL、Scope、順序、精度、エラー、時点を含める。一般の`p`が全演算に対して可換であるとは主張しない。
+
+SQLを正本とする既存Queryから候補Operatorを生成する場合、元Queryの意味・版・Target bindingを保持し、実Providerで独立Oracleと比較する。形式的に一般証明できない場合は、対象Fixture・Target・版に限定したEvidenceとして扱う。共通Data Operatorの導入を、SQL正本の置換や第二Query Runtimeの採用条件としない。
+
+### 18.3 複数Functionの編集成功と、全体の不変条件は別
+
+[#2597](https://github.com/hat47x/tei-platform/issues/2597)のEditing Sessionと、[#2601](https://github.com/hat47x/tei-platform/pull/2601)の局所Transaction Referenceを接続する。各Functionがそれぞれの入力検証と保存に成功しても、**並行実行後の業務不変条件**が成立するとは限らない。
+
+例：口座A/Bの残高が各100、両者の合計が100以上という業務条件を維持する。二つのSessionが同じSnapshotを読み、それぞれAまたはBから100引く判断を行い、互いに別行を更新すると、個別の更新条件は通っても最終合計0となり得る（Write Skewの候補）。実際にその現象が起こるかはDB分離レベル、ロック、Predicate検査、HostのTransaction境界、業務Ruleに依存する。**合成SQLiteのBEGIN/ROLLBACK/SAVEPOINT成功を、実TEI/PGでのWrite Skew実証へ昇格しない。**
+
+編集の観測票は、`Function Instance / Editing Session / base revision / Read set and predicate / Save Intent / Target binding / actual Tx boundary / Commit outcome / Receipt / independent post-read / business invariant`を区別する。途中失敗、Commit結果不明、再試行、再評価時のRule/Grant変更を個別に扱い、見えているViewの保存成功を業務全体の確定としない。既存外部HostのTransaction/認可/副作用制御を利用し、TEI独自Hostや共通Transaction Coordinatorを新設しない。
+
+### 18.4 反証票（OP-01〜12、当節としてNOT RUN）
+
+| ID | 二条件の比較 | 不正な昇格 | Owner |
+| --- | --- | --- | --- |
+| OP-01 | JOINで右側2行、EXISTSで存在のみ | 行増幅と存在判定を同一視 | #2387/#2622 |
+| OP-02 | NOT IN対象にNULL、NOT EXISTS | NULL三値論理の差を消す | #2387/#2514 |
+| OP-03 | LEFT JOIN不一致と右側実NULL | 同じNULL表示から来歴を同一視 | #2387/#2506 |
+| OP-04 | LIMIT前後のFilter/Sort交換 | 演算順序を自由に交換 | #2387/#2622 |
+| OP-05 | DISTINCTで異なるFactが同値 | Fact ID/Bag粒度の喪失 | #2593/#2387 |
+| OP-06 | AVG再集計の中間状態欠損 | 値型一致で可換と宣言 | #2593/#2544 |
+| OP-07 | SQLite合成一致・実Provider未実行 | 全Targetで意味同等と宣言 | #2387/#2498 |
+| OP-08 | 同じSQL ID、異RLS/Principal | 同一母集団を宣言 | #2611/#2622 |
+| OP-09 | 二Functionが別行を並行更新 | 個別成功で全体不変条件成立 | #2597/#1174 |
+| OP-10 | 保存前にRule/Grantが改版 | Preview時の判断を現在権限とする | #2598/#1174 |
+| OP-11 | Commit応答喪失・再試行 | 結果不明を未実行と同一視 | #1174/#2597 |
+| OP-12 | UIは保存成功、独立post-read無し | Effect/業務完了を確定 | #1174/#1119 |
+
+**証拠の境界**：#2387 QX-23では隔離SQLite 9件の成功が報告され、#2601ではSQLite局所Transaction 3件の成功が報告されているが、この節で再実行していない。これらを足してTEIのQuery→Function→Host→DBの12件E2E PASSとはしない。#2497は演算保存の条件を記述し、SQL/Operator実証は#2387/#2622、編集合成は#2597、実Effect/Recoveryは#1174、独立期待は#2514が所有する。
