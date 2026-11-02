@@ -27,6 +27,14 @@ def main():
     selected = [r for r in baseline["records"] if r["name"] in KNOWN_EXISTING]
     if Counter(r["name"] for r in selected) != KNOWN_EXISTING:
         raise RuntimeError("known baseline occurrences changed; review the oracle before measuring")
+    explicit_text = text
+    for name in KNOWN_EXISTING:
+        explicit_text = explicit_text.replace(f"`{name}`", f"`ref:{name}`")
+    explicit_baseline = check(root, document, explicit_text)
+    explicit_selected = [r for r in explicit_baseline["records"]
+                         if r["declaration"] == "ref" and r["name"] in KNOWN_EXISTING]
+    if Counter(r["name"] for r in explicit_selected) != KNOWN_EXISTING:
+        raise RuntimeError("explicit baseline occurrences changed; review the oracle before measuring")
     start = time.perf_counter()
     renamed = check(root, document, text.replace(original, "`ref:docs/architecture-renamed-2309.md`"))
     implicit_renamed = check(root, document, text.replace(original, "`docs/architecture-renamed-2309.md`"))
@@ -40,6 +48,8 @@ def main():
         "baseline_unresolved": [r["name"] for r in baseline["records"] if r["result"] == "unresolved"],
         "known_existing_occurrences": len(selected),
         "known_existing_false_positives": sum(r["result"] != "resolved" for r in selected),
+        "explicit_known_existing_occurrences": len(explicit_selected),
+        "explicit_known_existing_false_positives": sum(r["result"] != "resolved" for r in explicit_selected),
         "excluded_uncertain_occurrences": sum(r["name"] == "docs/audits/" for r in baseline["records"]),
         "injected_reference_defects_detected": sum((missing(renamed, "docs/architecture-renamed-2309.md"),
                                                    missing(fabricated, "docs/fabricated-2309.md"))),
