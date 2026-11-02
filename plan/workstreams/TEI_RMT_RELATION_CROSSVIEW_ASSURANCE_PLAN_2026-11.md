@@ -23,7 +23,21 @@ G-VとG-Rは **異なる母集団・異なる用途** に対する証拠であ�
 
 #2505版間差分との非重複を明確にする。G-Rの先行実測は[#2505 11/2独立Headless PoC](https://github.com/hat47x/tei-platform/issues/2505#issuecomment-6573011380)：合成Go 1.23.2 standaloneは三版A→B→Cの候補経路まで拡張され、**15 top-level test・race・vetが局所PASS**。対応候補の連鎖は意味上の同一性や旧操作の再利用許可にはならない。版間比較・Claim別適用・生成/公開の後段Consumerへの計画は[既存Draft #2615](https://github.com/hat47x/tei-platform/pull/2615)が担当し、本節は**同版CrossViewとの異なる母集団・接合点**に限定する。**GitHub製品コード・Go 1.26系・正式H2/J5・実原典・Owner受理は未実証**。合成PoCをS0の正式検収器へ代入しない。
 
-### Case別に失敗原因と検証資格を固定する（本表の10統合ケースは未実行）
+### 追加の横断結論：1対多Relationの「見える線」と「書き戻せる対象」は別
+
+[#2610 §34](https://github.com/hat47x/tei-platform/pull/2610)のScript-first/generic Studio、[#2497](https://github.com/hat47x/tei-platform/issues/2497)の構造保存Projection、[#2500](https://github.com/hat47x/tei-platform/issues/2500)のView→Typed Intentを、このRelation移植の一事例に接続する。
+
+設計Relationship1件に実装Refer候補2件があるとき、グラフを一つの線で示すことは**説明用の縮約Projection**として有用である。一方、異なるSource状態`s1`／`s2`が同じ表示`P(s1)=P(s2)`を持つなら、表示上の線だけから元の編集対象は決定できない。見た目が1本でも「2本の実装参照を一括修正してよい」という許可にはならない。
+
+**可読性と編集提案の具体的な接続条件**：
+- generic Modeler/Studioは、線と同時に**原典宣言、実装Refer候補0..N、Role、Source span、版、未解決の対応理由**を標準データ構造から参照可能にする。専用Relation画面の先行実装を要求せず、generic inspector／候補一覧／navigationを利用する。
+- 表示の単一辺から**編集対象を逆引きできるか**は別の条件。元Source spanと型付きRole/Path occurrence、Base Meaning Revision、更新対象、編集意図が一意に対応するときだけ[#2500](https://github.com/hat47x/tei-platform/issues/2500)のTyped Edit Proposalへ渡す。1本の表示線が2候補を畳んでいるときはread-onlyで複数候補を表示し、利用者・Ownerが次の対象を判断する。
+- Typed Edit Proposalの生成、Shared Acceptanceでの意味採用、Host現在認可、実Provider Commit／Receipt、実Consumerでの表示更新はそれぞれ別の資格。[#2505](https://github.com/hat47x/tei-platform/issues/2505)の版A/B候補が一意でも旧Intentを新版に黙ってrebaseしない。
+- 旧Sourceの欠落・明示空などraw差分は内部Factと局所説明で保全する。公開一覧・外部AI/SHOには[#2516](https://github.com/hat47x/tei-platform/issues/2516)/[#1178](https://github.com/hat47x/tei-platform/issues/1178)の許可されたProjectionだけを渡し、候補の**件数・診断の有無**自体も非公開情報になり得る点を確認する。
+
+この判断は**設計・受入条件であり、実UI/Putback実装成功ではない**。今後のCode/GUI/Ownerはそれぞれの既存Issueを使用する。
+
+### Case別に失敗原因と検証資格を固定する（本表の11統合ケースは未実行）
 
 | ケース | 入力・判別条件 | Headlessで照合する期待／禁止事項 | 担当 |
 | --- | --- | --- | --- |
@@ -34,6 +48,7 @@ G-VとG-Rは **異なる母集団・異なる用途** に対する証拠であ�
 | **RV-N1** | 外来`x:Refer`／`x:Relationship`／`x:TableKey`／`x:Key`／`x:Table`、通常`Refer`上の`x:ToTable`／`x:ToKeyFields`等の属性類似名、外来Tableの子にある通常Referを対照 | Readerの`Known=false`、修飾名、局所Fact、親Table文脈の伝播を独立に調べる。外来宣言・外来親IDを標準Fact/Relationへ昇格させない。既存[#950 RMP-048/RML-023](https://github.com/hat47x/tei-platform/issues/950)が一般契約。**Draft #2603はXEAF Referに限定した合成CI成功であり他種別／入れ子までの実証ではない**。残る`attributeValue(localName)`呼出しをOwnerが限定テスト | #950／#1126 |
 | **RV-C1** | 設計Relation1宣言／runtime Refer2候補、各々別Role・Alias | Source1／Runtime2／対応候補2／Accepted0（synthetic開始時）を別々に数え、Diagramと辺一覧でも区別。自動分割・合成を行わない | #1031／#1126／#982 |
 | **RV-C2** | 複合キー・Referの1 XML属性に複数Field成分。属性なし／明示空／区切り成分付き／外来namespaceも対照 | node／atom／区切り成分の所属・順序を別々に保持。normalized listとraw declarationの存在・字面を分離（[Draft #2603](https://github.com/hat47x/tei-platform/pull/2603)はSource Factの限定修正候補）。全atom計上から全意味成分保持を推定しない | #950／#1031／private #4 |
+| **RV-E1** | 一つの表示線が設計Relation1／実装Refer2候補を縮約。片側だけ変更するUI操作と、一意なSource span/Roleを指定する操作を対照 | generic inspectorからSource/Role/候補0..Nを読めること。表示線だけの曖昧な変更はread-only・navigationへ留め、一意なType/Role/Source/MeaningRevisionのときだけTyped Edit Proposalへ。Proposal→受理→権限→Effectを別々に確認 | #1124／#2497／#2500／#2391 |
 | **RV-V1** | 版A→Bのsource-ref変動、移動、同ID異Role、fan-in、view外ZIP member変更 | exact版差と意味差、旧Reviewの履歴と新版Claim適用を区別。旧ViewChangeを新版Actionへ自動rebaseしない | #2505／#2500／#1803 |
 | **RV-D1** | Role付きRelation pathを同じFunctionの複数Context occurrenceで使用。ある集合はcomplete、別集合はpartial | Entity Identity／Path occurrence／結果grain／取得scope／選択epochを保持。閲覧・選択・編集Binding／実Effectの資格を別々に示す | #2506／#2507／#2586 |
 | **RV-H2** | 実Workの同一生成版ZIP・Probe・Producer・Builder・Candidate・Ledger・receipt | 既存2checkerの実exit／原byteに加え、**一つのSource node→実TargetのJ5参照実解決**を確認。個別未解決は保留し、独立PASSを結合PASSと呼ばない | #1121／#Work／#3／private #4 |
