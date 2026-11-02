@@ -244,18 +244,18 @@ TEIの[PR #2576](https://github.com/hat47x/tei-platform/pull/2576)・[#2578](htt
 
 | ID | Pressure | 保持・比較する意味 | 誤成功 | Owner |
 | --- | --- | --- | --- | --- |
-| PC-133 | 売上200と在庫200 | Claim対象/Quantity Kind | 値一致で意味同値とする | #2516/#2497 |
-| PC-134 | 部分100と全件200 | Scope/Completeness/時点 | 値不一致で片方を誤りと断定 | #2516/#2506 |
-| PC-135 | 同一Claim/版で200と201 | 真に比較可能な不一致 | AI多数決で正解を決定 | #2516/#2514 |
-| PC-136 | 旧SHO文書と現CUI | Model/Document/Reviewの版 | 保存成功を現在意味受理とする | #2516/#2505 |
-| PC-137 | optional missing/nullが同表示 | 表示同値と元状態同値 | 省略から元のPresenceを復元 | #2585/#2497 |
-| PC-138 | 二つの大整数が同じfloat64 | Projectionの非単射性 | 値一致を厳密なID同一とする | #2585/#1705 |
-| PC-139 | 同一SQL文字列、RLSが異なる | 実効Query Scope/Binding | SQL字句一致で同一集合とする | #2387/#2516 |
-| PC-140 | TEI要素一つ→文書二Occurrence | Semantic ID/Document Occurrence ID | 一箇所編集で全箇所更新とみなす | #2497/SHO #4 |
-| PC-141 | 一Occurrenceのみ局所上書き | 文書編集/TEI変更提案/Review | 局所説明を元モデルへ暗黙反映 | #2497/SHO #6 |
-| PC-142 | 意味改版・表示byte不変 | Semantic revision/説明・レビュー | byte一致でレビュー現在性を保証 | #2505/SHO #6 |
-| PC-143 | 公開同一・秘密だけ異なる二世界 | Disclosure/診断/Traceの非干渉 | 拒否理由で秘密件数を漏らす | #2516/#1178 |
-| PC-144 | CUI PASS、SHO実表示未確認 | Consumer別actual read/load | 一Consumer成功を全成果物の実受入へ拡張 | #2498/#2516 |
+| PC-133 | 売上200と在庫200 | 互いに異なるQuantity KindとClaim Subject | Claim対象/Quantity Kind | 値一致で意味同値とする | #2516/#2497 |
+| PC-134 | 部分100と全件200 | 異なるDataset Scopeの2 Observation | Scope/Completeness/時点 | 値不一致で片方を誤りと断定 | #2516/#2506 |
+| PC-135 | 同一Claim/版で200と201 | 同じSource/Scope/Grainを主張する2 Claim | 真に比較可能な不一致 | AI多数決で正解を決定 | #2516/#2514 |
+| PC-136 | 旧SHO文書と現CUI | 旧固定納品版と現在のCUI Projection | Model/Document/Reviewの版 | 保存成功を現在意味受理とする | #2516/#2505 |
+| PC-137 | optional missing/nullが同表示 | Read-onlyなoptional Fieldの状態投影 | 表示同値と元状態同値 | 省略から元のPresenceを復元 | #2585/#2497 |
+| PC-138 | 二つの大整数が同じfloat64 | 異なる整数Raw Valueとfloat64での丸め | Projectionの非単射性 | 値一致を厳密なID同一とする | #2585/#1705 |
+| PC-139 | 同一SQL文字列、RLSが異なる | 実効RLS/Policy付きQuery Binding | 実効Query Scope/Binding | SQL字句一致で同一集合とする | #2387/#2516 |
+| PC-140 | TEI要素一つ→文書二Occurrence | 同じTEI Subjectへの文書参照Occurrence×2 | Semantic ID/Document Occurrence ID | 一箇所編集で全箇所更新とみなす | #2497/SHO #4 |
+| PC-141 | 一Occurrenceのみ局所上書き | 一つのDocument Occurrenceの局所Patch | 文書編集/TEI変更提案/Review | 局所説明を元モデルへ暗黙反映 | #2497/SHO #6 |
+| PC-142 | 意味改版・表示byte不変 | Semantic Sourceと表示Documentの独立Revision | Semantic revision/説明・レビュー | byte一致でレビュー現在性を保証 | #2505/SHO #6 |
+| PC-143 | 公開同一・秘密だけ異なる二世界 | Low-disclosure Projectionと秘密状態2世界 | Disclosure/診断/Traceの非干渉 | 拒否理由で秘密件数を漏らす | #2516/#1178 |
+| PC-144 | CUI PASS、SHO実表示未確認 | 同じClaimのCUI/SHO別Consumer Read | Consumer別actual read/load | 一Consumer成功を全成果物の実受入へ拡張 | #2498/#2516 |
 
 **比較原則**：`same value`、`same Claim`、`same Source`、`same Document Occurrence`、`same edit`、`same disclosure rights`を別の関係として扱う。比較可能性の前提が不明な場合、値の同値/異値だけで正否を決定しない。公開できない根拠を不存在へ変換しない。
 
