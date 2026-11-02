@@ -105,6 +105,8 @@ W2（表定義書）も追加しました（[`internal/artifact/tabledef.go`](..
 
 DDLとの整合（W5）は、表定義書の内容を `physical.SchemaSnapshot` に写し、既存の `schemadiff` で望ましいスキーマと突き合わせる形にしました（[`internal/artifact/ddlcheck.go`](../../internal/artifact/ddlcheck.go)）。差分は既存の語彙で返し、成果物側で黙って直しません。**索引は未対応**です。`persist` の宣言にキー・述語が無いため、索引の欠落を差分として報告しません（誤った差分を出さないための制限）。
 
+成果物の目録（manifest）も追加しました（[`internal/artifact/manifest.go`](../../internal/artifact/manifest.go)）。複数の成果物から、入力の版が揃っていることを確かめたうえで、種類・照合値・未解決の件数を決定的に並べます。**未解決が一つでもあれば `complete=false`** とし、完成に見せません。入力の版が混ざる場合と、改変された成果物は受け付けません。
+
 対応一覧（W4）は、現在の意味モデルに主題領域・作業・機能の対応を表す宣言が無いため、受理済みの意味からは導出できません。意味を足すか（A4）、対応一覧を手で維持するかの判断待ちです（[#2482](https://github.com/hat47x/tei-platform/issues/2482)）。DDLとの整合（W5）とCLI（W6）は未着手です。
 
 ## 7. 停止条件
