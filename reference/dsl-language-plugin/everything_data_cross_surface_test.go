@@ -8,6 +8,10 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+
+	"tei/internal/core"
+	"tei/internal/semantic"
+	"tei/internal/syntax"
 )
 
 // This file characterizes a limited Everything-is-Data authoring handoff.
@@ -249,4 +253,105 @@ func TestEverythingDataRealPinnedPipelineRejectsInvalidSource(t *testing.T) {
 	if _, err := ParsePipelineSyntax("rows/order |>"); err == nil {
 		t.Fatal("incomplete authoring source accepted")
 	}
+}
+
+// EG-08: join two syntax paths to an actual semantic.Namespace and an actual
+// pinned operator reference. This checks identity/type handoff only, NOT the
+// operator's predicate, cardinality, SQL or any accepted source revision.
+func TestEverythingDataActualSemanticParserCrossLanguageBind(t *testing.T) {
+	teiPin := testPin()
+	_, jsonPin := fixtureLanguagePins()
+	syntaxSource := "namespace sales\ndata Order { attribute orderId type std.identifier }"
+	jsonSource := `{"id":"sales","data":[{"id":"sales.order","symbol":"Order","attributes":[{"id":"sales.order.order_id","symbol":"orderId","type":"std.identifier"}]}]}`
+	providers := []Provider[semantic.Namespace]{
+		{Selection: teiPin, Parse: func(source string) (semantic.Namespace, error) {
+			return syntax.NewParser(source).ParseSemanticFile()
+		}},
+		{Selection: jsonPin, Parse: func(source string) (semantic.Namespace, error) {
+			var value semantic.Namespace
+			err := json.Unmarshal([]byte(source), &value)
+			return value, err
+		}},
+	}
+	a, err := ParseSelected(teiPin, providers, syntaxSource)
+	if err != nil {
+		t.Fatalf("TEI parser: %v", err)
+	}
+	b, err := ParseSelected(jsonPin, providers, jsonSource)
+	if err != nil {
+		t.Fatalf("test-only JSON adapter: %v", err)
+	}
+	for _, ns := range []semantic.Namespace{a, b} {
+		if ns.ID != core.CanonicalID("sales") || len(ns.Data) != 1 ||
+			ns.Data[0].ID != core.CanonicalID("sales.order") ||
+			len(ns.Data[0].Attributes) != 1 ||
+			ns.Data[0].Attributes[0].ID != core.CanonicalID("sales.order.order_id") ||
+			ns.Data[0].Attributes[0].TypeRef != core.CanonicalID("std.identifier") {
+			t.Fatalf("data/attribute identity or type not resolved: %#v", ns)
+		}
+	}
+	where := OperatorContract{
+		ID: "std.where", Version: "1", Fingerprint: "where-semantic-fixture",
+		Effect: "pure", InputType: "rows/sales.order", OutputType: "rows/sales.order",
+	}
+	calls := []PinnedCall{{Contract: where, InputType: where.InputType}}
+	outA, err := BindPinnedSemanticInput(a, "sales.order", calls, []OperatorContract{where})
+	if err != nil {
+		t.Fatalf("TEI semantic bind: %v", err)
+	}
+	outB, err := BindPinnedSemanticInput(b, "sales.order", calls, []OperatorContract{where})
+	if err != nil {
+		t.Fatalf("test-only JSON semantic bind: %v", err)
+	}
+	if outA != "rows/sales.order" || outA != outB {
+		t.Fatalf("mismatching bounded data/typed pipeline: %q, %q", outA, outB)
+	}
+}
+
+// EG-09 is deliberately a LIMITATION witness. The existing binder checks
+// uniqueness of Data ID and exact operator pins, not full Attribute Type
+// semantics or accepted revision. Identical outputs must not be promoted to
+// evidence that source/model meaning stayed unchanged.
+func TestEverythingDataBoundDataIDCannotProveModelSemanticEquality(t *testing.T) {
+	source := semantic.Namespace{
+		ID: core.CanonicalID("sales"),
+		Data: []semantic.Data{{
+			ID: core.CanonicalID("sales.order"),
+			Attributes: []semantic.Attribute{{
+				ID: core.CanonicalID("sales.order.amount"),
+				TypeRef: core.CanonicalID("std.decimal"),
+			}},
+		}},
+	}
+	changed := semantic.Namespace{
+		ID: core.CanonicalID("sales"),
+		Data: []semantic.Data{{
+			ID: core.CanonicalID("sales.order"),
+			Attributes: []semantic.Attribute{{
+				ID: core.CanonicalID("sales.order.amount"),
+				TypeRef: core.CanonicalID("std.string"),
+			}},
+		}},
+	}
+	if reflect.DeepEqual(source, changed) {
+		t.Fatal("the pressure worlds must have different semantic attributes")
+	}
+	where := OperatorContract{
+		ID: "std.where", Version: "1", Fingerprint: "where-semantic-fixture",
+		Effect: "pure", InputType: "rows/sales.order", OutputType: "rows/sales.order",
+	}
+	calls := []PinnedCall{{Contract: where, InputType: where.InputType}}
+	x, err := BindPinnedSemanticInput(source, "sales.order", calls, []OperatorContract{where})
+	if err != nil {
+		t.Fatal(err)
+	}
+	y, err := BindPinnedSemanticInput(changed, "sales.order", calls, []OperatorContract{where})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if x != y {
+		t.Fatalf("expected binder's limited data-ID result to be unchanged; %q != %q", x, y)
+	}
+	// Expected observation: x==y despite changed Attribute Type. The missing
+	// model/Role/Context/Operator-law qualification is for existing owners.
 }
