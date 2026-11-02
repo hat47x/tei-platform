@@ -23,6 +23,19 @@ REQUIRED_CLI = ("version", "model catalog", "inspect", "trace", "validate")
 LINK = re.compile(r"\]\(([^)]+)\)")
 SHELL_BLOCK = re.compile(r"(?ms)^```(?:sh|bash)\s*\n(.*?)^```\s*$")
 CLI_DECLARATION = re.compile(r'\{Name:\s*"([^"]+)",\s*Effect:\s*"([^"]+)"')
+# Narrow allowlist for documentation examples, not a CLI capability registry.
+# The actual CLI parser and Host are authoritative; this checks examples only.
+EXAMPLE_FLAGS = {
+    "commands": {},
+    "version": {"-json": False},
+    "model catalog": {"-workspace": True, "-namespace": True},
+    "inspect": {"-workspace": True, "-subject-kind": True, "-subject-id": True},
+    "trace": {"-workspace": True, "-scope": True, "-subject-kind": True,
+              "-subject-id": True, "-direction": True, "-mode": True,
+              "-offset": True, "-limit": True, "-expected-fingerprint": True},
+    "validate": {"-workspace": True, "-json": False},
+}
+SHELL_SIDE_EFFECT = ("&&", "||", ";", "|", ">", "<", "`", "$(")
 
 
 def check_repository(root: Path) -> list[str]:
@@ -112,6 +125,28 @@ def check_repository(root: Path) -> list[str]:
                 match = next((name for name in available if tail[: len(name.split())] == name.split()), None)
                 if match is None:
                     errors.append(f"{relative}: unverified/read-write TEI example: {line}")
+                    continue
+                # A known command name alone does not make an entire shell
+                # expression safe or guarantee that its flags exist.
+                if any(op in line for op in SHELL_SIDE_EFFECT) or line.endswith("\\"):
+                    errors.append(f"{relative}: shell expansion/control requires review: {line}")
+                    continue
+                flags = EXAMPLE_FLAGS[match]
+                rest = tail[len(match.split()):]
+                i = 0
+                while i < len(rest):
+                    name = rest[i]
+                    takes_value = flags.get(name)
+                    if takes_value is None:
+                        errors.append(f"{relative}: unverified CLI flag/argument: {name}")
+                        break
+                    if takes_value:
+                        if i + 1 >= len(rest) or rest[i + 1].startswith("-"):
+                            errors.append(f"{relative}: missing CLI flag value: {name}")
+                            break
+                        i += 2
+                    else:
+                        i += 1
 
     reference = contents.get(DOCUMENTS[1], "")
     for label in ("result.snapshotFingerprint", "result.trace.snapshotFingerprint", "-expected-fingerprint"):
