@@ -1088,3 +1088,43 @@ G0/G1/G2は**全面的な直列開発を要求しない**。DB fixtureとProvide
 - **未決Owner**：原典のidentity・業務Action・Scriptの効果と失敗、拒否・取消と認可、権利・公開許諾。既存ADR-0020/0029と#1129/#1174で表せない具体的反例が得られる場合のみ代案・根拠・影響先をProposed ADR候補へ送り、Acceptedとしない。
 
 **検証状態**：本節は固定main・既存ソース・Issue/PR・GitHub Actionsを読み取った計画追補。Go試験、trusted full health、実原典Candidateの全件検収、Windows GUI、実DB、原Driver/TEI実行比較、人的Owner受理を本節の作業で実施していない。
+
+## 33. 2026-11-02：一業務の設計可読性・Headless評価・実効果・文書を接合する
+
+**位置づけ・固定根拠**：本節は [#1119](https://github.com/hat47x/tei-platform/issues/1119) の既存C0〜C4、G0〜G4、§31/§32の履歴を改変しない**横断の実施順序とConsumer受渡し案**。照合main `9c9ef4d160640908e06ad13afb6c2b45c664c748`（2026-11-02）。既存[業務設計方針](../../docs/business-system-design.md)、[RQ-010〜013/RQ-025〜030](../../requirements/TEI_PRODUCT_REQUIREMENTS.md)、[M3/M4/M9](../MILESTONES.md)を参照する。[#2484](https://github.com/hat47x/tei-platform/issues/2484)のD-1〜D-3の採用・D-4保留と、[統合済PR #2588](https://github.com/hat47x/tei-platform/pull/2588)を前提とするが、採用済み要件から実Target/Owner受入済みとは推論しない。[AI-first/Headless-first追補PR #2492](https://github.com/hat47x/tei-platform/pull/2492)はDraft/未統合の検討資料として参照する。
+
+### 33.1 最初の成果は「意味が読める一業務」であり、生成コードではない
+
+既存`order_entry`を題材に、**受注確定の設計を一枚で読める**ことを最初のConsumer価値に置く。ただし公開Referenceの合成業務例であって、原典X-TEAのOwner受理済み業務仕様ではない。設計票は、新たなCanonical正本やWorkflow DSLではなく、既存Data/Function/BusinessモデルとSource/Evidenceを指す**read-only Projection**として構成する。
+
+| 人が確認する事項 | 必須の説明・未決の保持 | 既存担当と受渡し |
+| --- | --- | --- |
+| 目的・対象・責任 | Business Operation、業務上の一件、提出対象集合、担当/手作業/外部Handoffと適用時点。Function/Capabilityの宣言を業務Actionの意味受理に変えない | [#1125](https://github.com/hat47x/tei-platform/issues/1125)、[#267](https://github.com/hat47x/tei-platform/issues/267)、[#2505](https://github.com/hat47x/tei-platform/issues/2505) |
+| Data・値の根拠 | Source→Query→Function Data Contextの値lineage、1:Nの取得集合・粒度・重複・欠損/明示NULL・通貨/単位・時点・部分取得。数値一致だけで再集計可としない | [#1126](https://github.com/hat47x/tei-platform/issues/1126)、[#2506](https://github.com/hat47x/tei-platform/issues/2506)、[#2586](https://github.com/hat47x/tei-platform/issues/2586)、[#2593](https://github.com/hat47x/tei-platform/issues/2593) |
+| 条件・評価範囲 | 規則本文だけでなく先頭/編集対象/全明細の量化範囲、空集合の扱い、Snapshot/履歴の必要条件。評価済み不成立と未評価を分ける | [#1063](https://github.com/hat47x/tei-platform/issues/1063)、[#1125](https://github.com/hat47x/tei-platform/issues/1125)、[#1708](https://github.com/hat47x/tei-platform/issues/1708) |
+| 操作と実Request | 表示・選択→候補Intent→採用Action→Operation SurfaceのBinding→実Payload対象を別々に結ぶ。generic updateをsubmit/cancelの意味一致とみなさない | [#2485](https://github.com/hat47x/tei-platform/issues/2485)、[#2500](https://github.com/hat47x/tei-platform/issues/2500)、[#2598](https://github.com/hat47x/tei-platform/issues/2598) |
+| 確定と業務完了 | Invocation、Commit/ACK、Receipt/Lookup、独立Observation、歴史的BusinessResult、現在状態、確認の現在利用資格、Ownerの完了条件を別に示す | [#1174](https://github.com/hat47x/tei-platform/issues/1174)、[#1129](https://github.com/hat47x/tei-platform/issues/1129)、[#1163](https://github.com/hat47x/tei-platform/issues/1163)、[Draft #2518](https://github.com/hat47x/tei-platform/pull/2518) |
+| 説明・納品 | モデル意味版、生成Artifact、SHO文書Occurrence/局所編集、表示依存（図等）、説明レビュー、納品固定版を分け、意味の編集逆写像を自動承認しない | [#1803](https://github.com/hat47x/tei-platform/issues/1803)、[#2497](https://github.com/hat47x/tei-platform/issues/2497)、[#2516](https://github.com/hat47x/tei-platform/issues/2516)、SHO/MMI既存計画 |
+
+一枚にまとめるとは、すべての証拠を一つの永続schemaへ複製することではない。根拠のOwner・版・scope・時点・取得可能範囲へ**戻れる**ことをいう。設計書の可読性、業務意味のOwner受理、Target実装の資格、文書レビュー/公開可否は独立。
+
+### 33.2 Headlessでの判別を先行し、実UIは固有の保証だけ追加する
+
+| 段階（追加Gateではない） | 最初の判別ケース・期待する限定証拠 | 待たないもの |
+| --- | --- | --- |
+| 設計を読む | 受注確定の対象・条件・手作業・結果をread-onlyの表/関係一覧へ展開し、Source/未決へ戻る。Graphの未解決端点・診断対象と描画省略を混同しない | Wails完成、旧原モデル全件移植、Owner未受理箇所の勝手な補完 |
+| Headless意味評価 | **二明細を入替え**、先頭行・編集対象行・全行の検査範囲を比較。通貨/単位未受理、部分Result Slice、JOIN増幅、履歴上の集合出入りをそれぞれ未評価または反例として明示 | 汎用Simulation Engine/Leanの全面採用、新Evaluator/第二Oracle |
+| 操作対象と実効果 | Intentのsubmitがgeneric update/cancelへ誤結合されないこと、Intent対象X≠Payload/Effect対象Y、Commit不明と確定後Observation不明、同じ現在値でもBusiness完了は異なることを別のClaimとして比較 | 新Host、汎用Retry/Approval/Recovery Engine |
+| 表示・文書へ投影 | Headlessで固定した同版・同scopeの根拠をCUI/Modeler/SHOへ表示。未保存Patch、旧応答、改版後の図/引用/文書上書きを理由なく元Sourceへ書き戻さず、説明適用不能を表示 | 全GUI完成、新共通文書正本、旧レビューの自動復活 |
+
+**判別の先行証拠**：[#1125の三規則の合成正常系](https://github.com/hat47x/tei-platform/issues/1125#issuecomment-6470719087)は存在するが、全明細被覆・第3規則負例停止・正式Providerの証拠ではない。[#2485の合成bound-write](https://github.com/hat47x/tei-platform/issues/2485)と[#2482の成果物内部CheckSet](https://github.com/hat47x/tei-platform/issues/2482)はそれぞれ成立範囲を持つが、導出Intent→実Requestの意味同一性や公開Artifact一式の同版性へ自動昇格しない。原Driverの共有Transactionに生じるambient effectは旧挙動の観測であり、TEIの望ましいBusiness規則として無条件採用しない（[#940](https://github.com/hat47x/tei-platform/issues/940)、[#1129](https://github.com/hat47x/tei-platform/issues/1129)）。
+
+### 33.3 優先順位と終了条件（既存Ownerを変えない）
+
+- **既存P0を維持**：S0の原Source/J5検収、[#1174](https://github.com/hat47x/tei-platform/issues/1174)の実PostgreSQL確定後結果不正→Receipt/独立読取/Lookup（P0-a）、[#1129](https://github.com/hat47x/tei-platform/issues/1129)・[#1127](https://github.com/hat47x/tei-platform/issues/1127)の同一Data Rule二Function/Owner-write（P0-b）、[#1125](https://github.com/hat47x/tei-platform/issues/1125)→[#267](https://github.com/hat47x/tei-platform/issues/267)の業務意味受理（S3）。これらを設計票のread-only生成待ちで直列停止しない。
+- **P1として並行**：[#2586](https://github.com/hat47x/tei-platform/issues/2586)のQuery→Data Context→Claim→Pattern→Intent、[#2598](https://github.com/hat47x/tei-platform/issues/2598)の実Request束縛、[#2597](https://github.com/hat47x/tei-platform/issues/2597)のdirty/Undo/ABA、[#2505](https://github.com/hat47x/tei-platform/issues/2505)の版間追跡、[#2516](https://github.com/hat47x/tei-platform/issues/2516)のConsumer別開示・SHOを既存試験資産で接続する。AI-first/Headless-first/GUI-laterは実証順序であり、GUI固有のAccessibility、操作、表示、配布された実装をHeadless PASSで代替しない。
+- **Target/AIを並行拡張**：Java/.NET/WASM等の外部Host向けLibrary適合は[#2390](https://github.com/hat47x/tei-platform/issues/2390)、[#2513](https://github.com/hat47x/tei-platform/issues/2513)等で扱う。モデルの意味、Adapter字句/型、全実行Artifact、実Consumer、Host権限を別証拠にする。外部Harnessは[#2016](https://github.com/hat47x/tei-platform/issues/2016)/[#2515](https://github.com/hat47x/tei-platform/issues/2515)でPrepared/Delivered/Produced/Recorded/Verifiedと実OS・情報開示を確認し、CLI exit0やTool完了を業務完了にしない。
+- **部分結果の終点**：そのConsumerが要求する対象集合、粒度、時点、履歴、現在Authority、実送出許可を確認できない場合、正当なread-only部分説明は維持できるが、**全件・不存在・完全な業務完了・実行可能・公開可能**とは表示しない。確認対象がA→B→Aへ戻った場合も、撤回・集合membership変更・遅着訂正・過去Receiptの適用資格は別に評価する。
+- **既存計画との整合**：[#2484 D-4](https://github.com/hat47x/tei-platform/issues/2484)の#982「締めと訂正」追加は保留。periodは採用済みのC4の位置付けを使い、新C5や期間実装を本節で採用しない。[#2226](https://github.com/hat47x/tei-platform/pull/2226)はDraft/Openであり、ADR-0041の番号衝突は未決。TEI独自共通Host/Registry、第二の意味正本、第二のAcceptance/Oracle、追加Gateを作らない。
+
+**本節の完了の意味**：既存Ownerが次の作業・判別入力・必要証拠・Stopを辿れる計画追補としては完成。設計票UI、Headless縦断、実PostgreSQL/Windows、Java/.NET/WASM Consumer、SHO保存、Owner意味受理、G1〜G4製品Gateの新しいPASSを意味しない。過去§31/§32の証拠時点は書き換えない。
