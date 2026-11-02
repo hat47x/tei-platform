@@ -67,3 +67,37 @@ func TestTableDefinitionSnapshotDescribesTheTable(t *testing.T) {
 func semanticData() semantic.Data {
 	return semantic.Data{ID: "sales.order"}
 }
+func TestTableDefinitionSnapshotCarriesIndexes(t *testing.T) {
+	mapping := ddlCheckMapping()
+	indexes := []persistence.IndexMapping{{Name: "orders_status_idx", Attributes: []core.CanonicalID{"sales.order.status"}, Unique: true}}
+	mapping.Indexes = indexes
+
+	snapshot := TableDefinitionSnapshot(mapping, semanticData())
+	table := snapshot.Tables[0]
+	if len(table.Indexes) != 1 {
+		t.Fatalf("index lost: %+v", table.Indexes)
+	}
+	index := table.Indexes[0]
+	if index.Name != "orders_status_idx" || !index.Unique {
+		t.Fatalf("index identity lost: %+v", index)
+	}
+	if len(index.Keys) != 1 || index.Keys[0].Column != "status" {
+		t.Fatalf("the attribute must be resolved to its column: %+v", index.Keys)
+	}
+}
+
+func TestCompareTableDefinitionDetectsAMissingIndex(t *testing.T) {
+	mapping := ddlCheckMapping()
+	mapping.Indexes = []persistence.IndexMapping{{Name: "orders_status_idx", Attributes: []core.CanonicalID{"sales.order.status"}}}
+
+	withIndex := TableDefinitionSnapshot(mapping, semanticData())
+	withoutIndex := TableDefinitionSnapshot(ddlCheckMapping(), semanticData())
+
+	diff, err := CompareTableDefinition(mapping, semanticData(), withoutIndex)
+	if err != nil {
+		t.Fatalf("compare: %v", err)
+	}
+	if withIndex.Tables[0].Indexes == nil || len(diff.Changes) == 0 {
+		t.Fatalf("a missing index must be reported: %+v", diff.Changes)
+	}
+}

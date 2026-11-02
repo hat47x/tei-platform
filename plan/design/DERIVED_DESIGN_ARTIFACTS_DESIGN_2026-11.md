@@ -103,7 +103,7 @@ W2（表定義書）も追加しました（[`internal/artifact/tabledef.go`](..
 
 機能定義書（W3）も追加しました（[`internal/artifact/functiondef.go`](../../internal/artifact/functiondef.go)）。`application`・`capability`・`input`・`output`／`outcome`・`effect`・`validation`・`pattern` を決定的に並べ、入力・結果・効果の欠落と、入口（pattern）の無いアプリケーションを未解決に載せます。
 
-DDLとの整合（W5）は、表定義書の内容を `physical.SchemaSnapshot` に写し、既存の `schemadiff` で望ましいスキーマと突き合わせる形にしました（[`internal/artifact/ddlcheck.go`](../../internal/artifact/ddlcheck.go)）。差分は既存の語彙で返し、成果物側で黙って直しません。**索引は未対応**です。`persist` の宣言にキー・述語が無いため、索引の欠落を差分として報告しません（誤った差分を出さないための制限）。
+DDLとの整合（W5）は、表定義書の内容を `physical.SchemaSnapshot` に写し、既存の `schemadiff` で望ましいスキーマと突き合わせる形にしました（[`internal/artifact/ddlcheck.go`](../../internal/artifact/ddlcheck.go)）。差分は既存の語彙で返し、成果物側で黙って直しません。**索引は列名と一意性まで対応**しました（属性から物理列名を解決）。キーの式・照合順序・述語は `persist` に宣言が無いため比較しません（推測して差分を出さないための制限）。
 
 成果物一式の整合を検査する仕組み（`CheckSet`）も追加しました（[`internal/artifact/consistency.go`](../../internal/artifact/consistency.go)）。入力の版の一致、目録と成果物の対応、操作面の gap と未解決の対応、未解決があるのに完成と表示していないことを、**新しい意味を足さずに**確かめます。違反は対象と理由つきで返し、負例の作業領域では違反ゼロ、改変すると違反が出ることを試験で固定しました。以後に成果物の種類を増やすときも、この検査を通します。一括生成（`RenderWorkspace`）は**生成時に検査を実行し**、結果を `Findings` として返します。違反がある場合も成果物は返しますが、「整合した一式」として読んではいけません。
 

@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strings"
 
+	"tei/internal/core"
+
 	"tei/internal/database/persistence"
 	"tei/internal/database/physical"
 	"tei/internal/database/schemadiff"
@@ -14,9 +16,9 @@ import (
 // snapshot. It bridges the readable table definition and the existing schema
 // diff engine, so both read the same source instead of keeping two lists.
 //
-// Indexes are not carried yet: the artifact prints them, but the diff engine
-// compares keys and predicates that the persistence mapping does not declare.
-// A missing index is therefore not reported as a difference.
+// Indexes carry their column names and uniqueness. Key expressions, collations
+// and predicates are not compared yet: the persistence mapping does not declare
+// them, so they are left empty instead of being guessed.
 func TableDefinitionSnapshot(mapping persistence.Mapping, element semantic.Data) physical.SchemaSnapshot {
 	_ = element
 	table := physical.Table{
@@ -36,6 +38,21 @@ func TableDefinitionSnapshot(mapping persistence.Mapping, element semantic.Data)
 			Nullable:     column.Nullability == persistence.Optional,
 			Ordinal:      len(table.Columns) + 1,
 		})
+	}
+	columnOf := map[core.CanonicalID]string{}
+	for _, column := range mapping.Columns {
+		columnOf[column.Attribute] = column.Column
+	}
+	for _, index := range mapping.Indexes {
+		entry := physical.Index{Name: index.Name, Unique: index.Unique}
+		for _, attribute := range index.Attributes {
+			name, ok := columnOf[attribute]
+			if !ok {
+				name = string(attribute)
+			}
+			entry.Keys = append(entry.Keys, physical.IndexKey{Column: name, Order: physical.IndexOrderAsc})
+		}
+		table.Indexes = append(table.Indexes, entry)
 	}
 	return physical.SchemaSnapshot{
 		Database: mapping.Database,
