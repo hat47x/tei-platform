@@ -254,7 +254,7 @@ package order_entry.list_to_record ^1 {
 - Patternの定義を上書きしない。上書きが必要なら、別のPatternを作る。
 - 投影のレイアウトを持たない。テンプレートとProfileは生成器の入力に残す。
 
-**PoCでの実装.** `applications/<app>/packages/*.tei` の宣言を読み、Patternの存在・種別・重複・パッケージ間の衝突と、`requires` のSemantic参照を検査します。Applicationは`binds package <id> ^<版>`で版を束縛し、Packageの版との一致を検査します。対話ビューは、Patternを含むPackageを版つきで表示します（[#2521](https://github.com/hat47x/tei-platform/pull/2521)）。取り外し時のfingerprint比較は未実装です。
+**PoCでの実装.** `applications/<app>/packages/*.tei` の宣言を読み、Patternの存在・種別・重複・パッケージ間の衝突と、`requires` のSemantic参照を検査します。Applicationは`binds package <id> ^<版>`で版を束縛し、Packageの版との一致を検査します。対話ビューは、Patternを含むPackageを版つきで表示します。Packageを取り外してもSemantic fingerprintが変わらないことを試験で確認しています（[#2521](https://github.com/hat47x/tei-platform/pull/2521)）。
 
 **未解決.**
 
@@ -918,11 +918,12 @@ PoC #2521が実装した範囲と、まだ実装していない範囲を分け�
 | 印刷用の用紙面投影 | 実装済み（`view -format print`、A4、明細5行） |
 | header-detailの見出し・明細ビュー | 実装済み（Relationのsourceをheader、targetを明細として解決） |
 | 対話からのCommand起動（宣言・契約解決） | 実装済み（`interaction`の`command`、入力・結末・効果の解決。実行は未実装） |
-| Package（宣言・読込・検証・版束縛・ビュー表示） | 実装済み（衝突は明示エラー、取り外し時のfingerprint比較は未実装） |
+| Package（宣言・読込・検証・版束縛・ビュー表示） | 実装済み（衝突は明示エラー、取り外しはSemantic fingerprintを変えない） |
 | 操作（Commandの起動）、帳票の投影、Package、フック | 未実装 |
 | `reference/workspace`への宣言追加 | 未実施（受理経路が必要） |
 
 実装は、`internal/application/model.go`、`internal/syntax/application_pattern.go`、`internal/validation/application_pattern.go`、`internal/crossview/pattern_requirements.go`、`internal/applicationview`、`internal/semantic/model.go`、`internal/syntax/parser.go`、`internal/validation/validation.go`と、それぞれの試験です。
+
 
 
 
