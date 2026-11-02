@@ -429,6 +429,8 @@ lookup customer_lookup on order_entry.order_record.customerId
 
 **撤回条件.** Coreの属性追加が、実現先固有の差（NULL許容、空文字、既定値）を吸収できず、Pluginごとの分岐が増える場合は、AをやめてBへ寄せます。
 
+**PoCでの実装.** 必須と更新禁止は、Attributeの`required`・`immutable`として実装しました（[#2521](https://github.com/hat47x/tei-platform/pull/2521)）。`attribute quantity type std.decimal required immutable`のように宣言し、対話ビューとHTML投影（`required`・`readonly`）へ反映します。値域はまだ実装していません。
+
 ### D4 画面配置は意味ではなく、表示意図から派生させる
 
 **問題.** X-TEAは`Size`（未指定・`AUTO`・`幅;高さ`）と`Order`、`HORIZONTAL`/`VERTICAL`で画面を組み、絶対座標に近い配置を持ちました（知識目録I-8）。これはSame Targetでは強いが、Web・帳票・端末へ移すと再設計になります。
@@ -903,8 +905,11 @@ PoC #2521が実装した範囲と、まだ実装していない範囲を分け�
 | 診断コード（`UNKNOWN_APPLICATION_PATTERN_INTERACTION_ITEM`、`APPLICATION_PATTERN_INTERACTION_LOOKUP_TYPE_MISMATCH`など） | 実装済み |
 | crossviewの要求投影への対話参照 | 実装済み |
 | CLI `inspect` のCanonical JSONへの投影 | 実装済み（`application-pattern`のJSONに`interaction`が含まれる） |
-| 必須・更新禁止・値域（D3.1） | 未実装 |
-| 操作（Commandの起動）、画面・帳票の投影、Package、フック | 未実装 |
+| 必須・更新禁止（D3.1） | 実装済み（Attributeの`required`・`immutable`） |
+| 値域（D3.1） | 未実装 |
+| 対話ビュー（項目の型・表示名・入力部品・参照先の解決） | 実装済み（`internal/applicationview`、CLI `view`） |
+| 画面HTMLの投影 | 実装済み（`view -format html`） |
+| 操作（Commandの起動）、帳票の投影、Package、フック | 未実装 |
 | `reference/workspace`への宣言追加 | 未実施（受理経路が必要） |
 
-実装は、`internal/application/model.go`、`internal/syntax/application_pattern.go`、`internal/validation/application_pattern.go`、`internal/crossview/pattern_requirements.go`と、それぞれの試験です。
+実装は、`internal/application/model.go`、`internal/syntax/application_pattern.go`、`internal/validation/application_pattern.go`、`internal/crossview/pattern_requirements.go`、`internal/applicationview`と、それぞれの試験です。
