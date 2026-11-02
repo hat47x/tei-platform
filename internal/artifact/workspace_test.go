@@ -58,6 +58,11 @@ func TestRenderWorkspaceRendersTheNegativeFixture(t *testing.T) {
 	if unresolved == 0 {
 		t.Fatal("the negative fixture must carry unresolved entries")
 	}
+	// Generation runs CheckSet itself, so an inconsistent set can not be
+	// handed to a caller as if it were consistent.
+	if len(set.Findings) != 0 {
+		t.Fatalf("a consistently rendered set must carry no findings: %+v", set.Findings)
+	}
 }
 
 func TestRenderWorkspaceRefusesAnUnknownApplication(t *testing.T) {

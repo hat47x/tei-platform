@@ -16,6 +16,10 @@ type WorkspaceSet struct {
 	InputRevision string
 	Artifacts     []Artifact
 	Manifest      Manifest
+	// Findings is the result of CheckSet on this set. A non-empty list means
+	// the artifacts disagree with each other; the set is returned so a caller
+	// can show what was produced, but it must not be read as a consistent set.
+	Findings []Finding
 }
 
 // RenderWorkspace renders the table definitions and the function definition of
@@ -90,7 +94,9 @@ func RenderWorkspace(root, applicationID string) (WorkspaceSet, error) {
 	if err != nil {
 		return WorkspaceSet{}, fmt.Errorf("build manifest: %w", err)
 	}
-	return WorkspaceSet{InputRevision: revision, Artifacts: artifacts, Manifest: manifest}, nil
+	set := WorkspaceSet{InputRevision: revision, Artifacts: artifacts, Manifest: manifest}
+	set.Findings = CheckSet(set)
+	return set, nil
 }
 
 func findApplication(applications []application.Application, id string) (application.Application, bool) {
