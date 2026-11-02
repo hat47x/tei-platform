@@ -316,8 +316,9 @@ WP10 統合と引継ぎ
 | 受容アーキテクチャ | D1〜D8とD1.1・D1.2・D2.1・D3.1・D6.1、付録A（対応）・B（試験）・C（現行文法との差） |
 | 受容要件 | AC-1〜AC-11、RQ-C1〜C3、既存要求との重複確認 |
 | 移行計画 | WP1〜WP10、G0〜G5、Issue候補N-1〜N-6、この引継ぎ |
-| 文書PR | [#2519](https://github.com/hat47x/tei-platform/pull/2519)（Draft） |
-| PoC PR | [#2521](https://github.com/hat47x/tei-platform/pull/2521)（Draft、対話契約・ビュー・Packageの最小実装） |
+| 文書PR | [#2519](https://github.com/hat47x/tei-platform/pull/2519)（`e0ea7565f` でmainへ統合） |
+| PoC PR | [#2521](https://github.com/hat47x/tei-platform/pull/2521)（`53f5bb425` でmainへ統合） |
+| 追加の実装PR | [#2679](https://github.com/hat47x/tei-platform/pull/2679) Query入力、[#2682](https://github.com/hat47x/tei-platform/pull/2682) Command実行境界、[#2683](https://github.com/hat47x/tei-platform/pull/2683) フック宣言、[#2684](https://github.com/hat47x/tei-platform/pull/2684) 未使用属性、[#2685](https://github.com/hat47x/tei-platform/pull/2685) 印刷受領票、[#2686](https://github.com/hat47x/tei-platform/pull/2686) フック実行境界、[#2687](https://github.com/hat47x/tei-platform/pull/2687) layout、[#2688](https://github.com/hat47x/tei-platform/pull/2688) 統合試験（すべてmainへ統合） |
 
 **実装済みの範囲（PoC）.**
 
@@ -343,7 +344,7 @@ WP10 統合と引継ぎ
 | Package（宣言・検証・版束縛・衝突・ビュー表示） | 実装 | 付録C.5、`internal/application`・`internal/validation` |
 | Semantic fingerprint（投影の意味の版） | 実装 | 付録C.5、`internal/semantic` |
 | 統合試験（Semantic→Application→Package→view/print） | 実装 | `cmd/tei/product_slice_test.go` |
-| Commandの実行境界、集計・改ページ、削除の効果、フック | 未実装 | 付録C.5、D2・D5・D7 |
+| 残る未実装 | 実Provider接続、集計の実データ計算、削除の効果、帳票テンプレートの版管理 | 付録C.5、D5・D7 |
 
 **文書の読み方.**
 
@@ -353,11 +354,11 @@ WP10 統合と引継ぎ
 4. この計画で、作業パッケージ・ゲート・停止条件を見る。
 5. 付録Aで対応、付録Bで試験、付録Cで現行文法との差を見る。
 
-**人の判断が必要な事項.** §9の5項目です。要求の採否、D1〜D8の採用範囲、D6の対象、fixtureの利用条件、Issueへの結び付けを含みます。
+**人の判断が必要な事項.** §9の5項目です。利用者の指示により、これらは**仮承認**として扱い、実装と統合まで進めました。要求の最終採否、D1〜D8の採用範囲、D6の対象、fixtureの利用条件、Issueへの結び付けは別途判断します。
 
 **未検証.** 旧Runtimeの実行観測（[#940](https://github.com/hat47x/tei-platform/issues/940)）、実DBでの動作、配布JARとの同一性、参照モデルの内容（[#941](https://github.com/hat47x/tei-platform/issues/941)）です。文書の記述は静的読解に基づきます。
 
-**次の一歩.** このブランチをPRにしてレビューを受け、§9の判断の後に、N-1（WP3a）から着手します。
+**次の一歩.** 文書と実装はmainへ統合済みです。次は実Providerの接続、[#940](https://github.com/hat47x/tei-platform/issues/940)の実行観測、統合後のCI完了確認です。
 
 ## 12. レビューの手順
 
@@ -374,6 +375,7 @@ WP10 統合と引継ぎ
 **PRの関係.** 文書は[#2519](https://github.com/hat47x/tei-platform/pull/2519)、対話契約のPoCは[#2521](https://github.com/hat47x/tei-platform/pull/2521)です。PoCは文書のD1・D3.1の最小部分を実装し、`main`には未統合です。
 
 **統合の条件.** 要求・設計の採否が決まり、PRがDraftでなくなり、CIとレビューが通ることです。Draftのままでは統合しません。
+
 
 
 
