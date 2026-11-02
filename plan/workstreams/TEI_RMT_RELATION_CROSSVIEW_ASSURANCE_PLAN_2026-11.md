@@ -45,7 +45,20 @@ P1の最初のHeadless確認では、固定した同一配布版に属するXEA[
 
 この判断は**設計・受入条件であり、実UI/Putback実装成功ではない**。今後のCode/GUI/Ownerはそれぞれの既存Issueを使用する。
 
-### Case別に失敗原因と検証資格を固定する（本表の12統合ケースは未実行）
+### Key順序のdiagnosticと操作別readinessの証拠接合（#1805 Closedの既存記録を再利用）
+
+**成熟した判断**：[旧#1805の原因・影響と診断順序の照合](https://github.com/hat47x/tei-platform/issues/1805#issuecomment-6471603888)を、現役#950/#1126のSource-only／ER・Relation検証へ接続する。**Key自身の重複SortKeyをRelationship非依存に検出する候補パッチはmain未適用**（`diagnostics.go` blob `270de63791c9e76b04f230556542daca7e81ef12`）。既存 `orderedLegacyKeyMembers` を利用する改修の採否はSource担当が決め、ここでは事前受入条件だけを固定する。
+
+**同じSnapshotでもConsumer操作で判定を変える**：
+- **Jの原形read-only閲覧**：権限のあるprivate Consumerが同じexact Source版からJを一意に選び、Raw/Source Fact・Jの局所`RelationalFactResolutions`を読める。global `unresolved` は併記し、独立Jの表示を一律停止しない。原形を表示できること自体にlocal `resolved`を要求しない。J局所`resolved`は現行validatorでの構造準備度であってOwner意味Acceptedではない。
+- **Jに基づく派生Relation/Graph・Function表示**：選択Jだけでなく、その表示で**実際に消費する参照閉包・Role/Path occurrence・Context／版**を検証する。単なる同名ID・隣接Graph・`diagnostics=0`で未検査のField対応や意味受理を推定しない。編集Targetが非一意なら[#1124/#2500](https://github.com/hat47x/tei-platform/issues/2500)の既存read-only候補選択に留める。
+- **K/J全体の決定的lowering／成果物発行**：`RelationalResolutionStatus` のglobal `unresolved`／`partial`を対象全体の未完として扱う。局所Jの`resolved`で全体完成を代替しない。Source Inspection ReportのCLI `exit 0`は**集計レポート生成成功**であり、全体変換成功／業務意味受理／公開権利・実Effectではない。未受理の設計説明やSource観測資料を作ることと、正式な実行可能成果物を発行することは別。
+
+**既存公開Consumerの制約**：`tools/reference-xead-source-inspect/main.go` は個別`RelationalFactResolutions`を`ByKind`集計し、source ID/locatorを公開しない。公開報告の「legacy-key resolved=1」から特定Jを逆同定しない。既存`diagnosticToken`はsource digest＋`RelationalResolutionPolicyRevision`＋診断ordinal由来の**レポート内相関**であり、原因診断の追加・arity短絡の見直しで同じ旧診断の順序・tokenも変わり得る。変更前後のBoolean（診断0/非0）・件数・code・順序・`byKind`・token・global/local状態を比較し、**判定算法revision更新要否**を審査する。公開schema v3の形状維持を意味互換の保証としない。Modelerの表示済みR10と更新後R11も別snapshotの評価結果として扱い、旧応答で現在表示を上書きしない（[#1124の既存Consumer境界](https://github.com/hat47x/tei-platform/issues/1124#issuecomment-6470746209)）。
+
+**検証未実行に関する注意**：`diagnostics.go`はRelationshipのarity mismatchで`continue`しSortKey/型比較を**未実施**とする。左右の型情報が片方でも空なら`relationship-key-data-type-mismatch`検査を飛ばす。したがって個別診断が0でも「全ての比較条件にPASSした」とみなさない。FAMILYの許容され得る非対称形状を無条件の構造失敗にも、無条件の解決済みにも昇格しない。Source記録・型別の比較可能性・構造診断・Meaning Acceptanceは別々のEvidence欄に記す。
+
+### Case別に失敗原因と検証資格を固定する（本表の15統合ケースは未実行）
 
 | ケース | 入力・判別条件 | Headlessで照合する期待／禁止事項 | 担当 |
 | --- | --- | --- | --- |
@@ -53,6 +66,9 @@ P1の最初のHeadless確認では、固定した同一配布版に属するXEA[
 | **RV-F2** | 同FAMILYで対応候補が0件、または複数件 | 長さ差と対応不能・曖昧を別理由で提示。型・名前・Aliasの一致を無断の確定対応へ用いない | #950／#1126 |
 | **RV-R1** | REFFER 1→2、対照として同数2→2／SUBTYPE | Type固有の構造規則を比較。合致する次数から業務Relation・物理FK生成を自動受理しない | #950／#1126 |
 | **RV-K1** | FAMILY子側のSortKey空・重複・辞書順と数値順の差 | Relationshipのarity先行short-circuitと独立Key順序原因を分離。診断不在≠順序の実証。既存提案patch採否は担当が判断 | #950／#1126 |
+| **RV-K2** | 同一合成snapshotで独立Kは複合SortKey重複、Jは参照・依存を持たない正常Key。Jの原形閲覧、Jの派生説明、K/J全体loweringを同順に要求 | 独立Key診断候補の適用時はK局所unresolved・J局所resolved・global unresolvedを期待。Jのread-only原形は保持し、派生説明は消費閉包、全体loweringはglobalで保留。公開`byKind`件数からJのIDを逆特定しない | #950／#1126／#1124 |
+| **RV-K3** | REFFERの2→2構成で両側SortKey一意、型情報も両側同じ、XML出現順とSortKey順は異なる。対照として片側DataType欠落 | 構造診断0・局所resolvedがあり得ても列pair/Business identityはOwner未受理のまま。欠落型を比較済みとしない。source宣言順・SortKey字面・Validatorが判定した順・意味採用を混同しない | #950／#1126／#267 |
+| **RV-K4** | 同一Source byteを旧/候補の判定規則で比較。独立Kのみの0→非0と、既にR1/R2影響がある非0→非0を別fixtureで実施。FAMILY arity分岐も対照 | 診断Boolean/total/byCode/ordinal/token/global/localとpolicy revisionを差分表に固定。影響件数はarity短絡で変わるため「原因1＋順序影響2」を一般化しない。既存Report CLI exit 0をrelease/meaning PASSとみなさず、旧版判定結果の無言再利用を禁止 | #950／#1126／#2514 |
 | **RV-N1** | 外来`x:Refer`／`x:Relationship`／`x:TableKey`／`x:Key`／`x:Table`、通常`Refer`上の`x:ToTable`／`x:ToKeyFields`等の属性類似名、外来Tableの子にある通常Referを対照 | Readerの`Known=false`、修飾名、局所Fact、親Table文脈の伝播を独立に調べる。外来宣言・外来親IDを標準Fact/Relationへ昇格させない。既存[#950 RMP-048/RML-023](https://github.com/hat47x/tei-platform/issues/950)が一般契約。**Draft #2603の先行headはRefer限定のCI成功**。追加headではXEA[D]の`Relationship/TableKey`、XEAFの`Key/Refer`と外来Tableの入れ子Scopeを合成テストへ拡張したが、**最新headのCI結果は別途判定**。外来宣言を元のField・Tableの意味受理へ転換しない | #950／#1126 |
 | **RV-X1** | 固定同一配布版のXEAD Relationship・XEAF Runtime ReferをSource Factとして独立読取。設計1件→実装候補0／1／複数、同型でもAlias・Role・Field成分が異なる対照 | 現行CrossViewはXEADのみ対応という実装境界を維持。候補グラフG-Vをread-onlyで表示し、原因・多重対応・未解決・元byte/候補Target参照を別出典で照合。次の意味受理・物理FKへ自動昇格しない | #950／#1126／#1031／private #4 |
 | **RV-C1** | 設計Relation1宣言／runtime Refer2候補、各々別Role・Alias | Source1／Runtime2／対応候補2／Accepted0（synthetic開始時）を別々に数え、Diagramと辺一覧でも区別。自動分割・合成を行わない | #1031／#1126／#982 |
