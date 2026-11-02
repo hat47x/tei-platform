@@ -239,7 +239,64 @@ P(S1) = P(S2) = {id:L1, label:"A"}
 
 **優先**：既存#1119のP0-a/P0-bを維持し、#2598のTarget Binding正負と#1174の実対象負例を先行して一つのP1へ接合する。T-9/T-11は既存View InterpretationのFixtureを再利用する。T-12のOS/egressとT-13の実Txは専門Ownerの検証を使用し、ここで第二の認可・Sandbox・Transaction Engineを実装しない。
 
-## 9. 判断を残す点
+## 9. Semantic Contextから構成する汎用ActionとScript-firstな標準UI
+
+### 9.1 利用者Macroは既存Actionの組合せとして構成する
+
+[#2507 Semantic Context起点の汎用Action](https://github.com/hat47x/tei-platform/issues/2507)と[#988 Script/DSL first](https://github.com/hat47x/tei-platform/issues/988#issuecomment-6573241174)を、#2499の限定委任へ接続する。汎用ActionはX-TEA由来の固定機能タイプや画面ボタンの種類に束縛せず、**意味主体・関係・Function Data Context・業務操作の適用条件**から発見する。SmartDBはそのような汎用Data処理の標準Plugin候補であり、非業務領域への適用も圧力ケースとする。
+
+利用者Macroは、受理済みの業務Actionと標準PluginをScript/DSLで組み合わせ、現在のContextと手動・イベント・予約などの起動契機へ結び付ける**利用形態**として扱う。固有のMacro実行権限エンジンを独立させる必要性は現時点で示されていない。
+
+- **Actionの適用条件**：#2506/#2507のSubject・Relation Role・粒度・取得範囲/完全性・状態・Type/Unit/時点・必要Service Contractを参照する。Actionが発見可能であることは実行許可を意味しない。
+- **Script/DSL**：#988のSource/Parse/Resolve/Inspectを利用する。テキストを正本とするScriptと、構造化Sourceへ埋め込むScriptの双方を扱う。全種類を一つのMacro ASTやノード表現へ強制変換しない。
+- **UI**：Studioの標準テキスト・プロパティ・表・ツリー・参照・依存グラフ・差分・PreviewをSourceに対する派生投影として使う（#1124/#1824）。生成アプリ側は#997のRenderer/UI Kitと標準Action Bindingで表示する。専用UIは既存の標準構成で満たせない具体的利用価値を実証してから選択できる。
+- **実行権限と結果**：発行Grant（#2499）、現在Host/Provider AuthorityとOwner Effect（#1174/#1129）、実Load版（#943/#2390）、履歴と開示（#2504/#2516）は、UIの配置や表示規則とは別に確認する。
+
+### 9.2 活性と表示は短い式で表せる
+
+次は**説明のための疑似Scriptであり、正式なDSL構文ではない**。
+
+~~~text
+visible(discountField) = customer.type == "corporate"
+enabled(submitAction) = order.valid && !interaction.busy
+offer(recalculateAction) = context.grain == "aggregate" && measure.defined
+~~~
+
+表示や活性を決める式は、型・依存・Context Instanceと選択epoch・NULL/未取得・意味版・Rule変更に従って評価する。§enabled=true§でも実行Grantが失効していればEffectは拒否される。§enabled=false§はUI側の状態であり、業務Serviceの現在認可や外部Consumerの実行資格を直接書き換えるものではない。Actionの候補提示・起動・認可・確定・開示を一つの真偽値へ丸めない。
+
+### 9.3 標準データ構造とSource編集の往復
+
+新DSL/Operator Pluginがsymbol/source span/semantic ID、入力依存、値域・Context、Effectの既知/未知、diagnosticを共通inspectへ渡せる場合、Studioの標準UIから参照・検索・説明できるか検証する。未知DSLでもtext/既知metadata/unknown diagnosticを表示し、意味や副作用を捏造しない。
+
+Source span/意味ID/版への逆写像が一意な標準UI編集は、型付き変更提案→Preview→既存Acceptance→再Parse/再投影へ接続する。Macro展開後の派生ノード、複数Source span、古い版の同形ノードではread-onlyと原SourceへのNavigateを提供する。ノード位置やフォームの表示状態をScriptの第二正本にしない。
+
+これにより、新たな意味PluginやDSLを追加するたびにStudio専用画面を改造する依存を抑えられる。一方、任意の未知言語を完全解析できること、実Targetに安全に実行できることまでを無条件には保証しない。
+
+### 9.4 提示と実行の資格を局面ごとに評価する
+
+| 局面 | 必要な証拠 | 成立すること |
+| --- | --- | --- |
+| Action発見 | Semantic Context/Required Data Shape、Patternの意味条件 | このContextで利用候補となる |
+| 提示 | Consumerへの開示範囲、UI Placement、Contextの現在状態 | 利用者へ何を表示できるか |
+| 起動要求 | typed Intent、Subject/Relation Role、現在epoch、必要なSource Evidence | 誰が何をどの対象に要求したか |
+| 権限付き実行 | 現在のIssuer/Grant/Policy、Host、実Load Provider、実Payload対象 | どこまでの作用を許可するか |
+| Effect/説明 | Owner実Commit/Receipt・独立Read・Result版と閲覧権限 | 実際の効果と表示可能な結果 |
+
+表示が同じでも実効権限が違う場合、逆にUIで見えないFieldがあっても限定Actionを正当に実行できる場合を、両方試験する。SmartDBや組織用Action、専門領域Pluginにも同じ契約を適用できるかを比較する。
+
+### 9.5 新しい横断試験（T-14〜T-18、全て未実行）
+
+| ケース | 正負例・観測 | 既存Owner |
+| --- | --- | --- |
+| **T-14 同一Action複数Consumer** | 同じL1限定PATCHをCUI/標準表UI/利用者Macroに結び付け、表示位置は違っても対象・業務Action・Owner効果が同一に保たれるか | #2506/#2507、#997/#2502、#2598/#1174 |
+| **T-15 活性表示と実認可** | UIで§enabled=true§でもGrant失効時に実Effect拒否。UIで§enabled=false§が別Hostからの適法な起動を無条件に消さない | #988/#1124、#2499/#1174 |
+| **T-16 新DSL Pluginの標準UI投影** | 新しい構文を追加しても標準inspect/Tree/Property/Diffが機能し、未知Effectはunknownと表示する | #988/#1124/#1824、#2502 |
+| **T-17 Source編集の往復** | 一意Sourceへの編集はChange Proposalへ、展開/曖昧ノードはread-onlyとNavigationへ。別のScript正本を作らない | #988/#1124/#267、#2502 |
+| **T-18 起動契機と現在のContext** | 同じActionを手動/イベント/予約で利用し、旧epoch・LIVE対象集合変更・実Load版差・失効Grantを再照合する | #2502/#1130、#2582/#2499/#943/#1174 |
+
+**統合順**：先行する#1174実PG P0-aと#1129二Function P0-bは維持。P1では#2507のAction適用条件と#988のScript Inspectを#2502のHeadless CUIに接合し、T-14とT-15を既存#2598/#1174の対象整合試験へ委譲する。Studio標準UIとSource編集の実適合は後段のT-16/T-17で検証する。新しいMacro Executor、第二Authority、画面種別別専用DSLを始める契機にはしない。
+
+## 10. 判断を残す点
 
 - **業務Owner**：各Actionで「元の対象」「関係する対象」「全件の完了」をどのように定義するか。旧X-TEA `sales.order.submit`等の未受理マッピングは推測で補わない。
 - **組織Owner**：固定集合／実行時集合、代理の時点、合議、実行版固定と作用範囲での更新許容、既発行Grantの変更時再判定、結果閲覧をどのPolicyで扱うか。
@@ -251,4 +308,4 @@ P(S1) = P(S2) = {id:L1, label:"A"}
 
 **確認できたこと**：固定mainの既存型・RequestHash・通常Request生成・試験DDLのデータ解釈を静的に確認した。既存IssueにはT-1の具体的な未実行DB負例、Effect replayとResult再投影の未実行負例、EKI出力接続の静的所見がある。
 
-**未実行・未採用**：本書のT-1〜8の実行、信頼済みIssuer/実Grant、利用者Macro実ロード、PostgreSQL負例、Linux/WindowsでのOS隔離、外部EKIの同一Attempt納品、複数Target受入、業務意味の正式受理。新しいCore kind、Grant/Receipt schema、専用Host、共通Workflow Engine、仕様やADRの採用を本書から確定しない。
+**未実行・未採用**：本書のT-1〜18の実行、信頼済みIssuer/実Grant、利用者Macro実ロード、PostgreSQL負例、Linux/WindowsでのOS隔離、外部EKIの同一Attempt納品、複数Target受入、業務意味の正式受理。新しいCore kind、Grant/Receipt schema、専用Host、共通Workflow Engine、仕様やADRの採用を本書から確定しない。
