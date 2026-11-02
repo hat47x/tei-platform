@@ -56,9 +56,9 @@ F0→F1→S1の**同じBの条件**を比較する。変更を意図したconsum
 
 **A. Sourceのみ・表示のみ変更**：Markdown表→chain等の表記置換は、Authoring/Source引用を更新し、意味/Role/Operator版/入力閉包が等しいと確認できる計算だけ再利用候補。SHOのSource位置とレビュー資格は別。#2625の23件は限定した独立Python合成であり製品ParserのPASSではない。
 
-**B. 出力に現れないRule/Query依存の変更**：表示`amount=600`のまま、隠れた`credit_limit`が700→500になればValidationは再評価。SQLでも`WHERE`、`ORDER BY`、相関/外側参照がOutputField列に現れない場合がある（[Draft #2634 QX-27](https://github.com/hat47x/tei-platform/pull/2634)は実Go候補への特性試験だが新テスト結果は未確認）。**出力Field集合だけを依存閉包とみなさない**。#2624の表示/Rule footprintは独立合成Referenceであり、Providerの実取得は#2628へ。
+**B. 出力に現れないRule/Query依存の変更**：表示`amount=600`のまま、隠れた`credit_limit`が700→500になればValidationは再評価。SQLでも`WHERE`、`ORDER BY`、相関/外側参照がOutputField列に現れない場合がある（[Draft #2634 QX-27](https://github.com/hat47x/tei-platform/pull/2634)は合成analyzer入力で実Go DerivedIRを特性記述し、新HEAD `3dfc140` のCIに成功。ただしSQLGlot Worker/実DBの配線は未検証）。**出力Field集合だけを依存閉包とみなさない**。#2624の表示/Rule footprintは独立合成Referenceであり、Providerの実取得は#2628へ。
 
-**C. 生成物内部整合と実Consumer必要集合**：Generic Manifestが`Complete`でも期待memberが欠落し得る。[Draft #2633](https://github.com/hat47x/tei-platform/pull/2633)の6つのGo特性テストは候補PR #2587上の検査限界を扱う。実行・CI確認前に製品の検証済み不具合と呼ばない。公開時の世代混在・Manifest→relative path→byte→Readerは#2604、Consumer相対必要Kind/SubjectはDraft #2630で独立に検査する。
+**C. 生成物内部整合と実Consumer必要集合**：Generic Manifestが`Complete`でも期待memberが欠落し得る。[PR #2587](https://github.com/hat47x/tei-platform/pull/2587)は2026-11-02 14:08 UTCにmainへ統合。そこから分離した[Draft #2633](https://github.com/hat47x/tei-platform/pull/2633)の6つのGo特性テストは検査限界の候補を扱い、PR起票時の記録では新テストの実行・CIは未確認。**mainへのmergeだけではConsumer相対のExpectedMember・実Readの完成は証明しない**。公開時の世代混在・Manifest→relative path→byte→Readerは#2604、Consumer相対必要Kind/SubjectはDraft #2630で独立に検査する。
 
 **D. 異Provider・データClaimの再利用**：同じSnapshot文字列、表示値、Semantic Subjectだけでは同一Cohortを確定できない。#2627の32件の独立Go合成とCI成功は局所証拠。部分Read・absent・NULL・bag・Scope・Row identityを比較し、実DBによる共同Snapshot保証がない場合は当該Claimをunknownとする。Buildキャッシュの再利用と業務Data Resultの再取得は別の仕事として計上する。
 
@@ -110,3 +110,75 @@ J1は常にJ2より速いとは仮定しない。J0の見かけの高速化は�
 **Owner未決**：再利用記録を将来どの正式Contractへ置くか、Nodeの`reused`表現が必要か、共同資格の自動化範囲、OS/外部Targetへ要求する実消費入力Witness、公開方式、性能上の採用目標。いずれも本書の採用により自動決定しない。
 
 **本書で実行していないこと**：新Go/Python/Java/SQL/SHOのF0/F1/S1/S2試験、CI、実増分skip、外部DB/Hostの動作、速度測定、正式API・Schema/ADRの採用、Owner業務意味受理。既存の独立合成テスト成功は対応Issue/PRにのみ帰属する。
+
+## 9. 最初のP1反証バッテリー：依存の種類とOracleの根拠を分ける
+
+**位置づけ**：以下は既存IB-07/09/11/12/16/19、S2、J0/J1/J2へ割り当てるための**公開合成Input/Expectedの案**。IB番号を増設せず、参照実装の現状とは別の独立した期待値を**実行前に**固定する。ここに記載したこと自体はTest RUNではない。
+
+### 9.1 単一の「値Lineage」だけでは再利用条件を決められない
+
+Query／Ruleの依存を、利用目的に応じ最低限次の観点へ分けて観測する。正式な新Edge型を提案するものではない。
+
+| 依存観点 | Sourceが変わったときに影響するもの | 最小対照 |
+| --- | --- | --- |
+| **値** | 返却する値の算出 | SELECTの式、単位・丸め、NULLとmissing |
+| **行成立** | 行を返すかどうか | WHERE/EXISTS/NOT EXISTS、非表示Rule、相関条件 |
+| **多重度・粒度** | 行の件数・Identity・集計分母 | JOIN fanout、GROUP BY、bag対set |
+| **順序・選抜** | 上位N件、順位、順序付きWindow | 非出力ORDER BY列、LIMIT/TOP-N |
+| **完全性・時点** | 不存在・合計・共同Snapshotの主張可能性 | 部分取得、Provider cohort、遅延修正・retract |
+| **資格・公開** | 同じ結果を再取得・提示・実行できるか | Host Grant、実Readと開示、公開世代 |
+
+例：`SELECT id WHERE secret_score>50`と`...>70`は、出力列`id`とその直接Value Inputsが同じでも、返される**行集合**は違い得る。[Draft #2634](https://github.com/hat47x/tei-platform/pull/2634)のGo QX-27はSynthetic Analyzerの非出力依存を調べる局所証拠であり、`Lowering=full`から入力閉包の網羅を推定しない。[#2387](https://github.com/hat47x/tei-platform/issues/2387)のQX-23/24/25は実SQLの意味差と読取範囲のOwner。生成IR・物理Provider Read・Consumer Egressを同一レベルの「依存有り」証拠へ潰さない。
+
+| Probe | 事前固定する入力・変更 | 独立Expectedと誤再利用 |
+| --- | --- | --- |
+| **QP-01 行成立** | 1行`{id:A, secret_score:60}`、WHERE閾値`>50`→`>70` | 前=[A]／後=[]。出力列やValue Lineage不変によるskipは誤り |
+| **QP-02 多重度** | 親A 1行、子はAを参照する2行。INNER JOINとEXISTSを同じ表示列`parent.id`へ投影 | bag保持ならJOIN=[A,A]、EXISTS=[A]。SQLを構文正規化しただけで同値・同件数としない |
+| **QP-03 順序・TOP1** | A rank=9、B rank=8。A rankだけ7へ変更し`ORDER BY rank DESC LIMIT 1` | 前=A／後=B。表示列`id`のValue Inputsだけでは影響判定不可 |
+| **QP-04 不存在・部分取得** | 子の実観測は空だが`complete=false`、NOT EXISTSを要求 | 「子が存在しない」ではなくClaim不成立／unknown。Providerの全件要求と実取得完全性は別 |
+| **QP-05 Oracle相関** | Exact decimal +1.005、scale=2、half-evenの独立Expectedは1.00、half-up候補は1.01 | 候補とExpectedを同じ誤ったhalf-up処理で生成すれば見掛けPASS。符号対称MR単独も誤候補を検出しない |
+| **QP-06 Store複合破損** | 保存`source`が期待digestと異なり、`receipt.json`も欠落 | repair/reuseを拒否し旧byte/欠落を保持。単なるcache MISSとして同keyへ書き戻さない |
+| **QP-07 Grant時間差** | Provider Read前はGrant有効、Read後に失効してConsumerへ返す直前 | 現在権限の確認を必要とするClaimは拒否。pre/post二地点検査もABA・実外部egressの一般保証ではない |
+
+QP-01〜04の`SELECT`等は説明用の**合成データと独立Expected**であり、実SQLGlot Worker／実DBでのPASSではない。QP-05は[#2514 TAO-01〜04](https://github.com/hat47x/tei-platform/issues/2514)のCandidate/Expected共有由来問題を再利用。QP-07は[Draft #2637](https://github.com/hat47x/tei-platform/pull/2637)のD2 pre/post再確認を参照するが、製品での実Concurrent失効・外部送信の保証には拡張しない。
+
+### 9.2 F1との一致は独立Oracleではない
+
+F1（full B）とS1（selective B）が同一の誤ったGenerator／誤ったOperator／共有Expectedを使用すれば、両者が一致しても同じ誤りを繰り返した可能性が残る。
+
+P1の**二つの合格軸**を分ける。
+
+1. **再現一致**：F1とS1が、対象Claim/Consumerに必要な出力・member・実読取byteで同等（比較対象と許容差を先に固定）。
+2. **独立の正しさ**：F1もS1も、事前に別由来で固定したExpected/判別用反例を満たす。OracleのSource/Role/Operator/生成Prompt/Tool出力などがCandidateと共有される場合は`shared-origin/unknown`とし、**Agentの数やモデル名を独立Oracle数に数えない**（[#1445 H8-P15](https://github.com/hat47x/tei-platform/issues/1445)）。
+
+Metamorphic Relationは補助的な判別試験。関係PASSを独立Expected PASSへ昇格させない。holdoutの秘匿ExpectedをCandidate生成側へ公開しない。Oracle根拠が未確認でも実Byteの保管・検査は可能だが、Claimの意味適合は`unknown`とする。
+
+### 9.3 Store拒否と明示移行をcache MISSにまとめない
+
+[#2600の破損/移行差分](https://github.com/hat47x/tei-platform/issues/2600#issuecomment-6579585273)の責務を引き継ぎ、QP-06に以下の観測を追加する。
+
+| 既存Storeの観測 | 今回の扱い |
+| --- | --- |
+| 4ファイル読取り・digest・provenanceが一致 | Store内部整合のみ。Evidence・Consumer・現在資格を別に確認 |
+| Receiptだけが欠落し、3ファイル・提示Receiptの照合が成立 | **通常reuseではない**。隔離Storeの候補照合→Ownerが選ぶ明示移行経路 |
+| 保存source破損＋Receipt欠落 | 再利用・自動修復を拒否。旧ファイル不変 |
+| I/O拒否などでbyteを読めない | **integrity unknown**。破損断定・欠落断定や上書きはしない |
+| 事前検査後にbyte/path変更、またはWrite ACK不明 | 事前成功は後続成功を保証しない。再読取と競合・公開保証が別途必要 |
+
+`readOutcome/digestObserved/mutationAttempted/postRead/reuseDecision/migrationDecision`は実験票の列。Reference Store `Put`の局所`reused=true`を今回Build省略・現在選抜PASSへ流用しない。#2016はClosedで、既存#1105/#2604/#2595/#2514の責務を維持する。
+
+## 10. 開始条件・実験後の次判断
+
+**先に実行するセット**：既存GoのF0/F1/S1と、S2内のQP-01（行成立）、QP-06（複合破損）、QP-05（Oracle共有由来）の**三方向**。QP-02〜04・07は意味・Provider・現在Grantの各Ownerが持つ局所Fixtureを参照して、必要なClaimだけ段階的に増やす。三方向は全て同一のGo統合試験で動かす必要はない。**実際にどの工程を実行し、どの証拠を共有できるか**を一つの比較票で追う。
+
+**結果欄**：`fixed input revision; before/after dependency+selection scope; observed actual byte/unknown; artifact-member closure; current Consumer claim; full result; selective result; independent Expected+origin; joint-evidence status; current authority/disclosure; executed/reused reason; elapsed work+verification; fail/unknown/not-run`。比較元を揃えず局所の成功だけを合算しない。
+
+**判定ルール**：
+- F1≠S1（必要な意味結果）なら、その範囲のskipは不合格。F1=S1でも独立OracleがFAILなら両者不合格。
+- Evidenceが不足する場合は計算済みbyteを捨てる必要はないが、ClaimのPASS/発行/実行資格は主張しない。
+- Source/Store integrityがunknownの場合は、検証不能な過去物の再利用を保留し、既存安全手順による再取得・再実行と費用を記録。権限がない取得・再送はしない。
+- 反例で誤reuseが0、不要な失効と再資格化費用が数えられ、一定数のcold/warm反復測定ができた後にのみ、性能改善の主張を評価する。**先に採用閾値を固定するかは#2600/#2018 Owner判断**。
+
+**最新実装の位置づけ（2026-11-02 14:26 UTC照合）**：PR #2587はmainへ統合済みだが、全Consumerの必要member、公開世代、実Read/Disclosureの保証までは統合済みとしない。PR #2634は修正HEAD `3dfc140`のCI結果を確認する場合も**合成Analyzerを与える特性テスト**、PR #2633は独立Draft。PR #2642の署名側Source IndexはLoad時捕捉byteへ寄せたが、import/manifest束縛や原子的Snapshot、Build/Generatorの実消費byte一式を保証したわけではない。
+
+**本追補の状態**：GitHubのコード/Issue/PR読取に基づくP0/P1受入案。QP-01〜07の本件での実SQL/TEI/Go Selector/Store/Provider/Host実行、F0/F1/S1、性能比較、Owner受理は**NOT RUN／NOT ADOPTED**。新しいPipeline／Cache／Policy Engine／Oracle Engine／正式Core Schemaを採用しない。
