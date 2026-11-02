@@ -479,3 +479,24 @@ Markdown表、構造化Record、インデントDSL、Typed Graphviz、メソッ�
 - **#267 Owner判断**：原Functionの利用箇所Uと業務Actionの対応、完了述語の対象L・時間・Rule/外部工程、初回Result再生の義務を未受理と明示する。原モデルの未許諾固有内容を転載せず、合成Actionを正式意味へ昇格させない。
 
 **適用判断**：本節は既存[#1119 G0〜G4](https://github.com/hat47x/tei-platform/issues/1119)に必要な証拠の受渡し条件であり、新Gate、Host、Permission Engine、Evidence Registry、Receipt/Result Schema、共通Read-after-write実行器を増やさない。実Provider可視性・実DB・外部Host・SHO Consumer・Owner完了条件・実Target同等性は**NOT RUN / NOT ACCEPTED**。合成PASSを完全移植や実Provider E2Eへ合算しない。
+
+### 15.4 0件・複数Provider・変換結果でも「V成立＝B完了」としない（2026-11-03追加）
+
+§15.1のV（ある実ReadがそのCommitを含む）を、**Ownerの必要対象集合Lの完全性**や**複数Readの共同時点整合**へ無条件に拡張しない。既存[#2598 IB-N1〜06](https://github.com/hat47x/tei-platform/issues/2598#issuecomment-6585298131)、[#2582 QX-32](https://github.com/hat47x/tei-platform/issues/2582#issuecomment-6585309158)、[#2622 実SQLite列READ](https://github.com/hat47x/tei-platform/issues/2622#issuecomment-6585720562)の局所観測を**新しいEngineで模倣せず**、同一移植検収票へ受渡す。
+
+| 境界 | 判別すべき事実 | Owner完了Claimへの帰結 |
+| --- | --- | --- |
+| **空結果の母集団** | Read=空、Complete=true は、当該Provider/Predicate/Principal/Policy/Scope/時点での完全性にすぎない。RLS不可視行・未取得Tenant・否定Predicate・Relation Pathは別 | Owner対象L全体の不存在や「一度も割当なし」を推定しない。後者は§14の履歴窓被覆も必要 |
+| **保存後の空Read** | PrimaryにKがあり、Replicaは旧空結果、あるいは行がRLSで不可視であり得る。該当ReadにKを含むFenceが無い場合Vは未確立（IB-N1/3） | ACK-lossと旧Readから「未保存」「再作成可」を導かない。同一不変OperationID/RequestのLookup/Recoveryへ戻す |
+| **ABA** | 空→1件→空と無変更は値だけでは見分けられない（IB-N4/§14） | 現在不存在と歴史的Effectや「一度も存在しない」Claimを独立に扱う |
+| **二Providerのfractured read** | P1で旧Relation、P2で新属性を読むと、それぞれ個別のRead資格があっても同時の実業務世界に無い組を得られる。QX-32は実SQLiteで局所反例を観測済み | 各ReadのV/Completeを足して全体Bを証明しない。同時整合が必要なら共同Cut/再評価/適格な調停、不可ならunresolved |
+| **SQL/Query意味** | 基本Data ModelはTable/Field/Key/Relationの直接宣言。SQLは主としてLINQ型の変換記述で、TEI QueryとNative SQLを別解釈（[#2387補正](https://github.com/hat47x/tei-platform/issues/2387#issuecomment-6586014585)）。同じSQL byteでもSchema/Dialect、NATURAL JOINの暗黙列集合、非出力Predicate、JSON missing/nullが変わる | SQL byte/出力値一致から対象L・Join/Lineage・Grain・Rule意味同値へ飛躍しない。Sourceの元Syntax Sugar保存とOperator/Schema/Provider Pinを分離 |
+| **取得と開示** | Function Context明示MappingはD(display)/V(rule)/Q(predicate,sort,negative)/A(action)。実SQLite列READはStorage Row/Host Grantの証明ではない | 内部で秘密Predicateを読めてもConsumerへそのFieldや非公開Actionの存在を自動開示しない |
+
+**既存#1163同一Attempt票への追加列（Schema採用ではない）**：Query解釈／Schema・Dialect・Operator版／実Provider Route、Predicate・Relation・negative dependencyの母集団と実Read Scope、Result SliceのCompleteが意味する範囲、Owner対象Lとの包含・一致、各Readが含むCommit位置と共同Cutの有無、Path/Occurrence/Grain・Missing/NULL区別、Consumer用途・現Grantと実Reader出力。**各局所Go/SQLite/PythonのPASSを一本の製品実証に合算しない**。
+
+**実行順はP0を変更しない**。P0-a #1174は実PGの初回Commit不明後のK/独立O/Lookupを実証し、現行[#2664 Caller/Barrier](https://github.com/hat47x/tei-platform/pull/2664)を既存Producer候補として使う。ただしその合成Grant/試験DDL/CLI形driverは正式本番受理ではない。別[#2680 RR-P5 Go回帰](https://github.com/hat47x/tei-platform/pull/2680)は**既存Kを読むだけの再送/Lookup Tx終了故障**の局所回帰であり、実PG postcommit事例とは別。P0-b #1129/#1125は二Function同Rule・親最終Invariant・Owner対象L・手作業/Handoffを通して初めてBを審査する。P1では(A)因果位置と必要集合が証明できるRead、(B)旧Replica空ReadやRLS部分Read、(C)二Providerのfractured read、の3対照を#2582/#2622/#2598/#1163のOwnerへ渡す。
+
+**SHO・外部Targetへの移植**：原モデル→TEI統合モデルを意味正本とし、SQL/Markdownの元記法を勝手に展開形式へ書き戻さない。生成した.NET/Java/WASM LibraryとSHO設計書は同じ受理Meaningに帰属するが、実ロードbyte、Host Authority、Target別のNULL/精度/作用、Consumer Disclosure、Owner受理を別証拠として保つ。独自TEI Host、第二Canonical、共通Snapshot Registryや新Gateは追加しない。
+
+**資格**：上記は既存ローカル合成/SQLite/実Goの限定報告を同一Attemptへ接続する**設計・受渡し**であり、TEI本体→実PG→二Function→SHO/Consumer→Owner受理の縦断は **NOT RUN / NOT ACCEPTED**。
