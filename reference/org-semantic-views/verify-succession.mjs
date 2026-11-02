@@ -181,3 +181,105 @@ test('OC-16 validAt cut is not knownAt cut', () => {
   assert.deepEqual(ids(rowsAt('2027-06-30', R2)), ['A1', 'A2', 'A3', 'A4']);
   assert.deepEqual(ids(rowsAt(V, R1)), ['A1new', 'A2new', 'A3', 'A4']);
 });
+
+
+/* ORG-RC: in-flight Case responsibility is NOT an Org successor, Grant or Effect.
+ * Test-only policy flags and read witnesses: not accepted TEI business rules,
+ * not actual Provider reads, and not a transaction/Host test.
+ */
+const Q1 = 'Q1';
+const caseResponsibility = [
+  { id: 'QR-old', caseId: Q1, org: 'D1', validFrom: '2027-06-01', validTo: V, knownFrom: '2027-06-01', knownTo: null },
+  { id: 'QR-r1', caseId: Q1, org: 'D1a', validFrom: V, validTo: null, knownFrom: R1, knownTo: R2 },
+  { id: 'QR-r2', caseId: Q1, org: 'D1b', validFrom: V, validTo: null, knownFrom: R2, knownTo: null },
+];
+const caseRowsAt = (validAt, knownAt) => caseResponsibility.filter(
+  r => inWindow(validAt, r.validFrom, r.validTo) && inWindow(knownAt, r.knownFrom, r.knownTo)
+);
+const singleRule = Object.freeze({ revision: 'responsibility-r1', mode: 'single', acceptedInFixture: true });
+const jointRule = Object.freeze({ revision: 'responsibility-r2', mode: 'joint', acceptedInFixture: true });
+const closedCaseWitness = Object.freeze({ relationComplete: true, cohort: 'witnessed' });
+
+// Demonstration only. Existence of two conflicting assignments is a positive
+// witness even if a later Page is partial; a claim of zero requires closure.
+function coverage({ rule, rows, witness }) {
+  if (!rule?.acceptedInFixture) return { state: 'unresolved', reason: 'rule-not-accepted' };
+  if (!Array.isArray(rows) || !rows.every(x => x.caseId === Q1))
+    return { state: 'unresolved', reason: 'unqualified-case-scope' };
+  const owners = [...new Set(rows.map(x => x.org))];
+  if (rule.mode === 'single' && owners.length > 1)
+    return { state: 'violated', reason: 'multiple-owners-observed', owners };
+  if (!witness || witness.relationComplete !== true || witness.cohort !== 'witnessed')
+    return { state: 'unverified', reason: 'relation-collection-not-established' };
+  if (owners.length === 0) return { state: 'unassigned-for-scope', owners };
+  if (rule.mode === 'single' && owners.length === 1)
+    return { state: 'established-for-scope', owners };
+  if (rule.mode === 'joint' && owners.length === 2)
+    return { state: 'established-for-scope', owners };
+  return { state: 'unresolved', reason: 'policy-cardinality', owners };
+}
+function pendingCaseOwner({ mode, opened, current }) {
+  if (mode === 'freeze-on-application') return { state: 'candidate', owner: opened[0]?.org };
+  if (mode === 'resolve-on-approval') return { state: 'candidate', owner: current[0]?.org };
+  return { state: 'unresolved', reason: 'pending-case-policy-not-selected' };
+}
+function attemptedCommit({ checkedOwner, postOwner, hasAtomicFence }) {
+  if (!hasAtomicFence) return 'guarantee-unsupported';
+  return checkedOwner === postOwner ? 'candidate-only' : 'blocked-by-post-image';
+}
+function approvalCandidate({ subjectIsApplicant, grantCurrent, delegationScopeValid }) {
+  return (subjectIsApplicant || !grantCurrent || !delegationScopeValid) ? 'denied-in-fixture' : 'candidate-only';
+}
+function assessAllCases({ casePopulationComplete, assessedCases, expectedCases }) {
+  if (!casePopulationComplete) return 'unverified';
+  if (assessedCases !== expectedCases) return 'unverified';
+  return 'established-for-fixture-only';
+}
+
+test('RC-01 successor relation is not case migration without its own rule', () => {
+  assert.equal(source.successors.length, 2);
+  assert.equal(coverage({ rule: null, rows: [], witness: closedCaseWitness }).state, 'unresolved');
+});
+test('RC-02 explicit Q1 to D1a is only a responsibility claim for R1', () => {
+  assert.deepEqual(coverage({ rule: singleRule, rows: caseRowsAt(V, R1), witness: closedCaseWitness }),
+    { state: 'established-for-scope', owners: ['D1a'] });
+});
+test('RC-03 two witnessed owners violate the case-specific single-owner rule', () => {
+  const rows = [...caseRowsAt(V, R1), { id: 'QR-extra', caseId: Q1, org: 'D1b' }];
+  assert.equal(coverage({ rule: singleRule, rows, witness: { relationComplete: false, cohort: 'unknown' } }).state, 'violated');
+});
+test('RC-04 the same two owners fit the fixture joint-responsibility rule', () => {
+  const rows = [...caseRowsAt(V, R1), { id: 'QR-extra', caseId: Q1, org: 'D1b' }];
+  assert.deepEqual(coverage({ rule: jointRule, rows, witness: closedCaseWitness }),
+    { state: 'established-for-scope', owners: ['D1a', 'D1b'] });
+});
+test('RC-05 zero rows from partial or unknown cohort does not prove unassigned', () => {
+  assert.equal(coverage({ rule: singleRule, rows: [], witness: { relationComplete: false, cohort: 'witnessed' } }).state, 'unverified');
+  assert.equal(coverage({ rule: singleRule, rows: [], witness: closedCaseWitness }).state, 'unassigned-for-scope');
+});
+test('RC-06 pending-case freeze vs current resolution is an explicit policy choice', () => {
+  assert.equal(pendingCaseOwner({ mode: null, opened: caseRowsAt('2027-06-30', R1), current: caseRowsAt(V, R1) }).state, 'unresolved');
+  assert.equal(pendingCaseOwner({ mode: 'freeze-on-application', opened: caseRowsAt('2027-06-30', R1), current: caseRowsAt(V, R1) }).owner, 'D1');
+  assert.equal(pendingCaseOwner({ mode: 'resolve-on-approval', opened: caseRowsAt('2027-06-30', R1), current: caseRowsAt(V, R1) }).owner, 'D1a');
+});
+test('RC-07 R1 publication preserves its historical owner against R2 correction', () => {
+  const published = { revision: 'Q1-published-R1', validAt: V, knownAt: R1, owner: caseRowsAt(V, R1)[0].org };
+  assert.equal(published.owner, 'D1a');
+  assert.equal(caseRowsAt(V, R2)[0].org, 'D1b');
+  assert.notEqual(published.owner, caseRowsAt(V, R2)[0].org);
+});
+test('RC-08 checked owner is not a final-post-image invariant without fence', () => {
+  assert.equal(attemptedCommit({ checkedOwner: 'D1a', postOwner: 'D1b', hasAtomicFence: true }), 'blocked-by-post-image');
+  assert.equal(attemptedCommit({ checkedOwner: 'D1a', postOwner: 'D1b', hasAtomicFence: false }), 'guarantee-unsupported');
+  assert.equal(attemptedCommit({ checkedOwner: 'D1a', postOwner: 'D1a', hasAtomicFence: true }), 'candidate-only');
+});
+test('RC-09 a displayed approver candidate is neither SoD nor current Grant', () => {
+  assert.equal(approvalCandidate({ subjectIsApplicant: true, grantCurrent: true, delegationScopeValid: true }), 'denied-in-fixture');
+  assert.equal(approvalCandidate({ subjectIsApplicant: false, grantCurrent: false, delegationScopeValid: true }), 'denied-in-fixture');
+  assert.equal(approvalCandidate({ subjectIsApplicant: false, grantCurrent: true, delegationScopeValid: true }), 'candidate-only');
+});
+test('RC-10 an incomplete population cannot support an all-cases transferred claim', () => {
+  assert.equal(assessAllCases({ casePopulationComplete: false, assessedCases: 3, expectedCases: 3 }), 'unverified');
+  assert.equal(assessAllCases({ casePopulationComplete: true, assessedCases: 2, expectedCases: 3 }), 'unverified');
+  assert.equal(assessAllCases({ casePopulationComplete: true, assessedCases: 3, expectedCases: 3 }), 'established-for-fixture-only');
+});
