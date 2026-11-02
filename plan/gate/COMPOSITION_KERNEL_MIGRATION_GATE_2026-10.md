@@ -193,7 +193,7 @@ G3のv2公開判定に加える最小の**反証ケース**を既存Ownerへ割�
 | **B：保護Web Action→Service Carrier** | `TestCanonicalQuoteActionUsesHostOwnedGenerationServiceRoute`で合成Scope、Generation、環境不一致・失効拒否と実行回数を固定 | `order_entry.preview_order_quote`をAの`ledger.update.sales.order`と同一Contract/業務Actionとして接合しない。正式current Source・実Provider未確認 |
 | **C：Provider Read→Consumer Result** | `TestD2DriverRechecksAuthorityAfterCompleteSourceRead`でProvider途中失効後の空戻り・拒否を確認 | BのService実装やHTTP送出の原子的開示、実DB Snapshot/Commitをこの合成D2試験で証明しない |
 
-最初に**同じ固定checkoutで局所試験を別々に実行**し、対象Git HEAD、前後のclean、Toolchain、Source実byte/Source Index、WorldFingerprint/ModelRevision・Ruleを保存する。特に`tei operations`と`tei artifacts`は**別プロセス・別Load**であり、同一パスだけからSource Snapshotの同一性は導けない。出力の比較と独立Expectedを分離する。
+最初に**同じ固定checkoutで局所試験を別々に実行**し、対象Git HEAD、前後のclean、Toolchain、Source実byte/Source Index、WorldFingerprint/ModelRevision・Ruleを保存する。特に`tei operations`と`tei artifacts`は**別プロセス・別Load**であり、同一パスだけからSource Snapshotの同一性は導けない。さらに現mainの`cmd/tei/main.go`は両コマンドの分岐前に`loadWorld`を呼び、分岐後の`operations.SurfaceWorkspace`／`artifact.RenderWorkspace`でもWorkspaceを読み込むため、**各CLI呼出し内にも二度のLoadがある**。この事実は静的な実装所見であり、実際に異なるSourceを使ったという観測ではない。今後、不要な二重Loadの解消と、実際に出力された内容・Source Indexの束縛を別途検証する。出力の比較と独立Expectedを分離する。
 
 ```sh
 git rev-parse HEAD
@@ -223,6 +223,21 @@ git rev-parse HEAD
 | **既存Host/外部Consumer** | 現在Grant/Service Acceptance、実ロードArtifact/Provider、呼出し・結果の独立Oracle | TEI CLIが使えたことによるJava/.NET/Wasm製品互換 |
 
 **最小の横断負例 HS-1〜3（本書ではNOT RUN）**：HS-1はDiscovery時のCLI版AとInvoke時の版Bを取り違えて実行不可なコマンドを勧める。HS-2はread-onlyな`artifacts`を`-out`付きで実行し、ファイル書込みが発生したのに無副作用と表示する。HS-3は同じRead結果でも内部raw/開示禁止FieldをSkillやHarnessへ渡す、または先に得たGrant失効後の現在結果とする。いずれも新Agent Runtimeや共通Hostを作らず、既存CLI/Skill/Hostの担当ごとの独立観測で否定する。**Skill案内成功を外部Library Consumerの可搬性合格へ昇格させない。**
+
+### 4.3 空結果・否定依存・時間差を同じRead-only Consumerへ接続する
+
+他チャットからの横断成果（[#2582](https://github.com/hat47x/tei-platform/issues/2582)、[#2586](https://github.com/hat47x/tei-platform/issues/2586)、[#2516](https://github.com/hat47x/tei-platform/issues/2516)、[#2619](https://github.com/hat47x/tei-platform/issues/2619)）を、**E2のConsumer Claimの判定条件**として接合する。新Negative Cache/Proof Engineや第二のQuery/Policy正本は作らない。ここでの各ケースは**次段の試験入力案であり、PR #2660ではNOT RUN**。
+
+| 変化・対照 | 最低限保持する依存と独立Expected | 合格主張の上限 |
+| --- | --- | --- |
+| **RC-N1：完全な0件と部分取得0件** | 対象Subject/Relation occurrence、Predicate、取得Scope、Provider/Route、Snapshot、Rowset/Field完全性、否定の独立Oracle | **完全な母集団についてその条件・時点で0件**とは言えても、別Scopeや未来を含む「存在しない」とは言わない。部分取得の0件では不存在Claimを保留 |
+| **RC-N2：0→1→0、表示値が同じABA** | 中間変更、Provider cohort、Result Slice epoch、実Source/Rule/Authorityの時点、どこまで変更を観測したか | 最終JSONと初回JSONが同じでも「何も変わらなかった」の証拠ではない。ただし中間変更を観測できないProviderでは観測事実を捏造しない |
+| **RC-N3：非出力のRule・Predicate/WHERE/ORDERが変わる** | `Query→Function Context→Claim`の必要入力・否定依存、実取得とConsumer向け表示の差 | 出力列・集計値・Operation IDのbyte一致だけで旧Claimの現在適用資格を再利用しない。無関係なClaimを一律失効させない |
+| **RC-N4：Sourceの移動、Grant失効、Harness送出** | World/Meaning FingerprintとSource Index/Trace locator、選択したReadの現在Host Grant、Tool候補/診断/Renderer/実Egressを別時点で観測 | 実TEI CLIのSource再配置Reference [#2626](https://github.com/hat47x/tei-platform/pull/2626)が局所PASSでも、SHO引用自動復権・外部AIの現在開示許可は未証明 |
+
+初回は同じ固定Fixture/Consumerの**閉じたread-only Query**で、正常0件・既知の部分取得・追加/削除によるABA・別Scopeを対照する。必要なSource/Predicate/Route/時点が取れなければ該当Claimだけ`unknown`とし、実際に許された0件を一律エラーに変えない。過去Evidenceの再利用（#2600）と、今取得しなおすべき業務Data/Disclosure（#2582/#2516）は別の判定。#2514の独立Oracleで正負両方を照合し、#2018には必要な再取得量・検証負担を計測して渡す。
+
+**E3との接続境界**：[#2664](https://github.com/hat47x/tei-platform/pull/2664)は、`effectcommit.Runner`をWeb以外のCallerへ渡す`submit`参照と、CLI形の**プロセス内試験Driver**のDraft候補。報告されている使い捨てPostgreSQLでの結果・再照会・権限版の試験は、実DBを使った限定的な局所証拠であり、本書のE2 Consumerと**同じOperation/Source/Grant/Provider/Request**を通った証拠ではない。CLI形Driverを製品の`tei`コマンドと呼ばず、合成Grantを実発行済み権限に昇格させない。E2の完了前でも#1174担当で独立実験は進められるが、E3を一体合格と判定しない。
 
 AI-first/Headless-firstの実施順序（外部要求の机上評価→既存機構の最小結線→CUI/標準Plugin並行→headless縦断→必要なGUI）は全体計画Draft [#2492](https://github.com/hat47x/tei-platform/pull/2492)を参照し、本Gateで独立の新開発プロセスを発明しない。DSH/TAI/SEI/SHO等への投影では、準備・送付・生成・保存・独立確認の各事実がどこまで観測されたかを表示する。Tool呼出し、構文適合、バイト一致、AIの説明文を独立OracleやOwner受理の代用にしない。
 
