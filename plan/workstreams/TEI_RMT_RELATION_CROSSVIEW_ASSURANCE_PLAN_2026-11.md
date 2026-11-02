@@ -87,7 +87,17 @@ P1の最初のHeadless確認では、固定した同一配布版に属するXEA[
 
 これはRMT専用の**合成検証計画**である。現行`internal/xeadsource/crossview.go`の`BuildCrossViewProjection`がXEAD-onlyである事実は変わらず、XEAD↔XEAFのG-V列挙・候補集合増加・Current Owner判定は**製品機能として未実証**。実Work H2/J5、旧GUI、正式Owner受理・公開/配布・外部Harness実消費もNOT RUN。
 
-### Case別に失敗原因と検証資格を固定する（本表の22統合ケースは未実行）
+### 2026-11-02 追加：Relationを利用するClaimの有効期間と、生成成果物の実消費を分離する
+
+**動的依存（#2582/#2586）**：参照Relationを確認しただけでは、Functionがその後も同じRule入力を読んでいるとは限らない。表示を変えない `Order O1.amount=600` のまま `customerRef=C1→C2` が起きると、Ruleが消費する `Account.creditLimit` の対象はA1→A2へ切り替わり得る。これを単なるField値の差分やGraphの表示差として扱わず、**実際に評価したRelation occurrence→Binding→Predicate/Collection→Result Slice→Rule/Operator→Claim**の同一Run証拠を照合する。0件の`NOT EXISTS`は、既存RowIDがないことと依存がないことを混同しない。Predicate/Scope・Provider Read Cohort・列挙完全性・新規加入の変更観測を別に置き、`0件complete`と`0件partial`を別判定する。合成Python 12/12の報告は[#2582](https://github.com/hat47x/tei-platform/issues/2582#issuecomment-6579762087)の局所実績であり、本書やTEIで再実行したものではない。
+
+**依存閉包と変更窓は独立**：採用されたRuleで必要なRelation/Value/Predicate/Role全てを把握していても、前回Readから現時点までのChange Witnessに欠落・Lag・Provider毎の未被覆区間があれば、旧Claimの現在資格は保持できない。[#1125のCWT](https://github.com/hat47x/tei-platform/issues/1125#issuecomment-6579870075)は既存Ownerの証拠であり、RMTのSource Fact・`Source SHA`・`Meaning Revision`や`Materialized Slice`から、実変更通知の完全性を自動推定しない。現行Valueが元へ戻ったABAでも「現在値一致」と「その間不変」は異なる。用途別にread-only表示、Rule Claim、Operation/EffectとSHO説明の失効範囲を区別する。
+
+**生成・納品（#2604/#2630）**：一体モデルをAcceptedとした後にも、生成したLibrary・SHO文書・Manifestが同版で揃うこと、公開が途中で壊れないこと、各Consumerが必要集合を**実際に読んだこと**は別の事実。main統合済み[#2587](https://github.com/hat47x/tei-platform/pull/2587)の`tei artifacts -workspace reference/standard-crud/workspace -application ledger -out <fresh-dir>`は現行CLIの観測入口として利用できるが、そのファイル書き出し経路は個別ファイル→Manifest順のため、原子的な一式公開・Readerへの実同一世代到達まで示すものではない。書式だけの変更、Type/Ruleの意味変更、Producerの変更、公開ファイル欠損、Consumer側の旧世代読取を、用途別の再生成・再評価・再配布で区別する。検証責務は[#2604](https://github.com/hat47x/tei-platform/issues/2604)/[#2630](https://github.com/hat47x/tei-platform/pull/2630)/[#2482](https://github.com/hat47x/tei-platform/issues/2482)へ渡し、本書で第二のPublisher/Oracleを作らない。
+
+この接続は既存Issueの**試験入力と引渡し条件**であり、正式Reactive Engine、共通Changefeed/Host、生成物の新しい権限Schemaを導入しない。TEIの実Query・Provider変更追跡・Artifact Reader・SHOレビュー・Owner受理は**未実行**。
+
+### Case別に失敗原因と検証資格を固定する（本表の25統合ケースは未実行）
 
 | ケース | 入力・判別条件 | Headlessで照合する期待／禁止事項 | 担当 |
 | --- | --- | --- | --- |
@@ -112,6 +122,9 @@ P1の最初のHeadless確認では、固定した同一配布版に属するXEA[
 | **RV-O3** | 二memberの独立Kで`SortKey=010/020`を固定しXML子出現順だけ反転。別対照で正常・無依存Jを追加。文字列`"2"/"10"`の対照は別fixtureに固定 | 独立Expectedは明示SortKeyで確定するKのordered member/局所readinessのみ不変とする。SourceOrdinal/raw XML/digest、公開総数・Tokenは変化可能と明示。無関係J追加でKの局所結果が変わるMutant、XML順をSortKey順に取り違えるMutantを判別し、旧Source版の判定を新Sourceへ自動再利用しない | #950／#1126／#2514 |
 | **RV-D2** | 一つのRelation pathを持つFunctionで表示Field/Graphが同じ。非表示Rule input又はEXISTS条件の値・Path Role・評価Scopeだけ変え、全件と部分Pageを対照 | Display MappingだけでRule/Query/Action Claimを判定しない。Root/Relation Path/Field/Scope/Grain、表示D・選択S・検証V・Action Aの依存由来を区別。部分Pageから不存在/全件SUM/全称Validationを確定しない。非表示入力が変わるとRule結果が変わる独立Expectedを用意し、Read Grantは自動拡大しない | #1126／#2506／#2507／#2586 |
 | **RV-D3** | 同一Mapping・同一Result Slice・同一画面で、Provider P1は宣言されたRole/Fieldだけ、P2は追加の秘密Field/未宣言Relationも実読取してから同じ結果を返す（合成） | 同じOutput/Rule結果・Provider応答成功を物理Readの同一性、取得権限、開示許可に昇格しない。Declared Read／Actual Provider Read／Context Materialized Slice／Consumer Disclosedを別Evidenceで照合し、必要な補助Readは許可・目的条件で個別判断。現Source診断やCrossViewから実Provider read/OS隔離実証を主張しない | #2506／#2622／#2611／#2516／#2514 |
+| **RV-D4** | O1表示amount=600不変でcustomerRef C1→C2、Rule入力A1.limit700→A2.limit500、別対照で有効Hold0件→新規1件、0件complete/partialを変える | Relation pathの元IDではなく再束縛先・実評価Scope・Predicate・Read Cohort・Rule Claimを再観測。既存行IDのない否定依存を保持し、表示の継続とRule/Actionの失効を別判定 | #2582／#2586／#2506／#2514 |
+| **RV-D5** | Relation/Rule依存閉包は固定。ただし変更通知WindowにGap/Lag、又はC1→C2→C1のABAを注入する | 実Change Witnessの被覆がない場合、Value再一致や閉じた依存集合だけでcurrent/reuse許可を出さない。現時点のRead再評価と「期間を通じて不変」を別Claimにする | #1125／#2582／#2622／#1708 |
+| **RV-P1** | 同じAcceptedモデルからLibrary／SHO document／Manifestを別世代で生成し、(A)file byteは揃うがConsumer不足member、(B)旧file残存、(C)途中manifest切替、(D)正常一式pinを対照 | Generator internally consistent／publish generation atomicity／ExpectedMembers(Consumer)充足／実Reader consumed bytesを別々に照合。意味・版が同じだけで納品済み、読取済み、実行可能を宣言しない | #2482／#2604／#2630／SHO／#1803 |
 | **RV-H2** | 実Workの同一生成版ZIP・Probe・Producer・Builder・Candidate・Ledger・receipt | 既存2checkerの実exit／原byteに加え、**一つのSource node→実TargetのJ5参照実解決**を確認。個別未解決は保留し、独立PASSを結合PASSと呼ばない | #1121／#Work／#3／private #4 |
 
 `RV-*` は本節の比較票内の仮ラベルであり、#2505の実装済みRV試験番号／新たな共通Schema・Gate・APIではない。期待は実行済みPASSではなく反証可能な受入候補である。原実体の利用が必要なケースはprivate固定版と使い捨て環境で検査し、原本変更・内容公開を行わない。
