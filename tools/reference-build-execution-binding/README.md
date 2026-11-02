@@ -270,6 +270,26 @@ Build graphのedgeは順序だけを表すものではありません。`verifyB
 
 これにより「graph上は依存しているが、実際のconsumerが別artifactを使った」という偽のprovenanceを拒否します。stage0 seedも同じinput bindingを通し、stage1が実際にそのexact seed builderを使うことをcross-checkします。
 
+### node failure / blocked / partial output
+
+Build graphのsemantic identityと、ある実行のnode状態を分けます。
+
+```text
+BuildGraph
+  semantic DAG identity
+
+BuildGraphExecution
+  graph fingerprint
+  node observation: succeeded / failed / blocked
+```
+
+- 実行観測はgraphの全nodeにちょうど1件必要です。未知node・重複・欠落は拒否します。
+- producerがfailedまたはblockedなら、consumerは`blocked`でなければなりません。producer失敗後の`success`は拒否します。
+- 全producerがsucceededなのに`blocked`と報告することも拒否します。
+- `failed`は理由を必須とし、`succeeded`/`blocked`へ失敗理由を付けません。
+- `pinBuildGraphExecution`は全nodeがsucceededのときだけpin可能なnode idを返します。1件でもfailed/blockedなら、部分出力をcanonicalとしてpinせずエラーにします。
+- execution statusは`BuildGraph`のfingerprintを変えません。scheduler順・並列実行・成否はsemantic graph identityの外です。
+
 ## Subject bindingはBuildExecutionResultへ束縛する
 
 `ExecutionPlanFingerprint`と`ArtifactSetFingerprint`を別々に保持するだけでは、別々のbuild runから得たplanとartifact setを後から組み合わせる余地があります。
