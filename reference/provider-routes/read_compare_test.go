@@ -58,13 +58,13 @@ func TestRC06JoinFanoutIsABagNotASet(t *testing.T) {
 	b.Rows = b.Rows[:1]
 	expectReadStatus(t, "contradicted", a, b, validCohort())
 }
-func TestRC07NullIsNotMissing(t *testing.T) {
+func TestRC07NullVersusUnobservedIsUnresolved(t *testing.T) {
 	a, b := readFixture()
 	a.Rows[0].Presence = "null"
 	a.Rows[0].Value = ""
 	b.Rows[0].Presence = "absent"
 	b.Rows[0].Value = ""
-	expectReadStatus(t, "contradicted", a, b, validCohort())
+	expectReadStatus(t, "not_established", a, b, validCohort())
 }
 func TestRC08DifferentGrainNotComparable(t *testing.T) {
 	a, b := readFixture()
@@ -122,4 +122,25 @@ func TestRC17RouteScopeAndReadScopeDisagree(t *testing.T) {
 	a, b := readFixture()
 	b.Route.Scope = "tenant-B"
 	expectReadStatus(t, "not_established", a, b, validCohort())
+}
+
+func TestRC18BothUnobservedValuesCannotEstablishEquivalence(t *testing.T) {
+	a, b := readFixture()
+	a.Rows[0].Presence = "absent"
+	b.Rows[0].Presence = "absent"
+	expectReadStatus(t, "not_established", a, b, validCohort())
+}
+func TestRC19ObservedNullDiffersFromObservedValue(t *testing.T) {
+	a, b := readFixture()
+	a.Rows[0].Presence = "null"
+	a.Rows[0].Value = ""
+	expectReadStatus(t, "contradicted", a, b, validCohort())
+}
+func TestRC20BothObservedNullHaveSameFixturePresence(t *testing.T) {
+	a, b := readFixture()
+	a.Rows[0].Presence = "null"
+	a.Rows[0].Value = ""
+	b.Rows[0].Presence = "null"
+	b.Rows[0].Value = ""
+	expectReadStatus(t, "fixture_consistent", a, b, validCohort())
 }
