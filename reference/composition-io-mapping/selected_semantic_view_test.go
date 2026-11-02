@@ -35,16 +35,14 @@ func TestSelectedSemanticViewRejectsUnknownAndMixedRefs(t *testing.T) {
 	}
 
 	plan.Slots[1].Inputs[0].Type.SemanticRef = "customer.customer_id"
-	if report := InspectWithSelectedSemanticView(registry, plan, view);
-		report.Verdict != composition.ProposalConflict ||
+	if report := InspectWithSelectedSemanticView(registry, plan, view); report.Verdict != composition.ProposalConflict ||
 			!has(report, "type-incompatible") || report.Order != nil {
 		t.Fatalf("distinct domain aliases: %+v", report)
 	}
 
 	plan.Slots[1].Inputs[0].Type.SemanticRef = "sales.not_declared"
 	plan.Slots[0].Outputs[0].Type.SemanticRef = "sales.not_declared"
-	if report := InspectWithSelectedSemanticView(registry, plan, view);
-		report.Verdict != composition.ProposalUnknown ||
+	if report := InspectWithSelectedSemanticView(registry, plan, view); report.Verdict != composition.ProposalUnknown ||
 			!has(report, "selected-semantic-type-unknown") || report.Order != nil {
 		t.Fatalf("unselected type must not become a candidate: %+v", report)
 	}
@@ -54,8 +52,7 @@ func TestSelectedSemanticViewRejectsUnknownAndMixedRefs(t *testing.T) {
 	if raw := Inspect(registry, plan); raw.Verdict != composition.ProposalCandidate {
 		t.Fatalf("legacy E2 should remain unchanged: %+v", raw)
 	}
-	if report := InspectWithSelectedSemanticView(registry, plan, view);
-		report.Verdict != composition.ProposalUnknown ||
+	if report := InspectWithSelectedSemanticView(registry, plan, view); report.Verdict != composition.ProposalUnknown ||
 			!has(report, "selected-semantic-ref-required") || report.Order != nil {
 		t.Fatalf("stricter selected Semantic view requires ref: %+v", report)
 	}
@@ -65,8 +62,7 @@ func TestSelectedSemanticViewChecksPrimitiveAndDefinitionChanges(t *testing.T) {
 	registry, plan, view := selectedViewFixture(t)
 	plan.Slots[0].Outputs[0].Type.Name = "text"
 	plan.Slots[1].Inputs[0].Type.Name = "text"
-	if report := InspectWithSelectedSemanticView(registry, plan, view);
-		report.Verdict != composition.ProposalUnknown ||
+	if report := InspectWithSelectedSemanticView(registry, plan, view); report.Verdict != composition.ProposalUnknown ||
 			!has(report, "selected-semantic-representation-unresolved") || report.Order != nil {
 		t.Fatalf("same ID and wrong primitive must not pass: %+v", report)
 	}
@@ -83,8 +79,7 @@ func TestSelectedSemanticViewChecksPrimitiveAndDefinitionChanges(t *testing.T) {
 			}
 		}
 	}
-	if report := InspectWithSelectedSemanticView(registry, plan, changed);
-		report.Verdict != composition.ProposalUnknown ||
+	if report := InspectWithSelectedSemanticView(registry, plan, changed); report.Verdict != composition.ProposalUnknown ||
 			!has(report, "selected-semantic-representation-unresolved") || report.Order != nil {
 		t.Fatalf("modified meaning with unchanged port declaration must not pass: %+v", report)
 	}
@@ -92,15 +87,13 @@ func TestSelectedSemanticViewChecksPrimitiveAndDefinitionChanges(t *testing.T) {
 
 func TestSelectedSemanticViewDoesNotResolveInvalidDeclarations(t *testing.T) {
 	registry, plan, view := selectedViewFixture(t)
-	if report := InspectWithSelectedSemanticView(registry, plan, nil);
-		report.Verdict != composition.ProposalUnknown ||
+	if report := InspectWithSelectedSemanticView(registry, plan, nil); report.Verdict != composition.ProposalUnknown ||
 			!has(report, "selected-semantic-view-missing") || report.Order != nil {
 		t.Fatalf("missing selected view: %+v", report)
 	}
 	// Duplicate canonical namespace definitions must not use last-wins.
 	invalid := append(append([]semantic.Namespace(nil), view...), view[0])
-	if report := InspectWithSelectedSemanticView(registry, plan, invalid);
-		report.Verdict != composition.ProposalUnknown ||
+	if report := InspectWithSelectedSemanticView(registry, plan, invalid); report.Verdict != composition.ProposalUnknown ||
 			!has(report, "selected-semantic-view-invalid") || report.Order != nil {
 		t.Fatalf("duplicate selected declaration: %+v", report)
 	}
@@ -115,8 +108,7 @@ func TestSelectedSemanticViewDoesNotResolveInvalidDeclarations(t *testing.T) {
 			}
 		}
 	}
-	if report := InspectWithSelectedSemanticView(registry, plan, invalid);
-		report.Verdict != composition.ProposalUnknown ||
+	if report := InspectWithSelectedSemanticView(registry, plan, invalid); report.Verdict != composition.ProposalUnknown ||
 			!has(report, "selected-semantic-view-invalid") || report.Order != nil {
 		t.Fatalf("invalid selected alias definition: %+v", report)
 	}
