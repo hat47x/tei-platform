@@ -9,16 +9,38 @@ import sys
 from datetime import date
 from pathlib import Path
 
-RULE = "repo-path-v2"
+RULE = "repo-path-v3"
 TOKEN = re.compile(r"`(?:(ref|planned):)?((?:docs|plan|tools|reference|requirements|product)/[A-Za-z0-9_./-]+)`")
 DECLARATION = re.compile(r"`(ref|planned):([^`\n]*)`")
+FENCE = re.compile(r"^ {0,3}(`{3,}|~{3,})([^\r\n]*)")
+
+
+def mask_fences(text):
+    """Mask fenced code while preserving offsets and line numbers."""
+    output = []
+    fence_char, fence_length = None, 0
+    for line in text.splitlines(keepends=True):
+        match = FENCE.match(line)
+        if fence_char is None:
+            if match and not (match.group(1)[0] == "`" and "`" in match.group(2)):
+                fence_char, fence_length = match.group(1)[0], len(match.group(1))
+                output.append(re.sub(r"[^\r\n]", " ", line))
+            else:
+                output.append(line)
+        else:
+            output.append(re.sub(r"[^\r\n]", " ", line))
+            if (match and match.group(1)[0] == fence_char and len(match.group(1)) >= fence_length
+                    and not match.group(2).strip()):
+                fence_char, fence_length = None, 0
+    return "".join(output)
 
 
 def check(root, document, text):
     root = root.resolve()
     planned_doc = document.startswith("plan/")
     records = []
-    for match in TOKEN.finditer(text):
+    scan_text = mask_fences(text)
+    for match in TOKEN.finditer(scan_text):
         kind, name = match.groups()
         valid = not any(part in ("..", ".") for part in name.split("/"))
         target = (root / name).resolve()
@@ -42,7 +64,7 @@ def check(root, document, text):
                         "declaration": kind or "implicit", "severity": severity, "result": result})
     # A declaration must not disappear merely because its name is outside the
     # limited grammar. Ordinary backticks remain outside the failure boundary.
-    for match in DECLARATION.finditer(text):
+    for match in DECLARATION.finditer(scan_text):
         if TOKEN.fullmatch(match.group(0)):
             continue
         records.append({"line": text.count("\n", 0, match.start()) + 1, "name": match.group(2),

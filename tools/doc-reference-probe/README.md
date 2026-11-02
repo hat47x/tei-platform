@@ -8,7 +8,7 @@ python3 -m unittest discover -s tools/doc-reference-probe -p 'test_*.py'
 python3 tools/doc-reference-probe/evaluate.py
 ```
 
-`repo-path-v2` は `docs/`、`plan/`、`tools/`、`reference/`、`requirements/`、`product/` のいずれかで始まるASCIIパスを抽出し、ファイルシステム上の存在を厳密に照合します。それ以外の明示宣言は対応外として報告します。Linuxでの実行を想定し、大文字小文字の区別はファイルシステムに依存します。出力には規則、照合方式、文書、抽出数と行ごとの結果を含めます。コードフェンスや例文も除外しないため、結果を人が確認する必要があります。
+`repo-path-v3` は `docs/`、`plan/`、`tools/`、`reference/`、`requirements/`、`product/` のいずれかで始まるASCIIパスを抽出し、ファイルシステム上の存在を厳密に照合します。それ以外の明示宣言は対応外として報告します。3文字以上のバッククォートまたはチルダによる、行頭から3空白以内のコードフェンスは除外します。引用・リスト内のフェンスやインデントコードなど、Markdown構文全体の解析には対応しません。Linuxでの実行を想定し、大文字小文字の区別はファイルシステムに依存します。出力には規則、照合方式、文書、抽出数と行ごとの結果を含めます。結果は人が確認する必要があります。
 
 - `` `ref:docs/example.md` `` は明示参照です。`plan/`以外では未解決をエラー、`plan/`では警告にします。
 - `` `planned:docs/example.md` `` は `plan/` 内のみで将来のパスを宣言します。対象が存在するようになれば警告します。

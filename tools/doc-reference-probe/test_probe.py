@@ -49,6 +49,18 @@ class ProbeTest(unittest.TestCase):
                              ["unsupported-declaration", "unsupported-declaration"])
             self.assertTrue(all(r["severity"] == "error" for r in report["records"]))
 
+    def test_fenced_examples_are_not_references(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            text = ("`ref:docs/before`\n"
+                    "```text\n`ref:docs/ignored`\n```\n"
+                    "~~~~example\n`ref:unknown/ignored`\n~~~\n`ref:docs/still-ignored`\n~~~~\n"
+                    "`ref:docs/after`\n")
+            report = check(Path(tmp), "docs/example.md", text)
+            self.assertEqual([(r["line"], r["name"]) for r in report["records"]],
+                             [(1, "docs/before"), (10, "docs/after")])
+            unclosed = check(Path(tmp), "docs/example.md", "```\n`ref:docs/ignored`\n")
+            self.assertEqual(unclosed["denominator"], 0)
+
     def test_allowlist_exact_expired_stale_and_growth(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
