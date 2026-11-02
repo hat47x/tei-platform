@@ -17,6 +17,9 @@ const def = Object.freeze({
 const allowedFields = ['id','person','dept'];
 function readContext(mapping, observation = {}, data = fixture) {
   if (!mapping || mapping.relation !== 'Membership' ||
+      mapping.grain !== 'Relation occurrence' ||
+      mapping.requestedScope !== 'all-for-selected-department' ||
+      mapping.meaningRevision !== data.sourceRevision ||
       !data.departments.some(d => d.id === mapping.anchor) ||
       mapping.fields?.some(f => !allowedFields.includes(f)) ||
       !Array.isArray(mapping.fields) || !mapping.fields.includes('id')) {
@@ -158,4 +161,14 @@ test('no permission or actual effect is conferred by an authorized-looking mappi
   assert.equal('grant' in consumers.evidence,false);
   assert.equal('receipt' in consumers.evidence,false);
   assert.equal('commit' in x,false);
+});
+
+test('unknown source/model revision is not silently mapped into the current Context',()=>{
+  const x=readContext({...def,meaningRevision:'org-synthetic-r8'},
+    {completeness:'complete'});
+  assert.deepEqual(x,{status:'unsupported',reason:'unresolved-explicit-binding'});
+});
+test('unspecified result grain or requested scope is not silently inferred',()=>{
+  assert.equal(readContext({...def,grain:undefined}).status,'unsupported');
+  assert.equal(readContext({...def,requestedScope:undefined}).status,'unsupported');
 });
