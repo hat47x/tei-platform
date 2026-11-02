@@ -95,6 +95,12 @@
 | [`WEB_APPLICATION_COMPOSITION_DESIGN.md`](WEB_APPLICATION_COMPOSITION_DESIGN.md) | Webアプリケーションの構成キットとして、安全な要求経路と認証方式を組み合わせる設計候補（評価待ち） |
 | [`WEB_READ_WRITE_API_ADAPTER_DESIGN.md`](WEB_READ_WRITE_API_ADAPTER_DESIGN.md) | 標準Webの読込・書込API Adapterの設計候補と合成Reference。OData準拠・実DB書込・本番適合は未確認 |
 | [`XTEA_STARTUP_JAR_DISTRIBUTION_EVIDENCE_2026-10.md`](XTEA_STARTUP_JAR_DISTRIBUTION_EVIDENCE_2026-10.md) | X-TEAのstartup JARの配布・版・更新に関する、外部Referenceの静的な証拠整理。実行検証・TEIの更新機構への受入証明ではない |
+| [`OPERATION_SURFACE_DESIGN_2026-11.md`](OPERATION_SURFACE_DESIGN_2026-11.md) | 操作面（何ができて何が足りないか）の導出規則・来歴・未解決の分類・自律区分を定める共通設計（[#1127](https://github.com/hat47x/tei-platform/issues/1127)〜[#2144](https://github.com/hat47x/tei-platform/issues/2144)、提案中） |
+| [`DERIVED_CRUD_OPERATION_DESIGN_2026-11.md`](DERIVED_CRUD_OPERATION_DESIGN_2026-11.md) | Data-firstから標準CRUD・検索・保守画面までの導出と、同時更新・廃止・提示の受入（[#1127](https://github.com/hat47x/tei-platform/issues/1127)、提案中） |
+| [`EFFECT_RULE_AUTHORING_DESIGN_2026-11.md`](EFFECT_RULE_AUTHORING_DESIGN_2026-11.md) | 効果規則の宣言・所有者境界の診断・仮想項目の保存境界。実行時の段階は業務副作用の設計が正本（[#1129](https://github.com/hat47x/tei-platform/issues/1129)、提案中） |
+| [`RUN_PLAN_AND_UNATTENDED_EXECUTION_DESIGN_2026-11.md`](RUN_PLAN_AND_UNATTENDED_EXECUTION_DESIGN_2026-11.md) | 実行計画の宣言、業務キーによる実行の同定、再開・二重起動の拒否、帳票の決定性、無人の実行条件（[#1130](https://github.com/hat47x/tei-platform/issues/1130)、提案中） |
+| [`PERIOD_STATE_SEMANTICS_DESIGN_2026-11.md`](PERIOD_STATE_SEMANTICS_DESIGN_2026-11.md) | 業務日付・会計期間の状態・締めの一貫点・確定した行の不変性・赤黒の訂正・遅延到着の方針（[#2144](https://github.com/hat47x/tei-platform/issues/2144)、提案中・中核変更のためA4判断） |
+| [`DERIVED_DESIGN_ARTIFACTS_DESIGN_2026-11.md`](DERIVED_DESIGN_ARTIFACTS_DESIGN_2026-11.md) | 受理済みの意味から表定義書・機能定義書・対応一覧・DDLを決定的に導出し、差分と未解決を読む契約（[#1803](https://github.com/hat47x/tei-platform/issues/1803)、提案中） |
 
 ## 関連する参照事例と評価
 
