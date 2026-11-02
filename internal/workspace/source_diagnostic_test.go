@@ -1,4 +1,4 @@
-package workspace_test
+﻿package workspace_test
 
 import (
 	"os"
@@ -40,7 +40,7 @@ func TestWorkspaceParseErrorBecomesRelativeSourceDiagnostic(t *testing.T) {
 	if got := string(content[start:end]); got != "unknown" {
 		t.Fatalf("range text=%q range=%+v", got, diagnostic.Source.Range)
 	}
-	if diagnostic.Message != "expected database or uses" {
+	if diagnostic.Message != "expected database, uses, or binds" {
 		t.Fatalf("message=%q", diagnostic.Message)
 	}
 }
@@ -72,3 +72,4 @@ func TestWorkspaceLexerErrorBecomesSourceDiagnosticWithoutSyntheticSubject(t *te
 		t.Fatalf("range text=%q range=%+v", got, diagnostic.Source.Range)
 	}
 }
+
