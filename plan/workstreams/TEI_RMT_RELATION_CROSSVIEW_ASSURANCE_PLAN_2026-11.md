@@ -1,8 +1,8 @@
+# 参照モデルRelationship移植：Type固有構造・CrossView・証拠接合の実証計画（2026-11-02）
+
 > **状態：実証計画／Draft #2599候補。** 根拠の版・実行資格を分離する。原典固有情報はprivateに保持（#941）。
 >
 > **関係する正本**：[Critical Path §32](TEI_PRODUCT_CRITICAL_PATH_2026-10.md)／[横断設計Script-first Draft #2610](https://github.com/hat47x/tei-platform/pull/2610)／[#950 Source Adapter](https://github.com/hat47x/tei-platform/issues/950)／[#1126 ERモデル](https://github.com/hat47x/tei-platform/issues/1126)／[Source改版 Draft #2615](https://github.com/hat47x/tei-platform/pull/2615)。本書の内容はOwner判断・正式Gate・製品資格を追加しない。
-
-# 参照モデルRelationship移植：Type固有構造・CrossView・証拠接合の実証計画（2026-11-02）
 
 本書はCritical Pathの[§32](TEI_PRODUCT_CRITICAL_PATH_2026-10.md)における **S0 Source／包含範囲** と **S1 synthetic read-only** の実証項目を具体化する独立作業計画である。[Draft #2610](https://github.com/hat47x/tei-platform/pull/2610) が同じCritical Path本文の§33/34で横断設計・Script-first Studioの接合を担当しているため、そこでの節番号・編集経路を維持し、本書がRelationship固有の技術詳細を所有する。既存G0〜G4／S0〜S5、#1163の一改訂Evidence、#1174/#1129の実Effect P0、#267のOwner Acceptanceを維持する。実装順は外部要件の机上評価→意味・Plugin→CUI/標準Plugin並行→Headless Driver/Provider→GUIとし、[Draft #2492](https://github.com/hat47x/tei-platform/pull/2492)の提案と整合させる（Draftの採用・統合済みという意味ではない）。
 
@@ -49,4 +49,4 @@ G-VとG-Rは **異なる母集団・異なる用途** に対する証拠であ�
 
 **CIで判別した追加のSource Fact境界**：2026-11-02の[Draft #2603](https://github.com/hat47x/tei-platform/pull/2603)では、合成`x:ToKeyFields`／`x:WithKeyFields`が旧`attributeValue(localName)`で正規化済みのtyped Refer Factへ取り込まれる反例をGitHub CIで確認した（旧headのRepository HealthはFAIL）。新しい候補パッチはraw Presenceと通常属性の厳密一致を分離し、外来`x:Refer`ノードもtyped Fact対象から外す。**当該PRの最新head `f68dd486f85e01b9e060535c0443d4792ffa3730`ではRepository Health、self-build、Wails smoke、PoC、依存監査の5ワークフローが全てsuccessと確認済み**。これはsynthetic code及びCI実行版の資格であり、原典意味・実Work H2/J5・Owner Acceptanceを証明しない。raw Source Fact保持が進んでも、CrossViewの業務意味、宣言を利用するFunction Context、外部AIへの開示権限は自動的に成立しない。#950/#2516/#941の既存境界を維持する。
 
-**Owner未決**：旧FAMILYの各Role・対応FieldとTEI Semantic Relationの個数、条件付きの任意性・cardinality、物理FK/DDL・SQLによる実現、業務Actionの対象・失敗/Commit意味、旧版Reviewの新版適用と公開権利。これらはSource構造診断の改善や合成PoC成功で自動受理しない。**本節作成時にGo実原典試験・既存正式H2 receipt/gate・Work Candidate実体再読・旧GUI/DB・Owner正式受理は実施していない**。
+**Owner未決**：旧FAMILYの各Role・対応FieldとTEI Semantic Relationの個数、条件付きの任意性・cardinality、物理FK/DDL・SQLによる実現、業務Actionの対象・失敗/Commit意味、旧版Reviewの新版適用と公開権利。これらはSource構造診断の改善や合成PoC成功で自動受理しない。**本書初版時にGo実原典試験・既存正式H2 receipt/gate・Work Candidate実体再読・旧GUI/DB・Owner正式受理は実施していない**。
