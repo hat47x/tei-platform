@@ -920,6 +920,7 @@ PoC #2521が実装した範囲と、まだ実装していない範囲を分け�
 | 集計（`sum`・`count`・`min`・`max`・`avg`） | 実装済み（header-detailの宣言、印刷の集計欄） |
 | 投影のSemantic fingerprint | 実装済み（JSONの`semanticFingerprint`、HTMLのmeta、text） |
 | header-detailの見出し・明細ビュー | 実装済み（Relationのsourceをheader、targetを明細として解決） |
+| 一覧（browse）ビュー | 実装済み（Query結果列を表示名・型で解決） |
 | 対話からのCommand起動（宣言・契約解決） | 実装済み（`interaction`の`command`、入力・結末・効果の解決。実行は未実装） |
 | Command入力の対話項目への結びつけ | 実装済み（`command { input <name> <attribute> }`、項目の表示名へ解決） |
 | Package（宣言・読込・検証・版束縛・ビュー表示） | 実装済み（衝突は明示エラー、取り外しはSemantic fingerprintを変えない） |
@@ -927,6 +928,7 @@ PoC #2521が実装した範囲と、まだ実装していない範囲を分け�
 | `reference/workspace`への宣言追加 | 未実施（受理経路が必要） |
 
 実装は、`internal/application/model.go`、`internal/syntax/application_pattern.go`、`internal/validation/application_pattern.go`、`internal/crossview/pattern_requirements.go`、`internal/applicationview`、`internal/semantic/model.go`、`internal/syntax/parser.go`、`internal/validation/validation.go`と、それぞれの試験です。
+
 
 
 
