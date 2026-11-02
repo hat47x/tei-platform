@@ -351,6 +351,101 @@ func TestExtractRelationalSourceFactsRejectsForeignNamespaceReferLookalikes(t *t
 	}
 }
 
+func TestExtractRelationalSourceFactsPreservesNamespaceBoundaryAcrossLegacyKeyAndRelation(t *testing.T) {
+	source := []byte(`<System xmlns:x="urn:foreign">
+		<x:Table ID="FOREIGN_TABLE"><TableField ID="F"/></x:Table>
+		<Table ID="T1">
+			<TableField ID="F1" DataTypeID="D1"/>
+			<x:TableField ID="FOREIGN_FIELD" DataTypeID="D2"/>
+			<TableKey ID="K1" x:Type="SK">
+				<x:TableKeyField FieldID="FOREIGN_FIELD" SortKey="0"/>
+				<TableKeyField FieldID="F1" x:SortKey="42"/>
+			</TableKey>
+			<x:TableKey ID="FOREIGN_KEY"><TableKeyField FieldID="F1"/></x:TableKey>
+		</Table>
+		<x:Relationship ID="FOREIGN_REL" Type="FAMILY" Table1ID="T1" TableKey1ID="K1"/>
+		<Relationship x:ID="FOREIGN_REL_ID" Type="REFFER"
+			x:Table1ID="T1" x:TableKey1ID="K1" Table2ID="T1" TableKey2ID="K1"/>
+		<Function x:KeyFields="FOREIGN_KEY_FIELDS"/>
+		<x:Function KeyFields="FOREIGN_UNKNOWN_NODE"/>
+		<Function ID="REAL_FUNCTION" KeyFields="F1;"/>
+	</System>`)
+	doc, err := Parse(FormatXead, source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	facts := ExtractRelationalSourceFacts(doc)
+	if len(facts.LegacyKeys) != 1 || len(facts.RelationshipKeys) != 1 ||
+		len(facts.DeclaredKeyFields) != 1 {
+		t.Fatalf("foreign element or attribute promoted to typed fact: %#v", facts)
+	}
+	key := facts.LegacyKeys[0]
+	if key.TableLegacyID != "T1" || key.KeyLegacyID != "K1" || key.KeyType != "" ||
+		len(key.Members) != 1 || key.Members[0].FieldLegacyID != "F1" ||
+		key.Members[0].SortKey != "" || key.Members[0].DataTypeLegacyID != "D1" {
+		t.Fatalf("legacy key member/type contaminated by namespace: %#v", key)
+	}
+	relation := facts.RelationshipKeys[0]
+	if relation.RelationshipID != "" || relation.Table1LegacyID != "" || relation.Key1LegacyID != "" ||
+		relation.Table2LegacyID != "T1" || relation.Key2LegacyID != "K1" ||
+		relation.RelationshipType != "REFFER" {
+		t.Fatalf("namespace aliases promoted to relationship refs: %#v", relation)
+	}
+	declared := facts.DeclaredKeyFields[0]
+	if declared.SourceName != "Function" || declared.OwnerLegacyID != "REAL_FUNCTION" ||
+		!reflect.DeepEqual(declared.Fields, []string{"F1"}) {
+		t.Fatalf("foreign KeyFields invented as standard declaration: %#v", declared)
+	}
+}
+
+func TestExtractRelationalSourceFactsRejectsUnknownDefaultNamespace(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		format Format
+		xml string
+	}{
+		{"xead", FormatXead, `<System xmlns="urn:foreign"><Table ID="T"><TableKey ID="K"/></Table><Relationship ID="R"/></System>`},
+		{"xeaf", FormatXeaf, `<System xmlns="urn:foreign"><Table ID="T"><Key ID="K" Fields="F"/><Refer ID="R" ToTable="T"/></Table></System>`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			doc, err := Parse(tc.format, []byte(tc.xml))
+			if err != nil {
+				t.Fatal(err)
+			}
+			facts := ExtractRelationalSourceFacts(doc)
+			if len(facts.LegacyKeys) != 0 || len(facts.RelationshipKeys) != 0 ||
+				len(facts.RuntimeKeys) != 0 || len(facts.RuntimeRefers) != 0 ||
+				len(facts.DeclaredKeyFields) != 0 {
+				t.Fatalf("default foreign namespace promoted typed facts: %#v", facts)
+			}
+		})
+	}
+}
+
+func TestExtractRelationalSourceFactsPreservesRuntimeKeyOnlyFromExactFields(t *testing.T) {
+	doc, err := Parse(FormatXeaf, []byte(`<System xmlns:x="urn:foreign"><Table ID="T1">
+		<x:Key ID="FOREIGN_K" Fields="G"/>
+		<Key x:ID="FOREIGN_ID" x:Type="PK" x:Fields="G"/>
+		<Key ID="REAL_K" Type="SK" Fields="A;B;"/>
+	</Table></System>`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	facts := ExtractRelationalSourceFacts(doc)
+	if len(facts.RuntimeKeys) != 2 {
+		t.Fatalf("unknown Key was promoted to runtime fact: %#v", facts.RuntimeKeys)
+	}
+	if facts.RuntimeKeys[0].KeyLegacyID != "" || facts.RuntimeKeys[0].KeyType != "" ||
+		len(facts.RuntimeKeys[0].Fields) != 0 {
+		t.Fatalf("foreign attributes were promoted into runtime key: %#v", facts.RuntimeKeys[0])
+	}
+	if facts.RuntimeKeys[1].KeyLegacyID != "REAL_K" ||
+		facts.RuntimeKeys[1].KeyType != "SK" ||
+		!reflect.DeepEqual(facts.RuntimeKeys[1].Fields, []string{"A", "B"}) {
+		t.Fatalf("valid runtime key changed: %#v", facts.RuntimeKeys[1])
+	}
+}
+
 func TestExtractRelationalSourceFactsDoesNotInventFactsFromNamesOrTypes(t *testing.T) {
 	doc, err := Parse(FormatXead, []byte(`<System><Table ID="ORDER"><TableField ID="ORDER_ID" Name="Primary Key"/></Table></System>`))
 	if err != nil {
