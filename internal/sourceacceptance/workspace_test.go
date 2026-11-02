@@ -154,10 +154,18 @@ func TestLoadVerifiedWorkspaceRefusesChangedUnparsedManagedFile(t *testing.T) {
 	}
 }
 
-// B3: red when LoadVerifiedWorkspace is wired to the re-reading
-// workspace.BuildSourceIndex. Files are changed between Load and index build
-// through the private seam; the verified Source Index must still be the
-// Load-time bytes, which the synthetic Host witness accepts.
+// Files are changed between Load and index build through the private seam; the
+// verified Source Index must still be the Load-time bytes, which the synthetic
+// Host witness accepts.
+//
+// What this pins, honestly: since the managed-only bytes are captured at Load
+// (internal/workspace/source_snapshot.go), the legacy workspace.BuildSourceIndex
+// ALSO fingerprints Load-time bytes for a Result produced by Load, so these
+// cases stay green if LoadVerifiedWorkspace were wired back to it (checked by
+// mutation on 2026-11-02: only TestLoadVerifiedWorkspaceRefusesWorkspaceWithImports
+// turned red). They are regression guards for the Load-time binding. What the
+// strict builder adds over the legacy one is no filesystem fallback (covered
+// in internal/workspace) and the refusal of imports.
 func TestLoadVerifiedWorkspaceIndexesLoadTimeBytesNotLaterFileState(t *testing.T) {
 	cases := []struct {
 		name string

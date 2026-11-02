@@ -1,0 +1,5 @@
+namespace board
+
+data Card {
+    attribute island type sui.island_id
+}

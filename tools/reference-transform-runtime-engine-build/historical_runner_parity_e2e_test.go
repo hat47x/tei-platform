@@ -66,6 +66,12 @@ func TestHistoricalRuntimeEngineRunnerParity(t *testing.T) {
 	if err := requireCleanRepository(repo); err != nil {
 		t.Fatalf("historical comparison requires a clean, committed current checkout: %v", err)
 	}
+	// A shallow clone lacks the pinned revision, and the later `git show` would
+	// fail with a misleading "path ... not in <rev>" message. Fail with the
+	// real cause instead of skipping, so a missing history is never a pass.
+	if out, err := exec.Command("git", "-C", repo, "cat-file", "-e", preSharedGoBuildRunnerRevision+"^{commit}").CombinedOutput(); err != nil {
+		t.Fatalf("pinned historical revision %s is not available in this clone (shallow clone?); fetch full history, e.g. `git fetch --unshallow`: %v: %s", preSharedGoBuildRunnerRevision, err, out)
+	}
 	git := func(dir string, args ...string) []byte {
 		t.Helper()
 		cmd := exec.Command("git", append([]string{"-C", dir}, args...)...)

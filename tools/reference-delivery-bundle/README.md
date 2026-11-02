@@ -76,7 +76,7 @@ go run ./tools/reference-delivery-bundle/cmd/tei-delivery-bundle \
 
 ## 配備状態とロールバック
 
-`activate`は検証済みcatalogをactiveとしてstate fileへ記録し、直前のactiveをpreviousとして保持します。
+`activate`は検証済みcatalogをactiveとしてstate fileへ記録し、直前のactiveをpreviousとして保持します。以前のactiveはhistoryへ積みます。
 
 ```text
 go run ./tools/reference-delivery-bundle/cmd/tei-delivery-bundle \
@@ -89,11 +89,12 @@ go run ./tools/reference-delivery-bundle/cmd/tei-delivery-bundle \
   status -state ./deployment-state.json
 ```
 
-- `activate`はcatalogを読み直し、空・不正・digest不一致を拒否する。
-- `rollback`はprevious catalogを検証してからactiveとpreviousを入れ替える。previousがない場合は拒否する。
-- `status`はactiveとpreviousのcatalogが現在も検証できるかを確認する。
+- `activate`はcatalogを読み直し、空・不正・digest不一致を拒否する。historyは最大20世代を保持し、古い世代から捨てる。
+- `rollback`はhistoryの最新catalogを検証してactiveへ戻す。historyが空の場合は、history導入前のstateと互換のためにpreviousを使う。
+- `rollback`を繰り返すと、historyを新しい順に1段階ずつ戻る。
+- `status`はactive、previous、historyのcatalogが現在も検証できるかを確認する。historyのcatalogが変更・削除されている場合は失敗する。
 - stateはtemp fileへの書き込みとRenameで更新する。
-- ロールバックは1段階の入れ替えであり、サービスプロセスの起動・停止は行わない。
+- ロールバックはstateの入れ替えであり、サービスプロセスの起動・停止は行わない。
 
 ## ヘルスチェック
 
@@ -133,15 +134,21 @@ go run ./tools/reference-delivery-bundle/cmd/tei-delivery-bundle \
 go run ./tools/reference-delivery-bundle/cmd/tei-delivery-bundle \
   reconcile -state ./deployment-state.json \
   -command 'your-service-command' -health 'your-health-check' -timeout 10s
+
+go run ./tools/reference-delivery-bundle/cmd/tei-delivery-bundle \
+  supervise -state ./deployment-state.json \
+  -command 'your-service-command' -health 'your-health-check' \
+  -interval 30s -iterations 0
 ```
 
-- `start`は`bash -lc`でコマンドを起動し、PID・catalog・digest・開始時刻・ログpathを`<state>.pid`へ記録する。
+- `start`は`bash -c`でコマンドを起動し、PID・catalog・digest・開始時刻・ログpathを`<state>.pid`へ記録する。loginシェル（`bash -lc`）は使わないため、`~/.profile`等の読込は起動に含まれない。コマンドの解決は親プロセスの環境（`PATH`を含む）に依存する。外部のcron・timerから呼ぶ場合は、`PATH`が狭いことがあるため、コマンドを絶対pathで指定するか、実行元の環境で`PATH`を揃えること。
 - `TEI_CATALOG`、`TEI_ACTIVE_DIGEST`、`TEI_STATE`を環境変数で渡す。
 - `stop`は記録したPIDへ`Kill`を送り、PID fileを削除する。
 - `stop -graceful`は`kill -TERM`を送り、timeoutまで終了を待ってから必要なら`Kill`する。アプリケーションのshutdown完了は検証しない。
 - `restart`はgraceful stopの後に同じコマンドを起動する。起動準備・healthの完了は待たない。
 - `reconcile`は1回だけ監督する。未起動ならstart、healthyならnoop、unhealthyならrestartし、stale PIDは除去する。外部のcronやtimerから呼ぶ。
-- 既にPID fileがある場合、二重起動として拒否する。`reconcile`自身はループ・監視しない。
+- `supervise`は`reconcile`をintervalごとに繰り返す。`-iterations 0`は上限なし、Ctrl-Cで終了する。各回のreceiptをJSON Linesで出力する。
+- 既にPID fileがある場合、二重起動として拒否する。`reconcile`はループせず、`supervise`はバックオフ・leader electionを行わない。
 - このReferenceはLinux/WSLの`bash`と`kill`を前提とする。
 
 ## 守っている境界
@@ -150,12 +157,12 @@ go run ./tools/reference-delivery-bundle/cmd/tei-delivery-bundle \
 - signatureはbundleの完全性だけを示す。署名者・公開鍵の信頼、配備経路の真正性は扱わない。
 - `install`はローカルcatalogへの配置だけを行う。`activate` / `rollback`はstate fileの更新だけを行い、サービスを起動・停止しない。
 - `health`は利用者が指定したtrustedなコマンドの終了コードを記録するだけで、サービスを起動・監視しない。
-- `start` / `stop` / `restart` / `reconcile`はtrustedなコマンドの起動とPIDへのシグナルだけを行う。`stop -graceful`はSIGTERMを送るが、アプリケーションのshutdown完了、監視ループ、PID再利用の防止は行わない。
+- `start` / `stop` / `restart` / `reconcile` / `supervise`はtrustedなコマンドの起動とPIDへのシグナルだけを行う。`stop -graceful`はSIGTERMを送るが、アプリケーションのshutdown完了、バックオフ、leader election、PID再利用の防止は行わない。
 - catalogにないpluginを暗黙に追加しない。
 
 ## 未実装
 
 - 鍵管理、信頼の起点、署名者の認証。
-- 配布、継続的なヘルス監視・自動再起動ループ、アプリケーションのshutdown完了検証、多段階ロールバック、トランザクション。
+- 配布、バックオフ付きの継続監視、leader election、アプリケーションのshutdown完了検証、トランザクション。
 - 部分bundle、差分更新。
 - 実SaaS・実顧客先での配備確認。

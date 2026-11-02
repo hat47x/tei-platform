@@ -67,8 +67,9 @@ func TestLoadCapturesEveryManagedFile(t *testing.T) {
 }
 
 // (b) A file rewritten between Load and index build must not change the
-// Artifact fingerprint of the strict builder. It says nothing about the legacy
-// builder; see TestCharacterizationLegacyBuildSourceIndexRereadsUnparsedFile.
+// Artifact fingerprint of the strict builder. The legacy builder behaves the
+// same for a Result produced by Load; see
+// TestLegacyAndStrictBuildersAgreeOnLoadTimeBytesOfUnparsedFile.
 func TestBuildSourceIndexFromLoadIgnoresLaterFileChange(t *testing.T) {
 	root := copyReferenceWorkspace(t)
 	result, err := Load(root)
@@ -185,12 +186,13 @@ func TestBuildSourceIndexFromLoadFailsClosed(t *testing.T) {
 	})
 }
 
-// Characterization only, deliberately separate from the strict-builder tests:
-// the legacy BuildSourceIndex re-reads unparsed managed files from the
-// filesystem. This documents current behaviour, it does not endorse it. If a
-// later change makes the legacy builder Load-bound, delete or invert THIS test;
-// no strict-builder test depends on it.
-func TestCharacterizationLegacyBuildSourceIndexRereadsUnparsedFile(t *testing.T) {
+// Cross-check, deliberately separate from the strict-builder tests: since the
+// managed-only bytes are captured at Load (source_snapshot.go), the legacy
+// BuildSourceIndex also fingerprints the Load-time bytes of an unparsed managed
+// file instead of re-reading it. The two builders therefore agree on this file;
+// they still differ for a Result that was not produced by Load, where only the
+// legacy builder falls back to the filesystem.
+func TestLegacyAndStrictBuildersAgreeOnLoadTimeBytesOfUnparsedFile(t *testing.T) {
 	root := copyReferenceWorkspace(t)
 	result, err := Load(root)
 	if err != nil {
@@ -208,7 +210,13 @@ func TestCharacterizationLegacyBuildSourceIndexRereadsUnparsedFile(t *testing.T)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if reflect.DeepEqual(artifactFor(t, legacy, loadBoundReadme), mustArtifact(t, loadBoundReadme, original)) {
-		t.Fatal("legacy BuildSourceIndex no longer re-reads unparsed files (characterization changed)")
+	strict, err := BuildSourceIndexFromLoad(root, result)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := mustArtifact(t, loadBoundReadme, original)
+	if !reflect.DeepEqual(artifactFor(t, legacy, loadBoundReadme), want) ||
+		!reflect.DeepEqual(artifactFor(t, strict, loadBoundReadme), want) {
+		t.Fatal("a builder fingerprinted the post-Load file instead of the Load-time bytes")
 	}
 }

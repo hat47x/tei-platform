@@ -1,7 +1,6 @@
 package workspace
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -50,12 +49,14 @@ type Result struct {
 
 	// Private, transient read provenance. Not part of Canonical World or a
 	// serialized Source Index; only Load may populate this snapshot.
-	sourceSnapshotRoot string
-	sourceSnapshot     map[string][]byte
+	sourceSnapshotRoot  string
+	sourceSnapshot      map[string][]byte
+	semanticSourceFiles []string
 	// Load-time bytes of managed files that no domain loader parsed (for
-	// example README.md or unknown-root assets). Kept apart from
+	// example a forward-compatible source root asset). Kept separate from
 	// sourceSnapshot so the parser-bound meaning of that map, and of
-	// IndexedLoadedSnapshot, is unchanged. Used only by BuildSourceIndexFromLoad.
+	// IndexedLoadedSnapshot, does not change. BuildSourceIndex may use these
+	// bytes instead of re-reading the filesystem after Load.
 	sourceManagedExtra map[string][]byte
 	// Load-time identity of the workspace manifest and whether it declared
 	// imports. The manifest is NOT a Source Index Artifact (adding it would
@@ -218,39 +219,23 @@ func loadWithStackHook(root string, visiting map[string]bool, afterParse func())
 	if err := loadWorkspaceImports(root, imports, &r, visiting); err != nil {
 		return Result{}, err
 	}
-	Normalize(&r.World)
-	// Capture the bytes of managed files that no loader parsed, through the
-	// same pinned root, so the Source Index can be built without a later
-	// filesystem read. Imported Workspaces are loaded by their own call and
-	// are not covered. Nothing here is parsed.
+	// Test seam (a parameter, not a global): runs after every loader parsed its
+	// files and before the managed-only bytes are captured, so a test can change
+	// a file in that window.
 	if afterParse != nil {
 		afterParse()
 	}
-	if err := captureManagedExtra(sourceRoot, &r); err != nil {
+	// Capture the bytes of managed files that no loader parsed (see
+	// source_snapshot.go). Imported Workspaces are loaded by their own call and
+	// are not covered.
+	if err := captureManagedExtra(&r); err != nil {
 		return Result{}, err
 	}
+	Normalize(&r.World)
 	// The loader snapshot stays available, but an OS handle must not escape
 	// the Load lifetime. Imports close their own pinned roots independently.
 	r.sourceReadRoot = nil
 	return r, nil
-}
-
-func captureManagedExtra(root *os.Root, r *Result) error {
-	r.sourceManagedExtra = make(map[string][]byte)
-	for _, managed := range r.ManagedFiles {
-		content, err := readPinnedWorkspaceFile(root, managed.Path)
-		if err != nil {
-			return fmt.Errorf("capture managed source %q at Load: %w", managed.Path, err)
-		}
-		if previous, ok := r.sourceSnapshot[managed.Path]; ok {
-			if !bytes.Equal(previous, content) {
-				return fmt.Errorf("source %q changed while loading Workspace", managed.Path)
-			}
-			continue
-		}
-		r.sourceManagedExtra[managed.Path] = content
-	}
-	return nil
 }
 
 // parseWorkspaceYAML is retained for existing callers of the source-root-only API.
@@ -487,6 +472,7 @@ func loadSemantics(root string, r *Result) error {
 		if err != nil {
 			return sourceErr(path, err)
 		}
+		r.semanticSourceFiles = append(r.semanticSourceFiles, relPath(root, path))
 		idx, ok := byNamespace[ns.ID]
 		if !ok {
 			idx = len(r.World.Semantics)

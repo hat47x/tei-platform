@@ -41,12 +41,30 @@
 | 入力未取得 | `INCOMPLETE_INPUT` |
 | NULL の比較 | 一致しない扱い。件数は `nullInputCount` で開示、0や未取得と混同しない |
 
+### SQL移譲と取得後評価の適用条件（受入3）
+
+`-mode applicability` は、計画をSQLへ委譲できるか、取得後に評価できるか、どちらも保証できないかを判定します。保証できない方式へ黙って落としません。
+
+| 条件 | 結果 |
+| --- | --- |
+| NULL比較・十進精度・関連多重度・実行権限がすべて確認でき、`limit-before-derive`でない | `DELEGATE_TO_SQL` |
+| SQLでは意味を保てないが、必要な行を完全かつ有界に取得できる | `EVALUATE_AFTER_FETCH`（不足条件を`reasons`に併記） |
+| 完全取得ができない、取得が有界でない、`limit-before-derive`、式がSQLでも取得後でも評価不能 | `DELEGATION_UNSUPPORTED`（全不足条件を`reasons`に列挙） |
+
+- `limit-before-derive`は、行を先に切っているため取得後評価でも修復できません
+- `provider-*`の未確認は「未対応」ではなく「未証明」として扱います
+- 未対応の式を別方式で黙って計算しません
+
 多重一致の参照先の縮約禁止は #1706（D9）が所有します。本参照は多重参照の意味判定をしません。
 
 ## 実行方法
 
 ```sh
 go run ./tools/reference-derivation-plan/cmd/tei-derivation-plan -input request.json
+
+# SQL移譲と取得後評価の適用条件
+go run ./tools/reference-derivation-plan/cmd/tei-derivation-plan -mode applicability \
+  -input tools/reference-derivation-plan/testdata/applicability-sql.json
 ```
 
 `-input -`（既定）は標準入力から読みます。入力例（`limit 1`）：

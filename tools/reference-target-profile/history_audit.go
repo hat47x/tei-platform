@@ -146,7 +146,14 @@ func verifyHistoryAudit(root string) error {
 }
 
 func appendHistoryAudit(root, storage string, keepLast int, deleted []HistoryEntry) (string, error) {
-	records, err := readHistoryAudit(root)
+	path := historyAuditPath(root)
+	raw, err := os.ReadFile(path)
+	if os.IsNotExist(err) {
+		raw = nil
+	} else if err != nil {
+		return "", err
+	}
+	records, err := parseHistoryAudit(raw)
 	if err != nil {
 		return "", err
 	}
@@ -172,7 +179,10 @@ func appendHistoryAudit(root, storage string, keepLast int, deleted []HistoryEnt
 	if err != nil {
 		return "", err
 	}
-	path := historyAuditPath(root)
+	// Preserve accepted EOF-terminated records without joining two JSON values.
+	if len(raw) > 0 && raw[len(raw)-1] != '\n' {
+		encoded = append([]byte{'\n'}, encoded...)
+	}
 	file, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
 	if err != nil {
 		return "", err

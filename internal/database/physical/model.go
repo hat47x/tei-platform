@@ -47,13 +47,22 @@ type Column struct {
 // UniqueConstraint records relational uniqueness intent separately from the
 // index that a provider may use to implement it. Name is retained for trace and
 // future DDL, while structural comparison uses the ordered Columns.
+//
+// NameGenerated is set only on a Desired constraint whose Name was derived by
+// the realization policy because the definition declared none (#1803). A
+// generated name is used when the constraint is created but is not compared
+// against the name of an observed constraint; a declared name is part of the
+// desired state. An observed constraint never sets it.
 type UniqueConstraint struct {
-	Name    string   `json:"name,omitempty"`
-	Columns []string `json:"columns"`
+	Name          string   `json:"name,omitempty"`
+	NameGenerated bool     `json:"nameGenerated,omitempty"`
+	Columns       []string `json:"columns"`
 }
 
+// ForeignKey: see UniqueConstraint for Name and NameGenerated.
 type ForeignKey struct {
 	Name              string   `json:"name,omitempty"`
+	NameGenerated     bool     `json:"nameGenerated,omitempty"`
 	Columns           []string `json:"columns"`
 	ReferencedSchema  string   `json:"referencedSchema,omitempty"`
 	ReferencedTable   string   `json:"referencedTable"`

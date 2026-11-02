@@ -110,6 +110,8 @@ ssh-keygen -Y verify -f /tmp/allowed_signers -I signer -n tei-audit \
 
 `-signature`・`-allowed-signers`・`-identity`を指定すると、先にcheckpointのdetached signatureを`ssh-keygen -Y verify`で検証し、その後にstoreとの一致を検証します。署名が不正なら`signatureVerified=false`、storeと不一致なら`signatureVerified=true`のまま`passed=false`になります。署名者のAuthority・trust rootは検証しません。
 
+Go候補の再buildは、選抜時と同じくgo.modを持たない一時ディレクトリで行います。候補のディレクトリでbuildすると、リポジトリのgo.modのgoディレクティブがDefaultGODEBUGとしてbinaryに入り、go.modより新しいtoolchain(例: go1.27.0)でdigestが一致しなくなります(#2370)。toolchainの版が選抜時と違えばdigestは変わりうるため、別toolchainでの再現性は引き続き検証対象外です。
+
 ## 検証すること・しないこと
 
 | 検証する | 検証しない |

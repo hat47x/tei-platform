@@ -1,0 +1,93 @@
+name: TEI order_entry submitのeffectcommit Runner経由・実PostgreSQL試験（検証専用）
+
+# #1127: Web Targetの注文提出Storeを、正式なeffectcommit Runnerを呼び出し側として
+# 使う参照実装（任意選択）に対する試験を、使い捨てのPostgreSQLで実行する。
+# DSNが無いと実DBの試験はSKIPして緑に見えるため、SKIPをPASSとして数えない。
+# 権限・Host許可・DDLはすべて試験用の合成であり、Authority、人的受理、G1/G2を
+# 証明しない。
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, reopened, synchronize]
+    paths:
+      - '.github/workflows/tei-runner-order-submit-postgres-ci.yml'
+      - 'tools/reference-first-web-target/runner_order_submit*.go'
+      - 'tools/reference-first-web-target/order_submit_postgres*.go'
+      - 'internal/security/effectcommit/**'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tei-runner-order-submit-postgres-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  isolated-postgres-runner-order-submit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: tei_fixture
+          POSTGRES_PASSWORD: local_fixture_only
+          POSTGRES_DB: tei_fixture
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U tei_fixture -d tei_fixture"
+          --health-interval 3s
+          --health-timeout 3s
+          --health-retries 20
+    env:
+      GOENV: off
+      GOWORK: off
+      GOFLAGS: ''
+      GOTOOLCHAIN: local
+      TEI_TEST_POSTGRES_DSN: postgres://tei_fixture:local_fixture_only@127.0.0.1:5432/tei_fixture?sslmode=disable
+    steps:
+      - name: GitHub仮統合HEADを完全取得
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: 実行前のhead・branchとcleanを照合
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          [[ "$GITHUB_REF" =~ ^refs/pull/[0-9]+/merge$ ]]
+          read -r merge base head extra < <(git rev-list --parents -n 1 HEAD)
+          test -z "${extra:-}"
+          test "$merge" = "$GITHUB_SHA"
+          test "$head" = "${{ github.event.pull_request.head.sha }}"
+          [[ "$base" =~ ^[0-9a-f]{40}$ ]]
+          test "$(git rev-parse --is-shallow-repository)" = false
+          test -z "$(git ls-files -v | awk '/^[a-zS]/ {print}')"
+          test -z "$(git status --porcelain=v1 --untracked-files=all --ignored=matching)"
+      - name: Go版を確定
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: go.mod
+          check-latest: false
+          cache: false
+      - name: Runner Callerの試験（DB不要＋実PostgreSQL）とSKIPの検査
+        shell: bash
+        run: |
+          set -euo pipefail
+          go vet ./tools/reference-first-web-target
+          go test -count=1 -v -run '^TestRunnerOrderSubmit' ./tools/reference-first-web-target | tee "$RUNNER_TEMP/go-test.log"
+          # 実DBの試験が全てPASSし、SKIPされていないことを確認する。
+          real="$(grep -c -- '--- PASS: TestRunnerOrderSubmitRealPostgres' "$RUNNER_TEMP/go-test.log" || true)"
+          test "$real" -ge 6
+          ! grep -q -- '--- SKIP: TestRunnerOrderSubmit' "$RUNNER_TEMP/go-test.log"
+          ! grep -q -- '--- FAIL' "$RUNNER_TEMP/go-test.log"
+      - name: 実行後のhead・checkoutを再検証
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test -z "$(git ls-files -v | awk '/^[a-zS]/ {print}')"
+          test -z "$(git status --porcelain=v1 --untracked-files=all --ignored=matching)"

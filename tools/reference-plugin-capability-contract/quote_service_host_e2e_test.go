@@ -64,11 +64,14 @@ func TestQuoteCandidateContractRunsThroughProductServiceCarrierAndRealHost(t *te
 	if runtime.GOOS == "windows" {
 		t.Skip("reference StdioProcessLauncher restricts whitespace in executable paths")
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
-	defer cancel()
+	// #2057: go buildはキャッシュなし・CPU競合のCIで数十秒かかる一方、実プロセスの起動は
+	// 1回あたり数十ms以内である。buildは独立した長い期限で待ち、実プロセスの期限は
+	// build後に始めて、build時間が起動側の予算を食わないようにする。
+	buildCtx, cancelBuild := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancelBuild()
 
 	binary := filepath.Join(t.TempDir(), "quote-service-host")
-	build := exec.CommandContext(ctx, "go", "build", "-o", binary, "./plugins/reference-order-quote")
+	build := exec.CommandContext(buildCtx, "go", "build", "-o", binary, "./plugins/reference-order-quote")
 	build.Dir = filepath.Join("..", "..")
 	build.Env = append(os.Environ(),
 		"GOENV=off", "GOWORK=off", "GOPROXY=off", "GOSUMDB=off", "GOTOOLCHAIN=local",
@@ -76,6 +79,8 @@ func TestQuoteCandidateContractRunsThroughProductServiceCarrierAndRealHost(t *te
 	if out, err := build.CombinedOutput(); err != nil {
 		t.Fatalf("build independent quote plugin: %v\n%s", err, out)
 	}
+	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
+	defer cancel()
 	raw, err := os.ReadFile(binary)
 	if err != nil {
 		t.Fatal(err)

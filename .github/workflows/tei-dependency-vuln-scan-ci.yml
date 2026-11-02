@@ -1,0 +1,117 @@
+name: TEI 依存の既知脆弱性確認
+
+# Go（ルートと cmd/tei-studio の2つのmodule）とnpm（2つのpackage）を、
+# 公開されている既知の脆弱性情報と照合する。
+# Secretsを使わず、公開情報（vuln.go.dev、npm advisory registry）のみへ
+# 既定のネットワーク接続を行う。
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, reopened, synchronize, ready_for_review]
+  push:
+    branches: [main]
+  schedule:
+    # 毎日 03:14 UTC。既存の依存が新たに「既知」となった場合を検出するため、
+    # PR契機に加えて定期実行を行う。
+    - cron: '14 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# PRは同じ番号の古い実行だけを取り消す。scheduleは取り消さない。
+concurrency:
+  group: tei-vuln-${{ github.event_name }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  govulncheck-root:
+    name: govulncheck（ルートmodule）
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      GOWORK: off
+      GOFLAGS: ''
+    steps:
+      - name: 対象版を取得
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: 指定版のGoを用意
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: go.mod
+          check-latest: false
+          cache: false
+
+      - name: govulncheckを実行
+        shell: bash
+        run: |
+          set -euo pipefail
+          go version
+          go run golang.org/x/vuln/cmd/govulncheck@latest ./...
+
+  govulncheck-studio-binary:
+    name: govulncheck（tei-studio、実binary）
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      GOWORK: off
+      GOFLAGS: ''
+    steps:
+      - name: 対象版を取得
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: 指定版のGoを用意
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: go.mod
+          check-latest: false
+          cache: false
+
+      # cmd/tei-studio のdesktop buildはWails経由でcgo（gtk/webkit）に依存し、
+      # Linux runnerではbuildできない。配布と検査の対象は `-tags server` の
+      # CGO無効build（docs: tei-studio-server）なので、それを実binaryとして
+      # -mode binary で検査する。製品に入る依存だけを直接照合する。
+      - name: server構成でbuildし実binaryを検査
+        shell: bash
+        working-directory: cmd/tei-studio
+        run: |
+          set -euo pipefail
+          go version
+          CGO_ENABLED=0 go build -mod=readonly -tags server -o /tmp/tei-studio.exe .
+          go run golang.org/x/vuln/cmd/govulncheck@latest -mode binary /tmp/tei-studio.exe
+
+  npm-audit:
+    name: npm audit（参照ツール2件）
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        package_dir:
+          - reference/tei-studio-workbench
+          - reference/tei-studio-independent-consumer
+    steps:
+      - name: 対象版を取得
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Node実行環境を用意
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24.21.0
+          check-latest: false
+
+      # 参照ツール専用の依存であり、製品のGoバイナリには入らない。
+      # そのため失敗の扱いもGoと区別し、このjobの結果だけで統合を止めない。
+      - name: npm auditを実行
+        working-directory: ${{ matrix.package_dir }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm audit --omit=dev
