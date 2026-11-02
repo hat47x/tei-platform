@@ -67,8 +67,8 @@ func TestLoadCapturesEveryManagedFile(t *testing.T) {
 }
 
 // (b) A file rewritten between Load and index build must not change the
-// Artifact fingerprint of the strict builder. The legacy builder re-reads the
-// file (the pre-fix behaviour); that is pinned so the RED condition is visible.
+// Artifact fingerprint of the strict builder. It says nothing about the legacy
+// builder; see TestCharacterizationLegacyBuildSourceIndexRereadsUnparsedFile.
 func TestBuildSourceIndexFromLoadIgnoresLaterFileChange(t *testing.T) {
 	root := copyReferenceWorkspace(t)
 	result, err := Load(root)
@@ -83,14 +83,6 @@ func TestBuildSourceIndexFromLoadIgnoresLaterFileChange(t *testing.T) {
 	want := mustArtifact(t, loadBoundReadme, original)
 	if err := os.WriteFile(path, []byte("tampered after Load\n"), 0o644); err != nil {
 		t.Fatal(err)
-	}
-
-	legacy, err := BuildSourceIndex(root, result)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if reflect.DeepEqual(artifactFor(t, legacy, loadBoundReadme), want) {
-		t.Fatal("legacy BuildSourceIndex no longer re-reads unparsed files; its behaviour must stay unchanged")
 	}
 
 	strict, err := BuildSourceIndexFromLoad(root, result)
@@ -191,4 +183,32 @@ func TestBuildSourceIndexFromLoadFailsClosed(t *testing.T) {
 			t.Fatalf("uncovered Source reference was accepted: %v", err)
 		}
 	})
+}
+
+// Characterization only, deliberately separate from the strict-builder tests:
+// the legacy BuildSourceIndex re-reads unparsed managed files from the
+// filesystem. This documents current behaviour, it does not endorse it. If a
+// later change makes the legacy builder Load-bound, delete or invert THIS test;
+// no strict-builder test depends on it.
+func TestCharacterizationLegacyBuildSourceIndexRereadsUnparsedFile(t *testing.T) {
+	root := copyReferenceWorkspace(t)
+	result, err := Load(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(root, filepath.FromSlash(loadBoundReadme))
+	original, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, []byte("tampered after Load\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	legacy, err := BuildSourceIndex(root, result)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if reflect.DeepEqual(artifactFor(t, legacy, loadBoundReadme), mustArtifact(t, loadBoundReadme, original)) {
+		t.Fatal("legacy BuildSourceIndex no longer re-reads unparsed files (characterization changed)")
+	}
 }

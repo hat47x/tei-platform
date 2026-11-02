@@ -57,6 +57,11 @@ type Result struct {
 	// sourceSnapshot so the parser-bound meaning of that map, and of
 	// IndexedLoadedSnapshot, is unchanged. Used only by BuildSourceIndexFromLoad.
 	sourceManagedExtra map[string][]byte
+	// Load-time identity of the workspace manifest and whether it declared
+	// imports. The manifest is NOT a Source Index Artifact (adding it would
+	// change every accepted revision); it is recorded here instead.
+	sourceManifest        ManifestIdentity
+	sourceImportsDeclared bool
 
 	// Only populated during Load. One pinned directory handle protects all
 	// domain Source reads from a Workspace root pathname being replaced.
@@ -64,11 +69,39 @@ type Result struct {
 	sourceReadRoot *os.Root
 }
 
+// ErrImportsNotBound is returned by BuildSourceIndexFromLoad for a Workspace
+// that declares imports. The imported provider's semantic Namespace enters
+// World.Semantics, but the provider's bytes are in no Load-time map and a
+// pinned semanticDigest is optional, so the Source Index could not identify
+// them. The strict path fails closed instead of reporting a World as bound.
+var ErrImportsNotBound = errors.New("WORKSPACE_IMPORTS_NOT_BOUND: imported Workspace content is not part of the Source Index")
+
+// ManifestIdentity is the path and sha256 of the manifest bytes Load read.
+// The manifest decides source roots and imports, yet it is NOT part of the
+// Source Index, so an accepted record does not bind it. Compare this value
+// yourself if the manifest matters.
+type ManifestIdentity struct {
+	Path   string `json:"path"`
+	SHA256 string `json:"sha256"`
+}
+
+// ManifestIdentity reports the manifest bytes read by Load (zero for a Result
+// not produced by Load).
+func (r Result) ManifestIdentity() ManifestIdentity { return r.sourceManifest }
+
 func Load(root string) (Result, error) {
 	return loadWithStack(root, map[string]bool{})
 }
 
 func loadWithStack(root string, visiting map[string]bool) (Result, error) {
+	return loadWithStackHook(root, visiting, nil)
+}
+
+// loadWithStackHook is the private test seam of Load. afterParse, when
+// non-nil, runs after every domain loader and import has finished and before
+// the unparsed managed files are captured. Production callers pass nil. It is
+// a parameter, not a package-level variable, so tests cannot leak it.
+func loadWithStackHook(root string, visiting map[string]bool, afterParse func()) (Result, error) {
 	// Canonicalize once, then pin the directory before reading the manifest.
 	// Otherwise a rename between manifest and domain-source reads could
 	// silently redirect the second read to an unrelated Workspace.
@@ -91,13 +124,16 @@ func loadWithStack(root string, visiting map[string]bool) (Result, error) {
 	manifestTEI := filepath.Join(root, "tei.workspace.tei")
 	var roots []string
 	var imports []WorkspaceImport
+	var manifestID ManifestIdentity
 	if src, err := readPinnedWorkspaceFile(sourceRoot, "tei.workspace.yaml"); err == nil {
 		manifest, parseErr := parseWorkspaceManifestYAML(string(src))
 		if parseErr != nil {
 			return Result{}, fmt.Errorf("%s: %w", manifestYAML, parseErr)
 		}
 		roots, imports = manifest.Sources, manifest.Imports
+		manifestID = ManifestIdentity{Path: "tei.workspace.yaml", SHA256: sourceindex.Fingerprint(src)}
 	} else if src, legacyErr := readPinnedWorkspaceFile(sourceRoot, "tei.workspace.tei"); legacyErr == nil {
+		manifestID = ManifestIdentity{Path: "tei.workspace.tei", SHA256: sourceindex.Fingerprint(src)}
 		var parseErr error
 		roots, parseErr = syntax.NewParser(string(src)).ParseWorkspace()
 		if parseErr != nil {
@@ -122,6 +158,8 @@ func loadWithStack(root string, visiting map[string]bool) (Result, error) {
 		sourceSnapshotRoot:          rootReal,
 		sourceSnapshot:              make(map[string][]byte),
 		sourceReadRoot:              sourceRoot,
+		sourceManifest:              manifestID,
+		sourceImportsDeclared:       len(imports) > 0,
 	}
 	// TEI standard semantic types are a library prelude, not Micro Kernel kinds.
 	r.World.Semantics = append(r.World.Semantics, stdlib.SemanticNamespace())
@@ -185,6 +223,9 @@ func loadWithStack(root string, visiting map[string]bool) (Result, error) {
 	// same pinned root, so the Source Index can be built without a later
 	// filesystem read. Imported Workspaces are loaded by their own call and
 	// are not covered. Nothing here is parsed.
+	if afterParse != nil {
+		afterParse()
+	}
 	if err := captureManagedExtra(sourceRoot, &r); err != nil {
 		return Result{}, err
 	}
