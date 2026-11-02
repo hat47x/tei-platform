@@ -14,7 +14,7 @@ import (
 // runOperationsCommand prints the derived operation surface. Gaps are part of
 // the output: an operation that could not be derived is shown as a gap, not as
 // a success.
-func runOperationsCommand(workspacePath, applicationID string) error {
+func runOperationsCommand(workspacePath, applicationID, outPath string) error {
 	if workspacePath == "" {
 		return fmt.Errorf("operations requires -workspace")
 	}
@@ -22,15 +22,22 @@ func runOperationsCommand(workspacePath, applicationID string) error {
 	if err != nil {
 		return err
 	}
-	writeJSON(surface)
-	return nil
+	if outPath == "" {
+		writeJSON(surface)
+		return nil
+	}
+	encoded, err := json.MarshalIndent(surface, "", "  ")
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(outPath, append(encoded, byte(10)), 0o644)
 }
 
 // runArtifactsCommand prints the derived artifacts and their manifest. Findings
 // from the consistency check are part of the output; an incomplete set is
 // reported as such. With -out, one file per artifact and a manifest file are
 // written instead, and the manifest is printed.
-func runArtifactsCommand(workspacePath, applicationID, outDir string) error {
+func runArtifactsCommand(workspacePath, applicationID, outDir string, check bool) error {
 	if workspacePath == "" {
 		return fmt.Errorf("artifacts requires -workspace")
 	}
@@ -40,6 +47,10 @@ func runArtifactsCommand(workspacePath, applicationID, outDir string) error {
 	set, err := artifact.RenderWorkspace(workspacePath, applicationID)
 	if err != nil {
 		return err
+	}
+	if check && len(set.Findings) > 0 {
+		writeJSON(set.Findings)
+		return fmt.Errorf("the artifact set is inconsistent: %d findings", len(set.Findings))
 	}
 	if outDir == "" {
 		writeJSON(set)

@@ -104,7 +104,7 @@ func TestRenderBrowseHTMLAndPrint(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(printed, "@page") || !strings.Contains(printed, "受注番号") {
+	if !strings.Contains(printed, "@page") || !strings.Contains(printed, "受注番号") || !strings.Contains(printed, "format: tei.print/v0") {
 		t.Fatalf("browse print=%s", printed)
 	}
 }
