@@ -14,5 +14,6 @@
 - [深掘り設計の上流接続](UPSTREAM_CONNECTION_2026-11.md)
 - [TAI上流への立ち戻りと、5課題の整合](TAI_UPSTREAM_ALIGNMENT_2026-11.md)
 - [PoCの仮説と、上流へ戻る条件](POC_HYPOTHESES_2026-11.md)
+- [判断材料: マイルストーンと契約枠への位置づけ](MILESTONE_CONTRACT_DECISION_BRIEF_2026-11.md)
 - [上流計画から担当作業への展開](UPSTREAM_BREAKDOWN_2026-09.md)
 - [X-TEA設計を参照する際の代替手順](UPSTREAM_XTEA_DESIGN_FALLBACK_PROTOCOL.md)
