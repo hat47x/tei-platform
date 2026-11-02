@@ -135,6 +135,21 @@ func (p *Parser) ParseApplicationPattern() (application.Pattern, error) {
 				operators = append(operators, opTok.Text)
 			}
 			out.Filters = append(out.Filters, application.Filter{Attribute: attribute, Operators: operators})
+		case "sort":
+			_, _ = p.next()
+			attrTok, err := p.expect(TokenIdent)
+			if err != nil {
+				return out, err
+			}
+			attribute, err := core.ParseCanonicalID(attrTok.Text)
+			if err != nil {
+				return out, p.errAt(attrTok, err.Error())
+			}
+			dirTok, err := p.expect(TokenIdent)
+			if err != nil {
+				return out, err
+			}
+			out.Sorts = append(out.Sorts, application.Sort{Attribute: attribute, Direction: dirTok.Text})
 		case "capability":
 			if hasCapability {
 				return out, p.errAt(t, "capability is declared more than once")

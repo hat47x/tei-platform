@@ -20,8 +20,16 @@ type BrowseView struct {
 	Query               core.CanonicalID        `json:"query,omitempty"`
 	Columns             []Item                  `json:"columns,omitempty"`
 	Filters             []FilterRef             `json:"filters,omitempty"`
+	Sorts               []SortRef               `json:"sorts,omitempty"`
 	Packages            []PackageRef            `json:"packages,omitempty"`
 	SemanticFingerprint string                  `json:"semanticFingerprint,omitempty"`
+}
+
+// SortRefは、一覧の並び順を解決した結果である。
+type SortRef struct {
+	Attribute core.CanonicalID `json:"attribute"`
+	Label     string           `json:"label,omitempty"`
+	Direction string           `json:"direction"`
 }
 
 // FilterRefは、一覧の絞り込みに使う項目と演算子を解決した結果である。
@@ -123,6 +131,13 @@ func BuildBrowse(world ir.World, applicationID, patternID core.CanonicalID) (Bro
 		}
 		item := itemFor(attribute, typeValues)
 		view.Columns = append(view.Columns, item)
+	}
+	for _, sort := range pattern.Sorts {
+		attribute, ok := attributes[sort.Attribute]
+		if !ok {
+			return BrowseView{}, fmt.Errorf("browse pattern %s sort refers to unknown attribute %s", pattern.ID, sort.Attribute)
+		}
+		view.Sorts = append(view.Sorts, SortRef{Attribute: sort.Attribute, Label: labelOf(attribute), Direction: sort.Direction})
 	}
 	for _, filter := range pattern.Filters {
 		attribute, ok := attributes[filter.Attribute]

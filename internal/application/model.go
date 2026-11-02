@@ -103,6 +103,13 @@ type Pattern struct {
 	Interaction   *Interaction             `json:"interaction,omitempty"`
 	Aggregates    []Aggregate              `json:"aggregates,omitempty"`
 	Filters       []Filter                 `json:"filters,omitempty"`
+	Sorts         []Sort                   `json:"sorts,omitempty"`
+}
+
+// Sortは、一覧の並び順をQueryの契約として宣言する。
+type Sort struct {
+	Attribute core.CanonicalID `json:"attribute"`
+	Direction string           `json:"direction"`
 }
 
 // Filterは、一覧の絞り込みに使う項目と演算子の宣言である。

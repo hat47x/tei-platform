@@ -152,14 +152,26 @@ func validateApplicationPatterns(w ir.World) []Diagnostic {
 
 			if pattern.Kind == application.PatternBrowse {
 				out = append(out, validateBrowseFilters(pattern, patternSubject, semanticDataAttributes)...)
-			} else if len(pattern.Filters) > 0 {
-				out = append(out, errFor(
-					patternSubject,
-					"APPLICATION_PATTERN_FILTERS_NOT_ALLOWED",
-					"%s pattern %s does not accept filters; filters belong to browse",
-					pattern.Kind,
-					pattern.ID,
-				))
+				out = append(out, validateBrowseSorts(pattern, patternSubject, semanticDataAttributes)...)
+			} else {
+				if len(pattern.Filters) > 0 {
+					out = append(out, errFor(
+						patternSubject,
+						"APPLICATION_PATTERN_FILTERS_NOT_ALLOWED",
+						"%s pattern %s does not accept filters; filters belong to browse",
+						pattern.Kind,
+						pattern.ID,
+					))
+				}
+				if len(pattern.Sorts) > 0 {
+					out = append(out, errFor(
+						patternSubject,
+						"APPLICATION_PATTERN_SORTS_NOT_ALLOWED",
+						"%s pattern %s does not accept sorts; sorts belong to browse",
+						pattern.Kind,
+						pattern.ID,
+					))
+				}
 			}
 
 			switch pattern.Kind {
@@ -868,6 +880,31 @@ func validateBrowseFilters(
 			out = append(out, errFor(patternSubject, "APPLICATION_PATTERN_FILTER_DUPLICATE", "browse pattern %s declares filter %s more than once", pattern.ID, filter.Attribute))
 		}
 		seen[filter.Attribute] = true
+	}
+	return out
+}
+
+func validateBrowseSorts(
+	pattern application.Pattern,
+	patternSubject subject.Subject,
+	semanticDataAttributes map[core.CanonicalID]map[core.CanonicalID]core.CanonicalID,
+) []Diagnostic {
+	var out []Diagnostic
+	attributes := semanticDataAttributes[pattern.Data]
+	seen := map[core.CanonicalID]bool{}
+	for _, sort := range pattern.Sorts {
+		if _, ok := attributes[sort.Attribute]; !ok {
+			out = append(out, errFor(patternSubject, "UNKNOWN_APPLICATION_PATTERN_SORT_ATTRIBUTE", "browse pattern %s sort refers to %s that is not an attribute of %s", pattern.ID, sort.Attribute, pattern.Data))
+		}
+		switch sort.Direction {
+		case "asc", "desc":
+		default:
+			out = append(out, errFor(patternSubject, "APPLICATION_PATTERN_SORT_DIRECTION_UNSUPPORTED", "browse pattern %s sort %s uses unsupported direction %s", pattern.ID, sort.Attribute, sort.Direction))
+		}
+		if seen[sort.Attribute] {
+			out = append(out, errFor(patternSubject, "APPLICATION_PATTERN_SORT_DUPLICATE", "browse pattern %s declares sort %s more than once", pattern.ID, sort.Attribute))
+		}
+		seen[sort.Attribute] = true
 	}
 	return out
 }

@@ -296,6 +296,16 @@ func writeBrowseText(out io.Writer, view applicationview.BrowseView) (int, error
 			return 2, err
 		}
 	}
+	if len(view.Sorts) > 0 {
+		if _, err := fmt.Fprintln(out, "sorts:"); err != nil {
+			return 2, err
+		}
+		for _, sort := range view.Sorts {
+			if _, err := fmt.Fprintf(out, "  - %s %s\\n", sort.Label, sort.Direction); err != nil {
+				return 2, err
+			}
+		}
+	}
 	if len(view.Filters) > 0 {
 		if _, err := fmt.Fprintln(out, "filters:"); err != nil {
 			return 2, err

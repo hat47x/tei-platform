@@ -57,6 +57,7 @@ data Customer {
     data sales.order
     query order_entry.recent_orders
     filter sales.order.status { eq ne }
+    sort sales.order.status asc
 }
 `)
 	writeWorkspaceFile(t, root, "applications/order-entry/patterns/customer-reference.tei", `pattern order_entry.customer_reference reference {
@@ -153,7 +154,7 @@ func TestProductSliceLoadsValidatesAndViews(t *testing.T) {
 	if err != nil || code != 0 {
 		t.Fatalf("browse view exit=%d err=%v body=%s", code, err, browse.String())
 	}
-	if !strings.Contains(browse.String(), "<th>受注番号</th>") || !strings.Contains(browse.String(), "<option>eq</option>") {
+	if !strings.Contains(browse.String(), "<th>受注番号</th>") || !strings.Contains(browse.String(), "<option>eq</option>") || !strings.Contains(browse.String(), "並び順") {
 		t.Fatalf("browse html=%s", browse.String())
 	}
 
