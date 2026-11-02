@@ -26,6 +26,7 @@ nav{margin-top:2rem;border-top:1px solid #ddd;padding-top:1rem}
 <body>
 <h1>{{.Pattern}} <small>({{.Kind}})</small></h1>
 <p>data: {{.Data}}</p>
+{{if .Packages}}<p>packages: {{range .Packages}}{{.ID}} ^{{.Version}} {{end}}</p>{{end}}
 <form>
 {{range .Items}}<div class="entry">
 <label for="{{.Attribute}}">{{.Label}}</label>

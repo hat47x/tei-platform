@@ -53,6 +53,13 @@ data Customer {
     }
 }
 `)
+	writeWorkspaceFile(t, root, "applications/order-entry/packages/list-to-record.tei", `package order_entry.list_to_record ^1 {
+    application order_entry
+    member browse order_entry.recent_orders
+    member record order_entry.order_record
+    requires semantic sales.order
+}
+`)
 	return root
 }
 
@@ -99,6 +106,7 @@ func TestViewCommandRendersTextForm(t *testing.T) {
 		"pattern order_entry.order_record (record)",
 		"sales.order.customer_id : customer.customer_id lookup order_entry.customer_reference (reference)",
 		"navigations:",
+		"packages: order_entry.list_to_record ^1",
 	} {
 		if !strings.Contains(text, want) {
 			t.Fatalf("text=%q does not contain %q", text, want)

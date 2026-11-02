@@ -47,6 +47,14 @@ func viewWorld() ir.World {
 		},
 		Applications: []application.Application{{
 			ID: "order_entry",
+			Packages: []application.Package{{
+				ID:      "order_entry.list_to_record",
+				Version: "1",
+				Members: []application.PackageMember{
+					{Kind: application.PatternBrowse, Pattern: "order_entry.recent_orders"},
+					{Kind: application.PatternRecord, Pattern: "order_entry.order_record"},
+				},
+			}},
 			Patterns: []application.Pattern{
 				{ID: "order_entry.recent_orders", Kind: application.PatternBrowse, Data: "sales.order"},
 				{ID: "order_entry.customer_reference", Kind: application.PatternReference, Relation: "sales.order.customer"},
@@ -189,5 +197,15 @@ func TestBuildCarriesCommands(t *testing.T) {
 	}
 	if command.Effect == nil || command.Effect.Kind != "update" || command.Effect.Data != "sales.order" {
 		t.Fatalf("effect=%+v", command.Effect)
+	}
+}
+
+func TestBuildCarriesPackages(t *testing.T) {
+	view, err := applicationview.Build(viewWorld(), "order_entry", "order_entry.order_record")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(view.Packages) != 1 || view.Packages[0].ID != "order_entry.list_to_record" || view.Packages[0].Version != "1" {
+		t.Fatalf("packages=%+v", view.Packages)
 	}
 }

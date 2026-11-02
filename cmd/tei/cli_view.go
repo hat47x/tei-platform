@@ -119,6 +119,15 @@ func writeViewText(out io.Writer, view applicationview.View) (int, error) {
 	if _, err := fmt.Fprintf(out, "data %s\n", view.Data); err != nil {
 		return 2, err
 	}
+	if len(view.Packages) > 0 {
+		packages := make([]string, 0, len(view.Packages))
+		for _, pkg := range view.Packages {
+			packages = append(packages, fmt.Sprintf("%s ^%s", pkg.ID, pkg.Version))
+		}
+		if _, err := fmt.Fprintf(out, "packages: %s\n", strings.Join(packages, ", ")); err != nil {
+			return 2, err
+		}
+	}
 	if len(view.Items) == 0 {
 		if _, err := fmt.Fprintln(out, "items: (none)"); err != nil {
 			return 2, err
@@ -194,6 +203,15 @@ func writeHeaderDetailText(out io.Writer, view applicationview.HeaderDetailView)
 	}
 	if _, err := fmt.Fprintf(out, "relation %s — %s -> %s\n", view.Relation, view.Header, view.Detail); err != nil {
 		return 2, err
+	}
+	if len(view.Packages) > 0 {
+		packages := make([]string, 0, len(view.Packages))
+		for _, pkg := range view.Packages {
+			packages = append(packages, fmt.Sprintf("%s ^%s", pkg.ID, pkg.Version))
+		}
+		if _, err := fmt.Fprintf(out, "packages: %s\n", strings.Join(packages, ", ")); err != nil {
+			return 2, err
+		}
 	}
 	for _, section := range []struct {
 		label string

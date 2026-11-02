@@ -26,6 +26,7 @@ h2{font-size:1.05rem;margin-top:1.75rem}
 <body>
 <h1>{{.Pattern}} <small>({{.Kind}})</small></h1>
 <p>relation: {{.Relation}} — {{.Header}} → {{.Detail}}</p>
+{{if .Packages}}<p>packages: {{range .Packages}}{{.ID}} ^{{.Version}} {{end}}</p>{{end}}
 <h2>見出し</h2>
 {{range .HeaderItems}}<div class="entry">
 <label for="{{.Attribute}}">{{.Label}}</label>

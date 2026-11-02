@@ -23,6 +23,13 @@ type View struct {
 	Items         []Item                  `json:"items,omitempty"`
 	Navigations   []Navigation            `json:"navigations,omitempty"`
 	Commands      []Command               `json:"commands,omitempty"`
+	Packages      []PackageRef            `json:"packages,omitempty"`
+}
+
+// PackageRefは、このPatternを含むPackageへの参照である。
+type PackageRef struct {
+	ID      core.CanonicalID `json:"id"`
+	Version string           `json:"version"`
 }
 
 // Commandは、対話から起動できるCapabilityを解決した結果である。
@@ -149,6 +156,15 @@ func Build(world ir.World, applicationID, patternID core.CanonicalID) (View, err
 		Pattern:       pattern.ID,
 		Kind:          pattern.Kind,
 		Data:          pattern.Data,
+	}
+	for _, pkg := range app.Packages {
+		for _, member := range pkg.Members {
+			if member.Pattern != pattern.ID {
+				continue
+			}
+			view.Packages = append(view.Packages, PackageRef{ID: pkg.ID, Version: pkg.Version})
+			break
+		}
 	}
 	for _, item := range pattern.Interaction.Items {
 		attribute, ok := attributes[item.Attribute]

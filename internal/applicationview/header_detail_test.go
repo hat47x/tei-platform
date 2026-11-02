@@ -39,6 +39,13 @@ func headerDetailWorld() ir.World {
 		}},
 		Applications: []application.Application{{
 			ID: "order_entry",
+			Packages: []application.Package{{
+				ID:      "order_entry.order_lines",
+				Version: "1",
+				Members: []application.PackageMember{
+					{Kind: application.PatternHeaderDetail, Pattern: "order_entry.order_lines"},
+				},
+			}},
 			Patterns: []application.Pattern{{
 				ID:       "order_entry.order_lines",
 				Kind:     application.PatternHeaderDetail,
@@ -85,5 +92,15 @@ func TestRenderHeaderDetailHTML(t *testing.T) {
 		if !strings.Contains(html, want) {
 			t.Fatalf("html does not contain %q: %s", want, html)
 		}
+	}
+}
+
+func TestBuildHeaderDetailCarriesPackages(t *testing.T) {
+	view, err := applicationview.BuildHeaderDetail(headerDetailWorld(), "order_entry", "order_entry.order_lines")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(view.Packages) != 1 || view.Packages[0].ID != "order_entry.order_lines" || view.Packages[0].Version != "1" {
+		t.Fatalf("packages=%+v", view.Packages)
 	}
 }

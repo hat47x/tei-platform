@@ -21,6 +21,7 @@ type HeaderDetailView struct {
 	Detail        core.CanonicalID        `json:"detail"`
 	HeaderItems   []Item                  `json:"headerItems,omitempty"`
 	DetailColumns []Item                  `json:"detailColumns,omitempty"`
+	Packages      []PackageRef            `json:"packages,omitempty"`
 }
 
 // PatternKindは、Application Patternの種別だけを返す。viewコマンドの分岐に使う。
@@ -114,6 +115,15 @@ func BuildHeaderDetail(world ir.World, applicationID, patternID core.CanonicalID
 		Relation:      relation.ID,
 		Header:        header,
 		Detail:        relation.Target,
+	}
+	for _, pkg := range app.Packages {
+		for _, member := range pkg.Members {
+			if member.Pattern != pattern.ID {
+				continue
+			}
+			view.Packages = append(view.Packages, PackageRef{ID: pkg.ID, Version: pkg.Version})
+			break
+		}
 	}
 	for _, attribute := range headerAttributes {
 		view.HeaderItems = append(view.HeaderItems, itemFor(attribute, typeValues))
