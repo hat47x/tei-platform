@@ -131,7 +131,6 @@ func TestStructureProjectionNumberedSections(t *testing.T) {
 	}
 }
 
-
 // Case rows and their Markdown header/separator must agree. Otherwise the
 // rendered table quietly assigns metadata to the wrong semantic columns.
 func TestPressureCorpusSectionHeadersHaveSixColumns(t *testing.T) {
