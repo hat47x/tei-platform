@@ -238,6 +238,27 @@ TEIの[PR #2576](https://github.com/hat47x/tei-platform/pull/2576)・[#2578](htt
 
 **設計への帰属**：構造・Facetと動的意味の区分は#2495、演算束縛・Lawは#2544/#988、実行先・専門Providerは#951/#2077、Context/時間・Reactivenessは#2506/#2582、効果と権限は#1174、実Consumerでの保存性は#2497/#2498を利用する。各ケースは合成した**試験仮説**でありPC-121〜132の実行・受理はNOT RUN。
 
+## M. Consumer間Claim比較・Document Occurrence・開示非干渉（PC-121〜132、2026-11-02追加候補）
+
+[構造保存写像§14](STRUCTURE_PRESERVING_TRANSFORMATIONS_AND_PROJECTIONS_2026-11.md)のCR-01〜12、[#2516](https://github.com/hat47x/tei-platform/issues/2516)のW8/DP-M4a/b、SHO #4/#6のDocument Occurrenceを接続する。**全件机上の反例候補、実Comparator/SHO/OS/AI試験NOT RUN**。
+
+| ID | Pressure | 保持・比較する意味 | 誤成功 | Owner |
+| --- | --- | --- | --- | --- |
+| PC-121 | 売上200と在庫200 | Claim対象/Quantity Kind | 値一致で意味同値とする | #2516/#2497 |
+| PC-122 | 部分100と全件200 | Scope/Completeness/時点 | 値不一致で片方を誤りと断定 | #2516/#2506 |
+| PC-123 | 同一Claim/版で200と201 | 真に比較可能な不一致 | AI多数決で正解を決定 | #2516/#2514 |
+| PC-124 | 旧SHO文書と現CUI | Model/Document/Reviewの版 | 保存成功を現在意味受理とする | #2516/#2505 |
+| PC-125 | optional missing/nullが同表示 | 表示同値と元状態同値 | 省略から元のPresenceを復元 | #2585/#2497 |
+| PC-126 | 二つの大整数が同じfloat64 | Projectionの非単射性 | 値一致を厳密なID同一とする | #2585/#1705 |
+| PC-127 | 同一SQL文字列、RLSが異なる | 実効Query Scope/Binding | SQL字句一致で同一集合とする | #2387/#2516 |
+| PC-128 | TEI要素一つ→文書二Occurrence | Semantic ID/Document Occurrence ID | 一箇所編集で全箇所更新とみなす | #2497/SHO #4 |
+| PC-129 | 一Occurrenceのみ局所上書き | 文書編集/TEI変更提案/Review | 局所説明を元モデルへ暗黙反映 | #2497/SHO #6 |
+| PC-130 | 意味改版・表示byte不変 | Semantic revision/説明・レビュー | byte一致でレビュー現在性を保証 | #2505/SHO #6 |
+| PC-131 | 公開同一・秘密だけ異なる二世界 | Disclosure/診断/Traceの非干渉 | 拒否理由で秘密件数を漏らす | #2516/#1178 |
+| PC-132 | CUI PASS、SHO実表示未確認 | Consumer別actual read/load | 一Consumer成功を全成果物の実受入へ拡張 | #2498/#2516 |
+
+**比較原則**：`same value`、`same Claim`、`same Source`、`same Document Occurrence`、`same edit`、`same disclosure rights`を別の関係として扱う。比較可能性の前提が不明な場合、値の同値/異値だけで正否を決定しない。公開できない根拠を不存在へ変換しない。
+
 ## 外部仕様の照合（2026-11-01読取り）
 
 1. [Apache Arrow Format](https://arrow.apache.org/docs/format/Intro.html) のNested Layouts：List/Struct/Map/Unionの物理配置と型の区別。特にMapはList of key/value structsと共通の物理形に近いが、同じ概念的Map保証をそのまま他Targetへ転送できるわけではない。PC-41〜44の**Source参考**。
