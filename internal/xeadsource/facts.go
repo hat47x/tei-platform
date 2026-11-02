@@ -125,8 +125,12 @@ func ExtractRelationalSourceFacts(doc Document) RelationalSourceFacts {
 	var walk func(Node, string)
 	walk = func(n Node, tableLegacyID string) {
 		if !n.Known {
-			// Preserve unknown source nodes in the raw Reader, and allow
-			// independently known descendants to remain forensic candidates.
+			// Preserve unknown nodes in the raw Reader. A foreign Table
+			// lookalike is an ownership boundary: its known children must
+			// not inherit the enclosing real Table's identity.
+			if localName(n.Name) == "Table" {
+				tableLegacyID = ""
+			}
 			for _, child := range n.Children {
 				walk(child, tableLegacyID)
 			}
@@ -293,7 +297,9 @@ func indexTableFieldIdentity(root Node) tableFieldIdentityIndex {
 			var collectFields func(Node)
 			collectFields = func(current Node) {
 				for _, child := range current.Children {
-					if child.Known && child.Name == "Table" {
+					// A nested foreign Table must not donate its Field
+					// declarations to the enclosing real Table.
+					if localName(child.Name) == "Table" {
 						continue
 					}
 					if child.Known && (child.Name == "TableField" || child.Name == "Field") {
