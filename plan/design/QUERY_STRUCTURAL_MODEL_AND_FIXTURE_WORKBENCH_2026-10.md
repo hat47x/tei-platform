@@ -773,7 +773,7 @@ QX-23はSQL内のOperatorの同義性／Mutant感度を試した。**QX-24の新
 
 **Operator配置の意味保存を判別する提案（正式Schemaではない）**：
 1. **要求**：Function Data Contextから明示された`Relation path / selected fields / requested row-scope / grain / claim population / source revision`。Data Modelの全Relationを自動取得対象へ拡大せず、特殊Native SQLは版付きSourceとして明示。
-2. **計画候補**：`pushdown candidate`と`local-after-materialization candidate`を、(a) **Input Read/Disclosure権限**、(b) **物理Read footprint**、(c) **Provider能力とSQL/DSL Null/Bag/Sort/Collation/Effectの一致**、(d) **取得SliceのClaim相対Com-pletenessとSnapshot/epoch**、(e) **Measure law/Join occurrence**という独立資格で比較する。どこまで押し下げるかは実Providerの保証範囲に従う。
+2. **計画候補**：`pushdown candidate`と`local-after-materialization candidate`を、(a) **Input Read/Disclosure権限**、(b) **物理Read footprint**、(c) **Provider能力とSQL/DSL Null/Bag/Sort/Collation/Effectの一致**、(d) **取得SliceのClaim相対CompletenessとSnapshot/epoch**、(e) **Measure law/Join occurrence**という独立資格で比較する。どこまで押し下げるかは実Providerの保証範囲に従う。
 3. **正負双方の条件**：同じ権限で取得した**必要な候補全集合**があるなら純粋なFilter/Group/Sort等の局所評価は同義候補となる。Top-Nは全件Materialize以外にも、同じSnapshotの安定Sort/Keyset Cursorで**必要な順位範囲を取り切った証拠**があれば成立し得る。逆に限定ページや未知Collectionを`complete`に昇格しない。`EXISTS`の正Witnessは部分取得でも成立し得るが、`NOT EXISTS`・COUNT・SUMの全集合主張は閉じた母集団を要する。
 4. **物理境界**：`SQL WHERE tenant=A`を実行した観測と、`SQL SELECT all → local filter A`は最終値が同じでも、先行Read範囲が違う。セキュリティ条件は実DB/Host/Providerの既存Authorityへ委譲し、内部で許可される局所評価・外部AI/SHOへの開示を別資格とする。Claimを公開できてもそのProducerによる物理Readが許されたことにはならない。
 5. **結果資格**：候補Planの静的表現、実Providerで発行されたQuery/Read Footprint、実Observed Result Slice、Claimの十分性、Consumer向け開示、SHO/Artifactの実読取版を別列へ。#2516/#1178/#2515/#2604の既存担当を再利用する。新中央Provider Resolver、TEI独自Host、SQL Evaluator、第二データ正本は増やさない。
