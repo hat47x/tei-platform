@@ -34,6 +34,7 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 	root := fs.String("workspace", "", "TEI workspace directory")
 	applicationID := fs.String("application", "", "exact application ID")
 	patternID := fs.String("pattern", "", "exact application pattern ID")
+	packageID := fs.String("package", "", "exact application package ID")
 	commandID := fs.String("command", "", "command capability to plan")
 	var inputPairs inputFlag
 	fs.Var(&inputPairs, "input", "command input as name=value; repeatable")
@@ -41,10 +42,11 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 	if err := fs.Parse(args); err != nil {
 		return fail("INVALID_ARGUMENT", err.Error(), 2)
 	}
-	if fs.NArg() != 0 || *root == "" || *applicationID == "" || *patternID == "" ||
+	if fs.NArg() != 0 || *root == "" || *applicationID == "" ||
+		(*patternID == "" && *packageID == "") || (*patternID != "" && *packageID != "") ||
 		*root != strings.TrimSpace(*root) || *applicationID != strings.TrimSpace(*applicationID) ||
-		*patternID != strings.TrimSpace(*patternID) {
-		return fail("INVALID_ARGUMENT", "view requires exact -workspace, -application and -pattern, without positional arguments", 2)
+		*patternID != strings.TrimSpace(*patternID) || *packageID != strings.TrimSpace(*packageID) {
+		return fail("INVALID_ARGUMENT", "view requires exact -workspace, -application and exactly one of -pattern or -package, without positional arguments", 2)
 	}
 	if *format != "text" && *format != "json" && *format != "html" && *format != "print" {
 		return fail("INVALID_ARGUMENT", "view -format must be text, json, html, or print", 2)
@@ -53,6 +55,24 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 	loaded, err := workspace.Load(*root)
 	if err != nil {
 		return fail("WORKSPACE_LOAD_FAILED", err.Error(), 2)
+	}
+	if *packageID != "" {
+		if *format != "text" && *format != "json" {
+			return fail("INVALID_ARGUMENT", "view -package supports -format text or json", 2)
+		}
+		if *commandID != "" {
+			return fail("INVALID_ARGUMENT", "view -package does not accept -command", 2)
+		}
+		view, err := applicationview.BuildPackage(loaded.World, core.CanonicalID(*applicationID), core.CanonicalID(*packageID))
+		if err != nil {
+			return fail("VIEW_FAILED", err.Error(), 1)
+		}
+		report.OK = true
+		report.Result = view
+		if *format == "json" {
+			return writeViewReport(out, report, 0)
+		}
+		return writePackageText(out, view)
 	}
 	if *commandID != "" {
 		if *format != "text" && *format != "json" {
@@ -428,6 +448,36 @@ func parseInputPairs(pairs inputFlag) (map[string]string, error) {
 		values[name] = value
 	}
 	return values, nil
+}
+
+func writePackageText(out io.Writer, view applicationview.PackageView) (int, error) {
+	if _, err := fmt.Fprintf(out, "package %s ^%s (bound: %t)\n", view.Package, view.Version, view.Bound); err != nil {
+		return 2, err
+	}
+	if _, err := fmt.Fprintf(out, "application %s\n", view.Application); err != nil {
+		return 2, err
+	}
+	for _, member := range view.Members {
+		if _, err := fmt.Fprintf(out, "member %s %s\n", member.Kind, member.Pattern); err != nil {
+			return 2, err
+		}
+	}
+	for _, requirement := range view.Requires {
+		if _, err := fmt.Fprintf(out, "requires %s %s\n", requirement.Kind, requirement.ID); err != nil {
+			return 2, err
+		}
+	}
+	if view.Projection != "" {
+		if _, err := fmt.Fprintf(out, "projection %s\n", view.Projection); err != nil {
+			return 2, err
+		}
+	}
+	if view.Conformance != "" {
+		if _, err := fmt.Fprintf(out, "conformance %s\n", view.Conformance); err != nil {
+			return 2, err
+		}
+	}
+	return 0, nil
 }
 
 func writeCommandPatternText(out io.Writer, view applicationview.CommandPatternView) (int, error) {
