@@ -21,7 +21,7 @@ func workspaceTestReader(t *testing.T, root string) (*currentReader, sourceindex
 	if err != nil {
 		t.Fatal(err)
 	}
-	index, err := workspace.BuildSourceIndex(root, loaded)
+	index, err := workspace.BuildSourceIndexFromLoad(root, loaded)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -94,7 +94,7 @@ func TestLoadVerifiedWorkspaceR1AndSemanticEquivalentR2(t *testing.T) {
 
 	// Replacing the synthetic current witness with R2 permits it, but now
 	// reusing the earlier Source bytes (R0 relative to this new witness) fails.
-	updatedIndex, err := workspace.BuildSourceIndex(root, equivalent)
+	updatedIndex, err := workspace.BuildSourceIndexFromLoad(root, equivalent)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -234,7 +234,10 @@ func TestLoadVerifiedWorkspaceRefusesWorkspaceWithImports(t *testing.T) {
 	write("consumer/tei.workspace.yaml", "workspace: consumer\nsources:\n  - semantic\nimports:\n  - alias: os\n    path: ../provider\n    namespace: os\n")
 	write("consumer/semantic/watch.tei", "namespace monitoring\n\ndata Watch {\n    attribute process type os.process_id\n}\n")
 	root := filepath.Join(base, "consumer")
-	reader, _, _ := workspaceTestReader(t, root)
+	// A Workspace with imports cannot be signed through the strict builder
+	// (it refuses imports), so no accepted Record exists for it; the refusal
+	// must come before the witness is consulted, so the Record is a placeholder.
+	reader := &currentReader{record: Record{ApplicationID: "order_entry"}}
 	got, err := LoadVerifiedWorkspace(context.Background(), reader, "order_entry", root)
 	if err == nil || !strings.Contains(err.Error(), "SOURCE_WORKSPACE_IMPORTS_UNBOUND") {
 		t.Fatalf("Workspace with imports must be refused distinctly: %v", err)
