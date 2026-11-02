@@ -141,7 +141,7 @@ BC-08/09のOwner仮説P3、BC-07の正式回復条件、BC-12の量化/再集計
 
 ### 8.1 自作two-world fixture：表示の同一性だけではClaimを確定できない（限定実行）
 
-[合成fixture `verify_claim_projections.py`](../fixtures/business-completion-claims/verify_claim_projections.py)を、[BC-01/05/07〜12の設計票](#73-112差分の反証ケースと既存ownerへの受渡し)に対する**極小の反証データ**として追加した。
+[合成fixture `verify_claim_projections.py`](../fixtures/business-completion-claims/verify_claim_projections.py)を、上記§7.3のBC-01/05/07〜12設計票に対する**極小の反証データ**として追加した。
 
 - **実行**：`python -m py_compile plan/fixtures/business-completion-claims/verify_claim_projections.py`、`python plan/fixtures/business-completion-claims/verify_claim_projections.py`。2026-11-02の隔離環境 Python 3.13.5で`Ran 1 test ... OK`、8個の`subTest`対象は全てPASS。GitHub branch上のファイルblob `e9da92a845d3ffa4203b0969c4ee411b07547106`と、試験を実行したローカルファイルの`git hash-object`一致を確認。
 - **検証した条件**：各例で`visible(worldA)==visible(worldB)`かつ、**明示した合成Claimの期待真偽**がA=true／B=falseになる。対象は全件の一部取得、外部受領、正式Recoveryの帰属、値・membershipのABA、IntentとEffect対象、Receipt再生と歴史的Output、SUMの内訳である。
