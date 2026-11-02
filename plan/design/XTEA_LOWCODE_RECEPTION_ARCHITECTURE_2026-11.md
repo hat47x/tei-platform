@@ -945,10 +945,12 @@ PoC #2521が実装した範囲と、まだ実装していない範囲を分け�
 | 項目の並び（D4） | 実装済み（recordの`layout { order ... }`、座標ではない） |
 | Package（宣言・読込・検証・版束縛・ビュー表示） | 実装済み（衝突は明示エラー、取り外しはSemantic fingerprintを変えない） |
 | Packageのビュー（メンバー・前提・版束縛） | 実装済み（`view -package`） |
+| Applicationのビュー（Pattern・Package・意味の版） | 実装済み（`view -application`） |
 | Commandの実行境界、改ページ、フックのDSL | 未実装 |
 | `reference/workspace`への宣言追加 | 未実施（受理経路が必要） |
 
 実装は、`internal/application/model.go`、`internal/syntax/application_pattern.go`、`internal/validation/application_pattern.go`、`internal/crossview/pattern_requirements.go`、`internal/applicationview`、`internal/semantic/model.go`、`internal/syntax/parser.go`、`internal/validation/validation.go`と、それぞれの試験です。
+
 
 
 

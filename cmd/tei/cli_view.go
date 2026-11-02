@@ -43,10 +43,12 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 		return fail("INVALID_ARGUMENT", err.Error(), 2)
 	}
 	if fs.NArg() != 0 || *root == "" || *applicationID == "" ||
-		(*patternID == "" && *packageID == "") || (*patternID != "" && *packageID != "") ||
+		(*patternID != "" && *packageID != "") ||
+		(*commandID != "" && *patternID == "") ||
 		*root != strings.TrimSpace(*root) || *applicationID != strings.TrimSpace(*applicationID) ||
-		*patternID != strings.TrimSpace(*patternID) || *packageID != strings.TrimSpace(*packageID) {
-		return fail("INVALID_ARGUMENT", "view requires exact -workspace, -application and exactly one of -pattern or -package, without positional arguments", 2)
+		*patternID != strings.TrimSpace(*patternID) || *packageID != strings.TrimSpace(*packageID) ||
+		*commandID != strings.TrimSpace(*commandID) {
+		return fail("INVALID_ARGUMENT", "view requires exact -workspace and -application, at most one of -pattern, -package, or -command, without positional arguments", 2)
 	}
 	if *format != "text" && *format != "json" && *format != "html" && *format != "print" {
 		return fail("INVALID_ARGUMENT", "view -format must be text, json, html, or print", 2)
@@ -55,6 +57,21 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 	loaded, err := workspace.Load(*root)
 	if err != nil {
 		return fail("WORKSPACE_LOAD_FAILED", err.Error(), 2)
+	}
+	if *patternID == "" && *packageID == "" && *commandID == "" {
+		if *format != "text" && *format != "json" {
+			return fail("INVALID_ARGUMENT", "view -application supports -format text or json", 2)
+		}
+		view, err := applicationview.BuildApplication(loaded.World, core.CanonicalID(*applicationID))
+		if err != nil {
+			return fail("VIEW_FAILED", err.Error(), 1)
+		}
+		report.OK = true
+		report.Result = view
+		if *format == "json" {
+			return writeViewReport(out, report, 0)
+		}
+		return writeApplicationText(out, view)
 	}
 	if *packageID != "" {
 		if *format != "text" && *format != "json" {
@@ -448,6 +465,31 @@ func parseInputPairs(pairs inputFlag) (map[string]string, error) {
 		values[name] = value
 	}
 	return values, nil
+}
+
+func writeApplicationText(out io.Writer, view applicationview.ApplicationView) (int, error) {
+	if _, err := fmt.Fprintf(out, "application %s\n", view.Application); err != nil {
+		return 2, err
+	}
+	for _, use := range view.SemanticUses {
+		if _, err := fmt.Fprintf(out, "uses %s\n", use); err != nil {
+			return 2, err
+		}
+	}
+	for _, pattern := range view.Patterns {
+		if _, err := fmt.Fprintf(out, "pattern %s (%s)\n", pattern.ID, pattern.Kind); err != nil {
+			return 2, err
+		}
+	}
+	for _, pkg := range view.Packages {
+		if _, err := fmt.Fprintf(out, "package %s ^%s (bound: %t)\n", pkg.ID, pkg.Version, pkg.Bound); err != nil {
+			return 2, err
+		}
+	}
+	if _, err := fmt.Fprintf(out, "semantics %s\n", view.SemanticFingerprint); err != nil {
+		return 2, err
+	}
+	return 0, nil
 }
 
 func writePackageText(out io.Writer, view applicationview.PackageView) (int, error) {

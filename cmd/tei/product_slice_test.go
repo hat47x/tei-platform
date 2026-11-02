@@ -201,6 +201,26 @@ func TestProductSliceLoadsValidatesAndViews(t *testing.T) {
 		t.Fatalf("command view=%+v", commandReport.Result)
 	}
 
+	var applicationView bytes.Buffer
+	code, err = runViewCommand([]string{
+		"-workspace", root,
+		"-application", "order_entry",
+		"-format", "json",
+	}, &applicationView)
+	if err != nil || code != 0 {
+		t.Fatalf("application view exit=%d err=%v body=%s", code, err, applicationView.String())
+	}
+	var applicationReport struct {
+		OK     bool                            `json:"ok"`
+		Result applicationview.ApplicationView `json:"result"`
+	}
+	if err := json.Unmarshal(applicationView.Bytes(), &applicationReport); err != nil {
+		t.Fatal(err)
+	}
+	if !applicationReport.OK || len(applicationReport.Result.Patterns) < 5 || applicationReport.Result.SemanticFingerprint == "" {
+		t.Fatalf("application view=%+v", applicationReport.Result)
+	}
+
 	var packageView bytes.Buffer
 	code, err = runViewCommand([]string{
 		"-workspace", root,
