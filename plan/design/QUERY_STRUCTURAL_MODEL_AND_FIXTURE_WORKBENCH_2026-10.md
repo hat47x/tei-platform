@@ -951,6 +951,35 @@ QX-22〜24はSQL→標準Operator／Provider Pushdown→Local計算の局所同�
 **状態**：SQLite/Python local **14/14 PASS**／GitHub blob一致。TEI SQL Worker→Go→Function Context→実Provider、RDB/APIの多ProviderConformance、Java/.NET/WASM、Host/Current Grant・RLS、SHO/UI/外部AIへの実開示、Owner業務意味受理は**NOT RUN**。
 
 
+
+### 7.25 QX-29：標準Data OperatorをJavaの実言語意味へ写像する場合のValue／Error／丸め時点を独立測定（2026-11-02、JDK 21実行20件）
+
+**新差分**：QX-28（§7.24）はSQLite SQLとPython/Decimalの標準ライブラリによる局所比較であり、TEIの多言語Targetという製品価値に対し、Java実行そのものの実測が欠けていた。そこで既存[#2077 別言語生成](https://github.com/hat47x/tei-platform/issues/2077)、[#988 Operator Contract](https://github.com/hat47x/tei-platform/issues/988)、[#2622 DO-07](https://github.com/hat47x/tei-platform/issues/2622)、[#2593 Measure](https://github.com/hat47x/tei-platform/issues/2593)、[#2056 Missing/NULL](https://github.com/hat47x/tei-platform/issues/2056)の受入観点へ、Javaの実行環境で観測した**計算結果と技術失敗**を追加する。**TEIが生成したJavaコードではなく、手書き独立Reference**であり、SQL⇄Javaの全面同義性や正式DSL semanticsを採用したものではない。
+
+[QX29JavaValueReference.java](https://github.com/hat47x/tei-platform/blob/work/query-structural-fixture-design-20261030/plan/fixtures/query-workbench-f0/QX29JavaValueReference.java) をローカルOpenJDK 21.0.12.1で`javac -encoding UTF-8`→`java QX29JavaValueReference`として**実際にコンパイル・実行し20/20 PASS**を確認。実行ソースのGit blob SHAとGitHub保存ファイルblob SHAはともに **`4ab62ebf4ec56caf17d02267ce25d69f59c37da2`**（実ファイル5563 byte）で一致。JUnit等の別依存はなし、Java classファイルはGitHubへ納品せずReferenceのSourceのみ保存した。
+
+| Test | 実Java 21で固定した出力／失敗 | SQL / Python / TEIの意味比較に必要な区別 |
+| --- | --- | --- |
+| **QX29-01〜03** | `new BigDecimal("0.1") + new BigDecimal("0.2") = 0.3`。Java `double 0.1+0.2 != 0.3`。`new BigDecimal(0.1d)`は`new BigDecimal("0.1")`と数値不一致、`BigDecimal.valueOf(0.1)`はこの値例で一致 | 入力の10進文字列／binary float／float→Decimal Adapterの違い、Precision Source |
+| **QX29-04〜05** | ±2.5にHALF_EVENは±2、HALF_UPは±3 | SQLite `ROUND(±2.5,0)`とも比較、未受理の業務丸めをTargetデフォルトへ固定しない |
+| **QX29-06** | `1.005×2`をhalf-evenで明細先行2桁に丸めると**2.00**、総和後2桁に丸めると**2.01** | **同じ丸めモード・Scaleでも丸め時点が違えば結果が違う**。Data Rule/Measure/集計Grain/Stageへの明示Bindingが必要 |
+| **QX29-07〜08** | `Math.addExact(Long.MAX_VALUE,1)`は`ArithmeticException`、`BigInteger+1`は成功し9223372036854775808 | 入力型の幅・Overflow／Error vs 成功値・生成先ABI・上限 |
+| **QX29-09〜10** | 不正数値文字列→`NumberFormatException`。Java Mapでキー欠落とキーあり明示`null`を区別 | 入力変換失敗をBusiness Rejectへ付け替えず、missing/nullのRole/Meaningを保持 |
+| **QX29-11** | `BigDecimal("1.0").compareTo(BigDecimal("1.00")) == 0` だが`equals`はfalse | **数値的な同値≠Scale/型表現としての同一性**。Query DISTINCT/Group/Keyの比較則とSource byte identityを別扱い |
+| **QX29-12〜13** | `BigDecimal.ONE.divide(new BigDecimal("3"))`は非終端小数で`ArithmeticException`、Scale2/HALF_EVEN指定なら0.33 | 割り算の精度/Scale/丸めが未指定なら「実装が自然に正しい結果」を出すとは扱わない |
+| **QX29-14〜16** | Java `"Ä".equalsIgnoreCase("ä")`はtrue（QX-28のSQLite NOCASEではfalse）。Unicode NFCは明示すると合成/分解を同一化。`Comparator.nullsLast`はNULLを末尾へ | Unicode/Collation/Normalization/NULL orderを明示Evaluation条件とし、Java String比較をSQL COLLATEと無条件交換しない |
+| **QX29-17〜18** | `Long.parseLong("1e2")`は`NumberFormatException`、`new BigDecimal("1e2")`は数値100 | **指数表記の受容可否はAdapter／型の仕様判断**。同じ100を返し得ることから入力言語が同義とはならない |
+| **QX29-19** | 空Listを`Stream.reduce(add)`すると`Optional.empty`、単位元`BigDecimal.ZERO`指定なら0 | SQL空SUM=NULL、TOTAL=0.0との接合。Empty/Missing/Nullと元集合の完全性は別 |
+| **QX29-20** | BigDecimalの`-0.00`は`signum=0`、Java doubleの`-0.0`と`0.0`はraw bitsが異なる | 0と負ゼロの数値同値・表現同一性・serializeを混同しない |
+
+**成熟した設計含意**：
+- SQL/Go/Java/.NET/WASMの**値だけが一致しても**、入力パース／Null Presence／Representation Scale／関数評価順／rounding stage／Overflow・Technical Reject／Result Serializationが異なれば、全体契約は同値とはいえない。対象Function/Operatorの意味に関わる軸だけを#988/#2077/#2622の既存適合試験へ加える。
+- Javaでは`BigDecimal`を使用すれば自動的に意味保存が保証されるわけではない（数値文字列生成の起点、`new BigDecimal(double)`、`equals`対`compareTo`、`divide`の失敗、丸め時点）。「推測する丸め規則」については現行の未対応規則拒否を維持し、Ownerが受理した規則と入力契約なしに生成器で既定採用しない。
+- **小さく再現可能な受入段階**：V0 Source/Operand/Role/Operator版の照合、V1 独立Java/SQL/Go計算とParserの対照、V2 TEI同一モデルから生成したJava JAR／.NET assembly／WASMの**公開API + JSON Adapter**を別々に実行、V3 外部HostでのAuth/Tx/Provider/Receipt（Read/Write別）、V4 Source/Data/Function/Business/SHOのOwnerによる個別受理。V1のPASSをV2〜V4へ自動昇格しない。
+- 新しいTEI独自Host、中央Provider Resolver、独立SQL Emulator、第二Canonical Store、JDKへのランタイム依存を生成物全体へ一律追加する提案ではない。Goは開発ツール実装、Javaは生成先の一候補。Context/Operator/Adapter/Hostを具体的案件に応じた薄いBindingで接続する。
+
+**未実証**：TEI実モデル→同一生成器→JAR作成、生成した全.classの固定・比較、実Java JSON入力Adapter、同一Sourceの.NET/WASM Target、実Provider/Host/OS Egress/SHO、Owner Meaning Acceptanceは**NOT RUN**。Java 20件は実JDKの限定比較であり、実TEI生成器や対象データへの意味適用実証ではない。
+
 ## 8. 実装順・担当引継ぎ（提案）
 
 | 段階 | 所有 | 実施 | 完了の根拠 |
