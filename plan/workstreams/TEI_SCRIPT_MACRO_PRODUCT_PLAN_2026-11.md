@@ -216,6 +216,44 @@ go run ./cmd/tei artifacts -workspace reference/standard-crud/workspace -applica
 
 **改版・制約**：テストの説明は現在のSource-static観測に基づく。実際のM0試行・strictと非strictの統合照合・import/ABA/Source driftの注入・本番Host/Provider/OS/SHO/EKI・Owner受理はすべて**NOT RUN**。#1119の既存P0/Gateは変更せず、新しいCLI Contract、全局Source Index Engine、実行Host、横断承認Gateを創設しない。
 
+## 2026-11-02後半の実証成果と、次の一件の接合
+
+前節までの61件の反証候補をさらに増やす前に、**実際に動く最小Consumerへ既存の検証資産を接続する**。同じ名前の「確認済み」を別の層へ持ち越さず、製品に何が存在し、どこが未接続かを記録する。
+
+### 既存の実測・実装を再利用する対象
+
+| 担当 | 実際に成立した範囲／参照 | Macroへ転用しない資格 |
+| --- | --- | --- |
+| **実CLI / Context** | [#2626](https://github.com/hat47x/tei-platform/pull/2626)ではmain統合済みの`catalog→inspect→trace→validate`を実Go CLIで実行、実Source位置移動の前後も比較。Focused CIの合成55件・実CLI 2 job成功というIssue記録あり | 標準Operation/Artifact M0検証は別。SHO保存・Harness実受信・Owner受理は未 |
+| **Operation/Artifact M0** | [Draft #2678](https://github.com/hat47x/tei-platform/pull/2678)を独立作成。`reference/standard-crud/workspace`に対し、5つの実CLI呼出しの版とWorld/ModelRevision、5 Operation/4 Gap、Artifact Manifest/Findingsを照合。検査器の合成11件と実Go CLIを**別CI job**にする | PR作成時点で両jobはqueued／新実行は未確認。`-out`書込み、実Provider/Host、Macro起動は対象外 |
+| **実PostgreSQL単行CAS** | [#2651](https://github.com/hat47x/tei-platform/pull/2651)と[#2653](https://github.com/hat47x/tei-platform/pull/2653)で、PostgreSQL 14.24の隔離DBにおける単一文比較更新、競合、冪等再実行、別接続、機密現在値の非返却を独立に実測（8件という担当報告） | `tools/reference-expected-state-update`の参照実験。#1174のBusiness Effect/Receiptや#1119 P0-a本番Callerへ接続済みとはしない。CIでは実DB環境変数が無ければSKIP |
+| **Java成果物閉包** | [#2652](https://github.com/hat47x/tei-platform/pull/2652)で`Main.class`と`Main$Input.class`をStoreへ保存、復元したclass集合だけから隔離JVMで起動する6種の試験を実施（公開10 fixtureも確認） | Macro向けLibrary/Plugin全依存/別Hostの現在実ロード、#2604の製品配布と消費者別受理の証拠ではない |
+| **Consumer用途別Set** | [#2630](https://github.com/hat47x/tei-platform/pull/2630)はmain統合済み。Generic Manifest自己整合とConsumerに必要なmemberの閉包を別Claimとして設計 | [#2659](https://github.com/hat47x/tei-platform/pull/2659)のCheckSet改修は現時点Open。製品全Artifactが自動完全になったとはしない |
+
+### M0→M3で一つの負例を共有する：検索結果0件から「存在しない」を判断してよいか
+
+**受注1001に「未処理割当が存在しない」ことを確かめて確定するマクロ**を、少なくとも次の条件で比較する。実用上は、照会で空集合が返ったことだけを処理許可の根拠にできない。
+
+| 状況 | 観測 | 成立するClaim／次の処理 |
+| --- | --- | --- |
+| 正当な完全検索 | 対象Subject、Tenant/Relation Scope、Predicate、必要な時点が固定され、当該Universeが**完全に観測**されて0件 | そのScope/時点での不存在を候補にできる。ただし**Commit時点での不存在**はAction/Ownerの別検査 |
+| 部分取得やページ打切り | 見えた範囲は0件、未取得ページやRelationがある | `not-established`。不存在の証明や自動確定をしない |
+| RLS・開示制限 | 利用者へ0件のみ開示、Hostは別Scopeの情報を保有し得る | Consumerの可視ScopeとOwner業務Universeを分ける。生情報を返さずOwner内部の検証で合法確定する余地は残す |
+| 反例の存在 | 同じSnapshot/Scopeで条件を満たす実体を1件観測 | その範囲の「存在しない」は反証される（存在の証人）。全件を読まずとも不在結論を拒否できる場合がある |
+| 別時点の変化 | 読み取り後に未処理割当が追加された | 過去の完全検索を現在の処理許可へ流用しない。DB/Ownerが現在の不変条件を検査する |
+| 原子的更新 | 対象1件へのCASは成功しても、無関係な別行の挿入は防いでいない | 単行CASの合格を`NOT EXISTS`の集合全体の真理や業務手続完了へ拡張しない |
+
+この判断は[#2586](https://github.com/hat47x/tei-platform/issues/2586)のHJ-04、[#2582](https://github.com/hat47x/tei-platform/issues/2582)の集合依存、[#2387](https://github.com/hat47x/tei-platform/issues/2387)のQuery Predicate、#1174の現在Owner Effectを**一件の同じSynthetic Subject/Action**へ接続して検査する。新たなNegative Cache、共通Proof Engine、中央Snapshot Managerは先に作らない。存在証人が非公開なら、利用者にRaw値を返さず、Owner内部で要求する条件を確かめた結果だけを許された開示先へ渡す。
+
+### 次の小さな完了単位
+
+1. **M0**：#2678のexact-head実CLIを通し、5 Operation/4 GapとArtifact Source版を観測・ログの件数から再確認。合成11件と実Go観測を別結果とし、手動で`commands`を見たことや既存#2626のPASSをそのまま数えない。
+2. **M1**：同じ`ledger` Artifactを用途別Expected Setで照合する。原本に差のある`-out`のファイル書込みと、実Readerが読めたMember/Manifest bytesを区別する。Java依存class集合は別Target/別Domainの既存実証とし、通用条件だけ参照する。
+3. **M3**：#2651/#2653の実CAS記録を使い、実Queryの「未存在」要求が**単行期待値更新で代用できるか**を反証する。必要な場合はOwnerのDB制約/Transactionで現在集合を確認。#1174 P0-aの実Effect・Receipt未接続は未達として保持する。
+4. **M4**：SHO保存文書のSource再解決と、EKI同一AttemptのBody実取得を別に観測する。M0/M1の生成成功だけで納品へ昇格させない。
+
+**優先順位とEvidence**：既存P0-a/P0-b/Gate A/B/Cを維持し、M0のread-only実証は並行で進める。特定のOwnerが実DBで8件PASSと報告しても、TEI Macroの実ビルド/Provider/Current Grantへ転用しない。新#2678のCI結果が得られるまでは`new-M0-NOT-VERIFIED`と記録する。上の負例は**計画段階でMacro製品E2E未実行**。
+
 ## テスト証拠の受渡し：1ケースにつき別の保証を保持
 
 | 試験証拠 | 最初の取得先 | 後段へ渡せる範囲 |
