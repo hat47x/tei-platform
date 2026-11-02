@@ -339,3 +339,77 @@ TAI mainの[実装README](https://github.com/hat47x/tai-pleroma/blob/main/integr
 `PFC-01〜12`はIssue #2585に定義。特に、`optional × required`によるPresence差、`many × numeric/bool`の対応範囲、`float64`の数値忠実度、Field→Input→TypeRefの検査、read-only artifactとSUIの非投影Fieldを**同じ固定Versionで別々に**比較する。最初は現行の小さな生成Templateを実行し、Source文字列存在テストを越えて実際のraw JSON出力と終了コードを観測する。
 
 **今回の資格**：source codeとTAIの静的資料を照合した設計仮説。上記PFCを実行した結果やOwnerによる正式な意味受理ではない。標準Core TypeKind・新共通Runtime/Host・独立Source正本の追加は提案していない。
+
+
+## 12. 時間・増分観測・結論の撤回を構造保存に接続する（2026-11-02追補）
+
+### 12.1 他レーンとの接合：静的Projectionから「変わる観測」へ
+
+[#2586](https://github.com/hat47x/tei-platform/issues/2586)（Query→Data Context→Claim→Pattern→操作候補の単一Function縦断）、[#2506](https://github.com/hat47x/tei-platform/issues/2506)（取得範囲・Context Instance/epoch）、[#2507](https://github.com/hat47x/tei-platform/issues/2507)（異質Consumerの機能Pattern）、[#2505](https://github.com/hat47x/tei-platform/issues/2505)（版間Source意味対応）で、**同じ構造の異なる時点・異なる取得範囲**をどう説明するかが具体化した。SQLの[#2387](https://github.com/hat47x/tei-platform/issues/2387)は演算・Lineage、[#1708](https://github.com/hat47x/tei-platform/issues/1708)はFreshnessを所有する。本#2497はそれらの意味を上書きせず、**ProjectionがClaimの成立条件と撤回条件を保存するか**を扱う。
+
+静的な写像`p:S→V`だけでなく、実際の読み取りを`observe(S, query, scope, snapshot?, epoch, time)`と考え、その結果に適用した`project`がどの観測可能なClaimを支持するかを比較する。これは既存Referenceを読むための記法であり、新しいTEI共通API・Runtime・正本の提案ではない。
+
+**分離する時点と版**：
+
+- Source definition revision／semantic acceptance revision：意味定義の版。
+- Query/Provider result revision、read-set／snapshot／scope：どの範囲のデータを観測したか。
+- Event time／processing time／observation time：イベント発生、処理、観測の時刻。watermarkは実Providerが保証する範囲に限る。
+- Selection epoch／UI rendering revision：利用者の選択や画面に適用する応答の世代。
+- Artifact/build revision／consumer load revision：生成・配布・実際の読込みの版。
+
+同一タイムスタンプ文字列だけで同一Snapshot・同一Meaningを宣言せず、異なる版を横断して同一とするには対応する根拠が必要。
+
+### 12.2 「情報が増えれば結論が増える」の成立条件
+
+**単調な問い合わせ**とは、同じ解釈・Universe/Schema・Identity/Scopeを固定し、データを追加するだけで既存結果を失わない問い合わせである。存在確認（肯定的な存在証人）は、追加だけのデータについては保持しやすい。しかし、訂正・削除・権限変更・時点変更を許す実世界では、以前の存在証人も再検証対象となる。
+
+- `SELECT`で見えた一件の存在は、**その観測時点とScope**での肯定的証人。将来の存在を保証するものではない。
+- `COUNT`、`SUM`、`AVG`、TOP-N、NOT EXISTS、LEFT JOINの未一致に由来する仮NULLなどの**結果値・結論**は、追加データで変わり得る。特にSUMの下界は、既知入力が非負、同じ単位・Identity・時点・JOIN重複無し、追加のみなどの条件付き。
+- 0件の取得は、対象母集団・条件・取得完了が確認できて初めて**その範囲内での不存在**を支持する。未取得・先頭ページ・権限で制限されたSliceから世界全体の不存在を結論しない。
+- 集計の1行はEntityの1件と同一の粒度ではない。JOINで2×3=6行となったとき、元の二つの関係の実体件数を6件と報告しない。
+
+ここで区別するのは**入力データの追加に関する単調性**と、**判断・Claimの維持可能性**である。集計の中間状態や近似値を表示することは可能だが、確定値として扱うには対象Consumerの追加条件が必要。
+
+### 12.3 Claimの変更を表す最小状態（概念上の作業票）
+
+| 状態 | 意味 | Viewへ伝えること |
+| --- | --- | --- |
+| supported-in-scope | 指定Scope/版の観測でClaimを支持 | 対象・根拠・観測時点・条件 |
+| provisional | 部分集合・遅延・未確定条件付きの候補 | 未観測部分・更新可能性 |
+| contradicted-in-scope | 同じ条件・比較可能な版で反証を観測 | 矛盾した対象と観測根拠 |
+| superseded | 後続の同一対象・比較可能な版の結果へ置換 | 旧版と新版、置換理由 |
+| unknown-or-stale | 成立判断に必要な観測が欠落・失効 | 不足・再取得・再評価の条件 |
+
+これらは**TEIの新しい正式enumではない**。既存Result/Diagnostic/Claimの表現可能性を比較するための語彙である。例えば、後から到着したLEFT JOINの一致行により旧仮NULL行が消える場合、表示側は単なる追加だけでなく旧行の撤回を扱う必要がある。古いselection epochの非同期応答は、現在選択のClaimへ混ぜない。
+
+### 12.4 同じSourceから二つのConsumerへ投影するときの検査
+
+**一つのFixtureを固定して、二つの異質Consumer**（Headless CUIと表/Chart、またはSHO文書）へ投影する。
+
+1. D1が完全2件、D2が先頭ページ1件（母集団3件）という観測を、二つの独立Relation Pathとして保持する。D1とD2のJOINの表示件数は元のEntity件数へ昇格しない。
+2. D2の残りを取得した後、表示中のAggregate、存在／不存在Claim、Pattern適合、操作候補について、**何が再評価され、何が旧版のまま保留か**を比較する。全再取得を基準とし、局所更新の採用は依存条件が観測できる場合に限定する。
+3. A選択→B選択の間にAの遅延応答が返っても、BのContextへ帰属させない。Selection epochは業務Operation IDと別。
+4. `null`、Query由来の仮NULL、optional Fieldの省略、未取得、Claimの`unknown`を区別する。
+5. 一方のConsumerで旧Claimが撤回されたら、他方に旧Claimを確定として残さないための**通知・再解決の責務と観測境界**を示す。実Consumerが非同期更新を受け取った証拠なしに全画面同期を主張しない。
+6. Sourceモデル改版（[#2505](https://github.com/hat47x/tei-platform/issues/2505)）がある場合、byte/locatorの変化と意味上の同一性候補、Owner受理を区別する。
+
+**担当の受入経路**：単一FunctionのHeadless縦断実装は#2586、Contextの取得範囲・再評価は#2506/#1708、Pattern/表示は#2507/#997、版間意味対応は#2505、Target/Consumer実証は#2498、本#2497は保存・喪失の説明条件を保持する。新しい共通Changefeed/Claim Engine、第二Authorityや専用Hostは前提にしない。
+
+### 12.5 新しい反証票（TP-01〜12、全件NOT RUN）
+
+| ID | 最小の反例 | 失ってはいけない区別 |
+| --- | --- | --- |
+| TP-01 | 先頭1ページ0件 | 部分0件と母集団0件 |
+| TP-02 | 0件確定後に新規挿入 | 過去の不存在と現在の不存在 |
+| TP-03 | 既知非負SUMに負値が追加 | 条件付き下界と一般SUM |
+| TP-04 | JOINの重複でSUMが2倍 | Relation Grainと集計対象 |
+| TP-05 | LEFT JOIN仮NULL→一致行到着 | NULL値と未一致、撤回 |
+| TP-06 | TOP-Nの新しい上位要素到着 | 追加のみの表示と旧行置換 |
+| TP-07 | 旧Selection epochの応答到着 | Context InstanceとBusiness ID |
+| TP-08 | イベント時刻と処理時刻の逆転 | Event/Processing/Observation Time |
+| TP-09 | 同一時刻・異なるSnapshot | タイムスタンプ一致と一貫したRead-set |
+| TP-10 | Model revision変化、Source locator同じ | locator一致と意味上の同一性 |
+| TP-11 | 一方のConsumerだけ再描画 | 更新通知と実Consumer観測 |
+| TP-12 | 数値型は保持、取得Scopeは縮小 | Value fidelityとClaim completeness |
+
+**状態**：他レーンの設計とIssueを照合した反証可能な追加提案。TP-01〜12、実Provider、GUI、Owner意味受理は未実施。外部仕様の引用を正式採用したものではない。
