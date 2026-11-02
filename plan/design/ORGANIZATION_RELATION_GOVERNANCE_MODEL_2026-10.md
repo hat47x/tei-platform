@@ -1716,3 +1716,44 @@ Source Revision不一致でhelperを停止させる。UI選択epoch、Provider S
 **現行main差分**：2026-11-02の再取得時、mainは`d8f5114f17793354bbab0c766190699ad2b5d60b`へ進行。組織設計Draft #2389のbaseは`2503a25fee9ffa47592d47818c2bb35c0a2c50ab`、合成Reference Draft #2596のbaseは`9c9ef4d160640908e06ad13afb6c2b45c664c748`であり、現mainとの収束・trusted checkout・実Go/Provider接続を確認するまでDraftを解除/mergeしない。mainが進行したこと自体はこの合成観測の成否を変更しないが、製品採用資格の確認範囲は別である。
 
 **実装順の変更は最小限**：#2634の現行Go特性試験の結果を参照し、#2586が受理済みFunction/Query/Context/Patternにこの隠れた依存を実際に渡せるかを一試行で確認。#2582は差分再取得、#2600は生成キャッシュ、#2516は公開の資格、#2514は期待Oracle独立性を担当する。新しい共通Dependency Graph Registry、Query Executor、Cache/Host/権限Engineは本節から導入しない。正式TEI Query/Provider、Studio/SHO、外部Consumer、Owner意味受理は引き続き**NOT RUN**。
+## 49. 組織分割・承継と比較可能性：同じ名称・同じ人数を同じ意味にしない（2026-11-02、設計候補）
+
+### 49.1 識別子の継続と組織の承継は別の関係
+
+§39〜48の一体Source・時点・Measure/Claim/Read依存を、部門の**分割・統合・改称・廃止**へ拡張する。この追補は既存P0-M（意味保存）とP0-V（最終状態）および#2510の分野別Corpusへの入力であり、新Core kind、汎用組織承継エンジン、専用UI/Hostを追加する採用決定ではない。
+
+- **同一性**：Person ID、OrgUnit ID、Position ID、Membership occurrence IDは別々。表示名の継続、外部HRコードの再利用、二組織の名称一致からOrgUnitの同一性を推測しない。改称で同一性が続く場合と分割で新しい対象が生まれる場合はOwnerの意味規則・Source根拠で判断する。
+- **承継**：`successorOf`等は案件の通常Relation/Profileとして表現する候補であり、`sameAs`ではない。承継の対象は人事配置、職位、指揮命令、費用帰属、報告単位、責任等ごとに異なる可能性がある。単なる承継線からMember、決裁権、Grantを全継承しない。
+- **比較可能性**：歴史的組織D1、改編後D1a/D1b、報告用Group Gを混ぜて一本の「部門人数」系列にしない。比較には、Scope/軸、時間、Measure/grain、Rule版、明示的な集約・対応付け規則、実取得の完全性、Source/Provider cohortが必要。対応規則のない「同じ部署だったはず」は`unresolved`にする。
+- **時間の独立**：valid-at（業務有効日）、known/recorded-at（その時点で把握されていた訂正）、published revision（外部へ確定提示した版）は別。遡及訂正後の再計算値を、当時の公開帳票や確定済み業務効果の値に上書きしない。
+
+### 49.2 既存§39のP1/P2/P3・A1〜A4を用いた手計算Oracle（未実行）
+
+下表は既存組織データに**明示的な合成配賦Rule**がある場合だけの期待値。FTEは当該fixtureの配賦値であって雇用・在籍・労働時間の普遍的意味ではない。D1は2027-07-01以降に新しいD1a/D1bへ分割されると仮定し、`D1 = D1a`という識別子同一視はしない。D2は継続する。
+
+| 固定した観測文脈 | 関係出現と配賦（当該時点） | 部門FTE | 全Person distinct / 関係出現 |
+| --- | --- | --- | --- |
+| **旧体制** valid 2027-06-30 | A1=P1→D1:1.0、A2=P2→D1:0.6、A3=P2→D2:0.4、A4=P3→D2:1.0 | D1=1.6、D2=1.4 | **3人 / 4件** |
+| **初回公開版 R1** valid 2027-07-01、known 2027-07-01 | 新規A1'=P1→D1a:1.0、A2'=P2→D1b:0.6、A3/A4はD2で継続 | D1a=1.0、D1b=0.6、D2=1.4 | **3人 / 4件** |
+| **遡及訂正版 R2** valid 2027-07-01、known 2027-07-03 | A2'は当初から無効と訂正、A3のP2→D2配賦0.4→1.0に訂正。A1'/A4は不変 | D1a=1.0、D1b=0、D2=2.0 | **3人 / 3件** |
+
+- R1とR2は**同じvalid日でも違う記録/公開根拠**を持つ。R1公開物の再現はR1を参照し、現在認識での再計算はR2を参照する。公開物の再現に必要なdigest/版が保全されていなければ`unverified`。上記の変化は合成規範の例であり、実システムでの遡及削除処理の可否・保管方式は別契約。
+- Ownerが「旧D1と後継D1a+D1bを**FTEというMeasureについてのみ**比較可能」と受理したなら、旧D1=1.6／R1後継計=1.6／R2後継計=1.0を比較できる。ただし後継計が1.6でも組織同一性、人数の推移、承認権継承が確定したことにはならない。
+- 同じ明示Groupでの**unique Person**は旧D1=2、R1後継=2、R2後継=1。部門別人数の単純加算が許されるかは兼務・多重経路に依存し、FTEの加法性から人数の加法性を推論しない（#2593）。
+- 「D1bの現在人数0」は閉じた合成Sourceに限るOracle。実Providerのreadがpartialなら、0件応答・NOT EXISTSを全体の不存在へ昇格させない（#2387/#2628）。
+- 承認Ruleが「D1の責任者」を選ぶ場合、改編後のD1a/D1b責任者やM1の在任先を後継Relationだけで自動決定しない。候補解決と現在の実行権限・職務分掌・最終Effectを別照合する（#2386 S6/#1174）。
+
+### 49.3 既存Issueへ引き渡す反例（ORG-OC；新しいGateではない）
+
+| 反例 | 識別すべき誤成功 | 独立した成功条件（設計候補） | Owner |
+| --- | --- | --- | --- |
+| OC-01 組織名/HRコード再利用 | D1→D1aを同一OrgUnit IDに書換 | ID継続とsuccessor RelationのSource/Accepted意味を分離 | #2386/#2495 |
+| OC-02 部門分割の原子公開 | 同一revisionでD1とD1a/D1bが部分混在 | 変更集合の検証・公開版の一致を確認。不確実な外部Provider全体の原子性は主張しない | #2386 S3/#1807 |
+| OC-03 同一valid日のR1/R2 | 最新値で「当時公開」の数値を置換 | report revisionとknown-atを固定して旧値を再現し、restated値は別Claim | #2582/#1803 |
+| OC-04 比較系列の暗黙接続 | 階層の名称・位置から長期時系列を自動結合 | Compare用BridgeのScope/Measure/Rule受理がなければ`unresolved` | #2593/#2497 |
+| OC-05 多重経路と人数/FTE | 4関係=4人、FTE一致=責任同一と断定 | unique Person、occurrence、FTE、責任候補を独立Claim | #2593/#2507 |
+| OC-06 R2での局所失効 | R1のD1b値・比較結果・並び順を現行と表示 | Source訂正→Queryの非表示依存→Claim→UI/SHOの資格を用途別に再評価 | #2582/#2586 |
+| OC-07 部分Provider | D1bの0行を不存在確定とする | Scope/actual read witness/cohort/completeを証拠化し未確認を保留 | #2622/#2628 |
+| OC-08 承継からのAction | 後継部門の担当へ旧D1決裁権を移す | Owner Ruleと実Host Grant/Target/commitを再検証。承継はGrantではない | #2598/#1174 |
+
+**段階別証拠**：手計算表はE0期待のみ（本追補の新規fixture・試験は**NOT RUN**）。Draft #2596の**固定HEAD `f2a8be6b9fed1e59b59eec86b06c1c7862ab62b6`に対するNode合成166件SUCCESS**は既存反例の限定証拠であり、ORG-OC-01〜08の実行証拠ではない。最初に独立FixtureでR1/R2の再現性と明示Bridgeなしの拒否を検証し、次に#2586で実TEI Data/Relation→Query→Context/Measure→複数Consumerの同一試行を確かめる。最後に#2386 S3/P0-Vと#1174の実Provider/Effectへ引き渡す。通常組織Dataに専用ACLを加えず、保護指定された個別項目のみ既存の保護契約に従う。Ownerの業務意味受理、現在mainでの統合適合、実DB/Studio/SHO/Hostの受入はいずれも**未確認**。
