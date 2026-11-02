@@ -980,6 +980,36 @@ QX-22〜24はSQL→標準Operator／Provider Pushdown→Local計算の局所同�
 
 **未実証**：TEI実モデル→同一生成器→JAR作成、生成した全.classの固定・比較、実Java JSON入力Adapter、同一Sourceの.NET/WASM Target、実Provider/Host/OS Egress/SHO、Owner Meaning Acceptanceは**NOT RUN**。Java 20件は実JDKの限定比較であり、実TEI生成器や対象データへの意味適用実証ではない。
 
+
+### 7.26 QX-30：値の意味だけでなく、外部JVMが実際に組み立てるJava全class閉包の整合性を分離する（2026-11-02、JDK 21実行12件）
+
+#### QX-29からの追加発見：不一致が実行エラーにならず「正常に誤計算」する
+
+QX-29（§7.25）は同じJava 21処理系の`BigDecimal`・数値変換・例外・丸め時点を20例で独立測定した。しかし**主クラスのバイトが完全一致していても、依存する副クラスの違いだけで外部Consumerが値としては正常に受理できる誤結果を返す**場合を検証していなかった。既存[#2512 Java ArtifactSet](https://github.com/hat47x/tei-platform/issues/2512)の`Main.class`だけでは`Main$Input.class`が無く`NoClassDefFoundError`という試験と異なり、今回は**必要classは存在し、外部JVM実行も正常終了するが、値が意味的に変わる負例**を固定する。#2513型付きJava Library、#1102 ArtifactSet、#1105 Store、#1370 Verified→Loaded byte、#2390 外部Consumer、#2600 増分ビルド、#2077 多言語Target、#2514独立Oracleと接続する。
+
+**独立実測Reference**：[test_qx30_java_artifact_semantics.py](https://github.com/hat47x/tei-platform/blob/work/query-structural-fixture-design-20261030/plan/fixtures/query-workbench-f0/test_qx30_java_artifact_semantics.py)。Python 3.13.5の`unittest/tempfile/subprocess/hashlib/json`で**実OpenJDK 21.0.12.1のjavac＋java**を呼び、各試験ごとに固定したJava `qx30.LineAmount`公開クラス、内部`qx30.Rule`、**別source/別compile outputの`ExternalConsumer`**を組み立てる。実JDKで**12/12 unittest PASS**、`py_compile` PASS。Python実行ソースとGitHub保存ファイルのblob SHA-1 **`6352be74621aa3e5f954a8349095306d49b2f02d`**一致、8416 bytes、SHA256 `b17c50d1cfc83d8cfe24d028d61e0fda13c4e8b1723ca9a5fbfc89c277d5c12a`。個別生成classのSHA-256とパス集合を比較し、集合fingerprintは**隔離fixture独自のJSON正規化**であって#1102の正式ArtifactSet Schema/Digestではない。
+
+| Case | JDK実行・全class観測 | 設計上の意味 |
+| --- | --- | --- |
+| **QX30-01/02** 主`LineAmount.class`のbyteはHALF_UP版とHALF_EVEN版でSHA-256完全一致。内部`Rule.class`は異なり、二member集合digestも異なる | 主class単独digest／主API identityと必要な実行class閉包を分離。生成物が同じに見えても丸め実装は一致しない |
+| **QX30-03/04** clean Java Consumerの`1.005`は両版で正常終了するが、UP=**1.01**、EVEN=**1.00**。主classをUP版のまま内部RuleだけEVEN版に入れ替えても正常終了で1.00 | **必要memberの混在はNoClassDefFoundErrorを伴わず、成功として誤った値を返し得る**。主classの検証成功・実行成功・Meaning一致は別 |
+| **QX30-05** 主classだけを独立classpathへ置くと実`NoClassDefFoundError: qx30/Rule`で失敗 | 既存#2512の主class単体では実行閉包を満たさない負例を別実装で再現 |
+| **QX30-06/07** 二classを新規隔離先へコピーし、全member digestと集合digestが一致すれば正常なJava Consumerが1.01を返す。一方主class同じ／Rule異なる混成Setはmember検査で拒否候補 | byte一致した全memberコピーで実行可能性を限定実証。ただし本fixtureは**TEI Store Put/Getや後続ClassLoaderが実際に読んだbyteを逐次検証したものではない** |
+| **QX30-08** 両版を同時にclass pathへ置き順序を入れ替えると、両方正常終了でもUP優先1.01／EVEN優先1.00、CodeSource URLも先行ディレクトリを示す | **Classpath shadow**は主class・外部ConsumerのSource不変でも解決する実装が変わる。CodeSource URLだけを検証済み実ロードbyteの証明にしない |
+| **QX30-09/10** `1.006`なら両版とも1.01であり、観測値一致でも依存Rule集合は異なる。`-1.005`のtieではUP=-1.01、EVEN=-1.00で差を検出 | Oracleは選んだ入力に依存してmutantが生き残る。Case判別力・必要な境界値を#2514へ |
+| **QX30-11/12** fixture用Member Mapの列挙順を変えてもSet digest一致。一member欠落と一member内容差を別分類 | 依存閉包の`missing member`、`member byte change`、`order-only presentation`を別証拠として保持 |
+
+#### 実装／受入の新しい判断境界
+
+1. **生成・配布物の必要閉包**：同一Accepted Model/Function/Operator version/Generator/Toolchain→Java生成Source→全class role/path/digest（必要ならResource/JAR/Moduleと依存Libraryの閉包）を#1102へ渡す。ソース版/公開APIのbyte一致があっても`Rule.class`だけの変更を再生成・配布・Conformance検査の対象から除外しない。設計書SHOの説明に書かれた半偶数丸め等は**同じSource Meaningを参照する導出情報**であり、コメント文面と主classバイトだけではRuntime Rule版を固定しない。
+2. **Artifact Source identity／Store availability／Loaded codeを分ける**：全memberのRole/Path/Digestを#2512の実Store Put/Getで再構成した後、#1370で**検証したbytesと実ClassLoaderが解決したbytes**の境界を確認する。今回のCodeSource URLはロード元ディレクトリの観測にとどまり、ロード途中の改変・既ロードclass・外部依存のshadow・JVMTI等の一般防御を証明しない。
+3. **意味上の丸めと実際の選択**：HALF_UPとHALF_EVENの両方を人工fixtureで正常に実行できたが、どちらがTEIの受理済み業務丸めかは未決。#2291の未対応丸めを生成前拒否する境界と#2077の正式Target実現を維持。Consumerが成功したことをOwner Meaning受理とみなさない。
+4. **独立Oracleと現在再利用資格**：`1.006`の値一致はRule差の判別力がない。正負tie・Scale・Missing/Null・adapter parse・overflowなど必要集合に対する独立Oracleを#2514と#1131に置く。#2600では説明だけの変更とRuntime Rule.class変更を別Impactとし、**ArtifactSet全member閉包・Consumer必要Role・Target実ロード元・Test Evidence**まで実消費依存として扱う。変更されたRule.classがクラスパスに残り得るとき、主class cache hitだけでskipしない。
+5. **順序**：P1は#2512の既存実Store/Set codeと本fixtureの必要member比較を一試行に接続→P2は#2513の正式TEIモデルから生成Java Library/公開型付きAPI/JSON Adapterを**別プロジェクトのConsumer**で実起動し、同一Contract/Fixtureに対する結果を測定→P3はSource+生成器+全artifact digest+実Host/Consumer時点を同一AttemptのReceiptに結合、同じ意味からSHO資料への出典/版を投影。新Host/Registry/中央Cache/新Operator Meaning正本の導入はしない。
+
+**状態の区別**：実Java外部Consumer、二版classの実Build/実Load、仮の全class集合fingerprint、反例を含む**12/12 RUN PASS**。既存TEI製品の`ArtifactSet`/Store Put/Get・生成Java JAR/正式JSON Adapter、同一受理モデル・実Provider・Host/Trust/SHO、Owner意味受理は**NOT RUN**。本書/PRはDraft/Openであり、#1640 D2の実行拒否境界、#1119既存G0〜G4、TEI独自Host非採用を維持。
+
+
 ## 8. 実装順・担当引継ぎ（提案）
 
 | 段階 | 所有 | 実施 | 完了の根拠 |
