@@ -11,6 +11,11 @@ import (
 type ProjectedDiagnostic struct {
 	Diagnostic validation.Diagnostic   `json:"diagnostic"`
 	Sources    []sourceindex.Reference `json:"sources,omitempty"`
+	// UnresolvedSourceOrigins names declaration origins that participate in a
+	// duplicate but whose physical position cannot be determined. It is used
+	// for DUPLICATE_SEMANTIC_ELEMENT only. A listed origin is never replaced by
+	// a guessed path or range.
+	UnresolvedSourceOrigins []string `json:"unresolvedSourceOrigins,omitempty"`
 }
 
 // ProjectDiagnostics resolves path-independent diagnostic Subjects through a
