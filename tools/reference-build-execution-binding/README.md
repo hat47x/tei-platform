@@ -104,6 +104,28 @@ but artifact-affecting input identity unchanged
 
 current `BuildPlan`からこのReferenceへ射影する処理は候補モデルのpressureであり、production化する際には「artifact-affecting definition closureが完全である」というEvidenceまたはcontractが必要です。
 
+## 既存LockedBuildから複数member ArtifactSetへ
+
+current `plugin.LockedBuild`は一つの`ArtifactDigest`だけを持ちます。このReferenceはproduction型を変えず、**その既存Lockが固定したartifactが、複数memberのArtifactSetのどのroleか**をexactに結びます。
+
+```text
+LockedBuild (single artifact digest)
+  + BuildExecutionResult (exact plan / set fingerprint)
+  + ArtifactSet (N members)
+  -> LockedBuildArtifactSetBinding
+```
+
+`bindLockedBuildToArtifactSet`は次を要求します。
+
+- `BuildExecutionResult`が渡されたArtifactSetのfingerprintを指す
+- 指定roleのmemberが集合内にちょうど一つある
+- そのmemberのdigestが`LockedBuild.ArtifactDigest`と一致する
+- digestを集合や実bytesから再計算してLockへ書き戻さない
+
+これは`LockedBuild`を複数artifactへ拡張したことでも、CoreへTarget固有のRole enumを追加したことでもありません。bindingはAcceptance / Trust / Runtime Authorityを付与しません。
+
+実コンパイラで二つの実行ファイルを一度の`go build`で生成し、片方のdigestを持つ`LockedBuild`を対応するroleへ結ぶ試験を持つ。誤ったrole、digest不一致、resultと集合の不一致は拒否します。
+
 ## BuildExecutionResultは実行回数を識別しない
 
 `BuildExecutionResult` は、exact `BuildExecutionPlan` と `ArtifactSet` の**内容上の対応**を識別する。個別のBuild Attempt（実際に実行した一回の観測）を識別するものではない。
