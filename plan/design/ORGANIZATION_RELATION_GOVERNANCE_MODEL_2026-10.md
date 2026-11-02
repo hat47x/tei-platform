@@ -1917,3 +1917,64 @@ Source Revision不一致でhelperを停止させる。UI選択epoch、Provider S
 関連する別PRの**GitHub実状態**を確認したところ、組織合成Reference #2596のほか、標準Function別Mapping/Rule Footprintの[PR #2624](https://github.com/hat47x/tei-platform/pull/2624)、Provider route/cohort合成の[PR #2627](https://github.com/hat47x/tei-platform/pull/2627)、CLIからConsumer・Source資格までの[PR #2626](https://github.com/hat47x/tei-platform/pull/2626)、Everything is Data横断受入の[PR #2629](https://github.com/hat47x/tei-platform/pull/2629)は**merged**。これは「個別Component/Referenceがmainにある」という状態に限る。反対に、実Workbench/open-world表示資格[PR #2631](https://github.com/hat47x/tei-platform/pull/2631)、複数Editing Context[PR #2601](https://github.com/hat47x/tei-platform/pull/2601)、追加組織RC/VF [PR #2655](https://github.com/hat47x/tei-platform/pull/2655)は**Draft/未統合**（2026-11-03再照合時）。#2586で同じMeaning/Query/Context/実Provider/Consumer/Actionを通した一つの試行による適合をまだ確認していない。
 
 **統合順**：まず#2586の一固定組織Scenarioを用い、mainにあるReference/実CLIの受渡し可能なID・実API・欠落Edgeを静的照合する。次に実Query/Providerから得たread witnessがない箇所を`unverified`として保持し、Table/Graph/SHO・編集Sessionの旧選択/既表示資格を照合する。最後に同じScenarioで実Request/Host Grant/Effectと独立readを照合する。**merge済み部品の存在、複数PRの各局所PASS、表示値一致だけを足し算して製品E2E成功へ昇格しない**。#1119の既存Priority/Gateを変えず、未成熟な追加Engineや完全な組織専用Schemaの導入は避ける。
+
+## 53. 観測の完全性は行集合と属性値で異なる：組織Query・Rule・SHOの不確実性を保持する（2026-11-03：Everything is Data/動的依存閉包との横断、採用前）
+
+### 53.1 課題：全行を取得しても必要属性を観測したとは限らない
+
+§46〜52ではProviderの実Read/Claim完全性、0件・非表示依存・既表示失効を区別した。しかし**行集合のcomplete**から`Allocation`、`Case responsibility status`、`Role版`等の**個々の必要値が取得済み**とは導けない。逆に特定属性の値が取得済みでも、対象Relation集合がpartialなら全称判定・不存在を導けない。組織だけの特殊な例外ではなく、Everything is Dataの通常Datasetに普遍的な問題である。
+
+| 必要な観測 | 例 | 欠けたとき |
+| --- | --- | --- |
+| 対象集合・Relation occurrenceの範囲 | D1所属 A1/A2 の列挙、D1bの0件、Case Q1の責任集合 | 集合全体の人数・NOT EXISTS・全件移管済みを確定しない |
+| 属性の観測状態・Rule依存 | A1/A2の配賦比率、`DepartmentCapacity`、非表示WHERE/ORDERキー | 数値集計・Validation・ソート/フィルタの完全結果を確定しない |
+| 属性値の意味とNULL | `Allocation` が観測済みnull／未要求／取得不明／値0 | nullを0、未要求をNULL、非開示を不存在に読み替えない |
+| スコープと時点 | valid-at / known-at、Source/Role/Query/Mapping版 | 別時点の属性値で同時点のMembership Claimを成立させない |
+| 取得証拠 | どのProvider/Route/Read SessionからどのField/Relationを読んだか | Declared Mappingや画面表示だけでphysical read・cohort一致を主張しない |
+| 利用・出力 | Tableにidだけ、Ruleにcapacity、SHOの再計算表 | 表示の正しさとRule入力充足・公開版適合・実書込許可を別資格化 |
+
+**観測状態の分析用対照**：`observed-value`、`observed-null`、`not-requested`、`unobserved`、`unknown/unsupported`を区別して診断する。これは**正式なCore enumや新Public schemaを定義するものではない**。既存Provider/Context/Source証拠への参照で説明できればよく、案件固有のNULL意味・保護対象の有無・実施対象はOwnerの契約で定める。「未観測」を業務上のfalseとして処理しない。
+
+### 53.2 同じD1の二人が表示される反例（ORG-FO；独立した受入期待）
+
+閉じた合成DatasetにPerson P1/P2、D1 Membership A1/A2、Allocation A1=100/A2=60、試験用Capacity(D1)=180を置く。表示は`id/person/dept`のみで同じでも、Query/Ruleに要求されるInputの有無とRead Cohortが違う。比較Ruleは`sum(allocation) <= capacity`という**架空の試験規則**であり、実人事ルールや実TEIのAuthorityを意味しない。
+
+| ケース | 観測・変更 | 必要な限定判定 |
+| --- | --- | --- |
+| FO-01 | 行A1/A2の集合はcomplete、Allocationは両方未要求 | 単純Member一覧の2件表示は可能。FTE=1.6やCapacity判定は`unverified` |
+| FO-02 | 行集合complete、A1の値100だけ観測、A2の値はunobserved | 見えているA1だけを全件合計とせずFTE Claim保留 |
+| FO-03 | A2は値nullを**観測**（0ではない） | null/0/未観測を区別。Owner NULL規則不明なら集計`unresolved` |
+| FO-04 | A2値0を**観測** | 行は存在し続け、FTEは100。0値からA2所属不存在を推論しない |
+| FO-05 | A1=100,A2=60、Capacity=180を同じ適格Cohortで取得 | 試験Ruleは成立候補。ただし業務意味・Action/Grantとは別 |
+| FO-06 | 表示同一でCapacityだけ180→150に訂正 | 表示Member Claimは保持候補、Rule Outcomeは再資格化 |
+| FO-07 | WHERE Allocation>=70でA2値未観測 | 表示IDが同じでもFilter全件結果は`unverified` |
+| FO-08 | ORDER Allocation DESC、値またはTie規則未観測 | 既表示の並び/ページ現在資格を主張しない |
+| FO-09 | 行集合partial 1/2、観測済みA1値100 | A1存在の正のWitnessは維持可能。D1全体FTE・人数・NOT EXISTSは保留 |
+| FO-10 | Q1責任者候補が2件**実観測**、単一責任Rule | 正の多重度違反はpartialでも説明候補。一方、0件で未割当て確定には必要集合の閉包が要る |
+| FO-11 | 同じsnapshot名だがroute/known-at/Field取得が異なる | Join済みFTEとCapacityを同じRead Cohortと見なさず`unverified` |
+| FO-12 | Source/Role Pin/Mappingが変化、表示IDは同じ | 依存Footprintを再評価し、未Pin/未解析は「無影響」としない |
+| FO-13 | R1公開SHOとR2現在再計算で同じPerson一覧、FTE入力版は異なる | 公開R1の再現とR2現在Claimを別成果物・別資格とする |
+| FO-14 | 別Context/Selection epochで同じA2が再表示 | 表示対象IDの一致だけで古い応答・Dirty Patch・Operation targetを現在資格にしない |
+| FO-15 | 画面に表示しない追加FieldをProviderが実取得 | Outputから取得Field集合を逆推定しない。実Read witnessがないなら`unverified` |
+| FO-16 | 通常の組織Dataと個別に保護指定されたFieldが共存 | 組織全体を特殊ACL対象にせず、具体的保護指定/Consumer開示と通常内部Readを別判定 |
+
+`full rows`と`all required fields observed`は直交する。Fieldの一部がunknownでも**影響しない用途に限って**L0一覧等を表示できる。一方、Actionが必要とする隠れたField/Rule入力がunknownなら、一覧表示が成功していても実行許可にはならない。
+
+### 53.3 Select/Validate・動的依存閉包・Ownerとの接続
+
+- `select rows where allocation>0`は選別処理、`validate all existing D1 membership allocations>0`は**選別前の母集団**に対する全称規則。選別済み行だけから原集合の業務Validationを証明しない（#988/#2586）。Provider Pushdownや演算順序が変わると、取得Field、Error、NULL意味、診断/Timingが変わり得る。値一致だけで実行計画同値としない。
+- Queryの出力列だけでなく、WHERE/ORDER/EXISTS/NOT EXISTS、Relation path、動的Binding、Role Pin、必要Field、Provider complete/cohort、Owner Rule版、Consumer Artifactを依存として調べる（#2635/#2582/#2600）。**値の同一性**と**利用資格の同一性**を分ける。部分依存・Opaqueは`unverified`であり、依存なしではない。
+- Role/DSL/Plugin追加時は新たな候補の発見と既に受理済みの意味の同一性を区別する（#2620/#2638/#2639）。Plugin作者にメタオントロジーの追加注釈を一律義務付けない。
+- Dataの通常Readは既存Data/Relationに従い行える。実Providerの必要取得・外部ConsumerへのDisclosure・現行HostのAction Authorityは**別の資格**。組織管理であることを理由に一律暗号化・匿名化・ACL/OS隔離しない。
+
+### 53.4 実装・引継ぎと停止線
+
+**第1段階（Synthetic E0）**：main統合済み#2596の既存合成Sourceと別Referenceを用いて、Field観測値/未観測/null/0、行集合のcomplete/partial、同表示・異Rule依存、別cohort、役割改版を反証可能な独立Oracleで検証する。**この節のFO-01〜16は計画時点ではNOT RUN**。Referenceを実装した場合は実行者・Source Blob・固定commitと試験版を別記する。
+
+**第2段階（TEI Headless E1〜E2）**：#2506 Function Contextへ実際に渡る`Result Slice`、#2622/#2628のphysical Read Witness、#2387/#2635の非表示依存、#2624のRule Footprintを同じSource/Query/Provider/Scope/known-atで結合する。行範囲とField範囲を双方観測できないなら不適合/未検証として出す。#2586の同一Run E2Eが未成立なら既存個別PASSを合算しない。
+
+**第3段階（Consumer/Effect E3〜E4）**：標準UI/Studio、SHO出力、TAI/外部Consumerが、その用途に必要なField観測資格と現在のRole/Source/Artifact版を保つか試す。編集では#2598のIntent→実Request Target、#1174の最終Effect/独立read、#1129のOwner-write Coverageを別検証する。実外部送出は#2516のDisclosure責務、実Host/OS隔離は特別保護条件がある時のみ。
+
+**Owner**：組織意味#2386、Profile Corpus#2510、一般メタfacet#2495、Read#2622/#2628、Rule#2624、Query#2387/#2635、Context#2506、Claim#2582、Consumer E2E#2586、Operation#2598、Effect#1174。新Core FieldEvidence enum、新共通Host、新Query/Rule実行器、新納品Registry・組織専用ACLは採用しない。
+
+**計測用受入票**：Case ID／Source/Meaning/Role Pin／Query/Rule/Operator／valid/known／Provider Route・Read Attempt／(a)行集合Scope+complete、(b)必要Fieldごとの実観測状態、(c)表示/Rule/Action各Dependency、(d)Consumer公開範囲、(e)実Target・Effect／独立Oracle／実行Runtime+SHA／Owner採否。記録は既存の型付きEvidenceへの参照で足りればよく、正式Schema拡張を先行決定しない。
