@@ -2,6 +2,7 @@ package artifact
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"tei/internal/core"
@@ -20,6 +21,13 @@ import (
 // and predicates are not compared yet: the persistence mapping does not declare
 // them, so they are left empty instead of being guessed.
 func TableDefinitionSnapshot(mapping persistence.Mapping, element semantic.Data) physical.SchemaSnapshot {
+	return TableDefinitionSnapshotWith(mapping, element, nil)
+}
+
+// TableDefinitionSnapshotWith also resolves the referenced mappings, so foreign
+// keys carry the table and columns they point at. A nil resolver leaves them to
+// the declared identifiers.
+func TableDefinitionSnapshotWith(mapping persistence.Mapping, element semantic.Data, resolve func(core.CanonicalID) (persistence.Mapping, bool)) physical.SchemaSnapshot {
 	_ = element
 	table := physical.Table{
 		Name: mapping.Table,
@@ -54,6 +62,44 @@ func TableDefinitionSnapshot(mapping persistence.Mapping, element semantic.Data)
 		}
 		table.Indexes = append(table.Indexes, entry)
 	}
+	foreignKeys := append([]persistence.ForeignKeyMapping(nil), mapping.ForeignKeys...)
+	sort.Slice(foreignKeys, func(i, j int) bool { return foreignKeys[i].Name < foreignKeys[j].Name })
+	for _, foreignKey := range foreignKeys {
+		entry := physical.ForeignKey{Name: foreignKey.Name}
+		for _, attribute := range foreignKey.Attributes {
+			if column, ok := columnOf[attribute]; ok {
+				entry.Columns = append(entry.Columns, column)
+			} else {
+				entry.Columns = append(entry.Columns, string(attribute))
+			}
+		}
+		referenced, ok := persistence.Mapping{}, false
+		if resolve != nil {
+			referenced, ok = resolve(foreignKey.ReferencedMapping)
+		}
+		tableName := string(foreignKey.ReferencedMapping)
+		if ok {
+			tableName = referenced.Table
+		}
+		if schema, name, cut := strings.Cut(tableName, "."); cut {
+			entry.ReferencedSchema, entry.ReferencedTable = schema, name
+		} else {
+			entry.ReferencedTable = tableName
+		}
+		for _, attribute := range foreignKey.ReferencedAttributes {
+			if ok {
+				for _, column := range referenced.Columns {
+					if column.Attribute == attribute {
+						entry.ReferencedColumns = append(entry.ReferencedColumns, column.Column)
+					}
+				}
+			} else {
+				entry.ReferencedColumns = append(entry.ReferencedColumns, string(attribute))
+			}
+		}
+		table.ForeignKeys = append(table.ForeignKeys, entry)
+	}
+
 	return physical.SchemaSnapshot{
 		Database: mapping.Database,
 		Tables:   []physical.Table{table},
@@ -65,7 +111,13 @@ func TableDefinitionSnapshot(mapping persistence.Mapping, element semantic.Data)
 // means the artifact and the schema agree; the diff is returned, never silently
 // repaired.
 func CompareTableDefinition(mapping persistence.Mapping, element semantic.Data, target physical.SchemaSnapshot) (schemadiff.Diff, error) {
-	diff, err := schemadiff.Compare(TableDefinitionSnapshot(mapping, element).Normalize(), target.Normalize())
+	return CompareTableDefinitionWith(mapping, element, target, nil)
+}
+
+// CompareTableDefinitionWith resolves referenced mappings, so foreign keys are
+// compared by the table and columns they point at.
+func CompareTableDefinitionWith(mapping persistence.Mapping, element semantic.Data, target physical.SchemaSnapshot, resolve func(core.CanonicalID) (persistence.Mapping, bool)) (schemadiff.Diff, error) {
+	diff, err := schemadiff.Compare(TableDefinitionSnapshotWith(mapping, element, resolve).Normalize(), target.Normalize())
 	if err != nil {
 		return schemadiff.Diff{}, fmt.Errorf("compare table definition with the target schema: %w", err)
 	}

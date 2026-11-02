@@ -101,3 +101,63 @@ func TestCompareTableDefinitionDetectsAMissingIndex(t *testing.T) {
 		t.Fatalf("a missing index must be reported: %+v", diff.Changes)
 	}
 }
+func TestTableDefinitionSnapshotResolvesForeignKeys(t *testing.T) {
+	customer := persistence.Mapping{
+		ID: "sales_core.customer", Database: "sales_core", SemanticData: "sales.customer",
+		Table: "public.customers",
+		Columns: []persistence.ColumnMapping{
+			{Attribute: "sales.customer.customer_id", Column: "customer_id", Storage: persistence.StorageInt64, Nullability: persistence.Required},
+		},
+	}
+	mapping := ddlCheckMapping()
+	mapping.Columns = append(mapping.Columns, persistence.ColumnMapping{
+		Attribute: "sales.order.customer_id", Column: "customer_id", Storage: persistence.StorageInt64, Nullability: persistence.Required,
+	})
+	mapping.ForeignKeys = []persistence.ForeignKeyMapping{{
+		Name:                 "orders_customer_fk",
+		Attributes:           []core.CanonicalID{"sales.order.customer_id"},
+		ReferencedMapping:    "sales_core.customer",
+		ReferencedAttributes: []core.CanonicalID{"sales.customer.customer_id"},
+	}}
+
+	snapshot := TableDefinitionSnapshotWith(mapping, semanticData(), func(id core.CanonicalID) (persistence.Mapping, bool) {
+		if id == customer.ID {
+			return customer, true
+		}
+		return persistence.Mapping{}, false
+	})
+	table := snapshot.Tables[0]
+	if len(table.ForeignKeys) != 1 {
+		t.Fatalf("foreign key lost: %+v", table.ForeignKeys)
+	}
+	fk := table.ForeignKeys[0]
+	if fk.Name != "orders_customer_fk" || fk.ReferencedSchema != "public" || fk.ReferencedTable != "customers" {
+		t.Fatalf("reference not resolved: %+v", fk)
+	}
+	if len(fk.Columns) != 1 || fk.Columns[0] != "customer_id" || len(fk.ReferencedColumns) != 1 || fk.ReferencedColumns[0] != "customer_id" {
+		t.Fatalf("columns not resolved: %+v", fk)
+	}
+}
+
+func TestCompareTableDefinitionDetectsAMissingForeignKey(t *testing.T) {
+	mapping := ddlCheckMapping()
+	mapping.Columns = append(mapping.Columns, persistence.ColumnMapping{
+		Attribute: "sales.order.customer_id", Column: "customer_id", Storage: persistence.StorageInt64, Nullability: persistence.Required,
+	})
+	withKey := mapping
+	withKey.ForeignKeys = []persistence.ForeignKeyMapping{{
+		Name:                 "orders_customer_fk",
+		Attributes:           []core.CanonicalID{"sales.order.customer_id"},
+		ReferencedMapping:    "sales_core.customer",
+		ReferencedAttributes: []core.CanonicalID{"sales.customer.customer_id"},
+	}}
+
+	target := TableDefinitionSnapshot(mapping, semanticData())
+	diff, err := CompareTableDefinition(withKey, semanticData(), target)
+	if err != nil {
+		t.Fatalf("compare: %v", err)
+	}
+	if len(diff.Changes) == 0 {
+		t.Fatal("a missing foreign key must be reported")
+	}
+}
