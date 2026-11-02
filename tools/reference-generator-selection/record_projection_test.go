@@ -177,3 +177,35 @@ func TestRecordTemplateGeneratesOptionalField(t *testing.T) {
 		t.Fatal("generated source does not handle an optional field")
 	}
 }
+
+func TestRecordTemplateGeneratesBooleanField(t *testing.T) {
+	contract := `{
+  "schema": "tei.reference.generator-contract/v0",
+  "id": "sui.card.record",
+  "version": "7",
+  "status": "reference-local",
+  "inputs": [{"attribute": "sui.card.text_reviewed", "primitive": "std.boolean"}],
+  "output": {"primitive": "std.text"},
+  "projection": {
+    "kind": "record",
+    "fields": [
+      {"name": "textReviewed", "input": "textReviewed", "attribute": "sui.card.text_reviewed", "primitive": "std.boolean", "optional": true}
+    ]
+  }
+}`
+	path := filepath.Join(t.TempDir(), "contract.json")
+	if err := os.WriteFile(path, []byte(contract), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	out := filepath.Join(t.TempDir(), "candidate")
+	if _, err := Generate(path, "text-record-template", out); err != nil {
+		t.Fatal(err)
+	}
+	source, err := os.ReadFile(filepath.Join(out, "main.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(source), "value.(bool)") {
+		t.Fatal("generated source does not handle a boolean field")
+	}
+}
