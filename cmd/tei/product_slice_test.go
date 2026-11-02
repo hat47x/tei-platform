@@ -94,6 +94,10 @@ data Customer {
     }
 }
 `)
+	writeWorkspaceFile(t, root, "applications/order-entry/patterns/submit-order.tei", `pattern order_entry.submit_order command {
+    capability sales.submit_order
+}
+`)
 	writeWorkspaceFile(t, root, "applications/order-entry/patterns/order-lines.tei", `pattern order_entry.order_lines header-detail {
     relation sales.order.lines
     page-break 3 repeat-header
@@ -174,6 +178,27 @@ func TestProductSliceLoadsValidatesAndViews(t *testing.T) {
 	}
 	if !planReport.OK || !planReport.Result.Ready || len(planReport.Result.Inputs) != 1 || planReport.Result.Inputs[0].Value != "ORD-1" {
 		t.Fatalf("command plan=%+v", planReport.Result)
+	}
+
+	var commandView bytes.Buffer
+	code, err = runViewCommand([]string{
+		"-workspace", root,
+		"-application", "order_entry",
+		"-pattern", "order_entry.submit_order",
+		"-format", "json",
+	}, &commandView)
+	if err != nil || code != 0 {
+		t.Fatalf("command view exit=%d err=%v body=%s", code, err, commandView.String())
+	}
+	var commandReport struct {
+		OK     bool                               `json:"ok"`
+		Result applicationview.CommandPatternView `json:"result"`
+	}
+	if err := json.Unmarshal(commandView.Bytes(), &commandReport); err != nil {
+		t.Fatal(err)
+	}
+	if !commandReport.OK || commandReport.Result.Capability != "sales.submit_order" || len(commandReport.Result.Outcomes) != 1 {
+		t.Fatalf("command view=%+v", commandReport.Result)
 	}
 
 	var recordHTML bytes.Buffer

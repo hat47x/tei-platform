@@ -936,6 +936,7 @@ PoC #2521が実装した範囲と、まだ実装していない範囲を分け�
 | 対話からのCommand起動（宣言・契約解決） | 実装済み（`interaction`の`command`、入力・結末・効果の解決。実行は未実装） |
 | Command入力の対話項目への結びつけ | 実装済み（`command { input <name> <attribute> }`、項目の表示名へ解決） |
 | Commandの起動計画（入力の過不足・値の形） | 実装済み（`view -command`、実行は未実装） |
+| command Patternのビュー | 実装済み（能力・入力・結末・効果を`view`で表示） |
 | Commandの実行境界（Executor契約・結末照合） | 実装済み（`internal/command`、実Providerは未接続） |
 | フックの宣言（位相・読み書き・失敗時） | 実装済み（`hook`、実装Pluginは未接続） |
 | フックの実行境界（Implementation契約・reject/warn） | 実装済み（`internal/hook`、実Pluginは未接続） |
@@ -946,6 +947,7 @@ PoC #2521が実装した範囲と、まだ実装していない範囲を分け�
 | `reference/workspace`への宣言追加 | 未実施（受理経路が必要） |
 
 実装は、`internal/application/model.go`、`internal/syntax/application_pattern.go`、`internal/validation/application_pattern.go`、`internal/crossview/pattern_requirements.go`、`internal/applicationview`、`internal/semantic/model.go`、`internal/syntax/parser.go`、`internal/validation/validation.go`と、それぞれの試験です。
+
 
 
 

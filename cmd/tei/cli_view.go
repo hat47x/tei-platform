@@ -97,6 +97,15 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 			return fail("VIEW_FAILED", err.Error(), 1)
 		}
 		result = view
+	case application.PatternCommand:
+		if *format == "html" || *format == "print" {
+			return fail("INVALID_ARGUMENT", "view -format html/print does not support command patterns", 2)
+		}
+		view, err := applicationview.BuildCommandPattern(loaded.World, core.CanonicalID(*applicationID), core.CanonicalID(*patternID))
+		if err != nil {
+			return fail("VIEW_FAILED", err.Error(), 1)
+		}
+		result = view
 	default:
 		return fail("VIEW_UNSUPPORTED", fmt.Sprintf("view does not support pattern kind %s", kind), 1)
 	}
@@ -142,6 +151,8 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 			return writeHeaderDetailText(out, value)
 		case applicationview.BrowseView:
 			return writeBrowseText(out, value)
+		case applicationview.CommandPatternView:
+			return writeCommandPatternText(out, value)
 		}
 		return 2, fmt.Errorf("unhandled view result %T", result)
 	}
@@ -417,6 +428,28 @@ func parseInputPairs(pairs inputFlag) (map[string]string, error) {
 		values[name] = value
 	}
 	return values, nil
+}
+
+func writeCommandPatternText(out io.Writer, view applicationview.CommandPatternView) (int, error) {
+	if _, err := fmt.Fprintf(out, "command %s (%s)\n", view.Capability, view.Label); err != nil {
+		return 2, err
+	}
+	for _, input := range view.Inputs {
+		if _, err := fmt.Fprintf(out, "input %s (%s)\n", input.Name, input.Type); err != nil {
+			return 2, err
+		}
+	}
+	for _, outcome := range view.Outcomes {
+		if _, err := fmt.Fprintf(out, "outcome %s -> %s\n", outcome.Name, outcome.Payload); err != nil {
+			return 2, err
+		}
+	}
+	if view.Effect != nil {
+		if _, err := fmt.Fprintf(out, "effect: %s %s\n", view.Effect.Kind, view.Effect.Data); err != nil {
+			return 2, err
+		}
+	}
+	return 0, nil
 }
 
 func writeCommandPlanText(out io.Writer, plan applicationview.CommandPlan) (int, error) {
