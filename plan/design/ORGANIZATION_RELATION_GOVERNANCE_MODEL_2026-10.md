@@ -1872,3 +1872,41 @@ Source Revision不一致でhelperを停止させる。UI選択epoch、Provider S
 **共通証拠票**：Case/責任Relation occurrence、Source/Role/Rule版、valid/known/publication、Org successorとCase migrationの別根拠、Ownerの単一/共同責任選択、Case母集団・責任関係の実取得Scope/cohort/complete、候補と実Principal/Grant、Consumer/Artifact、実Request/Effect/独立Read、固定run/headと独立Oracle、Owner採否・未実施理由。巨大な共通Context structを作らず既存証拠を参照する。
 
 **未決事項**：進行中Caseの申請時固定／承認時再解決／明示移管、単一/共同責任の範囲、遡及訂正の業務効果、未割当て処理は各業務Owner判断。本節は**採用前計画**であり、ORG-RC-01〜10は**実装・実行・実TEI/DB/Host/Owner受理ともNOT RUN**。組織Data専用ACL、TEI独自Host、第二Workflow/Authorization/Canonicalを増設しない。
+## 52. 組織Viewの表示済み資格・負依存・編集保留：二つの時間と三つのConsumer境界（2026-11-03、横断の採用前Pressure）
+
+### 52.1 §51の責任充足から「表示済みの現在資格」へ
+
+§51のCase責任Coverageと§46〜48のProvider/Query根拠を、**結果取得時に適格であっても表示時や操作時には適格でない**状況へ延長する。これはTEI Studioの専用組織画面を新設する話ではなく、既存標準Workbench/View/Editing Session、Function Data Context、SHOを同じClaim根拠で動かせるかを測るConsumer側の反証である。
+
+- **応答の後着拒否**：Request R1（Anchor D1、Context Instance I1、selection epoch 7）に対して読んだ所属A1/A2が、次のRequest R2（Anchor D2、epoch 8）後に到着した場合、R1を現行Selectionへ描画しない。表示列/Person IDが似ていてもreadTokenの意味・文脈・選択の一致が必要。UI response-orderだけの防止は、Source/Role/Providerの変更を補完しない。
+- **既表示の失効**：画面に既にR1結果を描いた後、Source Acceptance、Role依存Pin、known-at / Provider route、選択epoch、Rule/Queryの依存入力が変わる場合は、影響するClaimの**現在資格を撤回/未検証表示**する。後着拒否だけでは旧表示の有効性は変わらない。明確な影響を受けないD2/P3のID等は、依存閉包が確認できれば保持候補にする。
+- **変更途中の入力**：表示結果とユーザーの未保存Patchは別のState。後着Responseや別Anchor/Context Instanceへの選択がDirty Patchを無断消去したり、旧A2の解除を新A2new／同一Person P2のA3へ無断再束縛したりしない。新しいTransaction ManagerやEditing Registryを本Issueでは設けない。
+- **通常組織Dataのアクセス**：この鮮度・意味資格は組織全体の機密性を示すものではない。通常の所属/職位は標準Dataと同じように利用できる。特別保護項目のRead/Disclosureと、実Hostの変更Authorityは各々既存の境界で判断する。
+
+### 52.2 旧結果が残る三つの「同じ見た目」反例
+
+| 反例 | 見た目の誤った推論 | 必須の別証拠・判定 |
+| --- | --- | --- |
+| **F-1：Same snapshot s7** | replica/primaryのsnapshot名が`s7`、組織Data Source版が同じだからR1表示を現行へ流用できる | route/provider/alias/mapping/valid-at/known-at/Read cohortを区別。既存合成§46ではR1 D1=A1/A2、R2 D1=A1 |
+| **F-2：Same visible rows** | WHERE/ORDER/EXISTSに使った非表示Data/ProjectやRole Ruleが改訂されても表示項目が同じならClaim再利用 | Value LineageとControl/Existence/Rule Footprintを別に扱う。依存抽出unknownなら`unverified`。空配列も対象/Predicate/取得Scope/存在否定への依存を持つ |
+| **F-3：Same Person, different edge** | P2を選んでいたから旧A2の編集を新所属A2newや別のA3へ適用できる | Relation occurrence、Context/Anchor/epoch、Source・Role/Query版、対象の現在性、Dirty Patch帰属とAction/Requestを明示照合。候補をEffect資格に昇格しない |
+
+**偽同値の追加負例**：Case Q1について対象時点で責任Relationが0件の二世界があっても、「過去に一度も担当がなかった」という業務規則を採るなら区間内0→1→0の中間事実が必要。**現在0件**のClaimは、Ruleが現在時点のみを対象とし実際の対象Collectionが完結している場合に限り成立する。中間履歴の完備性を全業務Ruleに義務化するのではなく、Ownerが採用する規範に対応して必要性を判断する。正の多重責任Witnessは部分Pageでも違反を示せる一方、0件・全件移管済みは必要Collection/Cohortが閉じている場合に限る（§51）。
+
+### 52.3 「応答を描く」と「公開を保つ」と「実行する」を別判定する
+
+1. **取得・利用時の資格**：同じSource/Accepted meaning/Role/Query IDだけでなく、Context instance/epoch、Anchor、選択Relation occurrence、valid/known、実Provider routeとread witness、必要Dependency/Result sliceを既存証拠への参照で再解決する。metadata不足なら表示を無条件に禁止するのではなく、一般L0のread-only Viewと、`unresolved/unverified`の説明対象を分ける（#2631）。
+2. **表示済みClaimの資格**：現在のChange source と対象ClaimのDependencyを照合し、影響する表示の再評価・旧根拠の撤回を行う。表示済みデータ自体を自動削除したり、R1の公開SHO文書をR2値で上書きしない。Source/Role/Provider変更時に依存欠落を`no effect`と判定しない。
+3. **編集・確定の資格**：可視のAction候補、保存待ちPatch、Capability束縛後のRequest target/epoch/Grant/SoD、Effect/Receipt/独立Readを分離する。旧関係A2から新A2newへの自動移管はBusiness ActionのOwner受理がある場合でも再解決が必要。複数Provider Save Groupは保証された原子境界を超えて`all committed`と断言しない。
+
+**複数Claimの共同評価**：表示用Membership、FTE、Q1責任候補が別route/known-atで計算された場合、同じ`s7`や同一Person IDを根拠に同一Cohortを主張しない。共同Claimの時点・Source/Rule/Measure Scope・actual read sessionが未一致なら、合算した断定ではなく`distinct/unverified`とする。単一Providerか否かだけを根拠にせず、実トランザクション/実Providerが返すWitnessを#2628で確認する。
+
+### 52.4 具体的な独立Referenceと受入経路
+
+[独立Draft #2655](https://github.com/hat47x/tei-platform/pull/2655)へ`reference/org-semantic-views/verify-consumer-freshness.mjs`を追加。これはmain統合済み#2596の同一合成Source `org-synthetic-r7`とScenarioを**importして**おり、§49〜51の独立succession Caseを差し替えない。VF-01〜24で、replica/primaryのD1=A1/A2対A1、snapshot名一致、旧epoch Response拒否、物理Read unknown/partial、Role Pin差、既表示の撤回、Dirty Patch保持、P2/A2/A3、空・二重責任の非対称性、非出力Dependency、0→1→0、共同Cohort、非原子Save Groupを対照する。
+
+- **局所実測**：GitHub readbackしたテストSource Blob `160cc7ef8f141923516bfc446533b6bc92b9d3bc`と既存共有fixtureの内容をV8互換Runnerへ取り込み、Node importをshimに置換して**24/24局所検証PASS**。この結果は**Node CLI/Actions exact-headのPASSではない**。
+- **今後のNode/CI**：新テストを既存Reference exact-head Workflowに追加。完了したrunのfixed head、Node版、テスト件数、clean stateを別確認するまでcurrent-head CI PASSと呼ばない。§51の追加RC試験についても固定HEADが異なれば証拠を別に管理。
+- **実製品への引渡し**：#2631/#1124へ実Workbenchの表示後失効と後着応答、#2597/#2601へSession/Dirty Patch/Save Group、#2506/#2582/#2635へSource/Role/Query非出力依存、#2628/#2611へ実Provider/cohort、#2516へConsumer別開示、#2586へ同一固定Scenario E2E、#2598/#1174へ実Request/Effect。TEI実製品の一気通貫、実Host/DB/Studio/SHO、業務Owner受理は**NOT RUN**。
+
+**採否・拡張の停止線**：標準Dataを普通に使えるL0ケースを退行させず、Type/Relation/Roleの明示情報の深さに応じて説明の精度を上げる。開発者へ追加Ontology記入を義務化しない。新Core kind/公開Context巨大struct/専用組織ACL/第二Query・UI・Event Store/独自Hostを先行実装しない。ここでのV8 fixtureの`witnessed`は合成条件であり、実Providerの物理取得を証明しない。
