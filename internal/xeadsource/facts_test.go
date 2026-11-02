@@ -447,9 +447,9 @@ func TestExtractRelationalSourceFactsForeignTableDoesNotInheritParentOwnership(t
 
 func TestExtractRelationalSourceFactsRejectsUnknownDefaultNamespace(t *testing.T) {
 	for _, tc := range []struct {
-		name string
+		name   string
 		format Format
-		xml string
+		xml    string
 	}{
 		{"xead", FormatXead, `<System xmlns="urn:foreign"><Table ID="T"><TableKey ID="K"/></Table><Relationship ID="R"/></System>`},
 		{"xeaf", FormatXeaf, `<System xmlns="urn:foreign"><Table ID="T"><Key ID="K" Fields="F"/><Refer ID="R" ToTable="T"/></Table></System>`},
