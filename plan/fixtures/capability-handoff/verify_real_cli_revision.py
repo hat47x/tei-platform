@@ -152,6 +152,7 @@ def main():
             "expected limited read-only command catalog absent")
 
     require((original / SOURCE).is_file(), "expected standard CRUD input source absent")
+    original_tree = source_tree_identity(original)
     with tempfile.TemporaryDirectory(prefix="tei-one-revision-") as temp:
         root = Path(temp)
         copied = root / "workspace"
@@ -181,8 +182,8 @@ def main():
             == changed["artifacts"]["manifest"]["inputRevision"])
         require(not cross_command_join_qualified,
                 "old operation surface was incorrectly qualified with new artifact set")
-        require(source_tree_identity(original) != "",
-                "original fixture must remain observable")
+        require(source_tree_identity(original) == original_tree,
+                "original reference workspace was altered")
         print(json.dumps({
             "status": "PASS", "scope": "real TEI CLI; separate command invocations",
             "binary_revision": version["vcsRevision"],
