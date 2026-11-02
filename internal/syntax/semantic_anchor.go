@@ -192,6 +192,9 @@ func semanticDataAnchors(lx *Lexer, dataID core.CanonicalID) ([]SubjectAnchor, e
 			// The type reference token is anchored under its own kind so a typed edit
 			// can replace exactly this token. Kind "semantic-attribute" stays the symbol.
 			anchors = append(anchors, SubjectAnchor{Kind: "semantic-attribute-type", ID: string(id), Anchor: tokenAnchor(typeTok)})
+			if err := skipSemanticAttributeOptions(lx); err != nil {
+				return nil, err
+			}
 		case "relation":
 			sym, err := expectLexerIdent(lx, "semantic relation symbol")
 			if err != nil {
@@ -388,6 +391,36 @@ func expectLexerText(lx *Lexer, text string) (Token, error) {
 		return Token{}, fmt.Errorf("expected %q at %d:%d, got %q", text, t.Start.Line, t.Start.Column, t.Text)
 	}
 	return t, nil
+}
+
+// skipSemanticAttributeOptions consumes the optional attribute modifiers after
+// the type reference so the anchor scan resumes at the next data member.
+func skipSemanticAttributeOptions(lx *Lexer) error {
+	for {
+		next, err := peekLexer(lx)
+		if err != nil {
+			return err
+		}
+		if next.Kind != TokenIdent {
+			return nil
+		}
+		switch next.Text {
+		case "description", "display", "value":
+			_, _ = lx.Next()
+			if err := expectLexerKind(lx, TokenString, "semantic attribute "+next.Text); err != nil {
+				return err
+			}
+		case "required", "immutable":
+			_, _ = lx.Next()
+		case "role":
+			_, _ = lx.Next()
+			if _, err := expectLexerIdent(lx, "semantic attribute role"); err != nil {
+				return err
+			}
+		default:
+			return nil
+		}
+	}
 }
 
 func expectLexerIdent(lx *Lexer, description string) (Token, error) {
