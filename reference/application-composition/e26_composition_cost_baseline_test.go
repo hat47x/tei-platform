@@ -100,7 +100,10 @@ func TestE26NativeOverlayAuthoringBaseline(t *testing.T) {
 	if len(stage0.World.Applications) != 0 {
 		t.Fatal("Stage 0 cannot be counted as an accepted SUI Application")
 	}
-	baseManifest := e26ObservedSource(t, stage0Root, "tei.workspace.yaml")
+	// The live manifest records formatVersion since #1920. The recorded Stage 0
+	// authoring baseline is kept in testdata so the frozen count keeps meaning.
+	baseManifest := e26ObservedSource(t, ".", "testdata/sui-stage0.tei.workspace.yaml")
+	baseManifest.Path = "tei.workspace.yaml"
 	if baseManifest.NonblankLines != 3 {
 		t.Fatalf("SUI Stage 0 manifest baseline drift: %+v", baseManifest)
 	}

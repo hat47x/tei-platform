@@ -39,6 +39,7 @@
 | [`CONTRACT_ONLY_GENERATIVE_PROVIDER_POC_2026-10.md`](CONTRACT_ONLY_GENERATIVE_PROVIDER_POC_2026-10.md) | 実装を持たない契約と独立した適合試験を先に共有し、案件内でAIまたは人が必要なProviderだけを補完するPoC案（[#1975](https://github.com/hat47x/tei-platform/issues/1975)、未採用） |
 | [`BUSINESS_LIFECYCLE_V1_DESIGN.md`](BUSINESS_LIFECYCLE_V1_DESIGN.md) | 業務の状態遷移を意味の正本として定義し、実行・観測する設計（ISSUE-000038 / ADR-0024 / ADR-0025） |
 | [`DESIGN_SYNTHESIS_CROSS_VIEW_PROOF_DESIGN.md`](DESIGN_SYNTHESIS_CROSS_VIEW_PROOF_DESIGN.md) | RQ-026の複数視点の照合を、対象を限定した証明上の条件として設計案の候補を絞り込む処理へ接続する、評価待ちの設計 |
+| [`ARTIFACT_SET_SCOPE_AND_CONSUMER_READ_EVIDENCE_2026-11.md`](ARTIFACT_SET_SCOPE_AND_CONSUMER_READ_EVIDENCE_2026-11.md) | #2482・#2604の導出Artifactについて、Application/Consumerの必要集合とManifest内部整合、公開一式の実読取を区別する検証計画（提案中・未採用） |
 | [`TOPOLOGY_COMPOSITE_VIEWS_AND_PIPELINE_2026-10.md`](TOPOLOGY_COMPOSITE_VIEWS_AND_PIPELINE_2026-10.md) | トポロジーの基本構造・複合図表と関連表・Complect解消・開発パイプラインの完全性を、既存契約へ照合する未採用の設計・段階的実証計画 |
 | [`PROJECT_PLUGIN_COMPOSITION_DESIGN.md`](PROJECT_PLUGIN_COMPOSITION_DESIGN.md) | 案件ごとのプラグイン、画面部品一式、仕様テンプレート、構成プロファイルの境界（[GitHub #1016](https://github.com/hat47x/tei-platform/issues/1016)、評価待ち） |
 | [`MULTILINGUAL_SEMANTIC_RESOURCE_DESIGN_2026-10.md`](MULTILINGUAL_SEMANTIC_RESOURCE_DESIGN_2026-10.md) | 意味モデルと表示資源を分離する多言語対応、言語資源の所有、代替、配布、翻訳の確認（[GitHub #1396](https://github.com/hat47x/tei-platform/issues/1396)、評価待ち） |
@@ -107,6 +108,7 @@
 | [`RUN_PLAN_AND_UNATTENDED_EXECUTION_DESIGN_2026-11.md`](RUN_PLAN_AND_UNATTENDED_EXECUTION_DESIGN_2026-11.md) | 実行計画の宣言、業務キーによる実行の同定、再開・二重起動の拒否、帳票の決定性、無人の実行条件（[#1130](https://github.com/hat47x/tei-platform/issues/1130)、提案中） |
 | [`PERIOD_STATE_SEMANTICS_DESIGN_2026-11.md`](PERIOD_STATE_SEMANTICS_DESIGN_2026-11.md) | 業務日付・会計期間の状態・締めの一貫点・確定した行の不変性・赤黒の訂正・遅延到着の方針（[#2144](https://github.com/hat47x/tei-platform/issues/2144)、提案中・中核変更のためA4判断） |
 | [`DERIVED_DESIGN_ARTIFACTS_DESIGN_2026-11.md`](DERIVED_DESIGN_ARTIFACTS_DESIGN_2026-11.md) | 受理済みの意味から表定義書・機能定義書・対応一覧・DDLを決定的に導出し、差分と未解決を読む契約（[#1803](https://github.com/hat47x/tei-platform/issues/1803)、提案中） |
+| [`XTEA_LOWCODE_RECEPTION_ARCHITECTURE_2026-11.md`](XTEA_LOWCODE_RECEPTION_ARCHITECTURE_2026-11.md) | X-TEAから回収したローコードの知見を、Core・Pattern・生成器・Plugin・Studio・要件のどこで受け止めるかの設計案（未採用）。パッケージ・対話フック・項目の役割・結果型・標準業務意味の判断候補を含む |
 
 ## 関連する参照事例と評価
 
