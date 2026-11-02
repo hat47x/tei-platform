@@ -251,3 +251,131 @@ Data Contextが複数のResult SliceとGrainを正しく保持しても、**変�
 | #2516 | CUI/SHO/外部Consumerへの用途相対のProjection | すべてのConsumerに全Raw/機密情報を送出しない |
 
 標準Plugin開発者が毎回メタ概念の分類やLawを手作業で列挙する必要がないことを目指し、既存Semantic Data/Relation/Ruleから利用可能な意味的性質を読み取る。組織管理などの通常DataへのアクセスはTEI内の一般的なData利用のままとし、特定保護情報の例外・外部送出・実Host Authorityの検証は既存の該当境界へ委譲する。
+
+
+## 15. 用途相対の判定可能性と部分入力の意味（2026-11-02追補）
+
+### 15.1 課題：完全性は必要十分条件の一部であり、常に一律ではない
+
+Function Patternの利用資格は、全Data Contextに同じ`complete`や`stale`を付けるだけでは判断できない。必要なのは、**個別のClaim（どの結論を、誰が、どの時点・母集団について用いるか）に対する入力要件と観測の充足**である。
+
+既存#2497の用途相対の保存条件を参照する。投影`P`からClaim`Q`を正しく決められるには、同じ`P`へ写る二つの許容入力が`Q`について異なる答えを持たないことが必要である。ただし、有限fixtureで反例が見つからないことは一般的な十分性証明ではない。#2507が所有するPattern適合、#2582が所有する変化後の再評価、#1063/#1706が扱う意味演算・集合の既存条件を利用し、この文書で別の論理推論器・第二の規則正本を設けない。
+
+次の四つの質問を、CUIの用途別適合票で区別する。
+
+1. **表示できるか**：手元にある結果の値・粒度・出典を、暫定性を含めて説明できるか。
+2. **Claimを結論として扱えるか**：必要な母集団／入力版・演算規則が揃うか。条件付きの片側結論のみ成立するか。
+3. **変更Intentを組み立てられるか**：業務対象ID・Action・変更対象・選択epochを明示できるか。集計行の逆更新は明示的なOperationが必要。
+4. **実行・業務完了を説明できるか**：現行Hostの権限、Commit/Receipt、独立観測、Ownerが定義した完了条件を満たすか。上の三つから自動昇格させない。
+
+### 15.2 片側結論と非単調な結論を判別する
+
+初期の比較入力：親H、Line L1/L2は同額100、DeliveryはD1/D2/D3。Line/Deliveryは独立1:N。完全Line合計=200、両集合のJOIN後に単純SUMすると600、`SUM(DISTINCT amount)`=100。値の等しさとEntity IDの同一性は別。
+
+| Claim／要求 | 部分入力から成立し得る説明 | 追加条件・未成立となる反例 |
+| --- | --- | --- |
+| `EXISTS matching Line` | 対象Scope/版で実際に一致する一件を観測すれば、そのSnapshotについて存在の証人になり得る | Delete/訂正/時点変更を越えた永続の存在証明ではない |
+| `NOT EXISTS matching Line` | 観測した部分に見つからないことまで | 指定Scopeの検索が完了し、述語と時点が検証されるまでは不存在を確定しない |
+| `COUNT>=1` | 同一対象と数える重複規則が明示された正しい証人があれば片側成立し得る | JOIN行や同一Entityの複数occurrenceを別実体として数えない |
+| `SUM>=threshold` | 数量・金額が非負、重複/単位/粒度/時点が整合し、append-onlyに増える既知部分集合なら下界候補 | 負数、訂正/削除、JOIN増幅、異通貨換算・丸め差で下界保証を失う |
+| `MAX>=threshold` | 順序が検証された観測値ひとつから条件付き成立し得る | 対象時点以降の削除／更新、数値比較の意味型不一致では再評価 |
+| `TOP-N`の最終順位 | 観測済み部分の順位のみ | 未取得の上位候補が存在し得る。閉じた範囲や上界の根拠を要する |
+| `LEFT JOIN unmatched` | 現在の取得部分で未一致と説明できる | 右集合の追加入力で仮NULL行が消える。SQL NULLと業務不存在を混同しない |
+| `AVERAGE`／比率 | 観測した部分集団の値としてのみ | 母集団、分母・NULL・重複・時点・単位の条件が必要 |
+| `exact SUM` | 必要な全Lineと計算規則を確認できた時点だけ | Deliveryの部分取得だけで独立Line合計まで失効させない |
+
+**時間・履歴の条件**：append-onlyと仮定して得た「一度成立した片側結論」も、訂正、取り消し、データ削除、規則改訂、閲覧権限・母集団の変更を越えて自動保存しない。Event-time windowやProvider streamの閉鎖は、実際のwatermark／読取保証や専門Ruleで判断する。存在・不存在・集計は、観測時点に相対的なClaimとする。
+
+**理論的な比較**：[CALM論文](https://arxiv.org/abs/1901.01930)、[The Coordination Criterion (2026)](https://arxiv.org/abs/2602.09435)では、単調性と調整・整合性の関係が研究されている。TEIでは当面「部分入力が増えた場合に、指定Claimが保持されるための条件」を**反証可能な評価項目**として利用する。TEIで任意のQueryの単調性を証明した、分散調整が不要になった、という製品主張は含まない。
+
+### 15.3 判定が用途に相対的であることを示す例
+
+同じD2の部分取得（1/3件）の下でも、次の区別を保つ。
+
+- 「画面内にD2の観測済み1件を表示」：対象/時点/取得範囲を添えれば表示候補。
+- 「現在のD2は業務上1件だけ」：残りの観測範囲が不明なら未確定。
+- 「D1全2件の独立合計200」：D1の完全性と計算意味が適合すれば、D2部分取得とは独立して結論可能。
+- 「D2全件を対象とする一括操作」：D2の対象集合・解決時点、Actionの要求に応じて判断。UIの表示件数から自動導出しない。
+- 「D2の既知一件への明示ID編集候補」：Context epoch/ID/Actionが明示なら部分取得でも候補にはなり得る。Host現在権限や保存成功は別。
+- 「外部HarnessにD2のRawデータを渡す」：画面の閲覧可能性とは別の開示条件で判断する。TEI内の通常組織Data利用を一律に特別保護へ移すものではない。
+
+## 16. Data Context横断の単一ヘッドレス縦断シナリオ（統合計画）
+
+### 16.1 実証対象を固定する
+
+複数担当の独立Referenceがあることと、それらが同一入力・同一意味で接続できることは別である。初回の共通合成Fixtureを**H・D1(2)・D2(3)**に固定し、同じSource/Schema/Query/Model/Rule/Context/Actionの版と来歴を保持する。別々のIssueが既に所有する解析・評価・更新・検証を再実装せず、**受渡し形式、対象Identity、必要な証拠の不足**だけを一枚の試験票で確認する。
+
+構成上の縦断経路：
+
+```text
+Accepted Semantic Relation + Query Source/Schema/Dialect
+    ↓ (#1126 / #2387: 解決可能な範囲と解析入力の版を提示)
+RelationalIR / Output Grain / Source occurrence + Query Evidence
+    ↓ (#2506: 関数ごとのContext参照とResult Sliceへ接合)
+Function Context Definition → Instance + Selection epoch
+    ↓ (#2507/#2497: Claim相対の可視化・操作適用性)
+Pattern candidates: Table / Chart / Tree / Specialized
+    ↓ (#2500: read-only ViewChangeをtyped Operation Intent候補へ)
+Action candidate | ambiguous | unsupported | stale | unresolved
+    ↓ (#1127/#2485/#1121/#1174: 別段のDriver/Host実実行・認可・Receipt)
+Independent observation / Business outcome (#1131/#1180/#1125)
+```
+
+これは**既存担当をつなぐ検査経路**であり、第二Execution Runtime、第二Driver Scenario、独立Receipt/Authority、統合Context Registryを作る方針ではない。
+
+### 16.2 共通受渡し票の最小欄（正式APIではない）
+
+| 受渡し | 必須照合と失われる可能性がある情報 | 正本のOwner |
+| --- | --- | --- |
+| Semantic→Query | ID、Relation Role/Key、SQL Source/SHA・Dialect・Schema・Worker入力 | #1126/#2387 |
+| Query→Context | Output Grain、Entity/Relation/Occurrenceとの対応根拠、lineage、Scope、Predicate、Page、Snapshot、NULLの由来 | #2387/#2506 |
+| Context→Pattern | Context/Instance/epoch、Result Slice、Grain、Facet、Claim required inputs、適用/非適用理由 | #2506/#2507 |
+| Pattern→Intent | 表示行occurrenceと業務対象IDの区別、Field/Edge Role、Action版、部分取得と全件Action要件 | #2497/#2500 |
+| Intent→Effect | 実Target、Operation ID、現在認可、Rule/Expected version、Commit/不明な結果 | #1127/#1174/#2485 |
+| Evidence→Consumer | 実行入力版、観測対象・時点・範囲、独立Oracle、残余、Consumerごとの開示条件 | #1131/#1180/#2514/#2516 |
+
+既存`OutputField.Inputs`のField IDと`RelNode.Inputs`のOperation IDは別の名前空間であり、明示の根拠なしに機械的に結びつけない。実SQL Workerの応答が入力Source/Schema/Dialectと同じ試行に属するかは#2387の実装状況に従う。局所Go／Python Fixtureで構造が合っても、正式TEI Contextへの自動導出・実DB上の結果同等性は新たな実証が必要。
+
+### 16.3 正例・負例を組にした試験票
+
+| 対照 | 正しい結論 | 誤成功として検出するもの |
+| --- | --- | --- |
+| HS-01 独立集合 | D1=2、D2=3、JOIN表示=6を区別 | 6個の業務明細を新規作成したと扱う |
+| HS-02 Claim別完全性 | D1完全ならLine合計は局所確定、D2部分はJOIN全体未確定 | Context全体を一律無効化／部分JOINを全件確定 |
+| HS-03 NULLと未確定 | SQL SUMのNULL／LEFT JOIN仮NULL／未観測による結論無しを区別 | 全て同じJSON `null`に丸める |
+| HS-04 版の入替え | Query/Schema/Rule/Actionの改版を対象ごとに検出 | 同じQuery IDだから旧解析結果を現在の根拠とする |
+| HS-05 親選択A→B | 旧epochの応答をBへ混入させない | Aの表示行をBの業務対象へ逆結合 |
+| HS-06 同一対象の複数出現 | L1のJOIN上3出現から明示IDつき単一Intent候補を作れる範囲を確認 | `rowIndex`や値一致だけで対象を確定 |
+| HS-07 関係操作 | Relation occurrenceのunlinkとEntity deleteを区別 | 参照先の生存期間を変更してしまう |
+| HS-08 非可逆投影 | 集約点の読取り・選択ができ、書戻しは明示Action待ち | 集約点の変更を任意の元行へ割り当てる |
+| HS-09 Refresh/撤回 | LEFT JOIN仮NULL・NOT EXISTS・TOP-Nの旧出力を必要に応じ撤回 | append-only UI更新による残存行 |
+| HS-10 ACK消失 | Result unknown／現在値の独立読取を別観測として表示 | 同値再読取を当該RequestのCommit証明へ昇格 |
+| HS-11 Domain Plugin | unit・clock・operator lawを適合検査し専門計算へ委譲 | 数値型一致だけでtime step・solver差を無視 |
+| HS-12 二Consumer | CUI JSONと異なるRendererの対象ID・Claim・欠落残余が一致 | 一方の表示仕様を第二Business定義とする |
+
+**初回の縦切りはHS-01〜06のread-only出力**とし、従来の試験成功を再計測したかのように扱わない。HS-07〜12は独立して追加可能。将来のDriver/実DB/Host接続は#2485/#1180の既存Scenarioと組み合わせ、Ownerによる意味判断は既存受理経路で行う。
+
+### 16.4 成功を測る単位
+
+「Pattern名を認識した」ことより、次を測る。
+
+- **情報保持**：SourceからClaimまでの必要Identity・粒度・時間・完全性・値域が保持された割合、LossとUnknownが説明された件数。
+- **診断の判別力**：誤更新・誤集計・誤対象・不明効果を拒否できた件数と、正しい局所結果を過剰に拒否した件数。
+- **統合負担**：既存Contractをそのまま利用できた接続、追加Adapter行数、重複定義、必要なCore変更、版の更新波及。
+- **製品価値**：AIが一度のCUI往復で不足情報と次の検証を説明できるか、実装・設定・再試験の手間（生産性測定は#2018）。
+- **実行証拠**：局所fixture、TEI正式Goテスト、実Worker入力、実Provider/DB、実Host、Owner受理を独立に記録。
+
+## 17. Plugin Pattern拡張をData処理以外へ広げる条件
+
+他領域の専門機能を、同一Data Contextに型を追加するだけで実現できると扱わない。#2493が検討する異種DomainのG0表現／G1解釈／G2評価／G3合成／G4実現の比較軸を参照し、ClockとEffectを含む契約を必要なConsumerだけに適用する。
+
+- **組織・兼務/代理**：通常の組織DataはTEI内で一般のDataとして参照。多重Role/時点の意味を標準Tree/Graphへ投影し、表示の所属から現在Host Grantを自動作成しない。特定保護情報と外部開示は別条件。
+- **BOM/工程**：同一Entityが複数Path occurrenceに現れること、数量展開とリソース時間計算の別演算、Gantt dragと実計画確定の区別。
+- **IoT/監視と計算物理**：Sensor event-timeと取得時刻、一定tickと可変イベント、sample-and-hold、単位・座標、遅延、訂正。入力Producer/演算/専門HostのClock/Step/Failure契約を明示。可視化の一致をPhysics/実機効果とはみなさない。
+- **長時間業務**：申請/承認・外部Handoff・Async Operationについて受付、進行、業務完了、再試行可能性・不明効果を別々のResult/Receiptとして表示。
+- **文書・知識**：同一SubjectをCUI・SHO・図表へ投影し、出典・版・未決・開示可能範囲を用途相対で保持。資料に書かれた指示をHost実行権限へ引き上げない。
+
+標準Plugin開発者に複雑なFacet/Law/Clock宣言を一律に要求することは目的ではない。**標準Semantic Data/Relation/型・Ruleに既存の意味がある場合、それを標準機能が活用できる**ことを優先し、専門Domainの要求が現れたときに明示的な演算・時制・Provider契約を追加する。
+
+外部参照：[Flink Dynamic TablesのChangelog](https://docs.confluent.io/cloud/current/flink/concepts/dynamic-tables.html)、[Materialize data/time/diff](https://materialize.com/docs/fundamentals/concepts/arrangements/)、[Delta Lake Change Data Feed](https://docs.delta.io/delta-change-data-feed/)。これらは入力変更の表現に関する比較資料であり、TEIの実装・Snapshot保証・Changelog適合を示すものではない。
+
