@@ -1057,6 +1057,19 @@ QX-26（同一SQLite DBの2ページとSnapshot）、QX-31（Relation path再束
 **資格と優先順位**：SQLite実DB二つを使った局所13件のみ実測。TEI SQLGlot Worker→Go IR→実Function Context、TEIの二つの実Provider、API/GraphQL/OData横断Read、実Host/Consumer/SHO、Ownerによる業務意味受理は**NOT RUN**。#1640 D2のComplex Query実行拒否、#1119 G0〜G4、外部Host方針を維持。PR #2624（明示Function Context）、#2627（合成Provider Route）、#2634（Go依存）、#2637（D2の読取後Grant再検査）、#2629（横断計画）は**本節更新のGitHub照合ではmerged**。それぞれ局所実装・CI資格を示すにとどまり、単一Function E2Eは別途検証する。
 
 
+### 7.29 QX-33：Analyzer ResponseのQuery ID照合とSource／Schema実帰属の差を実Goプロトコルで特性記述（2026-11-03）
+
+別途進んだ§7.28 QX-32は**二つのProviderにまたがる共同Read Cohort**の有限実証であり、本節の**Analyzer Invocation境界**とは別。重複する試験番号・受入資格にしない。詳細は[**QUERY_QX33_ANALYZER_INVOCATION_BINDING_AND_VERTICAL_HANDOFF_2026-11.md**](./QUERY_QX33_ANALYZER_INVOCATION_BINDING_AND_VERTICAL_HANDOFF_2026-11.md)。
+
+**実コード・状態の更新**：既存`internal/query/analyzer/client.go`の`RunPythonWorker`は実`Request`をstdinでWorkerへ渡し、`Result.Query`と`ProtocolVersion`を要求へ照合する（#2471、**merged**）。一方ResultにはSource/Schemaの実消費byteがechoされず、Query ID/Protocolだけでは保存済みResultを別SQL/Schema/Targetへ適用できる**独立の版同一性証明**とはならない。#2634（QX-27実Go DerivedIRの合成解析入力特性）、#2637（D2 Provider後のHost FieldRead再検査）も**merged**。本書§7.22/7.23の「queued」は当時の履歴であり、現在の未mergeを意味しない。両者のmergeは**実SQLGlot Worker→実Go→Provider→SHO**の合格ではない。
+
+**保存した実Goテスト**：[client_qx33_request_binding_characterization_test.go](../../internal/query/analyzer/client_qx33_request_binding_characterization_test.go)（Git blob `f0c6113ca2ff5a3fd3b3febe8faf18c6855d1cb2`、3443 bytes）。既存`RunPythonWorker`へ自己プロセスのテストHelperを渡す。HelperがSQL/Schemaを**意図的に無視する**とき、同じQuery/Protocolを保つSQL Filter変更・Table変更・Schema変更の応答を静的契約上受理し得ることをcharacterizeする。**ローカル`gofmt -l`空／SourceのGitHub byte一致は確認済み、Go test・exact-head Actionsは未確認**。これは実SQLGlot Workerの結果取り違えバグを観測したものではない。実Process invocationが渡したstdin/stdoutをCaller側で結び付ける可能性も残す。
+
+**次の一本の試験**：QX33-V0：実Authored SQL byte／選択Template分岐／Dialect／Schema Context／Worker実行版と実stdinを同一Attemptに帰属 → V1：Workerの実Output／Go `DerivedIR`の`OutputField`値Lineage、非表示Predicate/Sort/EXISTS/Path、Partial/Unknownを**欠落時はunknownのまま**比較 → V2：Function Data Context/受理済みRole・Operatorと必要Field/Relation pathを接合 → V3：Provider/Read Cohort/否定的集合のComplete Witness → V4：Consumer開示／実Host Grant/Effectを別資格とする。**SQLGlot Worker実呼出しのV0/V1が未実証のうちは、合成Python/Goの成功数を増やしても製品E2E受理に昇格させない**。
+
+既存#2387/#2506/#2586/#2622/#2582/#2516/#1174のOwnerへ段階検証を引継ぎ、Worker responseの新Field・新Proof Registry・新Query Executor／Hostを即採用しない。#1640 D2の複雑SQL実行拒否、#1119の既存G0〜G4、Source一正本を維持。
+
+
 ## 8. 実装順・担当引継ぎ（提案）
 
 | 段階 | 所有 | 実施 | 完了の根拠 |
