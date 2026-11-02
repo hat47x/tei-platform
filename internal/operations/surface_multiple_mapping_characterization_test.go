@@ -162,3 +162,23 @@ func TestCharacterizeStorageTypeChangeInvisibleToPureDerivedSurface(t *testing.T
 	}
 	t.Log("CHARACTERIZATION: physical storage change invisible to pure Operation Surface (workspace fingerprint not checked)")
 }
+
+func TestCharacterizeSelectedMappingTableChangeAffectsBasis(t *testing.T) {
+	w := multipleMappingWorld()
+	a := DeriveOperationSurface(w, "order_entry")
+	before, ok := findOperation(a, "order_entry.create.sales.order")
+	if !ok {
+		t.Fatal("before create not derived")
+	}
+	// Positive control: Table belongs to the declared Basis preimage.
+	w.Persistence[1].Table = "migrated_archive_orders"
+	b := DeriveOperationSurface(w, "order_entry")
+	after, ok := findOperation(b, "order_entry.create.sales.order")
+	if !ok {
+		t.Fatal("after create not derived")
+	}
+	if before.ID != after.ID || before.Basis == after.Basis || !reflect.DeepEqual(before.Inputs, after.Inputs) {
+		t.Fatalf("expected stable operation ID and inputs but changed Basis: before=%+v after=%+v", before, after)
+	}
+	t.Log("CHARACTERIZATION: selected table changes the mapping Basis, unlike selected Storage/Column changes")
+}
