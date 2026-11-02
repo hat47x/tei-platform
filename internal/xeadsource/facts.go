@@ -182,7 +182,9 @@ func ExtractRelationalSourceFacts(doc Document) RelationalSourceFacts {
 				})
 			}
 		case "Refer":
-			if doc.Format == FormatXeaf {
+			// A foreign-namespaced lookalike is an unknown source node,
+			// not a typed XEAF runtime Refer declaration.
+			if doc.Format == FormatXeaf && n.Known {
 				toKeyFieldsRaw := exactOptionalAttribute(n, "ToKeyFields")
 				withKeyFieldsRaw := exactOptionalAttribute(n, "WithKeyFields")
 				toKeyFields := ""
@@ -195,10 +197,10 @@ func ExtractRelationalSourceFacts(doc Document) RelationalSourceFacts {
 				}
 				facts.RuntimeRefers = append(facts.RuntimeRefers, RuntimeReferFact{
 					Locator:             n.Locator,
-					ReferLegacyID:       attributeValue(n, "ID"),
+					ReferLegacyID:       exactAttributeValue(n, "ID"),
 					SourceTableLegacyID: tableLegacyID,
-					ToTableLegacyID:     attributeValue(n, "ToTable"),
-					TableAlias:          attributeValue(n, "TableAlias"),
+					ToTableLegacyID:     exactAttributeValue(n, "ToTable"),
+					TableAlias:          exactAttributeValue(n, "TableAlias"),
 					ToKeyFields:         splitLegacyFieldList(toKeyFields),
 					WithKeyFields:       splitLegacyFieldList(withKeyFields),
 					ToKeyFieldsRaw:      toKeyFieldsRaw,
@@ -324,6 +326,13 @@ func attributeValue(n Node, name string) string {
 		}
 	}
 	return ""
+}
+
+// exactAttributeValue reads only the unqualified declaration used by a
+// typed Source Fact. Foreign-namespaced lookalikes remain on the raw Node.
+func exactAttributeValue(n Node, name string) string {
+	value, _ := exactAttribute(n, name)
+	return value
 }
 
 // exactOptionalAttribute keeps a declared empty source value distinct from absence.
