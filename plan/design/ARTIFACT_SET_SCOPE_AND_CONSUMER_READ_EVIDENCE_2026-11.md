@@ -99,3 +99,38 @@ Consumerが提出・利用するClaim、対象Application/Subjectと粒度、適
 - **実行状況**：本書で新たに定義したAS-01〜05、Consumer同版Read/Deliver、外部Meaning資格、Windows/SHO/EKI/TAI E2E、Owner意味受理は**NOT RUN／未採用**。他PRで報告された合成テストPASSを本書の実行結果として再解釈しない。
 
 **次の成果物**は、上記P1/P2の同一固定Revisionでの独立Oracle＋実Go/Reader試験記録である。設計票はその受入責務を明確化するもので、試験成功そのものではない。
+
+## 8. Everything is Data・Function Data Contextからの追加圧力（2026-11-02追補）
+
+**新しい成熟判断**：Artifact集合の「揃っている」は、**要求したLogical Memberの充足**だけでは十分とは限らない。適用先がAI/SHO/外部Consumerなら、`Actual Read Footprint`（何を取り出したか）、`Rule/Query Dependency Footprint`（出力に表示しないが判定に使った項目）、`Result Completeness`、`Disclosure/Egress`（何を誰へ渡したか）も別資格として比較する。一方で通常のローカル設計書閲覧に、実DB Read WitnessやAI開示を一律の必須条件として課すものではない。
+
+### 8.1 他チャットで実証された限定Reference
+
+- [Draft #2624](https://github.com/hat47x/tei-platform/pull/2624)：Function別の明示Data Mappingと標準Role。固定Python合成20例について、未Mappingの秘密Fieldが変わっても限定Projectionへ暗黙混入しないことを確認。ただし実Providerアクセスの最小性は未証明。別の[#2387 QX-25](https://github.com/hat47x/tei-platform/issues/2387)では、出力にない秘密FieldをWHERE/Sort/COUNT/JOIN等が参照し、**見える列が同じでも結果が変わり得る**反例を独立SQLite Fixtureで観測。Rule/Query依存と表示Mappingを同一視しない。
+- [Draft #2628](https://github.com/hat47x/tei-platform/pull/2628)：Declared footprint→Realized request→Synthetic Access Witness→Result Slice→Consumer Disclosureの違いを12件合成で比較。Outputが同一でもProviderが不要な秘密列や別Relationを内部で読んだ可能性が残る。12/12は局所Python Referenceであり、実DB/実Providerの物理読取り保証ではない。
+- [Draft #2627](https://github.com/hat47x/tei-platform/pull/2627)：同じSemantic Dataに複数Provider/Alias/Scopeが対応する場合、意味上のSubject一致から単一物理経路や同Snapshotを決めない。Provider route/read cohort計32例の局所合成検証。実`DeriveOperationSurface`、Registry/Provider、実DBは別Owner・未検証。
+- [Draft #2626](https://github.com/hat47x/tei-platform/pull/2626)：#2516のClaim/Scope/Completeness、混合版、二世界開示を15件合成。対象HEAD `60b9a2e145529d6dd832f5a41c40bc999d4992b7`に対する[focused CI #41442415419](https://github.com/hat47x/tei-platform/actions/runs/41442415419)はSUCCESS。ただしTEI本体/実CLI・SHO/外部HarnessのE2Eではない。
+- [MMI Draft #753](https://github.com/hat47x/markdown-matrix-injector/pull/753)／[#754](https://github.com/hat47x/markdown-matrix-injector/pull/754)、[SHO #10](https://github.com/hat47x/sho-composer/issues/10)：取得・文書への出現・表示・レビュー・固定納品と、ローカル読取／外部AI送信を独立資格として扱う。MMIのC-01/T2 G0-0未通過やSHO実製品未成立を、この比較からPASSへ昇格させない。
+
+上記は**別PRの限定合成結果**であり、本PR #2630のAS試験や実TEI Product/Consumer受入のPASSではない。必要なFixtureと観測項目だけ借り、合成Oracle/実Provider/Producerを複製しない。
+
+### 8.2 AS-06〜10：期待集合の充足とRead/Disclosureを分ける（全件NOT RUN）
+
+| ID | 最小の二世界／二Consumer反例 | 守る資格とOwner |
+| --- | --- | --- |
+| **AS-06 秘密Dataの非干渉** | 同じ公開Subject/Fieldを投影する二世界で、未Mapping秘密Fieldだけを変更。Artifactの公開Content/Manifestの**存在・件数・Kind・出力ファイル名**にも差が漏れていないか。 | 公開観測対象は指定ConsumerのPolicy/Claim相対。Outputが同じでも実Providerが秘密を読まなかった証明にはならない。#2516/#2624/#2628 |
+| **AS-07 非表示述語依存** | 出力される列は同じだが、WHERE/COUNT/JOIN/Sortに秘密Fieldが影響するQueryを生成由来の説明へ参照させる。 | Display Mappingの一致を、Rule Dependencyの一致や秘密情報非利用と誤報しない。処理許可と出力開示は別。#2387/#2624/#1178 |
+| **AS-08 二Provider・同Subject別実装** | 同一Semantic SubjectをReplica/Primary/API/Archiveの異なる経路が提供。Snapshot token文字列が等しいケースと、同じRow数でもNULL/absent・時点の異なるケース。 | Semantic一致から実Provider・Scope・Snapshot/Row完全性を捏造しない。Artifact生成Inputと実Provider Read Evidenceも別。#2627/#2622/#2506 |
+| **AS-09 ローカルReadから外部AI送信** | AI/CUIがローカルでは参照できるArtifactを取得。その一部に非公開なSource locator/関係名、またはActionの存在情報が含まれる。 | `read allowed`、`egress allowed`、`received`、`review accepted`を別判定。拒否時は秘匿対象の存在・件数まで外部から推測できる返答に注意。#2516/#2515/#1178／SHO #10 |
+| **AS-10 Manifest同版でもContext混在** | 正常なManifest AとBから、個別には有効なArtifactを取得し、Scope/時点/Provider候補が異なるRead Sliceと併置。 | Artifact byte一致・個別Read成功・同名Snapshotだけで、Consumerの複合Claimを肯定しない。#2516/#2626/#2604 |
+
+**重要な境界**：AS-06の「公開観測が同じ」は、匿名化や秘密漏洩防止の**十分条件全般**を主張するものではない。対象Consumerが観測し得る名前・存在・件数・schema・file path・error categoryを適用Scopeとして決めるための有限Pressureである。非表示の秘密Fieldへ合法的に依存して生成結果が変わる場合もあるため、AS-07の**必要で許可された依存**と、AS-06の**許可外依存の露出**を混同しない。
+
+## 9. PR #2630の受入・実行Evidence管理
+
+初回PR候補のRepository Health、依存脆弱性確認、focused Fixture CIは、それぞれ**実際に実行した対象SHA**とログの最終結論を記録する。一般的な`go test ./...`の成功で、他DraftのPython/Go/Shell Fixtureがすべて動いたと推論しない。Focused CI #2626のように、必要なケースについて**exact HEAD checkout・実スクリプトblob・実行後のclean state**を明示する経路を優先する。
+
+- このPRの`AS-01〜10`は現時点で**検証計画のみ**。#2624・#2626・#2627・#2628の合成PASSやmainの旧Gate Readyを、本PRのE2E達成としない。
+- **最初に実証する組み合わせ**：AS-01/02（対象Member）＋#2482 AC-01〜04（内容検証）＋#2604 AP-08/09（公開path/実読取）。続いてAS-06/07/09の公開/外部送信差、AS-08/10のProvider/時点・Scope混合を、別Consumer条件で比較する。
+- **失敗時の分類**：`missing-member`、`wrong-application`、`invalid-content`、`unverified-producer`、`mixed-published-generation`、`read-not-observed`、`scope-incomparable`、`disclosure-denied`、`unknown`を、**比較票内の診断候補**として使う。新公開JSON/Schema/Result enumの採用ではない。
+- **Ownerの採否判断**：Manifest自身が用途相対のExpectedMemberを含むべきか、必要集合をApplication/Consumerのread-only検収が定めるべきかは、AS-01/02実行後に判断する。局所的なRead/Disclosureの追加は既存#2506/#2622/#2516へ分担し、TEI独自Host・中央Permission/ArtifactStore・全用途共通Gateを前提にしない。
