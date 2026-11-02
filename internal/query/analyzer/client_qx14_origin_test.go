@@ -82,8 +82,8 @@ func TestQX14SameIdentityResponseDoesNotBindSQLSchemaOrDialect(t *testing.T) {
 	}
 }
 
-// An exact-request digest is necessary for rebinding old observations, but it
-// cannot witness the changes between two equal byte sequences (ABA). This is
+// An exact-request digest can detect mismatched request bytes, but it cannot
+// witness changes between two equal byte sequences (ABA). This is
 // a fixture-only Consumer qualification; no production epoch API is introduced.
 func TestQX14RequestDigestDoesNotProveNoABA(t *testing.T) {
 	fingerprint := func(r Request) [32]byte {
