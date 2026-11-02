@@ -34,6 +34,9 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 	root := fs.String("workspace", "", "TEI workspace directory")
 	applicationID := fs.String("application", "", "exact application ID")
 	patternID := fs.String("pattern", "", "exact application pattern ID")
+	commandID := fs.String("command", "", "command capability to plan")
+	var inputPairs inputFlag
+	fs.Var(&inputPairs, "input", "command input as name=value; repeatable")
 	format := fs.String("format", "text", "text or json")
 	if err := fs.Parse(args); err != nil {
 		return fail("INVALID_ARGUMENT", err.Error(), 2)
@@ -50,6 +53,25 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 	loaded, err := workspace.Load(*root)
 	if err != nil {
 		return fail("WORKSPACE_LOAD_FAILED", err.Error(), 2)
+	}
+	if *commandID != "" {
+		if *format != "text" && *format != "json" {
+			return fail("INVALID_ARGUMENT", "view -command supports -format text or json", 2)
+		}
+		values, err := parseInputPairs(inputPairs)
+		if err != nil {
+			return fail("INVALID_ARGUMENT", err.Error(), 2)
+		}
+		plan, err := applicationview.BuildCommandPlan(loaded.World, core.CanonicalID(*applicationID), core.CanonicalID(*patternID), core.CanonicalID(*commandID), values)
+		if err != nil {
+			return fail("VIEW_FAILED", err.Error(), 1)
+		}
+		report.OK = true
+		report.Result = plan
+		if *format == "json" {
+			return writeViewReport(out, report, 0)
+		}
+		return writeCommandPlanText(out, plan)
 	}
 	kind, err := applicationview.PatternKind(loaded.World, core.CanonicalID(*applicationID), core.CanonicalID(*patternID))
 	if err != nil {
@@ -321,6 +343,72 @@ func writeBrowseText(out io.Writer, view applicationview.BrowseView) (int, error
 	}
 	for i, column := range view.Columns {
 		if _, err := fmt.Fprintf(out, "  %d. %s : %s\n", i+1, column.Label, column.Type); err != nil {
+			return 2, err
+		}
+	}
+	return 0, nil
+}
+
+type inputFlag []string
+
+func (f *inputFlag) String() string { return strings.Join(*f, ",") }
+
+func (f *inputFlag) Set(value string) error {
+	*f = append(*f, value)
+	return nil
+}
+
+func parseInputPairs(pairs inputFlag) (map[string]string, error) {
+	values := map[string]string{}
+	for _, pair := range pairs {
+		name, value, ok := strings.Cut(pair, "=")
+		if !ok || name == "" {
+			return nil, fmt.Errorf("-input must be name=value")
+		}
+		if _, exists := values[name]; exists {
+			return nil, fmt.Errorf("-input %s is given more than once", name)
+		}
+		values[name] = value
+	}
+	return values, nil
+}
+
+func writeCommandPlanText(out io.Writer, plan applicationview.CommandPlan) (int, error) {
+	if _, err := fmt.Fprintf(out, "command %s (%s)\n", plan.Capability, plan.Label); err != nil {
+		return 2, err
+	}
+	if _, err := fmt.Fprintln(out, "inputs:"); err != nil {
+		return 2, err
+	}
+	for _, input := range plan.Inputs {
+		line := fmt.Sprintf("  - %s (%s)", input.Name, input.Type)
+		if input.Attribute != "" {
+			line += fmt.Sprintf(" ← %s", input.Label)
+		}
+		if input.Provided {
+			line += fmt.Sprintf(" = %s", input.Value)
+		} else {
+			line += " (missing)"
+		}
+		if _, err := fmt.Fprintln(out, line); err != nil {
+			return 2, err
+		}
+	}
+	for _, outcome := range plan.Outcomes {
+		if _, err := fmt.Fprintf(out, "outcome %s -> %s\n", outcome.Name, outcome.Payload); err != nil {
+			return 2, err
+		}
+	}
+	if plan.Effect != nil {
+		if _, err := fmt.Fprintf(out, "effect: %s %s\n", plan.Effect.Kind, plan.Effect.Data); err != nil {
+			return 2, err
+		}
+	}
+	if _, err := fmt.Fprintf(out, "ready: %t\n", plan.Ready); err != nil {
+		return 2, err
+	}
+	if len(plan.Missing) > 0 {
+		if _, err := fmt.Fprintf(out, "missing: %s\n", strings.Join(plan.Missing, ", ")); err != nil {
 			return 2, err
 		}
 	}

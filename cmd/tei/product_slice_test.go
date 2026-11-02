@@ -144,6 +144,29 @@ func TestProductSliceLoadsValidatesAndViews(t *testing.T) {
 		t.Fatalf("lookup=%+v", report.Result.Items[1].Lookup)
 	}
 
+	var planOut bytes.Buffer
+	code, err = runViewCommand([]string{
+		"-workspace", root,
+		"-application", "order_entry",
+		"-pattern", "order_entry.order_record",
+		"-command", "sales.submit_order",
+		"-input", "order=ORD-1",
+		"-format", "json",
+	}, &planOut)
+	if err != nil || code != 0 {
+		t.Fatalf("command plan exit=%d err=%v body=%s", code, err, planOut.String())
+	}
+	var planReport struct {
+		OK     bool                        `json:"ok"`
+		Result applicationview.CommandPlan `json:"result"`
+	}
+	if err := json.Unmarshal(planOut.Bytes(), &planReport); err != nil {
+		t.Fatal(err)
+	}
+	if !planReport.OK || !planReport.Result.Ready || len(planReport.Result.Inputs) != 1 || planReport.Result.Inputs[0].Value != "ORD-1" {
+		t.Fatalf("command plan=%+v", planReport.Result)
+	}
+
 	var browse bytes.Buffer
 	code, err = runViewCommand([]string{
 		"-workspace", root,
