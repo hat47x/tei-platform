@@ -183,16 +183,26 @@ func ExtractRelationalSourceFacts(doc Document) RelationalSourceFacts {
 			}
 		case "Refer":
 			if doc.Format == FormatXeaf {
+				toKeyFieldsRaw := exactOptionalAttribute(n, "ToKeyFields")
+				withKeyFieldsRaw := exactOptionalAttribute(n, "WithKeyFields")
+				toKeyFields := ""
+				withKeyFields := ""
+				if toKeyFieldsRaw != nil {
+					toKeyFields = *toKeyFieldsRaw
+				}
+				if withKeyFieldsRaw != nil {
+					withKeyFields = *withKeyFieldsRaw
+				}
 				facts.RuntimeRefers = append(facts.RuntimeRefers, RuntimeReferFact{
 					Locator:             n.Locator,
 					ReferLegacyID:       attributeValue(n, "ID"),
 					SourceTableLegacyID: tableLegacyID,
 					ToTableLegacyID:     attributeValue(n, "ToTable"),
 					TableAlias:          attributeValue(n, "TableAlias"),
-					ToKeyFields:         splitLegacyFieldList(attributeValue(n, "ToKeyFields")),
-					WithKeyFields:       splitLegacyFieldList(attributeValue(n, "WithKeyFields")),
-					ToKeyFieldsRaw:      exactOptionalAttribute(n, "ToKeyFields"),
-					WithKeyFieldsRaw:    exactOptionalAttribute(n, "WithKeyFields"),
+					ToKeyFields:         splitLegacyFieldList(toKeyFields),
+					WithKeyFields:       splitLegacyFieldList(withKeyFields),
+					ToKeyFieldsRaw:      toKeyFieldsRaw,
+					WithKeyFieldsRaw:    withKeyFieldsRaw,
 					Nature:              SourceFactNature,
 					AuthorityLimits:     cloneStrings(runtimeReferAuthorityLimits),
 				})
