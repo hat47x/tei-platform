@@ -63,6 +63,16 @@ data Customer {
     datasource master
 }
 `)
+	writeWorkspaceFile(t, root, "applications/order-entry/queries/recent_orders.tei", `query order_entry.recent_orders {
+    datasource sales
+    sql postgres file "recent_orders.sql"
+    result {
+        column order_id -> sales.order.order_id
+        column customer_id -> sales.order.customer_id
+    }
+}
+`)
+	writeWorkspaceFile(t, root, "applications/order-entry/queries/recent_orders.sql", "select order_id, customer_id from sales.order\n")
 	writeWorkspaceFile(t, root, "applications/order-entry/patterns/order-record.tei", `pattern order_entry.order_record record {
     data sales.order
     interaction {
@@ -130,6 +140,20 @@ func TestProductSliceLoadsValidatesAndViews(t *testing.T) {
 	}
 	if report.Result.Items[1].Lookup == nil || report.Result.Items[1].Lookup.TargetType != "customer.customer_id" {
 		t.Fatalf("lookup=%+v", report.Result.Items[1].Lookup)
+	}
+
+	var browse bytes.Buffer
+	code, err = runViewCommand([]string{
+		"-workspace", root,
+		"-application", "order_entry",
+		"-pattern", "order_entry.recent_orders",
+		"-format", "html",
+	}, &browse)
+	if err != nil || code != 0 {
+		t.Fatalf("browse view exit=%d err=%v body=%s", code, err, browse.String())
+	}
+	if !strings.Contains(browse.String(), "<th>受注番号</th>") {
+		t.Fatalf("browse html=%s", browse.String())
 	}
 
 	var detail bytes.Buffer

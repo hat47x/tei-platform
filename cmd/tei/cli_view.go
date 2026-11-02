@@ -69,6 +69,12 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 			return fail("VIEW_FAILED", err.Error(), 1)
 		}
 		result = view
+	case application.PatternBrowse:
+		view, err := applicationview.BuildBrowse(loaded.World, core.CanonicalID(*applicationID), core.CanonicalID(*patternID))
+		if err != nil {
+			return fail("VIEW_FAILED", err.Error(), 1)
+		}
+		result = view
 	default:
 		return fail("VIEW_UNSUPPORTED", fmt.Sprintf("view does not support pattern kind %s", kind), 1)
 	}
@@ -92,6 +98,12 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 			} else {
 				html, err = applicationview.RenderHeaderDetailHTML(value)
 			}
+		case applicationview.BrowseView:
+			if *format == "print" {
+				html, err = applicationview.RenderBrowsePrintHTML(value)
+			} else {
+				html, err = applicationview.RenderBrowseHTML(value)
+			}
 		}
 		if err != nil {
 			return fail("VIEW_FAILED", err.Error(), 1)
@@ -106,6 +118,8 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 			return writeViewText(out, value)
 		case applicationview.HeaderDetailView:
 			return writeHeaderDetailText(out, value)
+		case applicationview.BrowseView:
+			return writeBrowseText(out, value)
 		}
 		return 2, fmt.Errorf("unhandled view result %T", result)
 	}
@@ -256,6 +270,38 @@ func writeHeaderDetailText(out io.Writer, view applicationview.HeaderDetailView)
 			if _, err := fmt.Fprintf(out, "  - %s: %s %s (%s)\n", aggregate.Name, aggregate.Function, aggregate.Label, aggregate.Type); err != nil {
 				return 2, err
 			}
+		}
+	}
+	return 0, nil
+}
+
+func writeBrowseText(out io.Writer, view applicationview.BrowseView) (int, error) {
+	if _, err := fmt.Fprintf(out, "pattern %s (%s)\n", view.Pattern, view.Kind); err != nil {
+		return 2, err
+	}
+	if _, err := fmt.Fprintf(out, "data %s — query %s\n", view.Data, view.Query); err != nil {
+		return 2, err
+	}
+	if len(view.Packages) > 0 {
+		packages := make([]string, 0, len(view.Packages))
+		for _, pkg := range view.Packages {
+			packages = append(packages, fmt.Sprintf("%s ^%s", pkg.ID, pkg.Version))
+		}
+		if _, err := fmt.Fprintf(out, "packages: %s\n", strings.Join(packages, ", ")); err != nil {
+			return 2, err
+		}
+	}
+	if view.SemanticFingerprint != "" {
+		if _, err := fmt.Fprintf(out, "semantics: %s\n", view.SemanticFingerprint); err != nil {
+			return 2, err
+		}
+	}
+	if _, err := fmt.Fprintln(out, "columns:"); err != nil {
+		return 2, err
+	}
+	for i, column := range view.Columns {
+		if _, err := fmt.Fprintf(out, "  %d. %s : %s\n", i+1, column.Label, column.Type); err != nil {
+			return 2, err
 		}
 	}
 	return 0, nil
