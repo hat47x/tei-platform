@@ -102,6 +102,29 @@ type Application struct {
 	Validations  []core.CanonicalID    `json:"validations,omitempty"`
 	Databases    []DatabaseRequirement `json:"databases,omitempty"`
 	Patterns     []Pattern             `json:"patterns,omitempty"`
+	Packages     []Package             `json:"packages,omitempty"`
+}
+
+// Packageは、既存Patternを束ねる派生の宣言である。Patternの定義を複製しない。
+type Package struct {
+	ID          core.CanonicalID     `json:"id"`
+	Version     string               `json:"version"`
+	Members     []PackageMember      `json:"members,omitempty"`
+	Requires    []PackageRequirement `json:"requires,omitempty"`
+	Projection  string               `json:"projection,omitempty"`
+	Conformance string               `json:"conformance,omitempty"`
+}
+
+// PackageMemberは、Packageが参照するPatternと、その種別である。
+type PackageMember struct {
+	Kind    PatternKind      `json:"kind"`
+	Pattern core.CanonicalID `json:"pattern"`
+}
+
+// PackageRequirementは、Packageが前提にするSemantic要素への参照である。
+type PackageRequirement struct {
+	Kind string           `json:"kind"`
+	ID   core.CanonicalID `json:"id"`
 }
 
 // HasDatabaseAliasは、Application-localなdatasource alias宣言が一件以上存在するかだけを返す。
