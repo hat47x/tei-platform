@@ -25,12 +25,22 @@ type View struct {
 	Commands            []Command               `json:"commands,omitempty"`
 	Packages            []PackageRef            `json:"packages,omitempty"`
 	SemanticFingerprint string                  `json:"semanticFingerprint,omitempty"`
+	Hooks               []HookRef               `json:"hooks,omitempty"`
 }
 
 // PackageRefは、このPatternを含むPackageへの参照である。
 type PackageRef struct {
 	ID      core.CanonicalID `json:"id"`
 	Version string           `json:"version"`
+}
+
+// HookRefは、対話の前後に差し込む処理の宣言を解決した結果である。
+type HookRef struct {
+	Phase    string             `json:"phase"`
+	Reads    []core.CanonicalID `json:"reads,omitempty"`
+	Uses     []core.CanonicalID `json:"uses,omitempty"`
+	Produces []core.CanonicalID `json:"produces,omitempty"`
+	Failure  string             `json:"failure,omitempty"`
 }
 
 // Commandは、対話から起動できるCapabilityを解決した結果である。
@@ -229,6 +239,15 @@ func Build(world ir.World, applicationID, patternID core.CanonicalID) (View, err
 			From: source.ID,
 			Kind: source.Kind,
 			Data: source.Data,
+		})
+	}
+	for _, hook := range pattern.Interaction.Hooks {
+		view.Hooks = append(view.Hooks, HookRef{
+			Phase:    hook.Phase,
+			Reads:    hook.Reads,
+			Uses:     hook.Uses,
+			Produces: hook.Produces,
+			Failure:  hook.Failure,
 		})
 	}
 	for _, command := range pattern.Interaction.Commands {

@@ -604,6 +604,39 @@ func validateRecordPatternInteraction(
 		}
 	}
 
+	for _, hook := range pattern.Interaction.Hooks {
+		switch hook.Phase {
+		case "before-read", "before-create", "after-create", "before-update", "after-update", "before-delete", "after-delete":
+		default:
+			out = append(out, errFor(patternSubject, "APPLICATION_PATTERN_INTERACTION_HOOK_PHASE_UNSUPPORTED", "record pattern %s hook uses unsupported phase %s", pattern.ID, hook.Phase))
+		}
+		switch hook.Failure {
+		case "", "reject", "warn":
+		default:
+			out = append(out, errFor(patternSubject, "APPLICATION_PATTERN_INTERACTION_HOOK_FAILURE_UNSUPPORTED", "record pattern %s hook %s uses unsupported failure %s", pattern.ID, hook.Phase, hook.Failure))
+		}
+		for _, attribute := range hook.Reads {
+			if _, ok := dataAttributes[attribute]; !ok {
+				out = append(out, errFor(patternSubject, "UNKNOWN_APPLICATION_PATTERN_INTERACTION_HOOK_READ", "record pattern %s hook %s reads %s that is not an attribute of %s", pattern.ID, hook.Phase, attribute, pattern.Data))
+			}
+		}
+		for _, attribute := range hook.Produces {
+			if _, ok := dataAttributes[attribute]; !ok {
+				out = append(out, errFor(patternSubject, "UNKNOWN_APPLICATION_PATTERN_INTERACTION_HOOK_PRODUCE", "record pattern %s hook %s produces %s that is not an attribute of %s", pattern.ID, hook.Phase, attribute, pattern.Data))
+			}
+		}
+		for _, capability := range hook.Uses {
+			namespace, ok := semanticCapabilities[capability]
+			if !ok {
+				out = append(out, errFor(patternSubject, "UNKNOWN_APPLICATION_PATTERN_INTERACTION_HOOK_USE", "record pattern %s hook %s uses %s that is not a capability", pattern.ID, hook.Phase, capability))
+				continue
+			}
+			if !usedSemantics[namespace] {
+				out = append(out, errFor(patternSubject, "APPLICATION_PATTERN_INTERACTION_HOOK_SEMANTIC_NOT_USED", "record pattern %s hook %s uses %s from namespace %s that application %s does not use", pattern.ID, hook.Phase, capability, namespace, app.ID))
+			}
+		}
+	}
+
 	for _, navigation := range pattern.Interaction.Navigations {
 		ref, ok := patterns[navigation.From]
 		if !ok {

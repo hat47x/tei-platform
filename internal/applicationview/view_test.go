@@ -77,6 +77,13 @@ func viewWorld() ir.World {
 							},
 						},
 						Navigations: []application.InteractionNavigation{{From: "order_entry.recent_orders"}},
+						Hooks: []application.Hook{{
+							Phase:    "before-update",
+							Reads:    []core.CanonicalID{"sales.order.status"},
+							Uses:     []core.CanonicalID{"sales.confirm_order"},
+							Produces: []core.CanonicalID{"sales.order.customer_id"},
+							Failure:  "reject",
+						}},
 						Commands: []application.InteractionCommand{{
 							Capability: "sales.confirm_order",
 							Inputs:     []application.CommandInputBinding{{Name: "order_id", Attribute: "sales.order.order_id"}},
@@ -235,5 +242,19 @@ func TestBuildCarriesSemanticFingerprint(t *testing.T) {
 	}
 	if after.SemanticFingerprint == view.SemanticFingerprint {
 		t.Fatal("semantic change did not change the view fingerprint")
+	}
+}
+
+func TestBuildCarriesHooks(t *testing.T) {
+	view, err := applicationview.Build(viewWorld(), "order_entry", "order_entry.order_record")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(view.Hooks) != 1 {
+		t.Fatalf("hooks=%+v", view.Hooks)
+	}
+	hook := view.Hooks[0]
+	if hook.Phase != "before-update" || len(hook.Reads) != 1 || len(hook.Uses) != 1 || len(hook.Produces) != 1 || hook.Failure != "reject" {
+		t.Fatalf("hook=%+v", hook)
 	}
 }

@@ -205,6 +205,29 @@ func writeViewText(out io.Writer, view applicationview.View) (int, error) {
 			}
 		}
 	}
+	if len(view.Hooks) > 0 {
+		if _, err := fmt.Fprintln(out, "hooks:"); err != nil {
+			return 2, err
+		}
+		for _, hook := range view.Hooks {
+			line := fmt.Sprintf("  - %s", hook.Phase)
+			if len(hook.Reads) > 0 {
+				line += fmt.Sprintf(" reads %s", joinIDs(hook.Reads))
+			}
+			if len(hook.Uses) > 0 {
+				line += fmt.Sprintf(" uses %s", joinIDs(hook.Uses))
+			}
+			if len(hook.Produces) > 0 {
+				line += fmt.Sprintf(" produces %s", joinIDs(hook.Produces))
+			}
+			if hook.Failure != "" {
+				line += fmt.Sprintf(" on-failure %s", hook.Failure)
+			}
+			if _, err := fmt.Fprintln(out, line); err != nil {
+				return 2, err
+			}
+		}
+	}
 	if len(view.Commands) > 0 {
 		if _, err := fmt.Fprintln(out, "commands:"); err != nil {
 			return 2, err
@@ -246,6 +269,14 @@ func bindLabel(label string, attribute core.CanonicalID) string {
 		return ""
 	}
 	return fmt.Sprintf(" ← %s", label)
+}
+
+func joinIDs(ids []core.CanonicalID) string {
+	parts := make([]string, 0, len(ids))
+	for _, id := range ids {
+		parts = append(parts, string(id))
+	}
+	return strings.Join(parts, ", ")
 }
 
 func writeHeaderDetailText(out io.Writer, view applicationview.HeaderDetailView) (int, error) {
