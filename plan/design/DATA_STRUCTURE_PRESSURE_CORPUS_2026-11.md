@@ -9,7 +9,7 @@
 
 対象の同一性／構成文法／性質・法則／解釈文脈／利用箇所の要求／主張と根拠／実現と表示。各Pressureの意味に関連するM1〜M10（#2495）は重複して構わないが、**一つの性質を二つの独立な意味正本に保存しない**。
 
-以下の120ケースは**初期の異質性を測るための開始点であり、網羅の完了や上限を意味しない**。新規の構造・数学的性質・分野固有の解釈は追加し続ける。関心事が重複する場合も、操作・利用文脈・失われる情報が異なれば別の反例として保持する。
+以下の132ケースは**初期の異質性を測るための開始点であり、網羅の完了や上限を意味しない**。新規の構造・数学的性質・分野固有の解釈は追加し続ける。関心事が重複する場合も、操作・利用文脈・失われる情報が異なれば別の反例として保持する。
 
 ## A. 値と同一性（PC-01〜07）
 
@@ -214,6 +214,29 @@ TEIの[PR #2576](https://github.com/hat47x/tei-platform/pull/2576)・[#2578](htt
 | PC-120 | 同一意味からの複数Consumer出力 | CUI成功・SHO/外部未観測 | 実Consumerごとのread/load | 一Consumerの表示成功を全Target適合とする | #2498/#2516 |
 
 **設計判断**：Value Fidelity、合法な再集計、Claimの成立、根拠アクセス、外部開示、Consumerへの実到達は異なる述語。これらを単一のPASS/LOSSLESSへ集約しない。新Measure Runtime、第二Authority/Registry、数学的な全域証明は前提にしない。
+
+## M. 動的モデルの計算意味・複数Clock・専門Solver（PC-121〜132、2026-11-02追加候補）
+
+**新しく発見する問い**：「何が接続されているか」という静的なGraph/Relationと、「どの時間基準、遷移・スケジューラ・Solver・状態を用いて値や効果が進むか」という*Model of Computation*は別の意味である。同じ循環Graphでも、即時計算の代数ループ、1-stepのDelayを持つfeedback、非同期Eventの循環を区別する。M1〜M10のどこに記録すべきかを圧力試験し、必要なら**動的意味の新しいメタ質問**を#2495へ提案する。新しいTEI Core Runtimeやゲーム/数値Solver内蔵をこのCorpusから自動決定しない。
+
+| ID | Pressure / 資料上の構造 | 構成・表現 | 分けて問う性質 | 誤認・損失の負例 | 既存Owner |
+| --- | --- | --- | --- | --- | --- |
+| PC-121 | 同じGraph上の純粋なDataflow | Operator DAGと入力値 | 値依存／評価順／副作用なし | Edgeがあるだけで実行順・決定性を保証 | #988/#2495 |
+| PC-122 | Delayを持つFeedback Loop | Graph循環＋時刻付きState | 1 tick前の値／初期状態／単位 | 循環を全て不正・全て即時解決と判定 | #988/#2507 |
+| PC-123 | 同時刻の代数ループ | X→Y→Xと連立拘束 | Solver必要条件／収束・解の存在／失敗 | Delayを推測したり順番実行で確定値を作る | #2544/#2495 |
+| PC-124 | 複数ClockのSample-and-Hold | 60Hz物理更新と10Hz認知出力 | Clock同一性／位相／保持・stale | サンプル値の等しさから同時刻の評価を断定 | #2506/#2497 |
+| PC-125 | ODEと数値積分 | 連続時間の微分式と離散Step | 刻みh／Integrator／誤差境界／事象検出 | 数値列一致から解法・連続時間意味の同一性を宣言 | #1705/#2544 |
+| PC-126 | Simulation TimeとWall Time | 時間倍率を変えたゲーム・試験 | sim delta／real timeout／input時点／再現条件 | Slow-motionの成功を実時間応答期限への適合とする | #2507/#2497 |
+| PC-127 | 状態付きReplay | Initial State・Event Log・乱数種 | 外部入力／Seed／Order／Snapshotの版 | 同じ初期値のみで非決定的実行を完全再現と断定 | #1131/#1180 |
+| PC-128 | 同時刻の複数Event | Event QueueとScheduler | 同時刻tie・優先順位・因果順序 | Timestamp一致を実行順序・同一Eventとみなす | #2386/#2497 |
+| PC-129 | 同期Functionと非同期Command | 同じI/O shapeのOperation | 副作用／ACK-loss／Receipt／Commit | 値の戻りが同じなので業務完了と推論 | #1174/#1129 |
+| PC-130 | AI認知と身体運動の異なる周期 | CPU推論State→運動制御Tick | 遅延／契約するState／入力鮮度／遷移 | 推論が成功したことから次の物理動作が実現とみなす | #2507/#2497 |
+| PC-131 | 専門Solverを持つ外部Plugin | ODE/最適化/制約Provider | 要求Operator／Solver依存・精度／回復条件 | 同じFunction Signatureで同じLaw/解を保証 | #951/#2544 |
+| PC-132 | 訂正を含むReactive Aggregate | Snapshot差分＋retract/replace | 部分Claim／依存粒度／再評価／開示 | 追加Eventだけ反映して旧集計・旧Claimを確定表示 | #2582/#2593 |
+
+**外部の圧力資料（正本採用ではない）**：[FMI 3.0.2](https://fmi-standard.org/docs/3.0.2/) はModel Exchange・Co-Simulation・Scheduled Executionを区別し、SolverやSchedulerを誰が持つかを分ける。[Modelica Language](https://modelica.org/projects/language/) は連続／離散・イベントを含むモデルを扱う。[Godot Engine physics interpolation](https://docs.godotengine.org/en/stable/tutorials/physics/interpolation/physics_interpolation_introduction.html) は物理Tickと描画Frameの非同一性を説明する。TEIがそれらのRuntimeを内蔵するという意味ではない。
+
+**設計への帰属**：構造・Facetと動的意味の区分は#2495、演算束縛・Lawは#2544/#988、実行先・専門Providerは#951/#2077、Context/時間・Reactivenessは#2506/#2582、効果と権限は#1174、実Consumerでの保存性は#2497/#2498を利用する。各ケースは合成した**試験仮説**でありPC-121〜132の実行・受理はNOT RUN。
 
 ## 外部仕様の照合（2026-11-01読取り）
 
