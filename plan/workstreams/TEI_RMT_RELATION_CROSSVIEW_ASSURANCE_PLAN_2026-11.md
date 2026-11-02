@@ -67,7 +67,17 @@ P1の最初のHeadless確認では、固定した同一配布版に属するXEA[
 - **観測上の識別不能対**：同じSourceのK=局所unresolvedとJ=局所resolvedについて、公開`ByKind`件数は共通であり、Consumerの選択対象がKかJかを区別できない。公開集計だけを入力とする「Jの操作可否Oracle」は成立しない。同様に`ToKeyFields`の正規化配列`[]`だけでは、原属性の欠落と明示空を区別できない。元XMLのprivate raw declaration／`Node.Known`・exact属性、当該Factの局所Resolutionを必要範囲で参照し、公開Reportのsource SHAや件数を個別Factの識別子へ昇格させない。
 - **範囲限定**：独立Oracle、Source一致、Owner意味確認、公開適格性、実Work H2/J5 Target参照は別の検証。実Go/GUIでのMutant試験や正式Acceptanceを新しく行ったものではない。#2514のOracle/Conformance Profileと#950のSource Fact保持のOwnerを変えず、本書はRelationship固有のfixture入力・Expected・識別不能対だけを管理する。
 
-### Case別に失敗原因と検証資格を固定する（本表の17統合ケースは未実行）
+### 2026-11-02 追補：Metamorphic検証とFunction実消費の境界
+
+[#2514の独立OracleとMutation感度](https://github.com/hat47x/tei-platform/issues/2514#issuecomment-6576646220)を、実行済み製品検収と区別しながらRelationship Source検証へ適用する。また[#2506の表示MappingとRule依存](https://github.com/hat47x/tei-platform/issues/2506#issuecomment-6576904883)、[#2586のQuery→Context→Claim](https://github.com/hat47x/tei-platform/issues/2586#issuecomment-6576783393)で、**同じ表示値でも成立するClaimと実際に消費した入力が異なる**ことが明確になった。本workstreamはそのRelation固有の圧力例だけを所有する。
+
+1. **変換前後に保存すべき主張を限定する**：同じ二Fieldの`SortKey=010/020`を固定してXML上の出現順だけを交換すると、`SourceOrdinal`・source digest・raw locator等は変化し得る一方、現行のSortKey比較で確定する**順序付きField組とKey局所readiness**は、同じ独立Key・同じ検証規則のもとでは不変であるはず。さらに無関係Jの追加で公開`byKind`総数・Source SHA・`diagnosticToken`は変化しても、依存しないKの局所結果は変わらないはず。**何を不変とするかをClaimごとに指定**し、raw差分・公開tokenの不変までは要求しない。SortKeyが`"2"/"10"`なら文字列順と数値順の違いを別の独立Expectedで検証する。
+2. **表示範囲とRule/Query依存を区別する**：同じRelation図・同じJの表示Fieldから、Relation pathのRole、非表示WHERE/EXISTS入力、Validation Rule入力、Action対象を復元できるとは限らない。FunctionごとのRoot/Relation Path/Field/Scope/Grainは明示Mappingで定義・追跡し、表示の簡略化から暗黙のRead Grantを作らない。部分取得で`exists` Witnessは確認できても`NOT EXISTS`・全件SUM・全件Validationは成立しない場合がある。入力不足は業務拒否（false）でなく未確定として記録する。
+3. **宣言・物理取得・Materialize・開示の分離**：同じFunction要求/Result Slice/表示であっても、Providerが別Role/秘密Fieldを余計に読んだ世界とは**実Read Footprint**が異なる。Source/Design RMTで言えるのは要求候補の由来までであり、実Provider SQL/HTTP/read trace、同期snapshot、現在Principalの権限、Consumerへ実際に送ったbyte/fieldsはそれぞれ#2622/#2611/#2506/#2516/実Host担当が観測する。必要な補助Readもあり得るので、`DisplayFields == PhysicalReadFields`を一律に強制しない。Sourceが適切でも過剰取得/開示が安全と自動確定しない。
+
+本節は**計画上の判別条件**であり、定義・Data Context、Provider、Rule、公開・実Effectの新しいOwner、第二Oracle、Runtime Host、製品enum/APIを作らない。固定Source/Policy/Function Context、Claim、独立Expected、検証到達範囲、実入力を試験票に記録する。Mutant/MetamorphicのTEI製品実行、実Provider/実GUI/Owner意味受理は**NOT RUN**。
+
+### Case別に失敗原因と検証資格を固定する（本表の20統合ケースは未実行）
 
 | ケース | 入力・判別条件 | Headlessで照合する期待／禁止事項 | 担当 |
 | --- | --- | --- | --- |
@@ -87,6 +97,9 @@ P1の最初のHeadless確認では、固定した同一配布版に属するXEA[
 | **RV-D1** | Role付きRelation pathを同じFunctionの複数Context occurrenceで使用。ある集合はcomplete、別集合はpartial | Entity Identity／Path occurrence／結果grain／取得scope／選択epochを保持。閲覧・選択・編集Binding／実Effectの資格を別々に示す | #2506／#2507／#2586 |
 | **RV-O1** | 同じ親1／子2の合成構成で`FAMILY`を正例に、`REFFER`へTypeだけ変えた場合、子のSortKeyを重複にした場合、同じTypeで対応候補0件／複数件の場合を別対照とする | 独立Expectedが「非対称は一律reject」「FAMILYなら無条件pass」「重複SortKeyでも順序成功」「曖昧なのに先頭候補Accept」のMutantを区別できること。診断0≠比較実施済み、Source形状の許容≠業務列pair受理。Type分岐に関する正負Expectedは旧固定Sourceと自作fixtureから記述し、現行TEI診断をOracleにしない | #950／#1126／#2514 |
 | **RV-O2** | 同一snapshotでKとJのlocal状態が異なるがpublic`ByKind`が集計だけのケース、およびXEAF Referの原属性`missing`／`present-empty`／外来namespaceを正規化配列だけで見たケース | 各Consumerの実入力Projectionを固定し、区別すべきClaimに必要なSource presence／owner scope／対象Factのlocal Resolutionが**その入力に存在するか**を比較。存在しなければ「検証器失敗」以前の入力観測不足として保留。raw保持の修正候補[Draft #2603](https://github.com/hat47x/tei-platform/pull/2603)は最新head試験の資格を別計上し、公開Reportの件数からprivate対象を逆同定しない | #950／#1124／#2514／#2516 |
+| **RV-O3** | 二memberの独立Kで`SortKey=010/020`を固定しXML子出現順だけ反転。別対照で正常・無依存Jを追加。文字列`"2"/"10"`の対照は別fixtureに固定 | 独立Expectedは明示SortKeyで確定するKのordered member/局所readinessのみ不変とする。SourceOrdinal/raw XML/digest、公開総数・Tokenは変化可能と明示。無関係J追加でKの局所結果が変わるMutant、XML順をSortKey順に取り違えるMutantを判別し、旧Source版の判定を新Sourceへ自動再利用しない | #950／#1126／#2514 |
+| **RV-D2** | 一つのRelation pathを持つFunctionで表示Field/Graphが同じ。非表示Rule input又はEXISTS条件の値・Path Role・評価Scopeだけ変え、全件と部分Pageを対照 | Display MappingだけでRule/Query/Action Claimを判定しない。Root/Relation Path/Field/Scope/Grain、表示D・選択S・検証V・Action Aの依存由来を区別。部分Pageから不存在/全件SUM/全称Validationを確定しない。非表示入力が変わるとRule結果が変わる独立Expectedを用意し、Read Grantは自動拡大しない | #1126／#2506／#2507／#2586 |
+| **RV-D3** | 同一Mapping・同一Result Slice・同一画面で、Provider P1は宣言されたRole/Fieldだけ、P2は追加の秘密Field/未宣言Relationも実読取してから同じ結果を返す（合成） | 同じOutput/Rule結果・Provider応答成功を物理Readの同一性、取得権限、開示許可に昇格しない。Declared Read／Actual Provider Read／Context Materialized Slice／Consumer Disclosedを別Evidenceで照合し、必要な補助Readは許可・目的条件で個別判断。現Source診断やCrossViewから実Provider read/OS隔離実証を主張しない | #2506／#2622／#2611／#2516／#2514 |
 | **RV-H2** | 実Workの同一生成版ZIP・Probe・Producer・Builder・Candidate・Ledger・receipt | 既存2checkerの実exit／原byteに加え、**一つのSource node→実TargetのJ5参照実解決**を確認。個別未解決は保留し、独立PASSを結合PASSと呼ばない | #1121／#Work／#3／private #4 |
 
 `RV-*` は本節の比較票内の仮ラベルであり、#2505の実装済みRV試験番号／新たな共通Schema・Gate・APIではない。期待は実行済みPASSではなく反証可能な受入候補である。原実体の利用が必要なケースはprivate固定版と使い捨て環境で検査し、原本変更・内容公開を行わない。
