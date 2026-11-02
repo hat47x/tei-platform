@@ -1607,3 +1607,58 @@ Source Revision不一致でhelperを停止させる。UI選択epoch、Provider S
 - **次の実製品検証：** #2506/#2624がDeclared Read、#2611/#2627がAlias/Mapping経路・Cohort、#2622/#2628が実Query/API/SQLのRead Witness、#2516が外部Consumerへ実際に渡した情報、#2586が同一Function/Source版の縦断、#2598/#1174が実Request/Effectを所有する。これらを**同一試行**のEvidenceとして結べるかが製品受入条件となる。
 
 **未実証：** 既存TEI Go/Query/Function Context・実DB/API/Replica・実ProviderアクセスTrace・Client/LLMへの開示・Studio/SHO/UI/外部Host・Owner意味受理。現実のDataset/Scenario・Provider Readerから合成ログを直接計測しているわけではない。Source/Scenario/Roleの正式Schema・新共通Provider Resolver/Host/認可Engineは採用しない。既存#1119のP0優先順位と通常組織Dataの利用方針を維持する。
+
+## 47. 表示・Rule依存・実取得・Consumer開示を別々の資格として結合する（2026-11-02）
+
+### 47.1 最新の横断議論で補強された意味境界
+
+[#2624](https://github.com/hat47x/tei-platform/issues/2624)のDisplay Mapping／Rule Dependency Footprint、[#2619](https://github.com/hat47x/tei-platform/issues/2619)のEverything is Data、[#2622](https://github.com/hat47x/tei-platform/issues/2622)のData Operations、[#2582](https://github.com/hat47x/tei-platform/issues/2582)のClaim相対更新、[#2516](https://github.com/hat47x/tei-platform/issues/2516)のConsumer別情報公開を、組織の標準UIに接続する。
+
+**同じ組織図を表示するために必要なDataと、組織の業務Ruleを判定するために必要なDataは異なり得る。** 対象にRelationが存在すること、Functionが表示のために取得すること、Rule/Actionが必要入力として評価すること、実Providerが読んだこと、Consumerへ渡せることを別の依存・証拠列にする。
+
+例：D1の組織表にA1(P1,D1)とA2(P2,D1)の2行を表示する。合成Ruleが「所属に明示したFTE配賦合計がD1の仮の収容上限以下か」を判定する場合、表示には`Membership.id/person/dept`だけで十分だが、Ruleは`Membership`・`Allocation`・`DepartmentCapacity`の三つの入力経路を要する。
+
+- 既存合成配賦：A1=100、A2=60、合計160 basis points（=1.60 FTE）。
+- 仮のDepartmentCapacity：D1=180。合成Ruleは`160<=180`で`satisfied`。
+- **D1容量だけ150に変更**：画面の人物・所属IDと表示行は**同一**だがRule結果は`not_satisfied`。表示された値が同じという理由でRule結果まで保持・再利用できない。
+- 実RuleのOperator/Rule revision、Data Source版、Relation occurrenceと集計Grain、読み出し時点/Scope/Provider cohort、必要Readの完全集合性が成立して初めてRule候補を評価できる。入力が不足するなら`unresolved`。
+- Ruleが`satisfied`でも、それは**Operation Intent候補の根拠の一部**であり、既存Business Actionが受理されたこと・現在のHost Grant・Commit・業務完了を意味しない。
+- 値としては通常の組織Dataであり、**容量値そのものに一般的な秘密分類を付ける設計判断はしていない**。一方、Consumerごとに実際に渡すValue/Rule Outcome/診断が異なる場合、特別に開示条件を設けた用途ではRule結果自体の開示も明示判定する。
+
+### 47.2 意味・時点・依存・開示の独立受入票（ORG-RF）
+
+| Case | 合成条件 | 検証すべき区別 |
+| --- | --- | --- |
+| ORG-RF-01 表示とRule | 同じA1/A2行、容量180→150 | Display結果は同じ、Rule結果は`satisfied→not_satisfied` |
+| ORG-RF-02 表示上の関係とRule Input | D1所属だけ表示 | 表示に使わない`Allocation/Capacity`もRuleの必要依存。未宣言の全Data自動読込とはしない |
+| ORG-RF-03 入力未取得 | Allocation A2不足、Capacity不存在、物理Read witness unknown | 0/NULLを補完して成功・拒否を決めず`unresolved` |
+| ORG-RF-04 部分集合 | D1は取得A1のみ、complete不明 | 現在の配賦合計の最終判定は未確定。合成Fixtureでは偽completeも判別 |
+| ORG-RF-05 Rule/Meaning改版 | `cap-rule-r1`とは異なるRule版・Source版 | 行表示が変化しなくてもRule利用資格を再確認 |
+| ORG-RF-06 実Provider Cohort | replicaとprimaryのSnapshot名はともに`s7`、known-atは別 | 同じ名前から同一時点のRule/Display入力だと宣言しない |
+| ORG-RF-07 期間訂正 | primaryの2027-07-03認識ではA2がD1から外れ、A1=100 | 同じSourceファイルでも時点・Read routeによってRule基礎データが異なる |
+| ORG-RF-08 JOIN重複 | D1の2 Membership×2 Projectで4 SQL行 | Ruleの基礎FTEは160。JOIN後の4行から320へ重複集計しない |
+| ORG-RF-09 Role/Operator | `test-only-rule`と未認識Operator | Data中の文字列Roleに実行許可・業務意味受理を付けない |
+| ORG-RF-10 Consumer Disclosure | 表示専用/外部Consumerの合成Policyを別に指定 | 容量180と150でRule結果が逆でも、非開示Consumerはどちらも`unavailable`を受け取り、結果の真偽を露出しない |
+| ORG-RF-11 局所Reviewer | 合成ScenarioでRule結果の開示を明示したConsumer | そのConsumerに限りOutcomeやCapacityを表示する。合成Flagは実認可エンジンでない |
+| ORG-RF-12 Action/Effect | Ruleの局所判定が`satisfied` | `candidate-only`。実Request対象・Grant・Receipt・Business Completionは未成立 |
+
+**正当な専門化と標準構造の両立**：Ruleを標準Dataの役割付き表現として記述しても、Ruleを許可された業務解釈として受理する仕事は既存Ownerに残す。選択/式/関数のSyntax Sugar、GUIのTable/Graph/Tree、将来の別Targetが異なっても、評価対象・依存Source・演算・時点・開示条件は共通の元参照へ結び付く。Graphの構造自体から容量Ruleや業務的「主たる所属」を自動推論しない。
+
+### 47.3 独立合成Referenceの実行範囲
+
+[Draft PR #2596](https://github.com/hat47x/tei-platform/pull/2596)に`verify-rule-footprint.mjs`を追加し、共通`source-fixture.json`に**仮の容量データと合成Rule定義**、`scenario-fixture.json`に**表示/レビュー/外部Consumerの合成開示条件**を追加した。実Provider・実Hostは呼ばない。
+
+- **新規29/29 PASS**：最新GitHub Blob `69f8c6d40b7cea7335bdb417ac1535f177bc63ff`のテスト本体をV8互換Runnerで確認。表示行とRule結果の反例、必要なRule経路・Scope・版・Cohort、既知の全件期待と物理Read不足、合成Disclosureの負例を含む。
+- **現行合成Reference全体141/141 PASS**：同一の共通Source/Scenarioを読む7ファイルについてGitHub readback後に再評価（27+11+16+16+20+22+29）。
+- **Native Node/GitHub Actionsは今後の観測対象**：`.github/workflows/tei-org-semantic-reference-node.yml`は新しい`verify-rule-footprint.mjs`も実行対象へ追加した。実Workflow runの対象SHA・exit・logが確認されるまでCI成功と言わない。
+- **正式TEI製品試験はNOT RUN**：`internal/semantic`・正式Rule/Validation、`internal/operations`、Query/Context、実DB/API/Replica、Consumer egress、Studio/SHO、現在のHost/Grant、Ownerによる業務意味受理はこの合成テストで実行していない。
+
+### 47.4 他担当へ渡す次の最小縦断
+
+1. **#2620/#2624／#1126**：Rule/Function/ContextのRoleを受理済み標準Dataと結び付け、Display ReadとRule DependencyのSource/Field/Path/Grain/版の差をCUIでinspectできるか確認。
+2. **#2387/#2622/#2628／#2611/#2627**：Rule依存をProviderへ束縛した**実取得Footprint**、Read Cohortと完全性の根拠を実測し、表示とRuleの同一試行の入力資格を比較する。追加で必要な補助Readの正当性は専門Ownerへ説明・受理。
+3. **#2582/#2507/#2586**：容量値だけを変えて人物Table/GraphのSubject/Relation IDは保持しつつ、Rule Outcome・利用可能なAction候補だけを適切に再評価できるか反証。逆にPageだけが部分なら全件Ruleを確定しない。
+4. **#2516/#1178／#1124/SHO**：Role/Rule根拠を適切なConsumerへ提示し、明示的に保護する用途ではRule結果・診断・ログ/通信を含めた**実Disclosure Evidence**を別観測。一般組織Dataのモジュール全体を特殊ACL対象にしない。
+5. **#2598/#1174/#1119**：Rule結果を実Operationの許可証へ昇格させず、既存Actionの受理、実Request、Grant、Effect/独立Observation、Owner意味受理へ対応付ける。#1119 P0の実PostgreSQL・Owner-writeが優先。
+
+この成果は**標準構造・専門Ruleの合成に必要な意味境界と受入票**であり、新しい固定型体系、第二Rule Engine、汎用権限管理、専用Hostの製品採用・統合を意味しない。
