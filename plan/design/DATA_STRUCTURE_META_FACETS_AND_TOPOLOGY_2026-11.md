@@ -623,12 +623,12 @@ Everything is Dataの横断実証が進んだ結果、**表記構造が同じこ
 
 ### 25.2 Display Read、Rule Dependency、Action Requirementを別のFootprintとして扱う
 
-あるFunction Fで、表示に必要な要素を **D(F)**、受理済みRule Rの評価に必要な要素を **V(F,R)**、Operationの事前条件や更新対象に必要な要素を **A(F,Action)** と呼ぶ。集合記法は概念を比較する仮記号であり、正式な依存グラフ/Query Plannerの実装宣言ではない。
+あるFunction Fで、表示に必要な**データ依存**を **D(F)**、受理済みRule Rの評価に必要なデータ依存を **V(F,R)**、Operationの事前条件を検査するために必要なデータ依存を **A_data(F,Action)** と呼ぶ。これらとは別に、**更新対象・Effect範囲 A_write**、**Host/Authority/Receipt等の実行条件 A_exec**を保持する。集合記法は概念を比較する仮記号であり、正式な依存グラフ/Query Plannerの実装宣言ではない。
 
 - Dは表示に使う値と構造の**宣言された**範囲。#2506のFunction Data Contextが明示し、存在するRelation全てを暗黙取得しない。
-- VはRuleが評価する条件の依存。**Dと同一である必要はなく、Dに含まれるとも限らない。** #1129/#1729から必要なField、Relation、時点、NULL/completeを追跡する。
-- Aは対象ID、関連する更新不可変条件、base revision、現在Grant、Effect/Receipt等を含む操作の要求。Vを満たすPreviewが、保存時点でAを満たす証拠にはならない。
-- データを読むための実効資格と、得られた値／Rule結果／診断を別Consumerへ開示する資格も別。依存集合の和 D∪V∪A を計算することは**それらを一つのClientやLLMへ取り寄せてよいという許可ではない**。
+- VはRuleが評価する条件のデータ依存。**Dと同一である必要はなく、Dに含まれるとも限らない。** #1129/#1729から必要なField、Relation、時点、NULL/completeを追跡する。
+- A_dataは対象ID、関連する更新不変条件、保存時に再読取が必要な入力等の**データ要求**。A_writeは更新するSubject/Relation/FieldとEffectの対象、A_execはbase revision、現在Grant、Host/Provider、Commit/Receiptなどの**データ以外の実行資格**。Vを満たすPreviewが、保存時点でA_execを満たす証拠にはならない。
+- **同じ種類のデータ依存だけ**を集合として扱えば、D∪V∪A_dataは必要な入力の*論理的な候補集合*になる。ただし、実Providerでの取得やClient/LLMへの送出を許可するものではない。A_writeやA_execをデータ集合に混ぜない。実効Read Grant、Ruleの評価主体、結果/診断の開示Policyは別途評価する。
 
 **合成反例（別PRの隔離Fixtureに対応）**：表示対象は Order.amount=600 のみ。非表示の Account.credit_limit が700の世界と500の世界では、表示Projectionが同じでも、受理済みの「amount ≤ credit_limit」Ruleを実際に評価できる条件なら判定は異なる。Dしか見ないParser/Studio/AIが「同じFunction状態なのでAction Offer・Validationも一致」と断定すれば誤り。反対にRule結果が非公開のConsumerへ「閾値超過」「隠し上限との差」を返すことも不適切となり得る。既存Host/Policyに許可された結果だけを送る必要がある。
 
