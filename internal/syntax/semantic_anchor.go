@@ -36,6 +36,18 @@ func ParseSemanticFileAnchored(src string) (SemanticAnchored, error) {
 
 func semanticSubjectAnchors(src string, namespace core.CanonicalID) ([]SubjectAnchor, error) {
 	lx := NewLexer(src)
+	// Skip the optional semantic format header so the anchor scan starts at the
+	// same declaration as the value parser.
+	if first, err := peekLexer(lx); err != nil {
+		return nil, err
+	} else if first.Kind == TokenIdent && first.Text == "formatVersion" {
+		if _, err := lx.Next(); err != nil {
+			return nil, err
+		}
+		if _, err := expectLexerIdent(lx, "semantic format version"); err != nil {
+			return nil, err
+		}
+	}
 	if _, err := expectLexerText(lx, "namespace"); err != nil {
 		return nil, err
 	}
@@ -358,6 +370,13 @@ func semanticCapabilityID(namespace core.CanonicalID, symbol string) (core.Canon
 
 func tokenAnchor(t Token) Anchor {
 	return Anchor{Start: t.Start, End: t.End}
+}
+
+func peekLexer(lx *Lexer) (Token, error) {
+	off, line, column := lx.off, lx.line, lx.column
+	t, err := lx.Next()
+	lx.off, lx.line, lx.column = off, line, column
+	return t, err
 }
 
 func expectLexerText(lx *Lexer, text string) (Token, error) {

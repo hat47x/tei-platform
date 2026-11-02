@@ -63,6 +63,9 @@ type Result struct {
 	// change every accepted revision); it is recorded here instead.
 	sourceManifest        ManifestIdentity
 	sourceImportsDeclared bool
+	// Format version declared by the Workspace manifest. Semantic files may
+	// declare their own header; when they do, it must agree with this value.
+	manifestFormatVersion int
 
 	// Only populated during Load. One pinned directory handle protects all
 	// domain Source reads from a Workspace root pathname being replaced.
@@ -126,6 +129,7 @@ func loadWithStackHook(root string, visiting map[string]bool, afterParse func())
 	var roots []string
 	var imports []WorkspaceImport
 	var manifestID ManifestIdentity
+	manifestFormatVersion := 0
 	if src, err := readPinnedWorkspaceFile(sourceRoot, "tei.workspace.yaml"); err == nil {
 		manifest, parseErr := parseWorkspaceManifestYAML(string(src))
 		if parseErr != nil {
@@ -144,6 +148,7 @@ func loadWithStackHook(root string, visiting map[string]bool, afterParse func())
 				return Result{}, fmt.Errorf("%s: unsupported workspace formatVersion %d (supported: 1)", manifestYAML, manifest.FormatVersion)
 			}
 		}
+		manifestFormatVersion = manifest.FormatVersion
 		roots, imports = manifest.Sources, manifest.Imports
 		manifestID = ManifestIdentity{Path: "tei.workspace.yaml", SHA256: sourceindex.Fingerprint(src)}
 	} else if src, legacyErr := readPinnedWorkspaceFile(sourceRoot, "tei.workspace.tei"); legacyErr == nil {
@@ -174,6 +179,7 @@ func loadWithStackHook(root string, visiting map[string]bool, afterParse func())
 		sourceReadRoot:              sourceRoot,
 		sourceManifest:              manifestID,
 		sourceImportsDeclared:       len(imports) > 0,
+		manifestFormatVersion:       manifestFormatVersion,
 	}
 	// TEI standard semantic types are a library prelude, not Micro Kernel kinds.
 	r.World.Semantics = append(r.World.Semantics, stdlib.SemanticNamespace())
@@ -484,6 +490,12 @@ func loadSemantics(root string, r *Result) error {
 		ns, err := syntax.NewParser(string(src)).ParseSemanticFile()
 		if err != nil {
 			return sourceErr(path, err)
+		}
+		if ns.FormatVersion > 1 {
+			return sourceErr(path, fmt.Errorf("unsupported semantic formatVersion %d (supported: 1)", ns.FormatVersion))
+		}
+		if ns.FormatVersion != 0 && r.manifestFormatVersion != 0 && ns.FormatVersion != r.manifestFormatVersion {
+			return sourceErr(path, fmt.Errorf("semantic formatVersion %d does not match the Workspace formatVersion %d", ns.FormatVersion, r.manifestFormatVersion))
 		}
 		r.semanticSourceFiles = append(r.semanticSourceFiles, relPath(root, path))
 		idx, ok := byNamespace[ns.ID]

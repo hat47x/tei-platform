@@ -1775,7 +1775,35 @@ func (p *Parser) ParsePersistence() (persistence.Mapping, error) {
 
 // ParseSemanticFile parses a semantic source file. The syntax remains intentionally
 // small: a namespace followed by type, data, capability and typed validation declarations.
+// parseOptionalSemanticFormatVersion consumes an optional leading
+// "formatVersion N" header. Zero means the file did not declare a version and
+// inherits the Workspace manifest version. This describes the syntax
+// generation; it is not the content version of a contract.
+func (p *Parser) parseOptionalSemanticFormatVersion() (int, error) {
+	t, err := p.peek()
+	if err != nil {
+		return 0, err
+	}
+	if t.Kind != TokenIdent || t.Text != "formatVersion" {
+		return 0, nil
+	}
+	_, _ = p.next()
+	valueTok, err := p.expect(TokenIdent)
+	if err != nil {
+		return 0, err
+	}
+	version, convErr := strconv.Atoi(valueTok.Text)
+	if convErr != nil || version < 1 {
+		return 0, p.errAt(valueTok, "formatVersion must be a positive integer")
+	}
+	return version, nil
+}
+
 func (p *Parser) ParseSemanticFile() (semantic.Namespace, error) {
+	formatVersion, err := p.parseOptionalSemanticFormatVersion()
+	if err != nil {
+		return semantic.Namespace{}, err
+	}
 	if _, err := p.expectText("namespace"); err != nil {
 		return semantic.Namespace{}, err
 	}
@@ -1790,7 +1818,7 @@ func (p *Parser) ParseSemanticFile() (semantic.Namespace, error) {
 	if strings.Contains(string(nsID), ".") {
 		return semantic.Namespace{}, p.errAt(nsTok, "semantic namespace must be a top-level canonical id")
 	}
-	ns := semantic.Namespace{ID: nsID}
+	ns := semantic.Namespace{ID: nsID, FormatVersion: formatVersion}
 
 	for {
 		t, err := p.peek()
