@@ -21,7 +21,7 @@ DOCUMENTS = (
 )
 REQUIRED_CLI = ("version", "model catalog", "inspect", "trace", "validate")
 LINK = re.compile(r"\]\(([^)]+)\)")
-SHELL_BLOCK = re.compile(r"(?ms)^\`\`\`(?:sh|bash)\s*\n(.*?)^\`\`\`\s*$")
+SHELL_BLOCK = re.compile(r"(?ms)^```(?:sh|bash)\s*\n(.*?)^```\s*$")
 CLI_DECLARATION = re.compile(r'\{Name:\s*"([^"]+)",\s*Effect:\s*"([^"]+)"')
 
 
