@@ -130,3 +130,48 @@ func TestStructureProjectionNumberedSections(t *testing.T) {
 		t.Fatal("expected numbered design sections")
 	}
 }
+
+
+// Case rows and their Markdown header/separator must agree. Otherwise the
+// rendered table quietly assigns metadata to the wrong semantic columns.
+func TestPressureCorpusSectionHeadersHaveSixColumns(t *testing.T) {
+	path := filepath.Join(repositoryRoot(t), "plan", "design", "DATA_STRUCTURE_PRESSURE_CORPUS_2026-11.md")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	lines := strings.Split(string(data), "\n")
+	sections := 0
+	for i, line := range lines {
+		if len(line) < 5 || !strings.HasPrefix(line, "## ") ||
+			line[3] < 'A' || line[3] > 'Z' || line[4] != '.' {
+			continue
+		}
+		sections++
+		found := false
+		for j := i + 1; j < len(lines); j++ {
+			if strings.HasPrefix(lines[j], "## ") {
+				break
+			}
+			if !strings.HasPrefix(lines[j], "| ID |") {
+				continue
+			}
+			found = true
+			if got := pressureTableColumns(lines[j]); got != 6 {
+				t.Errorf("section %s: header has %d columns, want 6", line, got)
+			}
+			if j+1 >= len(lines) || !strings.HasPrefix(lines[j+1], "| ---") {
+				t.Errorf("section %s: missing table separator row", line)
+			} else if got := pressureTableColumns(lines[j+1]); got != 6 {
+				t.Errorf("section %s: separator has %d columns, want 6", line, got)
+			}
+			break
+		}
+		if !found {
+			t.Errorf("section %s: missing case table header", line)
+		}
+	}
+	if sections == 0 {
+		t.Fatal("no alphabetical pressure corpus sections")
+	}
+}
