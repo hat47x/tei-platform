@@ -1,0 +1,24 @@
+{
+  "scenarioFormat": "tei.reference.org-scenario/v0",
+  "sourceRevisionRef": "org-synthetic-r7",
+  "baseline": {
+    "validAt": "2027-06-15",
+    "knownAt": "2027-07-01"
+  },
+  "readEvidence": {
+    "instance": "I1",
+    "anchor": "D2",
+    "epoch": 7,
+    "meaning": "org-synthetic-r7",
+    "query": "membership-q1",
+    "readVersion": "snap-3",
+    "complete": true,
+    "occurrence": "edge-display-3",
+    "subject": "P2",
+    "edge": "A3",
+    "edgeKind": "Membership"
+  },
+  "treePreferenceExample": {
+    "P2": "A2"
+  }
+}
