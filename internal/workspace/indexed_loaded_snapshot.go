@@ -13,10 +13,12 @@ import (
 // or symlink change cannot redirect that inspection to a different file.
 //
 // This is an authoring snapshot, NOT proof of the *current* filesystem state.
-// Load reads manifests and every managed Source (parsed and forward-compatible)
-// from a single pinned os.Root. However inventory/Source enumeration still use
-// filesystem paths, and in-place modifications remain possible; Load is not an
-// atomic multi-file snapshot.
+// Load reads manifests and parsed domain Source bytes from a single pinned
+// os.Root. Managed files that no domain loader parsed are captured separately
+// at Load for Source Index, but this reader deliberately exposes only
+// parser-consumed bytes: it cannot attest an unparsed asset and fails closed
+// for it. In-place modifications remain possible; Load is not an atomic
+// multi-file snapshot.
 func IndexedLoadedSnapshot(root string, loaded Result) (sourceindex.Index, func(string) ([]byte, error), error) {
 	var empty sourceindex.Index
 	physical, err := canonicalWorkspaceRoot(root)
@@ -35,9 +37,10 @@ func IndexedLoadedSnapshot(root string, loaded Result) (sourceindex.Index, func(
 		content, ok := loaded.sourceSnapshot[artifact.Path]
 		if !ok {
 			// A BuildSourceIndex fallback that read files after Load is not
-			// sufficient: it cannot be tied to Load-time bytes. A partial
-			// snapshot (for example from a forged Result) fails closed.
-			return empty, nil, fmt.Errorf("source %q has no Load-time snapshot", artifact.Path)
+			// sufficient: it cannot be tied to parsed loader bytes. Unparsed
+			// managed assets (captured in sourceManagedExtra for Source Index)
+			// are intentionally not accepted here.
+			return empty, nil, fmt.Errorf("source %q has no parsed Load snapshot", artifact.Path)
 		}
 		copied := bytes.Clone(content)
 		if got := sourceindex.Fingerprint(copied); got != artifact.Fingerprint {
