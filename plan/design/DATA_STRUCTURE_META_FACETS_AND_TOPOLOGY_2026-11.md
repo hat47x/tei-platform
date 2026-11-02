@@ -805,3 +805,85 @@ Rowset Closure、Field Observation、Cohortは直列に全部一致させる単�
 これらは既存#2582のRCケース、#2516のW8〜W10、#2630のAS、#2600の増分Build/資格へ**担当を渡す設計検査票**であって、第二のScenario SSOTではない。最初の共同実証は合成の受注額600／与信上限700対500／部分Provider Read／秘密Action／SHO公開版を固定し、**実際に同じ活動・Source/Rule/Mapping/Grant/Consumerを指す証拠**を一回の試行で接合する。全再評価と依存選択的再評価の結果差、誤維持、過剰失効、Provider/Tool再呼出数、必要時間を比較する。
 
 **現状**：横断比較・実証計画のみ。TEI製品のClaim合成、外部Harness Tool実呼出、SHO実Consumer/EKI実配送、OS/DBの機密強制、正式Owner意味受理は**NOT RUN**。#2631、#2628、#2627、#2613等の隔離PASSは各PRの固定Fixtureに限る。採否は各Ownerが証拠に基づき判断する。
+
+## 28. 2026-11-02 非出力依存の保存：値Lineage・結果成立・選択・順序・Current Authority
+
+[Query Explain #2387](https://github.com/hat47x/tei-platform/issues/2387)から[Go DerivedIR特性記述 Draft #2634](https://github.com/hat47x/tei-platform/pull/2634)と[Draft #2635](https://github.com/hat47x/tei-platform/pull/2635)が並行提案され、[Function Mapping/Rule入力 #2624](https://github.com/hat47x/tei-platform/pull/2624)、[増分再利用手順 #2636](https://github.com/hat47x/tei-platform/pull/2636)、[D2読取Grant再確認 #2637](https://github.com/hat47x/tei-platform/pull/2637)の具体的接続点が明らかになった。既存§22/25〜27の「依存と現在資格」を、Queryの**値に表れない選択根拠**へ拡張する。新しい公開Query Schemaや第二の解析器・Cache/Permission Engineの導入ではない。
+
+### 28.1 同じOutputField.Value lineageでも、同じResult Claimとは限らない
+
+合成Query（構文の説明例でありTEIが全件実行できることの証明ではない）：
+
+```sql
+SELECT id
+FROM item
+WHERE secret_score > 50
+ORDER BY secret_rank, id
+LIMIT 1
+```
+
+表示値`id`の直接的な値Lineageは`item.id`だけに見える。しかし`secret_score`は**採用される行の集合**、`secret_rank`は**採用順序／先頭の選択**、`LIMIT`は**採用境界**を左右する。秘密列の値を変更しても`id`列の式とOutputField IDは不変であり得る一方、結果に現れるIDは変わり得る。したがって`OutputField.Inputs`が同じという証拠だけでは、Result Slice、Claim、キャッシュ再利用を認められない。
+
+比較のため、依存の**役割**を分ける。これらは分析観点であって製品の固定Enumではない。
+
+| 依存の役割 | 典型的な演算・根拠 | 変化すると何が変わるか | 担当 |
+| --- | --- | --- | --- |
+| **値の算出（Value）** | SELECT/計算式の入力、演算版、単位・NULL/Decimal | 既に選ばれた出力行の値 | #2387/#2593 |
+| **行の成立・選択（Membership）** | WHERE、EXISTS/NOT EXISTS、JOIN条件、HAVING、RLS、Relation path | 出力行の有無／採用対象。表示値の式が同じでも変化 | #2387/#2506/#2622 |
+| **行の多重度（Multiplicity）** | SQL bag、1:N Join fanout、DISTINCT、GROUP BY | 同じ値の出現数、SUM/COUNT/AVG等 | #1706/#2593 |
+| **順序・境界（Selection）** | ORDER BY、LIMIT/OFFSET、Window、Tie-break | 先頭n件、順位、ページ。旧結果行の元値が不変でも採否が変化 | #1640/#2387/#2582 |
+| **閉包・不存在の根拠（Closure）** | 反結合・NOT EXISTS、全部分集合の検査、完全なRead Slice | 不存在/全称のClaim。追加Eventで旧Claimが撤回され得る | #2506/#2516 |
+| **実観測・適用時点（Observation）** | Provider実取得、Field observed/absent、Snapshot issuer/Read-set、Rule版 | その依存を実際に満たしたか・現在も使えるか | #2611/#2627/#2586 |
+| **現在のRead/Disclosure資格（Authority）** | 実Principal、RLS、取得時/返却時Grant、Consumer向けPolicy | 実取得を許すか、値・Action名・存在/件数を外へ出せるか | #1178/#1769/#2516 |
+
+**重要な限界**：値/行成立/順位等の区別は、現在のTEI `DerivedIR`に全種類の**型付きDependency Edgeが既に存在する**という意味ではない。#2634/#2635の合成`analyzer.Result`では、WHERE/ORDER/相関EXISTSの参照列やExpressionが別経路に保持される例がある一方、Value lineage `OutputField.Inputs`はそれらを全部含まない。「Expressionが保持された」「IR coverageがfullと記録された」から、実SQLGlot Worker・全演算・Reader/CUIへ必要な依存が伝わったとは言えない。
+
+### 28.2 値の出所と、結果を採った理由は異なる「なぜ」の問い
+
+例えば、`SELECT id FROM item WHERE score > 50`で結果が一件も出ない場合、出力値Lineageは空でも、**結果が空であることの成立条件**は`item`の対象範囲・score・Predicate・実Rowset Closureに依存する。今見えている0件は他Tenantや未取得Pageに対する不存在の証明ではない。
+
+同様に、`NOT EXISTS`の「現在該当行なし」というClaimは、一行の追加によって偽になる可能性がある。正の存在証人は同じScopeへの追加だけなら保存可能な場合があるが、対象削除・時点・Authority/Visibilityの変更では再評価が必要になる。**演算の単調性・負の依存・完全性の前提**を明示し、単純に「前回の出力値が変わっていないからClaim有効」としない。
+
+Query変更Δに対し次のように比較する：
+
+- Value Expression不変でも、Predicate/Join/HAVING/Sort/Limit/Scope/RLS/Rule/Provider Cohortに変化があれば、それを必要とするClaimの再資格化候補にする。
+- 実Readで観測できなかった項目は、観測済みNULLや0件に潰さない。Rowset CompleteとField Observedは別。
+- 正当なSource/Operator依存が`Opaque`・未解決であれば、必要範囲での`unresolved`または全面再評価候補へ戻し、**依存がないという推定**でskipしない。
+- Value/Selection/Closureの静的依存が揃っても、実Providerに実際に読ませたQuery、Execution/Authority、Consumer向け開示・実Resultの現在性は別の実証とする。
+
+### 28.3 非出力列がIRに含まれるときの情報境界
+
+AnalyzerやGo DerivedIRが`secret_score > 50`の条件文を保持することは、内部の構造Explain・影響解析に有用だが、**内部IRが持つ文字列・値・列名を低開示Consumerへ無条件に返してよいという資格ではない**。条件定数、秘密Column名、Predicateが存在すること自体が非公開の場合がある。
+
+- 内部Read Footprintの必要性、**実Providerでの取得資格**、CUI/SHO/AI/外部Harnessへどの説明を開示するか、実送出先を別に記録する（§26、#2516/#2515）。
+- 非公開Predicateの詳細を省略する際も、公開Consumerには**不十分な観測のまま真/偽を確定させない**。内部診断の具体的な欠落理由は現在Policyが許可する粒度で投影する。
+- Query/Action実行前だけのRead Grant確認は、実行中の変更と現在の公開資格の問題を残す。[Draft #2637](https://github.com/hat47x/tei-platform/pull/2637)は同一AttemptのpreflightとProvider取得・評価後の返却直前にGrantを再確認する**限定的な二地点検査**。失効→復活するABA、返却後のConsumer egress、別Host/OS/RLS、分散Snapshotの一致はそれだけでは証明できない。実装PRが既存D2の安全拒否やProvider責務を変更せずに扱う範囲を尊重する。
+
+### 28.4 「再計算しなくてよい」の証拠を、独立Oracleで反証する
+
+[増分Build比較計画 Draft #2636](https://github.com/hat47x/tei-platform/pull/2636)のF0 baseline／F1 changed full／S1 selective／S2 negative controlsを再利用する。**Byte一致、値Lineage一致、Artifact cache hit、既存のRun成功状態**のいずれも、選択的な再計算・Claim再利用の資格とは別。
+
+初回はQuery・Rowset/Field/Rule/Authorityを一つずつ変え、**結果値は不変でもMember/Rank/Complete/Disclosureが変わる**正負ペアを作る。F1 fullの出力だけをS1 selectiveのWantへ複製すると、同じ解析器/Generatorの欠陥を共有する恐れがある。[独立Oracle #2514](https://github.com/hat47x/tei-platform/issues/2514)へ、手計算・独立評価・原典Scenario/Accepted Ruleから期待を立てた根拠と、Candidateとの共通由来を明示して渡す。
+
+[Draft #2634](https://github.com/hat47x/tei-platform/pull/2634)と[Draft #2635](https://github.com/hat47x/tei-platform/pull/2635)は**同じQX-27について並行したGo Characterization**であり、互いを独立Oracleと数えない。両者の重複する観測を比較したうえで#2387のOwnerが一つの受入経路へ整理し、Coverage/相関/非出力値・誤表示の**不足する負例**だけを残す。両PRとも現時点ではDraftで、片方の成功はもう片方や実SQLGlot→Goの成立を保証しない。
+
+### 28.5 次の実証票（既存Ownerで実施）
+
+| ID | 固定条件・単一変更 | 誤った再利用／誤成功 | Owner |
+| --- | --- | --- | --- |
+| LQ-01 | SELECTの値Inputs不変、WHEREの閾値だけ変更 | 値Lineage ID一致→同じRow membership | #2387/#2634/#2635 |
+| LQ-02 | 非表示ORDER BY列の順位だけ変更、LIMIT=1 | 出力Value Expressionが不変→最上位行も不変 | #2387/#2582 |
+| LQ-03 | NOT EXISTS用Relationへ1行追加 | 出力値を変更していない→旧不存在Claim維持 | #1706/#2582/#2516 |
+| LQ-04 | JOINの関連Occurrenceだけ追加、値は同じ | 重複/AVG/COUNTに影響しないと判定 | #2593/#2387 |
+| LQ-05 | SQL/IR値Lineage一致、AnalyzerのColumnRefが一部欠落 | Lowering=fullフラグだけで全Dependencyが網羅済み | #2387/#2514 |
+| LQ-06 | Field取得先がabsent、RowsetはComplete | 0/NULL扱いで不存在ClaimやRule判定を受理 | #2627/#2506 |
+| LQ-07 | 内部IRが秘密Predicateを保持、低権限CUIにExplain | 内部IRを生出力し、秘密列/閾値を漏らす | #2516/#1178 |
+| LQ-08 | Provider取得中にRead Grantが失効 | preflight成功を返却時Authorityと断定 | #2637/#1174 |
+| LQ-09 | Grant失効→復活ABA、または返却後の失効 | 二地点検査が全時間の継続的権限・送出資格を保証 | #2637/#2515 |
+| LQ-10 | Query変更なし、Provider CohortまたはRLS Scopeを変更 | 同じQuery digestから同じ現在Result Claimと判定 | #2622/#2611 |
+| LQ-11 | F1 fullとS1 selectiveが一致、Expectedが候補由来 | 実装とOracleに共通誤りがあっても独立受理 | #2514/#2600 |
+| LQ-12 | FullとSelectiveが結果同値、依存不明・Cache Hit差 | 観測値の一致だけで全入力上の安全なskip/性能改善を確定 | #2600/#2582 |
+
+実施の順は、**Q0** Source-static/型付きIRで値・非出力依存を分ける → **Q1** 実SQLGlot Worker→Go DerivedIRの実連結を検証 → **Q2** #2624のFunction Mapping/Ruleと実Provider/Rowset+Field/Cohortを照合 → **Q3** 低開示CUI/SHOへの説明・#2637の実Host/権限境界 → **Q4** #2636に沿うfull/selected・独立Expected・現在再利用資格と時間の比較。#2387はQuery構造Explain、#2582は変更影響、#2600は増分Build/計測、#2514はOracleの独立性、#2586は同版実一体試行を担当する。
+
+**状態**：この節は独立Draftに存在する設計・局所Go試験の比較と、既存Ownerへの受渡し。LQ-01〜12の**同一TEI製品経路／実DB/Host/AI/SHO**の一気通貫検証とOwnerの意味受理は**NOT RUN**。業務Rule/SQLが解決済みだからと既存#1640 D2の安全拒否を解除しない。
