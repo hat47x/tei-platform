@@ -342,7 +342,7 @@ func TestOneRevisionOrderEntryE2EPacket(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	index1, err := workspace.BuildSourceIndex(r1, loaded)
+	index1, err := workspace.BuildSourceIndexFromLoad(r1, loaded)
 	if err != nil {
 		t.Fatal(err)
 	}
