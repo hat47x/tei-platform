@@ -124,12 +124,19 @@ func ExtractRelationalSourceFacts(doc Document) RelationalSourceFacts {
 
 	var walk func(Node, string)
 	walk = func(n Node, tableLegacyID string) {
-		if n.Known && n.Name == "Table" {
+		if !n.Known {
+			// Preserve unknown source nodes in the raw Reader, and allow
+			// independently known descendants to remain forensic candidates.
+			for _, child := range n.Children {
+				walk(child, tableLegacyID)
+			}
+			return
+		}
+		if n.Name == "Table" {
 			tableLegacyID = attributeValue(n, "ID")
 		}
 
-		if n.Known {
-			switch n.Name {
+		switch n.Name {
 		case "TableKey":
 			key := LegacyKeyFact{
 				Locator:         n.Locator,
@@ -185,7 +192,7 @@ func ExtractRelationalSourceFacts(doc Document) RelationalSourceFacts {
 		case "Refer":
 			// A foreign-namespaced lookalike is an unknown source node,
 			// not a typed XEAF runtime Refer declaration.
-			if doc.Format == FormatXeaf && n.Known {
+			if doc.Format == FormatXeaf {
 				toKeyFieldsRaw := exactOptionalAttribute(n, "ToKeyFields")
 				withKeyFieldsRaw := exactOptionalAttribute(n, "WithKeyFields")
 				toKeyFields := ""
@@ -210,10 +217,8 @@ func ExtractRelationalSourceFacts(doc Document) RelationalSourceFacts {
 					AuthorityLimits:     cloneStrings(runtimeReferAuthorityLimits),
 				})
 			}
-			}
 		}
 
-		if n.Known {
 		if raw := attributeValue(n, "KeyFields"); raw != "" {
 			fields := splitLegacyFieldList(raw)
 			facts.DeclaredKeyFields = append(facts.DeclaredKeyFields, DeclaredKeyFieldsFact{
@@ -224,7 +229,6 @@ func ExtractRelationalSourceFacts(doc Document) RelationalSourceFacts {
 				Nature:          SourceFactNature,
 				AuthorityLimits: cloneStrings(declaredKeyFieldsAuthorityLimits),
 			})
-		}
 		}
 
 		for _, child := range n.Children {
