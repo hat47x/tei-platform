@@ -205,6 +205,16 @@ func writeViewText(out io.Writer, view applicationview.View) (int, error) {
 			}
 		}
 	}
+	if len(view.Unused) > 0 {
+		if _, err := fmt.Fprintln(out, "unused:"); err != nil {
+			return 2, err
+		}
+		for _, item := range view.Unused {
+			if _, err := fmt.Fprintf(out, "  - %s (%s)\n", item.Label, item.Type); err != nil {
+				return 2, err
+			}
+		}
+	}
 	if len(view.Hooks) > 0 {
 		if _, err := fmt.Fprintln(out, "hooks:"); err != nil {
 			return 2, err
