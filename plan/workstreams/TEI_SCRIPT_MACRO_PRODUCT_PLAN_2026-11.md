@@ -1,7 +1,7 @@
 # スクリプト・利用者マクロの製品化と権限委任の実証計画（2026年11月）
 
 - **状態**：開発計画案・未採用。個々のIssueと既存製品計画の判断境界を維持する。実装・試験・Ownerの受理をこの文書から宣言しない。
-- **設計本文**：[マクロの権限委任と操作対象の接合](../design/SCRIPT_MACRO_AUTHORITY_AND_EFFECT_TARGET_BINDING_2026-11.md)（T-1〜T-18）。本文に仕組みを重複記述せず、ここでは**担当・順序・実証の受渡し**を管理する。
+- **設計本文**：[マクロの権限委任と操作対象の接合](../design/SCRIPT_MACRO_AUTHORITY_AND_EFFECT_TARGET_BINDING_2026-11.md)（T-1〜T-44）。本文に仕組みを重複記述せず、ここでは**担当・順序・実証の受渡し**を管理する。
 - **親計画**：[横断 Critical Path #1119](https://github.com/hat47x/tei-platform/issues/1119)、[大量AI並列開発 #2493](https://github.com/hat47x/tei-platform/issues/2493)、[開発全体計画](../MASTER_PLAN.md)。既存Gate A/B/C、P0-a/P0-bの資格・順序に介入しない。
 - **製品Owner**：[Script/User Macro #2502](https://github.com/hat47x/tei-platform/issues/2502)、[限定委任 #2499](https://github.com/hat47x/tei-platform/issues/2499)、[実行Policy #2504](https://github.com/hat47x/tei-platform/issues/2504)。
 
@@ -114,6 +114,33 @@ Java/.NET/Wasm/Process等の外部Hostへ同一Script/Action/Contractを接続�
 **初期作業**：同じ合成Actionに対し、狭い取得、同一結果を返す余分な取得、古いReplicaの読取り、許可されない別経路への切替を別試行として比較する。既存の局所参照試験は再利用するが、それぞれの合格をMacro製品の統合合格へ移さない。Provider内部アクセスの観測が不足する場合は、当該保証を不明として記録する。
 
 既存#1119 P0-a/P0-bとGateを維持し、各レーンは並行調査できる。**T-27〜34、実Macro・実Provider接続、実OS/開示・Owner受理はNOT RUN**。実装や正式契約の採用は別判断。
+
+## 変更影響とArtifact公開の選択的再資格化（2026-11-02追補）
+
+[設計第12章](../design/SCRIPT_MACRO_AUTHORITY_AND_EFFECT_TARGET_BINDING_2026-11.md)の**T-35〜44**は、Everything is DataのData/Rule/Query、MacroのAction/Grant、生成物配布、SHO/AI等Consumerの**現在のClaim資格**を同一版で追うための計画。新しいClaim Engine・Cache・Schedulerを創設せず、[#2582](https://github.com/hat47x/tei-platform/issues/2582)、[#2600](https://github.com/hat47x/tei-platform/issues/2600)、[実行プロトコルDraft #2636](https://github.com/hat47x/tei-platform/pull/2636)、[#2630](https://github.com/hat47x/tei-platform/pull/2630)、[#2604](https://github.com/hat47x/tei-platform/issues/2604)の既存証拠をMacro Consumerへ接続する。
+
+| 段階 | 追加試験 | 既存担当・必要な実証 |
+| --- | --- | --- |
+| **S0：依存の説明** | T-35/36/37/42。Output値Lineageと非出力WHERE/EXISTS/Sort/Limit依存、Rule/Scope、依存欠落・誤「full」、無関係変更の局所維持 | #2387、Draft #2634、#2582/#2514 |
+| **S1：対象と実現** | T-38。同じOperation ID/BasisでもMapping列/Storage改版でConsumer Inputs・実Provider依存が異なり得る | #2611、Draft #2632、#2598/#2600 |
+| **S2：変更後の実行資格** | T-41/44。過去のEffect Receipt/承認履歴を保持しつつ、ABA/Grant失効後の現在起動・Commit資格を再照合 | #2499/#1174/#2582/#2516 |
+| **S3：公開されたMacro一式** | T-39/40。Consumer用途別Expected ArtifactSet、Manifest内部整合、同世代公開、実Load/実Reader byteを分けて証明 | #2482、#2604、Draft #2630/#2633、#2502/#943 |
+| **S4：全体の再検証費用** | T-43。F0/F1/S1/S2のfull/選択的/負例比較とJ0/J1/J2のClaim再確認費用。正しさ成立後に時間測定 | #2600、Draft #2636、#2018/#2514 |
+
+**最小一巡**：同一の合成受注Macroを、(F0)固定Source/Context/Provider/Artifact版で全検証し、(F1)次の単独変更後に全検証、(S1)依存に基づき必要箇所だけ再評価、(S2)誤再利用を誘う負例として実行する。次を**同じInput/expected/Host/Consumer定義に固定**し、比較できなければ`not-established`とする。
+
+1. Hidden WHERE thresholdだけ変更し出力JSONは変えないが、行membership Claimは再評価する。
+2. 非表示Sort/EXISTS/Top-Nや、未列挙依存の変更は値Lineageと別の資格として扱う。
+3. Mapping Storageまたは未選択Provider変更は、実依存・World/Artifact・Target適合への波及を個別判定する。
+4. Macro本体が同じでもConsumer必要Member欠落、途中世代混在、実Loader不一致を検出する。
+5. SHOの無関係な説明修正では、業務Effect/Library再ビルドと文書公開のClaimを局所化する。
+6. Grant失効や開示Policy変更は過去のArtifact/Receiptを削除せず、**今後の実行・表示**の適格性だけを再評価する。既確定Effectを検証目的で再Submitしない。
+
+**Evidenceの独立比較**：原Sourceと実消費byte／構造と受理意味／値依存と行集合・順序依存／選択したProvider・Context時点／実ビルドArtifactとConsumer全Member・公開世代／過去の実行・独立Oracle／現在Grant・開示の各列を持つ。過去`PASS`を今回の再実行`PASS`へ偽装せず、保持した履歴と今回の用途への再利用適格性を別に報告する。
+
+**判別指標**：固定反例範囲でのfalse reuse件数（許されない省略）、false invalidation件数（証拠付き無関係なのに再実行）、実選択された必要Memberの漏れ、Target/Read/Disclosureの不明件数、requalificationの呼出し・費用、同一Host/入力でのcold/warmとedit-to-usable p50/p95。**再計算の正しさを検証した後に速度を測り、未測定の高速化は報告しない**。新たなProduction要件やGateを増やすのではなく、#2600/#2018の品質観測へ渡す。
+
+**実証状況**：この追補は設計/Workstreamの接合案。#2632/#2633/#2634の実Go候補ファイルが存在することと、その正確なHeadでのGo/CI PASSを別に確認する。T-35〜44のMacro Producer→Consumer→Host→Result/開示の同一試行、外部Reader、性能測定、Owner意味受理は**NOT RUN**。他OwnerのDraftやCritical Path P0-a/P0-b・Gate A/B/Cは変更しない。
 
 ## テスト証拠の受渡し：1ケースにつき別の保証を保持
 
