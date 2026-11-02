@@ -1,5 +1,6 @@
 import tempfile
 import unittest
+import hashlib
 import json
 import subprocess
 import sys
@@ -167,6 +168,27 @@ class ProbeTest(unittest.TestCase):
             stale = run("--allowlist", str(allowlist), "--audit-allowlist")
             self.assertEqual(stale.returncode, 1, stale.stderr)
             self.assertEqual(json.loads(stale.stdout)["allowlist"]["issues"][0]["result"], "stale-allowlist")
+
+    def test_cli_checks_baseline_digest_against_exact_bytes(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "docs").mkdir()
+            (root / "docs" / "example.md").write_text("no references", encoding="utf-8")
+            baseline = root / "baseline.json"
+            baseline.write_bytes(b'{"baseline_count":0,"entries":[]}\n')
+            digest = hashlib.sha256(baseline.read_bytes()).hexdigest()
+            command = [sys.executable, str(Path(__file__).with_name("probe.py")), "--root", str(root),
+                       "--allowlist", str(baseline), "--baseline-allowlist", str(baseline),
+                       "--baseline-sha256", digest, "docs/example.md"]
+            good = subprocess.run(command, capture_output=True, text=True, check=False)
+            self.assertEqual(good.returncode, 0, good.stderr)
+            info = json.loads(good.stdout)["allowlist"]
+            self.assertEqual(info["baseline_sha256"], digest)
+            self.assertTrue(info["baseline_digest_verified"])
+            baseline.write_bytes(b'{"baseline_count":0,"entries":[]}')
+            changed = subprocess.run(command, capture_output=True, text=True, check=False)
+            self.assertNotEqual(changed.returncode, 0)
+            self.assertIn("baseline SHA-256 mismatch", changed.stderr)
 
 
 if __name__ == "__main__":

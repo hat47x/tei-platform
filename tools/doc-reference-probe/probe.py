@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Optional, narrowly scoped experiment for repository-root path references."""
 import argparse
+import hashlib
+import hmac
 import json
 import re
 import sys
@@ -151,10 +153,15 @@ def main():
     parser.add_argument("--root", type=Path, default=Path.cwd())
     parser.add_argument("--allowlist", type=Path, help="optional exact-entry JSON allowlist")
     parser.add_argument("--baseline-allowlist", type=Path, help="trusted baseline JSON for increase checks")
+    parser.add_argument("--baseline-sha256", help="expected SHA-256 of the baseline JSON bytes")
     parser.add_argument("--audit-allowlist", action="store_true", help="audit all allowlist documents")
     args = parser.parse_args()
     if args.baseline_allowlist and not args.allowlist:
         parser.error("--baseline-allowlist requires --allowlist")
+    if args.baseline_sha256 and not args.baseline_allowlist:
+        parser.error("--baseline-sha256 requires --baseline-allowlist")
+    if args.baseline_sha256 and not re.fullmatch(r"[0-9a-f]{64}", args.baseline_sha256):
+        parser.error("--baseline-sha256 must be 64 lowercase hexadecimal characters")
     if args.audit_allowlist and not args.allowlist:
         parser.error("--audit-allowlist requires --allowlist")
     root = args.root.resolve()
@@ -169,7 +176,13 @@ def main():
             allowlist = json.loads(args.allowlist.read_text(encoding="utf-8"))
             apply_allowlist(report, allowlist, today)
             if args.baseline_allowlist:
-                compare_allowlists(report, json.loads(args.baseline_allowlist.read_text(encoding="utf-8")), today)
+                baseline_bytes = args.baseline_allowlist.read_bytes()
+                baseline_digest = hashlib.sha256(baseline_bytes).hexdigest()
+                if args.baseline_sha256 and not hmac.compare_digest(baseline_digest, args.baseline_sha256):
+                    raise ValueError("baseline SHA-256 mismatch")
+                compare_allowlists(report, json.loads(baseline_bytes.decode("utf-8")), today)
+                report["allowlist"]["baseline_sha256"] = baseline_digest
+                report["allowlist"]["baseline_digest_verified"] = bool(args.baseline_sha256)
             if args.audit_allowlist:
                 report["allowlist_audit"] = audit_allowlist(root, allowlist, today)
         except (ValueError, OSError) as exc:
