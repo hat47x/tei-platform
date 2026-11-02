@@ -77,3 +77,18 @@ EG-01の投影で**Operator meaning law、filter条件、集計Grain/NULL/Bag/�
 - **研究の自由度**：新しいSyntax/Operator/Domainの並列試行を継続し、Coreや専用UIの新種は必要性が反証試験で明確になった部分を採用する。固定の候補数上限を設けない。
 
 **成果の目的**：Everything is Dataの抽象計画を、既にあるTEI Go製品コードに1段階だけ接近させる。実装を複製せず、何が接続できたかと未成立の保証を同時に記録する。
+
+## 6. 2026-11-02 EG-08/09追加：実Semantic接合とData ID同一性の限界
+
+先行EG-01〜07はPipeline構文とexact-pinned Operatorの**型連鎖に限定した同値**を観測する。以下の二試験を、実`semantic.Namespace`への接合と、意味を取り落とす危険の明示的な負例として追加した。
+
+| 試験 | 具体的な実Go接合 | 主張しないこと |
+| --- | --- | --- |
+| **EG-08** | `ParseSelected`に、実`syntax.NewParser(...).ParseSemanticFile()`とtest-only JSONの二実装を渡す。`sales.order`とそのAttribute Typeが両方で一致する場合のみ`BindPinnedSemanticInput`から同じ型結果を得るか確認。 | JSONが正式言語として登録されたこと、Semantic WorldがOwner受理されたこと、Predicate/Query/Host実行が一致すること。 |
+| **EG-09** | 同じ`sales.order` IDのまま`sales.order.amount`の型を`std.decimal`→`std.string`へ変更し、`BindPinnedSemanticInput`の結果型だけは一致し得ると示す。 | **同じData IDと同じOperator Pinだからモデル意味は不変**、あるいはキャッシュ/Consumer資格の再検査が不要だと判断すること。 |
+
+EG-09は既存Binderの責務不足を**即座に実装バグ・新API要求**とみなすものではない。現BinderはData IDの一意性とOperator契約の型連鎖を確認する限定Referenceで、全属性の意味・Role/Context・Accepted Revisionを確認する責務は定義されていない。二つの`Namespace`値は完全なWorkspace World/正式Validationの通過を意味しない。
+
+**横断計画への成熟差分**：`Syntax/Role→Model (Attribute/Relation/Rule)→Function Context/Query hidden dependencies→Provider Route→Operation/Artifact→Consumer Loaded Bytes/Disclosure`を、結果型やData IDではなく、用途に必要な**依存閉包と実証された各version/epoch**で接合する。`#2629`のQDC-01〜10、`#2636`のF1/S1再利用選択、`#2638`のRole改版影響にEG-09を引き渡す。モデル全体変更だから必ず全Artifact無効、あるいはIDが変わらないから再確認不要、のどちらも無条件の正解としない。出力されないWHERE/ORDER/JOIN等の依存については`#2634`で別に検証中。
+
+**試験資格**：EG-08/09の追加後、計**9件のGoテスト**。追加前head `5be242b664e1cb77d4af2f97930e52a7681fe480`ではGitHub Actions Repository Health successかつ `go test -count=1 ./...`ログ内の `tei/reference/dsl-language-plugin` PASSを確認したが、それは**旧7件が載る版のEvidence**。新headでのGo/CI成功は再確認後にのみ表明する。Python23件/JS19件等、別Subjectの局所PASSを1件の横断E2Eへ加算しない。
