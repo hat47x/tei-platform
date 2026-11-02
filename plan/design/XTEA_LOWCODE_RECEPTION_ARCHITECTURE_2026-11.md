@@ -500,7 +500,7 @@ X-TEAの戻り値とTEIの分類の対応（案）は、次のとおりです。
 
 **撤回条件.** 結果型が増えすぎて、呼出し側の分岐が実装負担になる場合は、結果の分類を業務結果と実行結果の二層に整理します（[Business Effect Lifecycle](BUSINESS_EFFECT_LIFECYCLE_DESIGN_2026-10.md)との整合）。
 
-**PoCでの実装.** `interaction`の`command`でCapabilityを参照し、対話ビューが入力・結末・効果を解決します。入力は`input <name> <attribute>`で対話の項目へ結びつけます。起動前の入力計画は`view -command`で確認でき、値の形（整数・数値・日付など）も検査します（[#2521](https://github.com/hat47x/tei-platform/pull/2521)）。実行境界は`internal/command`の`Executor`契約として実装し、入力検証・実行失敗・宣言外の結末を`ExecutionError`として分けます。取引は`UnitOfWork`と`Transaction`の契約として境界を実装し、成功時はCommit、実行失敗・宣言外の結末・Commit失敗時はRollbackします。実Providerの接続は未実装です。
+**PoCでの実装.** `interaction`の`command`でCapabilityを参照し、対話ビューが入力・結末・効果を解決します。入力は`input <name> <attribute>`で対話の項目へ結びつけます。起動前の入力計画は`view -command`で確認でき、値の形（整数・数値・日付など）も検査します（[#2521](https://github.com/hat47x/tei-platform/pull/2521)）。実行境界は`internal/command`の`Executor`契約として実装し、入力検証・実行失敗・宣言外の結末を`ExecutionError`として分けます。取引は`UnitOfWork`と`Transaction`の契約として境界を実装し、成功時はCommit、実行失敗・宣言外の結末・Commit失敗時はRollbackします。実Providerの接続は未実装です。契約の配線は`ReferenceExecutor`と`MemoryUnitOfWork`で確認できます（業務副作用はありません）。
 
 **未解決.**
 
@@ -941,6 +941,7 @@ PoC #2521が実装した範囲と、まだ実装していない範囲を分け�
 | command Patternのビュー | 実装済み（能力・入力・結末・効果を`view`で表示） |
 | Commandの実行境界（Executor契約・結末照合） | 実装済み（`internal/command`、実Providerは未接続） |
 | Commandの取引境界（Unit of Work・Commit/Rollback） | 実装済み（境界のみ、実Providerは未接続） |
+| Commandの参照実装（契約確認用） | 実装済み（業務副作用なし、Commit/Rollbackの記録のみ） |
 | フックの宣言（位相・読み書き・失敗時） | 実装済み（`hook`、実装Pluginは未接続） |
 | フックの実行境界（Implementation契約・reject/warn） | 実装済み（`internal/hook`、実Pluginは未接続） |
 | 未使用属性の表示（D8・G-7） | 実装済み（recordビューの`unused`） |
@@ -953,6 +954,7 @@ PoC #2521が実装した範囲と、まだ実装していない範囲を分け�
 | `reference/workspace`への宣言追加 | 未実施（受理経路が必要） |
 
 実装は、`internal/application/model.go`、`internal/syntax/application_pattern.go`、`internal/validation/application_pattern.go`、`internal/crossview/pattern_requirements.go`、`internal/applicationview`、`internal/semantic/model.go`、`internal/syntax/parser.go`、`internal/validation/validation.go`と、それぞれの試験です。
+
 
 
 
