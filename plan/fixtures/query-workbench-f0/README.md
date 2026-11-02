@@ -180,7 +180,7 @@ python3 -m py_compile test_qx31_relation_path_negative_read.py
 
 ## QX-33：実Go Analyzerの入力帰属・Query ID照合（2026-11-03）
 
-[実Go client特性試験](../../../../internal/query/analyzer/client_qx33_request_binding_characterization_test.go)と[QX-33受渡し計画](../../design/QUERY_QX33_ANALYZER_INVOCATION_BINDING_AND_VERTICAL_HANDOFF_2026-11.md)を追加。QX-32の**二Provider共同Read Cohort**とは異なる依存境界。
+[実Go client特性試験](../../../internal/query/analyzer/client_qx33_request_binding_characterization_test.go)と[QX-33受渡し計画](../../design/QUERY_QX33_ANALYZER_INVOCATION_BINDING_AND_VERTICAL_HANDOFF_2026-11.md)を追加。QX-32の**二Provider共同Read Cohort**とは異なる依存境界。
 
 - 本体の`RunPythonWorker`はQuery IDとProtocolVersionの照合を行う。Source SQL／Schemaを応答単体へ同一版でbind・証明する契約ではない（#2471 merged）。
 - 本試験は現在の実Go clientを、**SQL/Schemaを故意に無視するテストHelper**で呼び、固定入力／Predicate改訂／Relation改訂／Schema改訂の4 subtestを比較。HelperはSQLGlotではなく、実Workerのバグを示すものではない。
