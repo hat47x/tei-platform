@@ -1318,3 +1318,77 @@ TEI #1127が検討する`Semantic Data/Relations → Function Data Context + Ope
 **主張の範囲はClaimとSource範囲に相対的**：局所Referenceの`3 Persons`は合成Datasetを完全に記述したことを前提とする。実Providerで一部Pageしか取得できない場合は、`COUNT DISTINCT=3`を「業務世界全体の人数」としては確定できない。存在を示す具体的な行や、限定されたScopeに対する値は別。#2506（Result Slice）、#2593（Measure/Grain）、#2582（変化に伴うClaim再評価）へ接続する。
 
 **Open Issueへの効果**：#2386のP0-Mは抽象反例だけでなく、動かせる小Oracleを得た。P0-Vは未実施のまま。機能UI/SQL/Executionの未接続部分を埋める前に、この局所PASSを製品全体の達成/意味受理/実行許可へ昇格させない。通常の組織Dataには専用の閲覧制御を追加せず、特別保護対象だけ別に検討するという§2.4/§36.3のOwner方針も維持する。
+
+## 42. 意味付き組織Viewの反応的更新と編集セッションの分離（2026-11-02：他チャット同期）
+
+### 42.1 「図を再表示する」よりも「どの主張がいつ有効か」を識別する
+
+同じPerson/Relationから構成するGraph/Table/Chartの更新は、一括の「Viewがstale」判定には還元できない。**Viewが表示しているClaimと、更新された入力の関連性**を先に確かめる。
+
+- **表示情報の更新**：D2の名称変更ではD2のラベルは更新対象だが、Person数、Membership数、明示配賦FTEを無条件に失効させない。人数の値が偶然同じだったというだけで既知の依存性が無いとは言えない。Rule・選択・Source版・取得範囲・Value/Row成立条件に関する根拠が必要。
+- **業務上のFactの変更**：Membership A2の有効期間変更はそのRelation、D1所属一覧、D1配賦FTEに影響するが、Person P2の同一性やD2側A3が変わると推測しない。D1の職位M1の在任は別の関係で、影響の規則が存在しない限り独立。
+- **Ruleだけの変更**：直接Factを改訂せずに橋渡しRuleのrevだけ変わる場合、Rule由来の所属線の説明・表示資格が変わり得る。直接受理済みA1〜A4を自動更新・破棄しない。
+- **時間と履歴**：有効時点（valid time）と「いつそう認識されたか」（recorded/known time）を区別。遡及訂正を現在のViewへ反映しても、「訂正前に何と認識されていたか」を表示する過去の問い合わせは独立に扱う。
+- **Context Instance**：画面選択epoch、Definition/Instance ID、親AnchorとSource/Rule版は独立。古い応答の上書き、旧SelectionのAction昇格、別配置のDirty Patch混入を許さない。
+- **取得の不完全さ**：画面に存在しないRelationshipや人物を「本当に存在しない」と推論しない。取得済み1件の存在は示せても、集合全体の人数・不存在・最終承認候補の証明には必要Scopeの完全性を照合する。
+- **非単調な導出**：`NOT EXISTS`・LEFT JOIN未一致・Top-N・集計では新規行の追加で既存表示が消えたり変化する。差分更新は単純なappendではなく、必要に応じてretract/replaceや全再取得を使う。
+
+これらは共通のReactive Engineの新設を意味しない。[#2582](https://github.com/hat47x/tei-platform/issues/2582)はClaim相対の再評価・通知、[#2506](https://github.com/hat47x/tei-platform/issues/2506)はContext/Result Sliceの所有。組織ドメインは、固有の正負反例と、その独立Oracleを供給する。
+
+### 42.2 有効時点と記録時点が異なる合成訂正（ORG-C1）
+
+[独立Reference Draft #2596](https://github.com/hat47x/tei-platform/pull/2596)へ追加した`reference/org-semantic-views/verify-change.mjs`は、**同一Membership A2の二つの記録版**を使用する。
+
+- **当初の記録**：`A2=P2→D1` は2027-01-01から有効、終了未設定。この版は2027-04-01から2027-07-02まで「当時知っていた記録」として利用可能。
+- **7月2日に記録された遡及訂正**：A2の業務有効終了を2027-06-01（半開区間の右端）とする。この訂正版は2027-07-02以降の認識である。A2の同一性とP2のPerson同一性は維持する。
+- **他のMembership**：A1、A3、A4は変えない。M1のOccupancy O1/O2は別関係。FTEはA1=1.0、A2=0.6、A3=0.4、A4=1.0の**明示的合成ルール**による。
+
+| View/Claim | `validAt=2027-06-15, knownAt=2027-07-01` | `validAt=2027-06-15, knownAt=2027-07-03` | 意味 |
+| --- | --- | --- | --- |
+| Membershipの出現件数 | **4** | **3** | 同じ業務日でも、訂正を知っているかで変わる |
+| D1 Membership数 | **2** | **1** | A2の業務有効終了を反映 |
+| D1配賦FTE | **1.6** | **1.0** | 当該期間に有効なMembershipだけを合成集計 |
+| D2 Membership数/FTE | **2 / 1.4** | **2 / 1.4** | A3/A4は訂正なし |
+| 全体のユニークPerson | **3** | **3** | P2はD2側A3にも存在。意味上の「影響なし」の資格はFixture・依存集合に相対的 |
+| M1の在任者 | **P2** | **P2** | Occupancyは別関係。自動的に所属を導出しない |
+
+**別の表示目的**：`validAt=2027-05-31, knownAt=2027-07-03`ならA2はなお有効で、Membershipは**4**のまま。2027-07-01にはO1→O2の職位在任者交替が発生するが、これ自体からD1への直接所属を追加しない。日時を単一の`current`で表すと二つの差分を説明できない。
+
+### 42.3 差分の種類と、保持すべきView資格
+
+| Change / 条件 | 保持できるもの（条件付き） | 再評価/表示再投影すべきもの | 無根拠な誤処理 |
+| --- | --- | --- | --- |
+| 部門D2の名称変更 | 正しい依存が分かる人数・FTE・Person ID | 名称ラベル、名称に依存する検索/Sort | 全人数/FTEの一律破棄、名称変更をPerson異動と解釈 |
+| 同じRelationの出現順変更 | 集合意味に依存する計数・主張 | row-order依存のView | row indexを業務Relation IDとして保存 |
+| A2の遡及訂正 | Person同一性、A3/A4の既知独立Relation | D1当該期間の所属線・FTE、部門関係計数 | valid timeとknown timeの混同、直接/派生Lineの混同 |
+| 配賦Rule/値だけ変更 | Relation出現件数・Person数（同一対象前提） | FTEと依存する表示/検証 | FTE変化を業務Entity新規作成とする |
+| Ruleだけ改版 | 受理済み直接Membership（保存版はそのまま） | Rule由来の表示・候補・説明・利用資格 | Rule改版をDB上の直接関係の自動変更とする |
+| 右集合に一致行追加 | 元々直接取得したSource Fact | LEFT JOIN未一致/NOT EXISTS等の結果 | 旧未一致表示をappendだけで維持する |
+| 部分ページ取得 | 観測された個別存在（有効Scope内） | 全件/不存在/全体平均の結論 | 表示0件＝業務世界全体が空とする |
+| 旧Selection epochの遅延結果 | 対象Aに属する既存のDirty Patch（適切な保持規則がある場合） | 現在Bの表示/Operation候補 | AのPatchや遅延readをBへ混ぜる |
+| 提出した保存RequestのACK/Receipt不明 | 既存の確定前Valueや観測履歴 | 実Commit/effectの独立照合 | UI再表示や同値readを当該Requestの業務完了証拠とする |
+
+**重要な注意**：この表は任意変更を受けて汎用的に保持可否を自動判定する実装仕様ではない。変更に関連するRule・Source・Queryの依存が未知なら、値が変わらなかった事実だけから**無影響**を宣言しない。初回の安全な実装方法は、依存するClaimを明示して必要箇所をread-only再取得・再計算する方式でよい。
+
+### 42.4 Editing Session・一体保存と、標準UIの意味的可視化を混同しない
+
+2026-11-02の別チャットでは、[#2597](https://github.com/hat47x/tei-platform/issues/2597)と[Draft #2601](https://github.com/hat47x/tei-platform/pull/2601)で`Function Definition → Function Instance → Data Context → Editing Session → Save Intent → Action/Effect`が検討されている。組織Viewの例では次の区別が必要。
+
+1. **Functionの二つの配置**：I1でP2のA3関係を編集していても、同一Function Definitionを持つI2のEditing SessionへA3の未保存Patchを渡さない。
+2. **P2ノード／A3関係線の区別**：元Subject IDとRelation occurrence IDがそれぞれ異なる。A3のunlinkはP2のEntity deleteではない。
+3. **再取得とDirty Patch**：A3の新しいSource結果が到着しても、P2/D2への未保存変更を無音で上書きしない。Revision・Anchor・Instance IDを照合し、競合・未解決・再確認の候補を提示する。
+4. **複数変更のSave Intent**：D1所属変更とD2所属変更を同じ組織図から依頼しても、一体のDB Transactionとして保存されるとは限らない。実際のBusiness Action・Provider/Host Tx契約と、個別の結果・部分成功・不明を分ける。
+5. **意味上の「組織改編を受理した」と実保存**：Ownerが組織改編案を受理したこと、画面で変更意図を生成したこと、Providerで更新が確定したこと、異動の業務有効日が到来したことは別イベント。UIは各状態を別に投影する。
+6. **製品横断の正本**：Document/SHO/AI CUIへの構成Contextは元のAccepted Data/Relation/Ruleと出典・時点へ参照する。[#2516](https://github.com/hat47x/tei-platform/issues/2516)で利用目的別のConstruction Contextを構成する場合も第二の意味正本を作らない。
+
+**組織Dataのアクセス**：同一TEI世界内の部門・配置・関係・集計は通常Dataとして自由に利用する。ここでいう編集時の「元データへの対応」「現在のEffect権限」「特殊保護対象の例外」「独立外部Harnessへの情報送出」は四つの別問題。組織管理モジュールだからという理由で専用ACL/RLSを付けない（§2.4/§36.3）。
+
+### 42.5 実証証拠・次に接続する層
+
+[Draft #2596](https://github.com/hat47x/tei-platform/pull/2596) の変更差分Oracleは`verify-change.mjs`で定義。GitHubから再取得した同ファイルのテスト本体をこの作業の**V8 isolate上で`node:test`/assert互換の簡易Runner**により実行した結果は**11/11 PASS**。これは**実Node CLIやGitHub Actionsでの実行ではない**。既存の`verify.mjs`の27/27 V8 PASSと合わせて**38個の独立合成検証項目**であるが、どちらも正式TEI実装の適合を意味しない。
+
+関連[Draft #2601](https://github.com/hat47x/tei-platform/pull/2601)は孤立したPython合成18件とSQLite 3件のPASSを報告しているが、そのテストを組織メタモデルの製品E2E成功へ合算しない。
+
+次の具体作業は、(a) Node CLIで本Referenceのexact commitを実行、(b) #1126/#1131に元モデルとDatasetを固定、(c) #2387のQuery/行成立と#2506のResult Slice/Claim・#2582の差分通知を同版CUIで照合、(d) #2507のPatternと#2500のIntent、#2597のEditing Session/Save Intentへ接続すること。**すべてを同時に新規実装するのではなく、既存部品を順番に同版でつなげ、見えていない依存/不支持を明示する**。#2586が縦断実証のOwner、#1174は実EffectのOwner。Referenceの局所判定をHost AuthorityやOwner意味受理に昇格させない。
+
+成果は**設計案と独立したsynthetic局所実行**であり、Core型やGraphエンジンの採用、TEI製品のReactive実装、正式Plugin契約・実DB/GUI/Windows、業務Owner受理、PR統合は未実施。
