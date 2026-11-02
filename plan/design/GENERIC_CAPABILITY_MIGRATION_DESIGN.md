@@ -387,3 +387,72 @@ authorization tokenやPrincipalをsemantic request shapeへ埋め込むと、cur
 - generic Runtime identityだけでPermissionやResource Authorityを得られる
 
 現段階の価値は、移行時に二重Authorityを作らず、Referenceごとに確認した境界を一つの順序へまとめた点にあります。
+
+## 19. Contract Query結果の意味保存：二つのReference反例とTarget投影（2026-11-02）
+
+> **位置づけ：未採用の移行評価追補。** #951の既存Reference feature freezeとL0/L1/L2/G1/G2を維持する。本節は#179のQuery契約を再定義せず、正式なService Contractの発行、Owner受理、新Gate・公開Status enum・共通ABI・独自TEI Hostの追加を指示しない。対象はread-onlyの一件であり、mutating ActionのEffect/Receipt/Unknownをこの結論から導かない。
+
+### 19.1 原Contractと二つの実行Referenceを混同しない
+
+照合基準：TEI main `9c9ef4d160640908e06ad13afb6c2b45c664c748`（2026-11-02）。当該ソースはこの固定版で静的に再読した。Git blobはCustomer試験Adapter `5a0d60be265047d391061d66dbe833764e24e538`、Generic result shape `bf7a5391fa20ca27d14558ff185e11ee801f2789`。
+
+| 対象 | 定義・経路 | 成立する範囲／成立しない範囲 |
+| --- | --- | --- |
+| Database Contract Query | `reference/workspace/databases/master-data/contracts/customer.tei`: `master_data.customer v2.4/find_by_id`、input `customer.customer_id`、result `customer.customer zero-or-one` | #179の正常0件・正常1件・実行失敗の区別を比較基準にする。実Oracle readの証拠ではない（#214）。 |
+| Customer Service Carrier試験 | `internal/driver/reference_two_application_service_carrier_test.go:82-119` の `sharedCustomerServiceExecutor` → `InvokeSelectedServiceCarrier` | `test-only.customer-query-service` の合成Route/Acceptance/Verifier/Processを使用。正式な上記Database Contractと同一Contract identityまたは意味Acceptedではない。 |
+| Generic Contract Query Invocation Reference | `tools/reference-plugin-capability-contract/contract_query_invocation.go` と `shapes/contract-query-result-v0.json` | `driver.ContractQueryExecutor` の結果をJSONに符号化し構造的Shapeを照合するReference。Customer試験Adapterとは別経路であり、相互のPASSを一件のE2E証拠に合算しない。 |
+
+`customer.customer_id`はSemantic alias `std.identifier`、試験用Adapterの物理入力はGo `int64`。同じ見かけの値でも型・値域・IDの意味適合は未受理。`customer.customer`には`customerId`と`name`が宣言されるが、試験AdapterはIDしか投影しない。全属性の必須性はOwner確認対象であり、Shapeだけから必須と決めない。
+
+### 19.2 互いに異なる二つの損失
+
+| ケース | 現行固定ソースからの予測 | 失われる区別・不足する検証 |
+| --- | --- | --- |
+| A1 Customer Service応答 `{"customer_id":42}` | ID42の1行を生成 | 単一正常値の合成接続のみ。実DB検索や返却属性の完全性は未検証。 |
+| A2 応答 `{}`、`null`、`{"customer_id":null}` | Goの非ポインタ`int64`のゼロ値を経て、ID0の**正常1行**を無条件生成 | missing/null/明示0の区別を喪失。正常な未検出のService表現は未定義。 |
+| A3 応答 `{"customer_id":42,"customer_id":null}` | 標準`json.Unmarshal`では重複メンバーの拒否がなく、ID42の1行となり得る | 曖昧なWireを正常レコードとして処理。Generic Referenceの重複JSON拒否の既存資産と対照。 |
+| A4 Serviceの実行エラー／Runtime拒否 | Adapterは`InvokeSelectedServiceCarrier`のerrorを返す | **全失敗を1行へ潰しているわけではない**。実行失敗と正常0件の区別は残るが、本番Provider/Host保証ではない。 |
+| B1 Generic Executorが`ContractQueryResult{Rows:nil}`を正常返却 | `json.Marshal`で`"Rows":null`、Generic結果Shapeはarray要求で拒否 | 既存Driverでは正常0件だが、Wire表現がShape不適合。 |
+| B2 Generic Executorが空の非nil Rowsを正常返却 | `"Rows":[]`は構造的Shapeへ適合し得る | 同じ正常0件に別のWire結果。**当該QueryのWire境界だけ**の正規化候補であり、全TEIのnil一般則ではない。 |
+| B3 Generic Executorが2行または空/NULLのAttributesを返す | `Rows`は単なるarray、`Attributes`の値は`any`で構造的に通過し得る | `zero-or-one`の件数・Customer属性の必須性/実行時意味型をShape単独では保証しない。 |
+
+`internal/driver/contract_query_execution.go`には0件・1件・複数件のcardinality検査と、結果Dataに属さない属性の拒否がある。ただし、必須属性・値域・nullの完全な実行時検証ではない。Generic Referenceは`executor.ExecuteContractQuery`を直接呼ぶため、このDriver側のcardinality検査を経由したと推定してはならない。
+
+Aは**異なる入力状態を同一の正常1行へ潰す**損失、Bは**同じ正常0件の物理表現差で拒否する**不整合であり、修正箇所も評価票も分ける。各表の挙動はこの版の静的ソースとGo/JSON仕様からの予測。新規のTEI結合試験・実Provider実行のPASSではない。
+
+### 19.3 結果のClaimをScope・時点・完全性に相対化する
+
+評価用比較票の軸は、Query/意味版、Selected Logical InstanceとEnvironment/権限Scope、読取条件（Snapshot/時点/整合性）、対象集合の完全性、Outcome（正常0件・正常1件・契約違反・実行失敗・不明）、それぞれの観測根拠、とする。**新しい公開Claim Schemaではない**。
+
+- 正常0件とは、**指定されたQuery・選択Instance・可視範囲・読取条件において完了した照会の0件**。世界全体に顧客が存在しないという証明ではない。ページ未取得、途中失敗、部分取得、RLS等の可視範囲差、Snapshot不明を完全な正常0件へ昇格させない。
+- `NotFound`（正常0件）、`Invalid result`（欠損/件数/意味型不適合）、`Execution failure`、`Authority denied`、`Unresolved/Unknown`は比較票上で区別する。これらの語をそのままCore固定enumへ追加しない。
+- `Rows:nil`と`Rows:[]`は**このDriverの正常0件意味においてのみ**同等扱いできる。`#1121`の`SourceInputs=nil`（closure未報告）と`[]`（確認済み0件）は逆に意味が異なる。Contractを跨ぐ一律nil→空正規化は禁止。
+- Read結果のConsumer解釈（表示/選択/Business Action）は別契約。顧客未検出から受注拒否を自動生成しない。Viewの部分取得・逆写像は#1127/#2497/#2500、Mutating Effect/receiptは#1174がOwner。
+
+### 19.4 二経路の独立した最小適合票（新Gateではない）
+
+| ID | Referenceと入力 | 確認する義務 | 証拠状態 |
+| --- | --- | --- | --- |
+| CQ-R1 | Customer試験Adapter、正常ID42 | 同じIDの1行を維持 | 既存合成正常系の静的所見。 |
+| CQ-R2 | Customer試験Adapter、`{}` / `null` / 属性null / 重複キー | 欠損/曖昧入力を正常顧客へ偽装しない | 現行コードでは不成立と予測。差分試験未実行。 |
+| CQ-R3 | Customer試験Adapter、Service実行失敗/Acceptance撤回 | 正常0件とerror/拒否を混同しない。Verifier/Process到達条件も分離 | 既存合成負例あり。今回再実行なし。 |
+| CQ-R4 | Generic Invocation、`Rows:nil` と`Rows:[]` | 同じ正常0件意味をWireで保持するか、差を明示 | nil→null/array拒否、非nil空→[]を静的予測。新試験なし。 |
+| CQ-R5 | Generic Invocation、2行/空Attributes/NULL値 | Shape構造合格とQuery多重度・Data/型適合を別に検査 | Generic Shape単独では不十分。 |
+| CQ-R6 | 入力のmissing/null/型違い/値域違い | `#2056`の入力契約と出力欠損を混同しない。ID0へ黙ってcoerceしない | 入力側実装・検証は独立。業務値域はOwner未受理。 |
+| CQ-R7 | 二Application/別Instance/Host current route | Contractが同じでもInstance・Scope・Generation・Provider/Artifact/現在Authorityが異なる場合を拒否/再検査 | #951/#1223既存試験を参照。実DB・本番Host未検証。 |
+| CQ-R8 | 外部Target（Java/.NET/Wasm等） | 元の意味をTarget固有Collection/型/失敗へ対応させ、未対応は明示 | #2077既存主対象は`line-amount`。Customer Queryの別Target実走は未取得。 |
+
+最初の実装作業はCQ-R2とCQ-R4を**別々にcharacterize**し、実測でSource予測を確定すること。既存#179の件数検査や#951のShape/Authority Registryを再実装しない。修正候補は(1)Service応答を正しく検査してからSemantic Resultへ投影、(2)Queryで意味の定まった正常空結果をWire表現に適合させる、の局所二件に限定する。Serviceで正常0件をどう符号化するかは正式Contract/Owner判断に戻す。
+
+### 19.5 G1/G2判断・外部Target・Owner境界
+
+- **既存の確定基準**：#179の`zero-or-one`、0件とExecution Errorの非同一性。これを新しいService契約の未受理なJSON表現で上書きしない。
+- **Ownerへ残す問い**：`customer.customer_id`と`int64`の値域・ID0の許容、顧客結果の必須属性/null、Serviceでの0件表現、Instance/Scope/Consistency/Completenessに必要な保証、Query→Serviceの意味的Conformanceと公開/受理。Publisher/Provider/現在Authorityは各Ownerが別確認する。
+- **L1/L2**：旧Authorityが正本。限定的な合成Service疎通やGeneric Shape成功は正式意味適合の証拠ではない。二つのReferenceに別々の成功があっても同一Attempt/Contract/Provider/ResultのE2Eと合算しない。
+- **G1/G2**：#951のContract・Provider Conformance・Publisher/Issuer Trust・Shape Authority・Host current Scope/Permission/Resource/Artifact/Generation・Result/Failure意味が揃うまでは移さない。旧Kindの0（宣言/Validation/Lock）・A（Executor選択）・B（実行Carrier/Runtime）を独立に撤去判定。#214 actual Oracleの0/1/error、実効read-only、外部Source/DB事実は別証拠。
+- **Target**：TEI独自共通Hostを新設しない。TEIは意味/契約/生成/適合と来歴を担当し、外部Java/.NET/Wasm/Nativeの各Hostが実効権限・寿命・副作用境界を担う。#2390の外部Consumerと#2513のJava型付きLibrary実Loadは、#2077の生成器fixture選抜とは別の合格条件。
+- **SHO/説明**：#1803とSHO系の設計成果物では「意味仕様」「対象版/Source/結果Claim」「技術的適合」「Owner受理」「実DB/外部Hostの観測」「未確認」を明示的に区別する。図・JSON・digest一致を業務意味/実行資格へ昇格させない。
+
+責務参照：#951（Service Contract/Provider/Authority）、#179（Database Query意味）、#2056（入力missing/NULL）、#1121（Lowering/Target）、#2077（別言語生成比較）、#2390/#2513（外部Consumer）、#214（Oracle actual read）、#1803（設計成果物）、#1127/#2497/#2500（取得範囲/表示・編集）、#1174（書込み確定）。
+
+**未実施・未採用**：今回の追補はmainの静的照合と既存Issue/PRの議論に基づく設計更新。新たなGo/Java/.NET/DB/Host試験、正式Service公表、実Provider受理、Owner業務受理、G1移行、旧Kind削除、製品schema/API変更は行っていない。
