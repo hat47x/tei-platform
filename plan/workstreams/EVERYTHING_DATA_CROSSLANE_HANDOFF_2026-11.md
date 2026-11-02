@@ -380,3 +380,63 @@ order.lines
 **優先順位**：既存#1119のP0-a/P0-bとOwner受理を維持し、C0〜C3はread-onlyの実証を平行可能にする。C4はその既存実行資格の成立後に実施する。C0〜C5は新Gate/Runtimeではなく、[本計画H0〜H5](#6-接合の進め方成熟度に応じて並行固定の開発上限ではない)の具体的受渡し作業である。
 
 **現時点の証拠状態**：#988 SV-01〜06のPython6件、#2631のV8 16 assertions、#2627のGo32件、#2624のPython20+18件、SQL/SQLiteの局所実測は各元Issue/PRの独立報告である。このPRで新たにそれらを実行、同一Source・同一World・同一ProviderでE2E接続したわけではない。PR #2629は引き続きDraft。正式Operator API、Data Normal Form、生成Target、Host Grant、Owner意味受理の採用はそれぞれの担当判断に委ねる。
+
+
+## 15. Operatorの代数則と増分評価の適合条件（2026-11-02、他レーンとの最終接合候補）
+
+### 15.1 追加の成熟判断：高階Operatorの利点を、正しさが検証できる範囲で最大化する
+
+Everything is Data＋高階Operatorは、`if`を記述し直すためだけの抽象ではない。同じ`filter/map/groupBy/aggregate/window`が、**生成AIによるDSL構築、Data OperationsのProvider Pushdown、Function Data Contextの再評価、増分ビルド、別Target生成**に利用されるなら、各段階で変換を正当化する**Operator固有の条件付きLaw**が必要になる。
+
+本節でいう`Law`は標準データ構造で**意味部品の契約を記述する属性／関係の候補**であり、新しいLaw Registry、Solver、Optimizer、DSL Core型の採用ではない。#988のOperator意味・固定版、#2495のFacet/量、#2497の構造保存、#2593のMeasure、#2582の反応的Context、#2600の再利用資格、#2018の生成AI生産性へ**条件・反例・証拠**を引き渡す。
+
+### 15.2 変換時の最小判断票（新製品APIではない）
+
+| 比較対象 | 具体例 | 安全と主張するために必要な条件／検出すべき誤り |
+| --- | --- | --- |
+| **構文の置換** | `ds.filter(p).map(f)` ↔ 宣言表・Goa/MukuroL風定義 | 同じ型付きOperator、変数束縛、評価順、純粋性、Scope/参照版、Source出典。構文一致だけで意味を採用しない |
+| **map融合** | `map(f).map(g)` ↔ `map(g∘f)` | f/gの引数束縛、決定性、部分関数・失敗や診断、Effect、観測順序、Source追跡が変わらない範囲。値同値だけでは不足 |
+| **filter移動** | `filter(p).map(f)` ↔ `map(f).filter(p')` | p'が写像後の値に正確に対応し、元Scope、NULL/Unknown、Partial failure、アクセス/開示、Effectが同じ条件。pを同じ文字列で移せばよいわけではない |
+| **filterとlimit** | `filter(p).take(n)` ↔ `take(n).filter(p)` | 一般に不成立。順序と上限までのRead、Queryの隠れた依存・rowset完全性を記録 |
+| **aggregate分割** | `sum(whole)` ↔ `sum(sum(partition_i))` | 分割集合が同じCohortを過不足なく一度ずつ覆い、SUMの精度・丸め・NULL/欠損/空集合・型・オーバーフロー・並び/決定性が成立。平均・比率は原則として中間状態（sum/count等）が必要 |
+| **量化／単調性** | `any(p)`, `all(p)`, `none(p)` | 未完全集合でも存在証人・反例証人による片側判定は可能。要素削除、Predicate変更、Cohort/Scope改版で過去の証人が無効化し得る |
+| **Window/Stream** | イベント追加・遅延訂正と`window().aggregate()` | event-time/processing-time、watermark、暫定/確定、late arrival/retraction、単位・Window境界、順序と再通知資格を保持 |
+| **構造投影** | 3層→2層、Graph→Tree、Column→Dataset | Identity、Relation occurrence、grain、order/bag/completeness、Source span、編集可能範囲を明示。集約Viewからの保存は別Actionに委譲 |
+| **Provider配置** | SQL/RDB、OData、ローカル評価 | OperatorのTruth/NULL/精度/Failure/行存在/評価Scope/Access/開示とProvider実証Capabilityが合致。物理Read最小性と出力一致は別 |
+| **増分reuse** | predicateやRule入力だけ変更 | Actual consumed dependency + Source/Operator/Role/Context/Provider/Target版＋Oracleの現在資格に基づき、**省略可能なStageだけ**reuse。意味結果同じでもSource Fidelity/SHO/実Grantは再確認 |
+
+**Lawの説明に用いるデータ項目（未採用）**：`operator/id/version`、`source/target shape`、`scope/grain/bag/order/time`、`preconditions`、`observable outputs + diagnostic/failure + effect + access/disclosure footprint`、`counterexamples`、`qualifying evidence`、`target/provider constraints`、`source provenance`。既存Meaning/Plugin/Scenarioの情報へ参照でつなぎ、独立のLaw正本や実行許可を作らない。
+
+### 15.3 適用可能性と増分再計算は別の問い
+
+同じOperator定義の`filter`・`aggregate`を再利用する場合、**(A)演算が入力Shapeに適合すること**、**(B)特定の書換えLawが成立すること**、**(C)変更差分だけで結果を更新可能なこと**、**(D)その結果を現在のContext/Consumerに利用してよいこと**を別々に判定する。
+
+- `filter`は追加行・修正行・削除行それぞれのIdentityとPredicate依存を追えれば差分更新候補を作れるが、部分Resultの全件性は差分更新だけで確定しない。
+- `sum`は重複を含む入力集合を修正・削除する場合に、元の寄与元ID・入力の正確な数値・丸め時点・Scope/時点を保持する必要がある。先行集約値をあとからJOINして再SUMする変換は[#2593](https://github.com/hat47x/tei-platform/issues/2593)の反例に照らして判断。
+- `any`の過去のtrueはWitnessが削除・Scope変更されると失効し得る。`all`の過去のfalseも違反Witnessの削除・Predicate改版で失効する。**単調性は入力変化の許容集合に相対的**。
+- `not exists`／全称／TopNは、取得ページ・Effective Snapshotが異なると一つの真偽や順位に確定できないことがある。ContinuationやKeysetが同じでも実Read Cohortの裏付けが必要（#2622／#2586）。
+- `where`が出力しない秘密Fieldを参照する場合、表示不変・同じResult DigestであってもValidation、Consumerが知る件数、実取得、外部送信の許可は異なり得る（#2516／#2624／#2387）。
+- 最終的なビルド再利用判断は[#2600](https://github.com/hat47x/tei-platform/issues/2600)、反応的データContextの再評価は[#2582](https://github.com/hat47x/tei-platform/issues/2582)がOwner。**生成したコードの再ビルド省略と、実行時データの再取得省略を別レーン**として扱う。
+
+### 15.4 高階Operatorの契約を試す次の受入セット（OL-01〜08：新実行NOT RUN）
+
+| ID | 一軸変化 | 独立期待・判別 |
+| --- | --- | --- |
+| OL-01 | 同一演算をMarkdown表／チェーン／軽量DSLで記述 | 正規化候補・Role・型・Scopeが一致してもSource occurrenceは異なる |
+| OL-02 | 値結果が同じまま`filter`を`map(parse)`の前後へ移動 | 例外・診断・実Read依存が異なるケースは等価と認定しない |
+| OL-03 | `map(f).map(g)`を一度の`map`へ融合、gは非純粋/失敗し得る | 結果値だけの比較では不足。許可したEffect/Failure/traceを明示 |
+| OL-04 | `sum`対象の行を追加・削除・修正、表示は2階層集計 | Result grain/元Entity ID/complete/空集合/null/丸め/追加差分の区別 |
+| OL-05 | `any(p)=true`のWitness行だけ削除、別Pageは未取得 | 旧trueを維持したまま「現在true」と扱わず、再取得・未解決 |
+| OL-06 | Filterの出力列は同じ、Predicateに利用する非表示Fieldだけ変更 | 依存再評価、必要実Read、開示/推測可能件数、ビルド意味とは別 |
+| OL-07 | `window`のlate event訂正、10Hz→60Hz、Duration・Time Point型の相違 | 結果のretraction、時間単位・Window/Actor条件、暫定/確定の区別 |
+| OL-08 | 意味Sourceだけの整形・Role/Operator版のみ変更・実Grantだけ失効 | Source再解析／意味再解決／Target再生成／Context再評価／実行資格を**工程ごと**に判定 |
+
+### 15.5 実装への渡し方（先行導入を避ける）
+
+1. **#988/#2620**：高階Operatorの入出力と、成立条件を標準Data上の属性/関係として説明する。既存Language Pluginの実Parserと比較し、未知語・曖昧なRole・作用的Lambdaを診断。構文や法則の候補だけでは採用しない。
+2. **#1706/#2593/#2497**：集合・Measure・構造写像の保存条件と反例Oracleを既存Corpusへ対応付ける。独立Expectedの適用対象を確認する。
+3. **#2506/#2582/#2622/#2387**：同じFunction Data Contextから実Read・Rule Input・Predicate依存を切り分け、既存Query/ProviderへPushdown可能な範囲だけを比較。非業務のStream/Graphにも同じ検査列を当てる。
+4. **#2600/#2018**：AIによる局所変更とTarget生成で、「手続き的分岐の節減」と「意味/Failure/Source/Proof/修正時間の総費用」を別計測。実行時差分計算とビルドskipを取り違えない。
+5. **#2586/#2598/#1174**：同一ScenarioのRead→Validation→Action候補→実Request→独立Observationまで接合。**Result・診断・Read footprint・Effect・Grant**のいずれも未観測ならその資格を未確定として残す。
+
+**成熟度**：Operator Lawを**新しい固定APIとして採用する計画ではなく**、既存Operator/Plugin/Semantic/Scenarioに必要な情報と、変換を許す場合の根拠を明確化したもの。OL-01〜08は本PRで新しいテストを実行していない。独立合成参照の局所PASSを実Provider/Target/Studioへの同一Run合格に換算しない。
