@@ -440,3 +440,55 @@ Everything is Data＋高階Operatorは、`if`を記述し直すためだけの�
 5. **#2586/#2598/#1174**：同一ScenarioのRead→Validation→Action候補→実Request→独立Observationまで接合。**Result・診断・Read footprint・Effect・Grant**のいずれも未観測ならその資格を未確定として残す。
 
 **成熟度**：Operator Lawを**新しい固定APIとして採用する計画ではなく**、既存Operator/Plugin/Semantic/Scenarioに必要な情報と、変換を許す場合の根拠を明確化したもの。OL-01〜08は本PRで新しいテストを実行していない。独立合成参照の局所PASSを実Provider/Target/Studioへの同一Run合格に換算しない。
+
+
+## 16. Data→意味→実現→Consumerの変更影響閉包（2026-11-02、最新別レーンの実コード反例を統合）
+
+### 16.1 今回明確になった不足
+
+Everything is Dataが十分に成熟するには、**同じプレーンなデータの記述が得られること**に加え、そのデータを何が解釈し、何を読み、何を生成・実行・開示したかという**実際の依存関係の閉包**を説明できる必要がある。構文・Meaning・Operation・Provider・Artifact・Consumerのそれぞれに、部分的に安定したID／Digestがある。**単一IDや一つのCompleteフラグの一致を、横断的な再利用資格としない**。
+
+既存の[#2600](https://github.com/hat47x/tei-platform/issues/2600)（実消費入力／再利用／ArtifactSet）、[#2630](https://github.com/hat47x/tei-platform/issues/2630)（Consumer相対の必要Member）、[#2611](https://github.com/hat47x/tei-platform/issues/2611)（多Mapping）、[#2387](https://github.com/hat47x/tei-platform/issues/2387)（非出力依存）、[#2516](https://github.com/hat47x/tei-platform/issues/2516)（用途別開示）を、**新しい依存グラフ・Cache Engine・Manifest Schemaを実装せず**、最初は一つの差分表で接続する。
+
+| 依存面 | 具体的な依存 | 変化しても見かけ上不変になり得るもの |
+| --- | --- | --- |
+| **Authoring／構文** | Source occurrence、Syntax/Role Plugin pin、literal/ref／scope/capture | Markdownの表示文字、plain Data構造Digest、同名Function |
+| **意味／評価** | Operator ID＋版、型/量/NULL、非出力Predicate・Sort、Rule/Actionの事前Read | 出力列の一覧、Function定義ID、画面表示値 |
+| **取得・Provider経路** | Function Mapping、選択Source/Storage、Provider route、物理Field/Rowset/known-at、Capability | Operation ID/Basis、Alias表示名、Result JSON |
+| **生成・実現** | Generator/Target、実消費Source/Mapping、Artifactの**全必要Member**と実Byte、Consumer想定Schema | Manifest Complete、Set digest、ファイル名、Meaning ID |
+| **Consumer／作用** | 実際にロードしたArtifact/Snapshot、表示・Rule出力の開示、現在のHost Grant、実Request/Receipt | ProducerのPASS、Studio preview、受理済みMeaningの過去版 |
+
+**区別する二つの閉包**：(a)静的なSource／Plugin／Targetの変更からGenerator・Artifact・テストに必要な**Build再利用**、(b)実行中のData/Rule/Provider/時点変更から再読取・再評価・更新許可に必要な**Runtime再評価**。Graphviz文脈変換部品（§11）は、これらの依存をGraphデータへ可視化する候補とし、見せてよい情報・Node ID・Edge意味を#2497/#2516で解決する。非公開Dependencyを描画で漏らすことは避ける。
+
+### 16.2 既存実コード・実テストからの新しい圧力（望ましい挙動として未採用）
+
+- [Draft #2632](https://github.com/hat47x/tei-platform/pull/2632) は、実TEI `DeriveOperationSurface` を対象にした**7件の特性記述Goテストを保存**。候補挙動として、選択MappingのColumnを増やしても`Operation.ID/Basis`が同じで`create.Inputs`が変わり得る。別のStorage型変更は同Pure Surfaceだけを見ると不変になり得る。World/Target全域の再生成に問題があると確定したものではなく、当該PRにある7件のGo実行は**NOT RUN**。
+- [Draft #2634](https://github.com/hat47x/tei-platform/pull/2634) は、実Go DerivedIRへの**非出力Predicate/Sort/相関参照**の伝播と、Analyzer `Lowering=full` をGo側が単独で完全検証していない可能性を示す**5ケースの特性試験**を保存。実SQL Worker・TEI full解析の不具合認定でも、Goテスト成功の報告でもない。
+- [Draft #2633](https://github.com/hat47x/tei-platform/pull/2633) は、Manifestに`Complete=true`があってもConsumerの必要Member充足・実ファイルByte／実Schema解釈を確認する必要があることについて、**6件の実Go Characterization Test**を保存。生成Producerの自己整合と実Consumerの正しいロードを別にする。PR作成時点の6件実行は**NOT RUN**。
+- [Draft #2631](https://github.com/hat47x/tei-platform/pull/2631) は、**未知Roleの標準データ表示への退避**と構造型・表示Scopeを扱うV8隔離16 assertions PASSを報告。これは実TEI Studio/Language Plugin上の表示・編集実証ではない。
+
+### 16.3 新たな横断反証表（QDC-01〜10、**このPRではNOT RUN**）
+
+| Case | 一軸変更／反例 | 期待する「必要な再資格」と、既存担当 |
+| --- | --- | --- |
+| **QDC-01** | 同Operation ID/Basisで選択MappingへFieldを追加、`create.Inputs`が変わる | Operator/Field入力をConsumer別に再照合。Basis一致だけでArtifact再利用を許可しない。#2632/#2600 |
+| **QDC-02** | 物理Storage型／NULL規則のみ変更、Pure Surfaceが不変 | World/Mapping/Targetの依存範囲を照合し、必要な生成・実Provider試験を保留／選択。#2611/#2632 |
+| **QDC-03** | Aliasの名前だけ変更、複数経路選択の順序が変わり得る | 実経路ID/Target/Purposeを見てSourceの選択を再資格化。名前順・第一候補をAuthorityにしない。#2611/#2627 |
+| **QDC-04** | Output Field/Query IDは同じ、Predicate秘密Fieldの閾値だけ変更 | Source/IR非出力依存・実Read/Disclosureを追跡し、表示不変でも再評価。#2634/#2387/#2516 |
+| **QDC-05** | AnalyzerのColumnRefsが不足するが、`Lowering=full`がある | 状態文字列のみから解析依存網羅を証明しない。実Worker→Go Source lineagesを必要に応じ再資格化。#2634/#2387 |
+| **QDC-06** | `Manifest.Complete=true`で必須成果物の一つが欠落 | Consumer別ExpectedMember/必要Scopeを固定し、実消費一式を検査。#2630/#2633/#2604 |
+| **QDC-07** | 壊れたJSONに正しい`schemaVersion`らしい文字列が含まれる | 文字列含有ではなくSchemaとして解析して資格化。#2633/#2482 |
+| **QDC-08** | Manifest固定後にArtifact bytes／Gap Reasonが変更 | 実Readerが読んだ各Byte・Gap意味／Artifact Setを検証。Producer自己照合のみで成功としない。#2633/#2604 |
+| **QDC-09** | 未知Domain/RoleがPlugin導入により出現 | Structureは汎用Studioで読めても、未知のAction/更新可否/解釈済みRoleは`unknown`へ退避。#2631/#2620/#1124 |
+| **QDC-10** | 同じ構造をGraphvizで表示、非表示Rule／Secret Predicateの依存が追加 | 変換部品の保存条件とConsumer別Disclosureを再照合。表示構造一致は依存/開示の同値証拠にならない。#2497/#2516/#2621 |
+
+### 16.4 H0〜H5に加える最小作業（既存受入の差分）
+
+- **H0/C0：実依存の棚卸し**。一つのFunction+Read+Rule+Provider route+Artifact Consumerを選び、どのSource FieldがどのOperator/Rule/Mapping/Memberに実際に使われたかを静的に一覧化する。未解析のhidden依存は`unknown`として残す。
+- **H1/C1：実TEIから正規化・Roleを取得**。既存の実CLIで観測できる範囲を先に計測。#2625の同義表層は新たなParserを前提にせず、実World上で何が解決できないかをSource位置付きで示す。
+- **H2/C2：選択Mapping変更と隠れたQuery/Rule依存を同一Fixtureへ**。#2632/#2634のCharacterizationがどこまで実TEI Go testsで成立したかを**試験実行後に限り**結果として扱う。#2624 Rule footprint／#2627 Provider Cohortと接合する際、同一World・同一Snapshotの証拠を要求する。
+- **H3/C3：汎用StudioとGraphviz説明**。未知RoleはPlain Dataへ退避、Source/意味/実現の欠落を診断。編集逆写像は一意Occurrenceのみ。Graphvizに未開示Field/Ruleの内容を無断付加しない。
+- **H4/C4：Artifactと実行の検収**。#2633のConsumer別Manifest/Reader負例を#2604実Publish/readと接続したあと、現Targetで読み込まれたByteとOperation/Receipt/独立Readを別の証拠として固定。Source digest同一と現在のHost Grantは独立。
+- **H5/C5：増分とAI生産性**。QDC-01〜10を clean全工程・選択実行の両条件で比較し、**False reuse／False invalidation／実行時間／AIの修正差分**を#2600/#2018に還流。Cache命中率ではなく、現在の意味適合とConsumerに必要なArtifactの充足を採否条件とする。
+
+**今回の資格境界**：この§16は既存Draftの観測・特性試験予定・限定実績から導いた横断検証案であり、製品の新Core契約、実Go試験PASS、新Studio、Manifest脆弱性確定、正式Meaning受理を宣言しない。誤再利用が疑われることと、本番事故が確認されたことを分ける。
