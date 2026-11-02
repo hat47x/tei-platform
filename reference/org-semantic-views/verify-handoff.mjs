@@ -3,15 +3,11 @@
  * This is a read-only handoff oracle, not a TEI Action, Host or Tx implementation.
  * Run with: node --test reference/org-semantic-views/verify-handoff.mjs
  */
+import { fixture, baselineMemberships } from './source-fixture.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-const read = Object.freeze({
-  instance: 'I1', anchor: 'D2', epoch: 7, meaning: 'org-r7',
-  query: 'membership-q1', readVersion: 'snap-3', complete: true,
-  occurrence: 'edge-display-3', subject: 'P2',
-  edge: 'A3', edgeKind: 'Membership',
-});
+const read = Object.freeze({ ...fixture.readEvidence });
 const intent = Object.freeze({ action: 'unlink', targetKind: 'Membership', targetId: 'A3' });
 
 // Returns a *read-only* suitability claim; it does not authorize or construct a business Request.
