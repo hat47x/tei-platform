@@ -171,6 +171,13 @@ func (p *Parser) ParseApplicationPattern() (application.Pattern, error) {
 				return out, p.errAt(sizeTok, "page-size requires an integer")
 			}
 			out.PageSize = size
+		case "print-template":
+			_, _ = p.next()
+			templateTok, err := p.expect(TokenIdent)
+			if err != nil {
+				return out, err
+			}
+			out.PrintTemplate = templateTok.Text
 		case "layout":
 			_, _ = p.next()
 			if _, err := p.expect(TokenLBrace); err != nil {

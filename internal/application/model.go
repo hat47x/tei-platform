@@ -118,6 +118,7 @@ type Pattern struct {
 	PageSize      int                      `json:"pageSize,omitempty"`
 	PageBreak     *PageBreak               `json:"pageBreak,omitempty"`
 	Layout        *Layout                  `json:"layout,omitempty"`
+	PrintTemplate string                   `json:"printTemplate,omitempty"`
 }
 
 // Layoutは、対話の項目の並びを宣言する。画面座標ではなく、意味の順序だけを持つ。

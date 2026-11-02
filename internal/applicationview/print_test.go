@@ -7,6 +7,26 @@ import (
 	"tei/internal/applicationview"
 )
 
+func TestRenderPrintHTMLCarriesTemplate(t *testing.T) {
+	world := viewWorld()
+	for i := range world.Applications[0].Patterns {
+		if world.Applications[0].Patterns[i].ID == "order_entry.order_record" {
+			world.Applications[0].Patterns[i].PrintTemplate = "a4-v1"
+		}
+	}
+	view, err := applicationview.Build(world, "order_entry", "order_entry.order_record")
+	if err != nil {
+		t.Fatal(err)
+	}
+	html, err := applicationview.RenderPrintHTML(view)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(html, "template: a4-v1") {
+		t.Fatalf("print html does not carry the template: %s", html)
+	}
+}
+
 func TestRenderPrintHTML(t *testing.T) {
 	view, err := applicationview.Build(viewWorld(), "order_entry", "order_entry.order_record")
 	if err != nil {
