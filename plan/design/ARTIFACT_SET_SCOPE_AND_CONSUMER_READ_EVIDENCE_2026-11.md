@@ -134,3 +134,35 @@ Consumerが提出・利用するClaim、対象Application/Subjectと粒度、適
 - **最初に実証する組み合わせ**：AS-01/02（対象Member）＋#2482 AC-01〜04（内容検証）＋#2604 AP-08/09（公開path/実読取）。続いてAS-06/07/09の公開/外部送信差、AS-08/10のProvider/時点・Scope混合を、別Consumer条件で比較する。
 - **失敗時の分類**：`missing-member`、`wrong-application`、`invalid-content`、`unverified-producer`、`mixed-published-generation`、`read-not-observed`、`scope-incomparable`、`disclosure-denied`、`unknown`を、**比較票内の診断候補**として使う。新公開JSON/Schema/Result enumの採用ではない。
 - **Ownerの採否判断**：Manifest自身が用途相対のExpectedMemberを含むべきか、必要集合をApplication/Consumerのread-only検収が定めるべきかは、AS-01/02実行後に判断する。局所的なRead/Disclosureの追加は既存#2506/#2622/#2516へ分担し、TEI独自Host・中央Permission/ArtifactStore・全用途共通Gateを前提にしない。
+
+## 10. Go候補実装への試験接合（2026-11-02追補）
+
+### 10.1 合成比較から実`internal/artifact`へ
+
+[#2633](https://github.com/hat47x/tei-platform/pull/2633)に、**PR #2587の未統合実装HEADから派生した独立Draft**として`internal/artifact/consumer_scope_characterization_test.go`を追加した。#2587の所有ブランチとmainには変更を加えていない。コード変更はGo testファイル1件（6ケース）のみ。
+
+| Case | 現実装に対するGo Characterization | 既存Ownerの次の判断 |
+| --- | --- | --- |
+| AS-01 | 異ApplicationのFunctionDefinitionを同じSource Revisionで混ぜ、Generic Manifest/CheckSetがApplication Scopeを検査しないことを観測 | #2482：要求Applicationを外部Claimから照合する必要性と配置 |
+| AS-02 | 2個の期待Memberから1個だけ残したSetをManifest化し、`Complete=true`が**Expected集合充足ではない**ことを観測 | #2482：ExpectedMember独立Oracle |
+| AC-01 | Surface JSONの構文が壊れていても、内容内にschema文字列がある場合の検査経路 | #2482：Decode失敗Finding |
+| AC-02 | Manifest作成後にArtifact Contentを改変した場合の`Artifact.Verify`と`CheckSet`の診断差 | #2482：Reader時点での各Artifact Verify |
+| AC-03 | Gap Reasonだけを変えてdigestを再生成した場合のUnresolved照合差 | #2482：Gap→Unresolvedの理由と多重度 |
+| AC-04 | JSONの`schemaVersion`と別フィールド中のschema文字列が異なる場合 | #2482：実SchemaVersion fieldの検証 |
+
+**現在の資格**：#2633はGo test SourceをGitHubに保存して存在と6関数を再取得確認済み、**Go実行・CI未確認**。#2587本体・GitHub mainに結合されたことも未主張。#2633のbaseは`work/upstream-connection-2026-11`であり、既存Repository Health workflowの`pull_request.branches: [main]`に該当しないため、通常のmain向けCI成功を証拠として借用できない。最初の試験成功は実候補HEADへのFocused CIまたは信頼可能なGo checkoutの実測が必要。これらのテストは**現行の穴を特徴づけるもので修正後の仕様として承認したものではない**。将来の最小修正時には修正後の検出を期待する正の回帰試験へ更新する。
+
+### 10.2 同Semantic Subjectの複数Mappingを追加圧力にする
+
+[独立Draft #2632](https://github.com/hat47x/tei-platform/pull/2632)は、[#2611](https://github.com/hat47x/tei-platform/issues/2611)／[#2627](https://github.com/hat47x/tei-platform/pull/2627)の多経路合成比較を、PR #2587の**実`internal/operations.DeriveOperationSurface`**に接続した別担当の4ケースGo Characterization候補である。報告された候補Source上の反例は、同じSemantic DataへArchive/Primary 2 Mappingが到達すると第一AliasのMappingだけを選び、後発候補をConflictとして表現しないこと、Alias名の変更だけでOperation Basis/Inputが入れ替わること、選択されなかったMappingだけの変更ではSurface JSONが不変になることなど。#2632のテストは取得時点でGo実行**NOT RUN**であり、独立Oracle／正式Validator／実DB未適合のまま扱う。
+
+**ArtifactSetとの接点**：`RenderWorkspace`が各Persistence Mappingを表定義書へ生成できても、同じWorldから得たOperation Surfaceが**複数候補の意味をすべて説明した**とは限らない。これはAS-01/02の「Member数が存在する」とは別の`Meaning/Route Coverage`である。Generic Artifact CheckSetの成功を、複数Providerの選択理由・Constraint/Gapの正しさ・実CapabilityのBinding・現在Host Grantへ昇格させない。#2611/#2627が経路候補を、#2485がOperation/Actionの選択意味を、#2598が実Request対象を、#1174が実Effectをそれぞれ検証する。
+
+**追加AS-11（予定／NOT RUN）**：同一Semantic Dataに二つの受理可能なMapping/Provider候補を宣言した合成Worldで、(a) `RenderWorkspace`の表定義書一覧、(b) `DeriveOperationSurface`のOperation/Basis/Gap、(c) `Manifest`、(d) ConsumerがClaimする「利用可能な候補経路」を別列比較する。一方のみ表示された場合、全経路網羅のClaimは`unknown/incomplete`とし、単一候補しかないことや実行権限を断定しない。対象Worldが現Validatorで拒否されるなら、拒否条件を証拠として別記し、無理に本番適格Worldと見なさない。
+
+### 10.3 CIの資格
+
+- **PR #2630初回HEAD** `4d48bfada4d2107e9183b9b6b9c96a2cb440ec40`の[Repository Health #41442614894](https://github.com/hat47x/tei-platform/actions/runs/41442614894)はFAIL。原因は新規設計Markdownを`plan/design/README.md`へ登録していなかったことで、`TestPlanReadmesMentionEveryEntry`が報告した。Readme索引は`9febca20ed3529b5786c502c1be1623f9c03fe88`で修正。
+- **PR #2630後続HEAD** `3262037b177e0536407148dc5a4b8ff06f7eae86`の[Repository Health #41444279121](https://github.com/hat47x/tei-platform/actions/runs/41444279121)は本節記載時点で実行中、[依存脆弱性確認 #41444279151](https://github.com/hat47x/tei-platform/actions/runs/41444279151)はsuccess。CI結果が更新されたらexact HEADと結び付けて判断する。
+- #2630は設計文書・索引のみ、#2633は未統合の実コードへのGo Testのみ、#2632は別Ownerの多経路Go Testで、**それぞれ別PR/別HEAD/別実行証拠**である。PR #2630のREADME/Repository Health PASSが後で確認できても、#2633/#2632のGo試験を実行したことにはならない。
+
