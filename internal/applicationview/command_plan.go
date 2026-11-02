@@ -11,16 +11,16 @@ import (
 // CommandPlanは、対話からCommandを起動する前の入力を解決した結果である。
 // 実行は行わず、宣言された入力・結末・効果と、値の過不足だけを示す。
 type CommandPlan struct {
-	SchemaVersion string           `json:"schemaVersion"`
-	Application   core.CanonicalID `json:"application"`
-	Pattern       core.CanonicalID `json:"pattern"`
-	Capability    core.CanonicalID `json:"capability"`
-	Label         string           `json:"label,omitempty"`
+	SchemaVersion string             `json:"schemaVersion"`
+	Application   core.CanonicalID   `json:"application"`
+	Pattern       core.CanonicalID   `json:"pattern"`
+	Capability    core.CanonicalID   `json:"capability"`
+	Label         string             `json:"label,omitempty"`
 	Inputs        []CommandPlanInput `json:"inputs,omitempty"`
-	Missing       []string         `json:"missing,omitempty"`
-	Outcomes      []CommandOutcome `json:"outcomes,omitempty"`
-	Effect        *CommandEffect   `json:"effect,omitempty"`
-	Ready         bool             `json:"ready"`
+	Missing       []string           `json:"missing,omitempty"`
+	Outcomes      []CommandOutcome   `json:"outcomes,omitempty"`
+	Effect        *CommandEffect     `json:"effect,omitempty"`
+	Ready         bool               `json:"ready"`
 }
 
 // CommandPlanInputは、Commandの入力と、呼出し側が渡した値である。
