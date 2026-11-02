@@ -105,7 +105,7 @@ def execute(binary, workspace, expected_head):
             "trace has different semantic subject")
     require(isinstance(trace.get("total"), int) and trace["total"] >= 2,
             "expected declared relation edges are missing")
-    require(trace.get("rows") == [], "summary unexpectedly returned full rows")
+    require(not trace.get("rows"), "summary unexpectedly returned full rows")
     source_refs = summary.get("source", {}).get("references", [])
     require(source_refs, "trace source references absent")
     require(set(r.get("artifactPath") for r in references).intersection(
