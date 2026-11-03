@@ -726,3 +726,31 @@ BP-05の対象を人手の受理票では `(TargetSet L, EmptyPolicy E, Predicat
 - **同一Attemptの縦断**：最小の実証に進むときは、#2586の既存Scenarioで`Owner候補L/E/P→実Function Mapping/Query→Provider Result Slice→Rule評価→Authorization/Command呼出し→Consumer表示`の**同一Attempt**と時点を照合。#1174のEffect/Receipt、#2516の現在開示資格は独立列とし、別試験の成功を継ぎ足さない。既存の第3規則不成立時停止の負例（S1）は未実施のまま残す。
 
 **実施順は既存S0–S3を変更しない**。追加したU1–U4とOnline/Offlineの記録はread-only検収票の比較欄であり、製品の新GateでもOwner決定でもない。BP-05の`canonical:false`、checker=`review-needed`、人手=`undecided`を維持する。Go/SQL/DB/Provider/SHO/Studio/Owner意味受理と同一Attemptの新規実測は本節では**NOT RUN**。
+
+### 15.13 Ruleの正本・適用対象・実行Phaseを混同しない（2026-11-03、計画・NOT RUN）
+
+[Data Model配下のData Script/Rule共有設計 #1129](https://github.com/hat47x/tei-platform/issues/1129#issuecomment-6587145160)と[旧仕様Parity／TEI適合を一Attemptで分ける #2783](https://github.com/hat47x/tei-platform/pull/2783)の**BP-05固有の受渡し**。基本的なField ValidationはData Modelの属性拡張で表す方向、独自条件・更新時の導出／複合条件はData-attached Scriptを利用する方向とする。ただし現行のCanonical `sales.order_line.quantity_positive` / `sales.order_line.line_number_positive` / `sales.order.lines.line_number_unique` を、事実確認なしに新Sourceへ移設・二重定義・自動受理しない。名称・構文・Rule定義格納形式の正式採否は#1129/#988/#267の既存Ownerが扱う。
+
+| 共有Ruleの意味側（候補） | BP-05へBindingするとき確定が必要なもの |
+| --- | --- |
+| Field値の正値（`line_number_positive`, `quantity_positive`） | **一行のRule定義**と、**どの行を何行評価するか**という適用量化/Contextは別。FieldへのAttachmentだけでSubmitの全行検査実施済みとは扱わない |
+| Relation集合の一意性（`line_number_unique`） | 業務上の関係Role/集合L/明細identity・同版をBinding。局所`lineNumbers`固定配列や部分集合の重複未発見は全件一意の証拠ではない |
+| Data Script／Derivation／更新時Hook | Script原文と型付きRule候補、Attachment、依存Read Set、`before-write / in-Tx / post-commit`等のPhaseとEffectを区別。IFで書けることと実Operationで呼ばれたことは別。派生プレビューや通知発火を正式Commitへ昇格させない |
+| 標準Function／API／バッチの利用 | 同じ受理済みRule ID・版を参照し、入口別にRuleのコピーや実行Phaseの差がないか確認。画面表示/Manual BP-04を新しい強制Ruleへ自動変換しない |
+
+**Parity（P）**は旧Source/Scriptの忠実観測と実発火の独立期待、**Adaptation（A）**はTEI Context→Rule適用→同一Request/Grant/Owner-write/Receiptという安全適合、**Extension（E）**は追加機能とする。#2783のE0–E6受入票を**既存担当に渡すだけ**で、BP-05へ旧Runtime同義・実Provider・Owner受理の実績を持ち込まない。特に本計画のS1「第3規則不成立時の後続停止」は、Data Scriptの`IF`/Rule宣言やStudio表示だけで解消しない。
+
+### 15.14 検査の配置・実行期限・免除と現在資格（設計・NOT RUN）
+
+[Everything is Data横断計画 #2667 の§27.6（品質保証の範囲・期限・例外）](https://github.com/hat47x/tei-platform/pull/2667)を、§15.12のOnline/Offline分離へ**最小追加**する。Rule別の検査配置は案件Ownerの判断事項であり、特定のOnline必須条件をデータ品質Jobへ移すだけでWriteの許可根拠にしてはならない。
+
+| 配置候補（未採用の検討欄） | BP-05/Claimに対する意味上の停止条件 |
+| --- | --- |
+| **Online mandatory** | Submitの必要条件なら、その**同一Operation**で対象L/版/Rule入力を評価し、`not-satisfied`なら定められた後続を止める。`input unavailable / partial / error`は業務不成立と同義ではないが、**成功資格も与えない**。実停止は既存S1で独立に証明 |
+| **Deferred with deadline** | 期限・母集団・Snapshot・Provider/Role・完了証拠を保持。未実施・遅延・検査不能・局所PASSと、対象全体の適格なPASSを区別。期限内Job完了があってもRuleの全件合格・現在のSubmit許可とは別 |
+| **Advisory / formal-only** | 顧客向けの説明・候補・静的形式検査であり、Ownerが必須としたWrite/Business Guardを代替しない。Leanの形式命題証明は取得被覆`R=L`や実Provider強制の証明ではない |
+| **例外・免除（期間／範囲限定）** | Owner/Authority、対象・適用期間・理由・Rule版・失効条件を別に記録する候補。例外は既知の違反や過去Quality Findingを消さず、無期限の全行正常主張にもならない。例外によるWrite許可はHostの現在Authority/Effect Fenceとは別に検証 |
+
+**独立した最小反例（既存Q1–Q5/E0–E3/U1–U4/DQX/DQAを再利用、全NOT RUN）**：同じ`L={A(1),B(0)}`について (a) RLS部分取得Aのみ＋Offline 0異常、(b) B(0)の有効な反例をOfflineで後から検出、(c) Quality Jobが期限超過しているのに実行Jobだけ`completed`、(d) 期限付き例外が失効、(e) 同じRule版でも異Snapshotの結果を合算、を各々**Scope付きClaim**として比較。検査結果には「実行されたか」「どの範囲の正常・違反を証明したか」「現在の利用資格」「何が未検証か」を別列で保持。長期Quality実績やJobメトリクスを、BP-05の実Command・実Effectの証拠としない。
+
+**実証の優先順位は変更しない**。既存S1の第三規則のみ不成立→認可/Command停止、S2の同一Provider/Context取得、S3の`L/E/P` Owner受理を先に進める。Data Script Parityと共通Rule実装は#1129/#2783、品質の監査/増分/Jobは#2622/#2667、業務Actionと独立Effectは#1174、開示は#2516へ委譲する。新Script正本・Quality Scheduler・汎用Host・Rule Engine・Gate・ADRは追加しない。Go/PG/旧Driver/EKI Job/Studio/SHO同一Attemptは本追補で**NOT RUN**。
