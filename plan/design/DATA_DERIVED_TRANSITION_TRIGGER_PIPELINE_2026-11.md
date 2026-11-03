@@ -1,0 +1,134 @@
+# Data Modelの仮想項目からFlow／Batch／Pipelineを起動する意味契約（設計案）
+
+- 日付：2026-11-03
+- 状態：**設計提案／反証計画**。新しいCore kind、Data Script構文、Event Broker、Scheduler、Job Engine、Execution Hostの採用や実装済みを意味しない。
+- 発端：Data Script上の通常項目の更新や仮想項目の導出状態の変化から、バッチ／パイプライン／大規模Jobを起動したいという要求。状態列は他の属性・関連データの状況を代表して二重管理されやすいため、**意味の正本をもつ事実から状態を導出**し、必要なEffectだけを別の履歴／Receiptへ保存する。
+- 関連：[Buriからの継承](BURI_TO_TEI_LIFECYCLE_TRANSFER_2026-11.md)、[非業務State Machine・三形態](STATE_MACHINE_CROSS_DOMAIN_DESIGN_PRESSURE_2026-11.md)、[Decision Workbook](DECISION_WORKBOOK_INTAKE_REVIEW_2026-11.md)。
+- Issue Owner：[#2622](https://github.com/hat47x/tei-platform/issues/2622) Data/Derived、[#1129](https://github.com/hat47x/tei-platform/issues/1129) Rule Phase/Effect、[#1130](https://github.com/hat47x/tei-platform/issues/1130) Non-UI Batch、[#2582](https://github.com/hat47x/tei-platform/issues/2582) Dependency/Refresh、[#1708](https://github.com/hat47x/tei-platform/issues/1708) joint Read、[#1174](https://github.com/hat47x/tei-platform/issues/1174) Effect Fence、[#2564](https://github.com/hat47x/tei-platform/issues/2564) actual CAS、[#2514](https://github.com/hat47x/tei-platform/issues/2514) Independent Oracle、[#2600](https://github.com/hat47x/tei-platform/issues/2600) Build/Invalidation。新Issueを作らない。
+
+## 1. 三つの責務と三種類の「状態」を混同しない
+
+### 1.1 Data Modelの仮想項目（意味宣言）
+
+**Data Modelが、属性を「導出される仮想属性」として明示し、型、対象、書込み可否、基礎データの所有者を定義する**ことを要件とする。同じData ID/Attribute IDを他のField、UI、Rule、Flowから参照できる。
+
+たとえば `order.billing_ready` は `boolean / virtual / read-only` としてData Modelに宣言する。`order.status` を物理列に必ず追加する設計ではない。仮想属性が物理的に未保存でも、UI/Query/Rule/Flowはその同じ意味Attributeを参照できるようにする。Data Modelで「仮想」だと宣言されていない項目を、Scriptに関数があるというだけで暗黙に仮想化しない。
+
+**まだ正式なGo Struct／DSL grammarは採用しない**。属性の型、Virtual／Derived Role、可観測なScope、保存方式（read-time/on-write/materialized/generated DB）を一つのCore enumに押し込まない。意味上の`virtual`と物理実現の`computed in DB`／`cached`／`generated column`を分離する。
+
+### 1.2 Data Scriptが導出規則と依存を定義する
+
+Data Script（名称・Syntaxは未確定）は、`order.billing_ready`の**純粋な導出規則**を定義する責務を持つ。入力はData ModelのAttribute/Relation IDと明示Context、必要なGrain、Filter、欠損/NULL、取得完全性、評価時点、Query/Operator/Plugin版。例は配送明細すべて完了／受注承認済み／請求レコード未生成などの事実から導出する。
+
+- `all(lines, delivered)`には`lines`の**完全集合**の根拠が必要。`0行`と`未取得`、部分Read、権限により非開示の行を区別する。`all(empty)`の真偽はそのDomainの受理済み規則に従い、勝手に空集合を請求可能へしない。
+- `NOT EXISTS invoice`は「取得できない」「Providerが完全性を証明できない」と同義でない。Queryの非出力Predicate、集約、JOIN、Scope、Timeを依存閉包へ含める。
+- 状態を変更する目的で`billing_ready`へのwriteを許すと、元の事実との二重管理が再発する。仮想Attributeへの明示writeは原則unsupportedとし、受理された**元データへのOperation**へ誘導する。手動上書きが業務要件なら「明示Overrideという新しい元データ」をモデル化し、導出式の入力とし履歴化する。
+- 純粋導出と、write前Validation、before-write mutation、同一Tx Effect、post-commit外部Effectは#1129の既存Phaseで分離する。Data Script内の計算が外部Jobを暗黙起動することは禁止する。
+
+### 1.3 Flowは「評価された状態・変化」と「副作用Intent」を結ぶ
+
+Flowには`when physical attribute changed`、`when derived value transitions`、`when state condition holds`、`when domain event committed`等の契機の**意味上の違い**を明示できることを要件とする。これらは仮の記法であって正式Grammarではない。
+
+| 契機 | 意味 | 追加の証拠・制約 |
+| --- | --- | --- |
+| Source-write Event | 基礎Field/Relationの変更が確定した | どのWriteが、どのSubject・Txnに確定したか。Derivedの値が変わった証拠にはならない |
+| Derived-edge | 同じSubjectの計算値が、承認されたbefore/afterの観測境界で`false→true`等へ変化 | 比較するBefore/Afterの完全性・整合Snapshot、規則版、Event Identity、再検出/重複抑止。毎回の再計算成功＝edgeではない |
+| Level predicate | `billing_ready=true`等が一定Scope/時点で成立する | 初回・再観測・定期再走査でも成立し得る。ジョブ重複抑止・期限・現在Authが別途必要。Edgeとは異なる |
+| Accepted domain event | `order.confirmed`等、Ownerが意味受理したEventが確定した | 対象・Version・Receipt／Commit・発行契約。見えた状態やUI ACKから自動生成しない |
+| Timer / external event | 時間の経過、Webhook、Queue、センサなど | 外部Clock／送信者Authority／重複・遅着・配送順の契約。データ更新がないことを無変化とみなさない |
+
+**データ導出状態をイベント正本へ格上げしない**。Derived claimは同じ入力・Operator版・適切なRead上では計算できる一方、`T1`時点で`false`だったという履歴、`T2`で外部通知したという事実、Job Stepが完了したというReceiptは別の永続事実。必要ならOutbox／Job journal／Outcomeは**実行記録**として保存するが、同じ業務状態を別のTruthとして保存しない。
+
+## 2. 図・表・Scriptを結ぶ設計Surface
+
+**同じModel IDを起点に、次を連結**できることをTEI Studio/SHOの設計圧力とする。
+
+| Surface | 設計内容／編集責務 | 別の意味正本にしないもの |
+| --- | --- | --- |
+| Data Model Table | `order.billing_ready`: type bool、`derived/virtual`、read-only、対象Data、説明とOwner | Data Script式の複製、DBにstatus列を強制 |
+| Data Script／Derivation Table | 依存Field/Relation、演算、集約集合の完全性、missing/null、Time、純粋計算 | Script hookの内部でJobを送る |
+| Flow／Trigger Table | 対象Attribute/Event、edge/level/write/commitの違い、Guard、Action/Capability参照、Re-trigger/replay policy | 表を描くだけでEffect許可になること |
+| Pipeline／Job Graph | Task ID、入出力Artifact、依存、順序/並行、分割・checkpoint、容量・取消/回復、Ownerと実行場所 | 全作業の基盤に一律の永続Workflow Instanceを要求 |
+| Test／Scenario／Trace Matrix | Source/Before/After、Signal、Expected Event/Job Intent、実Observation/Receipt、失効とRevision | Derived Expectedを独立Oracleと称する |
+| SHO設計資料 | これらの意味／未決事項を読者向けに相互参照・レビュー／版管理 | 承認済みドキュメントと意味受理を混同 |
+
+**例（概念・正式TEI DSLではない）**：
+~~~text
+Data Model
+  order.billing_ready : bool [virtual, read-only]
+
+Data Script
+  billing_ready <- approved(order)
+                   AND all(order.lines, delivery_confirmed)
+                   AND not_exists(order.invoices)
+
+Flow
+  when order.billing_ready changes false -> true [after commit, scoped by order ID]
+    request Capability invoice.create_for_order
+
+Batch / Pipeline
+  invoice.create_for_order -> validate current facts -> create invoice intent
+                           -> provider effect -> receipt -> independent read
+~~~
+
+これは「同じ意味をModel、Script、Flowに三重保存する」ということではない。Modelは対象の宣言、Scriptは評価規則、Flowは変化を利用するTrigger/Action Bindingをそれぞれ**参照で接続**する。`delivery_confirmed`と`approved`の業務意味はOwner決定、`invoice.create_for_order`のTx/冪等性はProvider/既存Hostの実行責務。Script自体にJob実行権限はない。
+
+## 3. 導出値の変化を実Eventへ変換するための証拠境界
+
+**安易な`onChange(virtual_status)`は危険。** 無保存の純粋式は、値を再計算できることを示すだけで、過去に何度・いつ変化したかを示さない。以下を区別する。
+
+1. **入力の変化を捕捉**：Committed source mutation、CDC/Queue通知、明示Operation/Receipt、またはPeriodic reconciliationのどれか。Providerによっては変化通知不可。通知の有無から値の不変を推定しない。
+2. **対象Dependency/Subjectを特定**：更新された子行がどの`order`に影響するか、Join/NOT EXISTS/全件集約、Rule/Plugin版、Source移動、外部Provider更新、Clock/timerを含む依存範囲を評価。依存不明なら局所最適化できない。
+3. **一貫した前後観測**：Before/Afterが同じ論理Subject・Scope・許可されたRule版で比較できるか。#1708のsame-record/snapshot/version-aligned/best-effort能力に照合し、単に近い時刻・同じ数字では証明しない。比較に必要な旧値がない場合、Edgeは**unknown**。初回評価を勝手に`false→true`としない。
+4. **Trigger result**：`edge-known`／`no-edge`／`unknown`／`unsupported`の区別を検討。Edge発生が確定しても、当該EventからJobが起動できる資格は別。外部状態がstale/unavailable/partialなら「発火せず保留」やrecheckへ進み、false扱いしない。
+5. **Effect fenceと回復**：対応する`Capability`の最新Owner／Resource権限を実行時確認。DBで原子的な`source update + outbox`を提供できれば採用候補だが、複数Provider跨ぎには同一Tx保証なし。`Event ID→Job ID/Attempt ID→Step Effects/Receipt`をつなぎ、at-least-once送信時は重複を検出。Exactly-onceの一般保証はしない。
+6. **定期再調停**：イベント欠落、DB/APIの遅延、Crash/ACK loss、A→B→A（途中の遷移が端点から消える）、時計の進行による条件成立を別ケースにする。厳密Edge要件を満たさないProviderは`level-triggered reconciliation`＋一意業務Action/既存Receipt等の方式を比較。ただし`level`が`edge`の意味的な代替になれるかはOwner判断。
+
+**バッチの実務上の複雑さ**：数十万対象のJobでは「statusが変わった」だけで全件走査すると重複・取りこぼし・過負荷を招き得る。対象粒度（Subject/Subset/Window）、処理対象の基準Snapshot/Watermark、順序／並列度、処理再開点、Step結果、Backpressure・Rate limit、再送／取消／部分成功、失敗の隔離、再実行した場合のEffect一致をJob/Provider契約へ渡す。これらは`#1130`の既存Batch Ownerが担当するものであり、汎用Task Engineの実装を本稿で確定しない。
+
+**再帰と循環**：FlowのActionが`billing_ready`の入力`invoices`を変更して`true→false`へ戻し、次の再計算が走ることは起こり得る。これは正常なFeedbackの場合もあり、無限起動ループの場合もある。Dependency DAGに加えてEffect→Inputの関係を表示し、業務上の終了条件、再入禁止／最大試行、冪等性を明示する。`false→true`の再入は**新しい業務Eventか重複か**を、単に値が同じという理由で決めない。
+
+## 4. 仮想状態は二重管理を減らすが、全てを仮想化しない
+
+| 状態の例 | 正本と望ましい扱い | 仮想で代替できないもの |
+| --- | --- | --- |
+| `ready_to_invoice` | 承認・納品・請求不存在の事実から**計算可能な状態**。仮想属性が候補 | 元データが外部で完全に得られない場合の「現在確定」 |
+| `all_lines_delivered` | 受注明細・納品のRelationsと完全性から計算できる | 子集合の一部だけ見た集計、非開示行、正本のない履歴 |
+| `currently_overdue` | 期限・現在時刻から計算可能。Clockを宣言した導出 | 時刻だけで閾値を越える場合の発火にはScheduler/Time Eventが必要 |
+| `job_running`／`job_step_done` | 実Jobのjournal/Attempt/Checkpoint／Receiptに根拠を持つ**実行状態** | 外部Side Effectの成功や送信済みを業務データから推測すること |
+| `notice_sent` | 送信要求と実Delivery Receiptが区別された保存済み事実 | 未確認のメール・Queue配信を`sent`へ自動昇格 |
+| `order_cancelled` | Ownerが決める業務取消の独立した意思決定・履歴が必要なら**保存された明示事実** | 他の値が条件を満たしただけで取消の意思が発生したとは言えない |
+
+パフォーマンスのために物理側へ保存する`materialized billing_ready`は、規則版、入力Snapshot/Read completeness、再計算時点と無効化条件をもつ**キャッシュ／派生Projection**であり、新しいAccepted Meaningの正本ではない。Materializedを読むConsumerが`fresh`と認められる条件を別に宣言する。分散環境では「読み込みたび最新」を要件とするかを先にOwnerが判断する。
+
+## 5. 最小のConformanceと独立Expected（すべてNOT RUN）
+
+| 既存Owner | 反例／検査Fixture | 最低限許される結論／禁止推論 |
+| --- | --- | --- |
+| #2622/#1129 | Modelにvirtual宣言、Scriptに純粋導出。Script出力へ直接writeしようとする | 不正writeを拒否。Hookが登録できただけで実Computed Column採用とは言わない |
+| #1708/#2582 | 受注明細3件中2件だけ取得・未着1件を隠す。集計`all delivered`と`NOT EXISTS invoice` | Result`unknown`、**false/true・emptyにしない**。影響範囲不明の局所skip不可 |
+| #1129/#1174 | 行更新がRollback、ACK消失、同一Event重複、commit後にGrant撤回 | rollbackからJob確定を推測しない。Unknownを成功にしない。現在GrantでEffectを再検査 |
+| #2582/#2600 | A→B→A、ルール版更新、Script source移動、Time threshold超過 | 終点同値でもEdge継続保証なし。Source/Meaning/Artifact/Triggerの失効を別々に表示 |
+| #1130 | 10万件対象の分割、途中中断・再開・取消・並列更新、同一要求再送 | Job Attempt/Checkpoint/Receiptを観測。重複Effectを合格にしない。throughputは測定後 |
+| #2514/#1131 | 同じSource/Ruleから生成した期待と独立手書きExpectedが異なる | 生成ロジック自己採点を独立Oracleと呼ばない。誤Guard・漏れEventをMutationで検知 |
+| #2497/#2621 | Model/Script/Flow図表の1箇所だけ変更し、他Projection/SHOとの差分 | Source/ID/Versionが同じ範囲のみ整合と結論。図に見えるだけで実行資格を付与しない |
+| #2564/#1174 | 2 Workerが同じ`ready=true`に対し同時請求Jobを起動 | 条件付きWrite/一意Operation IDと実DB/Providerの防止を確認するまで本番安全性未取得 |
+
+最小縦断を一つに絞るなら、**受注の一部納品→全明細納品→請求準備完了のDerived Attribute→Batch起動Intent→同じ請求の二重作成防止→Receipt/別Read**。受注状態列を手で更新して二重管理する案と、Derived＋業務Factを使う案を比較し、規則修正件数、同期更新箇所、誤検出、性能、復旧難度を計測する。どちらが実際に有利かは試験で判断する。
+
+## 6. 設計上の段階とPlan Ownership
+
+- **F0（今回）**：Model virtual＋Data Script derivation＋Flow trigger＋Batch Actionの責務分離と、既存Issueへの引渡しを文書化。**採用済みのDSL syntaxやEngineを作ったと主張しない**。
+- **F1（read-only）**：既存Derived/Rule ReferenceからModel/Script/FlowのLinkとDependencyをExplain可能にし、前後値・未知・完全性・型を独立Expectedで検証。既存Canonical/IRの新規正本を増やさない。
+- **F2（Trigger Intent）**：単一ProviderでのCommitted Source Update／Virtual Edgeの比較可能性、outbox/claim correlation、重複・Rollback・A→B→AとClock変化を実Provider要件へ分離。Event Broker構築を先行しない。
+- **F3（Batch E2E）**：#1130のUIなしJob/進捗/再試行/大量対象に対象ID/Chunk/Checkpoint、#1129/#1174のEffect／Receiptを接続。実ホスト/Providerの一度限りの実Effectを独立に観測する。
+- **F4（図表・設計・生成）**：同一Accepted MeaningのData Model/Derivation/Flow/Job DAG/SHOへ編集・Source逆写像・選択的再生成。Runtime安全性とAuthoring価値を別軸で検収。
+- **採用Gate**：仮想Fieldで減らせた物理status二重管理と、増えた導出コスト／Watch/Job記録/Recoveryの複雑さを比較。Domain全体で統一Status表・共通Scheduler・Workflow Engineを採ることを前提にしない。
+
+**既存Issue責務**：意味属性・Relation/Context=#2622/#2620/#2506、Rule/仮想/phase=#1129、Dependency・Read Freshness=#2582/#1708/#1641、Query集合完全性=#2387、Action Binding=#2507、Batch=#1130、Effect/Grant/Receipt=#1174/#2564、Diagram↔Table/Source=#2497/#2621/#1803、独立Expected=#2514、Build差分=#2600、全体Gate=#1119。新しいJob Registry/TEI Host/第二Meaning正本を作らない。
+
+## 7. 不明／Ownerが決める条件と現在のEvidence
+
+**Ownerの具体判断が必要**：`billing_ready`は明細の完了だけか、出荷実績確定・検収・時間を含むか。訂正／返品・取消で何が起こるか。再計算時の粒度と許容遅延、Strict EdgeかLevel Reconciliationか、同一Subject二回目の正当なJob起動、依存先が別Providerなら整合Snapshot不可能時に停止するか、履歴・監査と重複通知の許容範囲。必要なときだけOwnerが意味とEffect Contractを受理する。
+
+**既存Evidenceの上限**：TEIに`Derived Attribute`／`Data Rule`の設計と実験Reference、`Period`の限定契約、`reference-expected-state-update`の合成CASがある。ただし実`virtual state change→committed event→batch invocation→provider effect receipt`の通しE2Eは確認していない。**本資料はPROPOSAL、設計FixtureはNOT RUN、実DB/Host/Batchの保証はNOT ACCEPTED**。旧Buriの静的実装からこのイベント基盤を実装済みと推定しない。
