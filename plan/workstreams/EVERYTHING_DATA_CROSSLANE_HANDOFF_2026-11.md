@@ -961,3 +961,78 @@ actual Source bytes + source occurrence + selected Language/Operator pins
 - **B3 性能採用・回帰**：#565のQuality Envelope（Subject/Revision/Runtime Target/Scenario/Measure/受入根拠/Evidence/状態）に結び、#2514の独立Oracle、#2595/#2600の実Source/Build/Consumer資格、#1163の一改訂Evidenceを参照。Guardを省略して誤判定したら対象最適化を戻し、古いReceiptと現在資格を分ける。開発/診断時の追加検証を製品Runtimeの常時コストにしない。
 
 **正式判断は未了**：どのGuardを省略・無効化してもよいかは、実Target/Providerが持つ保証とConformance・性能測定を見てOwnerが決める。静的/動的Plugin方式、Backend Generatorの正式API、共通Benchmark threshold、正式DSL構文、Product Runtimeの最適化実装を決定しない。本節はドキュメントのみであり、新しいGo/CLI/SQL/Provider/Hostベンチマーク、Go生成、CI、Owner意味受理はNOT RUN。
+
+## 26. 広域データ品質検査をモデルから派生させる――夜間・Replica・Lean補助Target（2026-11-03追補）
+
+> **設計提案／NOT RUN／正式Job API・Scheduler・検証成果物Schema・Lean Target・運用SLAは未採用。** §25の実行時性能重視を発展させる。業務データの定義域・行内整合・行間/集合整合・時点・数学的法則を、日常アプリとは**独立に実行可能な派生検証成果物**として生成し、夜間やRead Replica上で広く監査できるようにする。検証規則を別チームが第二正本として再入力するのではなく、**同じAccepted Meaning・Data Rule・Operator/Facet・依存契約**から用途別にLowerする。「独立」とは**実行場所・時刻・資源・Receipt**の独立性であり、業務意味の重複管理ではない。Independent Expected/Oracleは候補実装と別根拠を維持する（#2514）。
+
+### 26.1 生成の二系統＋Lean（新共通Runtimeは前提としない）
+
+\`\`\`text
+authoritative Source → existing Canonical / Accepted Meaning
+   └─ typed Data Rules / Relation / Quantity / Lifecycle / Operator pins
+        ├─ Online Go app / typed Provider operations
+        │    └─ low-cost mandatory guards at input / command / effect boundary
+        ├─ Derived Data Quality CheckSet (候補)
+        │    ├─ standalone read-only Go binary / SQL query suite / existing Provider adapter
+        │    └─ scheduled externally or manually on primary snapshot, replica, isolated copy
+        └─ optional Lean 4 proof obligations / theorem-check artifacts
+               └─ law/algorithm correctness under explicit assumptions
+\`\`\`
+
+「夜間Job」「Replica」「Lean」は**実現/実行Profileの違い**。同じRule/Subject/Scopeの由来、Source/Meaning/Operator/Generator版は相互に追えるが、ジョブの実行時刻・Reader/Provider・Snapshot・結果資格は別。派生CheckSetは正本でも新しいValidation/Proof Registryでもない。cron/CI/既存外部Schedulerで実行できることを先に比較し、TEI専用Host/常駐Schedulerは作らない。Read replicaでは一般に参照Queryだけが可能であり、監査結果の永続化・通知・是正Intentは**別の許可された保存先/運用系**へ出力する。
+
+### 26.2 「検証の後回し」と「制約の不履行」を分ける
+
+| 既存Meaningからの品質主張 | 基本配置 | 夜間/Replicaへ回せる条件・限界 |
+| --- | --- | --- |
+| 値の型/値域、NULL許容、文字長、数量・通貨単位 | Source/Build/DB constraints＋入力境界 | 過去行の全件スキャンや版移行後の再監査はoffline可能。危険な生入力の拒否や必須DB制約を単に後回しにしない |
+| 行内の合計・整合、状態と必須項目の整合 | Cheapな同期Rule/必要なDB制約＋offline再照合 | 発見遅延が許容され、是正方針がある追加監査は移動可能。Commitの正当性が依存する条件は同期で維持 |
+| PK/FK/業務Relation、複合/期間キー、重複、孤児行 | DBで提供される制約＋必要な更新時契約 | 広域点検や既存汚染発見を別Job化。物理FK/SortKeyを業務Relation/履歴意味へ自動昇格しない |
+| 注文合計＝明細合計、在庫/残高/時間窓、集計grain・重複 | 定義された更新契約＋周期的整合スキャン | Snapshotの全対象・Field completeness、時間・重複・遅着Eventの条件が揃う範囲だけ判定。部分結果のゼロ件は「正常」としない |
+| 状態遷移履歴/取消と履歴の一致、外部システム間照合 | 必要なcommand/Tx/receipt境界＋async再照合 | 実副作用を発生させるRepairは検証Jobから自動実行しない。独立ReadとOwner判断の後に既存CommandへIntentを渡す |
+| Lean等による演算則・不変条件・矛盾可能性の証明 | Build/CI/夜間の任意の形式検証Target | 「仮定下の命題の証明」は実データ全件・Provider鮮度・翻訳忠実性・Owner業務意味受理・Go実装同等性を証明しない。反例未発見/timeoutを証明成功としない |
+
+**延期可能性はRuleごと・用途ごと・業務Ownerごとに判定する。** 夜間検査結果を処理時の認可・一意性・金額の必須丸め・確定可否に無条件で代用しない。onlineは性能と現時点整合、offlineは全体的品質と時間をかけた再照合。両者を「同じ保証」と呼ばず、許容発見遅延・重大度・是正期限を明示した場合に限り一部の高価な検査をoffline専用へ移す。
+
+### 26.3 Job/Checkの最小引継ぎ票（既存Evidence/Artifactへ参照するだけ）
+
+| 欄 | 必ず保持する理由 |
+| --- | --- |
+| Rule Subject / Accepted Meaning・Source occurrence / Rule/Operator/Lean theory/Generator version | どの受理された意味から導出した検査か、何を未受理としたかを説明 |
+| Check kind (domain/intra-row/inter-row/aggregate/temporal/proof), severity, online/offline placement | 実行時に残す条件と夜間検査へ移す条件を分ける |
+| Data Context / Relation path / grain / bag semantics / row+field completeness / scope / predicate / period | 完全性のない全件「異常なし」を防止 |
+| Data Provider/DB/dataset/replica identity、snapshot ID・LSN/replay watermark、observed at/checked through | PRIMARY現在値とReplica上の過去時点の値を混同しない。複数Providerは同一watermarkを勝手に仮定しない |
+| Raw/typed input interpretation、NULL/missing/withheld/partial、operator/rounding semantics | 不明・非開示を合格0件へ変換しない |
+| Independent Expected/Oracle provenance、known mutants、case result | 同じGenerator/Rule interpreterによる自己追認を避ける |
+| Run attempt ID、actual executable/SQL bytes + pin、rows scanned、findings、coverage、errors、time/cost | 実施した範囲と、未実施/部分失敗/timeoutを区別 |
+| Observation/diagnostic stable ID、source/subject、historical result、current qualification、remediation intent | 結果の説明、再監査、修正提案と実効果を区別。低権限へ生データを漏らさない |
+
+データ品質の判定は少なくとも **\`pass-in-scope\` / \`violations-found\` / \`incomplete\` / \`unavailable\` / \`invalid-contract\` / \`not-run\`** を比較票で区別する候補。これは新Core enumや正式APIではない。たとえ\`pass-in-scope\`でも「指定Snapshotの対象範囲に限定して違反を観測しなかった」という主張であり、現在のPRIMARY全件保証ではない。歴史的PASSと現在の資格を分離し、定義/Provider/Source/Policy改版やReplica遅延で現在適用を再判定する。
+
+**Replicaの停止条件**：レプリケーション遅延、対象WAL/LSNの未適用、Snapshot未確定、接続先の昇格/経路変更、長時間Queryとのreplay競合、別DB/外部Providerの異時点読取、欠落した対象集合を\`0 violations\`として合格にしない。多くのReplicaは更新不可なので、Check結果の保存先とDBの読み取り側を分離する。Primaryへの更新は別Authority・既存Command/Receipt境界へ渡す。
+
+### 26.4 最小反証Fixture（新Engine/新Case大量追加なし）
+
+| ラベル | 同じ業務Ruleから導出する観測 | 独立Expected／誤ってはならない結論 |
+| --- | --- | --- |
+| **DQ-01 行内/定義域** | quantity=3, unitPrice=19.995、明細金額59.985、丸め定義あり/未定義、NULL/missing/0 | 同じ型付き意味とDecimal精度でonline+offline計算。規則未定義や未取得を正常値に補完しない |
+| **DQ-02 行間/集計** | Order O1に明細A=100、B=100、配送3件fanout | 期待合計200。JOIN後600やDISTINCT amountで100を採用しない（#2593既存MC-01） |
+| **DQ-03 Replicaの鮮度** | Primaryで行Bをcommit、ReplicaはB反映前のLSNでスキャン、その後replay | 旧LSNの違反ゼロは当該過去Snapshotに限定。Primary最新の「全件合格」と報告しない |
+| **DQ-04 部分・異時点** | Rowset L={A,B}、取得R={A}、Field欠損、異Provider異epoch | partial/unknown。R内違反は範囲根拠つきで発見可能だが、違反ゼロは全体正常性を示さない |
+| **DQ-05 契約・意味改版** | ID/値同じでもRule版、Facet演算、Provider/Source改版、A→B→A | 古いCheck binary・結果の現在資格を再利用しない。影響閉包が証明できる場合だけ選択的再検証 |
+| **DQ-06 Lean/実データ境界** | 命題「入力集合Lの全行q>0なら\`all(L,q>0)=true\`」の形式的根拠、実ProviderはR⊂Lだけ返す | 抽象法則の証明はL=Rを保証しない。Lean proof success ≠ Data pass ≠ generated Go correctness ≠ Owner acceptance |
+
+**追加PoCの判断順**：
+1. **D0（read-only設計）**：#2622のData Rule/Context、#988のOperator契約、#2544のLaw/Facetを取り出し、オンラインに必要な検査と周期検査候補を一Ruleずつ比較。どのRuleが単に遅延可能かは業務Owner判断を残す。
+2. **D1（実行場所の分離）**：受注/明細の既存Fixtureから**同じRule/Source/意味Pin**に由来するオンラインGo純粋演算と、read-only SQL/Goスキャンの候補を派生。独立Expected（#2514）・Provider readの実対象を照合。最初は人工Snapshot/一時DB、既存外部Schedulerでよい。
+3. **D2（Snapshot/Replica）**：一次DBのCommit水準とReplicaのreplay watermark・scan snapshotを記録して DQ-03/04 を反証。Replicaの0件や長時間ReadをPRIMARYの現在受理へ昇格しない。Check実行がReplicaのreplay lag/CPU/I/Oへ与える影響も測る。
+4. **D3（Lean任意Target）**：#2544のLaw claimと#2514の独立Expectedを参照し、合成した一つの命題/仮定/Lean proof artifactを作る。実Rule/Go/SQLがその命題を忠実に実装するかは**別Fixture/実Target比較**。Lean EngineをTEI Runtime必須依存にしない。
+5. **D4（運用価値）**：findingsを型/Subject/Source/Rule/Owner/再発/未確認範囲で集約し、候補原因・修正案を提示。**修正は意図提案まで**であり自動DB更新しない。検出率/false positive/scan cost/Replica負荷/実行遅延/修正までの時間/人手定義量と既存の手書き監査を比較。未検証の「大手品質チーム相当の保証」を製品達成と主張しない。
+
+### 26.5 既存Owner/ADR境界・変更状態
+
+- **#2622** がData Rule/Function Data Context/Providerと多対象Queryの意味契約、**#1126/#1129** がData定義・キー/Relation、更新時/Tx/状態・副作用、**#2593/#2582/#1708** がaggregate/grain・動的依存・Snapshot境界。
+- **#988/#1063** が同じOperator/意味から用途別の検証用成果物へLowerする接続、**#2544** がLean等で検証し得るLaw/Facetと仮定の意味、**#2514** が独立Expected/Claim相対の判定、**#2600/#2595** が生成/実使用Byteと依存失効、**#1174/#1119/#1163** がAuthority/Effect・正式受入Evidence。
+- 既存ADR-0022（AI提案/意味受理）、ADR-0023（Command後独立観測）、ADR-0029（Application validation選択）、ADR-0039（Query Missing/NULL、提案中）、ADR-0043（TEI独自Hostなし）と衝突させない。**新ADR候補**は「同一MeaningからOnline GuardとOffline Quality Checkを導出し、Snapshot相対の検査結果と現在資格を分離する」だが、正式の文書・番号・採用判断は実証後とする。
+- 本節の設計は**DSL文法、Lean Target、検証Job命令/CLI、Scheduler、品質Dashboard、Result Store/Schema、Runtime Guard省略の正式契約**を採用・実装しない。**実Provider/Replica/Lean/Go生成/Go試験、CI、Owner受理はNOT RUN**。
