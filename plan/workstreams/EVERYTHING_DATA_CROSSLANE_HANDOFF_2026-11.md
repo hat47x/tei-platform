@@ -1283,3 +1283,65 @@ AI一括修正で**対象曖昧、複数Patch衝突、base byte不一致、取�
 責務は #988/#1018（言語・解決）、#1002/#1017（安全なSource読取）、#2743/#958/#2582（外部Reference鮮度・失効）、#2621/#1124/#2497/#2745/#2674（原文保存・診断・AI Patch）、#2516（開示）、#2600（増分再資格化）、#1163（同一AttemptのEvidence）に戻す。**既存RF/GN/SFのCaseを再起票しない**。
 
 **今回確認できた限定事実**：[#2639](https://github.com/hat47x/tei-platform/pull/2639) HEAD `12c864ba83840a7b5750bc8da84af0e8534558e1`について[Repository Health run #41578551459](https://github.com/hat47x/tei-platform/actions/runs/41578551459)と[依存確認 run #41578551497](https://github.com/hat47x/tei-platform/actions/runs/41578551497)が**同一HEADでcompleted/success**。これは限定Go Language Plugin ReferenceのCI成功であり、外部Importの独立Expected/実HTTP・offline、Studio動的診断・AI Patch、外部Consumer/Host、Owner業務意味受理の成功ではない。本追補のR0〜R3とそれら製品試験は**NOT RUN**。既存#2743/#2745はDraftのままで、正式ADR/Schema/実装採用は未決。
+
+
+## 27. 外部Reference・Source修正・業務Commit・EKI実行を一つの試行で区別する（2026-11-03横断追補）
+
+> **設計・横断受入票のみ／実Source Writer・外部Provider・業務DB・EKI・Studio・SHOの新しいE2EはNOT RUN。** §§19〜26の「実CLI/Source/意味/Consumer/実効果」を、外部DSL参照の失効、AIによるSource修正、業務状態の物理保存、分散ジョブの実行・再試行という別チャットの接点で一つの試行へ束縛する。新たなTEI Host、EKI内の第二業務意味正本、中央状態テーブル、Registry、万能Source Editorは作らない。
+
+### 27.1 一つのActionを複数の資格に分割する
+
+| 資格・対象 | 必ず別に保持する事実 | 最終的に判断する既存Owner |
+| --- | --- | --- |
+| 外部Reference/Source | Declared locator・必須/任意、解決した物理Target、Source byte digest・revision・occurrence/span・取得時点、fresh/stale/unavailable/partial/not-found/permission-denied、Cacheからの復元か否か | #1017 Read boundary、#1018 Language/Workspace dispatch、#988、#2621、#1529 |
+| 定義・意味・編集 | Parse/Validateの診断、候補Model/Role、Accepted Meaning/Authority、元Markdown糖衣・書式の原byte、編集対象の一意性、修正案と適用済みPatch、再Parseで得た意味Diff | #2619/#2620/#2621、#1124、main統合#2674 Source Fidelity |
+| 業務Action/状態 | 選択したFunction Context、実対象Entity/Row identity・expected version、input/payload内のTarget ID、現行状態と業務上の遷移可否、Owner受理済Rule | #1129 Lifecycle、#1126 Data/キー、#2622 Provider、#2564 CAS |
+| 実行経路と現在の権限 | 選択Provider・DB Alias、principal/grant/operation binding、dry-run/prepareと実commit、transaction境界、部分効果・Commit unknown | #2611/#2598、#1174 Effect、既存Host/Provider |
+| 分散Task/資源 | EKI task/attempt/lease、配置先・許可Resource/可用性、worker/結果受信時点、dedupe・timeout・再接続、Execution Receipt | EKI側の資源/実行管理。TEIでは業務Flowの依存とTask結果への参照のみ |
+| Consumerに伝える結果 | Resultの実取得とDisclosure、SHO引用/Studio診断のSource revision、Eki Job AcceptedとBusiness State CommittedとBusiness Verifiedの相違、historical/current qualification | #2516、#2605、SHO側Consumer、#1163 Evidence |
+
+**論理的な不変条件**：
+
+- Sourceが存在する・Parserが成功する・AIが修正案を生成する・Roleが受理される、のいずれも、編集書込み許可や業務Command実行資格を付与しない。
+- EKIのTask/Attempt/Leaseは**資源・実行の状態**。受注確定/取消、組織所属の有効期間、Workflowの業務状態をEKI Task状態へ移管しない。原則は当該業務データと同じ所有・更新境界に状態属性を置き、履歴/イベントまたはJSON/別表は履歴・可変構造・同時更新等の要件が実在する場合に選ぶ。汎用状態テーブルは前提にしない。
+- TEIが停止してもEKIに登録済みのTask/Lease管理は自立し得るが、EKIが完了と報告したことは業務Commit、Receipt確定、Providerにおける一意な副作用、Consumerの正しい開示を保証しない。TEIのGo単一バイナリはEKIを利用せず単体実行できることを基本とする。
+- Studioの「参照を表示」「Previewが成功」「保存Intentができた」「Source Patchが保存された」「EKIのジョブが受付けられた」「業務DBのCommitが観測された」「後続の業務検証が成立」は、UI・CLI・AIに**別状態**として示す。unknown/partial/staleを成功へ丸めない。
+
+### 27.2 外部参照からAI修正までの書込み前契約（新Editorではない）
+
+1. **取得/診断**：ParserはSourceの表記・Spanと宣言を出す。#1017の物理read boundaryは、宣言Rootを越えるsymlinkやTOCTOU、実際に読んだbyteとdigestの同一性を検証対象にする。#1018はLanguage/Version/Implementation pin、実Workspace dispatchを担う。欠落必須ファイルは診断エラー、任意参照は用途別のdegraded/unresolvedを表現する。Resolver/Source IndexのOwnerをParser内で重複実装しない。
+2. **状態と影響**：参照先のpath移動で内容hashが同じ場合、Meaningの再受理が不要となることはあるが、Source occurrence/引用・Traceの位置は再解決する。A→B→Aも同じbyteだけで「一度も失効なし」としない。offline Cacheで閲覧できても、現在の実Provider読み取り/命令/開示資格は別。影響不明な依存Closureは新鮮扱いしない。
+3. **AI提案**：診断コード/元位置と候補修正を構造化し、Patch対象を (workspace identity, canonical Source path, original byte digest, occurrence/span, Language/Plugin/Role pin, proposed replacement) に束縛。候補が複数、Role未確定、意味変更あり、Workspace外、Providerの編集不能または出典曖昧なら**Preview/保留/read-only**。AIが「修復完了」と宣言しても受理しない。
+4. **局所適用**：明示的許可を受けたPatchだけ、書込み直前に物理Target/byte digest/現在のAuthorityを再照合し、重複/交差Spanや同一ファイルに対する他編集競合を拒否。no-op Saveは書込みゼロ・原byte保持、通常SaveでMarkdown表・コメント・CRLF/BOM・フェンス等を全面整形しない。変更後は実ファイルを再読取→reparse→Meaning Diff→必要なOwner再受理。**Patch適用成功はSource修正成功の証拠であり、Business Commitではない。**
+5. **消費/再資格化**：診断・修正結果のConsumerは対象Source/Rule/Artifact/引用とDisclosure許可を固定して閲覧。実対象以外は選択的に資格更新するが、未列挙の否定依存・読取0件・依存Plugin改版がある場合、無条件skipしない。#2600のBuild skipと#2582の実行時再評価は区別する。
+
+### 27.3 最小の縦断ケースと独立Expected（新しい機構の仮定を置かない）
+
+試行単位は**「受注 O1 の取消要求」一つ**とし、選択済みFunction Context・対象の明細・Source revision・DB Alias・実Provider/外部Host・EKI Task/Attemptを相互に関連づける。SourceはMarkdown定義と宣言された外部参照（初期はローカル1ファイル）、業務状態は受注行の `status`/`version`（**例示・正式DDLではない**）、取消履歴は業務要件により別イベントとして選択。Expectedは候補実装と独立して固定し、Task受付と業務状態の正しさを別列で採点する。
+
+| ケース | 変更・失敗注入 | 最低限必要な結論／Stop条件 |
+| --- | --- | --- |
+| **XS-01** | 外部必須定義が存在・一致し、参照/業務State/Actionが正当 | Source→Semantic/Meaning候補→Context→Operation→Provider/Host→Receipt→Consumerまで同じAttempt/版で追跡。実Provider/EKIが未接続ならそこでNOT RUN |
+| **XS-02** | 必須参照not-found、optional参照のみoffline/cache | 必須は有効なBuild/実行経路へ昇格しない。optionalは用途・freshness・completeを明示。cacheで見えること≠現在利用可 |
+| **XS-03** | 参照先が同byte移動、Source spanだけ変わる | 値/MeaningとSource位置/引用/Traceの現在資格を別判定。必要なConsumerのみ再解決 |
+| **XS-04** | 解決直後にsymlink/ファイル差替え、A→B→A | チェック時と実read/write時の同一性が示せなければ拒否/unknown。digest一致だけで履歴的鮮度を仮定しない |
+| **XS-05** | AIが古いSource spanを修正、別ウィンドウで先行更新 | write前のdigest/対象実体不一致で競合拒否。元Source保持、他Spanへの自動再ターゲットをしない |
+| **XS-06** | Markdown表の1値だけ編集、no-op SaveとExplicit Formatを比較 | 通常Saveは元糖衣・他byte完全保持。Format/Refactorのみ明示の書式変更を許す。Semantic Diffとbyte Diffを別提出 |
+| **XS-07** | Operation選択対象O1に対しPayloadがO2、またはDB Aliasが複数 | 暗黙の一意BindingやO1権限のO2への流用を禁止。実対象ID/expected version/Provider routeをCommit直前に束縛。未解決なら拒否 |
+| **XS-08** | State=confirmed、取消CAS version競合、Rule denied | 同じData RuleをGUI/CLI/Batchで評価。業務拒否と技術失敗を区別し、EKIの再試行で勝手に状態遷移を再決定しない |
+| **XS-09** | EKI worker timeout後にcallback重複、Lease失効後に古いAttemptが完了 | Attempt identity・idempotency/Effect Receiptで同一業務効果を二度適用しない。atomic Provider保証なければCommit unknownと再照合を要求 |
+| **XS-10** | EKI受理・Job完了、Provider Commitはunknown/部分成功 | Task complete≠Business committed≠Business verified。無条件retry/取消成功表示を禁止し、既存Provider/Host照会・Recoveryへ委譲 |
+| **XS-11** | Task完了後にTEI停止/再接続、参照元Plugin版/Source revision変更 | EKI登録済み実行は独立継続可能。再開時に歴史的Receiptを保持し、現在のMeaning/Scope/Consumer資格だけを再照合 |
+| **XS-12** | 実行は全件0件/partialまたはPrimary/Replicaの時点が異なる | 「対象なし」「取消条件成立」「全件検証済み」を、Scope/row+field completeness/epoch/Provider Evidenceなしに確定しない（§18・§26） |
+
+**採点列**は、Source bytes/Revision・Reference status・Meaning/Rule pin・Workspace/Principal・Context/Entity ID・Request Target ID・Payload Target ID・DB alias/Provider・CAS version・Task/Attempt/Lease・actual consumed byte・Effects/Receipt/unknown・Consumer actual read/Disclosure・実行環境/費用とする。PII・secret/非開示の値をログやAI提案本文へ載せず、必要な可観測性と権限制御を同時に検査する。
+
+### 27.4 既存Ownerへの実行順・Go/DSLの採用条件
+
+- **F0：静的/CI前提**。#1017/#1018/#988で実read、Language Plugin選択、Source Index/Spanが一致する最小ケースを確保。#2639は実Go Reference 9テストであるが、Workspace E2E/正式Role受理ではない。#2674のSource Fidelity設計はmain統合済みでも、実Writer/Studio Roundtrip実証ではない。
+- **F1：Patchを含む一改訂**。#2621/#1124/#1529のSource Writer/競合処理へXS-03〜06を接続。既存の修正・受理入口が見つからなければ `NOT RUN: missing concrete writer` と記録し、代用の新編集Engineを作らない。
+- **F2：業務Commitの一改訂**。#1129/#2622/#2564/#1174でO1取消を同じTarget ID・Version・現行Grant・Tx/Receiptへ結合。O1/O2すり替え、CAS不成立、ACK-loss、部分効果を最初に観測。受注状態の物理保存は基本的に業務行の責務とし、イベント履歴等は要件で選択。現mainのread-only Operation/Artifact PASSを実Commit PASSへ拡張しない。
+- **F3：EKIを任意のExecution Adapterとして比較**。ローカル単一Goバイナリ実行と、EKI Task/Attempt/Leaseで同じ業務Input/Expectedを処理する経路を比較する。EKIはクラウド・オンプレ・ローカル計算資源の配置/監視/復旧を持ち得るが、TEI専用Hostや無条件Gateway経由のデータ転送は要求しない。CPU/GPU/VRAMの申告・予約と実測値は別。運用性能（待ち/資源占有/追加roundtrip）を測り、TEIとEKIの結合による無駄なホップや不可避の常駐負荷があれば棄却する。
+- **F4：Consumer/再利用の適合**。#1163/#2516/#2600とSHOの別Ownerが、実Reader/引用・ArtifactSet・開示・診断の現在資格を同一改訂で判定。§26の夜間監査/Replica検査結果を現在Primaryの業務Commit保証へ昇格しない。
+
+**採否の留保**：DSLの専門家向け表現はグローバル共通・Go固有宣言を日常表層へ強制しない。Go AST/独自Parser/ハイブリッド/コード生成は同じ可読性・意味/診断/Source保存/生成速度のFixtureで比較し、Go実装親和性のために表層を決定しない。Goの単一バイナリは基本実行形態、EKIは必要時に選ぶ分散実行委譲先、.NET/Java等の既存Hostも保持する。実Writer/Provider/EKI/SHO/第二Targetの成功と、Owner意味受理・新ADR・新Runtime APIの採用はすべて**NOT RUN/未決定**。
