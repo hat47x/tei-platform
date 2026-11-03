@@ -16,13 +16,17 @@ import (
 // MemoryStoreは、Commandの効果を適用する参照用の記憶域である。
 // 実データベースではなく、参照実装の配線とRollbackを確認するためだけに使う。
 type MemoryStore struct {
-	mu   sync.RWMutex
-	data map[core.CanonicalID]map[string]map[string]string
+	mu         sync.RWMutex
+	data       map[core.CanonicalID]map[string]map[string]string
+	attributes map[core.CanonicalID]map[string]map[core.CanonicalID]string
 }
 
 // NewMemoryStoreは、空の参照記憶域を作る。
 func NewMemoryStore() *MemoryStore {
-	return &MemoryStore{data: map[core.CanonicalID]map[string]map[string]string{}}
+	return &MemoryStore{
+		data:       map[core.CanonicalID]map[string]map[string]string{},
+		attributes: map[core.CanonicalID]map[string]map[core.CanonicalID]string{},
+	}
 }
 
 // Applyは、入力全体からキーを作り、宣言された効果を記憶域へ適用する。
@@ -32,6 +36,11 @@ func (s *MemoryStore) Apply(effect *semantic.DataEffect, inputs map[string]strin
 
 // ApplyWithKeyは、呼出し側が決めたキーで効果を適用する。
 func (s *MemoryStore) ApplyWithKey(effect *semantic.DataEffect, key string, inputs map[string]string) error {
+	return s.ApplyRecord(effect, key, inputs, nil)
+}
+
+// ApplyRecordは、レコード値と属性値の対応を一緒に記憶域へ適用する。
+func (s *MemoryStore) ApplyRecord(effect *semantic.DataEffect, key string, inputs map[string]string, attributes map[core.CanonicalID]string) error {
 	if effect == nil {
 		return fmt.Errorf("data effect is not declared")
 	}
@@ -43,22 +52,32 @@ func (s *MemoryStore) ApplyWithKey(effect *semantic.DataEffect, key string, inpu
 	if s.data[effect.Data] == nil {
 		s.data[effect.Data] = map[string]map[string]string{}
 	}
+	if s.attributes[effect.Data] == nil {
+		s.attributes[effect.Data] = map[string]map[core.CanonicalID]string{}
+	}
 	switch effect.Kind {
 	case semantic.DataEffectCreate:
 		if _, exists := s.data[effect.Data][key]; exists {
 			return fmt.Errorf("record %s already exists", key)
 		}
 		s.data[effect.Data][key] = copyValues(inputs)
+		if attributes != nil {
+			s.attributes[effect.Data][key] = copyAttributes(attributes)
+		}
 	case semantic.DataEffectUpdate:
 		if _, ok := s.data[effect.Data][key]; !ok {
 			return fmt.Errorf("record %s is not present", key)
 		}
 		s.data[effect.Data][key] = copyValues(inputs)
+		if attributes != nil {
+			s.attributes[effect.Data][key] = copyAttributes(attributes)
+		}
 	case semantic.DataEffectDelete:
 		if _, ok := s.data[effect.Data][key]; !ok {
 			return fmt.Errorf("record %s is not present", key)
 		}
 		delete(s.data[effect.Data], key)
+		delete(s.attributes[effect.Data], key)
 	default:
 		return fmt.Errorf("unsupported data effect %s", effect.Kind)
 	}
@@ -81,6 +100,42 @@ func (s *MemoryStore) DeleteAll(data core.CanonicalID) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	delete(s.data, data)
+	delete(s.attributes, data)
+}
+
+// DeleteKeyは、キーに対応するレコードを削除する。
+func (s *MemoryStore) DeleteKey(data core.CanonicalID, key string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	delete(s.data[data], key)
+	delete(s.attributes[data], key)
+}
+
+// RecordSnapshotは、キー・レコード値・属性値をまとめた参照用の写しである。
+type RecordSnapshot struct {
+	Key        string
+	Values     map[string]string
+	Attributes map[core.CanonicalID]string
+}
+
+// RecordsWithAttributesは、Dataのレコードをキー順に返す。
+func (s *MemoryStore) RecordsWithAttributes(data core.CanonicalID) []RecordSnapshot {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	keys := make([]string, 0, len(s.data[data]))
+	for key := range s.data[data] {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	out := make([]RecordSnapshot, 0, len(keys))
+	for _, key := range keys {
+		out = append(out, RecordSnapshot{
+			Key:        key,
+			Values:     copyValues(s.data[data][key]),
+			Attributes: copyAttributes(s.attributes[data][key]),
+		})
+	}
+	return out
 }
 
 // Recordsは、Dataの現在のレコードを返す。
@@ -99,23 +154,38 @@ func (s *MemoryStore) Records(data core.CanonicalID) []map[string]string {
 	return out
 }
 
-func (s *MemoryStore) snapshot() map[core.CanonicalID]map[string]map[string]string {
+type memorySnapshot struct {
+	data       map[core.CanonicalID]map[string]map[string]string
+	attributes map[core.CanonicalID]map[string]map[core.CanonicalID]string
+}
+
+func (s *MemoryStore) snapshot() memorySnapshot {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	out := map[core.CanonicalID]map[string]map[string]string{}
+	out := memorySnapshot{
+		data:       map[core.CanonicalID]map[string]map[string]string{},
+		attributes: map[core.CanonicalID]map[string]map[core.CanonicalID]string{},
+	}
 	for data, records := range s.data {
-		out[data] = map[string]map[string]string{}
+		out.data[data] = map[string]map[string]string{}
 		for key, record := range records {
-			out[data][key] = copyValues(record)
+			out.data[data][key] = copyValues(record)
+		}
+	}
+	for data, records := range s.attributes {
+		out.attributes[data] = map[string]map[core.CanonicalID]string{}
+		for key, attributes := range records {
+			out.attributes[data][key] = copyAttributes(attributes)
 		}
 	}
 	return out
 }
 
-func (s *MemoryStore) restore(snapshot map[core.CanonicalID]map[string]map[string]string) {
+func (s *MemoryStore) restore(snapshot memorySnapshot) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.data = snapshot
+	s.data = snapshot.data
+	s.attributes = snapshot.attributes
 }
 
 func recordKey(inputs map[string]string) string {
@@ -146,6 +216,14 @@ func keyText(inputs map[string]string, keys []string) string {
 		parts = append(parts, key+"="+inputs[key])
 	}
 	return strings.Join(parts, "\x00")
+}
+
+func copyAttributes(values map[core.CanonicalID]string) map[core.CanonicalID]string {
+	out := make(map[core.CanonicalID]string, len(values))
+	for key, value := range values {
+		out[key] = value
+	}
+	return out
 }
 
 func copyValues(values map[string]string) map[string]string {
@@ -198,13 +276,15 @@ func (e ReferenceDataExecutor) Execute(_ context.Context, request Request) (Resu
 			}
 		}
 	}
+	plan, _ := applicationview.BuildCommandPlan(e.World, request.Application, request.Pattern, request.Capability, request.Inputs)
+	targetAttributes := attributeValues(plan)
 	if capability.Effect != nil && capability.Effect.Kind == semantic.DataEffectDelete {
-		if err := e.checkDeletePolicy(capability.Effect.Data); err != nil {
+		if err := e.checkDeletePolicy(capability.Effect.Data, targetAttributes); err != nil {
 			return Result{}, err
 		}
 	}
 	key := recordKeyFields(request.Inputs, e.KeyFields)
-	if err := e.Store.ApplyWithKey(capability.Effect, key, request.Inputs); err != nil {
+	if err := e.Store.ApplyRecord(capability.Effect, key, request.Inputs, targetAttributes); err != nil {
 		return Result{}, err
 	}
 	result := Result{Effect: capability.Effect}
@@ -368,11 +448,35 @@ func (e ReferenceDataExecutor) checkRequiredInputs(request Request) error {
 	return nil
 }
 
-func (e ReferenceDataExecutor) checkDeletePolicy(target core.CanonicalID) error {
+func (e ReferenceDataExecutor) checkDeletePolicy(target core.CanonicalID, targetAttributes map[core.CanonicalID]string) error {
 	for _, namespace := range e.World.Semantics {
 		for _, data := range namespace.Data {
 			for _, relation := range data.Relations {
 				if relation.Target != target {
+					continue
+				}
+				if len(relation.Keys) > 0 {
+					for _, record := range e.Store.RecordsWithAttributes(data.ID) {
+						matched := true
+						for _, key := range relation.Keys {
+							source, sourceOK := record.Attributes[key.SourceAttribute]
+							targetValue, targetOK := targetAttributes[key.TargetAttribute]
+							if !sourceOK || !targetOK || source != targetValue {
+								matched = false
+								break
+							}
+						}
+						if !matched {
+							continue
+						}
+						switch relation.OnDelete {
+						case "cascade":
+							e.Store.DeleteKey(data.ID, record.Key)
+						case "preserve":
+						default:
+							return fmt.Errorf("inbound relation %s restricts delete of %s", relation.ID, target)
+						}
+					}
 					continue
 				}
 				if len(e.Store.Records(data.ID)) == 0 {
@@ -391,6 +495,16 @@ func (e ReferenceDataExecutor) checkDeletePolicy(target core.CanonicalID) error 
 	return nil
 }
 
+func attributeValues(plan applicationview.CommandPlan) map[core.CanonicalID]string {
+	out := map[core.CanonicalID]string{}
+	for _, input := range plan.Inputs {
+		if input.Provided && input.Attribute != "" {
+			out[input.Attribute] = input.Value
+		}
+	}
+	return out
+}
+
 // StoreUnitOfWorkは、MemoryStoreのスナップショットでRollbackする参照実装である。
 type StoreUnitOfWork struct {
 	Store      *MemoryStore
@@ -406,7 +520,7 @@ func (u *StoreUnitOfWork) Begin(context.Context) (Transaction, error) {
 
 type storeTransaction struct {
 	unit     *StoreUnitOfWork
-	snapshot map[core.CanonicalID]map[string]map[string]string
+	snapshot memorySnapshot
 	done     bool
 }
 
