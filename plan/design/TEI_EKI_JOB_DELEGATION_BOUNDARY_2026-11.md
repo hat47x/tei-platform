@@ -239,6 +239,10 @@ Workerにはoutbound-firstの社内PC/ARM64 Raspberry Pi/On-prem資源Poolも候
 
 [予算・リードタイム・回復調停](TEI_EKI_DEADLINE_BUDGET_RECOVERY_COORDINATION_2026-11.md)へ詳細を分離。TEI Job/Flowの`not_before/target_complete/latest_useful`、End-to-endの検証・業務完了条件、再実行/Checkpoint/Effect ClassはTEIの意味契約。EKIのPool Brokerは現在の許可済みDLG-1／BUD-1／CAP-1、Queue/Transfer/Provision/Verifyと失敗後の復旧余力を用い、配置候補／早期引上げ／期限リスクWarningを返す。**単独Jobの候補順位だけでなく、複数部門の既存予約・回復Window・公平枠を横断し、Planの予測とProvider実予約／EKI Authority／TEI Business Completionを別の事実として返す**（詳細は追補§10）。**予定通りの完了は保証しない**（EKI RQ-057）。実外部効果がUnknownの場合、期限逼迫は勝手な再試行許可にならない。Provider内の再試行とEKI Attemptの再試行を二重化せず、TEI Business CommitのOwnerも変更しない。
 
+### 8.12 他レーンの実Go CLI／Action／BatchとEKIの証拠を一つの試行で照合
+
+[TEI→EKI→Providerの一改訂・実行証拠の縦断](TEI_EKI_ONE_REVISION_EVIDENCE_VERTICAL_SLICE_2026-11.md)を追加。TEI #1130のJL-01〜07とAJ、#1129のData Script XL、#2616の実Go CLI/Action Offer（限定Go試験と実Host未検証の区別）、#2667のSource/Meaning/Artifact/Consumer境界を、**同じ純粋JobのT0 Direct／T1 EKI Native／T2 Managed Provider**へ接続する。EKIのTask acceptedはResult body取得・Provider実予約・TEI Business Commitとは異なる。まず#112の旧Artifact/Result 422/501 Gapを解消したか同じInput bytes/digestで検証し、新Host/Registry/Schedulerを前提にしない。Job/Business MeaningのOwnerもEKIへ移さない。
+
 ## 9. 設計判断のGate、実装順、Issue追補候補
 
 - **G0／今回の設計比較**：EKI ADR-0013・一方向依存・native-first kernel とTEI no-custom-Host/Plugin-firstを保持し、上記二層案を未採用の候補とする。TEI Draft PRへの資料追加だけで、EKIのRequirements/ADR/Mainは書換えない。
