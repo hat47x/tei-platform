@@ -697,3 +697,32 @@ BP-05の対象を人手の受理票では `(TargetSet L, EmptyPolicy E, Predicat
 **検収出力**は既存のread-only #1125レビュー票に`L/E/P + Owner decision/revision + evidence scope (static/synthetic/actual) + Provider route/slice/completeness/as-of + rule/operator/query versions + negative-stop proof + consumer use/authority + unresolved`を関連付けるだけとする。新しいStatus/Acceptance正本、形式証明器、Host、Gate、Query/Validation DSL実装は作らない。業務確認の履歴・正式Commit/Receipt・独立ObservationのClaimは[別S3設計](https://github.com/hat47x/tei-platform/issues/1125#issuecomment-6585850700)および#1174を参照し、BP-05の評価PASSに合算しない。
 
 **段階**：S0（本節の静的・read-only整理）→既存S1の第3規則負例→S2の実Provider/cohort証拠→S3でOwnerの`L/E/P`受理と説明。実Go/DB/Provider/Lean/Studio/SHOの追加試験、正式Owner受理、#1119製品Gateの合格はこの文書では**NOT RUN/NOT ACCEPTED**。現時点の比較器`review-needed`、人手分類`undecided`を維持する。
+
+### 15.11 全件成立と不成立の証拠非対称性（2026-11-03、read-only計画・NOT RUN）
+
+§15.5のQ1–Q5と§15.9の`(L,E,P)`を前提に、全行正値の評価主張を**成立証拠**と**反例証拠**に分ける。これは新しい`Result`型やValidation Engineを追加する仕様ではなく、既存`review-validation-scope`とContext/Provider証拠に付ける判定理由である。
+
+- `∀x∈L P(x)` の**成立**には、対象`L`の意味受理、必要な`R`の集合・Field完全性、同版・同時点、適切なRule適用の証拠が必要。部分取得`R⊂L`で見えている行がすべて正値でも、全行成立とは主張できない。
+- 一方、`b∈L`と`P(b)=false`を同一Scope・有効時点・正しい型で**確実に観測した**なら、他の未取得行が存在しても当該時点の全称命題は不成立と証明できる。これは**限定的な反例証人**であり、対象`b`のmembershipが未解決、既知でない`NULL/absent`、無関係tenant、古いSnapshot、非開示情報の無権限取得からは導かない。Owner未受理のBP-05責務や正式Submit拒否への昇格も禁止する。
+- `line_number_unique`については、`a,b∈L`、異なる明細identity、同一番号を正しい粒度・時点で観測した場合、**重複の存在**は全件取得せず反証可能。一方、部分取得で重複を見つけられなかったことから**全件一意**とは主張できない。`quantity_positive`も同じ全称／反例の区別を持つが、既存の`ORDER BY line_number`だけで数量の全件成立は証明できない。
+- 真に`L=∅`の場合の形式的な全称命題は§15.9の`E`に従って別判定する。観測`R=[]`かつcoverage unknownを`L=∅`へ昇格させない。「明示的な0は規則不成立」と「未取得・部分取得によって規則の評価ができない」を混同しない。
+
+| 既存の二明細を使う限定比較（いずれも新規実行NOT RUN） | Predicateに関して導けること／導けないこと |
+| --- | --- |
+| **U1** `R=[A(1)]`、提出`L`が全件だが取得`partial`、違反行は未観測 | **全行成立は未確立**。存在するはずのBの個数や値を一般Consumerへ漏らさない |
+| **U2** `R=[B(0)]`、Bが受理済み`L`へ所属すること、数値0、時点を資格確認済み、他行未取得 | **当該時点の全行正値は反証可能**。ただし正式Operationを止める根拠には別途受理規則・現在性・認可/Commandへの接続が必要 |
+| **U3** 同じ`B(0)`だが、BのRelation所属／tenant／行Versionが不明、またはFieldが`absent` | **違反の主張も未確立**。`NULL/absent`を0へ変換しない |
+| **U4** 異なる明細A/Bの同一行番号を同じ`L`で観測／逆に部分集合で衝突なし | 前者は当該時点の**一意性違反の証人**。後者は**全件一意性を保証しない** |
+
+既存#2506/#2622が行・Fieldの取得とContext完全性、#2582が同一Claimの変更・Membership、#2387がQuery Predicate・Source版、#2516が表示・非開示を担当する。**一件の有効な反例を検知できることと、全件を完全に取得できることは別の能力**であり、いずれも合成Fixtureの局所PASSを本番保証へ昇格しない。
+
+### 15.12 同一Ruleのオンライン検査と後追いData Quality監査を分離（計画・NOT RUN）
+
+[#2622のData Quality構想](https://github.com/hat47x/tei-platform/issues/2622#issuecomment-6598969026)と[増分監査の制約](https://github.com/hat47x/tei-platform/issues/2622#issuecomment-6599457368)を既存BP-05へ限定接続する。Ownerに受理された**同じ**`L/E/P`、Rule/Operator/Relation版から、(1)提出時の必要条件の評価と、(2)特定Snapshot・対象母集団の読取専用監査を派生できる可能性はある。ただし二つは**同じ実行資格ではない**。新たなRule正本、共通Scheduler、実行Host、全面スキャンEngineを提案しない。
+
+- **Online**：そのOperationが必須とする入力・時点・Rule版・現在権限と、規則不成立時に実際に認可/Commandを止める証拠を扱う。実ProviderのCoverage/時点が不足する場合、業務`satisfied`へ推測しない。
+- **Offline**：`asOf`、対象集合の粒度・Scope、Rule/Query/Provider版、Row/Field completeness、Snapshot、RLS/取得権限を固定した**過去時点相対のQuality Finding**を返す。監査で後から行番号0を発見しても、過去のCommitを「実行されなかった」ことへ書き換えず、現在のSubmit可否・再試行権限やOwnerの業務完了を自動判定しない。
+- **増分再監査**：前回Checkpointと今回の間に**関連する全変更**（Value、追加・削除、Relation membership、Query Predicate/Sort、Rule/Operator/Schema、Provider/Scope）が被覆される証拠がある場合だけ、無関係変更を理由に全面再Scanを省略する候補とする。見えた変更が0件、Source byte一致、旧合格だけでは無変更を証明しない。[#1125の変更窓の反例](https://github.com/hat47x/tei-platform/issues/1125#issuecomment-6579870075)と#2600を再利用する。
+- **同一Attemptの縦断**：最小の実証に進むときは、#2586の既存Scenarioで`Owner候補L/E/P→実Function Mapping/Query→Provider Result Slice→Rule評価→Authorization/Command呼出し→Consumer表示`の**同一Attempt**と時点を照合。#1174のEffect/Receipt、#2516の現在開示資格は独立列とし、別試験の成功を継ぎ足さない。既存の第3規則不成立時停止の負例（S1）は未実施のまま残す。
+
+**実施順は既存S0–S3を変更しない**。追加したU1–U4とOnline/Offlineの記録はread-only検収票の比較欄であり、製品の新GateでもOwner決定でもない。BP-05の`canonical:false`、checker=`review-needed`、人手=`undecided`を維持する。Go/SQL/DB/Provider/SHO/Studio/Owner意味受理と同一Attemptの新規実測は本節では**NOT RUN**。
