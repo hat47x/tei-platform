@@ -203,6 +203,14 @@ EKIが停止してもTEIのData Model／純粋Derivation／ローカルValidatio
 
 **停止・採否**：EKIがBusiness Flowの理解を必要とする／TEI側に隠れた常駐Runnerが必要／同じStepを二主体が再試行する／partialまたはunknownをsuccessへ変換する／Springの便利機能が独立AuthorityとTx境界を破るならその委譲案を採らない。まず現行EKI #57/#112/#242のTask実行縦断を検証し、Group・Timers・Deferred・DAGは必要な最小Caseが失敗する際のみ追加要求へ昇格する。
 
+### 8.6 EKIの継続的な資源・Node運用へのTEI適用（2026-11-03、Owner追加）
+
+[EKI Resource／Node運用のTEI可視化・Simulation・AIレビュー計画](TEI_EKI_RESOURCE_OPERATIONS_SIMULATION_2026-11.md)を参照。**EKIはJob Controllerだけでなく、CPU/GPU/Memory、Worker Node／Local Governor、Pool／Delegate、Resource Reservation、Resident/Session、権限の失効と回復を継続的に管理する製品**。TEIは、そのEKI自身の**Application Plane**として、運用Model/Graph/表・時間軸・シミュレーション・生成AIレビュー・運用Function/Runbook・安全なAdmin Intentを最大限実装できる候補である。TEIをただの管理画面描画器に矮小化しない。
+
+ここでも依存は逆転させない。EKIのObservation Planeは非Authority、Resource/Lease/Placement/Local Governorの実権限はEKI Kernel／OS／Providerに残す。TEIが生成した可視化・AI候補・Simulationを、WorkerやDeviceの直接制御・Lease発行・Admin権限に格上げしない。EKIのControl PlaneやLocal GovernorはTEI/AIが停止していても端末を保護する。
+
+特に現在のEKI[#354](https://github.com/hat47x/eki-fabric/issues/354)は同時Attemptの**合計予約**、[#118](https://github.com/hat47x/eki-fabric/issues/118)はCPU/GPU/NPU等の観測可能性、[#123](https://github.com/hat47x/eki-fabric/issues/123)は安全なAgent更新、[#124](https://github.com/hat47x/eki-fabric/issues/124)は端末利用者への提供履歴と説明を課題としている。これらをTEI Simulationの独立Expected／危険な操作のPreview・停止条件へ接続するが、未実装のEKI管理API／状態変化をTEI画面が提供済みとはしない。
+
 ## 9. 設計判断のGate、実装順、Issue追補候補
 
 - **G0／今回の設計比較**：EKI ADR-0013・一方向依存・native-first kernel とTEI no-custom-Host/Plugin-firstを保持し、上記二層案を未採用の候補とする。TEI Draft PRへの資料追加だけで、EKIのRequirements/ADR/Mainは書換えない。
