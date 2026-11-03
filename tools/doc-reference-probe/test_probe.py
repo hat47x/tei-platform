@@ -7,7 +7,7 @@ import sys
 from datetime import date
 from pathlib import Path
 
-from probe import apply_allowlist, audit_allowlist, check, compare_allowlists
+from probe import apply_allowlist, audit_allowlist, check, compare_allowlists, parse_allowlist
 
 
 class ProbeTest(unittest.TestCase):
@@ -226,6 +226,29 @@ class ProbeTest(unittest.TestCase):
             changed = subprocess.run(command, capture_output=True, text=True, check=False)
             self.assertNotEqual(changed.returncode, 0)
             self.assertIn("baseline SHA-256 mismatch", changed.stderr)
+
+    def test_duplicate_json_keys_rejected_in_current_and_baseline(self):
+        for raw in ('{"baseline_count":0,"baseline_count":1,"entries":[]}',
+                    '{"baseline_count":1,"entries":[{"document":"docs/a.md","name":"docs/a",'
+                    '"reason":"first","reason":"second","issue":2309}]}'):
+            with self.assertRaisesRegex(ValueError, "duplicate JSON key"):
+                parse_allowlist(raw)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "docs").mkdir()
+            (root / "docs" / "example.md").write_text("no references", encoding="utf-8")
+            current = root / "current.json"
+            baseline = root / "baseline.json"
+            good = '{"baseline_count":0,"entries":[]}'
+            bad = '{"baseline_count":0,"baseline_count":1,"entries":[]}'
+            command = [sys.executable, str(Path(__file__).with_name("probe.py")), "--root", str(root),
+                       "--allowlist", str(current), "--baseline-allowlist", str(baseline), "docs/example.md"]
+            for current_text, baseline_text in ((bad, good), (good, bad)):
+                current.write_text(current_text, encoding="utf-8")
+                baseline.write_text(baseline_text, encoding="utf-8")
+                run = subprocess.run(command, capture_output=True, text=True, check=False)
+                self.assertNotEqual(run.returncode, 0)
+                self.assertIn("duplicate JSON key", run.stderr)
 
 
 if __name__ == "__main__":
