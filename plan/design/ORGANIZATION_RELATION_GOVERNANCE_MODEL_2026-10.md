@@ -2078,3 +2078,56 @@ TEI上の組織/Capacity Planningを、コアに組み込まれた例外的なEn
 2026-11-03 09:03Z実行の[PR #2779 Actions #41607867473](https://github.com/hat47x/tei-platform/actions/runs/41607867473)は、fixed HEAD `e51a7bb692177c0a50daf7686649da530f5e1a0d`に対し**completed/success**。Node **v22.16.0**、`verify.mjs`の**27 checks PASS**、`node --test`の**225/225 PASS・fail 0**（そのうち新規TS-01〜20の20件）をログから確認。今回の新SourceのBlobは`3b314fef6d19a98bb5f55400dc69335687f2676f`、利用した共通Fixture Blobは`d66f29505389f2096e9b825ba4f5e2d799d607d4`。Workflowのexact-head照合・試験後cleanもsuccessful。旧「V8局所PASSのみ／CI未確認」は記録時点の状態であり、本節の新しい固定版の実測を優先する。
 
 **ただし、この合計252 checksを製品横断252件と呼ばない。** 27は別Reference検査、225はNode合成テストであり、同じRunnerで成功した局所E0のみ。PR #2681の実Go E1は別固定Source/別Run、#2779に実TEI Native・SQL・Provider/DB・Studio/SHO・Host・Owner受理の証拠はない。#1119のP0 DB/Owner-write優先や既存Gateを変えない。
+
+## 56. 組織E2にSQLを必須化しない：宣言済みData/Relationから実Function Data Contextへ（2026-11-03、#1126/#2622/#2506/#2586との横断受入案）
+
+### 56.1 既存実装を照合した決定：Data Modelは直接宣言が正本、SQL Queryは利用側の手段
+
+- **実Authoringの正本入口**：[PR #2681](https://github.com/hat47x/tei-platform/pull/2681)の`reference/org-headless-workspace/semantic/organization/model.tei`は`Person`、`OrgUnit`、`Membership`、`Position`、`Occupancy`を`data`で直接宣言する。所属/在任は別DataのRelation occurrenceであり、SQL/DDLを逆解釈してEntityを作る方式ではない。Membershipの物理`persist`と`primary-key`は別の保存契約。現状の`validFrom`/`knownFrom`は**単なるAttribute**であり、Bitemporal評価の実装ではない。
+- **実Surfaceの限界**：main `internal/operations/surface.go`の`SurfaceWorkspace`は実Loader/Source Index/Worldを読み、`DeriveOperationSurface`へ渡し、`worldFingerprint`/`modelRevision`を付与する。Surface自身の`effect=read-only`および`AuthorityLimits`は実読取や実行権限を表さない。#2681 fixed-head CI成功は**E1: native Model→read-only OperationSurface/Artifacts**に限る。
+- **既存Query入口の限界**：mainの`internal/query/model.go`で現行`EmbeddedSQL`はNative SQL＋`Inputs`＋`ResultColumns`を持つ。`internal/syntax/query_authoring.go`はSQL本文/fileを構文処理し、`internal/query/derived.go`の`DeriveFromAnalysis`はSQL Analyzer結果からスコープ/Lineage/RelationalIRを作る。SQL由来`FieldID`はTEI Semantic IDではない。**この実装が存在することから、標準Relation Traversalが既に動作するとは言えない**。
+- **表示入口の限界**：main `internal/applicationview/browse.go`の`BuildBrowse`は`Pattern.Query`から`EmbeddedSQL.ResultColumns`をSemantic Attribute/表示項目へ解決する**read-only projection**。#2679の`query.input`↔`filter.parameter`の型検証とHTMLへの表示は実装済みでも、Data Contextを実Providerから取得してQueryを実行した証拠ではない。
+
+これらは二者択一ではない。TEIの**業務/データ正本は直接宣言**、通常の関連データ取得は**既存Data/Relationに基づくData OperationsとFunctionごとの明示Mapping**を主経路とし、集約/複雑な結合/DB特有演算などにはQuery（TEI Query/Native SQL）を補助として利用する。**QueryにSQLが現在実装されていることを理由に、ドメイン専門家へ普段からSQLを強制しない**。Relationを根拠にQuery候補・Planを自動導出することは可能でも、無制限な暗黙Fetchは認めない。何を取得するかはFunctionの宣言がOwnerで、Studioは補完/診断を提供する。
+
+### 56.2 E2の最初の一往復を固定：Read Planが先、SQL形式は後
+
+既存`.tei`モデルを更新する前に、次の**実製品受入対象**を限定する。
+
+`org_view`が`organization.membership`をRelation occurrence IDで取得し、Function Data Contextが必要な`membership_id/person_id/org_unit_id/allocation`、`person`・`unit`の参照関係、`validAt/knownAt`の必要条件を**明示して指定**する。実Providerは要求と実Readを別のEvidenceとして返す。現在の`.tei`の有効/認知日時はAttributeのみのため、cut条件の意味・実SQL生成/Provider pushdownを **まだ実装済みと扱わない**。
+
+同じSource/Meaning/Role Pin/Query・Mapping/Read sessionに対し、固定したA1〜A4、P1〜P3、D1/D2、配賦100/60/40/100、容量D1=180/D2=160を外部DB実レコードとして登録した試験を実行できた場合にのみE2の評価へ進む。**現在のNative WorkspaceにはSchema・Read Operation宣言しかなく、試験データは登録されていない**。現実のProvider接続が不足する場合、独立合成E0の値を貼り付けたデモでE2 PASSとは報告しない。
+
+提案するTrial（例示ID、採用API名ではない）：
+
+| Trial | 同一入力での差分 | 独立Expectedと必要観測 | 成立させてはいけないClaim |
+| --- | --- | --- | --- |
+| ORG-E2-01 | 元A1〜A4をMembership ID単位で取得 | 4 occurrence、3 distinct Persons、D1=160、D2=140、全体300のbasis-points。実readした4行と必要4 FieldのWitness | `Person=4`、`JOIN行数=実体件数` |
+| ORG-E2-02 | D1でRelation/filterを選択 | A1/A2のみ。条件に使う`org_unit_id`は出力に隠れても依存 | D1の0件/全員数をpartialで確定 |
+| ORG-E2-03 | Person P2をAnchorとした二所属 | A2/D1とA3/D2の2 occurrence、Personは一人 | 1 PersonだからRelation一つ、A2= A3 |
+| ORG-E2-04 | `Membership→Person`と`Membership→OrgUnit`を追う | それぞれ明示Relationのtarget/foreign-keyのみ。Source側1のcardinalityが全Person側の所属1件を意味しない | Occupancy⇒Membership、未宣言Relationの自動Fetch |
+| ORG-E2-05 | A2のAllocation Fieldだけ非観測／observed NULL／0の3世界 | Membership ID一覧は維持可能。FTEはunknown/Owner NULL policy/zeroを区別 | `not-requested=NULL=0` |
+| ORG-E2-06 | Rowset partial 1ページ、または0件の不明Cohort | 限定的正のWitnessのみ保持。全体count・NOT EXISTS・Capacityはunverified | 不明0件から「組織不存在」 |
+| ORG-E2-07 | knownAtのR1→R2遡及訂正（同validAt） | R1/R2の旧公開と現行評価を別Claim/Result Slice。Query/Providerで時点実装がないならNOT RUN | SQL/Attribute名があればbitemporal対応済み |
+| ORG-E2-08 | WHERE/ORDER/EXISTSの非出力Field・依存Ruleを変更 | 変更が出力列不変でも結果資格は再評価。Source/Queryの必要Footprintと実Read Witnessの不一致を説明 | 出力の等しさから同じDependency/取得 |
+| ORG-E2-09 | D1→D1a/D1bのWhat-if overlay | BaselineとProposalの別Slice/Source資格、旧Capacity未継承。実DB変更なし | Simulation PASSからOwner Acceptance/Grant/Effect |
+| ORG-E2-10 | 旧A2を画面選択後、同じP2のA3／新A2newが候補に現れる | 別Relation occurrence/Context epoch/期待版を維持、Dirty Patchは無断消去しない | 任意の同一Personへ書込Targetを付替え |
+
+**SQLはE2-01〜04の正本生成手段でない**。既存実Providerが標準Relationの読取り/自動Relation Traversalをまだ提供しない場合は、そのGapを#2622/#1127へ返し、具体的なProvider実装を最小化する。いきなり`query { sql postgres ... }`をAuthoring前提としてORG標準モデルを変えない。ただし比較・調査用の明示Native SQLが必要なら、Query Source/Dialect/Schema/Analyzer版・実Executionを別契約として評価する。
+
+### 56.3 物理取得の「実行された」という証拠を最小化する
+
+同一Trialの記録は **(a)要請されたData/Field/Relation/Scope**、**(b)実Providerがアクセスした物理対象・Field・行集合/ページ・Route・Read Session**、**(c)結果として返したResult Slice・粒度・Version**、**(d)Consumer/Ruleが実際に使った依存**を分ける。Providerに実Read Witness APIがない場合は「witness unknown」を正直に保持し、Source/Mapping一致や出力一致で代理証明しない。秘密Field/外部Sourceの読む/見せる権利も、通常Dataの利用や現在の書込Grantとは異なる。
+
+特にE2-01の`D1/D2 FTE合計`は、同一Cohortで四つの所属occurrenceとAllocation値の観測が必要。観測可能性の一部が欠けた場合、Member一覧のL0表示は可能でも`capacity satisfied` Claimはできない。Field例の`allocation`は試験用basis pointsであり、業務の配賦単位/有効時点/丸め/労働契約を受理したわけではない。
+
+### 56.4 受入計画とOwner
+
+1. **E1固定証拠**：#2681 fixed HEAD `8efe0d351a244b57fefd00b498a5b47136619ac5`、Actions #41580077197の`go test`・`validate`・`operations`・`artifacts`成功を入力資格とする。ここを変更したら元CIを流用しない。
+2. **実Data Ops優先のE2受入**：#2622/#1127はRelation path→物理Mapping→Provider readの具体入口を調査。#2506はFunctionの明示要請とContext Result Sliceを担当。#2628/#2611は実Route/Read Witness/多重Mapping、#2387はQueryによる依存、#2635は非出力Query Footprintの照合。#2586は同一Source/一Attemptの端から端の消費を束ね、個別Provider/Loader実装を二重に所有しない。
+3. **E3/E4は引継ぎのみ**：#2497/#2631/SHOはBaseline/Proposal/Publishedと編集逆射影、#2582は変化後の用途相対再資格、#2598/#1174は現在Request/Host/Effectを別受理する。#2779（合成TS Node）と#2681（E1 Go）は**別試行の成功**であり、E2〜E4達成ではない。
+4. **試験失敗時の停止**：実Relation Data Ops不在→`NOT RUN: relation-path-producer-unavailable`、実Provider/DB未接続→`NOT RUN: provider-unavailable`、Query解析実Producer未特定→`NOT RUN: sql-worker-unavailable`、必要Field/Rowset/Cohort不明→`unverified`、Meaning Owner未受理→`not accepted`。Errorを成功やfalseへ丸めない。#1119の既存P0-a/P0-b実DB/Owner-write Gateを変えない。
+
+**扱わない**：新Domain Core、SQLから組織Dataを逆生成する新正本、Go固有構文を日常DSLへ強制すること、第二Query/Context/Host/Proof/Authorization Engine、通常の組織Dataに対する専用ACL、外部Authoritative Sourceの勝手な受理。受入票は既存Evidence/ID/Revisionへの参照で構成し、巨大な全機能共通DTOを導入しない。
+
+**本節の証拠境界**：既存Go/Nodeのfixed-head CI成功とmain code読取にもとづく**設計・Gap判定のみ**。本節でORG-E2-01〜10の実Query／実Provider／実DB／Studio／SHO／Hostを起動してはいない。別のToolchainでのSQL解析・実データ取得成功を推測しない。
