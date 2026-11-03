@@ -57,6 +57,7 @@ go run ./tools/reference-shared-acceptance propose-qualified-reference-pattern -
 go run ./tools/reference-shared-acceptance revision -workspace DIR
 go run ./tools/reference-shared-acceptance preview  -workspace DIR -candidate FILE [-out FILE]
 go run ./tools/reference-shared-acceptance review   -workspace DIR -candidate FILE [-format text|json|html] [-out FILE]
+go run ./tools/reference-shared-acceptance compare-application-membership -before DIR -after DIR
 go run ./tools/reference-shared-acceptance accept   -workspace DIR -candidate FILE -expected-review-fingerprint SHA256 [-derived-out FILE] [-out FILE]
 go run ./tools/reference-shared-acceptance reject   -workspace DIR -candidate FILE [-reason TEXT] [-out FILE] [-allow-reference-baseline]
 go run ./tools/reference-shared-acceptance decisions -workspace DIR [-out FILE]
@@ -67,6 +68,7 @@ go run ./tools/reference-shared-acceptance decisions -workspace DIR [-out FILE]
 - `revision`: workspaceの現在のmodel revision（管理対象source全fileの相対pathと内容fingerprintから導出）を出力します。candidateの`baseModelRevision`にはこれを使います。
 - `preview`: sourceを一切書き換えずに、各stageの結果・Semantic Diff・impact・unresolvedを出力します。受理可能でなければ終了コード1です。
 - `review`: `preview`と同じread-only評価を使い、承認時に確認する内容をA1〜A8の順で表示します。既定は人が読むtextで、`-format json`を指定すると同じ内容を機械可読で出力し、`-format html`を指定すると同じ内容を1枚のHTMLで出力します。HTMLは外部のscript・stylesheet・font・imageを使わず、JavaScriptなしで読めます。権限差分とnative codeの残存箇所は現時点で専用評価がないため、推測で「変更なし」とせず`未評価`と表示します。
+- `compare-application-membership`: 二つのWorkspaceを読み、Applicationの厳密な差分と、意味名前空間の利用順を区別しない限定候補を別々に標準出力へ表示します。どちらかのWorkspaceに検証エラーがあれば診断を返して終了1とし、候補を出しません。`-out`は受け付けず、SourceやDecisionを変更しません。**受理用PreviewやDecisionではなく**、受理・互換性・影響なしの判定には使えません。Sourceの並び、Targetへの影響、依存の網羅性、二つのWorkspaceが固定された同時点のsnapshotであることは確認しません。Validationの宣言順と重複は保持します。
 - `accept`: CLIからauthoritative sourceを更新する場合は、先に`review`で得た`reviewFingerprint`を`-expected-review-fingerprint`へ必ず渡します。同じ検査とReview Projectionを最初から作り直し、fingerprintが一致して受入検査も通った場合だけsourceを更新します。更新後はtoolを介さない共有loaderで再読込し、Previewが示した差分どおりか・Validationが通るか・派生物を決定論的に再生成できるかを確認します。一つでも満たさなければ元のsourceへ戻します。`-derived-out`にaccepted sourceから再生成したCanonical World JSONを書き出せます。
 - `reject`: authoritative sourceを変更せず、退けたcandidateをcontent-addressed Decisionとして`.tei/decisions/`へ記録します。staleなcandidateも退けられ、基準revisionとcurrent revisionの食い違いをDecisionへ残します。Decision ledgerはmanaged sourceではないためmodel revisionを変えません。Gate B / Gate Cのreference baselineへ記録する場合だけ`-allow-reference-baseline`が必要です。
 - `decisions`: accepted / rejected Decisionの記録を、現在のworkspaceと照合して出力します。workspace全体のrevision、Decisionが書いたsourceの有無・現在性、判断時に使ったEvidenceの現在性を別々に確認します。

@@ -24,6 +24,7 @@ func main() {
 const usage = `usage:
   reference-shared-acceptance preview -workspace DIR -candidate FILE [-out FILE]
   reference-shared-acceptance review  -workspace DIR -candidate FILE [-format text|json|html] [-out FILE]
+  reference-shared-acceptance compare-application-membership -before DIR -after DIR
   reference-shared-acceptance accept  -workspace DIR -candidate FILE -expected-review-fingerprint SHA256 [-derived-out FILE] [-out FILE] [-allow-reference-baseline]
   reference-shared-acceptance reject  -workspace DIR -candidate FILE [-reason TEXT] [-out FILE] [-allow-reference-baseline]
   reference-shared-acceptance attach-qualification -candidate FILE -qualification FILE [-out FILE]
@@ -44,6 +45,9 @@ func runCLI(args []string, stdout, stderr io.Writer) int {
 		return 2
 	}
 	command := args[0]
+	if command == "compare-application-membership" {
+		return runApplicationMembershipComparison(args[1:], stdout, stderr)
+	}
 	switch command {
 	case "preview", "review", "accept", "reject", "attach-qualification", "propose-qualified-reference-pattern", "attach-semantic-evaluation", "attach-rmt-transcription", "revision", "decisions", "witness-decision", "confirm-record", "confirm-check", "confirmations":
 	default:
