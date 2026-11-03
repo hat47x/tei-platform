@@ -14,7 +14,7 @@ func fixtureWorkspace(t *testing.T) (string, string) {
 	if err := os.MkdirAll(folder, 0700); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(root, "tei.workspace.yaml"), []byte("workspace: demo\nsources:\n  - custom\n"), 0600); err != nil {
+	if err := os.WriteFile(filepath.Join(root, "tei.workspace.yaml"), []byte("workspace: demo\nformatVersion: 1\nsources:\n  - custom\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
 	file := filepath.Join(folder, "asset.txt")
@@ -94,7 +94,7 @@ func TestObserveSourceTracksWorkspaceManifest(t *testing.T) {
 	// Change a non-semantic part of the manifest. It is still an input to
 	// Workspace selection and must invalidate a Desktop draft observation.
 	manifest := filepath.Join(root, "tei.workspace.yaml")
-	if err := os.WriteFile(manifest, []byte("workspace: demo\nsources:\n  - custom\n# external change\n"), 0600); err != nil {
+	if err := os.WriteFile(manifest, []byte("workspace: demo\nformatVersion: 1\nsources:\n  - custom\n# external change\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := CheckSourceFresh(before); !errors.Is(err, ErrSourceChanged) {
@@ -106,7 +106,7 @@ func TestObserveSourceManifestSymlinkOutsideWorkspaceFailsClosed(t *testing.T) {
 	root, _ := fixtureWorkspace(t)
 	manifest := filepath.Join(root, "tei.workspace.yaml")
 	outside := filepath.Join(t.TempDir(), "external.yaml")
-	if err := os.WriteFile(outside, []byte("workspace: demo\nsources:\n  - custom\n"), 0600); err != nil {
+	if err := os.WriteFile(outside, []byte("workspace: demo\nformatVersion: 1\nsources:\n  - custom\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.Remove(manifest); err != nil {
@@ -126,7 +126,7 @@ func TestObserveSourceTracksParsedSemanticBytes(t *testing.T) {
 	if err := os.MkdirAll(dir, 0700); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(root, "tei.workspace.yaml"), []byte("workspace: demo\nsources:\n  - semantic\n"), 0600); err != nil {
+	if err := os.WriteFile(filepath.Join(root, "tei.workspace.yaml"), []byte("workspace: demo\nformatVersion: 1\nsources:\n  - semantic\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
 	model := filepath.Join(dir, "model.tei")

@@ -24,7 +24,7 @@ func TestRealStudioHostCLIAndGoOperationParity(t *testing.T) {
 	syntax := fixtureWorkspace(t, "hostsyntax", "namespace hostsyntax\n\ndata Broken {\n    attribute invalid type }\n}\n")
 	semantic := t.TempDir()
 	if err := os.WriteFile(filepath.Join(semantic, "tei.workspace.yaml"),
-		[]byte("workspace: host_semantic\nsources:\n  - applications\n"), 0o644); err != nil {
+		[]byte("workspace: host_semantic\nformatVersion: 1\nsources:\n  - applications\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	appFile := filepath.Join(semantic, "applications", "order-entry", "application.tei")

@@ -114,11 +114,11 @@ func loadBoundImportPair(t *testing.T) (consumer, provider string) {
 			t.Fatal(err)
 		}
 	}
-	write(filepath.Join(provider, "tei.workspace.yaml"), "workspace: provider\nsources:\n  - semantic\n")
+	write(filepath.Join(provider, "tei.workspace.yaml"), "workspace: provider\nformatVersion: 1\nsources:\n  - semantic\n")
 	write(filepath.Join(provider, "semantic", "os", "process.tei"),
 		"namespace os\n\ntype ProcessId from std.identifier\n\ndata Process {\n    attribute id type os.process_id\n}\n")
 	write(filepath.Join(consumer, "tei.workspace.yaml"),
-		"workspace: consumer\nsources:\n  - semantic\nimports:\n  - alias: os\n    path: ../provider\n    namespace: os\n")
+		"workspace: consumer\nformatVersion: 1\nsources:\n  - semantic\nimports:\n  - alias: os\n    path: ../provider\n    namespace: os\n")
 	write(filepath.Join(consumer, "semantic", "watch.tei"),
 		"namespace monitoring\n\ndata Watch {\n    attribute process type os.process_id\n}\n")
 	return consumer, provider

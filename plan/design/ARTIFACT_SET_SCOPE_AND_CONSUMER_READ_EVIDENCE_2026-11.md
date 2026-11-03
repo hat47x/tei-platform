@@ -200,3 +200,43 @@ Consumerが提出・利用するClaim、対象Application/Subjectと粒度、適
 - `main`への製品コード統合、PRの合成CI成功、`Artifact/Manifest Digest`一致、Source移動前後のMeaning不変、同一FunctionのContext合成PASS、Product Skillの説明可能性、SHO文書の存在は**独立した資格**。
 - #2633の新試験は現状の不備の特性記述であり、**検出できない挙動がPASSしたことは修正済みと同義ではない**。
 - 必要Memberが揃わない・Sourceの実Consumed bytesが未特定・外部Provider/Claimのscopeが不明・公開世代が混在・送信権限がない場合、Consumerの`usable`や`approved`を自動的にtrueにしない。
+
+## 12. 2026-11-02 18:40Z 更新：Characterization統合から検査修正と公開byteの実証へ
+
+### 12.1 新しいmain資格：合成反例の固定は修正完了ではない
+
+- main照合 `f84ca05936370e431d4ad27922eca29cbcc7d41b`（2026-11-02T18:38:41Z）。[PR #2633](https://github.com/hat47x/tei-platform/pull/2633)は2026-11-02T18:37:06Zに**mainへ統合済み**、exact head `244fccde0bc9ad5a40d4dd203157becd856017b9`の[Repository Health #41464423243](https://github.com/hat47x/tei-platform/actions/runs/41464423243)、[Self-build #41464423053](https://github.com/hat47x/tei-platform/actions/runs/41464423053)、[Dependency #41464423090](https://github.com/hat47x/tei-platform/actions/runs/41464423090)がsuccess。**この6テストのうちAC-01〜04は検査が通過してしまう欠点を特徴づけていた**ので、成功は修正完了を意味しない。
+- [Draft PR #2659](https://github.com/hat47x/tei-platform/pull/2659)をmain `f84ca05936370e431d4ad27922eca29cbcc7d41b`から分岐して作成。変更は`internal/artifact/consistency.go`／そのGoテスト2ファイルだけ。`CheckSet`で個別`Artifact.Verify()`、Operation Surface実JSON parseと`schemaVersion`、Gap→Unresolvedのexact multiset（Subject＋Reason＋Kind/Detail＋多重度）を検査し、AC-01〜04を異常検出の**正の回帰**に変更する。既存構造検査の責務を強化する修正候補であり、Consumer Scope/Source/公開一式の意味契約を変更するものではない。
+- #2659の保存HEAD `10ad24748308eb47152050411b52e6edce614311`に対するGitHub Actionsは初回照合時点でqueued（[Repository Health #41503078091](https://github.com/hat47x/tei-platform/actions/runs/41503078091)）。**Go/CI成功・Ownerレビュー・Mergeは未確認**。追加されるFinding Codeを利用Consumerが安全に扱えるか確認を要する。
+- [PR #2632](https://github.com/hat47x/tei-platform/pull/2632)は**closed・未merge**であり、7件の多Mapping Characterizationをmainの合格試験に数えない。AS-11の経路選択/Map/Storage型差を示す候補資料として残す。別途実World Validator／Source/Provider/Targetと接続するまで製品保証を主張しない。
+- Workspace Source読取の[#1017](https://github.com/hat47x/tei-platform/issues/1017)はclosed、[PR #2646](https://github.com/hat47x/tei-platform/pull/2646)はmainに統合済み。一方、[Draft #2647](https://github.com/hat47x/tei-platform/pull/2647)のTraceの固定ルートReaderや、複数ファイル同時Snapshot・外部Consumerが読んだbyteの証明は別資格。closedだけでArtifact一式の同時Snapshotは保証しない。
+
+### 12.2 AP-10/11：「Artifact Digest」は「保存した本文のDigest」ではない
+
+[Issue #2604追補 AP-10/11](https://github.com/hat47x/tei-platform/issues/2604#issuecomment-6585308926)で、**公開Manifestの内容と保存ファイルの間にある検証不能部分**を特定した。
+
+- `Artifact.Digest`は`Kind, InputRevision, Rule, Generator, Content, Unresolved`のArtifact envelope全体をfingerprintする。
+- `ManifestEntry`が保持するのは`Kind, Rule(ID/Version/Fingerprint), Digest, Unresolved(count)`までで、Generator・Unresolved各Reason/Detail・相対Path・Content単独Digestが欠ける。
+- 実`tei artifacts -out`は各`.md/.json`へ**Contentだけ**を書き、`manifest.json`には`{manifest,findings}`を書き込む。したがって出力Dirとmanifestだけの外部Readerは、実byteを取得してもその情報だけでは`Artifact.Verify()`の原入力を再構成できない。**Contentの生SHA-256と`Artifact.Digest`を直接比較してはいけない**。
+- **AP-10（同Content／別Rule・Generator）**、**AP-11（同Content・同Unresolved件数／別Reason・Detail）**を#2604へ追加。どちらもNOT RUN。#2659のインメモリ検査がPASSしても、`-out`の公開一式がReaderによって完全検証可能になったとは扱わない。
+
+この欠落に対する最低限の対照を、既存のAP-08/09に重ねる。
+
+| 入力・検査 | Readerが見た内容 | 限定的に言えること／不足 |
+| --- | --- | --- |
+| `tei artifacts`（`-out`なし）の`WorkspaceSet` | Artifact envelope（`Content/Generator/Unresolved`）、Manifest、Findings | Envelopeの`Verify`と`CheckSet`を試みられる。ただし外部公開ファイルや実Host効果は不明 |
+| `tei artifacts -out DIR`の出力Dir | 本文ファイル群＋`manifest.json`（Manifest/Findings） | 出力Dirの保存物を個々に読める。しかし各本文ファイルの`Artifact.Digest`再計算に必要な情報が不足 |
+| 固定世代の公開・Consumer実読取（#2604候補） | Entry↔相対Path、実Content digest、実読取byte、必要なEnvelope情報、公開世代 | 比較票上の要件。公開API、ディレクトリ形式、保存方式はOwnerの試験後に判断 |
+| SHO・AI／Harness Reader | 上記に加え用途相対ExpectedMembers、Claim／Scope、DisclosureとOccurrence | 読めたことと内容を使用・レビュー・外部送出する資格は別 |
+
+### 12.3 次に行う検証の優先順序
+
+1. **P0 CheckSetの欠落修正**：#2659のactual Go testsをGitHub Actions実HEADと同一のcheckoutで検証。AS-01/02が引き続きGeneric Manifestでは検出不能であること、AC-01〜04が今度は検出されることを別列で記録。意図的なGeneric Setの用途を損なわない。
+2. **P1 出力物の証拠形式検証**：#2604でAP-08〜11を実`tei artifacts`／`-out`の二経路比較で検証。途中失敗、旧ファイル残留、ContentとEnvelopeの異版、ConsumerのPath/read/verify結果を独立Oracleで判定。ManifestのEntryを取り出しただけで実Fileを取得済みと主張しない。
+3. **P2 版と動的依存**：#2582/#2586/#2600（Draft #2636）に、Source/Rule/Predicate/Provider/Read Cohort/Operation Basis/Storage/Content/Consumer Purposeの差を渡す。F1 fullとS1 selectiveの一致だけでなく**独立Expected**を確認し、false reuseとfalse invalidationを分けて測る。Store破損、Receipt欠落、Grant失効を単なるcache missへ丸めない。
+4. **P3 二種類のReader**：TEI側で実Human表示・AI JSONの同一出典を検証（#2626の実CLI read-only成功は独立の先行根拠）。SHO #4/#6の実保存→再開→出典再解決、TAI Product Skillの実受信・開示・撤回は**各Ownerの別実験**として扱う。
+5. **P4 実Provider／外部Host**：Function ContextのDeclared/Actual Read、複数ProviderのSnapshot、Operation選択と現在Grant/実Effectの関連を検査。設計資料の正常性を実行許可へ昇格しない。
+
+**今回の新しい判断候補**：Manifest/Artifact自体に物理Path・Content digestを足すか、用途限定の公開側read-only目録と固定世代を使うか。Generic Artifactの意味モデルとは混ぜず、#2604のAP-08〜11実行結果を受けてOwnerが選ぶ。未採用の新Core/共通Artifact Store/Host/配布Gateは導入しない。
+
+**資格**：#2633の6件はmainへ統合した実Go Characterization。#2659は修正候補Draft／新CI未確認。AP-08〜11、AS-11/12、実SHO・TAI・外部Providerの統合試験はNOT RUN。この文書自体は正式な製品要求・Gate/Owner意味受理を変更しない。

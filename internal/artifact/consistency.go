@@ -38,6 +38,11 @@ const (
 	FindingManifestEntryStale = "MANIFEST_ENTRY_STALE"
 	// FindingManifestTampered: the manifest digest does not match its entries.
 	FindingManifestTampered = "MANIFEST_DIGEST_MISMATCH"
+	// FindingArtifactTampered: the actual artifact bytes do not match its digest.
+	FindingArtifactTampered = "ARTIFACT_DIGEST_MISMATCH"
+	// FindingSurfaceGapUnexpected: the unresolved list contains an entry that
+	// cannot be matched to an operation surface gap (including multiplicity).
+	FindingSurfaceGapUnexpected = "SURFACE_GAP_UNRESOLVED_UNEXPECTED"
 	// FindingSurfaceTargetUnreachable: an operation names a data that the
 	// application can not reach through its persistence.
 	FindingSurfaceTargetUnreachable = "SURFACE_TARGET_UNREACHABLE"
@@ -57,6 +62,15 @@ func CheckSet(set WorkspaceSet) []Finding {
 				Code:    FindingRevisionMismatch,
 				Subject: artifact.Kind,
 				Detail:  fmt.Sprintf("artifact was derived from %s, set is %s", artifact.InputRevision, set.InputRevision),
+			})
+		}
+		// Manifest entry matching alone only compares stored digests. Verify
+		// the actual content/rule/unresolved bytes at the reader boundary.
+		if err := artifact.Verify(); err != nil {
+			findings = append(findings, Finding{
+				Code:    FindingArtifactTampered,
+				Subject: artifact.Kind,
+				Detail:  err.Error(),
 			})
 		}
 	}
@@ -110,30 +124,55 @@ func CheckSet(set WorkspaceSet) []Finding {
 		if artifact.Kind != string(KindOperationSurface) {
 			continue
 		}
-		carried := map[string]bool{}
-		for _, unresolved := range artifact.Unresolved {
-			carried[unresolved.Subject] = true
-		}
 		payload, err := decodeOperationSurface(artifact.Content)
-		if err == nil {
-			for _, operation := range payload.Operations {
-				if operation.Basis == "" || !knownAutonomy(operation.Autonomy) {
-					findings = append(findings, Finding{
-						Code:    FindingOperationIncomplete,
-						Subject: operation.ID,
-						Detail:  fmt.Sprintf("basis=%q autonomy=%q", operation.Basis, operation.Autonomy),
-					})
-				}
-			}
+		if err != nil {
+			findings = append(findings, Finding{
+				Code: FindingContentIncomplete, Subject: artifact.Kind,
+				Detail: err.Error(),
+			})
+			continue
 		}
-		for _, gap := range surfaceGaps(artifact) {
-			if !carried[gap.Target] {
+		if payload.SchemaVersion != operations.OperationSurfaceSchemaVersion {
+			findings = append(findings, Finding{
+				Code: FindingContentIncomplete, Subject: artifact.Kind,
+				Detail: fmt.Sprintf("schemaVersion=%q, expected %q", payload.SchemaVersion, operations.OperationSurfaceSchemaVersion),
+			})
+		}
+		for _, operation := range payload.Operations {
+			if operation.Basis == "" || !knownAutonomy(operation.Autonomy) {
 				findings = append(findings, Finding{
-					Code:    FindingSurfaceGapMissing,
-					Subject: gap.Target,
-					Detail:  fmt.Sprintf("gap %s/%s is not carried as unresolved", gap.Kind, gap.Reason),
+					Code: FindingOperationIncomplete, Subject: operation.ID,
+					Detail: fmt.Sprintf("basis=%q autonomy=%q", operation.Basis, operation.Autonomy),
 				})
 			}
+		}
+		// Compare the EXACT multiset of the unresolved entries against the
+		// gaps encoded in the content. Subject-only membership hides reason,
+		// kind/detail changes and duplicate/missing entries.
+		carried := make(map[Unresolved]int, len(artifact.Unresolved))
+		for _, unresolved := range artifact.Unresolved {
+			carried[unresolved]++
+		}
+		for _, gap := range payload.Gaps {
+			key := Unresolved{Subject: gap.Target, Reason: gap.Reason, Detail: fmt.Sprintf("%s: %s", gap.Kind, gap.Detail)}
+			if carried[key] > 0 {
+				carried[key]--
+				continue
+			}
+			findings = append(findings, Finding{
+				Code: FindingSurfaceGapMissing, Subject: gap.Target,
+				Detail: fmt.Sprintf("gap %s/%s is not carried as exact unresolved", gap.Kind, gap.Reason),
+			})
+		}
+		for _, unresolved := range artifact.Unresolved {
+			if carried[unresolved] <= 0 {
+				continue
+			}
+			carried[unresolved]--
+			findings = append(findings, Finding{
+				Code: FindingSurfaceGapUnexpected, Subject: unresolved.Subject,
+				Detail: fmt.Sprintf("unresolved %s/%s does not match a surface gap", unresolved.Subject, unresolved.Reason),
+			})
 		}
 	}
 
@@ -173,16 +212,6 @@ func CheckSet(set WorkspaceSet) []Finding {
 	}
 
 	return findings
-}
-
-// surfaceGaps reads the gaps back from the surface artifact content. The
-// artifact is the only thing a consumer has, so the check reads the same bytes.
-func surfaceGaps(artifact Artifact) []operations.SurfaceGap {
-	payload, err := decodeOperationSurface(artifact.Content)
-	if err != nil {
-		return nil
-	}
-	return payload.Gaps
 }
 
 // ruleForKind names the one rule that may produce each kind. An artifact that
