@@ -46,3 +46,19 @@ For multi-org records, the `any` vs `all` rule is an **explicit test-input choic
 4. Test actual org revision, delayed responses, Role Pin, Read Cohort, active Identity/Grant, and stale cache behavior. Keep publication and historical as-of queries separate from current permission.
 
 No new Core Organization kind, global ACL engine, duplicate Host, policy registry, or mandatory annotation burden is proposed. A shared `Rule/Policy binding` may be expressed with existing Data/Relation/Plugin contracts, assisted by Studio/AI, while the existing Host or specialized Provider retains authoritative enforcement.
+
+## Visible-state requalification (VE-01..20)
+
+The companion `verify-visibility-epoch.mjs` is a 20-case read-only state characterization, not an actual Studio/Browser/Host test. Its independent toy Context binds source identity **including locator**, accepted meaning, policy revision, hierarchy axis/root, valid/known cut, principal/tenant, current grant epoch, read cohort, Query non-output dependency footprint, selection epoch and session epoch. A response is accepted to visible state **only after** current-context and current permit checks; a successful prior Provider read is insufficient if either has changed while a request was in flight.
+
+- VE-01/02: accepted list candidates and **revoked visible/cache** after policy revision. A previously lawfully downloaded/exported copy cannot be retroactively erased; future access and controlled application surfaces are different from external retention.
+- VE-03..08: delayed reply, revocation, selection A→B→A, scope root D1→H, hierarchy axis change and policy-version change require requalification even when row IDs remain the same.
+- VE-09..13: unavailable/partial results are not empty complete; list/read is not export; a `count` route must be explicitly qualified, and filtering a previously paged/unrestricted set in the browser cannot attest policy-enforced total counts.
+- VE-14..15: preserve an unsaved edit as a **quarantined** draft when its read/operation grant lapses, not as a reusable submit intent; purely cosmetic style changes can retain still-qualified data.
+- VE-16..20: identical bytes at a different source locator, Query hidden predicate revision, Provider cohort, tenant mismatch and previously exported copies are distinct invalidation/disclosure conditions.
+
+A `synthetic-provider-observed` or toy permit object in the tests is **test data**, not evidence from a real Provider, IdP, Host, Studio or external Consumer. These tests make no claim about revocation of screenshots, documents already received by a third party, browser backups, physical caches or secrets already disclosed.
+
+**Next real proof** (existing Owners #2582/#2506/#2516/#2631/#2598/#1174): one actual TEI read→Context→UI/consumer on current Source/Policy/Role/Grant, then a revoked/scope-changed read with an old response delivered late, and read/write/export/count attempts. Observe actual request and response bytes, cache/DOM/a11y, diagnostic and external-channel disclosures, while maintaining non-sensitive delayed edits in a quarantined state. Missing real execution must be recorded as `NOT RUN`, not inferred from Node results.
+
+At creation-time, VE-01..20 ran 20/20 in a local V8-compatible test shim; exact-head native Node CI is a separate verdict.
