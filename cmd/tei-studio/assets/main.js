@@ -1,6 +1,7 @@
 ﻿import {Call} from "/wails/runtime.js";
 import {createReadOnlyClient} from "./client.mjs";
 import {createPreviewScope} from "./preview-scope.mjs";
+import {summarizeView} from "./view-format.mjs";
 
 const api = createReadOnlyClient((name, ...args) => Call.ByName(name, ...args));
 const workspace = document.querySelector("#workspace");
@@ -57,9 +58,33 @@ async function runCommand(label, action) {
     executeCommandButton.disabled = !selectedID();
   }
 }
+function renderView(value) {
+  viewOutput.replaceChildren();
+  for (const section of summarizeView(value)) {
+    text(viewOutput, "h3", section.title);
+    if (Array.isArray(section.header) && section.header.length) {
+      const table = document.createElement("table");
+      const head = document.createElement("tr");
+      for (const label of section.header) text(head, "th", label);
+      table.appendChild(head);
+      for (const row of section.rows || []) {
+        const tr = document.createElement("tr");
+        for (const cell of row) text(tr, "td", cell);
+        table.appendChild(tr);
+      }
+      viewOutput.appendChild(table);
+    } else {
+      for (const row of section.rows || []) text(viewOutput, "p", row.join("："));
+    }
+  }
+}
 function displayView(label, response) {
   viewState.textContent = response.ok ? label + "：ビュー応答" : label + "：" + response.failure.code;
-  viewOutput.textContent = JSON.stringify(response, null, 2);
+  if (!response.ok) {
+    viewOutput.textContent = JSON.stringify(response, null, 2);
+    return;
+  }
+  renderView(response.value);
 }
 async function runView(button, label, action) {
   const id = selectedID();
@@ -183,5 +208,6 @@ if (!listed.ok) {
   planCommandButton.disabled = !selectedID();
   executeCommandButton.disabled = !selectedID();
 }
+
 
 

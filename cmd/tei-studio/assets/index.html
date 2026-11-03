@@ -15,6 +15,9 @@
     .preview{margin-top:2rem;padding:1rem;border:1px solid #8886;border-radius:.5rem}
     .preview table{border-collapse:collapse;width:100%;margin:1rem 0}
     .preview th,.preview td{text-align:left;border:1px solid #8886;padding:.4rem}
+    .view h3{margin:1rem 0 .35rem}
+    .view table{border-collapse:collapse;width:100%;margin:.4rem 0}
+    .view th,.view td{text-align:left;border:1px solid #8886;padding:.35rem}
   </style>
 </head>
 <body>
@@ -38,7 +41,7 @@
     <button id="view-pattern" disabled>Patternビュー</button>
   </div>
   <div id="view-state" role="status" aria-live="polite"></div>
-  <pre id="view-output" aria-label="View result"></pre>
+  <div id="view-output" class="view" aria-label="View result"></div>
   <div class="controls">
     <label for="command-capability">Capability</label><input id="command-capability" placeholder="sales.order.submit" autocomplete="off">
     <label for="command-inputs">Inputs</label><input id="command-inputs" placeholder="order=ORD-1" autocomplete="off">
@@ -63,5 +66,6 @@
   <script type="module" src="./main.js"></script>
 </body>
 </html>
+
 
 
