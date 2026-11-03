@@ -41,6 +41,9 @@ func (s *MemoryStore) Apply(effect *semantic.DataEffect, inputs map[string]strin
 	}
 	switch effect.Kind {
 	case semantic.DataEffectCreate:
+		if _, exists := s.data[effect.Data][key]; exists {
+			return fmt.Errorf("record %s already exists", key)
+		}
 		s.data[effect.Data][key] = copyValues(inputs)
 	case semantic.DataEffectUpdate:
 		if _, ok := s.data[effect.Data][key]; !ok {
@@ -199,7 +202,20 @@ func (e ReferenceDataExecutor) checkValueDomains(request Request) error {
 			continue
 		}
 		typ, ok := types[attribute.TypeRef]
-		if !ok || len(typ.Values) == 0 {
+		if !ok {
+			continue
+		}
+		for depth := 0; depth < 16 && len(typ.Values) == 0; depth++ {
+			if typ.Kind != semantic.TypeAlias || typ.Underlying == "" {
+				break
+			}
+			next, exists := types[typ.Underlying]
+			if !exists {
+				break
+			}
+			typ = next
+		}
+		if len(typ.Values) == 0 {
 			continue
 		}
 		allowed := false
