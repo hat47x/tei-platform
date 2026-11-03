@@ -576,3 +576,17 @@ TAIのQH-01〜18は公開合成Nodeの有限試験であり、TEI実CLI／外部
 **最小Gate**：参照文書のSC-01〜14について、まずP0（静的SourceとCoverage）→P1（候補・Owner質問）を設計完了できたら、実Providerが必要なSC-05（COMMIT ACK不明）/SC-06（異時点二Provider Read）/SC-11（制約の実強制）を優先し、#2586の**一つのFunction・同一Attempt**へ接続する。SC-01〜14は**今回実行していない**。以前の別PRの局所PASSやGitHub CIのgreenを、今回のSQL意味受理・実DB・Migration/Owner成功に数えない。
 
 **設計判断待ち**：業務Key/SortKey、業務Relationと時点、多重Workflow、取消とEffect、履歴の正本と保存要件、Scope/開示、既存データ移行は各Ownerへ質問する。必要な判断が不明なら候補を残し、Sourceの名前・構造から推測して処理を進めない。汎用状態表を既定構成にはしない。
+
+## 20. Data ModelをSQLから逆生成しないための、Schema依存・多形式Queryの実測（2026-11-03）
+
+11/3のSQL解釈議論で、**Data Modelの正本をTable / Field / Key / Relationの直接宣言**に据え、SQLを主に**LINQ型のデータ変換**として扱う方針を再照合した。[#951契約連携 PR #2677](https://github.com/hat47x/tei-platform/pull/2677)はGitHub上merged済みだが、そこでのSQL二解釈/Schema依存/階層NULL・欠損/保存後0件に関する設計整理を、単一TEI実行の証拠としては数えない。
+
+[新Draft #2778 のSQL/DDL設計 §8–9](../design/SQL_DDL_STATIC_FACT_AND_SEMANTIC_ACCEPTANCE_2026-11.md)で、**SQL原byteが不変でもSchema依存でQuery結果・Output Shapeが変わる**ことを、Python 3.13.5/SQLite 3.46.1の独立14テストで実行確認。[SM-15固定fixture](https://github.com/hat47x/tei-platform/blob/docs/sql-static-semantic-evidence-handoff-20261103/plan/fixtures/sql-semantics-f0/test_sm15_source_schema_drift.py) は実行ソースとGitHub保存blob `fd6b636f2ee25d05e5522233703b856246ebfbff`一致。
+
+- **Implicit schema dependency**：`orders NATURAL JOIN payments`のSQL byteを変えず、paymentsへ`status`列を追加すると**2行→1行**。明示`JOIN ... ON tenant_id/order_id`はこの差分では2行を維持。`SELECT *`の同一SQLは3→4列へ変化。Source byte/Operator名だけでCache Reuse/Result Shape/Consumer開示の現在性を認めない。
+- **Source/Meaningの責務**：物理PK宣言順とTEI Key Member SortKeyは別。FK/CheckがDDLにあることと、その接続での制約強制、受理済み業務Relation/State Transitionは別。Nullable UNIQUEやDEFAULT省略と明示NULLを混同しない。
+- **Query言語の接合**：TEI Query、SQL Import、Native SQLを用途に応じて選択し、Markdown/DSLの元形式を保持。RDB/JSONB/Document/Graphを使う場合も、NULL/欠損/空配列、Identity、Grain、複数行・順序、非可逆なDerived Dataset、Provider Read/Effect/Consumer Disclosureを契約に残す。新しい第二SQL Parser、Generic Data Store、分散Hostは作らない。
+
+**既存C0〜C5に追加する受渡し票**：C0にSource bytes/Dialect/参照Schema Rev/選択されたSource scope→C1に直接宣言Data ModelのMeaning/Key/RelationとSQL-derived Transformationを別識別→C2にFunction Mapping/Operatorの入力・出力形状と暗黙依存→C3にProvider別Current Schema/実Read/完整性・Read Cohort→C4にRule/Action/Receipt/Host権限→C5にConsumer用途ごとの開示資格・SHO/Studio投影の再資格化。
+
+**未実証／Owner**：14件は隔離SQLiteの結果のみ。TEI SQL Worker→Go DerivedIRのSchema Registry解決・Source span、物理DB Migration/Constraint Apply、複数実Provider、実Consumer、Owner業務意味受理はNOT RUN。#1126（Model Key/Relation）、#2387（SQL DerivedIR）、#988（Operator）、#2506（Function Mapping）、#2622（Provider）、#2600（Build再利用）、#2582（Runtime再評価）へ、既存Gatesを保持して次の一試行を委譲する。
