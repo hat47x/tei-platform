@@ -15,7 +15,7 @@ import (
 // ディレクトリ名は整理上の配置にすぎず、Environment identityは必ずsource本文から取得する。
 // Database providerやファイル名からtarget / executorを補完しない。
 func loadContractQueryExecutorBindings(root string, r *Result) error {
-	files, err := globSorted(filepath.Join(root, "environments", "*", "contract-query-executors", "*.tei"))
+	files, err := listPinnedUnitFiles(root, r, filepath.Join(root, "environments"), []string{"contract-query-executors"}, "*.tei")
 	if err != nil {
 		return err
 	}
