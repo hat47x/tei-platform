@@ -3,6 +3,7 @@
 機能やIssueをまたいで、進め方・移行順・調査対象を定める計画文書を置きます。採用済みの設計判断は[`adr/`](../adr/README.md)、機能の内部設計は[`design/`](../design/README.md)、個々の作業と完了条件はGitHub Issuesを参照してください。
 
 - [Everything is Dataの横断接合・同一版受入の計画](EVERYTHING_DATA_CROSSLANE_HANDOFF_2026-11.md)
+- [業務状態の保存方式・時点・権限を同一Scenarioで比較する受入ハンドオフ](BUSINESS_STATE_PERSISTENCE_DECISION_GATE_2026-11.md)
 - [定義を中心にしたフィードバックループの計画](DEFINITION_CENTERED_FEEDBACK_LOOP_PLAN_2026-09.md)
 - [定義と派生物の一覧](DEFINITION_DERIVED_ARTIFACT_INVENTORY_2026-09.md)
 - [フィードバックの振り分け一覧](DEFINITION_FEEDBACK_ROUTING_CATALOG_2026-09.md)
