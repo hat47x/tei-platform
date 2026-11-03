@@ -174,7 +174,7 @@ func TestStudioCatalogMatchesCLIResultSemantics(t *testing.T) {
 
 func TestStudioCatalogMatchesCLIDuplicateIdentitySemantics(t *testing.T) {
 	root := t.TempDir()
-	writeWorkspaceFile(t, root, "tei.workspace.yaml", "workspace: catalog_parity\nsources:\n  - semantic\n")
+	writeWorkspaceFile(t, root, "tei.workspace.yaml", "workspace: catalog_parity\nformatVersion: 1\nsources:\n  - semantic\n")
 	for _, path := range []string{"semantic/sales/first.tei", "semantic/sales/second.tei"} {
 		writeWorkspaceFile(t, root, path, "namespace sales\n\ndata Order {\n}\n")
 	}
@@ -298,7 +298,7 @@ func TestValidateCLIDiagnosticsEqualInProcessOperation(t *testing.T) {
 	}
 	for name, source := range cases {
 		root := t.TempDir()
-		writeWorkspaceFile(t, root, "tei.workspace.yaml", "workspace: parity\nsources:\n  - applications\n")
+		writeWorkspaceFile(t, root, "tei.workspace.yaml", "workspace: parity\nformatVersion: 1\nsources:\n  - applications\n")
 		writeWorkspaceFile(t, root, "applications/order-entry/application.tei", source)
 		var out bytes.Buffer
 		code, err := validateWorkspaceJSON(&out, root)

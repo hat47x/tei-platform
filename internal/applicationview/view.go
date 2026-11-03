@@ -1,0 +1,372 @@
+package applicationview
+
+import (
+	"fmt"
+
+	"tei/internal/application"
+	"tei/internal/core"
+	"tei/internal/ir"
+	"tei/internal/semantic"
+)
+
+// SchemaVersionは、この投影のJSON契約の版を表す。
+const SchemaVersion = "tei.applicationview/v0"
+
+// Viewは、Application Patternの対話契約を、表示側が使える形に解決した投影である。
+// 意味を複製せず、PatternとSemanticのidentityを型付きで参照する。
+type View struct {
+	SchemaVersion       string                  `json:"schemaVersion"`
+	Application         core.CanonicalID        `json:"application"`
+	Pattern             core.CanonicalID        `json:"pattern"`
+	Kind                application.PatternKind `json:"kind"`
+	Data                core.CanonicalID        `json:"data,omitempty"`
+	Items               []Item                  `json:"items,omitempty"`
+	Navigations         []Navigation            `json:"navigations,omitempty"`
+	Commands            []Command               `json:"commands,omitempty"`
+	Packages            []PackageRef            `json:"packages,omitempty"`
+	SemanticFingerprint string                  `json:"semanticFingerprint,omitempty"`
+	Hooks               []HookRef               `json:"hooks,omitempty"`
+	Unused              []Item                  `json:"unused,omitempty"`
+	PrintTemplate       string                  `json:"printTemplate,omitempty"`
+}
+
+// PackageRefは、このPatternを含むPackageへの参照である。
+type PackageRef struct {
+	ID      core.CanonicalID `json:"id"`
+	Version string           `json:"version"`
+}
+
+// HookRefは、対話の前後に差し込む処理の宣言を解決した結果である。
+type HookRef struct {
+	Phase    string             `json:"phase"`
+	Reads    []core.CanonicalID `json:"reads,omitempty"`
+	Uses     []core.CanonicalID `json:"uses,omitempty"`
+	Produces []core.CanonicalID `json:"produces,omitempty"`
+	Failure  string             `json:"failure,omitempty"`
+}
+
+// Commandは、対話から起動できるCapabilityを解決した結果である。
+type Command struct {
+	Capability core.CanonicalID `json:"capability"`
+	Label      string           `json:"label,omitempty"`
+	Inputs     []CommandInput   `json:"inputs,omitempty"`
+	Outcomes   []CommandOutcome `json:"outcomes,omitempty"`
+	Effect     *CommandEffect   `json:"effect,omitempty"`
+}
+
+// CommandInputは、Commandが要求する入力を解決した結果である。
+type CommandInput struct {
+	Name      string           `json:"name"`
+	Type      core.CanonicalID `json:"type"`
+	Attribute core.CanonicalID `json:"attribute,omitempty"`
+	Label     string           `json:"label,omitempty"`
+}
+
+// CommandOutcomeは、Commandの正常終了で得られる業務上の結末である。
+type CommandOutcome struct {
+	Name    string           `json:"name"`
+	Payload core.CanonicalID `json:"payload"`
+}
+
+// CommandEffectは、Commandが意図するデータ効果である。実行の許可ではない。
+type CommandEffect struct {
+	Kind string           `json:"kind"`
+	Data core.CanonicalID `json:"data"`
+}
+
+// Itemは、対話に現れる項目と、その型・表示名・入力部品・意味の役割・参照先を表す。
+type Item struct {
+	Attribute core.CanonicalID `json:"attribute"`
+	Type      core.CanonicalID `json:"type,omitempty"`
+	Label     string           `json:"label,omitempty"`
+	Input     string           `json:"input,omitempty"`
+	Required  bool             `json:"required,omitempty"`
+	Immutable bool             `json:"immutable,omitempty"`
+	Role      string           `json:"role,omitempty"`
+	Values    []string         `json:"values,omitempty"`
+	Lookup    *Lookup          `json:"lookup,omitempty"`
+}
+
+// Lookupは、項目の値を参照Patternから得る束縛を解決した結果である。
+type Lookup struct {
+	Pattern         core.CanonicalID        `json:"pattern"`
+	Kind            application.PatternKind `json:"kind"`
+	TargetAttribute core.CanonicalID        `json:"targetAttribute"`
+	TargetType      core.CanonicalID        `json:"targetType,omitempty"`
+}
+
+// Navigationは、このPatternへ入る遷移元を解決した結果である。
+type Navigation struct {
+	From core.CanonicalID        `json:"from"`
+	Kind application.PatternKind `json:"kind"`
+	Data core.CanonicalID        `json:"data,omitempty"`
+}
+
+// Buildは、Application Patternのinteractionを、Semanticの型とPatternの種別で解決する。
+// 参照が欠けている場合は推測で補わず、エラーを返す。
+func Build(world ir.World, applicationID, patternID core.CanonicalID) (View, error) {
+	var app *application.Application
+	for i := range world.Applications {
+		if world.Applications[i].ID == applicationID {
+			app = &world.Applications[i]
+			break
+		}
+	}
+	if app == nil {
+		return View{}, fmt.Errorf("application %sが見つかりません", applicationID)
+	}
+
+	patterns := map[core.CanonicalID]application.Pattern{}
+	dataAttributes := map[core.CanonicalID]map[core.CanonicalID]semantic.Attribute{}
+	dataAttributeOrder := map[core.CanonicalID][]semantic.Attribute{}
+	relations := map[core.CanonicalID]semantic.Relation{}
+	typeValues := map[core.CanonicalID][]string{}
+	capabilities := map[core.CanonicalID]semantic.Capability{}
+	for _, candidate := range world.Applications {
+		for _, pattern := range candidate.Patterns {
+			if _, exists := patterns[pattern.ID]; !exists {
+				patterns[pattern.ID] = pattern
+			}
+		}
+	}
+	for _, namespace := range world.Semantics {
+		for _, typ := range namespace.Types {
+			if len(typ.Values) > 0 {
+				typeValues[typ.ID] = typ.Values
+			}
+		}
+		for _, capability := range namespace.Capabilities {
+			capabilities[capability.ID] = capability
+		}
+		for _, data := range namespace.Data {
+			attributes := map[core.CanonicalID]semantic.Attribute{}
+			for _, attribute := range data.Attributes {
+				attributes[attribute.ID] = attribute
+			}
+			dataAttributes[data.ID] = attributes
+			dataAttributeOrder[data.ID] = append([]semantic.Attribute(nil), data.Attributes...)
+			for _, relation := range data.Relations {
+				if _, exists := relations[relation.ID]; !exists {
+					relations[relation.ID] = relation
+				}
+			}
+		}
+	}
+
+	pattern, ok := patterns[patternID]
+	if !ok {
+		return View{}, fmt.Errorf("application pattern %sが見つかりません", patternID)
+	}
+	if pattern.Interaction == nil {
+		return View{}, fmt.Errorf("application pattern %sはinteractionを持ちません", patternID)
+	}
+	if pattern.Data == "" {
+		return View{}, fmt.Errorf("application pattern %sはdataを持ちません", patternID)
+	}
+	attributes, ok := dataAttributes[pattern.Data]
+	if !ok {
+		return View{}, fmt.Errorf("semantic data %sが見つかりません", pattern.Data)
+	}
+
+	view := View{
+		SchemaVersion: SchemaVersion,
+		Application:   app.ID,
+		Pattern:       pattern.ID,
+		Kind:          pattern.Kind,
+		Data:          pattern.Data,
+	}
+	fingerprint, err := fingerprintForApp(world, *app)
+	if err != nil {
+		return View{}, err
+	}
+	view.SemanticFingerprint = fingerprint
+	view.PrintTemplate = pattern.PrintTemplate
+	for _, pkg := range app.Packages {
+		for _, member := range pkg.Members {
+			if member.Pattern != pattern.ID {
+				continue
+			}
+			view.Packages = append(view.Packages, PackageRef{ID: pkg.ID, Version: pkg.Version})
+			break
+		}
+	}
+	for _, item := range pattern.Interaction.Items {
+		attribute, ok := attributes[item.Attribute]
+		if !ok {
+			return View{}, fmt.Errorf("interaction item %sは%sのattributeではありません", item.Attribute, pattern.Data)
+		}
+		resolved := Item{
+			Attribute: item.Attribute,
+			Type:      attribute.TypeRef,
+			Label:     labelOf(attribute),
+			Input:     inputKind(attribute.TypeRef),
+			Required:  attribute.Required,
+			Immutable: attribute.Immutable,
+			Role:      attribute.Role,
+			Values:    typeValues[attribute.TypeRef],
+		}
+		if item.Lookup != nil {
+			target, ok := patterns[item.Lookup.Pattern]
+			if !ok {
+				return View{}, fmt.Errorf("lookup pattern %sが見つかりません", item.Lookup.Pattern)
+			}
+			if target.Kind != application.PatternReference {
+				return View{}, fmt.Errorf("lookup pattern %sはreferenceではありません: %s", target.ID, target.Kind)
+			}
+			relation, ok := relations[target.Relation]
+			if !ok {
+				return View{}, fmt.Errorf("reference pattern %sのrelation %sが見つかりません", target.ID, target.Relation)
+			}
+			targetAttributes, ok := dataAttributes[relation.Target]
+			if !ok {
+				return View{}, fmt.Errorf("relation target %sが見つかりません", relation.Target)
+			}
+			targetAttribute, ok := targetAttributes[item.Lookup.TargetAttribute]
+			if !ok {
+				return View{}, fmt.Errorf("lookup target %sは%sのattributeではありません", item.Lookup.TargetAttribute, relation.Target)
+			}
+			resolved.Lookup = &Lookup{
+				Pattern:         target.ID,
+				Kind:            target.Kind,
+				TargetAttribute: item.Lookup.TargetAttribute,
+				TargetType:      targetAttribute.TypeRef,
+			}
+		}
+		view.Items = append(view.Items, resolved)
+	}
+	for _, navigation := range pattern.Interaction.Navigations {
+		source, ok := patterns[navigation.From]
+		if !ok {
+			return View{}, fmt.Errorf("navigation source %sが見つかりません", navigation.From)
+		}
+		if source.Kind != application.PatternBrowse {
+			return View{}, fmt.Errorf("navigation source %sはbrowseではありません: %s", source.ID, source.Kind)
+		}
+		view.Navigations = append(view.Navigations, Navigation{
+			From: source.ID,
+			Kind: source.Kind,
+			Data: source.Data,
+		})
+	}
+	if pattern.Layout != nil {
+		byAttribute := map[core.CanonicalID]Item{}
+		for _, item := range view.Items {
+			byAttribute[item.Attribute] = item
+		}
+		ordered := make([]Item, 0, len(view.Items))
+		seen := map[core.CanonicalID]bool{}
+		for _, attribute := range pattern.Layout.Order {
+			if item, ok := byAttribute[attribute]; ok {
+				ordered = append(ordered, item)
+				seen[attribute] = true
+			}
+		}
+		for _, item := range view.Items {
+			if !seen[item.Attribute] {
+				ordered = append(ordered, item)
+			}
+		}
+		view.Items = ordered
+	}
+	usedAttributes := map[core.CanonicalID]bool{}
+	for _, item := range pattern.Interaction.Items {
+		usedAttributes[item.Attribute] = true
+	}
+	for _, attribute := range dataAttributeOrder[pattern.Data] {
+		if !usedAttributes[attribute.ID] {
+			view.Unused = append(view.Unused, itemFor(attribute, typeValues))
+		}
+	}
+	for _, hook := range pattern.Interaction.Hooks {
+		view.Hooks = append(view.Hooks, HookRef{
+			Phase:    hook.Phase,
+			Reads:    hook.Reads,
+			Uses:     hook.Uses,
+			Produces: hook.Produces,
+			Failure:  hook.Failure,
+		})
+	}
+	for _, command := range pattern.Interaction.Commands {
+		capability, ok := capabilities[command.Capability]
+		if !ok {
+			return View{}, fmt.Errorf("interaction command %sはcapabilityではありません", command.Capability)
+		}
+		label := capability.Symbol
+		if label == "" {
+			label = string(capability.ID)
+		}
+		resolved := Command{Capability: command.Capability, Label: label}
+		for _, input := range capability.Inputs {
+			resolvedInput := CommandInput{Name: string(input.Name), Type: input.Type}
+			for _, binding := range command.Inputs {
+				if binding.Name != string(input.Name) {
+					continue
+				}
+				attribute, ok := attributes[binding.Attribute]
+				if !ok {
+					return View{}, fmt.Errorf("command %s input %s binds %s that is not an attribute of %s", command.Capability, binding.Name, binding.Attribute, pattern.Data)
+				}
+				resolvedInput.Attribute = binding.Attribute
+				resolvedInput.Label = labelOf(attribute)
+			}
+			resolved.Inputs = append(resolved.Inputs, resolvedInput)
+		}
+		for _, outcome := range capability.Outcomes {
+			resolved.Outcomes = append(resolved.Outcomes, CommandOutcome{Name: string(outcome.Name), Payload: outcome.Payload})
+		}
+		if capability.Effect != nil {
+			resolved.Effect = &CommandEffect{Kind: string(capability.Effect.Kind), Data: capability.Effect.Data}
+		}
+		view.Commands = append(view.Commands, resolved)
+	}
+	return view, nil
+}
+
+func labelOf(attribute semantic.Attribute) string {
+	if attribute.Display != "" {
+		return attribute.Display
+	}
+	if attribute.Symbol != "" {
+		return attribute.Symbol
+	}
+	return string(attribute.ID)
+}
+
+func inputKind(typeRef core.CanonicalID) string {
+	switch typeRef {
+	case "std.integer", "std.decimal", "std.money":
+		return "number"
+	case "std.date":
+		return "date"
+	case "std.datetime":
+		return "datetime-local"
+	case "std.time":
+		return "time"
+	case "std.boolean":
+		return "checkbox"
+	default:
+		return "text"
+	}
+}
+
+// fingerprintForAppは、Applicationが使うSemantic名前空間だけの指紋を返す。
+// 投影が、どの意味の版から出たかを追えるようにする。
+func fingerprintForApp(world ir.World, app application.Application) (string, error) {
+	if len(app.SemanticUses) == 0 {
+		return "", nil
+	}
+	used := map[core.CanonicalID]bool{}
+	for _, namespace := range app.SemanticUses {
+		used[namespace] = true
+	}
+	namespaces := make([]semantic.Namespace, 0, len(app.SemanticUses))
+	for _, namespace := range world.Semantics {
+		if used[namespace.ID] {
+			namespaces = append(namespaces, namespace)
+		}
+	}
+	if len(namespaces) == 0 {
+		return "", nil
+	}
+	return semantic.Fingerprint(namespaces)
+}
