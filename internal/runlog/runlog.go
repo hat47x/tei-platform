@@ -29,6 +29,9 @@ type Record struct {
 	Attempt    int      `json:"attempt"`
 	FenceEpoch int      `json:"fenceEpoch"`
 	Status     Status   `json:"status"`
+	// Steps lists the operations that finished in this attempt. A resumed attempt
+	// continues after them instead of repeating work that is already done.
+	Steps []string `json:"steps,omitempty"`
 }
 
 // RunKey identifies a run: the plan and the values of its key inputs. The
