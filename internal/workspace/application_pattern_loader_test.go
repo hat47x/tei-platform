@@ -11,6 +11,7 @@ import (
 func TestWorkspaceLoadsApplicationPatternsFromIndependentFiles(t *testing.T) {
 	root := t.TempDir()
 	writePatternWorkspaceFile(t, root, "tei.workspace.yaml", `workspace: pattern_loader_test
+formatVersion: 1
 sources:
   - applications
 `)

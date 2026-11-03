@@ -120,6 +120,8 @@ DDLとの整合（W5）は、表定義書の内容を `physical.SchemaSnapshot` 
 | `MANIFEST_ENTRY_STALE` | 目録が実在しない成果物を載せていないこと | 目録だけが先行して更新されている |
 | `MANIFEST_DIGEST_MISMATCH` | 目録の照合値が中身と一致すること | 目録だけが書き換えられている |
 | `SURFACE_TARGET_UNREACHABLE` | 操作の対象が、アプリが到達できる保存の対応にあること | 操作面と保存の宣言が食い違っている（生成時に検査） |
+| `PERIOD_PRECONDITION_UNKNOWN` | 期間の前提が、実在する期間を指すこと | 存在しない期間を前提にしている |
+| `PERIOD_PRECONDITION_MISMATCH` | 期間の前提が、その操作の対象を統治する期間を指すこと | 別のデータの期間を前提にしている |
 
 検査は**矛盾の検出**であり、成果物の正しさの証明ではありません。以後に成果物の種類を増やすときも、この検査を通します。一括生成（`RenderWorkspace`）は**生成時に検査を実行し**、結果を `Findings` として返します。違反がある場合も成果物は返しますが、「整合した一式」として読んではいけません。
 
@@ -129,7 +131,7 @@ DDLとの整合（W5）は、表定義書の内容を `physical.SchemaSnapshot` 
 
 成果物の目録（manifest）も追加しました（[`internal/artifact/manifest.go`](../../internal/artifact/manifest.go)）。複数の成果物から、入力の版が揃っていることを確かめたうえで、種類・照合値・未解決の件数を決定的に並べます。各項目は**規則の識別子・版・指紋**も持ちます（何が作ったか、規則の中身が変わったかまで辿れる）。**未解決が一つでもあれば `complete=false`** とし、完成に見せません。入力の版が混ざる場合と、改変された成果物は受け付けません。
 
-W6（CLI）の読み取りと書き出しを追加しました。`tei artifacts -workspace <root> -application <id>` が成果物一式（内容・照合値・未解決・目録・整合検査の `findings`）を JSON で出します。`-out <dir>` を付けると、成果物ごとに1ファイル（表は `table-<table>.md`、機能は `function-<app>.md`、操作面は `operation-surface.json`）と `manifest.json` を書き、目録を標準出力へ出します。同じ意味からは同じファイル名になり、同名で中身が違う場合は上書きせず停止します。未解決が残る場合は `complete: false`、整合検査の違反は `findings` に並びます。
+W6（CLI）の読み取りと書き出しを追加しました。`tei artifacts -workspace <root> -application <id>` が成果物一式（内容・照合値・未解決・目録・整合検査の `findings`）を JSON で出します。`-out <dir>` を付けると、成果物ごとに1ファイル（表は `table-<table>.md`、機能は `function-<app>.md`、操作面は `operation-surface.json`）と `manifest.json` を書き、目録を標準出力へ出します。同じ意味からは同じファイル名になり、同名で中身が違う場合は上書きせず停止します。未解決が残る場合は `complete: false`、整合検査の違反は `findings` に並びます。`-check` を付けると、整合検査の違反がある場合に終了コード 1 で止まります（CIで使う想定）。
 
 対応一覧（W4）は、現在の意味モデルに主題領域・作業・機能の対応を表す宣言が無いため、受理済みの意味からは導出できません。意味を足すか（A4）、対応一覧を手で維持するかの判断待ちです（[#2482](https://github.com/hat47x/tei-platform/issues/2482)）。DDLとの整合（W5）とCLI（W6）は未着手です。
 

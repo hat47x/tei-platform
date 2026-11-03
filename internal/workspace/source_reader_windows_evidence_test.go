@@ -30,7 +30,7 @@ func requireJunction(t *testing.T, link, target string) {
 func writeEvidenceWorkspace(t *testing.T, files map[string]string, sources ...string) string {
 	t.Helper()
 	root := t.TempDir()
-	manifest := "workspace: windows_evidence\nsources:\n"
+	manifest := "workspace: windows_evidence\nformatVersion: 1\nsources:\n"
 	for _, source := range sources {
 		manifest += "  - " + source + "\n"
 	}
