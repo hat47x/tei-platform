@@ -710,9 +710,9 @@ strict方式でも`workspace.Load`自身のscan/各Sourceの読取り・追加�
 
 次の縦切りは、`order1001`の現在Statusだけを比較して更新できても、未処理割当が存在しない保証にはならないことを正例/負例で示す。Owner受理済みBusiness Actionの必要条件が集合に及ぶ場合、その処理の実Transaction/DB制約と独立Observationで検査する。現在値非開示は守り、内部比較用Rawを無条件にAI/Studioへ戻さない。
 
-### 15.3 M0を実コマンド・実Fixtureに接続した独立Draft
+### 15.3 M0を実コマンド・実Fixtureに接続した独立Reference（main統合済み）
 
-これまでM0はCLIからのread-only受渡し計画だった。その後[実装実証 #2678](https://github.com/hat47x/tei-platform/pull/2678)がmainへ統合され（2026-11-02 21:52 UTC）、exact-head CIの合成Checker/実Go CLI両jobが成功した。統合したこのReferenceでは、mainで実在する`tei operations`／`tei artifacts`を`reference/standard-crud/workspace`の`ledger`に適用する検査器・合成負例11件・exact-head GitHub Actionsを**既存CLIに依存する別レーン**として保存した。
+これまでM0はCLIからのread-only受渡し計画だった。その後[実装実証 #2678](https://github.com/hat47x/tei-platform/pull/2678)がmainへ統合され（2026-11-02 21:52 UTC）、exact-head CIの合成Checker/実Go CLI両jobが成功した。統合したこのReferenceでは、mainで実在する`tei operations`／`tei artifacts`を`reference/standard-crud/workspace`の`ledger`に適用する検査器・合成負例11件・exact-head GitHub Actionsを**既存CLIに依存する別レーン**として実行・確認した。
 
 M0は`validate/operations/artifacts`のWorld版・Rule/Gap・Manifestを照合し、`-out`書込みや実Providerは実行しない。[#2626](https://github.com/hat47x/tei-platform/pull/2626)の実Go CLI→人/AI二表示→Source移動の成功実測とは対象とScopeが異なる。**M0の固定Public Fixture read-only実測は成立**したが、局所PASSをOwner意味受理・Macro実権限・実Provider/SHO/EKIの合格へ自動昇格しない。
 
