@@ -5,6 +5,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"strings"
 	"testing"
 
@@ -14,17 +15,19 @@ import (
 	"tei/internal/security/effectcommit/submit"
 )
 
-// AT-1 characterization for issue #1174 (real PostgreSQL, TEST-ONLY DDL,
-// SYNTHETIC grant; gated by TEI_TEST_POSTGRES_DSN, a skip is not evidence).
+// AT-1 for issue #1174 (real PostgreSQL, TEST-ONLY DDL, SYNTHETIC grant; gated
+// by TEI_TEST_POSTGRES_DSN, a skip is not evidence).
 //
-// The first test documents a KNOWN GAP, it does not close it: effectcommit.Runner
-// does not reconcile Request.Payload with Request.Scope.Resource or the
-// OperationID. The test-only apply_owner_effect routine takes the target order
-// id from the payload, so a Request whose OperationID names order 1001 but whose
-// payload targets order 1002 updates 1002. Hence the TARGET CALLER must keep
-// them consistent. This is evidence for the open question (an Owner decision),
-// NOT a claim that the gap is closed. If this test starts failing, the Runner or
-// the Provider began to reconcile them: update the issue and this test together.
+// effectcommit.Runner does not itself reconcile Request.Payload with
+// Request.Scope.Resource or the OperationID, and the test-only apply_owner_effect
+// routine takes the target order id from the payload. Owner provisional decision
+// D11 therefore puts the guarantee on the TARGET that composes the Intent: the
+// shared checkOrderSubmitIntent is installed as submit.Spec.ValidateIntent, and a
+// mismatching Intent is refused as NotCommitted before the Runner is reached.
+// The first test is the regression test of that: it replaced the earlier
+// characterization of the known gap. It does not claim the Runner or the Provider
+// reconcile the two; a direct Runner call with a mismatching Request is not
+// covered here.
 //
 // The second test shows that the Web and CLI callers, which build the payload
 // from the order id themselves, keep payload, OperationID and effect consistent.
@@ -62,33 +65,76 @@ func atReceiptOperations(t *testing.T, env *runnerPGEnv) []string {
 	return ops
 }
 
-func TestRunnerOrderSubmitRealPostgresAT1CharacterizationKnownGapPayloadTargetNotReconciledWithScope(t *testing.T) {
-	env := newRunnerPGEnv(t)
-	grant := syntheticSubmitGrant()
-	req, err := runnerSubmitRequest(grant, 1001) // Scope and OperationID name order 1001
-	if err != nil {
-		t.Fatal(err)
+func TestRunnerOrderSubmitRealPostgresAT1TargetRefusesPayloadNotReconciledWithOperationBeforeExecution(t *testing.T) {
+	mismatches := map[string][]byte{
+		"other-order":  []byte(`{"orderId":1002,"to":"submitted"}`),
+		"other-state":  []byte(`{"orderId":1001,"to":"draft"}`),
+		"extra-key":    []byte(`{"orderId":1001,"to":"submitted","x":1}`),
+		"missing-to":   []byte(`{"orderId":1001}`),
+		"not-json":     []byte(`order 1001`),
+		"empty":        nil,
+		"duplicate-id": []byte(`{"orderId":1002,"orderId":1001,"to":"submitted"}`),
 	}
-	if req.OperationID != "order-submit/1001" {
-		t.Fatalf("operation=%q", req.OperationID)
+	for _, kind := range []string{"web", "cli"} {
+		for name, payload := range mismatches {
+			t.Run(kind+"/"+name, func(t *testing.T) {
+				env := newRunnerPGEnv(t)
+				for _, q := range []string{cliAuthoritySQL, atSeedEpochsSQL} {
+					if _, err := env.db.Exec(q); err != nil {
+						t.Fatal(err)
+					}
+				}
+				sink := &atSink{}
+				rec := &atRecRunner{inner: effectcommit.Runner{Provider: env.provider(t),
+					Audit: effectcommit.AuditConfig{Sink: sink, Provenance: effectcommit.ProvenanceRealPG}}}
+				spec, in := runnerSubmitSpec, effectIntentFor(kind, 1001)
+				if kind == "cli" {
+					spec = cliSpec
+				}
+				in.Payload = payload // OperationID names 1001, the payload does not agree
+				caller := submit.Caller{Runner: rec, Grants: atGrants(kind, nil), Spec: spec}
+				grant, err := caller.Grant(context.Background())
+				if err != nil {
+					t.Fatal(err)
+				}
+				out, err := caller.Execute(context.Background(), grant, in)
+				if !errors.Is(err, submit.ErrIntentRejected) || out.Disposition != submit.NotCommitted {
+					t.Fatalf("out=%+v err=%v", out, err)
+				}
+				if kind == "web" {
+					if _, err := runnerSubmitRequestFromIntent(grant, in); !errors.Is(err, submit.ErrIntentRejected) {
+						t.Fatalf("web request builder err=%v", err)
+					}
+				}
+				if rec.calls != 0 {
+					t.Fatalf("Runner reached %d times", rec.calls)
+				}
+				if len(sink.got) != 0 {
+					t.Fatalf("evidence emitted: %d", len(sink.got))
+				}
+				for _, id := range []int64{1001, 1002} {
+					if got := atSecondConnStatus(t, env, id); got != "draft" {
+						t.Fatalf("%d=%q: the database changed", id, got)
+					}
+				}
+				if ops := atReceiptOperations(t, env); len(ops) != 0 {
+					t.Fatalf("receipts=%v", ops)
+				}
+			})
+		}
 	}
-	req.Payload = []byte(`{"orderId":1002,"to":"submitted"}`) // payload targets 1002
+}
 
-	res, err := effectcommit.Runner{Provider: env.provider(t)}.Execute(context.Background(), req, grant)
-	if err != nil || res.Status != effectcommit.StatusCommitted {
-		t.Fatalf("res=%+v err=%v: the Runner no longer commits a payload that targets another order; the known gap may have been closed, update this characterization", res, err)
+// effectIntentFor returns the Intent the given caller composes for an order.
+func effectIntentFor(kind string, id int64) submit.Intent {
+	if kind == "cli" {
+		return cliIntent(id)
 	}
-	// KNOWN GAP (characterized): the Runner accepted it and the effect landed on 1002.
-	if got := atSecondConnStatus(t, env, 1002); got != "submitted" {
-		t.Fatalf("1002=%q: payload target was not applied; the gap may have been closed, update this characterization", got)
+	in, err := runnerSubmitIntent(id)
+	if err != nil {
+		panic(err)
 	}
-	if got := atSecondConnStatus(t, env, 1001); got != "draft" {
-		t.Fatalf("1001=%q", got)
-	}
-	// The receipt (audit trail) names operation 1001 although 1002 changed.
-	if ops := atReceiptOperations(t, env); len(ops) != 1 || ops[0] != "order-submit/1001" {
-		t.Fatalf("receipts=%v", ops)
-	}
+	return in
 }
 
 func TestRunnerOrderSubmitRealPostgresAT1CallersKeepPayloadTargetConsistentWithOperation(t *testing.T) {
