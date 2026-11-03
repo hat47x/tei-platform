@@ -451,3 +451,41 @@ FixtureのExpectedをTEI Parser／AIが作ったCandidateから生成しない�
 **変更停止条件**：新しいURL Resolver／抽象Plugin方式／正式DSL Grammar／全Provider共通Snapshot／自動Source Relinkを先に決める必要はない。導入が実証上必須となった時点で、その最小要求だけを既存[#988](https://github.com/hat47x/tei-platform/issues/988)／[#1570](https://github.com/hat47x/tei-platform/issues/1570)／[#2505](https://github.com/hat47x/tei-platform/issues/2505)へ戻す。#2600ではE2の実消費依存が未証明ならBuild skipを採用せず、#958認知層は歴史と現在資格の説明に徹する。#1124／#2516のStudio／AIへはE1の資格が得られた範囲だけを投影する。並行[#2667](https://github.com/hat47x/tei-platform/pull/2667)の本文は本PRでは編集しない。
 
 **検証・統合上の注意**：本追補はGitHubの実ファイルをread-onlyで調査して作成した設計であり、Go試験・SHO試験・実Provider・Windows／HTTP・AI送信をこの変更で新たに実行していない。受入済みADRやdocs/status.mdの実装状況は更新しない。PR #2743はDraftを保ち、最新mainとの差分・exact Head／対象Path・Ownerレビューを確認してから統合判断する。
+
+## 2026-11-03 第5追補：Import束縛の証明限界をP0出口条件へ接続
+
+**目的**：前追補のV0-1／2は外部Namespaceの意味変更を見分ける入口として成立するが、その結果を**「実Loadから完全に束縛したSource Index」「増分Build skip可能」「実Consumer現在資格あり」へ上げるための不足**が残る。これを既存APIの実際の失敗契約に照らして明文化する。RF-01〜24、V0-1〜6、E0〜E3bは追加・改名せず、この節をレビューの収束点とする。新Host／Registry／Importer／Manifest／Gateを提案しない。
+
+### 現mainで確認した三つの独立した証拠と意図的な停止
+
+確認版：main 0e18b916aa15bc7768e9abfb34318b98ee497cb3。以下は**静的なコード・テスト確認**であり本PRの新しい実走ではない。
+
+| 現行の入口 | 確認した保証 | 明示的な非保証・停止 |
+| --- | --- | --- |
+| Workspace.Load + Result.Imports／WorkspaceImport.SemanticDigest | 外部Providerの所有する選択Namespaceを明示取得し、選択した正規化Semantic内容のDigestを保持。任意pinは内容変更時に拒否できる | Import元のraw Source全member、Provider実効root、実読取byteの一体Snapshot、AuthorityやOwner受理を自動束縛しない。Providerが暗黙に取り込んだ別Namespaceは推移再公開しない |
+| Result.ManifestIdentity／BuildSourceIndex | Loadで読んだWorkspace manifestのPath＋SHAと、利用側Managed SourceのIndexを**別の証拠**として扱える | manifestのimports.pathを別Providerへ差替え、意味Digestが同じ場合も、利用側Managed Source Indexだけで選択元不変とは言えない。ManifestIdentityはSource Indexの一部ではない |
+| BuildSourceIndexFromLoad（strict） | Load時に取得した利用側Managed Source bytesだけでIndexを作る。別Workspace Importが宣言・解決されていれば **ErrImportsNotBound** として拒否する。未解析管理Assetと非原子的な複数ファイルLoadの限界も明記 | これは外部Import対応が完了した成功状態ではなく、ImportのSource／Dependency closureがIndexへ束縛されないことの**意図的な未資格化**。BuildSourceIndexの通常成功やIndexedLoadedSnapshotの利用側限定Readを、strictな外部含有の全件束縛成功へ読み替えない |
+| LocateImportedSource | Providerを再Loadし、消費側に記録されたNamespaceのSemantic Digestとの一致を再確認し、Provider側Source anchorをread-onlyで返す | 先のConsumer Loadと再Loadとの間にSourceがA→B→Aで変わらなかったこと、同一の原子的read cohort、Source内容のOwner意味受理・編集資格は証明しない |
+
+**現存する拒否テスト**：internal/workspace/source_index_load_bound_hardening_test.go の TestBuildSourceIndexFromLoadRefusesWorkspaceWithImports は、明示Importを持つResultが ErrImportsNotBound に停止することを検査する。internal/workspace/import_digest_pin_test.go は選択Namespaceのpin／同byte移動／無関係Namespace変更を扱う。この二種類を新規の「Build成功」試験へ変換しない。strictの拒否を単に取り除くことも、Importやmanifestを無証拠に管理Source Indexへ混在させることも採用しない。
+
+### 二軸で明示するP0の結果：意味の照合とInput-closure資格
+
+| 観測された状況 | 選択Namespaceの意味・履歴に関する判断 | strictな外部Import含むBuild／現在Consumerへ渡す判断 |
+| --- | --- | --- |
+| 明示Import、pin一致、Provider Source位置を照合 | **選択したSemantic内容は期待Digestと一致**。構造候補・履歴read-onlyへ進める | ManifestIdentity・Provider原Source・実消費Closure・現在Authorityは別。strict IndexがErrImportsNotBoundなら **unqualified**。Business Accepted／Build skip／現行実Actionは不可 |
+| Consumer Managed Sourceが同一、imports.pathだけ別Providerへ変更、選択Namespace Digestは同じ | **選択した正規化意味byteの一致**として記録可能。Provider Identity／出典・Authorityは再資格化対象 | Source Index不変からImport選択元不変と推定しない。ManifestIdentityを別観測。Provider別許可・現在性を検査 |
+| Provider Source同byteで移動、同Namespace Digest | 値・意味内容の再計算は用途依存で再利用候補 | Source occurrence・Trace・引用の再定位と権限を再検査。SHO文書の旧引用を自動Rewriteしない |
+| 暗黙の推移Import／外部未取得／Provider権限不足 | 解決した範囲のみ候補。未取得依存・空集合・不在を混同しない | strictな現在資格の成立を主張しない。停止は当該Claimへ限定し、証明できる無関係Claimの履歴閲覧は保持 |
+| Source A→B→A、前後のDigest一致 | Aが過去と同じ値であることと、変更履歴・その間のAuthorityを分ける | 固定Provider Revision／実Input snapshotが得られない限り「中間更新なし」「Build／Owner資格復活」を主張しない |
+
+**実際のProduct出口は二段階**とする。P0a（既存実Go Loader・Digest・宣言先変更・厳密拒否）は、固定A/Bの独立Expectedと当該exact HEADのGo Runで検証可能。P0b（外部Importを含むSource／manifest／Provider実消費の完全な束縛）は、**現行strict APIが意図的に拒否するため、成功しているとは主張しない**。P0aが成立した段階で別途P0bに必要な最小受渡しを評価し、ImportのSourceを束縛する形式、OSファイルSnapshot／Provider能力／ACLを正式採用するかは、それぞれの既存Ownerへ差分として返す。P0b未成立でもread-only解析や候補説明を全停止しない。
+
+### 実施計画の変更（追加Fixture IDなし）
+
+1. **現mainの実証済み範囲を再確認**：既存テスト TestExternalSemanticImportOptionalDigestPin、TestExternalNamespaceImportPreservesProviderIdentityAndSourceOwnership、TestLocateImportedSourceUsesProviderScopeAndCurrentFingerprint、TestBuildSourceIndexFromLoadRefusesWorkspaceWithImports の期待・失敗を静的比較し、必要になった場合のみ現PR HEADに対するfocused Go試験へ進む。過去のmain CI成功を現PR HEADの合格と表示しない。
+2. **P0a比較票を完成**：同じConsumer Managed Source、Provider P1／P2、Namespace A／B、manifest bytes、選択Semantic Digest、Provider内Source occurrence、Source Index、Owner受理／現在Authorityを**別列**にする。ExpectedはProvider選択・意味内容とscopeから独立に固定する。「出力されたDigestを次のpinにそのまま転記しただけ」の自己整合をOracleとしない。
+3. **P0bの停止を観測**：importsが宣言されている時、BuildSourceIndexFromLoad が返す ErrImportsNotBound を正の拒否Expectedとして記録。未取得・未束縛は空集合や失効済みではなく **unknown/unqualified**。どうしても完全なBundleが必要なConsumerのためだけに、Provider側Source／manifest／実消費byteを固定する最小手段を既存#1570／#1017／#2505／#2595へ評価依頼。合成テストのためだけに第二のCacheやRegistryを実装しない。
+4. **後段へ正しい資格だけを渡す**：#2600へ「意味計算再利用可否」と「Artifact／Source citation／Consumer再資格化」を別列で渡し、#2667 §30〜32（横断R0〜R3／Import再利用）とは新Runnerを作らず対応表で接合。#1124／#2516にはread-onlyと現在開示の区別を渡し、#267案件Meaning、#1174実Effect、#988 DSL／Operatorの各Ownerを横取りしない。SQL／Data Contextの否定Schema依存（#2778）も同じく「値不変＝依存閉包不変ではない」という比較軸に限り参照する。
+
+**受入の停止条件と終了条件**：P0aのDoneは、単一の実Source・Provider Scope／Manifest／Digest・利用側不変性・意図的なstrict拒否を、独立Expectedとexact HEADへ束縛した記録が得られること。P0b／Build skip／Publisher／SHO保存文書／Host EffectはこのDoneに含めない。現PR #2743は設計レビューとしての**新しいFixture起票をここで停止**し、P0aの実Go実証と横断Ownerによる差分受理へ次の作業を渡す。新ADR決定、製品Go変更、本番Provider、性能測定、Ownerの業務意味受理は依然NOT RUN／NOT ACCEPTED。
