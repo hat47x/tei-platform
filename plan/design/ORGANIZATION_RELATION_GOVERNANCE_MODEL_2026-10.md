@@ -2175,3 +2175,11 @@ Providerの役割を、Authentication Assertion Reader（SAML/OIDC）、Director
 **段階**：P0 既存CLIとNative組織E1の正確な機能棚卸し→P1 単一階層・兼務・未来版の標準Profileを小例で比較→P2 AIがPlugin配線候補を出すread-only実Harness試験→P3 実Directory/HR Providerの現在ReadとRow/Field/Relation完全性→P4 必要な企業だけOwnerが承認した改組・更新を実Provider/HostのCommit/Receiptへ接続。正しい既存Host権限を満たすまではP4へ進まない。
 
 **回帰条件**：単純企業に不要Pluginを強制しない、Hierarchy循環と多重経路を区別する、valid/known/公表版を混ぜない、同名Accountの誤同定を拒否する、Sync部分0件を不存在としない、複数Provider候補・Plugin版ドリフトを診断する、Groupから自動Grantを与えない、Simulationを実Commitに昇格しない。これは計画であり、新しいCLI/Skill/Plugin/IdP連携・本番適合・Owner受理はNOT RUN。
+
+### 57.4 PluginパラメータをAIが誤配線しないための契約（提案）
+
+**パラメータの説明もDataとして扱う**。各Parameterには、論理名、意味Roleと対象Subject/Relation kind、型/多重度/既定値、選択可能な値、他Parameterへの依存、Source/Owner、Source Revision、秘密/開示範囲、未設定時の振る舞い、否定例、互換性条件を持たせる候補。AIに渡すのは許可されたDescriptorと観測結果の要約であって、Directoryの認証情報・保護対象者の実データではない。
+
+**Contract側の別記録**：Required/Provided Data・Relation/Query/Operation、Version/Fingerprint、Provider/Environment Binding、read/write Effect、Failure/Unknown、Source Provenance、Conformance Evidence、実行側が要求するScope。これは#951の既存Service Contract拡張範囲で評価し、組織用の第二Plugin Registryを作らない。Parameterを設定できてもProviderが存在しない、異なるSource Owner、時点を扱えない、Conformance未確認なら「配線候補」に止める。
+
+**AI支援の出力形式**は「採用する標準Profile＋必要なAdapter」「Parameterの値／出典／推定・確定」「Contract/Provider選択とConflict」「Previewで変わるModel/Relation/Source」「必要なOwner質問」「実験・未実行の境界」の六面を基本にする。明示的なWrite Intentがない限り候補を保存せず、適用時にはSource版CAS・差分と現在Authorityを再確認する。モデルの元DSL/Markdown糖衣記法は通常Saveで保持し、Formatは独立操作とする。
