@@ -247,12 +247,41 @@ go run ./cmd/tei artifacts -workspace reference/standard-crud/workspace -applica
 
 ### 次の小さな完了単位
 
-1. **M0**：#2678のexact-head実CLIを通し、5 Operation/4 GapとArtifact Source版を観測・ログの件数から再確認。合成11件と実Go観測を別結果とし、手動で`commands`を見たことや既存#2626のPASSをそのまま数えない。
+1. **M0**：#2678のexact-head CI（2026-11-03確認）で合成Checkerと実Go CLIの両jobが成功。既知5 Operation/4 GapとArtifact Source版の**限定実測を受入材料**とし、実Macro/Owner DB/Adapterを含むM3へは合格資格を持ち越さない。
 2. **M1**：同じ`ledger` Artifactを用途別Expected Setで照合する。原本に差のある`-out`のファイル書込みと、実Readerが読めたMember/Manifest bytesを区別する。Java依存class集合は別Target/別Domainの既存実証とし、通用条件だけ参照する。
 3. **M3**：#2651/#2653の実CAS記録を使い、実Queryの「未存在」要求が**単行期待値更新で代用できるか**を反証する。必要な場合はOwnerのDB制約/Transactionで現在集合を確認。#1174 P0-aの実Effect・Receipt未接続は未達として保持する。
 4. **M4**：SHO保存文書のSource再解決と、EKI同一AttemptのBody実取得を別に観測する。M0/M1の生成成功だけで納品へ昇格させない。
 
-**優先順位とEvidence**：既存P0-a/P0-b/Gate A/B/Cを維持し、M0のread-only実証は並行で進める。特定のOwnerが実DBで8件PASSと報告しても、TEI Macroの実ビルド/Provider/Current Grantへ転用しない。新#2678のCI結果が得られるまでは`new-M0-NOT-VERIFIED`と記録する。上の負例は**計画段階でMacro製品E2E未実行**。
+**優先順位とEvidence**：既存P0-a/P0-b/Gate A/B/Cを維持し、M0のread-only実証は並行で進める。特定のOwnerが実DBで8件PASSと報告しても、TEI Macroの実ビルド/Provider/Current Grantへ転用しない。#2678のCIは両job成功を確認済み。ただしM0の実CLI成功をMacroの実行/納品保証へ転用しない。上の負例は**計画段階でMacro製品E2E未実行**。
+
+## 2026-11-03 M3: 実Command・権限・効果観測の結合計画
+
+[設計第16章](../design/SCRIPT_MACRO_AUTHORITY_AND_EFFECT_TARGET_BINDING_2026-11.md)へ2026-11-03 main `0e18b916aa15bc7768e9abfb34318b98ee497cb3`に統合済みのCommand/Period/Effect Rule/Adapter実装を接続した。**M0のread-only実CLI接合と、M3の実業務確定を同じ完了扱いにしない。**
+
+### M0は最初の局所縦切りが成立済み（範囲を限定）
+
+- [#2678](https://github.com/hat47x/tei-platform/pull/2678)は2026-11-02 21:52 UTCに**merged**。PR exact head `bf5e12db101b0fe5145c4a1a93e810be794c999f` の[Macro M0 actual TEI CLI workflow #41510214144](https://github.com/hat47x/tei-platform/actions/runs/41510214144)を確認した。`tests-only`と`observed-macro-m0-cli`の**両job completed/success**。前節の「Draft #2678／作成時点queued」は履歴情報であり、**現在も未確認という意味ではない**。
+- これで証明されたのは、固定Public Fixtureの`validate/operations/artifacts`を実Goバイナリで呼び、World/ModelRevision、5 Operation/4 Gap、Manifest/Findingsを照合する**限定M0**。新たなMacro実行やProvider DBの処理、OS送出、Modelの正式受理、実Skill/Harness、全Domainの適合を実証したわけではない。
+- M1の`artifacts -out`実Reader/複数世代公開は[#2604](https://github.com/hat47x/tei-platform/issues/2604)/[#2630](https://github.com/hat47x/tei-platform/pull/2630)で別判定。#2678は`-out`を書込まず、実データのQuery/Effectも行っていない。M0の基準は固定したまま**次の本当の未接続辺M3へ**進む。
+
+### M3-A〜F：最初の受入に必要な分離観測
+
+| 段階・Priority | 同じ合成`order_entry`から観測する最小実体 | 独立Expected・停止条件／Owner |
+| --- | --- | --- |
+| **M3-A / S0：参照のみ** | merged #2747の`studiohost.PlanCommand/ExecuteCommand`、`Mode=reference`、`Committed=true`とEffect/Outcome。Go単一バイナリ/CLIの標準入口は維持 | **Reference commit≠DB Effect**。Studioの表示/AI説明は`Mode`・実Receiptの有無を示す。#1124/#2745/#2502 |
+| **M3-B / S1：対象の拘束** | merged #2773`commandadapter.Executor`。Ownerが許可した`Order1001`とCommand Inputs/明示`Payload`/Providerの実Targetを照合。`Order1002`へのすり替えを負例にする | `effectcommit`のGrant/Scope/RequestHashだけでは業務対象の意味拘束は未証明。合法な関連明細更新はOwnerの対象変換で説明。#2598/#2499/#1174（T-1/T-38） |
+| **M3-C / S2：必要なPeriodとTx** | merged #2746/#2768のPeriod状態、`command.Invoker.Periods=nil`・`MapPeriodState`未登録・closedの差、`Invoker.UnitOfWork`とAdapterの`Runner`の独立Txの組合せ | 必須Periodが不明でも処理が進み得る現在経路を本番Macro受入へ自動昇格しない。内側Commit済み・外側Commit失敗を全Rollbackと推測しない。#2144/#1129/#1174 |
+| **M3-D / P0-a Owner実DB** | 実PostgreSQLの現在Grantを同じ物理Txで検査→実Resource update→同一OperationIDのReceipt記録→Commit/再照会。Ack消失/競合/Replayを区別 | #2651/#2653の実単行CASは**別Referenceの成功**。Adapter→本番Owner/Providerの同一Tx/Receipt・現在Grantの資格が得られなければ**P0-a未合格**。#1174/#1119 |
+| **M3-E / S2〜S4：確定後Effect** | merged #2771`SQLEffectObserver`・#2769補償に、同一業務Target/AttemptのSQL Params/独立Read/Effectlogを接続。count>0が別注文に由来する負例、Observer error後のJournal欠測、補償の部分失敗を含む | Query countだけでは因果効果を証明しない。`RunEffect`は成功呼出し後Observer errorでAppend前に戻る経路がある。実Runで回復・再試行・独立Observationを観測するまで`unknown`。#1129/#1174/#1130 |
+| **M3-F / S4：外部Consumer/Job** | TAI/SHO/任意EKIへ渡す際のTask/Attempt/Body/digest/実ReaderとCurrent Disclosure。TEIが非常駐な場合のTrigger/Resource/Node実務を分離 | EKI ACK≠実Body受信/Owner Effect。TEIの業務状態/Rule正本をEKIへ移譲しない。#1130/#2516、[Everything is Data `27](https://github.com/hat47x/tei-platform/pull/2667)、EKI #465 |
+
+**実行の開始順**：M3-A/B/Cは互いに独立の合成・Headless Go試験で並行化できる。ただし**M3-Dの正式P0-a実DB接合の合格を、M3-BのFakeProvider PASSで代理しない**。M3-Eはその実Effectと同じOperation/Subject/Receiptの独立観測、M3-FはさらにReader/Disclosureまでを要する。新しい永続Host/Registry/Workflow/Tx Coordinatorは作らない。
+
+**採用までの停止条件**：`Grant issuer未識別`、`IntentとPayload対象対応未受理`、`必須Period状態欠落`、`実Txが分裂`、`ObserverのQuery/ArgsがEffect Target未束縛`、`Read/Reportの実開示未観測`なら、該当Claimを`unverified/unknown/unsupported`へ留める。表示は可能でも実行ボタンの現在資格やJob成功/納品へ昇格させない。合法な内部Read、限定PATCH、宣言された任意承認手順の自由は維持する。
+
+**Frontend・配布の直交性**：通常マクロはグローバルに使える可読性重視の言語中立DSL/Source糖衣で作成し、Go固有`package/struct/func`などを利用者へ強制しない。標準配布はGoビルドの単一バイナリを基本、外部.NET/Java等は専用Target/Host Consumerとして可能性を保持。DSL表層/Unicode/Source保存は#988/[Draft #2745](https://github.com/hat47x/tei-platform/pull/2745)、Frontend→Go生成の実適合/性能は[Draft #2667](https://github.com/hat47x/tei-platform/pull/2667)がOwner。**このM3実行資格とParser/Go Backend選定をひとつの先行決定へ抱き合わせない**。
+
+**状態・測定**：M0の実CLI CI成功は確認済み。M3-A/B/Cの元となる局所実装と単体試験は別Ownerの報告であり、上記新しい同一`order_entry`の複合負例、M3-Dの実DB Owner Effect、M3-Eの因果Observer/Journal、M3-Fの実EKI/SHO受領は**NOT RUN**。M3-B/C/Eの反証結果と独立Expectedを記録してから、必要な製品修正を既存Issueへ割り当てる。P0/Gate A/B/Cは維持。
 
 ## テスト証拠の受渡し：1ケースにつき別の保証を保持
 
