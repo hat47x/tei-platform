@@ -25,12 +25,16 @@ func NewMemoryStore() *MemoryStore {
 	return &MemoryStore{data: map[core.CanonicalID]map[string]map[string]string{}}
 }
 
-// Applyは、宣言された効果を記憶域へ適用する。
+// Applyは、入力全体からキーを作り、宣言された効果を記憶域へ適用する。
 func (s *MemoryStore) Apply(effect *semantic.DataEffect, inputs map[string]string) error {
+	return s.ApplyWithKey(effect, recordKey(inputs), inputs)
+}
+
+// ApplyWithKeyは、呼出し側が決めたキーで効果を適用する。
+func (s *MemoryStore) ApplyWithKey(effect *semantic.DataEffect, key string, inputs map[string]string) error {
 	if effect == nil {
 		return fmt.Errorf("data effect is not declared")
 	}
-	key := recordKey(inputs)
 	if key == "" {
 		return fmt.Errorf("record key is empty")
 	}
@@ -59,6 +63,17 @@ func (s *MemoryStore) Apply(effect *semantic.DataEffect, inputs map[string]strin
 		return fmt.Errorf("unsupported data effect %s", effect.Kind)
 	}
 	return nil
+}
+
+// Getは、キーに対応するレコードを返す。
+func (s *MemoryStore) Get(data core.CanonicalID, key string) (map[string]string, bool) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	record, ok := s.data[data][key]
+	if !ok {
+		return nil, false
+	}
+	return copyValues(record), true
 }
 
 // DeleteAllは、Dataのレコードをすべて削除する。
@@ -99,12 +114,26 @@ func (s *MemoryStore) restore(snapshot map[core.CanonicalID]map[string]map[strin
 }
 
 func recordKey(inputs map[string]string) string {
-	if len(inputs) == 0 {
-		return ""
-	}
 	keys := make([]string, 0, len(inputs))
 	for key := range inputs {
 		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	return keyText(inputs, keys)
+}
+
+func recordKeyFields(inputs map[string]string, fields []string) string {
+	if len(fields) == 0 {
+		return recordKey(inputs)
+	}
+	keys := append([]string(nil), fields...)
+	sort.Strings(keys)
+	return keyText(inputs, keys)
+}
+
+func keyText(inputs map[string]string, keys []string) string {
+	if len(keys) == 0 {
+		return ""
 	}
 	sort.Strings(keys)
 	parts := make([]string, 0, len(keys))
@@ -125,8 +154,9 @@ func copyValues(values map[string]string) map[string]string {
 // ReferenceDataExecutorは、宣言された効果をMemoryStoreへ適用する参照実装である。
 // 業務ロジックは持たない。
 type ReferenceDataExecutor struct {
-	World ir.World
-	Store *MemoryStore
+	World     ir.World
+	Store     *MemoryStore
+	KeyFields []string
 }
 
 func (e ReferenceDataExecutor) Execute(_ context.Context, request Request) (Result, error) {
@@ -157,13 +187,19 @@ func (e ReferenceDataExecutor) Execute(_ context.Context, request Request) (Resu
 		if err := e.checkValueDomains(request); err != nil {
 			return Result{}, err
 		}
+		if capability.Effect.Kind == semantic.DataEffectUpdate {
+			if err := e.checkImmutableInputs(request); err != nil {
+				return Result{}, err
+			}
+		}
 	}
 	if capability.Effect != nil && capability.Effect.Kind == semantic.DataEffectDelete {
 		if err := e.checkDeletePolicy(capability.Effect.Data); err != nil {
 			return Result{}, err
 		}
 	}
-	if err := e.Store.Apply(capability.Effect, request.Inputs); err != nil {
+	key := recordKeyFields(request.Inputs, e.KeyFields)
+	if err := e.Store.ApplyWithKey(capability.Effect, key, request.Inputs); err != nil {
 		return Result{}, err
 	}
 	result := Result{Effect: capability.Effect}
@@ -172,6 +208,53 @@ func (e ReferenceDataExecutor) Execute(_ context.Context, request Request) (Resu
 		result.Outcome = &outcome
 	}
 	return result, nil
+}
+
+func (e ReferenceDataExecutor) checkImmutableInputs(request Request) error {
+	plan, err := applicationview.BuildCommandPlan(e.World, request.Application, request.Pattern, request.Capability, request.Inputs)
+	if err != nil {
+		return nil
+	}
+	var dataID core.CanonicalID
+	for i := range e.World.Applications {
+		if e.World.Applications[i].ID != request.Application {
+			continue
+		}
+		for j := range e.World.Applications[i].Patterns {
+			if e.World.Applications[i].Patterns[j].ID == request.Pattern {
+				dataID = e.World.Applications[i].Patterns[j].Data
+			}
+		}
+	}
+	if dataID == "" {
+		return nil
+	}
+	record, ok := e.Store.Get(dataID, recordKeyFields(request.Inputs, e.KeyFields))
+	if !ok {
+		return nil
+	}
+	immutable := map[core.CanonicalID]bool{}
+	for _, namespace := range e.World.Semantics {
+		for _, data := range namespace.Data {
+			if data.ID != dataID {
+				continue
+			}
+			for _, attribute := range data.Attributes {
+				if attribute.Immutable {
+					immutable[attribute.ID] = true
+				}
+			}
+		}
+	}
+	for _, input := range plan.Inputs {
+		if !input.Provided || !immutable[input.Attribute] {
+			continue
+		}
+		if old, exists := record[input.Name]; exists && old != input.Value {
+			return fmt.Errorf("immutable attribute %s cannot change", input.Attribute)
+		}
+	}
+	return nil
 }
 
 func (e ReferenceDataExecutor) checkValueDomains(request Request) error {
