@@ -224,7 +224,7 @@ TEI CoreでSpring Statemachineの全機構を先行採用するのではなく�
 [TEI Application→EKI論理Launch Target／Cloud Control＋On-prem/Pi Fabricの比較](TEI_EKI_APPLICATION_DEPLOYMENT_FABRIC_2026-11.md)を追加。State/Flowの意味はTEI、常駐ApplicationのRuntime/Service readinessはCloud／既存Orchestrator、Task/Attempt/LeaseとResource/Node stateはEKI、DB/Business EffectはDomain Providerが保持。**どの管理コンソールに登録したか**ではRuntime状態の所有者は変わらない。Web/APIの可用性とPi/PCの機会的Task実行はState Machineの実行Profileとして区別する。Release Intent→Provider Actual→Consumer Observation／現在資格の差を、Graph×Tableの相関表示と独立Expectedで検収する。
 
 
-### 7.9 Data ScriptのIFからDecision Table／State Graphへの投影資格（2026-11-03、IF-first方針の反証計画）
+### 7.10 Data ScriptのIFからDecision Table／State Graphへの投影資格（2026-11-03、IF-first方針の反証計画）
 
 <!-- IF_DECISION_TABLE_PROJECTION_20261103 -->
 
@@ -252,10 +252,50 @@ TEI CoreでSpring Statemachineの全機構を先行採用するのではなく�
 | **DT-07 Source編集** | No-op Saveはzero write/byte一致。1セル編集は元ScriptのOccurrenceが一意に特定できる場合のみ局所Patch。周囲のコメント・書式・構文糖を崩さない | #2621、#1124、#1935 |
 | **DT-08 別Domain** | UI/通信/ゲーム等のEvent priority・timeout・並行Regionに業務Decision WorkbookのLifecycle一意制約を押し付けない | #2497、#988、#2514 |
 
-**限定的な独立Probe**：今回、公開架空値だけを用いたPython標準unittestの小比較を実行し8件PASS（通常IF、closed拒否、short-circuit、重複Match、NULL/未取得、old/new、CAS toy、read-only投影）。このProbeはGitHubに未保存であり、8 PASSは本仕様の反例・性質を限定的に説明するtoyの結果である。**実X-TEA Script、Excel Workbook、TEI Parser/Studio、Go/Java生成Target、実DB/Provider、Owner意味受理の試験ではない**。DT-01〜08の製品ConformanceはすべてNOT RUN。
+**証拠訂正（2026-11-03）**：前版の「Python標準unittestで8件PASS」という記載は、当該時点の実行ログ・スクリプト実物を確認できないため**撤回する**。報告された8件を実行済みのProbeとして扱わず、この文書での結果は**設計上の反証候補、NOT RUN**とする。いずれのDT-01〜08も実Workbook、TEI Parser、Studio、Go/Java Target、実DB/Provider/Owner意味受理での製品試験は**NOT RUN**。今後PASSと記録する場合には実行したSource/Expected、固定入力、Tool/Version、Command、Exit、出力、git commit/test blobの可検証な証跡を保存する。
 
 **最短の接続順**：①既存Source/WorkbookでIF→表のread-only行・Source位置を照合、②DT-01〜04で順序/Read/欠測/診断の違いを固定、③DT-05〜06を#1129/#1174実Effectへ、④DT-07は#1935 Shared Acceptanceのupdate演算が実証された範囲だけに限定、⑤DT-08で別Domainへの強制的な意味拡張を防ぐ。これを先に新しいDecision Table EngineやState Machine Runtimeを作る口実にしない。Source正本・Meaning Authority・Provider実効果・文書投影のOwnerを重複させない。対応不能なIFはLoss付きread-onlyまたはunsupportedに留める。
 
+
+
+### 7.11 入力起点と実行先をData Scriptの意味から分離する：Function Invocation・Interaction・現在Targetの縦断（2026-11-03）
+
+<!-- tei-20261103-invocation-interaction-binding-crosslane -->
+
+**他レーンの成熟判断と本計画での新しい差分**：
+
+- [RMT-2一試行計画 Draft #2783](https://github.com/hat47x/tei-platform/pull/2783)は「二入口・一つのData Rule・一Owner Write」をE0〜E6で比較し、PA-11〜14で反例集合・実Observer・Trigger/Flow・EKI Body/Deadlineを区別した。ここでE0〜E6の別正本を作らず、**同じFunction/Actionの起動入口とInteractionが、実行対象・意味・権限を汚染しないか**という画面/Job/CLI境界を特定する。
+- [Data Script/状態の方針 #1129](https://github.com/hat47x/tei-platform/issues/1129)はIF-firstの単一Meaningを維持し、Function/Flow図はProjection／Bindingとする。[Action Surface Draft #2616](https://github.com/hat47x/tei-platform/pull/2616)と[実Command Target漂移 #2598](https://github.com/hat47x/tei-platform/issues/2598#issuecomment-6601453060)には、表示/入力側の受注O1に対し実RequestがO2を更新し得る**限定Go特性試験**がある。これは適格拒否が実装できた証拠ではない。
+- [組織由来の推移的可視性 Draft #2781](https://github.com/hat47x/tei-platform/pull/2781)は、表示・read-only・例外・deny・期間・Scopeを分けた合成33ケースの提案であり、Provider/Hostの実効認可ではない。**「画面に見える」こと、Data ScriptのValidation成立、実Actionの書込Grantは別契約**。
+- [非常駐JobとEKI委譲計画 #1130](https://github.com/hat47x/tei-platform/issues/1130)はTEIがJob意味を持ち、EKIにTask/Attempt/資源・期限を必要に応じ委任する。ボタン押下もTimerも「Script専用Host」起動の別言語仕様にせず、型付きFunction/Action Invocationへ正規化する。
+
+**唯一の業務Ruleを共有し、入口の違いを隠さない**：
+
+| 契約面 | 固定する意味・証拠 | 起動形態による違い |
+| --- | --- | --- |
+| Data/Rule | Order Subject、型/粒度、IF評価順、必須Read、State/Validation/DerivationとRule版 | Web/CLI/Batchが別にRuleを再定義しない |
+| Function/Action | Purpose（submit/cancel/correct等）、typed parameters、対象集合とScope、期待するBusiness Effect | 一つのBusiness Functionを複数起点から呼べるが、異なるPurposeを同じupdate操作に圧縮しない |
+| Invocation Trigger | user button、API、CLI、Timer、Data Eventなどの起動契機、Actor/Correlation/Idempotency | Triggerは受付契機であり現在Authorizationや実Data Eventの証明ではない |
+| Interaction | 型付きInput要求、確認/選択/進捗/取消の必要能力、失敗時の応答Contract | Web/DesktopはInteraction Providerを利用し、CLI/Headlessは事前Inputを与えるかinteractive-requiredを返す。UI待機をData Scriptの純粋Ruleへ埋め込まない |
+| Request/Effect | Target Subject/Provider Mapping、Grant、ExpectedVersion、Payload、Period、Commit/Replay/Receipt | 各入口で同じ最終Owner Resource/Meaningへ束縛する。TEIのPreview/参照ExecutorのCommittedは実DB Commitではない |
+| Async/Delivery | Resource予算・期限・Job Instance/Attempt、Body/Result/Owner Verified | EKIや外部Hostの実行完了から業務上の成功・納品・Rule現在性を推論しない |
+
+**最小縦断ケース（新規Harness/Engineではなく既存PA/SJ/OBの横断照合票）**：
+
+| Case | 具体的な反証 | 期待結果とOwner |
+| --- | --- | --- |
+| **IV-01 二入口一Rule** | Webの提出ボタンとHeadless CLI/APIで同一Order O1/同一Rule版を呼び出す | 入力値/Rule相対Expectedと業務拒否理由は一致。ただしActor/Grant、Interaction、結果の提示は別。#1129/#2783 |
+| **IV-02 Interaction不足** | Functionは利用者の追加確認を必須とするがHeadless実行へ確認済みInput/Providerがない | 明示的interactive-required／不受理。確認なしで既定承認しない。#997/#1130/#2502 |
+| **IV-03 Purpose/Target漂移** | 表示/選択はO1のsubmit、PayloadはO2のcancel、Provider Aliasも複数 | Request構築または実Commit直前に現Owner/Grant/Target不一致を拒否する必要がある。現行のGo負例PASSは拒否の製品PASSではない。#2598/#1174 |
+| **IV-04 組織Read-only** | O1は可視だが部門Scopeがread-only、または組織関係の部分Readで授権経路不確定 | 表示許可からMutation Grantを導出しない。実Host/Providerが現在のScope/Permission/Policy版を検査。#2386/#2781/#1174 |
+| **IV-05 Period/Revision** | Actionを提示した後に期間がclosing/closed、Rule/Source/Grantが改版 | Offer/PreviewをExecuteの現在資格に転用しない。必要な現在状態が不明ならfail closed。#2598/#2784 |
+| **IV-06 Virtual Edge疑似イベント** | SQL Schema/Mapping改訂によりDerived Fieldの表示値が変わるが、Business Write/Commitがない | UIの変更表示・Derived Edge候補からOutbox/Jobを発火させない。#2387/#1129/本Draft Data-derived §7.4 |
+| **IV-07 Effect不明・Replay** | Commit後ACK-loss、Replicaでは旧値/0件、再SubmitボタンやTimer再送が発生 | 新OperationIDの二重Commitに進まず、既存Receipt/Idempotencyと因果Readを照会。#1174/#2598 |
+| **IV-08 非常駐とEKI** | GUI停止中に登録済みJob/Timerが発生、EKI Task.completedだがBody/業務効果未確認 | Deploymentで選んだ実Coordinatorの起動を検証し、Task/Artifact/Business Verifiedを分離。TEI独自常駐Hostを追加しない。#1130/EKI #112 |
+
+**最短の実装順・止めどころ**：まず公開合成Order 1件について、元Data RuleとFunctionの意味・Source位置を固定して同じInvocationをHeadless二入口から呼ぶ（#2783 PA-01/13を再利用）。次に現在のGo Action Surface/Command AdapterへIV-03とIV-05の**意図した拒否を独立Expected**として与える。ここでSourceを誤参照/対象違い/Grant欠測なら業務Effectを止める。実Provider（初回Owner Write/ACK-loss）を通過した後で初めてWeb/Desktop Interactionと、オプションのEKI Task/Artifact/Deadlineへ拡張。図表での「Action可」ラベル・Decision Tableのallow・Rule CheckSetの0違反・EKI Task.completed・Probeのexit=0は、正式Commit/Owner Completedを代替しない。
+
+**採否・証拠の状態**：これは既存Source/Issue/他Draftの結合計画であり、新しいTEI API/Interaction Plugin/Job Scheduler/Rule正本を実装した記録ではない。IV-01〜08の同一Attempt Web/CLI/Provider/Host/EKI E2E、実組織Policy enforcement、実Command拒否、元X-TEAとの同義検証、Owner受理はすべて**NOT RUN／NOT ACCEPTED**。既存の#1119 Gateを引き上げない。
 
 ## 8. 今回の結論と検証の状態
 
