@@ -249,6 +249,12 @@ Workerにはoutbound-firstの社内PC/ARM64 Raspberry Pi/On-prem資源Poolも候
 
 最初のGateは**W-1 Go Direct vs 現EKI RE-01〜08**。現在Input Artifact ingest-intents/uploadはHandlerが501、Output GETはStoreがあると実経路がある。ExecutorApprovalはDispatch起動設定から取得するため、TEIごとのFunction/Job/Entry DigestとCurrent Grantが実確定したかは別。完了した限定Processテストの存在を足掛かりに、既存EKI #112/#57/#242へ不足分だけを引き渡す。新しいTEI HostやEKI第二Job Engineは作らない。
 
+### 8.14 TEIの限定RunPlanとEKIの実Task Groupは別レベルの契約
+
+[最新の一改訂縦断§13](TEI_EKI_ONE_REVISION_EVIDENCE_VERTICAL_SLICE_2026-11.md)で、TEI `RunPlan`の現Go実装（Stepごとの進捗・Checkpoint Resume・RunKey/Attempt/Fence）が確認できることを追加した。ただしRunKeyの現在実装にはSource/Artifact Revisionや業務Effect Receiptが含まれず、File Journalの`Last→Append`は分散CAS/Txを証明しない。**Step resolvedはEKI AcceptedResultでも業務Commitでもない**。TEI Plan Resume／EKI Task Attempt Retry／外部HPC・Cloud Providerの内部Retryを、Operation ID/Effect Class/現在Grant/Receipt/ExecutionRefで別に管理し、#115の内部Retryが無効化／観測できないeffectful Stepはholdとする。
+
+EKI #267/#381/#695のTask phase実装と限定試験は確認済み。旧文書の「検証・回復後のTask phase未配線」を現時点の一般事実にしない。EKI #126 Group Budget/Deadline/Partial Resultはまだ**openの要求**であり、TEI FlowのFork/Join、Groupの一体Budget/Cancel、業務品質範囲をEKIが実装済みとは扱わない。100件中80件Verifiedでも、TEIのOwnerが全件必須と受理していれば結果は未完了。RunPlanは標準Go単一Binary／既存Host起動を妨げず、EKIが不要なPure/短時間JobはDirectを維持。
+
 ## 9. 設計判断のGate、実装順、Issue追補候補
 
 - **G0／今回の設計比較**：EKI ADR-0013・一方向依存・native-first kernel とTEI no-custom-Host/Plugin-firstを保持し、上記二層案を未採用の候補とする。TEI Draft PRへの資料追加だけで、EKIのRequirements/ADR/Mainは書換えない。
@@ -264,6 +270,6 @@ Workerにはoutbound-firstの社内PC/ARM64 Raspberry Pi/On-prem資源Poolも候
 
 ## 10. 検証・出典の状態
 
-2026-11-03時点で接続GitHubの**EKI README/ADR-0013/MVP計画/Architecture/External OpenAPI/既存Issue**と**TEIデータ・Flow/Batch/Effectの既存Issue**をread-only照合した。EKI本体にはGoによるControl・Task/Lease/State等の開発成果があるが、Task Group／外部Callback／TEI固有のDerived-edge→EKI Job委任の実Product E2E、Workerの本番能力、分散Job Controller全体の完成を確認したものではない。EKI #381によればTask `admitted→ready→active` の実装が進む一方、Result検証・回復の後続状態経路に未解決箇所がある。EKI #242も起動配線の不足を扱う。READMEの古いM0説明・過去Issueだけで現HEADの全動作を断定しない。
+2026-11-03時点で接続GitHubの**EKI README/ADR-0013/MVP計画/Architecture/External OpenAPI/既存Issue**と**TEIデータ・Flow/Batch/Effectの既存Issue**をread-only照合した。EKI本体にはGoによるControl・Task/Lease/State等の開発成果があるが、Task Group／外部Callback／TEI固有のDerived-edge→EKI Job委任の実Product E2E、Workerの本番能力、分散Job Controller全体の完成を確認したものではない。EKI #267/#381はclosedで、Task `admitted→ready→active→verifying`・拒否後の再投入とResult受理の配線・試験を#695で照合済み。ただしEKI #242の旧未配線記録とProduct-only／実TEI生成Job/Provider/業務Receiptの受入は別。READMEの古いM0説明・過去Issueだけで現HEADの全動作を断定しない。
 
 TEIは実動するEKI Adapter／Callback Endpoint／Outbox連携を今回追加していない。GitHubのDesign Draftへの追記のみ。**JD-01〜09は全件NOT RUN**、人による運用・Security Reviewも未実施、E2E実装済み・Owner意味受理・EKI要件採用・main統合の証拠とはしない。
