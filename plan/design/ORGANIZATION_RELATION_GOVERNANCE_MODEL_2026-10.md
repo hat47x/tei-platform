@@ -2324,3 +2324,40 @@ Record R1の取扱OrgがL1で、PolicyがD1以下のcommand階層に限定する
 **重要な独立出力**：Artifact Readerは`findings=0, complete=False`を記録した。テスト/Artifact出力は成功だが、**Artifact Manifestがcompleteという意味ではない**。独立Readerが断定したのは、入力Revision/項目Digest/Rule fingerprint/Operation Surfaceが相互対応するという限定事項であり、全Target生成・Consumer実受領・本番配布の完了ではない。生成物完全性は#1163/#2604の既存契約へ返す。
 
 この成功が証明するのは、**実TEI構文でRecord→OrgUnitの関係を正しく保存し、未BindingのRecordに無根拠なOperation/Grantを導出しない**ことまで。#2781の合成VP Rule、組織Policyの実用、実DB/Provider enforcement、Read/Write Host Grant、UI/SHO/AI非開示、業務Owner受理は未実証。特に実RLS/テナント隔離・非許可Recordの不流出はSecurity要件であり、このGo E1で安全性を主張しない。
+
+## 60. 表示後の組織・Policy・Grant変更：後着ResponseとConsumer資格を現在に束縛する（2026-11-03、#2582/#2506/#2516/#2631横断、採用前）
+
+### 60.1 有効だった表示を、現在も有効な表示と混同しない
+
+§58のOrg Linked Record Policyと§59の実TEI`CaseRecord → OrgUnit`が成立しても、**既に画面へ表示済みのレコードが、組織異動・Grant失効・再取得・検索条件改版の後に保持できるとは限らない**。前回の`Read OK`は、後刻の`Commit to visible state`を許可したことにならない。また同じRecord IDが再表示されても、親選択、Function Context、Read Cohort、可視性の根拠が異なれば**同じ現在資格ではない**。
+
+- **生成・取得時**：Source（Path/Revisionを含む）／Accepted Meaning／Role Pin／Query非出力依存／Record→Org Relation／Hierarchy root+axis／valid+known cut／Provider Route+Read Cohort／現在Principal・Tenant・Grant epoch／Function selection epochを明示したRequestを作る。
+- **受信・表示直前**：古いRequestのResult Sliceが現在のSource・Policy・Role・Grant・選択・Read範囲に適格か再照合する。未知・部分取得・Provider失敗や可視性/開示資格不明を`正常0件`に置換しない。現在のProvider/Hostが必要なReadを強制できないRouteは**拒否/未対応**とする。
+- **変更発生時**：影響を受ける既表示行・Cache・検索候補・集計・診断・Operation候補・AI Tool/SHO Export準備物を**用途ごとに再資格化**する。不要な全体再計算は避けるが、依存閉包が不明なら`影響なし`としない。古いResponseの後着を現在の画面やCUIへコミットしない。
+- **未保存編集**：編集Patchの存在と現在の保存許可は別。GrantやParent/Recordが失効したら、機密でない未保存Patchは**隔離された編集下書き**として残す候補だが、古いRequest TargetやSource版で自動送信しない。隔離状態自体の読取資格・保存場所・寿命も別に確認する。機密Patchを「保護されたから安全」と無証拠に保持しない。
+- **外部へ既に送出済み**：以前に正当に取得した画面の撮影・Download・受信済みAI/SHO資料を**事後に完全消去できるとは主張しない**。できるのは後続のアクセス／アプリ管理下のCache・画面・今後の開示の制限、必要な通知・訂正/監査である。取り消せない既知情報と、将来の利用資格は別管理する。
+
+### 60.2 同じRecordと見える世界でも、保持可能性は異なる
+
+| Trial | 観測・変更 | 独立Expected |
+| --- | --- | --- |
+| ORG-VE-01 | D1のCase 1件を現行Policy/Grantで読取 | 実Provider/Hostで適格Readを確認できた場合に限り当該Consumerへ反映。候補Ruleだけでは不可 |
+| ORG-VE-02 | 画面表示後、Policy `p-r1→p-r2`またはRead Grant失効 | 影響する表示/Cache/候補を再資格化。発生前に合法Download済の外部コピーの完全消去は主張しない |
+| ORG-VE-03 | 旧GrantのRead要求が遅れて到着、画面は既にp-r2 | 旧応答を現在表示へ戻さない。元レコードが同じIDでも失効 |
+| ORG-VE-04 | 親選択A→B→A、Record IDと表示値が再一致 | selection epoch/Context epochが異なれば、A時代のRequestを復活させない |
+| ORG-VE-05 | root D1→H、axis command→budget、Principal/Tenant/Grant変更 | 旧Grantを広いScope・別軸・別Principalへ無断流用しない |
+| ORG-VE-06 | 未要求Field/partial Rowset/Provider unavailable/0件 | 正常な空集合・完全FTE/NOT EXISTSへ変換しない |
+| ORG-VE-07 | UI listはRead候補だがCount・Export・SHO/AIは別用途 | 既表示資格を件数、外部開示、実Update、Batchへ転用しない |
+| ORG-VE-08 | WHERE/ORDER/EXISTS非表示Field・Provider cohort・Source locator改版 | 表示が同一でも依存/取得資格を再評価。モデル移動/再束縛で旧出典を無断維持しない |
+| ORG-VE-09 | Grant失効中に未保存Patchが存在 | 失効版でSubmitしない。Patch保護・隔離の可否はHost/Studio契約で別確認 |
+| ORG-VE-10 | 表示の色・幅のみ変更（Meaning/Policy/Grant/Readは不変） | 該当表示の構築は変わっても、独立したData Read Claimまで一律失効させない |
+
+**意味上の重要な違い**：履歴組織図の`validAt/knownAt`を過去に戻しても、現在のRead/Disclosure Grantを過去へ戻せない。合法に公開した過去資料の正本再現と、現在その資料を開示してよいかは別判定である。
+
+### 60.3 合成Referenceの位置と実試験の停止線
+
+[Draft #2781](https://github.com/hat47x/tei-platform/pull/2781)の新`verify-visibility-epoch.mjs`に**VE-01〜20**を実装、既存exact-head Node Suiteへ接続。作成直後のV8互換局所実行は**20/20 PASS**。固定HEAD native Node CIは**別確認**しなければならない。これは閉じた合成`synthetic-provider-observed`と架空Permitによる状態の差を検査するだけで、実ProviderやOS/Host認可の証拠ではない。前PR HEADのVP-01〜33 Node成功も新版へ無条件転用しない。
+
+実E3以降への追加の最小受入票：実`.tei`のCase/Policy/Meaning/Role Pin／起点選択と現在Epoch／Provider Route+物理Read/Enforcement Witness+Rowset/Field/Cohort／非表示Query依存／Host Grant root+axis+policy version+principal+tenant+action／受信時点と表示コミット時点の二照合／表示・DOM/a11y・Cache・Count/診断・SHO/AIへの実開示と不可逆コピー／未保存Patch／操作Intentと独立Effect Receipt。**一つの実Run**で、旧Read応答が変更後に到着する負例を、現物Bytes・独立Expectedを使って評価する。
+
+Ownerは#2582（再資格化とDependency）、#2506（Context/Selection）、#2516（用途別開示）、#2631（Studio/表示）、#2622/#2628（Provider実Read）、#2598（Intent/現在Target）、#1174（実Effect）。新しいReactive Broker/第二Source・Host・Policy Engine/専用ACLを追加しない。**新しい結合テストを未実施なら`NOT RUN`、Policy Owner採否未決なら`not accepted`、物理Read/Enforcement witness不足なら`unverified`**を保持する。
