@@ -198,6 +198,7 @@ func DiffApplicationMembershipCandidates(before, after ir.World) (ApplicationMem
 		Changes: changes,
 		AuthorityLimits: []string{
 			"candidate-only-not-acceptance-delta",
+			"semantic-and-non-application-changes-not-evaluated",
 			"source-order-and-target-effects-not-evaluated",
 			"dependency-coverage-not-verified",
 		},

@@ -17,6 +17,7 @@ type applicationMembershipComparison struct {
 	Schema            string                                             `json:"schema"`
 	ComparisonOnly    bool                                               `json:"comparisonOnly"`
 	StrictChanges     []changeanalysis.SubjectChange                     `json:"strictChanges"`
+	SemanticChanges   []changeanalysis.SubjectChange                     `json:"semanticChanges"`
 	Membership        *changeanalysis.ApplicationMembershipCandidateDiff `json:"membershipCandidates,omitempty"`
 	BeforeDiagnostics []validation.Diagnostic                            `json:"beforeDiagnostics"`
 	AfterDiagnostics  []validation.Diagnostic                            `json:"afterDiagnostics"`
@@ -48,12 +49,17 @@ func runApplicationMembershipComparison(args []string, stdout, stderr io.Writer)
 	report := applicationMembershipComparison{
 		Schema: "tei.reference.application-membership-comparison/v0", ComparisonOnly: true,
 		BeforeDiagnostics: validation.Validate(before.World), AfterDiagnostics: validation.Validate(after.World),
-		AuthorityLimits: []string{"not-an-acceptance-preview-or-decision", "source-order-and-target-effects-not-evaluated", "dependency-coverage-not-verified", "workspace-snapshots-not-pinned-or-atomic"},
+		AuthorityLimits: []string{"not-an-acceptance-preview-or-decision", "non-semantic-and-non-application-collections-not-evaluated", "source-order-and-target-effects-not-evaluated", "dependency-coverage-not-verified", "workspace-snapshots-not-pinned-or-atomic"},
 	}
 	exit := 0
 	if validation.HasErrors(report.BeforeDiagnostics) || validation.HasErrors(report.AfterDiagnostics) {
 		exit = 1 // Do not emit candidate changes for invalid models.
 	} else {
+		report.SemanticChanges, err = changeanalysis.Diff(before.World, after.World)
+		if err != nil {
+			fmt.Fprintln(stderr, err)
+			return 2
+		}
 		report.StrictChanges, err = changeanalysis.DiffApplications(before.World, after.World)
 		if err != nil {
 			fmt.Fprintln(stderr, err)

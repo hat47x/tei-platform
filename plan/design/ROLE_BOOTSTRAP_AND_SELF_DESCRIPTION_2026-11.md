@@ -126,6 +126,8 @@ Runtime側の `Registry.InvokeWithProvenance` は選択したCapability、Plugin
 
 **読み取り専用の比較経路**：Reference toolの `compare-application-membership -before DIR -after DIR` は、二つのWorkspaceから厳密なApplication差分と利用集合の候補差分を別々に表示する。片方でもValidation errorがあれば元診断を返し、候補を表示しない。SourceやDecisionは書かず、既存のPreview・Review・Acceptanceの計算にも接続しない。実CLIの一時Workspaceで、名前空間利用順の入替え、利用の削除、未定義名前空間を比較した。候補はTargetの表示順や依存網羅性の検証ではなく、異なる時点の読込み間の原子性も保証しない。実利用者がこの比較で負担を減らせるかは未測定。
 
+**編集から選択までの対照**：`tools/reference-shared-acceptance/definition_plugin_workflow_test.go` は一時Workspaceと実CLIで、Applicationの名前空間利用順と業務Data属性を2ファイルで変更した。2件の型参照と1件のPlugin Lockは変更せず、通常の検証とPlugin解決が成功した。Application利用集合の候補は空でも業務属性は追加されているため、比較コマンドに既存のSemantic subject差分を別欄で表示し、候補側にもSemanticなどが対象外と明記する。未定義型に変えた負例では通常Plugin解決と比較が停止し、明示的なPlugin診断だけが元診断・未検証候補を非成功で返す。この件数は合成例の変更ファイル・参照・Lockの観測であり、実利用者の入力時間や全影響を測ったものではない。
+
 **Build位置の限定対照**：`internal/plugin/build_location_actual_test.go` は実Goコンパイラで同一内容の合成モジュールを二つの異なるディレクトリからBuildする。Go 1.27.3／Linuxでは `-trimpath` 有効時、同一位置の再Buildと移動後の出力バイトが一致し、Source内容を変えた出力と実行結果は変化した。`-trimpath` なしでは同じ内容でも位置によってバイトが異なった。同じSource DigestでLocatorのみ異なるBuildPlan v1のFingerprintは両条件と独立に異なる。Go単体の比較であり、実TEI Builder AdapterがPlanを実行した証拠、他Target・Compilerでの再現性、移動後のBuild省略の安全性を示さない。
 
 既存の `tools/reference-build-execution-binding` はLocatorを取得ヒントとして除く**別のReference限定**の実行Plan投影を持ち、BuildPlan v1や既存LockのFingerprintを変更しない。条件付きの再利用を検討するなら、Builderが位置の非依存性を保証できる範囲と実際の入力・出力を確認し、既存の候補を対照する。今回の実験だけでv1固定範囲やLock照合を変更しない。
