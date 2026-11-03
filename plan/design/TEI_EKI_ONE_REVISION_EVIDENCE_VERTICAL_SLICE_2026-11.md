@@ -306,3 +306,13 @@ EKI側の[PR #694](https://github.com/hat47x/eki-fabric/pull/694)はWorker Trust
 **次の最小実装の方向**：Bを製品機能とする前に、EKIの既存Owner [#112](https://github.com/hat47x/eki-fabric/issues/112)・外部Artifact ingest/WorkOrderという**既存Contractの必要最小の差分**だけを明らかにする。高価なSolver／複数Pool Federation／自前AI Job RuntimeはA・BのE2E成立を前提に後続へ回す。A/B/Cの3種類を同じ「Job成功」カウントで合算しない。新ケース番号を乱立させずWP/VSの既存IDへ参照で引き渡す。
 
 **この章の証拠区分**：EKI mainの実OpenAPI source blob、TEI #2787のexact-head WP 19 PASS（外部PR報告）、#2811/#2812の文書・限定Sourceコード提案、EKI #692/#694の修正・運用決定、既存TEI RunPlan/Provider検証からの**設計提案**。本Draftの新しいGo/Node/実EKI/実AIテストは**NOT RUN**。Owner受理、メインline統合、実Worker I/Oと金銭的最適化は主張しない。
+
+## 15. Build/Toolchain/Data Localityを実行可能性の独立Gateへ（2026-11-04）
+
+[Deadline/Budget/Recovery§12](TEI_EKI_DEADLINE_BUDGET_RECOVERY_COORDINATION_2026-11.md)のCL-01〜08を、T0/T1/T2の**同一Artifact比較に必要な実行前の条件**として追加。TEI [Job/Build設計 #2788](https://github.com/hat47x/tei-platform/pull/2788)の単一Go Binary既定・必要時のみ分割と、EKI [#112](https://github.com/hat47x/eki-fabric/issues/112)のビルドキャッシュ差（過去Spikeで0.8/12.5秒）・Toolchain版差、[EKI #58](https://github.com/hat47x/eki-fabric/issues/58)の転送費用をつなぐ。**通常EKI Workerでユーザー任意URLからGo ToolchainやInputを勝手に取得しない**（[RQ-029](https://github.com/hat47x/eki-fabric/blob/main/requirements/PRODUCT_REQUIREMENTS.md)）。Executor/Runtime Class/Artifact digest/入力のData Grantと、実予約は別検査。
+
+- **T0**：既存Go CLIで同一Source/Meaning/Artifact/Entry・Runtime Class/Toolchain/Input/Output bytesを固定。Build/Execution timeを別計測。
+- **T1**：EKI P0 `parameters`はWorkerへ配送されず、Input ingest経路も未実装という§14の非損失Gateを先に通す。Task/WorkOrderに`Go Source Name`を記述しただけでは、EKI Workerが同じGo Binary/Entry/Dependenciesを実行した証拠にならない。
+- **T2**：管理Pool Providerの`staged artifact ready`、`current authorized Data access`、`capacity reserved`、`Task/Attempt/Lease`、`Result body`を**別Receipt**として取得。Cache HitやWarm Statusは、現在のTrust/Quota/Leaseの代用品にしない。実Providerを確認する前に`deadline recovery feasible`としない。
+
+**一つの実行単位で観測する最小データ**：`logical_function_id, source/meaning/artifact/toolchain revision, runtime class/OS/arch, executor digest, input digest+size, stage/cache evidence age, data access scope, transfer bytes/time, provider reservation/attempt, output digest+size, verification and deadline, BUD-1/CAP-1 physical consumption`。いずれも**既存正本へのリンクを張るread-only票**とし、別Registryや新しい公開ABIの採用ではない。3経路で`cold / warm / unavailable`を同じ意味で検証し、TEIの選択済み外部Import原文証拠（Draft #2812）をFull Input Closure／ビルドキャッシュ資格へ誤昇格させない。**CL-01〜08はこの追補でNOT RUN**。初回の合格基準はP0のPure Job一件に固定する。
