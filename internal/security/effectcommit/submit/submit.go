@@ -75,8 +75,9 @@ func AcquireGrant(ctx context.Context, src GrantSource) (legacyauthorization.Aut
 // provisional decision D11). When nil, behaviour is exactly as before. When set
 // and it returns an error, RequestFromGrant, Caller.Execute and Caller.Lookup
 // refuse with ErrIntentRejected and the Runner is never called. The hook
-// receives a copy of the Intent and must not retain it; its error text is
-// discarded so that no payload content can leak.
+// receives a private copy of the Intent (the same bytes then go into the
+// Request) and must not retain it; a panic counts as a rejection and its error
+// text or panic value is discarded so that no payload content can leak.
 type Spec struct {
 	Application    string
 	Capability     string
@@ -99,12 +100,14 @@ func RequestFromGrant(spec Spec, grant legacyauthorization.AuthorizationGrant, i
 	if spec.Application == "" || spec.Capability == "" || in.OperationID == "" {
 		return effectcommit.Request{}, ErrInvalidIntent
 	}
-	if spec.ValidateIntent != nil {
-		probe := in
-		probe.Payload = append([]byte(nil), in.Payload...)
-		if spec.ValidateIntent(probe) != nil {
-			return effectcommit.Request{}, ErrIntentRejected
-		}
+	// One private copy of the payload is made. The hook checks exactly this copy
+	// and the Request carries exactly this copy, so the bytes that were checked
+	// are the bytes that execute (no check/use gap) and the caller's slice is
+	// never shared with the hook.
+	checked := in
+	checked.Payload = append([]byte(nil), in.Payload...)
+	if spec.ValidateIntent != nil && !intentAccepted(spec.ValidateIntent, checked) {
+		return effectcommit.Request{}, ErrIntentRejected
 	}
 	return effectcommit.Request{
 		Scope: effectcommit.Scope{
@@ -116,8 +119,19 @@ func RequestFromGrant(spec Spec, grant legacyauthorization.AuthorizationGrant, i
 		},
 		OperationID:     in.OperationID,
 		ExpectedVersion: in.ExpectedVersion,
-		Payload:         append([]byte(nil), in.Payload...),
+		Payload:         checked.Payload,
 	}, nil
+}
+
+// intentAccepted runs the hook and reports whether it accepted. An error or a
+// panic is a rejection; neither the error text nor the panic value is kept.
+func intentAccepted(validate func(Intent) error, in Intent) (ok bool) {
+	defer func() {
+		if recover() != nil {
+			ok = false
+		}
+	}()
+	return validate(in) == nil
 }
 
 // Disposition is the neutral reading of a Runner answer.

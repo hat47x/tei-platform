@@ -391,3 +391,43 @@ func TestEmptyIDsStillWinOverHook(t *testing.T) {
 		t.Fatalf("err=%v", err)
 	}
 }
+
+func TestValidatedBytesAreTheExecutedBytes(t *testing.T) {
+	sp := spec
+	sp.ValidateIntent = func(in Intent) error {
+		in.Payload[0] = 'V' // the hook's view is what must execute
+		return nil
+	}
+	r := &fakeRunner{execResult: effectcommit.Result{Status: effectcommit.StatusCommitted}}
+	orig := []byte("abc")
+	if _, err := (Caller{Runner: r, Spec: sp}).Execute(context.Background(), grant(), Intent{OperationID: "op/1", Payload: orig}); err != nil {
+		t.Fatal(err)
+	}
+	if string(r.lastReq.Payload) != "Vbc" {
+		t.Fatalf("executed %q, checked bytes were %q", r.lastReq.Payload, "Vbc")
+	}
+	if string(orig) != "abc" {
+		t.Fatalf("caller slice altered: %q", orig)
+	}
+}
+
+func TestValidateIntentPanicIsRejection(t *testing.T) {
+	sp := spec
+	sp.ValidateIntent = func(in Intent) error { panic("boom " + string(in.Payload)) }
+	r := &fakeRunner{}
+	c := Caller{Runner: r, Spec: sp}
+	in := Intent{OperationID: "op/1", Payload: []byte("secret-payload")}
+	out, err := c.Execute(context.Background(), grant(), in)
+	if !errors.Is(err, ErrIntentRejected) || out.Disposition != NotCommitted {
+		t.Fatalf("out=%+v err=%v", out, err)
+	}
+	if _, err := c.Lookup(context.Background(), grant(), in); !errors.Is(err, ErrIntentRejected) {
+		t.Fatalf("lookup err=%v", err)
+	}
+	if r.executes != 0 || r.lookups != 0 {
+		t.Fatalf("Runner reached")
+	}
+	if s := fmt.Sprintf("%v %+v", err, out); strings.Contains(s, "boom") || strings.Contains(s, "secret") {
+		t.Fatalf("leak: %s", s)
+	}
+}
