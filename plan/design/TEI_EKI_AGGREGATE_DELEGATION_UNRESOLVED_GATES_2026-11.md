@@ -150,6 +150,11 @@ G3についても、現`service/run.go`の`currentTrustBundle`は未導入（Not
 
 **新制度を増やさない**：本計画のG0は`Existing EKI ABI snapshot + TEI semantic checklist + real Worker bytes`という比較に絞り、WPの静的試験とRE/VSの実行試験を重複計上しない。初期Referenceは①Parameters不要なPure Job、②Typed input Pure Job（現Gap）、③Effectful Job（現P0不適格）。EKI #112を外部API Ownerとし、TEI #1130/#2514/#1180/#2811へ必要なFixture/独立Expectedだけを渡す。新しいUniversal ABI/Host/Artifact RegistryやAI自律実行権限は作らない。
 
+
+### 7.5 Cache/Toolchainの局所性はProvider能力とData権限に分割する（2026-11-04）
+
+[Deadline/予算§12](TEI_EKI_DEADLINE_BUDGET_RECOVERY_COORDINATION_2026-11.md)のCL-01〜08をG0/G1/G7へ接続する。EKI [#112](https://github.com/hat47x/eki-fabric/issues/112)の実験でビルドCacheあり/なしの時間差と、Toolchain再選択が記録されている。EKI [#58](https://github.com/hat47x/eki-fabric/issues/58)はInput TransferがCompute短縮を上回る確定的な反例を持つ。**Poolに空きGPUがあること・Cacheがあると申告されたことだけでは、TEI生成Jobを今使える保証にならない**。必要なOS/arch/Go Toolchain/Artifact Digest・Entry・Input Data Class/Grant/可用性と実Provider Capacity Reservationを別の現在性で評価する。`ProviderCapability`に未知がある場合はOptimizerの高順位を許可とせず、`needs_measurement/not_eligible`で止める。EKI RQ-029に反し、任意のWorker側取得でToolchainやWorkspaceを黙って補完しない。Cache HitはSecurity Authorityではない。**CLの実験はNOT RUN**、新しいStage ServerやRuntime CompilerをEKI Coreに加えず、既存EKI #112/#58／TEI #2788を実装Ownerとする。
+
 ## 8. 作業順・各Ownerへの引渡し・保留判断
 
 | Phase | 依存と実装/受入の最小目標 | 反映先（**既存Owner**） | 先行条件 |
