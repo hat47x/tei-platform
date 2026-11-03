@@ -65,21 +65,7 @@ jobs:
         run: |
           set -euo pipefail
           test -z "$(gofmt -l internal/driver/action_surface_handoff_test.go)"
-          go test ./internal/driver -run '^TestActionSurfaceToBoundRequestWrongTarget        shell: bash
-        run: |
-          set -euo pipefail
-          python3 -B plan/fixtures/action-surface-cli/verify_real_cli.py \
-            --binary "$RUNNER_TEMP/tei" \
-            --workspace reference/standard-crud/workspace
-
-      - name: Ensure candidate source remains unchanged
-        if: always()
-        shell: bash
-        run: |
-          set -euo pipefail
-          test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
-          test -z "$(git status --porcelain=v1 --untracked-files=all)"
- -count=1 -v
+          go test ./internal/driver -run '^TestActionSurfaceToBoundRequestWrongTarget$' -count=1 -v
 
       - name: Run OB-01/02 and file-effect negative witness
         shell: bash
