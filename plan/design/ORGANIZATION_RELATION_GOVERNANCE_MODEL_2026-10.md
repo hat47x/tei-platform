@@ -2163,3 +2163,15 @@ Providerの役割を、Authentication Assertion Reader（SAML/OIDC）、Director
 属性単位でSource of Recordを指定する。例えば「HR=雇用・所属・辞令の有効日」「Directory=ログインAccount・Group」「TEIアプリ=案件担当」「外部Host=今回の実行許可」。差分同期は初期Full Syncとdelta、cursorの期限・無効化、tombstone、ページ欠落、更新順不同、権限不足、外部ソースの訂正を別診断にする。同期成功は業務上の全所属・全時点を取得した保証ではない。
 
 実Plugin接続時はConnectorの必要Read Scope/Context、許可されたDisclosure、Data Ownerと運用Owner、Error/Unknown、版・契約fingerprintを識別する。取得認証情報・署名情報・Secretを生成AIの文脈へ移さず、許された構造メタデータと必要最低限の証拠を渡す。ログイン済み・Group所属はBusiness Actionの許可ではない。
+
+### 57.3 AI HarnessのFitting作業票と最小受入
+
+**入力**：企業の説明文、利用目的、公開可能なSource/Connectorメタデータ、解決対象Workspace。Agentは必要なパラメータを「確定」「推定候補」「未確認」に分ける。すべての専門Facetを顧客に質問するのではなく、標準Profileで決まる部分は既定値を提案し、意味やAuthorityに影響する分岐だけ追加確認する。
+
+**配線作業票**：①既存Contract/Provider/Environmentを発見、②Organization ProfileのHierarchy/Time/Identity/Sync/Policy/Projectionの要求を型付きInput/Outputへ対応、③Service Contract ID/Version/Fingerprint、Provider Conformance、Scope/Effect/FailureとPlugin/Role Pinの閉包を照合、④選択が複数・不足・衝突なら理由つきで停止、⑤Source/意味/依存/表示差分をPreview、⑥独立Expectedで正負試験、⑦Owner意味受理と実Host Grant/Effectを別に審査する。
+
+現mainの `tei commands` は選抜read-only Catalogであり、`plugin-lock`、`plugin-resolve`、`plugin-runtime-plan` は既存の観察・計画入口。これらから新しい組織Pluginの自動選択・導入・設定適用を完了したと推定しない。新規Fittingコマンドや外部Harness用Toolは既存機能の不足を確認した後の設計候補とする。#2607のProduct Skillはread-only調査で再利用し、#2605・TAI SK-02でSkillの実ロード有無、Tool-only対Skill＋Toolの比較適格、作業時間・Token・誤ったSource/権限主張を検査する。TAI自体はTEI組織モデルの実行依存にしない。
+
+**段階**：P0 既存CLIとNative組織E1の正確な機能棚卸し→P1 単一階層・兼務・未来版の標準Profileを小例で比較→P2 AIがPlugin配線候補を出すread-only実Harness試験→P3 実Directory/HR Providerの現在ReadとRow/Field/Relation完全性→P4 必要な企業だけOwnerが承認した改組・更新を実Provider/HostのCommit/Receiptへ接続。正しい既存Host権限を満たすまではP4へ進まない。
+
+**回帰条件**：単純企業に不要Pluginを強制しない、Hierarchy循環と多重経路を区別する、valid/known/公表版を混ぜない、同名Accountの誤同定を拒否する、Sync部分0件を不存在としない、複数Provider候補・Plugin版ドリフトを診断する、Groupから自動Grantを与えない、Simulationを実Commitに昇格しない。これは計画であり、新しいCLI/Skill/Plugin/IdP連携・本番適合・Owner受理はNOT RUN。
