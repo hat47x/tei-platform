@@ -46,3 +46,4 @@ jobs:
           test -z "$(git status --porcelain=v1 --untracked-files=all)"
           echo "command-effectcommit-characterization-head=$EXPECTED_HEAD"
           echo "test-blob=$(git rev-parse HEAD:internal/security/effectcommit/commandadapter/executor_characterization_test.go)"
+          echo "result-test-blob=$(git rev-parse HEAD:internal/security/effectcommit/commandadapter/executor_result_characterization_test.go)"
