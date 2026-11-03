@@ -221,3 +221,54 @@ AIに渡す際は、実装が持つ**確定した構造IDと現在の権限**、
 - **T3**：実Provider Action/Commit/Receipt/独立Readを試す必要があれば、#1129/#1174/実Provider Ownerの受入票に接続する。本計画で新しい実行Hostや共通Authorityを作らない。
 
 **責務**：#988はSource→Syntax/Role/Operator候補、#1124はStudioの表示・Command UI、#2621/#2497は元Source保存・局所Patch、#2515/#2516はAIへの実開示、#1129/#1174は実行/Period Guard/Effect、#2600はSource/Build/Consumer版の現在性。現PRは**設計文書だけ**であり、T0〜T3の新実行、実Studio GUI、Provider/DB、Tool Egress、Owner受理は**NOT RUN**。
+
+## 11. X-TEAのData Script・状態更新契機FlowをDSL表層へ接続（2026-11-03）
+
+### 11.1 既存の意味設計とSource表層のOwnerを分離
+
+[Buri／X-TEA継承 Draft #2744](https://github.com/hat47x/tei-platform/pull/2744)の[Data-derived Trigger／Batch計画](https://github.com/hat47x/tei-platform/blob/work/buri-lifecycle-design-transfer-20261103/plan/design/DATA_DERIVED_TRANSITION_TRIGGER_PIPELINE_2026-11.md)と[非業務State Machine計画](https://github.com/hat47x/tei-platform/blob/work/buri-lifecycle-design-transfer-20261103/plan/design/STATE_MACHINE_CROSS_DOMAIN_DESIGN_PRESSURE_2026-11.md)を**意味・Effect・Flowの担当計画**として再利用する。本書は**DSL表層、Unicode local Symbol、Studio/AI表示、元Source書戻しの契約**のみを担当し、別のTrigger RegistryやWorkflow Engineを立てない。
+
+X-TEAからの**移植可能性を先に検証する設計候補**は、(a) Data Model項目拡張の標準Validation、(b) Data Scriptによる個別のValidation、(c) 仮想AttributeをData Modelで宣言しData Scriptで導出、(d) 値更新・条件成立を契機とするFlow候補である。#2744では直接的な意味移植P／Adapter接続A／新保証が必要な領域Eを分けており、旧Hookの存在だけで実Provider／Tx／後続Jobが実装済みとは主張しない。
+
+| 意味の役割 | 定義と検証の所在 | DSL表層で落としてはいけない情報 | 禁止推論 |
+| --- | --- | --- | --- |
+| **Validation** | Model項目拡張を基本、独自ロジックはData Script／既存Rule | 対象ID、値域、NULL/未取得、評価Scope、業務不成立と評価不能 | 同じ表やコメントを実行Ruleへ自動昇格、業務拒否を技術エラーへ潰す |
+| **Derivation** | Modelが型・virtual/read-only性、Scriptが純粋な導出規則 | 依存Field/Relation、計算時点、partial/complete、元Source span | 仮想値のPreview変化から物理State更新・確定Eventを推定 |
+| **State transition / Flow** | Dataの実状態とRule/Function/Capability、必要時のみFlow Role | old/new、Subject/業務キー、条件、Rule/Provider版、遷移可能性 | 状態図の矢印、表示上の同名状態からAction許可を推定 |
+| **Effect / Batch** | #1129/#1130/#1174等の既存保存・実行Owner | Trigger候補、実Commit、配信要求、Receipt/独立Readの別資格 | 参照実行の完了やData Scriptの値変更を永続Job成功と同一視 |
+
+**Flow中心のAuthoringは既存Data/Rule/Function/Capabilityの別の入口**とする。単純なIFやScriptをすべてState Machineで置換せず、長時間の待機・並行合流・再開の必要性がある場合に限り独立Workflow Instanceを比較する。受注の単純な状態は本体行の項目を第一候補とし、組織所属の期間、並列承認、UI/Game/Deviceの状態を共通状態テーブルに押し込まない。
+
+### 11.2 4つの表層で同じ認知順序を比較する
+
+文法は未採用。軽量な言語中立DSL／Go風式／Markdown表／chain式は、いずれも次の情報を**同じ意味Contract**で表現できるかだけを比較する。
+
+~~~text
+対象Data / Attribute
+  → 観測済みの入力・必要な完全性
+  → Validation / Derivation
+  → old/new・状態遷移・発火条件
+  → 意図するFlow / Effect（必要な場合）
+~~~
+
+- **未取得/NULL/部分集合**：導出値を未観測なのにfalse・0・空集合へ補完しない。Validationの不成立と評価不能を別扱いにする。
+- **値変化とEventの差**：Virtual Fieldの再計算やStudioのPreviewでfalse→trueを観測しても、実Provider Commitを伴うイベント・Job発火とは限らない。受注訂正や多重実行の条件を区別する。
+- **Authority/Receipt**：Command Plan／Reference Execute／Driver呼出し前のPeriod Guard拒否／実Commit・Receiptを別Claimとする。Source中のイベント名・コメントを実Tool許可へ昇格しない。
+- **元の記法を保存**：内部でRole/Plain Dataへdesugarしても、通常Saveでは元の表・式・chain・説明文・Unicode文字・コメントを無断再整形しない。曖昧なViewの逆写像はread-only・Reviewへ戻す。
+
+### 11.3 現行実装を踏まえた限定受入
+
+2026-11-03に再確認したmain統合済みの**限定能力**は、[#2747](https://github.com/hat47x/tei-platform/pull/2747) Studio Command Plan／参照Execute、[#2751](https://github.com/hat47x/tei-platform/pull/2751) Studioのread-only表形式表示、[#2748](https://github.com/hat47x/tei-platform/pull/2748)・[#2749](https://github.com/hat47x/tei-platform/pull/2749) Period閉鎖時のDriver呼出し前拒否の試験、[#2752](https://github.com/hat47x/tei-platform/pull/2752)・[#2754](https://github.com/hat47x/tei-platform/pull/2754)・[#2768](https://github.com/hat47x/tei-platform/pull/2768)の参照保存・期間状態ファイル読取とCLI参照実行である。**論理名切替、Studio構造編集、仮想状態→永続Event→実Batch、実DB保存はこれらの試験で立証されていない**。
+
+既存のConformanceと新しい実証を重複させないため、次の**既存Fixtureへの割付**だけを追加する。
+
+| 順序 | 既存の試験Owner／観測対象 | この段階で許される結論 |
+| --- | --- | --- |
+| **V0** Source／構文 | #988/#2621のGN/SFでValidation/Derivation/FlowのSource appearance、元byte span、Unicode名、no-op Save／局所Patch | 同じ表層を保持できるか。正式文法・新Writerの採用ではない |
+| **V1** 意味・独立Expected | #2622/#1637/#2514と#2744の既存反例でAttribute Validation→Virtual Derivation→oldValue/valueChangedを検証 | 純粋な計算と拒否/unknownまで。実Event発火なし |
+| **V2** Studio／AI | #1124/#2515/#2516でSource/論理名/物理名の同一ID投影、表形式read-only、コメント経由の不正Tool指示を区別 | Read-only表示やReference Planの資格まで。DB保存や実Tool許可ではない |
+| **V3** 実Trigger／保存 | #1129/#1130/#1174/#2564で条件付き更新、Commit known/unknown、重複Job、Receipt/独立Readを実Providerで確認 | 独立実測済みのEffect claimに限定。合成Script／Guard成功では代替しない |
+
+**停止条件**：V0/V1のために新しい万能Event/Workflow Host、中央State Registry、強制Go AST構文、第二のMeaning/Source正本を必要とする設計は先行採用しない。Job配信保証は必要になった段階でEffect Ownerが決める。
+
+**変更の資格**：本節は#2744の設計と既存Studio/期間参照実装を**DSL計画へ接続するdocs-onlyの差分**。新Data Script文法、Unicode Lexer、Studio名切替、実Batch・実Provider/DB、AI Context実送信の試験は本PRではNOT RUN。意味受理／実行方式・Source保存方式の正式採否を変更しない。
