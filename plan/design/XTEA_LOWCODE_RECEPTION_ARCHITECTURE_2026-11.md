@@ -955,6 +955,7 @@ PoC #2521が実装した範囲と、まだ実装していない範囲を分け�
 | Commandの参照実行（CLI） | 実装済み（`view -command -execute`、業務副作用なし） |
 | Command計画の期間表示（D6.1） | 実装済み（効果Dataを統制する期間・状態・閉期間の拒否） |
 | 期間の閉塞によるCommand拒否 | 実装済み（`PeriodState`契約と参照実装） |
+| CLI参照実行の期間状態 | 実装済み（`view -execute -period-state`） |
 | フックの宣言（位相・読み書き・失敗時） | 実装済み（`hook`、実装Pluginは未接続） |
 | フックの実行境界（Implementation契約・reject/warn） | 実装済み（`internal/hook`、実Pluginは未接続） |
 | 未使用属性の表示（D8・G-7） | 実装済み（recordビューの`unused`） |
@@ -972,6 +973,7 @@ PoC #2521が実装した範囲と、まだ実装していない範囲を分け�
 | `reference/workspace`への宣言追加 | 未実施（受理経路が必要） |
 
 実装は、`internal/application/model.go`、`internal/syntax/application_pattern.go`、`internal/validation/application_pattern.go`、`internal/crossview/pattern_requirements.go`、`internal/applicationview`、`internal/semantic/model.go`、`internal/syntax/parser.go`、`internal/validation/validation.go`と、それぞれの試験です。
+
 
 
 

@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -223,6 +224,20 @@ func TestProductSliceLoadsValidatesAndViews(t *testing.T) {
 	}
 	if !referenceReport.OK || referenceReport.Result.Mode != "reference" || !referenceReport.Result.Committed || referenceReport.Result.Outcome == nil {
 		t.Fatalf("reference run=%+v", referenceReport.Result)
+	}
+
+	var periodStateFailure bytes.Buffer
+	code, err = runViewCommand([]string{
+		"-workspace", root,
+		"-application", "order_entry",
+		"-pattern", "order_entry.order_record",
+		"-command", "sales.submit_order",
+		"-input", "order=ORD-1",
+		"-execute",
+		"-period-state", filepath.Join(root, "missing-period-state.json"),
+	}, &periodStateFailure)
+	if code == 0 || !strings.Contains(periodStateFailure.String(), "PERIOD_STATE_LOAD_FAILED") {
+		t.Fatalf("period state failure exit=%d body=%s", code, periodStateFailure.String())
 	}
 
 	var applicationView bytes.Buffer
