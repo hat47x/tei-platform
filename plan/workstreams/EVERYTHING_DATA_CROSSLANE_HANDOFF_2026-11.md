@@ -1169,7 +1169,7 @@ CheckSetは**原則read-only**。RepairのSQL/CommandはFindingの副作用と�
 
 > **状態：既存計画への選択基準・反証票。正式な`extends`文法、共通Equivalence API、継承Runtime、Owner認可継承、SQL Migration自動生成の採用ではない。** 2026-11-03の「モデル再利用/継承」横断レビューを、#2386/#2510の組織、#2620/#2638の自己記述Role、#1129/#1126/#2622の業務状態と保存、#2505/#1920の改版、#2600の選択的再生成へ接続する。既存§21のGR-01〜10と§24のVS-1〜5を置き換えず、**同じ実対象で互換性を判断する際の不足列**のみ追加する。
 
-### 28.1 再利用する単位と「似ている」の意味
+### 29.1 再利用する単位と「似ている」の意味
 
 **構造を共有しても、業務意味を共有したとは限らない。** 最初に次の五つを別の比較として記録する。
 
@@ -1183,7 +1183,7 @@ CheckSetは**原則read-only**。RepairのSQL/CommandはFindingの副作用と�
 
 **意味上の「Role」も区別**：構文・意味解釈の`Semantic Role`、業務参加・責任の`Business Role`、外部Hostの`Principal/Grant`は三つの関係である。名前や同じRecord形式による暗黙の写像を作らない。Ownerも「モデル意味を受理するOwner」「Data/Relationの管理Owner」「Provider/Pluginの供給責任」「実行を許すHost主体」を分ける。この区分は新しい標準Owner enumの採用ではなく、既存受入票の識別欄である。通常組織Dataを一律に特別保護せず、必要なField/Provider/運用境界の開示だけを#2516で確認する。
 
-### 28.2 再利用の既定順：参照・合成が基本、継承は契約を限定して採用
+### 29.2 再利用の既定順：参照・合成が基本、継承は契約を限定して採用
 
 | 手段 | 判断基準 | 反例・やめる条件 |
 | --- | --- | --- |
@@ -1200,19 +1200,19 @@ CheckSetは**原則read-only**。RepairのSQL/CommandはFindingの副作用と�
 
 Buri由来の図表駆動・State Machineは、業務Procedure・Rule/Function・実行中の永続Workflow/Timerと区別する（Draft #2744）。またゲームやUIのState Machineは業務固有のOwner/承認を継承しない別Domainの意味Role候補。全Domainへ同一Workflow Schema/Runtimeを要求しない。
 
-### 28.3 保存版・受理・生成・実行の独立Pin
+### 29.3 保存版・受理・生成・実行の独立Pin
 
 **固定すべき再利用証拠の最小束縛**（比較票の列であり新永続Schemaではない）：
 
 `source locator+occurrence / original bytes+source index / workspace formatVersion / grammar&role ID+version+contract fingerprint+implementation fingerprint of eager dependency closure / accepted subject+meaning revision+Owner scope / key+Relation+time semantics / binding target+Provider/schema+operator pin / generator/toolchain+artifact member+manifest / actual reader/consumer+purpose / current disclosure&Host grant / observed result+attempt+time`。
 
-- [merged #2694](https://github.com/hat47x/tei-platform/pull/2694)でWorkspace manifestの`formatVersion: 1`必須・未指定/未知将来版拒否は実装済み。ただし **formatVersionは内容のMeaning versionでない**。旧形式からの変換器、Plugin固有書式、Owner意味受理は別。
+- Workspace manifestの`formatVersion`未指定拒否は[merged #2694](https://github.com/hat47x/tei-platform/pull/2694)で導入済み。**2026-11-03現行mainの`loader.go`は版1/2を受理し、未知版3以上を拒否**する。版2のSemantic Sourceでは明示的な`formatVersion 2`ヘッダを要求し、版不一致を拒否する局所Goテストがある（`format_version_test.go`）。この**形式版**はMeaning/Owner/Roleの版やImport元の実Source資格ではない。旧形式の完全変換器、Plugin固有書式、Owner意味受理は別。
 - [merged #2638](https://github.com/hat47x/tei-platform/pull/2638)の有限Role Bootstrap・推移Pinは合成Reference/設計の証拠。Role名とversionだけの一致、実装Fingerprint未照合を現在の相互運用資格にしない。新しいInheritance ResolverやRole Authorityを別に作らない。
 - Source`A→B→A`の同じ最終byteや、ファイルのrename/content保持から**期間内無変更・Occurrence自動対応・最新Review適用**は推論できない。#2505の多版Source対応はCandidateで、現在の意味Owner受理・SHOの文書Occurrence/Reviewと区別する。
 - 本体`status`Field／JSONB／sidecarなどStorage Bindingの改版では、**Key tupleの型と順序、Subject/Workflow Instance/Active occurrenceのID、Provider/Tx/CAS能力、current writer唯一性、必要履歴、NULL/absent/partial** を明示検証する。単純な`ALTER TABLE`や同名FKだけで業務同義のMigration成功を宣言しない。
 - 現Grant/Disclosureが変わっただけなら旧Artifact byteや歴史的検収は保存候補だが、現在の実Action/送出資格は再確認する。再利用の適否は`structural candidate`、`accepted meaning`、`actual consumer/host qualification`という別の主張である。
 
-### 28.4 MRU-01〜12：前回横断レビューを既存Owner試験へ割り付ける最小互換性票
+### 29.4 MRU-01〜12：前回横断レビューを既存Owner試験へ割り付ける最小互換性票
 
 | Case | 明示する負例（比較する変更は原則一軸） | 独立Expected／誤受理を拒否する条件 | 既存の受け皿 |
 | --- | --- | --- | --- |
@@ -1231,14 +1231,14 @@ Buri由来の図表駆動・State Machineは、業務Procedure・Rule/Function�
 
 **Referenceの合格と、実TEIの合格を混ぜない**。既存#2638 RB系の合成24件、#2655の組織合成、#2649の実Go CLI/Artifact Readerはそれぞれ独立の証拠。上記**MRU-01〜12を同じSubject・Meaning Role/Plugin Pin/Storage Provider/Hostで走らせた正式E2EはNOT RUN**。
 
-### 28.5 実装済みの足場と、実際にまだ届いていない範囲（2026-11-03現在）
+### 29.5 実装済みの足場と、実際にまだ届いていない範囲（2026-11-03現在）
 
 - **実Go Compiler/CLIで観測済み**：[Draft #2681](https://github.com/hat47x/tei-platform/pull/2681) exact HEAD `8efe0d351a244b57fefd00b498a5b47136619ac5`の[Native organization workflow #41580077197](https://github.com/hat47x/tei-platform/actions/runs/41580077197)は**completed/success**。Go 1.26.10で`TestOrgHeadless`、`validate`、`operations -application org_view`、`artifacts`が成功。Membershipの`list/read`2件だけを導出し、更新/承認Bindingを捏造していない。ArtifactのManifest `complete=false`、`findings=0`を保持している。**同じData Modelの継承・変更時互換性、実Provider/DB/Host/Owner受理は未実証**。このDraftを汎用組織管理の製品完成と呼ばない。
 - **別Domainの実CLI実証**：merged [#2649](https://github.com/hat47x/tei-platform/pull/2649)の固定実行には`validate→operations→artifacts→-out独立Reader`とSource-only移動・旧新Revision混在拒否がある。しかし異Domainのローカル成功を、MRU-04やMRU-07のRule/Storage互換へ合算しない。
 - **Role/形式の基線**：merged #2638は有限Bootstrapの合成Role検証、merged #2694はWorkspace Manifestの形式版拒否であり、前者は正式Role実装、後者はModel内容版/Migrationまでの受理を証明しない。
 - **未接続**：二Domain間の実Role/Attribute再利用、実Model Reference/Refinement Grammar、Business Role/Owner受理、Physical SQL State Storage/複合Key/CAS、外部Provider/Host認可・Effect、SHO文書Occurrence/Reviewの実受渡し、Target Generated binaryの同等性、Selective full vs incremental性能測定は**NOT RUN／Owner未受理**。
 
-### 28.6 最小の実証順と採用条件（既存#1119/#1163へ渡す）
+### 29.6 最小の実証順と採用条件（既存#1119/#1163へ渡す）
 
 **R0 — Source・Shape/Role契約の固定（read-only）**：`reference/standard-crud/workspace`と`reference/org-headless-workspace`を別Domain基準に用い、formatVersion/Source bytes/Subject/Type/Attribute、Role/Operator実装依存Pin、独立Expectedを固定。**再利用元と利用側の同じMeaningを人工的に仮定しない**。MRU-01/02/05/06で、構造可視と意味採否を別票にする。現実の`extends`構文がない範囲は「NOT RUN: missing concrete entry」と明記して手書き継承Engineで製品合格にしない。
 
@@ -1345,3 +1345,79 @@ AI一括修正で**対象曖昧、複数Patch衝突、base byte不一致、取�
 - **F4：Consumer/再利用の適合**。#1163/#2516/#2600とSHOの別Ownerが、実Reader/引用・ArtifactSet・開示・診断の現在資格を同一改訂で判定。§26の夜間監査/Replica検査結果を現在Primaryの業務Commit保証へ昇格しない。
 
 **採否の留保**：DSLの専門家向け表現はグローバル共通・Go固有宣言を日常表層へ強制しない。Go AST/独自Parser/ハイブリッド/コード生成は同じ可読性・意味/診断/Source保存/生成速度のFixtureで比較し、Go実装親和性のために表層を決定しない。Goの単一バイナリは基本実行形態、EKIは必要時に選ぶ分散実行委譲先、.NET/Java等の既存Hostも保持する。実Writer/Provider/EKI/SHO/第二Targetの成功と、Owner意味受理・新ADR・新Runtime APIの採用はすべて**NOT RUN/未決定**。
+
+
+## 31. 外部モデル再利用の資格――Import成功・意味Pin・Source受理の境界（2026-11-03横断追補）
+
+> **状態：現行mainのGo Source・既存Goテストを照合した設計差分と、次の同一Run受入手順。新テスト実行・新Parser/Resolver/Store・業務Owner受理・正式ADRはNOT RUN/未採用。** §29「参照・合成・限定継承」と§30「外部Import・Studio修正」を、実在する`WorkspaceImport`の能力と停止線へ結び付ける。二つの章の繰返しではなく、**Importで取得できる「意味」と、外部原文まで結ばれた「現在の証拠」の欠落**を扱う。
+
+### 31.1 現行Goで確認できた能力と限界（2026-11-03 main Source-static）
+
+| 実入口（Go） | 既にある振る舞い・局所Goテスト | 保証していないこと |
+| --- | --- | --- |
+| `internal/workspace/imports.go:WorkspaceImport` | 明示`alias/path/namespace`＋**任意**の`semanticDigest`。選択Namespaceの正規化された意味JSONのdigestを比較し、不一致はLoad時拒否。Rootを越える`../provider`は明示Importとして扱い、Managed Source rootの越境は区別して拒否。 | `semanticDigest`はProvider原文bytes、Workspace manifest、Plugin実装、全推移依存、OwnerのMeaning受理を証明するLockではない。未指定なら開発用の可変ImportとしてLoadできる |
+| `loadWorkspaceImports` | Providerが**自分で所有する**NamespaceのみをImport。Providerが別Workspaceから輸入したNamespaceを暗黙re-exportしない。Alias/Namespace重複・循環/所有衝突・一部symlink escapeを既存テストで拒否。Imported Role/ModelをConsumerのManaged Sourcesへ混ぜない。 | Importしたことから相手のBusiness Owner承認、Runtime Plugin、Action Grant、SHO Source ownershipを取得しない |
+| `internal/workspace/loader.go:Load` | 外部WorkspaceはProvider自身のLoaderで読み、Consumerの`World.Semantics`へ限定Namespaceを組み込む。Consumerが管理するSource bytes/Manifest identityは別。 | Import Providerを含む**単一Atomic Source snapshot**、任意Remote/HTTP Reference全般の鮮度や現在Authority |
+| `internal/workspace/source_index.go:BuildSourceIndex` | 通常のIndex経路はConsumerのManaged Sourceを扱える。Imported ProviderのSource位置/byteをConsumer所有のSourceとして捏造しない。 | Imported Sourceまで含む厳密なAccepted Source証拠 |
+| `BuildSourceIndexFromLoad` | **Import宣言を含むWorkspaceでは`ErrImportsNotBound`としてfail-closed**。実コードと`TestBuildSourceIndexFromLoadRefusesWorkspaceWithImports`で明示されている。 | 現在の`SourceIndex`にProvider bytesを安全に取り込めたとは報告しない。Import済み`World`を一式受理済みと見なすことはできない |
+| `Result.ManifestIdentity` | `Load`時に読んだmanifestのPath/Digestを別保持。 | ManifestがSource Index Artifactに含まれたということ、別時点のImport Redirectを防いだこと |
+
+**実証の出典（既存mainコードとテスト名）**：
+- [`internal/workspace/imports.go`](https://github.com/hat47x/tei-platform/blob/main/internal/workspace/imports.go)、[`import_digest_pin_test.go`](https://github.com/hat47x/tei-platform/blob/main/internal/workspace/import_digest_pin_test.go)の`TestExternalSemanticImportOptionalDigestPin`：同じNamespaceのSource移動と無関係Namespace追加では意味Pin維持、意味定義変更はPin拒否、Pin削除後は開発用Import再許容。
+- [`imports_test.go`](https://github.com/hat47x/tei-platform/blob/main/internal/workspace/imports_test.go)の`TestExternalNamespaceImportPreservesProviderIdentityAndSourceOwnership`：Imported NamespaceをConsumer Sourcesと混同せず、Plugin実装も自動Importしない。
+- [`source_index_load_bound_hardening_test.go`](https://github.com/hat47x/tei-platform/blob/main/internal/workspace/source_index_load_bound_hardening_test.go)の`TestBuildSourceIndexFromLoadRefusesWorkspaceWithImports`と[`source_index.go`](https://github.com/hat47x/tei-platform/blob/main/internal/workspace/source_index.go)：Import時のStrict Index拒否、およびSource IndexとManifest identityの別保証。
+
+**現行の区分**：`Load/Validate`で選択Namespaceを解釈できたという局所成功、`semanticDigest`により**当該Normalize済みNamespaceだけ**が一致したという成功、Import元/先のSource/Owner/Consumerの完全証拠は、**互いに異なるClaim**。特にStrict Index拒否を現行の誤動作と決め付けない（未束縛Sourceを安全に成功としない既存方針）。
+
+### 31.2 三Domainの同一Subject実験（正式Grammarは増やさない）
+
+一つの受注側Consumerが`org-model`から`organization.membership`の型をImportし、受注承認のRuleがそのMembershipを参照、Workflowの現在状態は受注本体`approvalStatus`へBindingする例を比較する。
+
+```text
+Provider Workspace "org-model" --owns--> organization (Person, Membership, Position)
+  | explicitly import alias=org; namespace=organization; optional semanticDigest
+  v
+Consumer Workspace "order-entry"
+  --owns--> sales.order / Data Script / current approvalStatus / Mapping
+  --ref--> organization.membership(occurrence + valid/recorded time)
+  --separate--> Business responsibility / Delegation / current Host Grant
+```
+
+- **Reference**：Providerから`Membership`の型を使用できても、Consumerがその定義・元Source・Owner承認を所有するようにはならない。Role/OperatorのEager依存はImport pinと別に固定する。
+- **Composition**：Consumer側の`Order→Membership`関係・取得Scope/時点、`approvalStatus`保存Binding、Grant照合を明示する。Imported Personに実承認Authorityを追加する「型継承」はしない。
+- **限定的Refinement/Inheritance**：`ApprovedMember`が親`Membership`として利用できるかは、親Contractの入力・出力・多重度・時点・NULL/partial・Effectを壊さないことを独立Expectedで確認する。強化した承認Guardが親利用者を拒否するなら一般的置換可能性を棄却し、用途限定Compositionとして明示する。
+- **物理**：本体`approvalStatus`は第一候補だが、複数承認Attempt/並行Token/履歴が必要ならSidecar等を選び、現在State Writerを一つに保つ。Import ProviderのScope/Key/Role/Storageを自動上書きしない。
+
+### 31.3 外部再利用の最小反証対照（MRUと既存Fixtureを**結ぶだけ**）
+
+| 対照 | 一軸変更 | 要求する結論・停止点 |
+| --- | --- | --- |
+| **I0 Baseline** | Provider/Consumer固定、明示Namespace、Pin一致 | `Load+validation`の局所成立は候補。Strict Source IndexはImport時`ErrImportsNotBound`なので、正式な跨Workspace Acceptanceを主張しない |
+| **I1 Source Relocation** | Providerが当該Namespaceを別ファイルへ移動、正規化意味同一 | Semantic Pin維持候補。一方、Provider Source occurrence/SHO引用、Manifest/Read現在性は別確認（§29 MRU-10） |
+| **I2 Same-name different meaning** | 同一Namespace ID/型名でもField単位/FTE意味・Data Ruleを変更 | Pin一致を期待しない。UnpinnedでLoadできてもOwner意味受理/Function互換まで自動成立しない（MRU-01/02） |
+| **I3 Transitive Role/Source** | AがBから輸入したNamespaceをCがA経由で使おうとする／Eager Role実装Pinのみ変更 | 非所有Namespaceの暗黙re-exportは拒否。Normalized Namespace digestだけで推移Role/Plugin Pinが成立したとしない（MRU-05/06） |
+| **I4 Manifest redirect** | Consumerのimport pathだけ別Providerへ変更し、選択Namespaceの意味digestは同値 | Semantic候補は同じでもManifestIdentity/供給元・Authority・Source provenance差を検出。以前の受理・実Reader資格を自動転用しない |
+| **I5 Partial/offline** | 明示必須Importが一時unavailable／permission denied／partial、Cacheだけ残る | 現在Reader資格は`unknown/unavailable`。旧Cached Meaningを現行Accept/Operationへ昇格しない。実装入口がないHTTP/Network状態は#2743設計・未実行と記録 |
+| **I6 Grant-only** | Source/Meaning/Artifact不変、Consumer Principal/Host Grantだけ失効 | 過去のValue/Artifactを保有しても現在のAction/Disclosureを再確認（MRU-03/12） |
+| **I7 Full vs Selective** | 無関係Provider Namespace追加、利用中のAlias別Import更新、0→1→0 Relation変更を比較 | Role/Meaning/Source/Query/Artifact/Disclosureの依存が明示された範囲のみ選択的再評価。それ以外は`unverified`、誤再利用も無用な全再Buildも測定 |
+
+**誤った二択を避ける**：`semanticDigest`の一致を理由にすべてを「完全に固定」とするのも、ProviderのSource移動だけで全Consumerを「再生成必須」とするのも誤り。型/Role/Source/Provider/Authority/Consumer別の再資格化を分ける。未観測のProvider version、変換される単位、下流に現れないRule/Predicate依存は既存#2582/#2600の対象。
+
+### 31.4 Strict Acceptanceの不足を解消する設計の比較（採用は保留）
+
+**候補A：Provider側の固定Source・意味受理証拠を委譲参照**。Provider所有のLoad時Source bytes/Manifest identity/選択Namespace/推移Pinを、実Audience・版・Ownerが許したClaimとしてConsumerが参照する。Sourceの所有権をConsumerへ移さず、現行Trusted Host `sourceacceptance.Reader`のAuthorityと矛盾しないよう現在性・失効を別に照合。**導入判断は#1163/#1017/#2743／Owner**。
+
+**候補B：明示的に固定されたVendor/BundleのImport Snapshot**。Provider原文＋manifest＋意味/Plugin依存の必要閉包を一つの実取得Bundleで固定し、Consumerに同梱できるか評価。単なる`semanticDigest`だけではByte/原出典と実ロードを保証しない。Bundleに入ったことが供給元の意味・権限受理の移管を意味しない。Bundleが大きすぎるなら目的相対のPackage closureを比較。
+
+**候補C：今のPreview/Read-only局所Importのまま**。Providerで未束縛なSourceを含む場合、説明・候補表示を行えても、厳密Source Acceptance/生成/公開/実行の資格はそこで停止する。利用価値が十分ならA/Bを急いで製品化しない。
+
+どの案も第二Semantic Canonical、global Model Registry、必須中央Store、TEI独自Host、新認可Engineを要求しない。外部HTTP/Cloud Importを既に実装したという主張もしない。
+
+### 31.5 既存テストの次の実行順・責務
+
+1. **X0 exact-head Go再実行**：main上の既存`TestExternalSemanticImportOptionalDigestPin`、`TestExternalNamespaceImportPreservesProviderIdentityAndSourceOwnership`、`TestBuildSourceIndexFromLoadRefusesWorkspaceWithImports`を`go test ./internal/workspace -run '^(...)$' -count=1`で実行。固定HEAD、Go版、Source blob、テスト実ログを記録。**本追補では実行していない**。
+2. **X1 一Consumer二Provider・経路変更**：同じWorkspace Source/Meaningで`alias+path+namespace`、Role/Provider契約・ManifestIdentityを比較。旧/newどちらをOwnerが受理したかは明示的な実証拠が必要。Existing Loaderの局所テストを超える部分は`NOT RUN`。
+3. **X2 Strict provenance**：A/Bの設計を#1163のSource資格/Provider SourceReader/Scope/Ownerへ渡し、現在の`ErrImportsNotBound`を仮に解除せず、**先に必要な供給元Byte・閉包・実Readerの実証を定義**。A/B未成立ならCで停止。
+4. **X3 Consumerと選択的再生成**：Source移動/Role変更/Import path変更/Grant失効の同じ正負対照を、Go CLI Operation/Artifact、SHO引用、AI Skill候補・Provider実Readの各Ownerで評価。現実のHost/SHO/Runtimeが接続できない工程は未実行とし、独立Claimを保つ。
+
+**現在の変更・合否**：本§31は計画文書のみを変更する。既存GoテストがSourceに存在することは確認したが、この回答での`go test`・Focused CI・実Provider/SHO/Host、厳密な跨Workspace Acceptanceは**NOT RUN／未確認**。§29 MRU-01〜12と§30 Source/AI修正のOwner分担を維持し、Issue/ADR本文とOwner正式判断は変更しない。
