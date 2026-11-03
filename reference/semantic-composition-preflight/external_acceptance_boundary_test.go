@@ -31,11 +31,11 @@ func TestLocalSourceAcceptanceDoesNotWitnessExternalSemanticRevision(t *testing.
 	provider := filepath.Join(root, "provider")
 	consumer := filepath.Join(root, "consumer")
 	writeSemanticFixture(t, filepath.Join(provider, "tei.workspace.yaml"),
-		"workspace: provider\nsources:\n  - semantic\n")
+		"workspace: provider\nformatVersion: 1\nsources:\n  - semantic\n")
 	writeSemanticFixture(t, filepath.Join(provider, "semantic", "os.tei"),
 		"namespace os\n\ntype ProcessId from std.identifier\n")
 	writeSemanticFixture(t, filepath.Join(consumer, "tei.workspace.yaml"),
-		"workspace: consumer\nsources:\n  - semantic\nimports:\n  - alias: os\n    path: ../provider\n    namespace: os\n")
+		"workspace: consumer\nformatVersion: 1\nsources:\n  - semantic\nimports:\n  - alias: os\n    path: ../provider\n    namespace: os\n")
 	writeSemanticFixture(t, filepath.Join(consumer, "semantic", "watch.tei"),
 		"namespace monitoring\n\ndata Watch {\n    attribute processId type os.process_id\n}\n")
 
@@ -92,7 +92,7 @@ func TestLocalSourceAcceptanceDoesNotWitnessExternalSemanticRevision(t *testing.
 	// meaning. The existing optional pinned import can reject the drift, but
 	// this pin itself does not represent a Host's current Acceptance decision.
 	writeSemanticFixture(t, filepath.Join(consumer, "tei.workspace.yaml"),
-		"workspace: consumer\nsources:\n  - semantic\nimports:\n  - alias: os\n    path: ../provider\n    namespace: os\n    semanticDigest: "+before.Imports[0].SemanticDigest+"\n")
+		"workspace: consumer\nformatVersion: 1\nsources:\n  - semantic\nimports:\n  - alias: os\n    path: ../provider\n    namespace: os\n    semanticDigest: "+before.Imports[0].SemanticDigest+"\n")
 	if _, err := workspace.Load(consumer); err == nil || !strings.Contains(err.Error(), "semantic digest mismatch") {
 		t.Fatalf("explicitly pinned previous semantic meaning must reject provider drift: %v", err)
 	}

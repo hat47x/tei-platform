@@ -331,6 +331,7 @@ RQを単独のチェック項目として見るより、同じ業務シナリオ
 - 要求が守る価値（個人・組織・社会）: [`../product/value/TEI_PRODUCT_VALUE.md`](../product/value/TEI_PRODUCT_VALUE.md)
 - 正式な要求本文: [`TEI_PRODUCT_REQUIREMENTS.md`](TEI_PRODUCT_REQUIREMENTS.md)
 - 業務システム設計の要求解釈: [`BUSINESS_SYSTEM_DESIGN_REQUIREMENTS.md`](BUSINESS_SYSTEM_DESIGN_REQUIREMENTS.md)
+- X-TEAの知見を受容するための要求候補（未採用）: [`XTEA_LOWCODE_RECEPTION_REQUIREMENTS_2026-11.md`](XTEA_LOWCODE_RECEPTION_REQUIREMENTS_2026-11.md)
 - 構成を根幹から読む: [`../docs/architecture-reading-guide.md`](../docs/architecture-reading-guide.md)
 - 要求から受け入れシナリオと検証根拠まで追う: [`../plan/UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md`](../plan/UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md)
 - 現在の実装状況: [`../docs/status.md`](../docs/status.md)

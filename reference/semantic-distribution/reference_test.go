@@ -30,11 +30,11 @@ func preparePair(t *testing.T) (consumer, provider string) {
 	root := t.TempDir()
 	consumer, provider = filepath.Join(root, "consumer"), filepath.Join(root, "provider")
 	writeFixture(t, filepath.Join(provider, "tei.workspace.yaml"),
-		"workspace: provider\nsources:\n  - semantic\n")
+		"workspace: provider\nformatVersion: 1\nsources:\n  - semantic\n")
 	writeFixture(t, filepath.Join(provider, "semantic", "os", "process.tei"),
 		"namespace os\n\ntype ProcessId from std.identifier\n\ndata Process {\n    attribute processId type os.process_id\n}\n")
 	writeFixture(t, filepath.Join(consumer, "tei.workspace.yaml"),
-		"workspace: consumer\nsources:\n  - semantic\nimports:\n  - alias: os\n    path: ../provider\n    namespace: os\n")
+		"workspace: consumer\nformatVersion: 1\nsources:\n  - semantic\nimports:\n  - alias: os\n    path: ../provider\n    namespace: os\n")
 	writeFixture(t, filepath.Join(consumer, "semantic", "watch.tei"),
 		"namespace monitoring\n\ndata Watch {\n    attribute processId type os.process_id\n}\n")
 	return consumer, provider
@@ -81,7 +81,7 @@ func TestPathAndDataOnlyPackagePreserveCanonicalMeaning(t *testing.T) {
 	// Remove the path import so that only the explicitly inspected package
 	// value supplies the external namespace in this isolated projection.
 	writeFixture(t, filepath.Join(consumer, "tei.workspace.yaml"),
-		"workspace: consumer\nsources:\n  - semantic\n")
+		"workspace: consumer\nformatVersion: 1\nsources:\n  - semantic\n")
 	result, err := workspace.Load(consumer)
 	if err != nil {
 		t.Fatal(err)

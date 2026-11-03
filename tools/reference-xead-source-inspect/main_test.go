@@ -11,6 +11,36 @@ import (
 	"tei/internal/xeadsource"
 )
 
+// Source facts may retain literal XEAF key declarations; the public report
+// must still expose only aggregated observations, not the source field values.
+func TestBuildReportDoesNotPublishRawRuntimeReferKeyFields(t *testing.T) {
+	const privateFrom = "PRIVATE_FROM_FIELD_0094"
+	const privateTo = "PRIVATE_TO_FIELD_0095"
+	source := []byte(`<System><Table ID="T1"><Refer ID="R1" ToTable="T2" ToKeyFields="` +
+		privateTo + `" WithKeyFields="` + privateFrom + `"/></Table><Table ID="T2"/></System>`)
+	inspection, err := xeadsource.Inspect(xeadsource.FormatXeaf, source, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(inspection.RelationalFacts.RuntimeRefers) != 1 {
+		t.Fatalf("internal runtime refer count = %d", len(inspection.RelationalFacts.RuntimeRefers))
+	}
+	refer := inspection.RelationalFacts.RuntimeRefers[0]
+	if refer.ToKeyFieldsRaw == nil || *refer.ToKeyFieldsRaw != privateTo ||
+		refer.WithKeyFieldsRaw == nil || *refer.WithKeyFieldsRaw != privateFrom {
+		t.Fatalf("internal raw declarations not retained: %#v", refer)
+	}
+	public, err := json.Marshal(buildReport(inspection))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, secret := range []string{privateFrom, privateTo} {
+		if bytes.Contains(public, []byte(secret)) {
+			t.Fatalf("public inspection leaked raw Refer field %q: %s", secret, public)
+		}
+	}
+}
+
 func TestBuildReportOmitsRawBusinessIdentifiersAndDetectsDerivedRelationshipKey(t *testing.T) {
 	contract := []byte(`{
 	  "sourceProfiles": {"xead": {"rootKind":"System","supportedFormatVersions":["1.2"]}},
@@ -267,5 +297,52 @@ func TestBuildReportMarksUnvalidatedDeclaredKeyFieldsAsPartial(t *testing.T) {
 	}
 	if bytes.Contains(encoded, []byte("PRIVATE_FUNCTION")) {
 		t.Fatalf("public partial readiness leaked function identifier: %s", encoded)
+	}
+}
+
+// A permitted FAMILY Source shape still has no accepted Field pairing.
+// Publish the revised diagnostic code and policy provenance, but no source IDs.
+func TestBuildReportFamilyExpansionIsUnresolvedAndPrivate(t *testing.T) {
+	const secretParent = "PRIVATE_PARENT_ID"
+	const secretChild = "PRIVATE_CHILD_ID"
+	const secretRelation = "PRIVATE_RELATION_ID"
+	input := []byte(`<System><Table ID="` + secretParent + `">
+		<TableField ID="PA" DataTypeID="D1"/>
+		<TableKey ID="KP" Type="PK"><TableKeyField FieldID="PA"/></TableKey>
+	</Table><Table ID="` + secretChild + `">
+		<TableField ID="CA" DataTypeID="D1"/><TableField ID="CB" DataTypeID="D2"/>
+		<TableKey ID="KC" Type="PK">
+			<TableKeyField FieldID="CA" SortKey="10"/>
+			<TableKeyField FieldID="CB" SortKey="20"/>
+		</TableKey>
+	</Table><Relationship ID="` + secretRelation + `" Type="FAMILY"
+		Table1ID="` + secretParent + `" TableKey1ID="KP"
+		Table2ID="` + secretChild + `" TableKey2ID="KC"/>
+	</System>`)
+	inspection, err := xeadsource.Inspect(xeadsource.FormatXead, input, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	public := buildReport(inspection)
+	if public.SchemaVersion != "reference-xead-source-inspection-v3" ||
+		public.RelationalResolutionPolicyRevision != "tei.xeadsource.relational-resolution/v2" ||
+		public.RelationalResolutionStatus != "unresolved" ||
+		public.RelationalDiagnostics.Total != 1 ||
+		public.RelationalDiagnostics.ByCode["relationship-family-correspondence-unresolved"] != 1 ||
+		public.RelationalFactResolutions.ByKind["relationship-key"].Unresolved != 1 {
+		t.Fatalf("source shape/correspondence lost its evidence limits: %#v", public)
+	}
+	if len(public.RelationalDiagnostics.Evidence) != 1 ||
+		public.RelationalDiagnostics.Evidence[0].DiagnosticToken == "" {
+		t.Fatalf("missing source-bound correlation token: %#v", public.RelationalDiagnostics)
+	}
+	encoded, err := json.Marshal(public)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, private := range []string{secretParent, secretChild, secretRelation, "PA", "CA", "CB"} {
+		if bytes.Contains(encoded, []byte(private)) {
+			t.Fatalf("public report leaked Source identifiers %q: %s", private, encoded)
+		}
 	}
 }

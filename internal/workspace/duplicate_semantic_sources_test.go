@@ -27,7 +27,7 @@ func TestDuplicateSemanticSourceCandidates(t *testing.T) {
 			if err := os.MkdirAll(filepath.Join(root, "semantic"), 0755); err != nil {
 				t.Fatal(err)
 			}
-			for path, text := range map[string]string{"tei.workspace.yaml": "workspace: test\nsources:\n  - semantic\n", "semantic/a.tei": tc.first, "semantic/b.tei": tc.second} {
+			for path, text := range map[string]string{"tei.workspace.yaml": "workspace: test\nformatVersion: 1\nsources:\n  - semantic\n", "semantic/a.tei": tc.first, "semantic/b.tei": tc.second} {
 				if text == "" {
 					continue
 				}
@@ -104,9 +104,9 @@ func TestDuplicateSemanticSourcesSurviveUnrelatedImport(t *testing.T) {
 	base := t.TempDir()
 	consumer := filepath.Join(base, "consumer")
 	provider := filepath.Join(base, "provider")
-	writeDuplicateFixture(t, provider, "tei.workspace.yaml", "workspace: provider\nsources:\n  - semantic\n")
+	writeDuplicateFixture(t, provider, "tei.workspace.yaml", "workspace: provider\nformatVersion: 1\nsources:\n  - semantic\n")
 	writeDuplicateFixture(t, provider, "semantic/external.tei", "namespace external\ntype ExternalId from std.identifier\n")
-	writeDuplicateFixture(t, consumer, "tei.workspace.yaml", "workspace: consumer\nsources:\n  - semantic\nimports:\n  - alias: external\n    path: ../provider\n    namespace: external\n")
+	writeDuplicateFixture(t, consumer, "tei.workspace.yaml", "workspace: consumer\nformatVersion: 1\nsources:\n  - semantic\nimports:\n  - alias: external\n    path: ../provider\n    namespace: external\n")
 	writeDuplicateFixture(t, consumer, "semantic/request.tei", "namespace intake\ndata Request {\n    attribute status type std.code\n    attribute status type std.code\n}\n")
 
 	loaded, err := Load(consumer)
@@ -138,7 +138,7 @@ func TestDuplicateSemanticSourcesSurviveUnrelatedImport(t *testing.T) {
 // position is reported as unresolved rather than filled with the local path.
 func TestDuplicateSemanticSourcesMarkStandardPreludeUnknown(t *testing.T) {
 	root := t.TempDir()
-	writeDuplicateFixture(t, root, "tei.workspace.yaml", "workspace: prelude\nsources:\n  - semantic\n")
+	writeDuplicateFixture(t, root, "tei.workspace.yaml", "workspace: prelude\nformatVersion: 1\nsources:\n  - semantic\n")
 	writeDuplicateFixture(t, root, "semantic/std.tei", "namespace std\ntype code from std.text\n")
 
 	loaded, err := Load(root)
@@ -170,7 +170,7 @@ func TestDuplicateSemanticSourcesMarkStandardPreludeUnknown(t *testing.T) {
 // complete duplicate set.
 func TestDuplicateSemanticSourcesMarkUnlocatableDeclarationUnknown(t *testing.T) {
 	root := t.TempDir()
-	writeDuplicateFixture(t, root, "tei.workspace.yaml", "workspace: single\nsources:\n  - semantic\n")
+	writeDuplicateFixture(t, root, "tei.workspace.yaml", "workspace: single\nformatVersion: 1\nsources:\n  - semantic\n")
 	writeDuplicateFixture(t, root, "semantic/request.tei", "namespace intake\ndata Request {\n    attribute status type std.code\n}\n")
 	loaded, err := Load(root)
 	if err != nil {
