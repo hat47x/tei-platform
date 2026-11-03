@@ -250,3 +250,6 @@ P3（成果物への反映）のうち、**機能定義書への期間の行**�
 - `FunctionDefinitionInput` に `Periods` を追加し、`uses semantic` の名前空間の期間を `period <id> data <data> states <open,closing,closed>` の行で出す（`internal/artifact/functiondef.go`）。
 - 生成規則（`function-definition/v1`）の行種別に `period` を追加。並びは期間の識別子順。
 - 作業領域からの一括生成で、名前空間の期間を渡す（`internal/artifact/workspace.go`）。
+### P2 の追補（2026-11-03）: 書き込みの前提
+
+閉じた期間が拒否する操作（`closed-rejects` に `create`・`update` がある場合）には、操作面の `preconditions` に `period:<期間>:open` を加えました。実行する側は、期間が開いていることの証明を渡さなければなりません。**実行時に拒否を強制する仕組みはまだありません**（契約としての前提のみ）。

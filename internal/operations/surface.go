@@ -366,12 +366,18 @@ func deriveApplicationOperations(
 		}
 	}
 	for i := range ops {
-		if ops[i].Period != "" {
-			continue
-		}
-		if periodID, rejects := periodFields(index, core.CanonicalID(ops[i].Target)); periodID != "" {
+		if ops[i].Period == "" {
+			periodID, rejects := periodFields(index, core.CanonicalID(ops[i].Target))
+			if periodID == "" {
+				continue
+			}
 			ops[i].Period = periodID
 			ops[i].PeriodRejects = rejects
+		}
+		// A write the closed period rejects needs proof that the period is
+		// open before it runs.
+		if periodRejectsOperation(ops[i].PeriodRejects, ops[i].Kind) && !hasOperationPrecondition(ops[i], "period:"+ops[i].Period+":open") {
+			ops[i].Preconditions = append(ops[i].Preconditions, "period:"+ops[i].Period+":open")
 		}
 	}
 	return ops, gaps
@@ -574,4 +580,24 @@ func periodFields(index surfaceIndex, data core.CanonicalID) (string, []string) 
 		return "", nil
 	}
 	return string(period.ID), append([]string(nil), period.ClosedRejects...)
+}
+
+// periodRejectsOperation reports whether a closed period rejects this operation.
+func periodRejectsOperation(rejects []string, kind string) bool {
+	for _, rejected := range rejects {
+		if rejected == kind {
+			return true
+		}
+	}
+	return false
+}
+
+// hasOperationPrecondition reports whether the operation already declares it.
+func hasOperationPrecondition(operation Operation, want string) bool {
+	for _, precondition := range operation.Preconditions {
+		if precondition == want {
+			return true
+		}
+	}
+	return false
 }
