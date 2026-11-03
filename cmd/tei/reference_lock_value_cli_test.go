@@ -10,6 +10,9 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+
+	"tei/internal/plugin"
+	"tei/internal/workspace"
 )
 
 // The workspace and edits are synthetic and isolated; no reference baseline is changed.
@@ -105,6 +108,33 @@ func TestLogicalReferencesAndEnvironmentLockCLI(t *testing.T) {
 	if out := validate(1); !strings.Contains(out, "UNKNOWN_SEMANTIC_ATTRIBUTE_TYPE") {
 		t.Fatalf("missing reference not diagnosed: %s", out)
 	}
+	// Characterize the existing cross-domain validation, not a desirable contract.
+	for _, args := range [][]string{
+		{"plugin-lock", "-workspace", root},
+		{"plugin-resolve", "-workspace", root, "-environment", "test", "-plugin-lock", oldPath},
+	} {
+		out := run(1, args...)
+		if !strings.Contains(out, "UNKNOWN_SEMANTIC_ATTRIBUTE_TYPE") {
+			t.Fatalf("unrelated invalid model did not block %v as expected: %s", args, out)
+		}
+	}
+	loaded, err := workspace.Load(root)
+	if err != nil {
+		t.Fatalf("load synthetic workspace: %v", err)
+	}
+	var pinned plugin.Lock
+	if err := json.Unmarshal(old, &pinned); err != nil {
+		t.Fatal(err)
+	}
+	if len(loaded.World.Environments) != 1 {
+		t.Fatalf("expected one environment, got %d", len(loaded.World.Environments))
+	}
+	resolved, err := (plugin.Catalog{Plugins: loaded.World.Plugins, Bundles: loaded.World.Bundles}).ResolveEnvironmentWithLock(loaded.World.Environments[0], pinned)
+	if err != nil || len(resolved.Plugins) != 1 || string(resolved.Plugins[0].ID) != "tei.value.example" {
+		t.Fatalf("underlying locked resolution: %+v, %v", resolved, err)
+	}
+	t.Log("existing CLI limitation: an unresolved model type also blocks plugin-lock and plugin-resolve in this independent builtin-plugin fixture")
+	t.Log("the existing Go resolver can still resolve the exact pinned descriptor; this does not authorize execution or validate the model")
 	write("semantic/sales/moved.tei", model)
 	validate(0)
 	beforeTypeChange := run(0, "world", "-workspace", root)

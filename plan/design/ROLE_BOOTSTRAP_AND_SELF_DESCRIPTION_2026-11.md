@@ -101,6 +101,19 @@ Layer 3   CUI／Studio／Skill／SHO／Targetへの用途別Projection
 
 比較案として、各参照に型宣言の**生バイト列のハッシュを直接保存する**方式を仮定すると、この型変更で3箇所のPinが古くなる。実際に算出した変更前後のSHA-256が異なることは試験するが、その方式の実装、更新の自動化、入力回数・時間や実作業の負担は測っていない。正規化した意味の指紋や間接参照では結果が異なり得る。実CLIが確認するのは特定の合成WorkspaceとPlugin定義の範囲であり、異なる実装バイナリの照合、正式Role解釈、実Provider実行、データ移行の妥当性は確認していない。型変更後に参照が解決することは、変更が業務上安全であるという意味ではない。
 
+### 4.2.1 価値と照らした境界ごとの暫定整理
+
+次は[製品価値](../../product/value/TEI_PRODUCT_VALUE.md)と[RQ-008](../../requirements/TEI_PRODUCT_REQUIREMENTS.md#rq-008-capability単位で標準実装と固有実装を置き換えられること)を基準とした限定整理であり、要求の改定や安全条件の撤回ではない。
+
+| 場面 | 現在の確認と価値 | 見直す範囲 |
+| --- | --- | --- |
+| 定義の編集・参照 | 上記CLI試験では、型の参照は安定IDで解決し、3参照への内容ハッシュの手入力を要しなかった | 通常の関係を読むだけの操作に、参照先の固定バイト列を必須とする根拠は未確認。曖昧・欠落・型不一致の診断は保つ |
+| Pluginの選択 | `plugin.Lock` は環境ごとに選んだPluginの版・定義Fingerprintを保持する。上記試験で定義変更を旧Lockが拒否した | 同一試験で無関係な業務型の未解決が `plugin-lock` と `plugin-resolve` の両方を停止した。既存のGo resolverは同じWorkspaceとLockからPlugin定義を解決できた。read-only診断の継続を検討するが、検証済み構成・実行許可として返してはならない |
+| Build・配布 | RQ-008は外部Pluginの配布物の内容Digest確認を要求する。`internal/plugin/build.go` はBuild入力と成果物を固定する | 成果物の同一性確認は通常の定義間Refとは別。不要と決めず、選択したBuild・配布物の範囲で評価する |
+| 実行・外部作用 | 現在の権限・対象・実際の結果は、定義参照の解決や過去のLock一致とは別 | 権限確認、誤対象の防止、必要な結果照合を読み取りの利便性と引き換えに外さない |
+
+`plugin-lock` と `plugin-resolve` は現在 `cmd/tei/cli_result.go` でWorkspace全体を検証してから実行する。最小の改善候補は、既存コマンドの成功条件を変えることではなく、必要なPlugin・環境の選択結果と、Workspace全体が未検証である旨・元の診断を別に返す**任意のread-only診断**を比較すること。その結果からLockの正式利用やRuntime起動を許可しない。依存する意味定義を必要とするPlugin、未解決の環境、改変されたPlugin定義を誤って有効としないことを実証できなければ、候補を採用しない。専用CLIや新たな正本が必要かも未決である。
+
 [#2620 RE-01〜10](https://github.com/hat47x/tei-platform/issues/2620)と[TAI #271 QH-01〜18](https://github.com/hat47x/tai-pleroma/issues/271)の横断研究から、**同じRole ID/versionでも実装内容が変わり得る**という受入条件を具体化した。前段ReferenceはRoot/Eager依存先について**版文字列だけを比較**していたため、同じ版の実装差を見逃すという、あくまで**このFixture自身の不足**があった。正式TEI製品に当該欠陥があると断定するものではない。
 
 そこで、各Role DescriptorとPinを、`version + contract fingerprint + actual implementation fingerprint`という**比較用の3軸**に拡張。Rootと推移するEager依存先の双方でexact照合を要求する。Fixtureのfingerprint文字列は**テストが与えたラベル**であり、現物バイトをSHA-256計算した真正なLock証拠ではない。実TEIへの接続時には、既存Extension Lock／Language Selectionが検証する**実Provider物・Pin対象・Implementation fingerprint**を利用し、自己申告Stringを信用しない。
