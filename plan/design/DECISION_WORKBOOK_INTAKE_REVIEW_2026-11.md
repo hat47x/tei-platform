@@ -66,6 +66,16 @@
 | [#2619](https://github.com/hat47x/tei-platform/issues/2619) / [#1121](https://github.com/hat47x/tei-platform/issues/1121) | 三形態の共通Source→Role→Accepted Meaning→Target-native生成→SHO文書の比較 | 一律のFlow Runtime／Go/Java/組込の同一実行保証 |
 | [#2514](https://github.com/hat47x/tei-platform/issues/2514) / [#1131](https://github.com/hat47x/tei-platform/issues/1131) | 14ベクトルを*入力候補*とし、現行Referenceで支持できる列と未実装列、独立Oracleへ分解 | 元WorkbookのExpectを自動で独立真理へ昇格させる |
 
+### 5.1 Flow表がDerived Attributeの変化を契機とする場合
+
+[仮想項目・Data Script・イベント起動・Batch Pipelineの設計案](DATA_DERIVED_TRANSITION_TRIGGER_PIPELINE_2026-11.md)に接続する。添付Workbookの`(Lifecycle, From, Capability)`形式だけでは、**子明細の更新で親レコードの仮想statusが変わった際にJobを起動する**という要求を表現し切れない。
+
+Data Modelに`virtual/read-only`と宣言したAttributeを、Data Scriptで型付き依存付きに導出し、さらに**そのData Script上の変更時Trigger宣言をFlow／Capabilityへ参照Bindingする**構成を評価する。ただし仮想項目の再計算＝永続Event発生ではない。Flow表で`physical-write`／`derived-edge`／`level`／`domain-commit`／`timer`を区別し、Scope・Snapshot・Clock、未知・重複・再送・Rollbackの扱いを検査する。正式なWorkbook列や構文は未採用。
+
+- サンプルの受注`billing_ready`が`false→true`へ変わる場合、子明細の全件取得／請求不存在のread-setと前後評価の整合がないならEdgeを確定しない。
+- 大規模Jobは#1130の非UI Batch／Pipeline、更新と副作用は#1129/#1174のPhase/Effect Fence、Dependencyと鮮度は#2582/#1708がOwner。WorkbookのFlow列に`command`と書いただけで起動権限・一度限りの実行を保証しない。
+- Flow図、Decision表、Data Modelの仮想項目、Data Script、SHO成果物を同じIDで投影するが、JobのJournal/Receiptという**独立した実行事実**は元データの導出状態へ消去しない。
+
 ## 6. 最小受入順序と停止条件
 
 - **D0 調査還元（今回）**：一次観察／3報告とWorkbook現物／現行TEIの適合・不適合を分離。Buri実動、TEI Runtime、第三者Rule Engineの実行は不要。**本稿は設計レビュー入力であり、正式Schema受入ではない。**
