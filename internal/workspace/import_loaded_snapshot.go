@@ -9,7 +9,7 @@ import (
 )
 
 // ImportedParsedLoadEvidence describes the selected provider Namespace and the
-// exact parsed Source bytes captured during the SAME nested provider Load as
+// fingerprints of parsed Source bytes captured during the SAME nested provider Load as
 // the consumer's Workspace Import. Manifest is a separate input, never a
 // consumer-managed Source Index artifact.
 //
@@ -26,9 +26,9 @@ type ImportedParsedLoadEvidence struct {
 	FullInputClosure bool
 }
 
-// importedParsedLoad is private, transient provenance. It is never exported by
-// serialization of Result; a caller must explicitly request the read-only
-// projection and must separately authorize disclosure of any raw Source.
+// importedParsedLoad is private, transient provenance. The private raw bytes
+// are never serialized with Result or exposed by the public metadata accessor.
+// Importing a Semantic Namespace is NOT authorization to read Provider Source.
 type importedParsedLoad struct {
 	evidence ImportedParsedLoadEvidence
 	files    map[string][]byte
@@ -82,19 +82,16 @@ func captureImportedParsedLoad(imp WorkspaceImport, digest string, provider Resu
 	return importedParsedLoad{evidence: evidence, files: files}, nil
 }
 
-// ImportedParsedLoadSnapshot retrieves a read-only in-memory view of parsed
-// Source and manifest bytes captured during the selected external Import's
-// initial provider Load. No filesystem read or LocateImportedSource re-Load
-// occurs here. The returned reader makes independent copies on every call.
+// importedParsedLoadSnapshot retrieves raw bytes for trusted internal
+// Workspace operations ONLY. No filesystem read or fresh Provider Load occurs.
+// It returns clone-on-read bytes of selected parsed Sources and the Provider
+// Manifest. It is intentionally unexported: an explicit Workspace Import is
+// not a grant to disclose Provider source text, comments or full Manifest.
 //
-// Only the selected Namespace's parsed Source files and the provider Manifest
-// are readable; unrelated provider Sources and transitive imported files are
-// excluded. Raw bytes require an explicit read and must not be sent to logs,
-// AI or other consumers without their own disclosure permission.
-//
-// This does not satisfy BuildSourceIndexFromLoad for imported Workspaces, and
-// does not claim an atomic multi-file snapshot or complete input closure.
-func ImportedParsedLoadSnapshot(loaded Result, alias string) (ImportedParsedLoadEvidence, func(string) ([]byte, error), error) {
+// A future external Consumer must pass the Provider's existing disclosure and
+// authorization boundary before such raw data may be projected. This function
+// does not establish full input closure or multi-file atomicity.
+func importedParsedLoadSnapshot(loaded Result, alias string) (ImportedParsedLoadEvidence, func(string) ([]byte, error), error) {
 	var empty ImportedParsedLoadEvidence
 	var selected *ResolvedImport
 	for i := range loaded.Imports {
@@ -144,4 +141,13 @@ func ImportedParsedLoadSnapshot(loaded Result, alias string) (ImportedParsedLoad
 	out := capture.evidence
 	out.ParsedSources = append([]sourceindex.Artifact(nil), capture.evidence.ParsedSources...)
 	return out, read, nil
+}
+
+// DescribeImportedParsedLoad returns only read-only fingerprints and source
+// locations. It never exposes the Provider Manifest or Source contents.
+// Caller-visible metadata is not a disclosure grant, acceptance or build
+// qualification. FullInputClosure remains false.
+func DescribeImportedParsedLoad(loaded Result, alias string) (ImportedParsedLoadEvidence, error) {
+	evidence, _, err := importedParsedLoadSnapshot(loaded, alias)
+	return evidence, err
 }
