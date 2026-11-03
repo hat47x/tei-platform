@@ -152,6 +152,12 @@ AIに期待する仕事：
 
 **Expectedの独立性**：各Caseの前提と許される出力を先に固定し、TEI生成の同じRule／SimulatorからExpectedを自動算出しない。Guard反転、Lease後着、Node二重ID、Memory/VRAM見積違い、古いObservation、Disclosure越境、AI Prompt Injection等のMutantを用意し、判別力を説明する。EKI/EKI Agent実測が無ければ`simulation-only`と表示。TEI [#2514](https://github.com/hat47x/tei-platform/issues/2514)のOracleへ接続するが、別のConformance Runnerを起こさない。
 
+### 8.1 Hosted Controlと外部Service実行を前提とするDeployment圧力（2026-11-03）
+
+[EKIをTEI Applicationの論理的Launch/Deployment Brokerにする設計案](TEI_EKI_APPLICATION_DEPLOYMENT_FABRIC_2026-11.md)では、安定クラウドでEKI Control/Consoleを提供し、TEI生成Cloud/On-prem Applicationの**常駐実行Ownerは既存Cloud Host／Orchestrator**、Task/Lease／仮想Edge計算はEKIの任意委任、と分ける。Hosted ConsoleのResource Pool/Node管理にはGraph/表/Simulation/AI Reviewを最大限利用できるが、ConsoleはEKI Authorityを直接変更せず、EKI Kernelが停止時にも復旧できるNative経路を維持する。
+
+**運用SurfaceをDeployへ延長**：Release Source/Meaning/Artifact digest、EKI Deploy Proposal、Provider Service identity/Revision、Ingress/User Data Path、Result/Provider Health/Business Receiptを同一画面に**別の状態**として表示する。管理コンソールをクラウドで貸与しても、公開AppへのUser HTTPやbulk Artifact/DB trafficをEKI Controlに通さない。TenantのResource構成・Node数・Access/AI Promptへの開示を区別する。AL-01（Direct vs EKI broker同一Host）、AL-02（EKI停止後Service継続）、AL-07（Tenant隔離）、AL-12（Provider実状態との差分）を本稿のNR-01〜12とは異なる部署/実Targetの**追加圧力**として参照し、Test Runner/Oracleは増設しない。
+
 ## 9. 既存計画との分担・段階導入・Done/Stop
 
 | 段階 | TEI側の差分／最小成果物 | EKIの既存担当とGate |
