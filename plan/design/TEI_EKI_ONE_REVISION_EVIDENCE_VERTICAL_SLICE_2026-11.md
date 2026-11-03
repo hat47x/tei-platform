@@ -14,7 +14,7 @@
 - **T1 EKI Native**：同じ入力・Executor/Artifact版・Expectedを保持し、EKIのTask→Attempt→Resultへ委任する。EKI内部のScheduler/Worker/Result取得まで**実際に確認できた場合のみ**「実行済み」とする。Input/Output bytesが渡せなければ`unsupported`。
 - **T2 EKI→Managed Pool**：EKIは登録済みResource Delegate/Cluster Groupを選び、Slurm/Kueue/Cloud等のProviderが内部Node配置を行う。Provider予約/ExecutionRef/結果本体とEKI AcceptedResultを別観測にする。T1が成功してもT2を成功としない。
 
-**優先するのは最小の一つの純粋計算**。複雑なAI tool chain、Data Script changed-edge、Flow/業務DB Commit、複数Pool最適化、生成AI運用操作は後続の独立Gateへ分割する。特にTEI #1129のX-TEA hook実行意味はSource-staticだけで決定できず、初回fixtureの計算を業務Sourceの真の意味へ昇格しない。EKI #112の投影SpikeでInput Artifact 8/9が422、Result取得が501だった履歴は**現在の実行能力を再検査すべき根拠**であり、この文書で解決したとは言わない。
+**優先するのは最小の一つの純粋計算**。最新EKI Sourceによる再資格化は本稿§12が優先し、旧#112/#242の実装不足表現は歴史的な報告として読む。複雑なAI tool chain、Data Script changed-edge、Flow/業務DB Commit、複数Pool最適化、生成AI運用操作は後続の独立Gateへ分割する。特にTEI #1129のX-TEA hook実行意味はSource-staticだけで決定できず、初回fixtureの計算を業務Sourceの真の意味へ昇格しない。EKI #112の投影SpikeでInput Artifact 8/9が422、Result取得が501だった履歴は**現在の実行能力を再検査すべき根拠**であり、この文書で解決したとは言わない。
 
 ## 2. 縦断で残す識別子は多いが、正本は増やさない
 
@@ -76,7 +76,7 @@ TEI Data Model/Scriptの`ready`仮想状態を想定し、`false→true`の業�
 | Case | 注入する対照・入力 | 固定すべきExpected／証拠 |
 | --- | --- | --- |
 | **VS-01** T0 vs T1 Input | 同じ論理Function、異なるInput bytes/digest/欠損、Toolchain rev違い | Artifact/input bindingが合致しなければ拒否。同名Job/同じ出力文字列だけで互換性PASSとしない |
-| **VS-02** EKI API未対応 | 旧Spikeと同等のInput Artifact/Result retrieval 422/501 | 外部APIの現実を`unsupported`として示す。モック成功を実E2Eと主張しない |
+| **VS-02** EKI API再資格化 | 旧SpikeのInput ingest 422／Result GET 501と、最新のConfig有無・Output GET・Output bodyの各場合を分離 | 実際に存在するAPI機能と旧歴史的Gapを区別し、現行未対応Input ingestは`unsupported`。モック成功を実E2Eと主張しない（§12） |
 | **VS-03** W-1型/NULL | `quantity=0/null/missing`、金額不正文字列、部分Input | Expectedを事前固定し、NULLとmissingを混同しない。単なる拒否は契約適合範囲内に限定 |
 | **VS-04** X-TEA virtual changed-edge | Before false→After trueとtrue→true/unknown→true/rollbackを並列 | 実Commit/同一scope/Rule Revがある場合のみChanged Event、その他はno-event／unknownを区別 |
 | **VS-05** 0件/否定依存 | 子集合0件、別のProviderで子Relation追加、NOT EXISTS Rule、部分RLS | 0件=全世界空集合/依存無しとしない。差分取得不能なら`edge unknown/unsupported` |
@@ -98,7 +98,7 @@ TEI Data Model/Scriptの`ready`仮想状態を想定し、`false→true`の業�
 | --- | --- | --- |
 | **V0 Scope/Expected固定** | W-1固定Input/Output/nullable/Source/Meaning/Artifact/Target、EKI APIの現状、既存TEI/EKI Unit/Synthetic観測を同じ表へ。X-TEA Sourceと業務秘密を新公開文書へ転載しない | TEI #2514/#1121/#1130、Buri/#1129のSource/意味Owner。合成TargetのPASSを実業務へ昇格しない |
 | **V1 Direct Go実行** | TEI単一Go Targetを実起動、Byte/Toolchain/Output digestと同じ独立Expectedを確認、異版拒否を観測 | TEI既存Go/CLI/Build evidence、#2616 OB-07A、#2667の実CLI。ただし別PRの旧HEAD PASSを本HEAD合格に転用しない |
-| **V2 EKI Native Job I/O** | Public API→Input Artifact body→Digest/Executor一致→実Attempt/Lease/Worker→Result body/digest/verificationを一つのTask/Attemptで相関 | EKI #112/#57/#242。422/501、Worker未配線なら`unsupported`と止める |
+| **V2 EKI Native Job I/O** | Public API→Input Artifact body→Digest/Executor一致→実Attempt/Lease/Worker→Result body/digest/verificationを一つのTask/Attemptで相関 | EKI #112/#57/#242。現mainはoptional Dispatch/実Process test/条件付きOutput GETを持つため、**RE-01〜08でConfig別に再資格化**。Input ingest未実装やProduct-only result未結合なら該当境界で止める |
 | **V3 Provider Pool委任** | Managed HPC/Cloudの一つのPoolでProvider Reservation/ExecutionRef/ResultとEKI Taskを紐付け、ACK loss・二重Retryと取消を対照 | EKI #67、Task State Model、DLG-1/BUD-1/CAP-1。内部NodeをEKIに複製しない |
 | **V4 非常駐Business Trigger** | TEI #1129 XL-03の実旧Driver/新Provider対応、Before/After/Commit/Outbox→EKI、実Effect Receiptと後続Flowまでの同一Owner判断 | TEI #1129/#1174/#2499、#1130。実Tx/外部Effectの採用資格はV1〜3と独立 |
 | **V5 時間/費用/実成果** | Direct/EKI/Providerを同一W-1（後にW-2）でBenchmark。Deadline/回復/Quotaの合成反証→実失敗測定→Shadow calibrationの順 | EKI #58/#19/#50、TEI Ops/Simulation。再計画/AI Reviewは当該証拠の範囲でのみ評価 |
@@ -167,3 +167,45 @@ TEI Data Model/Scriptの`ready`仮想状態を想定し、`false→true`の業�
 | **VS-22 AI・Disclosure/Perf** | AIがGraph非開示ノード数/生ログを求め、性能重視でFull Scope検査省略を提案 | `permitted_disclosure_scope`を守り、最低限の実Host Grant/CAS/Effect Fenceは省略しない。Deferred化はOwnerにより採用された範囲のみ |
 
 **採用・停止**：VS-01〜22はあくまで本稿の独立Expected候補。PR #2667/#2616/#2780/#2781の既存試験と本稿の試験を**重複成果と数えない**。V0にはBuild/Entry/Scope/Qualityの受入票を加えるが、V2（EKI Native I/O）が未達なら本稿全体を`TEI→EKI製品実証完了`と呼ばない。Source-static/限定Go Characterization/合成Scope/独立Provider Receiptはそれぞれ異なる証拠資格である。
+
+## 12. 現行EKI main再照合：旧Spike/Issueの未実装判定を再資格化する（2026-11-03）
+
+**今回のSource比較は、EKIの旧検証基線`c0776fdd1be9c6e83d9e0ae803f9ff650ee7def1`（Issue #242の参照）から現`main`まで681コミット先行・差分300ファイル（GitHub比較APIによる取得範囲）**。したがって**#242の「実配線なし」／2026-10-19 TEI投影Spikeの「Result 501・Worker未実装」／EKI #112の422/501は、当時の実行結果としては正しいが、現mainの全Profileに対する現在の確定判定ではない**。コード存在を製品の実動PASSへ自動昇格するのも同様に誤り。
+
+| 機能／検査対象 | 現`main`でSourceから確認できる事実 | 実行資格と残るGap |
+| --- | --- | --- |
+| **Task受理・実行配置** | [`internal/control/service/run.go`](https://github.com/hat47x/eki-fabric/blob/main/internal/control/service/run.go)で`admission.Config.Results=store`、`cfg.Dispatch != nil`なら`startDispatch`。[`dispatch.go`](https://github.com/hat47x/eki-fabric/blob/main/internal/control/service/dispatch.go)が配置署名／Lease予約・発行／WorkOrder署名を組み合わせ、Tickループを実行 | **Source implemented/optional**。`dispatch=nil`ならTaskを進行させない。署名鍵・Trust Domain・ExecutorApproval設定と各Provider前提の実起動、Capacity/Lease/Recoveryを個別確認。全Profile常時動作やT2 HPC対応の証明ではない |
+| **実Agent・Claim** | [`conformance/process/http_submit_agent_test.go`](https://github.com/hat47x/eki-fabric/blob/main/conformance/process/http_submit_agent_test.go)に`TestHTTPTaskSubmissionIsExecutedByTheAgent`。POST Task→Dispatch→Agentが`/bin/echo`相当固定Commandを実行→Claim記録までを別OSプロセスで試す**テストコードが存在** | **Test-profile fixture exists／このターンのexact-head Go実行はNOT RUN**。同テストは`ADMITTED→READY`を試験からSQLite CASで明示的に進め、結果についても試験コードが`resultacceptance.Accept`を直接呼ぶ。製品の通常設定だけでAdmissionから結果受理まで無人E2Eがつながった、と扱わない |
+| **Worker Output body** | [`conformance/process/execution_body_test.go`](https://github.com/hat47x/eki-fabric/blob/main/conformance/process/execution_body_test.go)は同AttemptのClaimとControl側に保存されたbody bytes/size/digestを照合するテスト。[`service/run.go`](https://github.com/hat47x/eki-fabric/blob/main/internal/control/service/run.go)でmTLS Worker+`artifacts_dir`があると受入側Storeへ接続 | **Body受信のプロセス試験コードあり**。TEI-generated ExecutorのInput受渡し、Client結果取得と同一Taskの全工程、長期Retention、Cloud/別Host実配備は別Gate |
+| **Client Result GET** | [`handler.go`](https://github.com/hat47x/eki-fabric/blob/main/internal/control/clientapi/handler.go)の`GET /v1/tasks/{id}/result`は`ResultsEnabled`で分岐。[`run.go`](https://github.com/hat47x/eki-fabric/blob/main/internal/control/service/run.go)は`Results:store`を渡す。AcceptedResultありなら200、未受理／未終端等は409など | **Result APIは条件付きで実装済み**。GETで200を返せる設計と、通常Dispatch/Agent経路が独立VerificationからAcceptedResultを生成することは別。旧Spikeの501を現`main`で恒久的な仕様としない |
+| **Client Output Artifact GET** | [`clientapi/artifact.go`](https://github.com/hat47x/eki-fabric/blob/main/internal/control/clientapi/artifact.go)が`GET /v1/artifacts/{digest}`のOwner/期限/撤回判定とbody streamを実装。`handler.go`の`artifactsOf`はArtifactStoreのMetaを使ってResult内の可取得Artifactを投影 | **`Worker.ArtifactsDir`と格納されたMeta/bodyがあるProfileでは条件付きで取得可能**。設定無しでは501、未登録/失効/Owner違いは規定の拒否。Artifact bodyを持つことと業務Resultの受理は別。Client APIのREADMEに残る「全Artifact GETは501／Result artifactsは常に空」は現在のhandler実装と**文書ドリフト** |
+| **Client Input Artifact ingest** | [`handler.go`](https://github.com/hat47x/eki-fabric/blob/main/internal/control/clientapi/handler.go)は`POST /v1/artifacts/ingest-intents`、`PUT /v1/artifact-uploads/{id}`を`routeNotImplemented`へ送る。[`spec/external/openapi.json`](https://github.com/hat47x/eki-fabric/blob/main/spec/external/openapi.json)にはこれらの外部Contractの項目が存在 | **現在Sourceで未実装**。TEIが送る任意Input bytes/digest/権利のあるArtifactを、この入口から登録できると主張しない。W-1/T1の最初の未解決外部境界 |
+| **Executor binding** | [`dispatch.go`](https://github.com/hat47x/eki-fabric/blob/main/internal/control/service/dispatch.go)は起動設定`Dispatch.ExecutorApproval`を使用し、`ExecutorDigest`をWorkOrder発行に渡す | **単一実行体のFixtureでの拘束と、任意のTEI Function/Jobごとに受理済みExecutor digestを束縛できることは別**。Client任意指定はEKI #112の既存契約・管理者承認・WorkOrderの実検証と対照する。Callerが`effect_mode:none`と偽装しただけで安全なExecutorとしない |
+| **Trust Bundle read failure** | [`service/run.go`](https://github.com/hat47x/eki-fabric/blob/main/internal/control/service/run.go)の`currentTrustBundle`は`ErrNotFound`のみ互換未導入、その他の読取失敗は`error`を返す実装へなっている | **EKI #467の旧Source-static不具合を現実の全経路の未修正事項と断言しない**。実mTLS Handlerがerrorをfail-closedに伝播するかの実負例、Issuer fingerprint #466、Agent更新競合は別に検証 |
+| **Managed HPC/Cloud/PC Pool** | 上記は主にEKIの直接Worker／固定Command Test-profileのSourceと限定プロセス試験 | **T2実HPC/Cloud/MDM連携・Resource PoolのProvider Reservation／経済圏の複数Org調停・端末OSの実使用感は依然未証明**。EKI #67／#115／#125等の専任Ownerへ引き渡す |
+
+**Sourceを見直した結果の優先順位の修正**：従来の「Worker/Result実装がないので何も始められない」ではなく、**現在あるTest-profileの実Job経路を正しく再利用し、試験用CAS・Result Acceptanceの手動呼び出しとInput ingestの未実装を切り分ける**。新しくGeneric Job Engine/Registryを立てない。
+
+### 12.1 次に実行すべき最小Process受入（RE-01〜08、全件NOT RUN）
+
+| Test | 用意する切片 | 独立Expected／失敗時の判定 |
+| --- | --- | --- |
+| **RE-01 Config off** | `Dispatch=nil`、Client POST、`Worker=nil` | 受理できても実Attempt/Lease/WorkOrder/Resultが生成されたとしない。`queued`を期限保証へ変換しない |
+| **RE-02 Config on** | `Dispatch!=nil`・署名鍵等を明示・mTLS Worker・固定Executor | 署名済みPlacement/Lease/WorkOrderと実Agent Claimの同一Task/Attempt関係を観測。**試験側のADMITTED→READY補助CASの有無**をログで記録 |
+| **RE-03 Product-only acceptance** | RE-02を元に、試験コードが`resultacceptance.Accept`を直接呼ばずClient GETを観測 | 200＋受理済Result/出力digest/bodyまで製品が自力で到達すればその条件を記録。409/保留なら未結合。**synthetic verifierを本番独立検証と称しない** |
+| **RE-04 Output GET conditions** | mTLS Worker+`ArtifactsDir`設定あり／なし、Metaあり／なし、期限切れ、別Principal、撤回済 | 取得可能時だけbody/digest/size一致。501/404等のOwner/設定・保持条件を別に固定。Backendに保存された単一Fileは実External Artifact ingestionの証拠ではない |
+| **RE-05 Input ingest** | `POST /v1/artifacts/ingest-intents`と`PUT /v1/artifact-uploads/{id}`の現APIでW-1の入力bodyを渡す | 現Sourceでは501想定。`unsupported`を明示し、Output GETが動くことをInput Uploadが動くことへ読み替えない |
+| **RE-06 Per-Job Executor identity** | 登録済Executor A/Bの別digest、Client Task要求とDispatch Configの現選択、旧Job v1 vs Binary v2 | 同名Function/管理者の静的`ExecutorApproval`だけでTaskごとのDigestが一致すると仮定しない。Mismatch/未登録なら拒否、古いJobを新版Executorへ黙って替えない |
+| **RE-07 Current Trust failure** | 最新Trust Bundle未登録・読み出し故障・旧Issuer失効の3種、直接Worker mTLS | 読出し故障を`not configured`に変換せず停止/拒否。旧Source-static報告を現実の再現証拠なしで`未修正`としない |
+| **RE-08 Test-profile vs production** | Loopback test profileの固定`/bin/echo`と、別Hostの管理クラスタProviderを対照 | 前者のGo Process test PASSは後者のProvider Reservation・再実行制御・Assurance/SLO／業務Effect成功の証明ではない。EKI #115の隠れRetryは引き続き評価 |
+
+**証拠資格**：このターンで確認したのは**接続GitHub現`main`のGo Source/テストコード/READMEと旧Issue/Spikeの差分**であり、RE-01〜08の実Goテスト、現mainのexact-head CI、TEI生成Go→EKIの実Input/Result全件結合、実HPC/MDM/Cloud/EKIプラットフォームの運用は**NOT RUN**。試験コードの存在をGo実行済みと表現しない。
+
+### 12.2 既存計画・Ownerに対する最小修正
+
+- [EKI #112](https://github.com/hat47x/eki-fabric/issues/112)：**Input ingestが現在も`routeNotImplemented`、Client Executor要求・Result provenanceとのギャップ**へ焦点を絞る。Output GET/Client Result GET/Dispatch全般の「一律未実装」は撤回。古い422/501は発生当時のSpike事実として保持する。
+- [EKI #242](https://github.com/hat47x/eki-fabric/issues/242)／[#57](https://github.com/hat47x/eki-fabric/issues/57)：**現在はoptional Dispatch Loopと実Process Testがある**。残存課題は手動`ADMITTED→READY`、手動`ResultAcceptance.Accept`を含まない本当のProduct-only縦断／持続・運用Profileと証拠を整理すること。現行Issue記述の旧参照`c0776fdd`の未配線分析を最新実装の不在証明にしない。
+- [EKI #465](https://github.com/hat47x/eki-fabric/issues/465) closed／[#467](https://github.com/hat47x/eki-fabric/issues/467) open：閉じたIssueと最新Sourceに改善の見える経路を先に調べ、過去不具合の採番のみから未実装と断定しない。Current Runtime・TLS・Worker Effectへの適合は別受入。
+- [TEI #1130](https://github.com/hat47x/tei-platform/issues/1130)／[#2616](https://github.com/hat47x/tei-platform/pull/2616)／[#2667](https://github.com/hat47x/tei-platform/pull/2667)：W-1の`Source/Artifact/Entry/Input/Expected`を固定し、**まずRE-02〜06と一つのDirect Go T0の独立比較**を行う。実Provider/Business Commitへの拡張はそれぞれのOwner Gatewayを通る。
+- **適合完了の判定**：`Source implemented`／`test source exists`／`actual Go test PASS on exact HEAD`／`real process in test profile`／`product-only process no manual setup`／`actual TEI Job/Result body`／`managed provider pool`／`business commit/owner acceptance`を別列で管理。欠落がある工程から先へ「完成」を伝播しない。
+
