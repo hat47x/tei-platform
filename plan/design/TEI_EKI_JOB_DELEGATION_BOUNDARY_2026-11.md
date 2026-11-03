@@ -237,7 +237,7 @@ Workerにはoutbound-firstの社内PC/ARM64 Raspberry Pi/On-prem資源Poolも候
 
 ### 8.11 TEIのJob期限・再実行条件をEKIの回復Aware Plannerへ渡す
 
-[予算・リードタイム・回復調停](TEI_EKI_DEADLINE_BUDGET_RECOVERY_COORDINATION_2026-11.md)へ詳細を分離。TEI Job/Flowの`not_before/target_complete/latest_useful`、End-to-endの検証・業務完了条件、再実行/Checkpoint/Effect ClassはTEIの意味契約。EKIのPool Brokerは現在の許可済みDLG-1／BUD-1／CAP-1、Queue/Transfer/Provision/Verifyと失敗後の復旧余力を用い、配置候補／早期引上げ／期限リスクWarningを返す。**予定通りの完了は保証しない**（EKI RQ-057）。実外部効果がUnknownの場合、期限逼迫は勝手な再試行許可にならない。Provider内の再試行とEKI Attemptの再試行を二重化せず、TEI Business CommitのOwnerも変更しない。
+[予算・リードタイム・回復調停](TEI_EKI_DEADLINE_BUDGET_RECOVERY_COORDINATION_2026-11.md)へ詳細を分離。TEI Job/Flowの`not_before/target_complete/latest_useful`、End-to-endの検証・業務完了条件、再実行/Checkpoint/Effect ClassはTEIの意味契約。EKIのPool Brokerは現在の許可済みDLG-1／BUD-1／CAP-1、Queue/Transfer/Provision/Verifyと失敗後の復旧余力を用い、配置候補／早期引上げ／期限リスクWarningを返す。**単独Jobの候補順位だけでなく、複数部門の既存予約・回復Window・公平枠を横断し、Planの予測とProvider実予約／EKI Authority／TEI Business Completionを別の事実として返す**（詳細は追補§10）。**予定通りの完了は保証しない**（EKI RQ-057）。実外部効果がUnknownの場合、期限逼迫は勝手な再試行許可にならない。Provider内の再試行とEKI Attemptの再試行を二重化せず、TEI Business CommitのOwnerも変更しない。
 
 ## 9. 設計判断のGate、実装順、Issue追補候補
 
