@@ -219,3 +219,20 @@ Data Modelの定義はSource側のTable/Field/Key/Relation宣言として明示�
 **P3-Effect/Consumer**：#2622がDB Alias・実ProviderのSchema/実Read・現在RLS/Permissionを観測。#2516の二ConsumerはOutput Shape変更/秘密項目開示を別票に、#1129/#1174はAction/Commit/Receiptを別票に記録。実DB Migrationの成功は当該提供元のActual/Verify/Apply記録を要し、このRead-onlyなFixtureから推測しない。
 
 **停止条件**：Syntax/ScopeやSchema閉包が不明なときは、Query Explainの構造候補は提示しても、`semantic-equivalent`・`complete-read`・`action-authorized`・`migration-applied`を宣言しない。QX-33とSM-16の同型テストを増やさず、Producer所在→実V0/V1→Function受渡しの順を優先する。
+
+### 10.4 NATURAL JOINは「列が存在しないこと」へも依存する
+
+SM-15/SM-16を動的依存の議論へ接続すると、より重要な**負のSchema依存**が見える。変更前の`orders`には`status`が存在し、`payments`には存在しない。この「payments側に同名のstatusが無い」という構造的事実によって、`NATURAL JOIN`の暗黙述語からstatusが**除外されていた**。後からpaymentsへ同名statusを追加すると、旧SQLのbyteと明示参照列は同一でも新しい等値条件が発生する。
+
+つまり、完全な依存を`columnRefs = {orders.order_id, payments.order_id}`のような**現存して参照された列の正の集合**だけへ切り詰めると不十分である。存在しない列名の一件一件を際限なく登録するのでもなく、`NATURAL JOIN`という演算が**二つの入力Schemaの列名集合全体を消費する**という依存範囲を、Resolved Source occurrenceと結びつければよい。これにより、任意の列追加が暗黙述語を変え得るかを再評価できる。一方、明示`JOIN ON`は関係のない新列追加について過少失効を生まない範囲で**局所再利用候補**とできる。
+
+| 変化 | `NATURAL JOIN`への期待 | 明示`JOIN ON`との対照 |
+| --- | --- | --- |
+| 同名列`status`を片側に追加し、両側で一致するようになる（SM-15実測） | 暗黙述語が増え、行集合が変わり得る。**当該演算再解析が必要** | 明示述語にstatusがなければ、同じ反例の結果値は不変 |
+| まだ他方に存在しない`memo`列を片側だけに追加（**未実行対照案**） | `NATURAL JOIN`の一致列集合は不変でも、`SELECT *`なら出力形は変わり得る | Join結果／Projection／Consumer Shapeの受入を別列で判定 |
+| `status`を片側から削除/改名（**未実行対照案**） | 旧暗黙述語が消え、行集合が増える可能性。依存集合の縮小も失効理由 | 明示述語が参照していたなら通常は解決失敗を診断 |
+| SQL byteとSchema名集合が不変でも実View/Function/Policy版・Provider/DB Aliasが変更（**未実行対照案**） | Source/Queryだけで意味同値にならない。解決されたDefinition/権限・Runtime観測で判定 | 同様に外部依存を確認。列集合が全てではない |
+
+この**不存在に依存する事実**は、QX-31/#2582のデータ0件時`NOT EXISTS`、QX-26/32のRead Cohort、#2600の増分build資格と形式上類似する。ただし、Schema Column Setの変化による**静的解析/生成Artifact失効**と、実行時行集合の追加・削除による**Runtime Claim失効**を同じキャッシュ・Snapshotとして実装しない。現存する依存Graph/Artifact/Source追跡へ帰属させ、第二のNegative Dependency Registryを設けない。
+
+**次Gateの最小対照**：SM-15の実測正例（同名status追加）に、`memo`片側追加と`status`削除/改名の**未実行2例**を加え、実SQL Workerが一致列集合／未対応を説明できるか評価する。Go SM-16の合成Resultが既に欠落を表現しないことを、実Workerの正否へ拡張しない。
