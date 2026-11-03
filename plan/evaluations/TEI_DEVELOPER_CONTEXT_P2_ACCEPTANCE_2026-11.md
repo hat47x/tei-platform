@@ -79,3 +79,31 @@
 **採用に必要なOwner判断**：①必要Rと対象Scope、②必要な候補収集改善と許容読取費用、③報告上の`unknown`/完了表示、④Model choice/probabilityの契約、⑤実Tool・外部Modelへの開示資格、⑥改善の最低価値と停止条件。
 
 **実施状態**：本計画は実Go 13件の現挙動再現を記録したもの。改善実装、D0/D1/M1のblind比較、T8、実SEI Product接続、実llama.cpp、外部Harness／OS効果、Owner受理は**NOT RUN／NOT ACCEPTED**。単一Goバイナリ基盤と既存TEI/SEI/TAI責務を尊重し、新Host・Registry・共通Proof Store・正式Gateを増設しない。
+
+<!-- tei-devctx-t22-and-test-identity-20261103 -->
+## 6. T22：再利用後のモデル失敗と旧判断の有効性（LC-24）
+
+**本節は新しい正式Report APIではなく評価計画**。2026-11-03に既存[PR #2669](https://github.com/hat47x/tei-platform/pull/2669)のbranch `test/reference-developer-context-coverage-20261103`へ`rerank_failed_retry_characterization_test.go`を追加（追加commit `ecc76f7df967395bfbb3ef984f5a5a13275ea107`）。製品`main.go`は変更しない。以前の**13件PASSは歴史的なexact HEADの実測**であり、T22追加後の新HEADに自動転用しない。新Testのfocused CI結果は別途exact HEADで確認して更新する。
+
+### 6.1 試験IDの一意な対応
+
+[#2533の歴史的な番号衝突の整理](https://github.com/hat47x/tei-platform/issues/2533#issuecomment-6604501999)を踏まえ、**評価表の正式な索引**は次のとおり。Go test名／PR/Run／Source SHAを共に記録し、過去コメントの別名を消さない。
+
+| 正規評価索引 | PR試験内の短縮名／過去別名 | 項目 | 実証境界 |
+| --- | --- | --- | --- |
+| **LC-21/T19-R** | `T19-R`（歴史的`LC-21/T19`） | `Report`再使用・Go浅いcopyによる前回結果混入 | Go実証済み |
+| **LC-22/T20-A** | `T20-A`／`T20` | 割当Attempt全件の分母を保持 | **4公開合成Attempt**のGo実証。実モデル効果は未測定 |
+| **LC-23/T21** | `T19-C`（歴史的`LC-21/T19`） | choice/確率/表示順位の意味区別 | `Rerank`の形式・表示順をGo実証。校正・Provider契約は未実証 |
+| **LC-24/T22** | `T22` | 成功後の失敗・旧ModelChoice残存／Deliveryの別資格 | テストSource追加。**当該HEADの実CI状態は別確認** |
+
+### 6.2 T22の独立反証・採用停止条件
+
+公開`t.TempDir`の同一2候補・固定Source・同じbaseline順序で、(a)成功HTTP200で順位B→Aを作り、(b)同じ`Report`への非loopback拒否、(c)同じ`Report`への**loopbackで受信後503**、(d)新しい`Discover`への同じ503を比較する。
+
+現Goの`Rerank`は失敗時に`Evaluation.State`を書き換えるが、`Candidates`の旧`ModelChoice/Probabilities`・並替え順は消去しない。**失敗状態でも旧候補判断が残る可能性**を、出力と相手の実POST受取Requestで観測する。fresh対照では決定的候補順・空のModelChoiceを確認する。失敗応答によってすでに送信済みのByteを取り消したと主張しない（[#2516 CP-12](https://github.com/hat47x/tei-platform/issues/2516#issuecomment-6600118988)）。
+
+現`main` CLIの`Discover→Rerank`単回実行の障害とは**区別**する。危険は外部評価Harness・Product統合が同一`Report`/sliceを再利用する条件にあり、通常CLIの本体修正・正式fallback要件はOwner決定前に行わない。試験がPASSしても「fallback修正済み」とせず、過去判断と現在試行の資格を分けてConsumerへ表示／伝達できることを別に要求する。
+
+**失敗時の最終表示に関する二つの判断候補（未採用）**：方式F1＝現Attemptのモデル結果は失効としてfreshな決定的順位に復帰、方式F2＝旧判断を歴史的注記として保存しつつ当該Attemptの順位資格を`unknown/stale`と明示。どちらでも外部送信と取得済みObservationを消したことにはしない。両方式は実Consumer/UI/Disclosure／追加費用・復帰性を別評価し、非公開の旧path・候補数・Tool名を無条件に公表しない。
+
+**T22に接続する未実施**：不正typed返答とTimeout、実Model/Provider、OS/Network中間ログ、同一Sourceに対する外部Harness再開、実Consumer開示、T14/T17のblind評価、T8共同Snapshot、独立Rに基づく業務意味評価。#2533（認知比較）／#2514（Oracle）／#2516（Consumer受渡し）／SEI #767（Method）／TAI #271（再資格化）／#2515・TAI #232（実開示・OS）の既存担当を維持する。
