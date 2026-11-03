@@ -2018,3 +2018,57 @@ Source Revision不一致でhelperを停止させる。UI選択epoch、Provider S
 - **統合判定**：mainの正本コードとDraft #2681の差分・CI結果をレビュー後、#2586の同一固定試行へ引き渡す。#2655のNode synthetic CIと#2681のGo native CIは**別試行**であり、別々の成功を合成してE2E達成としない。#1119既存S0/J5・P0-a/P0-b等のGateや実DB優先度を変更しない。
 
 **状態**：設計・native入力/試験/WorkflowをDraftに保存した段階。E1の実CLI/Go結果、E2〜E4の実Provider/Studio/SHO/Host、Owner意味受理は**未確認**。通常の組織Dataへの専用ACL、新Core固定種別、TEI独自Host、第二のRule/Workflow Engineは追加しない。
+
+### 54.4 2026-11-03再実測：第一Native E1の資格を訂正
+
+§54.1〜54.3は記載当時のqueued状態を履歴として残す。その後のGitHub Actionsを再照合した結果、[PR #2681](https://github.com/hat47x/tei-platform/pull/2681)のfixed HEAD `8efe0d351a244b57fefd00b498a5b47136619ac5` に対する[run #41580077197](https://github.com/hat47x/tei-platform/actions/runs/41580077197)は**completed/success**。job `native-org-workspace`のexact-head source/clean検証、`go test ./internal/operations -run '^TestOrgHeadless' -count=1`、`go run ./cmd/tei validate`／`operations`／`artifacts`、独立JSON Reader、clean stateの各stepがsuccess。これは「**実TEI Authoringからread-only OperationSurface/ArtifactへのE1局所適合**」に限られる。PRは**open/未統合**（UI上のDraft flagはfalse）で、業務OwnerがAcceptanceした意味ではない。
+
+また[PR #2655](https://github.com/hat47x/tei-platform/pull/2655)は2026-11-03 03:52Zに**main merged**、固定HEAD `53fb6a16030e9f6d63a43f280629fa548f35661`の[Node run #41531908837](https://github.com/hat47x/tei-platform/actions/runs/41531908837)も**success**。先行§52〜53のqueued/局所V8記録はその時点の履歴であり、現在のNode局所合成ReferenceはNative Node CIの結果も確認できる。ただしE0とE1の成功を足し算してE2/E3/E4を実証したとはしない。実SQL/Provider・Temporal Rule・SHO/UI・Commit/Receipt・Owner受理は未接続のままである。
+
+## 55. 組織TransitionのWhat-ifを独立世界として扱う：採用世界・提案差分・Rule評価・実Effectを混同しない（2026-11-03、組織AI/Capacity/SHO/EKI横断、採用前）
+
+### 55.1 組織AIは「提案の可視化」と「実際の発令」を一工程にしない
+
+TEI上の組織/Capacity Planningを、コアに組み込まれた例外的なEntityではなく**標準Data/Relation/Rule/Function/Projectionを組み立てた標準Application**として提供する。生成AIの提案・シミュレーションは可視化とレビューを助けるが、Ownerの意味受理・組織の改編発令・Host Grant/実Effectは別である。特に、**組織の遷移計画と、個々のPerson/Position/Membership/Case Responsibility/Capacity/Grantの遷移は一致しない**。
+
+分析上の最小試行単位は `BaselineRef + ProposalDelta + Valid/Known Cut + Rule/Measure/Capacity Revision + Read Qualification + Consumer Projection` とする（正式API/DSL/schema決定ではない）。`BaselineRef`は既存Accepted Source/Meaningへの参照であり、提案で直接上書きしない。`ProposalDelta`は独立した仮想変更で、単なる将来日時を`validAt`に設定した実Source状態でもない。`What-if`の評価は独立世界の**Simulation Claim**であり、通常の取引・操作・承認資格とは別段階。
+
+| 何を変えるか | 試行に含める | 自動継承してはいけない |
+| --- | --- | --- |
+| 組織・構造 | D1→D1a/D1b、Org IDとsuccessor候補、適用時点/Source | 同一Org ID・既存配賦・Capacities・責任業務の完了 |
+| 所属と在任 | A1/A2の終了、新A1new/A2newの作成、既存A3配賦変更 | Person IDの重複加算、Occupancy⇒Membership、旧Action Target |
+| 資源/Capacity | 部門FTE供給と別Sourceの収容上限/要員スキル/時点 | FTE=同時稼働可能人数、部門Capacityの無条件承継 |
+| 業務責任/統制 | Q1など進行中Caseの移管候補、単一/共同責任RuleのOwner選択 | successor relationからCase責任・代理承認・Grantへ飛躍 |
+| 公開と実行 | Preview/差分/Reason/Rule衝突/SHO計画案、Commit後観測 | Preview成功≠Owner承認≠現在Grant≠実書込/発令≠Completed |
+
+**シミュレーションの「安全」**は成功を意味しない。制約を満たすかどうかの限定試算と、その判定に不足するSource/Field/Read Witness/Owner Ruleを別々に説明する。組織全Dataの特殊ACLは設けない。保護が必要な個別項目や対外開示は既存Disclosure契約で処理する。
+
+### 55.2 二つの反例世界と独立期待値
+
+基礎はmain統合済み`org-synthetic-r7`のR1 cut（2027-06-15 valid、2027-07-01 known）：A1=P1/D1/100、A2=P2/D1/60、A3=P2/D2/40、A4=P3/D2/100。Personは3、Relation occurrenceは4、FTEはD1 1.6+D2 1.4=3.0、試験用CapacityはD1 1.8、D2 1.6。正式なCapacity業務Ruleではない。
+
+**Trial T-A（配賦計画）**：A2を終了し、**既存**A3を40→100へ変更する仮想差分。新結果はD1 1.0、D2 2.0、全体3.0、Person3、現役Membership occurrence3。試験用のD2収容値1.6に対し**0.4超過**する。試験用Capacityを2.2へ緩める別案なら計算上は満たすが、Capacity Source改版をOwnerが承認した根拠は**存在しない**。P2のPosition Occupancy O1や旧D1担当Case Q1はこの配賦変更から自動移管されない。
+
+**Trial T-B（組織分割計画）**：D1をD1a/D1bへ分割しA1/A2を終了、新しいA1new=P1/D1a/100、A2new=P2/D1b/60とする。全体FTEは3.0、人は3、所属occurrenceは4だが旧D1と後継のIDは別。新D1a/D1bのCapacityは試験データに**未設定**である。旧D1のCapacity 1.8を勝手に相続させた「適合」は`unverified`とし、受理済みのFTE限定比較Bridgeがない限り旧D1/新D1a+D1bの集計比較を断言しない。Case Q1の責任先や人員・Grantも不変のまま**移管未決**として表示する。
+
+**二つの世界に共通**：Baselineのsource byteは不変、複数Trial間でDeltaが混入せず、`sourceRevision / valid-at / known-at / RuleRevision`が変わったTrialは再評価・Rebaseを求める。R1計画をR2の遡及訂正後へ自動適用しない。ScenarioのSource referenceを既にAccepted Sourceへ昇格させない。旧A2のAction Intentは、個々の実世界の現行Relation occurrenceと発令時点へ再束縛しなければならない。
+
+### 55.3 実装したE0 Pressureと証拠境界
+
+独立[Draft #2779](https://github.com/hat47x/tei-platform/pull/2779)の`reference/org-semantic-views/verify-transition-simulation.mjs`に**TS-01〜20**を追加。既存合成`source-fixture.mjs`をimportし、Fixtureを改変せず仮想Deltaだけを別世界で検証する。Base/Split/ReallocateのPerson・Membership・Capacity、提案の独立、Rule version/Source time不一致、空・部分観測、Position/Case非継承、明示Bridge、Effect/Grant未発生を対照する。
+
+- **局所実測**：既存Fixture Blob `d66f29505389f2096e9b825ba4f5e2d799d607d4`を読み、同じcut選別・20テスト本体をV8互換Runnerで実行して**20/20 PASS**。これを実TEI Native/ProviderやNode CIと称しない。
+- **CI接続**：既存のexact-head Node合成Workflowに当該テストとblob記録を追加。新PRの固定HEADに紐付くActionsの完了/ログを確認して初めてCI PASSと呼ぶ。既に成功した#2655/#2681の異なるfixed HEADを#2779へ流用しない。
+- **現実の受入資格**：TEI Runtime上のSimulation一般API、新World複製モデル、差分永続化、Resource Scheduling Engine、組織発令Worker、Host Grant制御、外部DB保存/原子性は**まだ設計・実装を受理していない**。Node合成の`complete`/`cohort`は試験仮定であり実Provider Witnessではない。
+
+### 55.4 統合の依存順序（#2586/#1119の既存Gateを維持）
+
+1. **E1の現物を契約化**：#2681の固定合格Sourceと実Operation Surfaceの意味を保持しつつ、`.tei`の通常Attribute（validFrom/knownFrom）をBitemporal Engineの実装と誤認しない。Org/Member/Occupancy/PositionのIDを型/Source/Relationとして独立に扱い、抽象Simulation用の新Core型や新Parserを追加しない。
+2. **E2の一固定Trialへ橋渡し**：#2586、#2387、#2506、#2628、#2624の既存Query/Context/実Read資格にT-A/T-Bの**同じIndependent Expected**を渡す。現実のReadでPerson/Relationの選択、Allocation/Capacity Field、Scope/cohort、time cut/Rule版を再現し、動的Rule Footprint/Negative dependency/部分Dataを検査する。既存Native WorkspaceはSchema/operationのみなので、実レコードをロードしたふりをしない。
+3. **E3のPreview/SHOへ投影**：標準Studio/SHOの既存ProjectionにBaseline/Scenario/Delta/Unverified/Rule説明を分け、R1公開済み文書・現在のAccepted World・what-if図を同一正本の別Projectionとして示す。生成AIは根拠と未確定点を提示できるがOwner承認を代行したとは扱わない。表示済みの失効とDirty Patch保護は§52を適用する。
+4. **E4の発令・Effect**：業務Ownerが移管の規則・対象・発効日を受理した場合に限り、新しい**実Intent/Request**を現行Provider/Hostへ束縛し、必要なGrant・SoD・実Target・最終post-image・receipt・独立Readを再検証。Simulation Plan IDを直接write API/authorization tokenとして使わない。複数Provider/途中失敗は保証された単位だけでCommitを語る（#2598/#1129/#1174）。
+5. **資源コントローラへの汎化**：EKI等がCPU/GPU/Memory/Node資源を共同管理する場合も、TEIはモデル・依存・可視化・予測シミュレーションを提供できる。しかし**資源予約の現物観測・Node実制御・Authority・Failure Recovery**は当該Controller/外部HostのOwner契約に属する。FTE容量をCPU数量・Quotaの意味へ無断一般化しない。独自TEI Host/中央組織Registryや第二Auth/Workflow Engineを足さない。
+
+**採否票**：Trial/Baseline Source+Meaning/Rule+Role Pin/valid+known/Delta+Proposal Revision/Field・Row Read qualification/Constraint owner+scope/Projection+SHO revision/Owner acceptance status/Action intent+target+grant+effect+receipt/Independent Expected+Runner+fixed SHA。欠ける項目は「未知」として説明し、豊富なメタ情報を全利用者が手で必須入力する方式へはしない。
+
+**未決**：業務別Rule・承継Bridge・Case移管・兼務・Capacity意味、提案の評価モデル・受理資格、実RDB/Providerコントロール、実Studio/SHO/外部Host試験。今回のE0合成・E1 read-only Local Nativeの成功と、組織再編の本番運用・実発令の受理は明確に別である。
