@@ -98,3 +98,65 @@ Ownerから判断がない意味には**未受理**を明記し、AI/SQL/DSL変�
 | #2497／#2621／#2018／#2600 | 表／図の部分Projection、元DSL書式、保守性・Build品質の測定 | StateMachine専用Core/Editor |
 
 既存設計文書から本書へ機能正本を移さない。採用判断が必要なら対応するOwner/ADRへ提案として戻す。**GitHubへのこの追加は計画整合であり、Source meaning受理、製品実装、実DB/Host試験、Migration成功を主張しない。**
+
+## 9. 第2次深化：生成時Bindingと実行時の正しさを分ける（2026-11-03）
+
+他チャットのX-TEA動的Data Access／TEI生成コード方針と、EKIジョブ／組織／Plugin／Build議論を照合した追加受入条件。**採用済みABI・実装済み性能・新たなEngineの提案ではない。**
+
+### 9.1 何をビルド時に確定できるか
+
+| 生成時に固定するもの | 実行時に再確認するもの | 固定と再確認を混同した反例 |
+| --- | --- | --- |
+| Data Model／Relation occurrence／Rule/Function/Operation identity、選択Provider/Target/方言、Query template、生成器版 | 現在のDB Alias実対象、schema互換、Tenant/Principal/Role/RLS、入力値、Query結果の完全性 | 正しい静的SQLでも実DB schemaが古い／Aliasが別Tenantを指す |
+| 状態変更のGuard/Transition式、Expected-version条件、Typed update path | 現行行version、現在状態、同時更新、Tx隔離、更新行数、Commit結果 | ビルド時に合法なsubmitでも実行時にはcancel済み |
+| Membership/Occupancyの意味Role、期間演算子、明示Relation path | `validAt`/`knownAt`、公開組織版、現在Grant、可視範囲 | ビルド時所属に基づく担当候補が異動・委任失効後も実行できる |
+| Workflow instance/branchのIdentity・多重度、Provider能力宣言 | 既存instance版、active branch、attempt重複、外部Effect receipt | 一つのOrder status更新成功を、二つの独立branch完了と誤認 |
+| 生成物のWorld/Model/Artifact/Generator/Plugin版・依存閉包 | Provider/Schema/Policyの現行資格、実データの状態 | Artifactのハッシュ一致を現在の認可・業務意味受理へ昇格 |
+
+**原則**：X-TEA型の実行時モデル探索・リフレクション・Function→DataAccessの都度解決は、TEIのコード生成で**削減候補**となる。一方、DB round-trip、JOIN fanout、N+1、行復元、索引、競合、RLS、部分取得は残る。生成コードの速度優位を測定前に断定しない。複数Targetに同じRuleを生成しても、Runtime GrantやTransactionの保証を共通化したとは主張しない。
+
+### 9.2 同じActionの5つの時点を保存する
+
+**モデル版**（何を生成したか）／**判断時点**（どの状態・所属・Ruleで候補と判定したか）／**送信時点**（どのProvider/DB AliasへどのExpected条件で書いたか）／**Commit判定時点**（確定／拒否／unknown）／**独立観測時点**（どのRead Cohortで確認したか）を区別する。
+
+- Previewで`allowed`だったActionを、実送信時のGrantやGuard再検査なしで実行しない。
+- 同じOperation IDを再送しても「二重副作用なし」を保証するには、Provider/外部Effect側のdurable dedupeまたは照合可能なreceiptが必要。メモリ内の成功フラグだけでは不十分。
+- Commit ACK喪失時は**失敗確定でも成功確定でもない**。重複送信を禁止し、receipt／独立Read／専門Providerのreconcileへ進める。未知の結果を別の業務更新で上書きしない。
+- DB内のstatus更新と外部通知は同じ原子Txとは限らない。必要なら既存Effect/Outbox契約で扱い、専用Workflow Hostを作らない。
+- Job/Batch/CLI/Webから同じ業務Actionを呼ぶ場合、呼出し形態ごとの権限・deadline・retry policyは外側の運用契約。TEIの生成Functionは共通の意味と入力・結果を保持するが、ジョブスケジューラの資源最適化を状態モデルへ埋め込まない。
+
+### 9.3 JSONB/ARRAY/本体列／関連表の公平な比較
+
+比較単位は**同じ業務意味と独立Expected**。候補ごとに変わるのはPhysical Binding/Provider SQLであり、意味上の成功条件は変えない。
+
+1. `Order`単純遷移：同じ`(tenant, orderNo)`、同じversion-CAS、同じcancel競合を、本体列／JSONB pathの両方で比較。JSONBの`missing`・JSON `null`・SQL `NULL`・空配列を分離する。
+2. 複数active branch：ARRAY要素の順序・重複・branch ID・局所更新が必要なら、JSONB/ARRAYの配列置換と関連表の行CASを比較。構造化列で原子性が保証できなければProvider非適合とし、意味を弱めない。
+3. 時点付きMembership：期間境界、兼務、遡及訂正、valid/recorded二軸、Tenant越境、非開示を、関係行とJSON埋込み候補で比較。索引やQuery速度だけで正本を選ばない。
+4. 横断状態一覧：本体行からのView/UNIONと専用Read Modelを比較。read-only replicaの遅延・Snapshotずれ・Grant差分を測定。読み取り投影の作成はWriter移譲ではない。
+
+**最小測定票**：`{same semantic case, expected/result, storage variant, generator+provider+schema revision, target, query count, p50/p95, allocations, read scope/completeness, concurrent update result, receipt status, edit-to-ready, evidence}`。数値の目標・優劣はPoC測定後に判断。実DBと合成Providerを同じ系列に混ぜない。
+
+### 9.4 受入に使う具体的な停止反例（BG追加番号は作らない）
+
+| 既存BGへの追補 | 反例と期待 |
+| --- | --- |
+| BG-01／BG-03 | Preview時`pending`、実行直前に他者が`cancelled`へ変更。静的に生成された合法ActionでもCAS/Guardが拒否し、業務拒否と技術失敗を分離 |
+| BG-01／BG-07 | UPDATE Commit後にACKだけ喪失。Retryが同じ業務Effectを二重に実行しないことをreceiptで観測。証拠がなければ`unknown`で停止 |
+| BG-02／BG-05 | 組織版r1の担当者候補がr2公開後に失効。既存候補・保存済みWorklistは現在Grantではない。秘匿行の存在を診断へ漏らさない |
+| BG-03 | JSONB pathでactive branchを更新した直後、別branch更新が同じ行を上書き。部分更新能力の宣言だけでなく実同時更新の結果を観測 |
+| BG-04／BG-06 | SQL byte・Model IDは同じでもSchema/Policy/DB Aliasが変化。生成Queryの静的整合、実Read Claim、現在Authorityを別々に失効判定 |
+| BG-07 | JSONB→関連表の移行で二つのbranch IDが一つに潰れる。値集合が同じでもIdentity保存失敗としてMigration不受理 |
+
+### 9.5 次に着手する最小の縦断検証
+
+**P0.** 既存#2564/#1129の一つの受注更新Fixtureを選び、Owner未受理のRuleや欠けているreceiptを明記した独立Expectedを固定する。
+
+**P1.** 受注本体statusへの静的Bindingを一つ生成できるか確認。生成経路が未実装なら`NOT RUN: generation-unavailable`として止め、手書きSQLの成功を生成成功に代えない。
+
+**P2.** 同じ版のFunctionをCLI/Job/Webのうち実際に存在する入口から呼び、実ProviderのCAS/Guard、Commit/ACK、独立Readを観測。入口が未存在なら当該経路だけ未実施とする。
+
+**P3.** JSONBへの代替Bindingを、同じExpectedと同じDB条件で比較。多重branchやMembershipは、単純受注が成立した後に追加する。SQL生成時間、実行時間、Query数、ビルド時間を別に計測する。
+
+**P4.** Schema/Rule/Plugin/Provider改版のうち一件だけ変更し、どの生成Artifact・Runtime Claim・Consumer公開が失効するかを実際に記録する。
+
+**引継ぎ**：#1129はRule/Guard/Effect、#1126はMeaning/Physical Binding、#2622はProvider/Query/性能、#2564/#1174はCAS/Current Grant/Receipt、#2600は生成物の鮮度と編集待ち時間、#2018は公平な比較基準を担当する。新Issue/ADR・新State Engineは、この一件で不足が観測されるまで作らない。
