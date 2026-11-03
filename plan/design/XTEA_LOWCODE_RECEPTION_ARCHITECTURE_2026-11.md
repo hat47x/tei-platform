@@ -500,7 +500,7 @@ X-TEAの戻り値とTEIの分類の対応（案）は、次のとおりです。
 
 **撤回条件.** 結果型が増えすぎて、呼出し側の分岐が実装負担になる場合は、結果の分類を業務結果と実行結果の二層に整理します（[Business Effect Lifecycle](BUSINESS_EFFECT_LIFECYCLE_DESIGN_2026-10.md)との整合）。
 
-**PoCでの実装.** `interaction`の`command`でCapabilityを参照し、対話ビューが入力・結末・効果を解決します。入力は`input <name> <attribute>`で対話の項目へ結びつけます。起動前の入力計画は`view -command`で確認でき、値の形（整数・数値・日付など）も検査します（[#2521](https://github.com/hat47x/tei-platform/pull/2521)）。実行境界は`internal/command`の`Executor`契約として実装し、入力検証・実行失敗・宣言外の結末を`ExecutionError`として分けます。取引は`UnitOfWork`と`Transaction`の契約として境界を実装し、成功時はCommit、実行失敗・宣言外の結末・Commit失敗時はRollbackします。実Providerの接続は未実装です。契約の配線は`ReferenceExecutor`と`MemoryUnitOfWork`、データ効果は`ReferenceDataExecutor`と`MemoryStore`・`StoreUnitOfWork`で確認でき、`view -command -execute`でCLIから参照実行できます（業務副作用はありません）。起動計画には、効果が及ぶDataを統制する期間と閉期間の拒否を表示します。`PeriodState`が閉を示し、効果の種類が`closedRejects`に含まれる場合は`COMMAND_PERIOD_CLOSED`で拒否します。
+**PoCでの実装.** `interaction`の`command`でCapabilityを参照し、対話ビューが入力・結末・効果を解決します。入力は`input <name> <attribute>`で対話の項目へ結びつけます。起動前の入力計画は`view -command`で確認でき、値の形（整数・数値・日付など）も検査します（[#2521](https://github.com/hat47x/tei-platform/pull/2521)）。実行境界は`internal/command`の`Executor`契約として実装し、入力検証・実行失敗・宣言外の結末を`ExecutionError`として分けます。取引は`UnitOfWork`と`Transaction`の契約として境界を実装し、成功時はCommit、実行失敗・宣言外の結末・Commit失敗時はRollbackします。実Providerの接続は未実装です。実Providerは既存の`internal/security/effectcommit`（PostgreSQL参照実装）へ接続し、Commandの`UnitOfWork`は`effectcommit.Runner`へ委譲して、認可・OperationID・receiptを省略しません。PoCの`ReferenceDataExecutor`は契約確認用で、実Providerではありません。契約の配線は`ReferenceExecutor`と`MemoryUnitOfWork`、データ効果は`ReferenceDataExecutor`と`MemoryStore`・`StoreUnitOfWork`で確認でき、`view -command -execute`でCLIから参照実行できます（業務副作用はありません）。起動計画には、効果が及ぶDataを統制する期間と閉期間の拒否を表示します。`PeriodState`が閉を示し、効果の種類が`closedRejects`に含まれる場合は`COMMAND_PERIOD_CLOSED`で拒否します。
 
 **未解決.**
 
@@ -962,6 +962,7 @@ PoC #2521が実装した範囲と、まだ実装していない範囲を分け�
 | `reference/workspace`への宣言追加 | 未実施（受理経路が必要） |
 
 実装は、`internal/application/model.go`、`internal/syntax/application_pattern.go`、`internal/validation/application_pattern.go`、`internal/crossview/pattern_requirements.go`、`internal/applicationview`、`internal/semantic/model.go`、`internal/syntax/parser.go`、`internal/validation/validation.go`と、それぞれの試験です。
+
 
 
 

@@ -376,7 +376,7 @@ WP10 統合と引継ぎ
 
 **未検証.** 旧Runtimeの実行観測（[#940](https://github.com/hat47x/tei-platform/issues/940)）、実DBでの動作、実Providerの接続、配布JARとの同一性、参照モデルの内容（[#941](https://github.com/hat47x/tei-platform/issues/941)）です。文書の記述は静的読解に基づきます。
 
-**次の一歩.** 文書と実装はmainへ統合済みです。次は実Providerの接続、[#940](https://github.com/hat47x/tei-platform/issues/940)の実行観測、統合後のCI完了確認です。
+**次の一歩.** 文書と実装はmainへ統合済みです。次は実Providerの接続、[#940](https://github.com/hat47x/tei-platform/issues/940)の実行観測、統合後のCI完了確認です。実Providerは既存の`internal/security/effectcommit`へ接続し、Commandの`UnitOfWork`を`effectcommit.Runner`へ委譲する方針です。
 
 ## 12. レビューの手順
 
@@ -393,6 +393,7 @@ WP10 統合と引継ぎ
 **PRの関係.** 文書は[#2519](https://github.com/hat47x/tei-platform/pull/2519)、対話契約のPoCは[#2521](https://github.com/hat47x/tei-platform/pull/2521)です。PoCは文書のD1・D3.1の最小部分を実装し、`main`には未統合です。
 
 **統合の条件.** 要求・設計の採否が決まり、PRがDraftでなくなり、CIとレビューが通ることです。Draftのままでは統合しません。
+
 
 
 
