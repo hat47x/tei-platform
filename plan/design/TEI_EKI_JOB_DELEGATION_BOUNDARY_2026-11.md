@@ -255,6 +255,10 @@ Workerにはoutbound-firstの社内PC/ARM64 Raspberry Pi/On-prem資源Poolも候
 
 EKI #267/#381/#695のTask phase実装と限定試験は確認済み。旧文書の「検証・回復後のTask phase未配線」を現時点の一般事実にしない。EKI #126 Group Budget/Deadline/Partial Resultはまだ**openの要求**であり、TEI FlowのFork/Join、Groupの一体Budget/Cancel、業務品質範囲をEKIが実装済みとは扱わない。100件中80件Verifiedでも、TEIのOwnerが全件必須と受理していれば結果は未完了。RunPlanは標準Go単一Binary／既存Host起動を妨げず、EKIが不要なPure/短時間JobはDirectを維持。
 
+### 8.15 EKI P0外部APIのLossless Lowering Gateを追加
+
+[一改訂実証§14](TEI_EKI_ONE_REVISION_EVIDENCE_VERTICAL_SLICE_2026-11.md)にEKI[現実の外部OpenAPI](https://github.com/hat47x/eki-fabric/blob/main/spec/external/openapi.json)とTEI Draft #2787の**WP-01〜19、19/19 exact-head Node CI PASS**を接続。これは**ABI非同値を検出する証拠**であり、実EKI Job/Worker PASSではない。TEIのTyped Input、Executor digest、Effect class、not-before/target/latest-useful、Data Class/Pool AuthorityはEKI P0 TaskRequest/WorkOrderがそのまま実行強制できるとは限らない。特に`parameters`はWorkerへ渡らず、`effect_mode=none`限定、`version_constraint`はAdmissionで未評価。**必須意味が表現・強制されない場合、Adapterはsilent default/extensionでごまかさず`unsupported`／既存Host・Directへ回す**。Input Artifactの実受け渡しや結果取得は別RE/VS実Process Gateとして保持する。WPの固定OpenAPI blobがEKI更新で変わったら再比較が必要であり、AIが現Authorityを生成しない。
+
 ## 9. 設計判断のGate、実装順、Issue追補候補
 
 - **G0／今回の設計比較**：EKI ADR-0013・一方向依存・native-first kernel とTEI no-custom-Host/Plugin-firstを保持し、上記二層案を未採用の候補とする。TEI Draft PRへの資料追加だけで、EKIのRequirements/ADR/Mainは書換えない。
