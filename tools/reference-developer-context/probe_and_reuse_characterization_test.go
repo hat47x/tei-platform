@@ -116,6 +116,13 @@ func TestRerankReusedReportCarriesPreviousModelOutputIntoNextRequest(t *testing.
 	if reused.Evaluation.State != "model-ranked" || reused.Candidates[0].Path != other {
 		t.Fatalf("first model choice did not reorder candidates: %+v", reused)
 	}
+	// A Go struct copy is not a deep copy: its Candidates slice still shares
+	// backing storage with base. The original Evaluation field still says
+	// "baseline", although its candidate order and choice were mutated.
+	if base.Evaluation.State != "baseline" || base.Candidates[0].Path != other ||
+		base.Candidates[0].ModelChoice == "" {
+		t.Fatalf("expected a shallow-copy baseline to be contaminated: %+v", base)
+	}
 	Rerank(context.Background(), &reused, server.URL+"/v1/systemone", "fixture-only-model")
 	if reused.Evaluation.State != "model-ranked" {
 		t.Fatalf("reused report rerank failed: %+v", reused.Evaluation)
