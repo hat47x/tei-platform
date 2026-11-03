@@ -2361,3 +2361,9 @@ Record R1の取扱OrgがL1で、PolicyがD1以下のcommand階層に限定する
 実E3以降への追加の最小受入票：実`.tei`のCase/Policy/Meaning/Role Pin／起点選択と現在Epoch／Provider Route+物理Read/Enforcement Witness+Rowset/Field/Cohort／非表示Query依存／Host Grant root+axis+policy version+principal+tenant+action／受信時点と表示コミット時点の二照合／表示・DOM/a11y・Cache・Count/診断・SHO/AIへの実開示と不可逆コピー／未保存Patch／操作Intentと独立Effect Receipt。**一つの実Run**で、旧Read応答が変更後に到着する負例を、現物Bytes・独立Expectedを使って評価する。
 
 Ownerは#2582（再資格化とDependency）、#2506（Context/Selection）、#2516（用途別開示）、#2631（Studio/表示）、#2622/#2628（Provider実Read）、#2598（Intent/現在Target）、#1174（実Effect）。新しいReactive Broker/第二Source・Host・Policy Engine/専用ACLを追加しない。**新しい結合テストを未実施なら`NOT RUN`、Policy Owner採否未決なら`not accepted`、物理Read/Enforcement witness不足なら`unverified`**を保持する。
+
+### 60.4 現固定HEAD Node CI記録
+
+[Draft #2781](https://github.com/hat47x/tei-platform/pull/2781)のfixed HEAD `77ac2f3e49394aa8742c39181168607d8e3aff77`に対する[Actions #41641623522](https://github.com/hat47x/tei-platform/actions/runs/41641623522)はcompleted/success。Node v22.16.0、`verify.mjs` 27 checks PASS、`node --test` **258/258 PASS（fail 0）**。新規VE-01〜20の成功、Source Blob `93cfbe4146904c2d8c3c613c4a67bae6ecb0e340`、fixed-head/cleanをログで確認。前HEADの結果を混同しない。
+
+これは**合成E0限定**の成功で、実TEI Provider RLS、Hostの認可、Studio/SHO/AI実開示、Owner受理は未実証。別PR #2779のTSを同一Runに足さない。
