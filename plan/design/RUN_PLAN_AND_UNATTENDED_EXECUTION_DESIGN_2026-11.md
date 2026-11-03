@@ -170,3 +170,38 @@ W1・W2 が前提。W4 は W2 と並行できる。W6 は #2146 の実装を待�
 2. `output` を `run-plan` に持たせるか、#1803（設計成果物の導出）と同じ「導出成果物」の契約へ寄せるか。後者のほうが規則が一つで済む。
 3. 失敗の閾値（どこで止めるか）を意味の層に持たせるか、運用の設定に任せるか。本稿は運用に任せる案である。
 4. #2146 の所有記録の永続化を待たずに、メモリ上の所有で W1〜W5 を進めてよいか。
+## 実装状況（2026-11-03 追記）
+
+P1（宣言・検証）を実装しました。期間の状態（#2144）・効果の規則（#1129）と同じ型です。
+
+**宣言**
+
+```
+run-plan monthly_close {
+    operation sales.close
+    key sales.period.month
+    concurrency singleton
+    resume checkpoint
+    output sales.period
+    autonomy unattended
+}
+```
+
+- `operation` は複数回書ける（宣言順に実行）。`key` も複数回書ける（複数の入力で実行を同定する）。
+- `concurrency`・`resume`・`autonomy` は省略できる（省略時は操作面の既定 `attended`、同時実行は `singleton`、再開は `none`）。
+- 識別子は名前空間に属する（`monthly_close` は `sales.monthly_close` として解決）。
+
+**検証**（`internal/validation/runplan.go`）
+
+| 診断 | 意味 |
+| --- | --- |
+| `RUN_PLAN_NO_OPERATIONS` | 操作を一つも宣言していない |
+| `RUN_PLAN_UNKNOWN_OPERATION` | 実在しない能力を指している |
+| `RUN_PLAN_NO_KEY` | 実行を同定する入力が無い（黙って新規実行にしないための前提） |
+| `RUN_PLAN_UNKNOWN_KEY` | 実在しない属性を指している |
+| `RUN_PLAN_UNKNOWN_CONCURRENCY` | `singleton`・`per-key` 以外 |
+| `RUN_PLAN_UNKNOWN_RESUME` | `checkpoint`・`none` 以外 |
+| `RUN_PLAN_UNKNOWN_AUTONOMY` | `attended`・`unattended` 以外 |
+| `RUN_PLAN_CHECKPOINT_WITHOUT_OUTPUT` | チェックポイントから再開するのに出力が無い（進捗を報告できない） |
+
+**未着手**: 実行の同定（`runKey`・`attemptId`・`fenceEpoch`）の実装、項目ごとの結果、無人の実行の拒否試験、出力の生成（P2以降）。

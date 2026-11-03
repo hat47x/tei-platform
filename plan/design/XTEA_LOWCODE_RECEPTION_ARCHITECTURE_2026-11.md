@@ -953,6 +953,7 @@ PoC #2521が実装した範囲と、まだ実装していない範囲を分け�
 | 参照Storeの値域検査 | 実装済み（create/update時、Typeの`values`と別名解決） |
 | 参照Storeの重複create拒否 | 実装済み（同じキーのcreateを拒否） |
 | 参照Storeのキー指定と更新禁止検査 | 実装済み（`KeyFields`、update時の`immutable`） |
+| 参照Storeの複合キーと決定的な順序 | 実装済み（複数`KeyFields`、レコードのキー順） |
 | Commandの参照実行（CLI） | 実装済み（`view -command -execute`、業務副作用なし） |
 | Command計画の期間表示（D6.1） | 実装済み（効果Dataを統制する期間・状態・閉期間の拒否） |
 | 期間の閉塞によるCommand拒否 | 実装済み（`PeriodState`契約と参照実装） |
@@ -974,6 +975,7 @@ PoC #2521が実装した範囲と、まだ実装していない範囲を分け�
 | `reference/workspace`への宣言追加 | 未実施（受理経路が必要） |
 
 実装は、`internal/application/model.go`、`internal/syntax/application_pattern.go`、`internal/validation/application_pattern.go`、`internal/crossview/pattern_requirements.go`、`internal/applicationview`、`internal/semantic/model.go`、`internal/syntax/parser.go`、`internal/validation/validation.go`と、それぞれの試験です。
+
 
 
 

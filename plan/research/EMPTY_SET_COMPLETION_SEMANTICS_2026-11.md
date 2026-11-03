@@ -1,6 +1,6 @@
 # 空集合と業務完了の意味（#1125 BP-05）
 
-- 状態: 調査ノート。採用判断ではない。
+- 状態: 判断材料と、2026-11-03のOwner判断（EmptyPolicyの決め方）の記録。設計の採否は #267。
 - 契機: #1125 BP-05 の「必須条件が全対象行で成立するとき、対象集合が0行なら完了と言えるか」というOwner条件。
 - 関連: `plan/design/BUSINESS_ACTION_COMPLETION_EVIDENCE_DESIGN_2026-11.md`（実装前設計・Owner未受理）、#267（採用判断の入口）。
 
@@ -63,14 +63,23 @@ structure CompletionClaim where
 
 形式証明 `predicate` と、業務証拠 `covered` / `emptyJustified` を別フィールドにする。Leanの証明が埋まっても、`covered` と `emptyJustified` が未提供なら完了ではない。
 
-## 6. 未決
+## 6. 決定（2026-11-03 Owner）
 
-- `EmptyPolicy` をActionごとにOwnerが宣言するか、業務類型から既定を導いて上書き可能にするか。
+空集合の完了扱いは、**業務類型ごとの既定候補を用意し、ActionごとにOwnerが宣言して上書きできる**形にする。
+
+- `EmptyPolicy` は述語の形から自動導出しない。全称と不在確認を同じ形で扱えないため。
+- 完了述語は `(TargetSet L, EmptyPolicy, Predicate P)` の三つ組として扱う。
+- 既定候補は §3 の表を使い、Action側の宣言が既定を上書きする。
+- 宣言の構文・保存先は `BUSINESS_ACTION_COMPLETION_EVIDENCE_DESIGN_2026-11.md` の採否（#267）と合わせて設計する。
+
+## 7. 未決
+
+- `EmptyPolicy` の宣言構文・保存先（Source / Accepted meaning / Execution record のどこに置くか）。
 - 不在確認の「探索の完全性」を、既存のProvider契約・観測（#2598・#2582・#2387・#2622）のどこまでで保証できるか。
 - 形式系の検証をどこまで実装するか（Leanの特定版での機械検証は未実施）。
 
-## 7. 主張しないこと
+## 8. 主張しないこと
 
-- この文書は採用判断ではない。Core Schema・実行Status・製品保証を変更しない。
+- この文書はCore Schema・実行Status・製品保証を変更しない。設計の採否は #267。
 - Leanの特定バージョンで上記の写像を機械検証していない。
 - 業務類型の表は候補であり、全ての業務を網羅した分類ではない。

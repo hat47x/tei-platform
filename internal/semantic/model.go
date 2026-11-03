@@ -17,6 +17,7 @@ type Namespace struct {
 	Validations   []Validation `json:"validations,omitempty"`
 	Periods       []Period     `json:"periods,omitempty"`
 	EffectRules   []EffectRule `json:"effectRules,omitempty"`
+	RunPlans      []RunPlan    `json:"runPlans,omitempty"`
 }
 
 // Period binds one data to a business date and to the states a closing period
@@ -202,4 +203,17 @@ type EffectRule struct {
 	EffectData    core.CanonicalID `json:"effectData"`
 	ViaCapability core.CanonicalID `json:"viaCapability,omitempty"`
 	OnFailure     string           `json:"onFailure,omitempty"`
+}
+
+// RunPlan declares an ordered execution inside one application: which
+// capabilities run, what identifies a run, and whether it may run unattended.
+// The calendar, the scheduler, and credentials are deliberately absent.
+type RunPlan struct {
+	ID          core.CanonicalID   `json:"id"`
+	Operations  []core.CanonicalID `json:"operations"`
+	Key         []core.CanonicalID `json:"key,omitempty"`
+	Concurrency string             `json:"concurrency,omitempty"`
+	Resume      string             `json:"resume,omitempty"`
+	Outputs     []core.CanonicalID `json:"outputs,omitempty"`
+	Autonomy    string             `json:"autonomy,omitempty"`
 }

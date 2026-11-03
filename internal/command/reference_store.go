@@ -87,9 +87,14 @@ func (s *MemoryStore) DeleteAll(data core.CanonicalID) {
 func (s *MemoryStore) Records(data core.CanonicalID) []map[string]string {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	var out []map[string]string
-	for _, record := range s.data[data] {
-		out = append(out, copyValues(record))
+	keys := make([]string, 0, len(s.data[data]))
+	for key := range s.data[data] {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	out := make([]map[string]string, 0, len(keys))
+	for _, key := range keys {
+		out = append(out, copyValues(s.data[data][key]))
 	}
 	return out
 }
