@@ -110,7 +110,8 @@ Layer 3   CUI／Studio／Skill／SHO／Targetへの用途別Projection
 | 定義の編集・参照 | 上記CLI試験では、型の参照は安定IDで解決し、3参照への内容ハッシュの手入力を要しなかった | 通常の関係を読むだけの操作に、参照先の固定バイト列を必須とする根拠は未確認。曖昧・欠落・型不一致の診断は保つ |
 | 外部Workspaceの意味Import | `internal/workspace/import_digest_pin_test.go` ではnamespace単位の `semanticDigest` は任意。固定時は意味変更を拒否し、Source移動・空白・コメント・正規化される属性順の変更や別namespace追加は許す | 個別参照への生byte Pinとは異なる既存の選択肢。固定なしでは提供元の変更を受け入れるため、変更影響の確認や受理を省略できない。Digestは推移依存を固定せず、不一致は読込み時の失敗なので後述の候補診断でも回避しない |
 | Pluginの選択 | `plugin.Lock` は環境ごとに選んだPluginの版・定義Fingerprintを保持する。上記試験で定義変更を旧Lockが拒否した | 同一試験で無関係な業務型の未解決が `plugin-lock` と `plugin-resolve` の両方を停止した。既存のGo resolverは同じWorkspaceとLockからPlugin定義を解決できた。read-only診断の継続を検討するが、検証済み構成・実行許可として返してはならない |
-| Build・配布 | RQ-008は外部Pluginの配布物の内容Digest確認を要求する。`internal/plugin/build.go` はBuild入力と成果物を固定する | 成果物の同一性確認は通常の定義間Refとは別。不要と決めず、選択したBuild・配布物の範囲で評価する |
+| Build・配布 | RQ-008は外部Pluginの配布物の内容Digest確認を要求する。`internal/plugin/build.go` のBuildPlanは選択したPlugin、Source、Builder、Target等を固定し、成果物Lockとは別である | 通常の定義編集や定義間RefにBuildPlanを必須とする根拠ではない。PlanはSourceのLocator変更も別Fingerprintとする（`internal/plugin/build_source_neutral_test.go`）。移動だけでも再Buildが必要かは実Builderの入力・出力を比較しておらず、保留する。成果物の同一性確認は削らない |
+| 変更影響 | RQ-008はConsumerと再検証範囲の追跡を求め、依存の欠落を影響なしと扱わない。`internal/modelref` は渡されたGraphと変更を検査し、候補を返す | Graphの構造が正しく影響候補が空でも、動的参照や未収集のConsumerがない証明にはならない。両Review APIの `authorityLimits` に網羅性未確認を明記し、追加収集や再検証の要否は用途別に判断する |
 | 実行・外部作用 | 現在の権限・対象・実際の結果は、定義参照の解決や過去のLock一致とは別 | 権限確認、誤対象の防止、必要な結果照合を読み取りの利便性と引き換えに外さない |
 
 `plugin-lock` と `plugin-resolve` は現在 `cmd/tei/cli_result.go` でWorkspace全体を検証してから実行する。最小の改善候補は、既存コマンドの成功条件を変えることではなく、必要なPlugin・環境の選択結果と、Workspace全体が未検証である旨・元の診断を別に返す**任意のread-only診断**を比較すること。その結果からLockの正式利用やRuntime起動を許可しない。依存する意味定義を必要とするPlugin、未解決の環境、改変されたPlugin定義を誤って有効としないことを実証できなければ、候補を採用しない。専用CLIや新たな正本が必要かも未決である。
