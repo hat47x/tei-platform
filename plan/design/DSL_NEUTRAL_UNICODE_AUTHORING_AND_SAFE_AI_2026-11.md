@@ -190,7 +190,7 @@ Go構文に無い `|>`、Go予約語の `select`、日常DSLに不必要な `fun
 
 **注意する具体的なUI/AI誤読**：#2747の試験には `Mode == "reference"` かつ `Committed == true` を期待する観測がある。この `Committed` は**参照実行内のUnit of Workを表す結果**であり、業務DBへの永続保存完了とは違う。表示・診断・AI Contextでは `Reference run / simulated completion / no external persistence` のように**資格を明示**し、`Committed=true` の1項目を「受注確定済み」「DB commit済み」「取消可能」と訳出しない。APIの名称や公開JSONをこの文書だけで改名せず、既存Studio/Execution Ownerへ委譲する。
 
-[PR #2748（Open・未merge）](https://github.com/hat47x/tei-platform/pull/2748)には、Workspace宣言された `period` / `effect create` / `persist` →Operation Surface→Closed Period Guard→`execution.Invoke`拒否の試験候補がある。説明上の試験意図は、**期間がclosedならdriverを呼ぶ前に拒否**すること。ただし、PRがopenの段階ではmainの製品機能と断定せず、独立した実Provider/DB・可視化・権限確認の合格へは昇格しない。
+[PR #2748（main統合済み）](https://github.com/hat47x/tei-platform/pull/2748)には、Workspace宣言された `period` / `effect create` / `persist` →Operation Surface→Closed Period Guard→`execution.Invoke`拒否の試験候補がある。説明上の試験意図は、**期間がclosedならdriverを呼ぶ前に拒否**すること。現在は限定的な期間Guardの実装／試験としてmainへ統合済み。ただし実Provider/DB・Studio/AI・現在のHost認可を含む全経路合格へは昇格しない。
 
 この進展により、DSL/Studio/AI連携は**Source上のCommand記法 → 構造/Role/Operation候補 → Studio Plan → Reference Execute → 実Host/Provider Action → Commit/Receipt/独立Read**という資格の異なる経路を一枚で説明できる。ただし各段の実装済み/未実装/Owner受理を混同しない。
 
@@ -272,3 +272,48 @@ X-TEAからの**移植可能性を先に検証する設計候補**は、(a) Data
 **停止条件**：V0/V1のために新しい万能Event/Workflow Host、中央State Registry、強制Go AST構文、第二のMeaning/Source正本を必要とする設計は先行採用しない。Job配信保証は必要になった段階でEffect Ownerが決める。
 
 **変更の資格**：本節は#2744の設計と既存Studio/期間参照実装を**DSL計画へ接続するdocs-onlyの差分**。新Data Script文法、Unicode Lexer、Studio名切替、実Batch・実Provider/DB、AI Context実送信の試験は本PRではNOT RUN。意味受理／実行方式・Source保存方式の正式採否を変更しない。
+
+## 12. Source修正・Command・効果観測・EKI委譲の一改訂資格（2026-11-03、現行コードの差分）
+
+### 12.1 横断計画・既存実装との接続
+
+[横断計画 Draft #2667 `31](https://github.com/hat47x/tei-platform/pull/2667)は外部Referenceの修正→AI/StudioのSource Patch→受注O1の取消→Provider効果→EKI Attempt→Consumerという **XS-01〜12** を一つの反証束で扱う。[外部参照 Draft #2743](https://github.com/hat47x/tei-platform/pull/2743)は同byte移動／A→B→A／Source再解決・offlineの既存実装と未実証領域を分けている。本書は **DSLのSource local Symbol、Unicode・論理名表示、Source糖衣の保存、AI/Studioへの説明** にのみ差分を持ち、Source Reader・業務Effect・EKIの実行資格を再実装しない。
+
+2026-11-03時点でmainの実Goコードを取得して確認した限定境界：
+
+| 既存実装 | 確認した振る舞い | 下流が誤って補完し得る主張 |
+| --- | --- | --- |
+| [merged #2751](https://github.com/hat47x/tei-platform/pull/2751) Studio | Command/参照Execute等を **read-only表**へ要約 | 元Markdownへの局所書戻し・論理名/物理名の安全な切替が完成 |
+| [merged #2770](https://github.com/hat47x/tei-platform/pull/2770) CommandのAttribute検査 | `checkRequiredInputs`は **Attribute束縛が1つもないCommandでは属性必須検査をskip** | Command入力契約やProvider条件まで検証済み |
+| [merged #2773](https://github.com/hat47x/tei-platform/pull/2773) Command Adapter | 既存`effectcommit.Runner`へOperationID/ExpectedVersion/Payload/Grantを呼出側から渡す。denied/conflictは別error | 実コード上は`committed`と`replayed`をともに**空の`command.Result{}`＋nil error**へ写像。戻り値だけから新規Commitと再利用Receiptを区別できない |
+| [merged #2771](https://github.com/hat47x/tei-platform/pull/2771) SQL Observer | 設定Queryのcount>0で`Observed=true`、0件はfalse、読取errorはerror、未設定は理由付きfalse | 古い別受注の行が1件あれば`Observed=true`になり得る。今回のO1実Effect/Owner業務完了は自明でない |
+| [merged #2772](https://github.com/hat47x/tei-platform/pull/2772) Effect Rule | `Succeeded`（能力実行）と`Observed`（独立Read）を別に扱う局所試験の証拠 | その二値だけで正しい対象・版・現在Grant・後続Job完了を保証 |
+
+**同じ「成功表示」でも証拠の所有範囲は異なる。** Studio Reference Executeの`Committed=true`、Adapterのnil error、Observerの`Observed=true`、EKI Task completeを結合しても、O1の正しいSource/Meaning/対象ID/Grant/Versionに対する業務取消成功とは言えない。
+
+### 12.2 同一受注O1での最小の追加反例（新ID/新Runnerなし）
+
+既存GN/SFと#2667 XS-01〜12、#2514のExpectedへ追加する **比較列** に限定する。
+
+| 既存Caseとの接続 | 具体的な入力差分 | 最小Expected／停止条件 |
+| --- | --- | --- |
+| XS-07／GN-05・11 | StudioはO1を選択、Payload内`order_id=O2`、表示論理名が同じかUnicode Confusable | Subject/O1業務キー・Request・実Payload Target・Grant Resource・Provider route・CAS versionが一致する証拠がなければEffect実行を許可しない。現Adapter単体がすべて保証すると推定しない |
+| XS-07／GN-03 | Command Patternは属性Bindingゼロだが、Dataには必須属性あり | #2770のskipは想定動作。ただし**Command専用入力Schema／業務Rule／Authority検証は別**。必要な具体検証が無ければ`UNVERIFIED` |
+| XS-09/10 | SQL Observerが`SELECT count(*) FROM stock`でO2の既存1行を数えるが、O1の今回のActionは未実行 | 現コードはcount>0からtrueを返し得るが、**O1のEffectの証拠としては不適格**。対象・Operation・版・時点に束縛されたQuery/Args/Receipt/独立Readのいずれで証明するかをOwnerへ返す |
+| XS-12 | Count=0（Replica遅延・partialを含む）、または読取error、またはQuery未設定 | 0件は「観測時点では見えない」で、Commit不存在の証明ではない。読取errorと未設定を区別。対象/Scope/Reader/鮮度が不足なら`unknown` |
+| XS-09 | 同一OperationIDの再送でRunnerが`replayed`、初回`committed`とは違う | Adapter戻り値は同じ成功形へ畳まれる。Receipt/Attempt履歴への到達経路が確認できなければ、AI/Studioで「新規に今回保存」と表現しない |
+| XS-03/05/11 | AIのPatch後、Source Role/Plugin/Unicode Profileが変更。既存EKI Attemptは旧定義版のまま進行 | 元Markdown糖衣・非対象byteを保持、実再読取→reparse→Meaning/Dependency Diffへ。**歴史的Task結果と現在のSource/Owner/Grant/Consumer資格を分離**。Prompt中の「再送/取消」を実Tool命令にしない |
+
+### 12.3 既存責務への実証票（新しい共通Schemaは導入しない）
+
+| 既存Owner | 実証する最小の項目 | 立証できるまで禁止する主張 |
+| --- | --- | --- |
+| #988/#2621/#2743 | 実Source byte/occurrence、Language/Unicode Profile/Binding、Patch前後の実Read、Syntax/Role依存 | Source修正完了＝業務変更・再Build不要 |
+| #1124/#2515/#2516 | Studioの選択Subject/Capability、表示モード、AIに実送信されたSource/ラベル、Tool request/Disclosure | 表示・Plan・Reference成功＝Action資格 |
+| #1129/#1174/#2773 | O1のSelected Target、Payload/OperationID/ExpectedVersion、現Grant/Provider、Committed/Replayed/Denied/Conflict/Unknown・Receipt | Adapter成功のみで今回の新規Commit・正しいO1の変更を証明 |
+| #1129/#2771/#2514 | 実Query/Args/Reader/対象/Scope/時点、既存行による偽陽性、0件/読取失敗、必要な独立Expected | count>0だけでO1のEffect・業務完了を証明 |
+| #2667 `31／EKI側 | Task/Attempt/Lease、実Consumed Artifact・結果、historical/current Qualification、Consumer Receipt | EKI Job完了＝業務DB Commit/現在のMeaning受理 |
+
+**実行負担の抑制**：DSL編集時に字句/Source span/静的Binding、Load/Build時にRole/Operator/Source closureとArtifact版、実Provider/Host境界でGrant/Target/CAS/Commit/Receiptを確認する。**純粋関数の全呼出しへParser/外部参照再取得を追加しない**（#2667 `25）。CLI・Go単一バイナリ直接実行を標準とし、EKIは必要に応じたTask/資源委譲。業務Ownerの取消意味・実DB保存方式・Jobリトライ許容範囲はDSL/Source Nameから推測しない。
+
+**証拠資格**：#2770/#2771/#2773はmain実コードの分岐を**静的照合**したのみで、この設計追補による実SQL、PostgreSQL、実EKI/Studio/AI、Source Writer、同一O1 E2Eは**NOT RUN**。Count>0を返すこと自体を製品不具合と確定するものではなく、**Queryが対象/時点/Operationへ束縛されないまま広いEffect保証に使われると証拠不足**という反例である。正式DSL文法、Unicode Profile/実Target安全性、Owner受理は未決。
