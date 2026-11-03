@@ -243,6 +243,12 @@ Workerにはoutbound-firstの社内PC/ARM64 Raspberry Pi/On-prem資源Poolも候
 
 [TEI→EKI→Providerの一改訂・実行証拠の縦断](TEI_EKI_ONE_REVISION_EVIDENCE_VERTICAL_SLICE_2026-11.md)を追加。TEI #1130のJL-01〜07とAJ、#1129のData Script XL、#2616の実Go CLI/Action Offer（限定Go試験と実Host未検証の区別）、#2667のSource/Meaning/Artifact/Consumer境界を、**同じ純粋JobのT0 Direct／T1 EKI Native／T2 Managed Provider**へ接続する。EKIのTask acceptedはResult body取得・Provider実予約・TEI Business Commitとは異なる。まず#112の旧Artifact/Result 422/501 Gapを解消したか同じInput bytes/digestで検証し、新Host/Registry/Schedulerを前提にしない。Job/Business MeaningのOwnerもEKIへ移さない。
 
+### 8.13 最新EKIの実装を根拠に、委任前提を再資格化する
+
+[一改訂実行縦断§12](TEI_EKI_ONE_REVISION_EVIDENCE_VERTICAL_SLICE_2026-11.md)に、現EKI `main`の**optional Dispatch実配線・別ProcessでHTTP→Agent固定Command/Claimを確認するテスト・Result GETにAcceptedResult Storeを接続する実装・条件付きOutput Artifact GET**をSource根拠とともに反映した。旧EKI #242の「起動経路未配線」、#112の「入力422/Result501」は**旧Source/Spikeの時点事実**であり、現在の全構成の実装状況と同一視しない。逆にTest-profileではTaskをADMITTED→READYへ試験用CASし、Result Acceptanceを試験内で直接呼び出しているので、TEIから通常のProduct起動だけで任意Jobが自動で業務Resultまで達したと主張しない。
+
+最初のGateは**W-1 Go Direct vs 現EKI RE-01〜08**。現在Input Artifact ingest-intents/uploadはHandlerが501、Output GETはStoreがあると実経路がある。ExecutorApprovalはDispatch起動設定から取得するため、TEIごとのFunction/Job/Entry DigestとCurrent Grantが実確定したかは別。完了した限定Processテストの存在を足掛かりに、既存EKI #112/#57/#242へ不足分だけを引き渡す。新しいTEI HostやEKI第二Job Engineは作らない。
+
 ## 9. 設計判断のGate、実装順、Issue追補候補
 
 - **G0／今回の設計比較**：EKI ADR-0013・一方向依存・native-first kernel とTEI no-custom-Host/Plugin-firstを保持し、上記二層案を未採用の候補とする。TEI Draft PRへの資料追加だけで、EKIのRequirements/ADR/Mainは書換えない。
