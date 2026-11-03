@@ -492,9 +492,21 @@ FixtureのExpectedをTEI Parser／AIが作ったCandidateから生成しない�
 
 **P0bで初めて必要な証拠（未実証・採用前の候補）**：現行の `loadWorkspaceImports` は別Workspaceをロードしても `ResolvedImport` にはalias/path/namespace/意味Digestしか受け渡さず、Providerの当該Loadで実消費したSource byte・manifest・Source membership／Snapshotを一体のWitnessとして返さない。後続 `LocateImportedSource` はProviderを**再Load**するため、そのDigestとSource anchorが一致しても初回Consumer Loadとの間の無変更、同一Read cohort、A→B→A不在を証明できない。`BuildSourceIndexFromLoad` は外部Importがある場合の `ErrImportsNotBound` を意図的に維持する。
 
-**P0b負例への実装移管（[Draft PR #2801](https://github.com/hat47x/tei-platform/pull/2801)）**：Provider原文の末尾空白だけを変えたとき、選択NamespaceのSemantic Digestと利用側Managed Source Indexは不変でも、旧`workspace.Result`を渡した後続`LocateImportedSource`はProviderを再Loadし、新しいSource fingerprintを返す。これは**Source参照を現在再解決する正常な振る舞い**だが、「初回Consumer Loadが消費したProvider原文を証明する」との誤読を反証する。独立に計算したraw byte SHA-256で対比し、既存のPin拒否やSource移動テストと重複させない。#2801は**テスト追加済み・exact-head実Go試験の結果未確認**であり、P0b合格とは記録しない。
+**P0b負例への実装移管（[Draft PR #2801](https://github.com/hat47x/tei-platform/pull/2801)）**：Provider原文の末尾空白だけを変えたとき、選択NamespaceのSemantic Digestと利用側Managed Source Indexは不変でも、旧`workspace.Result`を渡した後続`LocateImportedSource`はProviderを再Loadし、新しいSource fingerprintを返す。これは**Source参照を現在再解決する正常な振る舞い**だが、「初回Consumer Loadが消費したProvider原文を証明する」との誤読を反証する。独立に計算したraw byte SHA-256で対比し、既存のPin拒否やSource移動テストと重複させない。[PR #2801のexact-head Repository Health #41656612182](https://github.com/hat47x/tei-platform/actions/runs/41656612182) はHEAD `493ec88438c18a896f894672a426bfbe975b095b`で**completed/success**。追加したGo負例を含む既存Go全件試験の成功は、**P0bの未保証を示す振る舞いの実証**であり、P0b合格ではない。
 
 **P0bの方式比較を実装順序として絞る**。A：同一Provider Loadの中でReaderが実際に消費したSource byte・Manifest byte・Source occurrence／membershipを保持し、対象Consumerへread-onlyで渡す（現行`sourceSnapshot`／`ManifestIdentity`の正しい所有範囲を拡張する最小案）。B：同じ入力を不変Bundleに収め、Loadも実Consumerも**そのBundle自体**から読み、Bundle identityと内容を照合する案。AをローカルWorkspace authoring／最小Go参照実証の第一候補とし、Bは配布・別プロセスBuild／再現要求に不可避なことが示された場合に比較する。どちらも正式API／Plugin方式／供給元Authorityではない。**Aだけでは複数ファイルの同時点原子性は証明しない**。BでもBundleの固定後に実Consumerが別の物理Sourceを再読込すれば資格は成立しない。
+
+**P0b-Aの最小受渡し票（実装前の期待・追加Schemaではない）**：`consumer import alias/path/namespace`、`provider root identity`、`provider manifest path + raw digest`、`selected namespace semantic digest`、`provider-owned source occurrence/path + parsed byte digest`、`load-time managed membershipと未解析Sourceの有無`、`実際にConsumerが消費するentry/closure`を**同じProvider Loadの局所観測として並べる**。原文そのものを公開ログ・AI Contextへ無条件に入れない。必要Consumerの読み取り権限と開示資格はこの受渡し票の外側で再確認する。
+
+| 一軸だけ動かす対照（既存実テストを再利用） | 意味計算の再使用候補 | Source／Consumerに必要な再資格化 |
+| --- | --- | --- |
+| Provider rawの空白だけ変更（#2801 Go PASS） | Namespace digestは同一のまま | Provider raw byte・引用／Span／出典の再資格化。古いResultのSource再解決を元LoadのWitnessとみなさない |
+| Provider内で原文同byteのまま移動（既存Importテスト） | 対象意味は同一のまま | Source occurrence／Locatorと保存引用を再定位。SHO自動書換え・Owner受理は別 |
+| 同内容のProvider A→Bへ明示切替（#2786 Go PASS） | Semantic Digestは一致し得る | Provider identity・manifest／permissionを再確認。Consumer Source Index不変を供給元同一とみなさない |
+| Namespaceの意味だけA→B、旧Pin保持（既存／#2786） | 旧意味の現在利用は不適格 | Pin mismatch拒否。別のSource acceptanceや新しいOwner受理なしに自動復旧しない |
+| 複数Sourceの途中競合・Manifest変更／ABA（未実証） | 一部値・前後Digest一致だけでは判定不可 | 実Consumed byteとread setの完全性／Revision fenceがなければunknown。強いSnapshotを主張しない |
+
+**導入条件**：最初のP0b-A試験は既存`Result.sourceSnapshot`（Parserが消費したbyte）／`sourceManagedExtra`（未解析Managed Source）／`ManifestIdentity`（ManifestのDigest）から、どのSource/Manifestが**実際に同じProvider Loadで観測できるか**を明示的に一覧化するだけでよい。ただし現行`ManifestIdentity`はManifestの**raw byteではなくDigestのみ**であり、`sourceSnapshot`はConsumer側Resultへ自動移管されない。この不足を隠す仮の成功データを作らない。必要範囲が確認できた後にだけ、Snapshotの読み取り専用受渡しかimmutable bundleの必要性を比較する。これらは実装／正式採用済みではない。
 
 **選択のゲート**は四点とする。(1) 読取の入口が`sourceReadRoot`か別ファイル読取かをSource/Manifest/Provider実読取ごとに確認、(2) Builder/Parser/Consumerに渡したbyteとSourceIndex等の検証対象が同じAttemptで再現できるか、(3) 実Providerと無関係なソース、空結果・否定依存・推移Importまで「未読=不存在」と誤推定せず必要Closureを限定できるか、(4) Source引用・Meaning再利用・Build artifact再利用・現在Disclosure/Grant・Effectを異なるClaimとして扱えるか。1〜3のうち欠落した入力は`unknown/unqualified`で停止する。実行中のin-place改変、同時点Read Cohort、外部Authority、Source Revision A→B→A、Target Effectは**別の保証**であり、Hash一致だけでは合格にしない。
 
