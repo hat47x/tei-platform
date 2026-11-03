@@ -76,7 +76,7 @@ func TestRunnerOrderSubmitRealPostgresAT1CharacterizationKnownGapPayloadTargetNo
 
 	res, err := effectcommit.Runner{Provider: env.provider(t)}.Execute(context.Background(), req, grant)
 	if err != nil || res.Status != effectcommit.StatusCommitted {
-		t.Fatalf("res=%+v err=%v", res, err)
+		t.Fatalf("res=%+v err=%v: the Runner no longer commits a payload that targets another order; the known gap may have been closed, update this characterization", res, err)
 	}
 	// KNOWN GAP (characterized): the Runner accepted it and the effect landed on 1002.
 	if got := atSecondConnStatus(t, env, 1002); got != "submitted" {
@@ -100,6 +100,11 @@ func TestRunnerOrderSubmitRealPostgresAT1CallersKeepPayloadTargetConsistentWithO
 		for _, id := range []int64{1001, 1002} {
 			t.Run(kind+"/"+itoa(id), func(t *testing.T) {
 				env := newRunnerPGEnv(t)
+				for _, q := range []string{cliAuthoritySQL, atSeedEpochsSQL} { // atBaseGrant uses the distinct epochs
+					if _, err := env.db.Exec(q); err != nil {
+						t.Fatal(err)
+					}
+				}
 				// 1. The payload each caller builds for order N targets N, as does the OperationID.
 				var raw []byte
 				var op string

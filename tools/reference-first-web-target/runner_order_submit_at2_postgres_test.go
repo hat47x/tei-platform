@@ -107,11 +107,28 @@ type atRun struct {
 	evidence []effectcommit.Evidence
 }
 
+// Distinct epoch values so a Provider that permutes the epoch arguments cannot
+// pass by coincidence (every other fixture seeds 1,1,1).
+const (
+	atEpochSubjectLink = 3
+	atEpochMembership  = 5
+	atEpochPolicy      = 7
+)
+
+const atSeedEpochsSQL = `UPDATE ` + runnerTestSchema + `.authority SET subject_link=3, membership=5, policy=7`
+
 func atBaseGrant(kind string) legacyauthorization.AuthorizationGrant {
+	g := syntheticSubmitGrant()
 	if kind == "cli" {
-		return cliSyntheticGrant()
+		g = cliSyntheticGrant()
 	}
-	return syntheticSubmitGrant()
+	src := ""
+	if g.Epochs != nil {
+		src = g.Epochs.Source
+	}
+	g.Epochs = &legacyauthorization.AuthorityEpochs{Source: src,
+		SubjectLink: atEpochSubjectLink, Membership: atEpochMembership, Policy: atEpochPolicy}
+	return g
 }
 
 // atSubmit runs one submit for order id through the named consumer, with the
@@ -236,6 +253,26 @@ func atCells() []atCell {
 			wantDisp: submit.NotCommitted, wantStatus: effectcommit.StatusDenied, web: "refused", cli: "refused", want: atDraft},
 		{name: "resource-mismatch", mutate: func(g *legacyauthorization.AuthorizationGrant) { g.Resource += ".other" },
 			wantDisp: submit.NotCommitted, wantStatus: effectcommit.StatusDenied, web: "refused", cli: "refused", want: atDraft},
+		{name: "grant-source-mismatch", mutate: func(g *legacyauthorization.AuthorizationGrant) {
+			e := *g.Epochs
+			e.Source += "-other"
+			g.Epochs = &e
+		}, wantDisp: submit.NotCommitted, wantStatus: effectcommit.StatusDenied, web: "refused", cli: "refused", want: atDraft},
+		{name: "grant-subject-link-epoch-mismatch", mutate: func(g *legacyauthorization.AuthorizationGrant) {
+			e := *g.Epochs
+			e.SubjectLink++
+			g.Epochs = &e
+		}, wantDisp: submit.NotCommitted, wantStatus: effectcommit.StatusDenied, web: "refused", cli: "refused", want: atDraft},
+		{name: "grant-membership-epoch-mismatch", mutate: func(g *legacyauthorization.AuthorizationGrant) {
+			e := *g.Epochs
+			e.Membership++
+			g.Epochs = &e
+		}, wantDisp: submit.NotCommitted, wantStatus: effectcommit.StatusDenied, web: "refused", cli: "refused", want: atDraft},
+		{name: "grant-policy-epoch-mismatch", mutate: func(g *legacyauthorization.AuthorizationGrant) {
+			e := *g.Epochs
+			e.Policy++
+			g.Epochs = &e
+		}, wantDisp: submit.NotCommitted, wantStatus: effectcommit.StatusDenied, web: "refused", cli: "refused", want: atDraft},
 		{name: "role-revoked", sql: `UPDATE ` + runnerTestSchema + `.authority SET enabled=FALSE`,
 			wantDisp: submit.NotCommitted, wantStatus: effectcommit.StatusDenied, web: "refused", cli: "refused", want: atDraft},
 		{name: "membership-epoch-bump", sql: epoch("membership"),
@@ -284,6 +321,9 @@ func TestRunnerOrderSubmitRealPostgresAT2ResultTypeAndAuditAcrossFailureCells(t 
 					if _, err := env.db.Exec(cliAuthoritySQL); err != nil {
 						t.Fatal(err)
 					}
+				}
+				if _, err := env.db.Exec(atSeedEpochsSQL); err != nil {
+					t.Fatal(err)
 				}
 				if cell.prep != nil {
 					cell.prep(t, env, kind)
