@@ -6,6 +6,7 @@ import (
 	"tei/internal/applicationview"
 	"tei/internal/command"
 	"tei/internal/core"
+	"tei/internal/operations"
 	"tei/internal/semantic"
 	"tei/internal/workspace"
 )
@@ -61,6 +62,12 @@ func (h *ReadOnly) PlanCommand(workspaceID, applicationID, patternID, capability
 // ExecuteCommand runs the reference executor and unit of work. It does not
 // persist data or call an external service.
 func (h *ReadOnly) ExecuteCommand(workspaceID, applicationID, patternID, capabilityID string, inputs map[string]string) CommandRunResponse {
+	return h.ExecuteCommandWithPeriods(workspaceID, applicationID, patternID, capabilityID, inputs, nil)
+}
+
+// ExecuteCommandWithPeriods runs the reference executor with caller-supplied
+// period states. A closed period rejects effects listed in closedRejects.
+func (h *ReadOnly) ExecuteCommandWithPeriods(workspaceID, applicationID, patternID, capabilityID string, inputs, periods map[string]string) CommandRunResponse {
 	loaded, failure := h.loadWorkspace(workspaceID)
 	if failure != nil {
 		return CommandRunResponse{Failure: failure}
@@ -73,6 +80,19 @@ func (h *ReadOnly) ExecuteCommand(workspaceID, applicationID, patternID, capabil
 		World:      loaded.World,
 		Executor:   command.ReferenceExecutor{World: loaded.World},
 		UnitOfWork: &command.MemoryUnitOfWork{},
+	}
+	if periods != nil {
+		states := map[string]operations.PeriodState{}
+		for id, value := range periods {
+			state := operations.PeriodState(value)
+			switch state {
+			case operations.PeriodOpen, operations.PeriodClosing, operations.PeriodClosed:
+				states[id] = state
+			default:
+				return CommandRunResponse{Failure: &Failure{Code: "INVALID_PERIOD_STATE", Stage: "command", Message: "period state must be open, closing, or closed"}}
+			}
+		}
+		invoker.Periods = command.NewMapPeriodState(states)
 	}
 	result, err := invoker.Invoke(context.Background(), command.Request{
 		Application: core.CanonicalID(applicationID),
