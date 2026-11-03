@@ -51,9 +51,10 @@ func (r Resolver) ExecuteDerivedBrowseQuery(
 	if executor == nil || authority == nil {
 		return DerivedBrowseQueryExecution{}, fmt.Errorf("%w: executor/authority missing", query.ErrDerivedUnsupported)
 	}
-	if err := query.ValidateDerivedSelect(*resolved.Query, plan, source, func(attribute core.CanonicalID) bool {
+	canRead := func(attribute core.CanonicalID) bool {
 		return authority.CanReadAttribute(ctx, attribute)
-	}); err != nil {
+	}
+	if err := query.ValidateDerivedSelect(*resolved.Query, plan, source, canRead); err != nil {
 		return DerivedBrowseQueryExecution{}, err
 	}
 
@@ -75,6 +76,12 @@ func (r Resolver) ExecuteDerivedBrowseQuery(
 	}
 	selected, err := query.EvaluateDerivedSelect(plan, rows, complete)
 	if err != nil {
+		return DerivedBrowseQueryExecution{}, err
+	}
+	// The Host grant may be revoked while the Provider reads and rows are
+	// mapped. Check again before returning either raw or derived values.
+	// This is a current-authorization fence, not a transaction snapshot.
+	if err := query.ValidateDerivedSelect(*resolved.Query, plan, source, canRead); err != nil {
 		return DerivedBrowseQueryExecution{}, err
 	}
 	return DerivedBrowseQueryExecution{

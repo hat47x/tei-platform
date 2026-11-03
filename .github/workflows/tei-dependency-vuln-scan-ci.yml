@@ -7,6 +7,10 @@ name: TEI 依存の既知脆弱性確認
 on:
   pull_request:
     branches: [main]
+    paths-ignore:
+      - '**.md'
+      - 'plan/**'
+      - 'docs/**'
     types: [opened, reopened, synchronize, ready_for_review]
   push:
     branches: [main]
