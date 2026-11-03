@@ -21,8 +21,8 @@ show   -grant FILE -trust FILE
 
 `T`はRFC3339のUTCで、末尾が`Z`です。
 
-- `keygen`は秘密鍵（Ed25519のseed、base64）をファイルへ書き、信頼ファイルのエントリを標準出力へ出します。既存ファイルは上書きしません。
-- 秘密鍵のパスがGit作業ツリーの内側なら`keygen`も`sign`も拒否します（`PRIVATE_KEY_IN_REPOSITORY`）。鍵は、リポジトリ、Store、信頼ファイルの外へ置きます。ファイルモードは0600を要求しますが、強制されるのはOSが対応する範囲です。
+- `keygen`は秘密鍵（Ed25519のseed、base64）をファイルへ書き、信頼ファイルのエントリを標準出力へ出します。`sign`は`-out`へ署名済みGrantを書きます。どちらも既存ファイルを上書きしません（`O_EXCL`）。したがって`-out`に秘密鍵・信頼ファイル・以前のGrantを指定しても壊しません。
+- 秘密鍵のパスがGit作業ツリーの内側なら`keygen`も`sign`も拒否します（`PRIVATE_KEY_IN_REPOSITORY`）。文字列上の判定に加え、ファイルを開いたハンドルからOSが報告する実体パスで判定するため、Windowsのジャンクションやシンボリックリンク経由でも作業ツリー内へは書きません（`keygen`は秘密を書く前に確認し、内側なら作成したファイルを削除します）。鍵は、リポジトリ、Store、信頼ファイルの外へ置きます。ファイルモードは0600を要求しますが、強制されるのはOSが対応する範囲です。
 - `sign`の`-not-before`と`-not-after`は必須で、期間は24時間以内です。署名対象は、`provisional: true`、issuer、keyId、Application、Capability、Subject、Resource、Epochs、期間を含む、ドメイン分離した正準JSONです。
 - `show`は現在時刻で検証し、署名は表示せず、要約だけを出します。
 
@@ -34,6 +34,14 @@ show   -grant FILE -trust FILE
 - 拒否するもの: 署名の改ざん、期限切れ、未来の開始、失効、別issuer、別keyId、Application・Capability・Subject・Resourceの不一致、既知フィールド外、期間が24時間を超えるもの、`provisional`が真でないもの。
 - `FileSource`は、読み取りのたびにGrantと信頼ファイルを読み直して検証します。再起動なしで、失効と期限が反映されます。
 - エラーは固定の符号だけで、署名対象のバイト列、署名、ファイルの内容を含みません。
+
+## 限界と運用上の注意
+
+- 信頼ファイルは**issuer・keyId・Application単位**で鍵を信頼します。Capability・Resource・Subjectは制限しません。鍵の保持者は、その鍵が信頼されたApplication内の任意のCapability・Subject・Resourceについて、24時間以内のGrantを作れます。範囲を絞れるのは、鍵を分けて発行する運用だけです。
+- 効果許可と、Source Acceptance（`reference-host-acceptance`）で**同じ鍵を使い回さない**でください。信頼ファイルのスキーマと署名のドメインは分けてあり、取り違えは検証で拒否されますが、鍵の共用は運用で避けます。
+- `reference-critical-path-evidence-audit`の`provisional-grant`検査は、パケットの作成者が`physical.hostAuthorityProvenance`に書く**自己申告のラベル**に依ります。ラベルを書かないパケットは検出できません。ツールの結果は従来どおり承認ではなく、レビューで実際のEvidenceを確認してください。
+- 期間の下限は1分、上限は24時間です。`notBefore`の未来側の上限は設けていません。上限24時間の期間が全体を制限し、未来開始のGrantはその時刻まで使えず、署名者が開始時刻を選べることで新たに得る能力がないためです（署名者は元々24時間以内の任意のGrantを作れます）。必要になったら、検証側の時計を基準に上限を足します。
+- テキスト項目は、256バイト以下、有効なUTF-8、制御文字・書式文字（bidi上書き、ゼロ幅など）・ASCIIの半角空白以外の空白を含まないものに限ります。JSONのキーは、重複と、綴り（大文字小文字）の違いを拒否します。
 
 ## 見直す条件
 

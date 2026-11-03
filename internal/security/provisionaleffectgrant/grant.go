@@ -31,6 +31,8 @@ import (
 	"io"
 	"strings"
 	"time"
+	"unicode"
+	"unicode/utf8"
 
 	"tei/internal/security/legacyauthorization"
 	"tei/internal/sourceacceptance/hoststore"
@@ -43,6 +45,11 @@ const (
 	TrustSchema = "tei.host-effect-grant-provisional-trust/v0"
 	// MaxValidity is the longest allowed notBefore..notAfter span.
 	MaxValidity = 24 * time.Hour
+	// MinValidity is the shortest allowed span, so a Grant is not a zero-length
+	// or clock-skew-sized sliver that could only be an accident.
+	MinValidity = time.Minute
+	// maxFieldBytes bounds every text field of a Grant.
+	maxFieldBytes = 256
 	// MarkProvisional is the Provenance mark. It equals
 	// effectcommit.ProvenanceProvisionalGrant; effectcommit is not imported here
 	// so this reference issuer stays independent of the effect Runner.
@@ -117,8 +124,20 @@ func SigningPayload(g Grant) ([]byte, error) {
 	})
 }
 
+// plainField accepts a non-empty, bounded, valid UTF-8 text with no control or
+// format character (tab, ESC, bidi overrides such as U+202E, zero-width
+// characters, ...) and no whitespace other than inner ASCII spaces.
 func plainField(s string) bool {
-	return strings.TrimSpace(s) != "" && s == strings.TrimSpace(s) && !strings.ContainsAny(s, "\x00\r\n")
+	if s == "" || len(s) > maxFieldBytes || !utf8.ValidString(s) || s != strings.TrimSpace(s) {
+		return false
+	}
+	for _, r := range s {
+		if r == utf8.RuneError || unicode.IsControl(r) || unicode.Is(unicode.Cf, r) ||
+			unicode.Is(unicode.Co, r) || unicode.Is(unicode.Cs, r) || (unicode.IsSpace(r) && r != ' ') {
+			return false
+		}
+	}
+	return true
 }
 
 func parseUTC(s string) (time.Time, error) {
@@ -144,6 +163,9 @@ func (g Grant) window() (time.Time, time.Time, error) {
 	na, err2 := parseUTC(g.NotAfter)
 	if err1 != nil || err2 != nil || !na.After(nb) {
 		return time.Time{}, time.Time{}, errors.New("PROVISIONAL_GRANT_PERIOD_INVALID")
+	}
+	if na.Sub(nb) < MinValidity {
+		return time.Time{}, time.Time{}, errors.New("PROVISIONAL_GRANT_PERIOD_TOO_SHORT")
 	}
 	if na.Sub(nb) > MaxValidity {
 		return time.Time{}, time.Time{}, errors.New("PROVISIONAL_GRANT_PERIOD_TOO_LONG")
@@ -173,6 +195,9 @@ func Sign(g Grant, key ed25519.PrivateKey) (Grant, error) {
 // trailing data.
 func Parse(raw []byte) (Grant, error) {
 	if len(raw) > maxDocumentBytes {
+		return Grant{}, errors.New("PROVISIONAL_GRANT_INVALID")
+	}
+	if err := checkKeys(raw); err != nil {
 		return Grant{}, errors.New("PROVISIONAL_GRANT_INVALID")
 	}
 	var g Grant
@@ -238,6 +263,50 @@ func Verify(g Grant, q Query, policy hoststore.TrustPolicy, now func() time.Time
 		Provenance: MarkProvisional,
 		NotAfter:   na,
 	}, nil
+}
+
+var (
+	grantKeys = map[string]bool{
+		"schema": true, "provisional": true, "issuer": true, "keyId": true, "applicationId": true,
+		"capability": true, "subjectId": true, "resource": true, "epochs": true,
+		"notBefore": true, "notAfter": true, "signature": true,
+	}
+	epochKeys = map[string]bool{"source": true, "subjectLink": true, "membership": true, "policy": true}
+)
+
+// checkKeys refuses duplicate keys and any key whose spelling differs from the
+// schema (encoding/json would otherwise match "SubjectID" to "subjectId" and
+// silently keep the last of two duplicates). Values are validated by Decode.
+func checkKeys(raw []byte) error {
+	dec := json.NewDecoder(bytes.NewReader(raw))
+	var object func(allowed map[string]bool, top bool) error
+	object = func(allowed map[string]bool, top bool) error {
+		if tok, err := dec.Token(); err != nil || tok != json.Delim('{') {
+			return errors.New("not an object")
+		}
+		seen := map[string]bool{}
+		for dec.More() {
+			tok, err := dec.Token()
+			key, ok := tok.(string)
+			if err != nil || !ok || !allowed[key] || seen[key] {
+				return errors.New("bad key")
+			}
+			seen[key] = true
+			if top && key == "epochs" {
+				if err := object(epochKeys, false); err != nil {
+					return err
+				}
+				continue
+			}
+			var skip json.RawMessage
+			if err := dec.Decode(&skip); err != nil {
+				return err
+			}
+		}
+		_, err := dec.Token()
+		return err
+	}
+	return object(grantKeys, true)
 }
 
 func readClock(clock func() time.Time) (now time.Time, err error) {
