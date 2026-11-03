@@ -5,7 +5,9 @@ import (
 	"strings"
 )
 
-const RelationalResolutionPolicyRevision = "tei.xeadsource.relational-resolution/v1"
+// v2 distinguishes permissible legacy FAMILY target-key expansion from an
+// equal-arity mismatch without treating unresolved Field correspondence as accepted.
+const RelationalResolutionPolicyRevision = "tei.xeadsource.relational-resolution/v2"
 
 const (
 	RelationalFactResolutionResolved    = "resolved"

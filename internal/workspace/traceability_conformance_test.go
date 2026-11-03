@@ -77,7 +77,7 @@ func TestTraceabilityConformanceNativeSQLFlowsWithoutAuthoringPath(t *testing.T)
 
 func TestTraceabilityConformanceMoveKeepsWorldAndRetargetsDiagnostic(t *testing.T) {
 	root := t.TempDir()
-	if err := os.WriteFile(filepath.Join(root, "tei.workspace.yaml"), []byte("workspace:\n  sources:\n    - applications\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(root, "tei.workspace.yaml"), []byte("workspace:\nformatVersion: 1\n  sources:\n    - applications\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	writeTraceabilityApplication(t, root, "order-entry")
@@ -146,7 +146,7 @@ func TestTraceabilityConformanceMoveKeepsWorldAndRetargetsDiagnostic(t *testing.
 
 func TestTraceabilityConformanceParseErrorIsSourceDirect(t *testing.T) {
 	root := t.TempDir()
-	if err := os.WriteFile(filepath.Join(root, "tei.workspace.yaml"), []byte("workspace:\n  sources:\n    - applications\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(root, "tei.workspace.yaml"), []byte("workspace:\nformatVersion: 1\n  sources:\n    - applications\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	dir := filepath.Join(root, "applications", "broken")
