@@ -849,3 +849,65 @@ TAIのQH-01〜18は公開合成Nodeの有限試験であり、TEI実CLI／外部
 | **P3** 最小Go生成／実Consumption | DLC-06/DLX-04の純粋DecimalとNullabilityをGo単一バイナリで限定試験、実Build入力・ArtifactSet・Readerが読んだbyteを照合しExpectedと比較 | Runtime/Provider/DB/SHO/Host実行は別証拠。保存Actionは適切な既存Ownerへ引き渡す。構文採否には自動昇格しない |
 
 **既存文書との差分だけを更新**：本§23は§22の日本語例を言語中立構文へ再位置付けし、実際の人間被験者なしで行える比較へ補正した。国際化・Unicode詳細は[#2745](https://github.com/hat47x/tei-platform/pull/2745)、Source保存はmain統合[#2674](https://github.com/hat47x/tei-platform/pull/2674)、Bootstrapはmain統合[#2638](https://github.com/hat47x/tei-platform/pull/2638)を参照し再実装しない。ADR候補は§22に記載した無番号のDSL Frontend/Source Fidelity判断へ結果を引き渡すだけとし、既存ADR-0022/0023/0032/0033/0039/0043を勝手に変更しない。ConformanceのOracle/現在資格は#2514、増分/実Source帰属は#2600/#2595、実Effectは#1129/#1174。**本追補は計画文書のみ。新PoC、実Go CLI、実Provider、Studio/SHO/AI Harness、Unicodeの実Lexer、CI exact-HEAD、Owner受理はいずれもNOT RUN。**
+
+## 24. DSLからGo実行までの一改訂縦断――共通契約の実消費を確認するための受入票（2026-11-03追補）
+
+> **状態：具体的な実証計画。テスト／Go生成器／実Providerの実装・実走は本節でNOT RUN。** §22の契約、§23の実装選択・国際化・Bootstrap・Source Fidelityを繰り返して別仕様にせず、**実際にどのbyteがどの段階で消費されたか**と**どこまでのClaimが成立するか**を、既存#1163の一改訂Evidence票へ渡す。#1119のP0-a/P0-b/G0〜G4の順序を変更しない。
+
+### 24.1 意味が異なる四つの完了を分離する
+
+| 判定 | 必要な観測 | まだ保証しないこと |
+| --- | --- | --- |
+| **F: Frontend適合** | Sourceの実byte・occurrence・選択されたLanguage/Grammar/Plugin版、実Parserの構文結果と原文診断 | 参照意味/型の正しさ・Owner受理 |
+| **M: Semantic適合** | 解決されたSubject/Role/Operator/Type・Nullability・Ref・grain/Scope/完全性・version closure、反例と拒否理由 | Go生成/実Provider/現権限/Commit |
+| **G: Go生成適合** | 同じ意味契約から生成されたGo Source・Source map・Toolchainと実Build input・生成物/ロード元、独立Expectedの限定一致 | 他Targetの同値、実業務の保存副作用 |
+| **E: Effect適合** | 現在のPrincipal/Host Authority・Provider Attempt・Operation identity・Commit状態・Receipt・独立Read（必要な時点/Scope） | 意味受理の自動決定・別Source/別Hostへの汎化 |
+
+F/M/G/Eは**直交する証拠列**。Fが偽でもSource診断は利用でき、Mが未受理でも候補のpreviewや限定Fixture評価は可能。ただし、未受理の候補に**実本番effect実行資格を与えない**。Gを満たした純粋計算の値からEを推論しない。結果 `0` / 空配列 / 読取失敗 / 業務NotSatisfied / Technical Error / Commit unknown は異なる。これらの状態の新しい共通Enum/APIを先行作成することは要求しない。
+
+### 24.2 小さな一改訂縦断：一つのScopeを固定する
+
+**選ぶ題材（構文は仮の表記）**：`amount = quantity * unitPrice` と `total = lines |> sum(amount)`、`confirmable = lines.count() > 0 and lines.all(quantity > 0)`。Source上はGoの`struct/func/import`を要求しない。Canonical IDは既存ASCIIの`sales.order.*`を使い、表示名/ローカルUnicode Symbolは別Bindの試験に回す。まず一つのOrderと二つのLine、Order→LineのRelation、明示したData Contextと全件/一部のscopeを用意する（独立Expected・データモデル・関係・金額精度/丸めContractを**先に固定**する）。説明用Markdown表を勝手に実行DSLとして扱わない。
+
+**最初の観測経路**：
+```text
+actual Source bytes + source occurrence + selected Language/Operator pins
+  → existing ParseSelected / ParsePipelineSyntax / LowerPinnedPipeline (可能な既存経路)
+  → existing Canonical/Role/Validator/typed Context (候補/受理状態を区別)
+  → pure operator semantics + independent Expected
+  → Go generator candidate + actual go build + single binary
+  → actual consumed inputs + Got/diagnostics + source map
+  → only when separately authorized: typed Intent → Provider/Host → receipt → independent read
+```
+途中に未提供の正式Go Generator/Binding/実Contextがあれば**`NOT RUN: missing concrete entry`**と止め、テスト用手書きGoを製品Generatorが存在する証明にしない。適切に型・版固定した合成インメモリDatasetで純粋Operatorを先に確かめ、その後#1119/#1163の実CLIと実Provider受入へ引き継ぐ。既存実Go CLIの`validate → operations → artifacts → fresh -out`と独立Readerの限定入口はmain統合[#2649](https://github.com/hat47x/tei-platform/pull/2649)・§19経路Aを再利用し、**`artifacts -out`のディスク書込みとread-only CLI資格を同一視しない**。
+
+**必要な最小Evidence列**：`attempt ID | actual source+occurrence+revision | parser/language/role/operator (including transitive implementation pins) | interpreted meaning status | input row/field closure, scope, epoch | independent Expected & provenance | generated Go source/build inputs/loaded artifact set | Got & diagnostic code+original span | current authority | operation identity/Provider attempt | commit status | post-commit read | claim F/M/G/E, unknowns`。既存#1163/#2514の表・Receiptへの参照で足り、新公開Schema/共通Proof Engineは設けない。
+
+### 24.3 同じ縦断に差す「正例＋反例」の最小マトリクス
+
+| Case（本節の説明ラベル） | 入力差分 | Expected/不許可な推論 | 再利用するOwner |
+| --- | --- | --- | --- |
+| **VS-1 Source/Frontend** | 同じScopeの二表層、`select`や`|>`をGo式に直接渡す負例、Unicode alias、Source relocation | 表層ごとのparse可否を**実Parserで**測定。Semanticで同じことが成立する場合も元byte/span・構文Profileは別。Go都合の語彙変更を強制しない | #988/#2621、Draft #2639/#2745 |
+| **VS-2 型/業務意味** | `quantity=3` `unitPrice=19.995`、丸め未宣言、明示NULL/未取得、同IDでDecimal→String | 正しい中間Decimalは59.985。丸め未定義は拒否、null/missing/not-fetchedの混同不可。同ID・同Binder結果でも意味の一致とはいえない | #2514 H5/TAO、#988、#2639 EG-09 |
+| **VS-3 完全性/否定依存** | L={A,B}、R={A}、0行complete/partial、後からBが追加、Relation先/Owner変更、A→B→A | 部分行で`all`真、`not exists`、全件SUMを確定しない。既存反例は全称否定に使える場合がある。履歴の一致≠現在Qualification | #2582/#2622/#2600 IB-07/09/10 |
+| **VS-4 実Go artifact** | Sourceが同byteでOperator/Generator版変更、出力の一member欠落、Source byteの検査対象と実Build対象が違う | 正しい再生成・診断/旧Artifact排除を要求。実Builder/Toolchain/Readerが消費した内容に帰属できなければ`unknown`。単一binary生成と全Output closureの区別 | #2595 EB-01/02、#2600/#2604 |
+| **VS-5 効果と回復** | 計算上`confirmable=true`、権限変更、Provider ACK消失、Commit unknown、再試行 | 結果trueはIntent候補のみ。Commit不明ならOperation identityで回復/独立Readが必要。結果不明を更新なしとせず、勝手に再実行しない | #1129/#1174/#2514 W、ADR-0023 |
+
+**必要な変種を分割**：正常な`all`は、空集合の場合に言語/Operatorが定義する空集合規則の影響を受ける。業務上「明細が1件以上」を同時に要求する`count()>0`を保持し、`all`単独の数学的真を確定受注可能と取り違えない。部分集合で`count()>0`の局所存在は示せても、完全な総額の確定にはならない。Unit/通貨・Decimal scale/roundingは明示契約とし、`float64`やGoゼロ値へ勝手にlowerしない。
+
+### 24.4 採用判断・効率比較・再利用境界
+
+**Frontend選択の実験（P0/P1）**は、利用者に見える**言語中立な軽量DSL／Go式／Markdown／chain**で同じ意図・Scope・型/Source問題を見せ、AIによるノイズ/認知順序/修正局所性比較を採点補助とする。独立Expectedで確定できる意味的な正誤は機械的Conformanceとして別採点。実際の人間被験者がいなければ人間可読性の定量実証とは呼ばない。構文方式A/B/Cの試験と、Backend D（Go生成）の試験は別。
+
+**切替/停止**：Go ASTが予約語や型宣言を表層へ強要するならAを棄却。Hybrid Cの前処理・逆位置写像・Plugin版間の判定が独自Frontend Bより複雑で、局所診断やSource byte fidelityを損ねるならCを棄却。BになってもGo生成の標準Target方針は維持する。いずれかが不明参照・型/NULL/丸め・Source/Role Pin・独立Expected・実入力閉包・実効果境界を暗黙補完するなら**方式選抜を停止**してContractを修正し、意味受理へ進めない。
+
+**最初の縦断を終えた後の第二領域**：受注で通った汎用化主張は、Membership/Occupancy（別ID・時点・所属/代理の意味）やWorkflowの異質Subject/Transition/Ownerへ**同じ最小Fixture概念を適用し反証**する。既存Draft[#2681](https://github.com/hat47x/tei-platform/pull/2681)のOrganizationモデルや#2386を再利用するが、そこで業務RoleからGrant/承認権限を推測しない。二領域未到達なら「業務受注Scopeに限る」にClaimを限定。新汎用状態表、Host、Registry、全Domain対応DSL Syntaxを先行採用しない。
+
+### 24.5 計画の重複防止と次アクション
+
+- **#988** が文法/Operator（新Parser/第二Resolverの採用可否）、**#2621** がAuthoring/元Source/診断の安定性、**#2514** が独立Oracleの品質とClaim範囲。Draft #2639は最小Go Language Plugin Referenceであり、追加テストの採否/CIはそのPR Owner。Draft #2745の国際化/安全AI Profileは同Branch文書へ転写しない。
+- **#2595/#2600/#2604** が実Build input・ArtifactSet・公開Reader・現在資格。**#1129/#1174** はIntent/権限/Tx/Receiptと独立Read、**#2387/#2622** がSQL/Provider固有の意味・実現。**#1119/#1163** が縦断のEvidenceと既存Priorityを維持。元Source上の外部Referenceのfresh/stale/offlineはSource/Dependency担当の既存契約へ引き継ぎ、実ネットワーク取得はここでは行わない。
+- **計画上の直近作業候補**：①既存Go Reference/現行CLIの正確な実行入口を記録、②VS-1〜3の意味/Source反例を実現できる最小FixtureとOracleの独立導出元を固定、③不足している正式Generator/Runtime Consumer/Provider Bindingを**missing concrete entry**として列挙、④実Go生成が可能になった範囲だけVS-4を試験、⑤effectは独立のAuthority/Receipt証拠が整ってからVS-5へ引き渡す。**未確認の工程を手書きMockで置き換えて製品合格にしない**。
+- **2026-11-03時点のCI区分**：Draft #2667 head `5882ff67e22f1f37f8f6adccd4ccddfc6c480b4d`のPR健全性確認は照合時`queued`、Draft #2639 head `12c864ba83840a7b5750bc8da84af0e8534558e1`の健全性確認は照合時`in_progress`、Draft #2745 head `61f834771091260212d4264855c94a702efca4e2`は照合時`queued`（いずれも2026-11-03 04:28 UTC前後）。旧HEADのPASSを現HEADに移さない。**この§24自体のheadは後続コミットになるのでCIを別途照合する**。
+
+**ADR**：既存§22の無番号 `DSL Frontend Selection and Source Fidelity` は正式採否を保留。既存ADR-0022/0023/0032/0033/0039/0043と#1119のGateを変更しない。今回の成果は**既存計画内の検査票と依存順序**であり、採用済み実装・形式・Runtime・Owner意味受理の宣言ではない。
