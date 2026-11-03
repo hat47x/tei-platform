@@ -198,6 +198,15 @@ Established --[T4: link-lost]--> Closed
 - Excelを唯一のAuthoring Sourceとも`.tei`を全Domain唯一のSourceとも固定しない。Managed Sourceと受理済Meaningから、Excel・Studio・Markdown・SHOの図表と可逆な編集提案へ渡す。
 - 添付のlint 0/0はWorkbook生成ツールの報告。独立Expectedの実評価、Runtime実行、Owner受理への昇格はしない。
 
+### 7.6 仮想Attribute起点のFlow／Batch（2026-11-03、設計追補）
+
+[仮想状態・Data Script・Trigger・Pipelineの設計／反証計画](DATA_DERIVED_TRANSITION_TRIGGER_PIPELINE_2026-11.md)に、**「実データ変更／導出値の変化→Flow起動→UIなしJob」**の要求と検証境界を追加した。
+
+- Data ModelはVirtual/Derived Attributeの存在・型・対象・read-onlyを宣言し、Data Script側は純粋な値導出と依存関係を定義する。Flow側がそのAttributeの`changed false→true`等を明示的に購読する。意味宣言とTrigger Bindingと実Effectは別。
+- `physical write`／`derived edge`／`level condition`／`domain commit`／`timer`を区別する。導出値を再計算できても過去の変化の発生・時刻・一度限りのJob起動は保証されないため、Before/After・Read一致・Event Identity・Idempotency/Receiptを要件に応じて別検収する。
+- 同じData/Statusを重複保存しない原則を強化する。ただし実行進捗・外部通知・手動取消・Actorの承認など、計算だけで復元できない**独立した事実**は保存が必要。Materialized View/CacheとBusiness Truthは区別する。
+- Flow中心の機能構築はData/Rule/Function/Capabilityの既存契約の**異なる合成入口**として扱い、新たな万能Scheduler/Workflow Hostを先行採用しない。#1130（Batch）／#1129（Effect phase）／#2622（Derived）／#2582（依存）へ渡す。
+
 ## 8. 今回の結論と検証の状態
 
 **成熟した設計入力として置くもの**：状態機械の適用対象は業務に限らない／図・状態表・遷移表・交差マトリクスは同一意味を異なる形で投影する／意味Core・実行・保存・UI・文書を直結せず明示Bindingする／業務IFを全部置換しない／実Runtimeの一般化は別の採用判断とする。
