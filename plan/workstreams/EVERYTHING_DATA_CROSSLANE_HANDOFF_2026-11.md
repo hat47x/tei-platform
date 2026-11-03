@@ -590,3 +590,17 @@ TAIのQH-01〜18は公開合成Nodeの有限試験であり、TEI実CLI／外部
 **既存C0〜C5に追加する受渡し票**：C0にSource bytes/Dialect/参照Schema Rev/選択されたSource scope→C1に直接宣言Data ModelのMeaning/Key/RelationとSQL-derived Transformationを別識別→C2にFunction Mapping/Operatorの入力・出力形状と暗黙依存→C3にProvider別Current Schema/実Read/完整性・Read Cohort→C4にRule/Action/Receipt/Host権限→C5にConsumer用途ごとの開示資格・SHO/Studio投影の再資格化。
 
 **未実証／Owner**：14件は隔離SQLiteの結果のみ。TEI SQL Worker→Go DerivedIRのSchema Registry解決・Source span、物理DB Migration/Constraint Apply、複数実Provider、実Consumer、Owner業務意味受理はNOT RUN。#1126（Model Key/Relation）、#2387（SQL DerivedIR）、#988（Operator）、#2506（Function Mapping）、#2622（Provider）、#2600（Build再利用）、#2582（Runtime再評価）へ、既存Gatesを保持して次の一試行を委譲する。
+
+## 21. SQLの暗黙Schema依存を、実Go DerivedIRの現在の資格へ引き継ぐ（2026-11-03）
+
+[SQL/DDL意味契約 §10](../design/SQL_DDL_STATIC_FACT_AND_SEMANTIC_ACCEPTANCE_2026-11.md)／[SM-16 Go test](../../internal/query/derived_sm16_schema_drift_characterization_test.go)を受入対象に追加する。前節のSM-15は実SQLiteの**SQL byte不変／Schema追加／NATURAL JOIN結果2→1**、`SELECT *`のShape変更を観測済み。今回のSM-16は既存Go`query.DeriveFromAnalysis`に**固定した合成analyzer.Result**を、status列の有無が異なる二つの`physical.SchemaSnapshot`と共に与える試験。GoのSource/Field解決が通ったことやIRのJSON一致だけでは、SQLの暗黙Schema依存が完全に列挙されたと証明できない点を分離する。
+
+| 接合 | 具体的に追加する根拠 | 成功扱いしないもの |
+| --- | --- | --- |
+| C0 Source→Analyzer | SQL原byte、Dialect/Worker版、Schemaの列集合/Revision、実Workerへのstdin/ResultとExit/Attempt | Query ID/Protocol一致のみ、Synthetic Workerの返答 |
+| C1 Analyzer→Go IR | `NATURAL JOIN`の**実際に一致する全列**、`SELECT *`展開列/Order、Source occurrence/Scope、`USING`列統合と未解釈診断 | `Coverage.Resolution=full`や合成IR値の一致だけで「依存が完全」 |
+| C2 Function/Operator | 受理済みData ModelのKey/Relation、Function Mapping/Rule Dependency、NULL/Grain/Unit/Compare | SQL DDL/JOINから業務Meaningの新正本を作る |
+| C3 Provider→Current Claim | DB Aliasの実対象、Provider Schema/制約/Read時点、部分集合/0件・実Principal/RLS | Schema-introspectionやReadの成功からHost Grant/Commit/共同Snapshotへ昇格 |
+| C4–5 Consumer/Effect | Shape変更後の二ConsumerのTyped Adapterと公開Field、Rule/Actionへの必要入力と現在資格 | SQL/Providerの静的情報だけでAction Offer、業務確定、外部開示を許可 |
+
+**優先順**：既存[#2387 QX-33 V0/V1](https://github.com/hat47x/tei-platform/pull/2388)で実SQLGlot Producer所在が`unresolved`であれば、同型のsynthetic SQL Workerテストを増やさず、実Producerを固定・起動することを最優先とする。次にSM-15 SQL二Schemaと実Result→Go IRを一試行へ連結し、#2506/#2586へ不足した依存を伝える。SM-16のGo局所テストは**CI exact HEADでのPASSを確認するまでは未確定**、実Worker・Migration/Provider/Owner受理はNOT RUN。新Parser、Host、中央RegistryやGlobal Cacheは作らない。
