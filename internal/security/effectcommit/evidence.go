@@ -36,6 +36,13 @@ const (
 // It deliberately has no payload, request hash, DSN, token or error-text field.
 // For calls rejected before the request is validated, Scope, Epochs and
 // OperationID are left empty because they are still untrusted input.
+//
+// Limits a reader must know: a request that PASSES validation has its Scope
+// fields and OperationID copied verbatim into Evidence, so Evidence is only as
+// secret-free as the identifiers the caller chooses; keep secrets out of
+// identifiers. A panic inside the Provider itself (for example in Begin)
+// escapes Execute exactly as it did before this type existed, and then no
+// Evidence is recorded for that call.
 type Evidence struct {
 	Operation      string // "execute" or "lookup"
 	Scope          Scope
@@ -45,7 +52,7 @@ type Evidence struct {
 	ErrorClass     ErrorClass // empty when Status is set
 	ReceiptVersion uint64     // receipt resource version for committed/replayed
 	Provenance     Provenance
-	Guarantee      GuaranteeLevel // Provider's declared level, or undeclared
+	Guarantee      GuaranteeLevel // the Provider's SELF-DECLARED level (not verified), or undeclared
 }
 
 // EvidenceSink receives Evidence. It has no error return: a sink failure must
@@ -100,6 +107,12 @@ func classify(err error) ErrorClass {
 }
 
 func (r Runner) emit(op string, req Request, grant legacyauthorization.AuthorizationGrant, res Result, err error) {
+	// Everything in emit runs AFTER the effect has finished (possibly committed),
+	// so nothing in it may change what the caller sees: not the sink, not the
+	// Provider's declaration, not building the Evidence. Recover from all of it.
+	// If building the Evidence itself panics, no Evidence is recorded (the
+	// outcome is preserved at the price of exactly-once).
+	defer func() { _ = recover() }()
 	prov := r.Audit.Provenance
 	if prov == "" {
 		prov = ProvenanceUnspecified
@@ -118,6 +131,5 @@ func (r Runner) emit(op string, req Request, grant legacyauthorization.Authoriza
 		ev.OperationID = req.OperationID
 		ev.Epochs = *grant.Epochs
 	}
-	defer func() { _ = recover() }()
 	r.Audit.Sink.Record(ev)
 }

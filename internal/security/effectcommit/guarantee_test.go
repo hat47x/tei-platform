@@ -78,6 +78,43 @@ func TestAtomicDeclarationAccepted(t *testing.T) {
 	}
 }
 
+// panickingDeclarer wraps a working Provider whose Guarantee() panics.
+type panickingDeclarer struct{ Provider }
+
+func (panickingDeclarer) Guarantee() Guarantee { panic("declaration failure") }
+
+func TestPanickingGuaranteeIsUndeclaredAndRefused(t *testing.T) {
+	p := panickingDeclarer{newMemoryProvider()}
+	if g := DeclaredGuarantee(p); g.Level != GuaranteeUndeclared {
+		t.Fatalf("a panicking declaration must read as undeclared, got %+v", g)
+	}
+	if err := RequireGuarantee(p, GuaranteeAtomicWithCommit); !errors.Is(err, ErrGuaranteeUndeclared) {
+		t.Fatalf("a panicking declaration must fail closed, got %v", err)
+	}
+	if _, err := NewRequiredRunner(p, GuaranteeAtomicWithCommit, AuditConfig{}); !errors.Is(err, ErrGuaranteeUndeclared) {
+		t.Fatalf("NewRequiredRunner must refuse it, got %v", err)
+	}
+}
+
+// nilableProvider has a pointer-receiver declaration that does not dereference
+// its receiver, so a typed-nil pointer would otherwise be accepted.
+type nilableProvider struct{}
+
+func (*nilableProvider) Begin(context.Context) (Transaction, error) { return nil, errors.New("unused") }
+func (*nilableProvider) Guarantee() Guarantee {
+	return Guarantee{Level: GuaranteeAtomicWithCommit, Reason: "would be accepted without the nil check"}
+}
+
+func TestTypedNilProviderIsMissingNotDeclared(t *testing.T) {
+	var p *nilableProvider
+	if g := DeclaredGuarantee(p); g.Level != GuaranteeUndeclared {
+		t.Fatalf("a typed-nil Provider must read as undeclared, got %+v", g)
+	}
+	if err := RequireGuarantee(p, GuaranteeAtomicWithCommit); !errors.Is(err, ErrMissingProvider) {
+		t.Fatalf("a typed-nil Provider must be reported missing, got %v", err)
+	}
+}
+
 func TestUndeclaredProviderStillWorksWithoutRequire(t *testing.T) {
 	if res, err := runExec(Runner{Provider: newMemoryProvider()}, fixtureRequest()); err != nil || res.Status != StatusCommitted {
 		t.Fatal(res, err)

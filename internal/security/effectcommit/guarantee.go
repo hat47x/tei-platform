@@ -3,6 +3,7 @@ package effectcommit
 import (
 	"errors"
 	"fmt"
+	"reflect"
 )
 
 // GuaranteeLevel is an unapproved A2 reference proposal, not a ratified
@@ -35,6 +36,12 @@ type Guarantee struct {
 
 // GuaranteeDeclarer is OPTIONAL. A Provider that does not implement it keeps
 // working exactly as before.
+//
+// A wrapper type that EMBEDS a concrete declaring Provider has that Guarantee
+// method promoted, so it would inherit the inner level even if the wrapper adds
+// non-atomic behaviour around it. A wrapper must therefore declare its OWN
+// level explicitly. (Embedding the Provider INTERFACE hides the declaration,
+// which is the fail-closed direction.)
 type GuaranteeDeclarer interface {
 	Guarantee() Guarantee
 }
@@ -52,17 +59,44 @@ func knownLevel(l GuaranteeLevel) bool {
 	return l == GuaranteeNotAtomic || l == GuaranteeAtomicWithCommit
 }
 
-// DeclaredGuarantee returns the Provider's declaration, normalised: a nil
-// Provider, a Provider without GuaranteeDeclarer, or an unknown level yields
-// GuaranteeUndeclared.
-func DeclaredGuarantee(p Provider) Guarantee {
-	d, ok := p.(GuaranteeDeclarer)
-	if !ok || p == nil {
-		return Guarantee{Level: GuaranteeUndeclared}
+// isNilProvider reports a nil interface AND a typed-nil pointer (a nil
+// *T stored in the interface), which would otherwise pass a type assertion and
+// could even be "declared" by a pointer-receiver method that never dereferences
+// its receiver.
+func isNilProvider(p Provider) bool {
+	if p == nil {
+		return true
 	}
-	g := d.Guarantee()
+	switch v := reflect.ValueOf(p); v.Kind() {
+	case reflect.Ptr, reflect.Map, reflect.Slice, reflect.Func, reflect.Interface, reflect.Chan:
+		return v.IsNil()
+	}
+	return false
+}
+
+// DeclaredGuarantee returns the Provider's declaration, normalised: a nil
+// (or typed-nil) Provider, a Provider without GuaranteeDeclarer, an unknown
+// level, or a Guarantee() that panics yields GuaranteeUndeclared. A panic is
+// treated as "undeclared" (fail closed) rather than allowed to escape: the
+// Runner reads the declaration AFTER an effect may have committed, so a panic
+// here must never change what the caller sees.
+func DeclaredGuarantee(p Provider) (g Guarantee) {
+	undeclared := Guarantee{Level: GuaranteeUndeclared}
+	if isNilProvider(p) {
+		return undeclared
+	}
+	d, ok := p.(GuaranteeDeclarer)
+	if !ok {
+		return undeclared
+	}
+	defer func() {
+		if recover() != nil {
+			g = undeclared
+		}
+	}()
+	g = d.Guarantee()
 	if !knownLevel(g.Level) {
-		return Guarantee{Level: GuaranteeUndeclared}
+		return undeclared
 	}
 	return g
 }
@@ -70,7 +104,7 @@ func DeclaredGuarantee(p Provider) Guarantee {
 // RequireGuarantee fails closed unless the Provider declared exactly the
 // wanted level. want must be GuaranteeAtomicWithCommit or GuaranteeNotAtomic.
 func RequireGuarantee(p Provider, want GuaranteeLevel) error {
-	if p == nil {
+	if isNilProvider(p) {
 		return ErrMissingProvider
 	}
 	if !knownLevel(want) {

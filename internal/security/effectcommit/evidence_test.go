@@ -135,6 +135,59 @@ func TestEvidenceCarriesDeclaredGuarantee(t *testing.T) {
 	}
 }
 
+// A Provider whose Guarantee() panics must not change the outcome of a call
+// that already committed, and the Evidence must still be recorded (as
+// undeclared). Before the fix the panic escaped Execute after the commit.
+func TestPanickingGuaranteeCannotChangeOutcome(t *testing.T) {
+	req := canaryRequest()
+	plain, errPlain := runExec(Runner{Provider: newMemoryProvider()}, req)
+	sink := &fakeSink{}
+	var got Result
+	var err error
+	func() {
+		defer func() {
+			if r := recover(); r != nil {
+				t.Fatalf("a panicking Guarantee() escaped Execute after the effect committed: %v", r)
+			}
+		}()
+		got, err = runExec(Runner{Provider: panickingDeclarer{newMemoryProvider()}, Audit: AuditConfig{Sink: sink}}, req)
+	}()
+	if errPlain != nil || err != nil || got != plain || got.Status != StatusCommitted {
+		t.Fatalf("outcome changed: %+v %v vs %+v %v", got, err, plain, errPlain)
+	}
+	if len(sink.got) != 1 || sink.got[0].Guarantee != GuaranteeUndeclared || sink.got[0].Status != StatusCommitted {
+		t.Fatalf("want one undeclared committed Evidence, got %+v", sink.got)
+	}
+}
+
+// NotAtomic is carried in Evidence too, and it is the Provider's own claim.
+func TestEvidenceCarriesNotAtomicDeclaration(t *testing.T) {
+	sink := &fakeSink{}
+	p := &remoteEffectProvider{}
+	_, err := runExec(Runner{Provider: p, Audit: AuditConfig{Sink: sink, Provenance: ProvenanceSynthetic}}, fixtureRequest())
+	if err == nil {
+		t.Fatal("the fake remote Provider's Begin is expected to fail")
+	}
+	if len(sink.got) != 1 || sink.got[0].Guarantee != GuaranteeNotAtomic || sink.got[0].ErrorClass != ErrorClassExecution {
+		t.Fatalf("%+v", sink.got)
+	}
+}
+
+// Scope fields and the OperationID that pass validation are echoed verbatim:
+// Evidence is only as secret-free as the identifiers a caller chooses. This
+// test pins that documented limit so it cannot silently change.
+func TestEvidenceEchoesValidatedIdentifiersVerbatim(t *testing.T) {
+	sink := &fakeSink{}
+	req := fixtureRequest()
+	req.OperationID = "operation-with-visible-text"
+	if _, err := runExec(Runner{Provider: newMemoryProvider(), Audit: AuditConfig{Sink: sink}}, req); err != nil {
+		t.Fatal(err)
+	}
+	if sink.got[0].OperationID != "operation-with-visible-text" {
+		t.Fatalf("validated identifiers are expected to be echoed: %+v", sink.got[0])
+	}
+}
+
 func TestNilSinkIdenticalBehaviourAndSinkPanicDoesNotChangeOutcome(t *testing.T) {
 	req := canaryRequest()
 	a, errA := runExec(Runner{Provider: newMemoryProvider()}, req)
