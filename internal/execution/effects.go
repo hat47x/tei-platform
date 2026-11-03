@@ -109,3 +109,25 @@ type effectRule = semantic.EffectRule
 func NeedsCompensation(rule semantic.EffectRule) bool {
 	return rule.OnFailure == "compensate"
 }
+
+// Compensate runs the compensations that answer a failed effect, in the order the
+// rules were declared. Each attempt is journaled by RunEffect, so a compensation
+// that itself fails leaves a record instead of disappearing. All compensations
+// are attempted even when one fails; the first error is returned after the run.
+func Compensate(ctx context.Context, invoker Invoker, observer EffectObserver, journal effectlog.Journal, applicationID core.CanonicalID, rules []semantic.EffectRule, failed semantic.EffectRule, adapters driver.BindingAdapterResolver, input any) ([]effectlog.Record, error) {
+	if !NeedsCompensation(failed) {
+		return nil, nil
+	}
+	var (
+		records  []effectlog.Record
+		firstErr error
+	)
+	for _, rule := range CompensationsFor(rules, failed) {
+		record, err := RunEffect(ctx, invoker, observer, journal, applicationID, rule, adapters, input)
+		records = append(records, record)
+		if err != nil && firstErr == nil {
+			firstErr = fmt.Errorf("compensate %s: %w", rule.ID, err)
+		}
+	}
+	return records, firstErr
+}
