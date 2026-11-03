@@ -289,18 +289,33 @@ go run ./cmd/tei artifacts -workspace reference/standard-crud/workspace -applica
 
 - **MC-B01 / T-1・T-38 / M3-B**：Command`order=ORD-1`に対し、明示`Payload={"order":"ORD-2"}`を与える。現在のAdapterがその不一致をFake Providerの`WriteResource`に渡すことを**不安全な構成の特徴として観測**する。PASSが出ても対象照合の安全性を保証したことにはならず、Owner検査を実装した後は**不一致を拒否するTestへ置換**する。別Owner [#2616 OB-07A](https://github.com/hat47x/tei-platform/pull/2616)のOperationSurface→Driver Target driftと同一合格票にしない。
 - **MC-C01 / T-1・T-41 / M3-C/D**：内側Effect RunnerがFake TxでCommitした後、外側Command UnitOfWorkのCommitが失敗する。`COMMAND_COMMIT_FAILED`と内側Commitの記録が共存する構成を確かめる。外側Rollbackを内側実Effectの回復と推測しない。
-- **Exact-head Evidence（実測）**：[Focused Actions #41620889140](https://github.com/hat47x/tei-platform/actions/runs/41620889140) はhead `3b0ead5706f914209c4c76e18ea30aac250cb86b`、Go1.26.10/Linuxで `completed/success`。`TestCharacterizationExplicitPayloadDiffersFromCommandInput` と `TestCharacterizationInnerCommitCanPrecedeOuterCommitFailure` の**2件ともPASS**、gofmt・worktree不変を確認。これは「現行コードで不安全な構成が成立し得る」という合成反例の成功であり、**安全なPayload Target検査・原子的実Commitを証明するものではない**。前head `27aa489...` は `effectcommit.Transaction.Rollback()` と `command.Transaction.Rollback(ctx)` の型混同でcompile failed、別試行として保持。実Provider/DB/Current Grant/Receiptは**別試行・NOT RUN**。
+- **Exact-head Evidence（実測）**：[Focused Actions #41620889140](https://github.com/hat47x/tei-platform/actions/runs/41620889140) はhead `3b0ead5706f914209c4c76e18ea30aac250cb86b`、Go1.26.10/Linuxで `completed/success`。`TestCharacterizationExplicitPayloadDiffersFromCommandInput` と `TestCharacterizationInnerCommitCanPrecedeOuterCommitFailure` の**2件ともPASS**、gofmt・worktree不変を確認。これは「現行コードで不安全な構成が成立し得る」という合成反例の成功であり、**安全なPayload Target検査・原子的実Commitを証明するものではない**。前head `27aa489...` は `effectcommit.Transaction.Rollback()` と `command.Transaction.Rollback(ctx)` の型混同でcompile failed、別試行として保持。既存Reference Callerの隔離実PostgreSQL成功とは別に、**このCommand Adapter→正式Owner Target/Grant/Receiptを同一Attemptで検証する試験はNOT RUN**。
 
 | 次の適合切断点 | 本当のExpected／拒否条件 | 既存Ownerと実行資格 |
 | --- | --- | --- |
 | **M3-B→D Owner対象** | 実IntentとPayloadの業務Target/合法な関係変換を同一Attemptで照合し、O1選択→O2更新を条件付きCommitの手前で拒否 | #2598/#1174/#2499、P0-aの実PG試験。Fake Providerは証明外 |
 | **M3-C→D Tx/期間** | 必須Periodの取得不能・Closed/時点変更、内側Commit後外側Commitの失敗、ACK消失時の同OperationID Lookupを別結果へ分類 | #2144/#1129/#1174。外側Rollback≠内側Commit撤回 |
 | **M3-D→E Query依存** | 同じSQL SourceでもSchemaの追加で`NATURAL JOIN`の結果集合が変化（[隔離SQLite #2778 SM-15](https://github.com/hat47x/tei-platform/pull/2778)）。Schema/Mapping/Provider/Snapshotを再束縛し、実Countを当該OperationのTarget/Effectへ相関させる | #1126/#2387/#2622/#2600、#1129。SQLite局所PASS≠実TEI SQL Worker/実DB Effect |
-| **M3-E→F 外部委任** | TEIの意味Rule/Quality Claim→実Provider Commit/Receipt→必要に応じ任意EKIのTask/Attempt/Lease→実Body/SHO Consumer受領を別証拠で結合 | #1130/#2516、[横断 #2667 `27/31](https://github.com/hat47x/tei-platform/pull/2667)。EKI不要のローカル実行も妨げない |
+| **M3-E→F 外部委任** | TEIの意味Rule/Quality Claim→実Provider Commit/Receipt→必要に応じ任意EKIのTask/Attempt/Lease→実Body/SHO Consumer受領を別証拠で結合 | #1130/#2516、[横断 #2667 §27/31](https://github.com/hat47x/tei-platform/pull/2667)。EKI不要のローカル実行も妨げない |
 
 **最小合格定義**：M3のProduct資格は`同一Subject/Function/Owner受理意味→Actual Provider Target/Grant/Period→Conditional Commit/Receipt→必要な独立観測`を既存P0で証明できた場合だけ。Do-not-repeatのためのReceipt Lookup・Commit unknownを単なる再Submitで置換しない。Replica/全件監査/継続Jobは必要な場合だけ別Runへ移し、Request当時の最小安全検査を省かない。
 
 新規PRのGo CharacterizationとSQL/Organization/EKIの各局所Evidenceを、**同一Attempt E2Eに見せかけない**。#2602は既存設計・計画Markdownだけ更新、#2780は独立したGo Test/CIとREADME。新Test ID・共通Gate・第二Authority/Host/Registryは追加しない。
+
+### M3-D/Recovery：確定・再送・不確定をConsumerへ伝える資格
+
+[設計`16.5](../design/SCRIPT_MACRO_AUTHORITY_AND_EFFECT_TARGET_BINDING_2026-11.md)の対応として、[Draft #2780](https://github.com/hat47x/tei-platform/pull/2780)に**MC-D01/D02のGo Characterization**を追加した。従来MC-B01/C01（Target drift／二重Tx）の後に、**実行結果そのものがCommandから消費者へどう届くか**を点検する。新しい正式Result SchemaやRecovery Serviceはこの段階では採用しない。
+
+| 接続 | 独立Expectedと現在のOwner受入条件 | 状態／禁止する転用 |
+| --- | --- | --- |
+| **MC-D01：初回と冪等Replay**（T-41、M3-D） | 同OperationID/Inputsで1回Write＋1回Receiptの後、再送では新Writeなし。合成Providerでは両Callとも`command.Result{}`で区別できない。正式受入では歴史Receiptと再送/初回の識別をConsumerの用途別に伝える | Go Characterizationだけ。既存`submit.Outcome`の`Committed/Replayed`はA2未採用の別Caller参照であり、Commandへ無審査コピーしない |
+| **MC-D02：Commit unknown**（T-41/T-52、M3-D/F） | Fake Commit errorが`COMMAND_EXECUTION_FAILED`にwrapされても、`errors.As`で`CommitUncertainError`を識別できる。Host/Studio/AI/Queueの実表示とRetry判断は別検証 | 一般`ExecutionError`≠Rollback確定。`Lookup=not-recorded`も実Effectゼロの証拠ではない。新IDで再Submitしない |
+| **実PG Reference Caller**（M3-D） | [実PG run #41620889113](https://github.com/hat47x/tei-platform/actions/runs/41620889113)で`tools/reference-first-web-target`の`TestRunnerOrderSubmit...`を隔離PostgreSQL16に対して検証し、happy/replayed、Epoch失効、ACK喪失→Lookup、Evidence/観測をPASS記録 | **実PostgreSQLの局所成功は既に存在**。ただし`submit` Callerであり`commandadapter.Executor`、マクロScript Loader、Owner実Target/Host Policy／Studioとの**同一製品Attempt**を検証したものではない |
+| **継続適格性**（M3-E/F） | 実Receipt→当該Targetを相関した独立Read→実Consumerが許されるHistory Result/最新Projection/現在Disclosureを分離する | Outputが空/同じ、EKI Task ACK、SHO生成が成功でも、同じAttemptの実Body受領や現在Permissionを補完しない |
+
+**次の最小作業単位**：合成Goで`MC-B/C/D`の現行差分を検出したうえで、#1174/#2598の実Owner側へ`適切なGrant＋Target束縛＋内外Txの重複排除／明示分割＋同OperationID再照会`を受渡し、#1119 P0-aが要求する**実PG同一境界**へ接続する。既存`submit.Caller`の局所実DB成功があるので、まず**その既存Receipt/Dispositionの経路と新Command Adapterの差分だけ**を比較し、第二のGeneric Runner/Receipt Lookupを作らない。
+
+**Evidenceの固定**：MC-B01/C01旧head`3b0ead...`のGo2/2実測は保持する。MC-D01/D02追加による#2780新HEADのFocused/Repository Healthを別票で確認する。Go4件のPASSでも**観測した不安全な現行挙動のCharacterization**であり、Owner実行安全性PASSとはしない。対象Provider/Scope/Rule改版、SQL Schema drift（#2778 SM-15/16）、組織Owner/Resourceの時点、外部EKIのJob Resultを同じClaimへ合算しない。既存T-1〜61とP0/Gate A/B/C、#2667/各Ownerを維持。
 
 ## テスト証拠の受渡し：1ケースにつき別の保証を保持
 
