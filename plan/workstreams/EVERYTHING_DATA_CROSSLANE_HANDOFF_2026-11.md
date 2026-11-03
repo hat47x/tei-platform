@@ -1718,3 +1718,9 @@ EKIがTEIの組織関連Jobを受理する場合、EKIの配置可能性・予�
 [Org Policy Draft #2781](https://github.com/hat47x/tei-platform/pull/2781)のfixed HEAD `88f3e3e2e1a2352fa53625732f465fb2b8b07761`で、[Node Actions #41632269936](https://github.com/hat47x/tei-platform/actions/runs/41632269936)は**success**。Node v22.16.0、`verify.mjs`27 checks成功、`node --test`235/235成功（新規VP-01〜30を含む）、fail 0。GitHub jobログ上の新Source Blob `bdc4e63649fa3e728c8293fef55b43a0d278b1c1`とexact-head/clean stepを確認した。
 
 **昇格禁止**：実Host Grant/actual Provider Filter/Row-Level Security・実Data Context・テナント間非干渉・Query全経路・SHO/AI出力・実Source/Policy受理は未実施。synthetic `hostSimulation` の結果は実環境の認可ではなく、実Dataの秘密性を裏付けない。#2779 What-if別ブランチのNode成果や#2681 Native Goの成功を本PRの一試行と足し合わせない。#1119の製品Critical PathとSecurity/Privacy/Owner審査を維持し、実Enforcementを先行受理しない。
+
+### 37.5 最終fixed-head 33件とHost Scope根拠の別扱い
+
+[Draft #2781](https://github.com/hat47x/tei-platform/pull/2781)へ**VP-31〜33（Root・Axis・Policy Revision不一致）**を追加した。候補のScopeがD1からHに変わった、`command`から`budget`へ切り替わった、または`p-r1`から`p-r2`へ改版したのに、実Hostの旧Grantを利用してよいと判断する実装を拒否する。もちろんOrg MembershipやDirectory Groupと現在Grantは別事実のままである。
+
+固定HEAD `565a260403445556bb088f0433a53760fdcddda7`の[Actions #41632981999](https://github.com/hat47x/tei-platform/actions/runs/41632981999)は**completed/success**、Node v22.16.0、`verify.mjs`27 checks／`node --test`238/238 PASS・fail 0（VP-01〜33を含む）、Source Blob `9cb39f44a9eb55be51c3e56cc1cb19bbf16c4e8d`を確認。§37.4に書いた235件は旧HEADの局所合成成功の履歴。**現HEADに対する実TEI Provider/Host Enforcement／テナント分離／Query全Read/Export/Batch経路／SHO/AI Disclosure／Owner Meaningの資格はまだない**。
