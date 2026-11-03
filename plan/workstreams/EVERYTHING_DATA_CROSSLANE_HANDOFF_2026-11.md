@@ -1762,6 +1762,19 @@ Ownerの設計方針：Data ModelはSQL解釈から構造生成するのでな�
 
 **証拠状態**：本§36は既存TEI/ EKI契約に対する**Docs-onlyの差分**。LR-01〜12の本番/合成テスト実行、TEI→EKIの時間Contractの実ABI、計量/外部料金、Cluster/PC群の実予約・失敗回復、ML学習・shadow評価、性能/予算最適化の効果、TEI Owner意味受理、EKI Ownerの要件/ADR採用は**NOT RUN/未決**。§35とEKI ADR-0013を変更せず、公式製品の実装済みとは主張しない。
 
+
+### 36.5 回復許可と期限/予算適合を同一試行で接合する（RA-01〜26、2026-11-03）
+
+§36のLR-01〜12は「期限・回復余力・外部コスト」の資格だが、§31で観測した**Command Targetの不一致／内外Commit分離／初回とReplayの結果情報消失／Commit uncertain**を合わせて判定しない限り、回復のための新Attemptを安全に許可できない。§32のImported Source資格、SQL Schema閉包、§37の組織Policy/現在Grantが古いときも同様である。
+
+この**再実行の安全性A × 期限内にVerified Outputを得る可能性B**の二軸を、[独立した詳細計画](RECOVERY_ADMISSIBILITY_EFFECTS_AND_BUDGET_2026-11.md)にまとめ、[RA-01〜26の合成Reference](../fixtures/recovery-admissibility/check_recovery_admissibility.cjs)を追加。保存したGitHub上のJSを再取得してV8で**26/26 PASS（合成のみ）**を確認した。安全性・費用予測/実Resource Group/Host/実DBを検証する本番Gateではない。
+
+- **先に照合**：Business Commit unknown→同OperationIDのReceipt/独立Effect Read、Task completed/ACKだがBodyなし→Result取得、旧Lease active→Fence/遅着確認。Deadlineや予算が残っていても新しいOperationIDでEffectを再投入しない。
+- **再投入候補になった後に評価**：実Grant/Permit・内部Retry可否・現在Reserved Capacity・Core物理Budget・Core外の価格/支出承認、Queue+転送+Compute+Verification+Recovery、障害相関・公平性、Consumer実Body取得を比較。予測・候補・真正の予約/実Executionは区別。
+- **Ownerへの受渡し**：TEI #1130/#2598/#1174/#2600、EKI #58/#115/#154/#155/#19/#112の既存契約へRAを分配。特に[Macro #2780](https://github.com/hat47x/tei-platform/pull/2780)の実Go 4件のPASSは危険な配線のCharacterizationであって安全な実業務再実行の合格ではない。独立Expectedで同一Provider/Attemptを実測するまで新Product ABI/Controller/Grantを採用しない。
+
+**証拠範囲**：本節へのリンクとReference合成26件の成功のみ。TEI→EKI実Job一試行、実Go/PG/Result Consumer、Recovery Permit/Resource/価格・SLA、正式Owner受理は**NOT RUN**。#1119 P0-a/P0-b、§31・§35・§37のOwnerを変更しない。
+
 ## 37. 組織由来Record Policyの広域適用と個別除外：一般Data/RelationによるPolicy候補から実Provider/Host Enforcementへ（2026-11-03、採用前）
 
 ### 37.1 要件の適用範囲と意味を独立にする
