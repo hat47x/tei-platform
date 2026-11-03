@@ -712,9 +712,9 @@ strict方式でも`workspace.Load`自身のscan/各Sourceの読取り・追加�
 
 ### 15.3 M0を実コマンド・実Fixtureに接続した独立Draft
 
-これまでM0はCLIからのread-only受渡し計画だった。今回、[実装実証Draft #2678](https://github.com/hat47x/tei-platform/pull/2678)を新設し、mainで実在する`tei operations`／`tei artifacts`を`reference/standard-crud/workspace`の`ledger`に適用する検査器・合成負例11件・exact-head GitHub Actionsを**既存CLIに依存する別レーン**として保存した。
+これまでM0はCLIからのread-only受渡し計画だった。その後[実装実証 #2678](https://github.com/hat47x/tei-platform/pull/2678)がmainへ統合され（2026-11-02 21:52 UTC）、exact-head CIの合成Checker/実Go CLI両jobが成功した。統合したこのReferenceでは、mainで実在する`tei operations`／`tei artifacts`を`reference/standard-crud/workspace`の`ledger`に適用する検査器・合成負例11件・exact-head GitHub Actionsを**既存CLIに依存する別レーン**として保存した。
 
-M0は`validate/operations/artifacts`のWorld版・Rule/Gap・Manifestを照合し、`-out`書込みや実Providerは実行しない。[#2626](https://github.com/hat47x/tei-platform/pull/2626)の実Go CLI→人/AI二表示→Source移動の成功実測とは対象とScopeが異なる。**どちらの局所PASSも、今回のM0実行結果・Owner意味受理・Macro実権限へ自動昇格しない**。
+M0は`validate/operations/artifacts`のWorld版・Rule/Gap・Manifestを照合し、`-out`書込みや実Providerは実行しない。[#2626](https://github.com/hat47x/tei-platform/pull/2626)の実Go CLI→人/AI二表示→Source移動の成功実測とは対象とScopeが異なる。**M0の固定Public Fixture read-only実測は成立**したが、局所PASSをOwner意味受理・Macro実権限・実Provider/SHO/EKIの合格へ自動昇格しない。
 
 後続のM1実Consumer全Memberは[#2630](https://github.com/hat47x/tei-platform/pull/2630)を参照し、JavaのStore閉包は[#2652](https://github.com/hat47x/tei-platform/pull/2652)の実JVM独立6試験（復元class集合から公開10 Fixture）を異Targetの正例として利用する。Main.class単体のDigestは全class依存の完備を示さない。M3実Grant/DBとM4文書・Body実受領は既存Ownerの受入へ渡す。
 
