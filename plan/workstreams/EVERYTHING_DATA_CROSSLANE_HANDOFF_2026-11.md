@@ -1163,3 +1163,91 @@ CheckSetは**原則read-only**。RepairのSQL/CommandはFindingの副作用と�
 **採否**：TEIの標準実行はGo単一バイナリ、他Targetは用途別の補助。常駐TEI Host／汎用State Store／二重Scheduler／第二Source・Meaning Registry／万能Capability Gateは作らない。Reference UIの`Committed=true`、EKIの`AcceptedResult`、Replicaの`pass-in-scope`を単一の`success`へまとめない。Ownerが業務意味を受理した事実と、実Host/Providerが今回のEffectを許可・観測した事実も別。
 
 **検証・変更の範囲**：この§28は**並行Draftとmerged PRの実在に基づく計画追補のみ**。今回、実TEI Studio/GUI/CLI/DB/Provider/EKI/SHO/AI E2E、V0〜V3、業務Meaning受理を新たに実行・承認したわけではない。§27以前の設計を上書きせず、#2743/#2744/#2745の設計本文・既存Issue/ADR・本番Provider・Runtime APIを変更しない。
+
+
+## 28. モデルの参照・合成・継承――構造再利用と業務意味・Authorityの漏れを分ける（2026-11-03横断追補）
+
+> **状態：既存計画への選択基準・反証票。正式な`extends`文法、共通Equivalence API、継承Runtime、Owner認可継承、SQL Migration自動生成の採用ではない。** 2026-11-03の「モデル再利用/継承」横断レビューを、#2386/#2510の組織、#2620/#2638の自己記述Role、#1129/#1126/#2622の業務状態と保存、#2505/#1920の改版、#2600の選択的再生成へ接続する。既存§21のGR-01〜10と§24のVS-1〜5を置き換えず、**同じ実対象で互換性を判断する際の不足列**のみ追加する。
+
+### 28.1 再利用する単位と「似ている」の意味
+
+**構造を共有しても、業務意味を共有したとは限らない。** 最初に次の五つを別の比較として記録する。
+
+| 共有単位 | 共有できる候補 | 共有しただけでは成立しないこと |
+| --- | --- | --- |
+| `Data Shape / Type / Attribute` | 値域、Record/Relationの形、型検査・表示部品 | 単位/精度、FTEと人数、主従関係、業務Key、NULL/欠損/非開示の同義、同一Entity |
+| `Semantic Role / Operator / Rule` | 明示Role ID、typed Contract、採用済み意味と依存、検証法則 | quoted `role`文字列の起動、同名版の実装同一、未受理業務規則、Clientへの実行資格 |
+| `Organization / Business Relation` | Person/OrgUnit/Membership/Position/Occupancyの一般構造、型付きRelation | Membership⇒承認権限、複数Membership⇒単一所属、職位⇒現行Host Grant、組織改編⇒未完了Caseの自動移譲 |
+| `Workflow State / SQL Storage` | 正本Data Rule/Guard、logical stateと明示Storage Binding | `status`列の名前だけで同一Lifecycle、並行tokenを単一列へ無損失縮約、FK⇒業務Relation、SQL CHECK⇒遷移許可 |
+| `Source / Artifact / Consumer` | 固定版のSource occurrence、Role Pin、派生Artifact byte、歴史的Evidence | Source移動⇒現引用の自動再同定、Manifest一致⇒実Reader受領、過去PASS⇒現Grant/開示/Commit許可 |
+
+**意味上の「Role」も区別**：構文・意味解釈の`Semantic Role`、業務参加・責任の`Business Role`、外部Hostの`Principal/Grant`は三つの関係である。名前や同じRecord形式による暗黙の写像を作らない。Ownerも「モデル意味を受理するOwner」「Data/Relationの管理Owner」「Provider/Pluginの供給責任」「実行を許すHost主体」を分ける。この区分は新しい標準Owner enumの採用ではなく、既存受入票の識別欄である。通常組織Dataを一律に特別保護せず、必要なField/Provider/運用境界の開示だけを#2516で確認する。
+
+### 28.2 再利用の既定順：参照・合成が基本、継承は契約を限定して採用
+
+| 手段 | 判断基準 | 反例・やめる条件 |
+| --- | --- | --- |
+| **Reference（優先）** | 既に受理済みの同じ定義・Rule/Operator/型を**明示版とSource/Provider pin付きで**使う。案件のSubject/Owner/Grantは呼出し側で別Binding | 親定義の新版を無条件追随、同じdisplay名を別Tenantの同一IDへ自動解決、型同一で意味同一を主張 |
+| **Composition（優先）** | 独立したIdentity/Relation/Role/Rule/Storage実現の関係を、入力・出力・制約・多重度・時点を宣言して組む | 「PositionがMembershipを包含」「Workflow StateがBusiness Objectと同一ID」という単一継承鎖への押込み、二重のCurrent State Writer |
+| **Inheritance/refinement（限定）** | 同じ主体・概念の専門化で、**親の観測契約を子で維持できる**ことを独立Expectedと差分検査で確認した場合。定義の継承そのものは実装選択待ち | 追加した必須Input/Guardで親の利用者を拒否、親の許す結果を弱める、作用/副作用を拡大、ParentのOwner受理/Host Grantまで子へ自動コピー |
+
+限定的な置換可能性の判定では、親を使う既存Function/Consumerについて **(a) Inputの受入条件を強めない、(b) Output/結果/不変条件を弱めない、(c) 未宣言Effectを追加しない、(d) Identity/Relation cardinality・bag/grain・NULL/unknown・有効時点の期待を壊さない** ことを確認する。子が親より厳しい業務制約を必要とする場合は、親の代替としての一般互換ではなく、**特定用途での新しい受理・明示Composition**とする。形式的な型変性/置換判定を一般の業務意味受理へ自動昇格させない。
+
+**最初の三つの異質なSubject**（いずれも作業例・正式DSL/受理ではない）：
+1. **受注`sales.order`**：`status=pending/submitted/cancelled`はData Script/Ruleが唯一の業務意味、同じ本体レコードの状態Fieldを第一候補にする。取消可能性・更新Permissionは単なる`status`型の継承で成立しない。
+2. **組織`organization.membership`**：Person P2にMembership M2/M3が同時に存在し、別の`validAt`/`knownAt`・FTE/Position/Responsibilityを持つ。MembershipはPersonのsubclassや単一`parentOrg`ではなく、**独立Occurrenceを持つRelation**として表現する。組織編成D1→D1a/D1bでRole/Case Q1の責任先・承認Grantを暗黙移植しない。
+3. **承認Workflow**：同じBusiness Subjectに対し申請Attempt A1/A2があり、`approvalStatus`が複数active token/履歴を持つなら、単一`Order.status`へ強引に継承して縮約しない。業務本体の複数Field/構造化Field、sidecar、中央/外部Storeを**容量・更新原子性・多重度・運用要件の証拠**で選択。物理保存の第一候補は本体状態属性だが、意味的な非可逆圧縮を許さない。
+
+Buri由来の図表駆動・State Machineは、業務Procedure・Rule/Function・実行中の永続Workflow/Timerと区別する（Draft #2744）。またゲームやUIのState Machineは業務固有のOwner/承認を継承しない別Domainの意味Role候補。全Domainへ同一Workflow Schema/Runtimeを要求しない。
+
+### 28.3 保存版・受理・生成・実行の独立Pin
+
+**固定すべき再利用証拠の最小束縛**（比較票の列であり新永続Schemaではない）：
+
+`source locator+occurrence / original bytes+source index / workspace formatVersion / grammar&role ID+version+contract fingerprint+implementation fingerprint of eager dependency closure / accepted subject+meaning revision+Owner scope / key+Relation+time semantics / binding target+Provider/schema+operator pin / generator/toolchain+artifact member+manifest / actual reader/consumer+purpose / current disclosure&Host grant / observed result+attempt+time`。
+
+- [merged #2694](https://github.com/hat47x/tei-platform/pull/2694)でWorkspace manifestの`formatVersion: 1`必須・未指定/未知将来版拒否は実装済み。ただし **formatVersionは内容のMeaning versionでない**。旧形式からの変換器、Plugin固有書式、Owner意味受理は別。
+- [merged #2638](https://github.com/hat47x/tei-platform/pull/2638)の有限Role Bootstrap・推移Pinは合成Reference/設計の証拠。Role名とversionだけの一致、実装Fingerprint未照合を現在の相互運用資格にしない。新しいInheritance ResolverやRole Authorityを別に作らない。
+- Source`A→B→A`の同じ最終byteや、ファイルのrename/content保持から**期間内無変更・Occurrence自動対応・最新Review適用**は推論できない。#2505の多版Source対応はCandidateで、現在の意味Owner受理・SHOの文書Occurrence/Reviewと区別する。
+- 本体`status`Field／JSONB／sidecarなどStorage Bindingの改版では、**Key tupleの型と順序、Subject/Workflow Instance/Active occurrenceのID、Provider/Tx/CAS能力、current writer唯一性、必要履歴、NULL/absent/partial** を明示検証する。単純な`ALTER TABLE`や同名FKだけで業務同義のMigration成功を宣言しない。
+- 現Grant/Disclosureが変わっただけなら旧Artifact byteや歴史的検収は保存候補だが、現在の実Action/送出資格は再確認する。再利用の適否は`structural candidate`、`accepted meaning`、`actual consumer/host qualification`という別の主張である。
+
+### 28.4 MRU-01〜12：前回横断レビューを既存Owner試験へ割り付ける最小互換性票
+
+| Case | 明示する負例（比較する変更は原則一軸） | 独立Expected／誤受理を拒否する条件 | 既存の受け皿 |
+| --- | --- | --- | --- |
+| **MRU-01** | `Person`/別Business Person型が同名・同Shape | Shape一致のみなら`structurally comparable`まで。主体同一／Owner同一とはしない | #2495/#2497/#2514 |
+| **MRU-02** | 同一Attribute IDでFTE比率→人数、Decimalの丸め/単位変更 | 値・型互換でも意味・粒度・単位の変換が未受理なら代替不成立 | #2386/#1063/#2514 |
+| **MRU-03** | Membershipを持つ社員を承認者として提案 | 所属を見せることは可、Business Role/Delegationと現Grantが無ければ実承認不可 | #2386/#2507/#1174 |
+| **MRU-04** | P2のM2/M3同時所属とD1→D1a/D1b改編、Case Q1未処理 | Membership occurrence/時点/責任を保持、PositionやCase ownerの一意性を捏造しない | #2681/#2386/#2510 |
+| **MRU-05** | Root Roleのversion同一で実装Fingerprint I1→I2 | Version-only pinを適合としない。影響するTyped Meaningを再資格化 | #2620/merged #2638/#988 |
+| **MRU-06** | Root不変、Eager依存RoleだけI1→I2（別の無関係Roleは不変） | 依存閉包は再評価、独立Claimの全失効をしない | #2638/#2600 |
+| **MRU-07** | Orderの同じRuleをembedded列→複数Field/SidecarへStorage Binding変更 | 状態/Effectは独立Oracleで比較、物理Schema一致を業務同義にしない | #1129/#1126/#2622 |
+| **MRU-08** | 並行Token2つを単一`status`文字列へ写像 | Branch/履歴/Instance identityを失えばlossless継承不可 | #1129/Draft #2744 |
+| **MRU-09** | 複合Key `(tenant,orderNo)`、異なるSortKey/State Instance/保存先の合成 | 型・順序・Scope・Key同定・CASを固定。物理PK/FKや文字連結で誤結合しない | #1126/#1129/#2622 |
+| **MRU-10** | Sourceファイル名移動のみ、内容/World同一 | Meaning/生成再利用候補とSourceIndex/SHO引用再確認を分離 | merged #2649/#2505/#2516 |
+| **MRU-11** | Relation先/Credit Limit、`NOT EXISTS`の0→1→0、出力値不変 | 動的/否定依存・Scope/row+field completenessを再評価。変更が未観測ならUnknown | #2387/#2582/#2600 |
+| **MRU-12** | Owner承認範囲/現在Host Grant/Disclosureだけ失効 | 旧検証は歴史的に保持、実Command/外部送信は新資格なしに実行しない | #2516/#1174/TAI #271 |
+
+**Referenceの合格と、実TEIの合格を混ぜない**。既存#2638 RB系の合成24件、#2655の組織合成、#2649の実Go CLI/Artifact Readerはそれぞれ独立の証拠。上記**MRU-01〜12を同じSubject・Meaning Role/Plugin Pin/Storage Provider/Hostで走らせた正式E2EはNOT RUN**。
+
+### 28.5 実装済みの足場と、実際にまだ届いていない範囲（2026-11-03現在）
+
+- **実Go Compiler/CLIで観測済み**：[Draft #2681](https://github.com/hat47x/tei-platform/pull/2681) exact HEAD `8efe0d351a244b57fefd00b498a5b47136619ac5`の[Native organization workflow #41580077197](https://github.com/hat47x/tei-platform/actions/runs/41580077197)は**completed/success**。Go 1.26.10で`TestOrgHeadless`、`validate`、`operations -application org_view`、`artifacts`が成功。Membershipの`list/read`2件だけを導出し、更新/承認Bindingを捏造していない。ArtifactのManifest `complete=false`、`findings=0`を保持している。**同じData Modelの継承・変更時互換性、実Provider/DB/Host/Owner受理は未実証**。このDraftを汎用組織管理の製品完成と呼ばない。
+- **別Domainの実CLI実証**：merged [#2649](https://github.com/hat47x/tei-platform/pull/2649)の固定実行には`validate→operations→artifacts→-out独立Reader`とSource-only移動・旧新Revision混在拒否がある。しかし異Domainのローカル成功を、MRU-04やMRU-07のRule/Storage互換へ合算しない。
+- **Role/形式の基線**：merged #2638は有限Bootstrapの合成Role検証、merged #2694はWorkspace Manifestの形式版拒否であり、前者は正式Role実装、後者はModel内容版/Migrationまでの受理を証明しない。
+- **未接続**：二Domain間の実Role/Attribute再利用、実Model Reference/Refinement Grammar、Business Role/Owner受理、Physical SQL State Storage/複合Key/CAS、外部Provider/Host認可・Effect、SHO文書Occurrence/Reviewの実受渡し、Target Generated binaryの同等性、Selective full vs incremental性能測定は**NOT RUN／Owner未受理**。
+
+### 28.6 最小の実証順と採用条件（既存#1119/#1163へ渡す）
+
+**R0 — Source・Shape/Role契約の固定（read-only）**：`reference/standard-crud/workspace`と`reference/org-headless-workspace`を別Domain基準に用い、formatVersion/Source bytes/Subject/Type/Attribute、Role/Operator実装依存Pin、独立Expectedを固定。**再利用元と利用側の同じMeaningを人工的に仮定しない**。MRU-01/02/05/06で、構造可視と意味採否を別票にする。現実の`extends`構文がない範囲は「NOT RUN: missing concrete entry」と明記して手書き継承Engineで製品合格にしない。
+
+**R1 — 合成と限定置換可能性**：まずReference/Composition経路でP2のM2/M3、Order状態Rule、承認Attemptを同じtyped Input/Output/Ruleに束縛可能か検証。追加必須Guard／出力保証弱化／Effect増加／未知関係の縮約を変異として加え、独立Expectedで拒否。受入済み意味の追加・変更は元Owner判断を必要とする。Graph/Tree/UIの見た目一致を互換にしない。
+
+**R2 — 実Go縦断・Storage Conformance**：#2681の実Source→World/OperationSurface/Artifactと#2649の実Readerを、**同一固定HEAD/Workspace/Subject/Role版**で接合。次にEmbedded→Sidecar等の物理Binding変更を#1126/#1129/#2622の実Providerへ委譲し、NULL/Key/状態token/履歴/条件付き更新/独立Readの変化を確認。実Provider入口が未接続なら`NOT RUN`を残す。#1129の現行Writer一つの原則に反して二重状態を書かない。
+
+**R3 — selective regenerationとCurrent Qualification**：Sourceのみ、Rule/Role only、Storage Binding only、Dynamic Relation/0件集合、Consumer/Grant onlyを一軸ずつ注入。`Clean full`と`selected invalidation`を比較し、**(a) Source/Meaning再読取、(b) 生成Build要否、(c) Artifact/文書再読取、(d) 実Data再取得/Claim再評価、(e) 現Grant/開示資格**を別列にする。False reuseだけでなく、無関係成果物の不必要な全再生成も計測する。変更通知Coverageが欠けるときはskipしない。歴史的Receiptを削除しない。
+
+**採否・停止**：2Domainを試しても、型/属性の一致を意味同義、MembershipをApproval Authority、同じ`status`を同じLifecycle、物理保存変換を意味保存、同じSource byteをOwner再受理と自動判定した場合は該当Reuse方式を棄却。親型への置換可能性・有益性が独立Expectedと現実のConsumerで確認されない限り、TEI Coreへ一般継承機構を増やさない。逆にReference/Compositionで目的を満たせるならそれを既定に採用候補とする。
+
+**Owner/ADR帰属**：#2619/#2620/#988は共通DataとRoleの意味、#2495/#2497は構造とProjection、#2386/#2510は組織、#1129/#1126/#2622は状態/SQL/Provider、#2505/#1920はSource/形式版、#2600/#2582はBuild/Runtime失効、#2514は独立Oracle、#2516/#1174はConsumer/Host資格、#1163/#1119は同一Attempt・優先順位。**本節でIssue/ADR本文・優先度・Ownerの正式意味・新Core/Parser/Resolver/Host/認可Engineを変更しない**。継承文法と正式契約は実証が揃うまで保留する。
