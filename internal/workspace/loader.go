@@ -52,6 +52,9 @@ type Result struct {
 	sourceSnapshotRoot  string
 	sourceSnapshot      map[string][]byte
 	semanticSourceFiles []string
+
+	// Locally parsed Semantic Source files, grouped by their declared Namespace.
+	semanticFilesByNamespace map[string][]string
 	// Load-time bytes of managed files that no domain loader parsed (for
 	// example a forward-compatible source root asset). Kept separate from
 	// sourceSnapshot so the parser-bound meaning of that map, and of
@@ -63,6 +66,13 @@ type Result struct {
 	// change every accepted revision); it is recorded here instead.
 	sourceManifest        ManifestIdentity
 	sourceImportsDeclared bool
+
+	// Original manifest bytes captured by Load; separate from Source Index.
+	sourceManifestBytes []byte
+
+	// Same-Load parsed evidence of explicitly selected external Namespaces.
+	// This private evidence does not grant cross-Provider snapshot qualification.
+	importedParsedLoads map[string]importedParsedLoad
 	// Format version declared by the Workspace manifest. Semantic files may
 	// declare their own header; when they do, it must agree with this value.
 	manifestFormatVersion int
@@ -142,6 +152,7 @@ func loadWithStackHooks(root string, visiting map[string]bool, hooks loadHooks) 
 	var roots []string
 	var imports []WorkspaceImport
 	var manifestID ManifestIdentity
+	var manifestRaw []byte
 	manifestFormatVersion := 0
 	if src, err := readPinnedWorkspaceFile(sourceRoot, "tei.workspace.yaml"); err == nil {
 		manifest, parseErr := parseWorkspaceManifestYAML(string(src))
@@ -166,8 +177,10 @@ func loadWithStackHooks(root string, visiting map[string]bool, hooks loadHooks) 
 		manifestFormatVersion = manifest.FormatVersion
 		roots, imports = manifest.Sources, manifest.Imports
 		manifestID = ManifestIdentity{Path: "tei.workspace.yaml", SHA256: sourceindex.Fingerprint(src)}
+		manifestRaw = append([]byte(nil), src...)
 	} else if src, legacyErr := readPinnedWorkspaceFile(sourceRoot, "tei.workspace.tei"); legacyErr == nil {
 		manifestID = ManifestIdentity{Path: "tei.workspace.tei", SHA256: sourceindex.Fingerprint(src)}
+		manifestRaw = append([]byte(nil), src...)
 		var parseErr error
 		roots, parseErr = syntax.NewParser(string(src)).ParseWorkspace()
 		if parseErr != nil {
@@ -196,6 +209,7 @@ func loadWithStackHooks(root string, visiting map[string]bool, hooks loadHooks) 
 		sourceImportsDeclared:       len(imports) > 0,
 		manifestFormatVersion:       manifestFormatVersion,
 	}
+	r.sourceManifestBytes = manifestRaw
 	// TEI standard semantic types are a library prelude, not Micro Kernel kinds.
 	r.World.Semantics = append(r.World.Semantics, stdlib.SemanticNamespace())
 	if hooks.afterPin != nil {
@@ -522,6 +536,11 @@ func loadSemantics(root string, r *Result) error {
 			return sourceErr(path, fmt.Errorf("workspace formatVersion 2 requires an explicit semantic formatVersion header"))
 		}
 		r.semanticSourceFiles = append(r.semanticSourceFiles, relPath(root, path))
+		if r.semanticFilesByNamespace == nil {
+			r.semanticFilesByNamespace = make(map[string][]string)
+		}
+		r.semanticFilesByNamespace[string(ns.ID)] = append(
+			r.semanticFilesByNamespace[string(ns.ID)], relPath(root, path))
 		idx, ok := byNamespace[ns.ID]
 		if !ok {
 			idx = len(r.World.Semantics)
