@@ -1,10 +1,10 @@
-# Command → effectcommit の二つの接合負例（限定Go Characterization）
+# Command → effectcommit の四つの接合・結果資格反例（限定Go Characterization）
 
 - **状態**：テスト専用・合成の現行挙動記録。安全な実装の受入や正式業務意味の証明ではない。
-- **対象**：`internal/security/effectcommit/commandadapter/executor_characterization_test.go`。既存の `adapterWorld()`／`request()`／`grant()` と本物の `command.Invoker`・`commandadapter.Executor`・`effectcommit.Runner` を通す。Providerと外側UnitOfWorkだけを合成とする。
+- **対象**：`internal/security/effectcommit/commandadapter/executor_characterization_test.go`・`executor_result_characterization_test.go`。既存の `adapterWorld()`／`request()`／`grant()` と本物の `command.Invoker`・`commandadapter.Executor`・`effectcommit.Runner` を通す。Providerと外側UnitOfWorkだけを合成とする。
 - **設計との接点**：[Macro設計PR #2602](https://github.com/hat47x/tei-platform/pull/2602) 第16章／M3-B・M3-C・M3-D。[#2598](https://github.com/hat47x/tei-platform/issues/2598)、[#1174](https://github.com/hat47x/tei-platform/issues/1174)、[#1129](https://github.com/hat47x/tei-platform/issues/1129)、[#1119](https://github.com/hat47x/tei-platform/issues/1119)のOwnerとP0は変えない。
 
-## 二つの独立Expectedと現在の観測
+## 対象・Tx境界についての二つの独立Expectedと現在の観測
 
 | ID | 独立Expected／入力 | テストが現在記録するもの | 証明しないもの |
 | --- | --- | --- | --- |
@@ -32,10 +32,10 @@ go test ./internal/security/effectcommit/commandadapter -run TestCharacterizatio
 
 **設計上の停止線**：内部Goの型付きCauseを保持することと、外部Studio/API/CLIへ正しい非実行Dispositionが表現・伝達されることを分ける。未知Commit時は**同OperationID・同PayloadのRequestで権限適格性を確認してLookup**し、Lookupが `not-recorded` でも対象Ownerの実Effect状態の保証がなければ新Effectを自動実行しない。実Host/Providerと独立Owner read/Receipt照合は[#1174](https://github.com/hat47x/tei-platform/issues/1174)／[#1119](https://github.com/hat47x/tei-platform/issues/1119)へ委譲する。
 
-この追加は**Test Characterizationのみ**であり、初回/Replay/unknownを伝達する正式なResult schemaを採用・実装したものではない。Head更新後のCIは実行記録のSHA/Workflow結果を確認するまでPASS扱いにしない。
+この追加は**Test Characterizationのみ**であり、初回/Replay/unknownを伝達する正式なResult schemaを採用・実装したものではない。[Focused Actions #41632111078](https://github.com/hat47x/tei-platform/actions/runs/41632111078)では直前head `c9927f247839106c28811e14abba16a53bd38e98` のGo1.26.10/Linux実試験 **4/4 PASS**、`gofmt`・worktree cleanを確認。ただし、その後のWorkflow/README変更HEADに同じ合格を自動転記しない。
 
 ## 次の実装所有と中止線
 
 - MC-B01に対しては、呼出側で`OperationID`・`Grant`・`ExpectedVersion`・`Payload`を同一Operationとして確定させた根拠が必要。合法な関連明細更新もあるので、単純な文字列一致で全件を拒否せず、Ownerが受理したTarget変換とProvider側の実書込み対象を結ぶ。
 - MC-C01では、外側UnitOfWorkとRunner内側Transactionが**同一物理Tx**に参加している根拠がなければ一つのAtomic Commitと主張しない。Commit uncertainでは同じOperationIDの既存Receipt照会を優先し、異なるIDで無確認再実行しない。
-- この2件は合成Providerのみ。現在Grant発行/失効、実PostgreSQL、BusinessResult、独立SQL Observer、Effectlog Journal/補償、Studio/SHO/EKI Consumer、OS隔離、Owner意味受理は未実行。P0-a／P0-b・Gate A/B/Cは変更しない。
+- 本PRの4件はすべて合成Providerであり、現在Grant発行/失効、**Command Adapterに接続した実PostgreSQL**、BusinessResult、独立SQL Observer、Effectlog Journal/補償、Studio/SHO/EKI Consumer、OS隔離、Owner意味受理は未実行。別Callerでの実PostgreSQL Reference（#1174）は既存の限定証拠として区別する。P0-a／P0-b・Gate A/B/Cは変更しない。
