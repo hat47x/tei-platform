@@ -313,3 +313,21 @@ L1の単一Field PATCHはL1 ID、対象属性、Version等で意味的候補化�
 **資格表示**：static-inspected、synthetic-test-passed、actual-cli-observed、harness-load-observed、tool-invocation-observed、consumer-observed、provider-effect-observed、owner-accepted を単一progress数値へ圧縮しない。これは既存Evidenceへの**説明ラベル案**であり、正式enum/新Gate/Registryを採用する提案ではない。unsupported、not_run、insufficient-evidence、fail、successは根拠と対象を明記し、成功/失敗の二値へ丸めない。
 
 **停止線と現状**：E0の既存TEI限定Read-only実証は#2626の根拠を参照。#2607のTS-16〜19の新全体11件/実checkout/CI、TAI SK-02の実4 Session、実Tool/OS/Networkの観測、同Taskの正答・費用改善、Action→Provider Effect、Owner意味受理は**本節としてNOT RUN**。外部HarnessをTEI Target生成物の実行必須条件にしない。新Host/Policy/Skill Runner/Universal Shell Parser/Benchmark Engine/Authorityの第二正本を設けない。
+
+<!-- 20261103-real-cli-ob01-02-test-bridge -->
+## 12. OB-01/02の「実CLI」に対する最小検証をGitHub上へ接続（2026-11-03）
+
+### 12.1 設計から試験実行導線へ移した範囲
+§10でNOT RUNとしたOB-01（CLI discoveryとdispatchの差）／OB-02（OperationSurfaceの期待ID/gap/binding/版）について、既存[#1127標準CRUD負例](https://github.com/hat47x/tei-platform/blob/main/reference/standard-crud/README.md)を**実際にビルドしたGo CLI**で読む試験スクリプトと、PR exact HEADで走る専用GitHub Actionsを本Draftに追加した。
+
+- [試験スクリプト](../../plan/fixtures/action-surface-cli/verify_real_cli.py) はGitHubチェックアウト内の公開合成 `reference/standard-crud/workspace`を実CLI `operations -workspace ... -application ledger`で読み、既存READMEに凍結された5 Operation／4 Gapの順序、missing-semantics・conflict・missing-input、Rule ID/Version/Fingerprint、World/Model Revision、authorityLimits、write Operationのbinding/Effects/expected-state、同じ固定入力での再実行同値を検証する。既存Go単体テストをそのままPASSとして流用せず、CLI subprocess/JSON解釈・Pathを含む実受渡しを試す。
+- **新たに静的Sourceで確認した差**：`tei operations` はstdoutへのread-only Surface表示だけでなく `-out <file>` を受け、`os.WriteFile`で**実ファイルを書き込む**。従来§10/§11で強調した `artifacts -out`と同様、`operations -out`も「read-onlyなOperation Surface」と「CLI invocation全体のOS作用」が別である具体例。スクリプトは一時ディレクトリのみで `-out` を実行し、stdout版とのJSON同値と実ファイル生成を確認する。ファイル書込みの内容同値は原子的な出版・権限・秘密非送出の保証ではない。
+- [Focused Workflow](../../.github/workflows/action-surface-real-cli.yml) はPR exact HEADを固定、チェックアウト状態/スクリプトBlobを表示、`go.mod` のGoを設定、Checkout**外**の一時パスへビルド、実CLI/公開負例Workspaceを実行し、終了後のgit cleanを確認する。変更経路以外のGo/Provider/Host/実DBを実行しない。
+
+**現状の厳密な区別**：ここで行ったのは**GitHubへの実試験SourceとCI実行導線の保存**である。Workflow run のexact-head successful conclusionとlogを別途照合できるまでは、OB-01/02の新規実CLI PASSと主張しない。元の#2587 internal/operations Go単体・#2626の実CLI限定成功は先行別証拠。OB-03〜08は引き続きNOT RUN。仮に本試験がPASSしても、Meaning受理、Rule全入力閉包、CLI完全discovery、実Product Skill/Harness、実Provider、Artifact公開の原子性、Host Grant/Receipt/独立Read、業務Owner受理は未確認。
+
+### 12.2 残されたドキュメントドリフト（他Ownerへの引渡し）
+既存[OPERATION_SURFACE_DESIGN](OPERATION_SURFACE_DESIGN_2026-11.md)と[DERIVED_CRUD_OPERATION_DESIGN](DERIVED_CRUD_OPERATION_DESIGN_2026-11.md)は初期設計時点の `tei operation surface`／W5 CLI未着手／全コマンドdiscoveryへの追加を記述している箇所がある。一方、現mainには `tei operations` の実dispatchがあり、`tei commands` は意図的に selected-read-only-commands を返す。**既存文書は歴史的な提案と現実のCLI仕様が一部食い違っている**。本PRで他Ownerの設計文書やCLI ABIを無断変更せず、#1127の担当へ「実dispatch/引数/既存契約/現行Statusを照合して注記を修正する」差分のみ引き渡す。help usageの列挙漏れも同じ現実確認対象。CLIが存在することから正式公開・全利用資格を推論しない。
+
+### 12.3 他チャットの業務状態・ジョブ管理への非昇格
+標準Operation Surfaceに `Autonomy: unattended` と表示されても、E​​KIのジョブ起動資格、Workflowの状態遷移許可、期間状態、リソース予約（GPU/CPU/Memory）や継続実行の安全性は導出できない。状態は業務レコードの属性/履歴/対象固有契約、ジョブの実行とリソース調停は各Runtime/外部Coordinatorが担い、TEIはその意味モデルとシミュレーション/可視化・監査根拠を提供する。#1125 Business Procedureの手作業・契機は自動実行定義と混同せず、#2622 Providerが実現可能な副作用との差を残す。具体的なEKI連携はOwner側の独立Fixtureと実観測が得られるまで、新しい万能State Engine/Host/Resource RegistryをTEIへ追加しない。
