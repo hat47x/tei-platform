@@ -137,8 +137,19 @@ def observe(binary, workspace, app, expect_negative):
         require(set_doc["manifest"]["complete"] is False,
                 "negative fixture was silently called complete")
     else:
-        # A complete application is not required; nonnegative here means the
-        # expected operation exists, not that there are no other gaps.
+        # Independent observed counterexample at this reference revision:
+        # all standard operations derived does not mean every document did.
+        require(len(ops["gaps"]) == 0,
+                "order_entry operation gaps changed: re-qualify the fixture")
+        require(set_doc["manifest"]["complete"] is False,
+                "order_entry manifest completeness changed: re-qualify the fixture")
+        other_unresolved = sum(len(item.get("unresolved") or [])
+                               for item in set_doc["artifacts"]
+                               if item.get("kind") != "operation-surface")
+        require(other_unresolved > 0,
+                "manifest incompleteness must originate outside operation-surface")
+        require(not (artifact_surface(set_doc).get("unresolved") or []),
+                "surface must have no unresolved when operation gaps are empty")
         require(any(x.get("id") == "order_entry.update.sales.order"
                     for x in ops["operations"]),
                 "expected accepted-model standard update is not listed")
