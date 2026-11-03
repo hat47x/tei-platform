@@ -25,6 +25,17 @@ Data Script（名称・Syntaxは未確定）は、`order.billing_ready`の**純�
 - 状態を変更する目的で`billing_ready`へのwriteを許すと、元の事実との二重管理が再発する。仮想Attributeへの明示writeは原則unsupportedとし、受理された**元データへのOperation**へ誘導する。手動上書きが業務要件なら「明示Overrideという新しい元データ」をモデル化し、導出式の入力とし履歴化する。
 - 純粋導出と、write前Validation、before-write mutation、同一Tx Effect、post-commit外部Effectは#1129の既存Phaseで分離する。Data Script内の計算が外部Jobを暗黙起動することは禁止する。
 
+### 1.2.1 Data Script上の「項目変更→Flow」Bindingを第一級の設計入力とする
+
+**ユーザー要求として、Data Scriptの中で、通常Field／仮想Attributeの変化を契機にする宣言を置ける構成を検討する。** これはData ScriptがJobやQueueを直接操作する方式ではない。例えば`billing_ready`の導出式と、その`false→true`変化を`invoice_pipeline`へつなぐ**Trigger参照Binding**を近接記述できるようにする。
+
+- **Data Model**：仮想項目の宣言・型・対象Data Identity・read-only（例：`order.billing_ready`）。
+- **Data Script**：導出規則、その依存・時点・取得完全性、さらに変更時に起動すべきFlow ID／Event Contractを**宣言として関連付ける**。Source位置とstable Attribute/Rule/Trigger IDを保持する。
+- **Flow Definition**：起動契機のedge/level等の意味、前提・受理済Rule／必要なData/Job Target・失敗／再実行Policyを保持。Data ScriptにFlowの全Stepを重複定義しない。
+- **Execution Binding**：Changed Event/Job Intentを、そのHost/Providerで実現できるかを検証。実行権限、現在のData/Grant、Durable effect/Receiptはこの段階の責務。
+
+UIで当該項目を選んだ際、**Data Modelの宣言→Data Scriptの式とTrigger参照→Flow図／状態表→Batchジョブ**が相互に辿れ、いずれの箇所から修正しても同じReference IDへ差分候補を提示できることを受入項目にする。これならデータ中心・フロー中心の双方から機能を設計できるが、三つの宣言をそれぞれ「業務状態の別正本」とするわけではない。
+
 ### 1.3 Flowは「評価された状態・変化」と「副作用Intent」を結ぶ
 
 Flowには`when physical attribute changed`、`when derived value transitions`、`when state condition holds`、`when domain event committed`等の契機の**意味上の違い**を明示できることを要件とする。これらは仮の記法であって正式Grammarではない。
