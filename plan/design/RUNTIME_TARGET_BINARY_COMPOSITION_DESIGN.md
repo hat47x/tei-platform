@@ -348,3 +348,87 @@ Providerの準備時に決める構成パラメータ、要求ごとの入力、
 Contract/Conformanceは[#951](https://github.com/hat47x/tei-platform/issues/951)、Composition/Generationは[#1223](https://github.com/hat47x/tei-platform/issues/1223)、Artifact/Buildは[#943](https://github.com/hat47x/tei-platform/issues/943)、Runtime/Target/Trustの差は[#259](https://github.com/hat47x/tei-platform/issues/259)に戻す。Providerの申告、契約の意味上の受理、Artifact検証、現在のHost権限を相互に代用しない。
 
 標準Adapter、CLR/JVM直接ホスティング、Wasm Component/WIT、製品用の項目対応付けの記述構文、相互作用ごとの型付き契約は**未決**である。これらを新しい固定種別、第二のLock、独立Resolver、公開仕様として先取りしない。
+
+## 14. 業務FunctionとBuild Unitの割当・Job入口（2026-11-03、評価候補）
+
+**状態：設計候補／NOT RUN／Owner未受理。** X-TEA XF000の対話画面・定時起動を起点に、同一の型付きFunctionをUIボタン・CLI・cron・Web・既存Host/EKI等から呼び出す要求を、本書の配備単位に接続する。Goの単一実行ファイルを標準的な生成物としつつ、必要になった時点で設定を最小限追加し複数バイナリへ分割できることを狙う。TEI独自の共通Hostや常駐Schedulerは追加しない（[ADR-0043](../adr/0043-target-native-artifacts-without-tei-host.md)）。
+
+### 14.1 論理構造、ビルド、配備、入口の独立性
+
+| 区分 | 所有する内容 | 誤って同一視しないもの |
+| --- | --- | --- |
+| System／Subsystem／Function／Action／Data Rule | 業務・分野の論理構造とAccepted Meaning | フォルダ名・Go package・実行ファイル名 |
+| Invocation Binding | UIイベント／CLI／時刻／外部要求とFunctionの引数対応 | 実行権限・物理配置 |
+| Build Unit（候補名） | 特定Targetの入口集合、必要実装の依存閉包、Builder入力 | Subsystem、Deployment Unit |
+| Artifact／ArtifactSet | exact bytes、member、ビルド・Source・Toolchain来歴 | 起動可否、現在の認可 |
+| Deployment Unit／Entry Point | 配置・更新・停止の単位、実際のCLI/HTTP等の呼出し入口 | 内部に含まれるFunction全件 |
+
+一つのFunctionが複数Build Unitに含まれてよい。一つのArtifactを複数Deploymentで使用しても、そこでの主体・Environment・権限・寿命は別。Functionがバイナリに静的結合されても、公開Entry Pointに指定されなければ外部から呼べない。PluginとArtifactの多対多は既存[#1097](https://github.com/hat47x/tei-platform/issues/1097)/[#1102](https://github.com/hat47x/tei-platform/issues/1102)へ戻し、新しいBuild Engine／Artifact Lockは作らない。
+
+### 14.2 設定なしから必要時だけマルチビルドへ
+
+1. **単一ビルドの既定**：Build割当ファイルは不要。既存のApplication/Targetに指定された起動入口から、適合する実装の依存閉包を生成する。全Functionの自動公開や全Pluginの無条件同梱を意味しない。入口未指定・未配置・非対応は診断して黙って省略しない。
+2. **有効化時のPreview**：ビルド管理PluginのCUI/Studioから、Function ID・所属Subsystem・Source・起動契機・現在のTarget依存・構成結果を読み取り専用で一覧化する。既定と同等の最小設定を提案する。明示確認後にだけProject側の構成差分を保存する。
+3. **一覧と設定の分離**：機能一覧表はモデルと割当設定からの再生成可能な投影。列にはFunction ID、業務所属、公開入口、root/closure区分、適用Build Unit、割当根拠、Source/Model版、conflict/unresolvedを含める。Markdown/CSV/Studioで閲覧してよいが第二正本にしない。表編集は設定変更Intent→Preview→保存とし、業務Functionの意味を直接変更しない。
+4. **設定ファイルは小さく**：最初から全Functionの個別行を列挙しない。default、Namespace/業務Scope/Source Path規則、例外Override、外部公開する入口だけを記す。新しいファイル名・schema（例えばtei.build.yaml相当）は未採用であり、既存[案件構成](PROJECT_PLUGIN_COMPOSITION_DESIGN.md)やWorkspace設定への最小追加で済むか先に評価する。
+
+説明専用の構文案（**正式DSLではない**）：
+
+~~~yaml
+build:
+  default: app
+  units:
+    app: { target: go/linux-amd64 }
+    batch: { target: go/linux-amd64 }
+  rules:
+    - match: { namespace: "sales.jobs.*" }
+      unit: batch
+  overrides:
+    sales.recalculate: [batch]
+  entrypoints:
+    - { function: "sales.jobs.daily-close", unit: batch, surface: cli-job }
+~~~
+
+未指定のFunctionをどのようにroot化するかは、既存のApplication/Action契約と照合して決める。Build Unitに含まれるData Ruleや依存Functionを外部公開しない。Secret、cron時刻、認証トークンは業務意味やBuild設定に埋め込まず、実行・配備時の契約に委譲する。
+
+### 14.3 割当と依存閉包の決定規則
+
+- 評価候補の順序は「Function ID個別指定 ＞ Namespace/業務Scope ＞ Source Path/Folder ＞ default」。同じ優先順位で異なるunitが選ばれた場合は失敗とし、宣言順・名称順で勝者を決めない。同一結果の重複は正規化し、**複数unitへの明示包含**と曖昧な割当を区別する。規則の最終優先順位はOwner判断待ち。
+- Folder規則はソース整理に過ぎない。Source Pathの移動で割当が変わった場合は差分を警告し、Function IDとAccepted Meaningを勝手に変えない。未解決Source参照や旧Model Revisionでは配置を確定させない。
+- rootから到達するData Rule、標準Operator、共通実装、Providerを依存閉包として導出する。動的呼出し・Reflection・外部API越境・Go importの到達性が未知なら「依存なし」と推定しない。隔離・認可・トランザクションを跨ぐ呼出しを自動的に同一プロセスへ静的結合しない。
+- Build Unit、ArtifactSet、公開Entry Point、Deployment bindingを、Source/Meaning/Rule/Config revision、Builder/Generator/Toolchain/Target/Plugin版と逆追跡可能にする。新旧Artifact・一部member欠落・A→B→A・同一Source別Toolchainについて、成果物再利用／検証根拠再利用／現在資格を分離する（[#2600](https://github.com/hat47x/tei-platform/issues/2600)）。
+
+### 14.4 同じJob Functionの外部提供
+
+単一Goバイナリは、例として「sales serve」と「sales job run sales.jobs.daily-close --business-date 2026-11-03」の複数入口を提供できる。分割した場合は「sales-batch job run ...」として同じFunctionへ到達させる。これらは正式CLI構文ではない。cron/OS Task Schedulerは生成したCLI入口を起動するだけでよく、TEIの常駐を要求しない。実際の定時契約（タイムゾーン、同時起動、回復、サービス主体、ログ保存）はDeployment側で扱う。
+
+Webでは、認可済みRoute→Action/Function→同一プロセス実行または外部Job Providerのどちらも許す。ただし任意Function名をURLから受けて任意shellを実行する公開入口は作らない。引数の業務上の型・既定値・検証はFunction側、CLI/HTTPの文字列表現はAdapter側。必要な利用者入力がない非対話Jobは「事前引数あり」「明示的な中断／再開契約」「unsupported」を区別し、Swing/Wailsの画面を前提にしない。
+
+Jobを要求したというACK、実際の起動、進捗、業務結果、DB Commit Receipt、独立Observationは別々に観測する。通信断・二重依頼・認可失効・旧Artifactでの起動では、OperationID/Attempt/実ロード版/現在Grantを照合し、不明な副作用を「失敗＝未実行」へ変換しない。権限とScript信頼境界は[#2504](https://github.com/hat47x/tei-platform/issues/2504)/[#1174](https://github.com/hat47x/tei-platform/issues/1174)、外部起動・回復は[#1130](https://github.com/hat47x/tei-platform/issues/1130)、EKIの実Task/Lease/資源AuthorityはEKI側の担当とする。
+
+### 14.5 最小の反証Fixture（すべて未実行）
+
+| ID | 条件 | 独立Expected／停止条件 |
+| --- | --- | --- |
+| MB-01 | Build設定なし、Web/Jobの二つの入口 | 単一Goバイナリから両方に到達し、内部Functionは非公開。未配置は未解決として診断 |
+| MB-02 | 同一モデルを1→2→3バイナリに変更 | Function/Rule/Scenarioの意味は不変。Build/Artifact/Deploymentの識別は別 |
+| MB-03 | 100 Function、Namespace規則1件＋個別Override1件 | 一覧の根拠は決定的。100件の設定コピー不要。表示表は再生成可能 |
+| MB-04 | 規則の同順位衝突／Source Path移動／古いModel版 | conflict、割当差分、staleを独立検出。勝手に採用しない |
+| MB-05 | 同じFunctionを2単位に包含、Data Ruleは依存で共通 | root/closure/publicの区別、実Goの不要package/linked symbol除外を確認 |
+| MB-06 | CLI・cron相当・Webから同一Jobに型付き引数 | 業務結果は同じ意味、Host主体/認可/Transportは別。拒否時Job起動0件 |
+| MB-07 | バッチに対話必須、またはSecretがBuild設定に混入 | 不適合を明示、CredentialをArtifactや一覧に露出させない |
+| MB-08 | ACK消失、二重要求、旧Artifact/Providerで実行 | Unknown保持→照会／限定回復。無条件リトライ・旧権限での実行を拒否 |
+| MB-09 | SHO説明のみ変更／Rule改版／ArtifactSet一member欠落 | 必要再生成、Artifact再利用、Evidence再利用、現在資格を別に判定 |
+
+期待値のテスト正本をここで作らず、[#1180](https://github.com/hat47x/tei-platform/issues/1180)の保存済みScenarioと[#2514](https://github.com/hat47x/tei-platform/issues/2514)の独立Oracleに結び付ける。
+
+### 14.6 段階計画と所有境界
+
+- **P0 読取り専用**：既存Function/Operation Surface、業務IDとPath、#1167のGo入口、#1097/#1102のArtifact束縛を現在版で棚卸しし、MB-01〜09のExpectedを固定する。
+- **P1 Headless実証**：同じMeaningから1/2/3単位の入口集合と依存閉包を生成し、実Go build、link後内容、ArtifactSet、CLI入口まで確認する。単にmanifestを分けただけで実際に分割されたとはしない。
+- **P2 管理コスト**：設定なし→Preview→最小設定の初期生成→派生機能一覧→例外変更→差分診断をCUI先行で測り、同じ契約をStudioへ投影する。手作業の設定行数、重複、誤割当、影響Build数、編集から利用可能までの時間を比較する。
+- **P3 外部起動**：実Web HostとOS Scheduler相当を用いて同じJobを呼び出し、認証・進捗・取消・未知Commit・Recoveryを分けて観測する。実EKI接続は別受入。
+
+担当は配備／Target[#259](https://github.com/hat47x/tei-platform/issues/259)/[#1182](https://github.com/hat47x/tei-platform/issues/1182)、案件構成と初期設定[#1016](https://github.com/hat47x/tei-platform/issues/1016)、Job入口[#1130](https://github.com/hat47x/tei-platform/issues/1130)、Script/Macro契機[#2502](https://github.com/hat47x/tei-platform/issues/2502)、Build閉包・増分Evidence[#943](https://github.com/hat47x/tei-platform/issues/943)/[#2600](https://github.com/hat47x/tei-platform/issues/2600)、設計成果物としてのFunction一覧[#2482](https://github.com/hat47x/tei-platform/issues/2482)。第二のHost、Scheduler、契約Resolver、Function意味の正本を作らない。
+
+**Owner判断待ち**：Build Unitの正式な型と名称、設定ファイルの配置、暗黙のroot集合、割当規則の優先順位、複数unitにおけるFunction公開方法、OS Schedulerの設定生成範囲。実マルチビルド／ジョブ起動／Studio初期設定UI／実認可／本番回復のE2EはNOT RUN。本節を現行実装の合格として扱わない。
