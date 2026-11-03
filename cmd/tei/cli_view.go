@@ -12,6 +12,7 @@ import (
 	"tei/internal/applicationview"
 	"tei/internal/command"
 	"tei/internal/core"
+	"tei/internal/periodstate"
 	"tei/internal/semantic"
 	"tei/internal/workspace"
 )
@@ -49,6 +50,7 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 	packageID := fs.String("package", "", "exact application package ID")
 	commandID := fs.String("command", "", "command capability to plan")
 	execute := fs.Bool("execute", false, "reference execution of the planned command")
+	periodStateFile := fs.String("period-state", "", "period state JSON for -execute")
 	var inputPairs inputFlag
 	fs.Var(&inputPairs, "input", "command input as name=value; repeatable")
 	format := fs.String("format", "text", "text or json")
@@ -59,6 +61,7 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 		(*patternID != "" && *packageID != "") ||
 		(*commandID != "" && *patternID == "") ||
 		(*execute && *commandID == "") ||
+		(*periodStateFile != "" && !*execute) ||
 		*root != strings.TrimSpace(*root) || *applicationID != strings.TrimSpace(*applicationID) ||
 		*patternID != strings.TrimSpace(*patternID) || *packageID != strings.TrimSpace(*packageID) ||
 		*commandID != strings.TrimSpace(*commandID) {
@@ -125,6 +128,13 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 				World:      loaded.World,
 				Executor:   command.ReferenceExecutor{World: loaded.World},
 				UnitOfWork: &command.MemoryUnitOfWork{},
+			}
+			if *periodStateFile != "" {
+				states, err := periodstate.File{Path: *periodStateFile}.PeriodStates(context.Background(), *applicationID)
+				if err != nil {
+					return fail("PERIOD_STATE_LOAD_FAILED", err.Error(), 2)
+				}
+				invoker.Periods = command.NewMapPeriodState(states)
 			}
 			result, err := invoker.Invoke(context.Background(), command.Request{
 				Application: core.CanonicalID(*applicationID),
