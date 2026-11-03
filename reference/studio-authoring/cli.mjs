@@ -15,6 +15,17 @@ import { observeBusinessDFD, verifyBusinessDFDObservation } from "./business-obs
 import { produceBusinessDFD } from "./business-producer.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
+
+// #2354: the result-envelope tei commands wrap their previous output in
+// ({schemaVersion, ok, result}). `world` keeps its bare ir.World write, so only
+// the enveloped commands are unwrapped here; the bridge keeps consuming the
+// unwrapped shapes, and this boundary is where the envelope is removed.
+function unwrapEnvelope(envelope, label) {
+  if (!envelope || envelope.ok !== true || envelope.result === undefined)
+    throw new Error("INVALID_TEI_RESULT: " + label);
+  return envelope.result;
+}
+
 const usage = [
   "usage:",
   "  node reference/studio-authoring/cli.mjs inspect -workspace DIR -focus relation:ID|step:ID [-business-dfd FILE]",
@@ -57,7 +68,7 @@ function fromWorkspace(workspace, withSourceIndex) {
   const before = getRevision();
   const world = JSON.parse(run("./cmd/tei", "world", "-workspace", workspace));
   const sourceIndex = withSourceIndex
-    ? JSON.parse(run("./cmd/tei", "source-index", "-workspace", workspace))
+    ? unwrapEnvelope(JSON.parse(run("./cmd/tei", "source-index", "-workspace", workspace)), "source-index")
     : undefined;
   const after = getRevision();
   if (before !== after) throw new Error("SOURCE_CHANGED_DURING_PROJECTION");

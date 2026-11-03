@@ -1,0 +1,24 @@
+{
+  "schema": "tei.reference.semantic-mapping-input/v0",
+  "definitions": [
+    {"id": "def-amount", "name": "金額"},
+    {"id": "def-date", "name": "日付"},
+    {"id": "def-code", "name": "区分コード"}
+  ],
+  "elements": [
+    {"id": "e01", "name": "price", "observedIn": "orders.price",
+     "mappings": [{"definition": "def-amount", "status": "accepted", "origin": "human", "acceptedBy": "owner-a"}]},
+    {"id": "e02", "name": "tax", "observedIn": "orders.tax",
+     "mappings": [{"definition": "def-amount", "status": "accepted", "origin": "human", "acceptedBy": "owner-a"}]},
+    {"id": "e03", "name": "ordered_on", "observedIn": "orders.ordered_on",
+     "mappings": [{"definition": "def-date", "status": "accepted", "origin": "human", "acceptedBy": "owner-a"}]},
+    {"id": "e04", "name": "kind", "observedIn": "orders.kind",
+     "mappings": [
+       {"definition": "def-code", "status": "accepted", "origin": "human", "acceptedBy": "owner-a"},
+       {"definition": "def-amount", "status": "accepted", "origin": "human", "acceptedBy": "owner-b"}]},
+    {"id": "e05", "name": "shipped_on", "observedIn": "orders.shipped_on",
+     "mappings": [{"definition": "def-date", "status": "candidate", "origin": "ai"}]},
+    {"id": "e06", "name": "memo", "observedIn": "orders.memo"},
+    {"id": "e07", "name": "note_planned"}
+  ]
+}

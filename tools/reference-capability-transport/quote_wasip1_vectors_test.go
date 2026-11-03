@@ -45,8 +45,11 @@ func TestIndependentQuoteWASIP1AgainstCandidateSemanticVectors(t *testing.T) {
 	if err != nil {
 		t.Skip("Node.js is unavailable; this is not evidence of WASI parity")
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 180*time.Second)
-	defer cancel()
+	// #2057: go buildはキャッシュなし・CPU競合のCIで数十秒かかる一方、実プロセスの起動は
+	// 1回あたり数十ms以内である。buildは独立した長い期限で待ち、実プロセスの期限は
+	// build後に始めて、build時間が起動側の予算を食わないようにする。
+	buildCtx, cancelBuild := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancelBuild()
 
 	work := t.TempDir()
 	files, err := os.ReadDir("../../plugins/reference-order-quote")
@@ -77,7 +80,7 @@ func TestIndependentQuoteWASIP1AgainstCandidateSemanticVectors(t *testing.T) {
 		t.Fatal(err)
 	}
 	wasm := filepath.Join(t.TempDir(), "order-quote.wasm")
-	build := exec.CommandContext(ctx, "go", "build", "-o", wasm, ".")
+	build := exec.CommandContext(buildCtx, "go", "build", "-o", wasm, ".")
 	build.Dir = work
 	build.Env = append(os.Environ(), "GOOS=wasip1", "GOARCH=wasm", "GOENV=off", "GOWORK=off", "GOFLAGS=", "GOTOOLCHAIN=local", "GOPROXY=off", "GOSUMDB=off")
 	if output, err := build.CombinedOutput(); err != nil {
@@ -91,12 +94,14 @@ func TestIndependentQuoteWASIP1AgainstCandidateSemanticVectors(t *testing.T) {
 	// Both builds consume precisely the same copied Go source. Each result is
 	// an independent physical artifact with a different exact digest.
 	native := filepath.Join(t.TempDir(), "order-quote-native")
-	nativeBuild := exec.CommandContext(ctx, "go", "build", "-o", native, ".")
+	nativeBuild := exec.CommandContext(buildCtx, "go", "build", "-o", native, ".")
 	nativeBuild.Dir = work
 	nativeBuild.Env = append(os.Environ(), "GOOS="+runtime.GOOS, "GOARCH="+runtime.GOARCH, "GOENV=off", "GOWORK=off", "GOFLAGS=", "GOTOOLCHAIN=local", "GOPROXY=off", "GOSUMDB=off")
 	if output, err := nativeBuild.CombinedOutput(); err != nil {
 		t.Fatalf("independent Native build: %v\n%s", err, output)
 	}
+	ctx, cancel := context.WithTimeout(context.Background(), 180*time.Second)
+	defer cancel()
 	nativeBytes, err := os.ReadFile(native)
 	if err != nil {
 		t.Fatal(err)

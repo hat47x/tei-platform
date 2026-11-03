@@ -155,13 +155,18 @@ func Explain(in Input) Report {
 		report.Unknown = append(report.Unknown, "inputVersion")
 	}
 
-	// Disclosure boundary: a general requester never receives hidden inputs.
-	if in.Requester == RequesterAdmin {
+	// Disclosure boundary: a general requester never receives hidden inputs. An
+	// admin receives them only for a present result; a missing, NULL, or failed
+	// result has no value to disclose.
+	if in.Requester == RequesterAdmin && in.ResultState == StatePresent {
 		report.InputValue = in.InputValue
 		report.UnitPrice = in.UnitPrice
 		report.Disclosed = append(report.Disclosed, "inputValue", "unitPrice")
 	} else {
-		report.Redacted = []string{"inputValue", "unitPrice", "rowExistence"}
+		report.Redacted = appendUnique(report.Redacted, "inputValue", "unitPrice")
+		if in.Requester != RequesterAdmin {
+			report.Redacted = appendUnique(report.Redacted, "rowExistence")
+		}
 	}
 
 	// An unauthorized evaluation discloses no value and no inputs.

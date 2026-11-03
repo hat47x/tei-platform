@@ -18,6 +18,16 @@ if (process.env.TEI_STUDIO_E2E !== "1") {
 }
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const baseline = join(root, "reference", "workspace");
+
+// #2354: the result-envelope tei commands wrap their previous output in
+// ({schemaVersion, ok, result}). `world` keeps its bare ir.World write, so only
+// the enveloped commands are unwrapped here; the bridge keeps consuming the
+// unwrapped shapes.
+function unwrapEnvelope(envelope, label) {
+  if (!envelope || envelope.ok !== true || envelope.result === undefined)
+    throw new Error("INVALID_TEI_RESULT: " + label);
+  return envelope.result;
+}
 const created = mkdtempSync(join(tmpdir(), "tei-studio-1124-"));
 let checks = 0;
 const checked = (condition, message) => { assert.ok(condition, message); checks++; };
@@ -84,7 +94,7 @@ function world(workspace) {
   return JSON.parse(tei(["world", "-workspace", workspace]).stdout);
 }
 function sourceIndex(workspace) {
-  return JSON.parse(tei(["source-index", "-workspace", workspace]).stdout);
+  return unwrapEnvelope(JSON.parse(tei(["source-index", "-workspace", workspace]).stdout), "source-index");
 }
 function input(label, suffix, value) {
   const path = join(created, label + suffix);

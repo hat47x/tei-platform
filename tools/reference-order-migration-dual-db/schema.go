@@ -345,6 +345,17 @@ CREATE TABLE omdd.schema_client (
   last_seen_at timestamptz NOT NULL DEFAULT now(),
   retired_at timestamptz
 );
+-- Observed write versions of the customer master. The trigger records which
+-- shape each write used. A registered client is a declaration; this table is
+-- the observation that a declared old-version writer is still writing.
+CREATE TABLE omdd.schema_write (
+  id bigserial PRIMARY KEY,
+  change_id text NOT NULL,
+  entity_key text NOT NULL,
+  version text NOT NULL CHECK (version IN ('v1-full-name','v2-split-name')),
+  observed_at timestamptz NOT NULL DEFAULT clock_timestamp()
+);
+CREATE INDEX schema_write_window ON omdd.schema_write(change_id, observed_at);
 CREATE TABLE omdd.schema_issue (
   id bigserial PRIMARY KEY,
   change_id text NOT NULL,

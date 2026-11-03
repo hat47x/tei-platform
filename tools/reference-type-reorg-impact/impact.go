@@ -55,6 +55,15 @@ type Diagnostic struct {
 	Subject string `json:"subject"`
 }
 
+// Reprojection records the canonical type one affected view must point to
+// after acceptance. It is a plan, not an applied change.
+type Reprojection struct {
+	View       string `json:"view"`
+	Element    string `json:"element"`
+	TypeBefore string `json:"typeBefore"`
+	TypeAfter  string `json:"typeAfter"`
+}
+
 type Impact struct {
 	Schema            string          `json:"schema"`
 	StructureRevision string          `json:"structureRevision"`
@@ -64,7 +73,11 @@ type Impact struct {
 	Capabilities      []CapabilityUse `json:"capabilities"`
 	AliasTypes        []string        `json:"aliasTypes"`
 	Keys              []KeyUse        `json:"keys"`
+	Reprojection      []Reprojection  `json:"reprojection"`
 	Diagnostics       []Diagnostic    `json:"diagnostics"`
+	// ConsistentAfter is true when every affected view would point to the
+	// target type, so the views agree after acceptance.
+	ConsistentAfter bool `json:"consistentAfter"`
 	// ReviewRequired is always true: a merge is a meaning decision that a
 	// matching representation never settles.
 	ReviewRequired bool `json:"reviewRequired"`
@@ -83,7 +96,7 @@ func Analyze(world ir.World, m Merge) (Impact, error) {
 	}
 	out := Impact{
 		Schema: Schema, StructureRevision: fmt.Sprintf("sha256:%x", sha256.Sum256(raw)), Merge: m,
-		Attributes: []Use{}, Validations: []ValidationUse{}, Capabilities: []CapabilityUse{}, AliasTypes: []string{}, Keys: []KeyUse{}, Diagnostics: []Diagnostic{},
+		Attributes: []Use{}, Validations: []ValidationUse{}, Capabilities: []CapabilityUse{}, AliasTypes: []string{}, Keys: []KeyUse{}, Reprojection: []Reprojection{}, Diagnostics: []Diagnostic{},
 		ReviewRequired: true,
 	}
 	from := map[string]bool{}
@@ -255,6 +268,48 @@ func Analyze(world ir.World, m Merge) (Impact, error) {
 	}
 	if len(seen) > 1 {
 		diag("physical-storage-differs", "attributes of merged types")
+	}
+
+	// Reprojection lists the canonical type every affected view must point to
+	// after acceptance. Acceptance itself is outside this reference.
+	for _, use := range out.Attributes {
+		out.Reprojection = append(out.Reprojection, Reprojection{View: "attribute", Element: use.Attribute, TypeBefore: use.Type, TypeAfter: m.Into})
+	}
+	for _, use := range out.Validations {
+		out.Reprojection = append(out.Reprojection, Reprojection{View: "validation", Element: use.Validation, TypeBefore: use.Type, TypeAfter: m.Into})
+	}
+	for _, use := range out.Capabilities {
+		out.Reprojection = append(out.Reprojection, Reprojection{View: "capability", Element: use.Capability + "/" + use.Direction, TypeBefore: use.Type, TypeAfter: m.Into})
+	}
+	for _, key := range out.Keys {
+		before := ""
+		for _, field := range key.Fields {
+			if from[attrType[field]] {
+				before = attrType[field]
+				break
+			}
+		}
+		out.Reprojection = append(out.Reprojection, Reprojection{View: "key", Element: key.Kind + "/" + key.ID, TypeBefore: before, TypeAfter: m.Into})
+	}
+	for _, mapping := range world.Persistence {
+		for _, column := range mapping.Columns {
+			attribute := string(column.Attribute)
+			if from[attrType[attribute]] {
+				out.Reprojection = append(out.Reprojection, Reprojection{View: "persistence", Element: attribute, TypeBefore: attrType[attribute], TypeAfter: m.Into})
+			}
+		}
+	}
+	sort.Slice(out.Reprojection, func(i, j int) bool {
+		if out.Reprojection[i].View != out.Reprojection[j].View {
+			return out.Reprojection[i].View < out.Reprojection[j].View
+		}
+		return out.Reprojection[i].Element < out.Reprojection[j].Element
+	})
+	out.ConsistentAfter = ok
+	for _, entry := range out.Reprojection {
+		if entry.TypeAfter == "" {
+			out.ConsistentAfter = false
+		}
 	}
 
 	sort.Slice(out.Attributes, func(i, j int) bool { return out.Attributes[i].Attribute < out.Attributes[j].Attribute })
