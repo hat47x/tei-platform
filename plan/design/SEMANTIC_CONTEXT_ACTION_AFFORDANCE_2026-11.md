@@ -384,3 +384,47 @@ Goでビルドした単一ネイティブバイナリはTEIの標準実行形態
 4. **OB-09（EKI/運用Ownerへの契約候補、未実施）**：同一Meaning・Snapshotが固定される最小広域監査Taskを一つ配備し、`Job Accepted`と`Quality Verified`を別観測。Replica watermark/lag、全件可視性、部分失敗、結果を待つ業務と待たない業務を区別し、最小CPU/IO/Latency比較を#2018/#2600に返す。EKI必須化はしない。
 
 **Evidence境界**：実Go CLIのOB-01/02は§12で限定成功済み。OB-07Aは[Focused Actions #41611947261](https://github.com/hat47x/tei-platform/actions/runs/41611947261)の候補HEAD `7fc6cd7512f590ce6102c3165862272a95460172`・Go1.26.10で**実Goテスト1件PASS**（実CLI OB-01/02・クリーンCheckoutも同job PASS）を確認。ただし合成Adapterの誤対象作用という**負例の現挙動の特性確認**であり、製品の事前target/fence機構が安全に拒否できるという証明ではない。OB-07B/08/09、実Go単一バイナリの配布性能、EKI実Task/Lease、Replica/水位、実DB/Host、SHO/Studio/Consumerの一体受入、Owner意味受理は**NOT RUN**。共通Host/新State Table/Proof Engine/新Quality Registry・直列Gateを追加しない。
+
+<!-- 20261103-phase-guard-and-deadline-bounded-action -->
+## 14. Offer時点からCommit・非同期検証まで：期間・委任・期限の「有効性」を混ぜない（2026-11-03）
+
+### 14.1 Source照合と、他Laneとの非重複
+
+他チャットの業務Lifecycle/SQL状態/組織委任・EKI資源調停議論を、現mainのGo実装と照合した。[#2744 Buri/Flow/EKI設計Draft](https://github.com/hat47x/tei-platform/pull/2744)には、[TEI×EKIの期限・予算・連鎖失敗](TEI_EKI_DEADLINE_BUDGET_RECOVERY_COORDINATION_2026-11.md)（LB-01〜17）、[Pool資源の委任Gate](TEI_EKI_AGGREGATE_DELEGATION_UNRESOLVED_GATES_2026-11.md)（DG-01〜14）、[ジョブ実行委譲境界](TEI_EKI_JOB_DELEGATION_BOUNDARY_2026-11.md)がすでにある。この§14はEKIの資源最適化やTEIのBusiness Lifecycleの意味Ownerを再定義せず、**#2616のUI非依存Action Offer→現実のExecute/Commit/Verify**の一段を接続する。
+
+現mainの製品コードには`operations.CheckPeriods`、`operations.GuardCapabilityWith`、`periodstate.File`、参照実行者の`submitIfReadyGuarded`がある。期状態は受理済みMeaningにある定義と異なり、実行時Sourceが供給する。[merged #2754](https://github.com/hat47x/tei-platform/pull/2754)のFile Readerは、JSON内に対象Periodが**存在しない場合にはunguarded**、不正な状態値・ファイル読取り不能はerrorとする。これは意図的なReference方針であり、**「存在しない状態＝現在openと立証済み」という主張ではない**。また実行者の`PeriodGuard.Source=nil`は明示的にGuardなしの実装経路である。Guardが導入済みだからすべてのDriver呼出しが原子的に期間/Grant検証済みとはいわない。事前GuardとCommitの間のstate change/TOCTOUは#1174等の実Host/Provider Ownerの契約。
+
+### 14.2 一つのActionで変わる5つの時計と、異なる権限
+
+| 時点・時計 | 現在必要な証拠と否定しなければならない推論 | 既存Owner |
+| --- | --- | --- |
+| **Offer/Preview at t0** | Accepted Meaningの適用範囲、Function/Ruleのhidden read・NULL/未取得/partial、Actorの候補と実行targetの識別根拠。提示されたButton/Operation IDは現在Grantではない。 | #2507/#2506/#2516、#2499 |
+| **Request at t1** | Subject/Rowset/業務Keyと物理PK、Scope/epoch、Source/Role/Operator、Expected old-state・選択したActionの対象の一致。t0からの組織異動・期限委任撤回・最新Business stateで候補資格が変わる。 | #2598/#2499/#2620 |
+| **Provider execute/Commit at t2** | 現Grant・現Period・本当のTarget、CAS/同時更新、Effect fence、Idempotency/Commit identity、既存Host/Adapterが保証できる範囲。事前OK・Process成功・Driver Outcomeのいずれも原子的Commitの証明ではない。 | #1174/#1129/#2564 |
+| **EKI Task admission→Attempt/Lease at t3** | Jobの`not_before/target_complete/latest_useful`、残り時間/物理Budget、Resource/Trust/Data locality、現在DLG-1/BUD-1/CAP-1/Provider Admission。予測上eligibleと実Reservation/Allocationは別。試行成功はBusiness Commitでない。 | #1130、EKI #112/#57/#58/#108/#109/#140 |
+| **Independent observation/verification at t4** | 同じ業務対象・実Result Body、Source/Receipt・Read Scope/Snapshot/epoch、Replica watermark/lag、独立Expected。t4が期限超過なら、t3が成功でも期限内の業務完了とは認定しない。 | #1163/#2514/#2516、#2018/EKI |
+
+厳密な時系列はTaskが業務Commit前の純粋Computeであるか、Commit後の副作用通知か、検証Jobかで異なる。上表のt0〜t4は**証拠境界のラベル**であり、全Jobに固定の時系列や新しいState Machine公開enumを強制するものではない。特に`Group Job`が再試行・部分成功した場合、Task/Attempt/Lease/Provider ExecutionRef/Business Operation・Event IDを取り違えない。委任先が実Commit対象を推測したり、自身のSuccessだけでBusinessVerifiedを発行しない。
+
+### 14.3 期限と回復予算の最小計算単位
+
+`latest_useful`を過ぎてから実結果が返ったときの業務利用可否と、`target_complete`到達率を別にし、**計算終了だけでなくOutput転送・独立検証・業務受領に要する時間**を見積りへ入れる。失敗後は`remaining_time = deadline - observed_now`を初回値からリセットせず、残存予算と再試行可能な副作用の資格を再評価する。EKI内部の予測/Shadow値は権限や予約の代わりにならない。とくに試行timeout+Provider ACK欠落では元ExecutionRef照会を優先し、期限圧力だけで二重実行を許可しない（#2744 LB-12/17）。
+
+異種資源の選択は直接実行も正常な候補として扱い、Broker往復/転送/検証で期限を浪費する小Jobを強制的にEKIへ流さない。TEIの組織可視性/Workflow承認はEKIのAdmin Budget/Local Governorを増やさず、EKI Pool Offerや予測実績から業務レコードの閲覧Grantを増やさない。分布・内部Node数の開示もAudienceごとに別に審査する。費用はまず物理量/観測者を記録し、価格・課金・最適化PolicyをEKI Coreの新責務として押し付けない。
+
+### 14.4 境界ごとに何を受け入れるか：AJ-01〜08（独立Expectedの反証候補）
+
+| ID | 固定して比較する負例 | 受理できる最小観測・未証明境界 |
+| --- | --- | --- |
+| **AJ-01 Period TOCTOU** | t0でopen、t1でclosing、t2でclosed／Source file欠落／不正値 | 固定SourceからのOperation候補と**現在StateSourceの再読取**を分ける。GuardによるrefusalをProvider内部の原子的Fence成功に昇格しない。 |
+| **AJ-02 組織・委任撤回** | t0 A部門のAction Offer、t1異動／時間制限付き代理権失効、t2外部Providerの古いGrant | 機能の表示と、t2のcurrent Principal/Scope/Grant・実Effect=0の拒否を別確認。|
+| **AJ-03 対象入替え・ABA** | t0選択O-1、t2のAdapterはO-2へCommit／同じ表面値に戻った別Revision | 対象とeffectの現在一致・独立Readが必要。成功Outcomeや結果値Digest一致だけでは不十分（§13既存Go負例）。 |
+| **AJ-04 期限後の検証** | 計算は締切前、Artifact Body取得／Quality検証／業務受取は締切後 | Task SuccessとOn-time Verified Business Completionを別採点。レプリカの旧Snapshotを現在の受理根拠にしない。 |
+| **AJ-05 故障後の残り時間** | 50分Deadline、15分失敗＋二度目失敗、残り12分で再実行・検証16分 | 不可能な期限を成功予測へ丸めない。Ownerが承認する部分Result/Fallbackだけ提示。 |
+| **AJ-06 実行権限と資源予約** | TEIのRole/Workflow承認あり、EKI BUD-1は残るがProvider Quota/Local Governor拒否 | Offer/Forecast/eligible/reservable/actually allocated/observedを別票。自動Scaleout/支払は不可。 |
+| **AJ-07 ACK-lossと二重Retry** | Provider Job受理後のACK消失、EKI/Providerがともにretryしようとする | Operation/Task/Attempt/ExecutionRef/Receiptの相関・lookupを先行。Effect未知なら再送を保留。 |
+| **AJ-08 組織階層・実績開示** | 低権限ConsumerへPool内部のNode数/精度高い成功確率や非表示注文の候補件数が出る | 業務データと資源の双方を別のDisclosure Boundaryで遮断。最終回答だけ一致でもTool計画/診断/ログが漏れれば不合格。 |
+
+**試行の最短順**：①[本DraftのGo期間Guard試験](../../internal/driver/action_surface_period_handoff_test.go)で`operations.GuardCapabilityWith`と実JSON StateSourceの更新を固定 → ②#2598でAJ-02/03のRequest Targetとcurrent Grantを既存Adapter/Provider前の契約で検証 → ③#1130とEKI #112が**純粋Job一件**のInput Artifact digest/body→実Task→Output bytes→TEI独立Oracleを先に観測 → ④実Provider Commit/Receiptと期限・予算・回復のend-to-end計測 → ⑤SHO/AI/Studioなど実Consumerの必要開示だけを評価。EKI #112の既存Spike報告にあるArtifact ingest 422／Result API 501を実E2E成功扱いしない。新しいJob Runner/Authority Registry/万能State Schemaの追加や、現有#1119 G0〜G4の再定義は行わない。
+
+**この§14の証拠資格**：既存main/PR #2744のコード・文書静的照合と、実Goの限定負例・参照Gateの接合設計。AJ-01の新Go試験は現HEADのexact CI/logを別途確認してからPASSを記す。AJ-02〜08の同一縦断実Consumer/EKI/Provider/OS/Replica、Deadline/Costの物理実測・Owner意味受理はNOT RUN。正式DSL/TEI/EKI ABIとBusiness Grantは追加・採用しない。
