@@ -122,18 +122,24 @@ attribute label type std.text value "受注"
 - v1→v2は、継承版の明示化があるため`SuccessWithWarnings`。ヘッダを既に持つv1→v2は内容が変わらないため`VERSION_ONLY_BUMP`で失敗する。
 - 出力は要素・属性をソートした正規形で、v2→v2はバイト同一（冪等）。
 
-v2 codecは変換境界の検証用で、**製品の受理版はまだ1のまま**（`workspace.Load`は1だけを受け付ける）。
+### v2の製品採用（Owner判断 2026-11-02）
+
+v2を製品の受理版として採用する。`workspace.Load`は次を満たす。
+
+- 作業領域manifestの`formatVersion`は**1または2**を受理し、3以上と未指定は拒否する。
+- 作業領域が2のとき、配下の`.tei`は**明示の`formatVersion 2`ヘッダを必須**とする（継承の暗黙既定を認めない）。
+- `.tei`が宣言した版は作業領域の版と一致しなければならない（1の作業領域に2の`.tei`は不一致）。
+- 作業領域が1のときは従来どおり、ヘッダ未宣言の`.tei`は1を継承する。
 
 ## 7. 残る作業
 
-- 製品としてv2を受理するか、v2の差分を何にするかの決定（現在のv2は「ヘッダ必須＋継承版の明示化」という検証用の差分）
 - 対象外の宣言（type/validation/relation等）をCentralで表現する拡張
 - 隣接版の連鎖を併用するかの再判断
 
-（プラグインcodecの登録口は`Formats`として実装済み。`.tei`codecは`tei.semantic`として登録できる。）
+（プラグインcodecの登録口は`Formats`として実装済み。`.tei`codecは`tei.semantic`として登録できる。v2の製品採用も完了。）
 
 ## 8. 主張しないこと
 
-- v2は検証用のcodecで、製品の受理済み形式ではない。`workspace.Load`はv1だけを受け付ける。
-- `.tei` codecの対象は意味定義の一部（namespace/data/attribute）で、型・検証・関係は拒否する。
+- `.tei` codecが扱うのは意味定義の一部（namespace/data/attribute）で、型・検証・関係は要素識別子付きで拒否する。
 - 新→旧の変換、業務データの移行、外部形式の取込写像は扱わない。
+- v2のmanifest schemaは変えていない。変わったのは受理する版の集合と、v2でのヘッダ必須規則である。

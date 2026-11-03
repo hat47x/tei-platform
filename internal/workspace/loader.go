@@ -135,18 +135,20 @@ func loadWithStackHook(root string, visiting map[string]bool, afterParse func())
 		if parseErr != nil {
 			return Result{}, fmt.Errorf("%s: %w", manifestYAML, parseErr)
 		}
-		// The format version is recorded in the manifest. An unknown future
-		// version fails closed, and a missing version is rejected instead of
-		// defaulted. Frozen artifacts that cannot be rewritten must opt in
-		// explicitly; the historical runner parity test does so for its
-		// pre-formatVersion comparison tree (#1920).
-		if manifest.FormatVersion != 1 {
-			if manifest.FormatVersion == 0 && os.Getenv("TEI_WORKSPACE_ALLOW_UNSPECIFIED_FORMAT") != "1" {
-				return Result{}, fmt.Errorf("%s: missing formatVersion (supported: 1)", manifestYAML)
-			}
-			if manifest.FormatVersion > 1 {
-				return Result{}, fmt.Errorf("%s: unsupported workspace formatVersion %d (supported: 1)", manifestYAML, manifest.FormatVersion)
-			}
+		// The format version is recorded in the manifest. Supported versions are
+		// 1 and 2 (Owner decision 2026-11-02); an unknown future version fails
+		// closed, and a missing version is rejected instead of defaulted. Frozen
+		// artifacts that cannot be rewritten must opt in explicitly; the
+		// historical runner parity test does so for its pre-formatVersion
+		// comparison tree (#1920).
+		switch {
+		case manifest.FormatVersion == 1 || manifest.FormatVersion == 2:
+		case manifest.FormatVersion == 0 && os.Getenv("TEI_WORKSPACE_ALLOW_UNSPECIFIED_FORMAT") == "1":
+			// Explicit frozen-artifact opt-in.
+		case manifest.FormatVersion == 0:
+			return Result{}, fmt.Errorf("%s: missing formatVersion (supported: 1, 2)", manifestYAML)
+		default:
+			return Result{}, fmt.Errorf("%s: unsupported workspace formatVersion %d (supported: 1, 2)", manifestYAML, manifest.FormatVersion)
 		}
 		manifestFormatVersion = manifest.FormatVersion
 		roots, imports = manifest.Sources, manifest.Imports
@@ -491,11 +493,17 @@ func loadSemantics(root string, r *Result) error {
 		if err != nil {
 			return sourceErr(path, err)
 		}
-		if ns.FormatVersion > 1 {
-			return sourceErr(path, fmt.Errorf("unsupported semantic formatVersion %d (supported: 1)", ns.FormatVersion))
+		if ns.FormatVersion > 2 {
+			return sourceErr(path, fmt.Errorf("unsupported semantic formatVersion %d (supported: 1, 2)", ns.FormatVersion))
 		}
 		if ns.FormatVersion != 0 && r.manifestFormatVersion != 0 && ns.FormatVersion != r.manifestFormatVersion {
 			return sourceErr(path, fmt.Errorf("semantic formatVersion %d does not match the Workspace formatVersion %d", ns.FormatVersion, r.manifestFormatVersion))
+		}
+		// Version 2 makes the header mandatory: the inherited default is
+		// materialized, so a version 2 Workspace cannot silently read headerless
+		// files as version 1.
+		if ns.FormatVersion == 0 && r.manifestFormatVersion == 2 {
+			return sourceErr(path, fmt.Errorf("workspace formatVersion 2 requires an explicit semantic formatVersion header"))
 		}
 		r.semanticSourceFiles = append(r.semanticSourceFiles, relPath(root, path))
 		idx, ok := byNamespace[ns.ID]
