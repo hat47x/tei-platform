@@ -164,6 +164,42 @@ Buriの`XPDL→Java/Janino`は「業務モデルから実行コードを生成�
 
 **撤回条件**：共通Runtime表／Lifecycle Core種別を増やしても最小3シナリオのRule重複・必要コード・誤受理を減らせない、または構造同形がOwner Meaning差を隠す場合、その抽象化は採用しない。試験実行前は`NOT RUN`、Sourceに基づく静的所見は`STATIC`、TEI案は`PROPOSAL`、Owner未受理は`PENDING`と明記し、全工程の一括PASSを主張しない。
 
+### 7.7 Procedure／Function／Runtime Workflowと「待ち」の分離（BL-03、BL-04）
+
+他チャットの[#1125](https://github.com/hat47x/tei-platform/issues/1125)（業務DFD／手作業）、[#1444](https://github.com/hat47x/tei-platform/issues/1444)（Accepted Business Procedure→選択的機能展開）、[#2386](https://github.com/hat47x/tei-platform/issues/2386)（組織・代理・時点）に照らすと、**業務手順のStep／状態属性／自動実行すべきCommand／実際に待機しているActivity Instanceは異なる対象**である。BuriのXPDL上で同じActivityとして表現できることから、TEIの同一Core kindや一律の永続実行トークンを導入してはならない。
+
+| 設計対象 | 具体例 | 正本・実行資格の境界 | まず採る表現 |
+| --- | --- | --- | --- |
+| Business Procedure（業務上の手順） | 受付→電話確認→上長へ引継ぎ | 業務StepとActor/HandoffのAccepted Meaning。手作業は完了証拠がない限り未完了 | 既存Procedure／Step／Action参照。専用Workflow Runtimeなし |
+| Function／Business Action | 受注の確定、在庫引当、通知要求 | 入出力／業務拒否、現在Grant、Tx／Effect、Receiptの責務を分離 | 既存Capability／Rule／Action／Provider、状態は対象本体行を第一候補 |
+| Runtime Workflow（長時間・複数活動の管理） | A・Bの独立承認が両方完了してから実行 | 作業Instance／分岐到着／Join条件／重複到着／再開・Migrationの一貫性 | 必要性が具体化したときだけInstance/Branch/Arrivalの専用保存候補 |
+| Trigger／Timer | 期限後に通知する、毎朝再評価する | 記述された予定と実Scheduler設定／現在Authorityは別。少なくとも一回の実行や重複抑止を推測しない | 既存Trigger／Runtime Authorityへの明示Binding |
+
+**静的根拠**：[Buri `wakanagoProcess.ftl`](https://github.com/seasarorg/s2buri/blob/fbaf32dd3ec2a815dfe3f4426f10d6b0ce53547d/buri-core/src/main/resources/ftl/wakanagoProcess.ftl#L30-L60)はAND/XOR Joinを活動開始時の分岐に生成。[AbstBuriExeProcessDataAccess.canJoinAndFlow](https://github.com/seasarorg/s2buri/blob/fbaf32dd3ec2a815dfe3f4426f10d6b0ce53547d/buri-core/src/main/java/org/escafe/buri/util/packages/abst/AbstBuriExeProcessDataAccess.java#L125-L146)は未完了兄弟数が0であることを合流可否の条件に使う。[BuriStateUtilImpl](https://github.com/seasarorg/s2buri/blob/fbaf32dd3ec2a815dfe3f4426f10d6b0ce53547d/buri-core/src/main/java/org/escafe/buri/dao/util/impl/BuriStateUtilImpl.java#L338-L345)は親Branch IDによる件数照会へ委譲し、[BuriJoinWaitingUtilImpl](https://github.com/seasarorg/s2buri/blob/fbaf32dd3ec2a815dfe3f4426f10d6b0ce53547d/buri-core/src/main/java/org/escafe/buri/dao/util/impl/BuriJoinWaitingUtilImpl.java#L24-L36)にはJoin待機の別の保存経路がある。[BuriEngineTest.test12_1Tx/test12_2Tx](https://github.com/seasarorg/s2buri/blob/fbaf32dd3ec2a815dfe3f4426f10d6b0ce53547d/buri-core-test/src/test/java/org/escafe/buri/engine/impl/BuriEngineTest.java#L603-L710)は二つの待機状態・片方の完了後の残存・両方完了・再入を順次操作で検証するテストの**存在**を示す。これらは同時2実行のexactly-once JoinやDB隔離の保証ではない。
+
+**TEI側で増やすべきでない等式**：Buriの「未処理兄弟数=0」は**構造上の合流条件**であり、業務上「二名の独立した承認が有効である」「必要な職位・時点・Grantで承認された」「Joinの後続Effectが一回だけ確定した」ことと等しくない。二つの分岐を同一人物が二度処理した場合に成立させるか、代理承認を許容するか、差戻し・取消・所属改編後に旧承認を有効とするかはOwnerの具体的な業務規則が必要。業務上の`all`／`quorum`は対象集合の完全性と評価時点を要し、Buriの親Branch件数だけで汎用`all`演算を意味確定しない。
+
+**BL-03の既存Fixtureを三段に分解（新番号を発行しない）**：
+
+1. **手順だけ**：電話確認と担当者引継ぎをProcedureとして記載。Functionや持続的Workflow Instanceが無くても手作業が消えないこと。証拠がなければ「確認済み」にしない（#1125/#1444）。
+2. **二つの待機**：承認AとBを独立に発生させ、Aのみ到着→Join不成立、B到着→Join成立。業務上の必要主体・有効時点・同一人の二役可否は**未受理の仮定を置かず**、Fixtureの独立Expectedへ明示（#2386/#1131）。
+3. **同時到着・再送・失効**：A/Bの並列完了、Aの重複到着、Join直後の障害、BのGrant撤回／案件版変更を別の結果へ分類。後続Actionの確定が高々一回か、少なくとも重複実行を検知・拒否できるかをProvider／Operation Identity／Receiptと独立Readで観測する。合流件数の事前Readのみでは合格不可（#1129/#1174/#1119）。
+
+**BL-04の追加反例**：長時間Workflowでは「承認時の業務版」「案件の現業務版」「Workflow定義版」「組織有効時点」を区別。途中でProcess v1→v2、同一状態名の意味変更、担当者の異動、過去の承認の取消が重なるとき、機械的な状態ID一致や新しい担当候補への再Bindingだけで履歴を再解釈・自動移行しない。Ownerは「旧版維持／再評価／明示Migration／中断」のいずれを当該Stepで許すか、独立Expectedに記録する（#2386、ADR-0024、Data Evolution）。
+
+### 7.8 新しいRuntimeを採るための条件と実装停止票（BL-03）
+
+**Runtime Workflowを先に作るのではなく、**次の三条件が具体的Scenarioで同時に必要な場合だけ、専用Instance／Branch／Arrival表現を比較する。
+
+- **必要性**：停止・再開・二つ以上の同時活動・相関到着・定義版固定等があり、単一Data本体状態と業務別履歴／関連表では意味・整合性を無理なく表せない。
+- **意味条件**：Step／Action／対象データのIdentity、合流に必要な担当集合・順序・有効期間、取消・差戻し、業務上の同一人二役可否をOwnerが独立に記述できる。
+- **実行条件**：現在認可、条件付き到着、同時Joinの一度限りの効果（または重複抑止）、失敗時の再実行資格、未知Commit、Receipt、版変更時の停止／移行が既存Provider／Hostの契約で説明できる。
+
+不足が**業務モデル／手順の表現**なら#1125/#1444へ、**データKey/Relation**なら#1126へ、**副作用・同時実行**なら#1129/#1174へ、**Query／一覧**なら#2622/#2387へ、**意味受理・横断資格**なら#1119/#2514へ戻す。Runtimeという名称だけから新Core・共通State表・新Scheduler・Orchestratorを起票しない。
+
+**完了単位**：BL-03/04の独立Expected、出典固定、反例とOwnerの未決質問、最小の既存Reference接続、棄却／採用保留条件がレビュー可能になるまでを設計Doneとする。Buri実動や旧環境復元は不要。TEIの実Providerでの同時Join・Receipt・Host資格は別Issueの未実行検証であり、この資料の静的観察をPASSへ変えない。
+
+
 ## 8. 出典と検証状態
 
 - Buri一次資料：[マニュアル](https://github.com/seasarorg/s2buri/blob/fbaf32dd3ec2a815dfe3f4426f10d6b0ce53547d/buri-core/doc/%E3%83%9E%E3%83%8B%E3%83%A5%E3%82%A2%E3%83%AB.txt)、[Wakanagoテンプレート](https://github.com/seasarorg/s2buri/blob/fbaf32dd3ec2a815dfe3f4426f10d6b0ce53547d/buri-core/src/main/resources/ftl/wakanagoProcess.ftl)、[BuriStateUtilImpl](https://github.com/seasarorg/s2buri/blob/fbaf32dd3ec2a815dfe3f4426f10d6b0ce53547d/buri-core/src/main/java/org/escafe/buri/dao/util/impl/BuriStateUtilImpl.java)、[BuriDataUtilImpl](https://github.com/seasarorg/s2buri/blob/fbaf32dd3ec2a815dfe3f4426f10d6b0ce53547d/buri-core/src/main/java/org/escafe/buri/dao/util/impl/BuriDataUtilImpl.java)、[Process Selector](https://github.com/seasarorg/s2buri/blob/fbaf32dd3ec2a815dfe3f4426f10d6b0ce53547d/buri-core/src/main/java/org/escafe/buri/engine/selector/processImpl/ValidDateBuriProcessSelector.java)。
