@@ -213,6 +213,12 @@ Established --[T4: link-lost]--> Closed
 
 Spring Statemachineの階層、直交Region、Fork/Join、History、Deferred Event、Timer、永続化などはEKIの複雑な分散Job運用に参考となるが、TEIの標準DSL/Coreへ一括輸入せず、EKIの既存独立状態軸・CAS/fencingで不足が実証された場合にだけ比較する。Spring Statemachine本体は2026-07-05に公開Repoがarchivedとなったため、直接依存でなく概念・反証の参照とする。**EKIがRich State Machineを採用した＝TEIの業務Flowを解釈してよい**、とはしない。
 
+### 7.8 EKI資源共有の状態機械をTEIで検証する（2026-11-03）
+
+[EKI Resource/Node運用の可視化・Simulation・AIレビュー計画](TEI_EKI_RESOURCE_OPERATIONS_SIMULATION_2026-11.md)に、**EKI自体がResource/Node/Local Governor/Task/Lease/Residentなど複雑な継続状態を安全に管理する**という実例を追加した。TEIはEKIのApplication PlaneのGraph/表/Time-series、状態Role/Rule、Simulation Scenario、生成AI Critical Review、変更Previewと運用Function生成に用いる。ただし**EKI Task State Authority・Lease・Local Governor/Providerの実権限をTEIの意味候補やAIによって上書きしない**。
+
+TEI CoreでSpring Statemachineの全機構を先行採用するのではなく、EKIの既存Task/Attempt/Lease等の独立State軸に、Graph×Transition/Invariant表×Event Traceを投影できるかを評価する。EKI側でDeferred Event/Fork/Join/History等が必要ならEKI固有Conformanceへ引き渡す。GPU shared memory・VRAM・CPU/Memory予約／OS保護を一つの「使用率」列に潰さず、Simulationの計算結果と実Device観測・Authority Decisionを分離する。
+
 ## 8. 今回の結論と検証の状態
 
 **成熟した設計入力として置くもの**：状態機械の適用対象は業務に限らない／図・状態表・遷移表・交差マトリクスは同一意味を異なる形で投影する／意味Core・実行・保存・UI・文書を直結せず明示Bindingする／業務IFを全部置換しない／実Runtimeの一般化は別の採用判断とする。
