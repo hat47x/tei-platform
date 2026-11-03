@@ -270,3 +270,77 @@ FixtureのExpectedをTEI Parser／AIが作ったCandidateから生成しない�
 **順序**：P0=RF-01／06〜09／14（取得の失敗と全件性）→P1=RF-02〜05／11／13／16（版間・依存局所化）→P2=RF-10／12／15／17／18（実Consumer・実Build・実Effect）→P3=既存案件Ownerによる意味受理。各段階はその範囲の実行と証拠が揃ったときにのみ前進し、旧CIのPASSを新しいHEADへ転用しない。
 
 **未決**：用途別鮮度期限、権威あるNot Found、offlineの固定Build・公開、同byte改版でOwner再受理を省略する条件、権限変更後の履歴開示。新ADRは採用せず既存Ownerへ判断を残す。#2667の横断Draftは別Ownerが同じ時期に編集しているため、計画本文をこのPRで重複更新しない。上記のRF→IB/ND/RC対応表をリンクで受け渡す。
+
+## 2026-11-03 第3追補：取得状態から操作資格への判定票
+
+**状態：設計・検証計画、NOT RUN／NOT ACCEPTED。** 第一・第2追補の取得6分類とRF-01〜18は維持する。ここでは「個々の取得結果がfreshなら、その集合全体・現在の用途・実行資格も成立する」という誤推論を防ぐ。複数Providerの読取整合性は既存[#1708](https://github.com/hat47x/tei-platform/issues/1708)、Query/Contextの否定依存と空集合は[#2582](https://github.com/hat47x/tei-platform/issues/2582)、現在のOwner／Accessは[#267](https://github.com/hat47x/tei-platform/issues/267)／[#958](https://github.com/hat47x/tei-platform/issues/958)、Source読取は[#1017](https://github.com/hat47x/tei-platform/issues/1017)に委ねる。新しい共通Snapshot機構、negative-cache Engine、Reference Resolver、Review Gateは追加しない。
+
+### 1. 宣言の利用モードと取得結果を区別する
+
+外部Referenceの必須／任意という区別だけでは処理条件は定まらない。候補として少なくとも以下の利用モードを**既存のResource選択・Dependency・Consumer要件の組合せ**で表現する。新しいDSLキーワードやSchemaの採用は含まない。
+
+| 参照利用モード（概念） | 満たすべき証拠・失敗時 |
+| --- | --- |
+| 固定版（pinned、再現用途） | 指定した供給元Revision／固定内容・Digest・必要な入力閉包が揃えば、現在ネットワークがunavailableでも履歴の再解析・offline Build候補。現在公開／実行権限は別。 |
+| 現在版（floating、現在性必須） | 供給元・scope・取得時点・要求鮮度／整合性を再照合。旧Cacheだけでは現在版と呼ばない。取得不能はcurrent qualification unknownとして保留。 |
+| 任意の依存（optional） | 不在が許される意味・fallback・生成物への影響を当該Ownerが定義している場合のみ継続。optionalだから未取得部分を空集合やNULLと解釈しない。 |
+| 生成段階の依存（generated at stage N） | Nより前に不在でも即時の永久失敗にはしない。N後の出力が必要なのに欠落・partialなら、その段階の生成・利用を拒否。既存Build graphへ接続。 |
+| 現在の外部効果に必要な参照 | Source取得freshだけで進めず、案件のAccepted Meaningと現在のHost/Provider Grant、実際のRequest・副作用の保証を確認。offline／ACK不明を自動再送理由にしない。 |
+
+ローカルの必須固定ファイルが、権限内の確定した読取りで存在しなければ診断Error。一方、通信断、レート制限、アクセス不可、部分取得、未解決のsymlink／redirectや途中生成を同じ「ファイルが存在しないError」へ潰さない。Parserの構文エラーとSource Readerの参照解決エラーはsource spanで関連付けても別原因として保持する。
+
+### 2. 取得観測の利用資格を判定する最小の質問
+
+一つのObservationからConsumerへ渡す前に、次の質問を**既存のSource／Model／Evidence参照から**確認する。判定の不足はread-only結果へ残し、別の汎用資格Registryに保存しない。
+
+| 判定する質問 | 根拠と否定条件 |
+| --- | --- |
+| 参照先は何か | 宣言されたScope付き対象・Locatorと、実取得Locator・転送・移動履歴・Providerを対応付ける。redirect／symlinkで別権限先へ到達したら再認可。論理同一性はURL一致・hash一致から推定しない。 |
+| どの入力を実際に読んだか | 供給元Revision（種類付き）、固定byte digest、対象member・field・範囲、Source occurrence、実消費byte。同時刻のetag／mtimeや前後hashだけでは原子的取得を保証しない。 |
+| 不在・完全性を本当に確認したか | Not Foundの権威・対象範囲・時点・Visibilityを評価。404が秘匿やProvider不具合を含む場合は不在を確定しない。部分取得、探索未完、正常0件は区別。 |
+| いつまで利用可能か | 供給元の更新情報、確認時点、Consumer用途別鮮度期限、必要な再検査条件を照合する。ローカル時計の進み・遅れ、条件付き取得やTTLは保証範囲を限定。 |
+| いま誰が使えるか | 現在のAccess／Disclosure／信頼先／配布先を確認する。取得できた内容を外部AIへ送信可能とは推論しない。低権限には存在・件数・診断差からも秘密を漏らさない。 |
+| 複数入力は整合しているか | 各Sourceがfreshでも同一論理時点とは限らない。Provider別snapshot／Read cohort／一貫性証拠・非原子的混合の可否を案件要求と照合。保証不能ならstrict用途はUnsupported／unverified。 |
+| どの判断に使うか | Source表示・解析／Candidate生成・意味受理・Build・外部Effectごとに必要な証拠を別記。Owner Decision、Build receipt、Execution receiptを相互代替しない。 |
+
+**Negative Cacheの注意**：以前の正しいnot-foundも、対象Locator／Provider／Scope／権限・観測時点に相対的な歴史記録である。後に新設されたファイルや回復した参照を「現在も不存在」と決めつけない。存在を隠す404と確定不在を同一視しない。negative-resultの期限や変更通知の信頼度はOwner未決であり、独立した汎用Negative Cacheを実装しない。
+
+**Read cohortの注意**：Source AのRevision r12とSource Bのr15がそれぞれfreshでも、同じ業務時点に属する証拠はない。必要な用途が整合したsnapshotを要求し、Provider間で証明不能なら「単独ではfresh／組合せ評価はunverified」と説明する。原子的な複数Provider取得をTEI Coreで先行実装しない。単なるClock timestamp一致、同名snapshot token、同一WorldFPで整合性を主張しない。
+
+### 3. 操作ごとの既定判断（採用前の比較基準）
+
+| Consumer操作 | stale／unavailable／partial時 | 意味・権限が変わるとき |
+| --- | --- | --- |
+| 履歴の読取・出典比較 | 取得済みの固定範囲について、閲覧権限がある場合は許容。現在版とは表示しない | 旧記録を保持、現Disclosureで公開可能な部分だけ表示 |
+| 構文解析・診断・read-only候補 | 固定入力の範囲で許容。未取得依存は独立診断。現在Sourceへの断定なし | Role／Operator版・Source span・Scopeを版付きで表示 |
+| 現行Meaningの採用・Owner再受理 | 必要な外部Source／scope／整合性を確認できなければ保留 | 既存#267でDecision。AI／Resolverは受理しない |
+| pinned Build／Artifactの再現 | 必要な入力closure／実消費byte／Toolchain Pinが揃った場合に限り候補。未確認依存や必要Member欠落は保留 | 計算結果の再利用、ArtifactSetの完全性、現在配布資格を別々に評価 |
+| AIによる一括修正提案・適用 | 旧版のPreviewは許すが現在版への無検査適用は禁止。版・span・対象・意味差分を再確認 | Sourceを変える適用とOwnerによる意味受理、外部送信の権限を分離 |
+| 外部実行・保存・再送 | 現在Grant・対象Host／Provider条件とOperation identityが不明なら拒否。Commit結果unknownは自動再送しない | 既発生Effectの履歴は保持し、現在の新規実行資格は別に再検査 |
+
+### 4. 反証Fixture RF-19〜24（RF-01〜18に追加。いずれもNOT RUN）
+
+| ID | 独立Expected（禁止推論） | 既存Owner／必要Observation |
+| --- | --- | --- |
+| RF-19 | **AとBはそれぞれfreshだが異なるread cohort**。strict-consistencyを要求する導出を合格にしない。許容したbest-effortならnon-atomicを明示 | #1708、独立に固定したA/Bの値とProvider snapshot。混在値を確定値としない |
+| RF-20 | **確定Not Found後にファイルが作成され、最終試行はoffline**。旧negative-resultを現在不存在として再利用しない | #2505／#958、供給元の作成イベントと取得試行履歴。negative cacheの期限不明はunknown |
+| RF-21 | **HTTP 404が存在隠蔽を兼ね、低権限利用者のみ取得不可**。外部AI向け結果・件数・Tool候補から存在を推定できない | #1045／#2516、実Providerの認可応答・Disclosure observer。内部原因は権限内に記録 |
+| RF-22 | **固定pinned Aでoffline解析は成功、同じAを現在版として利用する処理は保留**。同一Cacheに対する用途差を保持 | #958／#2600、入力Closure・現在性要件・独立Expected。offline Build成功を現Grantとしない |
+| RF-23 | **Reference redirect／symlink先が選択Scope外へ移動**。元URLが許可済みでも外部内容を取得・取り込まない。新しい外部Sourceを暗黙選択しない | #1002／#1017／#1570、実効Locator・物理境界・Provider認可。TOCTOU未保証を別記 |
+| RF-24 | **同一Source hash・同一画面選択後、Policyだけ撤回／旧応答後着**。旧内容の新規表示・AI送信・自動適用を拒否し、許可された無関係範囲は保持 | #1124／#2516、Consumer epoch、Policy change observer、Source Index・Scope binding |
+
+各RFの独立Expectedを実装から生成しない。最初は公開合成Providerにより状態とscopeを制御し、取得失敗・Read Cohort・Policyを観測する。現行の実Provider・外部HTTP・OSファイル権限・SHO保存Reader・TEI Studio・実Hostの適合を一度に主張せず、**その試験が実際に読んだ入力と対象Closure**を記録する。Referenceで合格した一段だけに限定してIssueの証拠を更新する。
+
+### 5. 実施順序・停止条件と横断計画への引渡し
+
+**第1縦断（headless read-only）**：P0取得分類RF-01／06〜09／14にRF-20／22を追加。独立Expected・Source span・Provider返却／Cache・時刻・正確な失敗コードを同一Attemptで取得。Loader／Readerの実験で有効な能力範囲を先に確定し、外部HTTP一般保証を主張しない。
+
+**第2縦断（必要なClaimだけ）**：RF-02〜05／11／13／16／19と#2505／#2600を突合。Sourceの内容一致とSource Index／Trace・Meaning受理・Build省略、Read cohort不一致を別列にしてBR-FULL／BR-SELECTIVE／BR-UNVERIFIEDの期待と比較する。
+
+**第3縦断（情報と副作用）**：RF-10／12／15／17／18／21／23／24を#1124 Studio、#2516 AI／SHO、#1017実Reader、#1174外部Effectへ渡す。権限外の内容・存在・診断件数の送信なし、旧応答拒否、旧Receiptからの自動再送0回を各Ownerが検証する。正式Meaning受理は既存#267を経由し、Owner未決を残す。
+
+最低受入票は次を並列に記録する：Source／Reference Revision、Content fingerprint、取得attempt・時点・結果／完全性、実消費byte／依存閉包、必要Read cohort、Consumer Purpose／Disclosure、構造候補、Accepted Meaningの受理時と現在資格、ArtifactSet必要member、実Effect Receipt、独立Expected、観測器、禁止推論、対象exact HEAD／CI。フィールド追加は既存Source Index／Evidence／CLIの投影可能性をまず調べ、汎用の公開schemaをここで決めない。
+
+**停止条件**：読み取りscope、Not Foundの権威、全件性、Read Cohort、実消費byte、現在開示、Owner受理のうち、操作に必要な根拠が欠けた場合は「現在成立」「部分再計算を省略してよい」「実行可能」という結論に進まない。固定履歴・影響のないClaimのread-only利用まで全面禁止しない。
+
+**Owner未決**：用途別鮮度期限と監視要件、負の取得結果の再利用時間・権威、非原子的Readを許すDomain／用途、pinned offline Buildの許容、権限失効後の既取得Cache開示・削除要件、内容同一時のOwner再受理省略条件。新ADRの採用決定はここで行わない。並行Draft[#2667](https://github.com/hat47x/tei-platform/pull/2667)の横断計画は別Ownerの編集範囲なので、本PRでは同じファイルを更新しない。
