@@ -1208,6 +1208,39 @@ Requiredが全社、Authorized/ActualがTenant A限定なら「Tenant Aの対象
 **責務**：#2622/#2628＝Data Context/Provider Real Read、§37/#2386/#2781＝Organization Policy、#2516/#2515＝用途別開示、#2514＝独立Expected/Claim Coverage、#1130＝読取専用Batch、#2582/#2600＝差分・再資格、#1174＝現在Authority/Effect、§35〜36/EKI＝配置/期限/回復。新しい監査専用万能Grant、Policy Engine、Quality Registry、Schedulerや正式Schema/ADRを採用しない。
 
 
+
+### 27.8 派生品質検査そのものの検出力――独立Oracle・故障注入・全件対照と費用の両立（2026-11-03横断追補）
+
+> **設計・実証計画／NOT RUN・NOT ACCEPTED。** §26のオンライン/夜間/Lean派生、§27.6の対象Coverage Debt、§27.7の四Footprint、§35〜36のEKI資源/期限管理は既存のまま。本節は**検査対象が全件でも、検査式・生成Go/SQL・Readerの間違いを見逃す**欠落を埋める。#2514（独立Oracle/Mutant判別）、#1063（生成時/実行時二用途）、#2593（grain/集計法則）、#2622/#2628（Data Operations/実Read）、#2018（成功偏重を避けた比較）へ引継ぎ、第二のTEI Validator/Proof Engineや共通品質Runnerを作らない。
+
+**二つのCoverageを同じ百分率にしない**：
+1. **Data coverage**＝適用対象Rule×母集団×Row/Field/Relation×期間×Snapshotのうち、権限を持つ実Readerが完全に検査できた範囲（§27.6/27.7）。分母/閉包不明はunknown。
+2. **Fault-detection evidence**＝特定Rule・生成器・実Targetの検査が、独立に定義した既知誤りを拒否できた範囲。固定Mutantを何件検出したかは**試験集合に関する局所的な判別力**であり、未知故障の検出確率、製品のデータ品質、Lean証明、全Provider適合を一般保証しない。
+
+**三つの独立Witness**：A. Rule側のAccepted Meaning・Source/Operator/Nullable/Unit/grain/時点と独立Expectedの導出元。B. 実行されたGo/SQL/Provider Queryの生成元・実消費byte/Target版・Relation join/Predicate・実取得Scope（Declared ReadとActual Acquisitionを分離）。C. 観測された実Data Snapshot・検査件数・violation/unknown/timeout・結果にアクセスできるConsumer/Receipt。**A/B/Cの独立性と版閉包が立証できない共同Claimはunqualified**とする。オンラインGoと派生SQLが同じGeneratorの誤Loweringを共有すると、両者が一致しても真のRuleから逸脱する。Leanの法則証明も、命題生成とProvider/Targetへの対応が誤ればその逸脱を検出しない。
+
+| Pressure（既存DQ/DQX/DQA/QDSへ投入する故障注入） | 故障の具体例 | 合格に必要な観測／誤成功停止線 |
+| --- | --- | --- |
+| **QFV-01 算術・型** | half-evenをhalf-upとして生成、Decimalをfloatで演算、Decimal→String同ID、未取得をNULL/0へ | 期待値は候補Go/SQL/同じEvaluatorから作らず、例: +1.005を小数2桁half-evenなら1.00。違反/拒否の局所差を検出 |
+| **QFV-02 集計/粒度** | 受注明細2件×配送3件のjoin fanout後SUM=600、DISTINCT amountで200を100へ誤縮約 | 独立の受注合計Expected=200、粒度/重複・Relation/Measure法則を固定。Go=SQL一致でも誤結果ならFail |
+| **QFV-03 非出力依存** | 表示値同じでもHidden WHERE、EXISTS/NOT EXISTS、sort/limit順、Dynamic Relation先変更 | Query非出力依存の版と実Read cohortを観測し、空/partialと完全不存在を分離。結果byte一致だけでは旧Pass再利用不可 |
+| **QFV-04 不完全/認可** | 全社RuleなのにRLSはTenant Aだけ、secret Fieldを内部Overfetchして結果だけマスク | Required/Authorized/Actual/Disclosedの差を検出。RLS下0件を全社無違反にせず、不正取得を出力マスクで隠さない |
+| **QFV-05 増分の失効** | CDC gap、行削除、否定依存、A→B→A、Rule/Operator/Policy改版、旧/new Relation片側欠落 | 同じ固定対象のFull ScanとIncremental Scanの差、原因/再Scan/unknownを比較。誤再利用をFail、過剰失効も費用として測る |
+| **QFV-06 実Run/効果** | Exit 0だが出力Artifact欠落、Replica S0 PASS後Primary S1に違反、EKI late Attempt、是正Commit unknown | Job受理／品質Claim／現在資格／Repair Receiptを別判定。旧Resultと効果不明を緑色にしない |
+
+**Quality Check生成器の最小受入票**：元Source occurrence + Accepted Rule/Operator/Meaning revision、独立Expectedの具体的算出根拠とCandidateとの共通依存警告、Lowered Go/SQL/Leanの実byteと実Reader、対象Data Context/依存（表に出ないPredicate/Join/Exists/Time/Policyを含む）、Fault注入前後のExpected/Got/diagnostic、完全性と対象Snapshot、該当Targetのpass/fail/unknown、実コスト。既存#2514のTAO/MR、#2628のRead Witness、#2593 MC、§24 VS・§27 DQ/DQXを**同一試行で参照**し、Fixture正本や新Schemaを重複生成しない。
+
+**Baseline / Optimized / Unverifiedを分ける**：
+- Baseline：固定されている業務Rule・母集団・Snapshot・独立Expectedに対し、**可能なとき完全なread-only scan**を行う。断定可能なScopeを明示する。
+- Optimized：同一条件で、生成したTyped Go演算・Provider pushdown・Snapshot reuse・Incremental・重点検査の費用差を比較。オンライン必要Guardの省略は§25の証明条件に従う。
+- Unverified：実Providerを読めない、Full baselineが時間切れ、Mutationを試していない、Oracleが候補と共通出所、権限/Replicaの完全性不明の場合は、**0 cost／0 violation／成功扱いにしない**。既存の成功試行だけから平均を取って速さ・品質を主張しない（#2018）。
+
+**KPIの候補（事前定義が条件）**：オフライン対象の検証完了率とCoverage debt、規定期限内にConsumerへ到達した検査結果、固定Mutant集合に対する検出件数・見逃し件数・拒否理由、false-positive候補の再確認率、Full/Incrementalの誤再利用・過剰再検査、scan CPU/IO/bytes・Provider roundtrip・Replica lag・転送費用、Rule改版から再生成/再監査までの時間、診断/修復の手作業時間。**Mutation detection rateを未知故障発生率の推定に転用しない**。夜間Scanの実測費用と、必須Online Guardのp95/allocsへの影響は別指標とする（§25/#565）。
+
+**実証順**：F0＝受注合計1 Rule＋組織Membership期間整合1 RuleのSource/Meaning・独立Expected・誤実装を固定。F1＝生成器に依存しない人工Fault injectionでQFV-01/02/04の検出力を先に照合（手書きSQLは比較候補で正式TEI Targetの完成証拠にしない）。F2＝実Go/SQL/Provider Readerに到達した場合のみ、同じData Context/Read Witness/実Query byteで正常/異常/unknownとQFV-03/05を対照。F3＝Full/Incremental/Targeted/Statistical Samplingの検出力・費用・結果資格を、分母とDeadlineを保持して比較。F4＝実Job/Replica/EKI/SHO/AI/是正は各Ownerへ渡し、到達できない系統はNOT RUNとして残す。**未実験の改善率や「少人数で大手品質チーム並みの保証を達成した」という主張は禁止**。
+
+**Ownerの分離**：#2514が独立Expected・Fault判別・Claim範囲、#1063/#988が同一MeaningからのTarget lowering、#2622/#2628が実Provider ReadとPushdown、#2593がMeasure/grain、#2582/#2600が動的依存・再使用、#1130/§35〜36がJob/リードタイムとEKI候補、#2544がLean Law、#2516がConsumer開示、#2018が対照実験と費用・人手の生産性指標を所有する。実Go/SQL/Lean/Replica/EKI/Host等の実結合・Owner受理は未実施であり、この節自体はDocs-only。
+
 ## 28. 一改訂のValue／Flow／Job／Consumer縦断――参照実行と外部実行を混同しない（2026-11-03横断追補）
 
 ### 28.1 並行する三つのOwner計画を、別の正本を作らずにつなぐ
