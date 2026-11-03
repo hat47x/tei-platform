@@ -1870,3 +1870,7 @@ Security/Privacy/実Host/DB/Ownerレビューは既存#1119 Gateに委譲。専�
 **用途別停止**：普通の一覧Readが成功しても、Query Count/Page/Search/Export/AI/SHO/Batch/Updateの実施行資格は別。部分取得/0件/未知Readをfalse/完全空集合に変換しない。Policyからの適用除外≠他Policy/HostのAllow。実Providerに制限を掛けずUIだけで隠す実装は不可。未保存Patchは機密保持の可否を確認した範囲で隔離し、古いIntentの自動Submitは拒否。既に適法に送出されたコピーの外部完全消去は不可能であり、「現時点の閲覧制限」と「過去資料の撤回・通知・監査」を別に扱う。
 
 **既存Ownerの一固定Trial**：#2582/#2506がContext・選択・結果Requalification、#2622/#2628/#2387が同Source/Policy版・実Read/Query非出力/Enforcement、#2516/#2631がUI/DOM/a11y・診断/件数/AI/SHO実消費、#2598/#1174が現在Action/Effect。Read要求→Policy/Grant失効→遅延Response→表示拒否・Cache再資格・下書き隔離→別Provider RouteでのCount/Export拒否を**実Request/Response bytesと独立Expected**で同じAttemptに束ねる。実Endpoint/Hostが未接続なら`NOT RUN: enforcement-unavailable`、Scopeや実Read不明なら`unverified`、Owner意味の受理がなければ`not accepted`。独自TEI Host/第二Reactive Broker/ACL/Policy Engineを作らない。#1119 P0-a/P0-bの実DB・Owner-writeを優先。
+
+### 39.1 VE-01〜20のfixed-head実測
+
+[Draft #2781](https://github.com/hat47x/tei-platform/pull/2781)のfixed HEAD `77ac2f3e49394aa8742c39181168607d8e3aff77`に対する[Node Actions #41641623522](https://github.com/hat47x/tei-platform/actions/runs/41641623522)はcompleted/success。Node v22.16.0、Reference 27 checks PASS、`node --test` **258/258 PASS、fail 0**（新規VE-01〜20を含む）。ソースBlob `93cfbe4146904c2d8c3c613c4a67bae6ecb0e340`。これは合成E0で、実Provider・Host・Studio/SHO/AI・Ownerの許可や実開示はNOT RUN。#2681実Go E1と別試行を合算して製品E2E PASSとしない。
