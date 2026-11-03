@@ -91,6 +91,10 @@ Total CostはCompute（Cloud/On-prem amortization）＋Data Egress/Ingress＋Con
 
 顧客発見では`Pool/Orgレベルの利用可否判断に困っているか`、`既存製品のライセンス/運用負担を下げるか`、`Nodeの詳細をEKIに渡さないデータ主権・Security上の価値があるか`、`TEIのAI Pipeline設計と一体の購買意思があるか`を別に検証する。**「国内企業は余剰PCを多数持つ」から`動的PC Cloud`へ有償の需要があるとは推定しない**。Clientが承認済Poolを指名する方式と、EKIが最適Delegateを提案する方式の双方を、現行EKI RQ-059と照合する。経済圏におけるContributionや金銭的価値への換算は別の制度・Ownerが決め、EKI Coreが通貨や市場を構築しない。
 
+### 6.2 最初に購入価値を判定する実証は、Pool選択より前のJob Wireと予約
+
+[TEI/EKIの未解決契約と独立反証](TEI_EKI_AGGREGATE_DELEGATION_UNRESOLVED_GATES_2026-11.md)を補助判断票にする。顧客に`全企業GPUが見える`と言えても、実TEI Jobの入出力Artifact・EKI #112のAPI Gap、下位Providerの予約と二重Retry、Owner/EDR/MDMの現在性が未検証なら安全な共有製品としての価値は証明できない。Pilotでは**既存Provider直接利用 vs EKI Broker介在**を同じWorkload/結果で測り、Task完了率・p95待ち時間・費用/完了件数・実User干渉・Security incident・権限/支出への影響を別の軸で評価する。過剰なPool inventory収集、未承認GPU連携、組織間Credit制度を初期MVPの必須前提にしない。
+
 ## 7. Issue・ADRとの接続（重複開発を避ける）
 
 - **EKI側で維持**：#58 Suitability、#112 External TEI projection、#57/#242 Task/E2E、#130 stop-safe resident、#106 Session/小Task、#222 Worker identity/onboarding、#109/#125/#140 resource pools/economics、#19/#48/#50 simulation、#354 concurrent reservations、#118 CPU/GPU/Local Observability、#124 human transparency、#136 TEI plugin comparison。EKI repo/ADRの正式変更はEKI Owner判断待ち。
