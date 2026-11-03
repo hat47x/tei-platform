@@ -428,3 +428,48 @@ Goでビルドした単一ネイティブバイナリはTEIの標準実行形態
 **試行の最短順**：①[main起点の独立Draft PR #2784のGo期間Guard試験](https://github.com/hat47x/tei-platform/pull/2784)で`operations.GuardCapabilityWith`と実JSON StateSourceの更新を固定 → ②#2598でAJ-02/03のRequest Targetとcurrent Grantを既存Adapter/Provider前の契約で検証 → ③#1130とEKI #112が**純粋Job一件**のInput Artifact digest/body→実Task→Output bytes→TEI独立Oracleを先に観測 → ④実Provider Commit/Receiptと期限・予算・回復のend-to-end計測 → ⑤SHO/AI/Studioなど実Consumerの必要開示だけを評価。EKI #112の既存Spike報告にあるArtifact ingest 422／Result API 501を実E2E成功扱いしない。新しいJob Runner/Authority Registry/万能State Schemaの追加や、現有#1119 G0〜G4の再定義は行わない。
 
 **この§14の証拠資格**：既存main/PR #2744のコード・文書静的照合と、実Goの限定負例・参照Gateの接合設計。AJ-01の新Go試験は、GuardCapabilityWith/periodstate.Fileが既にある**新main基線の独立Draft PR #2784**へ分離した。旧#2616 branchに新main APIを無検証に引用した初版はCI失敗となったため、その試験コードを#2616から移し、旧Focused Workflowの安定構成を復元した。#2784現HEADのGo試験/CI/logの成功を確認するまではPASSとしない。AJ-02〜08の同一縦断実Consumer/EKI/Provider/OS/Replica、Deadline/Costの物理実測・Owner意味受理はNOT RUN。正式DSL/TEI/EKI ABIとBusiness Grantは追加・採用しない。
+
+<!-- 20261103-action-invocation-effect-evidence-join -->
+## 15. Function/Action Invocationの「実行要求と業務効果」を、既存Command/Effectcommitの反例へ接合する（2026-11-03）
+
+### 15.1 横断照合で得た新しい結論
+
+**標準操作が見つかること ≠ 業務Actionの目的が受理されていること ≠ Requestの対象が拘束されていること ≠ Commit/Receiptが分かること ≠ Consumerへ結果が正しく届くこと**。他チャットのDSL/Studio/AI/Batch共通Function Invocation論点と、現行実Goの独立した証拠を一試行の検収列に直す。
+
+| 実証Source（同一製品E2Eには合算しない） | 現在実測した特徴と厳密な限界 |
+| --- | --- |
+| [#2616 OB-01/02・OB-07A](https://github.com/hat47x/tei-platform/actions/runs/41633212269)：actual Go CLI + derived Surface→Driver | 公開`ledger`はOperation 5／Gap 4、`operations -out`は実File write。合成Adapterで選択O-1に対しO-2へのEffectでも成功Outcomeが返る。Offerの正しさも対象の正しさも保証しない。 |
+| [#2666実CLI A1](https://github.com/hat47x/tei-platform/actions/runs/41632245693)：Operation→Artifact/Manifest | 公開`order_entry`はOperation 8／Gap 0でもManifest.Complete=false。**Operation候補の未解決0はArtifact・Function Context・外部Consumerの完全性を保証しない**。 |
+| [#2780 MC-B01/C01/D01/D02](https://github.com/hat47x/tei-platform/actions/runs/41632377548)：実Command Invoker→Adapter→Effectcommit Runner + 合成Provider | (B) Commandの選択ORD-1と明示PayloadのORD-2不一致を拒否せず転送、(C) 内側commit成功と外側UnitOfWork commit失敗が分裂、(D01)初回とreplayedをCommand空Resultが区別しない、(D02)commit uncertainの型付きCauseはerrors.As可能だが外側Error Codeは汎用。4/4 PASSは**ギャップの検出**であり正しいフェンスの成立ではない。 |
+| [新main起点Draft #2784](https://github.com/hat47x/tei-platform/pull/2784)：actual`periodstate.File`→`GuardCapabilityWith` | Preview後の期間open/closing/closed/欠落/unavailable/invalid変化を検査する。既存Referenceの**キー欠落→unguarded**と**File失効→error**を区別。これはDriver/ProviderのTx内期間Fenceではない。 |
+
+これらは別のSource/Branch、別のAdapterと異なる実行場所で得られた局所証拠であり、操作5/8件・Go試験4件・期間ガードという結果を足して**同一Business Operationが正しく実行できた**と主張しない。特に#2780のCommand Adapterと#2616のDriverは**別の入口**であり、同じFrameworkの自動実行保証に統合しない。
+
+### 15.2 「用途の同一性」と「対象の同一性」と「副作用の同一性」
+
+形式を先に固定せず、同一のAttempt/Operationについて次の**照合関係**を既存Model・Request・Receiptの読み取りで表示できるか検証する。新たな公開Schema/Registry/Hostは設けない。
+
+| 証拠の結合点 | 最低限区別する情報 | 無証拠で採用してはいけない主張 |
+| --- | --- | --- |
+| **Purpose**：Function/Action | `update`等のOperation Kindと、`cancel`／`submit`／`approve`等の**業務目的・受理済みMeaning、適用Rule、対象Role** | 標準CRUDの`update`から取消等の固有業務意味を生成した |
+| **Subject**：Offer→Request | 選択業務ID＋Occurrence/Scope/epoch、RowsetとRelation多重度、業務Key vs PK、Expected Version | Clientが送った単一`orderId`値＝Providerが実更新する対象集合 |
+| **Current authority**：Dispatch→Commit | Request版・現在のPrincipal/Grant/Period/Provider Capability/実Scopeの再照合、認可範囲、同時更新 | Offer時の権限・Preflight Guard＝Commit時点の権限/期間Fence |
+| **Effects and transaction** | 実Effect Target/Phase、関係するTxn boundary、Idempotency identity、内外UoW同一Txの根拠 | 片方のCommit成功/外側Rollbackで全副作用を原子的に確定/取消できる |
+| **Outcome and Recovery** | New/Replay/NotCommitted/Uncertainの区別、同一OperationIDでのReceipt/Lookup・未知状態 | `command.Result{}`/一般Error/成功文字列＝実Commit確定または未実行 |
+| **Observations and consumers** | 独立Readの対象・時点・Snapshot・Read completeness、Consumerの実受領byte/開示版 | Adapter自己応答、Manifest Gap=0、EKI Task Success＝BusinessVerified |
+
+**利用者Interaction**はこれらの表示/要求/入力と中断・再開をTarget固有UI（Web/Desktop/CLI/Batch）へ投影するだけで、別の業務意味や実行認可の正本を作らない。CLI/Job等が入力不要なら同期Promptを要求せず、対話が必要な場合も「入力待ち」「未実行」「Commit不明」「結果未受領」を別表示する。AIはPlan/候補/Previewを構成できるが、Grant Issuer・ビジネスMeaning Owner・実Hostとは区別する。Source origin/Revision、Function Contextのhidden predicate/Rule依存、取得完全性が不明なら、画面のEnable状態をCommit許可と誤認しない。
+
+### 15.3 三つの停止点を最小受入として固定
+
+- **Q1：実行前**：選択目的/対象・Request Payload・current Scope/Principal/Grant/Period/ExpectedVersionと、Adapter/Providerの書込み対象・権限・現在Snapshotを同一Attemptで突合。合法な関連明細へのEffectも存在するので、文字列IDが異なれば一律拒否する短絡規則は採らない。業務Meaningに基づく「許された対象集合」を定義できない場合は **unsupported／不明**。
+- **Q2：実確定時**：Commandの内外TransactionとEffectcommitが一つの物理Txに参加する根拠を持てない場合は、原子的Commit/一括Rollbackを主張しない。ACK-loss/Commit uncertainでは、同じOperationIDでReceipt Lookupを先に行い、別OperationIDで盲目的に再実行しない。RunのSuccessとResource/Business Effectを分ける。
+- **Q3：結果提供時**：必要なReceipt・対象・独立Read・Manifest Body・Reader SnapshotとAudienceの現在Disclosure/意味契約を照合。Commit済みでもBusinessVerifiedは別。Consumerには`committed`と`replayed`、`unknown`を同じ「成功/失敗」へ丸めた可視化を行わない。EKIの`completed`は実業務Effect/期限内検証済み結果の証明ではない。
+
+### 15.4 次の検証順序・各Owner・保留
+
+1. **現行境界の合流表（設計／Owner #2598・#2507）**：同じ公開`sales.order`のAction Purpose、Operation/Binding、選択subject、Command.Input、明示Payload、Provider target、現在のPeriod/Grantを一行に固定する。現行の別入口間で結合できない箇所は**unverified**とし、横断の擬似Successを作らない。上の#2616/#2666/#2780/#2784既存FixtureとIndependent Expectedを再利用。
+2. **実行安全化（実装・実Provider Owner #1174/#1129）**：Q1 mismatch/失効の事前拒否で**実Effect=0**、Q2 atomic boundary／Receipt／ACK-loss recovery、Q3別readで対象・結果を確認できたら初めて受入対象とする。合成Adapterの望ましくない挙動を仕様として保存しない。
+3. **Consumer/Job接続（#2516/#1130、TAI/SHO/EKI各Owner）**：Function InvocationをUI・CLI・Batch等で同じ業務契約に束縛し、Runtime InteractionとResource Executionだけを適応。EKI #112の実Artifact ingest/Result retrieval未達を飛ばして実「結果あり」とは言わない。実Web/Desktop/SHO/AI/Host/EKI、実SQL/Provider、Deadline/物理費用、Owner意味受理は未実施。
+
+この節は**限定実証の非同値性を既存計画へ接合したもの**であり、新正式DSL/Operation Runner/Effect Fence API/共通TX Coordinator・Action Schema・Role Authority正本を採択しない。#1119 G0〜G4、#1174/#1130の既存Owner順序、既存Go単体バイナリと外部Hostへの自由度を保持する。
