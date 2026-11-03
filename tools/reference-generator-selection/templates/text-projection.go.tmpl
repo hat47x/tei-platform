@@ -1,0 +1,57 @@
+package main
+
+// Generated candidate for the {{.ContractID}} projection contract at version
+// {{.ContractVersion}}. Missing, empty and unresolved stay distinct.
+
+import (
+	"encoding/json"
+	"fmt"
+	"os"
+)
+
+type output struct {
+	State string `json:"state"`
+	Text  string `json:"text,omitempty"`
+}
+
+func emit(out output) {
+	encoded, _ := json.Marshal(out)
+	fmt.Println(string(encoded))
+}
+
+func main() {
+	var in map[string]any
+	if err := json.NewDecoder(os.Stdin).Decode(&in); err != nil {
+		emit(output{State: "error"})
+		os.Exit(2)
+	}
+	value, ok := in["text"]
+	if !ok {
+		emit(output{State: "missing"})
+		return
+	}
+	if value == nil {
+		emit(output{State: "unresolved"})
+		return
+	}
+	text, ok := value.(string)
+	if !ok {
+		emit(output{State: "error"})
+		os.Exit(2)
+	}
+	{{- if eq .ProjectionKind "normalize" }}
+	text = trimSpace(text)
+	{{- end }}
+	emit(output{State: "present", Text: text})
+}
+
+func trimSpace(s string) string {
+	start, end := 0, len(s)
+	for start < end && (s[start] == ' ' || s[start] == '\t' || s[start] == '\n' || s[start] == '\r') {
+		start++
+	}
+	for end > start && (s[end-1] == ' ' || s[end-1] == '\t' || s[end-1] == '\n' || s[end-1] == '\r') {
+		end--
+	}
+	return s[start:end]
+}

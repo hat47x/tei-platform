@@ -15,8 +15,9 @@ import (
 // sources or accept the merge.
 func main() {
 	root := flag.String("workspace", "", "source Workspace root to read")
-	from := flag.String("from", "", "comma-separated type IDs to merge away")
-	into := flag.String("into", "", "type ID to merge into")
+	from := flag.String("from", "", "comma-separated type IDs to merge away (or single source type for -split)")
+	into := flag.String("into", "", "type ID to merge into (or comma-separated target types for -split)")
+	split := flag.Bool("split", false, "compute the impact of splitting a type into several target types")
 	candOut := flag.String("candidate-out", "", "new file for a set-attribute-type change candidate (needs -base-revision)")
 	base := flag.String("base-revision", "", "target model revision from the Shared Acceptance revision command")
 	flag.Parse()
@@ -29,7 +30,12 @@ func main() {
 		fmt.Fprintln(os.Stderr, "load Workspace:", err)
 		os.Exit(1)
 	}
-	impact, err := typereorg.Analyze(loaded.World, typereorg.Merge{From: strings.Split(*from, ","), Into: *into})
+	var impact typereorg.Impact
+	if *split {
+		impact, err = typereorg.SplitImpact(loaded.World, typereorg.Split{From: *from, Into: strings.Split(*into, ",")})
+	} else {
+		impact, err = typereorg.Analyze(loaded.World, typereorg.Merge{From: strings.Split(*from, ","), Into: *into})
+	}
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)

@@ -1,0 +1,88 @@
+{
+  "schema": "tei.reference.capability-degradation-input/v0",
+  "targetId": "existing-db",
+  "tables": [
+    {
+      "id": "orders",
+      "observed": true,
+      "capabilities": [
+        "read",
+        "insert",
+        "update",
+        "delete",
+        "optimistic-lock-column",
+        "audit-column",
+        "transaction"
+      ]
+    },
+    {
+      "id": "legacy_orders",
+      "observed": true,
+      "capabilities": [
+        "read",
+        "insert",
+        "update",
+        "delete",
+        "transaction"
+      ]
+    }
+  ],
+  "operations": [
+    {
+      "id": "orders.read",
+      "table": "orders",
+      "action": "read",
+      "requires": ["read"]
+    },
+    {
+      "id": "orders.insert",
+      "table": "orders",
+      "action": "insert",
+      "requires": ["insert", "audit-column"]
+    },
+    {
+      "id": "orders.update",
+      "table": "orders",
+      "action": "update",
+      "requires": ["update", "optimistic-lock-column"]
+    },
+    {
+      "id": "orders.delete",
+      "table": "orders",
+      "action": "delete",
+      "requires": ["delete", "optimistic-lock-column"]
+    },
+    {
+      "id": "legacy.read",
+      "table": "legacy_orders",
+      "action": "read",
+      "requires": ["read"]
+    },
+    {
+      "id": "legacy.insert",
+      "table": "legacy_orders",
+      "action": "insert",
+      "requires": ["insert"]
+    },
+    {
+      "id": "legacy.update",
+      "table": "legacy_orders",
+      "action": "update",
+      "requires": ["update", "optimistic-lock-column"]
+    },
+    {
+      "id": "legacy.delete",
+      "table": "legacy_orders",
+      "action": "delete",
+      "requires": ["delete", "optimistic-lock-column"]
+    },
+    {
+      "id": "legacy.audit-update",
+      "table": "legacy_orders",
+      "action": "update",
+      "requires": ["update", "optimistic-lock-column", "audit-column"],
+      "allowDegradation": true,
+      "weakerGuarantee": "更新のみ。競合検出と監査列は使わない"
+    }
+  ]
+}

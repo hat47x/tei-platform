@@ -190,6 +190,8 @@ func workspaceWithFailingSourceIndex(t *testing.T) string {
 		t.Fatal(err)
 	}
 	const declaration = "    index orders_customer_idx on sales.order.customer_id\n"
+	// Windows checkouts may convert LF to CRLF; the declaration is matched on LF text.
+	content = []byte(strings.ReplaceAll(string(content), "\r\n", "\n"))
 	if !strings.Contains(string(content), declaration) {
 		t.Fatalf("fixture changed: the index declaration is gone from %s", persistence)
 	}

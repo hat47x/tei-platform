@@ -15,23 +15,36 @@ import (
 
 // cliValidationReport is a projection for automation, not a second semantic
 // validation model or a grant of authority to modify accepted source.
+//
+// worldFingerprint and sourceIndexFingerprint are present only when the
+// Workspace was loaded and indexed (ok=true or semantic findings). They are
+// omitted for syntax findings and execution failures, where no version exists.
+// They equal the values from inspect and model catalog for the same files, and
+// are evidence of the read version, not of correctness. Fields were added to
+// tei.cli.validate/v0; existing readers that ignore unknown fields are unaffected.
 type cliValidationReport struct {
-	SchemaVersion string                `json:"schemaVersion"`
-	OK            bool                  `json:"ok"`
-	Diagnostics   []cliValidationItem   `json:"diagnostics"`
-	Error         *cliValidationFailure `json:"error,omitempty"`
+	SchemaVersion          string                `json:"schemaVersion"`
+	OK                     bool                  `json:"ok"`
+	Diagnostics            []cliValidationItem   `json:"diagnostics"`
+	WorldFingerprint       string                `json:"worldFingerprint,omitempty"`
+	SourceIndexFingerprint string                `json:"sourceIndexFingerprint,omitempty"`
+	Error                  *cliValidationFailure `json:"error,omitempty"`
 }
 
 // Source locations never synthesize an empty Semantic Subject for parse errors.
 type cliValidationItem struct {
 	Diagnostic validation.Diagnostic `json:"diagnostic"`
 	Sources    []cliValidationSource `json:"sources,omitempty"`
+	// UnresolvedSourceOrigins marks declarations whose position is unknown,
+	// such as the in-process standard prelude. It is never a path placeholder.
+	UnresolvedSourceOrigins []string `json:"unresolvedSourceOrigins,omitempty"`
 }
 
 type cliValidationSource struct {
-	ArtifactPath string            `json:"artifactPath"`
-	Range        sourceindex.Range `json:"range"`
-	Role         sourceindex.Role  `json:"role,omitempty"`
+	ArtifactPath string               `json:"artifactPath"`
+	Range        sourceindex.Range    `json:"range"`
+	Role         sourceindex.Role     `json:"role,omitempty"`
+	Subject      *sourceindex.Subject `json:"subject,omitempty"`
 }
 
 type cliValidationFailure struct {
@@ -99,14 +112,24 @@ func validateWorkspaceJSON(out io.Writer, root string) (int, error) {
 		})
 		return writeValidationReport(out, report, 1)
 	}
+	report.WorldFingerprint = result.WorldFingerprint
+	report.SourceIndexFingerprint = result.SourceIndexFingerprint
 	for _, projected := range result.Diagnostics {
 		item := cliValidationItem{Diagnostic: projected.Diagnostic}
+		if len(projected.UnresolvedSourceOrigins) > 0 {
+			item.UnresolvedSourceOrigins = append([]string{}, projected.UnresolvedSourceOrigins...)
+		}
 		for _, ref := range projected.Sources {
-			item.Sources = append(item.Sources, cliValidationSource{
+			source := cliValidationSource{
 				ArtifactPath: ref.ArtifactPath,
 				Range:        ref.Range,
 				Role:         ref.Role,
-			})
+			}
+			if projected.Diagnostic.Code == "DUPLICATE_SEMANTIC_ELEMENT" {
+				subject := ref.Subject
+				source.Subject = &subject
+			}
+			item.Sources = append(item.Sources, source)
 		}
 		report.Diagnostics = append(report.Diagnostics, item)
 	}

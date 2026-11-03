@@ -18806,15 +18806,19 @@ function readCatalog(raw) {
   const v = record2(raw);
   if (v.effect !== "read-only" || !Array.isArray(v.entries) || typeof v.modelRevision !== "string" || typeof v.worldFingerprint !== "string" || typeof v.sourceIndexFingerprint !== "string")
     throw Error("INVALID_CATALOG_RESPONSE");
-  const seen = /* @__PURE__ */ new Set();
+  const seen = /* @__PURE__ */ new Map();
   const entries2 = v.entries.map((rawEntry) => {
     const e = record2(rawEntry), s = subject(e.subject), key = subjectKey(s);
-    if (seen.has(key) || typeof e.sourceStatus !== "string")
+    if (typeof e.sourceStatus !== "string" || e.ambiguous !== void 0 && typeof e.ambiguous !== "boolean")
       throw Error("INVALID_CATALOG_ENTRY");
-    seen.add(key);
+    const ambiguous = e.ambiguous === true;
+    if (seen.has(key) && (!seen.get(key) || !ambiguous))
+      throw Error("INVALID_CATALOG_ENTRY");
+    seen.set(key, ambiguous);
     return {
       subject: s,
       sourceStatus: e.sourceStatus,
+      ambiguous,
       ...e.parent === void 0 ? {} : { parent: subject(e.parent) },
       ...typeof e.symbol === "string" ? { symbol: e.symbol } : {}
     };
@@ -18825,6 +18829,15 @@ function readCatalog(raw) {
     worldFingerprint: v.worldFingerprint,
     sourceIndexFingerprint: v.sourceIndexFingerprint
   };
+}
+function inspectEligibility(catalog, selected2) {
+  if (!catalog) return { ok: false, reason: "CATALOG_UNAVAILABLE" };
+  const matches = catalog.entries.filter((entry) => subjectKey(entry.subject) === subjectKey(selected2));
+  if (matches.length === 0)
+    return { ok: false, reason: "SUBJECT_NOT_FOUND" };
+  if (matches.length !== 1 || matches[0].ambiguous)
+    return { ok: false, reason: "SUBJECT_AMBIGUOUS" };
+  return { ok: true };
 }
 function readValidation(raw) {
   const v = record2(raw);
@@ -19053,7 +19066,7 @@ function renderList() {
     const name2 = document.createElement("span");
     name2.textContent = entry.symbol || entry.subject.id;
     const detail = document.createElement("small");
-    detail.textContent = `${entry.subject.kind} \xB7 ${entry.subject.id}`;
+    detail.textContent = `${entry.subject.kind} \xB7 ${entry.subject.id}${entry.ambiguous ? " \xB7 \u5BFE\u8C61\u672A\u78BA\u5B9A" : ""}`;
     button.append(name2, detail);
     button.addEventListener(
       "click",
@@ -19070,6 +19083,25 @@ function renderList() {
 }
 async function inspect(subject2) {
   if (!client || !workspace.value || disposed) return;
+  const eligibility = inspectEligibility(catalogSnapshot, subject2);
+  if (!eligibility.ok) {
+    responses.invalidate("inspection");
+    const request2 = ++inspectionEpoch;
+    selected = null;
+    title.textContent = subject2.id;
+    renderList();
+    editor.setDocument({
+      id: "unresolved",
+      version: `${workspaceEpoch}:${request2}`,
+      text: `\u5019\u88DC\u306E\u540C\u4E00\u6027\u306F\u672A\u78BA\u5B9A\u3067\u3059\uFF1A${eligibility.reason}`
+    });
+    graph.update({ width: 680, height: 240, nodes: [], edges: [] });
+    element("graph-note").textContent = "\u5BFE\u8C61\u306E\u4E00\u610F\u6027\u304C\u672A\u78BA\u5B9A\u306E\u305F\u3081\u95A2\u9023\u56F3\u306F\u4FDD\u7559\u3057\u307E\u3057\u305F\u3002";
+    element("source-status").textContent = "\u5BFE\u8C61\u672A\u78BA\u5B9A";
+    notice.textContent = `\u5019\u88DC\u306E\u95B2\u89A7\u306F\u7D99\u7D9A\u3067\u304D\u307E\u3059\u3002Inspect\u306F\u4FDD\u7559\uFF1A${eligibility.reason}`;
+    notice.dataset.state = "error";
+    return false;
+  }
   const context = workspaceEpoch, request = ++inspectionEpoch, id = workspace.value;
   selected = subject2;
   title.textContent = subject2.id;
@@ -19080,7 +19112,7 @@ async function inspect(subject2) {
     version: `${context}:${request}`,
     text: "\u9078\u629E\u3057\u305F\u8981\u7D20\u3092\u53D6\u5F97\u3057\u3066\u3044\u307E\u3059\u3002"
   });
-  const related = relatedGraph(entries, subject2);
+  const related = relatedGraph(entries.filter((entry) => !entry.ambiguous), subject2);
   graph.update(related.input);
   graph.setSelectedNode(subjectKey(subject2));
   element("graph-note").textContent = related.hidden ? `\u89AA\u5B50\u95A2\u4FC2\u306E\u3046\u30618\u4EF6\u3092\u8868\u793A\uFF08\u307B\u304B${related.hidden}\u4EF6\uFF09` : "\u9078\u629E\u8981\u7D20\u3068\u3001\u4E00\u89A7\u306B\u542B\u307E\u308C\u308B\u76F4\u63A5\u306E\u89AA\u5B50\u95A2\u4FC2";

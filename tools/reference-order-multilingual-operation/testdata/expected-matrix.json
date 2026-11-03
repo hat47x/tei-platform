@@ -1,0 +1,19 @@
+{
+  "note": "Declared before running. 'expired' means the translation depends on a source changed by the single revision r1 -> r2.",
+  "rows": [
+    {"kind": "message", "target": "order.batch_confirmed", "locale": "ja-JP", "provider": "source", "category": "source", "after": "valid"},
+    {"kind": "message", "target": "order.batch_confirmed", "locale": "en-US", "provider": "std.lang_en", "category": "dependent", "after": "expired"},
+    {"kind": "message", "target": "order.batch_confirmed", "locale": "de-DE", "provider": "std.lang_de", "category": "dependent-other-language", "after": "expired"},
+    {"kind": "message", "target": "order.submit_rejected", "locale": "ja-JP", "provider": "source", "category": "source", "after": "valid"},
+    {"kind": "message", "target": "order.submit_rejected", "locale": "en-US", "provider": "partner.lang_en", "category": "other-provider", "after": "valid"},
+    {"kind": "message", "target": "order.submit_rejected", "locale": "de-DE", "provider": "std.lang_de", "category": "other-language", "after": "valid"},
+    {"kind": "message", "target": "order.tax_notice", "locale": "en-US", "provider": "source", "category": "independent", "after": "valid"},
+    {"kind": "display-name", "target": "data:sales.order", "locale": "ja-JP", "provider": "source", "category": "source", "after": "valid"},
+    {"kind": "display-name", "target": "data:sales.order", "locale": "en-US", "provider": "std.lang_en", "category": "dependent", "after": "expired"},
+    {"kind": "display-name", "target": "data:sales.order_line", "locale": "ja-JP", "provider": "source", "category": "source", "after": "valid"},
+    {"kind": "display-name", "target": "data:sales.order_line", "locale": "en-US", "provider": "std.lang_en", "category": "same-provider-unrevised", "after": "valid"},
+    {"kind": "display-name", "target": "data:sales.order_line", "locale": "de-DE", "provider": "std.lang_de", "category": "other-language", "after": "valid"},
+    {"kind": "function-name", "target": "capability:sales.order.submit", "locale": "ja-JP", "provider": "source", "category": "source", "after": "valid"},
+    {"kind": "function-name", "target": "capability:sales.order.submit", "locale": "en-US", "provider": "std.lang_en", "category": "dependent", "after": "expired"}
+  ]
+}

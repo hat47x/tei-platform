@@ -2,29 +2,29 @@
 
 プラグイン作成者が、構築意図の宣言から構築器の解決、構築の試行の証跡化、成果物の保管、構築器自身の自己構築、構築済みプロセスプラグインの呼出しまでを一つの流れで行う技術検証用サンプルです。確かめたいのは、工程1で確定した構築計画の照合値と成果物のダイジェストが全工程で同一に引き継がれるか、失敗や一回きりの成功を再現性の成立と取り違えないか、という点です。
 
-- 状態: 設計案は提案段階です。このREADMEは入口であり、通しの流れは実装していません。各工程の実装、試験、実環境での確認の状況は、下の工程表で工程ごとに区別して示します。
+- 状態: 設計案は提案段階です。通しの流れは[`tools/reference-plugin-build-supply`](../../tools/reference-plugin-build-supply/README.md)で、同じ機械の上の実際のGoの構築と既存の自己構築の実行器を使って実装し、試験しました。提供元のカタログと信頼の失効は合成で、本番の構築器や署名の証拠ではありません。各工程の実装、試験、実環境での確認の状況は、下の工程表で工程ごとに区別して示します。
 - 設計の正本: [技術検証用サンプルの統合設計 4.7節](../../plan/design/TECH_VALIDATION_SAMPLES_2026-10.md#47-プラグインの構築意図から自己構築成果物の固定までplugin-build-supply)。技術検証用サンプルの位置づけ、物語、受け渡しの詳細はそちらを参照してください。
 - 各資産の説明と使い方は、それぞれのREADMEが正本です。この入口は工程との対応だけを示します。
 
 ## 工程
 
-現状の区分は、各資産のREADMEの記述から判断したものです。この入口を書いた時点では、どの試験も実行していません。
+現状の区分は、[`tools/reference-plugin-build-supply`](../../tools/reference-plugin-build-supply/README.md)の通しの試験の結果です。既存資産を呼べたか、呼べなかった理由は、そのREADMEの「既存資産を呼べるか」にあります。
 
 | 工程 | 内容 | 前工程から受け取るもの | 使う既存資産 | 現状 |
 | --- | --- | --- | --- | --- |
-| 1 | 構築意図の宣言と構築器の契約の解決 | なし(最初の工程)。作成者が書いた宣言と、ソースとカタログの観測値 | [`tools/reference-build-authoring-intent`](../../tools/reference-build-authoring-intent/README.md)、[`tools/reference-builder-contract-resolution`](../../tools/reference-builder-contract-resolution/README.md) | 合成データで試験 |
-| 2 | 構築の試行の証跡化と成果物の保管 | 工程1の確定計画、構築器の識別、解決の固定記録 | [`tools/reference-build-attempt-evidence`](../../tools/reference-build-attempt-evidence/README.md)、[`tools/reference-build-artifact-store`](../../tools/reference-build-artifact-store/README.md) | 合成データで試験 |
-| 3 | 構築器の自己構築と、二回構築・段階の収束・ホスト登録 | 工程1・2の計画と証跡。ただし現在の実行器は計画を自分で組み立て、工程1・2の参照実装を使わない | [`reference/plugin-self-build`](../plugin-self-build/README.md)(入力の正本と実行器の説明)、[`tools/reference-plugin-self-build`](../../tools/reference-plugin-self-build/)、[`tools/reference-native-plugin-builder`](../../tools/reference-native-plugin-builder/)、[`tools/reference-plugin-package-builder`](../../tools/reference-plugin-package-builder/)、[`tools/reference-transform-runtime-engine`](../../tools/reference-transform-runtime-engine/README.md)、[`tools/reference-transform-seed-builder`](../../tools/reference-transform-seed-builder/) | 実装あり |
-| 4 | 構築済みプロセスプラグインの呼出し確認と、識別の通し照合 | 工程3の成果物と固定情報、工程1の計画の照合値、工程2の保管庫から再取得したバイト列 | [`tools/reference-process-plugin`](../../tools/reference-process-plugin/)(構築対象かつ呼出し対象) | 未確認 |
+| 1 | 構築意図の宣言と構築器の契約の解決 | なし(最初の工程)。作成者が書いた宣言と、ソースとカタログの観測値 | [`tools/reference-build-authoring-intent`](../../tools/reference-build-authoring-intent/README.md)、[`tools/reference-builder-contract-resolution`](../../tools/reference-builder-contract-resolution/README.md) | 実ファイルと観測したGoで試験。確定計画はサンプル側で導き、構築意図のCLIとはソース以外の項目を照合する(CLIのソースの照合値は別方式)。解決の参照実装は固定入力だけで、解決・固定・失効はサンプル側 |
+| 2 | 構築の試行の証跡化と成果物の保管 | 工程1の確定計画、構築器の識別、解決の固定記録 | [`tools/reference-build-attempt-evidence`](../../tools/reference-build-attempt-evidence/README.md)、[`tools/reference-build-artifact-store`](../../tools/reference-build-artifact-store/README.md) | 実際の`go build`で試験。二つの資産は固定入力だけで外から呼べないため、試行の記録と保管庫は同じ規則でサンプル側に作った |
+| 3 | 構築器の自己構築と、二回構築・段階の収束・ホスト登録 | 工程1・2の計画と証跡。ただし現在の実行器は計画を自分で組み立て、工程1・2の参照実装を使わない | [`reference/plugin-self-build`](../plugin-self-build/README.md)(入力の正本と実行器の説明)、[`tools/reference-plugin-self-build`](../../tools/reference-plugin-self-build/)、[`tools/reference-native-plugin-builder`](../../tools/reference-native-plugin-builder/)、[`tools/reference-plugin-package-builder`](../../tools/reference-plugin-package-builder/)、[`tools/reference-transform-runtime-engine`](../../tools/reference-transform-runtime-engine/README.md)、[`tools/reference-transform-seed-builder`](../../tools/reference-transform-seed-builder/) | 実行器を変更せずに実行して試験。実行器が組み立てた計画を工程1の確定計画へ照合する |
+| 4 | 構築済みプロセスプラグインの呼出し確認と、識別の通し照合 | 工程3の成果物と固定情報、工程1の計画の照合値、工程2の保管庫から再取得したバイト列 | [`tools/reference-process-plugin`](../../tools/reference-process-plugin/)(構築対象かつ呼出し対象) | 保管庫から再取得したバイト列を、製品の`StdioProcessLauncher`(プロセス通信の版1)で呼んで試験 |
 
 工程ごとの補足です。
 
-- 工程3: `reference/plugin-self-build`のREADMEは、実行器を候補の実装とし、実際の構築の検証根拠や段階の収束の成立は後続としています。そのため「実装あり」にとどめます。
-- 工程4: 自己構築の既存の試験が、構築済みの成果物を旧通信方式で実際に呼んでいるかは、READMEから確かめられません。識別を突き合わせる通しの照合は、まだ足場がありません。
+- 工程3: 実行器は構築した成果物を一時ディレクトリごと削除します。保管庫へ入れるバイト列は工程2の実構築のもので、実行器の二回構築と同じダイジェストであることで結びます。
+- 工程4: 自己構築の既存の試験が構築済みの成果物を旧通信方式で呼んでいるかは、引き続き確かめていません。このサンプルの工程4が、保管庫から取り出したバイト列を呼びます。
 
 ## 取り込むピーキーな要件と失敗注入
 
-要件IDの意味は、設計文書の[2章 ピーキーな要件の目録](../../plan/design/TECH_VALIDATION_SAMPLES_2026-10.md#2-ピーキーな要件の目録)にあります。「固有」は目録にない、このサンプル固有の困難です。保つものと確かめ方の詳細は、4.7節の表を参照してください。
+要件IDの意味は、設計文書の[2章 ピーキーな要件の目録](../../plan/design/TECH_VALIDATION_SAMPLES_2026-10.md#2-ピーキーな要件の目録)にあります。「固有」は目録にない、このサンプル固有の困難です。保つものと確かめ方の詳細は、4.7節の表を参照してください。どの注入も試験しました。試験名と観測値は[`tools/reference-plugin-build-supply`](../../tools/reference-plugin-build-supply/README.md)の「失敗注入と合否」にあります。
 
 | 要件 | 工程 | 注入する失敗 | 観測する合否 |
 | --- | --- | --- | --- |
@@ -34,14 +34,18 @@
 | 固有 | 3 | ソースやツールチェーンの版の食い違い、汚れた作業ツリー、暗黙のキャッシュの混入 | 閉包を固定できなければ停止する |
 | 固有 | 1〜4 | 工程間で受け渡す識別が食い違ったまま、各工程の単独確認だけが通る | 計画の照合値と成果物のダイジェストが全工程で同一でなければ、通しとして不合格になる |
 
+部分出力を残す失敗と二回構築の不一致は、模擬の構築器で起こしています。実際の`go build`の非決定性やリンカの異常終了ではありません。
+
 ## 通しの完了条件
 
-現在、通しの完了条件はどれも成立していません。工程1・2が工程3と接続されておらず、通しの照合もないためです。
+次の四つは、`tools/reference-plugin-build-supply`の`TestThroughPluginBuildSupply`で成立を確かめました。実行方法は、そのREADMEの「実行」にあります(`python3 tools/verify-plugin-build-supply.py`を清浄な複製で実行)。
 
 - 工程1で確定した計画の照合値が、工程2の証跡、工程3の検証根拠と固定情報まで同じ値で引き継がれる。途中で計画や識別を再用意しない。
 - 保管庫から再取得した成果物のダイジェストが、二回構築のダイジェストとホスト登録時のダイジェストと同一である。
 - 構築器自身の構築から配布一式とTEI-native実現の生成までが、同じエンジンの識別と構築器のダイジェストを計画に束縛したまま、段階の収束まで通る。
 - 構築済みのプロセスプラグインを旧通信方式で呼べ、その成果物が工程1から3の識別と同一である。どの工程かが欠けたら、通しの完了とせず、欠けた工程を示す。
+
+成立の範囲には限りがあります。工程1が導くのは`tei.process.reference`の計画だけで、配布一式、TEI-native実現、変換の構築器の計画は、引き続き実行器が組み立てます。三つ目の条件は、実行器の検証根拠の内部の整合と、TEI-native実現のエンジンの識別が工程3と4で同じことまでを確かめています。
 
 ## 部分工程の診断(互換入口)
 
@@ -68,3 +72,5 @@
 - 固有: 変換の実行エンジンの識別が、実際にリンクされた実体の識別ではない(実行時)
 - 固有: 自己構築の収束が初期の構築器のGo実装に依存し、ホストの署名と信頼の起点がコアの正式な型でない(ツール)
 - 固有: 通しの完了を一つの証拠として示す手段がない(検証根拠)
+
+通しの実装で観測した不足と、サンプル側での扱いは、[`tools/reference-plugin-build-supply`](../../tools/reference-plugin-build-supply/README.md)の「基盤の不足」にあります。どの不足も、サンプル側の実装で通しを成立させただけで、基盤では解消していません。たとえば実行器と工程1の接続は、実行器が組み立てた計画を確定計画へ照合する形で、実行器が確定計画を受け取る形ではありません。通しの照合(`VerifyThrough`)もサンプル固有の関数です。

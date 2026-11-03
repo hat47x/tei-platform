@@ -11,6 +11,11 @@ import (
 type ProjectedDiagnostic struct {
 	Diagnostic validation.Diagnostic   `json:"diagnostic"`
 	Sources    []sourceindex.Reference `json:"sources,omitempty"`
+	// UnresolvedSourceOrigins names declaration origins that participate in a
+	// duplicate but whose physical position cannot be determined. It is used
+	// for DUPLICATE_SEMANTIC_ELEMENT only. A listed origin is never replaced by
+	// a guessed path or range.
+	UnresolvedSourceOrigins []string `json:"unresolvedSourceOrigins,omitempty"`
 }
 
 // ProjectDiagnostics resolves path-independent diagnostic Subjects through a
@@ -21,7 +26,10 @@ func ProjectDiagnostics(diagnostics []validation.Diagnostic, index sourceindex.I
 	out := make([]ProjectedDiagnostic, 0, len(diagnostics))
 	for _, diagnostic := range diagnostics {
 		projected := ProjectedDiagnostic{Diagnostic: diagnostic}
-		if diagnostic.Subject == nil {
+		// A semantic Subject identifies the duplicated name, not a particular
+		// declaration. The index can retain only the first matching anchor, so
+		// presenting it as the rejected declaration would be misleading.
+		if diagnostic.Subject == nil || diagnostic.Code == "DUPLICATE_SEMANTIC_ELEMENT" {
 			out = append(out, projected)
 			continue
 		}

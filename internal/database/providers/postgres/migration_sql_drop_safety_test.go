@@ -291,7 +291,7 @@ func TestRenderMigrationSQLRejectsIncompleteOrUnresolvedForeignKey(t *testing.T)
 	}
 }
 
-func TestRenderMigrationSQLRejectsPrimaryKeyChangeUntilConstraintIdentityIsRealizable(t *testing.T) {
+func TestRenderMigrationSQLRejectsPrimaryKeyRemovalWithoutCurrentKey(t *testing.T) {
 	diff := schemadiff.Diff{
 		Database: "sales_core",
 		Changes: []schemadiff.Change{
@@ -301,7 +301,7 @@ func TestRenderMigrationSQLRejectsPrimaryKeyChangeUntilConstraintIdentityIsReali
 	}
 
 	statements, err := postgres.RenderMigrationSQL(diff)
-	if err == nil || !strings.Contains(err.Error(), "does not support primary-key change") || !strings.Contains(err.Error(), "constraint identity") {
+	if err == nil || !strings.Contains(err.Error(), "removes the primary key but names no current key") {
 		t.Fatalf("statements=%#v err=%v", statements, err)
 	}
 	if statements != nil {

@@ -34,7 +34,9 @@ type Result struct {
 	Schema   string `json:"schema"`
 	Database string `json:"database"`
 	Provider string `json:"provider"`
-	// Tables lists the tables the Provider could render, in name order.
+	// Tables lists the tables the Provider could render, ordered so that a
+	// table comes after the tables its foreign keys reference; ties stay in
+	// name order. Running the statements in this order creates every table.
 	Tables []Table `json:"tables"`
 	// Unresolved lists tables the Provider refused or could not realize.
 	Unresolved []Unresolved `json:"unresolved"`
@@ -48,7 +50,11 @@ type Result struct {
 }
 
 // Render realizes the mappings of one database and renders each table on its
-// own, so a table the Provider refuses does not hide the others.
+// own, so a table the Provider refuses does not hide the others. Each table's
+// foreign keys are rendered with that table, so tables are emitted after the
+// tables they reference; a table on a foreign-key cycle, or one that references
+// a table that could not be rendered, is reported instead of emitted in an
+// order that would fail.
 func Render(world ir.World, databaseID string, provider environment.DatabaseProvider) (Result, error) {
 	out := Result{
 		Schema: Schema, Database: databaseID, Provider: string(provider),
@@ -76,9 +82,23 @@ func Render(world ir.World, databaseID string, provider environment.DatabaseProv
 	}
 	tables := append([]physical.Table(nil), desired.Tables...)
 	sort.Slice(tables, func(i, j int) bool { return tables[i].Name < tables[j].Name })
-	for _, t := range tables {
+	ordered, cyclic := orderByForeignKeys(tables)
+	for _, t := range cyclic {
+		out.Unresolved = append(out.Unresolved, Unresolved{Table: t.Name, Reason: "外部キーが表の間で循環しているか、循環する表を参照しているため、表ごとの新規作成順を決められません"})
+	}
+	failed := map[string]string{}
+	for _, t := range cyclic {
+		failed[tableKey(t.Schema, t.Name)] = t.Name
+	}
+	for _, t := range ordered {
+		if ref, ok := failedReference(t, failed); ok {
+			out.Unresolved = append(out.Unresolved, Unresolved{Table: t.Name, Reason: fmt.Sprintf("外部キーの参照先の表 %s を出力できないため、この表も出力しません", ref)})
+			failed[tableKey(t.Schema, t.Name)] = t.Name
+			continue
+		}
 		if reason, ok := namingReason[t.QualifiedName()]; ok {
 			out.Unresolved = append(out.Unresolved, Unresolved{Table: t.Name, Reason: reason})
+			failed[tableKey(t.Schema, t.Name)] = t.Name
 			continue
 		}
 		single := physical.SchemaSnapshot{Database: core.CanonicalID(databaseID), Tables: []physical.Table{t}}
@@ -86,11 +106,13 @@ func Render(world ir.World, databaseID string, provider environment.DatabaseProv
 		diff, err := schemadiff.Compare(single, empty)
 		if err != nil {
 			out.Unresolved = append(out.Unresolved, Unresolved{Table: t.Name, Reason: err.Error()})
+			failed[tableKey(t.Schema, t.Name)] = t.Name
 			continue
 		}
 		statements, err := migration.Render(provider, diff)
 		if err != nil {
 			out.Unresolved = append(out.Unresolved, Unresolved{Table: t.Name, Reason: err.Error()})
+			failed[tableKey(t.Schema, t.Name)] = t.Name
 			continue
 		}
 		out.Tables = append(out.Tables, Table{Name: t.Name, Statements: statements})
@@ -107,4 +129,67 @@ func Render(world ir.World, databaseID string, provider environment.DatabaseProv
 		out.Script = script
 	}
 	return out, nil
+}
+
+func tableKey(schema, name string) string { return schema + "\x00" + name }
+
+// references returns the keys of the other tables in byKey that t's foreign
+// keys point to. A reference outside the rendered tables, or to t itself, adds
+// no ordering constraint.
+func references(t physical.Table, byKey map[string]bool) []string {
+	self := tableKey(t.Schema, t.Name)
+	var refs []string
+	for _, fk := range t.ForeignKeys {
+		k := tableKey(fk.ReferencedSchema, fk.ReferencedTable)
+		if k != self && byKey[k] {
+			refs = append(refs, k)
+		}
+	}
+	return refs
+}
+
+// orderByForeignKeys returns the tables that can be created one by one, each
+// after the tables it references, keeping name order among tables that are
+// ready at the same time. Tables on or behind a cycle are returned separately.
+func orderByForeignKeys(tables []physical.Table) (ordered, cyclic []physical.Table) {
+	byKey := map[string]bool{}
+	for _, t := range tables {
+		byKey[tableKey(t.Schema, t.Name)] = true
+	}
+	done := map[string]bool{}
+	remaining := tables
+	for len(remaining) > 0 {
+		var next []physical.Table
+		progressed := false
+		for _, t := range remaining {
+			ready := true
+			for _, k := range references(t, byKey) {
+				if !done[k] {
+					ready = false
+					break
+				}
+			}
+			if ready && !progressed {
+				ordered = append(ordered, t)
+				done[tableKey(t.Schema, t.Name)] = true
+				progressed = true
+				continue
+			}
+			next = append(next, t)
+		}
+		if !progressed {
+			return ordered, next
+		}
+		remaining = next
+	}
+	return ordered, nil
+}
+
+func failedReference(t physical.Table, failed map[string]string) (string, bool) {
+	for _, fk := range t.ForeignKeys {
+		if name, ok := failed[tableKey(fk.ReferencedSchema, fk.ReferencedTable)]; ok && name != t.Name {
+			return name, true
+		}
+	}
+	return "", false
 }

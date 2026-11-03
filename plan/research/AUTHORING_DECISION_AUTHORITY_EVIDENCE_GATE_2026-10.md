@@ -292,3 +292,13 @@ authoring Decision Authority Evidence Gate
 production actor / authority schema
   -> not adopted
 ```
+
+## 13. 2026-10-28追記: exact witness bindingのReference実装状況
+
+§12の判定はproduction経路について変わらない。その一方で、`main` = `57f09a7ec`（#2310 / #2311）以降、Reference単位のexact witness bindingを実装した。実装の説明と分類規則は[`tools/reference-shared-acceptance/README.md`](../../tools/reference-shared-acceptance/README.md)と[ADR-0042](../adr/0042-decision-witness-authority-qualified-boundary.md)（提案中）に置き、ここでは本研究文書との対応だけを記す。
+
+- **E1 / E4 / E6**: witness messageとnamespaceをDecision record本文（candidate / review binding / 基準revision / semantics / 理由 / source scopeのdigest）から決定論的に再導出し、proposal全体にbindingする。
+- **E2 / E3**: operator管理のallowed-signers policyがprincipalとnamespace（workspace・semantics・scope）を許可した場合に限り、`decisionActorStatus=identity-resolved` / `decisionAuthorityStatus=authority-qualified`へ上がる。policy・verify-time・revocationはCLI flagsだけから取得し、workspaceやcandidateから補完しない。
+- **E5**: 検証にはpinned verify-timeが必須。任意のKRL / revoked-keysを適用する。verify-time非対応provider（OpenSSH 8.9p1）では検証に至らず未解決のまま。
+- **§10との照合**: principal不一致、改変message、accept→reject流用、accept / reject競合のdowngrade、witness削除によるclaim消失、verify configuration不備は、reference-shared-acceptanceのwitness試験とopensshwitnessのprovider試験でfail closedを確認済み（満了・未開始・失効はprovider試験）。**別workspaceのscope許可不一致を明示的に試験した単体は無く、namespace導出とpolicy許可の構造によって同一の検査経路に載る**。origin.actorのみ・identityのみでauthority無しのcaseは、witness対象外の経路ではなく「policyが許可しない」経路として同じfail closedに載る。
+- **変わらないこと**: §12の「verified human Decision witness -> Not Ready」等はproduction経路の判定であり、Reference harnessの-policy検証で試験的に状態が上がっても、production identity provider・鍵・policyの運用が定まるまでは採用されない。`authority-qualified != Decision applied`の分離（§6）は実装側でも維持している。

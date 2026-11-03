@@ -64,8 +64,11 @@ func TestIndependentQuoteRunsThroughExistingRuntimeAuthorityBoundary(t *testing.
 	if runtime.GOOS == "windows" {
 		t.Skip("reference process command paths need platform-specific path policy")
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
-	defer cancel()
+	// #2057: go buildはキャッシュなし・CPU競合のCIで数十秒かかる一方、実プロセスの起動は
+	// 1回あたり数十ms以内である。buildは独立した長い期限で待ち、実プロセスの期限は
+	// build後に始めて、build時間が起動側の予算を食わないようにする。
+	buildCtx, cancelBuild := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancelBuild()
 
 	// Compile the actual independent provider, with no import of TEI internals.
 	work := t.TempDir()
@@ -81,12 +84,14 @@ func TestIndependentQuoteRunsThroughExistingRuntimeAuthorityBoundary(t *testing.
 		t.Fatal(err)
 	}
 	binary := filepath.Join(t.TempDir(), "order-quote")
-	build := exec.CommandContext(ctx, "go", "build", "-o", binary, ".")
+	build := exec.CommandContext(buildCtx, "go", "build", "-o", binary, ".")
 	build.Dir = work
 	build.Env = append(os.Environ(), "GOWORK=off", "GOTOOLCHAIN=local")
 	if output, err := build.CombinedOutput(); err != nil {
 		t.Fatalf("compile reference quote executable: %v\n%s", err, output)
 	}
+	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
+	defer cancel()
 	image, err := os.ReadFile(binary)
 	if err != nil {
 		t.Fatal(err)

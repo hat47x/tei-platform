@@ -27,8 +27,9 @@ func TestSelectedCompositionSwitchesDistinctProcessArtifacts(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("reference stdio process launcher forbids spaces in executable paths on Windows")
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 80*time.Second)
-	defer cancel()
+	// #2057: buildは実プロセスの期限と切り離し、独立した長い期限で待つ。
+	buildCtx, cancelBuild := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancelBuild()
 
 	dir := t.TempDir()
 	type release struct {
@@ -46,7 +47,7 @@ func TestSelectedCompositionSwitchesDistinctProcessArtifacts(t *testing.T) {
 	makeRelease := func(revision, version string) release {
 		t.Helper()
 		path := filepath.Join(dir, "process-"+revision)
-		cmd := exec.CommandContext(ctx, "go", "build",
+		cmd := exec.CommandContext(buildCtx, "go", "build",
 			"-ldflags", "-X main.referenceRevision="+revision,
 			"-o", path, "../../plugins/reference-process-executor")
 		if output, err := cmd.CombinedOutput(); err != nil {
@@ -85,6 +86,8 @@ func TestSelectedCompositionSwitchesDistinctProcessArtifacts(t *testing.T) {
 	}
 	old := makeRelease("old", "1.0.0")
 	next := makeRelease("new", "1.0.1")
+	ctx, cancel := context.WithTimeout(context.Background(), 80*time.Second)
+	defer cancel()
 	if old.digest == next.digest {
 		t.Fatal("different revisions unexpectedly produced the same executable bytes")
 	}

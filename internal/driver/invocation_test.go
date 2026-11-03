@@ -152,6 +152,62 @@ func TestDriverKeepsAdapterResolutionAndInvocationFailuresAsExecutionErrors(t *t
 	})
 }
 
+// A request cancelled before Adapter resolution must not enter that
+// potentially effectful Plugin/Provider selection boundary.
+func TestDriverPreCancelledRequestSkipsAdapterResolution(t *testing.T) {
+	resolver := driver.NewResolver(referenceWorld(t))
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	resolutionCalls, invocationCalls := 0, 0
+	adapters := bindingAdapterResolverFunc(func(context.Context, realization.CustomGoBinding) (capabilityinvoke.Adapter, error) {
+		resolutionCalls++
+		return capabilityAdapterFunc(func(context.Context, core.CanonicalID, any) (capabilityinvoke.BusinessResult, error) {
+			invocationCalls++
+			return capabilityinvoke.BusinessResult{}, nil
+		}), nil
+	})
+
+	result, err := resolver.InvokeCapability(ctx, "order_entry", "sales.order.submit", adapters, nil)
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("pre-cancelled request must retain cancellation error: result=%#v err=%v", result, err)
+	}
+	if resolutionCalls != 0 || invocationCalls != 0 {
+		t.Fatalf("pre-cancelled request reached resolver=%d adapter=%d", resolutionCalls, invocationCalls)
+	}
+	if result.Result.Outcome != "" || result.Result.Mode != "" || result.Result.Payload != nil {
+		t.Fatalf("pre-cancelled request invented a business result: %#v", result)
+	}
+}
+
+// If cancellation happens while resolving the Adapter, the existing
+// capabilityinvoke guard prevents dispatch. It does not claim that resolving
+// resources has been rolled back.
+func TestDriverCancellationDuringAdapterResolutionSkipsDispatch(t *testing.T) {
+	resolver := driver.NewResolver(referenceWorld(t))
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	resolutionCalls, invocationCalls := 0, 0
+	adapters := bindingAdapterResolverFunc(func(context.Context, realization.CustomGoBinding) (capabilityinvoke.Adapter, error) {
+		resolutionCalls++
+		cancel()
+		return capabilityAdapterFunc(func(context.Context, core.CanonicalID, any) (capabilityinvoke.BusinessResult, error) {
+			invocationCalls++
+			return capabilityinvoke.BusinessResult{}, nil
+		}), nil
+	})
+
+	result, err := resolver.InvokeCapability(ctx, "order_entry", "sales.order.submit", adapters, nil)
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("cancellation during resolution must reach Driver caller: result=%#v err=%v", result, err)
+	}
+	if resolutionCalls != 1 || invocationCalls != 0 {
+		t.Fatalf("resolution cancellation reached resolver=%d adapter=%d", resolutionCalls, invocationCalls)
+	}
+	if result.Result.Outcome != "" || result.Result.Mode != "" || result.Result.Payload != nil {
+		t.Fatalf("cancelled resolution produced a business result: %#v", result)
+	}
+}
+
 func referenceLegacyAuthFixture(t *testing.T) string {
 	t.Helper()
 	_, filename, _, ok := runtime.Caller(0)

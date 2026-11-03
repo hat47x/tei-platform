@@ -34,6 +34,7 @@
 5. `select/filter/sort/count/group/page/metadata/trace` のいずれの権限も欠ければEvaluatorを呼ばない。
 6. Tenant T1のQueryにT2行が含まれた場合、権限テーブルを見る前に不完全なPlanとして拒否。さらに選択行単位の許可も別に必要。
 7. 実行後のGrant失効、保存済み結果の再読取時の失効、認可Adapterエラー、Evaluatorエラー、別主体の偽装Grantを拒否し、secretをError文字列に載せない。
+8. 同じRule ID `sales.line_amount` を、`staff.admin`（全段階許可）と`staff.public`（詳細開示のみ拒否）、およびtenant t1（許可）とt2（未許可）で比較し、主体・テナントが変わると開示可否が変わることを固定する。規則やBindingは変えない。
 
 ## 境界と未証明事項
 

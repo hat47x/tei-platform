@@ -1,0 +1,40 @@
+{
+  "schema": "tei.reference.derived-name-rules/v0",
+  "id": "reference-local.derived-names",
+  "version": "1",
+  "layers": [
+    {
+      "id": "postgres-table",
+      "version": "1",
+      "target": "postgres",
+      "foldCase": true,
+      "maxBytes": 63,
+      "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
+      "reserved": ["select", "table", "user", "order", "group", "where", "from"],
+      "derivations": [
+        {"id": "pkey", "suffix": "_pkey"},
+        {"id": "unique-key", "suffix": "_key"}
+      ]
+    },
+    {
+      "id": "go-type",
+      "version": "1",
+      "target": "go",
+      "foldCase": true,
+      "ignoreChars": "_-",
+      "reserved": ["type", "func", "map", "range", "select"],
+      "derivations": [
+        {"id": "list-type", "suffix": "list"},
+        {"id": "condition-type", "suffix": "condition"}
+      ]
+    },
+    {
+      "id": "windows-file",
+      "version": "1",
+      "target": "windows-files",
+      "foldCase": true,
+      "maxBytes": 120,
+      "reserved": ["con", "prn", "aux", "nul", "com1", "lpt1"]
+    }
+  ]
+}

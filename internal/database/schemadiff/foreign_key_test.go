@@ -8,8 +8,8 @@ import (
 	"tei/internal/database/schemadiff"
 )
 
-func TestForeignKeyNameOnlyDifferenceIsNotDrift(t *testing.T) {
-	desired := schemaWithForeignKeys(physical.ForeignKey{Name: "desired_name", Columns: []string{"customer_id"}, ReferencedSchema: "public", ReferencedTable: "customers", ReferencedColumns: []string{"id"}})
+func TestForeignKeyGeneratedNameDifferenceIsNotDrift(t *testing.T) {
+	desired := schemaWithForeignKeys(physical.ForeignKey{Name: "desired_name", NameGenerated: true, Columns: []string{"customer_id"}, ReferencedSchema: "public", ReferencedTable: "customers", ReferencedColumns: []string{"id"}})
 	actual := schemaWithForeignKeys(physical.ForeignKey{Name: "generated_name", Columns: []string{"customer_id"}, ReferencedSchema: "public", ReferencedTable: "customers", ReferencedColumns: []string{"id"}})
 	diff, err := schemadiff.Compare(desired, actual)
 	if err != nil {

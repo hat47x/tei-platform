@@ -1215,8 +1215,10 @@ func gitOutput(repo string, args ...string) (string, error) {
 }
 
 func gitOutputBytes(repo string, args ...string) ([]byte, error) {
-	all := append([]string{"-C", repo}, args...)
+	all := append([]string{"-C", repo}, gitIsolationConfig...)
+	all = append(all, args...)
 	cmd := exec.Command("git", all...)
+	cmd.Env = gitEnvironment(os.Environ())
 	out, err := cmd.Output()
 	if err == nil {
 		return out, nil
@@ -1226,4 +1228,25 @@ func gitOutputBytes(repo string, args ...string) ([]byte, error) {
 		return nil, fmt.Errorf("git %s: %w: %s", strings.Join(args, " "), err, strings.TrimSpace(string(exitErr.Stderr)))
 	}
 	return nil, fmt.Errorf("git %s: %w", strings.Join(args, " "), err)
+}
+
+// gitIsolationConfig fixes configuration that could change which files the
+// read-only Git queries report. A global excludes file would otherwise hide
+// untracked files from the clean-repository check.
+var gitIsolationConfig = []string{"-c", "core.excludesFile=", "-c", "core.fsmonitor=false"}
+
+// gitEnvironment drops every GIT_* variable from the Host environment so that
+// GIT_DIR, GIT_WORK_TREE, GIT_INDEX_FILE and similar redirections cannot make
+// the queries read a repository other than the one named by -C. Other Host
+// variables stay, because Git needs PATH, HOME and platform variables to run.
+func gitEnvironment(base []string) []string {
+	out := make([]string, 0, len(base))
+	for _, entry := range base {
+		key, _, _ := strings.Cut(entry, "=")
+		if strings.HasPrefix(strings.ToUpper(key), "GIT_") {
+			continue
+		}
+		out = append(out, entry)
+	}
+	return out
 }

@@ -26,7 +26,7 @@ func TestBuildLockedDataOnlySemanticExportUsesExistingArtifactStore(t *testing.T
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(filepath.Join(providerRoot, "tei.workspace.yaml"),
-		[]byte("workspace: provider\nsources:\n  - semantic\n"), 0o644); err != nil {
+		[]byte("workspace: provider\nformatVersion: 1\nsources:\n  - semantic\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(filepath.Join(semanticRoot, "os.tei"),
@@ -111,7 +111,7 @@ func TestBuildLockedDataOnlySemanticExportUsesExistingArtifactStore(t *testing.T
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(filepath.Join(consumerRoot, "tei.workspace.yaml"),
-		[]byte("workspace: monitoring\nsources:\n  - semantic\n"), 0o644); err != nil {
+		[]byte("workspace: monitoring\nformatVersion: 1\nsources:\n  - semantic\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(filepath.Join(consumerRoot, "semantic", "watch.tei"),

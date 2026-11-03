@@ -16,6 +16,19 @@ if ! command -v "${ssh_keygen}" >/dev/null 2>&1; then
   exit 77
 fi
 
+# The fixture pins the verification time with -O verify-time. OpenSSH builds
+# that lack this option cannot establish the positive case, so stop before
+# signing instead of failing halfway through the pressure run. The probe uses
+# only missing files, never a real key or policy.
+capability_probe="$("${ssh_keygen}" -Y verify -O "verify-time=${verify_time}" -f tei-missing-policy -I tei-probe -n tei-probe -s tei-missing-sig < /dev/null 2>&1 || true)"
+case "${capability_probe}" in
+  *'"verify-time" option'*|*"Invalid verify-time"*)
+    echo "OpenSSH ssh-keygen lacks the -Y verify verify-time option required by this fixture." >&2
+    echo "No result is claimed. Install a newer OpenSSH (9.x or later) and rerun this script." >&2
+    exit 77
+    ;;
+esac
+
 tmp="$(mktemp -d)"
 trap 'rm -rf "${tmp}"' EXIT
 

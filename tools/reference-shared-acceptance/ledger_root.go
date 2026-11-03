@@ -11,13 +11,14 @@ import (
 	"strings"
 )
 
-// Decision and Confirmation records are supporting/derived state, not managed
-// Source: they do not enter the model revision and deleting them changes no
-// accepted meaning. When this Reference writes or reads them, however, their
-// paths must resolve inside the SAME pinned Workspace root as the Source.
-// Otherwise an outward symbolic link at .tei/decisions or .tei/confirmations
-// would let a record be created or read outside the Workspace while the
-// command still reports a Workspace-relative recordPath.
+// Decision and Confirmation records and their witnesses are supporting/derived
+// state, not managed Source: they do not enter the model revision and deleting
+// them changes no accepted meaning. When this Reference writes or reads them,
+// however, their paths must resolve inside the SAME pinned Workspace root as
+// the Source.
+// Otherwise an outward symbolic link at .tei/decisions, .tei/confirmations or
+// .tei/decision-witnesses would let a record be created or read outside the
+// Workspace while the command still reports a Workspace-relative recordPath.
 //
 // These helpers are a containment boundary for this Reference, not a sandbox
 // against an uncooperative process that replaces a directory after the check.
@@ -30,7 +31,7 @@ const ledgerLabel = "Decision/Confirmation ledger"
 // later caller cannot reuse them as a general Workspace writer.
 func ledgerPath(relative string) bool {
 	slash := strings.ReplaceAll(relative, "\\", "/")
-	for _, dir := range []string{decisionDir, confirmationDir} {
+	for _, dir := range []string{decisionDir, confirmationDir, witnessDir} {
 		if slash == dir || strings.HasPrefix(slash, dir+"/") {
 			return true
 		}

@@ -24,7 +24,7 @@ Implementation-Version: 1
 
 EOF
 jar cfm "$jar_path" "$out/MANIFEST.MF" -C "$classes" .
-find "$root/tests/fixtures" -name '*.java' -print > "$out/fixture-sources.txt"
+find "$root/tests/fixtures" -name '*.java' ! -name 'DriverFixture.java' -print > "$out/fixture-sources.txt"
 javac --release 8 -encoding UTF-8 -d "$fixture_classes" @"$out/fixture-sources.txt"
 
 printf 'agent:   %s\n' "$jar_path"

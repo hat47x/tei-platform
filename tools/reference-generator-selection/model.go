@@ -57,7 +57,7 @@ func GenerateWithCommand(ctx context.Context, opts ModelOptions) (CandidateManif
 		runCtx, cancel = context.WithTimeout(ctx, opts.Timeout)
 		defer cancel()
 	}
-	cmd := exec.CommandContext(runCtx, "bash", "-lc", opts.Command)
+	cmd := exec.CommandContext(runCtx, "bash", "-c", opts.Command)
 	cmd.Env = append(os.Environ(),
 		"TEI_CONTRACT="+opts.ContractPath,
 		"TEI_LANGUAGE="+language,

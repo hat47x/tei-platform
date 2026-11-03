@@ -108,6 +108,7 @@ func assignConstraintNames(tables []physical.Table, policy PhysicalRealizationPo
 			generated := strings.TrimSpace(uc.Name) == ""
 			if generated {
 				uc.Name = namer.ConstraintName(ConstraintNameUnique, t.Name, uc.Columns)
+				uc.NameGenerated = uc.Name != ""
 			}
 			view.Unique = append(view.Unique, ConstraintNameEntry{Name: uc.Name, Generated: generated})
 		}
@@ -116,6 +117,7 @@ func assignConstraintNames(tables []physical.Table, policy PhysicalRealizationPo
 			generated := strings.TrimSpace(fk.Name) == ""
 			if generated {
 				fk.Name = namer.ConstraintName(ConstraintNameForeignKey, t.Name, fk.Columns)
+				fk.NameGenerated = fk.Name != ""
 			}
 			view.Foreign = append(view.Foreign, ConstraintNameEntry{Name: fk.Name, Generated: generated})
 		}
@@ -140,11 +142,13 @@ func assignConstraintNames(tables []physical.Table, policy PhysicalRealizationPo
 		for j := range tables[i].UniqueConstraints {
 			if views[i].Unique[j].Generated {
 				tables[i].UniqueConstraints[j].Name = ""
+				tables[i].UniqueConstraints[j].NameGenerated = false
 			}
 		}
 		for j := range tables[i].ForeignKeys {
 			if views[i].Foreign[j].Generated {
 				tables[i].ForeignKeys[j].Name = ""
+				tables[i].ForeignKeys[j].NameGenerated = false
 			}
 		}
 		sort.Strings(rs)
