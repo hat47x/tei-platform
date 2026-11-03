@@ -56,8 +56,8 @@ func (t *characterizationTransaction) Commit(context.Context) error {
 	return nil
 }
 
-// A deferred rollback call cannot undo the fake transaction's committed state.
-func (t *characterizationTransaction) Rollback(context.Context) error {
+// The runner's deferred rollback cannot undo the fake transaction's committed state.
+func (t *characterizationTransaction) Rollback() error {
 	t.rollbacks++
 	return nil
 }
