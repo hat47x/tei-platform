@@ -230,6 +230,10 @@ EKI ADR-0039（最小安全観測）と[#548](https://github.com/hat47x/eki-fabr
 
 **最小の裁定**：LB-18/19/20/22/26は既存契約の反証であり、独自のOptimizerや新Core型がなくても判断できる。LB-21はEKI #125/#155のOwnerがFair Shareの規則を採用するまで結論保留。LB-23/25は既存#19/#48/#50のTrace/Shadow評価、LB-24は既存Admission/CAP-1/Provider CASの契約へ渡す。**全体最適の理論的保証、確率校正、実Deadline/SLA達成率は未検証**。
 
+### 10.7 Deadlineの型と実EKI P0単一deadlineは一致しない
+
+[実外部契約の静的対照WP-01〜19](TEI_EKI_ONE_REVISION_EVIDENCE_VERTICAL_SLICE_2026-11.md)§14により、EKI P0 TaskRequestの時間項目は**単一`deadline`**であり、TEIが管理する`not_before/target_complete_by/latest_useful_complete_by/recovery_within`を無条件にLoweringできないことを固定。**エンドツーエンド業務期限を単一実行期限に置換しない**。TEI Application/実Provider/Policy Ownerのどこが残余制約を強制するか具体的な引受が無ければ、EKIは`deadline-aware placement`の保証を与えず`cannot-enforce/needs-measurement`を返す。期限付き予約・CAP-1費用・Provider内部Retryが実在するかは別のAuthority/Receiptで検証。#2787の19/19はSource ABI対照であり、過去実績の確率予測・回復成功率・金銭最適化の証明ではない。
+
 ## 11. Task Groupの部分成果・計画再開・リカバリを結ぶ予算評価（2026-11-04）
 
 [実行縦断§13](TEI_EKI_ONE_REVISION_EVIDENCE_VERTICAL_SLICE_2026-11.md)により、TEI `run-plan`のStep進捗とEKI `Task/Attempt`の再実行は既存実装が進んでいることを確認した。ただし、TEIのStep完了記録と実ProviderのBusiness Receiptは別であり、`runlog.File`はPlanの版・外部Effect/Outputや複数プロセスCASを証明しない。**「再開できる」は「安全に副作用を再実行できる」ではない。** 現状の継続的なコーディネーションでは、実行計画／Task状態／Provider状態／業務完了の異時点を別の根拠として維持する。
