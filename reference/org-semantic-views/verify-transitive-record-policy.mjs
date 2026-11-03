@@ -101,7 +101,7 @@ function evaluate(g,p,r,depth=20) {
  if(positive) {
    const actions=override==='read-only'?['read']:p.actions.slice();
    return result('policy-eligible','scope-positive-path',{
-     actions,matched,graphRevision:g.revision,policyRevision:p.revision,
+     actions,matched,scopeRoot:p.scopeRoot,axis:p.axis,tenant:p.tenant,graphRevision:g.revision,policyRevision:p.revision,
      assurance:'synthetic-policy-candidate-only',
    });
  }
@@ -113,10 +113,13 @@ function hostSimulation(candidate,grant,action,ctx) {
  if(!candidate.actions.includes(action))return result('not-authorized','read-only-or-operation-excluded');
  if(!grant||!grant.current||grant.epoch!==ctx.grantEpoch||
     grant.principal!==ctx.principal||grant.tenant!==ctx.tenant||
+    grant.scopeRoot!==candidate.scopeRoot||grant.axis!==candidate.axis||
+    grant.issuedPolicyRevision!==candidate.policyRevision||
     !grant.actions.includes(action))return result('unverified','actual-host-grant-not-established');
  return result('simulated-host-candidate','test-grant-is-not-real-provider-enforcement');
 }
-const hostGrant={current:true,epoch:4,principal:'U1',tenant:'T1',actions:['read','update']};
+const hostGrant={current:true,epoch:4,principal:'U1',tenant:'T1',scopeRoot:'D1',axis:'command',
+ issuedPolicyRevision:'p-r1',actions:['read','update']};
 const hostCtx={principal:'U1',tenant:'T1',grantEpoch:4};
 
 test('VP-01 typed command closure follows D1 children, not siblings',()=>{
@@ -266,4 +269,23 @@ test('VP-30 cycle, multiple-path and tenant restrictions are axis-dependent',()=
  const c=closure(g,policy());
  assert.equal(c.diagnostics.includes('cross-tenant-or-unresolved-edge'),true);
  assert.equal(c.nodes.includes('X'),false);
+});
+
+test('VP-31 a Host grant for D1 does not authorize policy expansion to H',()=>{
+ const p=policy();p.scopeRoot='H';
+ const candidate=evaluate(graph(),p,R.r1);
+ assert.equal(candidate.status,'policy-eligible');
+ assert.equal(hostSimulation(candidate,hostGrant,'read',hostCtx).status,'unverified');
+});
+test('VP-32 a command grant is not a budget-scope grant',()=>{
+ const p=policy();p.axis='budget';
+ const candidate=evaluate(graph(),p,record('RB',['B']));
+ assert.equal(candidate.status,'policy-eligible');
+ assert.equal(hostSimulation(candidate,hostGrant,'read',hostCtx).status,'unverified');
+});
+test('VP-33 changing policy revision invalidates an old Host binding',()=>{
+ const p=policy();p.revision='p-r2';
+ const candidate=evaluate(graph(),p,R.r1);
+ assert.equal(candidate.status,'policy-eligible');
+ assert.equal(hostSimulation(candidate,hostGrant,'read',hostCtx).status,'unverified');
 });
