@@ -170,6 +170,14 @@ EKI [Issue #106](https://github.com/hat47x/eki-fabric/issues/106)の既存TEI Sp
 
 Fixture/図のExpectedは**TEI生成DSL/実Simulatorの式をコピーせず**、Independent Oracleの根拠で固定（TEI [#2514](https://github.com/hat47x/tei-platform/issues/2514)）。すべて机上設計・**NOT RUN**。Adapterが未存在なら`unsupported`を出し、Fake providerでPASSしても実Cloud/API/Workerの適合済みとは扱わない。
 
+### 7.1 Resource DelegateをEKIの標準的な外部単位にする（2026-11-03）
+
+[TEIのAI JobとEKIのPool-first広域委任契約](TEI_AI_WORKLOAD_EKI_AGGREGATE_DELEGATION_2026-11.md)を受け、Cloud/SBC/PC/HPCを個別Workerの横並びではなく、**Managed Cloud/Managed HPC/Dynamic Corporate-EndpointのResource Delegate単位**として登録・選択する案へ修正する。EKIがHPC各NodeのProvisioning、GPU分割、端末資産台帳を持つことを標準目標にしない。既存HPC Scheduler（Slurm/Kueue等）・Managed Cloud・端末Security/ITAM/MDMのOwnershipを温存し、EKIは複数Providerのうちどこに期限・予算・Data Class・Trust・Result要件に沿って委任するかを判断する。
+
+**Cloud Stable Control/Console**と**Delegateが所有する実Execution/Data Plane**は独立する。Managed Applicationの実Host／Ingress/DBのRuntime Authorityも元Providerのまま。非常に安価なArm/SBC群は、命令/メモリ/通信/電力を満たし、明示登録されたDelegateの下でのみ扱う。Workerへの個別認証やLocal Governorの実拒否権が必要なProfileでは、**管理単位がPoolでも実行の正当性は省略しない**。
+
+EKIの内部を細部なしの“単一仮想マシン”と見なすことはできず、必要なWorkload class/OS-arch/単一Device Memory/Trusted Data Class、実Admission/Reservation/費用の差をSub-offerとして伝達する。Kueue MultiKueueやSlurm Federationの既存協調方式を参考とするが、EKIに内部Schedulerを移植する案ではない。
+
 ## 8. 段階導入とIssue/ADR責務の所有範囲
 
 | Gate | 最小の出来上がりと受入条件 | 主要Owner |
