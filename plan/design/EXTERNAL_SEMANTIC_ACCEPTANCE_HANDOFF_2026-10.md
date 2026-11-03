@@ -377,6 +377,47 @@ FixtureのExpectedをTEI Parser／AIが作ったCandidateから生成しない�
 
 この表はRF群に対する**実行順を絞る横断受入票**であり、もう一つのFixture集や実装Schedulerではない。V0-1／V0-2を最初の必須縦断とし、結果の不足によってV0-3〜6を細分化する。実Sourceのない合成HTTP応答だけを最初のP0合格にしない。
 
+
+### P0実装に先立つ境界の訂正：管理Sourceと明示Importを別扱いにする
+
+本節はRF-23などで「Scope外のpathを拒否」と表現した条件の**適用単位**を明確にする。単純な「利用側Workspaceのroot外をすべて拒否」は現行機能と矛盾するため採用しない。現行main（観測 0e18b916aa15bc7768e9abfb34318b98ee497cb3）の internal/workspace/imports.go を静的確認した結果、次の区別が必要である。
+
+| 読取入口 | 既存の仕様・観測 | 正しい境界と未証明範囲 |
+| --- | --- | --- |
+| 利用側の管理対象Source（sources／Source Index） | ワークスペースに属する管理対象ファイルの列挙。#1002／#1017が物理root越境と実読取byteを扱う | 管理対象Sourceの暗黙な越境は拒否。Source Indexの保護を、明示Importの禁止へ拡大しない |
+| 利用側が明示指定した外部Workspace（imports.path） | 宣言はcleanな相対path。テストで ../provider を明示する。選択した別WorkspaceをProvider loaderで開く。imports.pathとsourcesは別欄 | 明示選択したProviderルートが利用者／Hostの許可対象かを確認する必要がある。相対pathに .. があるという理由だけで一律拒否しない。現行Loaderのpath構文検査＝実効path／symlink／供給元の認可保証とは主張しない |
+| Provider側の管理対象Source | Provider自身のWorkspace loaderを使う。選択したNamespaceのProvider所有を要求し、他Providerからの推移Importを暗黙に再公開しない | Providerの管理SourceはProvider自身のroot境界で検査。Namespace明示選択・Semantic Digest pin・正規化意味の検査と、供給元Authority／案件Owner受理は分離 |
+| 将来のHTTP／OData等Provider | 現行のWorkspace Import構文では直接扱っていない | URI、redirect、資格情報、取得Snapshot、404の権威、Cacheの期限は当該Provider契約で観測してから分類。ローカルPath実証をHTTP実装済みと扱わない |
+
+**RF-23のExpectedを精密化**：宣言されたProviderルートそのものが利用側root外でも、許された明示Importとして正当な場合がある。拒否するのは「明示選択・認可されたProviderの実効ルート／Namespace／読取範囲から外れた実体」や無断のredirect／symlink越境であり、単なる利用側root外の存在ではない。実効path確定の原子性・競合時の保護は依然として未証明ならunknownとする。
+
+### 既存テストの性格と、独立Expectedを備えた最小受入Packet
+
+既存 TestLocalSourceAcceptanceDoesNotWitnessExternalSemanticRevision は、変更前のLoader出力から得たSemanticDigestを後続のPin値として使い、Provider改変による不一致と利用側Source照合の独立性を検査する。これは有用な**現行動作の特性試験**だが、そのPinの正しさまでLoader自身から独立に期待した試験ではない。V0-1／2の受入は、少なくとも次の二種類のExpectedを独立に固定して補強する。
+
+| 結果の列 | Loader結果を見ずに先に固定するExpected | 観測する実入口 |
+| --- | --- | --- |
+| 構造・意味 | Provider AのProcessId基底型がstd.identifier、Bがstd.text。利用側Watchの参照は同じOS Namespace。選択Namespaceの件数、同名別Provider・推移再公開禁止も入力で確定 | 実Workspace Loader／World／ResolvedImport |
+| 変更判定 | 供給側のみA→BならConsumer Managed SourceのSource Index／Model Revisionは維持し、Imported Semanticは変更。旧Aの明示PinはBを拒否 | 実LoaderとSource Index、現在の特性テストと別のOracle |
+| 参照元と権限 | Providerの宣言pathと供給側管理Source、実効root、必要範囲を記録。現行機構にReaderのPermission／Snapshot／Revision証拠がなければ「未確認」を期待し、捏造しない | 実Source ReaderとProvider Loader。認可・現在性は別Owner |
+| 現在資格 | Source-onlyのVerifyCurrentが成功しても外部MeaningがOwner受理済み・実行可能とはならない。未受理の状態をExpectedとして固定 | 既存sourceacceptance Reader。#267との統合経路は後段 |
+
+最初の再現コマンド候補は次とし、**exact HEADのtrusted checkoutで実行した場合だけ実証済み**と記録する。
+
+    go test -count=1 ./reference/semantic-composition-preflight ./internal/workspace ./internal/sourceacceptance
+
+観測記録には実行版、試験名、投入A/BのSource byteと対象、期待するSemantic Shape、実際のProvider解決、観測したDigest／Index、失敗・不足範囲、実行環境を付す。必要に応じ固定したExpected Digestを追加するときも、Loader出力を転記して自己正当化せず、独立にレビューした基準を使用する。実試験が現在のschemaで取得できない項目は、後付けで成功値を生成せずunverifiedとする。
+
+### 検証を置く時点：Go単一バイナリと外部Hostの双方に適用する
+
+| 段階 | 前倒しできる確認 | 実行時まで保持する確認 |
+| --- | --- | --- |
+| DSL編集／Language Plugin | 宣言された参照、Source span、構文、静的依存・Pinの候補、必須性、診断／修正Preview。非信頼コメント／文書中の文字列を外部Source読取・Tool起動命令へ格上げしない | Source取得・Host GrantはParserの権限にしない。編集時の修正候補は現行Sourceへの適用前に版・Scopeを再確認 |
+| Workspace Load／Build | 固定Source、明示Import、依存Closure、Role/Operator pin、必要ArtifactSetを検証。再現可能なビルドでは外部Importの内容が固定できた範囲をEvidenceへ束縛。Pin省略を許す開発作業と再現性のClaimを分ける | Providerの読取能力が無い状態でunknownを成功扱いしない。Source-only Fingerprintの一致だけで外部Importの固定入力を証明しない |
+| 生成Goバイナリ／外部Targetの実行 | 既に検証済みの純粋変換・固定内容の各呼出しに、毎回フルParser／外部Reference全件検査を要求しない（性能方針は#565／#2667 §25）。必要な固定Bundle／Build資格は入力として引き渡す | mutableな実Provider Read、現在のPolicy・Disclosure／Grant、Effect前のAdmission、Commit不明時の独立Receipt／再観測は対象Host／Provider境界で検査する。TEI独自の共通Hostは要求しない |
+
+**採否条件**：この3段階を一つの「fresh/approved/ready」にまとめない。Go実行時の費用削減を理由に、現在権限、部分取得、実Provider整合性、Commitの不確実性を省略しない。一方、静的なSource/Grammar検査を毎回の純粋Operator実行へ繰り返し移す設計も採用しない。性能測定はConformance後の別試験で行う。
+
 ### Evidenceの最小受渡しと段階停止（形式は暫定）
 
 | 証拠段階 | 進める条件 | 到達しても主張しないこと |
