@@ -24,6 +24,7 @@ type CommandPlan struct {
 	Invalid       []CommandPlanIssue `json:"invalid,omitempty"`
 	Outcomes      []CommandOutcome   `json:"outcomes,omitempty"`
 	Effect        *CommandEffect     `json:"effect,omitempty"`
+	Period        *CommandPeriodRef  `json:"period,omitempty"`
 	Ready         bool               `json:"ready"`
 }
 
@@ -35,6 +36,15 @@ type CommandPlanInput struct {
 	Label     string           `json:"label,omitempty"`
 	Value     string           `json:"value,omitempty"`
 	Provided  bool             `json:"provided"`
+}
+
+// CommandPeriodRefは、Commandの効果が及ぶDataを統制する期間である。
+type CommandPeriodRef struct {
+	ID            core.CanonicalID `json:"id"`
+	Data          core.CanonicalID `json:"data"`
+	BusinessDate  core.CanonicalID `json:"businessDate"`
+	States        []string         `json:"states,omitempty"`
+	ClosedRejects []string         `json:"closedRejects,omitempty"`
 }
 
 // CommandPlanIssueは、入力の不足以外の不備を表す。
@@ -91,6 +101,25 @@ func BuildCommandPlan(world ir.World, applicationID, patternID, capabilityID cor
 		}
 		if err := checkCommandValue(input.Type, value, types); err != nil {
 			plan.Invalid = append(plan.Invalid, CommandPlanIssue{Input: input.Name, Message: err.Error()})
+		}
+	}
+	if plan.Effect != nil {
+		for _, namespace := range world.Semantics {
+			for _, period := range namespace.Periods {
+				if period.Data == plan.Effect.Data {
+					plan.Period = &CommandPeriodRef{
+						ID:            period.ID,
+						Data:          period.Data,
+						BusinessDate:  period.BusinessDate,
+						States:        period.States,
+						ClosedRejects: period.ClosedRejects,
+					}
+					break
+				}
+			}
+			if plan.Period != nil {
+				break
+			}
 		}
 	}
 	sort.Strings(plan.Missing)
