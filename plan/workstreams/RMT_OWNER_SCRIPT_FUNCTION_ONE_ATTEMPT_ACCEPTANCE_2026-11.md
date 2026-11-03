@@ -89,3 +89,22 @@ E0/E1/E2の証拠は他のE3〜E6の実行許可ではない。各段の**同一
 実行記録：**Python 3.13.5、sqlite3標準モジュール、py_compile PASS、unittest 8/8 PASS**。実行source 7392 byte、Git blob `6ecb3f988e354860211399066a9a89cf4b089dc5`、SHA-256 `542dca721fc23b86ea532174922df1a355b6cc0dcf46eea5f232fee421c077fe` をローカルで記録し、GitHub再取得blob一致。これは**SQLiteで限定した反証の実測**であって、Business OwnerのEmptyPolicyの採用・TEI SQL実行・原Runtimeの実動・実Host Authority・同一AttemptのEffect証明を示さない。
 
 次のP0-a/P0-bでは、この試験の表現をそのまま製品Interfaceに採用するのではなく、#2514の独立Expectedと実ProviderのRead/Receiptへ置換する。Script/Function側で足りないField・Phase・Identityを先に列挙し、追加Coreを必要とするかは実際の失敗から判断する。
+
+## 7. 「一試行」の正確な範囲：Legacy・TEI・Consumerを同じAttempt IDにしない
+
+ここまでの「同じSource/Subject/Attempt」は、**あるTEI実行の内部**でRequest→Effect→独立Readを因果的に接合する要求である。旧Driver試行、TEI試行、SHO/Consumerの別プロセス読込、任意のEKI Task/Attemptは**実際には別のAttempt**であり、単一の識別子へ潰さない。横断比較に必要なのは「一つの受入Scenarioに対応する各試行の証拠を、明示的な比較辺で結び付けること」である。
+
+| 対象 | 固定するIdentity | 許される比較・許されない飛躍 |
+| --- | --- | --- |
+| **受入Scenario/Case** | Scenario ID、独立Expectedの採用版、合成/旧実体の区別、入力Fixture・対象集合L・Rule目的、対象となるlegacy/TEIのSource/Meaning対応 | 旧・新で値や文面が一致しても同じ受理意味とは限らない。Accepted Mappingと差分表を別保存 |
+| **Legacy実行** | 実Driver/JAR/DB Snapshot、Source bytes、Legacy Attempt/Trigger/実Read・書込み・例外、対象Key | TEI実行と同一Attemptだと宣言しない。旧版未起動なら legacy result=unobserved |
+| **TEI Rule評価／実行** | TEI Source/Accepted Meaning revision、Rule/Function/Context/Provider/Host版、TEI Attempt、実Target、OperationID、不変Request bytes | 同じFunction名、OperationID文字列、入力表示値だけで実対象の一致や再送資格を推定しない |
+| **Commit・独立Read** | そのTEI Attemptの実Request→K/Receipt/Transaction→当該Provider Read/Scope/位置→Oの因果接合。異ProviderのReadは明示別Route/Cohort | 違うRead/業務条件の「それぞれPASS」をBへ足さない。失敗後のLookupは別Invocationでも同一不変OperationID/Requestに帰属し得る |
+| **Target生成・Consumer** | Generator/Target Toolchain/Artifact Set revision、実配布file bytes/manifest digest、独立Consumer invocation/read、現在Audience/Authority | 同じMeaningから生成しても別Targetや後続Buildを同じ実行Attemptと呼ばない。Manifestの宣言≠Readerの実受領 |
+| **外部Job（必要時）** | TEI Job Semantic IDと実委譲条件、EKI Task/Attempt/Lease、Result Body digest/受領Attempt/時点/期限 | EKI task/AttemptはTEIのBusiness OperationIDではない。Task Completed≠Body取得≠Owner Business Verified |
+
+**継ぎ目の判定**：各段に「Claim、対象・Scope、比較する版、Producer、実行Context/Attempt、実際に消費したbyte、資格を証明できる辺、missing/partial/unknown」を記録する。横断比較のためのScenario IDは中央Proof Registryではない。**比較の根拠が未取得ならfail-closedの判断を保持**し、似た値・同じ業務Key・同じ時刻から無理に結線しない。公開IssueやSHO出力ではOwner/機密情報の開示を別審査する。
+
+**具体的な負例**：同じSource/Ruleで別AttemptのKを借りる、同じOperationIDを別Tenantで使う、旧Driverの表示成功とTEIの実DB Commitを同一試行と呼ぶ、EKIのResult Bodyが次のAttemptから届く、A→B→AのSource byte一致で観測期間の連続性を宣言する。これらは同じScenarioに属していても、因果接合できない限りProduct PASSにしない。
+
+受入票の物理構造は既存#1163/#2514の成果に委ね、本節で新たな共通Evidence Schema/APIを採用しない。
