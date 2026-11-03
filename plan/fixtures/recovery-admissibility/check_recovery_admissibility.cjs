@@ -6,10 +6,10 @@
 // adopted EKI state, TEI Job ABI, recovery permit or Host grant.
 function qualify(s) {
   const out = (decision, reason) => ({decision, reason});
+  if (s.effect === "business" && s.effectState === "unknown")
+    return out("reconcile-only", "commit-uncertain-even-if-output-verified");
   if (s.output === "body-verified")
     return out("no-new-attempt", "already-verified; current-disclosure-separate");
-  if (s.effect === "business" && s.effectState === "unknown")
-    return out("reconcile-only", "commit-uncertain-not-a-safe-retry");
   if (s.effect === "business" && s.effectState === "committed")
     return out("retrieve-only", "committed-effect-result-unverified");
   if (s.taskPhase === "completed" && s.output !== "body-verified")
@@ -113,6 +113,10 @@ const cases = [
     {resourceEligibility:"denied"},"blocked"],
   ["RA-24","unknown verification time is not presumed zero",
     {verification:null},"needs-evidence"],
+  ["RA-25","verified output cannot settle uncertain business commit",
+    {effect:"business",effectState:"unknown",output:"body-verified"},"reconcile-only"],
+  ["RA-26","business effect has no accepted retry semantics",
+    {effect:"business",sameOperationID:true,businessRetryAllowed:false},"blocked"],
 ];
 function runCases() {
   const rows=[];
