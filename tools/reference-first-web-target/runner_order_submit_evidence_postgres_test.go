@@ -4,6 +4,8 @@ package main
 
 import (
 	"context"
+	"encoding/base64"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"net/url"
@@ -87,6 +89,39 @@ func (e *runnerPGEnv) storedReceipts(t *testing.T) []storedReceipt {
 	return out
 }
 
+// secretRenderings returns the forms in which a secret could leak through a
+// future []byte/[]rune/etc. field: raw, decimal byte list, hex and base64.
+func secretRenderings(secret string) []string {
+	return []string{
+		secret,
+		fmt.Sprint([]byte(secret)),
+		hex.EncodeToString([]byte(secret)),
+		base64.StdEncoding.EncodeToString([]byte(secret)),
+		base64.RawStdEncoding.EncodeToString([]byte(secret)),
+	}
+}
+
+// evidenceLeaks reports whether any rendering (%v, %+v, %#v) of any Evidence
+// contains the secret in any of the secretRenderings forms.
+func evidenceLeaks(evs []effectcommit.Evidence, secrets []string) bool {
+	for _, ev := range evs {
+		for _, f := range []string{"%v", "%+v", "%#v"} {
+			text := fmt.Sprintf(f, ev)
+			for _, sec := range secrets {
+				if sec == "" {
+					continue
+				}
+				for _, n := range secretRenderings(sec) {
+					if strings.Contains(text, n) {
+						return true
+					}
+				}
+			}
+		}
+	}
+	return false
+}
+
 // assertSecretFree fails if any Evidence renders the canary or the DSN.
 func assertSecretFree(t *testing.T, dsn string, evs []effectcommit.Evidence) {
 	t.Helper()
@@ -96,13 +131,33 @@ func assertSecretFree(t *testing.T, dsn string, evs []effectcommit.Evidence) {
 			needles = append(needles, pw)
 		}
 	}
-	for i, ev := range evs {
-		text := fmt.Sprintf("%+v", ev)
-		for _, n := range needles {
-			if n != "" && strings.Contains(text, n) {
-				t.Fatalf("evidence[%d] contains a secret value", i)
-			}
+	if evidenceLeaks(evs, needles) {
+		t.Fatalf("evidence contains a secret value")
+	}
+}
+
+// TestEvidenceSecretCheckDetectsLeaks proves the check itself fires on a
+// string leak and on a []byte leak (printed as decimals by %+v).
+func TestEvidenceSecretCheckDetectsLeaks(t *testing.T) {
+	if evidenceLeaks([]effectcommit.Evidence{{Operation: "order-submit/1"}}, []string{evidenceCanary}) {
+		t.Fatal("clean evidence reported as leaking")
+	}
+	if !evidenceLeaks([]effectcommit.Evidence{{Operation: "x " + evidenceCanary}}, []string{evidenceCanary}) {
+		t.Fatal("string leak not detected")
+	}
+	type leaky struct{ B []byte }
+	text := fmt.Sprintf("%+v", leaky{B: []byte(evidenceCanary)})
+	if strings.Contains(text, evidenceCanary) {
+		t.Fatal("premise broken: verb plus-v printed the bytes as text")
+	}
+	found := false
+	for _, n := range secretRenderings(evidenceCanary) {
+		if strings.Contains(text, n) {
+			found = true
 		}
+	}
+	if !found {
+		t.Fatal("[]byte leak not detected by the renderings")
 	}
 }
 
