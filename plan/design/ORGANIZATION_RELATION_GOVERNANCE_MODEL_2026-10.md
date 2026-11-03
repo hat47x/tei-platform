@@ -2143,3 +2143,13 @@ TEI上の組織/Capacity Planningを、コアに組み込まれた例外的なEn
 **Harness側の手順**：自然言語の制約→既存Command/Contract/Provider発見→候補Parameter/依存/版の照合→曖昧性・取得不足の診断→構造/Source差分Preview→独立Expected→Owner受理→実Host/Provider認可と実Effect。mainの `tei commands`・`plugin-lock`・`plugin-resolve`・`plugin-runtime-plan`は読取り用の既存入口であり、組織Fittingを実装済みとみなさない。未実装の `tei org fit` 等をSkillから呼ばない。#2605のProduct SkillとTAI SK-02の独立H2/H3比較を再利用する。
 
 **最小反例とOwner**：階層循環/複数経路、将来発効と遡及訂正、HR/IdP属性競合、削除/部分同期、同Contract複数Provider、Grant失効、Proposalと業務Commitの差を#2510/#2681/#2779に割り付ける。組織意味#2386、Plugin契約#951、Function Read#2506/#2622、Harness Skill#2605、実Effect#1119/#1174。実CLI・IdP/SCIM接続・E2E・正式Profile採用はNOT RUN。
+
+### 57.1 階層と時点の契約を分割する
+
+階層は単一のparent列やGraphレイアウトではなく、型付きRelationの集合として扱う。指揮命令、予算・原価、地理、プロジェクト、法人支配は別の辺種とし、各辺にはSource/Target、Occurrence ID、valid期間、必要ならrecorded期間と公表Revisionを束縛する。単一親を要する辺種で二重親や循環を検出する一方、兼務やGraph上の複数経路まで一律に拒否しない。
+
+再帰Queryの結果は「到達Node」「使用した辺Occurrence」「到達Path」を区別。A→B→C、A→Cという二経路が存在しても、同一Cへの到達を一回に集約した表示と、複数経路を保持すべき業務判断は別。Pathの重複、循環、深さ制限、取得途中失敗を診断し、上限到達を末端到達と判定しない。Treeに一つの親を選ぶ場合も、本務・優先度はOwnerが定めたPreferenceがあるときだけ使用する。
+
+時間のパラメータは、①業務上の有効時点 validAt、②当時把握できていた記録時点 knownAt、③全体改組の公表版、④個別所属・職位・RelationのRevision、⑤Source/Provider Readの版、に分ける。組織全体の公表と個々の辞令の発効が食い違う場合、Profileは優先規則の候補を提示し、未受理なら曖昧と診断する。古い時点の組織図と現在の認可を混同しない。
+
+**受入反例**：同じ部門名でStable IDが別、A→B→Aの所属変更、未来発効の改組を過去のknownAtで照会、取得できなかった下位部門を0件とする、異なるSource時点のRelationをつないで存在しないPathを生成する。これらを既存#2510/#2779 Corpusへ割当て、単純な現在木Profileに不要な履歴表を強制しない。
