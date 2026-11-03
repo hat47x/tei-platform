@@ -12,7 +12,7 @@ import (
 
 func TestWorkspaceSourceMoveChangesOnlySourceIndexLocator(t *testing.T) {
 	root := t.TempDir()
-	manifest := []byte("workspace: source_traceability\nsources:\n  - semantic\n")
+	manifest := []byte("workspace: source_traceability\nformatVersion: 1\nsources:\n  - semantic\n")
 	if err := os.WriteFile(filepath.Join(root, "tei.workspace.yaml"), manifest, 0o644); err != nil {
 		t.Fatal(err)
 	}
