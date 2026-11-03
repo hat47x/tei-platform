@@ -331,3 +331,12 @@ L1の単一Field PATCHはL1 ID、対象属性、Version等で意味的候補化�
 
 ### 12.3 他チャットの業務状態・ジョブ管理への非昇格
 標準Operation Surfaceに `Autonomy: unattended` と表示されても、E​​KIのジョブ起動資格、Workflowの状態遷移許可、期間状態、リソース予約（GPU/CPU/Memory）や継続実行の安全性は導出できない。状態は業務レコードの属性/履歴/対象固有契約、ジョブの実行とリソース調停は各Runtime/外部Coordinatorが担い、TEIはその意味モデルとシミュレーション/可視化・監査根拠を提供する。#1125 Business Procedureの手作業・契機は自動実行定義と混同せず、#2622 Providerが実現可能な副作用との差を残す。具体的なEKI連携はOwner側の独立Fixtureと実観測が得られるまで、新しい万能State Engine/Host/Resource RegistryをTEIへ追加しない。
+
+<!-- 20261103-ob01-02-actual-exacthead-success -->
+### 12.4 実Go CLIによる限定OB-01/02：exact-head CI成功を確認
+
+保存後に実行された[GitHub Actions #41607482804](https://github.com/hat47x/tei-platform/actions/runs/41607482804)の **operation-surface-real-cli = success**を、ジョブstepと実行ログを再取得して確認した。対象HEADは **`326b905a195b954caad5a062b88e260d91f48236`**、試験スクリプトGit blobは **`53994f47d9851a9d850805817937efb5b2e314b3`**、Go **1.26.10**、公開負例Workspaceを実際のビルド済みGo executableに渡した。
+
+観測値：`operationCount=5`、`gapCount=4`、`worldFingerprint=sha256:bd53dbaca0ac2c20bc911e0b69083467f2ad38273911269d525db666e681817f`、`modelRevision=sha256:c60ed68c7c85ab218883b18970df85db1ebcae7d9090336452766d7a95d2b04d`、`ruleFingerprint=sha256:92adf0fa3b20816fb6068780a6dd8b9b1fb77973e6c2cff823313346b0e59ae0`。実stdout二度一致・事前固定の5 Operation/4 GapとBinding/Effect/Concurrency/AuthorityLimits、`operations -out`の**実ファイル生成とJSON同値**、Checkoutのclean pre/postを試験した。
+
+**成立したClaim**：現HEADの一つの公開合成Workspaceで、Read-only `operations` Surface表示と、同じcommandの`-out`によるローカルFile Writeが実Go CLIで観測でき、Gap/Bindingを黙って成功/Grantへ昇格させない判別条件を満たした。これはCLI/Artifactの**出力先差**を確認したのであり、Source変更中の二重Load Race、原子的Artifact公開、Shell連結でのOS作用、Product Skill実Load、業務Actionの入力Closure、Provider/Host実Effect・Receipt、Owner意味受理までは証明していない。既存§10のOB-03〜08と§11のE1〜E4はNOT RUN。Source/Codeの本体改変なし。最新HEADで新変更が入れば、既存Runをそのまま現在のQualificationへ転用しない。
