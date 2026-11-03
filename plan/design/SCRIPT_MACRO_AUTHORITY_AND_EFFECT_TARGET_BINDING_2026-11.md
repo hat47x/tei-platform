@@ -720,7 +720,54 @@ M0は`validate/operations/artifacts`のWorld版・Rule/Gap・Manifestを照合�
 
 **追加のCore設計判断は行わない**。既存T-35/36（非表示Predicate・結果選択）、T-41（過去のReceiptと現在資格）、T-54/58（CLI ScopeとSource版）、T-61（実成果物の閉包）の受入条件を、今回の具体Fixtureに結び付ける。Macroの`NOT EXISTS`に必要な正負/時点条件は実Provider・Ownerを接合してから判断する。
 
-## 16. 判断を残す点
+## 16. 実Commandから実効果への契約接合：Studio参照実行、Grant、Tx、観測を一つの成功へ潰さない（2026-11-03）
+
+### 16.1 現在mainで利用できる実装と、接続されていない契約
+
+2026-11-03のmain `0e18b916aa15bc7768e9abfb34318b98ee497cb3` から、[merged #2747](https://github.com/hat47x/tei-platform/pull/2747)、[#2746](https://github.com/hat47x/tei-platform/pull/2746)、[#2768](https://github.com/hat47x/tei-platform/pull/2768)、[#2769](https://github.com/hat47x/tei-platform/pull/2769)、[#2771](https://github.com/hat47x/tei-platform/pull/2771)、[#2773](https://github.com/hat47x/tei-platform/pull/2773)の実コードを静的に照合した。**複数の機能がmainに存在することは、これらが実DB/同一Host/同一Attemptで縦断接続された証明ではない。**
+
+| 実装済みの接点 | コード上の確実な境界 | Macroが追加で必要とする証拠 |
+| --- | --- | --- |
+| Studio Command | `internal/studiohost/command.go`の`ExecuteCommand`は`command.ReferenceExecutor`と`MemoryUnitOfWork`を使用し、`Mode="reference"`でも`Committed=true`を返す | Studioの「参照内Commit」を**実DB確定/Owner Effect/Receipt**として表示・AI説明しない。`PlanCommand`の表示は実行資格ではない |
+| Command Invoker | `internal/command/invoke.go`は入力Plan/Periodを確認し、`UnitOfWork`が存在すれば`Begin→Executor→Commit`を呼ぶ | 同じ物理Txに属することが示されない別Runner/UnitOfWorkを二重Commitの一式としない |
+| 認可付き書込みAdapter | `internal/security/effectcommit/commandadapter/executor.go`で`command.Executor`→既存`effectcommit.Runner.Execute`へ委譲。`Scope`はCommandのApplication/CapabilityとGrant主体/Action/Resourceから構成。`OperationID`、`ExpectedVersion`、`Payload`、`Grant`は**呼出側入力** | Trusted Issuerの実Grant、承認した業務対象と実Payload/実Provider Effectの一致、現在Owner条件、正しいIdempotency/Resource version |
+| Adapter結果 | `committed/replayed`は`command.Result{}`と`nil error`、`denied/conflict`は区別可能なerrorへ変換 | 元の`Receipt`や`committed/replayed`の違いは現Command結果へ伝わらない。成功コードだけで初回確定・再送・実Consumer受領を説明しない |
+| Period Guard | `command.Invoker.checkPeriod`は`Periods=nil`で検査を通過する。`command.MapPeriodState.Closed`の**未記載Period**は`false`、`MemoryPeriodState.Closed`の未記載はerror。`execution.PeriodGuard.Source=nil`もGuardを実行しない | 業務MacroでPeriod前提が必須なら、現在状態未取得を`open`扱いする可否をTarget/Ownerごとに明示。Reference既定を本番の失効拒否保証へ昇格しない |
+| Effect Rule/Observer | `internal/execution/effects.go`の`RunEffect`は`after-commit/compensation`に対する`Invoker→Observer→Journal`を試みる。`SQLEffectObserver`はQuery/Argsがあれば`count≥1`で`Observed=true` | Queryが**当該Operation/業務対象/時点の効果だけ**を見ていること、実対象ArgsとDB Snapshot、行の有無以外の業務完了条件。SQL count一般を因果Receiptとしない |
+| 補償 | `CompensationsFor`は同じCapability/EffectDataを選抜。`Compensate`は宣言順に全件を試み、失敗も記録する設計 | 補償はDB Rollbackや業務全体の回復と同じではない。補償自身の部分失敗・再送/完了判定・別Ownerの効果は未適合 |
+| 実PostgreSQL CAS | [merged #2651/#2653](https://github.com/hat47x/tei-platform/pull/2653)の隔離実DBで単一行のCompare-and-Swapと現在値非開示の限定実測 | `effectcommit`の同一DB/同一Tx実Grant・Receipt、複数行`NOT EXISTS`条件、Command Adapterからの実DB効果をこのReferenceのPASSで代用しない |
+
+### 16.2 静的に認められる未接続辺を、具体的な反証にする
+
+**A. 意図した対象≠渡したPayload**：例えばOwnerの許可は受注`ORD-1001`、Command Inputsにも同じ値があるが、Adapterに渡された明示`Payload`が`ORD-1002`を指定する。現在のAdapterは`Payload=nil`の場合には`request.Inputs`をJSON化するが、明示`Payload`とInputs/業務Targetの**意味上の整合は検査しない**。`effectcommit`のScope/Grant照合は主体・Action・Resource等を検査するが、そのまま個々の受注IDとPayloadの意味対応を証明しない。これは**成立し得る構成の未検証条件**であり、実Owner Providerで不正更新を再現したという主張ではない。
+
+同じActionが明細や在庫を合法に更新する場合もあるため、ID文字列を単純に一致させて全更新を拒否するのではない。Ownerが受理した`Intent→許されたTarget集合・変換→実Request Payload→Provider確認済みEffect`を、実Targetの資格・同一Attemptの独立Expectedで照合する（既存T-1、#2598、#2499、#1174）。
+
+**B. 二つのCommit境界**：`command.Invoker.UnitOfWork≠nil`と、別`effectcommit.Runner`の独立した`Provider.Begin/Commit`を同時に指定できる構造がある。後段の外側`UnitOfWork.Commit`だけが失敗しても、内側の副作用が既に確定している可能性を否定できない。正式接続では**副作用の確定を所有する物理Txは一つ**とするか、複数効果なら各Ownerの明示的な独立Receipt/補償契約へ分ける。外側の失敗を一律Rollback済みとして自動再Submitしない（既存T-1/T-41、#1174/#1129）。これも現製品で二重Commit障害が発生したという実測ではない。
+
+**C. Period未取得**：ClosedならReferenceでも拒否できるが、必須Periodの`Periods=nil`や`MapPeriodState`の未登録IDで通過し得る現行経路がある。`no period declared`、意図的にGuardしないTrusted Tool、**宣言があるが現在状態が不明**を別状態にする。一般利用者Macroの本番作用に必要なPeriodについては、Ownerが要求する現在状態と取得時点がない限り、該当する実Effect資格を与えない案をまず反証する。期間を一律専用テーブル/Workflow Engineへ移すことは要求しない（#2144/#2744/#1129）。
+
+**D. Effect観測の相関と記録空白**：`SQLEffectObserver`のテストは固定`SELECT count(*) FROM stock`の結果が2なら`Observed=true`を確かめるが、特定Operationの効果を生んだ2行とは照合しない。さらに`RunEffect`では、Invokerが成功したあと**Observerでerrorが発生した場合、Journal.Appendへ到達する前にreturnする**経路がある。実外部効果の成否が不明のまま記録が欠ける可能性を、**現コード上の境界**として明示する。実Providerへ接続する際は、失敗前の試行/Intent/Receiptと観測不能状態を既存のEffect/Recoveryの正本へ残す方法を検証する。`Observed=false`／`observer error`／`Journal error`／`Effect denied`／`Commit unknown`を一つの`failed`へ畳まない。既存の#1129/#1174/#1130が実装責務を保持し、新しい共通Journalや全局Recovery Engineは設けない。
+
+**E. 文書/Runtimeの型を混ぜない**：Goでビルドした単一実行ファイルをTEIの標準配布・実行形態とする一方、日常DSLのFrontendは**ドメイン専門家に自然な言語中立・低ノイズ構文**を優先する。`func/struct/package/import`をマクロの通常記述へ強制せず、Go式AST／独自Parser／Hybrid／DSL→Go生成は内部方式として別実験する。日本語専用DSLは採用しない。Unicodeローカル名を使う場合も安定したASCII Canonical IDへの明示Binding・元Markdown/Source糖衣保持・診断/修正候補のSource位置を保つ（#2667 `22〜27、[Draft #2745](https://github.com/hat47x/tei-platform/pull/2745)、merged #2674）。自然なAuthoringや`Mode=reference`を理由に、実Host Authorityが発行されたと解釈しない。
+
+### 16.3 既存検証へ戻す最小接続順（新T番号を発行しない）
+
+| 既存検証の再利用 | 最初の実証と独立Expected | 所有先・止める条件 |
+| --- | --- | --- |
+| **T-17/T-45：Preview/参照表示** | StudioのReference`Committed=true`が表示/AI説明で`実DB成功`へ変換されない。`Mode`/`Receipt`未取得を区別 | #1124/#2747/#2502。実DB未接続なら`Reference only` |
+| **T-1/T-38：Payload/Mapping拘束** | 受注1001の許可・Inputs1001、実Payload1002、選抜Provider別Targetなど正負2系統。実WriteはHostの承認対象外へ行かない | #2598/#2499/#1174/#2773。偽Providerで通ること≠実Owner拒否 |
+| **T-41/T-58：Period/現在Grant** | 提示した期間がclosed、未取得、更新済み／旧Grant、強制読取時点を変え、実Effectの手前で止める | #2144/#1129/#2744。`nil`と`open`の同値はOwner未受理 |
+| **T-1/T-41：TxとCommit unknown** | 内側Commit後の外側Commit失敗、ACK喪失、同OperationID再照会。新ID/別Effectを勝手に再実行しない | #1174/#1129/#1130。実PG同一Tx未証明ならP0-a未合格 |
+| **T-27/T-33/T-41：独立観測** | 正しいOperationでは0行、別Operationの行でcount=1、Query/Args誤Binding、読取失敗、Journal失敗。**因果誤成功**と記録空白を検出 | #1129/#2387/#1174。ObserverだけのCount PASSは業務完了ではない |
+| **T-41/T-52：補償/外部Job** | 効果失敗、補償部分成功、再実行・EKI Attempt/Body未到達・SHO再読取を分ける | #1129/#1130、EKI #465、#2516。補償起動/Task ACK≠回復/納品 |
+| **T-19/T-22/T-54：Authoring→実Load** | 同一Meaningの複数FrontendsとGo Backend、Source修正/Role Pin/Targetの実Loader資格を別列で照合 | #988/#2639/#2667/#2745/#2595。Go実行成功≠DSL可読性採用/Owner意味受理 |
+
+**優先する一件**：既存の`sales.order.submit`を意味受理したと推定せず、公開合成の`order_entry`で`Preview(reference)→呼出側に固定した`Grant/OperationID/Payload`→`Command Adapter→Effect Fence`を**二つのTarget負例（正当な1001／すり替え1002）**で分ける。偽Providerの段階では`Runnerが引数をどう受け取ったか`まで、実DBの段階ではOwnerの受理したTarget/Tx/Receiptの実観測までを独立報告する。新しいHost・Workflow/Job実行器・共通Approval/Role Registry・DSL Grammarを先に作らない。EKIへの委譲は、TEI常駐の有無・資源/Node運用上の必要性がある場合の**任意の手段**であって、業務状態やOwner効果の正本をEKIへ移す決定ではない（#2667 `27）。
+
+**実証状態**：上記のGo Sourceと各PRは静的に照合した。#2773の合成Fake Provider、#2771のQueryer模擬、#2747のStudio Reference、#2651/#2653の隔離PostgreSQL CASはそれぞれ**異なる局所資格**。今回提示した実Command Adapter→実Provider PostgreSQL→AfterCommit SQL Observer→Macro/Studio/外部Jobの**同一Attempt製品E2EはNOT RUN**。追加のT番号・新しいGateは設けない。
+
+## 17. 判断を残す点
 
 - **業務Owner**：各Actionで「元の対象」「関係する対象」「全件の完了」をどのように定義するか。旧X-TEA `sales.order.submit`等の未受理マッピングは推測で補わない。
 - **組織Owner**：固定集合／実行時集合、代理の時点、合議、実行版固定と作用範囲での更新許容、既発行Grantの変更時再判定、結果閲覧をどのPolicyで扱うか。
@@ -732,4 +779,4 @@ M0は`validate/operations/artifacts`のWorld版・Rule/Gap・Manifestを照合�
 
 **確認できたこと**：固定mainの既存型・RequestHash・通常Request生成・試験DDLのデータ解釈を静的に確認した。既存IssueにはT-1の具体的な未実行DB負例、Effect replayとResult再投影の未実行負例、EKI出力接続の静的所見がある。
 
-**未実行・未採用**：本書のT-1〜61の実行、信頼済みIssuer/実Grant、利用者Macro実ロード、PostgreSQL負例、Linux/WindowsでのOS隔離、外部EKIの同一Attempt納品、複数Target受入、業務意味の正式受理。新しいCore kind、Grant/Receipt schema、専用Host、共通Workflow Engine、仕様やADRの採用を本書から確定しない。
+**未実行・未採用**：本書のT-1〜61のMacro縦断実行、信頼済みIssuer/実Grant、利用者Macro実ロード、PostgreSQL負例、Linux/WindowsでのOS隔離、外部EKIの同一Attempt納品、複数Target受入、業務意味の正式受理。新しいCore kind、Grant/Receipt schema、専用Host、共通Workflow Engine、仕様やADRの採用を本書から確定しない。
