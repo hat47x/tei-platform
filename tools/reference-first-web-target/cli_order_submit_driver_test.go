@@ -4,6 +4,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"strconv"
@@ -45,7 +46,8 @@ const (
 	cliOperationIDPattern = "cli-order-submit/%d"
 )
 
-var cliSpec = submit.Spec{Application: cliApplication, Capability: cliCapability}
+// cliSpec installs the same shared intent check as the Web store (D11).
+var cliSpec = submit.Spec{Application: cliApplication, Capability: cliCapability, ValidateIntent: checkOrderSubmitIntent}
 
 func cliIntent(orderID int64) submit.Intent {
 	return submit.Intent{
@@ -77,6 +79,10 @@ func cliOrderRun(ctx context.Context, caller submit.Caller, args []string, stdou
 		out, err = caller.Execute(ctx, grant, cliIntent(id))
 	} else {
 		out, err = caller.Lookup(ctx, grant, cliIntent(id))
+	}
+	if errors.Is(err, submit.ErrIntentRejected) {
+		fmt.Fprintf(stdout, "not submitted order %d (rejected)\n", id)
+		return cliExitNotCommitted
 	}
 	if err != nil {
 		fmt.Fprintf(stdout, "failed order %d\n", id)

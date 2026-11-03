@@ -328,3 +328,66 @@ func TestImportGuard(t *testing.T) {
 		t.Fatal("no non-test file checked")
 	}
 }
+
+func TestValidateIntentUnsetKeepsBehaviour(t *testing.T) {
+	r := &fakeRunner{execResult: effectcommit.Result{Status: effectcommit.StatusCommitted}}
+	out, err := Caller{Runner: r, Spec: spec}.Execute(context.Background(), grant(), Intent{OperationID: "op/1", Payload: []byte("x")})
+	if err != nil || out.Disposition != Committed || r.executes != 1 {
+		t.Fatalf("out=%+v err=%v executes=%d", out, err, r.executes)
+	}
+}
+
+func TestValidateIntentRejectionNeverReachesRunnerAndLeaksNothing(t *testing.T) {
+	const secret = "secret-payload-body"
+	var seen Intent
+	sp := spec
+	sp.ValidateIntent = func(in Intent) error {
+		seen = in
+		in.Payload[0] = 'X' // a hook must not be able to alter the real payload
+		return errors.New("bad " + string(in.Payload))
+	}
+	r := &fakeRunner{}
+	in := Intent{OperationID: "op/1", Payload: []byte(secret)}
+	c := Caller{Runner: r, Spec: sp}
+
+	out, err := c.Execute(context.Background(), grant(), in)
+	if !errors.Is(err, ErrIntentRejected) || out.Disposition != NotCommitted || out.OperationID != "op/1" {
+		t.Fatalf("execute out=%+v err=%v", out, err)
+	}
+	out, err = c.Lookup(context.Background(), grant(), in)
+	if !errors.Is(err, ErrIntentRejected) || out.Disposition != NotCommitted {
+		t.Fatalf("lookup out=%+v err=%v", out, err)
+	}
+	if r.executes != 0 || r.lookups != 0 {
+		t.Fatalf("Runner reached: %d/%d", r.executes, r.lookups)
+	}
+	if string(in.Payload) != secret || string(seen.Payload) == "" {
+		t.Fatal("caller payload was altered")
+	}
+	for _, s := range []string{err.Error(), fmt.Sprintf("%+v", out)} {
+		if strings.Contains(s, "secret") || strings.Contains(s, "bad") {
+			t.Fatalf("leak: %s", s)
+		}
+	}
+	if _, err := RequestFromGrant(sp, grant(), in); !errors.Is(err, ErrIntentRejected) {
+		t.Fatalf("RequestFromGrant err=%v", err)
+	}
+}
+
+func TestValidateIntentAcceptingHookRunsRunner(t *testing.T) {
+	sp := spec
+	sp.ValidateIntent = func(Intent) error { return nil }
+	r := &fakeRunner{execResult: effectcommit.Result{Status: effectcommit.StatusDenied}}
+	out, err := Caller{Runner: r, Spec: sp}.Execute(context.Background(), grant(), Intent{OperationID: "op/1"})
+	if err != nil || out.Disposition != NotCommitted || out.Status != effectcommit.StatusDenied || r.executes != 1 {
+		t.Fatalf("out=%+v err=%v executes=%d", out, err, r.executes)
+	}
+}
+
+func TestEmptyIDsStillWinOverHook(t *testing.T) {
+	sp := spec
+	sp.ValidateIntent = func(Intent) error { return nil }
+	if _, err := RequestFromGrant(sp, grant(), Intent{}); !errors.Is(err, ErrInvalidIntent) {
+		t.Fatalf("err=%v", err)
+	}
+}
