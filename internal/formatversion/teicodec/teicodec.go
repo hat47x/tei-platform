@@ -36,6 +36,9 @@ func New(version formatversion.Version, requireHeader bool) *Codec {
 func (c *Codec) Version() formatversion.Version { return c.version }
 
 const (
+	// Format is the stable format identifier used when the .tei codec is
+	// registered in the core formatversion.Formats entry.
+	Format = "tei.semantic"
 	// CodeUnsupportedConstruct marks a declaration the codec cannot round-trip.
 	CodeUnsupportedConstruct = "UNSUPPORTED_CONSTRUCT"
 	// CodeMaterializedDefault marks an inherited value written explicitly.

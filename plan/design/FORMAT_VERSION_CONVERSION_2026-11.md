@@ -41,6 +41,9 @@ namespace sales
 
 `internal/formatversion` が単一の入口と結果分類を持つ。プラグインは`Codec`（`Decode`/`Encode`）だけを提供する。
 
+- `Registry`: 1つの形式内の版ごとのcodecと変換入口
+- `Formats`: **プラグインの登録口**。形式ID（例 `tei.semantic`）ごとに`Registry`を持ち、`Formats.Convert(format, source, from, to)`で振り分ける。同じ版番号でも形式が違えば衝突しない。同じ形式・版の二重登録は拒否する。未登録形式は`UNKNOWN_FORMAT`で失敗し、登録済み形式をメッセージに含める
+
 ### 中心表現
 
 ```text
@@ -124,9 +127,10 @@ v2 codecは変換境界の検証用で、**製品の受理版はまだ1のまま
 ## 7. 残る作業
 
 - 製品としてv2を受理するか、v2の差分を何にするかの決定（現在のv2は「ヘッダ必須＋継承版の明示化」という検証用の差分）
-- プラグイン固有形式（#1739の入力プロファイル）のcodec登録口
 - 対象外の宣言（type/validation/relation等）をCentralで表現する拡張
 - 隣接版の連鎖を併用するかの再判断
+
+（プラグインcodecの登録口は`Formats`として実装済み。`.tei`codecは`tei.semantic`として登録できる。）
 
 ## 8. 主張しないこと
 
