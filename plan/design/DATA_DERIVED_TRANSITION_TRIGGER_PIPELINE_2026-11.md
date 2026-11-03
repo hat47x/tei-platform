@@ -222,6 +222,18 @@ P=まず意味忠実な移植、A=既存契約への適合Adapter、E=追加要�
 
 **Doneの境界**：P1〜3はSource-faithful candidateと限定Fixtureの同値まで。Aの既存Adapter経路が通るなら新Core/DSL/Pluginを提案しない。実Provider／正式Targetで同じ拒否・更新・回復が独立観測できたときだけ**実行互換**へ進める。Owner受理はこのどの技術PASSとも別。X-TEAの既存設計を過度に複雑な新基盤で置き換えない。
 
+### 7.3 EKIにJob制御を委譲する場合の実行境界（2026-11-03）
+
+[TEI→EKI委任の共通契約／Plugin拡張／Tx・Callback設計](TEI_EKI_JOB_DELEGATION_BOUNDARY_2026-11.md)へ、**Data Scriptで宣言した通常Field／Virtual Attributeの変更→Flow→Batch/大規模Job**という要求を接続した。TEIがData/Rule/Flow/Ownerの意味を持ち、EKIがTask／Attempt／Lease／資源配置／Result検証を担当する。EKI Console/Policy Review等はTEIローコード生成の候補だが、EKI KernelはTEI製品稼働へ依存しない。
+
+新たな先行決定をせず、次を先に反証する：
+- **発火時点**：Data Scriptの更新前純粋判定と実ProviderのCommitを分離し、厳格なEdge起動には同一Scopeのbefore/afterと同一Tx Outboxなどの証拠を要する。Txn外のEKI SubmitをRollback可能なWrite中に呼ばない。
+- **インターフェース**：EKIは言語中立なTask/Result/Lease/Authorityの共通契約を一意に所有し、TEI PluginはTrigger/Rule→EKI申請・Callback配送方式・Provider差分を吸収する。任意PluginにEKIの権限／再試行／結果受理を上書きさせない。
+- **Callback**：通知はAck/Progress/ResultのObservationで、Business Commit／Accepted Meaningでない。Pull照会を初期基準、Pushは耐久受領・重複・順不同・再取得を含む追加のCapability候補。EKIにWebhookの実装済みを仮定しない。
+- **大規模Job**：TEI Flow GraphとEKI Task Group／Workflow DAGを同一視しない。依存Jobの業務意味はTEI側、資源／予算／AttemptはEKI側。現EKIのTask Group等が実E2Eで利用できるかは別の受入Gate。
+
+JD-01〜09の相関・Rollback・重複通知・Effect Unknown等の独立Expectedは新資料へ集約し、本資料では第二のFixture/Engine/Runtimeを作らない。EKIの設計主権とTEIのMeaning Ownerを維持する。
+
 ## 8. 不明／Ownerが決める条件と現在のEvidence
 
 **Ownerの具体判断が必要**：`billing_ready`は明細の完了だけか、出荷実績確定・検収・時間を含むか。訂正／返品・取消で何が起こるか。再計算時の粒度と許容遅延、Strict EdgeかLevel Reconciliationか、同一Subject二回目の正当なJob起動、依存先が別Providerなら整合Snapshot不可能時に停止するか、履歴・監査と重複通知の許容範囲。必要なときだけOwnerが意味とEffect Contractを受理する。
