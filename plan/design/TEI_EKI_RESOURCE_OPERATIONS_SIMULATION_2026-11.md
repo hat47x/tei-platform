@@ -183,6 +183,10 @@ AIに期待する仕事：
 
 [EKI現mainの実配線再資格化](TEI_EKI_ONE_REVISION_EVIDENCE_VERTICAL_SLICE_2026-11.md)§12では、optional Dispatch、固定Commandの別Processテスト、条件付きOutput body受領とGET実装が確認できる。一方、Result Acceptanceの試験内直接呼出し・Client Input ingestの未実装、実Provider連携、異種GPU/VRAM予約、社内Endpoint/MDMによるPool登録・失効は未証明である。TEI Consoleでは**source exists／test source exists／exact-head test PASS／product-only実行／実Managed Pool**の証拠を別の資格として可視化し、WorkOrder/Lease/Claimを一つの`Job完了`アイコンへ潰さない。GPU/Cloud/MDM全体の管理Appに昇格するにはEKI #67等の専門Ownerで個別検証する。
 
+### 8.6 AI-firstなConformance生成と現在のEKI ABI差分の表示
+
+[縦断§14](TEI_EKI_ONE_REVISION_EVIDENCE_VERTICAL_SLICE_2026-11.md)のABI Gateを、TEI管理Consoleの`mode=read-only/diagnosis`へ接続。TEIのジョブ要件（Effect/Executor/Inputs/期限/Pool/DataClass）とEKI P0が**表現できる項目／値だけ保持する項目／実行時に強制しない項目／表現不能な項目**を区別して表示する。WP-01〜19の静的差分は出典OpenAPI blobと試験Versionを併記し、EKIの実Worker/Output・Owner Grantへ昇格しない。生成AIによるGap検出や反例生成はTEI [#2811](https://github.com/hat47x/tei-platform/pull/2811)の共通AI-first test scaffoldを後続Consumerとして使い、本Console固有のFixture RunnerやAI Policy Authorityを新設しない。Source採用とEKI Worker Trustも別Issuer/Revisionであり、AIが原文や未公開Node Topologyを外部送信する権利は無い。
+
 ## 9. 既存計画との分担・段階導入・Done/Stop
 
 | 段階 | TEI側の差分／最小成果物 | EKIの既存担当とGate |
