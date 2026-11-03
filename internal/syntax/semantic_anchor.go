@@ -141,6 +141,22 @@ func semanticSubjectAnchors(src string, namespace core.CanonicalID) ([]SubjectAn
 			if err := skipSemanticValidationBody(lx); err != nil {
 				return nil, err
 			}
+		case "period":
+			sym, err := expectLexerIdent(lx, "semantic period identity")
+			if err != nil {
+				return nil, err
+			}
+			id, err := semanticPeriodID(namespace, sym.Text)
+			if err != nil {
+				return nil, err
+			}
+			anchors = append(anchors, SubjectAnchor{Kind: "semantic-period", ID: string(id), Anchor: tokenAnchor(sym)})
+			if err := expectLexerKind(lx, TokenLBrace, "semantic period body"); err != nil {
+				return nil, err
+			}
+			if err := skipSemanticPeriodBody(lx); err != nil {
+				return nil, err
+			}
 		default:
 			return nil, fmt.Errorf("unexpected semantic declaration %q at %d:%d", t.Text, t.Start.Line, t.Start.Column)
 		}
@@ -443,4 +459,40 @@ func expectLexerKind(lx *Lexer, kind TokenKind, description string) error {
 		return fmt.Errorf("expected %s at %d:%d, got %q", description, t.Start.Line, t.Start.Column, t.Text)
 	}
 	return nil
+}
+
+// semanticPeriodID resolves a period identity the same way capabilities do.
+func semanticPeriodID(namespace core.CanonicalID, symbol string) (core.CanonicalID, error) {
+	if strings.Contains(symbol, ".") {
+		id, err := core.ParseCanonicalID(symbol)
+		if err != nil {
+			return "", err
+		}
+		if !strings.HasPrefix(string(id), string(namespace)+".") {
+			return "", fmt.Errorf("period canonical id must belong to the declared semantic namespace")
+		}
+		return id, nil
+	}
+	seg, err := core.SymbolToSegment(symbol)
+	if err != nil {
+		return "", err
+	}
+	return core.ParseCanonicalID(string(namespace) + "." + seg)
+}
+
+// skipSemanticPeriodBody skips the period body. Members are validated by the
+// parser; the anchor pass only needs the identity that follows the keyword.
+func skipSemanticPeriodBody(lx *Lexer) error {
+	for {
+		t, err := lx.Next()
+		if err != nil {
+			return err
+		}
+		if t.Kind == TokenRBrace {
+			return nil
+		}
+		if t.Kind == TokenEOF {
+			return fmt.Errorf("unterminated semantic period body")
+		}
+	}
 }

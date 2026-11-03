@@ -169,6 +169,7 @@ func main() {
 	applicationID := fs.String("application", "", "application canonical ID")
 	artifactOutDir := fs.String("out", "", "artifacts: directory to write the derived files")
 	artifactCheck := fs.Bool("check", false, "artifacts: fail when the set is inconsistent")
+	periodStates := fs.String("period-states", "", "periods: period=state pairs, comma separated")
 	environmentID := fs.String("environment", "", "environment canonical ID")
 	solutionID := fs.String("solution", "", "solution release canonical ID")
 	historyPath := fs.String("history", "", "normalized migration history JSON")
@@ -483,6 +484,12 @@ func main() {
 	switch command {
 	case "operations":
 		if err := runOperationsCommand(*workspacePath, *applicationID, *artifactOutDir); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		return
+	case "periods":
+		if err := runPeriodsCommand(*workspacePath, *applicationID, *periodStates); err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
