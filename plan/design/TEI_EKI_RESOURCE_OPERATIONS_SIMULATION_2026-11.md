@@ -179,6 +179,10 @@ AIに期待する仕事：
 
 [期限・予算・実績によるResource Pool調停](TEI_EKI_DEADLINE_BUDGET_RECOVERY_COORDINATION_2026-11.md)では、TEI Ops Consoleに`requested deadline/forecast completion range/remaining slack/estimated recovery elapsed/available recovery budget/actual Provider reservation`を**異なる事実**として表示する。単一の`expected finish`だけでは複数故障・Queue/転送・検証が見えない。Site/Network/Provider共通故障のGraph、期限接近によるCloud引上げのWhat-if、予測の校正/サンプル不足、故障後の予算消費とCAP-1承認をSimulation/AI Critical Reviewの主要ケースに含める。ただしAIの提案や期限Warningは、実資源確保・費用支出・管理者Grantに昇格しない。
 
+### 8.5 直接Worker Test-profileの現在EvidenceとPool運用の間
+
+[EKI現mainの実配線再資格化](TEI_EKI_ONE_REVISION_EVIDENCE_VERTICAL_SLICE_2026-11.md)§12では、optional Dispatch、固定Commandの別Processテスト、条件付きOutput body受領とGET実装が確認できる。一方、Result Acceptanceの試験内直接呼出し・Client Input ingestの未実装、実Provider連携、異種GPU/VRAM予約、社内Endpoint/MDMによるPool登録・失効は未証明である。TEI Consoleでは**source exists／test source exists／exact-head test PASS／product-only実行／実Managed Pool**の証拠を別の資格として可視化し、WorkOrder/Lease/Claimを一つの`Job完了`アイコンへ潰さない。GPU/Cloud/MDM全体の管理Appに昇格するにはEKI #67等の専門Ownerで個別検証する。
+
 ## 9. 既存計画との分担・段階導入・Done/Stop
 
 | 段階 | TEI側の差分／最小成果物 | EKIの既存担当とGate |
