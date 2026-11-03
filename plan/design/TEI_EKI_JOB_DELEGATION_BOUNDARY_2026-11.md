@@ -219,6 +219,10 @@ TEIのApplication Composition/Artifactから`Release/Deployment Intent`を導出
 
 Workerにはoutbound-firstの社内PC/ARM64 Raspberry Pi/On-prem資源Poolも候補だが、**低信頼・端末利用者優先／断続的な資源**にStateful ServiceのAvailabilityを委ねない。小型Linux WorkerのOS/arch/RAM/Sandbox/Executor digestの適合、Agent enrollment/revoke、Node/Data/Trust/Lease Authority、Site Cache/Network費用を検証する。厳しいSLOはCloud/Managed Host、再実行可能な補助TaskはEKIが配分、というHybridの具体Caseから開始する。
 
+### 8.7 TEI成果物のLaunch先とEKI Cloud Control（2026-11-03、市場適合追補）
+
+[EKIの市場適合・Cloud/On-prem配備方式の照合](EKI_ENTERPRISE_COMPUTE_MARKET_FIT_2026-11.md)を追加。TEI生成ApplicationをEKI Consoleから**既存Cloud/オンプレHostへ配備管理**できることは有力な利用体験だが、常時稼働Web/API/DBのAvailability/業務State正本をEKIのTask Leaseへ無条件に移さない（EKI #130／ADR-0013）。EKIのControl/ConsoleはCloudに置ける構成候補でも、Worker ExecutionとData PlaneをControl経由のProxyにしない。Linux/Arm/小型PC/一時Workerは登録・認証・Local Governor/Resource Suitability Gateを通った範囲に限定する。**常駐App配備と止められる背景Jobを異なるProduct Profile**として検証し、Cloud ControllerやEKI-hosted TEI Serviceを実装済みとは扱わない。
+
 ## 9. 設計判断のGate、実装順、Issue追補候補
 
 - **G0／今回の設計比較**：EKI ADR-0013・一方向依存・native-first kernel とTEI no-custom-Host/Plugin-firstを保持し、上記二層案を未採用の候補とする。TEI Draft PRへの資料追加だけで、EKIのRequirements/ADR/Mainは書換えない。
