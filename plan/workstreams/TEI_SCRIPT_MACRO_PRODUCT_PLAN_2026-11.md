@@ -289,7 +289,7 @@ go run ./cmd/tei artifacts -workspace reference/standard-crud/workspace -applica
 
 - **MC-B01 / T-1・T-38 / M3-B**：Command`order=ORD-1`に対し、明示`Payload={"order":"ORD-2"}`を与える。現在のAdapterがその不一致をFake Providerの`WriteResource`に渡すことを**不安全な構成の特徴として観測**する。PASSが出ても対象照合の安全性を保証したことにはならず、Owner検査を実装した後は**不一致を拒否するTestへ置換**する。別Owner [#2616 OB-07A](https://github.com/hat47x/tei-platform/pull/2616)のOperationSurface→Driver Target driftと同一合格票にしない。
 - **MC-C01 / T-1・T-41 / M3-C/D**：内側Effect RunnerがFake TxでCommitした後、外側Command UnitOfWorkのCommitが失敗する。`COMMAND_COMMIT_FAILED`と内側Commitの記録が共存する構成を確かめる。外側Rollbackを内側実Effectの回復と推測しない。
-- **Exact-head Evidence**：`.github/workflows/macro-command-boundary-characterization.yml`で本物のGoパッケージをGofmtと合わせて確認する。PR作成直後のRun queued/runningは`NOT VERIFIED`。実行結果とそのhead SHAを確認するまでPASSEDとはしない。実Provider/DB/Current Grant/Receiptは**別試行**。
+- **Exact-head Evidence（実測）**：[Focused Actions #41620889140](https://github.com/hat47x/tei-platform/actions/runs/41620889140) はhead `3b0ead5706f914209c4c76e18ea30aac250cb86b`、Go1.26.10/Linuxで `completed/success`。`TestCharacterizationExplicitPayloadDiffersFromCommandInput` と `TestCharacterizationInnerCommitCanPrecedeOuterCommitFailure` の**2件ともPASS**、gofmt・worktree不変を確認。これは「現行コードで不安全な構成が成立し得る」という合成反例の成功であり、**安全なPayload Target検査・原子的実Commitを証明するものではない**。前head `27aa489...` は `effectcommit.Transaction.Rollback()` と `command.Transaction.Rollback(ctx)` の型混同でcompile failed、別試行として保持。実Provider/DB/Current Grant/Receiptは**別試行・NOT RUN**。
 
 | 次の適合切断点 | 本当のExpected／拒否条件 | 既存Ownerと実行資格 |
 | --- | --- | --- |
