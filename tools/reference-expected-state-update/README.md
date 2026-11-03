@@ -138,6 +138,8 @@ go run ./tools/reference-expected-state-update/cmd/tei-expected-state-update \
 
 生の値を保存しない理由は、項目3で採用した「サーバ側で生値を比較」と、記録が要求より長く残るためである。
 
+実DB経路（`PGStore.Apply`）の`Result`も同じ`RecordRun`で記録できる。`TestPGRunIsRecordedAndReproducedWithoutRawValues`が、実PostgreSQLで適用→競合→再送を実行し、記録の再現と生値非保存を確認する（`TEI_EXPECTED_STATE_PG_DSN`設定時のみ）。
+
 ### 未決
 
 - 実際の保存先（ローカルファイル以外）、保持期間の運用値、監査アクセス権、記録の暗号学的署名は未決。
