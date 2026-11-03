@@ -1421,3 +1421,37 @@ Consumer Workspace "order-entry"
 4. **X3 Consumerと選択的再生成**：Source移動/Role変更/Import path変更/Grant失効の同じ正負対照を、Go CLI Operation/Artifact、SHO引用、AI Skill候補・Provider実Readの各Ownerで評価。現実のHost/SHO/Runtimeが接続できない工程は未実行とし、独立Claimを保つ。
 
 **現在の変更・合否**：本§31は計画文書のみを変更する。既存GoテストがSourceに存在することは確認したが、この回答での`go test`・Focused CI・実Provider/SHO/Host、厳密な跨Workspace Acceptanceは**NOT RUN／未確認**。§29 MRU-01〜12と§30 Source/AI修正のOwner分担を維持し、Issue/ADR本文とOwner正式判断は変更しない。
+
+## 31. Organization E1からRelation-first実Data Ops/Contextへの橋渡し（2026-11-03、#2386/#2586の採用前横断実証）
+
+### 31.1 現物から確定できる境界
+
+- [Org Native PR #2681](https://github.com/hat47x/tei-platform/pull/2681)の`semantic/organization/model.tei`は**Person、OrgUnit、Membership、Position、Occupancyを直接Dataとして宣言**し、Relationのtarget/keyを明示。`persist`は別物理Mapping。固定HEAD `8efe0d351a244b57fefd00b498a5b47136619ac5`で[Actions #41580077197](https://github.com/hat47x/tei-platform/actions/runs/41580077197)が実Go Loader/CLI/Operations/Artifacts PASS。これはE1であり、実SQL/Provider/Context Readではない。
+- main `internal/operations/surface.go`の`SurfaceWorkspace`は`workspace.Load`＋Source Index→`DeriveOperationSurface`、`effect=read-only`で資格を限定する。main `internal/query/model.go`のQueryは`EmbeddedSQL`であり、`syntax/query_authoring.go`がnative SQL body/fileを受け、`derived.go`が解析結果をDerivedIRへ変換する。**現行SQLの実装とTEI標準Relationの取得/Traversal実装を同一視しない**。
+- main `internal/applicationview/browse.go`の`BuildBrowse`はSQL結果列MappingからBrowse列/Filter等を構築する**表示用の投影**。[merged #2679](https://github.com/hat47x/tei-platform/pull/2679)によるQuery Input⇔Browse Filterの型付き対応は有効だが、物理Read/実Queryの実行証拠ではない。
+- [Org E0 PR #2779](https://github.com/hat47x/tei-platform/pull/2779)の[Node Actions #41607867473](https://github.com/hat47x/tei-platform/actions/runs/41607867473)は固定HEADで`verify.mjs`27件、Node225件がPASS。E0合成とE1 Nativeが別々にPASSしても、同一World/Query/Provider/Consumer runの成立とは言えない。
+
+### 31.2 QueryとData Operationsの責務を分離し、可読性の優先順位を保存する
+
+Ownerの設計方針：Data ModelはSQL解釈から構造生成するのでなく、Data/Field/Key/Relationを**直接宣言**する。業務利用者が通常の関連データを取得する際は、宣言済みRelation pathから標準Data Operationsを導出し、**Functionが使用する範囲を明示Mapping**。Studioは候補/補完を提供するが、非宣言外部Relation/Fieldを無制限に自動Fetchしない。Native SQL/TEI Queryは複雑な変換やDB固有の特殊処理への補助経路であり、普通のReadのためにSQL記述を事実上必須にしてはならない。Go Parser/AST親和性は内部実装上の選択肢で、DSLの普段のスクリプトへ`struct/func/import/package`を露出させない。
+
+- **#1126** は直接宣言Data/Relation/業務Key/物理PK意味契約。#988/#2620は言語/Roleと正本。#2622/#1127は既存Data Ops導出とProvider適用。#2506はFunction明示Data Context。#2387はQuery専用構文/非表示依存/SQL解析のOwner。#2611/#2628は実物理Provider/Read Witness。#2586は**この隣接成果物の一固定Attempt接合のみ**。
+- 採用前候補の通常Query Pathは`Semantic Data/Relation → Explicit Function Mapping → Data Operations/Provider-specific realization → actual Result Slice/Read Witness → Claim/Pattern`。SQL経路は`Query SQL Source + Dialect/Schema/Worker revision → DerivedIR → Provider execution → Result Slice`で、SQLのFieldIDはSemantic IDでないため、明示結果Mappingがないまま再利用しない。どちらも現状全経路実測済みではない。
+- 資格も用途別に：**candidate**, **declared**, **parsed**, **bound**, **physically observed**, **consumer qualified**, **currently action-authorized**, **Effect observed**を同じstatusで表現しない。現在一部入力が未観測でも普通のDataのL0一覧は利用可能だが、FTE/Rule/External Disclosure/Writeは用途相対の前提を別に確認する。
+
+### 31.3 E2の最小受入試行を同一組織Source/Fixtureに束ねる
+
+[組織設計PR #2389 §56](https://github.com/hat47x/tei-platform/pull/2389)へORG-E2-01〜10を登録した。#2681実`.tei`はSchema/Mapping/OperationSurfaceのみ、A1〜A4実Providerデータは未登録。合成`org-synthetic-r7`とのID/FTE一致は**期待値**であって実DBの結果ではない。
+
+| 受入列 | 最低の正例 | 必須負例・未検証 |
+| --- | --- | --- |
+| Authoring/Meaning | 直接宣言MembershipがPersonとOrgUnitをRelation target/keyで参照、Member occurrence IDは独立 | Person IDだけからA2/A3を同一化しない、Occupancy⇒Membershipとしない |
+| Function Request | `org_view`がMember/Person/OrgUnit必要集合とallocation Fieldを明示 | undeclared Relation/Fieldの実Read、未知Sourceの暗黙Fetch |
+| Physical Read | 一固定DB/Route/Revision/cutでA1〜A4とValue/NULL/未取得/部分ReadのWitness | read-only OperationSurfaceの存在・同一HTML出力で実Readしたと主張 |
+| Claim/Measure | 4 Membership・3 Person・全FTE3.0、D1=1.6/D2=1.4を独立Expectedと照合 | Join 6行/Field欠損/partial readから全体count/FTE/Capacityを確定 |
+| Query/control dependencies | WHERE/ORDER/EXISTS/NOT EXISTSの非表示入力とRole Pin/Rule版を追跡 | 同じ表示値・同じsnapshot名だけで同値/未失効と判定 |
+| Current Consumer/Action | Baseline/Proposal/R1公開版を別Projectionにし旧A2の対象を保持 | what-ifをaccepted/authorized/committed、CandidateをGrantと見なす |
+
+**実装計画**：まず既存mainのData Ops/Provider入口が本当にRelation Traversalできるか調査し、なければ`NOT RUN: relation-path-producer-unavailable`として#2622へ責務を戻す。実RDBの固定データ/取得権限・read witnessがなければ`NOT RUN: provider-unavailable`、実SQL Workerなら`NOT RUN: sql-worker-unavailable`。真偽や「0件」で埋めない。特に#1119の実PostgreSQLとOwner-write P0-a/P0-bの優先度は変更しない。
+
+**本節の状態**：GitHubの固定Go/Node CI、実Go Source/SQL/Presentation Producerの静的読取に基づく**採用前の受入計画**。本節自体で新Go/Query/DB/Studio/SHO/Host E2Eを実行したわけではない。第二Canonical/Query/Host/ACL・意味Registry・巨大Context DTOは作らない。
