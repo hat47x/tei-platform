@@ -44,6 +44,9 @@ const (
 // Candidate is one auxiliary item proposed for placement.
 type Candidate struct {
 	ID string `json:"id"`
+	// Content is the canonical content of the item. It enters the meaning
+	// version only when the item is meaning-canonical.
+	Content string `json:"content,omitempty"`
 	// AffectsExecution is true when changing the item changes execution,
 	// validation, authorization or target lowering.
 	AffectsExecution bool `json:"affectsExecution"`
@@ -300,10 +303,17 @@ type Report struct {
 func Analyze(in Input) Report {
 	placements := make([]Decision, 0, len(in.Candidates))
 	meaning := []string{}
+	findings := []Finding{}
 	for _, c := range in.Candidates {
 		d := Classify(c)
 		if d.Placement == MeaningCanonical {
-			meaning = append(meaning, c.ID)
+			meaning = append(meaning, "candidate:"+c.ID+"\x00"+c.Content)
+		}
+		if c.AffectsExecution && (c.RecomputableFromCanonical || c.PerViewer || c.PresentationOnly) {
+			// A claim that the item is derived, per-viewer, or presentation-only
+			// cannot hold when the item changes execution. Execution wins, and the
+			// contradiction is reported instead of silently accepting the claim.
+			findings = append(findings, Finding{"claim-contradicts-execution", c.ID})
 		}
 		placements = append(placements, d)
 	}
@@ -317,11 +327,10 @@ func Analyze(in Input) Report {
 	terms, tFind := TermIndex(in.Terms)
 	for _, t := range terms {
 		if t.Status == "accepted" {
-			meaning = append(meaning, "term:"+t.ID)
+			meaning = append(meaning, "term:"+t.ID+"\x00"+t.Definition)
 		}
 	}
 
-	findings := []Finding{}
 	findings = append(findings, aFind...)
 	findings = append(findings, hFind...)
 	findings = append(findings, tFind...)

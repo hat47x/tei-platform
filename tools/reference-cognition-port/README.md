@@ -94,7 +94,7 @@ go run ./tools/reference-cognition-port/cmd/tei-cognition-propose \
   -command 'your-local-proposer "$TEI_COGNITION_CONTEXT" > "$TEI_COGNITION_OUTPUT"'
 ```
 
-コマンドへ`TEI_COGNITION_CONTEXT`、`TEI_COGNITION_OUTPUT`、`TEI_COGNITION_PROVIDER`、`TEI_COGNITION_MODEL`、`TEI_COGNITION_VERSION`を渡します。コマンドは`TEI_COGNITION_OUTPUT`へ提案JSONを書きます。特定ベンダーのAPI・認証・課金・モデル版管理はTEI内に埋め込みません。
+コマンドへ`TEI_COGNITION_CONTEXT`、`TEI_COGNITION_OUTPUT`、`TEI_COGNITION_PROVIDER`、`TEI_COGNITION_MODEL`、`TEI_COGNITION_VERSION`を渡します。コマンドは`TEI_COGNITION_OUTPUT`へ提案JSONを書きます。特定ベンダーのAPI・認証・課金・モデル版管理はTEI内に埋め込みません。コマンドは`bash -c`で起動し、loginシェル（`~/.profile`等）は読まないため、receiptは利用者のlogin環境に依存しません。コマンドの解決は親プロセスの環境（`PATH`を含む）に依存します。
 
 ## 提案の検査
 

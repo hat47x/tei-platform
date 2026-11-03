@@ -1,0 +1,47 @@
+name: X-TEAモデルCLIの検査
+
+# モデルCLIとシナリオ構造の単体試験だけを実行する。X-TEA本体やGUIは起動しない。
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, reopened, synchronize, ready_for_review]
+    paths:
+      - 'tools/reference-xtea-control/xtea_cli.py'
+      - 'tools/reference-xtea-control/tests/**'
+      - 'tools/reference-xtea-control/scenarios/**'
+      - 'tools/reference-xtea-control/verify-all.ps1'
+      - '.github/workflows/tei-reference-xtea-model-cli-ci.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'tools/reference-xtea-control/xtea_cli.py'
+      - 'tools/reference-xtea-control/tests/**'
+      - 'tools/reference-xtea-control/scenarios/**'
+      - 'tools/reference-xtea-control/verify-all.ps1'
+      - '.github/workflows/tei-reference-xtea-model-cli-ci.yml'
+
+permissions: {}
+
+concurrency:
+  group: tei-reference-xtea-model-cli-${{ github.event_name }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  model-cli:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: リポジトリを取得
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: モデルCLIとシナリオの単体試験
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover \
+            -s tools/reference-xtea-control/tests \
+            -p 'test_model_cli.py' \
+            -v
+          python3 tools/reference-xtea-control/tests/test_scenario_files.py

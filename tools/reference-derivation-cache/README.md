@@ -20,6 +20,8 @@
 | 入力版が変わった | 旧値を現在値として返さない（値は不明） | `STALE_INPUT` |
 | 規則版が変わった | 根拠なく旧キャッシュを流用しない | `STALE_RULE` |
 | 権限・tenant・情報源時点が違う | 同一キャッシュとして共有しない | `CONTEXT_MISMATCH` |
+| 情報源時点が変わった | 評価時刻が同じでも旧値を現在値として返さない | `STALE_SOURCE_TIME` |
+| 現在の情報源時点が未指定 | 時点を確かめずに再利用しない | `SOURCE_TIME_UNSPECIFIED` |
 | 確定保存値への再評価 | 上書きしない | `CONFIRMED_SAVED_IMMUTABLE` |
 | 複数情報源で時点不一致 | 強い整合性を偽装しない | `SNAPSHOT_INTEGRITY_UNPROVEN` |
 
@@ -36,7 +38,11 @@
 | 商品単価300→350後の確定保存600 | `CONFIRMED_SAVED_IMMUTABLE`、`value=600`（新規未確定計算は700） |
 | 規則v1→v2後の旧キャッシュ | `STALE_RULE`、値は不明 |
 | tenant・権限・時点が違う | `CONTEXT_MISMATCH`、値は不明 |
+| 情報源時点だけが `t0`→`t1` へ変わった（規則版・入力版は同じ） | `STALE_SOURCE_TIME`、値は不明 |
+| 現在の情報源時点が空 | `SOURCE_TIME_UNSPECIFIED`、値は不明 |
 | 複数情報源・時点不一致 | `SNAPSHOT_INTEGRITY_UNPROVEN` |
+
+`evaluatedAt`（評価時刻）は参考情報であり、再利用の条件ではありません。評価時刻が違っても情報源時点が同じなら再利用し、評価時刻が同じでも情報源時点が違えば再利用しません。これは「いつ計算したか」と「どの時点の情報源か」を混同しないためです。
 
 ## 実行方法
 
@@ -49,8 +55,8 @@ go run ./tools/reference-derivation-cache/cmd/tei-derivation-cache -input reques
 ```json
 {
   "cacheRequested": true,
-  "entry": { "ruleVersion": "1", "inputVersion": "R0", "contextClass": "tenantA/admin", "sourceTimePoint": "t0", "value": "20" },
-  "current": { "ruleVersion": "1", "inputVersion": "R1", "contextClass": "tenantA/admin", "sourceTimePoint": "t0" }
+  "entry": { "ruleVersion": "1", "inputVersion": "R0", "contextClass": "tenantA/admin", "sourceTimePoint": "t0", "evaluatedAt": "2026-10-01T09:00:00Z", "value": "20" },
+  "current": { "ruleVersion": "1", "inputVersion": "R1", "contextClass": "tenantA/admin", "sourceTimePoint": "t0", "evaluatedAt": "2026-10-01T10:00:00Z" }
 }
 ```
 

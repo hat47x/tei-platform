@@ -1,6 +1,6 @@
 # reference-change-packet（#2017）
 
-変更の範囲、危険度、必須の検証、停止条件を一つのJSONへ宣言し、変更pathの範囲確認と検証の実行、証拠の記録を行う参照です。ADR-0035の作業票（task packet）の最小実装で、意味の受理・権限の付与・PRの統合は行いません。
+変更の範囲、危険度、必須の検証、停止条件を一つのJSONへ宣言し、変更pathの範囲確認と検証の実行、証拠の記録を行う参照です。ADR-0035の作業票（task packet）の最小実装で、意味の受理・権限の付与・PRの統合は行いません。ADR-0035は提案中であり、本ツールは提案の最小実装であって、採用済みの判断ではありません。
 
 ```text
 go run ./tools/reference-change-packet/cmd/tei-change-packet validate -packet plan/...
@@ -25,6 +25,8 @@ go run ./tools/reference-change-packet/cmd/tei-change-packet verify   -packet pl
 | `verification` | 実行する検証。`name`、`run`、任意の`timeoutSeconds` |
 | `stopConditions` | 人へ戻す条件。文章で宣言し、receiptへ残す |
 | `evidence` | 残す証拠の種類（任意） |
+| `unverified` | この作業票が意図的に検証しない範囲（任意）。receiptの`unverified`へ写す |
+| `humanJudgment` | A4が必要な理由（`meaning`・`authority`・`production`・`secrets`・`license`・`destructive-migration`）。空でない場合は`level`を`A4`にしなければならない |
 
 ## 危険度
 
@@ -36,6 +38,8 @@ go run ./tools/reference-change-packet/cmd/tei-change-packet verify   -packet pl
 
 このツールは`A3`の判断を代行しません。`passed=true`は、宣言した範囲と検証が一致したことだけを示します。
 
+`humanJudgment`が空でない作業票は、`level`が`A4`でなければ検証で拒否します。A0〜A3で意味・権限などの変更を「範囲内だから」と自動統合しないためです。`unverified`はreceiptへ写し、部分的な検証を全体の合格と読み違えないようにします。receiptの`environment`には`goos`・`goarch`・`goVersion`を記録します。
+
 ## 守っている境界
 
 - 変更pathは、`git diff <base>`とuntracked fileから求める。ステージ済み・未ステージ・未追跡を区別せず、baseとの差分として扱う。
@@ -43,7 +47,7 @@ go run ./tools/reference-change-packet/cmd/tei-change-packet verify   -packet pl
 - 検証コマンドは、作業票に明示されたものだけを実行する。任意のShellを既定で受け付けない。検証コマンドは秘密情報を出力しないよう定義する。
 - 失敗・範囲外・git状態の不読を、成功として扱わない。
 - 作業票、Workspace、Gitの状態を書き換えない。PRの統合、意味の受理、権限の付与を行わない。
-- 実行環境は`bash`を前提とする。Windows nativeでの同等性は未検証。
+- 実行環境は`bash`を前提とする。Windows nativeでの同等性は未検証。検証コマンドは`bash -c`で起動し、loginシェル（`~/.profile`等）は読まない。コマンドの解決は親プロセスの環境（`PATH`を含む）に依存する。
 
 ## 証拠
 

@@ -29,12 +29,13 @@ func TestRejectedProcessArtifactStageRetainsVerifiedProvider(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("reference launcher does not support executable paths containing spaces on Windows")
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
-	defer cancel()
+	// #2057: buildは実プロセスの期限と切り離し、独立した長い期限で待つ。
+	buildCtx, cancelBuild := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancelBuild()
 	build := func(revision string) (string, string) {
 		t.Helper()
 		path := filepath.Join(t.TempDir(), "process-"+revision)
-		cmd := exec.CommandContext(ctx, "go", "build", "-ldflags", "-X main.referenceRevision="+revision,
+		cmd := exec.CommandContext(buildCtx, "go", "build", "-ldflags", "-X main.referenceRevision="+revision,
 			"-o", path, "../../plugins/reference-process-executor")
 		if out, err := cmd.CombinedOutput(); err != nil {
 			t.Fatalf("build %s: %v\n%s", revision, err, out)
@@ -48,6 +49,8 @@ func TestRejectedProcessArtifactStageRetainsVerifiedProvider(t *testing.T) {
 	}
 	oldPath, oldDigest := build("active")
 	candidatePath, candidateDigest := build("candidate")
+	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
+	defer cancel()
 	if oldDigest == candidateDigest {
 		t.Fatal("reference builds were not distinct")
 	}

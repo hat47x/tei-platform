@@ -27,6 +27,7 @@ try {
 
     Invoke-Test "Swing E2E" @("tests\test_integration.py")
     Invoke-Test "model CLI" @("tests\test_model_cli.py")
+    Invoke-Test "scenario JSON" @("tests\test_scenario_files.py")
 
     if ($IncludeXeadServer) {
         Invoke-Test "server contract (reference)" @("tests\test_server_client.py")

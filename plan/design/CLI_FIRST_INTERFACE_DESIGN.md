@@ -198,6 +198,7 @@ Issue #1165に対し、既存 `index.Build` → `modelref/derivedbridge.FromInde
 | `trace` | あり（`tei.cli.trace/v0`） | JSONの`error.code`、終了コード1または2 | CLI用の応答型 |
 | `validate -workspace -json` | あり（`tei.cli.validate/v0`） | JSONの`error.code`、終了コード1または2 | CLI用の応答型 |
 | `commands` | あり（`tei.cli.discovery/v0`） | 引数があれば標準エラーの自由文、終了コード2 | CLI用の応答型 |
+| `version -json` | あり（`tei.cli.version/v0`、#2318で追加） | 未知の引数は標準出力の自由文、終了コード2 | CLI用の応答型 |
 | `validate`（テキスト） | なし（tab区切り行または`ok`） | 標準エラーの自由文、終了コード1または2 | 該当なし |
 | `workspace-files` | なし | 標準エラーの自由文、終了コード2 | `workspace.ManagedFile`の配列を直接出力 |
 | `source-index` | なし | 標準エラーの自由文、終了コード2 | 主体指定なしは`sourceindex.Index`（`artifacts`・`references`）、主体指定ありは`operations.SubjectSources`を直接出力 |
@@ -233,6 +234,12 @@ Issue #1165に対し、既存 `index.Build` → `modelref/derivedbridge.FromInde
 ### 10.4 失敗時の形式（提案、未決）
 
 選択肢は、(a)`validate -json`と同じ`error.code`付きJSONを対象コマンドへ広げる、(b)現状（標準エラーの自由文と終了コード）を契約として明記する、の2つである。(b)を選ぶ場合、呼出し側は標準出力が空であることと成功した空の結果を、終了コードで区別する。終了コードの意味は§3.2の記載（0成功、1 findingまたは不一致、2入力・読込み・出力の失敗）を使う。(a)の対象範囲と、`v0`の維持か`v1`への移行かが未決である。
+
+### 10.4.1 実行ファイルの識別（#2318）
+
+`tei version`（テキスト）と`tei version -json`（`tei.cli.version/v0`）は、Goツールチェーンが実行ファイルへ埋め込んだbuild情報を返す。項目は`goVersion`、`goos`、`goarch`、`vcsRevision`、`vcsModified`、build結果を変える設定の`buildSettings`、情報源の`source`である。`git`や作業ツリーは読まない。そのため、別のcheckoutに置かれた実行ファイルでも、そのファイル自身の識別を返す。
+
+build情報にコミットが無い場合（`-buildvcs=false`、checkout外でのbuild、`go run`など）は`source=unavailable`とし、`vcsRevision`を推測で埋めない。`vcsModified=true`は未コミットの変更を含むbuildであり、`vcsRevision`だけでは再現できない。外部の利用者が結果を版固定するときは、`schemaVersion`の照合に加え、この識別を結果と一緒に記録する。識別は再現の手掛かりであり、配布の承認・署名・特定コミットとの一致の証明ではない。
 
 ### 10.5 この節が確認していないこと
 

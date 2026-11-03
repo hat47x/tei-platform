@@ -18,6 +18,7 @@
 | 認可されていない | 業務制約を評価しない | `AUTHORIZATION_DENIED` |
 | 純粋規則への循環依存 | 実行前に拒否 | `DEPENDENCY_CYCLE` |
 | 同名属性で参照（明示IDでない） | 参照を拒否 | `AMBIGUOUS_REFERENCE` |
+| 未知のPhase（例 `Save` の綴り違い） | Previewとして黙って扱わない | `PHASE_UNKNOWN` |
 | 導出の入力未取得 | not satisfied と区別 | `DERIVATION_INPUT_UNAVAILABLE` |
 | 導出の実行失敗 | not satisfied と区別 | `DERIVATION_EXECUTION_FAILURE` |
 | 導出がNULLで方針未定義 | 0やnot satisfiedへ変換しない | `DERIVATION_NULL_UNSPECIFIED` |
@@ -37,7 +38,7 @@
 | 単価NULLで方針未定義 | `DERIVATION_NULL_UNSPECIFIED`（0やnot satisfiedにしない） |
 | 単価未取得 | `DERIVATION_INPUT_UNAVAILABLE` |
 | 一時編集で数量1→金額300のPreview | `VALIDATION_SATISFIED`（`saveGuaranteed=false`。保存許可やCommit成立を意味しない） |
-| Preview時の上限700、保存直前に500へ変更 | 古いPreview結果を根拠に保存しない。保存Actionが現行版で再評価する（本参照は`saveGuaranteed=false`で示す） |
+| Preview時の上限700、保存直前に500へ変更 | 古いPreview結果を根拠に保存しない。保存時は現行版の上限500で再評価し`VALIDATION_NOT_SATISFIED`（本参照は`saveGuaranteed=false`で示す） |
 | `amount`という同名の別Semantic属性 | `AMBIGUOUS_REFERENCE`（明示ID参照以外は拒否） |
 | Validationが導出値を参照し循環依存 | `DEPENDENCY_CYCLE` |
 
@@ -59,7 +60,7 @@ go run ./tools/reference-derived-validation/cmd/tei-derived-validation -input re
 }
 ```
 
-`derivation.state` は `present`、`null`、`input-unavailable`、`execution-failure`、`phase` は `preview`、`save` です。`phase=save` は**合成入力側の評価局面の指定**であり、HostやOwner Actionが保存・Commitを実行した証拠ではありません。`saveGuaranteed` は互換用の出力項目として保持しますが、本参照は実保存を観測できないため常に `false` です。
+`derivation.state` は `present`、`null`、`input-unavailable`、`execution-failure`、`phase` は `preview`、`save` です。それ以外の`phase`は`PHASE_UNKNOWN`として拒否し、Previewとして黙って扱いません。`phase=save` は**合成入力側の評価局面の指定**であり、HostやOwner Actionが保存・Commitを実行した証拠ではありません。`saveGuaranteed` は互換用の出力項目として保持しますが、本参照は実保存を観測できないため常に `false` です。
 
 ## 限界
 

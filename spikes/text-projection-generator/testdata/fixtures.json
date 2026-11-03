@@ -1,0 +1,27 @@
+{
+  "schema": "tei.spike.text-projection-fixture/v0",
+  "contractId": "sui.card.text",
+  "contractVersion": "1",
+  "cases": [
+    {
+      "id": "present",
+      "input": {"text": "hello"},
+      "want": {"state": "present", "text": "hello"}
+    },
+    {
+      "id": "empty",
+      "input": {"text": ""},
+      "want": {"state": "present", "text": ""}
+    },
+    {
+      "id": "missing",
+      "input": {},
+      "want": {"state": "missing"}
+    },
+    {
+      "id": "unresolved",
+      "input": {"text": null},
+      "want": {"state": "unresolved"}
+    }
+  ]
+}
