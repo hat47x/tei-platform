@@ -23,7 +23,7 @@ package workspace
 //     obtained from another package) is not detected, and neither is a read
 //     through a handle that was opened elsewhere.
 //   - Allowed sites are reviewed, not proven safe, and a new caller of an
-//     allowed helper such as globSorted is not detected.
+//     allowed helper such as pinnedDirMatches is not detected.
 //   - It is not human acceptance of the boundary.
 
 import (
@@ -94,10 +94,8 @@ var allowedReadCallSites = map[readCallSite]struct {
 		"advisory path containment check for native SQL files (root and candidate); the bytes are not read here"},
 	{"loader.go", "resolveNativeSQLFile", "os.Stat"}: {1,
 		"advisory regular-file check on the already resolved native SQL path; no content is read"},
-	{"loader.go", "globSorted", "filepath.Glob"}: {1,
-		"listing only: returns candidate file names for the loaders that call globSorted; no file content is read here"},
-	{"plugin_implementation_loader.go", "loadPluginImplementations", "filepath.WalkDir"}: {1,
-		"listing only: enumerates implementation files under the plugin implementations directory; the walk callback reads no content"},
+	{"loader.go", "pinnedDirMatches", "fs.ReadDir"}: {1,
+		"pinned listing: reads a directory of the Load-time Root.FS() (or a temporary rooted handle for direct per-domain loader tests), never the Workspace pathname; the only pattern matched is a fixed file-name pattern"},
 	{"loader.go", "scanManagedFiles", "fs.WalkDir"}: {1,
 		"pinned listing: walks rootHandle.FS() (the Load-time os.Root), so every traversal stays inside the pinned directory handle"},
 	{"loader.go", "listPinnedDomainSources", "fs.WalkDir"}: {1,
@@ -255,6 +253,7 @@ func TestWorkspaceProductionCodeUsesOnlyAuditedReadBoundary(t *testing.T) {
 
 func TestWorkspaceReadBoundaryGuardRejectsNewUnpinnedReads(t *testing.T) {
 	const head = "package workspace\nimport (\n\t\"os\"\n\t\"path/filepath\"\n)\nvar _ = os.Getpid\nvar _ = filepath.Join\n"
+	const fsHead = "package workspace\nimport \"io/fs\"\n"
 	cases := []struct {
 		name    string
 		file    string
@@ -273,9 +272,12 @@ func TestWorkspaceReadBoundaryGuardRejectsNewUnpinnedReads(t *testing.T) {
 		{"function value, not a call", "x.go", head + "var stat = os.Stat", "(package) os.Stat"},
 		{"aliased import", "x.go", "package workspace\nimport o \"os\"\nfunc f(p string) { _, _ = o.ReadFile(p) }", "os.ReadFile"},
 		{"dot import", "x.go", "package workspace\nimport . \"os\"\nvar _ = Getpid", "dot-import"},
-		{"extra call in an allowed function", "loader.go", head + "func globSorted(p string) { _, _ = filepath.Glob(p); _, _ = filepath.Glob(p) }", "more unpinned reads than reviewed"},
-		{"allowed call moved to another function", "loader.go", head + "func other(p string) { _, _ = filepath.Glob(p) }", "loader.go other filepath.Glob"},
-		{"allowed function name in another file", "new_loader.go", head + "func globSorted(p string) { _, _ = filepath.Glob(p) }", "new_loader.go globSorted"},
+		{"extra call in an allowed function", "loader.go", fsHead + "func pinnedDirMatches(v fs.FS, p string) { _, _ = fs.ReadDir(v, p); _, _ = fs.ReadDir(v, p) }", "more unpinned reads than reviewed"},
+		{"allowed call moved to another function", "loader.go", fsHead + "func other(v fs.FS, p string) { _, _ = fs.ReadDir(v, p) }", "loader.go other fs.ReadDir"},
+		{"removed fs.Glob is no longer allowed", "loader.go", fsHead + "func pinnedDirMatches(v fs.FS, p string) { _, _ = fs.Glob(v, p) }", "loader.go pinnedDirMatches fs.Glob"},
+		{"removed filepath.Glob is no longer allowed", "loader.go", head + "func globSorted(p string) { _, _ = filepath.Glob(p) }", "loader.go globSorted filepath.Glob"},
+		{"removed filepath.WalkDir is no longer allowed", "plugin_implementation_loader.go", head + "func loadPluginImplementations(p string) { _ = filepath.WalkDir(p, nil) }", "loadPluginImplementations filepath.WalkDir"},
+		{"allowed function name in another file", "new_loader.go", fsHead + "func pinnedDirMatches(v fs.FS, p string) { _, _ = fs.ReadDir(v, p) }", "new_loader.go pinnedDirMatches"},
 		{"unguarded calls are fine", "x.go", head + "func f(p string) { _ = filepath.Join(p, \"a\") }", ""},
 		{"os.OpenRoot in a new file", "x.go", head + "func f(p string) { _, _ = os.OpenRoot(p) }", "x.go f os.OpenRoot"},
 		{"os.ReadDir", "x.go", head + "func f(p string) { _, _ = os.ReadDir(p) }", "os.ReadDir"},
@@ -292,7 +294,7 @@ func TestWorkspaceReadBoundaryGuardRejectsNewUnpinnedReads(t *testing.T) {
 		{"exact audited file may use the entry points", "source_read.go", head + "func f(p string) { _, _ = os.Open(p); _, _ = os.Stat(p) }", ""},
 		{"local variable named os is not the package", "x.go", "package workspace\nimport \"os\"\nvar _ = os.Getpid\nfunc f() { os := struct{ ReadFile func() }{}; os.ReadFile() }", ""},
 		{"test files are not scanned", "x_test.go", head + "func f(p string) { _, _ = os.ReadFile(p) }", ""},
-		{"reviewed call stays allowed", "loader.go", head + "func globSorted(p string) { _, _ = filepath.Glob(p) }", ""},
+		{"reviewed call stays allowed", "loader.go", fsHead + "func pinnedDirMatches(v fs.FS, p string) { _, _ = fs.ReadDir(v, p) }", ""},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

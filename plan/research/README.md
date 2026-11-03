@@ -14,3 +14,4 @@
 - [技術調査の統合方針（2026年10月）](TECH_RESEARCH_INTEGRATION_2026-10.md)
 - [直近の技術研究を検証可能な作業に落とす計画（2026年10月16日）](TECH_RESEARCH_EXECUTION_PLAN_2026-10-16.md)
 - [X-TEA（XEAD）のローコード機構に関する知識目録（2026年11月）](XTEA_LOWCODE_KNOWLEDGE_INVENTORY_2026-11.md)
+- [空集合と業務完了の意味（2026年11月）](EMPTY_SET_COMPLETION_SEMANTICS_2026-11.md)：全称条件の空集合（vacuous truth）とLeanでの扱いを、業務類型・EmptyPolicyとの関係で整理する調査ノート。採用判断ではありません。

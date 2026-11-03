@@ -28,7 +28,7 @@ th{background:#f3f3f3}
 {{if .Packages}}<p>packages: {{range .Packages}}{{.ID}} ^{{.Version}} {{end}}</p>{{end}}
 {{if .PageSize}}<p>page-size: {{.PageSize}}</p>{{end}}
 {{if .Sorts}}<p>並び順: {{range .Sorts}}{{.Label}} {{.Direction}}{{end}}</p>{{end}}
-{{if .Filters}}<form class="filters">{{range .Filters}}<label>{{.Label}} <select>{{range .Operators}}<option>{{.}}</option>{{end}}</select><input type="{{.Input}}" name="{{.Attribute}}"></label>{{end}}</form>{{end}}
+{{if .Filters}}<form class="filters">{{range .Filters}}<label>{{.Label}}{{if .Parameter}} ({{.Parameter}}){{end}} <select>{{range .Operators}}<option>{{.}}</option>{{end}}</select><input type="{{.Input}}" name="{{.Attribute}}"></label>{{end}}</form>{{end}}
 <table>
 <thead><tr>{{range .Columns}}<th>{{.Label}}</th>{{end}}</tr></thead>
 <tbody>
@@ -39,6 +39,7 @@ th{background:#f3f3f3}
 <tr>{{range .Columns}}<td></td>{{end}}</tr>
 </tbody>
 </table>
+<footer>pattern: {{.Pattern}} / semantics: {{.SemanticFingerprint}} / format: tei.print/v0{{if .PrintTemplate}} template: {{.PrintTemplate}}{{end}}</footer>
 </body>
 </html>
 `))
@@ -56,6 +57,7 @@ h1{font-size:1.1rem;border-bottom:2px solid #000;padding-bottom:2mm}
 table{width:100%;border-collapse:collapse;margin-top:4mm}
 th,td{border:1px solid #000;padding:1.5mm 2mm;text-align:left;font-size:.85rem}
 th{background:#eee}
+footer{margin-top:6mm;font-size:.75rem;color:#444;border-top:1px solid #999;padding-top:2mm}
 </style>
 </head>
 <body>
@@ -73,6 +75,7 @@ th{background:#eee}
 <tr>{{range .Columns}}<td></td>{{end}}</tr>
 </tbody>
 </table>
+<footer>pattern: {{.Pattern}} / semantics: {{.SemanticFingerprint}} / format: tei.print/v0{{if .PrintTemplate}} template: {{.PrintTemplate}}{{end}}</footer>
 </body>
 </html>
 `))

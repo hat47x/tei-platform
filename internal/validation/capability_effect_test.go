@@ -28,6 +28,10 @@ func TestCapabilityDeclaredEffectUsesCanonicalData(t *testing.T) {
 	if ds := validateCapabilityDataEffects(w); len(ds) != 0 {
 		t.Fatalf("declared update effect was rejected: %+v", ds)
 	}
+	capability.Effect.Kind = semantic.DataEffectDelete
+	if ds := validateCapabilityDataEffects(w); len(ds) != 0 {
+		t.Fatalf("declared delete effect was rejected: %+v", ds)
+	}
 }
 
 func TestCapabilityDataEffectFailsClosedOnUnknownDataAndKind(t *testing.T) {

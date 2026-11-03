@@ -135,7 +135,9 @@ func TestE26NativeOverlayAuthoringBaseline(t *testing.T) {
 		}
 	}
 	manifest := e26ObservedSource(t, overlay, "tei.workspace.yaml")
-	if manifest.NonblankLines != 4 || !strings.Contains(mustReadE26(t, filepath.Join(overlay, "tei.workspace.yaml")), "  - applications\n") {
+	// The E22 overlay now records formatVersion metadata in addition to the
+	// source roots; the added root itself is checked below.
+	if manifest.NonblankLines != 5 || !strings.Contains(mustReadE26(t, filepath.Join(overlay, "tei.workspace.yaml")), "  - applications\n") {
 		t.Fatalf("E22 candidate manifest does not add applications source root: %+v", manifest)
 	}
 	// Reading Stage 0 island source into an isolated test Workspace is not

@@ -81,6 +81,7 @@ func validateApplicationPatterns(w ir.World) []Diagnostic {
 	}
 
 	queries := map[core.CanonicalID]applicationPatternQueryRef{}
+	queryInputs := map[core.CanonicalID]map[string]core.CanonicalID{}
 	for _, query := range w.Queries {
 		if _, exists := queries[query.ID]; exists {
 			// Query自身の重複は既存Validationが報告する。
@@ -91,6 +92,11 @@ func validateApplicationPatterns(w ir.World) []Diagnostic {
 			Application: query.Application,
 			Datasource:  query.Datasource,
 		}
+		inputs := map[string]core.CanonicalID{}
+		for _, input := range query.Inputs {
+			inputs[string(input.Name)] = input.Type
+		}
+		queryInputs[query.ID] = inputs
 	}
 
 	seenPatternIDs := map[core.CanonicalID]core.CanonicalID{}
@@ -151,7 +157,7 @@ func validateApplicationPatterns(w ir.World) []Diagnostic {
 			}
 
 			if pattern.Kind == application.PatternBrowse {
-				out = append(out, validateBrowseFilters(pattern, patternSubject, semanticDataAttributes)...)
+				out = append(out, validateBrowseFilters(pattern, patternSubject, semanticDataAttributes, queryInputs)...)
 				out = append(out, validateBrowseSorts(pattern, patternSubject, semanticDataAttributes)...)
 			} else {
 				if len(pattern.Filters) > 0 {
@@ -213,6 +219,53 @@ func validateApplicationPatterns(w ir.World) []Diagnostic {
 						pattern.ID,
 						pattern.PageBreak.Rows,
 					))
+				}
+			}
+
+			if pattern.PrintTemplate != "" && pattern.Kind == application.PatternCommand {
+				out = append(out, errFor(
+					patternSubject,
+					"APPLICATION_PATTERN_PRINT_TEMPLATE_NOT_ALLOWED",
+					"command pattern %s does not accept print-template",
+					pattern.ID,
+				))
+			}
+
+			if pattern.Layout != nil {
+				switch {
+				case pattern.Kind != application.PatternRecord:
+					out = append(out, errFor(
+						patternSubject,
+						"APPLICATION_PATTERN_LAYOUT_NOT_ALLOWED",
+						"%s pattern %s does not accept layout; layout belongs to record",
+						pattern.Kind,
+						pattern.ID,
+					))
+				default:
+					attributes := semanticDataAttributes[pattern.Data]
+					seen := map[core.CanonicalID]bool{}
+					for _, attribute := range pattern.Layout.Order {
+						if _, ok := attributes[attribute]; !ok {
+							out = append(out, errFor(
+								patternSubject,
+								"UNKNOWN_APPLICATION_PATTERN_LAYOUT_ORDER",
+								"record pattern %s layout refers to %s that is not an attribute of %s",
+								pattern.ID,
+								attribute,
+								pattern.Data,
+							))
+						}
+						if seen[attribute] {
+							out = append(out, errFor(
+								patternSubject,
+								"APPLICATION_PATTERN_LAYOUT_ORDER_DUPLICATE",
+								"record pattern %s layout orders %s more than once",
+								pattern.ID,
+								attribute,
+							))
+						}
+						seen[attribute] = true
+					}
 				}
 			}
 
@@ -598,6 +651,39 @@ func validateRecordPatternInteraction(
 		}
 	}
 
+	for _, hook := range pattern.Interaction.Hooks {
+		switch hook.Phase {
+		case "before-read", "before-create", "after-create", "before-update", "after-update", "before-delete", "after-delete":
+		default:
+			out = append(out, errFor(patternSubject, "APPLICATION_PATTERN_INTERACTION_HOOK_PHASE_UNSUPPORTED", "record pattern %s hook uses unsupported phase %s", pattern.ID, hook.Phase))
+		}
+		switch hook.Failure {
+		case "", "reject", "warn":
+		default:
+			out = append(out, errFor(patternSubject, "APPLICATION_PATTERN_INTERACTION_HOOK_FAILURE_UNSUPPORTED", "record pattern %s hook %s uses unsupported failure %s", pattern.ID, hook.Phase, hook.Failure))
+		}
+		for _, attribute := range hook.Reads {
+			if _, ok := dataAttributes[attribute]; !ok {
+				out = append(out, errFor(patternSubject, "UNKNOWN_APPLICATION_PATTERN_INTERACTION_HOOK_READ", "record pattern %s hook %s reads %s that is not an attribute of %s", pattern.ID, hook.Phase, attribute, pattern.Data))
+			}
+		}
+		for _, attribute := range hook.Produces {
+			if _, ok := dataAttributes[attribute]; !ok {
+				out = append(out, errFor(patternSubject, "UNKNOWN_APPLICATION_PATTERN_INTERACTION_HOOK_PRODUCE", "record pattern %s hook %s produces %s that is not an attribute of %s", pattern.ID, hook.Phase, attribute, pattern.Data))
+			}
+		}
+		for _, capability := range hook.Uses {
+			namespace, ok := semanticCapabilities[capability]
+			if !ok {
+				out = append(out, errFor(patternSubject, "UNKNOWN_APPLICATION_PATTERN_INTERACTION_HOOK_USE", "record pattern %s hook %s uses %s that is not a capability", pattern.ID, hook.Phase, capability))
+				continue
+			}
+			if !usedSemantics[namespace] {
+				out = append(out, errFor(patternSubject, "APPLICATION_PATTERN_INTERACTION_HOOK_SEMANTIC_NOT_USED", "record pattern %s hook %s uses %s from namespace %s that application %s does not use", pattern.ID, hook.Phase, capability, namespace, app.ID))
+			}
+		}
+	}
+
 	for _, navigation := range pattern.Interaction.Navigations {
 		ref, ok := patterns[navigation.From]
 		if !ok {
@@ -900,6 +986,7 @@ func validateBrowseFilters(
 	pattern application.Pattern,
 	patternSubject subject.Subject,
 	semanticDataAttributes map[core.CanonicalID]map[core.CanonicalID]core.CanonicalID,
+	queryInputs map[core.CanonicalID]map[string]core.CanonicalID,
 ) []Diagnostic {
 	var out []Diagnostic
 	attributes := semanticDataAttributes[pattern.Data]
@@ -916,6 +1003,15 @@ func validateBrowseFilters(
 			case "eq", "ne", "ge", "gt", "le", "lt", "scan", "generic":
 			default:
 				out = append(out, errFor(patternSubject, "APPLICATION_PATTERN_FILTER_OPERATOR_UNSUPPORTED", "browse pattern %s filter %s uses unsupported operator %s", pattern.ID, filter.Attribute, operator))
+			}
+		}
+		if filter.Parameter != "" {
+			inputs := queryInputs[pattern.Query]
+			parameterType, ok := inputs[filter.Parameter]
+			if !ok {
+				out = append(out, errFor(patternSubject, "UNKNOWN_APPLICATION_PATTERN_FILTER_PARAMETER", "browse pattern %s filter %s binds unknown query input %s", pattern.ID, filter.Attribute, filter.Parameter))
+			} else if attributeType, exists := attributes[filter.Attribute]; exists && attributeType != parameterType {
+				out = append(out, errFor(patternSubject, "APPLICATION_PATTERN_FILTER_PARAMETER_TYPE_MISMATCH", "browse pattern %s filter %s has type %s but query input %s has type %s", pattern.ID, filter.Attribute, attributeType, filter.Parameter, parameterType))
 			}
 		}
 		if seen[filter.Attribute] {

@@ -17,6 +17,7 @@ h1{font-size:1.2rem;border-bottom:2px solid #000;padding-bottom:2mm}
 table{width:100%;border-collapse:collapse;margin-top:4mm}
 th,td{border:1px solid #000;padding:2mm 3mm;text-align:left;vertical-align:top}
 th{width:30%;background:#eee;font-weight:600}
+footer{margin-top:6mm;font-size:.75rem;color:#444;border-top:1px solid #999;padding-top:2mm}
 </style>
 </head>
 <body>
@@ -24,6 +25,7 @@ th{width:30%;background:#eee;font-weight:600}
 <table>
 {{range .Items}}<tr><th>{{.Label}}</th><td></td></tr>
 {{end}}</table>
+<footer>pattern: {{.Pattern}} / semantics: {{.SemanticFingerprint}} / format: tei.print/v0{{if .PrintTemplate}} template: {{.PrintTemplate}}{{end}}</footer>
 </body>
 </html>
 `))
@@ -61,6 +63,7 @@ th{background:#eee;font-weight:600}
 <table>
 {{range .Aggregates}}<tr><th>{{.Name}}</th><td>{{.Function}} {{.Label}} ({{.Type}})</td></tr>
 {{end}}</table>{{end}}
+<footer>pattern: {{.Pattern}} / semantics: {{.SemanticFingerprint}} / format: tei.print/v0{{if .PrintTemplate}} template: {{.PrintTemplate}}{{end}}</footer>
 </body>
 </html>
 `))

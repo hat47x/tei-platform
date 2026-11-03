@@ -25,12 +25,24 @@ type View struct {
 	Commands            []Command               `json:"commands,omitempty"`
 	Packages            []PackageRef            `json:"packages,omitempty"`
 	SemanticFingerprint string                  `json:"semanticFingerprint,omitempty"`
+	Hooks               []HookRef               `json:"hooks,omitempty"`
+	Unused              []Item                  `json:"unused,omitempty"`
+	PrintTemplate       string                  `json:"printTemplate,omitempty"`
 }
 
 // PackageRefは、このPatternを含むPackageへの参照である。
 type PackageRef struct {
 	ID      core.CanonicalID `json:"id"`
 	Version string           `json:"version"`
+}
+
+// HookRefは、対話の前後に差し込む処理の宣言を解決した結果である。
+type HookRef struct {
+	Phase    string             `json:"phase"`
+	Reads    []core.CanonicalID `json:"reads,omitempty"`
+	Uses     []core.CanonicalID `json:"uses,omitempty"`
+	Produces []core.CanonicalID `json:"produces,omitempty"`
+	Failure  string             `json:"failure,omitempty"`
 }
 
 // Commandは、対話から起動できるCapabilityを解決した結果である。
@@ -70,6 +82,7 @@ type Item struct {
 	Input     string           `json:"input,omitempty"`
 	Required  bool             `json:"required,omitempty"`
 	Immutable bool             `json:"immutable,omitempty"`
+	Role      string           `json:"role,omitempty"`
 	Values    []string         `json:"values,omitempty"`
 	Lookup    *Lookup          `json:"lookup,omitempty"`
 }
@@ -105,6 +118,7 @@ func Build(world ir.World, applicationID, patternID core.CanonicalID) (View, err
 
 	patterns := map[core.CanonicalID]application.Pattern{}
 	dataAttributes := map[core.CanonicalID]map[core.CanonicalID]semantic.Attribute{}
+	dataAttributeOrder := map[core.CanonicalID][]semantic.Attribute{}
 	relations := map[core.CanonicalID]semantic.Relation{}
 	typeValues := map[core.CanonicalID][]string{}
 	capabilities := map[core.CanonicalID]semantic.Capability{}
@@ -130,6 +144,7 @@ func Build(world ir.World, applicationID, patternID core.CanonicalID) (View, err
 				attributes[attribute.ID] = attribute
 			}
 			dataAttributes[data.ID] = attributes
+			dataAttributeOrder[data.ID] = append([]semantic.Attribute(nil), data.Attributes...)
 			for _, relation := range data.Relations {
 				if _, exists := relations[relation.ID]; !exists {
 					relations[relation.ID] = relation
@@ -165,6 +180,7 @@ func Build(world ir.World, applicationID, patternID core.CanonicalID) (View, err
 		return View{}, err
 	}
 	view.SemanticFingerprint = fingerprint
+	view.PrintTemplate = pattern.PrintTemplate
 	for _, pkg := range app.Packages {
 		for _, member := range pkg.Members {
 			if member.Pattern != pattern.ID {
@@ -186,6 +202,7 @@ func Build(world ir.World, applicationID, patternID core.CanonicalID) (View, err
 			Input:     inputKind(attribute.TypeRef),
 			Required:  attribute.Required,
 			Immutable: attribute.Immutable,
+			Role:      attribute.Role,
 			Values:    typeValues[attribute.TypeRef],
 		}
 		if item.Lookup != nil {
@@ -229,6 +246,44 @@ func Build(world ir.World, applicationID, patternID core.CanonicalID) (View, err
 			From: source.ID,
 			Kind: source.Kind,
 			Data: source.Data,
+		})
+	}
+	if pattern.Layout != nil {
+		byAttribute := map[core.CanonicalID]Item{}
+		for _, item := range view.Items {
+			byAttribute[item.Attribute] = item
+		}
+		ordered := make([]Item, 0, len(view.Items))
+		seen := map[core.CanonicalID]bool{}
+		for _, attribute := range pattern.Layout.Order {
+			if item, ok := byAttribute[attribute]; ok {
+				ordered = append(ordered, item)
+				seen[attribute] = true
+			}
+		}
+		for _, item := range view.Items {
+			if !seen[item.Attribute] {
+				ordered = append(ordered, item)
+			}
+		}
+		view.Items = ordered
+	}
+	usedAttributes := map[core.CanonicalID]bool{}
+	for _, item := range pattern.Interaction.Items {
+		usedAttributes[item.Attribute] = true
+	}
+	for _, attribute := range dataAttributeOrder[pattern.Data] {
+		if !usedAttributes[attribute.ID] {
+			view.Unused = append(view.Unused, itemFor(attribute, typeValues))
+		}
+	}
+	for _, hook := range pattern.Interaction.Hooks {
+		view.Hooks = append(view.Hooks, HookRef{
+			Phase:    hook.Phase,
+			Reads:    hook.Reads,
+			Uses:     hook.Uses,
+			Produces: hook.Produces,
+			Failure:  hook.Failure,
 		})
 	}
 	for _, command := range pattern.Interaction.Commands {

@@ -12,7 +12,7 @@ import (
 func viewWorkspace(t *testing.T) string {
 	t.Helper()
 	root := t.TempDir()
-	writeWorkspaceFile(t, root, "tei.workspace.yaml", "workspace: view_command\nsources:\n  - semantic\n  - applications\n")
+	writeWorkspaceFile(t, root, "tei.workspace.yaml", "workspace: view_command\nformatVersion: 1\nsources:\n  - semantic\n  - applications\n")
 	writeWorkspaceFile(t, root, "semantic/sales/order.tei", `namespace sales
 
 data Order {
@@ -178,7 +178,7 @@ func TestViewCommandRendersHTMLForm(t *testing.T) {
 func headerDetailWorkspace(t *testing.T) string {
 	t.Helper()
 	root := t.TempDir()
-	writeWorkspaceFile(t, root, "tei.workspace.yaml", "workspace: header_detail_view\nsources:\n  - semantic\n  - applications\n")
+	writeWorkspaceFile(t, root, "tei.workspace.yaml", "workspace: header_detail_view\nformatVersion: 1\nsources:\n  - semantic\n  - applications\n")
 	writeWorkspaceFile(t, root, "semantic/sales/order.tei", `namespace sales
 
 data Order {

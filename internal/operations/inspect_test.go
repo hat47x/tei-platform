@@ -134,7 +134,7 @@ func TestInspectAttributeRejectsMissingAndDuplicateIdentities(t *testing.T) {
 
 func TestInspectAndTraceAttributeRejectDuplicateSourceDeclarations(t *testing.T) {
 	root := t.TempDir()
-	writeWorkspaceFixture(t, root, "tei.workspace.yaml", "workspace: attributes\nsources:\n  - semantic\n")
+	writeWorkspaceFixture(t, root, "tei.workspace.yaml", "workspace: attributes\nformatVersion: 1\nsources:\n  - semantic\n")
 	for _, name := range []string{"one.tei", "two.tei"} {
 		writeWorkspaceFixture(t, root, filepath.Join("semantic", name),
 			"namespace sales\n\ndata Order {\n    attribute orderId type std.identifier\n}\n")
@@ -154,7 +154,7 @@ func TestInspectSubjectFileMoveDoesNotChangeCanonicalFingerprint(t *testing.T) {
 	if err := os.Mkdir(filepath.Join(root, "semantic"), 0755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(root, "tei.workspace.yaml"), []byte("workspace: inspect\nsources:\n  - semantic\n"), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(root, "tei.workspace.yaml"), []byte("workspace: inspect\nformatVersion: 1\nsources:\n  - semantic\n"), 0644); err != nil {
 		t.Fatal(err)
 	}
 	first := filepath.Join(root, "semantic", "first.tei")
