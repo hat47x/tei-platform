@@ -5,6 +5,7 @@ type OrgUnitId from std.identifier
 type MembershipId from std.identifier
 type PositionId from std.identifier
 type OccupancyId from std.identifier
+type CaseRecordId from std.identifier
 
 data Person {
     attribute personId type organization.person_id
@@ -45,4 +46,14 @@ data Occupancy {
         key organization.occupancy.person_id -> organization.person.person_id
     relation position to organization.position one
         key organization.occupancy.position_id -> organization.position.position_id
+}
+
+// A business CaseRecord is not an OrgUnit, Membership, Position, or Principal.
+// Its handlingUnit is a *structural relationship*, not a read/update grant.
+data CaseRecord {
+    attribute caseId type organization.case_record_id
+    attribute handlingUnitId type organization.org_unit_id
+
+    relation handlingUnit to organization.org_unit one
+        key organization.case_record.handling_unit_id -> organization.org_unit.org_unit_id
 }
