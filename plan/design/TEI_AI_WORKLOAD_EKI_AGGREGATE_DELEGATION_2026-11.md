@@ -120,6 +120,10 @@ MDM等は**資産管理/ComplianceのAuthority**、Pool Gatewayは**接続の実
 
 **Owner境界**：TEI #1121/#1130/#2620/#2499、EKI #109/RQ-058、#140、#125、#67、#222、#58/#106、#57/#112、#130、Authority/Deployment Profiles。AP Fixtureは**今後の独立Oracle候補**であり、実Slurm/Intune/MDM/Agent/Cloud/EKI/TEI間のE2Eを確認したものではない。
 
+### 7.1 反証の優先順位：Pool-firstを実行可能にする依存Gate
+
+[資源群委任の未解決Gate・実予約・MDM/Trust・Federation反証](TEI_EKI_AGGREGATE_DELEGATION_UNRESOLVED_GATES_2026-11.md)を追加した。これまでのAP-01〜12は抽象境界を試すが、**TEI Job byte/Result E2E（EKI #112）、Offer→Provider Reservation（DLG-1/BUD-1/CAP-1）、Provider二層Retry/Unknown、MDM情報とLocal Governorの分離、Trust Bundle読取障害（EKI #466/#467）、時点付き組織Policyと予算、AI運用への非開示**を単独のG0〜G7・DG-01〜14として掘り下げた。**P1 Pure Job Wireを実証する前に管理Pool構想を実装済みと称しない**。既存EKI #465はclosedであり過去のソース所見を現HEADの未修正不具合と断定しない。
+
 ## 8. 段階と採否判断
 
 - **P0（今回）**：既存EKI「委任の核」「登録済Pool」「一時資源・クラウドの広域最適化」を再利用し、TEI AI Job/Delegate Pool/HPC Provider/企業Endpoint Asset Systemの所有境界・負例を設計書へ反映。新Core Enum/Global Registryの追加は保留。
