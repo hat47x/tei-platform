@@ -834,3 +834,35 @@ SQLを正本とする既存Queryから候補Operatorを生成する場合、元Q
 | AE-08 | Skill本文同一、依存Script/CLI変更 | 実消費依存閉包の再資格化 |
 
 **実証順序**：まず既存`Artifact.Verify`と`tei artifacts -out`の実保存形式を固定checkoutで確認し、AE-01〜03のbyte/Envelope差を独立Oracleで再現する。次にAE-04〜06の公開障害注入を#2604へ、AE-07〜08の実Consumer/Skill消費をSHO/#2605へ渡す。出力互換・API変更・公開方式はOwner判断待ち。#2633のmain統合済みCharacterization、#2659のDraft修正、#2607のDraft Skill CIを混同せず、別HEADのCI成功を現在HEADへ転用しない。**新規E2E・Windows/SHO/Harness実読取・Owner意味受理は未実施**。
+
+
+## 21. Data Model正本・Queryの二経路・生成アクセスの性能境界（2026-11-03）
+
+### 21.1 正本をSQL解析結果へ逆転させない
+
+2026-11-03横断の設計判断として、**Table / Field / Key / RelationはData Modelへ直接宣言した構造を正本**とする。SQLの静的解析から得られるTable/Relation/Keyは、既存DBの取込や診断に用いる**候補**であって、Owner受理済みモデルへ自動昇格させない。SQLは第一級のQuery/変換定義として扱い、通常の取得はData ModelのRelationとFunction Data Contextから対象・経路・範囲を明示し、複雑な集計やDB方言固有処理ではNative SQLを保持する。
+
+**TEI Query**と**Native SQL**の二経路は、単一の実行構文への強制変換を意味しない。SQL→TEI QueryのAI変換は、Source SQLを保持した候補とし、NULL/欠損/空集合、Bag、Collation、Decimal、時点、Scope/RLS、Filter/Sort/Limit、Provider pushdownと局所実行の差を独立Oracleで比較する。生成SQLの実行成功だけでは、元Queryの意味保存を受理しない。構造正本はData Model、Query正本は当該QueryのAuthoring形式、実効ReadはProvider Witnessとして**別の責務**にする。
+
+### 21.2 実行時の検証を無条件に積み増さない
+
+性能を製品品質として扱い、検証を`編集時 → ビルド時 → Provider/Host境界 → 実行時`へ適切に配置する。静的に確定し、生成物・Binding・依存版へ束縛できる不変条件を、各行・各Fieldの実行ごとに重複検証する必要はない。一方、現在のAuthority、外部Input、実Providerの結果完全性、Transaction競合、Effectの結果など、**実行時にしか確定できない条件は省略対象としない**。検証省略は対象条件・前提・失効トリガ・負例・性能差を示して判断する。
+
+生成アクセスについては、Functionごとに明示した`Target / Relation path / Field / Predicate / Scope / Completeness`からQuery計画を生成し、N+1、JOIN fanout、過剰取得、未取得Field、Pushdown順序差を検証する。生成コードの短さやCLIの成功は、実Providerのp50/p95・行数・Read set・Query count・Memory・失敗時のEffectを保証しない。最適化がRead Scope、開示、Ruleの依存閉包を変えないことを先に検証し、性能を後測定する。
+
+### 21.3 受入票（DM-01〜10、当節としてNOT RUN）
+
+| ID | 正例と負例 | 受入の境界 | Owner |
+| --- | --- | --- | --- |
+| DM-01 | DDLのFK候補とOwner受理Relationが相違 | SQL解析を構造正本に昇格しない | #1126/#1129 |
+| DM-02 | 同一Data ModelからTEI QueryとNative SQL | Source/Authoring正本を区別 | #2387/#2622 |
+| DM-03 | AI変換でNOT INのNULL差 | 変換成功と意味同等性を分離 | #2387/#2514 |
+| DM-04 | LIMIT/FilterのPushdown順序変更 | 取得範囲と演算意味を保持 | #2622/#2628 |
+| DM-05 | FunctionでRelation経路が複数候補 | 明示Bindingと曖昧診断 | #2624/#1129 |
+| DM-06 | 一覧100件の関連取得が101 Query | N+1を測定し改善 | #2628/#2018 |
+| DM-07 | JOINで100件→300件 | Fanoutと業務粒度を分離 | #2593/#2622 |
+| DM-08 | 静的型検証を実行時に重複 | 証明済み契約の安全な省略条件 | #2018/#2514 |
+| DM-09 | 実行時Grant失効・Provider部分取得 | 静的成功でも境界検証を残す | #1174/#2628 |
+| DM-10 | 最適化前後で値同一・Read Scope異なる | 出力値だけで最適化適合としない | #2628/#2516 |
+
+**導入順**：M0＝現行Data Model/SQL/Function MappingのOwnerと正本を固定。M1＝同一Sourceに対するTEI Query/Native SQL/独立Expectedを比較。M2＝実ProviderでQuery count・Row count・p50/p95・Read Witnessを採取。M3＝生成コード/外部Hostで境界検証と省略条件を検査。M4＝Owner意味受理と実業務Effectを別票で判断。新しい汎用SQL Runtime、TEI独自Host、第二Data Model正本は設けない。
