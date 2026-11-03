@@ -147,6 +147,13 @@ func TestLogicalReferencesAndEnvironmentLockCLI(t *testing.T) {
 	if out := diagnostic("missing", oldPath); !strings.Contains(out, "UNKNOWN_ENVIRONMENT") || strings.Contains(out, `"candidates"`) {
 		t.Fatalf("unknown environment: %s", out)
 	}
+	if out := diagnostic("bad id", oldPath); !strings.Contains(out, "INVALID_ARGUMENT") || strings.Contains(out, `"candidates"`) {
+		t.Fatalf("invalid environment id: %s", out)
+	}
+	write("bad-lock.json", "{invalid")
+	if out := diagnostic("test", filepath.Join(root, "bad-lock.json")); !strings.Contains(out, "INVALID_PLUGIN_LOCK") || strings.Contains(out, `"candidates"`) || !strings.Contains(out, "UNKNOWN_SEMANTIC_ATTRIBUTE_TYPE") {
+		t.Fatalf("invalid lock or lost diagnostic: %s", out)
+	}
 	write("environments/test/environment.tei", "environment test {\n    plugin tei.missing ^1\n}\n")
 	if out := diagnostic("test", oldPath); !strings.Contains(out, "PLUGIN_RESOLVE_FAILED") || strings.Contains(out, `"candidates"`) {
 		t.Fatalf("missing plugin: %s", out)
@@ -193,6 +200,50 @@ func TestLogicalReferencesAndEnvironmentLockCLI(t *testing.T) {
 	if got, err := os.ReadFile(filepath.Join(root, "semantic", "sales", "moved.tei")); err != nil || string(got) != model {
 		t.Fatalf("model changed during lock update: %v", err)
 	}
+
+	// The selected executor is bound to an application that uses this semantic
+	// namespace. The descriptor itself has no field declaring semantic needs.
+	write("tei.workspace.yaml", "workspace: value_probe\nformatVersion: 1\nsources:\n  - semantic\n  - plugins\n  - environments\n  - applications\n")
+	write("applications/order.tei", "application order_app {\n    uses semantic sales\n}\n")
+	write("environments/test/environment.tei", "environment test {\n    plugin tei.value.example ^1\n    deployment-executor application-start for application order_app -> runtime.value_example\n}\n")
+	validate(0)
+	resolve(0, newPath)
+	if out := run(1, "plugin-resolve", "-workspace", root, "-environment", "test", "-plugin-lock", newPath, "-diagnostic-candidates"); !strings.Contains(out, `"ok": false`) || !strings.Contains(out, `"workspaceValidated": false`) {
+		t.Fatalf("diagnostic must not claim success even for a valid workspace: %s", out)
+	}
+	if out := run(2, "plugin-runtime-plan", "-workspace", root, "-environment", "test", "-plugin-lock", newPath, "-diagnostic-candidates"); !strings.Contains(out, "INVALID_ARGUMENT") {
+		t.Fatalf("runtime plan must not accept diagnostic flag: %s", out)
+	}
+	write("semantic/sales/moved.tei", strings.Replace(model, "sales.order_id", "sales.missing", 1))
+	for _, command := range []string{"plugin-resolve", "plugin-runtime-plan"} {
+		out := run(1, command, "-workspace", root, "-environment", "test", "-plugin-lock", newPath)
+		if !strings.Contains(out, "UNKNOWN_SEMANTIC_ATTRIBUTE_TYPE") || strings.Contains(out, `"result"`) {
+			t.Fatalf("%s accepted invalid application meaning: %s", command, out)
+		}
+	}
+	out = diagnostic("test", newPath)
+	var report struct {
+		OK     bool   `json:"ok"`
+		Mode   string `json:"mode"`
+		Result struct {
+			WorkspaceValidated bool            `json:"workspaceValidated"`
+			Candidates         json.RawMessage `json:"candidates"`
+			Diagnostics        []struct {
+				Code string `json:"code"`
+			} `json:"diagnostics"`
+		} `json:"result"`
+	}
+	if err := json.Unmarshal([]byte(out), &report); err != nil {
+		t.Fatal(err)
+	}
+	hasMeaningError := false
+	for _, d := range report.Result.Diagnostics {
+		hasMeaningError = hasMeaningError || d.Code == "UNKNOWN_SEMANTIC_ATTRIBUTE_TYPE"
+	}
+	if report.OK || report.Mode != "unvalidated-candidates" || report.Result.WorkspaceValidated || len(report.Result.Candidates) == 0 || !hasMeaningError {
+		t.Fatalf("unsafe application-meaning diagnostic: %s", out)
+	}
+	t.Log("application-start executor candidate with invalid target application meaning remains explicitly unvalidated; normal resolve and runtime plan are blocked")
 	t.Log("real CLI: 3 logical type references; type edit and file move accepted without reference rewrites, 1 missing reference rejected; 1 changed descriptor required 1 lock regeneration")
 	t.Log("hypothetical comparison only: if every reference stored the exact declaration-byte hash, this type edit would require updating 3 pins; no per-reference pin implementation or timing was tested")
 }
