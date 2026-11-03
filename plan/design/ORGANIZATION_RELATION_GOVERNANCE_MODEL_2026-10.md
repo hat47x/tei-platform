@@ -2183,3 +2183,11 @@ Providerの役割を、Authentication Assertion Reader（SAML/OIDC）、Director
 **Contract側の別記録**：Required/Provided Data・Relation/Query/Operation、Version/Fingerprint、Provider/Environment Binding、read/write Effect、Failure/Unknown、Source Provenance、Conformance Evidence、実行側が要求するScope。これは#951の既存Service Contract拡張範囲で評価し、組織用の第二Plugin Registryを作らない。Parameterを設定できてもProviderが存在しない、異なるSource Owner、時点を扱えない、Conformance未確認なら「配線候補」に止める。
 
 **AI支援の出力形式**は「採用する標準Profile＋必要なAdapter」「Parameterの値／出典／推定・確定」「Contract/Provider選択とConflict」「Previewで変わるModel/Relation/Source」「必要なOwner質問」「実験・未実行の境界」の六面を基本にする。明示的なWrite Intentがない限り候補を保存せず、適用時にはSource版CAS・差分と現在Authorityを再確認する。モデルの元DSL/Markdown糖衣記法は通常Saveで保持し、Formatは独立操作とする。
+
+### 57.5 人が入力する内容を最小にする利用体験
+
+利用者は次のように依頼する想定：「指揮命令は単一の上司系統。兼務はできる。来年4月の改組を事前に確認したい。社員の所属は人事DB、ログインはEntra。組織の下位部署まで承認対象に含めたい。」
+
+AIの初回応答は構築済み宣言ではなく、(a)単一のcommand階層＋兼務可能なMembership、(b)validAtと公表Revを使うFuture Preview、(c)HR所属とEntra Principalの属性別Connector候補、(d)下位部署の再帰Pathと承認Ruleの別Binding、(e)Owner確認が必要な「兼務先も承認するか」「組織改編を遡及訂正するか」、を提示する。標準部品で十分ならそれ以上の手入力を要求しない。
+
+適合性テストでは同じ組織Worldに対し、設定を一つだけ変えた場合のSource差分／生成差分／Previewと、変更すべきでない属性や権限の不変を独立Expectedで比較する。導入工数はPlugin選択数でなく、必要な質問数、手修正数、独立Test成功率、実Tool呼出とToken/時間、誤配線/誤権限の発生で評価する。最初の実Harness試行は公開合成Sourceのみで、秘密情報や実運用のIdP資格を前提にしない。
