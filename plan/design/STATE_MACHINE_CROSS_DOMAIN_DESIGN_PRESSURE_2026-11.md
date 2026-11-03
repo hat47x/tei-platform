@@ -223,6 +223,40 @@ TEI CoreでSpring Statemachineの全機構を先行採用するのではなく�
 
 [TEI Application→EKI論理Launch Target／Cloud Control＋On-prem/Pi Fabricの比較](TEI_EKI_APPLICATION_DEPLOYMENT_FABRIC_2026-11.md)を追加。State/Flowの意味はTEI、常駐ApplicationのRuntime/Service readinessはCloud／既存Orchestrator、Task/Attempt/LeaseとResource/Node stateはEKI、DB/Business EffectはDomain Providerが保持。**どの管理コンソールに登録したか**ではRuntime状態の所有者は変わらない。Web/APIの可用性とPi/PCの機会的Task実行はState Machineの実行Profileとして区別する。Release Intent→Provider Actual→Consumer Observation／現在資格の差を、Graph×Tableの相関表示と独立Expectedで検収する。
 
+
+### 7.9 Data ScriptのIFからDecision Table／State Graphへの投影資格（2026-11-03、IF-first方針の反証計画）
+
+<!-- IF_DECISION_TABLE_PROJECTION_20261103 -->
+
+**位置づけ**：[TEI #1129の「Data ScriptのIFを基本とし、状態機械は保守性が増す範囲だけ選択」](https://github.com/hat47x/tei-platform/issues/1129#issuecomment-6588906800)と§7.5のDecision Workbook（Validation/Derivation/Flowの提案・レビュー面）を接合する。IF→Decision Table／State Graphを原文の自動置換ではなく、まず**同じ受理済み意味のread-only Projection**として検証する。結果値が一致しても、評価順序・短絡・未取得・診断・副作用・実Readの差を無視した意味同値は認めない。Excelのdraft行や「合格」ラベルをAuthoritative Sourceの編集権限・Owner承認・実行資格へ昇格しない。
+
+**変換の資格**：
+
+| 段階 | 扱い | 必要な証拠・禁止事項 |
+| --- | --- | --- |
+| **P0 非実行の投影** | 元Source occurrence、byte span、文法/Revisionを保持したIF→Rule/Transition Table・Graphの表示候補 | Else、優先順位、重複Match、未解釈構文、Source位置、Loss/Unresolvedを保存。元Scriptに書戻さない |
+| **P1 条件付き同値** | 同じInput/Context/Role版に対し、IFと表が何を保存できるかの反証 | Resultだけでなく、Error/Diagnostic、評価順序、Short-circuit、実Read、公開可能な理由、Effect Phaseが同等である範囲を検証。副作用があるGuardは純粋な論理表に勝手に配置しない |
+| **P2 明示的編集Intent** | 表・Graphの編集から元Sourceの局所Patch候補を提案 | 対象Subject＋Source occurrence＋Source revision＋UTF-8 spanの一意性、影響解析、変更対象外byte不変、Ownerの受理を別に確認。#2621/#1124/#1935の既存境界を再利用 |
+| **P3 実実行／Effect** | Host/Providerが現在の権限と条件を再検査して実行 | old/new値、Rule Phase、Tx/CAS/Idempotency、Receipt、独立Readを区別。表のValidationの成功をCommitやJob実行成功と呼ばない |
+
+**固定小例（正式TEI DSLではない）**：受注提出時に「①statusがclosedならreject_closed、②quantityがNULLならunknown_qty、③quantity<=0ならreject_qty、④それ以外はallow」を順次IFで評価する。closedの行でquantityがnot-fetchedの場合、短絡したIFはquantityを読む必要がないが、表が全条件を先に評価するとRead/errorが増える。closedかつquantity=-1なら条件が二つMatchしてもIFは最初のreject_closedを採用する。順序指定のない決定表を同値と扱えない。
+
+| ID | 比較Fixture／独立Expected | 既存Owner |
+| --- | --- | --- |
+| **DT-01 First-match** | closed & quantity=-1：IFは最初の拒否。無順序の2行Matchを同じ判定と誤認しない | #988、#1129 |
+| **DT-02 短絡・非出力Read** | closed & quantity=not-fetched：IFはquantityを読まない。Eager表が読んでLookup errorを起こす場合、実行同値ではない | #2622、#2497 |
+| **DT-03 NULLと未取得** | draft & quantity=NULLは値の観測、not-fetchedは未観測。どちらもfalseにして一致させない | #2622、#2514 |
+| **DT-04 拒否Reason/Diagnostic** | Resultがrejectでも最初のReason・発生箇所・公開可能な情報が違う場合は、診断や利用者説明の同値未成立 | #1129、#1649、#2515 |
+| **DT-05 Edge vs Level** | old=draft→new=submittedの変化とcurrent=submittedを分ける。導出再計算は履歴Eventの実発生と同義でない | #2582、#1129、#1130 |
+| **DT-06 同時更新** | 同じ旧revisionから2回submitする場合、CASで確定できた回数以上のEffectを作らない。2行Matchは実Commit2回を意味しない | #1129、#1174 |
+| **DT-07 Source編集** | No-op Saveはzero write/byte一致。1セル編集は元ScriptのOccurrenceが一意に特定できる場合のみ局所Patch。周囲のコメント・書式・構文糖を崩さない | #2621、#1124、#1935 |
+| **DT-08 別Domain** | UI/通信/ゲーム等のEvent priority・timeout・並行Regionに業務Decision WorkbookのLifecycle一意制約を押し付けない | #2497、#988、#2514 |
+
+**限定的な独立Probe**：今回、公開架空値だけを用いたPython標準unittestの小比較を実行し8件PASS（通常IF、closed拒否、short-circuit、重複Match、NULL/未取得、old/new、CAS toy、read-only投影）。このProbeはGitHubに未保存であり、8 PASSは本仕様の反例・性質を限定的に説明するtoyの結果である。**実X-TEA Script、Excel Workbook、TEI Parser/Studio、Go/Java生成Target、実DB/Provider、Owner意味受理の試験ではない**。DT-01〜08の製品ConformanceはすべてNOT RUN。
+
+**最短の接続順**：①既存Source/WorkbookでIF→表のread-only行・Source位置を照合、②DT-01〜04で順序/Read/欠測/診断の違いを固定、③DT-05〜06を#1129/#1174実Effectへ、④DT-07は#1935 Shared Acceptanceのupdate演算が実証された範囲だけに限定、⑤DT-08で別Domainへの強制的な意味拡張を防ぐ。これを先に新しいDecision Table EngineやState Machine Runtimeを作る口実にしない。Source正本・Meaning Authority・Provider実効果・文書投影のOwnerを重複させない。対応不能なIFはLoss付きread-onlyまたはunsupportedに留める。
+
+
 ## 8. 今回の結論と検証の状態
 
 **成熟した設計入力として置くもの**：状態機械の適用対象は業務に限らない／図・状態表・遷移表・交差マトリクスは同一意味を異なる形で投影する／意味Core・実行・保存・UI・文書を直結せず明示Bindingする／業務IFを全部置換しない／実Runtimeの一般化は別の採用判断とする。
