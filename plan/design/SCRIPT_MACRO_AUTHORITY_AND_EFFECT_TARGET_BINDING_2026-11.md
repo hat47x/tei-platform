@@ -776,7 +776,7 @@ M0は`validate/operations/artifacts`のWorld版・Rule/Gap・Manifestを照合�
 | **MC-B01**（T-1/T-38） | Command Input`ORD-1`、呼出側明示Payload`ORD-2`の意図的な不一致。現AdapterがFake Providerの`WriteResource`までPayloadを渡す挙動を**安全性の不足として**記録。テストがPASSしても「不一致を許すことが正しい」の意味にはならない | Ownerが受理した`Intent→対象変換→実Target`と現在Grantを、実Provider/条件付きCommit直前まで照合。不一致を拒否する本来の安全性テストへ移行 |
 | **MC-C01**（T-1/T-41） | 内側`effectcommit`のFake Tx Commitが成功した後、外側`command.UnitOfWork.Commit`だけ失敗。Commandが`COMMAND_COMMIT_FAILED`でも、合成内側Commit記録が存在することを観測 | 実Owner Providerで同一物理Txを保証するか、複数OwnerのEffectを個別Receipt/補償として扱う。ACK/Commit unknownから新OperationIDで勝手に再実行しない |
 
-**保存と実行を別報告**：#2780にはGo試験Source・Focused exact-head Workflow・独立ExpectedのREADMEを保存。Source保存やPR作成時のCI開始をテストPASSと呼ばず、当該headのGo/gofmt/Repository Health実結果が得られた場合だけ限定`Characterization verified`とする。実PostgreSQL・正式Grant/Owner対象・実外部Consumer/OSは独立の未実証領域。
+**保存と実行を別報告**：#2780にはGo試験Source・Focused exact-head Workflow・独立ExpectedのREADMEを保存。Source保存やPR作成時のCI開始をテストPASSと呼ばない。**実測更新**：[exact-head Focused Workflow #41620889140](https://github.com/hat47x/tei-platform/actions/runs/41620889140) が `3b0ead5706f914209c4c76e18ea30aac250cb86b`（Go 1.26.10/Linux）で `completed/success`。ジョブログで **MC-B01・MC-C01のGo 2件ともPASS**、`gofmt`検査とworktree不変を確認。検査したTest Blobは `d4f57f06c5e87621e0e389a264e8de35850f4e04`。旧head `27aa489...` は `effectcommit.Transaction.Rollback()` と `command.Transaction.Rollback(ctx)` の混同でコンパイル失敗し、修正後に再取得した。この**限定Characterization verified**は製品安全性/PG/HostのPASSではない。実PostgreSQL・正式Grant/Owner対象・実外部Consumer/OSは独立の未実証領域。
 
 この最短縦切りへ、他レーンで確認された次の意味上の依存を**既存Ownerの受渡し**として追加する。
 
