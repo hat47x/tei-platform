@@ -231,6 +231,10 @@ Workerにはoutbound-firstの社内PC/ARM64 Raspberry Pi/On-prem資源Poolも候
 
 組織・経済圏を跨ぐ場合も、管理者登録済Delegate、非推移的Federation Grant、予算/データ制約、本人のopt-outを尊重する。EKIのPoolは単一巨大GPU/Memory機械ではないため、Workload条件を満たす下位Sub-offerの検査が必要。**TEI Flow意味、EKI Delegation Authority、HPC Node Scheduler、Endpoint Asset Authorityの四者を別正本として保持**し、重複Controller・安全性保証の格下げ・資源の二重予約を防止する。
 
+### 8.10 委任先PoolとProviderの多段Hand-off／実結果の未解決契約
+
+[TEI/EKI/下位Providerの未解決Gate](TEI_EKI_AGGREGATE_DELEGATION_UNRESOLVED_GATES_2026-11.md)§3・§7を参照。**TEI Business Operation／EKI Task・Attempt・Lease／下位Provider Job・Reservation／Effect Receipt**を四種類の独立IdentityとOutcomeとして追跡する。EKI Admissionは下位GPU予約ではない。ProviderのAck消失は`submission_unknown`、Lease失効はEffect不在ではない。下位Slurm等のrequeueとEKI Retryが同一Effectを二重発生させないため、Owner・execution ref・lookup・idempotency条件をProvider Bindingに固定する。**現在のEKI #112ではInput Artifact 8/9=422、結果取得501のSpike Gap**があり、最初の実用Gateは純粋Job一件のinput/output bytes/digest E2Eである。外部APIの新Schemaや分散Tx実装はGateで不足が確定するまで保留する。
+
 ## 9. 設計判断のGate、実装順、Issue追補候補
 
 - **G0／今回の設計比較**：EKI ADR-0013・一方向依存・native-first kernel とTEI no-custom-Host/Plugin-firstを保持し、上記二層案を未採用の候補とする。TEI Draft PRへの資料追加だけで、EKIのRequirements/ADR/Mainは書換えない。
