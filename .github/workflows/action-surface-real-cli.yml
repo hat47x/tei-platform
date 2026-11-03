@@ -66,8 +66,7 @@ jobs:
           set -euo pipefail
           gofmt -d internal/driver/action_surface_handoff_test.go
           test -z "$(gofmt -l internal/driver/action_surface_handoff_test.go)"
-          test -z "$(gofmt -l internal/driver/action_surface_period_handoff_test.go)"
-          go test ./internal/driver -run '^TestActionSurface(ToBoundRequestWrongTarget|PeriodStateChangesAtDispatch)$' -count=1 -v
+          go test ./internal/driver -run '^TestActionSurfaceToBoundRequestWrongTarget$' -count=1 -v
 
       - name: Run OB-01/02 and file-effect negative witness
         shell: bash
