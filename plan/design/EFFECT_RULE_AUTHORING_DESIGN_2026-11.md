@@ -177,3 +177,37 @@ W1・W2 が前提。W3〜W5 は並行できる。W6 は W3 の後。
 3. `stage` の三区分で足りるか。副作用の設計1章は実行時の六段階を持つが、宣言としては三つに畳めるかは実証が要る。
 4. `always` を残すか。保存値を確定する業務（締め後の確定金額など）は #2144 の期間の状態と重なるため、そちらへ寄せる案がある。
 5. 「保存するアプリケーション」を、`persist` の持ち主とするか、データベースの `ownership`（`managed-here`／`external-observed`）とするか。本稿は前者を案にしている。後者なら外部資産の扱いが揃うが、同じデータを複数のアプリケーションが保存する場合に所有が曖昧になる。
+## 実装状況（2026-11-03 追記）
+
+P1（宣言・検証）を実装しました。期間の状態（#2144）で確立した型をそのまま適用しています。
+
+**宣言**
+
+```
+effect-rule order.stock {
+    on capability sales.order.submit
+    stage after-commit
+    effect update sales.stock
+    via capability sales.stock.decrement
+    on-failure compensate
+}
+```
+
+- 項目: `on capability <id>`・`stage <段階>`・`effect <create|update> <data>`・`via capability <id>`・`on-failure <reject|compensate>`
+- 段階: `derivation`・`validation`・`pre-commit`・`in-transaction`・`after-commit`・`compensation`
+- 識別子は名前空間に属する（`order.stock` は `sales.order.stock` として解決）
+
+**検証**（`internal/validation/effectrule.go`）
+
+| 診断 | 意味 |
+| --- | --- |
+| `EFFECT_RULE_UNKNOWN_CAPABILITY` | 対象の能力が存在しない |
+| `EFFECT_RULE_UNKNOWN_STAGE` | 段階が上記のいずれでもない |
+| `EFFECT_RULE_UNKNOWN_DATA` | 効果の対象データが存在しない |
+| `EFFECT_RULE_UNKNOWN_VIA` | 委譲先の能力が存在しない |
+| `EFFECT_RULE_UNKNOWN_FAILURE` | 失敗時の扱いが `reject`・`compensate` 以外 |
+| `EFFECT_RULE_REQUIRES_VIA` | 確定後・補償の効果が、実行する能力を名指していない |
+
+**未着手**: 操作面・成果物への反映（P2）、実行時の扱い（P3）、`when` のような条件の宣言。
+
+**設計上の注意**: 確定後の効果はトランザクションと一緒に巻き戻せないため、`via capability` を必須にしました。これは「失敗したときに戻せない効果を、戻せる効果と同じ顔で扱わない」という判断です。

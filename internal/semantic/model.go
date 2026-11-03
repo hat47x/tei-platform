@@ -16,6 +16,7 @@ type Namespace struct {
 	Capabilities  []Capability `json:"capabilities,omitempty"`
 	Validations   []Validation `json:"validations,omitempty"`
 	Periods       []Period     `json:"periods,omitempty"`
+	EffectRules   []EffectRule `json:"effectRules,omitempty"`
 }
 
 // Period binds one data to a business date and to the states a closing period
@@ -189,4 +190,16 @@ type Capability struct {
 	Output   core.CanonicalID `json:"output,omitempty"`
 	Outcomes []Outcome        `json:"outcomes,omitempty"`
 	Effect   *DataEffect      `json:"effect,omitempty"`
+}
+
+// EffectRule declares a side effect that runs around a capability, and where it
+// runs. It does not change what the capability returns.
+type EffectRule struct {
+	ID            core.CanonicalID `json:"id"`
+	OnCapability  core.CanonicalID `json:"onCapability"`
+	Stage         string           `json:"stage"`
+	EffectKind    DataEffectKind   `json:"effectKind"`
+	EffectData    core.CanonicalID `json:"effectData"`
+	ViaCapability core.CanonicalID `json:"viaCapability,omitempty"`
+	OnFailure     string           `json:"onFailure,omitempty"`
 }
