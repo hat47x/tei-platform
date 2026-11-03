@@ -1551,3 +1551,62 @@ Ownerの設計方針：Data ModelはSQL解釈から構造生成するのでな�
 **未確定の選択**は「EKIが外部Groupに付与するReserve/Admission契約の強さ」「Resource Group内の異質適格性をProviderがどこまで保証できるか」「委譲先の内部retriesとEKI Attemptとの対応」「EKI Resource GroupとTEI Organization時限性/法域のBinding」「内部情報を漏らさない能力照会」「二Provider構成の実費・性能」の六つ。これらの公式API/標準DSL/RQ/ADR採否はEKI/TEI各Ownerが実検証で決める。TEI生成Go単一バイナリの直接実行・既存Host組込を後退させず、EKI専用の常駐Control PlaneをTEI内に足さない。
 
 **証拠状態**：この§35はリポジトリの既存Issue/ADRと他チャットの設計判断を照合した**文書変更のみ**。新しいGo/SQL/TEI CLI/HPC/PC/クラウド実計測、EKI Worker/Provider Integration、実契約SPI、企業/法域のGrant、Owner正式受理、CI実走は**NOT RUN/未採用**。既存§27〜34と他レーンのDraftを変更しない。
+
+
+## 36. 許容リードタイムと回復余力から配置を再判断する――TEI Job契約・EKI期限/信頼性/予算最適化の統合（2026-11-03横断追補）
+
+> **設計上の受入候補／新しい製品Scheduler、価格エンジン、Job API、実EKI/TEI縦断・性能測定はNOT RUN。** 別チャットの「Jobの許容リードタイム、過去の成功・所要時間、失敗が重なるときも容認時間内で回復できることを考慮して、与えられた資源を**予算最適化**を基本として賢く配分する」要件を、§35の資源グループの実体適格性と[EKI ADR-0013](https://github.com/hat47x/eki-fabric/blob/main/plan/adr/0013-product-core-and-faces.md)の委任の核に接続。**EKI Coreへ金額・価格形成を導入しない**（既存ADR-0010/#108）。既存[#58](https://github.com/hat47x/eki-fabric/issues/58) Suitability、[#19](https://github.com/hat47x/eki-fabric/issues/19) shadow予測、closed [#108](https://github.com/hat47x/eki-fabric/issues/108) 期限引き上げ、open [#155](https://github.com/hat47x/eki-fabric/issues/155) 回復の公平性、open [#126](https://github.com/hat47x/eki-fabric/issues/126) Task Group、open [#115](https://github.com/hat47x/eki-fabric/issues/115) Backend内部再試行、open [#67](https://github.com/hat47x/eki-fabric/issues/67) 2 Provider接続を**再利用**する。各Issueにない実装や実SLAを先取りしない。
+
+### 36.1 TEIの時間・復旧意味とEKIの計測・予測を分ける
+
+| 層 | 引き渡す意味・観測 | 意図的に委譲しない判断 |
+| --- | --- | --- |
+| **TEI Job Definition（意味）** | Job/Stage ID、DAG・入力依存・Output/verification、`requestedAt / earliestStart / preferredCompletionAt / latestAcceptableAt`、maxInterruption・retry/idempotency/checkpointability・部分結果の扱い、許容する代替Target/Data Class、回復に許される残時間、外部発効操作の有無。比較票の候補項目であり正式DSLではない | 実行可能性・現在権限・Worker成功確率・予約保証をSource定義の文字列から確定しない |
+| **EKI Admission/Suitability** | hard Policy/Resource/Grant/Isolation/Effect適格性と、Local/Existing/EKI委譲の価値比較。期限に間に合わない見込みや不足実測を明示して拒否・代替条件を返す | 実配置の承認をSuitability/予測scoreへ与えない |
+| **EKI Placement/Recovery** | 合格したResource Group候補ごとの待ち、起動、入力転送、実行、checkpoint、出力転送、検証、取消/再配置時間を**同じ時計で**比較。予算と再試行上限のうち、残りに応じた初期/予備枠と継続的な再評価を扱う | 業務Flowの次Stepや「結果は正しい」というTEI/Hostの意味受理を生成しない |
+| **Provider / Backend** | 実予約可能枠・キャパシティ/内部retry制御・適格子集合・開始/停止/Job handle、ネットワーク/Data localityと可観測な費用・遅延 | Providerの自己申告から保証・Trustを創作しない。Backend内部のスケジューリングをEKIが再実装しない |
+| **Cost/Policy Owner（EKI外の金額意味）** | 物理消費量（CPU/GPU・転送byte・保存・関数呼び出し）と、許可された単価表/割引/通貨/税/上限の対応、実支出予測・予備費・エスカレーション許可を決定。価格表の根拠・版・期間を保持 | EKI CoreのBudget・Compute Grantを新しい会計/請求/価格形成エンジンへ置換しない |
+| **Consumer / Runtime Effect** | verified outputが`latestAcceptableAt`までに使えるか（必要な実Artifact body/Consumer取得まで）、Task/Attempt/Result Claim、実Provider Commit/Receipt、不明を分ける | `worker finished`、`EKI completed`、業務上の有用な結果、支払成功を同一にしない |
+
+**時間の定義**：`latestAcceptableAt`は「利用者/業務側が最後に役に立つとみなす時刻」の候補であり、EKIのTask timeoutやLease満了と自動一致しない。必要があれば`preferredCompletionAt`をsoft target、`latestAcceptableAt`をhard limitとして区別する。ただし利用側から時刻が提供されなければ無限待機・無期限回復を意味しない。環境Policyと能力開示の既定値を参照し、期限不明は目的別に`needs-measurement`/unresolvedで止める。Deadline判定には原則として「実処理完了」ではなく「結果検証/転送/必要なConsumer到達」を含める（要件が定める別Scopeならその定義を固定）。
+
+### 36.2 確率的配置はhard条件の後、独立Oracleと共に採点する
+
+1. **Hard filter first**：Effect/retry安全性、現在のCompute Grant・Data Class・Resource Group適格子集合、持ち主のopt-out、物理容量/予約、Providerの内部Retry制御、Token/Lease/時点、EKI/クラウド二重予算上限を先に評価する。どれか未確認なら`not-supported`/`needs-measurement`として停止し、安い・成功確率が高いという予測で解除しない。
+2. **候補完了時間**：待機/起動＋Input転送＋実行（分布）＋Checkpoint/再取得＋Output転送＋Verification/必須後段＋失敗時のbackoff/再配置を含める。各Stageの依存DAGでは直列総和と並列のcritical pathを区別する。実行時刻・Size・キャッシュ、Groupの観測鮮度、Context/Policy改版を固定する。
+3. **予測の信頼度**：履歴はResource Group/Backend/Job Class/規模/時帯・Toolchain/Version・Data Classごとに由来と母数を保持。完了時刻の分布、打切り（timeout/中断・未観測）、失敗種別、検証不一致、相関する故障（同じ障害ドメインやクラウドリージョン）を別に扱う。欠損は失敗率ゼロへ補完しない。分位点・信頼区間と校正を比較する。外れた予測には`unknown`を返す。履歴の高成功率はAssurance/権限ではない。
+4. **最適化対象**：適格候補の間で、`P(verified by latest acceptable time)`、見込総物理消費、外部価格表に基づく期待支出、データ移動・電力・利用者妨害、最大損失/回復余力を**別軸**で比較。価格/時間/成功率を未宣言の一つの重みScoreへ黙示的に押し込まない。まず予算/期限/成功許容の業務側制約を満たす候補を絞り、その中で利用側が明示した費用優先・時間優先・Pareto等の選択方針を適用する。費用の期待値が低くても、同一Eventの連続障害により期限違反する案は別に示す。
+5. **Recovery Reserve（設計候補）**：第一Attemptの予算を使い切らず、必要なら再取得・下位実行・検証・実行先移行に使う**計算/転送/回数/残時間/外部価格表上の余力**を保持する。Reserveは見込み/予約/実際に法的拘束を持つ枠/消費済みを区別し、単に「予算を取り置いた」から物理資源を予約済みとはしない。同じWorkload/部門でのReserve共有と飢餓対策はEKI #155/ #125のPolicyに従う。recovery.Permit/Lease/Attemptは既存EKI #154/ADR-0015のdurable fenceを再利用し、第二回復Ledgerを作らない。
+6. **再配置の契機**：Queue/Provider能力/Owner opt-out・現行予算・経過時間・checkpoint残量・推定失敗率が更新された際、`now + feasible_lower_bound_for_remaining_and_verification > latestAcceptableAt`で期限内成功不可能なら、黙って同じ配置を続けない。許可済み代替への早期切替（エスカレーション）が有効でも、切替費用/追加Attempt/元Leaseの取消・回収を評価する。実Budget・Grant・Artifactの現在性を確認した**新たな配置決定**が必要。予約なしの「将来のクラウド追加で間に合う」は保証でない。
+7. **結果/通知**：期限違反が高リスク、確率不校正、価格情報なし、予備予算不足、代替なし、Provider/Grant未確認である理由を、開示可能な集約情報だけでClient/管理者に返す。利用側の期限延長/予算追加/品質条件緩和は**新しい明示Decision/Policy**であり、EKIが自己判断で緩めない。結果は`verified-in-scope`/`failed`/`expired-not-run`/`execution-unknown`/`partial`を区別する候補で、新API Enumの採用ではない。
+
+**数理的な停止線**：`1-(1-p)^n`等で反復成功確率を改善するには、失敗が独立同分布という根拠が必要。同一Provider/出所/ネットワーク/Policyに依存する相関故障のとき、複製を独立と仮定しない。中断済みAttemptの「成功例だけ」の時間分布や、回収通知を通常失敗と合算した学習も棄却する。P(success by deadline)は統計的な予測で、契約上のSLAや保証ではない。
+
+### 36.3 独立Expected付き受入票 LR-01〜12（未実行）
+
+| ID | 入力・失敗注入 | 判別すべき結果・停止条件 |
+| --- | --- | --- |
+| **LR-01 リードタイム** | hard期限60分。候補A：待25＋転10＋計算20＋検証10=65分、B：待5＋転5＋計算25＋検証5=40分（すべて合成） | Aの実行時間20分だけを見て選ばない。Bの期限内候補性だけ確認し、Bの実予約とSLA保証は別 |
+| **LR-02 安価だが回復不能** | A初回は10分/安価、同じ障害群で停止頻発。失敗通知から最短Fallbackが25分、残り20分 | 期限内回復は不可能/unknown。安い初回見積りを`recoverable`へ昇格しない |
+| **LR-03 予備予算** | 外部価格表の試験用上限100単位、初回70＋Fallback50、EKI物理budgetは別 | 初回だけなら70<=100でも、想定両段階は120>100。reserveの金額判断はCore外のCost/Policy。Budget authorityが不足なら再配置不可 |
+| **LR-04 相関障害** | 同じデータセンター/ストレージ障害に依存する二Group、各単独成功率90%と申告 | 二つへの複製で99%成功と断定しない。障害領域の独立証拠がない限り未知 |
+| **LR-05 時間切れの中断** | 実行8割進行して再起動が必要、checkpointなし/あり | checkpointなしはゼロから再計算、ありも状態byteの検証と移送時間を含める |
+| **LR-06 Capacity急減** | PC Group100→10、Provider観測時刻は古い。Lease/回収に遅れあり | A/Bの余力を現在予約可能としない。再評価がGrant/Reservationを自動発行しない |
+| **LR-07 Deadline再評価** | Queue時は間に合う予測、20分後にProvider混雑/移送時間が増加 | 期限までの残り時間から再判定、許可済み代替の切替か早期not-feasible通知。単にretry回数を増やさない |
+| **LR-08 隠れたRetry** | 外部HPCが同じJobを自動再実行、TEI側はnon-idempotent effect | 外部Retry禁止/観測/冪等根拠のない経路を拒否。EKI Attempt=1が物理実行1回の証明ではない |
+| **LR-09 Reserveと公平性** | Recovery優先Groupが続き、通常Taskが無期限待機 | #155のfair share/agingによる制限を検証。Recovery ReserveはBudget/Quotaを増幅せず、Starvationを隠さない |
+| **LR-10 期限後結果** | 期限を過ぎてTask phaseはqueued、別例は実行したか不明で遅着Result | expired-not-runとexecution-unknown/late-resultを区別。遅着を無条件採用/再実行しない |
+| **LR-11 Group部分結果** | TEI評価100件のうち80件はVerified、15件timeout、5件未実行/不明 | EKI Task Group/Result Countの記録とTEIの集合/Expectedの業務Meaningを別にする。80件を全100件の合格と呼ばない |
+| **LR-12 実行経路比較** | 同じGo単独JobをLocal/EKI Native/EKI→外部Groupで処理、転送/検証/回復/実費を含む | 同じSource/Executor digest/Expectedを固定し、deadline success・合計物理消費・外部価格・追加Hopと結果の実byteを比較。必要ないEKI委譲を強制しない |
+
+### 36.4 既存Ownerでの実証順と採用判断
+
+- **T0 適格性とJob契約**：TEI #1130でFunction→Job Plan/Output/verificationと時間・再試行可能性・部分結果の意味をread-only比較し、EKI #58のdeterministic suitability + hard policy filterへ渡す。実TEI Job Lowererがなければ`NOT RUN: TEI job producer unavailable`。新しいDSL構文を先に採用しない。
+- **T1 決定的Baseline**：EKI #19の既存`spikes/artifact-locality-cost`、EKI #108/#140設計のdeadline引き上げ・物理消費と、TEI §35の資源Group候補に`queue + transfer + execution + verification + possible recovery`を加え、LR-01〜07を固定Fixture/独立Expectedで反証する。MLのスコアはBaselineとの差としてshadowへ置き、本番Placementに直結しない。
+- **T2 配置と回復のAuthority**：EKI #154（durable recovery予算/Permit、closedだが実配線の現在性は別確認）、#155（fairness）、#115/#67（backend retry/Group）、#111（期限超過の公開状態）、#126（Task Group）の既存OwnerへLR-08〜11を配分。Current policy+Budget/Grant+Lease/fenceを再検証したAttemptだけ新規実行可能とする。実OS/Cluster Provider未達ならその範囲は`NOT RUN`。
+- **T3 予測と同一試行評価**：十分な合成/実観測が得られた場合に限り、EKI #19で `P(verified before latestAcceptableAt)`のcalibration、group/time slice、censoring、correlated failuresを測る。deterministic baseline対shadow predictionのfalse escalation/missed deadline/budget overrun/extra retries/false successを独立採点する。Shadowより権限のある学習Schedulerを無断採用しない。
+- **T4 最終的な経済性**：既存EKI物理Budget/Contributionと**外部Price/Policy**による支出見込みを別票にし、TEI Go単独/外部Host/EKI Native/EKI Groupの利用価値を比較する。単価表のRevision、コスト範囲、最大損失、時間条件、結果検証費、予備費を明示。必要な業務/組織Policyや外部決済・契約をEKI Coreに実装しない。P0-a/P0-bの実業務Effect/Receipt（TEI #1119/#1174）を前提とせずJob完成を宣言しない。
+
+**正式判断の保留**：soft/hard deadline・停止の優先度、目標とする期限内完了確率、Reserve/Quotaの割当、複製の許否と相関モデル、価格外部AdapterとBudgetの連動、前払い予約の強さ、成功/一部結果の用途別意味、学習による順位決定の採否。これらはOwner/Provider/Deploymentによって異なり、共通SLA・単一価格Score・新中央State/Cost Registryとして先行固定しない。
+
+**証拠状態**：本§36は既存TEI/ EK​​I契約に対する**Docs-onlyの差分**。LR-01〜12の本番/合成テスト実行、TEI→EKIの時間Contractの実ABI、計量/外部料金、Cluster/PC群の実予約・失敗回復、ML学習・shadow評価、性能/予算最適化の効果、TEI Owner意味受理、EKI Ownerの要件/ADR採用は**NOT RUN/未決**。§35とEKI ADR-0013を変更せず、公式製品の実装済みとは主張しない。
