@@ -561,3 +561,18 @@ Everything is Dataが十分に成熟するには、**同じプレーンなデー
 [TAI #271](https://github.com/hat47x/tai-pleroma/issues/271)／[Draft #270](https://github.com/hat47x/tai-pleroma/pull/270)では、Product間のEvidence変更影響と**現在Consumer／権限の資格**を分ける計画がある。TEIは`Source/Role/Operator Pin／明示Context/Scope/Read witness／Result & Unknown／Claim資格／Provider Route／Consumerへの開示区分`という**実際に確かめた範囲だけ**をProduct Skill・SHO等へ受け渡す。外部Harness/AgentがDSLの`role`や`tool`文字列を見つけても実操作Commandとして採用しない。
 
 TAIのQH-01〜18は公開合成Nodeの有限試験であり、TEI実CLI／外部ネットワーク送出／SHOの保存・配送／Host Grantの実証とは別。TEIのSource/Meaning/Provider・独立OracleはTEIの既存Ownerに残し、TAIに第二のMeaning/Authorityを設けない。現時点で新しいProduct跨ぎの実行試験は**NOT RUN**。
+
+## 19. SQL/DDLのSource-static証拠とData/Rule/Provider/Owner受理の接合（2026-11-03追補）
+
+本計画のC0〜C5／H0〜H5に、[SQL/DDL静的事実と意味受理の受渡し計画](../design/SQL_DDL_STATIC_FACT_AND_SEMANTIC_ACCEPTANCE_2026-11.md)を参照として加える。**新Core/SQL Analyzer/Provider/Hostを重複実装しない**。SQLの`PRIMARY KEY`、`FOREIGN KEY`、`CHECK`、期間列、`BEGIN`から、業務Key/Relation/状態遷移/現行履歴/実Commitを自動推論しない。
+
+| 既存の接合箇所 | 追加で検査すること | 引渡し先 |
+| --- | --- | --- |
+| Source / Structural Candidate（C0/1） | Dialect/Source spanを持つDDL上の複合PK列順≠TEI Key Member SortKey≠業務Key、FK≠業務Relation、CHECK≠状態遷移。S（静的）とC（候補）を別表示 | #2387・#1126・#988 |
+| Meaning / Rule（C1/2） | status値域・複数Workflow Instance・属人兼務の期間Relation・valid time/recorded timeを、意味受理と保存先（本体列／履歴・イベント／業務関連表／JSON）へ二重化せず接続 | #1126・#1129・#2386 |
+| Provider / Context（C2/3） | NULL/欠損/未取得/非開示/完全0件と、実DB FK/CHECKのvalidation/enforcementを分ける。Function MappingとProvider Actual Read、共同Cohortの証拠を独立観測 | #2506・#2622・#2611・#2586 |
+| Action / Consumer（C4/5） | Transaction Intent・実Commit・ACK喪失・Receipt・独立Read・現在Host Grant、Migration Desired/Actual/Apply・Owner再受理を別資格へ置く | #1129・#1174・#2564・既存Migration Owner |
+
+**最小Gate**：参照文書のSC-01〜14について、まずP0（静的SourceとCoverage）→P1（候補・Owner質問）を設計完了できたら、実Providerが必要なSC-05（COMMIT ACK不明）/SC-06（異時点二Provider Read）/SC-11（制約の実強制）を優先し、#2586の**一つのFunction・同一Attempt**へ接続する。SC-01〜14は**今回実行していない**。以前の別PRの局所PASSやGitHub CIのgreenを、今回のSQL意味受理・実DB・Migration/Owner成功に数えない。
+
+**設計判断待ち**：業務Key/SortKey、業務Relationと時点、多重Workflow、取消とEffect、履歴の正本と保存要件、Scope/開示、既存データ移行は各Ownerへ質問する。必要な判断が不明なら候補を残し、Sourceの名前・構造から推測して処理を進めない。汎用状態表を既定構成にはしない。
