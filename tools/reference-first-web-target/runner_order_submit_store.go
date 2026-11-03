@@ -67,6 +67,19 @@ const (
 	runnerSubmitExpectedVersion = 0
 )
 
+// runnerStoreOption configures optional behaviour of the Postgres-backed store.
+type runnerStoreOption func(*runnerStoreConfig)
+
+type runnerStoreConfig struct{ audit effectcommit.AuditConfig }
+
+// withRunnerAudit wires an opt-in Evidence sink into the Runner this store
+// builds. The Provenance label is supplied by the COMPOSITION (real-pg only
+// where the code really runs against PostgreSQL); the store never infers it.
+// Without this option no Evidence is built. The shipped CLI does not use it.
+func withRunnerAudit(a effectcommit.AuditConfig) runnerStoreOption {
+	return func(c *runnerStoreConfig) { c.audit = a }
+}
+
 var errRunnerSubmitFailed = errors.New("order submit effect failed")
 
 func newRunnerOrderSubmitStore(
@@ -85,12 +98,22 @@ func newRunnerOrderSubmitStore(
 // effectcommit Provider (trusted Owner routine "apply_owner_effect" in the
 // fixed schema, which the deployment must install) and keeps the existing
 // separate read pool for the Observation. Errors never carry the DSN.
+//
+// Optional runnerStoreOption values (for example withRunnerAudit) are additive;
+// with none the store behaves exactly as before.
 func newPostgresRunnerOrderSubmitStore(
 	ctx context.Context,
 	writeDSN, readDSN, effectSchema string,
 	world ir.World,
 	grantSource submitGrantSource,
+	opts ...runnerStoreOption,
 ) (*runnerOrderSubmitStore, error) {
+	var cfg runnerStoreConfig
+	for _, o := range opts {
+		if o != nil {
+			o(&cfg)
+		}
+	}
 	direct, err := newPostgresOrderSubmitStore(writeDSN, readDSN)
 	if err != nil {
 		return nil, errors.New("open order submit store failed")
@@ -110,7 +133,7 @@ func newPostgresRunnerOrderSubmitStore(
 		_, err := direct.checkOrderSubmitSchema(c, world)
 		return err
 	}
-	store, err := newRunnerOrderSubmitStore(effectcommit.Runner{Provider: provider}, grantSource, check, direct)
+	store, err := newRunnerOrderSubmitStore(effectcommit.Runner{Provider: provider, Audit: cfg.audit}, grantSource, check, direct)
 	if err != nil {
 		pool.Close()
 		_ = direct.Close()
