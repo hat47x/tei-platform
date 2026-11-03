@@ -200,6 +200,19 @@ Buriの`XPDL→Java/Janino`は「業務モデルから実行コードを生成�
 **完了単位**：BL-03/04の独立Expected、出典固定、反例とOwnerの未決質問、最小の既存Reference接続、棄却／採用保留条件がレビュー可能になるまでを設計Doneとする。Buri実動や旧環境復元は不要。TEIの実Providerでの同時Join・Receipt・Host資格は別Issueの未実行検証であり、この資料の静的観察をPASSへ変えない。
 
 
+### 7.9 Buriの図表駆動性をValidation／Derivation／Flowまで再評価（2026-11-03）
+
+従来の本計画は**状態遷移・保存方式・認可・Runtime**に偏っていた。追加の[非業務状態機械と三形態・図表交差・ヒアリング編集計画](STATE_MACHINE_CROSS_DOMAIN_DESIGN_PRESSURE_2026-11.md)では、ユーザーヒアリング中の図表変更を**再転記せずにSource／意味Role／生成Artifactへ渡せること**を、TEIの継続した設計・製品価値の圧力として追加した。
+
+- Buriで一次確認できるのは**JaWEのXPDLを図上編集→Activity/Transition/条件式/Tool→Wakanago Java生成**の経路、Excel権限Hierarchyと有効期間、既存DTO/DAO/BAOとの結合。**図表を変えるだけで任意の全業務ロジックが完結するとは主張しない**。
+- マニュアルのExcelルールライブラリ記述と二次資料のDecision Table説明はあるが、`Validation`／`Derivation`／`Flow`の名称を持つ三モード独立実装・その全てが図表で直接編集できたことは、確認したBuri公開Repoからは**未確認**。旧Buriにない機構をあったことにしない。一方、TEIの**今後の三形態の構想**としては有力な比較軸である。
+- Validation＝判定・制約（false/unknown/errorを区別）、Derivation＝型付き純粋導出と依存、Flow＝Event/State/手順・Effect Intent（実Effect保証ではない）を、**新Core enumではなく既存Rule/Function/Capability/Procedureと意味Roleの組合せ**として先に評価する。
+- 図・状態管理表・決定表・算定表・Source/独立Expected・SHO設計書の同一性を、State/Transition/Rule stable ID、Source span、Revision、Traceで検証する。**見た目の二重正本は作らない**。図上の線追加／表の条件変更→差分Preview→Owner受理→選択的再生成を単一Authoringモデルで追う。
+- 同一三形態が業務に限らず、UI非同期／通信Session／ゲームActor／組込Deviceに実際に適合するかを検討する。図表記述・レビュー容易性、Meaning/Operator Conformance、Target生成、現在実行資格・副作用を**別々に評価**。
+- 既存Ownerは#2620（構造＋Role）、#2621（Markdown/表/Source）、#2497（Projectionと逆写像）、#1124（Modeler）、#1803（文書/SHO）、#988（DSL/Operator）、#2514（独立Expected）、#1121（Lowering）、#1129/#1174（Effect）。新Issue／Editor／Runtimeの実装はここから先行採用しない。
+
+この変更はBuriの実動試験／旧エディタ復旧を必要としない。**TEI側の「ヒアリングからシステム化」の受入は将来の実Project Loop検証**であり、今回の静的調査からその実現済みを推論しない。
+
 ## 8. 出典と検証状態
 
 - Buri一次資料：[マニュアル](https://github.com/seasarorg/s2buri/blob/fbaf32dd3ec2a815dfe3f4426f10d6b0ce53547d/buri-core/doc/%E3%83%9E%E3%83%8B%E3%83%A5%E3%82%A2%E3%83%AB.txt)、[Wakanagoテンプレート](https://github.com/seasarorg/s2buri/blob/fbaf32dd3ec2a815dfe3f4426f10d6b0ce53547d/buri-core/src/main/resources/ftl/wakanagoProcess.ftl)、[BuriStateUtilImpl](https://github.com/seasarorg/s2buri/blob/fbaf32dd3ec2a815dfe3f4426f10d6b0ce53547d/buri-core/src/main/java/org/escafe/buri/dao/util/impl/BuriStateUtilImpl.java)、[BuriDataUtilImpl](https://github.com/seasarorg/s2buri/blob/fbaf32dd3ec2a815dfe3f4426f10d6b0ce53547d/buri-core/src/main/java/org/escafe/buri/dao/util/impl/BuriDataUtilImpl.java)、[Process Selector](https://github.com/seasarorg/s2buri/blob/fbaf32dd3ec2a815dfe3f4426f10d6b0ce53547d/buri-core/src/main/java/org/escafe/buri/engine/selector/processImpl/ValidDateBuriProcessSelector.java)。
