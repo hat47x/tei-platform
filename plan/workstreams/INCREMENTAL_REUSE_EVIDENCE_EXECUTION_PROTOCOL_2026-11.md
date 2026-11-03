@@ -265,3 +265,45 @@ QP-08〜10は[#2582](https://github.com/hat47x/tei-platform/issues/2582)・[#258
 **停止線**：PR #2626/#2637/#2633のmerge、局所GoテストPASS、World Fingerprint不変、Role/Skill候補表示、Sourceパス一致、Manifest内部整合のいずれも、単独ではE2共同Consumer PASSの十分条件ではない。Owner受理・実Host副作用・実Provider同一Snapshot・外部SHO納品の合格は別。
 
 **状態**：本節はGitHubのmain/PRと他チャットの限定観測を受けた**実証計画**。S2-SR01〜04の本件でのF0/F1/S1/S2実行、CI、性能測定、E2の共同成立、正式Contract/Owner受理は**NOT RUN／NOT ADOPTED**。新Host・共通Registry・第二Canonical/Resolver・第二Build Graphを設けない。
+
+## 13. 2026-11-03追補：外部Reference失効と副作用の不可逆性を増分処理の停止条件へ
+
+**観測main**：`0e18b916aa15bc7768e9abfb34318b98ee497cb3`。本節は新しい再利用Engineを作る提案ではない。既存[#2743](https://github.com/hat47x/tei-platform/pull/2743)の外部Reference失効設計、[#2667](https://github.com/hat47x/tei-platform/pull/2667)の実CLI/SQL Worker収束、main統合済み[#2765](https://github.com/hat47x/tei-platform/pull/2765)・[#2769](https://github.com/hat47x/tei-platform/pull/2769)・[#2771](https://github.com/hat47x/tei-platform/pull/2771)・[#2773](https://github.com/hat47x/tei-platform/pull/2773)のEffect/観測/補償/Command Adapterの局所実装を**P1停止線**として接続する。局所PRの成功は本手順のF0/F1/S1/S2を実行した証拠ではない。
+
+### 13.1 過去の事実は失効しないが、現在への適用は失効し得る
+
+外部Referenceは、少なくとも`Source URL / revision / retrievedAt / checkedAt / content fingerprint / read completeness / permission outcome`を分離して観測する。対象の移動、内容改版、A→B→A、offline、権限変更で失効するのは一律に「全世界の過去」ではない。
+
+| 記録・Claim | Source変更で扱うこと | やってはいけないこと |
+| --- | --- | --- |
+| **過去Observation** | 取得時点のbyteと時刻を履歴として保持 | 後の404/403を理由に、取得済み履歴が存在しなかったことにする |
+| **Structural Candidate** | 出典・Parser/Plugin版・依存範囲を照合し、必要な候補だけ再抽出 | byte一致を構造候補の意味受理と同一視 |
+| **Accepted Meaning** | 受理範囲とOwner Authorityを照合し、失効する受理を局所判定 | A→B→Aで過去のOwner受理を自動復活 |
+| **Build Artifact/Evidence** | 依存閉包・Toolchain・Producer/Target・実消費byteを照合 | World fingerprintが同じだけで現在のBuild資格を復活 |
+| **Execution Receipt/Effect** | 過去に起きた副作用・Receiptを履歴として保持し、現在の状態を別途観測 | Source失効により過去の外部副作用を「未実行」に戻す |
+
+Source取得の`unavailable/partial/permission-denied/not-found`を空集合と同じにしない。外部参照がofflineで新鮮さを確認できない場合、古いArtifactの保管は可能でも、新しいConsumer Claimの成立は`unknown`または用途上の拒否とする。鮮度TTL、offline固定Buildの許容範囲、同内容改版時の再受理省略は#2743 Owner未決であり、ここで決定しない。
+
+### 13.2 純粋な再生成と、外部Effectの再実行を分ける
+
+BuildのS1 selectiveを、**業務Commandや外部Effectの再実行許可へ流用しない**。mainの`RunEffect`は能力呼出しの成功と独立Observerの`Observed`を分け、`SQLEffectObserver`は0行を未観測、読取エラーを観測失敗とする限定実装。Command Adapterは既存`effectcommit`境界に委譲するが、実PostgreSQL・実外部副作用・認可Grant発行を保証したものではない。
+
+| S2 probe | 入力と独立Expected | 正しい処置 |
+| --- | --- | --- |
+| **EF-01 Source A→B→A** | Source byteがAへ戻るが、B期間中にOwner受理撤回・Plugin版変更 | byte/Artifact内容再利用は個別検査。Owner受理・実行資格は自動復活しない |
+| **EF-02 Commit ACK喪失** | Effect実行後、応答またはReceipt取得に失敗。外部状態は不明 | `unknown outcome`として再観測・operation identity照合。Build再実行や単純retryで外部効果を重複させない |
+| **EF-03 Observer空/失敗** | SQL Observer 0行、またはQuery error | 0行は`Observed=false`、エラーは観測失敗。どちらも「効果なし」「成功」と断定しない |
+| **EF-04 Compensation失敗** | Effect失敗後の補償が失敗、または一部成功 | 元Effect/補償Attempt/失敗記録を保持。再生成成功を補償完了に転写しない |
+| **EF-05 Reference権限変更** | 同byteの外部Sourceを再取得できず、既存Artifactは保存済み | 歴史的byteと現在の読取・開示許可を分け、許可なき再取得・開示を行わない |
+
+### 13.3 最小の統合順序
+
+**Gate A：read-only**。固定HEADでSource→Operation→ArtifactのF0/F1/S1を一巡し、外部Referenceは取得結果/時点/完全性を記録。Source/Meaning/Artifact/Consumerのどこを再利用したかを分ける。最初の完了条件は、実Go CLIと独立Readerの**同一Attempt**が確認できること。#2667の実SQL Workerが特定できない場合は`NOT RUN: producer-unavailable`とし、mockやSQLiteを実SQL Worker成功の代替にしない。
+
+**Gate B：Effect観測**。Gate Aの純粋なBuild結果と独立したAttemptとして、既存Effect Ruleの`invoked / succeeded / observed / receipt / compensated`を観測。実DB/Hostの証拠がない限り、局所Go Fake Provider試験を外部効果のE2へ昇格させない。
+
+**Gate C：費用測定**。Source/Reference再確認、局所Build、Artifact検証、Oracle、現在資格、Effect再観測を**別時間**として計測。外部Effect再実行を高速化KPIの「節約したBuild」に含めず、必要な認可・副作用回復が不明なら`usable result`到達を主張しない。
+
+**停止条件**：実消費Sourceが不明、Referenceの完全性/権限が不明、必要memberが欠落、独立Oracleの根拠が共有、外部Effect outcome/Receiptが不明、現在Grantが不明の場合、該当するClaimをPASSにしない。部分的なArtifactや歴史的Receiptは保存できるが、現在の利用資格を付与しない。#2743/#2667/#1129/#2600の既存Ownerを維持し、新Host/Registry/承認Engine/Effect Schedulerを増設しない。
+
+**状態**：設計・実行ゲートの追補のみ。EF-01〜05、実DB/実外部Host、F0/F1/S1/S2、独立Consumer、実効果回復、性能測定、Owner受理は本追補では**NOT RUN**。
