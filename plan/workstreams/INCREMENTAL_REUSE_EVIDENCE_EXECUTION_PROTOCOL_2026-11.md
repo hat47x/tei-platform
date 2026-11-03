@@ -344,3 +344,35 @@ BuildのS1 selectiveを、**業務Commandや外部Effectの再実行許可へ流
 4. 計測票には`schema resolve + query impact + required rebuild + consumer read`と`effect/receipt recovery`を分ける。実SQL Worker不明なら`NOT RUN: producer-unavailable`。新しい依存エンジンやHostを採用しない。
 
 **状態**：SM-15は隔離SQLiteの限定実測、MC-B01/C01は合成Goの特性観測。**本#2636での実TEI F0/F1/S1/S2、SQL Worker、実Provider、Consumer共同資格、性能測定、Owner受理はNOT RUN**。局所PASSを統合PASSへ転写しない。
+
+## 15. 2026-11-03実行移行：反例追加を止め、最初のF0/F1/S1を成立させる
+
+本節は§9〜14の反例を追加するのではなく、**実行可能な最小一巡と判定票**へ収束させる。最初の対象は副作用のないQuery/Artifact経路とし、SQL Schema drift（SD-01/02）を一軸変更に採用する。実SQLGlot Workerの所在が確認できない場合は合成Go DerivedIRと独立SQLiteを**別々の限定証拠**として保存し、E2Eを成功扱いしない。
+
+### 15.1 最初の実行票：1 fixture × 3実行 × 2独立判定
+
+| 実行 | 入力と固定条件 | 記録するもの | 合格・失敗の判定 |
+| --- | --- | --- | --- |
+| **F0** | SQL/Schema A、Toolchain/Role/Operator/Provider固定、cold full | Source・Schema・Resolved Relation・Producer版、全member byte、Consumer出力、経過時間 | 独立Expected Aとの一致。Consumer実読取がなければ`NOT RUN` |
+| **F1** | SQL同byte、Schema B（NATURAL JOINの共通列追加）、full | F0と同列＋出力行集合・shapeの変化、時間 | 独立Expected Bとの一致。2行→1行はSM-15の**SQLite限定**対照値 |
+| **S1** | F1と同一Schema B、選択的再利用、独立した新Run | 実行/省略したNode、全必要member、実Reader、時間、失効判定 | `F1=S1`かつ両者が独立Expected Bと一致。省略したNodeを当Runの`succeeded`と偽記録しない |
+| **S2** | F0へ戻す／Schema解決先・Scope・部分取得など一軸ずつ | 誤reuse、過剰失効、未観測・不明の理由 | 危険なreuseを拒否し、独立した無影響memberを維持できるかを別々に判定 |
+
+**独立Expectedの条件**：実SQLGlot→Go IRの結果やF1の生成結果からExpectedを自動生成しない。SM-15のSQLiteは独立SQL実行の限定対照として利用できるが、同一E2Eの実Provider/Consumer Expectedとは呼ばない。Source/Schema/Provider/Targetの選択を実行前に固定し、比較後にExpectedを修正しない。
+
+### 15.2 一つのRunに必要な記録
+
+各Runに`run_id; git HEAD; fixture revision; source bytes digest; physical schema revision; resolved relations/columns; parser+worker version; Role/Operator pin; build/toolchain; actual reads; built/reused/unknown nodes; required ArtifactSet members and actual reader bytes; consumer result; independent expected origin; reference freshness/completeness; current grant (該当時); durations; status; reason`を記録する。取得できない列は推測値で埋めず`unknown/not-run`とする。
+
+**出力資格は三つの判定**を独立に残す：①artifact byte/shape一致、②Consumer結果と独立Expected一致、③現在のSource/Reference/Grant/公開世代への適用資格。①だけのPASSは②③のPASSではない。
+
+### 15.3 実行担当と着手条件
+
+- **P0：実SQL Producer所在** — [#2387](https://github.com/hat47x/tei-platform/issues/2387) QX-33のWorker実体、起動、stdin/stdout、実依存を特定する。未特定なら`NOT RUN: producer-unavailable`を明記し、合成analyzer.Resultを代用しない。
+- **P1：最初のread-only三実行** — [#2778](https://github.com/hat47x/tei-platform/pull/2778)のSM-15（独立SQLite 14/14という限定報告）とSM-16（実Go`query.DeriveFromAnalysis`へ合成Resultを投入、exact-head CI未確認）を**別証拠**として受領。実Workerが揃ってからF0/F1/S1を同じ固定Toolchainで実行する。
+- **P2：実Consumerの資格** — [#2667](https://github.com/hat47x/tei-platform/pull/2667)の実CLI`validate→operations→artifacts→fresh -out→independent Reader`を同一Attemptで通し、必要member・実読取・Source Revisionを確認する。
+- **P3：副作用の別Gate** — [#2780](https://github.com/hat47x/tei-platform/pull/2780)のMC-B/C/D特性試験と既存PostgreSQL ReferenceのReceipt/Replayを別証拠として受領する。Command Adapterの`committed/replayed`が同一の空`command.Result{}`へ写される現行挙動、型付き`CommitUncertainError`を区別する。Build性能実験から実Effectを呼び出さない。
+
+**終了条件**：F0/F1/S1について同一HEAD・同一Toolchainの実行ログ、必要ArtifactSetと独立Consumer、独立Expected、誤reuse/過剰失効、cold/warmおよび`edit→usable`時間が揃った場合のみ、実証を完了と報告する。揃わない場合は不足した境界を列挙し、合成局所試験のPASSを総合PASSへ転写しない。既存#2600/#2387/#2667/#2778/#2780のOwnerに受け渡し、新しいProduct Gate/Host/Cache Engineを設けない。
+
+**現在状態**：本節は実行指示・判定票の追加。実Worker→Go IR→実Provider→Consumerの一巡、F0/F1/S1実測、性能比較、Owner受理は**NOT RUN**。
