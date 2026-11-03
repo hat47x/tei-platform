@@ -19,7 +19,7 @@
 
 今回の**新提案**：EKIを「管理されたアプリケーション公開・配置・運用を選択できる**論理Target／Deployment Broker**」とする。ただし、その**公開面／App catalog／Deployment操作／Instance寿命**がEKI現行APIに存在するかは未証明。Hosted Controlという新しいEKI Application Faceの要件と、EKI Core Kernelの採用決定を分離して検証する。
 
-## 2. 三つの異なる「ローンチ」を分ける
+## 2. 五つの「ローンチ形態」と実行主体を分ける
 
 | Launch Profile（仮称） | 利用者から見える操作 | 長寿命の実行・サービス継続Owner | EKIが保持し得る事実 |
 | --- | --- | --- | --- |
