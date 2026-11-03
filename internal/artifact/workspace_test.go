@@ -12,6 +12,7 @@ import (
 	"tei/internal/database/persistence"
 	"tei/internal/ir"
 	"tei/internal/operations"
+	"tei/internal/semantic"
 )
 
 func TestRenderWorkspaceRendersTheNegativeFixture(t *testing.T) {
@@ -88,7 +89,7 @@ func TestRenderWorkspaceListsOnlyUsedNamespaces(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	write("tei.workspace.yaml", "workspace: scoped\nsources:\n  - semantic\n  - applications\n")
+	write("tei.workspace.yaml", "workspace: scoped\nformatVersion: 1\nsources:\n  - semantic\n  - applications\n")
 	write("semantic/used/data.tei", "namespace used\n\ndata Item {\n    attribute id type std.identifier\n}\n\ncapability used.item.touch {\n    input item used.item\n    outcome touched used.item\n}\n")
 	write("semantic/unused/data.tei", "namespace unused\n\ndata Other {\n    attribute id type std.identifier\n}\n\ncapability unused.other.touch {\n    input other unused.other\n    outcome touched unused.other\n}\n")
 	write("applications/app/application.tei", "application app {\n    uses semantic used\n}\n")
@@ -172,5 +173,41 @@ func TestRenderWorkspaceKeepsTheReferenceWorkspaceConsistent(t *testing.T) {
 	}
 	if !surface {
 		t.Fatal("the reference set must include the operation surface")
+	}
+}
+func TestCheckPeriodPreconditionsReportsAMismatch(t *testing.T) {
+	world := ir.World{Semantics: []semantic.Namespace{{
+		ID: "s",
+		Periods: []semantic.Period{{
+			ID:   "s.month",
+			Data: "s.order",
+		}},
+	}}}
+	payload, err := json.MarshalIndent(operationSurfacePayload{
+		SchemaVersion: operations.OperationSurfaceSchemaVersion,
+		Operations: []operations.Operation{
+			{ID: "ok.create", Kind: "create", Target: "s.order", Preconditions: []string{"period:s.month:open"}, Basis: "x"},
+			{ID: "wrong.create", Kind: "create", Target: "s.other", Preconditions: []string{"period:s.month:open"}, Basis: "x"},
+			{ID: "unknown.create", Kind: "create", Target: "s.order", Preconditions: []string{"period:s.nope:open"}, Basis: "x"},
+		},
+	}, "", "  ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	artifact, err := New(KindOperationSurface, Rule{ID: OperationSurfaceRuleID, Version: OperationSurfaceRuleVersion, Fingerprint: "sha256:rule"}, OperationSurfaceGenerator, "sha256:input", string(payload)+"\n", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	findings := checkPeriodPreconditions(world, []Artifact{artifact})
+	if len(findings) != 2 {
+		t.Fatalf("a mismatched and an unknown period must both be reported: %+v", findings)
+	}
+	codes := map[string]bool{}
+	for _, finding := range findings {
+		codes[finding.Code] = true
+	}
+	if !codes["PERIOD_PRECONDITION_UNKNOWN"] || !codes["PERIOD_PRECONDITION_MISMATCH"] {
+		t.Fatalf("unexpected codes: %+v", codes)
 	}
 }

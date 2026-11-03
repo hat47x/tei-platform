@@ -28,7 +28,7 @@ const providerSemantic = "namespace os\n\ntype ProcessId from std.identifier\n\n
 func plainWorkspace(t *testing.T) string {
 	t.Helper()
 	root := filepath.Join(t.TempDir(), "ws")
-	writeSignFixture(t, filepath.Join(root, "tei.workspace.yaml"), "workspace: plain\nsources:\n  - semantic\n")
+	writeSignFixture(t, filepath.Join(root, "tei.workspace.yaml"), "workspace: plain\nformatVersion: 1\nsources:\n  - semantic\n")
 	writeSignFixture(t, filepath.Join(root, "semantic", "os", "process.tei"), providerSemantic)
 	return root
 }
@@ -36,11 +36,11 @@ func plainWorkspace(t *testing.T) string {
 func importingWorkspace(t *testing.T) string {
 	t.Helper()
 	base := t.TempDir()
-	writeSignFixture(t, filepath.Join(base, "provider", "tei.workspace.yaml"), "workspace: provider\nsources:\n  - semantic\n")
+	writeSignFixture(t, filepath.Join(base, "provider", "tei.workspace.yaml"), "workspace: provider\nformatVersion: 1\nsources:\n  - semantic\n")
 	writeSignFixture(t, filepath.Join(base, "provider", "semantic", "os", "process.tei"), providerSemantic)
 	consumer := filepath.Join(base, "consumer")
 	writeSignFixture(t, filepath.Join(consumer, "tei.workspace.yaml"),
-		"workspace: consumer\nsources:\n  - semantic\nimports:\n  - alias: os\n    path: ../provider\n    namespace: os\n")
+		"workspace: consumer\nformatVersion: 1\nsources:\n  - semantic\nimports:\n  - alias: os\n    path: ../provider\n    namespace: os\n")
 	writeSignFixture(t, filepath.Join(consumer, "semantic", "watch.tei"),
 		"namespace monitoring\n\ndata Watch {\n    attribute process type os.process_id\n}\n")
 	return consumer
