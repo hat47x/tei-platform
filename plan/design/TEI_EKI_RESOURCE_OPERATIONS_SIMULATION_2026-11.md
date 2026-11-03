@@ -158,6 +158,10 @@ AIに期待する仕事：
 
 **運用SurfaceをDeployへ延長**：Release Source/Meaning/Artifact digest、EKI Deploy Proposal、Provider Service identity/Revision、Ingress/User Data Path、Result/Provider Health/Business Receiptを同一画面に**別の状態**として表示する。管理コンソールをクラウドで貸与しても、公開AppへのUser HTTPやbulk Artifact/DB trafficをEKI Controlに通さない。TenantのResource構成・Node数・Access/AI Promptへの開示を区別する。AL-01（Direct vs EKI broker同一Host）、AL-02（EKI停止後Service継続）、AL-07（Tenant隔離）、AL-12（Provider実状態との差分）を本稿のNR-01〜12とは異なる部署/実Targetの**追加圧力**として参照し、Test Runner/Oracleは増設しない。
 
+### 8.1 市場需要・競合と適用先の補足（2026-11-03）
+
+[EKIの企業内Compute資源一元管理：市場・製品適合の調査](EKI_ENTERPRISE_COMPUTE_MARKET_FIT_2026-11.md)では、NVIDIA Run:ai/Base Command Manager、Rafay、IBM Turbonomic、HPE OpsRamp、Slurm、Tanium、OpenCostと用途が重なる点を確認した。**図・Dashboard・AI推奨だけでは商品上の差別化にならない**。初期市場は社内AI/GPU混在Poolの可視化→使用可否の事前Simulation→安全な限定委任で検証する。FinOps/Flexeraの数字をEKI購買需要や節約実績と同一視しない。
+
 ## 9. 既存計画との分担・段階導入・Done/Stop
 
 | 段階 | TEI側の差分／最小成果物 | EKIの既存担当とGate |
