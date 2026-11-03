@@ -120,3 +120,24 @@ func TestRenderFunctionDefinitionShowsPeriods(t *testing.T) {
 		t.Fatalf("content lost the period:\n%s", rendered.Content)
 	}
 }
+func TestRenderFunctionDefinitionShowsEffectRules(t *testing.T) {
+	input := functionDefinitionInput()
+	input.EffectRules = []semantic.EffectRule{{
+		ID:            "sales.order.stock",
+		OnCapability:  "sales.order.register",
+		Stage:         "after-commit",
+		EffectKind:    "update",
+		EffectData:    "sales.order",
+		ViaCapability: "sales.order.register",
+		OnFailure:     "compensate",
+	}}
+
+	rendered, err := RenderFunctionDefinition(input)
+	if err != nil {
+		t.Fatalf("render: %v", err)
+	}
+	want := "effect-rule sales.order.stock on sales.order.register stage after-commit effect update sales.order via sales.order.register on-failure compensate\n"
+	if !strings.Contains(rendered.Content, want) {
+		t.Fatalf("content lost the effect rule:\n%s", rendered.Content)
+	}
+}
