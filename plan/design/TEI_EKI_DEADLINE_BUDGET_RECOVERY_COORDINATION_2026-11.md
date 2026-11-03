@@ -229,3 +229,46 @@ EKI ADR-0039（最小安全観測）と[#548](https://github.com/hat47x/eki-fabr
 | **LB-26 TEI FlowとJob Deadlineの境界** | A→B、EKIのA結果が期限内、TEI Bの必須DB Commitが未確認／TEI Coordinatorが停止 | `EKI verified A`≠`TEI Flow complete`。Owner/HostがBを検証するまでBusiness CompletionやSLO達成を宣言しない |
 
 **最小の裁定**：LB-18/19/20/22/26は既存契約の反証であり、独自のOptimizerや新Core型がなくても判断できる。LB-21はEKI #125/#155のOwnerがFair Shareの規則を採用するまで結論保留。LB-23/25は既存#19/#48/#50のTrace/Shadow評価、LB-24は既存Admission/CAP-1/Provider CASの契約へ渡す。**全体最適の理論的保証、確率校正、実Deadline/SLA達成率は未検証**。
+
+## 11. Task Groupの部分成果・計画再開・リカバリを結ぶ予算評価（2026-11-04）
+
+[実行縦断§13](TEI_EKI_ONE_REVISION_EVIDENCE_VERTICAL_SLICE_2026-11.md)により、TEI `run-plan`のStep進捗とEKI `Task/Attempt`の再実行は既存実装が進んでいることを確認した。ただし、TEIのStep完了記録と実ProviderのBusiness Receiptは別であり、`runlog.File`はPlanの版・外部Effect/Outputや複数プロセスCASを証明しない。**「再開できる」は「安全に副作用を再実行できる」ではない。** 現状の継続的なコーディネーションでは、実行計画／Task状態／Provider状態／業務完了の異時点を別の根拠として維持する。
+
+### 11.1 期限内の「使える成果」の正本はTEIのJob/Quality Meaning
+
+[EKI #126](https://github.com/hat47x/eki-fabric/issues/126)（open）が扱うTask Groupは、**一群のTaskに予算・期限・取消・部分結果を付ける**構想であり、TEI業務上のRunPlan/Flowそのものではない。Groupの最小経済性評価は、以下の違いに依存する。
+
+| 業務受理条件（TEI／Owner側） | 予算配分に対する意味 | Provider/EKIのTask outcomeとの差 |
+| --- | --- | --- |
+| **All required** | 1件でも未取得/unknownなら、部分実行が安くても最終成果未達。残余期限・再試行予算を評価 | 80/100完了を`100/100 quality PASS`へ変換しない |
+| **Minimum useful subset** | `min_verified`件・対象範囲/独立性/品質などのOwner契約を満たせば、未完了の追加Taskへ支出しない戦略も許容され得る | 最初の20件だけが偏ったPool/母集団なら、20件の成功で全体の推論品質を保証しない |
+| **Progressive/anytime** | 既に検証済みの結果を段階提供し、残余予算と期限までの追加価値を比較 | 部分Snapshotを`final result`と混同せず、Result Revision/Quality Coverageを明示 |
+| **No partial usefulness** | 期限までに必要な独立Expectedを満たせない見込みなら、早期停止・Direct fallback・Owner通知を提案 | EKI `Task completed`の数が多くてもBusiness Outcomeは0かもしれない |
+
+上記の`min_verified/coverage/value_of_next_result`は**TEIで受理済み業務Meaningの候補**であり、EKI #126の正式API/Schema・Runtime保証ではない。重み、価値、単価をEKI Coreに閉じ込めず、Financial Provider/TEI Application Planeで評価する。**Groupの期限や予算の強い一体性は、EKI側で採用されるまで`proposed`として扱う**。
+
+### 11.2 予算に加えるべき「追加1件の価値」と「再試行コスト」
+
+**事前に確保された現在GrantとOutcome品質を守ったうえで**、`Candidate action`の比較票に`marginal_verified_utility`、`remaining_deadline_slack`、`remaining_physical_budget`、`provider_capacity_commitment`、`correlated_failure_risk`、`detection_and_reconcile_time`、`provider_retry_visibility`を追加する案。**効用値はOwner受理したモデルの値に限り、AIが高い成功確率を出しただけで支出しない**。
+
+- `start another task`：新規に得られる**独立な**情報量が、転送・検証・資源消費・期限遅延に見合うか。
+- `retry existing task`：旧Attempt/外部Provider内部Retry/未知Effectを照会し、追加結果の価値と、二重支出・Group Budget/Recovery Windowの競合を比較する。
+- `escalate to managed pool`：Provider Reservationと費用開始/解除の実Receipt、全Task間のBudget競合を再評価。**BUD-1物理枠があることはCloud/GPU Slotがある証拠ではない**。
+- `stop or accept partial`：残りのTaskが意味・品質に必須でなければ、検証済み部分結果をOwner契約により採用し、実未完了/unknownを消さずに終了または保留する。取消要求は外部Effectが生じなかったことを意味しない。
+
+**複数のTaskの部分成果**を一つのQuality Claimにする場合、`verified/success`、`failed`、`not started`、`cancel requested`、`unknown`、`excluded from required scope`は異なる。未完了・不明の分母を減らして`100% completed`にしない。疑似集計だけでは、本当のGroup Budget/Group Cancellation/Group Result Authenticationは得られない。
+
+### 11.3 連鎖失敗と再開の受入基準（LB-27〜32、全件NOT RUN）
+
+| Case | 入力・故障 | 独立Expected |
+| --- | --- | --- |
+| **LB-27 Partial success/Quality** | Task 100件のうち80 verified、20 unknown、TEI品質がAll-requiredとMinimum-usefulで異なる | All-requiredは不合格/未確定。Minimum-usefulは母集団/独立性/Quality条件を確認した場合のみ限定採用 |
+| **LB-28 Group budget conflict** | 同時TaskがBUD-1の共通残額を使い切る、Provider予約済み・キャンセルACK不明 | Proposalの合算だけで二重支出可としない。BUD-1とProviderの実Reservation/解放Receiptで停止 |
+| **LB-29 Three-level retry storm** | TEI RunPlanがResume、EKIが新Attempt、Cloud Queueが内部Retry | Effect-freeでないJobはProvider内部Retry停止/観測を証明できなければ不適格。期限逼迫でも二重Effect禁止 |
+| **LB-30 Crash after business Commit** | Provider業務Commit後にTEI Step記録前でCrash、RunPlanは未完了と判断 | 同じOperationID/Provider Lookup・Receiptで照合。記録上未実施を「安全な再実行可」に読み替えない |
+| **LB-31 Plan revision ABA** | Plan A→B→Aで同一PlanID、Stepの入力・Executorと時点異なる | 同一表示Plan/IDや古い`steps`だけで実行資格再利用しない。Source/Meaning/Artifact/Owner Scopeを再資格化 |
+| **LB-32 Early marginal stop** | 20件の検証済み独立結果でOwnerの最低Quality達成、追加80件は期限・物理予算圧迫 | 最小値達成を全体完了や100件の真実と偽らず、追加実行/中止/延長を実Policy内で比較。未実Taskを`failed`にしない |
+
+**Phaseの判断**：①TEI実`RunPlan`の現RunKey/Step記録とVS-23〜32を直接Goで反証、②EKI #267/#381実装のTask Phaseと一つの実AcceptedResultまでの現在資格を実Processで再実証、③EKI #115の内部Retry/Provider Ack unknown、④EKI #126のTask Groupの必要最小Contract、⑤Deadline/部分効用/相関失敗を既存#19/#48/#50のDeterministic→Shadowで比較する。**Phase①〜④の実E2Eが通る前に、確率最適化/有償Autoscaleの実運用価値を主張しない**。
+
+**非目標**：TEIにEKI Task Group台帳を複製、EKIにTEIのBusiness RunPlan/Workflow Engineを移植、PlanRunとTaskを同じIDにする、全Providerに完全な2PCを要求する、未知Effectを再実行の許可に変える、独立OracleのExpectedをScheduler/AIが生成する、正式なDSL/API/価格体系を本稿で採用すること。
