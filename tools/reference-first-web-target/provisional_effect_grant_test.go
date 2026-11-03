@@ -124,6 +124,12 @@ func TestProvisionalSelectionVerifiesAtStartupAndWarns(t *testing.T) {
 	if err != nil || r == nil {
 		t.Fatalf("%v %v", r, err)
 	}
+	// Selecting is silent; the warning is printed by announce(), which the
+	// startup calls only after every gate has passed.
+	if strings.Contains(logs.String(), "PROVISIONAL_EFFECT_GRANT_ACTIVE") {
+		t.Fatalf("selection printed the warning too early: %s", logs.String())
+	}
+	r.(interface{ announce() }).announce()
 	for _, want := range []string{"PROVISIONAL_EFFECT_GRANT_ACTIVE", "development-only", "not G2 evidence", "provisional-grant"} {
 		if !strings.Contains(logs.String(), want) {
 			t.Fatalf("warning lacks %q: %s", want, logs.String())

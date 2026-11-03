@@ -108,6 +108,7 @@ bash tools/reference-critical-path-evidence-audit/compose-smoke.sh
 - `E1` は `R0 != R1`、Candidate/Reviewの**それぞれ独立した指紋**とReviewが参照するCandidateの指紋、Decision、R1再読込、`add-validation` と `add-application-validation-use` の同時受理、R1の `order_entry` が `sales.order_line.unit_price_positive` を選択した実Web正負試験、N11 controlを要求する。WebのProviderは合成でもよいが、`web.runMode=running-server` と**実Web操作receipt**が必要。さらに `web.negativeValidation` は**新しい単価規則そのもの**、`web.negativeEvidenceMode` は `running-server` であることを申告させる。併せて `web.workspaceRevisionReceipt`（実際にWebが使用したWorkspaceのmanaged-source R1再観測）と `web.targetLaunchReceipt`（実際のTarget起動先・build revision・起動前後の記録、認証情報は含めない）を**互いに別のreceipt**として要求する。既存Web JSONの `baselineRepositoryRevision` / `targetBuildRevision` はGit revisionであって、Accepted Sourceの `modelRevision` を証明しない。従来の数量0による正常な拒否や、Goの `httptest` による単価0の負例だけでは、実行中Webサーバが新しい単価規則を拒否した証拠にならない。`handler-only` / `httptest` はE0の有用な証跡だが、このE1の実サーバ操作要件を満たさない。
 - `E2` はE1に加え `actual-db` Provider、R1に対するDatasource/schema互換性証跡、current Host Authority、Commandと独立readの**別receipt**、同一record、S02/S05の拒否試験を要求する。Web synthetic Providerを `E2` として提出すると拒否する。
 - `physical.hostAuthorityProvenance`（任意）が`provisional-grant`（開発専用の暫定効果許可、D8）のパケットは、E0〜E2のどの主張でも`PROVISIONAL_GRANT_NOT_G2_EVIDENCE`を出して`INCOMPLETE`になります。暫定許可はG2へ数えません。
+- E2の主張では、`physical.hostAuthorityProvenance`が既知の値（`real-pg`または`synthetic`、完全一致）であることを要求します。省略、未知の値、表記ゆれ（大文字小文字・`_`・ゼロ幅文字入りの`real-pg`など）は`E2_HOST_AUTHORITY_PROVENANCE_REQUIRED`で`INCOMPLETE`です。`provisional-grant`は、大文字小文字・`_`・空白・ゼロ幅/bidi制御文字を畳んで比較し、別名でも`PROVISIONAL_GRANT_NOT_G2_EVIDENCE`にします。この値はパケット作成者の自己申告で、Evidenceの真正性は確認しません。新しい値は、この許可リストへ意図して追加します。
 - N11（Command後のObservation readが結果を返せない条件）は、正負のWeb応答、Workspace版の証跡、Target起動記録、E2のCommand・独立readとは**別の証跡**で確認する。空白だけのlocatorや別段階の記録をN11に流用した申告は`N11_UNOBSERVED_CONTROL_MISSING`とする。これはlocatorの形式検査であり、実際にreadが未実施だったことを証明しない。E2のCommand/独立readについても空白だけのlocatorは拒否する。
 - Source、Target、DB schema、Git revisionを値の一致だけで同一視しない。DB schemaとApplicationは別のライフサイクルであり、`schemaCompatibility=compatible` は**提出された判定結果の表明**に過ぎない。Providerの実状態・readの独立性・記録時点はreviewerが確認する。
 - `E0` のフォーム検査が通っても、C0/Studio/Business/Loweringの本当のproducer-consumer接続や製品上の動作を証明しない。
@@ -116,7 +117,7 @@ bash tools/reference-critical-path-evidence-audit/compose-smoke.sh
 
 `testdata/p0-order-entry-e2-not-executed.json` は、#1163が求める「同じ新しい1回の実runから記録する」packet（受理済みSource R1・Host認可・Web build・DB schema・Command・別invocationのObservation・S02/S05/N11の負例）の欄を揃え、**実行した欄を一つも埋めていない**見本である。未実行の欄は空文字にする。`not-executed` のような文字列を入れると、このpreflightは非空のlocatorを「証跡あり」と数える。
 
-期待結果は`INCOMPLETE`・`productGate=UNQUALIFIED`・非ゼロ終了で、`REVISION_QUALIFICATION_STALE_OR_MISSING`、`ACCEPTED_R0_R1_LINEAGE_MISSING`、`S02_*`・`S05_*`・`N11_UNOBSERVED_CONTROL_MISSING`、`E2_COMMAND_AND_INDEPENDENT_READ_NOT_CORRELATED`など18件の不足が列挙される。`not_executed_fixture_test.go` がこの一覧を固定し、欄が値で埋まった見本を「未実行」と呼べなくする。
+期待結果は`INCOMPLETE`・`productGate=UNQUALIFIED`・非ゼロ終了で、`REVISION_QUALIFICATION_STALE_OR_MISSING`、`ACCEPTED_R0_R1_LINEAGE_MISSING`、`S02_*`・`S05_*`・`N11_UNOBSERVED_CONTROL_MISSING`、`E2_COMMAND_AND_INDEPENDENT_READ_NOT_CORRELATED`など19件の不足が列挙される。`not_executed_fixture_test.go` がこの一覧を固定し、欄が値で埋まった見本を「未実行」と呼べなくする。
 
 R0・意味同値R2を**Web自身が**実行前に拒否したことは、現行のpacket形式に欄が無く、この見本は主張しない。外部ハーネスによる検出と区別して記録する欄は、実runが得られる時点で別途検討する。これは実行結果でも、G1/G2のPASSでもない。
 

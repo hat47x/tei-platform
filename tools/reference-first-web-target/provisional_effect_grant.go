@@ -11,6 +11,7 @@ import (
 	"os"
 	"time"
 
+	"tei/internal/ir"
 	"tei/internal/security/effectcommit"
 	"tei/internal/security/legacyauthorization"
 	"tei/internal/security/provisionaleffectgrant"
@@ -48,6 +49,14 @@ func (f provisionalEffectGrantFlags) any() bool {
 // provisionalEffectGrantReader adapts FileSource to HostEffectGrantReader.
 type provisionalEffectGrantReader struct {
 	source provisionaleffectgrant.FileSource
+	notice string
+}
+
+// announce prints the development-only warning. The caller invokes it only
+// after Source verification and every startup gate have passed, immediately
+// before the Target is published, so a start that fails never claims to be active.
+func (r provisionalEffectGrantReader) announce() {
+	log.Print(r.notice)
 }
 
 func (r provisionalEffectGrantReader) ReadCurrentEffectGrant(ctx context.Context, q HostEffectGrantQuery) (HostEffectGrantRecord, error) {
@@ -106,9 +115,9 @@ func selectProvisionalEffectGrant(f provisionalEffectGrantFlags, applicationID s
 	if err != nil {
 		return nil, err
 	}
-	log.Printf("PROVISIONAL_EFFECT_GRANT_ACTIVE: development-only (D8), not a production permission; application=%s capability=%s notAfter=%s; Evidence is marked %q and is not G2 evidence",
+	notice := fmt.Sprintf("PROVISIONAL_EFFECT_GRANT_ACTIVE: development-only (D8), not a production permission; application=%s capability=%s notAfter=%s; Evidence is marked %q and is not G2 evidence",
 		g.ApplicationID, g.Capability, v.NotAfter.Format(time.RFC3339), provisionaleffectgrant.MarkProvisional)
-	return provisionalEffectGrantReader{source: source}, nil
+	return provisionalEffectGrantReader{source: source, notice: notice}, nil
 }
 
 func readSmallFile(path string) ([]byte, error) {
@@ -140,4 +149,44 @@ func newProvisionalSubmitGrantSource(source provisionaleffectgrant.FileSource, a
 // Grant may use: the Provenance is fixed to provisional-grant.
 func provisionalAuditConfig(sink effectcommit.EvidenceSink) effectcommit.AuditConfig {
 	return effectcommit.AuditConfig{Sink: sink, Provenance: effectcommit.ProvenanceProvisionalGrant}
+}
+
+// newProvisionalRunnerOrderSubmitStore is the ONLY way this package builds a
+// store fed by a provisional Grant: it fixes the Runner's Evidence Provenance to
+// provisional-grant, so a Host cannot pair a provisional Grant with real-pg,
+// synthetic or unspecified Provenance (a test checks that nothing else calls
+// newProvisionalSubmitGrantSource).
+func newProvisionalRunnerOrderSubmitStore(
+	provider effectcommit.Provider,
+	source provisionaleffectgrant.FileSource,
+	applicationID, subjectID string,
+	sink effectcommit.EvidenceSink,
+	schemaCheck func(context.Context) error,
+	status orderStatusReader,
+) (*runnerOrderSubmitStore, error) {
+	if provider == nil || sink == nil {
+		return nil, errors.New("provisional runner order submit store requires a provider and an Evidence sink")
+	}
+	return newRunnerOrderSubmitStore(
+		effectcommit.Runner{Provider: provider, Audit: provisionalAuditConfig(sink)},
+		newProvisionalSubmitGrantSource(source, applicationID, subjectID),
+		schemaCheck, status)
+}
+
+// newPostgresProvisionalRunnerOrderSubmitStore is the PostgreSQL form of
+// newProvisionalRunnerOrderSubmitStore (same fixed Provenance).
+func newPostgresProvisionalRunnerOrderSubmitStore(
+	ctx context.Context,
+	writeDSN, readDSN, effectSchema string,
+	world ir.World,
+	source provisionaleffectgrant.FileSource,
+	applicationID, subjectID string,
+	sink effectcommit.EvidenceSink,
+) (*runnerOrderSubmitStore, error) {
+	if sink == nil {
+		return nil, errors.New("provisional runner order submit store requires an Evidence sink")
+	}
+	return newPostgresRunnerOrderSubmitStore(ctx, writeDSN, readDSN, effectSchema, world,
+		newProvisionalSubmitGrantSource(source, applicationID, subjectID),
+		withRunnerAudit(provisionalAuditConfig(sink)))
 }

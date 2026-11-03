@@ -233,6 +233,11 @@ func runCombinedWebTargetWithHost(ctx context.Context, reader sourceacceptance.R
 		Addr:    *listen,
 		Handler: handler,
 	}
+	// Source verification and every startup gate have passed. Only now say that
+	// the development-only Grant is active (a failed start must not claim it).
+	if announcer, ok := provisionalReader.(interface{ announce() }); ok {
+		announcer.announce()
+	}
 	log.Printf(
 		"TEI first Web Target projection: http://%s/ application=%s baseline=%s R=%s T=%s",
 		*listen,
