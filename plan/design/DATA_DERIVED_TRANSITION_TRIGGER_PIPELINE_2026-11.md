@@ -191,7 +191,38 @@ Batch / Pipeline
 
 **既存Issue責務**：意味属性・Relation/Context=#2622/#2620/#2506、Rule/仮想/phase=#1129、Dependency・Read Freshness=#2582/#1708/#1641、Query集合完全性=#2387、Action Binding=#2507、Batch=#1130、Effect/Grant/Receipt=#1174/#2564、Diagram↔Table/Source=#2497/#2621/#1803、独立Expected=#2514、Build差分=#2600、全体Gate=#1119。新しいJob Registry/TEI Host/第二Meaning正本を作らない。
 
-## 7. 不明／Ownerが決める条件と現在のEvidence
+## 7. X-TEA既存機構の小さな移植を先行させる（2026-11-03、優先順位の修正）
+
+**ユーザー指摘**：Data Modelの項目拡張Validation、Data Script側の独自Validation／Derivation、データ変更時のScript評価・状態連動はX-TEAに既にある。TEIでは、これらのために新しい抽象アーキテクチャを作るのではなく、**既存実装の構造と業務意味を保持して移植すること**を第一候補にする。前節までのTrigger／Job／Edgeの一般論は、すべての移植Caseに強制する事前要件ではない。
+
+ただし「X-TEAで実装された」「Source上にhookがある」「TEIでも同じ結果を実行できる」は別の証拠段階。既存[#950](https://github.com/hat47x/tei-platform/issues/950)（RMT-2 Source-faithful adapter）には、実Benchmarkで**DERIVABLE Field 52件**を分類した所見がある。[#1637](https://github.com/hat47x/tei-platform/issues/1637)（closed）はX-TEAのTable Script／Virtual Fieldの**read-time導出**を、DerivationDefinitionとBindingへ分けた合成Reference。一方[#940](https://github.com/hat47x/tei-platform/issues/940)（open）は旧Driverの実Runtime Effect/Transaction観測を扱う。これらを合算して製品移植完了と判定しない。
+
+### 7.1 移植可能性を三種類に切り分ける
+
+| X-TEAの既存機構と想定入力 | TEI側の受け皿 | 移植クラス／確認すべき差分 |
+| --- | --- | --- |
+| Data ModelのField定義・属性拡張（型、必須、DERIVABLE等） | 既存Data/Attribute、Validation意味Role、Source-faithful adapter | **P：意味・構造をほぼ直接対応付ける候補**。X-TEAのField拡張がTEI現行Coreにない場合は、既存属性に紛れ込ませずRole/Extension候補として保持。実構文採用は別 |
+| Data Scriptの独自Validation | 既存#1129のRule Definition/Attachment、#1637／現行Validation Eval Reference | **P：既存hookの判定ロジックを移植候補へ分類**。Scriptでread/write/APIが起きる部分は判定から分離し、`check-only`でもEffectがないと保証されるかを負例で確認 |
+| Data Scriptによる仮想Field導出 | Data Modelのvirtual対象ID ＋ #1637のDerivationDefinition/Binding | **P：同じInput/Outputを移植する候補**。Dependency、NULL、時点、Relation全件性、Operator版を失わない。現TEIに未実装Operatorがあれば外部Script Asset Binding/unsupportedで止める |
+| BR／AR等のデータ更新イベント、`oldValue`／`valueChanged`を使う条件 | #1129のwrite lifecycle phase＋Rule Attachment、#2582の依存/再取得 | **A：既存Script hook→TEI Operation phaseへのAdapter移植**。旧Driverの順序・Tx・commit前後・例外・再入抑止・依存更新先をSource観察と独立Expectedで確かめる |
+| Script連鎖での関連レコード更新／状態の代表値再計算 | #1129 Action/Effect、#2622 Derived、Provider Binding | **A：同一Provider内の意味は継承候補**だが、旧Driverの`true`返却や見かけの状態値だけでCommit確定・原子性を推測しない。元データとDerived表示／保存結果を分ける |
+| 更新後の別プロセスJob／大規模Pipeline／Queue・再開・高並列実行 | #1130のBatch/Non-UI、#1174 Effect Fence、#2564 実DB CAS/Receipt | **E：X-TEAのScriptで呼び出し得ることと、独立Runtime保証は別**。UIなし起動・Durable Event・多Worker・部分失敗回復が必要なときだけTEI追加拡張として評価 |
+
+P=まず意味忠実な移植、A=既存契約への適合Adapter、E=追加要件の実装／独立受入が必要、という**計画上の分類**。ライブラリの機械的コピー・互換API・公式移植完了を意味しない。X-TEA上で読取時算定と更新時Script実行が併存していた可能性も残し、「Derivationは主に更新契機」を唯一の実行時点へ固定しない。
+
+### 7.2 「単純移植」縦切りFixtureの優先順
+
+1. **属性拡張Validation**：XEAF/XEADの型・必須・値域候補を原Source/ID/版つきで読み、同じ値を良否判定する最小ケースを作る。現行TEIの`positive`／`relation-unique`で表せない範囲を**不足として示す**。安易に自由式言語を増やさない。
+2. **仮想Fieldの一計算**：数量×単価など、元Field→Data Script→Virtual Attribute値を同じ型で出し、read-time／update-timeの観測時点を分ける。`DERIVABLE`のX-TEA定義とScript算定のLocatorを紐付け、Script本体の公開Repo転載を避ける。
+3. **フィールド変更に伴う純粋判定・算定**：`oldValue/valueChanged`を使い、0→1／同値更新／NULL→値／空文字↔設定／複数Field同時更新を比較。旧Driver内で実行されたScript順序と、TEIの提案Phaseを別欄に記録する。Rollback・Script例外後に`true`が残る負例を併記し、`boolean true`を処理成功の根拠にしない。
+4. **同一Data更新に伴うFlow候補**：上記の導出値／状態条件を、TEIのFlow table/CapabilityへBindingする。旧モデルにFlow ID・Effect資格が存在しない場合は**新Owner判断の意味**として保留。Data Scriptに隠れたJob実行を持ち込まない。
+5. **実CommitとBatchへの接続（別Gate）**：Rollback、ACK喪失、再起動、同一Event再送、異時点Read、Grant撤回を実Provider/Hostへ引き渡す。多Provider／外部Queue／大規模Jobの全保証まで待って1〜3の単純移植を止めない。
+
+最小成果物は「X-TEAの元要素／Rule event／Script・Field Locator／時点／Input→Output／TEI候補ID／対応可否／差分／独立Expected」の**1行1根拠の対応票**。RMT-2のTranscription／loss-ledgerを使い、第二Canonicalや巨大な再実装調査票を作らない。原Sourceの内容・秘匿IDやScript本文は必要に応じ非公開で管理し、GitHubの公開PRへ複製しない。
+
+**Doneの境界**：P1〜3はSource-faithful candidateと限定Fixtureの同値まで。Aの既存Adapter経路が通るなら新Core/DSL/Pluginを提案しない。実Provider／正式Targetで同じ拒否・更新・回復が独立観測できたときだけ**実行互換**へ進める。Owner受理はこのどの技術PASSとも別。X-TEAの既存設計を過度に複雑な新基盤で置き換えない。
+
+## 8. 不明／Ownerが決める条件と現在のEvidence
 
 **Ownerの具体判断が必要**：`billing_ready`は明細の完了だけか、出荷実績確定・検収・時間を含むか。訂正／返品・取消で何が起こるか。再計算時の粒度と許容遅延、Strict EdgeかLevel Reconciliationか、同一Subject二回目の正当なJob起動、依存先が別Providerなら整合Snapshot不可能時に停止するか、履歴・監査と重複通知の許容範囲。必要なときだけOwnerが意味とEffect Contractを受理する。
 
