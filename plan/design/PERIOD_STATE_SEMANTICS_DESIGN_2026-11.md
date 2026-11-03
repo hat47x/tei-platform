@@ -268,7 +268,7 @@ P3（成果物への反映）のうち、**機能定義書への期間の行**�
 期間は `semantic.Namespace` の項目として読み込まれます（`internal/workspace/loader.go`）。読み込みの直後に、**期間が IR に載っていない**ことが分かったため修正しました。`tei periods` が空を返す症状で気づいた不具合です。再発を防ぐため、`internal/workspace/period_load_test.go` で「読み込んだ世界に期間と拒否操作が残る」ことを固定しています。
 ### 実行入口のガード（2026-11-03 追記）
 
-能力の呼出し直前に期間を確かめる関数を追加しました（`internal/driver/periodguard.go` の `GuardPeriods`）。
+能力の呼出し直前に期間を確かめる関数を追加しました（`internal/operations/periodguard.go` の `GuardCapability`）。**driver ではなく operations に置いています**。driver から operations を参照すると、Driver の依存閉包が広がり、`tools/reference-first-web-target/sharedprojection` の閉包試験が失敗したためです（束縛の知識は操作面が持つ、という層の分け方にも合います）。
 
 - 入力: 操作面、期間の状態、呼び出そうとしている能力の識別子。
 - 出力: `(PeriodRejection, bool)`。**拒否は値として返し、エラーにしない**（業務上の結末として利用者へ返すため）。
