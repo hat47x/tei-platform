@@ -164,8 +164,8 @@ Target実行・実Effect・独立Observation
 
 ### 4.2 仕様の過剰一般化を拒否する最小反例
 
-1. **単一キーの見かけ上の成功**：受注明細の業務Identityが \`(受注番号, 明細番号)\` で、物理PKが \`order_line_id\` の場合、画面が物理1列で行を選択できてもBusiness identityは証明されない。逆に複合業務キーがあっても物理PKを複合化する必然はない。業務上の有効範囲、テナント、再採番、NULL、粒度をOwnerが定めるまでKey変換は候補。旧DriverのCHAR/VARCHAR挙動（X-01）を全Providerの比較規則にしない。X-02のFAMILY「Source形状として許容」もField pairの意味受理ではない。
-2. **状態列／汎用状態表の誤一般化**：受注の確定・取消は本体行の状態列と必要な監査記録が候補。組織所属の有効期間は複数所属・訂正・二時点を伴い得る。承認Workflowの並行Branch/再試行・代理はRun/Task別状態を要する場合がある。同じ\`status\`型でも意味・基数・時点・同時更新は違う。横断検索／Run実行管理の需要を証明する前にBuriのBURI_STATE群を全Domainへ転用せず、本体行への状態保持も万能と決めない。
+1. **単一キーの見かけ上の成功**：受注明細の業務Identityが `(受注番号, 明細番号)` で、物理PKが `order_line_id` の場合、画面が物理1列で行を選択できてもBusiness identityは証明されない。逆に複合業務キーがあっても物理PKを複合化する必然はない。業務上の有効範囲、テナント、再採番、NULL、粒度をOwnerが定めるまでKey変換は候補。旧DriverのCHAR/VARCHAR挙動（X-01）を全Providerの比較規則にしない。X-02のFAMILY「Source形状として許容」もField pairの意味受理ではない。
+2. **状態列／汎用状態表の誤一般化**：受注の確定・取消は本体行の状態列と必要な監査記録が候補。組織所属の有効期間は複数所属・訂正・二時点を伴い得る。承認Workflowの並行Branch/再試行・代理はRun/Task別状態を要する場合がある。同じ`status`型でも意味・基数・時点・同時更新は違う。横断検索／Run実行管理の需要を証明する前にBuriのBURI_STATE群を全Domainへ転用せず、本体行への状態保持も万能と決めない。
 3. **画面/SQLからCommitを決め付ける誤り**：旧XF選択画面で「取消」が表示される、SQL UPDATEに到達する、子Functionが正常終了する、Commit応答を受ける、別接続で更新値が見える、業務上完了する、はそれぞれ別Claim。X-01の局所H2実動で子の保存が親の未確定更新を確定する例があったが、TEIで暗黙commitを設計規則へ採用しない。Receiptがあっても独立Readが当該Commitを含む因果性や必要対象集合の全件完了を推定しない。
 4. **資料・実行フローの同一視**：人が電話確認するBusiness StepはRuntime WorkflowやFunctionなしでも業務意味がある。逆に内部Retry/補償処理はFunction/Procedure上の一Stepとは限らない。承認結果から実Capability Grantを直結せず[#2499](https://github.com/hat47x/tei-platform/issues/2499)/[#1174](https://github.com/hat47x/tei-platform/issues/1174)の既存Authority/Effect経路で実証する。
 
