@@ -2278,3 +2278,11 @@ Record R1の取扱OrgがL1で、PolicyがD1以下のcommand階層に限定する
 [Draft PR #2781](https://github.com/hat47x/tei-platform/pull/2781)のfixed HEAD `88f3e3e2e1a2352fa53625732f465fb2b8b07761`に対する[Actions #41632269936](https://github.com/hat47x/tei-platform/actions/runs/41632269936)は**completed/success**。Node v22.16.0、`verify.mjs`の**27 checks PASS**と`node --test`**235/235 PASS・fail 0**、新規VP-01〜30全成功、Source Blob `bdc4e63649fa3e728c8293fef55b43a0d278b1c1`をログから確認した。jobのexact-head照合／clean-before-afterもsuccess。本文§58.6の「V8局所のみ／Node未確認」はPR作成当時の履歴であり、現在の合成E0実測は本節で更新する。
 
 これは`org-synthetic-r7`を含む**Node合成Referenceのみ**の235件＋別27 checksである。前回の[Draft #2779](https://github.com/hat47x/tei-platform/pull/2779)は別HEAD・別ブランチなので、TS 20件をこの235件に上乗せして「同一Runで255件成功」としない。実TEI Plugin/Role Policy、物理RDB RLS・API/Host Enforcement・Directory、秘密情報・実Disclosure、改編Agent/Studio/SHO、Owner Rule受理は引き続き**NOT RUN/未受理**。重要なセキュリティ要件についてE0成功だけから安全性を主張しない。
+
+### 58.8 Scope/Axis/Policy版のHost Binding反例と最終E0実測
+
+[PR #2781](https://github.com/hat47x/tei-platform/pull/2781)へ、当初30件に**VP-31〜33の3件**を追加した。**同じPrincipalとRead actionでも、Host側に現在受理されているScope Root・Hierarchy Axis・発行時Policy Revisionが候補と異なれば、Policy Eligibleを実HostのRead/Update許可へ昇格しない**という境界を固定する。特に、利用者またはAIが設定D1をHへ拡張しただけで旧D1 Grantを流用しない、`command`のGrantを`budget`へ転用しない、Policy `p-r1`のBindingを`p-r2`の根拠にしない、の三反例である。これは旧Hostの認可機構を作り直す案ではなく、既存Host/Providerへ渡すBinding/Version Fenceの必要条件。
+
+固定HEAD `565a260403445556bb088f0433a53760fdcddda7`に対する[Node Actions #41632981999](https://github.com/hat47x/tei-platform/actions/runs/41632981999)は**completed/success**。ログ上のNode **v22.16.0**、`verify.mjs`**27 checks PASS**、`node --test`**238/238 PASS・fail 0**（VP-01〜33全成功）、Source Blob `9cb39f44a9eb55be51c3e56cc1cb19bbf16c4e8d`を確認した。exact-head/cleanもjob step success。§58.7の235件は**以前のHEADの履歴**であり、現HEADの資格は本節による。実Provider Enforcementや実Host Grantのテストを実施したものではない。
+
+**最優先の実製品負例**：一つのData recordが下位Orgに属し、Org Policyの範囲をD1→Hへ変更する操作、Role軸`command`→`budget`の変更、Owner Policy版変更の各場合に、同じ既表示RecordやCache/Query/Batchの旧Read Grantを使えないことを、当該Provider/Hostの**実施行点**で確認する。合成モデル中の`hostSimulation`は現在Grant実証ではない。#1119実DB/Effect/Ownerの優先を維持する。
