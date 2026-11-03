@@ -135,3 +135,31 @@ func TestRunEffectRejectsAnInTransactionRule(t *testing.T) {
 		t.Fatal("an effect the transaction covers must not be run as a late effect")
 	}
 }
+func compensationRules() []semantic.EffectRule {
+	return []semantic.EffectRule{
+		{ID: "sales.order.undo", OnCapability: "sales.order.submit", Stage: "compensation", EffectKind: "update", EffectData: "sales.stock", ViaCapability: "sales.stock.restore", OnFailure: "compensate"},
+		{ID: "sales.order.other", OnCapability: "sales.order.submit", Stage: "compensation", EffectKind: "update", EffectData: "sales.price", ViaCapability: "sales.price.restore", OnFailure: "compensate"},
+		{ID: "sales.order.late", OnCapability: "sales.order.submit", Stage: "after-commit", EffectKind: "update", EffectData: "sales.stock", ViaCapability: "sales.stock.decrement"},
+		{ID: "other.order.undo", OnCapability: "sales.other.submit", Stage: "compensation", EffectKind: "update", EffectData: "sales.stock", ViaCapability: "sales.stock.restore"},
+	}
+}
+
+func TestCompensationsForMatchesCapabilityAndData(t *testing.T) {
+	failed := lateRule()
+	compensations := execution.CompensationsFor(compensationRules(), failed)
+	if len(compensations) != 1 {
+		t.Fatalf("only the compensation for the same capability and data answers: %+v", compensations)
+	}
+	if compensations[0].ID != "sales.order.undo" {
+		t.Fatalf("unexpected compensation: %+v", compensations[0])
+	}
+}
+
+func TestNeedsCompensationFollowsTheRule(t *testing.T) {
+	if !execution.NeedsCompensation(semantic.EffectRule{OnFailure: "compensate"}) {
+		t.Fatal("a rule that asks for compensation must start one")
+	}
+	if execution.NeedsCompensation(semantic.EffectRule{OnFailure: "reject"}) {
+		t.Fatal("a rule that rejects must not start a compensation")
+	}
+}
