@@ -108,7 +108,9 @@ func (*uncertainCharacterizationTx) FindReceipt(context.Context, string) (effect
 func (*uncertainCharacterizationTx) WriteResource(_ context.Context, req effectcommit.Request) (uint64, error) {
 	return req.ExpectedVersion + 1, nil
 }
-func (*uncertainCharacterizationTx) SaveReceipt(context.Context, effectcommit.Receipt) error { return nil }
+func (*uncertainCharacterizationTx) SaveReceipt(context.Context, effectcommit.Receipt) error {
+	return nil
+}
 func (*uncertainCharacterizationTx) Commit(context.Context) error {
 	return errors.New("ack lost after commit request")
 }
