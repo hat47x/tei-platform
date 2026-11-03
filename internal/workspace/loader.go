@@ -534,6 +534,7 @@ func loadSemantics(root string, r *Result) error {
 		r.World.Semantics[idx].Capabilities = append(r.World.Semantics[idx].Capabilities, ns.Capabilities...)
 		r.World.Semantics[idx].Validations = append(r.World.Semantics[idx].Validations, ns.Validations...)
 		r.World.Semantics[idx].Periods = append(r.World.Semantics[idx].Periods, ns.Periods...)
+		r.World.Semantics[idx].EffectRules = append(r.World.Semantics[idx].EffectRules, ns.EffectRules...)
 		for _, typ := range ns.Types {
 			r.Sources["semantic-type:"+string(typ.ID)] = SourceLocation{File: relPath(root, path), Line: 1, Column: 1}
 		}
