@@ -370,3 +370,48 @@ else: SATISFIED
 **定義する必要があるOwner判断**：このValidationが`first`なのか全診断列挙なのか、順序によるエラー抑止を業務意味とするか、Flowの厳格Edgeとレベル再照合をどう使い分けるか、Schema/Query変更で再算定した値を過去業務状態の変化に読み替えてよいか、Workbookの編集をどのRole/Sourceへ書き戻すか。これらはAI比較の得点から自動採用しない。
 
 **今回の証拠状態**：上記コード・他レーンDraft・既存計画のread-only照合と本文追補のみ。Decision Table→実Parser/Rule、Excel/Studioからの実Source Writer、Import全閉包の確立、SQLGlot/Go/Provider一改訂、Flow/Job Effectは**本追補ではNOT RUN**。正式Syntax/Unicode Profile/新Schema/新Host/新Engine/Ownerの意味受理は**未決**。
+
+## 14. 実証の収束：P0aの限定PASSと一ScenarioからのCLI／Web検証（2026-11-03）
+
+### 14.1 実証の進展を未実証の範囲と併記する
+
+本計画の`13にあるP0aは、別Ownerの[Draft #2786](https://github.com/hat47x/tei-platform/pull/2786)で**限定された実Go試験として実行済み**となった。HEAD `af27e660ed12060dc77a6bd7e4964e4b3e32ce0d` の[GitHub Actions Repository Health #41641035468](https://github.com/hat47x/tei-platform/actions/runs/41641035468)はcompleted/success。P0aの合成WorkspaceはProvider P1→P2切替、Semantic Digest／Manifest／Provider raw bytes／Consumer Source Index、古いPinの拒否とstrict `ErrImportsNotBound`を独立Expectedに照合した。
+
+この限定PASSで分かるのは**現在のSource Indexが何を保証せずに停止するか**まで。Consumerに届く全Importの原Source byte／Manifest／Provider membershipを**同じ実Read attempt**として固定するP0bは依然として未実証。`13のP0a〜P3の概念上の手順を維持しつつ、**P0a試験を新たに作り直さず、その固定Headの証拠を入力として利用**する。Draft未mergeの試験をmainの製品合格へは転用しない。
+
+さらに[Macro/Command特性試験 Draft #2780](https://github.com/hat47x/tei-platform/pull/2780) のHEAD `d70a99131b5298f44b6edc739b723621d1679674` に対する[Focused Actions #41632377548](https://github.com/hat47x/tei-platform/actions/runs/41632377548)は、4件のGo Characterizationでcompleted/success。これは次の**望ましくない現行特性を観測したPASS**であり安全性の合格ではない。
+
+- MC-B01：選択Commandの`ORD-1`と明示Payload`ORD-2`の不一致が、合成書込み境界まで到達する。
+- MC-C01：内側`effectcommit`が合成Commitした後に外側`command.UnitOfWork`のCommitが失敗し、ひとつの原子的業務Commitとして説明できない。
+- MC-D01/D02：`committed`と`replayed`がCommand Resultで区別できない一方、応答不明の型付き原因はwrap後も`errors.As`で復元可能。新規保存とReplayを同じ利用者向け結果へ自動翻訳しない。
+
+上記を本計画`12の**未検証の仮説→限定的に実証された不安全な特性**へ更新する。ただし実DB/Host/Owner Target Binding/Studioからの同一Attemptは未実証であり、実装修正のOwnerは#1129/#1174/#2602。`14は新しいResult API、Operation Engine、Hostを定義しない。
+
+### 14.2 SourceとScenarioの二つのSSOTを混同しない
+
+[Issue #1180](https://github.com/hat47x/tei-platform/issues/1180)には、**Accepted Canonicalを業務意味の正本、独立保存したDriver Scenarioをシナリオテストの正本**とし、同じScenarioからCLI argv/stdin plan・Web/Desktop E2Eを派生させる既存方針がある。DSL構文比較用の一時的なFixtureを、別の永続的Scenario/Oracle正本にしない。
+
+最低限のテスト縦切りを**受注O1、明細、1 Validation、1 Derivation、1 Command、外部Import P1/P2、O2への誤Target**に限定する。状態の実永続効果は既存隔離Provider/Hostの資格が揃った時だけ測る。
+
+| 共通Driver Scenarioが持つ契約 | DSL側の比較・Coverage | 各実Targetが別に証明するもの |
+| --- | --- | --- |
+| Canonical/Scenario/Fixture/Independent ExpectedのIDとRevision、Language/Operator Pin | 低ノイズDSL／Markdown表／chainのSource span、構文診断、完全性、NULL、未取得、短絡、Rule Meaning差分 | 同じ業務対象/Ruleを本当にConsumerが読んだか。対象外Stepを省略した場合は失敗／unsupported |
+| 同一Subject O1・OrderID・Scope/Source Boundaries | Unicode local Symbol→ASCII Stable ID、論理名表示切替、同名/Confusableの別ID拒否 | CLI Input/argv、Web Form、Studio selectionの各BindingがO1を指し、O2を拒否するか |
+| Attribute Validation、Virtual Derivation、Flow candidate | Script/Decision Table/Graph/Studioは純粋Projection。Effectを字面や表示ラベルで作らない | RuntimeのBusiness Result/Execution Error、Target固有Login/Host Grant/Visual Errorは別 |
+| 明示的なSource Patch／No-op Save／Source revision | 元Markdown sugar、非対象byte、UTF-8 source offset、外部Import full closure不明の停止 | 実Reader/Writer/SourceIndexの同一改訂。GUI ScreenshotはVisual回帰の証拠であり業務意味の正本ではない |
+| OperationID/実Target/Payload/ExpectedVersion/Grant／独立Observation | 参照Executeの`Committed=true`、実Effect、SQL count>0、EKI Job終了を別に説明 | 実Provider/Receipt、初回Commit/Replay、部分Effect、実DB独立Read。CLI合格をWeb Host/認可合格へ流用しない |
+
+**Coverageを一つの数値へ潰さない**。少なくとも (1)構文/Operator/Rule分岐、(2)NULL/未取得/partial/曖昧なデータパターン、(3)Driver Scenario Step/Outcome/negative、(4)CLI/Web/Desktop等のRoute/Host、(5)実Effect/Observationの達成・未到達を**同じScenario上の異なる列**として扱う。未対応Step、Provider欠落、Security/Host Evidenceなしは`SKIP PASS`でなく`UNSUPPORTED`／`NOT RUN`／`UNVERIFIED`とする。初期は既存Test/Traceから派生列を計算し、全域Instrumentation/新Runner/第二Coverage DBを作らない。
+
+### 14.3 ここから先の最小差分と決定権
+
+| 順序 | 次に行うべきこと | 既存Owner／完了・停止の境界 |
+| --- | --- | --- |
+| **次1** | #2786 P0aの固定Go Expectedを再利用し、Source Index・Import・Manifest・actual Reader bytesの**未束縛P0b**を1つのConsumerで限定検証 | #2743/#1017/#1018。P0b実Read Cohort・closureがなければSource-completeを宣言しない |
+| **次2** | 同じ受注のScript⇄表について、短絡、NULL、未取得、negative、評価順序/Hit policyの**読み順と意味不変**をOwnerに比較票として提示 | #988/#2514/#2621。人間の被験者や仮想専門家は不要。AIは構文ノイズ/認知順序を説明、正式SyntaxはOwner判断 |
+| **次3** | そのScenarioを元にCLI read-only/参照実行の入力計画とWeb/Studioの参照Testを既存#1180の方法で導出し、Coverage Obligation差を記録 | #1180/#1124/#1824。CLI/Web業務Route同等とWeb固有Host/Visual資格を区別。生成器未実装なら設計だけで完了扱いしない |
+| **次4** | Target O1/O2・内外Transaction・Replay/Unknownの現行不安全Characterizationを、Owner承認後の**拒否Expected／実Receipt確認**へ接続 | #2602/#1129/#1174。#2780 PASSを安全性PASSと見なさず、新Host・第二Authorityを作らない |
+
+**Ownerに残す決定**：正式なDSL Grammar、Unicode識別子Profile、Decision TableのHit Policy/短絡、Business DataからのEvent生成条件、P0bのSource束縛方式（同一Provider Read vs immutable Bundle）、Scenario Generator/実Providerの実装順。元SourceのSource Fidelityは維持。性能上、検証を編集・Build・実行前Action境界へ分配し、純粋Operatorの毎回実行時に全Source Parse/外部依存再取得を要求しない（横断計画#2667 `25）。
+
+**今回の状態**：第14節は、既存Issue/PR・実Goコード・そのexact HEAD Actionsから取得できた事実の**設計上の再整理のみ**。Source/DSL/Scenario Generator/Studio/Web GUI/Unicode Lexer/実外部Provider/EKIの新しい試験はこのPRでは**NOT RUN**。正式文法・Owner意味受理・main統合は保留。
