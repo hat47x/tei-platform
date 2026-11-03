@@ -36,6 +36,8 @@
 
 通常の複合Web Targetの起動関数 `runCombinedWebTarget(ctx, reader, args)` は、Hostから渡された `sourceacceptance.Reader` を `LoadVerifiedWorkspace` に渡し、成功した **同じ `Loaded.World`** でProjectionとRunnerを構築します。Reader欠落、受理失効、Application不一致、管理対象ファイルの追加・欠落やbyte fingerprint不一致は、HTTP HandlerとRunnerの生成より前に拒否します。B/R/Tのラベルはこの照合の代わりになりません。Readerを渡した経路では診断フラグとの併用も拒否します。
 
+照合するSource Indexは、再読込みではなく **Load時に固定したバイト列** から作ります（#1017）。次の点に注意してください。importを宣言するWorkspaceは、取り込み元の内容をSource Indexで識別できないため、`SOURCE_WORKSPACE_IMPORTS_UNBOUND` で起動前に拒否します（束縛ではなく拒否です）。Workspaceのmanifest（`tei.workspace.yaml`など）はSource Indexに含まれず、受理記録は束縛しません。`VerifiedWorkspace.Manifest` はLoad時の証拠として公開するだけです。複数ファイルの原子的な読込みと、管理対象に入らなかったファイルの検出は保証しません。
+
 **現時点のCLIは正式なHost受理元へ未接続です。** フラグを省略した通常起動は `SOURCE_ACCEPTANCE_READER_REQUIRED` で終了します。`.tei/decisions/` の記録や呼出元JSONから受理権限を生成しません。以下の既存合成fixture手順には `-diagnostic-unaccepted-source` を明示し、起動ログに `SOURCE_ACCEPTANCE_NOT_VERIFIED` を残します。この診断経路は製品G1の証拠に数えません。
 
 `tei_order_only` / `tei_repair_only` と凍結Worldの別実行ファイルは既存の診断Referenceのままで、今回のReader注入経路の対象外です。これらも正式な受理済みSourceを検証したTargetとは扱いません。
