@@ -33,7 +33,7 @@ func twoConsumers(t *testing.T) (string, string, string) {
 	first := filepath.Join(base, "monitor")
 	second := filepath.Join(base, "audit")
 	writeSource(t, filepath.Join(provider, "tei.workspace.yaml"),
-		"workspace: provider\nsources:\n  - semantic\n")
+		"workspace: provider\nformatVersion: 1\nsources:\n  - semantic\n")
 	writeSource(t, filepath.Join(provider, "semantic", "process.tei"),
 		"namespace os\n\ntype ProcessId from std.identifier\n\ndata Process {\n    attribute id type os.process_id\n}\n")
 	for _, tc := range []struct {
@@ -43,7 +43,7 @@ func twoConsumers(t *testing.T) (string, string, string) {
 		{second, "audit", "namespace auditing\n\ndata Audit {\n    attribute pid type os.process_id\n}\n"},
 	} {
 		writeSource(t, filepath.Join(tc.root, "tei.workspace.yaml"),
-			"workspace: "+tc.name+"\nsources:\n  - semantic\nimports:\n  - alias: os\n    path: ../provider\n    namespace: os\n")
+			"workspace: "+tc.name+"\nformatVersion: 1\nsources:\n  - semantic\nimports:\n  - alias: os\n    path: ../provider\n    namespace: os\n")
 		writeSource(t, filepath.Join(tc.root, "semantic", "consumer.tei"), tc.body)
 	}
 	return first, second, provider
@@ -139,7 +139,7 @@ func TestTwoWorkspacesConsumeSameSelectedPluginBuildArtifact(t *testing.T) {
 		if len(path.Imports) != 1 || path.Imports[0].SemanticDigest != expected.SemanticDigest {
 			t.Fatalf("workspace import digest differs from selected built asset: %#v", path.Imports)
 		}
-		writeSource(t, filepath.Join(root, "tei.workspace.yaml"), "workspace: consumer\nsources:\n  - semantic\n")
+		writeSource(t, filepath.Join(root, "tei.workspace.yaml"), "workspace: consumer\nformatVersion: 1\nsources:\n  - semantic\n")
 		packaged, err := workspace.Load(root)
 		if err != nil {
 			t.Fatal(err)

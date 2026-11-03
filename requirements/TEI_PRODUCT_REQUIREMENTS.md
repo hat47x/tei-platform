@@ -66,6 +66,8 @@ TEIは、これらの資産を意味、機能、実現方法、入力元索引�
 
 反対に、logicalに一つのData Modelとして扱うことを、単一Databaseへの物理統合要件にはしません。法令、組織責任、可用性、性能、既存資産等による配置差をEnvironment Binding / Provider / Realizationとして表現できる必要があります。
 
+複数Database・Document Store・外部Serviceから組み立てた読み取り用Projectionが存在しても、その表示項目を自動的に更新可能とはみなしてはいけません。編集可能な項目については、正本の所有元、更新先・更新操作の意味、必要な版条件と保証を明示し、一意の逆変換が存在しない導出値・集約値・曖昧なRelationを勝手に書き戻さない必要があります。単一Databaseの標準CRUDは簡易な設定で成立し、複数Sourceの更新や移行にだけ必要な追加契約を要求できることとします。
+
 ## RQ-006 Desired / Actual / Diff / Unresolvedを分離できること
 
 Database等の外部状態について、望ましい状態、観測された状態、確定した差分、比較未確定を区別できなければなりません。
@@ -88,7 +90,15 @@ Database、Runtime、Target等の製品固有知識は、Provider / Adapter / Ca
 
 Capabilityごとにbuiltin、generated implementation、plugin、既存実装等をBindingでき、必要なCapabilityだけを置き換えられる構造を持つ必要があります。
 
-標準名前空間として`std.*`を予約し、Plugin / packageの名前衝突を避けられる必要があります。
+プラグインの利用に際して、Principal、Database、業務Semantic Model等の特定分野の概念を全構成へ必須導入してはいけません。汎用の値変換・バッチは必要な型と接続だけで構成でき、業務上の意味的同一性を主張するBindingではじめて正本となる意味参照の範囲・版・受理状態を確認できる必要があります。実行時の外部権限検査とは分離します。
+
+一つのComponent Typeから、設定・DataSource・対象Semantic Entity・利用範囲の異なる複数の論理Instanceを構成できなければなりません。固定パラメータ、正本へ追跡できる型付き項目・Relation参照、許された変換式、呼出しごとの値を区別し、名前や文字列表記の一致だけでBindingを確定してはいけません。実行時に変わる値を準備時の固定設定へ暗黙に混入させず、未解決・複数候補・版不一致は検査できる必要があります。
+
+Provider、型契約、意味参照、Instance設定、Bindingなどを変更するときは、影響を受けるConsumerと必要な再検証範囲を追跡できなければなりません。再検証不要と判断するには、その用途・Scopeで依存関係を十分に追跡できている根拠を必要とし、動的参照や依存情報の欠落を「影響なし」と扱ってはいけません。構成時の検査結果を現在の実行権限や永続データの整合保証へ流用しないものとします。
+
+TEI管理の予約名前空間は`tei.*`とし、標準契約を`tei.std.*`、実験候補を`tei.experimental.*`、寄稿・委任管理の拡張を`tei.contrib.*`に配置できなければなりません。外部・案件Pluginには別の管理名前空間を認め、名前の類似やプレフィックスだけでContract適合、公開Authority、実行権限を認めてはいけません。既存`std.*`等の識別子は自動改名せず、参照先・版・Lock・利用Consumerを照合した移行を必要とします。
+
+外部プラグイン公開では、名前の予約・発行主体の確認、ソースリポジトリの関連付け、リリース成果物の形式・内容Digest検証、Capabilityへの適合性、Consumerの採用・実行権限を別々の状態として追跡できる必要があります。配布物の発見・検証を、Acceptedな業務意味や現在の実行許可へ自動的に昇格させてはいけません。Registryが成果物を集中保管することや、名前が逆ドメイン形式であること、実行時のオンラインRegistry接続を必須としません。参照済みリリースの同一性・来歴・検査対象と未検証範囲はオフラインでも再確認できるようにします。
 
 生成物へ案件固有の実装を結び付ける場合は、その実装の所有者、対応する拡張点と契約の版、入出力、実行段階を追跡できる必要があります。再生成は案件側の実装を上書きせず、拡張点の廃止や互換性のない変更を、利用前の不適合として検出できなければなりません。生成物への直接編集も、上書きの前に検出し、保全または明示的な判断へ渡します。特定言語の継承やファイル配置の規則は要求しません。
 
@@ -97,6 +107,8 @@ Capabilityごとにbuiltin、generated implementation、plugin、既存実装等
 ユーザーID、パスワード、無効状態、有効期限、失敗回数、独自のロック、組織情報などを含む既存の認証仕様を、移行時にTEI標準へ変更することを必須にしてはいけません。
 
 認証・認可はCapability契約とMappingを通して既存構造へ接続でき、後から必要な単位で置き換えられる必要があります。
+
+Principal、Account、Tenant、Sessionなどの業務上・認証上の概念はTEI Coreの必須入力にせず、利用する機能が`tei.std.*`または案件側の契約として必要な場合にだけ導入できなければなりません。これらを要求しない最小バッチはIdentity Pluginなしで構成可能とします。これは実行環境のOS権限・隔離・外部能力の強制を省略する意味ではありません。
 
 ## RQ-010 人間向けの高密度な設計・運用認知環境を提供できること
 
@@ -146,6 +158,8 @@ Web、Desktop、Mobile、API、MCP、VUI等を、Coreへ個別実装を埋め込
 
 Targetごとの差はCapability negotiationやRuntime Binding等で明示し、Conformanceによって共通意味が保たれていることを確認します。
 
+TEI独自の共通Hostや共通Runtimeを生成物の必須依存としません。.NET / Java等の既存アプリケーションに組み込む部品と、必要な機能を包含する単独ネイティブ実行ファイルの双方を構成できる必要があります。認証認可、Capability、副作用制御、監査などは、各関心の契約と、対象環境で実際に責務を負う主体へ結び付けます。
+
 **業務機能の経路間完全性**: 同じAccepted Applicationと実行条件を扱うCLI、Web、Desktop、Mobile、API、MCP等の経路は、原則として全業務操作・Validation・認可・Outcome・副作用・Observationに同等に到達可能でなければなりません。CLIを業務機能の省略版とはせず、一経路のDriver/CLI Scenario群から業務定義全体を検証可能にします。経路間の差は入力・表示・通信・Host連携という実現方法に限定し、未実装の業務機能や「非対応表示」を同等性として扱いません。必要な実装能力が不足する場合は、同じ業務契約を満たす明示的・認可済み代替手段を使うか、実行・配備前に不適合／未解決として検出します。
 
 同じDriver ScenarioとAccepted revisionを基準に、CLIで検証した業務の操作・期待結果・観測をWeb等のTarget-specific E2Eへ導出できる必要があります。生成元の業務assertionは共通化し、Webの認証・session・CSRF・画面操作・Accessibility等のTarget固有テストは別途実行します。CLIの業務PASSだけでWeb E2EもPASSと宣言したり、未対応Scenarioを黙ってskipしたりしてはいけません。詳細境界と最初の実証は`plan/design/CROSS_ROUTE_FUNCTIONAL_PARITY_AND_TEST_DERIVATION.md`、#1180に置きます。
@@ -154,7 +168,7 @@ Targetが「何を表示・操作できるか」というTarget Capabilityと、
 
 Target / Hostがinspectionやdevelopment controlのために公開するMCP等のcontrol interfaceと、Application自身が業務上のPresentation / InteractionをMCP Targetとして公開する場合も区別できる必要があります。
 
-業務アプリケーションを利用者のAIへ公開する経路でも、同じ利用者・同じ受理済みの版・同じ実行条件で、認可、Validation、業務結果、実行エラー、Observationの意味を保つ必要があります。参照専用の公開では、更新を起こせる操作を公開せず、権限外の行・項目・集計も返してはいけません。利用者の権限と代理するAIの識別を追跡できる必要があります。更新を公開する場合の承認、再実行、結果不明の扱いは、既存の業務契約とHostの権限に従います。
+業務アプリケーションを利用者のAIへ公開する経路でも、同じ利用者・同じ受理済みの版・同じ実行条件で、認可、Validation、業務結果、実行エラー、Observationの意味を保つ必要があります。参照専用の公開では、更新を起こせる操作を公開せず、権限外の行・項目・集計も返してはいけません。利用者の権限と代理するAIの識別を追跡できる必要があります。更新を公開する場合の承認、再実行、結果不明の扱いは、既存の業務契約と、対象環境で実行権限・副作用を管理する主体の契約に従います。
 
 参照専用の経路を先に検証することは可能ですが、対象から外した更新操作を明示し、全業務操作の同等性を達成したとは扱いません。開発者向けMCPを必須にする要求でもありません。
 
@@ -256,11 +270,15 @@ secret、network endpoint、filesystem path等のHost materialをCanonical defin
 
 AI、Editor、generated code、automationも同じ権限・Resource境界を迂回してはいけません。AI actorであることや自律度が高いことから、write、Capability invocation、secret / network / filesystem access等のauthorityを暗黙に付与してはいけません。
 
+自律実行の範囲は、Hostが受理した宣言で明示します。宣言にない操作、判断が必要な操作、権限が不足する操作は人へ返し、自律度の高さから権限を補いません。
+
 ## RQ-020 再実行・takeover・unknownを安全に扱えること
 
 外部Runtimeの状態が不明なときに、同じ副作用を自動replayしてはいけません。
 
 ownership、fencing、durable handle、observation等を用いて、誰が現在の実行を調停する権限を持つかと、外部Runtimeがどのgenerationを受理したかを区別できる必要があります。
+
+再実行・takeoverの許可範囲も宣言し、許可されていない操作の自動再実行を拒否する試験を持つ必要があります。unknown outcomeを成功や取消として扱いません。
 
 ## RQ-021 ReferenceとConformanceで再現可能性を示すこと
 
@@ -269,6 +287,8 @@ ownership、fencing、durable handle、observation等を用いて、誰が現在
 異なるProviderやTargetを追加するときも、「動いた」という事実だけでなく、共通の意味境界を満たしているかを確認できる必要があります。
 
 Driver Scenarioを唯一のテストケース定義とする範囲では、再生成したCLIコマンド／各Target E2EがScenarioの操作・分岐・期待値・必要な観測を漏らさず保持しているかを、機械的なcoverage matrixと生成物の一致検査で示します。同じScenario revision／Generator version／Target Bindingから生成した成果物は再現可能であり、手修正された生成物や旧revisionの生成物はstaleとして検出できる必要があります。CLIでScenarioが実行可能と確認できることと、各Targetでの実E2E／認証／視覚・操作品質が確認できることは別のEvidenceです。
+
+構成・Build・実行の処理経路について完全性を主張する場合は、対象となるPhase、Target、実装・外部資源の信頼境界、宣言で捕捉できる依存や副作用の範囲を明示しなければなりません。Authoring上の宣言、解決・Loweringされた実行計画、実際に観測された処理・効果を区別し、未宣言の工程・依存・副作用が実行可能な場合は、その不在をGraphの表示だけから保証してはいけません。必要な工程・外部能力を制御できる境界では未宣言の操作を拒否し、それが検証できないProviderでは完全性を未確認として扱える必要があります。最小Batchに全用途共通のExecution Engineや業務Principalを強制してはいけません。
 
 AIが作成したProposalやgenerated artifactを採用した場合も、AIを介さずauthoritative sourceを再読込し、同じCanonical meaningとConformance結果を再現できる必要があります。
 
@@ -296,7 +316,7 @@ prerelease / experimentalなframework、AI evaluator、agent方式等を検証�
 
 Target / Driver / Providerごとに必要な性能条件を定義し、測定・Conformanceできる構造を持つ必要があります。
 
-Plugin / Semantic Extensionを増やしたこと自体を理由に、Targetの起動時間、初期転送量、常駐memory、storage footprint、network request数、resolver時間を無制限に増やしてはいけません。特に標準機能をExtensionとして提供する場合は、logicalな拡張単位と物理的なartifact / process / Wasm moduleの単位を分け、Targetごとに未使用実装の除外、共通runtimeの共有、artifact重複排除、static linking、lazy loading等を選べる必要があります。
+Plugin / Semantic Extensionを増やしたこと自体を理由に、Targetの起動時間、初期転送量、常駐memory、storage footprint、network request数、resolver時間を無制限に増やしてはいけません。特に標準機能をExtensionとして提供する場合は、logicalな拡張単位と物理的なartifact / process / Wasm moduleの単位を分け、Targetごとに未使用実装の除外、既存runtimeの利用、artifact重複排除、static linking、lazy loading等を選べる必要があります。
 
 性能最適化のために複数Extensionを一つのartifactへ統合しても、元のidentity、version、Lock、provenance、Authorityへ逆追跡できなければなりません。反対に、一つのExtensionを一つのprocessや一つのWasm moduleとして配布することを標準前提にしてはいけません。
 
@@ -401,6 +421,8 @@ AIエージェントは、少なくとも次を区別できなければなりま
 
 TEI成果物を読めること、Business Procedureを理解できること、AIのautonomy levelが高いことは、それだけでwrite / invoke / secret / network / external side effect authorityを与えません。
 
+AIは、自分が実行可能な操作と人間判断が必要な操作を区別し、後者を自動実行しません。実行可能な範囲の宣言は、権限の付与そのものではありません。
+
 Agentが行った業務もRQ-018〜RQ-020のCommand / Observation / Resource / retry / unknown境界を迂回してはいけません。
 
 ## RQ-031 特定のモデル体系をCoreで特権化しないこと
@@ -413,7 +435,7 @@ TEIは、Data Model、Function / Interaction、Business Procedure、UI、workflo
 
 標準機能として提供する意味体系にも、原則として第三者Extensionと同じidentity、dependency、conflict、discovery、Conformanceの契約を適用します。実装をbuiltinにすることは許容しますが、標準機能だけが利用できる別の意味追加経路を前提にしません。
 
-標準namespaceのauthorityも同じ原則に従って明示します。`std.*`等の予約namespaceは、最初に宣言したExtensionやload順によって所有権を得る仕組みにしてはいけません。標準機能が複数packageへ分かれる場合も、namespace ownerからの明示的な委譲や同等の契約で追跡できる必要があります。
+標準namespaceのauthorityも同じ原則に従って明示します。TEI管理の`tei.*`、その下の`tei.std.*`・`tei.experimental.*`・`tei.contrib.*`等の予約namespaceは、最初に宣言したExtensionやload順によって所有権を得る仕組みにしてはいけません。標準機能が複数packageへ分かれる場合も、namespace ownerからの明示的な委譲や同等の契約で追跡できる必要があります。正式なID構文、委任単位、既存`std.*`参照の移行方式は別途採用判断を要します。
 
 ## RQ-032 Plugin / DSLで意味論を宣言・合成できること
 

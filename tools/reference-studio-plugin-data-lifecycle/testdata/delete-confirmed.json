@@ -1,0 +1,25 @@
+{
+  "state": {
+    "pluginId": "p",
+    "areas": [
+      {"key": "a", "mapping": "confirmed", "owners": ["p"]},
+      {"key": "b", "mapping": "confirmed", "owners": ["p"], "referencedBy": ["q"]},
+      {"key": "c", "mapping": "shared", "owners": ["p", "r"]},
+      {"key": "d", "mapping": "unknown"}
+    ],
+    "files": [
+      {"path": "src/order.tei", "segments": [
+        {"key": "s1", "area": "a", "kind": "owned", "bytes": "A1"},
+        {"key": "s2", "kind": "unknown-attribute", "bytes": "<x-data q=\"z\"/>"},
+        {"key": "s3", "area": "a", "kind": "owned", "bytes": "A2"},
+        {"key": "s4", "kind": "extension", "bytes": "<ext:note/>"},
+        {"key": "s5", "area": "b", "kind": "owned", "bytes": "B1"}
+      ]},
+      {"path": "src/shared.tei", "segments": [
+        {"key": "s6", "area": "c", "kind": "shared", "bytes": "C1"},
+        {"key": "s7", "kind": "unknown-element", "bytes": "<mystery/>"}
+      ]}
+    ]
+  },
+  "request": {"action": "delete-data", "selectedAreas": ["a"]}
+}

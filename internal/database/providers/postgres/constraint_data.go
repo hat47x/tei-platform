@@ -26,6 +26,10 @@ const (
 	// table that already has one (#1803 P5). It additionally carries the
 	// observed constraint name and the foreign keys that depend on the old key.
 	ConstraintDataPrimaryKeyReplace ConstraintDataCheckKind = "primary-key-replace"
+	// ConstraintDataPrimaryKeyRemove removes the primary key of an existing
+	// table. It carries the observed name and the referencing foreign keys;
+	// removing a key that a foreign key depends on is refused, never cascaded.
+	ConstraintDataPrimaryKeyRemove ConstraintDataCheckKind = "primary-key-remove"
 	// ConstraintDataRenameConstraint renames a unique constraint or foreign key
 	// of an existing table whose declared name differs from the observed one
 	// (#1803). It carries no row counts: it records whether the observed name
@@ -126,9 +130,9 @@ type ConstraintDataReader interface {
 
 // existingTableConstraintAdditions returns the constraint additions in diff
 // that target a table not created by the same diff, as unobserved checks. A
-// primary-key change is an addition when the table has no primary key and a
-// replacement (P5) when it has one and keeps one; removing a primary key
-// altogether is not covered and is refused by the renderer.
+// primary-key change is an addition when the table has no primary key, a
+// replacement (P5) when it has one and keeps one, and a removal when the
+// desired key is empty and the table has one.
 func existingTableConstraintAdditions(diff schemadiff.Diff) ([]ConstraintDataCheck, error) {
 	created := createdTablesOf(diff)
 	var out []ConstraintDataCheck
@@ -153,7 +157,11 @@ func constraintAdditionCheck(change schemadiff.Change, created map[string]bool) 
 	switch change.Kind {
 	case schemadiff.ChangePrimaryKey:
 		if len(change.PrimaryKey) == 0 {
-			return ConstraintDataCheck{}, false, nil
+			if len(change.BeforePrimaryKey) == 0 {
+				return ConstraintDataCheck{}, false, fmt.Errorf("change-primary-key %s removes a primary key but names no current key", change.Table)
+			}
+			return ConstraintDataCheck{Kind: ConstraintDataPrimaryKeyRemove, Table: change.Table,
+				BeforeColumns: append([]string(nil), change.BeforePrimaryKey...)}, true, nil
 		}
 		if len(change.BeforePrimaryKey) != 0 {
 			return ConstraintDataCheck{Kind: ConstraintDataPrimaryKeyReplace, Table: change.Table,
@@ -238,6 +246,25 @@ func (p Provider) ObserveConstraintData(ctx context.Context, observation SchemaO
 			return observation, fmt.Errorf("%s %s: %w", check.Kind, check.Table, err)
 		}
 		switch check.Kind {
+		case ConstraintDataPrimaryKeyRemove:
+			identityReader, canRead := p.Catalog.(PrimaryKeyIdentityReader)
+			if !canRead {
+				check.Reason = "the catalog reader cannot read the existing primary key constraint"
+				continue
+			}
+			pk, err := identityReader.PrimaryKeyIdentity(ctx, table)
+			if err != nil {
+				check.Reason = "reading the existing primary key constraint failed: " + err.Error()
+				continue
+			}
+			if strings.TrimSpace(pk.Name) == "" || !slices.Equal(pk.Columns, check.BeforeColumns) {
+				check.Reason = fmt.Sprintf("the observed primary key (%s) differs from the diff's current key (%s)", strings.Join(pk.Columns, ", "), strings.Join(check.BeforeColumns, ", "))
+				continue
+			}
+			check.PrimaryKeyName = pk.Name
+			check.ReferencingForeignKeys = pk.ReferencingForeignKeys
+			check.Observed = true
+			continue
 		case ConstraintDataPrimaryKeyReplace:
 			identityReader, canRead := p.Catalog.(PrimaryKeyIdentityReader)
 			if !canRead {
@@ -425,6 +452,17 @@ func (o SchemaObservation) AssessConstraintDataReadiness(diff schemadiff.Diff) (
 					assessment.Reason = ConstraintDataReferencedByForeignKeys
 					assessment.Detail = "referenced by " + describeReferencingForeignKeys(check.ReferencingForeignKeys) + "; the primary key is not replaced"
 				}
+			} else if want.Kind == ConstraintDataPrimaryKeyRemove {
+				switch {
+				case strings.TrimSpace(check.PrimaryKeyName) == "":
+					assessment.Executable = false
+					assessment.Reason = ConstraintDataUnobserved
+					assessment.Detail = "the existing primary key constraint name was not observed; it is never assumed from the table name"
+				case len(check.ReferencingForeignKeys) > 0:
+					assessment.Executable = false
+					assessment.Reason = ConstraintDataReferencedByForeignKeys
+					assessment.Detail = "referenced by " + describeReferencingForeignKeys(check.ReferencingForeignKeys) + "; the primary key is not removed"
+				}
 			}
 		}
 		if assessment.Executable && (want.Kind == ConstraintDataPrimaryKey || want.Kind == ConstraintDataPrimaryKeyReplace) {
@@ -571,7 +609,7 @@ SELECT count(*)
 FROM pg_catalog.pg_constraint con
 JOIN pg_catalog.pg_class cls ON cls.oid = con.conrelid
 JOIN pg_catalog.pg_namespace ns ON ns.oid = cls.relnamespace
-WHERE ns.nspname = $1 AND cls.relname = $2 AND con.conname = $3 AND con.contype::text = $4`
+WHERE ns.nspname = $1 AND cls.relname = $2 AND con.conname = $3 AND con.contype::text = $4 AND con.conparentid = 0`
 
 // constraintNameOccupantQuery lists what holds the new name: a relation of the
 // schema (tables, indexes, the primary key's index, sequences, views) and a

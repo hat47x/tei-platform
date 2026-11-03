@@ -24,7 +24,7 @@ func readValidationReport(t *testing.T, b *bytes.Buffer) cliValidationReport {
 
 func TestValidateWorkspaceJSONValid(t *testing.T) {
 	root := t.TempDir()
-	writeWorkspaceFile(t, root, "tei.workspace.yaml", "workspace: valid\nsources:\n  - semantic\n")
+	writeWorkspaceFile(t, root, "tei.workspace.yaml", "workspace: valid\nformatVersion: 1\nsources:\n  - semantic\n")
 	writeWorkspaceFile(t, root, "semantic/sales/empty.tei", "namespace sales\n")
 	var out bytes.Buffer
 	code, err := validateWorkspaceJSON(&out, root)
@@ -39,7 +39,7 @@ func TestValidateWorkspaceJSONValid(t *testing.T) {
 
 func TestValidateWorkspaceJSONParseFailure(t *testing.T) {
 	root := t.TempDir()
-	writeWorkspaceFile(t, root, "tei.workspace.yaml", "workspace: bad\nsources:\n  - semantic\n")
+	writeWorkspaceFile(t, root, "tei.workspace.yaml", "workspace: bad\nformatVersion: 1\nsources:\n  - semantic\n")
 	writeWorkspaceFile(t, root, "semantic/sales/order.tei", "namespace sales\n\ndata Order {\n    attribute orderId type }\n}\n")
 	var out bytes.Buffer
 	code, err := validateWorkspaceJSON(&out, root)
@@ -60,7 +60,7 @@ func TestValidateWorkspaceJSONParseFailure(t *testing.T) {
 
 func TestValidateWorkspaceJSONSemanticFailure(t *testing.T) {
 	root := t.TempDir()
-	writeWorkspaceFile(t, root, "tei.workspace.yaml", "workspace: bad\nsources:\n  - applications\n")
+	writeWorkspaceFile(t, root, "tei.workspace.yaml", "workspace: bad\nformatVersion: 1\nsources:\n  - applications\n")
 	writeWorkspaceFile(t, root, "applications/order-entry/application.tei", `application order_entry {
     database sales {
         target sales_core
@@ -90,7 +90,7 @@ func TestValidateWorkspaceJSONSemanticFailure(t *testing.T) {
 
 func TestValidateWorkspaceJSONDuplicateHasDeclarationCandidates(t *testing.T) {
 	root := t.TempDir()
-	writeWorkspaceFile(t, root, "tei.workspace.yaml", "workspace: duplicate\nsources:\n  - semantic\n")
+	writeWorkspaceFile(t, root, "tei.workspace.yaml", "workspace: duplicate\nformatVersion: 1\nsources:\n  - semantic\n")
 	writeWorkspaceFile(t, root, "semantic/intake/request.tei", "namespace intake\ndata Request {\n    attribute status type std.code\n    attribute status type std.code\n}\n")
 	var out bytes.Buffer
 	code, err := validateWorkspaceJSON(&out, root)
@@ -115,7 +115,7 @@ func TestValidateWorkspaceJSONDuplicateHasDeclarationCandidates(t *testing.T) {
 
 func TestValidateWorkspaceJSONCrossKindDuplicateLabelsCandidates(t *testing.T) {
 	root := t.TempDir()
-	writeWorkspaceFile(t, root, "tei.workspace.yaml", "workspace: duplicate\nsources:\n  - semantic\n")
+	writeWorkspaceFile(t, root, "tei.workspace.yaml", "workspace: duplicate\nformatVersion: 1\nsources:\n  - semantic\n")
 	writeWorkspaceFile(t, root, "semantic/a.tei", "namespace intake\ntype Request from std.code\n")
 	writeWorkspaceFile(t, root, "semantic/b.tei", "namespace intake\ndata Request {}\n")
 	var out bytes.Buffer
@@ -134,13 +134,13 @@ func TestValidateWorkspaceJSONCrossKindDuplicateLabelsCandidates(t *testing.T) {
 	t.Fatal("cross-kind diagnostic missing")
 }
 
-func TestValidateWorkspaceJSONDuplicateWithRealImportHasNoPartialSources(t *testing.T) {
+func TestValidateWorkspaceJSONDuplicateWithUnrelatedImportKeepsLocalCandidates(t *testing.T) {
 	root := t.TempDir()
 	consumer := filepath.Join(root, "consumer")
-	writeWorkspaceFile(t, consumer, "tei.workspace.yaml", "workspace: consumer\nsources:\n  - semantic\nimports:\n  - alias: external\n    path: ../provider\n    namespace: external\n")
+	writeWorkspaceFile(t, consumer, "tei.workspace.yaml", "workspace: consumer\nformatVersion: 1\nsources:\n  - semantic\nimports:\n  - alias: external\n    path: ../provider\n    namespace: external\n")
 	writeWorkspaceFile(t, consumer, "semantic/request.tei", "namespace intake\ndata Request {\n attribute status type std.code\n attribute status type std.code\n}\n")
 	provider := filepath.Join(root, "provider")
-	writeWorkspaceFile(t, provider, "tei.workspace.yaml", "workspace: provider\nsources:\n  - semantic\n")
+	writeWorkspaceFile(t, provider, "tei.workspace.yaml", "workspace: provider\nformatVersion: 1\nsources:\n  - semantic\n")
 	writeWorkspaceFile(t, provider, "semantic/external.tei", "namespace external\ntype ExternalId from std.identifier\n")
 	var out bytes.Buffer
 	code, err := validateWorkspaceJSON(&out, consumer)
@@ -149,8 +149,11 @@ func TestValidateWorkspaceJSONDuplicateWithRealImportHasNoPartialSources(t *test
 	}
 	for _, item := range readValidationReport(t, &out).Diagnostics {
 		if item.Diagnostic.Code == "DUPLICATE_SEMANTIC_ELEMENT" {
-			if item.Diagnostic.Subject == nil || item.Diagnostic.Subject.ID != "intake.request.status" || len(item.Sources) != 0 {
-				t.Fatalf("incomplete candidates: %+v", item)
+			if item.Diagnostic.Subject == nil || item.Diagnostic.Subject.ID != "intake.request.status" ||
+				len(item.Sources) != 2 || len(item.UnresolvedSourceOrigins) != 0 ||
+				item.Sources[0].ArtifactPath != "semantic/request.tei" || item.Sources[0].Range.Start.Line != 3 ||
+				item.Sources[1].Range.Start.Line != 4 {
+				t.Fatalf("unrelated import erased local candidates: %+v", item)
 			}
 			return
 		}
@@ -158,10 +161,10 @@ func TestValidateWorkspaceJSONDuplicateWithRealImportHasNoPartialSources(t *test
 	t.Fatal("duplicate diagnostic missing")
 }
 
-func TestValidateWorkspaceJSONDuplicateWithPreludeHasNoPartialSources(t *testing.T) {
+func TestValidateWorkspaceJSONDuplicateWithPreludeMarksStandardUnknown(t *testing.T) {
 	root := t.TempDir()
-	writeWorkspaceFile(t, root, "tei.workspace.yaml", "workspace: prelude\nsources:\n  - semantic\n")
-	writeWorkspaceFile(t, root, "semantic/std.tei", "namespace std\ntype Code from std.text\ntype Code from std.text\n")
+	writeWorkspaceFile(t, root, "tei.workspace.yaml", "workspace: prelude\nformatVersion: 1\nsources:\n  - semantic\n")
+	writeWorkspaceFile(t, root, "semantic/std.tei", "namespace std\ntype code from std.text\n")
 	var out bytes.Buffer
 	code, err := validateWorkspaceJSON(&out, root)
 	if err != nil || code != 1 {
@@ -169,11 +172,15 @@ func TestValidateWorkspaceJSONDuplicateWithPreludeHasNoPartialSources(t *testing
 	}
 	count := 0
 	for _, item := range readValidationReport(t, &out).Diagnostics {
-		if item.Diagnostic.Code == "DUPLICATE_SEMANTIC_ELEMENT" && item.Diagnostic.Subject != nil && item.Diagnostic.Subject.ID == "std.code" {
-			count++
-			if len(item.Sources) != 0 {
-				t.Fatalf("prelude candidate set is incomplete: %+v", item)
-			}
+		if item.Diagnostic.Code != "DUPLICATE_SEMANTIC_ELEMENT" || item.Diagnostic.Subject == nil || item.Diagnostic.Subject.ID != "std.code" {
+			continue
+		}
+		count++
+		if len(item.Sources) != 1 || item.Sources[0].ArtifactPath != "semantic/std.tei" || item.Sources[0].Range.Start.Line != 2 {
+			t.Fatalf("local prelude candidate: %+v", item.Sources)
+		}
+		if len(item.UnresolvedSourceOrigins) != 1 || item.UnresolvedSourceOrigins[0] != "standard" {
+			t.Fatalf("standard origin was not marked unknown: %+v", item)
 		}
 	}
 	if count == 0 {
@@ -225,7 +232,7 @@ func TestValidateWorkspaceJSONFingerprintsMatchModelCatalog(t *testing.T) {
 
 func TestValidateWorkspaceJSONFingerprintsChangeWithContent(t *testing.T) {
 	root := t.TempDir()
-	writeWorkspaceFile(t, root, "tei.workspace.yaml", "workspace: valid\nsources:\n  - semantic\n")
+	writeWorkspaceFile(t, root, "tei.workspace.yaml", "workspace: valid\nformatVersion: 1\nsources:\n  - semantic\n")
 	writeWorkspaceFile(t, root, "semantic/sales/empty.tei", "namespace sales\n")
 	world1, source1 := validateFingerprints(t, root)
 	again1, againSource1 := validateFingerprints(t, root)
@@ -243,7 +250,7 @@ func TestValidateWorkspaceJSONFingerprintsChangeWithContent(t *testing.T) {
 // the fingerprints are omitted from the JSON instead of being empty strings.
 func TestValidateWorkspaceJSONOmitsFingerprintsWithoutVersion(t *testing.T) {
 	root := t.TempDir()
-	writeWorkspaceFile(t, root, "tei.workspace.yaml", "workspace: bad\nsources:\n  - semantic\n")
+	writeWorkspaceFile(t, root, "tei.workspace.yaml", "workspace: bad\nformatVersion: 1\nsources:\n  - semantic\n")
 	writeWorkspaceFile(t, root, "semantic/sales/order.tei", "namespace sales\n\ndata Order {\n    attribute orderId type }\n}\n")
 	for name, dir := range map[string]string{"parse": root, "load": filepath.Join(t.TempDir(), "missing")} {
 		var out bytes.Buffer
@@ -261,7 +268,7 @@ func TestValidateWorkspaceJSONOmitsFingerprintsWithoutVersion(t *testing.T) {
 // exits 0, so callers must use the exit code (or JSON ok), not stdout == "ok".
 func TestValidateWorkspaceWarningOnlyContract(t *testing.T) {
 	root := t.TempDir()
-	writeWorkspaceFile(t, root, "tei.workspace.yaml", "workspace: warn\nsources:\n  - releases\n")
+	writeWorkspaceFile(t, root, "tei.workspace.yaml", "workspace: warn\nformatVersion: 1\nsources:\n  - releases\n")
 	writeWorkspaceFile(t, root, "releases/applications/order-entry/1.0.0.tei", `application-release order_entry 1.0.0 {
     source-revision "warning-only"
 

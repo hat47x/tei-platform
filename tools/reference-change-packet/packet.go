@@ -14,6 +14,7 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"sort"
 	"strings"
 	"time"
@@ -56,6 +57,13 @@ type Packet struct {
 	StopConditions []string  `json:"stopConditions"`
 	Evidence       []string  `json:"evidence,omitempty"`
 	Notes          []string  `json:"notes,omitempty"`
+	// Unverified lists what this packet deliberately does not verify. It is
+	// copied to the receipt so a partial check is never read as a full one.
+	Unverified []string `json:"unverified,omitempty"`
+	// HumanJudgment lists the A4 reasons this change touches: meaning,
+	// authority, production, secrets, license, destructive-migration. A
+	// non-empty list requires level A4; A3 can never cover it.
+	HumanJudgment []string `json:"humanJudgment,omitempty"`
 }
 
 type Violation struct {
@@ -82,7 +90,17 @@ type Receipt struct {
 	Scope          []Violation `json:"scopeViolations,omitempty"`
 	Steps          []Step      `json:"steps"`
 	StopConditions []string    `json:"stopConditions,omitempty"`
+	Unverified     []string    `json:"unverified,omitempty"`
+	Environment    Environment `json:"environment"`
 	Passed         bool        `json:"passed"`
+}
+
+// Environment records where the verification actually ran. A result without the
+// environment is not reproducible and is not treated as portable evidence.
+type Environment struct {
+	GOOS      string `json:"goos"`
+	GOARCH    string `json:"goarch"`
+	GoVersion string `json:"goVersion"`
 }
 
 // Decode reads one packet and rejects unknown fields so a misspelled policy is
@@ -132,6 +150,25 @@ func normalizePatterns(values []string, label string) ([]string, error) {
 	return out, nil
 }
 
+var humanJudgmentReasons = map[string]bool{
+	"meaning": true, "authority": true, "production": true,
+	"secrets": true, "license": true, "destructive-migration": true,
+}
+
+// validateHumanJudgment keeps the A0-A4 boundary honest: a change that needs a
+// human decision can never be declared at A3 or below, where automation might
+// otherwise treat a passing scope check as permission to integrate.
+func validateHumanJudgment(packet Packet) error {
+	for _, reason := range packet.HumanJudgment {
+		if !humanJudgmentReasons[reason] {
+			return fmt.Errorf("humanJudgment %q must be one of meaning, authority, production, secrets, license, destructive-migration", reason)
+		}
+	}
+	if len(packet.HumanJudgment) > 0 && packet.Level != LevelA4 {
+		return fmt.Errorf("level %s cannot cover human-judgment changes %v; use A4", packet.Level, packet.HumanJudgment)
+	}
+	return nil
+}
 func Validate(packet Packet) error {
 	if packet.Schema != Schema {
 		return fmt.Errorf("schema %q is not %q", packet.Schema, Schema)
@@ -147,6 +184,9 @@ func Validate(packet Packet) error {
 	}
 	if !levels[packet.Level] {
 		return fmt.Errorf("level %q must be one of A0, A1, A2, A3, A4", packet.Level)
+	}
+	if err := validateHumanJudgment(packet); err != nil {
+		return err
 	}
 	if len(packet.AllowedPaths) == 0 {
 		return fmt.Errorf("allowedPaths must not be empty")
@@ -358,6 +398,8 @@ func Run(ctx context.Context, packet Packet, repo string) (Receipt, error) {
 		Schema: Schema, PacketID: packet.ID, Level: packet.Level,
 		Head: head, Base: packet.Base, Steps: []Step{},
 		StopConditions: append([]string(nil), packet.StopConditions...),
+		Unverified:     append([]string(nil), packet.Unverified...),
+		Environment:    Environment{GOOS: runtime.GOOS, GOARCH: runtime.GOARCH, GoVersion: runtime.Version()},
 	}
 	base := packet.Base
 	if base == "" {
