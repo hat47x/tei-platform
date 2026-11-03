@@ -948,6 +948,7 @@ PoC #2521が実装した範囲と、まだ実装していない範囲を分け�
 | Commandの参照実装（契約確認用） | 実装済み（業務副作用なし、Commit/Rollbackの記録のみ） |
 | 参照データ記憶域（MemoryStore） | 実装済み（create/update/delete、スナップショットによるRollback） |
 | 参照Storeの削除ポリシー実行 | 実装済み（restrict・cascade・preserve。行の対応付けは粗い参照実装） |
+| 参照Storeの必須属性検査 | 実装済み（create時、record commandのbinding経由） |
 | Commandの参照実行（CLI） | 実装済み（`view -command -execute`、業務副作用なし） |
 | Command計画の期間表示（D6.1） | 実装済み（効果Dataを統制する期間・状態・閉期間の拒否） |
 | 期間の閉塞によるCommand拒否 | 実装済み（`PeriodState`契約と参照実装） |
@@ -968,6 +969,7 @@ PoC #2521が実装した範囲と、まだ実装していない範囲を分け�
 | `reference/workspace`への宣言追加 | 未実施（受理経路が必要） |
 
 実装は、`internal/application/model.go`、`internal/syntax/application_pattern.go`、`internal/validation/application_pattern.go`、`internal/crossview/pattern_requirements.go`、`internal/applicationview`、`internal/semantic/model.go`、`internal/syntax/parser.go`、`internal/validation/validation.go`と、それぞれの試験です。
+
 
 
 
