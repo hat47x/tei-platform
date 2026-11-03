@@ -163,3 +163,78 @@ node --test reference/ui-customization/composition/resolve-ui-kit.test.mjs
 **Ownerの未決判断**：Studioと生成ApplicationのKit共有範囲、最初の実Framework/Native例、どのUI公開点を安定保証するか、互換変更時の要求Reviewとサポート期間、プロセス隔離に必要な具体的脅威モデル。ここでは新Issue/ADR・正式Policy・本番採用を行わない。
 
 関連担当：[#997](https://github.com/hat47x/tei-platform/issues/997)、[#1000](https://github.com/hat47x/tei-platform/issues/1000)、[#1824](https://github.com/hat47x/tei-platform/issues/1824)、[#259](https://github.com/hat47x/tei-platform/issues/259)、[#951](https://github.com/hat47x/tei-platform/issues/951)、[#1158](https://github.com/hat47x/tei-platform/issues/1158)、[#943](https://github.com/hat47x/tei-platform/issues/943)、[#2391](https://github.com/hat47x/tei-platform/issues/2391)。
+
+<!-- tei-ui-extension-crosslane-20261103-b -->
+## 2026-11-03 再深化：UI拡張の寿命・用途相対互換性・ビルド配置（計画追補／NOT RUN）
+
+この節は直前のUX-01〜07を置換せず、他レーンの **#1127/#2500/#2507/#2582/#2598（Context/Offer/Intent/失効）**、**#1130/#1167/#1182（Function起動と単一/複数Build）**、**#1174（実Effect）**、**#2391（外部UI制御のビルド時除去）**をUI-3/UI-5の**受入条件**へ具体的に接続する。新しい中央Registry/Host/Resolver、万能UI ABI、専用Build Engineは作らない。
+
+### 「拡張できる」と「更新できる」を同じ判定にしない
+
+互換性は利用目的と実証範囲を明示する **Claim** として扱う。公開Slotが存在する／型が同じ／親Kitのsemverが同じ／React buildがPASS、という個別事実から、Actionの意味同等性、現在Grant、WebView安全性、業務Commitの同等性を推論しない。
+
+| 変更と用途 | 静的に再利用できる候補 | 再確認が必要な境界 |
+| --- | --- | --- |
+| 親Kitの内部DOM・スタイル変更、公開Slot/Action契約は維持 | Slot identity/Bindingの旧比較結果（exact dependencyが不変である範囲のみ） | 実ブラウザのvisual/a11y/IME/focus/CSS、未公開DOMへの依存、描画performance |
+| Slotのmount順・life cycle・data props・旧Implementation ID変更 | 変更が及ばない別Slotの限定証拠 | 対象Extensionのdispose/再購読・状態再初期化、型だけでなく意味Role・grain・scope |
+| 同型データのMeaning/Rule/Context/Provider/取得範囲変更 | source不変な無関係RendererのBuild artifactなど | Offer/Intent適用条件、selection epoch、NULL/missing/withheld/partial、現在の実行先資格 |
+| Wails/Go Bridge/Serviceの版、Build Unit配置、Target Toolchain変更 | 受理済みBusiness Meaning自体（意味Sourceが不変の場合） | 静的リンク・bridge公開範囲・Dependency closure・IPC/HTTP経路・Artifact実物・OSごとの機能 |
+| 実行時のUser/Role/Policy/Resource/Source/対象版失効 | 変更前の履歴的な説明資料 | 現Request/Host Grant/Provider target/Expected-stateとEffectの独立Observation |
+
+**決定単位**は「Kit全体のPASS」ではなく `(Target, Slot/Extension, Context/Action use, artifact/build, environment)` に相対的な根拠付きの判断。結果は、明示根拠のある**再利用可能／再検証必要／衝突／不足・不明／非対応**を区別し、競合/不明を成功として自動昇格しない。これは既存のIssueで扱う更新診断の観点であり、新共通status enumではない。
+
+### 状態・非同期処理・再描画の寿命
+
+UIの編集・起動・保存には少なくとも次の異なる寿命がある。
+
+- **Renderer寿命**：mount→update→unmount、Event購読、Timer、Drag selection、focus/IME、破棄・再購読、複数pane/window。置換Kitは登録された購読・Resourceを解除し、旧Rendererから後着したイベントを新Instanceへ無条件適用しない。SUI Canvasの高頻度pointer/undoはNative側に保持する。
+- **Editing/Context寿命**：Function Context InstanceとResult Slice/取得Scope/epoch、未送信Draft・validation結果・unsaved edits。Kit更新はData Sourceへの保存でもDraft破棄の許可でもない。保存すべきDraftの所有と復元資格は既存Editing Session/Source側へ委譲し、Renderer内部local stateと区別する。
+- **Operation/Effect寿命**：Save Intent、送信済Request、応答喪失、Provider Commit、Receipt、独立Read/Observation。画面更新・再接続・二重click・timeoutで**副作用あるSubmitを再実行しない**。同期的なUI連打抑止は必要でも、Host側idempotency/現Grant/実Txの保証ではない。
+
+具体例：受注D1を編集中に親Kitを更新、非同期Read(D1旧epoch)の返答が後着し、利用者はD2へ選択変更済み。旧返答がD2の表示を上書きしたり、古い対象D1に`submit`を実行したりしてはならない。保存状態が「通信断で不明」のままUIが再起動した場合、前回の未確定Requestと新規Submitを区別し、既存Owner/Providerへの照会に進む。新たなReact固有の第二保存Engineを作らない。
+
+### UI配置と物理Build配置は別軸
+
+UIが **Function/Actionの論理Identity** を参照することと、その実装がどのGo binary/Browser asset/API/外部Workerへ入るかは別。#1130の単一Build既定・必要時だけ複数Build指定を採用候補として接続し、UI Extension側に`Function -> binary`の第二正本テーブルを作らない。
+
+```text
+Accepted Business Function / Action
+      |             └─ CLI / cron / Web / Desktop からの論理Entry（公開とGrantは別）
+      v
+Application Interaction Contract
+      |
+UI Kit: Web renderer / Wails renderer / custom component
+      |
+Target/Build Profile（単一Unit既定、必要な時のみsplit intent）
+      |                     |
+ Web UI assets          Desktop executable (Go+Wails)
+      |                     |
+ API/Provider Unit <----+   or external Worker when explicitly selected
+```
+
+- 単一Buildの時点では利用者に全Functionの配属を入力させず、既存Composition/Builderの導出表で表示する。複数Buildへ分割するときだけ、既存Function IDと必要Entry/Target/配置Intentを管理する。Functionの業務所属・Meaning・Ruleは変えない。
+- Webフロントの静的資産にDesktopのGo Service、DB Provider、秘密、Editor/テスト専用MCPを混入させない。ビルドに含むことと、起動入口を公開することと、現Grantと、Effect確定は四つの別事実。
+- UI Kitをv2へ上げてもAPI Unitがv1のままという**混在配備**や、ブラウザキャッシュの旧JSが新APIを呼ぶ経路を、単一のApplication model revisionで隠さない。UI asset/API/desktop buildそれぞれの実物・契約世代を照合し、不適合なら実Operationを停止し、旧配備の利用可能性は配備側で判断する。
+- 調整対象は増分Buildの依存閉包（#943/#2600）と既存Function→Build/Entry計画（#1130）。UI配属変更だけでAccepted Meaningを改訂したことにしない。別Unitを横断する同一Transactionは自動成立しない。
+
+### Trust Boundary：Kit Slotはサンドボックスではない
+
+案件が信頼して静的合成したReact/TS/Goコードであっても、**任意JSを同じWebViewへ導入すると同じOrigin/Bridgeの権限を共有する恐れ**がある。manifestに`required capability`と記したことはOS権限強制ではない。信頼できないExtensionは単純なSlotへの挿入を許す設計にせず、必要な場合は実Origin/iframe/IPC/process isolationと公開Methodの絞込みをTarget別に実証する。WailsのBridgeや開発MCPに任意JS実行・Go直呼出しが残れば、UIからのAction delegationだけでは迂回防止にならない。外部制御Test/DevelopmentとProduction artifactの差は#2391で物理除去を独立判定。
+
+### 実証ケース（UX-01〜07へ追加、独立Expectedは#1180を再利用）
+
+| ID | 比較・負例 | 拒否／観測条件とOwner |
+| --- | --- | --- |
+| UX-08 | Kit更新/複数pane、旧epochのRead/Event/購読が後着 | 古いRendererが新Context/Draftを上書きしない。cleanup/focus/IME/a11yも検証。#1000/#1824 |
+| UX-09 | 単一Go binary→画面/Jobを分離、同じFunction IDをWeb/cronから呼ぶ | Business Meaning不変、依存閉包・Artifactと論理Entry/公開Route/現在Grant別証拠。#1130/#1167/#1182 |
+| UX-10 | Web asset v2 / API v1、旧JS cacheと新API、Desktop別v1、Slot contractのみ一致 | 混在配備の不適合を診断。UI配置が同じでもRequest/Result/Failure/unknownを失わない。#259/#1182 |
+| UX-11 | 外部HTML/不正ExtensionがWails Bridge・試験MCPへ到達 | 実的に未公開／到達不可か検証。依存/Asset/公開Methodの監査。Production制御面の物理除去。#1824/#2391 |
+| UX-12 | 二重Submit、timeout/ACK喪失中のUI再起動、旧Requestの再送 | フロント同期排他とHost冪等性/Receiptは別。未知Commitを失敗や成功へ丸めず自動再Submitしない。#1000/#1174 |
+| UX-13 | Role/Provider/Source Scopeの変更、0→1→0件のABA、Contextはpartial | 旧Offerの実行資格・不存在推論を再利用しない。無関係Slotは過剰失効させない。#2507/#2582/#2598 |
+| UX-14 | 親Kitは同version・違うSource digest、または拡張PluginとToolchain版だけ更新 | Lock/source fingerprint/actual loaded artifactの不一致で更新を保留。Semverや成功した旧Buildの証拠を転用しない。#943/#951/#997 |
+
+**最小進行（既存Issueの段階を維持）**：P0（read-only差分・依存・Failure票）→ P1（#1000の実React Form＋案件Panel、UX-01/02/08/12）→ P2（同一Headless ActionのOffer/Intent/独立Expected、UX-03/13）→ P3（#1824の実Wailsと #259 の生成Desktopを**別成果物**で、UX-04/11）→ P4（#1130の単一/複数BuildとBrowser/API別配備、UX-09/10/14）。#993 Nativeは別の独立Pressureとして扱う。最初のP0/P1で新UI kind/Extension ABI/Service APIの正式化を求めない。
+
+**測定する値**：同一Scenario/Target固定下の案件固有変更行・変更ファイル数、手動追従回数、AI指示量・追加質問数、実UI/実Actionの修正工数、増分Build対象数・時間、Artifact byte・起動負荷、Listener/Bridge公開面、未許可・不適合の拒否と誤った自動再実行の件数。数値閾値や性能改善は実測後に判断。P0机上照合、Node合成PASS、Go局所PASS、実Browser/WebView E2E、実Provider Effect/Receipt、Owner意味受理を**別Evidence**として記録する。
+
+**判断保留**：UI拡張の長期安定公開点をどこまで約束するか、Render-state移行の製品保証、Kit更新時の利用中Sessionの扱い、Untrusted addonの許容範囲、生成DesktopとStudioの共有Kitの範囲。上流が壊れないと宣言しただけで自動更新を採用しない。
