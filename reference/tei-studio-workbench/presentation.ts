@@ -5,6 +5,7 @@ export type Entry = {
   parent?: Subject;
   symbol?: string;
   sourceStatus: string;
+  ambiguous: boolean;
 };
 export type Finding = {
   id: string;
@@ -147,17 +148,24 @@ export function readCatalog(raw: unknown): Catalog {
     typeof v.sourceIndexFingerprint !== "string"
   )
     throw Error("INVALID_CATALOG_RESPONSE");
-  const seen = new Set<string>();
+  const seen = new Map<string, boolean>();
   const entries = v.entries.map((rawEntry) => {
     const e = record(rawEntry),
       s = subject(e.subject),
       key = subjectKey(s);
-    if (seen.has(key) || typeof e.sourceStatus !== "string")
+    if (typeof e.sourceStatus !== "string" ||
+        (e.ambiguous !== undefined && typeof e.ambiguous !== "boolean"))
       throw Error("INVALID_CATALOG_ENTRY");
-    seen.add(key);
+    const ambiguous = e.ambiguous === true;
+    // The Go Catalog keeps global ambiguity even for a filtered single row.
+    // Duplicates are displayable only when every occurrence is flagged.
+    if (seen.has(key) && (!seen.get(key) || !ambiguous))
+      throw Error("INVALID_CATALOG_ENTRY");
+    seen.set(key, ambiguous);
     return {
       subject: s,
       sourceStatus: e.sourceStatus,
+      ambiguous,
       ...(e.parent === undefined ? {} : { parent: subject(e.parent) }),
       ...(typeof e.symbol === "string" ? { symbol: e.symbol } : {}),
     };
@@ -169,6 +177,18 @@ export function readCatalog(raw: unknown): Catalog {
     sourceIndexFingerprint: v.sourceIndexFingerprint,
   };
 }
+/** Read-only eligibility, not Source location, editability, or Acceptance. */
+export function inspectEligibility(catalog: Catalog | null, selected: Subject) {
+  if (!catalog) return { ok: false as const, reason: "CATALOG_UNAVAILABLE" };
+  const matches = catalog.entries.filter((entry) =>
+    subjectKey(entry.subject) === subjectKey(selected));
+  if (matches.length === 0)
+    return { ok: false as const, reason: "SUBJECT_NOT_FOUND" };
+  if (matches.length !== 1 || matches[0].ambiguous)
+    return { ok: false as const, reason: "SUBJECT_AMBIGUOUS" };
+  return { ok: true as const };
+}
+
 export function readValidation(raw: unknown): Finding[] {
   const v = record(raw);
   if (

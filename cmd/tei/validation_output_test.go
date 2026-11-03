@@ -10,7 +10,7 @@ import (
 
 func TestValidateWorkspacePrintsParseErrorAtSourceRange(t *testing.T) {
 	root := t.TempDir()
-	writeWorkspaceFile(t, root, "tei.workspace.yaml", "workspace: parse_diagnostic\nsources:\n  - semantic\n")
+	writeWorkspaceFile(t, root, "tei.workspace.yaml", "workspace: parse_diagnostic\nformatVersion: 1\nsources:\n  - semantic\n")
 	writeWorkspaceFile(t, root, "semantic/sales/order.tei", `namespace sales
 
 data Order {
@@ -34,7 +34,7 @@ data Order {
 
 func TestValidateWorkspaceProjectsSemanticDiagnosticToDefinition(t *testing.T) {
 	root := t.TempDir()
-	writeWorkspaceFile(t, root, "tei.workspace.yaml", "workspace: semantic_diagnostic\nsources:\n  - applications\n")
+	writeWorkspaceFile(t, root, "tei.workspace.yaml", "workspace: semantic_diagnostic\nformatVersion: 1\nsources:\n  - applications\n")
 	writeWorkspaceFile(t, root, "applications/order-entry/application.tei", `application order_entry {
     database sales {
         target sales_core
@@ -59,7 +59,7 @@ func TestValidateWorkspaceProjectsSemanticDiagnosticToDefinition(t *testing.T) {
 
 func TestValidateWorkspaceTextDoesNotSelectOneDuplicateCandidate(t *testing.T) {
 	root := t.TempDir()
-	writeWorkspaceFile(t, root, "tei.workspace.yaml", "workspace: duplicate\nsources:\n  - semantic\n")
+	writeWorkspaceFile(t, root, "tei.workspace.yaml", "workspace: duplicate\nformatVersion: 1\nsources:\n  - semantic\n")
 	writeWorkspaceFile(t, root, "semantic/intake/request.tei", "namespace intake\ndata Request {\n attribute status type std.code\n attribute status type std.code\n}\n")
 	var out bytes.Buffer
 	code, err := validateWorkspace(&out, root)
@@ -73,7 +73,7 @@ func TestValidateWorkspaceTextDoesNotSelectOneDuplicateCandidate(t *testing.T) {
 
 func TestValidateWorkspaceKeepsOkForValidSource(t *testing.T) {
 	root := t.TempDir()
-	writeWorkspaceFile(t, root, "tei.workspace.yaml", "workspace: valid\nsources:\n  - semantic\n")
+	writeWorkspaceFile(t, root, "tei.workspace.yaml", "workspace: valid\nformatVersion: 1\nsources:\n  - semantic\n")
 	writeWorkspaceFile(t, root, "semantic/sales/empty.tei", "namespace sales\n")
 
 	var out bytes.Buffer

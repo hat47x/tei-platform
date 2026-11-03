@@ -1,4 +1,5 @@
 workspace: tei_reference
+formatVersion: 1
 sources:
   - plugins
   - bundles
