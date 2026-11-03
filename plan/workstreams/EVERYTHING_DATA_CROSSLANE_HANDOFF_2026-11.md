@@ -1161,6 +1161,53 @@ CheckSetは**原則read-only**。RepairのSQL/CommandはFindingの副作用と�
 
 **責務**：#2622がRule/Provider Read、#2514がOracle/Claim、#1130が非画面Batch、#2386/#1129が業務時点・状態、#2582/#2600が増分閉包、#1174がRepair/Commit、#2544がLean Law、§35〜36/EKI #19/#57が実行資源・期限/Recovery。旧§27 Q0〜Q4と既存Owner/Gateは維持。新Core Kind・Quality Registry・中央例外テーブル・自動Repair/Policy Engine・TEI Host・正式ADR/DSLを決定しない。
 
+
+### 27.7 広域品質監査のRead権限・実取得・外部開示――全件・増分・標本の保証を分ける（2026-11-03横断追補）
+
+> **設計・受入票／実Provider・Policy・監査Job・性能試験はNOT RUN。** §27.6のCoverage Debtと§37のOrganization由来Record Policy（Draft #2781、合成VP-01〜33）、#2622のDeclared/Actual/Disclosed、#2628の実取得Witness、#2516の用途別開示を接続。中央Policy/品質Registry・TEI Host・第二の意味正本は作らない。
+
+**同一Ruleでも、検査対象の母集団・監査主体が読取可能な母集団・実際に取得したデータ・開示可能な結果は別**。監査目的を理由にHost/ProviderのGrantを拡張しない。§37のRecord Policy例外も、他Policyを迂回する実Grantではなく、品質Ruleの適用除外を意味するわけでもない。
+
+| Footprint | 必要な束縛 | 禁止推論 |
+| --- | --- | --- |
+| **Required Population** | Owner受理RuleのSubject/適用期間/Relation/粒度/対象Tenant/必要Field/Rule版 | DDL上のKeyや画面一覧から全社Ruleの対象集合を推測する |
+| **Authorized Read Scope** | 実Principal・委任・Host Grant・Policy版・Tenant・Provider Enforcement・時点 | Modelに監査Ruleがあるので他Tenantも読める、例外=Allow |
+| **Actual Acquired Scope** | 実SQL/API、RLS通過後のRow/Field、Reader route、Read Cohort、Snapshot/LSN、完全性Witness | SELECT allで全件取得したはず、出力0件=母集団空、マスクしたFieldは実際には読んでいない |
+| **Permitted Disclosure Scope** | 監査Owner/運用担当/Studio/SHO/AI/外部Consumerごとの現行開示Policyと実送出 | 内部Read成功は全Consumerへの公開許可、匿名化した件数や時刻からは漏れない |
+
+Requiredが全社、Authorized/ActualがTenant A限定なら「Tenant Aの対象内では違反未観測」と「Tenant Bは未検証/非開示」を分け、全社品質PASSへ昇格しない。未検証Tenantの存在・件数をどこまで公開できるかも現行開示Policyに依存する。強権限監査ユーザー・RLS bypass・Tenant横断の一元収集は自動生成しない。
+
+**実現候補**：①Tenant/Policy Ownerが許可したScopeごとにread-only CheckSetを実行、②現行Policyが許す品質メタデータだけを合成、③跨Tenant一意性・相互Relation等の全体制約に限り、必要な横断Grantや安全な比較方式を別途受理する。局所PASSの合算では、各Tenantにまたがる外部ID衝突や関係違反を発見できない。EKI Task/Lease・Workerの配置はデータRead Grantを発行しない。別Nodeへの再配置・retry時もHost/Providerの現在資格を再確認する。
+
+**全件・増分・重点・標本を混同しない**：
+
+| 実施方式 | 費用最適化の候補 | 許される品質Claim |
+| --- | --- | --- |
+| **Complete Scan** | 固定Snapshot/対象閉包/一貫した実Provider Readで全件検査 | 指定Rule×時点×Scopeでの違反/違反未観測。RequiredとActualの一致がなければ全社PASSでない |
+| **Incremental Scan** | 前回Full Scan＋欠落のない変更ログ・挿入/削除・否定依存・旧/new Relation・Rule/Policy版の再資格化 | 証明された閉包に限り前回Claimを継承。CDC Gap/Policy変更により閉包不明ならFull/Unknown |
+| **Targeted or Stratified Scan** | 既知異常・重要な変更・高リスク期間の優先検査 | 重点対象内のみの事実。未検査層はCoverage Debtのまま |
+| **Statistical Sampling** | 費用を下げて兆候を観測。母集団・抽出方式・選択確率・重複/偏りを記録 | 標本内の観測値と、明示された統計仮定に限定した推定。標本で違反0件を全件の論理的証明としない |
+
+例えば全10万件中1000件の標本が無異常でも、対象全件を検証した意味にはならない。統計的な信頼度や閾値はOwner/統計設計者が事前に設定した前提に従い、実測や抽出設計なしにAIが補完しない。必須Online Guardは標本Scanで置換しない。
+
+**版・鮮度・現在資格**：FindingはRule/Subject、actual Read Scope/Snapshot、対象Occurrence、診断kind、Policy/Provider/Source revisionへ束縛する。Dataset byteが不変でも、Policy root/axis/revision、現在Grant、開示対象、Replica replay、抽出設計の変更で古いCoverageと開示資格を再判定する。A→B→Aでは過去Receiptを保持しても旧Grantを復活させない。現在AI/SHOへ結果を出す際は、診断文面、件数、Source span、error/timingも含め現行Disclosureを照合する。
+
+**§27.5〜27.6／§37／#2628の既存反例に差し込む追加差分（新Runnerなし）**：
+
+| ID | 入力と反例 | Expected/停止条件 |
+| --- | --- | --- |
+| QDS-01 | 全社Rule、Tenant AだけRLSで取得可・Aに違反0・B未取得 | A限定PASSと全社Coverage Debt。BへのRead Grantを自動発行しない |
+| QDS-02 | 秘密FieldをProviderで過大取得し出力で伏字／必要Fieldを未取得 | 出力非表示と物理未取得を区別。missing/withheldをNULL・合格にしない |
+| QDS-03 | Record Policyのroot/axis/revisionだけ変化、業務Data/Ruleは同byte | 旧Host Grantと旧全件Coverageを無条件再利用しない |
+| QDS-04 | Tenant A/Bがそれぞれ正常、共通外部IDの衝突がTenant間に存在 | 局所PASSから横断一意性/整合性のPASSを推論しない |
+| QDS-05 | 10万件のうち1000件を抽出し0違反、未抽出側に違反 | sample passをcomplete passにしない、仮定なしの信頼度を創作しない |
+| QDS-06 | CDC Gap＋古いReplica＋EKI再Attempt＋Consumer Policy変更 | 増分のFull同等性や最新Primary/AI Disclosure資格を無条件継承しない |
+
+**小さな二領域の縦断**：受注・明細ではTenant/Field RLSがQuality Claimを狭める例、組織Membershipではvalid/known時点・Record Policy変更が実ReadとDisclosureを変える例を使う。各々同じAccepted Rule/Operator/実Target版に対し、宣言Read・実SQL/API・Providerからの実Row/Field取得・品質Claim・Consumerへ出たbyteを一Attemptで区別する。#2628の人工Read WitnessやDraft #2781のNode試験を実RLS保証に昇格しない。Go/SQL/Lean/Replica/EKI/実Host/Studio/SHO/AIの新しい製品E2Eは未実施。
+
+**責務**：#2622/#2628＝Data Context/Provider Real Read、§37/#2386/#2781＝Organization Policy、#2516/#2515＝用途別開示、#2514＝独立Expected/Claim Coverage、#1130＝読取専用Batch、#2582/#2600＝差分・再資格、#1174＝現在Authority/Effect、§35〜36/EKI＝配置/期限/回復。新しい監査専用万能Grant、Policy Engine、Quality Registry、Schedulerや正式Schema/ADRを採用しない。
+
+
 ## 28. 一改訂のValue／Flow／Job／Consumer縦断――参照実行と外部実行を混同しない（2026-11-03横断追補）
 
 ### 28.1 並行する三つのOwner計画を、別の正本を作らずにつなぐ
