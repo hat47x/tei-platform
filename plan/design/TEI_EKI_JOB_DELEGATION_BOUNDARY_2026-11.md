@@ -211,6 +211,14 @@ EKIが停止してもTEIのData Model／純粋Derivation／ローカルValidatio
 
 特に現在のEKI[#354](https://github.com/hat47x/eki-fabric/issues/354)は同時Attemptの**合計予約**、[#118](https://github.com/hat47x/eki-fabric/issues/118)はCPU/GPU/NPU等の観測可能性、[#123](https://github.com/hat47x/eki-fabric/issues/123)は安全なAgent更新、[#124](https://github.com/hat47x/eki-fabric/issues/124)は端末利用者への提供履歴と説明を課題としている。これらをTEI Simulationの独立Expected／危険な操作のPreview・停止条件へ接続するが、未実装のEKI管理API／状態変化をTEI画面が提供済みとはしない。
 
+### 8.7 TEI Applicationの「EKIへLaunch」は実行Hostの新設ではなくDeployment Broker候補（2026-11-03）
+
+[Cloud Control＋On-prem/小型Edge FabricへのTEI Application Launch設計](TEI_EKI_APPLICATION_DEPLOYMENT_FABRIC_2026-11.md)を追補。EKIの既存[Orchestrator調査§7.3](https://github.com/hat47x/eki-fabric/blob/main/research/integration/orchestrator-integration-and-layering.md)は、TEI生成の**常駐業務Application本体をEKIが直接運用することを対象外**としつつ、配置先の選択とEvidence記録を未決の候補としている。今回の「EKIがLaunch Target」を**Logical Deployment/Placement Broker + Management Console**として試作するのはこの制約と両立するが、EKIの正式なPaaS Hosting APIが採用済みという意味ではない。
+
+TEIのApplication Composition/Artifactから`Release/Deployment Intent`を導出し、EKIのAdmin/Provider Selectionを経て、**実際のWeb/API常駐・Ingress・Autoscale・DB/SLOは選ばれたCloud/On-prem Hostの責務**とする。EKIへのSubmit成功、下位ProviderのResource作成、Actual Service Readiness、TEI Business Outcomeを別証拠へ束縛する。EKI自体が生成ApplicationのHost/Reverse Proxy/DBを引き受けない。公開Client HTTPやbulk ArtifactをEKI Controlに余分に通さず、同一Cloudへの直接Deployとの費用・遅延・障害依存の比較を必須にする。
+
+Workerにはoutbound-firstの社内PC/ARM64 Raspberry Pi/On-prem資源Poolも候補だが、**低信頼・端末利用者優先／断続的な資源**にStateful ServiceのAvailabilityを委ねない。小型Linux WorkerのOS/arch/RAM/Sandbox/Executor digestの適合、Agent enrollment/revoke、Node/Data/Trust/Lease Authority、Site Cache/Network費用を検証する。厳しいSLOはCloud/Managed Host、再実行可能な補助TaskはEKIが配分、というHybridの具体Caseから開始する。
+
 ## 9. 設計判断のGate、実装順、Issue追補候補
 
 - **G0／今回の設計比較**：EKI ADR-0013・一方向依存・native-first kernel とTEI no-custom-Host/Plugin-firstを保持し、上記二層案を未採用の候補とする。TEI Draft PRへの資料追加だけで、EKIのRequirements/ADR/Mainは書換えない。
