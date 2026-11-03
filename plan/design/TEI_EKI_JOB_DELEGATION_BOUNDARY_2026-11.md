@@ -2,7 +2,7 @@
 
 - 日付：2026-11-03
 - 状態：**設計提案（Decision待ち／実装・実行検証なし）**。EKIの公開API変更、TEI Plugin SPI変更、ジョブエンジン実装、相互依存の採用済みADRを意味しない。
-- 目的：TEIのData Model／Data Script（項目Validation・仮想導出・更新時Rule）→Flow／Capabilityから、EKIを**ジョブ管理が必要な構成の第一候補となる実行・資源調停・結果検証Provider**として委任できるかを検討する。EKI自身のControl/Application PlaneはTEIのローコード能力を活用し得るが、EKI Kernelの権限正本と停止・復旧をTEIへ移譲しない。
+- 目的：TEIのData Model／Data Script（項目Validation・仮想導出・更新時Rule）→Flow／Capabilityから、EKIを**必要時に選択できる実行・資源調停・結果検証Provider**として委任できるかを検討する。EKI自身のControl/Application PlaneはTEIのローコード能力を活用し得るが、EKI Kernelの権限正本と停止・復旧をTEIへ移譲しない。
 - TEI関連：[仮想状態・Data Script・Flow／Batch](DATA_DERIVED_TRANSITION_TRIGGER_PIPELINE_2026-11.md)、[状態機械と図表交差](STATE_MACHINE_CROSS_DOMAIN_DESIGN_PRESSURE_2026-11.md)、[Buri継承](BURI_TO_TEI_LIFECYCLE_TRANSFER_2026-11.md)；Issue [#1129](https://github.com/hat47x/tei-platform/issues/1129)／[#1130](https://github.com/hat47x/tei-platform/issues/1130)／[#1174](https://github.com/hat47x/tei-platform/issues/1174)／[#2582](https://github.com/hat47x/tei-platform/issues/2582)／[#2622](https://github.com/hat47x/tei-platform/issues/2622)／[#2514](https://github.com/hat47x/tei-platform/issues/2514)／[#988](https://github.com/hat47x/tei-platform/issues/988)。
 - EKI一次資料：[`ADR-0013`](https://github.com/hat47x/eki-fabric/blob/main/plan/adr/0013-product-core-and-faces.md)、[`research/integration/orchestrator-integration-and-layering.md`](https://github.com/hat47x/eki-fabric/blob/main/research/integration/orchestrator-integration-and-layering.md)、[`plan/UPSTREAM_PLAN.md`のTEI適用](https://github.com/hat47x/eki-fabric/blob/main/plan/UPSTREAM_PLAN.md)、[`architecture/EXTENSION_SPI.md`](https://github.com/hat47x/eki-fabric/blob/main/architecture/EXTENSION_SPI.md)、[`architecture/TASK_STATE_MODEL.md`](https://github.com/hat47x/eki-fabric/blob/main/architecture/TASK_STATE_MODEL.md)、[`spec/external/openapi.json`](https://github.com/hat47x/eki-fabric/blob/main/spec/external/openapi.json)、Issue [EKI #136](https://github.com/hat47x/eki-fabric/issues/136)、[#112](https://github.com/hat47x/eki-fabric/issues/112)、[#126](https://github.com/hat47x/eki-fabric/issues/126)、[#57](https://github.com/hat47x/eki-fabric/issues/57)、[#242](https://github.com/hat47x/eki-fabric/issues/242)、[#381](https://github.com/hat47x/eki-fabric/issues/381)。
 
@@ -219,9 +219,17 @@ TEIのApplication Composition/Artifactから`Release/Deployment Intent`を導出
 
 Workerにはoutbound-firstの社内PC/ARM64 Raspberry Pi/On-prem資源Poolも候補だが、**低信頼・端末利用者優先／断続的な資源**にStateful ServiceのAvailabilityを委ねない。小型Linux WorkerのOS/arch/RAM/Sandbox/Executor digestの適合、Agent enrollment/revoke、Node/Data/Trust/Lease Authority、Site Cache/Network費用を検証する。厳しいSLOはCloud/Managed Host、再実行可能な補助TaskはEKIが配分、というHybridの具体Caseから開始する。
 
-### 8.7 TEI成果物のLaunch先とEKI Cloud Control（2026-11-03、市場適合追補）
+### 8.8 TEI成果物のLaunch先とEKI Cloud Control（2026-11-03、市場適合追補）
 
 [EKIの市場適合・Cloud/On-prem配備方式の照合](EKI_ENTERPRISE_COMPUTE_MARKET_FIT_2026-11.md)を追加。TEI生成ApplicationをEKI Consoleから**既存Cloud/オンプレHostへ配備管理**できることは有力な利用体験だが、常時稼働Web/API/DBのAvailability/業務State正本をEKIのTask Leaseへ無条件に移さない（EKI #130／ADR-0013）。EKIのControl/ConsoleはCloudに置ける構成候補でも、Worker ExecutionとData PlaneをControl経由のProxyにしない。Linux/Arm/小型PC/一時Workerは登録・認証・Local Governor/Resource Suitability Gateを通った範囲に限定する。**常駐App配備と止められる背景Jobを異なるProduct Profile**として検証し、Cloud ControllerやEKI-hosted TEI Serviceを実装済みとは扱わない。
+
+### 8.9 AI Jobの複雑さはTEIへ、HPC/Nodeの専門性は下位Providerへ（2026-11-03）
+
+[AI Job構築とPool-first委任の設計](TEI_AI_WORKLOAD_EKI_AGGREGATE_DELEGATION_2026-11.md)に基づき、EKIの最低限の責務を再確認する。TEIはAI/LLM JobのData Context、Model/Prompt/Tool/Operator、Function/State/Flow/DAG、依存と独立Expected、Artifact/Executorを生成する。**EKIは任意AI Operator/DAGの解釈を行わず、Task Envelope/必要資源/信頼・Data Class/期限・予算/試行回復/結果検証を扱う委任Brokerでよい**。ただしAuthority/Admission/Task/Attempt/Lease/Fence/Unknown/Resultは**EKIが省略できないKernel責務**であり、「単純なJob Controller」を無認可Queueと同一視しない。
+
+大規模HPCクラスタのCPU/GPU/Memory粒度やMPI/NUMA・GPU分割/Worker Queueは、Slurm/Kueue/Kubernetes／外部Cloud等、既存の専門Providerに残す。通常のEKI資源選択・開示対象は**登録済Pool/Cluster Group/Delegate**。EKI自身がWorker直接実行を担当するProfileでのみWorker/Lease実証が必要。低信頼のPC資産登録・隔離は既存IT Asset/MDM/EDR等のSecurity Authorityに保持し、EKIは動的な供給Offerを持つResource Delegateとして扱う。外部Compliance≠実Worker Assurance／現在Local Governorの許可と区別。
+
+組織・経済圏を跨ぐ場合も、管理者登録済Delegate、非推移的Federation Grant、予算/データ制約、本人のopt-outを尊重する。EKIのPoolは単一巨大GPU/Memory機械ではないため、Workload条件を満たす下位Sub-offerの検査が必要。**TEI Flow意味、EKI Delegation Authority、HPC Node Scheduler、Endpoint Asset Authorityの四者を別正本として保持**し、重複Controller・安全性保証の格下げ・資源の二重予約を防止する。
 
 ## 9. 設計判断のGate、実装順、Issue追補候補
 
