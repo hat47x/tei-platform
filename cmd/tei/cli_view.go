@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -9,9 +10,20 @@ import (
 
 	"tei/internal/application"
 	"tei/internal/applicationview"
+	"tei/internal/command"
 	"tei/internal/core"
+	"tei/internal/semantic"
 	"tei/internal/workspace"
 )
+
+type referenceCommandRun struct {
+	SchemaVersion string                      `json:"schemaVersion"`
+	Mode          string                      `json:"mode"`
+	Plan          applicationview.CommandPlan `json:"plan"`
+	Outcome       *semantic.Outcome           `json:"outcome,omitempty"`
+	Effect        *semantic.DataEffect        `json:"effect,omitempty"`
+	Committed     bool                        `json:"committed"`
+}
 
 type cliViewReport struct {
 	SchemaVersion string                `json:"schemaVersion"`
@@ -36,6 +48,7 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 	patternID := fs.String("pattern", "", "exact application pattern ID")
 	packageID := fs.String("package", "", "exact application package ID")
 	commandID := fs.String("command", "", "command capability to plan")
+	execute := fs.Bool("execute", false, "reference execution of the planned command")
 	var inputPairs inputFlag
 	fs.Var(&inputPairs, "input", "command input as name=value; repeatable")
 	format := fs.String("format", "text", "text or json")
@@ -45,10 +58,14 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 	if fs.NArg() != 0 || *root == "" || *applicationID == "" ||
 		(*patternID != "" && *packageID != "") ||
 		(*commandID != "" && *patternID == "") ||
+		(*execute && *commandID == "") ||
 		*root != strings.TrimSpace(*root) || *applicationID != strings.TrimSpace(*applicationID) ||
 		*patternID != strings.TrimSpace(*patternID) || *packageID != strings.TrimSpace(*packageID) ||
 		*commandID != strings.TrimSpace(*commandID) {
 		return fail("INVALID_ARGUMENT", "view requires exact -workspace and -application, at most one of -pattern, -package, or -command, without positional arguments", 2)
+	}
+	if *execute && *format != "text" && *format != "json" {
+		return fail("INVALID_ARGUMENT", "view -execute supports -format text or json", 2)
 	}
 	if *format != "text" && *format != "json" && *format != "html" && *format != "print" {
 		return fail("INVALID_ARGUMENT", "view -format must be text, json, html, or print", 2)
@@ -102,6 +119,36 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 		plan, err := applicationview.BuildCommandPlan(loaded.World, core.CanonicalID(*applicationID), core.CanonicalID(*patternID), core.CanonicalID(*commandID), values)
 		if err != nil {
 			return fail("VIEW_FAILED", err.Error(), 1)
+		}
+		if *execute {
+			invoker := command.Invoker{
+				World:      loaded.World,
+				Executor:   command.ReferenceExecutor{World: loaded.World},
+				UnitOfWork: &command.MemoryUnitOfWork{},
+			}
+			result, err := invoker.Invoke(context.Background(), command.Request{
+				Application: core.CanonicalID(*applicationID),
+				Pattern:     core.CanonicalID(*patternID),
+				Capability:  core.CanonicalID(*commandID),
+				Inputs:      values,
+			})
+			if err != nil {
+				return fail("COMMAND_FAILED", err.Error(), 1)
+			}
+			run := referenceCommandRun{
+				SchemaVersion: applicationview.SchemaVersion,
+				Mode:          "reference",
+				Plan:          plan,
+				Outcome:       result.Outcome,
+				Effect:        result.Effect,
+				Committed:     true,
+			}
+			report.OK = true
+			report.Result = run
+			if *format == "json" {
+				return writeViewReport(out, report, 0)
+			}
+			return writeReferenceRunText(out, run)
 		}
 		report.OK = true
 		report.Result = plan
@@ -545,6 +592,29 @@ func writeCommandPatternText(out io.Writer, view applicationview.CommandPatternV
 		if _, err := fmt.Fprintf(out, "effect: %s %s\n", view.Effect.Kind, view.Effect.Data); err != nil {
 			return 2, err
 		}
+	}
+	return 0, nil
+}
+
+func writeReferenceRunText(out io.Writer, run referenceCommandRun) (int, error) {
+	if _, err := fmt.Fprintln(out, "mode: reference (no durable effects)"); err != nil {
+		return 2, err
+	}
+	if code, err := writeCommandPlanText(out, run.Plan); err != nil {
+		return code, err
+	}
+	if run.Outcome != nil {
+		if _, err := fmt.Fprintf(out, "outcome: %s -> %s\n", run.Outcome.Name, run.Outcome.Payload); err != nil {
+			return 2, err
+		}
+	}
+	if run.Effect != nil {
+		if _, err := fmt.Fprintf(out, "effect: %s %s\n", run.Effect.Kind, run.Effect.Data); err != nil {
+			return 2, err
+		}
+	}
+	if _, err := fmt.Fprintf(out, "committed: %t\n", run.Committed); err != nil {
+		return 2, err
 	}
 	return 0, nil
 }
