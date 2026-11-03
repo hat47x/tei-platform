@@ -175,7 +175,7 @@ AIに期待する仕事：
 
 [未解決Gate計画](TEI_EKI_AGGREGATE_DELEGATION_UNRESOLVED_GATES_2026-11.md)§2・§6を追加。TEIのEKI管理Consoleでは`RegisteredDelegate`／`ProviderCapability`／`CapacityOffer`／`AllocationAuthority`を別のType/Stateとする。通常の広域操作はPool/Delegate単位に絞り、内部Node/DeviceはEKI直接管理Profileまたは限定Provider drill-downに留める。**Offer/Simulation/AI Reviewを現在の予約・Grantに昇格させない**。Scope、時点、Source revision、completeness（fresh/stale/partial/unavailable/not-found/permission-denied）と過去値を別表示。Trust Bundleのopen Source-static課題EKI #466/#467を実Worker/MDM Gatewayへ進む前のOwner確認Gateとし、端末集約でmTLS/Local Governorの強制が消えないことを検証する。
 
-### 8.4 リードタイム・失敗相関・Recovery Reserveの運用可視化
+### 8.4 リードタイム・失敗相関・Recovery Reserve・Portfolio競合の運用可視化
 
 [期限・予算・実績によるResource Pool調停](TEI_EKI_DEADLINE_BUDGET_RECOVERY_COORDINATION_2026-11.md)では、TEI Ops Consoleに`requested deadline/forecast completion range/remaining slack/estimated recovery elapsed/available recovery budget/actual Provider reservation`を**異なる事実**として表示する。単一の`expected finish`だけでは複数故障・Queue/転送・検証が見えない。Site/Network/Provider共通故障のGraph、期限接近によるCloud引上げのWhat-if、予測の校正/サンプル不足、故障後の予算消費とCAP-1承認をSimulation/AI Critical Reviewの主要ケースに含める。ただしAIの提案や期限Warningは、実資源確保・費用支出・管理者Grantに昇格しない。
 
