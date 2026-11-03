@@ -36,6 +36,12 @@ Data Script（名称・Syntaxは未確定）は、`order.billing_ready`の**純�
 
 UIで当該項目を選んだ際、**Data Modelの宣言→Data Scriptの式とTrigger参照→Flow図／状態表→Batchジョブ**が相互に辿れ、いずれの箇所から修正しても同じReference IDへ差分候補を提示できることを受入項目にする。これならデータ中心・フロー中心の双方から機能を設計できるが、三つの宣言をそれぞれ「業務状態の別正本」とするわけではない。
 
+### 1.2.2 現行Semantic実装との距離（静的照合）
+
+[現行main `internal/semantic/model.go`](https://github.com/hat47x/tei-platform/blob/main/internal/semantic/model.go)の`Data`には`Script string`フィールドが既にある。一方、`Attribute`には`ID/Symbol/TypeRef/Required/Immutable/Role/Value`等はあるが、**専用の`virtual`判別子／Derived Rule ID／Dependency集合／Trigger Bindingを持つ正式な契約はない**。したがって、「DataにScript欄がある」ことと「仮想属性の型付き導出・変化イベント・Batch起動が実装されている」ことを混同しない。
+
+この差分を埋める最短案は、既存Data／Attributeの型付き意味IDとRoleの解釈境界、Data Script Source参照、既存`derivationref`・Data Rule/Effect Phaseを用いた**非破壊のReference**から開始し、正式な`virtual` Syntax/Coreフィールドを採るべきかは具体的二Domainの読取・書込・再資格化反例で判断すること。物理保存に`Generated Column`／Cacheを使うかはProvider Realizationに属する。
+
 ### 1.3 Flowは「評価された状態・変化」と「副作用Intent」を結ぶ
 
 Flowには`when physical attribute changed`、`when derived value transitions`、`when state condition holds`、`when domain event committed`等の契機の**意味上の違い**を明示できることを要件とする。これらは仮の記法であって正式Grammarではない。
