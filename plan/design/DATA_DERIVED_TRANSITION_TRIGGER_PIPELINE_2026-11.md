@@ -42,6 +42,53 @@ UIで当該項目を選んだ際、**Data Modelの宣言→Data Scriptの式とT
 
 この差分を埋める最短案は、既存Data／Attributeの型付き意味IDとRoleの解釈境界、Data Script Source参照、既存`derivationref`・Data Rule/Effect Phaseを用いた**非破壊のReference**から開始し、正式な`virtual` Syntax/Coreフィールドを採るべきかは具体的二Domainの読取・書込・再資格化反例で判断すること。物理保存に`Generated Column`／Cacheを使うかはProvider Realizationに属する。
 
+### 1.2.3 ValidationとDerivationの配置規約（X-TEAからの継承方針／2026-11-03）
+
+ユーザーの追加方針に従い、**Data Modelで表現できる項目属性・拡張定義はData Modelへ、そこから外れる独自ValidationはData Scriptへ**置く。**Derivationは主にDataの更新契機でData Scriptが評価する**。これは今後のTEIの設計方針であって、旧X-TEAの各イベントコードやフックをそのまま移植する確定案ではない。
+
+| 対象／契約 | 記述場所（Authoring） | 何を表すか | 正本・実行との境界 |
+| --- | --- | --- | --- |
+| 基礎的Validation | **Data ModelのAttribute拡張定義** | 型、必須、許容範囲、長さ、集合、形式など**その属性に局所的な宣言で記述できる規則**。型依存で実装・受理済みのものだけ | モデル上の宣言が業務規則の意味元。現在実装の`required`等と、未実装`min/max`等を区別。DB CHECKと同じ保証ではない |
+| 関係・横断・独自Validation | **Data ScriptのValidation Rule** | 条件付き必須、他項目との比較、複数行の重複、親子件数・状態、時点付き規則、専門Domainの判定など | 型付きID・依存Read・Context／Snapshot／Provider完全性を要求。独自ロジックでも`true`を返しただけで実行認可にしない |
+| Derivation | **Data Scriptの純粋Derivation Rule** | Data Modelが`virtual/derived`を宣言したAttributeへの計算、他Attribute／Relationからの値・状態の導出 | 主な評価契機はinsert/update/delete、Relation link/unlink等の**実Data変化**。Scriptが同じ項目に勝手に別正本を生成しない |
+| Trigger／Flow | **Data ScriptのTrigger参照宣言＋Flowの実行契約** | データ項目更新や導出値のedge/levelの成立をJob/Capabilityへ接続 | 導出やValidationの評価はEffectなし。Jobの発火／Commit／認可は既存#1129/#1130/#1174の契約 |
+
+**配置の単純さと実行の正確さを両立**：
+- **Model→Scriptへの明示参照**：同じ規則をData Model拡張とScriptに重複記述しない。Data Modelに属する制約をScriptで独自実装する必要がある場合、ScriptのRule IDを項目へ参照Bindingし、表示上は項目拡張の一部として見せられるかを評価する。型・対象・Rule/Operator版・Source spanを追う。
+- **派生値はData Modelで宣言、Data Scriptで定義**：型と`virtual`指定だけでは値を導出できない。Script側のTarget Attribute IDと依存閉包が特定できない場合は`unresolved`。物理列を不要にすることと、検索性能や障害回復のためのMaterialized Cache／実Job Receiptの保存は両立する。
+- **Data更新イベントは更新のIntentではない**：`field edited`／`pending update`／`provider committed`／`replica observed`を区別。Validationは**書込み拒否に必要な段階**で評価し、純粋Derivationは依存順に評価する。Flow/外部Jobの起動は原則Commit確認後のIntentへ結び、before-write評価中に外部効果を起こさない。
+- **同じ導出に複数用途**：保存前の整合判定、read-time表示、変更時キャッシュ失効、commit後のTrigger比較に、同じ純粋Ruleを適用してよい。ただしread-timeだけで観測した値から厳密な「変化が発生した」というEventを推測しない。強い一貫性が必要ならProviderの同一Snapshot/Tx/Conditional Write能力を検証する。
+- **更新集合の局所性**：単一Field更新のほか、子集合の追加・削除、Lookup値の改版、時計の経過で派生値が変わり得る。Source更新時の評価対象とRule Dependencyの逆引きが不明なら、局所再計算／確定Eventを主張しない。周期再調停やread-time再評価が必要なProfileもある。
+- **業務判定と技術失敗**：Validationは`satisfied`／`not-satisfied`／`unknown`／`error`を区別する候補契約。Script例外、partial read、Providerの権限不足を「Validation不成立」と同一視しない。X-TEAのhistoricalなcheck-only時にScript副作用が抑止されない懸念は、TEIでは純粋判定の実行フェンスで切り離す。
+
+#### 一つの更新からの処理順（提案でありAPI／Runtime実装済みを意味しない）
+
+~~~text
+変更要求 / Operation Intent（Data ID・対象Record Key・期待Revision）
+    ↓
+対象の現在Read／必要なRelation・入力Scope／権限の確認
+    ↓
+Data Modelの項目制約 → Data Scriptの独自Validation（純粋）
+    ↓
+Data ScriptのDerivation（純粋・依存順、未確定なら停止）
+    ↓
+必要なValidation/Derivation再評価・予測差分と独立Expected
+    ↓
+Owner Action / Providerの条件付きWrite・Transaction
+    ↓
+Commit outcome（success / rejected / unknown）とReceipt
+    ↓
+Data Script Triggerの前後比較（確定した対象・時点に限定）
+    ↓
+Flow / Batchの起動Intent → Host/Provider認可 → Jobの実Effect/Receipt
+~~~
+
+上の順は**意味上の関門**。書込み前後で同じ入力Snapshotが必要か、導出値をWrite Setへ含めるか、post-commitに再取得するかはProvider能力とRule依存により異なり、実装の固定フック順ではない。特に、`Commit unknown`で成功イベントを捏造しないこと、必要なConstraintをpost-commitに遅らせて誤書込みを許さないことを必須とする。
+
+**最小負例の拡張（既存#1129／#2514に相乗り、試験番号の新設なし）**：`quantity=-1`は項目制約で拒否、`quantity=4 / available=2`はData Scriptの独自Validationで拒否、`quantity=2 / price=100`でDerived amount=200、子明細の一部未取得ならDerived全件完了はunknown、同じ値に更新してもDerived-edgeは発生しない、Commit rollbackならJob発火しない、同じCommitの再通知なら重複Jobを防ぐ。これらのExpectedはRuleの式をコピーせず独立根拠で固定する。
+
+**判断待ち**：項目拡張の具体的な最小セット（required/length/range等）、Data Scriptに置くPredicate/FunctionのDSL表面、評価フェーズと同じRuleの実行可能Target範囲、Relation集合・非同期Providerの整合要件、Scriptのトリガー宣言とFlow定義の参照方向。既存#2620/#2622/#1129/#1130/#988/#2514に割り当て、現行Coreへ無条件に追加しない。
+
 ### 1.3 Flowは「評価された状態・変化」と「副作用Intent」を結ぶ
 
 Flowには`when physical attribute changed`、`when derived value transitions`、`when state condition holds`、`when domain event committed`等の契機の**意味上の違い**を明示できることを要件とする。これらは仮の記法であって正式Grammarではない。
