@@ -144,6 +144,12 @@ G3についても、現`service/run.go`の`currentTrustBundle`は未導入（Not
 
 **Security再資格化**：EKI #466/#467はそれぞれPR #678/#675によって修正・試験が報告され**closed**。当初のSource-static指摘は歴史的Evidenceへ移し、更新後Trust/Issuer失効・実mTLSとGroup Gatewayの統合試験を継続する。修正済みIssueを未修正安全Gapとして新設・再度計画化しない。
 
+### 7.4 ABI損失をP1 Pure Job Wireの実装停止線へ明示（2026-11-04）
+
+[一改訂の実行縦断§14](TEI_EKI_ONE_REVISION_EVIDENCE_VERTICAL_SLICE_2026-11.md)を先行Gateに追加。TEI Draft [#2787](https://github.com/hat47x/tei-platform/pull/2787)はEKI実OpenAPI blob `388f2e3ad32ba663b4777fcfb4304b0cf6f48f3f`の固定証人に対する**WP-01〜19の19/19 exact-head CI PASS**を報告したが、これは実Task Process/Runtime適合ではない。P0 `parameters`はWorkOrder/Workerへ未伝達、`effect_mode`は`none`のみ、Executor `version_constraint`はAdmissionで未評価、`deadline`は単一時刻、Input ingestはHandler実装が501、Provider/Data AuthorityはTask自己申告では発行されない。**Source→意味→Workerで必須情報が一つでも黙って失われるJobは委任不適合**とする。
+
+**新制度を増やさない**：本計画のG0は`Existing EKI ABI snapshot + TEI semantic checklist + real Worker bytes`という比較に絞り、WPの静的試験とRE/VSの実行試験を重複計上しない。初期Referenceは①Parameters不要なPure Job、②Typed input Pure Job（現Gap）、③Effectful Job（現P0不適格）。EKI #112を外部API Ownerとし、TEI #1130/#2514/#1180/#2811へ必要なFixture/独立Expectedだけを渡す。新しいUniversal ABI/Host/Artifact RegistryやAI自律実行権限は作らない。
+
 ## 8. 作業順・各Ownerへの引渡し・保留判断
 
 | Phase | 依存と実装/受入の最小目標 | 反映先（**既存Owner**） | 先行条件 |
