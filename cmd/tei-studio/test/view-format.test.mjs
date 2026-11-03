@@ -61,3 +61,18 @@ test("command run includes the plan and the reference execution", () => {
   assert.equal(sections[sections.length - 1].title, "参照実行");
   assert.equal(sections[sections.length - 1].rows[1][1], "true");
 });
+
+test("package view is summarized into members and requirements", () => {
+  const sections = summarizeView({
+    package: "order_entry.list_to_record",
+    version: "1",
+    projection: "screen",
+    bound: true,
+    members: [{kind: "browse", pattern: "order_entry.recent_orders"}, {kind: "record", pattern: "order_entry.order_record"}],
+    requires: [{kind: "semantic", id: "sales.order"}],
+  });
+  assert.deepEqual(sections.map((section) => section.title), ["Package", "メンバー", "前提"]);
+  assert.equal(sections[0].rows[4][1], "true");
+  assert.equal(sections[1].rows[1][1], "order_entry.order_record");
+  assert.equal(sections[2].rows[0][1], "sales.order");
+});

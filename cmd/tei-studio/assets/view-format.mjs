@@ -1,4 +1,4 @@
-// Read-only summary of a TEI view for the Studio screen.
+﻿// Read-only summary of a TEI view for the Studio screen.
 // The formatter is pure so it can be tested without a DOM.
 
 function valueOf(value) {
@@ -162,6 +162,32 @@ function summarizeApplication(view) {
   return sections;
 }
 
+function summarizePackage(view) {
+  const sections = [{
+    title: "Package",
+    rows: [
+      ["package", valueOf(view.package)],
+      ["version", valueOf(view.version)],
+      ["projection", valueOf(view.projection)],
+      ["conformance", valueOf(view.conformance)],
+      ["bound", view.bound ? "true" : "false"],
+    ],
+  }];
+  sections.push({
+    title: "メンバー",
+    header: ["種別", "Pattern"],
+    rows: (view.members || []).map((member) => [valueOf(member.kind), valueOf(member.pattern)]),
+  });
+  if (Array.isArray(view.requires) && view.requires.length) {
+    sections.push({
+      title: "前提",
+      header: ["種別", "ID"],
+      rows: view.requires.map((requirement) => [valueOf(requirement.kind), valueOf(requirement.id)]),
+    });
+  }
+  return sections;
+}
+
 function summarizeCommand(view) {
   const sections = [{
     title: "Command",
@@ -209,6 +235,7 @@ export function summarizeView(value) {
       ],
     }]);
   }
+  if (value.package && value.version !== undefined) return summarizePackage(value);
   if (Array.isArray(value.items)) return summarizeRecord(value);
   if (Array.isArray(value.columns)) return summarizeBrowse(value);
   if (Array.isArray(value.detailColumns)) return summarizeHeaderDetail(value);
@@ -219,3 +246,4 @@ export function summarizeView(value) {
     rows: Object.entries(value).map(([key, entry]) => [key, JSON.stringify(entry)]),
   }];
 }
+
