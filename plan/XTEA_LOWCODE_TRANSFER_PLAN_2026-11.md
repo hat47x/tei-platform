@@ -337,6 +337,7 @@ WP10 統合と引継ぎ
 | command Patternのビュー | 実装 | 付録C.5 |
 | Commandの実行境界（Executor契約） | 実装 | 付録C.5 |
 | Commandの取引境界（Unit of Work） | 実装 | 付録C.5 |
+| 削除の効果（`delete`） | 実装 | 付録C.5 |
 | Commandの参照実装 | 実装 | 付録C.5 |
 | フックの宣言（位相・読み書き・失敗時） | 実装 | 付録C.5 |
 | フックの実行境界（reject/warn） | 実装 | 付録C.5 |

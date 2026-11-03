@@ -167,9 +167,12 @@ type DataEffectKind string
 const (
 	DataEffectCreate DataEffectKind = "create"
 	DataEffectUpdate DataEffectKind = "update"
+	DataEffectDelete DataEffectKind = "delete"
 )
 
-func (k DataEffectKind) Valid() bool { return k == DataEffectCreate || k == DataEffectUpdate }
+func (k DataEffectKind) Valid() bool {
+	return k == DataEffectCreate || k == DataEffectUpdate || k == DataEffectDelete
+}
 
 type DataEffect struct {
 	Kind DataEffectKind   `json:"kind"`
