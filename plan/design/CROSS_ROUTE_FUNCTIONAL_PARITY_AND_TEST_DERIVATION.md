@@ -1,6 +1,6 @@
 # 経路間の業務機能完全性とScenario由来E2Eテスト
 
-- Status: design contract / Reference proposed; implemented cross-route generator / persisted Driver Scenario compiler: **not yet verified**
+- Status: design contract / **bounded persisted Scenario → CLI implementation confirmed by source** (2026-11-04); Web/other Target E2E emitter, general Scenario/compiler and AI extensibility **not yet verified**
 - Requirements: RQ-012, RQ-013, RQ-019〜021, RQ-034
 - Implementation owner: [#1180](https://github.com/hat47x/tei-platform/issues/1180)
 - Reuse: #1158 (typed operations / UI adapter), #259 (Target capability / Execution / Trust), #1163 (single-revision Evidence), #70/#270 (First Web Target), #1043/#1174/#1178 (security)
@@ -42,7 +42,7 @@ TargetのHTTP status、CLI exit code、画面文言、DOM selectorは**それぞ
 
 **Accepted Canonicalは業務意味のSSOT、保存済みDriver ScenarioはシナリオテストのSSOT**とする。ScenarioはCanonicalから最初に導出・提案してよいが、その後のCLI・Web・Desktop等向けのテストを個別に人手で保守しない。Scenarioの修正と明示Reviewが必要な場合はScenario自身を更新し、すべてのTarget成果物を再生成する。テスト実行結果から期待値を逆算してScenarioを書き換えてはいけない。
 
-既存の`internal/driver/final_gate_b_scenario_test.go`、`gate_b_ui_less_scenario_test.go`等は**Goテスト内で組み立てるtest-local Reference**であり、現時点では全Targetへ生成可能な永続Scenario資産ではない。まず代表例から、既存DriverのOperation／Result／Observation／Providerを参照する**独立保存・版管理・再読込可能なScenario表現**と、その解決・検証を成立させる。Goテストを機械的に逆解析して無検証な業務定義へ昇格しない。新しい第二Driverや、独立した業務Semantic DSLを作らない。記述形式と恒久schemaは最小のactual consumerで検証してから確定する。
+既存の`internal/driver/final_gate_b_scenario_test.go`、`gate_b_ui_less_scenario_test.go`等はGoテスト内で組み立てるtest-local Referenceである。一方、2026-11-04のsource再確認により、**`reference/driver-scenarios/order-entry-pattern-smoke.json`（6 Step）、`internal/scenariotest/scenario.go`（`tei.driver-scenario/v0`）、`cmd/tei/scenario.go`（`verify/generate/run/check`）および`cmd/tei/scenario_test.go`の既存限定実装を確認**した。これは保存・再読込・CLI派生の限定Referenceであり、全業務Step/任意Caseの生成、Web E2Eへの生成、実Provider Write/Host資格を含まない。今後はこの現物を起点に、既存DriverのOperation／Result／Observation／Providerへの対応を拡張する。Goテストを機械的に逆解析して無検証な業務定義へ昇格せず、第二Driver・独立業務Semantic DSLを作らない。恒久schemaは複数Consumerの実証後に判断する。
 
 Scenario側が所有するテスト要素:
 - scenario identity／revision／origin（生成・編集・review履歴）および参照するAccepted Application／Canonical revision／Scenario source
@@ -181,26 +181,26 @@ Executionは隔離されたFixture/Disposable DB、認可済みTest Resource、�
 5. **compare / shrink / report**：Actual vs独立Expected、既知誤実装Mutant、Run間差分、データSnapshot、Rule/Branch/Pattern/Scenario coverage、失敗Traceを同一Case/Scenario/Run IDと版に結ぶ。反例の縮小・再現seed・重複検出はAI支援可能とし、最小反例に変形しても元の失敗が保持されるか実再実行する。
 6. **review / adopt**：有用な探索ケースを回帰ケースへ昇格するときはExpectedの独立根拠・対象範囲・Owner受理・必要な権限を区別。AI生成・複数AIの同意・既存評価器が出したActualの転用だけではExpectedを正式Oracleにしない。
 
-CLI名・schema・Agent用Tool形態は**PoCのConsumer実証後に判断**する。#1180の既存候補 \`tei scenario verify/generate/run/check-generated\` に探索/coverageを増分接続できるかを先に評価し、第二のtest command namespaceや全能力を持つAgent専用Runtimeを作らない。対話的なAIだけでなく他言語の自動生成器や人間が同じファイル・JSON契約を利用できるようにする。
+CLI名・schema・Agent用Tool形態は**PoCのConsumer実証後に判断**する。#1180の既存候補 `tei scenario verify/generate/run/check-generated` に探索/coverageを増分接続できるかを先に評価し、第二のtest command namespaceや全能力を持つAgent専用Runtimeを作らない。対話的なAIだけでなく他言語の自動生成器や人間が同じファイル・JSON契約を利用できるようにする。
 
 ### 8.2 AIが拡張できる最小契約とCoverageの分母
 
 固定の「全ドメイン共通必須テストパターン一覧」は作らない。Domain/Operator/型/Constraintから**適用条件付きCoverage Obligationを実行前に列挙**し、追加プラグイン/Corpus/ユーザー定義テストが新しいObligationを提案・追加できるようにする。新しいCaseの追加にCoreソース改修を要しないことを受入条件とする。
 
 最小の**候補**（正式Core型ではない）:
-- Case: \`id, sourceRef, semanticSubjectID, scenarioRef?, inputs/fixtureRef, generatorKind?, seed?, precondition, expectedRef? / exploratoryGoal, assertions, tags, provenance, revision\`
-- Coverage Obligation: \`id, subjectID, dimension, applicability, requiredPartitionOrOutcome, sourceRevision, scope/grain/asOf, criticality, provenance, requiredEvidenceLevel\`
-- Run/Evidence: \`scenario/case/obligation IDs, exact source+canonical+plugin+fixture+target binding+artifact revision, attempted/executed/asserted/qualified, observed results, error kind, independent observation, trace links, actual read/effect footprint, limits/unknown\`
-- Suite: \`selectedCaseRefs, scenarioRefs, coverageProfile, fixture/target profiles, isolation/safety policy, resource budget\`。Suiteに業務Step/Expectedを複製しない。
+- Case: `id, sourceRef, semanticSubjectID, scenarioRef?, inputs/fixtureRef, generatorKind?, seed?, precondition, expectedRef? / exploratoryGoal, assertions, tags, provenance, revision`
+- Coverage Obligation: `id, subjectID, dimension, applicability, requiredPartitionOrOutcome, sourceRevision, scope/grain/asOf, criticality, provenance, requiredEvidenceLevel`
+- Run/Evidence: `scenario/case/obligation IDs, exact source+canonical+plugin+fixture+target binding+artifact revision, attempted/executed/asserted/qualified, observed results, error kind, independent observation, trace links, actual read/effect footprint, limits/unknown`
+- Suite: `selectedCaseRefs, scenarioRefs, coverageProfile, fixture/target profiles, isolation/safety policy, resource budget`。Suiteに業務Step/Expectedを複製しない。
 
 Coverageを「既存テストが通った項目の割合」から算出しない。分母はObligationの版付き候補集合として、列挙済み/未解決/対象外/未発見可能性を明示。Code（実Go instrumentationとTEI Source/Meaning対応）、Rule/Branch、Data partition、状態遷移、Scenario/Target step、Provider/Effectを**独立の分母**とし、異なる軸を単一%に足さない。Go standard coverageはbranch/MC/DCの証明ではない。executed、asserted、qualifiedは別。対象集合が不完全・分母0なら「100%」にしない。
 
-AIによるケース拡張の候補は、型/制約由来の境界値・NULL/欠損/部分取得、決定表の重なりと短絡、Property-based/Fuzz/Mutation、Metamorphic、差分テスト、履歴不具合からの回帰、専門Profileの時系列/グラフ/業務/ゲーム等。生成数/予算上限を越えたら\`truncated/incomplete\`とし、探索しなかったObligationをPASSにしない。AIが未知の意味を発見しても即座にAccepted Ruleへ格上げしない。
+AIによるケース拡張の候補は、型/制約由来の境界値・NULL/欠損/部分取得、決定表の重なりと短絡、Property-based/Fuzz/Mutation、Metamorphic、差分テスト、履歴不具合からの回帰、専門Profileの時系列/グラフ/業務/ゲーム等。生成数/予算上限を越えたら`truncated/incomplete`とし、探索しなかったObligationをPASSにしない。AIが未知の意味を発見しても即座にAccepted Ruleへ格上げしない。
 
 ### 8.3 CLI/Web/GUIは共通Scenarioの別Consumer（次段）
 
 - 同じ保存済みScenario + Canonical + plugin/target lock + fixture + generator versionから、typed CLI argv/stdinとWeb意味Locator/操作手順を独立生成。全必須Step/Branch/Assertion/Observationの対応Manifestを両経路で突き合わせ、欠落や曖昧さでfail-closed。CLI stdoutやDOM/クリック録画から業務期待値を逆生成しない。
-- 「CLIとWebが一致」と「両方が独立Expectedに正しい」は別検収。Fixtureを隔離して両経路を実行し、構造化Business Outcome、NULL/欠損、Key、Multiplicity、順序、金額精度、Data state delta、実Effect、独立Readを比較。権限/Policy Scope/時点/部分取得/Commit unknownが異なるときは\`incomparable/unknown\`。共通誤実装の自己追認には#2514の独立Oracle/既知Mutantを利用。
+- 「CLIとWebが一致」と「両方が独立Expectedに正しい」は別検収。Fixtureを隔離して両経路を実行し、構造化Business Outcome、NULL/欠損、Key、Multiplicity、順序、金額精度、Data state delta、実Effect、独立Readを比較。権限/Policy Scope/時点/部分取得/Commit unknownが異なるときは`incomparable/unknown`。共通誤実装の自己追認には#2514の独立Oracle/既知Mutantを利用。
 - GUIには、操作E2E、DOM/ARIA構造、視覚Baseline/画像差分、実データの独立Observationを**別Assertion列**として接続する。初期Web候補はPlaywright等を比較するがCoreに固定しない。日時/フォント/viewport/renderer/locale/animation/seedの固定、スクリーンショットの機密遮蔽、baselineのReview/Revisionと自動更新禁止を要求。画像一致≠業務成功、データ同値≠操作可能性。
 - Wails/WebView/Native/Canvasは実Host固有Evidence。テスト用UI instrumentation/外部制御は#2391に従って本番Artifactから物理的に除去できるか検証し、通常のアクセシビリティを損なわない。Test-build成功をProduction安全性へ昇格しない。
 
@@ -215,8 +215,79 @@ AIによるケース拡張の候補は、型/制約由来の境界値・NULL/欠
 | **P3: Visual/Desktop** | Web DOM/ARIA・Screenshot回帰の差分、Wails/Native固有Assertion、Production instrumentation除去 | ビジネス差と視覚差の双方のMutantを別々に検出し、実配布Buildの除去を証拠で示す |
 | **P4: 変更影響と選択的再実行** | Source/Rule/Plugin/Oracle/Fixture/Target変更でObligationと旧Evidenceを差分 | stale/unknownを明示。選択的再実行と完全ベースラインの見逃し率・コストを比較 |
 
-最初のDomainは公開合成\`order_entry\`のread-only Query/Validationから、(1)正常、(2)NULLとmissing、(3)重複/部分集合、(4)丸め境界、(5)拒否/評価不能を候補化する。別途非業務Domain（状態機械/ゲーム等）1件で「業務専用のCoreパターン表」が不要なことを確認。Source/Meaningの変更なしに新たなCase・Profileを追加できることを重視する。実DB/書込み/GUIはP0合格の前提にしない。
+最初のDomainは公開合成`order_entry`のread-only Query/Validationから、(1)正常、(2)NULLとmissing、(3)重複/部分集合、(4)丸め境界、(5)拒否/評価不能を候補化する。別途非業務Domain（状態機械/ゲーム等）1件で「業務専用のCoreパターン表」が不要なことを確認。Source/Meaningの変更なしに新たなCase・Profileを追加できることを重視する。実DB/書込み/GUIはP0合格の前提にしない。
 
-反証Fixture：\`AI-01\` 既存期待値をActualからコピーした偽PASS、\`AI-02\` 新しいNULL partitionがcoverage分母から黙って消える、\`AI-03\` 旧Scenarioの片Target生成物だけ残留、\`AI-04\` Target未対応Stepがskipされ空PASS、\`AI-05\` Web表示一致だが実保存なし、\`AI-06\` CLI/Webとも同じ誤計算、\`AI-07\` 画像baseline自動更新で劣化を隠蔽、\`AI-08\` secret/権限を持つ本番Providerへ探索実行、\`AI-09\` 部分Readを全件確認と誤認、\`AI-10\` source/Oracle/Plugin版変更後も旧Evidenceを再利用、\`AI-11\` exploratory結果をOwner受理済み意味へ昇格、\`AI-12\` budget上限で探索停止した未検査をPASS扱い。
+反証Fixture：`AI-01` 既存期待値をActualからコピーした偽PASS、`AI-02` 新しいNULL partitionがcoverage分母から黙って消える、`AI-03` 旧Scenarioの片Target生成物だけ残留、`AI-04` Target未対応Stepがskipされ空PASS、`AI-05` Web表示一致だが実保存なし、`AI-06` CLI/Webとも同じ誤計算、`AI-07` 画像baseline自動更新で劣化を隠蔽、`AI-08` secret/権限を持つ本番Providerへ探索実行、`AI-09` 部分Readを全件確認と誤認、`AI-10` source/Oracle/Plugin版変更後も旧Evidenceを再利用、`AI-11` exploratory結果をOwner受理済み意味へ昇格、`AI-12` budget上限で探索停止した未検査をPASS扱い。
 
 **完了報告の境界**：本節の追補は計画だけ。実CLIのinspect/generate/run/coverage、永続Scenario Compiler、GUI/Playwright/Wails、AI Agentの実行、安全なOS隔離、本番適格性、Owner意味受理は未証明。実装後はexact HEAD、実Build/Runner、fixture bytes、seed、独立Oracle、実行Trace、Coverage分母と未知範囲、clean repository-health結果を記録する。
+
+
+## 9. 既存CLI Referenceに接続するAIテスト足場：実装可能なP0入口（2026-11-04）
+
+**区分：現物Sourceの静的確認と設計計画。今回の追加試験は NOT RUN。** §8の「新CLIが未実装」という一律表現を訂正し、実装済みの範囲を正確に起点へ据える。他チャットのDraft #2745（DSL→同一Meaning/Scenario）、#2619（Test as Data）、#2514（TAO独立Oracle）、#2493（多数Agent Lane）、#2595（実Source入力・Tool帰属）、#2600（Artifact再利用とEvidence再資格化）、#2391（GUI/制御面本番除去）と照合した。変更は本Issue #1180の実装責務に限定し、別Ownerの意味/権限/Runnerを重複しない。
+
+### 9.1 現物の再利用と未実装の差分
+
+| 観測項目 | 2026-11-04に静的確認できたSource/契約 | P0で必要な差分 |
+| --- | --- | --- |
+| 既存Scenario | `reference/driver-scenarios/order-entry-pattern-smoke.json` の6 Step、`tei.driver-scenario/v0` | AI生成Caseを**元ファイルに上書きせず**候補として追加・重複/由来照合 |
+| CLI操作 | `cmd/tei/scenario.go` に `verify / generate / run / check` | inventory→Case候補→実在CLIへの投入・診断の最小手順を記述・実証。新command/APIは必要な不足が出てから |
+| CLI生成 | `scenariotest.Generate` が全Stepのtyped `argv` と明示 `stdin.mode=none` を生成 | 新Stepの対応を測定。未知Operation・未支持stdinはskipせずunsupported |
+| 実行範囲 | `resolve-pattern`, `execute-browse-query`, `evaluate-validations`, `observe-synthetic-state` | **read-only/合成の限定Reference**。Command/Auth/実DB/Web/外部Effectは未実証と明記 |
+| ピン留め | Scenario SHA、World SHA、Plugin Lock SHA、fixture SHAとPlanの全内容比較 | 実行Tool/バイナリ、Source実読込、Case独立Expected、Target buildと現在資格は別Evidence |
+| 値の表現 | `Value.Decode` は `string/int64/float64/timestamp` の4種 | NULL/missing/redacted/unavailable・decimal精度などは現行形式に**ない**。拒否する負例と将来の型契約追加を分離 |
+| 安全性 | duplicate JSON member、trailing content、列名重複、古いpin等の拒否試験がSourceに存在 | 既存の拒否を保ちながらAIの外部Input/探索Budget/FS/OS/Network/Disclosureを別に検収 |
+| カバレッジ | Stepごとの結果・`verified`・`evidenceNature` を取得可能 | Rule/Branch/Data/State/Effectの版付き**事前Obligation分母**と「実行済み/検証済み/現在資格」を追加。6/6 Step成功からCoverage100%は導かない |
+
+**現在のCLI実在入口**（表示コマンドは例。実行はこの設計追補内では未実施）：
+
+```bash
+go run ./cmd/tei scenario verify -scenario reference/driver-scenarios/order-entry-pattern-smoke.json -workspace reference/workspace
+go run ./cmd/tei scenario generate -scenario reference/driver-scenarios/order-entry-pattern-smoke.json -workspace reference/workspace
+go run ./cmd/tei scenario run -scenario reference/driver-scenarios/order-entry-pattern-smoke.json -workspace reference/workspace -step validate-denied
+```
+
+生成済みplanの`check -plan`は対象のScenario/Workspace同一性と手修正を検証するが、Plan生成自体を実行証拠にしない。`run`のpinなし直接起動は現状`executionMode=exploratory-unpinned`と返す。`verified=true`でも対象はSourceに書かれた限定合成Stepであり、独立Oracle・実Host/Provider/外部Effect全体の資格ではない。
+
+### 9.2 最初の縦断テストを5枚の検収票に分ける
+
+**P0-0 現物Baseline（変更前）**：clean checkout、正確なcommit/Go/toolchain、`cmd/tei/scenario.go`と`internal/scenariotest/scenario.go`のblob、6 Step Scenario/fixture bytesを固定。既存Focused test（`go test ./cmd/tei ./internal/scenariotest`）とCLIの`verify/generate/run/check`を**実際に**試し、成功・失敗・未実行をReceiptへ記録。新しいTest Engineを先に導入しない。
+
+**P0-1 AI Case拡張（元の期待値を改変しない）**：生成AIには現存する検証済みread-only inventory、使用可能なOperation列、source locations、制約、既存Expected、fixture種別、未知/unsupportedを読ませ、**隔離ディレクトリ／別branch**にのみ新しいCase/Scenario/fixture候補を作成させる。最初は既存v0の許容表現に限り、（a）追加した正常Validation、（b）拒否されるValidation、（c）誤Expectedの否定対照を作る。各候補へ`candidateCaseID, sourceRef, intendedSemanticID, parentScenarioRevision, fixtureDigest, oracleOrigin, authoringActor, budget/seed`を**別のmanifest/レビュー表に保持**する。既存`Scenario` schemaへ未対応フィールドを無理に追加せず、Source Parserが拒否する場所にmetadataを注入しない。候補を正式Scenario/Canonicalへ自動受理しない。
+
+**P0-2 静的検証・修復ループ**：現在の`verify`がチェックする範囲と、作成したCase metadata/coverage applicability/oracle独立性の未検査を並記。二段目のread-only checkerはまず小さな検証スクリプト/テストとして比較し、実Consumerの必要が確認された場合のみCLIへ接続。構文破損、unknown Step、duplicate Step ID、unsupported Value kind、missing fixture、Source ambiguity、Scope/Authority mismatch、期待値と実装の共有由来を型別に診断。AIによる修復後、同じ出典に対する再検証で失敗が解消されたことを確認する。
+
+**P0-3 隔離実行・反例縮小**：既存CLIから実行できるCaseはpin付きplanで再実行し、`actual result` / `expected` / `evidenceNature` / `coverage obligation`を別列で保持。生成Agentは期待値が未確定の入力を探索してよいが、QUALIFIED PASSにしない。失敗入力を縮める場合もshrunk fixtureのdigest・seedと元の失敗型を保持し、**縮小後に再実行した同じ失敗**がなければ反例成立と呼ばない。
+
+**P0-4 Coverage差分（分母の正当性）**：Caseを増やす前の**required/known/unknown** obligation inventoryを凍結し、実行後のcovered/uncovered/blocked/unsupportedを報告。Case数、Step数、Rule coverage、Data pattern coverage、実Provider scope coverageは別指標。新しいCaseが見つけた未知partitionは事前分母に対する後発の発見として記録し、新旧分母を同じ割合で比較しない。partial/read denied/zero rows/timeoutを全件未存在の証明にしない。
+
+この5枚の完了を**一件のDemo成功ではなく、正負ペアと実Output digestに基づく受入**として実証。最初からWeb、SQL実Provider、Wails、Agent用MCP、新テスト言語、専用スケジューラを完成条件に含めない。
+
+### 9.3 AI/Agent間の並列作業規則（#2493との接点）
+
+- Task Packetに`base SHA, allowed source/read projection, writable test candidate paths, expected independent oracle, target Scenario/Obligation scope, budget, tool/OS principal, egress policy, output artifact paths, review owner`を持たせる。これは既存Issue/branch/manifestへ記録する運用規約であり、第二Task Authorityではない。
+- 各Agentは独立したcandidate path/branch/worktreeへCaseを追加する。共有Scenario・独立Expected・Coverage分母・Baseline画像を**同時に無断更新しない**。同一Obligationに複数の独立反例を提案してよいが、正本採用はDiffとOracle出典を比較して単一の受理経路へ統合。
+- 同じAIモデルを複数回呼ぶ、相互一致を得る、同じEvaluatorでExpectedを作り直す、という行為は独立検証ではない。生成側と採点側のSource/Tool/Prompt/Corpusの共有由来を検査し、必要ならsealed holdoutを#2514/#2515の保護下で用いる。
+- 生成AIの大量探索は**候補の発散**を許す。実行の同時接続数、Budget、CPU/IO/時間、Fixture隔離、外部Effect、非公開データ・ログの開示は別制御。Tool呼出しの`allow`宣言だけでOS/Networkの実効遮断とみなさない。探索が打ち切られたら`truncated`・残件不明を報告する。
+- 提案Caseを現行モデルの不変条件へ組み込む前に、対象ID・Rule/Role/Operator/Plugin版・Source span・Test AuthoringのRoleを固定。Unicode表示名、ローカル識別子、GUIラベルをCanonical IDや実CLI/HTTP公開入口へ推測で変換しない（Draft #2745）。
+
+### 9.4 追加の反証Fixture（AI-13〜20、各々未実行）
+
+| ID | 一入力だけ変える対照 | 不正な成功を拒否する期待 |
+| --- | --- | --- |
+| AI-13 | 既存Scenarioに第二Case候補を追加するが、Scenario元JSONは変更なし | 外部manifestの候補が既存v0に組み込まれていないことを`pending`と示し、Case追加成功を実行済みとしない |
+| AI-14 | `Value.kind=null`、もしくは欠損/explicit-nullを同値扱い | 現行`Value.Decode`の未対応を正しく拒否し、missingを0/空文字へ補完しない |
+| AI-15 | AIが既存`expectValidations`をActualに合わせて書換え | Expected出典とBase差分で自己追認を検出。run PASSだけでOracle独立性を主張しない |
+| AI-16 | Plugin Lockは同一、候補Caseの実行Sourceや実Toolだけが変更 | 既存pinが固定する範囲と#2595のactual producer証拠を分離。digest一致≠同一生成主体 |
+| AI-17 | Agent A/Bが同じStep IDまたはCase IDを追加 | 安定ID衝突を検出。後勝ちで上書きしない。候補の由来を保持 |
+| AI-18 | Agentのsource可視範囲外のSecret/holdoutをFixture生成に流用 | 候補を隔離し不許可Read/egressを実権限境界で拒否。prompt制約のみでPASSにしない |
+| AI-19 | 分母の探索上限に到達し既存ObligationがすべてPASS | `known covered`と`unknown/unexplored`を分け、完全な100%を宣言しない |
+| AI-20 | UI DOM/画像一致・CLI/WebともResult一致だが、同一Generatorの誤期待値 | Target同等性は条件付き成立しても独立Oracleの正しさはFAIL/UNVERIFIED。画像を意味Expectedへ昇格しない |
+
+### 9.5 現在の採否とOwner受渡し
+
+- **採る**：既存Scenario v0 + CLIの実入口をP0のConsumerとして再利用、AIによるCase差分/隔離、独立ExpectedとCoverage分母の分離、ファイル+JSONによるHeadless-first検証、Agent単位のSource/Tool/権限/予算の追跡。
+- **保留**：正式のCase Pack schema、Markdown表Parser/Role適用、`null`等の追加値型、汎用Property/Fuzz/Mutation Engine、Web/GUI emitter、Wails操作API、Coverage Store/Benchmark Runner、外部Agent用MCP。最小実Consumerで必要性を観測してから選定。
+- **引き渡す**：#2621 Authoring、#1131 Fixture/Instance、#2514 Oracle/Mutation、#2493 Task Lane、#2515 OS/Egress、#2595 実Source束縛、#2600 選択的再資格化、#2391 UI外部制御、#1163 Actual Evidence、#1174 Provider Effect、#1180 CLI/Web Scenario parity。対象不在・機能未接続・実行未観測は各Ownerの未検証を維持。
+
+**この追補はdocs-onlyであり、既存6 Stepのsourceを静的に確認した結果と、これから実施する試験を区別する。** 実Go/CLIの新規Attempt、Agent生成Case、Web、GUI、独立Oracleの新しい結合試験、外部Host/DBの実効果、Owner受理は今回NOT RUN。
