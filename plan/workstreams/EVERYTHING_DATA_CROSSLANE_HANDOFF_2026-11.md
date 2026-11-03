@@ -1036,3 +1036,85 @@ authoritative Source → existing Canonical / Accepted Meaning
 - **#988/#1063** が同じOperator/意味から用途別の検証用成果物へLowerする接続、**#2544** がLean等で検証し得るLaw/Facetと仮定の意味、**#2514** が独立Expected/Claim相対の判定、**#2600/#2595** が生成/実使用Byteと依存失効、**#1174/#1119/#1163** がAuthority/Effect・正式受入Evidence。
 - 既存ADR-0022（AI提案/意味受理）、ADR-0023（Command後独立観測）、ADR-0029（Application validation選択）、ADR-0039（Query Missing/NULL、提案中）、ADR-0043（TEI独自Hostなし）と衝突させない。**新ADR候補**は「同一MeaningからOnline GuardとOffline Quality Checkを導出し、Snapshot相対の検査結果と現在資格を分離する」だが、正式の文書・番号・採用判断は実証後とする。
 - 本節の設計は**DSL文法、Lean Target、検証Job命令/CLI、Scheduler、品質Dashboard、Result Store/Schema、Runtime Guard省略の正式契約**を採用・実装しない。**実Provider/Replica/Lean/Go生成/Go試験、CI、Owner受理はNOT RUN**。
+
+## 27. 広域品質検査の運用契約――増分監査・EKI委譲・是正までの独立証拠（2026-11-03追補）
+
+> **状態：設計・縦断実証案。NOT RUN／未採用。** §25のオンライン性能、§26の派生CheckSet・Replica・Leanを、**継続運用で「いつ／何を／どこまで検査できたか」を失わず、少人数で異常を調査・是正できる構成**へ接続する。既存#1130（UI非依存Batch）、#2622（Data Rule/Provider）、#2544（Lean/Facet）、#2514（独立Oracle）、#2582/#2600（依存閉包）、#1174（Effect Fence）、EKI Fabric #57（Task/Attempt/Lease/Result verification）と責務を重複させない。
+
+### 27.1 実行基盤ではなく「検査意味と実行実体」を分離する
+
+同じOwner受理済みData Rule／Model／Operator契約から **Online Guard**、**read-only Data Quality CheckSet**、**任意のLean proof obligation** を用途別に派生する。原定義が一つであることは、各Target実装が同じ誤りを共有し得ることも意味するため、独立Expected・既知Mutant・異経路比較を#2514へ残す。
+
+| 所有者・実行レーン | 所有する契約 | 所有しない結論 |
+| --- | --- | --- |
+| TEI Meaning/Generator | RuleのSubject・Owner受理版・型/NULL/grain/Relation・依存、Quality Checkのread scope/閉包条件・診断、派生Go/SQL/Lean候補 | 実際にJobが起動したこと、実Replicaの鮮度、実Providerの開示・Commit |
+| 既存Scheduler・cron・Job Controller（EKIは**選択肢**） | Trigger、予算、Task/Attempt/Lease、Worker配置、retry/reclaim、物理実行のResultClaim/検証・配送 | AcceptedResultだけから「品質違反ゼロ」「業務Rule適合」「Source Meaning受理」を保証すること |
+| 実Provider/DB/既存Host | 実Read権限、対象表・Field・Scope/Principal、transaction snapshot/LSN、read-only制約、現在のResource/Query制約 | 異時点の二DB/Replicaを黙って同一Snapshotにすること |
+| TEI Quality Report Consumer | 実Query入力/結果の束縛、対象期間とcoverage、異常/不明/未検査、診断ID、版・時点付き結果の説明、再確認要求 | 古いReplica findingでPrimaryを直接修正、実行成功を業務品質合格へ昇格 |
+
+**TEI固有Hostは作らない**。品質検査は明示されたInput/Output契約を持つ独立Goバイナリやread-only SQL等として生成し、まず既存OS Scheduler/CI/手動CLIで実行可能かを比較。TEIが非常駐でも、業務上の状態/Flow/依存/適用条件はTEI定義が正本。EKIを使う場合は**実行管理・CPU/GPU/メモリ・ノード/Lease・取消・再試行**を部分委譲し、TEIの業務状態遷移・Owner判断をEKIのTask状態へ移管しない。
+
+EKI Fabric [#57](https://github.com/hat47x/eki-fabric/issues/57)はTask/Attempt/Lease、Lease失効後のlate Result拒否、ResultClaimと独立VerificationResult、AcceptedResultを区別する**既存の実証Owner**。しかし現時点でTEI品質CheckSetをEKIへ統合・実運用した根拠はない。**EKI AcceptedResultは輸送/実行成果の受理であり、TEI quality-passではない**。Workerが生成した診断値だけで独立な正しさを推論しない。EKI連携を必須依存・巨大Job Manager・新TEI常駐サービスとして前提化しない。
+
+### 27.2 Quality ClaimはSnapshot相対の二段階判定にする
+
+**実行Receipt**（Run/Attemptが実際に何を消費し、完了したか）と**品質Claim**（特定Data Scopeに異常が存在する／観測されなかったか）を別にする。Quality Claimの最小束縛は§26の表に追記するだけで足り、第二Proof Schemaは作らない。
+
+1. **Source/Rule側**：Accepted Meaning/Rule/Operator/Generator/実Go/SQL byte・Target版、適用条件、必要なData Context・Independent Expected。
+2. **Read側**：実Provider endpoint/Replica身份、Principal/開示条件、Query byte、snapshot/transaction/LSNまたは整合版、replica replay watermark、対象Period/Row/Field/Relation closure、処理件数と未観測理由。
+3. **Execution側**：Task/Attempt/Lease（該当時）、開始/終了時刻、実Artifact、CPU/IO/Query budget、timeout/cancel/retry、例外/row count/violations、結果の完全性。
+4. **Consumer側**：得られた \`violations-found\` / \`pass-in-scope\` / \`incomplete\` / \`unavailable\` / \`not-run\` のClaimと適用時点、旧Claimの現在資格、必要なOwner再受理・Provider再Read。
+
+**二段階**：①ReplicaのSnapshot S上で「違反観測／対象内違反未観測」を記録、②現在のPrimaryへの適用・修正が必要なら、当該キー・Rule版・最新レコード/関係/状態を**現在の認可下で再検証**。Replicaの旧違反がPrimaryで是正済みの可能性、旧Replicaの0違反後にPrimaryで新違反が発生した可能性の両方を扱う。ReplicaのLSN確認は、当該DBの必要変更が適用されたことを示す条件にはなり得ても、外部API/異DBとの共同Snapshotを自動保証しない。
+
+**実時間の資格はRuleごと**：危険な入力・Commitに必要な業務条件はOnlineで保持し、歴史的/広域/高価な監査だけ非同期化を検討。「Nightly pass」を翌日昼の新しいCommandの認可や業務適合へ流用しない。Quality結果の保存・通知・アクセス制御は既存運用/Providerの管理下に置き、Replicaへ書き込まない。観測した生データのAgent/AIへの開示には、現在のDisclosure Scopeを適用。
+
+### 27.3 全件Scanと選択的再Scanの採用条件
+
+夜間検査でも全件毎回Scanは高コスト。静的依存だけでなく、**候補集合の増減・否定依存・動的Relation・変更履歴・Schema/Rule版**を追跡できる場合に限り選択的再監査を検討する。
+
+| 変更 | 再評価範囲の例 | 正しい「省略」の前提 |
+| --- | --- | --- |
+| 明細行Amount/Quantity変更 | 当該Lineと関連Orderの合計/制約 | 変更ログ/対象Order/Relationの完全な閉包がある |
+| Line挿入・削除 | 当該OrderのCOUNT/SUM/\`not exists\`／全称Rule | negative dependencyを記録。削除を更新差分から落とさない |
+| Customer/Org membershipのRelation先変更 | 変更前・変更後の両参照先に波及するClaim | 動的参照先の旧/new identityと時点を確認 |
+| Rule/Operator/Lean前提/Generator変更 | 当該Ruleから導出されたすべての対象Claimを再資格化 | 局所再実行で足りることを依存閉包から証明できる |
+| Change feed欠落、Replica lag不明、未観測期間あり | 範囲未確定として\`incomplete\`、必要ならFull Scan | 最終値がA→B→Aでも中間履歴無変更と推論しない |
+| Provider/Snapshotまたぎ・テーブル再構成 | 各Scope/epochへ区切って判定またはUnknown | 異なるwatermark/Read cohortを一つの全件に合算しない |
+
+**増分の開始条件**：前回検証済みのFull Scanの対象集合・snapshot・Rule版が存在し、変更ログにGapがなく、対象Ruleの依存（挿入/削除/否定・時点）をすべて列挙できること。そうでなければ全件Scanへ戻すかUnknown。Previous passにDeltaだけを足して完全性が自動継承されたと主張しない。#2600の「誤再利用ゼロ／過剰失効検出」をData Qualityにも適用。ただし**Builderの増分再生成と実データの増分Scanは別の問題**であり、同じCache命中率で評価しない。
+
+### 27.4 「異常検出→確認→是正→再観測」を独立したEvidenceに
+
+\`\`\`text
+derived read-only CheckSet → observed finding (source/snapshot scoped)
+    → triage (kind/severity/owner + suspected cause; AI suggestions optional)
+    → current Primary/Provider revalidation (same affected subject + Rule)
+    → authorized, typed Repair Intent via existing Command/Host/Provider
+    → Commit known/unknown + operation identity + independent Read
+    → new Quality Claim (new snapshot), old finding remains historical
+\`\`\`
+
+CheckSetは**原則read-only**。RepairのSQL/CommandはFindingの副作用として即実行しない。修正候補の根拠・作用範囲・更新前後条件と、Ownerの受理・Hostの現在Authorityを検査する。Commit unknown時は二重実行禁止と再照合を優先。是正後の0違反は再Scanした新しいSnapshot範囲のClaimであり、旧不整合が初めから存在しなかったことにはしない。AIは異常分類・原因候補・Patch/修正Intentの提案を支援できるが、Context内の説明を実Authorityへ昇格しない。
+
+### 27.5 最小受入Fixtureと優先順位（#26の再実装を避ける）
+
+| ラベル | 反証する変種・異常 | 独立Expected / 結論範囲 |
+| --- | --- | --- |
+| **DQX-01** Online vs Offline | 同じ量/明細合計RuleをGo online／SQL read-only offlineへLower。配送JOIN fanoutあり | 違反の有無・集計grainが一致。異なるQuery生成器が同じ誤りを共有し得るため、handwritten Oracle/Mutation対照で検出 |
+| **DQX-02** Replicaの古いPASS | S0では0違反、Primaryに新違反B、Replica replayはS0 | 「S0の範囲で異常未観測」だけ。現在Primary PASS・Owner受理を主張しない |
+| **DQX-03** 旧違反の是正 | S0で違反A、Primary S1では修正済み。古いFindingの自動Repairを試行 | Primary再検証でRepairを拒否/不要にする。監査履歴は消さない |
+| **DQX-04** 増分の見落とし | 明細B削除→\`not exists\`が成立、CDC gap、A→B→A | Delta-onlyのfalse passを拒否、再Scan/Unknownを選択。FullとIncrementalでClaim一致 |
+| **DQX-05** EKI委譲/重複 | Worker A lease失効、Worker B再試行、Aから遅延Result、同一Taskの重複配送 | EKIのResult資格とTEIの品質判定を別々に結ぶ。遅延Resultで品質PASSを上書きしない。**EKI実連携はNOT RUN** |
+| **DQX-06** Lean/実装/入力 | LeanでLawが仮定下で証明、SQL/Goに誤丸め/バグ、Providerは部分集合 | Proof PASS・実装不一致・データUnknownを別Claimとして同時報告。形式証明からGo/SQL同値を推論しない |
+
+**実証順（新しいGateではない）**：
+- **Q0**：#2622の既存受注/明細Ruleと#2514の独立Expectedを1件固定し、online guard／offline scanの配置理由・発見遅延・Ownerを記録。
+- **Q1**：実DBの固定Snapshotを使うread-only全件Check（受注合計と孤児/重複のうち1つ）を、同Rule/Operator版で生成可能か検査。正式Generator未存在なら\`NOT RUN: missing concrete entry\`、手書きSQLは比較Oracle/候補としてのみ扱う。
+- **Q2**：同じ検査にReplica lag・部分取得・異時点・失敗途中を与え、ReceiptのScope/epoch/coverageを検証。
+- **Q3**：前回Full Scan＋変更の閉包が成立する場合だけIncrementalとFullを比較し、false reuse/再Scan負担/p50,p95/Replica IOを計測。
+- **Q4**：再検証付きRepair Intent、独立Read、必要ならEKIのexecution-only Task委譲をそれぞれ独立に確認。Leanは任意の補助Targetとして後続。EKI/Leanの未完成をQ1 read-only検証の必須ブロッカーにはしない。
+
+**責務引継ぎ**：#1130がUI非依存Batchのtyped input/output、trigger/取消/進捗/結果Artifactを所有。#2622がData Rule/Contextと多Provider Read、#2544がLean Law/Facet、#2514が独立ExpectedとClaim Coverage、#2582/#2600が依存/増分の適用条件、#1174/#1129がRepair/Authority/Commit、#1163が一改訂Evidence。EKI側のJob Controllerは既存EKI Fabric #57等のOwnerであり、このTEI計画からEKIの実装・ADR・Scheduler選定を決定しない。既存ADR-0023（Command後の独立Read）、ADR-0029（Application Validation選択）、ADR-0043（独自TEI Hostなし）を維持。
+
+**停止・非採用**：Replicaの旧Resultを現在の全件PASSと報告、EKI AcceptedResultをTEI Quality Passと混同、Change-feed Gapを見逃した局所Scan、省略後のOnline必須制約漏れ、未確認のRepair自動適用、Lean ProofからProvider実データ合格を推論した場合は採用停止。Job/Proof/Repairの製品API・Scheduler・新Registry/Host/Quality Dashboardの採用、実Go/SQL/Replica/EKI/Lean実行、CI、Ownerの意味/運用受入は**未決・NOT RUN**。
