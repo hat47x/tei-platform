@@ -563,7 +563,7 @@ func loadSemantics(root string, r *Result) error {
 }
 
 func loadApplications(root string, r *Result) error {
-	manifests, err := globPinnedSorted(root, r, filepath.Join(root, "applications", "*", "application.tei"))
+	manifests, err := listPinnedUnitFiles(root, r, filepath.Join(root, "applications"), nil, "application.tei")
 	if err != nil {
 		return err
 	}
@@ -578,7 +578,7 @@ func loadApplications(root string, r *Result) error {
 		}
 		r.Sources["application:"+string(a.ID)] = SourceLocation{File: relPath(root, path), Line: 1, Column: 1}
 		unitDir := filepath.Dir(path)
-		patternFiles, _ := globPinnedSorted(root, r, filepath.Join(unitDir, "patterns", "*.tei"))
+		patternFiles, _ := listPinnedFiles(root, r, filepath.Join(unitDir, "patterns"), "*.tei")
 		for _, patternPath := range patternFiles {
 			patternSource, err := readSourceForLoad(root, r, patternPath)
 			if err != nil {
@@ -591,7 +591,7 @@ func loadApplications(root string, r *Result) error {
 			a.Patterns = append(a.Patterns, pattern)
 			r.Sources["application-pattern:"+string(pattern.ID)] = SourceLocation{File: relPath(root, patternPath), Line: 1, Column: 1}
 		}
-		packageFiles, _ := globPinnedSorted(root, r, filepath.Join(unitDir, "packages", "*.tei"))
+		packageFiles, _ := listPinnedFiles(root, r, filepath.Join(unitDir, "packages"), "*.tei")
 		for _, packagePath := range packageFiles {
 			packageSource, err := readSourceForLoad(root, r, packagePath)
 			if err != nil {
@@ -605,7 +605,7 @@ func loadApplications(root string, r *Result) error {
 			r.Sources["application-package:"+string(pkg.ID)] = SourceLocation{File: relPath(root, packagePath), Line: 1, Column: 1}
 		}
 		r.World.Applications = append(r.World.Applications, a)
-		qfiles, _ := globPinnedSorted(root, r, filepath.Join(unitDir, "queries", "*.tei"))
+		qfiles, _ := listPinnedFiles(root, r, filepath.Join(unitDir, "queries"), "*.tei")
 		for _, qpath := range qfiles {
 			qsrc, err := readSourceForLoad(root, r, qpath)
 			if err != nil {
@@ -635,7 +635,7 @@ func loadApplications(root string, r *Result) error {
 			r.World.Queries = append(r.World.Queries, q)
 			r.Sources["query:"+string(q.ID)] = SourceLocation{File: relPath(root, qpath), Line: 1, Column: 1}
 		}
-		bfiles, _ := globPinnedSorted(root, r, filepath.Join(unitDir, "realizations", "*.tei"))
+		bfiles, _ := listPinnedFiles(root, r, filepath.Join(unitDir, "realizations"), "*.tei")
 		for _, bpath := range bfiles {
 			bsrc, err := readSourceForLoad(root, r, bpath)
 			if err != nil {
@@ -654,7 +654,7 @@ func loadApplications(root string, r *Result) error {
 }
 
 func loadDatabases(root string, r *Result) error {
-	manifests, err := globPinnedSorted(root, r, filepath.Join(root, "databases", "*", "database.tei"))
+	manifests, err := listPinnedUnitFiles(root, r, filepath.Join(root, "databases"), nil, "database.tei")
 	if err != nil {
 		return err
 	}
@@ -667,7 +667,7 @@ func loadDatabases(root string, r *Result) error {
 		if err != nil {
 			return sourceErr(path, err)
 		}
-		contractFiles, _ := globPinnedSorted(root, r, filepath.Join(filepath.Dir(path), "contracts", "*.tei"))
+		contractFiles, _ := listPinnedFiles(root, r, filepath.Join(filepath.Dir(path), "contracts"), "*.tei")
 		for _, cpath := range contractFiles {
 			csrc, err := readSourceForLoad(root, r, cpath)
 			if err != nil {
@@ -684,7 +684,7 @@ func loadDatabases(root string, r *Result) error {
 				r.Sources["database-contract-query:"+string(c.ID)+"/"+string(query.Name)] = contractSource
 			}
 		}
-		persistenceFiles, _ := globPinnedSorted(root, r, filepath.Join(filepath.Dir(path), "persistence", "*.tei"))
+		persistenceFiles, _ := listPinnedFiles(root, r, filepath.Join(filepath.Dir(path), "persistence"), "*.tei")
 		for _, ppath := range persistenceFiles {
 			psrc, err := readSourceForLoad(root, r, ppath)
 			if err != nil {
@@ -708,7 +708,7 @@ func loadDatabases(root string, r *Result) error {
 		} else if !errors.Is(err, os.ErrNotExist) {
 			return err
 		}
-		migrationFiles, _ := globPinnedSorted(root, r, filepath.Join(filepath.Dir(path), "migrations", "*", "migration.tei"))
+		migrationFiles, _ := listPinnedUnitFiles(root, r, filepath.Join(filepath.Dir(path), "migrations"), nil, "migration.tei")
 		for _, mpath := range migrationFiles {
 			msrc, err := readSourceForLoad(root, r, mpath)
 			if err != nil {
@@ -728,7 +728,7 @@ func loadDatabases(root string, r *Result) error {
 }
 
 func loadReleases(root string, r *Result) error {
-	appFiles, err := globPinnedSorted(root, r, filepath.Join(root, "releases", "applications", "*", "*.tei"))
+	appFiles, err := listPinnedUnitFiles(root, r, filepath.Join(root, "releases", "applications"), nil, "*.tei")
 	if err != nil {
 		return err
 	}
@@ -745,7 +745,7 @@ func loadReleases(root string, r *Result) error {
 		r.Sources["application-release:"+string(rel.Application)+"/"+rel.Version] = SourceLocation{File: relPath(root, path), Line: 1, Column: 1}
 	}
 
-	dbFiles, err := globPinnedSorted(root, r, filepath.Join(root, "releases", "databases", "*", "*.tei"))
+	dbFiles, err := listPinnedUnitFiles(root, r, filepath.Join(root, "releases", "databases"), nil, "*.tei")
 	if err != nil {
 		return err
 	}
@@ -762,7 +762,7 @@ func loadReleases(root string, r *Result) error {
 		r.Sources["database-release:"+string(rel.Database)+"/"+rel.Version] = SourceLocation{File: relPath(root, path), Line: 1, Column: 1}
 	}
 
-	solutionFiles, err := globPinnedSorted(root, r, filepath.Join(root, "releases", "solutions", "*", "*.tei"))
+	solutionFiles, err := listPinnedUnitFiles(root, r, filepath.Join(root, "releases", "solutions"), nil, "*.tei")
 	if err != nil {
 		return err
 	}
@@ -782,7 +782,7 @@ func loadReleases(root string, r *Result) error {
 }
 
 func loadEnvironments(root string, r *Result) error {
-	manifests, err := globPinnedSorted(root, r, filepath.Join(root, "environments", "*", "environment.tei"))
+	manifests, err := listPinnedUnitFiles(root, r, filepath.Join(root, "environments"), nil, "environment.tei")
 	if err != nil {
 		return err
 	}
@@ -844,37 +844,114 @@ func resolveNativeSQLFile(root, declarationPath, rawRef string) (string, error) 
 	return candidate, nil
 }
 
-// globPinnedSorted expands a filepath.Glob style pattern below root through
-// the Root pinned by Load (or a temporary rooted handle for direct per-domain
-// loader tests), never through the Workspace pathname. It keeps globSorted's
-// result shape: absolute paths below root in sorted order, no error for a
-// missing directory, and entries of any type (a later pinned read rejects
-// non-regular ones exactly as before).
-func globPinnedSorted(root string, r *Result, pattern string) ([]string, error) {
-	logical, err := filepath.Rel(root, pattern)
+// pinnedDirMatches lists the entries of the directory dir (slash separated,
+// relative to the pinned Root) whose NAME matches pattern, in name order. The
+// pattern is always a fixed file-name pattern chosen by a loader (or "*"); it is
+// never built from a directory name found in the Workspace, so a name that
+// contains glob metacharacters is matched like any other. A directory that does
+// not exist or cannot be listed yields no entries, as filepath.Glob did.
+// Entries of any type are returned (a later pinned read rejects non-regular
+// ones), including a directory named like a file.
+func pinnedDirMatches(fsys fs.FS, dir, pattern string) ([]string, error) {
+	entries, err := fs.ReadDir(fsys, dir)
 	if err != nil {
-		return nil, fmt.Errorf("Workspace listing pattern %q relative to Workspace: %w", pattern, err)
+		return nil, nil
 	}
-	logical = filepath.ToSlash(logical)
-	rootHandle := r.sourceReadRoot
-	if rootHandle == nil {
-		rootHandle, err = openWorkspaceRoot(root)
+	var names []string
+	for _, entry := range entries {
+		matched, err := path.Match(pattern, entry.Name())
 		if err != nil {
-			return nil, fmt.Errorf("open Workspace root for %s listing: %w", logical, err)
+			return nil, fmt.Errorf("Workspace listing pattern %q: %w", pattern, err)
 		}
-		defer rootHandle.Close()
+		if matched {
+			names = append(names, entry.Name())
+		}
 	}
-	matches, err := fs.Glob(rootHandle.FS(), logical)
+	return names, nil
+}
+
+// pinnedListingRoot returns the Root pinned by Load, or a temporary rooted
+// handle for direct per-domain loader tests, and the function that releases it.
+func pinnedListingRoot(root string, r *Result, what string) (*os.Root, func(), error) {
+	if r.sourceReadRoot != nil {
+		return r.sourceReadRoot, func() {}, nil
+	}
+	handle, err := openWorkspaceRoot(root)
+	if err != nil {
+		return nil, nil, fmt.Errorf("open Workspace root for %s listing: %w", what, err)
+	}
+	return handle, func() { handle.Close() }, nil
+}
+
+func logicalListingPath(root, directory string) (string, error) {
+	logical, err := filepath.Rel(root, directory)
+	if err != nil {
+		return "", fmt.Errorf("Workspace listing directory %q relative to Workspace: %w", directory, err)
+	}
+	return filepath.ToSlash(logical), nil
+}
+
+// listPinnedFiles lists the entries of directory whose name matches the fixed
+// file-name pattern, through the Root pinned by Load. It returns absolute paths
+// below root in sorted order and no error for a missing directory.
+func listPinnedFiles(root string, r *Result, directory, pattern string) ([]string, error) {
+	logical, err := logicalListingPath(root, directory)
 	if err != nil {
 		return nil, err
 	}
-	files := make([]string, 0, len(matches))
-	for _, match := range matches {
-		files = append(files, filepath.Join(root, filepath.FromSlash(match)))
+	handle, release, err := pinnedListingRoot(root, r, logical)
+	if err != nil {
+		return nil, err
+	}
+	defer release()
+	names, err := pinnedDirMatches(handle.FS(), logical, pattern)
+	if err != nil {
+		return nil, err
+	}
+	files := make([]string, 0, len(names))
+	for _, name := range names {
+		files = append(files, filepath.Join(directory, name))
 	}
 	sort.Strings(files)
 	return files, nil
 }
+
+// listPinnedUnitFiles lists <parent>/<unit>/<below...>/<pattern> for every
+// entry <unit> of parent. The unit directories are enumerated from the pinned
+// directory listing and joined by name; no pattern is built from them, so unit
+// names that contain glob metacharacters are listed. Only the final file-name
+// pattern is matched. Results are absolute paths in sorted order; missing
+// directories contribute nothing.
+func listPinnedUnitFiles(root string, r *Result, parent string, below []string, pattern string) ([]string, error) {
+	logicalParent, err := logicalListingPath(root, parent)
+	if err != nil {
+		return nil, err
+	}
+	handle, release, err := pinnedListingRoot(root, r, logicalParent)
+	if err != nil {
+		return nil, err
+	}
+	defer release()
+	units, err := pinnedDirMatches(handle.FS(), logicalParent, "*")
+	if err != nil {
+		return nil, err
+	}
+	var files []string
+	for _, unit := range units {
+		elements := append([]string{logicalParent, unit}, below...)
+		logicalDir := path.Join(elements...)
+		names, err := pinnedDirMatches(handle.FS(), logicalDir, pattern)
+		if err != nil {
+			return nil, err
+		}
+		for _, name := range names {
+			files = append(files, filepath.Join(root, filepath.FromSlash(logicalDir), name))
+		}
+	}
+	sort.Strings(files)
+	return files, nil
+}
+
 func relPath(root, path string) string {
 	x, err := filepath.Rel(root, path)
 	if err != nil {
