@@ -80,7 +80,7 @@ func TestOrgHeadlessSeparateMembershipFromOccupancy(t *testing.T) {
 	}
 }
 
-// The third Data type deliberately has only a *semantic relation* to OrgUnit:
+// CaseRecord deliberately has only a *semantic relation* to OrgUnit:
 // no Persistence mapping, no Policy/Grant binding, no derived Case read/write.
 // A relational path being authorable is not a runtime Row Level Security claim.
 func TestOrgHeadlessCaseRelationDoesNotAuthorizeReadOrWrite(t *testing.T) {
