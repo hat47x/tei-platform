@@ -21,6 +21,19 @@ go test ./internal/security/effectcommit/commandadapter -run TestCharacterizatio
 
 限定CI `.github/workflows/macro-command-boundary-characterization.yml` はPRのexact HEADをcheckoutし、`go.mod`のGo版、`gofmt -l`、上記Go試験、worktree不変を別々に確認する。**PR作成やテストSource保存だけで、CIが成功したとは記録しない。**
 
+## Replay/unknownの別資格（MC-D01/D02）
+
+[submit側の既存共通Caller](https://github.com/hat47x/tei-platform/blob/main/internal/security/effectcommit/submit/submit.go)は `Committed`／`Replayed`／`NotCommitted`／`Uncertain`／`NotRecorded` 等を区別する**未採用A2参照**を持つ。他方、現在の `commandadapter.Executor` は `committed/replayed` を両方 `command.Result{}` と `nil` に写す。これらは別の既存Caller入口であり、既存 `submit.Outcome` をただちに製品の正式 `Command.Result` に昇格させない。
+
+| ID | 独立Expectedと合成観測 | 合格と呼ばない範囲 |
+| --- | --- | --- |
+| **MC-D01** 初回対Replay | 同じOperationIDと同じInputsを2回実行。Fake Provider内では最初のEffect＋Receiptが1回保存され、2回目はReceipt一致によるReplayで追加Writeしない。CommandのResultは**両方空値**。 | UI/CLIに初回確定・再送・Receiptが既に伝達されたとは言えない。Providerの実DB冪等性・現Grantの実適合は証明外 |
+| **MC-D02** Commit uncertain | Fake TransactionのCommitがエラー。Commandの外側では `COMMAND_EXECUTION_FAILED` に包まれるが、`errors.As` で `CommitUncertainError` は保持される。 | DBに書き込まれた／Rollbackされた／Receiptがない、といった実結果は分からない。新しいOperationIDを発行した再Submitは許されない |
+
+**設計上の停止線**：内部Goの型付きCauseを保持することと、外部Studio/API/CLIへ正しい非実行Dispositionが表現・伝達されることを分ける。未知Commit時は**同OperationID・同PayloadのRequestで権限適格性を確認してLookup**し、Lookupが `not-recorded` でも対象Ownerの実Effect状態の保証がなければ新Effectを自動実行しない。実Host/Providerと独立Owner read/Receipt照合は[#1174](https://github.com/hat47x/tei-platform/issues/1174)／[#1119](https://github.com/hat47x/tei-platform/issues/1119)へ委譲する。
+
+この追加は**Test Characterizationのみ**であり、初回/Replay/unknownを伝達する正式なResult schemaを採用・実装したものではない。Head更新後のCIは実行記録のSHA/Workflow結果を確認するまでPASS扱いにしない。
+
 ## 次の実装所有と中止線
 
 - MC-B01に対しては、呼出側で`OperationID`・`Grant`・`ExpectedVersion`・`Payload`を同一Operationとして確定させた根拠が必要。合法な関連明細更新もあるので、単純な文字列一致で全件を拒否せず、Ownerが受理したTarget変換とProvider側の実書込み対象を結ぶ。
