@@ -219,6 +219,10 @@ Spring Statemachineの階層、直交Region、Fork/Join、History、Deferred Eve
 
 TEI CoreでSpring Statemachineの全機構を先行採用するのではなく、EKIの既存Task/Attempt/Lease等の独立State軸に、Graph×Transition/Invariant表×Event Traceを投影できるかを評価する。EKI側でDeferred Event/Fork/Join/History等が必要ならEKI固有Conformanceへ引き渡す。GPU shared memory・VRAM・CPU/Memory予約／OS保護を一つの「使用率」列に潰さず、Simulationの計算結果と実Device観測・Authority Decisionを分離する。
 
+### 7.9 Cloud/Edge DeploymentとState Ownerの分離（2026-11-03）
+
+[TEI Application→EKI論理Launch Target／Cloud Control＋On-prem/Pi Fabricの比較](TEI_EKI_APPLICATION_DEPLOYMENT_FABRIC_2026-11.md)を追加。State/Flowの意味はTEI、常駐ApplicationのRuntime/Service readinessはCloud／既存Orchestrator、Task/Attempt/LeaseとResource/Node stateはEKI、DB/Business EffectはDomain Providerが保持。**どの管理コンソールに登録したか**ではRuntime状態の所有者は変わらない。Web/APIの可用性とPi/PCの機会的Task実行はState Machineの実行Profileとして区別する。Release Intent→Provider Actual→Consumer Observation／現在資格の差を、Graph×Tableの相関表示と独立Expectedで検収する。
+
 ## 8. 今回の結論と検証の状態
 
 **成熟した設計入力として置くもの**：状態機械の適用対象は業務に限らない／図・状態表・遷移表・交差マトリクスは同一意味を異なる形で投影する／意味Core・実行・保存・UI・文書を直結せず明示Bindingする／業務IFを全部置換しない／実Runtimeの一般化は別の採用判断とする。
