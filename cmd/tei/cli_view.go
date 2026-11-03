@@ -650,6 +650,11 @@ func writeCommandPlanText(out io.Writer, plan applicationview.CommandPlan) (int,
 			return 2, err
 		}
 	}
+	if plan.Period != nil {
+		if _, err := fmt.Fprintf(out, "period: %s states=%s closed-rejects=%s\n", plan.Period.ID, strings.Join(plan.Period.States, ","), strings.Join(plan.Period.ClosedRejects, ",")); err != nil {
+			return 2, err
+		}
+	}
 	if len(plan.Invalid) > 0 {
 		if _, err := fmt.Fprintln(out, "invalid:"); err != nil {
 			return 2, err
