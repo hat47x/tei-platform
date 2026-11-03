@@ -276,3 +276,56 @@ EKI ADR-0039（最小安全観測）と[#548](https://github.com/hat47x/eki-fabr
 **Phaseの判断**：①TEI実`RunPlan`の現RunKey/Step記録とVS-23〜32を直接Goで反証、②EKI #267/#381実装のTask Phaseと一つの実AcceptedResultまでの現在資格を実Processで再実証、③EKI #115の内部Retry/Provider Ack unknown、④EKI #126のTask Groupの必要最小Contract、⑤Deadline/部分効用/相関失敗を既存#19/#48/#50のDeterministic→Shadowで比較する。**Phase①〜④の実E2Eが通る前に、確率最適化/有償Autoscaleの実運用価値を主張しない**。
 
 **非目標**：TEIにEKI Task Group台帳を複製、EKIにTEIのBusiness RunPlan/Workflow Engineを移植、PlanRunとTaskを同じIDにする、全Providerに完全な2PCを要求する、未知Effectを再実行の許可に変える、独立OracleのExpectedをScheduler/AIが生成する、正式なDSL/API/価格体系を本稿で採用すること。
+
+## 12. 実行体・依存物・データの局所性を期限・予算の調停に組み込む（2026-11-04）
+
+他レーンの[TEI Job/Buildの段階割当 Draft #2788](https://github.com/hat47x/tei-platform/pull/2788)、[TEI #1130 BU-01〜09](https://github.com/hat47x/tei-platform/issues/1130)、[EKI #112 TEI workload projection](https://github.com/hat47x/eki-fabric/issues/112)、[EKI #58 Suitability Gate](https://github.com/hat47x/eki-fabric/issues/58)、[EKI Control/Data Plane](https://github.com/hat47x/eki-fabric/blob/main/architecture/CONTROL_DATA_PLANE.md)、[EKI RQ-029](https://github.com/hat47x/eki-fabric/blob/main/requirements/PRODUCT_REQUIREMENTS.md)を横断。前節までのPool選択が計算資源・queue・失敗見込み中心だったことに対し、**実行可能なArtifact・Toolchain・入力・結果の置き場所と事前準備**を、費用/時間/Authorityの独立制約として補う。
+
+### 12.1 Sourceの意味、ビルド成果物、実行可能な配置は別
+
+**TEI**はFunction/Job/Flowの意味、単一Go Binary既定、Build Target/Artifact Byte/Toolchain/依存閉包、Entry/InvocationとIndependent Expectedを管理。**EKI**は実行リソースの適格性と委任資格／Task/Attempt/Lease/Resource/Transfer budgetを管理。**Provider**は実際のRuntime Class・Data Plane Store/Cache・Executorを準備し実Jobを起動する。EKIがTEI Sourceを解釈してGoビルドを再実行する前提にしない。複数Buildは必要になった段階でTEI Build管理Pluginが提案し、業務上のFunctionの名前で物理配備を分断しない（TEI #2788）。
+
+**候補Poolにおける「実行準備済み」**は、次の独立Witnessが揃う場合だけ判断する：
+- `source/meaning/build`：TEI受理済みJob意味、完全性を持つ入力closure、Go Toolchain/OS/arch/Artifact Digest・Entry/Executorの版。TEI外部Importのselected parsed Source Witness（Draft [#2812](https://github.com/hat47x/tei-platform/pull/2812)）は**Full Closureでない**ため、そのままBuild再利用資格には使わない。
+- `executor/runtime`：Providerによる対応OS/arch/runtime/toolchain・Approved Executor/Artifact digestの現時点の束縛。EKI P0の`version_constraint`はAdmission未評価、`parameters`はWorkerへ未配送という静的差異を先行[非損失Gate](TEI_EKI_ONE_REVISION_EVIDENCE_VERTICAL_SLICE_2026-11.md)§14で拒否／保留する。
+- `data`：Input artifact bytes/size/digest、Data Class・Residency・Owner/Grant、Store/Cacheの現在性、実Provider Data Planeへの安全な取得経路。WorkerのClient指定URLを自動取得しない（EKI **RQ-029**）。同じDigestのCache hit自己申告は実データ存在とSecurity Authorityを証明しない。
+- `capacity`：DLG-1委任先登録／BUD-1物理予算／CAP-1費用支出許可／実Provider CPU/GPU/Memory Reservation/Local Governor。Artifactが用意できてもGPUが取れなければ`execution-ready`ではない。逆も同様。
+- `outcome`：Result本体をStoreへ戻し、検証/Owner開示を通過できる出力転送経路。入力だけでなくOutputの保持費用・期限・検証遅延も含む。
+
+上記を**新しいRuntime/Registry・共通Manifestの正式Schemaとして採用しない**。既存のTEI Build/Entry Witness、EKI Provider Resource Class、Data Plane Store/ArtifactGrant、Runtime／Actual Resultを、読み取り専用の判断票に束ねる。
+
+### 12.2 Cacheを考慮したDeadline/Costモデル：coldとwarmを混ぜない
+
+**時間の予測（Proposal）**：`T_total = T_admission + T_queue + T_capacity_reserve + T_artifact_stage_or_build + T_input_transfer + T_start + T_compute + T_output_transfer + T_verify + T_result_visibility + T_business_commit_if_required`。実行体が既に配布済みならStage部分は減るが、**安全・同一Digest・Grantを確認した実Cache Hit**でなければゼロと置かない。`T_artifact_stage_or_build`を二重計上しないよう、TEIで事前Buildした場合はEKI Workerでの追加Buildを前提にしない。複数Taskで共通Artifactを使う場合はStageコストをTaskごとに無条件再計上せず、一方初回配布・Cache miss・Eviction・時刻帯別Loadを見積もる。
+
+[EKI #112](https://github.com/hat47x/eki-fabric/issues/112)には、TEI projection Spikeの**ビルドキャッシュ有無で約0.8秒と12.5秒（約15倍）**という過去の観測がある。これは当該環境での事例であり、全Poolの一般的な性能値／実Go Binaryの配布速度ではない。同じIssueはToolchainが`go.mod`指定によって変わる実例を持ち、EKI RQ-029は**任意のWorker-side network fetchを既定で認めない**。必要なToolchainをWorkerに黙って取得させるPlanは不適格。事前に承認済みData Plane/Package Sourceへ配備・Buildするか、既存Host/Directを選ぶ。
+
+[EKI #58](https://github.com/hat47x/eki-fabric/issues/58)の既存Suitability合成例は、Local実行60秒に対し、分散候補は計算20秒だが入力8GiBを100MiB/sで転送するため**入力転送だけで約81.92秒、単純合計で101.92秒**になる。つまりGPU/CPUが速いことはEnd-to-endの優位性を示さない。**Output転送・検証・再試行・キャッシュ準備・Planner自身の遅延**まで含んだ同一Workload/Result Qualityの対照でのみ「EKIの方が速く/安く完了する」と主張する。
+
+**Placement候補の区分（正式enumではない）**：`direct-existing`、`warm-artifact-and-data`、`warm-executor-cold-input`、`requires-authorized-staging`、`unknown-version-or-cache`、`not-eligible`。Cache/Bundleが古い、Body bytes不明、Toolchain不適合、Source closure不足、Data Region違反の場合、`cache present`だけを根拠にeligibleへ昇格しない。
+
+### 12.3 事前配備と計算資源の予約を同一の行為としない
+
+期限逼迫時にManaged HPC/Cloudを**先に使える状態へ準備する**ことは有用だが、実行許可・費用発生の条件が異なる：
+1. `prepare/stage proposal`：必要Artifact/Toolchain/InputのHash・Provider Capability・Data Classを検査。転送・Build・事前保存にもOwner/Quota/Transfer Budgetが必要。明示承認なしのプリウォームを低信頼PC群／他組織へ撒かない。
+2. `authorized stage`：既存のData Plane Grant／Approved Store/Provider、Artifact Byte・Digest/Scopeと配備先を限定し、実Observationで完了を確認。**Stage成功≠Run Grant**、Stageを実WorkOrder起動として記録しない。
+3. `capacity reserve`：上記の準備と別にEKI BUD-1/CAP-1・Provider Admissionで実計算枠・時間窓を確認。ProviderがCapacityを将来保証しないなら、Stage済みでもFallbackは`speculative`。
+4. `execute and verify`：Source/Meaning/Executor/Artifact/Policy/Leaseの現Revision、Local Governor、Input/Output、Result Qualityを再確認。旧Stageがあるだけで旧TrustやGrantを延命させない。
+5. `release/reconcile`：Stageされた機密Artifactの保持/削除と、Cloud有償Capacityの課金終了は別Receipt。Stageを失敗したRunの一部として二重計上しない一方、実転送費用・格納量を予算から消さない。
+
+**予算が厳しい場合の推奨順**：まず無権限・実行不能・Source/Artifact不適格候補を排除し、Direct/Warm/Coldの完成見込みと物理消費を比較する。後から別Poolへ移す場合はArtifact事前準備・予約コストの回収可否、同じSourceの再利用回数、Deadline余裕・回復枠を考慮。単に`GPU utilization`最大・同一論理PoolのCPU合算最大を選ぶことはしない。公平性の改善をCost最小化で上書きしない。
+
+### 12.4 独立Fixture（既存LBへの追加CL-01〜08、全件NOT RUN）
+
+| Case | 試験条件・障害 | Independent Expected |
+| --- | --- | --- |
+| **CL-01 Cache warm/cold** | 同じTEI Go Executor digest、同じProvider Class。1回目Stage miss、2回目verified Hit。Queue等は固定 | Stageの時間/物理消費を区別し、Hit根拠なしのゼロ推定は禁止。#112の0.8/12.5秒を普遍定数にしない |
+| **CL-02 Unauthorized toolchain fetch** | Worker OSに指定Go toolchainがない。Clientが任意ネットURLを与えて自動入手させようとする | RQ-029により既定拒否。承認済みToolchain ProviderやPre-staged Binaryがないなら`not eligible` |
+| **CL-03 Cached bytes wrong digest** | CacheのEntry名は同じ、実Body digestが新Artifact Revisionと違う | 旧Cacheを使わず拒否／再Stage。表示名やHit申告をSource/Executable Authorityへ昇格しない |
+| **CL-04 Locality vs fast compute** | Local 60秒。Remote 20秒＋8GiB/100MiB/sの新規Input転送81.92秒 | #58の固定反例で`FABRIC_NOT_JUSTIFIED`相当。Remoteを高速な候補と偽らず、Result/Verify費用込みで比較 |
+| **CL-05 Partial Source closure** | TEI #2812でselected parsed Sourceのみ取得、推移Import/否定依存は不明。新Inputは同Digest名 | Full ClosureがないならBuild skip/Output受理へ昇格しない。`needs source requalification`、再実行資格は別 |
+| **CL-06 Staged but no capacity** | Managed PoolでArtifact/InputのStageは成功、同じ時間窓のGPU slotは他Taskに予約済み | `stage-ready` ≠ `reservation-confirmed`。Deadline/Recovery保証なし、二重予約不可 |
+| **CL-07 Low-trust prewarm** | 管理者承認のない社内PC Groupへ機密Executor/Inputを事前配布しようとする | DLG-1/Data Class/Local Governor/Transfer Budget/Provider grantを満たさず拒否。Poolの集約表示は配布許可でない |
+| **CL-08 Replan and orphan stage** | A Poolに有償Stage/Cache格納、途中でB Poolへ変更、AではData Retention/Cloud支出継続 | Bへ切替成功でもAの転送/残余格納費を消さない。Provider release/retentionの実Receiptまで`unknown/outstanding` |
+
+**実装順の上書きではない**：P0は既存[EKI #58](https://github.com/hat47x/eki-fabric/issues/58)のSuitability-0モデル（Input bytes/Cache/Throughput/Compute）に、TEI Build Artifact/Runtime ClassとLocal baselineを結ぶ読み取り専用比較を追加する。P1は現EKI P0 Input ingestとApproved Executor identityの不足を[#112](https://github.com/hat47x/eki-fabric/issues/112)で解消する。P2で初めて実ProviderのStage/Reserve/Result/Cache MetricsをE2E観測し、P3でDeadline/RecoveryのPlanner・Predictorに反映する。新Cost Engine、Container Registry、Package Downloader、Workload-specific Go CompilerをEKIへ追加しない。WP-01〜19は静的ABI試験PASSの報告、CL-01〜08は**新規実行NOT RUN**。
