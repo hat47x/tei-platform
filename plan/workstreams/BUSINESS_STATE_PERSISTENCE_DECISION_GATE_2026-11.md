@@ -25,7 +25,7 @@
 | --- | --- | --- | --- |
 | 本体status一列 | index/filter、単純なas-is current。過去履歴は別 | 有効なstatus集合と遷移Guardは別。行version-CAS、他属性との整合 | 状態コードの対応、未確定／NULL、旧履歴の欠損 |
 | 本体複数列 | 直交状態軸の複合Predicate | 軸間不変条件、同じ行への並行更新・lost update | 「直交」か「階層」かの意味、旧遷移経路 |
-| JSONB／ARRAY等の構造化列 | provider固有path/containment、G​​IN等の索引候補。無索引時は別評価 | JSON欠損≠null≠空、ARRAYの順序/重複、branch identity、要素更新の原子性・row CAS | 型・版・要素Identity・集合多重度・NULL/空の意味 |
+| JSONB／ARRAY等の構造化列 | provider固有path/containment、GIN等の索引候補。無索引時は別評価 | JSON欠損≠null≠空、ARRAYの順序/重複、branch identity、要素更新の原子性・row CAS | 型・版・要素Identity・集合多重度・NULL/空の意味 |
 | 業務別Relation／Instance表 | 有効期間・複数step・複数attempt・履歴の自然なSELECT | PK/FK/業務Key/期間重複、独立更新のTx、deleted/closed行 | 関係occurrence、valid/recorded time、履歴、旧キー |
 | イベント／監査専用表 | event timeと記録時刻の区別、再生は追加要件 | 順序、重複/冪等、欠落・遡及修正、currentとの結合 | 履歴完全性、イベントschema/version、再生規則 |
 | 中央共有Writer／外部Store | 複数Domainの独立運用・監視用途 | 業務型×Tenant×Key×Process instanceの混同、DB間原子性・許可 | writer切替、既存workflow occurrence、二重書込の停止 |
