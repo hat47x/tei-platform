@@ -122,6 +122,9 @@ type Relation struct {
 	// Keysは複合keyを含むRelationも表現できるよう、対応関係を順序付きで保持する。
 	// key対応をまだ定義していない概念Relationでは空のままとし、既存Canonical表現を変えない。
 	Keys []RelationKey `json:"keys,omitempty"`
+	// OnDeleteは、参照先の削除に対する振る舞いの宣言である。
+	// restrict・cascade・preserveを持ち、実行時の強制はProviderに置く。
+	OnDelete string `json:"onDelete,omitempty"`
 }
 
 // ValidationKindは、業務上の不変条件として実Referenceで確認できた
