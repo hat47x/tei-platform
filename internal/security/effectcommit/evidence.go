@@ -3,6 +3,7 @@ package effectcommit
 import (
 	"context"
 	"errors"
+	"unicode"
 
 	"tei/internal/security/legacyauthorization"
 )
@@ -91,6 +92,27 @@ func (r Runner) Lookup(ctx context.Context, req Request, grant legacyauthorizati
 	return res, err
 }
 
+// MaxGuaranteeReasonRunes bounds the reason text copied into Evidence.
+const MaxGuaranteeReasonRunes = 200
+
+// sanitizeReason drops control characters (newlines, NUL, escapes) and
+// truncates to MaxGuaranteeReasonRunes so a Provider cannot inject log lines or
+// bulk text through the declaration. It does not detect secrets: a reason must
+// still be fixed, secret-free text.
+func sanitizeReason(s string) string {
+	out := make([]rune, 0, len(s))
+	for _, r := range s {
+		if unicode.IsControl(r) {
+			continue
+		}
+		out = append(out, r)
+		if len(out) == MaxGuaranteeReasonRunes {
+			break
+		}
+	}
+	return string(out)
+}
+
 func classify(err error) ErrorClass {
 	var unc *CommitUncertainError
 	switch {
@@ -121,7 +143,7 @@ func (r Runner) emit(op string, req Request, grant legacyauthorization.Authoriza
 		prov = ProvenanceUnspecified
 	}
 	declared := DeclaredGuarantee(r.Provider)
-	ev := Evidence{Operation: op, Provenance: prov, Guarantee: declared.Level, GuaranteeReason: declared.Reason}
+	ev := Evidence{Operation: op, Provenance: prov, Guarantee: declared.Level, GuaranteeReason: sanitizeReason(declared.Reason)}
 	ev.ErrorClass = classify(err)
 	if ev.ErrorClass == ErrorClassNone {
 		ev.Status = res.Status

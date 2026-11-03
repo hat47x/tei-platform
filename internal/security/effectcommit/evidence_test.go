@@ -123,6 +123,25 @@ func TestEvidenceInvalidRequestEchoesNothingUntrusted(t *testing.T) {
 	}
 }
 
+func TestEvidenceGuaranteeReasonIsSanitizedAndBounded(t *testing.T) {
+	long := strings.Repeat("あ", MaxGuaranteeReasonRunes+50)
+	for name, tc := range map[string]struct{ in, want string }{
+		"control-chars-removed": {"line1\nline2\x00\x1b[31mred\r\t", "line1line2[31mred"},
+		"truncated":             {long, strings.Repeat("あ", MaxGuaranteeReasonRunes)},
+		"plain-kept":            {"provisional D10: x", "provisional D10: x"},
+	} {
+		sink := &fakeSink{}
+		p := declaring{newMemoryProvider(), Guarantee{Level: GuaranteeAtomicWithCommit, Reason: tc.in}}
+		runner := Runner{Provider: p, Audit: AuditConfig{Sink: sink}}
+		if _, err := runExec(runner, fixtureRequest()); err != nil {
+			t.Fatal(err)
+		}
+		if got := sink.got[0].GuaranteeReason; got != tc.want {
+			t.Fatalf("%s: reason=%q want %q", name, got, tc.want)
+		}
+	}
+}
+
 func TestEvidenceCarriesDeclaredGuarantee(t *testing.T) {
 	sink := &fakeSink{}
 	p := declaring{newMemoryProvider(), Guarantee{Level: GuaranteeAtomicWithCommit, Reason: "synthetic"}}

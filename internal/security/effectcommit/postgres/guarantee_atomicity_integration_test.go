@@ -5,6 +5,7 @@ import (
 	"errors"
 	"sync"
 	"testing"
+	"time"
 
 	"tei/internal/security/effectcommit"
 )
@@ -214,5 +215,115 @@ func TestDeclaredProviderRequiredRunnerConcurrentRevokeIsAllOrNothing(t *testing
 		default:
 			t.Fatalf("unexpected status: %+v", result)
 		}
+	}
+}
+
+// TestDeclaredProviderRequiredRunnerBlocksOnUncommittedRevocation is the
+// deterministic check of the authority row lock. Another transaction revokes
+// (UPDATE, uncommitted) and holds the authority row; the declared Runner's
+// CheckAuthority must wait on that row lock, and after the revocation commits it
+// must see the changed version and Deny with no effect and no receipt. If the
+// lock is not taken (FOR UPDATE removed, or CheckAuthority not calling the lock
+// function) Execute returns while the revocation is still uncommitted.
+func TestDeclaredProviderRequiredRunnerBlocksOnUncommittedRevocation(t *testing.T) {
+	f := openFixture(t)
+	installTrustedOwnerFixture(t, f)
+	ctx := context.Background()
+	req := f.req
+	req.Payload = []byte("3")
+	grant := f.grant(t)
+	owner, err := NewWithTrustedOwnerRoutine(f.pool, f.schema)
+	if err != nil {
+		t.Fatal(err)
+	}
+	runner := requiredRunner(t, owner, nil)
+
+	revoker, err := f.pool.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = revoker.Rollback(context.Background()) }()
+	if _, err := revoker.Exec(ctx, "UPDATE "+f.schema+".subjects SET role='VIEWER' WHERE subject=$1", req.Scope.Subject); err != nil {
+		t.Fatal(err)
+	}
+
+	type outcome struct {
+		res effectcommit.Result
+		err error
+	}
+	done := make(chan outcome, 1)
+	go func() {
+		r, err := runner.Execute(ctx, req, grant)
+		done <- outcome{r, err}
+	}()
+	select {
+	case o := <-done:
+		t.Fatalf("Execute did not wait for the uncommitted revocation (authority row not locked): %+v err=%v", o.res, o.err)
+	case <-time.After(500 * time.Millisecond):
+	}
+	if err := revoker.Commit(ctx); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case o := <-done:
+		if o.err != nil || o.res.Status != effectcommit.StatusDenied || o.res.Receipt != (effectcommit.Receipt{}) {
+			t.Fatalf("after revocation commit: %+v err=%v", o.res, o.err)
+		}
+	case <-time.After(10 * time.Second):
+		t.Fatal("Execute stayed blocked after the revocation committed")
+	}
+	a, reservations, history, outbox, receipts := ownerCounts(t, f)
+	value, version := f.readObject(t)
+	if a != 3 || reservations != 0 || history != 0 || outbox != 0 || receipts != 0 || value != "original" || version != 0 {
+		t.Fatalf("denied but state changed: %d %d %d %d %d %q %d", a, reservations, history, outbox, receipts, value, version)
+	}
+}
+
+// failBeforeCommit rolls back and returns an error instead of committing, and
+// declares its own level explicitly. Authority check, owner effect and receipt
+// have all been executed on the transaction by then; none may survive. This is
+// what detects a receipt INSERT or an owner effect that ran outside the commit.
+type failBeforeCommit struct{ inner Provider }
+
+func (failBeforeCommit) Guarantee() effectcommit.Guarantee {
+	return effectcommit.Guarantee{Level: effectcommit.GuaranteeAtomicWithCommit, Reason: "test wrapper"}
+}
+
+func (w failBeforeCommit) Begin(ctx context.Context) (effectcommit.Transaction, error) {
+	tx, err := w.inner.Begin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return failBeforeCommitTx{Transaction: tx}, nil
+}
+
+type failBeforeCommitTx struct{ effectcommit.Transaction }
+
+func (t failBeforeCommitTx) Commit(context.Context) error {
+	_ = t.Transaction.Rollback()
+	return errors.New("commit not reached")
+}
+
+func TestDeclaredProviderRequiredRunnerPreCommitFailureLeavesNoReceiptNorOwnerEffect(t *testing.T) {
+	f := openFixture(t)
+	installTrustedOwnerFixture(t, f)
+	ctx := context.Background()
+	req := f.req
+	req.Payload = []byte("3")
+	grant := f.grant(t)
+	owner, err := NewWithTrustedOwnerRoutine(f.pool, f.schema)
+	if err != nil {
+		t.Fatal(err)
+	}
+	runner := requiredRunner(t, failBeforeCommit{inner: owner}, nil)
+	got, err := runner.Execute(ctx, req, grant)
+	if err == nil || got.Status == effectcommit.StatusCommitted {
+		t.Fatalf("pre-commit failure reported as success: %+v err=%v", got, err)
+	}
+	a, reservations, history, outbox, receipts := ownerCounts(t, f)
+	value, version := f.readObject(t)
+	if a != 3 || reservations != 0 || history != 0 || outbox != 0 || receipts != 0 || value != "original" || version != 0 {
+		t.Fatalf("effect or receipt survived without commit: stock=%d reservations=%d history=%d outbox=%d receipts=%d object=%q v%d",
+			a, reservations, history, outbox, receipts, value, version)
 	}
 }

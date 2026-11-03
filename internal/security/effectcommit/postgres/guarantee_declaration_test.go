@@ -76,3 +76,27 @@ func TestWrapperDeclarationDoesNotLeakThroughNamedField(t *testing.T) {
 		t.Fatalf("named-field wrapper inherited %q", g.Level)
 	}
 }
+
+// embeddingWrapper EMBEDS the concrete Provider, so Guarantee() is promoted and
+// the wrapper is reported as atomic-with-commit even if it adds non-atomic
+// behaviour. This pins that known property (see effectcommit.GuaranteeDeclarer):
+// it is a composition-review matter, listed in README.md, not something this
+// package can prevent.
+type embeddingWrapper struct{ Provider }
+
+func TestEmbeddingWrapperInheritsDeclarationKnownLimitation(t *testing.T) {
+	p, err := NewWithTrustedOwnerRoutine(&pgxpool.Pool{}, "tei_schema")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if g := effectcommit.DeclaredGuarantee(embeddingWrapper{p}); g.Level != effectcommit.GuaranteeAtomicWithCommit {
+		t.Fatalf("embedding wrapper = %q; the promoted declaration is the documented limitation", g.Level)
+	}
+	direct, err := New(&pgxpool.Pool{}, "tei_schema")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if g := effectcommit.DeclaredGuarantee(embeddingWrapper{direct}); g.Level != effectcommit.GuaranteeUndeclared {
+		t.Fatalf("embedding the direct-path Provider declared %q", g.Level)
+	}
+}
