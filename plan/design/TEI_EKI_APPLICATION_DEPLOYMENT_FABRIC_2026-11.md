@@ -186,6 +186,11 @@ EKIの内部を細部なしの“単一仮想マシン”と見なすことは�
 
 [Deadline/Budget/Recovery-aware Coordination](TEI_EKI_DEADLINE_BUDGET_RECOVERY_COORDINATION_2026-11.md)により、Managed Cloud/Managed HPC/Dynamic Endpointの選択は単純なCPU/GPU割当でなく、Queue/Provision/Network/Verified ResultのEnd-to-end時間と、失敗後の再確保・予算・期限前エスカレーションを比較する。実運用のApplication Serviceは既存Providerの可用性契約を維持。**EKI Cloud Controlが提供した予測はHost SLAでもCloud Capacity reservationでもない**。Scale-outはBUD-1/CAP-1とProvider quota/Cost Authorityを満たした場合だけ、停止・解除・支出反映はProvider receiptによって確認する。
 
+
+### 7.4 事前Stage・有償Capacity確保・Launchを分離する（2026-11-04）
+
+[期限・予算計画§12](TEI_EKI_DEADLINE_BUDGET_RECOVERY_COORDINATION_2026-11.md)へ準拠。TEI生成Go実行体のBuild ArtifactをCloud/HPC/Endpoint Poolへ`Stage`することと、BUD-1/CAP-1・Provider Reservationによる**有償・実CPU/GPU Capacity確保**、さらにEKI Task/Leaseによる**実行権限**は、費用・許可・失効・Receiptがそれぞれ異なる。Stageに成功しただけでCapacity/SLO/Runを保証しない。機密Source/Inputを管理者未承認の低信頼PC Poolへ「Cacheのため」配布しない。Workerから任意URL・Toolchainを取得させず、承認されたData Plane Store/ArtifactGrant、既存Provider配備機構を使用する。Cloud ControlのControl PlaneをGB単位のArtifact Proxyへしない。実Stage/Launch/Resultがない限り`ready`を単一の真値として表示しない。初期実証は一つのGo Binary・一つのPure JobのDirect vs EKIに限定する（CL-01〜08すべてNOT RUN）。
+
 ## 8. 段階導入とIssue/ADR責務の所有範囲
 
 | Gate | 最小の出来上がりと受入条件 | 主要Owner |
