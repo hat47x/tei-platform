@@ -120,7 +120,76 @@ Established --[T4: link-lost]--> Closed
 
 **停止条件**：未受理のDomain意味、曖昧な状態/Region、Event集合・入力Domainの不完全性、外部Reference版不明／stale、Graphと表の相互不一致、Source逆写像不能、Target非対応、安全上未知のGuard、現在Grant／Effect未確認のいずれかを検出したら、該当操作をunresolved/unsupportedとして止める（read-onlyの表示自体は対象Scope/未解決を明記して可）。既存Product Gate／Owner受理を変更しない。
 
-## 7. 今回の結論と検証の状態
+## 7. Validation／Derivation／Flowと、ヒアリング中の設計修正から実装へ渡す契約
+
+### 7.1 Buriの資料・ソースから確認できる範囲と不足
+
+**確認済みの静的事実（Buri `fbaf32d`）**：
+- [マニュアル §3-1-3～3-1-4](https://github.com/seasarorg/s2buri/blob/fbaf32dd3ec2a815dfe3f4426f10d6b0ce53547d/buri-core/doc/%E3%83%9E%E3%83%8B%E3%83%A5%E3%82%A2%E3%83%AB.txt)に、JaWEでXPDLのProcess／Activity／Transitionを描き、ManualとAutomatic、条件式（`#data`参照）を定義する操作手順がある。**この図は保存・実行されるフロー定義の編集入口**であり、見た目だけの説明図ではない。
+- 同マニュアル§4-1-5/6ではAND/XOR、`#data`／`#action`の条件、ToolでOGNL等の処理を呼び出す。[`wakanagoProcess.ftl`](https://github.com/seasarorg/s2buri/blob/fbaf32dd3ec2a815dfe3f4426f10d6b0ce53547d/buri-core/src/main/resources/ftl/wakanagoProcess.ftl)は条件・例外遷移・Tool・Manual待機をJava生成へ接続する。
+- 同マニュアル§4-2-3と[`ExcelBaseParticipantProvider`](https://github.com/seasarorg/s2buri/blob/fbaf32dd3ec2a815dfe3f4426f10d6b0ce53547d/buri-core/src/main/java/org/escafe/buri/common/participantprovider/impl/ExcelBaseParticipantProvider.java)に、Excelの権限階層と有効期間を読み込んでActivity候補の認可判定へ使う経路がある。Excel表はフロー内Ruleのすべてを代替していない。
+- 同マニュアルの特徴一覧は「Excelにルールを記述するだけのルールライブラリを搭載」と記す。二次資料にはExcelのDecision Tableという説明もあるが、この調査で直接見つかったExcel解析コードは主として**ParticipantProviderの権限表**である。Excelを使う任意のValidation/Derivation/Flow決定表の実行器とその実動は、このBuri Repo内の根拠で実装確認できていない。
+- [`BuriScriptComponentImpl`](https://github.com/seasarorg/s2buri/blob/fbaf32dd3ec2a815dfe3f4426f10d6b0ce53547d/buri-core/src/main/java/org/escafe/buri/component/impl/BuriScriptComponentImpl.java)はToolのExtended Attributeをスクリプト呼出しコードへ生成する。Toolに任意コードを置けるということと、顧客が図表を修正するだけでそのロジック全体を安全に生成できることは同義でない。
+
+**未確認の帰属**：`Validation`／`Derivation`／`Flow`がBuriでそのままの名称・厳密な3モードで独立実装されていたという主張は、確認した公開マニュアル・主要ソースでは裏付けられていない。これは**ユーザーが示した重要な設計上の三分類**としてTEIへ導入を検討する。Buri／S2Coffee／外部デシジョンテーブル実装の役割分担を混同しない。今後の史料照合は追加の参照資料が得られた場合のみ行い、Buri旧環境の実動復元をGateにしない。
+
+**これまで漏れていた本質**：図面を描けること以上に、ヒアリングで加筆訂正した**説明可能な宣言そのもの**が、型・対象・Rule・実装部品の対応を保ち、実装・検査・文書へ連続して引き継がれる点を、TEIの価値と評価対象にする。
+
+### 7.2 三つの意味形態（閉じたCore enum／正式命名の決定ではない）
+
+| 観点 | Validation／制約 | Derivation／導出 | Flow／進行・状態・手順 |
+| --- | --- | --- | --- |
+| 利用者が決めたい問い | **何が成立する／しない／未判定か** | **何から何を求め、なぜその値・分類になるか** | **何が契機で、次に何が起き／進められるか** |
+| 表・図の候補 | 条件・判定表、制約マトリクス、例外と診断一覧 | 算定表、決定表、依存グラフ、式・単位・丸め規則 | 状態図×遷移表、処理Flow、時系列、手作業／外部Actionの区別 |
+| 共通の実装対象 | Semantic Subject/Scope＋Predicate/Validation Rule | Derived Attribute/Dataset/Function＋純粋Operator依存 | Procedure/Action、State Transition Candidate、Event/Trigger＋既存Capability |
+| 入力と結果 | typed facts、complete/scope/epoch、satisfied/not-satisfied/unknown/error | typed inputs、精度・NULL・欠損・時点、値＋出所・診断 | State/Event/Guard＋Version、遷移候補・拒否・Effect Intent／Observation |
+| Effect | 判定自体は副作用を持たない（ただし拒否を強制する場所は別） | 計算本体は純粋。表示用計算と保存済派生値を区別 | Flowの決定は副作用を起こさない。Actionの実EffectはProvider/Hostに委譲 |
+| 主な診断 | 条件重複・抜け、矛盾、未知／不完全入力 | 循環参照、型・単位・精度、非可換な集計、欠損 | 未到達・欠落イベント・分岐競合、順序、再入、実行不能・Effect不確実性 |
+| 主要既存Owner | #1129/#2507/#2514、既存Validation | #2622/#988/#2600、DerivedとFunction | #1125/#1444、Lifecycle v1、#1121/#1174 |
+
+三つは**同じ定義へ複数Roleで重ね得る**が、意味・Effect・実行時点まで統合しない。例：`注文可能 = 在庫数 >= 注文数`を導出値とする、`注文可能`を受注確定のValidationとして参照する、Flowで`確定要求`が来た際に評価する、という三者のBindingは明示する。**Validation=trueはAuthorizationではなく、Derivation結果は常に現在値ではなく、Flowの遷移候補は実Commitではない。**
+
+例として業務以外にも次が成り立つかを比較する：
+- **UI**：`formCanSubmit`導出、フォーム入力Validation、Idle→Submitting→Done/ErrorのFlow。ボタン表示・enabledがHostによるwrite permissionに昇格しない。
+- **通信**：`retryDeadline`導出、packet/attempt ID Validation、Closed→Connecting→EstablishedのFlow。旧ACK、timeout、ABAとEffect結果を分ける。
+- **ゲーム**：入力・環境から`threatLevel`を導出、攻撃条件をValidation、警戒／運動RegionのFlow。Frame order・物理運動・乱数seedを固定した範囲で再現性を評価する。
+- **組込**：センサから`overheat`を導出、運転許可の安全条件、Running→FaultのFlow。欠測/時刻/故障時の安全側出力を純粋なGuard成功と混同しない。
+
+純粋ValidationとDerivationは共通Operator／Rule基盤を再利用しやすいが、FlowとEffectはTime・Concurrency・Targetが強く関与する。三分類を**すべての業務Ruleを覆う排他的分類**とはしない。Sourceの観測、業務上の命令、外部Action、独立Expected、Authorityは別の意味Role／証拠である。
+
+### 7.3 ユーザーヒアリングの図表を「そのままシステム化」する最短の往復
+
+目指すのは「手書きの会議図から即座に本番実行」ではない。**ヒアリングで理解された同じ定義を、再転記・再解釈せず、段階的に資格を与えて実装へ使えること**と定義する。
+
+| 段階 | 一つの設計の扱い | 何ができる／何をしてはいけない |
+| --- | --- | --- |
+| H0 質問・共同編集 | TEI Modelerで図にノード・矢印追加、表に条件・導出・例外追記。SHOの文章とSource位置を対応させる | Draft／出典／発言者が未受理なら候補表示。自然言語・見た目の図を実行定義と見なさない |
+| H1 構造化・診断 | 変更を既存Record／Graph／Expression＋Role候補に写像し、対象・型・Status／Event・入出力とRelationを検査 | Source span・Stable ID・意味候補・曖昧箇所を一覧にする。自動で穴を埋めない |
+| H2 例示と合意 | 同じ表・図に、正常／境界／例外の具体例、独立Expected、Ownerの受理対象/範囲を紐付ける | 説明用表、AI案、受理済規則、独立Oracleを区別。整合性チェックを意味受理としない |
+| H3 生成・検証 | 受理済みMeaningをLanguage/Operator/Provider/Target固定とともに必要なGo/Host Library・SHO設計文書・Conformanceへ派生 | ModelとDocだけ再生成して済む変更とTarget再Buildが必要な変更を区別。生成成功を実運用可能としない |
+| H4 実現・承認 | 実Consumerで利用したArtifact、現在Provider／Authority、保存Effect、独立Read、レビュー済み文書の配布Revisionを照合 | 人手受理、外部実行権限、テストEvidenceを混ぜた単一`approved`を作らない |
+
+**共同編集の最小操作**：一つのState/Rule/Derived Attributeを選択すると、図・表・説明・Source・Example・Expected・Generated targetの対応箇所へ移動できる。図のedge削除→遷移表の一行削除候補、表のGuard変更→図の該当edgeハイライト、導出式変更→利用するValidation／Flow／Targetの影響一覧、といった**差分PlanとPreview**を出す。曖昧な逆写像、非可逆集計、循環Dependency、未取得Required Factは自動確定せず診断する。
+
+**訂正の粒度**：文言・配置・コメント、例示値、独立Expected、Guard／Derivation式、Rule／Role版、Provider Binding、Target Templateの変更を別扱いし、意味変更を伴わない表示修正から実行時の再承認を自動要求しない。逆に式の1字修正がEffect/Guardへ波及する場合は必ず影響閉包を示す。非対称な図↔表編集は唯一のAuthoritative SourceへPatchとして記録する。SHOは同じモデルから説明・図表・改版履歴を生成し、承認済み納品文書のRevisionを保つ。
+
+### 7.4 検証を既存Conformanceへ割り付ける
+
+以下は**新Runner／新テスト正本を増やすものではない**。既存[#2620](https://github.com/hat47x/tei-platform/issues/2620)／[#2621](https://github.com/hat47x/tei-platform/issues/2621)／[#2497](https://github.com/hat47x/tei-platform/issues/2497)／[#2514](https://github.com/hat47x/tei-platform/issues/2514)に割り付ける受入圧力であり、現時点では全て**NOT RUN**。
+
+| 既存領域 | 最小の反例・独立Expected | 反証する誤成功 |
+| --- | --- | --- |
+| #2620/#988 | 同じ入力項目を、Validation表・Derivation表・Flow表の別Roleで解釈。Type/Operator lock・出典を揃えた範囲だけ意味に束縛 | 同形表だから同じ意味／表があるだけで実行可能 |
+| #2497/#1124 | 遷移図のedge T2と遷移表T2を相互選択。重複edge・複数Guard・折り畳み表示・曖昧削除を検査 | 図が一致して見えるからSourceが一致／複数遷移を1セルに潰す |
+| #2621/#1803 | ヒアリングで説明文・表・図を変更し、Source→Meaning→SHO文書と生成Bundleを版別比較 | レイアウト修正だけで全Meaning変更／式変更後も旧成果物のまま |
+| #2514/#1131 | 計算の独立Expected、Validationのfalse/unknown、Flowの分岐差分を別Oracleで採点 | 計算表から自動生成した値を独立Expectedとする |
+| #1121/#2600 | あるDerivationの変更で参照するValidation/Flow/Go Artifactのみを再資格化。RuntimeのRead/Grantは別判定 | byte同一＝意味同一、原因の異なる旧Receipt再利用 |
+| #1129/#1174 | 会議で定義したFlowのActionが、現在Host Authorization／実Provider書込み／Receiptを伴って実行できるか別検収 | accepted diagram＝本番実行許可／Provider ACK＝業務完了 |
+
+**Gate**：最初は一つの「入力値→導出→Validation→状態遷移」だけを、図・表・Markdown説明・独立Expectedの四Projectionで同じSource/Meaning IDとして追う。次に非業務UIまたは通信の異質Domainで同じ意味Roleを使う。続いて再編集・再生成と必要なTargetを検証し、初めて実Provider／HostのEffectに進む。**ヒアリングで即編集できる利用価値**と**正しい実装を生成するConformance**を独立に評価する。
+
+
+## 8. 今回の結論と検証の状態
 
 **成熟した設計入力として置くもの**：状態機械の適用対象は業務に限らない／図・状態表・遷移表・交差マトリクスは同一意味を異なる形で投影する／意味Core・実行・保存・UI・文書を直結せず明示Bindingする／業務IFを全部置換しない／実Runtimeの一般化は別の採用判断とする。
 
