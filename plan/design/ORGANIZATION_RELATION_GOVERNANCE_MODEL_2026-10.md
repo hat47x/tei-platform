@@ -2072,3 +2072,9 @@ TEI上の組織/Capacity Planningを、コアに組み込まれた例外的なEn
 **採否票**：Trial/Baseline Source+Meaning/Rule+Role Pin/valid+known/Delta+Proposal Revision/Field・Row Read qualification/Constraint owner+scope/Projection+SHO revision/Owner acceptance status/Action intent+target+grant+effect+receipt/Independent Expected+Runner+fixed SHA。欠ける項目は「未知」として説明し、豊富なメタ情報を全利用者が手で必須入力する方式へはしない。
 
 **未決**：業務別Rule・承継Bridge・Case移管・兼務・Capacity意味、提案の評価モデル・受理資格、実RDB/Providerコントロール、実Studio/SHO/外部Host試験。今回のE0合成・E1 read-only Local Nativeの成功と、組織再編の本番運用・実発令の受理は明確に別である。
+
+### 55.5 CI fixed-head 追加実測（E0の範囲）
+
+2026-11-03 09:03Z実行の[PR #2779 Actions #41607867473](https://github.com/hat47x/tei-platform/actions/runs/41607867473)は、fixed HEAD `e51a7bb692177c0a50daf7686649da530f5e1a0d`に対し**completed/success**。Node **v22.16.0**、`verify.mjs`の**27 checks PASS**、`node --test`の**225/225 PASS・fail 0**（そのうち新規TS-01〜20の20件）をログから確認。今回の新SourceのBlobは`3b314fef6d19a98bb5f55400dc69335687f2676f`、利用した共通Fixture Blobは`d66f29505389f2096e9b825ba4f5e2d799d607d4`。Workflowのexact-head照合・試験後cleanもsuccessful。旧「V8局所PASSのみ／CI未確認」は記録時点の状態であり、本節の新しい固定版の実測を優先する。
+
+**ただし、この合計252 checksを製品横断252件と呼ばない。** 27は別Reference検査、225はNode合成テストであり、同じRunnerで成功した局所E0のみ。PR #2681の実Go E1は別固定Source/別Run、#2779に実TEI Native・SQL・Provider/DB・Studio/SHO・Host・Owner受理の証拠はない。#1119のP0 DB/Owner-write優先や既存Gateを変えない。
