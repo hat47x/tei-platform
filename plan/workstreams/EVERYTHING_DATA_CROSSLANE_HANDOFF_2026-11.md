@@ -1609,4 +1609,4 @@ Ownerの設計方針：Data ModelはSQL解釈から構造生成するのでな�
 
 **正式判断の保留**：soft/hard deadline・停止の優先度、目標とする期限内完了確率、Reserve/Quotaの割当、複製の許否と相関モデル、価格外部AdapterとBudgetの連動、前払い予約の強さ、成功/一部結果の用途別意味、学習による順位決定の採否。これらはOwner/Provider/Deploymentによって異なり、共通SLA・単一価格Score・新中央State/Cost Registryとして先行固定しない。
 
-**証拠状態**：本§36は既存TEI/ EK​​I契約に対する**Docs-onlyの差分**。LR-01〜12の本番/合成テスト実行、TEI→EKIの時間Contractの実ABI、計量/外部料金、Cluster/PC群の実予約・失敗回復、ML学習・shadow評価、性能/予算最適化の効果、TEI Owner意味受理、EKI Ownerの要件/ADR採用は**NOT RUN/未決**。§35とEKI ADR-0013を変更せず、公式製品の実装済みとは主張しない。
+**証拠状態**：本§36は既存TEI/ EKI契約に対する**Docs-onlyの差分**。LR-01〜12の本番/合成テスト実行、TEI→EKIの時間Contractの実ABI、計量/外部料金、Cluster/PC群の実予約・失敗回復、ML学習・shadow評価、性能/予算最適化の効果、TEI Owner意味受理、EKI Ownerの要件/ADR採用は**NOT RUN/未決**。§35とEKI ADR-0013を変更せず、公式製品の実装済みとは主張しない。
