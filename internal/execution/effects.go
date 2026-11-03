@@ -83,3 +83,29 @@ func RunEffect(ctx context.Context, invoker Invoker, observer EffectObserver, jo
 	}
 	return record, nil
 }
+
+// CompensationsFor returns the compensation rules that answer a failed effect:
+// the same capability that owns the failed effect, and the same data the failed
+// effect changed. A compensation for other data would undo work that is still
+// wanted, so it is not returned.
+func CompensationsFor(rules []semantic.EffectRule, failed effectRule) []semantic.EffectRule {
+	var out []semantic.EffectRule
+	for _, rule := range rules {
+		if rule.Stage != "compensation" || rule.ViaCapability == "" {
+			continue
+		}
+		if rule.OnCapability != failed.OnCapability || rule.EffectData != failed.EffectData {
+			continue
+		}
+		out = append(out, rule)
+	}
+	return out
+}
+
+type effectRule = semantic.EffectRule
+
+// NeedsCompensation reports whether a failed effect asks for compensation. A
+// failure that only rejects does not start one.
+func NeedsCompensation(rule semantic.EffectRule) bool {
+	return rule.OnFailure == "compensate"
+}
