@@ -163,3 +163,40 @@ func TestNeedsCompensationFollowsTheRule(t *testing.T) {
 		t.Fatal("a rule that rejects must not start a compensation")
 	}
 }
+func TestCompensateRunsTheMatchingCompensation(t *testing.T) {
+	journal := &memoryJournal{}
+	failed := lateRule()
+	failed.OnFailure = "compensate"
+	records, err := execution.Compensate(context.Background(), &effectInvoker{}, nil, journal, "app", compensationRules(), failed, nil, nil)
+	if err != nil {
+		t.Fatalf("compensate: %v", err)
+	}
+	if len(records) != 1 || records[0].RuleID != "sales.order.undo" || !records[0].Succeeded {
+		t.Fatalf("unexpected compensation records: %+v", records)
+	}
+	if len(journal.records) != 1 {
+		t.Fatalf("the compensation must be journaled: %+v", journal.records)
+	}
+}
+
+func TestCompensateDoesNothingForARejectingRule(t *testing.T) {
+	failed := lateRule()
+	failed.OnFailure = "reject"
+	records, err := execution.Compensate(context.Background(), &effectInvoker{}, nil, &memoryJournal{}, "app", compensationRules(), failed, nil, nil)
+	if err != nil || len(records) != 0 {
+		t.Fatalf("a rejecting rule must not start a compensation: records=%+v err=%v", records, err)
+	}
+}
+
+func TestCompensateRecordsItsOwnFailure(t *testing.T) {
+	journal := &memoryJournal{}
+	failed := lateRule()
+	failed.OnFailure = "compensate"
+	records, err := execution.Compensate(context.Background(), &effectInvoker{err: errors.New("undo failed")}, nil, journal, "app", compensationRules(), failed, nil, nil)
+	if err != nil {
+		t.Fatalf("a failed compensation is a record: %v", err)
+	}
+	if len(records) != 1 || records[0].Succeeded || records[0].Detail != "undo failed" {
+		t.Fatalf("unexpected compensation record: %+v", records)
+	}
+}
