@@ -99,7 +99,7 @@
 
 **判断の例**：40分の期限が緩く、Oの中断リスクと22分のFallbackが十分検証でき、物理予算が残るなら、まずO→監視→早い時点のMへ切替が候補。Oの中断率が高い、共通障害が大きい、回復予算が不足、Data ClassやCAP-1が不適格なら**最初からM**または**期限達成不能を前倒しで知らせる**。常にO優先という固定アルゴリズムではない。
 
-## 8. 最小の独立Conformance（LB-01〜17、全件NOT RUN）
+## 8. 最小の独立Conformance（LB-01〜17、追加LB-18〜26は§10.6、全件NOT RUN）
 
 | Case | Fixture／Fault Injection | Independent Expected |
 | --- | --- | --- |
@@ -136,6 +136,88 @@ ExpectedはPlan/Estimator/LLMと**独立な固定Oracle**を用意し、実故�
 
 **Metrics（提案）**：`deadline_miss_rate`、`on_time_verified_completion_rate`（母集団と打切りを固定）、`p50/p95 end-to-end lead-time`、`p95/p99 recovery elapsed`（観測できた範囲と母集団）、`escalation rate/time`、`remaining recovery budget`、`deadline_at_risk lead warning time`、`compute/transfer/verification physical cost per accepted result`、`provider admission failure`、`decision overhead`、`owner-interference`、`unauthorized allocation=0`、`unknown-effect duplicate retries=0`。構成・入力・環境・失敗母集団が違う数字を単純比較しない。
 
-**明示的保留**：TEI/ EKIの正式DSL/APIの名前、確率閾値や統計推定器、分散最適化Solver/学習Model、Cloud料金の自動入力、SLA/保証、recovery budgetの物理表現、Hedgeと独立性、Ownerの全自動再配置許可。**現行EKIのAuthority/実Providerの完了資格・持ち主の拒否権は不変**。どのアルゴリズムでも変更する前に既存Issueと独立TestでOwner判断を行う。
+**明示的保留**：TEI/EKIの正式DSL/APIの名前、確率閾値や統計推定器、分散最適化Solver/学習Model、Cloud料金の自動入力、SLA/保証、recovery budgetの物理表現、Hedgeと独立性、Ownerの全自動再配置許可。**現行EKIのAuthority/実Providerの完了資格・持ち主の拒否権は不変**。どのアルゴリズムでも変更する前に既存Issueと独立TestでOwner判断を行う。
 
 **停止条件**：実Artifact/Result不可、必要なProvider/Trust/Data/Deadline/Consent不明、Source stale/partial、現在のCAP-1/Provider予約なし、物理予算不足、実External Effect Unknown、故障相関不明で必要な回復確率を保証できない、Fallback開始時の必要時間超過、Estimator校正不足、Solver overhead/費用逆転、一般ClientへのPool秘密漏洩。読取可能な状態の説明・期限リスクWarningは維持するが、実権限なしで高額Scaleoutや危険な再試行を行わない。
+
+## 10. 横断深化：単体Jobから複数Job・期限付き約束へ（2026-11-03、第2段）
+
+TEIの別議論（[#1130](https://github.com/hat47x/tei-platform/issues/1130)のHeadless Batch／Trigger／Simulation、[#2499](https://github.com/hat47x/tei-platform/issues/2499)の外部Authority、[#2514](https://github.com/hat47x/tei-platform/issues/2514)の独立Oracle、組織の時点付きMembershipとDecision WorkbookでのFlow意味受理）と、EKIの実装進捗を照合した結果、**単一Jobの安価なPool選択だけでは、複数の期限付きJob、部門別最低枠、回復用Capacity、Providerの競合が同時に起こる場面を扱えない**。しかしEKIに新しい汎用業務Workflow Engine／HPC Node Scheduler／Budget Authorityを作る必要もない。以下は既存契約に従う**短い時間窓ごとのPortfolio-level Coordination Proposal**を定義する。
+
+### 10.1 「期限に間に合う見込み」「資源を予約した」「期限を約束した」を区別する
+
+| 事実・状態 | 正本と有効範囲 | 伝えられること／伝えてはいけないこと |
+| --- | --- | --- |
+| TEI Business/Flow Deadline | TEIのOwner受理済みJob／Flow Definition・Meaning/Source/Artifact Revision | `target`、`latest_useful`、Step critical pathの依存・検証・業務Commit。**Taskのdeadlineを勝手にFlow成功へ読み替えない** |
+| Pool Forecast | EKIのObservation＋Provider Offer、Model Revision、Sample/Time Window、観測時点 | `deadline_at_risk`とPlan候補。**予測は物理Capacity・SLA・Trustを証明しない** |
+| Budget Reservation | 採用ADR-0014のBUD-1、必要に応じCAP-1とProvider-side Quota | 物理量の使用権限と有償確保の承認境界。**Budgetを確保しただけでGPU slotが取れたわけではない** |
+| Provider Capacity Commitment | 外部HPC/Cloud/Site Gatewayが認めた予約・時間窓・Resource Class、Provider Revision | 予約の強度（soft offer／queue acceptance／hard reservation）、失効・取消条件。**将来のOwner reclaim、Provider停止、絶対的な可用性保証と同一視しない** |
+| EKI Attempt/Lease | EKIのTask/Attempt/Lease/Recovery Store、現fence/expiry | 特定試行の有限な実行資格。**Leaseは完了時刻や外部Effect無発生の証明ではない** |
+| Verified/Business Outcome | EKI AcceptedResult／TEI業務Provider Commit Receipt／実Independent Observation | 最終的に得た結果と適用できる意味。**Estimator hit／Callback／Job submittedで完了にしない** |
+
+**結果の達成時点**はTEIが採用した条件で異なる：`EKI Result accepted`まででよい純計算と、`TEI Provider business commit verified`まで必要な処理を区別する。同じ期限をこれら全てに一律適用しない。
+
+### 10.2 ポートフォリオの「実行希望・資源予約・回復枠・部門公平性」を分離する
+
+**重要な差**：前節§4の`recovery reserve budget`（将来の回復用に使い切らない**物理量予算の取り置き**）は、次のどちらとも異なる。
+
+- **EKI Recovery Window Permit/Budget**：回復が一斉に発生した際のAttempt release数／transfer bytes／compute millis／時間窓を制限する**安全側のレート・増幅防止**。既存[ADR-0015](https://github.com/hat47x/eki-fabric/blob/main/plan/adr/0015-recovery-budgets-and-permits.md)、[EKI #154](https://github.com/hat47x/eki-fabric/issues/154)（closed：`Pending`、予算・Permitの永続化設計／実MVP E2E保証とは別）をOwnerとする。BUD-1の物理量Budgetを複製・置換しない。
+- **Provider Capacity Reservation**：特定のGPU/CPU/Worker Classに対する実枠・時間窓を、外部Providerが予約する行為。BUD-1の利用可能残高や「回復予算を保持した」という内部Planは、将来の物理Capacity獲得を保証しない。有償CapacityならCAP-1承認とProvider側の請求/費用開始・解放Receiptも必要。
+
+**Portfolio単位のProposal**には、同じPoolに並ぶTaskと部門／Service Class、期限付きCritical Jobs、利用中の予約、回復Reserve、CandidateのData/Trust・Requester Scopeを入れる。部門ごとの最低割当・上限・Borrowingは未決の[EKI #125](https://github.com/hat47x/eki-fabric/issues/125)がOwner。回復の窓をまたいだBest-effort飢餓は[EKI #155](https://github.com/hat47x/eki-fabric/issues/155)（open）がOwner。期限が近いTaskを**全資源への優先権**へ自動変換しない。組織の時点付きAssignmentとResource Grantは別権限、古い部門所属や利用者申告の`urgent`から公平性枠を引き上げない。
+
+**MVP判断順序（新Solver不要）**：
+1. 管理者許可／Data/Runtime/Resource/Local Governor／DLG-1／BUD-1／CAP-1／Providerの現在Eligibilityで**hard filter**。独立Expectedが無ければ`unsupported`を返す。
+2. `DIRECT`実行と各管理済みPool/動的Poolの`queue+setup+transfer+compute+verify+visibility`、必要なら業務Commitを比較。各EstimateはSource、測定期間、Calibration、欠測、Confidence、Time Windowを付記。
+3. **全Jobの既存Commitmentと公平枠**を固定した上で、候補ごとに残り時間と回復に必要な最小準備時間、ProviderのCapacity Commitmentを評価。優先期限のみ見て他の予約Jobを押し出す変更は、別途権限と影響検証が必要。
+4. その条件内で、安価なOpportunistic、予約済Managed Pool、Direct Host、Cloud CAP-1を、転送/再起動/料金/電力/利用者干渉とともに**比較するProposal**を作る。目的の重みは管理者Policy／OwnerのBusiness Deadline。EKI Coreで通貨・価格や組織Fair-shareの恣意的な重みを自作しない。
+5. 実実行時には**予約直前の現在性再評価と条件付きProvider Admission**が必要。Planは予約を発行せず、Current Authorityは最後の段階で別決定。拒否・失効・Observation staleなら再Plan／期限リスク通知、実完了を保証しない。
+
+**予約の棚卸し**：Planを再計算しても、過去のCAP-1予約・Provider側の稼働費用・未確認Effectを自動消去しない。旧予約と新予約が重なる期間／Cloud終了処理が非同期で課金される期間を含めて、上限を越えないか確認する。Reservationを変更する場合の`old release request`と`provider release confirmed`は別状態。
+
+### 10.3 回復の見込みは「未来の時間」を前借りできない：Rolling Horizonで再計算
+
+**各判定の有効区間**：`Plan = (Task/Flow rev, resource/Policy rev, budget rev, provider offer rev, evidence window, now, horizon)`。新しいAttempt・Owner変更・Clockの進行・価格表変更・Provider停止で`Plan stale`となり、そのPlanの見込みから新しい実行資格を生成しない。
+
+**実行後の再評価**では、末尾期限から現在時刻までの`remaining_time`と、当該Task/Flowで既に消費した物理Budget、旧予約、未確認Effectを入力に戻す。特定のJobだけでなく、他部門・他Jobの既存Commitmentを含める。再Planは前のPlanと同じ`Provider Execution Ref/Attempt`が現存している可能性を扱うため、**後から受け取ったResult・旧Lease・失効の二重処理**を避ける。
+
+**見込みの品質**：未知の故障率や失敗相関に、仮の`0%`を入れて「99.9%成功」と表示しない。Deadline success probabilityの数値化は、同等Workload/Pool/時間帯の適切なHoldout、打切り・選択バイアス、共通障害と予測校正を検証できる場合に限る。結果を知らないTaskは`censored/unknown`として扱い、`Task refused`や`Telemetry delay`と一律なFailureにしない。実工場・事務所等の労働時間や端末一斉回収はFuture Demandに影響するが、**MDMの前回Inventory=現在の実可用性**ではない。
+
+**ヘッジ／冗長化**は純粋・複製安全なTaskのみ、実Providerの二重課金とResult verify費用を含む場合に比較する。Effectful/UNKNOWNなTaskに期限制約を理由に多重Attemptを勝手に追加しない。同じSite/Storage/Identity Gateway依存ならバックアップのPool IDを増やしても障害分散ではない。
+
+### 10.4 期限・待機・実行見込みなしを依頼元へ誤認させない
+
+[EKI #249](https://github.com/hat47x/eki-fabric/issues/249)（open）は受理済み`queued`を配置待ちと見込みなしで区別できない問題、[#111](https://github.com/hat47x/eki-fabric/issues/111)（open）は未開始の期限超過状態と`実行されたか不明`を分離する要求を扱う。したがって、現在のExternal APIに以下の全部が存在すると**主張しない**：
+
+| Client向けに表したい概念（Proposal） | 事実源と実判断条件 | 誤った説明 |
+| --- | --- | --- |
+| `waiting_eligible` | Taskは受理済み、適格なPool/Provider候補が存在し、今はQueue/Wait | `queued`＝必要なら必ず開始できる |
+| `blocked_by_policy/budget` | Admin Policy/物理Budget/Admission条件で止まる。非開示Poolの有無は見せない | `no eligible resource`からNode数・所在・他部門Quotaを漏らす |
+| `no_current_plan` | Candidate不足・Provider unavailable・能力未確認・Model校正不足のいずれか。Reason Scopeを限定 | Providerが`unavailable`だからWorkload不適格が確定 |
+| `deadline_at_risk` | 現時計と現在の実Provider Commitment／回復計画を照合し、期限内完了を立証できない | `likely late`＝Task failed／自動費用支出の許可 |
+| `deadline_missed_not_started` | **どのAttemptにもdispatchの証拠がない場合だけ** | 期限切れ＝外部副作用が無かった |
+| `deadline_missed_outcome_unknown` | dispatch済み/外部Effectの可能性あり、確定Receiptがない | Deadline経過＝safe retry or cancelled |
+
+TEI Studioでは`source observation`／`simulated plan`／`EKI accepted/admitted`／`Provider reserved`／`EKI verified result`／`TEI committed business effect`を縦に並べ、Reason/出典/時点/不明を別に表示する。External APIの公開Status enumは、EKI #249/#111のOwnerが正式受理するまで変えない。**実行見込みと管理者向けの詳細Root Causeを同じ開示範囲にしない**。
+
+### 10.5 既存Measurementの実装位置と、改善効果の検証を混同しない
+
+EKI [ADR-0039](https://github.com/hat47x/eki-fabric/blob/main/plan/adr/0039-minimal-safety-observability.md)と[#548](https://github.com/hat47x/eki-fabric/issues/548)（open）は`admission.rejected`／`lease.reclaimed`／`claim.refused`／`limit.refused`の4種類の実安全Eventを実発生点で数えることを扱う。**これら4カウンターだけでEnd-to-endの完了時間分布・故障相関・Budget節約・Deadline達成確率は学習できない。** さらに、End-to-end時刻・Provider Queue・Transfer・Result検証・Business Receiptの観測要件を**別のOutcome Sampling Profile候補**として整理する。ただし、新しいEKI計測DB/Registryや個体追跡の全量Logを最初から作らない。EKIの既存Task/Attempt/Provider相関・Observation Planeと[#19](https://github.com/hat47x/eki-fabric/issues/19)のshadow-schemaを再利用する。
+
+**評価順序**：①固定Deterministic/最少2PoolとDirectの比較、②共通障害／複数Job／Recovery WindowのScenario、③実記録を使ったShadow（別のTrialではCurrent Authorityへ影響無し）、④Holdout校正とProvider実測、⑤Ownerが支出/期限条件の自動化閾値を受理する場合のみ実Pilot。単純な`GPU utilization increased`、LLMによる`safe`、過去のSimulation PASSは実用価値や安全性の証明ではない。
+
+### 10.6 追加の独立Expected（LB-18〜26、全件NOT RUN）
+
+| Case | 固定条件と注入 | Expected：満たすべき区別 |
+| --- | --- | --- |
+| **LB-18 二つの期限ジョブの同時競合** | あるManaged Poolに時間窓内1枠のみ、Job A/Bとも20分の処理と30分の期限を申告、Aの予算枠は許可・Bは異なる部門で最低保証あり | 別々の単体Plannerが同じ物理枠を二回Reserveしない。両方期限内を約束せず、Provider/部門Policyに従って待機・代替・期限リスクを説明 |
+| **LB-19 Recovery Reserve≠Capacity Reserve** | AのBUD-1物理予算に再実行分の余力あり、Provider実GPUは他JobにReservation済み | 回復予算があるからFallback GPUを確保できたと表示しない。現在のProvider Reservation/Quotaが無ければ保証なし |
+| **LB-20 Recovery Window Budget耐久性** | 大量reclaim後にControl再起動、同一Time Windowでrelease 10件、毎回`Budget{}`へ戻したくなる | EKI #154のWindow/Pending/Permitの耐久不変条件を維持。独立BUD-1を迂回せず、restartでrelease/transfer budgetをリセットしない |
+| **LB-21 Recovery Fair Share vs Urgency** | Urgentが継続流入、部門Bのbest-effortは何回もWindow跨ぎで延期 | #155/#125の未採用Policy下で「公平性保証済」と表示しない。UrgentによるGrant/Quota越え不可。飢餓の検出/Policy候補を分ける |
+| **LB-22 期限切れで未dispatch/済み不明** | 未開始Taskと、dispatch後Lease expiry・外部Effect不明のTaskが同じDeadlineを越える | 前者`not-started`相当、後者`unknown/reconciling`を区別。期限経過を無効果/自動retryへ縮約しない |
+| **LB-23 予測の打切りとBias** | Pool Oは完了20／消失40／結果不明40、Estimatorは20完了の平均のみで`on-time=100%`申告 | 少数の完了だけで`deadline success 100%`を出さない。Censored/Unknown/Eligible populationとCalibration不足を表現 |
+| **LB-24 再計画と失効** | Plan P0でProvider A Soft Offer、Plan P1直前にAのQuota/Pricing/Agent Revが更新 | 旧Planを実Current Authとしない。BUD-1/CAP-1とProvider Confirmationを再評価、既支出分は消さない |
+| **LB-25 共通障害の誤分散** | 二つのPoolが同一Artifact Store/Identity Provider/電源/Networkを共有、同時失敗 | `independent`の成功確率積を使わない。Shared dependencyをGraph上で表示、Risk unknownまたは別Fault Domainを候補に |
+| **LB-26 TEI FlowとJob Deadlineの境界** | A→B、EKIのA結果が期限内、TEI Bの必須DB Commitが未確認／TEI Coordinatorが停止 | `EKI verified A`≠`TEI Flow complete`。Owner/HostがBを検証するまでBusiness CompletionやSLO達成を宣言しない |
+
+**最小の裁定**：LB-18/19/20/22/26は既存契約の反証であり、独自のOptimizerや新Core型がなくても判断できる。LB-21はEKI #125/#155のOwnerがFair Shareの規則を採用するまで結論保留。LB-23/25は既存#19/#48/#50のTrace/Shadow評価、LB-24は既存Admission/CAP-1/Provider CASの契約へ渡す。**全体最適の理論的保証、確率校正、実Deadline/SLA達成率は未検証**。
