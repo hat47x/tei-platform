@@ -87,7 +87,7 @@ EKI Authority / Worker / Provider
 
 TEI StudioはGraph/表/TimelineとData/Rule/Function/Flow IDの相互選択を担い、SHOは構成変更・安全根拠・影響予測・監査記録を説明する文書へ投影する。EditorでGraph上のNodeを「削除」してもEKI実NodeやLeaseが削除されるわけではない。編集不可のDerived、曖昧なGraph逆写像、部分取得はread-onlyにする。標準構造・意味Role・Projection機構は[#2620](https://github.com/hat47x/tei-platform/issues/2620)／[#2621](https://github.com/hat47x/tei-platform/issues/2621)／[#2497](https://github.com/hat47x/tei-platform/issues/2497)へ渡し、EKI専用のGraph Core/Node Registryを作らない。
 
-## 5. シミュレーションの4モードと実Environmentとの差
+## 5. シミュレーションの4モードと実環境との差
 
 | Mode | 入力・手順 | 示せること | 示せないこと |
 | --- | --- | --- | --- |
@@ -158,7 +158,7 @@ AIに期待する仕事：
 | --- | --- | --- |
 | **R0 机上設計（今回）** | Graph/Table/Timelineを通すNode/Resource State Contract、権限/観測/予測の分離、NR-01〜12 | EKI #354/#118/#124/#123/#268/#19と適合照合。追加Contract採用はOwner待ち |
 | **R1 read-only Opsビュー** | 安全に開示できるEKIのObservation/Read-only APIからRecord/Relationを取り、Topologyと予約/実測・State/Traceを表示（モデル・時点・未知を保持） | EKI ADR-0021の開示Scope、EKI #112の外部API契約。**スクレイピングや内部Store直接参照を既定にしない** |
-| **R2 Simulator × 検証** | EK​​I既存Simulator／TraceをData/Function/Scenarioで受け、Deterministic/What-if/Fault Injectionの独立Expectedに対して説明できるか検証 | EKI #19/#48/#50、#354の同時Reservation負例。SimulatedとActualを分離 |
+| **R2 Simulator × 検証** | EKI既存Simulator／TraceをData/Function/Scenarioで受け、Deterministic/What-if/Fault Injectionの独立Expectedに対して説明できるか検証 | EKI #19/#48/#50、#354の同時Reservation負例。SimulatedとActualを分離 |
 | **R3 AI支援のChange Review** | Source/Result限定Prompt・Context、Impact Graph、AIと独立Checkerの差分・SHO説明。A4となるOwner/Trust決定は人が受理 | EKI Authority/Access revocation、TEI #2514/#1124。AIはQuery/提案の権限に限定 |
 | **R4 Safe Admin Intent** | 小さな`Node drain`または`Pool quota`のPreview→typed Proposal→EKI Admin API→実Receipt／独立Read。TEI Studio停止時もCLI復旧可 | EKI Admin Authority/CAS/fencing／#268の実接続。承認前・旧Revisionなら停止 |
 | **R5 Resource-aware E2E** | CPU/RAM/GPU/VRAM/Nodeの異種実Profile、Local Governor、MultiWorker/ResidentとInput/Output Budget、実機証拠 | EKI #57/#242を含む実Worker E2E、#118 OS観測、#354同時性、安全性能を個別実測 |
