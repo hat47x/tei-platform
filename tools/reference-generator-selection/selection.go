@@ -383,6 +383,10 @@ func validateContract(contract Contract) error {
 			if len(contract.Projection.Fields) == 0 {
 				return fmt.Errorf("a record projection requires fields")
 			}
+			inputsByAttribute := map[string]InputSpec{}
+			for _, input := range contract.Inputs {
+				inputsByAttribute[input.Attribute] = input
+			}
 			seen := map[string]bool{}
 			for _, field := range contract.Projection.Fields {
 				if strings.TrimSpace(field.Name) == "" || strings.TrimSpace(field.Input) == "" ||
@@ -393,6 +397,14 @@ func validateContract(contract Contract) error {
 					return fmt.Errorf("record field %q is duplicated", field.Name)
 				}
 				seen[field.Name] = true
+				input, ok := inputsByAttribute[field.Attribute]
+				if !ok {
+					return fmt.Errorf("record field %q references undeclared contract input attribute %q", field.Name, field.Attribute)
+				}
+				if field.Primitive != input.Primitive {
+					return fmt.Errorf("record field %q primitive %q does not match contract input %q primitive %q",
+						field.Name, field.Primitive, field.Attribute, input.Primitive)
+				}
 			}
 		default:
 			return fmt.Errorf("projection kind must be identity, normalize, or record")
