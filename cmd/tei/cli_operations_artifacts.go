@@ -119,3 +119,55 @@ func slug(value string) string {
 	replaced := strings.NewReplacer(".", "-", "/", "-", " ", "-").Replace(value)
 	return strings.ToLower(replaced)
 }
+
+// runPeriodsCommand reports the operations that may not run because their period
+// is not open. The period state is runtime information: the caller supplies it,
+// and an unspecified period is not treated as closed.
+func runPeriodsCommand(workspacePath, applicationID, statesFlag string) error {
+	if workspacePath == "" {
+		return fmt.Errorf("periods requires -workspace")
+	}
+	states, err := parsePeriodStates(statesFlag)
+	if err != nil {
+		return err
+	}
+	surface, err := operations.SurfaceWorkspace(workspacePath, applicationID)
+	if err != nil {
+		return err
+	}
+	rejections := operations.CheckPeriods(surface, states)
+	if rejections == nil {
+		rejections = []operations.PeriodRejection{}
+	}
+	writeJSON(struct {
+		Application string                            `json:"application,omitempty"`
+		States      map[string]operations.PeriodState `json:"states"`
+		Rejections  []operations.PeriodRejection      `json:"rejections"`
+	}{Application: applicationID, States: states, Rejections: rejections})
+	if len(rejections) > 0 {
+		return fmt.Errorf("%d operation(s) are refused by the period state", len(rejections))
+	}
+	return nil
+}
+
+// parsePeriodStates reads "period=state,period=state". An empty flag yields no
+// state, so nothing is refused by assumption.
+func parsePeriodStates(value string) (map[string]operations.PeriodState, error) {
+	states := map[string]operations.PeriodState{}
+	if strings.TrimSpace(value) == "" {
+		return states, nil
+	}
+	for _, pair := range strings.Split(value, ",") {
+		period, state, ok := strings.Cut(strings.TrimSpace(pair), "=")
+		if !ok || period == "" || state == "" {
+			return nil, fmt.Errorf("period state %q must be period=state", pair)
+		}
+		switch operations.PeriodState(state) {
+		case operations.PeriodOpen, operations.PeriodClosing, operations.PeriodClosed:
+		default:
+			return nil, fmt.Errorf("period state %q must be open, closing, or closed", state)
+		}
+		states[period] = operations.PeriodState(state)
+	}
+	return states, nil
+}
