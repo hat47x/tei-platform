@@ -34,3 +34,14 @@ func TestExecuteCommandReportsInvalidInput(t *testing.T) {
 		t.Fatalf("run=%+v", run)
 	}
 }
+
+func TestExecuteCommandRejectsInvalidPeriodState(t *testing.T) {
+	host, err := NewReadOnly([]string{referenceWorkspace(t)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	run := host.ExecuteCommandWithPeriods("workspace-1", "order_entry", "order_entry.submit_order", "sales.order.submit", map[string]string{"order": "ORD-1"}, map[string]string{"sales.period": "unknown"})
+	if run.OK || run.Failure == nil || run.Failure.Code != "INVALID_PERIOD_STATE" {
+		t.Fatalf("run=%+v", run)
+	}
+}
