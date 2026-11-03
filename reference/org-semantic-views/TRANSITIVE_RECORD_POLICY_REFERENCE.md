@@ -22,15 +22,15 @@ A later `knownAt=2027-07-03` correction changes validity of D1→L2 at `validAt=
 
 For multi-org records, the `any` vs `all` rule is an **explicit test-input choice**. No global TEI default is adopted. A positive-path witness can justify a restricted local eligibility candidate under a stated `any` rule despite incomplete collection, while a negative/universal claim requires the relevant collection closure. A policy-defined strict single-parent tree is different from the structurally permitted DAG; the selected business axis determines whether multi-parent graph edges are valid.
 
-## Cases (VP-01..30)
+## Cases (VP-01..33)
 
 - Structural: typed command vs budget edges, reachable Nodes vs Path occurrences, multiple parents, cycle, depth cutoffs, tenant barriers.
 - Applicability and exceptions: default on for **only explicitly targeted** order records, metadata unaffected, per-record read-only, exclude-from-this-policy, explicit deny. Multiple applicable rules cannot silently be overridden by one opt-out.
-- Time and freshness: `validAt` vs `knownAt`, source-graph revision, policy revision, original/current Host grant epoch and principal.
+- Time and freshness: `validAt` vs `knownAt`, source-graph revision, policy revision, original/current Host grant epoch and principal, plus a separate binding of Host grant scope-root/axis/issued-policy-version. A client/AI cannot widen D1 to H, switch command→budget, or reuse an old policy revision merely because the same principal has a synthetically matching action.
 - Negative/partial: absent/unknown record→Org links; partial hierarchy; `any` vs `all` with unknown extent; no grant inferred from Organization Membership/Directory Group or structural reachability.
 - Consumer/effect: no automatic external disclosure, export, current Host Grant or Effect; frontend post-filtering cannot attest to Provider-enforced page/count visibility.
 
-**Local evidence at creation:** 30/30 tests passed through V8-compatible shim with Node test imports replaced. The exact-head CI's native Node result is a **separate fact** to check after the PR is created. Even if Node CI passes, the scope is closed synthetic Reference E0 only: no actual Query/Function Data Context/Provider RLS, real host/grant, sensitive user data, Studio/SHO, actual AI recipient or Owner acceptance.
+**Local evidence at creation:** 33/33 tests passed through V8-compatible shim with Node test imports replaced. The exact-head CI's native Node result is a **separate fact** to check after the PR is created. Even if Node CI passes, the scope is closed synthetic Reference E0 only: no actual Query/Function Data Context/Provider RLS, real host/grant, sensitive user data, Studio/SHO, actual AI recipient or Owner acceptance.
 
 ## Existing Owner boundaries / required proof
 
