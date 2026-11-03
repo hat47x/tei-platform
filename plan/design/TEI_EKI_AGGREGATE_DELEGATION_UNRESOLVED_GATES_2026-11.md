@@ -13,13 +13,13 @@
 | **G0 実行Artifactと結果本体** | TEI Jobに`executor.digest`・ワークスペースを要求したのにEKI External APIで取り込めない／実Resultが取得できない | **最優先の外部契約Gap**。EKI [#112](https://github.com/hat47x/eki-fabric/issues/112)：TEI仕事9種中8種の入力が422、結果取得501というSpike観測。理想のPool Brokerより先にPure Task 1件のbyte-bound E2Eを通す。TEI [#1121](https://github.com/hat47x/tei-platform/issues/1121)/[#1130](https://github.com/hat47x/tei-platform/issues/1130)と対照 |
 | **G1 資源Offer→実予約** | Pool平均・古いOffer・同一Cloud quotaの二重表示から実行可能と誤認。二つのControlで同じGPU slotを確保 | EKI採用ADR-0014の**DLG-1**登録、**BUD-1**枠、**CAP-1**有償容量とProvider admissionを独立する。**Offerは予定、Reservationは実Authority** |
 | **G2 委任先への多段指示・実行帰属** | EKI Task→下位Scheduler Job→内部Attempt/Retry→外部Effectの意味が一つの`completed`に潰れる | EKI Task/Attempt/Lease正本、Provider Execution Ref、TEI Business Operation/Receiptを**別IDと別Outcome**。既存EKI Task State Model、#67、TEI #1174 |
-| **G3 MDM/Endpoint Securityとの連携** | `compliant=true`を`resource available`／Worker assuranceと混同。削除・通信断で新Taskを実行 | Asset/Compliance情報は登録根拠のみ。**今のLocal Governor/Agent登録・Trust Bundle・実行資格**を別検査。EKI #222、#466/#467はSource-static安全性Gap |
+| **G3 MDM/Endpoint Securityとの連携** | `compliant=true`を`resource available`／Worker assuranceと混同。削除・通信断で新Taskを実行 | Asset/Compliance情報は登録根拠のみ。**今のLocal Governor/Agent登録・Trust Bundle・実行資格**を別検査。EKI #222、#466/#467の修正済み事例と実mTLS・失効の運用Gate |
 | **G4 TEI Flowと非常駐・外部Provider** | TEIが停止したらFlowが進まない、EKIとProviderが同じStepを二重Retry。User希望の「設定レス」で監視主体が消える | Coordinator選択をDeploymentごとに固定。TEI Flow/GuardはTEI意味正本、EKIはTask/Attempt、外部Providerは内部Job状態。既存TEI #1129/#1130のCommit/Outbox/Callbackとは独立Gate |
 | **G5 組織間委任・公平性** | A→B、B→CのGrantがA→Cへ推移する。Pool Budget・下位Quotaが二重消費。提供量をEKI内の金額へ換算 | EKI ADR-0014のBUD-1/CAP-1、RQ-034/037/038、[#125](https://github.com/hat47x/eki-fabric/issues/125)。TEI組織モデルの時点付きAssignment/Authority、EKIのDelegate permission、実Provider costを分離 |
 | **G6 TEI管理コンソール／AI安全レビュー** | 観測Poolを現在の実Grantに昇格。非開示Node件数がGraph/AI promptで漏れる | TEI Modeler/Graph/Scenarioはread-only ProjectionとProposal。EKI Admin Authority／独立read／Providerへの実反映が実操作正本。TEI #2497/#2514/#2620 |
 | **G7 事業性／オーバーヘッド** | EKI仲介でLatency・Data Egress・重複Reservation・運用工数が増え、Directより劣る | EKI [#58](https://github.com/hat47x/eki-fabric/issues/58)のSuitability Gateを入口にし、Provider別の費用/SLO/evidenceの比較で`Direct`を正常な選択とする |
 
-**前提となる既存状態**：EKI #109（登録済Pool/RQ-058）／#140（広域最適化）は**closedで要求が整理されている**が、対応する実Pool ProviderのE2Eをここから確定しない。#67は二種類の管理クラスタProvider接続を要求するopen Issue。#112は現APIにTEI Job Artifact/Result取得のGapを記録している。#465（Runner→Body送信の静的問題）は**closed**となったため、過去所見を現HEADの現存不具合と断定せず、Attempt IDと実Output bytesの結合を継続E2E確認項目にする。#466のFingerprint計算と#467のTrust Bundle読取障害は**openのSource-static所見**であり、実攻撃や現在の全経路のfailureは未実証。
+**前提となる既存状態**：EKI #109（登録済Pool/RQ-058）／#140（広域最適化）は**closedで要求が整理されている**が、対応する実Pool ProviderのE2Eをここから確定しない。#67は二種類の管理クラスタProvider接続を要求するopen Issue。#112は現APIにTEI Job Artifact/Result取得のGapを記録している。#465（Runner→Body送信の静的問題）は**closed**となったため、過去所見を現HEADの現存不具合と断定せず、Attempt IDと実Output bytesの結合を継続E2E確認項目にする。#466のFingerprint計算と#467のTrust Bundle読取障害は**過去のSource-static所見であり、両Issueは修正報告と試験の後にclosed**。実攻撃や現在の全経路のfailureは未実証。
 
 ### 1.1 現main再確認によるG0/G3の証拠資格更新（2026-11-03）
 
@@ -73,7 +73,7 @@ G3についても、現`service/run.go`の`currentTrustBundle`は未導入（Not
 
 **連携方式候補**：社内既存のDevice Group/IT Asset Collectionを、管理者が委任対象として登録する**Group Reference Adapter**。Group内の個体Identity・サインイン主体・エンドポイントのIP/hostnamesは外部ITAM/MDM正本へ残す。EKIに必要な情報はClass・数の公開可能範囲・合計供給予測・Gateway Admission・失効通知の最小集合である。Agentを直接EKIへ登録するProfileでは[#222](https://github.com/hat47x/eki-fabric/issues/222)のWorker Enrollment要件が残り、`external group`だから無認証でもよいとはしない。
 
-**重要な実装Evidence不足**：[EKI #466](https://github.com/hat47x/eki-fabric/issues/466)はTrust BundleのIssuer FingerprintでSHA256(DER)とSHA256(SHA256(DER))が食い違うSource-static所見、[#467](https://github.com/hat47x/eki-fabric/issues/467)はTrust Bundle読取障害を未設定と同じfalseへ畳み、**従来のCA/Registry検証を通った相手に対する追加の版検査だけ**飛ばし得るSource-static所見。いずれも実攻撃未実証であって「すべてのmTLS検証が迂回できる」という主張ではない。**直接WorkerやSecurity Gatewayで高いTrustに昇格する前の既存EKI Owner Gate**として独立Oracle/実TLS経路を先に確認する。Trust Bundleが意図的に未導入／利用中なのにDB読取障害／対象Issuerが除外済みの三状態を別に検査。実装済み保証へ書換えない。
+**修正報告のある歴史的なSource-static所見と残る実TLS確認**：[EKI #466](https://github.com/hat47x/eki-fabric/issues/466)はTrust BundleのIssuer FingerprintでSHA256(DER)とSHA256(SHA256(DER))が食い違うSource-static所見、[#467](https://github.com/hat47x/eki-fabric/issues/467)はTrust Bundle読取障害を未設定と同じfalseへ畳み、**従来のCA/Registry検証を通った相手に対する追加の版検査だけ**飛ばし得るSource-static所見。いずれも実攻撃未実証であって「すべてのmTLS検証が迂回できる」という主張ではない。**直接WorkerやSecurity Gatewayで高いTrustに昇格する前の既存EKI Owner Gate**として独立Oracle/実TLS経路を先に確認する。Trust Bundleが意図的に未導入／利用中なのにDB読取障害／対象Issuerが除外済みの三状態を別に検査。実装済み保証へ書換えない。
 
 **失効シナリオ**：MDMがNode-Xを隔離→Device Groupの表示が更新されても、EKI側には30秒前のOffer、Node-X上には未期限のLeaseが残る場合がある。EKIは**新しい高機密JobをAdmitしない**、Gateway/Local Governorは再検査不能なら実行を拒否、既実行Taskについては停止Receiptか`unknown`の独立観測が必要。単にGroup membershipのUI色を赤くするだけで実停止が成立したと宣言しない。
 
@@ -138,6 +138,12 @@ G3についても、現`service/run.go`の`currentTrustBundle`は未導入（Not
 
 [縦断受入VS-01〜14](TEI_EKI_ONE_REVISION_EVIDENCE_VERTICAL_SLICE_2026-11.md)で、以前のG0〜G7/DG-01〜14に対する**実装前の一本のReference**を用意。W-1（純粋数量×金額、NULL/missingは別Expected）をT0直接Go→T1 EKI Native→T2 Managed Providerで同一Source/Artifact/Input/Oracleのまま比較し、W-2 changed-edge/Outbox/Business Effectは別のOwner Gateへ分離する。Providerが入力/結果のbodyや実予約を提供できないとき、Pure GoのPASSをEKI/Providerの合格に合算しない。プラグインと外部Providerに独立の実Grant/Revision確認を求めるが、新中央Provenance Registryは設けない。
 
+### 7.3 既存Job進捗とGroup Budgetを混同しない（2026-11-04）
+
+[実行縦断§13](TEI_EKI_ONE_REVISION_EVIDENCE_VERTICAL_SLICE_2026-11.md)と[Deadline/予算§11](TEI_EKI_DEADLINE_BUDGET_RECOVERY_COORDINATION_2026-11.md)を追加照合。TEI `internal/execution/runplan.go`の`RunPlan`、`runlog.File`の`RunKey/Steps/Attempt/FenceEpoch`は現`main`に存在し、Step再開の限定機能が実装済み。一方、同時別プロセスのCAS、外部Effect CommitとJournal記録の原子性、Plan/Executor Revisionの保持、実EKI Workerへの委譲はそのSourceだけでは証明できない。EKI #267/#381は**closed**、Task phaseと失敗時の`ready`戻しの試験が#695で報告された。EKI #115のProvider内部Retry制御、#126のGroup予算・期限・部分結果、#155の回復公平性は**open**。TEIのBusiness FlowとEKIのTask Groupを共通Scheduler/台帳へ統合せず、Owner別にVS-23〜32とLB-27〜32を配分する。
+
+**Security再資格化**：EKI #466/#467はそれぞれPR #678/#675によって修正・試験が報告され**closed**。当初のSource-static指摘は歴史的Evidenceへ移し、更新後Trust/Issuer失効・実mTLSとGroup Gatewayの統合試験を継続する。修正済みIssueを未修正安全Gapとして新設・再度計画化しない。
+
 ## 8. 作業順・各Ownerへの引渡し・保留判断
 
 | Phase | 依存と実装/受入の最小目標 | 反映先（**既存Owner**） | 先行条件 |
@@ -145,7 +151,7 @@ G3についても、現`service/run.go`の`currentTrustBundle`は未導入（Not
 | **P0 source-to-contract** | 既存EKIのDLG-1/BUD-1/CAP-1、TEI Data/AI Job/Flow、Provider/MDM/Orgの所有境界をRead-only対応表へ。新Core型/新RegistryやAI/HPC Kernelを実装しない | EKI ADR-0014／#109/#140（採用設計）、TEI #1121/#1130/#2620/#2499 | Source/Revisionと提案の区別 |
 | **P1 pure Job wire** | 一個のTEI純粋Executor＋Input Artifact digest/body＋EKI Task Admission＋Output bytes→TEI独立Oracleまで、既存Public APIでできる範囲と不足を実観測 | EKI #112/#57/#465（ClosedだがE2Eは別）、TEI #1121/#1130/#2514 | APIの422/501ギャップを成功扱いしない |
 | **P2 one managed pool** | 管理されたSlurm/Kueue等一系統のDelegateでProvider Admission/Reservation→EKI Attempt/Lease→Result検証・Cancel/Retryを相関。第二Providerは差異が明確なものを選ぶ | EKI #67/#58、ADRs、TEI #1130 | 実Cost/Outcome/Provider ReceiptとAuthority |
-| **P3 dynamic endpoint** | MDM/Endpoint ProviderのGroup reference、Gateway Offer、Local Governor、Trust Bundle失効の三境界を合成→実機で検査 | EKI #222/#466/#467/#118/#354、既存Endpoint管理Owner | Worker TrustのSource-static負例解消と実TLS試験 |
+| **P3 dynamic endpoint** | MDM/Endpoint ProviderのGroup reference、Gateway Offer、Local Governor、Trust Bundle失効の三境界を合成→実機で検査 | EKI #222/#466/#467/#118/#354、既存Endpoint管理Owner | 修正済み#466/#467の統合・実TLS・版交代試験 |
 | **P4 higher-level coordination** | TEI Flow継続・EKI Task／Provider Jobの二重Retry無し、期間限定Grant/Cancel、組織異動/部門予算・Federation越境の反証 | EKI #125/#130/#140、TEI #2499/#1129/#1174/#1130 | 人/組織の委任Policy・実Credential Owner |
 | **P5 TEI operations value** | Pool-first Graph/Table/Timeline、What-if、AI Review、Preview→Current Auth→Effect Receiptと独立Read。市場Pilotで既存ツール/Directと比較 | TEI #1124/#2497/#2514/#2620、EKI #58/#124／Market Fit | 開示と独立実Observed Stateが成立 |
 
