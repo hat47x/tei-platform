@@ -1063,7 +1063,7 @@ EKI Fabric [#57](https://github.com/hat47x/eki-fabric/issues/57)はTask/Attempt/
 1. **Source/Rule側**：Accepted Meaning/Rule/Operator/Generator/実Go/SQL byte・Target版、適用条件、必要なData Context・Independent Expected。
 2. **Read側**：実Provider endpoint/Replica身份、Principal/開示条件、Query byte、snapshot/transaction/LSNまたは整合版、replica replay watermark、対象Period/Row/Field/Relation closure、処理件数と未観測理由。
 3. **Execution側**：Task/Attempt/Lease（該当時）、開始/終了時刻、実Artifact、CPU/IO/Query budget、timeout/cancel/retry、例外/row count/violations、結果の完全性。
-4. **Consumer側**：得られた \`violations-found\` / \`pass-in-scope\` / \`incomplete\` / \`unavailable\` / \`not-run\` のClaimと適用時点、旧Claimの現在資格、必要なOwner再受理・Provider再Read。
+4. **Consumer側**：得られた `violations-found` / `pass-in-scope` / `incomplete` / `unavailable` / `not-run` のClaimと適用時点、旧Claimの現在資格、必要なOwner再受理・Provider再Read。
 
 **二段階**：①ReplicaのSnapshot S上で「違反観測／対象内違反未観測」を記録、②現在のPrimaryへの適用・修正が必要なら、当該キー・Rule版・最新レコード/関係/状態を**現在の認可下で再検証**。Replicaの旧違反がPrimaryで是正済みの可能性、旧Replicaの0違反後にPrimaryで新違反が発生した可能性の両方を扱う。ReplicaのLSN確認は、当該DBの必要変更が適用されたことを示す条件にはなり得ても、外部API/異DBとの共同Snapshotを自動保証しない。
 
@@ -1076,24 +1076,24 @@ EKI Fabric [#57](https://github.com/hat47x/eki-fabric/issues/57)はTask/Attempt/
 | 変更 | 再評価範囲の例 | 正しい「省略」の前提 |
 | --- | --- | --- |
 | 明細行Amount/Quantity変更 | 当該Lineと関連Orderの合計/制約 | 変更ログ/対象Order/Relationの完全な閉包がある |
-| Line挿入・削除 | 当該OrderのCOUNT/SUM/\`not exists\`／全称Rule | negative dependencyを記録。削除を更新差分から落とさない |
+| Line挿入・削除 | 当該OrderのCOUNT/SUM/`not exists`／全称Rule | negative dependencyを記録。削除を更新差分から落とさない |
 | Customer/Org membershipのRelation先変更 | 変更前・変更後の両参照先に波及するClaim | 動的参照先の旧/new identityと時点を確認 |
 | Rule/Operator/Lean前提/Generator変更 | 当該Ruleから導出されたすべての対象Claimを再資格化 | 局所再実行で足りることを依存閉包から証明できる |
-| Change feed欠落、Replica lag不明、未観測期間あり | 範囲未確定として\`incomplete\`、必要ならFull Scan | 最終値がA→B→Aでも中間履歴無変更と推論しない |
+| Change feed欠落、Replica lag不明、未観測期間あり | 範囲未確定として`incomplete`、必要ならFull Scan | 最終値がA→B→Aでも中間履歴無変更と推論しない |
 | Provider/Snapshotまたぎ・テーブル再構成 | 各Scope/epochへ区切って判定またはUnknown | 異なるwatermark/Read cohortを一つの全件に合算しない |
 
 **増分の開始条件**：前回検証済みのFull Scanの対象集合・snapshot・Rule版が存在し、変更ログにGapがなく、対象Ruleの依存（挿入/削除/否定・時点）をすべて列挙できること。そうでなければ全件Scanへ戻すかUnknown。Previous passにDeltaだけを足して完全性が自動継承されたと主張しない。#2600の「誤再利用ゼロ／過剰失効検出」をData Qualityにも適用。ただし**Builderの増分再生成と実データの増分Scanは別の問題**であり、同じCache命中率で評価しない。
 
 ### 27.4 「異常検出→確認→是正→再観測」を独立したEvidenceに
 
-\`\`\`text
+```text
 derived read-only CheckSet → observed finding (source/snapshot scoped)
     → triage (kind/severity/owner + suspected cause; AI suggestions optional)
     → current Primary/Provider revalidation (same affected subject + Rule)
     → authorized, typed Repair Intent via existing Command/Host/Provider
     → Commit known/unknown + operation identity + independent Read
     → new Quality Claim (new snapshot), old finding remains historical
-\`\`\`
+```
 
 CheckSetは**原則read-only**。RepairのSQL/CommandはFindingの副作用として即実行しない。修正候補の根拠・作用範囲・更新前後条件と、Ownerの受理・Hostの現在Authorityを検査する。Commit unknown時は二重実行禁止と再照合を優先。是正後の0違反は再Scanした新しいSnapshot範囲のClaimであり、旧不整合が初めから存在しなかったことにはしない。AIは異常分類・原因候補・Patch/修正Intentの提案を支援できるが、Context内の説明を実Authorityへ昇格しない。
 
@@ -1104,13 +1104,13 @@ CheckSetは**原則read-only**。RepairのSQL/CommandはFindingの副作用と�
 | **DQX-01** Online vs Offline | 同じ量/明細合計RuleをGo online／SQL read-only offlineへLower。配送JOIN fanoutあり | 違反の有無・集計grainが一致。異なるQuery生成器が同じ誤りを共有し得るため、handwritten Oracle/Mutation対照で検出 |
 | **DQX-02** Replicaの古いPASS | S0では0違反、Primaryに新違反B、Replica replayはS0 | 「S0の範囲で異常未観測」だけ。現在Primary PASS・Owner受理を主張しない |
 | **DQX-03** 旧違反の是正 | S0で違反A、Primary S1では修正済み。古いFindingの自動Repairを試行 | Primary再検証でRepairを拒否/不要にする。監査履歴は消さない |
-| **DQX-04** 増分の見落とし | 明細B削除→\`not exists\`が成立、CDC gap、A→B→A | Delta-onlyのfalse passを拒否、再Scan/Unknownを選択。FullとIncrementalでClaim一致 |
+| **DQX-04** 増分の見落とし | 明細B削除→`not exists`が成立、CDC gap、A→B→A | Delta-onlyのfalse passを拒否、再Scan/Unknownを選択。FullとIncrementalでClaim一致 |
 | **DQX-05** EKI委譲/重複 | Worker A lease失効、Worker B再試行、Aから遅延Result、同一Taskの重複配送 | EKIのResult資格とTEIの品質判定を別々に結ぶ。遅延Resultで品質PASSを上書きしない。**EKI実連携はNOT RUN** |
 | **DQX-06** Lean/実装/入力 | LeanでLawが仮定下で証明、SQL/Goに誤丸め/バグ、Providerは部分集合 | Proof PASS・実装不一致・データUnknownを別Claimとして同時報告。形式証明からGo/SQL同値を推論しない |
 
 **実証順（新しいGateではない）**：
 - **Q0**：#2622の既存受注/明細Ruleと#2514の独立Expectedを1件固定し、online guard／offline scanの配置理由・発見遅延・Ownerを記録。
-- **Q1**：実DBの固定Snapshotを使うread-only全件Check（受注合計と孤児/重複のうち1つ）を、同Rule/Operator版で生成可能か検査。正式Generator未存在なら\`NOT RUN: missing concrete entry\`、手書きSQLは比較Oracle/候補としてのみ扱う。
+- **Q1**：実DBの固定Snapshotを使うread-only全件Check（受注合計と孤児/重複のうち1つ）を、同Rule/Operator版で生成可能か検査。正式Generator未存在なら`NOT RUN: missing concrete entry`、手書きSQLは比較Oracle/候補としてのみ扱う。
 - **Q2**：同じ検査にReplica lag・部分取得・異時点・失敗途中を与え、ReceiptのScope/epoch/coverageを検証。
 - **Q3**：前回Full Scan＋変更の閉包が成立する場合だけIncrementalとFullを比較し、false reuse/再Scan負担/p50,p95/Replica IOを計測。
 - **Q4**：再検証付きRepair Intent、独立Read、必要ならEKIのexecution-only Task委譲をそれぞれ独立に確認。Leanは任意の補助Targetとして後続。EKI/Leanの未完成をQ1 read-only検証の必須ブロッカーにはしない。
@@ -1118,3 +1118,48 @@ CheckSetは**原則read-only**。RepairのSQL/CommandはFindingの副作用と�
 **責務引継ぎ**：#1130がUI非依存Batchのtyped input/output、trigger/取消/進捗/結果Artifactを所有。#2622がData Rule/Contextと多Provider Read、#2544がLean Law/Facet、#2514が独立ExpectedとClaim Coverage、#2582/#2600が依存/増分の適用条件、#1174/#1129がRepair/Authority/Commit、#1163が一改訂Evidence。EKI側のJob Controllerは既存EKI Fabric #57等のOwnerであり、このTEI計画からEKIの実装・ADR・Scheduler選定を決定しない。既存ADR-0023（Command後の独立Read）、ADR-0029（Application Validation選択）、ADR-0043（独自TEI Hostなし）を維持。
 
 **停止・非採用**：Replicaの旧Resultを現在の全件PASSと報告、EKI AcceptedResultをTEI Quality Passと混同、Change-feed Gapを見逃した局所Scan、省略後のOnline必須制約漏れ、未確認のRepair自動適用、Lean ProofからProvider実データ合格を推論した場合は採用停止。Job/Proof/Repairの製品API・Scheduler・新Registry/Host/Quality Dashboardの採用、実Go/SQL/Replica/EKI/Lean実行、CI、Ownerの意味/運用受入は**未決・NOT RUN**。
+
+
+## 28. 一改訂のValue／Flow／Job／Consumer縦断――参照実行と外部実行を混同しない（2026-11-03横断追補）
+
+### 28.1 並行する三つのOwner計画を、別の正本を作らずにつなぐ
+
+- **Authoring／Source**：[DSL・Studio計画 Draft #2745](https://github.com/hat47x/tei-platform/pull/2745)が言語中立の低ノイズなDSL表層、ローカルUnicode識別子→既存ASCII Canonical IDへの明示Binding、糖衣記法のbyte保存、AI修正Preview／競合停止を所有する。日本語専用DSLやGo AST固有構文の強制はしない。Go単一バイナリ既定というTarget判断とFrontend選択は直交する。
+- **意味／業務状態／Flow**：[X-TEA Data Script・Buri/EKI計画 Draft #2744](https://github.com/hat47x/tei-platform/pull/2744)がField標準Validation、Script独自Validation/Derivation、virtual Attributeの宣言と導出、old/new状態条件とEffect／Batchの境界を所有する。**X-TEAの既存Data Model/Scriptを移植・Adapterで再利用できるかが先**で、新たなState Machine、全業務共通の状態テーブル、第二Rule正本を先に作らない。受注の単純状態は本体行、組織所属は時点付きRelation、長期Flowは必要時のInstanceという物理設計の自由を保つ。
+- **外部Reference／現在資格**：[外部Reference Draft #2743](https://github.com/hat47x/tei-platform/pull/2743)がSource Observation/Structural Candidate/Accepted Meaning/Artifact/Receiptの再資格化条件、Read cohort、partial/Not Found/permission-denied/offlineを所有する。cache hit／WorldFP同一からSource引用・現時点権限・外部データ完全性を推測しない。
+
+**本節の担当**は三計画を横断する**既存#1163の一改訂・一Attempt受入順序**とOwnerへの停止位置だけ。各PRの詳細Fixture/文法/Provider/API Schemaをこの§28へ複製しない。参照側の意味正本をEKIへ移さず、EKI固有のTask/Attempt/Lease/Resource管理をTEIに再実装しない（#2744 §8、EKI Fabric #57）。
+
+### 28.2 現在mainで区別すべき四つの真実
+
+2026-11-03に統合状態を再確認した限定入口は、[merged #2747](https://github.com/hat47x/tei-platform/pull/2747) Studio `PlanCommand/ExecuteCommand`（`Mode=reference`、参照実行の`Committed=true`を**業務DB commitと読み替えない**）、[merged #2748](https://github.com/hat47x/tei-platform/pull/2748)／[#2749](https://github.com/hat47x/tei-platform/pull/2749) Guardによる閉鎖期間の**driver呼出し前拒否**、[merged #2751](https://github.com/hat47x/tei-platform/pull/2751) Studio read-only表表示、[merged #2768](https://github.com/hat47x/tei-platform/pull/2768) CLI `view -execute -period-state <file>`による参照実行前の期間状態判定。これらは**実DB Commit、実業務Event永続化、EKI Jobの起動、Source変更の逆書戻し、Provider/Hostでの現在の許可**を証明していない。
+
+| 現れる表示／Result | 真のClaim（確認可能な範囲） | **未成立のClaim**と次のObserver |
+| --- | --- | --- |
+| Studio 表／候補Operation／`PlanCommand` | 参照可能なID・Capability・計画。Source/Role/RefのQualifierを保持 | 編集権限／保存／実Effect。Source元byteとScope・Owner、UI操作経路は#1124/#2621 |
+| `ExecuteCommand` `Mode=reference, Committed=true` | 当該Reference Executorの局所結果（実DB保存なし） | DB committed／durable Event／Receipt。#1129/#1174の実Provider commitと独立Readが必要 |
+| `COMMAND_PERIOD_CLOSED`／driver未呼出し | 与えられた期間状態を使う限定実行入口で拒否 | 期間状態ファイルの現在性、別入口の回避不能性、実DB拒否。Owner・Provider・Reader版の検査が必要 |
+| EKI `AcceptedResult`／再試行・Lease | EKIが特定Attempt/Artifactを受理した（そのContractと版に限る） | TEIの業務遷移確定／品質PASS。TEI Rule・Read/Owner/Hostを再照合し必要時にBusiness Commit |
+
+### 28.3 一回の縦断と既存反証への割当て（新Fixture IDなし）
+
+**受注取消と集計の最小縦断**：固定したSource／Field/Rule／実Providerを参照し、①Studioで構造・State/Rule/期間を表示、②Data Scriptの値導出と更新前後条件を独立Expectedで検査、③同じ期間状態に対しReference Executeを観測、④実Providerが利用可能な場合のみ更新Intent→Commit known/unknown→Receipt/独立Read、⑤必要時だけTEI FlowからEKIへ型付きTaskを委譲、⑥新しいSnapshotでQuality／SHO/AIの出典を再検査する。④以降の**実装入口・権限・観測器が無ければ明示的にNOT RUN**とし、③から成果を補完しない。
+
+| 差し込む反例 | 独立Expected（先に固定） | 所有／停止点 |
+| --- | --- | --- |
+| **同一Data値、Source参照先だけ移動／改版／offline** | 値やWorldが同じでもSourceIndex・Citationと現在Read資格は別、未取得はNULLや0件にしない | #2743 RF、#2505／#2600。Reader/Cacheの同時点closureが無ければ停止 |
+| **virtual値がfalse→true、しかしPreviewのみ** | 計算と発火候補は存在、durable Event・Job配送・Business Commitなし | #2744 Data Script、#1637／#1130。実Effect claimへ進まない |
+| **closed periodのCommandを計画／Reference実行** | Plan表示の存在≠実操作許可。現行Guardの拒否事実を記録し、未適用の入口はunknown | #2747/#2768、#1129／#1174。全入口の実Provider制約は未検証 |
+| **EKIの古いAttemptが遅延完了／Job結果ACKだけ成功** | 旧Leaseの結果で新Runを上書きせず、Job Resultだけで業務State/Qualityを変更しない | #2744 §8、EKI #57。独立Business Read／Effect Receiptなければ停止 |
+| **原文の保存後、AIが古いSpanへPatch** | 未変更byte保持・期待Revision不一致は書込拒否。表示言語変更はID/意味の権限変更にならない | #2745 GN/SF、#2743 RF、#1124/#2621/#2516 |
+
+**最短の順序（既存試験資産を使う）**：
+
+1. **V0 Source＋表示**：merged #2747/#2751/#2768の現行Reference実行と既存Source Fidelityを、同じ固定WorkSpace/Source Revisionで収集。これはReference資格だけ。
+2. **V1 Rule/Virtualの意味互換**：#2744のX-TEA移植候補を一つだけ選び、#2514の独立Expectedと未取得/NULL/partial負例でGo実行可否を比較。実TEI機構が無ければ `NOT RUN: missing concrete implementation`。
+3. **V2 実Effect**：#1119 P0-a/P0-b・#1129/#1174の実DB/HostとOperation identityを確認。Commit unknown→再送なし→独立Readという現行重要課題を、Syntheticな`Committed`から分離する。
+4. **V3 Optional EKI／Consumer**：実Job契約/LeaseとTEI Ruleが明示的に接続できた場合だけEKI側へ委譲。SHO/AIは現在のSource/Disclosure/Read cohortの資格を別判定する。V3はV0/V1の実行前提ではない。
+
+**採否**：TEIの標準実行はGo単一バイナリ、他Targetは用途別の補助。常駐TEI Host／汎用State Store／二重Scheduler／第二Source・Meaning Registry／万能Capability Gateは作らない。Reference UIの`Committed=true`、EKIの`AcceptedResult`、Replicaの`pass-in-scope`を単一の`success`へまとめない。Ownerが業務意味を受理した事実と、実Host/Providerが今回のEffectを許可・観測した事実も別。
+
+**検証・変更の範囲**：この§28は**並行Draftとmerged PRの実在に基づく計画追補のみ**。今回、実TEI Studio/GUI/CLI/DB/Provider/EKI/SHO/AI E2E、V0〜V3、業務Meaning受理を新たに実行・承認したわけではない。§27以前の設計を上書きせず、#2743/#2744/#2745の設計本文・既存Issue/ADR・本番Provider・Runtime APIを変更しない。
