@@ -224,3 +224,21 @@ effect-rule order.stock {
 - 戻り値は `EffectRequirement{RuleID, Stage}`。呼び出し側はこれを能力の結末と**混ぜずに**扱う。
 
 **未着手**: 効果の実行そのもの（誰が実行し、成否をどこへ記録するか）、観測の記録形式、失敗時の補償の起動。
+### 効果の記録（2026-11-03 追記）
+
+確定後・補償の効果を「実行した事実」と「独立に観測した事実」に分けて残すため、記録の器を追加しました（`internal/effectlog`）。
+
+```go
+type Record struct {
+    RuleID, Stage, Capability string
+    Succeeded bool  // 能力の実行が成功した
+    Observed  bool  // 独立した読取りが効果を確認した
+    Detail    string
+}
+```
+
+- `File` は JSON Lines（1行1件）で追記する。壊れた行はエラーとして報告し、**その行より前の記録は返す**（黙って捨てない）。
+- `Succeeded` と `Observed` を別の欄にしているのは、成功コードを観測の代わりにしないため。
+- 記録は受理済みの意味ではないので、意味モデルには置かない（期間の状態と同じ扱い）。
+
+**未着手**: 効果の実行（`via capability` の呼出し）と記録の接続、失敗時の補償の起動、観測の取得。
