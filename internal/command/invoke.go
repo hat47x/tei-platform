@@ -46,6 +46,7 @@ type Invoker struct {
 	World      ir.World
 	Executor   Executor
 	UnitOfWork UnitOfWork
+	Periods    PeriodState
 }
 
 // Invokeは、Commandを実行する。入力の不備、Executorの不在、実行の失敗、
@@ -63,6 +64,9 @@ func (i Invoker) Invoke(ctx context.Context, request Request) (Result, error) {
 			message = fmt.Sprintf("invalid input %s: %s", plan.Invalid[0].Input, plan.Invalid[0].Message)
 		}
 		return Result{}, &ExecutionError{Code: "INVALID_COMMAND_INPUT", Message: message}
+	}
+	if err := i.checkPeriod(ctx, plan); err != nil {
+		return Result{}, err
 	}
 	if i.Executor == nil {
 		return Result{}, &ExecutionError{Code: "COMMAND_EXECUTOR_UNAVAILABLE", Message: "no executor is configured for this command boundary"}
@@ -84,6 +88,25 @@ func (i Invoker) Invoke(ctx context.Context, request Request) (Result, error) {
 		return Result{}, &ExecutionError{Code: "COMMAND_COMMIT_FAILED", Message: err.Error(), Cause: err}
 	}
 	return result, nil
+}
+
+func (i Invoker) checkPeriod(ctx context.Context, plan applicationview.CommandPlan) error {
+	if plan.Period == nil || i.Periods == nil || plan.Effect == nil {
+		return nil
+	}
+	closed, err := i.Periods.Closed(ctx, plan.Period.ID)
+	if err != nil {
+		return &ExecutionError{Code: "COMMAND_PERIOD_STATE_FAILED", Message: err.Error(), Cause: err}
+	}
+	if !closed {
+		return nil
+	}
+	for _, rejected := range plan.Period.ClosedRejects {
+		if rejected == plan.Effect.Kind {
+			return &ExecutionError{Code: "COMMAND_PERIOD_CLOSED", Message: fmt.Sprintf("period %s is closed for %s", plan.Period.ID, plan.Effect.Kind)}
+		}
+	}
+	return nil
 }
 
 func (i Invoker) execute(ctx context.Context, request Request, plan applicationview.CommandPlan) (Result, error) {
