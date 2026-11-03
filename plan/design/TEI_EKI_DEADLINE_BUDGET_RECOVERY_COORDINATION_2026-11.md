@@ -161,7 +161,7 @@ TEIの別議論（[#1130](https://github.com/hat47x/tei-platform/issues/1130)の
 
 **重要な差**：前節§4の`recovery reserve budget`（将来の回復用に使い切らない**物理量予算の取り置き**）は、次のどちらとも異なる。
 
-- **EKI Recovery Window Permit/Budget**：回復が一斉に発生した際のAttempt release数／transfer bytes／compute millis／時間窓を制限する**安全側のレート・増幅防止**。既存[ADR-0015](https://github.com/hat47x/eki-fabric/blob/main/plan/adr/0015-recovery-budgets-and-permits.md)、[EKI #154](https://github.com/hat47x/eki-fabric/issues/154)（closed：`Pending`、予算・Permitの永続化設計／実MVP E2E保証とは別）をOwnerとする。BUD-1の物理量Budgetを複製・置換しない。
+- **EKI Recovery Window Permit/Budget**：回復が一斉に発生した際のAttempt release数／transfer bytes／compute millis／時間窓を制限する**安全側のレート・増幅防止**。既存ADR-0015（[関連EKI #154](https://github.com/hat47x/eki-fabric/issues/154)、closed：`Pending`、予算・Permitの永続化設計／実MVP E2E保証とは別）をOwnerとする。BUD-1の物理量Budgetを複製・置換しない。
 - **Provider Capacity Reservation**：特定のGPU/CPU/Worker Classに対する実枠・時間窓を、外部Providerが予約する行為。BUD-1の利用可能残高や「回復予算を保持した」という内部Planは、将来の物理Capacity獲得を保証しない。有償CapacityならCAP-1承認とProvider側の請求/費用開始・解放Receiptも必要。
 
 **Portfolio単位のProposal**には、同じPoolに並ぶTaskと部門／Service Class、期限付きCritical Jobs、利用中の予約、回復Reserve、CandidateのData/Trust・Requester Scopeを入れる。部門ごとの最低割当・上限・Borrowingは未決の[EKI #125](https://github.com/hat47x/eki-fabric/issues/125)がOwner。回復の窓をまたいだBest-effort飢餓は[EKI #155](https://github.com/hat47x/eki-fabric/issues/155)（open）がOwner。期限が近いTaskを**全資源への優先権**へ自動変換しない。組織の時点付きAssignmentとResource Grantは別権限、古い部門所属や利用者申告の`urgent`から公平性枠を引き上げない。
@@ -202,7 +202,7 @@ TEI Studioでは`source observation`／`simulated plan`／`EKI accepted/admitted
 
 ### 10.5 既存Measurementの実装位置と、改善効果の検証を混同しない
 
-EKI [ADR-0039](https://github.com/hat47x/eki-fabric/blob/main/plan/adr/0039-minimal-safety-observability.md)と[#548](https://github.com/hat47x/eki-fabric/issues/548)（open）は`admission.rejected`／`lease.reclaimed`／`claim.refused`／`limit.refused`の4種類の実安全Eventを実発生点で数えることを扱う。**これら4カウンターだけでEnd-to-endの完了時間分布・故障相関・Budget節約・Deadline達成確率は学習できない。** さらに、End-to-end時刻・Provider Queue・Transfer・Result検証・Business Receiptの観測要件を**別のOutcome Sampling Profile候補**として整理する。ただし、新しいEKI計測DB/Registryや個体追跡の全量Logを最初から作らない。EKIの既存Task/Attempt/Provider相関・Observation Planeと[#19](https://github.com/hat47x/eki-fabric/issues/19)のshadow-schemaを再利用する。
+EKI ADR-0039（最小安全観測）と[#548](https://github.com/hat47x/eki-fabric/issues/548)（open）は`admission.rejected`／`lease.reclaimed`／`claim.refused`／`limit.refused`の4種類の実安全Eventを実発生点で数えることを扱う。**これら4カウンターだけでEnd-to-endの完了時間分布・故障相関・Budget節約・Deadline達成確率は学習できない。** さらに、End-to-end時刻・Provider Queue・Transfer・Result検証・Business Receiptの観測要件を**別のOutcome Sampling Profile候補**として整理する。ただし、新しいEKI計測DB/Registryや個体追跡の全量Logを最初から作らない。EKIの既存Task/Attempt/Provider相関・Observation Planeと[#19](https://github.com/hat47x/eki-fabric/issues/19)のshadow-schemaを再利用する。
 
 **評価順序**：①固定Deterministic/最少2PoolとDirectの比較、②共通障害／複数Job／Recovery WindowのScenario、③実記録を使ったShadow（別のTrialではCurrent Authorityへ影響無し）、④Holdout校正とProvider実測、⑤Ownerが支出/期限条件の自動化閾値を受理する場合のみ実Pilot。単純な`GPU utilization increased`、LLMによる`safe`、過去のSimulation PASSは実用価値や安全性の証明ではない。
 
