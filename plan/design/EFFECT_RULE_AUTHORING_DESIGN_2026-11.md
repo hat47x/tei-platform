@@ -216,3 +216,11 @@ effect-rule order.stock {
 - 操作面: `binding` が効果規則の対象能力と一致する操作に `effectRules`（規則の識別子）を載せる（`internal/operations/surface.go`）。
 - 成果物: 機能定義書に `effect-rule <id> on <capability> stage <stage> effect <kind> <data> [via <capability>] [on-failure <扱い>]` の行を出す（`internal/artifact/functiondef.go`）。
 - 生成規則の行種別に `effect-rule` を追加。
+### P3（実行時の扱い）の着手（2026-11-03 追記）
+
+確定後・補償の効果は、能力の結末（成功コード）では**証人にならない**ため、独立に観測すべき対象として切り出しました（`internal/execution/effects.go` の `EffectsOutsideTransaction`）。
+
+- 対象能力に束縛され、段階が `after-commit` または `compensation` の規則を返す。
+- 戻り値は `EffectRequirement{RuleID, Stage}`。呼び出し側はこれを能力の結末と**混ぜずに**扱う。
+
+**未着手**: 効果の実行そのもの（誰が実行し、成否をどこへ記録するか）、観測の記録形式、失敗時の補償の起動。
