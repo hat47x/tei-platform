@@ -15,7 +15,7 @@ import (
 func TestSourceIndexInspectionReusesOperationSemantics(t *testing.T) {
 	root := filepath.Join(testRepositoryRoot(t), "reference", "workspace")
 	subject := sourceindex.Subject{Kind: "query", ID: "order_entry.recent_orders"}
-	raw, err := buildSourceIndexInspection(root, subject.Kind, subject.ID)
+	raw, _, err := buildSourceIndexInspection(root, subject.Kind, subject.ID)
 	if err != nil {
 		t.Fatal(err)
 	}

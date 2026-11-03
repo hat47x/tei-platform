@@ -21,7 +21,7 @@ func makeSourceWorkspace(t *testing.T) (string, plugin.Lock, WorkspaceDisplayCon
 	t.Helper()
 	root := t.TempDir()
 	files := map[string]string{
-		"tei.workspace.yaml":                       "workspace: test\nsources:\n  - plugins\n  - semantic\n  - environments\n",
+		"tei.workspace.yaml":                       "workspace: test\nformatVersion: 1\nsources:\n  - plugins\n  - semantic\n  - environments\n",
 		"plugins/tei-order-ui/1.0.0/plugin.tei":    "plugin tei.order.ui v1.0.0 {\n    runtime builtin\n}\n",
 		"plugins/tei-locale-ja/1.0.0/plugin.tei":   "plugin tei.locale.ja v1.0.0 {\n    runtime builtin\n}\n",
 		"semantic/sales/order.tei":                 referenceSemantic,

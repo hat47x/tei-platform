@@ -39,6 +39,9 @@ go run ./tools/reference-generator-artifact-store/cmd/tei-generator-artifact-sto
   artifact
   receipt.json
   object.json
+  classes/                 # Java候補のみ（#2512）
+    Main.class
+    Main$Input.class
 ```
 
 `object.json`は次を記録します。
@@ -48,6 +51,7 @@ go run ./tools/reference-generator-artifact-store/cmd/tei-generator-artifact-sto
 - `sourceDigest`、`binaryDigest`
 - `buildEvidenceDigest`（選抜receiptのbuildEvidenceをcanonical JSONにしたdigest。source-only候補では省略）
 - `receiptDigest`
+- `classSetDigest`、`classes[]`（Java候補のみ。相対path・Role・byte SHA-256・size）
 
 `receipt.json`は保存時の選抜receipt全体で、`receiptDigest`と照合します。`put`/`get`のreceiptにも`buildEvidenceDigest`を返します。`put`/`get`のreceiptと`list`のobject entryにも`language`を記録し、保存した候補の実行形式を一覧から区別できます。
 
@@ -110,6 +114,37 @@ ssh-keygen -Y verify -f /tmp/allowed_signers -I signer -n tei-audit \
 
 `-signature`・`-allowed-signers`・`-identity`を指定すると、先にcheckpointのdetached signatureを`ssh-keygen -Y verify`で検証し、その後にstoreとの一致を検証します。署名が不正なら`signatureVerified=false`、storeと不一致なら`signatureVerified=true`のまま`passed=false`になります。署名者のAuthority・trust rootは検証しません。
 
+Go候補の再buildは、選抜時と同じくgo.modを持たない一時ディレクトリで行います。候補のディレクトリでbuildすると、リポジトリのgo.modのgoディレクティブがDefaultGODEBUGとしてbinaryに入り、go.modより新しいtoolchain(例: go1.27.0)でdigestが一致しなくなります(#2370)。toolchainの版が選抜時と違えばdigestは変わりうるため、別toolchainでの再現性は引き続き検証対象外です。
+
+## Javaの全class集合（#2512 J2/J3）
+
+Java候補では、`artifact`に入る主class（選抜receiptの`binaryDigest`と照合する`Main.class`）に加えて、**ビルドで生成された全`.class`**を`classes/`へ保存します。
+
+- `classes[]`は相対path（`/`区切り）、Role（`main`／`inner`）、byte SHA-256、sizeを持つ。
+- `classSetDigest`はpath順に正規化した`classes[]`のSHA-256で、member一覧そのものの同一性を表す。
+- `RestoreClassSet(storeDir, sourceDigest, destDir)`は`Get`と同じreceipt・artifact検査の後、**保存されたclass bytesだけ**で`destDir`を再構成する。memberが欠落・改変されていれば`Passed=false`を返し、部分的な集合を「起動可能な閉包」と報告しない。
+- 古いobject（`classSetDigest`なし）は、provenanceが一致する場合に限りclass集合を追加して更新する。provenanceが異なる場合は上書きしない。
+
+### 実測した証拠
+
+同じsource・contract・fixtures・build attemptから:
+
+| 確認 | JDK 17.0.20.1（WSL2 Ubuntu） | JDK 11.0.20.1（Windows 11） |
+| --- | --- | --- |
+| 全class保存（`Main.class`＋`Main$Input.class`） | PASS | PASS |
+| Store bytesだけから隔離classpathを再構成し、公開10 fixtureを実行 | PASS（10/10） | PASS（10/10） |
+| `java -verbose:class`で`Main$Input`のロード元が復元directoryであること | PASS | PASS |
+| 内側classを削除すると起動失敗（`NoClassDefFoundError`） | PASS（期待どおり失敗） | PASS（期待どおり失敗） |
+| 保存classの1 byte改変を`RestoreClassSet`が拒否 | PASS（`digest does not match`） | PASS |
+| class集合を持たないobjectの復元拒否 | PASS | PASS |
+
+### 主張しないこと
+
+- これは製品Storeの公開schema・key・APIの採用ではない。言語中立のArtifact Setは#1102、Store primitiveは#1105が所有する。
+- Selector Receiptの入力閉包を証明しない（#2016）。
+- 実行したのは単一プロセス・単一JDKの`java -cp <isolated> Main`であり、複数Host・classloader shadow・Jar配布・署名を扱わない。
+- `-verbose:class`はロード元pathの観測であり、OS・JVMの完全な隔離を証明しない。
+
 ## 検証すること・しないこと
 
 | 検証する | 検証しない |
@@ -130,12 +165,14 @@ ssh-keygen -Y verify -f /tmp/allowed_signers -I signer -n tei-audit \
 - `put`/`get`のreceiptと`list`のentryが`language`を返す。
 - WASI候補のsourceとwasm binaryを保存・取得できる。
 - Java候補のsourceと`Main.class`を保存・取得できる。
+- Java候補の全class集合を保存し、`RestoreClassSet`で隔離directoryへ復元できる。復元先の`java -cp <isolated> Main`が公開fixtureを実行でき、`-verbose:class`のロード元が復元先になる（#2512）。
 - Python/JavaScript候補のsourceを保存・取得できる。artifactは空で、binary digestを持たない。
 - source-only objectも`list`/`prune`で検証でき、空artifactと空binary digestを照合する。
 - 同じobjectの再保存が`reused=true`になる。
 - provenanceの異なる既存objectは再利用せず拒否する。
 - `receipt.json`がない既存objectは、再`Put`で復元され、`Get`が通る。
 - receiptのbinary digestを改変すると`passed=false`。
+- 内側classの欠落・改変、class集合を持たないobjectを`RestoreClassSet`が拒否する（#2512）。
 - 保存後にartifactを改変すると`passed=false`。
 - 未知の候補を拒否する。
 - `list`が全objectを検証し、改変objectがあれば不合格にする。

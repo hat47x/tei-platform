@@ -108,7 +108,7 @@ jobs:
           "CHECKOUT_SHA=$actual"
           if ($actual -ne $env:CANDIDATE_HEAD_SHA) { throw 'Checkout does not match the exact candidate head' }
 
-      - name: Pin Go 1.26.9
+      - name: Pin Go 1.26.10
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         with:
           go-version-file: go.mod
@@ -135,7 +135,7 @@ jobs:
         run: |
           $ErrorActionPreference = 'Stop'
           go version
-          if ((go version) -notmatch 'go1\.26\.9') { throw 'Go 1.26.9 is required' }
+          if ((go version) -notmatch 'go1\.26\.10') { throw 'Go 1.26.10 is required' }
           go mod tidy
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           git diff --exit-code -- go.mod go.sum

@@ -82,7 +82,7 @@ func ValidateWorkspace(root string) (WorkspaceValidation, error) {
 		return WorkspaceValidation{}, err
 	}
 	return WorkspaceValidation{
-		Diagnostics:            workspace.ProjectDiagnostics(validation.Validate(loaded.World), index),
+		Diagnostics:            workspace.ProjectDiagnosticsWithLoadedDuplicates(validation.Validate(loaded.World), index, loaded),
 		WorldFingerprint:       worldFP,
 		SourceIndexFingerprint: sourceFP,
 	}, nil

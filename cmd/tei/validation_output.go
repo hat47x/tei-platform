@@ -29,7 +29,9 @@ func printProjectedDiagnostics(out io.Writer, diagnostics []workspace.ProjectedD
 	hasError := false
 	for _, projected := range diagnostics {
 		diagnostic := projected.Diagnostic
-		if len(projected.Sources) > 0 {
+		// Duplicate candidates are a set, not an indication that the first
+		// source is the declaration to reject. Text output has only one prefix.
+		if len(projected.Sources) > 0 && diagnostic.Code != "DUPLICATE_SEMANTIC_ELEMENT" {
 			source := projected.Sources[0]
 			fmt.Fprintf(
 				out,

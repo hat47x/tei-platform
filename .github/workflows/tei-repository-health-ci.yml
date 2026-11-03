@@ -80,6 +80,15 @@ jobs:
             printf 'pr-merge-base=%s\n' "$base"
           fi
 
+      - name: 公開境界のマーカーを検査
+        shell: bash
+        env:
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: |
+          set -euo pipefail
+          python3 -B tools/check-public-boundary/check_test.py
+          python3 -B tools/check-public-boundary/check.py --root .
+
       - name: 指定版のGoを用意
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         with:

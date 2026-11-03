@@ -26,7 +26,9 @@ commands (DSNs come from TEI_OMDD_LEGACY_DSN, TEI_OMDD_PRIMARY_DSN, TEI_OMDD_INV
   switch-owner  -plan plan.json -field F -owner legacy|primary
                                            step 4: move the master of one customer field
   expand-name   -plan plan.json            step 4: expand and migrate phases of the name split
-  contract-name -plan plan.json            step 4: check the contract phase (refused while old writers remain)
+  contract-name -plan plan.json -since RFC3339 [-now RFC3339]
+                                           step 4: check the contract phase from observed writes
+                                           (refused while an old-version write is observed)
   send-billing  -plan plan.json -billing-url URL
                                            step 4: send pending customer changes to the billing system
   reconcile-billing -plan plan.json -billing-url URL
@@ -41,6 +43,7 @@ type cliArgs struct {
 	chunkSize                   int
 	opt                         DispatchOptions
 	billing                     BillingOptions
+	contractSince, contractNow  string
 }
 
 // Main is the CLI entry point; it returns the process exit code.
@@ -60,6 +63,8 @@ func Main(args []string, stdout, stderr io.Writer) int {
 	fs.StringVar(&a.owner, "owner", "", "new owner: legacy or primary (switch-owner)")
 	fs.StringVar(&a.billing.URL, "billing-url", "", "billing system base URL")
 	fs.DurationVar(&a.billing.Timeout, "billing-timeout", 2*time.Second, "billing call bound")
+	fs.StringVar(&a.contractSince, "since", "", "contract-name: RFC3339 start of the write observation window")
+	fs.StringVar(&a.contractNow, "now", "", "contract-name: RFC3339 end of the write observation window (default: now)")
 	connectTimeout := fs.Duration("connect-timeout", DefaultDispatchOptions().ConnectTimeout, "inventory connect bound")
 	opTimeout := fs.Duration("op-timeout", DefaultDispatchOptions().OpTimeout, "inventory operation bound")
 	if err := fs.Parse(args[1:]); err != nil {
@@ -183,7 +188,22 @@ func runCommand(ctx context.Context, cmd string, a cliArgs) (any, error) {
 	case "expand-name":
 		return ExpandNameSplit(ctx, primary, plan)
 	case "contract-name":
-		return CheckContractNameSplit(ctx, primary, plan)
+		opt := ContractOptions{}
+		if a.contractSince != "" {
+			since, err := time.Parse(time.RFC3339, a.contractSince)
+			if err != nil {
+				return nil, fmt.Errorf("-since: %w", err)
+			}
+			opt.Since = since
+		}
+		if a.contractNow != "" {
+			now, err := time.Parse(time.RFC3339, a.contractNow)
+			if err != nil {
+				return nil, fmt.Errorf("-now: %w", err)
+			}
+			opt.Now = now
+		}
+		return CheckContractNameSplit(ctx, primary, plan, opt)
 	case "send-billing", "reconcile-billing":
 		if a.billing.URL == "" {
 			return nil, errBillingURL

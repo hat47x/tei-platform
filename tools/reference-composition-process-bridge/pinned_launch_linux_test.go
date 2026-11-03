@@ -154,10 +154,13 @@ func (h *pinnedReferenceHost) Invoke(ctx context.Context, command pruntime.Proce
 	return response, nil
 }
 
-func buildPinnedFixture(t *testing.T, ctx context.Context, dir, name string) (string, string) {
+func buildPinnedFixture(t *testing.T, dir, name string) (string, string) {
 	t.Helper()
 	path := filepath.Join(dir, name)
-	build := exec.CommandContext(ctx, "go", "build", "-ldflags", "-X main.referenceRevision="+name, "-o", path, "../../plugins/reference-process-executor")
+	// #2057: buildは呼出し側の実行期限と切り離し、独立した長い期限で待つ。
+	buildCtx, cancelBuild := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancelBuild()
+	build := exec.CommandContext(buildCtx, "go", "build", "-ldflags", "-X main.referenceRevision="+name, "-o", path, "../../plugins/reference-process-executor")
 	if out, err := build.CombinedOutput(); err != nil {
 		t.Fatalf("build %s: %v\n%s", name, err, out)
 	}
@@ -205,11 +208,11 @@ func runPinnedReference(t *testing.T, ctx context.Context, h *pinnedReferenceHos
 }
 
 func TestLinuxPinnedProcessSourceReplacement(t *testing.T) {
+	dir := t.TempDir()
+	original, expected := buildPinnedFixture(t, dir, "approved")
+	replacement, replacementDigest := buildPinnedFixture(t, dir, "replaced")
 	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
 	defer cancel()
-	dir := t.TempDir()
-	original, expected := buildPinnedFixture(t, ctx, dir, "approved")
-	replacement, replacementDigest := buildPinnedFixture(t, ctx, dir, "replaced")
 	if expected == replacementDigest {
 		t.Fatal("fixtures must have different bytes")
 	}
@@ -239,11 +242,11 @@ func TestLinuxPinnedProcessSourceReplacement(t *testing.T) {
 }
 
 func TestLinuxPinnedProcessSymlinkRetargetAndRevocation(t *testing.T) {
+	dir := t.TempDir()
+	original, expected := buildPinnedFixture(t, dir, "approved")
+	replacement, _ := buildPinnedFixture(t, dir, "replaced")
 	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
 	defer cancel()
-	dir := t.TempDir()
-	original, expected := buildPinnedFixture(t, ctx, dir, "approved")
-	replacement, _ := buildPinnedFixture(t, ctx, dir, "replaced")
 	link := filepath.Join(dir, "selected")
 	if err := os.Symlink(original, link); err != nil {
 		t.Fatal(err)
@@ -275,10 +278,10 @@ func TestLinuxPinnedProcessSymlinkRetargetAndRevocation(t *testing.T) {
 }
 
 func TestLinuxPinnedProcessRejectsWrongDigestAndSource(t *testing.T) {
+	dir := t.TempDir()
+	original, expected := buildPinnedFixture(t, dir, "approved")
 	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
 	defer cancel()
-	dir := t.TempDir()
-	original, expected := buildPinnedFixture(t, ctx, dir, "approved")
 	for _, bad := range []string{"", "sha256:123", "sha256:" + strings.Repeat("0", 64)} {
 		if h, err := pinReferenceExecutable(ctx, original, bad); err == nil {
 			h.Close()

@@ -21,6 +21,16 @@ Issueでは「何を行うか」を管理し、ADRでは「なぜその方針を
 - `置き換え済み`：後続のADRによって判断が更新された
 - `却下`：検討したが採用しなかった
 
+### 状態を変えたときの確認
+
+ADRの状態を変えたら、そのADRを参照している文書（`AGENTS.md`、`CONTRIBUTING.md`、他のADR、Issue）の記述を、同じ変更で確認します。参照元は、リポジトリのルートで次を実行して探します。
+
+```bash
+git grep -n "ADR-0035" -- . ':!plan/adr/0035-autonomy-levels-and-verification-packets.md'
+```
+
+参照元の記述が状態と合わない場合は、同じ変更で直します。直せない場合は、Issueへ残します。
+
 ## 判断履歴
 
 - [ADR-0001: 設計判断と実行作業をADRとIssueに分ける](0001-adr-and-issue-workflow.md)
@@ -65,3 +75,5 @@ Issueでは「何を行うか」を管理し、ADRでは「なぜその方針を
 - [ADR-0040: 生成器の失効承認をregistryの編集と分離し、承認recordの対象一致だけを検証する](0040-generator-revocation-approval-separation.md)（提案中）
 - [ADR-0041: 生成物の来歴・選抜・artifact・auditを分離し、実行権限へ接続しない](0041-generated-artifact-provenance-boundaries.md)（提案中）
 - [ADR-0042: Decision witnessのactor・authority状態は、policy検証configurationによるexact bindingでのみ解決し、受理とは混同しない](0042-decision-witness-authority-qualified-boundary.md)（提案中）
+- [ADR-0043: TEI独自Hostを前提とせず、成果物を対象環境に適応させる](0043-target-native-artifacts-without-tei-host.md)（採用。ADR-0032・ADR-0033のHost必須部分を更新）
+- [ADR-0044: 認証をTEIコアの規定・実現対象としない](0044-authentication-not-a-core-concern.md)（採用。Studioはローカルで認証無し原則、ランタイム認証はPlugin依存。ADR-0019・ADR-0043の認証側の分離を具体化）
