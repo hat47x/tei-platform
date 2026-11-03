@@ -140,3 +140,43 @@ amount = quantity * unitPrice
 **停止条件**：実Sourceの語彙候補を現行Canonical IDへ黙って昇格する、Raw MarkdownからFormatter自動実行、Context中の命令をTool Authorityにする、同名/ConfusableだけでBinding、対象外byteのSource変更、Go Reference局所PASSを全Product/Studio E2E PASSとする、といった動作が観測されたら先行採用しない。
 
 **今回の変更範囲**：この新規設計文書と索引、関係Issueへの差分受渡しのみ。新しいGrammar/Lexer/Unicode library/Studio/AI runtime/Formatter/Schemaや第二Host/Registryを採用・実装しない。GN-01〜16、実Product、Owner業務受理、実外部Harnessは**NOT RUN**。
+
+
+## 9. 別レーン§22との再照合：可読性PoCとFrontend実装方式を混同しない（2026-11-03追補）
+
+**参照先**：[Everything is Data横断計画・Draft #2667 §22](https://github.com/hat47x/tei-platform/pull/2667)、既存[#988](https://github.com/hat47x/tei-platform/issues/988)、[実Go Language Plugin Reference・Draft #2639](https://github.com/hat47x/tei-platform/pull/2639)。§22の既存A/B/C/Dは**実装方式の選択肢**、本書§6の4表層は**利用者の記法**である。対応を一対一にせず、言語選択と実装技法を直交させる。
+
+| 評価するもの | 比較する選択肢 | まず確認する事実 | 結論のOwner |
+| --- | --- | --- | --- |
+| **利用者が読むSource構文** | 低ノイズ言語中立DSL／Go風式／Markdown表／chain式 | 同じ受注Meaning、同じExpected、同じNULL/未取得/partial/曖昧性、局所変更差分 | **TEI Owner**。AIは比較案の説明のみ |
+| **Frontend実装** | Go式AST直接／TEI既存Parser+Syntax Plugin／両者の部分併用 | Lexer/構文位置・版固定・エラー診断・Sourceへの逆写像が可能か | #988とOwner。**Go ASTは利用者向け記法の目的でない** |
+| **Backend/実行形態** | Go単一ネイティブバイナリを基本／必要時は既存外部.NET/Java/WASM Host向け出力 | 同じAccepted MeaningとTarget/Generator版、実Build/Consumer byte、Authorityを比較 | #1063/#2595/Target Owner |
+
+Go構文に無い `|>`、Go予約語の `select`、日常DSLに不必要な `func/struct/package/import`を理由に、自然なドメイン表現を譲歩させない。Go式ASTの利点が使える小さな式には適用してよいが、構文・Source Mappingが不自然になるなら既存Semantic接続を保ったままFrontendを変える。**Go言語のビルド・ASTを採用しても、TEI用に新しい共通実行Hostを追加する根拠にはならない。**
+
+**§22の可読性試験記述への差分提案**：人間の被験者、仮想専門家、読解率95%などの数値基準は採用しない。個人OSSの条件では、AIに同条件の4記法を並べて「業務上意味を持たないノイズ」「対象→前提→処理→結果の読み順の逆転」「局所編集のしにくさ」を具体例つきで指摘させ、必要条件の脱落は独立Expected・機械検証で判定。**Ownerに提示するのは順位確定ではなく、短い比較票と反例**。AI同士が同意したことを人間の可読性実証や正式意味受理と扱わない。
+
+### 9.1 一つの受注Fixtureに収束する実証順（新Gate・新Runnerなし）
+
+**比較用Sourceは3層を固定**：受注 `sales.order`、明細 `sales.order.line`、割当 `sales.order.line.allocation`。Source側の名は`quantity`または`数量`、実Binding先は既存ASCII Canonical ID。表示は`数量`／`Order quantity`／物理名／ModelRefの4モード。
+
+| 受渡し | 限定したExpected | 既存Fixtureと終了条件 |
+| --- | --- | --- |
+| **S0 Source/語彙** | Source中に`数量`があることと`core/identity`がUnicode Canonical IDを受理することは別。現mainは後者を拒否。言語中立DSLの文法もまだ採用前 | GN-01/03と§22 DLC-01。現Parser未対応は`unsupported`、自作ParserのPASSは実製品に昇格させない |
+| **S1 Meaning/表示** | 受理済みの明示Bindingがある場合、4表層の候補が**限定条件で**同じSubject/Type/Roleになる。Studioの表示名切替は同じSource/意味を変更しない | GN-02/04/05/11と§22 DLC-04。**表示ラベルからモデルIDを逆推定しない** |
+| **S2 Owner向け比較** | 金額計算と割当整合・確定可否で、未取得≠0件、NULL≠0、partial≠全件、集計結果≠個別ID。AIがノイズ・認知順序を評価 | GN-03、#2514/#2621、§22 DLC-02/03。未確認/不成立/未取得を短さのために合成しない |
+| **S3 Source局所編集** | ローカル名または論理名を表示変更してもSourceを無断Writeしない。原Markdownで無変更保存はzero-write、1セル編集は非対象byte不変 | GN-12/13/14、main統合#2674 SF-01〜18、§22 DLC-05。実Reader/Writerで確認できるまで`NOT RUN` |
+| **S4 AI/Consumer安全** | 論理名・物理名・コメント内`tool`やUnicode同形文字から、Role採用/Provider実Read/Tool Action/Host Grantを自動発行しない | GN-07/08/10/15/16、#2515/#2516。診断の表示と**AI/Hostへの実送信byte/実Action**を別観測 |
+
+本試験の**最初の実装接合をS0に限定**する。現`core/identity`の実受理範囲と`reference/dsl-language-plugin`のLanguage pin/Source spanをread-onlyに確認し、Unicode表層名のBindingがまだ無いなら`NOT IMPLEMENTED`として記録する。仮にS0とS1の局所試験が通っても、S3の元Source保存・S4の実AI/Host安全性やS2のOwner判断を合格にしない。
+
+### 9.2 版・名前変更・再Buildの境界
+
+- **表示言語のみ変更**：Label/表示Resourceの資格は変わり得るが、明示的にBindingされたSubject/Accepted Meaningを変更したとは扱わない。実SourceをSaveで書き換えない。
+- **原Source上のSymbol rename**：同じSubjectへ明示再Bindingできれば意味不変候補。ただしSource bytes・Occurrence・SourceIndex/診断位置は変化する。Source revisionと必要Consumerの再資格化を省略しない。
+- **Binding先ID、Rule、Operator、Unicode Profile/Language版変更**：字句・候補意味・参照閉包・Build入力の影響を調べる。結果値が同じというだけでBuild reuseや実Action資格を主張しない。SourceがA→B→Aと戻っても履歴・Owner撤回・現在Grantは自動復活しない。
+- **既存Physical/Target名の変更**：実DB/外部Hostの版・Provider MappingとTarget衝突を別に検証。論理名表示への翻訳や正規化を物理DDLのMigrationへ自動昇格しない。
+
+この条件は[#2600](https://github.com/hat47x/tei-platform/issues/2600)の増分Build、[#1124](https://github.com/hat47x/tei-platform/issues/1124)のSource表示・現在開示、[#1396](https://github.com/hat47x/tei-platform/issues/1396)の既存翻訳資源の資格を**各Ownerのまま再利用**する。新しい共通Revision CounterやRename Registryを導入しない。
+
+**今回の証拠段階**：この§9は別レーン計画の内容と現行Source実装を突き合わせた**docs-only追補**。S0〜S4の新実験・AIによる比較・実Studio/Host/Runtime/SHO E2E・Ownerの正式文法採用は**NOT RUN**。§22の既存計画本文は他のDraftのため無断で変更しない。
