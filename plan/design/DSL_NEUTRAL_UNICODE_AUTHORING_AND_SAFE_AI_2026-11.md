@@ -69,6 +69,23 @@
 
 **今回の変更・未実証**：本文は設計・Ownerへの差分渡しだけ。P0の実CLI/API、AIエージェント、Source Writer/Unicode Lexer、固定テストCorpus/Mutation、CLI/Web/GUI/実DBの新試験は**NOT RUN**。本書は正式DSL/Unicode Profile/AIのExpected受理や実行許可を宣言しない。
 
+### 0.5 テスト用JSON追加だけでGo Referenceを増補する最小実装（Draft #2813）
+
+共通テストのP0全体（#2811）を独自開発するのではなく、[#2813](https://github.com/hat47x/tei-platform/pull/2813)として**既存 Go Language Plugin Reference を再利用した小さいtest-only実装**を切り出した。実際の差分は`reference/dsl-language-plugin/ai_pipeline_candidate_test.go`と`testdata/ai_pipeline/`のJSON 2個＋README（4ファイル）。製品Parser/Runtime、共通Scenario、Source Writer、Accepted Meaning、正式DSL構文への変更はない。
+
+**既に作成した素材**：既存`ParsePipelineSyntax`→`LowerPinnedPipeline`→`ComposePinned`を使用するGoテスト1件。初期の9ケースに加え、Goコードを一切変更せず**別JSONファイルから正常1・契約不足拒否1の2ケース**を追加した。Source/Operator Pin・Catalog・Expected type・拒否分類・UTF-8 byte spanをJSONで指定し、重複Case ID／存在しない契約参照／未知フィールド／空ケースは失敗させる。4つの基準線Source/ExpectedはGo testにも別に固定する。
+
+| 現時点で検証するClaim | 意図的に検証しないClaim |
+| --- | --- |
+| AIが**通常のJSONファイルを追加するだけ**でGo Referenceのtest-only候補を増やせる構造 | AIによる実自律探索・必須Coverage発見・独立Oracle受理・全Rule検証 |
+| Pipeline構文・Operator exact pin・型連続性・副作用付きOperator拒否・診断byte span | 数量2×単価300の**実計算**、NULL/partial業務評価、Decision Table/Hit Policy |
+| Unicode全角空白のUTF-8 spanと同形Operator名のpin不一致 | Unicode変数名の正式字句解析・セキュリティ全体・多言語Studioの編集・実Target Entry Point |
+| 製品コードと分離されたread-only Go Test | 実Source受理、保存済みDriver Scenario/CLI/Web/GUI E2E、Provider Commit、現在Grant |
+
+**次のOwner判断を小さく**：#2811/#2514が「Expectedの独立出典・事前Obligation・既知Mutant検出」を追加ケースの受理条件として示し、#988/#2621がSource位置・Unsupported表層・型意味の実境界をレビューする。最初の受入は**別のJSONケースで正例・負例を増やせて、既存Go Test/CIで結果を取得できるか**に限定。これを満たしても#2811のinspect→generate→shrink→adopt全ループが完成したとはしない。正式なtest schema/CLIを本書で採用しない。
+
+**証拠状態**：Draft #2813のGoテスト・JSON素材はリポジトリ上に作成済み。ただしその**最新HEADに対する実Go Test/CIの結果が取れるまでPASS未確認**。#2745は設計文書のみで、ここに新Goコードを移さない。
+
 ## 1. 優先順位：自然なテキスト記述と意味の厳密性を両立
 
 **製品要件として維持するもの**：
