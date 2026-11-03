@@ -968,7 +968,7 @@ actual Source bytes + source occurrence + selected Language/Operator pins
 
 ### 26.1 生成の二系統＋Lean（新共通Runtimeは前提としない）
 
-\`\`\`text
+```text
 authoritative Source → existing Canonical / Accepted Meaning
    └─ typed Data Rules / Relation / Quantity / Lifecycle / Operator pins
         ├─ Online Go app / typed Provider operations
@@ -978,7 +978,7 @@ authoritative Source → existing Canonical / Accepted Meaning
         │    └─ scheduled externally or manually on primary snapshot, replica, isolated copy
         └─ optional Lean 4 proof obligations / theorem-check artifacts
                └─ law/algorithm correctness under explicit assumptions
-\`\`\`
+```
 
 「夜間Job」「Replica」「Lean」は**実現/実行Profileの違い**。同じRule/Subject/Scopeの由来、Source/Meaning/Operator/Generator版は相互に追えるが、ジョブの実行時刻・Reader/Provider・Snapshot・結果資格は別。派生CheckSetは正本でも新しいValidation/Proof Registryでもない。cron/CI/既存外部Schedulerで実行できることを先に比較し、TEI専用Host/常駐Schedulerは作らない。Read replicaでは一般に参照Queryだけが可能であり、監査結果の永続化・通知・是正Intentは**別の許可された保存先/運用系**へ出力する。
 
@@ -1008,9 +1008,9 @@ authoritative Source → existing Canonical / Accepted Meaning
 | Run attempt ID、actual executable/SQL bytes + pin、rows scanned、findings、coverage、errors、time/cost | 実施した範囲と、未実施/部分失敗/timeoutを区別 |
 | Observation/diagnostic stable ID、source/subject、historical result、current qualification、remediation intent | 結果の説明、再監査、修正提案と実効果を区別。低権限へ生データを漏らさない |
 
-データ品質の判定は少なくとも **\`pass-in-scope\` / \`violations-found\` / \`incomplete\` / \`unavailable\` / \`invalid-contract\` / \`not-run\`** を比較票で区別する候補。これは新Core enumや正式APIではない。たとえ\`pass-in-scope\`でも「指定Snapshotの対象範囲に限定して違反を観測しなかった」という主張であり、現在のPRIMARY全件保証ではない。歴史的PASSと現在の資格を分離し、定義/Provider/Source/Policy改版やReplica遅延で現在適用を再判定する。
+データ品質の判定は少なくとも **`pass-in-scope` / `violations-found` / `incomplete` / `unavailable` / `invalid-contract` / `not-run`** を比較票で区別する候補。これは新Core enumや正式APIではない。たとえ`pass-in-scope`でも「指定Snapshotの対象範囲に限定して違反を観測しなかった」という主張であり、現在のPRIMARY全件保証ではない。歴史的PASSと現在の資格を分離し、定義/Provider/Source/Policy改版やReplica遅延で現在適用を再判定する。
 
-**Replicaの停止条件**：レプリケーション遅延、対象WAL/LSNの未適用、Snapshot未確定、接続先の昇格/経路変更、長時間Queryとのreplay競合、別DB/外部Providerの異時点読取、欠落した対象集合を\`0 violations\`として合格にしない。多くのReplicaは更新不可なので、Check結果の保存先とDBの読み取り側を分離する。Primaryへの更新は別Authority・既存Command/Receipt境界へ渡す。
+**Replicaの停止条件**：レプリケーション遅延、対象WAL/LSNの未適用、Snapshot未確定、接続先の昇格/経路変更、長時間Queryとのreplay競合、別DB/外部Providerの異時点読取、欠落した対象集合を`0 violations`として合格にしない。多くのReplicaは更新不可なので、Check結果の保存先とDBの読み取り側を分離する。Primaryへの更新は別Authority・既存Command/Receipt境界へ渡す。
 
 ### 26.4 最小反証Fixture（新Engine/新Case大量追加なし）
 
@@ -1021,7 +1021,7 @@ authoritative Source → existing Canonical / Accepted Meaning
 | **DQ-03 Replicaの鮮度** | Primaryで行Bをcommit、ReplicaはB反映前のLSNでスキャン、その後replay | 旧LSNの違反ゼロは当該過去Snapshotに限定。Primary最新の「全件合格」と報告しない |
 | **DQ-04 部分・異時点** | Rowset L={A,B}、取得R={A}、Field欠損、異Provider異epoch | partial/unknown。R内違反は範囲根拠つきで発見可能だが、違反ゼロは全体正常性を示さない |
 | **DQ-05 契約・意味改版** | ID/値同じでもRule版、Facet演算、Provider/Source改版、A→B→A | 古いCheck binary・結果の現在資格を再利用しない。影響閉包が証明できる場合だけ選択的再検証 |
-| **DQ-06 Lean/実データ境界** | 命題「入力集合Lの全行q>0なら\`all(L,q>0)=true\`」の形式的根拠、実ProviderはR⊂Lだけ返す | 抽象法則の証明はL=Rを保証しない。Lean proof success ≠ Data pass ≠ generated Go correctness ≠ Owner acceptance |
+| **DQ-06 Lean/実データ境界** | 命題「入力集合Lの全行q>0なら`all(L,q>0)=true`」の形式的根拠、実ProviderはR⊂Lだけ返す | 抽象法則の証明はL=Rを保証しない。Lean proof success ≠ Data pass ≠ generated Go correctness ≠ Owner acceptance |
 
 **追加PoCの判断順**：
 1. **D0（read-only設計）**：#2622のData Rule/Context、#988のOperator契約、#2544のLaw/Facetを取り出し、オンラインに必要な検査と周期検査候補を一Ruleずつ比較。どのRuleが単に遅延可能かは業務Owner判断を残す。
@@ -1455,3 +1455,36 @@ Ownerの設計方針：Data ModelはSQL解釈から構造生成するのでな�
 **実装計画**：まず既存mainのData Ops/Provider入口が本当にRelation Traversalできるか調査し、なければ`NOT RUN: relation-path-producer-unavailable`として#2622へ責務を戻す。実RDBの固定データ/取得権限・read witnessがなければ`NOT RUN: provider-unavailable`、実SQL Workerなら`NOT RUN: sql-worker-unavailable`。真偽や「0件」で埋めない。特に#1119の実PostgreSQLとOwner-write P0-a/P0-bの優先度は変更しない。
 
 **本節の状態**：GitHubの固定Go/Node CI、実Go Source/SQL/Presentation Producerの静的読取に基づく**採用前の受入計画**。本節自体で新Go/Query/DB/Studio/SHO/Host E2Eを実行したわけではない。第二Canonical/Query/Host/ACL・意味Registry・巨大Context DTOは作らない。
+
+
+## 34. SQL/DDLの静的事実と組織what-ifの時間・責任を接合する――E1の先で止める条件（2026-11-03追補）
+
+### 34.1 現行の二つのReferenceと一つの設計案を異なる証拠として扱う
+
+- **E1 Native TEI**：[#2681](https://github.com/hat47x/tei-platform/pull/2681)の`reference/org-headless-workspace`はPerson/OrgUnit/Membership/Position/Occupancyを独立IDとして宣言し、MembershipのPerson・Unit Relationと`public.org_memberships`へのPersistence mappingを持つ。宣言上の物理Keyは`primary-key organization.membership.membership_id`。allocation/validFrom/knownFromはoptional。実Go/CLIの限定CI [#41580077197](https://github.com/hat47x/tei-platform/actions/runs/41580077197)は当該PR固定HEADでsuccess。**Providerによる実行、Postgres上でのPK/FK制約、期間非重複、Migration、DB書込みは未検証**。
+- **E0 Synthetic Scenario**：[#2779](https://github.com/hat47x/tei-platform/pull/2779)の`org-synthetic-r7`に対する独立copy-on-write組織改編20ケースは、固定HEADの[Node CI #41607867473](https://github.com/hat47x/tei-platform/actions/runs/41607867473)でsuccess。試行は`validAt=2027-06-15`、`knownAt=2027-07-01`、Capacity Rule版が固定された**合成世界**。#2681の`.tei`を実Queryで読んだ値ではない。
+- **SQL static / candidate / observed / accepted**：[#2778](https://github.com/hat47x/tei-platform/pull/2778)のS/C/O/A区分を#1126/#1129/#2622/#2387から再利用する。SはSource/Dialectに書かれた構文・制約宣言、CはTEIのKey/Relation/State/Ruleへの対応候補、Oは実DB Providerの時点とScope付き観測、AはOwnerの意味受理。**OとAは上下関係ではない**。静的SQL解釈、合成Scenario、Owner受理、実Tx完了を一つのPASSへまとめない。
+
+### 34.2 提案が総量を保っても業務・物理制約の不変を意味しない
+
+合成BaselineのMembership occurrence A1=P1/D1/100、A2=P2/D1/60、A3=P2/D2/40、A4=P3/D2/100（100 points=1 FTE）を使い、**A2 retire、A3 40→100**を提案する。合計300 points/3 Personsは不変でも、D2は140→200となり、**合成Capacity160を40超過**する。P2のOccupancy、Q1のCase責任、Grantを自動継承・移転しない。D1分割でA1new/A2newを設けた場合は旧D1のCapacity・権限が後継に引き継がれる根拠がなく、**unverified**を保持する。
+
+この反例をSQL・実DBへ移す前に、以下を必ず別に固定する。
+
+| 接続点 | 正当な候補 | 無条件に成立しない事項 |
+| --- | --- | --- |
+| **Identity／Physical PK** | Native TEIの`membership_id`独立OccurrenceとProviderの明示Key Mapping | 仮の`PRIMARY KEY(tenant_id,membership_id)`やDDL列順からTEIの業務Key、SortKey、Occurrence同一性を推測しない。Tenant Scopeは別途選択 |
+| **Temporal State** | `validFrom`／`knownFrom`、選択`validAt`／`knownAt`、ProviderのSnapshot/履歴行とOwnerの時点ルール | Native Sourceに終了時点/重複排除・訂正規則がないのに、完全なbitemporal履歴や同一時点の一意行を証明したとしない |
+| **Relation／Capacity** | Membership occurrence、Person・Unit、Occupancy、Caseを独立に取得し、Rule版を固定 | SQL FK/JOINの存在から責任・承認権限、兼務の集約粒度、Capacity RuleのOwner受理を推測しない |
+| **Read／Query** | Functionが明示したRelation path、Field/Row/Predicateの完全性、AliasとRead Cohort、独立Expected | `NATURAL JOIN`のSchema列追加で意味が変化、Join多重化、非表示WHERE/NOT EXISTS、部分0件を現在の全件事実に昇格しない |
+| **Proposal→Apply** | Source/Rule/Read版を固定したScenario Diff→Owner Decision→Hostの現在Grant/CAS→実Commit/Receipt/独立Read | copy-on-write PreviewやStudio参照実行`Committed=true`をDB Applyと見なさない。EKI Jobの`AcceptedResult`もBusiness Commitではない |
+
+**状態保存**は受注・所属・Workflowの用途によって本体列／期間Relation／Instance／履歴を選び、SQLの`status`や`CHECK IN(...)`だけで遷移・Ownerの意味正本を作らない。#2778 SC反例と#2389の現行/提案/公表を再利用し、第二汎用状態テーブル／第二SQL Engineは起票しない。
+
+### 34.3 Doneの最短経路と独立停止位置
+
+**P0**：#2681の実`.tei` Loader/Operation E1と#2779合成TSを**別Run・別Fixture**として採取し、相互に値やIdentityが一致するとはまだ主張しない。**P1**：#2778 S/CでKey・Relation・Temporal・NullableをSource span付きの候補として照合し、Ownerへ有効/認知時点と責任移転・重複所属の意味を質問。SQLGlot/Workerや実DDL Readerが無ければ`NOT RUN: producer-unavailable`。**P2**：#2586/#2506/#2622で、同一Rule/Subject/validAt/knownAt・必要Field・Relation/Query Scopeを実Providerから取得し、complete/partial/permission-deniedを独立に観測。実Provider未接続なら`NOT RUN: provider-unavailable`。**P3**：その実Readに対してのみ改編Overlayを計算し、合成Capacity超過と後継Capacity未観測を独立Expectedで反証する。**P4**：Owner Decisionと実Action/Commit/Receipt/独立Readを#1119 P0-a/P0-b/#1129/#1174へ委譲。EKIとSHO/Studioへの配布は必要になった場合に限り、Current/Proposal/Accepted/Applied/Verifiedを混ぜず開示・引用資格を確認する。
+
+**優先しないもの**：新SQL/DSL Grammar、全Domain共通State Engine、組織専用Core／ACL、EKIの業務意味正本化、実DBや多Providerの同期Snapshotを暗黙に仮定する一体Runner。既存§33のE2 Relation-first経路を満たさずSQLや合成結果だけからE3/E4へ進めない。
+
+**今回の実証状態**：既存の#2681実Go/CLI限定CI・#2779独立Node合成CIの成功と#2778設計書の静的確認に基づく**Docs-only追補**。新しいSQL Worker／実DB Migration／Provider Query／業務Owner受理／改編PreviewのTEI実装／Effect／Studio・SHO・EKI連携は本節ではNOT RUN。本文§31〜33と各Owner Issueの担当範囲は変更しない。
