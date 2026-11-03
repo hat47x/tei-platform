@@ -25,11 +25,11 @@ func (p *characterizationProvider) Begin(context.Context) (effectcommit.Transact
 }
 
 type characterizationTransaction struct {
-	request    effectcommit.Request
-	writes     int
-	saved      int
-	commits    int
-	rollbacks  int
+	request   effectcommit.Request
+	writes    int
+	saved     int
+	commits   int
+	rollbacks int
 }
 
 func (*characterizationTransaction) CheckAuthority(context.Context, effectcommit.Scope, legacyauthorization.AuthorityEpochs) (bool, error) {
