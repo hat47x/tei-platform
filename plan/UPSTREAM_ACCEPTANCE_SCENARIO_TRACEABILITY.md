@@ -648,3 +648,31 @@ PAS-07で業務手順を検証する場合も、業務固有の意味は元の�
 - 最初の実行先だけを根拠に、表示の完全な中間表現を固定すること
 - 判定段階Cの前に編集環境やAIの詳細な接続方式を固定すること
 - PAS-07を理由に、正本の`Procedure`・`Step`、業務処理の実行機構、新しい判定段階を自動的に導入すること
+
+## 16. 2026-11-01 追補 — 深掘り設計5件の追跡（評価待ち）
+
+[Issueの深掘り対象の選定](workstreams/ISSUE_DEEPENING_2026-11.md)で選んだ5件について、13章の追跡情報を[深掘り設計の上流接続](workstreams/UPSTREAM_CONNECTION_2026-11.md) 5章へ記録しました。この節は、その対応を PAS 側から辿るための索引です。**要求の集合、11章の対応表、判定段階の条件は変更しません。**
+
+| 設計 | 関連する要求 | 主となる PAS | 副の PAS | 判定段階への影響 |
+| --- | --- | --- | --- | --- |
+| [#1127](https://github.com/hat47x/tei-platform/issues/1127) 標準CRUD | RQ-014（主）、010・011・012・017 | PAS-02 | PAS-01・06 | なし |
+| [#1129](https://github.com/hat47x/tei-platform/issues/1129) 効果規則 | RQ-018・019・020（主）、005・008 | PAS-02 | PAS-03・05 | なし |
+| [#1130](https://github.com/hat47x/tei-platform/issues/1130) 実行計画 | RQ-012・018〜020（主）、024 | PAS-05 | PAS-02・04 | なし |
+| [#2144](https://github.com/hat47x/tei-platform/issues/2144) 期間の状態 | RQ-001・026（主）、006・018 | PAS-07 | PAS-02・05 | なし（採用はA4） |
+| [#1803](https://github.com/hat47x/tei-platform/issues/1803) 設計成果物 | RQ-017（主）、002・010・028 | PAS-01 | PAS-04 | なし |
+
+この追補は、5件の設計が提案段階であることを変えません。5件を PAS の検証根拠として数えるには、各設計の受入（負例を含む）が参照事例で成立している必要があります。
+## 17. 実装の根拠（2026-11-02）
+
+深掘り5件のうち、意味から決まる部分は実装と試験で確かめた範囲があります。判定の材料として、対応するファイルを挙げます。
+
+| 設計 | 実装・試験 | 確かめた範囲 |
+| --- | --- | --- |
+| #1127 標準CRUD | `internal/operations/surface.go`、`surface_test.go` | `list`・`read`・`create`・`update` の導出、未解決の分類、能力への `binding` |
+| #1127 実行（束縛） | `internal/driver/bound_write_test.go` | create・update が実現へ解決して実行され、拒否が `BusinessResult` で返り、行が変わらないこと（**合成の保存領域**） |
+| #1803 設計成果物 | `internal/artifact/`（`artifact.go`・`tabledef.go`・`functiondef.go`・`surface.go`・`manifest.go`・`workspace.go`・`consistency.go`） | 表・機能・操作面・目録の生成、11種類の整合検査、DDL 整合（列・主キー・一意制約・外部キー・索引の列名） |
+| #1127 負例の固定 | `reference/standard-crud/`、`internal/operations/surface_test.go` | キー欠落・ライフサイクル欠落・書込み専用別名・拒否の表現 |
+| #1130・#1129・#2144 | 設計のみ（実装なし） | — |
+| 実DBの競合 | `tools/reference-expected-state-concurrency/` | 枠組みのみ（`TEI_TEST_POSTGRES_DSN` 未設定のため**未実行**） |
+
+この表は「確かめた範囲」と「確かめていない範囲」を分けるためのものです。実装があることを、受入シナリオの達成や意味の受理の証拠にしません。

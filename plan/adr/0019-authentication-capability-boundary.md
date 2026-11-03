@@ -1,5 +1,7 @@
 # ADR-0019: Application利用者の認証・認可をSemantic Capabilityとして扱う
 
+> **後続判断（2026-11-03）**：[ADR-0044](0044-authentication-not-a-core-concern.md)が、認証はTEIコアの規定・実現対象外であることを明示しました（Studioはローカルで認証無し原則、ランタイム認証はPlugin依存）。本ADRのSemantic Capability扱い、既存schemaの保持、secret非保存の判断は維持します。
+
 - 状態: 採用
 - 日付: 2026-09-01
 

@@ -3,6 +3,7 @@ package validation
 import (
 	"tei/internal/core"
 	"tei/internal/ir"
+	"tei/internal/semantic"
 	"tei/internal/subject"
 )
 
@@ -13,6 +14,14 @@ func validateCapabilityDataEffects(w ir.World) []Diagnostic {
 	for _, namespace := range w.Semantics {
 		for _, data := range namespace.Data {
 			knownData[data.ID] = struct{}{}
+		}
+	}
+	inbound := map[core.CanonicalID][]semantic.Relation{}
+	for _, namespace := range w.Semantics {
+		for _, data := range namespace.Data {
+			for _, relation := range data.Relations {
+				inbound[relation.Target] = append(inbound[relation.Target], relation)
+			}
 		}
 	}
 	var out []Diagnostic
@@ -28,6 +37,13 @@ func validateCapabilityDataEffects(w ir.World) []Diagnostic {
 			}
 			if _, ok := knownData[effect.Data]; !ok || effect.Data == "" {
 				out = append(out, errFor(subj, "UNKNOWN_SEMANTIC_CAPABILITY_EFFECT_DATA", "capability %s has data effect for unknown semantic data %s", capability.ID, effect.Data))
+			}
+			if effect.Kind == semantic.DataEffectDelete {
+				for _, relation := range inbound[effect.Data] {
+					if relation.OnDelete == "" {
+						out = append(out, warnd("DELETE_EFFECT_RELATION_POLICY_MISSING", "capability %s deletes %s but inbound relation %s has no on-delete policy", capability.ID, effect.Data, relation.ID))
+					}
+				}
 			}
 		}
 	}
