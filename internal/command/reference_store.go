@@ -145,8 +145,13 @@ func (e ReferenceDataExecutor) Execute(_ context.Context, request Request) (Resu
 	if capability == nil {
 		return Result{}, fmt.Errorf("capability %s is not defined", request.Capability)
 	}
-	if capability.Effect != nil && capability.Effect.Kind == semantic.DataEffectCreate {
-		if err := e.checkRequiredInputs(request); err != nil {
+	if capability.Effect != nil && (capability.Effect.Kind == semantic.DataEffectCreate || capability.Effect.Kind == semantic.DataEffectUpdate) {
+		if capability.Effect.Kind == semantic.DataEffectCreate {
+			if err := e.checkRequiredInputs(request); err != nil {
+				return Result{}, err
+			}
+		}
+		if err := e.checkValueDomains(request); err != nil {
 			return Result{}, err
 		}
 	}
@@ -164,6 +169,51 @@ func (e ReferenceDataExecutor) Execute(_ context.Context, request Request) (Resu
 		result.Outcome = &outcome
 	}
 	return result, nil
+}
+
+func (e ReferenceDataExecutor) checkValueDomains(request Request) error {
+	plan, err := applicationview.BuildCommandPlan(e.World, request.Application, request.Pattern, request.Capability, request.Inputs)
+	if err != nil {
+		return nil
+	}
+	attributes := map[core.CanonicalID]semantic.Attribute{}
+	for _, namespace := range e.World.Semantics {
+		for _, data := range namespace.Data {
+			for _, attribute := range data.Attributes {
+				attributes[attribute.ID] = attribute
+			}
+		}
+	}
+	types := map[core.CanonicalID]semantic.Type{}
+	for _, namespace := range e.World.Semantics {
+		for _, typ := range namespace.Types {
+			types[typ.ID] = typ
+		}
+	}
+	for _, input := range plan.Inputs {
+		if !input.Provided || input.Attribute == "" {
+			continue
+		}
+		attribute, ok := attributes[input.Attribute]
+		if !ok {
+			continue
+		}
+		typ, ok := types[attribute.TypeRef]
+		if !ok || len(typ.Values) == 0 {
+			continue
+		}
+		allowed := false
+		for _, value := range typ.Values {
+			if value == input.Value {
+				allowed = true
+				break
+			}
+		}
+		if !allowed {
+			return fmt.Errorf("value %s is outside the domain of %s", input.Value, input.Attribute)
+		}
+	}
+	return nil
 }
 
 func (e ReferenceDataExecutor) checkRequiredInputs(request Request) error {
