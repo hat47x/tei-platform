@@ -307,3 +307,40 @@ BuildのS1 selectiveを、**業務Commandや外部Effectの再実行許可へ流
 **停止条件**：実消費Sourceが不明、Referenceの完全性/権限が不明、必要memberが欠落、独立Oracleの根拠が共有、外部Effect outcome/Receiptが不明、現在Grantが不明の場合、該当するClaimをPASSにしない。部分的なArtifactや歴史的Receiptは保存できるが、現在の利用資格を付与しない。#2743/#2667/#1129/#2600の既存Ownerを維持し、新Host/Registry/承認Engine/Effect Schedulerを増設しない。
 
 **状態**：設計・実行ゲートの追補のみ。EF-01〜05、実DB/実外部Host、F0/F1/S1/S2、独立Consumer、実効果回復、性能測定、Owner受理は本追補では**NOT RUN**。
+
+## 14. 2026-11-03追補：Schema driftとCommand Targetを「同じSource」の反証に加える
+
+**追加した実証対象は二つ**。Source byteが変わらなくても、SQLの解決先Schema、またはCommandの実Targetが変われば、再利用の適用範囲が変わる。前者はread-only計算の依存、後者は副作用の実行資格であり、両者を一つのCache KeyやPASSへ統合しない。
+
+### 14.1 SQL SchemaはQuery Sourceの隠れた実入力
+
+[#2778](https://github.com/hat47x/tei-platform/pull/2778)のSM-15は、**独立Python/SQLiteの局所反例**として、同一`NATURAL JOIN` SQL Sourceに対しSchemaへ同名の`status`列を追加すると結果が**2行→1行**、`SELECT *`の列が**3→4**になることを確認した（報告上14/14 PASS）。これはTEIの実SQLGlot Worker/Go DerivedIR/Provider/実DBが一巡してPASSした証拠ではない。
+
+| Probe | 固定・変化させるもの | 独立Expected／拒否条件 |
+| --- | --- | --- |
+| **SD-01 NATURAL JOIN** | SQL byte固定。左右のSchemaで共通列`status`を追加 | JOIN成立条件の増加により行集合が変わり得る。SQL Source hash一致でQuery結果をreuseしない |
+| **SD-02 SELECT star** | `SELECT *` byte固定。Schemaへ列追加 | Output Shape/Consumer必要Fieldの再評価。旧ShapeのArtifactSetだけでは現在のConsumer契約を満たさない |
+| **SD-03 同名の解決先** | SQL字面固定。Search Path/Namespace/Relation bindingを変更 | Resolved object identity、Schema revision、列/Relation binding、実Provider routeを照合。不明なら`unknown` |
+| **SD-04 静的事実と実DB** | DDL SourceとSchema観測を分ける。Migration適用成否は不明 | DDL宣言だけで実DB Schemaが変更済みとしない。Desired/Actual/Migration証拠を別列に保持 |
+
+**再利用判定票への最小追加列**：`query source byte; schema revision; resolved relation/column occurrence; search path/namespace; query operator+lowering version; provider observed schema/route; output shape; consumer required fields`。全Sourceを無条件に失効させず、解決先が変わったQuery/Consumerを再資格化する。SQLの静的候補、実DB観測、Owner受理は[#1126](https://github.com/hat47x/tei-platform/issues/1126)/[#2387](https://github.com/hat47x/tei-platform/issues/2387)/[#2622](https://github.com/hat47x/tei-platform/issues/2622)に委譲し、汎用State TableやMigration Engineは追加しない。
+
+### 14.2 Commandの実Targetは、PayloadとGrantから自動的に一致しない
+
+[#2780](https://github.com/hat47x/tei-platform/pull/2780)は、実Goの`command.Invoker → commandadapter.Executor → effectcommit.Runner`に合成Provider/外側UnitOfWorkを接続した**特性試験**。exact-headのfocused GitHub Actionsで2/2 PASSと報告されているが、これは現行配線の**不安全な可能性を示す再現成功**であり、安全性PASSではない。
+
+| Probe | 現行特性・入力 | 必要なOwner受入 |
+| --- | --- | --- |
+| **CT-01 Target drift** | Command Input `ORD-1`、明示Payload `ORD-2`でも合成書込みへ到達（MC-B01） | Command選択Target、Payload Target、Grant Scope、実Provider Requestの一致を副作用前に検査。異なる場合は拒否 |
+| **CT-02 split commit** | 内側Runnerの合成Commit後、外側UnitOfWorkのCommit失敗（MC-C01） | 二つのTransactionを原子的な一Commitと主張しない。部分効果/ACK不明/Receiptを保持し、再実行可否を別判断 |
+
+**F0/F1/S1/S2の停止線**：CT-01/02をBuild省略の「性能試験」として副作用を再実行しない。read-only FixtureでOperation/Target/Grantの差を観測するにとどめ、実Commitは#1174/#1119/#2602のOwnerと既存Effect境界で独立実証。対象不一致の現行Characterization PASSを仕様採用と解釈しない。実PostgreSQL・外部Host・Grant Issuer・二重Commit事故・回復性は未実証。
+
+### 14.3 実装へ進める前の収束条件
+
+1. 既存F0/F1/S1の実行Fixtureを一つ固定し、まず`SD-01/02`を**read-only**で再現。SQL SourceだけでなくSchema/Resolved Relationを入力閉包へ含めたとき、誤reuseを検出できるかを測る。
+2. 同じ入力の独立Expectedを固定し、`F1=S1`と`F1/S1=Expected`を別々に検査。#2778のSQLite 14件をそのままTEI Product Oracleとして数えない。
+3. `CT-01/02`は既存#2780の実Go負例と、#1174/#1119の実Provider/Receipt計画へ参照で渡す。Buildの選択的実行によってEffectの再試行資格を推論しない。
+4. 計測票には`schema resolve + query impact + required rebuild + consumer read`と`effect/receipt recovery`を分ける。実SQL Worker不明なら`NOT RUN: producer-unavailable`。新しい依存エンジンやHostを採用しない。
+
+**状態**：SM-15は隔離SQLiteの限定実測、MC-B01/C01は合成Goの特性観測。**本#2636での実TEI F0/F1/S1/S2、SQL Worker、実Provider、Consumer共同資格、性能測定、Owner受理はNOT RUN**。局所PASSを統合PASSへ転写しない。
