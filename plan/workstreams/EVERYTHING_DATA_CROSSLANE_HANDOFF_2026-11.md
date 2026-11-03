@@ -728,3 +728,72 @@ TAIのQH-01〜18は公開合成Nodeの有限試験であり、TEI実CLI／外部
 **既存#1163 Evidence票に残す最小列**：Source元byte・Occurrence・改訂/Parser版、Data/Attribute/Relation identity、Type/必要Facet、受理Meaning/Rule/Role/Operator依存Pin、purpose/subject/grain/Scope、宣言/実Provider取得とRowset/Field completeness/epoch、動的Relation/negative dependency、必要ArtifactとReader実消費byte/世代、現在Consumer/Disclosure/Host Grant、独立Expected・Actual、established/contradicted/not-established/not-run、必要なBuild再生成・Runtime再Read・Owner再受理の範囲。**新共通Evidence Schemaではない**。
 
 **2026-11-03再照合の証拠状態**：Draft #2639 head 98966e85acd2abf5efce976a3d09a97c798d6519 のgofmt修正Blobは保存済みだが、PR-triggered workflow取得結果は空で、このHEADの正規CI成功は未確認。Draft #2667の追補前head 0e9ea97ccbe47067b2143287736e12682b4985f7 の[Repository Health #41510572157](https://github.com/hat47x/tei-platform/actions/runs/41510572157) は **failure**：ログ上は internal/validation/validation.go のgofmt drift。Docs追補の意味試験FAILや他のGo test全体PASSへは読み替えない。この§21による新Product/Provider/SHO/Host統合試験はNOT RUN。別OwnerのGoコードやADR本体は変更せず、Draftのままレビューする。
+
+## 22. DSL可読性から実行契約への引継ぎ――Frontend選定とGo生成を分離する（2026-11-03、計画追補）
+
+> **状態：設計・比較PoC候補／NOT RUN／正式構文・Frontend採用・Owner意味受理は未決。** 本節は§19〜21と既存#988/#2514/#2621/PR #2639を結ぶ引継ぎ票であり、実装済み契約、新Schema、第二Canonical、新Runtime Host、追加Gateを宣言しない。Go単一バイナリは標準実行形態の方針、.NET/Java等は必要時のTargetとするが、全生成物のビルド・意味適合を実証したという意味ではない。
+
+### 22.1 選択肢の直交性と停止原則
+
+- **利用者価値が第一**：ドメイン専門家に `package` / `import` / `struct` / `func` / Go型引数を普段のスクリプトで強要しない。構文の少ない記述でも、型・業務意味・Authorityの検査を弱めない。日本語はサンプルのDomain識別子であり、DSLを日本語専用にする意図はない（UTF-8識別子・論理名表示を別検証）。
+- **A Go式AST**：Go互換部分式に限る。Go予約語 `select` とパイプ `|>` などはそのままGo式として解析できない。可読性を犠牲にして語彙を変更させるなら棄却候補。
+- **B TEI独自Frontend**：外側の宣言・Pipeline・クエリを自然な構文で解析する。新Parserを構想する前に既存Language Plugin/Parserの境界を確認する。
+- **C Hybrid**：TEI構文解析とGo式ASTの部分再利用。前処理でSource位置が曖昧になる、二重の文法/Resolverが必要になる場合はBへ戻す。
+- **D Goコード生成**：A/B/Cとは排他的ではないBackend。どのFrontendでも共通の固定済み意味契約からGoコードを生成する候補。Go AST採否と標準Runtime方針を連動させない。
+- **停止原則**：Parser成功≠型・意味受理≠生成成功≠実行資格≠業務効果。新しい共通Host/Registry/Meaning SSOT/独自Oracle Runnerは作らない。Native SQLは明示Source/Bindingのまま保持（#2387/#2622）。
+
+### 22.2 Frontendを跨ぐ引継ぎの最小不変条件（新公開Schemaではない）
+
+| 欄 | 保持すべき情報 | 拒否・不明扱いとする反例 | 既存Owner |
+| --- | --- | --- | --- |
+| Source／文法 | Authoritative Source byte/occurrence/span、Source locator・revision、Language/Grammar Plugin選択・版、Syntax projection | Go生成後の行列位置で原文診断を代用、移動後locatorを未再解決 | #2621/#988 |
+| Meaning／受理 | Subject ID・Role・意味解釈依存・Accepted Meaningの版/範囲/Owner受理状態 | 同ID/同型・Parser一致から意味同値/採用を推論、Owner撤回後の自動復活 | #2619/#2620/#1126/#988 |
+| Type／Nullability | 論理型・値域・単位・Decimal精度/丸め契約、nullableとactual presenceの区別、Operator ID/実装版 | Goのfloat64/ゼロ値へ黙示変換、未定義丸め規則の補完 | #988/#2622/#2514 |
+| 入力観測 | missing/explicit-null/not-fetched/withheld、集合のgrain・multiset・field/row completeness・scope/epoch | 未取得・非開示をNULL/0件、部分取得を全件と解釈 | #2621/#2622/#2514/#1708 |
+| 参照／依存 | relation path、候補と曖昧診断、静的・否定/動的依存、実選択入力の版 | 複数候補の先頭採用、同じ結果値から依存不変を推論 | #988/#2600/#2639 |
+| Expected／診断 | Candidateから独立したExpected/Oracle出典・版・適用Claim、安定diagnostic kind ID、Subject/occurrenceに結びつく発生追跡 | GotからWantを生成、Source行番号や診断文言を安定IDとして流用 | #2514/#2621/#1649 |
+| Go生成物 | Semantic/Operator/Generator/Toolchain/Target版、生成ファイルと原文のSource map、実Build input/ArtifactSet | 生成成功・byte一致だけで意味同値・実Consumer利用を主張 | #1063/#2595/#2600/#2604 |
+| 評価／保存 | 計算値・not-satisfied/unknown/rejected、Operation Intent、現在Authority、Provider Attempt、Commit known/unknown、独立Read/Receipt | true/exit 0/ACK をCommit/保存効果・現在認可・Owner受理へ昇格 | #1129/#1174/#2514 |
+
+安定診断は **kind code** と **発生対象（Subject・依存・Source occurrence）** を分ける。Source移動で行番号が変化しても同じ問題を追跡でき、原因/対象が変わった際には別問題と判定できることを試す。診断コードの正式一覧は本節で制定しない。
+
+### 22.3 処理層と責務：実行契約はFrontendから独立
+
+| 層 | 担当 | 担当しないこと |
+| --- | --- | --- |
+| Frontend（A/B/C） | Token/構文/元Source位置、構文診断、選択済みLanguage PluginのSyntax projection | 業務意味/実行Authority/Provider成功の承認 |
+| Semantic Analysis（既存Canonical/Role/Validator/Operatorを再利用） | 型/Nullability、Reference・曖昧性、Operator pin、明示Data Context・grain・Scope、静的/動的依存の必要情報、意味診断 | 実データ完全取得、Commit、Ownerの黙示受理 |
+| Code Generation（D） | 意味に従うGo型・Decimal実装・Runtime契約Binding、Source map、Generator/Toolchain/Artifact依存 | 未定義税/丸め/単位を推測、生成物成功から意味受理を推論 |
+| Runtime＋既存Provider/外部Host | 入力実測（取得済みと未取得の区別）、評価結果/失敗、実Request/現在Authority、Commit/Receipt/独立Readの観測 | TEI独自Hostの新設、業務意味の再定義、ACKだけで保存完了を保証 |
+
+**引継ぎの停止条件**：未受理Role、unresolved/ambiguous ref、必要Type/Ruleの不明、必須Reference stale/unavailable、完全性不明の全称/不存在、必要Contract/Target非対応、現在Authority不明のeffectは、それぞれの段階で明示的に停止・unknown・unsupportedとする。Offlineの固定Snapshotから過去の説明/計算を再現できても、現在のSource鮮度/権限・実Provider実行を保証しない。A→B→Aでは内容再利用候補と現在Owner受理・実行資格の再評価を分離する。
+
+### 22.4 最小同一Fixture――可読性試験とConformanceを別採点
+
+**Domainと前提**：受注・明細・顧客。可読性試験では「明細金額 = 数量 × 単価」「受注明細を集約」「受注確定可能条件」をA/B/Cの三表層で提示する。Go専用型宣言なし、モデル/Operator版を固定。原文の日本語識別子は例示、グローバル適用時は英語その他UTF-8識別子でも同じMeaning/診断を評価する。Dは生成Backendとして別判定する。
+
+| 試験 | 独立Expected／禁止推論 | 判定Owner・既存Fixtureの接続 |
+| --- | --- | --- |
+| **DLC-01 表層** | A/B/Cが意味同値と認められた式では同一のOperator/Subject/型へLower。Go `select`/ `|>` を許さない制約を利用者語彙へ押し付けない | #988、PR #2639 EG-08/09。正式Grammarを決めない |
+| **DLC-02 Decimal** | 数量3、単価19.995は中間値59.985。scale=2への最終丸めは規則不明なら拒否。明示modeの正負tie・未対応modeを分離 | #2514 N/TAO、#2016 H5-O1/#2291既存反例 |
+| **DLC-03 Presence/集合** | 0、explicit NULL、missing、未取得、非開示は別。L={A,B}, R={A}の部分結果だけでは全件SUM/「不存在」成立を宣言しない。取得済みBの反例は適用範囲つきで全称を否定可能 | #2514 C、#2622、#1708 |
+| **DLC-04 Relation/動的依存** | 同名候補・1:N fanout・Subject同IDでAttribute Typeだけdecimal→stringを別診断/影響とし、Binder出力一致から再Build安全を推論しない | #988、PR #2639 EG-09、#2600 IB-07/10 |
+| **DLC-05 Source fidelity** | Markdownの改行/コメント/CRLF変更、Source移動、元言語の構文エラーで、原文範囲/安定診断kind/発生Subjectを保存・再解決。無変更Sourceはbyte不変。Go生成エラーを利用者原文へ逆写像 | #2621、SHO/MMI C-01/T2、#2674 Source Fidelity |
+| **DLC-06 実行とEffect** | 同一意味・実入力・Targetで計算値と拒否/unknownを比較。true、正常終了、Provider ACKのどれも実Commit・保存効果を保証しない。Commit unknown→Receipt/独立ReadとOperation identityを別確認 | #2514 W、#1129/#1174、#2595/#2604 |
+
+**可読性評価の観測**：業務条件/入出力の説明正答、誤読種別、修正箇所の発見、編集所要時間、Go知識への依存、未取得・NULL・部分集合の誤解。対象者・課題・提示順を記録。結果は利用者評価であってConformance PASSではない。閾値は事前にOwnerが定め、事後に都合よく調整しない。
+
+**Conformanceの観測**：上記DLC別のindependent Expected、既知mutantの排除、Source/Operator/Build/Run/Consumerのactual binding、入力scope/epoch/grain、diagnostic code+source map、実計算とEffect Receiptの別結果、現在資格。正負・unknown・not-runを分け、構文成功やGo生成成功だけを合格にしない。#2514のOracle Soundness/Evaluation Binding/Claim Coverageを再利用し、新Runnerや新Oracleを作らない。
+
+### 22.5 方式切替条件・縦切り順序・ADR候補
+
+1. **P0 Source→Meaning（read-only）**：PR #2639の既存Go Language Plugin Reference/限定BinderでDLC-01/04を照合し、Go式対応境界とSource spanを確認。PRの現HEAD exact CIが未確認なら `NOT VERIFIED` のまま。局所EG PASSを全意味同値へ昇格しない。
+2. **P1 可読性＋否定Fixture**：A/B/Cの実際の業務記述でDLC-02/03/05を比較し、ドメイン専門家の読解・編集と、独立Expected/診断の別採点を行う。Go文法への譲歩で可読性が悪化する、またはCの前処理・Source mapがBより複雑になる場合、A/Cを棄却してBへ切り替える。方式選択は実測後のOwner判断。
+3. **P2 Go生成の最小計算縦切り**：同じ受理済み意味・固定ContractからDLC-02/03の小さな純粋計算をGoへ生成し、実Build binaryと独立Expectedを比較。DはBackendでありA/B/Cと同一投票にしない。実Build input・ArtifactSet/実Reader・CI exact HEADを固定。
+4. **P3 Runtime/保存の別縦切り**：既存#1119/#1163/§19経路Aと#1129/#1174を使い、実Provider/Hostがあるケースに限定してIntent→実Request→ACK/Commit unknown→独立観測を検査。純粋計算のPASSを保存まで拡大しない。標準Go binaryの実績を.NET/Javaへ転用しない。
+
+**方式選択の判定**：AはGo互換で自然に読める式に限る。Cは既存Go AST再利用の便益が、二重文法・Source逆写像の複雑さを上回る場合のみ。Bは自然な文法がGo制約で損なわれる場合の正常な選択肢。全方式共通で型/Nullability/完全性/曖昧性/Source/diagnostic/独立Expected/実効果分離に違反すれば採用停止。Go単一バイナリとTEI独自Hostなしの上位方針は維持。
+
+**ADR候補（番号未付与・未採用）**：`DSL Frontend Selection and Source Fidelity`。利用者可読性優先、FrontendとBackendの直交性、Semantic/Runtime契約の不変条件、棄却/切替条件、Go AST利用範囲を記録する案。既存ADR-0022（AI候補と意味受理）、ADR-0023（命令後独立Read）、ADR-0032/0033（構成・Plugin）、ADR-0043（TEI独自Hostなし）を変更・重複せず、#988の採否ゲートで検討する。
+
+**既存Issue/PRへの最小差分**：#988はFrontend→Semanticの不変条件とGo式/独自構文のPressureを所有。#2621はSource occurrence・版・原文往復/安定診断のOwner。#2514は独立Oracle・mutant・Claimの実用資格。PR #2639は現有9件の限定Go Referenceの証拠であり実Runtime試験のOwnerではない。#2600/#2595は依存閉包・実Build入力、#1129/#1174はEffect/Authority、#2667（本節）は横断引継ぎのみ。**この追補による新試験/新コード/新CI実行はNOT RUN。正式DSL文法・Parser方式・Schema・Owner受理は未決定。**
