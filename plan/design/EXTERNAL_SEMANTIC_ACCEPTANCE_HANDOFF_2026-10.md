@@ -344,3 +344,50 @@ FixtureのExpectedをTEI Parser／AIが作ったCandidateから生成しない�
 **停止条件**：読み取りscope、Not Foundの権威、全件性、Read Cohort、実消費byte、現在開示、Owner受理のうち、操作に必要な根拠が欠けた場合は「現在成立」「部分再計算を省略してよい」「実行可能」という結論に進まない。固定履歴・影響のないClaimのread-only利用まで全面禁止しない。
 
 **Owner未決**：用途別鮮度期限と監視要件、負の取得結果の再利用時間・権威、非原子的Readを許すDomain／用途、pinned offline Buildの許容、権限失効後の既取得Cache開示・削除要件、内容同一時のOwner再受理省略条件。新ADRの採用決定はここで行わない。並行Draft[#2667](https://github.com/hat47x/tei-platform/pull/2667)の横断計画は別Ownerの編集範囲なので、本PRでは同じファイルを更新しない。
+
+## 2026-11-03 第4追補：実装入口に限定したP0縦断受入
+
+**状態：実コードと他製品の限定実験を照合した計画差分。以下のP0縦断は、この追補ではNOT RUN。** RF-01〜24の個別反例を増殖させず、着手対象・独立Expected・証拠の昇格条件を狭く固定する。
+
+### 何が現在の実装にあり、何がないか
+
+2026-11-03のmain観測版 0e18b916aa15bc7768e9abfb34318b98ee497cb3 のSourceを静的に確認した。
+
+| 接続元と既存の実体 | 確認できる事実 | 証明していないこと |
+| --- | --- | --- |
+| internal/workspace/imports.go | WorkspaceImportがalias・path・namespaceと任意のsemanticDigestを持つ。ResolvedImportが正規化したNamespaceのSemanticDigestを保持する。これは利用側Managed Sourceとは異なる外部Namespaceの明示的な読取り | 汎用HTTP URL、ETag／条件付きGET、offline Cache、Provider別Permission、複数Provider Snapshotを提供する正式APIではない |
+| reference/semantic-composition-preflight/external_acceptance_boundary_test.go | TestLocalSourceAcceptanceDoesNotWitnessExternalSemanticRevisionという既存の合成Goテストが、隣接する二Workspace間で、供給側のみ型の基底を変更する。利用側Managed SourceとSource acceptance recordが不変でも、外部Semantic Digestは変化する。旧semanticDigestでpinした場合はLoaderが拒否するようassertしている | **試験コードの静的確認**であり、今回のexact HEADで新たに試験を実行した証拠ではない。Hostによる外部意味の案件受理、現在のネットワーク取得権限、実HTTPやSHO Consumerの確認でもない |
+| internal/sourceacceptance/verify.go | 現在のHost Readerを用いる利用側Managed Sourceの照合がある。Readerの信頼・RevocationはHost側の責務 | 別WorkspaceのSemantic Digestを自動で案件受理すること、Query／Buildの全依存・実行資格を証明すること |
+| [SHO Composer Draft #13](https://github.com/hat47x/sho-composer/pull/13) | 独立Python実験で、異なるSourceが同byteでもSource Identity／Occurrenceは同一視できず、A→B→Aの中間変更は前後byteの一致のみでは検出できないという負例を記録（PR記載の17/17 PASSは当該独立試験の範囲） | TEI Loader／Go Product／SHO本体の保存・原子的Read／版Fence・ABA防止／納品文書の出典再解決が実証済みという主張ではない |
+
+**接続を分ける理由**：外部Semantic Importの選択対象（Namespace／意味Digest）と、SHO保存文書の出典参照（Document Source Identity／Occurrence／Revision／参照位置）は役割が異なる。同じ内容Hashの二ファイル、同じSemantic Meaningの二Source、移動した同一Sourceを混同しない。Source位置が変わっただけのケースではMeaningの全面再受理を前提にせず、出典・Review・現在開示・再解決だけを別判定する。SHOの元文書をTEIの自動Rewrite対象へ昇格させない。
+
+### 最初の縦断は「外部WorkspaceのSemantic Import」に限定する
+
+第一段は**現行の実Go Workspace Reader／Loaderを使う二Workspaceの固定Fixture**。ネットワーク・汎用Resolver・正式DSL文法・新Cache・Studioが実装済みであることを前提にしない。既存テストを独立Expected付きで再検証し、そのRead-only結果を後段に渡す。
+
+| 最小縦断Case | 固定入力・独立Expected | 先に照合する既存成果と停止条件 |
+| --- | --- | --- |
+| V0-1 基準取得 | Consumer CのManaged SourceはrC、Provider PはNamespace Nの意味Digest dA。CのSource Index／World／Resolved Importを別列に取得。宣言Alias・Scopeと実Provider、元Source位置を明記 | 既存WorkspaceImport／ResolvedImport／Source Indexの現在の表現を使う。元の供給側生byte・改版が露出しなければ空欄ではなく未確認と記録 |
+| V0-2 ProviderだけA→B | CのManaged Source・ローカルSource acceptanceが不変でも、Pの意味Digest dB≠dAとなる。旧dAで明示pinすればLoad拒否。未pinのLoader成功＝Owner受理ではない | 既存TestLocalSourceAcceptanceDoesNotWitnessExternalSemanticRevisionを**まずexact HEADでfocused実行**。ProviderへアクセスしたbyteとLoaderが実際に消費したbyteは別の確認欄 |
+| V0-3 位置変更・内容同一 | 移動または同byteの別Sourceを入力。Semantic Digest一致の可能性と、Locator・Source occurrence・Source Index／引用更新の必要性を分離。元Sourceとの意味的同一性は未決のままにできる | #2505と既存[#2626](https://github.com/hat47x/tei-platform/pull/2626)のSource移動証拠を比較する。Import pathの変更を無条件の自動Relinkとして扱わない |
+| V0-4 取得失敗・partial／offline候補 | 存在しないProvider path、権限外Scope、途中読取りの不足を**分けて注入**。実際のLoaderが返すError／欠落を観測し、未実装のHTTP状態コードを模擬成功として公表しない | 取得Errorを外部Reference Observationへ正規化する正式入口が無ければNOT RUN: no product observation path。optional・未生成を暗黙の空集合としない |
+| V0-5 A→B→A・固定入力競合 | 変更履歴を独立Oracleで与え、前後digest一致と中間変更履歴の一致を別評価。版Fenceが得られなければ「中間変更なし／同一Snapshot」の資格を与えない | #1017／#2595。過去のSource Observation・Accepted Meaningと、現在のReview／Grantの自動復活なし |
+| V0-6 保存文書の参照とAI提示 | D1にr1 Source occurrenceを固定し、別版r2へSource移動、D1の保存・再読取／引用再解決を別に確認。旧Source内容が読めても今の開示権限が無ければAI送信しない | TEIのRead-only出典情報とSHO #13のSource ID/Occurrence候補を比較。実SHO Reader／保存・外部AI受信は**別Owner実験・NOT RUN** |
+
+この表はRF群に対する**実行順を絞る横断受入票**であり、もう一つのFixture集や実装Schedulerではない。V0-1／V0-2を最初の必須縦断とし、結果の不足によってV0-3〜6を細分化する。実Sourceのない合成HTTP応答だけを最初のP0合格にしない。
+
+### Evidenceの最小受渡しと段階停止（形式は暫定）
+
+| 証拠段階 | 進める条件 | 到達しても主張しないこと |
+| --- | --- | --- |
+| E0 Source／Producer | exact Repo HEAD、実Reader／Loader、投入Source byte、供給側／利用側のscope・Revision、明示pin、取得失敗を別々に記録 | Parser／Build実消費、現在外部HTTP、Ownerの業務意味受理 |
+| E1 実Consumerへの受渡し | 同じAttemptのLoader/Model Source Index／必要なMemberを使い、Inspector／CLIでどの引用・不明が残るか観測。旧版による後着上書きを拒否 | 実SHO保存文書・AI開示・Editor・Targetの統合資格 |
+| E2 消費Byteと資格 | Readerから消費までの固定Snapshot／Version fenceの有無を確認し、実Source／ReferenceをConsumerが読んだ証拠、完全な依存Closure・必要ArtifactSetと現在Policyを別判定 | Owner Decision、Runtime Permission、Commit Receiptを自動で付与すること |
+| E3 意味／Effect | 既存#267／#1016の案件Decisionに、選択外部Resourceの現在意味Digestが入ることを適切なOwnerが受理。実Effectは#1174の別Observer／Receiptで確認 | 過去CI、byte一致、Source acceptのみから業務受理や実行成功を推論すること |
+
+**この計画の具体的Done条件**は、少なくともV0-1／2について、実SourceとLoader出力を固定したfocused Go試験、Provider A→B時の正しいpin拒否、利用側Source受理との独立性、独立Expectedの一致をexact HEADとRunへ結び付けること。Source閉包・供給側Revisionが取得できない場合は、不足を出力し、対象Claimを未確認に止める。E0の成功だけでE1〜E3を完了にしない。
+
+**変更停止条件**：新しいURL Resolver／抽象Plugin方式／正式DSL Grammar／全Provider共通Snapshot／自動Source Relinkを先に決める必要はない。導入が実証上必須となった時点で、その最小要求だけを既存[#988](https://github.com/hat47x/tei-platform/issues/988)／[#1570](https://github.com/hat47x/tei-platform/issues/1570)／[#2505](https://github.com/hat47x/tei-platform/issues/2505)へ戻す。#2600ではE2の実消費依存が未証明ならBuild skipを採用せず、#958認知層は歴史と現在資格の説明に徹する。#1124／#2516のStudio／AIへはE1の資格が得られた範囲だけを投影する。並行[#2667](https://github.com/hat47x/tei-platform/pull/2667)の本文は本PRでは編集しない。
+
+**検証・統合上の注意**：本追補はGitHubの実ファイルをread-onlyで調査して作成した設計であり、Go試験・SHO試験・実Provider・Windows／HTTP・AI送信をこの変更で新たに実行していない。受入済みADRやdocs/status.mdの実装状況は更新しない。PR #2743はDraftを保ち、最新mainとの差分・exact Head／対象Path・Ownerレビューを確認してから統合判断する。
