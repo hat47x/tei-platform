@@ -1,0 +1,13 @@
+application ledger {
+    uses semantic sales
+
+    database sales {
+        target sales_core
+        access read-write
+    }
+
+    database archive {
+        target sales_archive
+        access write
+    }
+}
