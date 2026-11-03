@@ -128,6 +128,8 @@ Runtime側の `Registry.InvokeWithProvenance` は選択したCapability、Plugin
 
 **編集から選択までの対照**：`tools/reference-shared-acceptance/definition_plugin_workflow_test.go` は一時Workspaceと実CLIで、Applicationの名前空間利用順と業務Data属性を2ファイルで変更した。2件の型参照と1件のPlugin Lockは変更せず、通常の検証とPlugin解決が成功した。Application利用集合の候補は空でも業務属性は追加されているため、比較コマンドに既存のSemantic subject差分を別欄で表示し、候補側にもSemanticなどが対象外と明記する。未定義型に変えた負例では通常Plugin解決と比較が停止し、明示的なPlugin診断だけが元診断・未検証候補を非成功で返す。この件数は合成例の変更ファイル・参照・Lockの観測であり、実利用者の入力時間や全影響を測ったものではない。
 
+**既存Reference Workspaceの複製での対照**：`tools/reference-shared-acceptance/reference_workspace_value_workflow_test.go` は現在の `reference/workspace` を二つの一時Workspaceへ複製し、片方の `sales.order` に文字列属性を追加する。1ファイルの編集で検証が通り、development環境の選択済みPlugin定義8件は元のLockで解決でき、Lockの再生成結果も同一だった。実CLIのSemantic差分は追加属性1件、Application利用差分は0件で、既存の影響分析は所有Dataへの1辺とDriver／Target未評価の2項目を返した。新属性の型を未定義に変えると `plugin-lock`、通常の `plugin-resolve`、`plugin-runtime-plan` と比較コマンドは停止し、明示的なPlugin診断は元のエラーと未検証候補を返した。Workspace全体のValidationは正式なPlan・実行の境界として維持し、編集途中の情報取得を止める範囲のみ候補として検討する。対象Pluginは選択しただけで実行しておらず、入力回数・時間、実利用者、影響の網羅性は測定していない。固定されたGate B/C版ではなく複製時点のReferenceであり、元Sourceは変更しない。
+
 **Build位置の限定対照**：`internal/plugin/build_location_actual_test.go` は実Goコンパイラで同一内容の合成モジュールを二つの異なるディレクトリからBuildする。Go 1.27.3／Linuxでは `-trimpath` 有効時、同一位置の再Buildと移動後の出力バイトが一致し、Source内容を変えた出力と実行結果は変化した。`-trimpath` なしでは同じ内容でも位置によってバイトが異なった。同じSource DigestでLocatorのみ異なるBuildPlan v1のFingerprintは両条件と独立に異なる。Go単体の比較であり、実TEI Builder AdapterがPlanを実行した証拠、他Target・Compilerでの再現性、移動後のBuild省略の安全性を示さない。
 
 既存の `tools/reference-build-execution-binding` はLocatorを取得ヒントとして除く**別のReference限定**の実行Plan投影を持ち、BuildPlan v1や既存LockのFingerprintを変更しない。条件付きの再利用を検討するなら、Builderが位置の非依存性を保証できる範囲と実際の入力・出力を確認し、既存の候補を対照する。今回の実験だけでv1固定範囲やLock照合を変更しない。
