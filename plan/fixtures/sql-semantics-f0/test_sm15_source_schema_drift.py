@@ -10,6 +10,7 @@ import unittest
 class ImplicitSQLDependencies(unittest.TestCase):
     def setUp(self):
         self.db = sqlite3.connect(":memory:")
+        self.db.execute("PRAGMA foreign_keys=OFF")
         self.db.executescript("""
             CREATE TABLE orders (
                 tenant_id TEXT NOT NULL,
@@ -78,7 +79,7 @@ class ImplicitSQLDependencies(unittest.TestCase):
         self.db.execute("INSERT INTO child VALUES ('A','missing')")
         self.assertEqual(self.rows('SELECT count(*) FROM child'), [(1,)])
 
-    def test_07_foreign_key_enforcement_on_new_connection(self):
+    def test_07_foreign_key_enforcement_enabled_on_connection(self):
         self.db.execute('PRAGMA foreign_keys=ON')
         self.db.execute("""CREATE TABLE child(
             tenant_id TEXT, order_id TEXT,
