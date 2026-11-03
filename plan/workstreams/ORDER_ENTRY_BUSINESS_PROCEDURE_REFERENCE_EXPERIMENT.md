@@ -666,3 +666,34 @@ For the minimum-row proof, depend on the **actual executed** predicate, sort, ty
 - Consequently, the proof's **non-output dependency** (filter/sort/limit/order/attribute grain/Provider policy, Source and execution version) must be retained in the same existing review evidence packet for **selective requalification**. A display-only projection or artifact byte match does not revalidate the query's hidden dependencies or current authority.
 
 **Owner decision and rollout unchanged:** classify the one `review-validation-scope` difference by the existing four human outcomes; remain `undecided` until the BP-05 target cohort and responsibility are accepted. Reuse #2387 (Query Explain), #988/#2619 (conditional Operator laws), #2506/#2622 (Context and actual Provider), #1174 (effect-time authority), #2582/#2600 (runtime versus build requalification), #2516 (disclosure), and #267 (meaning acceptance). An Issue/SHO representation may explain **which conditions would support the Claim**, but may not auto-connect Business Procedure to a Query, infer an unknown missing field as zero, declare a real Command blocked, or promote a synthetic success to a production guarantee. New tests, actual Provider, third-rule rejection, whole-cohort guarantee and Owner acceptance are **NOT RUN/NOT ACCEPTED** by this document change.
+
+### 15.9 空集合の形式的成立と業務上の完了条件をOwner判断へ引き渡す（2026-11-03、計画・未受理）
+
+この節は[空集合の意味に関する調査ノート（統合済みPR #2722）](../research/EMPTY_SET_COMPLETION_SEMANTICS_2026-11.md)の**実験計画への受渡し**であり、調査ノートの複製、新Core `EmptyPolicy`型、Lean導入決定ではない。§15.7のE0〜E3と§15.5のQ1〜Q5を再利用する。
+
+BP-05の対象を人手の受理票では `(TargetSet L, EmptyPolicy E, Predicate P)` と**三つの判断欄**で扱う（候補表現でありCanonical DSL/Schemaではない）。
+
+| Ownerが判断する欄 | 判断材料 | 技術が提供できる証拠／まだ代替できないもの |
+| --- | --- | --- |
+| `L`（対象集合と時点） | 編集対象の一明細か、提出対象の明細集合か。固定ID集合か、提出時の親子Relation述語で再解決するか | #2506/#2622のScope/Grain/Relation・取得範囲、#1708の既存Snapshot契約。SQLの`WHERE order_id`やFKだけから業務上の集合意味を採用しない |
+| `E`（空集合時の扱い） | 空を許す・提出不可・別の業務確認を要求する等の**候補**から案件の扱いを判断。不在確認や集計から一律の既定を推測しない | 観測された`R=[]`、真に`L=∅`である独立の完全性根拠、空集合でのBusiness Action判断を別列で扱う。形式的`∀x∈∅ P(x)`の真だけではSubmit可としない |
+| `P`（対象行の条件） | 明細番号正値、数量正値、明細番号一意性のどれをBP-05自身が負い、どれを別経路に委ねるか | 3規則の合成正常系は現存するが、`quantity`先頭行・`lineNumber`先頭行・`lineNumbers`集合の実際の入力被覆は別。第3規則不成立時の後続停止や本番業務保証は未証明 |
+
+**受理順序**：構造観測（SQLの型・列・Sort、FK等）→曖昧な業務意味候補→Ownerが対象Scope・空集合扱い・規則責務を受理→該当Operationの実Provider/Hostで条件を実証、を区別する。これは[#1126のER/物理表現](https://github.com/hat47x/tei-platform/issues/1126)、[#267の既存Shared Acceptance](https://github.com/hat47x/tei-platform/issues/267)、[#1125の責務四分類](https://github.com/hat47x/tei-platform/issues/1125#issuecomment-6400716990)の分担を利用する。`line_number int64 required`、SQLの`ORDER BY`、物理PKやFK、型/ID一致は、明細番号正値を**業務必須**と認定する証拠ではない。過去の意味受理や実行資格は、Source byte一致・A→B→A・プラグイン/Operator再選択から自動復活しない。
+
+**Ownerへ渡す一問（拡張するが増やさない）**：「BP-05が対象とする明細集合`L`と空集合時の扱い`E`は何か。その`L`の明細番号・数量に求める条件`P`を、BP-05自身が負うか、特定できる別経路が負うか」。回答は意思決定の候補であり、本文を直ちにBusiness Sourceへ反映しない。別経路を採用するならOperation、対象集合、規則、版と否定時停止の証拠を要求する。
+
+### 15.10 意味受理、形式的証明、現在利用資格を混ぜない最小検収（NOT RUN）
+
+`Predicate P`の形式的証明と、`R=L`の実観測、`E`の業務上の採否、`P`を評価したOperationの実行資格は相互代替不能。Leanによる形式系への写像は[調査ノート](../research/EMPTY_SET_COMPLETION_SEMANTICS_2026-11.md)で未採用・特定版未検証であり、BP-05の本計画では形式証明Engineや新Registryを実装しない。
+
+| 既存例を再利用する独立期待（全件計画段階） | 必要な結論・停止条件 |
+| --- | --- |
+| `L=∅, R=∅, complete=true` と `L≠∅, R=∅, partial/hidden` を対照 | 同じ画面上の0件でも、前者はOwnerの`E`判断待ち、後者は全対象Claim根拠不足。双方を`satisfied`や`not-satisfied`へ自動縮約しない |
+| 同じ公開SQL・データ型・固定行でも、Ownerが`line_number`を表示順序と解釈する世界と提出必須制約とする世界 | 静的構造・同一ID/型だけでは意味同値でもBP-05責務でもない。受理記録なしなら`undecided` |
+| 受理済み`L/E/P`が同一でも、Query非出力Predicate、Sort、実Providerの完全性、Role/Operator版、対象Relation membership、現在Grantのいずれかが変化 | 当該Claimの依存閉包に沿って選択的再資格化（#2582/#2600）。過去Evidenceの歴史的保持と今回の`satisfied`／Consumer開示／Commit資格は分ける |
+| 第3規則に0を与える合成負例から、現状の三規則正常系の`t.Fatalf`を見比べる | 評価`ResultNotSatisfied`と**実Operationの認可/Commandが呼ばれない**ことは別命題。後者は同一経路の呼出し証拠を得るまで未確認 |
+
+**検収出力**は既存のread-only #1125レビュー票に`L/E/P + Owner decision/revision + evidence scope (static/synthetic/actual) + Provider route/slice/completeness/as-of + rule/operator/query versions + negative-stop proof + consumer use/authority + unresolved`を関連付けるだけとする。新しいStatus/Acceptance正本、形式証明器、Host、Gate、Query/Validation DSL実装は作らない。業務確認の履歴・正式Commit/Receipt・独立ObservationのClaimは[別S3設計](https://github.com/hat47x/tei-platform/issues/1125#issuecomment-6585850700)および#1174を参照し、BP-05の評価PASSに合算しない。
+
+**段階**：S0（本節の静的・read-only整理）→既存S1の第3規則負例→S2の実Provider/cohort証拠→S3でOwnerの`L/E/P`受理と説明。実Go/DB/Provider/Lean/Studio/SHOの追加試験、正式Owner受理、#1119製品Gateの合格はこの文書では**NOT RUN/NOT ACCEPTED**。現時点の比較器`review-needed`、人手分類`undecided`を維持する。
