@@ -128,7 +128,7 @@ ExpectedはPlan/Estimator/LLMと**独立な固定Oracle**を用意し、実故�
 | Phase | 最小成果物／検査 | Ownerと受入Gate |
 | --- | --- | --- |
 | **0 契約照合** | TEI Job/Batchの時刻・Retry/Checkpoint/Effect/Result Spec、EKI RQ-057/058とDLG-1/BUD-1/CAP-1のMapping、Direct-vs-Broker固定Oracle | TEI #1130/#1121、EKI #108/#109/#140（既存要求）、#58 |
-| **1 実Job Wire** | TEI純粋Job1件のInput/Output bytes/Executor digest→EKI Task/Resultの受渡し | EKI #112/#57/#242。**現422/501が未解消ならここで止める** |
+| **1 実Job Wire** | TEI純粋Job1件のInput/Output bytes/Executor digest→EKI Task/Resultの受渡し | EKI #112/#57/#242。**旧422/501を現環境で再評価**し、Input ingest・手動補助のない実Resultが未対応なら該当境界で止める（§9.2） |
 | **2 Deterministic time/budget** | Pool/Provider 2候補のQueue/Transfer/Run/Verify所要とBUD-1/CAP-1・Local Governor/資格を使い、Deadline-aware feasibility/Direct comparatorを決定論で出す | EKI #58/#67/#108/#140。Reason/Estimator Revisionと独立Expected |
 | **3 Recovery-aware planning** | 2故障／共有Site障害／費用枠残余／Retry・Checkpoint・Provider ack unknownをSimulatorで評価、実Provider/WorkerのRetryを実測 | EKI RQ-052／#354、#19/#48、実Provider/Lease/Result Owner |
 | **4 Shadow calibration** | Pool×Runtime/Workload Class×Time Windowの実Outcome、打切り・ドリフト/相関を分けたHoldoutとCalibration。Actual Placementへ影響させない | EKI #19/#50。学習モデルのAuthority昇格を行わない |
@@ -143,6 +143,10 @@ ExpectedはPlan/Estimator/LLMと**独立な固定Oracle**を用意し、実故�
 ### 9.1 Deadline/Cost判断を、実Source/Artifactが一致する対照試行へ接続
 
 [一改訂のDirect／EKI Native／Managed Pool縦断と独立Oracle](TEI_EKI_ONE_REVISION_EVIDENCE_VERTICAL_SLICE_2026-11.md)のW-3/VS-10〜12では、09:00開始、10:00最終期限、O→M切替の検出5分＋M実行26分という**合成値**を固定し、09:29が最遅判断候補、09:32故障判明なら10:03となる負例を設計した。**予測の比較対象は同じTEI Input/Executor digest/Result検証条件**であり、出力本体のないEKI`completed`とDirectの実Outputを比較しない。T0/T1/T2の実経路が成立するまで費用・期限達成率・回復確率の製品実績を主張しない。LB-01〜26の予算/相関/公平性を再実装せず、VS Fixtureは実験の縦断証拠だけを扱う。
+
+### 9.2 歴史的なEKI 422/501と現Dispatch/Output GETの区別
+
+[実行縦断§12](TEI_EKI_ONE_REVISION_EVIDENCE_VERTICAL_SLICE_2026-11.md)で現EKI `main`のConfig別証拠を再確認した。Dispatchはoptionalだが実配線コードとTest-profile実Process試験は存在し、Result GETも`Results:store`なら実装経路があり、Output GETもArtifact Store/Owner/期限条件の下で存在する。**旧Spikeの422/501を現在の全Profileに当てはめない**。一方Input ingest-intents/Artifact uploadのHandlerはまだ501、テストでResult Acceptanceを直接呼ぶため**製品の完全な自動受理は未証明**。本稿のDeadline/Budget/Recovery実績はこれらRE-01〜08を受理してからしか測れない。将来費用を先に最適化しても、Input bytesやAcceptedResultがないTaskを`成功`に数えない。
 
 ## 10. 横断深化：単体Jobから複数Job・期限付き約束へ（2026-11-03、第2段）
 
