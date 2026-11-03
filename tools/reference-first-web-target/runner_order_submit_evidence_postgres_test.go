@@ -25,8 +25,10 @@ import (
 // runner_order_submit_postgres_test.go; they SKIP without TEI_TEST_POSTGRES_DSN
 // and a skip is not evidence. The Provenance label is chosen by this test file
 // (the composition), never by the store. Guarantee is the Provider's
-// self-declaration; the postgres Provider declares nothing, so it reads
-// "undeclared". This is a reference result, not proof of production audit.
+// self-declaration; the trusted-owner postgres Provider declares
+// atomic-with-commit with the Reason "provisional D10: ..." (provisional,
+// unverified), which GuaranteeReason carries into Evidence. This is a reference
+// result, not proof of production audit.
 
 const evidenceCanary = "CANARY-SECRET-7f3a9c"
 
@@ -161,7 +163,15 @@ func TestEvidenceSecretCheckDetectsLeaks(t *testing.T) {
 	}
 }
 
+// assertBaseEvidence expects the trusted-owner Provider's provisional D10
+// declaration. The ack-loss wrapper in this test file holds the Provider in a
+// named field and declares nothing, so it uses assertBaseEvidenceGuarantee.
 func assertBaseEvidence(t *testing.T, ev effectcommit.Evidence, op string) {
+	t.Helper()
+	assertBaseEvidenceGuarantee(t, ev, op, effectcommit.GuaranteeAtomicWithCommit, effectpostgres.ReasonProvisionalD10)
+}
+
+func assertBaseEvidenceGuarantee(t *testing.T, ev effectcommit.Evidence, op string, wantLevel effectcommit.GuaranteeLevel, wantReason string) {
 	t.Helper()
 	g := syntheticSubmitGrant()
 	if ev.Operation != op {
@@ -170,8 +180,8 @@ func assertBaseEvidence(t *testing.T, ev effectcommit.Evidence, op string) {
 	if ev.Provenance != effectcommit.ProvenanceRealPG {
 		t.Fatalf("provenance=%q", ev.Provenance)
 	}
-	if ev.Guarantee != effectcommit.GuaranteeUndeclared {
-		t.Fatalf("guarantee=%q (postgres Provider declares nothing)", ev.Guarantee)
+	if ev.Guarantee != wantLevel || ev.GuaranteeReason != wantReason {
+		t.Fatalf("guarantee=%q reason=%q, want %q / %q", ev.Guarantee, ev.GuaranteeReason, wantLevel, wantReason)
 	}
 	want := effectcommit.Scope{Application: runnerSubmitApplication, Capability: runnerSubmitCapability,
 		Subject: g.SubjectID, Action: g.Action, Resource: g.Resource}
@@ -328,7 +338,8 @@ func TestRunnerOrderSubmitRealPostgresEvidenceUnknownCommitThenLookupSameOperati
 	if len(evs) != 1 {
 		t.Fatalf("evidence after unknown commit=%d", len(evs))
 	}
-	assertBaseEvidence(t, evs[0], "execute")
+	// The ack-loss wrapper declares nothing (fail closed), so its Evidence is undeclared.
+	assertBaseEvidenceGuarantee(t, evs[0], "execute", effectcommit.GuaranteeUndeclared, "")
 	if evs[0].ErrorClass != effectcommit.ErrorClassCommitUncertain || evs[0].Status != "" {
 		t.Fatalf("ev=%+v", evs[0])
 	}

@@ -130,7 +130,8 @@ func TestEvidenceCarriesDeclaredGuarantee(t *testing.T) {
 	if _, err := runExec(runner, fixtureRequest()); err != nil {
 		t.Fatal(err)
 	}
-	if sink.got[0].Guarantee != GuaranteeAtomicWithCommit || sink.got[0].Provenance != ProvenanceRealPG {
+	if sink.got[0].Guarantee != GuaranteeAtomicWithCommit || sink.got[0].Provenance != ProvenanceRealPG ||
+		sink.got[0].GuaranteeReason != "synthetic" {
 		t.Fatalf("%+v", sink.got[0])
 	}
 }

@@ -53,6 +53,9 @@ type Evidence struct {
 	ReceiptVersion uint64     // receipt resource version for committed/replayed
 	Provenance     Provenance
 	Guarantee      GuaranteeLevel // the Provider's SELF-DECLARED level (not verified), or undeclared
+	// GuaranteeReason is the Provider's fixed, secret-free reason text for its
+	// declaration (for example "provisional D10: ..."), empty when undeclared.
+	GuaranteeReason string
 }
 
 // EvidenceSink receives Evidence. It has no error return: a sink failure must
@@ -117,7 +120,8 @@ func (r Runner) emit(op string, req Request, grant legacyauthorization.Authoriza
 	if prov == "" {
 		prov = ProvenanceUnspecified
 	}
-	ev := Evidence{Operation: op, Provenance: prov, Guarantee: DeclaredGuarantee(r.Provider).Level}
+	declared := DeclaredGuarantee(r.Provider)
+	ev := Evidence{Operation: op, Provenance: prov, Guarantee: declared.Level, GuaranteeReason: declared.Reason}
 	ev.ErrorClass = classify(err)
 	if ev.ErrorClass == ErrorClassNone {
 		ev.Status = res.Status

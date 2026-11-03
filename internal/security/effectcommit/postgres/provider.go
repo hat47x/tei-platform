@@ -55,6 +55,34 @@ func NewWithTrustedOwnerRoutine(pool *pgxpool.Pool, schema string) (Provider, er
 	return p, nil
 }
 
+// ReasonProvisionalD10 is the Guarantee.Reason of a Provider built by
+// NewWithTrustedOwnerRoutine. It is fixed text (no secrets) so that an Evidence
+// reader can tell the declaration is provisional.
+const ReasonProvisionalD10 = "provisional D10: trusted-owner routine path; re-verify against real deployment"
+
+// Guarantee implements effectcommit.GuaranteeDeclarer.
+//
+// Provisional delegated decision D10: ONLY a Provider built by
+// NewWithTrustedOwnerRoutine claims atomic-with-commit, and only for that
+// trusted-owner routine path. Every other Provider (New, the direct objects
+// UPDATE path, the zero value) declares nothing and is refused by
+// RequireGuarantee. The claim is a self-declaration, not proof: authority
+// check, effect and receipt are claimed to share one commit, which the real
+// PostgreSQL tests listed in README.md exercise but cannot establish for a
+// real deployment (routine body, ownership, EXECUTE grants and every authority
+// mutation path need independent verification).
+//
+// The level is derived from the unexported trustedOwnerRoutine field, which no
+// code outside this package can set. A wrapper that EMBEDS Provider would have
+// this method promoted and so inherit the claim; wrappers must declare their
+// own level or hold the Provider in a named field (see effectcommit.GuaranteeDeclarer).
+func (p Provider) Guarantee() effectcommit.Guarantee {
+	if !p.trustedOwnerRoutine {
+		return effectcommit.Guarantee{Level: effectcommit.GuaranteeUndeclared}
+	}
+	return effectcommit.Guarantee{Level: effectcommit.GuaranteeAtomicWithCommit, Reason: ReasonProvisionalD10}
+}
+
 func (p Provider) Begin(ctx context.Context) (effectcommit.Transaction, error) {
 	if p.Pool == nil || !schemaName.MatchString(p.Schema) {
 		return nil, effectcommit.ErrMissingProvider
@@ -173,4 +201,5 @@ func (t *transaction) Commit(ctx context.Context) error { return t.tx.Commit(ctx
 func (t *transaction) Rollback() error                  { return t.tx.Rollback(context.Background()) }
 
 var _ effectcommit.Provider = Provider{}
+var _ effectcommit.GuaranteeDeclarer = Provider{}
 var _ effectcommit.Transaction = (*transaction)(nil)

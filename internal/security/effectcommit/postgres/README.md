@@ -47,3 +47,27 @@ PostgreSQLの`SELECT ... FOR UPDATE`には対象表への更新権限が必要�
 **受入/配備制約**：このopt-inは信頼されたホスト構成だけが選択し、Pluginの任意SQL/Script APIに転用しない。DB関数の所有者、SQL本文、固定`search_path`、公開EXECUTE権限、書込対象、DBロールと認可正本の全更新経路を配備者が監査する必要があります。テスト用関数は`SECURITY INVOKER`であり、実運用向けのDB権限制約・不正な直接UPDATE防止まで証明しません。本番の強制フェンスや多DB/外部通知の原子性を主張しません。
 
 実PostgreSQL fixture `trusted_owner_integration_test.go`は共有在庫3を異なる二つのResourceが各3確保する競合の正負（在庫不足は`StatusDenied`）、対象版一致/在庫のみ不足、版不一致/在庫十分、入力数量不正の分類、receipt INSERT失敗時の全Owner効果のRollback、関数欠落時のfail-closedを検査します。これは**参照用の実DB試験であって#1129の製品Source/Plugin/Provider結線・旧Runtime適合ではありません**。
+
+## 保証水準の宣言（仮承認D10）
+
+`NewWithTrustedOwnerRoutine`で作ったProviderだけが、`Guarantee()`で`atomic-with-commit`を宣言します。理由欄は`provisional D10: trusted-owner routine path; re-verify against real deployment`（定数`ReasonProvisionalD10`）です。`New`で作ったProvider（従来の`objects`直接更新の経路）、ゼロ値、フィールドを直接指定した値は何も宣言せず、`RequireGuarantee`と`NewRequiredRunner`は拒否します。宣言は`trustedOwnerRoutine`フィールドから決まり、パッケージ外からは設定できません。`Provider`を埋め込む型は宣言が昇格するため、ラッパーは名前付きフィールドで保持するか、自分の水準を明示してください。
+
+**宣言は主張であって証明ではありません。** 実PostgreSQL試験の合格は、試験用スキーマ・試験用ルーチンでの確認にとどまります。ルーチン本体、DB所有者、EXECUTE権限、権限変更の全経路は、実配備ごとに独立して再検証してください。G1/G2はUNQUALIFIEDのままです。Evidenceの`Guarantee`は自己宣言の水準、`GuaranteeReason`は理由欄をそのまま運ぶので、`provisional D10`の文字列から仮宣言であることを読み取れます。
+
+宣言を支える試験（実PostgreSQL試験は`TEI_EFFECT_POSTGRES_DSN`が無いとSKIPし、SKIPは証拠になりません）:
+
+| 観点 | 試験 |
+| --- | --- |
+| 宣言の経路別の出し分け（DB不要） | `guarantee_declaration_test.go` の `TestTrustedOwnerProviderDeclaresProvisionalAtomicWithCommit` / `TestOtherPostgresProvidersDeclareNothingAndAreRefused` / `TestWrapperDeclarationDoesNotLeakThroughNamedField` |
+| 権限確認・Owner効果・受領が同一commit（受領INSERT失敗で全Owner効果がRollback） | `trusted_owner_integration_test.go` の `TestTrustedOwnerRoutineReceiptFailureRollsBackAndMissingRoutineFailsClosed` |
+| 関数欠落時のfail-closed | 同上 |
+| 版衝突・Owner拒否・入力不正の分類と、非commit時にDBを変えないこと | `TestTrustedOwnerRoutineDistinguishesVersionConflictOwnerDenialAndInvalidInput` |
+| 共有在庫の競合（2 Resourceが同時に確保して1件だけ確定） | `TestTrustedOwnerRoutineConcurrentSharedInventory` |
+| ack喪失後の再接続Lookup・同一OperationIDの再送・別内容の衝突拒否 | `TestTrustedOwnerRoutineAckLossReconnectedReplay` |
+| 権限失効とcommitの直列化（権限行ロック） | `TestPostgresConcurrentRevokeAndCommitLinearize`（`New`経路）、`TestDeclaredProviderRequiredRunnerConcurrentRevokeIsAllOrNothing`（宣言したProvider経路。Owner効果込みで全部か皆無） |
+| 宣言したProviderで`RequireGuarantee(AtomicWithCommit)`を満たしたRunnerが、ack喪失後も効果・受領を1組で保つこと | `guarantee_atomicity_integration_test.go` の `TestDeclaredProviderRequiredRunnerAckLossThenReplay` |
+| 同一OperationIDの並行実行で1回だけ確定し、残りはReplayed | `TestDeclaredProviderRequiredRunnerConcurrentSameOperationCommitsOnce` |
+| 保存用DB利用者が権限を直接更新できないこと・ロック関数欠落時のfail-closed | `privilege_integration_test.go` |
+| EvidenceのGuarantee欄 | `tools/reference-first-web-target/runner_order_submit_evidence_postgres_test.go`（`atomic-with-commit`と理由欄を期待。ack喪失用ラッパーは宣言を隠すため`undeclared`） |
+
+直接書込みなど`NewWithTrustedOwnerRoutine`を通らない経路は、宣言の対象外です。
