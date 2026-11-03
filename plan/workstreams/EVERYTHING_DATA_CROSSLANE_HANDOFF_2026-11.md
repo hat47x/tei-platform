@@ -1347,11 +1347,11 @@ AI一括修正で**対象曖昧、複数Patch衝突、base byte不一致、取�
 **採否の留保**：DSLの専門家向け表現はグローバル共通・Go固有宣言を日常表層へ強制しない。Go AST/独自Parser/ハイブリッド/コード生成は同じ可読性・意味/診断/Source保存/生成速度のFixtureで比較し、Go実装親和性のために表層を決定しない。Goの単一バイナリは基本実行形態、EKIは必要時に選ぶ分散実行委譲先、.NET/Java等の既存Hostも保持する。実Writer/Provider/EKI/SHO/第二Targetの成功と、Owner意味受理・新ADR・新Runtime APIの採用はすべて**NOT RUN/未決定**。
 
 
-## 31. 外部モデル再利用の資格――Import成功・意味Pin・Source受理の境界（2026-11-03横断追補）
+## 32. 外部モデル再利用の資格――Import成功・意味Pin・Source受理の境界（2026-11-03横断追補）
 
 > **状態：現行mainのGo Source・既存Goテストを照合した設計差分と、次の同一Run受入手順。新テスト実行・新Parser/Resolver/Store・業務Owner受理・正式ADRはNOT RUN/未採用。** §29「参照・合成・限定継承」と§30「外部Import・Studio修正」を、実在する`WorkspaceImport`の能力と停止線へ結び付ける。二つの章の繰返しではなく、**Importで取得できる「意味」と、外部原文まで結ばれた「現在の証拠」の欠落**を扱う。
 
-### 31.1 現行Goで確認できた能力と限界（2026-11-03 main Source-static）
+### 32.1 現行Goで確認できた能力と限界（2026-11-03 main Source-static）
 
 | 実入口（Go） | 既にある振る舞い・局所Goテスト | 保証していないこと |
 | --- | --- | --- |
@@ -1369,7 +1369,7 @@ AI一括修正で**対象曖昧、複数Patch衝突、base byte不一致、取�
 
 **現行の区分**：`Load/Validate`で選択Namespaceを解釈できたという局所成功、`semanticDigest`により**当該Normalize済みNamespaceだけ**が一致したという成功、Import元/先のSource/Owner/Consumerの完全証拠は、**互いに異なるClaim**。特にStrict Index拒否を現行の誤動作と決め付けない（未束縛Sourceを安全に成功としない既存方針）。
 
-### 31.2 三Domainの同一Subject実験（正式Grammarは増やさない）
+### 32.2 三Domainの同一Subject実験（正式Grammarは増やさない）
 
 一つの受注側Consumerが`org-model`から`organization.membership`の型をImportし、受注承認のRuleがそのMembershipを参照、Workflowの現在状態は受注本体`approvalStatus`へBindingする例を比較する。
 
@@ -1388,7 +1388,7 @@ Consumer Workspace "order-entry"
 - **限定的Refinement/Inheritance**：`ApprovedMember`が親`Membership`として利用できるかは、親Contractの入力・出力・多重度・時点・NULL/partial・Effectを壊さないことを独立Expectedで確認する。強化した承認Guardが親利用者を拒否するなら一般的置換可能性を棄却し、用途限定Compositionとして明示する。
 - **物理**：本体`approvalStatus`は第一候補だが、複数承認Attempt/並行Token/履歴が必要ならSidecar等を選び、現在State Writerを一つに保つ。Import ProviderのScope/Key/Role/Storageを自動上書きしない。
 
-### 31.3 外部再利用の最小反証対照（MRUと既存Fixtureを**結ぶだけ**）
+### 32.3 外部再利用の最小反証対照（MRUと既存Fixtureを**結ぶだけ**）
 
 | 対照 | 一軸変更 | 要求する結論・停止点 |
 | --- | --- | --- |
@@ -1403,7 +1403,7 @@ Consumer Workspace "order-entry"
 
 **誤った二択を避ける**：`semanticDigest`の一致を理由にすべてを「完全に固定」とするのも、ProviderのSource移動だけで全Consumerを「再生成必須」とするのも誤り。型/Role/Source/Provider/Authority/Consumer別の再資格化を分ける。未観測のProvider version、変換される単位、下流に現れないRule/Predicate依存は既存#2582/#2600の対象。
 
-### 31.4 Strict Acceptanceの不足を解消する設計の比較（採用は保留）
+### 32.4 Strict Acceptanceの不足を解消する設計の比較（採用は保留）
 
 **候補A：Provider側の固定Source・意味受理証拠を委譲参照**。Provider所有のLoad時Source bytes/Manifest identity/選択Namespace/推移Pinを、実Audience・版・Ownerが許したClaimとしてConsumerが参照する。Sourceの所有権をConsumerへ移さず、現行Trusted Host `sourceacceptance.Reader`のAuthorityと矛盾しないよう現在性・失効を別に照合。**導入判断は#1163/#1017/#2743／Owner**。
 
@@ -1413,7 +1413,7 @@ Consumer Workspace "order-entry"
 
 どの案も第二Semantic Canonical、global Model Registry、必須中央Store、TEI独自Host、新認可Engineを要求しない。外部HTTP/Cloud Importを既に実装したという主張もしない。
 
-### 31.5 既存テストの次の実行順・責務
+### 32.5 既存テストの次の実行順・責務
 
 1. **X0 exact-head Go再実行**：main上の既存`TestExternalSemanticImportOptionalDigestPin`、`TestExternalNamespaceImportPreservesProviderIdentityAndSourceOwnership`、`TestBuildSourceIndexFromLoadRefusesWorkspaceWithImports`を`go test ./internal/workspace -run '^(...)$' -count=1`で実行。固定HEAD、Go版、Source blob、テスト実ログを記録。**本追補では実行していない**。
 2. **X1 一Consumer二Provider・経路変更**：同じWorkspace Source/Meaningで`alias+path+namespace`、Role/Provider契約・ManifestIdentityを比較。旧/newどちらをOwnerが受理したかは明示的な実証拠が必要。Existing Loaderの局所テストを超える部分は`NOT RUN`。
@@ -1422,16 +1422,16 @@ Consumer Workspace "order-entry"
 
 **現在の変更・合否**：本§31は計画文書のみを変更する。既存GoテストがSourceに存在することは確認したが、この回答での`go test`・Focused CI・実Provider/SHO/Host、厳密な跨Workspace Acceptanceは**NOT RUN／未確認**。§29 MRU-01〜12と§30 Source/AI修正のOwner分担を維持し、Issue/ADR本文とOwner正式判断は変更しない。
 
-## 31. Organization E1からRelation-first実Data Ops/Contextへの橋渡し（2026-11-03、#2386/#2586の採用前横断実証）
+## 33. Organization E1からRelation-first実Data Ops/Contextへの橋渡し（2026-11-03、#2386/#2586の採用前横断実証）
 
-### 31.1 現物から確定できる境界
+### 33.1 現物から確定できる境界
 
 - [Org Native PR #2681](https://github.com/hat47x/tei-platform/pull/2681)の`semantic/organization/model.tei`は**Person、OrgUnit、Membership、Position、Occupancyを直接Dataとして宣言**し、Relationのtarget/keyを明示。`persist`は別物理Mapping。固定HEAD `8efe0d351a244b57fefd00b498a5b47136619ac5`で[Actions #41580077197](https://github.com/hat47x/tei-platform/actions/runs/41580077197)が実Go Loader/CLI/Operations/Artifacts PASS。これはE1であり、実SQL/Provider/Context Readではない。
 - main `internal/operations/surface.go`の`SurfaceWorkspace`は`workspace.Load`＋Source Index→`DeriveOperationSurface`、`effect=read-only`で資格を限定する。main `internal/query/model.go`のQueryは`EmbeddedSQL`であり、`syntax/query_authoring.go`がnative SQL body/fileを受け、`derived.go`が解析結果をDerivedIRへ変換する。**現行SQLの実装とTEI標準Relationの取得/Traversal実装を同一視しない**。
 - main `internal/applicationview/browse.go`の`BuildBrowse`はSQL結果列MappingからBrowse列/Filter等を構築する**表示用の投影**。[merged #2679](https://github.com/hat47x/tei-platform/pull/2679)によるQuery Input⇔Browse Filterの型付き対応は有効だが、物理Read/実Queryの実行証拠ではない。
 - [Org E0 PR #2779](https://github.com/hat47x/tei-platform/pull/2779)の[Node Actions #41607867473](https://github.com/hat47x/tei-platform/actions/runs/41607867473)は固定HEADで`verify.mjs`27件、Node225件がPASS。E0合成とE1 Nativeが別々にPASSしても、同一World/Query/Provider/Consumer runの成立とは言えない。
 
-### 31.2 QueryとData Operationsの責務を分離し、可読性の優先順位を保存する
+### 33.2 QueryとData Operationsの責務を分離し、可読性の優先順位を保存する
 
 Ownerの設計方針：Data ModelはSQL解釈から構造生成するのでなく、Data/Field/Key/Relationを**直接宣言**する。業務利用者が通常の関連データを取得する際は、宣言済みRelation pathから標準Data Operationsを導出し、**Functionが使用する範囲を明示Mapping**。Studioは候補/補完を提供するが、非宣言外部Relation/Fieldを無制限に自動Fetchしない。Native SQL/TEI Queryは複雑な変換やDB固有の特殊処理への補助経路であり、普通のReadのためにSQL記述を事実上必須にしてはならない。Go Parser/AST親和性は内部実装上の選択肢で、DSLの普段のスクリプトへ`struct/func/import/package`を露出させない。
 
@@ -1439,7 +1439,7 @@ Ownerの設計方針：Data ModelはSQL解釈から構造生成するのでな�
 - 採用前候補の通常Query Pathは`Semantic Data/Relation → Explicit Function Mapping → Data Operations/Provider-specific realization → actual Result Slice/Read Witness → Claim/Pattern`。SQL経路は`Query SQL Source + Dialect/Schema/Worker revision → DerivedIR → Provider execution → Result Slice`で、SQLのFieldIDはSemantic IDでないため、明示結果Mappingがないまま再利用しない。どちらも現状全経路実測済みではない。
 - 資格も用途別に：**candidate**, **declared**, **parsed**, **bound**, **physically observed**, **consumer qualified**, **currently action-authorized**, **Effect observed**を同じstatusで表現しない。現在一部入力が未観測でも普通のDataのL0一覧は利用可能だが、FTE/Rule/External Disclosure/Writeは用途相対の前提を別に確認する。
 
-### 31.3 E2の最小受入試行を同一組織Source/Fixtureに束ねる
+### 33.3 E2の最小受入試行を同一組織Source/Fixtureに束ねる
 
 [組織設計PR #2389 §56](https://github.com/hat47x/tei-platform/pull/2389)へORG-E2-01〜10を登録した。#2681実`.tei`はSchema/Mapping/OperationSurfaceのみ、A1〜A4実Providerデータは未登録。合成`org-synthetic-r7`とのID/FTE一致は**期待値**であって実DBの結果ではない。
 
