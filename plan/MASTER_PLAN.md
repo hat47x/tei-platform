@@ -51,6 +51,8 @@
 
 **Artifact Envelopeの同一性・物理公開一式・実Consumer読取は三つの別資格**として受入を計画します。既存`Artifact.Digest`はContent raw hashではなくKind/InputRevision/Rule/Generator/Content/UnresolvedのEnvelope fingerprintであり、現行`tei artifacts -out`の個別保存byteとManifestだけではEnvelope検証入力を完全復元できません。Content同一でRule/Generator/Unresolvedが変化する負例、Manifest取得中の世代切替、ExpectedMemberの欠落、SHO/Skillの旧版実消費を[#2497 §20](https://github.com/hat47x/tei-platform/blob/docs/data-structure-meta-facets-20261101/plan/design/STRUCTURE_PRESERVING_TRANSFORMATIONS_AND_PROJECTIONS_2026-11.md)のAE-01〜08へ整理しました。Artifact整合は#2482/#2630、公開一式は#2604、SHO/Consumer読取は#2516、Skill消費は#2605へ帰属します。#2633 main統合済みCharacterizationと#2659/#2607 Draftを区別し、別HEADのCI成功を現HEADの証拠にしません。実外部Consumer・障害注入・Owner受理は未実施で、第二Artifact正本や独自Hostは追加しません。
 
+**Data Model正本とQuery二経路、生成アクセス性能の受入**：Table/Field/Key/Relationは直接宣言するData Modelを正本とし、SQL解析由来は候補に留めます。QueryはTEI QueryとNative SQLを第一級の別Authoring経路とし、AI変換は元SQLを保持した意味比較候補です。通常の取得はFunction Data ContextにTarget/Relation path/Field/Predicate/Scopeを明示し、複雑集計・方言固有処理ではNative SQLを維持します。生成アクセスのN+1、JOIN fanout、Read Scope、Query count、p50/p95を実Providerで測定し、静的に証明できる契約の重複ランタイム検証は前提・失効条件付きで省略候補とします。ただし実行時Grant、外部Input、Provider部分取得、Transaction/Effectの境界検証は省略しません。[#2497 §21](https://github.com/hat47x/tei-platform/blob/docs/data-structure-meta-facets-20261101/plan/design/STRUCTURE_PRESERVING_TRANSFORMATIONS_AND_PROJECTIONS_2026-11.md)のDM-01〜10は設計票でNOT RUN。既存#1126/#1129/#2387/#2622/#2624/#2628/#2018/#1174へ帰属し、第二Data Model正本・新SQL Runtime・TEI独自Hostを設けません。
+
 ### 外部要件を先に受け止める（要求・構造の机上評価）
 
 CUIやGUIの実装に入る前に、**データ構造、意味上の識別・型・値域・関係・制約、操作・状態・副作用、プラグインの契約・合成・ライフサイクル、Target/Hostとの境界**など、後戻りの費用が大きい基本構造を十分に検討します。
