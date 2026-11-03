@@ -77,3 +77,15 @@ E0/E1/E2の証拠は他のE3〜E6の実行許可ではない。各段の**同一
 この4圧力は将来拡張Eだけではない。PA-11〜13のうち旧X-TEA Data Script/Validation/更新Hookと対応する範囲は忠実移植Pの必要な受入に含め、TEIの新しい安全要求や証拠強化はAへ区別する。PA-14は旧UI起動との同義性Pを要求せず、非画面Jobの追加適合Aと任意EKI実行Eを分離する。
 
 **実測限界**：PA-11〜14はこの段落では設計上の比較条件であり、原X-TEA実Driver、実ProviderのObserver対象束縛、EKI実Runner/Body/Deadline、Owner意味は**NOT RUN / NOT ACCEPTED**。局所SQLite参考試験が成功してもTEI本体/旧Driverの一試行PASSにはならない。
+
+## 6. 局所SQLiteの実行済み反証（PA-11〜13）
+
+[実行用Python/SQLite試験](../fixtures/rmt-one-attempt/test_rmt_validation_effect_scope_sqlite.py)を別ファイルに置いた。**自作の小さなProof境界モデルと使い捨てSQLite**であり、TEIの実Provider・Data Script/Rule・旧Driverを呼ぶものではない。
+
+- **PA-11**：同じ注文の完全2行では全称正例、先頭1行だけではunknown。一件の所属確認済みquantity=0はPartialでも反証。別Tenantで同注文番号の不正行は対象の反証に流用不可。空集合はOwner EmptyPolicyによって結論が異なり、NULLはunknown。
+- **PA-12**：無条件のCOUNT>0が、異Operation/異Orderの既存効果だけでtrueになる。OperationIDが同じでも別Tenantなら対象のEffectを認定しない。実対象の行が見つかってもK/因果的O/Owner Bは別。
+- **PA-13**：old/new値のPreviewでchange=trueでもOutboxは0。合成TxでReceiptとOutbox行を作成した場合のみSQL行を観測する。ただし外部Job実行は証明しない。ACK=unknownでもReceiptがDBに残る対照は、旧効果の否定や新OperationIDによる再実行を許可する根拠ではない。
+
+実行記録：**Python 3.13.5、sqlite3標準モジュール、py_compile PASS、unittest 8/8 PASS**。実行source 7392 byte、Git blob `6ecb3f988e354860211399066a9a89cf4b089dc5`、SHA-256 `542dca721fc23b86ea532174922df1a355b6cc0dcf46eea5f232fee421c077fe` をローカルで記録し、GitHub再取得blob一致。これは**SQLiteで限定した反証の実測**であって、Business OwnerのEmptyPolicyの採用・TEI SQL実行・原Runtimeの実動・実Host Authority・同一AttemptのEffect証明を示さない。
+
+次のP0-a/P0-bでは、この試験の表現をそのまま製品Interfaceに採用するのではなく、#2514の独立Expectedと実ProviderのRead/Receiptへ置換する。Script/Function側で足りないField・Phase・Identityを先に列挙し、追加Coreを必要とするかは実際の失敗から判断する。
