@@ -944,6 +944,7 @@ PoC #2521が実装した範囲と、まだ実装していない範囲を分け�
 | Commandの取引境界（Unit of Work・Commit/Rollback） | 実装済み（境界のみ、実Providerは未接続） |
 | 削除の効果（`delete`） | 実装済み（Capabilityの`effect delete <data>`宣言） |
 | 参照削除の振る舞い（`on-delete`） | 実装済み（`restrict`・`cascade`・`preserve`の宣言、実行は未実装） |
+| 削除効果の参照ポリシー検査 | 実装済み（内向きRelationに`on-delete`がない場合の警告） |
 | Commandの参照実装（契約確認用） | 実装済み（業務副作用なし、Commit/Rollbackの記録のみ） |
 | Commandの参照実行（CLI） | 実装済み（`view -command -execute`、業務副作用なし） |
 | Command計画の期間表示（D6.1） | 実装済み（効果Dataを統制する期間・状態・閉期間の拒否） |
@@ -960,6 +961,7 @@ PoC #2521が実装した範囲と、まだ実装していない範囲を分け�
 | `reference/workspace`への宣言追加 | 未実施（受理経路が必要） |
 
 実装は、`internal/application/model.go`、`internal/syntax/application_pattern.go`、`internal/validation/application_pattern.go`、`internal/crossview/pattern_requirements.go`、`internal/applicationview`、`internal/semantic/model.go`、`internal/syntax/parser.go`、`internal/validation/validation.go`と、それぞれの試験です。
+
 
 
 
