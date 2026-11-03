@@ -1168,3 +1168,23 @@ G0/G1/G2は**全面的な直列開発を要求しない**。DB fixtureとProvide
 **引渡し単位**：各fixtureのSource/Catalog/Graph観測revision、UI入口、selection epoch、qualified Ref／候補集合、Inspect spy、表示された診断と公開可否、実行asset/build SHA、exact-head run IDを残す。UI selection S、Invocation T、確定Effect EはOwnerにより受理された対応規則がない限り等号で結ばない。Decision witness、Source鮮度、独立Effect/Observation、Ownerの意味受理も別のread-only表示レーン候補であり、証拠が欠けた場合は `unknown/not-verified` とする。四レーンの追加表示は#1124の別段階で評価し、PR1の変更対象に含めない。
 
 **移行停止条件**：#2583の埋込みasset／生成bundle byte一致と、新しいexact Workbench sourceの依存集合・資格付きpin追加を確認する。旧snapshot pinを削除・緩和しない。#2457は汎用`publish`の成功をGraph表示ID対応の証拠として扱わず、可能なら`publishGraph`の実Graph.update経由で受入する。両Draftの現headに対してはfocused/full CI、ブラウザー・WebView2、Owner採用をこの文書作業で実行していない。
+
+## 35. #2583/#2457統合後のStudio・Headless優先順（2026-11-03）
+
+**時点と優先関係**：main [`0e18b916aa15bc7768e9abfb34318b98ee497cb3`](https://github.com/hat47x/tei-platform/commit/0e18b916aa15bc7768e9abfb34318b98ee497cb3)の読取りに基づく**後続差分**。§33で「Draft／未統合」「bundle/pin修復待ち」と記した記録は、当時のexact-head経緯として保持し、現在の停止条件としない。製品のG0〜G4やS01/S02、既存Owner受理を新規定義・達成判定しない。
+
+- **統合済みの実装・文書**：[merged #2583](https://github.com/hat47x/tei-platform/pull/2583)（merge `681a6c87`）のCatalog `ambiguous`保持＋共有`inspectEligibility` guardはmainの`reference/tei-studio-workbench/{presentation.ts,main.ts}`へ入り、PR1のbundle生成一致と限定CIが報告済み。[merged #2457](https://github.com/hat47x/tei-platform/pull/2457)（`87cbe945`）の`qualified-selection.mjs`は`publishGraph`によるnode集合の照合、stale/unbound/描画失敗のReferenceを提供。[merged #2590](https://github.com/hat47x/tei-platform/pull/2590)（`3cd97c07`）は§33の受入案を文書統合した。ただし、`main.ts`からqualified-selection Referenceへの実配線と、4入口／残存DOMのConsumer受入は未確認・未完。
+- **Host方針の処理済み事項**：[ADR-0043](../adr/0043-target-native-artifacts-without-tei-host.md)が採用・main統合済み（[#2426](https://github.com/hat47x/tei-platform/pull/2426)、merge `b6e6cdf4`）。既存ADR-0041/0042は維持、[#2341](https://github.com/hat47x/tei-platform/issues/2341)はClosed。[#2226](https://github.com/hat47x/tei-platform/pull/2226)も同mergeでMergedと表示されるが、別個の採用試験とはみなさない。TEI独自共通Hostは**非必須**、Wails/Theiaも**非必須**。既存PoC WailsのHost/bridge語彙はそのTargetの実装・歴史的Evidenceであり、全製品の前提条件ではない。
+
+| 優先・既存Owner | 次に実証する最小範囲 | 完了と誤認しない条件 |
+| --- | --- | --- |
+| **1 / #1124 PR2（直接ブロッカー）** | Graph・list・initial・commandの**実イベント**から統合済みCatalog guardへ到達させる。二scope同kind/IDの曖昧候補・絞込み後1件・正常一意を同一Fixtureで比較し、曖昧なunqualified Inspect transport **0回**、一意対象は意図した1回、診断と候補保持をassert。Source移動でMeaning同一でもSourceIndex/locatorの鮮度を再確認 | 共通`inspect()`での静的拒否とNode単体PASSはPR2の実4入口PASSではない。既存ReadOnly PortとSource Ownerを再利用し、第二Resolverを作らない |
+| **2 / #1124 PR3** | mainへ統合済み`createQualifiedSelectionGuard/publishGraph`を実Graph・Workbench側へ接続。view ID→qualified Refと描画snapshotの同一性、正常G1→G2、R10→R11＋G2 `missing_endpoint`拒否で旧G1 DOMクリック後も**Inspect 0・locator確定0**。ABA・別Window・既描画DOM/ARIA/診断の失効も必要範囲で測る | `publishGraph`の単体PASS、旧SVG保持、表示ラベル一致、Source`modelRevision`観測だけで、現在Source・開示資格・Authorityを保証しない |
+| **3 / #1124 P1 Freshness / Readiness** | merged #2293/#2294/#2348の設計に従い、Source R10→R11で旧schema/Inspect/readyを失効。`decision=accepted`＋`sourceChanged=true`＋`DECISION_RECORD_FAILED`の場合、SourceとDecision ledgerを独立readbackし、自動再Accept **0回**。S01は不要なmigrationなし、S02は実Target互換性証拠なしの誤Readyなし | Source受理、ledger永続化、Decision witness、Owner意味受理、Target実現準備、表示の公開資格を一つの成功Statusへ圧縮しない |
+| **4 / #1124 P2 Authoring / Observation** | 三視点のtyped提案→Preview/meaning diff/Impact→既存#267 Shared Acceptance→再投影を同一revisionで一往復。元Markdown等のSource Fidelity（[#2621](https://github.com/hat47x/tei-platform/issues/2621)）とNo-op Save byte不変を検査。[merged #2747](https://github.com/hat47x/tei-platform/pull/2747)のStudio `PlanCommand/ExecuteCommand`は**ReferenceExecutor**であり、実DB永続化/正式Receiptではないと表示 | `Committed=true`やUI応答成功を実Provider Commit・Business Completion・Action Owner受理へ昇格しない |
+| **並行 / #1180・全Target E0→E3** | 要件Pressure→最小基盤→CUI/標準Plugin→同じAccepted Scenario由来のHeadless Driver/Provider/独立Observationを先行。[#2492](https://github.com/hat47x/tei-platform/pull/2492)は確認時Open・main未統合の計画候補。CLI限定6-Step生成（merged #1867）は再利用 | StudioのPR2/PR3はNode/実DOMの限定fixtureで独立に進行可能。Headless E3成功を実GUI/実認可/実業務Effectの全Target PASSとしない |
+| **後続opt-in / #2391 E4** | #1180 ScenarioをTarget UI操作へ派生。外部Runnerを基本とし、アプリ内Instrumentationは必要なBuildのみ追加。Productionでは**専用制御面を物理除去**し、検査対象Artifactと実配布・起動Artifactを照合。通常UI・a11yは維持 | Wails内蔵MCP、Playwright等は対象固有の選択肢であり、TEI Host/Wails/Theiaの必須化・第二Scenario/Authorityを意味しない |
+
+**着手判断**：PR1の再実装・旧bundle mismatchの再起票・ADRの再採番は不要。最初の新しい実装PRは**PR2の4入口Consumer統合とInspect spy**に限定し、PR3のGraph snapshot接続を次に扱う。PR2/PR3に共通するSource現在性と開示資格の情報が不足する場合は、無根拠に`resolved/ready`へ昇格せず`unresolved/not-verified`に留める。全Target Headless E3は並列進行、E4は後段であり、Studio自体の成立要件にしない。
+
+**証拠資格**：この節はGitHubのPR/Issue、mainコードとADR索引の**静的照合**。新しい4入口UI、実DOM、Accept+旧応答の結合、実Provider/DB、Production物理除去、ユーザー試験、Owner意味受理を本節で実行・達成した主張ではない。
