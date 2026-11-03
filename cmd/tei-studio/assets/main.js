@@ -16,6 +16,8 @@ const applicationInput = document.querySelector("#application-id");
 const patternInput = document.querySelector("#pattern-id");
 const viewApplicationButton = document.querySelector("#view-application");
 const viewPatternButton = document.querySelector("#view-pattern");
+const viewPackageButton = document.querySelector("#view-package");
+const packageInput = document.querySelector("#package-id");
 const viewState = document.querySelector("#view-state");
 const viewOutput = document.querySelector("#view-output");
 const capabilityInput = document.querySelector("#command-capability");
@@ -91,12 +93,15 @@ async function runView(button, label, action) {
   if (!id) return;
   viewApplicationButton.disabled = true;
   viewPatternButton.disabled = true;
+  viewPackageButton.disabled = true;
   viewState.textContent = "実行中…";
   try {
     displayView(label, await action(id));
   } finally {
     viewApplicationButton.disabled = !selectedID();
     viewPatternButton.disabled = !selectedID();
+  viewPackageButton.disabled = !selectedID();
+    viewPackageButton.disabled = !selectedID();
   }
 }
 function clearPreview() {
@@ -148,6 +153,7 @@ function invalidatePreview() {
   observeButton.disabled = !selectedID() || !xeadPath.value.trim();
   viewApplicationButton.disabled = !selectedID();
   viewPatternButton.disabled = !selectedID();
+  viewPackageButton.disabled = !selectedID();
   planCommandButton.disabled = !selectedID();
   executeCommandButton.disabled = !selectedID();
 }
@@ -176,6 +182,7 @@ viewApplicationButton.addEventListener("click", () => runView(viewApplicationBut
 planCommandButton.addEventListener("click", () => runCommand("plan", (id) => api.planCommand(id, applicationInput.value.trim(), patternInput.value.trim(), capabilityInput.value.trim(), parseInputs(commandInputs.value))));
 executeCommandButton.addEventListener("click", () => runCommand("execute", (id) => api.executeCommand(id, applicationInput.value.trim(), patternInput.value.trim(), capabilityInput.value.trim(), parseInputs(commandInputs.value))));
 viewPatternButton.addEventListener("click", () => runView(viewPatternButton, "pattern", (id) => api.viewPattern(id, applicationInput.value.trim(), patternInput.value.trim())));
+viewPackageButton.addEventListener("click", () => runView(viewPackageButton, "package", (id) => api.viewPackage(id, applicationInput.value.trim(), packageInput.value.trim())));
 for (const action of actions) {
   action.addEventListener("click", async () => {
     if (!selectedID()) return;
@@ -205,9 +212,11 @@ if (!listed.ok) {
   observeButton.disabled = !selectedID() || !xeadPath.value.trim();
   viewApplicationButton.disabled = !selectedID();
   viewPatternButton.disabled = !selectedID();
+  viewPackageButton.disabled = !selectedID();
   planCommandButton.disabled = !selectedID();
   executeCommandButton.disabled = !selectedID();
 }
+
 
 
 

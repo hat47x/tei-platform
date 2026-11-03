@@ -8,6 +8,7 @@ const names = Object.freeze({
   observeXead: "main.StudioBridge.ObserveXead",
   viewPattern: "main.StudioBridge.ViewPattern",
   viewApplication: "main.StudioBridge.ViewApplication",
+  viewPackage: "main.StudioBridge.ViewPackage",
   planCommand: "main.StudioBridge.PlanCommand",
   executeCommand: "main.StudioBridge.ExecuteCommand",
 });
@@ -37,9 +38,11 @@ export function createReadOnlyClient(callByName) {
     observeXead: (workspaceID, relativePath) => call("observeXead", workspaceID, relativePath),
     viewPattern: (workspaceID, applicationID, patternID) => call("viewPattern", workspaceID, applicationID, patternID),
     viewApplication: (workspaceID, applicationID) => call("viewApplication", workspaceID, applicationID),
+    viewPackage: (workspaceID, applicationID, packageID) => call("viewPackage", workspaceID, applicationID, packageID),
     planCommand: (workspaceID, applicationID, patternID, capabilityID, inputs) => call("planCommand", workspaceID, applicationID, patternID, capabilityID, inputs),
     executeCommand: (workspaceID, applicationID, patternID, capabilityID, inputs) => call("executeCommand", workspaceID, applicationID, patternID, capabilityID, inputs),
   });
 }
+
 
 
