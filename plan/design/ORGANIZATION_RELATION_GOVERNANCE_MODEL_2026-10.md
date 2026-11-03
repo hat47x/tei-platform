@@ -2286,3 +2286,33 @@ Record R1の取扱OrgがL1で、PolicyがD1以下のcommand階層に限定する
 固定HEAD `565a260403445556bb088f0433a53760fdcddda7`に対する[Node Actions #41632981999](https://github.com/hat47x/tei-platform/actions/runs/41632981999)は**completed/success**。ログ上のNode **v22.16.0**、`verify.mjs`**27 checks PASS**、`node --test`**238/238 PASS・fail 0**（VP-01〜33全成功）、Source Blob `9cb39f44a9eb55be51c3e56cc1cb19bbf16c4e8d`を確認した。exact-head/cleanもjob step success。§58.7の235件は**以前のHEADの履歴**であり、現HEADの資格は本節による。実Provider Enforcementや実Host Grantのテストを実施したものではない。
 
 **最優先の実製品負例**：一つのData recordが下位Orgに属し、Org Policyの範囲をD1→Hへ変更する操作、Role軸`command`→`budget`の変更、Owner Policy版変更の各場合に、同じ既表示RecordやCache/Query/Batchの旧Read Grantを使えないことを、当該Provider/Hostの**実施行点**で確認する。合成モデル中の`hostSimulation`は現在Grant実証ではない。#1119実DB/Effect/Ownerの優先を維持する。
+
+## 59. 現物TEIでRecord→OrgUnitを保持する：構造関係からPolicy/Grantを生成しない（2026-11-03、§58のE0から実Native E1への限定接続）
+
+### 59.1 今回追加した実現物と成立させる主張
+
+[PR #2681](https://github.com/hat47x/tei-platform/pull/2681)の既存`reference/org-headless-workspace`に`organization.case_record`を**通常のData**として加え、`case_id`と`handling_unit_id`から、明示`relation handlingUnit to organization.org_unit one`を表現した。これは§58の`Record→OrgUnit`の最小出典となる。同一Workspaceの既存`Person/OrgUnit/Membership/Position/Occupancy`、read-only Application、MembershipのPersistence mappingは保持する。`CaseRecord`にはあえて新しい物理Persistence mapping・Application CRUD・Policy/Grantを宣言しない。
+
+`internal/operations/org_headless_characterization_test.go`に`TestOrgHeadlessCaseRelationDoesNotAuthorizeReadOrWrite`を追加。実TEI `workspace.Load`からDataが残るか、Relationのtarget`organization.org_unit`とSource/Target Semantic AttributeのKeyが正確に保持されるか、`SurfaceWorkspace`がCaseの操作・Effect・Bindingを自動生成しないかを検査する。これにより次の**否定的な実装契約**がテスト可能になる。
+
+- `CaseRecord.handlingUnit`という**構造上の参照が成立する**ことと、D1以下という**Scopeの計算資格**、当該Recordの**可視性**、現在Principalに対する**実Host Grant**、実Providerの**Row Filter Enforcement**は別。
+- `Membership`/旧(validFrom, knownFrom)は業務所属/時間の出典候補であって、Login Principal・Role・権限・現在Sessionの同一性を保証しない。
+- `case_record`にPersistence/Operation bindingがない現在のWorkspaceで、構造Relationの追加だけを理由にCaseの`list/read/update`を導出しない。実Providerへ読みに行く設定も未受理である。
+
+**証拠の状態**：新規`.tei`モデル／Go Native characterization／README差分はPR #2681へ保存。更新済みfixed HEADのGitHub Actions結果は**別途確認してから**この節へ追記する。先の#2681 HEAD`8efe0d35...`のGo CI PASSは**変更前**のE1履歴であり、新版の試験結果と混同しない。#2781 VP-01〜33 Node実行は**独立したE0合成世界**であり、今回のGo Testを実Host Securityや実DB Policy enforcementへ昇格しない。
+
+### 59.2 直交させた最小責務と、E2の具体的接合
+
+| 所有者／契約 | 今回の実現物で成立する範囲 | E2〜E4への不足 |
+| --- | --- | --- |
+| #1126／#2386：構造・業務意味 | 実`.tei`のCase→OrgUnit Relation ID・明示Key、Membershipと別Data | 業務Ownerが`handlingUnit`を可視性根拠として受理する条件、複数Org link/時点 |
+| #951／#2619：Profile・Policy Binding | Node E0に既定Policy・read-only/exception/denyの反例、実TEIには通常のRelation | Plugin選択とContract版、Function/Consumerへの適用範囲・相互優先順位 |
+| #2622／#2506：実Data取得 | CaseRecordのRelation Pathを正本として参照可能な構造 | 明示Function Mapping→Provider Binding→実Read Witness/Result Slice、必須Field/Rowset/Cohort |
+| #2387／#2635：Queryと否定依存 | 既存Query Analyzer/DerivedIRと非出力Field依存の素材 | 実Source/SQL Worker/Schema/Dialect/Query版、負のPath/0件/Predicate/Count/Page |
+| #2628／#2611：実Read/施行点 | E0で例外/Partialを検討済み | DB/API/Hostが非許可行を**取得・返却・集計・外部送出しない**実観測。多Provider経路 |
+| #2516／#2582／#2631：Consumer・鮮度 | E0で役割/時点/Root/Axis改版を分ける | 実Studio/SHO/AIの資料/表示/開示資格・旧Cache撤回 |
+| #2598／#1174／#1119：実Action/Effect | E1はread-only・write Bindingなし | 現行GrantとIntent/Target/Scope/Effect/Receipt、実DB統合と独立Post-image |
+
+**次の最小E2試行**は、既存Case→OrgUnit Relationを実Providerが辿るかという単一の実Query／Function Readで開始し、正常1件／Scope外1件／0件complete／Read partial／同じRecordのPolicy除外・read-onlyを、同一Source/Policy/Role+Consumerの固定Versionで比較する。**UIで後から行を消すのは不合格**とし、Providerまたは既存Hostがどの時点・どのRead Routeで行フィルタを施行したかを要求する。実施行点がない場合は`NOT RUN: enforcement-unavailable`と明示し、合成Nodeで補完しない。
+
+**優先順位**：本件は現行#1119 P0-a/P0-bのDB/Effect Gateを変更しない。独自TEI Host・組織専用ACL/Policy Engine・新Core固定Data・自動的なSQL逆生成を増やさず、既存のData/Relation/Provider/Host契約へ必要な証拠を還流する。Ownerの広域Policy適用・個別例外・実開示の意味はまだ採用前。
