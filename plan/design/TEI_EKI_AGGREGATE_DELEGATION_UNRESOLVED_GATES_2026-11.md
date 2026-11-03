@@ -21,6 +21,12 @@
 
 **前提となる既存状態**：EKI #109（登録済Pool/RQ-058）／#140（広域最適化）は**closedで要求が整理されている**が、対応する実Pool ProviderのE2Eをここから確定しない。#67は二種類の管理クラスタProvider接続を要求するopen Issue。#112は現APIにTEI Job Artifact/Result取得のGapを記録している。#465（Runner→Body送信の静的問題）は**closed**となったため、過去所見を現HEADの現存不具合と断定せず、Attempt IDと実Output bytesの結合を継続E2E確認項目にする。#466のFingerprint計算と#467のTrust Bundle読取障害は**openのSource-static所見**であり、実攻撃や現在の全経路のfailureは未実証。
 
+### 1.1 現main再確認によるG0/G3の証拠資格更新（2026-11-03）
+
+[実行証拠の縦断§12](TEI_EKI_ONE_REVISION_EVIDENCE_VERTICAL_SLICE_2026-11.md)で、旧EKI #112/#242の不足を**時点・実装構成別**に再資格化した。現EKI `main`の`service/run.go`は`Results:store`と条件付き`Dispatch`を接続、`service/dispatch.go`は配置・Lease・WorkOrderの発行ループを組立て、`conformance/process/http_submit_agent_test.go`は別OSプロセスでHTTP Taskから固定Executorを走らせるTest-profileを持つ（**このターンのGo試験はNOT RUN**）。ただし同テストはADMITTED→READYを直接SQLite CASし、Result Acceptanceもテストから直接呼ぶ。**Product-onlyでResultまで自動進行するとは証明していない**。Output Artifact GETも`Worker.ArtifactsDir`／Meta/Owner/期限がそろえばHandler経路は存在するが、Input Artifactの`POST ingest-intents`・`PUT artifact-uploads`はまだ`routeNotImplemented`。以前の「Result取得501／Worker未配線」を現mainの一律Gapとせず、G0は**Input ingest＋Per-Job Executor binding＋手動補助なしの実AcceptedResult/Result Body取得**に絞る。
+
+G3についても、現`service/run.go`の`currentTrustBundle`は未導入（NotFound）と**取得障害（error）**をSource上で区別している。旧EKI #467の失敗報告を現Source上の継続不具合と断定せず、実mTLS Handlerによるエラー伝播・revocationの負例と#466 fingerprintを別試験で評価する。EKI `clientapi/README.md`にはOutput GETは501／Result artifacts常に空という**最新Sourceと不一致の説明**が残るため、APIの真偽はOpenAPI・Handler・Process試験・実レスポンスを横並びで確認する。新しいContract/Registryは作らない。
+
 ## 2. 同じ「Resource Pool」でも四つの資格を一つにしない
 
 **Logical pool ≠ fungible physical machine ≠ available capacity ≠ authority to run.** 運用Surfaceでは次を別Role／Source／Revision／有効時刻として扱う。
