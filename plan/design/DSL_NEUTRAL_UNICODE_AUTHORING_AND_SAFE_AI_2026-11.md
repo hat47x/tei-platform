@@ -375,9 +375,9 @@ else: SATISFIED
 
 ### 14.1 実証の進展を未実証の範囲と併記する
 
-本計画の`13にあるP0aは、別Ownerの[Draft #2786](https://github.com/hat47x/tei-platform/pull/2786)で**限定された実Go試験として実行済み**となった。HEAD `af27e660ed12060dc77a6bd7e4964e4b3e32ce0d` の[GitHub Actions Repository Health #41641035468](https://github.com/hat47x/tei-platform/actions/runs/41641035468)はcompleted/success。P0aの合成WorkspaceはProvider P1→P2切替、Semantic Digest／Manifest／Provider raw bytes／Consumer Source Index、古いPinの拒否とstrict `ErrImportsNotBound`を独立Expectedに照合した。
+本計画の§13にあるP0aは、別Ownerの[Draft #2786](https://github.com/hat47x/tei-platform/pull/2786)で**限定された実Go試験として実行済み**となった。HEAD `af27e660ed12060dc77a6bd7e4964e4b3e32ce0d` の[GitHub Actions Repository Health #41641035468](https://github.com/hat47x/tei-platform/actions/runs/41641035468)はcompleted/success。P0aの合成WorkspaceはProvider P1→P2切替、Semantic Digest／Manifest／Provider raw bytes／Consumer Source Index、古いPinの拒否とstrict `ErrImportsNotBound`を独立Expectedに照合した。
 
-この限定PASSで分かるのは**現在のSource Indexが何を保証せずに停止するか**まで。Consumerに届く全Importの原Source byte／Manifest／Provider membershipを**同じ実Read attempt**として固定するP0bは依然として未実証。`13のP0a〜P3の概念上の手順を維持しつつ、**P0a試験を新たに作り直さず、その固定Headの証拠を入力として利用**する。Draft未mergeの試験をmainの製品合格へは転用しない。
+この限定PASSで分かるのは**現在のSource Indexが何を保証せずに停止するか**まで。Consumerに届く全Importの原Source byte／Manifest／Provider membershipを**同じ実Read attempt**として固定するP0bは依然として未実証。§13のP0a〜P3の概念上の手順を維持しつつ、**P0a試験を新たに作り直さず、その固定Headの証拠を入力として利用**する。Draft未mergeの試験をmainの製品合格へは転用しない。
 
 さらに[Macro/Command特性試験 Draft #2780](https://github.com/hat47x/tei-platform/pull/2780) のHEAD `d70a99131b5298f44b6edc739b723621d1679674` に対する[Focused Actions #41632377548](https://github.com/hat47x/tei-platform/actions/runs/41632377548)は、4件のGo Characterizationでcompleted/success。これは次の**望ましくない現行特性を観測したPASS**であり安全性の合格ではない。
 
@@ -385,7 +385,7 @@ else: SATISFIED
 - MC-C01：内側`effectcommit`が合成Commitした後に外側`command.UnitOfWork`のCommitが失敗し、ひとつの原子的業務Commitとして説明できない。
 - MC-D01/D02：`committed`と`replayed`がCommand Resultで区別できない一方、応答不明の型付き原因はwrap後も`errors.As`で復元可能。新規保存とReplayを同じ利用者向け結果へ自動翻訳しない。
 
-上記を本計画`12の**未検証の仮説→限定的に実証された不安全な特性**へ更新する。ただし実DB/Host/Owner Target Binding/Studioからの同一Attemptは未実証であり、実装修正のOwnerは#1129/#1174/#2602。`14は新しいResult API、Operation Engine、Hostを定義しない。
+上記を本計画§12の**未検証の仮説→限定的に実証された不安全な特性**へ更新する。ただし実DB/Host/Owner Target Binding/Studioからの同一Attemptは未実証であり、実装修正のOwnerは#1129/#1174/#2602。§14は新しいResult API、Operation Engine、Hostを定義しない。
 
 ### 14.2 SourceとScenarioの二つのSSOTを混同しない
 
@@ -403,15 +403,41 @@ else: SATISFIED
 
 **Coverageを一つの数値へ潰さない**。少なくとも (1)構文/Operator/Rule分岐、(2)NULL/未取得/partial/曖昧なデータパターン、(3)Driver Scenario Step/Outcome/negative、(4)CLI/Web/Desktop等のRoute/Host、(5)実Effect/Observationの達成・未到達を**同じScenario上の異なる列**として扱う。未対応Step、Provider欠落、Security/Host Evidenceなしは`SKIP PASS`でなく`UNSUPPORTED`／`NOT RUN`／`UNVERIFIED`とする。初期は既存Test/Traceから派生列を計算し、全域Instrumentation/新Runner/第二Coverage DBを作らない。
 
-### 14.3 ここから先の最小差分と決定権
+### 14.3 過剰な直列化を避ける最小検証と合流点
 
-| 順序 | 次に行うべきこと | 既存Owner／完了・停止の境界 |
+従前の「P0b → 構文比較 → 同一ScenarioからCLI/Web生成 → 実Effect」という**一本の順番は、全工程に対する前提条件としては強すぎる**。外部Importのfull closureは**実Importを使う対象の資格要件**だが、外部Importなしの合成・固定Source上でDSL構文を比較するための前提条件ではない。別OwnerのP0bを待つためだけにDSLの最小PoCやDriver Scenarioのread-only検証を停止させない。
+
+| 独立レーン | 今すぐできる最小の検証 | 合流点／ここから先の禁止推論 |
 | --- | --- | --- |
-| **次1** | #2786 P0aの固定Go Expectedを再利用し、Source Index・Import・Manifest・actual Reader bytesの**未束縛P0b**を1つのConsumerで限定検証 | #2743/#1017/#1018。P0b実Read Cohort・closureがなければSource-completeを宣言しない |
-| **次2** | 同じ受注のScript⇄表について、短絡、NULL、未取得、negative、評価順序/Hit policyの**読み順と意味不変**をOwnerに比較票として提示 | #988/#2514/#2621。人間の被験者や仮想専門家は不要。AIは構文ノイズ/認知順序を説明、正式SyntaxはOwner判断 |
-| **次3** | そのScenarioを元にCLI read-only/参照実行の入力計画とWeb/Studioの参照Testを既存#1180の方法で導出し、Coverage Obligation差を記録 | #1180/#1124/#1824。CLI/Web業務Route同等とWeb固有Host/Visual資格を区別。生成器未実装なら設計だけで完了扱いしない |
-| **次4** | Target O1/O2・内外Transaction・Replay/Unknownの現行不安全Characterizationを、Owner承認後の**拒否Expected／実Receipt確認**へ接続 | #2602/#1129/#1174。#2780 PASSを安全性PASSと見なさず、新Host・第二Authorityを作らない |
+| **L：表層／意味（#988/#2514/#2621）** | 外部Importなしの固定`order_entry`/受注O1で、軽量言語中立DSL・Go風式・Markdown表・chain式を、同一Frozen Expectedで比較。構文ノイズ・認知順序は生成AIの定性的比較、NULL/未取得/partial・評価順序・短絡・Rule型を機械的に検査。Unicode local nameは既存ASCII Canonical IDへの明示Binding候補 | 新DSL構文の採用、現Parserで未対応な表層の実行成功、Owner意味受理を主張しない。固定Sourceの軽量PoCにはP0bを要求しない |
+| **I：Import実消費（#2743/#2786）** | P0a exact-headの既存Go成功試験を参照し、Provider原Source byte/Manifest/依存Closureと**実Consumer同一Read attempt**を束縛できるかP0bで比較 | **Importを含む実WorkspaceのSource-complete／安全なPatch・Build reuse・現在Consumer資格**には、対象外を含めて必要なImport closureを確認。`ErrImportsNotBound`を迂回しない |
+| **S：Scenario／CLI・Web（#1180/#2666）** | Accepted Canonicalを参照する**一つの保存可能なDriver Scenario**に、受注O1のread-only Query＋Validation、負例、独立Expectedを置き、まずCLIのStep/Artifact対応を計測。実Web生成器が未実装なら`NOT IMPLEMENTED`を明示 | CLIからWebへテストログを変換するのではなく、同じScenarioから各Targetへ派生。Host/Session/Visual/Authorization・EffectはTarget別のEvidenceが必要 |
+| **E：実Action Target/効果（#2602/#1129/#1174/#2780）** | O1を選択してPayloadがO2の負例、内外Transaction非原子性、Committed/Replayed/UnknownのResult資格を既存Characterizationで確認し、Ownerが拒否・RecoveryのExpectedを独立固定 | 実Host/Provider／現在Grant・Receipt/DB独立Readが揃うまでは`NO EFFECT CLAIM`。参照成功や合成の不安全挙動PASSを実業務安全PASSへしない |
 
-**Ownerに残す決定**：正式なDSL Grammar、Unicode識別子Profile、Decision TableのHit Policy/短絡、Business DataからのEvent生成条件、P0bのSource束縛方式（同一Provider Read vs immutable Bundle）、Scenario Generator/実Providerの実装順。元SourceのSource Fidelityは維持。性能上、検証を編集・Build・実行前Action境界へ分配し、純粋Operatorの毎回実行時に全Source Parse/外部依存再取得を要求しない（横断計画#2667 `25）。
+**合流を要求する境界を限定**：
+1. **L＋S**：同じMeaning/Expectedを持つReference Script/Decision Tableと保存済みScenarioの静的Step/Rule対応を確認。独立Expectedの所在は#2514と#1180、DSL側の比較表は第二Oracleでない。
+2. **L＋I**：実Importを宣言したSourceを編集・解釈・Build再利用・Consumer開示する場合に限りP0bの実消費閉包を必須として照合。外部ImportなしのSource比較は独立に進められる。
+3. **S＋E**：実Command Testを有効にする時点でTarget/OperationID/Payload/Grant/Version、Commit/Replay/Unknown、実Observationの契約に合流する。CLIのread-only合格は先行できる。
+4. **L＋I＋S＋E**：正式の一改訂E2Eを主張する場合だけ、Source／Meaning／Scenario／Generator／実Artifact／Host／実Provider／Receipt／Consumerの実消費版を揃える。
+
+### 14.4 CLI実証から得た「定義網羅≠成果物完全」の回帰条件
+
+[Draft #2666](https://github.com/hat47x/tei-platform/pull/2666)のexact HEAD `b3fffbd48a84e83f73e386b24cc984cf5be1b3e9` で[専用Actions #41632245693](https://github.com/hat47x/tei-platform/actions/runs/41632245693)がcompleted/success。実Go CLIの`operations`→`artifacts`→`artifacts -out`の同一Source版・保存ファイルbyteを限定検証した。
+
+この試験で、`order_entry`の **Operation数8・Operation gaps=0、Artifact数4、Manifest.Complete=false** が同時に確認された。`ledger`はOperation数5・Gaps 4・Artifact数5・Manifest.Complete=false。したがって、**OperationのGapゼロをもって必要なArtifact/Manifest/Consumerまで完備したと扱わない**。この数値は当該公開Referenceの固定HEAD・Fixtureに限定し、汎用的な製品保証ではない。元SourceやCanonicalの中身を追加で読まずに、新DSL全候補の成果物完全性を主張しない。
+
+**#1180のCoverage Matrixに必要な別列**：
+
+| 比較列 | 検査する欠落 | 失敗/未実行をどう扱うか |
+| --- | --- | --- |
+| 構文・意味分岐 | DSL Syntax/Operator、Validation・Derivationの分岐、short-circuit/NULL/missing | 未対応表層は`UNSUPPORTED`。テスト用の実装で製品Parser成功としない |
+| Data Pattern・Scope | 正常・0・NULL・未取得・partial・ambiguous、Source/Provider/Rowの完全性 | データ未取得や部分readは`UNKNOWN`。取得0件を完全データ扱いしない |
+| Scenario/Route | Scenario Step/Branch/Outcome→CLI/Web/Desktopの生成／実対応 | Stepを黙って省略した場合は失敗。Web未生成は`NOT IMPLEMENTED`、CLI PASSから転用しない |
+| Operation/Artifact/Manifest | Operation gaps、Artifact gaps、Manifest member/digest/complete、実Artifact body、Consumer期待Member | Operation gaps=0でもManifest incompleteはそのまま残す。`Complete`やConsumer適格を捏造しない |
+| Effect/Observation | current Grant、Target/Commit/Replay/Unknown、独立Read、実Job/Receipt | Reference/synthetic成功を実Effect PASSへ昇格しない |
+
+この表は**新しいCoverage Store、Scenario Generator、Central Validation Engine、CLI専用Meaning正本の提案ではない**。まず既存#1180のDriver Scenarioと#2666の実CLI出力／#2514のExpectedを並べ、未実装・未観測を見える化する読取り専用比較票で足りる。Source/Artifact/Scenarioの版が違う場合、比較から適合を結論しない。
+
+**Ownerに残す決定**：正式なDSL Grammar、Unicode識別子Profile、Decision TableのHit Policy/短絡、Business DataからのEvent生成条件、P0bのSource束縛方式（同一Provider Read vs immutable Bundle）、Scenario Generator/実Providerの実装順。元SourceのSource Fidelityは維持。性能上、検証を編集・Build・実行前Action境界へ分配し、純粋Operatorの毎回実行時に全Source Parse/外部依存再取得を要求しない（横断計画#2667 §25）。
 
 **今回の状態**：第14節は、既存Issue/PR・実Goコード・そのexact HEAD Actionsから取得できた事実の**設計上の再整理のみ**。Source/DSL/Scenario Generator/Studio/Web GUI/Unicode Lexer/実外部Provider/EKIの新しい試験はこのPRでは**NOT RUN**。正式文法・Owner意味受理・main統合は保留。
