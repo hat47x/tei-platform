@@ -933,6 +933,7 @@ PoC #2521が実装した範囲と、まだ実装していない範囲を分け�
 | 一覧（browse）ビュー | 実装済み（Query結果列を表示名・型で解決） |
 | 一覧の絞り込み（項目・演算子） | 実装済み（`filter <attribute> { eq ne }`、HTMLの絞り込み欄） |
 | Query入力と絞り込みの結びつけ | 実装済み（`query input <name> <type>`、`filter ... parameter <name>`、型一致を検査） |
+| Query入力のSQL参照検査 | 実装済み（`:name`・`$name`・`@name`の参照を警告） |
 | 一覧の並び順（`sort`） | 実装済み（`sort <attribute> asc`・`desc`、HTMLの並び順表示） |
 | 一覧のページ件数（`page-size`） | 実装済み（1..1000、HTMLの件数表示） |
 | 対話からのCommand起動（宣言・契約解決） | 実装済み（`interaction`の`command`、入力・結末・効果の解決。実行は未実装） |
@@ -956,6 +957,7 @@ PoC #2521が実装した範囲と、まだ実装していない範囲を分け�
 | `reference/workspace`への宣言追加 | 未実施（受理経路が必要） |
 
 実装は、`internal/application/model.go`、`internal/syntax/application_pattern.go`、`internal/validation/application_pattern.go`、`internal/crossview/pattern_requirements.go`、`internal/applicationview`、`internal/semantic/model.go`、`internal/syntax/parser.go`、`internal/validation/validation.go`と、それぞれの試験です。
+
 
 
 
