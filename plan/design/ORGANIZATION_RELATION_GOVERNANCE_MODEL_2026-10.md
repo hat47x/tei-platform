@@ -2316,3 +2316,11 @@ Record R1の取扱OrgがL1で、PolicyがD1以下のcommand階層に限定する
 **次の最小E2試行**は、既存Case→OrgUnit Relationを実Providerが辿るかという単一の実Query／Function Readで開始し、正常1件／Scope外1件／0件complete／Read partial／同じRecordのPolicy除外・read-onlyを、同一Source/Policy/Role+Consumerの固定Versionで比較する。**UIで後から行を消すのは不合格**とし、Providerまたは既存Hostがどの時点・どのRead Routeで行フィルタを施行したかを要求する。実施行点がない場合は`NOT RUN: enforcement-unavailable`と明示し、合成Nodeで補完しない。
 
 **優先順位**：本件は現行#1119 P0-a/P0-bのDB/Effect Gateを変更しない。独自TEI Host・組織専用ACL/Policy Engine・新Core固定Data・自動的なSQL逆生成を増やさず、既存のData/Relation/Provider/Host契約へ必要な証拠を還流する。Ownerの広域Policy適用・個別例外・実開示の意味はまだ採用前。
+
+### 59.3 最新Native E1の実測とArtifact completeを区別
+
+[PR #2681](https://github.com/hat47x/tei-platform/pull/2681)の更新HEAD `a2110f4a8e8cfa60a2f2c57c1de4a84d75c5bcec`に対する[Native Actions #41640612514](https://github.com/hat47x/tei-platform/actions/runs/41640612514)は**completed/success**（job `native-org-workspace`）。Linux/amd64 Go **1.26.10**、exact source SHA checkout/clean、`go test ./internal/operations -run '^TestOrgHeadless' -count=1`（追加のCase→OrgUnit関係負例を含む）、実`tei validate`、実`tei operations`、実`tei artifacts`、別Python Reader、試験後cleanが成功した。
+
+**重要な独立出力**：Artifact Readerは`findings=0, complete=False`を記録した。テスト/Artifact出力は成功だが、**Artifact Manifestがcompleteという意味ではない**。独立Readerが断定したのは、入力Revision/項目Digest/Rule fingerprint/Operation Surfaceが相互対応するという限定事項であり、全Target生成・Consumer実受領・本番配布の完了ではない。生成物完全性は#1163/#2604の既存契約へ返す。
+
+この成功が証明するのは、**実TEI構文でRecord→OrgUnitの関係を正しく保存し、未BindingのRecordに無根拠なOperation/Grantを導出しない**ことまで。#2781の合成VP Rule、組織Policyの実用、実DB/Provider enforcement、Read/Write Host Grant、UI/SHO/AI非開示、業務Owner受理は未実証。特に実RLS/テナント隔離・非許可Recordの不流出はSecurity要件であり、このGo E1で安全性を主張しない。
