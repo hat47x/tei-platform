@@ -27,6 +27,18 @@ func TestValidateQueryInputsRejectDuplicate(t *testing.T) {
 	}
 }
 
+func TestValidateQueryInputsCheckSQLReference(t *testing.T) {
+	w := queryInputWorld()
+	w.Queries[0].Source = "select order_id from sales.order where status = :status"
+	if diagnosticByCode(validateQueryInputs(w), "QUERY_INPUT_NOT_REFERENCED") != nil {
+		t.Fatal("referenced query input was reported")
+	}
+	w.Queries[0].Source = "select order_id from sales.order"
+	if diagnosticByCode(validateQueryInputs(w), "QUERY_INPUT_NOT_REFERENCED") == nil {
+		t.Fatal("unreferenced query input was accepted")
+	}
+}
+
 func TestValidateQueryInputsRejectUnknownType(t *testing.T) {
 	w := queryInputWorld()
 	w.Queries[0].Inputs = []query.Input{{Name: "status", Type: "missing.type"}}

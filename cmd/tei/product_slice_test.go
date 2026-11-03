@@ -76,7 +76,7 @@ data Customer {
     }
 }
 `)
-	writeWorkspaceFile(t, root, "applications/order-entry/queries/recent_orders.sql", "select order_id, customer_id from sales.order\n")
+	writeWorkspaceFile(t, root, "applications/order-entry/queries/recent_orders.sql", "select order_id, customer_id from sales.order where status = :status\n")
 	writeWorkspaceFile(t, root, "applications/order-entry/patterns/order-record.tei", `pattern order_entry.order_record record {
     data sales.order
     interaction {
