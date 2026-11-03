@@ -68,7 +68,7 @@
 | Progress monitoring | Compute進捗（Claim）、heartbeat（Observation）、Provider Queue/actual、残り時間/残予算とLocal Governorによる縮小を観測 | Claimは実完了・安全な中断を証明しない。観測が途絶えたらrisk上昇/unknown |
 | Deadline pressure | 期限への余裕`slack`を、Queue/Provision/Transfer/Verification＋**回復時間**を含んで再計算。`slack ≤ fallback setup + conservative runtime`に近づけば昇格候補を提示 | 前もって実有償Capacityを確保する場合はCAP-1と二重Budget/Provider制約。自動Scaleoutは事前承認済みScopeのみ |
 | Failure/reclaim | 同時失敗・未知Effect、Provider timeout、Site outage/一斉reclaimを分類し、独立PoolのFallback、Checkpoint/Resume、Task再投入と隔離を比較 | 旧Lease/Attemptの結果が遅着したら新Attemptとして受理しない。副作用Unknownは勝手にRetryしない |
-| Outcome / feedback | EKI Verified ResultとTEI Business Receipt、实际Queue/耗時/失敗/転送/利用量/費用/干渉を分離して記録、予実/校正へ | 最適化Proposal/AI一致を正式なAssurance・Grantに昇格しない |
+| Outcome / feedback | EKI Verified ResultとTEI Business Receipt、実際のQueue待ち時間／処理時間／失敗／転送／利用量／費用／利用者への影響を分離して記録、予実/校正へ | 最適化Proposal/AI一致を正式なAssurance・Grantに昇格しない |
 
 **待機も戦略**：Queueが短くなる見込みのある同一クラスタで待機した方が良い場合がある。価格の安い夜間Windowを待つ候補もあり得るが、Deadline/Quota/現在のGrantで認められなければ不可。**早く開始するほど良いとは限らず、安く遅く開始するほど良いとも限らない**。Control Planeは小さい規則から始め、評価計算のコスト／再評価頻度に上限・ヒステリシス/Minimum dwellを設け、Policy境界内で揺れを抑える。Solver overhead自身でリードタイムを失わない。
 
@@ -99,7 +99,7 @@
 
 **判断の例**：40分の期限が緩く、Oの中断リスクと22分のFallbackが十分検証でき、物理予算が残るなら、まずO→監視→早い時点のMへ切替が候補。Oの中断率が高い、共通障害が大きい、回復予算が不足、Data ClassやCAP-1が不適格なら**最初からM**または**期限達成不能を前倒しで知らせる**。常にO優先という固定アルゴリズムではない。
 
-## 8. 最小の独立Conformance（LB-01〜16、全件NOT RUN）
+## 8. 最小の独立Conformance（LB-01〜17、全件NOT RUN）
 
 | Case | Fixture／Fault Injection | Independent Expected |
 | --- | --- | --- |
@@ -114,11 +114,12 @@
 | **LB-09 Censored failure** | 100Task中完了70、タイムアウト20、結果不明10。完了分だけ短時間 | 70完了の平均から100件の期限成功確率を作らない。不明/打切りを区別 |
 | **LB-10 Drift** | 同Pool ID/新Agent version・勤務時間変更・Policy rev変更、古い予測あり | 古い`p95`を現在の合格保証にしない。Requalification/再校正を要求 |
 | **LB-11 Double quota** | EKI BUD-1枠残100、Cloud側Quota満杯、CAP-1提案あり | BUD-1があるだけではProvider Capacity受理できず、Cloudは拒否。Quotaを両方に二重予約した成功は不可 |
-| **LB-12 Provider ack loss** | EK​​IからSlurm Job投入、Providerが受理後応答断。Deadline逼迫 | Provider ExecutionRef lookupを優先。再提出はCorrelation/Idempotencyがなければ`unknown/held` |
+| **LB-12 Provider ack loss** | EKIからSlurm Job投入、Providerが受理後応答断。Deadline逼迫 | Provider ExecutionRef lookupを優先。再提出はCorrelation/Idempotencyがなければ`unknown/held` |
 | **LB-13 Direct wins** | Local/Existing 5ms、EKI Decision/Dispatch往復10ms以上の同等仕事 | `DIRECT`正常判定。高価なOptimizer探索で実Jobより遅くなるのは不合格 |
 | **LB-14 Fair-share override** | 部門Aが`urgent`と宣言し部門Bの保証枠を横取りしようとする | User preferenceだけでEKI Admin Fair-share/BUD-1を超えない。期限が危険でも無権限支出不可 |
 | **LB-15 Forecast disclosure** | Pool内部Node非開示、Clientへ詳細な確率分布/下位Site数を返そうとする | RQ-018/058のDisclosureで抑制。最適化内部モデルがNode秘密を漏らさない |
 | **LB-16 Sim→Act mismatch** | SimulatorはM available、実CAP-1承認時にProvider capacity消失 | Simulation/AI PASSでLeaseやProvider Reservationを発行しない。新しいAuthority検査→`unavailable`/再Plan |
+| **LB-17 連鎖した二回失敗** | Deadline 50m、初回失敗15m、再試行2回目失敗後に残余12m。再々実行の検出・確保・検証込みで16m必要 | 現在残余12<16を明示。初回の50mをリセットせず、既存Host／部分結果利用／期限リスク通知のうちOwner許可範囲を提示。旧Attemptの副作用不明なら再々実行しない |
 
 ExpectedはPlan/Estimator/LLMと**独立な固定Oracle**を用意し、実故障分布・異種Provider／実時刻/実消費は実測で別受入。合成Score/ScenarioのPASSを本番Deadline達成率へ昇格させない。失敗Caseは[既存TEI #2514](https://github.com/hat47x/tei-platform/issues/2514)のOracleとEKIの既存Simulation/Conformanceへ接続し、新Runnerや別検証Registryを作らない。
 
@@ -129,12 +130,12 @@ ExpectedはPlan/Estimator/LLMと**独立な固定Oracle**を用意し、実故�
 | **0 契約照合** | TEI Job/Batchの時刻・Retry/Checkpoint/Effect/Result Spec、EKI RQ-057/058とDLG-1/BUD-1/CAP-1のMapping、Direct-vs-Broker固定Oracle | TEI #1130/#1121、EKI #108/#109/#140（既存要求）、#58 |
 | **1 実Job Wire** | TEI純粋Job1件のInput/Output bytes/Executor digest→EKI Task/Resultの受渡し | EKI #112/#57/#242。**現422/501が未解消ならここで止める** |
 | **2 Deterministic time/budget** | Pool/Provider 2候補のQueue/Transfer/Run/Verify所要とBUD-1/CAP-1・Local Governor/資格を使い、Deadline-aware feasibility/Direct comparatorを決定論で出す | EKI #58/#67/#108/#140。Reason/Estimator Revisionと独立Expected |
-| **3 Recovery-aware planning** | 2故障／共有Site障害／費用枠残余／Retry・Checkpoint・Provider ack unknownをSimulatorで評価、実Provider/WorkerのRetryを実測 | EKI #52/#354、#19/#48、実Provider/Lease/Result Owner |
+| **3 Recovery-aware planning** | 2故障／共有Site障害／費用枠残余／Retry・Checkpoint・Provider ack unknownをSimulatorで評価、実Provider/WorkerのRetryを実測 | EKI RQ-052／#354、#19/#48、実Provider/Lease/Result Owner |
 | **4 Shadow calibration** | Pool×Runtime/Workload Class×Time Windowの実Outcome、打切り・ドリフト/相関を分けたHoldoutとCalibration。Actual Placementへ影響させない | EKI #19/#50。学習モデルのAuthority昇格を行わない |
 | **5 TEI Ops／Pilot** | 期限/予算/実結果の可視化、What-if・AI Critical Review、Fallback原因/Plan diff、Deadline Miss/Recovery SLO/物理Cost・顧客価値 | TEI #1124/#2514/#2620、EKI #125/資源管理Owner、Business Owner |
 
 **Metrics（提案）**：`deadline_miss_rate`、`on_time_verified_completion_rate`（母集団と打切りを固定）、`p50/p95 end-to-end lead-time`、`p95/p99 recovery elapsed`（観測できた範囲と母集団）、`escalation rate/time`、`remaining recovery budget`、`deadline_at_risk lead warning time`、`compute/transfer/verification physical cost per accepted result`、`provider admission failure`、`decision overhead`、`owner-interference`、`unauthorized allocation=0`、`unknown-effect duplicate retries=0`。構成・入力・環境・失敗母集団が違う数字を単純比較しない。
 
-**明示的保留**：TEI/ EK​​Iの正式DSL/APIの名前、確率閾値や統計推定器、分散最適化Solver/学習Model、Cloud料金の自動入力、SLA/保証、recovery budgetの物理表現、Hedgeと独立性、Ownerの全自動再配置許可。**現行EKIのAuthority/実Providerの完了資格・持ち主の拒否権は不変**。どのアルゴリズムでも変更する前に既存Issueと独立TestでOwner判断を行う。
+**明示的保留**：TEI/ EKIの正式DSL/APIの名前、確率閾値や統計推定器、分散最適化Solver/学習Model、Cloud料金の自動入力、SLA/保証、recovery budgetの物理表現、Hedgeと独立性、Ownerの全自動再配置許可。**現行EKIのAuthority/実Providerの完了資格・持ち主の拒否権は不変**。どのアルゴリズムでも変更する前に既存Issueと独立TestでOwner判断を行う。
 
 **停止条件**：実Artifact/Result不可、必要なProvider/Trust/Data/Deadline/Consent不明、Source stale/partial、現在のCAP-1/Provider予約なし、物理予算不足、実External Effect Unknown、故障相関不明で必要な回復確率を保証できない、Fallback開始時の必要時間超過、Estimator校正不足、Solver overhead/費用逆転、一般ClientへのPool秘密漏洩。読取可能な状態の説明・期限リスクWarningは維持するが、実権限なしで高額Scaleoutや危険な再試行を行わない。
