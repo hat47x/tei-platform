@@ -187,3 +187,25 @@ func TestV2OutputIsCanonicalAndIdempotent(t *testing.T) {
 		t.Fatalf("v2 identity changed the bytes:\nfirst:\n%s\nsecond:\n%s", first.Output, second.Output)
 	}
 }
+
+// The real .tei codec is registered through the plugin entry, without the core
+// knowing about .tei.
+func TestTeiCodecRegistersThroughTheFormatsEntry(t *testing.T) {
+	formats := formatversion.NewFormats()
+	if err := formats.Register(teicodec.Format, teicodec.New(1, false)); err != nil {
+		t.Fatal(err)
+	}
+	if err := formats.Register(teicodec.Format, teicodec.New(2, true)); err != nil {
+		t.Fatal(err)
+	}
+	result, err := formats.Convert(teicodec.Format, []byte(semanticSource), 1, 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Status != formatversion.SuccessWithWarnings || !hasCode(result, teicodec.CodeMaterializedDefault) {
+		t.Fatalf("format dispatch did not run the .tei codec: %+v", result)
+	}
+	if !strings.HasPrefix(string(result.Output), "formatVersion 2\n") {
+		t.Fatalf("v2 output does not declare its version:\n%s", result.Output)
+	}
+}
