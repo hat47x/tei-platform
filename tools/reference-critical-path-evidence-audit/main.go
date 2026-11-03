@@ -135,10 +135,17 @@ func Audit(p Packet, expectedHead, expectedMain string) Report {
 		add("TRUSTED_FULL_HEALTH_NOT_RECORDED")
 	}
 	// Any claim: a packet that rests on a provisional effect Grant is not
-	// qualifying evidence, whatever else it contains. The mark is compared after
-	// trimming and case folding so that formatting cannot hide it.
-	if strings.EqualFold(strings.TrimSpace(p.Physical.HostAuthorityProvenance), "provisional-grant") {
+	// qualifying evidence, whatever else it contains. The label is normalized
+	// (format/space characters removed, case and "_" folded) so that formatting
+	// or an alias cannot hide it.
+	if normalizedProvenance(p.Physical.HostAuthorityProvenance) == "provisional-grant" {
 		add("PROVISIONAL_GRANT_NOT_G2_EVIDENCE")
+	} else if p.Claim == "E2" && !allowedHostAuthorityProvenance[p.Physical.HostAuthorityProvenance] {
+		// An E2 claim must NAME where its effect Grant came from, using one of
+		// the known labels exactly. Omitting the field, an unknown alias or a
+		// look-alike must not pass as an ordinary Grant. The label stays a
+		// self-declaration of the packet's author.
+		add("E2_HOST_AUTHORITY_PROVENANCE_REQUIRED")
 	}
 	if p.Claim == "E1" || p.Claim == "E2" {
 		if p.Contract.EvidenceClass != "actual-observed" {
@@ -247,6 +254,29 @@ func Audit(p Packet, expectedHead, expectedMain string) Report {
 		r.Status = "REVIEW_REQUIRED"
 	}
 	return r
+}
+
+// allowedHostAuthorityProvenance are the effectcommit.Provenance values an E2
+// packet may declare for its effect Grant. "provisional-grant" is deliberately
+// absent (it is diagnosed separately), as are "unspecified" and every new value:
+// adding one is a deliberate change to this list.
+var allowedHostAuthorityProvenance = map[string]bool{"real-pg": true, "synthetic": true}
+
+// normalizedProvenance lower-cases a label, drops control and format characters
+// (zero-width, bidi), folds "_" and whitespace to "-" and trims "-" at the ends.
+func normalizedProvenance(s string) string {
+	var out strings.Builder
+	for _, r := range s {
+		switch {
+		case unicode.IsControl(r) && !unicode.IsSpace(r), unicode.Is(unicode.Cf, r):
+			continue
+		case r == '_', unicode.IsSpace(r):
+			out.WriteRune('-')
+		default:
+			out.WriteRune(unicode.ToLower(r))
+		}
+	}
+	return strings.Trim(out.String(), "-")
 }
 
 func exactSet(actual []string, expected ...string) bool {
