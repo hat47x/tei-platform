@@ -95,6 +95,10 @@ Total CostはCompute（Cloud/On-prem amortization）＋Data Egress/Ingress＋Con
 
 [TEI/EKIの未解決契約と独立反証](TEI_EKI_AGGREGATE_DELEGATION_UNRESOLVED_GATES_2026-11.md)を補助判断票にする。顧客に`全企業GPUが見える`と言えても、実TEI Jobの入出力Artifact・EKI #112のAPI Gap、下位Providerの予約と二重Retry、Owner/EDR/MDMの現在性が未検証なら安全な共有製品としての価値は証明できない。Pilotでは**既存Provider直接利用 vs EKI Broker介在**を同じWorkload/結果で測り、Task完了率・p95待ち時間・費用/完了件数・実User干渉・Security incident・権限/支出への影響を別の軸で評価する。過剰なPool inventory収集、未承認GPU連携、組織間Credit制度を初期MVPの必須前提にしない。
 
+### 6.3 顧客の購買判断につながるのは「期限と回復リスクを含めた予算内の仕事完了」
+
+[期限・実績・予算・Recovery Coordination](TEI_EKI_DEADLINE_BUDGET_RECOVERY_COORDINATION_2026-11.md)を市場検証の差別化候補へ。GPU使用率や見掛けの空き台数より、**同一品質のJobについて、許容リードタイム内にVerified Resultを得た割合、失敗後の回復時間、実際の物理消費・外部料金、不要なCloud引上げの抑制、運用負担**を、Direct/現行HPCとEKIで比較する。現在のEKI要求RQ-057は期限内完了を保証せず、予算内での引上げと期限前のリスク通知を求める。価格換算はCore外で行い、独自通貨／無条件の金銭的最適性をプロダクトの既定機能として主張しない。
+
 ## 7. Issue・ADRとの接続（重複開発を避ける）
 
 - **EKI側で維持**：#58 Suitability、#112 External TEI projection、#57/#242 Task/E2E、#130 stop-safe resident、#106 Session/小Task、#222 Worker identity/onboarding、#109/#125/#140 resource pools/economics、#19/#48/#50 simulation、#354 concurrent reservations、#118 CPU/GPU/Local Observability、#124 human transparency、#136 TEI plugin comparison。EKI repo/ADRの正式変更はEKI Owner判断待ち。
