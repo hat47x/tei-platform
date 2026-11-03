@@ -146,3 +146,77 @@ Current Readerとして検証した一続きの経路。ここは[#267](https://
 
 この段階は、前段の署名・Digest確認から**業務意味の受理に必要な証拠が不足していることの検証**であり、
 実際に外部業務知識を受理・運用できる製品機能の完成を意味しない。
+## 2026-11-03 追補：外部Referenceの取得鮮度・失効・受理境界
+
+**状態：設計と試験計画への追補。新しい製品契約・API・Owner受理・実Provider検証を採用／達成したものではない。**
+
+外部Semanticの案件受理という本書の主責務は変えず、TEI DSL・設計文書等の外部参照が「現時点で何を取得・検証できたか」を受理前に伝える共通契約を整理する。参照するResourceの種類をCoreへ一括追加する案ではない。既存[#1570](https://github.com/hat47x/tei-platform/issues/1570)の明示選択、[#1002](https://github.com/hat47x/tei-platform/issues/1002)／[#1017](https://github.com/hat47x/tei-platform/issues/1017)のSource読取境界、[#1018](https://github.com/hat47x/tei-platform/issues/1018)のLanguage Plugin、[#2505](https://github.com/hat47x/tei-platform/issues/2505)の版間対応、[#267](https://github.com/hat47x/tei-platform/issues/267)のShared Acceptance、[#958](https://github.com/hat47x/tei-platform/issues/958)の認知的現在性、[#2600](https://github.com/hat47x/tei-platform/issues/2600)のBuild再利用を再利用し、第二Resolver・Knowledge Registry・受理Ledger・Cache Engine・Hostを作らない。
+
+### 取得Observationと受理の最小の受渡し情報
+
+| 項目 | 保持すべき区別と責務 |
+| --- | --- |
+| 参照宣言 | 宣言元のScope付き論理ID、Source occurrence（ファイル／範囲／入力版）、参照種別、必須性、用途。相対path・URLはSemantic IDではない。Parserは参照を抽出し、無制限なファイルアクセスを持たない。 |
+| 論理対象と所在 | 型付きResourceRef、宣言Locator、実取得Locator、移動・redirectの対応。供給側WorkspaceのSource Indexと利用側Managed Sourceは別。 |
+| Source Revision | Commit・ETag・Version ID等の種類／発行元／値。供給元Revision、実byteのContent Fingerprint、正規化されたSemantic Digest、配布Artifact Digestを別々に扱う。 |
+| 取得Observation | Attempt ID、Provider／Resolver版、retrievedAt（内容を得た時刻）、checkedAt（現在性を確認した時刻）、応答・失敗原因、取得範囲／完全性、現在の主体・用途。試行ごとに履歴を保持する。 |
+| Cache | 検査した固定byteとfingerprint、取得証拠、適用できる用途・範囲を結ぶ。部分取得のhashを全体hashとしない。Content CacheからOwner受理・現在権限を復元しない。 |
+| 依存関係 | Source occurrence→内容・Role／Operator Pin→Candidate／Accepted Meaning→文書／Build／Consumerのうち観測済みの辺だけを使う。未列挙・探索不完全は「依存なし」ではなくunknown。 |
+| 意味受理・実行 | 既存#267で、Owner判断を意味・scope・根拠版へ束縛する。受理履歴と現在の適用資格は別。Host／Providerの読取・開示・実行権限は都度検査する。 |
+
+Providerで実際に読んだbyteと、Parser／Buildへ渡したbyteが一致して初めて、そのAttemptの固定入力と主張できる。事前・事後hash一致だけで検査と実読取の間のABA／TOCTOUを排除しない（[#2595](https://github.com/hat47x/tei-platform/issues/2595)）。異なる外部参照をWorkspace Fingerprint一つで完全に保証しない。
+
+### 6状態は利用者向けの代表分類、内部は独立軸
+
+| 表示分類 | 成立条件・留保 |
+| --- | --- |
+| fresh | Consumerが要求した対象・scope・範囲・鮮度期限と取得根拠を満たす。意味の正しさ・Owner受理・実行許可は別。 |
+| stale | 旧Observation／Cacheは存在するが、現在の用途に求める鮮度がない。履歴閲覧と現在判断を分ける。 |
+| unavailable | offline／timeout等で現在の取得状態が不明。not-foundとみなさない。staleなCacheを同時に持ち得る。 |
+| partial | 要求されたmember／page／field／依存範囲の一部が不足。取得部分だけで全件適合・不存在を推論しない。 |
+| not-found | 信頼できる供給元・scope・時点で不在を確認。404が権限隠蔽を兼ねる場合、外部には不在を断定しない。 |
+| permission-denied | 現在の主体・用途では取得・開示不可。低権限Consumerには存在自体を伏せるためunavailableへ縮約できるが、内部拒否事実を消さない。 |
+
+一つの排他的な永続enumへ押し込まず、取得結果、範囲の完全性、Consumer相対の鮮度、開示資格を分離する。例えば「取得失敗＋旧Cache stale」「取得部分は新鮮＋全体はpartial」が成立する。直近の失敗と最後の成功時点も別に表示する。正常0件もPredicate・Scope・Provider・取得時点・Rowset／Field完全性に依存する（[#2582](https://github.com/hat47x/tei-platform/issues/2582)）。状態から診断のSeverityを一律に決定せず、必須のローカルファイル不在、任意の依存、未生成Asset、固定Snapshotの履歴再現、現在性を要する外部実行を分ける。
+
+### イベントごとの失効対象・残す履歴
+
+| 変更 | 取得Observation／Candidate | Accepted Meaning | Build／SHO／AI Consumer |
+| --- | --- | --- | --- |
+| ファイル移動・内容同一 | 参照Locator・Source occurrenceを再解決。内容依存Candidateは再利用候補 | 旧受理を履歴保持。新Sourceの意味的対応・scopeを確認 | 内容計算は省略候補だが引用・Source Index・Trace・現在開示は再確認 |
+| Revisionのみ変更、実byte同一 | 新Revision／観測を追加し、供給元の解釈規則も確認 | 無条件の自動再受理も全面破棄もしない。受理範囲との適合を判断 | 内容Cache再利用候補。現行Source Bindingと生成物資格は別 |
+| 内容A→B | 影響候補を再計算し、旧観測は履歴保持 | AのOwner判断をBへ自動継承しない | 実依存Closureに基づき選択的再生成。未知Edgeならskip保留 |
+| Permission／信頼／開示変更 | 歴史的取得事実は保持し、現在取得・提示資格を再評価 | 歴史的意味を削除しない。現在採用と実行は別判断 | 旧Cacheから権限外の表示・外部送信・invokeをしない |
+| A(r1)→B(r2)→A(r3) | 内容hashが戻っても3回のObservationを区別。中間未観測なら「変更なし」は未証明 | r1のReview・撤回・Owner判断は自動復活しない | 内容と実依存が一致すれば再利用候補。現在Grant／Review／Consumer資格は再検証 |
+| offline／取得不能 | unavailableと最終成功Observation／Cacheのstaleを区別 | 旧受理は履歴として残す。現在の外部根拠を要する判断は保留 | 固定入力のread-only再現は条件付きで許す。現在外部取得・権限・実Effectは保証しない |
+
+失効は過去Evidenceの削除ではなく、当該Claim／Consumerに対する**現在の再利用資格の再評価**。依存が無関係であると実証した範囲は維持できるが、未観測の辺を「無関係」と推定しない。既存[#2626](https://github.com/hat47x/tei-platform/pull/2626)の実Go CLI・同byte Source移動は、World Fingerprint不変でもSource Index／Traceが変わる限定Evidenceであり、実HTTP・現在Owner権限・SHO保存後原典再解決のPASSではない。
+
+### offline時の診断・修正候補・Build
+
+- Studio／CLIは、宣言元span・最後に取得できたRevision／時刻／hash・今回の失敗・Cached contentのscope・未確認依存を、開示可能な情報に限って示す。古いCacheだけで現在Sourceをfreshと表示しない。
+- Parserのsource-direct診断と、Semantic SubjectからSource Indexへ戻した診断を分離する（[#17](https://github.com/hat47x/tei-platform/issues/17)／[#1155](https://github.com/hat47x/tei-platform/issues/1155)／[#2317](https://github.com/hat47x/tei-platform/issues/2317)）。AIのバルク修正候補は、期待Revision・対象span・Scope・変更区分・根拠を持たせPreviewする。古い候補を現行Sourceへ無条件適用せず、業務意味の変更はOwnerへ渡す。
+- 固定Snapshot・必要Dependency Closure・Role／Operator／Builder／Target Pinが確認できる範囲ならoffline解析／生成の再現を検討できる。現在の外部参照鮮度、Host Grant、Provider効果をCacheだけでは保証しない。permission-deniedの内容、存在、診断件数、Tool候補も低権限のAIへ漏らさない（#1045／#2516）。
+
+### 最小Fixtureと優先順（すべて新規実行NOT RUN）
+
+| ID | 入力／注入 | 独立Expected |
+| --- | --- | --- |
+| RF-01 | 固定r1のAを完全取得 | 取得byte・Source occurrence・必要scopeのfresh |
+| RF-02 | A同byteで移動 | 内容同一、Locator／引用は再資格化 |
+| RF-03 | A同byte、Source Revisionだけ更新 | 新Observationと内容再利用可能性を分離 |
+| RF-04 | A→B | 影響Candidate／Artifact再評価、旧受理履歴保持 |
+| RF-05 | A→B→A | Content再利用とReview／Grant自動復活拒否を分離 |
+| RF-06 | 取得途中に権限拒否 | permission-denied、未認可部分の利用・開示なし |
+| RF-07 | page1だけ取得、page2欠落 | partial、全件不存在を主張しない |
+| RF-08 | offline、Aの旧Cacheあり | unavailable＋stale、固定再現と現行判断を区別 |
+| RF-09 | 必須参照に権威ある不在結果 | not-found診断、旧履歴保持、秘匿404は例外 |
+| RF-10 | 検査後・消費前にA→B→A | 前後hashのみで同一消費byteを保証しない |
+| RF-11 | A同byte、Role／Operatorの実装Pin変更 | Source Cache保持、Meaning／Build再資格化 |
+| RF-12 | A同byte、Consumer Policy／Grant変更 | 内容一致と現在の開示拒否を両立 |
+
+**P0：** RF-01／06〜09の取得観測・完全性・状態分類を既存Readerと取得Providerの契約で検証。**P1：** RF-02〜05／11を[#2505](https://github.com/hat47x/tei-platform/issues/2505)の版間対応と[#2600](https://github.com/hat47x/tei-platform/issues/2600)の全件対選択的Buildへ渡し、誤再利用／不要な全面失効を計測。**P2：** RF-10／12を[#1124](https://github.com/hat47x/tei-platform/issues/1124)の後着応答、[#2516](https://github.com/hat47x/tei-platform/issues/2516)のAI／SHO開示、#2595の消費byteと接合。**P3：** 案件が選択した外部Semantic Digestを既存#267／#1016の同一Decisionへ結び、正式受理はOwner判断とする。新Gateは追加しない。
+
+**停止条件：** 必要Scope／完全性／実消費byte／Dependency Closure／現行Permission／意味対応のどれかが不明なら、現在の意味成立・Build skip・外部Effectを合格へ昇格させない。read-only履歴・診断候補まで一律停止しない。
+
+**Owner未決：** 用途別の鮮度期限、権威あるnot-foundの条件、offline固定Buildの許容範囲、内容同一時の受理省略可否、権限変更後の履歴開示。変更は既存IssueのOwnerへ返す。本追補は設計であり、RFの実Go試験・実Remote Provider・Studio適用・正式Owner受理・実Targetの資格を実証していない。
