@@ -136,3 +136,47 @@ CREATE TABLE membership (
 - 元のSQL/native asset、TEI DSL Markdown糖衣のSource保存形式を変えない。解析Derived IRはread-only補助。編集を行うなら一意なSource spanへ限定し、曖昧な候補は人に判断を返す。
 - 実DB制約の有効化/再検証、Migrationの結果、Transaction Commit/Receipt、Unknown ACK、外部通知、複数Providerの整合は**実観測がない限り未実証**。以前の他レーンの合成Reference PASSをこの計画の実行済み証拠として再掲・合算しない。
 - 本文の設計案が採用されたときのみ、既存ADRの必要箇所へ差分を反映する。Issueは進捗・障害、ADRは採用理由、設計計画は候補と受入条件、`docs/status.md`は実装済み事実に限定する。
+
+## 8. 他チャットの方針との照合：Data ModelをSQLから逆生成しない（2026-11-03追補）
+
+今回の意思決定で重要なのは、SQLを**データモデル定義言語の中心に据えない**ことである。TEI Data Modelの意味正本は、Source上で直接宣言された**Table / Field / Key / Relation**と、そのOwnerが受理したRole・意味契約に置く。構造化SQLの主たる役割は、既存Data/Function ContextからのLINQ型**選択・結合・変換・導出**を表現すること。SQL DDL/SQL Queryを解析できても、業務モデルの正本を自動生成・上書きしない。
+
+- **標準Query/Script**：Sourceに表現した`filter`相当などのOperatorの条件・順序・入力集合を、明示Function Mappingとデータ構造へ関連付ける。前置予約語によるQuery/Pipelineの強制的な区別は前提にせず、専門家が読みやすい構文で構成できるかを#988/#2620のPoCで比較する。例示構文は正式採用されていない。
+- **SQL Import**：既存SQLを構造解析し、相当するData OperatorやRelation候補を提示する経路。自動逆変換できない方言/未解析箇所/曖昧な業務Relationは保持し、SourceからSQLへもSQLからSourceへも意味を無理に変換しない。
+- **Native SQL**：DB固有の表現、2way SQL、性能・機能上必要な手書きSQLを明示Bindingで保持する経路。元SQLのbyte/出典/位置/パラメータとProviderの方言を保存する。TEI専用Queryへ移したと推測しない。
+- **同じ演算でも異構造**：RDBのRelation、Document/JSONBの階層要素、Graphの辺/Path、Table状集合の同型Recordは、Identity、Occurrence、粒度、重複、順序、NULL/欠損/空配列、集計の非可逆性、更新Targetの一意性をそれぞれ表現する。共通Function/Operator名だけで、SQLのNULLとJSONキー欠落、SQL JOINとGraph Traverse、GROUP BY行とEntity Rowの同義を主張しない。異ProviderのPushdown結果・独立Read・開示/Effectは#2622/#2506/#2516の実適合に戻す。
+
+### 8.1 モデル定義とSQLの暗黙依存を分離する
+
+Data Modelの定義はSource側のTable/Field/Key/Relation宣言として明示する。一方、**Query側の依存はSQL本文に明示されない場合がある**。特に`NATURAL JOIN`は両入力の同名列を新しい結合条件にする可能性があり、`SELECT *`はSchemaの新列を出力へ含める可能性がある。`USING`や`SELECT table.*`も指定列/参照するSchemaの版を固定して解析し、JOINのSource occurrenceやProjectionの出力形状に結びつける。
+
+したがって、`SQL Source byte hash`だけをQuery意味同一性・Binding Cache再利用の根拠にしない。`SQL原byte＋Dialect/Parser版＋解決された参照・対象DB Alias＋Schema revision/Field集合＋Function Mapping/Operator版＋評価条件`を、**その演算が実際に消費した依存閉包**として保持できるか確認する。Dialect/Source Scopeが不明なら`unknown`であり、生成器の古いMeaning/Current Claimを使い回さない。#2600のBuild Cache再利用と#2582のRuntime Result/Claim失効は別の判定とする。
+
+## 9. SM-15：SQL byte不変でもSchema・実接続条件で結果が変わる限定SQLite反例（今回実行済み）
+
+**新しい実装・実測**：[test_sm15_source_schema_drift.py](https://github.com/hat47x/tei-platform/blob/docs/sql-static-semantic-evidence-handoff-20261103/plan/fixtures/sql-semantics-f0/test_sm15_source_schema_drift.py)。Python **3.13.5**／SQLite **3.46.1**／標準`sqlite3`で`python -m unittest -q test_sm15_source_schema_drift.py`を**14/14 PASS**、`python -m py_compile test_sm15_source_schema_drift.py` PASS。検証したUTF-8 SourceとGitHub保存版のblob IDを**`fd6b636f2ee25d05e5522233703b856246ebfbff`（6,623 bytes）**で一致確認。実source SHA-256は`e3e7993bf37c93827835893f8dc8bd5d47c51706740a1cc4589fe50bc816c8bb`。**SQLite in-memory隔離実行**であって、TEI Parser/DDL Import/SQL Worker/実Provider/デプロイ済DB/Migration/業務意味の実証ではない。
+
+| test | 隔離SQLiteで実際に確認したこと | 意味論・適合への含意 |
+| --- | --- | --- |
+| **01** | `PRAGMA table_info(orders)`でPK順が`tenant_id=1,order_id=2` | 物理PK宣言順は得られるが、**TEI Key Member SortKey・業務キー・表示順の受理を証明しない** |
+| **02** | Schema変更前、`orders NATURAL JOIN payments`でO1/O2の2行 | 暗黙の共通列はtenant_id/order_id |
+| **03** | **SQL文字列を変えず**、`payments.status`を`ALTER TABLE ADD COLUMN ... DEFAULT 'draft'`で追加するとO2が除外され**2→1行** | Schema driftで暗黙のJOIN条件が増加。**Source byte一致でもQueryの意味・結果は変わる**。これは隔離DB内DDLであり、Migration Engineの成功ではない |
+| **04** | 同じSchema変更でも、`ON o.tenant_id=p.tenant_id AND o.order_id=p.order_id`の明示JOINはO1/O2を維持 | 明示結合が当変更に対して安定だったという**有限正例**。全Schema変更に不変とはいえない |
+| **05** | `SELECT *`の返却列数が同じSQL byteのまま**3→4列** | 出力のShape/Consumer Disclosure/型付きAdapterがSchema版に依存 |
+| **06–07** | **明示的に`PRAGMA foreign_keys=OFF`の同接続**ではFK宣言済みの不正参照をINSERTでき、**ONへ切替後**は同じ不正参照を`IntegrityError`で拒否 | FK構造があることと**実接続で強制されること**は独立。実DBの全制約をSだけで証明できない |
+| **08–09** | `CHECK(status IN('draft','submitted'))`だけならNULLを許す。`submitted→draft`のSQL UPDATEも成功 | CHECK値域とNOT NULL/業務遷移/Actor/Effectは異なる |
+| **10** | DEFAULT 'draft'は列省略INSERTには適用。明示NULL INSERTはNULL | `missing`・`null`・`default`は別の入力意味 |
+| **11** | Valid-from/to列を持つ所属表でも同じPersonの期間が重複可能 | 期間列名はTemporal Relation多重度・有効期間制約の受理ではない |
+| **12** | `NOT EXISTS`の固定SQLはHold追加で**1→0** | 0件のNegative Witnessは時点/対象/Scopeに依存する |
+| **13** | 存在しないTableのSELECTは`OperationalError` | 不在/取得失敗を空集合に変換しない |
+| **14** | SQLiteの普通のUNIQUE列にNULLを2行INSERT可能 | UniqueとNot Null/業務識別性を混同しない（方言/モード差は別） |
+
+**局所反例が示した成熟した受入条件**：
+
+1. **SM-15-1（#2387/#1126）**：Source SQLだけの静的解析で`NATURAL JOIN`や`*`を完全に解決済みと呼ばない。Dialectと参照した具体Schemaを同じSource位置/Revisionに固定できなければ、Lineage/Result Shape/依存母集合はunresolved。
+2. **SM-15-2（#2600/#2582/#2622）**：Schema追加による暗黙条件/形状変更をModel/Query/Function/Consumer依存へ伝播する。ただし関係ないQuery・Consumerを全件失効させる必要があるかは実消費依存と独立Fixtureで判定し、過少失効と過剰失効を両方検出する。
+3. **SM-15-3（#1129/#1126）**：FK/CHECK/PK/DEFAULTはSourceで宣言されても、その接続での制約強制・業務状態・Targetの一意性・Migration結果は別のO/A列へ渡す。
+4. **SM-15-4（#2622/#2506/#2516）**：出力列数や0件の変化を「Query表示の違い」に限定しない。Functionが計算に必要な非表示列、局所Read Scope、外部Consumerの開示、Result Schema/JSON Adapterなどを実証・契約する必要がある。
+5. **SM-15-5（#988/#2619）**：SQLをData Model定義の主語にしない。TEI Query/RDB/JSONB/Document/Graphの相互運用で、Operatorの意味、NULL/欠損/空集合、Cardinality/Order/Identity、Authority/Effectを結合時に明示する。
+
+**後続の未実行Gate**：当該14件はSQLite標準ライブラリの挙動を検査したのみ。現行TEI SQL Worker→Go DerivedIRのSchema Binding実測、SQL Server/Oracle/PostgreSQL/SQLiteを横断する方言実測、RDB＋JSONB／Document／Graph Providerの二実装、Client/Studio/SHOのDisclosure、實Host認可、Migration Apply、Ownerの受理を**実行していない**。同一TEI FunctionのS/C/O/AとConsumer current qualificationを別々に確認することが次段。
