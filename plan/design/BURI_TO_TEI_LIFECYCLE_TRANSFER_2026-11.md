@@ -219,6 +219,10 @@ Buriの`XPDL→Java/Janino`は「業務モデルから実行コードを生成�
 
 Excel Workbookの12シートと4つの規則群、図表生成レポートは**試作の静的材料**。Validationの任意比較、DerivationのLookup、受注用Flow一意制約、`.tei`唯一正本という表現は現行TEIの採用済み契約と同一ではない。Ownerの意味受理とShared Acceptanceの対応可能Operation、Source Revision、独立Expectedの境界を先に検証し、既存#2620/#2621/#2497/#1935/#2514へ差分だけを引き渡す。Buri実動確認・新Core/EngineをDoneに追加しない。
 
+### 7.11 X-TEA直接移植を主経路とする（2026-11-03）
+
+Data Modelの項目拡張Validation、Data Scriptでの独自Validation／Virtual Field算定、更新イベントの旧Script Hookについては、**Buriからの類推実装よりX-TEAに既に存在する実装・Sourceの移植**を先行する。[仮想Attribute／更新時導出／Trigger／Batch計画§7](DATA_DERIVED_TRANSITION_TRIGGER_PIPELINE_2026-11.md)にP（ほぼ直接の意味移植）／A（既存TEI実行契約へのAdapter）／E（追加の非UI Batch/Queue/回復保証）を区別した。#950のSource-faithful adapterと#1637の導出Referenceを再利用し、#940の旧Runtime実観測待ちを「歴史的実装がなかった」と混同しない。移植前に新規State Machine/Rule/Job Engineを要件化しない。
+
 ## 8. 出典と検証状態
 
 - Buri一次資料：[マニュアル](https://github.com/seasarorg/s2buri/blob/fbaf32dd3ec2a815dfe3f4426f10d6b0ce53547d/buri-core/doc/%E3%83%9E%E3%83%8B%E3%83%A5%E3%82%A2%E3%83%AB.txt)、[Wakanagoテンプレート](https://github.com/seasarorg/s2buri/blob/fbaf32dd3ec2a815dfe3f4426f10d6b0ce53547d/buri-core/src/main/resources/ftl/wakanagoProcess.ftl)、[BuriStateUtilImpl](https://github.com/seasarorg/s2buri/blob/fbaf32dd3ec2a815dfe3f4426f10d6b0ce53547d/buri-core/src/main/java/org/escafe/buri/dao/util/impl/BuriStateUtilImpl.java)、[BuriDataUtilImpl](https://github.com/seasarorg/s2buri/blob/fbaf32dd3ec2a815dfe3f4426f10d6b0ce53547d/buri-core/src/main/java/org/escafe/buri/dao/util/impl/BuriDataUtilImpl.java)、[Process Selector](https://github.com/seasarorg/s2buri/blob/fbaf32dd3ec2a815dfe3f4426f10d6b0ce53547d/buri-core/src/main/java/org/escafe/buri/engine/selector/processImpl/ValidDateBuriProcessSelector.java)。
