@@ -1347,6 +1347,36 @@ AI一括修正で**対象曖昧、複数Patch衝突、base byte不一致、取�
 **採否の留保**：DSLの専門家向け表現はグローバル共通・Go固有宣言を日常表層へ強制しない。Go AST/独自Parser/ハイブリッド/コード生成は同じ可読性・意味/診断/Source保存/生成速度のFixtureで比較し、Go実装親和性のために表層を決定しない。Goの単一バイナリは基本実行形態、EKIは必要時に選ぶ分散実行委譲先、.NET/Java等の既存Hostも保持する。実Writer/Provider/EKI/SHO/第二Targetの成功と、Owner意味受理・新ADR・新Runtime APIの採用はすべて**NOT RUN/未決定**。
 
 
+
+
+### 31.5 実Go接続で観測された「対象・確定・結果伝達」の切断を、XS-07〜10の実証前提へ織り込む（2026-11-03追加）
+
+> **本節は既存§31 XS-07/08/09/10、§34 SQL、§35 RG-06/07/11の採点列と実証順を更新する。** 新しいOperation Status enum／Receipt/Tx/Policy Engine／重複するMacro仕様は追加しない。現行コードの危険な配線を特徴づける局所PASSは安全の受理ではない。独立[test-only Draft #2780](https://github.com/hat47x/tei-platform/pull/2780)と[Macro Owner計画 #2602 §16.4](https://github.com/hat47x/tei-platform/pull/2602)に具体のGoテストと実装判断が属する。
+
+**(1) Selected target → explicit Payload → actual Provider targetの非同値。** main統合[#2773](https://github.com/hat47x/tei-platform/pull/2773)の`commandadapter.Executor.Execute`はCallerが明示した`Payload`を、Command `Inputs`と照合せずRunnerへ渡す。#2780 **MC-B01**の実`command.Invoker→commandadapter.Executor→effectcommit.Runner`・Fake Providerでは、Command選択`ORD-1`なのに`Payload.order=ORD-2`が`WriteResource`まで到達する。これは「不一致を安全に拒否した」ではなく、**現行実装経路で不一致が残る**という局所反証である。Command Target/Grant Resource/Provider Alias/期待Version/Request.Payload/実Write対象/Receipt Subjectを単一の業務Owner受理済み変換で相互照合する。正当な親子Entityへの書込みはあり得るため、**文字列IDを単純比較して一律禁止する方式も不採用**。Mapping/Operation identityが不明なら実Commitへ進まない。
+
+**(2) 二つのUnitOfWork/Tx境界を一つのCommitへ畳まない。** #2780 **MC-C01**は、外側`command.Invoker.UnitOfWork`のCommitを失敗させ、Runner内側Fake TransactionのCommit後に`COMMAND_COMMIT_FAILED`が返っても、内側の合成書込記録が残る挙動を観測。外側Rollbackで内側効果が巻き戻ったことにならない。**実PostgreSQLの二重Tx事故やdurabilityが起きたと断定しない**。Ownerの実Providerで、①同一物理Txに束ねられるか、②別Txなら業務作用/回復はどう分割されるか、③ack-loss/uncertainのReceipt Lookupと独立Readが成立するかを別票にする。read-only/Preview経路で実Commitを要求しない。
+
+**(3) RunnerのOutcomeがCommand Consumerへ伝達されるとは限らない。** 現mainの`commandadapter.Executor`は`StatusCommitted`と`StatusReplayed`をどちらも**空の`command.Result{}`とnil error**へ変換する。#2780追加の**MC-D01**はFakeで初回Effect/Receipt保存と、同OperationIDのreplay（重複Writeなし）を再現し、両方のCommand Resultが空であるとする**Characteristic**。**MC-D02**はFakeのCommit応答喪失に対し、外側`COMMAND_EXECUTION_FAILED`の`error`連鎖内に`CommitUncertainError`が`errors.As`で残るという試験。これは「外部UI/CLIが確定/Replay/不明を区別して表示できる」という証拠ではない。**型付きCauseがGo内部に存在することと、Consumerが観測したDispositionは分離**する。外部APIのResult型・互換性/公開方式はOwner判断として保留するが、少なくともConsumer側に`新規確定／既存Receiptを再確認／確定不明`の異同を隠したまま新OperationIDを再発行・自動再実行してはならない。
+
+**(4) Observer COUNT≥1と試行したEffectの因果性も別。** 現main`internal/execution/observe.go`の`SQLEffectObserver`は、指定Queryの行数が1以上なら`Observed=true`とする。Query/Argsの対象束縛が未指定・不完全なら**別Operation/別Rowでも成立し得る**。同`effects.go:RunEffect`はInvoker成功後のObserver errorで`journal.Append`前に返る経路があり、*業務作用が起きた可能性*と*保存された試行記録*が一致しない場合を考慮する。確認するのは特定OperationID/Target/expected-stateに因果的に結び付く結果とJournal/Receiptであり、`COUNT>=1`や画面ToastをCommit証明にしない。これらは**Source-staticの候補リスク**であり、実DB障害注入の事故再現ではない。
+
+**(5) SQL byte同一でもTarget候補の取得集合が変わる。** [Draft #2778](https://github.com/hat47x/tei-platform/pull/2778)のSM-15隔離SQLiteでは、`NATURAL JOIN`左右の列集合に`payments.status`を追加しただけでSQLは同byteなのに結果が**2→1行**、`SELECT *`は**3→4列**に変わった。暗黙Joinは「存在する列」だけでなく**左右の列名全集合および以前その名前が存在しなかったこと**に依存する。SM-16は実Go`query.DeriveFromAnalysis`＋意図的に固定した合成Analyzer ResultでSchema-resolvedなDerivedIRが同じになり得ることを確認するが、実SQLGlot WorkerのSchema closureが本番で欠落した証拠ではない。**Query候補／Function Context／選択したOperation対象**の型・Rowset・Field/暗黙条件の版を束ね、旧SchemaのTarget選択を現在の実Write/Grantへ昇格しない。無関係列追加で過剰失効させず、`JOIN ON`等の明示依存では必要Closureだけを比較する。
+
+#### XS-07〜10と§35への追加受入列（独立Expectedは既存Ownerが先に固定）
+
+| 結合する既存反例 | 観測すべき一件のEvidence | 不合格／保留の条件 |
+| --- | --- | --- |
+| **XS-07 + MC-B01 + SM-15/16** | 実選択のContext/RowsetとSchema closure、Ownerが許した`Selected→Payload→Provider Target`変換、Grant Resource、expected Version、actual write target | `ORD-1→ORD-2`に未受理の変換がありながらFake Writeへ進む。SQLは同byteでもSchema依存不明のTargetを旧情報で確定 |
+| **XS-08/10 + MC-C01** | 外側UoW/内側Runnerの物理Transaction/Commit主体、同OperationIDとTargetに対するReceipt、independent Read | 内側Commitの可能性を外側Failureで「Rollback確定」と表示。実Txの相関不明なら`Commit unknown` |
+| **XS-09/10 + MC-D01/D02** | Runnerの新規確定・Replay・Uncertain、Adapterでの失情報、Go error chain、外部Consumerに実届いたStatus/Receipt | 空Result/汎用Errorのみから、全試行新規成功または全試行失敗と判定し無確認再送 |
+| **XS-10 + Effect Observer/Journal** | Query/Args/Rowset/Operation IDの因果対応、ObserverのError/false、Journal Appendの実結果 | 別対象COUNT・Observer error後の記録欠測を「効果なし／観測済」と推測 |
+| **§35 RG-06/07/11（任意EKI委譲）** | TEI業務OperationID、EKI Task/Attempt/Lease、内部Retry、実Artifact body、Owner Resultの独立読取 | EKI Task done／Ack／再委譲をBusiness Commit/新規Effectの許可として使う |
+
+**最短の実証順（既存#1119 P0-a/P0-bを変更しない）**：まず #2780 の現HEADをGo formatting→focused tests→head固定Evidenceとして再検証し、MC-B/C/DのCharacterizationを**安全な拒否テストに転換できる条件**をOwnerが明記する。次に#2778 SQLGlot実Producerの固定Schema列集合を#2586 Function/Result→#2598 Target選択へ渡す。そこから#1174の現在Grant/実Provider同一Tx/Receipt、#1129の効果観測・Journal、必要なら§35 EKI内部retry/ACKと外部Consumerへ展開する。**実Providerの一Attemptが欠ければ、別PRのSQL PASS・Fake Go PASSを合算したE2E成功は報告しない**。
+
+**証拠の現時点（2026-11-03、特定HEADに限定）**：#2780の`3b0ead5706f914209c4c76e18ea30aac250cb86b`では[Focused #41620889140](https://github.com/hat47x/tei-platform/actions/runs/41620889140)が**2つのMC-B/C Characterization PASS**。一方、その後の`292ad69ca9eba589498ee071ca8e9392d0c43054`はMC-D追加後の[Focused #41631728388](https://github.com/hat47x/tei-platform/actions/runs/41631728388)が**failure**で、ジョブログ上では`gofmt -l`の空チェックを通過できず、4件のGo Test PASSは**未確認**。#2778 HEAD `1568e00ce1d9fcd7d59ed0f80f1e16173bb4715a`の[Repository Health #41620927639](https://github.com/hat47x/tei-platform/actions/runs/41620927639)はcompleted/success、ただしSQLiteとGo Syntheticは独立局所試行であり、Owner・実PG Schema/Effect/EKI/SHO E2Eを示さない。**本節は現Go Source/CIの再取得＋横断計画追記のみであり、新しいGo/DB Testや製品修正はNOT RUN**。
+
 ## 32. 外部モデル再利用の資格――Import成功・意味Pin・Source受理の境界（2026-11-03横断追補）
 
 > **状態：現行mainのGo Source・既存Goテストを照合した設計差分と、次の同一Run受入手順。新テスト実行・新Parser/Resolver/Store・業務Owner受理・正式ADRはNOT RUN/未採用。** §29「参照・合成・限定継承」と§30「外部Import・Studio修正」を、実在する`WorkspaceImport`の能力と停止線へ結び付ける。二つの章の繰返しではなく、**Importで取得できる「意味」と、外部原文まで結ばれた「現在の証拠」の欠落**を扱う。
