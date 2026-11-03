@@ -1259,9 +1259,9 @@ Buri由来の図表駆動・State Machineは、業務Procedure・Rule/Function�
 
 ### 30.1 Managed Sourceと外部Workspace Importを混同しない
 
-**Managed Source**はWorkspaceの管理範囲内でReaderが実際に読んだbyteとSource occurrence/spanを固定する。**明示的外部Workspace Import**はalias/path/namespace/optional semanticDigest、許可されたScopeとProvider/Language Pinを持つ別の境界であり、「Workspace root外」を理由に一律拒否しない。許可されていないroot越境、redirect/symlinkによるscope逸脱、read-time TOCTOUは既存[#1017](https://github.com/hat47x/tei-platform/issues/1017)／#1002の安全境界で拒否する。実Go入口は\`internal/workspace/imports.go\`・\`workspace.Load\`・\`internal/sourceacceptance/verify.go\`、言語選択からCandidate/Source Indexへの接続は[#1018](https://github.com/hat47x/tei-platform/issues/1018)／#988の未充足条件として扱う。
+**Managed Source**はWorkspaceの管理範囲内でReaderが実際に読んだbyteとSource occurrence/spanを固定する。**明示的外部Workspace Import**はalias/path/namespace/optional semanticDigest、許可されたScopeとProvider/Language Pinを持つ別の境界であり、「Workspace root外」を理由に一律拒否しない。許可されていないroot越境、redirect/symlinkによるscope逸脱、read-time TOCTOUは既存[#1017](https://github.com/hat47x/tei-platform/issues/1017)／#1002の安全境界で拒否する。実Go入口は`internal/workspace/imports.go`・`workspace.Load`・`internal/sourceacceptance/verify.go`、言語選択からCandidate/Source Indexへの接続は[#1018](https://github.com/hat47x/tei-platform/issues/1018)／#988の未充足条件として扱う。
 
-編集時の解析対象も分ける。宣言済み**必須外部ファイル**が無ければその適用段階でblocking diagnosis、optional不在/一時unavailable/permission-denied/offline/partial/権威未確定not-foundは区別する。\`.tei\`のDSL Sourceと、別Pluginが所有するnative \`.sql\`/\`.go\`/\`.json\`/\`.yaml\`/\`.md\`を無条件に同じParserで再解釈しない。Markdownのコメントやコードフェンスに見える文字列だけで、実行可能なReference/Actionを発見したことにしない。
+編集時の解析対象も分ける。宣言済み**必須外部ファイル**が無ければその適用段階でblocking diagnosis、optional不在/一時unavailable/permission-denied/offline/partial/権威未確定not-foundは区別する。`.tei`のDSL Sourceと、別Pluginが所有するnative `.sql`/`.go`/`.json`/`.yaml`/`.md`を無条件に同じParserで再解釈しない。Markdownのコメントやコードフェンスに見える文字列だけで、実行可能なReference/Actionを発見したことにしない。
 
 **検証配置**：編集時＝構文・Source byte span・参照宣言・候補修正、Load/Build時＝外部Importと固定semanticDigest・Role/Operator Pin・実依存closure、実Provider/Host境界＝現在のGrant/partial read/Effect/Receipt。Go単一バイナリの純粋hot pathに毎回の全Source再ParserやOwner意味照合を要求しない（§25）。Source resolved ≠ Semantic accepted ≠ Build/Consumer qualified ≠ Runtime authorized。
 
@@ -1269,7 +1269,7 @@ Buri由来の図表駆動・State Machineは、業務Procedure・Rule/Function�
 
 | 順序 | 対象と独立Expected | 停止／禁止推論 |
 | --- | --- | --- |
-| **R0 Source/Import** | #2743 V0-1/V0-2：利用側Managed Source byte不変、外部Namespace A/Bの意味的属性・型と旧Pin拒否を**Loader出力とは独立に**固定。既存\`external_acceptance_boundary_test.go\`をfocused Go実行 | 既存テストのLoader由来semanticDigestを自己Oracleにしない。Source同一→外部Meaning同一・Owner受理済みとしない |
+| **R0 Source/Import** | #2743 V0-1/V0-2：利用側Managed Source byte不変、外部Namespace A/Bの意味的属性・型と旧Pin拒否を**Loader出力とは独立に**固定。既存`external_acceptance_boundary_test.go`をfocused Go実行 | 既存テストのLoader由来semanticDigestを自己Oracleにしない。Source同一→外部Meaning同一・Owner受理済みとしない |
 | **R1 Reference状態** | #2743 RF群：必須/任意、scope外symlink/redirect、offline/permission-denied/partial、A→B→Aを観測。宣言Scope内の正当な外部Importは許す | 404を権威ある不存在、0件を取得完全、Cache hitを現在許可、string path checkをTOCTOU耐性としない |
 | **R2 Studio/AI Patch** | #2745 GNと#2674 SF：元のSource digest/revision・byte span・該当occurrence・期待旧byteを伴う差分Preview。Apply直前にSource/参照先を再読取・再Parse、No-op Saveは0 writeで元byte完全維持 | 旧Previewの自動適用、Markdown書式/CRLF/BOM/コメントの勝手な正規化、AI修正候補＝Owner意味受理を禁止 |
 | **R3 Build/Consumer** | §28 V2/V3／#2600／#1163：Source Index/Model Revision/実Build Input/ArtifactSet/外部Consumer actual read/現在Disclosureを独立記録 | 同byte移動・同WorldFP・同出力型から引用/Grant/Receiptや歴史的Owner承認の現在資格を復活させない |
@@ -1278,8 +1278,8 @@ AI一括修正で**対象曖昧、複数Patch衝突、base byte不一致、取�
 
 ### 30.3 実証優先順位とPR/Issueの責務
 
-**P0** 実mainのGo入口・正負Fixture・Source byte/digestと独立Expectedを固定し、#2743 R0をまずfocused Goで確認する。**P1** 実Readerのscope境界と外部Importを同じ版で照合し、partial/denied/offlineの診断を検証。**P2** 実Studio/Source Writerが利用できる範囲だけR2（GN/SF）を実行。**P3** 実生成物/実Consumer/実Provider・Hostが存在する段階だけR3へ進む。未接続なら \`NOT RUN: missing concrete entry\`、読取対象/完全性が不明なら \`unknown\`、Owner判断が無ければ \`not accepted\` と明示してその境界で止める。Sourceの構造的候補と外部業務意味の受理を混ぜない。
+**P0** 実mainのGo入口・正負Fixture・Source byte/digestと独立Expectedを固定し、#2743 R0をまずfocused Goで確認する。**P1** 実Readerのscope境界と外部Importを同じ版で照合し、partial/denied/offlineの診断を検証。**P2** 実Studio/Source Writerが利用できる範囲だけR2（GN/SF）を実行。**P3** 実生成物/実Consumer/実Provider・Hostが存在する段階だけR3へ進む。未接続なら `NOT RUN: missing concrete entry`、読取対象/完全性が不明なら `unknown`、Owner判断が無ければ `not accepted` と明示してその境界で止める。Sourceの構造的候補と外部業務意味の受理を混ぜない。
 
 責務は #988/#1018（言語・解決）、#1002/#1017（安全なSource読取）、#2743/#958/#2582（外部Reference鮮度・失効）、#2621/#1124/#2497/#2745/#2674（原文保存・診断・AI Patch）、#2516（開示）、#2600（増分再資格化）、#1163（同一AttemptのEvidence）に戻す。**既存RF/GN/SFのCaseを再起票しない**。
 
-**今回確認できた限定事実**：[#2639](https://github.com/hat47x/tei-platform/pull/2639) HEAD \`12c864ba83840a7b5750bc8da84af0e8534558e1\`について[Repository Health run #41578551459](https://github.com/hat47x/tei-platform/actions/runs/41578551459)と[依存確認 run #41578551497](https://github.com/hat47x/tei-platform/actions/runs/41578551497)が**同一HEADでcompleted/success**。これは限定Go Language Plugin ReferenceのCI成功であり、外部Importの独立Expected/実HTTP・offline、Studio動的診断・AI Patch、外部Consumer/Host、Owner業務意味受理の成功ではない。本追補のR0〜R3とそれら製品試験は**NOT RUN**。既存#2743/#2745はDraftのままで、正式ADR/Schema/実装採用は未決。
+**今回確認できた限定事実**：[#2639](https://github.com/hat47x/tei-platform/pull/2639) HEAD `12c864ba83840a7b5750bc8da84af0e8534558e1`について[Repository Health run #41578551459](https://github.com/hat47x/tei-platform/actions/runs/41578551459)と[依存確認 run #41578551497](https://github.com/hat47x/tei-platform/actions/runs/41578551497)が**同一HEADでcompleted/success**。これは限定Go Language Plugin ReferenceのCI成功であり、外部Importの独立Expected/実HTTP・offline、Studio動的診断・AI Patch、外部Consumer/Host、Owner業務意味受理の成功ではない。本追補のR0〜R3とそれら製品試験は**NOT RUN**。既存#2743/#2745はDraftのままで、正式ADR/Schema/実装採用は未決。
