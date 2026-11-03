@@ -140,6 +140,10 @@ ExpectedはPlan/Estimator/LLMと**独立な固定Oracle**を用意し、実故�
 
 **停止条件**：実Artifact/Result不可、必要なProvider/Trust/Data/Deadline/Consent不明、Source stale/partial、現在のCAP-1/Provider予約なし、物理予算不足、実External Effect Unknown、故障相関不明で必要な回復確率を保証できない、Fallback開始時の必要時間超過、Estimator校正不足、Solver overhead/費用逆転、一般ClientへのPool秘密漏洩。読取可能な状態の説明・期限リスクWarningは維持するが、実権限なしで高額Scaleoutや危険な再試行を行わない。
 
+### 9.1 Deadline/Cost判断を、実Source/Artifactが一致する対照試行へ接続
+
+[一改訂のDirect／EKI Native／Managed Pool縦断と独立Oracle](TEI_EKI_ONE_REVISION_EVIDENCE_VERTICAL_SLICE_2026-11.md)のW-3/VS-10〜12では、09:00開始、10:00最終期限、O→M切替の検出5分＋M実行26分という**合成値**を固定し、09:29が最遅判断候補、09:32故障判明なら10:03となる負例を設計した。**予測の比較対象は同じTEI Input/Executor digest/Result検証条件**であり、出力本体のないEKI`completed`とDirectの実Outputを比較しない。T0/T1/T2の実経路が成立するまで費用・期限達成率・回復確率の製品実績を主張しない。LB-01〜26の予算/相関/公平性を再実装せず、VS Fixtureは実験の縦断証拠だけを扱う。
+
 ## 10. 横断深化：単体Jobから複数Job・期限付き約束へ（2026-11-03、第2段）
 
 TEIの別議論（[#1130](https://github.com/hat47x/tei-platform/issues/1130)のHeadless Batch／Trigger／Simulation、[#2499](https://github.com/hat47x/tei-platform/issues/2499)の外部Authority、[#2514](https://github.com/hat47x/tei-platform/issues/2514)の独立Oracle、組織の時点付きMembershipとDecision WorkbookでのFlow意味受理）と、EKIの実装進捗を照合した結果、**単一Jobの安価なPool選択だけでは、複数の期限付きJob、部門別最低枠、回復用Capacity、Providerの競合が同時に起こる場面を扱えない**。しかしEKIに新しい汎用業務Workflow Engine／HPC Node Scheduler／Budget Authorityを作る必要もない。以下は既存契約に従う**短い時間窓ごとのPortfolio-level Coordination Proposal**を定義する。
