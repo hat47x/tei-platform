@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -123,13 +124,22 @@ func slug(value string) string {
 // runPeriodsCommand reports the operations that may not run because their period
 // is not open. The period state is runtime information: the caller supplies it,
 // and an unspecified period is not treated as closed.
-func runPeriodsCommand(workspacePath, applicationID, statesFlag string) error {
+func runPeriodsCommand(workspacePath, applicationID, statesFlag, stateFile string) error {
 	if workspacePath == "" {
 		return fmt.Errorf("periods requires -workspace")
 	}
 	states, err := parsePeriodStates(statesFlag)
 	if err != nil {
 		return err
+	}
+	if stateFile != "" {
+		fileStates, err := periodStateFile{path: stateFile}.PeriodStates(context.Background(), applicationID)
+		if err != nil {
+			return err
+		}
+		for period, state := range fileStates {
+			states[period] = state
+		}
 	}
 	surface, err := operations.SurfaceWorkspace(workspacePath, applicationID)
 	if err != nil {
