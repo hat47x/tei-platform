@@ -7,6 +7,7 @@ import (
 	"strings"
 	"sync"
 
+	"tei/internal/applicationview"
 	"tei/internal/core"
 	"tei/internal/ir"
 	"tei/internal/semantic"
@@ -144,6 +145,11 @@ func (e ReferenceDataExecutor) Execute(_ context.Context, request Request) (Resu
 	if capability == nil {
 		return Result{}, fmt.Errorf("capability %s is not defined", request.Capability)
 	}
+	if capability.Effect != nil && capability.Effect.Kind == semantic.DataEffectCreate {
+		if err := e.checkRequiredInputs(request); err != nil {
+			return Result{}, err
+		}
+	}
 	if capability.Effect != nil && capability.Effect.Kind == semantic.DataEffectDelete {
 		if err := e.checkDeletePolicy(capability.Effect.Data); err != nil {
 			return Result{}, err
@@ -158,6 +164,46 @@ func (e ReferenceDataExecutor) Execute(_ context.Context, request Request) (Resu
 		result.Outcome = &outcome
 	}
 	return result, nil
+}
+
+func (e ReferenceDataExecutor) checkRequiredInputs(request Request) error {
+	var dataID core.CanonicalID
+	for i := range e.World.Applications {
+		if e.World.Applications[i].ID != request.Application {
+			continue
+		}
+		for j := range e.World.Applications[i].Patterns {
+			if e.World.Applications[i].Patterns[j].ID == request.Pattern {
+				dataID = e.World.Applications[i].Patterns[j].Data
+			}
+		}
+	}
+	if dataID == "" {
+		return nil
+	}
+	plan, err := applicationview.BuildCommandPlan(e.World, request.Application, request.Pattern, request.Capability, request.Inputs)
+	if err != nil {
+		return nil
+	}
+	provided := map[core.CanonicalID]bool{}
+	for _, input := range plan.Inputs {
+		if input.Provided && input.Attribute != "" {
+			provided[input.Attribute] = true
+		}
+	}
+	for _, namespace := range e.World.Semantics {
+		for _, data := range namespace.Data {
+			if data.ID != dataID {
+				continue
+			}
+			for _, attribute := range data.Attributes {
+				if attribute.Required && !provided[attribute.ID] {
+					return fmt.Errorf("required attribute %s is not provided", attribute.ID)
+				}
+			}
+		}
+	}
+	return nil
 }
 
 func (e ReferenceDataExecutor) checkDeletePolicy(target core.CanonicalID) error {
