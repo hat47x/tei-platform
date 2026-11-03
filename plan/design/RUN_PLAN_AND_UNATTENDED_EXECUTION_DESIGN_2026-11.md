@@ -205,3 +205,25 @@ run-plan monthly_close {
 | `RUN_PLAN_CHECKPOINT_WITHOUT_OUTPUT` | チェックポイントから再開するのに出力が無い（進捗を報告できない） |
 
 **未着手**: 実行の同定（`runKey`・`attemptId`・`fenceEpoch`）の実装、項目ごとの結果、無人の実行の拒否試験、出力の生成（P2以降）。
+### P2 実行の同定と拒否規則（2026-11-03 追記）
+
+実行の同定と、開始・再開・拒否の判定を実装しました（`internal/runlog`）。
+
+```go
+runKey    = RunKey(計画ID, キーの値)   // 区切りは unit separator（値にカンマが入っても偽造できない）
+attempt   = 前回 + 1
+fenceEpoch = 前回 + 1（再開のたびに増える）
+```
+
+| 前回 | `resume` | 判定 |
+| --- | --- | --- |
+| 無し | 任意 | `start`（attempt 1・fence 1） |
+| 未完了 | `checkpoint` | `resume`（attempt/fence を +1） |
+| 未完了 | `none` | **`refuse`** |
+| 完了 | 任意 | **`refuse`**（業務キーを変えるか、明示の再実行の操作を作る） |
+
+- `Owns` は現在の attempt と fenceEpoch が一致するときだけ真。古い担当は書けない。
+- 記録は JSON Lines。壊れた行はエラーとして報告し、その行より前は返す。
+- 実行の記録は受理済みの意味ではないので意味モデルには置かない。
+
+**未着手**: 実際の実行ループへの接続、項目ごとの結果、無人実行の拒否試験、`autonomy unattended` の検証（操作面の自律区分との突き合わせ）。
