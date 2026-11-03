@@ -1,4 +1,4 @@
-// Host-neutral JS port for the PoC A bootstrap screen.
+﻿// Host-neutral JS port for the PoC A bootstrap screen.
 // #3 can replace this screen without importing Go/Wails into reusable UI.
 const names = Object.freeze({
   list: "main.StudioBridge.ListWorkspaces",
@@ -6,6 +6,8 @@ const names = Object.freeze({
   validate: "main.StudioBridge.ValidateWorkspace",
   inspect: "main.StudioBridge.InspectSubject",
   observeXead: "main.StudioBridge.ObserveXead",
+  viewPattern: "main.StudioBridge.ViewPattern",
+  viewApplication: "main.StudioBridge.ViewApplication",
 });
 
 export function createReadOnlyClient(callByName) {
@@ -31,5 +33,8 @@ export function createReadOnlyClient(callByName) {
     validateWorkspace: (workspaceID) => call("validate", workspaceID),
     inspectSubject: (workspaceID, kind, subjectID) => call("inspect", workspaceID, kind, subjectID),
     observeXead: (workspaceID, relativePath) => call("observeXead", workspaceID, relativePath),
+    viewPattern: (workspaceID, applicationID, patternID) => call("viewPattern", workspaceID, applicationID, patternID),
+    viewApplication: (workspaceID, applicationID) => call("viewApplication", workspaceID, applicationID),
   });
 }
+
