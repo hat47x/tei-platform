@@ -10,7 +10,7 @@ import (
 
 func TestWorkspaceParseErrorBecomesRelativeSourceDiagnostic(t *testing.T) {
 	root := t.TempDir()
-	if err := os.WriteFile(filepath.Join(root, "tei.workspace.yaml"), []byte("workspace:\n  sources:\n    - applications\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(root, "tei.workspace.yaml"), []byte("workspace:\nformatVersion: 1\n  sources:\n    - applications\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	path := filepath.Join(root, "applications", "order-entry", "application.tei")
@@ -40,14 +40,14 @@ func TestWorkspaceParseErrorBecomesRelativeSourceDiagnostic(t *testing.T) {
 	if got := string(content[start:end]); got != "unknown" {
 		t.Fatalf("range text=%q range=%+v", got, diagnostic.Source.Range)
 	}
-	if diagnostic.Message != "expected database or uses" {
+	if diagnostic.Message != "expected database, uses, or binds" {
 		t.Fatalf("message=%q", diagnostic.Message)
 	}
 }
 
 func TestWorkspaceLexerErrorBecomesSourceDiagnosticWithoutSyntheticSubject(t *testing.T) {
 	root := t.TempDir()
-	if err := os.WriteFile(filepath.Join(root, "tei.workspace.yaml"), []byte("workspace:\n  sources:\n    - applications\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(root, "tei.workspace.yaml"), []byte("workspace:\nformatVersion: 1\n  sources:\n    - applications\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	path := filepath.Join(root, "applications", "order-entry", "application.tei")
