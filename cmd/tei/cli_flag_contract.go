@@ -61,7 +61,7 @@ var selectedReadOnlyFlagAllowlist = map[string][]string{
 	"world":               {"workspace", "world"},
 	"requirements":        {"workspace", "world"},
 	"plugin-lock":         {"workspace", "world"},
-	"plugin-resolve":      {"workspace", "world", "environment", "plugin-lock"},
+	"plugin-resolve":      {"workspace", "world", "environment", "plugin-lock", "diagnostic-candidates"},
 	"plugin-runtime-plan": {"workspace", "world", "environment", "plugin-lock"},
 }
 

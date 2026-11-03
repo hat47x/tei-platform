@@ -178,7 +178,7 @@ func sourceIndexJSON(out io.Writer, workspacePath, worldPath, subjectKind, subje
 // with stderr text; every failure here is one envelope instead, with the same
 // exit codes (2 for argument/load/resolve failures, 1 for semantic validation
 // and plugin runtime plan build failures).
-func resultCommandJSON(out io.Writer, command, workspacePath, worldPath, environmentID, pluginLockPath string, extraArgs int) (int, error) {
+func resultCommandJSON(out io.Writer, command, workspacePath, worldPath, environmentID, pluginLockPath string, diagnostic bool, extraArgs int) (int, error) {
 	if (workspacePath == "") == (worldPath == "") {
 		return resultInvalidArgument(out, command, command+" requires exactly one of -workspace or -world")
 	}
@@ -190,6 +190,47 @@ func resultCommandJSON(out io.Writer, command, workspacePath, worldPath, environ
 		return resultLoadFailure(out, command, err)
 	}
 	ds := validation.Validate(w)
+	if diagnostic && command == "plugin-resolve" {
+		report := cliResultEnvelope{SchemaVersion: resultSchemaVersion(command), Mode: "unvalidated-candidates", Error: &cliFailure{Code: "UNVALIDATED_CANDIDATES", Message: "diagnostic only; not validated or authorized for execution"}}
+		detail := struct {
+			WorkspaceValidated bool                    `json:"workspaceValidated"`
+			Diagnostics        []validation.Diagnostic `json:"diagnostics"`
+			Candidates         *plugin.ResolvedSet     `json:"candidates,omitempty"`
+			SelectionError     *cliFailure             `json:"selectionError,omitempty"`
+		}{Diagnostics: ds}
+		fail := func(code, message string) {
+			detail.SelectionError = &cliFailure{Code: code, Message: message}
+		}
+		id, idErr := core.ParseCanonicalID(environmentID)
+		if environmentID == "" {
+			fail(resultCodeInvalidArgument, "plugin-resolve requires -environment")
+		} else if idErr != nil {
+			fail(resultCodeInvalidArgument, idErr.Error())
+		} else if env, ok := findEnvironment(w, id); !ok {
+			fail(resultCodeUnknownEnvironment, "unknown environment "+environmentID)
+		} else {
+			catalog := plugin.Catalog{Plugins: w.Plugins, Bundles: w.Bundles}
+			var resolved plugin.ResolvedSet
+			var resolveErr error
+			if pluginLockPath != "" {
+				var lock plugin.Lock
+				if decodeErr := decodeJSONFile(pluginLockPath, &lock); decodeErr != nil {
+					fail(resultCodeInvalidPluginLock, decodeErr.Error())
+				} else {
+					resolved, resolveErr = catalog.ResolveEnvironmentWithLock(env, lock)
+				}
+			} else {
+				resolved, resolveErr = catalog.ResolveEnvironment(env)
+			}
+			if resolveErr != nil {
+				fail(resultCodePluginResolveFailed, resolveErr.Error())
+			} else if detail.SelectionError == nil {
+				detail.Candidates = &resolved
+			}
+		}
+		report.Result = detail
+		return emitResult(out, report, 1)
+	}
 	if validation.HasErrors(ds) {
 		return resultValidationFailure(out, command, ds)
 	}

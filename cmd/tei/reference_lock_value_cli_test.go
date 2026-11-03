@@ -135,6 +135,29 @@ func TestLogicalReferencesAndEnvironmentLockCLI(t *testing.T) {
 	}
 	t.Log("existing CLI limitation: an unresolved model type also blocks plugin-lock and plugin-resolve in this independent builtin-plugin fixture")
 	t.Log("the existing Go resolver can still resolve the exact pinned descriptor; this does not authorize execution or validate the model")
+	diagnostic := func(environment, lockPath string) string {
+		return run(1, "plugin-resolve", "-workspace", root, "-environment", environment, "-plugin-lock", lockPath, "-diagnostic-candidates")
+	}
+	out := diagnostic("test", oldPath)
+	for _, expected := range []string{`"ok": false`, `"workspaceValidated": false`, `UNKNOWN_SEMANTIC_ATTRIBUTE_TYPE`, `"candidates"`, `tei.value.example`, `UNVALIDATED_CANDIDATES`} {
+		if !strings.Contains(out, expected) {
+			t.Fatalf("diagnostic missing %s: %s", expected, out)
+		}
+	}
+	if out := diagnostic("missing", oldPath); !strings.Contains(out, "UNKNOWN_ENVIRONMENT") || strings.Contains(out, `"candidates"`) {
+		t.Fatalf("unknown environment: %s", out)
+	}
+	write("environments/test/environment.tei", "environment test {\n    plugin tei.missing ^1\n}\n")
+	if out := diagnostic("test", oldPath); !strings.Contains(out, "PLUGIN_RESOLVE_FAILED") || strings.Contains(out, `"candidates"`) {
+		t.Fatalf("missing plugin: %s", out)
+	}
+	write("environments/test/environment.tei", "environment test {\n    plugin tei.value.example ^1\n}\n")
+	write("plugins/example/plugin.tei", strings.Replace(provider, "action application-start", "action application-start\n        action application-retire", 1))
+	if out := diagnostic("test", oldPath); !strings.Contains(out, "PLUGIN_RESOLVE_FAILED") || strings.Contains(out, `"candidates"`) {
+		t.Fatalf("stale lock: %s", out)
+	}
+	write("plugins/example/plugin.tei", provider)
+	t.Log("diagnostic candidates retain validation errors and non-success status; missing environment/plugin and stale lock return no candidates")
 	write("semantic/sales/moved.tei", model)
 	validate(0)
 	beforeTypeChange := run(0, "world", "-workspace", root)
