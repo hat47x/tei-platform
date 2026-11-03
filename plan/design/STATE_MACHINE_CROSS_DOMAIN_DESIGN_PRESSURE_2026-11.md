@@ -207,6 +207,12 @@ Established --[T4: link-lost]--> Closed
 - 同じData/Statusを重複保存しない原則を強化する。ただし実行進捗・外部通知・手動取消・Actorの承認など、計算だけで復元できない**独立した事実**は保存が必要。Materialized View/CacheとBusiness Truthは区別する。
 - Flow中心の機能構築はData/Rule/Function/Capabilityの既存契約の**異なる合成入口**として扱い、新たな万能Scheduler/Workflow Hostを先行採用しない。#1130（Batch）／#1129（Effect phase）／#2622（Derived）／#2582（依存）へ渡す。
 
+### 7.7 TEIとEKIの状態機械は同じRuntimeではない（2026-11-03、Owner判断）
+
+[TEI→EKI限定委譲とSpring Statemachine比較](TEI_EKI_JOB_DELEGATION_BOUNDARY_2026-11.md)§8で、**ステート管理に基づくJob/Flowの定義・進行判断は基本TEIの責務**と整理し直した。TEIは必ずしも常駐しないため、生成Application／既存Host・OS scheduler・EKI・他Providerなどから、個別Deploymentに適した起動・進行主体を明示選択する。EKIが必要なのは主にTask/Attempt/Lease／Result/Effect/Recoveryの技術的な状態遷移と、部分委譲した場合のTimer・遅延Event・限定Step依存である。
+
+Spring Statemachineの階層、直交Region、Fork/Join、History、Deferred Event、Timer、永続化などはEKIの複雑な分散Job運用に参考となるが、TEIの標準DSL/Coreへ一括輸入せず、EKIの既存独立状態軸・CAS/fencingで不足が実証された場合にだけ比較する。Spring Statemachine本体は2026-07-05に公開Repoがarchivedとなったため、直接依存でなく概念・反証の参照とする。**EKIがRich State Machineを採用した＝TEIの業務Flowを解釈してよい**、とはしない。
+
 ## 8. 今回の結論と検証の状態
 
 **成熟した設計入力として置くもの**：状態機械の適用対象は業務に限らない／図・状態表・遷移表・交差マトリクスは同一意味を異なる形で投影する／意味Core・実行・保存・UI・文書を直結せず明示Bindingする／業務IFを全部置換しない／実Runtimeの一般化は別の採用判断とする。
