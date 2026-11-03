@@ -167,9 +167,13 @@ AIに期待する仕事：
 
 **運用SurfaceをDeployへ延長**：Release Source/Meaning/Artifact digest、EKI Deploy Proposal、Provider Service identity/Revision、Ingress/User Data Path、Result/Provider Health/Business Receiptを同一画面に**別の状態**として表示する。管理コンソールをクラウドで貸与しても、公開AppへのUser HTTPやbulk Artifact/DB trafficをEKI Controlに通さない。TenantのResource構成・Node数・Access/AI Promptへの開示を区別する。AL-01（Direct vs EKI broker同一Host）、AL-02（EKI停止後Service継続）、AL-07（Tenant隔離）、AL-12（Provider実状態との差分）を本稿のNR-01〜12とは異なる部署/実Targetの**追加圧力**として参照し、Test Runner/Oracleは増設しない。
 
-### 8.1 市場需要・競合と適用先の補足（2026-11-03）
+### 8.2 市場需要・競合と適用先の補足（2026-11-03）
 
 [EKIの企業内Compute資源一元管理：市場・製品適合の調査](EKI_ENTERPRISE_COMPUTE_MARKET_FIT_2026-11.md)では、NVIDIA Run:ai/Base Command Manager、Rafay、IBM Turbonomic、HPE OpsRamp、Slurm、Tanium、OpenCostと用途が重なる点を確認した。**図・Dashboard・AI推奨だけでは商品上の差別化にならない**。初期市場は社内AI/GPU混在Poolの可視化→使用可否の事前Simulation→安全な限定委任で検証する。FinOps/Flexeraの数字をEKI購買需要や節約実績と同一視しない。
+
+### 8.3 Pool-first運用可視化の資格表とSafety Gate
+
+[未解決Gate計画](TEI_EKI_AGGREGATE_DELEGATION_UNRESOLVED_GATES_2026-11.md)§2・§6を追加。TEIのEKI管理Consoleでは`RegisteredDelegate`／`ProviderCapability`／`CapacityOffer`／`AllocationAuthority`を別のType/Stateとする。通常の広域操作はPool/Delegate単位に絞り、内部Node/DeviceはEKI直接管理Profileまたは限定Provider drill-downに留める。**Offer/Simulation/AI Reviewを現在の予約・Grantに昇格させない**。Scope、時点、Source revision、completeness（fresh/stale/partial/unavailable/not-found/permission-denied）と過去値を別表示。Trust Bundleのopen Source-static課題EKI #466/#467を実Worker/MDM Gatewayへ進む前のOwner確認Gateとし、端末集約でmTLS/Local Governorの強制が消えないことを検証する。
 
 ## 9. 既存計画との分担・段階導入・Done/Stop
 
