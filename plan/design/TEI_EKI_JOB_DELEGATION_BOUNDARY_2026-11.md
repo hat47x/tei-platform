@@ -235,6 +235,10 @@ Workerにはoutbound-firstの社内PC/ARM64 Raspberry Pi/On-prem資源Poolも候
 
 [TEI/EKI/下位Providerの未解決Gate](TEI_EKI_AGGREGATE_DELEGATION_UNRESOLVED_GATES_2026-11.md)§3・§7を参照。**TEI Business Operation／EKI Task・Attempt・Lease／下位Provider Job・Reservation／Effect Receipt**を四種類の独立IdentityとOutcomeとして追跡する。EKI Admissionは下位GPU予約ではない。ProviderのAck消失は`submission_unknown`、Lease失効はEffect不在ではない。下位Slurm等のrequeueとEKI Retryが同一Effectを二重発生させないため、Owner・execution ref・lookup・idempotency条件をProvider Bindingに固定する。**現在のEKI #112ではInput Artifact 8/9=422、結果取得501のSpike Gap**があり、最初の実用Gateは純粋Job一件のinput/output bytes/digest E2Eである。外部APIの新Schemaや分散Tx実装はGateで不足が確定するまで保留する。
 
+### 8.11 TEIのJob期限・再実行条件をEKIの回復Aware Plannerへ渡す
+
+[予算・リードタイム・回復調停](TEI_EKI_DEADLINE_BUDGET_RECOVERY_COORDINATION_2026-11.md)へ詳細を分離。TEI Job/Flowの`not_before/target_complete/latest_useful`、End-to-endの検証・業務完了条件、再実行/Checkpoint/Effect ClassはTEIの意味契約。EKIのPool Brokerは現在の許可済みDLG-1／BUD-1／CAP-1、Queue/Transfer/Provision/Verifyと失敗後の復旧余力を用い、配置候補／早期引上げ／期限リスクWarningを返す。**予定通りの完了は保証しない**（EKI RQ-057）。実外部効果がUnknownの場合、期限逼迫は勝手な再試行許可にならない。Provider内の再試行とEKI Attemptの再試行を二重化せず、TEI Business CommitのOwnerも変更しない。
+
 ## 9. 設計判断のGate、実装順、Issue追補候補
 
 - **G0／今回の設計比較**：EKI ADR-0013・一方向依存・native-first kernel とTEI no-custom-Host/Plugin-firstを保持し、上記二層案を未採用の候補とする。TEI Draft PRへの資料追加だけで、EKIのRequirements/ADR/Mainは書換えない。
