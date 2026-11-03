@@ -2131,3 +2131,15 @@ TEI上の組織/Capacity Planningを、コアに組み込まれた例外的なEn
 **扱わない**：新Domain Core、SQLから組織Dataを逆生成する新正本、Go固有構文を日常DSLへ強制すること、第二Query/Context/Host/Proof/Authorization Engine、通常の組織Dataに対する専用ACL、外部Authoritative Sourceの勝手な受理。受入票は既存Evidence/ID/Revisionへの参照で構成し、巨大な全機能共通DTOを導入しない。
 
 **本節の証拠境界**：既存Go/Nodeのfixed-head CI成功とmain code読取にもとづく**設計・Gap判定のみ**。本節でORG-E2-01〜10の実Query／実Provider／実DB／Studio／SHO／Hostを起動してはいない。別のToolchainでのSQL解析・実データ取得成功を推測しない。
+
+## 57. 組織Domain ProfileとAI支援によるPlugin接続（2026-11-03、採用前）
+
+企業が「兼務あり、指揮命令系統で承認、所属はHR正本、AD/Entraで認証、来年度の改組を事前表示」と説明するだけで、生成AIが標準Data/Relation/RuleとProvider・Pluginの適合候補を選択する設計案。組織ごとに新しいCore/Host/Registryを作らず、既存契約のパラメータ化を優先する。
+
+**独立する設定軸**：組織の安定IDと法人Scope、指揮命令/原価/プロジェクト等の型付き階層（単一/複数親・循環・再帰Path）、Person/Membership/Position/Principalの区別、validAt/knownAt/組織全体公表Revision/個別所属Revision、属性・RelationごとのSource of Record、Provider Readの完全性、業務Rule/承認経路、表示/Simulation/Effect。
+
+**連携境界**：SAML/OIDCは認証Assertion、AD/LDAP/GraphはDirectory読取り、SCIMはUser/Group同期の候補、HRは業務所属の正本候補。GroupやManagerをOrgUnit・実行Grantへ自動変換しない。外部IDはIssuer/Tenant等を含めて照合し、同名・メール一致によるPerson統合を避ける。
+
+**Harness側の手順**：自然言語の制約→既存Command/Contract/Provider発見→候補Parameter/依存/版の照合→曖昧性・取得不足の診断→構造/Source差分Preview→独立Expected→Owner受理→実Host/Provider認可と実Effect。mainの `tei commands`・`plugin-lock`・`plugin-resolve`・`plugin-runtime-plan`は読取り用の既存入口であり、組織Fittingを実装済みとみなさない。未実装の `tei org fit` 等をSkillから呼ばない。#2605のProduct SkillとTAI SK-02の独立H2/H3比較を再利用する。
+
+**最小反例とOwner**：階層循環/複数経路、将来発効と遡及訂正、HR/IdP属性競合、削除/部分同期、同Contract複数Provider、Grant失効、Proposalと業務Commitの差を#2510/#2681/#2779に割り付ける。組織意味#2386、Plugin契約#951、Function Read#2506/#2622、Harness Skill#2605、実Effect#1119/#1174。実CLI・IdP/SCIM接続・E2E・正式Profile採用はNOT RUN。
