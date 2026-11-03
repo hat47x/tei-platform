@@ -1712,3 +1712,9 @@ Studioは「組織軸とRuleの一元設定・効くRecord集合・例外・各C
 EKIがTEIの組織関連Jobを受理する場合、EKIの配置可能性・予算・期限・Lease・回復最適化は**組織DataのRead/Disclosure Grantではない**。現在のPrincipal/Delegation/Grant、Source/Policy/Read ScopeをTEI/Host/Providerが引き続き検査し、再試行・別Nodeへの配置で失効済資格を蘇生させない。EKI Coreに新しいOrganization ACL/財務認可正本を設けない（既存§35〜36/#1119を維持）。
 
 **未決のOwner分岐**：複数Org linkのany/all、単一親/DAG、RecordとFunction/Consumer単位の例外粒度、Ruleの合成順位・非適用時の既存契約、閲覧と参照専用の違い、実ProviderでRLS/Filter/Host境界をどう保証するか、同一Scopeでの歴史照会の可否。これらの意味はOrganization/Business Ownerが決定し、実Enforcement資格はHost/Provider Ownerが判断する。未定部分を仮の安全性保証にしない。
+
+### 37.4 E0 fixed-head run と実Enforcement不足の分離
+
+[Org Policy Draft #2781](https://github.com/hat47x/tei-platform/pull/2781)のfixed HEAD `88f3e3e2e1a2352fa53625732f465fb2b8b07761`で、[Node Actions #41632269936](https://github.com/hat47x/tei-platform/actions/runs/41632269936)は**success**。Node v22.16.0、`verify.mjs`27 checks成功、`node --test`235/235成功（新規VP-01〜30を含む）、fail 0。GitHub jobログ上の新Source Blob `bdc4e63649fa3e728c8293fef55b43a0d278b1c1`とexact-head/clean stepを確認した。
+
+**昇格禁止**：実Host Grant/actual Provider Filter/Row-Level Security・実Data Context・テナント間非干渉・Query全経路・SHO/AI出力・実Source/Policy受理は未実施。synthetic `hostSimulation` の結果は実環境の認可ではなく、実Dataの秘密性を裏付けない。#2779 What-if別ブランチのNode成果や#2681 Native Goの成功を本PRの一試行と足し合わせない。#1119の製品Critical PathとSecurity/Privacy/Owner審査を維持し、実Enforcementを先行受理しない。
