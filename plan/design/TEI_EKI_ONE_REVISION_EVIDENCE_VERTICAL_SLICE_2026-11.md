@@ -261,3 +261,48 @@ TEI Data Model/Scriptの`ready`仮想状態を想定し、`false→true`の業�
 **V3’（Managed Pool/Task GroupはOwner別）**：#115の内部Retry無効化/観測、#126の一群予算/取消/期限・部分結果の契約、#67のCluster Provider、#155のRecovery Fairnessを別Gateにする。現Task APIの複数呼出し結果をTEIで束ねても、EKI-native Group DeadlineやGroup Budgetの実装済み主張はしない。
 
 **Stop**：直接Go/RunPlanのStep resolvedがあるだけ、同名RunKeyにPlan変更がある、同じPlanへ別プロセス同時起動、External Effect/Provider ACK unknown、Task Groupの部分結果のQuality Scope不明、EKI Trust/Policyの現在Revision不明、EKI Result body/TEI Business Receipt未取得のいずれかで、最終的な`finished/assured`表示へ昇格しない。
+
+## 14. 実EKI P0 ABIの非損失ゲートを、実ジョブ試験の前提に置く（2026-11-04）
+
+### 14.1 今回の新しい実証：契約の非同値を19ケースで固定したが、実Jobはまだ走っていない
+
+並走の[TEI Draft #2787](https://github.com/hat47x/tei-platform/pull/2787)は、EKI[実OpenAPI `spec/external/openapi.json`](https://github.com/hat47x/eki-fabric/blob/main/spec/external/openapi.json)の**実Git blob `388f2e3ad32ba663b4777fcfb4304b0cf6f48f3f`**をtest-only snapshotとして固定し、`tools/reference-tei-eki-contract/probe.test.cjs`の**WP-01〜19**でTEI→EKI投影の損失を検出する。PR #2787の報告ではexact-head `4b4c6d3f24e2d0994a4f5a1b2a674af3320ace52`、[Actions run 41641607381](https://github.com/hat47x/tei-platform/actions/runs/41641607381)で**19/19 PASS**。今回、接続GitHubのEKI`main`を再読したOpenAPI blob SHAも同一値だった。これは**ソース構造の負例を検出する静的契約試験**に限る。現EKI Worker/ProviderにTEI生成Jobが実投入できること、費用/期限/回復、OwnerのMeaning Acceptanceは証明しない。
+
+**P0非損失判定表**（TEI側で意味が要求される場合。EKIのSourceについては2026-11-04の参照）：
+
+| 受渡し意味 | 現EKI P0外部契約の観察 | 下位へ無断投影した場合の損失 | 最小の判断 |
+| --- | --- | --- | --- |
+| 入力パラメータ | `TaskRequest.parameters`は存在するがOpenAPIに「Workerへ渡さない」と明記 | TEIの`quantity`等がClient側にはあるだけでExecutorが受け取らない | **`not-representable-for-execution`**。Input Artifact等で実際に渡せる別経路が証明できるまでJobを拒否 |
+| Executor一致 | `ExecutorRequirement.version_constraint`はfingerprintに記録するがAdmissionで評価しない。TaskRequirementに厳密`executor.digest`なし | TEIのArtifact/Entrypointの指定版が実行されると誤認 | **`wire-shape-only`**。EKI Agent WorkOrderの実Approved Executor digestとProvider側Actualを独立照合できる場合だけ適合候補 |
+| Effect class | `reliability.effect_mode`は`none`のみ | TEI DB更新・外部支払い等のEffectful Jobを「純粋計算」と虚偽申告 | **`not-representable`**。外部副作用はEKI P0の委任対象外。既存Hostで実行／明示Owner判断 |
+| 時間契約 | `TaskRequest.deadline`は単一値。TEIの`not_before/target_complete/latest_useful/recovery`とは異なる | 時刻を勝手に最終時刻へ潰すと、早期開始禁止／優先目標／業務完了・回復の意味が失われる | **`partial wire only`**。TEIの残余意味を外部の実Ownerが保持できる場合に限り予測候補。自動SLA/保証・状態確定は不可 |
+| Artifact入出力 | OpenAPIがArtifact GETとInput ingest endpointを宣言する一方、実HandlerではInput ingestを501へ送る。Output GETはOwner/期限/Store条件下で存在 | `output_digest`や契約上のpath存在を、Input実登録・Result body取得に誤変換 | **`input-unavailable`／`output-conditional`**。同一AttemptのInput/Output bytesとdigestを実Processで照合し、未対応経路は停止 |
+| 資源提供者/データ領域 | `TaskRequest.resources`は物理要件だが、任意Provider選択やData Residency GrantをCallerの自己申告で認可する契約ではない | 「CPU/GPU要件を書いた」＝希望Clusterが認可・予約されたと誤認 | **`authority-owned-elsewhere`**。EKI DLG-1/BUD-1/CAP-1とProvider Admission/Reservationを別に照合 |
+
+**適合性の処理順**：①TEI Business/Quality/Source Meaningの必須意味を列挙、②EKI current OpenAPIとAdapterで`lossless / representable-but-not-enforced / not-representable / unknown`に分類、③欠けた**必須意味は黙ってdefaultへ変えず**`unsupported`としてDirect/既存Hostへ戻す、④残余が適合可能な純計算Taskのみ実EKI Process受入に進める。上記はAdapterの**受入基準**であり、新`TEI-EKI universal ABI`や第二Schema正本を採用するものではない。`extensions`や`client_request_id`に未保証意味を詰め込んでもEKIが解釈・強制する証拠にはならない。
+
+**エビデンスの混同を禁止**：WP 19/19 PASS（Schemaの静的対照）≠TEI Job Lowering完了≠Product-only Task start/result verified≠Input/Output body≠HPC Provider reservation≠Business Commit。旧EKI #112の422/501と現API Handlerの条件付き経路を区別した§12を優先し、今回の静的差異が実APIの正常性を保証しないことを記録。
+
+### 14.2 AI-first Test Scaffoldへ接続するが、テスト実装を二重化しない
+
+[TEI Draft #2811](https://github.com/hat47x/tei-platform/pull/2811)は生成AIのinspect→Case生成・拡張→独立Expected/Oracleとの比較→縮小→OwnerレビューをP0とする**文書案**（AI-01〜12、実CLI/Web/AI実装NOT RUN）。本レーンの**WP-01〜19（実CIの静的ABI対照）**・**VS-01〜32（本PR未実施の実行・Effect縦断）**・**LB-01〜32（期限/予算/回復）**を、新規Runnerを起こさず既存[#1180](https://github.com/hat47x/tei-platform/issues/1180)のScenario/Target導出、[#2514](https://github.com/hat47x/tei-platform/issues/2514)の独立Oracle、[#1131](https://github.com/hat47x/tei-platform/issues/1131)のFixtureへOwner分配する。
+
+**生成AIに最初に解放する作業は**、`Required semantic field × current EKI OpenAPI × mapping status × negative counterexample`の**read-only Gap抽出・候補Fixture生成**。実Providerへ自律Submit/Cost-bearing reserve/Grant変更/Effectful Job再試行する権限は与えない。生成CandidateはSource revision/独立Expected/再現コマンド/期待失敗・実Observedを別列にし、あるAIの回答を別AIが追認しただけではOwner受理としない。
+
+### 14.3 外部Source受理とWorker Trustは別のversion/currentness
+
+[TEI Draft #2812](https://github.com/hat47x/tei-platform/pull/2812)は、**同一Provider LoadでParserが消費したselected Namespaceの原文／Manifest**をread-onlyで持つ限定Source Witness。2026-11-03時点の報告では専用Go試験の結果は未確定であり、**Full Input Closureではない**。同じSourceを後から再取得してbyte一致したからといって、最初のLoadの証拠にはできない（[#2801](https://github.com/hat47x/tei-platform/pull/2801)）。TEIのReference/Meaning/Artifact鮮度と、EKI Workerの信頼・Execution Grantは個別判定を継続する。
+
+EKI側の[PR #694](https://github.com/hat47x/eki-fabric/pull/694)はWorker Trustの署名鍵集合をAgentの`anchor.json`という**配備所有者の設定**で管理し、受信した版自体に「次の信頼鍵」を宣言させないと決定。[PR #692](https://github.com/hat47x/eki-fabric/pull/692)には複数鍵のいずれかで検証して受理する局所実装と試験の報告がある。**TEIのSource/Accepted MeaningをEKIのTrust Anchorへ自動昇格させず、EKIの署名済みWorkOrderもTEIのビジネス上の意味受理としない**。複数鍵・期限切れ・失効・I/O ErrorでのFail-closedの運用受入はEKI Ownerの責務。こうしてTEIのPlugin/Reference/Sourceを含め、同じ`version`という名称でも誰が発行し、何を守る版かを明示する。
+
+### 14.4 P0の小さな受入票：3ジョブで「できる」と「できない」を切り分ける
+
+| Test Class | Minimal fixture／Independent Expected | 現在の判定 |
+| --- | --- | --- |
+| **A. Parameterless pure** | 固定Executor・空Parameters・適合Resource、実入力なし／簡易Output。EKI配置・Lease・Claim・Result/Artifact body/Ownerの因果を観測 | Sourceでは経路が存在、Product-onlyの再試験が必要。**本稿NOT RUN** |
+| **B. Typed-input pure** | TEI Go Function `quantity=2,unitPrice=300.00`→`600.00`、Byte/digest一致、NULL/missing負例。入力受渡しのActual WorkOrder/Agent Readingを必須 | EKI P0のParametersはWorker未配送、Input ingestも未対応。**現契約で未解決/実行適合を未証明** |
+| **C. Effectful business** | 承認済Operation ID/Host Grant/外部DB Commit/Receiptを要するJob、Result再送とACK lossを対照 | EKI P0 `effect_mode:none`のみ。**EKIを実行先にしない**。TEI/既存HostのEffect Providerを別に使う |
+
+**次の最小実装の方向**：Bを製品機能とする前に、EKIの既存Owner [#112](https://github.com/hat47x/eki-fabric/issues/112)・外部Artifact ingest/WorkOrderという**既存Contractの必要最小の差分**だけを明らかにする。高価なSolver／複数Pool Federation／自前AI Job RuntimeはA・BのE2E成立を前提に後続へ回す。A/B/Cの3種類を同じ「Job成功」カウントで合算しない。新ケース番号を乱立させずWP/VSの既存IDへ参照で引き渡す。
+
+**この章の証拠区分**：EKI mainの実OpenAPI source blob、TEI #2787のexact-head WP 19 PASS（外部PR報告）、#2811/#2812の文書・限定Sourceコード提案、EKI #692/#694の修正・運用決定、既存TEI RunPlan/Provider検証からの**設計提案**。本Draftの新しいGo/Node/実EKI/実AIテストは**NOT RUN**。Owner受理、メインline統合、実Worker I/Oと金銭的最適化は主張しない。
