@@ -911,3 +911,53 @@ actual Source bytes + source occurrence + selected Language/Operator pins
 - **2026-11-03時点のCI区分**：Draft #2667 head `5882ff67e22f1f37f8f6adccd4ccddfc6c480b4d`のPR健全性確認は照合時`queued`、Draft #2639 head `12c864ba83840a7b5750bc8da84af0e8534558e1`の健全性確認は照合時`in_progress`、Draft #2745 head `61f834771091260212d4264855c94a702efca4e2`は照合時`queued`（いずれも2026-11-03 04:28 UTC前後）。旧HEADのPASSを現HEADに移さない。**この§24自体のheadは後続コミットになるのでCIを別途照合する**。
 
 **ADR**：既存§22の無番号 `DSL Frontend Selection and Source Fidelity` は正式採否を保留。既存ADR-0022/0023/0032/0033/0039/0043と#1119のGateを変更しない。今回の成果は**既存計画内の検査票と依存順序**であり、採用済み実装・形式・Runtime・Owner意味受理の宣言ではない。
+
+## 25. DSLとGo Runtimeの検証費用――実行性能を守る配置と選択的な省略（2026-11-03追補）
+
+> **設計・比較計画／実行時最適化の実装・計測はNOT RUN。** ユーザーの追加方針：Go単一バイナリの実行時レイテンシ・スループット・資源使用を重要な製品品質とし、過剰な検証は移動・統合・省略・無効化を検討する。ただし、検証の削除によって意味・現在Authority・保存効果の真偽が変わることを許す方針ではない。#565（closed）のPerformance/Resource Quality Envelope、#988/#2622/#1174/#2514、§22〜24に接続する。新しいQuality Gate/Runtime Host/Validation Engine/Registryは作らない。
+
+### 25.1 「一度で足りる検査」と「実入力ごとの必要条件」を分ける
+
+| 検査対象 | 基本の位置 | 無効化・移動の候補 | 省略してはならない根拠 |
+| --- | --- | --- | --- |
+| DSL Parse、Unicode/Lint、Source位置・説明書式 | 編集/保存/Build | 本番hot pathで再Parse、Source全照合、Formatterをしない。失敗時だけ原位置を復元 | Source/Language版が変われば再解析・診断。現在の実入力を静的Sourceで代用しない |
+| Role/Operator/Plugin依存Pin、静的型、Relation定義、Eager循環 | Build/選択/ロード時 | 固定されたGoバイナリの毎件実行ではResolver/Role/型宣言の再検証を省略候補とする | Plugin/実装/意味版変更、動的Binding、未Pin依存は再資格化が必要 |
+| 生成物の来歴、Artifact/Toolchain、独立Oracleの全Fixture | Build/CI/Artifact選択・ロード時 | 全件実行時のSource再hash、Conformanceの再実行を避ける | 実Build入力・実ロードbyteと検証対象の不一致、失効したArtifactを見逃さない |
+| 外部データ型、presence、Nullability、Field/Row完全性、grain、時点 | Input/Provider境界、必要な評価時点 | 同じ不変条件を行ごとに繰返し確認する代わりに、検証済みの型付きRecord/Batch/Snapshotの適用範囲に限定して一回検査 | Raw入力、別Provider/別Epoch、新規Row、partial/withheld/missingは黙示的に正値扱いしない |
+| Decimal精度・丸め・単位、業務Rule・状態遷移 | 専用計算経路・業務操作の必要点 | 既存ContractからGoの型付き専用演算にLowerし、反射や動的ディスパッチを避ける。証明済み値域なら重複のrange検証を検討 | 不明な丸め、overflow、時点で変化する規則や業務拒否をdebug限定にしない |
+| Provider Read、Query Pushdown、動的/否定依存、参照先鮮度 | Provider/Read/再取得の境界 | 無関係な各Rowで再取得・再照合しない。Snapshotの有効範囲内でBatch/Cache | Row/Field completeness、scope、principal/RLS、time、Relationの変化を見失って全件/不存在を誤推論しない |
+| 現在認可、Commit対象の版/重複防止、Effect Fence | 実Request/Commitと同じ既存Host/Provider境界 | read-only純粋演算には副作用Guardなし。writeは条件付き更新/Txで一体化し冗長な往復検査を削減 | Build時の認可を現在Grantと見なさない。Commit unknownを成功・失敗へ丸めず、無条件再試行しない |
+| Trace/詳細説明/高頻度ログ | 開発・CI、運用で必要な失敗・監査境界 | 成功hot pathの全行Trace/文字列生成を遅延、観測量を限定 | 必須のOperation identity/拒否理由/監査/Receipt・失敗診断を失わない |
+
+**省略可能なのは、同じ性質が同じ版・対象・Scope・時点・実装で既に保証され、その保証が後段まで保持される場合に限る。** 同じ返値、過去のPASS、同ID、Cache hitだけを省略根拠にしない。Go ASTをFrontendで使わない場合でも、同じ意味から同じ高速なGo実行経路を生成できるべきである。
+
+### 25.2 実行形態とGuard削減の候補
+
+1. **静的合成による最短経路**：モデル/Language/Operator/生成器の固定済み版から純粋Operationを型付きGo関数として生成できるか比較。Go単一バイナリの毎件実行でDSL再Parse/全Plugin Resolve/全Schema検証を要求しない。静的合成・動的ロード・外部Process方式の採否は#951/#988の方式Gateで保留する。
+2. **Input BoundaryとBatch単位の検査**：型付き/NULL/Scope/完全性の保証済みRecordを内側で再検査しない。保証の作り方・消費元・失効条件は測定対象に記録。検証を省いた結果NULL、Missing、Not Fetched、Undisclosed、Partialが潰れるなら棄却。
+3. **Providerでの最適化**：#2622のBatch、Pushdown、Stream、#2593の集約粒度を利用。filter→sort→limit と limit→filter は一般に交換できないので、速度だけで書換えを許さない。物理roundtripを減らす場合も実ProviderのRead scope/時点/権限を保持する。
+4. **効果境界での最適化**：#1174のEffect Fenceはread-onlyには要求しない。Writeでは既存Host/Provider側の条件付きTx/原子的version検査が使える範囲で統合する。atomic保証のないSaaS/APIでは、削減した検証で現在Authority/Receiptの虚偽保証を生まない。
+5. **診断と観測の低コスト化**：詳細Trace、Source map展開、diagnostic文面、全row logは必要なケースでのみ実体化する。エラー時に元Source span/安定コードを復元できる性質は維持。全製品共通のunsafeモードや任意の「認可OFF」フラグを導入しない。
+
+### 25.3 ベンチマーク／Conformanceを同じ入力で実行
+
+| ID | Baselineと最適化候補 | 独立Expected・停止条件 |
+| --- | --- | --- |
+| **PF-01 Decimal** | 動的Operator/型検査あり vs 静的Go専用計算、入力境界一回検査 | 3×19.995の厳密中間値59.985、丸め未指定拒否、正負tie、overflow、NULL、不対応modeの出力/拒否が同じ |
+| **PF-02 集合** | 1件/大量明細、empty complete/partial、重複・1:N fanoutで行ごと vs Batch/Stream | 集計のgrain/order/bag/presence/完全性が同じ。partialを全件真にしない |
+| **PF-03 Read** | 明示Scope/時点/Principalの複数Read vs Batch/Query Pushdown/Snapshot再利用 | 実Row/Field、否定/動的依存、RLSと時点の整合。速くても非可換な順序変更は不合格 |
+| **PF-04 Effect** | 現在権限・Target版・Commit/Receiptの通常経路 vs 条件付き更新で往復削減 | 許可・拒否・失効・Commit unknown・リトライで同一業務効果（試験範囲）。read-onlyには副作用Guardを載せない |
+| **PF-05 診断** | 詳細Trace/全件診断生成 vs 失敗時の遅延展開/限定Audit | 正常時低コスト、失敗時にSubject/診断ID/元位置/必要なReceiptを失わない |
+
+**性能指標**：p50/p95 latency、throughput ops/s、ns/opまたはms/op、B/op・allocs/op、CPU/GC、Provider roundtrip、cold start、検査実行回数。Source/Accepted Meaning/Operator/Generator/Go Toolchain、実Build/ロードbyte、データ量、Scope/epoch、OS/CPU/並列度、warm/cold、測定分散を固定し、実Goの純計算と外部Provider I/Oを別々に計測する。#2600のBuild/編集待ち時間と本節のRuntime latencyを混同しない。
+
+**採用規則**：まず同じ独立Expected、同じ拒否/unknown、同じ必要Effect証拠に合格し、その後に性能差を判定。性能目標・許容劣化はScenario/Targetごとに事前定義し、一律の数値を先行採用しない。未測定の高速化や実行資格を主張しない。既知の負例（Go Source/Build差、Decimal→string、partial=empty、A→B→A、Grant失効、Commit不明、Source/Artifact混在）のいずれかを見逃せば当該Guard削減は棄却。
+
+### 25.4 実証順序とOwner／未決定事項
+
+- **B0 検査配置を分類**：#988の純粋Operator、#2622のProvider境界、#1174の副作用境界について、compile-time／load-time／input-boundary／effect-boundary／diagnostic-onlyのどこで検証するかを既存受入票へ追記。仕様外・未知の保証は「省略可」にしない。
+- **B1 PF-01/02の限定Baseline/Fast path**：#988/PR #2639の既存Go Referenceに接続し、純粋計算の速度と意味を比較。手書きGoの比較結果を正式TEI Generatorの実装済証拠にしない。製品入口不明ならNOT RUN: missing concrete entry。
+- **B2 PF-03/04のProvider/Effect実測**：#2622/#1174/#1119の既存Ownerに引継ぎ。部分集合・時点・認可・Commit不明の意味を損なう場合、より高速な案でも棄却する。
+- **B3 性能採用・回帰**：#565のQuality Envelope（Subject/Revision/Runtime Target/Scenario/Measure/受入根拠/Evidence/状態）に結び、#2514の独立Oracle、#2595/#2600の実Source/Build/Consumer資格、#1163の一改訂Evidenceを参照。Guardを省略して誤判定したら対象最適化を戻し、古いReceiptと現在資格を分ける。開発/診断時の追加検証を製品Runtimeの常時コストにしない。
+
+**正式判断は未了**：どのGuardを省略・無効化してもよいかは、実Target/Providerが持つ保証とConformance・性能測定を見てOwnerが決める。静的/動的Plugin方式、Backend Generatorの正式API、共通Benchmark threshold、正式DSL構文、Product Runtimeの最適化実装を決定しない。本節はドキュメントのみであり、新しいGo/CLI/SQL/Provider/Hostベンチマーク、Go生成、CI、Owner意味受理はNOT RUN。
