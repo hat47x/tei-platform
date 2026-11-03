@@ -317,3 +317,56 @@ X-TEAからの**移植可能性を先に検証する設計候補**は、(a) Data
 **実行負担の抑制**：DSL編集時に字句/Source span/静的Binding、Load/Build時にRole/Operator/Source closureとArtifact版、実Provider/Host境界でGrant/Target/CAS/Commit/Receiptを確認する。**純粋関数の全呼出しへParser/外部参照再取得を追加しない**（#2667 `25）。CLI・Go単一バイナリ直接実行を標準とし、EKIは必要に応じたTask/資源委譲。業務Ownerの取消意味・実DB保存方式・Jobリトライ許容範囲はDSL/Source Nameから推測しない。
 
 **証拠資格**：#2770/#2771/#2773はmain実コードの分岐を**静的照合**したのみで、この設計追補による実SQL、PostgreSQL、実EKI/Studio/AI、Source Writer、同一O1 E2Eは**NOT RUN**。Count>0を返すこと自体を製品不具合と確定するものではなく、**Queryが対象/時点/Operationへ束縛されないまま広いEffect保証に使われると証拠不足**という反例である。正式DSL文法、Unicode Profile/実Target安全性、Owner受理は未決。
+
+## 13. Data Scriptから決定表への変換とImport／Schema変化の境界（2026-11-03・同一課題への実証集約）
+
+### 13.1 成熟した他レーン結果をDSLの一つの受入問題へ統合
+
+- [Buri/X-TEA横断Draft #2744](https://github.com/hat47x/tei-platform/pull/2744)の[Decision Workbook適合レビュー](https://github.com/hat47x/tei-platform/blob/work/buri-lifecycle-design-transfer-20261103/plan/design/DECISION_WORKBOOK_INTAKE_REVIEW_2026-11.md)は、**Excel/Markdown/Studioの決定表を新しい意味正本にしないこと**、現行`Validation`の`positive`から`>=0`を推測しないこと、`derivationref`の`Multiply`試作からLookup等の全演算対応を推測しないことを明記している。
+- [外部Reference Draft #2743](https://github.com/hat47x/tei-platform/pull/2743)とmain `internal/workspace/source_index.go` を照合すると、`BuildSourceIndexFromLoad` の**strict経路はImport宣言のあるWorkspaceで `ErrImportsNotBound` を返す**。これは「外部Importも含めたSource closureが完全に取得・索引化された」ことを示せない場合の**意図した拒否**であり、不具合修正と称して条件を除去してはならない。
+- [SQL静的意味計画 Draft #2778](https://github.com/hat47x/tei-platform/pull/2778)では、独立した限定実証として、同じ`NATURAL JOIN` SQLでもSchemaに共通列を追加すると結果集合が変わることを隔離SQLiteで確認し、別の実Go DerivedIR特性テストを追加した。**同一Source byte・同一Rule ID・同じ式の見た目でも、解決済みSchema/Relation/Operator版の変化で導出結果・依存Closureが変わり得る**。この二種の試行を実SQLGlot→Go→Data Scriptの一つのE2E合格へ合算しない。
+
+本書は上記の**表層と契約の対応確認**だけを担当する。決定表の演算意味は#988/#2620/#1129、外部Import実取得は#1017/#1018/#2743、SQL Schema/DerivedIRは#2778/#2622、独立Expectedは#2514、Trigger/Jobの実効果は#2744/#1174で管理する。
+
+### 13.2 一つの受注ScriptとDecision Tableを同じ条件で比較する
+
+**採用文法ではない比較用の疑似表記**。Domainは`sales.order`、入力`quantity`と`creditHold`、導出対象`amount`、業務上の取消/請求Trigger候補。先に独立Expectedを固定し、AIが短い表現へ変換した際にそのExpectedを再生成しない。
+
+~~~text
+// candidate source: 条件の順序を示す疑似スクリプト
+if quantity is NULL or NOT_FETCHED: UNKNOWN
+else if quantity < 0: REJECT("negative quantity")
+else if creditHold is NOT_FETCHED: UNKNOWN
+else if creditHold == true: REJECT("credit hold")
+else: SATISFIED
+~~~
+
+表へ変換するなら、各行の`Condition`/`Priority`/`Result`だけでなく、**ヒットポリシー（first/unique/collect等）、前提データの完全性、型/NULL・未取得、診断優先、エラーと短絡評価、副作用有無**を保持すること。元のScriptが`quantity < 0`で終わるとき、未取得`creditHold`を新たに評価するDecision Tableは、Read回数・診断・エラーを変え得る。表の短さによってこの差を隠さない。テーブル行の順序を移動しても同じ意味になるとは限らない。
+
+| 既存Caseの差分 | 固定入力・変更 | 独立Expectedと比較項目 |
+| --- | --- | --- |
+| GN/SF・XL-01 **負値と短絡** | quantity=-1、creditHoldは未取得 | 選択した明示評価契約では先にREJECT。全行一括評価で追加Readや未知/技術失敗が発生する場合、**変換同値を主張しない** |
+| GN/SF・XL-01 **取得不明** | quantity=2、creditHoldは未取得 | UNKNOWN。未取得をfalse・空値・許可に補完しない |
+| GN/SF・XL-01 **NULL** | quantity=explicit NULL、creditHold=true | UNKNOWN。Script/表の診断帰属を保ち、NULLを0にしない |
+| GN/SF・DT **規則重複** | quantity<0とcreditHold=trueが同時成立 | First-match/複数診断/Unique-hitを**Ownerが固定しなければ同値未確定**。表の並び順だけで安全性を推測しない |
+| XL-01 **境界値0** | quantity=0、`positive`と`>=0`の候補表現 | 元Ruleの厳密意味が不明なら**非負許可への自動変換をしない**。Canonicalの`positive`を`>=0`と同義扱いしない |
+| XL-02 **依存欠落** | amount=quantity×unitPrice、年度別rate Lookupが追加 | Lookupの型・時間・関係・Rule/Operator pin・`amount`依存を含める。Workbook列だけで完備したDependency DAGとは扱わない |
+| XS/SM **Schemaドリフト** | 受注O1/O2の同じSQLが、Schemaに`status`列追加後、結果2行→1行 | Source byte同一でも解決済みQuery/Schema依存が変わった。**仮想値true→falseを実Business Cancel Eventへ自動昇格しない**。#2778の個別実証に限定 |
+| GN/XS **Import閉包** | 外部Import宣言あり、正規`BuildSourceIndexFromLoad` strictを呼ぶ | 現mainの`ErrImportsNotBound`を**期待される停止**として扱う。別のProvider/Manifest/実Readerの束縛証拠なしにSource-closedとしない |
+| SF/GN **決定表編集** | 受理済みIDを保ったまま表の1行だけ変更、または行順変更／base_revision空／同じ名前が複数 | Source byte/occurrence、元糖衣構文、Scope、Rule ID、提案Diffを分ける。Workbookの空base_revisionを既存ツールが拒否するとは推測しない。**write前の再資格化・必要ならread-only** |
+
+**注意**：上表は既存GN/SF/XL/XS/SMの**適用Claimを明示した比較票**であり、新しいFixture体系、実Parser、実行器、Shared Acceptance操作やDecision表文法の採用ではない。Script疑似表記を現行TEI Parserで動くと主張しない。表/チェーン/Graphへの変換が**構造同値**と確認できても、RuleのPhase/短絡・副作用・Context/Source revisionが異なれば**意味同値は未証明**。
+
+### 13.3 個人OSS向けの最短実装順・Owner停止条件
+
+| 既存段階 | 次の具体作業／再利用先 | 終了と言える範囲と停止条件 |
+| --- | --- | --- |
+| **P0a** 実Sourceの境界 | main `internal/workspace/source_index.go`・既存Import拒否テスト、#2639実Language Reference、#2743のSource anchorを固定し、同一Source byte/strict/Provider/Manifest条件を記録 | **実Loaderの拒否の確認まで**。Import閉包/Version/Owner Meaningが未束縛ならここで停止 |
+| **P0b** 最小の構文比較 | Sourceを正規に解析できる部分だけ、Script/Markdown表/chainへ投影。表のPriority/Hit Policy、NULL/partial/短絡/Diagnostic/Source spanを固定Expectedへ照合 | 見た目の「低ノイズ」だけではPASSにしない。Go AST部分再利用は手段、構文採否はOwner |
+| **P1** 1箇所の編集Preview | 既存#2621/#2497/Source Fidelityの範囲でSource/Workbook表の一行変更と競合、base_revision空、NFC衝突を独立比較 | **Read-onlyまたはCandidate Patchまで**。実Writer/Shared Acceptanceが具体的に未接続なら`NOT IMPLEMENTED` |
+| **P2** 導出とSchema | #2778 SM-15/16、#2582/#2600、#2744 DS-01〜08へ接続。Schema/Import変更でも同じRule/SourceのQuery候補と現在意味資格を再評価 | SQL/Go/Providerの実消費版が一致しないClaimは`UNKNOWN`。Derived deltaからBusiness Eventを発火しない |
+| **P3** 外部Effect/Job | #1129/#1174/#1130と任意EKIの実Task/Attemptへ接続。OperationID/Target/Grant/Receipt/期限・リトライを別に追う | 実Commit/独立Read/Job Resultが揃うClaimに限定。参照Execute/SQL count>0/Task COMPLETEを業務確定へまとめない |
+
+**定義する必要があるOwner判断**：このValidationが`first`なのか全診断列挙なのか、順序によるエラー抑止を業務意味とするか、Flowの厳格Edgeとレベル再照合をどう使い分けるか、Schema/Query変更で再算定した値を過去業務状態の変化に読み替えてよいか、Workbookの編集をどのRole/Sourceへ書き戻すか。これらはAI比較の得点から自動採用しない。
+
+**今回の証拠状態**：上記コード・他レーンDraft・既存計画のread-only照合と本文追補のみ。Decision Table→実Parser/Rule、Excel/Studioからの実Source Writer、Import全閉包の確立、SQLGlot/Go/Provider一改訂、Flow/Job Effectは**本追補ではNOT RUN**。正式Syntax/Unicode Profile/新Schema/新Host/新Engine/Ownerの意味受理は**未決**。
