@@ -79,3 +79,47 @@ func TestOrgHeadlessSeparateMembershipFromOccupancy(t *testing.T) {
 		t.Fatal("native semantic model collapsed Membership and Occupancy")
 	}
 }
+
+// The third Data type deliberately has only a *semantic relation* to OrgUnit:
+// no Persistence mapping, no Policy/Grant binding, no derived Case read/write.
+// A relational path being authorable is not a runtime Row Level Security claim.
+func TestOrgHeadlessCaseRelationDoesNotAuthorizeReadOrWrite(t *testing.T) {
+	root := filepath.Join("..", "..", "reference", "org-headless-workspace")
+	loaded, err := workspace.Load(root)
+	if err != nil {
+		t.Fatalf("load real .tei workspace with CaseRecord: %v", err)
+	}
+	var found bool
+	for _, ns := range loaded.World.Semantics {
+		for _, data := range ns.Data {
+			if data.ID != "organization.case_record" {
+				continue
+			}
+			found = true
+			if len(data.Relations) != 1 {
+				t.Fatalf("CaseRecord must declare one typed OrgUnit relation: %+v", data.Relations)
+			}
+			rel := data.Relations[0]
+			if rel.Target != "organization.org_unit" || rel.Cardinality != "one" || len(rel.Keys) != 1 ||
+				rel.Keys[0].SourceAttribute != "organization.case_record.handling_unit_id" ||
+				rel.Keys[0].TargetAttribute != "organization.org_unit.org_unit_id" {
+				t.Fatalf("CaseRecord→OrgUnit must preserve explicitly authored key identity: %+v", rel)
+			}
+		}
+	}
+	if !found {
+		t.Fatal("CaseRecord did not survive actual .tei Parser/Loader")
+	}
+	surface, err := SurfaceWorkspace(root, "org_view")
+	if err != nil {
+		t.Fatalf("derive read-only operation surface: %v", err)
+	}
+	if surface.Effect != "read-only" || len(surface.Operations) != 2 {
+		t.Fatalf("unpersisted CaseRecord relationship must not create operations/grants: %+v", surface)
+	}
+	for _, op := range surface.Operations {
+		if op.Target == "organization.case_record" || len(op.Effects) != 0 || op.Binding != "" {
+			t.Fatalf("CaseRecord OrgUnit relation must not imply read, edit or Host authorization: %+v", op)
+		}
+	}
+}
