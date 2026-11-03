@@ -95,7 +95,11 @@ Layer 3   CUI／Studio／Skill／SHO／Targetへの用途別Projection
 
 本Referenceは、再現を要求する利用場面と、編集中の参照解決・表示を対照していない。両者を同じ必須条件にするかは未決であり、RB-24の「version-only Pin拒否」はこの合成試験の期待に限る。実際に同版の異なる実装が意味を変える例、既存Lockによる固定、差替え・更新・編集の負担を比較し、追加のFingerprintが必要な境界と不要な境界を決める。成果物の完全性確認や実行時の権限検査を省略するという意味ではない。
 
-**既存APIの限定対照**：`internal/plugin/logical_reference_lock_test.go` は、`modelref.Ref` を変更せず、環境のPlugin Lockを旧版と新版に切り替え、それぞれ指定した版を解決できることを検査する。同じ版のPlugin定義を変更すると旧Lockでは拒否されることも確認する。`modelref.Ref` と `plugin.Lock` を一つの試験から別々に呼んだ結果であり、Role解釈とLockが製品として統合されたこと、builtin実装のバイト列の照合、実際の編集負担や安全性を示すものではない。定義ごとにFingerprintを埋める比較方式や、実TEI CLIによる同一モデルの比較も未実施である。
+**既存APIの限定対照**：`internal/plugin/logical_reference_lock_test.go` は、`modelref.Ref` を変更せず、環境のPlugin Lockを旧版と新版に切り替え、それぞれ指定した版を解決できることを検査する。同じ版のPlugin定義を変更すると旧Lockでは拒否されることも確認する。`modelref.Ref` と `plugin.Lock` を一つの試験から別々に呼んだ結果であり、Role解釈とLockが製品として統合されたこと、builtin実装のバイト列の照合、実際の編集負担や安全性を示すものではない。
+
+**実CLIによる限定対照**：`cmd/tei/reference_lock_value_cli_test.go` は一時Workspaceに同じ型を3回参照する小さなモデルと、builtin Plugin・環境を作り、実CLIをビルドして起動する。型の基底を変更しても3参照を書き換えずに検証でき、モデルのWorld表示は変化した。別の属性を追加した場合もPlugin Lockは変わらず、Sourceの移動も検証できた。存在しない型への参照は診断された。Plugin定義の変更は旧Lockで拒否され、Lockを一つ作り直すと解決でき、モデルの参照は変わらなかった。
+
+比較案として、各参照に型宣言の**生バイト列のハッシュを直接保存する**方式を仮定すると、この型変更で3箇所のPinが古くなる。実際に算出した変更前後のSHA-256が異なることは試験するが、その方式の実装、更新の自動化、入力回数・時間や実作業の負担は測っていない。正規化した意味の指紋や間接参照では結果が異なり得る。実CLIが確認するのは特定の合成WorkspaceとPlugin定義の範囲であり、異なる実装バイナリの照合、正式Role解釈、実Provider実行、データ移行の妥当性は確認していない。型変更後に参照が解決することは、変更が業務上安全であるという意味ではない。
 
 [#2620 RE-01〜10](https://github.com/hat47x/tei-platform/issues/2620)と[TAI #271 QH-01〜18](https://github.com/hat47x/tai-pleroma/issues/271)の横断研究から、**同じRole ID/versionでも実装内容が変わり得る**という受入条件を具体化した。前段ReferenceはRoot/Eager依存先について**版文字列だけを比較**していたため、同じ版の実装差を見逃すという、あくまで**このFixture自身の不足**があった。正式TEI製品に当該欠陥があると断定するものではない。
 
