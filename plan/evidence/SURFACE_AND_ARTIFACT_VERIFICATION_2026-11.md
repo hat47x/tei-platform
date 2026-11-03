@@ -69,3 +69,23 @@ go run ./cmd/tei validate -workspace reference/standard-crud/workspace
 - 実際の能力呼出しを行うツールへの適用（`tools/reference-data-first-persistence` は未適用）
 - 実データベースでの期間と競合の確認（`TEI_TEST_POSTGRES_DSN` 未設定）
 - 期間の状態を誰が・いつ記録するかの運用（現状は JSON ファイルを運用者が置く想定）
+## 7. 効果の規則の確認（2026-11-03 追記）
+
+`effect-rule`（#1129）を P1〜P3 で実装し、ライブラリの範囲で確かめました。
+
+| 確認 | コマンド | 結果 |
+| --- | --- | --- |
+| 宣言の解析 | `go test ./internal/syntax -run EffectRule` | 通る |
+| 検証（6診断） | `go test ./internal/validation -run EffectRule` | 通る（正例は診断なし、負例は該当の診断） |
+| 操作面への反映 | `go test ./internal/operations -run EffectRules` | 通る（束縛された操作だけが規則を載せる） |
+| 成果物への反映 | `go test ./internal/artifact -run EffectRules` | 通る（`effect-rule` 行） |
+| 結末で証人にならない効果 | `go test ./internal/execution -run EffectsOutsideTransaction` | 通る |
+| 実行と観測の分離 | `go test ./internal/execution -run RunEffect` | 通る（成功コードだけでは `Observed` にならない） |
+| 記録 | `go test ./internal/effectlog` | 通る（往復・欠落・壊れた行） |
+| 補償の選択と実行 | `go test ./internal/execution -run 'Compensations|Compensate'` | 通る（同一の能力・同一のデータだけ） |
+| 観測（SQL） | `go test ./internal/execution -run SQLEffectObserver` | 通る（件数・零件・読取り失敗・未設定） |
+
+**確かめていないこと**
+- 実データベースでの効果の実行と観測（`TEI_TEST_POSTGRES_DSN` 未設定）
+- 効果の対象を特定する引数の組み立て（`Args` の実装）
+- 再試行の上限、補償の完了を待つ境界
