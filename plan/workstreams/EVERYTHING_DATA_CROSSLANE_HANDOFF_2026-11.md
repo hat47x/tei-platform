@@ -797,3 +797,55 @@ TAIのQH-01〜18は公開合成Nodeの有限試験であり、TEI実CLI／外部
 **ADR候補（番号未付与・未採用）**：`DSL Frontend Selection and Source Fidelity`。利用者可読性優先、FrontendとBackendの直交性、Semantic/Runtime契約の不変条件、棄却/切替条件、Go AST利用範囲を記録する案。既存ADR-0022（AI候補と意味受理）、ADR-0023（命令後独立Read）、ADR-0032/0033（構成・Plugin）、ADR-0043（TEI独自Hostなし）を変更・重複せず、#988の採否ゲートで検討する。
 
 **既存Issue/PRへの最小差分**：#988はFrontend→Semanticの不変条件とGo式/独自構文のPressureを所有。#2621はSource occurrence・版・原文往復/安定診断のOwner。#2514は独立Oracle・mutant・Claimの実用資格。PR #2639は現有9件の限定Go Referenceの証拠であり実Runtime試験のOwnerではない。#2600/#2595は依存閉包・実Build入力、#1129/#1174はEffect/Authority、#2667（本節）は横断引継ぎのみ。**この追補による新試験/新コード/新CI実行はNOT RUN。正式DSL文法・Parser方式・Schema・Owner受理は未決定。**
+
+## 23. DSL実装選択の実証順序――言語中立・原文保存・Bootstrap・現在資格を同時に守る（2026-11-03追補）
+
+> **計画／NOT RUN・NOT ACCEPTED。** 本節は§22の「可読性→意味契約→Go実行」を最新の別レーンへ接続する**差分のみ**。正式DSL Grammar・Unicode Profile・Go AST/Hybrid/独自Parser・公開API・Go生成器・Plugin方式を採用するものではない。#1119の既存Gateを増設せず、#988/#2514/#2621/#2600等のOwnerを変更しない。
+
+### 23.1 §22を補正する二つの条件（#2745との重複は参照で解消）
+
+1. **グローバル共通の言語中立構文**：§22の日本語「明細金額」「数量」等はローカルDomain識別子を表す**説明用例**であり、日本語の予約語や日本語専用DSLを正式候補にしない。初期評価の比較例は英語の軽量構文 `amount = quantity * unitPrice`、`lines |> where quantity > 0 |> sum(amount)` 等とし、`|>` 自体も未採用候補。日本語/他Unicode文字のローカルSymbolと表示言語は**構文比較と直交**して検証する。Goの `select` 予約語・`|>` 非対応を利用者へGo型宣言やGo固有語彙を強要する理由にしない。
+2. **個人OSSで現実的な利用者評価**：§22にある「業務専門家を集めた読解時間/正答率測定」は、将来、適格な協力者がいる場合の追加方法であって**今回のP0/P1完了条件ではない**。現時点の第一段階は、同じモデル/問題/解答を使う**AI支援の盲検的な表層比較**（構文ノイズ、概念提示順、局所修正箇所、曖昧性の指摘）と、独立Expectedによる機械Conformanceを分離する。AIの評価一致や推定読解時間を「ドメイン専門家が理解できた実測」と報告しない。比較の採否はOwnerが証拠を見て判断する。詳細なGN-01〜16/U0〜U4と五種類の名前の契約は[Draft #2745](https://github.com/hat47x/tei-platform/pull/2745)がOwner。**#2667からその文書を重複編集しない。**
+
+**現行制約**：既存`core/identity/id.go`のCanonical ID/Local NameはASCII制約。Unicode表層識別子を使うには、選択済みLanguage PluginのSource local Symbolと既存Canonical ModelRefの**明示Binding**を検証する。物理名、論理名、ローカルSymbol、Target生成Symbol、Stable IDを混同せず、翻訳・字面類似・NFCの自動正規化でMeaningを決めない。Studioの表示名切替はSource/Meaning/Targetを書き換えない。Unicode識別子のProfile、Bidi/Confusable警告、実ToolへのAI入力のAuthorityは別の受理対象（#988/#2621/#1124/#2515/#2516）。
+
+### 23.2 既存資産との責務と証拠段階
+
+| 境界・再利用先 | 確認した状態 | DSL PoCでの扱い／まだ言えないこと |
+| --- | --- | --- |
+| **#988** Language Plugin/Operator Contract | Pin、Source span、Operator/NULL等の**局所Reference報告**。正規Semantic Acceptanceと実Providerは別 | A Go式AST・B既存Parser/TEI独自構文・C Hybridで同じ**意味契約へ解決できる範囲**だけ比較。二重Resolverを作らない |
+| **merged #2638** Role Bootstrap | 有限Layer0、eager/deferred、推移Pin・実装identityの**合成Reference/設計文書がmainへ統合** | 同名Role/CarrierだけでFunction/Ruleを実行しない。Eager循環と未Pin推移依存は診断。正式Core bootstrap・全Plugin実動の実証ではない |
+| **merged #2674** Markdown Source Fidelity | Source sugar/コメント/改行等を守る**設計文書がmainへ統合** | Save≠Format、no-op書込みゼロ・byte不変、Occurrence単位の最小Patch、競合時read-only/Preview。実Source Writer/Studioの完了ではない |
+| **Draft #2639** Go Language Plugin cross-surface | EG-08/09で複数表層と型差反例を限定的に検証した旨のPR記録 | Binder出力/同IDの一致≠業務Meaning/NULL完全同値/増分Build再利用可。**現HEAD exact CIは別確認** |
+| **Draft #2745** 言語中立/Unicode/AI | 五名称・明示Binding・GN-01〜16・Owner比較の**設計候補** | 日本語DSL正式採用、Unicode Lexer実装、Studio表示切替、Prompt injection耐性は未実証 |
+| **#2600/#2595** Build/実Source束縛 | IB-01〜10、Go S4-00とScript ABAの既存残余試験計画 | DSL parse結果と**実Buildが読んだbyte/依存閉包**を区別。Digest/同値/局所PASSで再利用資格を推定しない |
+| **#2514/#1129/#1174** Expected/実Effect | 独立Oracleと保存/Authority/Receipt境界の既存Owner | Parsed・Semantic・Built・Evaluated・Persisted・Effect observedを別Claimとして扱う |
+
+### 23.3 追補すべき4本の反証型Fixture（新しいFixture群を量産しない）
+
+| ID（比較票ラベル） | 入力差分・反例 | 独立Expected／適用停止線 | 既存担当へ割付 |
+| --- | --- | --- | --- |
+| **DLX-01** 表層/表示と意味 | ASCII `amount = quantity * unitPrice`、別構文、UnicodeローカルSymbol版。さらに同じIDでDecimal型→String型（EG-09） | 明示PinとBindingが同じ**かつ**必要Role/Rule/型が同じ場合にのみ対象Claim相対の同値を比較。Unicode同形/翻訳からBindingしない。変更なしSaveはbyte一致、診断は元Source byte spanへ | #988、#2621、#2639 EG-09、#2745 GN-01/12/16 |
+| **DLX-02** Bootstrap/Reference鮮度 | Root Role Pinは有効だがeager依存Provider実装が未Pin、外部Referenced Sourceがmove/changed/offline/stale | 循環/未Pinは停止・diagnostic。移動/同byteはlocatorの再解決、内容変更は依存Meaning再検査。Offlineの旧Snapshotは過去の説明/限定評価に使えても**現在の受理・実行・開示資格には代えない**。取得状態とAccepted Meaningの履歴を分ける | #2620/#988（merged #2638参照）、#2621、#2600、SHO/MMI C-01/T2 |
+| **DLX-03** 部分集合・否定依存 | `lines |> where ... |> sum(...)`、0件complete vs 0件partial、未取得Field、動的Relation先変更、A→B→A | emptyが「存在しない」を意味するのは対象集合・Field/row completeness/Scope/時点が証明された時だけ。部分Readの局所反例は全称否定に使えても全件肯定は不可。末尾が同値でも動的/否定依存と現在資格は再評価 | #2514 C/M、#2622、#2600 IB-07/09/10、#2582 |
+| **DLX-04** Go生成/実効果 | 明細3×19.995の中間59.985、丸め未指定/明示mode、生成Goの型/演算/Source map、業務条件true後のProvider ACK喪失/Commit unknown | 丸め不明/未対応なら拒否。Go `float64`やゼロ値への黙示変換なし。生成後の独立Expectedとactual loaded artifactを照合。計算Got/Intent/Provider attempt/Commit status/独立Readは別Claim。ACKなしは「効果なし」とみなさず、無条件再試行しない | #2514 N/W、#2595/#2600、#1129/#1174、#2604 |
+
+**DLX-02のSource鮮度**：`fresh/stale/unavailable/partial/not-found/permission-denied`は外部Referenceの観測・診断を分類する**比較候補**。Source URL/Revision、fetch time、content fingerprint、Source occurrence、Cache、Owner受理の関係を照合する。内容A→B→Aで旧Observation/Receiptの履歴を残しても、現在利用資格を自動復活させない。新しいSource Registryやプロダクト共通Freshness Engineは導入しない。外部実取得・offline/権限喪失の実試験は**NOT RUN**。
+
+### 23.4 Go実装とPluginの最小境界
+
+- **Frontend**：既存Language Pluginで固定された文法選択→元Source occurrenceのToken/parse→変換候補。Go ASTは互換式の部分的技術に限る。バイト位置・Unicode境界・元構文/コメントは原Source側で管理。Bへ切替可能な中間表現を採用前のPoC範囲で比較。
+- **Semantic**：既存Canonical/Role/Operator/Validatorで型・Nullable、missing/not-fetched/withheld、grain/完全性、曖昧Relation、依存Pinを検査。syntax成功を意味受理に昇格しない。有限Bootstrapの解釈根は既存Lock/Resolverへ従属し、自己記述の循環で自身を正当化させない。
+- **Generation**：受理済みMeaningからGo単一バイナリ用SourceとSource map、Artifact/Toolchain依存を再現可能に生成する候補。構文Parser方式に固有のGo生成ルートを増やさない。.NET/Javaは必要時の追加Target。**静的合成/動的ロード/外部Processは更新・隔離・再現・Host認可の反例がそろうまで未決**（#951/#988）。
+- **Runtime/Provider**：計算の観測とCommit/独立Readを分離、read-only表示とaction executableも分離。TEI独自Host・中央Registry/Policy Engineを作らない。DSLの簡潔さがDBのSave phase、Provider capability、現在のHost認可を省略する根拠にはならない。
+
+### 23.5 既存計画への実行順とDone/Stopの区別
+
+| 順 | 実証・依存 | Doneと呼べる範囲 | 停止/Owner判断 |
+| --- | --- | --- | --- |
+| **P0** 版・Owner固定 | main統合済み#2638/#2674とDraft #2639/#2745/#2667、参照Source/Plugin/Model/Oracle版の一覧、existing Parser/Role/Source Ownerの再利用点を記録 | 古いCIや別HEADのPASSを転用しない。未受理/未Pin/未取得があればそのClaimをhold |
+| **P1** 人間向け構文比較 | 言語中立軽量DSL/Go式/Markdown/chainで同一Subject/Expected、AI支援による表層ノイズ・認知順序・局所編集の比較票（**人間の読解実測とは呼ばない**）、GN/Source negative | Go文法都合で専門語彙を曲げる・CのSource逆写像がBより複雑ならA/Cを棄却候補。正式GrammarはOwner待ち |
+| **P2** 既存Go Reference | DLC-01〜05とDLX-01〜03を既存#988/#2639/merged #2638/#2674に結び、実Parserの診断とSource位置、独立Expected・動的依存を照合 | 同じBinder結果のみで意味同値・現行資格・再Build skipを宣言しない。Parser/Writer/Source 実コード未到達ならNOT RUN |
+| **P3** 最小Go生成／実Consumption | DLC-06/DLX-04の純粋DecimalとNullabilityをGo単一バイナリで限定試験、実Build入力・ArtifactSet・Readerが読んだbyteを照合しExpectedと比較 | Runtime/Provider/DB/SHO/Host実行は別証拠。保存Actionは適切な既存Ownerへ引き渡す。構文採否には自動昇格しない |
+
+**既存文書との差分だけを更新**：本§23は§22の日本語例を言語中立構文へ再位置付けし、実際の人間被験者なしで行える比較へ補正した。国際化・Unicode詳細は[#2745](https://github.com/hat47x/tei-platform/pull/2745)、Source保存はmain統合[#2674](https://github.com/hat47x/tei-platform/pull/2674)、Bootstrapはmain統合[#2638](https://github.com/hat47x/tei-platform/pull/2638)を参照し再実装しない。ADR候補は§22に記載した無番号のDSL Frontend/Source Fidelity判断へ結果を引き渡すだけとし、既存ADR-0022/0023/0032/0033/0039/0043を勝手に変更しない。ConformanceのOracle/現在資格は#2514、増分/実Source帰属は#2600/#2595、実Effectは#1129/#1174。**本追補は計画文書のみ。新PoC、実Go CLI、実Provider、Studio/SHO/AI Harness、Unicodeの実Lexer、CI exact-HEAD、Owner受理はいずれもNOT RUN。**
