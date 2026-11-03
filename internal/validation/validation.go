@@ -301,6 +301,11 @@ func Validate(w ir.World) []Diagnostic {
 		if _, ok := semanticData[r.Target]; !ok {
 			out = append(out, errFor(subject.Subject{Kind: "semantic-relation", ID: string(r.ID)}, "UNKNOWN_SEMANTIC_RELATION_TARGET", "relation %s targets unknown semantic data %s", r.ID, r.Target))
 		}
+		switch r.OnDelete {
+		case "", "restrict", "cascade", "preserve":
+		default:
+			out = append(out, errFor(subject.Subject{Kind: "semantic-relation", ID: string(r.ID)}, "SEMANTIC_RELATION_ON_DELETE_UNSUPPORTED", "relation %s uses unsupported on-delete %s", r.ID, r.OnDelete))
+		}
 	}
 	semanticValueTypeExists := func(id core.CanonicalID) bool {
 		if _, ok := semanticData[id]; ok {

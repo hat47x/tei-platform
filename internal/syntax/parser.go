@@ -2064,11 +2064,20 @@ func (p *Parser) parseSemanticData(namespace core.CanonicalID) (semantic.Data, e
 				return d, p.errAt(rSym, err.Error())
 			}
 			rid, _ := core.ParseCanonicalID(string(id) + "." + rseg)
+			onDelete := ""
+			if nt, _ := p.peek(); nt.Text == "on-delete" {
+				_, _ = p.next()
+				policyTok, err := p.expect(TokenIdent)
+				if err != nil {
+					return d, err
+				}
+				onDelete = policyTok.Text
+			}
 			keys, err := p.parseSemanticRelationKeys()
 			if err != nil {
 				return d, err
 			}
-			d.Relations = append(d.Relations, semantic.Relation{ID: rid, Symbol: rSym.Text, Target: target, Cardinality: semantic.Cardinality(cardTok.Text), Keys: keys})
+			d.Relations = append(d.Relations, semantic.Relation{ID: rid, Symbol: rSym.Text, Target: target, Cardinality: semantic.Cardinality(cardTok.Text), Keys: keys, OnDelete: onDelete})
 		case "candidate-key":
 			key, err := p.parseSemanticCandidateKey(id)
 			if err != nil {
