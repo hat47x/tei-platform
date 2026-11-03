@@ -91,6 +91,10 @@ Layer 3   CUI／Studio／Skill／SHO／Targetへの用途別Projection
 
 ### 4.2 Exact implementation identityへの強化（RB-20〜24）
 
+**適用範囲の注意（2026-11-03）**：この節で比較するPinは、選択したRole実装とその起動時依存について、特定の実装を再現・照合するための候補である。業務定義から別の定義を参照するたびに、参照先の内容ハッシュをSourceへ記述する要件ではない。通常の定義間の関係は、既存の識別子・スコープ・型付き参照で扱う。実装の選択や版固定が必要な場合も、定義ごとに手入力させるのではなく、既存のWorkspace／Extension Lock等に集約できるかを先に確かめる。
+
+本Referenceは、再現を要求する利用場面と、編集中の参照解決・表示を対照していない。両者を同じ必須条件にするかは未決であり、RB-24の「version-only Pin拒否」はこの合成試験の期待に限る。実際に同版の異なる実装が意味を変える例、既存Lockによる固定、差替え・更新・編集の負担を比較し、追加のFingerprintが必要な境界と不要な境界を決める。成果物の完全性確認や実行時の権限検査を省略するという意味ではない。
+
 [#2620 RE-01〜10](https://github.com/hat47x/tei-platform/issues/2620)と[TAI #271 QH-01〜18](https://github.com/hat47x/tai-pleroma/issues/271)の横断研究から、**同じRole ID/versionでも実装内容が変わり得る**という受入条件を具体化した。前段ReferenceはRoot/Eager依存先について**版文字列だけを比較**していたため、同じ版の実装差を見逃すという、あくまで**このFixture自身の不足**があった。正式TEI製品に当該欠陥があると断定するものではない。
 
 そこで、各Role DescriptorとPinを、`version + contract fingerprint + actual implementation fingerprint`という**比較用の3軸**に拡張。Rootと推移するEager依存先の双方でexact照合を要求する。Fixtureのfingerprint文字列は**テストが与えたラベル**であり、現物バイトをSHA-256計算した真正なLock証拠ではない。実TEIへの接続時には、既存Extension Lock／Language Selectionが検証する**実Provider物・Pin対象・Implementation fingerprint**を利用し、自己申告Stringを信用しない。
