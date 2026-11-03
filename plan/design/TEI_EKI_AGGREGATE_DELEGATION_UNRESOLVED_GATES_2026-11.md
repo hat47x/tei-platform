@@ -126,7 +126,7 @@
 
 ### 7.1 時間と予算で変わる計画の受入条件
 
-[EKI Deadline/Budget/Recovery Coordinator](TEI_EKI_DEADLINE_BUDGET_RECOVERY_COORDINATION_2026-11.md)のLB-01〜16をDG-01〜14と接続する。未登録Pool/誤GPU class/MDM失効/下位Admission unknown等を避けた上で、**許容リードタイムと失敗後の残余時間を見積り、回復のための物理予算を残す**。費用だけ安いがDeadline/SLO未達の候補は最適としない。Estimatorの実績はPool/Time/Workload等級ごとにObservationとして保持し、少数サンプル/打切り・ドリフト・共通故障を扱う。EKI #108/#109/#140の採用済み要件に加える実装Gateであり、新しいPolicy Authority／Budget Registryは作らない。
+[EKI Deadline/Budget/Recovery Coordinator](TEI_EKI_DEADLINE_BUDGET_RECOVERY_COORDINATION_2026-11.md)のLB-01〜26をDG-01〜14と接続する。**LB-18〜26は複数Jobの予約競合、実回復Window予算、部門飢餓、期限未開始とEffect不明、複数Poolの共通障害、TEI業務Flowまでの完了境界を追加する。**未登録Pool/誤GPU class/MDM失効/下位Admission unknown等を避けた上で、**許容リードタイムと失敗後の残余時間を見積り、回復のための物理予算を残す**。費用だけ安いがDeadline/SLO未達の候補は最適としない。Estimatorの実績はPool/Time/Workload等級ごとにObservationとして保持し、少数サンプル/打切り・ドリフト・共通故障を扱う。EKI #108/#109/#140の採用済み要件に加える実装Gateであり、新しいPolicy Authority／Budget Registryは作らない。
 
 ## 8. 作業順・各Ownerへの引渡し・保留判断
 
