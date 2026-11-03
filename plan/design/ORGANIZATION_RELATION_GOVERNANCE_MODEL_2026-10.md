@@ -2191,3 +2191,84 @@ Providerの役割を、Authentication Assertion Reader（SAML/OIDC）、Director
 AIの初回応答は構築済み宣言ではなく、(a)単一のcommand階層＋兼務可能なMembership、(b)validAtと公表Revを使うFuture Preview、(c)HR所属とEntra Principalの属性別Connector候補、(d)下位部署の再帰Pathと承認Ruleの別Binding、(e)Owner確認が必要な「兼務先も承認するか」「組織改編を遡及訂正するか」、を提示する。標準部品で十分ならそれ以上の手入力を要求しない。
 
 適合性テストでは同じ組織Worldに対し、設定を一つだけ変えた場合のSource差分／生成差分／Previewと、変更すべきでない属性や権限の不変を独立Expectedで比較する。導入工数はPlugin選択数でなく、必要な質問数、手修正数、独立Test成功率、実Tool呼出とToken/時間、誤配線/誤権限の発生で評価する。最初の実Harness試行は公開合成Sourceのみで、秘密情報や実運用のIdP資格を前提にしない。
+
+## 58. 組織によるレコード可視性・参照専用を広域設定する：再帰Relation、例外、実Host認可を別契約にする（2026-11-03、#2386／Plugin横断、採用前）
+
+### 58.1 要件の読み替え：通常Dataを特別保護しないが、必要なApplicationでは広域Policyを一元化する
+
+組織Dataそのものは標準Data/Relationとして通常利用できる。一方、個々の業務Recordの`ownerOrg`／`handlingOrg`／`projectOrg`等との関係を辿って、**指定した業務Data群に対し組織関係由来の可視性・参照専用の要件を一括適用**したい企業はある。これは§57のOrganization Profile／Pluginが選択可能な**用途別Policy Binding**として扱う。特殊な全組織ACLや第二Hostを標準機能として強制しない。
+
+基本UXの想定は「特定のData/用途にOrganization Ruleを広く有効化し、業務上の例外だけ明示する」。設定はStudioで一か所に見えるようにし、各Data/Function/Query/ConsumerがどのRule・Organization軸・Source/Role版・例外の影響を受けるかをImpactとして展開できるようにする。ただし、**『適用対象から除外したRecord』＝『全員に公開』ではない**。これは当該Policyに対する`not-applicable`だけであり、残るHost/ProviderのRead/Disclosure/書込権限判定を通す。公開許可は別の明示的な業務・Host判断を要する。
+
+### 58.2 設定を直交する独立契約に分ける
+
+| 契約／設定項目 | 何を決めるか | 勝手に補完しないもの |
+| --- | --- | --- |
+| 適用範囲／Behavior | どのData型・Function/ConsumerのRecord/操作に、表示制限・参照のみ・特定操作可を適用するか | 全組織Data・全Applicationへの暗黙一括ACL |
+| Record→Org Relation Binding | Recordの責任Org・取扱Orgなど対象Relation occurrenceと必要Field/Join path、粒度・時点・Source | 列名やUI表示・Person所属からの推測 |
+| 対象Organization axis | command／budget／project等の型付き辺、起点Org、下位方向、有効/認知時点、選択版 | 階層名称が似た別軸・複数親の暗黙権限継承 |
+| Principal/Grant入力 | 現在の認証Principal、対象Scope、Hostから確認できたRead/Operation Grantと有効期間 | HR Membership/Directory Group/Role名から新Grant生成 |
+| 多重Org/階層のRule | Recordに複数Orgがある場合のany/all、単一親が必要かDAG可か、循環・越境・上限処理 | 未受理のany、無制限に他Tenantへ到達 |
+| 規則の合成・例外 | 明示Deny、Read-only化、特定Policyの適用除外、複数Ruleの優先、理由/Owner/有効期間 | `exclude`を許可、`read-only`を全外部開示許可、例外を時点無関係に継続 |
+| 物理Enforcement | Provider/外部Hostで必要なRead・Count・検索・書込経路に適用する条件と実Witness | TEIのPreview/Filter/Nodeの合成PASSから本番防御成立 |
+| Consumer・鮮度 | UI、SHO、AI、レポート、Batch等の実消費対象と開示/キャッシュ/表示済み資格 | 同じRecord表示や同じRole名から現在開示/実行許可 |
+
+**Policyを定義することと実際にアクセスを制限できることは別**。TEIは業務のScope Rule候補と型付きBinding・診断・生成可能なPolicy Projectionを担えるが、認可決定・Provider行制限・現在のGrant検証は利用する既存Host/専門Providerが実施する。Providerが効率的・完全な行制限を実装できない場合、ブラウザーに全件を読み込んだ後に隠す方式で代用しない。各Query/Report/Export/Batch経路を拒否または未対応として明示する。
+
+### 58.3 指揮命令の再帰パスは組織上の到達を表すだけ
+
+Record R1の取扱OrgがL1で、PolicyがD1以下のcommand階層に限定するとき、D1→L1の存在は**Organization Scopeの候補**である。R1の現在Readを許可するには、Recordの取扱Relation、現在Principal、Host Grant、他Policy、Read Routeを別に評価する。本人がD1所属、L1の上司、Directory GroupのMemberであるという事実だけからRead Grantを導出しない。
+
+**グラフの反例**：H→D1→L2とH→S→L2の二経路があれば「到達Node L2は一つ、Pathは二つ」と数える。厳密な単一親Profileなら多重親を診断するが、明示DAGを選んだProfileでは構造としては保持できる。別軸のD1→B（budget）はcommand配下へ含めない。L1→D1の循環、深さ制限、権限/同期不足で未取得の子、Tenant外のXへの辺は、到達不能の証明として扱わない。異なるSource/knownAtの辺を連結して存在しない一つの組織Pathを構築しない。
+
+**時間**：例示valid=2027-06-15、known=2027-07-01ではD1→L2が到達可能だが、known=07-03の遡及訂正でvalid=06-15の辺が除外される。H起点なら別のH→S→L2が残る場合もある。階層の到達は`root/axis/validAt/knownAt/Source-Graph Revision`の組に相対的であり、表示済み・キャッシュ・Queryの非出力Filter/EXISTSも再資格化する。ただし**現在Grant**は歴史組織のas-ofに巻き戻さない。
+
+### 58.4 一括適用と除外は「Policyの適用」と「効果」を分ける
+
+採用前の参照用判定：
+
+| 事象 | 組織Policy候補 | その先の必要条件 |
+| --- | --- | --- |
+| Scope内、標準Read | `eligible-for-read`の候補 | 実Host/Providerの現在Read許可・他Policy・実行時点 |
+| Scope外・必要Collection完全 | `deny-candidate`（対象Ruleに限る） | 実HostとのBinding／全RouteでEnforcement |
+| Relation/階層/Fieldが部分取得 | `unverified` | 安全な実行・開示は拒否/延期、Queryの実Readで補完 |
+| 指定Recordをread-onlyにする | Read候補は保つがUpdate候補を除く | 実Host側の現在Readと別のUpdate/Effect検証 |
+| 指定RecordをPolicy対象から外す | `not-applicable-to-this-policy` | **他Rule/Hostの判定に戻す。一般公開・Update許可ではない** |
+| Record固有の明示Deny | 当該Ruleの適用範囲内ではDenyが優先候補 | 他Ruleで覆す自動Allowを作らない |
+| Tenantを越えるLink/不明ID | 不整合/未解決としてReject/Diagnosis | 例外的越境が必要ならOwner/Hostが別Contract受理 |
+| 同じRecordの複数Org link | 明示受理したany/all、Owner Ruleに従う | 「兼務＝anyが当然」ではない。関係集合の完全性を確認 |
+
+通常の`Data Model`はあくまで通常Data。Policyの適用対象が未設定のDataへ、Org Linked Ruleを自動的に掛けない。一方、対象Recordでは**複数経路**（一覧・詳細・Query・外部API・Report・集計・検索・キャッシュ・Export・AI/SHO）から条件がすり抜けないことを、実Provider/Hostと消費先で立証する。表示後にJavaScriptで行を消すことだけでは防御にならない。ページング/全件数/存在判定/集約/NOT EXISTS/非表示列の読取りは特に別試験を要する。
+
+**例外とRule優先のOwner判断**：広域Default→用途/Record例外とするとき、`exclude`がどの一つのPolicyからの除外か、他Policy・個別Deny・上位Hostの許可がどう合成されるかを明示する。保守的な拒否優先を検証候補とするが、既存HostのPolicy Engineの組成規則をTEIが勝手に上書きしない。特別保護されたFieldの取扱いも別Contractであり、`read-only`は情報開示が広がる根拠ではない。
+
+### 58.5 標準Data Operations・Studio・Function Data Contextと接続する順序
+
+1. **Meaning/Plugin**（#2386/#951/#2619/#2510）：Organization Profileが標準Hierarchy Relation/Record→Org link/Rule Parameterを宣言し、AIは「特定Data型で一括有効」「一部Recordは参照専用」「特定Recordは適用除外」を提案/差分表示する。原Source/Role/Plugin VersionとOwner承認を固定する。新Core enumや第二Permission Registryは作らない。
+2. **明示Context**（#2506/#1126/#2622）：Functionが必要なRelation path/Field/Scope/Consumerを明示。Hierarchy traversalは複数経路、循環、時点、未知Readを扱い、無宣言Fetchや列名による近道を行わない。通常ReadのData Operationsと物理Enforcement契約を分離する。
+3. **Query/実Provider**（#2387/#2635/#2628/#2611）：WHERE/ORDER/EXISTS/NOT EXISTSやRowsetの完全性、Providerの実Read Witness、Policy施行対象、paging/count/aggregationの実結果を同じRead attemptで観測。Provider別にRDB RLS・API Filter・専用Host Boundary等の既存方式への実現適合を比較。適用できないRouteを黙って通さない。
+4. **Consumer**（#2582/#2631/#2516/SHO）：Studioには「広域Rule・例外・依存対象の影響一覧」を統合表示できる候補を持たせる。現在表示と過去公開SHOの版を分け、Read可能だがUpdate不可と未検証を誤認させない。AI用文脈へのSecret/特別保護Field/非許可Recordの露出、診断文や件数からの漏れも別検証する。
+5. **実Action**（#2598/#1174/#1129）：read-only候補をUpdate/Unlink/承認Actionに変換しない。Owner承認、現在Principal/Grant、実Target/Context epoch/Version、Effect Receipt/独立post-imageで資格を検証する。既存外部Hostの認可を尊重する。
+6. **EKI連携の限界**：EKIがジョブとしてTEIのRead/Reportを配置する場合、ジョブPrincipal/Delegationと利用Dataの実Read/Disclosure許可を最新資格で照合し、過去のOrg階層やJob割当てからGrantを生成しない。TEIはJob構成・業務意味、EKIは配置・再試行・リードタイム/予算最適化、実Provider/Hostは最終Access/Effectを所有。再試行時も失効済Grant/Sourceを再利用しない。
+
+### 58.6 実行可能なE0 PressureとE2/E4への不足証拠
+
+[独立Draft #2781](https://github.com/hat47x/tei-platform/pull/2781)に`reference/org-semantic-views/verify-transitive-record-policy.mjs`の**VP-01〜30**を作成。単純Hierarchyだけでなくtyped Axis/DAG/複数Path/Cycle/Depth/Tenant、record-link完全性、any/all、global Policyの対象Data Kind、read-only・exclusion・deny、valid/known訂正、Source/Policy/Grant Epoch、ExportとPage/Countの非証明を検証する。**最初のV8互換Runnerの局所30/30 PASS**は合成E0のみで、Node exact-headの合格は別確認。Workflowへ新スクリプトのBlob/Node Testを追加した。ここでの`synthetic-host-candidate`は**架空の入力だけで実Host認可の成功証拠ではない**。
+
+実製品での受入反例（新機構の採用前）：
+
+| Trial | 実際に必要な試験 | 受入失敗・保留条件 |
+| --- | --- | --- |
+| ORG-SEC-E2-01 | 同一DataでPolicy ON/OFF、Org配下1件・別Scope1件の実Provider取得 | Policy ONでもRDB/APIが全件返す、UIでだけ隠す |
+| ORG-SEC-E2-02 | 同じPolicyでList/Detail/Count/Page/Filter/Join/Report/Exportの実Read | 未対応Routeからの行/件数漏洩、非表示依存の誤利用 |
+| ORG-SEC-E2-03 | 二所属・多重Path・循環・複数親・partial同期 | 同一Recordの二重加算・無限走査・partial0件を未所属確定 |
+| ORG-SEC-E2-04 | Read-only例外、Update/Unlinkの実Request | View表示成功からWrite/Effectを許可 |
+| ORG-SEC-E2-05 | Policy適用除外のRecordと他Policy/Host Denyが共存 | `exclude`からpublic/allow/bypassを生成 |
+| ORG-SEC-E2-06 | valid/known/Policy/Grant/Role版と既表示Cacheの変化 | 昨日のPermission/Sourceから現行Readを許可 |
+| ORG-SEC-E2-07 | Tenant外の同名Org/Directory Group/未知External ID | Scope/Identityを跨いで許可、受理ないCrosswalk |
+| ORG-SEC-E2-08 | SHO/AI/Batch/API/別Providerへの開示とRead Witness | 画面に出ない非許可RecordやSecret/件数を渡す |
+| ORG-SEC-E4-09 | 実HostのGrant/Principal/SoD、Commit/Receipt/post-image | 合成Policy Eligibleを実行許可・確定成功として記録 |
+
+**受入票**：Source/Policy/Plugin/Owner Revision、Data Kind/Record→Org Relation pathとOccurrence、axis/root/valid/known、Host Principal/Grant Scope/Epoch、例外の適用対象と優先Rule、Provider actual read＋施行点、Query/Consumer/Cache/Count/Disclosure、候補Read/Writeと実Host判定、試験Runner/HEADとOwner採否。既存Evidence参照で構成し、巨大な共通Policy DTO/Policy Engineを先行導入しない。
+
+**停止線**：現在の#2681 E1 Native、#2779 E0 Transition、#2781 E0 Visibilityは別World/Run。これらの成功を実RLS/DB Enforcement、外部API/Host/Studio/SHO、正式Owner Meaning受理や製品E2Eへ昇格しない。実Provider内の制約を観測できない場合は`NOT RUN: enforcement-unavailable`、部分同期/権限不明は`unverified`、Owner未判断のPolicy Priority/any/all/例外は`not accepted`として扱う。実装は#1119の既存P0-a/P0-b/Owner-write優先を維持する。
