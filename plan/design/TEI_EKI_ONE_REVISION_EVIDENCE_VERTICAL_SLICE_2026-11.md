@@ -90,7 +90,7 @@ TEI Data Model/Scriptの`ready`仮想状態を想定し、`false→true`の業�
 | **VS-13** Service/Flow非常駐 | TEI CLI終了、EKI稼働、未登録Guardを含む後続Flow、Callback後着 | EKI Taskは続行できてもTEI業務Guardは推定実行しない。Coordinator実在とどこで停止するかを表示 |
 | **VS-14** No distribution / disclosure | 同一Pure JobはDirectの方が低費用、一般利用者に下位Node数非開示 | `DIRECT`正常結果。EKIの内部Trust/Pool inventory/Topologyは予測詳細やAI prompt/SHO/Tooltipで漏らさない |
 
-**受理境界**：VS-01〜22の独立ExpectedはOwner／実Providerの振る舞いから先に固定し、TEI生成RuleやEKI Schedulerの予測から自動算出しない。Source-static／synthetic pure／real CLI／real EKI Native／real Provider／real Business Commit／real external Consumerの各資格を**合格件数で加算せず、行ごとに確認**する。2026-11-03時点、この追加14件は**全件NOT RUN**。
+**受理境界**：VS-01〜32の独立ExpectedはOwner／実Providerの振る舞いから先に固定し、TEI生成RuleやEKI Schedulerの予測から自動算出しない。Source-static／synthetic pure／real CLI／real EKI Native／real Provider／real Business Commit／real external Consumerの各資格を**合格件数で加算せず、行ごとに確認**する。2026-11-03時点、この追加14件は**全件NOT RUN**。
 
 ## 7. 「実装する価値がある最小切片」への統合順とOwners
 
@@ -166,7 +166,7 @@ TEI Data Model/Scriptの`ready`仮想状態を想定し、`false→true`の業�
 | **VS-21 Deferred Quality Deadline** | EKI Result 09:59 Verified、Quality Audit Deadline10:05、Auditは10:08又は取得不明 | EKI期限内完了とBusiness Quality期限達成を分離。Owner許可なしにRequired検査をDeferredへ変更しない |
 | **VS-22 AI・Disclosure/Perf** | AIがGraph非開示ノード数/生ログを求め、性能重視でFull Scope検査省略を提案 | `permitted_disclosure_scope`を守り、最低限の実Host Grant/CAS/Effect Fenceは省略しない。Deferred化はOwnerにより採用された範囲のみ |
 
-**採用・停止**：VS-01〜22はあくまで本稿の独立Expected候補。PR #2667/#2616/#2780/#2781の既存試験と本稿の試験を**重複成果と数えない**。V0にはBuild/Entry/Scope/Qualityの受入票を加えるが、V2（EKI Native I/O）が未達なら本稿全体を`TEI→EKI製品実証完了`と呼ばない。Source-static/限定Go Characterization/合成Scope/独立Provider Receiptはそれぞれ異なる証拠資格である。
+**採用・停止**：VS-01〜32はあくまで本稿の独立Expected候補。PR #2667/#2616/#2780/#2781の既存試験と本稿の試験を**重複成果と数えない**。V0にはBuild/Entry/Scope/Qualityの受入票を加えるが、V2（EKI Native I/O）が未達なら本稿全体を`TEI→EKI製品実証完了`と呼ばない。Source-static/限定Go Characterization/合成Scope/独立Provider Receiptはそれぞれ異なる証拠資格である。
 
 ## 12. 現行EKI main再照合：旧Spike/Issueの未実装判定を再資格化する（2026-11-03）
 
@@ -209,3 +209,55 @@ TEI Data Model/Scriptの`ready`仮想状態を想定し、`false→true`の業�
 - [TEI #1130](https://github.com/hat47x/tei-platform/issues/1130)／[#2616](https://github.com/hat47x/tei-platform/pull/2616)／[#2667](https://github.com/hat47x/tei-platform/pull/2667)：W-1の`Source/Artifact/Entry/Input/Expected`を固定し、**まずRE-02〜06と一つのDirect Go T0の独立比較**を行う。実Provider/Business Commitへの拡張はそれぞれのOwner Gatewayを通る。
 - **適合完了の判定**：`Source implemented`／`test source exists`／`actual Go test PASS on exact HEAD`／`real process in test profile`／`product-only process no manual setup`／`actual TEI Job/Result body`／`managed provider pool`／`business commit/owner acceptance`を別列で管理。欠落がある工程から先へ「完成」を伝播しない。
 
+
+## 13. TEI RunPlan実装とEKI Attemptを接合する際の再開・部分結果の境界（2026-11-04）
+
+**直近の実装を踏まえた再評価。** TEI [#2798](https://github.com/hat47x/tei-platform/pull/2798)/[#2802](https://github.com/hat47x/tei-platform/pull/2802)/[#2805](https://github.com/hat47x/tei-platform/pull/2805)/[#2807](https://github.com/hat47x/tei-platform/pull/2807)はclosedで、現`main`の[`internal/execution/runplan.go`](https://github.com/hat47x/tei-platform/blob/main/internal/execution/runplan.go)には`RunPlan`が`semantic.RunPlan`のOperations順に`StepFunc`を呼び、`runlog.File` Journalに完了Stepを記録し、中断時に既完了Stepを飛ばす実装がある。[`internal/runlog/runlog.go`](https://github.com/hat47x/tei-platform/blob/main/internal/runlog/runlog.go)は`RunKey(planID,keyValues)`、`Attempt/FenceEpoch`、`Owns`を持つ。実行結果は`StepFunc`が返した`resolved/unresolved`で判定する。**このSource上の実装は前稿の「Headless Batch未実装」という一般化を修正するが、実Provider業務Effect・外部EKI成功・自動安全復旧の証明ではない。**
+
+**重要な未証明境界：**
+1. **Stepの意味・実行資格**：`RunPlan`自体はOperation IDを`StepFunc`へ渡す汎用進行器。Stepが何を実行したか、誰がCurrent Grantを与えたか、External ProviderがCommitしたか、Source/Artifact/MeaningのRevisionが同じかは`RunPlan`が保証しない。`StepResult.Status="resolved"`は業務Receiptではない。
+2. **Journalの永続性と競合**：`runlog.File.Append`はJSON Lines追記であり、`Last`を読んで`Decide`する経路に「同時別プロセスが同じRunKeyを開始／再開しない」ためのCAS/transactionは**Sourceでは確認できない**。存在する`Owns(last,attempt,fenceEpoch)`も各実Effectの直前にRunnerから検査される実装ではない。**Fence値が存在する＝外部効果が古いAttemptから拒否される、ではない**。単一Caller向けの参照実装と分散実行契約を別に扱う。
+3. **Crash window**：`step(ctx,operation)`の実ProviderがCommit済みでも、`journal.Append`前にCrashすると、そのStepは未完了と見える。再開時のskip規則だけでは二重Effectを防げない。事前に業務OperationID/Effect Fence/Idempotency/Provider Lookupの契約が必要。`Append`済みでもOutput bytes・品質検証・Business Receiptが無ければEKIに`completed`を送れない。
+4. **版と順序**：現在のRunKeyはPlanID＋Key値であり、`runlog.Record`の主な永続情報は`PlanID,Key,Attempt,FenceEpoch,Status,Steps`。**Plan Definition/Source/Executable ArtifactのRevisionやStep順序・契約はRecordで固定されていない**。再開時に同一PlanIDのStep集合/順序が変われば、`Steps`照合で旧Stepだけを飛ばす一方、新Rule/引数で残りが走り得る。再開の前にSource/Meaning/Artifact/Profileの適合を既存Build/Receiptから照合し、不一致時は安全側停止・明示Migrationを要求する。**中央Run Registryや新公開schemaを前提にしない**。
+5. **TEIとEKIのFenceは異なる**：TEI`RunKey/attempt/fenceEpoch`は同じ実行計画の進捗資格、EKI`TaskID/Attempt/Lease/fence`は委任先Workerの物理実行権限。数値が同じでも等価でなく、どちらかのFenceの更新は他方のEffect/Grantを自動失効させない。`FlowStep/OperationID ↔ EKI TaskID/AttemptID ↔ Provider ExecutionRef`の相関を必要とするが、EKIにTEIのBusiness Flow意味・Step Ledgerを持たせない。
+6. **委任先による内部Retry**：[EKI #115](https://github.com/hat47x/eki-fabric/issues/115)のRQ-054はopen。Cloud Function/QueueやManaged HPCが内部Retryを制御できないとき、副作用あり／再実行根拠不明なStepは配置せず`unsupported/held`。EKI外側の再投入、Provider内部のretry、TEI Plan Resumeを足し合わせて同一Effectを複製しない。
+7. **EKIの実Task phase**：[EKI #267](https://github.com/hat47x/eki-fabric/issues/267)、[#381](https://github.com/hat47x/eki-fabric/issues/381)、[PR #695](https://github.com/hat47x/eki-fabric/pull/695)はclosed。現`main`では`admitted→ready→active`を配置側、`active→verifying`をClaim受理側のCASで扱い、拒否後に`active→ready`/Exhaustedへ戻す経路とテストを確認している。#695はWSL clean cloneで`./scripts/verify.sh` PASSと報告。**前稿の「readyへは試験が手動CASしないと移れない」は現在の全構成の未実装判定ではない**。ただしTEI JobのOutput/Provider Business Commit/Group Outcomeには別受入が必要。
+8. **EKIのTrust修正**：[EKI #466](https://github.com/hat47x/eki-fabric/issues/466)/[#467](https://github.com/hat47x/eki-fabric/issues/467)はclosed、[PR #678](https://github.com/hat47x/eki-fabric/pull/678)/[#675](https://github.com/hat47x/eki-fabric/pull/675)の修正・個別試験が報告されている。**旧Source-staticの二重fingerprint／読取障害のsilent bypassを現在の未修正不具合として扱わない**。更新・Issuer失効・Agentの真正検証までの実運用は別Gate。
+9. **Task GroupとPlanは異なる**：[EKI #126](https://github.com/hat47x/eki-fabric/issues/126)はopenで、予算・期限・取消・部分的な結果をTask群として束ねる契約の検討段階。TEI RunPlanは**順序付き業務Operation**であり、Task Groupは**複数独立Taskの資源・期限・部分結果の集約**。一つのJobが多数の評価Taskを含む場合でも、EKI Group APIが完成したと見なさない。初期はTEI側の非Authority集約表示と既存Task/Result IDの関係だけで比較し、EKI Groupの予算・取消等の強い一体性は#126 Ownerが受理するまで主張しない。
+
+### 13.1 三層の再試行で守る不変条件
+
+| 階層 | 実行/結果の所有者 | Retry/Resumeしてよい条件・影響 |
+| --- | --- | --- |
+| TEI Plan／Flow | 業務Meaning/Operation、Stepの依存・品質・Commit期限、結果採用とSource Revision | RunPlanの再開は既完了Stepの**記録**を読み飛ばすだけ。未記録Effect／Source改版／Unknown CommitならHost/Provider Lookup＋Owner受理までhold |
+| EKI Task／Attempt | タスクの受理・能力/Policy・Lease/Fence・Worker Claim/Result、BUD-1/Recovery Window | Retryable/Effect Class/残予算・最新Admission、旧AttemptのEffect照合と独立に判断。TEIの全Flow StepをEKI内部Schedulerへ転送しない |
+| 外部Provider Job／Reservation | Cloud/HPC等が持つ内部ExecutionRef・Queue・preemption・internal retry・課金 | 内部Retryを停止/観測できるかProvider Contractで確認。Provider成功Report≠TEI Business Commit、ACK unknownなら追加Job発行前にLookup |
+
+**初期の安全な接続**は、再実行可能・副作用なしの一つのStepを、1つのEKI Task/Attemptへ委譲し、実Output body/digest/独立Expectedを取得すること。**副作用ありStepのResume/EKI Retry/Provider内部Retryを同時には有効化しない。** 通信不能時の`unknown`を単なる「未実行」に変換しない。
+
+### 13.2 追加の固定反証（VS-23〜32、全件NOT RUN）
+
+| Case | 故障・対照入力 | Independent Expected／保留条件 |
+| --- | --- | --- |
+| **VS-23 Journal commit gap** | TEI Stepの外部EffectはCommitted、直後Crashで`runlog.Append(resolved)`未達 | 再開しても無条件にStepを再実行しない。Business OperationID/Provider Receiptと照合、未知ならhold |
+| **VS-24 Duplicate runners** | 同じRunKeyを別プロセスが同時に`Last→Start`。Fileに両方`attempt=1/fence=1` | File Journalの現在実装だけでexclusiveとは主張しない。実Process/CAS OwnerのGateまで副作用Stepを同時実行不可 |
+| **VS-25 Plan edit while paused** | 同じPlanIDでv1はA→B、再開前にv2でA→C→Bへ変更 | 旧Step Aの記録だけで新C/Bを勝手に続行せず、Meaning/Artifact/Step Contract一致を受理するまで停止 |
+| **VS-26 Fence mismatch across planes** | TEI Run attempt 2/fence 2、EKI Task Attempt 1/fence 7、Provider JobRef-X | 独立Identity/Currentnessを検査し、整数の一致で横断Grant/Resultを認めない |
+| **VS-27 Provider internal retry** | 副作用ありJobをProviderが自動2回再実行可能、TEIもResume、EKIもRetry | EKI #115が求める内部Retry制御がなければ配置しない。最終のBusiness Effectは二重実行しない |
+| **VS-28 EKI phase source progress** | 現`main`の`admitted→ready→active→verifying→terminal`、失敗→ready・同時Cancel | #267/#381の報告済みPASSと本稿の再試験を区別。CAS失敗・reconcile後も二重AcceptedResultなし |
+| **VS-29 Trust false-positive** | Bundle I/O ErrorまたはDER fingerprint違いで旧イシュー文を参照 | 新Source/修正済PRで拒否・移行を再評価し、過去のIssueだけから未修正と断定しない |
+| **VS-30 Task Group partial** | 10 Taskのうち6 verified、2 failed、2 unknown、期限終了 | 成功数6、失敗2、不明2を保持。10/10正常完了やunknown=空結果としない。グループ全体の完了認定はOwner受理範囲に限定 |
+| **VS-31 Group budget and duplicate** | 10個のTaskを2系統Providerへ投入。5件は完了後に重複Callback、3件は未実行、合算Budget不足 | 重複Callbackで完了数・消費予算を二重計上しない。BUD-1をグループの擬似台帳で置換せず、不足時は実予算Gateで止める |
+| **VS-32 Partial utility/quality** | 100件の候補評価中80件成功。業務品質は「全100件必須」と「20件以上の独立候補で可」が別Job | 前者のBusiness PASS不可、後者は選定された母集団/証拠/Qualityを満たす範囲でだけ部分成果利用可。分母100を無かったことにしない |
+
+**独立Oracle**：VS-23〜32は既存[TEI #2514](https://github.com/hat47x/tei-platform/issues/2514)、[EKI #57](https://github.com/hat47x/eki-fabric/issues/57)/[#126](https://github.com/hat47x/eki-fabric/issues/126)/[#115](https://github.com/hat47x/eki-fabric/issues/115)の受入へ**差分を引き渡す**。この文書に新Runner、新Task Group正式Schema、新Hostや中央Receipt Registryを作らず、未採用の分布推定・Deadline確率・3段再試行自動Policyを既存実装済みとして扱わない。
+
+### 13.3 最小受入順序とGateの更新
+
+**V1’（実Go/RunPlanの限定証拠）**：`runplan.go`の既存Step進行と`runlog.go`のRunKey/Steps/Attempt/Fenceを正本とした固定Direct/Pure fixtureで、記録・再開・改版・2プロセス競合を独立Expectedへ照合。現GoのPR試験PASS（既存報告）と新VSの`NOT RUN`を別資格として保持。業務Providerの効果・許可は未証明。
+
+**V2’（EKI Nativeの現在実装へ合わせる）**：以前の「Taskがreadyに動かない」「Trust旧二件未修正」を停止理由にしない。#267/#381/#695のTask phase実装とAcceptedResult Store/Output bodyを既存Sourceに基づき再資格化し、Input Artifact外部登録・TEI Per-Job Executor binding／Product-only Result E2Eを独立に調べる。
+
+**V3’（Managed Pool/Task GroupはOwner別）**：#115の内部Retry無効化/観測、#126の一群予算/取消/期限・部分結果の契約、#67のCluster Provider、#155のRecovery Fairnessを別Gateにする。現Task APIの複数呼出し結果をTEIで束ねても、EKI-native Group DeadlineやGroup Budgetの実装済み主張はしない。
+
+**Stop**：直接Go/RunPlanのStep resolvedがあるだけ、同名RunKeyにPlan変更がある、同じPlanへ別プロセス同時起動、External Effect/Provider ACK unknown、Task Groupの部分結果のQuality Scope不明、EKI Trust/Policyの現在Revision不明、EKI Result body/TEI Business Receipt未取得のいずれかで、最終的な`finished/assured`表示へ昇格しない。
