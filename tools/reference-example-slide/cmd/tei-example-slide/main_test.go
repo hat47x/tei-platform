@@ -287,7 +287,7 @@ func modelSourceCLIInputs(t *testing.T) (string, string, string) {
 	if err := os.MkdirAll(filepath.Join(root, "semantic"), 0700); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(root, "tei.workspace.yaml"), []byte("workspace:\n  sources:\n    - semantic\n"), 0600); err != nil {
+	if err := os.WriteFile(filepath.Join(root, "tei.workspace.yaml"), []byte("workspace:\nformatVersion: 1\n  sources:\n    - semantic\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
 	source := []byte("namespace sales\n\ndata Child {\n    attribute businessCode type std.identifier\n}\n")

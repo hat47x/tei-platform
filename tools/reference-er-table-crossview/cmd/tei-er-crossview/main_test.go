@@ -11,7 +11,7 @@ import (
 
 func TestCLIExportsSourceWorkspaceOnlyToExplicitNewPrivateFile(t *testing.T) {
 	root := t.TempDir()
-	if err := os.WriteFile(filepath.Join(root, "tei.workspace.yaml"), []byte("workspace: er_crossview_test\nsources:\n  - semantic\n"), 0600); err != nil {
+	if err := os.WriteFile(filepath.Join(root, "tei.workspace.yaml"), []byte("workspace: er_crossview_test\nformatVersion: 1\nsources:\n  - semantic\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
 	dir := filepath.Join(root, "semantic", "sales")
