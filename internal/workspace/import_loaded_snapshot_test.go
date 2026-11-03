@@ -1,7 +1,8 @@
-package workspace_test
+package workspace
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"os"
 	"path/filepath"
@@ -9,20 +10,19 @@ import (
 	"testing"
 
 	"tei/internal/sourceindex"
-	"tei/internal/workspace"
 )
 
 // A selected provider Namespace has a concrete parsed-byte witness from its
 // ORIGINAL nested Load. The witness stays unchanged after the physical files
 // move or change; a fresh navigation observation is a separate operation.
 func TestImportedParsedLoadSnapshotRetainsSameLoadBytesWithoutReread(t *testing.T) {
-	consumer, provider := externalPair(t)
+	consumer, provider := importedEvidenceFixturePair(t)
 	manifestPath := filepath.Join(provider, "tei.workspace.yaml")
 	parsedPath := filepath.Join(provider, "semantic/os/process.tei")
 	secondPath := filepath.Join(provider, "semantic/os/thread.tei")
 	unrelatedPath := filepath.Join(provider, "semantic/unrelated.tei")
-	writeExternalFixture(t, secondPath, "namespace os\n\ntype ThreadId from std.identifier\n")
-	writeExternalFixture(t, unrelatedPath, "namespace unrelated\n\ntype SecretId from std.identifier\n")
+	writeImportedEvidenceFixture(t, secondPath, "namespace os\n\ntype ThreadId from std.identifier\n")
+	writeImportedEvidenceFixture(t, unrelatedPath, "namespace unrelated\n\ntype SecretId from std.identifier\n")
 
 	manifestBefore, err := os.ReadFile(manifestPath)
 	if err != nil {
@@ -36,14 +36,28 @@ func TestImportedParsedLoadSnapshotRetainsSameLoadBytesWithoutReread(t *testing.
 	if err != nil {
 		t.Fatal(err)
 	}
-	loaded, err := workspace.Load(consumer)
+	loaded, err := Load(consumer)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(loaded.Imports) != 1 {
 		t.Fatalf("expected one imported Namespace: %+v", loaded.Imports)
 	}
-	evidence, read, err := workspace.ImportedParsedLoadSnapshot(loaded, "os")
+	// Public projection contains only location/fingerprints; import by itself
+	// cannot authorize disclosure of Provider Source or Manifest text.
+	public, err := DescribeImportedParsedLoad(loaded, "os")
+	if err != nil {
+		t.Fatal(err)
+	}
+	encoded, err := json.Marshal(public)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if bytes.Contains(encoded, []byte("ThreadId")) ||
+		bytes.Contains(encoded, []byte("workspace: provider")) {
+		t.Fatal("metadata-only projection leaked Provider raw Source or Manifest")
+	}
+	evidence, read, err := importedParsedLoadSnapshot(loaded, "os")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -92,10 +106,10 @@ func TestImportedParsedLoadSnapshotRetainsSameLoadBytesWithoutReread(t *testing.
 			t.Fatalf("outside selected Namespace source %q was exposed", denied)
 		}
 	}
-	if _, fn, err := workspace.ImportedParsedLoadSnapshot(loaded, "unrelated"); err == nil || fn != nil {
+	if _, fn, err := importedParsedLoadSnapshot(loaded, "unrelated"); err == nil || fn != nil {
 		t.Fatal("unimported Namespace must not expose provider Source")
 	}
-	if _, err := workspace.BuildSourceIndexFromLoad(consumer, loaded); !errors.Is(err, workspace.ErrImportsNotBound) {
+	if _, err := BuildSourceIndexFromLoad(consumer, loaded); !errors.Is(err, ErrImportsNotBound) {
 		t.Fatalf("partial imported witness must not lift strict closure refusal: %v", err)
 	}
 
@@ -103,16 +117,16 @@ func TestImportedParsedLoadSnapshotRetainsSameLoadBytesWithoutReread(t *testing.
 	// old read-only witness must stay tied to its original in-memory bytes.
 	parsedAfter := append(append([]byte(nil), parsedBefore...), '\n')
 	manifestAfter := append(append([]byte(nil), manifestBefore...), '\n')
-	writeExternalFixture(t, parsedPath, string(parsedAfter))
-	writeExternalFixture(t, manifestPath, string(manifestAfter))
+	writeImportedEvidenceFixture(t, parsedPath, string(parsedAfter))
+	writeImportedEvidenceFixture(t, manifestPath, string(manifestAfter))
 	assertRead("tei.workspace.yaml", manifestBefore)
 	assertRead("semantic/os/process.tei", parsedBefore)
 
-	reloaded, err := workspace.Load(consumer)
+	reloaded, err := Load(consumer)
 	if err != nil {
 		t.Fatal(err)
 	}
-	newEvidence, newRead, err := workspace.ImportedParsedLoadSnapshot(reloaded, "os")
+	newEvidence, newRead, err := importedParsedLoadSnapshot(reloaded, "os")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -132,9 +146,34 @@ func TestImportedParsedLoadSnapshotRetainsSameLoadBytesWithoutReread(t *testing.
 
 	// A forged public ResolvedImport cannot reuse a private same-Load witness.
 	forged := loaded
-	forged.Imports = append([]workspace.ResolvedImport(nil), loaded.Imports...)
+	forged.Imports = append([]ResolvedImport(nil), loaded.Imports...)
 	forged.Imports[0].SemanticDigest = "sha256:" + string(bytes.Repeat([]byte{'0'}, 64))
-	if _, _, err := workspace.ImportedParsedLoadSnapshot(forged, "os"); err == nil {
+	if _, _, err := importedParsedLoadSnapshot(forged, "os"); err == nil {
 		t.Fatal("forged import digest must be rejected")
 	}
+}
+
+func writeImportedEvidenceFixture(t *testing.T, file, content string) {
+	t.Helper()
+	if err := os.MkdirAll(filepath.Dir(file), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(file, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func importedEvidenceFixturePair(t *testing.T) (consumer, provider string) {
+	t.Helper()
+	base := t.TempDir()
+	consumer, provider = filepath.Join(base, "consumer"), filepath.Join(base, "provider")
+	writeImportedEvidenceFixture(t, filepath.Join(provider, "tei.workspace.yaml"),
+		"workspace: provider\nformatVersion: 1\nsources:\n  - semantic\n")
+	writeImportedEvidenceFixture(t, filepath.Join(provider, "semantic/os/process.tei"),
+		"namespace os\n\ntype ProcessId from std.identifier\n\ndata Process {\n    attribute id type os.process_id\n}\n")
+	writeImportedEvidenceFixture(t, filepath.Join(consumer, "tei.workspace.yaml"),
+		"workspace: consumer\nformatVersion: 1\nsources:\n  - semantic\nimports:\n  - alias: os\n    path: ../provider\n    namespace: os\n")
+	writeImportedEvidenceFixture(t, filepath.Join(consumer, "semantic/watch.tei"),
+		"namespace monitoring\n\ndata Watch {\n    attribute process type os.process_id\n}\n")
+	return consumer, provider
 }
