@@ -73,11 +73,11 @@ func TestActionSurfaceToBoundRequestWrongTarget(t *testing.T) {
 				store[wrongEffectTarget] = "cancelled"
 				return capabilityinvoke.BusinessResult{
 					Capability: core.CanonicalID(binding),
-					Mode: capabilityinvoke.ResultOutcome,
-					Outcome: "cancelled",
+					Mode:       capabilityinvoke.ResultOutcome,
+					Outcome:    "cancelled",
 					Payload: map[string]any{
 						"orderId": wrongEffectTarget,
-						"status": "cancelled",
+						"status":  "cancelled",
 					},
 				}, nil
 			}), nil
