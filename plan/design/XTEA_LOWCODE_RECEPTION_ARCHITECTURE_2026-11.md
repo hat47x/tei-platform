@@ -959,11 +959,13 @@ PoC #2521が実装した範囲と、まだ実装していない範囲を分け�
 | Applicationのビュー（Pattern・Package・意味の版） | 実装済み（`view -application`） |
 | StudioホストのビューAPI | 実装済み（`ViewPattern`・`ViewApplication`、読み取り専用） |
 | Studio rendererのビュー表示 | 実装済み（Application・PatternのJSON表示、読取専用） |
+| StudioからのCommand計画・参照実行 | 実装済み（`PlanCommand`・`ExecuteCommand`、業務副作用なし） |
 | Applicationビューの期間（D6.1） | 実装済み（ID・Data・業務日付・状態） |
 | Commandの実行境界、改ページ、フックのDSL | 未実装 |
 | `reference/workspace`への宣言追加 | 未実施（受理経路が必要） |
 
 実装は、`internal/application/model.go`、`internal/syntax/application_pattern.go`、`internal/validation/application_pattern.go`、`internal/crossview/pattern_requirements.go`、`internal/applicationview`、`internal/semantic/model.go`、`internal/syntax/parser.go`、`internal/validation/validation.go`と、それぞれの試験です。
+
 
 
 

@@ -15,6 +15,8 @@ test("each call carries explicit workspace ID without per-tab global selection",
   await client.observeXead("workspace-1", "model.xead");
   await client.viewPattern("workspace-1", "order_entry", "order_entry.order_record");
   await client.viewApplication("workspace-1", "order_entry");
+  await client.planCommand("workspace-1", "order_entry", "order_entry.submit_order", "sales.order.submit", {"order": "ORD-1"});
+  await client.executeCommand("workspace-1", "order_entry", "order_entry.submit_order", "sales.order.submit", {"order": "ORD-1"});
   assert.deepEqual(seen, [
     ["main.StudioBridge.ListWorkspaces"],
     ["main.StudioBridge.CatalogWorkspace", "workspace-2", "ns"],
@@ -23,6 +25,8 @@ test("each call carries explicit workspace ID without per-tab global selection",
     ["main.StudioBridge.ObserveXead", "workspace-1", "model.xead"],
     ["main.StudioBridge.ViewPattern", "workspace-1", "order_entry", "order_entry.order_record"],
     ["main.StudioBridge.ViewApplication", "workspace-1", "order_entry"],
+    ["main.StudioBridge.PlanCommand", "workspace-1", "order_entry", "order_entry.submit_order", "sales.order.submit", {"order": "ORD-1"}],
+    ["main.StudioBridge.ExecuteCommand", "workspace-1", "order_entry", "order_entry.submit_order", "sales.order.submit", {"order": "ORD-1"}],
   ]);
 });
 test("operation denial is not converted into transport success", async () => {
@@ -38,4 +42,5 @@ test("transport errors and malformed envelopes are distinct", async () => {
   assert.equal((await invalid.listWorkspaces()).failure.code, "INVALID_HOST_RESPONSE");
   assert.equal(JSON.stringify(await rejected.listWorkspaces()).includes("private absolute path"), false);
 });
+
 
