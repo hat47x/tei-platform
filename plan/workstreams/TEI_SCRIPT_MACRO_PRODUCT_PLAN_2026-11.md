@@ -283,6 +283,25 @@ go run ./cmd/tei artifacts -workspace reference/standard-crud/workspace -applica
 
 **状態・測定**：M0の実CLI CI成功は確認済み。M3-A/B/Cの元となる局所実装と単体試験は別Ownerの報告であり、上記新しい同一`order_entry`の複合負例、M3-Dの実DB Owner Effect、M3-Eの因果Observer/Journal、M3-Fの実EKI/SHO受領は**NOT RUN**。M3-B/C/Eの反証結果と独立Expectedを記録してから、必要な製品修正を既存Issueへ割り当てる。P0/Gate A/B/Cは維持。
 
+### M3-B/Cの新しい独立Go Characterizationと、次の製品受入
+
+新規[Draft PR #2780](https://github.com/hat47x/tei-platform/pull/2780)（別ブランチ）で、既存の`command.Invoker→commandadapter.Executor→effectcommit.Runner`を通る**二つの合成Go負例**を追加した（コード試験のOwnerは本計画の文書PR #2602とは別）。新しいProduct APIや試験専用Hostを作らない。
+
+- **MC-B01 / T-1・T-38 / M3-B**：Command`order=ORD-1`に対し、明示`Payload={"order":"ORD-2"}`を与える。現在のAdapterがその不一致をFake Providerの`WriteResource`に渡すことを**不安全な構成の特徴として観測**する。PASSが出ても対象照合の安全性を保証したことにはならず、Owner検査を実装した後は**不一致を拒否するTestへ置換**する。別Owner [#2616 OB-07A](https://github.com/hat47x/tei-platform/pull/2616)のOperationSurface→Driver Target driftと同一合格票にしない。
+- **MC-C01 / T-1・T-41 / M3-C/D**：内側Effect RunnerがFake TxでCommitした後、外側Command UnitOfWorkのCommitが失敗する。`COMMAND_COMMIT_FAILED`と内側Commitの記録が共存する構成を確かめる。外側Rollbackを内側実Effectの回復と推測しない。
+- **Exact-head Evidence**：`.github/workflows/macro-command-boundary-characterization.yml`で本物のGoパッケージをGofmtと合わせて確認する。PR作成直後のRun queued/runningは`NOT VERIFIED`。実行結果とそのhead SHAを確認するまでPASSEDとはしない。実Provider/DB/Current Grant/Receiptは**別試行**。
+
+| 次の適合切断点 | 本当のExpected／拒否条件 | 既存Ownerと実行資格 |
+| --- | --- | --- |
+| **M3-B→D Owner対象** | 実IntentとPayloadの業務Target/合法な関係変換を同一Attemptで照合し、O1選択→O2更新を条件付きCommitの手前で拒否 | #2598/#1174/#2499、P0-aの実PG試験。Fake Providerは証明外 |
+| **M3-C→D Tx/期間** | 必須Periodの取得不能・Closed/時点変更、内側Commit後外側Commitの失敗、ACK消失時の同OperationID Lookupを別結果へ分類 | #2144/#1129/#1174。外側Rollback≠内側Commit撤回 |
+| **M3-D→E Query依存** | 同じSQL SourceでもSchemaの追加で`NATURAL JOIN`の結果集合が変化（[隔離SQLite #2778 SM-15](https://github.com/hat47x/tei-platform/pull/2778)）。Schema/Mapping/Provider/Snapshotを再束縛し、実Countを当該OperationのTarget/Effectへ相関させる | #1126/#2387/#2622/#2600、#1129。SQLite局所PASS≠実TEI SQL Worker/実DB Effect |
+| **M3-E→F 外部委任** | TEIの意味Rule/Quality Claim→実Provider Commit/Receipt→必要に応じ任意EKIのTask/Attempt/Lease→実Body/SHO Consumer受領を別証拠で結合 | #1130/#2516、[横断 #2667 `27/31](https://github.com/hat47x/tei-platform/pull/2667)。EKI不要のローカル実行も妨げない |
+
+**最小合格定義**：M3のProduct資格は`同一Subject/Function/Owner受理意味→Actual Provider Target/Grant/Period→Conditional Commit/Receipt→必要な独立観測`を既存P0で証明できた場合だけ。Do-not-repeatのためのReceipt Lookup・Commit unknownを単なる再Submitで置換しない。Replica/全件監査/継続Jobは必要な場合だけ別Runへ移し、Request当時の最小安全検査を省かない。
+
+新規PRのGo CharacterizationとSQL/Organization/EKIの各局所Evidenceを、**同一Attempt E2Eに見せかけない**。#2602は既存設計・計画Markdownだけ更新、#2780は独立したGo Test/CIとREADME。新Test ID・共通Gate・第二Authority/Host/Registryは追加しない。
+
 ## テスト証拠の受渡し：1ケースにつき別の保証を保持
 
 | 試験証拠 | 最初の取得先 | 後段へ渡せる範囲 |
