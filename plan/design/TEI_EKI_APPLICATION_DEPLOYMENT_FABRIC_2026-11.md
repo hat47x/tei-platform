@@ -178,6 +178,10 @@ Fixture/図のExpectedは**TEI生成DSL/実Simulatorの式をコピーせず**�
 
 EKIの内部を細部なしの“単一仮想マシン”と見なすことはできず、必要なWorkload class/OS-arch/単一Device Memory/Trusted Data Class、実Admission/Reservation/費用の差をSub-offerとして伝達する。Kueue MultiKueueやSlurm Federationの既存協調方式を参考とするが、EKIに内部Schedulerを移植する案ではない。
 
+### 7.2 実際のLaunch可否とManaged Poolの予約・支出を二段階に分ける
+
+[未解決Gate](TEI_EKI_AGGREGATE_DELEGATION_UNRESOLVED_GATES_2026-11.md)§3・§5により、EKI Consoleで`Cloud/HPC Pool`が表示されたことを、実ProviderがリソースをReserve/Deployできる保証と混同しない。TEI ReleaseのArtifact digest→EKI Admission→BUD-1/CAP-1費用枠→下位Cloud/Slurm/KueueのReservation/Deployment actual→Provider Receipt／独立ヘルスを順序を分けて表示。**Provider ACK喪失は`unknown`、費用確保解除はProviderの実Observationまで保留**。TEI生成サービスの可用性・Ingress/DBは既存Hostの責任。高変動Endpoint Poolは`guaranteed=0`を許容する可中断Taskに絞り、SLO/実動資源をCloudサービス同等に見せない。
+
 ## 8. 段階導入とIssue/ADR責務の所有範囲
 
 | Gate | 最小の出来上がりと受入条件 | 主要Owner |
