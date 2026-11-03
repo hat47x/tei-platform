@@ -180,3 +180,42 @@ Data Modelの定義はSource側のTable/Field/Key/Relation宣言として明示�
 5. **SM-15-5（#988/#2619）**：SQLをData Model定義の主語にしない。TEI Query/RDB/JSONB/Document/Graphの相互運用で、Operatorの意味、NULL/欠損/空集合、Cardinality/Order/Identity、Authority/Effectを結合時に明示する。
 
 **後続の未実行Gate**：当該14件はSQLite標準ライブラリの挙動を検査したのみ。現行TEI SQL Worker→Go DerivedIRのSchema Binding実測、SQL Server/Oracle/PostgreSQL/SQLiteを横断する方言実測、RDB＋JSONB／Document／Graph Providerの二実装、Client/Studio/SHOのDisclosure、實Host認可、Migration Apply、Ownerの受理を**実行していない**。同一TEI FunctionのS/C/O/AとConsumer current qualificationを別々に確認することが次段。
+
+## 10. SM-16：実Go DerivedIRを使った「解析済み≠Schema依存の閉包済み」特性試験（2026-11-03）
+
+### 10.1 QX-33の実コード・他チャット成果との接点
+
+[#2387/QX-33](https://github.com/hat47x/tei-platform/pull/2388)で確認されている現行Goコード`internal/query/analyzer/client.go`は、`RunPythonWorker`の応答を**Query ID・Protocol Versionに限って**一致照合しており、SQL Source・SchemaContext byte・Worker実体を独立に証明しない。Go`DerivedIR`の`Coverage.Parse/Resolution/Lowering`はそれぞれ自身の範囲の観測であり、SQL構文に隠れた依存の**完全性**、解析Resultを生み出したSource/Schema/Workerの**真正性**まで示さない。
+
+ここでSM-15の実SQLite結果に接続する。既存`DeriveFromAnalysis(q, databaseID, analyzer.Result, physical.SchemaSnapshot)`は、実際に渡された分析結果からSource/Fieldを解決する**実Go実装**である。SourceとResultがあるSchemaに由来することの証拠はGo側の`schema-resolved`という表示から独立である。未提供のSQLGlot workerを新Parser/仮Workerに置き換えてプロトコルの正式成功と見なさない。
+
+**追加Go試験**：[derived_sm16_schema_drift_characterization_test.go](../../internal/query/derived_sm16_schema_drift_characterization_test.go) を今回のブランチへ追加した。現Go`DeriveFromAnalysis`を直接呼ぶ（外部Workerや新APIを作らない）。二つの物理Snapshotは`payments.status`の有無だけ異なる。元Sourceは同じ`NATURAL JOIN` SQL、合成`analyzer.Result`は**意図的に固定**して両版のGo IRへ入力する。SM-15の実SQLiteは結果2行→1行に変化するが、Go側の既存`Result`が暗黙結合列を列挙しないままなら、Schema解決成功・投影値一致だけで差を見出せないことを**負例として再現する試験**である。
+
+**技術的受入の上限**：本試験のAnalyzer Resultは合成・固定であり、実SQLGlotがこの欠落したResultを発行するという主張ではない。SM-15のSQLite結果は別の試行であり、同じ物理DB/Workerから得たGo ResponseとのE2E比較ではない。実Workerが見つからなければ`NOT RUN: producer-unavailable`とする。現在の本Repository CIが完了するまでは、このGoテストをPASSと記さない。
+
+### 10.2 依存の閉包と、失効対象を絞るための最小規則
+
+同じSQL byte/Query IDでもSchema差分が意味を変える範囲を、曖昧に全Query失効としない。まず**依存の強さと不足の種類**を分ける。
+
+| SQL形態 | 必要な構造入力 | 列追加による変化の起こり方 | 現段階の候補判断 |
+| --- | --- | --- | --- |
+| 明示`JOIN ... ON a.tenant_id=b.tenant_id AND ...`＋明示SELECT列 | 指定Field/Predicate/Type・Source occurrenceのSchema／Dialect。必要ならView/Default/RLS等の外部依存 | 同名の無関係列追加では**今回SM-15に限り**結果不変。ただしData Type/Collation/Provider条件等が変われば別 | 構造の局所再利用候補。Owner/実Provider/Current Claimの資格ではない |
+| `NATURAL JOIN` | **両入力の列名集合全体**と一致名・修飾列/統合列ルール、実際の参照Scope | 新規の同名列が自動で結合条件へ追加され、SQL不変でも行集合が変わる | 関係するSchema集合を解決しなければ`dependency-unknown`。自動の完全なJoin Equivalenceを主張しない |
+| `SELECT *`／`table.*` | 出力対象の列集合・順序、表示形、修飾／権限/非開示条件 | 新列の追加でProjection/Client Adapter／Consumer Disclosureが変わり得る | Shapeと開示資格を別チェック。応答の観測値だけでContract完結としない |
+| `JOIN ... USING(k)` | 指定Join key・型/照合と、`*`展開時の統合列・入力Source/Column set | 新規無関係列は結合述語には入らない場合でも、`SELECT *`ではOutput Shapeに影響 | Join述語の依存と、表示列/Lineageの依存を分ける |
+| View/CTE、Function、`search_path`やDB Alias | 展開元Sourceまたは実参照Definition/Resolverと選択Target・Dialect/Role/RLS/Provider条件 | SQL文字列が同じでもObjectの定義差・名前解決差・Current Policy差が起こり得る | 参照先の実解決を記録できない場合は`unresolved`。表名一致だけで対象一致としない |
+| JSON/Document/Graphへの同等Operator | 欠損/NULL/空配列、Path occurrence、Identity、Grain、Order、Version/Scope、比較・欠損時の評価 | 同じ`where`/join相当でも集合・型・存在意味が違う | #988/#2622のOperator Conformanceへ渡す。標準SQLの意味を全Providerへ無条件転写しない |
+
+**安全な再利用候補の条件**：`Source byte/選択Template＋Dialect/Parser/Worker版＋解析に実消費されたSchema/Definition/Resolved occurrenceの閉包＋Function Mapping/Operator評価条件＋Consumer必要Shape`を比較し、対象演算の全条件が同じ/意味的互換と示せるときに限る。Schema/Worker/依存集合のどれか未観測なら**局所的な`unknown`**であり、旧解析Result・旧公開Artifact・旧Owner Meaningを「現在の合格」に戻さない。実RuntimeにおけるProvider Read Cohort・Host Grant・RLS再取得は#2622/#2582、Build Artifactのskip/再生成は#2600へ区別して引き継ぐ。
+
+### 10.3 次の「実際の製品接続」Gateの一試行票（計画、NOT RUN）
+
+**P0-Worker**：既存実Producer（SQLGlot Worker等）の保存元/配布物SHA、起動方法/依存Lock/環境を確定。現時点のQX-33はworker所在が未解決。ない場合は`producer-unavailable`を正式に残す。
+
+**P1-SchemaPair**：SM-15と同じ合成SQL・Schema前後2版を**実Workerへそれぞれ**渡し、`Request.Source/Schema/Dialect`、Process stdin/stdout/exit/Diagnostics、実`analyzer.Result`、Go`DerivedIR`のScope/Field/Operation/Residual unknownを同一Attemptに固定。**合成Resultの再利用は不可**。期待はNATURAL JOINの暗黙一致列の変化を式依存/未対応として説明できること。見えなければ`partial/unresolved`、勝手な`full`を拒否。
+
+**P2-Context**：#2506/#2586の明示Function Contextへ、受理済みRelation/Required Field/Scopeを渡す。JOINの結果2→1に対するResult Slice/Claim・非出力述語依存と現在Read資格を照合。適用していないData Model変更をSQLだけで受理したことにしない。
+
+**P3-Effect/Consumer**：#2622がDB Alias・実ProviderのSchema/実Read・現在RLS/Permissionを観測。#2516の二ConsumerはOutput Shape変更/秘密項目開示を別票に、#1129/#1174はAction/Commit/Receiptを別票に記録。実DB Migrationの成功は当該提供元のActual/Verify/Apply記録を要し、このRead-onlyなFixtureから推測しない。
+
+**停止条件**：Syntax/ScopeやSchema閉包が不明なときは、Query Explainの構造候補は提示しても、`semantic-equivalent`・`complete-read`・`action-authorized`・`migration-applied`を宣言しない。QX-33とSM-16の同型テストを増やさず、Producer所在→実V0/V1→Function受渡しの順を優先する。
