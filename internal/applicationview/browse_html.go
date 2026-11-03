@@ -39,7 +39,7 @@ th{background:#f3f3f3}
 <tr>{{range .Columns}}<td></td>{{end}}</tr>
 </tbody>
 </table>
-<footer>pattern: {{.Pattern}} / semantics: {{.SemanticFingerprint}} / format: tei.print/v0</footer>
+<footer>pattern: {{.Pattern}} / semantics: {{.SemanticFingerprint}} / format: tei.print/v0{{if .PrintTemplate}} template: {{.PrintTemplate}}{{end}}</footer>
 </body>
 </html>
 `))
@@ -75,7 +75,7 @@ footer{margin-top:6mm;font-size:.75rem;color:#444;border-top:1px solid #999;padd
 <tr>{{range .Columns}}<td></td>{{end}}</tr>
 </tbody>
 </table>
-<footer>pattern: {{.Pattern}} / semantics: {{.SemanticFingerprint}} / format: tei.print/v0</footer>
+<footer>pattern: {{.Pattern}} / semantics: {{.SemanticFingerprint}} / format: tei.print/v0{{if .PrintTemplate}} template: {{.PrintTemplate}}{{end}}</footer>
 </body>
 </html>
 `))

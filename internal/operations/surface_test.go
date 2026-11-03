@@ -501,3 +501,34 @@ func TestDeriveOperationSurfaceBindingRequiresTheDataAsInput(t *testing.T) {
 		t.Fatalf("only the capability that accepts the written data may be the binding: %q", update.Binding)
 	}
 }
+func TestDeriveOperationSurfaceCarriesThePeriod(t *testing.T) {
+	world := surfaceTestWorld(database.AccessReadWrite, true)
+	world.Semantics[0].Periods = []semantic.Period{{
+		ID:            "sales.month",
+		Data:          "sales.order",
+		BusinessDate:  "sales.order.order_id",
+		States:        []string{"open", "closing", "closed"},
+		ClosedRejects: []string{"create", "update"},
+	}}
+
+	surface := DeriveOperationSurface(world, "")
+
+	create, ok := findOperation(surface, "order_entry.create.sales.order")
+	if !ok {
+		t.Fatalf("create operation missing: %+v", surface.Operations)
+	}
+	if create.Period != "sales.month" {
+		t.Fatalf("create must carry the period: %+v", create)
+	}
+	if len(create.PeriodRejects) != 2 || create.PeriodRejects[0] != "create" {
+		t.Fatalf("create must carry the operations the closed period rejects: %+v", create.PeriodRejects)
+	}
+	update, ok := findOperation(surface, "order_entry.update.sales.order")
+	if !ok || update.Period != "sales.month" {
+		t.Fatalf("update must carry the period: %+v", update)
+	}
+	list, _ := findOperation(surface, "order_entry.list.sales.order")
+	if list.Period != "sales.month" {
+		t.Fatalf("the period governs the data, so list carries it too: %+v", list)
+	}
+}

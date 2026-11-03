@@ -5,12 +5,17 @@ import "tei/internal/core"
 // Namespace is a coarse-grained semantic dependency unit. It is independent
 // from repository paths and may be consumed by Applications and Databases.
 type Namespace struct {
-	ID           core.CanonicalID `json:"id"`
-	Types        []Type           `json:"types,omitempty"`
-	Data         []Data           `json:"data,omitempty"`
-	Capabilities []Capability     `json:"capabilities,omitempty"`
-	Validations  []Validation     `json:"validations,omitempty"`
-	Periods      []Period         `json:"periods,omitempty"`
+	ID core.CanonicalID `json:"id"`
+	// FormatVersion is the optional format version declared by the semantic
+	// file itself ("formatVersion N"). Zero means the file did not declare one
+	// and inherits the Workspace manifest version. It describes the syntax
+	// generation, not the content version of a contract.
+	FormatVersion int          `json:"formatVersion,omitempty"`
+	Types         []Type       `json:"types,omitempty"`
+	Data          []Data       `json:"data,omitempty"`
+	Capabilities  []Capability `json:"capabilities,omitempty"`
+	Validations   []Validation `json:"validations,omitempty"`
+	Periods       []Period     `json:"periods,omitempty"`
 }
 
 // Period binds one data to a business date and to the states a closing period
@@ -84,6 +89,12 @@ type Attribute struct {
 	Required    bool             `json:"required,omitempty"`
 	Immutable   bool             `json:"immutable,omitempty"`
 	Role        string           `json:"role,omitempty"`
+	// Value is the optional declared value written as `value "..."`. A nil
+	// pointer means the attribute has no value clause (Absent), a pointer to an
+	// empty string means an explicitly empty value (Empty), and any other
+	// pointer is a value (Value). This is the format-level tri-state, separate
+	// from whether the attribute is required at runtime.
+	Value *string `json:"value,omitempty"`
 }
 
 type Cardinality string

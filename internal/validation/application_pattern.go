@@ -222,6 +222,15 @@ func validateApplicationPatterns(w ir.World) []Diagnostic {
 				}
 			}
 
+			if pattern.PrintTemplate != "" && pattern.Kind == application.PatternCommand {
+				out = append(out, errFor(
+					patternSubject,
+					"APPLICATION_PATTERN_PRINT_TEMPLATE_NOT_ALLOWED",
+					"command pattern %s does not accept print-template",
+					pattern.ID,
+				))
+			}
+
 			if pattern.Layout != nil {
 				switch {
 				case pattern.Kind != application.PatternRecord:

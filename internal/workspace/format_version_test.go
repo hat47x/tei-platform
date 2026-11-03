@@ -85,3 +85,41 @@ func TestLoadAllowsMissingFormatVersionOnlyWithExplicitFrozenOptIn(t *testing.T)
 		t.Fatalf("explicit frozen opt-in did not load the legacy manifest: %v", err)
 	}
 }
+
+func writeSemanticHeaderWorkspace(t *testing.T, semanticBody string) string {
+	t.Helper()
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, "semantic"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	manifest := "workspace: test\nformatVersion: 1\nsources:\n  - semantic\n"
+	if err := os.WriteFile(filepath.Join(root, "tei.workspace.yaml"), []byte(manifest), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "semantic", "model.tei"), []byte(semanticBody), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	return root
+}
+
+func TestLoadAcceptsMatchingSemanticFormatVersion(t *testing.T) {
+	root := writeSemanticHeaderWorkspace(t, "formatVersion 1\nnamespace test\n")
+	if _, err := Load(root); err != nil {
+		t.Fatalf("matching semantic formatVersion was rejected: %v", err)
+	}
+}
+
+func TestLoadAcceptsHeaderlessSemanticFileByInheritingTheWorkspaceVersion(t *testing.T) {
+	root := writeSemanticHeaderWorkspace(t, "namespace test\n")
+	if _, err := Load(root); err != nil {
+		t.Fatalf("headerless semantic file did not inherit the workspace version: %v", err)
+	}
+}
+
+func TestLoadRejectsUnsupportedSemanticFormatVersion(t *testing.T) {
+	root := writeSemanticHeaderWorkspace(t, "formatVersion 2\nnamespace test\n")
+	_, err := Load(root)
+	if err == nil || !strings.Contains(err.Error(), "unsupported semantic formatVersion 2") {
+		t.Fatalf("unsupported semantic formatVersion was accepted: %v", err)
+	}
+}

@@ -16,6 +16,7 @@ type ApplicationView struct {
 	SemanticUses        []core.CanonicalID      `json:"semanticUses,omitempty"`
 	Patterns            []ApplicationPatternRef `json:"patterns,omitempty"`
 	Packages            []ApplicationPackageRef `json:"packages,omitempty"`
+	Periods             []ApplicationPeriodRef  `json:"periods,omitempty"`
 	SemanticFingerprint string                  `json:"semanticFingerprint,omitempty"`
 }
 
@@ -30,6 +31,14 @@ type ApplicationPackageRef struct {
 	ID      core.CanonicalID `json:"id"`
 	Version string           `json:"version"`
 	Bound   bool             `json:"bound"`
+}
+
+// ApplicationPeriodRefは、Applicationが使う期間の宣言である。
+type ApplicationPeriodRef struct {
+	ID           core.CanonicalID `json:"id"`
+	Data         core.CanonicalID `json:"data"`
+	BusinessDate core.CanonicalID `json:"businessDate"`
+	States       []string         `json:"states,omitempty"`
 }
 
 // BuildApplicationは、ApplicationのPattern・Packageと、使用する意味の版を解決する。
@@ -74,6 +83,16 @@ func BuildApplication(world ir.World, applicationID core.CanonicalID) (Applicati
 	fingerprint, err := semantic.Fingerprint(namespaces)
 	if err != nil {
 		return ApplicationView{}, err
+	}
+	for _, namespace := range namespaces {
+		for _, period := range namespace.Periods {
+			view.Periods = append(view.Periods, ApplicationPeriodRef{
+				ID:           period.ID,
+				Data:         period.Data,
+				BusinessDate: period.BusinessDate,
+				States:       period.States,
+			})
+		}
 	}
 	view.SemanticFingerprint = fingerprint
 	return view, nil
