@@ -1771,3 +1771,29 @@ EKIがTEIの組織関連Jobを受理する場合、EKIの配置可能性・予�
 [Draft #2781](https://github.com/hat47x/tei-platform/pull/2781)へ**VP-31〜33（Root・Axis・Policy Revision不一致）**を追加した。候補のScopeがD1からHに変わった、`command`から`budget`へ切り替わった、または`p-r1`から`p-r2`へ改版したのに、実Hostの旧Grantを利用してよいと判断する実装を拒否する。もちろんOrg MembershipやDirectory Groupと現在Grantは別事実のままである。
 
 固定HEAD `565a260403445556bb088f0433a53760fdcddda7`の[Actions #41632981999](https://github.com/hat47x/tei-platform/actions/runs/41632981999)は**completed/success**、Node v22.16.0、`verify.mjs`27 checks／`node --test`238/238 PASS・fail 0（VP-01〜33を含む）、Source Blob `9cb39f44a9eb55be51c3e56cc1cb19bbf16c4e8d`を確認。§37.4に書いた235件は旧HEADの局所合成成功の履歴。**現HEADに対する実TEI Provider/Host Enforcement／テナント分離／Query全Read/Export/Batch経路／SHO/AI Disclosure／Owner Meaningの資格はまだない**。
+
+## 38. 組織Record→Org Relationを実TEIで検証したE1と、次の実Provider Enforcement試験（2026-11-03、#2586／#2622／#2516への具体的引継ぎ）
+
+### 38.1 実Goで確認したことと、確認できないこと
+
+[PR #2681](https://github.com/hat47x/tei-platform/pull/2681)の`reference/org-headless-workspace`に`CaseRecord`と`relation handlingUnit → OrgUnit`を直接`.tei`に追加した。Membership/Occupancy/Personと違う一般DataからOrgUnitへ**型付き明示Relation**を持てる構造を、既存Parser/Workspace Loaderで読み、`TestOrgHeadlessCaseRelationDoesNotAuthorizeReadOrWrite`でSemantic target/key一致と無関係なCase Operation/Host Binding非生成を固定。
+
+HEAD `a2110f4a8e8cfa60a2f2c57c1de4a84d75c5bcec`、[Native Actions #41640612514](https://github.com/hat47x/tei-platform/actions/runs/41640612514) **completed/success**：Go1.26.10 Linux、exact-head/clean、Go focused test・実`tei validate`/`operations`/`artifacts`・別JSON Readerがsuccess。このReaderは`findings=0, complete=False`を出力しているため**Artifact生成全体completeや外部Consumer実受領は未成立**。以前の#2681 HEADや#2781のNode合成とは別Run/別Source。
+
+**E1で成立**：`Case→OrgUnit`という明示Relationが実TEI Core Semantic Worldへ残る。**E2以降で未成立**：このRelationが「D1配下のCaseを読む」と業務Owner受理されたか／FunctionがそのPathを要求できるか／実Providerが行集合と必要Fieldを取得したか／実Queryにスコープ制限を施行できたか／現在HostでPrincipalに許可があるか／SHO・AIへ開示してよいか。この順序を逆転しない。
+
+### 38.2 #2586の単一Attemptへ渡す最小入力と欠落時の停止
+
+元`CaseRecord`は**未Persist・未Operation Binding**なので、現状を「RDB接続済みCase一覧」とは扱わない。最小の次段は別Data/Providerサンプルとして、以下を**独立Expected付き**で一つだけ実現する。
+
+| 観測対象 | 実現側の既存Owner | 不合格条件 |
+| --- | --- | --- |
+| Source/Meaning/Relation | #1126/#2386：Case identity、`handlingUnit` target/key、Owner承認のScope意味 | Data構文を読めたことからRule/Grantを推定 |
+| Explicit Function Context | #2506/#2622：Case ID+Org Relation path/Hierarchy axis/root/必要Field/Scope/valid/knownの明示 | 未宣言Field/Relationを実Providerが勝手に読む |
+| Physical Data/Policy Enforcement | #2611/#2628/#2387：Provider Route/actual Read/Rowset+Field/Policy版、List/Detail/Count/Page負例 | UIのafter-filterやOwner未受理`any`で許可、部分0件から不存在確定 |
+| Display/External Consumer | #2497/#2582/#2516：実Visible Candidate/Read-only/exception+現在Grant/Disclosure、SHO/AI、既表示撤回 | metadata/Count/診断/Export経由でScope外情報漏洩 |
+| Current Action/Effect | #2598/#1174：現在Grant/Request Target/Host Effectと実post-imageを別検証 | Case→Org RelationだけでUpdate/Approval/Delegationを実行 |
+
+**第一目標**：同じ実Read/Provider/Root/Axis/Policy版で**scope内Case1件、scope外Case1件、read-only例外1件、適用除外だが他Host Denyで拒否1件、部分取得でunknown1件**を確認する。実Producer/Enforcement APIが未接続なら`NOT RUN: enforcement-unavailable`。Owner未受理は`not accepted`として停止し、#2781の合成33件で代用しない。
+
+Security/Privacy/実Host/DB/Ownerレビューは既存#1119 Gateに委譲。専用TEI Host、組織ACL Engine、第二Query Planner、秘密情報を伴う未承認外部Harness自動試行は追加しない。
