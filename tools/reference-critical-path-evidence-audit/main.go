@@ -68,16 +68,20 @@ type Web struct {
 }
 
 type Physical struct {
-	AcceptedRevision       string `json:"acceptedRevision"`
-	Datasource             string `json:"datasource"`
-	SchemaCompatibility    string `json:"schemaCompatibility"` // compatible, incompatible, unresolved
-	SchemaEvidence         string `json:"schemaEvidence"`
-	HostAuthorityEvidence  string `json:"hostAuthorityEvidence"`
-	CommandReceipt         string `json:"commandReceipt"`
-	IndependentReadReceipt string `json:"independentReadReceipt"`
-	RecordID               string `json:"recordId"`
-	SchemaFailureControl   string `json:"schemaFailureControl"` // S02
-	HostFailureControl     string `json:"hostFailureControl"`   // S05
+	AcceptedRevision      string `json:"acceptedRevision"`
+	Datasource            string `json:"datasource"`
+	SchemaCompatibility   string `json:"schemaCompatibility"` // compatible, incompatible, unresolved
+	SchemaEvidence        string `json:"schemaEvidence"`
+	HostAuthorityEvidence string `json:"hostAuthorityEvidence"`
+	// HostAuthorityProvenance is the optional Provenance label of the effect
+	// Grant behind HostAuthorityEvidence. "provisional-grant" (D8, development
+	// only) is never G2 evidence and always leaves the packet INCOMPLETE.
+	HostAuthorityProvenance string `json:"hostAuthorityProvenance,omitempty"`
+	CommandReceipt          string `json:"commandReceipt"`
+	IndependentReadReceipt  string `json:"independentReadReceipt"`
+	RecordID                string `json:"recordId"`
+	SchemaFailureControl    string `json:"schemaFailureControl"` // S02
+	HostFailureControl      string `json:"hostFailureControl"`   // S05
 }
 
 type Packet struct {
@@ -129,6 +133,12 @@ func Audit(p Packet, expectedHead, expectedMain string) Report {
 	if p.Qualification.FullHealth != "PASS" || !p.Qualification.CleanBefore ||
 		!p.Qualification.CleanAfter || strings.TrimSpace(p.Qualification.Receipt) == "" {
 		add("TRUSTED_FULL_HEALTH_NOT_RECORDED")
+	}
+	// Any claim: a packet that rests on a provisional effect Grant is not
+	// qualifying evidence, whatever else it contains. The mark is compared after
+	// trimming and case folding so that formatting cannot hide it.
+	if strings.EqualFold(strings.TrimSpace(p.Physical.HostAuthorityProvenance), "provisional-grant") {
+		add("PROVISIONAL_GRANT_NOT_G2_EVIDENCE")
 	}
 	if p.Claim == "E1" || p.Claim == "E2" {
 		if p.Contract.EvidenceClass != "actual-observed" {

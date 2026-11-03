@@ -39,6 +39,36 @@ func TestCompletePacketNeverGrantsProductGate(t *testing.T) {
 		t.Fatalf("%+v", result)
 	}
 }
+func TestProvisionalGrantProvenanceIsNeverG2Evidence(t *testing.T) {
+	for _, label := range []string{"provisional-grant", " Provisional-Grant\t"} {
+		for _, claim := range []string{"E0", "E1", "E2"} {
+			p := fixture()
+			p.Claim = claim
+			p.Physical.HostAuthorityProvenance = label
+			r := Audit(p, h, m)
+			if !has(r, "PROVISIONAL_GRANT_NOT_G2_EVIDENCE") || r.Status != "INCOMPLETE" || r.ProductGate != "UNQUALIFIED" {
+				t.Fatalf("%s %q: %+v", claim, label, r)
+			}
+		}
+	}
+	// Other or absent labels are unchanged: the complete fixture still reaches review.
+	p := fixture()
+	p.Physical.HostAuthorityProvenance = "real-pg"
+	if r := Audit(p, h, m); r.Status != "REVIEW_REQUIRED" || has(r, "PROVISIONAL_GRANT_NOT_G2_EVIDENCE") {
+		t.Fatalf("%+v", r)
+	}
+	// The label is accepted by the strict packet decoder.
+	raw, _ := json.Marshal(func() Packet { p := fixture(); p.Physical.HostAuthorityProvenance = "provisional-grant"; return p }())
+	path := filepath.Join(t.TempDir(), "p.json")
+	if err := os.WriteFile(path, raw, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	var out bytes.Buffer
+	if err := run([]string{"-packet", path, "-head", h, "-main", m}, &out); err == nil || !strings.Contains(out.String(), "PROVISIONAL_GRANT_NOT_G2_EVIDENCE") {
+		t.Fatalf("err=%v out=%s", err, out.String())
+	}
+}
+
 func TestReviewCandidateBindingMustMatchAcceptedCandidate(t *testing.T) {
 	p := fixture()
 	p.Claim = "E1"
