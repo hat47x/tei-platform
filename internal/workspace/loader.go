@@ -106,6 +106,19 @@ func loadWithStack(root string, visiting map[string]bool) (Result, error) {
 // the unparsed managed files are captured. Production callers pass nil. It is
 // a parameter, not a package-level variable, so tests cannot leak it.
 func loadWithStackHook(root string, visiting map[string]bool, afterParse func()) (Result, error) {
+	return loadWithStackHooks(root, visiting, loadHooks{afterParse: afterParse})
+}
+
+// loadHooks are private test seams of Load, passed as a parameter so tests
+// cannot leak them. afterPin runs once the Workspace root is pinned and the
+// manifest and managed files are read, before the first domain listing.
+type loadHooks struct {
+	afterPin   func()
+	afterParse func()
+}
+
+func loadWithStackHooks(root string, visiting map[string]bool, hooks loadHooks) (Result, error) {
+	afterParse := hooks.afterParse
 	// Canonicalize once, then pin the directory before reading the manifest.
 	// Otherwise a rename between manifest and domain-source reads could
 	// silently redirect the second read to an unrelated Workspace.
@@ -185,6 +198,9 @@ func loadWithStackHook(root string, visiting map[string]bool, afterParse func())
 	}
 	// TEI standard semantic types are a library prelude, not Micro Kernel kinds.
 	r.World.Semantics = append(r.World.Semantics, stdlib.SemanticNamespace())
+	if hooks.afterPin != nil {
+		hooks.afterPin()
+	}
 	for _, sourceRoot := range roots {
 		switch sourceRoot {
 		case "plugins":
@@ -547,7 +563,7 @@ func loadSemantics(root string, r *Result) error {
 }
 
 func loadApplications(root string, r *Result) error {
-	manifests, err := globSorted(filepath.Join(root, "applications", "*", "application.tei"))
+	manifests, err := globPinnedSorted(root, r, filepath.Join(root, "applications", "*", "application.tei"))
 	if err != nil {
 		return err
 	}
@@ -562,7 +578,7 @@ func loadApplications(root string, r *Result) error {
 		}
 		r.Sources["application:"+string(a.ID)] = SourceLocation{File: relPath(root, path), Line: 1, Column: 1}
 		unitDir := filepath.Dir(path)
-		patternFiles, _ := globSorted(filepath.Join(unitDir, "patterns", "*.tei"))
+		patternFiles, _ := globPinnedSorted(root, r, filepath.Join(unitDir, "patterns", "*.tei"))
 		for _, patternPath := range patternFiles {
 			patternSource, err := readSourceForLoad(root, r, patternPath)
 			if err != nil {
@@ -575,7 +591,7 @@ func loadApplications(root string, r *Result) error {
 			a.Patterns = append(a.Patterns, pattern)
 			r.Sources["application-pattern:"+string(pattern.ID)] = SourceLocation{File: relPath(root, patternPath), Line: 1, Column: 1}
 		}
-		packageFiles, _ := globSorted(filepath.Join(unitDir, "packages", "*.tei"))
+		packageFiles, _ := globPinnedSorted(root, r, filepath.Join(unitDir, "packages", "*.tei"))
 		for _, packagePath := range packageFiles {
 			packageSource, err := readSourceForLoad(root, r, packagePath)
 			if err != nil {
@@ -589,7 +605,7 @@ func loadApplications(root string, r *Result) error {
 			r.Sources["application-package:"+string(pkg.ID)] = SourceLocation{File: relPath(root, packagePath), Line: 1, Column: 1}
 		}
 		r.World.Applications = append(r.World.Applications, a)
-		qfiles, _ := globSorted(filepath.Join(unitDir, "queries", "*.tei"))
+		qfiles, _ := globPinnedSorted(root, r, filepath.Join(unitDir, "queries", "*.tei"))
 		for _, qpath := range qfiles {
 			qsrc, err := readSourceForLoad(root, r, qpath)
 			if err != nil {
@@ -619,7 +635,7 @@ func loadApplications(root string, r *Result) error {
 			r.World.Queries = append(r.World.Queries, q)
 			r.Sources["query:"+string(q.ID)] = SourceLocation{File: relPath(root, qpath), Line: 1, Column: 1}
 		}
-		bfiles, _ := globSorted(filepath.Join(unitDir, "realizations", "*.tei"))
+		bfiles, _ := globPinnedSorted(root, r, filepath.Join(unitDir, "realizations", "*.tei"))
 		for _, bpath := range bfiles {
 			bsrc, err := readSourceForLoad(root, r, bpath)
 			if err != nil {
@@ -638,7 +654,7 @@ func loadApplications(root string, r *Result) error {
 }
 
 func loadDatabases(root string, r *Result) error {
-	manifests, err := globSorted(filepath.Join(root, "databases", "*", "database.tei"))
+	manifests, err := globPinnedSorted(root, r, filepath.Join(root, "databases", "*", "database.tei"))
 	if err != nil {
 		return err
 	}
@@ -651,7 +667,7 @@ func loadDatabases(root string, r *Result) error {
 		if err != nil {
 			return sourceErr(path, err)
 		}
-		contractFiles, _ := globSorted(filepath.Join(filepath.Dir(path), "contracts", "*.tei"))
+		contractFiles, _ := globPinnedSorted(root, r, filepath.Join(filepath.Dir(path), "contracts", "*.tei"))
 		for _, cpath := range contractFiles {
 			csrc, err := readSourceForLoad(root, r, cpath)
 			if err != nil {
@@ -668,7 +684,7 @@ func loadDatabases(root string, r *Result) error {
 				r.Sources["database-contract-query:"+string(c.ID)+"/"+string(query.Name)] = contractSource
 			}
 		}
-		persistenceFiles, _ := globSorted(filepath.Join(filepath.Dir(path), "persistence", "*.tei"))
+		persistenceFiles, _ := globPinnedSorted(root, r, filepath.Join(filepath.Dir(path), "persistence", "*.tei"))
 		for _, ppath := range persistenceFiles {
 			psrc, err := readSourceForLoad(root, r, ppath)
 			if err != nil {
@@ -692,7 +708,7 @@ func loadDatabases(root string, r *Result) error {
 		} else if !errors.Is(err, os.ErrNotExist) {
 			return err
 		}
-		migrationFiles, _ := globSorted(filepath.Join(filepath.Dir(path), "migrations", "*", "migration.tei"))
+		migrationFiles, _ := globPinnedSorted(root, r, filepath.Join(filepath.Dir(path), "migrations", "*", "migration.tei"))
 		for _, mpath := range migrationFiles {
 			msrc, err := readSourceForLoad(root, r, mpath)
 			if err != nil {
@@ -712,7 +728,7 @@ func loadDatabases(root string, r *Result) error {
 }
 
 func loadReleases(root string, r *Result) error {
-	appFiles, err := globSorted(filepath.Join(root, "releases", "applications", "*", "*.tei"))
+	appFiles, err := globPinnedSorted(root, r, filepath.Join(root, "releases", "applications", "*", "*.tei"))
 	if err != nil {
 		return err
 	}
@@ -729,7 +745,7 @@ func loadReleases(root string, r *Result) error {
 		r.Sources["application-release:"+string(rel.Application)+"/"+rel.Version] = SourceLocation{File: relPath(root, path), Line: 1, Column: 1}
 	}
 
-	dbFiles, err := globSorted(filepath.Join(root, "releases", "databases", "*", "*.tei"))
+	dbFiles, err := globPinnedSorted(root, r, filepath.Join(root, "releases", "databases", "*", "*.tei"))
 	if err != nil {
 		return err
 	}
@@ -746,7 +762,7 @@ func loadReleases(root string, r *Result) error {
 		r.Sources["database-release:"+string(rel.Database)+"/"+rel.Version] = SourceLocation{File: relPath(root, path), Line: 1, Column: 1}
 	}
 
-	solutionFiles, err := globSorted(filepath.Join(root, "releases", "solutions", "*", "*.tei"))
+	solutionFiles, err := globPinnedSorted(root, r, filepath.Join(root, "releases", "solutions", "*", "*.tei"))
 	if err != nil {
 		return err
 	}
@@ -766,7 +782,7 @@ func loadReleases(root string, r *Result) error {
 }
 
 func loadEnvironments(root string, r *Result) error {
-	manifests, err := globSorted(filepath.Join(root, "environments", "*", "environment.tei"))
+	manifests, err := globPinnedSorted(root, r, filepath.Join(root, "environments", "*", "environment.tei"))
 	if err != nil {
 		return err
 	}
@@ -828,13 +844,36 @@ func resolveNativeSQLFile(root, declarationPath, rawRef string) (string, error) 
 	return candidate, nil
 }
 
-func globSorted(pattern string) ([]string, error) {
-	xs, err := filepath.Glob(pattern)
+// globPinnedSorted expands a filepath.Glob style pattern below root through
+// the Root pinned by Load (or a temporary rooted handle for direct per-domain
+// loader tests), never through the Workspace pathname. It keeps globSorted's
+// result shape: absolute paths below root in sorted order, no error for a
+// missing directory, and entries of any type (a later pinned read rejects
+// non-regular ones exactly as before).
+func globPinnedSorted(root string, r *Result, pattern string) ([]string, error) {
+	logical, err := filepath.Rel(root, pattern)
+	if err != nil {
+		return nil, fmt.Errorf("Workspace listing pattern %q relative to Workspace: %w", pattern, err)
+	}
+	logical = filepath.ToSlash(logical)
+	rootHandle := r.sourceReadRoot
+	if rootHandle == nil {
+		rootHandle, err = openWorkspaceRoot(root)
+		if err != nil {
+			return nil, fmt.Errorf("open Workspace root for %s listing: %w", logical, err)
+		}
+		defer rootHandle.Close()
+	}
+	matches, err := fs.Glob(rootHandle.FS(), logical)
 	if err != nil {
 		return nil, err
 	}
-	sort.Strings(xs)
-	return xs, nil
+	files := make([]string, 0, len(matches))
+	for _, match := range matches {
+		files = append(files, filepath.Join(root, filepath.FromSlash(match)))
+	}
+	sort.Strings(files)
+	return files, nil
 }
 func relPath(root, path string) string {
 	x, err := filepath.Rel(root, path)
