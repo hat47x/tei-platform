@@ -57,6 +57,13 @@ func (s *MemoryStore) Apply(effect *semantic.DataEffect, inputs map[string]strin
 	return nil
 }
 
+// DeleteAllは、Dataのレコードをすべて削除する。
+func (s *MemoryStore) DeleteAll(data core.CanonicalID) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	delete(s.data, data)
+}
+
 // Recordsは、Dataの現在のレコードを返す。
 func (s *MemoryStore) Records(data core.CanonicalID) []map[string]string {
 	s.mu.RLock()
@@ -137,6 +144,11 @@ func (e ReferenceDataExecutor) Execute(_ context.Context, request Request) (Resu
 	if capability == nil {
 		return Result{}, fmt.Errorf("capability %s is not defined", request.Capability)
 	}
+	if capability.Effect != nil && capability.Effect.Kind == semantic.DataEffectDelete {
+		if err := e.checkDeletePolicy(capability.Effect.Data); err != nil {
+			return Result{}, err
+		}
+	}
 	if err := e.Store.Apply(capability.Effect, request.Inputs); err != nil {
 		return Result{}, err
 	}
@@ -146,6 +158,29 @@ func (e ReferenceDataExecutor) Execute(_ context.Context, request Request) (Resu
 		result.Outcome = &outcome
 	}
 	return result, nil
+}
+
+func (e ReferenceDataExecutor) checkDeletePolicy(target core.CanonicalID) error {
+	for _, namespace := range e.World.Semantics {
+		for _, data := range namespace.Data {
+			for _, relation := range data.Relations {
+				if relation.Target != target {
+					continue
+				}
+				if len(e.Store.Records(data.ID)) == 0 {
+					continue
+				}
+				switch relation.OnDelete {
+				case "cascade":
+					e.Store.DeleteAll(data.ID)
+				case "preserve":
+				default:
+					return fmt.Errorf("inbound relation %s restricts delete of %s", relation.ID, target)
+				}
+			}
+		}
+	}
+	return nil
 }
 
 // StoreUnitOfWorkは、MemoryStoreのスナップショットでRollbackする参照実装である。
