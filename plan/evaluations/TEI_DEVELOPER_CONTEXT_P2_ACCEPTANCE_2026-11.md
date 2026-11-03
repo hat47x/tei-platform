@@ -107,3 +107,20 @@
 **失敗時の最終表示に関する二つの判断候補（未採用）**：方式F1＝現Attemptのモデル結果は失効としてfreshな決定的順位に復帰、方式F2＝旧判断を歴史的注記として保存しつつ当該Attemptの順位資格を`unknown/stale`と明示。どちらでも外部送信と取得済みObservationを消したことにはしない。両方式は実Consumer/UI/Disclosure／追加費用・復帰性を別評価し、非公開の旧path・候補数・Tool名を無条件に公表しない。
 
 **T22に接続する未実施**：不正typed返答とTimeout、実Model/Provider、OS/Network中間ログ、同一Sourceに対する外部Harness再開、実Consumer開示、T14/T17のblind評価、T8共同Snapshot、独立Rに基づく業務意味評価。#2533（認知比較）／#2514（Oracle）／#2516（Consumer受渡し）／SEI #767（Method）／TAI #271（再資格化）／#2515・TAI #232（実開示・OS）の既存担当を維持する。
+
+<!-- tei-devctx-p2-2a-collection-budget-factor-20261104 -->
+## 7. P2-2a：決定的な探索方法の限定比較（2026-11-04、評価専用実装）
+
+[#2533](https://github.com/hat47x/tei-platform/issues/2533)のT7/T9/T15と、第3節Aの「**読取予算・保持候補・表示12件の分離**」を、PR #2669の**評価側だけ**に追加した。 `tools/reference-developer-context/bounded_collection_comparison_test.go` に公開 `t.TempDir` Fixtureの3つのGo試験を作り、専用Workflowで `TestCollectionComparison` も対象とした。現 `Discover/Rerank`、Product CLI、正式 Report schema、Ownerの探索Policyは**変更しない**。
+
+**明示した比較条件**：現行Dは12候補の収集中に打切る。評価用方式Aは対象ファイルと同ディレクトリの `_test.go` を**最大12件／最大64件**で調べ、独立した `docs/` **直下のみ最大12件**を走査してから、**表示上限12件**へ縮約する。優先信号は「直接ファイル名一致test／対象の完全path文字列を含むdoc／stem本文一致test」。これは公開Fixture用の**説明可能な字句上の仮ポリシー**であり、全Markdown・関数依存・業務関連性の正解ではない。元PoCの`plan/adr`やdocs再帰探索をこの限定評価方式が完全再現するものでもない。検証したread scopeと上限を併記する。
+
+| 評価Fixture | 独立Expected／現D | 評価Aで確認する差 | 誤って拡張しない主張 |
+| --- | --- | --- | --- |
+| **CC-01／追加弱test** | `validation_test.go`は独立R。先行弱test12件により現Dは候補外 | test読取12件のA12では同様に未到達、読取64件予算のA64では13ファイルを実ReadしてRを表示12件内に保持 | 読取費用+1をモデル順位・純粋な関連性改善と誤認しない |
+| **CC-02／docs入口独立** | 先行弱test12件で現DはMarkdownを未走査。完全path入りdocは独立R | A12でもtestとdocの**読取予算を分離**したためdocsを実Readし、保持候補13件から12件を選ぶ | 完全pathの字句参照＝最新版仕様や意味受理、としない |
+| **CC-03／上限負例** | 65弱test＋後続直接test。対象は独立に存在 | A64でも64件で走査打切り、`TestTruncated=true`、R未保持となる | 上限付き探索の0件／未保持を「不存在・完全」としない |
+
+**採点で分離する変数**：実読取回数（test/docそれぞれ）、読取失敗、保持候補と表示候補、予算到達、必要Rの候補到達、表示12件内のR、増分読取費用。A64のCC-01改善は単純に読取件数増が必要であり、同予算のモデル順位効果と比較しない。CC-02は**独立doc予算＋字句優先の両方が変わる**ため一つの純粋因果効果と主張しない。将来の公平な2×2対照で、表示方式固定／予算差と、予算固定／表示差をさらに切り分ける。
+
+**資格と次の引渡し**：この3件はGoによる実ファイル入出力を使用するが、Go test `t.TempDir`内の合成字句Referenceであり、TEI Productの追加Probe CLI/SEI実Method/外部Harness/権限・Disclosureの実検証ではない。評価側の独立RはMethod入力に渡さず（#2514）、実Consumerへ渡す可否は#2516、実Toolの選択・実行資格は#2605/TAI #271/TAI #232の既存責務とする。新規Probe契約・全Repo Index・Agent Host・共通Registryは作らない。**PR exact HEADのCI結果が確認できるまでは試験PASSを主張しない。**
