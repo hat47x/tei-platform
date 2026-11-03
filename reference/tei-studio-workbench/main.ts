@@ -7,6 +7,7 @@ import { createResponseScope } from "./responses.ts";
 import { handleXeadPathKeydown } from "./keyboard.ts";
 import {
   readCatalog,
+  inspectEligibility,
   readValidation,
   readInspection,
   relatedGraph,
@@ -185,7 +186,7 @@ function renderList() {
     const name = document.createElement("span");
     name.textContent = entry.symbol || entry.subject.id;
     const detail = document.createElement("small");
-    detail.textContent = `${entry.subject.kind} · ${entry.subject.id}`;
+    detail.textContent = `${entry.subject.kind} · ${entry.subject.id}${entry.ambiguous ? " · 対象未確定" : ""}`;
     button.append(name, detail);
     button.addEventListener(
       "click",
@@ -202,6 +203,27 @@ function renderList() {
 }
 async function inspect(subject: Subject) {
   if (!client || !workspace.value || disposed) return;
+  const eligibility = inspectEligibility(catalogSnapshot, subject);
+  if (!eligibility.ok) {
+    // All existing selection routes meet here. Never issue an unqualified
+    // Inspect for a globally ambiguous or unavailable Canonical Subject.
+    responses.invalidate("inspection");
+    const request = ++inspectionEpoch;
+    selected = null;
+    title.textContent = subject.id;
+    renderList();
+    editor.setDocument({
+      id: "unresolved",
+      version: `${workspaceEpoch}:${request}`,
+      text: `候補の同一性は未確定です：${eligibility.reason}`,
+    });
+    graph.update({ width: 680, height: 240, nodes: [], edges: [] });
+    element("graph-note").textContent = "対象の一意性が未確定のため関連図は保留しました。";
+    element("source-status").textContent = "対象未確定";
+    notice.textContent = `候補の閲覧は継続できます。Inspectは保留：${eligibility.reason}`;
+    notice.dataset.state = "error";
+    return false;
+  }
   const context = workspaceEpoch,
     request = ++inspectionEpoch,
     id = workspace.value;
@@ -214,7 +236,7 @@ async function inspect(subject: Subject) {
     version: `${context}:${request}`,
     text: "選択した要素を取得しています。",
   });
-  const related = relatedGraph(entries, subject);
+  const related = relatedGraph(entries.filter((entry) => !entry.ambiguous), subject);
   graph.update(related.input);
   graph.setSelectedNode(subjectKey(subject));
   element("graph-note").textContent = related.hidden

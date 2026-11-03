@@ -131,6 +131,62 @@ Web/CLI/Desktopに同一の型付きQuery/Actionを使う。GraphQL・REST・ODa
 
 後続では、#1127の実Read Modelを#1158の共通操作へ接続し、#1043による保護下で実Providerに対する読込とCRUD Actionの独立再読込を実証する。動的Metadata、関連・派生項目による漏洩、負荷制限、ODataか単純REST＋制限付きQuery APIかを比較してから採否をADRに記録する。
 
+
+## 6. 2026-11-02 横断照合：Host非必須・AI-first・Data/Function/Businessを維持するWeb Adapter（検討・未採用）
+
+- **読み取り基準**：main `9c9ef4d160640908e06ad13afb6c2b45c664c748`。この節は#1656の**既存計画への追補候補**であり、新Public API、Core Type、権限正本、契約採用、Issue受入完了、Gate合格を意味しない。2026-10-13付の上記「未検証」記述は**初期Referenceの歴史的状態**として読む。
+- **横断参照**：独自共通Hostを必須にしないOwner方針は[Draft #2226](https://github.com/hat47x/tei-platform/pull/2226)に文書化中。AI-first・Headless-firstの開発順序は[Draft #2492](https://github.com/hat47x/tei-platform/pull/2492)。いずれもDraft・main未統合の実装保証として扱わない。
+- #1769は2026-11-02確認時点で**Closed**。Customer/Tenant双方の使い捨てPostgreSQL局所試験の既存実測報告（#1769/PR #1801）があるが、実IdP/Policy Authority、現在GrantとSQLの原子性、OData適合、実Web Hostへの接続、全Queryへの一般化を証明しない。E11/E12の**既知の情報推測**も解消済みではない。
+
+### 6.1 Webは対象環境へのAdapterであり、TEI共通Hostではない
+
+`HTTP／既存Host認証→信頼済み主体対応→既存security.authorize／Publication／Binding→型付きReadPlanまたはAction→実Provider／Owner確定境界→公開Result／独立Observation`を**設計上の責務列**として扱う。この一列を同一実行で完走したという証拠ではない。
+
+| 層・呼出関係 | 現行の確認済み実装（固定main） | 不足する実証・非目標 |
+| --- | --- | --- |
+| HTTP・Session・認証 | `reference/web-composition/go-host/host.go`、`tools/reference-first-web-target/session_command_route.go`。合成保護経路と既存Go Host | 実IdP・Target別Cookie/CSRF/Proxy、外部.NET/Java Host実接続。TEI独自Hostを必須にしない（#1043/#2390） |
+| Canonical/Driver/Binding | `reference/web-api-contract/canonical.go`、`internal/driver/`。Pattern/Query/Data/Result mappingと既存Capabilityの解決 | 公開Publicationは権限Grantでも業務意味受理でもない。Web専用第二Resolverは新設しない（#951/#1127） |
+| Read公開・Provider | `authorized_bind.go`→`scoped_driver_bridge.go`→`scoped_postgres_reference.go`等のReference。明示Scoped SQLと合成/限定実DB検査 | `TrustedReadContext`や`EnforcesScope`真偽値は権限の真正性を証明しない。Reader失効・実Policy Authority・間接推測・実Webハンドラは別（#1656） |
+| Command・Owner Effect | `command_canonical.go`／`tools/reference-first-web-target/command_scenario.go`、`internal/security/effectcommit/commit.go`。型付き候補、合成Command、独立のEffectCommit部品 | 正式Web Action→同一確定境界のEffectCommit Caller/Receipt/独立Readの縦断は未確認。HTTP 200とBusiness完了を同一視しない（#1174/#2518） |
+| Consumer・表示 | #2506 Function Context、#2500/#2598 Operation Intent、#2391 UI外部制御は別Ownerの候補 | AI/CUI・Web・SHO・GUIの表示結果や選択epochはAction対象ID/Grant/現行Commitの正本にならない |
+
+Pluginの`ServiceAcceptance`やArtifact Digestはサービス実装の来歴・選択の材料であり、利用者の業務権限やBusiness Actionの意味的受理ではない。認証・認可・Transaction・監査は利用する既存Host／対象プラットフォーム／Providerの機構へ適応し、必要な実行時検査が**どこで強制されたか**を観測する。第二のWeb Permission Engine／Transaction Engineを作らない。
+
+### 6.2 Queryの意味・公開権限・結果集合の完全性を分ける
+
+- **静的事実**：`order_entry.recent_orders`のCanonical Queryは`ordered_at DESC`。Web参照の`BindReadSubset`は明示`$orderby=orderedAt`の権限を拒否できるが、**指定されなかった既定Sortの情報流**までは認可していない。`scoped_postgres_reference.go`は非選択列を`NULL AS`で取得抑制しつつ、既定`ORDER BY o.ordered_at DESC, o.order_id DESC`を維持する。
+- **既存の反証証拠**：[E11/E12](../../reference/web-api-contract/POSTGRES_SCOPED_E2E.md)は、公開`orderId`だけが同一でも非公開`orderedAt`の大小を入れ替えると、既定の公開順序・`$top=1`結果が変化する**既知の限界**を記録。テストは意図的に現状を特性化しており、権限制約を満たしたPASSではない。
+- **公開の別問題**：物理SQL NULL、未選択列`NULL AS`、フィールド欠落、空文字、0/false、0件、ページ制限で取得した一部分、全件未取得は同値でない（#2056/#2585/#2506/#2586）。特に`$top`の結果に存在しない行から、全母集団での「不存在」やBusiness Action対象集合の全件性を推測しない。
+- **データの順序も情報**：行の一覧順、上位N件、件数、join後の増幅、派生項目・関連・非単調Queryによる結果の出現/消滅は、公開列のマスクと別の可観測情報。非公開列を直接送らなかったことだけで無漏洩と判定しない（#2387/#2582/#2586）。
+- **Owner未決**：非公開項目を既定Sortへ使うことを許す条件、並べ替え権限の所在、公開する情報の粒度と母集団・取得完全性。Query意味をWeb側で無断変更しない。許可・拒否の実行規則はOwner決定前に新Public契約へ昇格させない。
+
+### 6.3 書込：Intentの成立、Actual Target、Effect、Business完了を分離する
+
+#2598/#2391/#1174/#2518の議論を、Web固有Schemaではなく**一試行の受渡し・独立観測項目**として再利用する。
+
+`U（UI/AIが選んだ表示occurrence）→I（型付きOperation Intent候補のSemantic target・scope・版）→A（AdapterがProviderへ渡した対象/入力）→E（実際に作用した対象/値）→O（別readでの観測）→B（Owner受理済みBusiness完了条件）`。
+
+- `U=I`は自明でない。複数1:N Context、JOIN増幅、並べ替え・部分取得・選択epoch変更で表示行と対象Entityがずれる。Intent候補のserialize/replayのみで現在のGrant・対象・期待版を証明しない。
+- `I=A=E`はReceiptやRequestHash一致だけで証明できない。0行更新／別行更新／複数行更新と同一OperationのReceiptを別々に照合し、読込時点とCommit時点の版・Authorityの変更を記録する。
+- `E=O`は観測の時点・範囲が一致する場合だけ主張する。通信切断やCommit uncertainではHTTPレスポンス／UI描画から確定を推測しない。Actionがoutput-onlyのとき未受理の`denied` outcomeを追加せず、技術失敗と正式業務拒否の対応は#1129/ADR-0020 Ownerへ戻す。
+- `B`は人の確認、対象範囲、付随更新、手作業や取消・補償を含み得る。Providerの成功や単一DB行の更新からBusiness完了を独断しない。#2518の業務完了証拠と#1125の未受理Business Procedureを維持する。
+
+### 6.4 既存資産だけで反証する価値仮説と実証順序（追加APIなし）
+
+**価値仮説（1件）**：同じAccepted Query/Action意味を、Headless ConsumerとWeb/既存外部Hostで使うとき、HTTP専用の第二業務Resolver/権限正本を作らず、**公開可能な結果・対象帰属・失敗/未確定の区別**を同じ既存Driver/Capability/Provider拘束に結び付けられる。
+
+| 順序 | 実証する最小差分と反例 | 必要証拠・止める誤認 | Owner |
+| --- | --- | --- | --- |
+| **W0 静的比較** | 同じ`order_entry.recent_orders`のQuery ID、Result mapping、可視Field、既定Sort、Scope契約、HTTP/Headless Callerの実在を固定SHA/path付きで比較 | 呼出辺ごとに`implemented / synthetic-test / real-DB-local / caller-unverified`を付す。存在しないWeb→Scoped Provider辺を推測で結ばない | #1656/#1043 |
+| **W1 読込の既知反例** | 既存E11/E12のA/Bデータ（公開`orderId`同一・非公開`orderedAt`のみ逆転）で`$select=orderId`と`$top=1`を比較。許可されない明示SortはDB発行0で拒否 | 既知の推測を漏洩の可能性として記録し、規範的PASSへ昇格しない。Owner判断がない場合は正式公開不可/未決を維持。実DB再実行・実Host縦断は今回NOT RUN | #1656（#1769履歴を再利用） |
+| **W2 集合・Presenceの負例** | 同じ公開列に対して、0件/partial/top-N、SQL NULL/未選択NULL AS/欠落/空文字を意図的に分ける | 真の0件・不存在・全取得・更新可能対象集合への格上げが起きないこと。新Collection completeness契約をWebで先行採用しない | #2506/#2585/#2586 |
+| **W3 書込の異対象負例** | 同一`submit_order`候補でIntent対象1001を指定し、実Adapterが1002へ作用する反例を隔離環境で比較。Grant失効・Commit uncertain・独立Readも別々に確認 | `I/A/E/O/B`の各帰属と現在性。Receipt成功≠対象一致≠業務完了。実PG・Owner受理・正式Web Callerを観測するまで未合格 | #1174/#2598/#2518 |
+| **W4 外部Host比較** | W1の許可・拒否・可視結果とW3の拒否・不明分類を、既存Go HostとJava/.NET等の外部Consumerで比較 | 同一意味・同一試験Oracle、Targetごとの認証・Provider/Tx強制場所、追加Web専用Resolver数/Adapter工数。実外部Target試験はNOT RUN | #2390/#1180/#2018 |
+
+**最小の第一観測はW0→W1**。特にE11/E12の二世界を同一Queryで比較し、公開結果が非公開Sort値に依存するという**既に分かっている失敗**を、契約不在のまま「成功した」と扱わず記録できるかを確認する。W2〜W4は同じ価値仮説を後続段階で圧力試験するための既存Ownerへの受渡しであり、新Gateではない。
+
+**未実行・採用保留**：本追補でGo/PG/HTTP/Java/.NET/AI CUI/UI試験は新たに実施していない。テストソース、履歴上の実DB PASS、Source版の照合、Ownerの意味受理、本番認証/権限・効果確定は互いに独立の証拠。#1656のOData vs 制約付きREST＋Query比較、HTTP status/error/metadata、暗黙Sortの正式ポリシー、正式Provider選択はOwner判断待ち。
+
 ## 参考規格
 
 - [OData 4.01 URL Conventions（OASIS）](https://docs.oasis-open.org/odata/odata/v4.01/os/part2-url-conventions/odata-v4.01-os-part2-url-conventions.html)
