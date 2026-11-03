@@ -54,3 +54,18 @@ go run ./cmd/tei validate -workspace reference/standard-crud/workspace
 **確かめていないこと**: 閉じた期間の**実行時の拒否**。操作面は前提を宣言しますが、実行の入口で前提を検査する層はまだありません。実データベースでの期間の扱いも未確認です。
 
 **設計判断（仮承認D-2）**: 期間は意味の層（`data`・`persist` の宣言）に閉じ、CLI の段階は増やしていません。閉じた期間を `human-gated` に読み替えず、自律区分（誰が判断するか）と期間の状態（いつ実行できるか）を別の軸として扱います。
+## 6. 期間の状態の通し確認（2026-11-03 追記）
+
+期間の拒否が、宣言から実行入口まで一本につながることを確かめました。
+
+| 確認 | コマンド | 結果 |
+| --- | --- | --- |
+| 宣言から拒否まで | `go test ./internal/execution -run WorkspacePeriod` | 通る（`period` → 操作面 → 束縛 → ガード → driver を呼ばない拒否） |
+| ガードの単位 | `go test ./internal/operations -run 'GuardCapability|CheckPeriods'` | 通る（操作全体・能力単位・出所経由） |
+| CLI の判定 | 一時作業領域で `tei periods -period-state-file` | `closed` → 2件拒否・終了コード1、`open` → 0件・0、未知の状態 → エラー |
+| 状態ファイル | `go test ./cmd/tei -run PeriodStateFile` | 通る（読取り・未知の状態の拒否・欠落の拒否） |
+
+**確かめていないこと**
+- 実際の能力呼出しを行うツールへの適用（`tools/reference-data-first-persistence` は未適用）
+- 実データベースでの期間と競合の確認（`TEI_TEST_POSTGRES_DSN` 未設定）
+- 期間の状態を誰が・いつ記録するかの運用（現状は JSON ファイルを運用者が置く想定）
