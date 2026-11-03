@@ -64,6 +64,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          gofmt -d internal/driver/action_surface_handoff_test.go
           test -z "$(gofmt -l internal/driver/action_surface_handoff_test.go)"
           go test ./internal/driver -run '^TestActionSurfaceToBoundRequestWrongTarget$' -count=1 -v
 
