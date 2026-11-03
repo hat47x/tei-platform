@@ -399,6 +399,12 @@ Buriのプロセス改版と既存案件継続は参考になるが、**本v1で
 
 この追補はADR-0024/0025のStatusやLifecycle新Core種別の採否を変更しない。Buri由来の検証候補BL-01〜08は、TEIへの導入時に各既存Issueの独立Expected・反例として選択的に使うものであり、**今回のTEI実試験はNOT RUN**。
 
+### 業務Lifecycleと汎用状態機械の関係（2026-11-03、採用前）
+
+[非業務も含むState Machine・Validation／Derivation／Flow・図表交差の設計圧力](STATE_MACHINE_CROSS_DOMAIN_DESIGN_PRESSURE_2026-11.md)を、汎用性の反証・可読性／コード生成検証の入力として参照する。業務Lifecycle v1は受注`pending → submitted`の最小意味契約のままで、UI通信・ゲーム・組込の状態機械をこの文書のCoreや実行契約へ直接統合しない。
+
+状態図・状態表・遷移表・条件表をTEI Modeler/SHOで同一意味から投影し、ヒアリング中の編集差分をSource／Meaning／生成Targetへ戻す構想は重要だが、`Validation`・`Derivation`・`Flow`の新Core enumや汎用実行エンジンを採用したものではない。意味Role、Source／Snapshot、Independent Expected、Provider現在資格の区別は既存#2620/#2621/#2497/#2514/#1121が所有する。履歴的Buriに同名三モードの実装があったと一次資料からは未確認。
+
 ## 関連文書
 
 - ISSUE-000038: 作業範囲、実装順、完了条件
