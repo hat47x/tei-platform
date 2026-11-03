@@ -211,3 +211,8 @@ effect-rule order.stock {
 **未着手**: 操作面・成果物への反映（P2）、実行時の扱い（P3）、`when` のような条件の宣言。
 
 **設計上の注意**: 確定後の効果はトランザクションと一緒に巻き戻せないため、`via capability` を必須にしました。これは「失敗したときに戻せない効果を、戻せる効果と同じ顔で扱わない」という判断です。
+### P2（操作面・成果物）の実装状況（2026-11-03 追記）
+
+- 操作面: `binding` が効果規則の対象能力と一致する操作に `effectRules`（規則の識別子）を載せる（`internal/operations/surface.go`）。
+- 成果物: 機能定義書に `effect-rule <id> on <capability> stage <stage> effect <kind> <data> [via <capability>] [on-failure <扱い>]` の行を出す（`internal/artifact/functiondef.go`）。
+- 生成規則の行種別に `effect-rule` を追加。
