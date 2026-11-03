@@ -131,8 +131,20 @@ func keygen(path, issuer, keyID, application string, notBefore, notAfter *string
 	if err != nil {
 		return errors.New("PRIVATE_KEY_WRITE_FAILED: the file must not exist")
 	}
+	// The path may reach the repository through a junction or symbolic link that
+	// the lexical check cannot see. Ask the OS where the new (still empty) file
+	// really is BEFORE any secret is written; inside a working tree, remove it.
+	if real, err := finalPath(file); err != nil || pathInRepository(real) {
+		_ = file.Close()
+		_ = os.Remove(path)
+		if err != nil {
+			return errors.New("PRIVATE_KEY_WRITE_FAILED: cannot resolve the real location")
+		}
+		return errors.New("PRIVATE_KEY_IN_REPOSITORY: choose a path outside every Git working tree")
+	}
 	_, writeErr := file.WriteString(base64.StdEncoding.EncodeToString(private.Seed()) + "\n")
 	if err := errors.Join(writeErr, file.Close()); err != nil {
+		_ = os.Remove(path)
 		return errors.New("PRIVATE_KEY_WRITE_FAILED")
 	}
 	encoder := json.NewEncoder(stdout)
@@ -149,7 +161,17 @@ func sign(g provisionaleffectgrant.Grant, keyPath, out string) error {
 	if insideRepository(keyPath) {
 		return errors.New("PRIVATE_KEY_IN_REPOSITORY: choose a path outside every Git working tree")
 	}
-	raw, err := os.ReadFile(keyPath)
+	keyFile, err := os.Open(keyPath)
+	if err != nil {
+		return errors.New("PRIVATE_KEY_UNREADABLE")
+	}
+	// A key reached through a junction or link into a working tree is refused too.
+	if real, err := finalPath(keyFile); err != nil || pathInRepository(real) {
+		_ = keyFile.Close()
+		return errors.New("PRIVATE_KEY_IN_REPOSITORY: choose a path outside every Git working tree")
+	}
+	raw, err := io.ReadAll(io.LimitReader(keyFile, 4096))
+	_ = keyFile.Close()
 	if err != nil {
 		return errors.New("PRIVATE_KEY_UNREADABLE")
 	}
@@ -165,7 +187,18 @@ func sign(g provisionaleffectgrant.Grant, keyPath, out string) error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(out, append(encoded, '\n'), 0o600)
+	// O_EXCL: never overwrite anything, so -out can not destroy the private key,
+	// a trust file or an earlier Grant, whatever path spelling names it.
+	outFile, err := os.OpenFile(out, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
+	if err != nil {
+		return errors.New("OUTPUT_WRITE_FAILED: the file must not exist")
+	}
+	_, writeErr := outFile.Write(append(encoded, '\n'))
+	if err := errors.Join(writeErr, outFile.Close()); err != nil {
+		_ = os.Remove(out)
+		return errors.New("OUTPUT_WRITE_FAILED")
+	}
+	return nil
 }
 
 func show(grantPath, trustPath string, stdout io.Writer, now func() time.Time) error {
@@ -201,6 +234,13 @@ func insideRepository(path string) bool {
 	if err != nil {
 		return true // cannot prove it is outside: refuse
 	}
+	return pathInRepository(abs)
+}
+
+// pathInRepository is insideRepository for an absolute path. A caller that
+// holds an open file must ALSO check the OS-reported real path (finalPath):
+// EvalSymlinks does not see through Windows directory junctions.
+func pathInRepository(abs string) bool {
 	dir := filepath.Dir(abs)
 	if resolved, err := filepath.EvalSymlinks(dir); err == nil {
 		dir = resolved

@@ -5,7 +5,9 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -175,5 +177,107 @@ func TestErrorsNeverEchoKeyMaterial(t *testing.T) {
 	}
 	if err := run([]string{"bogus"}, &bytes.Buffer{}, clock); err == nil {
 		t.Fatal("unknown command accepted")
+	}
+}
+
+// linkDir makes link point at target: a directory junction on Windows (no
+// privilege needed), a symbolic link elsewhere. It skips when neither works.
+func linkDir(t *testing.T, link, target string) {
+	t.Helper()
+	if runtime.GOOS == "windows" {
+		if out, err := exec.Command("cmd", "/c", "mklink", "/J", link, target).CombinedOutput(); err != nil {
+			t.Skipf("mklink /J unavailable: %v %s", err, out)
+		}
+		return
+	}
+	if err := os.Symlink(target, link); err != nil {
+		t.Skipf("symlink unavailable: %v", err)
+	}
+}
+
+func repoWithSub(t *testing.T) (repo, sub string) {
+	t.Helper()
+	repo = t.TempDir()
+	if err := os.Mkdir(filepath.Join(repo, ".git"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	sub = filepath.Join(repo, "sub")
+	if err := os.Mkdir(sub, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	return repo, sub
+}
+
+func TestKeygenRefusesJunctionOrLinkIntoRepository(t *testing.T) {
+	_, sub := repoWithSub(t)
+	outside := t.TempDir()
+	jn := filepath.Join(outside, "jn")
+	linkDir(t, jn, sub)
+	err := run([]string{"keygen", "-private-key", filepath.Join(jn, "k5"), "-issuer", "dev", "-key-id", "k1", "-application", "order_entry"}, &bytes.Buffer{}, clock)
+	if err == nil || !strings.HasPrefix(err.Error(), "PRIVATE_KEY_IN_REPOSITORY") {
+		t.Fatalf("junction into the repository accepted: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(sub, "k5")); err == nil {
+		t.Fatal("a key file was left inside the repository")
+	}
+}
+
+func TestSignRefusesKeyReachedThroughJunctionOrLink(t *testing.T) {
+	_, sub := repoWithSub(t)
+	seed := base64.StdEncoding.EncodeToString(make([]byte, 32))
+	if err := os.WriteFile(filepath.Join(sub, "k"), []byte(seed+"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	outside := t.TempDir()
+	jn := filepath.Join(outside, "jn")
+	linkDir(t, jn, sub)
+	e := setup(t)
+	args := e.signArgs()
+	for i, a := range args {
+		if a == e.key {
+			args[i] = filepath.Join(jn, "k")
+		}
+	}
+	if err := run(args, &bytes.Buffer{}, clock); err == nil || !strings.HasPrefix(err.Error(), "PRIVATE_KEY_IN_REPOSITORY") {
+		t.Fatalf("key behind a junction into the repository was used: %v", err)
+	}
+	if _, err := os.Stat(e.grant); err == nil {
+		t.Fatal("a Grant was signed with a repository key")
+	}
+}
+
+func TestSignNeverOverwritesAnything(t *testing.T) {
+	e := setup(t)
+	keyBefore, _ := os.ReadFile(e.key)
+	trustBefore, _ := os.ReadFile(e.trust)
+	for name, out := range map[string]string{
+		"private key":     e.key,
+		"trust file":      e.trust,
+		"key via ..":      filepath.Join(e.dir, "sub", "..", "issuer.key"),
+		"key, other case": strings.ToUpper(e.key[:1]) + e.key[1:],
+		"existing grant":  e.grant,
+	} {
+		if name == "existing grant" {
+			if err := os.WriteFile(e.grant, []byte("earlier"), 0o600); err != nil {
+				t.Fatal(err)
+			}
+		}
+		args := e.signArgs()
+		args[len(args)-1] = out
+		if name == "key via .." {
+			_ = os.MkdirAll(filepath.Join(e.dir, "sub"), 0o700)
+		}
+		if err := run(args, &bytes.Buffer{}, clock); err == nil {
+			t.Fatalf("%s: -out accepted", name)
+		}
+	}
+	if got, _ := os.ReadFile(e.key); !bytes.Equal(got, keyBefore) {
+		t.Fatal("private key was modified")
+	}
+	if got, _ := os.ReadFile(e.trust); !bytes.Equal(got, trustBefore) {
+		t.Fatal("trust file was modified")
+	}
+	if got, _ := os.ReadFile(e.grant); string(got) != "earlier" {
+		t.Fatal("an existing Grant file was overwritten")
 	}
 }

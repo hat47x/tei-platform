@@ -420,3 +420,129 @@ func TestFileSourceVerifiesOnEveryRead(t *testing.T) {
 		t.Fatal("empty source accepted")
 	}
 }
+
+func TestSigningPayloadGolden(t *testing.T) {
+	g := baseGrant()
+	g.Schema, g.Provisional = Schema, true
+	got, err := SigningPayload(g)
+	if err != nil {
+		t.Fatal(err)
+	}
+	const want = `{"domain":"tei.host-effect-grant-provisional/v0","provisional":true,"issuer":"dev-issuer","keyId":"k1",` +
+		`"applicationId":"order_entry","capability":"order_entry.submit_order","subjectId":"editor","resource":"order/42",` +
+		`"epochs":{"source":"local-auth-store","subjectLink":10,"membership":20,"policy":30},` +
+		`"notBefore":"2026-11-03T11:59:00Z","notAfter":"2026-11-03T13:00:00Z"}`
+	if string(got) != want {
+		t.Fatalf("signing payload changed:\n got %s\nwant %s", got, want)
+	}
+}
+
+// A signature made over the same fields under another domain (none, the Source
+// Acceptance domain, a near-miss) must never verify as an effect Grant.
+func TestOtherDomainSignaturesAreNotEffectGrants(t *testing.T) {
+	k := newKeys(t)
+	policy := policyOf(t, entry(k, "dev-issuer", "k1", nil))
+	for _, domain := range []string{"", "tei.host-acceptance-decision/v0", Schema + "x", "tei.host-effect-grant-provisional/v1"} {
+		g := baseGrant()
+		g.Schema, g.Provisional = Schema, true
+		payload, err := json.Marshal(signedPayload{
+			Domain: domain, Provisional: true, Issuer: g.Issuer, KeyID: g.KeyID, ApplicationID: g.ApplicationID,
+			Capability: g.Capability, SubjectID: g.SubjectID, Resource: g.Resource, Epochs: g.Epochs,
+			NotBefore: g.NotBefore, NotAfter: g.NotAfter,
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		g.Signature = base64.StdEncoding.EncodeToString(ed25519.Sign(k.priv, payload))
+		if _, err := Verify(g, baseQuery(), policy, at(0)); err == nil || err.Error() != "HOST_STORE_SIGNATURE_INVALID" {
+			t.Fatalf("domain %q: %v", domain, err)
+		}
+	}
+	// A Source Acceptance Decision signature (same key) is not an effect Grant either.
+	d := hoststore.Decision{Issuer: "dev-issuer"}
+	decisionSigned, err := hoststore.Sign(d, "k1", k.priv)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var ev struct{ Signature string }
+	_ = json.Unmarshal(decisionSigned.Evidence, &ev)
+	g := baseGrant()
+	g.Schema, g.Provisional, g.Signature = Schema, true, ev.Signature
+	if _, err := Verify(g, baseQuery(), policy, at(0)); err == nil || err.Error() != "HOST_STORE_SIGNATURE_INVALID" {
+		t.Fatalf("decision signature accepted: %v", err)
+	}
+}
+
+func TestFieldsRejectControlFormatAndOversizeText(t *testing.T) {
+	k := newKeys(t)
+	bad := map[string]string{
+		"tab":         "a\tb",
+		"escape":      "a\x1bb",
+		"bidi":        "a‮b",
+		"zero width":  "a​b",
+		"nbsp":        "a b",
+		"line sep":    "a b",
+		"bad utf8":    "a\xffb",
+		"private use": "ab",
+		"oversize":    strings.Repeat("a", maxFieldBytes+1),
+	}
+	for name, v := range bad {
+		for field, set := range map[string]func(*Grant){
+			"subject":  func(g *Grant) { g.SubjectID = v },
+			"resource": func(g *Grant) { g.Resource = v },
+			"source":   func(g *Grant) { g.Epochs.Source = v },
+		} {
+			g := baseGrant()
+			set(&g)
+			if _, err := Sign(g, k.priv); err == nil || err.Error() != "PROVISIONAL_GRANT_INVALID" {
+				t.Fatalf("%s/%s: %v", name, field, err)
+			}
+		}
+	}
+	g := baseGrant()
+	g.SubjectID, g.Resource = "a b", "order/日本語"
+	if _, err := Sign(g, k.priv); err != nil {
+		t.Fatalf("inner space and non-ASCII letters must be allowed: %v", err)
+	}
+	if _, err := Sign(func() Grant { g := baseGrant(); g.Resource = strings.Repeat("a", maxFieldBytes); return g }(), k.priv); err != nil {
+		t.Fatalf("max length must be allowed: %v", err)
+	}
+}
+
+func TestPeriodHasALowerBound(t *testing.T) {
+	k := newKeys(t)
+	g := baseGrant()
+	g.NotBefore, g.NotAfter = ts(0), ts(59*time.Second)
+	if _, err := Sign(g, k.priv); err == nil || err.Error() != "PROVISIONAL_GRANT_PERIOD_TOO_SHORT" {
+		t.Fatalf("%v", err)
+	}
+	g.NotAfter = ts(time.Minute)
+	if _, err := Sign(g, k.priv); err != nil {
+		t.Fatalf("exactly one minute must be allowed: %v", err)
+	}
+}
+
+func TestParseRejectsDuplicateAndMiscasedKeys(t *testing.T) {
+	k := newKeys(t)
+	g := signed(t, k, nil)
+	raw, _ := json.Marshal(g)
+	s := string(raw)
+	for name, doc := range map[string]string{
+		"duplicate top":     strings.Replace(s, `"resource":"order/42"`, `"resource":"order/42","resource":"order/43"`, 1),
+		"duplicate epochs":  strings.Replace(s, `"policy":30`, `"policy":30,"policy":31`, 1),
+		"miscased top":      strings.Replace(s, `"subjectId"`, `"SubjectID"`, 1),
+		"miscased epochs":   strings.Replace(s, `"membership"`, `"Membership"`, 1),
+		"unknown in epochs": strings.Replace(s, `"policy":30`, `"policy":30,"extra":1`, 1),
+		"array":             "[" + s + "]",
+	} {
+		if doc == s {
+			t.Fatalf("%s: fixture did not change", name)
+		}
+		if _, err := Parse([]byte(doc)); err == nil || err.Error() != "PROVISIONAL_GRANT_INVALID" {
+			t.Fatalf("%s: %v", name, err)
+		}
+	}
+	if _, err := Parse(raw); err != nil {
+		t.Fatal(err)
+	}
+}
