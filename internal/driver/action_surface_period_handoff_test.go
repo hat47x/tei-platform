@@ -109,6 +109,18 @@ func TestActionSurfacePeriodStateChangesAtDispatch(t *testing.T) {
 	write(`{}`)
 	check(false, false)
 
+	// A state for a different period does not establish current eligibility
+	// of this period. In the current reference helper, omission is unguarded.
+	write(`{"sales.week":"closed"}`)
+	check(false, false)
+
+	// Distinguish an omitted key in a readable source from a source that
+	// disappears after the offer: an unreadable source must raise an error.
+	if err := os.Remove(statePath); err != nil {
+		t.Fatalf("remove current state file: %v", err)
+	}
+	check(false, true)
+
 	// Invalid Source is an error, not a successful business refusal.
 	write(`{"sales.month":"invalid"}`)
 	check(false, true)
