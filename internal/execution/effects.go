@@ -1,7 +1,12 @@
 package execution
 
 import (
+	"context"
+	"fmt"
+
 	"tei/internal/core"
+	"tei/internal/driver"
+	"tei/internal/effectlog"
 	"tei/internal/semantic"
 )
 
@@ -29,4 +34,52 @@ func EffectsOutsideTransaction(rules []semantic.EffectRule, capabilityID core.Ca
 		out = append(out, EffectRequirement{RuleID: string(rule.ID), Stage: rule.Stage})
 	}
 	return out
+}
+
+// EffectObserver reads an effect back through a path independent from the
+// invocation. It reports whether the effect is visible and any detail worth
+// recording. An error means the observation could not be made.
+type EffectObserver interface {
+	ObserveEffect(ctx context.Context, then effectlog.Record) (bool, string, error)
+}
+
+// RunEffect performs an effect that the invocation result cannot witness: it
+// invokes the capability the rule names, records the attempt, and marks the
+// record observed only when an independent read confirms it. A failed
+// invocation is recorded, not returned as an error; an error from the journal or
+// the observer is returned because the record would otherwise be incomplete.
+func RunEffect(ctx context.Context, invoker Invoker, observer EffectObserver, journal effectlog.Journal, applicationID core.CanonicalID, rule semantic.EffectRule, adapters driver.BindingAdapterResolver, input any) (effectlog.Record, error) {
+	record := effectlog.Record{
+		RuleID:     string(rule.ID),
+		Stage:      rule.Stage,
+		Capability: string(rule.ViaCapability),
+	}
+	if rule.ViaCapability == "" {
+		return record, fmt.Errorf("effect rule %s runs at %s, so it must name the capability that performs it", rule.ID, rule.Stage)
+	}
+	if rule.Stage != "after-commit" && rule.Stage != "compensation" {
+		return record, fmt.Errorf("effect rule %s runs at %s, which the transaction already covers", rule.ID, rule.Stage)
+	}
+
+	if _, err := invoker.InvokeCapability(ctx, applicationID, rule.ViaCapability, adapters, input); err != nil {
+		record.Detail = err.Error()
+		if journalErr := journal.Append(record); journalErr != nil {
+			return record, journalErr
+		}
+		return record, nil
+	}
+	record.Succeeded = true
+
+	if observer != nil {
+		observed, detail, err := observer.ObserveEffect(ctx, record)
+		if err != nil {
+			return record, fmt.Errorf("observe effect %s: %w", rule.ID, err)
+		}
+		record.Observed = observed
+		record.Detail = detail
+	}
+	if err := journal.Append(record); err != nil {
+		return record, err
+	}
+	return record, nil
 }
