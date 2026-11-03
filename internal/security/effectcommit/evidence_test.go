@@ -60,6 +60,20 @@ func TestEvidenceOnePerCallAndFields(t *testing.T) {
 	}
 }
 
+func TestEvidenceCarriesProvisionalGrantProvenance(t *testing.T) {
+	if ProvenanceProvisionalGrant != "provisional-grant" {
+		t.Fatalf("provenance mark changed: %q", ProvenanceProvisionalGrant)
+	}
+	sink := &fakeSink{}
+	runner := Runner{Provider: newMemoryProvider(), Audit: AuditConfig{Sink: sink, Provenance: ProvenanceProvisionalGrant}}
+	if _, err := runExec(runner, fixtureRequest()); err != nil {
+		t.Fatal(err)
+	}
+	if len(sink.got) != 1 || sink.got[0].Provenance != ProvenanceProvisionalGrant {
+		t.Fatalf("%+v", sink.got)
+	}
+}
+
 func TestEvidenceStatusesAndErrorClasses(t *testing.T) {
 	cases := []struct {
 		name       string

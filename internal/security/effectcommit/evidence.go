@@ -16,6 +16,12 @@ const (
 	ProvenanceUnspecified Provenance = "unspecified"
 	ProvenanceSynthetic   Provenance = "synthetic"
 	ProvenanceRealPG      Provenance = "real-pg"
+	// ProvenanceProvisionalGrant marks Evidence whose effect Grant came from the
+	// development-only provisional issuer (provisional owner decision D8,
+	// internal/security/provisionaleffectgrant). It is a mark of reduced trust:
+	// such Evidence must never be counted for G2. The composition supplies it;
+	// existing values are unchanged.
+	ProvenanceProvisionalGrant Provenance = "provisional-grant"
 )
 
 // ErrorClass is a coarse class of an Execution Error. It never carries the
