@@ -124,6 +124,8 @@ Layer 3   CUI／Studio／Skill／SHO／Targetへの用途別Projection
 
 既存の `tools/reference-build-execution-binding` はLocatorを取得ヒントとして除く**別のReference限定**の実行Plan投影を持ち、BuildPlan v1や既存LockのFingerprintを変更しない。条件付きの再利用を検討するなら、Builderが位置の非依存性を保証できる範囲と実際の入力・出力を確認し、既存の候補を対照する。今回の実験だけでv1固定範囲やLock照合を変更しない。
 
+**実AdapterとReference Providerの追加対照**：`tools/internal/gobuilder/provider_location_test.go` は実 `BuildPackage` と `tools/reference-process-plugin` のSource・Go依存を使用し、一時Workspaceの別々のBuild stateで4回Buildする。Go 1.27.3／Linuxでは、同じ相対パスのままWorkspace全体を移すと出力は一致した。一方、Plugin Sourceの内容を保って `main.go` から `relocated.go` に改名すると出力が変わり、Source内容の変更でも出力が変わった。これらは `-trimpath` を常に指定するAdapterでの観測であり、Workspace rootの移動とSourceファイル名の変更を同じ「位置変更」と扱えない。実GoコンパイラとReference ProviderのBuildは実行したが、完全なGit checkout・self-build runner・正式なProvenance／Authority検証ではなく、他のGo版・OS・Providerへの一般化もできない。既存のBuildPlan v1と出力Digest照合は維持する。
+
 [#2620 RE-01〜10](https://github.com/hat47x/tei-platform/issues/2620)と[TAI #271 QH-01〜18](https://github.com/hat47x/tai-pleroma/issues/271)の横断研究から、**同じRole ID/versionでも実装内容が変わり得る**という受入条件を具体化した。前段ReferenceはRoot/Eager依存先について**版文字列だけを比較**していたため、同じ版の実装差を見逃すという、あくまで**このFixture自身の不足**があった。正式TEI製品に当該欠陥があると断定するものではない。
 
 そこで、各Role DescriptorとPinを、`version + contract fingerprint + actual implementation fingerprint`という**比較用の3軸**に拡張。Rootと推移するEager依存先の双方でexact照合を要求する。Fixtureのfingerprint文字列は**テストが与えたラベル**であり、現物バイトをSHA-256計算した真正なLock証拠ではない。実TEIへの接続時には、既存Extension Lock／Language Selectionが検証する**実Provider物・Pin対象・Implementation fingerprint**を利用し、自己申告Stringを信用しない。
