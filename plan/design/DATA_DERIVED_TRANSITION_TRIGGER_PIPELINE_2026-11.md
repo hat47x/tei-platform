@@ -234,6 +234,14 @@ P=まず意味忠実な移植、A=既存契約への適合Adapter、E=追加要�
 
 JD-01〜09の相関・Rollback・重複通知・Effect Unknown等の独立Expectedは新資料へ集約し、本資料では第二のFixture/Engine/Runtimeを作らない。EKIの設計主権とTEIのMeaning Ownerを維持する。
 
+### 7.3 Job管理の所有者はEKI（配置案への追補）
+
+[TEI→EKIジョブ委譲と設定レス実行の境界](TEI_EKI_JOB_DELEGATION_BOUNDARY_2026-11.md)の§8に従い、**Data Scriptの更新イベント／仮想状態はJob管理機構そのものではない**。TEI生成物は必ずしも常駐しないため、`Flow trigger`を記述しただけでCron/timer/queueが稼働するとも、ジョブが自動で再開するとも主張しない。
+
+必要なJob管理はEKIを第一候補とし、TEIからは承認済みのData Model/Rule/Flow＋Task/Trigger/Executorへ変換するBindingを渡す。EKIがJob登録・予定・実行・再試行・Run/Attempt・資源配賦・結果記録を担う（**EKIの現Productで全て実装済みという意味ではない**）。Data Providerはcommit/outbox等で変更事実を観測可能にする。EKIはData Scriptそのものの意味正本を持たず、Subscription/Cursor/Delivery/Runを運用する。
+
+EKIを使わない単発・同期処理は従来どおりTEI単一バイナリ／既存Hostで実行可能。EKI以外の常駐Job schedulerを使う場合は明示Target／別の管理主体を選択し、TEIに隠れたJob Registryや常駐Hostを作らない。systemd/cronはEKIサービス自体のbootstrapまたは明示的な外部Schedulerであり、同一Jobの二重Schedulerにしない。
+
 ## 8. 不明／Ownerが決める条件と現在のEvidence
 
 **Ownerの具体判断が必要**：`billing_ready`は明細の完了だけか、出荷実績確定・検収・時間を含むか。訂正／返品・取消で何が起こるか。再計算時の粒度と許容遅延、Strict EdgeかLevel Reconciliationか、同一Subject二回目の正当なJob起動、依存先が別Providerなら整合Snapshot不可能時に停止するか、履歴・監査と重複通知の許容範囲。必要なときだけOwnerが意味とEffect Contractを受理する。
