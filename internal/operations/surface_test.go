@@ -531,4 +531,19 @@ func TestDeriveOperationSurfaceCarriesThePeriod(t *testing.T) {
 	if list.Period != "sales.month" {
 		t.Fatalf("the period governs the data, so list carries it too: %+v", list)
 	}
+	// A write the closed period rejects must carry the proof it needs.
+	if !hasPrecondition(create, "period:sales.month:open") || !hasPrecondition(update, "period:sales.month:open") {
+		t.Fatalf("writes must require an open period: create=%+v update=%+v", create.Preconditions, update.Preconditions)
+	}
+	if hasPrecondition(list, "period:sales.month:open") {
+		t.Fatalf("a read must not require an open period: %+v", list.Preconditions)
+	}
+}
+func hasPrecondition(operation Operation, want string) bool {
+	for _, precondition := range operation.Preconditions {
+		if precondition == want {
+			return true
+		}
+	}
+	return false
 }
