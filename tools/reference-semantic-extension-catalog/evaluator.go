@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"strings"
@@ -134,9 +135,16 @@ func evaluateSemanticConstraint(
 	if err := ctx.Err(); err != nil {
 		return SemanticEvaluationEvidence{}, fmt.Errorf("semantic evaluator did not start: %w", err)
 	}
-	outcome, err := implementation.Evaluate(ctx, input)
+	// The evaluator must not be able to alter the caller's bytes or make the
+	// recorded input fingerprint describe a different payload after evaluation.
+	evaluatorInput := bytes.Clone(input)
+	inputFingerprint := sourceindex.Fingerprint(evaluatorInput)
+	outcome, err := implementation.Evaluate(ctx, evaluatorInput)
 	if err != nil {
 		return SemanticEvaluationEvidence{}, fmt.Errorf("semantic evaluator %s failed: %w", implementation.ID, err)
+	}
+	if sourceindex.Fingerprint(evaluatorInput) != inputFingerprint {
+		return SemanticEvaluationEvidence{}, fmt.Errorf("semantic evaluator %s modified its input", implementation.ID)
 	}
 	if err := ctx.Err(); err != nil {
 		return SemanticEvaluationEvidence{}, fmt.Errorf("semantic evaluator did not complete: %w", err)
@@ -161,7 +169,7 @@ func evaluateSemanticConstraint(
 		EvaluatorImplementationID:      implementation.ID,
 		EvaluatorArtifactDigest:        implementation.ArtifactDigest,
 		ConformanceEvidenceFingerprint: conformance.EvidenceFingerprint,
-		InputFingerprint:               sourceindex.Fingerprint(input),
+		InputFingerprint:               inputFingerprint,
 		Status:                         outcome.Status,
 		Diagnostics:                    outcome.Diagnostics,
 	}
