@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"strings"
 
 	"tei/internal/application"
 	apprelease "tei/internal/application/release"
@@ -31,7 +30,6 @@ import (
 	"tei/internal/environment"
 	"tei/internal/index"
 	"tei/internal/ir"
-	"tei/internal/knowledgecontext"
 	"tei/internal/plugin"
 	pluginruntime "tei/internal/plugin/runtime"
 	"tei/internal/query/analyzer"
@@ -70,7 +68,7 @@ func (p *pathList) Set(v string) error {
 
 func main() {
 	flag.Usage = func() {
-		fmt.Fprintln(os.Stderr, "usage: tei <scenario|version|commands|model|inspect|trace|workspace-files|source-index|knowledge-review-plan|knowledge-review-handoff|knowledge-review-disclose|knowledge-data-design-candidate-review|knowledge-context|knowledge-qualify|validate|index|plugin-lock|plugin-resolve|plugin-runtime-plan|observed-index|workbench-model|world|requirements|normalize-postgres-plan|desired-schema|schema-diff|plan-migration|migration-fingerprint|database-reconcile|database-compatibility|application-release-compatibility|release-graph|solution-release-graph|consumer-impact|deployment-simulate|deployment-start|deployment-ready-commands|deployment-record-attempt|deployment-retry|deployment-pause|deployment-resume|deployment-abort|deployment-recovery|deployment-start-recovery|deployment-provider-plan|deployment-reconcile> [options]")
+		fmt.Fprintln(os.Stderr, "usage: tei <scenario|version|commands|model|inspect|view|trace|workspace-files|source-index|knowledge-review-plan|knowledge-review-handoff|knowledge-review-disclose|knowledge-data-design-candidate-review|knowledge-context|knowledge-qualify|validate|index|plugin-lock|plugin-resolve|plugin-runtime-plan|observed-index|workbench-model|world|requirements|normalize-postgres-plan|desired-schema|schema-diff|plan-migration|migration-fingerprint|database-reconcile|database-compatibility|application-release-compatibility|release-graph|solution-release-graph|consumer-impact|deployment-simulate|deployment-start|deployment-ready-commands|deployment-record-attempt|deployment-retry|deployment-pause|deployment-resume|deployment-abort|deployment-recovery|deployment-start-recovery|deployment-provider-plan|deployment-reconcile> [options]")
 	}
 	if len(os.Args) < 2 {
 		flag.Usage()
@@ -86,6 +84,16 @@ func main() {
 	}
 	if command == "model" {
 		code, err := runModelCommand(os.Args[2:], os.Stdout)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+		}
+		if code != 0 {
+			os.Exit(code)
+		}
+		return
+	}
+	if command == "view" {
+		code, err := runViewCommand(os.Args[2:], os.Stdout)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 		}
@@ -159,6 +167,10 @@ func main() {
 	providerName := fs.String("provider", "", "database provider")
 	migrationVersion := fs.String("version", "", "migration version/id")
 	applicationID := fs.String("application", "", "application canonical ID")
+	artifactOutDir := fs.String("out", "", "artifacts: directory to write the derived files")
+	artifactCheck := fs.Bool("check", false, "artifacts: fail when the set is inconsistent")
+	periodStates := fs.String("period-states", "", "periods: period=state pairs, comma separated")
+	periodStatePath := fs.String("period-state-file", "", "periods: JSON object of period to state")
 	environmentID := fs.String("environment", "", "environment canonical ID")
 	solutionID := fs.String("solution", "", "solution release canonical ID")
 	historyPath := fs.String("history", "", "normalized migration history JSON")
@@ -329,6 +341,58 @@ func main() {
 		}
 		return
 	}
+	if command == "knowledge-review-plan" {
+		// #2354: one BuilderReviewPlan in the command result envelope.
+		code, err := knowledgeReviewPlanJSON(os.Stdout, *workspacePath, *subjectKind, *subjectID,
+			*expectedReviewPlanFingerprint, fs.NArg())
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+		}
+		if code != 0 {
+			os.Exit(code)
+		}
+		return
+	}
+	if command == "knowledge-review-handoff" {
+		// #2354: one BuilderReviewHandoff; mode=handoff tells a handoff file
+		// from a qualification file when both feed the same decoder.
+		code, err := knowledgeReviewHandoffJSON(os.Stdout, *workspacePath, *subjectKind, *subjectID,
+			*qualificationRequirementsPath, *expectedReviewHandoffFingerprint, fs.NArg())
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+		}
+		if code != 0 {
+			os.Exit(code)
+		}
+		return
+	}
+	if command == "knowledge-review-disclose" {
+		// #2354: one DisclosureProjection; mode=disclosure matches the value
+		// knowledge-context -disclose uses for the same shape.
+		code, err := knowledgeReviewDiscloseJSON(os.Stdout, *workspacePath, *subjectKind, *subjectID,
+			*reviewHandoffPath, *expectedReviewHandoffFingerprint, *expectedDisclosureFingerprint, fs.NArg())
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+		}
+		if code != 0 {
+			os.Exit(code)
+		}
+		return
+	}
+	if command == "knowledge-data-design-candidate-review" {
+		// #2354: one Data Design candidate review packet in the envelope.
+		code, err := knowledgeDataDesignCandidateReviewJSON(os.Stdout, *workspacePath, *subjectKind, *subjectID,
+			*dataDesignCandidateKind, *dataDesignCandidateFingerprint,
+			*expectedDataDesignFingerprint, *expectedDataDesignCandidateEvidenceRequirementFingerprint,
+			*expectedDataDesignCandidateReviewFingerprint, fs.NArg())
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+		}
+		if code != 0 {
+			os.Exit(code)
+		}
+		return
+	}
 	if isResultEnvelopeCommand(command) {
 		// requirements, plugin-lock, plugin-resolve, plugin-runtime-plan
 		code, err := resultCommandJSON(os.Stdout, command, *workspacePath, *worldPath, *environmentID, *pluginLockPath, fs.NArg())
@@ -338,122 +402,6 @@ func main() {
 		if code != 0 {
 			os.Exit(code)
 		}
-		return
-	}
-	if command == "knowledge-review-plan" {
-		if *workspacePath == "" || *worldPath != "" {
-			fmt.Fprintln(os.Stderr, "knowledge-review-plan requires -workspace and does not accept -world")
-			os.Exit(2)
-		}
-		plan, err := buildBuilderReviewPlan(*workspacePath, *subjectKind, *subjectID)
-		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(2)
-		}
-		if err := checkBuilderReviewPlanFingerprint(plan, *expectedReviewPlanFingerprint); err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(1)
-		}
-		writeJSON(plan)
-		return
-	}
-	if command == "knowledge-review-handoff" {
-		if *workspacePath == "" || *worldPath != "" {
-			fmt.Fprintln(os.Stderr, "knowledge-review-handoff requires -workspace and does not accept -world")
-			os.Exit(2)
-		}
-		handoff, err := buildBuilderReviewHandoffFromFile(
-			*workspacePath,
-			*subjectKind,
-			*subjectID,
-			*qualificationRequirementsPath,
-		)
-		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(2)
-		}
-		if err := checkBuilderReviewHandoffFingerprint(
-			handoff,
-			*expectedReviewHandoffFingerprint,
-		); err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(1)
-		}
-		writeJSON(handoff)
-		return
-	}
-	if command == "knowledge-review-disclose" {
-		if *workspacePath == "" || *worldPath != "" {
-			fmt.Fprintln(os.Stderr, "knowledge-review-disclose requires -workspace and does not accept -world")
-			os.Exit(2)
-		}
-		disclosure, handoff, err := buildBuilderReviewDisclosureFromFile(
-			*workspacePath,
-			*subjectKind,
-			*subjectID,
-			*reviewHandoffPath,
-		)
-		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(2)
-		}
-		if err := checkBuilderReviewHandoffFingerprint(
-			handoff,
-			*expectedReviewHandoffFingerprint,
-		); err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(1)
-		}
-		if err := checkKnowledgeDisclosureFingerprint(
-			disclosure,
-			*expectedDisclosureFingerprint,
-		); err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(1)
-		}
-		writeJSON(disclosure)
-		return
-	}
-	if command == "knowledge-data-design-candidate-review" {
-		if *workspacePath == "" || *worldPath != "" {
-			fmt.Fprintln(os.Stderr, "knowledge-data-design-candidate-review requires -workspace and does not accept -world")
-			os.Exit(2)
-		}
-		if strings.TrimSpace(*dataDesignCandidateKind) == "" ||
-			strings.TrimSpace(*dataDesignCandidateFingerprint) == "" {
-			fmt.Fprintln(
-				os.Stderr,
-				"knowledge-data-design-candidate-review requires -data-design-candidate-kind and -data-design-candidate-fingerprint",
-			)
-			os.Exit(2)
-		}
-		context, err := buildKnowledgeContext(*workspacePath, *subjectKind, *subjectID)
-		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(2)
-		}
-		if err := checkDataDesignFingerprint(context, *expectedDataDesignFingerprint); err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(1)
-		}
-		packet, err := knowledgecontext.BuildDataDesignCandidateReview(
-			context,
-			*dataDesignCandidateKind,
-			*dataDesignCandidateFingerprint,
-			*expectedDataDesignCandidateEvidenceRequirementFingerprint,
-		)
-		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(1)
-		}
-		if err := checkDataDesignCandidateReviewFingerprint(
-			packet,
-			*expectedDataDesignCandidateReviewFingerprint,
-		); err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(1)
-		}
-		writeJSON(packet)
 		return
 	}
 	if command == "normalize-postgres-plan" {
@@ -535,6 +483,24 @@ func main() {
 	}
 
 	switch command {
+	case "operations":
+		if err := runOperationsCommand(*workspacePath, *applicationID, *artifactOutDir); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		return
+	case "periods":
+		if err := runPeriodsCommand(*workspacePath, *applicationID, *periodStates, *periodStatePath); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		return
+	case "artifacts":
+		if err := runArtifactsCommand(*workspacePath, *applicationID, *artifactOutDir, *artifactCheck); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		return
 	case "validate":
 		ds := validation.Validate(w)
 		hasErr := false

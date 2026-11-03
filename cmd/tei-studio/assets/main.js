@@ -1,4 +1,4 @@
-import {Call} from "/wails/runtime.js";
+﻿import {Call} from "/wails/runtime.js";
 import {createReadOnlyClient} from "./client.mjs";
 import {createPreviewScope} from "./preview-scope.mjs";
 
@@ -11,6 +11,12 @@ const observeButton = document.querySelector("#observe");
 const previewState = document.querySelector("#preview-state");
 const previewResult = document.querySelector("#preview-result");
 const previewScope = createPreviewScope();
+const applicationInput = document.querySelector("#application-id");
+const patternInput = document.querySelector("#pattern-id");
+const viewApplicationButton = document.querySelector("#view-application");
+const viewPatternButton = document.querySelector("#view-pattern");
+const viewState = document.querySelector("#view-state");
+const viewOutput = document.querySelector("#view-output");
 const actions = ["catalog", "validate", "inspect"].map((id) => document.getElementById(id));
 
 function display(label, response) {
@@ -19,6 +25,23 @@ function display(label, response) {
   output.textContent = JSON.stringify(response, null, 2);
 }
 function selectedID() { return workspace.value; }
+function displayView(label, response) {
+  viewState.textContent = response.ok ? label + "：ビュー応答" : label + "：" + response.failure.code;
+  viewOutput.textContent = JSON.stringify(response, null, 2);
+}
+async function runView(button, label, action) {
+  const id = selectedID();
+  if (!id) return;
+  viewApplicationButton.disabled = true;
+  viewPatternButton.disabled = true;
+  viewState.textContent = "実行中…";
+  try {
+    displayView(label, await action(id));
+  } finally {
+    viewApplicationButton.disabled = !selectedID();
+    viewPatternButton.disabled = !selectedID();
+  }
+}
 function clearPreview() {
   previewState.textContent = "";
   previewResult.replaceChildren();
@@ -66,6 +89,8 @@ function invalidatePreview() {
   previewScope.reset();
   clearPreview();
   observeButton.disabled = !selectedID() || !xeadPath.value.trim();
+  viewApplicationButton.disabled = !selectedID();
+  viewPatternButton.disabled = !selectedID();
 }
 workspace.addEventListener("change", invalidatePreview);
 xeadPath.addEventListener("input", invalidatePreview);
@@ -88,6 +113,8 @@ observeButton.addEventListener("click", async () => {
     previewState.textContent = "失敗: HOST_TRANSPORT_FAILURE";
   });
 });
+viewApplicationButton.addEventListener("click", () => runView(viewApplicationButton, "application", (id) => api.viewApplication(id, applicationInput.value.trim())));
+viewPatternButton.addEventListener("click", () => runView(viewPatternButton, "pattern", (id) => api.viewPattern(id, applicationInput.value.trim(), patternInput.value.trim())));
 for (const action of actions) {
   action.addEventListener("click", async () => {
     if (!selectedID()) return;
@@ -115,4 +142,7 @@ if (!listed.ok) {
   display("workspaces", listed);
   for (const button of actions) button.disabled = !selectedID();
   observeButton.disabled = !selectedID() || !xeadPath.value.trim();
+  viewApplicationButton.disabled = !selectedID();
+  viewPatternButton.disabled = !selectedID();
 }
+

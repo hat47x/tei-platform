@@ -1,0 +1,12 @@
+{
+  "periods": [
+    { "id": "2026-04", "state": "closed", "start": "2026-04-01", "end": "2026-04-30" },
+    { "id": "2026-05", "state": "open", "start": "2026-05-01", "end": "2026-05-31" }
+  ],
+  "events": [
+    { "id": "E3", "businessDate": "2026-04-20", "amount": "50", "orderKey": 3, "version": 1 },
+    { "id": "E1", "businessDate": "2026-05-02", "amount": "100", "orderKey": 1, "version": 1 },
+    { "id": "E2", "businessDate": "2026-05-03", "amount": "200", "orderKey": 2, "version": 1 }
+  ],
+  "latePolicy": "adjust-current"
+}
