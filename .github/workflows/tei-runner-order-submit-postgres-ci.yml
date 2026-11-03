@@ -106,6 +106,13 @@ jobs:
             'TestRunnerOrderSubmitRealPostgresBarrierAuthorityChangeVersusHeldTransaction/epoch-bump'
             'TestRunnerOrderSubmitRealPostgresBarrierAuthorityChangeVersusHeldTransaction/revoked'
             'TestRunnerOrderSubmitRealPostgresAT1TargetRefusesPayloadNotReconciledWithOperationBeforeExecution'
+            'TestRunnerOrderSubmitRealPostgresAT1CallersKeepPayloadTargetConsistentWithOperation'
+            'TestRunnerOrderSubmitRealPostgresAT2ResultTypeAndAuditAcrossFailureCells'
+            'TestRunnerOrderSubmitRealPostgresAT2StaleExpectedVersionIsConflictNotFailure'
+            'TestRunnerOrderSubmitRealPostgresEvidenceHappyReplayAndObservation'
+            'TestRunnerOrderSubmitRealPostgresEvidenceDeniedHasNoReceipt'
+            'TestRunnerOrderSubmitRealPostgresEvidenceUnknownCommitThenLookupSameOperationID'
+            'TestRunnerOrderSubmitRealPostgresEvidenceIsOptIn'
           )
           for name in "${required[@]}"; do
             grep -Eq -- "^[[:space:]]*--- PASS: ${name} \(" "$log" || { echo "required test did not PASS: ${name}" >&2; exit 1; }
