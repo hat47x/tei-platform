@@ -2153,3 +2153,13 @@ TEI上の組織/Capacity Planningを、コアに組み込まれた例外的なEn
 時間のパラメータは、①業務上の有効時点 validAt、②当時把握できていた記録時点 knownAt、③全体改組の公表版、④個別所属・職位・RelationのRevision、⑤Source/Provider Readの版、に分ける。組織全体の公表と個々の辞令の発効が食い違う場合、Profileは優先規則の候補を提示し、未受理なら曖昧と診断する。古い時点の組織図と現在の認可を混同しない。
 
 **受入反例**：同じ部門名でStable IDが別、A→B→Aの所属変更、未来発効の改組を過去のknownAtで照会、取得できなかった下位部門を0件とする、異なるSource時点のRelationをつないで存在しないPathを生成する。これらを既存#2510/#2779 Corpusへ割当て、単純な現在木Profileに不要な履歴表を強制しない。
+
+### 57.2 認証・Directory・HR・業務権限の接続
+
+Providerの役割を、Authentication Assertion Reader（SAML/OIDC）、Directory Reader（AD/LDAP/Microsoft Graph）、Provisioning Sync（SCIMなど）、業務上のPerson/Membership/Approval Resolverへ分ける。SAMLはAttributeを運べるものの、それだけで将来・過去を含む組織正本を提供しない。SCIM Enterprise Userのorganization/department/managerは有用な初期候補だが、OrgUnitの同一性・指揮命令関係・実行権限の証明ではない。
+
+外部Identityは認証発行者・Tenant/Directory・外部IDの組で照合し、OIDCではiss+subを基本にする。SAML NameIDはそのFormatと永続性・対象SPの性質を踏まえて扱う。AD/Graph側は当該DirectoryのStable Object IDをProvider依存のIdentityとして保持。メールアドレス・氏名・従業員番号や再利用される部署コードを暗黙のUniversal Keyとしない。退職・再雇用や複数アカウントのCrosswalkは候補を記録し、必要ならOwner確認する。
+
+属性単位でSource of Recordを指定する。例えば「HR=雇用・所属・辞令の有効日」「Directory=ログインAccount・Group」「TEIアプリ=案件担当」「外部Host=今回の実行許可」。差分同期は初期Full Syncとdelta、cursorの期限・無効化、tombstone、ページ欠落、更新順不同、権限不足、外部ソースの訂正を別診断にする。同期成功は業務上の全所属・全時点を取得した保証ではない。
+
+実Plugin接続時はConnectorの必要Read Scope/Context、許可されたDisclosure、Data Ownerと運用Owner、Error/Unknown、版・契約fingerprintを識別する。取得認証情報・署名情報・Secretを生成AIの文脈へ移さず、許された構造メタデータと必要最低限の証拠を渡す。ログイン済み・Group所属はBusiness Actionの許可ではない。
