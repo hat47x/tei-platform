@@ -71,7 +71,7 @@ TEI Data Model/Scriptの`ready`仮想状態を想定し、`false→true`の業�
 
 最適化の価値を実証するには、T0/T1/T2を**同一Job/同じ実結果**で比較し、実行待機/発見/処理/結果検証・実Provider使用量/外部Cloud費用・利用者の端末妨害・失敗/回復を観測する。SimulationのみのPareto優位やMLモデルの`shadow rank`から有償容量確保を推論しない。
 
-## 6. 反証と停止条件（VS-01〜14、現時点で全件NOT RUN）
+## 6. 反証と停止条件（VS-01〜14、追加VS-15〜22は§11、現時点で全件NOT RUN）
 
 | Case | 注入する対照・入力 | 固定すべきExpected／証拠 |
 | --- | --- | --- |
@@ -90,7 +90,7 @@ TEI Data Model/Scriptの`ready`仮想状態を想定し、`false→true`の業�
 | **VS-13** Service/Flow非常駐 | TEI CLI終了、EKI稼働、未登録Guardを含む後続Flow、Callback後着 | EKI Taskは続行できてもTEI業務Guardは推定実行しない。Coordinator実在とどこで停止するかを表示 |
 | **VS-14** No distribution / disclosure | 同一Pure JobはDirectの方が低費用、一般利用者に下位Node数非開示 | `DIRECT`正常結果。EKIの内部Trust/Pool inventory/Topologyは予測詳細やAI prompt/SHO/Tooltipで漏らさない |
 
-**受理境界**：VS-01〜14の独立ExpectedはOwner／実Providerの振る舞いから先に固定し、TEI生成RuleやEKI Schedulerの予測から自動算出しない。Source-static／synthetic pure／real CLI／real EKI Native／real Provider／real Business Commit／real external Consumerの各資格を**合格件数で加算せず、行ごとに確認**する。2026-11-03時点、この追加14件は**全件NOT RUN**。
+**受理境界**：VS-01〜22の独立ExpectedはOwner／実Providerの振る舞いから先に固定し、TEI生成RuleやEKI Schedulerの予測から自動算出しない。Source-static／synthetic pure／real CLI／real EKI Native／real Provider／real Business Commit／real external Consumerの各資格を**合格件数で加算せず、行ごとに確認**する。2026-11-03時点、この追加14件は**全件NOT RUN**。
 
 ## 7. 「実装する価値がある最小切片」への統合順とOwners
 
@@ -115,3 +115,55 @@ TEI Data Model/Scriptの`ready`仮想状態を想定し、`false→true`の業�
 - **Stop**：見かけ上のResult successで実bodyがない、旧/新Artifact revisionが混在、外部Action実行範囲とRequest対象が異なる、Source未取得/partialの業務RuleでChanged Edgeを推定、資源を実予約できないのに保証、Effect unknownで自動再実行、Data Class違反、MDM/Local Governor失効、予測値をAdmin/Lease権限へ昇格。このときも許された範囲のread-only診断は維持する。
 
 **採用のOwner質問**：T0/T1/T2のどのWorkload classを初期製品Gateとするか、nullable/rounding/qualityの独立Expectedの受入先、最低限のResult body取得とHash/Verifier相関、Provider ExecutionRef/Lease/Cancel不明の最小対照、Ownerが期限として測りたいOutcomeはEKI結果か業務Commitか。答えが未受理なら、正式Contract/ABIを推測で採用せず**V0の比較票とsynthetic fixtureまでに留める**。
+
+## 9. Cross-lane確定差分：Job意味・Build単位・Launch単位を別正本にする（2026-11-03追補）
+
+他チャットで進んだ[TEI #1130のBU-01〜09](https://github.com/hat47x/tei-platform/issues/1130)、[Build artifact多論理Subject #1097](https://github.com/hat47x/tei-platform/issues/1097)、[Application別Go実配備E1 #1167](https://github.com/hat47x/tei-platform/issues/1167)を、この実行縦断へ接続する。**標準はGo単一バイナリ**、マルチビルド設定は配備・起動・更新の実理由が生じてから導入する。業務上のSystem/Subsystem/Function/Flowは意味単位、`BuildUnit/DeployUnit/Invocation Entry`は技術単位であり、互いに恒等写像ではない。
+
+| 区別 | 正本／現在の証拠 | この縦断の合格境界 |
+| --- | --- | --- |
+| Logical Job/Function | TEI Ownerが受理するJob/Function/Flow IDと版。X-TEA旧意味を合成式から推定しない | 同じFunctionをT0/T1/T2で呼び、同じInput/Expectedを適用できる。Job名の一致だけでは不足 |
+| Build Intent／Physical Artifact | TEI #1130 BU、#1097 Shared Build Subject、#1167 Application別実Source Closure。**Go単一バイナリ内に複数Entryが存在し得る** | `Job ID → selected Entry/member/Artifact digest → toolchain/Source closure`を版付きで辿れる。共有Binaryだから実行Grantを共通化しない |
+| Deploy/Launch Target | 既存Go CLI/HTTP Host/cron/Cloud service/HPC Executor/EKI Taskの選択 | Entryが実Artifactに存在し、Targetが対応するOS/arch、Runtime、Input/Output契約を満たす。Build選択をRuntimeに隠して再解釈しない |
+| Actual invocation | OS Cron/Service Manager、既存Host、EKI Adapter/Providerの現Credential/Capability/Source & Meaning revision | 起動トリガー・Job Dispatch・実Args/Payload・起動時資格・実Worker/Process・Result Body/Exit/Receiptを別列で証明する |
+| Selected build outputs | 一つのBuildが全Functionを含む場合、後から`order_only`等の別Targetを必要に応じ追加 | 影響外Dependencyが**物理的に除外**された証拠は`go list -deps`＋`go build`＋必要に応じSymbol/Byteを確認した場合に限る。起動時`-application`選択だけで除外を主張しない |
+
+**V0票追加**：`logical_function_id, flow_step_id, entry_selector, build_intent, build_profile, target_runtime, artifact_member, artifact_digest, source_dependency_closure, invocation_transport, current_authority_issuer, operation_id, actual_result_digest`。あくまで既存発行Source/Build/Host/EKI Evidenceの**照合用フィールド候補**であり、新しい公開Manifest/Dispatcher/Registryの要求ではない。Source/Artifactが同じでもEntrypointの違いと現在Grantを検査する。TEI #1130 BU-09の`Job v1 queue → Binary v2 deploy → retry`では、再開時の旧JobのPinを維持し、単に最新バイナリに存在する同名Functionへ付け替えない。
+
+**結果分類の既存証拠**：[TEI #2747](https://github.com/hat47x/tei-platform/issues/2747)はStudio Plan/ExecuteCommandの**参照実行**を統合済みだが、実業務Provider/DB Commitではない。[Draft TEI #2780](https://github.com/hat47x/tei-platform/pull/2780)には`Committed/Replayed`の区別がCommand Result表面では失われる一方、CommitUncertainErrorの型付き原因は残るという**限定Go Characterization（PR内報告はexact-head 4/4 PASS）**がある。だから`Studio Command Committed=true`／`Go Command Result{}`／`EKI Result Completed`／`Business Provider Commit`を同じ肯定値へ正規化しない。#2780の限定Go PASSも、本PRで実DB/EKIが接続された証拠ではない。
+
+## 10. 品質・取得範囲・権限をリードタイム計算へ接続する（2026-11-03追補）
+
+他チャットの[横断PR #2667 §27.6/§27.7](https://github.com/hat47x/tei-platform/pull/2667)、[Data Operations #2622](https://github.com/hat47x/tei-platform/issues/2622)、[Transitive record visibility reference #2781](https://github.com/hat47x/tei-platform/pull/2781)、[Semantic Action #2616 §14](https://github.com/hat47x/tei-platform/pull/2616)により、EKIで早く計算が終わるだけでは**業務に必要な母集団について安全に結果利用できる**とは限らないと判明する。目的が「期限内の使える結果」である以上、計算終了と、取得・検査・開示・業務利用の資格を分ける。
+
+**品質/Scopeの4集合**：
+
+| 集合／Scope | 定義のOwner | 最小反証 |
+| --- | --- | --- |
+| `required_population` | TEI Business/Quality Meaning Owner：どの行/期間/部門/Data Classで品質検査と業務結果が必要か | 要求が全社で、取得は一部門だけ。品質良好を全社合格へ昇格不可 |
+| `authorized_read_scope` | 実Host/Identity/Provider Grant＋組織のvalid/known time | ViewerのRLSによる非表示を、Dataの不存在/0件とみなさない |
+| `actually_acquired_scope` | 実Provider physical Read/QAPI、Snapshot/Watermark、Field/Relation/Source Version/partial | 必要Readを宣言しても実未取得であれば`unknown/partial`。Providerが非公開Fieldを実読んだ事実は隠せない |
+| `permitted_disclosure_scope` | Consumer/Roleと実Disclosure Authority、出力/Tooltip/Count/Logs/LLMへの開示制約 | TEI Studio/SHO/LLMへ表示されないだけで、実Providerの読取り許可を得たとみなさない |
+
+品質の要件はTEIが分類する：**Required Online**（Business Effectの前に現在資格を検査）、**Bounded Deferred**（所定Deadlineまでに検査をJobで実行する）、**Advisory/Best-effort**（警告と未検査を区別）、**Lean/Sampled**（全件ではなく対象Subsetでの保証）。これらは**UI装飾ではなく、結果の採用範囲・締切・実行可否の意味条件**である。新Quality Engineは作らず、既存Data/Function/Batch/Oracleから生成し、必要な部分だけEKIに計算委任する。
+
+**時間契約**：`TEI Job request deadline`と`Business Quality Deadline`が異なることがある。例としてEKI Task Result bodyを10:00までに取得しても、必要な全体のQuality Auditが10:05までに合格しないなら、業務側のQuality PASSや「期限内に採用完了」を主張しない。一方、Advisory/LeanとしてOwnerが許した結果は、その**制限されたScope**でだけ利用可能と表現する。明示的なOwner受理なしに`Required Online`をEKI Deferredへ変えてはならない。
+
+**実行時性能との整合**：TEI RuntimeのすべてのRequestで全Relation/全期間を検査しない。Required Onlineは最低限の安全なHost/Provider実行資格・Target/Period/CAS/Effect Fenceを保つ。全社・時系列・外部横断の検査は、Ownerが許す`Deferred/Advisory`として独立Batch Jobへ配置可能。ただしCommit unknownや実Access Grant不明を高速化のために省略・緩和しない。検査の配置を変更する場合も、Source/Owner受理/Scope/Deadline/Artifact/Result Receiptを維持する。
+
+**AIレビュー**：AIが生成するCoverage/Diffや異常検知の候補はStructural Candidateであり、実Data Providerの取得範囲やSecurity Grantではない。EKIのResource Poolへの配備がどれほど効率的でも、`coverage unknown`・`source stale`・`owner not accepted`は高品質・実行資格へ昇格しない。生データをAIに送るかは`permitted_disclosure_scope`で独立審査し、単に画面に表示できるという理由では許されない。
+
+## 11. 追加の独立Expected（VS-15〜22／全件NOT RUN）
+
+| Case | 対照Fixture | 成立するExpected・停止線 |
+| --- | --- | --- |
+| **VS-15 単一Binary/Entry拒否** | 同じGo BinaryにJob-A/BのEntry、CallerにはAのみ許可 | BのCodeがPhysical Artifactに含まれても`Run B`を拒否。Build同居とRuntime Grantは別 |
+| **VS-16 Build Unit分割・再開** | Job v1 queue後にArtifact v2 deploy、Flow StepのMeaningは同じ、Executor byte変更 | 旧Runを黙ってv2へ再束縛しない。Source/Artifact/member Pin・Provider Capability/旧Resultの採用条件を比較 |
+| **VS-17 Artifact/Dependency部分再生成** | 未関連Functionの変更、選択済Go Entry・Shared Rule変更の差分を比較 | 依存閉包に従って再Build/再利用を区別。最小Buildによる物理除外は実Go dependencyの証拠が必要 |
+| **VS-18 Studio Reference Committed** | Studioの参照Commandが`Committed=true`、実DB Providerなし | 参照実行でありBusiness EffectのCommit Receiptとしない。EKI Job実行可能という意味もない |
+| **VS-19 Replayed／Commit unknown** | Operation Oに対しCommitted→Replayed、別TrialでACK消失 | CommandResultの表示同値から二度書いたと断定せず、typed cause/実Owner Lookup/Receiptで判定。Unknownなら無条件再提出禁止 |
+| **VS-20 Quality required vs acquired** | 必須100行、RLSで40件取得、取得された40件は品質PASS | `40/40 inspected`は`100/100 business PASS`ではない。Quality Coverage/非開示/不明を区別 |
+| **VS-21 Deferred Quality Deadline** | EKI Result 09:59 Verified、Quality Audit Deadline10:05、Auditは10:08又は取得不明 | EKI期限内完了とBusiness Quality期限達成を分離。Owner許可なしにRequired検査をDeferredへ変更しない |
+| **VS-22 AI・Disclosure/Perf** | AIがGraph非開示ノード数/生ログを求め、性能重視でFull Scope検査省略を提案 | `permitted_disclosure_scope`を守り、最低限の実Host Grant/CAS/Effect Fenceは省略しない。Deferred化はOwnerにより採用された範囲のみ |
+
+**採用・停止**：VS-01〜22はあくまで本稿の独立Expected候補。PR #2667/#2616/#2780/#2781の既存試験と本稿の試験を**重複成果と数えない**。V0にはBuild/Entry/Scope/Qualityの受入票を加えるが、V2（EKI Native I/O）が未達なら本稿全体を`TEI→EKI製品実証完了`と呼ばない。Source-static/限定Go Characterization/合成Scope/独立Provider Receiptはそれぞれ異なる証拠資格である。
