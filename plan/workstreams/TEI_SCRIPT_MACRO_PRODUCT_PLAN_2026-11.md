@@ -315,7 +315,7 @@ go run ./cmd/tei artifacts -workspace reference/standard-crud/workspace -applica
 
 **次の最小作業単位**：合成Goで`MC-B/C/D`の現行差分を検出したうえで、#1174/#2598の実Owner側へ`適切なGrant＋Target束縛＋内外Txの重複排除／明示分割＋同OperationID再照会`を受渡し、#1119 P0-aが要求する**実PG同一境界**へ接続する。既存`submit.Caller`の局所実DB成功があるので、まず**その既存Receipt/Dispositionの経路と新Command Adapterの差分だけ**を比較し、第二のGeneric Runner/Receipt Lookupを作らない。
 
-**Evidenceの固定**：MC-B01/C01旧head`3b0ead...`のGo2/2実測は保持する。MC-D01/D02追加による#2780新HEADのFocused/Repository Healthを別票で確認する。Go4件のPASSでも**観測した不安全な現行挙動のCharacterization**であり、Owner実行安全性PASSとはしない。対象Provider/Scope/Rule改版、SQL Schema drift（#2778 SM-15/16）、組織Owner/Resourceの時点、外部EKIのJob Resultを同じClaimへ合算しない。既存T-1〜61とP0/Gate A/B/C、#2667/各Ownerを維持。
+**Evidenceの固定**：MC-B01/C01旧head`3b0ead...`のGo2/2実測は保持する。[Focused #41632377548](https://github.com/hat47x/tei-platform/actions/runs/41632377548)で#2780のexact HEAD `d70a99131b5298f44b6edc739b723621d1679674`（Go1.26.10/Linux）を照合し、MC-B/C/Dの**Go4/4 Characterization PASS**と`gofmt`・checkout cleanを確認。Test Blobは `d4f57f06c5e87621e0e389a264e8de35850f4e04`／`c212b621c8a06b57284043573cb79e0c904e7514`。全体Repository Healthと他Providerの適合はFocused runとは別資格として扱う。Go4件のPASSでも**観測した不安全な現行挙動のCharacterization**であり、Owner実行安全性PASSとはしない。対象Provider/Scope/Rule改版、SQL Schema drift（#2778 SM-15/16）、組織Owner/Resourceの時点、外部EKIのJob Resultを同じClaimへ合算しない。既存T-1〜61とP0/Gate A/B/C、#2667/各Ownerを維持。
 
 ## テスト証拠の受渡し：1ケースにつき別の保証を保持
 
