@@ -187,6 +187,13 @@ func (r *Registry) Convert(source []byte, from, to Version) (Result, error) {
 	if err := validateCodecDiagnostics(decodeDiagnostics); err != nil {
 		return Result{}, err
 	}
+	if hasFailure(decodeDiagnostics) {
+		result.Status = Failure
+		result.Document = document
+		result.Output = append([]byte(nil), source...)
+		result.Diagnostics = decodeDiagnostics
+		return result, nil
+	}
 	if document.Declared != 0 && document.Declared != from {
 		return systemFailure(result, "VERSION_MISMATCH",
 			fmt.Sprintf("source declares format version %d but was converted from %d", document.Declared, from))
@@ -210,6 +217,13 @@ func (r *Registry) Convert(source []byte, from, to Version) (Result, error) {
 	}
 	if err := validateCodecDiagnostics(encodeDiagnostics); err != nil {
 		return Result{}, err
+	}
+	if hasFailure(encodeDiagnostics) {
+		result.Status = Failure
+		result.Document = document
+		result.Output = encoded
+		result.Diagnostics = append(append([]Diagnostic{}, decodeDiagnostics...), encodeDiagnostics...)
+		return result, nil
 	}
 	diagnostics := append(append([]Diagnostic{}, decodeDiagnostics...), encodeDiagnostics...)
 	redecoded, _, err := toCodec.Decode(encoded)
@@ -271,6 +285,15 @@ func statusOf(diagnostics []Diagnostic) Status {
 func hasWarnings(diagnostics []Diagnostic) bool {
 	for _, diagnostic := range diagnostics {
 		if diagnostic.Severity == SeverityWarning {
+			return true
+		}
+	}
+	return false
+}
+
+func hasFailure(diagnostics []Diagnostic) bool {
+	for _, diagnostic := range diagnostics {
+		if diagnostic.Severity == SeverityFailure {
 			return true
 		}
 	}
