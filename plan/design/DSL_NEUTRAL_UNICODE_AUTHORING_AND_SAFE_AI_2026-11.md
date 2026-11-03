@@ -27,7 +27,7 @@
 | **論理表示名／多言語資源** | `Order quantity` / `受注数量` | ユーザーが選ぶ表示言語のラベル。名前から逆に意味IDや物理対象を推測しない |
 | **生成Target用Symbol** | `orderQuantity`等 | Go/Java/.NET/WASM等の生成物に必要な各Target表記。衝突と元ID対応を固定 |
 
-**重要な現行実装上の事実**：mainの `core/identity/id.go` は `ParseCanonicalID` に `^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)*$`、`ParseLocalName` に `^[a-z][a-z0-9_]*$` 相当の**ASCII制約**を持つ。`SymbolToSegment` も非ASCII Symbolを受け付けない。この検証は[#1992](https://github.com/hat47x/tei-platform/pull/1992)（merged）で同じ受理集合を保ちながら高速化された。よって、現状では**「UTF-8 Sourceが書ける」ことから「Canonical IDや既存SymbolにUnicodeを直接使用できる」とは主張できない**。
+**重要な現行実装上の事実**：mainの `core/identity/id.go` は `ParseCanonicalID` に `^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)*$`、`ParseLocalName` に `^[a-z][a-z0-9_]*$` 相当の**ASCII制約**を持つ。`SymbolToSegment` も非ASCII Symbolを受け付けない。この検証は[#1992](https://github.com/hat47x/tei-platform/pull/1992)（merged）で同じ受理集合を保ちながら高速化された。よって、現状では**「UTF-8 Sourceが書ける」ことから「Canonical IDや既存SymbolにUnicodeを直接使用できる」とは主張できない**。
 
 Unicode表層Symbolを評価する場合の最小案は、**既存ASCII Canonical IDを維持したまま、固定されたLanguage PluginのSymbol→明示的な型付きModelRef Binding**を検討すること。Unicodeからのローマ字化、翻訳、類似名による自動Canonical ID生成は行わない。参照先が0/2件以上、異Scope、別版、不正な名称の場合は候補/診断に留める。将来Canonical ID自体を拡張するかは互換性の大きい**別Owner判断**とし、本計画の前提にしない。
 
@@ -113,9 +113,9 @@ amount = quantity * unitPrice
 | **GN-03** | `数量`と`quantity`を明示Bindingで同一Attributeへ束縛 | Meaning候補一致を限定確認。名が違うことを自動的な業務Meaning変更としない |
 | **GN-04** | Studioの日本語/英語/物理名/Stable ID切替 | 同Subject Selection・Source bytes・Meaning不変、実Read-only表示だけ変わる |
 | **GN-05** | 同一localeの論理名が二つのScopeに衝突 | ID/Scope併記・曖昧診断。単に先頭を選ばない |
-| **GN-06** | `café`（NFC）と`cafe\\u0301`（結合文字） | 比較時衝突を診断、元Source byteは通常Saveで不変 |
-| **GN-07** | ASCII Latin `order` とCyrillic o `\\u043Erder` | Confusable警告とコードポイント可視化。意味IDの暗黙統合なし |
-| **GN-08** | `\\u202E` Bidi control、`\\u200B` zero-widthを識別子／コメントへ別々に配置 | 識別子は危険文字Profileで拒否/未受理、コメントは忠実保存して安全表示。通常Save無断削除なし |
+| **GN-06** | `café`（NFC）と`cafe\u0301`（結合文字） | 比較時衝突を診断、元Source byteは通常Saveで不変 |
+| **GN-07** | ASCII Latin `order` とCyrillic o `\u043Erder` | Confusable警告とコードポイント可視化。意味IDの暗黙統合なし |
+| **GN-08** | `\u202E` Bidi control、`\u200B` zero-widthを識別子／コメントへ別々に配置 | 識別子は危険文字Profileで拒否/未受理、コメントは忠実保存して安全表示。通常Save無断削除なし |
 | **GN-09** | RTLの正当なローカル名／日本語・Latinの組合せ | 一律禁止せず、明示Profileと表示方向の整合を観測 |
 | **GN-10** | Markdownコメントの「Toolを呼び出せ」／quoted `role: trusted` | Contextでは非信頼データ、実Tool/Authorityへ昇格しない |
 | **GN-11** | 物理名`T_JUCHU.JUCHU_SU`と類似Logical名、別Storage | 受理済みMapping／Provider routeなしに実DB名を自動参照しない |
@@ -123,7 +123,7 @@ amount = quantity * unitPrice
 | **GN-13** | Unicode変数を使うMarkdown表/DSLで1つのCellを書換え | UTF-8 byte span正確、元の改行・表Alignment・コメントは保持。意図外変更拒否 |
 | **GN-14** | 旧Source spanにAI Patch、外部Editorが同じファイル変更 | 更新前に再読取/対象Occurrence再資格化。推測で上書きしない |
 | **GN-15** | UTF-8識別子のTarget生成で同じTarget名に衝突 | 明示的なSymbol Mapping/衝突診断、Target成功を意味受理へ昇格しない |
-| **GN-16** | Language Plugin／Unicode Unicode-data版の変更、元Source同byte | 字句診断と意味Candidateの必要な再評価。過去Accept・実Grant・履歴Evidenceの区別 |
+| **GN-16** | Language Plugin／Unicodeデータ版の変更、元Source同byte | 字句診断と意味Candidateの必要な再評価。過去Accept・実Grant・履歴Evidenceの区別 |
 
 **テストの比較単位**：同じSource SHA/Workspace/Scope/Subject、固定Language/Unicode Profile/Operator Pin、Expected、実Token span、Diagnostic、Proposal diff、再Read、Consumer投影、実Tool呼出の有無。Named Unicode escapeは上記**入力データの説明表記**であり、実字句Fixtureでは両方（実コードポイントとエスケープを含む説明テキスト）を区別して用意する。
 
