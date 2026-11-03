@@ -5,10 +5,12 @@ on:
     paths:
       - "tools/reference-developer-context/**"
       - ".github/workflows/developer-context-coverage-characterization.yml"
+      - "plan/evaluations/TEI_DEVELOPER_CONTEXT_P2_ACCEPTANCE_2026-11.md"
   push:
     paths:
       - "tools/reference-developer-context/**"
       - ".github/workflows/developer-context-coverage-characterization.yml"
+      - "plan/evaluations/TEI_DEVELOPER_CONTEXT_P2_ACCEPTANCE_2026-11.md"
 
 permissions:
   contents: read
