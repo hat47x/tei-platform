@@ -335,10 +335,18 @@ func (e ReferenceDataExecutor) checkRequiredInputs(request Request) error {
 		return nil
 	}
 	provided := map[core.CanonicalID]bool{}
+	bound := false
 	for _, input := range plan.Inputs {
+		if input.Attribute != "" {
+			bound = true
+		}
 		if input.Provided && input.Attribute != "" {
 			provided[input.Attribute] = true
 		}
+	}
+	if !bound {
+		// command Patternはattributeへの束縛を持たないため、必須属性を判定できない。
+		return nil
 	}
 	for _, namespace := range e.World.Semantics {
 		for _, data := range namespace.Data {
