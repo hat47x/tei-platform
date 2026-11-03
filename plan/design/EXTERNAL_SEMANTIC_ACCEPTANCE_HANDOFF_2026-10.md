@@ -220,3 +220,53 @@ Providerで実際に読んだbyteと、Parser／Buildへ渡したbyteが一致�
 **停止条件：** 必要Scope／完全性／実消費byte／Dependency Closure／現行Permission／意味対応のどれかが不明なら、現在の意味成立・Build skip・外部Effectを合格へ昇格させない。read-only履歴・診断候補まで一律停止しない。
 
 **Owner未決：** 用途別の鮮度期限、権威あるnot-foundの条件、offline固定Buildの許容範囲、内容同一時の受理省略可否、権限変更後の履歴開示。変更は既存IssueのOwnerへ返す。本追補は設計であり、RFの実Go試験・実Remote Provider・Studio適用・正式Owner受理・実Targetの資格を実証していない。
+## 2026-11-03 第2追補：5段階失効・依存閉包・独立Expected
+
+**位置づけ：設計／反証用Fixtureの追加計画。新規Product実装、正式Core schema、受理済みMeaning、実行資格、試験PASSの報告ではない。** 第一追補のRF-01〜12と状態定義を繰り返さず、他レーンの認知・Build・Source再配置・実行時Effectの成果から、不足していた横断判定だけを追加する。#1570/#1017のSource、#2505の版間SourceRef、#958の認識上の鮮度、#267の受理、#2600のBuild、#1174の実行効果という既存Ownerを維持。新Registry／Host／第二Canonical／共通失効Engineを作らない。
+
+### 5段階の失効と履歴保持（現在利用資格だけを再判定）
+
+| 段階 | 歴史として保持する記録 | 変更時に失効／再資格化する現在のClaim | 禁止する推論・責任境界 |
+| --- | --- | --- | --- |
+| Source Observation | 宣言元occurrence、供給元URL／解決Locator、Source Revisionの種類と値、取得Attempt／時刻、実byte fingerprint、完全性、失敗と権限の観測 | 新Source／移動／権限変更／offlineにより、取得時点・対象・現在性・開示可否を再確認。旧観測は削除しない | Cacheがある＝fresh、取得不能＝not-foundではない。Reader／Providerの責務 |
+| Structural Candidate | 固定SourceとParser・Language Plugin・Role／Operatorの推移Pin、Source span、候補・未解決の記録 | 内容、解釈器、依存Role、意味対応、隠れた依存の変更・未確認を対象に再導出 | Candidateの型・値・Data IDが同じ＝Meaning同値ではない。既存Parser／Validator |
+| Accepted Meaning | Owner Decision、対象Meaning、scope、受理時Revision、撤回等の履歴 | 変更後のSource／Meaning／Owner判断が現在の用途へ適用できるか別判定。旧Decisionの歴史は保持 | A→B→AでOwner判断を自動復活させない。#267／案件Owner |
+| Build Artifact／Evidence | 全必要memberのArtifactSet、Builder／Toolchain／Target、実入力closure、Build Attempt、過去の検査結果 | 実消費入力・Dependency closure・必要Member・現在のConsumer条件の変化により再利用資格を保留／再検査。古いArtifact byteは破棄しなくてよい | 主生成物やCAS digest一致＝全member／実ロード／意味受理合格ではない。#2600等 |
+| Execution Receipt／Effect | 過去のCommand、Operation Identity、Host/Providerの応答、独立Effect観測、不明Commit | 過去の効果自体は後のSource更新で失効しない。現在の再実行・再送・Grant・副作用重複防止資格を別判定 | Receiptの存在やAへの復帰＝新規実行許可ではない。ACK不明なら無断再送しない。#1174／実Provider |
+
+世界の正規化内容を示す **World Fingerprint**、Source occurrenceや参照対応の改版を示す **Model Revision／Source Index Fingerprint**、実入力・出力の版を示す **Artifact Revision／ArtifactSet Digest** は、比較する対象が異なる。WorldFP不変でもSource移動でIndex・Trace・引用が変わり得る。Artifactが同byteでも供給者の現在信頼・Consumerの開示権限・Host Grantは別。これらは既存のRevision／Build関係の照合列であり、新しい共通IDを定義しない。
+
+**既存の限定証拠**：merged [#2626](https://github.com/hat47x/tei-platform/pull/2626)の実Go CLI同byte Source移動はWorldFP不変とSource Index／Trace変化を観測した。別の [#2649](https://github.com/hat47x/tei-platform/pull/2649) では実CLI・Artifact保存・独立Readerのbyte対応が限定成立したが、Manifestの未充足が残った。両者を一つの外部HTTP／Owner意味受理／実Consumer E2Eに合算しない。
+
+### 部分再計算を認めるための前提
+
+1. Claimごとの必要対象集合・Source参照、Parser／Role／Operator推移Pin、Rule／Query Predicate・Relation、Scope、取得範囲、Rowset／Field完全性、Provider route、Target／Consumer、利用目的・開示・現在Grantのうち実際に必要な依存を観測する。**未列挙は空集合ではない**。0件や不存在はPredicate・全件性・時点に依存する否定依存。
+2. 実際に取得・検査したbyteが、Parser／Build／Interpreterへ渡された固定byteと一致することを示す。事前・事後hashの一致では検査と実消費の間のABA／TOCTOUを証明しない（#2595／#1017）。
+3. 依存closureが現在の対象Claimについて十分・完全であり、変更の無影響が反証可能なら選択的再計算候補。依存追加／削除・非表示Predicate・途中失敗・Provider差替え・scope不明・partial取得では、対象Claimのskip資格をunknownとし、広い再検査か全再計算へ戻る。
+4. 全再計算でも未取得Source・権限不足・現在Grantが自動的に解消するわけではない。根拠のないsuccessを作らずunverifiedを保持する。一方、無関係と確認された他Claimの歴史的証拠やArtifactまで無条件に失効させない。
+5. 内容再利用が成立したとしても、現在のSource引用・SHOの保存文書の原典再解決・Owner受理・ArtifactSet全member・実Consumer読取・Runtime Grant／Effectは別々に確認する。
+
+### 独立Expectedを持つ追加Fixture（RF-01〜12は維持、すべて新規NOT RUN）
+
+| ID | 変更入力と独立Expected | 観測器・既存Owner |
+| --- | --- | --- |
+| RF-13 | **外部参照の表示値と本文は同じ、内部Rule／Predicateだけ変化**。表示byteの一致からRule／Claimを再利用しない | 実依存のRule footprint、独立Rule Expected。#2624／#2600 IB-12／#2516 RC-02 |
+| RF-14 | **部分取得のpage1は0件、page2に対象行あり**。partialをnot-found・正常0件・全件成立へ昇格しない | 独立対象ID全集合とページ／Field完全性。#2582 ND-03／#2516 |
+| RF-15 | **内容・WorldFP同一、Provider routeと現在Grant／Disclosureのみ変化**。古い受理履歴は残し、現在の外部読取・AI開示・Action許可を別判定で拒否 | Provider／Hostの現在権限Observerと開示先。#958／#2516／#1174 |
+| RF-16 | **外部依存1件の追加／削除、既存Source byteは同一**。宣言された旧Source集合から自動的に「追加依存なし」と推論せずskip保留 | 独立の必要依存集合、実選択Predicate／Source closure。#2600 IB-07／#2595 |
+| RF-17 | **主Artifact一致だが必要memberが欠落または旧版**。実Target/Consumerの資格を与えない | ArtifactSet manifest／独立Reader／実ロードObserver。#1102／#2600 IB-05／#2649 |
+| RF-18 | **旧Receiptの後、Commit応答喪失、Source A→B→A**。既発生Effectの履歴は保持、再送／重複回避資格はunknown、無断Command再実行は0 | Operation identity／Backend独立Effect観測／現Grant。#1174／#1121 |
+
+FixtureのExpectedをTEI Parser／AIが作ったCandidateから生成しない。別に固定したSource byte、対象集合・scope、Rule／依存一覧、必要Artifact member、Grant／Policy、既発生Effectを真値とする。比較票は「入力Revision、実byte・取得Coverage、Claim、Expectedの失効／再計算、観測器、実結果、現在資格、禁止する結論、Owner、exact HEAD／Run」を最低列とする。局所合成PASSと実Go CLI・実HTTP・Studio・外部Host E2Eは合算しない。
+
+### 既存計画へ渡す差分と順序
+
+- **外部参照・改版**：#1570／#1017と#2505にRF-02〜05／16のSource位置・改版・実取得を渡す。現在のHTTP鮮度とSemantic Digest固定を同一視しない。
+- **認知・Context**：#958／#2533／#2516にRF-08／13〜15の用途・完全性・開示差分を渡す。認知ReportはAccepted MeaningやExecution Receiptの第二正本にならない。
+- **増分Build**：#2600のIB-05／07／10〜14にRF-02〜05／11／13／16／17を対応付け、BR-FULL／BR-SELECTIVE／BR-UNVERIFIEDでfalse reuse・不要な全面失効・要再資格化を比較する。新しいSchedulerを作らない。
+- **Studio・AI修正**：#1124／#1824にRF-10／12／15の後着応答、Scope別Graph選択、現在の開示可否を渡す。staleな修正候補を現行版へ適用しない。実行前の検査が必要な場合は旧操作を再試行しない。
+- **Owner／Runtime**：#267／#1016でRF-03〜05／18の正式案件受理範囲を扱う。#1174が実Receipt／Effectを所有し、Sourceの差分から副作用の消去や再送を推論しない。
+
+**順序**：P0=RF-01／06〜09／14（取得の失敗と全件性）→P1=RF-02〜05／11／13／16（版間・依存局所化）→P2=RF-10／12／15／17／18（実Consumer・実Build・実Effect）→P3=既存案件Ownerによる意味受理。各段階はその範囲の実行と証拠が揃ったときにのみ前進し、旧CIのPASSを新しいHEADへ転用しない。
+
+**未決**：用途別鮮度期限、権威あるNot Found、offlineの固定Build・公開、同byte改版でOwner再受理を省略する条件、権限変更後の履歴開示。新ADRは採用せず既存Ownerへ判断を残す。#2667の横断Draftは別Ownerが同じ時期に編集しているため、計画本文をこのPRで重複更新しない。上記のRF→IB/ND/RC対応表をリンクで受け渡す。
