@@ -61,6 +61,15 @@ class ProbeTest(unittest.TestCase):
             unclosed = check(Path(tmp), "docs/example.md", "```\n`ref:docs/ignored`\n")
             self.assertEqual(unclosed["denominator"], 0)
 
+    def test_root_directories_are_extracted_without_becoming_errors(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "internal").mkdir()
+            report = check(root, "docs/example.md", "`internal/` `core/` `ref:plugins/`")
+            self.assertEqual(report["denominator"], 3)
+            self.assertEqual([r["result"] for r in report["records"]], ["resolved", "unresolved", "unresolved"])
+            self.assertEqual([r["severity"] for r in report["records"]], ["info", "warning", "error"])
+
     def test_allowlist_exact_expired_stale_and_growth(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

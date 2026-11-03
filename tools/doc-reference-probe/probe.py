@@ -9,8 +9,8 @@ import sys
 from datetime import date
 from pathlib import Path
 
-RULE = "repo-path-v3"
-TOKEN = re.compile(r"`(?:(ref|planned):)?((?:docs|plan|tools|reference|requirements|product)/[A-Za-z0-9_./-]+)`")
+RULE = "repo-path-v4"
+TOKEN = re.compile(r"`(?:(ref|planned):)?((?:cmd|core|docs|internal|plan|plugins|tools|reference|requirements|product)/[A-Za-z0-9_./-]*)`")
 DECLARATION = re.compile(r"`(ref|planned):([^`\n]*)`")
 FENCE = re.compile(r"^ {0,3}(`{3,}|~{3,})([^\r\n]*)")
 
