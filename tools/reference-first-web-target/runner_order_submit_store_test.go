@@ -294,7 +294,7 @@ func TestRunnerOrderSubmitHostGrantDeniedNeverCallsRunner(t *testing.T) {
 	p := newFakeSubmit()
 	s, cr := newFakeStore(t, p, nil, nil)
 	runner := newOrderSubmitRunner(t, s)
-	runner.hostEffect = func(context.Context, string) error { return errors.New("revoked") }
+	runner.hostEffect = func(context.Context, string, string) error { return errors.New("revoked") }
 	result, err := runner.RunCommand(context.Background(), orderSubmitInput)
 	if err == nil || result.Stage != "host-effect-grant-denied" || cr.executes != 0 || p.tx.writeCalls != 0 {
 		t.Fatalf("result=%+v err=%v executes=%d", result, err, cr.executes)

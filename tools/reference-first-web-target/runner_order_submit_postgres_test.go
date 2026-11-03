@@ -254,7 +254,7 @@ func TestRunnerOrderSubmitRealPostgresHostGrantDeniedLeavesDraft(t *testing.T) {
 	cr := &countingRunner{inner: store.runner}
 	store.runner = cr
 	runner := newOrderSubmitRunner(t, store)
-	runner.hostEffect = func(context.Context, string) error { return errors.New("revoked") }
+	runner.hostEffect = func(context.Context, string, string) error { return errors.New("revoked") }
 	result, err := runner.RunCommand(context.Background(), orderSubmitInput)
 	if err == nil || result.Stage != "host-effect-grant-denied" || cr.executes != 0 ||
 		orderStatus(t, env.db, 1001) != "draft" || env.receipts(t) != 0 {
