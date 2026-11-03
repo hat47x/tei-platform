@@ -21,6 +21,15 @@ TEIの「最大限利用」とは**管理画面だけをTEIで描くことでは
 
 **依存の向き**：EKIのApplication/Control用UIをTEIから生成してよいが、EKIの署名・Task State Authority／Placement Authority／Lease発行・Local Governorの危険回避は、TEI Studio・生成画面・生成AI・EKI Central UIが停止しても機能する必要がある。TEIのRuntimeをEKI Kernelの必須前提にすることは、既存EKI方針に反する。逆に、EKIの管理業務そのものをTEIで記述・実行する能力は、権限外の純粋な「ダッシュボード」に限定しない。
 
+### 1.1 EKIの標準管理単位をPool/Delegateへ修正（2026-11-03）
+
+[AI JobはTEI、広域委任・資源群はEKI、HPC/社員PCの内部管理は専門Provider](TEI_AI_WORKLOAD_EKI_AGGREGATE_DELEGATION_2026-11.md)により、前段の`Node/Device`中心表現を修正する。**EKIの標準的な利用者操作・広域可視化の単位は、登録済Resource Pool／Cluster Group／Delegate／Trust Domain。** CPU/GPU/Memory単体やPC個体は**通常はEKIが直接所有する資産台帳ではない**。HPCならSlurm/Kueue/Cloud Provider、PCなら既存MDM/ITAM/Endpoint Security、DP-7の直接WorkerならEKI Agent/Local Governorが各々の詳細を管理する。
+
+- TEIの**標準管理コンソール**は、Pool/Delegate→Workload class/Offer→Policy/Consent→実際のTask/Result→予実/Cost/ImpactをGraph×Table×Timelineで表示する。個別Node・GPU PartitionへはScopeのあるOperatorだけProvider-owned画面／限定Queryでdrill-downし、標準EKI Controlに全Worker物理構成の複製を求めない。
+- ただしPoolの`100GB VRAM`や`100 cores`は**単一Workloadの連続資源**を意味しない。同質GPU Class／OS arch／Data Class／Memory ceilingごとのSub-offerを保持し、具体的Device配置の可否は実Providerが検査する。時点・失効・partial・uncertainをResource Scoreに平均化しない。
+- 社内PC等は**既存Security/ITAM/MDMの管理対象集合**を登録根拠とした`volatile Pool`として供給できる。しかし`compliant`という自己申告/管理台帳だけで、現在のLocal Governorの利用許可、Worker実行環境の保証、外部Effectの真正性を断定しない。
+- 以上はEKIの既存RQ-058、ADR-0013の**設計思想への整合**。HPC Pool/Gateway、MDM Adapter、実Agent/TEI Projectionの採用・実動は未確認。本稿以下のNode/Deviceレベル図・負例は、**EKI直接管理Profile／Provider drill-down／安全性検証に限る**ものと読む。全利用者が全Nodeを閲覧できる設計を要求しない。
+
 ## 2. 一枚の巨大な状態図でなく、独立した状態軸と相互制約を可視化
 
 | 対象・状態軸 | 代表的なFact／候補 | 何を区別しなければならないか |
