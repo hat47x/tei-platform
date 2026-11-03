@@ -500,12 +500,12 @@ X-TEAの戻り値とTEIの分類の対応（案）は、次のとおりです。
 
 **撤回条件.** 結果型が増えすぎて、呼出し側の分岐が実装負担になる場合は、結果の分類を業務結果と実行結果の二層に整理します（[Business Effect Lifecycle](BUSINESS_EFFECT_LIFECYCLE_DESIGN_2026-10.md)との整合）。
 
-**PoCでの実装.** `interaction`の`command`でCapabilityを参照し、対話ビューが入力・結末・効果を解決します。入力は`input <name> <attribute>`で対話の項目へ結びつけます。起動前の入力計画は`view -command`で確認でき、値の形（整数・数値・日付など）も検査します（[#2521](https://github.com/hat47x/tei-platform/pull/2521)）。実行境界は`internal/command`の`Executor`契約として実装し、入力検証・実行失敗・宣言外の結末を`ExecutionError`として分けます。取引は`UnitOfWork`と`Transaction`の契約として境界を実装し、成功時はCommit、実行失敗・宣言外の結末・Commit失敗時はRollbackします。実Providerの接続は未実装です。実Providerは既存の`internal/security/effectcommit`（PostgreSQL参照実装）へ接続し、Commandの`UnitOfWork`は`effectcommit.Runner`へ委譲して、認可・OperationID・receiptを省略しません。PoCの`ReferenceDataExecutor`は契約確認用で、実Providerではありません。契約の配線は`ReferenceExecutor`と`MemoryUnitOfWork`、データ効果は`ReferenceDataExecutor`と`MemoryStore`・`StoreUnitOfWork`で確認でき、`view -command -execute`でCLIから参照実行できます（業務副作用はありません）。起動計画には、効果が及ぶDataを統制する期間と閉期間の拒否を表示します。`PeriodState`が閉を示し、効果の種類が`closedRejects`に含まれる場合は`COMMAND_PERIOD_CLOSED`で拒否します。
+**PoCでの実装.** `interaction`の`command`でCapabilityを参照し、対話ビューが入力・結末・効果を解決します。入力は`input <name> <attribute>`で対話の項目へ結びつけます。起動前の入力計画は`view -command`で確認でき、値の形（整数・数値・日付など）も検査します（[#2521](https://github.com/hat47x/tei-platform/pull/2521)）。実行境界は`internal/command`の`Executor`契約として実装し、入力検証・実行失敗・宣言外の結末を`ExecutionError`として分けます。取引は`UnitOfWork`と`Transaction`の契約として境界を実装し、成功時はCommit、実行失敗・宣言外の結末・Commit失敗時はRollbackします。実Providerの接続は未実装です。実Providerは既存の`internal/security/effectcommit`（PostgreSQL参照実装）へ接続します。`internal/security/effectcommit/commandadapter`が`command.Executor`として`effectcommit.Runner.Execute`へ委譲し、認可・OperationID・receiptを省略しません。PoCの`ReferenceDataExecutor`は契約確認用で、実Providerではありません。契約の配線は`ReferenceExecutor`と`MemoryUnitOfWork`、データ効果は`ReferenceDataExecutor`と`MemoryStore`・`StoreUnitOfWork`で確認でき、`view -command -execute`でCLIから参照実行できます（業務副作用はありません）。起動計画には、効果が及ぶDataを統制する期間と閉期間の拒否を表示します。`PeriodState`が閉を示し、効果の種類が`closedRejects`に含まれる場合は`COMMAND_PERIOD_CLOSED`で拒否します。
 
 **未解決.**
 
 - 削除の効果の意味。`DataEffect`は`delete`を宣言できるようになったが、参照の制限・連鎖・保留の扱いをどう表すかは未決で、Business Effect Lifecycleと合わせて決める。
-- 削除時の参照の扱い（制限・連鎖・保留）を、Relationの意味として宣言するか、規則Pluginに置くか。PoCでは`on-delete restrict|cascade|preserve`として宣言だけを実装した。X-TEAの削除前検査は外向きの参照だけを確認していた（知識目録D-11）。
+- 削除時の参照の扱い（制限・連鎖・保留）を、Relationの意味として宣言するか、規則Pluginに置くか。PoCでは`on-delete restrict|cascade|preserve`として宣言し、参照Storeがrestrict（拒否）・cascade（内向きレコードの削除）・preserve（残す）を実行する。行の対応付けはData単位の粗い参照実装で、実Providerの参照制約ではない。X-TEAの削除前検査は外向きの参照だけを確認していた（知識目録D-11）。
 - 見出しと明細を一つの操作で更新するときの、効果のまとまり（同一取引とするか、補償で表すか）。
 - 画面を閉じる・取消す操作と、Commandの取消・補償の対応。
 - 複数画面・外部効果をまたぐ取引の表現。
@@ -946,10 +946,17 @@ PoC #2521が実装した範囲と、まだ実装していない範囲を分け�
 | 参照削除の振る舞い（`on-delete`） | 実装済み（`restrict`・`cascade`・`preserve`の宣言、実行は未実装） |
 | 削除効果の参照ポリシー検査 | 実装済み（内向きRelationに`on-delete`がない場合の警告） |
 | Commandの参照実装（契約確認用） | 実装済み（業務副作用なし、Commit/Rollbackの記録のみ） |
+| Commandからeffectcommitへのアダプタ | 実装済み（`effectcommit.Runner.Execute`へ委譲、認可・receiptを省略しない） |
 | 参照データ記憶域（MemoryStore） | 実装済み（create/update/delete、スナップショットによるRollback） |
+| 参照Storeの削除ポリシー実行 | 実装済み（restrict・cascade・preserve。行の対応付けは粗い参照実装） |
+| 参照Storeの必須属性検査 | 実装済み（create時、record commandのbinding経由。command Patternは判定不能としてスキップ） |
+| 参照Storeの値域検査 | 実装済み（create/update時、Typeの`values`と別名解決） |
+| 参照Storeの重複create拒否 | 実装済み（同じキーのcreateを拒否） |
+| 参照Storeのキー指定と更新禁止検査 | 実装済み（`KeyFields`、update時の`immutable`） |
 | Commandの参照実行（CLI） | 実装済み（`view -command -execute`、業務副作用なし） |
 | Command計画の期間表示（D6.1） | 実装済み（効果Dataを統制する期間・状態・閉期間の拒否） |
 | 期間の閉塞によるCommand拒否 | 実装済み（`PeriodState`契約と参照実装） |
+| CLI参照実行の期間状態 | 実装済み（`view -execute -period-state`） |
 | フックの宣言（位相・読み書き・失敗時） | 実装済み（`hook`、実装Pluginは未接続） |
 | フックの実行境界（Implementation契約・reject/warn） | 実装済み（`internal/hook`、実Pluginは未接続） |
 | 未使用属性の表示（D8・G-7） | 実装済み（recordビューの`unused`） |
@@ -958,11 +965,27 @@ PoC #2521が実装した範囲と、まだ実装していない範囲を分け�
 | Packageのビュー（メンバー・前提・版束縛） | 実装済み（`view -package`） |
 | Applicationのビュー（Pattern・Package・意味の版） | 実装済み（`view -application`） |
 | StudioホストのビューAPI | 実装済み（`ViewPattern`・`ViewApplication`、読み取り専用） |
+| Studio rendererのビュー表示 | 実装済み（Application・PatternのJSON表示、読取専用） |
+| StudioからのCommand計画・参照実行 | 実装済み（`PlanCommand`・`ExecuteCommand`、業務副作用なし） |
+| Studioのビュー要約表示 | 実装済み（項目・コマンド・フック・未使用を表形式で表示） |
+| StudioのPackageビュー | 実装済み（メンバー・前提・版束縛） |
 | Applicationビューの期間（D6.1） | 実装済み（ID・Data・業務日付・状態） |
 | Commandの実行境界、改ページ、フックのDSL | 未実装 |
 | `reference/workspace`への宣言追加 | 未実施（受理経路が必要） |
 
 実装は、`internal/application/model.go`、`internal/syntax/application_pattern.go`、`internal/validation/application_pattern.go`、`internal/crossview/pattern_requirements.go`、`internal/applicationview`、`internal/semantic/model.go`、`internal/syntax/parser.go`、`internal/validation/validation.go`と、それぞれの試験です。
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

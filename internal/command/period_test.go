@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"tei/internal/ir"
+	"tei/internal/operations"
 	"tei/internal/semantic"
 )
 
@@ -57,5 +58,24 @@ func TestInvokeReportsPeriodStateFailure(t *testing.T) {
 	_, err := invoker.Invoke(context.Background(), request())
 	if code := executionCode(t, err); code != "COMMAND_PERIOD_STATE_FAILED" {
 		t.Fatalf("code=%s", code)
+	}
+}
+
+func TestMapPeriodState(t *testing.T) {
+	states := NewMapPeriodState(map[string]operations.PeriodState{
+		"sales.period": operations.PeriodClosed,
+		"other.period": operations.PeriodOpen,
+	})
+	closed, err := states.Closed(context.Background(), "sales.period")
+	if err != nil || !closed {
+		t.Fatalf("closed=%t err=%v", closed, err)
+	}
+	closed, err = states.Closed(context.Background(), "other.period")
+	if err != nil || closed {
+		t.Fatalf("closed=%t err=%v", closed, err)
+	}
+	closed, err = states.Closed(context.Background(), "missing.period")
+	if err != nil || closed {
+		t.Fatalf("closed=%t err=%v", closed, err)
 	}
 }

@@ -87,15 +87,16 @@ func TestLoadListsDomainSourcesFromPinnedRootWhenAliasIsRetargeted(t *testing.T)
 	}
 }
 
-// globPinnedSorted must keep filepath.Glob + sort.Strings semantics for every
-// pattern shape the loaders use, including directories that match a file
-// pattern, missing directories and case.
-func TestGlobPinnedSortedMatchesPathnameGlobOnSyntheticTree(t *testing.T) {
+// The pinned listing helpers must keep filepath.Glob + sort.Strings semantics
+// for every pattern shape the loaders use (for ordinary names), including
+// directories that match a file pattern, missing directories and case.
+func TestPinnedListingMatchesPathnameGlobOnSyntheticTree(t *testing.T) {
 	root := t.TempDir()
 	files := []string{
 		"applications/b/application.tei", "applications/a/application.tei",
 		"applications/c/other.tei", "applications/a/patterns/z.tei", "applications/a/patterns/a.tei",
 		"applications/a/patterns/notes.txt", "applications/a/realizations/header-detail/h.tei",
+		"applications/A/Application.tei", "applications/loose.tei",
 		"databases/d/migrations/2/migration.tei", "databases/d/migrations/10/migration.tei",
 		"releases/applications/x/1.tei", "releases/solutions/s/2.tei",
 	}
@@ -112,35 +113,54 @@ func TestGlobPinnedSortedMatchesPathnameGlobOnSyntheticTree(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(root, "applications", "a", "patterns", "dir.tei"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	patterns := []string{
-		"applications/*/application.tei",
-		"applications/a/patterns/*.tei",
-		"applications/*/realizations/header-detail/*.tei",
-		"databases/d/migrations/*/migration.tei",
-		"releases/applications/*/*.tei",
-		"releases/solutions/*/*.tei",
-		"environments/*/environment.tei", // missing directory
-		"applications/a/queries/*.tei",   // missing directory
+	if err := os.MkdirAll(filepath.Join(root, "applications", "b", "application.tei.d"), 0o755); err != nil {
+		t.Fatal(err)
 	}
-	oracle := func(pattern string) []string {
-		matches, err := filepath.Glob(filepath.Join(root, filepath.FromSlash(pattern)))
+	abs := func(rel string) string { return filepath.Join(root, filepath.FromSlash(rel)) }
+	cases := []struct {
+		pattern string
+		list    func() ([]string, error)
+	}{
+		{"applications/*/application.tei", func() ([]string, error) {
+			return listPinnedUnitFiles(root, &Result{}, abs("applications"), nil, "application.tei")
+		}},
+		{"applications/a/patterns/*.tei", func() ([]string, error) {
+			return listPinnedFiles(root, &Result{}, abs("applications/a/patterns"), "*.tei")
+		}},
+		{"applications/*/realizations/header-detail/*.tei", func() ([]string, error) {
+			return listPinnedUnitFiles(root, &Result{}, abs("applications"), []string{"realizations", "header-detail"}, "*.tei")
+		}},
+		{"databases/d/migrations/*/migration.tei", func() ([]string, error) {
+			return listPinnedUnitFiles(root, &Result{}, abs("databases/d/migrations"), nil, "migration.tei")
+		}},
+		{"releases/applications/*/*.tei", func() ([]string, error) {
+			return listPinnedUnitFiles(root, &Result{}, abs("releases/applications"), nil, "*.tei")
+		}},
+		{"releases/solutions/*/*.tei", func() ([]string, error) {
+			return listPinnedUnitFiles(root, &Result{}, abs("releases/solutions"), nil, "*.tei")
+		}},
+		{"environments/*/environment.tei", func() ([]string, error) { // missing directory
+			return listPinnedUnitFiles(root, &Result{}, abs("environments"), nil, "environment.tei")
+		}},
+		{"applications/a/queries/*.tei", func() ([]string, error) { // missing directory
+			return listPinnedFiles(root, &Result{}, abs("applications/a/queries"), "*.tei")
+		}},
+	}
+	for _, tc := range cases {
+		got, err := tc.list()
+		if err != nil {
+			t.Fatalf("%s: %v", tc.pattern, err)
+		}
+		want, err := filepath.Glob(abs(tc.pattern))
 		if err != nil {
 			t.Fatal(err)
 		}
-		sort.Strings(matches)
-		return matches
-	}
-	for _, pattern := range patterns {
-		got, err := globPinnedSorted(root, &Result{}, filepath.Join(root, filepath.FromSlash(pattern)))
-		if err != nil {
-			t.Fatalf("%s: %v", pattern, err)
-		}
-		want := oracle(pattern)
+		sort.Strings(want)
 		if len(got) == 0 && len(want) == 0 {
 			continue
 		}
 		if !reflect.DeepEqual(got, want) {
-			t.Errorf("%s: got %v, want %v", pattern, got, want)
+			t.Errorf("%s: got %v, want %v", tc.pattern, got, want)
 		}
 	}
 }
