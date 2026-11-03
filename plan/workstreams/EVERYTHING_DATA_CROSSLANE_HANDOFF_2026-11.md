@@ -1285,11 +1285,11 @@ AI一括修正で**対象曖昧、複数Patch衝突、base byte不一致、取�
 **今回確認できた限定事実**：[#2639](https://github.com/hat47x/tei-platform/pull/2639) HEAD `12c864ba83840a7b5750bc8da84af0e8534558e1`について[Repository Health run #41578551459](https://github.com/hat47x/tei-platform/actions/runs/41578551459)と[依存確認 run #41578551497](https://github.com/hat47x/tei-platform/actions/runs/41578551497)が**同一HEADでcompleted/success**。これは限定Go Language Plugin ReferenceのCI成功であり、外部Importの独立Expected/実HTTP・offline、Studio動的診断・AI Patch、外部Consumer/Host、Owner業務意味受理の成功ではない。本追補のR0〜R3とそれら製品試験は**NOT RUN**。既存#2743/#2745はDraftのままで、正式ADR/Schema/実装採用は未決。
 
 
-## 27. 外部Reference・Source修正・業務Commit・EKI実行を一つの試行で区別する（2026-11-03横断追補）
+## 31. 外部参照修正から業務取消・EKI Attemptまでの統合負例――実対象と資格の一改訂束縛（2026-11-03横断追補）
 
-> **設計・横断受入票のみ／実Source Writer・外部Provider・業務DB・EKI・Studio・SHOの新しいE2EはNOT RUN。** §§19〜26の「実CLI/Source/意味/Consumer/実効果」を、外部DSL参照の失効、AIによるSource修正、業務状態の物理保存、分散ジョブの実行・再試行という別チャットの接点で一つの試行へ束縛する。新たなTEI Host、EKI内の第二業務意味正本、中央状態テーブル、Registry、万能Source Editorは作らない。
+> **設計・横断受入票のみ／実Source Writer・外部Provider・業務DB・EKI・Studio・SHOの新しいE2EはNOT RUN。** 既存§27（広域品質/EKI委譲）、§28（Value/Flow/Job/Consumer）、§29（構造再利用とAuthority）、§30（外部Importの編集時診断/AI修正）の**独立した担当契約は変更せず**、それらで個別に成立したと誤認しやすい境界を「受注 O1 の取消要求＋外部定義を同じAttemptで使用」という一つの反例束に接続する。主眼はRequestの選択TargetとPayload/実Commit Targetの同一性、修正前後の実Source、Job完了と業務確定の分離である。新たなTEI Host、EKI内の第二業務意味正本、中央状態テーブル、Registry、万能Source Editorは作らない。
 
-### 27.1 一つのActionを複数の資格に分割する
+### 31.1 一つのActionを複数の資格に分割する
 
 | 資格・対象 | 必ず別に保持する事実 | 最終的に判断する既存Owner |
 | --- | --- | --- |
@@ -1307,7 +1307,7 @@ AI一括修正で**対象曖昧、複数Patch衝突、base byte不一致、取�
 - TEIが停止してもEKIに登録済みのTask/Lease管理は自立し得るが、EKIが完了と報告したことは業務Commit、Receipt確定、Providerにおける一意な副作用、Consumerの正しい開示を保証しない。TEIのGo単一バイナリはEKIを利用せず単体実行できることを基本とする。
 - Studioの「参照を表示」「Previewが成功」「保存Intentができた」「Source Patchが保存された」「EKIのジョブが受付けられた」「業務DBのCommitが観測された」「後続の業務検証が成立」は、UI・CLI・AIに**別状態**として示す。unknown/partial/staleを成功へ丸めない。
 
-### 27.2 外部参照からAI修正までの書込み前契約（新Editorではない）
+### 31.2 外部参照からAI修正までの書込み前契約（§30の実行前提を参照）
 
 1. **取得/診断**：ParserはSourceの表記・Spanと宣言を出す。#1017の物理read boundaryは、宣言Rootを越えるsymlinkやTOCTOU、実際に読んだbyteとdigestの同一性を検証対象にする。#1018はLanguage/Version/Implementation pin、実Workspace dispatchを担う。欠落必須ファイルは診断エラー、任意参照は用途別のdegraded/unresolvedを表現する。Resolver/Source IndexのOwnerをParser内で重複実装しない。
 2. **状態と影響**：参照先のpath移動で内容hashが同じ場合、Meaningの再受理が不要となることはあるが、Source occurrence/引用・Traceの位置は再解決する。A→B→Aも同じbyteだけで「一度も失効なし」としない。offline Cacheで閲覧できても、現在の実Provider読み取り/命令/開示資格は別。影響不明な依存Closureは新鮮扱いしない。
@@ -1315,7 +1315,7 @@ AI一括修正で**対象曖昧、複数Patch衝突、base byte不一致、取�
 4. **局所適用**：明示的許可を受けたPatchだけ、書込み直前に物理Target/byte digest/現在のAuthorityを再照合し、重複/交差Spanや同一ファイルに対する他編集競合を拒否。no-op Saveは書込みゼロ・原byte保持、通常SaveでMarkdown表・コメント・CRLF/BOM・フェンス等を全面整形しない。変更後は実ファイルを再読取→reparse→Meaning Diff→必要なOwner再受理。**Patch適用成功はSource修正成功の証拠であり、Business Commitではない。**
 5. **消費/再資格化**：診断・修正結果のConsumerは対象Source/Rule/Artifact/引用とDisclosure許可を固定して閲覧。実対象以外は選択的に資格更新するが、未列挙の否定依存・読取0件・依存Plugin改版がある場合、無条件skipしない。#2600のBuild skipと#2582の実行時再評価は区別する。
 
-### 27.3 最小の縦断ケースと独立Expected（新しい機構の仮定を置かない）
+### 31.3 最小の縦断ケースと独立Expected（§27・§28・§30の横断結合）
 
 試行単位は**「受注 O1 の取消要求」一つ**とし、選択済みFunction Context・対象の明細・Source revision・DB Alias・実Provider/外部Host・EKI Task/Attemptを相互に関連づける。SourceはMarkdown定義と宣言された外部参照（初期はローカル1ファイル）、業務状態は受注行の `status`/`version`（**例示・正式DDLではない**）、取消履歴は業務要件により別イベントとして選択。Expectedは候補実装と独立して固定し、Task受付と業務状態の正しさを別列で採点する。
 
@@ -1336,7 +1336,7 @@ AI一括修正で**対象曖昧、複数Patch衝突、base byte不一致、取�
 
 **採点列**は、Source bytes/Revision・Reference status・Meaning/Rule pin・Workspace/Principal・Context/Entity ID・Request Target ID・Payload Target ID・DB alias/Provider・CAS version・Task/Attempt/Lease・actual consumed byte・Effects/Receipt/unknown・Consumer actual read/Disclosure・実行環境/費用とする。PII・secret/非開示の値をログやAI提案本文へ載せず、必要な可観測性と権限制御を同時に検査する。
 
-### 27.4 既存Ownerへの実行順・Go/DSLの採用条件
+### 31.4 既存Ownerへの実行順・Go/DSLの採用条件
 
 - **F0：静的/CI前提**。#1017/#1018/#988で実read、Language Plugin選択、Source Index/Spanが一致する最小ケースを確保。#2639は実Go Reference 9テストであるが、Workspace E2E/正式Role受理ではない。#2674のSource Fidelity設計はmain統合済みでも、実Writer/Studio Roundtrip実証ではない。
 - **F1：Patchを含む一改訂**。#2621/#1124/#1529のSource Writer/競合処理へXS-03〜06を接続。既存の修正・受理入口が見つからなければ `NOT RUN: missing concrete writer` と記録し、代用の新編集Engineを作らない。
