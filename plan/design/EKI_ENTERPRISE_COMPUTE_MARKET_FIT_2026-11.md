@@ -85,6 +85,12 @@ Total CostはCompute（Cloud/On-prem amortization）＋Data Egress/Ingress＋Con
 
 **未確定の投資判断**：市場全体規模、価格/契約形態、Run:ai OSSとの差、GPUメモリ共有・低価格ノードの経済性、Cloud Control SaaSの法規/データ所在、非TEI ClientとのInterop、顧客の既存クラスタ移行負担。実需要を顧客ヒアリングとPaid Pilotで測るまでは`product-market fit achieved`としない。
 
+### 6.1 顧客価値を資源群・組織単位で証明する追加仮説（2026-11-03）
+
+[TEIがAI Jobを構築、EKIが資源群へ委任する設計](TEI_AI_WORKLOAD_EKI_AGGREGATE_DELEGATION_2026-11.md)を受け、**EKIは個々のGPU/PCを管理する新製品である必要はない**と捉える。購入主体は一つ上のAI Platform／IT/Infra Governanceであり、複数の既存GPUクラスタ、Cloud Account、Managed Endpoint Poolを**同じ実権限と実費用に照らして委任できること**を差別化候補にする。Slurm/Kueue/ITAM/MDM/EDRを置換する管理ソフトの開発コストを避け、必要なProvider AdapterとTEIベースのSimulation/運用を価値の核にする。
+
+顧客発見では`Pool/Orgレベルの利用可否判断に困っているか`、`既存製品のライセンス/運用負担を下げるか`、`Nodeの詳細をEKIに渡さないデータ主権・Security上の価値があるか`、`TEIのAI Pipeline設計と一体の購買意思があるか`を別に検証する。**「国内企業は余剰PCを多数持つ」から`動的PC Cloud`へ有償の需要があるとは推定しない**。Clientが承認済Poolを指名する方式と、EKIが最適Delegateを提案する方式の双方を、現行EKI RQ-059と照合する。経済圏におけるContributionや金銭的価値への換算は別の制度・Ownerが決め、EKI Coreが通貨や市場を構築しない。
+
 ## 7. Issue・ADRとの接続（重複開発を避ける）
 
 - **EKI側で維持**：#58 Suitability、#112 External TEI projection、#57/#242 Task/E2E、#130 stop-safe resident、#106 Session/小Task、#222 Worker identity/onboarding、#109/#125/#140 resource pools/economics、#19/#48/#50 simulation、#354 concurrent reservations、#118 CPU/GPU/Local Observability、#124 human transparency、#136 TEI plugin comparison。EKI repo/ADRの正式変更はEKI Owner判断待ち。
