@@ -24,4 +24,5 @@ jobs:
           go-version-file: go.mod
       - name: Characterize current Discover and Rerank on public temp directories
         run: |
-          go test ./tools/reference-developer-context -run 'Test(DiscoveryAddingWeakCandidateCanEvictDirectEvidence|DiscoveryPositionIsAttemptLocalNotCandidateIdentity|DiscoveryDocumentDirectoryMentionSharesCoarseBasis|RerankQuestionContainsUntrustedCandidatePath|RerankQuestionC0BindsDifferentCandidatesAcrossAttempts)$' -v -count=1
+          go test ./tools/reference-developer-context -run 'Test(DiscoveryAddingWeakCandidateCanEvictDirectEvidence|DiscoveryPositionIsAttemptLocalNotCandidateIdentity|DiscoveryDocumentDirectoryMentionSharesCoarseBasis|RerankQuestionContainsUntrustedCandidatePath|RerankQuestionC0BindsDifferentCandidatesAcrossAttempts|DiscoveryScanBudgetMayHideRelatedDocument|DiscoveryUnreadableDocumentIsNotNoDocument|RerankModelFailureDoesNotUndoLocalRequestDelivery) -v -count=1
+ -v -count=1
