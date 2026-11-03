@@ -182,6 +182,10 @@ EKIの内部を細部なしの“単一仮想マシン”と見なすことは�
 
 [未解決Gate](TEI_EKI_AGGREGATE_DELEGATION_UNRESOLVED_GATES_2026-11.md)§3・§5により、EKI Consoleで`Cloud/HPC Pool`が表示されたことを、実ProviderがリソースをReserve/Deployできる保証と混同しない。TEI ReleaseのArtifact digest→EKI Admission→BUD-1/CAP-1費用枠→下位Cloud/Slurm/KueueのReservation/Deployment actual→Provider Receipt／独立ヘルスを順序を分けて表示。**Provider ACK喪失は`unknown`、費用確保解除はProviderの実Observationまで保留**。TEI生成サービスの可用性・Ingress/DBは既存Hostの責任。高変動Endpoint Poolは`guaranteed=0`を許容する可中断Taskに絞り、SLO/実動資源をCloudサービス同等に見せない。
 
+### 7.3 Cloud Controlの時間・費用判断は、実HostのSLOを置換しない
+
+[Deadline/Budget/Recovery-aware Coordination](TEI_EKI_DEADLINE_BUDGET_RECOVERY_COORDINATION_2026-11.md)により、Managed Cloud/Managed HPC/Dynamic Endpointの選択は単純なCPU/GPU割当でなく、Queue/Provision/Network/Verified ResultのEnd-to-end時間と、失敗後の再確保・予算・期限前エスカレーションを比較する。実運用のApplication Serviceは既存Providerの可用性契約を維持。**EKI Cloud Controlが提供した予測はHost SLAでもCloud Capacity reservationでもない**。Scale-outはBUD-1/CAP-1とProvider quota/Cost Authorityを満たした場合だけ、停止・解除・支出反映はProvider receiptによって確認する。
+
 ## 8. 段階導入とIssue/ADR責務の所有範囲
 
 | Gate | 最小の出来上がりと受入条件 | 主要Owner |
