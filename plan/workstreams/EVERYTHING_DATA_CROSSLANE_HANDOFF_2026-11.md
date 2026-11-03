@@ -1488,3 +1488,66 @@ Ownerの設計方針：Data ModelはSQL解釈から構造生成するのでな�
 **優先しないもの**：新SQL/DSL Grammar、全Domain共通State Engine、組織専用Core／ACL、EKIの業務意味正本化、実DBや多Providerの同期Snapshotを暗黙に仮定する一体Runner。既存§33のE2 Relation-first経路を満たさずSQLや合成結果だけからE3/E4へ進めない。
 
 **今回の実証状態**：既存の#2681実Go/CLI限定CI・#2779独立Node合成CIの成功と#2778設計書の静的確認に基づく**Docs-only追補**。新しいSQL Worker／実DB Migration／Provider Query／業務Owner受理／改編PreviewのTEI実装／Effect／Studio・SHO・EKI連携は本節ではNOT RUN。本文§31〜33と各Owner Issueの担当範囲は変更しない。
+
+
+## 35. TEIジョブ構築とEKI広域資源グループ委譲――低信頼端末・HPC・経済圏の責任境界（2026-11-03横断追補）
+
+> **採用済みの責務分離を具体化する設計・受入計画。実EKI Resource Provider、実TEI Job Builder、HPC/PC管理系、組織横断FederationのE2EはNOT RUN。** 別チャットの「AIジョブの構成・意味はTEI、EKIは委任の核とジョブコントローラー」「EKIはHPCの内部ノードを管理せずクラスタ群を一資源として見る」「社内遊休PCも個体でなく管理済みの資源群として扱う」を、既存[EKI ADR-0013](https://github.com/hat47x/eki-fabric/blob/main/plan/adr/0013-product-core-and-faces.md)の採用済み委任の核、[EKI #67](https://github.com/hat47x/eki-fabric/issues/67)管理クラスタProvider 2系統、[EKI #115](https://github.com/hat47x/eki-fabric/issues/115)委譲先内部再実行、closed [EKI #109](https://github.com/hat47x/eki-fabric/issues/109)資源プール草案、closed [EKI #140](https://github.com/hat47x/eki-fabric/issues/140)広域最適化と照合する。closed issueは採否未確認の設計まで自動的に製品実装済みと呼ばない。§27/28/31のJobとBusiness Effectの分離を維持する。
+
+### 35.1 管理粒度と資格の所有を分離する
+
+| 粒度・対象 | 主な責務と不変条件 | 委譲しない責務 |
+| --- | --- | --- |
+| **TEI Function/Job Definition** | 入力・出力、演算/DAG、意味のPin、実消費Source/Artifact、資源要件、Data Class/配置制約、費用/期限、効果の有無・再試行可否、独立Expectedと検証条件を構築する。非画面Batch/AI/HPCが同じ明示Contractから導出される | TEIは実物理容量・現在のCompute Grant・EKI Leaseを発行しない。Job DAGをEKIの業務意味正本へ渡さない |
+| **EKI Delegation/Job Control** | 許可されたTask/Attempt/Lease、Admission、Budget、Resource Group選択、結果Claim・検証・Recovery、時点つき観測と来歴を執行する。EKI自身の配置計画は利用者の業務判断ではない | DSL・業務Rule・会計処理・HPC内部Scheduler・PC MDM/EDR・TEI独自Hostを持たない |
+| **Organization/Resource Provider** | 利用可能な資源Group、管理主体・所有/提供範囲、契約/Policy版、上限・時点・適格性、予約/取消・要求受理結果をEKIへ開示する。EKIが実観測できない値はProvider claimと記録 | 管理主体による申告だけでWorker Assurance/Result真実性を上げない。組織所属のTEI MeaningからCompute Grantを自動発行しない |
+| **Execution Backend** | HPC Slurm/Kubernetes等の既存クラスタ、クラウドAPI、MDM/端末管理・ローカルGovernorが内部配置/ノード回復/強制停止を実施する。Adapterは外部Job handleとEKI Attemptを対応付ける | EKIが内部ノードを列挙して再スケジューリングしない。Provider内部retriesを隠して一回実行保証と報告しない |
+| **Host/DB Effect/Consumer** | 既存Host・DBが現在の権限、対象Identity/CAS/Tx/Commit/Receiptを実施。Consumerが実Artifact bytes・出典・Disclosureを確認 | EKI `completed` を業務CommitやData Quality PASSへ昇格させない |
+
+**「クラスタ群を一資源」の意味**は、EKIが**管理・予算・配置対象としてGroupを一単位に選ぶ**こと。Group内CPU/GPUの合算が常時予約可能、GPU互換性が均一、任意のノードが要求Data Classを満たす、内側の再試行が1回だけ、という主張ではない。直接Workerを扱う既存EKI実装は残せるが、外部管理されたGroupを扱うときに全ノードの所有権と配置権限を重ねない。Worker/Resource Pool/Compute Grant Provider/Execution Backend/TEI Contextを同じIDに集約しない。
+
+### 35.2 資源群の最小受渡し票（正式Schema/ABIを固定しない）
+
+- **Resource Group identity**：Group/Provider/管理主体/法的Ownerの独立IDと時点つき所属・契約版。親子Organization構造や経済圏所属はTEIの業務Dataとして参照できるが、**所属変更が自動でEKI grant・請求先・信頼等級を変えるとは扱わない**。管理者が実権限を発行・更新した版を別に照合する（TEI #2386/#2499、EKI RQ-047）。
+- **Capability envelope**：CPU arch/ISA、メモリ・GPU製品/VRAM・共有制約、NPU、OS/runtime/toolchain、Network/転送時間、Data localityと出力保持、同時実行数/時間・容量、cost/power、Assurance/Data Class。**advertised/eligible/reservable/actually allocated/observed** の段階と時刻を分離し、「GPU総数」だけで型付きAI Jobの適格性を決めない。異質なGroupなら、要求を満たす子集合へ下位Backendが確実に絞れる証拠がない限り、同質Groupへ分割または`unknown/unsupported`。
+- **Availability/Reservation**：予測余力/観測余力/仮予約/Provider受理/Lease確定/開始/終了/回収の段階、observedAt/effectiveAt/validUntil・TTL/epoch・Budget枠・quota holderを区別。PC群は端末稼働/持ち主復帰で容量が変動するため、集約予測を保証枠と呼ばない。外部Providerが枠を保証できない場合は *conditional admission* と現在の失効を明示する。
+- **Trust boundary**：Provider信頼、実ノード適格性、Data Classを処理してよい根拠、コード隔離/測定、Result verification、Telemetry信頼度を別軸にする。管理Group内に低信頼端末が混在する場合、最も信頼できる端末を根拠にGroup全体を高信頼としない。Providerが実選択先を制約・監査できないなら、そのAssuranceを要求するTaskは拒否。
+- **Attempt/Artifact chain**：TEI Source/Job digest・actual loader/Executor digest、入力Artifactの取得と内容、EKI Task/Attempt/Lease/外部Job handle、Provider内部retry/横取り、結果Claimと実Artifact body/digestの独立確認、業務Effect Receipt、Consumer actual readを別に束縛。Task `completed` やstdout digestだけでは成果物本体を取得・検証した証拠にならない（EKI #112/#320/#494）。
+- **Disclosure**：利用者・Group管理者・Fabric管理者で集約統計の粒度を制限し、Node/hostname/IP/所在地・他部門の余剰容量・内部価格を推測させない。TEI StudioのGraph/表/シミュレーションも与えられた可視範囲のみ。Source/Modelの公開可能性と実計算資源の照会権限は別。
+
+### 35.3 ジョブ構成と委譲方式：二段階の最適化を混同しない
+
+**TEI側**は専門家が読めるFunction/Data/Ruleから、構造化したJob Planとテスト・Expectedを生成する。Go単一バイナリ（基本）/既存Host内実行/任意EKI委譲の3経路で、同じ業務意味を再解釈せずに使えることが条件。AI Jobで複数Stageを生成しても、各Stageの必要Input/Output/依存/Effect/復旧条件はTEIが決め、EKIに「次の業務ステップを判断」させない。
+
+**EKI側**はTask Admission→許可されたResource Group選択（deadline/budget/data locality/trust/fair share）→期限付き委譲→状態と結果を観測。外部管理HPCでは、EKIのPlacementは*クラスタグループ選択まで*、内部ノードの配置/再配置は既存Backend。低信頼PC群では、EKIは端末管理系が認めるPoolへ仕事を渡し、PC個体の運用/パッチ/出勤時優先と停止はMDM/Agent/Local Governor側。外側EKI Lease失効時の下位Job取消・結果の遅着・残留Effectは返却/回復契約で別に観測する。
+
+**組織・経済圏の制御**は上位のPolicy/Compute Grant・予算・公平性・Data Class/法域・提供可能時間帯の*統治・調達*であり、HPCノード詳細やTEI業務状態の混在ではない。SEI等の意思決定はEKI ADR-0013 §2決定10の**管理者からの範囲・期限付き委任**に従い、TEIのOrganization RoleをEKI管理権限へ自動変換しない。ProviderのquotaとEKIのbudget/fair-shareは独立に課せられ、二重計上・両者不一致の挙動を明示する。クラウド拡張は金銭コストを伴う別の許可・二重上限に従い、自動決定=費用発生の無制限許可ではない。
+
+### 35.4 外部提供先の失敗を見分ける最小Fixture（RG-01〜12、未実行）
+
+| ID | 入力/反例 | 独立Expected / Stop条件 |
+| --- | --- | --- |
+| **RG-01 HPC集約** | 既存管理クラスタが内部64ノード、EKIにはGroup-Aとして公開 | EKIの外部PlacementはGroup-A。内部ノードは識別・割当不要だが、外部Job handle/Reserve/Resultの一致、実行保証可能範囲を受渡す |
+| **RG-02 異種GPU** | Group-Aの一部のみVRAM 80GB、Job要求70GB＋特定ISA | 合計VRAMやGroup最大値を適格性にしない。適格子集合へ制約可能なProviderだけ受理、無理ならGroup分割/unsupported |
+| **RG-03 PC群急減** | 勤務開始時にPool-Bの申告余力100→10、既存JobにLease | forecast/observed/reserved/activeを別記。Local opt-out優先、再委任可否・部分実行とTask/業務Effectを別判断 |
+| **RG-04 Provider障害** | Group-Aの監視が10分途絶、最後の空き枠申告は30 | staleを現在空き30として採用しない。unavailableとcapacity=0も区別。期限/再取得/停止条件を明示 |
+| **RG-05 Assurance偽装** | Pool-Bの一部が非管理端末、AdapterはGroup高信頼と報告 | worker自己申告/平均信頼では不許可。管理者根拠と実制約能力が足りなければ高Data Class Taskを拒否 |
+| **RG-06 内側再試行** | HPC Backendが同じ外部Jobを内部で自動再実行、TEI Taskは副作用あり | EKI #115に従い無効化・観測・拒否を判別。内側回数不明ならexactly onceとしない。EffectはHost/Provider側で別照合 |
+| **RG-07 取消/遅着** | EKI Lease期限切れ、下位クラスタ取消ACK、遅れてResult | 取消ACK≠処理停止証明、Effectゼロ証明ではない。fence/Job handleとTask/Attempt、結果検証を比較 |
+| **RG-08 組織異動/提供停止** | 部門を跨ぎ所有Groupが異動、契約/Compute Grantは旧版 | TEI Organization意味変更≠EKI管理Grant変更。新Policy/Owner許可なく利用可能Group拡張しない |
+| **RG-09 二重計上** | 同一GPU資源がGroup-AとProvider-Cの両方に含まれる | EKIの総容量を二重加算しない。disjointnessの証拠が不十分なら保証枠を下げる/unknown |
+| **RG-10 所在・転送費用** | Data 800GBは社内、遠方クラウドは速いが転送制限 | Bandwidth/Data Class/料金・転送時間/予算の許可とDeadlineを比較。最短CPU時間だけで選定しない |
+| **RG-11 Resultの本体欠落** | EKI ResultにSHA-256はあるがArtifact body取得不能 | ResultClaim/Task phaseを記録してもTEI Output/Consumer同一性は未検証。独立Readerでbytes確認するまではunknown |
+| **RG-12 直接実行との比較** | 同一TEI JobをGo単体、EKI Native Worker、EKI→外部Poolで比較 | Meaning/Expectedを同じに固定し、追加ホップ/待ち/実費/再試行回数/漏洩範囲と成功率を別計測。EKIが不要なJobへ一律委譲しない |
+
+### 35.5 実装順・判断を保留する条件
+
+- **G0 固定Fixture/契約差分**：まずEKI ADR-0013（採用済み）・open #67/#115/#112の現行契約と、TEI #1130/#2499/#2514/#1163のJob/Authority/Expectedを比較。closed #109/#140の構想を契約実装とみなさず、RG-01〜12のExpectedを別根拠で固定。既存EKIのTask/Lease APIをTEI DSLに埋め込まない。
+- **G1 最小二Provider read-only**：管理HPCと、端末管理系に集約された低信頼PC群またはクラウドGroupの**性質の異なる二系統**について、advertised capability/実制約可能なsubset/現在Reserve/内部retry/観測・開示を比較。EKI #67の2系統実接続に乗せ、TEI独自のHPC管理を作らない。現行API/実Providerが未到達なら `NOT RUN: concrete backend unavailable`。
+- **G2 実Job受渡し**：TEIで固定した一件のread-only Job/Executor digest・Input Artifact→EKI Task→Provider handle→Lease/Result/Output Artifact bodyの同一性を観測。実接続不能なら合成PASSと製品E2Eを合算しない。Runtime sourceやArtifactの異版、部分Input、非公開秘密をあいまいに補完しない。
+- **G3 回復・権限の負例**：RG-03/05/06/07/08/09/11の停止条件を外部Backend＋host-side effectで検査。副作用を持つ処理は内部自動retryの制御/観測または冪等性の独立証拠なしでは配置しない。TEI/EKI間に新しいAuthority Issuer/Business State Storeを作らない。
+- **G4 経済性/性能**：§25/#565のRuntime、#2600のBuild待ち、EKIのqueue/placement latency・resource-efficiency・data-egress/電力・Retry costを区別し、同一Expectedに適合する経路間で比較。クラウド予約/放棄の経済条件はOwnerの許可を要し、最適化候補がHard Policyを突破しない。
+
+**未確定の選択**は「EKIが外部Groupに付与するReserve/Admission契約の強さ」「Resource Group内の異質適格性をProviderがどこまで保証できるか」「委譲先の内部retriesとEKI Attemptとの対応」「EKI Resource GroupとTEI Organization時限性/法域のBinding」「内部情報を漏らさない能力照会」「二Provider構成の実費・性能」の六つ。これらの公式API/標準DSL/RQ/ADR採否はEKI/TEI各Ownerが実検証で決める。TEI生成Go単一バイナリの直接実行・既存Host組込を後退させず、EKI専用の常駐Control PlaneをTEI内に足さない。
+
+**証拠状態**：この§35はリポジトリの既存Issue/ADRと他チャットの設計判断を照合した**文書変更のみ**。新しいGo/SQL/TEI CLI/HPC/PC/クラウド実計測、EKI Worker/Provider Integration、実契約SPI、企業/法域のGrant、Owner正式受理、CI実走は**NOT RUN/未採用**。既存§27〜34と他レーンのDraftを変更しない。
