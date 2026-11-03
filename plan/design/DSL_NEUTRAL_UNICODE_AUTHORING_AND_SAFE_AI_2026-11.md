@@ -25,7 +25,7 @@
 
 **ここで保つ「同一」の対象を限定する**：構文Source byte一致、型付きMeaning同値、ScenarioのExpected同値、生成Artifact byte一致、実行結果/Effect同値は独立した判定。Sourceが異なる4表層から同じ型付きCandidateを得られても、実行権限やBuild完全性が成立したことにはならない。
 
-### 0.2 まず着手できる3段階（実コードとOwnerにひも付ける）
+### 0.2 P0共通AIテスト足場を前提に、DSL側で着手する3段階（実コードとOwnerにひも付ける）
 
 | 順 | 最小実作業 | Doneと未達を分ける根拠 |
 | --- | --- | --- |
@@ -44,6 +44,30 @@
 **一旦採用しないもの**：Unicode Canonical IDそのものへの変更、日本語用Keyword Grammar、新しい共通Parser/Host/Registry/Scenario Runner/独立Oracle/Build割当Schema、Go AST都合の普段のDSL記法、中央のカバレッジ数値。**設計採用待ち**：字句Unicode Profile、4表層から選ぶ記法、Decision TableのHit Policy、Build Unit正式型・Invocation Mapping形式。
 
 **検証状態**：本節のA〜Cは作業の提案であり、実行した新たなGo Test/CLI/Web/Studio/Unicode Parser/Build構成・Host/Provider E2Eはない。#2639 exact-head CIはGo Referenceの限定合格、#2788もdocs-onlyのDraftである。Ownerの意味受理と正式Syntax採用は行っていない。
+
+### 0.4 AI-firstテスト拡張を最優先にする受渡し（2026-11-04 横断差分）
+
+**優先度の修正**：[共通テスト設計 Draft #2811 §8](https://github.com/hat47x/tei-platform/pull/2811)では、**生成AIがテスト候補を自ら探索・追加・実行・縮小できる足場をP0**とする最新方針が明示された。本書§0.2のA（Go基準線）→B（DSL構文比較）→C（Scenario接続）は**DSL側の下流作業順**として維持し、**その前に実装P0の共通足場を既存Ownerへ提供／利用する**。P0に全CLI/Web/GUI/Import/Providerを要求してPoCを止めない。DSL側でAI用第二テストRunner、第二Coverage Engine、独立Test Scenario正本を発明しない。
+
+**AIが使う最初の入力（read-only）**：現mainの`core/identity/id.go`、`reference/dsl-language-plugin`のLanguage/Operator Pin・Source Diagnostic、`internal/driver/*scenario_test.go`のtest-local Driver step、公開Reference `order_entry`と、[#2639](https://github.com/hat47x/tei-platform/pull/2639)のGo Reference testという**実在する部品**を基準とする。Source byte／Occurrence/Span、Canonical Subject/型、Input completeness、Operation/Artifactの限定Gap、Candidate Roleの資格、現在のSupported/Unsupportedを収集する。未実装の`tei test inspect/generate`等のコマンドを実行可能と記載しない。既存の`tei operations`／`tei artifacts`についても、Operation Gapゼロ≠Manifest Completeと記録（[#2666](https://github.com/hat47x/tei-platform/pull/2666)）。
+
+**AIが生成・編集する最初の出力（候補）**：[#1131](https://github.com/hat47x/tei-platform/issues/1131)のFixtureと[#1180](https://github.com/hat47x/tei-platform/issues/1180)のScenarioへ、通常のMarkdown表・構造化ファイル・通常のGit差分として、`sourceRef / stableSubjectRef / inputs / preconditions / missing/null/partial distinctions / candidateCaseID / expectedRef or exploratoryGoal / origin / seed / revision`を持つ**test-only Case候補**を追加する。これらの名前は比較票の項目であり、新たな正式Schema/APIではない。AIがScenario本体やAccepted Meaningを無断修正しない。
+
+| 最小の追加ケース | AIに任せること | 独立Expectedと停止条件 |
+| --- | --- | --- |
+| **T-A 正常・算定** | 受注O1の数量2・単価300から算定Caseを提案し、低ノイズDSL/Go風/Markdown表/chain候補に同条件を与える | 合成Expected=600を事前固定（Domain正式計算ではない）。Outputだけでなく型/精度/Source/Roleが合うか別照合 |
+| **T-B 負数・短絡** | quantity=-1、creditHold未取得を追加し、短絡/優先/診断の違いを比較 | 提案済み契約の下では先行REJECT。Rule/Hit Policy未受理なら`UNVERIFIED`で停止。eager評価が追加Errorを出せば同値とはしない |
+| **T-C 欠損・型** | 明示NULL、未取得、partial、`std.decimal`→`std.string`、0件と未取得の差を追加 | Independent ExpectedをActual／生成されたParser／別表層の出力からコピーしない。同じID・結果値だけでMeaning/Build再利用PASSにしない |
+| **T-D 名前とSource** | Unicode local Symbol／同形/正規化差・二Scope同名、古いSource RevisionのPatchを試す | Canonical IDは現状ASCII。PinされないUnicode識別子は`UNSUPPORTED`。Source原byte/非対象byteを黙って変更しない。表示ラベルからFunction/GrantへBindしない |
+| **T-E Targetと権限** | 参照Command選択O1にPayload O2、`committed/replayed`、実DB Effect未観測の負例を加える | [#2780](https://github.com/hat47x/tei-platform/pull/2780)の現行不安全Characterizationを安全性合格と誤読しない。P0はisolated/read-onlyとし、実Write/Grantの実行なし |
+
+**独立した判別力をP0で検査する**：Coverageの分母は生成したCase数でなく、対象Model/Operator/Data/Ruleから**Caseを生成する前に挙げたObligation**（対象Scope・版・適用条件付き）に置く。Case追加で分母が都合よく消えないこと、未列挙・未知が100%に化けないこと、既存`positive`を`>=0`へすり替える「誤実装Mutant」を独立Expectedが検出できることを確認する。実装とAIが共有した誤推論を複数モデルが承認してもOracle独立性にはならない。AIの自動探索はDomain/型/外部Pluginで無制限に拡張できる方針だが、個々の実行にはFixture/seed/resource budget/副作用隔離を要求し、上限で探索停止した範囲は未検証とする。
+
+**P0受入（採用前）**：一つの公開`order_entry` Referenceについて、(a) AIがread-onlyの対象/既存Coverage/実装上のUnsupportedを確認し、(b) Source・Accepted Meaningを変更せずにT-A〜Cから正例1件・反例1件を通常のファイル差分として追加、(c) 既存Referenceの副作用のない検証器で実行できる範囲のみ実行、(d) Actual／独立Expected／反例検出／未実装を別々に報告、(e) 失敗したCaseを縮小し、縮小後も失敗を再実行して確認する。**最初のPoCではCLI/Web生成とGUIの画面回帰、SQL/外部Import P0b、実Provider WriteをDoneに含めない**。
+
+**Ownerと証拠資格**：P0の共通inspect/author/verify/isolated run/compare/shrinkとCoverage分母は**#2811/#1180/#2514/#1131の所有**、本書はDSLのSource/Binding/記法比較で必要な入力・Expectedを引き渡す**Consumer**である。[#2801](https://github.com/hat47x/tei-platform/pull/2801)のGo負例が示す`LocateImportedSource`の再Loadは初回Consumer Loadのraw byte固定証拠でなく、Import付きのP0b資格へ自動昇格させない。現main [#2802](https://github.com/hat47x/tei-platform/pull/2802)のRun Plan／resume判定もテスト実行権限・本番Writeの承認ではない。P0で既存のRun／Providerへ無断接続しない。
+
+**今回の変更・未実証**：本文は設計・Ownerへの差分渡しだけ。P0の実CLI/API、AIエージェント、Source Writer/Unicode Lexer、固定テストCorpus/Mutation、CLI/Web/GUI/実DBの新試験は**NOT RUN**。本書は正式DSL/Unicode Profile/AIのExpected受理や実行許可を宣言しない。
 
 ## 1. 優先順位：自然なテキスト記述と意味の厳密性を両立
 
