@@ -54,9 +54,26 @@ E0/E1/E2の証拠は他のE3〜E6の実行許可ではない。各段の**同一
 
 ## 4. 実行手順・現物への接続・やらないこと
 
-1. **P0-a #1174**：既存 \`internal/security/effectcommit/postgres/trusted_owner_integration_test.go\`、\`tools/reference-first-web-target/runner_order_submit_postgres_test.go\`、統合済み \`internal/security/effectcommit/submit/submit.go\` をProducerとして用いる。**初回post-commitの不正/未知Result→K→独立O→Lookup**の実PG負例を、同じRequestで実行できる範囲に限定。旧Receiptの**読取相当Tx終了error**は別[#2680 RR-P5](https://github.com/hat47x/tei-platform/pull/2680)（memory Provider）であり、実PG初回効果の証明へ混入しない。合成Grant/TEST-ONLY DDLは本番Authorization/Owner意味ではない。
+1. **P0-a #1174**：既存 `internal/security/effectcommit/postgres/trusted_owner_integration_test.go`、`tools/reference-first-web-target/runner_order_submit_postgres_test.go`、統合済み `internal/security/effectcommit/submit/submit.go` をProducerとして用いる。**初回post-commitの不正/未知Result→K→独立O→Lookup**の実PG負例を、同じRequestで実行できる範囲に限定。旧Receiptの**読取相当Tx終了error**は別[#2680 RR-P5](https://github.com/hat47x/tei-platform/pull/2680)（memory Provider）であり、実PG初回効果の証明へ混入しない。合成Grant/TEST-ONLY DDLは本番Authorization/Owner意味ではない。
 2. **P0-b #1129**：同一Data Ruleを呼ぶ標準FunctionとAPI形FunctionをBindingし、両入口の拒否・状態更新・Owner側追加行・VersionとReceiptを**同じ独立Expected**で比較。Owner Resourceが二つならtransaction participant/Writerを明示し、同一Tx不可の場合の部分Effectと回復資格を隠さない。
 3. **S0 #950／Work H2/J5**：原典Source provenance/旧実動・正式Target参照をprivateの固定版で検証し、公開Reportへraw内容・個人名・非公開モデルIDを出さない。Source Factの存在/曖昧度とMeaning受理を分離。
 4. **E2E #1163/#1125**：一改訂・一AttemptのEvidence表へE0〜E6の出典、Case、検証したTool/Process、exit、読み取ったbyte、役割、現在性を追記。UIやSHOが旧版を読んでも「完了」と表示しない。相違は原Source・Rule/Mapping・Provider Bindingのどこを修正すべきかへ戻す。
 
 **状態**：この計画はSource-staticな実装箇所と各Draft/Issueの報告を整理したもので、**新たなGo/PG/旧Driver/Studio/SHO実行・独立Expected採用・Ownerによる実業務意味受理は NOT RUN**。#1119 G0〜G4、#1174 P0-a、#1129 P0-bの未達を維持する。TEI専用Host、中央Workflow/State Store、二重Rule Source、全域CDC/共有Snapshot Registry、新Script Runnerは追加しない。
+
+## 5. 11/3 他レーンの追加圧力：反証一件・Flow起動・実効果対象・外部Job
+
+前節のPA-01〜10に対し、**従来計画が暗黙の成功と見なしかねない辺**を四つだけ追加する。既存[#2777 BP-05とOnline/Offline検証](https://github.com/hat47x/tei-platform/pull/2777)、[#1129 Data Script/Effect](https://github.com/hat47x/tei-platform/issues/1129)、[#1130 Batch/Job](https://github.com/hat47x/tei-platform/issues/1130)、[#2745 DSL/Studio Source/Effect](https://github.com/hat47x/tei-platform/pull/2745)のOwnerと契約を共有する。ここで新しいValidation/Job/Effect Engineを設計しない。
+
+| 追加圧力 | 正しい限定判断と既存Owner |
+| --- | --- |
+| **PA-11 存在する反例と全称成立の非対称性** | Owner対象集合Lの一要素が所属・条件・実Readにより確実に同定されていてRuleが不成立なら、他の要素が未取得でも「L全員成立」は反証できる場合がある。一方、観測した全行が成立しても、Lの被覆・非空・全述語・版/時点が未証明なら全称成立はunknown。「不成立の証明」と「成立の証明」を対称にComplete要求するか、部分Readの正例をBへ昇格させるのは誤り。空集合を許すか、数量非零条件を別にするかはOwnerのEmptyPolicy。#2514/#1125/#2777へ |
+| **PA-12 SQL Observerの対象漂移** | 同じCount=1のSQL観測でも、過去の別Order/別OperationのEffectであれば今の対象のObservationではない。現mainのSQLEffectObserverのcount>0は**設定Queryの述語内の存在**のみを示し、Operation/Subject/Receiptの自動束縛ではない。Command AdapterがCommittedとReplayedを同じ外向きResultへ写像しても「新規保存」は証明されない。実Request Target・Query/Args・Read時点・Receipt・Owner Lへ接合するまでK/O/Bを分ける。#1129/#1174/#2598へ |
+| **PA-13 評価と実発火の相違** | oldValue/valueChanged・virtual derived field・Flow/StateのPreview・GUIでの操作候補は、実DB EventやJob起動の証拠ではない。Source ScriptのIFを起点に、Guard（false/unknown/error）→Owner Action確定→Commit Receipt→Event/Outbox発生→Job Accepted→Job Result→Owner Verifiedを別欄で検証する。再計算やSQL Schema driftによるDerived差分だけでイベント実行しない。XF000後継のUIなし起動はFunction/Action Invocationで表現し、専用Host/Lancherを前提としない。#1129/#1130/#1174/#940へ |
+| **PA-14 外部委譲の成果物／時限保証** | EKIへTaskを委譲したこと、Task Accepted/Completed、body出力が保存されたこと、依頼主体が実bytesを取得・検証できたこと、業務全件完了は別。Deadline/Recovery/Costの予算は TEIのJob意味と運用条件から引渡すが、配備/資源選択はEKI、業務意味・最新ReadはTEIと実Providerに残す。body不達、別Attemptのbody混入、期限後結果、部分成功を判別。P0-a/P0-bの検収にEKIを必須化せずP1外部実行に回す。#1130/EKI既存Issueへ |
+
+**受入に追加する列（#1163既存Attempt票の補足であり、新Schemaではない）**：対象Lの量化とEmptyPolicy／反例の実所属証拠／全称成立時のCoverage、旧/新値・Derived Preview・業務Event・Commit Receipt・Outbox/JobのPhaseと版、SQL Observerの実Query/Argsと対象Operation ID・実対象、外部Task/Attempt/Result Bodyのdigest・実Reader・期限・回復余地、判定をしたOwnerと用いた独立Expected。**実行されていないPhaseは未実行として保持**し、違うAttempt/Targetの証拠で埋めない。
+
+この4圧力は将来拡張Eだけではない。PA-11〜13のうち旧X-TEA Data Script/Validation/更新Hookと対応する範囲は忠実移植Pの必要な受入に含め、TEIの新しい安全要求や証拠強化はAへ区別する。PA-14は旧UI起動との同義性Pを要求せず、非画面Jobの追加適合Aと任意EKI実行Eを分離する。
+
+**実測限界**：PA-11〜14はこの段落では設計上の比較条件であり、原X-TEA実Driver、実ProviderのObserver対象束縛、EKI実Runner/Body/Deadline、Owner意味は**NOT RUN / NOT ACCEPTED**。局所SQLite参考試験が成功してもTEI本体/旧Driverの一試行PASSにはならない。
