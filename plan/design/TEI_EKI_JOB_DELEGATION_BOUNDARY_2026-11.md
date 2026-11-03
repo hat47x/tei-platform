@@ -103,9 +103,9 @@ TEI Result Consumer（version/Authority/Effect fenceの再評価）
 | 業務DBの確定・外部通知／銀行API | TEI Capability／実Provider/Host、現権限・Tx/Receipt、必要なら補償 | EKIのEffect Receipt/Provider観測は参考Evidence。EKIだけでBusiness Commit／external exactly-onceにしない |
 | EKI自身のJob Console、管理・観測・Policy Review | TEIのLow-Code/SHO/Graph/Tableで生成候補 | EKI Application PlaneはTEI利用可能。ただしKernelの復旧・署名・Lease/Local GovernorはNative-first |
 
-**実行形態は選択的**：同期／単発のローカルTEI Go単一バイナリや既存Hostと、常駐JobのEKI管理を区別する。常駐Job管理を必要とする場合の基本BindingはEKIであり、他のJob Providerは明示的に選ぶ代替Targetであって、TEI本体の隠れたSchedulerではない。低遅延のUIや同一DBの単純更新まで常にEKIへ委譲しない。EKIのResource Suitability Gateが「分散しない」と判定する場合に、勝手にセキュリティ条件を落とさず別の許された実行方法へ戻す。
+**実行形態は選択的**：同期／単発のローカルTEI Go単一バイナリや既存Hostと、常駐JobのEKI管理を区別する。常駐・永続Job管理を要する場合は、そのDeploymentで既に存在するHost Scheduler／EKI／OS Schedulerのいずれかを**明示選択**し、TEIの意味上のFlowと実行管理のOwnerを別々に固定する。EKIは専門Providerの有力候補であり、唯一の必須経路ではない。低遅延のUIや同一DBの単純更新まで常にEKIへ委譲しない。EKIのResource Suitability Gateが「分散しない」と判定する場合に、勝手にセキュリティ条件を落とさず別の許された実行方法へ戻す。
 
-**既存Orchestratorとの関係**：EKIはKubernetes+Kueue、Slurm、Nomad等をResource Providerとして繋ぐ上位委任Brokerが基軸。Business Step依存を長期間耐久化する高度なJob/Workflowが必要なら、**TEI側へ常駐Flow runnerを既定で新設するのではなく**、EKI Job Controllerの将来のDAG/依存Run Contract（またはEKIが接続する既存Workflow Provider）で実現できるかを評価する。TEIは業務Flowの意味を保持し、実行可能なTask依存へLoweringする。現行EKI Task Groupが依存DAGの連鎖を実装済みとは扱わず、対応不可なら`unsupported`とする。二層Scheduler間の自動再試行・preemption・予算の二重計上はEKI既存調査の負例を再利用する。
+**既存Orchestratorとの関係**：EKIはKubernetes+Kueue、Slurm、Nomad等をResource Providerとして繋ぐ上位委任Brokerが基軸。Business Step依存を長期間耐久化する高度なJob/Workflowが必要なら、**TEI側がFlow意味と進行判断の責務を保持し**、常駐中の既存Host/生成Application内Coordinator、EKIへの限定委譲、または明示の外部Workflow Providerを比較する。TEIは業務Flowの意味を保持し、実行可能なTask依存へLoweringする。現行EKI Task Groupが依存DAGの連鎖を実装済みとは扱わず、対応不可なら`unsupported`とする。二層Scheduler間の自動再試行・preemption・予算の二重計上はEKI既存調査の負例を再利用する。
 
 ## 6. 二つの製品の循環依存・失敗独立性
 
@@ -131,60 +131,77 @@ EKIが停止してもTEIのData Model／純粋Derivation／ローカルValidatio
 
 番号は**本稿ローカルの反証ケース**で、EKIのPAS/RQやTEIのConformance番号へ自動登録しない。すべて**NOT RUN**。実Provider／実EKI公開APIの範囲、今後の正式Conformance Ownerが必要。
 
-## 8. 設定レスのEKIジョブ管理と常駐主体の所在（2026-11-03、Owner要求による修正）
+## 8. TEIをジョブ意味・進行の基本所有者とし、EKIには必要な運用能力を委譲する（2026-11-03、Owner修正）
 
-**設計の優先順位を更新する**：TEI生成物には必ずしも常駐プロセスがない。ゆえに、TEIのData Script／Flowに「毎日動く」「変更時に起動」「前のTaskが終わったら次へ」という記述があっても、それだけでは予定時刻を監視・再起動・再送する主体は現れない。**ジョブ管理を利用する構成では、EKIをその常駐・永続実行主体として第一候補に据え、TEI本体へJob Scheduler／Run Registry／Worker監視を埋め込まない。**
+**前版§8の「常駐Job管理が必要ならEKIが基本」「EKIがJob定義・Trigger・Flow依存を全て管理する」という一般化を撤回する。** ユーザーが明示した基本線は、**ステート管理に基づくジョブ管理の設計責務は原則TEI側**というもの。TEIはData Model／Data Script／Validation／Derivation／Flow・状態遷移、Jobの意味・Step依存・発火条件・業務上の再実行可否を定義・生成・管理する。生成Applicationが既存Hostに常駐し得る場合、状態機械の進行判断やJob Trigger処理もそのHostのTEI生成成果物で担える。
 
-ただし、**委譲が完全であること＝EKIがTEIの業務意味を所有することではない**。Data/Rule/Flowの意味・Data Providerの実Tx／Effect正本はTEI生成Application側、スケジュール登録・起動判定の実務管理・Job Run/Attempt/Retry/Deadline/Group/DAG実行・資源配置・回復・ジョブ結果の記録はEKI、という契約を候補にする。TEIがState Machine/Flow図から、EKIが実行可能な**実行依存グラフ／JobSpec／TriggerSpec（形式は未決）**を生成する余地はある。Business MeaningそのものをEKIのTask Stateへ投影しない。
+ただし「TEI側の責務」≠「TEI Platform本体が永続サーバを内蔵する」。TEIはModel／Artifact／Plugin/Bindingとして意味を提供するのであり、**Go単一バイナリや埋込みLibraryは常駐を保証しない**。常駐する主体の無い構成では、OS scheduler・既存Host・EKI・他Providerのいずれかへ、**必要な部分だけ**委譲する。EKIを呼ばない単発Job・既存HostのWorkflowまで、EKI登録を必須としない。
 
-### 8.1 「設定レス」の意味を4段階に分ける
+### 8.1 三つの所有権を区別して二重状態管理を避ける
 
-| 場面 | 望ましい最小挙動 | 入力／準備の境界 | 既存の保証 |
+| 責務 | 正本・所有者 | 委譲の可否と禁止推論 |
+| --- | --- | --- |
+| **① Domain／TEI Jobの意味状態** | TEI Data/Attribute・Script・Rule・Flow、Ownerが受理したMeaning、実業務Fact | TEIの生成成果物／既存Hostが解釈。EKIに業務的な`approved`／`billing_ready`の意味正本を移さない |
+| **② Flow進行・Job間依存** | TEI側のState/Flowの定義・遷移選択・発火規則。実際の進行記録は当該Deploymentで**選ばれた一つのCoordinator**が管理 | 同一DeploymentでTEI生成HostがCoordinatorになるか、EKI/既存Orchestratorへ**版固定された一部の進行実行**を委譲するかを選ぶ。両者が同一Stepを独立に再試行しない |
+| **③ EKI自身の実行状態** | EKIのTask／Attempt／Lease／Result Verification／External Effect／Cancellation／Recoveryの各Authorityと永続Store | EKIがTask受理・配置・fencing・reclaim・Attempt再試行・Result受理を独自管理する。EKI `completed` ≠ TEI Flowの業務完了、EKI Group ≠ 業務Workflow |
+
+**委譲の粒度**は`execution-only`（TEIがStepを決めEKIへTask依頼）、`trigger/schedule`（TEIが発火意味を決め、EKIが時間・変更通知を保持して依頼を起こす）、`bounded-step-coordination`（TEIが受理したステップ依存の**限定した実行表現**をEKIが保持・進める）の三候補。後者は**EKI公開Contractと実E2Eで対応できる場合に限る**。EKIに業務データの意味や任意Scriptを実行する自由権限を与えない。EKI側が依存DAGに未対応なら`unsupported`とし、TEIのCoordinatorがないまま黙って進めない。
+
+### 8.2 Deployment別の最低限の起動主体と安全な設定レス
+
+| Deployment／具体例 | 時間・変更を監視する主体 | ジョブ状態・次Stepを進める主体 | 受入・制約 |
 | --- | --- | --- | --- |
-| **Z0：初回起動・Job未登録** | EKIが一台で起動し、状態Store/契約検査/Health・限定的なStatus APIを提供。ジョブは**勝手に走らない** | InstallerによるOSアカウント・秘密鍵・Store権限・実行体隔離の構成は必要。利用者が設定ファイルを毎回書かない、という意味のZero-config | [EKI ADR-0018](https://github.com/hat47x/eki-fabric/blob/main/plan/adr/0018-single-machine-delegation-profile.md)でDP-7（単一マシン分離）が**採用**。実装済みではなくS1予定。現在のDP-0を本番安全性として使わない |
-| **Z1：承認済み単発Job** | EKIの標準Task APIで受理・永続化し、ローカルで実行・結果を照会する**デフォルトProfile候補**。外部Worker/クラスタは不要 | TEI/他ClientがJob内容とExecutor digest等を指定。本人のAuthority、ExecutorのAdmission、Resource上限は省略不可。未承認の任意コマンド自動実行なし | 方向はEKI #57・#112・#242。現Productの一連の実行完了は**未実証** |
-| **Z2：定期実行・依存Job** | 登録されたTriggerSpec／JobSpecの次回起動時刻・重複・永続Run・Job間依存をEKIが管理し、**TEI Clientが終了しても継続**する設計候補 | 頻度・Event条件・Time zone・Missed-run/Concurrency policyはJob定義に必要。ユーザーにEKI固有の運用設定を強制しないことが目標 | **新たに比較するJob Controller要件**。EKIの現行Task API/Task Groupだけで実現済みとはしない |
-| **Z3：外部Data変更・複数Worker・大規模DAG** | EKIが登録されたSignal source／Cursor、Run、Group、資源配賦、Backpressure、回復を管理する構想 | DB CDC/Outbox等のProducer接続、Provider権限、外部WorkerのEnrollmentとGrant、データ所在/機密・予算が必要。存在しないSourceは自動検出できない | EKI #126（Group）、Resource Provider Adapter研究等の**将来設計／検証待ち** |
+| TEI生成の常駐サービス／既存Java・.NET Host | 生成Application／既存Hostのタイマ・イベント／DB subscription | **TEIのFlow Contractを実装したHost側Coordinator**。EKIを使う場合も単なるTask実行先 | 既存Host自身の再起動、Job/Stateの保存と再実行Contractで検証。TEI本体に常駐サービスを追加しない |
+| TEI単発Go CLI・非常駐Artifact | OS `systemd.timer`／cron、外部業務Host、EKI等の明示Binding | 単発なら起動元。複数Step・永続Runなら**選択されたCoordinatorが必要** | `timer`をDSLに書いただけでは実行されない。設定・有効化・Credential・障害再開の責任を明示 |
+| EKIに部分委譲したJob | 通常はTEI側のCommitted outbox/event、必要に応じEKIが明示登録されたschedule/signalを保持 | **TEI HostのJob Coordinator**が進行を決め、EKIはTask/Attempt/Leaseを実行（execution-only） | EKI状態をTEI意味状態へ勝手にコピーせず、結果をTEI側が再受理する |
+| TEI側が停止している間も持続すべきJob | EKIの明示登録Trigger/Job、または既存Orchestrator | **限定的に委譲したStep進行はEKI/Orchestrator**、委譲されない業務判断は`awaiting-domain-evaluation`／保留 | TEIが生成した版固定Executor/Guardと必要なProvider GrantをEKIが安全に実行できる場合のみ進める。EKIの現行APIで対応済みとは主張しない |
 
-「完全設定レス」を**すべての外部DB・業務資格情報・Worker・実行プログラムを自動発見して任意の副作用を実行する**意味にしてはならない。望ましいUXは**安全な初期値＋必要条件に応じた宣言的Job登録＋未設定箇所の型付き診断**である。初回起動・ローカル操作に複雑なYAMLや専用クラスタを強要しない一方、認可・秘密鍵・Worker隔離はInstaller/OSで確実に実現する。EKIがローカルClientと同一OSユーザーでControlの鍵／Storeを共有する設定はDP-7の代替にならない。
+**EKI設定レスの最小目標は存続**：EKI未導入のTEI利用を妨げず、必要になった時は単一マシン構成が**管理者の個別設定ファイル編集を必須にせず**安全な既定値で起動する。EKI [ADR-0018](https://github.com/hat47x/eki-fabric/blob/main/plan/adr/0018-single-machine-delegation-profile.md)のDP-7はOSの別アカウント・Key/Store保護・Executor分離を要求し、**設計採用済みだが本番実装済みではない**。初回起動で未登録Jobを勝手に走らせない。標準Executorが承認されている単発ローカルTaskのみを段階的な実装Goalにする。外部DB CDC／Worker登録／Data Class／任意コード実行は明示設定・Grantが必要。
 
-### 8.2 Cron／systemdとの関係と二つのBootstrapping方式
+`systemd`等はEKI自身のサービス起動にも、EKIを使わないTEI Jobの明示的なスケジュールにも利用できる。しかし**EKIへ委譲したのと同じJobをOSタイマとTEI Hostが重複発火しない**ように一つの発火Ownerと`JobRun/Operation ID`を固定する。Cron／systemd timerの起動成功だけではTask受理・業務Commit・全欠落期間の再実行を証明しない。
 
-OSの定期起動機構は実在するが、**TEI生成プログラムがcronやsystemdを暗黙に所有しているわけではない**。
+### 8.3 Spring Statemachineからの比較：TEIへの一括輸入ではなくEKIの実行状態圧力として評価
 
-| 方式 | 起動・予定時刻の管理 | 長時間／依存ジョブ・回復とポータビリティ | 採用判断 |
+[Spring Statemachine 4.0公式Reference](https://docs.spring.io/spring-statemachine/docs/4.0.x/reference/)には階層状態、直交Region、Guards/Actions、Choice/Junction、Fork/Join、History、Deferred Event、Timer Trigger、Listener/Interceptor、State Machine Persister等がある。**機能一覧の存在≠EKIへの必要性／製品要件の証拠**。また[Spring StatemachineのGitHubリポジトリ](https://github.com/spring-attic/spring-statemachine)は2026-07-05にarchivedとなり、メンテナンス終了を明記しているため、Java Libraryへの直接依存を今回の推奨にしない。比較するのは**機構と反例**である。
+
+| 機構 | TEI側での考え方 | EKI側での必要性・現行境界 | Gate |
 | --- | --- | --- | --- |
-| OS Cronや`systemd.timer`を**Jobごと**に使う | OSがTEIの単発CLI、またはEKI Submit CLIを起動。Linux固有の定期実行環境に依存 | 依存DAG、永続Operation ID、実Task Resultの検証、Cross-Worker配置・Recoveryは別。Timer再起動・同時実行・欠落時の意味がOSの契約で異なる | **軽量Fallback/外部Integration Target**として残す。EKI完全委譲の標準経路にはしない |
-| `systemd`／Windows Service Manager／launchd等で**EKIサービス自体**を起動 | OSはEKIの起動・監視、EKIはJob Schedule、Trigger、Run/Attemptを永続管理 | TEIが稼働・常駐しなくても継続。EKI Native Kernelが責任を持ち、下位OS service managerはBootstrapだけ。インストール権限とCredential構成は必要 | **推奨する役割分担の設計候補**。EKI Timer・DAG Job Catalogは現実装済みとしない |
-| EKIの単発CLIだけを利用 | 利用者または既存Hostから必要時にEKIへSubmit | 単発Jobの委任は可能。**定期実行を誰も起動しない場合は動かない** | Z1の最小出口。Z2やZ3を自動達成と見なさない |
+| Flat State/Event/Guard/Action | **基本対象**：業務外も含むState/Rule/Flowの意味表現。IF中心記述と比較 | Task phaseの既存検証・transition subject／CASを再利用 | **両者の共通な検査可能な核**。実Runtime共有は未決 |
+| Hierarchical State | TEIにはDomain要求がある場合のみ。見せ方の折畳みとSemantic hierarchyは別 | EKI Job/Task/Groupの集計・状態可視化に役立つ可能性 | Group aggregateのみで十分なら階層Machineにしない |
+| Orthogonal Regions | UI／Gameなど必要Domainで評価 | **EKIは既にTask／Attempt／Lease／Result／Effect／Recoveryを独立軸に分離**。これを単一巨大State Enumに潰さない | 直交Region Runtimeを追加する前に、既存独立Store/Invariantで反例を満たせるか比較 |
+| Choice／Fork／Join | TEIがFlow分岐・step依存・独立Expectedを定義 | 分散Task Groupの完了集約・結果待ち・複数Attempt/Verifierの技術的合流に候補 | 全員成功／部分成功／未知／期限切れを業務上のJOIN条件へ転用しない |
+| Timer／Deferred Event | Flow側は時間条件・Scope/Clock・延期の意味を定義 | Lease expiry、Recovery retry、期限・延期Event・一部利用者の不在中TriggerにはEKIが実行Ownerのとき高適合 | Event喪失/重複/順序・再起動・期限越えのEvidenceが必要。in-memory timerだけでは不十分 |
+| Shallow/Deep History | TEI Domainの状態復帰が必要なときだけ | EKIのCheckpoint、再起動後のAttempt/Lease/recoveryに似た圧力だが、**同一Attemptの状態復活を意味しない** | 永続Receipt・Fenceから再構築する方式を優先し、古いLease/Authorityの復活を禁止 |
+| Persist/Interceptor、Event Callback | TEI側ではBusiness Commit/Provider Effect Fenceと独立 | EKIはState Revision/CAS、atomic Attempt+Task transition、Outbox/Recoveryが重要。Callbackは通知でありState Authorityでない | Persistence Interceptorの呼出し＝DBと外部Effectの単一Txにはならない |
+| Distributed State Machine | TEI自体に単一の分散State Engineを標準装備しない | EKIのControl Plane複数Instanceで正しいAuthority・CAS/fencing・reconciliationを確保する必要 | **共有状態機械の導入を既定にしない**。EKIの既存State Storeとそれを検査するContractが先 |
 
-`systemd.timer`の`Persistent=true`は停止期間に発火機会があったことを検出して起動時にServiceを**一回**起動するなどの機能を提供するが、未実行分の全Run列挙・業務上の二重防止・EKIのJob Receiptまでは保証しない（[systemd.timer man](https://www.freedesktop.org/software/systemd/man/latest/systemd.timer.html)）。OS cronに同等の欠落補完があると前提化しない。
+**優先判断**：EKIにおける高度な状態機械の必要性は、業務Flowの表現力より、**長寿命の複数Task/Attemptと同時Event、部分失敗、期限、失効、回復、複数Controllerの競合**で生じる。ただし現行[EKI Task State Model §3](https://github.com/hat47x/eki-fabric/blob/main/architecture/TASK_STATE_MODEL.md)は明示的に「一つの巨大なState Enumを使わない」と決め、[ADR-0032](https://github.com/hat47x/eki-fabric/blob/main/plan/adr/0032-task-phase-transition-subjects.md)は遷移の主体・CAS境界を定めている。**高度機構はこの正本を置換するためではなく、独立状態軸の安全な進行に不足する条件がある場合のみ検証**する。EKIにStatechart一式を内蔵・Spring製品を採用したことにはならない。
 
-**System SchedulerとEKI Schedulerを同じJobの二重正本にしない**。systemdはEKI自体を確実に起動するか、単純Jobのみを外部で起動する。EKIに登録したScheduleと同じ予定をOS timerへ無断複製すると、再起動後の二重起動／Owner不明が生じる。Delegationしない実装TargetではOS scheduler用Unit/cron設定の生成を明示的に選べるが、その場合の正本と運用責務はEKIではなく外部Schedulerである。
+### 8.4 委譲インターフェースは「状態機械そのものの共有」より、実行資格の限定を優先
 
-### 8.3 Jobを登録した後の所有権とCallbackなしでの継続
+**TEI正本から必要な部分だけLoweringする案**を第一候補にする。意味上のStable Transition/Step ID、Rule/Flow/Artifact Revision、Trigger ID/Clock/Scope、Data Class、業務Ownerと実行Hostの区分を残し、EKI側のTask/Attempt/Lease/Resultとは`operation id`で相関させる。
 
-**TEIの役割**：Data ModelでVirtual属性を宣言し、Data Scriptで更新時Validation/DerivationとTrigger/Flow Bindingを記述する。ビルド成果物には**Job Definition/Trigger Subscription/Flow Graph/Executor Artifact/Ownerとの紐付け**を含められる。ただし記述やコンパイル＝EKIへの登録／有効化ではない。Deployment/Registrationは現在Grantと契約版を照合し、EKIが受理したJob/Trigger/Run識別子を返す。
+- `execution-only`：TEI Hostが事前Guard/意味判断・次Step選択を行い、EKIが型付きTaskを実行して結果を返す。Callbackは任意（照会で回復可能）。TEIが停止中なら**後続の意味上の進行は停止**するがEKI中のTaskは継続する。
+- `delegated-coordination`：TEI生成の**特定Revisionで固定した有限Step Graph、既に判定済み条件、公開されたEvent種類、承認済Executor**のみをEKIが永続Runとして進める候補。動的な業務Guard・新データ取得・権限判断は、TEIの受理済みExecutor/既存Providerを明示呼び出し、実Meaning判定結果が不明なら保留。**任意Ruleの意味をEKI Kernelに実装しない**。
+- `timed/signal-trigger`：TEIがTriggerを定義。EKIが常駐していれば登録されたscheduleやCommitted Signalの到着・Cursorを保持できる契約を将来比較。ただし実DBのcommitとEKI登録は同一Txではない。Outbox/CDC/再照合と重複抑止はProvider能力と共に受入が必要。
+- **State source of truth**：TEI FlowのMeaningはTEI、実RunのCoordination OwnerはそのDeploymentで選択した一つ、EKIのAttempt/LeaseはEKI。EKI AcceptedResultやCallbackの到着はTEI業務効果の確定ではない。
 
-**EKIの役割（設計要件候補）**：登録済Job/Triggerの有効期限・Revision・次回時刻・入力SourceのCursor・最後に確定したEvent・Run/Step依存・Attemptとretry・Result/Receiptを**TEI常駐なしに保持・照会**。異なるJobから一つの実Workloadを共有する場合もTask ID／JobRun ID／Business Operation IDを混同しない。EKIがSourceの業務意味を計算するのではなく、TEI生成の承認済みEvaluator／Provider Adapterを許可された入力と実行体として起動する。
+**Owner Gate**：状態機械の意味正本、状態管理の永続化・Runner Owner、同一Stepの再試行を許す主体、タイマの登録と失効、Flow definition更新中のRun移行、External Effect Receiptの相関を、全てDeployment契約へ記載する。EKI独自のCommon APIを使うかTEI Pluginの拡張を使うかは前節§2の「EKI Common Authority Contract＋TEI Plugin Binding」で扱い、EKIの外部APIをTEI固有Statechart形式にしない。
 
-**Signal境界**：Data ProviderのcommitがEKIのJob登録・Task受理と原子的に結合するとは限らない。可能ならSource DBのTransaction内Outbox、できなければ権限付きCDC/監視とReconciliationによって更新事実を届ける。**Data Scriptそのものを常駐監視プロセスとして要求しない**。EKIが持つのはSignal subscription／配送・再走査／Job起動記録の管理であって、未登録DBを暗黙に観測する能力ではない。Providerが strict derived edge のbefore/after証拠を出せない場合は`unknown/unsupported`、Ownerが認めたlevel reconciliationのみFallback候補。
+### 8.5 独立Expected／Conformance（追加案、NOT RUN）
 
-**Callback境界**：TEI生成物が存在しない／停止している場合にもEKIはRunを継続し、結果を永続保持してQueryできること。Callbackは**常駐しているTEIアプリケーション等のConsumerが明示登録した場合だけ**送る任意の通知。TEIが常駐しない場合、EKIは保存されたFlow/Job定義に基づき次StepのJobを進め、必要なBusiness Actionは承認済みExecutor/Providerへ新たに依頼する。EKIのRun完了だけで業務DBの状態を成功に変更しない。通知のACKとJob Result、Business Effect Receiptを分離し、Retryする主体はTask/Attempt=EKI、業務Effect=Provider/Target Hostと固定する。
+| Case | Fixture | 期待される区別・禁止推論 |
+| --- | --- | --- |
+| SD-01 | TEI生成Hostが稼働し、業務Flow A→B、Task AだけEKIに送る | **TEIが次Step判定を維持**。EKIはAの実行Attemptを管理。EKI Task completedのみで業務Bを自動確定しない |
+| SD-02 | TEI CLI終了、EKI未導入、cronで単発Job起動 | Cronが起動Owner。TEIのFlow意味は維持するがEKIで動いたふりをしない。常駐依存は`unsupported` |
+| SD-03 | TEI停止中、EKI上に受理済み有限A→B Graph＋Executorのpinあり | **有限表現に限り**EKIがRunを進める設計候補。未受理Guard/Provider不可なら保留、勝手に業務確定しない |
+| SD-04 | AのEKI ResultClaim成功、Lease失効、Callback重複／順不同、業務Commit unknown | AcceptedResult/ReceiptとTEI Business Completionを分離。ResultClaim=成功は不合格 |
+| SD-05 | EKI Task/Attempt/Lease/Eventが同時更新、Crash直後にrecovery | 独立軸のCAS、Attempt再作成、古いLease fence、UNKNOWN維持を確認。単一State enumからの再計算で旧Authorityを復活させない |
+| SD-06 | Groupの3タスク：成功、期限切れで未送信、送信済みEffect UNKNOWN | Group集約は部分結果・未知を残す。単純JOIN=successや「3分の2完成＝業務承認」を禁ずる |
+| SD-07 | 業務Rule改版とEKI登録済みGraphの走行中更新 | Meaning RevisionとRun Pinを照合。新旧混合実行／旧Owner権限での後続Effectを防ぐ |
+| SD-08 | 同じTEI FlowをHost-running方式とdelegated-coordination方式で実行 | State/Transition ID・独立Expected・Effect outcomeと負例を比較。同じUI図表でも不可搬機構を`unsupported`と示す |
 
-**Job Definitionの版管理**：TEIのFlow Meaning Revision、Target Artifact Revision、EKI Job Registration Revision、Runの開始時Pin、Provider Rule/Policy/Executorの現在資格を独立に記録する。将来のJob定義更新が走行中Runの意味を勝手に変更しない。登録削除と起動停止、旧Run取消、途中のVersion Migrationは別Operationであり、現在のEKIのTask Group APIでこれらが実装済みとは言わない。
-
-### 8.4 初期の重要な非目標と追加Conformance（NOT RUN）
-
-- **初期の非目標**：EKIが任意の業務状態・他ProviderのTransactionを所有すること、EKIのKernelをTEI成果物の稼働に依存させること、設定不要で外部機密DBへ接続すること、全Scheduler/Workflow製品の置換、Cronの全保証を再実装すること。
-- **ZC-01** 初回インストール後、外部クラスタ/管理者手編集なしでDP-7安全条件を満たすローカル構成の起動・Healthが可能か。未登録Executorや外部Network Jobは拒否。OSアカウント／鍵の分離を独立検査。
-- **ZC-02** TEI生成の承認済みJobSpecをEKIへ一度登録し、TEI CLI／Studioを終了。EKIだけで単発Jobを実行・保存・Query。Restart後も同じJobRunに収束し、二重Attempt/Receiptを作らない。
-- **ZC-03** 一つの`daily at 02:00`と一つの`Data-commit`契機について、timezone/DST、service停止中の遅延・欠落、起動重複、Outbox Relay重複を独立Expectedで区別。未登録Source、部分取得、Commit Unknownでは起動成功を装わない。
-- **ZC-04** TEI Runtimeが一切稼働しない状態で、EKIの受理済みDAG A→Bが進むか。業務Side Effectを伴うBはProvider認可・Commit/Receiptを別に検収。EKIにDAG機能が無い間は`unsupported`であり実行を捏造しない。
-- **ZC-05** EK​​I Kernelが停止したとき、TEIで作られた運用UIが無くてもNative CLI/OS service managerで原因追跡と安全な復旧が可能。古いJob/Lease/Trust rootが復活しない。
-- **ZC-06** OS cron/systemd Job-firstとEKI Job-firstを比較し、同じJobを双方が発火させた場合の重複、停止時の追いつき、可搬性、運用負荷とTime-to-first-taskを測る。未起動Runと`unknown`を混同しない。
-
-**EKIへ求める追加契約のOwned Gap**：[EKI #57](https://github.com/hat47x/eki-fabric/issues/57) MVPを先に成立させ、[ADR-0018](https://github.com/hat47x/eki-fabric/blob/main/plan/adr/0018-single-machine-delegation-profile.md)／DP-7のSingle Machine導入へ、`local-default Task Admission`／`safe installer bootstrap`の要件候補を渡す。JobSpec／TriggerSpec／Schedule persistence／DAG next-step／Callback不使用のdurable result は[EKI #112](https://github.com/hat47x/eki-fabric/issues/112)のExternal Contract、[EKI #126](https://github.com/hat47x/eki-fabric/issues/126)のGroup、[EKI #136](https://github.com/hat47x/eki-fabric/issues/136)のTEI Plugin比較を**既存Owner候補**として比較。EKIの採用済ADR/Requirementsへの変更はEKI Ownerの判断を要する。TEI #1130は`EKIを持たないTEI生成物が勝手に常駐・監視する`という要件を置かず、`Job実行基盤へのBindingと独立したTarget`を受入単位にする。
+**停止・採否**：EKIがBusiness Flowの理解を必要とする／TEI側に隠れた常駐Runnerが必要／同じStepを二主体が再試行する／partialまたはunknownをsuccessへ変換する／Springの便利機能が独立AuthorityとTx境界を破るならその委譲案を採らない。まず現行EKI #57/#112/#242のTask実行縦断を検証し、Group・Timers・Deferred・DAGは必要な最小Caseが失敗する際のみ追加要求へ昇格する。
 
 ## 9. 設計判断のGate、実装順、Issue追補候補
 
