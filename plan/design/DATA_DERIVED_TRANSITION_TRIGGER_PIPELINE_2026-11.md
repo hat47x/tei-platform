@@ -242,6 +242,43 @@ JD-01〜09の相関・Rollback・重複通知・Effect Unknown等の独立Expect
 
 Data Providerがcommit/outboxや必要なRead completenessを提供できない場合、strictなVirtual-edgeの永続Event発生を推論しない。systemd/cronは明示した実行主体またはEKIサービスのbootstrapとしてのみ扱う。同一Trigger/Stepを二つのCoordinatorが独立して実行しない。TEIの純粋計算・単発実行がEKI導入を要求することもない。
 
+
+### 7.4 仮想Fieldの変化が「業務変更」か「Schema/Query解釈変更」かを区別する（2026-11-03 横断反証）
+
+<!-- DERIVED_TRIGGER_SCHEMA_COHORT_20261103 -->
+
+**接合理由**：本計画§3/§7.3は `Derived Value change`→`Flow candidate`→`Provider Commit/Outbox`→`EKI Task` を分離している。別レーンの[SQL意味境界 Draft #2778](https://github.com/hat47x/tei-platform/pull/2778)における**SM-15実SQLite 14件**では、**同じSQL byte**でも `NATURAL JOIN` の暗黙列集合がSchema変更によって変わり、結果が2行→1行となった。`SELECT *`の出力形状も3列→4列となる。独立した[SM-16実Go DerivedIR characterization](https://github.com/hat47x/tei-platform/blob/docs/sql-static-semantic-evidence-handoff-20261103/internal/query/derived_sm16_schema_drift_characterization_test.go)は合成解析入力に関する別試行であり、実SQLGlot→Go→Provider→Data ScriptのEnd-to-end成功ではない。
+
+**新しい圧力**：SQLがData Modelの正本にならないTEIでも、Data ScriptがData Operations/Queryを使用して仮想項目・状態を導出すれば、**Script Source不変／業務行不変／Query Source不変でも、解決済みSchemaやRelation/Providerの変更で導出値が変わり得る**。このような再計算差分をそのまま `oldValue != newValue` の業務Eventと解釈すると、取消・通知・料金計算・EKIの大規模Jobを根拠なく起動しかねない。
+
+**固定公開合成例（SM-15と同じ作例を使用／正式TEI DSLではない）**：
+- `orders(tenant_id,order_id,status)` にO1=draft、O2=submitted、`payments(tenant_id,order_id,amount)` に両注文が存在。SQL `SELECT order_id FROM orders NATURAL JOIN payments ORDER BY order_id` の結果はO1/O2。
+- paymentsへ `status TEXT DEFAULT 'draft'` を追加。元注文・支払データの識別子とSQL Source byteは変更しないが、共有列が増えた結果はO1のみとなる（SM-15実SQLiteで確認済み）。
+- 仮想述語 `payment_match(O2)` は前=true、後=falseに見える。しかしこの差は、**元の支払取引の取消が観測された証拠ではなく、SQLの解釈・Schema Mappingの変更に起因し得る**。仮想属性の現在資格を再評価する契機にはなるが、`true→false`をBusiness Cancel Eventとして自動発行してはならない。移行に伴う再処理をOwnerが明示受理する場合は、**移行・再評価を起点とする別の業務Action/Intent**として扱い、元のBusiness Commitと区別する。
+- 対照：同じ条件で `JOIN ... ON o.tenant_id=p.tenant_id AND o.order_id=p.order_id` と明示したSQLはSM-15ではO1/O2を維持した。よって**Schema全変更で全Queryを一律失効させる**のではなく、解決できた意味依存の閉包に沿って再検証範囲を限定する。閉包の完全性が不明なら「無影響」は主張しない。
+
+**実行に用いてよい差分の必要条件（採用前の設計ゲートであり共通Runtime APIではない）**：
+1. **Meaning**：Stable Subject、Owner受理されたRule/Operator版、Virtual Field/Flow条件、Scope/Grain/NULL/missingの意味が固定されている。
+2. **Query Binding**：原Query/SQL bytesだけでなく、Dialect、解決時点のSchema Revision、暗黙JOIN/Star/View/Path、Provider Mapping、非出力Predicate/Relation依存と解析Coverageが現在資格を持つ。
+3. **Before/Afterの比較可能性**：同じSubject/Business Period、互換なMeaning/Schema・Read Cohort・必要Field completeness、実際の取得値が確認できる。異なるQuery MappingやRead epochから得たtrue/falseは、同じ業務StateのEdge比較としない。
+4. **Eventの帰属**：`business write committed`、`schema/mapping migration`、`source rewrite`、`cache replay/recompute`、`late/partial read`を分類する。Schema revision変化だけでBusiness Commit/Outbox発生を推定しない。業務Eventが必要ならProviderの実Commit/Receiptを用いる。
+5. **Effect資格**：Business Triggerを実行する場合は#1129/#1174の現在Host認可、Tx/CAS、Idempotency、Effect Journal/Receiptと、再起動後の独立Readを別に確認。EKIに委任するJobは同一Event/Job/Attemptの相関、予算/Deadline、結果Bodyと実業務Effectを区別する。[期限・予算・Recovery計画](TEI_EKI_DEADLINE_BUDGET_RECOVERY_COORDINATION_2026-11.md)の再試行提案も未知Effectを自動再起動する理由にはならない。
+
+| ID | 追加する独立Expected／停止条件 | 既存Owner |
+| --- | --- | --- |
+| **DS-01 暗黙JOIN** | `NATURAL JOIN`のSchema変更でO2が結果から消えても、同一Business Commitを観測していない限りBusiness Cancel Event/Jobを作らず、Derived Claimは要再資格化 | #2387/#2622、#1129 |
+| **DS-02 明示JOIN対照** | 明示的なON条件のQueryとその必要依存が不変なら、無関係列追加のみで「意味変更確定」にしない。ただしProvider実Readの現在資格は別 | #2387/#2582 |
+| **DS-03 Starの形状差** | `SELECT *`の3→4列を以前のColumn PositionやDTO Mappingで黙って解釈しない。旧生成/Consumer資格を保持せず再照合 | #2387/#2600、#2497 |
+| **DS-04 0件／欠測** | `NOT EXISTS`や0件、partial/permission-denied/unknownは、Business falseや「不存在の全件証拠」へ自動昇格しない | #2622/#2514 |
+| **DS-05 Before/After非比較** | Replica t0とPrimary t1、Schema s1/s2を跨いだtrue→falseをEdge Eventにしない。各時点のQuery Resultとして別記 | #2582/#1129 |
+| **DS-06 Schema ABA** | Schema s1→s2→s1または結果true→false→trueで前後が同値でも、途中無変更・旧Approvalの現在有効性を推定しない | #2582/#2600 |
+| **DS-07 Commit→Outbox** | 同Tx内の業務Writeなしの再計算では永続Business Eventを作らない。Migration起点再処理は独立Intent/Owner判断と相関IDを要する | #1129/#2564/#1174 |
+| **DS-08 EKI重複・unknown** | Schema変更でDerived値が揺れ、EKI JobがACK timeoutでも、未知Effect照会前に新Job/Attemptを自動生成しない。Budget/DeadlineはAuthorityを代替しない | #1130、EKI #57/#112 |
+
+**優先実証手順**：①SM-15の正負2本を参照する**read-only Data Script/Virtual Outputの合成fixture**を作る（実SQL結果とDerived値は別Observerとして記録）、②同じRevision/CohortでのみBusiness Edgeが成立するか、DS-01〜06を独立Oracleへ接続、③OwnerがMigration起点再処理を要求した場合だけDS-07へ、④実Provider Commit/Outbox/ReceiptとEKI実TaskをDS-08で検証。新Query Engine・State Store・二重Job Schedulerを作らない。まずX-TEA直接移植のP1〜3を妨げず、実Model/Provider実接続が必要な段階だけ追加資格とする。
+
+**Evidence/未決**：SM-15の隔離SQLite実行とSM-16の合成解析入力Go特性試験は別Repo Draftの記録であり、本節で新たな実行はしていない。DS-01〜08のTEI Data Script/Studio/Provider/EKI実統合、Schema migration後の実Observer、Ownerの「Migration起点で再処理してよい」受理は**すべてNOT RUN/NOT ACCEPTED**。Source/SQL/Schemaの意味同値を既存Proofから推測しない。#2778はSQL解析依存閉包のOwner、本Draft #2744はVirtual/Trigger ConsumerのOwner、#1129/#1174はBusiness Effect、EKIはTask/Attempt/予算・回復を保持する。
+
 ## 8. 不明／Ownerが決める条件と現在のEvidence
 
 **Ownerの具体判断が必要**：`billing_ready`は明細の完了だけか、出荷実績確定・検収・時間を含むか。訂正／返品・取消で何が起こるか。再計算時の粒度と許容遅延、Strict EdgeかLevel Reconciliationか、同一Subject二回目の正当なJob起動、依存先が別Providerなら整合Snapshot不可能時に停止するか、履歴・監査と重複通知の許容範囲。必要なときだけOwnerが意味とEffect Contractを受理する。
