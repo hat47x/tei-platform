@@ -109,3 +109,57 @@ node --test reference/ui-customization/composition/resolve-ui-kit.test.mjs
 - [shadcn Registry](https://ui.shadcn.com/docs/registry/getting-started) — UI部品だけでなくプロジェクトが所有するsource/config/rules等を配る考え方。Source-ownedなKitとRuntime Pluginの区別に参考になる。
 
 これらを踏まえても、**配布単位としての「Kit」／実行機能の「Plugin」／案件の「UI Layer」／TEI内部の「業務仕様テンプレート」**を同一物とはしない。
+
+<!-- tei-ui-extension-upgrade-handoff-20261103 -->
+## 2026-11-03 横断追補：Web/Desktop UI拡張と更新追従の設計・実証計画（Draft／NOT RUN）
+
+**目的**：#997 の既存 Kit/Project Layer と #1824 の Wails/Studio、#259 の生成Desktop Target、#951 の Service Contract を接続する。これは #997 の UI-2/UI-3/UI-5 に対する**追加の受入観点**であり、新Core kind、新UI専用Host/Resolver、正式Extension API/ABI、追加Gateの採用ではない。下記の名前・分類は比較用の設計語彙。
+
+### 拡張方式の選択（分離は目的でなく必要条件から決める）
+
+| 方式 | 使いどころ | 所有境界と更新時の扱い |
+| --- | --- | --- |
+| 宣言的表示・操作配置 | 通常のForm/List/Tree/Action配置・表示条件 | Accepted Meaning/Actionを参照するPresentation側の宣言。業務Rule/権限をUIに複製しない |
+| Kit公開点への provide/replace/decorate | 特殊入力、可視化、右Panel、既存UI部品の明示差替 | Root Kitが公開する型付きSlot・期待Implementationを照合。案件ExtensionのSourceと依存を独立所有 |
+| Target内の静的コード合成 | WailsのGo Service、React/TypeScript独自部品、OS連携 | Design/Build時に選択・Lock・生成し、Go単一実行ファイル等のTarget成果物へ束縛。実行時の任意Go動的ロードは初期対象外 |
+| 外部プロセス／Remote Provider | 別の更新周期、障害隔離、専門Native Library、既存外部アプリ | 既存Service/Transport契約による別配置。起動/再接続/資格/通信断/不明効果を検証。ブラウザ内で任意ローカル実行ファイルの起動を前提にしない |
+| 案件Source fork | 上記公開契約で扱えない大改造 | Upstream自動追従を約束しない。変更の所有・再適用・再テストは案件が明示的に引き受ける |
+
+**二つの合成を混ぜない**：Kit Root→企業→案件の visual contribution 解決（本Reference）と、Contract→Provider→Target Artifactの選択/実装合成（#951/#1016/#1223）は異なる操作。KitのSlotは認可・Data Provider・業務Actionをoverrideできない。標準RendererもカスタムRendererも、公開契約に接続するという点で対称だが、すべてのUIを同じDOM・gesture・ABIへ強制しない。
+
+### 最小公開面（型の候補。正式Schemaではない）
+
+- **Kit側のSlot宣言**：slot identity、提供可能なContribution役割、Target/Framework範囲、表示データの型・粒度・NULL/欠損/非開示/partial、配置・順序・mount/unmount/dispose、focus/keyboard/IME/a11y、theme/localization・CSS衝突範囲。Slotは信頼されたKitが宣言し、未知Slotや曖昧な複数replaceを拒否する。
+- **Extension側の提供宣言**：extension ID、publisher/source provenance、exact parent Kit ID/version + content digest、対象Slot、provide/replace/decorate、旧Implementation期待ID、コード・資産・CSSのfingerprint、framework/toolchain/runtime依存、Target、必要なOS/通信Capability、公開するUIイベント、登録・解除処理。
+- **Interaction側の既存契約を参照**：Model/Meaning/Action identity、Source/Model/World revision、Data Context instanceとselection epoch、grain/completeness/scope、Validation/Diagnostic、Request/Result/Failure/Unknown。UIで表示されたOfferやenabledは現在の実行Grantではない。実Request時にHost/Providerの資格、対象Key、expected stateを再確認する（#1158/#1127/#2500/#2507）。
+- **境界**：描画/局所Preview・Drag・Undoの途中状態はUIが管理してよいが、Accepted Meaning変更、Source Accept、業務保存、実Provider CommitをSlotの直接操作にしない。Actionを通じても送信ACKとCommit/独立Observationを混同しない。
+- **能力と安全**：同一WebView/同一Originの任意スクリプト追加は安全なsandboxではない。WebViewのBridge公開、非信頼HTML/外部Navigation、OS File/Process/Secret、CSP/asset/URL、Browser/APIのIdentityをTarget別に点検。別Process化も自動的な権限隔離や業務保証ではない。
+
+### 更新手順：旧版の無条件追従ではなく三者比較
+
+1. **現行固定点**：旧Root Kit/Framework/Extension契約・版・fingerprint、案件Project Layer（独自Source・Slot contribution・依存）、現在の生成/配布Artifactを記録する。名称/semver一致だけで内容・意味の同等性を推測しない。
+2. **候補固定点**：新Root Kit/Renderer/Bridge/Toolchainの実物と公表契約を固定し、旧Kit→新Kitの差と、旧Kit→案件差分を別々に導出する。
+3. **静的照合**：Slot欠落、Slot shape/lifecycle/意味Binding変更、旧Implementation ID不一致、依存/CSS・登録順衝突、Target/Go/Wails/Framework不適合、Capability増加、禁止された直接DOM/内部API依存を検出する。判定不能は *unverified* とし、自動fallback・silent rewriteを行わない。
+4. **隔離された候補Build**：案件Extensionの原Sourceを保持し、新Kit上に再合成する。Generator/Bindingの変更と案件変更を別diffにし、対象Targetごとのbundle・binding・dependency closure・artifact identityを保存する。生成器自身のPASSを独立Evaluatorや実UIのPASSとみなさない。
+5. **試験・受理**：元の同一Actionと独立Expectedで、標準Renderer／案件Renderer／Nativeを比較。a11y・IME・状態復元・focus・partial/denied/unknown/commit観測を確認し、必要に応じ実Wails/Web browser E2Eを別Evidenceとする。
+6. **選択**：Compatibleと宣言された更新でも実行証拠不足なら本番への自動切替はしない。衝突/未検証時は**現在の動作確認済み固定版を維持**し、候補更新だけを保留・説明する。案件の上書きや意味変更は人のレビュー/Owner受理へ戻す。旧成果物を削除・上書きしない。
+
+更新診断の最低区別は、(a) 物理Source/依存の変化、(b) 公開UI契約の変化、(c) Meaning/Action bindingの変化、(d) Build/Target実行可否、(e) 実画面の振舞いの未実証。契約一致・Type一致・Build成功を業務的な同等性と取り違えない。Referenceテストの 13 PASS はこれらの実証に転用できない。
+
+### 最小差分Fixture（既存UI-2/UI-3/UI-4/UI-5へ配置）
+
+| ID | 元の機能と意図的変更 | 独立した期待／拒否 |
+| --- | --- | --- |
+| UX-01 | 受注標準Formに右PanelのカスタムRendererを追加→標準Kitの内部DOM/CSS構造だけを変更 | 公開Slotが安定なら案件Source/Action意味を維持。内部DOM selectorを直接読んだ実装は契約外依存として検出/更新保留 |
+| UX-02 | root Slot移動/削除、旧Implementation ID差替、2 Addonの同一Slot replace | 黙った勝者決定・二重登録・案件差分消失を拒否。変更位置/必要な選択を診断 |
+| UX-03 | 同じ表示型の金額を税抜→税込へ変更、Selection epoch失効、Data Context partial | 表示の型が同じでもMeaning/単位/粒度/時点の受理を再利用しない。古いOfferの保存を拒否 |
+| UX-04 | Wailsアプリへ案件Go Serviceを静的合成してBinding生成→Kit/Service更新 | Go側の契約/生成TSバインディング/Asset/Capability閉包を固定し、再ビルド。Wails起動だけでAction/OS認可合格としない |
+| UX-05 | Native Canvasのpointermove→cancel、drop時だけAction | cancelでは永続変更なし。dropで対象・revision・Grantを再確認。高頻度gestureをGo RPCへ強制しない |
+| UX-06 | 外部Processの応答喪失、ACK後のCommit不明、旧Process残留 | 自動再Submitしない。観測/復旧と子Process lifecycle・秘密・資源を別証拠にする |
+| UX-07 | Web/ReactとWails/WebViewで同一Action・2種類のUI配置 | Business result/validation/failure/unknownを比較し、環境固有OS機能はunsupportedと表示。Studio E2Eを生成Desktop E2Eへ転用しない |
+
+**優先順**：UX-01/02を #1000 の実Reactの第一Referenceに追加 → UX-03を既存Data Context/Action Fixtureで確認 → UX-04/07を #1824 PoC B と #259 の**異なる対象**として比較 → UX-05は #993 の実装状態を前提に再利用 → UX-06は既存Process/Effect Receipt側へ委譲。少なくとも2種類のApplication/Consumerでの再利用が示されるまで共通Extension ABIは確定しない。
+
+**Ownerの未決判断**：Studioと生成ApplicationのKit共有範囲、最初の実Framework/Native例、どのUI公開点を安定保証するか、互換変更時の要求Reviewとサポート期間、プロセス隔離に必要な具体的脅威モデル。ここでは新Issue/ADR・正式Policy・本番採用を行わない。
+
+関連担当：[#997](https://github.com/hat47x/tei-platform/issues/997)、[#1000](https://github.com/hat47x/tei-platform/issues/1000)、[#1824](https://github.com/hat47x/tei-platform/issues/1824)、[#259](https://github.com/hat47x/tei-platform/issues/259)、[#951](https://github.com/hat47x/tei-platform/issues/951)、[#1158](https://github.com/hat47x/tei-platform/issues/1158)、[#943](https://github.com/hat47x/tei-platform/issues/943)、[#2391](https://github.com/hat47x/tei-platform/issues/2391)。
