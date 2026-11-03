@@ -1860,3 +1860,13 @@ HEAD `a2110f4a8e8cfa60a2f2c57c1de4a84d75c5bcec`、[Native Actions #41640612514](
 **第一目標**：同じ実Read/Provider/Root/Axis/Policy版で**scope内Case1件、scope外Case1件、read-only例外1件、適用除外だが他Host Denyで拒否1件、部分取得でunknown1件**を確認する。実Producer/Enforcement APIが未接続なら`NOT RUN: enforcement-unavailable`。Owner未受理は`not accepted`として停止し、#2781の合成33件で代用しない。
 
 Security/Privacy/実Host/DB/Ownerレビューは既存#1119 Gateに委譲。専用TEI Host、組織ACL Engine、第二Query Planner、秘密情報を伴う未承認外部Harness自動試行は追加しない。
+
+## 39. 組織Policy変更後の既表示情報と後着Read：現在資格を用途ごとに再確認する（2026-11-03、実E1からE3/E4へ、採用前）
+
+**現物の境界**：実TEIの`CaseRecord→OrgUnit`を保持する[PR #2681](https://github.com/hat47x/tei-platform/pull/2681)はfixed-head `a2110f4a8e8cfa60a2f2c57c1de4a84d75c5bcec`で[Native Go CI #41640612514](https://github.com/hat47x/tei-platform/actions/runs/41640612514)成功。ただし`tei artifacts`の独立Readerは`findings=0, complete=False`を報告しており、Builder/全Consumer成功ではない。実Query/Context→Provider RLS/Host Grantへの接続もない。
+
+**E0の新条件**：[Draft #2781](https://github.com/hat47x/tei-platform/pull/2781)のPolicy可視性VP-01〜33に加え`verify-visibility-epoch.mjs`のVE-01〜20を追加（作成時V8互換局所20件PASS、新fixed-head CI確認は別）。Source Locator/Meaning/Policy/Role/Root/Axis/valid・known/current Grant/Principal・Tenant/Read Cohort/Query非出力依存/Selection Epochが変わったら、後着Responseを現在のUI・Tool/CUI・Cache・SHO/AI準備物へ復活させない。A→B→Aの同Record IDも別Request epoch。純粋な色/配置変更で適格なData Claimまで一律失効させる必要はない。
+
+**用途別停止**：普通の一覧Readが成功しても、Query Count/Page/Search/Export/AI/SHO/Batch/Updateの実施行資格は別。部分取得/0件/未知Readをfalse/完全空集合に変換しない。Policyからの適用除外≠他Policy/HostのAllow。実Providerに制限を掛けずUIだけで隠す実装は不可。未保存Patchは機密保持の可否を確認した範囲で隔離し、古いIntentの自動Submitは拒否。既に適法に送出されたコピーの外部完全消去は不可能であり、「現時点の閲覧制限」と「過去資料の撤回・通知・監査」を別に扱う。
+
+**既存Ownerの一固定Trial**：#2582/#2506がContext・選択・結果Requalification、#2622/#2628/#2387が同Source/Policy版・実Read/Query非出力/Enforcement、#2516/#2631がUI/DOM/a11y・診断/件数/AI/SHO実消費、#2598/#1174が現在Action/Effect。Read要求→Policy/Grant失効→遅延Response→表示拒否・Cache再資格・下書き隔離→別Provider RouteでのCount/Export拒否を**実Request/Response bytesと独立Expected**で同じAttemptに束ねる。実Endpoint/Hostが未接続なら`NOT RUN: enforcement-unavailable`、Scopeや実Read不明なら`unverified`、Owner意味の受理がなければ`not accepted`。独自TEI Host/第二Reactive Broker/ACL/Policy Engineを作らない。#1119 P0-a/P0-bの実DB・Owner-writeを優先。
