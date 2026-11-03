@@ -767,6 +767,25 @@ M0は`validate/operations/artifacts`のWorld版・Rule/Gap・Manifestを照合�
 
 **実証状態**：上記のGo Sourceと各PRは静的に照合した。#2773の合成Fake Provider、#2771のQueryer模擬、#2747のStudio Reference、#2651/#2653の隔離PostgreSQL CASはそれぞれ**異なる局所資格**。今回提示した実Command Adapter→実Provider PostgreSQL→AfterCommit SQL Observer→Macro/Studio/外部Jobの**同一Attempt製品E2EはNOT RUN**。追加のT番号・新しいGateは設けない。
 
+### 16.4 M3の最初の実Go負例を別Draftへ分離し、SQL/組織/EKIの意味依存を切らない（2026-11-03）
+
+[独立のDraft #2780](https://github.com/hat47x/tei-platform/pull/2780)で、現在の実`command.Invoker→commandadapter.Executor→effectcommit.Runner`を呼ぶ**Go test-only characterization**を作成した。#2616 OB-07Aの`OperationSurface→Driver` Target漂移負例とは**接続箇所が異なる**。新Product Adapter/権限器を作らない。
+
+| 既存受入番号へ割り当てる実Go Characterization | 固定されたExpectedと実観測の区別 | Ownerの正式合格条件 |
+| --- | --- | --- |
+| **MC-B01**（T-1/T-38） | Command Input`ORD-1`、呼出側明示Payload`ORD-2`の意図的な不一致。現AdapterがFake Providerの`WriteResource`までPayloadを渡す挙動を**安全性の不足として**記録。テストがPASSしても「不一致を許すことが正しい」の意味にはならない | Ownerが受理した`Intent→対象変換→実Target`と現在Grantを、実Provider/条件付きCommit直前まで照合。不一致を拒否する本来の安全性テストへ移行 |
+| **MC-C01**（T-1/T-41） | 内側`effectcommit`のFake Tx Commitが成功した後、外側`command.UnitOfWork.Commit`だけ失敗。Commandが`COMMAND_COMMIT_FAILED`でも、合成内側Commit記録が存在することを観測 | 実Owner Providerで同一物理Txを保証するか、複数OwnerのEffectを個別Receipt/補償として扱う。ACK/Commit unknownから新OperationIDで勝手に再実行しない |
+
+**保存と実行を別報告**：#2780にはGo試験Source・Focused exact-head Workflow・独立ExpectedのREADMEを保存。Source保存やPR作成時のCI開始をテストPASSと呼ばず、当該headのGo/gofmt/Repository Health実結果が得られた場合だけ限定`Characterization verified`とする。実PostgreSQL・正式Grant/Owner対象・実外部Consumer/OSは独立の未実証領域。
+
+この最短縦切りへ、他レーンで確認された次の意味上の依存を**既存Ownerの受渡し**として追加する。
+
+- [#2778 SM-15](https://github.com/hat47x/tei-platform/pull/2778)の隔離SQLite実測：同じ`NATURAL JOIN` SQL SourceでSchemaに同名列が追加されると結果集合が変化し、`SELECT *`のOutput Shapeも変わる。**SQL Source byte/Command Input/Source Revisionだけ固定しても、Schema/Operator/実Provider/集合完全性の変更がAction対象選択に波及し得る**。SQLをTEIの業務Meaning正本へ逆昇格させず、#1126/#2387/#2622が実Query取得/Schema依存を証明する。
+- [#2681組織E1](https://github.com/hat47x/tei-platform/pull/2681)と[#2779合成what-if](https://github.com/hat47x/tei-platform/pull/2779)は、組織/Case移動・期間・権限対象が異なるOwnerの意味に属することを示す参照。組織改編のPreview/シミュレーションを`Grant`や実Case更新の自動承認へ転用しない（#2386/#2598）。
+- [Everything is Data #2667 `27/31](https://github.com/hat47x/tei-platform/pull/2667)のEKI連携は**任意**。TEIはRule/Action/意味/検証候補、実Host/Providerは副作用・Receipt、EKI等はTask/Attempt/Lease/端末保護・資源配分。EKIの`AcceptedResult`、Task ACK、シミュレーション成功を業務CommitやCustomer Deliveryへ昇格させず、TEI単独Goバイナリでも通常のActionを実行できる設計を保持する。
+
+**成熟した停止線**：最小製品安全性は`選択Subject/Context→実Target/Scope/Grant→条件付きOwner Commit/Receipt`の同一Attemptで検証する。広域/過去全件のData Quality、Replicaの遅延付き監査、EKIの長時間Taskは独立Runへ移せるが、現在RequestのTarget・Grant・Period・Tx・Commit不明処理を「夜間監査で検査するから」と省いてはならない。新中央Registry/Host/Workflow/Validation Engineは不要。既存T-1〜61とP0/Gateを維持する。
+
 ## 17. 判断を残す点
 
 - **業務Owner**：各Actionで「元の対象」「関係する対象」「全件の完了」をどのように定義するか。旧X-TEA `sales.order.submit`等の未受理マッピングは推測で補わない。
