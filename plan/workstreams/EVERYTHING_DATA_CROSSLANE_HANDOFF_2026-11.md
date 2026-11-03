@@ -1775,6 +1775,23 @@ Ownerの設計方針：Data ModelはSQL解釈から構造生成するのでな�
 
 **証拠範囲**：本節へのリンクとReference合成26件の成功のみ。TEI→EKI実Job一試行、実Go/PG/Result Consumer、Recovery Permit/Resource/価格・SLA、正式Owner受理は**NOT RUN**。#1119 P0-a/P0-b、§31・§35・§37のOwnerを変更しない。
 
+### 36.5 実EKI P0 APIを確認してからTEI Jobを配置候補へ進める（2026-11-03、実Schema Source-static）
+
+TEI [Draft #2787](https://github.com/hat47x/tei-platform/pull/2787)は、[EKI external OpenAPI](https://github.com/hat47x/eki-fabric/blob/main/spec/external/openapi.json)の実Source Git blob `388f2e3ad32ba663b4777fcfb4304b0cf6f48f3f`から選んだSchema/Pathを**検証用Fixtureとして固定**し、WP-01〜19で**TEI Jobの必須意味をEKI v1 TaskRequestへ黙って欠落させないか**を検査する。API Source＝実Task/Worker/Result成功ではない。
+
+| EKI P0外部契約の観測事実 | TEI側の停止条件 |
+| --- | --- |
+| `TaskRequest.parameters`はあるがSourceに`not passed to workers`と明記 | パラメータ依存の実JobはAdmittedでも実行同値を主張しない |
+| `ExecutorRequirement.version_constraint`はAdmissionで未評価、`digest`欄なし | 実Executor版・byteの固定は別Evidence。Exact PinをConstraint文字列で代用しない |
+| `ReliabilityRequest.effect_mode`は`none`だけ | DB業務Effectやnon-idempotent Scriptをpure-computeとして受理させない |
+| `deadline`は1個のみ | `notBefore`、soft target、検証・Consumer到着込みのlatest usefulを無音で潰さない |
+| `/v1/artifacts/{artifact_id}`はGET経路と501応答が宣言される | EKI Resultのdigest/completedは実Artifact body受信・業務Commitを意味しない |
+| ResourceRequest物理量はあるがTaskRequestに直接のResource Group/Data-residency欄なし | 資源Group名・勤務地等の自己申告でCompute Grantや実配置を増幅させない |
+
+**比較列**：`not-representable`（v1が必須意味を表せない）／`wire-shape-only`（静的JSON表現は可能）／`unresolved`（Worker伝達・Pin・期限意味・実入力/出力・Grant/Effect不明）／`runtime=NOT_RUN`（現行Source/Schemaテストのみ）。これらはEKIの正式Response enumでも新TEI Core型でもなく、**既存T0〜T4に挿入するT0.5 wire-ABI preflightの受入票**である。
+
+実接続はTEI #1130のFunction→Job Producer、EKI #112/#266のExecutor/Parameter、#320/#494の実Artifact body、#67のProvider Group、TEI #1174の実Commitへ段階的に委譲する。実行先が未適合な場合、Go単体/既存Host実行を残し、EKI経由を強制しない。#2787の限定CIがPASSしても、Worker/Provider/Host/SHO/Owner E2Eは未証明。新Task API/Job Engine/Host/Authorityを先行採用しない。
+
 ## 37. 組織由来Record Policyの広域適用と個別除外：一般Data/RelationによるPolicy候補から実Provider/Host Enforcementへ（2026-11-03、採用前）
 
 ### 37.1 要件の適用範囲と意味を独立にする
