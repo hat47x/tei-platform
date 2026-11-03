@@ -189,6 +189,15 @@ Established --[T4: link-lost]--> Closed
 **Gate**：最初は一つの「入力値→導出→Validation→状態遷移」だけを、図・表・Markdown説明・独立Expectedの四Projectionで同じSource/Meaning IDとして追う。次に非業務UIまたは通信の異質Domainで同じ意味Roleを使う。続いて再編集・再生成と必要なTargetを検証し、初めて実Provider／HostのEffectに進む。**ヒアリングで即編集できる利用価値**と**正しい実装を生成するConformance**を独立に評価する。
 
 
+### 7.5 添付されたDecision Workbook調査との照合（2026-11-03）
+
+[Excel決定表調査のTEI適合レビュー](DECISION_WORKBOOK_INTAKE_REVIEW_2026-11.md)を追加した。WorkbookにはValidation 3件／Derivation 3件／Lookup 1件／Flow 4遷移／Test 14件があり、図・表・Matrixを同じIDで追う**説明用Profile**として有用。ただし汎用Decision Table Engine／Sourceの正式受理／実TEI評価は証明していない。
+
+- `positive`の自由比較演算子、`derivationref`の`lookup`、`date→year`、Flowの「初期1・終端必須・(Lifecycle,From,Capability)一意」は、現行Semanticで受けられる範囲／簡易業務Lifecycle用Profile／非対応を分ける。
+- 一般的なUI・通信・ゲーム・組込のState MachineをWorkbookのLifecycle表に無理に押し込まない。Event Payload、Time、Region、Guard overlap、SafetyをDomain別Pressureとして維持する。
+- Excelを唯一のAuthoring Sourceとも`.tei`を全Domain唯一のSourceとも固定しない。Managed Sourceと受理済Meaningから、Excel・Studio・Markdown・SHOの図表と可逆な編集提案へ渡す。
+- 添付のlint 0/0はWorkbook生成ツールの報告。独立Expectedの実評価、Runtime実行、Owner受理への昇格はしない。
+
 ## 8. 今回の結論と検証の状態
 
 **成熟した設計入力として置くもの**：状態機械の適用対象は業務に限らない／図・状態表・遷移表・交差マトリクスは同一意味を異なる形で投影する／意味Core・実行・保存・UI・文書を直結せず明示Bindingする／業務IFを全部置換しない／実Runtimeの一般化は別の採用判断とする。
