@@ -6,6 +6,45 @@
 - **既存原文保存仕様**：[main統合 #2674](https://github.com/hat47x/tei-platform/pull/2674)／[Markdown Source Fidelity](EVERYTHING_DATA_MARKDOWN_SOURCE_FIDELITY_2026-11.md)。保存は元のシンタックスシュガーを維持し、通常Saveで展開後の標準データ形式へ再直列化しない。
 - **最新局所実証との関係**：[Draft #2639](https://github.com/hat47x/tei-platform/pull/2639) は実Go Language Plugin ReferenceとSemantic candidateの一部を試すが、**Unicode表層識別子／Studio名切替／AI入力安全の製品適合は未実証**。別Draft[#2667](https://github.com/hat47x/tei-platform/pull/2667)の横断計画本文を競合編集しない。
 
+## 0. 直近実装キュー：一つの意味・Scenario・生成入口を分けて確認する（2026-11-04）
+
+**この節を新規実装の着手票とし、§1〜14は根拠・反例・Owner境界の参照用とする。** 追加のDSL/テスト/ビルド管理の正本を作らず、既存資産に依存することを明示する。最初に全部のUnicode／SQL／Provider／EKIを完成させるのではなく、**外部Importを使わない受注Source**で構文と意味の最小同値を確かめ、その後必要なレーンだけを接続する（§14.3）。
+
+### 0.1 最小一件の入力を固定する
+
+試験対象は公開Referenceの`order_entry`を起点とした**合成受注O1**のread-onlyモデルとする。以下の値はテスト用であり、本番業務Rule・正式DSL Syntax・採用済みCanonical Attributeの宣言ではない。
+
+| 観測対象 | 比較元・Expected | 非同値を示す負例 |
+| --- | --- | --- |
+| 意味参照 | `sales.order.quantity`等の**既存ASCII Canonical ID**、対象O1、Rule IDと型、Source revisionを明示Binding | `数量`と`quantity`を名前だけで同じStable IDに決定する／同一日本語論理名の別Subjectを混同 |
+| 純粋な計算 | quantity=2、unitPrice=300、amount=600（整数精度で厳密）、同じ独立Expected | NULL→0、missing→empty、partial→complete、`std.decimal`→`std.string`でも同じ意味だとする |
+| Validation／決定表 | quantity=-1で業務拒否、数量未取得は評価不能、後続`creditHold`が未取得でもshort circuit契約を保持 | eager評価で別Errorを発生／`positive`を`>=0`と同義へ補完／Hit Policyを省略 |
+| Unicode／Source | Unicode表層名は**字句ProfileとBindingの採用前候補**、Studio多言語論理名はread-only表示に限定。元Source byte/span・Sugarを保持 | NFC/NFD・Confusable・Bidi・同名Scope衝突、UTF-8 byteとEditor offset混同、Formatを通常Saveで暗黙実行 |
+| Scenario／経路 | [#1180](https://github.com/hat47x/tei-platform/issues/1180)の**保存済みDriver Scenarioがテスト正本**。CLI/Web/DesktopへのStep/Outcome/独立Expectedはそれから派生 | CLIの成功ログをWebのテスト正本として逆生成／未対応Web Stepを`PASS`扱い／GUI screenshotを業務意味のExpectedにする |
+| Build／公開入口 | [#2788](https://github.com/hat47x/tei-platform/pull/2788)の単一Goバイナリ（割当設定不要）から開始。必要時の1→2 Build Unitは**同一Function ID/業務Meaning/Scenario**を保つ比較 | 表示ラベル／ローカルSymbol／Source Folderを実行入口名や公開Capability/Grantへ自動昇格、内部Function全件を公開 |
+
+**ここで保つ「同一」の対象を限定する**：構文Source byte一致、型付きMeaning同値、ScenarioのExpected同値、生成Artifact byte一致、実行結果/Effect同値は独立した判定。Sourceが異なる4表層から同じ型付きCandidateを得られても、実行権限やBuild完全性が成立したことにはならない。
+
+### 0.2 まず着手できる3段階（実コードとOwnerにひも付ける）
+
+| 順 | 最小実作業 | Doneと未達を分ける根拠 |
+| --- | --- | --- |
+| **A：既存Goの基準線** | `core/identity/id.go`のASCII受理集合、`reference/dsl-language-plugin`のParser/Language pin/Source diagnostics、`internal/driver/final_gate_b_scenario_test.go`のtest-local Stepを**変更せず観察**し、同一FixtureのExpectedとReference接点を列記する | [#2639](https://github.com/hat47x/tei-platform/pull/2639)現HEADのGitHub Actions [#41578551459](https://github.com/hat47x/tei-platform/actions/runs/41578551459) はcompleted/success。ただしtest-only JSON Adapter・Semantic Candidateの限定Go証拠。正式Unicode Lexer／保存済みScenario／業務Meaning受理／製品CLI ParserのPASSではない |
+| **B：最小記法の比較票** | Aの同じIndependent Expectedで、言語中立低ノイズDSL／Go風式／Markdown表／chain式の4表層について、Source token/順序/NULL・未取得・短絡・型・diagnostic locationと**非対象Source byteへの影響**を並べる。現在Parserが受けない表層は`unsupported`と記録 | AIは**構文ノイズと認知順序の指摘のみ**。事前のExpectedとSource/Role/Operator pinの検査は別。人間被験者・仮想専門家の採点・固定数値閾値は不要。Ownerが文法・Unicode Profileを採否判断 |
+| **C：Scenarioと生成入口へ接続** | [#1180](https://github.com/hat47x/tei-platform/issues/1180)に既存Driverの1 read-only Step＋1 Validation負例を**保存・再生成可能なScenario候補**として引き渡す。CLI argv/stdin、Web/Desktopの業務操作Binding、独立結果・Host/VisualのEvidenceを別列で出す。Build単位は[#2788](https://github.com/hat47x/tei-platform/pull/2788)へ参照だけ渡す | Scenario GeneratorやWeb E2Eがまだ動かないなら`NOT IMPLEMENTED`。CLI実実行・Web Host・実Provider・実ジョブはそれぞれOwnerが検証。Source名/翻訳によって実Entry Point/権限を変更しない |
+
+**必須の前提／停止条件**：外部Importのある案件だけ[#2743](https://github.com/hat47x/tei-platform/pull/2743)のP0b実Read Cohortの証拠を求める。実Command/業務Effectへ進む時だけ[#2780](https://github.com/hat47x/tei-platform/pull/2780)のO1/O2 Target不一致・二重Tx・Replay/Unknown負例に接続。最小のDSL可読性PoCをこれらの実装完了まで止めない。仮に既存`operations`がgaps=0でも[実CLI #2666](https://github.com/hat47x/tei-platform/pull/2666)のようにArtifact ManifestがincompleteならConsumer/Build完全性を主張しない。
+
+### 0.3 実行資格と配布単位はDSL構文では決まらない
+
+**Functionの業務意味・Scenarioの期待結果・Invocation Binding・Build Unit・Deployment/公開Entry Point・Host Grantを分ける**。特にUnicodeローカルSymbol・翻訳ラベル・ファイル名からCLIコマンド/HTTP Route/公開Job名を黙って生成しない。Stable IDと実行Contextを固定した**明示的なInvocation Mapping**が必要であり、Schema・対象ID・権限を実行時に再検証する。単一Goバイナリへの静的同梱も、Functionの自動公開や認可を意味しない。
+
+[Build設計 Draft #2788 §14](https://github.com/hat47x/tei-platform/blob/work/issue-259-function-build-assignment-20261103/plan/design/RUNTIME_TARGET_BINARY_COMPOSITION_DESIGN.md)が**設定なし単一ビルドと必要時のみの複数Build**を担当し、本書は表層名→意味Refが変更・再配置で揺れないことを担当する。Function/Source Folder移動・表示言語変更・Build割当変更を同じ「モデルの変更」にまとめない。変更によって必要になるSource/Meaning/Artifact/Deployment/Execution Receiptの再資格化をそれぞれ求める。
+
+**一旦採用しないもの**：Unicode Canonical IDそのものへの変更、日本語用Keyword Grammar、新しい共通Parser/Host/Registry/Scenario Runner/独立Oracle/Build割当Schema、Go AST都合の普段のDSL記法、中央のカバレッジ数値。**設計採用待ち**：字句Unicode Profile、4表層から選ぶ記法、Decision TableのHit Policy、Build Unit正式型・Invocation Mapping形式。
+
+**検証状態**：本節のA〜Cは作業の提案であり、実行した新たなGo Test/CLI/Web/Studio/Unicode Parser/Build構成・Host/Provider E2Eはない。#2639 exact-head CIはGo Referenceの限定合格、#2788もdocs-onlyのDraftである。Ownerの意味受理と正式Syntax採用は行っていない。
+
 ## 1. 優先順位：自然なテキスト記述と意味の厳密性を両立
 
 **製品要件として維持するもの**：
