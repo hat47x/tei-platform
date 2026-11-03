@@ -340,3 +340,47 @@ L1の単一Field PATCHはL1 ID、対象属性、Version等で意味的候補化�
 観測値：`operationCount=5`、`gapCount=4`、`worldFingerprint=sha256:bd53dbaca0ac2c20bc911e0b69083467f2ad38273911269d525db666e681817f`、`modelRevision=sha256:c60ed68c7c85ab218883b18970df85db1ebcae7d9090336452766d7a95d2b04d`、`ruleFingerprint=sha256:92adf0fa3b20816fb6068780a6dd8b9b1fb77973e6c2cff823313346b0e59ae0`。実stdout二度一致・事前固定の5 Operation/4 GapとBinding/Effect/Concurrency/AuthorityLimits、`operations -out`の**実ファイル生成とJSON同値**、Checkoutのclean pre/postを試験した。
 
 **成立したClaim**：現HEADの一つの公開合成Workspaceで、Read-only `operations` Surface表示と、同じcommandの`-out`によるローカルFile Writeが実Go CLIで観測でき、Gap/Bindingを黙って成功/Grantへ昇格させない判別条件を満たした。これはCLI/Artifactの**出力先差**を確認したのであり、Source変更中の二重Load Race、原子的Artifact公開、Shell連結でのOS作用、Product Skill実Load、業務Actionの入力Closure、Provider/Host実Effect・Receipt、Owner意味受理までは証明していない。既存§10のOB-03〜08と§11のE1〜E4はNOT RUN。Source/Codeの本体改変なし。最新HEADで新変更が入れば、既存Runをそのまま現在のQualificationへ転用しない。
+
+<!-- 20261103-real-handoff-runtime-async-audit -->
+## 13. Actionの対象同一性、実行時の最小フェンス、EKI非同期検証を接合する（2026-11-03）
+
+### 13.1 なぜOB-02の成功から業務成功へ進めないか
+§12の限定実Go CLIでは、標準Operation Surfaceが`ledger.update.sales.order`→`sales.order.cancel`のBindingを正しく導出できた。しかし、Binding名と`Outcome: cancelled`が正しくても、**どの注文に実際に作用したか**は別問題である。[#2598 IB-01〜08](https://github.com/hat47x/tei-platform/issues/2598)と[#1174 AT-1](https://github.com/hat47x/tei-platform/issues/1174)が対象同一性のOwner。
+
+新しい [Go test-only characterization](../../internal/driver/action_surface_handoff_test.go) は、公開`standard-crud`の`operations.SurfaceWorkspace`から実`Operation.Binding`を取得し、既存`driver.Resolver.InvokeCapability`へ渡す。呼出者が注文`O-1`を選んでも、**故意に誤ったAdapterが`O-2`を変更し`Outcome=cancelled`を返す**公開合成負例を固定する。Driverが正しいCapabilityを解決・呼出したことと、業務対象`O-1`の確定を区別する検出用Witnessであり、**Driverに新たな対象一致ガードを実装したものではない**。実Provider/Host認可、実Transaction/DBコミット、Receiptはこの合成で検証しない。
+
+**検査位置の結論**：Adapterが返した結果だけを後から比較しても、別対象への不可逆な副作用を防止できない。業務Operation/Requestで要求する対象と実Providerへ渡る対象について、書込み直前の既存Host/Adapterの契約における**target/scope/expected-state/current grant/副作用の許可範囲**を束縛・確認する必要がある。実際の更新対象はReceipt・post-image・別readで確認する。単一行の`orderId`一致検査を、複数行Operationや集計への汎用規則に昇格させない。対象集合・関係・時間条件は受理済みMeaningの用途別契約で定める。
+
+### 13.2 バリデーションを実行段階ごとに配置する
+
+他チャットのGo単一バイナリ／DSL Source Preservation、TEI Desktop/SHO、EKIのTask/Attempt/Leaseとレプリカ監査計画を、**ホットパスの最小保証**と**時間をかけられる独立監査**に分ける。静的な全モデル検証を毎回実行せず、しかし実行前に必須の安全なチェックを「性能向上」の名目で省略しない。
+
+| 時点 | 最小検査と不確実性 | 既存Owner／処理を置く場所 | 禁止する誤判定 |
+| --- | --- | --- | --- |
+| 編集・Preview | DSL構文、Owner受理前Candidate、外部参照・依存、Source Span、UI表示・Read-only | #988/#2621/#1124とStudioの既存診断 | Previewの`Committed`を業務Commit／Event発行と呼ぶ |
+| Load・Build | 元Source＋明示外部Import/Role/Operator/Generator版、Meaningの受理範囲、依存閉包、Contract conformance | #2620/#2639/#2667/#2600の既存Loader/Builder | WorldFP同一からSource引用・Plugin/Tool/Consumerが有効とする |
+| 書込み要求の直前・Commit | request target/key/scopeと用途別Action/Capabilityの対応、Provider現在能力、Version/expected-state、current Grant/Period、冪等性・Commit不明・Receipt規約 | #2598/#1174/#1129と実Host/Provider | CLI/Tool/Jobの受理から業務更新完了を推論／不明Commitを盲目再送 |
+| 完了直後 | 実対象・Effect/BusinessResult、Commit/Receipt、別read、ReadのScope/epoch/cohortと拒否/不明 | #1163/#1174の観測、#2516のConsumer | 自己応答やレプリカ旧値/0件を確定観測とする |
+| 非同期・広域監査 | 全集合整合、履歴、Relation全件、期間横断、負の依存、変更後再資格化、複数Provider/Replicaを**水位と時点つき**で再評価 | TEIの検査定義を既存Batch/TaskのExecutionへ接続。EKIはジョブ/資源/Leaseの調停（別Owner）。結果のQuality/Business判定はTEI/業務Owner | EKI`Job Accepted`／`Task succeeded`だけをモデル/DB品質の合格とする |
+
+**最小の常時負荷**：対象を限定したexpected-state/CASや認可・Effect Fenceは書込みに必要で省けない。広域集計・履歴再照合、全Relation走査、第二Providerとの総突合せ等を、要件を満たす範囲で夜間・独立Job・Replicaへ委譲する。ただしReplicaが古い場合は`as-of watermark`／Snapshot/LSN/対象Scope/更新からの遅延と完全性を記録し、単に差があるから自動ロールバック・再送しない。非同期検証が必須の業務については、業務受理条件がその完了待ちを要求する場合だけ`BusinessVerified`へ昇格する。
+
+### 13.3 TEIとEKIの境界：ジョブ受理は品質証明ではない
+
+Goでビルドした単一ネイティブバイナリはTEIの標準実行形態を維持し、EKIは**任意の配備・実行基盤**として、Resource/Task/Attempt/Lease/スケジュール・リトライ・Telemetryを提供できるようにする。TEI独自の常駐Hostや中央Registryを前提にしない。TEI側はモデル・純粋な検査定義・必要な契約およびObservationの意味を記述し、ジョブ実体の起動と資源隔離はEKI/外部基盤が担当する。
+
+特に以下の状態は**別々の観測証拠**として表示する（正式な共通enumの新設ではない）。
+- `Plan Prepared`／`Reference Execute`：候補・実行計画／隔離またはReference実行に限る。
+- `Job Accepted`／`Attempt Running`／`Job Succeeded`：実行基盤での受付／生存／プロセス完了であり、業務効果を証明しない。
+- `Provider Commit Known`／`Commit Unknown`：実Providerの確定状態。Response喪失を成功／失敗へ丸めない。
+- `Business/Quality Verified`：必要な独立Read/業務期待/範囲/版を満たした場合のみ。
+
+長時間監査・レプリカ上の検証を非同期化することは、常に即時の完全性保証と交換可能とは限らない。境界内で即時検査を必要とする制約（対象同一性、権限、CAS、二重作用防止）はCommit直前に残し、その他の検査をOwnerが用途別に分類する。
+
+### 13.4 実証順序・引継ぎ・未完了
+1. **OB-07A（本DraftのGo test-only）**：OperationSurface→Driverの実Go経路と誤対象Adapterの独立観測を同一公開Workspaceで比較。結果は**まだ業務保証ではない**。CIのexact HEAD/Go test結果は別記録する。
+2. **OB-07B（#2598 Owner）**：同じ`selected target`／Action Subject/Scope/Context epoch／Source Revision／`request payload`と`actual effect subject`の受渡しを、既存Driver/Host適用境界で事前確認できるか評価。未対応なら`not proven`で止め、Action Offerから無条件Invokeへ進めない。
+3. **OB-08（#1174/#1119 Owner）**：Versioned actual Provider/実PostgreSQLにおいて、Commit/ACK-loss、Receipt、独立Readとtarget食違い、CAS拒否、Runtime Grant/Periodの現行性を別の同一試行票に記録。
+4. **OB-09（EKI/運用Ownerへの契約候補、未実施）**：同一Meaning・Snapshotが固定される最小広域監査Taskを一つ配備し、`Job Accepted`と`Quality Verified`を別観測。Replica watermark/lag、全件可視性、部分失敗、結果を待つ業務と待たない業務を区別し、最小CPU/IO/Latency比較を#2018/#2600に返す。EKI必須化はしない。
+
+**Evidence境界**：実Go CLIのOB-01/02は§12で限定成功済み。OB-07Aは追加Go testのCI成功が確認されるまで`NOT RUN`として扱う。OB-07B/08/09、実Go単一バイナリの配布性能、EKI実Task/Lease、Replica/水位、実DB/Host、SHO/Studio/Consumerの一体受入、Owner意味受理は**NOT RUN**。共通Host/新State Table/Proof Engine/新Quality Registry・直列Gateを追加しない。
