@@ -2272,3 +2272,9 @@ Record R1の取扱OrgがL1で、PolicyがD1以下のcommand階層に限定する
 **受入票**：Source/Policy/Plugin/Owner Revision、Data Kind/Record→Org Relation pathとOccurrence、axis/root/valid/known、Host Principal/Grant Scope/Epoch、例外の適用対象と優先Rule、Provider actual read＋施行点、Query/Consumer/Cache/Count/Disclosure、候補Read/Writeと実Host判定、試験Runner/HEADとOwner採否。既存Evidence参照で構成し、巨大な共通Policy DTO/Policy Engineを先行導入しない。
 
 **停止線**：現在の#2681 E1 Native、#2779 E0 Transition、#2781 E0 Visibilityは別World/Run。これらの成功を実RLS/DB Enforcement、外部API/Host/Studio/SHO、正式Owner Meaning受理や製品E2Eへ昇格しない。実Provider内の制約を観測できない場合は`NOT RUN: enforcement-unavailable`、部分同期/権限不明は`unverified`、Owner未判断のPolicy Priority/any/all/例外は`not accepted`として扱う。実装は#1119の既存P0-a/P0-b/Owner-write優先を維持する。
+
+### 58.7 合成E0の実Node fixed-head証拠
+
+[Draft PR #2781](https://github.com/hat47x/tei-platform/pull/2781)のfixed HEAD `88f3e3e2e1a2352fa53625732f465fb2b8b07761`に対する[Actions #41632269936](https://github.com/hat47x/tei-platform/actions/runs/41632269936)は**completed/success**。Node v22.16.0、`verify.mjs`の**27 checks PASS**と`node --test`**235/235 PASS・fail 0**、新規VP-01〜30全成功、Source Blob `bdc4e63649fa3e728c8293fef55b43a0d278b1c1`をログから確認した。jobのexact-head照合／clean-before-afterもsuccess。本文§58.6の「V8局所のみ／Node未確認」はPR作成当時の履歴であり、現在の合成E0実測は本節で更新する。
+
+これは`org-synthetic-r7`を含む**Node合成Referenceのみ**の235件＋別27 checksである。前回の[Draft #2779](https://github.com/hat47x/tei-platform/pull/2779)は別HEAD・別ブランチなので、TS 20件をこの235件に上乗せして「同一Runで255件成功」としない。実TEI Plugin/Role Policy、物理RDB RLS・API/Host Enforcement・Directory、秘密情報・実Disclosure、改編Agent/Studio/SHO、Owner Rule受理は引き続き**NOT RUN/未受理**。重要なセキュリティ要件についてE0成功だけから安全性を主張しない。
