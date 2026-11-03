@@ -1681,3 +1681,34 @@ Ownerの設計方針：Data ModelはSQL解釈から構造生成するのでな�
 **正式判断の保留**：soft/hard deadline・停止の優先度、目標とする期限内完了確率、Reserve/Quotaの割当、複製の許否と相関モデル、価格外部AdapterとBudgetの連動、前払い予約の強さ、成功/一部結果の用途別意味、学習による順位決定の採否。これらはOwner/Provider/Deploymentによって異なり、共通SLA・単一価格Score・新中央State/Cost Registryとして先行固定しない。
 
 **証拠状態**：本§36は既存TEI/ EKI契約に対する**Docs-onlyの差分**。LR-01〜12の本番/合成テスト実行、TEI→EKIの時間Contractの実ABI、計量/外部料金、Cluster/PC群の実予約・失敗回復、ML学習・shadow評価、性能/予算最適化の効果、TEI Owner意味受理、EKI Ownerの要件/ADR採用は**NOT RUN/未決**。§35とEKI ADR-0013を変更せず、公式製品の実装済みとは主張しない。
+
+## 37. 組織由来Record Policyの広域適用と個別除外：一般Data/RelationによるPolicy候補から実Provider/Host Enforcementへ（2026-11-03、採用前）
+
+### 37.1 要件の適用範囲と意味を独立にする
+
+[組織設計 #2389 §58](https://github.com/hat47x/tei-platform/pull/2389)の方針：組織情報（Person/Membership/OrgUnit/Hierarchy）は**標準Data/Relation**。ただし、業務Recordの`responsibleOrg`等へ**明示Relation Binding**を行うと、利用者が選択したData型・業務範囲に組織由来のレコード可視性・参照専用Policyを**広域一括適用**し、必要なRecord/Functionのみ例外を宣言できる。Organization Profile/Pluginは組織構造・階層axis・時点・Ruleの宣言に使い、第二のACL/Host/中央Policy正本は作らない。実際の認可は既存Host/Providerが担う。
+
+**原則的な区別**：Rule applies / applies with exception / in-scope / out-of-scope / unknown / read-only candidate / current Host-authorized read / actual Provider-enforced read / external Disclosure / write Effectは独立。特に**『広域Organization Ruleから除外した』＝『公開された』ではない**。残るHost/他Rule/実Providerの明示許可へ戻す。Ownerが定義していない`any/all`（複数所属・多経路）や例外のDeny/Allow優先度をデフォルトで勝手に決めない。部分取得・深さ制限・循環・Tenant越境・古いGrant/Sourceは`unverified`または拒否として説明し、無根拠に行の存在・不存在やAuthorityを認めない。
+
+### 37.2 一つのModelを複数のRead/Effect/Consumerに使用する統合試行
+
+既存#2386は組織/時点の意味、#951はProvider/Plugin契約、#1126はData/Relation/Logical ID、#2506はFunction Data Contextの**宣言した**Data/Relation、#2622はData Ops/Provider realization、#2387/#2635はWHERE/ORDER/EXISTS等の非出力Query依存、#2628はactual Read/Enforcement Witness、#2582は現在Claim再資格、#2516はCUI/Studio/SHO/AI開示、#2598/#1174はRequest Target/current Grant/実Effectを所有する。#2586はこれらの**固定一Attemptの引継ぎ**だけを持つ。
+
+| 試行と目的 | 必ず同一版で束縛するもの | 失敗/停止条件 |
+| --- | --- | --- |
+| PS-1 default on for selected Data | Policy scope+Owner+revision、Record→Org typed Relation、axis/root/cut、principal/tenant/grant epoch | 非適用Dataにも暗黙ACLを掛ける／Record名からOrg推定 |
+| PS-2 scoped Read and read-only | Query/Function Mapping、実Providerの行/Field/Route/Read Cohort、現在HostのRead/Update判定 | UI側だけ隠す／Read成功からUpdate可と推論 |
+| PS-3 per-record exception | 対象Rule ID/適用除外目的/期間、他Policy・実Host現在判定 | exception⇒allow/public/bypass／優先度不明 |
+| PS-4 recursively reachable hierarchy | Organization axis、path occurrenceとnode distinct、valid/known、edge Source/tenant、cycle/limit診断 | 複数Pathで重複件数／別軸やTenant越えの黙示Grant |
+| PS-5 actual negative enforcement | List/Detail/Count/Page/Export/Join/Aggregate/Cache/Batch/AI/SHOの実全Route | フィルタ後処理／隠れた件数や検索存在による漏洩 |
+| PS-6 staleness/effect | Policy/Role/Source/Grant改版、表示Epoch、Action target/Receipt独立Read、EKI再Attempt | 旧画面・旧Plan/Grantから現在実Read/書込を許可 |
+
+**Syntheticのみの証拠**：[独立Draft #2781](https://github.com/hat47x/tei-platform/pull/2781)へ`VP-01〜30`を追加し、V8互換ローカル30/30成功。fixed-head Node CIを確認してからその結果を別記する。実Host/IdP/Provider RLS・real read witness、業務OwnerのRule/exception受理、Studio/SHO/AI実送出は**NOT RUN**。#2681の実Native TEI E1成功や#2779のWhat-if E0成功を、Policy Enforcementの証拠へ転用しない。
+
+### 37.3 UI・生成AI・EKIとの責務
+
+Studioは「組織軸とRuleの一元設定・効くRecord集合・例外・各Consumerへの影響」を表示し、AIは自然言語から既存Plugin/Rule Bindingの候補を提案できる。ただし適用・Source CAS/Role Pin・Preview・Owner判断は別。通常Dataへの手入力メタ情報を増やさず、必要なDataへのRule Bindingだけを要求する。情報境界を含む外部AI/SHO開示は#2516へ、Graph/Tree表示のPath重複・意味保存は#2497へ戻す。
+
+EKIがTEIの組織関連Jobを受理する場合、EKIの配置可能性・予算・期限・Lease・回復最適化は**組織DataのRead/Disclosure Grantではない**。現在のPrincipal/Delegation/Grant、Source/Policy/Read ScopeをTEI/Host/Providerが引き続き検査し、再試行・別Nodeへの配置で失効済資格を蘇生させない。EKI Coreに新しいOrganization ACL/財務認可正本を設けない（既存§35〜36/#1119を維持）。
+
+**未決のOwner分岐**：複数Org linkのany/all、単一親/DAG、RecordとFunction/Consumer単位の例外粒度、Ruleの合成順位・非適用時の既存契約、閲覧と参照専用の違い、実ProviderでRLS/Filter/Host境界をどう保証するか、同一Scopeでの歴史照会の可否。これらの意味はOrganization/Business Ownerが決定し、実Enforcement資格はHost/Provider Ownerが判断する。未定部分を仮の安全性保証にしない。
