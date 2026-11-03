@@ -405,6 +405,13 @@ func validateContract(contract Contract) error {
 					return fmt.Errorf("record field %q primitive %q does not match contract input %q primitive %q",
 						field.Name, field.Primitive, field.Attribute, input.Primitive)
 				}
+				// The record template renders many fields as strings. Accepting a
+				// many field with another primitive would pass validation and then
+				// fail at runtime on the first element (#2585 PFC-06).
+				if field.Many && field.Primitive != "std.text" && field.Primitive != "std.identifier" {
+					return fmt.Errorf("record field %q: many is not supported for primitive %q in this Target profile",
+						field.Name, field.Primitive)
+				}
 			}
 		default:
 			return fmt.Errorf("projection kind must be identity, normalize, or record")
