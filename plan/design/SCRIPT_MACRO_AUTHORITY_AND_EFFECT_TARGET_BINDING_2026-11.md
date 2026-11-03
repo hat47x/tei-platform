@@ -786,6 +786,27 @@ M0は`validate/operations/artifacts`のWorld版・Rule/Gap・Manifestを照合�
 
 **成熟した停止線**：最小製品安全性は`選択Subject/Context→実Target/Scope/Grant→条件付きOwner Commit/Receipt`の同一Attemptで検証する。広域/過去全件のData Quality、Replicaの遅延付き監査、EKIの長時間Taskは独立Runへ移せるが、現在RequestのTarget・Grant・Period・Tx・Commit不明処理を「夜間監査で検査するから」と省いてはならない。新中央Registry/Host/Workflow/Validation Engineは不要。既存T-1〜61とP0/Gateを維持する。
 
+### 16.5 Effect Commitの結果資格をCommandの外へ失わない：成功・再送・不確定を別々に追う（2026-11-03）
+
+既存`effectcommit.Runner`は`StatusCommitted`、`StatusReplayed`、`StatusDenied`、`StatusConflict`、`CommitUncertainError`、`Lookup StatusNotRecorded`を区別する。その直上の**二つの実装済みCaller経路を混同しない**。
+
+- `internal/security/effectcommit/submit/submit.go`：注入`GrantSource`と`Intent`からRunnerを呼び、`submit.Outcome{Disposition,Status,OperationID}`として`Committed/Replayed/NotCommitted/Uncertain/Failed/NotRecorded`を区別。**正式な製品契約には未採用のA2 Reference**であり、Receiptの全てをConsumerへ返す完成品ではない。特に`Uncertain`には既存ReceiptのReplay処理の最後のCommit失敗も含み得る。`Lookup=NotRecorded`を「副作用は起こっていない」の証明にしない。
+- `internal/security/effectcommit/commandadapter/executor.go`：Runnerの`committed/replayed`をどちらも`command.Result{}`／`nil error`に写す。`denied/conflict`はSentinel errorへ、CommitUncertainはGeneric`COMMAND_EXECUTION_FAILED`にwrap。ただしGoの`errors.As`では元の`CommitUncertainError`を辿れる。**Commandの通常Resultだけでは初回Effect/再送/Receiptを区別できない**。
+
+この差は[#2780](https://github.com/hat47x/tei-platform/pull/2780)に新設した**MC-D01（初回CommittedとReplayedのCommand Result同一）／MC-D02（CommitUncertainがGeneric Command error下で型付き保持）**でGoの既存接合を通してCharacterizationする。前回のMC-B01／C01と同様、**TEST PASSは製品のResult/Recoveryの安全性が合格した意味ではない**。試験がまだ当該HEADで完了していなければ`NOT VERIFIED`で保持する。
+
+**実PostgreSQLの既知正例を誤って未実施へ戻さない**：[Run #41620889113](https://github.com/hat47x/tei-platform/actions/runs/41620889113) は隔離PostgreSQL 16で`tools/reference-first-web-target`の実`RunnerOrderSubmit`試験を実行し、Web/CLI両Callerのhappy/replayed、認可Epoch変更・取消、ACK喪失からのLookup、Receipt/独立ObservationなどがPASSした記録を持つ。同じ候補PRのWorkflowであっても、**この実DB試験は`effectcommit/submit`/Reference Caller経路**の実証であり、`commandadapter.Executor`に同じ永続化Providerを接続した製品Macroの合格ではない。MC-D01/02のFakeと実PGの成功を同一Attemptの閉包として足し算しない。
+
+| 既存受入を再利用する場面 | Runner/実DB側で必要な事実 | Command/Consumerへ渡す資格と停止線 |
+| --- | --- | --- |
+| **初回確定**（T-1/T-41） | 適格な現在Grant＋Owner Target＋同一TxのWrite/Receiptと確定応答 | `committed`はHistory Resultだが、Userへ開示できること・SHO/AIの実Reader受領は別 |
+| **冪等再送**（T-41） | 同OperationID・同RequestHashのReceipt一致、追加Writeなし | `replayed`は初回実行ではない。現在Data/Disclosureが変化しても旧Effectを再生しない |
+| **拒否・衝突**（T-1/T-41） | 業務条件/版/権限からNon-commitの理由が分かる | Outcomeが宣言済みか共通非実行Dispositionか、技術ErrorかをConsumer契約で区別。未宣言Outcomeを捏造しない |
+| **Commit応答不明**（T-41/T-52） | 同OperationID/Requestで独立`Lookup`、Receipt/実Effect/失効条件を照合 | Generic Command errorやTransport timeoutから`failed/rollback済み`と決めない。`not-recorded`だけで新OperationID再Submitしない |
+| **独立観測失敗**（T-41/T-52） | 実Owner CommitのReceiptはあるがSQL Observer/結果配送が失敗 | Effect履歴は保持し、Consumer側の`observed/received`を`unknown`に留める。業務副作用を再実行しない |
+
+**最短受入**：外部向けに一つの新しいResult schemaを先に確定せず、既存`Runner Result/Receipt/Lookup`と`command.Result/ExecutionError`の差分をConsumerごとの適用契約として列挙する。`submit.Outcome`を無条件に`Command.Result`へコピーせず、Ownerが`業務Outcome／非実行Disposition／技術障害／不確定Receipt`の帰属を決める。History Receipt・最新のRead Projection・現在Disclosureを分け、RuntimeのHot Pathへ全Source/全Rule検証を繰返し入れず、現在必要なTarget/Grant/Period/Tx検証だけは残す（#1174/#1129/#1131/#2502/#2667）。
+
 ## 17. 判断を残す点
 
 - **業務Owner**：各Actionで「元の対象」「関係する対象」「全件の完了」をどのように定義するか。旧X-TEA `sales.order.submit`等の未受理マッピングは推測で補わない。
