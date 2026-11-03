@@ -2,7 +2,6 @@ package execution
 
 import (
 	"context"
-	"fmt"
 
 	"tei/internal/core"
 	"tei/internal/runlog"
@@ -37,11 +36,12 @@ func RunPlan(ctx context.Context, plan semantic.RunPlan, keyValues []string, jou
 		return runlog.Decision{}, nil, err
 	}
 	decision := runlog.Decide(plan.Resume, last, found)
-	switch decision.Action {
-	case runlog.Refuse:
+	if decision.Action == runlog.Refuse {
 		return decision, nil, nil
-	case runlog.Resume:
-		return decision, nil, fmt.Errorf("run plan %s resumes from a checkpoint, but the progress of the steps is not recorded yet", plan.ID)
+	}
+	var done []string
+	if decision.Action == runlog.Resume {
+		done = append([]string(nil), last.Steps...)
 	}
 
 	record := runlog.Record{
@@ -51,6 +51,7 @@ func RunPlan(ctx context.Context, plan semantic.RunPlan, keyValues []string, jou
 		Attempt:    decision.Attempt,
 		FenceEpoch: decision.FenceEpoch,
 		Status:     runlog.Running,
+		Steps:      append([]string(nil), done...),
 	}
 	if err := journal.Append(record); err != nil {
 		return decision, nil, err
@@ -58,6 +59,10 @@ func RunPlan(ctx context.Context, plan semantic.RunPlan, keyValues []string, jou
 
 	var results []StepResult
 	for _, operation := range plan.Operations {
+		if containsStep(done, string(operation)) {
+			results = append(results, StepResult{Operation: string(operation), Status: "resolved", Detail: "already finished in an earlier attempt"})
+			continue
+		}
 		result := step(ctx, operation)
 		results = append(results, result)
 		if result.Status != "resolved" {
@@ -67,10 +72,25 @@ func RunPlan(ctx context.Context, plan semantic.RunPlan, keyValues []string, jou
 			}
 			return decision, results, nil
 		}
+		record.Steps = append(record.Steps, string(operation))
+		record.Status = runlog.Running
+		if err := journal.Append(record); err != nil {
+			return decision, results, err
+		}
 	}
 	record.Status = runlog.Completed
 	if err := journal.Append(record); err != nil {
 		return decision, results, err
 	}
 	return decision, results, nil
+}
+
+// containsStep reports whether an operation already finished in this run.
+func containsStep(steps []string, operation string) bool {
+	for _, step := range steps {
+		if step == operation {
+			return true
+		}
+	}
+	return false
 }
