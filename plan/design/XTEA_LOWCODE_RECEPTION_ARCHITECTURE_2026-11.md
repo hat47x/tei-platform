@@ -505,7 +505,7 @@ X-TEAの戻り値とTEIの分類の対応（案）は、次のとおりです。
 **未解決.**
 
 - 削除の効果の意味。`DataEffect`は`delete`を宣言できるようになったが、参照の制限・連鎖・保留の扱いをどう表すかは未決で、Business Effect Lifecycleと合わせて決める。
-- 削除時の参照の扱い（制限・連鎖・保留）を、Relationの意味として宣言するか、規則Pluginに置くか。PoCでは`on-delete restrict|cascade|preserve`として宣言だけを実装した。X-TEAの削除前検査は外向きの参照だけを確認していた（知識目録D-11）。
+- 削除時の参照の扱い（制限・連鎖・保留）を、Relationの意味として宣言するか、規則Pluginに置くか。PoCでは`on-delete restrict|cascade|preserve`として宣言し、参照Storeがrestrict（拒否）・cascade（内向きレコードの削除）・preserve（残す）を実行する。行の対応付けはData単位の粗い参照実装で、実Providerの参照制約ではない。X-TEAの削除前検査は外向きの参照だけを確認していた（知識目録D-11）。
 - 見出しと明細を一つの操作で更新するときの、効果のまとまり（同一取引とするか、補償で表すか）。
 - 画面を閉じる・取消す操作と、Commandの取消・補償の対応。
 - 複数画面・外部効果をまたぐ取引の表現。
@@ -947,6 +947,7 @@ PoC #2521が実装した範囲と、まだ実装していない範囲を分け�
 | 削除効果の参照ポリシー検査 | 実装済み（内向きRelationに`on-delete`がない場合の警告） |
 | Commandの参照実装（契約確認用） | 実装済み（業務副作用なし、Commit/Rollbackの記録のみ） |
 | 参照データ記憶域（MemoryStore） | 実装済み（create/update/delete、スナップショットによるRollback） |
+| 参照Storeの削除ポリシー実行 | 実装済み（restrict・cascade・preserve。行の対応付けは粗い参照実装） |
 | Commandの参照実行（CLI） | 実装済み（`view -command -execute`、業務副作用なし） |
 | Command計画の期間表示（D6.1） | 実装済み（効果Dataを統制する期間・状態・閉期間の拒否） |
 | 期間の閉塞によるCommand拒否 | 実装済み（`PeriodState`契約と参照実装） |
@@ -966,6 +967,7 @@ PoC #2521が実装した範囲と、まだ実装していない範囲を分け�
 | `reference/workspace`への宣言追加 | 未実施（受理経路が必要） |
 
 実装は、`internal/application/model.go`、`internal/syntax/application_pattern.go`、`internal/validation/application_pattern.go`、`internal/crossview/pattern_requirements.go`、`internal/applicationview`、`internal/semantic/model.go`、`internal/syntax/parser.go`、`internal/validation/validation.go`と、それぞれの試験です。
+
 
 
 
