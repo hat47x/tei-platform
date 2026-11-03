@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'plan/fixtures/action-surface-cli/**'
+      - 'plan/design/SEMANTIC_CONTEXT_ACTION_AFFORDANCE_2026-11.md'
       - '.github/workflows/action-surface-real-cli.yml'
       - 'reference/standard-crud/**'
       - 'cmd/tei/**'
