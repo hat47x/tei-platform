@@ -234,13 +234,13 @@ P=まず意味忠実な移植、A=既存契約への適合Adapter、E=追加要�
 
 JD-01〜09の相関・Rollback・重複通知・Effect Unknown等の独立Expectedは新資料へ集約し、本資料では第二のFixture/Engine/Runtimeを作らない。EKIの設計主権とTEIのMeaning Ownerを維持する。
 
-### 7.3 Job管理の所有者はEKI（配置案への追補）
+### 7.3 ステートに基づくJob/Flow管理はTEIが基本、実行継続だけEKIへ部分委譲（Owner方針、2026-11-03）
 
-[TEI→EKIジョブ委譲と設定レス実行の境界](TEI_EKI_JOB_DELEGATION_BOUNDARY_2026-11.md)の§8に従い、**Data Scriptの更新イベント／仮想状態はJob管理機構そのものではない**。TEI生成物は必ずしも常駐しないため、`Flow trigger`を記述しただけでCron/timer/queueが稼働するとも、ジョブが自動で再開するとも主張しない。
+[TEI→EKIの限定委譲・状態機械の役割比較](TEI_EKI_JOB_DELEGATION_BOUNDARY_2026-11.md)§8に従い、**前版の「ジョブ管理の所有者はEKI」という一般化を撤回**する。Data Model/ScriptのVirtual State・Validation・Derivation、状態変化から起動するFlowの**意味・Step依存・次工程の条件・再実行の業務妥当性**はTEI側の責務。TEI生成Applicationが既存Hostとして常駐していれば、この契約の実際のJob/Flow進行もHost側で管理できる。
 
-必要なJob管理はEKIを第一候補とし、TEIからは承認済みのData Model/Rule/Flow＋Task/Trigger/Executorへ変換するBindingを渡す。EKIがJob登録・予定・実行・再試行・Run/Attempt・資源配賦・結果記録を担う（**EKIの現Productで全て実装済みという意味ではない**）。Data Providerはcommit/outbox等で変更事実を観測可能にする。EKIはData Scriptそのものの意味正本を持たず、Subscription/Cursor/Delivery/Runを運用する。
+一方、**Data Scriptそのものは常駐サービスではない**。Go CLIや他Hostに組み込まれるライブラリだけではClock/Queue/CDC/Retry/JobRunを維持できない。この場合、明示的なOS Scheduler、既存Host、EKI、他のJob Provider等の実行管理主体を選ぶ。EKIはJobのTask/Attempt/Lease、資源配置・中断/回復・結果検証を担う**任意の専門実行先**であり、TEIのJob意味を置換しない。永続Timerや限定Step進行まで委譲する場合は、採用済みFlow Revision・Executor／Source・Grantの照合と、対応するEKI外部Contract/Conformanceを要求する。**現EKIでStep DAG・Trigger Registryが実装済みという意味ではない**。
 
-EKIを使わない単発・同期処理は従来どおりTEI単一バイナリ／既存Hostで実行可能。EKI以外の常駐Job schedulerを使う場合は明示Target／別の管理主体を選択し、TEIに隠れたJob Registryや常駐Hostを作らない。systemd/cronはEKIサービス自体のbootstrapまたは明示的な外部Schedulerであり、同一Jobの二重Schedulerにしない。
+Data Providerがcommit/outboxや必要なRead completenessを提供できない場合、strictなVirtual-edgeの永続Event発生を推論しない。systemd/cronは明示した実行主体またはEKIサービスのbootstrapとしてのみ扱う。同一Trigger/Stepを二つのCoordinatorが独立して実行しない。TEIの純粋計算・単発実行がEKI導入を要求することもない。
 
 ## 8. 不明／Ownerが決める条件と現在のEvidence
 
