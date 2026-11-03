@@ -201,6 +201,30 @@ func TestProductSliceLoadsValidatesAndViews(t *testing.T) {
 		t.Fatalf("command view=%+v", commandReport.Result)
 	}
 
+	var referenceRun bytes.Buffer
+	code, err = runViewCommand([]string{
+		"-workspace", root,
+		"-application", "order_entry",
+		"-pattern", "order_entry.order_record",
+		"-command", "sales.submit_order",
+		"-input", "order=ORD-1",
+		"-execute",
+		"-format", "json",
+	}, &referenceRun)
+	if err != nil || code != 0 {
+		t.Fatalf("reference run exit=%d err=%v body=%s", code, err, referenceRun.String())
+	}
+	var referenceReport struct {
+		OK     bool                `json:"ok"`
+		Result referenceCommandRun `json:"result"`
+	}
+	if err := json.Unmarshal(referenceRun.Bytes(), &referenceReport); err != nil {
+		t.Fatal(err)
+	}
+	if !referenceReport.OK || referenceReport.Result.Mode != "reference" || !referenceReport.Result.Committed || referenceReport.Result.Outcome == nil {
+		t.Fatalf("reference run=%+v", referenceReport.Result)
+	}
+
 	var applicationView bytes.Buffer
 	code, err = runViewCommand([]string{
 		"-workspace", root,
