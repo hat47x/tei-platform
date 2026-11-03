@@ -505,7 +505,7 @@ X-TEAの戻り値とTEIの分類の対応（案）は、次のとおりです。
 **未解決.**
 
 - 削除の効果の意味。`DataEffect`は`delete`を宣言できるようになったが、参照の制限・連鎖・保留の扱いをどう表すかは未決で、Business Effect Lifecycleと合わせて決める。
-- 削除時の参照の扱い（制限・連鎖・保留）を、Relationの意味として宣言するか、規則Pluginに置くか。PoCでは`on-delete restrict|cascade|preserve`として宣言し、参照Storeがrestrict（拒否）・cascade（内向きレコードの削除）・preserve（残す）を実行する。行の対応付けはData単位の粗い参照実装で、実Providerの参照制約ではない。X-TEAの削除前検査は外向きの参照だけを確認していた（知識目録D-11）。
+- 削除時の参照の扱い（制限・連鎖・保留）を、Relationの意味として宣言するか、規則Pluginに置くか。PoCでは`on-delete restrict|cascade|preserve`として宣言し、参照Storeがrestrict（拒否）・cascade（内向きレコードの削除）・preserve（残す）を実行する。`Relation.Keys`がある場合は属性値の一致する行だけを対象にし、ない場合はData単位の粗い判定になる。実Providerの参照制約ではない。X-TEAの削除前検査は外向きの参照だけを確認していた（知識目録D-11）。
 - 見出しと明細を一つの操作で更新するときの、効果のまとまり（同一取引とするか、補償で表すか）。
 - 画面を閉じる・取消す操作と、Commandの取消・補償の対応。
 - 複数画面・外部効果をまたぐ取引の表現。
@@ -948,7 +948,7 @@ PoC #2521が実装した範囲と、まだ実装していない範囲を分け�
 | Commandの参照実装（契約確認用） | 実装済み（業務副作用なし、Commit/Rollbackの記録のみ） |
 | Commandからeffectcommitへのアダプタ | 実装済み（`effectcommit.Runner.Execute`へ委譲、認可・receiptを省略しない） |
 | 参照データ記憶域（MemoryStore） | 実装済み（create/update/delete、スナップショットによるRollback） |
-| 参照Storeの削除ポリシー実行 | 実装済み（restrict・cascade・preserve。行の対応付けは粗い参照実装） |
+| 参照Storeの削除ポリシー実行 | 実装済み（restrict・cascade・preserve。`Relation.Keys`がある場合は行単位、ない場合はData単位） |
 | 参照Storeの必須属性検査 | 実装済み（create時、record commandのbinding経由。command Patternは判定不能としてスキップ） |
 | 参照Storeの値域検査 | 実装済み（create/update時、Typeの`values`と別名解決） |
 | 参照Storeの重複create拒否 | 実装済み（同じキーのcreateを拒否） |
@@ -976,6 +976,7 @@ PoC #2521が実装した範囲と、まだ実装していない範囲を分け�
 | `reference/workspace`への宣言追加 | 未実施（受理経路が必要） |
 
 実装は、`internal/application/model.go`、`internal/syntax/application_pattern.go`、`internal/validation/application_pattern.go`、`internal/crossview/pattern_requirements.go`、`internal/applicationview`、`internal/semantic/model.go`、`internal/syntax/parser.go`、`internal/validation/validation.go`と、それぞれの試験です。
+
 
 
 
