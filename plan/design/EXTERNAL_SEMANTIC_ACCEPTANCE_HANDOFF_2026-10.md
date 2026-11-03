@@ -418,6 +418,24 @@ FixtureのExpectedをTEI Parser／AIが作ったCandidateから生成しない�
 
 **採否条件**：この3段階を一つの「fresh/approved/ready」にまとめない。Go実行時の費用削減を理由に、現在権限、部分取得、実Provider整合性、Commitの不確実性を省略しない。一方、静的なSource/Grammar検査を毎回の純粋Operator実行へ繰り返し移す設計も採用しない。性能測定はConformance後の別試験で行う。
 
+### 現行mainの既存テスト再利用と、本当に未接続なP0
+
+**追加試験の前に、すでにあるReferenceを再使用する。** 現行main `0e18b916aa15bc7768e9abfb34318b98ee497cb3` の以下のGoコード・テストを静的照合した。mainのGitHub Actions「TEI PR・main 健全性確認」[run 41595750765](https://github.com/hat47x/tei-platform/actions/runs/41595750765) はこのexact HEADでcompleted/success。ただし、このPR #2743のHEADで実行した結果ではなく、個別試験の独立Oracleを自動的に証明するものでもない。
+
+| 現存する入口 | すでにテストが記述する範囲 | このPRで補強する未証明事項 |
+| --- | --- | --- |
+| internal/workspace/imports_test.go | 明示ImportのProvider／利用側Source所有分離、循環／曖昧・推移再公開の拒否 | 宣言Providerの現在Authority、外部配布元の本人性、案件Meaning受理 |
+| internal/workspace/import_digest_pin_test.go | 旧Pin一致、不一致拒否、同byte Source移動や無関係Namespace変更で選択NamespaceのPinを保持 | Digestを独立に固定したOracle、供給元raw byte／Version履歴と実消費byteの同一Attempt束縛 |
+| internal/workspace/import_source_test.go／import_source.go | LocateImportedSourceがProviderを再Loadし、解決時のSemantic DigestとSource anchorを照合。移動時のProvider内Path変更、stale・別Namespace Subject拒否 | **先のConsumer Loadと後の再Loadが原子的な一Snapshotである保証はない**。A→B→Aや実Source Read raceの歴史を、照合成功だけで消去しない |
+| internal/workspace/source_snapshot_test.go | ロード済みのManaged Sourceが変更前のbytesへ束縛される範囲の回帰ケース | 別Workspace Providerの全Sourceを、Consumer/SHO/Runtimeまで一貫して固定したとは主張しない |
+| reference/semantic-composition-preflight/external_acceptance_boundary_test.go | Source-only受理が外部ProviderのSemantic改版を承認しない既存の合成テスト | Ownerによる外部Meaningの案件Decision、現在のHost/Provider権限、後続Effect |
+
+**P0の作業を縮退する判断**：これらのGoテストを新Suiteとして複製せず、まず既存のfocused testを現PRのbaseとexact HEADで検証する。その後、V0-1／V0-2の不足する独立Expected（型／対象Scope、Provider A/Bの選択、旧Pin拒否、利用側Sourceの不変性）を**最小一件**の比較票に追加する。新たなGoテストが必要なのは、この比較票の独立性や消費byte／現在Readerに関する断定を既存テストが表現できないことを確認した場合のみ。RF-03／RF-10／RF-23等の原子的Snapshot・Permission・HTTPは、その能力を持つ実Provider入口が得られるまでNOT RUN／unknownと記載する。
+
+**横断計画との分担**：[Everything is Data Draft #2667](https://github.com/hat47x/tei-platform/pull/2667) の§30（R0〜R3）は外部Import→Studio診断→AI Patch→Consumerの一改訂を所有する。本書はその **R0へ渡す既存ReaderのE0受入と独立Expected、E1以降へ進めない停止線**だけを所有する。Source原文の無変更保存・UTF-8位置・AI修正のApply資格は#2745／#2674の既存担当、Build省略は#2600、意味受理は#267、実Effectは#1174に残す。§30と同名のRunner／Gate／Fixtureは新設しない。
+
+**read-sideとwrite-sideの非連続性**：外部ImportのDigest固定、SourceIndexの一致、複数入力のread snapshot（#1708）が成立しても、読み込み後に業務行・Grant・Provider状態が更新された場合、保存時の不変条件・権限は保証されない。参照用Commandの成功／Committed表示、計算値の一致、単発のSource Reader PASSを「実業務DB確定」に昇格しない。書込みが必要な案件では、既存[#1174](https://github.com/hat47x/tei-platform/issues/1174)の担当が同一Effect確定境界で利用主体、対象Action・Resource、期待版／read-setの適合、Authorityと副作用・Commit／Receipt・独立観測を確認する。Provider固有の保証が足りないならunknown／拒否、ACK消失時は無断再送しない。**read-only P0を進めるためにwrite-sideの完了を前提条件にはしない。**
+
 ### Evidenceの最小受渡しと段階停止（形式は暫定）
 
 | 証拠段階 | 進める条件 | 到達しても主張しないこと |
@@ -425,7 +443,8 @@ FixtureのExpectedをTEI Parser／AIが作ったCandidateから生成しない�
 | E0 Source／Producer | exact Repo HEAD、実Reader／Loader、投入Source byte、供給側／利用側のscope・Revision、明示pin、取得失敗を別々に記録 | Parser／Build実消費、現在外部HTTP、Ownerの業務意味受理 |
 | E1 実Consumerへの受渡し | 同じAttemptのLoader/Model Source Index／必要なMemberを使い、Inspector／CLIでどの引用・不明が残るか観測。旧版による後着上書きを拒否 | 実SHO保存文書・AI開示・Editor・Targetの統合資格 |
 | E2 消費Byteと資格 | Readerから消費までの固定Snapshot／Version fenceの有無を確認し、実Source／ReferenceをConsumerが読んだ証拠、完全な依存Closure・必要ArtifactSetと現在Policyを別判定 | Owner Decision、Runtime Permission、Commit Receiptを自動で付与すること |
-| E3 意味／Effect | 既存#267／#1016の案件Decisionに、選択外部Resourceの現在意味Digestが入ることを適切なOwnerが受理。実Effectは#1174の別Observer／Receiptで確認 | 過去CI、byte一致、Source acceptのみから業務受理や実行成功を推論すること |
+| E3a Owner Meaning（実行とは独立） | 既存#267／#1016の案件Decisionが、選択した外部Resource・意味Digest・適用Scopeと結びつくか、適切なOwnerが判断 | Source受理・Digest一致だけで業務意味を自動受理すること |
+| E3b Runtime Effect（独立Owner） | 実業務Actionでread-set／対象版／現在GrantをEffect確定境界で再評価し、#1174のProvider Commit／Receiptと独立Effect観測を別列で確認。案件用途によりE3aを前提にする条件はOwnerが決める | Source／read-only受理、参照CommandのCommitted表示、ACK、旧Receiptから実DB確定・再送安全性を推論すること |
 
 **この計画の具体的Done条件**は、少なくともV0-1／2について、実SourceとLoader出力を固定したfocused Go試験、Provider A→B時の正しいpin拒否、利用側Source受理との独立性、独立Expectedの一致をexact HEADとRunへ結び付けること。Source閉包・供給側Revisionが取得できない場合は、不足を出力し、対象Claimを未確認に止める。E0の成功だけでE1〜E3を完了にしない。
 
