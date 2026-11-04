@@ -6,7 +6,7 @@ import { pathToFileURL } from 'node:url';
 
 const tsModule = process.env.TEI_HASHID_TS_MODULE;
 if (!tsModule) throw Error('TEI_HASHID_TS_MODULE must point to compiled hashid.mjs');
-const { derive, frame, validate } = await import(pathToFileURL(tsModule).href);
+const { derive, frame, validate, serializeSchemeJSON, parseSchemeJSON } = await import(pathToFileURL(tsModule).href);
 const fixture = JSON.parse(readFileSync(new URL('./vectors.json', import.meta.url), 'utf8'));
 const base = {
   schemeId: fixture.scheme.schemeId,
@@ -76,4 +76,45 @@ test('typed TS rejects unsupported canonicalization, duplicate and Unicode alpha
   assert.throws(() => validate({...scheme, alphabet:'0β1'}));
   assert.throws(() => validate({...scheme, canonicalization:'json/v1'}));
   assert.throws(() => validate({...scheme, mode:'encodedDigest', outputBits:160, encoding:'base16lower', length:24}));
+});
+
+const wireFixture = JSON.parse(readFileSync(new URL('./scheme_wire_vectors.json', import.meta.url), 'utf8'));
+
+test('typed TS scheme JSON has exactly the canonical Go wire bytes', () => {
+  assert.equal(wireFixture.schemaVersion, 'tei.hashid.wire-v1.fixture');
+  for (const [name, canonical] of Object.entries(wireFixture.schemes)) {
+    const scheme = parseSchemeJSON(canonical);
+    const remarshal = serializeSchemeJSON(scheme);
+    assert.equal(remarshal, canonical, name);
+    assert.deepEqual(parseSchemeJSON(remarshal), scheme);
+  }
+});
+
+test('typed TS rejects noncanonical/ambiguous JSON scheme declarations', () => {
+  const exact = wireFixture.schemes.exact32;
+  const special = wireFixture.schemes.specialAscii;
+  for (const invalid of [
+    ' ' + exact,
+    exact + '\n',
+    exact + '{}',
+    exact.replace('"format":', '"newKey":1,"format":'),
+    exact.replace('"schemeId":', '"schemeId":"bad","schemeId":'),
+    exact.replace('"outputBits":0,', ''),
+    exact.replace('"alphabet":"0123456789abcdefghjkmnpqrstvwxyz"', '"alphabet":null'),
+    exact.replace('"length":32', '"length":32.0'),
+    exact.replace('tei.hashid.scheme/v1', 'tei.hashid.scheme/v2'),
+    special.replace('<', String.fromCharCode(92) + 'u003c'),
+    '[]',
+  ]) {
+    assert.throws(() => parseSchemeJSON(invalid), invalid);
+  }
+});
+
+test('typed TS serialization changes for presentation but not for binary digest frame', () => {
+  const a = {...base, algorithm:'shake256', mode:'encodedDigest',
+    outputBits:160, encoding:'base16lower', alphabet:'', length:0};
+  const b = {...a, encoding:'base32lower'};
+  assert.notEqual(serializeSchemeJSON(a), serializeSchemeJSON(b));
+  assert.deepEqual(frame(a, source), frame(b, source));
+  assert.deepEqual(derive(a, source, adapter).digest, derive(b, source, adapter).digest);
 });
