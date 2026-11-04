@@ -61,6 +61,9 @@ func decimalScheme() hashid.Scheme {
 
 func targetSnapshot(t *testing.T, path string, existing []bindingWire) string {
 	t.Helper()
+	if existing == nil {
+		existing = []bindingWire{} // canonical empty snapshot must encode [] rather than null
+	}
 	doc := targetProbeWire{
 		Format: targetWireV1,
 		Profile: targetProfileWire{
