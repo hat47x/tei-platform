@@ -13,6 +13,12 @@
 - frameは各項目のUTF-8 byte長をuint64 big-endianで付与する。ドメイン名 `tei.hashid.frame.v1` とcSHAKE customization `tei.hashid.cshake256.v1` を使用。
 - `CollisionProbability` / `CheckCollisionBudget` は独立・一様出力を仮定した誕生日近似を返す。実衝突の検出・DB永続化の一意性保証ではない。
 
+## 可逆表現の復号（追加Reference）
+
+`DecodeDigest` は `encodedDigest` だけを対象に、Base16、RFC4648 Base32、Base64url、Base10/36/62など指定Alphabetの固定幅radix表現を、指定ビット長のDigest byte列へ戻す。大文字、padding、非正規の先頭ゼロ/桁数、範囲超過、文字集合外の記号を拒否し、再エンコードした結果が元文字列に**完全一致**することを要求する。`exactCharacters` は不可逆な生成演算であり復号を拒否する。
+
+`decode_test.go` では128bitの10進39桁・36進25桁・62進22桁とゼロ値/最大値、過大数値と短い表記、SHA-256の各表記往復を検査する。なお **Digestに復号できることは入力Sourceの真正性や署名/権限を証明しない**。
+
 ## Target制約と割当境界（追加Reference）
 
 `TargetProfile` は物理ID用の名前空間、**検証規則の版**、許容ASCII文字集合、最小/最大/厳密長、ASCII大小文字区別、予約名を**宣言**する。 `CheckTargetBinding` はID生成結果と、その対象のqualified subjectおよび渡された既存割当Snapshot `[]TargetBinding` を比較し、同一Target名前空間における衝突、大小文字折畳みによる別IDの同一視、同一Subjectの暗黙再割当、不正Snapshotを拒否する。正規化後の物理キーを返すだけで登録しない。
