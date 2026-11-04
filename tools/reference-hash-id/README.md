@@ -30,9 +30,14 @@
 go test ./tools/reference-hash-id -count=1
 gofmt -l tools/reference-hash-id/*.go
 go vet ./tools/reference-hash-id
+node --test tools/reference-hash-id/hashid.crosslang.test.mjs
 ```
 
-`hashid_test.go` は、外部Python hashlibで計算したSHA-256/SHAKE256固定フレームの期待値、同一Digestの表現差、exact-mode Golden、スコープ分離、重複・Unicode等の入力拒否、桁数/人口に対する衝突予算拒否を確認する。cSHAKEの独立既知ベクトル照合、Go/TypeScriptのクロス言語Golden、非2冪アルファベットの統計的偏り検定、実DB/OSのcollation/target制約、Unicode profile、既存ID移行は**未実装・未実証**。
+`hashid_test.go` は、外部Python hashlibで計算したSHA-256/SHAKE256固定フレームの期待値、同一Digestの表現差、exact-mode Golden、スコープ分離、重複・Unicode等の入力拒否、桁数/人口に対する衝突予算拒否を確認する。
+
+`vectors.json` は **GoとNode.jsの両方が実際に読む**共有Golden fixture。`crosslang_fixture_test.go` がGoの`Derive`で計算し、`hashid.crosslang.test.mjs` は独立のNode `node:crypto`（SHA-256/SHAKE256）とバイナリ長フレーム/棄却サンプリングで同じ期待値を検査する。`crosslang_exec_test.go` によりGoの全体試験からNode試験も実行する。GitHub ActionsではNodeが見つからなければ失敗、通常のローカルGo試験では明示的にSkipする。
+
+2026-11-04の初回Node.js v22.16.0での`node --test`は**6件PASS**（実行環境を限定した独立試験）。Go/Node双方の**同一exact headでのCI**は対応するActions結果を確認するまで未実証として扱う。これはNode.jsの実証であり、TypeScriptコンパイラ/型付けの実証ではない。cSHAKEの独立既知ベクトル照合、TypeScript型検査、非2冪アルファベットの統計的偏り検定、実DB/OSのcollation/target制約、Unicode profile、既存ID移行は**未実装・未実証**。
 
 この実装の結果を正本IDと認定してはならない。既存値と同名になっても、`Scheme`・用途・scope・正本からの対応を検査する。必要な強度・Target名制約・実Collision対策はConsumer側の明示Policyで行う。
 
