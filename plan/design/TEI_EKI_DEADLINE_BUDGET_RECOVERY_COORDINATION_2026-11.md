@@ -210,9 +210,11 @@ TEI Studioでは`source observation`／`simulated plan`／`EKI accepted/admitted
 
 ### 10.5 既存Measurementの実装位置と、改善効果の検証を混同しない
 
-EKI ADR-0039（最小安全観測）と[#548](https://github.com/hat47x/eki-fabric/issues/548)（open）は`admission.rejected`／`lease.reclaimed`／`claim.refused`／`limit.refused`の4種類の実安全Eventを実発生点で数えることを扱う。**これら4カウンターだけでEnd-to-endの完了時間分布・故障相関・Budget節約・Deadline達成確率は学習できない。** さらに、End-to-end時刻・Provider Queue・Transfer・Result検証・Business Receiptの観測要件を**別のOutcome Sampling Profile候補**として整理する。ただし、新しいEKI計測DB/Registryや個体追跡の全量Logを最初から作らない。EKIの既存Task/Attempt/Provider相関・Observation Planeと[#19](https://github.com/hat47x/eki-fabric/issues/19)のshadow-schemaを再利用する。
+EKI ADR-0039（最小安全観測）と[#548](https://github.com/hat47x/eki-fabric/issues/548)（closed、発生点で計測する配線と検証が報告済み）は`admission.rejected`／`lease.reclaimed`／`claim.refused`／`limit.refused`の4種類の実安全Eventを実発生点で数えることを扱う。**これら4カウンターだけでEnd-to-endの完了時間分布・故障相関・Budget節約・Deadline達成確率は学習できない。** さらに、End-to-end時刻・Provider Queue・Transfer・Result検証・Business Receiptの観測要件を**別のOutcome Sampling Profile候補**として整理する。ただし、新しいEKI計測DB/Registryや個体追跡の全量Logを最初から作らない。EKIの既存Task/Attempt/Provider相関・Observation Planeと[#19](https://github.com/hat47x/eki-fabric/issues/19)のshadow-schemaを再利用する。
 
 **評価順序**：①固定Deterministic/最少2PoolとDirectの比較、②共通障害／複数Job／Recovery WindowのScenario、③実記録を使ったShadow（別のTrialではCurrent Authorityへ影響無し）、④Holdout校正とProvider実測、⑤Ownerが支出/期限条件の自動化閾値を受理する場合のみ実Pilot。単純な`GPU utilization increased`、LLMによる`safe`、過去のSimulation PASSは実用価値や安全性の証明ではない。
+
+**現在の受入判定**：#548の実装・試験の完了は、4つの安全Eventの発生件数に限る。Deadline内の業務品質・Queue/転送・実費用・回復時間・故障相関・Provider Reservationの観測が同時に揃ったわけではない。実績に基づくPlannerの予測精度や利用額の節減を、このIssueのclosed状態から導出しない。
 
 ### 10.6 追加の独立Expected（LB-18〜26、全件NOT RUN）
 
