@@ -2205,3 +2205,30 @@ EKI側#112/#266/#67/#115へ契約不足を返し、TEI #1130がJob意味と判�
 4. **比較票を一つに保つ**：W0〜W6で`qualified / not-qualified / unknown / not-applicable`と各段のactual evidence URL/head/toolchain/input/independent Expected/Ownerを記録。*not-applicable*は全件検証済みでない意味ではなく「そのUser Jobにその経路を要求しない」ことを明記。見知らぬ依存をN/Aに分類しない。価値判断/Owner正式採用はTAI #422のVA-01〜04へ委譲。
 
 **現時点の証拠**：#2822/#2823/#2824は現行実Go CLIで再現したとIssueに記録されている（main `97aba8146`、WSL Go1.27.0）。#2813固定HEADのGo CI PASSは候補DSL Test-only。#2811/#2667の計画追加はDocs-only。**本節の同一CLI／同一Scenario／独立Oracle／Build／Web／Host／EKI／Consumerの新たな実試行はNOT RUN**。独立の新しい合格主張、正式CLI/DSL Schema採用、Owner意味受理、実Host権限を含まない。
+
+
+### 43.11 消費しなかった入力の証拠：Negative Dependencyと必要Sourceの未取得（追加受入補強）
+
+#2822/#2823が示す根本問題は、単なる `validate` 終了コードでなく、**宣言されたSourceとParserが実消費したSourceの差分を、対象外/不存在/未探索/権限拒否/不明に理由付きで表現できるか**である。§43.6のLoadedだけでは、必要なファイルがどこかに追加された時に以前の「対象完了」が失効するかを判定しにくい。そこで#2600のnegative dependency／#2743のSource closureを、既存ADM-01〜03の**補助Expected**として接続する。新しいファイル追跡Engine、監視Service、Source Registryは設けない。
+
+**必要なRead closure（設計上の検収列）**：
+- **必要とされた集合**：ユーザーの要求・Accepted Model/Scenario/Targetが読込を必須とするRoot、Source種類、選択規則、関連version。Manifestに書かれていないものまで無根拠に必須としない。
+- **探索の根拠**：Loaderが実際に適用したRoot/Selector/拡張子・ファイル名規則と探索境界、候補数、非存在/非対象/permission-denied/partial/unavailable。 `workspace-files` の管理対象一覧とは別。
+- **実消費の根拠**：Parserが使用した実byteと型付き宣言、Source occurrence/必要なImported Source、未読込理由。外部Providerのraw/内部Pathは現在の開示許可が無いConsumerに出さない（#2812）。
+- **否定依存**：あるRoot/Selectorで「現時点で必要なファイルが他に無かった」と主張するには、正確な探索版・対象・完全性・Scopeが必要。未探索のRootや想定外の新ファイルを空集合・不存在へ昇格しない。後からMemberが増える・Root名が変わる・Source移動する場合は再資格化を判定（#2600 IB-11/13）。
+- **資格の上限**：必要Sourceの欠落や対象外の説明が未確定なら、限定Parser/DSL Testは局所PASS可能だが、全WorkspaceのCoverage、全Functionの検査、差分影響なし、Build skip、公開済みArtifactの再利用はunqualified。
+
+**既存Fixtureを使う最小変形（新ID・新Oracle正本を作らない）**
+
+| 対照 | §43.7で再利用するCase | 先に固定する独立Expected | 誤判定 |
+| --- | --- | --- | --- |
+| 利用者宣言0件と13個の標準Catalog | ADM-01 | `std`の定義を利用者Sourceとして数えず、要求集合が未確定なら`coverage denominator=unknown` | `validate ok=true`で業務モデル全件検査済み |
+| `semantic`→`semantics`、または存在しないRoot | ADM-02 | 必須Rootと実探索/Loadedの差を区分。下流の参照エラーとRootの入場不足は別診断 | 未読込みのためエラーが出ない＝完全 |
+| 管理対象だが規則外の`.TEI`／`Application.tei`、Root内の新ファイル | ADM-03 | 既存読込規則で除外されたか、要求上必須なのに未取得かを区別 | `workspace-files`掲載＝Parser消費済み、除外＝必ず欠陥 |
+| Raw移動・コメント改訂・A→B→A、Semantic結果同じ | ADM-02/03と#2600 IB-11/13 | 内容同値/World FPとSource occurrence/引用・negative dependency・現在資格を別票にする | 同じ最終Fingerprint＝旧引用や全Inputの証拠再利用可 |
+
+**採否の境界**：どのSource名/拡張子を許容し、未知Rootをwarning/errorにするか、CLIにどの個数を表示するかは#2822/#2823/#2824のOwner判断を保持。ここで新CLI JSONフィールド、診断code、ファイル種別を正式採用しない。P0はread-onlyの既存出力とIssueが観測したSource-static/実CLI反例の比較票、次段でfocused Go fixtureとexact-head独立Expected。広域Provider/SHO/Studioや実権限の製品資格は別Evidenceとする。
+
+**横断の統合前提**：#2667のDraft作業ブランチとmainが分岐しているため、旧HEADや別PRの局所PASSを合算しない。新たな検収条件を採用するときは対象main、Owner Issue、既存ADR、CIおよび並行PRで重複した節番号・Issue参照を再確認し、Ownerの受理と統合を別判断にする。
+
+**今回実施**：設計上の補助Expectedだけ。新しいSource探索・negative dependencyの実Go試験、実CLI再現、Build/SHO/Web/Hostの同一Attempt E2E、Owner正式受理は **NOT RUN**。
