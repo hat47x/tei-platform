@@ -185,7 +185,7 @@ Referenceの成功を製品機能の完成に昇格させず、次のように**
 | W1: 暗号/生成器 | NIST cSHAKE・SHAKE既知値、frame/golden、文字集合偏り・長さ/衝突予算 | Go/Node合成試験・標準ベクトル。一様性の包括的統計保証ではない |
 | W2: Target受理前 | 許可文字・case/Unicode/予約語・想定人口/確率・旧キー衝突診断、各Provider宣言の真正性 | ASCII静的ProfileとSQLite NOCASE限定試験。他Target未確認 |
 | W3: 保存のAuthority | 同一Scheme/Subject/Namespace/Source revisionをTarget Ownerが検証し、**実一意制約・transaction**で永続化。競合時fail-closed | SQLite単一接続の限定負例だけ。権限・マルチ接続/分散は未実証 |
-| W4: Consumer境界 | CLI・Studio・生成器の同一Scheme入力・出力・エラー経路、view-ID→qualified ID昇格拒否、epoch/stale判定 | 本Referenceは未接続。既存#1124/#2391のOwner判断へ委譲 |
+| W4: Consumer境界 | CLI・Studio・生成器の同一Scheme入力・出力・エラー経路、view-ID→qualified ID昇格拒否、epoch/stale判定 | `cmd/hashid-probe`のread-only Headless参照Consumerを追加。実CLI/Studio/生成器・Source freshness・Authorityには未接続。合格はexact headのCIで判定 |
 | W5: 更新/移行 | 旧Schemeと新Schemeの並存、旧値への参照維持、衝突時Rollback、移行・dual-read/Owner受理、Artifact/署名の非回帰 | 未実装・未実証。正式採用/移行の決定はしていない |
 
 製品へ初めて提供する最小API候補は以下の**分割された意味境界**のみとする（公開API名・パッケージの確定ではない）。
@@ -196,3 +196,14 @@ Referenceの成功を製品機能の完成に昇格させず、次のように**
 4. `AcceptPhysicalId(qualifiedSubject, scheme, result, targetAuthority)` — **Target Ownerが独立に設計・受理する保存操作候補**。このReferenceには実装しない。原子的な一意制約、既存割当と旧版衝突、認可・Source freshness・監査・Rollbackを別途検証する。
 
 `HashIdScheme`を選択できること自体は、`AcceptPhysicalId`の権限やSource Acceptanceにはならない。最初の実Consumerの採用決定が行われるまでは、`tei.std.hashId.*`を管理名前空間の提案のまま保ち、既存`core/identity`、Artifact/Lock/Plugin/Scenario Fingerprintに広域依存やデフォルト置換を導入しない。
+
+### 8.1 最小Headless Consumerの確認条件（read-only）
+
+`tools/reference-hash-id/cmd/hashid-probe`は製品CLIとは独立した実験用コマンドで、単一の正準`SchemeJSON`とsource raw bytesを読み取って決定的に`Derive`し、ローカルのTarget Snapshotが**明示されている場合だけ**静的`CheckTargetBinding`を実行する。
+
+- 入力Scheme/Source/Targetに上限を設ける。非正準Scheme JSON、Unknown/Duplicate/Null/欠落のあるTarget Snapshot、旧Scheme/旧Profileの衝突、同一物理IDの異Subject、許可外文字、予約名を非0終了・stdout出力なしで拒否する。
+- 成功出力は`status=derived-only`または`snapshot-preflight-only`、`authority=none`、`storageWrite=false`を固定し、呼出元申告のsubject、生成文字列、frameを決めるScheme、入力byte数と独立SHA-256値を提示する。入力Digestは、この実行が読んだbyte列の説明に過ぎない。
+- Source fileの存在/改変防止/正本Revision、Target割当の現在性・完全性、呼出元subjectがTEI正本のqualified refであること、Authority/Owner受理、原子的DB書込やRollbackを**一切保証しない**。
+- 受入候補の成功条件は、実Goコマンドとして同じFixtureを2度実行したときの出力一致、局所Source/Targetファイル不変、同名別Subject・旧Profile/別Scheme・不正Scheme JSON・巨大Inputを拒否する負例、`go test ./...`でのPackage実行の証拠。CLIの試験合格をW4の全Consumer接続済みとみなさない。
+- この段階で`AcceptPhysicalId`は実装しない。次に実Providerを選択するなら既存#2094の派生命名検証と共存し、独立した保存・認可・snapshotのfreshness/epochを実ConsumerのOwnerが検証する。
+
