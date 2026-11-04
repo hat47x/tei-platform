@@ -3,7 +3,7 @@
 - 監査の基準日：2026年9月21日（前回：2026年9月11日）
 - 追加した要求の初期評価：2026年10月3日（RQ-031〜033）、2026年10月7日（RQ-034）
 - 対象：RQ-001〜034
-- 現行の着手判断：[要件の優先順位と適用範囲 #982](https://github.com/hat47x/tei-platform/issues/982)
+- 現行の着手判断：[要件の優先順位と適用範囲 #982](https://github.com/hat47x/tei-platform/issues/982)（2026-11-04にclose。トリアージの結論は[#1119](https://github.com/hat47x/tei-platform/issues/1119)の横断計画へ吸収）
 - 横断的な受入条件：[クリティカルパス #1119](https://github.com/hat47x/tei-platform/issues/1119)
 - 上流の対応表：[要求と受入シナリオ](../UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md)
 - 品質に関する設計：[製品品質アーキテクチャ](../../docs/product-quality-architecture.md)
