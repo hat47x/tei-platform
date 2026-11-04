@@ -174,3 +174,25 @@ Golden vectorはアルゴリズム別の**公開既知テストベクトル**と
 5. **資格**: 実装の合成試験が成功しても、実業務データの同一性、外部Provider、Owner意味受理、現在の実行権限を証明しない。
 
 **現状（2026-11-04）**: `tools/reference-hash-id/` にraw-bytes/v1限定のGo Reference（生成、復号、Target制約・割当Snapshot比較）と、Host非依存の型付きTypeScript Reference（暗号PrimitiveはAdapter責務）、Go/Node共有Golden fixtureを追加した。SHA-256/SHAKE256の独立Node/Python系GoldenとNIST cSHAKE256公開ベクトルの試験を実装済み。Go1.26.10をローカル作業環境へ取得できず、Go全体テストの実績はCIで判定する。TypeScript型検査はコンパイラが利用可能な環境でのみ実行される。PR #2815の正確なHEADに対応するCI結果を見ずに成功とみなさない。全体受入、実Target同時登録、Unicode/OS、cSHAKE256の独立TypeScript Provider、既存Digest移行は未実証。本番適用はなし。
+
+## 8. 製品採用の最小Gate（要求候補・未採用）
+
+Referenceの成功を製品機能の完成に昇格させず、次のように**契約採用・実Consumer接続・外部Targetの権限ある保存**を分ける。
+
+| Gate | 責務と必要な証拠 | 現状 |
+| --- | --- | --- |
+| W0: Scheme Wire | 正規JSON・未知/重複/null拒否、Go/TSの同一Wireと再導出、旧版拒否 | Reference実装・共有fixtureを追加。exact head CIで限定判定 |
+| W1: 暗号/生成器 | NIST cSHAKE・SHAKE既知値、frame/golden、文字集合偏り・長さ/衝突予算 | Go/Node合成試験・標準ベクトル。一様性の包括的統計保証ではない |
+| W2: Target受理前 | 許可文字・case/Unicode/予約語・想定人口/確率・旧キー衝突診断、各Provider宣言の真正性 | ASCII静的ProfileとSQLite NOCASE限定試験。他Target未確認 |
+| W3: 保存のAuthority | 同一Scheme/Subject/Namespace/Source revisionをTarget Ownerが検証し、**実一意制約・transaction**で永続化。競合時fail-closed | SQLite単一接続の限定負例だけ。権限・マルチ接続/分散は未実証 |
+| W4: Consumer境界 | CLI・Studio・生成器の同一Scheme入力・出力・エラー経路、view-ID→qualified ID昇格拒否、epoch/stale判定 | 本Referenceは未接続。既存#1124/#2391のOwner判断へ委譲 |
+| W5: 更新/移行 | 旧Schemeと新Schemeの並存、旧値への参照維持、衝突時Rollback、移行・dual-read/Owner受理、Artifact/署名の非回帰 | 未実装・未実証。正式採用/移行の決定はしていない |
+
+製品へ初めて提供する最小API候補は以下の**分割された意味境界**のみとする（公開API名・パッケージの確定ではない）。
+
+1. `ValidateHashIdScheme(wire)` — Wireを解析し、Schemeと宣言した制約の適合を検査する。該当Providerが実在することやSourceの鮮度は別。
+2. `DeriveHashId(scheme, canonicalBytes, provider)` — raw digestか文字列生成の結果と、そのScheme・入力版の根拠を返す。表示文字列だけは正本参照として扱わない。
+3. `PreflightTargetId(result, targetProfile, bindingsSnapshot)` — 衝突候補/制約違反を診断する**非権威的Projection**。Snapshotが完全だとはみなさない。
+4. `AcceptPhysicalId(qualifiedSubject, scheme, result, targetAuthority)` — **Target Ownerが独立に設計・受理する保存操作候補**。このReferenceには実装しない。原子的な一意制約、既存割当と旧版衝突、認可・Source freshness・監査・Rollbackを別途検証する。
+
+`HashIdScheme`を選択できること自体は、`AcceptPhysicalId`の権限やSource Acceptanceにはならない。最初の実Consumerの採用決定が行われるまでは、`tei.std.hashId.*`を管理名前空間の提案のまま保ち、既存`core/identity`、Artifact/Lock/Plugin/Scenario Fingerprintに広域依存やデフォルト置換を導入しない。
