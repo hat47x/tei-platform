@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -43,6 +44,15 @@ func TestImportedParsedLoadSnapshotRetainsSameLoadBytesWithoutReread(t *testing.
 	}
 	if len(loaded.Imports) != 1 {
 		t.Fatalf("expected one imported Namespace: %+v", loaded.Imports)
+	}
+	// A non-exported byte slice in a public Result can still be printed by
+	// fmt's ordinary structural formatter. The NEW provider witness must not
+	// appear in a generic Result log just because a Semantic Import succeeded.
+	formatted := fmt.Sprintf("%+v", loaded)
+	for _, raw := range [][]byte{manifestBefore, parsedBefore, secondBefore} {
+		if strings.Contains(formatted, fmt.Sprint(raw)) {
+			t.Fatal("formatted Result contains a raw Provider Source or Manifest byte sequence")
+		}
 	}
 	evidence, read, err := importedParsedLoadSnapshot(loaded, "os")
 	if err != nil {
@@ -214,7 +224,7 @@ func TestCaptureImportedParsedLoadRedactsPrivatePaths(t *testing.T) {
 					Path:   "tei.workspace.yaml",
 					SHA256: sourceindex.Fingerprint(rawManifest),
 				},
-				sourceManifestBytes: append([]byte(nil), rawManifest...),
+				sourceManifestBytes: &manifestReadBytes{content: append([]byte(nil), rawManifest...)},
 			}
 			_, err := captureImportedParsedLoad(
 				WorkspaceImport{Alias: "os", Namespace: "os", Path: "../provider"},
