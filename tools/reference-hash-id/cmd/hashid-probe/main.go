@@ -1,0 +1,195 @@
+// hashid-probe is a read-only consumer of the experimental hashid Reference.
+// It deliberately has no allocation, authorization, Source Acceptance, or
+// canonical identity write operation.
+package main
+
+import (
+	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
+	"errors"
+	"flag"
+	"fmt"
+	"io"
+	"os"
+	"strings"
+
+	hashid "tei/tools/reference-hash-id"
+)
+
+const (
+	maxInputBytes  = 4 << 20
+	maxTargetBytes = 512 << 10
+	targetWireV1   = "tei.hashid.target-probe/v1"
+)
+
+type targetProfileWire struct {
+	Namespace       string   `json:"namespace"`
+	ProfileVersion  string   `json:"profileVersion"`
+	AllowedAlphabet string   `json:"allowedAlphabet"`
+	MinLength       int      `json:"minLength"`
+	MaxLength       int      `json:"maxLength"`
+	ExactLength     int      `json:"exactLength"`
+	CaseFoldASCII   bool     `json:"caseFoldASCII"`
+	Reserved        []string `json:"reserved"`
+}
+
+type bindingWire struct {
+	Namespace      string `json:"namespace"`
+	ProfileVersion string `json:"profileVersion"`
+	Subject        string `json:"subject"`
+	SchemeJSON     string `json:"schemeJSON"`
+	Text           string `json:"text"`
+}
+
+type targetProbeWire struct {
+	Format   string            `json:"format"`
+	Profile  targetProfileWire `json:"profile"`
+	Bindings []bindingWire     `json:"bindings"`
+}
+
+// report never claims target allocation or semantic Source Acceptance.
+type report struct {
+	Status              string `json:"status"`
+	Authority           string `json:"authority"`
+	StorageWrite        bool   `json:"storageWrite"`
+	Subject             string `json:"subject"`
+	SchemeJSON          string `json:"schemeJSON"`
+	SourceByteCount     int    `json:"sourceByteCount"`
+	SourceSHA256        string `json:"sourceSHA256"`
+	HashIDText          string `json:"hashIdText"`
+	DigestHex           string `json:"digestHex"`
+	TargetNamespace     string `json:"targetNamespace,omitempty"`
+	NormalizedTargetKey string `json:"normalizedTargetKey,omitempty"`
+}
+
+func main() {
+	os.Exit(run(os.Args[1:], os.Stdout, os.Stderr))
+}
+
+func run(args []string, stdout, stderr io.Writer) int {
+	flags := flag.NewFlagSet("hashid-probe", flag.ContinueOnError)
+	flags.SetOutput(stderr)
+	schemePath := flags.String("scheme", "", "path to canonical Scheme Wire JSON")
+	inputPath := flags.String("input", "", "path to raw canonical input bytes")
+	subject := flags.String("subject", "", "caller-supplied qualified subject identity")
+	targetPath := flags.String("target-probe", "", "optional local target snapshot JSON; never an authoritative store")
+	if err := flags.Parse(args); err != nil {
+		return 2
+	}
+	if flags.NArg() != 0 || *schemePath == "" || *inputPath == "" ||
+		*subject == "" || strings.TrimSpace(*subject) != *subject {
+		fmt.Fprintln(stderr, "scheme, input and nonblank qualified subject are required; no positional arguments")
+		return 2
+	}
+	if err := execute(*schemePath, *inputPath, *subject, *targetPath, stdout); err != nil {
+		fmt.Fprintln(stderr, "reference preview rejected:", err)
+		return 1
+	}
+	return 0
+}
+
+func execute(schemePath, inputPath, subject, targetPath string, stdout io.Writer) error {
+	schemeBytes, err := readBounded(schemePath, 4096)
+	if err != nil {
+		return fmt.Errorf("scheme: %w", err)
+	}
+	s, err := hashid.ParseSchemeJSON(schemeBytes)
+	if err != nil {
+		return err
+	}
+	input, err := readBounded(inputPath, maxInputBytes)
+	if err != nil {
+		return fmt.Errorf("input: %w", err)
+	}
+	result, err := hashid.Derive(s, input)
+	if err != nil {
+		return err
+	}
+	sourceHash := sha256.Sum256(input)
+	out := report{
+		Status:          "derived-only",
+		Authority:       "none",
+		StorageWrite:    false,
+		Subject:         subject,
+		SchemeJSON:      string(schemeBytes),
+		SourceByteCount: len(input),
+		SourceSHA256:    hex.EncodeToString(sourceHash[:]),
+		HashIDText:      result.Text,
+		DigestHex:       hex.EncodeToString(result.Digest),
+	}
+	if targetPath != "" {
+		targetBytes, err := readBounded(targetPath, maxTargetBytes)
+		if err != nil {
+			return fmt.Errorf("target probe: %w", err)
+		}
+		var probe targetProbeWire
+		if err := json.Unmarshal(targetBytes, &probe); err != nil {
+			return fmt.Errorf("target probe JSON: %w", err)
+		}
+		// This file is a local *test snapshot*, not an authenticated store.
+		// Require canonical bytes so duplicate/unknown/missing keys and
+		// noncanonical Unicode escapes cannot silently change interpretation.
+		canonical, err := json.Marshal(probe)
+		if err != nil || !bytes.Equal(canonical, targetBytes) ||
+			probe.Format != targetWireV1 || probe.Profile.Reserved == nil ||
+			probe.Bindings == nil {
+			return errors.New("noncanonical or unsupported target probe snapshot")
+		}
+		profile := hashid.TargetProfile{
+			Namespace:       probe.Profile.Namespace,
+			ProfileVersion:  probe.Profile.ProfileVersion,
+			AllowedAlphabet: probe.Profile.AllowedAlphabet,
+			MinLength:       probe.Profile.MinLength,
+			MaxLength:       probe.Profile.MaxLength,
+			ExactLength:     probe.Profile.ExactLength,
+			CaseFoldASCII:   probe.Profile.CaseFoldASCII,
+			Reserved:        probe.Profile.Reserved,
+		}
+		bindings := make([]hashid.TargetBinding, 0, len(probe.Bindings))
+		knownSubjects := make(map[string]bool)
+		for _, existing := range probe.Bindings {
+			if existing.Subject == "" || knownSubjects[existing.Namespace+"\x00"+existing.Subject] {
+				return errors.New("target snapshot contains an empty or duplicate qualified subject")
+			}
+			knownSubjects[existing.Namespace+"\x00"+existing.Subject] = true
+			priorScheme, err := hashid.ParseSchemeJSON([]byte(existing.SchemeJSON))
+			if err != nil {
+				return fmt.Errorf("target snapshot scheme: %w", err)
+			}
+			bindings = append(bindings, hashid.TargetBinding{
+				Namespace:      existing.Namespace,
+				ProfileVersion: existing.ProfileVersion,
+				Subject:        existing.Subject,
+				Scheme:         priorScheme,
+				Text:           existing.Text,
+			})
+		}
+		key, err := hashid.CheckTargetBinding(result, subject, profile, bindings)
+		if err != nil {
+			return fmt.Errorf("target preflight: %w", err)
+		}
+		out.Status = "snapshot-preflight-only"
+		out.TargetNamespace = profile.Namespace
+		out.NormalizedTargetKey = key
+	}
+	// No stdout is written before every local validation succeeds.
+	return json.NewEncoder(stdout).Encode(out)
+}
+
+func readBounded(path string, max int64) ([]byte, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+	data, err := io.ReadAll(io.LimitReader(file, max+1))
+	if err != nil {
+		return nil, err
+	}
+	if len(data) > int(max) {
+		return nil, fmt.Errorf("file exceeds %d bytes", max)
+	}
+	return data, nil
+}
