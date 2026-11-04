@@ -5,6 +5,7 @@ package commandadapter
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"tei/internal/command"
@@ -49,6 +50,13 @@ func (e Executor) Execute(ctx context.Context, request command.Request) (command
 		Payload:         payload,
 	}, e.Grant)
 	if err != nil {
+		// A lost commit response means the effect may or may not be applied.
+		// Preserve that as an unknown-effect execution error so the Command
+		// lifecycle refuses a same-attempt replay and requires a takeover.
+		var uncertain *effectcommit.CommitUncertainError
+		if errors.As(err, &uncertain) {
+			return command.Result{}, command.NewUnknownExecutionError("COMMAND_COMMIT_UNCERTAIN", uncertain.Error(), err)
+		}
 		return command.Result{}, err
 	}
 	switch result.Status {
