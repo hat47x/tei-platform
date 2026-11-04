@@ -26,4 +26,4 @@ jobs:
           go-version-file: go.mod
       - name: Characterize current Discover and Rerank on public temp directories
         run: |
-          go test ./tools/reference-developer-context -run 'Test(Discovery|Rerank|CollectionComparison)' -v -count=1
+          go test ./tools/reference-developer-context -run 'Test(Discovery|Rerank|CollectionComparison|CollectionFactorial)' -v -count=1
