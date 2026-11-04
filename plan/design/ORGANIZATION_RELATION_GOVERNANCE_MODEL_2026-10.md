@@ -2397,3 +2397,43 @@ Ownerは#2582（再資格化とDependency）、#2506（Context/Selection）、#2
 実Sourceの観測・ParsingとAI入力への開示は別。#2812の内部raw Witnessを**新しい公開APIとして自動転送しない**。Import結果から秘密原文をStudio/SHO/AIへ勝手に出さない。AIが増やせるのは隔離されたテスト候補であり、Ownerの意味受理、Source正本、Current Grant、固定Coverage分母を無断更新しない。実E2では`CaseRecord→OrgUnit`の構造Sourceと実Provider Requestの引継ぎを**同一Attemptで**記録し、Scope内/外、Read-only、Policy除外だがHost Deny、部分取得、後着Responseの負例を一つの固定Provider/Functionへ適用する。Provider実施行点がない場合は`NOT RUN: enforcement-unavailable`。
 
 **判定**：今回の**E1 Native Goは完了**、外部Source Importの別PR Go負例は独立局所実証、**E2実Provider/Host Enforcement・E3 Studio/SHO/AI実受領・E4 Commit/Receipt/業務Owner意味受理は未完**。#1119の実PostgreSQL/Owner-write P0を優先し、第二Source Store、Policy Engine、Query Runtime、TEI独自Hostを追加しない。
+
+## 62. Source・World・Operation三者の同値性は別：移動・ABA・関係多重度の実Go負例（2026-11-04、#2600/#2582/#2811/#2586横断、E1実証）
+
+### 62.1 実Sourceを使った3つの追加負例
+
+既存[PR #2681](https://github.com/hat47x/tei-platform/pull/2681)の実`.tei` Workspace（Person/OrgUnit/Membership/Position/Occupancy/CaseRecord、read-only Membership Mapping）に、前節§61のコメント変更に加え**3つのFocused Go Test**を追加した。現CoreのWorld/ModelRevision/OperationSurfaceをそのまま使用し、独自Semantic Resolverや模擬Coreを作らない。
+
+| ID・変更 | 独立Expected | 契約上の含意 |
+| --- | --- | --- |
+| ORG-SR-MOVE：`semantic/organization/model.tei`の同byteファイル名変更 | `WorldFingerprint(A)=WorldFingerprint(B)`、`ModelRevision(A)≠ModelRevision(B)`、Operation集合同じ | 内容・意味が等しくてもSource Locator/Span/引用を旧参照へ固定できない。ファイル移動を業務Meaning改訂とはしない |
+| ORG-SR-ABA：同じSourceへコメント付加してから元byteへ復帰 | `ModelRevision(A)≠ModelRevision(B)`、`ModelRevision(A)=ModelRevision(C)`。World・Operationは同じ | Source state hashは時系列Event IDではない。中間Bが存在しなかった／Grantが失効しなかった証拠にならない |
+| ORG-SEM-REL：CaseRecordの`handlingUnit` cardinality `one→many` | **Source revisionとWorld fingerprintは変化**するが、現在`org_view`のMembership Operation集合は同じ | 同じOperation ID/JSONやManifest結果は、Case→OrgUnit Relationに依存するFunction/Policyの意味互換性を保証しない |
+
+旧ORG-SR-COMMENT（§61）は`Source変更/World同じ/Operation同じ`。**同じ操作集合でも意味が変化する**という新ORG-SEM-RELを加えたことで、Source→World→Operationを直列の単純な同値条件へ潰せないことを実Goで反証した。
+
+[HEAD `a36ca136957284a9af1dadc3fe3b40940d2f3269`](https://github.com/hat47x/tei-platform/pull/2681)で、[Native Actions #41849999230](https://github.com/hat47x/tei-platform/actions/runs/41849999230)は**completed/success**。Go **1.26.10/Linux**、`go test ./internal/operations -run '^TestOrgHeadless' -count=1`（既存4＋追加3＝**計7テスト**）、実`tei validate/operations/artifacts`、別JSON Reader、exact candidate HEAD/cleanが成功。Artifact Readerは`findings=0, complete=False`なので、全Target/Consumer受領の証拠とはしない。PR #2681は**open・未統合**であり、main全体の最新健康状態/製品正式受理は別で確認する。
+
+### 62.2 依存再資格化の判定順：最小の差分で十分な範囲を止める
+
+**正規化World同値は、意味計算結果の再利用候補条件であってRead/Action許可ではない**。例えば、単なるSource移動で計算結果を全面再作成する必要は通常ないが、SHOの原典リンク、StudioのSelection→Source逆追跡、Alias/Import Locatorは再解決を要する。一方、Case Relationの多重度変更では、Membership CRUDが無変化でも**Caseを取るQuery、Record→Orgの可視性Policy、Actor Resolution、Row/Join grain、件数/NOT EXISTS、SHO/AIの説明**を再資格化しなければならない。
+
+**A→B→Aで守るべき線**：現在のraw byte SHAがAに戻った事実から、途中のSource変更・配布/撤回・Host Grant revocation・外部開示・Consumerの遅延Replyを観測したとは推論できない。同じfinal hashは**現在の内容同一性**の証拠には使えるが、時系列履歴の完全性ではない。必要なら既存Source受理/Read Attempt/Host Receiptで**実際に観測されたepochと出来事**を別票で持つ。全Sourceに新しいGlobal Event Registryを強制しない。
+
+**限定Scopeの再利用条件**（既存#2600/#2582/#2516に接続、正式schema未採用）：
+
+| Consumer/計算 | Source Move | A→B→A | Relation one→many |
+| --- | --- | --- | --- |
+| Parser/Worldの計算 | 意味同じなら再利用候補 | A/Cの内容同一は可。ただしBの履歴不明 | 関係Cardinalityに依存する意味/Rule/Queryは失効 |
+| Source Citation/Import | Locatorを再解決、必要byte Witness確認 | 古いPath/Span/Revisionの現行性を再確認 | Cardinality説明/出典/Owner Meaningを再受理 |
+| UI/SHO/AIの既表示値 | 値の表示と出典の現在性を分ける | 古いResponseを現在表示へ自動再投入しない | 同じ行が見えても粒度・Relation/Policy依存を再評価 |
+| 権限・Provider実Read | 現在Grant/Route/Row Field Witnessは独立 | Grant復活をhash一致で推論しない | 実施行Scope・Join/Count/Export/Read Cohortを確認 |
+| Build/Artifact | 実Builderの消費Source/Member/Generator/Toolchainに従う | 実消費Attempt/選択閉包とArtifact資格は独立 | 関係依存する生成物/テストの選択的再構築を要求 |
+
+### 62.3 「テスト件数」ではなく変化の識別力をAI-firstへ渡す
+
+#2811/#2813/#2514のAI-first足場に、**先に固定するExpectedと故障注入対照**として4件を渡す。例：`same operations→same meaning`とする偽のキャッシュ/RuleをORG-SEM-RELが検出すること、`same final Source hash→no intermediate events`とする推論をORG-SR-ABAが拒否すること、`file moved→Meaning changed`の過剰失効をORG-SR-MOVEが検出すること。各ケースは元の実`.tei`と現存Go Loaderを使い、AIが生成した予想Outputを独立Oracleに採用しない。まだ自動生成AIをこのGoテストに接続した訳ではなく、既知Mutant検出率/独立Coverageは**NOT RUN**。
+
+#2586の次の一固定E2試行では、実`CaseRecord.handlingUnit`の変化をFunction Contextの必要Relation pathとGranularity/Query`EXISTS/COUNT`/Provider Routeの実取得に結ぶ。CaseRecordのPersistence/実Provider Requestの入口が未接続なら、合成VP/VEを実RLSの代替とせず`NOT RUN: enforcement-unavailable`として#2622/#2628のOwnerへ戻す。
+
+**非採用**：第二組織Schema・新Source Event DB・第二Query/Cache/Policy/Host Engine、Owner判断を伴わない自動Hierarchy変換、全Consumer一斉失効。実E2 Provider・実Host・Studio/SHO/AI開示、業務Owner受理は未実施。#1119 P0-a/P0-bの実DB/Owner-writeのGateを維持する。
