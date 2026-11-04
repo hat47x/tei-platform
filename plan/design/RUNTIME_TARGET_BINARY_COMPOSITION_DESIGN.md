@@ -432,3 +432,61 @@ Jobを要求したというACK、実際の起動、進捗、業務結果、DB Co
 担当は配備／Target[#259](https://github.com/hat47x/tei-platform/issues/259)/[#1182](https://github.com/hat47x/tei-platform/issues/1182)、案件構成と初期設定[#1016](https://github.com/hat47x/tei-platform/issues/1016)、Job入口[#1130](https://github.com/hat47x/tei-platform/issues/1130)、Script/Macro契機[#2502](https://github.com/hat47x/tei-platform/issues/2502)、Build閉包・増分Evidence[#943](https://github.com/hat47x/tei-platform/issues/943)/[#2600](https://github.com/hat47x/tei-platform/issues/2600)、設計成果物としてのFunction一覧[#2482](https://github.com/hat47x/tei-platform/issues/2482)。第二のHost、Scheduler、契約Resolver、Function意味の正本を作らない。
 
 **Owner判断待ち**：Build Unitの正式な型と名称、設定ファイルの配置、暗黙のroot集合、割当規則の優先順位、複数unitにおけるFunction公開方法、OS Schedulerの設定生成範囲。実マルチビルド／ジョブ起動／Studio初期設定UI／実認可／本番回復のE2EはNOT RUN。本節を現行実装の合格として扱わない。
+
+## 15. 複数Buildの配置決定・実入力・公開資格を分離する（2026-11-04、横断照合）
+
+**状態：設計補強案・新しい横断試験はNOT RUN。** §14の単一ビルド既定／必要時のみ明示分割という方針を維持し、2026-11-04に進んだ[#1130](https://github.com/hat47x/tei-platform/issues/1130) BU-01〜09、[#2600](https://github.com/hat47x/tei-platform/issues/2600) IB-15〜18、[#2595](https://github.com/hat47x/tei-platform/issues/2595) EB-01、[#2604](https://github.com/hat47x/tei-platform/issues/2604) AP-01〜07、[#2787](https://github.com/hat47x/tei-platform/pull/2787)のEKI OpenAPIとの比較結果と接続する。これらの試験正本・Build Engine・Artifact Store・Job Coordinatorを本書へ複製しない。
+
+### 15.1 配置の意図から利用可能な入口までの五つの照合点
+
+| 段階 | 観測すること | ここから推定してはいけないこと |
+| --- | --- | --- |
+| **I0 業務Functionと公開意図** | Accepted Function/Action/Rule ID、業務所属、型付き入出力、公開が必要な起動契機、必要なInteractionの有無 | Folder名からの業務意味、Functionの自動公開、現在の実行Grant |
+| **I1 Build選択** | 単一既定／明示unit、選択規則の一致理由、root集合と推移的閉包、Target適合、除外対象、未配置・競合 | 選択されたというだけでビルド成功、実ソース消費済み |
+| **I2 実ビルド入力とArtifact** | required/declared/resolved/parsed/actual-consumed Source集合、負の依存、Builder/Toolchain、実入力bytes、生成実ファイル、ArtifactSet/memberのdigest | 宣言Source digestから実ビルドSourceを自動証明、ファイル作成から一式公開を自動証明 |
+| **I3 公開と受領** | どのArtifactSetのどのmemberが、どのDeployment/実入口に配備され、実Consumerがどのbyte/契約版を読んだか | exit=0、manifest complete、単独digest一致から実配備の版一致・公開成功を断定 |
+| **I4 現在の呼出し・業務効果** | Principal/Service Identity、Context/対象、現在Grant、Transport、OperationID/Attempt、Provider Receipt・独立Observation | CLI/HTTP ACK、EKI Task success、旧Artifactの過去PASSを現在の業務Commit資格へ昇格 |
+
+これらは**既存Evidenceへの用途別照合票**であり、新しいProduction schema、実行状態機械、五段階の許可エンジンではない。単一BuildでもI1〜I4の検証は省略されない。現行のファイル一覧が完全でないときは、存在するファイルだけで「必要なソースがすべて含まれる」と判断しない。Provider内部Source path/Raw fingerprintは、許可のないStudio/SHO/AI Consumerに出さず、公開可能な範囲の不足・診断だけを投影する（[#2812](https://github.com/hat47x/tei-platform/pull/2812)）。
+
+### 15.2 「Function一覧」の役割をさらに限定する
+
+一覧は**配置検討・診断のための導出表**とし、Function正本／Build Intent／実Artifact証拠を一つの手編集スプレッドシートへ潰さない。初期の表示列は、Function ID、業務所属、Logical Entryの種類、Root/Dependency/Non-root/Unresolved、推奨または明示Build Unit、割当根拠とrule revision、必要Target能力、公開状態、実証済みArtifact参照の有無。実ファイルパス・秘密情報・Provider内部参照を出すかは表示先の開示権限で制御する。
+
+- **暗黙のdefaultは「全ソースを無条件に公開する」ではない**：受理済みApplication/Action/Jobの公開要求をroot候補として取り出す。UIだけで使うFunctionはその契機、未接続のFunctionは非rootとして一覧に残す。必須rootが解決不能ならビルドを拒否し、意図的に非公開の関数は警告または情報表示に留める。root発見契約が定まらない場合は空の成功ビルドを作らず、必要な選択の不足を診断する。
+- **割当規則の優先順位は§14.3では未採用候補**：安定Function IDの明示指定はその対象に対して優先する案とし、Scope/Namespace/Pathの複数ルールが異なる単位を選ぶ場合は、採用済みの明示優先条件がない限り衝突。最長prefixやファイル走査順で勝者を決めない。Source移動はFunction Identityを変えず、配置差分を表示する。
+- **同じFunctionの二重配置**は、明示したrootまたは両unitの依存閉包から得られる包含として説明し、暗黙の公開や独立した業務Ownerの生成とはしない。Data Ruleは意味・phase/Effectの正本を参照し、各unitでの実現方法はTarget/Provider適合で検証する。
+- **設定自動初期化の安全条件**：Build Pluginはread-only提案→内容diff→保存Intent→Projectへの明示適用を分ける。既存設定ファイルがあれば上書きせず差分/競合を返す。再初期化時も同じ入力に対して正規化した設定結果が同じで、選択・改版・移動の理由を一覧に残す。初期配置で業務Meaning、Owner受理、Entry Point公開、OS Schedule登録を自動変更しない。
+
+### 15.3 実Go Sourceと再利用根拠の強化
+
+[#2819](https://github.com/hat47x/tei-platform/pull/2819)は**現行Go Generator Selectionの宣言Sourceと実ビルドSourceが不一致でも通る**ことを、test-only実Goで記録してmainへ統合済み。これは実装の安全な拒否を立証したのではなく、残る問題の実証である。Function→Build Unitの割当を正しく解決できても、最後のコンパイル入力が別ファイルなら正しい成果物とはいえない。
+
+Build Unitごとに、選択したroot・依存閉包・実Generator/Builderが**実際に消費した全関連入力**の束縛を確認する。否定依存・未読込必須Source・Queryで出力されなかった行／Predicate依存も、必要なClaimに応じて扱う。完全な入力閉包が示せない場合は当該BuildのskipやArtifact再利用をunknownへ保留する。バイナリの同じdigestと、生成器の資格／Owner受理／現在Grantは別物。Go packageの静的import closure、link後byte/シンボル、呼出し可能な入口の確認を分け、単なるmanifest-only・ソース上の推論を配布物からの不要機能除外のPASSにしない。
+
+増分ビルドで**一つのRuleが両unitへ到達するケース**、Source移動のみで意味は同じだがpath由来割当が変わるケース、Sourceは同じでToolchainのみ変えるケースを比較する。正しいBuild省略、Artifact再利用、Evidence再利用、現在資格はそれぞれ独立の結果として記録する（#2600）。
+
+### 15.4 複数unitの公開と非同期ジョブ完了
+
+実ファイルの生成はリリースではない。複数unitを更新する場合、期待するFunction/Contract revisionに対する**互換な配備組合せ**を診断できる必要がある。例えばWeb/APIがv2のJob要求を出し、Batch側がv1のままなら、受理可能な互換範囲を既存Service ContractとConsumer側で確認し、未確認なら切替えない。これは新しいRelease Registry/統一Txを要求するのではなく、既存ArtifactSet/Deployment evidence/Consumer observationの比較である。
+
+一つのArtifactSetでも、旧manifestと新memberの混在、書込途中失敗、ファイル名衝突があると、外部Consumerが異なる世代のファイルを読む可能性がある。#2604のAP-01〜07を公開責務の正本として参照し、Build選択が正しかったことを公開・受領の成功として誤転記しない。Releaseする対象unitがN個なら、各unitの生成、検証、公開、現実のConsumer読取と契約適合を**別々の状態**として記録する。
+
+ジョブはさらに「起動要求・受付」「実起動」「終了・Result」「実副作用の確定」「業務完了」を分ける。OS cronであっても、重複起動・途中中断・再送・旧版Jobの回復ではOperationID/Attempt/同じ要求の再送か新しい業務実行かを区別する。Webサービスからの呼出しは許可されたroute/actionだけ。長時間実行のためだけに共通TEI常駐Hostを新設せず、既存OS Scheduler/Host/EKI等の実行主体を選ぶ。
+
+**EKI P0への直接変換は現時点で一般Jobの保証にならない**：Draft #2787の版固定OpenAPI比較では、TaskRequest.parametersのWorker配送、effect_modeの副作用種類、Executor版のAdmission検査、output artifact body取得・業務Commitの証明などが未充足。合成19件PASSは実Task/Worker/DBの成功ではない。対応不可の必須Job属性がある場合は、部分的なwire shape一致でも、表面上の成功とせずnot-representable/unsupportedとして止める。限定した副作用なしJobの静的試験から開始し、実WorkerやResultの照合は別途必要。
+
+### 15.5 他チャットの設計を圧力条件へ接続（新しい独立テスト正本は作らない）
+
+| 差分観点 | 先行するFixture／Owner | 今回Build側で見る停止条件 |
+| --- | --- | --- |
+| **実Source差／必須Source未取得** | #2595 EB-01〜04、#2600 IB-15〜18、#2822/#2823 | 必須Source欠落・宣言/実消費差・不明閉包のBuild再利用を資格ありとしない |
+| **業務意味と起動配置の差** | #1130 BU-01〜09、#1180 Scenario、#2514独立Expected | 同じMeaningでも旧Buildの未公開rootや未対応Functionを見落とさない |
+| **公開の一式性と旧ファイル** | #2604 AP-01〜07 | 成果物生成済みでもConsumerが旧member・混合版を読んだら成功としない |
+| **EKI委任の意味欠落** | Draft #2787 WP-01〜19、#1130 SJ/LR | 必須引数・副作用・版・結果bodyの欠落をTask成功へ読み替えない |
+| **Desktop/WebのActionとData Rule** | #997/#1824、#2507、#1129、#2502 | 画面の有効表示、Wailsの接続、Script存在を実実行Grant/Business Commitにしない |
+| **隔離・秘匿と実ロード** | #2504、#1370、#1174、ADR-0044 | 同一バイナリ同居による権限共有を許可済みMacroの隔離保証にしない |
+
+**横断受入の終了条件（提案）**：固定した一つのAccepted Function/Rule/Scenarioを使い、①単一Goバイナリ、②Web/API＋Batchの2unit、③Job別の3unitで、全必須rootの配置、実消費入力、ビルド済みArtifact、公開入口、Target適合、外部Consumerの実受領、権限・結果を別列の証拠として比較できること。必要なら単一Buildが最善であるとの結論も許す。自動設定の記述行数・人が修正した箇所・Build latency/size/起動遅延・false reuse・false invalidationを測るが、設計だけで高速化を主張しない。
+
+**採用前の判断**：§14.3の優先順位・Build構成ファイル名・Root発見方法・Release切替契約は未採用。まず既存#1167/#1182と実現在のCLIを調べ、新しい構成Schema・コード生成入口・公開APIの実装が不可避かを判別する。#1130のBU、#2600のIB、#2604のAP、#2787のWPを重複コピーして新Gateにしない。追加した本文は設計・責務接合のみであり、実マルチBuild・Job起動・Web/EKI/Studio/SHO/実DB/Owner受理はいずれも**NOT RUN**。
