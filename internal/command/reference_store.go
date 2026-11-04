@@ -155,15 +155,17 @@ func (s *MemoryStore) Records(data core.CanonicalID) []map[string]string {
 	return out
 }
 
-type memorySnapshot struct {
+// StoreSnapshot is a consistent copy of values and attribute values.
+type StoreSnapshot struct {
 	data       map[core.CanonicalID]map[string]map[string]string
 	attributes map[core.CanonicalID]map[string]map[core.CanonicalID]string
 }
 
-func (s *MemoryStore) snapshot() memorySnapshot {
+// Snapshot returns a consistent copy of the store.
+func (s *MemoryStore) Snapshot() StoreSnapshot {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	out := memorySnapshot{
+	out := StoreSnapshot{
 		data:       map[core.CanonicalID]map[string]map[string]string{},
 		attributes: map[core.CanonicalID]map[string]map[core.CanonicalID]string{},
 	}
@@ -182,7 +184,8 @@ func (s *MemoryStore) snapshot() memorySnapshot {
 	return out
 }
 
-func (s *MemoryStore) restore(snapshot memorySnapshot) {
+// Restore replaces the store with the snapshot.
+func (s *MemoryStore) Restore(snapshot StoreSnapshot) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.data = snapshot.data
@@ -283,7 +286,9 @@ func (e ReferenceDataExecutor) Execute(_ context.Context, request Request) (Resu
 	plan, _ := applicationview.BuildCommandPlan(e.World, request.Application, request.Pattern, request.Capability, request.Inputs)
 	targetAttributes := attributeValues(plan)
 	if capability.Effect != nil && capability.Effect.Kind == semantic.DataEffectDelete {
+		snapshot := e.Store.Snapshot()
 		if err := e.checkDeletePolicy(capability.Effect.Data, targetAttributes); err != nil {
+			e.Store.Restore(snapshot)
 			return Result{}, err
 		}
 	}
@@ -660,12 +665,12 @@ func (u *StoreUnitOfWork) Begin(context.Context) (Transaction, error) {
 	if u.Store == nil {
 		return nil, fmt.Errorf("reference store is not configured")
 	}
-	return &storeTransaction{unit: u, snapshot: u.Store.snapshot()}, nil
+	return &storeTransaction{unit: u, snapshot: u.Store.Snapshot()}, nil
 }
 
 type storeTransaction struct {
 	unit     *StoreUnitOfWork
-	snapshot memorySnapshot
+	snapshot StoreSnapshot
 	done     bool
 }
 
@@ -681,7 +686,7 @@ func (t *storeTransaction) Rollback(context.Context) error {
 	if t.done {
 		return nil
 	}
-	t.unit.Store.restore(t.snapshot)
+	t.unit.Store.Restore(t.snapshot)
 	t.done = true
 	return nil
 }

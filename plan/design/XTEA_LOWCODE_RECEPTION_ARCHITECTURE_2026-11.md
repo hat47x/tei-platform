@@ -950,6 +950,7 @@ PoC #2521が実装した範囲と、まだ実装していない範囲を分け�
 | 参照データ記憶域（MemoryStore） | 実装済み（create/update/delete、スナップショットによるRollback） |
 | 参照Storeの削除ポリシー実行 | 実装済み（restrict・cascade・preserve。`Relation.Keys`がある場合は行単位、ない場合はData単位） |
 | 参照Storeの複数段カスケード | 実装済み（キー対応の再帰削除、循環防止） |
+| 参照Storeの削除ロールバック | 実装済み（深いrestrict失敗時にスナップショットへ復元） |
 | 参照Storeの必須属性検査 | 実装済み（create時、record commandのbinding経由。command Patternは判定不能としてスキップ） |
 | 参照Storeの値域検査 | 実装済み（create/update時、Typeの`values`と別名解決） |
 | 参照Storeの重複create拒否 | 実装済み（同じキーのcreateを拒否） |
@@ -979,6 +980,7 @@ PoC #2521が実装した範囲と、まだ実装していない範囲を分け�
 | `reference/workspace`への宣言追加 | 未実施（受理経路が必要） |
 
 実装は、`internal/application/model.go`、`internal/syntax/application_pattern.go`、`internal/validation/application_pattern.go`、`internal/crossview/pattern_requirements.go`、`internal/applicationview`、`internal/semantic/model.go`、`internal/syntax/parser.go`、`internal/validation/validation.go`と、それぞれの試験です。
+
 
 
 
