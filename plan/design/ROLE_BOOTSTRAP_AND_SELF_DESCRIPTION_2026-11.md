@@ -122,6 +122,8 @@ Runtime側の `Registry.InvokeWithProvenance` は選択したCapability、Plugin
 
 **CLI試作**：Draftの `plugin-lock -environment development` は明示された環境だけのLockを返し、envelopeの `mode: environment` とLock内のEnvironment一覧で範囲を示す。省略時の全環境Lockは変更しない。現行Referenceを使う実CLI試験では、development部分は全環境Lockと一致し、このLockをproductionの解決・Runtime Planに使うと拒否された。明示的な空ID・不正なIDと存在しない環境も拒否する。別環境のPlugin欠落や業務型エラーを含むWorkspaceでは、明示した環境が正常でも全体検証で停止するため、未検証Workspaceから正式Lockを生成する迂回路ではない。実運用の利便性・外部利用者の部分Lockへの対応は未確認で、採用判断は行わない。
 
+**Runtime接続の限定検証**：`cmd/tei/plugin_lock_scope_runtime_test.go` は業務Semantic Dataを持たないPlugin self-build Reference（標準型 `std` は存在）からnative static-response実装をmaterializeし、その実現Digestを結んだ一時Worldに対し、実CLIで環境単位Lockを作成する。既存Runtime PlanとBuiltin adapterを通じて実装の応答を得られ、別環境、定義Fingerprintの不一致、実現byteのDigest不一致は拒否された。Referenceのin-memory検証器はDigestだけを照合し、署名・出所・Host権限を検証しない。またこれはstatic responseを返す実装であり、業務意味の評価やAcceptanceの成立を示さない。別の実CLI試験では、Referenceのdevelopmentに対し全環境Lockと部分Lockから同一のRuntime Planが生成された。
+
 `plugin-lock` と `plugin-resolve` は現在 `cmd/tei/cli_result.go` でWorkspace全体を検証してから実行する。最小の改善候補は、既存コマンドの成功条件を変えることではなく、必要なPlugin・環境の選択結果と、Workspace全体が未検証である旨・元の診断を別に返す**任意のread-only診断**を比較すること。その結果からLockの正式利用やRuntime起動を許可しない。依存する意味定義を必要とするPlugin、未解決の環境、改変されたPlugin定義を誤って有効としないことを実証できなければ、候補を採用しない。専用CLIや新たな正本が必要かも未決である。
 
 **診断の試作**：Draftでは `plugin-resolve -diagnostic-candidates` を明示した場合だけ、全体の診断と、既存Resolverが返した候補を別に表示する。常に `ok: false`、終了1、`workspaceValidated: false` とし、候補は意味受理・実行許可・Runtime Planではない。環境不明、Plugin欠落、Lock不一致では候補を返さない。Workspaceの読み込み自体に失敗した場合は診断を続行できない。未検証の意味がPluginに必要かをこの試作は判定しないため、候補があっても使用可能性は不明である。通常の `plugin-resolve` と `plugin-runtime-plan` の検証・終了条件は変更しない。実Providerや自動化利用者への影響は未確認であり、採用判断は行わない。

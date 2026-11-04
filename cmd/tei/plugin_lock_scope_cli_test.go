@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"tei/internal/plugin"
+	pluginruntime "tei/internal/plugin/runtime"
 )
 
 func TestPluginLockExplicitEnvironmentReferenceCLI(t *testing.T) {
@@ -87,11 +88,31 @@ func TestPluginLockExplicitEnvironmentReferenceCLI(t *testing.T) {
 	if err := os.WriteFile(path, raw, 0o644); err != nil {
 		t.Fatal(err)
 	}
+	fullRaw, err := json.Marshal(all)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fullPath := filepath.Join(t.TempDir(), "all-lock.json")
+	if err := os.WriteFile(fullPath, fullRaw, 0o644); err != nil {
+		t.Fatal(err)
+	}
 	if got := run(0, "plugin-resolve", "-workspace", workspace, "-environment", "development", "-plugin-lock", path); !got.OK {
 		t.Fatalf("selected resolve: %+v", got)
 	}
-	if got := run(0, "plugin-runtime-plan", "-workspace", workspace, "-environment", "development", "-plugin-lock", path); !got.OK {
+	got := run(0, "plugin-runtime-plan", "-workspace", workspace, "-environment", "development", "-plugin-lock", path)
+	if !got.OK {
 		t.Fatalf("selected runtime plan: %+v", got)
+	}
+	fullPlan := run(0, "plugin-runtime-plan", "-workspace", workspace, "-environment", "development", "-plugin-lock", fullPath)
+	var selectedPlan, wholePlan pluginruntime.EnvironmentPlan
+	if err := reMarshal(got.Result, &selectedPlan); err != nil {
+		t.Fatal(err)
+	}
+	if err := reMarshal(fullPlan.Result, &wholePlan); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(selectedPlan, wholePlan) {
+		t.Fatalf("selected and full-lock runtime plans differ: %+v / %+v", selectedPlan, wholePlan)
 	}
 	if got := run(2, "plugin-resolve", "-workspace", workspace, "-environment", "production", "-plugin-lock", path); got.Error == nil || got.Error.Code != "PLUGIN_RESOLVE_FAILED" || !strings.Contains(got.Error.Message, "no environment") {
 		t.Fatalf("unselected resolve: %+v", got)
