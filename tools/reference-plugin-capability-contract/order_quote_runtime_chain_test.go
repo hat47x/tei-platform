@@ -247,6 +247,76 @@ func TestCandidateQuoteShapeConformanceAndRealRuntimeProcessOneInvocation(t *tes
 		attempt(t, "wrong evidence", "no conformant provider", func() { input.Evidence = []ConformanceEvidence{e} })
 	})
 	input.Evidence = []ConformanceEvidence{evidenceFor(provider, contract, "synthetic-test-only")}
+	t.Run("changed provider and shape through real runtime", func(t *testing.T) {
+		// Only a copied provider is changed: zero is a test marker, not a tax rule.
+		anchor := "\tSubtotalMinor int64  `json:\"subtotalMinor\"`\n"
+		if strings.Count(string(source), anchor) != 1 {
+			t.Fatal("provider result anchor is not unique")
+		}
+		changedSource := strings.Replace(string(source), anchor, anchor+"\tTaxMinor int64 `json:\"taxMinor\"`\n", 1)
+		providerDir := t.TempDir()
+		if err := os.WriteFile(filepath.Join(providerDir, "main.go"), []byte(changedSource), 0600); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(providerDir, "go.mod"), []byte("module example.invalid/changed-quote\n\ngo 1.23\n"), 0600); err != nil {
+			t.Fatal(err)
+		}
+		changedBinary := filepath.Join(providerDir, "quote")
+		build := exec.CommandContext(buildCtx, "go", "build", "-o", changedBinary, ".")
+		build.Dir = providerDir
+		build.Env = append(os.Environ(), "GOWORK=off", "GOTOOLCHAIN=local", "GOPROXY=off")
+		if out, err := build.CombinedOutput(); err != nil {
+			t.Fatalf("build changed provider: %v: %s", err, out)
+		}
+		changedBytes, err := os.ReadFile(changedBinary)
+		if err != nil {
+			t.Fatal(err)
+		}
+		changedDigest := quoteChainDigest(changedBytes)
+		if changedDigest == digest {
+			t.Fatal("changed provider retained original digest")
+		}
+		originalContract, originalProvider, originalPlan, originalHost := contract, provider, plan, host
+		defer func() {
+			contract, provider, plan, host = originalContract, originalProvider, originalPlan, originalHost
+		}()
+		shape := readQuoteCandidateShape(t, "result-v0.json")
+		shape.Root.Properties["taxMinor"] = InvocationShapeNode{Kind: "number"}
+		shape.Root.Required = append(shape.Root.Required, "taxMinor")
+		contract.ResultShapeFingerprint = invocationShapeFingerprint(shape)
+		provider.ContractFingerprint = fingerprint(contract)
+		provider.ArtifactDigest = changedDigest
+		plan.Plugins = append([]pruntime.PluginRuntime(nil), plan.Plugins...)
+		plan.Plugins[0].Command = changedBinary
+		plan.Plugins[0].Artifact.Digest = changedDigest
+		plan.RuntimePolicyFingerprint = pruntime.PolicyFingerprint(plan)
+		host.Verifier = &quoteChainHashVerifier{path: changedBinary}
+		changedImpl := impl
+		changedImpl.Provider = provider
+		changedImpl.ResultShapeArtifact = shape
+		changedImpl.ResultShapeFingerprint = contract.ResultShapeFingerprint
+		authorities := invocationShapeAuthoritiesForTest([]InvocationImplementation{changedImpl})
+		registry, err := NewInvocationRegistry([]InvocationImplementation{changedImpl}, authorities, invocationShapePublisherTrustForTest(t, authorities))
+		if err != nil {
+			t.Fatal(err)
+		}
+		changedInput := input
+		changedInput.Contracts = []Contract{contract}
+		changedInput.Providers = []Provider{provider}
+		before := launcher.calls
+		if _, err := registry.ResolveAndInvoke(ctx, changedInput, payload); err == nil || launcher.calls != before {
+			t.Fatalf("old evidence permitted changed provider/contract: %v", err)
+		}
+		changedInput.Evidence = []ConformanceEvidence{evidenceFor(provider, contract, "synthetic-changed-only")}
+		got, err := registry.ResolveAndInvoke(ctx, changedInput, payload)
+		if err != nil || launcher.calls != before+1 || !strings.Contains(string(got.ResultPayload), `"taxMinor":0`) {
+			t.Fatalf("changed provider and shape: %+v, %v", got, err)
+		}
+		if err := validateInvocationPayload(shape, got.ResultPayload); err != nil {
+			t.Fatal(err)
+		}
+		t.Log("changed isolated provider, candidate result Shape, contract fingerprint and synthetic evidence passed real Runtime; old provider conformance evidence rejected before launch; tax=0 is a test marker")
+	})
 	t.Run("isolated result shape change does not inherit old evidence", func(t *testing.T) {
 		// Modify a separate copy, never the unaccepted candidate on disk.
 		original, err := os.ReadFile("../../reference/candidates/order-quote/shapes/result-v0.json")
