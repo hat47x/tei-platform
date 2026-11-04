@@ -351,6 +351,8 @@ func TestCommittedHeadlessFixture(t *testing.T) {
 		actual.StorageWrite || actual.TargetNamespace != "example.records" ||
 		actual.SourceByteCount != len("hello TEI") ||
 		actual.HashIDText != actual.NormalizedTargetKey ||
+		actual.HashIDText != "590268890628724110017033" || // independent Python SHAKE256 framing golden
+		actual.SourceSHA256 != "a53b0563c14046eb542a3aa0eeeb7b3d502a935477b474fbe78d81bf33fb93c4" ||
 		len(actual.HashIDText) != 24 {
 		t.Fatalf("unexpected reference fixture result: %+v", actual)
 	}
