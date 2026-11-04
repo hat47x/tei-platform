@@ -27,3 +27,11 @@ jobs:
       - name: Characterize current Discover and Rerank on public temp directories
         run: |
           go test ./tools/reference-developer-context -run 'Test(Discovery|Rerank|CollectionComparison|CollectionFactorial|QuestionRelative|ActualProbe)' -v -count=1
+      - name: Temporary public gofmt exact-output verification
+        run: |
+          p=tools/reference-developer-context/actual_probe_receipt_test.go
+          gofmt -w "$p"
+          echo "TEMP_FORMAT_PROBE_20261104_BEGIN"
+          base64 -w 0 "$p"
+          echo
+          echo "TEMP_FORMAT_PROBE_20261104_END"
