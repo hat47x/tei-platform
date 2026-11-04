@@ -149,6 +149,11 @@ func TestRejectionSamplingNonPowerOfTwoAndCSHAKE(t *testing.T) {
 	if err != nil || r3.Text == r1.Text {
 		t.Fatal("SHAKE and cSHAKE should be distinct")
 	}
+	// Independent Python hashlib SHAKE256 vector for A=10, L=30.
+	// Input byte #19 is 252 and must be rejected (threshold=250).
+	if r3.Text != "763327628360903151303303983778" {
+		t.Fatalf("rejection-sampling golden mismatch: %q", r3.Text)
+	}
 }
 
 func TestRejectInvalidSchemes(t *testing.T) {
