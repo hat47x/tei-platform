@@ -69,5 +69,5 @@ go run ./cmd/tei validate -workspace reference/workspace
 - **Draft PRを作らない**。作業ブランチをpushし、レビュー可能になった時点でPRを1回作ります（draftの作成も `opened` として実行を起こします）。
 - **統合後はブランチを削除する**。マージ済みブランチの残置は、PR一覧と実行の見通しを悪くします。
 - **同時に開くPRは2〜3本まで**を目安にします。待ち時間が増えると、チェック完了待ちが律速になります。
-- **CIを追加するときは、`paths` で対象を絞り、`concurrency` を設定する**。全体の健全性確認（`tei-repository-health-ci.yml`）は必須の入口なので、対象を絞りません。
+- **CIを追加するときは、`paths` で対象を絞り、`concurrency` を設定する**。全体の健全性確認（`tei-repository-health-ci.yml`）は常に実行する入口（統合条件ではありません）なので、対象を絞りません。
 - **文書のみの変更**は、専門のワークフローを `paths-ignore` でスキップし、全体の健全性確認だけを実行します。
