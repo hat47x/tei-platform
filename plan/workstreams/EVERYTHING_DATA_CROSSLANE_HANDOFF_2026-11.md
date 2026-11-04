@@ -1874,3 +1874,41 @@ Security/Privacy/実Host/DB/Ownerレビューは既存#1119 Gateに委譲。専�
 ### 39.1 VE-01〜20のfixed-head実測
 
 [Draft #2781](https://github.com/hat47x/tei-platform/pull/2781)のfixed HEAD `77ac2f3e49394aa8742c39181168607d8e3aff77`に対する[Node Actions #41641623522](https://github.com/hat47x/tei-platform/actions/runs/41641623522)はcompleted/success。Node v22.16.0、Reference 27 checks PASS、`node --test` **258/258 PASS、fail 0**（新規VE-01〜20を含む）。ソースBlob `93cfbe4146904c2d8c3c613c4a67bae6ecb0e340`。これは合成E0で、実Provider・Host・Studio/SHO/AI・Ownerの許可や実開示はNOT RUN。#2681実Go E1と別試行を合算して製品E2E PASSとしない。
+
+## 40. 横断Evidenceの最小閉包と実装優先順（2026-11-04、横断レビュー・計画段階）
+
+### 40.1 結論と不変条件
+
+直近のDSL/Plugin、外部Reference、高速Build、テスト、組織Policy、EKI、Studio/SHOの各設計が成熟している。しかし個別PASSの合算では、同一Source revision・Function Instanceの意味、対象、実Read、実行資格、実Effectが連続していると証明できない。次の主軸は新しい共通機構ではなく、既存#1119/#1163/#1180と本計画§19–39に沿う「一Attemptの証拠閉包」である。
+
+構造同一≠Meaning同一、AI候補≠Owner受理、Action Offer≠実行Grant、Reference fresh≠必要Read完全、Artifact byte一致≠現在の使用資格、Worker successful≠Host Commit確定、同じ結果0件≠不存在。実装、合成Reference、計画、Owner未受理は別資格とする。
+
+### 40.2 最小閉包（第二Evidence Engineは作らない）
+
+| 段階 | 既存入口・担当 | 同一Attemptで記録する独立証拠 | 未成立時 |
+| --- | --- | --- | --- |
+| C0 Source | #2743/#2674/#988 | Source byte/span、外部Reference revisionとfreshness | stale/unavailable/partialを明示 |
+| C1 Meaning | #2639/#2620/#2644 | Typed Semantic、Role/Operator pin、Owner受理の適用範囲・単位・時点 | Parser成功のみならnot accepted |
+| C2 Read | #2506/#2622/#2387 | Function Context、Predicate/Relation/否定依存、row/field completeness、実Provider read | 部分0件から不存在を推論しない |
+| C3 Build/Consumer | #1163/#2600/#2604/#2516 | 実Go binary/build digest、Artifact全memberと独立Reader byte、実Disclosure | Manifestのみならunverified |
+| C4 Effect | #2598/#1174/#1119 | Intent target、Principal/Host Grant、Provider Request、Commit/unknown、独立post-image | ACK/Tool表示だけでEffect成立としない |
+
+読み取り専用経路はC0–C3で検収し、更新経路だけC4を必須にする。実入口がなければ NOT RUN: concrete-entry-unavailable と記載する。既存Scenario、Receipt、Manifest、Owner受入票を使い、新Host・Registry・Policy Engine・Runnerは追加しない。
+
+### 40.3 優先する3つの反証
+
+- **V-READ：実CLIと独立Reader**。同一Workspaceの一改訂で、完全0件/部分0件、Reference stale、A→B→A、同byte別Meaningを独立Expectedで比較。既存#1163/#1180を利用。まず非更新・単一Provider。
+- **V-ACTION：Contextから実Request**。Case→OrgUnitの構造E1をRead資格に昇格せず、scope内/外、read-only、他Host Deny、partialの5例でUI Offer・現Grant・Request対象・実post-imageを分離。実Enforcement未接続ならE2以降NOT RUN。
+- **V-DSL：同じExpectedのFrontend比較**。Go式AST親和、軽量独自構文、Hybridの3案をNULL、Decimal、Source位置、診断、部分集合、Go生成で比較。Frontend選択とBackend Go生成を分離。AIの初回成功・修正・tokenを記録し、人間専門家の可読性をAI試験で証明したと主張しない。
+
+### 40.4 優先順位と停止条件
+
+1. P0：#2667/#2639/#2681/#2781のexact HEAD、Draft/main、CI種別、実Provider有無を再確認し、別PRのPASSを合算しない。
+2. P1：V-READ。実CLI・独立Expected・Reader・否定依存を確認するまで新規高度機構を増やさない。
+3. P2：V-ACTION。Owner受理のない業務RuleやScopeを自動補完しない。実Provider/Hostの現在認可は別判定。
+4. P3：V-DSLと生成Go単一バイナリの一改訂縦断。正しさの確認後にp50/p95、build latencyを別々に計測する。
+5. P4：価値が確認できたときだけSHO/Studio、別Harness、EKI委譲、異Target・異Domainへ拡張。単独製品に共通基盤の必須依存を課さない。
+
+Owner Meaning未受理、必要Readの不完全、Pin不一致、Grant不明、Commit unknown、参照/Producer不在をsuccessへ昇格しない。表示・Preview・保存Intent・実Effectを区別し、用途別に再資格化する。
+
+**実施状態**：本節は既存Draft計画へのdocs-only追補。新しい一気通貫実験、Go生成、実DB、Windows UI、Owner受理、最新CIは本変更ではNOT RUN。既存Gate・責務を置換しない。正式ADR/文法/Plugin ABIも未採用。
