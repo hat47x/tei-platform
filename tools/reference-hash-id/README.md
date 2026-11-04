@@ -21,7 +21,7 @@
 - Snapshotの同じTarget名前空間に旧ProfileVersionが含まれる場合は、暗黙の再解釈をせず明示移行を要求する。
 - Case-insensitive Targetへは、大文字・小文字の両方を生成し得るAlphabet（例：Base64url、Base62）を拒否する。DBのcollationを自動検出しないため、実Targetのcollationを別途検証したProfileだけに利用する。
 - Targetで同一名前空間の全割当が得られなければ、Snapshot上で衝突なしと判定できても、実一意性を保証しない。DBへの格納時に一意制約・競合再試行・Transaction等の**実保存境界**が必要。
-- 正本との紐付けは `TargetBinding.Subject`（Qualified Source identity）に保持する。文字列だけをCanonical ID、権限、Source Acceptanceへ昇格させない。
+- 正本との紐付けは `TargetBinding.Subject`（Qualified Source identity）と `TargetBinding.Scheme`（正確な生成規則）に保持する。同じSubjectでもSchemeが異なれば暗黙の冪等再登録とはみなさず、移行を要求する。文字列だけをCanonical ID、権限、Source Acceptanceへ昇格させない。
 - 現状はASCIIのみ。Windows予約名/パス末尾規則・実DBのUnicode照合・OS別同値判定はOwnerが宣言する個別Profile/独立試験を要する。
 
 ## 試験
