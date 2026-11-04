@@ -85,7 +85,8 @@ func requireCurrentHostEffectGrantFor(
 	current, err := sourceacceptance.VerifyCurrent(ctx, sourceReader, applicationID, index)
 	if err != nil || current.DecisionRef != accepted.DecisionRef ||
 		current.AuthorityRevision != accepted.AuthorityRevision ||
-		current.ModelRevision != accepted.ModelRevision {
+		current.ModelRevision != accepted.ModelRevision ||
+		normalizedAcceptanceKind(current.AcceptanceKind) != normalizedAcceptanceKind(accepted.AcceptanceKind) {
 		return errHostEffectGrantUnavailable
 	}
 	query := HostEffectGrantQuery{
@@ -106,4 +107,13 @@ func requireCurrentHostEffectGrantFor(
 		return errHostEffectGrantUnavailable
 	}
 	return nil
+}
+
+// normalizedAcceptanceKind maps the empty kind to unspecified, the value
+// VerifyCurrent reports, so a hand-built startup Record compares equal.
+func normalizedAcceptanceKind(kind string) string {
+	if kind == "" {
+		return sourceacceptance.AcceptanceKindUnspecified
+	}
+	return kind
 }

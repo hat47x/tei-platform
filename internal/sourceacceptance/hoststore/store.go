@@ -56,9 +56,21 @@ var (
 // opaque, issuer-defined blob (for example a signature over Record); the Store
 // stores it verbatim and does not interpret it.
 type Decision struct {
-	Record   sourceacceptance.Record `json:"record"`
-	Issuer   string                  `json:"issuer"`
-	Evidence json.RawMessage         `json:"evidence,omitempty"`
+	Record sourceacceptance.Record `json:"record"`
+	Issuer string                  `json:"issuer"`
+	// AcceptanceKind is part of the signed bytes when present (D9). Empty is a
+	// Decision signed before the marker existed (read as "unspecified"); the only
+	// other allowed value is "provisional". "formal" cannot be issued or read.
+	AcceptanceKind string          `json:"acceptanceKind,omitempty"`
+	Evidence       json.RawMessage `json:"evidence,omitempty"`
+}
+
+// checkKind allows only the legacy (empty) and provisional kinds.
+func checkKind(kind string) error {
+	if kind != "" && kind != sourceacceptance.AcceptanceKindProvisional {
+		return errors.New("unsupported acceptance kind")
+	}
+	return nil
 }
 
 // DecisionVerifier is supplied by the Host. It must return nil only when the
@@ -118,10 +130,12 @@ func (s *Store) ReadCurrentAcceptedSource(ctx context.Context, applicationID str
 		if e.State != StateCurrent {
 			continue
 		}
-		if checkRecord(e.Decision.Record) != nil || s.verifier(ctx, e.Decision) != nil {
+		if checkRecord(e.Decision.Record) != nil || checkKind(e.Decision.AcceptanceKind) != nil || s.verifier(ctx, e.Decision) != nil {
 			return sourceacceptance.Record{}, ErrNoCurrentAcceptance
 		}
-		return cloneRecord(e.Decision.Record), nil
+		record := cloneRecord(e.Decision.Record)
+		record.AcceptanceKind = e.Decision.AcceptanceKind
+		return record, nil
 	}
 	return sourceacceptance.Record{}, ErrNoCurrentAcceptance
 }
@@ -135,7 +149,7 @@ func (s *Store) Ingest(ctx context.Context, d Decision) error {
 	if s.verifier == nil {
 		return ErrVerifierRequired
 	}
-	if err := checkRecord(d.Record); err != nil || strings.TrimSpace(d.Issuer) == "" {
+	if err := checkRecord(d.Record); err != nil || checkKind(d.AcceptanceKind) != nil || strings.TrimSpace(d.Issuer) == "" {
 		return ErrIngestRefused
 	}
 	if err := s.verifier(ctx, d); err != nil {

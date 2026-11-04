@@ -25,6 +25,12 @@ func ImpactWithBefore(before, after ir.World, changes []SubjectChange) ([]Impact
 			continue
 		}
 		switch change.Kind {
+		case "type":
+			for _, old := range typeReferenceEdges(before, core.CanonicalID(change.ID)) {
+				old.Via = "previous." + old.Via
+				old.Reason = "変更前の型参照: " + old.Reason
+				edges = append(edges, old)
+			}
 		case "candidate-key", "functional-dependency":
 			oldEdges := logicalRuleEdges(before, change.Kind, core.CanonicalID(change.ID))
 			for _, old := range oldEdges {

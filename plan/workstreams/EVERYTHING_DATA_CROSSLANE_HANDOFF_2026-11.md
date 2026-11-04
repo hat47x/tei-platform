@@ -498,7 +498,9 @@ Everything is Dataが十分に成熟するには、**同じプレーンなデー
 
 ### 17.1 設計上の到達点と現在の製品境界
 
-「Every Definition is Data」が製品機能になる最小の経路は**新しいDSL Parserを先に作ること**ではなく、既存Language Plugin／Operator／Worldの実入口へ、自己記述的Role候補と複数表層のSourceをつなぐこと。関連Draft：
+**状態の更新（2026-11-03）**：下記の記録後、#2638はmainへ統合され、#2639はDraftではないOpen PRになった。#2638で統合されたのは設計候補と合成Referenceであり、正式なRole Resolverや実ProviderのFingerprint検証が成立したことを意味しない。以下のCI観測は各時点の履歴である。
+
+「Every Definition is Data」が製品機能になる最小の経路は**新しいDSL Parserを先に作ること**ではなく、既存Language Plugin／Operator／Worldの実入口へ、自己記述的Role候補と複数表層のSourceをつなぐこと。関連PR：
 
 - [#2638：Role bootstrap](https://github.com/hat47x/tei-platform/pull/2638)。plain DataでRoleの必要Shape・依存・版／**Contract Fingerprint＋実装Fingerprint**のPinを記述する**限定合成24ケース**（V8実行・GitHub保存Source照合PASSと報告）。先行19件にRB-20〜24（同版別実装、推移Eager依存の実装差、正確な再Pin、無関係Provider追加、版文字列だけのPin不十分）を追加。Eager解釈の循環と、Graph/Tree等に普通にある遅延Ref循環を区別する。Root RoleだけPinしても必須依存RoleのContract/Implementationが固定されなければqualifiedとしない。同名別Providerや引用された`role`文字列は自動採用しない。合成Fingerprintは実TEI Extension Lockや実実装byteの真正性を証明しない。
 - [#2639：既存Go Language Plugin Referenceへの接続](https://github.com/hat47x/tei-platform/pull/2639)。`ParseSelected`／`ParsePipelineSyntax`／`LowerPinnedPipeline`／`ResolveOperator`を用いたtest-only JSON language対Pipe syntaxの限定比較。実`syntax.NewParser(...).ParseSemanticFile()`→`BindPinnedSemanticInput`のEG-08、および**同じData ID/限定Operator出力型でもAttribute TypeRefを変えると意味モデルとして同一とは断言できない**EG-09を含み、現HeadでGoテスト9関数を確認。`same data ID`／`same limited binder output`／`same accepted model meaning`を必ず別の比較列とする。**test-only JSON語彙・fixture plain-dataは正式Core schemaやAccepted Meaningではない**。

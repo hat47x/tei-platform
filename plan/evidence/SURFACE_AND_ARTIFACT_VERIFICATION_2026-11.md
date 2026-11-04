@@ -89,3 +89,21 @@ go run ./cmd/tei validate -workspace reference/standard-crud/workspace
 - 実データベースでの効果の実行と観測（`TEI_TEST_POSTGRES_DSN` 未設定）
 - 効果の対象を特定する引数の組み立て（`Args` の実装）
 - 再試行の上限、補償の完了を待つ境界
+## 8. 実行計画の確認（2026-11-04 追記）
+
+`run-plan`（#1130）の P1〜P2 を実装し、ライブラリの範囲で確かめました。
+
+| 確認 | コマンド | 結果 |
+| --- | --- | --- |
+| 宣言の解析 | `go test ./internal/syntax -run RunPlan` | 通る |
+| 検証（8診断） | `go test ./internal/validation -run RunPlan` | 通る（正例は診断なし、負例は該当の診断） |
+| 実行の同定・判定 | `go test ./internal/runlog` | 通る（開始・再開・拒否・fence・壊れた行） |
+| 実行ループ | `go test ./internal/execution -run RunPlan` | 通る（順次実行・途中停止・完了の記録・再開） |
+| 無人の停止 | `go test ./internal/execution -run 'Unattended|Attended'` | 通る（確かめる手段が無ければ `blocked`） |
+| 期間との接続 | `go test ./internal/execution -run PeriodPreconditions` | 通る（閉 → blocked、開 → 実行、期間なし → 素通り） |
+
+**確かめていないこと**
+- 実データベースでの計画の実行
+- 出力（`output`）の生成
+- 効果の前提を停止条件へ接続すること
+- 無人実行の承認（誰が無人を許したか）の記録

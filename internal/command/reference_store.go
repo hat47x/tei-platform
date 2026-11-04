@@ -4,13 +4,14 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
-
 	"tei/internal/applicationview"
 	"tei/internal/core"
 	"tei/internal/ir"
 	"tei/internal/semantic"
+	"time"
 )
 
 // MemoryStoreは、Commandの効果を適用する参照用の記憶域である。
@@ -154,15 +155,17 @@ func (s *MemoryStore) Records(data core.CanonicalID) []map[string]string {
 	return out
 }
 
-type memorySnapshot struct {
+// StoreSnapshot is a consistent copy of values and attribute values.
+type StoreSnapshot struct {
 	data       map[core.CanonicalID]map[string]map[string]string
 	attributes map[core.CanonicalID]map[string]map[core.CanonicalID]string
 }
 
-func (s *MemoryStore) snapshot() memorySnapshot {
+// Snapshot returns a consistent copy of the store.
+func (s *MemoryStore) Snapshot() StoreSnapshot {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	out := memorySnapshot{
+	out := StoreSnapshot{
 		data:       map[core.CanonicalID]map[string]map[string]string{},
 		attributes: map[core.CanonicalID]map[string]map[core.CanonicalID]string{},
 	}
@@ -181,7 +184,8 @@ func (s *MemoryStore) snapshot() memorySnapshot {
 	return out
 }
 
-func (s *MemoryStore) restore(snapshot memorySnapshot) {
+// Restore replaces the store with the snapshot.
+func (s *MemoryStore) Restore(snapshot StoreSnapshot) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.data = snapshot.data
@@ -270,6 +274,9 @@ func (e ReferenceDataExecutor) Execute(_ context.Context, request Request) (Resu
 		if err := e.checkValueDomains(request); err != nil {
 			return Result{}, err
 		}
+		if err := e.checkCandidateKeys(request); err != nil {
+			return Result{}, err
+		}
 		if capability.Effect.Kind == semantic.DataEffectUpdate {
 			if err := e.checkImmutableInputs(request); err != nil {
 				return Result{}, err
@@ -279,7 +286,9 @@ func (e ReferenceDataExecutor) Execute(_ context.Context, request Request) (Resu
 	plan, _ := applicationview.BuildCommandPlan(e.World, request.Application, request.Pattern, request.Capability, request.Inputs)
 	targetAttributes := attributeValues(plan)
 	if capability.Effect != nil && capability.Effect.Kind == semantic.DataEffectDelete {
+		snapshot := e.Store.Snapshot()
 		if err := e.checkDeletePolicy(capability.Effect.Data, targetAttributes); err != nil {
+			e.Store.Restore(snapshot)
 			return Result{}, err
 		}
 	}
@@ -293,6 +302,92 @@ func (e ReferenceDataExecutor) Execute(_ context.Context, request Request) (Resu
 		result.Outcome = &outcome
 	}
 	return result, nil
+}
+
+func (e ReferenceDataExecutor) checkCandidateKeys(request Request) error {
+	plan, err := applicationview.BuildCommandPlan(e.World, request.Application, request.Pattern, request.Capability, request.Inputs)
+	if err != nil {
+		return nil
+	}
+	attributes := attributeValues(plan)
+	var dataID core.CanonicalID
+	var candidateKeys []semantic.CandidateKey
+	for i := range e.World.Applications {
+		if e.World.Applications[i].ID != request.Application {
+			continue
+		}
+		for j := range e.World.Applications[i].Patterns {
+			if e.World.Applications[i].Patterns[j].ID == request.Pattern {
+				dataID = e.World.Applications[i].Patterns[j].Data
+			}
+		}
+	}
+	if dataID == "" {
+		return nil
+	}
+	for _, namespace := range e.World.Semantics {
+		for _, data := range namespace.Data {
+			if data.ID == dataID {
+				candidateKeys = data.CandidateKeys
+			}
+		}
+	}
+	if len(candidateKeys) == 0 {
+		return nil
+	}
+	types := map[core.CanonicalID]semantic.Type{}
+	for _, namespace := range e.World.Semantics {
+		for _, typ := range namespace.Types {
+			types[typ.ID] = typ
+		}
+	}
+	attributeTypes := map[core.CanonicalID]core.CanonicalID{}
+	for _, namespace := range e.World.Semantics {
+		for _, data := range namespace.Data {
+			if data.ID != dataID {
+				continue
+			}
+			for _, attribute := range data.Attributes {
+				attributeTypes[attribute.ID] = attribute.TypeRef
+			}
+		}
+	}
+	currentKey := recordKeyFields(request.Inputs, e.KeyFields)
+	for _, candidate := range candidateKeys {
+		values := map[core.CanonicalID]string{}
+		complete := true
+		for _, attribute := range candidate.Attributes {
+			value, ok := attributes[attribute]
+			if !ok {
+				complete = false
+				break
+			}
+			values[attribute] = value
+		}
+		if !complete {
+			continue
+		}
+		normalized := map[core.CanonicalID]string{}
+		for attribute, value := range values {
+			normalized[attribute] = normalizeValue(attributeTypes[attribute], value, types)
+		}
+		for _, record := range e.Store.RecordsWithAttributes(dataID) {
+			if record.Key == currentKey {
+				continue
+			}
+			matched := true
+			for attribute, value := range normalized {
+				if normalizeValue(attributeTypes[attribute], record.Attributes[attribute], types) != value {
+					matched = false
+					break
+				}
+			}
+			if matched {
+				return fmt.Errorf("candidate key %s is duplicated", candidate.ID)
+			}
+		}
+	}
+	return nil
 }
 
 func (e ReferenceDataExecutor) checkImmutableInputs(request Request) error {
@@ -449,6 +544,10 @@ func (e ReferenceDataExecutor) checkRequiredInputs(request Request) error {
 }
 
 func (e ReferenceDataExecutor) checkDeletePolicy(target core.CanonicalID, targetAttributes map[core.CanonicalID]string) error {
+	return e.cascadeDelete(target, targetAttributes, map[string]bool{})
+}
+
+func (e ReferenceDataExecutor) cascadeDelete(target core.CanonicalID, targetAttributes map[core.CanonicalID]string, visited map[string]bool) error {
 	for _, namespace := range e.World.Semantics {
 		for _, data := range namespace.Data {
 			for _, relation := range data.Relations {
@@ -471,7 +570,15 @@ func (e ReferenceDataExecutor) checkDeletePolicy(target core.CanonicalID, target
 						}
 						switch relation.OnDelete {
 						case "cascade":
+							visitKey := string(data.ID) + "\\x00" + record.Key
+							if visited[visitKey] {
+								continue
+							}
+							visited[visitKey] = true
 							e.Store.DeleteKey(data.ID, record.Key)
+							if err := e.cascadeDelete(data.ID, record.Attributes, visited); err != nil {
+								return err
+							}
 						case "preserve":
 						default:
 							return fmt.Errorf("inbound relation %s restricts delete of %s", relation.ID, target)
@@ -484,7 +591,17 @@ func (e ReferenceDataExecutor) checkDeletePolicy(target core.CanonicalID, target
 				}
 				switch relation.OnDelete {
 				case "cascade":
-					e.Store.DeleteAll(data.ID)
+					for _, record := range e.Store.RecordsWithAttributes(data.ID) {
+						visitKey := string(data.ID) + "\\x00" + record.Key
+						if visited[visitKey] {
+							continue
+						}
+						visited[visitKey] = true
+						e.Store.DeleteKey(data.ID, record.Key)
+						if err := e.cascadeDelete(data.ID, record.Attributes, visited); err != nil {
+							return err
+						}
+					}
 				case "preserve":
 				default:
 					return fmt.Errorf("inbound relation %s restricts delete of %s", relation.ID, target)
@@ -493,6 +610,39 @@ func (e ReferenceDataExecutor) checkDeletePolicy(target core.CanonicalID, target
 		}
 	}
 	return nil
+}
+
+func normalizeValue(typeRef core.CanonicalID, value string, types map[core.CanonicalID]semantic.Type) string {
+	primitive := typeRef
+	for depth := 0; depth < 16; depth++ {
+		typ, ok := types[primitive]
+		if !ok || typ.Kind != semantic.TypeAlias || typ.Underlying == "" {
+			break
+		}
+		primitive = typ.Underlying
+	}
+	switch primitive {
+	case "std.integer":
+		if number, err := strconv.ParseInt(value, 10, 64); err == nil {
+			return strconv.FormatInt(number, 10)
+		}
+	case "std.decimal", "std.money":
+		if number, err := strconv.ParseFloat(value, 64); err == nil {
+			return strconv.FormatFloat(number, 'f', -1, 64)
+		}
+	case "std.boolean":
+		if strings.EqualFold(value, "true") {
+			return "true"
+		}
+		if strings.EqualFold(value, "false") {
+			return "false"
+		}
+	case "std.date":
+		if date, err := time.Parse("2006-01-02", value); err == nil {
+			return date.Format("2006-01-02")
+		}
+	}
+	return value
 }
 
 func attributeValues(plan applicationview.CommandPlan) map[core.CanonicalID]string {
@@ -515,12 +665,12 @@ func (u *StoreUnitOfWork) Begin(context.Context) (Transaction, error) {
 	if u.Store == nil {
 		return nil, fmt.Errorf("reference store is not configured")
 	}
-	return &storeTransaction{unit: u, snapshot: u.Store.snapshot()}, nil
+	return &storeTransaction{unit: u, snapshot: u.Store.Snapshot()}, nil
 }
 
 type storeTransaction struct {
 	unit     *StoreUnitOfWork
-	snapshot memorySnapshot
+	snapshot StoreSnapshot
 	done     bool
 }
 
@@ -536,7 +686,7 @@ func (t *storeTransaction) Rollback(context.Context) error {
 	if t.done {
 		return nil
 	}
-	t.unit.Store.restore(t.snapshot)
+	t.unit.Store.Restore(t.snapshot)
 	t.done = true
 	return nil
 }

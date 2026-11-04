@@ -132,6 +132,7 @@ func main() {
 	worldPath := fs.String("world", "", "normalized M0 IR JSON")
 	workspacePath := fs.String("workspace", "", "TEI workspace directory")
 	jsonValidation := fs.Bool("json", false, "machine-readable JSON for validate -workspace")
+	pluginDiagnostic := fs.Bool("diagnostic-candidates", false, "show unvalidated plugin candidates; never authorizes execution")
 	subjectKind := fs.String("subject-kind", "", "Source Index subject kind")
 	subjectID := fs.String("subject-id", "", "Source Index subject ID")
 	traceScope := fs.String("scope", "", "scope for typed modelref trace projection")
@@ -395,7 +396,13 @@ func main() {
 	}
 	if isResultEnvelopeCommand(command) {
 		// requirements, plugin-lock, plugin-resolve, plugin-runtime-plan
-		code, err := resultCommandJSON(os.Stdout, command, *workspacePath, *worldPath, *environmentID, *pluginLockPath, fs.NArg())
+		environmentSpecified := false
+		fs.Visit(func(f *flag.Flag) {
+			if f.Name == "environment" {
+				environmentSpecified = true
+			}
+		})
+		code, err := resultCommandJSON(os.Stdout, command, *workspacePath, *worldPath, *environmentID, *pluginLockPath, *pluginDiagnostic, environmentSpecified, fs.NArg())
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 		}

@@ -70,15 +70,24 @@ structure CompletionClaim where
 - `EmptyPolicy` は述語の形から自動導出しない。全称と不在確認を同じ形で扱えないため。
 - 完了述語は `(TargetSet L, EmptyPolicy, Predicate P)` の三つ組として扱う。
 - 既定候補は §3 の表を使い、Action側の宣言が既定を上書きする。
-- 宣言の構文・保存先は `BUSINESS_ACTION_COMPLETION_EVIDENCE_DESIGN_2026-11.md` の採否（#267）と合わせて設計する。
+- 宣言の構文・保存先は **Actionの`.tei`宣言の`emptyPolicy`属性**とする（2026-11-04 Owner判断）。
+  - `capability <action> { ... emptyPolicy allow | requires-evidence | deny }`
+  - 未宣言は業務類型の既定候補（`internal/semantic.DefaultEmptyPolicy`）を使う
+  - 意味の正本は`.tei`側に置き、実行時記録は宣言を参照する
 
-## 7. 未決
+## 7. 実装状況（2026-11-04）
 
-- `EmptyPolicy` の宣言構文・保存先（Source / Accepted meaning / Execution record のどこに置くか）。
+- `internal/semantic`: `EmptyPolicy`（`allow` / `requires-evidence` / `deny`）、`DefaultEmptyPolicy(condition)`、`Capability.EffectiveEmptyPolicy(condition)`。
+- `internal/syntax`: capability宣言の`emptyPolicy`属性。未知の値と二重宣言を拒否する。
+- 試験: 既定候補、Action宣言による上書き、未知値・重複の拒否、未宣言の扱い。
+
+## 8. 未決
+
 - 不在確認の「探索の完全性」を、既存のProvider契約・観測（#2598・#2582・#2387・#2622）のどこまでで保証できるか。
 - 形式系の検証をどこまで実装するか（Leanの特定版での機械検証は未実施）。
+- `CompletionClaim` 評価（`TargetSet L`・`P`・`EmptyPolicy`の照合）への接続は #267 の設計採否後。
 
-## 8. 主張しないこと
+## 9. 主張しないこと
 
 - この文書はCore Schema・実行Status・製品保証を変更しない。設計の採否は #267。
 - Leanの特定バージョンで上記の写像を機械検証していない。

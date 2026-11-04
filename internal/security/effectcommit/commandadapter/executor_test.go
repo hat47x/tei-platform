@@ -52,7 +52,9 @@ func adapterWorld() ir.World {
 }
 
 type fakeProvider struct {
-	allowed bool
+	allowed   bool
+	conflict  bool
+	commitErr error
 }
 
 func (p fakeProvider) Begin(context.Context) (effectcommit.Transaction, error) {
@@ -72,12 +74,17 @@ func (t *fakeTransaction) FindReceipt(context.Context, string) (effectcommit.Rec
 }
 
 func (t *fakeTransaction) WriteResource(_ context.Context, request effectcommit.Request) (uint64, error) {
+	if t.provider.conflict {
+		return 0, effectcommit.ErrResourceConflict
+	}
 	return request.ExpectedVersion + 1, nil
 }
 
 func (t *fakeTransaction) SaveReceipt(context.Context, effectcommit.Receipt) error { return nil }
-func (t *fakeTransaction) Commit(context.Context) error                            { return nil }
-func (t *fakeTransaction) Rollback() error                                         { return nil }
+func (t *fakeTransaction) Commit(context.Context) error {
+	return t.provider.commitErr
+}
+func (t *fakeTransaction) Rollback() error { return nil }
 
 func grant() legacyauthorization.AuthorizationGrant {
 	return legacyauthorization.AuthorizationGrant{
@@ -131,5 +138,61 @@ func TestExecutorReportsBusinessDenial(t *testing.T) {
 	}
 	if !errors.Is(err, effectcommit.ErrBusinessDenied) {
 		t.Fatalf("error does not wrap business denial: %v", err)
+	}
+}
+
+// #2564: a lost commit response must reach the Command lifecycle as an
+// unknown effect, not as a clean rejection, so the same attempt cannot replay.
+func TestExecutorPreservesCommitUncertainty(t *testing.T) {
+	lifecycle := command.NewLifecycle()
+	invoker := command.LifecycleInvoker{
+		Lifecycle: lifecycle,
+		Invoker: command.Invoker{
+			World: adapterWorld(),
+			Executor: Executor{
+				Runner:      effectcommit.Runner{Provider: fakeProvider{allowed: true, commitErr: errors.New("connection reset after send")}},
+				Grant:       grant(),
+				OperationID: "op-1",
+			},
+		},
+	}
+	_, err := invoker.Invoke(context.Background(), request(), command.DispatchOptions{
+		CommandID: "cmd-1", Owner: "owner-a", Generation: 1,
+	})
+	if !command.EffectMayBeUnknown(err) {
+		t.Fatalf("commit uncertainty was dropped: %v", err)
+	}
+	var execution *command.ExecutionError
+	if !errors.As(err, &execution) || execution.Code != "COMMAND_EXECUTION_FAILED" {
+		t.Fatalf("error is not the command boundary error: %v", err)
+	}
+	var uncertain *effectcommit.CommitUncertainError
+	if !errors.As(err, &uncertain) {
+		t.Fatalf("CommitUncertainError is not preserved as the cause: %v", err)
+	}
+	attempt, _ := lifecycle.Attempt("cmd-1")
+	if attempt.Stage != command.StageUnknown {
+		t.Fatalf("stage=%s, want unknown", attempt.Stage)
+	}
+	if lifecycle.MayReplay("cmd-1") {
+		t.Fatal("an uncertain commit was reported as replayable")
+	}
+}
+
+func TestExecutorReportsResourceConflict(t *testing.T) {
+	invoker := command.Invoker{
+		World: adapterWorld(),
+		Executor: Executor{
+			Runner:      effectcommit.Runner{Provider: fakeProvider{allowed: true, conflict: true}},
+			Grant:       grant(),
+			OperationID: "op-1",
+		},
+	}
+	_, err := invoker.Invoke(context.Background(), request())
+	if err == nil {
+		t.Fatal("resource conflict was accepted")
+	}
+	if !errors.Is(err, effectcommit.ErrResourceConflict) {
+		t.Fatalf("error does not wrap resource conflict: %v", err)
 	}
 }
