@@ -443,3 +443,49 @@ Source移動・A→B→A・外部Importの途中欠落・0件の否定依存・D
 - **今は作らない**：第二のTest Runtime/Registry、全ドメイン専用Schema、Agent MCP必須Host、GUI第一、秘匿Oracleの公開、全Source閉包が未証明な段階での完全なIncremental Test Skip。
 
 Ownerは#1180（Scenario）、#2813/#988（DSL Candidate）、#2514（Oracle）、#2515（開示/OS）、#2595（実Source/Builder）、#2600（依存再資格）、#1163（Evidence）、#2391（GUI）、#2018（費用）へ分散したまま。**本節は新しい一元管理Owner・Host・意味正本を設立しない**。
+
+## 13. AIテスト候補から採用済み回帰資産への公開・受領境界（2026-11-04）
+
+**区分：横断設計追補／本節の実験はNOT RUN。** [横断計画§41–42（Draft #2667）](https://github.com/hat47x/tei-platform/blob/docs/everything-data-real-evidence-cut-20261103/plan/workstreams/EVERYTHING_DATA_CROSSLANE_HANDOFF_2026-11.md)の成果を再利用する。最優先は依然としてAIがJSONまたはScenario v0にCaseを隔離追加できるP0足場。その上で、**テスト候補が限定的にPASSしたこと**と**検証済み回帰Suite一式が公開され、Consumerが同じ版を受領できること**を別資格とする。新Runner/Publisher/Registry/意味正本は設けない。
+
+### 13.1 採用後の資格はG0〜G4の外に分離する
+
+| 状態 | 独立に確認すること | 保留すること |
+| --- | --- | --- |
+| Candidate | Agent別隔離PathへCase/Fixtureを生成。G0構文・G1対象/Scopeの妥当性 | 独立Expected、業務意味、実Target |
+| Qualified Regression | G2独立Oracle、G3実Run、G4事前Obligation・新規判別力を評価 | 世代一式公開、外部Consumer受領 |
+| Published Suite | Accepted Case/Fixture/Expected/Obligation/Target bindingの**必要Member集合・実byte/manifest・公開世代**を照合（#2604） | Consumerが取得したこと、実Grant |
+| Consumed Suite | Consumerが指定Manifestにあるmemberを読み、各byte/版を照合。余剰memberを勝手に取り込まない（#2516/#1163） | Target実行、現在の権限と効果 |
+| Executed Target | 実入力・Target artifact・runner receiptと独立Observationを束縛 | 別Target/別時点/業務意味の自動受理 |
+
+**この追加資格はP0の候補Case追加・局所テスト実行の必須前提にはしない。** CIや他Agent/Web/SHOに採用済み回帰一式を渡す段階でだけ発行・受領を厳格化する。G0〜G4をもう一つの合格率へ足さない。
+
+### 13.2 最新の実Go反例と対応する最小負例
+
+[Draft #2817](https://github.com/hat47x/tei-platform/pull/2817) は #2604 AP-01〜03を局所Goで実証：①R2書込み途中で新memberと旧R1 manifestが混在、②R2で使わない旧memberの物理残留、③名前衝突が検知される前に旧memberが置換される。これは既存Artifact Writerの現状であり、AI Case Suiteの公開が既に同実装を使っているという実装事実ではない。
+
+| Test | AI回帰資産の反証入力 | 受入期待 |
+| --- | --- | --- |
+| AT-PUB-01 | R2のCaseだけ新しく、Expectedは旧R1 | 混合版は拒否。旧Expectedを最新Caseの独立Oracleに流用しない |
+| AT-PUB-02 | R2 manifestにない旧R1 Caseがディレクトリに残留 | Consumerは旧memberをR2のCaseとして実行しない |
+| AT-PUB-03 | 2つのCase/Subjectが同じ物理出力名へ衝突 | 旧公開一式を途中破壊したのに成功としない。Case IDと物理ファイル名を区別 |
+| AT-PUB-04 | Manifest completeだがOracle由来不明、CheckSet Findingあり | 物理的な一式性と回帰意味適格性を分ける |
+| AT-PUB-05 | 同一の短縮Hash ID／別Scopeまたは別Scheme | 文字列一致だけで意味ID・Oracle・実行権限を結合しない（#2814/#2815） |
+| AT-PUB-06 | 同一Scenarioから生成したCLI/Webの一方だけ古いMemberを消費 | 各Targetの実Consumer Receipt/Pinを別検証し、CLI PASSをWebへ流用しない |
+| AT-PUB-07 | 外部AI公開IssueにSecret/holdout/Import Rawが証拠として混入 | #2515/#2516の公開可能Projectionのみ出し、原文の保存を開示許可と混同しない |
+| AT-PUB-08 | EKI Job完了だが成果物本文未取得／Provider Commit不明 | Job完了・成果物受領・業務Effectを別資格で保留。自動再実行で不明Commitを解決しない |
+
+### 13.3 P0の次に行う1件だけのConsumer実証
+
+§12の最小Packet（DSL JSON正常/拒否とDriver Scenario正常/拒否、固定Oracle/Mutant）が実測できてから、**採用可能なCaseを1件だけ**隔離世代として記述する。既存#2604のManifest/Member/Reader手法を利用できる範囲で、Producerが書いた全必須Case/Fixture/Expected bytesを示す。別のread-only Consumerが実際に取得したbytesをManifestのpinと照合する。R1→R2途中失敗、旧Case残存を最低1つずつ注入し、**Publisherが成功でもConsumerが取得していない**、または**実行は成功でもOracleが共有由来**という二つの不正昇格を拒否する。
+
+固定ManifestからCLI/Web各派生へ進むのは、その版とConsumerの実入力を照合できてから。特定のAtomic Rename・OS/FS保証は未採用であり、物理公開方法は#2604が判断する。AgentごとにCandidate独立編集を許し、採用済みExpected・固定Anchor・Holdout/世代公開先を勝手に編集させない。
+
+### 13.4 横断計画との整合・責務
+
+- §41の順序は**AI-first P0足場を先に整備し、その最初の製品横断Evidence対象がV-READ**という意味。P0足場を実ProviderやSHO/GUI完成まで待たせない。
+- #2604＝Artifact一式公開、#2516＝実Consumer/Disclosure、#1163＝一改訂Evidence、#1180＝ScenarioのCLI/Web派生、#2514＝独立Oracle、#2391＝GUI外部制御とProduction物理除去。#2811は**受渡しと採用条件**だけを扱う。
+- #2817の試験はWSL Go/既存Artifact Writerの局所負例で、AI Suite/Windows/外部SHO/実ConsumerのE2E証明ではない。#2815のHashId PoCは現行Case ID・Digest・署名の正式採用ではない。
+- #2820/#2825の文書整合監査に従い、歴史的なDraft/未実行の記載を現在のmerge/CIの真偽に読み替えない。正しさと本番資格は一つのStatusへ集約しない。
+
+**本節はdocs-only。** AT-PUB-01〜08、AI Caseの採用済み一式公開、Reader受領、Web/GUI/Provider/Host、Owner意味受理は本変更ではNOT RUN。新Publisher/Schema/Authorityは追加しない。
