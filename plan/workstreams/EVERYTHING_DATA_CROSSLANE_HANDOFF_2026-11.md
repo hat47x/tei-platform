@@ -1283,6 +1283,53 @@ Requiredが全社、Authorized/ActualがTenant A限定なら「Tenant Aの対象
 
 **責務と採否**：#2622＝実Data Provider/Relation・上流/下流Read Mapping、#1129/#1174＝取込Command/Commit/Recovery、#2514/#1180/#2811＝独立ExpectedとAI-first候補テスト、#1130＝Job/Result、#2604/#2595＝実入力Artifact/member・実Builderの消費、#2386/#2593＝時間・grain、#2516＝開示。固定業務Rule・異Source Identityの対応と外部の正本性はBusiness/Data Ownerの受理を要求する。本節は既存§27.6〜27.8と§41〜44のEvidenceを使い、**新DSL/Validator/Proof Engine、汎用外部SoR、別品質正本・中央Registryを採用せず、実装・実E2E・性能実測・Owner受理はNOT RUN**。
 
+
+### 27.10 外部突合の対応付け・粒度・保存先資格――一対一比較を前提にしない（2026-11-04横断追補）
+
+> **設計・受入条件のみ、NOT RUN／NOT ACCEPTED。** §27.9の上流受渡し完全性・外部突合を実装へ近づける際、単純なSource ID＝Target ID／件数一致／SUM一致だけで受理すると、**分割・統合・取消・遡及訂正・複数DB Alias・通貨/時点の違い**で誤った正常・異常判定になる。#2611（同じSemantic Dataの複数Persistence/DB Alias）、#2593（Measureの粒度・加算可能性）、#1129（業務Lifecycle）、#2622（多Provider Read）、#2514（独立Oracle）と§34・§40〜44を照合し、照合対象の**対応関係自体を出典・版付きの検証可能な仮説**として取り扱う。新Mapping Registry／汎用ETL Engine／Quality Hostは作らない。
+
+#### 27.10.1 対象を「同じ名前のRecord」ではなく、受理された業務事実で対応付ける
+
+| 確認単位 | 明示する意味・実証 | 自動的に言えないこと |
+| --- | --- | --- |
+| **Fact/Occurrence identity** | 上流System/Namespace・Record/Event ID・発生回/訂正元・業務Keyの受理範囲・Owner | 名前・表示ID・ハッシュ・同額だけで同一の業務事実 |
+| **Correspondence cardinality** | 1:1、1:N、N:1、必要な場合はN:M。分割・統合・重複・取消のRule/適用期間/対象集合 | 行数不一致＝欠落、合計一致＝すべてのOccurrenceを追跡済み |
+| **Source-to-target binding** | Source System/DB Alias/Provider・実Persistence Mappingと、その役割（現行/履歴/検証用/レプリカ）・Owner/Read Scope | 同じSemantic ID・Operation IDを持つ別DBが同じ現在レコード集合、同一書込先 |
+| **Value/Measure transformation** | 粒度、Unit/Currency/Scale/Rounding、許されるSUM/COUNT/Rate/Stock変換・使用した時点/レート・誤差契約 | 月末残高の単純SUM、異通貨の暗黙加算、丸め規則未定義での適合 |
+| **Temporal/correction relation** | Event/valid/known/recorded/Source accepted time、訂正/Cancel/Reverse、watermark・再送と再処理の区別 | 遅着/取消前のSnapshotを現在の全件保証、同内容の別OccurrenceをRetry重複 |
+| **Read/Disclosure evidence** | Required/Authorized/Actual/Disclosed Footprint、実Query/API・Snapshot・欠落/隔離/未到着と現在の共有資格 | RLS下の0行＝業務不存在、監査用Read許可＝外部AIへ生データ送信可 |
+
+**原則：Correspondenceは静的なModel Relationと実データ上の対応の両方を区別する。** モデルが「受注から請求へ分割可能」と宣言することは、実際の受注O1からI1/I2へ何が保存されたかの証明ではない。モデル/Sourceの構造が同じでも、Rule改版、Data Context、実Provider Binding、Row/Field Completeness、Policy/Grant、Source Revision、Artifact/Consumerで現在資格は変わる（§29/#2611/#2600）。
+
+**Mappingの決め方**：一つの業務Objectを各システムの物理キーへ暗黙に変換しない。原DBが与える安定外部ID、取込Receipt/Manifest、受理済み分割・合成Relation、変更イベントの相関IDなどを順に候補とし、**実測できない対応辺をAIが正解として補完しない**。対応不能/曖昧は`unmatched`／`ambiguous`／`unknown`等として、対象範囲とともに報告する。必要な横断ID/MappingのAuthorityをOwnerが受理していない場合、件数差の原因を「欠落」と断定せず、検出した差異と未確認の対応を別表示する。
+
+#### 27.10.2 保存された金額・件数が一致しても、保存と実業務の整合を証明しない
+
+- **分割**：上流受理1件 U1=100 が下流2件 D1=60、D2=40 に正当に分割され得る。比較してよい量・粒度・期間・丸め/単位がOwnerに受理され、D1/D2の対応辺・完全性が実取得できた場合にのみ100=60+40を局所的に受理する。未紐付けD3=0や旧D2を機械的に除外して「完了」とはしない。
+- **統合**：上流U1=60、U2=40が下流D1=100に統合され得る。SUM一致でもU1とU2がどちらも引き渡されたとは証明しない。個別Occurrence・受理/隔離・取込実履歴が必要なClaimでは、Control Totalだけなら未検証。
+- **取消・遡及**：上流U1=100、取消イベントC1=-100と、下流の現時点残高0は一致し得る。しかし「初めから取引なし」「取引後に取消済み」は異なる業務履歴。日末Stockは期間Flowの単純総和ではなく、valid/recorded timeとLifecycle Ruleを照合する。
+- **相殺/共有の誤り**：U1=70、U2=30に対し、下流D1=80、D2=20でも合計100。集計だけでは二件の不一致を発見できない。Go/SQL/Leanの同一Rule由来Expectedだけでは二系統の共通誤Bindingを検出できない（§27.8）。
+- **別DB Alias**：現行DB Aの受注O1@v2と履歴DB BのO1@v1は、同じSemantic Kindでも別実対象・版である。#2611の現行候補でOperation ID一致時に後続Mappingが消える可能性を、外部照合の正しいTarget確定へ流用しない。実Source/Reader・Alias・Role・Read Cohortを明示し、同時点でない二系統の「不一致」は先にEpoch差と実内容差を分ける。
+
+**判定の最小分類（新Core enumでない）**：`matched-in-scope`、`unmatched-source`、`unexpected-target`、`value-mismatch`、`ambiguous-correspondence`、`pending-watermark`、`incomplete-read`、`invalid-contract`。これは下流DBの既存Data Rule PASS/FAIL、Job Attempt/Receipt、修正Intent/現在のAuthorityとは独立。上流側で欠損が発生した疑いがあっても、独立根拠がなければ「実世界に存在したはず」という新たな事実を作らない。
+
+#### 27.10.3 最小の差分Fixture（§27.9 QREを再利用し、新Runnerを増やさない）
+
+| ID | 固定入力と負例 | 独立Expected・停止条件 |
+| --- | --- | --- |
+| **QRC-01 Split** | U1=100 → D1=60/D2=40、D2は明示関係あり／なしの両方 | 受理済み1:N関係と完全Readがあれば局所一致。関係未確定ならSUM一致だけで完了にしない |
+| **QRC-02 Merge** | U1=60/U2=40 → D1=100、U2だけ未受理の実取込証拠 | 合計一致でもU2の受渡し完了は不成立。受理履歴と対応辺を別判定 |
+| **QRC-03 Wrong distribution** | 上流70/30、下流80/20、合計両100 | Control Total PASS、Record単位の独立Expected FAILを共存報告 |
+| **QRC-04 Cancel+time** | 受注100→取消-100、下流残高0、旧Replicaは100 | Stock/Flow・取消履歴・Watermarkを分離。現状0から取引不存在を結論しない |
+| **QRC-05 Duplicate alias** | 同じsales.orderを現行DB/O1@v2と履歴DB/O1@v1から別Aliasで取得 | 読取Source/Role/Revision/実Queryを区別。Semantic/Operation ID一致で対象を無音統合しない（#2611） |
+| **QRC-06 Round/Unit** | 明細3×19.995＝59.985の中間値、保存金額の丸め/通貨変換/時点が異なる | Contractに無い丸め・換算をAIが補わずunknown/invalid-contract。正しい独立Expectedは別途固定 |
+| **QRC-07 Reconcile retry** | 同じTransferを再配送、別Occurrenceの同内容、Error後の旧Artifact混入 | Replayと新規業務事実、受理と実Commit、全member実取得とResultの世代を区別（§42/#2604） |
+| **QRC-08 Scope/Owner** | Tenant A/Bを局所検査、BのSource/Mapping/値は監査主体に非開示 | A限定Claim、横断一致はunknown。Read Grant/開示の追加は明示Owner判断が必要（§27.7） |
+
+**実証順**：C0 #2514/#1180にQRE-01 O1/O2欠落の独立Expectedを置き、受理済み`1:1`のみのBaselineを記録。C1 QRC-01〜04で1:N/N:1・取消時点を増やし、独立Oracle/固定Mutantの検出力と誤警告を確認。C2 #2611/#2622の候補Mappingと実Reader/二Providerを同一Attemptで照合できた場合だけQRC-05/06を実証。C3 #1130のread-only CheckSet/既存OS SchedulerでFull/Incrementalとリードタイム・CPU/IO/Replica負荷を計測。C4 将来のEKI委譲・Lean/SHO/AI説明は、C2実Readerと現在Consumer/Owner資格が成立した後に限定して検討。**AI-first Scenarioのテスト候補追加は可能でも、正式Driver v0未対応Operationや業務Owner未受理のCorrespondenceを実装済みと呼ばない**（§41/#2811/#2828）。
+
+**実装責務・採否**：#2611が同Semantic Kind/別Alias/Mapping候補の衝突と実Target、#2622が多Providerの実Read/取得/欠落、#2593がMeasureの合法演算と粒度、#1129が取消/訂正/保存のLifecycle、#2514が独立Oracle・共通出所警告、#1180/#2811がScenarioとAI提案、#1130が非画面Batch、#2516が開示、#2604/#2595がArtifact/Source実消費証拠、#1174が是正Effect・現在認可。**本節は計画書の追補に限り、外部業務Key規則・照合DSL/CLI/Result Store、実Go/SQL/DB/API/Replica/Lean/EKI、性能測定、Owner受理、main統合はNOT RUN/未採用。**
+
 ## 28. 一改訂のValue／Flow／Job／Consumer縦断――参照実行と外部実行を混同しない（2026-11-03横断追補）
 
 ### 28.1 並行する三つのOwner計画を、別の正本を作らずにつなぐ
