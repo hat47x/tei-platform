@@ -247,6 +247,72 @@ func TestReferenceWorkspaceDefinitionAndPluginWorkflow(t *testing.T) {
 		t.Fatalf("reference application changed during isolated test: %v", err)
 	}
 	t.Log("reference application: 1 file reordered; strict diff=1 and membership candidate=0; validation order change=1; missing namespace blocks normal paths and opt-in diagnostic remains non-success")
+
+	// A third case changes a shared type without rewriting its consumers.
+	if err := os.WriteFile(appPath, appOriginal, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	const oldType = "type OrderId from std.identifier"
+	if bytes.Count(original, []byte(oldType)) != 1 {
+		t.Fatal("type anchor must be unique")
+	}
+	typeChanged := bytes.Replace(original, []byte(oldType), []byte("type OrderId from std.text"), 1)
+	if err := os.WriteFile(filepath.Join(after, filepath.FromSlash(rel)), typeChanged, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	run(tei, 0, "validate", "-workspace", after)
+	run(tei, 0, "plugin-resolve", "-workspace", after, "-environment", "development", "-plugin-lock", lockPath)
+	var typeReport applicationMembershipComparison
+	if err := json.Unmarshal(run(compare, 0, "compare-application-membership", "-before", before, "-after", after), &typeReport); err != nil {
+		t.Fatal(err)
+	}
+	if len(typeReport.SemanticChanges) != 1 || typeReport.SemanticChanges[0].Kind != "type" || typeReport.SemanticChanges[0].ID != "sales.order_id" {
+		t.Fatalf("type change not found: %+v", typeReport.SemanticChanges)
+	}
+	wantEdges := map[string]bool{"attribute:sales.order.order_id": false, "contract-query:sales_core.order_line/find_by_order": false}
+	for _, edge := range typeReport.SemanticImpact {
+		if edge.From == "type:sales.order_id" && !strings.HasPrefix(edge.Via, "previous.") {
+			if _, ok := wantEdges[edge.To]; ok {
+				wantEdges[edge.To] = true
+			}
+		}
+	}
+	for target, found := range wantEdges {
+		if !found {
+			t.Fatalf("missing actual type consumer %s: %+v", target, typeReport.SemanticImpact)
+		}
+	}
+	unknownTypeImpact := false
+	for _, finding := range typeReport.SemanticImpactUnresolved {
+		unknownTypeImpact = unknownTypeImpact || finding.Code == "SEMANTIC_TYPE_IMPACT_INCOMPLETE"
+	}
+	if !unknownTypeImpact {
+		t.Fatalf("type analysis scope was not marked incomplete: %+v", typeReport.SemanticImpactUnresolved)
+	}
+	if err := json.Unmarshal(run(tei, 0, "plugin-lock", "-workspace", after), &updated); err != nil || !bytes.Equal(locked.Result, updated.Result) {
+		t.Fatalf("type change altered plugin lock: %v", err)
+	}
+	contractRel := "databases/sales-core/contracts/order-line.tei"
+	contractBefore, err := os.ReadFile(filepath.Join(before, filepath.FromSlash(contractRel)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	contractAfter, err := os.ReadFile(filepath.Join(after, filepath.FromSlash(contractRel)))
+	if err != nil || !bytes.Equal(contractBefore, contractAfter) {
+		t.Fatalf("consumer contract was rewritten: %v", err)
+	}
+	badType := bytes.Replace(original, []byte(oldType), []byte("type OrderId from std.not_present"), 1)
+	if err := os.WriteFile(filepath.Join(after, filepath.FromSlash(rel)), badType, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if out := run(tei, 1, "plugin-resolve", "-workspace", after, "-environment", "development", "-plugin-lock", lockPath); !bytes.Contains(out, []byte("UNKNOWN_SEMANTIC_TYPE_UNDERLYING")) {
+		t.Fatalf("unknown underlying type not rejected: %s", out)
+	}
+	var invalidType applicationMembershipComparison
+	if err := json.Unmarshal(run(compare, 1, "compare-application-membership", "-before", before, "-after", after), &invalidType); err != nil || invalidType.Membership != nil || invalidType.WorkspaceValidationPassed {
+		t.Fatalf("invalid type comparison: %+v, %v", invalidType, err)
+	}
+	t.Logf("reference type edit: 1 source changed, existing attribute and Contract Query references retained; %d direct/previous impact edges; incomplete coverage explicit; unchanged plugin lock; unknown base rejected", len(typeReport.SemanticImpact))
 	actual, err := os.ReadFile(filepath.Join(repositoryRoot(t), "reference", "workspace", filepath.FromSlash(rel)))
 	if err != nil || !bytes.Equal(actual, original) {
 		t.Fatalf("reference source changed during isolated test: %v", err)

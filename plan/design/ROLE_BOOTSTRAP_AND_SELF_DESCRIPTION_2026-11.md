@@ -132,6 +132,8 @@ Runtime側の `Registry.InvokeWithProvenance` は選択したCapability、Plugin
 
 同じ複製の別ケースでは、`order_entry` の意味名前空間の利用宣言を1ファイル内で並べ替えた。既存LockでPluginを解決でき、厳密なApplication差分は1件、利用集合の候補は0件だった。Validationの宣言順も変えると候補は1件となり、順序の意味を消さない。存在しない名前空間に変えた負例では通常比較とPlugin解決が停止し、明示的な診断では元診断と未検証状態を残して候補を確認できた。これはSourceの表示順やTargetが不変という証拠ではなく、既存の受理条件も変更しない。
 
+型定義の変更では、Referenceの `sales.order_id` の基底を一時コピー上で変更した。実CLIの検証と旧Plugin Lockによる選択は成功し、参照するAttributeとDatabase Contract QueryのSourceは書き換えなかった。一方、従来のReference影響分析には型変更の分岐がなく、両者の明示参照を候補に出していなかった。型別名・Attribute・Contract Query入力のexact ID参照を候補として追加し、変更・削除時は変更前の参照も区別する。推移依存や保存データ・移行・互換性は未確認と明示し、読み取り専用比較にも候補と未解決事項を表示する。未定義の基底型は通常の検証・Plugin解決で拒否される。型変更が業務上安全であること、実Providerの動作、影響の網羅性は示していない。
+
 **Build位置の限定対照**：`internal/plugin/build_location_actual_test.go` は実Goコンパイラで同一内容の合成モジュールを二つの異なるディレクトリからBuildする。Go 1.27.3／Linuxでは `-trimpath` 有効時、同一位置の再Buildと移動後の出力バイトが一致し、Source内容を変えた出力と実行結果は変化した。`-trimpath` なしでは同じ内容でも位置によってバイトが異なった。同じSource DigestでLocatorのみ異なるBuildPlan v1のFingerprintは両条件と独立に異なる。Go単体の比較であり、実TEI Builder AdapterがPlanを実行した証拠、他Target・Compilerでの再現性、移動後のBuild省略の安全性を示さない。
 
 既存の `tools/reference-build-execution-binding` はLocatorを取得ヒントとして除く**別のReference限定**の実行Plan投影を持ち、BuildPlan v1や既存LockのFingerprintを変更しない。条件付きの再利用を検討するなら、Builderが位置の非依存性を保証できる範囲と実際の入力・出力を確認し、既存の候補を対照する。今回の実験だけでv1固定範囲やLock照合を変更しない。
