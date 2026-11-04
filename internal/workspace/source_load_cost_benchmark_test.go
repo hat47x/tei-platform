@@ -20,7 +20,7 @@ func BenchmarkLoadManagedWorkspaceFiles(b *testing.B) {
 			if err := os.MkdirAll(filepath.Join(root, "semantic"), 0o755); err != nil {
 				b.Fatal(err)
 			}
-			manifest := "workspace: load_cost\nsources:\n  - semantic\n"
+			manifest := "workspace: load_cost\nformatVersion: 1\nsources:\n  - semantic\n"
 			if err := os.WriteFile(filepath.Join(root, "tei.workspace.yaml"), []byte(manifest), 0o644); err != nil {
 				b.Fatal(err)
 			}

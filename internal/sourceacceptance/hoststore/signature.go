@@ -7,7 +7,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"os"
 	"sort"
@@ -207,23 +206,36 @@ func checkKeyState(i TrustedIssuer, clock func() time.Time) error {
 // LoadTrustPolicy reads and validates a trust file. Errors do not include the
 // file's contents.
 func LoadTrustPolicy(path string) (TrustPolicy, error) {
+	return LoadTrustPolicyWithSchema(path, trustSchema)
+}
+
+// LoadTrustPolicyWithSchema is LoadTrustPolicy for a trust file of another
+// purpose (for example provisional effect-grant issuers). The schema string
+// keeps such a file from being accepted as Source Acceptance trust, and back.
+func LoadTrustPolicyWithSchema(path, schema string) (TrustPolicy, error) {
 	raw, err := os.ReadFile(path)
 	if err != nil {
 		return TrustPolicy{}, errors.New("HOST_STORE_TRUST_UNREADABLE")
 	}
-	return ParseTrustPolicy(raw)
+	return ParseTrustPolicyWithSchema(raw, schema)
 }
 
 // ParseTrustPolicy validates a trust document: known schema, at least one
 // issuer, a 32-byte public key, a non-empty key ID and Application list, and
 // no duplicate issuer/key pair, no public key listed twice, no unknown member, and a well-formed optional validity window.
 func ParseTrustPolicy(raw []byte) (TrustPolicy, error) {
+	return ParseTrustPolicyWithSchema(raw, trustSchema)
+}
+
+// ParseTrustPolicyWithSchema applies every ParseTrustPolicy rule to a document
+// whose schema must equal schema.
+func ParseTrustPolicyWithSchema(raw []byte, schema string) (TrustPolicy, error) {
 	var policy TrustPolicy
 	// Unknown members are refused, not ignored: a misspelled "revoked" or
 	// "notAfter" would otherwise leave the key silently unrestricted.
 	decoder := json.NewDecoder(bytes.NewReader(raw))
 	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&policy); err != nil || policy.Schema != trustSchema || len(policy.Issuers) == 0 {
+	if err := decoder.Decode(&policy); err != nil || schema == "" || policy.Schema != schema || len(policy.Issuers) == 0 {
 		return TrustPolicy{}, errors.New("HOST_STORE_TRUST_INVALID")
 	}
 	if _, err := decoder.Token(); err != io.EOF {
@@ -268,20 +280,36 @@ func (p TrustPolicy) Verifier() DecisionVerifier {
 		if err != nil {
 			return err
 		}
-		for _, issuer := range issuers {
-			if issuer.Issuer != d.Issuer || issuer.KeyID != evidence.KeyID || !contains(issuer.Applications, d.Record.ApplicationID) {
-				continue
-			}
-			key, _ := base64.StdEncoding.DecodeString(issuer.PublicKey)
-			if !ed25519.Verify(ed25519.PublicKey(key), payload, signature) {
-				return errors.New("HOST_STORE_SIGNATURE_INVALID")
-			}
-			// State is judged only for a genuine signature, so a forgery on an
-			// expired key still reports SIGNATURE_INVALID.
-			return checkKeyState(issuer, clock)
-		}
-		return fmt.Errorf("HOST_STORE_ISSUER_NOT_TRUSTED")
+		return verifyDetached(issuers, clock, d.Issuer, evidence.KeyID, d.Record.ApplicationID, payload, signature)
 	}
+}
+
+// VerifyDetached checks that a listed issuer, under keyID, signed exactly
+// payload for application, and that the key is currently usable (not revoked,
+// inside its window at this policy's clock). It is the shared core of the
+// Decision Verifier; a caller with another signed document domain-separates
+// the payload itself. Key state is judged only for a genuine signature.
+func (p TrustPolicy) VerifyDetached(issuer, keyID, application string, payload, signature []byte) error {
+	return verifyDetached(p.Issuers, p.now, issuer, keyID, application, payload, signature)
+}
+
+func verifyDetached(issuers []TrustedIssuer, clock func() time.Time, issuerID, keyID, application string, payload, signature []byte) error {
+	if len(signature) != ed25519.SignatureSize {
+		return errors.New("HOST_STORE_SIGNATURE_MALFORMED")
+	}
+	for _, issuer := range issuers {
+		if issuer.Issuer != issuerID || issuer.KeyID != keyID || !contains(issuer.Applications, application) {
+			continue
+		}
+		key, _ := base64.StdEncoding.DecodeString(issuer.PublicKey)
+		if !ed25519.Verify(ed25519.PublicKey(key), payload, signature) {
+			return errors.New("HOST_STORE_SIGNATURE_INVALID")
+		}
+		// State is judged only for a genuine signature, so a forgery on an
+		// expired key still reports SIGNATURE_INVALID.
+		return checkKeyState(issuer, clock)
+	}
+	return errors.New("HOST_STORE_ISSUER_NOT_TRUSTED")
 }
 
 func contains(values []string, value string) bool {

@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"tei/internal/core"
 	"tei/internal/driver"
@@ -20,8 +21,10 @@ func main() {
 	// The shipped CLI injects no Reader. A Source Reader is selected only by
 	// -host-acceptance-store with -host-acceptance-trust (signed Decisions,
 	// provisional policy); labels and Decision JSON are not a substitute. No
-	// effect Grant Reader can be selected here, so accepted Commands are still
-	// refused before dispatch. Unaccepted fixtures require explicit diagnostics.
+	// effect Grant Reader can be selected by default, so accepted Commands are
+	// still refused before dispatch. Only the explicit, development-only D8 flag
+	// triple (-provisional-effect-grant*) selects a signed provisional Reader.
+	// Unaccepted fixtures require explicit diagnostics.
 	if err := runCombinedWebTarget(context.Background(), nil, os.Args[1:]); err != nil {
 		if err == flag.ErrHelp {
 			return
@@ -77,6 +80,9 @@ func runCombinedWebTargetWithHost(ctx context.Context, reader sourceacceptance.R
 		diagnostic    = flags.Bool("diagnostic-unaccepted-source", false, "test-only: load unaccepted Reference Source without a Host witness")
 		storeDir      = flags.String("host-acceptance-store", "", "existing Host Acceptance Store directory (requires -host-acceptance-trust)")
 		trustPath     = flags.String("host-acceptance-trust", "", "Host trust file listing issuer public keys (requires -host-acceptance-store)")
+		provGrant     = flags.String("provisional-effect-grant", "", "DEVELOPMENT ONLY (D8): signed provisional effect Grant file (requires the two flags below)")
+		provTrust     = flags.String("provisional-effect-grant-trust", "", "DEVELOPMENT ONLY (D8): trust file for provisional effect Grant issuers")
+		provAck       = flags.Bool("provisional-effect-grant-development-only", false, "acknowledge that the provisional effect Grant is development/verification only, not a production permission, and not G2 evidence")
 	)
 	if err := flags.Parse(args); err != nil {
 		return err
@@ -107,6 +113,18 @@ func runCombinedWebTargetWithHost(ctx context.Context, reader sourceacceptance.R
 			return err
 		}
 		reader = store
+	}
+	// Opt-in, development-only effect Grant (D8). Without its flags this is a
+	// no-op and the Reader stays whatever the embedding Host injected (nil for
+	// the shipped CLI, so accepted Commands are still refused before dispatch).
+	provisionalReader, err := selectProvisionalEffectGrant(
+		provisionalEffectGrantFlags{grantPath: *provGrant, trustPath: *provTrust, developmentOnly: *provAck},
+		string(appID), effectReader, *diagnostic, time.Now)
+	if err != nil {
+		return err
+	}
+	if provisionalReader != nil {
+		effectReader = provisionalReader
 	}
 	var loaded workspace.Result
 	var acceptedWorkspace sourceacceptance.VerifiedWorkspace
@@ -163,12 +181,12 @@ func runCombinedWebTargetWithHost(ctx context.Context, reader sourceacceptance.R
 			return err
 		}
 		if !*diagnostic {
-			command.hostEffect = func(effectCtx context.Context, subjectID string) error {
+			command.hostEffect = func(effectCtx context.Context, subjectID, resourceID string) error {
 				if ctx.Err() != nil {
 					return errHostEffectGrantUnavailable
 				}
-				err := requireCurrentHostEffectGrant(effectCtx, reader, effectReader,
-					string(appID), subjectID, "order_entry.submit_order",
+				err := requireCurrentHostEffectGrantFor(effectCtx, reader, effectReader,
+					string(appID), subjectID, "order_entry.submit_order", resourceID,
 					acceptedWorkspace.SourceIndex, acceptedWorkspace.Acceptance)
 				if err != nil || ctx.Err() != nil {
 					return errHostEffectGrantUnavailable
@@ -214,6 +232,11 @@ func runCombinedWebTargetWithHost(ctx context.Context, reader sourceacceptance.R
 	server := &http.Server{
 		Addr:    *listen,
 		Handler: handler,
+	}
+	// Source verification and every startup gate have passed. Only now say that
+	// the development-only Grant is active (a failed start must not claim it).
+	if announcer, ok := provisionalReader.(interface{ announce() }); ok {
+		announcer.announce()
 	}
 	log.Printf(
 		"TEI first Web Target projection: http://%s/ application=%s baseline=%s R=%s T=%s",

@@ -229,7 +229,7 @@ func TestNativeSQLRejectsSymlinkThatEscapesWorkspace(t *testing.T) {
 func newQueryWorkspace(t *testing.T, queryDeclaration, sqlFile, sqlContent string) string {
 	t.Helper()
 	root := t.TempDir()
-	if err := os.WriteFile(filepath.Join(root, "tei.workspace.yaml"), []byte("workspace:\n  sources:\n    - applications\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(root, "tei.workspace.yaml"), []byte("workspace:\nformatVersion: 1\n  sources:\n    - applications\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	unit := filepath.Join(root, "applications", "order-entry")

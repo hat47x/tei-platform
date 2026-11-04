@@ -21,7 +21,7 @@ func fixture() Packet {
 		Qualification: Qualification{Head: h, Main: m, FullHealth: "PASS", CleanBefore: true, CleanAfter: true, Receipt: "local/health.log"},
 		Acceptance:    Acceptance{R0: "sha256:" + strings.Repeat("0", 64), R1: "sha256:" + strings.Repeat("1", 64), CandidateFingerprint: "sha256:" + strings.Repeat("2", 64), ReviewFingerprint: "sha256:" + strings.Repeat("3", 64), ReviewCandidateFingerprint: "sha256:" + strings.Repeat("2", 64), DecisionReceipt: "local/accept.json", ReloadReceipt: "local/reload.json", Delta: []string{"add-application-validation-use", "add-validation"}},
 		Web:           Web{AcceptedRevision: "sha256:" + strings.Repeat("1", 64), Application: "order_entry", Target: "web", SelectedValidation: "sales.order_line.unit_price_positive", NegativeValidation: "sales.order_line.unit_price_positive", NegativeEvidenceMode: "running-server", ProviderKind: "actual-db", RunMode: "running-server", WorkspaceRevisionReceipt: "local/r1-web-workspace.json", TargetLaunchReceipt: "local/target-launch.json", PositiveReceipt: "local/positive.json", NegativeReceipt: "local/negative.json", UnobservedControlReceipt: "local/n11.json"},
-		Physical:      Physical{AcceptedRevision: "sha256:" + strings.Repeat("1", 64), Datasource: "db-orders", SchemaCompatibility: "compatible", SchemaEvidence: "local/schema.json", HostAuthorityEvidence: "local/host.json", CommandReceipt: "local/write.json", IndependentReadReceipt: "local/read.json", RecordID: "o-1", SchemaFailureControl: "local/s02.json", HostFailureControl: "local/s05.json"},
+		Physical:      Physical{AcceptedRevision: "sha256:" + strings.Repeat("1", 64), Datasource: "db-orders", SchemaCompatibility: "compatible", SchemaEvidence: "local/schema.json", HostAuthorityEvidence: "local/host.json", HostAuthorityProvenance: "real-pg", CommandReceipt: "local/write.json", IndependentReadReceipt: "local/read.json", RecordID: "o-1", SchemaFailureControl: "local/s02.json", HostFailureControl: "local/s05.json"},
 	}
 }
 func has(r Report, s string) bool {
@@ -39,6 +39,84 @@ func TestCompletePacketNeverGrantsProductGate(t *testing.T) {
 		t.Fatalf("%+v", result)
 	}
 }
+func TestProvisionalGrantProvenanceIsNeverG2Evidence(t *testing.T) {
+	for _, label := range []string{"provisional-grant", " Provisional-Grant\t"} {
+		for _, claim := range []string{"E0", "E1", "E2"} {
+			p := fixture()
+			p.Claim = claim
+			p.Physical.HostAuthorityProvenance = label
+			r := Audit(p, h, m)
+			if !has(r, "PROVISIONAL_GRANT_NOT_G2_EVIDENCE") || r.Status != "INCOMPLETE" || r.ProductGate != "UNQUALIFIED" {
+				t.Fatalf("%s %q: %+v", claim, label, r)
+			}
+		}
+	}
+	// Other or absent labels are unchanged: the complete fixture still reaches review.
+	p := fixture()
+	p.Physical.HostAuthorityProvenance = "real-pg"
+	if r := Audit(p, h, m); r.Status != "REVIEW_REQUIRED" || has(r, "PROVISIONAL_GRANT_NOT_G2_EVIDENCE") {
+		t.Fatalf("%+v", r)
+	}
+	// The label is accepted by the strict packet decoder.
+	raw, _ := json.Marshal(func() Packet { p := fixture(); p.Physical.HostAuthorityProvenance = "provisional-grant"; return p }())
+	path := filepath.Join(t.TempDir(), "p.json")
+	if err := os.WriteFile(path, raw, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	var out bytes.Buffer
+	if err := run([]string{"-packet", path, "-head", h, "-main", m}, &out); err == nil || !strings.Contains(out.String(), "PROVISIONAL_GRANT_NOT_G2_EVIDENCE") {
+		t.Fatalf("err=%v out=%s", err, out.String())
+	}
+}
+
+func TestE2MustDeclareAKnownHostAuthorityProvenance(t *testing.T) {
+	const wantProvisional, wantRequired = "PROVISIONAL_GRANT_NOT_G2_EVIDENCE", "E2_HOST_AUTHORITY_PROVENANCE_REQUIRED"
+	zeroWidth, bidi, bom, nl := string(rune(0x200b)), string(rune(0x202e)), string(rune(0xfeff)), string(rune(10))
+	for label, want := range map[string]string{
+		"":                                   wantRequired, // omitted
+		"provisional_grant":                  wantProvisional,
+		"Provisional-Grant":                  wantProvisional,
+		"PROVISIONAL GRANT":                  wantProvisional,
+		"provisional-grant" + zeroWidth:      wantProvisional,
+		"prov" + zeroWidth + "isional-grant": wantProvisional,
+		"provisional" + bidi + "-grant":      wantProvisional,
+		bom + "provisional-grant":            wantProvisional,
+		"provisional-grant" + nl:             wantProvisional,
+		"Real-PG":                            wantRequired, // case matters for an allowed label
+		"real_pg":                            wantRequired,
+		"real-pg ":                           wantRequired,
+		"real" + zeroWidth + "-pg":           wantRequired,
+		"unspecified":                        wantRequired,
+		"host-authority":                     wantRequired,
+		"some-new-provisionalish-ok":         wantRequired,
+	} {
+		p := fixture()
+		p.Physical.HostAuthorityProvenance = label
+		r := Audit(p, h, m)
+		if !has(r, want) || r.Status != "INCOMPLETE" || r.ProductGate != "UNQUALIFIED" {
+			t.Fatalf("%q: want %s, got %+v", label, want, r)
+		}
+		if want == wantProvisional && has(r, wantRequired) {
+			t.Fatalf("%q: provisional must not also be reported as merely unknown: %+v", label, r)
+		}
+	}
+	for _, label := range []string{"real-pg", "synthetic"} {
+		p := fixture()
+		p.Physical.HostAuthorityProvenance = label
+		if r := Audit(p, h, m); r.Status != "REVIEW_REQUIRED" {
+			t.Fatalf("%q: %+v", label, r)
+		}
+	}
+	// The requirement is for E2 only; E1 packets do not carry Physical evidence.
+	p := fixture()
+	p.Claim = "E1"
+	p.Web.ProviderKind = "synthetic"
+	p.Physical = Physical{}
+	if r := Audit(p, h, m); r.Status != "REVIEW_REQUIRED" || has(r, "E2_HOST_AUTHORITY_PROVENANCE_REQUIRED") {
+		t.Fatalf("%+v", r)
+	}
+}
+
 func TestReviewCandidateBindingMustMatchAcceptedCandidate(t *testing.T) {
 	p := fixture()
 	p.Claim = "E1"

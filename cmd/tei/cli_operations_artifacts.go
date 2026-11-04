@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -9,12 +10,13 @@ import (
 
 	"tei/internal/artifact"
 	"tei/internal/operations"
+	"tei/internal/periodstate"
 )
 
 // runOperationsCommand prints the derived operation surface. Gaps are part of
 // the output: an operation that could not be derived is shown as a gap, not as
 // a success.
-func runOperationsCommand(workspacePath, applicationID string) error {
+func runOperationsCommand(workspacePath, applicationID, outPath string) error {
 	if workspacePath == "" {
 		return fmt.Errorf("operations requires -workspace")
 	}
@@ -22,15 +24,22 @@ func runOperationsCommand(workspacePath, applicationID string) error {
 	if err != nil {
 		return err
 	}
-	writeJSON(surface)
-	return nil
+	if outPath == "" {
+		writeJSON(surface)
+		return nil
+	}
+	encoded, err := json.MarshalIndent(surface, "", "  ")
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(outPath, append(encoded, byte(10)), 0o644)
 }
 
 // runArtifactsCommand prints the derived artifacts and their manifest. Findings
 // from the consistency check are part of the output; an incomplete set is
 // reported as such. With -out, one file per artifact and a manifest file are
 // written instead, and the manifest is printed.
-func runArtifactsCommand(workspacePath, applicationID, outDir string) error {
+func runArtifactsCommand(workspacePath, applicationID, outDir string, check bool) error {
 	if workspacePath == "" {
 		return fmt.Errorf("artifacts requires -workspace")
 	}
@@ -40,6 +49,10 @@ func runArtifactsCommand(workspacePath, applicationID, outDir string) error {
 	set, err := artifact.RenderWorkspace(workspacePath, applicationID)
 	if err != nil {
 		return err
+	}
+	if check && len(set.Findings) > 0 {
+		writeJSON(set.Findings)
+		return fmt.Errorf("the artifact set is inconsistent: %d findings", len(set.Findings))
 	}
 	if outDir == "" {
 		writeJSON(set)
@@ -107,4 +120,65 @@ func artifactFileName(item artifact.Artifact) (string, string) {
 func slug(value string) string {
 	replaced := strings.NewReplacer(".", "-", "/", "-", " ", "-").Replace(value)
 	return strings.ToLower(replaced)
+}
+
+// runPeriodsCommand reports the operations that may not run because their period
+// is not open. The period state is runtime information: the caller supplies it,
+// and an unspecified period is not treated as closed.
+func runPeriodsCommand(workspacePath, applicationID, statesFlag, stateFile string) error {
+	if workspacePath == "" {
+		return fmt.Errorf("periods requires -workspace")
+	}
+	states, err := parsePeriodStates(statesFlag)
+	if err != nil {
+		return err
+	}
+	if stateFile != "" {
+		fileStates, err := periodstate.File{Path: stateFile}.PeriodStates(context.Background(), applicationID)
+		if err != nil {
+			return err
+		}
+		for period, state := range fileStates {
+			states[period] = state
+		}
+	}
+	surface, err := operations.SurfaceWorkspace(workspacePath, applicationID)
+	if err != nil {
+		return err
+	}
+	rejections := operations.CheckPeriods(surface, states)
+	if rejections == nil {
+		rejections = []operations.PeriodRejection{}
+	}
+	writeJSON(struct {
+		Application string                            `json:"application,omitempty"`
+		States      map[string]operations.PeriodState `json:"states"`
+		Rejections  []operations.PeriodRejection      `json:"rejections"`
+	}{Application: applicationID, States: states, Rejections: rejections})
+	if len(rejections) > 0 {
+		return fmt.Errorf("%d operation(s) are refused by the period state", len(rejections))
+	}
+	return nil
+}
+
+// parsePeriodStates reads "period=state,period=state". An empty flag yields no
+// state, so nothing is refused by assumption.
+func parsePeriodStates(value string) (map[string]operations.PeriodState, error) {
+	states := map[string]operations.PeriodState{}
+	if strings.TrimSpace(value) == "" {
+		return states, nil
+	}
+	for _, pair := range strings.Split(value, ",") {
+		period, state, ok := strings.Cut(strings.TrimSpace(pair), "=")
+		if !ok || period == "" || state == "" {
+			return nil, fmt.Errorf("period state %q must be period=state", pair)
+		}
+		switch operations.PeriodState(state) {
+		case operations.PeriodOpen, operations.PeriodClosing, operations.PeriodClosed:
+		default:
+			return nil, fmt.Errorf("period state %q must be open, closing, or closed", state)
+		}
+		states[period] = operations.PeriodState(state)
+	}
+	return states, nil
 }

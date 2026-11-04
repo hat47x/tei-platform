@@ -171,6 +171,43 @@ func (p *Parser) ParseApplicationPattern() (application.Pattern, error) {
 				return out, p.errAt(sizeTok, "page-size requires an integer")
 			}
 			out.PageSize = size
+		case "print-template":
+			_, _ = p.next()
+			templateTok, err := p.expect(TokenIdent)
+			if err != nil {
+				return out, err
+			}
+			out.PrintTemplate = templateTok.Text
+		case "layout":
+			_, _ = p.next()
+			if _, err := p.expect(TokenLBrace); err != nil {
+				return out, err
+			}
+			layout := &application.Layout{}
+			for {
+				entry, err := p.peek()
+				if err != nil {
+					return out, err
+				}
+				if entry.Kind == TokenRBrace {
+					_, _ = p.next()
+					break
+				}
+				if entry.Text != "order" {
+					return out, p.errAt(entry, "expected order in layout")
+				}
+				_, _ = p.next()
+				attrTok, err := p.expect(TokenIdent)
+				if err != nil {
+					return out, err
+				}
+				attribute, err := core.ParseCanonicalID(attrTok.Text)
+				if err != nil {
+					return out, p.errAt(attrTok, err.Error())
+				}
+				layout.Order = append(layout.Order, attribute)
+			}
+			out.Layout = layout
 		case "page-break":
 			_, _ = p.next()
 			rowsTok, err := p.expect(TokenIdent)
@@ -447,12 +484,70 @@ func (p *Parser) parsePatternInteraction() (*application.Interaction, error) {
 				}
 			}
 			out.Commands = append(out.Commands, command)
+		case "hook":
+			_, _ = p.next()
+			phaseTok, err := p.expect(TokenIdent)
+			if err != nil {
+				return nil, err
+			}
+			hook := application.Hook{Phase: phaseTok.Text}
+			if _, err := p.expect(TokenLBrace); err != nil {
+				return nil, err
+			}
+			for {
+				entry, err := p.peek()
+				if err != nil {
+					return nil, err
+				}
+				if entry.Kind == TokenRBrace {
+					_, _ = p.next()
+					break
+				}
+				switch entry.Text {
+				case "reads", "produces":
+					_, _ = p.next()
+					attrTok, err := p.expect(TokenIdent)
+					if err != nil {
+						return nil, err
+					}
+					attribute, err := core.ParseCanonicalID(attrTok.Text)
+					if err != nil {
+						return nil, p.errAt(attrTok, err.Error())
+					}
+					if entry.Text == "reads" {
+						hook.Reads = append(hook.Reads, attribute)
+					} else {
+						hook.Produces = append(hook.Produces, attribute)
+					}
+				case "uses":
+					_, _ = p.next()
+					capabilityTok, err := p.expect(TokenIdent)
+					if err != nil {
+						return nil, err
+					}
+					capability, err := core.ParseCanonicalID(capabilityTok.Text)
+					if err != nil {
+						return nil, p.errAt(capabilityTok, err.Error())
+					}
+					hook.Uses = append(hook.Uses, capability)
+				case "on-failure":
+					_, _ = p.next()
+					kindTok, err := p.expect(TokenIdent)
+					if err != nil {
+						return nil, err
+					}
+					hook.Failure = kindTok.Text
+				default:
+					return nil, p.errAt(entry, "expected reads, uses, produces, or on-failure in hook")
+				}
+			}
+			out.Hooks = append(out.Hooks, hook)
 		default:
 			return nil, p.errAt(t, "expected item, navigate, or command in interaction")
 		}
 	}
-	if len(out.Items) == 0 && len(out.Navigations) == 0 && len(out.Commands) == 0 {
-		return nil, fmt.Errorf("interaction requires at least one item, navigation, or command")
+	if len(out.Items) == 0 && len(out.Navigations) == 0 && len(out.Commands) == 0 && len(out.Hooks) == 0 {
+		return nil, fmt.Errorf("interaction requires at least one item, navigation, command, or hook")
 	}
 	return out, nil
 }

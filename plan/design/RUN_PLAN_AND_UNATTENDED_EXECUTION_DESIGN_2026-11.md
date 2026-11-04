@@ -170,3 +170,79 @@ W1・W2 が前提。W4 は W2 と並行できる。W6 は #2146 の実装を待�
 2. `output` を `run-plan` に持たせるか、#1803（設計成果物の導出）と同じ「導出成果物」の契約へ寄せるか。後者のほうが規則が一つで済む。
 3. 失敗の閾値（どこで止めるか）を意味の層に持たせるか、運用の設定に任せるか。本稿は運用に任せる案である。
 4. #2146 の所有記録の永続化を待たずに、メモリ上の所有で W1〜W5 を進めてよいか。
+## 実装状況（2026-11-03 追記）
+
+P1（宣言・検証）を実装しました。期間の状態（#2144）・効果の規則（#1129）と同じ型です。
+
+**宣言**
+
+```
+run-plan monthly_close {
+    operation sales.close
+    key sales.period.month
+    concurrency singleton
+    resume checkpoint
+    output sales.period
+    autonomy unattended
+}
+```
+
+- `operation` は複数回書ける（宣言順に実行）。`key` も複数回書ける（複数の入力で実行を同定する）。
+- `concurrency`・`resume`・`autonomy` は省略できる（省略時は操作面の既定 `attended`、同時実行は `singleton`、再開は `none`）。
+- 識別子は名前空間に属する（`monthly_close` は `sales.monthly_close` として解決）。
+
+**検証**（`internal/validation/runplan.go`）
+
+| 診断 | 意味 |
+| --- | --- |
+| `RUN_PLAN_NO_OPERATIONS` | 操作を一つも宣言していない |
+| `RUN_PLAN_UNKNOWN_OPERATION` | 実在しない能力を指している |
+| `RUN_PLAN_NO_KEY` | 実行を同定する入力が無い（黙って新規実行にしないための前提） |
+| `RUN_PLAN_UNKNOWN_KEY` | 実在しない属性を指している |
+| `RUN_PLAN_UNKNOWN_CONCURRENCY` | `singleton`・`per-key` 以外 |
+| `RUN_PLAN_UNKNOWN_RESUME` | `checkpoint`・`none` 以外 |
+| `RUN_PLAN_UNKNOWN_AUTONOMY` | `attended`・`unattended` 以外 |
+| `RUN_PLAN_CHECKPOINT_WITHOUT_OUTPUT` | チェックポイントから再開するのに出力が無い（進捗を報告できない） |
+
+**未着手**: 実行の同定（`runKey`・`attemptId`・`fenceEpoch`）の実装、項目ごとの結果、無人の実行の拒否試験、出力の生成（P2以降）。
+### P2 実行の同定と拒否規則（2026-11-03 追記）
+
+実行の同定と、開始・再開・拒否の判定を実装しました（`internal/runlog`）。
+
+```go
+runKey    = RunKey(計画ID, キーの値)   // 区切りは unit separator（値にカンマが入っても偽造できない）
+attempt   = 前回 + 1
+fenceEpoch = 前回 + 1（再開のたびに増える）
+```
+
+| 前回 | `resume` | 判定 |
+| --- | --- | --- |
+| 無し | 任意 | `start`（attempt 1・fence 1） |
+| 未完了 | `checkpoint` | `resume`（attempt/fence を +1） |
+| 未完了 | `none` | **`refuse`** |
+| 完了 | 任意 | **`refuse`**（業務キーを変えるか、明示の再実行の操作を作る） |
+
+- `Owns` は現在の attempt と fenceEpoch が一致するときだけ真。古い担当は書けない。
+- 記録は JSON Lines。壊れた行はエラーとして報告し、その行より前は返す。
+- 実行の記録は受理済みの意味ではないので意味モデルには置かない。
+
+**未着手**: 実際の実行ループへの接続、項目ごとの結果、無人実行の拒否試験、`autonomy unattended` の検証（操作面の自律区分との突き合わせ）。
+### 実行ループ（2026-11-04 追記）
+
+`execution.RunPlan` で、同定 → 判定 → 操作の順次実行 → 記録までをつなぎました。
+
+- 判定が `refuse` のときは**何も実行せず**、判定を返す（エラーではない）。
+- 実行する場合は `running` を記録してから操作を順に実行し、全部通れば `completed`、途中で止まれば `failed` を記録する。
+- 操作の失敗は `StepResult` として返し、エラーにしない（どの項目で止まったかを残すため）。
+- **`resume` はまだ実装していない**。項目ごとの進捗を記録していないため、再開すると黙って作業を繰り返すことになる。そのため再開の判定になった場合は**エラーで止める**（できていないことを、できたように見せない）。
+
+**未着手**: 項目ごとの進捗の記録と再開、出力の生成、無人実行の拒否試験、期間・効果のガードを各操作の手前に置くこと。
+### 項目ごとの進捗と再開（2026-11-04 追記）
+
+`runlog.Record` に `steps`（この実行で終わった操作）を持たせ、**再開を実際に成立**させました。
+
+- 操作が終わるたびに `running` と `steps` を追記する（途中で止まっても、どこまで終わったかが残る）。
+- 再開の判定では、記録済みの `steps` を**飛ばして**残りから実行する。終わった操作は `StepResult{Detail: "already finished in an earlier attempt"}` として結果に残す（実行はしない）。
+- 再試行のたびに `attempt` と `fenceEpoch` が増える。古い世代は `Owns` で書けない。
+
+**未着手**: 出力の生成、無人実行の拒否試験、各操作の手前の期間・効果ガード、失敗した操作の再試行方針。

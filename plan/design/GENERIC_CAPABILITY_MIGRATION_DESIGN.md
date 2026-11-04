@@ -576,3 +576,86 @@ Customer Queryへ転用する際には次を混同しない。
 **再評価の順序と既存資産**：最初のCQ-R2/R4で**一回のRequest/Result変換**の意味喪失を固定。その後、CQ-T1/T3だけを一つのFunction Context/Consumerに適用し、負例の再現を独立Oracle/既存#1131/#1180 Scenarioへ接続。T2/T4/T5/T6は局所キャッシュ・Provider観測・Disclosureを検証する別Ownerの圧力条件。#2582で報告済みの独立Python3 DC-01〜12 **12/12 PASS**は著者の合成Worldであり、本Customer Query/実Source通知/Provider/Hostの実観測には転用しない。
 
 **表現上の制約：** このT1〜T6や比較表は新Core型・汎用Token/Negative Cache・Subscription/Watch Broker、Release-wide`stale` flag、Provider共通Snapshot API、第二Authority/Resolver/Gateの追加案ではない。履歴・現在・表示・Actionは用途別のClaimとして扱い、既存#951/#1124/#1641/#2582/#2516/#1174の責務を保持する。正式Ownerの意味受理、実Customer Query/実Provider実行、Host現在権限、実UI/SHO Reader、長期Cache・通知欠落検証は**未実施・未受理**。
+
+## 20. SQLを第一級Data Transformationとした場合のService Query意味適合（2026-11-03）
+
+> **位置付け：#951のProducer/Provider Conformanceに対するConsumer条件を整理する追補。** 2026-11-03時点の追加ユーザー方針（#2387/#2619/#2622のコメントに記録済み）と、#2640でmainへ統合された§19の反証群を接続する。製品Schema/ABI、第二SQL Engine/Resolver、共通TEI Host、新しいRelease Gateは決定しない。#951 Reference feature freeze、L0→L2→G1/G2のAuthority境界、#179の既存Query意味を維持する。
+
+### 20.1 Data Model正本、SQLの主用途、二つの解釈
+
+**Data Model**は原則としてTable/Field/Key/Relationを直接宣言し、その受理済み意味を正本とする（#1126）。SQLを解析して基本Data Modelや業務Relationを自動生成・受理することを通常経路にしない。DDL/既存DBの取込は補助的な候補として区別する。
+
+**SQLの主用途**はLINQに類似した**データ変換**である。受理済みData Modelや型付きDatasetから、filter/project/join/group/aggregate/sort/expand/nest等の変換によってDerived Dataset/仮想テーブルやFunction結果を得る。SQLは「DBアクセスだけの特殊記述」ではない。一方、SQL構文を万能な全構造共通Executorへ直接結び付けるわけでもない。#988のnamed/method/pipe/SQL構文は、型付きOperatorの意味・評価順・引数Binderが一致する範囲で別の書き方となり得る。
+
+同じSQL Sourceに対して、**TEI Query解釈**（可能な範囲を型付きOperator/結果grain/Lineageへ解釈し、Pushdown/Local実現候補を評価）と、**Native SQL解釈**（原文を保存し、対象Provider/Dialect/Schema/Sessionによって意味付け・実行）を区別する。Native資産をTEI解釈できないだけで失効させない。ただし双方の同義性・Effect/Failure・取得Scope/時点は**自動承認しない**。形式が同じ、SQL byteが同じ、Result Shapeが同じ、という事実だけではProviderの意味適合を示さない。
+
+| 軸 | 正本／入力 | #951が受け取る確認義務（実装Ownerは別） |
+| --- | --- | --- |
+| **M：Data Model** | 直接宣言のTable/Field/Key/RelationとAccepted revision（#1126） | QueryのJOIN演算辺やDocument Pathを業務Relationへ自動昇格しない |
+| **Q：Data Transformation** | SQL/typed Operator、Source occurrence、Operator/Expression version、Query入力と結果grain（#2387/#988） | Queryの意味版と必要な変換順・Bag/NULL/Identity・失敗の同等性を識別 |
+| **B：解釈とBinding** | TEI Query/Nativeの解釈選択、解決時Schema/Dialect/Session、Target/Provider、Mapping/Context/Scope（#2387/#2622/#2506） | 同じSource SQLでもBinding違いで意味が変わる場合に、旧Conformanceを流用しない |
+| **E：実行・結果Claim** | 実Provider SQL/request、Read Cohort、Result Slice/取得完全性、WireとConsumer開示（#2622/#2516） | 物理Execution成功、意味的Result、現在許可、Consumer開示を別証拠として記録 |
+
+これらの列は既存のScenario/Conformance比較票への受渡しであり、新しいCanonicalや固定Context Schemaではない。データモデルの正本とSQL Sourceの原文正本はそれぞれ保持する。SQL/Markdownの人間向け原文を、解析・保存によって無断で別表記へ正規化しないことは#2387/Modeler/SHOの担当。
+
+### 20.2 同一SQL byteでもSchema変化により結果が変化する反例
+
+**独立SQLiteの最小対照（2026-11-03に再現）**：
+
+```sql
+SELECT o.order_id, f.flag_id
+FROM orders AS o NATURAL JOIN flags AS f
+ORDER BY o.order_id;
+```
+
+- **Schema A**：両表の共有列は`customer_id`のみ。`orders`の(10,C1),(11,C2)、`flags`の(100,C1),(101,C2)から **(10,100),(11,101)**。
+- **Schema B**：双方に`status`列を追加。`orders`は(10,C1,open),(11,C2,closed)、`flags`は(100,C1,open),(101,C2,open)。SQL byte不変でも`NATURAL JOIN`の条件は`customer_id AND status`となり **(10,100)** のみ。
+- **対照**：`JOIN ... USING(customer_id)`ならSchema Bでも2行。
+
+Python標準`sqlite3`のin-memoryで上記2 SchemaのSQLを独立実行してこの結果を観測した。#2387にはより広い5/5合成テストの記録があるが、**TEIの実SQLGlot Worker/Go DerivedIR/本番DB/Provider Conformance PASSではない**。今回の観測は通常の顧客`find_by_id`が`NATURAL JOIN`を使用することを意味しない。
+
+**設計上の差分**：Query Source digestだけを再利用キーとして旧Query Explain、Operator Lowering、Provider Conformanceを`current`へ自動継承しない。**当該SQLで実際に解決されたSchema列集合・暗黙Join比較列・Dialect/名前解決・Provider Binding**が変化したら、必要な意味対応を再確認する。さらに`SELECT *`のShape変化、Viewの列改版、Native SQLのsession設定も別の依存になり得る。業務ERのRelation、PK、顧客IdentityはSQLの実効Join辺から推定採用しない。
+
+### 20.3 階層・多構造変換と正常0件を混同しない
+
+#2622の階層/Document案HQ-01〜08および多構造案MS-01〜08は、同じ型付き操作を**適用可能な基本構造へ広げる**ことを求める。Table/RelationだけでなくRecord/Tuple、Sequence/Array、Bag/Set、Map、Tree/Document/JSONB、Graph、Stream/Time Series、Tensor/Spatial等を候補とする。ただし、**同じOperator名が同じ構造法則を持つことは証明を要する**。全構造を一度TableへFlattenすることも、全構造にsort/join/window等を要求することもしない。
+
+顧客照会の`Result Rows`と同様、階層Path/Expandの返却でも次の入力差を失わない。
+
+| Document中の`items` | Value/Presenceとしての区別 | 未受理の暗黙変換 |
+| --- | --- | --- |
+| `{"items":[]}` | 観測済みの空配列 | 値のないField／未取得として扱う |
+| `{}` | Field自体が欠落 | 空配列として「展開正常0件」に変換 |
+| `{"items":null}` | 明示JSON null | 属性未存在・空配列と同一視 |
+| `{"items":[null]}` | 要素が1個で、その値がnull | 要素数0と同一視 |
+| `{"items":{}}` | arrayでなくobject | 暗黙に1要素に包む |
+| **SQL NULL／未取得／非開示** | データソースNULL、Read未実施、Policy上非開示は別 | 同じ`[]`/正常NotFoundに合成 |
+
+上表は**未採用のOperatorポリシーを勝手に決めるものではない**。許容するPath緩和・欠損処理は各意味契約の明示方針で判断する。Pathの子要素occurrence、Document Identity、配列位置、業務Entity ID、QueryのResult grainを区別する。Nested→Flat→Nestedの可逆性や配列Indexの安定した更新対象Identityを推測しない。JSONB/Document/Local/Java/.NET間の同義性は各Provider/Targetの独立Fixtureで確認する。
+
+### 20.4 保存後の0件は書込み失敗・未実行の証拠ではない
+
+§19.3/19.8の「0件をScope/時点に相対化する」原則に加え、**直前のActionのEffectが当該Readへ反映されたか**という因果的な保証を別に確認する（#2598 IB-N1〜06、#1174）。
+
+- t1でPrimaryへ`allocation A1`を作成し、Provider Receiptが`committed`。
+- t2で追随前のReplicaへ同じ対象のQueryを実行し、完了した`[]`を返す。
+- これは「**そのReplica上で0件を観測**」と「**PrimaryでCommit済み**」が両立する例。Rowset`Complete=true`だけでは当該Operationを含むReadとは限らない。
+- Commit ACKが失われてActionが`unknown`の場合、空Readを根拠に無条件で再作成してはならない。実ProviderのIdempotency/Receipt/Operation Identity/RYW fenceのOwner判断へ戻す。
+- RLSによる不可視も空Readの理由となり得る。実行Provider/Principal/Scope/因果位置と、Consumer向けに開示可能な理由は別。
+
+**#951はread-onlyの結果契約の範囲で「空の観測を勝手に書込み未実施へ拡張しない」ことだけを保持**する。Read-your-writes、Operation Identity、実Receipt、無確認再送の防止、現在Host Grantを#951に重複実装しない。#2598/#1174/#2611が保存→再読取の因果的適合を所有する。
+
+### 20.5 既存の実行計画へ接続する最小比較票
+
+| ID（本節の参照名） | 最小反証・受入条件 | 主担当・停止点 |
+| --- | --- | --- |
+| **CQ-I1 Model→Query** | 直接宣言ModelとSQL変換Sourceを別ID/版で保持。SQL JOINやDocument Pathを業務Relationへ自動受理しない | #1126/#2387。基本ModelやNative SQL Source正本を変更しない |
+| **CQ-I2 Schema drift** | 上記Schema A/Bで同一SQLが2行→1行、明示USING対照は2行。旧Result/旧Explainを同一Meaningと誤認しない | #2387 QX-18/33、#2582。**実Worker実体と起動・依存が未確定なら`NOT RUN: producer-unavailable`** |
+| **CQ-I3 Native vs TEI** | 同じSourceを二解釈した際、解析CoverageとProvider実行の対象版を独立記録。同義性未証明なら技術的成功を意味一致へ昇格させない | #988/#2387/#2622。全方言実行器なし |
+| **CQ-I4 Hierarchical presence** | empty/missing/null/[null]/object/partialを区別し、展開後のOccurrence/Bag/Identityを保持 | #2622 HQ-01〜04/#2506。実PG JSONB/Document未実施 |
+| **CQ-I5 Causal empty read** | Primary Commit→Replica空Readを、未保存・業務不存在へ変換しない。ACK unknownで盲目的再実行しない | #2598 IB-N1〜06/#1174。実Host/DB/ReceiptはNOT RUN |
+| **CQ-I6 Claim/Disclosure** | 上記反例のどれも内部Parser/Service診断からConsumerの現在表示・業務権限・外部開示を自動採用しない | #2516/#1124/#2390。Reader/Policy/Host実行別 |
+
+**順序は維持**：最初の#951内局所作業は§19の**CQ-R2（Service Adapterの欠損/null）とCQ-R4（Generic`Rows:nil`）の独立characterization**。本節のCQ-I1〜I4は#2387/#2622等の既存評価票へ参照接続し、CQ-I5は#2598/#1174へ委譲する。SQL解釈の統合実証は#2387 QX-33の**実Worker→実Go DerivedIR同一Attempt**が成立するまでSource-static/独立SQLiteと区別し、mockでE2E PASSを作らない。必要な新統合は既存#1119/#2586の縦断計画へ渡し、新Gate/第二正本は作らない。
+
+**Evidence・非主張**：main固定`a5cb7c4d58b5cf42d1c9c73810f86398987ae32c`（2026-11-03 JST）に統合済み§19を正とした上で、この第20節のみ追加した。独立SQLiteのSchema A/B対照以外、新TEI module Go/SQLGlot Worker、PostgreSQL/Document Provider、Java/.NET/Wasm Target、外部Host/CLI/GUI/SHO E2E、Ownerの意味受理、公開Schema/ABI、G1/G2移行は**NOT RUN/未受理**。

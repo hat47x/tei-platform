@@ -23,6 +23,7 @@ type HeaderDetailView struct {
 	DetailColumns       []Item                  `json:"detailColumns,omitempty"`
 	Aggregates          []AggregateRef          `json:"aggregates,omitempty"`
 	PageBreak           *PageBreakRef           `json:"pageBreak,omitempty"`
+	PrintTemplate       string                  `json:"printTemplate,omitempty"`
 	DetailRows          []int                   `json:"-"`
 	Packages            []PackageRef            `json:"packages,omitempty"`
 	SemanticFingerprint string                  `json:"semanticFingerprint,omitempty"`
@@ -140,6 +141,7 @@ func BuildHeaderDetail(world ir.World, applicationID, patternID core.CanonicalID
 		return HeaderDetailView{}, err
 	}
 	view.SemanticFingerprint = fingerprint
+	view.PrintTemplate = pattern.PrintTemplate
 	if pattern.PageBreak != nil {
 		view.PageBreak = &PageBreakRef{Rows: pattern.PageBreak.Rows, RepeatHeader: pattern.PageBreak.RepeatHeader}
 	}

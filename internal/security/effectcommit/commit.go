@@ -97,7 +97,12 @@ type Provider interface {
 // 「認可正本と副作用が本当に同じDBにある」ことは別の適合性証拠が必要。
 // grantは呼出側が直接生成してはならず、信頼されたsecurity.authorizeの
 // 成功結果から受け取る。Application/Capabilityは保存側がScopeで検証する。
-type Runner struct{ Provider Provider }
+type Runner struct {
+	Provider Provider
+	// Audit is optional (unapproved A2 reference proposal; see evidence.go).
+	// The zero value disables Evidence emission entirely.
+	Audit AuditConfig
+}
 
 func validScope(s Scope) bool {
 	return validText(s.Application) && validText(s.Capability) &&
@@ -135,9 +140,9 @@ func matches(rec Receipt, req Request, hash string) bool {
 		rec.RequestHash == hash && rec.ResourceVersion != 0
 }
 
-// Executeは権限版確認→確定記録再送確認→版付きデータ更新→確定記録→Commit。
+// execute(公開入口はEvidence付きのExecute)は権限版確認→確定記録再送確認→版付きデータ更新→確定記録→Commit。
 // 失効・版衝突では記録を開示せず、Commitでの障害は結果不明として返す。
-func (r Runner) Execute(ctx context.Context, req Request, grant legacyauthorization.AuthorizationGrant) (Result, error) {
+func (r Runner) execute(ctx context.Context, req Request, grant legacyauthorization.AuthorizationGrant) (Result, error) {
 	if err := ctx.Err(); err != nil {
 		return Result{}, err
 	}
@@ -205,9 +210,9 @@ func (r Runner) Execute(ctx context.Context, req Request, grant legacyauthorizat
 	return Result{Status: StatusCommitted, Receipt: rec}, nil
 }
 
-// Lookupは認可を現在の正本で再検査してから、同一のDB境界で記録を照会する。
+// lookup(公開入口はEvidence付きのLookup)は認可を現在の正本で再検査してから、同一のDB境界で記録を照会する。
 // not-recordedは同DBで記録がないという意味だけで、外部副作用の不存在ではない。
-func (r Runner) Lookup(ctx context.Context, req Request, grant legacyauthorization.AuthorizationGrant) (Result, error) {
+func (r Runner) lookup(ctx context.Context, req Request, grant legacyauthorization.AuthorizationGrant) (Result, error) {
 	if err := ctx.Err(); err != nil {
 		return Result{}, err
 	}

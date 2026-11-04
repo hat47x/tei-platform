@@ -112,6 +112,38 @@ TEI_EXPECTED_STATE_PG_CONFIRM_ISOLATED=tei_expected_state_e2e \
 - 製品Runtime（#1127の標準CRUD・#1129の実行時段階）への接続
 - 分散ノード間の調停（#2146）、自動再試行、観測の永続保存と保持期間
 
+## 実行記録（観測の保存と再現）
+
+1回の実行を、生の値を持たない**再現可能な記録**として保存できる（#2564項目4）。
+
+```bash
+go run ./tools/reference-expected-state-update/cmd/tei-expected-state-update \
+  -input tools/reference-expected-state-update/testdata/conflict.json \
+  -record /tmp/run-record.json
+
+# 同じ入力の再実行が記録を再現するか検証する
+go run ./tools/reference-expected-state-update/cmd/tei-expected-state-update \
+  -input tools/reference-expected-state-update/testdata/conflict.json \
+  -verify /tmp/run-record.json
+```
+
+記録に含めるもの:
+
+- 各要求の`key`、冪等キーのdigest、`outcome`、`reason`、`executionError`
+- `before`/`currentValue`/`newValue`の**digestのみ**（生の値は保存しない）
+- `observation`の件数と`comparisonInputBytes`
+- 記録全体の`digest`（entriesのcanonical JSONのSHA-256）
+
+保存先は呼び出し側が指定する（この参照は1実行1ファイル）。保持は`RetainRuns`の既定で**最新N件**を残す。`DecodeRecord`はschemaとdigestの不一致を拒否し、`VerifyRecord`は再実行の結果・件数・比較バイト数のずれをentry単位で報告する。
+
+生の値を保存しない理由は、項目3で採用した「サーバ側で生値を比較」と、記録が要求より長く残るためである。
+
+実DB経路（`PGStore.Apply`）の`Result`も同じ`RecordRun`で記録できる。`TestPGRunIsRecordedAndReproducedWithoutRawValues`が、実PostgreSQLで適用→競合→再送を実行し、記録の再現と生値非保存を確認する（`TEI_EXPECTED_STATE_PG_DSN`設定時のみ）。
+
+### 未決
+
+- 実際の保存先（ローカルファイル以外）、保持期間の運用値、監査アクセス権、記録の暗号学的署名は未決。
+
 ## 試験
 
 ```bash

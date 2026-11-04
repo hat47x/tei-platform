@@ -74,9 +74,15 @@ type Operation struct {
 	// Binding names the capability that executes a write operation. The PoC
 	// does not add a generic write executor: a write runs through an existing
 	// capability that declares the same effect on the same data.
-	Binding  string `json:"binding,omitempty"`
-	Autonomy string `json:"autonomy"`
-	Basis    string `json:"basis"`
+	Binding string `json:"binding,omitempty"`
+	// Period names the period that governs the data of this operation. When
+	// the period is closed, PeriodRejects lists the operations it rejects.
+	Period string `json:"period,omitempty"`
+	// EffectRules lists the effect rules that run around the bound capability.
+	EffectRules   []string `json:"effectRules,omitempty"`
+	PeriodRejects []string `json:"periodRejects,omitempty"`
+	Autonomy      string   `json:"autonomy"`
+	Basis         string   `json:"basis"`
 }
 
 // SurfaceGap records why a standard operation could not be derived.
@@ -179,6 +185,10 @@ type surfaceIndex struct {
 	updateIntent map[core.CanonicalID]bool
 	// binding maps "<effect kind>\x00<data>" to the capability that declares it.
 	binding map[string]string
+	// periods maps a data to the period that governs it.
+	periods map[core.CanonicalID]semantic.Period
+	// effectRules maps a capability to the effect rules that run around it.
+	effectRules map[core.CanonicalID][]string
 }
 
 func newSurfaceIndex(world ir.World) surfaceIndex {
@@ -187,12 +197,22 @@ func newSurfaceIndex(world ir.World) surfaceIndex {
 		validations:  map[core.CanonicalID]semantic.Validation{},
 		updateIntent: map[core.CanonicalID]bool{},
 		binding:      map[string]string{},
+		periods:      map[core.CanonicalID]semantic.Period{},
+		effectRules:  map[core.CanonicalID][]string{},
 	}
 	for _, namespace := range world.Semantics {
 		for _, validation := range namespace.Validations {
 			if _, exists := index.validations[validation.ID]; !exists {
 				index.validations[validation.ID] = validation
 			}
+		}
+		for _, period := range namespace.Periods {
+			if _, exists := index.periods[period.Data]; !exists {
+				index.periods[period.Data] = period
+			}
+		}
+		for _, rule := range namespace.EffectRules {
+			index.effectRules[rule.OnCapability] = append(index.effectRules[rule.OnCapability], string(rule.ID))
 		}
 		for _, capability := range namespace.Capabilities {
 			if capability.Effect == nil {
@@ -248,6 +268,7 @@ func deriveApplicationOperations(
 
 	for _, alias := range aliases {
 		for _, mapping := range persistenceForDatabase(world.Persistence, alias.TargetDatabase) {
+			periodID, rejects := periodFields(index, mapping.SemanticData)
 			element, ok := index.data[mapping.SemanticData]
 			if !ok {
 				// The missing semantic data is reported by the existing
@@ -318,6 +339,8 @@ func deriveApplicationOperations(
 				Preconditions: preconditionsFor(app, element, index),
 				Effects:       []string{"create:" + target},
 				Binding:       index.bindingFor("create", mapping.SemanticData),
+				Period:        periodID,
+				PeriodRejects: rejects,
 				Autonomy:      "attended",
 				Basis:         basis,
 			})
@@ -327,16 +350,18 @@ func deriveApplicationOperations(
 			// write applies only when they still match. A declared version
 			// attribute is a later, explicit alternative, not a requirement.
 			emitOperation(&ops, seen, Operation{
-				ID:          operationID(app.ID, "update", mapping.SemanticData),
-				Kind:        "update",
-				Target:      target,
-				Origin:      "derived",
-				Inputs:      key,
-				Effects:     []string{"update:" + target},
-				Concurrency: "expected-state",
-				Binding:     index.bindingFor("update", mapping.SemanticData),
-				Autonomy:    "attended",
-				Basis:       basis,
+				ID:            operationID(app.ID, "update", mapping.SemanticData),
+				Kind:          "update",
+				Target:        target,
+				Origin:        "derived",
+				Inputs:        key,
+				Effects:       []string{"update:" + target},
+				Concurrency:   "expected-state",
+				Binding:       index.bindingFor("update", mapping.SemanticData),
+				Period:        periodID,
+				PeriodRejects: rejects,
+				Autonomy:      "attended",
+				Basis:         basis,
 			})
 			if index.updateIntent[mapping.SemanticData] {
 				gaps = append(gaps, SurfaceGap{
@@ -346,6 +371,24 @@ func deriveApplicationOperations(
 					Detail: "no lifecycle or state declaration exists for this data",
 				})
 			}
+		}
+	}
+	for i := range ops {
+		if rules := index.effectRules[core.CanonicalID(ops[i].Binding)]; len(rules) > 0 {
+			ops[i].EffectRules = append([]string(nil), rules...)
+		}
+		if ops[i].Period == "" {
+			periodID, rejects := periodFields(index, core.CanonicalID(ops[i].Target))
+			if periodID == "" {
+				continue
+			}
+			ops[i].Period = periodID
+			ops[i].PeriodRejects = rejects
+		}
+		// A write the closed period rejects needs proof that the period is
+		// open before it runs.
+		if periodRejectsOperation(ops[i].PeriodRejects, ops[i].Kind) && !hasOperationPrecondition(ops[i], "period:"+ops[i].Period+":open") {
+			ops[i].Preconditions = append(ops[i].Preconditions, "period:"+ops[i].Period+":open")
 		}
 	}
 	return ops, gaps
@@ -538,4 +581,34 @@ func summarize(surface OperationSurface) SurfaceSummary {
 		}
 	}
 	return summary
+}
+
+// periodFields returns the period that governs a data and the operations it
+// rejects once closed. A data without a period yields empty values.
+func periodFields(index surfaceIndex, data core.CanonicalID) (string, []string) {
+	period, ok := index.periods[data]
+	if !ok {
+		return "", nil
+	}
+	return string(period.ID), append([]string(nil), period.ClosedRejects...)
+}
+
+// periodRejectsOperation reports whether a closed period rejects this operation.
+func periodRejectsOperation(rejects []string, kind string) bool {
+	for _, rejected := range rejects {
+		if rejected == kind {
+			return true
+		}
+	}
+	return false
+}
+
+// hasOperationPrecondition reports whether the operation already declares it.
+func hasOperationPrecondition(operation Operation, want string) bool {
+	for _, precondition := range operation.Preconditions {
+		if precondition == want {
+			return true
+		}
+	}
+	return false
 }

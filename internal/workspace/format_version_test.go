@@ -1,6 +1,7 @@
 package workspace
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -15,7 +16,7 @@ func TestParseWorkspaceManifestFormatVersion(t *testing.T) {
 		wantErr string
 	}{
 		{name: "version one", src: "workspace: test\nformatVersion: 1\nsources:\n  - semantic\n", version: 1},
-		{name: "version missing is transitional", src: "workspace: test\nsources:\n  - semantic\n", version: 0},
+		{name: "version missing parses to zero", src: "workspace: test\nsources:\n  - semantic\n", version: 0},
 		{name: "zero rejected", src: "workspace: test\nformatVersion: 0\nsources:\n  - semantic\n", wantErr: "positive integer"},
 		{name: "negative rejected", src: "workspace: test\nformatVersion: -1\nsources:\n  - semantic\n", wantErr: "positive integer"},
 		{name: "non numeric rejected", src: "workspace: test\nformatVersion: one\nsources:\n  - semantic\n", wantErr: "positive integer"},
@@ -56,26 +57,101 @@ func writeFormatVersionWorkspace(t *testing.T, manifest string) string {
 }
 
 func TestLoadRejectsUnsupportedWorkspaceFormatVersion(t *testing.T) {
-	root := writeFormatVersionWorkspace(t, "workspace: test\nformatVersion: 2\nsources:\n  - semantic\n")
+	root := writeFormatVersionWorkspace(t, "workspace: test\nformatVersion: 3\nsources:\n  - semantic\n")
 	_, err := Load(root)
-	if err == nil || !strings.Contains(err.Error(), "unsupported workspace formatVersion 2") {
+	if err == nil || !strings.Contains(err.Error(), "unsupported workspace formatVersion 3") {
 		t.Fatalf("unsupported version was accepted: %v", err)
+	}
+	if !strings.Contains(err.Error(), "supported: 1, 2") {
+		t.Fatalf("supported versions are not named: %v", err)
 	}
 }
 
-func TestLoadAcceptsVersionOneAndMissingDuringMigration(t *testing.T) {
-	for _, tc := range []struct {
-		name     string
-		manifest string
-	}{
-		{name: "version one", manifest: "workspace: test\nformatVersion: 1\nsources:\n  - semantic\n"},
-		{name: "missing transitional", manifest: "workspace: test\nsources:\n  - semantic\n"},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			root := writeFormatVersionWorkspace(t, tc.manifest)
-			if _, err := Load(root); err != nil {
-				t.Fatalf("Load failed: %v", err)
-			}
-		})
+func TestLoadAcceptsWorkspaceFormatVersionTwoWithExplicitSemanticHeader(t *testing.T) {
+	root := writeSemanticHeaderWorkspaceWithVersion(t, 2, "formatVersion 2\nnamespace test\n")
+	if _, err := Load(root); err != nil {
+		t.Fatalf("version 2 workspace was rejected: %v", err)
+	}
+}
+
+func TestLoadRejectsVersionTwoWorkspaceWithoutSemanticHeader(t *testing.T) {
+	root := writeSemanticHeaderWorkspaceWithVersion(t, 2, "namespace test\n")
+	_, err := Load(root)
+	if err == nil || !strings.Contains(err.Error(), "requires an explicit semantic formatVersion header") {
+		t.Fatalf("version 2 workspace accepted a headerless semantic file: %v", err)
+	}
+}
+
+func TestLoadRejectsSemanticVersionThatDiffersFromWorkspaceTwo(t *testing.T) {
+	root := writeSemanticHeaderWorkspaceWithVersion(t, 2, "formatVersion 1\nnamespace test\n")
+	_, err := Load(root)
+	if err == nil || !strings.Contains(err.Error(), "does not match the Workspace formatVersion 2") {
+		t.Fatalf("version mismatch was accepted: %v", err)
+	}
+}
+
+func TestLoadAcceptsVersionOne(t *testing.T) {
+	root := writeFormatVersionWorkspace(t, "workspace: test\nformatVersion: 1\nsources:\n  - semantic\n")
+	if _, err := Load(root); err != nil {
+		t.Fatalf("Load failed: %v", err)
+	}
+}
+
+func TestLoadRejectsMissingFormatVersion(t *testing.T) {
+	root := writeFormatVersionWorkspace(t, "workspace: test\nsources:\n  - semantic\n")
+	_, err := Load(root)
+	if err == nil || !strings.Contains(err.Error(), "missing formatVersion") {
+		t.Fatalf("missing format version was accepted: %v", err)
+	}
+}
+
+func TestLoadAllowsMissingFormatVersionOnlyWithExplicitFrozenOptIn(t *testing.T) {
+	t.Setenv("TEI_WORKSPACE_ALLOW_UNSPECIFIED_FORMAT", "1")
+	root := writeFormatVersionWorkspace(t, "workspace: test\nsources:\n  - semantic\n")
+	if _, err := Load(root); err != nil {
+		t.Fatalf("explicit frozen opt-in did not load the legacy manifest: %v", err)
+	}
+}
+
+func writeSemanticHeaderWorkspace(t *testing.T, semanticBody string) string {
+	t.Helper()
+	return writeSemanticHeaderWorkspaceWithVersion(t, 1, semanticBody)
+}
+
+func writeSemanticHeaderWorkspaceWithVersion(t *testing.T, workspaceVersion int, semanticBody string) string {
+	t.Helper()
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, "semantic"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	manifest := fmt.Sprintf("workspace: test\nformatVersion: %d\nsources:\n  - semantic\n", workspaceVersion)
+	if err := os.WriteFile(filepath.Join(root, "tei.workspace.yaml"), []byte(manifest), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "semantic", "model.tei"), []byte(semanticBody), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	return root
+}
+
+func TestLoadAcceptsMatchingSemanticFormatVersion(t *testing.T) {
+	root := writeSemanticHeaderWorkspace(t, "formatVersion 1\nnamespace test\n")
+	if _, err := Load(root); err != nil {
+		t.Fatalf("matching semantic formatVersion was rejected: %v", err)
+	}
+}
+
+func TestLoadAcceptsHeaderlessSemanticFileByInheritingTheWorkspaceVersion(t *testing.T) {
+	root := writeSemanticHeaderWorkspace(t, "namespace test\n")
+	if _, err := Load(root); err != nil {
+		t.Fatalf("headerless semantic file did not inherit the workspace version: %v", err)
+	}
+}
+
+func TestLoadRejectsUnsupportedSemanticFormatVersion(t *testing.T) {
+	root := writeSemanticHeaderWorkspace(t, "formatVersion 3\nnamespace test\n")
+	_, err := Load(root)
+	if err == nil || !strings.Contains(err.Error(), "unsupported semantic formatVersion 3") {
+		t.Fatalf("unsupported semantic formatVersion was accepted: %v", err)
 	}
 }

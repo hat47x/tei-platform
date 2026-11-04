@@ -182,3 +182,146 @@ W1・W2 が前提。W3 と W4 は別の層なので並行できる。W4 の規�
 2. 期間の状態を、`period` の宣言（本稿）にするか、`capability` の状態遷移（[BUSINESS_LIFECYCLE_V1](BUSINESS_LIFECYCLE_V1_DESIGN.md)）の一例として表すか。後者なら新しい宣言を足さずに済む可能性がある。
 3. `closed` の期間での `create` を許すか（翌期への計上）。本稿は `late-arrival` と合わせて選ぶ案にしている。
 4. 締めの切り出しの時点を、評価文脈（#1720）と期間の状態のどちらが持つか。
+## 15. 実装計画（2026-11-03、仮承認D-2に基づく）
+
+期間の状態は意味の層に閉じます（D-2 仮承認）。CLI の段階は増やしません。次の順で、段階ごとに試験を通します。
+
+| 段階 | 範囲 | 変更する場所 | 完了条件 |
+| --- | --- | --- | --- |
+| P1 | モデル・構文・検証 | `internal/semantic`（`Period` 型、パーサ）、`internal/validation` | `period` を宣言でき、対象データ・業務日付属性の実在と、`open`・`closing`・`closed` の三状態を検査する。負例（未定義のデータ、日付でない属性、状態の欠落）で診断が出る |
+| P2 | 操作面との接続 | `internal/operations` | `closed` の期間を持つデータは `create`・`update` を `human-gated` にし、`retire` の未解決を期間の宣言で解消する。決定性を保つ |
+| P3 | 成果物への反映 | `internal/artifact` | 機能定義書に期間の行を出し、整合検査（`CheckSet`）の対象に加える |
+
+### P1 の形（案）
+
+```text
+period sales.month {
+    data sales.order
+    business-date sales.order.order_date
+    states open, closing, closed
+    close-requires sales.period.close
+    closed-rejects create, update
+    correction via sales.period.correct
+}
+```
+
+- `states` は三状態をすべて含むことを要求する（順序は問わない）。
+- `business-date` は対象データの属性で、型が日付（`std.date` 系）であることを要求する。
+- `close-requires`・`correction` は能力の識別子で、同じ名前空間に実在することを要求する。
+- `closed-rejects` は操作種別（`create`・`update`・`delete`）の列挙とし、未知の種別を拒否する。
+
+### 各段階の検証
+
+```sh
+go test ./internal/semantic ./internal/validation -count=1   # P1
+go test ./internal/operations -count=1                        # P2
+go test ./internal/artifact ./internal/operations -count=1    # P3
+go run ./cmd/tei validate -workspace reference/workspace      # 既存の作業領域を壊さない
+```
+
+### 戻る条件
+
+- P1 で、既存の `data`・`attribute` の宣言と衝突する（同じ名前・同じ位置に別の意味を置く必要が出る）場合は、構文の案を設計へ戻す。
+- P2 で、`human-gated` にすることが実行の拒否と混同される場合は、自律区分の意味を設計へ戻す。
+### P1 の実装状況（2026-11-03）
+
+P1（モデル・構文・検証）を実装しました。
+
+- `semantic.Period` と `Namespace.Periods` を追加（`internal/semantic/model.go`）。
+- `period` ブロックを解析する（`data`・`business-date`・`states`・`close-requires`・`closed-rejects`・`correction via`）。一覧は空白区切りで、次のキーワードで止まる（`internal/syntax/parser.go`、`period_test.go`）。
+- 検証を追加（`internal/validation/period.go`）: 対象データの実在、業務日付が対象データの属性であること、`open`・`closing`・`closed` の三状態、`close-requires`・`correction` の能力実在、`closed-rejects` の操作種別。診断コードは `PERIOD_UNKNOWN_DATA`・`PERIOD_UNKNOWN_BUSINESS_DATE`・`PERIOD_STATES_INCOMPLETE`・`PERIOD_UNKNOWN_CAPABILITY`・`PERIOD_UNKNOWN_CLOSED_REJECT`。
+
+検証: `go test ./internal/syntax ./internal/validation ./internal/semantic ./internal/operations` が通り、`validate -workspace reference/workspace` も `ok`（期間を宣言していない作業領域に影響しない）。
+
+**未着手**: P2（操作面との接続）と P3（成果物への反映）。
+### P2 の実装状況（2026-11-03）
+
+P2（操作面との接続）のうち、**期間の参照と閉じた期間が拒否する操作の提示**を実装しました。
+
+- 操作面の各操作に `period`（期間の識別子）と `periodRejects`（閉じた期間が拒否する操作）を付ける。期間はデータに紐づくため、`list`・`read`・`create`・`update` のすべてに付く（`internal/operations/surface.go`）。
+- 期間を宣言していないデータは空のまま（既存の作業領域に影響しない）。
+- 自律区分は変えない。**閉じた期間は実行時に拒否される**という事実を、操作面に載せる形にした（`human-gated` に読み替えない。自律区分は「誰が判断するか」、期間の状態は「いつ実行できるか」で、別の軸のため）。
+
+**未着手**: 閉じた期間の拒否を実行時に強制する仕組み（P2 の残り）と、P3（成果物への反映）。
+### P3 の実装状況（2026-11-03）
+
+P3（成果物への反映）のうち、**機能定義書への期間の行**を実装しました。
+
+- `FunctionDefinitionInput` に `Periods` を追加し、`uses semantic` の名前空間の期間を `period <id> data <data> states <open,closing,closed>` の行で出す（`internal/artifact/functiondef.go`）。
+- 生成規則（`function-definition/v1`）の行種別に `period` を追加。並びは期間の識別子順。
+- 作業領域からの一括生成で、名前空間の期間を渡す（`internal/artifact/workspace.go`）。
+### P2 の追補（2026-11-03）: 書き込みの前提
+
+閉じた期間が拒否する操作（`closed-rejects` に `create`・`update` がある場合）には、操作面の `preconditions` に `period:<期間>:open` を加えました。実行する側は、期間が開いていることの証明を渡さなければなりません。**実行時に拒否を強制する仕組みはまだありません**（契約としての前提のみ）。
+### 実行時の拒否（2026-11-03 追記）
+
+前提を検査する関数を追加しました（`internal/operations/period.go` の `CheckPeriods`）。
+
+- 入力: 操作面と、期間ごとの実行時の状態（`open`・`closing`・`closed`）。
+- 出力: 実行してはいけない操作の一覧（`PeriodRejection`）。**拒否であって実行エラーではない**。
+- 期間が `open` なら拒否なし。`closing`・`closed` は、その期間が `closed-rejects` で宣言した操作だけを拒否する。
+- 状態が分からない期間（未指定）は拒否しない。**不明を「閉じている」とみなさず、判断を呼び出し側に残す**。
+
+期間の状態は受理済みの意味ではなく実行時の状態なので、状態の置き場所（誰が・いつ記録するか）は別途決めます。この関数は、その置き場所が決まったときに実行の入口から呼べる形です。
+### 作業領域の読み込み（2026-11-03 追記）
+
+期間は `semantic.Namespace` の項目として読み込まれます（`internal/workspace/loader.go`）。読み込みの直後に、**期間が IR に載っていない**ことが分かったため修正しました。`tei periods` が空を返す症状で気づいた不具合です。再発を防ぐため、`internal/workspace/period_load_test.go` で「読み込んだ世界に期間と拒否操作が残る」ことを固定しています。
+### 実行入口のガード（2026-11-03 追記）
+
+能力の呼出し直前に期間を確かめる関数を追加しました（`internal/operations/periodguard.go` の `GuardCapability`）。**driver ではなく operations に置いています**。driver から operations を参照すると、Driver の依存閉包が広がり、`tools/reference-first-web-target/sharedprojection` の閉包試験が失敗したためです（束縛の知識は操作面が持つ、という層の分け方にも合います）。
+
+- 入力: 操作面、期間の状態、呼び出そうとしている能力の識別子。
+- 出力: `(PeriodRejection, bool)`。**拒否は値として返し、エラーにしない**（業務上の結末として利用者へ返すため）。
+- 束縛（`binding`）がこの能力を指し、期間を持つ操作だけを対象にする。期間を持たない能力はガードしない（操作面が知らないため）。
+
+期間の状態の**出所**（誰が・いつ記録するか）は、まだ決めていません。現状は呼び出し側が渡します（CLI の `-period-states` も同じ）。出所が決まるまでは、状態を渡さない限り拒否しない方針を保ちます。
+### 状態の出所（2026-11-03 追記）
+
+期間の状態は受理済みの意味ではないため、**出所を呼び出し側から注入する**形にしました（`internal/operations` の `PeriodStateSource`）。
+
+- `PeriodStates(ctx, applicationID)` を実装する任意の出所を渡せる。今日は運用の記録や CLI の指定、将来は外部システムや観測の記録。
+- 出所が状態を返さない期間はガードしない（不明を「閉じている」とみなさない方針を維持）。
+- 出所のエラーは**エラー**として返す。拒否（業務上の結末）と、判断できなかったことを区別する。
+- 出所が nil の場合はガードしない（既存の呼び出しに影響しない）。
+
+**未着手**: 実際の出所（運用の記録をどこへ置くか）と、実行入口での呼び出し。
+### 出所の実装（2026-11-03 追記）
+
+最初の出所として、**運用者が置く JSON ファイル**を実装しました（`internal/periodstate` の `File`。CLI とツールの両方から使えるよう、`cmd/tei` から切り出しました）。
+
+```json
+{ "sales.month": "closed", "sales.week": "open" }
+```
+
+- `tei periods -workspace <root> -application <id> -period-state-file <path>` で読み込む
+- 未知の状態（`open`・`closing`・`closed` 以外）と、読めないファイルは**エラー**（拒否に丸めない）
+- ファイルに無い期間はガードしない（不明を「閉じている」とみなさない）
+- `-period-states` と併用した場合は、ファイルの値を優先する
+
+これは運用の記録の最小形です。運用の記録をどこに置くか（リポジトリ外の管理、観測との接続）は、実データでの確認と合わせて後続で決めます。
+### 実行入口の合成（2026-11-03 追記）
+
+`internal/execution` に、能力の呼出しと期間のガードを合成する関数を追加しました（`execution.Invoke`）。
+
+- ガードが拒否した場合、**driver を呼ばずに**拒否を返す（`*operations.PeriodRejection`）。
+- 出所のエラーはエラーとして返し、driver を呼ばない（判断できていない状態で実行しない）。
+- 出所が nil ならガードせず、そのまま実行する（既存の呼び出しに影響しない）。
+- この層は driver の外に置いています。driver が操作面へ依存すると依存閉包が広がるためです（`sharedprojection` の閉包試験が失敗した経緯）。
+### 通しの確認（2026-11-03 追記）
+
+作業領域のテキストから拒否までを通す試験を追加しました（`internal/execution/period_guard_workspace_test.go`）。
+
+1. `period` と `effect create` の能力、`persist` を持つ作業領域を読み込む
+2. 操作面が `create` を導出し、期間と拒否操作を載せ、能力へ束縛する
+3. 期間が `closed` のとき、`GuardCapabilityWith` が拒否を返す
+4. `execution.Invoke` は**driver を呼ばずに**拒否を返す
+
+これで「宣言 → 操作面 → 束縛 → 実行入口での拒否」が、ライブラリの範囲で一本につながりました。**実装の入口（実際の能力呼出しを行うツール）への適用と、実データベースでの確認は未着手**です。
+### 実行者ツールへの適用（2026-11-03 追記）
+
+`tools/reference-data-first-persistence` に、期間のガードを前置できる提出経路を追加しました（`submitIfReadyGuarded`）。
+
+- 既存の `submitIfReady` はガード無しのまま（挙動を変えない）。
+- ガードが拒否した場合、**driver を呼ばず**、既存の拒否の形（`stageResult{Stage: "period", Status: unresolved}`）で返す。ツールに別のエラー経路を増やさないため。
+- ガードの出所のエラーは、既存の `Err` として返す。
+- 拒否の発生源はまだ CLI から指定できない（状態ファイルの受け口は `tei periods` 側にある）。運用の記録をこのツールへ渡す配線は後続。

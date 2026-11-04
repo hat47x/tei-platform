@@ -3,10 +3,12 @@ package artifact
 import (
 	"fmt"
 
+	"strings"
 	"tei/internal/application"
 	"tei/internal/core"
 	"tei/internal/database/persistence"
 	"tei/internal/ir"
+
 	"tei/internal/semantic"
 	"tei/internal/sourceindex"
 	"tei/internal/workspace"
@@ -45,6 +47,8 @@ func RenderWorkspace(root, applicationID string) (WorkspaceSet, error) {
 	data := make(map[core.CanonicalID]semantic.Data)
 	capabilities := make(map[core.CanonicalID]semantic.Capability)
 	validations := make(map[core.CanonicalID]semantic.Validation)
+	periods := make(map[core.CanonicalID]semantic.Period)
+	effectRules := make([]semantic.EffectRule, 0)
 	used := map[core.CanonicalID]bool{}
 	for _, namespace := range target.SemanticUses {
 		used[namespace] = true
@@ -58,6 +62,10 @@ func RenderWorkspace(root, applicationID string) (WorkspaceSet, error) {
 		if used[namespace.ID] {
 			for _, capability := range namespace.Capabilities {
 				capabilities[capability.ID] = capability
+			}
+			effectRules = append(effectRules, namespace.EffectRules...)
+			for _, period := range namespace.Periods {
+				periods[period.ID] = period
 			}
 			for _, validation := range namespace.Validations {
 				validations[validation.ID] = validation
@@ -96,6 +104,8 @@ func RenderWorkspace(root, applicationID string) (WorkspaceSet, error) {
 		Application:   target,
 		Capabilities:  capabilities,
 		Validations:   validations,
+		Periods:       periods,
+		EffectRules:   effectRules,
 	})
 	if err != nil {
 		return WorkspaceSet{}, fmt.Errorf("render function definition %s: %w", target.ID, err)
@@ -114,6 +124,7 @@ func RenderWorkspace(root, applicationID string) (WorkspaceSet, error) {
 	}
 	set := WorkspaceSet{InputRevision: revision, Artifacts: artifacts, Manifest: manifest}
 	set.Findings = append(CheckSet(set), checkSurfaceTargets(loaded.World, target, artifacts)...)
+	set.Findings = append(set.Findings, checkPeriodPreconditions(loaded.World, artifacts)...)
 	if set.Findings == nil {
 		set.Findings = []Finding{}
 	}
@@ -176,6 +187,54 @@ func checkSurfaceTargets(world ir.World, app application.Application, artifacts 
 					Subject: operation.ID,
 					Detail:  "the application can not reach " + operation.Target,
 				})
+			}
+		}
+	}
+	return findings
+}
+
+// checkPeriodPreconditions verifies that every "period:<id>:open" precondition
+// names a period that exists for the operation target and that the period
+// actually rejects that operation once closed. A precondition without a basis
+// would read as a requirement the surface invented.
+func checkPeriodPreconditions(world ir.World, artifacts []Artifact) []Finding {
+	periods := map[string]semantic.Period{}
+	for _, namespace := range world.Semantics {
+		for _, period := range namespace.Periods {
+			periods[string(period.ID)] = period
+		}
+	}
+	var findings []Finding
+	for _, artifact := range artifacts {
+		if artifact.Kind != string(KindOperationSurface) {
+			continue
+		}
+		payload, err := decodeOperationSurface(artifact.Content)
+		if err != nil {
+			continue
+		}
+		for _, operation := range payload.Operations {
+			for _, precondition := range operation.Preconditions {
+				if !strings.HasPrefix(precondition, "period:") || !strings.HasSuffix(precondition, ":open") {
+					continue
+				}
+				id := strings.TrimSuffix(strings.TrimPrefix(precondition, "period:"), ":open")
+				period, ok := periods[id]
+				if !ok {
+					findings = append(findings, Finding{
+						Code:    "PERIOD_PRECONDITION_UNKNOWN",
+						Subject: operation.ID,
+						Detail:  "the precondition names an unknown period " + id,
+					})
+					continue
+				}
+				if string(period.Data) != operation.Target {
+					findings = append(findings, Finding{
+						Code:    "PERIOD_PRECONDITION_MISMATCH",
+						Subject: operation.ID,
+						Detail:  "the period " + id + " governs " + string(period.Data) + ", not " + operation.Target,
+					})
+				}
 			}
 		}
 	}

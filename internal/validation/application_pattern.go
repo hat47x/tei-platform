@@ -222,6 +222,53 @@ func validateApplicationPatterns(w ir.World) []Diagnostic {
 				}
 			}
 
+			if pattern.PrintTemplate != "" && pattern.Kind == application.PatternCommand {
+				out = append(out, errFor(
+					patternSubject,
+					"APPLICATION_PATTERN_PRINT_TEMPLATE_NOT_ALLOWED",
+					"command pattern %s does not accept print-template",
+					pattern.ID,
+				))
+			}
+
+			if pattern.Layout != nil {
+				switch {
+				case pattern.Kind != application.PatternRecord:
+					out = append(out, errFor(
+						patternSubject,
+						"APPLICATION_PATTERN_LAYOUT_NOT_ALLOWED",
+						"%s pattern %s does not accept layout; layout belongs to record",
+						pattern.Kind,
+						pattern.ID,
+					))
+				default:
+					attributes := semanticDataAttributes[pattern.Data]
+					seen := map[core.CanonicalID]bool{}
+					for _, attribute := range pattern.Layout.Order {
+						if _, ok := attributes[attribute]; !ok {
+							out = append(out, errFor(
+								patternSubject,
+								"UNKNOWN_APPLICATION_PATTERN_LAYOUT_ORDER",
+								"record pattern %s layout refers to %s that is not an attribute of %s",
+								pattern.ID,
+								attribute,
+								pattern.Data,
+							))
+						}
+						if seen[attribute] {
+							out = append(out, errFor(
+								patternSubject,
+								"APPLICATION_PATTERN_LAYOUT_ORDER_DUPLICATE",
+								"record pattern %s layout orders %s more than once",
+								pattern.ID,
+								attribute,
+							))
+						}
+						seen[attribute] = true
+					}
+				}
+			}
+
 			switch pattern.Kind {
 			case application.PatternBrowse:
 				out = append(out, validateBrowsePattern(app, pattern, patternSubject, semanticData, queries)...)
@@ -600,6 +647,39 @@ func validateRecordPatternInteraction(
 					binding.Attribute,
 					pattern.Data,
 				))
+			}
+		}
+	}
+
+	for _, hook := range pattern.Interaction.Hooks {
+		switch hook.Phase {
+		case "before-read", "before-create", "after-create", "before-update", "after-update", "before-delete", "after-delete":
+		default:
+			out = append(out, errFor(patternSubject, "APPLICATION_PATTERN_INTERACTION_HOOK_PHASE_UNSUPPORTED", "record pattern %s hook uses unsupported phase %s", pattern.ID, hook.Phase))
+		}
+		switch hook.Failure {
+		case "", "reject", "warn":
+		default:
+			out = append(out, errFor(patternSubject, "APPLICATION_PATTERN_INTERACTION_HOOK_FAILURE_UNSUPPORTED", "record pattern %s hook %s uses unsupported failure %s", pattern.ID, hook.Phase, hook.Failure))
+		}
+		for _, attribute := range hook.Reads {
+			if _, ok := dataAttributes[attribute]; !ok {
+				out = append(out, errFor(patternSubject, "UNKNOWN_APPLICATION_PATTERN_INTERACTION_HOOK_READ", "record pattern %s hook %s reads %s that is not an attribute of %s", pattern.ID, hook.Phase, attribute, pattern.Data))
+			}
+		}
+		for _, attribute := range hook.Produces {
+			if _, ok := dataAttributes[attribute]; !ok {
+				out = append(out, errFor(patternSubject, "UNKNOWN_APPLICATION_PATTERN_INTERACTION_HOOK_PRODUCE", "record pattern %s hook %s produces %s that is not an attribute of %s", pattern.ID, hook.Phase, attribute, pattern.Data))
+			}
+		}
+		for _, capability := range hook.Uses {
+			namespace, ok := semanticCapabilities[capability]
+			if !ok {
+				out = append(out, errFor(patternSubject, "UNKNOWN_APPLICATION_PATTERN_INTERACTION_HOOK_USE", "record pattern %s hook %s uses %s that is not a capability", pattern.ID, hook.Phase, capability))
+				continue
+			}
+			if !usedSemantics[namespace] {
+				out = append(out, errFor(patternSubject, "APPLICATION_PATTERN_INTERACTION_HOOK_SEMANTIC_NOT_USED", "record pattern %s hook %s uses %s from namespace %s that application %s does not use", pattern.ID, hook.Phase, capability, namespace, app.ID))
 			}
 		}
 	}

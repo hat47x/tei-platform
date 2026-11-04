@@ -39,6 +39,7 @@ th{background:#f3f3f3}
 <tr>{{range .Columns}}<td></td>{{end}}</tr>
 </tbody>
 </table>
+<footer>pattern: {{.Pattern}} / semantics: {{.SemanticFingerprint}} / format: tei.print/v0{{if .PrintTemplate}} template: {{.PrintTemplate}}{{end}}</footer>
 </body>
 </html>
 `))
@@ -56,6 +57,7 @@ h1{font-size:1.1rem;border-bottom:2px solid #000;padding-bottom:2mm}
 table{width:100%;border-collapse:collapse;margin-top:4mm}
 th,td{border:1px solid #000;padding:1.5mm 2mm;text-align:left;font-size:.85rem}
 th{background:#eee}
+footer{margin-top:6mm;font-size:.75rem;color:#444;border-top:1px solid #999;padding-top:2mm}
 </style>
 </head>
 <body>
@@ -73,6 +75,7 @@ th{background:#eee}
 <tr>{{range .Columns}}<td></td>{{end}}</tr>
 </tbody>
 </table>
+<footer>pattern: {{.Pattern}} / semantics: {{.SemanticFingerprint}} / format: tei.print/v0{{if .PrintTemplate}} template: {{.PrintTemplate}}{{end}}</footer>
 </body>
 </html>
 `))

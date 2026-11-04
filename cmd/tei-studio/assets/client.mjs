@@ -1,4 +1,4 @@
-// Host-neutral JS port for the PoC A bootstrap screen.
+﻿// Host-neutral JS port for the PoC A bootstrap screen.
 // #3 can replace this screen without importing Go/Wails into reusable UI.
 const names = Object.freeze({
   list: "main.StudioBridge.ListWorkspaces",
@@ -6,6 +6,12 @@ const names = Object.freeze({
   validate: "main.StudioBridge.ValidateWorkspace",
   inspect: "main.StudioBridge.InspectSubject",
   observeXead: "main.StudioBridge.ObserveXead",
+  viewPattern: "main.StudioBridge.ViewPattern",
+  viewApplication: "main.StudioBridge.ViewApplication",
+  viewPackage: "main.StudioBridge.ViewPackage",
+  planCommand: "main.StudioBridge.PlanCommand",
+  executeCommand: "main.StudioBridge.ExecuteCommand",
+  executeCommandWithPeriods: "main.StudioBridge.ExecuteCommandWithPeriods",
 });
 
 export function createReadOnlyClient(callByName) {
@@ -31,5 +37,15 @@ export function createReadOnlyClient(callByName) {
     validateWorkspace: (workspaceID) => call("validate", workspaceID),
     inspectSubject: (workspaceID, kind, subjectID) => call("inspect", workspaceID, kind, subjectID),
     observeXead: (workspaceID, relativePath) => call("observeXead", workspaceID, relativePath),
+    viewPattern: (workspaceID, applicationID, patternID) => call("viewPattern", workspaceID, applicationID, patternID),
+    viewApplication: (workspaceID, applicationID) => call("viewApplication", workspaceID, applicationID),
+    viewPackage: (workspaceID, applicationID, packageID) => call("viewPackage", workspaceID, applicationID, packageID),
+    planCommand: (workspaceID, applicationID, patternID, capabilityID, inputs) => call("planCommand", workspaceID, applicationID, patternID, capabilityID, inputs),
+    executeCommand: (workspaceID, applicationID, patternID, capabilityID, inputs) => call("executeCommand", workspaceID, applicationID, patternID, capabilityID, inputs),
+    executeCommandWithPeriods: (workspaceID, applicationID, patternID, capabilityID, inputs, periods) => call("executeCommandWithPeriods", workspaceID, applicationID, patternID, capabilityID, inputs, periods),
   });
 }
+
+
+
+

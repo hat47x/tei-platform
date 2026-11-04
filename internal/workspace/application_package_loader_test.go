@@ -21,7 +21,7 @@ func writePackageWorkspaceFile(t *testing.T, root, rel, content string) {
 
 func TestLoadApplicationPackages(t *testing.T) {
 	root := t.TempDir()
-	writePackageWorkspaceFile(t, root, "tei.workspace.yaml", "workspace: package_loader\nsources:\n  - semantic\n  - applications\n")
+	writePackageWorkspaceFile(t, root, "tei.workspace.yaml", "workspace: package_loader\nformatVersion: 1\nsources:\n  - semantic\n  - applications\n")
 	writePackageWorkspaceFile(t, root, "semantic/sales/order.tei", `namespace sales
 
 data Order {

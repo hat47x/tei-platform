@@ -8,7 +8,7 @@ import (
 
 func TestInspectCLIProjectsApplicationPatternInteraction(t *testing.T) {
 	root := t.TempDir()
-	writeWorkspaceFile(t, root, "tei.workspace.yaml", "workspace: inspect_interaction\nsources:\n  - applications\n")
+	writeWorkspaceFile(t, root, "tei.workspace.yaml", "workspace: inspect_interaction\nformatVersion: 1\nsources:\n  - applications\n")
 	writeWorkspaceFile(t, root, "applications/order-entry/application.tei", "application order_entry {\n}\n")
 	writeWorkspaceFile(t, root, "applications/order-entry/patterns/order-record.tei", `pattern order_entry.order_record record {
     data sales.order

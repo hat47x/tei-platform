@@ -5,10 +5,9 @@ import (
 	"testing"
 )
 
-// These are CHARACTERIZATION tests of the generic ArtifactSet contract (merged PR #2587).
-// They intentionally do not declare the observed omissions acceptable behavior.
-// Once the owning issues adopt a consumer-scoped qualification policy, replace
-// the corresponding expectations with the positive acceptance tests.
+// AS-01/02 characterize the generic set contract; consumer scope remains a
+// separate qualification. AC-01..04 are positive regression tests requiring
+// CheckSet to detect stored artifact byte and operation surface inconsistencies.
 //
 // AS-01/02: https://github.com/hat47x/tei-platform/pull/2630
 // AC-01..04: https://github.com/hat47x/tei-platform/issues/2482
@@ -92,7 +91,7 @@ func TestCharacterizeAS02SubsetCanHaveACompleteManifest(t *testing.T) {
 	}
 }
 
-func TestCharacterizeAC01MalformedSurfaceCanPassGenericCheckSet(t *testing.T) {
+func TestCheckSetRejectsAC01MalformedSurface(t *testing.T) {
 	const revision = "sha256:characterization"
 	content := "{\"schemaVersion\":\"tei.operations.operation-surface/v0\","
 	if _, err := decodeOperationSurface(content); err == nil {
@@ -109,12 +108,12 @@ func TestCharacterizeAC01MalformedSurfaceCanPassGenericCheckSet(t *testing.T) {
 		t.Fatal(err)
 	}
 	set := WorkspaceSet{InputRevision: revision, Artifacts: []Artifact{a}, Manifest: m}
-	if findings := CheckSet(set); len(findings) != 0 {
-		t.Fatalf("characterization: malformed JSON is not yet reported by CheckSet: %+v", findings)
+	if findings := CheckSet(set); !hasArtifactFinding(findings, FindingContentIncomplete) {
+		t.Fatalf("malformed JSON must produce a content finding: %+v", findings)
 	}
 }
 
-func TestCharacterizeAC02PostManifestArtifactMutation(t *testing.T) {
+func TestCheckSetRejectsAC02PostManifestArtifactMutation(t *testing.T) {
 	artifacts := manifestArtifacts(t, 0)
 	m, err := NewManifest(artifacts[0].InputRevision, artifacts)
 	if err != nil {
@@ -127,12 +126,12 @@ func TestCharacterizeAC02PostManifestArtifactMutation(t *testing.T) {
 		t.Fatal("Artifact.Verify must independently detect the changed bytes")
 	}
 	set := WorkspaceSet{InputRevision: m.InputRevision, Artifacts: artifacts, Manifest: m}
-	if findings := CheckSet(set); len(findings) != 0 {
-		t.Fatalf("characterization: CheckSet currently does not call Artifact.Verify: %+v", findings)
+	if findings := CheckSet(set); !hasArtifactFinding(findings, FindingArtifactTampered) {
+		t.Fatalf("a post-manifest content change must be reported: %+v", findings)
 	}
 }
 
-func TestCharacterizeAC03GapReasonMismatchWithValidDigests(t *testing.T) {
+func TestCheckSetRejectsAC03GapReasonMismatchWithValidDigests(t *testing.T) {
 	set := negativeFixtureSet(t)
 	found := false
 	for i, a := range set.Artifacts {
@@ -159,12 +158,13 @@ func TestCharacterizeAC03GapReasonMismatchWithValidDigests(t *testing.T) {
 		t.Fatal(err)
 	}
 	set.Manifest = m
-	if findings := CheckSet(set); len(findings) != 0 {
-		t.Fatalf("characterization: matching gap subjects can hide differing reasons: %+v", findings)
+	if findings := CheckSet(set); !hasArtifactFinding(findings, FindingSurfaceGapMissing) ||
+		!hasArtifactFinding(findings, FindingSurfaceGapUnexpected) {
+		t.Fatalf("reason mismatch must report missing AND unmatched gap entries: %+v", findings)
 	}
 }
 
-func TestCharacterizeAC04SchemaFieldCanDisagreeWithInlineVersion(t *testing.T) {
+func TestCheckSetRejectsAC04SchemaFieldSpoof(t *testing.T) {
 	const revision = "sha256:characterization"
 	content := "{\"schemaVersion\":\"different/v0\",\"note\":\"tei.operations.operation-surface/v0\",\"operations\":[],\"gaps\":[]}\n"
 	p, err := decodeOperationSurface(content)
@@ -185,7 +185,16 @@ func TestCharacterizeAC04SchemaFieldCanDisagreeWithInlineVersion(t *testing.T) {
 		t.Fatal(err)
 	}
 	set := WorkspaceSet{InputRevision: revision, Artifacts: []Artifact{a}, Manifest: m}
-	if findings := CheckSet(set); len(findings) != 0 {
-		t.Fatalf("characterization: generic substring search does not validate schemaVersion field: %+v", findings)
+	if findings := CheckSet(set); !hasArtifactFinding(findings, FindingContentIncomplete) {
+		t.Fatalf("schemaVersion field must be validated, not a substring: %+v", findings)
 	}
+}
+
+func hasArtifactFinding(findings []Finding, code string) bool {
+	for _, finding := range findings {
+		if finding.Code == code {
+			return true
+		}
+	}
+	return false
 }

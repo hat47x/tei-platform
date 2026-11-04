@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -9,9 +10,21 @@ import (
 
 	"tei/internal/application"
 	"tei/internal/applicationview"
+	"tei/internal/command"
 	"tei/internal/core"
+	"tei/internal/periodstate"
+	"tei/internal/semantic"
 	"tei/internal/workspace"
 )
+
+type referenceCommandRun struct {
+	SchemaVersion string                      `json:"schemaVersion"`
+	Mode          string                      `json:"mode"`
+	Plan          applicationview.CommandPlan `json:"plan"`
+	Outcome       *semantic.Outcome           `json:"outcome,omitempty"`
+	Effect        *semantic.DataEffect        `json:"effect,omitempty"`
+	Committed     bool                        `json:"committed"`
+}
 
 type cliViewReport struct {
 	SchemaVersion string                `json:"schemaVersion"`
@@ -34,17 +47,28 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 	root := fs.String("workspace", "", "TEI workspace directory")
 	applicationID := fs.String("application", "", "exact application ID")
 	patternID := fs.String("pattern", "", "exact application pattern ID")
+	packageID := fs.String("package", "", "exact application package ID")
 	commandID := fs.String("command", "", "command capability to plan")
+	execute := fs.Bool("execute", false, "reference execution of the planned command")
+	periodStateFile := fs.String("period-state", "", "period state JSON for -execute")
 	var inputPairs inputFlag
 	fs.Var(&inputPairs, "input", "command input as name=value; repeatable")
 	format := fs.String("format", "text", "text or json")
 	if err := fs.Parse(args); err != nil {
 		return fail("INVALID_ARGUMENT", err.Error(), 2)
 	}
-	if fs.NArg() != 0 || *root == "" || *applicationID == "" || *patternID == "" ||
+	if fs.NArg() != 0 || *root == "" || *applicationID == "" ||
+		(*patternID != "" && *packageID != "") ||
+		(*commandID != "" && *patternID == "") ||
+		(*execute && *commandID == "") ||
+		(*periodStateFile != "" && !*execute) ||
 		*root != strings.TrimSpace(*root) || *applicationID != strings.TrimSpace(*applicationID) ||
-		*patternID != strings.TrimSpace(*patternID) {
-		return fail("INVALID_ARGUMENT", "view requires exact -workspace, -application and -pattern, without positional arguments", 2)
+		*patternID != strings.TrimSpace(*patternID) || *packageID != strings.TrimSpace(*packageID) ||
+		*commandID != strings.TrimSpace(*commandID) {
+		return fail("INVALID_ARGUMENT", "view requires exact -workspace and -application, at most one of -pattern, -package, or -command, without positional arguments", 2)
+	}
+	if *execute && *format != "text" && *format != "json" {
+		return fail("INVALID_ARGUMENT", "view -execute supports -format text or json", 2)
 	}
 	if *format != "text" && *format != "json" && *format != "html" && *format != "print" {
 		return fail("INVALID_ARGUMENT", "view -format must be text, json, html, or print", 2)
@@ -53,6 +77,39 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 	loaded, err := workspace.Load(*root)
 	if err != nil {
 		return fail("WORKSPACE_LOAD_FAILED", err.Error(), 2)
+	}
+	if *patternID == "" && *packageID == "" && *commandID == "" {
+		if *format != "text" && *format != "json" {
+			return fail("INVALID_ARGUMENT", "view -application supports -format text or json", 2)
+		}
+		view, err := applicationview.BuildApplication(loaded.World, core.CanonicalID(*applicationID))
+		if err != nil {
+			return fail("VIEW_FAILED", err.Error(), 1)
+		}
+		report.OK = true
+		report.Result = view
+		if *format == "json" {
+			return writeViewReport(out, report, 0)
+		}
+		return writeApplicationText(out, view)
+	}
+	if *packageID != "" {
+		if *format != "text" && *format != "json" {
+			return fail("INVALID_ARGUMENT", "view -package supports -format text or json", 2)
+		}
+		if *commandID != "" {
+			return fail("INVALID_ARGUMENT", "view -package does not accept -command", 2)
+		}
+		view, err := applicationview.BuildPackage(loaded.World, core.CanonicalID(*applicationID), core.CanonicalID(*packageID))
+		if err != nil {
+			return fail("VIEW_FAILED", err.Error(), 1)
+		}
+		report.OK = true
+		report.Result = view
+		if *format == "json" {
+			return writeViewReport(out, report, 0)
+		}
+		return writePackageText(out, view)
 	}
 	if *commandID != "" {
 		if *format != "text" && *format != "json" {
@@ -65,6 +122,43 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 		plan, err := applicationview.BuildCommandPlan(loaded.World, core.CanonicalID(*applicationID), core.CanonicalID(*patternID), core.CanonicalID(*commandID), values)
 		if err != nil {
 			return fail("VIEW_FAILED", err.Error(), 1)
+		}
+		if *execute {
+			invoker := command.Invoker{
+				World:      loaded.World,
+				Executor:   command.ReferenceExecutor{World: loaded.World},
+				UnitOfWork: &command.MemoryUnitOfWork{},
+			}
+			if *periodStateFile != "" {
+				states, err := periodstate.File{Path: *periodStateFile}.PeriodStates(context.Background(), *applicationID)
+				if err != nil {
+					return fail("PERIOD_STATE_LOAD_FAILED", err.Error(), 2)
+				}
+				invoker.Periods = command.NewMapPeriodState(states)
+			}
+			result, err := invoker.Invoke(context.Background(), command.Request{
+				Application: core.CanonicalID(*applicationID),
+				Pattern:     core.CanonicalID(*patternID),
+				Capability:  core.CanonicalID(*commandID),
+				Inputs:      values,
+			})
+			if err != nil {
+				return fail("COMMAND_FAILED", err.Error(), 1)
+			}
+			run := referenceCommandRun{
+				SchemaVersion: applicationview.SchemaVersion,
+				Mode:          "reference",
+				Plan:          plan,
+				Outcome:       result.Outcome,
+				Effect:        result.Effect,
+				Committed:     true,
+			}
+			report.OK = true
+			report.Result = run
+			if *format == "json" {
+				return writeViewReport(out, report, 0)
+			}
+			return writeReferenceRunText(out, run)
 		}
 		report.OK = true
 		report.Result = plan
@@ -93,6 +187,15 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 		result = view
 	case application.PatternBrowse:
 		view, err := applicationview.BuildBrowse(loaded.World, core.CanonicalID(*applicationID), core.CanonicalID(*patternID))
+		if err != nil {
+			return fail("VIEW_FAILED", err.Error(), 1)
+		}
+		result = view
+	case application.PatternCommand:
+		if *format == "html" || *format == "print" {
+			return fail("INVALID_ARGUMENT", "view -format html/print does not support command patterns", 2)
+		}
+		view, err := applicationview.BuildCommandPattern(loaded.World, core.CanonicalID(*applicationID), core.CanonicalID(*patternID))
 		if err != nil {
 			return fail("VIEW_FAILED", err.Error(), 1)
 		}
@@ -142,6 +245,8 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 			return writeHeaderDetailText(out, value)
 		case applicationview.BrowseView:
 			return writeBrowseText(out, value)
+		case applicationview.CommandPatternView:
+			return writeCommandPatternText(out, value)
 		}
 		return 2, fmt.Errorf("unhandled view result %T", result)
 	}
@@ -205,6 +310,39 @@ func writeViewText(out io.Writer, view applicationview.View) (int, error) {
 			}
 		}
 	}
+	if len(view.Unused) > 0 {
+		if _, err := fmt.Fprintln(out, "unused:"); err != nil {
+			return 2, err
+		}
+		for _, item := range view.Unused {
+			if _, err := fmt.Fprintf(out, "  - %s (%s)\n", item.Label, item.Type); err != nil {
+				return 2, err
+			}
+		}
+	}
+	if len(view.Hooks) > 0 {
+		if _, err := fmt.Fprintln(out, "hooks:"); err != nil {
+			return 2, err
+		}
+		for _, hook := range view.Hooks {
+			line := fmt.Sprintf("  - %s", hook.Phase)
+			if len(hook.Reads) > 0 {
+				line += fmt.Sprintf(" reads %s", joinIDs(hook.Reads))
+			}
+			if len(hook.Uses) > 0 {
+				line += fmt.Sprintf(" uses %s", joinIDs(hook.Uses))
+			}
+			if len(hook.Produces) > 0 {
+				line += fmt.Sprintf(" produces %s", joinIDs(hook.Produces))
+			}
+			if hook.Failure != "" {
+				line += fmt.Sprintf(" on-failure %s", hook.Failure)
+			}
+			if _, err := fmt.Fprintln(out, line); err != nil {
+				return 2, err
+			}
+		}
+	}
 	if len(view.Commands) > 0 {
 		if _, err := fmt.Fprintln(out, "commands:"); err != nil {
 			return 2, err
@@ -246,6 +384,14 @@ func bindLabel(label string, attribute core.CanonicalID) string {
 		return ""
 	}
 	return fmt.Sprintf(" ← %s", label)
+}
+
+func joinIDs(ids []core.CanonicalID) string {
+	parts := make([]string, 0, len(ids))
+	for _, id := range ids {
+		parts = append(parts, string(id))
+	}
+	return strings.Join(parts, ", ")
 }
 
 func writeHeaderDetailText(out io.Writer, view applicationview.HeaderDetailView) (int, error) {
@@ -378,6 +524,111 @@ func parseInputPairs(pairs inputFlag) (map[string]string, error) {
 	return values, nil
 }
 
+func writeApplicationText(out io.Writer, view applicationview.ApplicationView) (int, error) {
+	if _, err := fmt.Fprintf(out, "application %s\n", view.Application); err != nil {
+		return 2, err
+	}
+	for _, period := range view.Periods {
+		if _, err := fmt.Fprintf(out, "period %s data %s states %s\n", period.ID, period.Data, strings.Join(period.States, ",")); err != nil {
+			return 2, err
+		}
+	}
+	for _, use := range view.SemanticUses {
+		if _, err := fmt.Fprintf(out, "uses %s\n", use); err != nil {
+			return 2, err
+		}
+	}
+	for _, pattern := range view.Patterns {
+		if _, err := fmt.Fprintf(out, "pattern %s (%s)\n", pattern.ID, pattern.Kind); err != nil {
+			return 2, err
+		}
+	}
+	for _, pkg := range view.Packages {
+		if _, err := fmt.Fprintf(out, "package %s ^%s (bound: %t)\n", pkg.ID, pkg.Version, pkg.Bound); err != nil {
+			return 2, err
+		}
+	}
+	if _, err := fmt.Fprintf(out, "semantics %s\n", view.SemanticFingerprint); err != nil {
+		return 2, err
+	}
+	return 0, nil
+}
+
+func writePackageText(out io.Writer, view applicationview.PackageView) (int, error) {
+	if _, err := fmt.Fprintf(out, "package %s ^%s (bound: %t)\n", view.Package, view.Version, view.Bound); err != nil {
+		return 2, err
+	}
+	if _, err := fmt.Fprintf(out, "application %s\n", view.Application); err != nil {
+		return 2, err
+	}
+	for _, member := range view.Members {
+		if _, err := fmt.Fprintf(out, "member %s %s\n", member.Kind, member.Pattern); err != nil {
+			return 2, err
+		}
+	}
+	for _, requirement := range view.Requires {
+		if _, err := fmt.Fprintf(out, "requires %s %s\n", requirement.Kind, requirement.ID); err != nil {
+			return 2, err
+		}
+	}
+	if view.Projection != "" {
+		if _, err := fmt.Fprintf(out, "projection %s\n", view.Projection); err != nil {
+			return 2, err
+		}
+	}
+	if view.Conformance != "" {
+		if _, err := fmt.Fprintf(out, "conformance %s\n", view.Conformance); err != nil {
+			return 2, err
+		}
+	}
+	return 0, nil
+}
+
+func writeCommandPatternText(out io.Writer, view applicationview.CommandPatternView) (int, error) {
+	if _, err := fmt.Fprintf(out, "command %s (%s)\n", view.Capability, view.Label); err != nil {
+		return 2, err
+	}
+	for _, input := range view.Inputs {
+		if _, err := fmt.Fprintf(out, "input %s (%s)\n", input.Name, input.Type); err != nil {
+			return 2, err
+		}
+	}
+	for _, outcome := range view.Outcomes {
+		if _, err := fmt.Fprintf(out, "outcome %s -> %s\n", outcome.Name, outcome.Payload); err != nil {
+			return 2, err
+		}
+	}
+	if view.Effect != nil {
+		if _, err := fmt.Fprintf(out, "effect: %s %s\n", view.Effect.Kind, view.Effect.Data); err != nil {
+			return 2, err
+		}
+	}
+	return 0, nil
+}
+
+func writeReferenceRunText(out io.Writer, run referenceCommandRun) (int, error) {
+	if _, err := fmt.Fprintln(out, "mode: reference (no durable effects)"); err != nil {
+		return 2, err
+	}
+	if code, err := writeCommandPlanText(out, run.Plan); err != nil {
+		return code, err
+	}
+	if run.Outcome != nil {
+		if _, err := fmt.Fprintf(out, "outcome: %s -> %s\n", run.Outcome.Name, run.Outcome.Payload); err != nil {
+			return 2, err
+		}
+	}
+	if run.Effect != nil {
+		if _, err := fmt.Fprintf(out, "effect: %s %s\n", run.Effect.Kind, run.Effect.Data); err != nil {
+			return 2, err
+		}
+	}
+	if _, err := fmt.Fprintf(out, "committed: %t\n", run.Committed); err != nil {
+		return 2, err
+	}
+	return 0, nil
+}
+
 func writeCommandPlanText(out io.Writer, plan applicationview.CommandPlan) (int, error) {
 	if _, err := fmt.Fprintf(out, "command %s (%s)\n", plan.Capability, plan.Label); err != nil {
 		return 2, err
@@ -406,6 +657,11 @@ func writeCommandPlanText(out io.Writer, plan applicationview.CommandPlan) (int,
 	}
 	if plan.Effect != nil {
 		if _, err := fmt.Fprintf(out, "effect: %s %s\n", plan.Effect.Kind, plan.Effect.Data); err != nil {
+			return 2, err
+		}
+	}
+	if plan.Period != nil {
+		if _, err := fmt.Fprintf(out, "period: %s states=%s closed-rejects=%s\n", plan.Period.ID, strings.Join(plan.Period.States, ","), strings.Join(plan.Period.ClosedRejects, ",")); err != nil {
 			return 2, err
 		}
 	}

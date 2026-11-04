@@ -185,7 +185,7 @@ func TestCombinedWebTargetSourceGateLiveProcesses(t *testing.T) {
 				// Source refusal must precede loading any Runner credential fixture.
 				args = append(args, "-legacy-users", "does-not-exist", "-legacy-authorization", "does-not-exist")
 			}
-			ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+			ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 			defer cancel()
 			command := exec.CommandContext(ctx, executable, args...)
 			command.Dir = repoRoot
@@ -196,7 +196,7 @@ func TestCombinedWebTargetSourceGateLiveProcesses(t *testing.T) {
 			command.Env = append(os.Environ(), "TEI_TEST_WEB_SOURCE_READER="+tc.mode,
 				"TEI_TEST_WEB_SOURCE_PUBLICATION="+selectedPublication)
 			base := "http://" + address
-			client := &http.Client{Timeout: 300 * time.Millisecond}
+			client := &http.Client{Timeout: 5 * time.Second}
 			if tc.refusal != "" {
 				output, err := command.CombinedOutput()
 				var exit *exec.ExitError

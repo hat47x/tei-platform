@@ -316,8 +316,9 @@ WP10 統合と引継ぎ
 | 受容アーキテクチャ | D1〜D8とD1.1・D1.2・D2.1・D3.1・D6.1、付録A（対応）・B（試験）・C（現行文法との差） |
 | 受容要件 | AC-1〜AC-11、RQ-C1〜C3、既存要求との重複確認 |
 | 移行計画 | WP1〜WP10、G0〜G5、Issue候補N-1〜N-6、この引継ぎ |
-| 文書PR | [#2519](https://github.com/hat47x/tei-platform/pull/2519)（Draft） |
-| PoC PR | [#2521](https://github.com/hat47x/tei-platform/pull/2521)（Draft、対話契約・ビュー・Packageの最小実装） |
+| 文書PR | [#2519](https://github.com/hat47x/tei-platform/pull/2519)（`e0ea7565f` でmainへ統合） |
+| PoC PR | [#2521](https://github.com/hat47x/tei-platform/pull/2521)（`53f5bb425` でmainへ統合） |
+| 追加の実装PR | [#2679](https://github.com/hat47x/tei-platform/pull/2679) Query入力、[#2682](https://github.com/hat47x/tei-platform/pull/2682) Command実行境界、[#2683](https://github.com/hat47x/tei-platform/pull/2683) フック宣言、[#2684](https://github.com/hat47x/tei-platform/pull/2684) 未使用属性、[#2685](https://github.com/hat47x/tei-platform/pull/2685) 印刷受領票、[#2686](https://github.com/hat47x/tei-platform/pull/2686) フック実行境界、[#2687](https://github.com/hat47x/tei-platform/pull/2687) layout、[#2688](https://github.com/hat47x/tei-platform/pull/2688) 統合試験、[#2689](https://github.com/hat47x/tei-platform/pull/2689) 実装状態、[#2691](https://github.com/hat47x/tei-platform/pull/2691) role、[#2693](https://github.com/hat47x/tei-platform/pull/2693) commandビュー、[#2696](https://github.com/hat47x/tei-platform/pull/2696) Packageビュー、[#2697](https://github.com/hat47x/tei-platform/pull/2697) Applicationビュー、[#2698](https://github.com/hat47x/tei-platform/pull/2698) 取引境界、[#2700](https://github.com/hat47x/tei-platform/pull/2700) 削除効果、[#2701](https://github.com/hat47x/tei-platform/pull/2701) 帳票テンプレート、[#2703](https://github.com/hat47x/tei-platform/pull/2703) 期間投影、[#2705](https://github.com/hat47x/tei-platform/pull/2705) 参照実装、[#2712](https://github.com/hat47x/tei-platform/pull/2712) 参照実行、[#2713](https://github.com/hat47x/tei-platform/pull/2713) SQL参照検査、[#2718](https://github.com/hat47x/tei-platform/pull/2718) 期間表示、[#2719](https://github.com/hat47x/tei-platform/pull/2719) on-delete、[#2723](https://github.com/hat47x/tei-platform/pull/2723) 閉期間拒否、[#2724](https://github.com/hat47x/tei-platform/pull/2724) 削除ポリシー検査、[#2727](https://github.com/hat47x/tei-platform/pull/2727) 参照Store、[#2729](https://github.com/hat47x/tei-platform/pull/2729) effectcommit方針、[#2733](https://github.com/hat47x/tei-platform/pull/2733) Studioビュー、[#2741](https://github.com/hat47x/tei-platform/pull/2741) Studio renderer、[#2747](https://github.com/hat47x/tei-platform/pull/2747) Studio Command、[#2751](https://github.com/hat47x/tei-platform/pull/2751) ビュー表、[#2753](https://github.com/hat47x/tei-platform/pull/2753) 削除ポリシー実行、[#2755](https://github.com/hat47x/tei-platform/pull/2755) Studio Package、[#2757](https://github.com/hat47x/tei-platform/pull/2757) 必須属性、[#2759](https://github.com/hat47x/tei-platform/pull/2759) 値域、[#2762](https://github.com/hat47x/tei-platform/pull/2762) 重複create、[#2764](https://github.com/hat47x/tei-platform/pull/2764) 実装状況、[#2766](https://github.com/hat47x/tei-platform/pull/2766) キー指定、[#2768](https://github.com/hat47x/tei-platform/pull/2768) 期間状態CLI、[#2770](https://github.com/hat47x/tei-platform/pull/2770) 必須属性修正、[#2773](https://github.com/hat47x/tei-platform/pull/2773) effectcommitアダプタ、[#2799](https://github.com/hat47x/tei-platform/pull/2799) 複合キー、[#2803](https://github.com/hat47x/tei-platform/pull/2803) Studio期間実行（すべてmainへ統合） |
 
 **実装済みの範囲（PoC）.**
 
@@ -330,14 +331,51 @@ WP10 統合と引継ぎ
 | 一覧（browse）ビュー | 実装 | 付録C.5 |
 | 一覧の絞り込み（項目・演算子） | 実装 | 付録C.5 |
 | Query入力と絞り込みの結びつけ | 実装 | 付録C.5 |
+| Query入力のSQL参照検査 | 実装 | 付録C.5 |
 | 一覧の並び順（`sort`） | 実装 | 付録C.5 |
 | 一覧のページ件数（`page-size`） | 実装 | 付録C.5 |
 | Commandの起動計画（入力の過不足） | 実装 | 付録C.5 |
+| command Patternのビュー | 実装 | 付録C.5 |
+| Commandの実行境界（Executor契約） | 実装 | 付録C.5 |
+| Commandの取引境界（Unit of Work） | 実装 | 付録C.5 |
+| 削除の効果（`delete`） | 実装 | 付録C.5 |
+| 参照削除の振る舞い（`on-delete`） | 実装 | 付録C.5 |
+| 削除効果の参照ポリシー検査 | 実装 | 付録C.5 |
+| Commandの参照実装 | 実装 | 付録C.5 |
+| Commandからeffectcommitへのアダプタ | 実装 | 付録C.5 |
+| 参照データ記憶域（MemoryStore） | 実装 | 付録C.5 |
+| 参照Storeの削除ポリシー実行 | 実装 | 付録C.5 |
+| 参照Storeのキー対応削除 | 実装 | 付録C.5 |
+| 参照Storeの必須属性検査 | 実装 | 付録C.5 |
+| 参照Storeの値域検査 | 実装 | 付録C.5 |
+| 参照Storeの重複create拒否 | 実装 | 付録C.5 |
+| 参照Storeのキー指定と更新禁止 | 実装 | 付録C.5 |
+| 参照Storeの複合キー | 実装 | 付録C.5 |
+| Commandの参照実行（CLI） | 実装 | 付録C.5 |
+| Command計画の期間表示 | 実装 | 付録C.5 |
+| 期間の閉塞によるCommand拒否 | 実装 | 付録C.5 |
+| CLI参照実行の期間状態 | 実装 | 付録C.5 |
+| フックの宣言（位相・読み書き・失敗時） | 実装 | 付録C.5 |
+| フックの実行境界（reject/warn） | 実装 | 付録C.5 |
+| 未使用属性の表示 | 実装 | 付録C.5 |
+| 属性の役割（role） | 実装 | 付録C.5 |
+| 項目の並び（layout） | 実装 | 付録C.5 |
+| 印刷の受領票 | 実装 | 付録C.5 |
+| 帳票テンプレートの版 | 実装 | 付録C.5 |
+| Packageのビュー | 実装 | 付録C.5 |
+| Applicationのビュー | 実装 | 付録C.5 |
+| StudioホストのビューAPI | 実装 | 付録C.5 |
+| Studio rendererのビュー表示 | 実装 | 付録C.5 |
+| StudioからのCommand計画・参照実行 | 実装 | 付録C.5 |
+| Studioからの期間状態付き参照実行 | 実装 | 付録C.5 |
+| Studioのビュー要約表示 | 実装 | 付録C.5 |
+| StudioのPackageビュー | 実装 | 付録C.5 |
+| Applicationビューの期間 | 実装 | 付録C.5 |
 | 印刷の改ページ（`page-break`） | 実装 | 付録C.5 |
 | Package（宣言・検証・版束縛・衝突・ビュー表示） | 実装 | 付録C.5、`internal/application`・`internal/validation` |
 | Semantic fingerprint（投影の意味の版） | 実装 | 付録C.5、`internal/semantic` |
 | 統合試験（Semantic→Application→Package→view/print） | 実装 | `cmd/tei/product_slice_test.go` |
-| Commandの実行境界、集計・改ページ、削除の効果、フック | 未実装 | 付録C.5、D2・D5・D7 |
+| 残る未実装 | 実Provider接続、集計の実データ計算、削除の効果、帳票テンプレートの版管理 | 付録C.5、D5・D7 |
 
 **文書の読み方.**
 
@@ -347,11 +385,15 @@ WP10 統合と引継ぎ
 4. この計画で、作業パッケージ・ゲート・停止条件を見る。
 5. 付録Aで対応、付録Bで試験、付録Cで現行文法との差を見る。
 
-**人の判断が必要な事項.** §9の5項目です。要求の採否、D1〜D8の採用範囲、D6の対象、fixtureの利用条件、Issueへの結び付けを含みます。
+**統合の経緯.** 仮承認の下で統合を進めた過程で、PR番号の取り違えにより[#2690](https://github.com/hat47x/tei-platform/pull/2690)・[#2699](https://github.com/hat47x/tei-platform/pull/2699)・[#2702](https://github.com/hat47x/tei-platform/pull/2702)（いずれも期間機能の文書・実装）を意図せず統合しました。内容を点検し、期間機能の範囲を出ていないことを確認しています。取り消しはしていません。
 
-**未検証.** 旧Runtimeの実行観測（[#940](https://github.com/hat47x/tei-platform/issues/940)）、実DBでの動作、配布JARとの同一性、参照モデルの内容（[#941](https://github.com/hat47x/tei-platform/issues/941)）です。文書の記述は静的読解に基づきます。
+**人の判断が必要な事項.** §9の5項目です。利用者の指示により、これらは**仮承認**として扱い、実装と統合まで進めました。要求の最終採否、D1〜D8の採用範囲、D6の対象、fixtureの利用条件、Issueへの結び付けは別途判断します。
 
-**次の一歩.** このブランチをPRにしてレビューを受け、§9の判断の後に、N-1（WP3a）から着手します。
+**直近の検証.** `main`の健全性CIは、`#2773`の`2f7c775e7`、`#2799`の`605599a6d`、`#2803`の`080caada4`で成功しています。変更したGoパッケージの単体・統合試験、`go build ./...`、`go vet`、`gofmt -l`、Studioの`node --test`も各PRで確認しています。
+
+**未検証.** 旧Runtimeの実行観測（[#940](https://github.com/hat47x/tei-platform/issues/940)）、実DBでの動作、実Providerの接続、配布JARとの同一性、参照モデルの内容（[#941](https://github.com/hat47x/tei-platform/issues/941)）です。文書の記述は静的読解に基づきます。
+
+**次の一歩.** 文書と実装はmainへ統合済みです。次は実Providerの接続、[#940](https://github.com/hat47x/tei-platform/issues/940)の実行観測、統合後のCI完了確認です。実Providerは既存の`internal/security/effectcommit`へ接続し、Commandの`UnitOfWork`を`effectcommit.Runner`へ委譲する方針です。
 
 ## 12. レビューの手順
 
@@ -368,6 +410,46 @@ WP10 統合と引継ぎ
 **PRの関係.** 文書は[#2519](https://github.com/hat47x/tei-platform/pull/2519)、対話契約のPoCは[#2521](https://github.com/hat47x/tei-platform/pull/2521)です。PoCは文書のD1・D3.1の最小部分を実装し、`main`には未統合です。
 
 **統合の条件.** 要求・設計の採否が決まり、PRがDraftでなくなり、CIとレビューが通ることです。Draftのままでは統合しません。
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

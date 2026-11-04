@@ -22,7 +22,7 @@ const (
 )
 
 const functionDefinitionRulePolicy = `function-definition/v1
-lines: application, capability (<id>), input, outcome, output, effect, validation, pattern
+lines: application, capability (<id>), input, outcome, output, effect, validation, period, effect-rule, pattern
 order: capabilities by id, inputs and outcomes in the authored order, patterns by id
 unresolved: capability without input, capability without output or outcomes, capability without effect`
 
@@ -32,6 +32,8 @@ type FunctionDefinitionInput struct {
 	Application   application.Application
 	Capabilities  map[core.CanonicalID]semantic.Capability
 	Validations   map[core.CanonicalID]semantic.Validation
+	Periods       map[core.CanonicalID]semantic.Period
+	EffectRules   []semantic.EffectRule
 }
 
 // RenderFunctionDefinition renders the functions an application declares. It
@@ -106,6 +108,29 @@ func renderFunctionDefinition(input FunctionDefinitionInput) (string, []Unresolv
 				Detail:  "capability declares no effect",
 			})
 		}
+	}
+
+	periodIDs := make([]core.CanonicalID, 0, len(input.Periods))
+	for id := range input.Periods {
+		periodIDs = append(periodIDs, id)
+	}
+	sort.Slice(periodIDs, func(i, j int) bool { return periodIDs[i] < periodIDs[j] })
+	for _, id := range periodIDs {
+		period := input.Periods[id]
+		fmt.Fprintf(&b, "period %s data %s states %s\n", period.ID, period.Data, strings.Join(period.States, ","))
+	}
+
+	rules := append([]semantic.EffectRule(nil), input.EffectRules...)
+	sort.Slice(rules, func(i, j int) bool { return rules[i].ID < rules[j].ID })
+	for _, rule := range rules {
+		fmt.Fprintf(&b, "effect-rule %s on %s stage %s effect %s %s", rule.ID, rule.OnCapability, rule.Stage, rule.EffectKind, rule.EffectData)
+		if rule.ViaCapability != "" {
+			fmt.Fprintf(&b, " via %s", rule.ViaCapability)
+		}
+		if rule.OnFailure != "" {
+			fmt.Fprintf(&b, " on-failure %s", rule.OnFailure)
+		}
+		b.WriteString("\n")
 	}
 
 	patterns := append([]application.Pattern(nil), input.Application.Patterns...)

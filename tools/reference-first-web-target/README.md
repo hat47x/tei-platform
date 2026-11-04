@@ -50,6 +50,8 @@
 
 これは第二のGrant台帳や発行機構ではありません。Host Readerの真正性、Grantの発行・保存・取消、ProviderとDB内の原子的な権限＋効果のCommitは**未実装**です。既存`runCombinedWebTarget(ctx, sourceReader, args)`のみを使う場合、Sourceは一致してもEffect Readerが無いためCommandを拒否します。既存の明示`-diagnostic-unaccepted-source`は合成Scenarioの継続検証用であり、正式Host受理・Grantの証明ではありません。受理済みR1を用いる子プロセスのCommand正例テストは、**test executableだけ**に異なる二つの合成Readerを注入します。
 
+**開発・検証専用の暫定効果許可（D8）**: 明示の3つのフラグ`-provisional-effect-grant FILE`、`-provisional-effect-grant-trust FILE`、`-provisional-effect-grant-development-only`をすべて与えたときだけ、署名つきの暫定効果許可（[`reference-host-effect-grant`](../reference-host-effect-grant/README.md)が発行）を`HostEffectGrantReader`として使います。1つでも欠けるか、Hostが注入したReaderや`-diagnostic-unaccepted-source`と併用すると起動を拒否します。起動時にstderrへ`PROVISIONAL_EFFECT_GRANT_ACTIVE`の警告を出し、実行のたびにGrantと信頼ファイルを再検証します（失効・期限は再起動なしで効きます）。Subject・Resource（`order/<id>`）・Capabilityが署名と一致しない要求は拒否します。**本番の権限発行ではありません。** この許可を使って作るEvidenceのProvenanceは`provisional-grant`で、G2へ数えません。フラグ無しの既定経路は従来どおり、Commandを実行前に拒否します。
+
 ## 実行
 
 Target build revisionは実際に実行するcheckoutから取得します。

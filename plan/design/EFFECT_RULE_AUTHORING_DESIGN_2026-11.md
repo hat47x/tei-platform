@@ -177,3 +177,107 @@ W1・W2 が前提。W3〜W5 は並行できる。W6 は W3 の後。
 3. `stage` の三区分で足りるか。副作用の設計1章は実行時の六段階を持つが、宣言としては三つに畳めるかは実証が要る。
 4. `always` を残すか。保存値を確定する業務（締め後の確定金額など）は #2144 の期間の状態と重なるため、そちらへ寄せる案がある。
 5. 「保存するアプリケーション」を、`persist` の持ち主とするか、データベースの `ownership`（`managed-here`／`external-observed`）とするか。本稿は前者を案にしている。後者なら外部資産の扱いが揃うが、同じデータを複数のアプリケーションが保存する場合に所有が曖昧になる。
+## 実装状況（2026-11-03 追記）
+
+P1（宣言・検証）を実装しました。期間の状態（#2144）で確立した型をそのまま適用しています。
+
+**宣言**
+
+```
+effect-rule order.stock {
+    on capability sales.order.submit
+    stage after-commit
+    effect update sales.stock
+    via capability sales.stock.decrement
+    on-failure compensate
+}
+```
+
+- 項目: `on capability <id>`・`stage <段階>`・`effect <create|update> <data>`・`via capability <id>`・`on-failure <reject|compensate>`
+- 段階: `derivation`・`validation`・`pre-commit`・`in-transaction`・`after-commit`・`compensation`
+- 識別子は名前空間に属する（`order.stock` は `sales.order.stock` として解決）
+
+**検証**（`internal/validation/effectrule.go`）
+
+| 診断 | 意味 |
+| --- | --- |
+| `EFFECT_RULE_UNKNOWN_CAPABILITY` | 対象の能力が存在しない |
+| `EFFECT_RULE_UNKNOWN_STAGE` | 段階が上記のいずれでもない |
+| `EFFECT_RULE_UNKNOWN_DATA` | 効果の対象データが存在しない |
+| `EFFECT_RULE_UNKNOWN_VIA` | 委譲先の能力が存在しない |
+| `EFFECT_RULE_UNKNOWN_FAILURE` | 失敗時の扱いが `reject`・`compensate` 以外 |
+| `EFFECT_RULE_REQUIRES_VIA` | 確定後・補償の効果が、実行する能力を名指していない |
+
+**未着手**: 操作面・成果物への反映（P2）、実行時の扱い（P3）、`when` のような条件の宣言。
+
+**設計上の注意**: 確定後の効果はトランザクションと一緒に巻き戻せないため、`via capability` を必須にしました。これは「失敗したときに戻せない効果を、戻せる効果と同じ顔で扱わない」という判断です。
+### P2（操作面・成果物）の実装状況（2026-11-03 追記）
+
+- 操作面: `binding` が効果規則の対象能力と一致する操作に `effectRules`（規則の識別子）を載せる（`internal/operations/surface.go`）。
+- 成果物: 機能定義書に `effect-rule <id> on <capability> stage <stage> effect <kind> <data> [via <capability>] [on-failure <扱い>]` の行を出す（`internal/artifact/functiondef.go`）。
+- 生成規則の行種別に `effect-rule` を追加。
+### P3（実行時の扱い）の着手（2026-11-03 追記）
+
+確定後・補償の効果は、能力の結末（成功コード）では**証人にならない**ため、独立に観測すべき対象として切り出しました（`internal/execution/effects.go` の `EffectsOutsideTransaction`）。
+
+- 対象能力に束縛され、段階が `after-commit` または `compensation` の規則を返す。
+- 戻り値は `EffectRequirement{RuleID, Stage}`。呼び出し側はこれを能力の結末と**混ぜずに**扱う。
+
+**未着手**: 効果の実行そのもの（誰が実行し、成否をどこへ記録するか）、観測の記録形式、失敗時の補償の起動。
+### 効果の記録（2026-11-03 追記）
+
+確定後・補償の効果を「実行した事実」と「独立に観測した事実」に分けて残すため、記録の器を追加しました（`internal/effectlog`）。
+
+```go
+type Record struct {
+    RuleID, Stage, Capability string
+    Succeeded bool  // 能力の実行が成功した
+    Observed  bool  // 独立した読取りが効果を確認した
+    Detail    string
+}
+```
+
+- `File` は JSON Lines（1行1件）で追記する。壊れた行はエラーとして報告し、**その行より前の記録は返す**（黙って捨てない）。
+- `Succeeded` と `Observed` を別の欄にしているのは、成功コードを観測の代わりにしないため。
+- 記録は受理済みの意味ではないので、意味モデルには置かない（期間の状態と同じ扱い）。
+
+**未着手**: 効果の実行（`via capability` の呼出し）と記録の接続、失敗時の補償の起動、観測の取得。
+### 効果の実行（2026-11-03 追記）
+
+`execution.RunEffect` で、確定後・補償の効果を実行し、記録へ残す経路を追加しました。
+
+1. 規則が `via capability` を名指していること、段階が `after-commit` または `compensation` であることを確かめる（違えばエラー）。
+2. その能力を呼ぶ。失敗は**記録**（`Succeeded=false`）であり、エラーとしては返さない。
+3. 成功した場合、独立した観測（`EffectObserver`）で効果を確かめ、`Observed` を立てる。**成功コードだけでは `Observed` にしない**。
+4. 記録の追記に失敗した場合はエラー（記録できない効果を黙って実行しない）。
+
+**未着手**: 観測の実装（DB の読取り、外部システムの照会）、補償の起動条件、再試行。
+### 補償の選択（2026-11-03 追記）
+
+失敗した効果に答える補償を選ぶ関数を追加しました（`execution.CompensationsFor`）。
+
+- 同じ能力（`on capability`）で、**同じデータ**を対象にする `compensation` の規則だけを返す。
+- 別のデータを対象にする補償は返さない。まだ望まれている作業を巻き戻してしまうため。
+- `NeedsCompensation` は `on-failure compensate` のときだけ真。`reject` は補償を起動しない。
+
+**未着手**: 選択した補償の実行（`RunEffect` と組み合わせる）、補償自体の失敗の扱い、再試行の上限。
+### 補償の実行（2026-11-03 追記）
+
+`execution.Compensate` で、選んだ補償を実行し記録します。
+
+- `on-failure compensate` のときだけ起動する（`reject` は何もしない）。
+- 補償は**宣言順**に実行し、すべての試行を記録する。**補償自体の失敗も記録**（`Succeeded=false`）として残し、消えない。
+- 1件が失敗しても残りを試み、最初のエラーを最後に返す（記録の失敗など、実行を止めるべきものだけ）。
+
+**未着手**: 補償の再試行回数、補償の完了を待つ境界、観測の実装。
+### 観測の実装（2026-11-03 追記）
+
+独立した観測の最初の実装として、**SQL の読取り**を追加しました（`internal/execution/observe.go` の `SQLEffectObserver`）。
+
+- 問い合わせが返す件数が 1 以上なら `Observed=true`（`detail` に件数）。
+- 0 件は「まだ見えていない」であり、成功ではない（`Observed=false`）。
+- 読取りの失敗は**エラー**。観測できなかったことと、観測して見えなかったことを区別する。
+- 問い合わせが未設定の場合は `Observed=false` と理由を返す（黙って成功にしない）。
+- `Queryer` は 1 行の読取りだけを要求するので、**データベース無しでも試験できる**（偽の実装で件数・エラー・未設定を固定）。
+
+**未着手**: 実データベースでの確認（DSN 未設定）、効果の対象を特定する引数の組み立て（`Args`）の実装、再試行。
