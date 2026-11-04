@@ -473,3 +473,46 @@ Goでビルドした単一ネイティブバイナリはTEIの標準実行形態
 3. **Consumer/Job接続（#2516/#1130、TAI/SHO/EKI各Owner）**：Function InvocationをUI・CLI・Batch等で同じ業務契約に束縛し、Runtime InteractionとResource Executionだけを適応。EKI #112の実Artifact ingest/Result retrieval未達を飛ばして実「結果あり」とは言わない。実Web/Desktop/SHO/AI/Host/EKI、実SQL/Provider、Deadline/物理費用、Owner意味受理は未実施。
 
 この節は**限定実証の非同値性を既存計画へ接合したもの**であり、新正式DSL/Operation Runner/Effect Fence API/共通TX Coordinator・Action Schema・Role Authority正本を採択しない。#1119 G0〜G4、#1174/#1130の既存Owner順序、既存Go単体バイナリと外部Hostへの自由度を保持する。
+
+<!-- 20261104-action-input-to-execution-evidence-qualification -->
+## 16. 11/4横断再照合：Action Offerの「実際に使われた意味」を証明してから実行資格を判定する
+
+### 16.1 新しい失敗クラスと、既存#2616の範囲
+
+同じ日に提出された[TEI #2822（宣言0件でもvalidate ok）](https://github.com/hat47x/tei-platform/issues/2822)、[#2823（Source root誤り・読込み対象外を黙殺）](https://github.com/hat47x/tei-platform/issues/2823)、[#2824（Discoveryが各CLI JSON契約の範囲を広告できない）](https://github.com/hat47x/tei-platform/issues/2824)と、[Generator実消費Source #2595](https://github.com/hat47x/tei-platform/issues/2595)を再照合した。従来§8〜15は、正しいFunction/ContextとAction Offerが**存在する前提**で、対象・Grant・Period・Effectを区別してきた。しかし、Source宣言・Catalog・Validation成功だけでその前提が満たされるわけではない。
+
+本節での限定的な判断は、「全てを強制的に再解析する」でも「統合した証明Registryを作る」でもない。**そのAction/Claimが依存する意味が、当該Attemptで実際に使われたことを、既存のSource/Build/Execution/Receiptの記録から追跡できる場合だけ資格を主張する**。製品の既存`validate ok`や`operations effect=read-only`の意味を、ここで勝手に変更しない。
+
+| 独立の証拠段階 | 求める事実 | 誤った昇格と拒否条件 | 所有Issue |
+| --- | --- | --- | --- |
+| **D0 Declared** | Function/Rule/Relation/Period、Source occurrence・byte/revision、必要Data Context・Scope | manifest上のSource名が有るだけで存在・Reader到達を証明しない | #988/#2571/#2823 |
+| **D1 Resolved / Parsed** | 許可されたSource root、実発見Member集合、read/skip/unknownと診断、必要Role/Plugin版 | 空Workspaceでもvalidate ok、標準Catalogの非0件だけでUser Meaning取得を認定しない | #2822/#2823/#2639 |
+| **D2 Built / Runtime consumed** | 実際に入力されたSource/Operator/Generator/Executable byte、実Target Artifact、依存閉包 | 宣言Source D1と実Build入力D2、Script A→B→A、同Hash別toolchain/実Providerを自動同一視しない | #2595/#2600/#1109 |
+| **D3 Action request at current instant** | Purpose、選択subject/Scope/epoch、現在Role/Grant/Period、Provider Binding・expected version | 旧Offerやhidden predicateが無いという主張から現在実行資格を与えない | #2506/#2507/#2598/#2499 |
+| **D4 Provider effect / Receipt** | 実Write対象集合、同一Tx/CAS/Effect Fence、Idempotency・Commit Unknown/Lookup | Action表示、Command success、外側ErrorをCommit成功/無効果の証明にしない | #1174/#1129 |
+| **D5 Consumer observed** | 実Artifact Body/Manifest Member、独立read Snapshot、Audience Disclosureと取得時点 | Artifact Gap=0・Job completed・計算Output同値をBusinessVerifiedへ昇格しない | #2514/#2516/#2604/#1130 |
+
+D0〜D5は**検収票の論理列**であり、すべてのActionが6段の新Runtimeを実装するという意味ではない。読取専用Offerの表示にD4は不要だが、書込みの現在許可にはD3/4が欠かせない。古いObservation/Claimはその時点の歴史的証拠として保存し、Source/Grant/Reader変更では**現在の実行/公開資格だけ**を失効させる。空集合・否定条件・Relation path・行/Field grain・partialなど非出力依存は、対象Claimに必要な範囲で閉包に含める。
+
+### 16.2 独立Expectedで反証すべき最小組合せ（AEQ-01〜08）
+
+| ID | 固定したInput/Mutation | 合格となる判定・誤った成功 |
+| --- | --- | --- |
+| **AEQ-01 Empty semantics** | ユーザー宣言0件、標準定義はCatalogに存在、`validate ok` | 対象の業務Action/Ruleが未導入なら`unsupported/unresolved`。Catalogが非空だからMeaning有効とはしない |
+| **AEQ-02 Declared but skipped** | manifest root誤字・存在しないroot／`.TEI`・`.tei.bak`・`Application.tei`／workspace-filesの列挙のみ | 宣言・探索・解析・消費を別列。未読込Ruleに依存するActionを現在有効としない |
+| **AEQ-03 Contract discovery** | CLI discoveryは`world`の非安定契約やmode別schemaを表示できない | `tei commands`だけで安定JSONの一式性を推論しない。実CommandのSchema/契約範囲とReaderを照合 |
+| **AEQ-04 Hidden negative dependency** | 非表示Predicate/NOT EXISTSが空／Relation D2はpartial／0行表示 | 0行≠取得完了・依存なし。対象書込み候補のRule/Target/件数/粒度は再判定 |
+| **AEQ-05 Source/Build ABA** | Source D1を宣言、実BuilderがD2を読む→再びD1。出力hash一致、別Generator版 | 実消費byteとToolchainの証拠がなければBuild結果再利用可能性と現在意味資格を分ける |
+| **AEQ-06 Function×Build×Invocation** | 同じBusiness Functionを既定の単一Goバイナリ→batch用2 Buildへ移動し、旧UnitからCommand受領 | Function IDは保存、Build/Artifact/公開Entry/実RuntimeとCurrent Grantは個別に検証。Compile-in≠Public/Granted |
+| **AEQ-07 Period and actor changed** | t0のOffer時open/許可、t1でclosing/異動、t2でProvider dispatch。Fileは欠落/invalidの場合あり | Guard source missing≠open。旧Offer・旧Grantは無効。Provider effect=0の安全性は実Txで別実証 |
+| **AEQ-08 Delivery and replay** | 同OperationIDの再送・外側Commit failure・ACK loss・Result Body欠落・古いConsumer Snapshot | Committed/Replayed/Uncertainを別に扱う。Effect Unknownなら新IDで再送しない。独立Readと現在Audience資格が揃うまでBusinessVerifiedと呼ばない |
+
+### 16.3 再利用する試験と、増やさないもの
+
+**最小P0**：[既存Driver Scenario #1180](https://github.com/hat47x/tei-platform/issues/1180)と[JSON追加候補のDraft #2828](https://github.com/hat47x/tei-platform/pull/2828)の固定Scenario/Independent Expectedを利用し、AEQ-01〜04を単一Workspace・同一Source Revisionで**read-only**照合。Workspace/CLI契約そのものの修正は#2822〜24のOwnerに委譲し、#2616で第二Parser・Discoveryを書かない。
+
+**P1**：#2616 OBの現実のCLI（ledger:5 operations/4 gaps）、#2666 Operation→Artifact（order_entry:Gap0でもManifest incomplete）、#2595実Build入力を同一Attemptに束縛できるかを調べる。合流不能な部分には`not-connected`と出し、別実行の成功ログを一試行の成功に合成しない。Function Identity／Build Identity／Invocation Identityの分離と、Go単一バイナリ既定・必要時のみ複数Buildは既存#1130/#2788へ委譲する。
+
+**P2**：#2598のTarget/Period/Grantの現在性、#1174の実Provider Commit/Receipt、#2516の独立Reader/開示を、必要な場合だけエンドツーエンドに接続。初回は**read-onlyで閉包と欠落を確認**、次に一業務書込みで`target mismatch/commit unknown`を合成→実Providerへ段階的に展開。前回の[#2784](https://github.com/hat47x/tei-platform/pull/2784)のGo期間ガード、[#2780](https://github.com/hat47x/tei-platform/pull/2780)のCommand/effectcommitは別実行・別Ownerの既存負例である。
+
+**性能・Authorityの停止線**：Source closureのread-only再検査と、Providerの必須current Grant/Target/CAS/Period Fenceを混ぜない。再利用可否は#2600、全件再検査の費用とfalse reuseは#2018。失敗時に「Sourceを読んでいない」を「正しい拒否が実装済み」と呼ばず、現行Referenceが黙って成功したら**現状を再現した負例**として報告。新TEI Host/Universal Proof Engine/Policy/Registryや標準DSLは導入しない。AEQ-01〜08を同一実Target・同一Attemptで通した試験、実Owner Accepted Meaning、実AI/Web/EKI Providerは**NOT RUN**。
