@@ -2367,3 +2367,33 @@ Ownerは#2582（再資格化とDependency）、#2506（Context/Selection）、#2
 [Draft #2781](https://github.com/hat47x/tei-platform/pull/2781)のfixed HEAD `77ac2f3e49394aa8742c39181168607d8e3aff77`に対する[Actions #41641623522](https://github.com/hat47x/tei-platform/actions/runs/41641623522)はcompleted/success。Node v22.16.0、`verify.mjs` 27 checks PASS、`node --test` **258/258 PASS（fail 0）**。新規VE-01〜20の成功、Source Blob `93cfbe4146904c2d8c3c613c4a67bae6ecb0e340`、fixed-head/cleanをログで確認。前HEADの結果を混同しない。
 
 これは**合成E0限定**の成功で、実TEI Provider RLS、Hostの認可、Studio/SHO/AI実開示、Owner受理は未実証。別PR #2779のTSを同一Runに足さない。
+
+## 61. 同じ組織意味でもSource原文が変わる：Read/Policy/Consumer資格の選択的再確認（2026-11-04、Source Index/Org E1/外部Import/AI-firstテスト横断）
+
+### 61.1 実Go Characterization：同じWorldは同じSourceではない
+
+[PR #2681](https://github.com/hat47x/tei-platform/pull/2681)の実`.tei`組織Workspaceを複写し、`semantic/organization/model.tei`の末尾に**コメントだけ**を追加した。現mainの`sourceindex.ModelRevision`は管理Sourceの**path+raw byte fingerprint**を集める一方、`operations.SurfaceWorkspace`の`WorldFingerprint`は正規化された意味モデルに由来する。これらは異なる検収列であり、どちらか片方では現在の出典・実行資格を証明しない。
+
+同一Goテスト`TestOrgHeadlessSourceByteEditPreservesWorldButChangesModelRevision`が、実`workspace.Load`／Source Index／read-only OperationSurfaceを使用して、(a) **WorldFingerprint同一**、(b) **ModelRevision相違**、(c) **Operation集合同一**、(d) **Effectはread-only、Host Authorityなし**を同時に検査。[PR HEAD `c3695ffccdcea115d8445505552b3ae0777f782c`](https://github.com/hat47x/tei-platform/pull/2681)に対する[GitHub Actions #41786879258](https://github.com/hat47x/tei-platform/actions/runs/41786879258)は**completed/success**。Go **1.26.10/Linux**、focused `go test ./internal/operations -run '^TestOrgHeadless' -count=1`、実`tei validate/operations/artifacts`と独立Readerが成功した。Artifactは別判定で`findings=0, complete=False`のまま。
+
+独立[PR #2801](https://github.com/hat47x/tei-platform/pull/2801)では、別ケースとして**外部Importを後から再解決して得たraw byteは初回Consumer Loadの消費byte Witnessではない**ことを実Goで示している。これらは同じSource改訂を対象とした同一Runではなく、証拠を合算しない。
+
+### 61.2 正しい再利用単位は一律無効化でも一律許可でもない
+
+| 対象 | コメントだけの改訂／意味World同一で再利用候補となるもの | 再確認を省略できないもの |
+| --- | --- | --- |
+| Data/Relation/Operation構造 | SourceごとのParse結果・必要Operator/Role版が適合する範囲で正規化Worldや同じOperationの**計算結果** | `ModelRevision`・Source occurrence・Locator・Source span・引用根拠の最新性 |
+| 組織Policyの適用 | 同じRule意味／Scope構造からの限定**候補**を再計算せず保持できる可能性 | Owner受理したPolicy版・Scope root/axis/valid/known・本当に実消費したSource・現在Principal/Grant。旧OfferをGrantに昇格しない |
+| Function Context/Provider Read | 同一Query/Footprint/Context/Read Cohortであると証明できる場合だけ既存Result Sliceの用途相対再利用を検討 | Row+Fieldの実Read完全性、Predicate/否定依存、Route、Provider Permission、後着Responseの現在資格 |
+| Studio/SHO/AI | 不変の構造や計算値のread-only表示は用途別資格で再利用候補 | 引用のSource URL/Path/Span、Display/Disclosure資格、診断文・ログ・AI JSONに載せる秘匿原文 |
+| Build/Artifact/Job | 意味生成の再実行省略と、Source非依存Artifactの再利用は**別々の可能性** | 現在の実Build Input・Toolchain・Generator・全member・実Consumer受領・Job/Host Receipt。旧`complete=False`を補完しない |
+
+注意すべき両方向の誤りは、(1) `WorldFingerprint`が同じなので**古いSource/Grant/開示が有効**と結論すること、(2) `ModelRevision`が変わったので**業務意味も変更され、全Dataを必ず再取得**とすること。失効判定は#2600のSource/Meaning/Rule/Artifact/Consumerの各依存と既存Host認可に戻す。新しい共通`isFresh`一値や全域再許可のAPIを導入しない。
+
+### 61.3 AI-firstテスト足場と一Attempt E2への引継ぎ
+
+#2811/#2813のAI追加テストには、**期待値が先に固定された一対の変更**を最初の入力として渡す。ORG-SR-01（元Source）とORG-SR-02（コメントのみ変更）で、独立Expectedは`World同一 / ModelRevision相違 / Operation同一 / 実権限不明`。自動生成されたExpectedをActualで上書きしない。追加反例：`Source path移動`、`意味Role/Relation target変更`、`外部Source再解決`、`A→B→A`、`Provider cohort/Policy/Grant改版`、`required Source rootの未探索・空集合`。それぞれ別の入力・Source選択・独立Expectedを要し、今回成功した1つのコメント試験と同じ保証を持つと見なさない。
+
+実Sourceの観測・ParsingとAI入力への開示は別。#2812の内部raw Witnessを**新しい公開APIとして自動転送しない**。Import結果から秘密原文をStudio/SHO/AIへ勝手に出さない。AIが増やせるのは隔離されたテスト候補であり、Ownerの意味受理、Source正本、Current Grant、固定Coverage分母を無断更新しない。実E2では`CaseRecord→OrgUnit`の構造Sourceと実Provider Requestの引継ぎを**同一Attemptで**記録し、Scope内/外、Read-only、Policy除外だがHost Deny、部分取得、後着Responseの負例を一つの固定Provider/Functionへ適用する。Provider実施行点がない場合は`NOT RUN: enforcement-unavailable`。
+
+**判定**：今回の**E1 Native Goは完了**、外部Source Importの別PR Go負例は独立局所実証、**E2実Provider/Host Enforcement・E3 Studio/SHO/AI実受領・E4 Commit/Receipt/業務Owner意味受理は未完**。#1119の実PostgreSQL/Owner-write P0を優先し、第二Source Store、Policy Engine、Query Runtime、TEI独自Hostを追加しない。
