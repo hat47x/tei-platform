@@ -17,8 +17,8 @@ import (
 func factorialDisplay(collected []Candidate, docsBeforeWeakTests bool) []Candidate {
 	candidates := append([]Candidate(nil), collected...)
 	priority := map[string]int{
-		"filename-matched-test": 0,
-		"content-matched-test":  1,
+		"filename-matched-test":        0,
+		"content-matched-test":         1,
 		"exact-file-mention-eval-only": 2,
 	}
 	if docsBeforeWeakTests {
@@ -111,8 +111,8 @@ func TestCollectionFactorialBudgetVersusSelectionPolicy(t *testing.T) {
 		t.Fatal("presentation policy unexpectedly mutated the collected evidence")
 	}
 	for label, display := range map[string][]Candidate{
-		"low/tests-first": lowTestsFirst,
-		"low/docs-first":  lowDocsFirst,
+		"low/tests-first":  lowTestsFirst,
+		"low/docs-first":   lowDocsFirst,
 		"high/tests-first": highTestsFirst,
 		"high/docs-first":  highDocsFirst,
 	} {
