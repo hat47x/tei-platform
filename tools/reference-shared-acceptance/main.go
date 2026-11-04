@@ -24,7 +24,7 @@ func main() {
 const usage = `usage:
   reference-shared-acceptance preview -workspace DIR -candidate FILE [-out FILE]
   reference-shared-acceptance review  -workspace DIR -candidate FILE [-format text|json|html] [-out FILE]
-  reference-shared-acceptance compare-application-membership -before DIR -after DIR
+  reference-shared-acceptance compare-application-membership -before DIR -after DIR [-include-unvalidated-candidates]
   reference-shared-acceptance accept  -workspace DIR -candidate FILE -expected-review-fingerprint SHA256 [-derived-out FILE] [-out FILE] [-allow-reference-baseline]
   reference-shared-acceptance reject  -workspace DIR -candidate FILE [-reason TEXT] [-out FILE] [-allow-reference-baseline]
   reference-shared-acceptance attach-qualification -candidate FILE -qualification FILE [-out FILE]

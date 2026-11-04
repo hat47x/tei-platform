@@ -86,6 +86,19 @@ func TestApplicationMembershipComparisonActualCLI(t *testing.T) {
 	if report.Membership != nil || len(report.StrictChanges) != 0 || !found {
 		t.Fatalf("invalid workspace: %+v", report)
 	}
+	diagnostic := run(1, "-include-unvalidated-candidates")
+	if diagnostic.WorkspaceValidationPassed || diagnostic.Membership == nil || len(diagnostic.Membership.Changes) != 1 || !strings.Contains(strings.Join(diagnostic.AuthorityLimits, ","), "workspace-validation-errors-candidates-unverified") {
+		t.Fatalf("unvalidated candidate must retain non-success limits: %+v", diagnostic)
+	}
+	found = false
+	for _, d := range diagnostic.AfterDiagnostics {
+		found = found || d.Code == "UNKNOWN_APPLICATION_SEMANTIC_NAMESPACE"
+	}
+	if !found {
+		t.Fatalf("unvalidated mode hid original diagnostic: %+v", diagnostic)
+	}
+	write(after, appPath, "application example {\n    invalid syntax\n}\n")
+	run(2, "-include-unvalidated-candidates") // Load failures cannot be bypassed.
 	run(2, "-out", filepath.Join(base, "not-allowed.json"))
 	if _, err := os.Stat(filepath.Join(base, "not-allowed.json")); !os.IsNotExist(err) {
 		t.Fatalf("read-only command wrote output file: %v", err)

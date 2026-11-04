@@ -124,11 +124,13 @@ Runtime側の `Registry.InvokeWithProvenance` は選択したCapability、Plugin
 
 追加の負例では、application-start Executorを `sales` の意味を使うApplicationへ結び付け、Application側の型参照を壊した。実CLIは通常のPlugin解決とRuntime Planを拒否し、診断モードだけが候補と元の意味エラーを未検証として返す。これは対象ApplicationとExecutorの接続を使った合成例であり、Plugin実装がその型を実際に消費した証明ではない。現行 `plugin.Definition` に業務意味依存を直接宣言する欄はなく、正式Role／Language Pluginの意味依存を検証できたとは扱わない。
 
-**読み取り専用の比較経路**：Reference toolの `compare-application-membership -before DIR -after DIR` は、二つのWorkspaceから厳密なApplication差分と利用集合の候補差分を別々に表示する。片方でもValidation errorがあれば元診断を返し、候補を表示しない。SourceやDecisionは書かず、既存のPreview・Review・Acceptanceの計算にも接続しない。実CLIの一時Workspaceで、名前空間利用順の入替え、利用の削除、未定義名前空間を比較した。候補はTargetの表示順や依存網羅性の検証ではなく、異なる時点の読込み間の原子性も保証しない。実利用者がこの比較で負担を減らせるかは未測定。
+**読み取り専用の比較経路**：Reference toolの `compare-application-membership -before DIR -after DIR` は、二つのWorkspaceから厳密なApplication差分と利用集合の候補差分を別々に表示する。片方でもValidation errorがあれば既定では元診断を返し候補を表示しない。明示的な `-include-unvalidated-candidates` では、差分が計算可能な場合に限って元診断と `workspaceValidationPassed: false` を添え、終了1のまま候補を表示する。SourceやDecisionは書かず、既存のPreview・Review・Acceptanceの計算にも接続しない。候補はTargetの表示順や依存網羅性の検証ではなく、異なる時点の読込み間の原子性も保証しない。実利用者がこの比較で負担を減らせるかは未測定。
 
 **編集から選択までの対照**：`tools/reference-shared-acceptance/definition_plugin_workflow_test.go` は一時Workspaceと実CLIで、Applicationの名前空間利用順と業務Data属性を2ファイルで変更した。2件の型参照と1件のPlugin Lockは変更せず、通常の検証とPlugin解決が成功した。Application利用集合の候補は空でも業務属性は追加されているため、比較コマンドに既存のSemantic subject差分を別欄で表示し、候補側にもSemanticなどが対象外と明記する。未定義型に変えた負例では通常Plugin解決と比較が停止し、明示的なPlugin診断だけが元診断・未検証候補を非成功で返す。この件数は合成例の変更ファイル・参照・Lockの観測であり、実利用者の入力時間や全影響を測ったものではない。
 
 **既存Reference Workspaceの複製での対照**：`tools/reference-shared-acceptance/reference_workspace_value_workflow_test.go` は現在の `reference/workspace` を二つの一時Workspaceへ複製し、片方の `sales.order` に文字列属性を追加する。1ファイルの編集で検証が通り、development環境の選択済みPlugin定義8件は元のLockで解決でき、Lockの再生成結果も同一だった。実CLIのSemantic差分は追加属性1件、Application利用差分は0件で、既存の影響分析は所有Dataへの1辺とDriver／Target未評価の2項目を返した。新属性の型を未定義に変えると `plugin-lock`、通常の `plugin-resolve`、`plugin-runtime-plan` と比較コマンドは停止し、明示的なPlugin診断は元のエラーと未検証候補を返した。Workspace全体のValidationは正式なPlan・実行の境界として維持し、編集途中の情報取得を止める範囲のみ候補として検討する。対象Pluginは選択しただけで実行しておらず、入力回数・時間、実利用者、影響の網羅性は測定していない。固定されたGate B/C版ではなく複製時点のReferenceであり、元Sourceは変更しない。
+
+同じ複製の別ケースでは、`order_entry` の意味名前空間の利用宣言を1ファイル内で並べ替えた。既存LockでPluginを解決でき、厳密なApplication差分は1件、利用集合の候補は0件だった。Validationの宣言順も変えると候補は1件となり、順序の意味を消さない。存在しない名前空間に変えた負例では通常比較とPlugin解決が停止し、明示的な診断では元診断と未検証状態を残して候補を確認できた。これはSourceの表示順やTargetが不変という証拠ではなく、既存の受理条件も変更しない。
 
 **Build位置の限定対照**：`internal/plugin/build_location_actual_test.go` は実Goコンパイラで同一内容の合成モジュールを二つの異なるディレクトリからBuildする。Go 1.27.3／Linuxでは `-trimpath` 有効時、同一位置の再Buildと移動後の出力バイトが一致し、Source内容を変えた出力と実行結果は変化した。`-trimpath` なしでは同じ内容でも位置によってバイトが異なった。同じSource DigestでLocatorのみ異なるBuildPlan v1のFingerprintは両条件と独立に異なる。Go単体の比較であり、実TEI Builder AdapterがPlanを実行した証拠、他Target・Compilerでの再現性、移動後のBuild省略の安全性を示さない。
 

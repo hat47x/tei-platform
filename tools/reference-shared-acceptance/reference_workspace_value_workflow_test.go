@@ -172,6 +172,81 @@ func TestReferenceWorkspaceDefinitionAndPluginWorkflow(t *testing.T) {
 	if !validationError {
 		t.Fatalf("comparison hid the invalid model diagnostic: %+v", invalidReport)
 	}
+
+	// A distinct Application edit: reorder only namespace declarations. The
+	// separate strict comparison remains authoritative for the acceptance path.
+	if err := os.WriteFile(filepath.Join(after, filepath.FromSlash(rel)), original, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	const appRel = "applications/order-entry/application.tei"
+	appOriginal, err := os.ReadFile(filepath.Join(before, filepath.FromSlash(appRel)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	const useOrder = "    uses semantic sales\n    uses semantic customer\n"
+	if bytes.Count(appOriginal, []byte(useOrder)) != 1 {
+		t.Fatal("application use anchor must be unique")
+	}
+	appReordered := bytes.Replace(appOriginal, []byte(useOrder), []byte("    uses semantic customer\n    uses semantic sales\n"), 1)
+	appPath := filepath.Join(after, filepath.FromSlash(appRel))
+	if err := os.WriteFile(appPath, appReordered, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	run(tei, 0, "validate", "-workspace", after)
+	run(tei, 0, "plugin-resolve", "-workspace", after, "-environment", "development", "-plugin-lock", lockPath)
+	var reordered applicationMembershipComparison
+	if err := json.Unmarshal(run(compare, 0, "compare-application-membership", "-before", before, "-after", after), &reordered); err != nil {
+		t.Fatal(err)
+	}
+	if !reordered.WorkspaceValidationPassed || len(reordered.StrictChanges) != 1 || reordered.Membership == nil || len(reordered.Membership.Changes) != 0 || len(reordered.SemanticChanges) != 0 {
+		t.Fatalf("reference application reorder: %+v", reordered)
+	}
+	const validationOrder = "    uses validation sales.order_line.quantity_positive\n    uses validation sales.order.lines.line_number_unique\n"
+	if bytes.Count(appReordered, []byte(validationOrder)) != 1 {
+		t.Fatal("validation order anchor must be unique")
+	}
+	changedValidation := bytes.Replace(appReordered, []byte(validationOrder), []byte("    uses validation sales.order.lines.line_number_unique\n    uses validation sales.order_line.quantity_positive\n"), 1)
+	if err := os.WriteFile(appPath, changedValidation, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	run(tei, 0, "validate", "-workspace", after)
+	var validationChange applicationMembershipComparison
+	if err := json.Unmarshal(run(compare, 0, "compare-application-membership", "-before", before, "-after", after), &validationChange); err != nil || validationChange.Membership == nil || len(validationChange.Membership.Changes) != 1 {
+		t.Fatalf("ordered validation change: %+v, %v", validationChange, err)
+	}
+	badApp := bytes.Replace(appReordered, []byte("uses semantic sales"), []byte("uses semantic missing_namespace"), 1)
+	if err := os.WriteFile(appPath, badApp, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	var blocked applicationMembershipComparison
+	if err := json.Unmarshal(run(compare, 1, "compare-application-membership", "-before", before, "-after", after), &blocked); err != nil || blocked.Membership != nil || blocked.WorkspaceValidationPassed {
+		t.Fatalf("default must block invalid model: %+v, %v", blocked, err)
+	}
+	var diagnosticReport applicationMembershipComparison
+	if err := json.Unmarshal(run(compare, 1, "compare-application-membership", "-before", before, "-after", after, "-include-unvalidated-candidates"), &diagnosticReport); err != nil {
+		t.Fatal(err)
+	}
+	if diagnosticReport.WorkspaceValidationPassed || diagnosticReport.Membership == nil || len(diagnosticReport.Membership.Changes) != 1 || !strings.Contains(strings.Join(diagnosticReport.AuthorityLimits, ","), "workspace-validation-errors-candidates-unverified") {
+		t.Fatalf("unvalidated candidate: %+v", diagnosticReport)
+	}
+	foundUnknownNamespace := false
+	for _, d := range diagnosticReport.AfterDiagnostics {
+		foundUnknownNamespace = foundUnknownNamespace || d.Code == "UNKNOWN_APPLICATION_SEMANTIC_NAMESPACE"
+	}
+	if !foundUnknownNamespace {
+		t.Fatalf("lost namespace diagnostic: %+v", diagnosticReport)
+	}
+	if out := run(tei, 1, "plugin-resolve", "-workspace", after, "-environment", "development", "-plugin-lock", lockPath); !bytes.Contains(out, []byte("WORKSPACE_VALIDATION_FAILED")) {
+		t.Fatalf("invalid application plugin selection: %s", out)
+	}
+	if out := run(tei, 1, "plugin-resolve", "-workspace", after, "-environment", "development", "-plugin-lock", lockPath, "-diagnostic-candidates"); !bytes.Contains(out, []byte(`"workspaceValidated": false`)) || !bytes.Contains(out, []byte("UNKNOWN_APPLICATION_SEMANTIC_NAMESPACE")) {
+		t.Fatalf("invalid application plugin diagnostics: %s", out)
+	}
+	actualApp, err := os.ReadFile(filepath.Join(repositoryRoot(t), "reference", "workspace", filepath.FromSlash(appRel)))
+	if err != nil || !bytes.Equal(actualApp, appOriginal) {
+		t.Fatalf("reference application changed during isolated test: %v", err)
+	}
+	t.Log("reference application: 1 file reordered; strict diff=1 and membership candidate=0; validation order change=1; missing namespace blocks normal paths and opt-in diagnostic remains non-success")
 	actual, err := os.ReadFile(filepath.Join(repositoryRoot(t), "reference", "workspace", filepath.FromSlash(rel)))
 	if err != nil || !bytes.Equal(actual, original) {
 		t.Fatalf("reference source changed during isolated test: %v", err)
