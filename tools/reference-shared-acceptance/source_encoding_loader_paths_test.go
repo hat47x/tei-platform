@@ -61,6 +61,12 @@ func TestReferenceBOMAcrossLoaderPaths(t *testing.T) {
 		{"environment", "environments/development/environment.tei"},
 		{"plugin", "plugins/tei-database-postgres/1.0.0/plugin.tei"},
 		{"release", "releases/databases/sales-core/4.2.0.tei"},
+		{"header-detail-binding", "applications/order-entry/realizations/header-detail/order-lines.tei"},
+		{"executor-binding", "environments/development/contract-query-executors/order-line-find-by-order.tei"},
+		{"sql-realization", "databases/sales-core/query-realizations/order-line-find-by-order.tei"},
+		{"bundle", "bundles/tei-reference-providers/1.0.0/bundle.tei"},
+		{"migration", "databases/sales-core/migrations/20260826_001/migration.tei"},
+		{"persistence", "databases/sales-core/persistence/order-line.tei"},
 	} {
 		t.Run(tc.loader, func(t *testing.T) {
 			dir := scratchWorkspace(t)
