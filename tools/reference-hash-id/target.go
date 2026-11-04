@@ -26,6 +26,7 @@ type TargetBinding struct {
 	Namespace      string
 	ProfileVersion string
 	Subject        string
+	Scheme         Scheme
 	Text           string
 }
 
@@ -79,6 +80,9 @@ func CheckTargetBinding(r Result, subject string, profile TargetProfile, binding
 		}
 		if key == existing && binding.Subject != subject {
 			return "", fmt.Errorf("physical ID collision between %q and %q", subject, binding.Subject)
+		}
+		if binding.Subject == subject && binding.Scheme != r.Scheme {
+			return "", fmt.Errorf("subject %q has an allocation under a different hash scheme; explicit migration required", subject)
 		}
 		if binding.Subject == subject && key != existing {
 			return "", fmt.Errorf("subject %q has a different existing physical ID; explicit migration required", subject)
