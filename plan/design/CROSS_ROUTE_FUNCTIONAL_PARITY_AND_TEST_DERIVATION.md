@@ -351,3 +351,60 @@ Source移動・A→B→A・外部Importの途中欠落・0件の否定依存・D
 - **Phase 3**：Source/Plugin/Oracle/Policy/Fixture/Targetが変わった時の再資格化と、Full vs Selectiveの誤再利用・実待ち時間を#2600/#2018へ引き渡す。EKIをCI/テスト実行の必須Hostとせず、分散管理や期限管理が必要な場合だけ既存委任契約で評価。
 
 **判定状況**：#2813のtest-only 11候補と#1180の実CLI6 StepはSourceを静的に確認。**今回の新增分テスト・独立Oracle判別・Coverage計測・最新exact-head CI、Web/GUI/実Providerは未実行/未確認。** 正式な新schema/テストEngine/Oracle/Host、Ownerの意味受理を宣言しない。
+
+
+## 11. P0採用ゲート：生成Caseの期待値・契約・Coverageを独立に審査する（2026-11-04）
+
+**状態：既存PR/Codeの追加Source確認に基づく計画・未実装／本節の新たな実試験NOT RUN。** 同日[DSL候補Draft #2813](https://github.com/hat47x/tei-platform/pull/2813) HEAD \`2219fc4d4d28430839bcd1ffab615811e6ecf798\` のSourceから、\`ai_pipeline_candidate_test.go\` が \`scenariotest.RejectDuplicateJSONMembers\` を再利用してJSON objectキー重複を拒否するようになったことを確認。先行§10の「重複キー拒否が未実装の可能性」は**このHEADでは再利用Sourceが存在する**と更新する。実際のGoテスト／CI完了を示すClaimではない。PR #2811自体は引き続きdocs-onlyで、別AgentのPR #2813の編集・mergeをしない。
+
+### 11.1 次の実装で解くべき欠落は「Case生成」ではなく「採用判断」
+
+#2813のJSON候補には、AIが同一ファイル内の\`contracts\`（Operatorのid/version/fingerprint/effect/inputType/outputType）と\`cases[].expected\`を**同時に提案可能**な構造がある。\`aiPipelineAnchors\`は固定4ケースのsource/stage/output/errorを保持するが、**新規追加Caseについて提案ContractとExpectedが同じ誤りに沿っている**ことを単独では検出できない。これは事前の危険分析であり、現在の実Goに偽PASSが起きたと観測したわけではない。
+
+したがって、\`candidate passed\`から\`qualified regression\`へ自動昇格しない。優先する受入条件は次のとおり。
+
+| Gate | 必要な入力と判定 | 不足した場合の表示 |
+| --- | --- | --- |
+| **G0 入場** | ファイル/Case/Step一意ID、Source byte/span、Role、型/Contract参照、fixture境界を正しく解釈できる。曖昧JSONキーを拒否 | \`invalid-candidate\` |
+| **G1 適用** | 対象Semantic ID/Revision、Contract実Pin、Source/Scope/grain、Caseが対象に達する根拠、実Targetの対応可能Operationを照合 | \`unresolved\` / \`unsupported\` |
+| **G2 独立Expected** | 受理済みの意味、候補実装から独立したReference/既知Mutant/外部定理・契約等に基づくExpected、独立性の限界と再資格化条件を記録。異なるAIという理由だけでは独立とみなさない | \`exploratory-only\` / \`oracle-unqualified\` |
+| **G3 実行証拠** | Exact Source/Scenario/Fixture/Toolchain/Plugin/Artifact、実argv/exit/Receipt、Actual、Assertion・独立Readの実観測範囲を固定 | \`not-run\` / \`stale\` / \`unknown\` |
+| **G4 Coverage資格** | 実行前に固定した適用Obligation集合のどれを独立Assertionが判別したか、実測到達範囲・未観測・探索打切りを列記 | \`covered-scope-only\` / \`incomplete\` |
+
+**G0～G4は連続した一つの合格率ではなく異なるClaimの資格**。G2は新たな業務意味を創作しない限り毎回Owner手作業を必須化しない。Accepted Meaningと独立したReference、検証済みの機械判定が使えるケースは自動資格化を目指せる。一方、未受理の業務Rule、丸め方式、期間・金額精度、認可意味を推測した場合はOwnerの意味判断が必要。正式導入の可否は既存のAcceptance担当が判断し、この計画が新Authorityにならない。
+
+### 11.2 最小の反証対：AIがContractとExpectedを同時に変えてしまう
+
+**適用対象を限定した合成PoC（設計値、未実行）**：公開DSL候補の仮想\`std.select\`について、Accepted/独立Referenceが\`rows/line → rows/selected\`と定める条件があると仮定する（これを既存TEIのAccepted宣言とは呼ばない）。
+
+- **正例 E1**：Candidate \`std.select: rows/line → rows/selected\`、Expected \`rows/selected\`、別根拠のOracleも\`rows/selected\`、実Goが一致。G0～G4のうち実際に取得した層だけ合格。
+- **偽PASS反例 E2**：生成Agentが\`contracts.select.outputType\`と\`cases[].expected.output_type\`を両方\`rows/wrong\`へ変更。候補の内部整合がPASSしても独立ReferenceではFAIL。**ContractとExpectedが同一起源の場合、内部PASSからG2へ昇格しない**。
+- **Mutation反例 E3**：独立Expectedは\`rows/selected\`に固定したまま、実装/候補Contractの変換結果だけを\`rows/wrong\`に変更。G2のReferenceに対してFAILを検出できることを実Goで実証する。実行可能な変異方法・テスト対象の由来は#2514 Ownerと調整し、契約変更のみが「実装Mutant」とは限らない点を明記。
+- **対象不一致 E4**：同じ名前\`std.select\`でもOperatorのversion/fingerprint/入力型が異なる。誤Pinに基づく「検出した/しなかった」を比較対象外へ分類。Candidateのラベルだけで実Contract identityを決めない。
+
+追加の正負：既存固定Anchor削除、Case ID重複、JSONキー重複、見えないHoldoutのExpectedコピー、NULL/欠損/decimalの現行v0未対応、\`evidenceNature\`がsynthetic-onlyなのに実Provider Write PASSとするケース。各反例の実行結果を取得する前にPASSと書かない。
+
+### 11.3 AIに渡す最小Work Packet（新しい業務Schemaではない）
+
+| 項目 | 例／用途 | 注意点 |
+| --- | --- | --- |
+| Baseline | \`main HEAD\`、対象PR HEAD、対象Source/Scenario/Fixture/Plugin pin | 分岐中のPR結果を現main実績に読み替えない |
+| Target | 1つのSemantic Subject/Operator/Driver StepとScope | Unicode表示名・相対pathだけで業務IDを推測しない |
+| Allowed changes | Agent専用 \`testdata/.../<new-id>.json\` または隔離Scenario/Fixtureコピー | 既存Accepted/Anchors/Oracle/本番Provider/他Agent候補はread-only |
+| Inputs | Scope付きモデル/操作inventory、事前Obligation、読取可能Fixture、生成Budgetとseed | \`unknown\`や未取得を「存在なし」にしない |
+| Output | Candidate差分、diagnostic、実argv/Receipt、独立Oracle照合、Coverage差分、未検査理由 | log/secret/holdout/raw保護データを公開PRへ複製しない |
+| Stop | Authority不足、効果不明、fingerprintずれ、適用対象曖昧、Budget終了 | 反復自動実行や期待値自動書換えで解消しない |
+
+これにより、生成AIは**ケースの候補作成・改良を広く自律実行**できるが、業務Meaningの正本更新や外部Effect/秘密開示の資格は取得しない。実OS/Network隔離は#2515、分散/非同期作業や期限は既存EKI/Buri委任Ownerに委ね、P0の実行必須インフラとしない。
+
+### 11.4 実装を増やす前に必要な採点と運用測定
+
+#2018（開発生産性）と#2600（再利用/再資格化）へ、少なくとも以下の**分母/対象/費用を別々に**渡す。
+- 候補投入数／構文入場数／実行された数／G2独立Oracle資格数／既存Obligationの新規充足数／知らなかったObligationの新規発見数。
+- 同一BaselineのKnown Mutantについて、追加Case前後で新たに検出できるか。Mutantが判別可能でない、Target/Scope対象外、Oracleが共有起源のときは検出率の分母へ機械的に算入しない。
+- ファイル1個追加までの作業回数、Go/CLI試行回数、CI時間、CPU/IO、実レビュー負担、見落とした故障、ケースの重複、トークン費用の**可観測範囲**。実Cost未測定ならunknown。
+- 生成したCaseがSource/Role/Oracle/Operator/Target改版でいつstaleになったかを追跡。Source path移動・A→B→A・empty集合の依存/欠落、Artifact再利用とEvidence再資格化を混同しない。
+
+**次の小さい着手単位**：#2813 Ownerが最新HEADのFocused Go+CIで既存11件＋JSON重複拒否を実測（実施済みかどうかは実Receipt照会で確定）。#2514と独立Oracle/Mutant正負対の採点根拠を合意。#1180側で元6 Stepを保持した隔離Candidate追加と既存CLI\`verify/generate/run/check\`実行を行い、実際の差分を取得。その後にだけTest Case Intake Viewや構造化Coverage出力の最小追加を判断する。
+
+**未検証のまま維持するもの**：新Caseの独立Expected判別、各Gateの実装・測定、Web/GUI/Desktopでの同一Scenario実走、実DB/Host、副作用、Owner採用、正式Test Schema、CI完全通過。本節は文書契約・反証計画の更新である。
