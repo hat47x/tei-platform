@@ -125,7 +125,7 @@ SHA-256は256 bit固定。短縮する場合は`sha256-truncated/v1`のように
 - 内容を公開から推測できる deterministic hash IDは秘密値・認可証明ではない。署名・トークン・秘密鍵・認可情報は別の責務。
 - 生成手順をAIが構成しても、生成したSchemeと入力/出力の宣言・選択されたProvider・検査結果を図表とログから辿れ、隠れたフックや暗黙の再ハッシュを設けない。
 
-## 6. 最小受入試験表（参照Goテスト一部追加。全体受入は未実施）
+## 6. 最小受入試験表（Go/TypeScript参照試験を一部追加。全体受入は未実施）
 
 | ID | 入力 / 条件 | 期待する証拠 |
 | --- | --- | --- |
@@ -142,7 +142,7 @@ SHA-256は256 bit固定。短縮する場合は`sha256-truncated/v1`のように
 | H11 | Go/TypeScript、OS・Unicode実装差、Golden fixtures | 同一input canonical bytes/同一output。非互換profileを拒否 |
 | H12 | Studio/CLI/Provider複数Consumer | 同じScheme解決と診断。UI view IDを正本へ昇格させない |
 
-Golden vectorはアルゴリズム別の**公開既知テストベクトル**と、TEI envelope/schemeの独立した合成vectorを分ける。双方が同じ誤った実装を共有しただけでは合格としない。一部のGo参照テストを [`tools/reference-hash-id/`](../../tools/reference-hash-id/) に実装した。ただしこの表は全体受入の計画であり、Go/TSの独立相互運用、実DB/Windows/ブラウザでの検証を完了したものではない。
+Golden vectorはアルゴリズム別の**公開既知テストベクトル**と、TEI envelope/schemeの独立した合成vectorを分ける。双方が同じ誤った実装を共有しただけでは合格としない。Go参照と型付きTypeScript参照、Node.js独立SHAKE256実装・共有Golden fixtureを [`tools/reference-hash-id/`](../../tools/reference-hash-id/) に追加した。cSHAKE256の暗号PrimitiveはNIST公開ベクトルを用いるGo試験で独立検査する。TypeScript実装の暗号計算は注入されたProviderが担当し、TypeScriptコンパイラがない環境では型チェック試験を明示Skipする。**Go/TS/Nodeの同一HEADでの合格、独立cSHAKEのTEI frame照合、実DB/Windows/ブラウザ検証はCIと個別受入根拠が揃うまで未実証**。この表は全体受入の計画である。
 
 ## 7. 未決・停止条件
 
@@ -152,4 +152,4 @@ Golden vectorはアルゴリズム別の**公開既知テストベクトル**と
 4. **変更の計測**: 既存の契約の合成だけで同じ用途を実装できれば、新しいCore原語・新DB/Registryを増やさない。再利用できない失敗を実Consumerで示せたときだけ拡張する。
 5. **資格**: 実装の合成試験が成功しても、実業務データの同一性、外部Provider、Owner意味受理、現在の実行権限を証明しない。
 
-**現状（2026-11-04）**: `tools/reference-hash-id/` にraw-bytes/v1限定の実験Go参照実装と単体テスト候補を追加した。独立Python hashlibからSHA-256/SHAKE256の固定フレーム期待値を計算済み。Go 1.26.10を作業環境へ取得できずローカルGoテストは未実行。CI結果はPR #2815を正本として確認する。全体受入、cSHAKEの独立既知ベクトル、TypeScript相互運用、実Target/既存Digest移行は未実証。本番適用はなし。
+**現状（2026-11-04）**: `tools/reference-hash-id/` にraw-bytes/v1限定のGo Reference（生成、復号、Target制約・割当Snapshot比較）と、Host非依存の型付きTypeScript Reference（暗号PrimitiveはAdapter責務）、Go/Node共有Golden fixtureを追加した。SHA-256/SHAKE256の独立Node/Python系GoldenとNIST cSHAKE256公開ベクトルの試験を実装済み。Go1.26.10をローカル作業環境へ取得できず、Go全体テストの実績はCIで判定する。TypeScript型検査はコンパイラが利用可能な環境でのみ実行される。PR #2815の正確なHEADに対応するCI結果を見ずに成功とみなさない。全体受入、実Target同時登録、Unicode/OS、cSHAKE256の独立TypeScript Provider、既存Digest移行は未実証。本番適用はなし。
