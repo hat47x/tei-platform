@@ -170,7 +170,10 @@ SQLファイルを移動し、参照先だけを更新した場合でも、正�
 
 ```bash
 go run ./cmd/tei plugin-lock \
-  -workspace reference/workspace > /tmp/tei-plugin-lock.json
+  -workspace reference/workspace -environment production > /tmp/tei-plugin-lock-result.json
+
+python3 -c 'import json,sys; r=json.load(sys.stdin); assert r["ok"]; json.dump(r["result"],sys.stdout)' \
+  < /tmp/tei-plugin-lock-result.json > /tmp/tei-plugin-lock.json
 
 go run ./cmd/tei plugin-runtime-plan \
   -workspace reference/workspace \
@@ -179,6 +182,8 @@ go run ./cmd/tei plugin-runtime-plan \
 ```
 
 この結果から、環境が利用するプラグインとその版、提供される機能、必要な権限、資源の対応付け、隔離に関する要求を確認できます。
+
+`plugin-lock`は結果をJSON envelopeで返すため、`-plugin-lock`へ渡すファイルには上のように`result`を保存します。`-environment production`を指定したLockはproductionだけを対象とし、別の環境には使えません。この指定を省略した従来の操作は全環境のLockを作ります。どちらの場合もWorkspace全体の検証は省略されず、Lockの作成・選択は実行権限や成果物バイト列の検証ではありません。
 
 リポジトリに保存した参照用プラグインの実装固定情報についても、作業領域から再生成して一致することを自動検査で確認しています。
 

@@ -90,6 +90,26 @@ func TestLogicalReferencesAndEnvironmentLockCLI(t *testing.T) {
 		t.Fatal(err)
 	}
 	resolve(0, oldPath)
+	var scoped struct {
+		Mode   string          `json:"mode"`
+		Result json.RawMessage `json:"result"`
+	}
+	if err := json.Unmarshal([]byte(run(0, "plugin-lock", "-workspace", root, "-environment", "test")), &scoped); err != nil || scoped.Mode != "environment" || len(scoped.Result) == 0 {
+		t.Fatalf("scoped lock: %+v, %v", scoped, err)
+	}
+	scopedPath := filepath.Join(root, "scoped-lock.json")
+	if err := os.WriteFile(scopedPath, scoped.Result, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	resolve(0, scopedPath)
+	// Explicit scope does not bypass validation errors in other environments.
+	write("environments/other/environment.tei", "environment other {\n    plugin tei.missing ^1\n}\n")
+	if out := run(1, "plugin-lock", "-workspace", root, "-environment", "test"); !strings.Contains(out, "WORKSPACE_VALIDATION_FAILED") {
+		t.Fatalf("unrelated invalid environment must still fail workspace validation: %s", out)
+	}
+	if err := os.Remove(filepath.Join(root, "environments", "other", "environment.tei")); err != nil {
+		t.Fatal(err)
+	}
 
 	// An unrelated attribute edit and a source move need no per-reference digest rewrite.
 	write(source, strings.Replace(model, "    attribute orderId type sales.order_id\n", "    attribute orderId type sales.order_id\n    attribute note type std.text\n", 1))
@@ -111,6 +131,7 @@ func TestLogicalReferencesAndEnvironmentLockCLI(t *testing.T) {
 	// Characterize the existing cross-domain validation, not a desirable contract.
 	for _, args := range [][]string{
 		{"plugin-lock", "-workspace", root},
+		{"plugin-lock", "-workspace", root, "-environment", "test"},
 		{"plugin-resolve", "-workspace", root, "-environment", "test", "-plugin-lock", oldPath},
 	} {
 		out := run(1, args...)
@@ -191,6 +212,9 @@ func TestLogicalReferencesAndEnvironmentLockCLI(t *testing.T) {
 	write("plugins/example/plugin.tei", strings.Replace(provider, "action application-start", "action application-start\n        action application-retire", 1))
 	if out := resolve(2, oldPath); !strings.Contains(out, "fingerprint diverged") {
 		t.Fatalf("changed descriptor not diagnosed: %s", out)
+	}
+	if out := resolve(2, scopedPath); !strings.Contains(out, "fingerprint diverged") {
+		t.Fatalf("changed descriptor bypassed scoped lock: %s", out)
 	}
 	newPath := filepath.Join(root, "new-lock.json")
 	if err := os.WriteFile(newPath, lock(), 0o644); err != nil {

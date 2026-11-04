@@ -178,7 +178,7 @@ func sourceIndexJSON(out io.Writer, workspacePath, worldPath, subjectKind, subje
 // with stderr text; every failure here is one envelope instead, with the same
 // exit codes (2 for argument/load/resolve failures, 1 for semantic validation
 // and plugin runtime plan build failures).
-func resultCommandJSON(out io.Writer, command, workspacePath, worldPath, environmentID, pluginLockPath string, diagnostic bool, extraArgs int) (int, error) {
+func resultCommandJSON(out io.Writer, command, workspacePath, worldPath, environmentID, pluginLockPath string, diagnostic, environmentSpecified bool, extraArgs int) (int, error) {
 	if (workspacePath == "") == (worldPath == "") {
 		return resultInvalidArgument(out, command, command+" requires exactly one of -workspace or -world")
 	}
@@ -238,11 +238,25 @@ func resultCommandJSON(out io.Writer, command, workspacePath, worldPath, environ
 	case "requirements":
 		return emitResult(out, resultEnvelope(command, "", dependency.Derive(w)), 0)
 	case "plugin-lock":
-		lock, err := plugin.BuildLock(plugin.Catalog{Plugins: w.Plugins, Bundles: w.Bundles}, w.Environments)
+		environments := w.Environments
+		mode := ""
+		if environmentSpecified {
+			id, err := core.ParseCanonicalID(environmentID)
+			if err != nil {
+				return resultInvalidArgument(out, command, "invalid -environment: "+err.Error())
+			}
+			env, ok := findEnvironment(w, id)
+			if !ok {
+				return emitResult(out, resultFailure(command, resultCodeUnknownEnvironment, fmt.Errorf("unknown environment %s", environmentID)), 2)
+			}
+			environments = append(environments[:0:0], env)
+			mode = "environment"
+		}
+		lock, err := plugin.BuildLock(plugin.Catalog{Plugins: w.Plugins, Bundles: w.Bundles}, environments)
 		if err != nil {
 			return emitResult(out, resultFailure(command, resultCodePluginLockFailed, err), 2)
 		}
-		return emitResult(out, resultEnvelope(command, "", lock), 0)
+		return emitResult(out, resultEnvelope(command, mode, lock), 0)
 	case "plugin-resolve", "plugin-runtime-plan":
 		if environmentID == "" || (command == "plugin-runtime-plan" && pluginLockPath == "") {
 			return resultInvalidArgument(out, command, command+" requires -environment"+flagPart(command))

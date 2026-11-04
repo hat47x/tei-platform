@@ -396,7 +396,13 @@ func main() {
 	}
 	if isResultEnvelopeCommand(command) {
 		// requirements, plugin-lock, plugin-resolve, plugin-runtime-plan
-		code, err := resultCommandJSON(os.Stdout, command, *workspacePath, *worldPath, *environmentID, *pluginLockPath, *pluginDiagnostic, fs.NArg())
+		environmentSpecified := false
+		fs.Visit(func(f *flag.Flag) {
+			if f.Name == "environment" {
+				environmentSpecified = true
+			}
+		})
+		code, err := resultCommandJSON(os.Stdout, command, *workspacePath, *worldPath, *environmentID, *pluginLockPath, *pluginDiagnostic, environmentSpecified, fs.NArg())
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 		}
