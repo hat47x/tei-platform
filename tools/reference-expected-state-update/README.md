@@ -144,6 +144,24 @@ go run ./tools/reference-expected-state-update/cmd/tei-expected-state-update \
 
 - 実際の保存先（ローカルファイル以外）、保持期間の運用値、監査アクセス権、記録の暗号学的署名は未決。
 
+## 実行時段階（unknown / takeover）
+
+`RuntimeStage`は、CASコマンドの実行時段階を検証する参照です（#2564 → #1129）。
+
+- `Dispatch` → 送信済み（`dispatched`）
+- `Observe` → 業務結果を観測（`observed`）。owner と generation が一致する必要がある
+- `MarkUnknown` → 応答が不明（`unknown`）
+
+不変条件（fail-closed）:
+
+- `unknown` のコマンドは、同じ owner/generation では**再送しない**（`Dispatch`が拒否）
+- `Takeover` は `unknown` のときだけ、**より大きい generation** と新しい owner で許可する
+- takeover 自体は成功ではない。`dispatched` のままで、`Observe` して初めて結果を記録する
+- `observed` のコマンドは再送しない
+- 観測の owner/generation が送信時と違えば拒否する
+
+`Observe`の結果には、CAS参照と同じ`APPLIED`/`CONFLICT`/`MISSING`/`DENIED`等をそのまま記録する。
+
 ## 試験
 
 ```bash
