@@ -94,6 +94,9 @@ func TestRejectNoncanonicalDigestForms(t *testing.T) {
 	if _, err := DecodeDigest(s, derived.Text+"="); err == nil {
 		t.Fatal("padded base64url accepted")
 	}
+	if _, err := DecodeDigest(s, strings.Repeat("A", maxOutputBits+1)); err == nil {
+		t.Fatal("oversized untrusted digest text accepted")
+	}
 	s.Mode, s.Encoding, s.Algorithm, s.OutputBits = ModeExactCharacters, "", AlgorithmSHAKE256, 0
 	s.Alphabet, s.Length = "0123456789", 30
 	if _, err := DecodeDigest(s, strings.Repeat("0", 30)); err == nil {
