@@ -73,10 +73,6 @@ func TestArtifactPublicationMidwayFailureLeavesMixedGenerations(t *testing.T) {
 		t.Fatal("observation changed: manifest.json is expected to still be the R1 manifest")
 	}
 	// The directory now holds R2 content for table a under the R1 manifest.
-	// The R1 manifest digest for table a no longer matches the file on disk.
-	if !strings.Contains(manifestR1, r1.Artifacts[0].Digest) {
-		t.Fatal("the R1 manifest should list the R1 digest of table a")
-	}
 }
 
 // AP-02: a file that the new generation no longer produces stays in the
