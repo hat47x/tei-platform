@@ -1241,6 +1241,48 @@ Requiredが全社、Authorized/ActualがTenant A限定なら「Tenant Aの対象
 
 **Ownerの分離**：#2514が独立Expected・Fault判別・Claim範囲、#1063/#988が同一MeaningからのTarget lowering、#2622/#2628が実Provider ReadとPushdown、#2593がMeasure/grain、#2582/#2600が動的依存・再使用、#1130/§35〜36がJob/リードタイムとEKI候補、#2544がLean Law、#2516がConsumer開示、#2018が対照実験と費用・人手の生産性指標を所有する。実Go/SQL/Lean/Replica/EKI/Host等の実結合・Owner受理は未実施であり、この節自体はDocs-only。
 
+
+### 27.9 上流受渡しと外部突合――「DB内全件正常」と「業務事実の取り込み完了」を区別する（2026-11-04追補）
+
+> **設計・受入票／NOT RUN・NOT ACCEPTED。** §27.6〜27.8のData Coverage／Footprint／Fault-detectionは、すでに存在するRowに対しては強いが、**必要なRow・関係・業務イベントがそもそも到着/保存していない場合**、全件Scan・Go/SQL一致・Lean Proofがともに正常でも取りこぼす可能性がある。本節では「モデルから派生するQuality Check」の利点を維持しながら、その**モデル外にある独立事実**をどこから取得し、何を根拠に欠落・過剰・不一致を主張できるかを具体化する。§40〜44のAI-first Scenario／実消費Source・Artifact／一Attempt Evidence、#2514独立Oracle、#2622多Provider Data Operations、#1130非画面Batch、#2386組織のvalid/known timeに接続。新いわゆる万能Truth DB/Registry、Host、監査用認可エンジンは作らない。
+
+**違う三つの整合性Claim**：
+
+| 種別 | 確かめること | あくまで未証明なこと |
+| --- | --- | --- |
+| **Internal conformance** | DB/Providerで実取得した完全なSnapshotの行/項目/関係が、受理済みData Ruleを満たす | そもそも到着していないOrder、見逃した取引、誤った業務Rule・全Provider横断の事実 |
+| **Handoff completeness** | 上流の受理済み入力・取込Envelope・Change Stream・処理Receiptをもとに、必要なIdentity/Occurrence/Versionが下流へ伝搬し、失敗/隔離分を別扱いできる | 上流が事実を漏らしていないこと、上流と下流の業務意味が等しいこと |
+| **External reconciliation** | 二つ以上の独立性が吟味されたシステム/外部台帳/承認済みControl Total間で、同じ業務対象・時点・換算規則について食い違いを検出できる | どちらが正しいか、第三の未観測システムや現実世界全体の完全性、未採用の業務同一性 |
+
+**独立性を「別DB」「別Generator」で代用しない**：上流レコードを再計算したControl Totalと下流モデルから生成したSQLが、同一の誤った業務Key/Filter/丸め規則を共有し得る。比較の根拠について、出所（System of Record/伝票・受理された入力・ETL・DB view・外部確認）、生成経路、共通依存、Owner/Authority、対象期間を固定する。独立性が足りなければshared-origin warningとし、二系統一致を独立Oracle成功と呼ばない。業務規則自体の抜け・誤定義は、異常傾向・外部証跡・人の判断から**Rule追加候補**として発見され得るが、AI/夜間JobがAccepted Meaningを自動変更しない。
+
+**受渡しEvidenceの最小対応列（既存Receipt/Artifactへ参照）**：上流Subject+Source System/承認された母集団・期間/識別子の名前空間、外部Event/Record Occurrenceと訂正/取消/重複許容、上流Snapshot/Log offset・watermark、受渡し対象のmanifest/member集合・実byte・件数/キー集合/単位、取込Attempt・受理/拒否/隔離/未処理、下流Business ID/Relation/Map版、実DB/Replica Read Cohort・Scope/LSN、Rule/Operator/Generator版・独立Expected、品質Finding/unknown・残債・期限、現在Owner/Disclosure。**件数合致だけでは行集合が同一、合計額一致だけでは金額誤りがない、hash一致だけでは業務意味が同じとは証明しない**。各リンクが部分的なら、そのリンクだけをunverifiedと表示する。
+
+**時点・運用**：上流で「送信済み」は下流の「受信/受理/Commit/独立Read済み」と異なる。遅延到着・Replay・Backfill・取消・遡及訂正には、業務のvalidAtと上流/下流のobservedAt、recordedAt、検査対象として閉じたwatermarkを別々に使う。水位が揃わない二Providerの差はまず未確定として管理し、Ownerの許容遅延を過ぎた場合に期限超過/要調査とする。データ不一致が実際に見つかった場合は、その限定Claimを記録できるが、未到着・認可外・未照会を「不存在」と断言しない。外部API/Replicaは同時点Snapshotの保証がなければ「横断完全一致」と報告しない。
+
+**オンライン性能への影響を限定**：同期処理に全件外部照合を挿入しない。変更ログ、既存業務Receipt、取込Manifest、Providerに存在するバッチ/スナップショットの証拠を使用し、レプリカ・夜間Job/別実行単位で照合する。必須入力拒否/一意性/認可/Commit判断はオンラインへ残す。照合対象の完全性が証明できる場合のみ増分照合、欠けた履歴や依存がある場合はUnknown/再取得/Full対照を比較。監査ジョブに必要な追加Read GrantはOwner/Hostの明示許可が必要であり、外部システムへ秘密原文を無条件に転送しない。EKI Task Completedは照合が正しいという証明ではない。
+
+**既存AI-firstテスト足場への具体的な差分（QRE-01〜07、独立Expectedを先に固定）**：
+
+| ID | 固定する反例 | 必須の独立Expectedと停止線 |
+| --- | --- | --- |
+| **QRE-01 Missing accepted record** | 上流受理O1/O2、下流DBはO1のみ。下流の全行は内部Ruleに合格 | Internal PASS/上流→下流のO2欠落をFindingとして別報告。下流全件PASSをhandoff completeにしない |
+| **QRE-02 Duplicate or retry** | 同一上流Attemptを再配送、別Occurrenceなのに金額/本文は同じ、取消Eventあり | 再配送と正当な二件をOccurrence/ID/版で区別。Digest一致で重複削除や業務件数縮約をしない |
+| **QRE-03 Control total agrees but wrong** | 2件の値が+10/-10相殺し合計一致、またはJOIN fanoutを両系統が共有 | 件数/総額一致をRecord-level一致・独立Oracleとしない。必要なら明示Key・金額・粒度で差分 |
+| **QRE-04 Time/watermark** | 上流O2は受理済み、下流WatermarkはO2到達前、Replicaはさらに遅延 | Current full PASSは禁止。追いつく前はpending/unknown、許容期限を過ぎたらoverdue/findingを別表示 |
+| **QRE-05 Handoff has gaps** | Transfer manifest 2 member中1 member欠落、取込Job Exit 0、前回Artifact残留 | 実入力member・受理件数・下流Readと照合。Task/Artifactの一部成功を全件成功にしない（§42/#2604） |
+| **QRE-06 Model misses business rule** | Ruleが取消後の残高/所属有効期間を規定しない。内部全件・形式LawはPASS | 外部Owner受理Scenario/Control Recordと照合して**仕様不足の候補**を報告。AI案を新業務Ruleとして採用しない |
+| **QRE-07 Authorization and disclosure** | 上流2 Tenant、監査ReadはAのみ、Bの存在/件数は秘密。AI要約へ送出 | Required/Authorized/Actual/Disclosedを分離。Bの情報を不許可閲覧者に漏らさず、全体保証はunknown（§27.7） |
+
+**着手順と実体のOwner**：
+- **R0（今ある足場で準備）**：#1180のScenario/Case/Expected・#2514独立Oracleに、受注O1/O2＋上流受理ログ＋下流欠落の独立正解を先に固定。#2811のAI-first test候補追加（Draft #2813 DSL JSON／Draft #2828 Driver JSON）に接続できるか確認。JSON追加の成功を実TEI Provider保証へ昇格しない。
+- **R1（pure/synthetic）**：QRE-01/02/03/06の正負を既存test-only Referenceで再現し、オンラインGo/夜間SQLが両方内部PASSでも、handoff/外部突合が失敗する反例を実証する。実用Generator未在なら手書き候補/独立Oracleだけの成功と記録。
+- **R2（Provider実Read）**：#2622/#2628で実RDBと上流API/file/read-only sourceの独立Readerをそれぞれ用意し、外部から得た実Input member・移送受理・実DB Rowを同一Attemptに束縛。QRE-04/05/07。二Sourceが実際には同じ起源なら独立性を下げて報告。実権限不在ならNOT RUN。
+- **R3（運用費用）**：#1130の既存Headless Job、必要ならEKI委譲で、Full vs incremental、Replay/Retry、期限内の確認、レプリカ負荷、誤見逃し、手動で定義/更新した照合Rule量を同一母集団で比較。Event移送のためだけに新常駐Broker/中央Job Hostを前提にしない。
+- **R4（受入）**：#2514の独立Expected/共通出所警告・Mutant、#565の性能Envelope、#1163のSource/Build/Consumer Evidence、Ownerの業務意味・データ品質保証期限を別々に確認。どのTarget/実Read入口が欠けても、成功として合算せず停止。
+
+**責務と採否**：#2622＝実Data Provider/Relation・上流/下流Read Mapping、#1129/#1174＝取込Command/Commit/Recovery、#2514/#1180/#2811＝独立ExpectedとAI-first候補テスト、#1130＝Job/Result、#2604/#2595＝実入力Artifact/member・実Builderの消費、#2386/#2593＝時間・grain、#2516＝開示。固定業務Rule・異Source Identityの対応と外部の正本性はBusiness/Data Ownerの受理を要求する。本節は既存§27.6〜27.8と§41〜44のEvidenceを使い、**新DSL/Validator/Proof Engine、汎用外部SoR、別品質正本・中央Registryを採用せず、実装・実E2E・性能実測・Owner受理はNOT RUN**。
+
 ## 28. 一改訂のValue／Flow／Job／Consumer縦断――参照実行と外部実行を混同しない（2026-11-03横断追補）
 
 ### 28.1 並行する三つのOwner計画を、別の正本を作らずにつなぐ
