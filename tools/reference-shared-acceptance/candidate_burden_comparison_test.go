@@ -137,7 +137,7 @@ func TestReferenceCandidateViewBurdenComparison(t *testing.T) {
 		t.Fatalf("baseline 比較の終了コード=%d", exit)
 	}
 	t.Logf("baseline: contract=%d gate=%d appRelease=%d dbRelease=%d", baseline.contract, baseline.gate, baseline.appRelease, baseline.dbRelease)
-	if baseline.dbRelease != 0 || baseline.gate != 0 {
+	if baseline.dbRelease != 0 || baseline.gate != 0 || baseline.appRelease != 0 {
 		t.Fatalf("現行Referenceの新しい候補は0件を期待: %+v", baseline)
 	}
 	if !contains(baselineReport.AuthorityLimit, "database-release-contract-candidates-only-major-behind-not-complete") {
