@@ -300,3 +300,62 @@ Database Contractの別ケースでは、現行Referenceの隔離コピーで `s
 **責務・優先順位**：本節は #2620 が受け持つ自己記述の接続仕様・反例だけを所有する。#2514がOracle、#2823がWorkspace診断、#2586が実Function縦断、#2600が増分資格、#2831が全体Buildの実証を担当。既存 #1119 P0-a/P0-b/G0〜G4 と #1127等の業務vertical sliceを新たなHard dependencyで塞がない。
 
 **現状**：設計追補のみ。SDX-09〜15の実TEI試験・新CI・実Provider/DB/Studio/SHO/Host／Owner意味受理・全体セルフビルドは **NOT RUN / NOT PROVEN**。PR #2638のbounded synthetic PASSおよびPR #2639の限定Go Reference結果は本節の一体縦断証拠ではない。
+
+
+<!-- tei-role-self-revision-transition-20261105 -->
+## 7. 2026-11-05 自己記述定義の改版・移行・自己更新の受入契約（計画／NOT RUN）
+
+### 7.1 なぜ必要か
+#2620/本書§6の「実際に解釈された必要閉包」に加え、**その解釈器自身が読むRole/Operator/言語定義が改版されたときの遷移**を区別する。形式の版と変換の一元化は既存[#1920](https://github.com/hat47x/tei-platform/issues/1920)、Source版間対応は[#2505](https://github.com/hat47x/tei-platform/issues/2505)、Ownerの意味受理は#267、レビュー/撤回の証拠は[#958](https://github.com/hat47x/tei-platform/issues/958) / [Draft #2829](https://github.com/hat47x/tei-platform/pull/2829)、Authoring Source往復は[#1124](https://github.com/hat47x/tei-platform/issues/1124)が担当する。本節はこれらの**自己記述特有の接続条件**を検査する。#1920がClosedであってもRole自己移行が製品上で完了したという証明ではない。
+
+### 7.2 同じ「version」を一つに潰さない
+以下を別のidentity/Claimとして扱う。新たな包括Revision Counter・永続的な第二Meta Schemaは追加しない。
+
+| 軸 | 変更の例 | 主張できる範囲 |
+| --- | --- | --- |
+| **Definition Format Version** | DSL/Markdown/Role記述の形式・構文・属性表現の変更 | Parserが読み取れるか／明示的な形式変換が必要か。意味の受理を含まない（#1920） |
+| **Role/Operator Contract Revision** | Required Shape、解釈条件、NULL・単位・grain・Effectの変更 | 同じデータから導かれるtyped Candidate/意味制約の差（#2620/#988） |
+| **Exact Interpreter Implementation** | ID/versionが同じまま実Providerのbytes/依存が変更 | 旧Pinと実内容の資格差。実装の新旧比較は既存Extension Lock/実内容証拠（PR #2638 RB-20〜24） |
+| **Source Occurrence / Reference Revision** | 文書移動、行再配置、Reference更新、A→B→A | locator/出典の現在性とSource Observationの差。Meaning IDと同一にしない |
+| **Accepted Meaning / Review Binding** | Ownerが改版を受理／撤回、証拠が再束縛 | 候補の意味同値と現在のOwner受理は別。旧reviewを自動復活させない |
+| **Build / Consumer / Host Qualification** | Toolchain、ArtifactSet、Reader、Grant変更 | 再構築・実受領・実行・開示資格は別。Stage 1/2が一致してもseed trustは未証明 |
+
+「新形式でparseできる」「shapeが適合する」「意味が同等」「受理済み」「現在使える」の5段階を**独立に**検査する。たとえば新Roleが旧型を広く受け付けること（structural backward readability）から、旧FunctionのNULL/丸め/副作用の意味互換性を導かない。
+
+### 7.3 既存機構による自己更新の段階プロトコル
+
+新しいMigration Engineや自己変更可能な本番Interpreterは置かない。既存Workspace/CLI/Language Plugin・Read-only Preview・Semantic Acceptance・Build/Hostの責務へ順番に受け渡す**論理手順**とする。
+
+1. **Freeze / Capture**：現行受理済み定義A、実Source bytes/参照revision、形式版、Role/Operator/Language Contractと実Implementation Pinの推移閉包、当時のMeaning/Artifact/Review Evidenceを固定。必要Sourceが未読込・部分取得なら「完全な比較」へ進まない（#2822/#2823/#2812）。
+2. **Prepare B（隔離候補）**：Aを保全したまま、既存形式変換入口（#1920の担当範囲）からBを**候補として**生成。unknown future version・変換不能な属性・未指定NULL/既定値・欠けたSourceは診断し、形式版だけ上げない。編集可能な正本Sourceの無断上書きはしない。
+3. **Dual Inspect / Compare**：AはAのexact-pinned Reader/Role/Operatorで、BはBのexact-pinned Reader/Role/Operatorで解釈。必要な同一Semantic SubjectについてShape、型、属性、Relation、Operator引数、NULL/missing/unfetched、金額精度、単位、grain/time、hidden predicate/scope、診断、Effects、依存閉包を比較。比較器自身がA/Bの未受理意味からExpectedを生成しない（#2514）。
+4. **Disposition**：`equal-for-claimed-scope / changed / ambiguous / unsupported / unknown` の**判断ラベル候補**を既存Read-only差分／Acceptanceへ渡す。これらは新しいCore列挙型を採用する提案ではない。意味が同等でも、Owner受理・現在Host Grantを自動付与しない。未知や意味喪失があればPreview/保留。
+5. **Explicit Cutover**：既存Authoritative Source・Revision一致を再確認し、Ownerが受理した範囲でのみ正本変更・新Lock/Builder・対象Artifactの再資格化へ。Consumerは必要memberを実読込・現在開示資格を再評価。Aの既存実行を黙ってBへ差替えない。
+6. **Revert / ABA**：B→AのSource内容復元でも、間の変更・撤回・Provider Selection・Review/Grant・Referenceの履歴が消えたことにはしない。旧Artifactのbytes一致と、現在Meaning/Consumer資格・連続性は別。旧定義の再利用は必要閉包を再資格化して判断。
+
+**停止線**：全段階で元Aの原文と歴史的Evidenceを保全。解釈ができなくなった場合はPlainDataと診断を可能な範囲で維持し、実行・受理・開示を暗黙に継続しない。Edit Preview・Semantic Acceptance・Host Effectは独立操作。Sourceを未収集／Referenceがpartialなら、その区間における「変更なし」は主張しない。
+
+### 7.4 具体的負例：SDX-16〜23
+
+| ID | 変更・圧力 | 正しい判別／既存Owner |
+| --- | --- | --- |
+| **SDX-16** | 形式版だけv1→v2に書換え、未変換の旧フィールドを放置 | 形式と内容が不整合。成功扱いせず旧Sourceを保全。#1920 |
+| **SDX-17** | 旧版の欠落フィールドの暗黙既定値と、新版のNULL/未取得の区別 | 属性が「ない」「NULL」「空」「未取得」を黙って一本化しない。#1920/#2620 |
+| **SDX-18** | Markdown表の並べ替え／改行やSource移動だけ変更 | Source位置は変わるが意味差分は独立判定。原文・引用先と現在性も別。#2621/#1124/#2505 |
+| **SDX-19** | `sum`/roundのShapeと出力型は同じ、丸め・NULL・grain・失敗動作だけ変更 | structural compatibleでも意味同値は不成立または未証明。独立Expectedを使う。#2514/#988 |
+| **SDX-20** | v1とv2のRole Contractが相互参照し、解釈確定に相手の完了が必要 | 即時eager-cycleを拒否。deferred Graph Refの合法な循環と区別。#2620 |
+| **SDX-21** | 古いInterpreterが知らない将来形式版／変換時に一属性を黙って削除 | unsupported/情報欠落を診断し、変換成功や自動採用を捏造しない。#1920 |
+| **SDX-22** | A→B→AでSource/Roleの内容digest再一致、途中でReview撤回・Evidence再束縛 | 歴史的Reviewを保持。復元digestだけで旧受理・継続性・現在利用資格を復活させない。#958/#2829/#2505 |
+| **SDX-23** | BでのMigration Previewは成功、しかし正本Source競合、実Builder依存/Artifact一式/ReaderまたはGrantは古い | PreviewとCutover、実Artifact/Reader/Host資格を独立判定。#1124/#2600/#2831/#1174 |
+
+**初回の最小受入**：同じ公開TEI Workspace/同じSemantic SubjectのA/Bについて、SDX-16/17/19/21の四つを「旧Source・独立Expected・実Format Reader・正負診断」に束縛。次にSDX-18/22のSource/Reviewの再資格化、SDX-20/23の解釈循環とBuild/Consumerを追加する。最初から実DB・Studio GUI・すべてのTargetをHard dependencyにしない。
+
+### 7.5 成立を主張する条件と今後の作業
+
+- **意味互換性の範囲**は、対象Input集合、NULL/未取得、粒度/時点/単位、Rule/Operatorの実装版、失敗・副作用、対象ConsumerのClaimに束縛する。有限CaseのPASSは全入力域・全Hostの等価性の数学的証明ではない。
+- **移行のExpectedは独立**：#2514のIndependent Oracle/known mutantを使用し、Migrationが書き出したExpectedをそのまま自己採点することを拒否。特にhalf-even/half-upなど同形で結果の異なる負例を入れる。
+- **編集Sourceを正本にする**：#1124のScript-firstと連携し、Studio/SHOはSource span/Revision・可逆Patch・差分Preview・確定受理を別に扱う。新RoleのGeneric UIを自動発見しても書き戻しが可逆と実証されなければread-onlyとする。
+- **Go単一バイナリは標準実行形態**。DSL表面は可読性を最優先とし、Go ASTとの親和性を採否の第一条件にしない。別TargetのJava/.NET/Wasm等は既存Lowering/Builderへ委譲し、自己更新の一つのPoCに全Targetを要求しない。
+- **引継ぎ**：#2620はSDX-16〜23と自己更新時の必要閉包、#1920は既存形式版変換のOwner（Closedを新実装の証拠にしない）、#2505は版間対応、#958はレビューとwithdraw、#1124/#2621はSource編集、#2514はOracle、#2600は選択的再資格化、#2831はセルフビルドの実証。**第二のRegistry/Resolver/Host/Migration Engineを作らない。**
+
+**実行・Evidence状態**：本§7は設計追補のみ。SDX-16〜23を実TEI CLI/実Provider/Studio/SHO/Build/Ownerで実行していない。既存PR #2638の有限合成Reference PASSや#2639のGo Reference CI成功は、新版Role自己移行・意味同値・現行実行資格の合格証明ではない。PlanのGitHub保存はOwnerによる正式意味受理ではない。
