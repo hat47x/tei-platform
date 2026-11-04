@@ -2233,6 +2233,39 @@ EKI側#112/#266/#67/#115へ契約不足を返し、TEI #1130がJob意味と判�
 
 **今回実施**：設計上の補助Expectedだけ。新しいSource探索・negative dependencyの実Go試験、実CLI再現、Build/SHO/Web/Hostの同一Attempt E2E、Owner正式受理は **NOT RUN**。
 
+
+### 43.13 DSL／Driver AI候補の実装済み入口と独立Oracleへの昇格条件（2026-11-04、#2813/#2828の実コードを照合した受入差分、docs-only）
+
+### 43.13.1 異なる二つの既存テストConsumerを正確に扱う
+
+- **DSL Pipeline candidate / [Draft #2813](https://github.com/hat47x/tei-platform/pull/2813)**：`reference/dsl-language-plugin/testdata/ai_pipeline/*.json`から候補を読むGo test-only Reference。実Pipeline Parser/Lowerer/Composerによる型/Pin/Span等の限定検査であり、`2219fc4d` の [exact-head Health #41744813520](https://github.com/hat47x/tei-platform/actions/runs/41744813520) はcompleted/success。11 Caseが合格しても、AIが実際に自律生成したこと、独立業務Oracle、実DB/外部Host/全Source取得の証拠にはならない。
+- **Driver Scenario candidate / [Draft #2828](https://github.com/hat47x/tei-platform/pull/2828)**：`reference/driver-scenarios/ai-candidate-order-validation.json` の2 Validation Step、`cmd/tei/ai_scenario_candidate_test.go`、追加手順READMEのtest-only 3ファイル。元の保存済み6-Step SSOTは変更しない。候補JSON glob、重複Scenario/Step ID拒否、固定Anchor保護、`verify → generate → check → pinned run`、Scenario改版に対する旧Plan拒否を既存`runScenarioCommand`で試験する。
+- **実行方式の重要な限定**：#2828のGoテストは`runScenarioCommand`を**Goテストプロセス内で直接呼ぶ**。計画内の`argv`が`tei scenario ...`形式でも、実OS subprocessでビルド済み`tei` binaryを別起動したことにはならない。`generated-pinned`／`verified=true`は合成Fixture・当該Source/Scenario/Lockの限定結果だけを支持する。完成した実CLI binary、OS境界、Web E2E、Host Grant、実Providerを追加で確認するまでQualified claimを広げない。
+- **資格**：#2828作成HEAD `71d9749c50b0b1cb95b3c2e07284ef56d8fbf772` の [Repository Health #41786950497](https://github.com/hat47x/tei-platform/actions/runs/41786950497) は照会時`in_progress`であり、製品Go試験の全体成功は未確定。他のSecurity/Studio/Web workflowの成功はScenario候補テストの成功を代替しない。#2811はdocs-only、#2828はtest-only、いずれもDraft・未統合。
+
+### 43.13.2 「負例」を三種類に分けて計数する
+
+| 反例の種類 | 代表例 | 実証できるClaimの上限 | 次の独立判定 |
+| --- | --- | --- | --- |
+| N1 業務拒否 | 不正な数量→`quantity_positive: not-satisfied` | 現行Validationが当該Fixtureを拒否した | Ruleの意味/数値境界は独立ExpectedとOwnerが決める |
+| N2 テスト・契約拒否 | Expected改ざん、古いPlan Pin、重複Case/JSONキー、型/Operator Pin不一致 | Schema/Pin/Assertion等の防御が機能した | 必要な対象Population/Source/Stepを除外していないか |
+| N3 故障検出力 | 正しいExpectedを固定したまま、実装/演算/Ruleへ**既知Mutant**を加える | 特定Mutantを正しく失敗として検出できた | #2514の独立OracleとMutantのOrigin・判別数/分母 |
+
+**N1＋N2のPASSをN3のPASSへ合算しない**。特に#2828の`ExpectValidations`を意図的に誤変更したときの拒否はN2であり、生成器／業務演算の実装自体を誤らせたKnown Mutantの検出実験ではない。追加された候補JSON内のExpectedは、AIの候補であってOwner受理済みの業務Oracleではない。#2813の型違い等も業務数値のMutant検出と混同しない。
+
+### 43.13.3 2 Consumerの最初の実行票（既存#2811 §12／#1180へ引継ぎ）
+
+1. **同じ独立基準**：Case/Scenario identity、actual Input fixture、required Source/Rule/Step分母、Operator/Plugin/Scenario revision、Expected作成元を先に固定。DSLとDriverは異なるOperation/Meaningを検証するので、**同じ業務Ruleに到達したと主張しない**。現時点ではread-onlyの証拠列を共通比較するだけ。
+2. **局所実装テスト**：#2813に`go test -count=1 ./reference/dsl-language-plugin -run '^TestAIPipelineCandidateCases$'`、#2828に`go test -count=1 ./cmd/tei -run '^TestAI'`を適用。PR別のexact HEAD、Go版、Fixture digest、実結果を保存。#2828のCI完了確認が最初の停止線。
+3. **実Binary境界を別試験**：必要なGo版のclean checkoutから`tei` binaryをビルドし、`scenario verify/generate/check/run`を実OS process/argvと実出力で行う。Goのin-process test結果をそのまま実CLI subprocess PASSと呼ばない。現在のバイナリの`tei commands`/実JSON schemaとRequired/Loaded Sourceは#2822〜24で別照合。
+4. **独立Oracle試験**：N3 Known Mutantを各適用Targetで一つ以上選び、Candidate Expectedを動かさず検出できるかを測定。テスト作成Agentが作ったActual/Expectedを共通に書換えてPassを維持できたならG2はunqualified。N1/N2/N3を別計数し、既知Mutant未検出をskipやn/aで隠さない。
+5. **Source revision独立性**：[実Go PR #2681](https://github.com/hat47x/tei-platform/pull/2681)のコメントのみ変更によるWorld FP同一/ModelRevision相違を§44の限定Expectedとして参照する。意味計算の再利用可能性とSource引用/生成物/実受領の再資格化を別票にする。別HEADの組織Native PASSをScenarioの同一Attempt PASSへ合算しない。
+
+**受入条件**：Goテストが通ることに加え、(a) Source/Step分母を独立に固定し、(b) N1/N2/N3のそれぞれの実行区分を記録し、(c) v0 Scenarioの未対応Operation/NULL/missing/decimal/実writeはunsupportedとして隠さず、(d) 必要なConsumerが実Readerで同じArtifact member byteを受領した場合のみそのClaimを許可する。A/Bどちらか未実施なら二者横断合格は`NOT RUN`。Web/GUI、実DB/Host、Owner Meaning Acceptanceは別Gate。
+
+**追加しないもの**：Scenario新正本、共通実行Runner、Oracleの自動承認、第二CLI/Registry/Host、AIへの外部Provider原文・内部Path/Raw fingerprint自動開示。現段階の改訂はP0実証の採否条件を具体化した**docs-only**。#2813/#2828の製品・テストコードは本PRでは変更せず、実Go／独立Oracle／実Binary subprocessは今回NOT RUN。既存#2514/#1180/#2811/#2595/#2604のOwnerを維持する。
+
+
 ## 44. 組織Native E1でSource同一性と意味同一性を切り離した：既存Evidence閉包を実Go反例で補強（2026-11-04、§40–43／#2600へ引継ぎ）
 
 ### 44.1 同じWorldとOperationを得ても、同じSource改訂ではない
