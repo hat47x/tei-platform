@@ -38,10 +38,10 @@ func TestSharedCrossRuntimeVectors(t *testing.T) {
 		t.Fatalf("unexpected fixture schema %q", fixture.SchemaVersion)
 	}
 	base := Scheme{
-		SchemeID: fixture.Scheme.SchemeID,
-		Purpose: fixture.Scheme.Purpose,
-		Scope: fixture.Scheme.Scope,
-		InputKind: fixture.Scheme.InputKind,
+		SchemeID:         fixture.Scheme.SchemeID,
+		Purpose:          fixture.Scheme.Purpose,
+		Scope:            fixture.Scheme.Scope,
+		InputKind:        fixture.Scheme.InputKind,
 		Canonicalization: fixture.Scheme.Canonicalization,
 	}
 	for _, tc := range []struct {
