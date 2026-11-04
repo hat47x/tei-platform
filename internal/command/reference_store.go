@@ -539,6 +539,10 @@ func (e ReferenceDataExecutor) checkRequiredInputs(request Request) error {
 }
 
 func (e ReferenceDataExecutor) checkDeletePolicy(target core.CanonicalID, targetAttributes map[core.CanonicalID]string) error {
+	return e.cascadeDelete(target, targetAttributes, map[string]bool{})
+}
+
+func (e ReferenceDataExecutor) cascadeDelete(target core.CanonicalID, targetAttributes map[core.CanonicalID]string, visited map[string]bool) error {
 	for _, namespace := range e.World.Semantics {
 		for _, data := range namespace.Data {
 			for _, relation := range data.Relations {
@@ -561,7 +565,15 @@ func (e ReferenceDataExecutor) checkDeletePolicy(target core.CanonicalID, target
 						}
 						switch relation.OnDelete {
 						case "cascade":
+							visitKey := string(data.ID) + "\\x00" + record.Key
+							if visited[visitKey] {
+								continue
+							}
+							visited[visitKey] = true
 							e.Store.DeleteKey(data.ID, record.Key)
+							if err := e.cascadeDelete(data.ID, record.Attributes, visited); err != nil {
+								return err
+							}
 						case "preserve":
 						default:
 							return fmt.Errorf("inbound relation %s restricts delete of %s", relation.ID, target)
@@ -574,7 +586,17 @@ func (e ReferenceDataExecutor) checkDeletePolicy(target core.CanonicalID, target
 				}
 				switch relation.OnDelete {
 				case "cascade":
-					e.Store.DeleteAll(data.ID)
+					for _, record := range e.Store.RecordsWithAttributes(data.ID) {
+						visitKey := string(data.ID) + "\\x00" + record.Key
+						if visited[visitKey] {
+							continue
+						}
+						visited[visitKey] = true
+						e.Store.DeleteKey(data.ID, record.Key)
+						if err := e.cascadeDelete(data.ID, record.Attributes, visited); err != nil {
+							return err
+						}
+					}
 				case "preserve":
 				default:
 					return fmt.Errorf("inbound relation %s restricts delete of %s", relation.ID, target)
