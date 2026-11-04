@@ -12,6 +12,12 @@
 
 **位置**は元`source`のUTF-8バイト半開区間です。たとえば`　rows/order |> std.where`の最初のOperator開始位置は17バイトです。表示上の文字幅・UTF-16 editor offsetと混同しません。
 
+## 既存Scenario CLIとの境界
+
+mainには既に `cmd/tei/scenario.go` の `scenario verify / generate / run / check` と、`reference/driver-scenarios/order-entry-pattern-smoke.json` の6-Step保存済みReferenceがあります（`tei.driver-scenario/v0`）。本ファイル群は**そのScenarioとは独立した、Language Pluginの構文・型・Pinだけのtest-only入力**です。Pipeline候補を業務Scenarioへ自動挿入したり、ScenarioのExpected・Canonicalへ昇格させたりしません。既存Scenarioの対象範囲はPattern/Browse/Validation/合成Observationであり、本テストのPipelineはその新しい実行Operationではありません。
+
+JSONの重複メンバーは既存 `scenariotest.RejectDuplicateJSONMembers` を再利用して拒否します（単なる `json.Decoder.DisallowUnknownFields` は重複キーを拒否しません）。AIが同じ `source`/`expected` を二度書いて見かけの合格を作る入力を許しません。
+
 ## 証拠上の注意
 
 - Goテストは既存`ParsePipelineSyntax`→`LowerPinnedPipeline`→`ComposePinned`を使います。実Goコードで受理していない表層をテスト内で「対応済み」と仮定しません。
