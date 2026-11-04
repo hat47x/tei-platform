@@ -20,6 +20,11 @@ func DecodeDigest(s Scheme, text string) ([]byte, error) {
 	if s.Mode != ModeEncodedDigest {
 		return nil, errors.New("exactCharacters cannot be decoded as a digest")
 	}
+	// Any v1 digest has at most maxOutputBits radix-2 characters. Reject
+	// oversized untrusted text before a decoder allocates memory for it.
+	if len(text) > maxOutputBits {
+		return nil, errors.New("digest text exceeds maximum canonical width")
+	}
 	var decoded []byte
 	var err error
 	switch s.Encoding {
