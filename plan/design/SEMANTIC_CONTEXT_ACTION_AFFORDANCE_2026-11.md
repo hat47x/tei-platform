@@ -516,3 +516,43 @@ D0〜D5は**検収票の論理列**であり、すべてのActionが6段の新Ru
 **P2**：#2598のTarget/Period/Grantの現在性、#1174の実Provider Commit/Receipt、#2516の独立Reader/開示を、必要な場合だけエンドツーエンドに接続。初回は**read-onlyで閉包と欠落を確認**、次に一業務書込みで`target mismatch/commit unknown`を合成→実Providerへ段階的に展開。前回の[#2784](https://github.com/hat47x/tei-platform/pull/2784)のGo期間ガード、[#2780](https://github.com/hat47x/tei-platform/pull/2780)のCommand/effectcommitは別実行・別Ownerの既存負例である。
 
 **性能・Authorityの停止線**：Source closureのread-only再検査と、Providerの必須current Grant/Target/CAS/Period Fenceを混ぜない。再利用可否は#2600、全件再検査の費用とfalse reuseは#2018。失敗時に「Sourceを読んでいない」を「正しい拒否が実装済み」と呼ばず、現行Referenceが黙って成功したら**現状を再現した負例**として報告。新TEI Host/Universal Proof Engine/Policy/Registryや標準DSLは導入しない。AEQ-01〜08を同一実Target・同一Attemptで通した試験、実Owner Accepted Meaning、実AI/Web/EKI Providerは**NOT RUN**。
+
+<!-- 20261105-unattended-combined-preconditions-evidence-coverage -->
+## 17. 11/5横断実装再点検：無人実行の「前提チェックが通った」と「十分な前提を検査した」を区別する
+
+### 17.1 現mainで前進したことと安全保証の限界
+
+[main統合 #2850](https://github.com/hat47x/tei-platform/pull/2850)により、`execution.EffectPreconditions(rules, observer)`は`after-commit`／`compensation`のEffectに対してObserverが無い場合、無人`RunPlan`を操作直前で止める。現mainの`PeriodPreconditions`と`CombinePreconditions`を使い、期間・Effectの検査関数を合成できる。これは**実装済みの限定的な入場ガード**であり、前節§13〜16で要件としていた全ての証拠が揃ったことを意味しない。
+
+本物の`internal/execution/runplan.go`の静的照合により、以下の非同値を追加する。
+
+| 現行コードで観察できる条件 | 言えること | 言えないこと・要追加検証 |
+| --- | --- | --- |
+| `EffectPreconditions`にnon-nil`EffectObserver`が渡された | 同じCapabilityに対する確定後／補償Ruleの「観測手段が全く無い」場合の事前停止を解除できる | 実際の`ObserveEffect`呼出し・対象Effectごとの観測対応・応答完全性・受領/検証/失効を確認していない。現実装は**Observerの存在を確認するだけ**で、対象Effectの実観測をこの関数内で行わない |
+| `PeriodPreconditions(surface, states)`が成功 | その引数`states`についてGuardがRefuseしなかった | statesの取得時刻・出所・必須Keyの存在・currentness・Commit時の期間/認可一致。Source欠落とopenは非同値（#2784） |
+| `CombinePreconditions`が空理由を返す | **渡されたnon-nil検査**は拒否理由を返さなかった | 業務上**必要な検査がすべて渡された**こと。Period検査が丸ごと欠けても、Effect検査だけがnon-nilなら合成関数はnon-nilであり、条件次第で進行できる |
+| `RunPlan`の`blocked` | そのStepは実行せず、Blockと理由を記録した | Plan全体に副作用が無いこと。2番目のStepでBlockされる前に、**1番目が既に実行済み**の場合がある（既存`TestUnattendedRunStopsWhenAPreconditionIsNotMet`もこの順序を示す） |
+| `runlog`がattempt/fenceを記録し、`StepResult: resolved`で`completed` | Journal内の試行と操作結果を追跡できる | `Journal.Last`→`Append`が外部横断の排他CASになったこと、`StepFunc(ctx,operation)`へfenceが自動束縛されたこと、Provider Commit/Business Result/Observer確認が成立したこと |
+
+とくに**partial precondition coverage**と**partial effect after blocked**は異なる問題である。前者は「検査が存在するから十分」という誤り、後者は「途中で止まったから何も起きていない」という誤り。RunPlan自体が汎用Authority正本になったと見なさず、**業務・Host・Providerの実行前提と結果資格**を呼出し側/既存Ownerが明示する。
+
+### 17.2 ACU-01〜08：実証の最小反例（既存Scenarioを再利用）
+
+| ID | 反例 | 必要な独立Expected・成果資格 |
+| --- | --- | --- |
+| **ACU-01 Missing component** | 期間Guard必須Operationなのに`CombinePreconditions(EffectPreconditions(...))`しか渡さない | 現行挙動を観測して`unsafe coverage gap`と報告。必要Guard集合の不足を入場前に拒否する方式は#1130のOwner判断対象 |
+| **ACU-02 Observer token** | Observer型の実装はあるが、対象Effectを観測不可/古い結果/別Scope | non-nilだけで`observed/verified`へ昇格しない。実Observer応答、対象・Receipt・Source/Time・Disclosureが別資格 |
+| **ACU-03 Static period** | Preflight時open、次の操作またはProvider Commit前にclosed/Grant revoked | 期間Sourceの時刻/版とProvider内current Fenceを区別。実Effect=0負例は#1174/Owner実Provider |
+| **ACU-04 Block after progress** | Step A resolvedし書込み可能、Step B precondition blocked | `Block B`でもAの実効果は不明/既確定の可能性。Run-level`no effects`を主張せず、step別Receipt/補償資格を確認 |
+| **ACU-05 Two contenders** | 同runKeyを2 Processが同時にJournal.Lastした後Appendする | Journalだけの順序を物理排他と推測しない。Owner/Lease/fence/CASの実外部Writeで負例を作る |
+| **ACU-06 Resumed effect** | Attempt1でA実Commit後にACK-loss、Attempt2で記録済みStepをskipまたは未記録Stepを再実行 | StepStatusとProvider実Effectを同一視しない。同OperationID/Receipt Lookupと独立ReadによるReplay/Uncertainの境界を検証 |
+| **ACU-07 AI scenario evidence** | #2828のJSON候補追加/Go PASS、#2830の`generated-pinned`等のResult資格 | required/discovered/loaded/executed/independent-oracle/qualifiedを分ける。新Caseファイル数=Coverage分母ではない |
+| **ACU-08 Meaning and Source drift** | Role/Operatorが自己記述され、Script SourceやRule版がOffer→Dispatchで変更 | #2620の`Role/Operator`有限BootstrapとAccepted Meaningを区別。Source実消費(#2595)、失効(#958/#2829)、Owner Acceptanceと現在Grantを別判定 |
+
+### 17.3 担当と次の接続順
+
+1. **P0: 既存コードでのcharacterization**：#1130の`RunPlan`と`CombinePreconditions`、#2784の期間File、#2850のEffectを用い、ACU-01/02/04で「止めたStepは未実行でも前Stepの効果はあり得る」「Observerの存在は実観測ではない」「必要な検査の欠落は自動検出されない」を、既存Goテスト近傍で同じScope/RunKeyの独立Expectedに照合。これは製品安全性成功の証明ではない。
+2. **P1: 既存Scenario SSOTとSource Closure**：#1180/#2811に`required/discovered/attempted/verified`とCase世代・独立Oracleを渡し、#2828/#2830の**別PRのCI PASSを一回の実Target End-to-Endに合算しない**。Source実読込#2822〜24、Build byte#2595、Role Provider#2620/#2639の未整合はunknown。
+3. **P2: 本番側の原子的実行・結果確認**：#1174/#1129にcurrent Principal/Grant/Period/Target/CAS→Commit/Receipt/Observerの同一作用境界、#2146に外部排他、#2516に実Consumer受領、#1130に部分完了/回復、任意EKIにはTask/Lease/Result bodyを担当させる。Direct Go/外部Host/EKIの選択でBusiness Meaningを変えない。
+
+**停止線**：`RunPlan`は現時点ではSource/Role実消費、認可Grant、Observer効果完了、実DBの分散排他を自動で証明しない。既存の`blocked`／`completed`を正式`BusinessVerified`へ昇格しない。ここでは新RunPlan/Policy Engine/Host/Registry/正式DSLを設計しない。ACU-01〜08の独立Oracleを伴う同一実Target横断E2E、実DB/エッジ、Owner受理は**NOT RUN**。
