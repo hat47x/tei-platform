@@ -1950,7 +1950,7 @@ Owner Meaning未受理、必要Readの不完全、Pin不一致、Grant不明、C
 
 ### 41.3 Source Witness・Disclosure・後着結果との接合
 
-#2743/#2801/#2812を再利用する。#2801の実Go負例（exact-head Repository Health成功）は**同一Semantic Digestでもraw byteが変わり、LocateImportedSourceの後段再Loadは初回Loadの消費byte証拠ではない**ことを示す。#2812では同一Loadのselected parsed Source/Manifestの局所Witnessを内部保持し、原文Readerはprivate、公開Describeはmetadataのみへ縮退する変更がDraft上に存在する。新HEADのCI結果とProvider全入力閉包は別判定。
+#2743/#2801/#2812を再利用する。#2801の実Go負例（exact-head Repository Health成功）は**同一Semantic Digestでもraw byteが変わり、LocateImportedSourceの後段再Loadは初回Loadの消費byte証拠ではない**ことを示す。#2812では同一Loadのselected parsed Source/Manifestの局所Witnessを内部保持し、原文Readerをpackage privateに保持する設計へ進み、さらに2026-11-04の現HEAD `8b90b606` では公開Describeアクセサ自体を削除した。内部Source path・raw fingerprint・件数の新規公開も認めない。直前HEAD `7a6071ed` のCIはsuccessだが、現HEADのRepository Healthは確認時点でin_progress。Provider全入力閉包も未成立。
 
 AI/Scenario/SHO/Studioが実Provider Sourceを扱うとき、**Importされたこと≠原文開示許可**、保存Witness≠現在Read Grant、選択Namespaceのみ≠全依存完全性、後着Response≠現在表示資格を維持する。raw byteをログ/外部AIへ自動露出せず、固定Scenarioには許可済みの合成・匿名Fixtureを使う。Source再読込、A→B→A、未解析Source、Manifest変更、negative dependencyは旧結果を再利用できるかを独立判断する。既存#2600/#2516の再資格化を複製しない。
 
@@ -1986,7 +1986,7 @@ EKI側#112/#266/#67/#115へ契約不足を返し、TEI #1130がJob意味と判�
 
 - **確認済みの既存入口**：mainのScenario CLI/v0 Source、#2813 test-only JSON Draft、#2801 exact-head Go負例、#2787 exact-head静的OpenAPI試験（各Claimに限定）。
 - **計画へ統合**：AI-first A0〜A4、AI-V-01〜08、Source raw Disclosure停止線、Function/Build/Entry分離、EKI lossy delegation停止線。既存各OwnerのIssueやSchemaを複製しない。
-- **未確認/未実施**：#2813新HEAD CI、#2812安全修正後HEAD CI、Track A/Bの同一独立Oracle比較、AI生成の実測Coverage、製品Provider/Web/GUI/SHO、実Multi-build、実EKI Task/Worker/Artifact、低レイテンシ実測、Owner Meaning受理。これらを完了・採用・main統合と記載しない。
+- **未確認/未実施**：#2813 `2219fc4d` のHealthはsuccess（限定test-only）だがAI実作成/独立Oracle/Target E2Eは未確認。#2812直前HEAD `7a6071ed` のHealthはsuccess、現HEAD `8b90b606` のHealthはin_progressで新CI未確定。Track A/Bの同一独立Oracle比較、AI生成の実測Coverage、製品Provider/Web/GUI/SHO、実Multi-build、実EKI Task/Worker/Artifact、低レイテンシ実測、Owner Meaning受理。これらを完了・採用・main統合と記載しない。
 
 **変更の性質**：本§41はDraft #2667の横断計画へのdocs-only追加。#1119 Gate・§40 C0〜C4の証拠閉包、既存各WorkstreamのOwnerと正式Grammar/Protocol採用保留を維持する。
 
@@ -2048,3 +2048,56 @@ EKI側#112/#266/#67/#115へ契約不足を返し、TEI #1130がJob意味と判�
 [Draft #2816](https://github.com/hat47x/tei-platform/pull/2816) のADR-0045〜0047は重複ADR整理の**提案中**で、採用済みADRと同列にしない。特にADR-0043/0044の外部Host／認証Plugin境界を尊重し、#2825 A-09の認証を「TEI Coreが必ず実装する」ような検収へ再導入しない。文書整合修正は既存Ownerの#2820/#2825/#2816/PR #2821/#2826に委ね、本文への二重修正を行わない。
 
 **状態とOwner判断待ち**：本追補は設計計画のdocs-only。#2817の限定Go局所試験、#2815の限定PoC、#2827の文書候補、#2820/#2825の静的監査を区分して接続しただけで、PUB-01〜06の新しい一式公開/Consumer E2Eや新規Go/Windows/SHO/AI/EKI/ETL試験は**NOT RUN**。公開方式A/B、HashIdの製品採用、ETL/MFT Plugin、ADR-0045〜0047は未採用。Draft #2667と既存Gate/Issue責務を維持する。
+
+
+## 43. 実消費入力からAIテスト・公開Artifact・Consumer実受領までの同一Attempt束縛（2026-11-04、§40〜42の実証入口を最小化／Docs-only）
+
+### 43.1 最新の実証を受入単位に翻訳する
+
+§40 C0〜C4、§41 AI-first G0〜G4、§42 PUB-01〜06は別々の新エンジンの設計ではない。**最も短い一改訂の実験**として、宣言されたSource、実際に消費したSource、テストCase、独立Expected、生成Artifact一式、Consumerが実際に受け取ったbyteと結果を関係付け、**各辺に欠落時の停止条件**を設ける。
+
+- [Draft #2813](https://github.com/hat47x/tei-platform/pull/2813) HEAD `2219fc4d` は [Health #41744813520](https://github.com/hat47x/tei-platform/actions/runs/41744813520) completed/success。JSONで追加するPipeline候補11件を含む**test-only Reference**のCI成功。独立Oracle検出力・AI実作成・Driver/CLI-Web・業務Provider実験の成功ではない。
+- [main統合済み #2819](https://github.com/hat47x/tei-platform/pull/2819) は`manifest.Source=audit.go` (D1)と`go build=main.go` (D2)が異なる場合でも現状Selectが候補を通し、出力binaryはD2由来なのにSource/Build Evidenceに宣言D1が残る**局所回帰反例**。ここで判定すべきなのは生成物の同Digestだけではなく**実Builderへの入力同定**。修正は既存#2595 EB-04が所有、反例の成功は修正成功ではない。
+- [Draft #2812](https://github.com/hat47x/tei-platform/pull/2812) は選択parsed SourceとManifest原文の初回Load内局所Witnessをprivate保持。前HEAD `7a6071ed` の [Health #41742064273](https://github.com/hat47x/tei-platform/actions/runs/41742064273) はsuccess。ただし内部path等のmetadata開示が残っていたため、**現HEAD `8b90b606137d5d4602b57d8f0a318a783dbf4edd` では公開Describeアクセサを撤去し、詳細Source/Manifest/Path/Raw fingerprintをpackage privateに限定**。現HEADの [Health #41785251763](https://github.com/hat47x/tei-platform/actions/runs/41785251763) は照会時 in_progress（旧HEAD PASS転用禁止）。`FullInputClosure=false`を維持する。
+- [Draft #2811](https://github.com/hat47x/tei-platform/pull/2811) §12に**DSL JSON候補／保存Driver Scenarioの2 Consumer × 正負各1例と独立Oracle**の最小Packetがある。直前HEAD `4bfd9f64` のHealth failureは計画Markdownのescaped backticksで、新HEAD `5ff66332` が修正候補（当該HEADのCIは別判定）。#2811はdocs-onlyであり実PacketはNOT RUN。
+
+### 43.2 追加するのは証拠の対応列であり、新しいAuthorityではない
+
+| 結節点 | 記録する最小証拠（既存Scenario/Receipt/Manifestへの対応） | 明示して止める条件 | Owner |
+| --- | --- | --- | --- |
+| I0 宣言Source → 実消費Input | 宣言Source ID/原byte fingerprint、実Reader/Builderが使用したbyte集合/physical identity、Provider/Toolchain・時点 | 宣言D1でbuild D2、Read closure不明、途中差替え | #2595/#2743/#2600 |
+| I1 入力 → 生成Case | 固定Scenario/JSON Case ID・Revision、Contract/Plugin Pin、actual parsing/fixture byte、生成Agent提案と人間Reviewの差 | 不明Step、重複JSONキー、ID衝突、古いScenario/Lock | #2813/#1180/#2811 |
+| I2 Case → Oracle/実Run | 事前固定Coverage Obligation・独立Expected・Known Mutant、実Result、tool/runtime/attemptの版 | ExpectedをActualから転記、弱い判別Case、unknownをPASS | #2514/#1163 |
+| I3 Run → 公開Artifact | 全member、実File byte、Manifest/CheckSet、世代参照、途中失敗/衝突の拒否 | `-out` 新旧混在、member欠落、stdoutのみのcomplete | #2604/#2482 |
+| I4 Artifact → Consumer | 実Reader受領byte・世代Pin・開示目的、Target-specific validation、現在の利用Grant | 意味は同じだがSource引用stale、raw/内部path漏洩、版混在 | #2516/SHO/#1174 |
+
+**AI/Toolへ公開する証拠は最小限の非機密要約に限定する**。Importできることは内部path、raw hash、原文件数、Manifest本文等の公開許可を含まない。必要な実Sourceを使う際は現在のRead/Disclosure資格があるConsumerだけに、既存Ownerが受理した経路で渡す。private Witnessを利用するためだけの公開Accessorを増やさない。
+
+### 43.3 具体的な一つのP0 Work Packet：2 Consumer × 2 Case
+
+**固定Input**：同一main base/正確なPR HEAD、Workspaceと入力Sourceのraw fingerprint、Scenario/JSON schema revision、Operator/Plugin lock、Fixture、Generator/Builder version、適用Scope。これらを同じ試行票で固定し、各Consumer固有のTarget/実行環境は別欄とする。
+
+**Consumer A：Go DSL Pipeline Candidate（#2813）**
+- A+：許容Pipeline JSON候補1件を既存Go Referenceで型/Span/Pin等まで実走。AI候補追加はテストコードの変更を要さないか。
+- A−：同じ入力から型契約不一致または重複JSONキーを1件導入し、適切に拒否。Baseline固定anchorを同じ編集で変えない。
+
+**Consumer B：Driver Scenario CLI（#1180）**
+- B+：既存6-Step Scenarioの範囲内でread-only/validationの許容Step1件を `scenario verify → generate → run → check`。独立FixtureとGenerated Planのpin、actual Observationを照合。
+- B−：Scenario/World/Plugin Lock改版または認識不能Stepを注入し、旧plan再使用／黙ったskipが拒否されることを実走。
+
+**独立判別**：A/Bの各Candidateの単なるPASS数を合算せず、対応する1個以上のKnown Mutantや手計算可能な独立Expectedを先に固定する。どちらも共通入力`Contract`と`Expected`を同時に誤改変した場合はG2不成立とし、通ったParser/Go testからMeaning Acceptanceを推定しない。
+
+**Cross-boundary負例（事前に未実行と明示）**：#2819 D1→D2実Builder入力不一致をPacketのI0に差し込み、A/Bが局所PASSでも縦断`qualified=false`にする。Source pathだけ同一でsymlink/読取時差替え、意味同一だが原文が変わる場合は実物理Readと引用の再資格化を別列に置く。公開世代R1→R2に失敗した#2817 AP-01/03もI3を`unqualified`にする。この段階では本番DB/Host/外部AIへ副作用要求を送らない。
+
+**評価レポートの行**：候補数、G0〜G4別合否、事前Obligation分母、Known Mutant検出、入力/Runner/Artifact/Consumerの各実byte照合、`NOT RUN`/unverified/unknown/not accepted、AI作成・実行時間と費用。単純なCase数より、反例検出力と誤資格化ゼロを最重要とする。
+
+### 43.4 P0〜P3の選択、契約不足時は停止
+
+1. **P0（先行）**：#2813 current exact-head Go/CIと#2812 current exact-head CIを再確認し、#2811 §12のWork Packet入力と既存#1180 CLI v0実入口を固定。Branch/Head間のtest PASSを足さない。
+2. **P1**：A+/A−とB+/B−を、個別の安全なFixtureに対して実試行。保存Scenarioは唯一のTest SSOTであり、DSL Candidate JSONは別テスト表層の候補Sourceであって第二Scenario正本ではない。
+3. **P2**：I0の#2819 EB-01負例とI3の#2817 AP-01〜03を合流させ、**縦断上のどこでunqualifiedが発生するか**を観測。新しい共通Runner/API/Registryで穴埋めしない。
+4. **P3**：入力帰属・独立Expected・公開一式・実受領が揃ったConsumerからSHO/Webや実Providerへ段階的に拡張。Go単一バイナリを基本、実Sourceが未束縛ならBuild skip、EKI委譲、実EffectのPASSは保留。
+
+**重要な停止規則**：Local test PASSやHead CI SUCCESSはそのHEAD/Claimの証拠のみ。Source/Providerの全入力closure、Read/Disclosure Grant、実Target Consumer、Host Effectが未観測なら`NOT RUN`または`unverified`を維持する。UnknownとFalse、not acceptedとnot runを混同しない。既存#1119 Gate、#1163 Evidence、#2514 Oracle、#2604 Publication、#2595 Source Binding、#2811 Test AuthoringのOwnerを変更しない。正式DSL Grammar/Artifact Publisher/ID Schema/EKI ABIをここでは採用しない。
+
+**実施状態**：本追補はDocs-onlyで、新しいP0 PacketのGo/CLI/Web/Provider/EKI/SHO、Independent Oracle/Mutant Run、実Consumer受領を本変更では実行していない。上記既存PRの限定Evidenceを横断整理しただけであり、Draft #2667を維持する。
