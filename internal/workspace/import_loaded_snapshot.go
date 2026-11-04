@@ -8,15 +8,15 @@ import (
 	"tei/internal/sourceindex"
 )
 
-// ImportedParsedLoadEvidence describes the selected provider Namespace and the
-// fingerprints of parsed Source bytes captured during the SAME nested provider Load as
+// importedParsedLoadEvidence is internal-only metadata for the selected
+// Namespace and parsed Source bytes captured during the SAME provider Load as
 // the consumer's Workspace Import. Manifest is a separate input, never a
 // consumer-managed Source Index artifact.
 //
 // FullInputClosure is always false: provider-wide inputs, negative dependencies,
 // multi-file atomicity, current Provider authority and downstream consumers
 // remain unqualified. This is not an Acceptance or execution grant.
-type ImportedParsedLoadEvidence struct {
+type importedParsedLoadEvidence struct {
 	Alias            string
 	ProviderPath     string
 	Namespace        string
@@ -26,11 +26,12 @@ type ImportedParsedLoadEvidence struct {
 	FullInputClosure bool
 }
 
-// importedParsedLoad is private, transient provenance. The private raw bytes
-// are never serialized with Result or exposed by the public metadata accessor.
-// Importing a Semantic Namespace is NOT authorization to read Provider Source.
+// importedParsedLoad is private, transient provenance. No raw bytes, Source
+// occurrence paths, fingerprints or Manifest details are projected by a new
+// public accessor. Importing a Semantic Namespace is not disclosure authority.
+// Existing Result.Imports remains a distinct pre-existing public projection.
 type importedParsedLoad struct {
-	evidence ImportedParsedLoadEvidence
+	evidence importedParsedLoadEvidence
 	files    map[string][]byte
 }
 
@@ -51,7 +52,7 @@ func captureImportedParsedLoad(imp WorkspaceImport, digest string, provider Resu
 
 	files := make(map[string][]byte, len(paths)+1)
 	files[provider.sourceManifest.Path] = bytes.Clone(provider.sourceManifestBytes)
-	evidence := ImportedParsedLoadEvidence{
+	evidence := importedParsedLoadEvidence{
 		Alias:          imp.Alias,
 		ProviderPath:   imp.Path,
 		Namespace:      imp.Namespace,
@@ -91,8 +92,8 @@ func captureImportedParsedLoad(imp WorkspaceImport, digest string, provider Resu
 // A future external Consumer must pass the Provider's existing disclosure and
 // authorization boundary before such raw data may be projected. This function
 // does not establish full input closure or multi-file atomicity.
-func importedParsedLoadSnapshot(loaded Result, alias string) (ImportedParsedLoadEvidence, func(string) ([]byte, error), error) {
-	var empty ImportedParsedLoadEvidence
+func importedParsedLoadSnapshot(loaded Result, alias string) (importedParsedLoadEvidence, func(string) ([]byte, error), error) {
+	var empty importedParsedLoadEvidence
 	var selected *ResolvedImport
 	for i := range loaded.Imports {
 		if loaded.Imports[i].Alias != alias {
@@ -141,13 +142,4 @@ func importedParsedLoadSnapshot(loaded Result, alias string) (ImportedParsedLoad
 	out := capture.evidence
 	out.ParsedSources = append([]sourceindex.Artifact(nil), capture.evidence.ParsedSources...)
 	return out, read, nil
-}
-
-// DescribeImportedParsedLoad returns only read-only fingerprints and source
-// locations. It never exposes the Provider Manifest or Source contents.
-// Caller-visible metadata is not a disclosure grant, acceptance or build
-// qualification. FullInputClosure remains false.
-func DescribeImportedParsedLoad(loaded Result, alias string) (ImportedParsedLoadEvidence, error) {
-	evidence, _, err := importedParsedLoadSnapshot(loaded, alias)
-	return evidence, err
 }
