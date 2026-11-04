@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"tei/internal/realization"
 	"tei/internal/workspace"
 	"tei/tools/internal/changeanalysis"
 )
@@ -338,12 +339,83 @@ func TestReferenceWorkspaceDefinitionAndPluginWorkflow(t *testing.T) {
 	if len(contractReport.SemanticChanges) != 0 || len(contractReport.StrictChanges) != 0 || contractReport.Membership == nil || len(contractReport.Membership.Changes) != 0 || len(contractReport.ChangedCollections) != 1 || contractReport.ChangedCollections[0] != "databases" {
 		t.Fatalf("contract collection change hidden or misclassified: %+v", contractReport)
 	}
+	contractWorld, err := workspace.Load(after)
+	if err != nil {
+		t.Fatal(err)
+	}
+	target := realization.ContractQueryTarget{Database: "sales_core", Contract: "sales_core.order_line", Query: "find_by_order"}
+	countReferences := func(target realization.ContractQueryTarget) [4]int {
+		var counts [4]int
+		for _, app := range contractWorld.World.Applications {
+			for _, db := range app.Databases {
+				for _, requirement := range db.RequiredContracts {
+					if db.TargetDatabase == target.Database && requirement.ContractID == target.Contract {
+						counts[0]++
+					}
+				}
+			}
+		}
+		for _, b := range contractWorld.World.HeaderDetailContractQueryBindings {
+			if b.Target == target {
+				counts[1]++
+			}
+		}
+		for _, b := range contractWorld.World.ContractQueryExecutorBindings {
+			if b.Target == target {
+				counts[2]++
+			}
+		}
+		for _, r := range contractWorld.World.ContractQuerySQLRealizations {
+			if r.Target == target {
+				counts[3]++
+			}
+		}
+		return counts
+	}
+	if got := countReferences(target); got != [4]int{1, 1, 1, 1} {
+		t.Fatalf("expected exact declared consumers: %v", got)
+	}
+	other := target
+	other.Contract = "sales_core.nonexistent"
+	if got := countReferences(other); got != [4]int{} {
+		t.Fatalf("unrelated contract matched: %v", got)
+	}
+	other = target
+	other.Query = "other_query"
+	if got := countReferences(other); got != [4]int{1, 0, 0, 0} {
+		t.Fatalf("query identity must distinguish query-level bindings while retaining contract requirement: %v", got)
+	}
+	for _, path := range []string{
+		"applications/order-entry/application.tei",
+		"applications/order-entry/realizations/header-detail/order-lines.tei",
+		"environments/development/contract-query-executors/order-line-find-by-order.tei",
+		"databases/sales-core/query-realizations/order-line-find-by-order.tei",
+	} {
+		oldBytes, err := os.ReadFile(filepath.Join(before, filepath.FromSlash(path)))
+		if err != nil {
+			t.Fatal(err)
+		}
+		newBytes, err := os.ReadFile(filepath.Join(after, filepath.FromSlash(path)))
+		if err != nil || !bytes.Equal(oldBytes, newBytes) {
+			t.Fatalf("consumer source changed %s: %v", path, err)
+		}
+	}
 	mismatched := bytes.Replace(contractBefore, []byte(queryInput), []byte("input order_id type std.text"), 1)
 	if err := os.WriteFile(contractPath, mismatched, 0o644); err != nil {
 		t.Fatal(err)
 	}
 	if out := run(tei, 1, "plugin-resolve", "-workspace", after, "-environment", "development", "-plugin-lock", lockPath); !bytes.Contains(out, []byte("HEADER_DETAIL_BINDING_INPUT_TYPE_MISMATCH")) {
 		t.Fatalf("existing binding mismatch not rejected: %s", out)
+	}
+	renamedInput := bytes.Replace(contractBefore, []byte(queryInput), []byte("input new_order_id type sales.order_id"), 1)
+	if err := os.WriteFile(contractPath, renamedInput, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	diagnostics := run(tei, 1, "validate", "-workspace", after, "-json")
+	for _, code := range []string{"HEADER_DETAIL_BINDING_INPUT_NOT_IN_SIGNATURE", "INVALID_CONTRACT_QUERY_SQL_REALIZATION"} {
+		if !bytes.Contains(diagnostics, []byte(code)) {
+			t.Fatalf("input rename hid %s: %s", code, diagnostics)
+		}
 	}
 	badContract := bytes.Replace(contractBefore, []byte(queryInput), []byte("input order_id type sales.not_found"), 1)
 	if err := os.WriteFile(contractPath, badContract, 0o644); err != nil {
@@ -360,7 +432,7 @@ func TestReferenceWorkspaceDefinitionAndPluginWorkflow(t *testing.T) {
 	if err := json.Unmarshal(run(compare, 1, "compare-application-membership", "-before", before, "-after", after, "-include-unvalidated-candidates"), &contractDiagnostic); err != nil || contractDiagnostic.WorkspaceValidationPassed || len(contractDiagnostic.AfterDiagnostics) == 0 || len(contractDiagnostic.ChangedCollections) != 1 || contractDiagnostic.ChangedCollections[0] != "databases" {
 		t.Fatalf("unvalidated contract comparison: %+v, %v", contractDiagnostic, err)
 	}
-	t.Log("reference contract minor-version edit: 1 file; semantic/application diffs empty but databases collection changed; existing Lock resolves; mismatched binding and unknown type rejected, opt-in remains unvalidated")
+	t.Log("reference contract minor-version edit: 1 file; exact consumers: 1 Application requirement, 1 header-detail binding, 1 executor binding, 1 SQL realization; their sources unchanged; mismatch and unknown type rejected")
 	actual, err := os.ReadFile(filepath.Join(repositoryRoot(t), "reference", "workspace", filepath.FromSlash(rel)))
 	if err != nil || !bytes.Equal(actual, original) {
 		t.Fatalf("reference source changed during isolated test: %v", err)
