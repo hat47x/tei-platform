@@ -118,6 +118,8 @@ Layer 3   CUI／Studio／Skill／SHO／Targetへの用途別Projection
 
 Runtime側の `Registry.InvokeWithProvenance` は選択したCapability、Plugin定義・artifact、権限・必要なResource leaseを扱うが、Semantic Extension Referenceの `SemanticValidationPlan` やShared Acceptanceを入力として評価しない。両者を連結済みとみなしてはならない。Referenceの実process PluginもDeploymentExecutorの応答を返すだけで、業務意味の受理や実際の外部状態の反映を証明しない。Runtimeのin-process実装へ渡すPermission一覧はHost側のProvenanceと別コピーにし、実装が一覧を書き換えてもHostの記録とlease解放が保たれることを試験する。これはprocess分離、悪意あるin-processコードのSandbox、全Provenance要素の完全性、正式な意味評価との接続を証明しない。
 
+**環境単位のLockに関する追加候補**：現行CLIの `plugin-lock` は全Environmentを対象とする一方、既存 `plugin.BuildLock` は指定されたEnvironmentの一覧を受け取る。`internal/plugin/lock_scope_value_test.go` の合成例では、productionのPlugin欠落により全環境のLock作成が失敗する一方、developmentだけのLockは作成・解決できた。そのLockでproductionを解決すること、固定したdevelopmentのPlugin定義を改変して解決することは拒否された。利用する環境だけを明示してLockを作るCLIの可能性はあるが、現行CLIは先にWorkspace全体を検証するため、無関係なエラーによる停止はこのAPI試験だけでは解消しない。部分Lockを全環境の固定と誤認しない出力、対象外Environmentでの拒否、既定の動作、正式な検証・実行境界を維持できるかが未検証であり、CLI変更や受理判断はまだ行わない。
+
 `plugin-lock` と `plugin-resolve` は現在 `cmd/tei/cli_result.go` でWorkspace全体を検証してから実行する。最小の改善候補は、既存コマンドの成功条件を変えることではなく、必要なPlugin・環境の選択結果と、Workspace全体が未検証である旨・元の診断を別に返す**任意のread-only診断**を比較すること。その結果からLockの正式利用やRuntime起動を許可しない。依存する意味定義を必要とするPlugin、未解決の環境、改変されたPlugin定義を誤って有効としないことを実証できなければ、候補を採用しない。専用CLIや新たな正本が必要かも未決である。
 
 **診断の試作**：Draftでは `plugin-resolve -diagnostic-candidates` を明示した場合だけ、全体の診断と、既存Resolverが返した候補を別に表示する。常に `ok: false`、終了1、`workspaceValidated: false` とし、候補は意味受理・実行許可・Runtime Planではない。環境不明、Plugin欠落、Lock不一致では候補を返さない。Workspaceの読み込み自体に失敗した場合は診断を続行できない。未検証の意味がPluginに必要かをこの試作は判定しないため、候補があっても使用可能性は不明である。通常の `plugin-resolve` と `plugin-runtime-plan` の検証・終了条件は変更しない。実Providerや自動化利用者への影響は未確認であり、採用判断は行わない。
