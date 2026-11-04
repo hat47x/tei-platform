@@ -489,3 +489,55 @@ Ownerは#1180（Scenario）、#2813/#988（DSL Candidate）、#2514（Oracle）�
 - #2820/#2825の文書整合監査に従い、歴史的なDraft/未実行の記載を現在のmerge/CIの真偽に読み替えない。正しさと本番資格は一つのStatusへ集約しない。
 
 **本節はdocs-only。** AT-PUB-01〜08、AI Caseの採用済み一式公開、Reader受領、Web/GUI/Provider/Host、Owner意味受理は本変更ではNOT RUN。新Publisher/Schema/Authorityは追加しない。
+
+## 14. AIテスト入場前のSource完全性とCLI契約：ゼロ件・未読込を成功にしない（2026-11-04）
+
+**区分：既存Issueの実CLI再現結果を受入条件へ組み込んだdocs-only変更。今回のCLI/Go試験はNOT RUN。** [横断計画§43（Draft #2667）](https://github.com/hat47x/tei-platform/blob/docs/everything-data-real-evidence-cut-20261103/plan/workstreams/EVERYTHING_DATA_CROSSLANE_HANDOFF_2026-11.md)を所有するレーンと責務を重ねず、#2811の「生成AIがどのCaseを作ってよいかを決める入場前提」として受け取る。
+
+### 14.1 新たに裏付けられた三つの入場リスク
+
+| 入場リスク | 実CLIの限定観測（他Issueの報告） | #2811での帰結と現在のClaim制限 |
+| --- | --- | --- |
+| **利用者宣言0件と成功** | [#2822](https://github.com/hat47x/tei-platform/issues/2822)：manifestだけのWorkspaceで `tei validate -json` は `ok=true`、`model catalog` は標準`std`の13 entries、利用者宣言は0件。空のmodelRevisionとcatalogが並存 | `validate.ok`・`catalog.entries.length`から対象業務Rule/Caseの存在を推論しない。空を意図したWorkspaceは**そのScopeに限り合法**でも、必要宣言が存在したことの証拠ではない |
+| **発見と読み込みの差** | [#2823](https://github.com/hat47x/tei-platform/issues/2823)：manifestの未知/存在しないSource rootの診断が直接返らない、`workspace-files`で発見した`.yaml`/`.TEI`/`Application.tei`等が実Loaderで読み飛ばされ得る | `discovered`≠`loaded`。Required Sourceが実Loadに入ったというWitnessがない場合、Case候補の局所Parseは行えても、Workspace完全性・全Rule Coverageを`qualified`としない |
+| **CLI契約版の未知** | [#2824](https://github.com/hat47x/tei-platform/issues/2824)：`tei commands`は19項目、文書内13と不一致。`schemaVersion`/契約外`world`がdiscoveryでは区別できない | コマンドの存在≠安定JSON ABI。実CLIの出力modeごとの契約を確認できなければ`contract-unknown`とし、発見された名称をそのままAIの実行プランへ採用しない |
+
+**修正方法をこのPRでは決定しない。** `validate`へ件数欄追加、warning化、`workspace-files`の読込状態欄、discoveryへの版/契約外表示の選択・互換性判断は#2822/#2823/#2824のOwnerが行う。#2811は結果を正しく解釈し、機械可読な不足を`unknown/unloaded/unsupported`で残すConsumer。
+
+### 14.2 G0の手前に置くReadiness前提（第二Gate/新APIではない）
+
+`Declared → Discovered → Loaded → Applicable → Executed → Qualified`は**一つの実行結果に同居する独立した証拠列**であって、第二のSource Registryや新Test Engineではない。
+
+- **Declared**：試行前に固定したRequired Source/業務Model/Rule/Scenario/Target/Obligation集合、scope、版、expectationの出典を記録。Declaredが不明なら「0件」ではなく`requirements-unknown`。現在のWorkspace manifestと試験要求の**必要集合**は区別する。
+- **Discovered**：`workspace-files`や既存Indexで実際に列挙したpath/root・状態を記録。単にリストに載ったことはLoader入場を証明しない。
+- **Loaded**：Parser/Loaderが実際に取り込んだ対象、raw source byte/source location、必要なimport/否定依存、診断・スキップ理由。既存CLIがこの列を返さないなら`not-observed`と書き、完了したことを仮定しない。原文は許可された内部Evidenceに限定（#2812/#2516）。
+- **Applicable**：対象Model/Operator/Rule/Step/Targetのpin、型、Scope、必要分岐、Source位置、partial/permission-denied、実装対応の可否を照合。未知Stepは暗黙skipせず`unsupported`。
+- **Executed**：実argvと実行したTool/Artifact/Scenario/Fixture/Workspace、実際に消費したBuild Input（#2595/#2819）、exit/result/evidenceNatureを記録。`validate.ok`は実業務Step実行を代替しない。
+- **Qualified**：§11 G2独立Expected、G3実Receipt、G4 Coverage分母に対して必要証拠を判定。公開されたSuite/実Reader受領は§13で別資格。
+
+**強いFail-closed条件**：あるObligationを満たすためのRequired Source/Loader/Contract/Targetが未読込または不明な場合、そのObligationのCoveredや全Target同等性を宣言しない。ただし探索・候補ケースの局所実行を妨げず、`candidate-only`と明示する。未取得/非開示の対象存在自体をAPI回答から推定しない。
+
+### 14.3 最短の「AIが間違ったテストを生成しない」実証
+
+既存の#2822〜24再現と#2813/#1180の受入試験を**別Runnerを作らず一枚の対照表**にまとめる。次の6対照を**新P0の入場反証 ADM-A〜F**と呼ぶ（横断計画§43のADM-01〜08と二重のCase正本を作らず、そのSubset/期待を引用する）。
+
+| 対照 | 変更する入力は一箇所 | AI向けDiscovery/Fixtureへの期待 |
+| --- | --- | --- |
+| ADM-A / §43 ADM-01 | 業務宣言を全て外し、標準`std`のみ | Case inventoryの業務分母を「標準13件」としない。要求業務宣言が必要なら`unresolved` |
+| ADM-B / ADM-02 | manifest `semantic`を未知`semantics`へ | 下流Validation失敗だけでSource未ロード原因を隠さない。名前補正候補はAI提案でも自動採用しない |
+| ADM-C / ADM-03 | `.tei`を`.TEI`へ、または固定ファイル名の大小文字差 | 発見されたpathを実Load済み扱いにしない。現行観測できない理由は`unknown`と記録 |
+| ADM-D / ADM-04 | `tei commands`で契約外`world`を選ぶ | 契約済み`tei.cli.*`を勝手に付与せず、mode・versionが未知なら拒否/限定候補 |
+| ADM-E / ADM-05 | 宣言`audit.go`・実build`main.go` | 実消費Input不一致を`unqualified`。main統合#2819の負例を「修正済み」へ誤昇格しない |
+| ADM-F / ADM-06 | #2813形式で1件を追加し、Expectedを候補Contractと共に誤変更 | JSON・局所Goの内部PASSと、固定Oracle/Mutantによる判別力を別に評価 |
+
+**最小実証順**：①#2813 exact-head成功済みの11件を再利用して追加Case正常/拒否を測る → ②#2822〜24のSource/契約入場負例を必要集合と突き合わせる → ③#1180 Scenarioの隔離Fixture/CLI planへ到達するCaseのみ実行 → ④独立Expected/Mutantの正負対を採点する。③の前にSource closureが観測できなければ`blocked/unknown`を残す。#2604のSuite一式公開は採用した後段で検証。
+
+対象ごとに**追加されたCase数、候補として実行可能なCase数、G2独立Expectedが適格なCase数、Requiredのうち実LoadedとApplicableなObligation数、未知/未探索/未対応数**を別集計。ゼロ/不明の分母を100%へ変換しない。実Go/CLIの正負Receiptとread-only外部Readerが揃うまで実証Doneではない。
+
+### 14.4 今回の成果と残る判断
+
+- **事実として参照できるもの**：#2822〜24が記録した特定main版・WSL Go実行の現象、#2813 HEAD `2219fc4d` のexact-head [Health #41744813520](https://github.com/hat47x/tei-platform/actions/runs/41744813520) completed/success、#2819統合の実Source/Build不一致負例、mainにあるScenario CLI v0/6 Step。版・Scopeを跨いで成功を合算しない。
+- **横断レーンのOwnerを維持**：#2822（空宣言）、#2823（Source入場）、#2824（CLI ABI）、#2571（Workspace Reader）、#2595（実Build Input）、#2813（DSL JSON Candidate）、#1180（Scenario）、#2514（独立Oracle）、#2604（Suite公開）、#2516（Disclosure）。#2811は**AIテスト作成時に必要な前提を照合する受渡し**を担当。
+- **未実施**：ADM-A〜Fの本作業による再実行、Source-loaded機械可読APIの新実装、実Provider/Web/GUI、選択的再資格化、AI外部Harness実試験、Owner意味受理。これらを実装済みと記録しない。
+
+**採用判断**：P0の成功条件を「AIが新しいJSONを生成できる」に限定せず、**実際に読まれたSourceと対象契約が不明なら正しさ・網羅性を認定しない**ところまでとする。ただし既存IssueのCLI修正を全てP0実装の直列必須条件にしてAIの試行を止めず、局所Candidateと製品横断Qualifiedを分離する。
