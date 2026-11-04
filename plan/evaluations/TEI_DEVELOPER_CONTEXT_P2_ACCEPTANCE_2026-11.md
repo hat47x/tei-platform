@@ -124,3 +124,27 @@
 **採点で分離する変数**：実読取回数（test/docそれぞれ）、読取失敗、保持候補と表示候補、予算到達、必要Rの候補到達、表示12件内のR、増分読取費用。A64のCC-01改善は単純に読取件数増が必要であり、同予算のモデル順位効果と比較しない。CC-02は**独立doc予算＋字句優先の両方が変わる**ため一つの純粋因果効果と主張しない。将来の公平な2×2対照で、表示方式固定／予算差と、予算固定／表示差をさらに切り分ける。
 
 **資格と次の引渡し**：この3件はGoによる実ファイル入出力を使用するが、Go test `t.TempDir`内の合成字句Referenceであり、TEI Productの追加Probe CLI/SEI実Method/外部Harness/権限・Disclosureの実検証ではない。評価側の独立RはMethod入力に渡さず（#2514）、実Consumerへ渡す可否は#2516、実Toolの選択・実行資格は#2605/TAI #271/TAI #232の既存責務とする。新規Probe契約・全Repo Index・Agent Host・共通Registryは作らない。**PR exact HEADのCI結果が確認できるまでは試験PASSを主張しない。**
+
+<!-- tei-devctx-p2-2a-factorial-20261104 -->
+## 8. P2-2a CC-04/05：読取予算と表示Policyの2×2独立比較
+
+第7節CC-01〜03の重要な限界は、CC-02で**独立Markdownの取得**と**取得後の表示優先順**を同時に変えていたこと。従来の結果だけではどちらが必要Rを見つける効果を持つか分解できない。
+
+今回、評価専用`tools/reference-developer-context/collection_selection_factorial_test.go`へ以下を追加した（**製品本体・Report schema・CLIは変更しない**）。`TestCollectionFactorialBudgetVersusSelectionPolicy`は単一公開`t.TempDir` Sourceを固定し、**読取test上限12／13（docs上限は両条件とも12）**を比較。各読取上限で一度取得した候補集合Cから、追加Readなしの純粋な表示Projectionだけを二つ生成する。
+
+- **S-test**：完全ファイル名一致test→stem本文一致test→対象完全path字句参照docの順で上位12件を選ぶ。
+- **S-doc**：完全ファイル名一致test→対象完全path字句参照doc→stem本文一致testの順で上位12件を選ぶ。
+- 同一行（読取予算固定）では**同じC、同じSource byte、同じ読取回数**を保持する。同一列（選抜Policy固定）では**追加1 test Read以外の条件を固定**。独立Expectedは試験構成前に`{validation_test.go, docs/target-reference.md}`の2つのpath witnessとして固定し、これをPolicyへ渡さない。
+
+| 固定世界の評価条件 | S-test（test優先） | S-doc（doc優先） | 実読取（test＋doc） |
+| --- | ---: | ---: | ---: |
+| **B12**（先行弱test12件で止まる） | Rの表示到達 **0/2** | **1/2** | **12＋1** |
+| **B13**（末尾の直接testも読取） | **1/2** | **2/2** | **13＋1** |
+
+本表は公開合成fixtureでの**事前Expected（実測完了までは予測）**。元`Discover`はtest12件でdocs走査自体を省くため、**S-test＝現製品方式**とは称さない。S-test/S-docはいずれもdocsを取得した後の**評価用選抜Policy**である。B12→B13の1件到達向上は追加1 test Readの結果であって、モデルが関連性を見抜いたものではない。S-test→S-docの1件到達向上は同一Cの純粋な選抜差であり、探索能力の増加ではない。相互作用がこのFixtureで無くても一般化しない。
+
+**CC-05（負対照）**：同じtest集合でMarkdownを置かない世界を使い、B12/B13の各行でS-test=S-docとなることを確認する。表示Policyは未取得の必要根拠を新たに生み出さない。B13だけ直接testを拾える条件を追加で確認する。
+
+**指標を分離**：`collect(R∩C)`、`display(R∩V)`、read対象と件数、`TestTruncated`、固定世界での差分、Provider/Model利用なし。テストは同一ホストの限定Source filesystem readを含むが、実Repoの関連性・意味受理・外部ConsumerへのDisclosure、SEI Methodの実Probe性能は測っていない。`validation_test.go`とdocの両方を必要Rに置くことは**評価用の人工Oracle**であり、業務Ownerの受入ではない。
+
+**実施順序・受入条件**：先にexact PR HEADのCIでCC-04/05のGo test成功とソース一致を確認する。次に、Rに曖昧性・費用（追加Read／解析byte）・段階的Unknownを入れた複数世界で外的妥当性を評価。SEI `D0/D1/M1`は同じSource・実Tool・Scope・Grant・同予算・blind R条件で別比較（#2533/#2514/SEI #767）。ここでの機械的成功をmodel ranking改善、実Tool利用、意味/Authority/OS安全へ昇格しない。再試行の旧ModelChoice/Deliveryは第6節と#2516、TAI #271で引継ぐ。
