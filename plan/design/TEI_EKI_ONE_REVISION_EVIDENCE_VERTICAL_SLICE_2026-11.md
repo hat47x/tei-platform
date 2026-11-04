@@ -291,7 +291,7 @@ TEI Data Model/Scriptの`ready`仮想状態を想定し、`false→true`の業�
 
 ### 14.3 外部Source受理とWorker Trustは別のversion/currentness
 
-[TEI Draft #2812](https://github.com/hat47x/tei-platform/pull/2812)は、**同一Provider LoadでParserが消費したselected Namespaceの原文／Manifest**をread-onlyで持つ限定Source Witness。2026-11-03時点の報告では専用Go試験の結果は未確定であり、**Full Input Closureではない**。同じSourceを後から再取得してbyte一致したからといって、最初のLoadの証拠にはできない（[#2801](https://github.com/hat47x/tei-platform/pull/2801)）。TEIのReference/Meaning/Artifact鮮度と、EKI Workerの信頼・Execution Grantは個別判定を継続する。
+[TEI Draft #2812](https://github.com/hat47x/tei-platform/pull/2812)は、同一Provider Loadのselected Namespace原文／Manifestを**privateのSource Witness**として保持し、公開のDescribeImportedParsedLoadはDigest等のメタデータに限定する実装へ改訂された。**Full Input Closureでも原文開示許可でもなく、CI成否は対象HEADに限定する**。同じSourceを後から再取得してbyte一致したからといって、最初のLoadの証拠にはできない（[#2801](https://github.com/hat47x/tei-platform/pull/2801)）。TEIのReference/Meaning/Artifact鮮度と、EKI Workerの信頼・Execution Grantは個別判定を継続する。
 
 EKI側の[PR #694](https://github.com/hat47x/eki-fabric/pull/694)はWorker Trustの署名鍵集合をAgentの`anchor.json`という**配備所有者の設定**で管理し、受信した版自体に「次の信頼鍵」を宣言させないと決定。[PR #692](https://github.com/hat47x/eki-fabric/pull/692)には複数鍵のいずれかで検証して受理する局所実装と試験の報告がある。**TEIのSource/Accepted MeaningをEKIのTrust Anchorへ自動昇格させず、EKIの署名済みWorkOrderもTEIのビジネス上の意味受理としない**。複数鍵・期限切れ・失効・I/O ErrorでのFail-closedの運用受入はEKI Ownerの責務。こうしてTEIのPlugin/Reference/Sourceを含め、同じ`version`という名称でも誰が発行し、何を守る版かを明示する。
 
@@ -316,3 +316,22 @@ EKI側の[PR #694](https://github.com/hat47x/eki-fabric/pull/694)はWorker Trust
 - **T2**：管理Pool Providerの`staged artifact ready`、`current authorized Data access`、`capacity reserved`、`Task/Attempt/Lease`、`Result body`を**別Receipt**として取得。Cache HitやWarm Statusは、現在のTrust/Quota/Leaseの代用品にしない。実Providerを確認する前に`deadline recovery feasible`としない。
 
 **一つの実行単位で観測する最小データ**：`logical_function_id, source/meaning/artifact/toolchain revision, runtime class/OS/arch, executor digest, input digest+size, stage/cache evidence age, data access scope, transfer bytes/time, provider reservation/attempt, output digest+size, verification and deadline, BUD-1/CAP-1 physical consumption`。いずれも**既存正本へのリンクを張るread-only票**とし、別Registryや新しい公開ABIの採用ではない。3経路で`cold / warm / unavailable`を同じ意味で検証し、TEIの選択済み外部Import原文証拠（Draft #2812）をFull Input Closure／ビルドキャッシュ資格へ誤昇格させない。**CL-01〜08はこの追補でNOT RUN**。初回の合格基準はP0のPure Job一件に固定する。
+
+## 16. AI生成テスト・Source開示・実EKI受入のゲート統合（2026-11-04）
+
+他レーン[TEI #2813](https://github.com/hat47x/tei-platform/pull/2813)はtest-onlyのGo Referenceで、JSON Fixture baseline 9件と追加候補2件により、Go側のテストコードを増やさずCase候補を追加する最小の足場を示した。4件のSource/ExpectedはGo側にも固定しており、未知契約・重複Case ID・空Case・不正Stageの拒否を含む。**#2813のPR本文はexact-head CI/実Go PASSの確認前であり、実行済みとは記録しない。** [AI-first計画#2811](https://github.com/hat47x/tei-platform/pull/2811)と[Scenario SSOT #1180](https://github.com/hat47x/tei-platform/issues/1180)の後続Consumerとして用いる。DSLのJSON形式をEKIの正式Test Runner／API Schemaへ流用せず、Caseの追加・独立Expected確認という**実装パターンのみ**を再利用する。
+
+[TEI #2812](https://github.com/hat47x/tei-platform/pull/2812)の最新P0bでは、同一Provider Loadで読んだselected Semantic Source/Manifestの**原文取得経路をprivateに制限**し、公開DescribeImportedParsedLoadをDigest等の**metadataのみ**へ修正した。初期案の「原文証拠があるからAI・Studio・EKIへ内容を渡せる」は誤り。Source WitnessはFull Input Closure、現在のData/Disclosure Grant、Owner Accepted Meaningのどれでもない。[EKI #321](https://github.com/hat47x/eki-fabric/issues/321)/[#433](https://github.com/hat47x/eki-fabric/issues/433)はclosedでWorker署名鍵・Trust Bundleの所有境界が整理されているが、TEI Source DigestをAgent Trust Anchorへ昇格させる理由にはならない。
+
+### 16.1 新規実行基盤を作らない受入判定
+
+| Gate | 既存Owner/証拠 | 合格範囲と停止線 |
+| --- | --- | --- |
+| **A Source / Meaning** | TEI Source/Reference #2812、Owner受理Meaning、Artifact Build証拠 | 原文開示の権限と同一LoadのFingerprintを別管理。partial / 未受理なら業務意味の確定不可 |
+| **B Independent Tests** | TEI #2813 TestData拡張パターン、#1180 Scenario、[#2514](https://github.com/hat47x/tei-platform/issues/2514)独立Oracle | AI生成の負例はCandidate。Expectedが同一Generator/Actual由来なら採点不可。新しいGo/CLI/Web実行は別資格 |
+| **C ABI no-loss** | TEI #2787のWP-01〜19、EKI OpenAPIの対象Blob/Rev | Parameter Worker未配送、Effect none限定、Executor版の強制不足、Deadlineの意味縮約、Input ingest未対応を黙って変換しない。不適合時はDirect/既存Host |
+| **D Real Execution** | RE-01〜08／VS-01〜32、EKI Task/Attempt/Provider、Output body、TEI Business Receipt | Product-only実Jobで実Input/Artifact/Executor/Result/Current Grantを照合。Go参照RunPlan完了や静的WP PASSを業務Commitへ合算しない |
+
+**最小動線**：公開可能な合成Jobの固定Input/Outputと独立Expected → AIが不足するCaseの候補を追加 → 既存Scenario/FixtureでSchema/ID/Scope/Oracleを検査 → 対象EKI OpenAPI RevでWP静的no-lossを判定 → 不適合ならここで停止 → 適合する純粋JobだけをT0 Direct/ T1 EKI Native（RE）で実検証 → T2 Provider/Deadline/Costは独立Gate後に進む。EKIのAPI/Artifact/Trust改版時は旧SnapshotのPASSを再利用せず、現Revisionで再確認する。
+
+**実装責務**：テスト生成・差分縮小はTEI #1180/#2514/#2811/#2813、ABIの追加はEKI #112、実Result/ProviderはEKI #57/#67、Deadline/Recoveryは既存#58/#115/#126。新中央Evidence Registry、新AI Policy Authority、新CLI/Web Driver、新EKI Job Engineは設けない。AIへ非公開Source本文/下位Worker Topologyや有償Capacity変更権限を渡さない。WP静的CI報告と#2813 test-only P0、#2812 private Source Witnessは別証拠であり、**この追補のTEI→EKI実行・AI生成・Worker/Hostの結合実験はすべてNOT RUN**。
