@@ -4,9 +4,12 @@ import (
 	"testing"
 
 	"tei/internal/application"
+	apprelease "tei/internal/application/release"
 	"tei/internal/database"
+	dbrelease "tei/internal/database/release"
 	"tei/internal/ir"
 	"tei/internal/realization"
+	"tei/internal/releaseplan"
 )
 
 func TestContractCandidatesBeforeAfterExactIdentityAndRemoval(t *testing.T) {
@@ -25,6 +28,23 @@ func TestContractCandidatesBeforeAfterExactIdentityAndRemoval(t *testing.T) {
 			{Application: "app", Pattern: "app.b", Target: realization.ContractQueryTarget{Database: "sales", Contract: "sales.other", Query: "find"}},
 			{Application: "app", Pattern: "app.c", Target: realization.ContractQueryTarget{Database: "other", Contract: "sales.order", Query: "find"}},
 		},
+		ApplicationReleases: []apprelease.Definition{{
+			Application: "app",
+			Version:     "1.2.3",
+			Databases:   []application.DatabaseRequirement{{Alias: "db", TargetDatabase: "sales", RequiredContracts: []database.ContractRequirement{{ContractID: "sales.order", CompatibleMajor: 1}}}},
+		}},
+		DatabaseReleases: []dbrelease.Definition{
+			{Database: "sales", Version: "1.0.0", Provides: []dbrelease.ProvidedContract{{ID: "sales.order", Version: database.ContractVersion{Major: 1}}}},
+			{Database: "other", Version: "1.0.0", Provides: []dbrelease.ProvidedContract{{ID: "sales.order", Version: database.ContractVersion{Major: 1}}}},
+		},
+		SolutionReleases: []releaseplan.Definition{{
+			ID:      "rollout",
+			Version: "2026.1.1",
+			Steps: []releaseplan.Step{
+				{ID: "gate", Kind: releaseplan.StepDatabaseGate, Contract: "sales.order", CompatibleMajor: 1},
+				{ID: "other-gate", Kind: releaseplan.StepDatabaseGate, Contract: "sales.other", CompatibleMajor: 1},
+			},
+		}},
 	}
 	after := old
 	after.Databases = []database.Database{{ID: "sales"}}
@@ -42,12 +62,31 @@ func TestContractCandidatesBeforeAfterExactIdentityAndRemoval(t *testing.T) {
 		if c.Kind == "application-pattern-contract-query" && (c.ID != "app/app.look" || c.Query != "find") {
 			t.Fatalf("unrelated pattern invocation: %+v", c)
 		}
+		switch c.Kind {
+		case "application-release-contract-requirement":
+			if c.ID != "app@1.2.3/db" {
+				t.Fatalf("unrelated application release: %+v", c)
+			}
+		case "database-release-contract-provided":
+			if c.ID != "sales@1.0.0" {
+				t.Fatalf("unrelated database release: %+v", c)
+			}
+		case "solution-release-contract-gate":
+			if c.ID != "rollout@2026.1.1/gate" {
+				t.Fatalf("unrelated solution release gate: %+v", c)
+			}
+		}
 	}
 	if seen["before/header-detail-binding"] != 1 || seen["after/header-detail-binding"] != 0 || seen["before/application-contract-requirement"] != 1 || seen["after/application-contract-requirement"] != 1 {
 		t.Fatalf("old and new declarations conflated: %+v", seen)
 	}
 	if seen["before/application-pattern-contract-query"] != 1 || seen["after/application-pattern-contract-query"] != 1 {
 		t.Fatalf("pattern contract-query declaration missing: %+v", seen)
+	}
+	for _, kind := range []string{"application-release-contract-requirement", "database-release-contract-provided", "solution-release-contract-gate"} {
+		if seen["before/"+kind] != 1 || seen["after/"+kind] != 1 {
+			t.Fatalf("release declaration %s missing from a snapshot: %+v", kind, seen)
+		}
 	}
 	if same, err := ContractCandidates(old, old); err != nil || len(same) != 0 {
 		t.Fatalf("unchanged contract produced candidate: %+v %v", same, err)

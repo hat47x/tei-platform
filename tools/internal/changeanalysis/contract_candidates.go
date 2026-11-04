@@ -9,6 +9,7 @@ import (
 	"tei/internal/core"
 	"tei/internal/database"
 	"tei/internal/ir"
+	"tei/internal/releaseplan"
 )
 
 // ContractConsumerCandidate is an explicit declaration, not proof of use,
@@ -27,11 +28,13 @@ type ContractChangeCandidate struct {
 	Consumers []ContractConsumerCandidate `json:"consumers"`
 }
 
-// ContractCandidates scans only five explicit reference declarations: an
-// Application contract requirement, a reference Pattern's contract-query
-// invocation, and header-detail, executor and SQL realization bindings. Query
-// declarations are keyed by complete Database and Contract identities, not
-// by a shared suffix. Both snapshots are scanned even after removal.
+// ContractCandidates scans only eight explicit reference declarations: an
+// Application contract requirement, an Application release requirement, a
+// reference Pattern's contract-query invocation, a Database release's provided
+// contract, a solution release contract gate, and header-detail, executor and
+// SQL realization bindings. Query declarations are keyed by complete Database
+// and Contract identities, not by a shared suffix. Both snapshots are scanned
+// even after removal.
 func ContractCandidates(before, after ir.World) ([]ContractChangeCandidate, error) {
 	type key struct{ database, contract core.CanonicalID }
 	flatten := func(w ir.World) (map[key]database.Contract, error) {
@@ -103,6 +106,35 @@ func ContractCandidates(before, after ir.World) ([]ContractChangeCandidate, erro
 						continue
 					}
 					add("application-pattern-contract-query", string(app.ID)+"/"+string(p.ID), string(p.ContractQuery.Query))
+				}
+			}
+			for _, r := range w.ApplicationReleases {
+				for _, db := range r.Databases {
+					if db.TargetDatabase != k.database {
+						continue
+					}
+					for _, req := range db.RequiredContracts {
+						if req.ContractID == k.contract {
+							add("application-release-contract-requirement", string(r.Application)+"@"+r.Version+"/"+string(db.Alias), "")
+						}
+					}
+				}
+			}
+			for _, r := range w.DatabaseReleases {
+				if r.Database != k.database {
+					continue
+				}
+				for _, pc := range r.Provides {
+					if pc.ID == k.contract {
+						add("database-release-contract-provided", string(r.Database)+"@"+r.Version, "")
+					}
+				}
+			}
+			for _, r := range w.SolutionReleases {
+				for _, s := range r.Steps {
+					if s.Kind == releaseplan.StepDatabaseGate && s.Contract == k.contract {
+						add("solution-release-contract-gate", string(r.ID)+"@"+r.Version+"/"+string(s.ID), "")
+					}
 				}
 			}
 			for _, b := range w.HeaderDetailContractQueryBindings {
