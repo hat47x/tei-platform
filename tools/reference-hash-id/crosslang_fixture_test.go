@@ -17,7 +17,7 @@ func TestSharedCrossRuntimeVectors(t *testing.T) {
 	var fixture struct {
 		SchemaVersion string `json:"schemaVersion"`
 		InputUTF8     string `json:"inputUtf8"`
-		Scheme struct {
+		Scheme        struct {
 			SchemeID         string `json:"schemeId"`
 			Purpose          string `json:"purpose"`
 			Scope            string `json:"scope"`
@@ -25,10 +25,10 @@ func TestSharedCrossRuntimeVectors(t *testing.T) {
 			Canonicalization string `json:"canonicalization"`
 		} `json:"scheme"`
 		Cases struct {
-			SHA256Hex             string `json:"sha256hex"`
-			SHAKE160Hex           string `json:"shake160hex"`
-			SHAKEExact32          string `json:"shakeExact32"`
-			SHAKEExactDecimal30   string `json:"shakeExactDecimal30"`
+			SHA256Hex           string `json:"sha256hex"`
+			SHAKE160Hex         string `json:"shake160hex"`
+			SHAKEExact32        string `json:"shakeExact32"`
+			SHAKEExactDecimal30 string `json:"shakeExactDecimal30"`
 		} `json:"cases"`
 	}
 	if err := json.Unmarshal(raw, &fixture); err != nil {
@@ -45,15 +45,15 @@ func TestSharedCrossRuntimeVectors(t *testing.T) {
 		Canonicalization: fixture.Scheme.Canonicalization,
 	}
 	for _, tc := range []struct {
-		name string
-		algorithm string
-		mode string
+		name       string
+		algorithm  string
+		mode       string
 		outputBits int
-		encoding string
-		alphabet string
-		length int
-		want string
-		digestHex bool
+		encoding   string
+		alphabet   string
+		length     int
+		want       string
+		digestHex  bool
 	}{
 		{"sha256", AlgorithmSHA256, ModeEncodedDigest, 256, EncodingHex, "", 0, fixture.Cases.SHA256Hex, true},
 		{"shake160", AlgorithmSHAKE256, ModeEncodedDigest, 160, EncodingHex, "", 0, fixture.Cases.SHAKE160Hex, true},
