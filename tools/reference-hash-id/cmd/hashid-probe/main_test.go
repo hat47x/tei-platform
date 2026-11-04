@@ -183,6 +183,84 @@ func TestHeadlessTargetPreflightAndSnapshotCollision(t *testing.T) {
 	}
 }
 
+func TestHeadlessRejectsStaleTargetRulesAndDuplicateBindings(t *testing.T) {
+	input := []byte("source A")
+	s := decimalScheme()
+	schemePath, inputPath, schemeJSON := fixture(t, s, input)
+	targetPath := filepath.Join(t.TempDir(), "target.json")
+	result, err := hashid.Derive(s, input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	existing := bindingWire{
+		Namespace:      "example.external-records",
+		ProfileVersion: "decimal24-v1",
+		Subject:        "qualified:a",
+		SchemeJSON:     string(schemeJSON),
+		Text:           result.Text,
+	}
+	args := []string{
+		"-scheme", schemePath, "-input", inputPath, "-subject", "qualified:a", "-target-probe", targetPath,
+	}
+	for _, tc := range []struct {
+		name     string
+		bindings []bindingWire
+		edit     func(*targetProbeWire)
+	}{
+		{
+			name:     "duplicate source snapshot",
+			bindings: []bindingWire{existing, existing},
+		},
+		{
+			name:     "stale profile version",
+			bindings: []bindingWire{existing},
+			edit: func(doc *targetProbeWire) {
+				doc.Profile.ProfileVersion = "decimal24-v2"
+			},
+		},
+		{
+			name:     "unknown target character set",
+			bindings: []bindingWire{},
+			edit: func(doc *targetProbeWire) {
+				doc.Profile.AllowedAlphabet = "012345678"
+			},
+		},
+		{
+			name:     "reserved derived value",
+			bindings: []bindingWire{},
+			edit: func(doc *targetProbeWire) {
+				doc.Profile.Reserved = []string{result.Text}
+			},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			targetSnapshot(t, targetPath, tc.bindings)
+			raw, err := os.ReadFile(targetPath)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var doc targetProbeWire
+			if err := json.Unmarshal(raw, &doc); err != nil {
+				t.Fatal(err)
+			}
+			if tc.edit != nil {
+				tc.edit(&doc)
+			}
+			canonical, err := json.Marshal(doc)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(targetPath, canonical, 0600); err != nil {
+				t.Fatal(err)
+			}
+			code, stdout, _ := runProbe(t, args...)
+			if code != 1 || stdout != "" {
+				t.Fatal("invalid target policy/snapshot was accepted")
+			}
+		})
+	}
+}
+
 func TestHeadlessRejectsUntrustedInputAndMalformedSnapshot(t *testing.T) {
 	s := decimalScheme()
 	schemePath, inputPath, wire := fixture(t, s, []byte("source A"))
