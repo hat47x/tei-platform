@@ -15,8 +15,10 @@
 
 ## Target制約と割当境界（追加Reference）
 
-`TargetProfile` は物理ID用の名前空間、許容ASCII文字集合、最小/最大/厳密長、ASCII大小文字区別、予約名を**宣言**する。 `CheckTargetBinding` はID生成結果と、その対象のqualified subjectおよび渡された既存割当Snapshot `[]TargetBinding` を比較し、同一Target名前空間における衝突、大小文字折畳みによる別IDの同一視、同一Subjectの暗黙再割当、不正Snapshotを拒否する。正規化後の物理キーを返すだけで登録しない。
+`TargetProfile` は物理ID用の名前空間、**検証規則の版**、許容ASCII文字集合、最小/最大/厳密長、ASCII大小文字区別、予約名を**宣言**する。 `CheckTargetBinding` はID生成結果と、その対象のqualified subjectおよび渡された既存割当Snapshot `[]TargetBinding` を比較し、同一Target名前空間における衝突、大小文字折畳みによる別IDの同一視、同一Subjectの暗黙再割当、不正Snapshotを拒否する。正規化後の物理キーを返すだけで登録しない。
 
+- Schemeが生成し得る**すべての文字**がTargetで許されることを要求する。生成済みIDが偶然有効な文字だけでも、生成規則としては不適合なら拒否する。
+- Snapshotの同じTarget名前空間に旧ProfileVersionが含まれる場合は、暗黙の再解釈をせず明示移行を要求する。
 - Case-insensitive Targetへは、大文字・小文字の両方を生成し得るAlphabet（例：Base64url、Base62）を拒否する。DBのcollationを自動検出しないため、実Targetのcollationを別途検証したProfileだけに利用する。
 - Targetで同一名前空間の全割当が得られなければ、Snapshot上で衝突なしと判定できても、実一意性を保証しない。DBへの格納時に一意制約・競合再試行・Transaction等の**実保存境界**が必要。
 - 正本との紐付けは `TargetBinding.Subject`（Qualified Source identity）に保持する。文字列だけをCanonical ID、権限、Source Acceptanceへ昇格させない。
