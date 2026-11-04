@@ -40,17 +40,17 @@ const (
 // v1 accepts raw bytes only: other canonicalization profiles must not be
 // silently interpreted as raw bytes.
 type Scheme struct {
-	SchemeID        string
-	Purpose         string
-	Scope           string
-	InputKind       string
+	SchemeID         string
+	Purpose          string
+	Scope            string
+	InputKind        string
 	Canonicalization string
-	Algorithm       string
-	Mode            string
-	OutputBits      int
-	Encoding        string
-	Alphabet        string
-	Length          int
+	Algorithm        string
+	Mode             string
+	OutputBits       int
+	Encoding         string
+	Alphabet         string
+	Length           int
 }
 
 // Result is scoped to the whole Scheme. Text alone is not a globally unique
