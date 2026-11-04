@@ -151,7 +151,8 @@ func readE2EObject(t *testing.T, f *postgresFixture) (string, int64) {
 	return string(value), version
 }
 
-func commandWorldE2E() ir.World {	return ir.World{
+func commandWorldE2E() ir.World {
+	return ir.World{
 		Semantics: []semantic.Namespace{{
 			ID: "sales",
 			Data: []semantic.Data{{
