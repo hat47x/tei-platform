@@ -336,6 +336,10 @@ func TestCommittedHeadlessFixture(t *testing.T) {
 	if code != 0 || stderr != "" {
 		t.Fatalf("committed reference fixture failed: code=%d stderr=%q", code, stderr)
 	}
+	secondCode, secondOutput, secondError := runProbe(t, args...)
+	if secondCode != 0 || secondError != "" || secondOutput != stdout {
+		t.Fatal("same committed Scheme + raw source + snapshot did not reproduce exact JSON")
+	}
 	var actual report
 	if err := json.Unmarshal([]byte(stdout), &actual); err != nil {
 		t.Fatal(err)
