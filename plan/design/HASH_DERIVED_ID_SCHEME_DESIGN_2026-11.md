@@ -1,6 +1,6 @@
 # 可変長・可変文字集合の内容導出ID：共通契約案（2026-11）
 
-- **文書の性格**: 実装前設計・未採用。採用済み仕様、既存ID移行の決定、テスト実施結果ではない。
+- **文書の性格**: 設計案と隔離Reference実験の記録・製品未採用。既存ID移行の決定や本番の意味的受理を含まない。試験実績は対応するDraft PRのexact headに限る。
 - **作業の正本**: [#2814](https://github.com/hat47x/tei-platform/issues/2814)（受入条件・進捗）。
 - **確認基準**: `main` commit `1f9f7d5d1876a0d0c420568bdf06becd96923b21`（2026-11-04 JST）。同時点の現行Referenceを変更しない。
 - **関連する採用済み境界**: [#1120](https://github.com/hat47x/tei-platform/issues/1120)（論理ID・型付き参照）、[#1595](https://github.com/hat47x/tei-platform/issues/1595)（Canonical Capability ID）、[#2094](https://github.com/hat47x/tei-platform/issues/2094)（派生名の衝突検出）、[全体構成](../../docs/architecture.md)、[管理名前空間案](PLUGIN_NAMESPACE_AND_OPTIONAL_COMPOSITION_2026-10.md)。
