@@ -134,11 +134,7 @@ func TestShippedCLIServesASignedAcceptedSourceButDispatchesNoCommand(t *testing.
 		if logs := mustRead(t, logfile.Name()); !strings.Contains(string(logs), "SOURCE_ACCEPTANCE_PROVISIONAL") || !strings.Contains(string(logs), "not a formal human Acceptance") {
 			t.Fatalf("no provisional warning on stderr: %s", logs)
 		}
-		if health, err := client.Get(base + "/healthz"); err != nil || health.Header.Get("X-TEI-Source-Acceptance-Kind") != "provisional" {
-			t.Fatalf("acceptance kind header missing: %v", err)
-		} else {
-			health.Body.Close()
-		}
+		assertKindHeader(t, client, base, "provisional")
 		response, err := (&http.Client{Timeout: 5 * time.Second}).Post(base+"/scenario/submit", "application/json", strings.NewReader(submitBody))
 		if err != nil {
 			t.Fatal(err)

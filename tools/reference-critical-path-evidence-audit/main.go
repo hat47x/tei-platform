@@ -155,13 +155,14 @@ func Audit(p Packet, expectedHead, expectedMain string) Report {
 	// Any claim (D9): an Acceptance recorded as provisional, or whose kind is
 	// unspecified, is not a formal human Acceptance. Normalized like the
 	// Provenance so formatting or an alias cannot hide it. A packet that omits
-	// the field is unchanged (legacy shape); a label other than "formal" or a
-	// known non-formal kind is refused as unrecognized.
+	// the field is unchanged (legacy shape). Any other label, including a
+	// self-declared "formal", is unrecognized: the Store refuses "formal" too and
+	// no path issues a formal Acceptance yet.
 	switch kind := normalizedProvenance(p.Acceptance.AcceptanceKind); {
 	case p.Acceptance.AcceptanceKind == "":
 	case kind == "provisional" || kind == "unspecified":
 		add("PROVISIONAL_ACCEPTANCE_NOT_FORMAL_EVIDENCE")
-	case p.Acceptance.AcceptanceKind != "formal":
+	default:
 		add("ACCEPTANCE_KIND_UNRECOGNIZED")
 	}
 	if p.Claim == "E1" || p.Claim == "E2" {

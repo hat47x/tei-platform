@@ -156,3 +156,19 @@ func (f formalReader) ReadCurrentAcceptedSource(ctx context.Context, app string)
 	r.AcceptanceKind = "formal"
 	return r, err
 }
+
+// The whole v1 payload, byte for byte: any change to the field set, order or
+// schema string is a signature-compatibility change and must be deliberate.
+func TestV1SigningPayloadGolden(t *testing.T) {
+	d := decision("d1", members(t, "application order_entry {}\n"))
+	d.Issuer, d.AcceptanceKind = "iss", sourceacceptance.AcceptanceKindProvisional
+	raw, err := SigningPayload(d)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(raw) != goldenV1Payload {
+		t.Fatalf("v1 payload changed:\n%s", raw)
+	}
+}
+
+const goldenV1Payload = `{"schema":"tei.host-acceptance-decision/v1","issuer":"iss","acceptanceKind":"provisional","record":{"applicationId":"order_entry","decisionRef":"d1","authorityRevision":"host-d1","modelRevision":"sha256:cdc0a722fc98714de9a4f5c709e0611306ddc75049f93ee5485ed0d4a0e8eacc","artifacts":[{"path":"applications/order-entry/application.tei","format":"tei","fingerprint":"sha256:4bd634564459d96db4be91eecb1fe1e5f8951005cc4e877bea93177be4cc5023"},{"path":"semantic/sales/order.tei","format":"tei","fingerprint":"sha256:d6a1af9d8db7c972762fa01e552d735914a0dd4f721cbb2f698ed287b1168cb7"}]}}`

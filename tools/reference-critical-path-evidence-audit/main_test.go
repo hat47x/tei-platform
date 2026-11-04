@@ -628,15 +628,15 @@ func TestProvisionalAcceptanceIsNeverFormalEvidence(t *testing.T) {
 			}
 		}
 	}
-	for _, label := range []string{"Formal", "formal ", "provisional2", "x"} {
+	for _, label := range []string{"formal", "Formal", "formal ", "provisional2", "x"} {
 		p := fixture()
 		p.Acceptance.AcceptanceKind = label
 		if r := Audit(p, h, m); !has(r, "ACCEPTANCE_KIND_UNRECOGNIZED") || r.Status != "INCOMPLETE" {
 			t.Fatalf("%q: %+v", label, r)
 		}
 	}
-	// Omitted (legacy packet) and the exact label "formal" leave the complete fixture reviewable.
-	for _, label := range []string{"", "formal"} {
+	// Omitted (legacy packet) leaves the complete fixture reviewable.
+	for _, label := range []string{""} {
 		p := fixture()
 		p.Acceptance.AcceptanceKind = label
 		if r := Audit(p, h, m); r.Status != "REVIEW_REQUIRED" || r.ProductGate != "UNQUALIFIED" {
