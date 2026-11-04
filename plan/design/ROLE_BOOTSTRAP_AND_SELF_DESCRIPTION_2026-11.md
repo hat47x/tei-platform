@@ -251,7 +251,7 @@ Database Contractの別ケースでは、現行Referenceの隔離コピーで `s
 
 ### 6.1 自己記述を「宣言」「解釈」「適合」「利用」に分ける
 
-1. **Descriptor as Data**：既存の基本値・Record/Sequence/Refで、Role/Operatorの要求Shape、識別子、適用条件、診断、依存（eager / deferred）、実装へのBindingを記述する。Role名や \`effect: pure\` は説明値であり自己権限ではない。
+1. **Descriptor as Data**：既存の基本値・Record/Sequence/Refで、Role/Operatorの要求Shape、識別子、適用条件、診断、依存（eager / deferred）、実装へのBindingを記述する。Role名や `effect: pure` は説明値であり自己権限ではない。
 2. **Interpretable**：既存Language Plugin/Extension Lockで *実Content/Contract/Implementation/推移eager依存* が選択・検証され、限定的なtyped Semantic Candidateへ解釈できる。構文糖衣の同形出力はAccepted Meaningと異なる。
 3. **Meaning Qualified / Accepted**：型、Relation/Attribute、Input/Output、演算の定義域、NULL/missing/unfetched、単位・精度・時点・grain、Queryの選択/否定依存を用途に照らして判定する。未定義の条件を勝手に埋めない。Ownerによる意味受理は独立の状態。
 4. **Usable / Realized**：必要なTarget能力、Build Artifact/Consumer必要member、実読み込み、現在のHost Grant/Disclosure/Effectを別検査する。Role解釈は実行資格を与えない。
@@ -269,15 +269,15 @@ Database Contractの別ケースでは、現行Referenceの隔離コピーで `s
 | **Meaning** | Type/Attribute/Relation/Rule、引数、NULL/単位/精度、作用順序、Predicate/WHERE/ORDER/JOIN/NOT EXISTS、grain/scope/completeness/time、独立Expected | Data ID・出力型・出力値だけでは同値未証明。hidden/negative依存の未証明はunknown |
 | **Realization / Consumer** | Target/Builder/toolchain、declared graphとactual inputs、ArtifactSet全必要member、Readerの実受領、現在Principal/目的/開示/Grant | Build cache、歴史的Evidence、現在表示・実行資格を混同しない |
 
-判定は対象Claimに必要な閉包に限定する。verifiedな要素は再利用可能でも、未記録・unavailable・partialを「依存なし」と扱わない。各層の資格は独立して \`verified / failed / unknown / not-run\` 等の既存表示に接続し、新規の一つのPASSフラグへ圧縮しない。内部の秘匿Input/Reasonを無条件にConsumerへ開示しない。
+判定は対象Claimに必要な閉包に限定する。verifiedな要素は再利用可能でも、未記録・unavailable・partialを「依存なし」と扱わない。各層の資格は独立して `verified / failed / unknown / not-run` 等の既存表示に接続し、新規の一つのPASSフラグへ圧縮しない。内部の秘匿Input/Reasonを無条件にConsumerへ開示しない。
 
 ### 6.3 同一Subjectでの最小縦断試行
 
-既存Go Reference PR #2639 の \`sales.order\` / \`sales.order.amount\` を**候補**とし、開始時に最新main、実Workspace、Source revision、実Language/Operator Provider/LockとCLI能力を再確認する。独立Expectedは候補Role/Operator自身から生成しない。Source A（正規TEI）と別表層 B（初期はtest-only）を比較する場合、Authoring文面/Source spanは異なるが、評価対象のSemantic Subject・必要なMeaning属性・Role/Operator Pinを同じ比較票に固定する。
+既存Go Reference PR #2639 の `sales.order` / `sales.order.amount` を**候補**とし、開始時に最新main、実Workspace、Source revision、実Language/Operator Provider/LockとCLI能力を再確認する。独立Expectedは候補Role/Operator自身から生成しない。Source A（正規TEI）と別表層 B（初期はtest-only）を比較する場合、Authoring文面/Source spanは異なるが、評価対象のSemantic Subject・必要なMeaning属性・Role/Operator Pinを同じ比較票に固定する。
 
 | ID | 反証入力 | 必須判別／既存Owner |
 | --- | --- | --- |
-| **SDX-09** | Workspace manifestの必要rootが存在しない、綴りが異なる、管理一覧のfileがParser未読込 | \`validate ok\` や空集合を完全なSource closureと誤認しない。#2823/#2600 |
+| **SDX-09** | Workspace manifestの必要rootが存在しない、綴りが異なる、管理一覧のfileがParser未読込 | `validate ok` や空集合を完全なSource closureと誤認しない。#2823/#2600 |
 | **SDX-10** | Source移動、同内容に戻るA→B→A、参照先改版 | occurrence/locator/RevisionとMeaning/Acceptanceを分離。#2505/#2621 |
 | **SDX-11** | 同Data ID・同出力型のままAttribute型/Relation/WHERE/ORDERの非出力依存だけ変更 | Binder結果一致から意味同値・Build skipを推論しない。#2639 EG-09/#2586/#2600 |
 | **SDX-12** | 同CarrierにModel/Test等の複数Role、引用中Role文字列、同名Provider追加 | 明示Use-site binding・候補発見と固定選択・開示を区別。#2620/#988/#2621 |
@@ -289,11 +289,11 @@ Database Contractの別ケースでは、現行Referenceの隔離コピーで `s
 
 ### 6.4 隣接Ownerへの引渡しと先行順
 
-- **E0（#2620/#988）**：実Go Language Selection、Role/Operator exact Pinと起動依存の実情報をInspect。既存Role Eager依存をProduct側が表せない場合は \`unsupported/gap\` と明記し、第二Resolverを作らない。SDX-09/12/14の負例を先に固定。
+- **E0（#2620/#988）**：実Go Language Selection、Role/Operator exact Pinと起動依存の実情報をInspect。既存Role Eager依存をProduct側が表せない場合は `unsupported/gap` と明記し、第二Resolverを作らない。SDX-09/12/14の負例を先に固定。
 - **E1（#2620/#2514/#2621）**：同じSemantic Subjectで正規TEIと第二表層のCandidate、Source Span、独立Oracle、必要属性を比較。引用を勝手にRole化せず、文書上の原文を保持。SDX-10/11/13を検証。
 - **E2（#2586/#2600/#2516）**：Meaning・非出力依存・Source実読込・Consumer用途・現在Grantを、既存Read/Build/Claim Evidenceへ接続。正しい局所再資格化とunsafe skipの双方を見分ける。
 - **E3（#2831）**：同じaccepted/locked Source/Role/Operatorの版を既存BuildIntent→Resolved Plan/actual runner入力/ArtifactSetへ結ぶ。stage0 seed→stage1/2照合と未宣言工程を検査し、自己解釈の成功をTEI全体セルフビルド成功と混同しない。
-- **可読性比較（DSL Owner）**：Go ASTへの寄せや専用構文の採用を先行決定せず、同じ課題・独立Expected・未取得/NULL/曖昧負例でMarkdown表/簡潔な式/候補DSLを生成AIによる同条件評価に掛ける。日常DSLへ \`struct\`/\`func\`/\`package\`/\`import\` を強制しない。
+- **可読性比較（DSL Owner）**：Go ASTへの寄せや専用構文の採用を先行決定せず、同じ課題・独立Expected・未取得/NULL/曖昧負例でMarkdown表/簡潔な式/候補DSLを生成AIによる同条件評価に掛ける。日常DSLへ `struct`/`func`/`package`/`import` を強制しない。
 
 **受入記録の最小項目**：exact repository HEAD / tested commit、実Executable/CLI entry、実Source・引用元のbyte/Revision、Subject/Role/Operator/Impl identities、必要閉包 vs 観測閉包、独立Expectedの出典と相関警告、実Consumer/Provider/Target Scope、PASS/FAIL/UNKNOWN/NOT RUN、Owner受理と現在Authorityを別欄に記録。
 
