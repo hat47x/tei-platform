@@ -2336,3 +2336,31 @@ EKI側#112/#266/#67/#115へ契約不足を返し、TEI #1130がJob意味と判�
 **次の実優先**：#2586は合成Policy VP/VEではなく、実`.tei` CaseRecord→OrgUnitの明示Relationと実Providerが発行したRequest・現行適用Scope/Read Witnessを同一Attemptで束縛する。#2622/#2628に実Data Ops/物理施行点が無ければ`NOT RUN: enforcement-unavailable`。未受理Owner Ruleなら`not accepted`。安全性・実Disclosure・Actual Effectの実証を今回のE1 Native PASSに上乗せしない。#1119 P0を維持する。
 
 **更新範囲**：この§44は現行コードと固定CIを調査して記録した設計・実験引継ぎ。独立E2E・新Provider/DB/Build/Studio/SHO/Host実験は未実施。
+
+## 45. AI-first足場の固定HEAD結果と、次の一回の統合反証（2026-11-04、§43/44の実証状況を更新・独立Owner維持）
+
+### 45.1 成熟した局所証拠と、統合でまだ欠ける証拠
+
+同じ「AIがテストを増やせる」という要求のうち、**DSL Pipeline候補の拡張**（#2813）、**保存Driver Scenario候補の拡張**（#2828）、**Scenarioの結果Claim上限**（#2830）は、別のConsumer・別HEADとして作業が進んだ。これらを新しい共通Runnerや第二Scenario正本へまとめず、まず既存CLI/Go testの実結果を確認する。
+
+| 既存作業 | fixed HEAD / 実CI | 確認できること | まだ主張できないこと |
+| --- | --- | --- | --- |
+| [Draft #2813](https://github.com/hat47x/tei-platform/pull/2813) | `2219fc4d4d28` / [Health #41744813520](https://github.com/hat47x/tei-platform/actions/runs/41744813520) **success** | AIがJSONでPipeline候補を追加し、既存Parse/Lower/Composeの正負例をGo testで検査する限定経路 | 受理済み業務Rule、独立Oracle、保存Scenario、Web/実Provider |
+| [Draft #2828](https://github.com/hat47x/tei-platform/pull/2828) | `71d9749c50b0` / [Health #41786950497](https://github.com/hat47x/tei-platform/actions/runs/41786950497) **failure** | 実ログで `go vet ./...`・`go test -count=1 -timeout 60m ./...`・`tei validate`はPASS。JSONを追加するScenario候補のtest-only Go経路を持つ | `cmd/tei/ai_scenario_candidate_test.go` の**gofmt drift**により全体Healthは不合格。最新修正HEADのPASSへ流用禁止。別担当の独立Expected・業務/E2E |
+| [Draft #2830](https://github.com/hat47x/tei-platform/pull/2830) | `38633584e424` / [Health #41787716244](https://github.com/hat47x/tei-platform/actions/runs/41787716244) **success**（Go1.26.10 Linux） | 保存6-Step Scenarioの `static-verification`／`exploratory-unpinned`／`generated-pinned`、`Verified`・`evidenceNature`・`scope` の限定判別に対する実Go回帰 | `Verified=true`をBusiness Effect／Host Grant／Web E2E／Source completenessとみなすこと |
+| [Draft #2812](https://github.com/hat47x/tei-platform/pull/2812) | `634ca10e1e5c` / [Health #41787598611](https://github.com/hat47x/tei-platform/actions/runs/41787598611) **success** | 初回Provider Load時の選択Imported Semantic原文/Manifestをprivate snapshotとして保持・後読可能な限定PoC | `FullInputClosure=false`、全Import/外部Provider、現在Disclosure・実Consumer・原子的Snapshot、許可されないRaw開示 |
+| [Draft #2829](https://github.com/hat47x/tei-platform/pull/2829) | `5e33d81cf637` / [Health #41809158439](https://github.com/hat47x/tei-platform/actions/runs/41809158439) **success** | Evidence E1→E2→E1（ABA）で同Fingerprintへ戻る限定characterization。旧Reviewの適格/連続性をFingerprint一致から断定できない反例 | OS Source/Grantの変更、全依存/時系列閉包、正式Evidence資格判定とUser公開 |
+
+上記のCI success/failureは**各PR head・各Claim単位**。#2812のprivate snapshot、#2829のABA、#2830の実行modeは互いに代替せず、合算して一つの実E2Eを構成したと主張しない。#2813/#2828/#2830のDraftがmainへ統合済みという意味でもない。
+
+### 45.2 次の最小実行順と検収
+
+1. **P0-Fmt**（#2828 Owner）：`gofmt -w cmd/tei/ai_scenario_candidate_test.go`で差分を最小修正し、**新exact HEAD**のRepository Healthと当該Case testを再実行。既存のGreen `go test`と失敗した全体Healthを混同しない。#2830には既にfixed-head Greenがあるため無関係なコードを動かさない。
+2. **P0-Holdout**（#2811/#2514 Owner）：#2813 Pipeline JSONと#2828 Driver Scenario JSONのそれぞれについて、**Candidate/Actualとは独立したExpectedとKnown Mutant**を1正例/1負例ずつ事前に固定。既存固定Anchorだけでは他のAI候補の業務Oracle独立性を証明しない。
+3. **P1-Actual**（#1180/#1163 Owner）：各Draftを別HEADでの局所合格として記録した後、必要なら隔離された統合試験版を選び、**同じ実対象Source/Scenario/Toolchain/Runner版**で実コマンド・実入力・結果を取得。単なるプロセス内`runScenarioCommand`のPASSを外部実バイナリ／Web／Host経路実行へ転記しない。#2822〜24で必要Sourceが未読込ならClaim ceilingを限定する。
+4. **P2-Read/ABA**（#2743/#2600/#2516 Owner）：Imported Source P0b-Aのprivate証拠を、required/actual Loaded closureおよび現在Consumer Disclosureとは別票に保持。Source/Meaning一致・digest ABAで過去引用や旧Grantが有効だと推定しない。外部Raw、path、fingerprintをAIへ無条件公開しない。
+5. **P3-Target/Effect**（#1180/#1174/各Host Owner）：同一ScenarioからWeb/CLIのTarget固有経路へ進めるのは、必要なSource/Step・独立Expected・Actual Builder Input・現在Grantが揃った範囲だけ。実Commit・Post-state・Consumer受領は別Receipt。欠けるなら`NOT RUN`／`UNKNOWN`／`UNQUALIFIED`とする。
+
+**完了の下限**：P0-Fmtの新HEAD Greenと、P0-Holdoutの独立Expected/既知Mutant実検出の少なくとも一つの同版Pairを実記録し、Observed Step/Contractと未観測Targetの境界が示せること。**これより前でもAI候補追加は継続してよい**。ただしP1〜P3が未観測なら価値実証B1/製品Conformanceを「成功」としない。
+
+**本節の実行水準**：既存固定CIログ・Source・Issueを再照合して計画順序を更新した**docs-only**。本変更で新規Go/CLI/統合/外部Host/SHO/Provider試験、独立Oracle・Known Mutant実測、Owner正式受理、PR mergeは **NOT RUN**。新Engine/中央Registry/実行Host/第二SSOTの設計採用なし。
