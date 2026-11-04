@@ -359,6 +359,47 @@ func TestReferenceWorkspaceDefinitionAndPluginWorkflow(t *testing.T) {
 	if len(contractReport.ContractCandidates[0].Consumers) != 8 || !strings.Contains(strings.Join(contractReport.AuthorityLimits, ","), "contract-compatibility-releases-dynamic-and-runtime-effects-unverified") {
 		t.Fatalf("candidate coverage or limits: %+v", contractReport)
 	}
+	// A reference Pattern's explicit contract-query invocation is a consumer too.
+	patternBefore, patternAfter := scratchWorkspace(t), scratchWorkspace(t)
+	const customerRel = "databases/master-data/contracts/customer.tei"
+	customerSource, err := os.ReadFile(filepath.Join(patternBefore, filepath.FromSlash(customerRel)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if bytes.Count(customerSource, []byte("contract master_data.customer v2.4")) != 1 {
+		t.Fatal("customer contract version anchor not unique")
+	}
+	customerEdit := bytes.Replace(customerSource, []byte("contract master_data.customer v2.4"), []byte("contract master_data.customer v2.5"), 1)
+	if err := os.WriteFile(filepath.Join(patternAfter, filepath.FromSlash(customerRel)), customerEdit, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	run(tei, 0, "validate", "-workspace", patternAfter)
+	var patternReport applicationMembershipComparison
+	if err := json.Unmarshal(run(compare, 0, "compare-application-membership", "-before", patternBefore, "-after", patternAfter), &patternReport); err != nil {
+		t.Fatal(err)
+	}
+	if len(patternReport.ContractCandidates) != 1 || patternReport.ContractCandidates[0].Contract != "master_data.customer" {
+		t.Fatalf("unexpected pattern contract candidates: %+v", patternReport.ContractCandidates)
+	}
+	invocations := map[string]int{}
+	for _, consumer := range patternReport.ContractCandidates[0].Consumers {
+		if consumer.Kind != "application-pattern-contract-query" {
+			continue
+		}
+		if consumer.Query != "find_by_id" {
+			t.Fatalf("unexpected pattern invocation candidate: %+v", consumer)
+		}
+		invocations[consumer.ID]++
+	}
+	for _, id := range []string{"order_entry/order_entry.customer_reference", "repair_intake/repair_intake.customer_reference"} {
+		if invocations[id] != 2 {
+			t.Fatalf("pattern invocation %s candidates=%d, want before/after each: %+v", id, invocations[id], patternReport.ContractCandidates[0].Consumers)
+		}
+	}
+	if len(invocations) != 2 {
+		t.Fatalf("unexpected pattern invocation set: %+v", invocations)
+	}
+	t.Log("reference pattern contract-query: master_data.customer version edit reports both applications' customer_reference/find_by_id in both snapshots")
 	contractWorld, err := workspace.Load(after)
 	if err != nil {
 		t.Fatal(err)

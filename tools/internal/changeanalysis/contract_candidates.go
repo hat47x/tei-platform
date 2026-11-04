@@ -27,7 +27,9 @@ type ContractChangeCandidate struct {
 	Consumers []ContractConsumerCandidate `json:"consumers"`
 }
 
-// ContractCandidates scans only four explicit reference collections. Query
+// ContractCandidates scans only five explicit reference declarations: an
+// Application contract requirement, a reference Pattern's contract-query
+// invocation, and header-detail, executor and SQL realization bindings. Query
 // declarations are keyed by complete Database and Contract identities, not
 // by a shared suffix. Both snapshots are scanned even after removal.
 func ContractCandidates(before, after ir.World) ([]ContractChangeCandidate, error) {
@@ -95,6 +97,12 @@ func ContractCandidates(before, after ir.World) ([]ContractChangeCandidate, erro
 							add("application-contract-requirement", string(app.ID)+"/"+string(db.Alias), "")
 						}
 					}
+				}
+				for _, p := range app.Patterns {
+					if p.ContractQuery == nil || p.ContractQuery.Contract != k.contract {
+						continue
+					}
+					add("application-pattern-contract-query", string(app.ID)+"/"+string(p.ID), string(p.ContractQuery.Query))
 				}
 			}
 			for _, b := range w.HeaderDetailContractQueryBindings {

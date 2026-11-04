@@ -11,8 +11,15 @@ import (
 
 func TestContractCandidatesBeforeAfterExactIdentityAndRemoval(t *testing.T) {
 	old := ir.World{
-		Databases:    []database.Database{{ID: "sales", Contracts: []database.Contract{{ID: "sales.order", Version: database.ContractVersion{Major: 1}}}}},
-		Applications: []application.Application{{ID: "app", Databases: []application.DatabaseRequirement{{Alias: "db", TargetDatabase: "sales", RequiredContracts: []database.ContractRequirement{{ContractID: "sales.order", CompatibleMajor: 1}}}}}},
+		Databases: []database.Database{{ID: "sales", Contracts: []database.Contract{{ID: "sales.order", Version: database.ContractVersion{Major: 1}}}}},
+		Applications: []application.Application{{
+			ID:        "app",
+			Databases: []application.DatabaseRequirement{{Alias: "db", TargetDatabase: "sales", RequiredContracts: []database.ContractRequirement{{ContractID: "sales.order", CompatibleMajor: 1}}}},
+			Patterns: []application.Pattern{
+				{ID: "app.look", ContractQuery: &application.ContractQueryInvocation{Contract: "sales.order", Query: "find"}},
+				{ID: "app.other", ContractQuery: &application.ContractQueryInvocation{Contract: "sales.other", Query: "find"}},
+			},
+		}},
 		HeaderDetailContractQueryBindings: []realization.HeaderDetailContractQueryBinding{
 			{Application: "app", Pattern: "app.a", Target: realization.ContractQueryTarget{Database: "sales", Contract: "sales.order", Query: "find"}},
 			{Application: "app", Pattern: "app.b", Target: realization.ContractQueryTarget{Database: "sales", Contract: "sales.other", Query: "find"}},
@@ -32,9 +39,15 @@ func TestContractCandidatesBeforeAfterExactIdentityAndRemoval(t *testing.T) {
 		if c.Kind == "header-detail-binding" && (c.ID != "app/app.a" || c.Query != "find") {
 			t.Fatalf("unrelated consumer: %+v", c)
 		}
+		if c.Kind == "application-pattern-contract-query" && (c.ID != "app/app.look" || c.Query != "find") {
+			t.Fatalf("unrelated pattern invocation: %+v", c)
+		}
 	}
 	if seen["before/header-detail-binding"] != 1 || seen["after/header-detail-binding"] != 0 || seen["before/application-contract-requirement"] != 1 || seen["after/application-contract-requirement"] != 1 {
 		t.Fatalf("old and new declarations conflated: %+v", seen)
+	}
+	if seen["before/application-pattern-contract-query"] != 1 || seen["after/application-pattern-contract-query"] != 1 {
+		t.Fatalf("pattern contract-query declaration missing: %+v", seen)
 	}
 	if same, err := ContractCandidates(old, old); err != nil || len(same) != 0 {
 		t.Fatalf("unchanged contract produced candidate: %+v %v", same, err)
