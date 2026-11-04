@@ -26,6 +26,13 @@ type importedParsedLoadEvidence struct {
 	FullInputClosure bool
 }
 
+// manifestReadBytes is an opaque pointer in the publicly returned Result.
+// Ordinary fmt formatting of Result must not traverse the retained raw bytes.
+// This is not authorization against trusted in-process code or reflection.
+type manifestReadBytes struct {
+	content []byte
+}
+
 // importedParsedLoad is private, transient provenance. No raw bytes, Source
 // occurrence paths, fingerprints or Manifest details are projected by a new
 // public accessor. Importing a Semantic Namespace is not disclosure authority.
@@ -43,15 +50,15 @@ func captureImportedParsedLoad(imp WorkspaceImport, digest string, provider Resu
 	var empty importedParsedLoad
 	paths := provider.semanticFilesByNamespace[imp.Namespace]
 	if len(paths) == 0 || provider.sourceSnapshot == nil ||
-		provider.sourceManifest.Path == "" || len(provider.sourceManifestBytes) == 0 {
+		provider.sourceManifest.Path == "" || provider.sourceManifestBytes == nil || len(provider.sourceManifestBytes.content) == 0 {
 		return empty, fmt.Errorf("import %q lacks same-Load parsed Source or manifest evidence", imp.Alias)
 	}
-	if sourceindex.Fingerprint(provider.sourceManifestBytes) != provider.sourceManifest.SHA256 {
+	if sourceindex.Fingerprint(provider.sourceManifestBytes.content) != provider.sourceManifest.SHA256 {
 		return empty, fmt.Errorf("import %q has inconsistent Load-time manifest identity", imp.Alias)
 	}
 
 	files := make(map[string][]byte, len(paths)+1)
-	files[provider.sourceManifest.Path] = bytes.Clone(provider.sourceManifestBytes)
+	files[provider.sourceManifest.Path] = bytes.Clone(provider.sourceManifestBytes.content)
 	evidence := importedParsedLoadEvidence{
 		Alias:          imp.Alias,
 		ProviderPath:   imp.Path,
@@ -108,7 +115,7 @@ func importedParsedLoadSnapshot(loaded Result, alias string) (importedParsedLoad
 		return empty, nil, fmt.Errorf("import alias %q is not resolved", alias)
 	}
 	capture, ok := loaded.importedParsedLoads[alias]
-	if !ok || capture.evidence.Alias != alias ||
+	if !ok || capture == nil || capture.evidence.Alias != alias ||
 		capture.evidence.ProviderPath != selected.Path ||
 		capture.evidence.Namespace != selected.Namespace ||
 		capture.evidence.SemanticDigest != selected.SemanticDigest {
