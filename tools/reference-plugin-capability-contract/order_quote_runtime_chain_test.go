@@ -365,6 +365,37 @@ func TestCandidateQuoteShapeConformanceAndRealRuntimeProcessOneInvocation(t *tes
 		if err := validateInvocationPayload(shape, got.ResultPayload); err != nil {
 			t.Fatal(err)
 		}
+		// A presentation-only reorder of required fields is normalized by the
+		// existing v0 rule; retain the exact same Shape and provider evidence.
+		reordered := shape
+		reordered.Root.Required = append([]string(nil), shape.Root.Required...)
+		for left, right := 0, len(reordered.Root.Required)-1; left < right; left, right = left+1, right-1 {
+			reordered.Root.Required[left], reordered.Root.Required[right] = reordered.Root.Required[right], reordered.Root.Required[left]
+		}
+		if reflect.DeepEqual(reordered.Root.Required, shape.Root.Required) || invocationShapeFingerprint(reordered) != contract.ResultShapeFingerprint {
+			t.Fatal("required-order-only edit should preserve the v0 Shape fingerprint")
+		}
+		reorderedImpl := changedImpl
+		reorderedImpl.ResultShapeArtifact = reordered
+		registry, err = NewInvocationRegistry([]InvocationImplementation{reorderedImpl}, authorities, invocationShapePublisherTrustForTest(t, authorities))
+		if err != nil {
+			t.Fatalf("unchanged evidence rejected on required reorder: %v", err)
+		}
+		before = launcher.calls
+		if result, err := invoke(editor); err != nil || launcher.calls != before+1 || !strings.Contains(string(result.ResultPayload), `"taxMinor":0`) {
+			t.Fatalf("same evidence and changed provider after reorder: %+v, %v", result, err)
+		}
+		weakened := reordered
+		weakened.Root.Required = append([]string(nil), reordered.Root.Required[1:]...)
+		if invocationShapeFingerprint(weakened) == contract.ResultShapeFingerprint {
+			t.Fatal("removed requirement reused old fingerprint")
+		}
+		weakenedImpl := reorderedImpl
+		weakenedImpl.ResultShapeArtifact = weakened
+		if _, err := NewInvocationRegistry([]InvocationImplementation{weakenedImpl}, authorities, invocationShapePublisherTrustForTest(t, authorities)); err == nil || launcher.calls != before+1 {
+			t.Fatalf("changed requirement reused old pin or launched process: %v", err)
+		}
+		t.Log("required field reorder needs no Shape or Provider evidence change; removing a required field cannot reuse the old pin")
 		t.Log("isolated changed semantic, test-only mapping gate, candidate authorizer, synthetic evidence and changed real provider executed in order; missing mapping, denied viewer and old evidence stopped before process; tax=0 is a test marker")
 	})
 	t.Run("isolated result shape change does not inherit old evidence", func(t *testing.T) {
