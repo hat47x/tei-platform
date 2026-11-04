@@ -220,3 +220,29 @@ W1で`docs/reference.md`をReadして完全path一致を観測後、**文書byte
 **効果比較の限定**：D0とD1は**読取費用も情報量も異なる**ので、D1の根拠到達向上をModel順位効果／同予算Method寄与と混同しない。比較では`initial report + actually acquired bytes + attempted/rejected/skipped scope + read budget + Source asOf`を区別する。真にM1を評価する段階では、D1/M1へ同じTool/Grant/Scope/情報/予算を与えて選択をblind比較し、実際に読まれていない候補を`found`として採点しない。
 
 **受理・Authorityの停止線**：現在のPoCは任意の追加Probe用CLI Flagを提供しない。test-only`localDocsProbe`を製品Toolや実Host権限の証拠に変換しない。D1の目的は、Methodが本当に追加Sourceへ到達したかを将来評価するための**実読取と人工Oracleの分離**である。#2514独立Oracle、#2533評価、SEI #767次Probe、TAI #271現在資格、#2516開示がOwner。新Runtime Host/Registry/共通Evidence正本/正式Gate/ADR承認はなし。
+
+<!-- tei-devctx-p2b-blind-location-bound-20261104 -->
+## 12. P2-2b：初期情報が識別不能な二世界では、固定予算1回の次Probe選択に上限がある
+
+**新しい主張**：D1とSEI M1の比較は、追加Readによる情報獲得とMethodの「見通しのよさ」を混ぜてはならない。初期Observationが完全に同じ二世界に、正解の根拠が互いに異なるScopeへ配置されている場合、**同じ初期入力だけで単一Scopeを選ぶ決定的方法**は両世界を同時には当てられない。これはモデルの性能批判ではなく、情報不足の論理的制約である。実M1を呼ばずにこの制約を公開合成Goで確認する。
+
+### CC-10：隠された根拠所在の対称な二世界
+- 固定されたQは「変更対象Goファイルを明示参照している文書を探す」。`Discover`に渡すtargetとGo source/test全byteは同一で、先行弱`_test.go`12件が候補枠を埋めるため、**初期Reportは完全一致**。
+- W-D：`docs/candidate.md`に対象完全path、`plan/adr/candidate.md`に他の同長path。W-A：両方の文書内容を入れ替える。両世界に**同じファイルpathと件数**が存在し、許されたProbe選択肢は`docs`または`plan/adr`のどちらか1つ。変えるのは隠れた文書内容のみで、Sourceの版・Read取得数・Budgetは等しい。
+- `readOneFixedScope`は**評価専用**のread-only関数。選択済みScope内のMarkdownを`readInside`で実際に1件読み、Path/SHA256/ByteCount/完全path字句一致とAttempt数を出す。**正解Scopeや世界IDは引数にしない**。現Developer Context本体・正式Tool/API/Host認可は変更しない。
+
+| 事前に固定したProbe（追加Read予算1） | W-D：根拠はdocs | W-A：根拠はplan/adr | 2世界の評価成績 |
+| --- | --- | --- | --- |
+| `docs`のみ | 到達 | 未到達 | **1/2** |
+| `plan/adr`のみ | 未到達 | 到達 | **1/2** |
+
+この**1/2は人工的に均等重み付けした二世界の一致数**であり、実Repoにおける成功率・モデル評価スコア・一般的な確率ではない。実SEI M1が同じ初期情報でどちらのScopeを選んでも、正解を事前に知る別情報なしに**両世界で必ず到達する保証**はできない。ランダム選択・文書名分布・許可Scope等、別の情報や戦略がある場合はその条件を公開し、独立に採点する。
+
+### CC-11：実Readをもう1回使う適応的な対照とTool未許可の負例
+- 最初に`docs`を1件実Readし、対象字句一致しなかった場合のみ`plan/adr`を追加で1件Readする。W-Dでは**1 Read**、W-Aでは**2 Read**で必要Rへ到達。二世界合計は**3 Read**、1回固定選択の二世界合計2 Readより1 Read多い。
+- この改善は**予算を増やしたことによる追加情報獲得**であり、モデルM1の「同予算での純粋な追加価値」ではない。Model使用のtoken/latency/送信費、read失敗、Audience/Host資格をさらに付けなければ実用比較にならない。
+- 合成`enabled=false`では`unsupported`、実Read0、証拠SHAなしとして止める。人工的な可用性分岐は**Hostの実Grant/OS隔離を証明しない**。Tool Roster・Scope・予算・DisclosureはMethod外部で与える。
+
+**実装と判定**：PR #2669の`tools/reference-developer-context/blind_probe_scope_comparison_test.go`へ`TestBlindProbeSameReportCompetingScopesOneReadBound`と`TestBlindProbeAdditionalReadResolvesMissAtHigherCost`を追加し、Focused workflowの`TestBlindProbe`対象とする。**当該exact HEADのGo CI結果が確定するまではPASS表現は予測値として扱う**。Go実行が合格しても、認知Methodの実質的増分効果の実証にはならない。
+
+**次にM1を検証するためのゲートではない受入手順**：①現在の実SEI Methodで選べるProbeの表現を確認、②両側に同じ初期Report/Q/現在Source/実Tool/Scope/Grant/予算を提供、③正解Scopeと独立Rを隠す、④Methodが提案したScopeに対して**同じToolで実Read**、⑤Read結果のSHA/時点/失敗/Consumer開示と費用で評価、⑥1回Budgetでの失敗と2回Budgetでの改善を混ぜない。Methodによる選択にModelの追加情報があるならその出典・開示資格を別記。#2514がOracle、SEI #767がMethod、#2533が比較、#2516がDisclosure、TAI #271が再資格化を所有。ADR-0038と業務Meaningの受理はOwner未決。新Host/Registry/正式Proof Store/製品Gateを追加しない。
