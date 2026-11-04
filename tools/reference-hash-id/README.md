@@ -69,9 +69,9 @@ CLIへのTarget Snapshotは厳密な単一行正準JSON `tei.hashid.target-probe
 ## 試験
 
 ```bash
-go test ./tools/reference-hash-id -count=1
-gofmt -l tools/reference-hash-id/*.go
-go vet ./tools/reference-hash-id
+go test ./tools/reference-hash-id/... -count=1
+gofmt -l tools/reference-hash-id/*.go tools/reference-hash-id/cmd/hashid-probe/*.go
+go vet ./tools/reference-hash-id/...
 node --test tools/reference-hash-id/hashid.crosslang.test.mjs
 ```
 
