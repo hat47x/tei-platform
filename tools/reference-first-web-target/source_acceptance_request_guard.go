@@ -10,6 +10,10 @@ import (
 	"tei/internal/sourceindex"
 )
 
+// acceptanceKindHeader carries the Source Acceptance kind (provisional or
+// unspecified; never "formal" today). Not G evidence and not a deployment basis.
+const acceptanceKindHeader = "X-TEI-Source-Acceptance-Kind"
+
 // guardCurrentAcceptedSource prevents a newly arrived HTTP request from
 // reaching a Runner/Command after the Host has revoked or replaced the
 // Accepted Source used to construct this process's immutable World.
@@ -22,6 +26,9 @@ import (
 func guardCurrentAcceptedSource(hostCtx context.Context, next http.Handler, reader sourceacceptance.Reader, applicationID string, index sourceindex.Index, accepted sourceacceptance.Record) http.Handler {
 	// Retain the exact startup Source membership. The runtime never upgrades
 	// its World automatically when a new Host Decision appears.
+	if accepted.AcceptanceKind == "" {
+		accepted.AcceptanceKind = sourceacceptance.AcceptanceKindUnspecified
+	}
 	startup := sourceindex.Index{Artifacts: append([]sourceindex.Artifact(nil), index.Artifacts...)}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// The Host's lifetime is independent from the individual HTTP
@@ -43,6 +50,9 @@ func guardCurrentAcceptedSource(hostCtx context.Context, next http.Handler, read
 			http.Error(w, "SOURCE_ACCEPTANCE_CURRENT_UNAVAILABLE", http.StatusServiceUnavailable)
 			return
 		}
+		// D9: make the Acceptance kind visible on every response so a
+		// provisional Acceptance cannot be mistaken for a formal one.
+		w.Header().Set(acceptanceKindHeader, accepted.AcceptanceKind)
 		next.ServeHTTP(w, r)
 	})
 }

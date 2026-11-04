@@ -614,3 +614,43 @@ func TestStrictJSONUnicodeFoldedAliasRejected(t *testing.T) {
 		t.Fatal("Unicode folded key shadowing was accepted")
 	}
 }
+
+func TestProvisionalAcceptanceIsNeverFormalEvidence(t *testing.T) {
+	zeroWidth, bidi, nl := string(rune(0x200b)), string(rune(0x202e)), string(rune(10))
+	for _, label := range []string{"provisional", "Provisional", " PROVISIONAL" + "	", "prov" + zeroWidth + "isional", "provisional" + bidi, "unspecified", "Unspecified" + nl, "UNSPECIFIED"} {
+		for _, claim := range []string{"E0", "E1", "E2"} {
+			p := fixture()
+			p.Claim = claim
+			p.Acceptance.AcceptanceKind = label
+			r := Audit(p, h, m)
+			if !has(r, "PROVISIONAL_ACCEPTANCE_NOT_FORMAL_EVIDENCE") || r.Status != "INCOMPLETE" || r.ProductGate != "UNQUALIFIED" {
+				t.Fatalf("%s %q: %+v", claim, label, r)
+			}
+		}
+	}
+	for _, label := range []string{"Formal", "formal ", "provisional2", "x"} {
+		p := fixture()
+		p.Acceptance.AcceptanceKind = label
+		if r := Audit(p, h, m); !has(r, "ACCEPTANCE_KIND_UNRECOGNIZED") || r.Status != "INCOMPLETE" {
+			t.Fatalf("%q: %+v", label, r)
+		}
+	}
+	// Omitted (legacy packet) and the exact label "formal" leave the complete fixture reviewable.
+	for _, label := range []string{"", "formal"} {
+		p := fixture()
+		p.Acceptance.AcceptanceKind = label
+		if r := Audit(p, h, m); r.Status != "REVIEW_REQUIRED" || r.ProductGate != "UNQUALIFIED" {
+			t.Fatalf("%q: %+v", label, r)
+		}
+	}
+	// The strict packet decoder accepts the field and the CLI still fails.
+	raw, _ := json.Marshal(func() Packet { p := fixture(); p.Acceptance.AcceptanceKind = "provisional"; return p }())
+	path := filepath.Join(t.TempDir(), "p.json")
+	if err := os.WriteFile(path, raw, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	var out bytes.Buffer
+	if err := run([]string{"-packet", path, "-head", h, "-main", m}, &out); err == nil || !strings.Contains(out.String(), "PROVISIONAL_ACCEPTANCE_NOT_FORMAL_EVIDENCE") {
+		t.Fatalf("err=%v out=%s", err, out.String())
+	}
+}
