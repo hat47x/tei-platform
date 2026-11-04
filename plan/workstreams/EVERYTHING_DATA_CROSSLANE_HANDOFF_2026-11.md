@@ -2102,15 +2102,15 @@ EKI側#112/#266/#67/#115へ契約不足を返し、TEI #1130がJob意味と判�
 
 **実施状態**：本追補はDocs-onlyで、新しいP0 PacketのGo/CLI/Web/Provider/EKI/SHO、Independent Oracle/Mutant Run、実Consumer受領を本変更では実行していない。上記既存PRの限定Evidenceを横断整理しただけであり、Draft #2667を維持する。
 
-## 43. AI-firstテスト入場資格：Sourceの読み込み閉包・CLI契約・独立Oracleを同じAttemptで確認する（2026-11-04、#1180/#2811と現mainの差分を接続・Docs-only）
 
-### 43.1 背景：validate成功と「対象を検査できた」を分ける
+
+### 43.5 Source入場確認：validate成功と「対象を検査できた」を分ける
 
 [#2822](https://github.com/hat47x/tei-platform/issues/2822) の再現では宣言0件のWorkspaceで `tei validate -json` が `ok: true` を返し、`model catalog` は標準定義13件を表示する。[#2823](https://github.com/hat47x/tei-platform/issues/2823) ではmanifestの未知のSource名、非対象拡張子、定められたファイル名との大文字小文字差で、`workspace-files` に表示されても実Loaderに届かない例がある。[#2824](https://github.com/hat47x/tei-platform/issues/2824) では `tei commands` の19件と契約文書の13件が異なり、各コマンドの `schemaVersion` や `world` の契約外扱いがDiscoveryで分からない。
 
 これらは現mainに対する各Issue記載の限定実行観測であり、本追補で再実行した証拠ではない。**syntax/validate PASS ≠ Source completeness ≠ Scenario applicability ≠ business result PASS** として、AI候補の合格証拠を構成する。既存の `tei.driver-scenario/v0`、6-Step Scenario、`tei scenario verify/generate/run/check` は再利用するが、コマンドの存在と全経路の業務同等性を混同しない。
 
-### 43.2 テスト入場から適用までの区別（新しい中央Registryではない）
+### 43.6 テスト入場から適用までの区別（新しい中央Registryではない）
 
 既存CLI、Workspace index、Scenario、Target receiptを突き合わせ、各Attemptの証拠に次の異なる列を残す。
 
@@ -2123,7 +2123,7 @@ EKI側#112/#266/#67/#115へ契約不足を返し、TEI #1130がJob意味と判�
 
 **Coverage分母**は「要求されたObligation」と「現在観測できる適用可能Obligation」を別に保存し、unknown/partial/permission-denied/unsupportedをゼロ件に潰さない。CLI/Webで共通Scenarioを用いてもTarget固有の認可・Operation・Effect・結果/VisualのEvidenceは別。Required Stepを生成器が暗黙skipした場合、同等性PASSは不可。
 
-### 43.3 最小反例パケット（独立Expectedを先に固定する）
+### 43.7 Source/CLI事前確認の既存反例パケット（独立Expectedを先に固定する）
 
 | ID | 操作 | 合格に必要な判別（現状の修正完了を意味しない） | 既存Owner |
 | --- | --- | --- | --- |
@@ -2138,7 +2138,7 @@ EKI側#112/#266/#67/#115へ契約不足を返し、TEI #1130がJob意味と判�
 
 最小P0は **ADM-01〜04 + ADM-06**。ただし現在のCLI/Loaderに不足する列は「未実装・未観測」と記録し、テストツール側で捏造したPASSにしない。P1としてADM-05/07/08を繋ぎ、既存Go/CLI・必要時Web/実Consumerと同一Attemptで負例を実行する。ADM-01〜04の契約追加・警告/エラー選択・schemaVersionは各Issue Ownerが決め、横断計画が先回りしてAPI変更を採用しない。
 
-### 43.4 判定・Owner・停止条件
+### 43.8 判定・Owner・停止条件
 
 - **局所実行可**：AI生成FixtureのParseやOperator整合は、Source閉包が未証明でも対象を限定した候補試験として実施可能。ただし全Workspace/全業務のCoverage、Target同等性、適用資格のClaimは停止。
 - **製品同等性の判定停止**：Required Source/Step/Branch/Target contractの未読込、unknown、version mismatch、読み込み対象不明、実行体入力不一致、独立Expected不在、Host/Provider Grant不明、Commit unknownのいずれかに依存するとき。単に回避・無視したものをPASSにしない。
@@ -2146,3 +2146,37 @@ EKI側#112/#266/#67/#115へ契約不足を返し、TEI #1130がJob意味と判�
 - **責務**：#2822/#2823/#2824がCLI入場証拠、#2595が実Source入力、#2811/#2813がAI候補、#1180がScenario/Target、#2604が公開・Reader、#422が価値比較の横断索引。第二Test SSOT、第二CLI契約、第二Evidence Engine、中央認可/Registry/Hostは作らない。
 
 **今回の状態**：この節はGitHub上の各Issueの限定的な実観測と他チャットの既存方針を結び直した **docs-only計画**。ADM-01〜08を本作業で再実行しておらず、外部Harness/実Web/Provider/Consumer/Owner受理は **NOT RUN**。Draftを維持し、各Issueの採否・実装は所有者の判断に残す。
+
+
+### 43.9 VA-04／VA-02／CP系列との対応表（既存OwnerとOracleを維持）
+
+横断側の [TAI Draft #423／VA-04](https://github.com/hat47x/tai-pleroma/blob/docs/yi-product-value-scope-review-20261104/evaluations/VA-04-evidence-readiness-preflight.md) は **C1 Declared、C2 Discovered、C3 Consumed、C4 Asserted、C5 Eligible & Received** の5区分を既に持つ。上記§43.5〜43.8の6つの観測段階とは、以下のように**対応づけるだけ**とし、新規状態機械・二重SSOT・共通Gateを作らない。
+
+| TAI VA-04 | 本§43の実証上の詳細 | 検証の限界 |
+| --- | --- | --- |
+| C1 Declared | §43.6 Declared、I0の要求Source/Scenario | 宣言があるだけでは存在・Read未確認 |
+| C2 Discovered | §43.6 Discovered | Source index/Workspace-files列挙≠Loaderによる消費 |
+| C3 Consumed | §43.6 Loaded、I0で実Builder/Interpreterが読んだbyteと区別 | Loaderのread確認≠Build入力閉包。後段Buildは独立Witnessが必要（#2595） |
+| C4 Asserted | §43.6 Applicable/Executedと独立Expected照合、I1/I2 | 実行・Assertion件数≠独立Oracleや業務意味受理 |
+| C5 Eligible & Received | §43.6 Observed/Qualifiedのうち現在Grant/実Consumer受領、I3/I4 | Parser-only候補試験ではC5のEffect/受領を必須にせず、該当Claimを限定 |
+
+**反例の正本とIDを増やさない**：ADM-01〜04はVA-04のPF-01〜04をTEIで詳述したもの。ADM-05は#2595/#2819（CP-03）、ADM-06は#2811/#2813のAI-EXT-01／独立Oracle、ADM-07はPF-05／#1180（CP-08）、ADM-08は#2604 AP-01〜07の接合先。EKI固有PF-06（3値/4値の契約未決）、PF-08（時刻系）はEKI Ownerへ残す。CP-01〜08やPF-01〜08をこの節で再定義・採番しない。
+
+### 43.10 最初の実行票：局所実証の継続と誤った全体合格の拒否
+
+**目的**：最初からWeb/Host/外部Provider全部を組み込まず、同一の固定版に対する「局所テストは実行できるが、未検査を全体PASSにしない」を最短で観測する。これは [#2811 §12](https://github.com/hat47x/tei-platform/pull/2811) の2 Consumer × 正負各1件を置換せず、実行前の小さな確認票を追加するもの。
+
+| 確認 | 最小入力/実行 | 独立Expected | Claim/後続の扱い |
+| --- | --- | --- | --- |
+| P0-A | 利用者宣言0件のWorkspaceで現行`tei validate -json`と`model catalog` | 標準`std`を利用者宣言に数えない。指定すべき業務Sourceが無いなら「業務モデル検査完了」ではない | 現行CLIの局所観測を記録。schema変更/警告方針は#2822 Owner未決 |
+| P0-B | 既知rootの綴り変更、未知root、管理一覧に出る非対象拡張子 | `Declared/Discovered`の差と`Loaded`の不明・未消費を分ける | User Jobの完全性Claimはunqualified。Reader/diagnostic契約の採否は#2823 Owner |
+| P0-C | 同一binaryの`tei commands`と対象コマンド実応答（複数modeを区別） | 実応答が認識できた版だけをPin。`world`を安定`tei.cli.*`契約としない | Mode/Failureを含む互換性は#2824 Owner未決。Discoveryから値を補完しない |
+| P0-D | 同じfix済みSource/Scenario版で#2813候補と#1180 v0をそれぞれ正負試験 | Expected作成者・固定Known Mutant・対象Step分母をActual/候補生成者から分離 | 局所Parser/CLIのPASSに限定。Web/Auth/Effect/ConsumerはNOT RUNまたは未観測 |
+
+各行に `exact repo/full SHA、PR head、actual binary/toolchain、Workspace/Source selector、fixture digest、Expected origin、対象Scope、実行コマンド/exit/JSON schema、正負結果、Observed vs Unknown、Claim ceiling、Owner` を残す。**外部送信可能な記録は許可されたProjectionのみ**で、source raw/path/fingerprint/hidden dataの公開許可は別途確認する。
+
+**Claim別のGo/No-Go**：候補JSON追加、構文・型・Source位置の限定試験はC1〜C3やTarget受領が不明でも「局所・限定」と明記して前進可能。一方、未読込/未探索がある状態での全業務Coverage、Target等価、再利用可能なBuild/Artifact、実副作用成功の宣言は停止。資料不足を一律の全研究停止にせず、当該Claimが依存する範囲だけfail-closedとする。
+
+**今後の順**：P0-A〜Dの再現（現行main exact版、各Ownerが保有する手順を再利用）→ #2811 G0〜G4の独立Oracle／Known Mutant実測 → #2595の実Builder byte帰属 → #2604の一式公開/Consumer受領 → #1180 Web/Host固有E2E。各段階の証拠を別版・別実行から無言で合成しない。新しい共通Reader/Runner、AIの自動Owner承認、EKI常時介在を前提にしない。
+
+**状態**：§43.5〜43.10は計画上の統合・重複整理のみ。追加の実CLI、Go、CI、別Harness、Web/Host/Provider/Consumer、独立Oracle/Mutantの実行およびOwner受理は本作業では **NOT RUN**。改版対象の実装責務は従来のOwner Issueのまま。
