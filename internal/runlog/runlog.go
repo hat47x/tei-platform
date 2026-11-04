@@ -19,6 +19,9 @@ const (
 	Running   Status = "running"
 	Completed Status = "completed"
 	Failed    Status = "failed"
+	// Blocked means the run stopped because a precondition was not met. It is
+	// not a failure: nothing was attempted.
+	Blocked Status = "blocked"
 )
 
 // Record is one attempt of one run.

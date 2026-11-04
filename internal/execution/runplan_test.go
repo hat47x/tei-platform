@@ -45,7 +45,7 @@ func TestRunPlanRunsTheOperationsInOrderAndCompletes(t *testing.T) {
 		return execution.StepResult{Operation: string(operation), Status: "resolved"}
 	}
 
-	decision, results, err := execution.RunPlan(context.Background(), closePlan(), []string{"2026-10"}, journal, step)
+	decision, results, err := execution.RunPlan(context.Background(), closePlan(), []string{"2026-10"}, journal, step, nil)
 	if err != nil {
 		t.Fatalf("run: %v", err)
 	}
@@ -70,7 +70,7 @@ func TestRunPlanStopsAtTheFirstFailureAndRecordsIt(t *testing.T) {
 		return execution.StepResult{Operation: string(operation), Status: "resolved"}
 	}
 
-	_, results, err := execution.RunPlan(context.Background(), closePlan(), []string{"2026-10"}, journal, step)
+	_, results, err := execution.RunPlan(context.Background(), closePlan(), []string{"2026-10"}, journal, step, nil)
 	if err != nil {
 		t.Fatalf("a failed step is recorded, not returned: %v", err)
 	}
@@ -88,10 +88,10 @@ func TestRunPlanRefusesACompletedRun(t *testing.T) {
 	step := func(_ context.Context, operation core.CanonicalID) execution.StepResult {
 		return execution.StepResult{Operation: string(operation), Status: "resolved"}
 	}
-	if _, _, err := execution.RunPlan(context.Background(), closePlan(), []string{"2026-10"}, journal, step); err != nil {
+	if _, _, err := execution.RunPlan(context.Background(), closePlan(), []string{"2026-10"}, journal, step, nil); err != nil {
 		t.Fatalf("first run: %v", err)
 	}
-	decision, results, err := execution.RunPlan(context.Background(), closePlan(), []string{"2026-10"}, journal, step)
+	decision, results, err := execution.RunPlan(context.Background(), closePlan(), []string{"2026-10"}, journal, step, nil)
 	if err != nil {
 		t.Fatalf("second run: %v", err)
 	}
@@ -120,7 +120,7 @@ func TestRunPlanResumesAfterTheRecordedSteps(t *testing.T) {
 		ran = append(ran, string(operation))
 		return execution.StepResult{Operation: string(operation), Status: "resolved"}
 	}
-	decision, results, err := execution.RunPlan(context.Background(), plan, key, journal, step)
+	decision, results, err := execution.RunPlan(context.Background(), plan, key, journal, step, nil)
 	if err != nil {
 		t.Fatalf("resume: %v", err)
 	}
@@ -136,5 +136,90 @@ func TestRunPlanResumesAfterTheRecordedSteps(t *testing.T) {
 	last := journal.records[len(journal.records)-1]
 	if last.Status != runlog.Completed || len(last.Steps) != 3 {
 		t.Fatalf("the resumed run must complete with every step: %+v", last)
+	}
+}
+func unattendedPlan() semantic.RunPlan {
+	plan := closePlan()
+	plan.Autonomy = "unattended"
+	return plan
+}
+
+func TestUnattendedRunStopsWhenNoPreconditionCheckIsConfigured(t *testing.T) {
+	journal := &runJournal{}
+	called := false
+	step := func(_ context.Context, operation core.CanonicalID) execution.StepResult {
+		called = true
+		return execution.StepResult{Operation: string(operation), Status: "resolved"}
+	}
+	_, results, err := execution.RunPlan(context.Background(), unattendedPlan(), []string{"2026-10"}, journal, step, nil)
+	if err != nil {
+		t.Fatalf("a blocked run is not an error: %v", err)
+	}
+	if called {
+		t.Fatal("an unattended run without a precondition check must not execute")
+	}
+	if len(results) != 1 || results[0].Status != "blocked" {
+		t.Fatalf("the blocked step must be reported: %+v", results)
+	}
+	last := journal.records[len(journal.records)-1]
+	if last.Status != runlog.Blocked {
+		t.Fatalf("the run must be recorded blocked: %+v", last)
+	}
+}
+
+func TestUnattendedRunStopsWhenAPreconditionIsNotMet(t *testing.T) {
+	journal := &runJournal{}
+	called := false
+	step := func(_ context.Context, operation core.CanonicalID) execution.StepResult {
+		called = true
+		return execution.StepResult{Operation: string(operation), Status: "resolved"}
+	}
+	preconditions := func(operation core.CanonicalID) string {
+		if operation == "sales.import" {
+			return "the period is closed"
+		}
+		return ""
+	}
+	_, results, err := execution.RunPlan(context.Background(), unattendedPlan(), []string{"2026-10"}, journal, step, preconditions)
+	if err != nil {
+		t.Fatalf("run: %v", err)
+	}
+	if !called {
+		t.Fatal("the first step may run before the blocked one")
+	}
+	if len(results) != 2 || results[1].Status != "blocked" || results[1].Detail != "the period is closed" {
+		t.Fatalf("the blocked step must name the reason: %+v", results)
+	}
+}
+
+func TestUnattendedRunExecutesWhenEveryPreconditionIsMet(t *testing.T) {
+	journal := &runJournal{}
+	step := func(_ context.Context, operation core.CanonicalID) execution.StepResult {
+		return execution.StepResult{Operation: string(operation), Status: "resolved"}
+	}
+	preconditions := func(core.CanonicalID) string { return "" }
+	_, results, err := execution.RunPlan(context.Background(), unattendedPlan(), []string{"2026-10"}, journal, step, preconditions)
+	if err != nil {
+		t.Fatalf("run: %v", err)
+	}
+	if len(results) != 3 {
+		t.Fatalf("every step must run: %+v", results)
+	}
+	if journal.records[len(journal.records)-1].Status != runlog.Completed {
+		t.Fatalf("the run must complete: %+v", journal.records)
+	}
+}
+
+func TestAttendedRunKeepsRunningWithoutAPreconditionCheck(t *testing.T) {
+	journal := &runJournal{}
+	step := func(_ context.Context, operation core.CanonicalID) execution.StepResult {
+		return execution.StepResult{Operation: string(operation), Status: "resolved"}
+	}
+	_, results, err := execution.RunPlan(context.Background(), closePlan(), []string{"2026-10"}, journal, step, nil)
+	if err != nil {
+		t.Fatalf("run: %v", err)
+	}
+	if len(results) != 3 {
+		t.Fatalf("an attended run is not blocked by the absence of a check: %+v", results)
 	}
 }
