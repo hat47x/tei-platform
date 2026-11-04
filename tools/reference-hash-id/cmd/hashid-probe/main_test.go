@@ -2,13 +2,16 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	hashid "tei/tools/reference-hash-id"
 )
@@ -355,5 +358,43 @@ func TestCommittedHeadlessFixture(t *testing.T) {
 		if c < '0' || c > '9' {
 			t.Fatalf("nondecimal output %q", actual.HashIDText)
 		}
+	}
+}
+
+func TestRealHeadlessCLIExecutableSmoke(t *testing.T) {
+	// Unlike the direct run() tests, this uses the actual Go command startup
+	// and flag parsing on the committed public fixture, with no writes.
+	if _, err := exec.LookPath("go"); err != nil {
+		if os.Getenv("GITHUB_ACTIONS") == "true" {
+			t.Fatal("Go toolchain required for actual headless CLI smoke in CI")
+		}
+		t.Skip("Go command unavailable")
+	}
+	dir := filepath.Join("..", "..", "examples")
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+	args := []string{
+		"run", ".",
+		"-scheme", filepath.Join(dir, "decimal24.scheme.json"),
+		"-input", filepath.Join(dir, "input.raw"),
+		"-subject", "example:record-one",
+		"-target-probe", filepath.Join(dir, "decimal24.target-probe.json"),
+	}
+	cmd := exec.CommandContext(ctx, "go", args...)
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout, cmd.Stderr = &stdout, &stderr
+	if err := cmd.Run(); err != nil {
+		t.Fatalf("actual headless CLI failed: %v: %s", err, stderr.String())
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("unexpected CLI stderr %q", stderr.String())
+	}
+	var got report
+	if err := json.Unmarshal(stdout.Bytes(), &got); err != nil {
+		t.Fatal(err)
+	}
+	if got.Status != "snapshot-preflight-only" || got.StorageWrite || got.Authority != "none" ||
+		got.HashIDText == "" || got.HashIDText != got.NormalizedTargetKey {
+		t.Fatalf("unexpected actual CLI output: %+v", got)
 	}
 }
