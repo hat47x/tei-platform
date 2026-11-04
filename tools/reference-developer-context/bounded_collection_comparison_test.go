@@ -92,9 +92,9 @@ func compareLocalLexicalCollection(root, target string, testLimit, docLimit int)
 	// A transparent lexical presentation policy, NOT an accepted relevance
 	// policy: directly named test, exact-file doc, then content/stem test.
 	priority := map[string]int{
-		"filename-matched-test": 0,
+		"filename-matched-test":        0,
 		"exact-file-mention-eval-only": 1,
-		"content-matched-test": 2,
+		"content-matched-test":         2,
 	}
 	sort.SliceStable(result.Candidates, func(i, j int) bool {
 		a, b := result.Candidates[i], result.Candidates[j]
