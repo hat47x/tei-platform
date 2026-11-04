@@ -103,9 +103,9 @@ func TestAIAddedScenarioCandidateFiles(t *testing.T) {
 				var receipt struct {
 					ExecutionMode string `json:"executionMode"`
 					Evidence      []struct {
-						StepID     string `json:"stepId"`
-						Verified   bool   `json:"verified"`
-						Nature     string `json:"evidenceNature"`
+						StepID   string `json:"stepId"`
+						Verified bool   `json:"verified"`
+						Nature   string `json:"evidenceNature"`
 					} `json:"evidence"`
 				}
 				if err := json.Unmarshal(actual.Bytes(), &receipt); err != nil {
