@@ -1,0 +1,17 @@
+{
+  "schemaVersion": "reference-hashid-v1",
+  "inputUtf8": "hello TEI",
+  "scheme": {
+    "schemeId": "tei.std.hashId.v1",
+    "purpose": "example.record",
+    "scope": "example.application",
+    "inputKind": "bytes",
+    "canonicalization": "raw-bytes/v1"
+  },
+  "cases": {
+    "sha256hex": "01e745ee1728403d83ebe8ccd903b375f40d40fc1754fd0bc41ca249142f838d",
+    "shake160hex": "c7421f66c67cb619739bc605fddafff7c79d5fa9",
+    "shakeExact32": "8t24m4aa03dc15gxscz9tbk7es640wm0",
+    "shakeExactDecimal30": "763327628360903151303303983778"
+  }
+}
