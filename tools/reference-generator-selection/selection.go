@@ -388,6 +388,7 @@ func validateContract(contract Contract) error {
 				inputsByAttribute[input.Attribute] = input
 			}
 			seen := map[string]bool{}
+			seenInputs := map[string]bool{}
 			for _, field := range contract.Projection.Fields {
 				if strings.TrimSpace(field.Name) == "" || strings.TrimSpace(field.Input) == "" ||
 					strings.TrimSpace(field.Attribute) == "" || strings.TrimSpace(field.Primitive) == "" {
@@ -397,6 +398,12 @@ func validateContract(contract Contract) error {
 					return fmt.Errorf("record field %q is duplicated", field.Name)
 				}
 				seen[field.Name] = true
+				// The runtime reads one map key per field, so two fields sharing
+				// an input key would silently read the same value.
+				if seenInputs[field.Input] {
+					return fmt.Errorf("record field input %q is duplicated", field.Input)
+				}
+				seenInputs[field.Input] = true
 				input, ok := inputsByAttribute[field.Attribute]
 				if !ok {
 					return fmt.Errorf("record field %q references undeclared contract input attribute %q", field.Name, field.Attribute)
@@ -495,6 +502,26 @@ func validateAgainstWorkspace(contract Contract, world ir.World) error {
 	}
 	if _, err := primitiveOf(types, contract.Output.Primitive); err != nil {
 		return fmt.Errorf("output primitive %s: %w", contract.Output.Primitive, err)
+	}
+	// #2585 PFC-08: validate the projection fields directly against the
+	// Workspace, not only through the contract inputs. A field whose attribute
+	// is absent or resolves to another primitive is a contract error even when
+	// an unrelated input still resolves.
+	if contract.Projection != nil && contract.Projection.Kind == "record" {
+		for _, field := range contract.Projection.Fields {
+			attribute, ok := findAttribute(world, field.Attribute)
+			if !ok {
+				return fmt.Errorf("projection field %q references attribute %s which was not found in the Workspace", field.Name, field.Attribute)
+			}
+			primitive, err := primitiveOf(types, string(attribute.TypeRef))
+			if err != nil {
+				return fmt.Errorf("resolve projection field %q attribute %s: %w", field.Name, field.Attribute, err)
+			}
+			if primitive != field.Primitive {
+				return fmt.Errorf("projection field %q attribute %s resolves to %s, field requires %s",
+					field.Name, field.Attribute, primitive, field.Primitive)
+			}
+		}
 	}
 	return nil
 }
