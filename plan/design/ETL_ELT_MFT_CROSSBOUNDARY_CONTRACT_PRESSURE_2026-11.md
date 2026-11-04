@@ -138,3 +138,112 @@ Writerが最終ファイル名へ直接書くことを既定安全とみなさ�
 - OpenLineage facets: https://openlineage.io/docs/spec/facets/
 
 **証拠制約:** 公開マニュアルの製品動作はその文書の版・条件に限定。ODIP/HULFT/AS2/Camel/SeaTunnel等の実機実行、コード監査、性能・セキュリティ評価、TEI生成Targetとの接続、実企業取引先、正式Owner受理、全Repository Healthは本書では **NOT RUN**。現在のmain/関連PRが変更されたら再照合する。
+
+
+## 8. 2026-11-04 再照合：公開・配送・受理の「保証の合成」と停止線（設計追加／NOT RUN）
+
+本節は既存[#2604](https://github.com/hat47x/tei-platform/issues/2604)の複数ファイル公開、[#1130](https://github.com/hat47x/tei-platform/issues/1130)のJob入出力、[#2542](https://github.com/hat47x/tei-platform/issues/2542)のファイル取込み/連携を**別Ownerのまま**つなぐ。新しい成果物Publisher/Runner、第二の受理State Machine、全Provider横断Txは作らない。HULFT-HUBの配信順・S3通知を、業務イベント全順序や取引の完全性に昇格させない。
+
+### 8.1 Five boundaries: 同じ「成功」を使わない
+
+| 証拠境界 | 証明可能な主張（要独立の証拠） | そこからは**導けない**こと／Owner |
+| --- | --- | --- |
+| **B0 Semantic / Plan** | Accepted Source/意味/Function/Period、型・入力・出力・必要な能力、Target-neutral plan | 未実行の生成計画から実Byteや実権限。#2619/#2622/#1121 |
+| **B1 Materialization / Publication** | 物理MemberのByte、Digest algorithm、版、Manifestの一致、Consumerの実Readerが同一世代のMemberを取得可能 | Manifest Complete≠一式atomic公開≠Business Accepted。#2604/#943/#1102 |
+| **B2 Transfer / Relay** | Route/Hop、Contractと各Attempt、Spoolの保存/期限、Byte整合性、配送/受領Receiptの範囲 | 配送Ack≠永続公開≠Importer確認。HULFT相当実Adapterは未実装。#2542 |
+| **B3 Ingestion / Reconciliation** | Import unit/file spec/検証結果、変換失敗/保留、Event identity、重複適用の結果、Consumer側確認 | 同一File digest≠同一Business Event；Record ingest≠業務意味受理。#2145/#1807/#2542 |
+| **B4 Provider Effect / Owner** | 現在Authority、実Request/Commit Receipt、別Read、許可されるBusiness Result、Ownerの意味受理 | Worker exit=0、EKI Task completed、MDN、S3通知だけでCommitを推論しない。#1174/#1129/#1119 |
+
+**契約の合成規則（候補）**:
+1. 必要な保証をConsumer/Operation/Period/宛先/データ分類で宣言する。各Providerは対象操作・版・実環境・Scopeに限定した能力を返す。意図した保証より弱い場合は \`unsupported\`、未照合なら \`unverified\` とし、勝手に「より弱い成功」へ代替しない。
+2. \`Transferred\`、\`IntegrityVerified\`、\`Published\`、\`Ingested\`、\`BusinessAccepted\`を一列の単一enumの状態機械に強制しない。各境界に独立したObservation・unknown/partial・時点・Authorityを持たせ、順不同の到着を許す。全段階を必須化せず、不要な段階は \`not-applicable\` と \`unverified\` を区別。
+3. 互いの証拠は\`subject qualified identity + version + attempt + scope + provider + time\`で参照関係を張る。路線・内容・業務のIDを単一キーへ自動統合せず、正確に解決できない場合はambiguous/unknown。既存Hash ID方式（#2814/ Draft #2815）はScheme/用途別の候補であり、Artifact Digestや正本IDを置き換えない。
+4. \`unknown\`（ACK失踪・途中失敗・独立Reader不可）時は同じ副作用Jobを自動再送しない。必要に応じHostの現在GrantとEffect/Receipt再照合を要求。純粋な計算の再試行能力を業務Commitへ転用しない。
+
+### 8.2 Publicationに必要なCapabilityは配送能力と別
+
+| Provider/方式（例） | 明示できる可能性のある保証 | 未検証のまま推定しない保証 |
+| --- | --- | --- |
+| ローカルFile stage→rename | 同一FS/OSでの個別ファイル公開候補。Consumerが期待版のbyteを再読取 | Windows/POSIX/ネットワークFSすべての一式原子公開、永続化までの保証 |
+| S3の単一Object PUT | **単一Key**でのatomicな旧版/新版観測、read-after-write、条件付きPutによる上書き競合防止 | 複数Keyの一式公開、通知順序、業務取込み、ETag=内容Digest |
+| Immutable generation prefix + manifest pointer | 成果物を別世代のKeyへ保存し、公開Pointerと各Memberの版を照合する実装候補 | Pointerだけで未到達Member/実権限/Readerが読んだByteの保証 |
+| HULFT-HUB Store-and-Forward | 蓄積、任意送出、経由Serverの条件付き順序制御 | 受信側Ingestion/業務受理、全イベント欠落ゼロ、全路線に無条件で順序保証 |
+
+**一次資料で確認した限定的な違い**:
+- S3は単一Keyの更新に原子性・強いread-after-write整合性を提供し、\`If-None-Match\` / \`If-Match\`で単一Key更新を制約できる。**ETagは条件付き更新のTokenであって一般のContent Digestではない**。特にMultipartや一部の暗号化方式ではETagは全Object MD5にならない。独立内容Digestは別のアルゴリズム・検証対象Byteを指定する。
+- S3 Event Notificationsは**at-least-once**であり、重複と配達順序逆転があり得る。\`sequencer\`は同一Object Keyでのイベント比較に使えるが、異なるKeyを跨ぐ全順序や取引の完全性には使えない。Event通知成功をPublication/Reader/Importer受理へ転用しない。
+- HULFT-HUB追越禁止は**同一File IDの蓄積開始順**に関する条件付き送出制御。多段の場合は全HUBでの設定が必要。ただし先行データが蓄積異常で削除された、または蓄積開始前にエラーになった場合、後続は待機せず送出され得る。従って\`ordered\`と\`gap-free\`は直交する。追越禁止で並列度が下がる条件も、Jobのdeadline/bandwidth/cost評価へ返す。
+- AS2 signed MDN/MICは元メッセージと受領証跡の関連付けを支えるが、後続ERP取込み・事業者の業務承認を証明しない。無署名MDN、非同期MDN、保持された元メッセージとの照合有無を区別。
+- Camel File Consumerの既定冪等Keyが物理Pathの場合、同名別版ファイルを誤って二度目と判定し得る。TEIは物理ファイル名をImporterの唯一のBusiness Eventキーにしない。
+
+この違いから、**Provider capabilityは単なる \`transferSupported=true\` でなく、\`guarantee + subject + ordering key + scope + version + required evidence\` の候補表**で表す。現行TEIにこれらの正式APIがあるとの主張ではない。Capability不一致時の実行前の拒否やTarget fallbackは既存#1121/#951のOwnerへ委譲する。
+
+## 9. 実行経路における「一式性・順序・完全性」の直交チェック
+
+同じ報告用CSV一件だけでは、**物理一式公開**と**ビジネス入力の完全性**を区別できない。
+
+例: 11月3日締めの売上結果 \`D\` がCSV \`A\`・補助マスタ \`B\`・Manifest \`M\` からなる。新世代 \`R2\` の \`A2\` を公開した時点で旧世代 \`R1\` の \`B1\` と \`M1\` をReaderが見た場合、一式公開は成立しない。全Byteがそろっても、受注の連番 \`1,2,4\`（欠落3）なら業務期の入力完全性は成立しない。さらに配送先が\`R2\`のCSVを受信しても、受理対象日の意味や改訂済みMasterとの関連付けは別。
+
+**一式性の確認**は[#2604](https://github.com/hat47x/tei-platform/issues/2604) AP-01〜07（と[PR #2817](https://github.com/hat47x/tei-platform/pull/2817)の限定Characterization）を再利用し、新しいPublisher/同名Fixtureを作らない。**Business Datasetの期間/粒度/期待する全件性**は#2622、**Transfer/Relayを跨ぐ列挙・欠落**だけを本ノートの固有Pressureとする。
+
+- **順序（order）**：どのPartition/File ID/宛先/路線で、どの操作の先行制約を保証するか。全ホップが必要保証を満たすかを確認。
+- **完全性（coverage / gap-free）**：そのScopeで期待される全件数・連番範囲・締め時刻・Manifest member集合・Import件数やChecksum等の独立の根拠があるか。先行Spool失効・欠落を「順序通り」によって隠さない。
+- **一式公開（atomic visibility）**：同じ世代のMember集合をConsumerが再読取し、任意の一つのMemberのみ新世代を参照する状態を拒否するか。S3単一Keyの原子性と複数Key一式性は異なる。
+- **鮮度（freshness）**：Source/Meaning、Job Period、Provider snapshot、物理Object version、Receipt/Grant時点が現在の要求条件を満たすか。0→1→0のABAや同名上書きを同値としない。
+- **効果（effect）**：取込み後の検証成功、外部DB Commit、OwnerのBusiness Acceptanceの別Receiptを持つか。
+
+## 10. 実証計画を追加する場合の既存Scenarioとの接続（設計／全件NOT RUN）
+
+新たなDMケース番号や第二Scenario正本を設けず、前節DM-01〜14を既存Ownerのテストへ投影する**比較観測列**を追加する。
+
+| 既存Pressureへ重ねる反例 | 必要な独立Observation | 必ず保持する拒否/unknown |
+| --- | --- | --- |
+| DM-04 + #2604 AP-01/06 | Published manifest revision、Member actual bytes、Readerの実版、切替時刻 | R1/R2混在、旧Manifestを読んだ後のR2上書きをSuccessとしない |
+| DM-05 + HULFT-HUB欠落先行 | Hop設定と各蓄積Attempt・失効、同一File ID順序、期待する配信集合 | 先行データ欠落にもかかわらず\`ordered and complete\`と称しない |
+| DM-07/09 + S3 Event通知 | Key/version、通知Event id/sequencer、受信Byte Digest、Import Unit identity | 重複通知/逆順、ETagをSHA-256と解釈、同名別版を一つのBusiness Eventと誤認しない |
+| DM-08 + AS2 signed MDN | 送信元Message ID、署名・MIC/元Message照合、Importer実結果、Provider側別Read | MDN verifiedだけでBusiness Acceptedを主張しない |
+| DM-02/03 + Period再処理 | 業務基準期、Source/参照Master版、前回Artifact/Checkpointと本日Attempt | 旧期・旧Master混在、同じJob名での意味的ABAを合格としない |
+| DM-11 + 外部Effect不明 | OperationID、Host Grant、Provider Commit Receiptまたは独立Readのunknown | EKI Task Result / exit0 でCommit確認済みへ昇格しない |
+
+### 同一試行の最小Witness（**正式Wire Schemaではない**）
+
+- \`acceptedMeaningRef + revision + selectedPeriod + functionOrOperationRef\`
+- \`target/build artifact actual digest + runtime provider/capability evidence\`
+- \`logical dataset + resolved input snapshot + output manifest/member byte digests\`
+- \`publication generation / actual reader version / read byte result\`
+- \`route + hop + transfer contract + attempt + ordered key + receipt scope/time\`
+- \`import unit + business event identity + validation/reconciliation result\`
+- \`effect/commit receipt or unknown + separate provider read + owner business acceptance (if applicable)\`
+
+すべてを常に生成物に埋め込む要求ではない。各欄の**Owner・出典・時点・開示可否・未観測**を保持し、利用者に公開不能な秘密・他TenantのデータをGraph/LLM/ログへ無条件出力しない。SHO/Studio/CUIはこの比較票のread-only Projection候補であり、見えるから実Authorityがあるとの判断はしない。
+
+**実証順序（対象Ownerへ引渡す計画）**:
+1. #2145の実PostgreSQL 16限定取込みReference、#2604/#2817のArtifact混合世代反例、#2666の実CLI→Artifact byte Reader（限定CI）を**再利用可能か静的点検**。歴史的PASSの証拠資格と現在Source版は分ける。
+2. Headlessで単一ローカルBuild/ArtifactSetの\`R1→R2\` Publisher/Consumerを構成し、途中失敗/Member欠落/旧世代読取を固定。**#2604 Ownerの既存AP試験を主張元とする**。
+3. 別のDisposable File/SQLite Consumerで、同一実行AttemptのPeriod・Manifest・Route・Import・独立Readを結ぶ。SFTP/HULFT/EKI/クラウドに依存しない最小の正常/負例を得る。
+4. S3やMFT等の**第二Provider**で、実能力の差分（conditional write、multipart checksum、Event再送、同一File ID順序、Spool expiry）を表示。保証できないものをunsupported/unknownに残す。
+5. 実HULFT製品や企業間EDI/本番Hostへは許諾・実環境・Owner判断後に進む。製品仕様比較のみで商用運用適合、実同期/配信保証を宣言しない。
+
+### 複数レーンの2026-11-04現状との分担
+
+- #1130 の更新にある **Meaning/Invocation、Build membership、Entry/Adapter、Effect/Authority、Result/Consumerの五Claim**は既存受入を尊重。本ノートB0〜B4は**物理データ配送に特化した分解**であり、第二のGate体系ではない。
+- Draft #2788のFunction/Build Unit選択はUI+Jobの物理構成に関する未採用案。本ノートは配信契約を新たなFunction型として確定しない。最初は単一Build/非常駐Goでもよい。
+- #2604は設計ArtifactSet一式公開がOwnerであり、本ノートは**その公開結果を別Transport/別Consumerへ引き渡すときの保証の合成**のみを扱う。
+- Draft #2744とEKIはResource/Task/Attempt/Lease・Job委任のOwnerを区別。現EKI P0の\`parameters\`/Effect/Artifact bodyの制約を型付き拒否へ接続する際は#1130のBD-01〜07を再利用。実TEI↔EKI Job I/Oは未実証。
+- #2814/Draft #2815のHashIdScheme/Wireの候補は、ProviderのETagや移送Checksumと**目的・バイト対象が違う**。既存Artifact Digest/署名/Canonical IDを変更しない。
+- #1180の保存Scenarioと独立Expected、#2514のOracleを正本とする。上記観測票はFixture/Scenarioの第二正本にはしない。
+
+### 追加根拠（一次資料、対象版に限定）
+
+- HULFT-HUB追越禁止と例外: https://www.hulft.com/help/ja-jp/HUB-V3/COM-HUB/Content/HUB_HUB/Fun_HUB/Phbt_OVTK.htm
+- HULFT-HUB蓄積・送出: https://www.hulft.com/help/ja-jp/HUB-V3/COM-HUB/Content/HUB_HUB/Fun_HUB/Acc.htm
+- S3 単一Keyの整合性: https://docs.aws.amazon.com/AmazonS3/latest/userguide/Welcome.html
+- S3 conditional writes: https://docs.aws.amazon.com/AmazonS3/latest/userguide/conditional-writes.html
+- S3 ETag / multipart integrity: https://docs.aws.amazon.com/AmazonS3/latest/userguide/checking-object-integrity-upload.html
+- S3 events at-least-once/out-of-order: https://docs.aws.amazon.com/AmazonS3/latest/userguide/notification-how-to-event-types-and-destinations.html
+- S3 sequencer per object key: https://docs.aws.amazon.com/AmazonS3/latest/userguide/notification-content-structure.html
+- AS2 MDN/MIC: https://www.rfc-editor.org/rfc/rfc4130.html
+- Camel File idempotent/readLock: https://camel.apache.org/components/next/file-component.html
+- OpenLineage Run/Job/Dataset facet: https://openlineage.io/docs/spec/facets/
+
+**新しい実行・実証はNOT RUN**。本節は既存main/Issue/外部一次資料を使った静的設計追補であり、正式API、受理済みSchema、HULFT/AS2/S3/TEI実E2E、安全な本番送受信、TEI Resource Scheduler、複数Object Atomic Transactionを実装した主張ではない。
