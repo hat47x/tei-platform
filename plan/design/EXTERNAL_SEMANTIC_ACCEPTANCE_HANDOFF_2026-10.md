@@ -1,6 +1,6 @@
 # 外部業務意味資産の選択と案件受理を結ぶ証拠契約（候補）
 
-- 状態：**設計・負例試験の候補**。製品用のComposition Profile構文、受理済み意味、実行権限ではない。
+- 状態（2026-11-04）：**外部意味の受理契約は設計候補・Owner未受理**。一方、外部Import P0a（[Draft #2786](https://github.com/hat47x/tei-platform/pull/2786)）、Source再読込みの負例（[Draft #2801](https://github.com/hat47x/tei-platform/pull/2801)）、同一Provider Loadの限定原文保持P0b-A（[Draft #2812](https://github.com/hat47x/tei-platform/pull/2812)）は、それぞれのexact HEADでGitHub CI成功を確認済み。**いずれもmain未統合**。P0b完全入力閉包、実Consumer／現在Disclosure、原子的Snapshot、Owner Meaning、実行資格は未成立。製品用のComposition Profile構文も未採用。
 - 管理課題：[#1570 外部Semantic参照](https://github.com/hat47x/tei-platform/issues/1570)。
 - 関連：[#1016 案件構成](https://github.com/hat47x/tei-platform/issues/1016)、[#267 共通受理](https://github.com/hat47x/tei-platform/issues/267)、[#1223 Composition Kernel](https://github.com/hat47x/tei-platform/issues/1223)。
 - 既存実装：`internal/workspace/imports.go`、`internal/modelref`、`internal/composition`、`internal/sourceacceptance`、`reference/semantic-composition-preflight`。
