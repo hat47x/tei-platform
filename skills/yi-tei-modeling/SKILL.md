@@ -8,7 +8,7 @@ description: >-
 
 # TEIモデリング調査（Product Skill試作）
 
-> **2026-11-02 試作／NOT RUN**：このSkillはTEI Product側が所有するread-only作業手順の候補。外部ハーネスへのインストール、TEI CLIの実行、MCP/Providerの接続、TEI製品としての正式採用は未実施。利用時は実環境を確認する。
+> **2026-11-05 実行資格の更新**：このSkillの初期ファイルは[PR #2607](https://github.com/hat47x/tei-platform/pull/2607)でmainへ統合済み。対象HEAD `d0de429ae5aac38b7949c2cfe6eacafff059675f`の[Product Skill CI #41532988114](https://github.com/hat47x/tei-platform/actions/runs/41532988114)では、静的チェッカーと、公開Reference Workspaceに対する実Goバイナリの`commands`／`model catalog`／`inspect`／`trace`／`validate`が限定的に成功した。一方、**外部ハーネスでのSkill実ロード・Tool呼出し、実OS/Provider権限・開示、業務Owner受理と正式Releaseは未実証**。利用時は現在の実環境とSource対象を改めて確認する。
 
 ## いつ使うか
 
@@ -39,4 +39,4 @@ TEIのSource・モデル要素・入力元・参照関係・Validationを調べ�
 - [TEI Product Skill課題](https://github.com/hat47x/tei-platform/issues/2605)
 - [YIシリーズ横断Skill設計（TAI Draft）](https://github.com/hat47x/tai-pleroma/pull/270)
 
-**現在の評価状態**：試作Skillの保存と静的参照確認に限る。Product側CLIの現物実行・二Harnessでのロード・TAI横断SkillとのH2/H3比較・正式Releaseはいずれも未実施。
+**現在の評価状態（2026-11-05）**：mainにある試作Skillの静的チェッカーと公開Fixtureの**実CLI単体CIは限定成功**。その実行はSkillを外部ハーネスからロード・呼出した試験ではない。次の資格は、必要な利用者定義Sourceが実解析済みであることの確認、同じTaskでのH2 Tool-only／H3 Tool＋Skillの実四Session比較、独立Expectedによる採点、適切な現在開示・Tool権限の確認である。二Harness互換、実外部Host/Provider、業務Owner受理、正式Releaseは**NOT RUN**（[TEI #2605](https://github.com/hat47x/tei-platform/issues/2605)／[TAI #168](https://github.com/hat47x/tai-pleroma/issues/168)）。
