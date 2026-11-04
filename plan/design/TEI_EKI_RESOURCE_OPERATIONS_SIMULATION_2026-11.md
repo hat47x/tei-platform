@@ -187,6 +187,13 @@ AIに期待する仕事：
 
 [縦断§14](TEI_EKI_ONE_REVISION_EVIDENCE_VERTICAL_SLICE_2026-11.md)のABI Gateを、TEI管理Consoleの`mode=read-only/diagnosis`へ接続。TEIのジョブ要件（Effect/Executor/Inputs/期限/Pool/DataClass）とEKI P0が**表現できる項目／値だけ保持する項目／実行時に強制しない項目／表現不能な項目**を区別して表示する。WP-01〜19の静的差分は出典OpenAPI blobと試験Versionを併記し、EKIの実Worker/Output・Owner Grantへ昇格しない。生成AIによるGap検出や反例生成はTEI [#2811](https://github.com/hat47x/tei-platform/pull/2811)の共通AI-first test scaffoldを後続Consumerとして使い、本Console固有のFixture RunnerやAI Policy Authorityを新設しない。Source採用とEKI Worker Trustも別Issuer/Revisionであり、AIが原文や未公開Node Topologyを外部送信する権利は無い。
 
+
+### 8.7 AI生成CaseとSource原文非開示の接続（2026-11-04）
+
+[TEI/EKI一改訂の受入表§16](TEI_EKI_ONE_REVISION_EVIDENCE_VERTICAL_SLICE_2026-11.md)を、EKI運用ConsoleのAI診断設計へ反映する。TEI [#2813](https://github.com/hat47x/tei-platform/pull/2813)はDSL ReferenceのJSON Case追加を試す**test-only・Draft**であり、実EKI Worker/Cloud/MDMの動作や予算最適化の成功を証明していない。AIが行うのは、既存の適合/非適合表（WP/RE/VS/LB/CL）から不足する負例候補と独立Expectedの確認事項を挙げることまで。生成したCaseの採否・現在の実Grant・Owner受理は既存Authorityに返す。
+
+外部Sourceの証拠は[TEI #2812](https://github.com/hat47x/tei-platform/pull/2812)の安全修正版に従い、**原文取得をprivateに限定し、公開SurfaceへはDigest等のメタデータだけを投影**する。AI prompt/Export/SHO/Tooltip/CSV/ログへ、単なるSource ImportやSource Witnessの存在を根拠に原文/非公開Pool Node数/Provider credentialを渡さない。利用できる範囲を明示した合成FixtureでAIの反証提案をテストし、実Worker/Provider/Business Effectは独立Test Gateへ接続する。EKIの[安全Event計測 #548](https://github.com/hat47x/eki-fabric/issues/548)はclosedだが、4種の安全カウンターをDeadline達成/実Cost/故障分布の完全なテレメトリとはみなさない。新しいAI RunnerやPolicy Authorityは作らない。
+
 ## 9. 既存計画との分担・段階導入・Done/Stop
 
 | 段階 | TEI側の差分／最小成果物 | EKIの既存担当とGate |
