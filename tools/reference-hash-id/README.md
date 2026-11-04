@@ -48,6 +48,24 @@ Wireの文字列表現自体は **証明・意味IDではない**。 `encodedDig
 
 `cshake_standard_test.go` は[NIST SP 800-185のcSHAKE公開サンプル](https://csrc.nist.gov/projects/cryptographic-standards-and-guidelines/example-values)（X=00010203、N=空、S="Email Signature"、512bit出力）と、N/S両空の場合にcSHAKE256がSHAKE256と一致する性質を独立に確認する。**標準Primitiveの適合試験とTEI独自のFrame・暗号Adapterの相互運用試験は別**。
 
+## 最初のHeadless Consumer：read-only `hashid-probe`（W4候補）
+
+`cmd/hashid-probe/` に、実行基盤・Studio・Hostへ依存しない最小CLIを配置する。保存済みの**正準Scheme Wire**と**raw byteの入力ファイル**、呼出元が明示する`subject`から`Derive`を実行する。必要であればローカルの`target-probe`（宣言Profile＋既存割当Snapshot）を読み、`CheckTargetBinding`による**事前診断だけ**を行う。
+
+```bash
+go run ./tools/reference-hash-id/cmd/hashid-probe \
+  -scheme tools/reference-hash-id/examples/decimal24.scheme.json \
+  -input tools/reference-hash-id/examples/input.raw \
+  -subject example:record-one \
+  -target-probe tools/reference-hash-id/examples/decimal24.target-probe.json
+```
+
+このfixtureは公開の合成バイト`hello TEI`を使い、返答に`status="snapshot-preflight-only"`、`authority="none"`、`storageWrite=false`と、Scheme JSON、入力バイト数/SHA-256、生成文字列、Target名前空間/正規化後キーを含む。入力SHA-256は**この実行が読んだバイト列の説明**であり、受理済Source revision/署名/適切なProviderであることを証明しない。`-target-probe`を省略すると`status="derived-only"`とする。
+
+CLIへのTarget Snapshotは厳密な単一行正準JSON `tei.hashid.target-probe/v1` を要求する。未知・重複フィールド・欠落フィールド・異版・null・過大ファイルを拒否する。**これはReference CLI専用の試験入力で、製品の正本モデル・永続化Schema・完全な現在割当の証明ではない**。入力ファイルは最大4MiB、Scheme最大4KiB、Target Snapshot最大512KiB。すべての局所診断成功後にのみstdoutへJSONを1件出力し、拒否した場合はstderrと非0終了にする。読み込んだSource/Targetのファイルへ書き戻さない。
+
+`subject`は呼出元宣言の識別子であり、このCLIはTEI正本のqualified-refへの存在・Scope・Revision・権限を**検証できない**。CLI出力を受理・発行・割当と呼ばず、登録・署名・Source Acceptance・Atomic Insert/Commitのコードパスを持たせない。実保存は将来のTarget Owner Gate W3、同一ConsumerへScope/Source freshnessを接続する判断はW4として別に扱う。
+
 ## 試験
 
 ```bash
