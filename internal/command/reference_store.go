@@ -270,6 +270,9 @@ func (e ReferenceDataExecutor) Execute(_ context.Context, request Request) (Resu
 		if err := e.checkValueDomains(request); err != nil {
 			return Result{}, err
 		}
+		if err := e.checkCandidateKeys(request); err != nil {
+			return Result{}, err
+		}
 		if capability.Effect.Kind == semantic.DataEffectUpdate {
 			if err := e.checkImmutableInputs(request); err != nil {
 				return Result{}, err
@@ -293,6 +296,71 @@ func (e ReferenceDataExecutor) Execute(_ context.Context, request Request) (Resu
 		result.Outcome = &outcome
 	}
 	return result, nil
+}
+
+func (e ReferenceDataExecutor) checkCandidateKeys(request Request) error {
+	plan, err := applicationview.BuildCommandPlan(e.World, request.Application, request.Pattern, request.Capability, request.Inputs)
+	if err != nil {
+		return nil
+	}
+	attributes := attributeValues(plan)
+	var dataID core.CanonicalID
+	var candidateKeys []semantic.CandidateKey
+	for i := range e.World.Applications {
+		if e.World.Applications[i].ID != request.Application {
+			continue
+		}
+		for j := range e.World.Applications[i].Patterns {
+			if e.World.Applications[i].Patterns[j].ID == request.Pattern {
+				dataID = e.World.Applications[i].Patterns[j].Data
+			}
+		}
+	}
+	if dataID == "" {
+		return nil
+	}
+	for _, namespace := range e.World.Semantics {
+		for _, data := range namespace.Data {
+			if data.ID == dataID {
+				candidateKeys = data.CandidateKeys
+			}
+		}
+	}
+	if len(candidateKeys) == 0 {
+		return nil
+	}
+	currentKey := recordKeyFields(request.Inputs, e.KeyFields)
+	for _, candidate := range candidateKeys {
+		values := map[core.CanonicalID]string{}
+		complete := true
+		for _, attribute := range candidate.Attributes {
+			value, ok := attributes[attribute]
+			if !ok {
+				complete = false
+				break
+			}
+			values[attribute] = value
+		}
+		if !complete {
+			continue
+		}
+		for _, record := range e.Store.RecordsWithAttributes(dataID) {
+			if record.Key == currentKey {
+				continue
+			}
+			matched := true
+			for attribute, value := range values {
+				if record.Attributes[attribute] != value {
+					matched = false
+					break
+				}
+			}
+			if matched {
+				return fmt.Errorf("candidate key %s is duplicated", candidate.ID)
+			}
+		}
+	}
+	return nil
 }
 
 func (e ReferenceDataExecutor) checkImmutableInputs(request Request) error {
