@@ -82,6 +82,8 @@ go run ./tools/reference-shared-acceptance decisions -workspace DIR [-out FILE]
 
 `databaseReleaseContractCandidates` は、Database Releaseが提供するContractのうち、majorが現在定義より古いものを前後snapshot別に列挙します。既存の `DATABASE_RELEASE_CONTRACT_AHEAD_OF_CURRENT_DEFINITION` が扱う先行方向の逆で、現在定義に存在しないContractは既存の `DATABASE_RELEASE_CONTRACT_NOT_CURRENT` が扱うため除外します。minorだけが古い提供は含めません。現在v4.2のReferenceでは候補は空で、Contractをv5.0へ上げると4.1.0と4.2.0が `providedContractVersion` と `currentContractVersion: 5.0` 付きで変更後に出ます。Contractをv3.0へ下げると4.1.0と4.2.0は既存の先行警告だけになり、候補は空です。履歴Releaseの正否、実行時のDeployment状態、データ移行、Providerの動作は未確認であり、空の候補は問題なしの証明ではありません。受理条件は変更しません。
 
+独立したWorkspace複製による負担比較では、無関係なContractのminor更新と対象Contractのminor更新で新しい3ビュー（gate・appRelease・dbRelease）はbaselineのまま、協調したmajor更新でdbReleaseが2件・appReleaseが1件だけ増え、未使用gateの追加でgateが1件だけ増えました。要求を更新しないmajor変更は既定で終了1・候補0件、`-include-unvalidated-candidates` でも終了1とエラー診断を維持します。対象は合成Referenceの5シナリオに限られ、実変更履歴や実利用者の負担を示しません。
+
 - `accept`: CLIからauthoritative sourceを更新する場合は、先に`review`で得た`reviewFingerprint`を`-expected-review-fingerprint`へ必ず渡します。同じ検査とReview Projectionを最初から作り直し、fingerprintが一致して受入検査も通った場合だけsourceを更新します。更新後はtoolを介さない共有loaderで再読込し、Previewが示した差分どおりか・Validationが通るか・派生物を決定論的に再生成できるかを確認します。一つでも満たさなければ元のsourceへ戻します。`-derived-out`にaccepted sourceから再生成したCanonical World JSONを書き出せます。
 - `reject`: authoritative sourceを変更せず、退けたcandidateをcontent-addressed Decisionとして`.tei/decisions/`へ記録します。staleなcandidateも退けられ、基準revisionとcurrent revisionの食い違いをDecisionへ残します。Decision ledgerはmanaged sourceではないためmodel revisionを変えません。Gate B / Gate Cのreference baselineへ記録する場合だけ`-allow-reference-baseline`が必要です。
 - `decisions`: accepted / rejected Decisionの記録を、現在のworkspaceと照合して出力します。workspace全体のrevision、Decisionが書いたsourceの有無・現在性、判断時に使ったEvidenceの現在性を別々に確認します。
