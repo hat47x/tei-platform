@@ -338,3 +338,44 @@ func TestEffectPreconditionsBlockAnUnattendedRun(t *testing.T) {
 		t.Fatalf("the effect must block the run: %+v", results)
 	}
 }
+func TestCombinePreconditionsStopsOnTheFirstUnmetCheck(t *testing.T) {
+	period := execution.PeriodPreconditions(periodSurface(), map[string]operations.PeriodState{"sales.month": operations.PeriodOpen})
+	effects := execution.EffectPreconditions(lateEffectRules(), nil)
+
+	combined := execution.CombinePreconditions(period, effects)
+	if reason := combined(core.MustCanonicalID("sales.close")); reason == "" {
+		t.Fatal("the unobservable effect must stop the run even when the period is open")
+	}
+
+	withObserver := execution.CombinePreconditions(period, execution.EffectPreconditions(lateEffectRules(), &countingObserver{}))
+	if reason := withObserver(core.MustCanonicalID("sales.close")); reason != "" {
+		t.Fatalf("both checks pass, so the run may continue: %q", reason)
+	}
+}
+
+func TestCombinePreconditionsWithoutChecksIsNil(t *testing.T) {
+	if execution.CombinePreconditions(nil, nil) != nil {
+		t.Fatal("no checks means nothing was verified, so the result must stay nil")
+	}
+}
+
+func TestCombinedChecksBlockAnUnattendedRun(t *testing.T) {
+	journal := &runJournal{}
+	called := false
+	step := func(_ context.Context, operation core.CanonicalID) execution.StepResult {
+		called = true
+		return execution.StepResult{Operation: string(operation), Status: "resolved"}
+	}
+	plan := semantic.RunPlan{ID: "sales.monthly_close", Operations: []core.CanonicalID{"sales.close"}, Autonomy: "unattended"}
+	preconditions := execution.CombinePreconditions(
+		execution.PeriodPreconditions(periodSurface(), map[string]operations.PeriodState{"sales.month": operations.PeriodOpen}),
+		execution.EffectPreconditions(lateEffectRules(), nil),
+	)
+	_, results, err := execution.RunPlan(context.Background(), plan, []string{"2026-10"}, journal, step, preconditions)
+	if err != nil {
+		t.Fatalf("run: %v", err)
+	}
+	if called || len(results) != 1 || results[0].Status != "blocked" {
+		t.Fatalf("the combined check must block the run: called=%v results=%+v", called, results)
+	}
+}
