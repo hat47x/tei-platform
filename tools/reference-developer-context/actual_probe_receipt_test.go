@@ -174,8 +174,7 @@ func TestActualProbeD0VersusBoundedD1AndUnsupported(t *testing.T) {
 			}
 			// Only the test's independent fixture oracle knows the
 			// hidden second path, not D0 or the D1 read policy.
-			if b, readErr := os.ReadFile(filepath.Join(root, "docs", "01-target.md"));
-				readErr != nil || !strings.Contains(string(b), target) {
+			if b, readErr := os.ReadFile(filepath.Join(root, "docs", "01-target.md")); readErr != nil || !strings.Contains(string(b), target) {
 				t.Fatalf("W3 hidden fixture expected: %v", readErr)
 			}
 		}
