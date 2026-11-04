@@ -148,3 +148,20 @@
 **指標を分離**：`collect(R∩C)`、`display(R∩V)`、read対象と件数、`TestTruncated`、固定世界での差分、Provider/Model利用なし。テストは同一ホストの限定Source filesystem readを含むが、実Repoの関連性・意味受理・外部ConsumerへのDisclosure、SEI Methodの実Probe性能は測っていない。`validation_test.go`とdocの両方を必要Rに置くことは**評価用の人工Oracle**であり、業務Ownerの受入ではない。
 
 **実施順序・受入条件**：先にexact PR HEADのCIでCC-04/05のGo test成功とソース一致を確認する。次に、Rに曖昧性・費用（追加Read／解析byte）・段階的Unknownを入れた複数世界で外的妥当性を評価。SEI `D0/D1/M1`は同じSource・実Tool・Scope・Grant・同予算・blind R条件で別比較（#2533/#2514/SEI #767）。ここでの機械的成功をmodel ranking改善、実Tool利用、意味/Authority/OS安全へ昇格しない。再試行の旧ModelChoice/Deliveryは第6節と#2516、TAI #271で引継ぐ。
+
+<!-- tei-devctx-p2-ci-health-adr0038-20261104 -->
+## 9. 実Go比較のCI健全性と認知受理の既存Ownerへの収束（2026-11-04）
+
+### 9.1 限定実行成功とPR全体の健全性は別
+- P2-2aの`CC-01〜05`（計5件）と既存Go Characterization（T22まで14件）は、[PR #2669](https://github.com/hat47x/tei-platform/pull/2669) の**focused** `bounded-discovery`で先に成功していた。一方、[Repo Health Run #41744747754](https://github.com/hat47x/tei-platform/actions/runs/41744747754)の`repository-health`は**failure**であり、その時点のPR全体の健全性をPASSとは呼べない。
+- 同runの**実Jobログ**を確認したところ、正規全体健全性の `gofmt -l . is empty` で失敗し、`bounded_collection_comparison_test.go`／`collection_selection_factorial_test.go`／`source_rename_and_scoring_characterization_test.go`の**3ファイルだけ**が`gofmt drift`と表示された。同Jobの後続`go vet ./...`実行やExternal Coordination E1の成功を、初めのformatter failureの解消証拠に置換しない。
+- **修正した事実**：PR branch上の該当3ファイルをCIのGo formatterによって整形し、Git blobを順に `131a23c279b6a2bf00281feb7ac9631e910fbefa`、`36b9767a12644faa411b04f758f43a1cd6491dc8`、`1d66d3b673a53629f6fee410265c85b6ffc31328`へ更新した。整形出力検査用の一時Workflowステップは削除し、専用Workflowの本来の `Test(Discovery|Rerank|CollectionComparison|CollectionFactorial)` 実行に復元した。**本節追加時点では新HEADの`repository-health`成功は未確認**。再確認ではこの文章を実証結果に合わせて更新する。
+- 今後の受入票は `PR exact HEAD / test source blobs / Focused Go CI / Repository Health / known failing step / main対応`を別欄とする。古いHEADのCIを新HEADに流用しない。Formatter不一致を本体アルゴリズムの失敗と混同しない一方、Focused GO successだけをRelease品質とみなさない。
+
+### 9.2 ADR-0038と認知の受入Owner（Issue/ADR横断レビューのC-7を反映）
+- [#2533 C-7](https://github.com/hat47x/tei-platform/issues/2533#issuecomment-6619122938)で、**ADR-0038（提案中）**・歴史的な `#843/#876`・閉鎖済み`#2021`と、現在の#2533との参照が重なっていることを確認した。過去Issueを新しい独立Oracle正本と扱わない。
+- **独立R/Expected/判別力の現在のOwnerは[#2514](https://github.com/hat47x/tei-platform/issues/2514)**と明示する。#2533は実評価、SEI [#767](https://github.com/hat47x/sei-cognition/issues/767)は認知Method候補、[#2516](https://github.com/hat47x/tei-platform/issues/2516)はConsumer/Disclosure、TAI [#271](https://github.com/hat47x/tai-pleroma/issues/271)は継続再資格化。これらの成功やモデルの確率はOwnerによる業務意味受理を代行しない。
+- **ADR-0038を正式採用するか参照方式の範囲へ留めるかは人のOwner判断**。今回の実Go試験・Role/Skill実装をもってADR受理、Model認知能力の完成、実行Authority付与、新規共通Proof Runtime構築と解釈しない。旧#2196/#2021は閉鎖のまま。
+
+### 9.3 直近の比較で残る別因子
+`CC-04/05`の2×2は、固定された人工World内の**字句で識別可能なRの表示到達**のみを測った。次のModel/Method比較では、(1)同じCでの順位、(2)同じ予算での追加Source Read、(3)未探索と権限不足、(4)Source版変更後の再取得、(5)実Consumerへ渡せる情報を分離する。固定RをMethodに公開せず、構造候補から受理済みMeaningへ自動昇格させない。現PoCが追加Probe用CLIを提供していない制約を維持する。
