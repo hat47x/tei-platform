@@ -65,12 +65,37 @@ func TestScenarioEvidenceModeLimitsQualification(t *testing.T) {
 		t.Fatalf("verify is not the six-step static reference: %+v", static)
 	}
 	assertPatternResolutionOnly(static)
+	// Requiring every evidence row prevents a green verify result from silently
+	// dropping an unexecuted Step. This is a bounded six-step contract, not
+	// proof that the real Provider/Host/Command route ran.
+	staticNature := map[string]string{
+		"browse-pattern":     "canonical-pattern-resolution-only",
+		"record-pattern":     "canonical-pattern-resolution-only",
+		"browse-synthetic":   "synthetic-fixture-bound; query-not-executed",
+		"validate-positive":  "canonical-validations-bound; not-evaluated",
+		"validate-denied":    "canonical-validations-bound; not-evaluated",
+		"observe-synthetic":  "synthetic-observation-bound; not-read",
+	}
+	staticNotExecuted := map[string]bool{
+		"browse-synthetic":  true,
+		"validate-positive": true,
+		"validate-denied":   true,
+		"observe-synthetic": true,
+	}
+	if len(static.Evidence) != len(staticNature) {
+		t.Fatalf("static verification omitted a required Step: %+v", static.Evidence)
+	}
+	seenStatic := make(map[string]bool)
 	for _, candidate := range static.Evidence {
-		if candidate.StepID == "browse-synthetic" {
-			if candidate.Verified || candidate.EvidenceNature != "synthetic-fixture-bound; query-not-executed" {
-				t.Fatalf("static verification incorrectly claimed query execution: %+v", candidate)
-			}
+		wantNature, expected := staticNature[candidate.StepID]
+		if !expected || seenStatic[candidate.StepID] || candidate.EvidenceNature != wantNature {
+			t.Fatalf("unexpected, duplicated, or mislabeled static evidence: %+v", candidate)
 		}
+		wantVerified := !staticNotExecuted[candidate.StepID]
+		if candidate.Verified != wantVerified {
+			t.Fatalf("static Step promoted an unexecuted operation: %+v", candidate)
+		}
+		seenStatic[candidate.StepID] = true
 	}
 
 	unpinned := invoke("run", "-scenario", scenarioPath, "-workspace", workspacePath, "-step", "browse-pattern")
@@ -87,12 +112,31 @@ func TestScenarioEvidenceModeLimitsQualification(t *testing.T) {
 	if err := json.Unmarshal(generated.Bytes(), &plan); err != nil {
 		t.Fatalf("decode generated CLI plan: %v", err)
 	}
-	if len(plan.Commands) != 6 || plan.Commands[0].StepID != "browse-pattern" {
-		t.Fatalf("unexpected generated CLI plan: %+v", plan.Commands)
+	// A successful plan must contain every required Step and each generated
+	// argv must produce its own accurately scoped evidence receipt.
+	runNature := map[string]string{
+		"browse-pattern":     "canonical-pattern-resolution-only",
+		"record-pattern":     "canonical-pattern-resolution-only",
+		"browse-synthetic":   "synthetic-browse-query-executed",
+		"validate-positive":  "canonical-validations-synthetic-input-evaluated",
+		"validate-denied":    "canonical-validations-synthetic-input-evaluated",
+		"observe-synthetic":  "synthetic-independent-observation-read",
 	}
-	pinned := invoke(plan.Commands[0].Argv[2:]...)
-	if pinned.ExecutionMode != "generated-pinned" || pinned.SelectedStepCount != 1 {
-		t.Fatalf("generated-pinned command has incorrect evidence scope: %+v", pinned)
+	if len(plan.Commands) != len(runNature) {
+		t.Fatalf("generated plan omitted required Steps: %+v", plan.Commands)
 	}
-	assertPatternResolutionOnly(pinned)
+	seenPinned := make(map[string]bool)
+	for _, command := range plan.Commands {
+		wantNature, expected := runNature[command.StepID]
+		if !expected || seenPinned[command.StepID] || len(command.Argv) < 3 {
+			t.Fatalf("missing, duplicate, or malformed generated Step: %+v", command)
+		}
+		pinned := invoke(command.Argv[2:]...)
+		if pinned.ExecutionMode != "generated-pinned" || pinned.SelectedStepCount != 1 ||
+			len(pinned.Evidence) != 1 || pinned.Evidence[0].StepID != command.StepID ||
+			!pinned.Evidence[0].Verified || pinned.Evidence[0].EvidenceNature != wantNature {
+			t.Fatalf("pinned Step overstated or omitted its evidence: %s %+v", command.StepID, pinned)
+		}
+		seenPinned[command.StepID] = true
+	}
 }
