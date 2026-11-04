@@ -313,6 +313,54 @@ func TestReferenceWorkspaceDefinitionAndPluginWorkflow(t *testing.T) {
 		t.Fatalf("invalid type comparison: %+v, %v", invalidType, err)
 	}
 	t.Logf("reference type edit: 1 source changed, existing attribute and Contract Query references retained; %d direct/previous impact edges; incomplete coverage explicit; unchanged plugin lock; unknown base rejected", len(typeReport.SemanticImpact))
+	// Change a Database contract independently of Semantic/Application.
+	if err := os.WriteFile(filepath.Join(after, filepath.FromSlash(rel)), original, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	const queryInput = "input order_id type sales.order_id"
+	if bytes.Count(contractBefore, []byte(queryInput)) != 1 {
+		t.Fatal("contract input anchor not unique")
+	}
+	contractPath := filepath.Join(after, filepath.FromSlash(contractRel))
+	if bytes.Count(contractBefore, []byte("contract sales_core.order_line v1.0")) != 1 {
+		t.Fatal("contract version anchor not unique")
+	}
+	contractEdit := bytes.Replace(contractBefore, []byte("contract sales_core.order_line v1.0"), []byte("contract sales_core.order_line v1.1"), 1)
+	if err := os.WriteFile(contractPath, contractEdit, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	run(tei, 0, "validate", "-workspace", after)
+	run(tei, 0, "plugin-resolve", "-workspace", after, "-environment", "development", "-plugin-lock", lockPath)
+	var contractReport applicationMembershipComparison
+	if err := json.Unmarshal(run(compare, 0, "compare-application-membership", "-before", before, "-after", after), &contractReport); err != nil {
+		t.Fatal(err)
+	}
+	if len(contractReport.SemanticChanges) != 0 || len(contractReport.StrictChanges) != 0 || contractReport.Membership == nil || len(contractReport.Membership.Changes) != 0 || len(contractReport.ChangedCollections) != 1 || contractReport.ChangedCollections[0] != "databases" {
+		t.Fatalf("contract collection change hidden or misclassified: %+v", contractReport)
+	}
+	mismatched := bytes.Replace(contractBefore, []byte(queryInput), []byte("input order_id type std.text"), 1)
+	if err := os.WriteFile(contractPath, mismatched, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if out := run(tei, 1, "plugin-resolve", "-workspace", after, "-environment", "development", "-plugin-lock", lockPath); !bytes.Contains(out, []byte("HEADER_DETAIL_BINDING_INPUT_TYPE_MISMATCH")) {
+		t.Fatalf("existing binding mismatch not rejected: %s", out)
+	}
+	badContract := bytes.Replace(contractBefore, []byte(queryInput), []byte("input order_id type sales.not_found"), 1)
+	if err := os.WriteFile(contractPath, badContract, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if out := run(tei, 1, "plugin-resolve", "-workspace", after, "-environment", "development", "-plugin-lock", lockPath); !bytes.Contains(out, []byte("WORKSPACE_VALIDATION_FAILED")) {
+		t.Fatalf("unknown query type must fail: %s", out)
+	}
+	var contractInvalid applicationMembershipComparison
+	if err := json.Unmarshal(run(compare, 1, "compare-application-membership", "-before", before, "-after", after), &contractInvalid); err != nil || contractInvalid.Membership != nil || len(contractInvalid.ChangedCollections) != 0 {
+		t.Fatalf("invalid contract comparison: %+v, %v", contractInvalid, err)
+	}
+	var contractDiagnostic applicationMembershipComparison
+	if err := json.Unmarshal(run(compare, 1, "compare-application-membership", "-before", before, "-after", after, "-include-unvalidated-candidates"), &contractDiagnostic); err != nil || contractDiagnostic.WorkspaceValidationPassed || len(contractDiagnostic.AfterDiagnostics) == 0 || len(contractDiagnostic.ChangedCollections) != 1 || contractDiagnostic.ChangedCollections[0] != "databases" {
+		t.Fatalf("unvalidated contract comparison: %+v, %v", contractDiagnostic, err)
+	}
+	t.Log("reference contract minor-version edit: 1 file; semantic/application diffs empty but databases collection changed; existing Lock resolves; mismatched binding and unknown type rejected, opt-in remains unvalidated")
 	actual, err := os.ReadFile(filepath.Join(repositoryRoot(t), "reference", "workspace", filepath.FromSlash(rel)))
 	if err != nil || !bytes.Equal(actual, original) {
 		t.Fatalf("reference source changed during isolated test: %v", err)

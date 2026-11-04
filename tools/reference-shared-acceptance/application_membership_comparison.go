@@ -19,6 +19,7 @@ type applicationMembershipComparison struct {
 	WorkspaceValidationPassed bool                                               `json:"workspaceValidationPassed"`
 	StrictChanges             []changeanalysis.SubjectChange                     `json:"strictChanges"`
 	SemanticChanges           []changeanalysis.SubjectChange                     `json:"semanticChanges"`
+	ChangedCollections        []string                                           `json:"changedCollections"`
 	SemanticImpact            []changeanalysis.ImpactEdge                        `json:"semanticImpact,omitempty"`
 	SemanticImpactUnresolved  []changeanalysis.Unresolved                        `json:"semanticImpactUnresolved,omitempty"`
 	Membership                *changeanalysis.ApplicationMembershipCandidateDiff `json:"membershipCandidates,omitempty"`
@@ -76,6 +77,11 @@ func runApplicationMembershipComparison(args []string, stdout, stderr io.Writer)
 			if err != nil {
 				return err
 			}
+			collections, _, err := changeanalysis.CollectionDiff(before.World, after.World)
+			if err != nil {
+				return err
+			}
+			report.ChangedCollections = collections
 			report.SemanticChanges, report.StrictChanges, report.Membership = semantic, strict, &candidate
 			if len(semantic) != 0 {
 				report.SemanticImpact, report.SemanticImpactUnresolved = changeanalysis.ImpactWithBefore(before.World, after.World, semantic)
