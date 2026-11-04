@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 
 	"tei/internal/sourceindex"
@@ -191,4 +192,40 @@ func importedEvidenceFixturePair(t *testing.T) (consumer, provider string) {
 	writeImportedEvidenceFixture(t, filepath.Join(consumer, "semantic/watch.tei"),
 		"namespace monitoring\n\ndata Watch {\n    attribute process type os.process_id\n}\n")
 	return consumer, provider
+}
+
+func TestCaptureImportedParsedLoadRedactsPrivatePaths(t *testing.T) {
+	const canary = "secret-private-provider-source-canary"
+	rawManifest := []byte("workspace: provider\nformatVersion: 1\nsources:\n  - semantic\n")
+	for _, tc := range []struct {
+		name string
+		path string
+	}{
+		{name: "missing-parser-byte", path: "semantic/" + canary + ".tei"},
+		{name: "invalid-relative-path", path: "../" + canary + ".tei"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			// Construct a private malformed provider result without opening the
+			// provider's filesystem; external diagnostics must not echo its path.
+			provider := Result{
+				semanticFilesByNamespace: map[string][]string{"os": {tc.path}},
+				sourceSnapshot: make(map[string][]byte),
+				sourceManifest: ManifestIdentity{
+					Path: "tei.workspace.yaml",
+					SHA256: sourceindex.Fingerprint(rawManifest),
+				},
+				sourceManifestBytes: append([]byte(nil), rawManifest...),
+			}
+			_, err := captureImportedParsedLoad(
+				WorkspaceImport{Alias: "os", Namespace: "os", Path: "../provider"},
+				"sha256:independent-test-only", provider,
+			)
+			if err == nil {
+				t.Fatal("invalid provider read evidence was accepted")
+			}
+			if strings.Contains(err.Error(), canary) {
+				t.Fatalf("provider-private Source path leaked in rejection: %v", err)
+			}
+		})
+	}
 }
