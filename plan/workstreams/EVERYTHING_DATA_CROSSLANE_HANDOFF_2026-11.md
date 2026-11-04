@@ -2207,7 +2207,7 @@ EKI側#112/#266/#67/#115へ契約不足を返し、TEI #1130がJob意味と判�
 **現時点の証拠**：#2822/#2823/#2824は現行実Go CLIで再現したとIssueに記録されている（main `97aba8146`、WSL Go1.27.0）。#2813固定HEADのGo CI PASSは候補DSL Test-only。#2811/#2667の計画追加はDocs-only。**本節の同一CLI／同一Scenario／独立Oracle／Build／Web／Host／EKI／Consumerの新たな実試行はNOT RUN**。独立の新しい合格主張、正式CLI/DSL Schema採用、Owner意味受理、実Host権限を含まない。
 
 
-### 43.11 消費しなかった入力の証拠：Negative Dependencyと必要Sourceの未取得（追加受入補強）
+### 43.12 消費しなかった入力の証拠：Negative Dependencyと必要Sourceの未取得（追加受入補強）
 
 #2822/#2823が示す根本問題は、単なる `validate` 終了コードでなく、**宣言されたSourceとParserが実消費したSourceの差分を、対象外/不存在/未探索/権限拒否/不明に理由付きで表現できるか**である。§43.6のLoadedだけでは、必要なファイルがどこかに追加された時に以前の「対象完了」が失効するかを判定しにくい。そこで#2600のnegative dependency／#2743のSource closureを、既存ADM-01〜03の**補助Expected**として接続する。新しいファイル追跡Engine、監視Service、Source Registryは設けない。
 
