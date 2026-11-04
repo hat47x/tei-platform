@@ -215,9 +215,9 @@ func loadWorkspaceImports(root string, imports []WorkspaceImport, result *Result
 			return fmt.Errorf("import %q: %w", imp.Alias, err)
 		}
 		if result.importedParsedLoads == nil {
-			result.importedParsedLoads = make(map[string]importedParsedLoad)
+			result.importedParsedLoads = make(map[string]*importedParsedLoad)
 		}
-		result.importedParsedLoads[imp.Alias] = capture
+		result.importedParsedLoads[imp.Alias] = &capture
 		owned[imp.Namespace] = true
 		result.World.Semantics = append(result.World.Semantics, *selected)
 		result.Imports = append(result.Imports, ResolvedImport{
