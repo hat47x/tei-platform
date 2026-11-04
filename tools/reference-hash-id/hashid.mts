@@ -158,3 +158,58 @@ export function derive(s: Scheme, source: Uint8Array, adapter: CryptoAdapter): D
   if (text.length !== s.length) throw Error('rejection sampling budget exceeded');
   return { scheme: s, text, digest: null };
 }
+
+// v1 canonical JSON includes every field in this fixed order, including
+// zero/empty values. It is intentionally NOT an authority/identity proof.
+// An encoding-only change modifies this wire, not encodedDigest hash bytes.
+export const SCHEME_WIRE_FORMAT = 'tei.hashid.scheme/v1';
+
+export function serializeSchemeJSON(s: Scheme): string {
+  validate(s);
+  return JSON.stringify({
+    format: SCHEME_WIRE_FORMAT,
+    scheme: {
+      schemeId: s.schemeId,
+      purpose: s.purpose,
+      scope: s.scope,
+      inputKind: s.inputKind,
+      canonicalization: s.canonicalization,
+      algorithm: s.algorithm,
+      mode: s.mode,
+      outputBits: s.outputBits,
+      encoding: s.encoding,
+      alphabet: s.alphabet,
+      length: s.length,
+    },
+  });
+}
+
+// Canonical equality rejects duplicate/unknown fields, missing zeros, nulls,
+// different key orders, whitespace and noncanonical JSON escapes. Parse must
+// never silently reinterpret a saved Scheme from a different language/version.
+export function parseSchemeJSON(raw: string): Scheme {
+  if (typeof raw !== 'string' || raw.length === 0 || raw.length > 4096) {
+    throw Error('invalid scheme JSON length');
+  }
+  const input: unknown = JSON.parse(raw);
+  if (input === null || typeof input !== 'object' || Array.isArray(input)) {
+    throw Error('scheme envelope must be an object');
+  }
+  const envelope = input as { format?: unknown; scheme?: unknown };
+  if (envelope.format !== SCHEME_WIRE_FORMAT || envelope.scheme === null ||
+      typeof envelope.scheme !== 'object' || Array.isArray(envelope.scheme)) {
+    throw Error('unsupported scheme envelope');
+  }
+  const s = envelope.scheme as Record<string, unknown>;
+  for (const key of ['schemeId', 'purpose', 'scope', 'inputKind',
+    'canonicalization', 'algorithm', 'mode', 'encoding', 'alphabet']) {
+    if (typeof s[key] !== 'string') throw Error('scheme string field is missing');
+  }
+  for (const key of ['outputBits', 'length']) {
+    if (typeof s[key] !== 'number') throw Error('scheme integer field is missing');
+  }
+  const checked = s as unknown as Scheme;
+  const canonical = serializeSchemeJSON(checked);
+  if (canonical !== raw) throw Error('noncanonical scheme JSON');
+  return checked;
+}
