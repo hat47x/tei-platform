@@ -119,7 +119,7 @@ func TestTargetRejectsInvalidAndAmbiguousScheme(t *testing.T) {
 	if _, err := CheckTargetBinding(r, "record:a", profile, nil); err != nil {
 		t.Fatalf("an unused uppercase character must not reject lowercase SHA-256: %v", err)
 	}
-	profile.AllowedAlphabet = "0123456789abcde"
+	profile.AllowedAlphabet = strings.ReplaceAll("0123456789abcdef", r.Text[:1], "")
 	if _, err := CheckTargetBinding(r, "record:a", profile, nil); err == nil {
 		t.Fatal("missing allowed character should reject source")
 	}
