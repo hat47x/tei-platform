@@ -2493,3 +2493,42 @@ EKI側#112/#266/#67/#115へ契約不足を返し、TEI #1130がJob意味と判�
 **P2-ORG-STALE**：P1が成立した後、Source Move／Relation Cardinality／Grant Revokeのうち1つだけ変更→旧Read後着→可視性/引用/更新Intentを現在資格へ再評価。実Studio/SHO/AI受領・秘密原文の開示は当該Ownerの許可があるときだけ。新Driverや第二Reactive Engineを設けない。
 
 **この節自体の証拠**：実Go E1の固定CIとSource/Workflow静的照合は成功。**実AI生成・独立Mutant検出・P1/P2 Provider実行・Query/SHO/Studio・実認可・Owner受理は未実施**。目的はE1の判別力を上げ、E2で未検証のままになっている部分を同じ受入票へ収めること。
+
+## 47. 必須条件の欠落を局所PASSから区別する：自己記述Role・RunPlan・AIテスト・Harnessへの最小引継ぎ（2026-11-05）
+
+### 47.1 新たに確認できた共通の不足
+
+[main統合済み #2850](https://github.com/hat47x/tei-platform/pull/2850)は、確定後・補償EffectにObserverが無ければ無人RunPlanを止める限定実装。一方、実mainのinternal/execution/runplan.goにある **CombinePreconditions** は、渡されたnon-nil検査が拒否しないことだけを判定し、必要なPeriod/Grant/Target/Effect検査がすべて渡されたことを証明しない。EffectObserverの存在も実Observeを呼んだ証拠ではなく、Step Bのblockedは先行Step Aの無作用を意味しない。[#2616 §17](https://github.com/hat47x/tei-platform/pull/2616)のACU-01〜08がこの差を扱う。
+
+[自己記述 Draft #2860 §6](https://github.com/hat47x/tei-platform/pull/2860)は、Source／Interpretation（Role・Operatorと推移Pin）／Meaning（非出力依存を含む）／Realization・Consumerという **Claim相対の必要閉包**とSDX-09〜15を設計済み。共通問題は「見えた検査はPASSだが、必要な検査が入っていたかが不明」という点である。
+
+**既存Evidenceで突合する4つの列**：
+
+- **Required（要件）**：Ownerの既存契約がその用途・Subject・操作に必要と定めたSource、Role/Operator、検査、Read、Effect、Consumer条件。AI自身の解釈だけで要求集合を確定しない。
+- **Observed（実証）**：当該Attemptの実Source/実装版・Source span、実Tool/Runner、検証Check・Receipt・Consumer実受領。過去の異なるPR HEADのCI成功は同一Attemptの証拠にしない。
+- **Undischarged（不足）**：Requiredにあり未読込・未実行・stale・partial・unavailable・permission-deniedな条件。**Required集合自体が未確定なら空集合としてPASSせずunknown**。ただしread-only Claimに不要な実DB Commit等は強制しない。
+- **Claim ceiling（結論）**：局所Go/Parser/Check/Skill適格PASS、Ownerの意味受理、現在Grant、実Effect、Consumer受領は別の結論。必要条件が欠けた場合、観測済みの局所結果は残しつつ上位資格だけ保留する。
+
+これらは**読取り専用の検収観点**であり、新たなRuntime Gate・共通Schema・Registry・Authority・Test Runnerを作る提案ではない。
+
+### 47.2 既存Ownerの検証票へ渡す6反例
+
+| Case | 局所PASSと未充足条件 | 必要な判定・Owner |
+| --- | --- | --- |
+| **OQ-01 Source欠落** | Workspaceのroot誤字・未解析suffix・標準Catalogだけでvalidate OK | 必須User SubjectのLoaded/Consumedなしならunknown。#2822/#2823/#1180、SDX-09 |
+| **OQ-02 Role閉包欠落** | Role Descriptorは読めるが実Role/Operatorのexact実装・推移eager依存が未Pin | InterpretableとMeaning Accepted/Usableを別判定。#2620/#988/#2860 SDX-12/14 |
+| **OQ-03 必須Guard欠落** | Periodが必要なのにEffectPreconditionsしかCombineへ渡さず、渡されたCheckは拒否しない | 安全に実行できると認定しない。**現実装が自動的に拒否すると主張しない**。#2616 ACU-01、#1130/#1174 |
+| **OQ-04 Block前の部分Effect** | Step A resolvedの後、Step B blocked。Observer型はあるが実Observeなし | Plan全体effect=0・業務Verifiedに昇格しない。Step別Receipt/Unknownを要求。#2616 ACU-02/04、#1174 |
+| **OQ-05 Required Test抜け** | 保存6 StepのGo CIは成功だが、新AI Case/Targetで必須Case欠落・SKIP | #2830の[exact Health success](https://github.com/hat47x/tei-platform/actions/runs/41851323500)を固定6 Stepの局所証拠に限定。#2811/#2828/#2514。実PGのSKIP緑拒否は[merged #2835](https://github.com/hat47x/tei-platform/pull/2835)の既存実装へ委譲 |
+| **OQ-06 Skill/Consumer未受領** | Skill記述あり・合成Checker eligible／Artifact Manifestありだが実Load/Readなし | H3実Loaded・Tool実Invoke、必要memberのConsumer実受領・現在Disclosureを別証拠へ。TAI #168、TEI #2604/#2516 |
+
+**最小の実行比較**：同じ公開Semantic SubjectとSource Revisionを固定し、Ownerが必須とする一条件について、正常に実観測された例と欠落した例を事前Expectedで対照する。合成CLI/Goの局所PASSが残っても、必要条件未充足なら上位Claimをunknown/unqualifiedへ落とせるかを確認する。Owner Accepted ExpectedはActualや生成AI候補と独立に固定する（#2514）。現Productにそれを示すWitnessが無い場合はunsupported/NOT RUNとして記録する。
+
+### 47.3 優先順位を増やさない統合順
+
+1. **利用価値を先行**：§45.3／TAI #168の公開TEI利用者定義1 SubjectについてT0実Source Loadedを確認し、既存H2→H3→H3→H2の4独立Sessionへ進む。OQ-01/06を既存Runbookの停止条件として再利用し、新Suiteを実Harness試験の先行義務にしない。
+2. **安全な業務実行**：#2616/#1130の既存RunPlanでOQ-03/04の不足検査と途中Effectのcharacterizationを行う。実Providerの現在Grant/Commit直前Fence/Receiptは#1174の実作用境界で別途検証し、RunPlan自体を万能Authorityにしない。
+3. **自己記述とBuild**：#2620/#2860が同一実Semantic SubjectのRole/Operator exact Pin・hidden dependencyを扱い、#2831は実Build graph/Seed/ArtifactSetを別の資格で検証。自己解釈の局所成功をセルフビルド成功に昇格しない。
+4. **AIテスト採用**：OQ-01/03/05を#2811/#2514の独立ExpectedとKnown Mutant候補へ渡し、#2828/#2830の既存Scenario/Runnerを利用。新たな第二Scenario正本を作らない。
+
+**今回のEvidence**：#2850 main統合とrunplan.goの静的コード確認、Draft #2860のSDX設計、#2830の固定CI、既存TAI SK-02合成CIまで。**OQ-01〜06の同一Attempt実試験、独立Mutant検出、実Harness/Skill Load、実Provider/Commit/Observer受領、正式Role自己解釈・全体セルフビルド、Owner受理はNOT RUN**。Draft #2667への計画追補のみ。#1119の既存P0/G0〜G4を変更しない。
