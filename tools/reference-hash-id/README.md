@@ -30,6 +30,10 @@
 - 正本との紐付けは `TargetBinding.Subject`（Qualified Source identity）と `TargetBinding.Scheme`（正確な生成規則）に保持する。同じSubjectでもSchemeが異なれば暗黙の冪等再登録とはみなさず、移行を要求する。文字列だけをCanonical ID、権限、Source Acceptanceへ昇格させない。
 - 現状はASCIIのみ。Windows予約名/パス末尾規則・実DBのUnicode照合・OS別同値判定はOwnerが宣言する個別Profile/独立試験を要する。
 
+## SQLite実Targetの限定回帰
+
+`sqlite_target_test.go` は、リポジトリ既存の `modernc.org/sqlite` を用いて**実SQLite DB**に `COLLATE NOCASE` と `UNIQUE(namespace, physical_id)` を宣言し、同一大文字小文字Foldの異Subject登録が拒否されることを検査する。もう一つの試験では8つのGo並行呼出しを**単一SQLite接続に直列化**し、1行しか保存されないことを確認する。DB側の一意制約という原子的なGuardの必要性を示すための限定実証であり、マルチ接続・マルチノード・PostgreSQL・Unicode照合・現実の移行/権限まで実証したものではない。
+
 ## 型付きTypeScriptと標準cSHAKE検査
 
 `hashid.mts` はHost/Browser/Nodeに依存しない型付き参考モデルで、Scheme検査、binary frame、Base16/Base32/Base64url/radix表現、およびXOFの棄却サンプリングを提供する。SHA-256/SHAKE256/cSHAKE256の実計算は `CryptoAdapter.digest` に委譲する。**Adapterは本物の暗号Providerである必要があり、cSHAKE256ではN=空、S=`tei.hashid.cshake256.v1` を満たす必要がある。** 特定Hostへの結線やKey管理は行わない。
