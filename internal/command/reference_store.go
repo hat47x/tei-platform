@@ -4,13 +4,14 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
-
 	"tei/internal/applicationview"
 	"tei/internal/core"
 	"tei/internal/ir"
 	"tei/internal/semantic"
+	"time"
 )
 
 // MemoryStoreは、Commandの効果を適用する参照用の記憶域である。
@@ -329,6 +330,23 @@ func (e ReferenceDataExecutor) checkCandidateKeys(request Request) error {
 	if len(candidateKeys) == 0 {
 		return nil
 	}
+	types := map[core.CanonicalID]semantic.Type{}
+	for _, namespace := range e.World.Semantics {
+		for _, typ := range namespace.Types {
+			types[typ.ID] = typ
+		}
+	}
+	attributeTypes := map[core.CanonicalID]core.CanonicalID{}
+	for _, namespace := range e.World.Semantics {
+		for _, data := range namespace.Data {
+			if data.ID != dataID {
+				continue
+			}
+			for _, attribute := range data.Attributes {
+				attributeTypes[attribute.ID] = attribute.TypeRef
+			}
+		}
+	}
 	currentKey := recordKeyFields(request.Inputs, e.KeyFields)
 	for _, candidate := range candidateKeys {
 		values := map[core.CanonicalID]string{}
@@ -344,13 +362,17 @@ func (e ReferenceDataExecutor) checkCandidateKeys(request Request) error {
 		if !complete {
 			continue
 		}
+		normalized := map[core.CanonicalID]string{}
+		for attribute, value := range values {
+			normalized[attribute] = normalizeValue(attributeTypes[attribute], value, types)
+		}
 		for _, record := range e.Store.RecordsWithAttributes(dataID) {
 			if record.Key == currentKey {
 				continue
 			}
 			matched := true
-			for attribute, value := range values {
-				if record.Attributes[attribute] != value {
+			for attribute, value := range normalized {
+				if normalizeValue(attributeTypes[attribute], record.Attributes[attribute], types) != value {
 					matched = false
 					break
 				}
@@ -561,6 +583,39 @@ func (e ReferenceDataExecutor) checkDeletePolicy(target core.CanonicalID, target
 		}
 	}
 	return nil
+}
+
+func normalizeValue(typeRef core.CanonicalID, value string, types map[core.CanonicalID]semantic.Type) string {
+	primitive := typeRef
+	for depth := 0; depth < 16; depth++ {
+		typ, ok := types[primitive]
+		if !ok || typ.Kind != semantic.TypeAlias || typ.Underlying == "" {
+			break
+		}
+		primitive = typ.Underlying
+	}
+	switch primitive {
+	case "std.integer":
+		if number, err := strconv.ParseInt(value, 10, 64); err == nil {
+			return strconv.FormatInt(number, 10)
+		}
+	case "std.decimal", "std.money":
+		if number, err := strconv.ParseFloat(value, 64); err == nil {
+			return strconv.FormatFloat(number, 'f', -1, 64)
+		}
+	case "std.boolean":
+		if strings.EqualFold(value, "true") {
+			return "true"
+		}
+		if strings.EqualFold(value, "false") {
+			return "false"
+		}
+	case "std.date":
+		if date, err := time.Parse("2006-01-02", value); err == nil {
+			return date.Format("2006-01-02")
+		}
+	}
+	return value
 }
 
 func attributeValues(plan applicationview.CommandPlan) map[core.CanonicalID]string {
