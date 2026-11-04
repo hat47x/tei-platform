@@ -21,3 +21,22 @@ go test ./internal/operations -run TestOrgHeadless -count=1
 **Scope:** This tests real Parser/Loader → Semantic World/Relation → Persistence mapping → OperationSurface, with artifact output as an additional consumer. `TestOrgHeadlessCaseRelationDoesNotAuthorizeReadOrWrite` is a native Go *negative characterization* of the typed relationship/policy boundary. It proves the absence of automatically derived Case operations in this read-only fixture, not that a default scoped-access policy could be enforced by a real Provider. It does NOT insert Persons/A1–A4 into a real DB, execute SQLGlot, observe Provider reads, calculate FTE/temporal correction, render Studio or SHO, authorize a Host action, or establish Owner business acceptance. Synthetic ORG-OC/RC/VF/FO remains a separate oracle in `reference/org-semantic-views`.
 
 Handoff: #2386, #2586, #1127, #2506, #2497, #2628, #2598, #1174; design Draft #2389. Reuse standard language/persistence/operations rather than introducing another organization Core or specialized Host.
+
+## Source, meaning and derived operations are different revision scopes
+
+These native Go regression tests work with **copies of the actual .tei workspace** and the production Parser/Loader/Source Index/Operation Surface, not a separate synthetic Source model.
+
+| Characterization | Source revision | Normalized World | Operation set | What it cannot establish |
+| --- | --- | --- | --- | --- |
+| Comment-only source edit | changed | unchanged | unchanged | Current source disclosure permission or real Provider/Host qualification |
+| Move `semantic/organization/model.tei` to another filename under same managed root | changed, despite identical file bytes | unchanged | unchanged | Validity of old source URL/span/citation, import snapshot or consumer selection |
+| A→B→A (add comment, then restore original bytes) | A ≠ B; A = C | unchanged | unchanged | That no intermediate revision or revocation ever happened |
+| CaseRecord `handlingUnit` cardinality `one → many` | changed | changed | unchanged | That same Operation JSON implies the same accepted meaning, Rule or Disclosure |
+
+The independent expected relationships in the table are asserted by `TestOrgHeadlessSourceByteEditPreservesWorldButChangesModelRevision`, `TestOrgHeadlessSourcePathMoveChangesModelRevision`, `TestOrgHeadlessSourceABAReturnsToOriginalStateButNotHistory`, and `TestOrgHeadlessSemanticRelationChangeIsInvisibleToCurrentOperations`.
+
+**A→B→A caveat:** The source identity `ModelRevision` is a fingerprint of the *currently observed state*, not an immutable event sequence, monotonic epoch, Provider Read receipt or authorization Grant. An external Consumer that missed B cannot infer B from A and C even when they share the same Source fingerprint. Observe the lifecycle and current permission separately.
+
+**Same Operation caveat:** A Function using the CaseRecord handling-unit relationship can depend on its declared cardinality even though the read-only Membership Operation Surface does not mention CaseRecord. Caching or skipping work solely because operation IDs or output JSON match is unsound for such a Consumer.
+
+The test runner's fixed-head status and product limitations must be checked separately. These checks do not establish real Provider execution, currently authorized policy enforcement, atomic multi-file Source capture or Owner's meaning acceptance.
