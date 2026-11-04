@@ -1,6 +1,6 @@
 # 内容導出IDの最小参照実装（#2814）
 
-**状態**: 実験的なGo参照実装。採用済み標準APIではなく、Core ID/Artifact Digest/署名/実行権限には結線しない。
+**状態**: 実験的なGo/TypeScript参照実装（TypeScriptの暗号計算は外部Adapterへ委譲）。採用済み標準APIではなく、Core ID/Artifact Digest/署名/実行権限には結線しない。
 
 設計: [可変長・可変文字集合の内容導出ID](../../plan/design/HASH_DERIVED_ID_SCHEME_DESIGN_2026-11.md)。
 
@@ -30,6 +30,14 @@
 - 正本との紐付けは `TargetBinding.Subject`（Qualified Source identity）と `TargetBinding.Scheme`（正確な生成規則）に保持する。同じSubjectでもSchemeが異なれば暗黙の冪等再登録とはみなさず、移行を要求する。文字列だけをCanonical ID、権限、Source Acceptanceへ昇格させない。
 - 現状はASCIIのみ。Windows予約名/パス末尾規則・実DBのUnicode照合・OS別同値判定はOwnerが宣言する個別Profile/独立試験を要する。
 
+## 型付きTypeScriptと標準cSHAKE検査
+
+`hashid.mts` はHost/Browser/Nodeに依存しない型付き参考モデルで、Scheme検査、binary frame、Base16/Base32/Base64url/radix表現、およびXOFの棄却サンプリングを提供する。SHA-256/SHAKE256/cSHAKE256の実計算は `CryptoAdapter.digest` に委譲する。**Adapterは本物の暗号Providerである必要があり、cSHAKE256ではN=空、S=`tei.hashid.cshake256.v1` を満たす必要がある。** 特定Hostへの結線やKey管理は行わない。
+
+`hashid.typed.test.mjs` は `tsc` で生成した独立`hashid.mjs`をNode `node:crypto` と共通 `vectors.json` に対して試験する。Goの `typed_exec_test.go` は `tsc` とNodeが利用可能な環境でのみ実行し、コンパイラ未導入時は**明示Skip**する。Go CIでのSkipをTypeScript合格と解釈しない。
+
+`cshake_standard_test.go` は[NIST SP 800-185のcSHAKE公開サンプル](https://csrc.nist.gov/projects/cryptographic-standards-and-guidelines/example-values)（X=00010203、N=空、S="Email Signature"、512bit出力）と、N/S両空の場合にcSHAKE256がSHAKE256と一致する性質を独立に確認する。**標準Primitiveの適合試験とTEI独自のFrame・暗号Adapterの相互運用試験は別**。
+
 ## 試験
 
 ```bash
@@ -43,7 +51,7 @@ node --test tools/reference-hash-id/hashid.crosslang.test.mjs
 
 `vectors.json` は **GoとNode.jsの両方が実際に読む**共有Golden fixture。`crosslang_fixture_test.go` がGoの`Derive`で計算し、`hashid.crosslang.test.mjs` は独立のNode `node:crypto`（SHA-256/SHAKE256）とバイナリ長フレーム/棄却サンプリングで同じ期待値を検査する。`crosslang_exec_test.go` によりGoの全体試験からNode試験も実行する。GitHub ActionsではNodeが見つからなければ失敗、通常のローカルGo試験では明示的にSkipする。
 
-2026-11-04の初回Node.js v22.16.0での`node --test`は**6件PASS**（実行環境を限定した独立試験）。Go/Node双方の**同一exact headでのCI**は対応するActions結果を確認するまで未実証として扱う。これはNode.jsの実証であり、TypeScriptコンパイラ/型付けの実証ではない。cSHAKEの独立既知ベクトル照合、TypeScript型検査、非2冪アルファベットの統計的偏り検定、実DB/OSのcollation/target制約、Unicode profile、既存ID移行は**未実装・未実証**。
+2026-11-04の初回Node.js v22.16.0での`node --test`は**6件PASS**（実行環境を限定した独立試験）。Go/Node双方の**同一exact headでのCI**は対応するActions結果を確認するまで未実証として扱う。これは独立Node.js試験の実績であり、追加したTypeScript・cSHAKE公開ベクトルの現在のCI合格を示さない。非2冪アルファベットの統計的偏り検定、cSHAKE256 TypeScript Provider独立実装、実DB/OSのcollation/target制約、Unicode profile、既存ID移行は**未実装・未実証**。
 
 この実装の結果を正本IDと認定してはならない。既存値と同名になっても、`Scheme`・用途・scope・正本からの対応を検査する。必要な強度・Target名制約・実Collision対策はConsumer側の明示Policyで行う。
 
