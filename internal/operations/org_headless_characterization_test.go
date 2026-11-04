@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 
 	"tei/internal/workspace"
@@ -126,7 +127,6 @@ func TestOrgHeadlessCaseRelationDoesNotAuthorizeReadOrWrite(t *testing.T) {
 	}
 }
 
-
 // A source-only change can leave the normalized semantic World unchanged while
 // changing the exact managed Source revision. A visible/read permission already
 // granted for a prior Source must not be renewed merely from equal operation JSON.
@@ -168,5 +168,133 @@ func TestOrgHeadlessSourceByteEditPreservesWorldButChangesModelRevision(t *testi
 	}
 	if after.Effect != "read-only" || len(after.AuthorityLimits) == 0 {
 		t.Fatalf("same World fingerprint and operation set cannot create action authority: %+v", after)
+	}
+}
+// The workspace's logical meaning and operation IDs survive a path move of one
+// fully parsed .tei source. SourceIndex ModelRevision still records the changed
+// source path. This is a local Workspace test, not an external Import or atomic
+// multi-file snapshot proof.
+func TestOrgHeadlessSourcePathMoveChangesModelRevision(t *testing.T) {
+	root := filepath.Join("..", "..", "reference", "org-headless-workspace")
+	before, err := SurfaceWorkspace(root, "org_view")
+	if err != nil {
+		t.Fatalf("load original organization workspace: %v", err)
+	}
+	copyRoot := t.TempDir()
+	if err := os.CopyFS(copyRoot, os.DirFS(root)); err != nil {
+		t.Fatalf("copy actual organization Source: %v", err)
+	}
+	from := filepath.Join(copyRoot, "semantic", "organization", "model.tei")
+	to := filepath.Join(copyRoot, "semantic", "organization", "model-relocated.tei")
+	if err := os.Rename(from, to); err != nil {
+		t.Fatalf("relocate parsed .tei Source within managed root: %v", err)
+	}
+	after, err := SurfaceWorkspace(copyRoot, "org_view")
+	if err != nil {
+		t.Fatalf("load organization workspace after Source path move: %v", err)
+	}
+	if before.WorldFingerprint != after.WorldFingerprint {
+		t.Fatalf("path-only move changed normalized World: before=%s after=%s",
+			before.WorldFingerprint, after.WorldFingerprint)
+	}
+	if before.ModelRevision == after.ModelRevision {
+		t.Fatal("a change to managed Source path must change the exact Source ModelRevision")
+	}
+	if !reflect.DeepEqual(before.Operations, after.Operations) {
+		t.Fatalf("path-only move changed actual read-only operations: before=%+v after=%+v",
+			before.Operations, after.Operations)
+	}
+}
+
+// A->B->A restores both currently observed fingerprints. This test explicitly
+// demonstrates that fingerprints are *state identifiers*, not revision history,
+// event receipts, currently valid grants, or proof no intermediate change occurred.
+func TestOrgHeadlessSourceABAReturnsToOriginalStateButNotHistory(t *testing.T) {
+	root := filepath.Join("..", "..", "reference", "org-headless-workspace")
+	copyRoot := t.TempDir()
+	if err := os.CopyFS(copyRoot, os.DirFS(root)); err != nil {
+		t.Fatalf("copy original .tei workspace: %v", err)
+	}
+	source := filepath.Join(copyRoot, "semantic", "organization", "model.tei")
+	original, err := os.ReadFile(source)
+	if err != nil {
+		t.Fatalf("read original .tei Source: %v", err)
+	}
+	a, err := SurfaceWorkspace(copyRoot, "org_view")
+	if err != nil {
+		t.Fatalf("load A: %v", err)
+	}
+	changed := append(append([]byte(nil), original...), []byte("\n// temporary B revision\n")...)
+	if err := os.WriteFile(source, changed, 0o644); err != nil {
+		t.Fatalf("write B: %v", err)
+	}
+	b, err := SurfaceWorkspace(copyRoot, "org_view")
+	if err != nil {
+		t.Fatalf("load B: %v", err)
+	}
+	if err := os.WriteFile(source, original, 0o644); err != nil {
+		t.Fatalf("restore original Source C: %v", err)
+	}
+	c, err := SurfaceWorkspace(copyRoot, "org_view")
+	if err != nil {
+		t.Fatalf("load restored A: %v", err)
+	}
+	if a.WorldFingerprint != b.WorldFingerprint || a.WorldFingerprint != c.WorldFingerprint {
+		t.Fatal("comment-only ABA must not change normalized semantic World")
+	}
+	if a.ModelRevision == b.ModelRevision || a.ModelRevision != c.ModelRevision {
+		t.Fatalf("Source identity must be A != B and A == C: %s / %s / %s",
+			a.ModelRevision, b.ModelRevision, c.ModelRevision)
+	}
+	if !reflect.DeepEqual(a.Operations, b.Operations) || !reflect.DeepEqual(a.Operations, c.Operations) {
+		t.Fatal("comment-only ABA must not create or change read-only operations")
+	}
+	// The temporal observation (three actual Load calls) is recorded by this
+	// test's own sequence, not inferred from the equal A/C fingerprints.
+}
+
+// A declared CaseRecord hierarchy link is *meaningful* even though the
+// read-only Membership OperationSurface does not mention the unpersisted Case.
+// Comparing only operation IDs/JSON would miss a changed Relation cardinality.
+func TestOrgHeadlessSemanticRelationChangeIsInvisibleToCurrentOperations(t *testing.T) {
+	root := filepath.Join("..", "..", "reference", "org-headless-workspace")
+	before, err := SurfaceWorkspace(root, "org_view")
+	if err != nil {
+		t.Fatalf("load original semantic relation: %v", err)
+	}
+	copyRoot := t.TempDir()
+	if err := os.CopyFS(copyRoot, os.DirFS(root)); err != nil {
+		t.Fatalf("copy actual .tei source: %v", err)
+	}
+	source := filepath.Join(copyRoot, "semantic", "organization", "model.tei")
+	raw, err := os.ReadFile(source)
+	if err != nil {
+		t.Fatalf("read source: %v", err)
+	}
+	oldDecl := "relation handlingUnit to organization.org_unit one"
+	newDecl := "relation handlingUnit to organization.org_unit many"
+	if strings.Count(string(raw), oldDecl) != 1 {
+		t.Fatal("expected precisely one typed CaseRecord relation occurrence")
+	}
+	changed := strings.Replace(string(raw), oldDecl, newDecl, 1)
+	if err := os.WriteFile(source, []byte(changed), 0o644); err != nil {
+		t.Fatalf("write changed relation declaration: %v", err)
+	}
+	after, err := SurfaceWorkspace(copyRoot, "org_view")
+	if err != nil {
+		t.Fatalf("load modified semantic relation: %v", err)
+	}
+	if before.WorldFingerprint == after.WorldFingerprint {
+		t.Fatal("different CaseRecord Relation cardinality must change semantic World")
+	}
+	if before.ModelRevision == after.ModelRevision {
+		t.Fatal("different Relation declaration must change managed Source ModelRevision")
+	}
+	if !reflect.DeepEqual(before.Operations, after.Operations) {
+		t.Fatalf("unpersisted CaseRecord Relation should not change Membership OperationSurface: before=%+v after=%+v",
+			before.Operations, after.Operations)
+	}
+	if after.Effect != "read-only" || len(after.AuthorityLimits) == 0 {
+		t.Fatal("a changed semantic Relation must not create an authorization Grant")
 	}
 }
