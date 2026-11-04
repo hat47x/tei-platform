@@ -117,6 +117,26 @@ func TestE2MustDeclareAKnownHostAuthorityProvenance(t *testing.T) {
 	}
 }
 
+// Documents a known limit: a look-alike label that uses a different script
+// (here Cyrillic o) is NOT folded to provisional-grant. E2 refuses it as an
+// unknown label; E0/E1 do not read Physical evidence, so nothing is reported.
+// The audit is not a defence against a packet author who disguises the label.
+func TestHomoglyphProvisionalLabelIsOnlyCaughtByTheE2AllowList(t *testing.T) {
+	label := "pr" + string(rune(0x043e)) + "visional-grant"
+	for claim, wantRequired := range map[string]bool{"E2": true, "E1": false, "E0": false} {
+		p := fixture()
+		p.Claim = claim
+		p.Physical.HostAuthorityProvenance = label
+		r := Audit(p, h, m)
+		if has(r, "PROVISIONAL_GRANT_NOT_G2_EVIDENCE") {
+			t.Fatalf("%s: a different-script look-alike must not be folded: %+v", claim, r)
+		}
+		if has(r, "E2_HOST_AUTHORITY_PROVENANCE_REQUIRED") != wantRequired {
+			t.Fatalf("%s: E2_HOST_AUTHORITY_PROVENANCE_REQUIRED=%v expected, got %+v", claim, wantRequired, r)
+		}
+	}
+}
+
 func TestReviewCandidateBindingMustMatchAcceptedCandidate(t *testing.T) {
 	p := fixture()
 	p.Claim = "E1"
