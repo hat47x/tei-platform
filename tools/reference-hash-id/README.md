@@ -13,6 +13,12 @@
 - frameは各項目のUTF-8 byte長をuint64 big-endianで付与する。ドメイン名 `tei.hashid.frame.v1` とcSHAKE customization `tei.hashid.cshake256.v1` を使用。
 - `CollisionProbability` / `CheckCollisionBudget` は独立・一様出力を仮定した誕生日近似を返す。実衝突の検出・DB永続化の一意性保証ではない。
 
+## Schemeの機械可読な固定形式（PoC v1）
+
+`scheme_wire.go`/`scheme_wire_test.go` と型付きTS `hashid.mts` は、`tei.hashid.scheme/v1` の正準JSONを相互運用する。Wireは **`format`＋全11項目が必須の`scheme`** からなる。UTF-8、固定キー順、余分な空白なし、全フィールド省略なし、HTML用追加エスケープなしの1行を唯一受理し、4KiB超・重複/未知キー・null・版違い・非正規エスケープは拒否する。Go `MarshalSchemeJSON/ParseSchemeJSON`、TS `serializeSchemeJSON/parseSchemeJSON`、共有Golden `scheme_wire_vectors.json` で照合する。
+
+Wireの文字列表現自体は **証明・意味IDではない**。 `encodedDigest` でEncodingだけを切替える場合、Wireは異なるがバイナリDigestは同一。導出アルゴリズムのFrameとWireの版は別契約であり、旧版の自動変換や既存Artifact/署名への適用はしない。
+
 ## 可逆表現の復号（追加Reference）
 
 `DecodeDigest` は `encodedDigest` だけを対象に、Base16、RFC4648 Base32、Base64url、Base10/36/62など指定Alphabetの固定幅radix表現を、指定ビット長のDigest byte列へ戻す。大文字、padding、非正規の先頭ゼロ/桁数、範囲超過、文字集合外の記号を拒否し、再エンコードした結果が元文字列に**完全一致**することを要求する。`exactCharacters` は不可逆な生成演算であり復号を拒否する。
