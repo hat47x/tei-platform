@@ -37,8 +37,8 @@ func commandCatalog() cliCommandCatalog {
 			{Name: "validate", Effect: "read-only", Required: []string{"exactly one of -workspace or -world"}, Optional: []string{"-json (workspace only)"}, Output: "text; json when -workspace -json"},
 			{Name: "world", Effect: "read-only", Required: []string{"exactly one of -workspace or -world"}, Output: "json"},
 			{Name: "requirements", Effect: "read-only", Required: []string{"exactly one of -workspace or -world"}, Output: "json"},
-			{Name: "plugin-lock", Effect: "read-only", Required: []string{"exactly one of -workspace or -world"}, Output: "json"},
-			{Name: "plugin-resolve", Effect: "read-only", Required: []string{"exactly one of -workspace or -world", "-environment"}, Optional: []string{"-plugin-lock"}, Output: "json"},
+			{Name: "plugin-lock", Effect: "read-only", Required: []string{"exactly one of -workspace or -world"}, Optional: []string{"-environment"}, Output: "json"},
+			{Name: "plugin-resolve", Effect: "read-only", Required: []string{"exactly one of -workspace or -world", "-environment"}, Optional: []string{"-plugin-lock", "-diagnostic-candidates"}, Output: "json"},
 			{Name: "plugin-runtime-plan", Effect: "read-only", Required: []string{"exactly one of -workspace or -world", "-environment", "-plugin-lock"}, Output: "json"},
 		},
 	}
