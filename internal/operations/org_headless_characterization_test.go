@@ -1,7 +1,9 @@
 package operations
 
 import (
+	"os"
 	"path/filepath"
+	"reflect"
 	"testing"
 
 	"tei/internal/workspace"
@@ -121,5 +123,50 @@ func TestOrgHeadlessCaseRelationDoesNotAuthorizeReadOrWrite(t *testing.T) {
 		if op.Target == "organization.case_record" || len(op.Effects) != 0 || op.Binding != "" {
 			t.Fatalf("CaseRecord OrgUnit relation must not imply read, edit or Host authorization: %+v", op)
 		}
+	}
+}
+
+
+// A source-only change can leave the normalized semantic World unchanged while
+// changing the exact managed Source revision. A visible/read permission already
+// granted for a prior Source must not be renewed merely from equal operation JSON.
+// This test uses a real copy of .tei authoring, the existing Loader and SourceIndex.
+// It does NOT model real physical Provider access, Policy enforcement or Host Grant.
+func TestOrgHeadlessSourceByteEditPreservesWorldButChangesModelRevision(t *testing.T) {
+	root := filepath.Join("..", "..", "reference", "org-headless-workspace")
+	before, err := SurfaceWorkspace(root, "org_view")
+	if err != nil {
+		t.Fatalf("load baseline organization workspace: %v", err)
+	}
+	copied := t.TempDir()
+	if err := os.CopyFS(copied, os.DirFS(root)); err != nil {
+		t.Fatalf("copy actual workspace Source: %v", err)
+	}
+	src := filepath.Join(copied, "semantic", "organization", "model.tei")
+	original, err := os.ReadFile(src)
+	if err != nil {
+		t.Fatalf("read copied organization model Source: %v", err)
+	}
+	commented := append(append([]byte(nil), original...), []byte("\n// source-only provenance edit; no accepted semantic change\n")...)
+	if err := os.WriteFile(src, commented, 0o644); err != nil {
+		t.Fatalf("write exact-source comment edit: %v", err)
+	}
+	after, err := SurfaceWorkspace(copied, "org_view")
+	if err != nil {
+		t.Fatalf("reparse comment-edited organization workspace: %v", err)
+	}
+	if before.WorldFingerprint != after.WorldFingerprint {
+		t.Fatalf("comment-only Source edit changed normalized World fingerprint: %s -> %s",
+			before.WorldFingerprint, after.WorldFingerprint)
+	}
+	if before.ModelRevision == after.ModelRevision {
+		t.Fatalf("comment-only Source edit must change managed Source revision: %s", before.ModelRevision)
+	}
+	if !reflect.DeepEqual(before.Operations, after.Operations) {
+		t.Fatalf("a comment-only Source edit must not create or change operations: before=%+v after=%+v",
+			before.Operations, after.Operations)
+	}
+	if after.Effect != "read-only" || len(after.AuthorityLimits) == 0 {
+		t.Fatalf("same World fingerprint and operation set cannot create action authority: %+v", after)
 	}
 }
