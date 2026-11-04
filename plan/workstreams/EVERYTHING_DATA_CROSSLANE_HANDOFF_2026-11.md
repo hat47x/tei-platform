@@ -1989,3 +1989,62 @@ EKI側#112/#266/#67/#115へ契約不足を返し、TEI #1130がJob意味と判�
 - **未確認/未実施**：#2813新HEAD CI、#2812安全修正後HEAD CI、Track A/Bの同一独立Oracle比較、AI生成の実測Coverage、製品Provider/Web/GUI/SHO、実Multi-build、実EKI Task/Worker/Artifact、低レイテンシ実測、Owner Meaning受理。これらを完了・採用・main統合と記載しない。
 
 **変更の性質**：本§41はDraft #2667の横断計画へのdocs-only追加。#1119 Gate・§40 C0〜C4の証拠閉包、既存各WorkstreamのOwnerと正式Grammar/Protocol採用保留を維持する。
+
+
+## 42. AI検証成果物の一式公開・受領資格と識別子境界（2026-11-04、§40–41への追補・Docs-only）
+
+### 42.1 実装から確認された新しい反例
+
+[Draft #2817](https://github.com/hat47x/tei-platform/pull/2817) は #2604 AP-01〜03 を現行Go実装へ適用し、WSL上のfocused Go testで次を観測した（PR本文に記録、repository-wide/exact-head CI・Windows・外部Consumerは別判定）。
+- **AP-01**：R2の一部ファイル書込後に失敗すると、**新R2ファイルと旧R1 manifest**が並存。
+- **AP-02**：R2で生成されないR1のファイルがディレクトリに残存。R2 manifestに載らないからといって物理的に消去されたわけではない。
+- **AP-03**：Slug名衝突がループ内で発見されるため、エラーの時点ですでに一部の既存ファイルが置換済み。旧manifestのみ残る。
+
+これは「書込み中断の実反例」だが、Producerが生成した各内容の誤り、外部SHOやAIの実消費障害まで証明したものではない。**§40 C3の『実Reader byte』だけでなく、『同一世代の公開済みmember集合』『Consumerが取得した一式』を明示**する必要がある。
+
+### 42.2 互いに独立する5つの資格
+
+| 資格 | 何を検証するか | 何を証明しないか | 所有 |
+| --- | --- | --- | --- |
+| 意味と定義 | Source/Canonical/Accepted Meaning、Scenario revision、独立Expected | ファイルの公開完了 | #988/#1180/#2514 |
+| 生成物同一性 | Artifact raw bytes、Manifest/Member digest、Generator/Toolchain pin | 出力先の世代一式性・公開時点 | #2482/#2600 |
+| 一式公開 | 完成Member全件、重複名なし、公開参照の一貫した切替、旧世代隔離 | Consumerが実際に取得したこと | **#2604** |
+| 実Consumer受領 | Pin済みManifest→実member bytes、欠落/版混在拒否、用途別Disclosure | 現在のHost Grant・業務Commit | #2516/SHO/#1163 |
+| 実行と効果 | 現在のPrincipal/Provider認可、Read/Write/Effect、独立post-image | 未観測の外部副作用・別用途での現在資格 | #1174/#1119 |
+
+**識別子の扱い**：#2814/#2815のHashIdScheme・exactCharacters等は、用途・Scope・Scheme版を束縛したID導出の候補に限定する。Canonical ID、Artifact Digest、Scenario SHA、生成実行Attempt ID、公開世代・納品先での受理を同一視しない。表示用の短いハッシュ文字列からSource/Meaning/Authorityを推論しない。#2815のGo/Node/TSと限定SQLiteの試験成功はPoCの局所資格であり、現行IDや署名・公開方式の正式置換ではない。
+
+### 42.3 #2604への受入拡張：新Publisherは先に作らない
+
+初期の検証は既存 `tei artifacts -out` を**隔離された世代別の出力先**で実行し、前の世代と同じディレクトリに直接上書きしない。CLIの正式仕様をこの文書で変更したとはしない。独立Readerは次を検査する。
+
+1. **発行前**：一式の候補を出力前に列挙し、重複出力名・予約名・許可外Path、必要Member欠落、ManifestとCheckSetの資格差を検査する。予め解決できない条件は未公開で停止。
+2. **生成中**：途中失敗やキャンセル時の未完成世代を公開済みと呼ばない。旧世代は参照を維持する限り読取可能で、旧世代を誤って改変しない。
+3. **公開時**：一つの世代に紐付くManifest/Member集合・digest・版が揃った状態だけを利用者へ見せる。OS/FSの原子的rename保証を**仮定せず**、方式A: immutable世代と検証済み参照、方式B: stage→atomic切替を#2604で比較。新Artifact Store/Registryは導入しない。
+4. **受領時**：Consumerが取得したManifest/各member raw bytesと世代pinを独立照合。公開切替が読取の途中で起きても混合版を黙認しない。Directory内の余剰ファイルをManifest対象として勝手に読まない。
+5. **利用時**：Manifest complete、Findingsゼロ、User/Owner Meaning、Disclosure/Host Grantは別列判定。公開成功から業務受理/実行可を推論しない。
+
+**新しい比較ケース PUB-01〜06（既存#2604 APへ割付）**：
+- PUB-01 / AP-01：部分書込の注入後にも旧R1 reader byte不変、新R2 publishなし。
+- PUB-02 / AP-02：R2 member削除後に旧R1 Bが物理残存してもR2 readerは拾わない。
+- PUB-03 / AP-03：`sales/a` と `sales.a` のslug衝突で公開済み一式が壊れない。Windows予約名・大小文字差は別Scope。
+- PUB-04 / AP-04：Artifact complete=trueでもFindingありを「納品検収PASS」とせず、CheckSetもConsumerが取得。
+- PUB-05 / AP-05/06：同Digest/別生成Attempt、R1→R2切替中の遅延Reader、A→B→Aで現在資格とbyte同値を分離。
+- PUB-06 / AP-07：Operation Surface一式を読めても未受理Binding/現在Grantが無ければRequestしない。
+
+**検証優先**：P0は#2817局所反例の復習と独立ReaderでのPUB-01/03、P1は世代分離方式の最小実証とPUB-02/05、P2はSHO・AI/Scenario・別FSの実消費。既存テストを新期待へ変更するのは#2604で方式採用後。途中失敗をsuccessへ変えるために旧manifestを自動書き換えない。
+
+### 42.4 AI-firstテストとDelivery/Jobの結節点
+
+- **#2811/#2813**：AIが候補Caseを追加する行為と、検証済み回帰Caseを公開する行為を区別する。候補はAgent/Run別の隔離Workspaceへ書く。Baseline・独立Expected・Known Mutant・Coverage Obligationは候補と同一変更権限に置かず、G0〜G4（#2811）を通ったCaseのみ明示採用する。Case IDや短いHashIdはOracleの独立性を保証しない。
+- **#1180 CLI/Web/GUI**：Scenarioを正本としてCLI/Webの派生物を再生成しても、それぞれのArtifact setとTarget実行Receiptが同じ受理版を消費したか確認。CLI PASSからWeb Auth/DOM/Visual PASSを転記しない。
+- **#1130/#2788 Job・#2787 EKI**：Task accepted/completedやoutput digestだけでは成果物本文の実受領・Providerへの適用・業務Commitは不明。実Artifact body未対応、入力/実行体版の不足時に無損失の委譲を装わない。
+- **#2827 ETL/ELT・MFT候補**：原ファイル内容Hash、物理版、配送Attempt/ACK、受取側取込Unit、Domain Event/Business Effectを区別。送達成功はImport成功ではなく、Import成功も業務受理ではない。DM-01〜14は**未実行の圧力試験候補**であり、標準Data Operation・専用Relay Pluginの採用は未決。新専用Host/Scheduler/転送基盤を作らない。
+
+### 42.5 計画・ADRの真偽を守る横断チェック（仕様の第二正本は作らない）
+
+2026-11-04の[Issue #2820](https://github.com/hat47x/tei-platform/issues/2820)と[#2825](https://github.com/hat47x/tei-platform/issues/2825)は、Issueのclose/merge状態と説明文、提案ADR、所在不明の計画リンク・既存資料等の不一致を**基準版固定のsource-static監査**で検出している。これは文書鮮度の証拠であり製品E2EやOwner受理の証明ではない。過去のDraft/未着手という時点記録を現在のstateへ自動更新しない。
+
+[Draft #2816](https://github.com/hat47x/tei-platform/pull/2816) のADR-0045〜0047は重複ADR整理の**提案中**で、採用済みADRと同列にしない。特にADR-0043/0044の外部Host／認証Plugin境界を尊重し、#2825 A-09の認証を「TEI Coreが必ず実装する」ような検収へ再導入しない。文書整合修正は既存Ownerの#2820/#2825/#2816/PR #2821/#2826に委ね、本文への二重修正を行わない。
+
+**状態とOwner判断待ち**：本追補は設計計画のdocs-only。#2817の限定Go局所試験、#2815の限定PoC、#2827の文書候補、#2820/#2825の静的監査を区分して接続しただけで、PUB-01〜06の新しい一式公開/Consumer E2Eや新規Go/Windows/SHO/AI/EKI/ETL試験は**NOT RUN**。公開方式A/B、HashIdの製品採用、ETL/MFT Plugin、ADR-0045〜0047は未採用。Draft #2667と既存Gate/Issue責務を維持する。
