@@ -13,6 +13,15 @@
 - frameは各項目のUTF-8 byte長をuint64 big-endianで付与する。ドメイン名 `tei.hashid.frame.v1` とcSHAKE customization `tei.hashid.cshake256.v1` を使用。
 - `CollisionProbability` / `CheckCollisionBudget` は独立・一様出力を仮定した誕生日近似を返す。実衝突の検出・DB永続化の一意性保証ではない。
 
+## Target制約と割当境界（追加Reference）
+
+`TargetProfile` は物理ID用の名前空間、許容ASCII文字集合、最小/最大/厳密長、ASCII大小文字区別、予約名を**宣言**する。 `CheckTargetBinding` はID生成結果と、その対象のqualified subjectおよび渡された既存割当Snapshot `[]TargetBinding` を比較し、同一Target名前空間における衝突、大小文字折畳みによる別IDの同一視、同一Subjectの暗黙再割当、不正Snapshotを拒否する。正規化後の物理キーを返すだけで登録しない。
+
+- Case-insensitive Targetへは、大文字・小文字の両方を生成し得るAlphabet（例：Base64url、Base62）を拒否する。DBのcollationを自動検出しないため、実Targetのcollationを別途検証したProfileだけに利用する。
+- Targetで同一名前空間の全割当が得られなければ、Snapshot上で衝突なしと判定できても、実一意性を保証しない。DBへの格納時に一意制約・競合再試行・Transaction等の**実保存境界**が必要。
+- 正本との紐付けは `TargetBinding.Subject`（Qualified Source identity）に保持する。文字列だけをCanonical ID、権限、Source Acceptanceへ昇格させない。
+- 現状はASCIIのみ。Windows予約名/パス末尾規則・実DBのUnicode照合・OS別同値判定はOwnerが宣言する個別Profile/独立試験を要する。
+
 ## 試験
 
 ```bash
