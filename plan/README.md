@@ -80,7 +80,7 @@
 - [`GATE_B_EVIDENCE_ACQUISITION.md`](gate/GATE_B_EVIDENCE_ACQUISITION.md)：必要な検証根拠と、それによって証明する内容
 - [`GATE_B_EVIDENCE_RUNBOOK.md`](gate/GATE_B_EVIDENCE_RUNBOOK.md)：正式な実行手順
 - [`GATE_B_READINESS_AUDIT.md`](gate/GATE_B_READINESS_AUDIT.md)：`Ready`／`Not Ready`の判定記録
-- ISSUE-000037-gate-b-three-lane-final-evidence.md：三系統の検証根拠を最終的にそろえる作業
+- ISSUE-000037-gate-b-three-lane-final-evidence.md（非公開へ退避した過去の作業記録。識別子のみ）：三系統の検証根拠を最終的にそろえる作業
 
 ### 現在
 
@@ -102,7 +102,7 @@
 
 - [`GATE_B_TO_C_HANDOVER_CONTRACT.md`](gate/GATE_B_TO_C_HANDOVER_CONTRACT.md)：引継ぎの規則と原則
 - [`GATE_B_TO_C_HANDOVER_BASELINE_B.md`](gate/GATE_B_TO_C_HANDOVER_BASELINE_B.md)：実際に固定した基準`B / R`の記録
-- ISSUE-000030-gate-b-to-c-handover-baseline.md
+- ISSUE-000030-gate-b-to-c-handover-baseline.md（非公開へ退避した過去の作業記録。識別子のみ）
 
 判定段階Bで`Ready`となった候補版`R = e5231839a5dcc62cce1181a2731fcb7c70d16736`は、引継ぎの基準`B`として固定済みです。
 
@@ -113,8 +113,8 @@
 - [`GATE_C_READINESS_AUDIT.md`](gate/GATE_C_READINESS_AUDIT.md)：`Ready`判定の記録
 - [`GATE_C_EVIDENCE_CONTRACT.md`](gate/GATE_C_EVIDENCE_CONTRACT.md)
 - [`GATE_C_FIRST_WEB_TARGET_EVIDENCE_RUNBOOK.md`](gate/GATE_C_FIRST_WEB_TARGET_EVIDENCE_RUNBOOK.md)
-- ISSUE-000007-first-web-target-projection.md
-- ISSUE-000028-first-web-target-conformance-evidence.md
+- ISSUE-000007-first-web-target-projection.md（非公開へ退避した過去の作業記録。識別子のみ）
+- ISSUE-000028-first-web-target-conformance-evidence.md（非公開へ退避した過去の作業記録。識別子のみ）
 
 判定段階Cは2026-09-19に**Ready**と判定しました（`T = 0ba87a4e0a96f70a198b03ff7652fb00e3826abe`）。判定記録は[`GATE_C_READINESS_AUDIT.md`](gate/GATE_C_READINESS_AUDIT.md)です。画面の見た目の忠実さを評価したのは単一のAI評価者であり、人による確認ではありません。
 
@@ -145,8 +145,8 @@ Web向けビルドT1
 
 1. [`../requirements/BUSINESS_SYSTEM_DESIGN_REQUIREMENTS.md`](../requirements/BUSINESS_SYSTEM_DESIGN_REQUIREMENTS.md)：RQ-025とRQ-026の要求解釈
 2. [`../docs/business-system-design.md`](../docs/business-system-design.md)：データ、機能・操作、業務を分ける設計上の境界
-3. ISSUE-000042-business-procedure-cross-view-reference.md：作業領域Cの参照事例と検証対象の一覧
-4. ISSUE-000050-second-realistic-handoff-corpus.md：受理に関する契約を製造・在庫の候補へ適用し、独立した業務上の初期資料から二つ目の現実的な引継ぎの検証根拠を取得する計画（2026-09-21に実施。記録あり）
+3. ISSUE-000042-business-procedure-cross-view-reference.md（非公開へ退避した過去の作業記録。識別子のみ）：作業領域Cの参照事例と検証対象の一覧
+4. ISSUE-000050-second-realistic-handoff-corpus.md（非公開へ退避した過去の作業記録。識別子のみ）：受理に関する契約を製造・在庫の候補へ適用し、独立した業務上の初期資料から二つ目の現実的な引継ぎの検証根拠を取得する計画（2026-09-21に実施。記録あり）
 
 現在、品質面で重視するのは、業務手順を単に「すべての項目を埋めた流れ図」として作ることではありません。
 
@@ -202,7 +202,7 @@ Web向けビルドT1
 
 ### 編集環境とPAS-01
 
-- ISSUE-000046-studio-shared-acceptance-authoring-loop.md
+- ISSUE-000046-studio-shared-acceptance-authoring-loop.md（非公開へ退避した過去の作業記録。識別子のみ）
 
 最小限の操作の流れ：
 
@@ -220,21 +220,21 @@ Web向けビルドT1
 
 この領域では、個別のアルゴリズムや機能設計に入る前に、製品として何を実現するかを確認します。
 
-1. ISSUE-000047-knowledge-first-semantic-exploration.md：人とAIが共通に使う、既存知識を優先する参照事例
-2. ISSUE-000051-derived-cognitive-retrieval-evaluation.md：候補の検索方式を比較する構成上の検証
+1. ISSUE-000047-knowledge-first-semantic-exploration.md（非公開へ退避した過去の作業記録。識別子のみ）：人とAIが共通に使う、既存知識を優先する参照事例
+2. ISSUE-000051-derived-cognitive-retrieval-evaluation.md（非公開へ退避した過去の作業記録。識別子のみ）：候補の検索方式を比較する構成上の検証
 
 人とAIが同じ正本の情報源、意味、検証根拠を読み取り専用で探索し、`applicable / incompatible / unknown`を区別することが、最初の小さな実証です。FlyHash、HDC、VSAなどは、候補生成に役立つかを比較する方式です。最終目標は検索そのものではなく、候補の生成・絞り込み・受理から実装と試験の再生成まで、改善の循環をつなぐことです。
 
 ### AIの変更提案とPAS-01・PAS-06
 
 - [`adr/0022-ai-proposal-canonical-acceptance-boundary.md`](adr/0022-ai-proposal-canonical-acceptance-boundary.md)
-- ISSUE-000027-ai-proposal-acceptance-boundary.md
+- ISSUE-000027-ai-proposal-acceptance-boundary.md（非公開へ退避した過去の作業記録。識別子のみ）
 
 AIによる提案には、意味の正本を変更する判断権限はありません。ファイルの直接編集、編集環境、コマンドラインからの変更と同じく、共通の受理境界で扱います。AIに期待する標準的な役割は、モデル全体を再生成することではありません。現在の版、明示した参照、検証根拠に基づく**小さな意味の差分、比較、説明**を作ることです。
 
 ### 二つ目の実行先とPAS-04
 
-- ISSUE-000026-target-capability-execution-profile-boundary.md
+- ISSUE-000026-target-capability-execution-profile-boundary.md（非公開へ退避した過去の作業記録。識別子のみ）
 
 最初の実行先だけで、実行先に依存しない分類体系が完成したとは判断しません。第二の実行先で、利用可能な機能、実行環境との対応付け、実行時の信頼条件、RQ-024の性能要件を検証します。
 
@@ -243,7 +243,7 @@ AIによる提案には、意味の正本を変更する判断権限はありま
 ## 設計判断記録・計画上の課題・機能設計
 
 - [`adr/`](adr/)：長く残す設計判断
-- [`issue/`](issue/)：複数のプルリクエスト、参照事例、検証根拠にまたがる作業の定義
+- [`issue/`](issue/)：過去のローカルIssue文書（作業の定義）の置き場所。文書は非公開へ退避しており、本文中の`ISSUE-0000xx`は履歴上の識別子です。現在の作業はGitHub Issuesで管理します
 - [`design/`](design/README.md)：機能単位の設計本文。全体構成の第二の正本にはしない
 
 計画段階にある将来の作業を、必要性が確認できないままGitHubの課題へ重複登録することは目的にしません。
