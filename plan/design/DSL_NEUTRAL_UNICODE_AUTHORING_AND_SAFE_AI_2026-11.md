@@ -86,6 +86,22 @@
 
 **証拠状態**：Draft #2813のGoテスト・JSON素材はリポジトリ上に作成済み。ただしその**最新HEADに対する実Go Test/CIの結果が取れるまでPASS未確認**。#2745は設計文書のみで、ここに新Goコードを移さない。
 
+### 0.6 実在Scenario CLI・同一Load Import証拠・AI Caseの三接点（2026-11-04）
+
+**直近の実装を確認して、以前の「保存済Scenario／CLI生成器は未実装」という一律表現を修正する。** [テスト計画 Draft #2811 §9](https://github.com/hat47x/tei-platform/pull/2811)がmainの実コードを照合した結果、`reference/driver-scenarios/order-entry-pattern-smoke.json` は`tei.driver-scenario/v0`の6 Step（Pattern解決、合成Browse、Validation正常/拒否、合成Observation）を**既に保存・再読込可能**である。`cmd/tei/scenario.go` の`scenario verify / generate / run / check`、`internal/scenariotest`のGeneratorと重複JSON拒否も存在する。ただしCLI生成はこのReference Stepを対象とし、CLI/Web全業務の同等性・新Case自動導入・外部Provider/DB/Host資格までの製品保証ではない。
+
+| 実在する機構 | DSL/AIで再利用する条件 | 現時点で未証明のこと |
+| --- | --- | --- |
+| **main Scenario v0＋CLI** | 既存6 Stepの実ID、Source/World/Plugin/Fixture fingerprint、`scenario verify/generate/run/check`の限定受理を最初の基準線とする。AI生成Caseを元Scenarioへ無断上書きせず、候補差分としてReviewする | 新規Caseの意味Schema、NULL/missing/redacted/unavailable・厳密decimal値（現Valueはstring/int64/float64/timestampの4種）、Web/GUIの実E2E |
+| **Draft [#2813](https://github.com/hat47x/tei-platform/pull/2813) のPipeline候補JSON** | 別ファイル追加のみでPin/型/Source spanの正負Caseを増やすtest-only入力。重複JSONメンバーの防御には既存`scenariotest.RejectDuplicateJSONMembers`を再利用し、第二のJSON意味Checkerを作らない | Pipeline CaseをScenario Stepや業務Expectedとして自動受理できること。新Parser/Unicode Lexer、業務金額・Validation評価 |
+| **Draft [#2812](https://github.com/hat47x/tei-platform/pull/2812) 同一Load Import証拠** | Providerの初回Loadで選択・解析したSemantic Source原byte／Manifestの**局所private Witness**を保持し、外部への公開はalias/digest等のmetadataに限定。外部Importのある実ConsumerではSource由来の現在資格を別に確認 | 複数ファイル原子的Snapshot／全Importと否定依存のclosure／外部Consumerへの原文開示資格／Build再利用やAI Tool Grant。exact HEAD `7a6071ed` の[CI #41742064273](https://github.com/hat47x/tei-platform/actions/runs/41742064273)は成功だがFull P0b PASSではない |
+
+**P0の境界**：`#2813`のPipeline JSON Caseは、現行Scenario v0の`resolve-pattern/evaluate-validations`等とは異なるReferenceテストである。対象Canonical/Role/独立Expected/Step Bindingが揃わないままScenarioへ機械的に挿入しない。AIは最初に双方の実在Source/型/未対応を`inspect`し、候補を別ファイルへ提案→既存Go Test/Scenario CLIの**対応する方**で検証する。橋渡しが未実装なら`NOT IMPLEMENTED`とする。Scenario `verified=true`と、Plugin Reference TestのPASSを合成して業務意味受理とはしない。
+
+**今回の証拠と次工程**：#2813 初回HEAD `d2c7757a`のRepository Health [#41742520634](https://github.com/hat47x/tei-platform/actions/runs/41742520634)は、Go vet/Go tests/Workspace validate成功、**gofmt driftで総合FAIL**。書式修正・重複JSON拒否を行った後の新HEADは再検証中であり、旧HEADのGo Test PASSを新HEADの全体合格として転用しない。先行PR #2812の限定Go成功も、外部Source全閉包・現在Owner Meaning/AI原文開示の資格まで拡張しない。
+
+**ここからの実装順**：①#2813のexact HEAD gofmt/Go Test/CI、②#2811/#1180の現Scenario v0 CLIを1実Caseで確認しCandidateから業務Meaningへの橋を**必要部分だけ**追加、③#2514の独立Expected/既知Mutantをこの2つの観測へ接続。正式Case Schema、Unicode Lexer、AI専用Runtime、外部Host/Registry/Source Snapshot Managerは先行採用しない。
+
 ## 1. 優先順位：自然なテキスト記述と意味の厳密性を両立
 
 **製品要件として維持するもの**：
