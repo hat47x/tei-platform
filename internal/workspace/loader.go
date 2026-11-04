@@ -68,11 +68,11 @@ type Result struct {
 	sourceImportsDeclared bool
 
 	// Original manifest bytes captured by Load; separate from Source Index.
-	sourceManifestBytes []byte
+	sourceManifestBytes *manifestReadBytes
 
 	// Same-Load parsed evidence of explicitly selected external Namespaces.
 	// This private evidence does not grant cross-Provider snapshot qualification.
-	importedParsedLoads map[string]importedParsedLoad
+	importedParsedLoads map[string]*importedParsedLoad
 	// Format version declared by the Workspace manifest. Semantic files may
 	// declare their own header; when they do, it must agree with this value.
 	manifestFormatVersion int
@@ -209,7 +209,7 @@ func loadWithStackHooks(root string, visiting map[string]bool, hooks loadHooks) 
 		sourceImportsDeclared:       len(imports) > 0,
 		manifestFormatVersion:       manifestFormatVersion,
 	}
-	r.sourceManifestBytes = manifestRaw
+	r.sourceManifestBytes = &manifestReadBytes{content: manifestRaw}
 	// TEI standard semantic types are a library prelude, not Micro Kernel kinds.
 	r.World.Semantics = append(r.World.Semantics, stdlib.SemanticNamespace())
 	if hooks.afterPin != nil {
