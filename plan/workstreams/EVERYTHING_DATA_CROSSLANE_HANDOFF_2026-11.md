@@ -2232,3 +2232,32 @@ EKI側#112/#266/#67/#115へ契約不足を返し、TEI #1130がJob意味と判�
 **横断の統合前提**：#2667のDraft作業ブランチとmainが分岐しているため、旧HEADや別PRの局所PASSを合算しない。新たな検収条件を採用するときは対象main、Owner Issue、既存ADR、CIおよび並行PRで重複した節番号・Issue参照を再確認し、Ownerの受理と統合を別判断にする。
 
 **今回実施**：設計上の補助Expectedだけ。新しいSource探索・negative dependencyの実Go試験、実CLI再現、Build/SHO/Web/Hostの同一Attempt E2E、Owner正式受理は **NOT RUN**。
+
+## 44. 組織Native E1でSource同一性と意味同一性を切り離した：既存Evidence閉包を実Go反例で補強（2026-11-04、§40–43／#2600へ引継ぎ）
+
+### 44.1 同じWorldとOperationを得ても、同じSource改訂ではない
+
+[PR #2681](https://github.com/hat47x/tei-platform/pull/2681)に実`.tei`コメントだけを変更した`TestOrgHeadlessSourceByteEditPreservesWorldButChangesModelRevision`を追加。[固定HEAD `c3695ffccdcea115d8445505552b3ae0777f782c`](https://github.com/hat47x/tei-platform/pull/2681)の[Native Actions #41786879258](https://github.com/hat47x/tei-platform/actions/runs/41786879258) **completed/success**。Go1.26.10/Linuxで実Workspace/Source Index/Operation Surfaceを通し、**WorldFingerprint同一、ModelRevision相違、Operation同一、Effect read-only**の四つを同時に検査した。別ReaderのArtifact検査は`findings=0, complete=False`なので、Artifact全memberや実Consumer受領を成功としない。
+
+[PR #2801](https://github.com/hat47x/tei-platform/pull/2801)は、外部Importの`LocateImportedSource`による後段再解決が初回Loadの消費byte証拠にはならない実Go負例。#2681のコメント変更ケースとは**別HEAD/別試行**であり、両者を合算して複数Source同時Snapshot・実Build入力閉包を証明しない。
+
+### 44.2 §40のC0〜C4と§43のW0〜W6へ追加する限定条件
+
+| 既存段階 | 実Go負例から決める検収列 | 禁止する昇格 |
+| --- | --- | --- |
+| C0/W0 Source | `ModelRevision`=管理対象のSource path+byte指紋／Consumer実消費Source/Importの同一Attempt Witness・選択Root完全性 | World同じ→Source未改訂／再Resolve時byte=初回実消費byte |
+| C1/W1 Meaning | 正規化`WorldFingerprint`とRole/Operator Pin、Owner受理範囲を別々に記録 | Source comment変更→Meaning変更、Parser成功→Owner意味受理 |
+| C2/Read/Policy | Context selection、Query hidden deps、Provider Row+Field/Cohort、Policy root/axis、現在Principal・Grant版 | 同じRead JSON/Operation候補→現行Grant/必要Fieldの実Read証明 |
+| C3/W4–W6 Artifact/Consumer | 実Builder入力、Generator/Toolchain、manifest complete・全member digest、現Consumer actual received bytes/現在開示 | `WorldFingerprint`一致→Artifact全再利用・SHO引用Fresh・受領済 |
+| C4/W5 Effect | Host Request/Actual Target/Grant/Commit Receipt/Post-image | 同じOrg Role→旧Grant再利用、Job/CLI success→業務Effect |
+
+**差分の最小化**：意味計算の再利用、Source引用の再資格、既存画面の再開示、実Provider再Read、Go Artifactの再生成、Host Grant更新は**必ずしも同じ無効化単位ではない**。#2600/#2516/#2582/#1163の既存依存・受領契約へ返し、第二Global Cache/Source/Policy Engineや全系再処理を導入しない。
+
+### 44.3 AI-first足場で先に固定する独立Expected
+
+§41のAI-first A0〜A6と§43 ADM-01〜03へ、組織Sourceコメント変更の正負対照を一つの**事前固定Expected**として提供する：
+`same semantic World = true; same ModelRevision = false; same read-only Operations = true; currently authorized = unknown; real DB/Provider read = NOT RUN`。AIはテスト候補と入力変形を増やせるが、実行ActualをExpectedへコピーしない。Source root未読込、別外部Import、A→B→A、Role/Policy変更、部分Read等は**今回のE1で未検証**と区別し、既存#2811/#2514の独立OracleとCoverage分母を使用する。
+
+**次の実優先**：#2586は合成Policy VP/VEではなく、実`.tei` CaseRecord→OrgUnitの明示Relationと実Providerが発行したRequest・現行適用Scope/Read Witnessを同一Attemptで束縛する。#2622/#2628に実Data Ops/物理施行点が無ければ`NOT RUN: enforcement-unavailable`。未受理Owner Ruleなら`not accepted`。安全性・実Disclosure・Actual Effectの実証を今回のE1 Native PASSに上乗せしない。#1119 P0を維持する。
+
+**更新範囲**：この§44は現行コードと固定CIを調査して記録した設計・実験引継ぎ。独立E2E・新Provider/DB/Build/Studio/SHO/Host実験は未実施。
