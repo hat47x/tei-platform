@@ -23,6 +23,7 @@ type applicationMembershipComparison struct {
 	ContractCandidates           []changeanalysis.ContractChangeCandidate            `json:"contractCandidates"`
 	GateCandidates               []changeanalysis.UnreferencedUnsatisfiableGate      `json:"unreferencedUnsatisfiableGateCandidates"`
 	ApplicationReleaseMismatches []changeanalysis.ApplicationReleaseContractMismatch `json:"applicationReleaseContractCandidates"`
+	DatabaseReleaseMismatches    []changeanalysis.DatabaseReleaseContractCandidate   `json:"databaseReleaseContractCandidates"`
 	SemanticImpact               []changeanalysis.ImpactEdge                         `json:"semanticImpact,omitempty"`
 	SemanticImpactUnresolved     []changeanalysis.Unresolved                         `json:"semanticImpactUnresolved,omitempty"`
 	Membership                   *changeanalysis.ApplicationMembershipCandidateDiff  `json:"membershipCandidates,omitempty"`
@@ -58,7 +59,7 @@ func runApplicationMembershipComparison(args []string, stdout, stderr io.Writer)
 	report := applicationMembershipComparison{
 		Schema: "tei.reference.application-membership-comparison/v0", ComparisonOnly: true,
 		BeforeDiagnostics: validation.Validate(before.World), AfterDiagnostics: validation.Validate(after.World),
-		AuthorityLimits: []string{"not-an-acceptance-preview-or-decision", "contract-candidates-only-eight-explicit-declaration-kinds-not-complete", "gate-candidates-only-unreferenced-and-unsatisfiable-not-complete", "application-release-contract-candidates-only-major-and-existence-not-complete", "contract-compatibility-releases-dynamic-and-runtime-effects-unverified", "source-order-and-target-effects-not-evaluated", "dependency-coverage-not-verified", "workspace-snapshots-not-pinned-or-atomic"},
+		AuthorityLimits: []string{"not-an-acceptance-preview-or-decision", "contract-candidates-only-eight-explicit-declaration-kinds-not-complete", "gate-candidates-only-unreferenced-and-unsatisfiable-not-complete", "application-release-contract-candidates-only-major-and-existence-not-complete", "database-release-contract-candidates-only-major-behind-not-complete", "contract-compatibility-releases-dynamic-and-runtime-effects-unverified", "source-order-and-target-effects-not-evaluated", "dependency-coverage-not-verified", "workspace-snapshots-not-pinned-or-atomic"},
 	}
 	exit := 0
 	report.WorkspaceValidationPassed = !validation.HasErrors(report.BeforeDiagnostics) && !validation.HasErrors(report.AfterDiagnostics)
@@ -92,6 +93,7 @@ func runApplicationMembershipComparison(args []string, stdout, stderr io.Writer)
 			report.ContractCandidates = contracts
 			report.GateCandidates = append(changeanalysis.GateCandidates(before.World, "before"), changeanalysis.GateCandidates(after.World, "after")...)
 			report.ApplicationReleaseMismatches = append(changeanalysis.ApplicationReleaseContractCandidates(before.World, "before"), changeanalysis.ApplicationReleaseContractCandidates(after.World, "after")...)
+			report.DatabaseReleaseMismatches = append(changeanalysis.DatabaseReleaseContractCandidates(before.World, "before"), changeanalysis.DatabaseReleaseContractCandidates(after.World, "after")...)
 			report.SemanticChanges, report.StrictChanges, report.Membership = semantic, strict, &candidate
 			if len(semantic) != 0 {
 				report.SemanticImpact, report.SemanticImpactUnresolved = changeanalysis.ImpactWithBefore(before.World, after.World, semantic)
