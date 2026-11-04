@@ -1330,6 +1330,34 @@ Requiredが全社、Authorized/ActualがTenant A限定なら「Tenant Aの対象
 
 **実装責務・採否**：#2611が同Semantic Kind/別Alias/Mapping候補の衝突と実Target、#2622が多Providerの実Read/取得/欠落、#2593がMeasureの合法演算と粒度、#1129が取消/訂正/保存のLifecycle、#2514が独立Oracle・共通出所警告、#1180/#2811がScenarioとAI提案、#1130が非画面Batch、#2516が開示、#2604/#2595がArtifact/Source実消費証拠、#1174が是正Effect・現在認可。**本節は計画書の追補に限り、外部業務Key規則・照合DSL/CLI/Result Store、実Go/SQL/DB/API/Replica/Lean/EKI、性能測定、Owner受理、main統合はNOT RUN/未採用。**
 
+
+#### 27.9.1 品質照合ジョブへの入場条件と最小固定Fixture（2026-11-04）
+
+> **Docs-only／新しい試験実走・Owner意味受理はNOT RUN。** §27.9の「受注O2取込欠落」を保証するには、上流O1/O2を実際に読んだSource証拠が先に必要。#2822の空Workspaceでもvalidate OK、#2823の未知Source root・未読込ファイル、#2824のCLI発見情報とJSON契約の不足を、品質監査における**False PASSを避ける入場条件**へ再利用する。Source/Caseの存在と実消費を混同せず、§43のAI-first足場を第二Runnerへ複製しない。
+
+| 段階 | 要求される確認 | 未成立時 |
+| --- | --- | --- |
+| **Declared** | Owner受理の上流受理母集団、期間・Tenant・Occurrence、下流Rule/Scope・比較に必要なSource/Case ID | 未受理・未宣言はunresolved。自動でCoverageを満たしたことにしない |
+| **Discovered** | 実Reader/Manifestが列挙したroot/member/版と必要集合の差 | 未発見、未知root、空のGlobはnot-covered |
+| **Loaded** | 実Parser/Providerが消費したbyte/Row/FieldとSnapshot/Source revision | 列挙だけではunloaded。実Inputの欠落を業務上の不存在と推測しない |
+| **Validated** | 読込済み対象の型・Role/Rule・Pin・JSON構造・Case/Step IDの検査 | validate OKだけで実Source/独立Expected適合としない |
+| **Executed** | どの固定Caseと実Go/SQL/Provider Queryを、どのDatasetで実行したか | 不実行・途中失敗・Read不完全を異常0にしない |
+| **Qualified** | 独立Expectedと上流受理／下流実Read／現在Policy／Audienceがつながる | 片側不足ならunknownまたは限定pass-in-scope |
+
+**固定Expectedの最小対照（新Scenario v0 Operationを定義しない）**：人工Sourceの上流Accepted OrderとしてO1=100、O2=200を異なるOccurrenceで事前固定。Data Ruleは下流に実保存された行のみに対して評価するため、欠落があっても内部PASSとなり得る。キー・粒度・期間・水位・独立Expectedを先に固定して比較する。
+
+| Case | Input/実Read | 独立Expected |
+| --- | --- | --- |
+| **QRA-P1** | 上流O1/O2をLoaded、下流O1/O2を同一ScopeのSnapshotで完全Read | handoff-complete候補。Source/Read/実Artifactが閉じた場合のみQualified |
+| **QRA-N1** | 上流O1/O2をLoaded、下流O1だけを完全Read | 内部Rule PASS、受渡しMissing O2を別報告 |
+| **QRA-N2** | ManifestはO1/O2を宣言、上流ReaderはO1しかLoadedせず、下流もO1 | source-incomplete/unknown。独立に観測していないO2の欠落を断定しない |
+| **QRA-N3** | 上流Manifest R2だが必要memberは旧R1、下流は2件で合計も一致 | 同世代実byteが未証明ならunverified。#2604一式Readerへ |
+| **QRA-N4** | AIのJSON Caseに同一Object内のExpectedキー重複、あるいはCase/Step ID衝突 | 不適格候補として拒否。標準JSONデコード後の値だけで重複キーを検出できたとは言わない |
+
+**重複の三種を分離**：同一JSON Objectの重複キー、異Case/StepのID衝突、同一業務Eventの再配送は別。Raw JSONの重複Key検査能力は#2813 DSL候補と#2828 Driver候補それぞれで確認し、実装がなければNOT RUN。AIが実ActualをExpectedへ写したものは#2514独立Oracleの根拠にならない。
+
+**実証順**：#1180/#2811の保存ScenarioでQRA-P1/N1を独立Expectedへ対応付け、#2822/#2823の既存CLI負例を隔離WorkspaceでQRA-N2に接続。#2604のmember実取得へN3、#2813/#2828のRaw入力適格性へN4を振り分け、#2622/#2628に実二ProviderのReadを渡す。既存Case・Fixture・Receiptを利用し、新CLI/Source Loader/Schema/Job Engine/共通Registryを作らない。**オンラインhot pathへ毎回二Source照合を追加しない**。CI・Go/SQL/Provider/Replica/EKI/Leanの新E2Eと性能実測、Ownerの入場条件採否は本節ではNOT RUN。
+
 ## 28. 一改訂のValue／Flow／Job／Consumer縦断――参照実行と外部実行を混同しない（2026-11-03横断追補）
 
 ### 28.1 並行する三つのOwner計画を、別の正本を作らずにつなぐ
