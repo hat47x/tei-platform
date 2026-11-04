@@ -2180,3 +2180,28 @@ EKI側#112/#266/#67/#115へ契約不足を返し、TEI #1130がJob意味と判�
 **今後の順**：P0-A〜Dの再現（現行main exact版、各Ownerが保有する手順を再利用）→ #2811 G0〜G4の独立Oracle／Known Mutant実測 → #2595の実Builder byte帰属 → #2604の一式公開/Consumer受領 → #1180 Web/Host固有E2E。各段階の証拠を別版・別実行から無言で合成しない。新しい共通Reader/Runner、AIの自動Owner承認、EKI常時介在を前提にしない。
 
 **状態**：§43.5〜43.10は計画上の統合・重複整理のみ。追加の実CLI、Go、CI、別Harness、Web/Host/Provider/Consumer、独立Oracle/Mutantの実行およびOwner受理は本作業では **NOT RUN**。改版対象の実装責務は従来のOwner Issueのまま。
+
+
+### 43.11 Contract-crossing witness packet: 最小1件の生成AI正負対照を実CLIで止める（2026-11-04、既存§43.10を実行可能な照合票へ圧縮）
+
+**新たな汎用Test Runnerや第二Oracle正本を作らない。** #1180の保存済Driver Scenario（同じ6 Step）と[#2811](https://github.com/hat47x/tei-platform/pull/2811) G0〜G4、[#2813](https://github.com/hat47x/tei-platform/pull/2813) AI追加可能JSON候補を接続する際、まず**同じ1つのRuleを通る正常系1件と、意図的に異なる期待値/実装を持つ負例1件**だけを、実CLI/Sourceを使う2経路で比較する。テストの件数でなく「誤った実装を検出できたか／未読込なのに検証済みと誤判定しないか」を優先する。
+
+| Boundary | Producer → Consumer | Required independent witness / stop |
+| --- | --- | --- |
+| W0 Source selection | manifest・実Workspace → workspace-files・Parser/Validator | `declared roots` と物理`discovered files` と`actually loaded files`を別列に持つ。#2823の未知root/非対象拡張子を「読込み済み」に補完しない。実Loadedを取得できなければ`unobserved` |
+| W1 Semantic candidate | selected .tei byte・Language/Role/Operator Pin → Semantic/Rule Candidate | byte digest・source span/Target Subject・Policy/Meaning版・Diagnostic、Issue #2822のユーザー宣言0件とstd builtinを混同しない。Valid=trueはInput completenessを保証しない |
+| W2 AI Test Candidate | 同じScenarioの意味Role／実Data例 → AI JSON候補 | 生成されたExpectedと実装Actualが同じOracle由来なら`shared-origin`として採点保留。独立Expected/Know Mutantを#2514/#2811が管理。Known Mutant不検出時は「テスト拡張成功」としない |
+| W3 Actual tested Target | Go built binary・real argv/mode → CLI Scenario/Function Result | #2824: `tei commands`の広告・実出力Schema・exit/warnings・`world`契約外・source selectorを別に確認。元Sourceの宣言未読込や実Build Input不一致があるなら限定PASSに留める |
+| W4 Build/member | Builder actual consumed sources + generator/toolchain → ArtifactSet & typed entry | #2595: 宣言Source digest≠実Go生成器に渡した入力になる負例。#2600: World同値でもSource occurrence/negative dependency・Evid資格は別。#2604: 必須member欠落/Consumer実loadを検出 |
+| W5 Invocation/Effect | CLI/Web/Host/EKI entry → typed Operation/Provider/Receipt → independently observed post-state | #1130: 非画面起動/Build/Jobの対応。#1174/#2598: 実対象のID・current Grant・CAS/Commit unknown。EKI Task completedやCLI`Committed=true`とDB Effectを混同しない |
+| W6 Consumer/Disclosure | Result Artifact actual bytes→ Studio/SHO/AI/harness external Consumer | 届いたbytesとSource/Meaning/Artifact Revisionを追い、外部開示資格と引用Freshnessを確認。受信未観測やReader未対応なら`NOT RUN`で止める |
+
+**代表的な独立の負例**：`source root=semantics`（誤字、実定義rootは`semantic`）、検証対象のBusiness Rule/テストに0件しか到達していないのに空Workspaceで`validate.ok=true`となる。このとき通常の`test pass`や`model catalog.entries=13`（builtin stdのみ）を根拠に「Ruleを検証済み」と表示してはならない。最初の自動生成Agentは、Diagnosticと未取得範囲を提示し、Ownerが受理した期待値を勝手に書換えない。別の正対照は、同じ版・入力・Operatorで実Dataが読み込まれ、既存独立Expectedに照合されること。両者を**同じ実CLI binaryとcommand modeで再現**し、宣言・実消費の差が明示されて初めて次段へ進む。
+
+**P0実行Packet（既存Ownerの作業に割当）**：
+1. #2822/#2823/#2824が持つ既存再現を**同一Go binaryの実argv/exit/JSONと現行main HEAD**で再確認し、前回検証版`97aba8146`の歴史的事実を最新環境に無断で転用しない。各Issueが修正/文書化方針を決める。診断未整備でも局所DSL候補テストは`W0-unverified`として走らせられる。
+2. #2811/#2813/#2514は保存済6-Step Scenarioから正常・Known Mutant負例各1件を選び、**同一出所のAI出力をExpectedに採用しない**条件をまず確認。AIがJSONを追加してGoテストがPASSしても、独立Oracle/実業務Step/無漏れCoverageは別判定。
+3. #2595/#2604/#1130/#1174の本物のBuilder/Artifact/Invocationを使える場合だけ、実消費バイト・必須Artifact member・実ロード・現在Effectへ接続。未実装なら`NOT RUN: concrete producer/consumer unavailable`。EKI #112/旧#2787のwire ABI試験をTask実行成功へ昇格しない。
+4. **比較票を一つに保つ**：W0〜W6で`qualified / not-qualified / unknown / not-applicable`と各段のactual evidence URL/head/toolchain/input/independent Expected/Ownerを記録。*not-applicable*は全件検証済みでない意味ではなく「そのUser Jobにその経路を要求しない」ことを明記。見知らぬ依存をN/Aに分類しない。価値判断/Owner正式採用はTAI #422のVA-01〜04へ委譲。
+
+**現時点の証拠**：#2822/#2823/#2824は現行実Go CLIで再現したとIssueに記録されている（main `97aba8146`、WSL Go1.27.0）。#2813固定HEADのGo CI PASSは候補DSL Test-only。#2811/#2667の計画追加はDocs-only。**本節の同一CLI／同一Scenario／独立Oracle／Build／Web／Host／EKI／Consumerの新たな実試行はNOT RUN**。独立の新しい合格主張、正式CLI/DSL Schema採用、Owner意味受理、実Host権限を含まない。
