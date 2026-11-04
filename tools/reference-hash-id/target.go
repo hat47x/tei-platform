@@ -11,6 +11,7 @@ import (
 // uniqueness constraints, or any caller's authority to allocate an ID.
 type TargetProfile struct {
 	Namespace       string
+	ProfileVersion  string
 	AllowedAlphabet string
 	MinLength       int
 	MaxLength       int
@@ -22,9 +23,10 @@ type TargetProfile struct {
 // TargetBinding is an independently obtained allocation snapshot.
 // Subject is a qualified source identity, NOT a display name or a view ID.
 type TargetBinding struct {
-	Namespace string
-	Subject   string
-	Text      string
+	Namespace      string
+	ProfileVersion string
+	Subject        string
+	Text           string
 }
 
 // CheckTargetBinding validates a *proposed* physical ID against a declared
@@ -44,6 +46,13 @@ func CheckTargetBinding(r Result, subject string, profile TargetProfile, binding
 	if err := validateResultText(r); err != nil {
 		return "", err
 	}
+	// The output alphabet, not just this sample result, must be legal in
+	// this target. Otherwise a later source could yield an unusable ID.
+	for _, c := range effectiveAlphabet(r.Scheme) {
+		if !strings.ContainsRune(profile.AllowedAlphabet, c) {
+			return "", fmt.Errorf("generator character %q is unavailable in target alphabet", c)
+		}
+	}
 	// A case-insensitive physical target collapses "A" and "a".
 	// For such targets, any case-paired values in the generator's effective
 	// alphabet make the advertised address space invalid; fail closed.
@@ -57,6 +66,9 @@ func CheckTargetBinding(r Result, subject string, profile TargetProfile, binding
 	for _, binding := range bindings {
 		if binding.Namespace != profile.Namespace {
 			continue
+		}
+		if binding.ProfileVersion != profile.ProfileVersion {
+			return "", fmt.Errorf("target profile version mismatch for subject %q; explicit migration required", binding.Subject)
 		}
 		if binding.Subject == "" {
 			return "", errors.New("allocation snapshot has an empty subject")
@@ -78,6 +90,9 @@ func CheckTargetBinding(r Result, subject string, profile TargetProfile, binding
 func (p TargetProfile) validate() error {
 	if !validToken(p.Namespace) {
 		return errors.New("target namespace must be an explicit ASCII token")
+	}
+	if !validToken(p.ProfileVersion) {
+		return errors.New("target profile version must be an explicit ASCII token")
 	}
 	if err := validAlphabet(p.AllowedAlphabet); err != nil {
 		return fmt.Errorf("invalid target alphabet: %w", err)
