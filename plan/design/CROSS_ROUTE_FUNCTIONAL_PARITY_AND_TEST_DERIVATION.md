@@ -541,3 +541,35 @@ Ownerは#1180（Scenario）、#2813/#988（DSL Candidate）、#2514（Oracle）�
 - **未実施**：ADM-A〜Fの本作業による再実行、Source-loaded機械可読APIの新実装、実Provider/Web/GUI、選択的再資格化、AI外部Harness実試験、Owner意味受理。これらを実装済みと記録しない。
 
 **採用判断**：P0の成功条件を「AIが新しいJSONを生成できる」に限定せず、**実際に読まれたSourceと対象契約が不明なら正しさ・網羅性を認定しない**ところまでとする。ただし既存IssueのCLI修正を全てP0実装の直列必須条件にしてAIの試行を止めず、局所Candidateと製品横断Qualifiedを分離する。
+
+
+## 15. Driver側AI Case Intakeの最初の実装Reference（Draft #2828、2026-11-04）
+
+**状態：実Goテスト/Scenario JSON/READMEを別Draftで作成。最新HEADの実CI資格は確認待ち。** 第12/14章の最小実装Track Bとして[Draft #2828](https://github.com/hat47x/tei-platform/pull/2828)（branch: test/driver-ai-json-candidate-intake-20261104、作成時HEAD: 71d9749c50b0b1cb95b3c2e07284ef56d8fbf772）を新たに開始した。#2811自身はdocs-onlyであり、実コードは既存#1180のScenario/CLI担当範囲の独立PRへ分離する。DSL側の[Draft #2813](https://github.com/hat47x/tei-platform/pull/2813)とは試験Subjectが異なる。新Runner/業務DSL/第二Oracleは作らない。
+
+### 15.1 コードで具体化したP0-B
+
+| 追加ファイル | 再利用する既存Consumer | この段階で確認対象となるClaim |
+| --- | --- | --- |
+| reference/driver-scenarios/ai-candidate-order-validation.json | 保存済tei.driver-scenario/v0、参照Workspaceの既存Validation Fixture | 新JSON ScenarioでValidation正常・拒否の2 Stepを独立保存できる |
+| cmd/tei/ai_scenario_candidate_test.go | scenariotest.Parseと既存Scenario verify/generate/check/pinned run | ai-candidate-*.jsonの追加だけでGo側変更不要。Scenario/Step ID衝突、固定Anchorの保護、各Stepの生成CLI実行・限定Receipt、Expected誤改変・旧Plan失効を検査 |
+| reference/driver-scenarios/AI_CANDIDATE_TESTING.md | 既存CLI、test-only制約、Source/Owner権限 | Agentが候補だけを書ける範囲と、独立Expected・Coverage・実Provider等の対象外を明記 |
+
+**作成した2 Stepは既知の合成Fixtureを使った候補であり、生成AIが未知のテストを自律発見した実績ではない。** Goの限定試験成功が得られても、テストの独立Oracle、全Source Loaded、Web/Auth/実DB Effect、業務意味受理、全Required Coverageは別Claim。元の6 Step Scenarioは変更しない。
+
+### 15.2 PR #2828の実測による受入手順
+
+1. **Exact HEAD固定**：HEAD/Go/toolchain/Source・Scenario/Fixture bytes/Plugin Lockと実CI run IDを記録。後続の修正・rebaseは別HEADとして判定。
+2. **Focused test**：既存Goの TestAIAddedScenarioCandidateFiles と TestAIScenarioCandidateRejectsWrongExpectedAndOldPlan を実走。候補の追加検出、verify→generate→check→generated-pinned run、2件の固定Anchor、期待値改ざん拒否と旧Plan拒否を区別する。
+3. **Full Repository Health**：Focused testだけでなく正規Format/Go vet/Go全体/Workspace Validateの結果を確認。別PRの成功は合算しない。
+4. **AIによる新規Case生成**：専用branchでJSONのみを1件追加し、既存のAnchor/独立Expected/Oracle/holdout/Canonicalは編集禁止。最初はread-only Validationの正負、次に異質Domainへ拡張。実Agent argv・Source・Result・費用/実時間を記録する。
+5. **独立OracleとMutation**：#2514側で事前固定した別根拠のExpected・既知Mutantが追加Caseの新規判別力を示すか測定。生成CandidateとExpectedが同じ誤りを持つときはqualifiedへ昇格させない。
+6. **Source入場/Obligation**：#2822〜24で確認したDeclared/Discovered/Loadedの欠落、CLI契約外/未知Targetを別列で保持。局所合成Caseの成功は全Workspace/全業務の完全性を保証しない。
+
+### 15.3 次段への橋渡し・二重機構防止
+
+- #2813のPipeline JSON候補と#2828のScenario JSON候補を**一つの新共通Schema/Engineへ先に移さない**。実Provider、Target、型と期待値の契約が異なるため、対象とClaimを分離する。
+- 共通化対象はまずread-onlyの **CaseID/Subject/Source revision/Contract Pin/Obligation/Oracle出典/実Tool・Fixture・Receipt/Scope/unknown** の比較列だけ。実Runnerの出力に無い欄は未観測とし、勝手に生成しない。
+- CLI/Web E2Eの対称生成、UI DOM/Visual、採用Suiteの世代一式公開とConsumer受領は#1180/#2391/#2604の既存Ownerに後続委譲。P0で新PublisherやEKI必須Hostを導入しない。
+
+**本設計文書追補はdocs-only。** PR #2828の最新実CI、AIによる未知Caseの実生成、G2独立Oracle、G4業務Coverage、実Web/GUI/Provider/Owner受理は本作業でNOT RUN／未確認。
