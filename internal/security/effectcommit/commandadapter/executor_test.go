@@ -53,6 +53,7 @@ func adapterWorld() ir.World {
 
 type fakeProvider struct {
 	allowed   bool
+	conflict  bool
 	commitErr error
 }
 
@@ -73,6 +74,9 @@ func (t *fakeTransaction) FindReceipt(context.Context, string) (effectcommit.Rec
 }
 
 func (t *fakeTransaction) WriteResource(_ context.Context, request effectcommit.Request) (uint64, error) {
+	if t.provider.conflict {
+		return 0, effectcommit.ErrResourceConflict
+	}
 	return request.ExpectedVersion + 1, nil
 }
 
@@ -172,5 +176,23 @@ func TestExecutorPreservesCommitUncertainty(t *testing.T) {
 	}
 	if lifecycle.MayReplay("cmd-1") {
 		t.Fatal("an uncertain commit was reported as replayable")
+	}
+}
+
+func TestExecutorReportsResourceConflict(t *testing.T) {
+	invoker := command.Invoker{
+		World: adapterWorld(),
+		Executor: Executor{
+			Runner:      effectcommit.Runner{Provider: fakeProvider{allowed: true, conflict: true}},
+			Grant:       grant(),
+			OperationID: "op-1",
+		},
+	}
+	_, err := invoker.Invoke(context.Background(), request())
+	if err == nil {
+		t.Fatal("resource conflict was accepted")
+	}
+	if !errors.Is(err, effectcommit.ErrResourceConflict) {
+		t.Fatalf("error does not wrap resource conflict: %v", err)
 	}
 }
