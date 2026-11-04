@@ -29,7 +29,7 @@ type StepFunc func(ctx context.Context, operation core.CanonicalID) StepResult
 // operations in the declared order. The refusal is returned as a decision, not an
 // error. Resuming is not implemented yet: the progress of the steps is not
 // recorded, so resuming would silently repeat work.
-func RunPlan(ctx context.Context, plan semantic.RunPlan, keyValues []string, journal Journal, step StepFunc) (runlog.Decision, []StepResult, error) {
+func RunPlan(ctx context.Context, plan semantic.RunPlan, keyValues []string, journal Journal, step StepFunc, preconditions PreconditionFunc) (runlog.Decision, []StepResult, error) {
 	runKey := runlog.RunKey(string(plan.ID), keyValues)
 	last, found, err := journal.Last(runKey)
 	if err != nil {
@@ -63,6 +63,23 @@ func RunPlan(ctx context.Context, plan semantic.RunPlan, keyValues []string, jou
 			results = append(results, StepResult{Operation: string(operation), Status: "resolved", Detail: "already finished in an earlier attempt"})
 			continue
 		}
+		// An unattended run cannot ask anyone, so it stops when a precondition is
+		// not met. An attended run keeps the previous behaviour: a person is
+		// present to handle the operation's refusal.
+		if plan.Autonomy == "unattended" {
+			reason := "no precondition check is configured"
+			if preconditions != nil {
+				reason = preconditions(operation)
+			}
+			if reason != "" {
+				results = append(results, StepResult{Operation: string(operation), Status: "blocked", Detail: reason})
+				record.Status = runlog.Blocked
+				if err := journal.Append(record); err != nil {
+					return decision, results, err
+				}
+				return decision, results, nil
+			}
+		}
 		result := step(ctx, operation)
 		results = append(results, result)
 		if result.Status != "resolved" {
@@ -94,3 +111,8 @@ func containsStep(steps []string, operation string) bool {
 	}
 	return false
 }
+
+// PreconditionFunc reports whether an operation may run. It returns a reason
+// when the precondition is not met; an empty reason means it is met. A nil
+// function means nothing is known, which for an unattended run is not enough.
+type PreconditionFunc func(operation core.CanonicalID) string
