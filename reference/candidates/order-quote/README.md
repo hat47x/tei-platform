@@ -66,3 +66,9 @@ Runtimeはテスト用`EnvironmentPlan`、実ファイルを再読込してSHA-2
 [候補専用の受領検証試験](../../../tools/reference-plugin-capability-contract/order_quote_business_receipt_test.go)では、入力の明細・数量・整数単価から金額を**独立に再計算**し、応答の通貨、明細件数、小計と照合します。JSONの構造だけは一致するが小計が誤っている応答や、数量・単価の業務制約に反する要求を拒否する反例を追加しました。[実プロセス直列試験](../../../tools/reference-plugin-capability-contract/order_quote_runtime_chain_test.go)にも適用し、実バイナリが返した正当な小計は受領し、実行後に改変された算術的に不正な結果は拒否します。
 
 この検査は**テスト専用の独立した業務オラクル**です。実アプリケーションの正規受理手順、承認済み業務規則、永続処理の検証エンジンを増設したものではありません。既存のShape Authority、Provider Conformance、Runtime Authorityや署名を新規発行するものでもありません。受理前の候補で確認された制約を、正式モデルへどのように宣言・配布するかは引き続き未解決です。
+
+## 結果Shape変更の隔離比較
+
+直列結合試験では結果Shapeの一時コピー1件に必須の数値項目 `taxMinor` を追加します。変更したShapeを旧Fingerprintのまま登録すると拒否され、Fingerprintを更新しても旧Shapeの合成Authority Evidenceでは登録できません。いずれもprocess起動前の拒否です。元のShapeと合成証跡の組合せでは実Providerを呼べますが、その実出力には追加項目がなく、変更後Shapeを通りません。追加項目を含む合成JSONが構造検査を通ることも確認します。
+
+この比較で編集したのは一時Shapeだけです。新しい意味定義、対応表、Provider、契約、正式な証跡を更新・受理するために必要な変更箇所の全体は測定していません。旧認可規則はShapeと別の経路で検証されますが、この比較は変更後の業務意味に対する認可やProviderの適合性を証明しません。税の計算方法や `taxMinor: 0` の業務的な正しさも判断していません。

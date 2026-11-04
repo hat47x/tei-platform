@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -246,6 +247,57 @@ func TestCandidateQuoteShapeConformanceAndRealRuntimeProcessOneInvocation(t *tes
 		attempt(t, "wrong evidence", "no conformant provider", func() { input.Evidence = []ConformanceEvidence{e} })
 	})
 	input.Evidence = []ConformanceEvidence{evidenceFor(provider, contract, "synthetic-test-only")}
+	t.Run("isolated result shape change does not inherit old evidence", func(t *testing.T) {
+		// Modify a separate copy, never the unaccepted candidate on disk.
+		original, err := os.ReadFile("../../reference/candidates/order-quote/shapes/result-v0.json")
+		if err != nil {
+			t.Fatal(err)
+		}
+		var changed InvocationShapeArtifact
+		if err := json.Unmarshal(original, &changed); err != nil {
+			t.Fatal(err)
+		}
+		changed.Root.Properties["taxMinor"] = InvocationShapeNode{Kind: "number"}
+		changed.Root.Required = append(changed.Root.Required, "taxMinor")
+		if err := validateInvocationShapeArtifact(changed); err != nil {
+			t.Fatal(err)
+		}
+		copyPath := filepath.Join(t.TempDir(), "result-v0.json")
+		copyBytes, err := json.Marshal(changed)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(copyPath, copyBytes, 0600); err != nil {
+			t.Fatal(err)
+		}
+		if invocationShapeFingerprint(changed) == impl.ResultShapeFingerprint {
+			t.Fatal("changed shape retained old fingerprint")
+		}
+		changedImpl := impl
+		changedImpl.ResultShapeArtifact = changed
+		before := launcher.calls
+		if _, err := NewInvocationRegistry([]InvocationImplementation{changedImpl}, shapeEvidence, invocationShapePublisherTrustForTest(t, shapeEvidence)); err == nil || !strings.Contains(err.Error(), "does not match declaration") {
+			t.Fatalf("old shape pin accepted: %v", err)
+		}
+		changedImpl.ResultShapeFingerprint = invocationShapeFingerprint(changed)
+		if _, err := NewInvocationRegistry([]InvocationImplementation{changedImpl}, shapeEvidence, invocationShapePublisherTrustForTest(t, shapeEvidence)); err == nil || !strings.Contains(err.Error(), "no accepted Shape Authority Evidence") {
+			t.Fatalf("old authority evidence accepted: %v", err)
+		}
+		if launcher.calls != before {
+			t.Fatal("stale shape caused process execution")
+		}
+		got, err := generic.ResolveAndInvoke(ctx, input, payload)
+		if err != nil || launcher.calls != before+1 {
+			t.Fatalf("original shape should still invoke actual provider: %+v, %v", got, err)
+		}
+		if err := validateInvocationPayload(changed, got.ResultPayload); err == nil {
+			t.Fatalf("old provider output unexpectedly satisfies new required taxMinor: %s", got.ResultPayload)
+		}
+		if err := validateInvocationPayload(changed, []byte(`{"currency":"JPY","lineCount":2,"subtotalMinor":1550,"taxMinor":0}`)); err != nil {
+			t.Fatalf("new candidate-shaped example rejected: %v", err)
+		}
+		t.Log("one isolated result Shape changed: old pin and old synthetic Shape evidence rejected before process; original provider still works under original Shape, but output lacks new required field")
+	})
 	t.Run("outer request shape violation prevents Runtime", func(t *testing.T) {
 		bad := payload
 		payload = []byte(`{"currency":"JPY","lines":[{"sku":"PEN","quantity":"3","unitPriceMinor":250}]}`)
