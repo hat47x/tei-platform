@@ -196,3 +196,27 @@
 **実装と実証の範囲**：PR #2669の`tools/reference-developer-context/question_relative_worlds_test.go`に`TestQuestionRelativeSameReportDifferentHiddenWorlds`と`TestQuestionRelativeSameCollectedCandidatesDifferentQuestions`を追加、Focused CI対象に`TestQuestionRelative`を含めた。製品本体・Reporter・Source正本・新Toolは不変更。**最新exact HEAD CI成功とformat healthが確認されるまでは本2件PASSと記録しない。**
 
 **次の独立比較**：外部SEI Method評価は`(Q,初期Report,候補元の現在Source版,実Tool,予算,Grant,Audience)`をD1/M1に対称に渡す。採点側の`W0/W1/W2`正解・選抜正解Rをモデルから隠す。現Developer Context CLIには任意probe範囲を指定する公開フラグはないため、想定ツールを実存在Toolと取り違えない。実行がなく追加Probe提案だけなら`proposed/unsupported`で止める。取得後の現在性・Consumer別開示は#2516、Source/Owner意味は既存責務、Attempt再資格化はTAI #271、Method側の不足判断はSEI #767とする。
+
+<!-- tei-devctx-p2-next-probe-actual-local-read-20261104 -->
+## 11. P2-2b 入口：D0と決定的D1の「提案→実Read→現在観測」を分離する（2026-11-04）
+
+**位置**：[#2533](https://github.com/hat47x/tei-platform/issues/2533)で以前から構想したD0/D1/SEI M1のblind比較のうち、**実行可能な前段D0対D1だけを評価専用Go実装**へ進める。D0＝現`Discover`、D1＝test専用`localDocsProbe`が**既知のScope `docs/*.md`直下**で明示予算1件の追加ファイルReadを行い、`path + SHA256 + byte count + exact target path文字列一致 + read attempt/result + budget exhausted`をその場で観測する。D1は入力に`target`（利用者のQ側で公開された既知対象）と`root`・予算・許可の合成スイッチのみを受け取り、**未知文書名や独立Expectedを受け取らない**。これは認知Methodではなく、実際のGoファイル読取を備えた**評価用の決定的対照**。SEI M1は依然として**NOT RUN**、新しい製品Tool/CLI/Authorityではない。
+
+### CC-08：同じ初期Reportの4世界を固定した追加読取対照
+| World | 初期D0 | D1（追加Read予算1件）の観測 | 評価上の禁止推論 |
+| --- | --- | --- | --- |
+| W0 docs無し | test12件で同一Report | `scope-missing`・追加file Read 0 | 全Repoに文書がない、とは言えない |
+| W1 target明示参照doc1件 | 同一 | 実Read1件、Byte/SHAと対象完全path字句一致 | 内容がOwner受理済み／最新文書とは言えない |
+| W2 別source参照doc1件 | 同一 | 実Read1件、取得は成功・字句一致なし | Read成功＝必要な根拠の取得ではない |
+| W3 別path参照doc→対象docの順で2件 | 同一 | 最初の1件をRead、**予算打切り**・対象根拠未到達 | 未到達＝存在しない、とは言えない |
+
+評価用`allow=false`では、提案はあっても `unsupported`、`attempts=0`、`reads=0`とし、**提案／利用可能性／実行済み／根拠取得を別票**で扱う。これは実Hostの許可処理ではなく、反例を作るための人工分岐。Goの`readInside`経由で読んだバイトのdigestをテスト側で独立`os.ReadFile`と照合するが、後者は**採点側のFixture Witness**であり、D1の実行に渡した隠し知識ではない。
+
+### CC-09：同じpathでSourceが変化した後の旧Receiptの扱い
+W1で`docs/reference.md`をReadして完全path一致を観測後、**文書byteを別path記述へ変更**し再取得。現ReadのSHA・適合が変わることを検証し、旧Receiptを現在の根拠に昇格させない。さらにA→B→Aで元byteへ復帰するとSHAが等しくなるが、**変更履歴無し／意味同一／Audience開示可／正しい共同Snapshot**を証明しない。これは単一ローカルfileの限定実観測であり、TEI ModelRevisionやProvider/Consumer受理の代用ではない（#2505／#2516／TAI #271）。
+
+**今回追加する実行入口**：PR #2669の`tools/reference-developer-context/actual_probe_receipt_test.go`に`TestActualProbeD0VersusBoundedD1AndUnsupported`／`TestActualProbeWitnessMustBeReacquiredAfterSourceRevision`を追加し、focused workflowに`TestActualProbe`を組み込む。**exact HEADのCIが完成するまでは新規2件のPASSを主張しない**。出力の状態`unsupported/scope-missing/observed`は**テストローカルな表現**で、正式なTEI Report schemaやSEI APIを設計しない。
+
+**効果比較の限定**：D0とD1は**読取費用も情報量も異なる**ので、D1の根拠到達向上をModel順位効果／同予算Method寄与と混同しない。比較では`initial report + actually acquired bytes + attempted/rejected/skipped scope + read budget + Source asOf`を区別する。真にM1を評価する段階では、D1/M1へ同じTool/Grant/Scope/情報/予算を与えて選択をblind比較し、実際に読まれていない候補を`found`として採点しない。
+
+**受理・Authorityの停止線**：現在のPoCは任意の追加Probe用CLI Flagを提供しない。test-only`localDocsProbe`を製品Toolや実Host権限の証拠に変換しない。D1の目的は、Methodが本当に追加Sourceへ到達したかを将来評価するための**実読取と人工Oracleの分離**である。#2514独立Oracle、#2533評価、SEI #767次Probe、TAI #271現在資格、#2516開示がOwner。新Runtime Host/Registry/共通Evidence正本/正式Gate/ADR承認はなし。
