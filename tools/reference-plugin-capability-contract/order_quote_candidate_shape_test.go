@@ -50,6 +50,10 @@ func readQuoteCandidateShape(t *testing.T, relative string) InvocationShapeArtif
 }
 
 func loadQuoteOverlaySemantic(t *testing.T) semantic.Namespace {
+	return loadQuoteOverlaySemanticWithEdit(t, nil)
+}
+
+func loadQuoteOverlaySemanticWithEdit(t *testing.T, edit func([]byte) []byte) semantic.Namespace {
 	t.Helper()
 	source := "../../reference/workspace"
 	scratch := filepath.Join(t.TempDir(), "workspace")
@@ -81,6 +85,9 @@ func loadQuoteOverlaySemantic(t *testing.T) semantic.Namespace {
 		data, err := os.ReadFile(filepath.Join("../../reference/candidates/order-quote", relative))
 		if err != nil {
 			t.Fatal(err)
+		}
+		if relative == "semantic/sales/quote.tei" && edit != nil {
+			data = edit(data)
 		}
 		target := filepath.Join(scratch, relative)
 		if err := os.MkdirAll(filepath.Dir(target), 0755); err != nil {
@@ -255,4 +262,89 @@ func TestCandidateQuoteShapeChecksStructureNotBusinessConstraints(t *testing.T) 
 	if got := invocationShapeFingerprint(request); !strings.HasPrefix(got, "sha256:") {
 		t.Fatal(fmt.Sprintf("candidate shape has no derived fingerprint: %q", got))
 	}
+}
+
+// This is a test-only comparison, not an automatic mapping generator or an
+// acceptance check. The edited semantic source is loaded from a scratch copy.
+func TestCandidateQuoteChangedResultMappingInIsolatedWorkspace(t *testing.T) {
+	baseline := loadQuoteOverlaySemantic(t)
+	changed := loadQuoteOverlaySemanticWithEdit(t, func(raw []byte) []byte {
+		anchor := "    attribute subtotalMinor type std.integer\n"
+		if strings.Count(string(raw), anchor) != 1 {
+			t.Fatal("expected one result attribute anchor")
+		}
+		return []byte(strings.Replace(string(raw), anchor, anchor+"    attribute taxMinor type std.integer\n", 1))
+	})
+	readMapping := func() quoteCandidateShapeMapping {
+		t.Helper()
+		raw, err := os.ReadFile("../../reference/candidates/order-quote/shape-mapping.json")
+		if err != nil {
+			t.Fatal(err)
+		}
+		var mapping quoteCandidateShapeMapping
+		if err := json.Unmarshal(raw, &mapping); err != nil {
+			t.Fatal(err)
+		}
+		return mapping
+	}
+	resultAttributes := func(ns semantic.Namespace) map[string]string {
+		out := map[string]string{}
+		for _, data := range ns.Data {
+			if data.ID == "sales.quote_result" {
+				for _, a := range data.Attributes {
+					out[string(a.ID)] = string(a.TypeRef)
+				}
+			}
+		}
+		return out
+	}
+	check := func(ns semantic.Namespace, mapping quoteCandidateShapeMapping, shape InvocationShapeArtifact) error {
+		for id, typ := range resultAttributes(ns) {
+			wire, ok := mapping.FieldMappings[id]
+			if !ok {
+				return fmt.Errorf("unmapped result attribute %s", id)
+			}
+			node, ok := shape.Root.Properties[wire]
+			if !ok {
+				return fmt.Errorf("missing result shape property %s", wire)
+			}
+			want := "number"
+			if typ == "std.code" {
+				want = "string"
+			} else if typ != "std.integer" {
+				return fmt.Errorf("unsupported semantic type %s", typ)
+			}
+			if node.Kind != want {
+				return fmt.Errorf("wrong result shape kind for %s", id)
+			}
+		}
+		return nil
+	}
+	shape := readQuoteCandidateShape(t, "result-v0.json")
+	mapping := readMapping()
+	if err := check(baseline, mapping, shape); err != nil {
+		t.Fatal(err)
+	}
+	if err := check(changed, mapping, shape); err == nil || !strings.Contains(err.Error(), "unmapped result attribute sales.quote_result.tax_minor") {
+		t.Fatalf("missing mapping not detected: %v", err)
+	}
+	mapping.FieldMappings["sales.quote_result.tax_minor"] = "taxMinor"
+	if err := check(changed, mapping, shape); err == nil || !strings.Contains(err.Error(), "missing result shape property taxMinor") {
+		t.Fatalf("missing shape property not detected: %v", err)
+	}
+	shape.Root.Properties["taxMinor"] = InvocationShapeNode{Kind: "number"}
+	shape.Root.Required = append(shape.Root.Required, "taxMinor")
+	if err := check(changed, mapping, shape); err != nil {
+		t.Fatal(err)
+	}
+	if err := validateInvocationPayload(shape, []byte(`{"currency":"JPY","lineCount":2,"subtotalMinor":1550}`)); err == nil {
+		t.Fatal("unchanged provider-shaped result accepted despite missing taxMinor")
+	}
+	if err := validateInvocationPayload(shape, []byte(`{"currency":"JPY","lineCount":2,"subtotalMinor":1550,"taxMinor":0}`)); err != nil {
+		t.Fatal(err)
+	}
+	if len(resultAttributes(changed)) != len(resultAttributes(baseline))+1 {
+		t.Fatal("unexpected semantic change count")
+	}
+	t.Log("isolated semantic attribute addition: one source, one mapping entry, one required Shape property; old result rejected; structural example accepted")
 }
