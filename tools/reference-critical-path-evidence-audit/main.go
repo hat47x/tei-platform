@@ -142,7 +142,10 @@ func Audit(p Packet, expectedHead, expectedMain string) Report {
 	// Any claim: a packet that rests on a provisional effect Grant is not
 	// qualifying evidence, whatever else it contains. The label is normalized
 	// (format/space characters removed, case and "_" folded) so that formatting
-	// or an alias cannot hide it.
+	// or an alias cannot hide it. Limit: a look-alike in another script (a
+	// homoglyph such as Cyrillic o) is not folded. Only the E2 allow-list below
+	// refuses it (as an unknown label); an E0/E1 packet carries no Physical
+	// evidence, so such a label is not detected there.
 	if normalizedProvenance(p.Physical.HostAuthorityProvenance) == "provisional-grant" {
 		add("PROVISIONAL_GRANT_NOT_G2_EVIDENCE")
 	} else if p.Claim == "E2" && !allowedHostAuthorityProvenance[p.Physical.HostAuthorityProvenance] {
