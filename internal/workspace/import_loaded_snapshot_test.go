@@ -209,9 +209,9 @@ func TestCaptureImportedParsedLoadRedactsPrivatePaths(t *testing.T) {
 			// provider's filesystem; external diagnostics must not echo its path.
 			provider := Result{
 				semanticFilesByNamespace: map[string][]string{"os": {tc.path}},
-				sourceSnapshot: make(map[string][]byte),
+				sourceSnapshot:           make(map[string][]byte),
 				sourceManifest: ManifestIdentity{
-					Path: "tei.workspace.yaml",
+					Path:   "tei.workspace.yaml",
 					SHA256: sourceindex.Fingerprint(rawManifest),
 				},
 				sourceManifestBytes: append([]byte(nil), rawManifest...),
