@@ -64,8 +64,8 @@ type Result struct {
 func (s Scheme) Validate() error {
 	for name, value := range map[string]string{
 		"schemeId": s.SchemeID,
-		"purpose": s.Purpose,
-		"scope": s.Scope,
+		"purpose":  s.Purpose,
+		"scope":    s.Scope,
 	} {
 		if !validToken(value) {
 			return fmt.Errorf("%s: unsupported or missing ASCII token", name)
