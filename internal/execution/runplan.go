@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"tei/internal/core"
+	"tei/internal/operations"
 	"tei/internal/runlog"
 	"tei/internal/semantic"
 )
@@ -116,3 +117,16 @@ func containsStep(steps []string, operation string) bool {
 // when the precondition is not met; an empty reason means it is met. A nil
 // function means nothing is known, which for an unattended run is not enough.
 type PreconditionFunc func(operation core.CanonicalID) string
+
+// PeriodPreconditions adapts the period guard to the run plan: a capability
+// whose period refuses it returns the refusal as the reason, so an unattended
+// run stops before it reaches the capability.
+func PeriodPreconditions(surface operations.OperationSurface, states map[string]operations.PeriodState) PreconditionFunc {
+	return func(capabilityID core.CanonicalID) string {
+		rejection, refused := operations.GuardCapability(surface, states, capabilityID)
+		if !refused {
+			return ""
+		}
+		return rejection.Detail
+	}
+}

@@ -6,6 +6,7 @@ import (
 
 	"tei/internal/core"
 	"tei/internal/execution"
+	"tei/internal/operations"
 	"tei/internal/runlog"
 	"tei/internal/semantic"
 )
@@ -221,5 +222,64 @@ func TestAttendedRunKeepsRunningWithoutAPreconditionCheck(t *testing.T) {
 	}
 	if len(results) != 3 {
 		t.Fatalf("an attended run is not blocked by the absence of a check: %+v", results)
+	}
+}
+func periodSurface() operations.OperationSurface {
+	return operations.OperationSurface{Operations: []operations.Operation{{
+		ID:            "app.create.sales.close",
+		Kind:          "create",
+		Target:        "sales.period",
+		Binding:       "sales.close",
+		Period:        "sales.month",
+		PeriodRejects: []string{"create"},
+	}}}
+}
+
+func TestPeriodPreconditionsStopAnUnattendedRun(t *testing.T) {
+	journal := &runJournal{}
+	called := false
+	step := func(_ context.Context, operation core.CanonicalID) execution.StepResult {
+		called = true
+		return execution.StepResult{Operation: string(operation), Status: "resolved"}
+	}
+	preconditions := execution.PeriodPreconditions(periodSurface(), map[string]operations.PeriodState{"sales.month": operations.PeriodClosed})
+
+	plan := semantic.RunPlan{
+		ID:         "sales.monthly_close",
+		Operations: []core.CanonicalID{"sales.close"},
+		Resume:     "none",
+		Autonomy:   "unattended",
+	}
+	_, results, err := execution.RunPlan(context.Background(), plan, []string{"2026-10"}, journal, step, preconditions)
+	if err != nil {
+		t.Fatalf("run: %v", err)
+	}
+	if called {
+		t.Fatal("a capability refused by its period must not run unattended")
+	}
+	if len(results) != 1 || results[0].Status != "blocked" {
+		t.Fatalf("the refusal must block the run: %+v", results)
+	}
+	if journal.records[len(journal.records)-1].Status != runlog.Blocked {
+		t.Fatalf("the run must be recorded blocked: %+v", journal.records)
+	}
+}
+
+func TestPeriodPreconditionsLetAnOpenPeriodRun(t *testing.T) {
+	journal := &runJournal{}
+	step := func(_ context.Context, operation core.CanonicalID) execution.StepResult {
+		return execution.StepResult{Operation: string(operation), Status: "resolved"}
+	}
+	preconditions := execution.PeriodPreconditions(periodSurface(), map[string]operations.PeriodState{"sales.month": operations.PeriodOpen})
+	plan := semantic.RunPlan{ID: "sales.monthly_close", Operations: []core.CanonicalID{"sales.close"}, Autonomy: "unattended"}
+	if _, results, err := execution.RunPlan(context.Background(), plan, []string{"2026-10"}, journal, step, preconditions); err != nil || len(results) != 1 || results[0].Status != "resolved" {
+		t.Fatalf("an open period must run: results=%+v err=%v", results, err)
+	}
+}
+
+func TestPeriodPreconditionsIgnoreCapabilitiesWithoutAPeriod(t *testing.T) {
+	preconditions := execution.PeriodPreconditions(periodSurface(), map[string]operations.PeriodState{"sales.month": operations.PeriodClosed})
+	if reason := preconditions(core.MustCanonicalID("sales.unbound")); reason != "" {
+		t.Fatalf("a capability without a period is not guarded: %q", reason)
 	}
 }
