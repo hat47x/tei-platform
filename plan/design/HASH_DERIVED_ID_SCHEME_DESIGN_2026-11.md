@@ -52,14 +52,20 @@ Source / approved input
 
 ```json
 {
-  "schemeId": "tei.std.hashId.v1",
-  "mode": "encodedDigest",
-  "purpose": "example.artifact",
-  "scope": "example.release",
-  "inputKind": "canonical-binary",
-  "canonicalization": "raw-bytes/v1",
-  "generator": {"algorithm": "cshake256", "outputBits": 160},
-  "presentation": {"encoding": "base32-rfc4648-lower-unpadded"}
+  "format": "tei.hashid.scheme/v1",
+  "scheme": {
+    "schemeId": "tei.std.hashId.v1",
+    "purpose": "example.artifact",
+    "scope": "example.release",
+    "inputKind": "bytes",
+    "canonicalization": "raw-bytes/v1",
+    "algorithm": "cshake256",
+    "mode": "encodedDigest",
+    "outputBits": 160,
+    "encoding": "base32lower",
+    "alphabet": "",
+    "length": 0
+  }
 }
 ```
 
@@ -73,17 +79,19 @@ SHA-256は256 bit固定。短縮する場合は`sha256-truncated/v1`のように
 
 ```json
 {
-  "schemeId": "tei.std.hashId.v1",
-  "mode": "exactCharacters",
-  "purpose": "example.external-record",
-  "scope": "example.application",
-  "inputKind": "canonical-binary",
-  "canonicalization": "raw-bytes/v1",
-  "generator": {"algorithm": "cshake256"},
-  "presentation": {
+  "format": "tei.hashid.scheme/v1",
+  "scheme": {
+    "schemeId": "tei.std.hashId.v1",
+    "purpose": "example.external-record",
+    "scope": "example.application",
+    "inputKind": "bytes",
+    "canonicalization": "raw-bytes/v1",
+    "algorithm": "cshake256",
+    "mode": "exactCharacters",
+    "outputBits": 0,
+    "encoding": "",
     "alphabet": "0123456789abcdefghjkmnpqrstvwxyz",
-    "length": 32,
-    "unit": "unicode-scalar"
+    "length": 32
   }
 }
 ```
@@ -103,6 +111,19 @@ SHA-256は256 bit固定。短縮する場合は`sha256-truncated/v1`のように
 `A`種類・`L`文字なら最大`M=A^L`種類、理想的な情報量は `H=L*log2(A)` bit。誕生日近似は（生成対象数`n`が`sqrt(M)`より十分小さいとき）`P(collision) ≈ n(n-1)/(2M)`。一般には`1-exp(-n(n-1)/(2M))`を用いて概算する。**暗号強度・原像抵抗性そのものと同一ではない**。固定Digestを短縮すれば利用できる識別空間も縮小する。
 
 例：数字20桁は約66.4 bit。Base32で32文字なら160 bit相当。事前の`ExpectedPopulation`と`MaxCollisionProbability`などはTarget/用途Policyが指定し、危険な短縮を表示警告だけで許さないPolicyでは生成を拒否する。生成後も永続側の一意制約/重複検査が必要。自動saltや連番再発行で既存意味IDを黙って変更せず、衝突時は両候補とScheme/Scopeを示してFail Closedする。再試行・割当を許す用途では、採用したsalt/nonce・再割当の記録とAuthorityを別に定義する。
+
+### 3.4 版付きScheme JSONの限定Wire（PoC・製品未採用）
+
+参照実装の *保存・再読込用* Wireとして`tei.hashid.scheme/v1`を導入した（[Go/TypeScript実装](../../tools/reference-hash-id/)）。上記の整形済み例は説明用であり、**実際に受理されるWireは空白を除いた1行の正規JSON**である。
+
+- 外側は`{"format":"tei.hashid.scheme/v1","scheme":{...}}`。内側は`schemeId,purpose,scope,inputKind,canonicalization,algorithm,mode,outputBits,encoding,alphabet,length`を**この順序で全件必須**とする。使用しない数値や文字列も0/空文字で残す。省略・null・未知・重複・順序変更・非正規JSONエスケープ・末尾ごみは受理しない。
+- 現`v1`の許可入力は`bytes/raw-bytes/v1`だけ。名前・scope・purposeは対応するASCIIトークン構文に制限。アルファベットは重複なしの印字可能ASCII 2〜94種類。Unicode scalar・JSON canonicalizationは後続の別版/別Profileであり、見かけ上同等でも暗黙移行しない。
+- 数値はビット数・文字数の整数。 `encodedDigest`は`length=0`、`exactCharacters`は`outputBits=0, encoding=""`。違うModeのゼロ値を流用したデフォルト補完は認めない。
+- Canonical WriterはUTF-8・ASCII値・上記固定キー順で`JSON.stringify`同等のエスケープとし、`<`/`>`/`&`も字面を維持する（HTML用追加エスケープなし）。4KiBを超えるDeclarationは拒否。Goの`MarshalSchemeJSON/ParseSchemeJSON`、TSの`serializeSchemeJSON/parseSchemeJSON`が同じ`scheme_wire_vectors.json`を参照する。
+- **Wire版はHashの入力に追加しない**。ハッシュ導出の識別は既存の`tei.hashid.frame.v1`、`schemeId`、目的・scope・アルゴリズム・Mode・出力規則で固定する。表示Encodingだけ変更すると`encodedDigest`のバイナリは同一でも**Scheme Wire全体のバイト列は異なる**。どちらも意味上の論理IDの同値性を意味しない。
+- v2へ変更する際は旧Wireを自動的に昇格させず、機械可読Migration宣言、旧新結果の照合、旧IDの保持、Consumer/Owner受理を別Gateとする。
+
+**境界**: これはHash Id Schemeを保存・交換する際の正準形式の*実験契約*である。署名対象・Artifact Lock・Capability Identityに直接転用する決定ではなく、実認証・実DBの取得保証・既存アプリ受理に結線しない。
 
 ## 4. 方式の比較と導入順
 
