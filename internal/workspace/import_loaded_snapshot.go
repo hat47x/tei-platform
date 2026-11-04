@@ -64,18 +64,18 @@ func captureImportedParsedLoad(imp WorkspaceImport, digest string, provider Resu
 	for _, path := range sortedPaths {
 		normalized, err := sourceindex.NormalizeWorkspacePath(path)
 		if err != nil || normalized != path || path == evidence.Manifest.Path {
-			return empty, fmt.Errorf("import %q has invalid parsed Source path %q", imp.Alias, path)
+			return empty, fmt.Errorf("import %q has invalid parsed Source path", imp.Alias)
 		}
 		raw, ok := provider.sourceSnapshot[path]
 		if !ok {
-			return empty, fmt.Errorf("import %q parsed Source %q has no Load-time bytes", imp.Alias, path)
+			return empty, fmt.Errorf("import %q parsed Source has no Load-time bytes", imp.Alias)
 		}
 		if _, duplicate := files[path]; duplicate {
-			return empty, fmt.Errorf("import %q has duplicate parsed Source %q", imp.Alias, path)
+			return empty, fmt.Errorf("import %q has duplicate parsed Source occurrence", imp.Alias)
 		}
 		artifact, err := sourceindex.NewArtifact(path, raw)
 		if err != nil {
-			return empty, fmt.Errorf("import %q parsed Source %q: %w", imp.Alias, path, err)
+			return empty, fmt.Errorf("import %q has invalid parsed Source evidence", imp.Alias)
 		}
 		files[path] = bytes.Clone(raw)
 		evidence.ParsedSources = append(evidence.ParsedSources, artifact)
