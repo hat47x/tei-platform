@@ -573,3 +573,55 @@ Ownerは#1180（Scenario）、#2813/#988（DSL Candidate）、#2514（Oracle）�
 - CLI/Web E2Eの対称生成、UI DOM/Visual、採用Suiteの世代一式公開とConsumer受領は#1180/#2391/#2604の既存Ownerに後続委譲。P0で新PublisherやEKI必須Hostを導入しない。
 
 **本設計文書追補はdocs-only。** PR #2828の最新実CI、AIによる未知Caseの実生成、G2独立Oracle、G4業務Coverage、実Web/GUI/Provider/Owner受理は本作業でNOT RUN／未確認。
+
+## 16. AI生成テストの実行漏れ・SKIP緑・Source再資格化を分離する（2026-11-04）
+
+**区分：最新CI/Go実装の確認に基づく既存P0受入契約の更新。§15のSource・Runner・Oracle責務を置換しない。** 今回確認した既存成果は、(a) #2828の実Go全体テスト成功とgofmt原因のHealth失敗、(b) #2835の必須試験SKIP/欠落検出、(c) #2681のWorld/Source改訂非同一性。いずれも**局所の限定Evidence**であり、AIが未知ケースを生成して不具合を検出したことは未証明。
+
+### 16.1 履歴とexact HEADを区別して受入状態を更新
+
+| 対象 | 確認した実証・結果 | 成立するClaim／未成立 |
+| --- | --- | --- |
+| [#2811 設計PR](https://github.com/hat47x/tei-platform/pull/2811) | 旧設計HEAD `a4483e85` の[Health #41787123130](https://github.com/hat47x/tei-platform/actions/runs/41787123130)は **completed/success** | 旧HEADのdocs正規CI成功。この§16追記後HEADの新CIへ結果転用不可 |
+| [#2828 Driver Candidate](https://github.com/hat47x/tei-platform/pull/2828) | 旧HEAD `71d9749c` の[Health #41786950497](https://github.com/hat47x/tei-platform/actions/runs/41786950497)は**completed/failure**。実ログ：`gofmt -l .`は`cmd/tei/ai_scenario_candidate_test.go`で失敗、`go vet ./...`・`go test -count=1 -timeout 60m ./...`・Workspace validateは**PASS** | 対象旧HEADの限定Goテスト実走は成功、総合Healthは不合格。別コミット `77baf709` でReceipt匿名構造体の整列のみ修正（製品ロジック不変）。**修正後HEADのCI成功は確認してから主張** |
+| [#2813 DSL JSON Candidate](https://github.com/hat47x/tei-platform/pull/2813) | HEAD `2219fc4d` の[Health #41744813520](https://github.com/hat47x/tei-platform/actions/runs/41744813520) **completed/success** | test-only 11候補・重複JSONキー拒否の実Go基準線。独立Oracleや業務Coverage資格にはしない |
+| [#2835 必須PG試験入場](https://github.com/hat47x/tei-platform/pull/2835) | 実PostgreSQLへのGo testを実施したローカル記録と、DSN無しで`go test`が成功しつつ21件SKIPされる対照。現mainの`.github/workflows/tei-effect-fence-postgres-ci.yml`に`required test did not PASS`とSKIP拒否検査が存在 | **実行結果の緑≠要求された試験の実行完了**を実証。Effect-fence専用CIのPolicyを全AI Testへそのまま複製するのではなく、「必須Obligation/Caseを実際に実行したか」の契約へ移植 |
+| [#2681 組織Native Source反例](https://github.com/hat47x/tei-platform/pull/2681) | 実`.tei`のコメントのみ変更して**WorldFingerprint同じ・ModelRevision異なる・read-only Operation同じ**を検証した限定Native [#41786879258](https://github.com/hat47x/tei-platform/actions/runs/41786879258)成功 | 同じ業務意味が使える場合でもSource改訂/出典引用・実Consumer再受領は別資格。全Source closureやArtifact completeを保証しない |
+
+### 16.2 G3とG4に「実行したはず」の確認を追加
+
+**required Caseの事前固定**：AIへ配るWork Packetに`requiredCaseIDs`、そのCaseが対象とする`obligation IDs`、対象の実行environment/fixture capability、禁止されたSKIPを記録する。これはScenario/Issue/既存CIの**派生read-only受入表**であり、二つ目のSuite正本・新Runnerを作らない。
+
+**試験実行後の判定**を4つに分ける。
+- **discovered**：Glob/Scenario Loader/CIが必要Case IDを見つけたか。globの上限/unknown path/途中失敗を「全件発見」にしない。
+- **scheduled / attempted**：Caseが実行計画に含まれ、実際にAttemptされたか。生成されたPlanが存在するだけでは実行済みとしない。
+- **terminal outcome**：`PASS / FAIL / SKIP / NOT RUN / BLOCKED / UNKNOWN`を明示。必須試験がログ欠落、SKIP、timeoutのときは**当該Obligationをqualifiedにしない**。任意環境の補助テストのSKIPはそのプロファイルの明示ポリシーに従い、すべてのskipをグローバルなbuild failureにしない。
+- **qualified**：G2独立ExpectedとG1 Source/Scope/Targetの適合、G3実Receipt/G4必要Obligation分母と照合し、**Required Caseを全件PASSした範囲だけ**で宣言する。数だけ合ってもCase ID違い・同一Caseの重複実行・旧Headのログ流用は認めない。
+
+合格条件の例：`requiredIDs - observedPassedIDs = ∅` かつ `observedSkippedRequiredIDs = ∅`、各Receiptの実Source/Tool/fixture/attempt版が一致、必要な独立Expectedがqualified。これを満たしても**要求Obligationが不完全な場合はCoverage 100%としない**。
+
+### 16.3 AIが実際にテストを増やす最小の実証
+
+- **P0-A**：#2813の既存JSON test-only 11件は固定し、Agentが新しいファイルで正常1件・拒否1件を追加。追加前にRequired Case IDsを定め、`go test`の出力・実Subtestの存在・重複ID拒否・独立Oracle未確定を区別。
+- **P0-B**：#2828の既存Candidate JSONに対し、既存Anchorとtest-only Goを変更せず**新しい`ai-candidate-*.json`を1ファイル追加**。実CLI `verify→generate→check→generated-pinned run`でStep全数を実行したことを確認し、対象の`evidenceNature`を限定保存。新規Caseと固定Anchorを同じ意義のテストにしない。
+- **P0-C**：上記の必須Case一件を「glob対象外拡張子にする」「Testの`-run`フィルタで除く」「任意条件でSKIPさせる」「CIがログを一部切り詰める」のうちまず2件の変化注入で試し、見かけのGo成功と**資格失敗**を別に出す。GoテストRunnerへの新しい必須機能を先に増やさず、既存出力と独立受入表で比較。
+- **P0-D**：#2681の事前固定Expected（`World同一=true、ModelRevision同一=false、Operation同一=true`）をInput/Mutationとして供給。AIが実ResultからWantを再計算してもG2独立Expectedの改変は不可。Source引用の旧版扱い、モデル意味の再利用、Artifact/Consumerの再資格化は分離する。
+
+このP0の後にのみ、同一Scenario→Web/CLI派生、GUI/Visual、Published Suite/Consumer receipt、実DB/Hostへ進む。実Sourceについては#2822〜24のDeclared/Discovered/Loaded、実Builder入力については#2595、実消費byteについては#2604/#2516に既存Ownerを維持。
+
+### 16.4 独立した負例を重複登録しない
+
+新Case IDをいきなり正式Scenario/Obligation正本へ増殖させず、以下を**既存#2835・#2813・#2828・#2681の反証を利用する受入表**として固定する。
+
+| 反例 | 受入判定 |
+| --- | --- |
+| 必須Case IDが1件欠けるが`go test`終了0 | `qualified=false, missingRequired` |
+| 必須Caseが`SKIP`、他はPASS | `qualified=false, skippedRequired`。任意テストのskipは別 |
+| 旧HEADで合格した同名Caseの結果だけが存在 | `stale`。新実行Receiptがない限り現HEADの資格にしない |
+| globで拾わない新しい拡張子にAI Candidateを置く | `not-discovered`。未知母集団なら全件Coverage主張を停止 |
+| Sourceコメントだけ変更したがWorld/Operationは同じ | 意味計算の再利用候補とSource改訂・引用資格を分ける |
+| 独立Expectedがないまま全Case PASS | `exploratory/locally-asserted`、G2不成立 |
+
+**採用範囲**：既存の#2514は独立Oracle/Mutation、#1180はScenario/TargetとObligation、#2835は既存Effect-fence CIの実行漏れ検査、#2681/#2600はSource/Meaning/Artifact再資格化、#2811は各Producer/Consumerの**試験採用条件の受渡し**のみ。生成AIにCase追加と修復の自由は残し、Expected/Required分母/実Grant・非公開holdoutの無条件書換えを許可しない。
+
+**本§16はdocs-only。** 今回新たなAgent未知Case生成、P0-Cの注入、Oracle/Mutant、Web/GUI/Provider、全Source closureの実行はNOT RUN。#2828の書式修正コミットは別PRであり、この設計PRにGoコードを含めない。
