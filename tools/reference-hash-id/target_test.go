@@ -8,6 +8,7 @@ import (
 func decimalTarget() TargetProfile {
 	return TargetProfile{
 		Namespace:       "example.records",
+		ProfileVersion:  "ascii-v1",
 		AllowedAlphabet: "0123456789",
 		ExactLength:     24,
 	}
@@ -36,26 +37,33 @@ func TestTargetExactCharactersAndIdempotency(t *testing.T) {
 		t.Fatalf("valid decimal target rejected: key=%q, err=%v", key, err)
 	}
 	_, err = CheckTargetBinding(r, "customer:a", profile, []TargetBinding{
-		{Namespace: profile.Namespace, Subject: "customer:a", Text: r.Text},
+		{Namespace: profile.Namespace, ProfileVersion: profile.ProfileVersion, Subject: "customer:a", Text: r.Text},
 	})
 	if err != nil {
 		t.Fatalf("idempotent physical allocation rejected: %v", err)
 	}
 	_, err = CheckTargetBinding(r, "customer:b", profile, []TargetBinding{
-		{Namespace: profile.Namespace, Subject: "customer:a", Text: r.Text},
+		{Namespace: profile.Namespace, ProfileVersion: profile.ProfileVersion, Subject: "customer:a", Text: r.Text},
 	})
 	if err == nil {
 		t.Fatal("same physical ID for different source must be rejected")
 	}
 	_, err = CheckTargetBinding(r, "customer:a", profile, []TargetBinding{
-		{Namespace: profile.Namespace, Subject: "customer:a", Text: strings.Repeat("0", 24)},
+		{Namespace: profile.Namespace, ProfileVersion: profile.ProfileVersion, Subject: "customer:a", Text: strings.Repeat("0", 24)},
 	})
 	if err == nil {
 		t.Fatal("silent physical reassignment must be rejected")
 	}
+
+	_, err = CheckTargetBinding(r, "customer:a", profile, []TargetBinding{
+		{Namespace: profile.Namespace, ProfileVersion: "ascii-v0", Subject: "customer:a", Text: r.Text},
+	})
+	if err == nil {
+		t.Fatal("different version of target collation rules must not be silently accepted")
+	}
 	// A distinct target namespace does not share a physical uniqueness key.
 	_, err = CheckTargetBinding(r, "customer:b", profile, []TargetBinding{
-		{Namespace: "other.target", Subject: "customer:a", Text: r.Text},
+		{Namespace: "other.target", ProfileVersion: profile.ProfileVersion, Subject: "customer:a", Text: r.Text},
 	})
 	if err != nil {
 		t.Fatalf("unrelated physical namespace rejected: %v", err)
@@ -70,6 +78,7 @@ func TestTargetCaseInsensitiveAndReserved(t *testing.T) {
 	}
 	profile := TargetProfile{
 		Namespace:       "example.sqlite.casefold",
+		ProfileVersion:  "ascii-v1",
 		AllowedAlphabet: "0123456789abcdefABCDEF",
 		ExactLength:     64,
 		CaseFoldASCII:   true,
@@ -78,7 +87,7 @@ func TestTargetCaseInsensitiveAndReserved(t *testing.T) {
 		t.Fatal(err)
 	}
 	_, err = CheckTargetBinding(r, "record:b", profile, []TargetBinding{
-		{Namespace: profile.Namespace, Subject: "record:a", Text: strings.ToUpper(r.Text)},
+		{Namespace: profile.Namespace, ProfileVersion: profile.ProfileVersion, Subject: "record:a", Text: strings.ToUpper(r.Text)},
 	})
 	if err == nil {
 		t.Fatal("case-insensitive collision was accepted")
@@ -98,6 +107,7 @@ func TestTargetRejectsInvalidAndAmbiguousScheme(t *testing.T) {
 	// 64-character hex cannot be represented by this 32-character target.
 	profile := TargetProfile{
 		Namespace:       "example.database",
+		ProfileVersion:  "ascii-v1",
 		AllowedAlphabet: "0123456789abcdef",
 		MaxLength:       32,
 	}
@@ -149,6 +159,7 @@ func TestTargetSnapshotAndPolicyFailClosed(t *testing.T) {
 		edit func(*TargetProfile)
 	}{
 		{"missing target namespace", func(p *TargetProfile) { p.Namespace = "" }},
+		{"missing target version", func(p *TargetProfile) { p.ProfileVersion = "" }},
 		{"duplicate allowed alphabet", func(p *TargetProfile) { p.AllowedAlphabet = "00123456789" }},
 		{"unicode allowed alphabet", func(p *TargetProfile) { p.AllowedAlphabet = "0123456789β" }},
 		{"length conflicts", func(p *TargetProfile) { p.MinLength = 2 }},
@@ -168,12 +179,12 @@ func TestTargetSnapshotAndPolicyFailClosed(t *testing.T) {
 		t.Fatal("missing source identity must reject")
 	}
 	if _, err := CheckTargetBinding(r, "record:a", p, []TargetBinding{
-		{Namespace: p.Namespace, Subject: "", Text: r.Text},
+		{Namespace: p.Namespace, ProfileVersion: p.ProfileVersion, Subject: "", Text: r.Text},
 	}); err == nil {
 		t.Fatal("unqualified existing subject must reject")
 	}
 	if _, err := CheckTargetBinding(r, "record:a", p, []TargetBinding{
-		{Namespace: p.Namespace, Subject: "record:b", Text: "abc"},
+		{Namespace: p.Namespace, ProfileVersion: p.ProfileVersion, Subject: "record:b", Text: "abc"},
 	}); err == nil {
 		t.Fatal("invalid allocation snapshot must reject")
 	}
