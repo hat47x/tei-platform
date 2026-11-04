@@ -27,12 +27,3 @@ jobs:
       - name: Characterize current Discover and Rerank on public temp directories
         run: |
           go test ./tools/reference-developer-context -run 'Test(Discovery|Rerank|CollectionComparison|CollectionFactorial)' -v -count=1
-      - name: Preview gofmt output for public characterization files
-        run: |
-          for p in tools/reference-developer-context/bounded_collection_comparison_test.go tools/reference-developer-context/collection_selection_factorial_test.go tools/reference-developer-context/source_rename_and_scoring_characterization_test.go; do
-            gofmt -w "$p"
-            echo "TEMP_FORMAT_DUMP_BEGIN_20261104:$p"
-            base64 -w 0 "$p"
-            echo
-            echo "TEMP_FORMAT_DUMP_END_20261104:$p"
-          done
