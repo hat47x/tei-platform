@@ -152,3 +152,31 @@ func EffectPreconditions(rules []semantic.EffectRule, observer EffectObserver) P
 		return ""
 	}
 }
+
+// CombinePreconditions runs each check and reports the first reason. Checks are
+// independent, so an unmet period and an unobservable effect both stop the run.
+// When every check is nil there is nothing to verify, so the result is nil and an
+// unattended run stops for lack of a check.
+func CombinePreconditions(checks ...PreconditionFunc) PreconditionFunc {
+	present := false
+	for _, check := range checks {
+		if check != nil {
+			present = true
+			break
+		}
+	}
+	if !present {
+		return nil
+	}
+	return func(capabilityID core.CanonicalID) string {
+		for _, check := range checks {
+			if check == nil {
+				continue
+			}
+			if reason := check(capabilityID); reason != "" {
+				return reason
+			}
+		}
+		return ""
+	}
+}
