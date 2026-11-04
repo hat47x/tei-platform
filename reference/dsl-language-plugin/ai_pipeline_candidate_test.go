@@ -44,9 +44,9 @@ var aiPipelineAnchors = map[string]struct {
 	output string
 	code   string
 }{
-	"p0-pure-expand": {"rows/order |> std.where |> std.expand", "ok", "rows/line", ""},
-	"p0-utf8-byte-span": {"　rows/order |> std.where", "ok", "rows/order", ""},
-	"p0-confusable-pin": {"rows/order |> std.ｗhere", "lower_error", "", "invalid"},
+	"p0-pure-expand":     {"rows/order |> std.where |> std.expand", "ok", "rows/line", ""},
+	"p0-utf8-byte-span":  {"　rows/order |> std.where", "ok", "rows/order", ""},
+	"p0-confusable-pin":  {"rows/order |> std.ｗhere", "lower_error", "", "invalid"},
 	"p0-effect-rejected": {"rows/order |> std.invoke", "lower_error", "", "effect"},
 }
 
