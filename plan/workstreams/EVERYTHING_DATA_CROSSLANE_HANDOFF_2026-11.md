@@ -2411,3 +2411,36 @@ EKI側#112/#266/#67/#115へ契約不足を返し、TEI #1130がJob意味と判�
 **完了の下限**：P0-Fmtの新HEAD Greenと、P0-Holdoutの独立Expected/既知Mutant実検出の少なくとも一つの同版Pairを実記録し、Observed Step/Contractと未観測Targetの境界が示せること。**これより前でもAI候補追加は継続してよい**。ただしP1〜P3が未観測なら価値実証B1/製品Conformanceを「成功」としない。
 
 **本節の実行水準**：既存固定CIログ・Source・Issueを再照合して計画順序を更新した**docs-only**。本変更で新規Go/CLI/統合/外部Host/SHO/Provider試験、独立Oracle・Known Mutant実測、Owner正式受理、PR mergeは **NOT RUN**。新Engine/中央Registry/実行Host/第二SSOTの設計採用なし。
+
+## 46. 組織Source差分の三次元反例をAI-firstと増分再利用の検収へ接続（2026-11-04、実Go E1／#2600/#2811/#2586横断）
+
+### 46.1 今回の実証は新しいEngineでなく既存Source/World/Operationを使用
+
+[Org Native PR #2681](https://github.com/hat47x/tei-platform/pull/2681)へ`TestOrgHeadlessSourcePathMoveChangesModelRevision`、`TestOrgHeadlessSourceABAReturnsToOriginalStateButNotHistory`、`TestOrgHeadlessSemanticRelationChangeIsInvisibleToCurrentOperations`を追加した。どれも実`.tei`を一時Workspaceへ複写し、既存Go `SurfaceWorkspace`（Loader/World/Source Index/OperationSurface）を通すもの。独立Expectedは本節/Org設計§62に固定した。
+
+[HEAD `a36ca136957284a9af1dadc3fe3b40940d2f3269`](https://github.com/hat47x/tei-platform/pull/2681)の[Native Actions #41849999230](https://github.com/hat47x/tei-platform/actions/runs/41849999230)は**completed/success**。Go1.26.10/Linux、Go focused `^TestOrgHeadless`7件、実CLI validate/operations/artifactsと独立Reader、exact HEADとCleanを実施。Runner `findings=0, complete=False`なので、Builder/Artifacts/Consumer閉包のComplete資格は依然ない。全PR/mainのHealthとは独立の限定成功。PR open/unmerged。
+
+| 変形 | Source Path/Raw identity | Semantic World | Derived Operation | AI/Build/Policyへの検収 |
+| --- | --- | --- | --- | --- |
+| コメント追加 | 改訂 | 不変 | 不変 | 出典/原文開示/引用の再確認は必要、意味再計算は省略候補 |
+| 同byte SourceのFile名移動 | **Path改訂、byte同一** | 不変 | 不変 | Locator・Import参照/SHO引用は古い可能性。Cacheを全失効する必要はない |
+| A→B→A | 初期と終点のState fingerprint同一 | 不変 | 不変 | **履歴不在の証明にはならず**、旧Read/Grant/Consumer再利用は独立 |
+| Case→OrgUnit Relation`one→many` | 改訂 | **変更** | **不変** | Operation同値だけで関係のgrain/多重度/Policy/Query/SHOが互換とは言えない |
+
+**重要な失効の非単調性**：Source Revisionは最終的な内容のidentity、実Reader/Host/Source受理のevent epochは別。A→B→Aで同じhashへ戻った場合も実Intermediate Rule/Grant Revoke、あるいは過去の外部Disclosureを元に戻せない。もう一方でSource移動だけなら、影響を受けない業務計算まで一律再実行する必要はない。#2600では`semantic recomputation`、`Source citation refresh`、`artifact build`、`Evidence reuse`、`Consumer authorization`の資格と実測latencyを別列で判断する。
+
+### 46.2 既存Issueへの具体的引継ぎ：新しい名前付きGatewayは作らない
+
+- **#2600 Incremental**：意味同値でもSource path/raw provenanceが異なる負例、A→B→Aの後着失効、Operation同値でも下流Query/PolicyへのRelation dependency変更という三種を、既存Dependency/CAS/Build Evidenceへ割り付ける。受入は一改訂実Builder Input＋ArtifactSet＋必要member実Consumer loadを確認してから。単にSource hash/Operation JSON一致でskipできたと報告しない。
+- **#2811/#2813/#2514 AI-first**：今回の実Go Testは**独立Expectedを先に固定する**Mutation Corpusの候補。AIはCase追加・局所検証をしてもよいが、ExpectedをActualで上書きせず、既知Mutantの検出とCoverage分母を別評価する。実AI AgentによるMutation検出力の計測は未実施。
+- **#2586/#2506/#2622/#2628 E2 Read**：Case`handlingUnit`の`one→many`で所属先RelationやQuery`EXISTS/COUNT`/Row grainが変わる例に、標準Functionの明示Data Context、実Provider Read/Route/Policy enforcement witnessを接続。現Native WorkspaceにCase Persistence/Query/実DBがないので**実行できない部分は`NOT RUN: provider-entry-unavailable`**。VP/VE合成CIを実Readへ置き換えない。
+- **#2582/#2516/#2631 Consumer**：新しいWorldfp/Source locator・Role/Grant epochと旧Responseの資格を区分し、Display/Data reuseとSource citation freshness/External disclosureを分離。Source移動で全数再取得するのも、同じOperation JSONで改編前のGrantを保持するのも禁止。
+- **#1119 横断Gate**：Owner意味受理、実Host Grant、Source/Provider Session、実Commit/Receipt/独立post-imageは今回のNative CIではNOT RUN。新全域Registry/Host/ACL/Query/Proof Engineなしで既存Gateへ戻す。
+
+### 46.3 次の最小一試行（P1）と停止条件
+
+**P1-ORG-READ**：既存`.tei`の`CaseRecord.handlingUnit`の1か所をモデルとして維持し、明示Function Readでscope内1・外1・同Caseで多重Org link1・partial1を独立Expectedに固定する。最初は実Provider Readの実行元・実Record ID・Field/read cohort・Policy rule・Consumer受領を**同じ実行Attempt**に束縛する。Providerに複数件のRelation path Readerがなく、Worker/HostでPolicy施行できなければ、`NOT RUN`を明示し、合成Referenceで実Provider成功としない。
+
+**P2-ORG-STALE**：P1が成立した後、Source Move／Relation Cardinality／Grant Revokeのうち1つだけ変更→旧Read後着→可視性/引用/更新Intentを現在資格へ再評価。実Studio/SHO/AI受領・秘密原文の開示は当該Ownerの許可があるときだけ。新Driverや第二Reactive Engineを設けない。
+
+**この節自体の証拠**：実Go E1の固定CIとSource/Workflow静的照合は成功。**実AI生成・独立Mutant検出・P1/P2 Provider実行・Query/SHO/Studio・実認可・Owner受理は未実施**。目的はE1の判別力を上げ、E2で未検証のままになっている部分を同じ受入票へ収めること。
