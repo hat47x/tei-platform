@@ -1,0 +1,65 @@
+package execution_test
+
+import (
+	"context"
+	"errors"
+	"testing"
+
+	"tei/internal/core"
+	"tei/internal/execution"
+	"tei/internal/semantic"
+)
+
+type fakeReader struct {
+	rows map[string]int
+	err  error
+}
+
+func (r fakeReader) ReadRows(_ context.Context, data core.CanonicalID) (int, error) {
+	if r.err != nil {
+		return 0, r.err
+	}
+	return r.rows[string(data)], nil
+}
+
+func outputPlan() semantic.RunPlan {
+	return semantic.RunPlan{ID: "sales.monthly_close", Outputs: []core.CanonicalID{"sales.close_statement", "sales.check_list"}}
+}
+
+func TestProjectOutputsReadsEveryDeclaredOutput(t *testing.T) {
+	results := execution.ProjectOutputs(context.Background(), outputPlan(), fakeReader{rows: map[string]int{"sales.close_statement": 12, "sales.check_list": 3}})
+	if len(results) != 2 {
+		t.Fatalf("every output must be read: %+v", results)
+	}
+	if results[0].Rows != 12 || results[0].Err != "" {
+		t.Fatalf("unexpected first result: %+v", results[0])
+	}
+	if results[1].Rows != 3 {
+		t.Fatalf("unexpected second result: %+v", results[1])
+	}
+}
+
+func TestProjectOutputsRecordsAFailedReadAndContinues(t *testing.T) {
+	results := execution.ProjectOutputs(context.Background(), outputPlan(), fakeReader{err: errors.New("read failed")})
+	if len(results) != 2 {
+		t.Fatalf("one failed read must not hide the other outputs: %+v", results)
+	}
+	for _, result := range results {
+		if result.Err != "read failed" {
+			t.Fatalf("the failure must be recorded: %+v", result)
+		}
+	}
+}
+
+func TestProjectOutputsWithoutAReaderSaysSo(t *testing.T) {
+	results := execution.ProjectOutputs(context.Background(), outputPlan(), nil)
+	if len(results) != 2 || results[0].Err == "" {
+		t.Fatalf("a missing reader must be reported: %+v", results)
+	}
+}
+
+func TestProjectOutputsWithoutOutputsIsEmpty(t *testing.T) {
+	if results := execution.ProjectOutputs(context.Background(), semantic.RunPlan{}, nil); len(results) != 0 {
+		t.Fatalf("a plan without outputs has nothing to project: %+v", results)
+	}
+}
