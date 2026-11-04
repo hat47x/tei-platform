@@ -43,23 +43,38 @@ func TestImportedParsedLoadSnapshotRetainsSameLoadBytesWithoutReread(t *testing.
 	if len(loaded.Imports) != 1 {
 		t.Fatalf("expected one imported Namespace: %+v", loaded.Imports)
 	}
-	// Public projection contains only location/fingerprints; import by itself
-	// cannot authorize disclosure of Provider Source or Manifest text.
-	public, err := DescribeImportedParsedLoad(loaded, "os")
-	if err != nil {
-		t.Fatal(err)
-	}
-	encoded, err := json.Marshal(public)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if bytes.Contains(encoded, []byte("ThreadId")) ||
-		bytes.Contains(encoded, []byte("workspace: provider")) {
-		t.Fatal("metadata-only projection leaked Provider raw Source or Manifest")
-	}
 	evidence, read, err := importedParsedLoadSnapshot(loaded, "os")
 	if err != nil {
 		t.Fatal(err)
+	}
+	// Source/Manifest paths and fingerprints are potentially sensitive.
+	// No new public accessor may disclose even their metadata merely because
+	// a Semantic Namespace Import was permitted. The prior ResolvedImport
+	// contract remains intact, but the private same-Load evidence is absent.
+	encoded, err := json.Marshal(loaded)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, privatePart := range []string{
+		"semantic/os/process.tei",
+		"semantic/os/thread.tei",
+		"semantic/unrelated.tei",
+		"workspace: provider",
+		"FullInputClosure",
+		"ParsedSources",
+		evidence.Manifest.SHA256,
+	} {
+		if bytes.Contains(encoded, []byte(privatePart)) {
+			t.Fatalf("public Result serialized private provider evidence %q", privatePart)
+		}
+	}
+	for _, artifact := range evidence.ParsedSources {
+		if bytes.Contains(encoded, []byte(artifact.Fingerprint)) {
+			t.Fatalf("public Result serialized private source fingerprint for %q", artifact.Path)
+		}
+	}
+	if loaded.Imports[0].Path != "../provider" {
+		t.Fatal("existing public ResolvedImport projection unexpectedly changed")
 	}
 	if evidence.Alias != "os" || evidence.ProviderPath != "../provider" ||
 		evidence.Namespace != "os" || evidence.SemanticDigest != loaded.Imports[0].SemanticDigest ||
