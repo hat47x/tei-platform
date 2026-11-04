@@ -43,7 +43,8 @@ func guardCurrentAcceptedSource(hostCtx context.Context, next http.Handler, read
 		if err != nil || hostCtx.Err() != nil ||
 			current.DecisionRef != accepted.DecisionRef ||
 			current.AuthorityRevision != accepted.AuthorityRevision ||
-			current.ModelRevision != accepted.ModelRevision {
+			current.ModelRevision != accepted.ModelRevision ||
+			current.AcceptanceKind != accepted.AcceptanceKind {
 			// Avoid exposing Host provenance or the actual authorization error
 			// in the HTTP body, including for a public health endpoint.
 			w.Header().Set("Cache-Control", "no-store")
