@@ -69,12 +69,12 @@ func TestScenarioEvidenceModeLimitsQualification(t *testing.T) {
 	// dropping an unexecuted Step. This is a bounded six-step contract, not
 	// proof that the real Provider/Host/Command route ran.
 	staticNature := map[string]string{
-		"browse-pattern":     "canonical-pattern-resolution-only",
-		"record-pattern":     "canonical-pattern-resolution-only",
-		"browse-synthetic":   "synthetic-fixture-bound; query-not-executed",
-		"validate-positive":  "canonical-validations-bound; not-evaluated",
-		"validate-denied":    "canonical-validations-bound; not-evaluated",
-		"observe-synthetic":  "synthetic-observation-bound; not-read",
+		"browse-pattern":    "canonical-pattern-resolution-only",
+		"record-pattern":    "canonical-pattern-resolution-only",
+		"browse-synthetic":  "synthetic-fixture-bound; query-not-executed",
+		"validate-positive": "canonical-validations-bound; not-evaluated",
+		"validate-denied":   "canonical-validations-bound; not-evaluated",
+		"observe-synthetic": "synthetic-observation-bound; not-read",
 	}
 	staticNotExecuted := map[string]bool{
 		"browse-synthetic":  true,
@@ -115,12 +115,12 @@ func TestScenarioEvidenceModeLimitsQualification(t *testing.T) {
 	// A successful plan must contain every required Step and each generated
 	// argv must produce its own accurately scoped evidence receipt.
 	runNature := map[string]string{
-		"browse-pattern":     "canonical-pattern-resolution-only",
-		"record-pattern":     "canonical-pattern-resolution-only",
-		"browse-synthetic":   "synthetic-browse-query-executed",
-		"validate-positive":  "canonical-validations-synthetic-input-evaluated",
-		"validate-denied":    "canonical-validations-synthetic-input-evaluated",
-		"observe-synthetic":  "synthetic-independent-observation-read",
+		"browse-pattern":    "canonical-pattern-resolution-only",
+		"record-pattern":    "canonical-pattern-resolution-only",
+		"browse-synthetic":  "synthetic-browse-query-executed",
+		"validate-positive": "canonical-validations-synthetic-input-evaluated",
+		"validate-denied":   "canonical-validations-synthetic-input-evaluated",
+		"observe-synthetic": "synthetic-independent-observation-read",
 	}
 	if len(plan.Commands) != len(runNature) {
 		t.Fatalf("generated plan omitted required Steps: %+v", plan.Commands)
