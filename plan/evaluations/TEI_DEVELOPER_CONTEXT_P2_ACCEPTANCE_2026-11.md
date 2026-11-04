@@ -165,3 +165,34 @@
 
 ### 9.3 直近の比較で残る別因子
 `CC-04/05`の2×2は、固定された人工World内の**字句で識別可能なRの表示到達**のみを測った。次のModel/Method比較では、(1)同じCでの順位、(2)同じ予算での追加Source Read、(3)未探索と権限不足、(4)Source版変更後の再取得、(5)実Consumerへ渡せる情報を分離する。固定RをMethodに公開せず、構造候補から受理済みMeaningへ自動昇格させない。現PoCが追加Probe用CLIを提供していない制約を維持する。
+
+<!-- tei-devctx-question-relative-tripleworld-20261104 -->
+## 10. P2-2a CC-06/07：同じ初期Observationでも問いQと隠れた世界Wが違えば必要な根拠は異なる（2026-11-04）
+
+**経緯**：前節CC-04/05の2×2は固定された人工Rのみを評価した。P2の本来の主張は「**問いに必要な根拠を、現在の権限・Source・Scopeで取得できたか**」であり、表示順位の総合的な良さではない。別チャットのSEI #767/#770の不足観測・追加Probe議論と、独立Oracle #2514のsealed Expectedを比較設計に接続する。
+
+### CC-06：同じ `Discover` Reportを返す三世界
+- **W0**：Go targetと同一packageに先行弱`_test.go`12件＋後続の直接test。docsに該当文書は置かない。
+- **W1**：W0と**全Go byteを同じ**に保ったまま、対象完全pathを字句参照する`docs/target-reference.md`を追加。
+- **W2**：W0と同じGoに、対象ではない別pathを字句参照する同名docを追加。
+- どのWorldも現`Discover`は弱test12件で候補枠を埋めてdocを走査しないため、**初期Reportは完全一致**。初期Reportしか与えられていないD0/D1/M1は、W0/W1/W2の真値を推測で判定してはいけない。
+- 公開合成で評価専用`compareLocalLexicalCollection`がtest13件まで、docs直下最大12件の追加Readを実施し、`TestRead`、`DocRead`、`ReadFailures`と表示した根拠pathを別々に記録する。W0 doc読取0、W1/W2 doc読取1。**読取が1件あっても、W2の文書が現在のtargetを明示参照した証拠にはならない**。
+
+独立Expected `R(Q)`を、`Q-test-change={validation_test.go}`、`Q-citation-check={docs/target-reference.md（対象の完全path字句参照に限る）}`、`Q-test-and-doc={双方}`として試験側で凍結する。Rは候補選抜・仮モデル・Probeの入力に渡さない。評価用B13・S-docによるpath witness到達の**予定判別値**は次のとおり。
+
+| 世界（固定した候補・実Read） | Q-test-change | Q-citation-check | Q-test-and-doc |
+| --- | ---: | ---: | ---: |
+| W0：doc無 | **1/1** | **0/1** | **1/2** |
+| W1：対象path文書有 | **1/1** | **1/1** | **2/2** |
+| W2：別path文書有 | **1/1** | **0/1** | **1/2** |
+
+この表は「**試験の人工path-oracleへの到達**」であり、実業務ドキュメントの意味・正式引用・Source現在性の受理票ではない。特にW0/W2の0/1は必要文書を取得・示せないことを意味するのみで、全Repo／別Scopeの不存在の証明ではない。
+
+### CC-07：同一Cと同一表示VでもQごとの十分性判定は異なる
+- W1を固定し、test13件＋doc1件を実Readして同一C（14候補）を確定。S-test表示12件では直接testは残り、docは落ちる。
+- **同じC、同じV、同じread件数**でも、Q-test-changeは1/1、Q-citation-checkは0/1、Q-test-and-docは1/2。従って`model-ranked`、候補件数、Top-kだけから「根拠が十分」を主張しない。
+- 固定`C`/Q相対`R`/表示`V`を分け、`R⊆C`かと`R⊆V`かを混同しない。もしRがCにあるがVに無い場合は**選抜不足**、RがCにも無い場合は**取得・探索不足／現在未確認**として残す（強い不存在は別証拠が必要）。
+
+**実装と実証の範囲**：PR #2669の`tools/reference-developer-context/question_relative_worlds_test.go`に`TestQuestionRelativeSameReportDifferentHiddenWorlds`と`TestQuestionRelativeSameCollectedCandidatesDifferentQuestions`を追加、Focused CI対象に`TestQuestionRelative`を含めた。製品本体・Reporter・Source正本・新Toolは不変更。**最新exact HEAD CI成功とformat healthが確認されるまでは本2件PASSと記録しない。**
+
+**次の独立比較**：外部SEI Method評価は`(Q,初期Report,候補元の現在Source版,実Tool,予算,Grant,Audience)`をD1/M1に対称に渡す。採点側の`W0/W1/W2`正解・選抜正解Rをモデルから隠す。現Developer Context CLIには任意probe範囲を指定する公開フラグはないため、想定ツールを実存在Toolと取り違えない。実行がなく追加Probe提案だけなら`proposed/unsupported`で止める。取得後の現在性・Consumer別開示は#2516、Source/Owner意味は既存責務、Attempt再資格化はTAI #271、Method側の不足判断はSEI #767とする。
