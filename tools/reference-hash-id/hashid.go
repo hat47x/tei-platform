@@ -160,8 +160,14 @@ func frame(s Scheme, input []byte) []byte {
 	fields := []string{
 		"tei.hashid.frame.v1", s.SchemeID, s.Purpose, s.Scope,
 		s.InputKind, s.Canonicalization, s.Algorithm, s.Mode,
-		strconv.Itoa(s.OutputBits), s.Encoding, s.Alphabet,
-		strconv.Itoa(s.Length),
+		strconv.Itoa(s.OutputBits),
+	}
+	// In encodedDigest, presentation is not part of the hashed identity:
+	// hex, base32 and radix must encode the same digest bytes.
+	// In exactCharacters the alphabet order and length define the mapping,
+	// and therefore must be bound to the XOF input.
+	if s.Mode == ModeExactCharacters {
+		fields = append(fields, s.Alphabet, strconv.Itoa(s.Length))
 	}
 	out := make([]byte, 0, len(input)+512)
 	for _, f := range fields {
