@@ -56,7 +56,7 @@ func decimalScheme() hashid.Scheme {
 	return s
 }
 
-func targetSnapshot(t *testing.T, path string, s hashid.Scheme, input []byte, existing []bindingWire) string {
+func targetSnapshot(t *testing.T, path string, existing []bindingWire) string {
 	t.Helper()
 	doc := targetProbeWire{
 		Format: targetWireV1,
@@ -129,7 +129,7 @@ func TestHeadlessTargetPreflightAndSnapshotCollision(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	originalSnapshot := targetSnapshot(t, path, s, input, nil)
+	originalSnapshot := targetSnapshot(t, path, nil)
 	args := []string{"-scheme", schemePath, "-input", inputPath, "-subject", "qualified:a", "-target-probe", path}
 	code, stdout, stderr := runProbe(t, args...)
 	if code != 0 || stderr != "" {
@@ -156,7 +156,7 @@ func TestHeadlessTargetPreflightAndSnapshotCollision(t *testing.T) {
 		SchemeJSON:     string(wire),
 		Text:           result.Text,
 	}
-	targetSnapshot(t, path, s, input, []bindingWire{entry})
+	targetSnapshot(t, path, []bindingWire{entry})
 	code, _, stderr = runProbe(t, args...)
 	if code != 0 || stderr != "" {
 		t.Fatalf("idempotent snapshot rejected: code=%d stderr=%q", code, stderr)
@@ -176,7 +176,7 @@ func TestHeadlessTargetPreflightAndSnapshotCollision(t *testing.T) {
 		t.Fatal(err)
 	}
 	entry.SchemeJSON = string(otherWire)
-	targetSnapshot(t, path, s, input, []bindingWire{entry})
+	targetSnapshot(t, path, []bindingWire{entry})
 	code, stdout, stderr = runProbe(t, args...)
 	if code != 1 || stdout != "" || !strings.Contains(stderr, "different hash scheme") {
 		t.Fatalf("scheme migration was not rejected: code=%d stdout=%q stderr=%q", code, stdout, stderr)
@@ -187,7 +187,7 @@ func TestHeadlessRejectsUntrustedInputAndMalformedSnapshot(t *testing.T) {
 	s := decimalScheme()
 	schemePath, inputPath, wire := fixture(t, s, []byte("source A"))
 	targetPath := filepath.Join(t.TempDir(), "snapshot.json")
-	original := targetSnapshot(t, targetPath, s, []byte("source A"), nil)
+	original := targetSnapshot(t, targetPath, nil)
 	valid := []string{"-scheme", schemePath, "-input", inputPath, "-subject", "qualified:a", "-target-probe", targetPath}
 	for _, invalid := range []string{
 		" " + original,
@@ -240,6 +240,38 @@ func TestHeadlessUsageFailsClosed(t *testing.T) {
 		code, stdout, _ := runProbe(t, args...)
 		if code != 2 || stdout != "" {
 			t.Fatalf("invalid invocation accepted: args=%q", args)
+		}
+	}
+}
+
+func TestCommittedHeadlessFixture(t *testing.T) {
+	// This end-to-end reference fixture intentionally uses only public,
+	// non-accepted raw bytes and a non-authoritative empty snapshot.
+	dir := filepath.Join("..", "..", "examples")
+	args := []string{
+		"-scheme", filepath.Join(dir, "decimal24.scheme.json"),
+		"-input", filepath.Join(dir, "input.raw"),
+		"-subject", "example:record-one",
+		"-target-probe", filepath.Join(dir, "decimal24.target-probe.json"),
+	}
+	code, stdout, stderr := runProbe(t, args...)
+	if code != 0 || stderr != "" {
+		t.Fatalf("committed reference fixture failed: code=%d stderr=%q", code, stderr)
+	}
+	var actual report
+	if err := json.Unmarshal([]byte(stdout), &actual); err != nil {
+		t.Fatal(err)
+	}
+	if actual.Status != "snapshot-preflight-only" || actual.Authority != "none" ||
+		actual.StorageWrite || actual.TargetNamespace != "example.records" ||
+		actual.SourceByteCount != len("hello TEI") ||
+		actual.HashIDText != actual.NormalizedTargetKey ||
+		len(actual.HashIDText) != 24 {
+		t.Fatalf("unexpected reference fixture result: %+v", actual)
+	}
+	for _, c := range actual.HashIDText {
+		if c < '0' || c > '9' {
+			t.Fatalf("nondecimal output %q", actual.HashIDText)
 		}
 	}
 }
