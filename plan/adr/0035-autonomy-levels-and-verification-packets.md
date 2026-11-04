@@ -71,7 +71,7 @@ TEIの開発規約は、AGENTS.md、CONTRIBUTING.md、ADR、Issue、CIに分か�
 次は、自律化の対象にしない。
 
 - 業務上の意味の受理と、受理済み意味の変更。
-- 権限、Trust、Production Hostの現在のAuthority。
+- 権限、Trust、対象環境で副作用を行う主体が強制する現在のAuthority（ADR-0043・ADR-0047）。
 - 本番環境への配備、データ移行、削除を伴う操作。
 - 秘密情報、個人情報、ライセンス、外部資料の利用条件。
 - 失敗の危険性を理解したうえでの例外承認。

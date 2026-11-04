@@ -1,6 +1,6 @@
 # ADR-0041: 生成物の来歴・選抜・artifact・auditを分離し、実行権限へ接続しない
 
-- 状態: 提案中
+- 状態: 提案中（[ADR-0045](0045-generator-artifact-lifecycle-and-evidence.md)へ統合を提案。ADR-0045の採用時に置き換え済みとする）
 - 日付: 2026-10-24
 - 関連ADR: ADR-0022 / ADR-0034 / ADR-0035 / ADR-0037 / ADR-0040
 - 関連Issue: #2016 / #943 / #1104 / #1370
