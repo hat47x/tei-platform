@@ -100,7 +100,7 @@ func run(args []string, stdout io.Writer) error {
 		if err := store.Ingest(context.Background(), d); err != nil {
 			return err
 		}
-		fmt.Fprintf(stdout, "current %s %s\n", d.Record.ApplicationID, d.Record.DecisionRef)
+		fmt.Fprintf(stdout, "current %s %s ACCEPTANCE_KIND=%s\n", d.Record.ApplicationID, d.Record.DecisionRef, kindLabel(d.AcceptanceKind))
 		return nil
 	case "revoke":
 		store, err := openStore(*storeDir, *trust, false)
@@ -121,7 +121,7 @@ func run(args []string, stdout io.Writer) error {
 		if err != nil {
 			return err
 		}
-		fmt.Fprintf(stdout, "current %s %s %s members=%d\n", record.ApplicationID, record.DecisionRef, record.ModelRevision, len(record.Artifacts))
+		fmt.Fprintf(stdout, "current %s %s %s members=%d ACCEPTANCE_KIND=%s\n", record.ApplicationID, record.DecisionRef, record.ModelRevision, len(record.Artifacts), kindLabel(record.AcceptanceKind))
 		return nil
 	default:
 		return fmt.Errorf("unknown command %q", args[0])
