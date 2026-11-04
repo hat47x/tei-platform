@@ -183,5 +183,6 @@ go test ./tools/reference-expected-state-update/... -count=1
 - 版属性（`version`）による比較、自動再試行、複数ノード間の調停は扱わない
 - 所有と世代は#2146、実行時の段階と不明の扱いは#1129が所有する
 - 秘密項目は「サーバ側で生値を比較」する方針を採用した。期待値は保護された要求経路で送り、DBのCAS文で比較する。現在値は結果・観測へ返さない。鍵付きハッシュ・監査ログの保持期間・マスキングは未実装
-- 実DB経路は製品Runtimeに接続していない。#1127の標準CRUDと#1129の実行時段階への写像は未実施
+- 実DB経路は `internal/command` の `Lifecycle` と `effectcommit` Provider へ接続し、`commandadapter` 経由のend-to-endを実PostgreSQLで確認した（#2852・#2853）。ただし`RuntimeStage`/`Lifecycle`はin-memoryであり、再起動後の排他・durable owner fencingは保証しない
+- **ABA（RCAS-01）**: 値一致CASだけでは同じ論理Commandを一つの効果に束縛できない。別idempotency keyでの再適用を反例として`pg_aba_test.go`に固定した。対象の版属性・operation identity・Owner受理済み再試行Policyの選択は未決
 - 観測の永続保存・保持期間・監査は未決
