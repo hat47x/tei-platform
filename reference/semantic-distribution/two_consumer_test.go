@@ -46,7 +46,7 @@ func TestTwoIndependentConsumersShareExactlyOneSemanticExport(t *testing.T) {
 	first, provider := preparePair(t)
 	second := filepath.Join(filepath.Dir(first), "second")
 	writeFixture(t, filepath.Join(second, "tei.workspace.yaml"),
-		"workspace: second\nsources:\n  - semantic\nimports:\n  - alias: os\n    path: ../provider\n    namespace: os\n")
+		"workspace: second\nformatVersion: 1\nsources:\n  - semantic\nimports:\n  - alias: os\n    path: ../provider\n    namespace: os\n")
 	writeFixture(t, filepath.Join(second, "semantic", "audit.tei"),
 		"namespace auditing\n\ndata Audit {\n    attribute observedProcess type os.process_id\n}\n")
 
@@ -74,7 +74,7 @@ func TestTwoIndependentConsumersShareExactlyOneSemanticExport(t *testing.T) {
 				t.Fatal(err)
 			}
 			writeFixture(t, filepath.Join(testCase.root, "tei.workspace.yaml"),
-				"workspace: consumer\nsources:\n  - semantic\n")
+				"workspace: consumer\nformatVersion: 1\nsources:\n  - semantic\n")
 			packaged, err := workspace.Load(testCase.root)
 			if err != nil {
 				t.Fatal(err)
@@ -129,7 +129,7 @@ func TestDataOnlyExportDoesNotSilentlyImportDependencyClosure(t *testing.T) {
 		t.Fatal(err)
 	}
 	writeFixture(t, filepath.Join(consumer, "tei.workspace.yaml"),
-		"workspace: consumer\nsources:\n  - semantic\n")
+		"workspace: consumer\nformatVersion: 1\nsources:\n  - semantic\n")
 	packaged, err := workspace.Load(consumer)
 	if err != nil {
 		t.Fatal(err)
@@ -151,7 +151,7 @@ func TestDataOnlyExportDoesNotSilentlyImportDependencyClosure(t *testing.T) {
 		t.Fatalf("explicitly selected namespace dependencies should validate: %+v", diags)
 	}
 	writeFixture(t, filepath.Join(consumer, "tei.workspace.yaml"),
-		"workspace: consumer\nsources:\n  - semantic\nimports:\n  - alias: os\n    path: ../provider\n    namespace: os\n  - alias: common\n    path: ../provider\n    namespace: common\n")
+		"workspace: consumer\nformatVersion: 1\nsources:\n  - semantic\nimports:\n  - alias: os\n    path: ../provider\n    namespace: os\n  - alias: common\n    path: ../provider\n    namespace: common\n")
 	explicitPath, err := workspace.Load(consumer)
 	if err != nil {
 		t.Fatal(err)
@@ -213,7 +213,7 @@ func TestCollidingProvidersCannotSilentlyReplaceNamespace(t *testing.T) {
 	// Supplying both without making an explicit exclusive selection must fail
 	// existing Canonical duplicate validation, not allow last-wins override.
 	writeFixture(t, filepath.Join(consumer, "tei.workspace.yaml"),
-		"workspace: consumer\nsources:\n  - semantic\n")
+		"workspace: consumer\nformatVersion: 1\nsources:\n  - semantic\n")
 	loaded, err := workspace.Load(consumer)
 	if err != nil {
 		t.Fatal(err)

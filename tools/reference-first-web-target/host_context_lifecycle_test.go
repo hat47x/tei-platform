@@ -25,7 +25,7 @@ func TestCombinedWebHostLifetimeStopsListener(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	index, err := workspace.BuildSourceIndex(root, loaded)
+	index, err := workspace.BuildSourceIndexFromLoad(root, loaded)
 	if err != nil {
 		t.Fatal(err)
 	}

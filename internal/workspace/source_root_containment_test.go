@@ -15,7 +15,7 @@ func sourceRootFixture(t *testing.T, rootName string) string {
 	if err := os.MkdirAll(root, 0700); err != nil {
 		t.Fatal(err)
 	}
-	manifest := "workspace: demo\nsources:\n  - " + rootName + "\n"
+	manifest := "workspace: demo\nformatVersion: 1\nsources:\n  - " + rootName + "\n"
 	if err := os.WriteFile(filepath.Join(root, "tei.workspace.yaml"), []byte(manifest), 0600); err != nil {
 		t.Fatal(err)
 	}
@@ -76,7 +76,7 @@ func TestWorkspaceRejectsDuplicateAndNestedSourceRoots(t *testing.T) {
 						t.Fatal(err)
 					}
 				} else {
-					manifest := "workspace: demo\nsources:\n  - " + tc.first + "\n  - " + tc.second + "\n"
+					manifest := "workspace: demo\nformatVersion: 1\nsources:\n  - " + tc.first + "\n  - " + tc.second + "\n"
 					if err := os.WriteFile(filepath.Join(root, "tei.workspace.yaml"), []byte(manifest), 0600); err != nil {
 						t.Fatal(err)
 					}
@@ -91,7 +91,7 @@ func TestWorkspaceRejectsDuplicateAndNestedSourceRoots(t *testing.T) {
 
 func TestWorkspaceAllowsSimilarButSeparateSourceRoots(t *testing.T) {
 	root := sourceRootFixture(t, "custom/assets")
-	manifest := "workspace: demo\nsources:\n  - custom/assets\n  - custom/assets-v2\n"
+	manifest := "workspace: demo\nformatVersion: 1\nsources:\n  - custom/assets\n  - custom/assets-v2\n"
 	if err := os.WriteFile(filepath.Join(root, "tei.workspace.yaml"), []byte(manifest), 0600); err != nil {
 		t.Fatal(err)
 	}
@@ -188,7 +188,7 @@ func TestWorkspaceContainmentRejectsSiblingPathPrefix(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(root, "custom-assets"), 0700); err != nil {
 		t.Fatal(err)
 	}
-	manifest := "workspace: demo\nsources:\n  - custom-assets\n"
+	manifest := "workspace: demo\nformatVersion: 1\nsources:\n  - custom-assets\n"
 	if err := os.WriteFile(filepath.Join(root, "tei.workspace.yaml"), []byte(manifest), 0600); err != nil {
 		t.Fatal(err)
 	}
@@ -216,7 +216,7 @@ func TestEmptySourceRootCannotEscapeThroughSymlinkedParent(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	if err := os.WriteFile(filepath.Join(root, "tei.workspace.yaml"), []byte("workspace: demo\nsources:\n  - custom/empty\n"), 0600); err != nil {
+	if err := os.WriteFile(filepath.Join(root, "tei.workspace.yaml"), []byte("workspace: demo\nformatVersion: 1\nsources:\n  - custom/empty\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.Symlink(outside, filepath.Join(root, "custom")); err != nil {

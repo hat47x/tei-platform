@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 
 	exportpackage "tei/tools/reference-export-package"
 )
@@ -13,7 +14,7 @@ import (
 // not sign the package or install it on a customer host.
 func main() {
 	if len(os.Args) < 2 || (os.Args[1] != "export" && os.Args[1] != "verify") {
-		fmt.Fprintln(os.Stderr, "usage: tei-export-package <export|verify> [-root DIR] [-out FILE] [-package FILE]")
+		fmt.Fprintln(os.Stderr, "usage: tei-export-package <export|verify> [-root DIR] [-out FILE] [-package FILE] [-include LIST] [-exclude LIST]")
 		os.Exit(2)
 	}
 	command := os.Args[1]
@@ -21,13 +22,24 @@ func main() {
 	root := fs.String("root", "", "package root")
 	out := fs.String("out", "", "output zip")
 	packagePath := fs.String("package", "", "package zip to verify")
+	include := fs.String("include", "", "comma-separated categories to carry: meaning,data,authority,evidence")
+	exclude := fs.String("exclude", "", "comma-separated categories to leave out")
 	_ = fs.Parse(os.Args[2:])
 	switch command {
 	case "export":
 		if *root == "" || *out == "" {
 			fail(fmt.Errorf("-root and -out are required for export"))
 		}
-		manifest, err := exportpackage.Export(*root, *out)
+		var manifest exportpackage.Manifest
+		var err error
+		if *include == "" && *exclude == "" {
+			manifest, err = exportpackage.Export(*root, *out)
+		} else {
+			manifest, err = exportpackage.ExportWithPolicy(*root, *out, exportpackage.Policy{
+				Include: splitList(*include),
+				Exclude: splitList(*exclude),
+			})
+		}
 		if err != nil {
 			fail(err)
 		}
@@ -42,6 +54,20 @@ func main() {
 		}
 		emit(manifest)
 	}
+}
+
+func splitList(value string) []string {
+	if strings.TrimSpace(value) == "" {
+		return nil
+	}
+	parts := strings.Split(value, ",")
+	out := make([]string, 0, len(parts))
+	for _, part := range parts {
+		if trimmed := strings.TrimSpace(part); trimmed != "" {
+			out = append(out, trimmed)
+		}
+	}
+	return out
 }
 
 func emit(value any) {

@@ -66,14 +66,33 @@ type Rounding struct {
 }
 
 type Contract struct {
-	Schema   string      `json:"schema"`
-	ID       string      `json:"id"`
-	Version  string      `json:"version"`
-	Status   string      `json:"status"`
-	Note     string      `json:"note,omitempty"`
-	Inputs   []InputSpec `json:"inputs"`
-	Output   TypeSpec    `json:"output"`
-	Rounding Rounding    `json:"rounding"`
+	Schema     string          `json:"schema"`
+	ID         string          `json:"id"`
+	Version    string          `json:"version"`
+	Status     string          `json:"status"`
+	Note       string          `json:"note,omitempty"`
+	Inputs     []InputSpec     `json:"inputs"`
+	Output     TypeSpec        `json:"output"`
+	Rounding   Rounding        `json:"rounding"`
+	Projection *ProjectionSpec `json:"projection,omitempty"`
+}
+
+// ProjectionSpec marks a non-numeric reference contract. Identity keeps the
+// input value; normalize trims surrounding whitespace; record projects several
+// named fields. Rounding must be absent.
+type ProjectionSpec struct {
+	Kind   string            `json:"kind"`
+	Fields []ProjectionField `json:"fields,omitempty"`
+}
+
+// ProjectionField maps one input key to one output field.
+type ProjectionField struct {
+	Name      string `json:"name"`
+	Input     string `json:"input"`
+	Attribute string `json:"attribute"`
+	Primitive string `json:"primitive"`
+	Many      bool   `json:"many,omitempty"`
+	Optional  bool   `json:"optional,omitempty"`
 }
 
 type Case struct {
@@ -94,6 +113,7 @@ type Result struct {
 	Amount   string `json:"amount,omitempty"`
 	Currency string `json:"currency,omitempty"`
 	Code     string `json:"code,omitempty"`
+	Text     string `json:"text,omitempty"`
 }
 
 type GenerationProvenance struct {
@@ -146,6 +166,9 @@ type ExecutionEvidence struct {
 	StdoutDigest string              `json:"stdoutDigest"`
 	StderrDigest string              `json:"stderrDigest"`
 	TimedOut     bool                `json:"timedOut,omitempty"`
+	// SourceDigest is the digest of the script source read immediately before
+	// this case ran. It is empty for compiled candidates.
+	SourceDigest string `json:"sourceDigest,omitempty"`
 }
 
 type CaseResult struct {
@@ -349,6 +372,54 @@ func validateContract(contract Contract) error {
 	}
 	if strings.TrimSpace(contract.Output.Primitive) == "" {
 		return fmt.Errorf("contract output primitive is required")
+	}
+	if contract.Projection != nil {
+		switch contract.Projection.Kind {
+		case "identity", "normalize":
+			if len(contract.Projection.Fields) != 0 {
+				return fmt.Errorf("a single-value projection must not declare fields")
+			}
+		case "record":
+			if len(contract.Projection.Fields) == 0 {
+				return fmt.Errorf("a record projection requires fields")
+			}
+			inputsByAttribute := map[string]InputSpec{}
+			for _, input := range contract.Inputs {
+				inputsByAttribute[input.Attribute] = input
+			}
+			seen := map[string]bool{}
+			for _, field := range contract.Projection.Fields {
+				if strings.TrimSpace(field.Name) == "" || strings.TrimSpace(field.Input) == "" ||
+					strings.TrimSpace(field.Attribute) == "" || strings.TrimSpace(field.Primitive) == "" {
+					return fmt.Errorf("record fields require name, input, attribute, and primitive")
+				}
+				if seen[field.Name] {
+					return fmt.Errorf("record field %q is duplicated", field.Name)
+				}
+				seen[field.Name] = true
+				input, ok := inputsByAttribute[field.Attribute]
+				if !ok {
+					return fmt.Errorf("record field %q references undeclared contract input attribute %q", field.Name, field.Attribute)
+				}
+				if field.Primitive != input.Primitive {
+					return fmt.Errorf("record field %q primitive %q does not match contract input %q primitive %q",
+						field.Name, field.Primitive, field.Attribute, input.Primitive)
+				}
+				// The record template renders many fields as strings. Accepting a
+				// many field with another primitive would pass validation and then
+				// fail at runtime on the first element (#2585 PFC-06).
+				if field.Many && field.Primitive != "std.text" && field.Primitive != "std.identifier" {
+					return fmt.Errorf("record field %q: many is not supported for primitive %q in this Target profile",
+						field.Name, field.Primitive)
+				}
+			}
+		default:
+			return fmt.Errorf("projection kind must be identity, normalize, or record")
+		}
+		if contract.Rounding != (Rounding{}) {
+			return fmt.Errorf("projection contracts must not set rounding")
+		}
+		return nil
 	}
 	if contract.Rounding.Precision < 1 || contract.Rounding.Scale < 0 || contract.Rounding.Scale > contract.Rounding.Precision {
 		return fmt.Errorf("contract rounding precision/scale is invalid")
@@ -661,7 +732,10 @@ func evaluateCandidate(ctx context.Context, dir string, fixture Fixture, contrac
 			return reject("generation contract digest mismatch")
 		}
 	}
-	sourcePath := filepath.Join(dir, filepath.FromSlash(manifest.Source))
+	sourcePath, err := candidateSourcePath(dir, manifest.Source)
+	if err != nil {
+		return reject("candidate source is not contained: " + err.Error())
+	}
 	source, err := os.ReadFile(sourcePath)
 	if err != nil {
 		return reject("source is unreadable: " + err.Error())
@@ -855,6 +929,16 @@ func evaluateCandidate(ctx context.Context, dir string, fixture Fixture, contrac
 	}
 
 	for _, tc := range fixture.Cases {
+		if language == LanguagePython || language == LanguageJavaScript {
+			current, err := sourceFileDigest(sourcePath)
+			if err != nil {
+				return reject("source is unreadable during execution: " + err.Error())
+			}
+			if current != actualDigest {
+				receipt.Results = append(receipt.Results, CaseResult{CaseID: tc.ID, Passed: false})
+				return reject("source changed during execution before case " + tc.ID)
+			}
+		}
 		var got Result
 		var execution *ExecutionEvidence
 		var err error
@@ -870,6 +954,9 @@ func evaluateCandidate(ctx context.Context, dir string, fixture Fixture, contrac
 		default:
 			got, execution, err = runCandidate(ctx, binaryPath, tc.Input, executionOptions)
 		}
+		if execution != nil && (language == LanguagePython || language == LanguageJavaScript) {
+			execution.SourceDigest = actualDigest
+		}
 		result := CaseResult{CaseID: tc.ID, Want: tc.Want, Got: got, Execution: execution}
 		if err != nil {
 			result.Passed = false
@@ -878,6 +965,15 @@ func evaluateCandidate(ctx context.Context, dir string, fixture Fixture, contrac
 		}
 		result.Passed = reflect.DeepEqual(got, tc.Want)
 		receipt.Results = append(receipt.Results, result)
+		if language == LanguagePython || language == LanguageJavaScript {
+			current, err := sourceFileDigest(sourcePath)
+			if err != nil {
+				return reject("source is unreadable after case " + tc.ID + ": " + err.Error())
+			}
+			if current != actualDigest {
+				return reject("source changed during execution after case " + tc.ID)
+			}
+		}
 	}
 	receipt.Passed = true
 	for _, result := range receipt.Results {
@@ -1356,6 +1452,57 @@ func findJava() (javacPath, javaPath, version string, available bool) {
 		return "", "", "", false
 	}
 	return javac, java, strings.TrimSpace(string(out)), true
+}
+
+// candidateSourcePath resolves the declared manifest source inside the
+// candidate directory. It refuses an absolute path, a path with "..", and a
+// symlink whose resolved target is outside the directory. The declaration is
+// never allowed to read a file beside the candidate.
+func candidateSourcePath(dir, declared string) (string, error) {
+	root, err := filepath.Abs(dir)
+	if err != nil {
+		return "", err
+	}
+	relative := filepath.FromSlash(declared)
+	if filepath.IsAbs(relative) {
+		return "", fmt.Errorf("source %q is absolute", declared)
+	}
+	cleaned := filepath.Clean(relative)
+	if cleaned == ".." || strings.HasPrefix(cleaned, ".."+string(os.PathSeparator)) {
+		return "", fmt.Errorf("source %q escapes the candidate directory", declared)
+	}
+	path := filepath.Join(root, cleaned)
+	resolvedRoot, err := filepath.EvalSymlinks(root)
+	if err != nil {
+		return "", err
+	}
+	resolvedPath, err := filepath.EvalSymlinks(path)
+	if err != nil {
+		return "", err
+	}
+	relativeToRoot, err := filepath.Rel(resolvedRoot, resolvedPath)
+	if err != nil {
+		return "", err
+	}
+	if relativeToRoot == ".." || strings.HasPrefix(relativeToRoot, ".."+string(os.PathSeparator)) {
+		return "", fmt.Errorf("source %q resolves outside the candidate directory", declared)
+	}
+	info, err := os.Stat(path)
+	if err != nil {
+		return "", err
+	}
+	if !info.Mode().IsRegular() {
+		return "", fmt.Errorf("source %q is not a regular file", declared)
+	}
+	return path, nil
+}
+
+func sourceFileDigest(path string) (string, error) {
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return "", err
+	}
+	return digest(raw), nil
 }
 
 func runScriptCandidate(ctx context.Context, interpreter, sourcePath string, input json.RawMessage, options ExecutionOptions) (Result, *ExecutionEvidence, error) {

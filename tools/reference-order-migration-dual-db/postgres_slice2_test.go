@@ -470,18 +470,24 @@ func TestPostgresPMIG03ExpandWithOldWritersContractRefused(t *testing.T) {
 	if h.count(h.primary, `SELECT count(*) FROM omdd.schema_issue WHERE state='open' AND entity_key='C007'`) != 1 {
 		t.Fatal("unsplittable name not listed")
 	}
-	refused, err := CheckContractNameSplit(h.ctx, h.primary, plan)
+	refused, err := CheckContractNameSplit(h.ctx, h.primary, plan, ContractOptions{Since: time.Now().Add(-time.Hour)})
 	if !errors.Is(err, ErrContractRefused) || refused.Allowed {
 		t.Fatalf("contract with old writers: %+v %v", refused, err)
 	}
 	if err := RetireSchemaClient(h.ctx, h.primary, "old-integration"); err != nil {
 		t.Fatal(err)
 	}
+	// Observe from here on: the old integration is retired, and the next
+	// write is the new-version UpdateCustomer.
+	var observationStart time.Time
+	if err := h.primary.QueryRow(h.ctx, `SELECT clock_timestamp()`).Scan(&observationStart); err != nil {
+		t.Fatal(err)
+	}
 	str := func(s string) *string { return &s }
 	if err := UpdateCustomer(h.ctx, h.primary, "C007", CustomerChange{FamilyName: str("旧連携"), GivenName: str("一郎")}); err != nil {
 		t.Fatal(err)
 	}
-	stillRefused, err := CheckContractNameSplit(h.ctx, h.primary, plan)
+	stillRefused, err := CheckContractNameSplit(h.ctx, h.primary, plan, ContractOptions{Since: observationStart})
 	if !errors.Is(err, ErrContractRefused) || len(stillRefused.Blockers) != 1 || stillRefused.Blockers[0] != "old-version-writer:"+ClientLegacyCDC {
 		t.Fatalf("contract with only the legacy writer left: %+v %v", stillRefused, err)
 	}
@@ -491,7 +497,7 @@ func TestPostgresPMIG03ExpandWithOldWritersContractRefused(t *testing.T) {
 		t.Fatal(err)
 	}
 	outer.Exec(h.ctx, `UPDATE omdd.schema_client SET active=false WHERE client_id=$1`, ClientLegacyCDC)
-	allowed, err := CheckContractNameSplit(h.ctx, outer, plan)
+	allowed, err := CheckContractNameSplit(h.ctx, outer, plan, ContractOptions{Since: observationStart})
 	outer.Rollback(h.ctx)
 	if err != nil || !allowed.Allowed {
 		t.Fatalf("contract without old writers: %+v %v", allowed, err)

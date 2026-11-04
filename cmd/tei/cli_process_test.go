@@ -55,7 +55,7 @@ func TestCLIProcessJSONContract(t *testing.T) {
 	}
 
 	root := t.TempDir()
-	writeWorkspaceFile(t, root, "tei.workspace.yaml", "workspace: cli_contract\nsources:\n  - semantic\n")
+	writeWorkspaceFile(t, root, "tei.workspace.yaml", "workspace: cli_contract\nformatVersion: 1\nsources:\n  - semantic\n")
 	writeWorkspaceFile(t, root, "semantic/sales/empty.tei", "namespace sales\n")
 	if got := string(run(0, "validate", "-workspace", root)); got != "ok\n" {
 		t.Fatalf("text output compatibility: %q", got)
@@ -214,7 +214,7 @@ func TestCLIProcessJSONContract(t *testing.T) {
 
 func TestValidateJSONDoesNotDependOnOutputFile(t *testing.T) {
 	root := t.TempDir()
-	writeWorkspaceFile(t, root, "tei.workspace.yaml", "workspace: cli_contract\nsources:\n  - semantic\n")
+	writeWorkspaceFile(t, root, "tei.workspace.yaml", "workspace: cli_contract\nformatVersion: 1\nsources:\n  - semantic\n")
 	writeWorkspaceFile(t, root, "semantic/sales/empty.tei", "namespace sales\n")
 	var result bytes.Buffer
 	code, err := validateWorkspaceJSON(&result, root)

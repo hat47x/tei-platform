@@ -12,7 +12,7 @@ import (
 
 func TestWorkspaceLoadsAdvancedIndexAndIndexesNestedDeclaration(t *testing.T) {
 	root := t.TempDir()
-	writeSource(t, root, "tei.workspace.yaml", []byte("workspace: advanced_index_test\nsources:\n  - databases\n"))
+	writeSource(t, root, "tei.workspace.yaml", []byte("workspace: advanced_index_test\nformatVersion: 1\nsources:\n  - databases\n"))
 	writeSource(t, root, "databases/sales-core/database.tei", []byte(`database sales_core {
     kind relational
     ownership managed-here
@@ -96,7 +96,7 @@ func TestWorkspaceLoadsAdvancedIndexAndIndexesNestedDeclaration(t *testing.T) {
 
 func TestSourceIndexRejectsDuplicatePersistenceIndexIdentity(t *testing.T) {
 	root := t.TempDir()
-	writeSource(t, root, "tei.workspace.yaml", []byte("workspace: advanced_index_duplicate_test\nsources:\n  - databases\n"))
+	writeSource(t, root, "tei.workspace.yaml", []byte("workspace: advanced_index_duplicate_test\nformatVersion: 1\nsources:\n  - databases\n"))
 	writeSource(t, root, "databases/sales-core/database.tei", []byte(`database sales_core {
     kind relational
     ownership managed-here

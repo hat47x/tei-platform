@@ -1,0 +1,59 @@
+{
+  "schema": "tei.spike.text-projection-selection/v0",
+  "contractId": "sui.card.text",
+  "contractVersion": "1",
+  "contractDigest": "sha256:7eb8d0d9765890689e17cc764324c2366c3c46af9e83327a07acfd0b9039cf5f",
+  "fixturesDigest": "sha256:2f7971b5fb97f7b409d438250e2d4fea528c0a8a639e972122f7257d4eea985d",
+  "projectionKind": "identity",
+  "results": [
+    {
+      "caseId": "present",
+      "want": {
+        "state": "present",
+        "text": "hello"
+      },
+      "got": {
+        "state": "present",
+        "text": "hello"
+      },
+      "passed": true
+    },
+    {
+      "caseId": "empty",
+      "want": {
+        "state": "present",
+        "text": ""
+      },
+      "got": {
+        "state": "present",
+        "text": ""
+      },
+      "passed": true
+    },
+    {
+      "caseId": "missing",
+      "want": {
+        "state": "missing"
+      },
+      "got": {
+        "state": "missing"
+      },
+      "passed": true
+    },
+    {
+      "caseId": "unresolved",
+      "want": {
+        "state": "unresolved"
+      },
+      "got": {
+        "state": "unresolved"
+      },
+      "passed": true
+    }
+  ],
+  "passed": true,
+  "generatedAt": "2026-11-01T07:05:50.2789005Z",
+  "goVersion": "go1.27.3",
+  "goos": "windows",
+  "goarch": "amd64"
+}

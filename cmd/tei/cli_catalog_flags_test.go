@@ -95,7 +95,7 @@ func TestAdvertisedCommandsRejectUnrelatedFlagsAtProcessBoundary(t *testing.T) {
 		t.Fatalf("build CLI: %v\n%s", err, output)
 	}
 	root := t.TempDir()
-	writeWorkspaceFile(t, root, "tei.workspace.yaml", "workspace: cli_flags\nsources:\n  - semantic\n")
+	writeWorkspaceFile(t, root, "tei.workspace.yaml", "workspace: cli_flags\nformatVersion: 1\nsources:\n  - semantic\n")
 	writeWorkspaceFile(t, root, "semantic/sales/empty.tei", "namespace sales\n")
 
 	run := func(args ...string) (int, string, string) {
@@ -134,6 +134,10 @@ func TestAdvertisedCommandsRejectUnrelatedFlagsAtProcessBoundary(t *testing.T) {
 		{"source-index", "-workspace", root, "-environment", "x"},
 		{"knowledge-context", "-workspace", root, "-environment", "x"},
 		{"knowledge-qualify", "-workspace", root, "-environment", "x"},
+		{"knowledge-review-plan", "-workspace", root, "-environment", "x"},
+		{"knowledge-review-handoff", "-workspace", root, "-environment", "x"},
+		{"knowledge-review-disclose", "-workspace", root, "-environment", "x"},
+		{"knowledge-data-design-candidate-review", "-workspace", root, "-environment", "x"},
 	} {
 		code, stdout, stderr := run(args...)
 		var envelope cliResultEnvelope

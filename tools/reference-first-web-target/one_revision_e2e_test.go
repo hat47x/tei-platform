@@ -342,7 +342,7 @@ func TestOneRevisionOrderEntryE2EPacket(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	index1, err := workspace.BuildSourceIndex(r1, loaded)
+	index1, err := workspace.BuildSourceIndexFromLoad(r1, loaded)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -605,8 +605,9 @@ func TestOneRevisionOrderEntryE2EPacket(t *testing.T) {
 			"acceptedRevision": receipts.R1, "datasource": "disposable PostgreSQL 16 (public.orders built from the R1 declaration)",
 			"schemaCompatibility": "compatible", "schemaEvidence": locator["schema"],
 			// D6: the effect Grant is synthetic. This value is a label, not authority.
-			"hostAuthorityEvidence": "synthetic-effect-grant:test-only",
-			"commandReceipt":        locator["command"], "independentReadReceipt": locator["read"], "recordId": "public.orders:order_id=1001",
+			"hostAuthorityEvidence":   "synthetic-effect-grant:test-only",
+			"hostAuthorityProvenance": "synthetic",
+			"commandReceipt":          locator["command"], "independentReadReceipt": locator["read"], "recordId": "public.orders:order_id=1001",
 			"schemaFailureControl": locator["s02"], "hostFailureControl": locator["s05"],
 		},
 	}

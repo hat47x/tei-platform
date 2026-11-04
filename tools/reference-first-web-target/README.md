@@ -36,6 +36,8 @@
 
 通常の複合Web Targetの起動関数 `runCombinedWebTarget(ctx, reader, args)` は、Hostから渡された `sourceacceptance.Reader` を `LoadVerifiedWorkspace` に渡し、成功した **同じ `Loaded.World`** でProjectionとRunnerを構築します。Reader欠落、受理失効、Application不一致、管理対象ファイルの追加・欠落やbyte fingerprint不一致は、HTTP HandlerとRunnerの生成より前に拒否します。B/R/Tのラベルはこの照合の代わりになりません。Readerを渡した経路では診断フラグとの併用も拒否します。
 
+照合するSource Indexは、再読込みではなく **Load時に固定したバイト列** から作ります（#1017）。次の点に注意してください。importを宣言するWorkspaceは、取り込み元の内容をSource Indexで識別できないため、`SOURCE_WORKSPACE_IMPORTS_UNBOUND` で起動前に拒否します（束縛ではなく拒否です）。Workspaceのmanifest（`tei.workspace.yaml`など）はSource Indexに含まれず、受理記録は束縛しません。`VerifiedWorkspace.Manifest` はLoad時の証拠として公開するだけです。複数ファイルの原子的な読込みと、管理対象に入らなかったファイルの検出は保証しません。
+
 **現時点のCLIは正式なHost受理元へ未接続です。** フラグを省略した通常起動は `SOURCE_ACCEPTANCE_READER_REQUIRED` で終了します。`.tei/decisions/` の記録や呼出元JSONから受理権限を生成しません。以下の既存合成fixture手順には `-diagnostic-unaccepted-source` を明示し、起動ログに `SOURCE_ACCEPTANCE_NOT_VERIFIED` を残します。この診断経路は製品G1の証拠に数えません。
 
 `tei_order_only` / `tei_repair_only` と凍結Worldの別実行ファイルは既存の診断Referenceのままで、今回のReader注入経路の対象外です。これらも正式な受理済みSourceを検証したTargetとは扱いません。
@@ -47,6 +49,8 @@
 通常の複合WebのHost起動経路では、Source Readerに加えて、独立した`HostEffectGrantReader`を注入できます。`Source Acceptance`が正常でも、`order_entry.submit_order`のCommandはHostの現在のEffect Grantが無い限り実行しません。HTTP入口のSource再照合に加え、実行直前のCommand Adapterが現在Sourceを再照合し、**authenticated subject / Action / Source Decision・Authority Revision / Model Revision**を一組としたHost Grantを要求します。受理失効、別Subject/Action/Revision、Grant失効、Reader欠落、Context取消は`HOST_EFFECT_GRANT_UNAVAILABLE`で状態更新前に拒否します。Host内部エラーの本文は公開しません。
 
 これは第二のGrant台帳や発行機構ではありません。Host Readerの真正性、Grantの発行・保存・取消、ProviderとDB内の原子的な権限＋効果のCommitは**未実装**です。既存`runCombinedWebTarget(ctx, sourceReader, args)`のみを使う場合、Sourceは一致してもEffect Readerが無いためCommandを拒否します。既存の明示`-diagnostic-unaccepted-source`は合成Scenarioの継続検証用であり、正式Host受理・Grantの証明ではありません。受理済みR1を用いる子プロセスのCommand正例テストは、**test executableだけ**に異なる二つの合成Readerを注入します。
+
+**開発・検証専用の暫定効果許可（D8）**: 明示の3つのフラグ`-provisional-effect-grant FILE`、`-provisional-effect-grant-trust FILE`、`-provisional-effect-grant-development-only`をすべて与えたときだけ、署名つきの暫定効果許可（[`reference-host-effect-grant`](../reference-host-effect-grant/README.md)が発行）を`HostEffectGrantReader`として使います。1つでも欠けるか、Hostが注入したReaderや`-diagnostic-unaccepted-source`と併用すると起動を拒否します。起動時にstderrへ`PROVISIONAL_EFFECT_GRANT_ACTIVE`の警告を出し、実行のたびにGrantと信頼ファイルを再検証します（失効・期限は再起動なしで効きます）。Subject・Resource（`order/<id>`）・Capabilityが署名と一致しない要求は拒否します。**本番の権限発行ではありません。** この許可を使って作るEvidenceのProvenanceは`provisional-grant`で、G2へ数えません。フラグ無しの既定経路は従来どおり、Commandを実行前に拒否します。
 
 ## 実行
 

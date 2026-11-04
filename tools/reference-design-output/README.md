@@ -17,6 +17,7 @@ go run ./tools/reference-design-output/cmd/tei-design-output \
 | `function-definitions.md` | ApplicationごとのPattern、Capability、Validation、利用する意味 | `reference-function-definition-document` |
 | `application-data-matrix.md` | Application × Dataの宣言された利用 | `reference-access-matrix` |
 | `data-application-matrix.md` | 同じ宣言をData側から読み直した表 | `reference-access-matrix` |
+| `access-vs-effects.md` | 宣言された利用、観測された副作用、両者の差（未観測ならその旨） | このツール |
 | `ddl/<database>.sql` | 提供元が出力できる新規作成用DDL | `reference-ddl-entry` |
 | `manifest.json` | 導出元revision、成果物ごとのdigest、未解決、対象外 | このツール |
 | `index.html` | 成果物へのリンク、revision、未解決を示す静的なナビゲーション | このツール |
@@ -84,8 +85,49 @@ go run ./tools/reference-design-output/cmd/tei-design-output \
 
 ## 未実装
 
-- 本文の書式差し替え（Markdown以外の出力plugin）。`index.html`はナビゲーションのみで、本文のHTML化は行いません。
+- 本文のHTML化（`index.html`はナビゲーションのみ）。
 - 受理済みBusiness Procedureを用いたBusiness × Function × Dataの対応一覧（#1125待ち）。
 - DDLのコメント・命名規則の選択と、PostgreSQL以外の提供元。
-- 成果物上の編集を変更案へ戻す経路。編集可能な正本の位置表示は未実装です。
-- 実データベースのスキーマとの照合（#1132）。
+- 成果物上の編集を変更案へ戻す経路。`editableSources`は正本の位置を示すだけで、成果物の編集を受理へ接続しません。
+- 実データベースのスキーマとの照合（#1132）。`-effects`は呼出元が報告した観測を記録するだけで、DBから副作用を自動観測しません。
+
+## 出力の書式（`-format`）
+
+```text
+go run ./tools/reference-design-output/cmd/tei-design-output \
+  -workspace reference/workspace -out /tmp/tei-design-output-text -format text
+```
+
+`markdown`（既定）と`text`を選べます。`text`は見出し記号・表の区切り・引用記号・インラインコード記号を落とし、表のセルをタブ区切りにします。DDLは提供元の出力なので書式を変えません。
+
+`CheckSemanticParity`が、2つの書式の成果物について**意味の行**（`SemanticLines`）が同じ順序で一致することを検査します。書式プラグインが行を落とす・語を変えると失敗します。これは意味の同一性の証明ではなく、同じ導出元から作った2出力の事実列の一致です。
+
+## 編集できる正本の位置（`editableSources`）
+
+`manifest.json`の`editableSources`に、Workspace内で編集できる正本のpath・指紋・役割（`definition`／`authoring`）を列挙します。`implementation`と`derived`は正本ではないため含めません。成果物は読み取り専用で、ここに示した正本を編集しても成果物へは自動反映されません（再導出が必要です）。
+
+## 宣言された利用と観測された副作用（`-effects`）
+
+```text
+go run ./tools/reference-design-output/cmd/tei-design-output \
+  -workspace reference/workspace -out /tmp/tei-design-output-effects \
+  -effects tools/reference-design-output/testdata/observed-effects.json
+```
+
+```json
+{
+  "effectsObserved": true,
+  "effectsSource": "audit-log:2026-11-01",
+  "observedEffects": [
+    {"application": "order-entry", "data": "sales.order", "access": "create"}
+  ]
+}
+```
+
+`access-vs-effects.<ext>`と`manifest.json`の`effects`が、宣言・観測・差を別々に示します。
+
+- `effectsObserved`が偽のとき、観測された副作用を渡すと拒否します（宣言を観測と偽装できない）
+- `undeclared-effect:<app>:<data>:<access>`：宣言にない副作用が観測された
+- `unobserved-declared-effect:<app>:<data>:<access>`：create/updateを宣言したが観測されなかった
+- 差は記録であり、受理・拒否の判断ではない。`read`は副作用に数えない
+

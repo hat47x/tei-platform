@@ -14,7 +14,7 @@ import (
 // 配置ディレクトリやファイル名からMapping / Relation identityを補完しない。
 // 合流先はsource本文のMapping Canonical IDだけで解決し、見つからない場合は失敗する。
 func loadRelationStorageAuthorings(root string, r *Result) error {
-	files, err := globSorted(filepath.Join(root, "databases", "*", "relation-storage", "*.tei"))
+	files, err := listPinnedUnitFiles(root, r, filepath.Join(root, "databases"), []string{"relation-storage"}, "*.tei")
 	if err != nil {
 		return err
 	}

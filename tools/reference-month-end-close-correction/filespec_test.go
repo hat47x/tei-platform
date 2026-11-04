@@ -83,6 +83,7 @@ func TestWholeFileRejections(t *testing.T) {
 		want string
 	}{
 		{"trailer count off by one", buildFile(t, rows, fileOpts{seq: 1, countDelta: 1}), RejectTrailerCount},
+		{"trailer sum off by one", buildFile(t, rows, fileOpts{seq: 1, sumDelta: 1}), RejectTrailerSum},
 		{"cut in the middle of a record", buildFile(t, rows, fileOpts{seq: 1, truncateTail: 120}), RejectTruncated},
 		{"cut at a record boundary, no trailer", buildFile(t, rows, fileOpts{seq: 1, truncateTail: 82}), RejectTruncated},
 	}

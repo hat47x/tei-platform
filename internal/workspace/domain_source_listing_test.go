@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -25,7 +26,29 @@ func TestDomainSourceListingUsesPinnedRootAfterWorkspaceAliasReplacement(t *test
 	loaded := Result{sourceReadRoot: pinned}
 	moved := filepath.Join(parent, "original")
 	if err := os.Rename(workspacePath, moved); err != nil {
-		t.Fatal(err)
+		// On Windows an open os.Root handle keeps the directory from being
+		// renamed, so the alias swap is refused instead of succeeding and
+		// being ignored. Both outcomes are "no escape"; assert the pinned
+		// reads below rather than relying on rename having succeeded.
+		// Classification: plan/evidence/WORKSPACE_SOURCE_READER_ENV_EVIDENCE_2026-11.md
+		if runtime.GOOS != "windows" {
+			t.Fatalf("alias replacement failed on %s: %v", runtime.GOOS, err)
+		}
+		t.Logf("alias replacement refused while the pinned root is open: %v", err)
+		files, err := listPinnedDomainSources(workspacePath, &loaded, "semantic", func(name string) bool {
+			return strings.HasSuffix(name, ".tei")
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		want := []string{filepath.Join(workspacePath, "semantic", "inside.tei")}
+		if !reflect.DeepEqual(files, want) {
+			t.Fatalf("enumeration escaped pinned root: got %v, want %v", files, want)
+		}
+		if _, err := readPinnedWorkspaceFile(pinned, "semantic/inside.tei"); err != nil {
+			t.Fatalf("pinned source was lost after refused alias change: %v", err)
+		}
+		return
 	}
 	foreign := filepath.Join(parent, "foreign")
 	if err := os.MkdirAll(filepath.Join(foreign, "semantic"), 0700); err != nil {

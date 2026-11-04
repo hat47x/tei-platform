@@ -45,7 +45,7 @@ func Generate(root string, s Size) error {
 	if err := os.MkdirAll(filepath.Join(root, "semantic", "hub"), 0o755); err != nil {
 		return err
 	}
-	manifest := "workspace: cli_trace_benchmark\nsources:\n  - semantic\n"
+	manifest := "workspace: cli_trace_benchmark\nformatVersion: 1\nsources:\n  - semantic\n"
 	if err := os.WriteFile(filepath.Join(root, "tei.workspace.yaml"), []byte(manifest), 0o644); err != nil {
 		return err
 	}

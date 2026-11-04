@@ -49,7 +49,7 @@ JOIN pg_catalog.pg_namespace ns ON ns.oid = cls.relnamespace
 JOIN generate_subscripts(con.conkey, 1) AS pos(i) ON true
 JOIN pg_catalog.pg_attribute att
   ON att.attrelid = cls.oid AND att.attnum = con.conkey[pos.i]
-WHERE con.contype = 'p' AND ns.nspname = $1 AND cls.relname = $2
+WHERE con.contype = 'p' AND con.conparentid = 0 AND ns.nspname = $1 AND cls.relname = $2
 ORDER BY pos.i`
 
 // referencingForeignKeysQuery selects the foreign keys whose referenced index
@@ -67,7 +67,8 @@ JOIN pg_catalog.pg_namespace fns ON fns.oid = fcls.relnamespace
 JOIN generate_subscripts(fk.conkey, 1) AS pos(i) ON true
 JOIN pg_catalog.pg_attribute att
   ON att.attrelid = fk.conrelid AND att.attnum = fk.conkey[pos.i]
-WHERE pk.contype = 'p' AND pns.nspname = $1 AND pcls.relname = $2
+WHERE pk.contype = 'p' AND pk.conparentid = 0 AND fk.conparentid = 0
+  AND pns.nspname = $1 AND pcls.relname = $2
 ORDER BY fns.nspname, fcls.relname, fk.conname, pos.i`
 
 func (r SQLCatalogReader) PrimaryKeyIdentity(ctx context.Context, table RelationIdentity) (PrimaryKeyIdentity, error) {

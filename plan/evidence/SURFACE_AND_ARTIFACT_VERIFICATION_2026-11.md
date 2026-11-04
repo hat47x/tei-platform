@@ -1,0 +1,91 @@
+# 操作面・成果物・束縛実行の検証記録（2026-11-02）
+
+- 状態: **検証の記録**。合否の判定ではなく、実行したコマンドと結果を残すものです。
+- 対象: ブランチ `work/upstream-connection-2026-11`（`origin/main` 上、rebase 済み）
+- 目的: 統合の判断材料として、変更範囲の健全性を確かめる
+
+## 1. 実行した確認
+
+| 確認 | コマンド | 結果 |
+| --- | --- | --- |
+| 全体のビルド | `go build ./...` | 成功（出力なし、exit 0） |
+| 内部パッケージの静的解析 | `go vet ./internal/...` | 成功（出力なし、exit 0） |
+| 書式 | `gofmt -l internal tools` | 出力なし |
+| 影響パッケージの試験 | `go test ./internal/artifact ./internal/operations ./internal/driver ./internal/semantic/... ./tools/repository-plan-check -count=1` | すべて `ok` |
+| 参照用作業領域 | `go run ./cmd/tei validate -workspace reference/workspace` | `ok`（既存の警告のみ） |
+| 負例の作業領域 | `go run ./cmd/tei validate -workspace reference/standard-crud/workspace` | `ok` |
+| 文書の検査 | `go test ./tools/repository-plan-check -count=1` | `ok` |
+| 実DBの競合（枠組み） | `go test ./tools/reference-expected-state-concurrency -count=1` | **スキップ**（`TEI_TEST_POSTGRES_DSN` 未設定） |
+
+## 2. この記録が示すこと
+
+- 変更範囲（操作面の導出、能力への束縛実行、設計成果物の生成と整合検査）のビルド・静的解析・試験が通ること。
+- 参照用作業領域と負例の作業領域の両方が、`validate` で読めること。
+
+## 3. この記録が示さないこと
+
+- **実データベースでの競合の防止**。実装は合成の保存領域で確かめただけで、PostgreSQL での並行更新は未実行です。
+- **意味の妥当性**。整合検査は成果物同士の矛盾を見るだけで、意味が正しいことは保証しません。
+- **受入シナリオの達成**。実装の存在を、判定や受理の証拠にしません。
+- **未実行の範囲**: `#1129`・`#1130`・`#2144` は設計のみです。Scenario に書き込みの語彙はありません。
+
+## 4. 再現
+
+```sh
+go build ./...
+go vet ./internal/...
+gofmt -l internal tools
+go test ./internal/artifact ./internal/operations ./internal/driver ./internal/semantic/... ./tools/repository-plan-check -count=1
+go run ./cmd/tei validate -workspace reference/workspace
+go run ./cmd/tei validate -workspace reference/standard-crud/workspace
+```
+## 5. 期間の状態の検証（2026-11-03 追記）
+
+期間の状態（#2144）を P1〜P3 で実装し、次の範囲を確かめました。
+
+| 確認 | コマンド | 結果 |
+| --- | --- | --- |
+| 宣言の解析 | `go test ./internal/syntax -run Period` | 通る（`period` の各項目を読み取る） |
+| 検証 | `go test ./internal/validation -run Period` | 通る（正例は診断なし、負例は5種の診断） |
+| 操作面への反映 | `go test ./internal/operations -run Period` | 通る（`period`・`periodRejects`・前提 `period:<id>:open`） |
+| 成果物への反映 | `go test ./internal/artifact -run Period` | 通る（機能定義書の期間行） |
+| 既存作業領域への影響 | `go run ./cmd/tei validate -workspace reference/workspace` | `ok`（期間を宣言していないため影響なし） |
+
+**確かめていないこと**: 閉じた期間の**実行時の拒否**。操作面は前提を宣言しますが、実行の入口で前提を検査する層はまだありません。実データベースでの期間の扱いも未確認です。
+
+**設計判断（仮承認D-2）**: 期間は意味の層（`data`・`persist` の宣言）に閉じ、CLI の段階は増やしていません。閉じた期間を `human-gated` に読み替えず、自律区分（誰が判断するか）と期間の状態（いつ実行できるか）を別の軸として扱います。
+## 6. 期間の状態の通し確認（2026-11-03 追記）
+
+期間の拒否が、宣言から実行入口まで一本につながることを確かめました。
+
+| 確認 | コマンド | 結果 |
+| --- | --- | --- |
+| 宣言から拒否まで | `go test ./internal/execution -run WorkspacePeriod` | 通る（`period` → 操作面 → 束縛 → ガード → driver を呼ばない拒否） |
+| ガードの単位 | `go test ./internal/operations -run 'GuardCapability|CheckPeriods'` | 通る（操作全体・能力単位・出所経由） |
+| CLI の判定 | 一時作業領域で `tei periods -period-state-file` | `closed` → 2件拒否・終了コード1、`open` → 0件・0、未知の状態 → エラー |
+| 状態ファイル | `go test ./cmd/tei -run PeriodStateFile` | 通る（読取り・未知の状態の拒否・欠落の拒否） |
+
+**確かめていないこと**
+- 実際の能力呼出しを行うツールへの適用（`tools/reference-data-first-persistence` は未適用）
+- 実データベースでの期間と競合の確認（`TEI_TEST_POSTGRES_DSN` 未設定）
+- 期間の状態を誰が・いつ記録するかの運用（現状は JSON ファイルを運用者が置く想定）
+## 7. 効果の規則の確認（2026-11-03 追記）
+
+`effect-rule`（#1129）を P1〜P3 で実装し、ライブラリの範囲で確かめました。
+
+| 確認 | コマンド | 結果 |
+| --- | --- | --- |
+| 宣言の解析 | `go test ./internal/syntax -run EffectRule` | 通る |
+| 検証（6診断） | `go test ./internal/validation -run EffectRule` | 通る（正例は診断なし、負例は該当の診断） |
+| 操作面への反映 | `go test ./internal/operations -run EffectRules` | 通る（束縛された操作だけが規則を載せる） |
+| 成果物への反映 | `go test ./internal/artifact -run EffectRules` | 通る（`effect-rule` 行） |
+| 結末で証人にならない効果 | `go test ./internal/execution -run EffectsOutsideTransaction` | 通る |
+| 実行と観測の分離 | `go test ./internal/execution -run RunEffect` | 通る（成功コードだけでは `Observed` にならない） |
+| 記録 | `go test ./internal/effectlog` | 通る（往復・欠落・壊れた行） |
+| 補償の選択と実行 | `go test ./internal/execution -run 'Compensations|Compensate'` | 通る（同一の能力・同一のデータだけ） |
+| 観測（SQL） | `go test ./internal/execution -run SQLEffectObserver` | 通る（件数・零件・読取り失敗・未設定） |
+
+**確かめていないこと**
+- 実データベースでの効果の実行と観測（`TEI_TEST_POSTGRES_DSN` 未設定）
+- 効果の対象を特定する引数の組み立て（`Args` の実装）
+- 再試行の上限、補償の完了を待つ境界

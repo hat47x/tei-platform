@@ -61,7 +61,7 @@ func TestReferenceSubmitCommandResolvesExplicitCapabilityBinding(t *testing.T) {
 
 func TestBindingSourceIdentityIsApplicationScopedAndSurvivesFileRename(t *testing.T) {
 	root := t.TempDir()
-	writeBindingWorkspaceFile(t, root, "tei.workspace.yaml", "workspace: binding_source_test\nsources:\n  - applications\n")
+	writeBindingWorkspaceFile(t, root, "tei.workspace.yaml", "workspace: binding_source_test\nformatVersion: 1\nsources:\n  - applications\n")
 	writeBindingWorkspaceFile(t, root, "applications/first/application.tei", "application first_app {\n}\n")
 	writeBindingWorkspaceFile(t, root, "applications/second/application.tei", "application second_app {\n}\n")
 	writeBindingWorkspaceFile(t, root, "applications/first/realizations/submit.tei", "realize sales.order.submit with custom go\n")

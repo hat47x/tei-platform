@@ -25,6 +25,8 @@ go run ./tools/reference-change-packet/cmd/tei-change-packet verify   -packet pl
 | `verification` | 実行する検証。`name`、`run`、任意の`timeoutSeconds` |
 | `stopConditions` | 人へ戻す条件。文章で宣言し、receiptへ残す |
 | `evidence` | 残す証拠の種類（任意） |
+| `unverified` | この作業票が意図的に検証しない範囲（任意）。receiptの`unverified`へ写す |
+| `humanJudgment` | A4が必要な理由（`meaning`・`authority`・`production`・`secrets`・`license`・`destructive-migration`）。空でない場合は`level`を`A4`にしなければならない |
 
 ## 危険度
 
@@ -35,6 +37,8 @@ go run ./tools/reference-change-packet/cmd/tei-change-packet verify   -packet pl
 - `A4`: 意味の受理、権限、本番配備、秘密情報、ライセンス判断、破壊的移行。人間の判断を必須とする。
 
 このツールは`A3`の判断を代行しません。`passed=true`は、宣言した範囲と検証が一致したことだけを示します。
+
+`humanJudgment`が空でない作業票は、`level`が`A4`でなければ検証で拒否します。A0〜A3で意味・権限などの変更を「範囲内だから」と自動統合しないためです。`unverified`はreceiptへ写し、部分的な検証を全体の合格と読み違えないようにします。receiptの`environment`には`goos`・`goarch`・`goVersion`を記録します。
 
 ## 守っている境界
 

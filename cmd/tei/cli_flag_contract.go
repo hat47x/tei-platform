@@ -33,6 +33,7 @@ func selectedReadOnlyFlagError(out io.Writer, command string, err error) (int, e
 // parses its own arguments instead of the shared FlagSet.
 var selectedReadOnlyFlagAllowlist = map[string][]string{
 	"inspect": {"workspace", "subject-kind", "subject-id"},
+	"view":    {"workspace", "application", "pattern", "package", "format", "command", "input", "execute", "period-state"},
 	"trace": {
 		"workspace", "scope", "subject-kind", "subject-id",
 		"direction", "mode", "offset", "limit", "expected-fingerprint",
@@ -43,7 +44,18 @@ var selectedReadOnlyFlagAllowlist = map[string][]string{
 		"workspace", "subject-kind", "subject-id", "disclose",
 		"expected-data-design-fingerprint", "expected-disclosure-fingerprint",
 	},
-	"knowledge-qualify":   {"workspace", "subject-kind", "subject-id", "qualification-requirements"},
+	"knowledge-qualify": {"workspace", "subject-kind", "subject-id", "qualification-requirements"},
+	"knowledge-review-plan": {"workspace", "subject-kind", "subject-id",
+		"expected-review-plan-fingerprint"},
+	"knowledge-review-handoff": {"workspace", "subject-kind", "subject-id",
+		"qualification-requirements", "expected-review-handoff-fingerprint"},
+	"knowledge-review-disclose": {"workspace", "subject-kind", "subject-id",
+		"review-handoff", "expected-review-handoff-fingerprint", "expected-disclosure-fingerprint"},
+	"knowledge-data-design-candidate-review": {"workspace", "subject-kind", "subject-id",
+		"data-design-candidate-kind", "data-design-candidate-fingerprint",
+		"expected-data-design-fingerprint",
+		"expected-data-design-candidate-evidence-requirement-fingerprint",
+		"expected-data-design-candidate-review-fingerprint"},
 	"version":             {"json"},
 	"validate":            {"workspace", "world", "json"},
 	"world":               {"workspace", "world"},

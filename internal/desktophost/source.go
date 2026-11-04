@@ -34,12 +34,15 @@ type SourceObservation struct {
 
 var ErrSourceChanged = errors.New("desktop source observation changed")
 
-// ObserveSource uses BuildSourceIndex, which uses retained parser bytes for
-// parsed Source and its existing checked reader for unparsed managed files.
-// IndexedLoadedSnapshot intentionally rejects such unparsed assets; it cannot
-// be used as a general inventory. The Workspace manifest is also tracked as
-// a Host observation. Reads are not a transaction or write permission.
-// Filesystem containment at Load is currently best-effort (issue #1017).
+// ObserveSource uses the Workspace Load snapshot. Load captures parsed Source
+// bytes and separately captures managed files that no domain loader parsed,
+// both through one pinned os.Root. BuildSourceIndex fingerprints those
+// Load-time bytes instead of re-reading the filesystem. IndexedLoadedSnapshot
+// remains parser-bound and intentionally rejects unparsed assets, so it is not
+// used as a general inventory here. The Workspace manifest is tracked as a
+// separate Host observation, so the manifest and the managed files may have
+// been read at different instants. Reads are not a transaction, a write lock,
+// or permission. In-place changes between reads remain possible (#1017).
 func ObserveSource(root string) (SourceObservation, error) {
 	abs, err := filepath.Abs(root)
 	if err != nil {

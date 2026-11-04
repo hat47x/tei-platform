@@ -12,6 +12,8 @@ go run ./tools/reference-generator-selection/cmd/tei-generator-select \
 
 registryを使うと、登録済みで有効な版だけを選抜できます。
 
+`manifest.Source`は候補directory内の相対pathに限定します。絶対path、`..`、候補外へ解決するsymlinkは、実行前に拒否します。Python/JavaScriptのscript候補は、各caseの実行前後でsource bytesのdigestを再確認し、変化した場合は`source changed during execution`で候補を拒否します。caseごとの`execution.sourceDigest`に、そのcaseの直前に読んだsourceのdigestを残します。これは一つのAttempt内で同じsource bytesが実行されたことの技術的な記録であり、生成AIが見た入力全体の完全性や、OS・networkの隔離を証明しません。
+
 caseごとの `execution.measurement` に、実行呼出し直前から終了待ち・入出力の完了までの経過時間 `elapsedNanos`、OSのprocess stateから取得した `userCpuNanos` と `systemCpuNanos` を記録します。単位はいずれもnanosecondです。build・処理系検出・終了後のJSON検証はこの経過時間に含めません。`goos`、`goarch`、`harnessGoVersion` は参照実行器の環境を示します。候補のsource/binary digestと処理系・buildの証拠は既存の項目に残します。
 
 観測値を含むreceiptのbytesは試行ごとに変わります。receipt digestとその署名は個々の試行に対応し、source/binaryの再現性は既存のdigestで別に確認します。
@@ -31,6 +33,9 @@ go run ./tools/reference-generator-selection/cmd/tei-generator-select \
   -registry tools/reference-generator-selection/testdata/registry.json
 ```
 
+`projection`を持つ契約では、`-strategy text-template`で文字列投影の候補を生成できます。`identity`は入力をそのまま、`normalize`は前後の空白を除きます。`projection`がないmoney契約は従来のstrategyだけを受け付けます。
+
+`projection`の`kind=record`では、`-strategy text-record-template`で複数属性を一つのrecordとして投影する候補を生成できます。`present`はcanonical JSONオブジェクト、`missing`は欠落フィールド名のJSON配列、`unresolved`は状態だけを返し、空文字は`present`として区別します。`testdata/sui-text`と`testdata/sui-record`の適合fixtureは、生成した候補を実際にビルドして実行し、caseごとの出力、source digest、generator provenanceを確認します。
 候補sourceは、契約から固定strategyで生成できます。
 
 ```text
@@ -295,6 +300,8 @@ reconcileは候補をビルド・実行・選抜しません。再生成した�
 - 受理済みWorkspaceの属性・型を、契約の入力として実際に解決する。存在しない属性や型の不一致を拒否する。
 - 期待値fixtureは候補より先に固定し、候補に合わせて書き換えない。
 - 候補のsource digestを実byteで確認する。digest不一致の候補をビルドしない。
+- `manifest.Source`を候補directory内の相対pathに限定し、絶対path・`..`・候補外へ解決するsymlinkを実行前に拒否する。
+- Python/JavaScriptのscript候補は、各caseの実行前後でsource bytesのdigestを再確認し、変化した候補を拒否する。caseごとの`execution.sourceDigest`に実行直前のdigestを残す。
 - 候補の出力を独立に比較する。候補が「合格」と自己申告しても採用しない。
 - 危険な候補を、欠落・通貨・丸め・精度の負例で落とす。
 - 生成AI候補のgeneration provenanceを、現在の契約digestへ束縛する。
@@ -323,3 +330,7 @@ reconcileは候補をビルド・実行・選抜しません。再生成した�
 `RenderForWorld`は、呼出元が一度読み込んだWorldと契約JSONのbyte列を受け取り、入力属性・型と出力型を照合してから、既存の固定strategyのsourceとcandidate manifestを返します。filesystemの出力、build・選抜・実行は行いません。契約の複合規則の受理やHostの実行許可を与えるAPIではありません。
 
 [設計成果物bundle](../reference-design-output/README.md)では、文書とコード候補を同じWorldとsource revisionへ結び付けるために使います。manifestの対応は来歴であり、モデル全体の意味的な網羅や実行適合の証拠とは区別します。
+
+## 文字列投影（reference-local）
+
+契約に`projection`がある場合、`rounding`は不要です。`identity`は入力をそのまま、`normalize`は前後の空白を除いて投影します。比較結果は`state`と`text`を使い、`missing`・`empty`（`state=present`で空）・`unresolved`を区別します。既存のmoney契約は`projection`を持たず、従来どおり`rounding`が必要です。

@@ -22,7 +22,7 @@ func loadContractQuerySQLRealizations(root string, r *Result) error {
 		return err
 	}
 
-	files, err := globSorted(filepath.Join(root, "databases", "*", "query-realizations", "*.tei"))
+	files, err := listPinnedUnitFiles(root, r, filepath.Join(root, "databases"), []string{"query-realizations"}, "*.tei")
 	if err != nil {
 		return err
 	}

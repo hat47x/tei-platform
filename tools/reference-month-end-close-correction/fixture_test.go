@@ -69,6 +69,7 @@ type fileOpts struct {
 	seq          int
 	month        string
 	countDelta   int
+	sumDelta     int
 	truncateTail int // bytes cut from the end
 }
 
@@ -88,7 +89,7 @@ func buildFile(t *testing.T, rows []shipmentRow, o fileOpts) []byte {
 		line(dataRecordBytes(t, i+1, r))
 		sum += r.Amount
 	}
-	line([]byte(fmt.Sprintf("T%06d%012d%61s", len(rows)+o.countDelta, sum, "")))
+	line([]byte(fmt.Sprintf("T%06d%012d%61s", len(rows)+o.countDelta, sum+int64(o.sumDelta), "")))
 	return out[:len(out)-o.truncateTail]
 }
 

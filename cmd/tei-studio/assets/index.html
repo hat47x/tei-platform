@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="ja">
 <head>
   <meta charset="utf-8">
@@ -15,6 +15,9 @@
     .preview{margin-top:2rem;padding:1rem;border:1px solid #8886;border-radius:.5rem}
     .preview table{border-collapse:collapse;width:100%;margin:1rem 0}
     .preview th,.preview td{text-align:left;border:1px solid #8886;padding:.4rem}
+    .view h3{margin:1rem 0 .35rem}
+    .view table{border-collapse:collapse;width:100%;margin:.4rem 0}
+    .view th,.view td{text-align:left;border:1px solid #8886;padding:.35rem}
   </style>
 </head>
 <body>
@@ -31,6 +34,25 @@
     <label for="subject-id">Subject ID</label><input id="subject-id" placeholder="exact canonical ID" autocomplete="off">
     <button id="inspect" disabled>参照</button>
   </div>
+  <div class="controls">
+    <label for="application-id">Application</label><input id="application-id" placeholder="order_entry" autocomplete="off">
+    <label for="pattern-id">Pattern</label><input id="pattern-id" placeholder="order_entry.order_record" autocomplete="off">
+    <label for="package-id">Package</label><input id="package-id" placeholder="order_entry.list_to_record" autocomplete="off">
+    <button id="view-application" disabled>Applicationビュー</button>
+    <button id="view-pattern" disabled>Patternビュー</button>
+    <button id="view-package" disabled>Packageビュー</button>
+  </div>
+  <div id="view-state" role="status" aria-live="polite"></div>
+  <div id="view-output" class="view" aria-label="View result"></div>
+  <div class="controls">
+    <label for="command-capability">Capability</label><input id="command-capability" placeholder="sales.order.submit" autocomplete="off">
+    <label for="command-inputs">Inputs</label><input id="command-inputs" placeholder="order=ORD-1" autocomplete="off">
+    <label for="command-periods">Periods</label><input id="command-periods" placeholder="sales.period=closed" autocomplete="off">
+    <button id="plan-command" disabled>計画</button>
+    <button id="execute-command" disabled>参照実行</button>
+  </div>
+  <div id="command-state" role="status" aria-live="polite"></div>
+  <pre id="command-output" aria-label="Command result"></pre>
   <div id="state" role="status" aria-live="polite"></div>
   <pre id="output" aria-label="Operation result"></pre>
   <section class="preview" aria-labelledby="preview-title">
@@ -47,3 +69,8 @@
   <script type="module" src="./main.js"></script>
 </body>
 </html>
+
+
+
+
+

@@ -100,7 +100,10 @@ func TestE26NativeOverlayAuthoringBaseline(t *testing.T) {
 	if len(stage0.World.Applications) != 0 {
 		t.Fatal("Stage 0 cannot be counted as an accepted SUI Application")
 	}
-	baseManifest := e26ObservedSource(t, stage0Root, "tei.workspace.yaml")
+	// The live manifest records formatVersion since #1920. The recorded Stage 0
+	// authoring baseline is kept in testdata so the frozen count keeps meaning.
+	baseManifest := e26ObservedSource(t, ".", "testdata/sui-stage0.tei.workspace.yaml")
+	baseManifest.Path = "tei.workspace.yaml"
 	if baseManifest.NonblankLines != 3 {
 		t.Fatalf("SUI Stage 0 manifest baseline drift: %+v", baseManifest)
 	}
@@ -132,7 +135,9 @@ func TestE26NativeOverlayAuthoringBaseline(t *testing.T) {
 		}
 	}
 	manifest := e26ObservedSource(t, overlay, "tei.workspace.yaml")
-	if manifest.NonblankLines != 4 || !strings.Contains(mustReadE26(t, filepath.Join(overlay, "tei.workspace.yaml")), "  - applications\n") {
+	// The E22 overlay now records formatVersion metadata in addition to the
+	// source roots; the added root itself is checked below.
+	if manifest.NonblankLines != 5 || !strings.Contains(mustReadE26(t, filepath.Join(overlay, "tei.workspace.yaml")), "  - applications\n") {
 		t.Fatalf("E22 candidate manifest does not add applications source root: %+v", manifest)
 	}
 	// Reading Stage 0 island source into an isolated test Workspace is not

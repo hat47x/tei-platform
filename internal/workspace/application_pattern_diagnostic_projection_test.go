@@ -11,6 +11,7 @@ import (
 func TestApplicationPatternValidationDiagnosticProjectsToCanonicalIdentifierToken(t *testing.T) {
 	root := t.TempDir()
 	writePatternWorkspaceFile(t, root, "tei.workspace.yaml", `workspace: pattern_diagnostic_projection_test
+formatVersion: 1
 sources:
   - applications
 `)

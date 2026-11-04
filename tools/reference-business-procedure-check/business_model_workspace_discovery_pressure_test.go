@@ -12,7 +12,7 @@ import (
 
 func TestBusinessWorkspaceSourceRootIsPhysicalDiscoveryWithoutIRWorldEmbedding(t *testing.T) {
 	root := t.TempDir()
-	writeBusinessWorkspaceDiscoveryFileProbe(t, filepath.Join(root, "tei.workspace.yaml"), []byte("workspace: business_discovery_pressure\nsources:\n  - business\n"))
+	writeBusinessWorkspaceDiscoveryFileProbe(t, filepath.Join(root, "tei.workspace.yaml"), []byte("workspace: business_discovery_pressure\nformatVersion: 1\nsources:\n  - business\n"))
 
 	candidatePath := filepath.Join(root, "business", "order-entry-procedure.json")
 	writeBusinessWorkspaceDiscoveryFileProbe(t, candidatePath, []byte(`{"schemaVersion":"business-authoring-candidate-probe-v0","procedure":"order-entry.order-handling"}`))
@@ -66,7 +66,7 @@ func TestBusinessWorkspaceSourceRootIsPhysicalDiscoveryWithoutIRWorldEmbedding(t
 
 func TestBusinessWorkspaceSourceMoveChangesPhysicalLocatorWithoutChangingWorldProbe(t *testing.T) {
 	root := t.TempDir()
-	writeBusinessWorkspaceDiscoveryFileProbe(t, filepath.Join(root, "tei.workspace.yaml"), []byte("workspace: business_discovery_move_pressure\nsources:\n  - business\n"))
+	writeBusinessWorkspaceDiscoveryFileProbe(t, filepath.Join(root, "tei.workspace.yaml"), []byte("workspace: business_discovery_move_pressure\nformatVersion: 1\nsources:\n  - business\n"))
 
 	oldRel := filepath.ToSlash(filepath.Join("business", "procedures", "order-entry.json"))
 	newRel := filepath.ToSlash(filepath.Join("business", "procedures", "archive", "order-entry.json"))

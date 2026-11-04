@@ -200,9 +200,25 @@ Lock対象ProviderのartifactやConformance Evidenceがdriftした場合はfail-
 
 ## bootstrap
 
-このReferenceはstage0 seed resolverを実装しません。
+このReferenceは、provider catalog・PATH・install順・provider scanからstage0 seedを自動選択しません。
 
-ただしself-hostingでは:
+`bindBootstrapSeed`は、呼出元が明示したstage0の`BuilderIdentity`だけを受け付けます。
+
+```text
+explicit stage0 seed
+  stage = stage0
+  source = explicit-caller / explicit-host-config
+  exact BuilderIdentity
+  -> BootstrapStage0Binding
+```
+
+- stageは`stage0`固定、sourceは必須です。`auto`・`default`・`catalog`・`path`等の自動検出を思わせるsourceは拒否します。
+- BuilderIdentityのID・version・contract version・artifact digestを検証し、digestは小文字へ正規化します。
+- binding fingerprintは格納fieldから再計算し、改ざんされたbindingを拒否します。
+- このAPIはcatalogを受け取らないため、provider選択をseedとして隠せません。
+- seed bindingはprovider conformance・Build Acceptance・Runtime Authorityを与えません。
+
+stage1以降は通常のprovider resolutionを要求します。`resolveStage1AfterExplicitSeed`はvalid seedを確認した後、`resolveBuilder`へseedを渡さず、providerが見つからなければ失敗します。seedを自動defaultとして使いません。
 
 ```text
 stage0:
@@ -211,8 +227,6 @@ stage0:
 stage1+:
   resolved / locked Builder Provider
 ```
-
-のように、seedを自動defaultとして隠さないことを前提にします。
 
 #1103のBuild graphと接続する場合も、stage0 seedはexplicit external seedとして扱います。
 

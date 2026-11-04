@@ -221,6 +221,103 @@ func TestResultEnvelopeCommandsJSONContract(t *testing.T) {
 	if knowledgeFlag.OK || knowledgeFlag.Error == nil || knowledgeFlag.Error.Code != resultCodeInvalidArgument {
 		t.Fatalf("wrong knowledge flag failure envelope: %+v", knowledgeFlag)
 	}
+
+	// The knowledge-review family joins the envelope (#2354 third wave).
+	// Each command has one output shape; `mode` names the result type so a
+	// file of unknown provenance can be told apart by machine.
+	reviewPlanEnvelope := run(0, "knowledge-review-plan", "-workspace", reference,
+		"-subject-kind", "semantic-data", "-subject-id", "sales.order")
+	if !reviewPlanEnvelope.OK || reviewPlanEnvelope.Mode != resultModePlan || reviewPlanEnvelope.Result == nil {
+		t.Fatalf("unexpected knowledge-review-plan envelope: %+v", reviewPlanEnvelope)
+	}
+	var planShape knowledgecontext.BuilderReviewPlan
+	if err := reMarshal(reviewPlanEnvelope.Result, &planShape); err != nil {
+		t.Fatalf("knowledge-review-plan result is not a BuilderReviewPlan: %v", err)
+	}
+	if planShape.Subject.Kind != "semantic-data" || planShape.Subject.ID != "sales.order" {
+		t.Fatalf("knowledge-review-plan result lost the subject: %+v", planShape.Subject)
+	}
+
+	handoffEnvelope := run(0, "knowledge-review-handoff", "-workspace", reference,
+		"-subject-kind", "semantic-data", "-subject-id", "sales.order",
+		"-qualification-requirements", qualificationRequirements)
+	if !handoffEnvelope.OK || handoffEnvelope.Mode != resultModeHandoff || handoffEnvelope.Result == nil {
+		t.Fatalf("unexpected knowledge-review-handoff envelope: %+v", handoffEnvelope)
+	}
+	var handoffShape knowledgecontext.BuilderReviewHandoff
+	if err := reMarshal(handoffEnvelope.Result, &handoffShape); err != nil {
+		t.Fatalf("knowledge-review-handoff result is not a BuilderReviewHandoff: %v", err)
+	}
+
+	reviewPlanFingerprint := run(1, "knowledge-review-plan", "-workspace", reference,
+		"-subject-kind", "semantic-data", "-subject-id", "sales.order",
+		"-expected-review-plan-fingerprint", "sha256:00")
+	if reviewPlanFingerprint.OK || reviewPlanFingerprint.Error == nil || reviewPlanFingerprint.Error.Code != resultCodeKnowledgeFailed {
+		t.Fatalf("wrong review-plan fingerprint envelope: %+v", reviewPlanFingerprint)
+	}
+
+	reviewRequirements := run(2, "knowledge-review-handoff", "-workspace", reference,
+		"-subject-kind", "semantic-data", "-subject-id", "sales.order",
+		"-qualification-requirements", filepath.Join(t.TempDir(), "absent.json"))
+	if reviewRequirements.OK || reviewRequirements.Error == nil || reviewRequirements.Error.Code != resultCodeKnowledgeFailed {
+		t.Fatalf("wrong review-handoff requirements envelope: %+v", reviewRequirements)
+	}
+
+	reviewHandoffPath := filepath.Join(t.TempDir(), "handoff.json")
+	handoffBytes, err := json.MarshalIndent(handoffEnvelope.Result, "", "  ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(reviewHandoffPath, handoffBytes, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	discloseEnvelope := run(0, "knowledge-review-disclose", "-workspace", reference,
+		"-subject-kind", "semantic-data", "-subject-id", "sales.order",
+		"-review-handoff", reviewHandoffPath)
+	if !discloseEnvelope.OK || discloseEnvelope.Mode != resultModeDisclosure || discloseEnvelope.Result == nil {
+		t.Fatalf("unexpected knowledge-review-disclose envelope: %+v", discloseEnvelope)
+	}
+	var disclosureShape knowledgecontext.DisclosureProjection
+	if err := reMarshal(discloseEnvelope.Result, &disclosureShape); err != nil {
+		t.Fatalf("knowledge-review-disclose result is not a DisclosureProjection: %v", err)
+	}
+
+	// The candidate review needs a candidate that exists in the current Data
+	// Design Context, so take a real fingerprint from a whole-context run of
+	// the same subject (the reference workspace carries one FD candidate on
+	// sales.order_line).
+	lineContextEnvelope := run(0, "knowledge-context", "-workspace", reference,
+		"-subject-kind", "semantic-data", "-subject-id", "sales.order_line")
+	var lineContextShape struct {
+		DataDesign *struct {
+			FunctionalDependencyCandidates []struct {
+				Fingerprint string `json:"fingerprint"`
+			} `json:"functionalDependencyCandidates"`
+		} `json:"dataDesign"`
+	}
+	if err := reMarshal(lineContextEnvelope.Result, &lineContextShape); err != nil {
+		t.Fatalf("knowledge-context result is not a Context: %v", err)
+	}
+	if lineContextShape.DataDesign == nil || len(lineContextShape.DataDesign.FunctionalDependencyCandidates) == 0 {
+		t.Fatal("reference workspace lost its FD candidate for the candidate review contract test")
+	}
+	candidateReviewEnvelope := run(0, "knowledge-data-design-candidate-review", "-workspace", reference,
+		"-subject-kind", "semantic-data", "-subject-id", "sales.order_line",
+		"-data-design-candidate-kind", "functional-dependency",
+		"-data-design-candidate-fingerprint", lineContextShape.DataDesign.FunctionalDependencyCandidates[0].Fingerprint)
+	if !candidateReviewEnvelope.OK || candidateReviewEnvelope.Mode != resultModeReview || candidateReviewEnvelope.Result == nil {
+		t.Fatalf("unexpected knowledge-data-design-candidate-review envelope: %+v", candidateReviewEnvelope)
+	}
+
+	absentCandidate := run(2, "knowledge-data-design-candidate-review", "-workspace", reference)
+	if absentCandidate.OK || absentCandidate.Error == nil || absentCandidate.Error.Code != resultCodeInvalidArgument {
+		t.Fatalf("wrong absent candidate envelope: %+v", absentCandidate)
+	}
+
+	reviewFlag := run(2, "knowledge-review-plan", "-no-such-option", "x")
+	if reviewFlag.OK || reviewFlag.Error == nil || reviewFlag.Error.Code != resultCodeInvalidArgument {
+		t.Fatalf("wrong review flag failure envelope: %+v", reviewFlag)
+	}
 }
 
 // reMarshal round-trips the envelope's dynamic result into a concrete shape.

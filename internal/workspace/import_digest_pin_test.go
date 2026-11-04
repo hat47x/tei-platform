@@ -11,7 +11,7 @@ import (
 )
 
 func pinnedImportManifest(digest string) string {
-	return fmt.Sprintf("workspace: consumer\nsources:\n  - semantic\nimports:\n  - alias: os\n    path: ../provider\n    namespace: os\n    semanticDigest: %s\n", digest)
+	return fmt.Sprintf("workspace: consumer\nformatVersion: 1\nsources:\n  - semantic\nimports:\n  - alias: os\n    path: ../provider\n    namespace: os\n    semanticDigest: %s\n", digest)
 }
 
 func TestExternalSemanticImportOptionalDigestPin(t *testing.T) {
@@ -56,7 +56,7 @@ func TestExternalSemanticImportOptionalDigestPin(t *testing.T) {
 	// Explicitly removing the optional assertion allows an ordinary editable
 	// local Workspace dependency. No second registry or lock is consulted.
 	writeExternalFixture(t, filepath.Join(consumer, "tei.workspace.yaml"),
-		"workspace: consumer\nsources:\n  - semantic\nimports:\n  - alias: os\n    path: ../provider\n    namespace: os\n")
+		"workspace: consumer\nformatVersion: 1\nsources:\n  - semantic\nimports:\n  - alias: os\n    path: ../provider\n    namespace: os\n")
 	if _, err := workspace.Load(consumer); err != nil {
 		t.Fatalf("unpinned local development must remain possible: %v", err)
 	}
