@@ -41,14 +41,19 @@ type Qualification struct {
 }
 
 type Acceptance struct {
-	R0                         string   `json:"r0"`
-	R1                         string   `json:"r1"`
-	CandidateFingerprint       string   `json:"candidateFingerprint"`
-	ReviewFingerprint          string   `json:"reviewFingerprint"`
-	ReviewCandidateFingerprint string   `json:"reviewCandidateFingerprint"` // ReviewProjection.candidateFingerprint; identity link, not proof
-	DecisionReceipt            string   `json:"decisionReceipt"`
-	ReloadReceipt              string   `json:"reloadReceipt"`
-	Delta                      []string `json:"delta"`
+	R0                         string `json:"r0"`
+	R1                         string `json:"r1"`
+	CandidateFingerprint       string `json:"candidateFingerprint"`
+	ReviewFingerprint          string `json:"reviewFingerprint"`
+	ReviewCandidateFingerprint string `json:"reviewCandidateFingerprint"` // ReviewProjection.candidateFingerprint; identity link, not proof
+	// AcceptanceKind is the optional kind of the Host Acceptance behind
+	// DecisionReceipt (D9). "provisional" and "unspecified" (a Decision signed
+	// before the marker existed) are never formal human Acceptance, and
+	// always leave the packet INCOMPLETE. Self-declared, like the Provenance.
+	AcceptanceKind  string   `json:"acceptanceKind,omitempty"`
+	DecisionReceipt string   `json:"decisionReceipt"`
+	ReloadReceipt   string   `json:"reloadReceipt"`
+	Delta           []string `json:"delta"`
 }
 
 type Web struct {
@@ -146,6 +151,19 @@ func Audit(p Packet, expectedHead, expectedMain string) Report {
 		// look-alike must not pass as an ordinary Grant. The label stays a
 		// self-declaration of the packet's author.
 		add("E2_HOST_AUTHORITY_PROVENANCE_REQUIRED")
+	}
+	// Any claim (D9): an Acceptance recorded as provisional, or whose kind is
+	// unspecified, is not a formal human Acceptance. Normalized like the
+	// Provenance so formatting or an alias cannot hide it. A packet that omits
+	// the field is unchanged (legacy shape). Any other label, including a
+	// self-declared "formal", is unrecognized: the Store refuses "formal" too and
+	// no path issues a formal Acceptance yet.
+	switch kind := normalizedProvenance(p.Acceptance.AcceptanceKind); {
+	case p.Acceptance.AcceptanceKind == "":
+	case kind == "provisional" || kind == "unspecified":
+		add("PROVISIONAL_ACCEPTANCE_NOT_FORMAL_EVIDENCE")
+	default:
+		add("ACCEPTANCE_KIND_UNRECOGNIZED")
 	}
 	if p.Claim == "E1" || p.Claim == "E2" {
 		if p.Contract.EvidenceClass != "actual-observed" {

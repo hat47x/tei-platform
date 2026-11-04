@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"tei/internal/core"
@@ -232,6 +233,12 @@ func runCombinedWebTargetWithHost(ctx context.Context, reader sourceacceptance.R
 	server := &http.Server{
 		Addr:    *listen,
 		Handler: handler,
+	}
+	if !*diagnostic && acceptedWorkspace.Acceptance.AcceptanceKind != "" {
+		// D9: a provisional (or unmarked) Acceptance is not a formal human
+		// Acceptance. Say so on stderr (the log package's default).
+		log.Printf("SOURCE_ACCEPTANCE_%s: Source accepted under the D9 provisional approval (acceptanceKind=%s), not a formal human Acceptance; not G evidence and not a production deployment basis",
+			strings.ToUpper(acceptedWorkspace.Acceptance.AcceptanceKind), acceptedWorkspace.Acceptance.AcceptanceKind)
 	}
 	// Source verification and every startup gate have passed. Only now say that
 	// the development-only Grant is active (a failed start must not claim it).
