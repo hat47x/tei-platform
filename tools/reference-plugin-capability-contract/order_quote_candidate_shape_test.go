@@ -55,6 +55,18 @@ func loadQuoteOverlaySemantic(t *testing.T) semantic.Namespace {
 
 func loadQuoteOverlaySemanticWithEdit(t *testing.T, edit func([]byte) []byte) semantic.Namespace {
 	t.Helper()
+	loaded := loadQuoteOverlayWorldWithEdit(t, edit)
+	for _, ns := range loaded.World.Semantics {
+		if ns.ID == core.MustCanonicalID("sales") {
+			return ns
+		}
+	}
+	t.Fatal("candidate sales semantic namespace unavailable")
+	return semantic.Namespace{}
+}
+
+func loadQuoteOverlayWorldWithEdit(t *testing.T, edit func([]byte) []byte) workspace.Result {
+	t.Helper()
 	source := "../../reference/workspace"
 	scratch := filepath.Join(t.TempDir(), "workspace")
 	if err := filepath.WalkDir(source, func(path string, entry fs.DirEntry, walkErr error) error {
@@ -101,13 +113,7 @@ func loadQuoteOverlaySemanticWithEdit(t *testing.T, edit func([]byte) []byte) se
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, ns := range loaded.World.Semantics {
-		if ns.ID == core.MustCanonicalID("sales") {
-			return ns
-		}
-	}
-	t.Fatal("candidate sales semantic namespace unavailable")
-	return semantic.Namespace{}
+	return loaded
 }
 
 func TestCandidateQuoteShapesMapToOverlaySemanticWithoutClaimingAuthority(t *testing.T) {

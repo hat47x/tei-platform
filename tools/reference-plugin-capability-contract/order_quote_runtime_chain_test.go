@@ -20,6 +20,7 @@ import (
 	"tei/internal/permission"
 	"tei/internal/plugin"
 	pruntime "tei/internal/plugin/runtime"
+	web "tei/reference/web-composition/go-host"
 )
 
 // This wire DTO is confined to a test of the existing legacy stdio carrier.
@@ -283,6 +284,33 @@ func TestCandidateQuoteShapeConformanceAndRealRuntimeProcessOneInvocation(t *tes
 		shape := readQuoteCandidateShape(t, "result-v0.json")
 		shape.Root.Properties["taxMinor"] = InvocationShapeNode{Kind: "number"}
 		shape.Root.Required = append(shape.Root.Required, "taxMinor")
+		loaded := loadQuoteOverlayWorldWithEdit(t, func(raw []byte) []byte {
+			anchor := "    attribute subtotalMinor type std.integer\n"
+			if strings.Count(string(raw), anchor) != 1 {
+				t.Fatal("semantic anchor not unique")
+			}
+			return []byte(strings.Replace(string(raw), anchor, anchor+"    attribute taxMinor type std.integer\n", 1))
+		})
+		mappingBytes, err := os.ReadFile("../../reference/candidates/order-quote/shape-mapping.json")
+		if err != nil {
+			t.Fatal(err)
+		}
+		var mapping quoteCandidateShapeMapping
+		if err := json.Unmarshal(mappingBytes, &mapping); err != nil {
+			t.Fatal(err)
+		}
+		semanticFound := false
+		for _, ns := range loaded.World.Semantics {
+			for _, data := range ns.Data {
+				for _, attr := range data.Attributes {
+					semanticFound = semanticFound || (attr.ID == "sales.quote_result.tax_minor" && attr.TypeRef == "std.integer")
+				}
+			}
+		}
+		if !semanticFound {
+			t.Fatal("changed semantic attribute absent")
+		}
+		authorize, editor, viewer := changedQuoteAuthorizer(t, loaded.World)
 		contract.ResultShapeFingerprint = invocationShapeFingerprint(shape)
 		provider.ContractFingerprint = fingerprint(contract)
 		provider.ArtifactDigest = changedDigest
@@ -303,19 +331,41 @@ func TestCandidateQuoteShapeConformanceAndRealRuntimeProcessOneInvocation(t *tes
 		changedInput := input
 		changedInput.Contracts = []Contract{contract}
 		changedInput.Providers = []Provider{provider}
+		// Explicit test-only gate: the Reference authorizer does not perform
+		// semantic-to-wire mapping or prove business acceptance by itself.
+		invoke := func(principal web.Principal) (InvocationExecution, error) {
+			if mapping.FieldMappings["sales.quote_result.tax_minor"] != "taxMinor" || shape.Root.Properties["taxMinor"].Kind != "number" {
+				return InvocationExecution{}, errors.New("unresolved test-only semantic mapping")
+			}
+			allowed, err := authorize(ctx, principal, "order_entry.preview_order_quote")
+			if err != nil {
+				return InvocationExecution{}, err
+			}
+			if !allowed {
+				return InvocationExecution{}, errors.New("candidate action denied")
+			}
+			return registry.ResolveAndInvoke(ctx, changedInput, payload)
+		}
 		before := launcher.calls
-		if _, err := registry.ResolveAndInvoke(ctx, changedInput, payload); err == nil || launcher.calls != before {
+		if _, err := invoke(editor); err == nil || !strings.Contains(err.Error(), "mapping") || launcher.calls != before {
+			t.Fatalf("unmapped semantic change reached process: %v", err)
+		}
+		mapping.FieldMappings["sales.quote_result.tax_minor"] = "taxMinor"
+		if _, err := invoke(viewer); err == nil || !strings.Contains(err.Error(), "denied") || launcher.calls != before {
+			t.Fatalf("unapproved viewer reached process: %v", err)
+		}
+		if _, err := invoke(editor); err == nil || launcher.calls != before {
 			t.Fatalf("old evidence permitted changed provider/contract: %v", err)
 		}
 		changedInput.Evidence = []ConformanceEvidence{evidenceFor(provider, contract, "synthetic-changed-only")}
-		got, err := registry.ResolveAndInvoke(ctx, changedInput, payload)
+		got, err := invoke(editor)
 		if err != nil || launcher.calls != before+1 || !strings.Contains(string(got.ResultPayload), `"taxMinor":0`) {
 			t.Fatalf("changed provider and shape: %+v, %v", got, err)
 		}
 		if err := validateInvocationPayload(shape, got.ResultPayload); err != nil {
 			t.Fatal(err)
 		}
-		t.Log("changed isolated provider, candidate result Shape, contract fingerprint and synthetic evidence passed real Runtime; old provider conformance evidence rejected before launch; tax=0 is a test marker")
+		t.Log("isolated changed semantic, test-only mapping gate, candidate authorizer, synthetic evidence and changed real provider executed in order; missing mapping, denied viewer and old evidence stopped before process; tax=0 is a test marker")
 	})
 	t.Run("isolated result shape change does not inherit old evidence", func(t *testing.T) {
 		// Modify a separate copy, never the unaccepted candidate on disk.
