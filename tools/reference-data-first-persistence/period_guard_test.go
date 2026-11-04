@@ -57,7 +57,6 @@ func TestSubmitWithoutAGuardKeepsThePreflightOnly(t *testing.T) {
 	}
 }
 
-
 // TestGuardedSubmitRechecksFileStateOnEachAttempt connects the same real
 // periodstate.File source to the existing reference executor gate. A period
 // decision from an earlier Action offer cannot be reused at dispatch; refusal
