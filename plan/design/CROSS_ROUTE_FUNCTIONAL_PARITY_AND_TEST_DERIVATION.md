@@ -291,3 +291,63 @@ go run ./cmd/tei scenario run -scenario reference/driver-scenarios/order-entry-p
 - **引き渡す**：#2621 Authoring、#1131 Fixture/Instance、#2514 Oracle/Mutation、#2493 Task Lane、#2515 OS/Egress、#2595 実Source束縛、#2600 選択的再資格化、#2391 UI外部制御、#1163 Actual Evidence、#1174 Provider Effect、#1180 CLI/Web Scenario parity。対象不在・機能未接続・実行未観測は各Ownerの未検証を維持。
 
 **この追補はdocs-onlyであり、既存6 Stepのsourceを静的に確認した結果と、これから実施する試験を区別する。** 実Go/CLIの新規Attempt、Agent生成Case、Web、GUI、独立Oracleの新しい結合試験、外部Host/DBの実効果、Owner受理は今回NOT RUN。
+
+
+## 10. AI Caseの発見・入場・判別力を実証する最小Consumer（2026-11-04）
+
+**位置づけ：P0実装計画の精密化／追加試験 NOT RUN。** 同日に他レーンで開始した[Draft #2813](https://github.com/hat47x/tei-platform/pull/2813)の**test-only実コード**を重複実装せず、[#1180](https://github.com/hat47x/tei-platform/issues/1180)の保存Scenario v0と結ぶ最小Consumerの受入条件を定める。ここで「テストを生成できた」と「不具合を判別できた」と「現在の業務/Target適合を証明した」を分ける。
+
+### 10.1 現在の2つの実在ConsumerとP0差分
+
+| Consumer | 実在する最小足場（Source確認） | 現状のClaim上限 | 次に足すもの |
+| --- | --- | --- | --- |
+| **DSL試験候補** | #2813の \`reference/dsl-language-plugin/ai_pipeline_candidate_test.go\` と \`testdata/ai_pipeline/{baseline,extra_candidate}.json\`。\`*.json\`追加でケースを増やす。9+2候補。Go内に主要4件の固定Anchor | test-onlyの構文、Pin/型/Source byte span、効果付きOperator拒否。最新HEADのGo/CI合格は別Receipt | Oracle出典・Coverage対象・実装差分の検出力を計測。Caseを既存Anchorsで上書きしない |
+| **Driver Scenario** | \`reference/driver-scenarios/order-entry-pattern-smoke.json\`（6 Step）と \`cmd/tei/scenario.go\` の\`verify/generate/run/check\`、Scenario/World/Plugin Lock/Fixture pin | Pattern/Validation/合成Browse/合成Observation/CLI plan。一般のBusiness Command、Web E2E、実DB、実Provider effectではない | AI追加Case候補を現行v0で表現できるか判定し、実行可能なCaseだけを隔離コピーのScenario/Fixtureに採用 |
+
+**同一のTest Subject（SourceのSemantic IDとRevision）を参照しても、DSL候補の構文合格とDriverの業務期待合格は異なるClaim。** 両Consumerを一つのRunnerへ統合しない。追加Caseを「どの対象・Obligation・Expected根拠・実行経路に適用したか」という**薄い機械可読な照合表（Test Case Intake/Qualification view）**で関連付けることから始める。新しい必須production schema/Registryを先に導入せず、既存Issue/fixture/生成Manifestの派生Viewとして試す。
+
+### 10.2 生成AI向けの「情報の入口」と「採点の出口」を非対称にする
+
+- **AIが見てよい入力（許可された範囲）**：Targetの実在能力と未対応点、Source-backedのRule/型/制約/Relation/既存Case、Scenario v0の対応可能なStep/Fixture kind、テスト候補が狙うObligationと現在の未検査状態、Candidateの編集可能path、実行Budget。CLIの\`model catalog\`、\`validate -json\`、Scenario\`verify\`等で実際に得られる項目を利用し、足りない項目は「未取得」とする。現存しない\`tei test generate\`を前提にしない。
+- **AIが書いてよいもの**：独立した新規test-only \`*.json\`候補/隔離Scenarioコピー、その対象/理由/seedを記録したレビュー用メタデータ。既存Accepted Rule/Canonical、旧Regression Expected、固定Anchor、実Secret、Baseline画像は変更不可。候補の意図と生成元が異なる場合は別IDにする。
+- **採点側だけが保持すべきもの**：固定された独立Expected/独立Oracleの導出根拠、判別用Mutant、秘匿Holdout、適用条件と資格判断。公開合成Expectedを教育用に見せることは妨げないが、**独立採点に用いるHoldoutやMutant正答を生成Agentへ逆流させない**。
+- **実証の出口**：\`candidateAdded\`、\`syntaxBound\`、\`executed\`、\`asserted\`、\`independentOracleQualified\`、\`applicableObligationCovered\`、\`targetEffectObserved\`を別列で記録。bool \`verified\`一つ、exit code 0、AIの自己申告、Mutation scoreだけで一括PASSを出さない。
+
+**AIのCase生成の目的関数は総件数ではなく、**「不足Obligationの解消候補」「既知誤実装を独立に見分けた新規性」「再現率・期待値根拠」「CI/実行/レビュー費用」を並べて比較する。まず重複Caseを減らし、既存のAnchor/Negativeを破壊しない。合理的な探索予算上限を超えた場合は未探索数/不明を残す。未知Domainへの追加を禁止する固定上限ではない。
+
+### 10.3 Coverage/Oracle適格性の判定表
+
+| 起きたこと | 合格としてよいClaim | 合格としてはならないClaim |
+| --- | --- | --- |
+| AIが独立JSONを1件追加しGoテストがexit 0 | ケースが検出・実行され、限定された候補Assertionが一致した可能性 | 独立Oracle合格、業務意味、全分母Coverage、実Target |
+| 既知Mutantを新Caseだけが拒否 | そのMutantに対する限定的な判別力（Mutant有効性・差分が検証済みの場合） | 未知の全故障を検出可能、全Domain適合 |
+| CLI Scenarioの6/6 Stepが検証済み | 当該revision・Fixture・合成Stepの結果 | NULL/欠損/decimal・全業務Rule・Web/Auth/Writeの網羅 |
+| 独立Expectedが未取得 | 観測／探索（qualifiedでない） | Correctness PASS |
+| 必要なDataの読取りが\`partial/unavailable/permission-denied\` | 取得済みScope内だけの評価、または判定保留 | 0件/未取得を「対象不存在・全件無違反」とする判定 |
+| Source bytes、Role/Operator/Oracle/Grant/Target版が変更 | 変更箇所の診断と再資格化が必要 | 旧Resultの無条件再利用 |
+| 画像/DOMが一致、業務Effectの独立Readなし | 表示面の限定回帰結果 | Write/Commit/業務完了の保証 |
+
+Source移動・A→B→A・外部Importの途中欠落・0件の否定依存・Datasetの異時点比較は、**Source fingerprint／Meaning revision／Model/Artifact revision／実Provider Snapshot／Oracle provenance／現Grant**のどれが変化したかを区別する。Selectorが生成したCoverage列だけで不存在や権限の根拠を作らない（#2582、#2600、#2515、#2514）。
+
+### 10.4 最小の2系統実証と反証（新P0のDefinition of Done）
+
+**Track A：DSL Candidate Intake（#2813 Owner、#2811はConsumer契約）**
+1. #2813の実HEAD/Go版/実行結果を確認し、11候補の\`*.json\`探索・Case ID重複拒否・固定Anchor維持を実測する。PR説明だけでCI成功としない。
+2. 生成AIまたは別生成器が、専用新規JSONへ**正常と拒否を各1件**追加する。共通Goコードを変更せず本当にテスト対象へ入ることを、subtest/出力で確認する。
+3. 誤った\`expected\`への書換え、同一EvaluatorからのWantコピー、既知誤実装、\`expected\`欠落・重複JSON object keyを**別々の負例**とする。Goの標準JSON decodeだけではキー重複が黙って後勝ちになる場合があるため、現実装の実際の拒否能力を対照測定し、不足なら#2813 Ownerへ修正を委ねる。
+
+**Track B：Driver Scenario Candidate Intake（#1180 Owner）**
+1. 現行v0の6 Step/Fixture/CLI planを基準線とし、生成AIが**別のScenario+Fixture**に1件ずつ正常/Validation拒否候補を追加。元ScenarioのExpectedを編集しない。
+2. \`verify→generate→run→check\`を実行し、Scenario/World/Plugin Lock/Fixture pinとevidenceNatureを別保存。現行v0に表現できないNULL・missing・decimal/State/Writeは\`unsupported\`として列挙し、成功に算入しない。
+3. TargetとなるSemantic Subject/Operationに同じ名前でも別Instance/Scope/Revisionの候補を与え、誤束縛・欠落Step・旧Planの不正再利用を拒否できることを確認。
+
+**共通採点**：上記の結果を同じCase/Subject IDと対象Source/Fixture revisionで照合するが、DSL試験をDriver業務試験の代替にしない。事前に列挙したObligation分母、追加された新Obligation、未評価/不明を分け、少なくとも**「テスト件数は増えたが独立Oracleの検出力は増えない」負例**と**「少数ケースで既知Mutantを新規検出」正例**を1つずつ採る。実Go/CLIのsource＋run receiptが出るまでDoneとしない。
+
+### 10.5 並列化と後続へのゲート
+
+- **Phase 0（いま）**：A/B各Ownerは独立branchでCase候補を追加可能。外部Agentは既存AGENTS/Task Packetのbase SHA・許可path/Tool・budget/egressを厳守。独立ReviewerはSourceとExpectedの共有由来・試験範囲を監査。#2514の独立Oracle・#2493の並列作業規則を参照。#2811は**仕様と証拠の接合**だけを所有する。
+- **Phase 1**：Track A/Bのactual結果から標準データ表現（Test as Data）と、read-only機械可読gap/receiptへの必要最小差分を抽出。Schemaの名称、MCP/Agent Host、Coverage DBは現時点で固定しない。Markdownテスト表は#2621のRole/Source fidelityとの接合検証を経て採用判断。
+- **Phase 2**：共通Driver Scenario v0で表せる対象の増加を確認後に、#1180のCLI/Web emitter・#2391のGUI/Instrumentation・#1163の一改訂Evidenceへ進む。テスト用UI支援をProduction成果物へ残さない。
+- **Phase 3**：Source/Plugin/Oracle/Policy/Fixture/Targetが変わった時の再資格化と、Full vs Selectiveの誤再利用・実待ち時間を#2600/#2018へ引き渡す。EKIをCI/テスト実行の必須Hostとせず、分散管理や期限管理が必要な場合だけ既存委任契約で評価。
+
+**判定状況**：#2813のtest-only 11候補と#1180の実CLI6 StepはSourceを静的に確認。**今回の新增分テスト・独立Oracle判別・Coverage計測・最新exact-head CI、Web/GUI/実Providerは未実行/未確認。** 正式な新schema/テストEngine/Oracle/Host、Ownerの意味受理を宣言しない。
