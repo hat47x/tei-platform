@@ -148,6 +148,8 @@ Database Contractの別ケースでは、現行Referenceの隔離コピーで `s
 
 このContractの限定的な利用先照合では、読み込んだ一時WorkspaceにApplicationのContract利用要求、header-detail Query Binding、development Executor Binding、PostgreSQL SQL realizationが各1件あった。Query単位の3件はDatabase／Contract／Queryの完全一致で照合し、別Contractや別Queryを除外した。版変更時、それら4つのSourceは変更されていない。Query入力名を変更した負例では、既存検証がheader-detail入力とSQL realizationの不一致をともに診断した。これは試験内の明示参照の個別照合であり、比較CLIがContract利用先を網羅的に報告する機能、実SQLやProviderの実行結果、全Release・動的依存の確認ではない。
 
+この観測を基に読み取り専用比較へ `contractCandidates` を追加した。変更したContractの前後の明示参照を4種類だけ、Database・Contractの完全一致で列挙し、Query単位の参照にはQuery名を残す。Contract単位の候補であり同一Contract内の別Queryも保守的に表示する。Release・未走査参照・動的依存・互換性・実行結果は未検証と出力へ明示し、既存の受理判定には接続しない。隔離Referenceで4種類を前後に各1件確認し、別Contract・別Databaseの誤一致と、削除前参照の喪失を合成負例で検査する。
+
 **Build位置の限定対照**：`internal/plugin/build_location_actual_test.go` は実Goコンパイラで同一内容の合成モジュールを二つの異なるディレクトリからBuildする。Go 1.27.3／Linuxでは `-trimpath` 有効時、同一位置の再Buildと移動後の出力バイトが一致し、Source内容を変えた出力と実行結果は変化した。`-trimpath` なしでは同じ内容でも位置によってバイトが異なった。同じSource DigestでLocatorのみ異なるBuildPlan v1のFingerprintは両条件と独立に異なる。Go単体の比較であり、実TEI Builder AdapterがPlanを実行した証拠、他Target・Compilerでの再現性、移動後のBuild省略の安全性を示さない。
 
 既存の `tools/reference-build-execution-binding` はLocatorを取得ヒントとして除く**別のReference限定**の実行Plan投影を持ち、BuildPlan v1や既存LockのFingerprintを変更しない。条件付きの再利用を検討するなら、Builderが位置の非依存性を保証できる範囲と実際の入力・出力を確認し、既存の候補を対照する。今回の実験だけでv1固定範囲やLock照合を変更しない。

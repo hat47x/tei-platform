@@ -339,6 +339,26 @@ func TestReferenceWorkspaceDefinitionAndPluginWorkflow(t *testing.T) {
 	if len(contractReport.SemanticChanges) != 0 || len(contractReport.StrictChanges) != 0 || contractReport.Membership == nil || len(contractReport.Membership.Changes) != 0 || len(contractReport.ChangedCollections) != 1 || contractReport.ChangedCollections[0] != "databases" {
 		t.Fatalf("contract collection change hidden or misclassified: %+v", contractReport)
 	}
+	if len(contractReport.ContractCandidates) != 1 || contractReport.ContractCandidates[0].Database != "sales_core" || contractReport.ContractCandidates[0].Contract != "sales_core.order_line" || contractReport.ContractCandidates[0].Change != "changed" {
+		t.Fatalf("unexpected contract candidates: %+v", contractReport.ContractCandidates)
+	}
+	observed := map[string]int{}
+	for _, consumer := range contractReport.ContractCandidates[0].Consumers {
+		observed[consumer.Snapshot+"/"+consumer.Kind]++
+		if consumer.Kind != "application-contract-requirement" && consumer.Query != "find_by_order" {
+			t.Fatalf("unrelated Query candidate: %+v", consumer)
+		}
+	}
+	for _, snapshot := range []string{"before", "after"} {
+		for _, kind := range []string{"application-contract-requirement", "header-detail-binding", "executor-binding", "sql-realization"} {
+			if observed[snapshot+"/"+kind] != 1 {
+				t.Fatalf("missing or duplicate candidate %s/%s: %+v", snapshot, kind, observed)
+			}
+		}
+	}
+	if len(contractReport.ContractCandidates[0].Consumers) != 8 || !strings.Contains(strings.Join(contractReport.AuthorityLimits, ","), "contract-compatibility-releases-dynamic-and-runtime-effects-unverified") {
+		t.Fatalf("candidate coverage or limits: %+v", contractReport)
+	}
 	contractWorld, err := workspace.Load(after)
 	if err != nil {
 		t.Fatal(err)
@@ -425,12 +445,15 @@ func TestReferenceWorkspaceDefinitionAndPluginWorkflow(t *testing.T) {
 		t.Fatalf("unknown query type must fail: %s", out)
 	}
 	var contractInvalid applicationMembershipComparison
-	if err := json.Unmarshal(run(compare, 1, "compare-application-membership", "-before", before, "-after", after), &contractInvalid); err != nil || contractInvalid.Membership != nil || len(contractInvalid.ChangedCollections) != 0 {
+	if err := json.Unmarshal(run(compare, 1, "compare-application-membership", "-before", before, "-after", after), &contractInvalid); err != nil || contractInvalid.Membership != nil || len(contractInvalid.ChangedCollections) != 0 || len(contractInvalid.ContractCandidates) != 0 {
 		t.Fatalf("invalid contract comparison: %+v, %v", contractInvalid, err)
 	}
 	var contractDiagnostic applicationMembershipComparison
 	if err := json.Unmarshal(run(compare, 1, "compare-application-membership", "-before", before, "-after", after, "-include-unvalidated-candidates"), &contractDiagnostic); err != nil || contractDiagnostic.WorkspaceValidationPassed || len(contractDiagnostic.AfterDiagnostics) == 0 || len(contractDiagnostic.ChangedCollections) != 1 || contractDiagnostic.ChangedCollections[0] != "databases" {
 		t.Fatalf("unvalidated contract comparison: %+v, %v", contractDiagnostic, err)
+	}
+	if len(contractDiagnostic.ContractCandidates) != 1 || contractDiagnostic.ContractCandidates[0].Contract != "sales_core.order_line" || !strings.Contains(strings.Join(contractDiagnostic.AuthorityLimits, ","), "workspace-validation-errors-candidates-unverified") {
+		t.Fatalf("unvalidated contract candidates not explicitly marked: %+v", contractDiagnostic)
 	}
 	t.Log("reference contract minor-version edit: 1 file; exact consumers: 1 Application requirement, 1 header-detail binding, 1 executor binding, 1 SQL realization; their sources unchanged; mismatch and unknown type rejected")
 	actual, err := os.ReadFile(filepath.Join(repositoryRoot(t), "reference", "workspace", filepath.FromSlash(rel)))

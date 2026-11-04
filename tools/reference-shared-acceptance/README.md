@@ -73,6 +73,8 @@ go run ./tools/reference-shared-acceptance decisions -workspace DIR [-out FILE]
 この比較はSemantic差分がある場合、既存の限定的な影響候補と未解決事項も表示します。型変更では、直接の型別名・Attribute・Database Contract Query入力をexact IDで探し、変更・削除前の参照も区別して示します。推移依存、未走査の参照、保存データや移行への影響は未確認で、候補が空でも影響がないとは判断できません。
 
 `changedCollections` はWorld直下のcollectionを粗く比較した名前の一覧です。Database等の変更をSemantic・Applicationの差分が空の場合にも見落としにくくしますが、詳細な差分・依存関係・互換性の分析ではありません。検証エラーで既定の比較が停止した場合や比較に失敗した場合、この一覧から変更なしと判断できません。
+
+`contractCandidates` は変更されたDatabase Contractについて、前後それぞれのApplicationのContract要求、header-detail Binding、Executor Binding、SQL realizationの明示参照を候補として表示します。DatabaseとContractの完全一致で拾い、Queryを持つ候補にはQuery名を添えます。Contract単位の比較なので、変更箇所以外のQueryも同じContractに属せば保守的に表示します。Release、その他の参照、動的依存、実行結果、互換性は未確認であり、候補が空でも影響なしの証明ではありません。無効なWorkspaceでは既定で候補を出さず、明示的な未検証モードでも終了1と診断を維持します。
 - `accept`: CLIからauthoritative sourceを更新する場合は、先に`review`で得た`reviewFingerprint`を`-expected-review-fingerprint`へ必ず渡します。同じ検査とReview Projectionを最初から作り直し、fingerprintが一致して受入検査も通った場合だけsourceを更新します。更新後はtoolを介さない共有loaderで再読込し、Previewが示した差分どおりか・Validationが通るか・派生物を決定論的に再生成できるかを確認します。一つでも満たさなければ元のsourceへ戻します。`-derived-out`にaccepted sourceから再生成したCanonical World JSONを書き出せます。
 - `reject`: authoritative sourceを変更せず、退けたcandidateをcontent-addressed Decisionとして`.tei/decisions/`へ記録します。staleなcandidateも退けられ、基準revisionとcurrent revisionの食い違いをDecisionへ残します。Decision ledgerはmanaged sourceではないためmodel revisionを変えません。Gate B / Gate Cのreference baselineへ記録する場合だけ`-allow-reference-baseline`が必要です。
 - `decisions`: accepted / rejected Decisionの記録を、現在のworkspaceと照合して出力します。workspace全体のrevision、Decisionが書いたsourceの有無・現在性、判断時に使ったEvidenceの現在性を別々に確認します。

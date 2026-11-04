@@ -20,6 +20,7 @@ type applicationMembershipComparison struct {
 	StrictChanges             []changeanalysis.SubjectChange                     `json:"strictChanges"`
 	SemanticChanges           []changeanalysis.SubjectChange                     `json:"semanticChanges"`
 	ChangedCollections        []string                                           `json:"changedCollections"`
+	ContractCandidates        []changeanalysis.ContractChangeCandidate           `json:"contractCandidates"`
 	SemanticImpact            []changeanalysis.ImpactEdge                        `json:"semanticImpact,omitempty"`
 	SemanticImpactUnresolved  []changeanalysis.Unresolved                        `json:"semanticImpactUnresolved,omitempty"`
 	Membership                *changeanalysis.ApplicationMembershipCandidateDiff `json:"membershipCandidates,omitempty"`
@@ -55,7 +56,7 @@ func runApplicationMembershipComparison(args []string, stdout, stderr io.Writer)
 	report := applicationMembershipComparison{
 		Schema: "tei.reference.application-membership-comparison/v0", ComparisonOnly: true,
 		BeforeDiagnostics: validation.Validate(before.World), AfterDiagnostics: validation.Validate(after.World),
-		AuthorityLimits: []string{"not-an-acceptance-preview-or-decision", "non-semantic-and-non-application-collections-not-evaluated", "source-order-and-target-effects-not-evaluated", "dependency-coverage-not-verified", "workspace-snapshots-not-pinned-or-atomic"},
+		AuthorityLimits: []string{"not-an-acceptance-preview-or-decision", "contract-candidates-only-four-declaration-kinds-not-complete", "contract-compatibility-releases-dynamic-and-runtime-effects-unverified", "source-order-and-target-effects-not-evaluated", "dependency-coverage-not-verified", "workspace-snapshots-not-pinned-or-atomic"},
 	}
 	exit := 0
 	report.WorkspaceValidationPassed = !validation.HasErrors(report.BeforeDiagnostics) && !validation.HasErrors(report.AfterDiagnostics)
@@ -81,7 +82,12 @@ func runApplicationMembershipComparison(args []string, stdout, stderr io.Writer)
 			if err != nil {
 				return err
 			}
+			contracts, err := changeanalysis.ContractCandidates(before.World, after.World)
+			if err != nil {
+				return err
+			}
 			report.ChangedCollections = collections
+			report.ContractCandidates = contracts
 			report.SemanticChanges, report.StrictChanges, report.Membership = semantic, strict, &candidate
 			if len(semantic) != 0 {
 				report.SemanticImpact, report.SemanticImpactUnresolved = changeanalysis.ImpactWithBefore(before.World, after.World, semantic)
