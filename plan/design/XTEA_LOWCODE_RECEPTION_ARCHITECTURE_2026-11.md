@@ -4,7 +4,7 @@
 - 日付: 2026-11-01
 - 入力: [X-TEAのローコード機構に関する知識目録](../research/XTEA_LOWCODE_KNOWLEDGE_INVENTORY_2026-11.md)
 - 要件候補: [X-TEA知見の受容要件](../../requirements/XTEA_LOWCODE_RECEPTION_REQUIREMENTS_2026-11.md)
-- 計画: [X-TEA知見の移行計画](../XTEA_LOWCODE_TRANSFER_PLAN_2026-11.md)
+- 計画: [X-TEA知見の移行計画](../workstreams/XTEA_LOWCODE_TRANSFER_PLAN_2026-11.md)
 - 関連: [機能移植対応表](AUTHORING_TOOL_FEATURE_TRANSFER_MAP_2026-10.md)、[生成AIネイティブなローコード開発基盤の製品戦略](GENERATIVE_LOWCODE_PRODUCT_STRATEGY_2026-10.md)、[Application Pattern v1](APPLICATION_PATTERN_V1_DESIGN.md)、[生成器の契約境界](GENERATOR_CONTRACT_BOUNDARIES_DESIGN_2026-10.md)、[Business Effect Lifecycle](BUSINESS_EFFECT_LIFECYCLE_DESIGN_2026-10.md)、ADR-0032、ADR-0033、ADR-0034、[#1127](https://github.com/hat47x/tei-platform/issues/1127)、[#1129](https://github.com/hat47x/tei-platform/issues/1129)、[#1130](https://github.com/hat47x/tei-platform/issues/1130)、[#2016](https://github.com/hat47x/tei-platform/issues/2016)
 
 ## 1. この文書が解く問題
@@ -658,7 +658,7 @@ X-TEAの実装では、税額は税率表の開始日と税区分で選び、正
 6. 標準業務意味（暦・会計期間）の範囲を決める
 ```
 
-各段階の完了条件は、[移行計画](../XTEA_LOWCODE_TRANSFER_PLAN_2026-11.md)に置きます。
+各段階の完了条件は、[移行計画](../workstreams/XTEA_LOWCODE_TRANSFER_PLAN_2026-11.md)に置きます。
 
 ## 8. 「受け止めた」と言える証拠
 
@@ -692,7 +692,7 @@ X-TEAの実装では、税額は税率表の開始日と税区分で選び、正
 
 - [X-TEAのローコード機構に関する知識目録](../research/XTEA_LOWCODE_KNOWLEDGE_INVENTORY_2026-11.md)
 - [X-TEA知見の受容要件](../../requirements/XTEA_LOWCODE_RECEPTION_REQUIREMENTS_2026-11.md)
-- [X-TEA知見の移行計画](../XTEA_LOWCODE_TRANSFER_PLAN_2026-11.md)
+- [X-TEA知見の移行計画](../workstreams/XTEA_LOWCODE_TRANSFER_PLAN_2026-11.md)
 - [機能移植対応表](AUTHORING_TOOL_FEATURE_TRANSFER_MAP_2026-10.md)
 - [Application Pattern v1](APPLICATION_PATTERN_V1_DESIGN.md)
 - [生成器の契約境界](GENERATOR_CONTRACT_BOUNDARIES_DESIGN_2026-10.md)
