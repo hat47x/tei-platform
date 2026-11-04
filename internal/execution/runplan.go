@@ -130,3 +130,25 @@ func PeriodPreconditions(surface operations.OperationSurface, states map[string]
 		return rejection.Detail
 	}
 }
+
+// EffectPreconditions adapts the effect rules to the run plan: a capability with
+// an effect that runs outside the transaction needs an observer, because the
+// invocation result cannot witness that effect. An unattended run stops when the
+// effect cannot be observed.
+func EffectPreconditions(rules []semantic.EffectRule, observer EffectObserver) PreconditionFunc {
+	return func(capabilityID core.CanonicalID) string {
+		for _, rule := range rules {
+			if rule.OnCapability != capabilityID {
+				continue
+			}
+			if rule.Stage != "after-commit" && rule.Stage != "compensation" {
+				continue
+			}
+			if observer == nil {
+				return "the effect " + string(rule.ID) + " runs outside the transaction and cannot be observed"
+			}
+			return ""
+		}
+		return ""
+	}
+}

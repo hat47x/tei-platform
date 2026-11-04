@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"tei/internal/core"
+	"tei/internal/effectlog"
 	"tei/internal/execution"
 	"tei/internal/operations"
 	"tei/internal/runlog"
@@ -281,5 +282,59 @@ func TestPeriodPreconditionsIgnoreCapabilitiesWithoutAPeriod(t *testing.T) {
 	preconditions := execution.PeriodPreconditions(periodSurface(), map[string]operations.PeriodState{"sales.month": operations.PeriodClosed})
 	if reason := preconditions(core.MustCanonicalID("sales.unbound")); reason != "" {
 		t.Fatalf("a capability without a period is not guarded: %q", reason)
+	}
+}
+
+type countingObserver struct{ calls int }
+
+func (o *countingObserver) ObserveEffect(context.Context, effectlog.Record) (bool, string, error) {
+	o.calls++
+	return true, "", nil
+}
+
+func lateEffectRules() []semantic.EffectRule {
+	return []semantic.EffectRule{
+		{ID: "sales.order.stock", OnCapability: "sales.close", Stage: "after-commit", EffectKind: "update", EffectData: "sales.period", ViaCapability: "sales.close"},
+		{ID: "sales.order.audit", OnCapability: "sales.decide", Stage: "in-transaction", EffectKind: "create", EffectData: "sales.period"},
+	}
+}
+
+func TestEffectPreconditionsStopAnUnobservableEffect(t *testing.T) {
+	preconditions := execution.EffectPreconditions(lateEffectRules(), nil)
+	if reason := preconditions(core.MustCanonicalID("sales.close")); reason == "" {
+		t.Fatal("an effect outside the transaction without an observer must block an unattended run")
+	}
+	if reason := preconditions(core.MustCanonicalID("sales.decide")); reason != "" {
+		t.Fatalf("an effect inside the transaction needs no observer: %q", reason)
+	}
+	if reason := preconditions(core.MustCanonicalID("sales.unbound")); reason != "" {
+		t.Fatalf("a capability without effects is not blocked: %q", reason)
+	}
+}
+
+func TestEffectPreconditionsAllowAnObservableEffect(t *testing.T) {
+	preconditions := execution.EffectPreconditions(lateEffectRules(), &countingObserver{})
+	if reason := preconditions(core.MustCanonicalID("sales.close")); reason != "" {
+		t.Fatalf("an observable effect must not block: %q", reason)
+	}
+}
+
+func TestEffectPreconditionsBlockAnUnattendedRun(t *testing.T) {
+	journal := &runJournal{}
+	called := false
+	step := func(_ context.Context, operation core.CanonicalID) execution.StepResult {
+		called = true
+		return execution.StepResult{Operation: string(operation), Status: "resolved"}
+	}
+	plan := semantic.RunPlan{ID: "sales.monthly_close", Operations: []core.CanonicalID{"sales.close"}, Autonomy: "unattended"}
+	_, results, err := execution.RunPlan(context.Background(), plan, []string{"2026-10"}, journal, step, execution.EffectPreconditions(lateEffectRules(), nil))
+	if err != nil {
+		t.Fatalf("run: %v", err)
+	}
+	if called {
+		t.Fatal("an unobservable effect must stop the run before it executes")
+	}
+	if len(results) != 1 || results[0].Status != "blocked" {
+		t.Fatalf("the effect must block the run: %+v", results)
 	}
 }
