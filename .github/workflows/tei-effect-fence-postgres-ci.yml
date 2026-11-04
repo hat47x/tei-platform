@@ -81,13 +81,65 @@ jobs:
           check-latest: false
           cache: false
 
-      - name: PostgreSQLの実依存試験
+      - name: PostgreSQLの実依存試験とSKIP・欠落の検査
         shell: bash
         run: |
           set -euo pipefail
-          go test -race -count=3 ./internal/security/effectcommit/... ./internal/security/legacyauthorization
           go vet ./internal/security/effectcommit/... ./internal/security/legacyauthorization
           test -z "$(gofmt -l internal/security/effectcommit/postgres)"
+          # DSNが空だと実DBの試験はSKIPして緑に見える。ここで空を拒否する。
+          test -n "${TEI_EFFECT_POSTGRES_DSN:-}"
+          log="$RUNNER_TEMP/go-test.log"
+          go test -race -count=3 -v ./internal/security/effectcommit/... ./internal/security/legacyauthorization | tee "$log"
+          # 保証水準の宣言（D10）を支える試験は、名前ごとにPASS行が在ることを要求する。
+          # 件数だけでは、既存の試験が新規・改名後の試験の欠落を覆い隠す。
+          # -count=3 のためPASS行は複数回出るが、1回以上在れば足りる。
+          required=(
+            'TestDeclaredProviderRequiredRunnerAckLossThenReplay'
+            'TestDeclaredProviderRequiredRunnerConcurrentSameOperationCommitsOnce'
+            'TestDeclaredProviderRequiredRunnerConcurrentRevokeIsAllOrNothing'
+            'TestDeclaredProviderRequiredRunnerBlocksOnUncommittedRevocation'
+            'TestDeclaredProviderRequiredRunnerPreCommitFailureLeavesNoReceiptNorOwnerEffect'
+            'TestTrustedOwnerProviderDeclaresProvisionalAtomicWithCommit'
+            'TestOtherPostgresProvidersDeclareNothingAndAreRefused'
+            'TestWrapperDeclarationDoesNotLeakThroughNamedField'
+            'TestEmbeddingWrapperInheritsDeclarationKnownLimitation'
+            'TestPostgresWriterCannotMutateAuthority'
+            'TestPostgresAuthorityLockFunctionMissingFailsClosed'
+            'TestPostgresCommitReplayAndRestartLookup'
+            'TestPostgresRoleRevocationPreventsCommitAndReceipt'
+            'TestPostgresRevocationAfterCommitHidesReceipt'
+            'TestPostgresResourceCASAndReceiptRollback'
+            'TestPostgresSameOperationDifferentRequestIsConflict'
+            'TestPostgresConcurrentRevokeAndCommitLinearize'
+            'TestPostgresSchemaConfigurationRejectsUnsafeNames'
+            'TestPostgresCommitErrorRemainsUncertain'
+            'TestTrustedOwnerRoutineConcurrentSharedInventory'
+            'TestTrustedOwnerRoutineReceiptFailureRollsBackAndMissingRoutineFailsClosed'
+            'TestTrustedOwnerRoutineDistinguishesVersionConflictOwnerDenialAndInvalidInput'
+            'TestTrustedOwnerRoutineDistinguishesVersionConflictOwnerDenialAndInvalidInput/matching-version-stock-shortage'
+            'TestTrustedOwnerRoutineDistinguishesVersionConflictOwnerDenialAndInvalidInput/stale-version-stock-available'
+            'TestTrustedOwnerRoutineDistinguishesVersionConflictOwnerDenialAndInvalidInput/matching-version-invalid-units'
+            'TestTrustedOwnerRoutineDistinguishesVersionConflictOwnerDenialAndInvalidInput/matching-version-stock-available'
+            'TestTrustedOwnerRoutineAckLossReconnectedReplay'
+          )
+          for name in "${required[@]}"; do
+            grep -Eq -- "^[[:space:]]*--- PASS: ${name} \(" "$log" || { echo "required test did not PASS: ${name}" >&2; exit 1; }
+          done
+          # このpackage群にはSKIPが正当な試験が無い（DSN以外のSkip条件は無い）。
+          # SKIPとFAILは、サブ試験（行頭が空白）も含めて一致させる。
+          # 否定した grep（! grep）は set -e では失敗扱いにならず、検査が働かない。
+          # 明示的に if で判定して終了する。
+          if grep -Eq -- '^[[:space:]]*--- SKIP:' "$log"; then
+            echo "unexpected SKIP in the real-PG run:" >&2
+            grep -E -- '^[[:space:]]*--- SKIP:' "$log" >&2
+            exit 1
+          fi
+          if grep -Eq -- '^[[:space:]]*--- FAIL:' "$log"; then
+            echo "unexpected FAIL in the real-PG run:" >&2
+            grep -E -- '^[[:space:]]*--- FAIL:' "$log" >&2
+            exit 1
+          fi
 
       - name: 検証後の変更を拒否
         if: always()
