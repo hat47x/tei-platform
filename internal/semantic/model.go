@@ -191,6 +191,10 @@ type Capability struct {
 	Output   core.CanonicalID `json:"output,omitempty"`
 	Outcomes []Outcome        `json:"outcomes,omitempty"`
 	Effect   *DataEffect      `json:"effect,omitempty"`
+	// EmptyPolicy is the Owner-declared handling of an empty target set for
+	// this business action. Empty means "not declared; use the business-type
+	// default" (see EffectiveEmptyPolicy).
+	EmptyPolicy EmptyPolicy `json:"emptyPolicy,omitempty"`
 }
 
 // EffectRule declares a side effect that runs around a capability, and where it
