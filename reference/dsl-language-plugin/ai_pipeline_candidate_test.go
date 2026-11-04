@@ -9,6 +9,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"tei/internal/scenariotest"
 )
 
 // AI pipeline fixtures are test-only candidate inputs. They do not define a
@@ -60,6 +62,12 @@ func TestAIPipelineCandidateCases(t *testing.T) {
 		data, err := os.ReadFile(path)
 		if err != nil {
 			t.Fatal(err)
+		}
+		// Reuse the existing Driver Scenario JSON gate: decoding alone accepts
+		// duplicate object keys, so an AI-authored candidate could silently
+		// overwrite a source, expected result, or Operator fingerprint.
+		if err := scenariotest.RejectDuplicateJSONMembers(data); err != nil {
+			t.Fatalf("%s: ambiguous JSON fixture: %v", path, err)
 		}
 		var suite aiPipelineFixture
 		decoder := json.NewDecoder(bytes.NewReader(data))
@@ -195,5 +203,14 @@ func checkAIPipelineFailure(t *testing.T, tc aiPipelineCase, err error) {
 	}
 	if tc.Expected.Stage != "lower_error" || !errors.Is(err, target) {
 		t.Fatalf("expected %s at lower stage, got %v", tc.Expected.ErrorCode, err)
+	}
+}
+
+func TestAIPipelineRejectsAmbiguousJSONMembers(t *testing.T) {
+	// Same key twice is not an independent alternate expectation. The
+	// central Scenario scanner must reject it before a normal JSON Decode.
+	candidate := []byte(`{"contracts":{},"cases":[{"id":"x","source":"rows/order |> std.where","source":"rows/other |> std.where"}]}`)
+	if err := scenariotest.RejectDuplicateJSONMembers(candidate); err == nil {
+		t.Fatal("duplicate JSON source member accepted")
 	}
 }
