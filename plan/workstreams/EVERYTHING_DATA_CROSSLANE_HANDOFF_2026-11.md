@@ -1912,3 +1912,80 @@ Security/Privacy/実Host/DB/Ownerレビューは既存#1119 Gateに委譲。専�
 Owner Meaning未受理、必要Readの不完全、Pin不一致、Grant不明、Commit unknown、参照/Producer不在をsuccessへ昇格しない。表示・Preview・保存Intent・実Effectを区別し、用途別に再資格化する。
 
 **実施状態**：本節は既存Draft計画へのdocs-only追補。新しい一気通貫実験、Go生成、実DB、Windows UI、Owner受理、最新CIは本変更ではNOT RUN。既存Gate・責務を置換しない。正式ADR/文法/Plugin ABIも未採用。
+
+
+## 41. AI-first Scenario検証とSource・Build・Job境界の最小接合（2026-11-04、他チャットの最新議論との横断整合、Docs-only）
+
+### 41.1 §40の「P1 V-READ」とAI-first P0の順序を明確化
+
+§40のP1 V-READは**最初の製品横断Evidence受入対象**であり、**テスト基盤の実装着手順序**を意味しない。実装着手の先頭は#2811で定義された「生成AIが小さなテストを検査・追加・隔離実行・比較できる足場」。その足場から最初に生み出す縦断対象がV-READである。ScenarioやAI用JSONを正本ごと統合する新Runner／第二DSLは作らない。
+
+現存する二つの入口を区別する。
+- **Track A / DSL候補**：Draft #2813 は既存Go ReferenceのParsePipelineSyntax→LowerPinnedPipeline→ComposePinnedと JSON candidate 9+2件を使う。Goテストを書き換えず候補ケースを追加できるReferenceであり、独立Oracle・Coverage分母・実製品の権限資格は未成立。新PR HEADのCIとmain統合は別判定。
+- **Track B / Driver Scenario**：実mainに cmd/tei/scenario.go の verify/generate/run/check と internal/scenariotest/scenario.go の tei.driver-scenario/v0 がある。生成CLI planのScenario/World/Plugin Lock/Fixture pinと、既存6-Step例を起点にする。このv0は安全な合成Read/Validation/Observationに限定され、全業務Command/Web/GUI同等性は未証明。旧「Scenario CLIがない」という断定を使わない。
+
+**AI-firstの最短順**：(A0)既存Scenario/Fixture/Operator/Case ID/Targetのinspect → (A1)事前登録のCoverage Obligation・独立Expectedを固定 → (A2)AIがJSONまたは許容v0 Scenarioの追加/変更案を隔離作成 → (A3)既存Validator/ParserでID重複・版・Source・型・未知operationを拒否 → (A4)既存Goテストまたはscenario verify/generate/run/checkを安全なfixtureで実走 → (A5)独立Expected・固定Mutant・反例とCoverageの差を照合 → (A6)Ownerレビュー後にScenario/Fixtureを受理。自動生成や実行成功だけでExpected・Obligation分母・Meaningを更新しない。
+
+### 41.2 AIが増やせるのは「テスト候補」、勝手に変更できないものは独立に固定
+
+| 証拠・入力 | 提案/生成AIの変更許容 | 独立の判定と責務 |
+| --- | --- | --- |
+| Scenario Candidate / JSON Case | 隔離Branchで追加・修正可。ID namespace衝突、未知Field/Operationは禁止 | #2811/#2813/#1180で静的検証、正式受理はReviewer |
+| Coverage Obligationの分母 | AI提案としては可。試行中の再定義不可 | #1180/#2514：既存Canonical/Scopeから先に固定。0件・未探索をcoveredにしない |
+| Expected / Oracle | AI候補は可。Actualのコピーを独立Expectedとしない | #2514：独立計算、既知Mutant、必要時Blind holdoutで判別力を測る |
+| CLI/Web/GUI派生物 | Scenarioから再生成、Target-specific assertionは別 | #1180/#2391：CLI PASSはWebのsession/CSRF/DOM/a11y/screenshot PASSではない |
+| Provider/Hostの権限・Commit | AI生成・探索からGrantを推定しない | #1174/#1119：明示Authority、隔離DB、Effect fence、独立post-image |
+
+**最小反証セット AI-V-01〜08**（新Case IDを正本へ勝手に登録せず既存Ownerへ割付）：
+1. JSON候補の重複ID・未知Stage・不正型で拒否。元の基準ケース削除により偽PASSしない。
+2. ActualとExpectedを同時に変更した自己追認を、固定Baselineと既知Mutantが検出。
+3. 対象0件・partial 0件・未探索を別状態とし、Coverage分母を縮めない。
+4. ScenarioのRevision/Plugin Lock変更後、旧CLI planと旧Web生成物がstale。対応不能Stepをskipしない。
+5. CLIで同じBusiness ResultでもWebの認可/session/表示/視覚回帰はunverifiedのまま。
+6. Source原文のみ変更・Semantic digest不変で、意味の再利用と引用/出典の再資格化を分離。
+7. UIでOfferが表示されてもHost Grantが消失したCommandは送信拒否。Commit unknownを自動再送しない。
+8. 複数Agentが同一Case ID/Expected/Fixtureを競合編集しても、同一Revisionの根拠に自動採用しない。
+
+**受入KPIを混同しない**：候補ケース追加数、構文/限定Assertion合格数、事前固定ObligationのCoverage、既知Mutantの検出数、実Provider/Targetでの独立Observation、生成・実行費用を別列表示。テストの数・合成PASS・複数AIの同意は保証水準にならない。AIの探索権限はread-only/隔離を既定とし、実外部Operation/秘密の自動送出は行わない。新Agent Runtime・test-only controlの本番残留は許容しない。
+
+### 41.3 Source Witness・Disclosure・後着結果との接合
+
+#2743/#2801/#2812を再利用する。#2801の実Go負例（exact-head Repository Health成功）は**同一Semantic Digestでもraw byteが変わり、LocateImportedSourceの後段再Loadは初回Loadの消費byte証拠ではない**ことを示す。#2812では同一Loadのselected parsed Source/Manifestの局所Witnessを内部保持し、原文Readerはprivate、公開Describeはmetadataのみへ縮退する変更がDraft上に存在する。新HEADのCI結果とProvider全入力閉包は別判定。
+
+AI/Scenario/SHO/Studioが実Provider Sourceを扱うとき、**Importされたこと≠原文開示許可**、保存Witness≠現在Read Grant、選択Namespaceのみ≠全依存完全性、後着Response≠現在表示資格を維持する。raw byteをログ/外部AIへ自動露出せず、固定Scenarioには許可済みの合成・匿名Fixtureを使う。Source再読込、A→B→A、未解析Source、Manifest変更、negative dependencyは旧結果を再利用できるかを独立判断する。既存#2600/#2516の再資格化を複製しない。
+
+### 41.4 実装開始からV-READへの橋渡し
+
+- **A0（最優先）**：#2813でJSON候補1正例+1拒否を、実Goのexact-head証拠付きで検証。固定Baselineと既知Mutantを1件ずつ紐付ける。Referenceの局所PASSと製品資格を分ける。
+- **A1**：#1180のv0 Scenarioを複製し、1 Stepを変更して既存4 CLI操作を実走。旧plan pinを拒否し、独立FixtureのActual/Expectedを照合。新CLIサブコマンドは作らない。
+- **A2**：Track A/Bについて共通のCase/Source/Obligation/Oracle根拠/実行Receiptのread-only比較表を作る。JSONとScenarioの第二共通正本を作らず、未対応表現をunmappedとする。
+- **A3**：§40 V-READへ接続。実Providerおよび完全性がなければProvider read qualifiedとは記録しない。Web/GUI visual/screenshotは後続のTarget-specific Gate。
+- **A4**：異質な第二Domain、Build/Job委譲を段階拡張。上記の独立Oracleとcoverageの測定が成立するまでは広域テスト生成を保証としない。
+
+### 41.5 業務Functionと実行・配備の物理構成を分離
+
+Draft #2788と#1130に従い、**業務System/Subsystem/Function ID → 型付きInvocation Binding → Build Unit → Artifact/Deployment Unit → CLI/cron/Web/EKI Entry Point → 現在のHost Grant/Effect**を区別する。Go単一バイナリを既定とし、**一つのBuild UnitならFunction割当設定は不要**。必要になった場合のみread-only Build Preview→Owner明示採用→default/namespace/path/overrideの最小割当を検討する。Function一覧は既存Model/Bindingからの派生Viewであり、手入力で第二正本を作らない。
+
+同一Functionを複数バイナリに含めても業務意味を複製しない。逆にビルドに含まれてもCLI/cron/Webが公開しているとは限らず、公開されても現在のPrincipalが実行できるとは限らない。MB-01〜09を既存#2788へ渡し、Scenarioの対象Operationと物理Entry Pointの版Pin、Goリンク後の実Artifact member、実行前Grant、unknown Effectを別列にする。正式Build割当構文、複数Buildの実運用、性能影響は未採用・NOT RUN。
+
+### 41.6 EKIは必須Hostではなく、情報を欠落させない任意の委譲先
+
+#2787で固定したEKI P0 OpenAPIの静的対照WP-01〜19は同PR fixed-head Node CIで19/19合格。しかしこれは**実Control Plane/Worker・Artifact-body・Host Effectの実証ではない**。現契約ではparametersがWorkerへ伝達されず、effect_modeはnoneのみ、executor.version_constraintはAdmissionで未評価、deadlineは単一、Artifact GETには501がある。複雑なTEI Jobを契約情報を落として委譲しない。
+
+| TEI Jobに必要な条件 | 現EKI P0への委譲判定 |
+| --- | --- |
+| 純粋・副作用なし、固定InputとOutputの意味を損なわない | 実入出力配送・実行体版の確認後に限定試験可。静的shape一致だけでは未資格 |
+| パラメータ・実行体Digest固定・成果物本文の取得が必須 | 現状不完全。黙って既定値に置換／成功扱いしない |
+| DB Effect・冪等性・Commit/復旧の厳密な条件 | effect_mode=noneへ偽装せずnot-representableとして停止 |
+| 最終検証まで含む業務期限・資源/データ所在の指定 | 単一deadlineやresource hintへ情報を落とさず、要件未表現をunresolvedとする |
+| 軽量認知など低レイテンシ・マルチモーダル応答 | 現P0 Task APIの適合は未確認。同期直実行を比較基準にし、通信・配信方式をOwner選定前に固定しない |
+
+EKI側#112/#266/#67/#115へ契約不足を返し、TEI #1130がJob意味と判定、EKIが配置/Lease/Attempt、Host/Providerが業務Commitを所有する。即応処理でEKI呼出しが遅いなら**分散しない**判断も適格な選択肢。将来の高速プロトコル/streaming/マルチモーダルはControlとData transport、deadline/jitter/backpressure/取消/順序/Frame timestamp・型付きPayload・承認済み開示の比較実験から決める。特定Protocol/gRPC/QUIC/WebSocket等を正式採用したとは記録しない。新しいEKI必須Host/TEI専用Scheduler/第二Task Ledgerを作らない。
+
+### 41.7 提出可能な判定と未実施
+
+- **確認済みの既存入口**：mainのScenario CLI/v0 Source、#2813 test-only JSON Draft、#2801 exact-head Go負例、#2787 exact-head静的OpenAPI試験（各Claimに限定）。
+- **計画へ統合**：AI-first A0〜A4、AI-V-01〜08、Source raw Disclosure停止線、Function/Build/Entry分離、EKI lossy delegation停止線。既存各OwnerのIssueやSchemaを複製しない。
+- **未確認/未実施**：#2813新HEAD CI、#2812安全修正後HEAD CI、Track A/Bの同一独立Oracle比較、AI生成の実測Coverage、製品Provider/Web/GUI/SHO、実Multi-build、実EKI Task/Worker/Artifact、低レイテンシ実測、Owner Meaning受理。これらを完了・採用・main統合と記載しない。
+
+**変更の性質**：本§41はDraft #2667の横断計画へのdocs-only追加。#1119 Gate・§40 C0〜C4の証拠閉包、既存各WorkstreamのOwnerと正式Grammar/Protocol採用保留を維持する。
