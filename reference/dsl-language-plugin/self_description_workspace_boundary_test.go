@@ -97,6 +97,22 @@ func TestSelfDescriptionWorkspaceSourceAndRoleBoundary(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read public reference fixture: %v", err)
 	}
+	// A separate read is compared against the Load-time Source Index fingerprint.
+	// Equality here is a bounded witness for this fixture, NOT a guarantee
+	// that multiple Workspace files were read in one atomic transaction.
+	var loadedArtifact *sourceindex.Artifact
+	for i := range index.Artifacts {
+		if index.Artifacts[i].Path == wantPath {
+			loadedArtifact = &index.Artifacts[i]
+			break
+		}
+	}
+	if loadedArtifact == nil {
+		t.Fatalf("Load-time Source Index has no Artifact for %s", wantPath)
+	}
+	if got := sourceindex.Fingerprint(raw); got != loadedArtifact.Fingerprint {
+		t.Fatalf("independent fixture read differs from Load-time indexed bytes: read=%s loaded=%s", got, loadedArtifact.Fingerprint)
+	}
 	text := string(raw)
 	const original = "attribute total type std.money"
 	if strings.Count(text, original) != 1 {
