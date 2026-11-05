@@ -90,6 +90,31 @@ func targetSnapshot(t *testing.T, path string, existing []bindingWire) string {
 
 func runProbe(t *testing.T, args ...string) (int, string, string) {
 	t.Helper()
+	// Tests pin each snapshot explicitly from the current fixture bytes. The
+	// CLI itself never creates or accepts missing pins on behalf of the caller.
+	inputPath, targetPath := "", ""
+	for i := 0; i+1 < len(args); i++ {
+		if args[i] == "-input" {
+			inputPath = args[i+1]
+		}
+		if args[i] == "-target-probe" {
+			targetPath = args[i+1]
+		}
+	}
+	if targetPath != "" {
+		source, err := os.ReadFile(inputPath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		target, err := os.ReadFile(targetPath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		sourceHash, targetHash := sha256.Sum256(source), sha256.Sum256(target)
+		args = append(args,
+			"-expected-source-sha256", hex.EncodeToString(sourceHash[:]),
+			"-expected-target-sha256", hex.EncodeToString(targetHash[:]))
+	}
 	var stdout, stderr bytes.Buffer
 	code := run(args, &stdout, &stderr)
 	return code, stdout.String(), stderr.String()
@@ -145,7 +170,8 @@ func TestHeadlessTargetPreflightAndSnapshotCollision(t *testing.T) {
 	if err := json.Unmarshal([]byte(stdout), &got); err != nil {
 		t.Fatal(err)
 	}
-	if got.Status != "snapshot-preflight-only" || got.Authority != "none" || got.StorageWrite ||
+	if got.Status != "caller-pinned-snapshot-preflight-only" || got.Authority != "none" || got.StorageWrite ||
+		!got.CallerPinsMatched || got.TargetSnapshotSHA256 == "" ||
 		got.NormalizedTargetKey != result.Text || got.TargetNamespace != "example.external-records" ||
 		got.DigestHex != "" {
 		t.Fatalf("unexpected preflight status: %+v", got)
@@ -350,7 +376,8 @@ func TestCommittedHeadlessFixture(t *testing.T) {
 	if err := json.Unmarshal([]byte(stdout), &actual); err != nil {
 		t.Fatal(err)
 	}
-	if actual.Status != "snapshot-preflight-only" || actual.Authority != "none" ||
+	if actual.Status != "caller-pinned-snapshot-preflight-only" || actual.Authority != "none" ||
+		!actual.CallerPinsMatched || actual.TargetSnapshotSHA256 == "" ||
 		actual.StorageWrite || actual.TargetNamespace != "example.records" ||
 		actual.SourceByteCount != len("hello TEI") ||
 		actual.HashIDText != actual.NormalizedTargetKey ||
@@ -384,6 +411,8 @@ func TestRealHeadlessCLIExecutableSmoke(t *testing.T) {
 		"-input", filepath.Join(dir, "input.raw"),
 		"-subject", "example:record-one",
 		"-target-probe", filepath.Join(dir, "decimal24.target-probe.json"),
+		"-expected-source-sha256", "a53b0563c14046eb542a3aa0eeeb7b3d502a935477b474fbe78d81bf33fb93c4",
+		"-expected-target-sha256", "7c920c2b4aa575b1e700d62e991ef3c7d3f4b6b32960d561d95048a1c33b3b72",
 	}
 	cmd := exec.CommandContext(ctx, "go", args...)
 	var stdout, stderr bytes.Buffer
@@ -398,8 +427,66 @@ func TestRealHeadlessCLIExecutableSmoke(t *testing.T) {
 	if err := json.Unmarshal(stdout.Bytes(), &got); err != nil {
 		t.Fatal(err)
 	}
-	if got.Status != "snapshot-preflight-only" || got.StorageWrite || got.Authority != "none" ||
+	if got.Status != "caller-pinned-snapshot-preflight-only" || !got.CallerPinsMatched || got.StorageWrite || got.Authority != "none" ||
 		got.HashIDText == "" || got.HashIDText != got.NormalizedTargetKey {
 		t.Fatalf("unexpected actual CLI output: %+v", got)
+	}
+}
+
+
+func TestHeadlessTargetRequiresCallerPinsAndRejectsStaleBytes(t *testing.T) {
+	s := decimalScheme()
+	schemePath, inputPath, _ := fixture(t, s, []byte("source A"))
+	targetPath := filepath.Join(t.TempDir(), "snapshot.json")
+	targetSnapshot(t, targetPath, nil)
+	args := []string{
+		"-scheme", schemePath, "-input", inputPath, "-subject", "qualified:a",
+		"-target-probe", targetPath,
+	}
+	runWithoutPins := func(args []string) (int, string, string) {
+		var stdout, stderr bytes.Buffer
+		code := run(args, &stdout, &stderr)
+		return code, stdout.String(), stderr.String()
+	}
+	if code, stdout, _ := runWithoutPins(args); code != 2 || stdout != "" {
+		t.Fatal("snapshot preflight without independently supplied pins was accepted")
+	}
+	source := []byte("source A")
+	target, err := os.ReadFile(targetPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sourceHash, targetHash := sha256.Sum256(source), sha256.Sum256(target)
+	pinned := append(append([]string{}, args...),
+		"-expected-source-sha256", hex.EncodeToString(sourceHash[:]),
+		"-expected-target-sha256", hex.EncodeToString(targetHash[:]))
+	if code, stdout, stderr := runWithoutPins(pinned); code != 0 || stdout == "" || stderr != "" {
+		t.Fatalf("matching independent pins were rejected: status=%d stderr=%q", code, stderr)
+	}
+	if err := os.WriteFile(inputPath, []byte("source B"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if code, stdout, stderr := runWithoutPins(pinned); code != 1 || stdout != "" ||
+		!strings.Contains(stderr, "source pin") {
+		t.Fatalf("stale source bytes not rejected: status=%d stdout=%q stderr=%q", code, stdout, stderr)
+	}
+	if err := os.WriteFile(inputPath, source, 0600); err != nil {
+		t.Fatal(err)
+	}
+	doc := targetProbeWire{}
+	if err := json.Unmarshal(target, &doc); err != nil {
+		t.Fatal(err)
+	}
+	doc.Profile.ProfileVersion = "decimal24-v2"
+	changed, err := json.Marshal(doc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(targetPath, changed, 0600); err != nil {
+		t.Fatal(err)
+	}
+	if code, stdout, stderr := runWithoutPins(pinned); code != 1 || stdout != "" ||
+		!strings.Contains(stderr, "target pin") {
+		t.Fatalf("stale target bytes not rejected: status=%d stdout=%q stderr=%q", code, stdout, stderr)
 	}
 }
