@@ -563,3 +563,63 @@ Everything is Dataが十分に成熟するには、**同じプレーンなデー
 [TAI #271](https://github.com/hat47x/tai-pleroma/issues/271)／[Draft #270](https://github.com/hat47x/tai-pleroma/pull/270)では、Product間のEvidence変更影響と**現在Consumer／権限の資格**を分ける計画がある。TEIは`Source/Role/Operator Pin／明示Context/Scope/Read witness／Result & Unknown／Claim資格／Provider Route／Consumerへの開示区分`という**実際に確かめた範囲だけ**をProduct Skill・SHO等へ受け渡す。外部Harness/AgentがDSLの`role`や`tool`文字列を見つけても実操作Commandとして採用しない。
 
 TAIのQH-01〜18は公開合成Nodeの有限試験であり、TEI実CLI／外部ネットワーク送出／SHOの保存・配送／Host Grantの実証とは別。TEIのSource/Meaning/Provider・独立OracleはTEIの既存Ownerに残し、TAIに第二のMeaning/Authorityを設けない。現時点で新しいProduct跨ぎの実行試験は**NOT RUN**。
+
+
+## 19. 汎用System Compositionの実選択・配置・利用資格を同一Subjectで照合する（2026-11-06）
+
+> **状態：設計引渡し／採用前の検証条件。** 11/5〜11/6の他レーン（#1016、#2619/#2620/#2622、#1125/#1126、#1130、#1174、#2831、Draft #2885/#2886/#2887、#2889）を接合する。新Core Schema、第二System/Meaning正本、Resolver、TEI専用Host、中央Runner、独立Gateは作らない。#1119のG1/G2/G4と既存H0〜H5、#2586のHJ、#2500のRT、#1180 Scenarioを維持する。
+
+### 19.1 成熟した原則と今回埋める欠落
+
+Everything is Dataの共通Carrierは、Data・Function・Business・Rule・Test等を同じ表現形式で扱うためのものであり、意味Role、Owner、現在Authority、物理配置、実Effectまで一つにするものではない。Script-firstのMarkdown／表／簡潔なDSLは専門家の認知順・Sourceの可読性を優先し、Go固有構文は普段の記述へ露出させない。標準実行形態はGo単一バイナリ、外部Host向け.NET/Java/WASM等は対象別Targetとして別途成立性を測る。
+
+追加の不足は、**一つのSystemとFunctionが、どのPlugin/Providerを実選択し、どのBuild/入口から、何を実際に読んで作用したか**の関係が、別レーンの証拠からまだ一回の試行で説明できないこと。Application Composition Profile（#1016）を構成選択・適合性照合の既存入口として利用し、別のSystem Manifest/Composition Resolverを導入しない。
+
+| 区別すべき単位 | 既存責務と必要Witness | 誤った昇格をしないこと |
+| --- | --- | --- |
+| System / Function / Business | #1125/#1126/#2619のData・Function・Business Role、Source occurrence、Semantic ID、Owner Meaning版 | Function所属≠公開入口。Business DFDのmanual/handoff≠実行Workflow。業務Key≠物理PK |
+| Role / Provider / Application Selection | #2620のRequired Shapeと実Pin、#951 Capability/Provider contract、#1016 Profileの選択結果と必要Contract | Bundle同梱≠実選択。Descriptorのpure/required自己申告≠検査義務やAuthority。候補追加≠黙ったProvider置換 |
+| Data Context / Physical Read | #2506/#2586の明示Relation/Field/Scope/GrainとResult Slice、#2622のProvider Realization、実Readerのrowset/時点/完全性 | Query IDや同じRows≠同じSQL・Provider・Read cohort。0件≠未取得・不存在。partial≠complete |
+| Function / Build / Entrypoint | #1130のFunction→1または必要時N Build・CLI/Web/GUI/Job入口、#1167の実リンク閉包、#1097のArtifactとlogical subject分離 | 起動時のApplication選択≠未使用Runnerの静的除外。Function定義の同一性≠物理Artifactの同一性 |
+| Actual Build / Runtime | #943/#2600/#2831の実compiler/link input・toolchain・Target・Artifact digest、実loaded/called入口 | 宣言Graph/Manifest/digest一致≠実Build input完全・全Self-Build・実Runtime利用 |
+| Invocation / Effect / Consumer | #1130/#1174のRequired/Supplied/Evaluated Guard、現在Grant、OperationID/Attempt/Receipt、#2604/#2516の実Reader member/body・開示 | 起動成功・stdout・ACK・Observer非nil・Manifest Complete≠Commit/Business完了・Consumer受領 |
+
+上表は**単一の新しいUniversal Envelopeを実装する要求ではない**。既存Object/Receipt間の結合可能なKeyと、Claimに必要な観測が現実に存在するかをread-onlyの対応表で示す。Source Revision、World/Model Revision、Meaning Acceptance、Build/Artifact Revision、Invocation/Attempt、Consumer Read Revisionは別identity。必要情報がない場合は当該Claimの資格をunknown/unqualifiedとし、全体を一律不可とする必要も、空集合の自動PASSもない。
+
+### 19.2 Claim相対の必要条件：読み取り、書き込み、生成物を混ぜない
+
+| 主張したい範囲 | 最小のRequired Obligation（既存Owner） | 必須ではないもの／停止理由 |
+| --- | --- | --- |
+| **C-Read**：特定Functionの値・存在の説明 | 実Loaded Source/Role、Mapping/Scope/Grain、Selected Query/Provider、実Readerの値と取得範囲、独立Expected、用途別開示（#2586/#2514/#2516） | read-onlyにDB Commitや全Self-Buildを一律強制しない。否定Claimなら母集団・条件・完全性が不明な時点でunknown |
+| **C-Build**：所定Functionが所定入口に存在 | Accepted/selected Function・Target、Build収録、実コンパイル入力、Artifact digest、実起動/公開入口、試験で実使用したbinary（#1130/#1167/#2600/#2831） | Source定義やruntime flagだけではlink除外／入口実存を証明しない。Plugin CatalogとBundleだけでは実選択不明 |
+| **C-Effect**：特定操作が所定の業務Effectをもたらした | C-Readの必要部分＋Accepted Action、対象ID/version、Current Grant、実Guard必要集合/評価、Provider Commit fence、OperationID/Attempt、Receipt、独立Read（#2500/#2598/#1174/#1163） | ACK消失・partial・旧Grant・Unknown Receiptでは完了主張を停止。同key lookupと新key再適用は別 |
+| **C-Publish**：同一世代の成果物をConsumerが受領 | Source/Generator/実Build/Manifest、必要member集合、公開世代、Readerが消費した全member byte、開示範囲（#2604/#2516） | producer成功やManifest completeのみでは未受領。静的サイト/SHOにDB Txを一律強制しない |
+| **C-Portability**：別Domain・別Targetへの再利用 | 共通構造/Role/Operatorの再利用箇所、Domain固有差、意味と実現の独立Expected・Actual、増えたCore分岐/Adapter/修正費（#2620/#2622/#2018） | 同じJSON形状や画面RowsだけでDomain意味同値／2 Target適合を主張しない |
+
+各Claimに対し、既存#1180/#2514でRequired・Observed・Unknown/Not-run・Independent Expected・Known Mutant・Claim ceilingを記録する。候補AI/Role/Plugin自身がRequired集合を空にしただけで検査義務を免除しない。非適用は理由付きnot-applicableとし、別Revision/Runで成立した局所PASSを同一AttemptのEvidenceへ合算しない。別レーンでの局所実証はそのまま価値を残す。
+
+### 19.3 一番短い接合手順（新Runnerと重複Fixtureを作らない）
+
+1. **P0：mainとDraftのSource/実装棚卸し。** #1016/Profile、#2620 Role、#2622 Query、#1130 Build/入口、#2586 HJの現実のproducer/consumerフィールドを一つのFunctionへ対照。対象は既存order_entryの一Function。merged #2882のWorkspace→RunPlan期間/Effect前提は局所Go synthetic実証、merged #2853/#2854/#2870のPG/CAS・Unknown・ABAは別経路の実PG局所実証と表示し、E2Eに加算しない。Draft #2885/#2886/#2887と#2889は対象HEAD・試験・未実証をそれぞれ独立確認する。
+2. **P1：read-only一往復を#2586 HJのOwnerで実行。** 実Source/Role/Function→Context Mapping→Query/Provider Selection→実CLI argv/binary→実Reader body/scope→独立Expectedを同Revision/Claimで追う。Roleが実Interpreterへ接続されていない等、最初の断線位置を欠落として記録。#1016は実選択、#1130はBuild/入口への対応情報を渡すだけとする。
+3. **P2：Buildの真偽を別Claimで検証。** 同じFunctionのCLI/Web入口と単一Go Binaryでの実収録・不要Application import除外を#1130/#1167で実Compiler/link inputにより観測。必要時だけ1→N Buildへ拡張。#2831の全Self-Build Stage0/1/2は並行P0で検証し、G1/G2の新Hard dependencyにしない。
+4. **P3：書込み一往復は既存#2500 RT→#2598→#1174→#1163へ委譲。** 同一Operation ID、現在Grant、必要/供給/評価済みGuard、実PG Commit/CAS、Receipt/別Connection Read、独立Consumerを固定。ACK lossは同OperationIDでlookupし、新key盲再試行を禁止する。Old/New Client共存と移行Cutoverは#2555/#2887の別資格。
+5. **P4：異質Domainを比較。** まず静的サイト/文書をread-only＋Artifact Publicationの対照として用い、次にGraph/Stream/VR的時系列の意味限界をPressureする。Business TxをすべてのDomainへ強制せず、Source/Role/Lineage/Time/Consumerがどこまで再利用できるか測る。実証前に専用Domain Coreを追加しない。
+
+**反証には既存Scenario/Fixtureを流用**：未使用Provider追加→選択不変の確認とビルドbyte不変を区別（#1016/#1251/#2681）；選択済みRole同version実装改変→Pin失効（#2620）；起動時Application切替でもlinkに未選択Runner残留（#1167）；0件/partial/NOT EXISTSとABA・時点変更（§18/#2582）；Required Guardをcallerが渡さずStep成功、Observer存在だけでEffect完了、先行Step効果後のblock（#1130/#2889）；Artifact世代R1/R2 member混在（#2604）。新しい重複番号付き検収表は作らない。
+
+### 19.4 他レーンからの制約をSystem Compositionへ適用する
+
+- **Data / Function / Business**：#1125/#1126とDraft #2886に沿い、Business手作業・疎結合・DFDと実行可能Workflowを区別。業務Key/Occurrence、物理PK、valid/recorded time、Definition/Instanceは見かけ上同じID/値で潰さない。Data中心の表現とBusinessの意味的完了条件は別。
+- **DB移行**：#2555とDraft #2887のExpand/Backfill/Validate/Cutover/Contractは旧新ClientのRequired Contract、Schema/Provider技術適合、履歴・Key、read/write正本、Effect/Unknown、Owner判断を分離。external-observed履歴はTEIによる適用を意味しない。MIG成功ログ一つで全段階PASSとしない。
+- **Plugin方式**：#1016/#951とDraft #2885では、拡張の必要性（標準Data/静的Libraryで代替できないか）、論理Contract、物理配布（静的合成/動的/外部Process）を直交化。選択済み依存の充足と未使用Bundle/Moduleの非干渉を実Buildと独立Expectedで確認。Data上のPlugin候補はHost Grantを付与しない。
+- **AI・Harness・SHO・EKI**：AIへの送出Context/用途別Disclosure、候補/独立Expected/人の受理、Action実呼出を別に扱う。TEIが利用者へ渡すのは実観測したSource/Role/Scope/Result/Uncertaintyのみ。SHO引用の歴史的版と現在Consumer資格、EKI Task/Lease結果とTEI業務Commitを同一結果へ畳まない。現在のAuthorityはそれぞれ既存Host/Providerに残す。
+- **Studioと変更影響**：標準Data/Meaningの表・図・式・文書投影は#1124/#2497を再利用。Sourceへ安全に逆写像できないAggregate/Graphはread-only diff。#2582 Runtime再評価と#2600 Build再利用を分離し、ABA・negative dependency・selection epochを既存責務で判断する。
+
+### 19.5 最小受入票と採用の停止線
+
+同一Attemptのread-only HJで報告する列は、(a) Source occurrence/revision・実Loaded、(b) Meaning/Role/Required Shape/Pinと受理資格、(c) Function/Context/Scope/Grain、(d) Profile/Provider/Query選択と実Reader、(e) 実Build/Entrypoint/Artifact/argv、(f) Consumer受領bodyとDisclosure、(g) 独立Expected・Actual・未充足Obligation・Claim ceiling。write時だけCurrent Grant/Guard/OperationID/Effect/Receipt/独立Readを追加する。未観測の内部ID/選択理由は想像で補わずunknownとする。秘密のSQL/DSN/件数/Sourceは用途別開示に従う。
+
+**最初の合格条件**は、同じFunction/Source Revision/実Binary/ReaderでC-ReadのRequiredが充足し、NULL/partial/0件/旧入力の少なくとも既存negativeを正しく保留または拒否できること。C-Build、C-Effect、C-Publish、C-Portabilityは独立判定し、C-Readの合格から自動で許可しない。Core特殊分岐数、Adapter/手修正量、未使用実装の混入、誤ったPASS/過剰拒否、独立Mutant検出力、Tool/CI/Token/人手を#2018の比較へ渡す。
+
+**今回の変更が示すのは設計引渡しのみ**。新実Go/PG/異質Domain/GUIの横断試験、Owner Meaning Acceptance、G1/G2/G4の正式判定はNOT RUN/UNQUALIFIEDのまま。#1016 Profile／#2586 HJ／#1119 GateのOwnerと境界を変更せず、production Schema・APIを追加する判断は実装Gapと独立試験の後に委ねる。
