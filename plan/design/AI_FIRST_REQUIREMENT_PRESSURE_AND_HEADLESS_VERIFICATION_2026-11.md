@@ -135,6 +135,70 @@ E1とE2は最小の共通面が成立した時点から重ねて実施できる�
 
 **実証の差分**：[TEI #2509](https://github.com/hat47x/tei-platform/issues/2509)を`CLI単体 / DSH標準Headless / DSH sdk-minimal`の対照入口として維持。Agent Teamsは**任意の別レーン**とし、実験的Pluginが有効でない条件と有効条件を実Profileごとに確認する。合成・非機密Fixtureを用いて`T-01〜T-12`を既存Ownerへ配分し、並列度と独立検証成果の相関を測る。既存契約・受理境界を変えるための結論にはOwnerの判断を要する。
 
+
+## 5.4 AI Proposal入力・受理・実行の接続境界（2026-11-06、設計／新E2E NOT RUN）
+
+### 採用済み契約と今回の追加範囲
+
+[ADR-0022](../adr/0022-ai-proposal-canonical-acceptance-boundary.md)と[#267](https://github.com/hat47x/tei-platform/issues/267)の**Shared Acceptance Boundary**を唯一のauthoritative source変更経路とする。[ADR-0030](../adr/0030-context-scoped-epistemic-knowledge.md)と[#958](https://github.com/hat47x/tei-platform/issues/958)は由来・主張種別・確認履歴・適用文脈・現在性を扱う。[#988](https://github.com/hat47x/tei-platform/issues/988)はLanguage Plugin/Operator/Source span診断、[#2619](https://github.com/hat47x/tei-platform/issues/2619)は標準データと意味Role、[#2622](https://github.com/hat47x/tei-platform/issues/2622)はData Operations/Provider契約を担当。新しいAI Acceptance Engine、Provider直結Tool、Canonical正本、Host、Policy Registryは作らない。
+
+**境界の列**：`Source選択・実消費→用途別Disclosure/外部送信→AI Candidate→決定論的Validation→曖昧・矛盾の保留→Human/Owner Review→Accepted Source更新→reload/Conformance→型付きAction Intent→外部Hostの現在認可→Provider Effect/Receipt→独立read`。Pure read-onlyな説明CandidateはAction以降へ進まない。各列は前列の成功から自動的にPASSにならない。
+
+### 入力/出力の最小参照票（正式Schema・新APIではない）
+
+| 段階 | 同一Attemptへ記録する必要な情報 | 誤って確定してはならないもの |
+| --- | --- | --- |
+| Input selection | task/purpose、principal/consumer、Source ID・Revision・raw digest、Source range/span、外部Reference revision/観測時点、Semantic/Operator Lock、選択・実消費byte | 列挙されたSourceすべてを実際にLoad/Parseしたこと |
+| Context/disclosure | Allowed *proposal/read* capabilities、用途別送出可否、実送信した範囲/byte・診断種別、必要Input Closure（observed/partial/unbound/unknown） | Modelへの入力が「全Source」、またはread-only＝外部送信自由 |
+| AI output | Candidate/Attempt ID、base model revision、typed proposal/diff、各Claimの出典位置・原文Quote/意味対象、前提・unsupported/unknown、参照したSource IDs | 引用位置が存在するだけでその意味が裏付けられたこと |
+| Validator | parse/type/ref、現行Source照合、Lock/Operator契約、Semantic Diff、依存Context/必要根拠、引用妥当性、曖昧・矛盾/不足 | validation合格＝Human/Owner acceptance |
+| Review / Source edit | Review target/actor/decision/authority/scope、expected base revision、採用したPatch、source write receipt、再Load/Conformance | AI生成者＝review actor、過去Reviewの自動継承 |
+| Host / Effect | 実Request/target identity/expected version/current grant、Provider/transaction outcome、operation identity、Receipt、独立read | 候補/保存成功＝現在の実行許可・Commit確定 |
+
+*Allowed capabilities*はAIへ見せる提案・参照対象の上限であり、既存Host/OSの実権限Grantではない。AI入力や引用対象のSourceは**文書の内容**であり、命令・Authorityには昇格しない。Tool resultと外部文書も同様に扱い、秘密のSource path/hash、存在件数、内部エラーや拒否理由も用途相対に公開判定する（#2515/#2516/#1178）。AI用のPrompt・ログ・再生成履歴へ無許可Raw・Credentialを持ち出さない。
+
+### Candidateの生成・適用・再開
+
+- **引用の二重検査**：Source position/Revision/Digestが存在することと、引用文が提案したRule・Relation・条件を支持することを別列で検証。間接引用や外部Referenceのfreshnessも再確認する。Indexだけの観測や`validate ok`（未読込Source、宣言0件の場合を含む）をFull Input Closureとして扱わない（#2822/#2823/#2812）。
+- **Meaningを勝手に補わない**：欠落、NULL、非開示、unknown、partial、conflicting、ambiguousを区別。Ownerの直接入力（要件・決定）は現在文脈の前提として使えるが、貼り付けた外部文書やAI文章の出所をuser確認済みへ変換しない（ADR-0030、#1440）。
+- **レビュー対象を固定**：Candidate semantic identityだけでなく、Base Source Revision、実参照Scope、Review対象と判断時点を記録。Source改版・関係経路変更・Role/Operator/Grant/Disclosure変更・撤回時には当該用途の適用資格を再照合する。SourceのA→B→A、EvidenceのE1→E2→E1でfingerprintが戻っても途中の無変更や旧Review復活を推定しない（#958/#2600）。
+- **再生成・再開時**：Candidate本文が同じでもAttemptは別。過去の拒否/保留をモデルの言換えによって迂回させず、再生成ごとに現在のSource/必要根拠/Allowed capabilityを照合。履歴を復元できなければ`not established`のまま。候補からAccepted Sourceへの反映は#267の書込み・reload検証だけ。
+- **Provider直結を構造的に排除**：AIが出せるのはtyped Action Intent **候補**まで。AIへのread-only Tool公開・Proposal生成から、Provider write/execute/commit、Shell/network egress、Host credentialを獲得する暗黙経路を設けない。実Actionは#2598の対象束縛と#1174/#1129の現在Grant/Effect Fence経由でのみ成立。ネットワーク/OS分離はUI上の宣言ではなく後段の実測対象。
+
+### UIに投影する区別（新Core enumの採用ではない）
+
+| 表示上の状態 | 必ず併記する根拠 | 可能にする操作 |
+| --- | --- | --- |
+| Source一部未取得／引用不明 | 取得したSource、欠落・部分Scope、元Revision | read-only確認・再取得 |
+| Candidate生成／修正候補 | 提案Diff、Source span、生成Attempt、未解決前提 | 比較・再生成・破棄 |
+| 構文検証済み・意味未確定 | passed/failed/unknownの検証対象 | Human/Owner照会、保留 |
+| Review済み・Source未反映 | Review対象、判断主体、base revision | 既存Acceptanceの適用検討 |
+| Source受理・再読込済み | 実Source更新・Reload/Conformanceの別Evidence | 当該意味の利用可否の確認 |
+| 実行未認可／拒否／結果不明 | 現在のGrant/Request/Receipt・非開示範囲 | 安全な再照会、必要時のみ再申請 |
+
+表示上の「verified」「green」「accepted」を単一状態にまとめず、編集成功、受理済み意味、利用資格、実Effectを別の列として示す。UIの実行ボタン活性やHuman reviewer候補の表示をHost Authorityへ昇格しない。
+
+### 最小反証Fixtureと実証順序（AI-01〜12の設計を実Ownerへ接続）
+
+| Case | 固定Source・独立Expectedの対照 | 必ず失敗させる誤昇格／Owner |
+| --- | --- | --- |
+| **AIB-01** | 根拠位置あり・別の意味／Source span不存在 | 位置一致だけで意味受理（#988/#267） |
+| **AIB-02** | rev17 Candidate→rev18 Source／A→B→A | 同Digest/旧baseから現在適用を推定（#267/#958/#2600） |
+| **AIB-03** | 宣言Inputと実parsed input不一致、0件/unknown import | CLI/Source選択成功を全依存Loadと推定（#2812/#2822/#2823） |
+| **AIB-04** | partialまたは非開示の子集合でNOT EXISTS | 取得0件から普遍的不存在を推定（#2622/#2506） |
+| **AIB-05** | 同一Sourceを公開Consumerと内部Reviewerへ投影 | 非公開Field/存在件数/拒否理由の漏えい（#2516/#2515） |
+| **AIB-06** | Source本文/Tool返値に`Providerへ書け`の命令 | 引用本文をsystem命令/実Grantとして扱う（#267/#1174） |
+| **AIB-07** | Allowed proposal/readのみ、AIがwrite Intent要求 | Tool availabilityをwrite Authorityへ昇格（#2619/#2622/#1174） |
+| **AIB-08** | CandidateをReject→同内容を別Attemptで再生成 | 再生成で拒否・検証を回避（#267/#958） |
+| **AIB-09** | Human直接回答と貼付AI原文を対照 | ingestion actorとcontent provenanceを混同（#958/#1440） |
+| **AIB-10** | CandidateとExpectedを同じ生成Ruleで作成、既知Mutant投入 | 自己追認を独立Oracle合格とする（#2514/#1180） |
+| **AIB-11** | Accepted Source/Reload成功後にHost Grant失効 | 受理・保存成功から実行可能と推定（#2598/#1174） |
+| **AIB-12** | Host Commit ACK喪失／二重Retry | unknownを未実行とみなして重複Effect（#1174/#1129） |
+
+**P0**：固定された合成SourceでAIB-01〜09をAI生成なしのCandidate Packetとして作り、既存parse/Validation/Shared Acceptance・Source再読込に実際に接続できる範囲を測定。AIの出力品質とは分ける。**P1**：AIB-10の独立Expectedと既知Mutantで誤PASSを検出（#2514/#1180）。**P2**：別Source版・Principal・開示範囲で二世界の返答/Tool候補/診断/外部送信を実観測（#2515/#2516）。**P3**：AIB-11/12を実Provider/外部Hostの別Attempt・Receipt/独立Readへ接続（#1174）。**P4**：その後で初めて実モデルによるCandidate正確性、誤引用率、必要な保留・拒否率、修正負担・Token/時間を評価する。平均精度値や成功件数を未実行のまま記入しない。
+
+**受入停止条件**：Source/引用/実消費Inputの連鎖が不明、必要根拠未取得、Actor authority未確認、Denied/unknown Effect、外部送信のPolicy/OS実測不足は各必要範囲で`not established`／`denied`とし、未観測のProviderや本番可用性を合格としない。#267はCanonical Source書込み・Owner受理、#988は構文/意味候補、#2619は意味Role/境界、#2622はOperation/Provider、#958はepistemic履歴、#2516は開示、#1180/#2514はScenario/Oracle、#1174は実Effectを所有する。**本節は計画更新のみ、AIB-01〜12の実行・実AI/CLI/OS/外部Host/Owner統合受理はNOT RUN／NOT ACCEPTED**。
+
 ## 6. 採否と現在の限界
 
 - **Owner方針として確認済み**：外部要件の十分な机上評価を基盤実装に先行させること、CUIと標準Pluginを並行開発すること、ヘッドレス実証を基準にGUIを後続実装すること。
