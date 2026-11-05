@@ -146,3 +146,66 @@ Read Cohortは**検収票上の呼称**で、既存のSource/Context/Query/Provi
 
 **次の最小垂直スライス**：同一Query/複合業務KeyのChunk Read→選択Source/Provider/Scope・Snapshotの固定→Checkpoint→独立Target Read→CDC catch-up判定。最初はread-onlyの合成反例で偽PASSを防ぎ、実Provider/実旧Client/同一Attemptへの接合は既存#2555/#2622/#1174/#1163 Ownerが各々立証する。全体の製品Gateや意味承認をこの局所PASSへ格上げしない。
 
+
+
+## 11. 互換性の二次元判定：Application Release × DB State（2026-11-06、他レーン照合による提案）
+
+既存の`application/release.Definition`は個々のApplication Releaseが要求するDB Aliasと`RequiredContracts`を**その版の値としてコピーして保持**する。`database/release.Definition`は`Provides`と`DataReadiness`を保持するが、後者は宣言であって実移行の独立検収ではない。`database/release.StateSnapshot`は`StateFromRelease`と`StateFromObserved`を区別する。外部管理DBの契約状態をread-only投影できても、TEIがMigration履歴を所有・適用したことにはならない。
+
+**Gate検収の二次元評価**は次のとおり。`AppV0`（旧Client）・`AppV1`（新Client）のDB要求を、各時点の`DB State提供契約`・DB Alias/Provider・Read/Writeの実経路と照合する。現行型が契約のRead/Write別提供を直接表現できるとは仮定せず、足りなければ**外部のScenario/観測票に記載**する。新しいDB Release/Contract SSOTは作らない。
+
+| 時点 | AppV0 Read | AppV0 Write | AppV1 Read | AppV1 Write | 判定 |
+| --- | --- | --- | --- | --- | --- |
+| G1 Expand後 | 旧Contract維持 | 旧形式の安全なWrite維持 | 互換範囲で試験 | Owner認可前は原則無効 | 旧Contractが破損ならG2禁止 |
+| G2/G3 並走 | 旧形式と履歴の意味を保持 | Snapshot+CDCに整合する書込み | partial/completeとSnapshot条件を別記録 | Ownerが明示した同期規則が無い限り二重正本不可 | 複数Writerの未解決をG4へ持ち越さない |
+| G4 Cutover | read互換が必要なら期限付きで保持 | Fence/Drain、未知Effectをlookup | 現Ownerと新Contractで独立Read | 現Grant/Owner generation/新DB実EffectとReceiptで確認 | 旧Writeが残る／新Write未確認なら切替のqualified PASS不可 |
+| G5 Contract | 残す互換Contractの存続条件を明示 | 旧Schemaに依存するWriter=0を母集団・観測窓で証明 | 新DB契約と現Scopeで成立 | 新契約でWrite/履歴保存が成立 | 旧Writeを観測できないことを退役証明にしない |
+
+**必須の互換性述語案**：必要とされた各Client/Release/DB Alias/Operation（Read, Write, Batch, Direct SQL）について、(a)その版の要求ContractとDBの提供Contractが適合、(b)実際のRead/Writeが当該Scope/Providerで成立、(c)必要なデータ移送・履歴と同期の現在資格がある、(d)Owner/Grant条件を満たす。いずれかに必要な観測が欠ければ当該操作は`unknown`。Schema/major版が一致するだけで業務同値としない。古いアプリが動いていない時点の実行ログは「旧アプリ可動保証」にはならない。
+
+### 外部管理DBとMigration History
+
+- **TEI-managed DB**：Canonical Migration Definition→Provider Realization→実行履歴・実DB Schema観測は別。SQL実行の成功だけでは提供契約／Data Readinessの現在性を認定しない。
+- **external-observed DB**：`StateSnapshot.Source=observed`、`ObservedAt`、`Provides`を持つが、MigrationをTEIが適用したとは表示しない。外部履歴が取得可能ならFlyway/Liquibase等の**元の履歴・checksum・repair状態・適用時刻・Provider**を来歴付きObservationとして照合する。共通の歴史を書き直さない。履歴不明なら`unknown`、checksumが不一致なら適合確認を止める。
+- DB Schemaの観測とMigration Historyが同じように見えても異なるClaim。外部ツールの`repair`や履歴テーブルへの手動変更をTEIが暗黙実行することは無い。
+- 同じSchemaが出来上がっていても、元データのBackfill・削除履歴・同期漏れ・追加Constraintの検証段階が違う可能性がある。`StateSnapshot`の提供Contractを、実データ・実Consumer/Ownerの合格へ昇格しない。
+
+## 12. Gate Evidence Packet：必要証拠と現在資格（新Core型ではない）
+
+G0〜G5の判定は、既存`releaseplan database-gate`、Scenario/Oracle、Source/Artifact/Execution Receipt等を**参照する検収票**とする。人間に提示する最小の列案は以下。
+
+| 列 | 意味／必須の区別 |
+| --- | --- |
+| `obligation / claim / gate` | Schema一致、Data集合完全性、旧Writer互換、Owner切替、履歴、復旧可能性を**別の主張**として扱う |
+| `required subject set / scope` | DB Alias/Instance、tenant・業務キー集合・有効時点、Client version/periodic Batch母集団、Provider read/write能力 |
+| `source / model / schema / plan revision` | World・Meaning・Actual Schema・SQL Asset/Realization・Migration Plan Digestを別固定 |
+| `observer / method / environment` | 実行者と独立のDB接続、Source/Target Reader、CDC/Outbox、Receipt照会、外部履歴の取得元・資格/権限 |
+| `snapshot / CDC / attempt` | Snapshot時点とPosition・Result Slice completeness、個別EffectのOperation/Attempt ID、Owner/Fence generationを混同しない |
+| `expected / observation` | 事前固定の独立Expectedと観測値。SQL/移行器の出力から期待値を作らない |
+| `state / reason / freshness` | `pass / block / unknown`、不一致/観測欠落/時間失効/Owner保留/Unsupportedを区別 |
+| `owner decision / authority` | 業務意味、例外/データ保持、切替・破壊的操作の承認と、Hostの現在Grantは別 |
+| `remedy / resume boundary` | 修正後に何を再検証し、Checkpointをいつ再使用できるか。実RollbackとGate資格の失効は別 |
+
+**判定規則案**：当該Gateで必要なobligationのすべてが、適切な範囲・現在版・必要な独立性で`pass`、かつOwnerの意思決定とHostの実行権限が別途成立した場合だけ進行候補。明白な不一致は`block`、観測不足・Provider不対応・部分Dataset・不明な正本/CDCなどは`unknown`。未適用のobligationはOwnerが理由と適用範囲を明示して記録した場合のみ`not-applicable`とできる（新enumの採用ではない）。**unknownをPASSとして集計しない**。
+
+全部のGate証拠が物理的に同時刻に採取されることは要求しない。Schema、CDC、Client実行、Owner承認は異なる観測窓で得られるため、**Plan/対象Scope/世代の整合と各証拠の鮮度条件**を照合する。一方、**同一の書込みEffect**についてはOperation/Request hash/Host Grant/Provider/Receipt/別Readを同一論理操作として相関させる。違う実行のPASSを寄せ集めて一つのEffect成功とは主張しない（#1163/#1174）。
+
+### Cutover境界の限定シーケンス（実装ではない）
+
+`Prepare（基線固定）→ Fence旧Writer → Drain/未知Operation照会 → CDC catch-up/独立検証 → Owner承認と新Writer権限の適用 → 新側の実Write/Receipt/別Read → Post-cutover観測`。
+
+旧/新DBをまたぐこの順序を、**分散した単一ACID Transactionだと主張しない**。移管の途中で旧WriterのFence応答が失われた場合、進行を止めて実際のOwner/Grant/旧Write効果を照会する。新Writerが既に有効化された後は「Cutover中止＝自動Rollback」ではなく、実Commitと逆同期の可否を再評価する（#2555/#1174/#2564）。Cutover合格はG5の不可逆なContractを許可するものでもない。
+
+## 13. 追加反例と次の最小実証（MG-20〜23、未実施）
+
+| Case | 故障注入／独立Expected | 停止先・既存Owner |
+| --- | --- | --- |
+| **MG-20 外部履歴差** | external-observed DBが目的Schema/ProvidedContractを返すが、外部Migration履歴のchecksum不一致・未取得。TEI Migrationを実行済み扱いにしない。履歴不一致時block、取得不可で安全性判断が必要ならunknown | #2622（Provider観測）/#1163（Evidence） |
+| **MG-21 新旧Release非対称** | AppV0とAppV1が異なるRequiredContracts。DB Stateは新majorのみ、AppV0 Readが通るがWriteが失敗する。Contract一致表示やDataReadiness宣言だけでG1/G4/G5をPASSにしない | #2555（Client移行）/#2622（Contract） |
+| **MG-22 独立観測欠落** | Runner完了・Target 0件・schema一致、Readerはtenant Aのpartialだけ、tenant B未観測。0件を全件0件にせずG3 unknown、外部の必要対象が欠けていることを報告 | #2506/#2514/#1163 |
+| **MG-23 Fence応答喪失** | G4で旧Writer停止Ackが消失したまま新Writerが有効化される。旧/新両方の別Read、Owner generationと実Effectを照会するまで切戻し/継続を止める。Cutoverを原子的成功と記録しない | #2555/#1174/#2564 |
+
+**P0実証順**：既存の`application.release.Definition`×`database.release.StateSnapshot`でMG-21を**read-onlyに比較**→同じ合成FixtureにMG-22の部分Readerを追加→MG-20の外部履歴・観測のない状態を`unknown`で表現→MG-23のFence/Unknownは既存実PostgreSQL参照経路に接続するまで**未検証**。実SQLや新Providerは追加せず、どのobligationが既存Scenario/Evidenceで記録可能か、まだ存在しない観測を列挙する。
+
+**採用を保留**：正式なMigration Evidence Schema、新しい二者間同期Tx API、外部Migration Historyの正規化型、DB別共通互換性ポリシー、業務Ownerの切替承認を自動化する仕組み。本書は現行コードに存在する契約を**証明可能な範囲で再利用する設計候補**に限る。
+
