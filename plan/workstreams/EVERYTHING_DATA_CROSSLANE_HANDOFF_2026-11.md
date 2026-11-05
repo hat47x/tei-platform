@@ -2468,6 +2468,24 @@ EKI側#112/#266/#67/#115へ契約不足を返し、TEI #1130がJob意味と判�
 **この節の証拠水準**：#2828/#2830固定HEAD CI、TAIの合成CI、#2823実CLI反例を参照し、既存Runbookへ試行の停止・受入条件を接合した**docs-only**。**T0〜T4同一Attemptの実Harness呼出し、今回の実Source Loaded再取得、独立業務Oracle採点、実Egress/Owner正式受理はNOT RUN**。比較実施OwnerはTAI #168/#422、TEI Source/Skillは#2822/#2823/#2605、Oracleは#2514/#2018に残す。
 
 
+
+<!-- 20261105-product-real-source-first-cutover -->
+### 45.4 設計候補から実利用価値へ移す一試行の退出基準（2026-11-05／実証順の再評価）
+
+**優先順位は§45.3のH2/H3四Sessionから変えない。** 他チャットで成熟した[#2605](https://github.com/hat47x/tei-platform/issues/2605)の限定実CLIと[#2863](https://github.com/hat47x/tei-platform/pull/2863)のSkill状態訂正、[#2860](https://github.com/hat47x/tei-platform/pull/2860)の実Workspace→Source Index→Go Parser境界試験、[#2862](https://github.com/hat47x/tei-platform/pull/2862)のDB候補探索を、同一Subjectの異なる**試験資格**として整理する。
+
+| 判断 | 現時点の確かな入口 | P0で確定する必要がある不足 |
+| --- | --- | --- |
+| **製品Source/CLI（必須）** | main [#2607](https://github.com/hat47x/tei-platform/pull/2607)と限定実CLI [#41532988114](https://github.com/hat47x/tei-platform/actions/runs/41532988114)は公開reference/workspaceのsales.order／関係をビルド済みGo CLIで読んだ | 同一AttemptのSourceの**実Parsed/Loaded**、Required Subject・必要なRoot/依存をW0の独立Expectedで確認。validate okとファイル列挙だけでは不可（#2822/23） |
+| **Product Skill／Harness（最初の価値判定）** | #2863は実CLI限定成功と外部Harness未実施の表示を整理し、限定Skill CIは成功 | TAI #168 Runbookに従うH2→H3→H3→H2の**実4独立Session**。H3ではSkill本文・参照ファイルの**実Load**、両条件で実CLI Tool呼出し、Task Oracle/Unknown/費用を別確認 |
+| **Role/自己記述（並行、Hard dependencyにしない）** | #2860の新Goテストは公開Workspaceのsales.order.total・Role文字列・TypeRef・Manifest版とParser版の分離に着手 | 最新HEADのCI PASSを確認し、parsed Role stringとRole Required Shape/Owner Accepted Meaningの間のGapを記録。実Role自己更新の成功とはしない |
+| **Query/DB選択（次の限定read-only）** | #2862はData Context→DB Alias/Instance→Provider→SQL候補の設計とDBX-01〜09を保有 | Source/Roleの入口を保存したまま、初回選択と**固定済み選択の失効**（専用SQL削除・共通SQL無音fallback禁止）を既存Query Resolverのclosed fixtureで検査。二DB実Readは独立P1 |
+| **Studio/Effect（条件付き）** | #1124はUI/Source Revision・現在Disclosure、#2853は別の実PG Command/CASを限定実証 | UI側二重Invoke対策だけをProvider冪等性やACK loss・Grantの証拠にせず、実Consumer/Action/Effectの接続が必要になった時だけ当該OwnerのGateへ |
+
+**P0の退出は一本化**：公開で扱える一つのユーザー定義Subjectについて、実Binary/Source/CLI output/警告の一式と、独立Expectedで採点したH2/H3四Sessionの証拠が揃うか、Source-not-loaded／Skill-not-loaded／unsupported-tool／unknownなどの**具体的な不足を再現**できること。実行していないケースは不合格や成功と断定せずNOT RUN。Skillが有益でなければTool-onlyを維持し、第二Harness/追加Bridgeを要求しない。DB Variant、Role自己移行、Studio WebView、実更新の全件実証はP0退出の条件ではない。
+
+**Scope境界**：同一Subjectは正確な試験比較単位であり、異なるPR・Runner・Targetの成功ログを同一Attemptへ合成しない。受入票の必要列はRequired／Observed／Undischarged／Claim ceilingのみ（§47）。現mainへの製品追加や新Runner、Registry、Host、各機構の強制パイプライン化は行わない。今回の§45.4は**設計・計画追加のみ**。新しい外部Harness実試験、最新#2860 Go/CLI E2E、#2862 SQL選択/実DB移行、Studio実UI、正式Owner受理は**NOT RUN**。
+
 ## 46. 組織Source差分の三次元反例をAI-firstと増分再利用の検収へ接続（2026-11-04、実Go E1／#2600/#2811/#2586横断）
 
 ### 46.1 今回の実証は新しいEngineでなく既存Source/World/Operationを使用
