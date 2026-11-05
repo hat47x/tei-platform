@@ -141,3 +141,24 @@ func TestRenderFunctionDefinitionShowsEffectRules(t *testing.T) {
 		t.Fatalf("content lost the effect rule:\n%s", rendered.Content)
 	}
 }
+func TestRenderFunctionDefinitionShowsRunPlans(t *testing.T) {
+	input := functionDefinitionInput()
+	input.RunPlans = []semantic.RunPlan{{
+		ID:          "sales.monthly_close",
+		Operations:  []core.CanonicalID{"sales.close"},
+		Key:         []core.CanonicalID{"sales.period.month"},
+		Concurrency: "singleton",
+		Resume:      "checkpoint",
+		Outputs:     []core.CanonicalID{"sales.period"},
+		Autonomy:    "unattended",
+	}}
+
+	rendered, err := RenderFunctionDefinition(input)
+	if err != nil {
+		t.Fatalf("render: %v", err)
+	}
+	want := "run-plan sales.monthly_close operations sales.close key sales.period.month concurrency singleton resume checkpoint output sales.period autonomy unattended\n"
+	if !strings.Contains(rendered.Content, want) {
+		t.Fatalf("content lost the run plan:\n%s", rendered.Content)
+	}
+}

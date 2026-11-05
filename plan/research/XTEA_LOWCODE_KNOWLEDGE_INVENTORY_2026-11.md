@@ -6,7 +6,7 @@
 - 目的: TEIがローコード開発基盤として引き継ぐ価値のある機構を、後続の設計・要件・計画から参照できる形で列挙する。
 - 受容先の整理: [X-TEA知見の受容アーキテクチャ](../design/XTEA_LOWCODE_RECEPTION_ARCHITECTURE_2026-11.md)
 - 要件候補: [X-TEA知見の受容要件](../../requirements/XTEA_LOWCODE_RECEPTION_REQUIREMENTS_2026-11.md)
-- 作業計画: [X-TEA知見の移行計画](../XTEA_LOWCODE_TRANSFER_PLAN_2026-11.md)
+- 作業計画: [X-TEA知見の移行計画](../workstreams/XTEA_LOWCODE_TRANSFER_PLAN_2026-11.md)
 
 ## 1. この文書の役割
 

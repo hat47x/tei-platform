@@ -293,3 +293,14 @@ fenceEpoch = 前回 + 1（再開のたびに増える）
 - 一つでも検査があれば、それを全部通ったときだけ実行する。
 
 これで無人実行の前提は、**期間の状態・確定後効果の観測性**の両方を満たすことが条件になりました。
+### 成果物への反映（2026-11-05 追記）
+
+機能定義書に `run-plan` の行を出すようにしました（`internal/artifact/functiondef.go`）。
+
+```
+run-plan sales.monthly_close operations sales.close key sales.period.month concurrency singleton resume checkpoint output sales.period autonomy unattended
+```
+
+- 並びは計画の識別子順。
+- 省略された項目は行に出さない（宣言に無いものを補わない）。
+- 生成規則 `function-definition/v1` の行種別に `run-plan` を追加。

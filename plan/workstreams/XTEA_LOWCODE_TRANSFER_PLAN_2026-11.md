@@ -2,7 +2,7 @@
 
 - 状態: **計画案（未採用）**。作業の順序、成果物、受入、停止条件を整理します。Issueの作業条件や設計判断の採用を、この文書だけで決めません。
 - 日付: 2026-11-01
-- 入力: [X-TEAのローコード機構に関する知識目録](research/XTEA_LOWCODE_KNOWLEDGE_INVENTORY_2026-11.md)、[X-TEA知見の受容アーキテクチャ](design/XTEA_LOWCODE_RECEPTION_ARCHITECTURE_2026-11.md)、[X-TEA知見の受容要件](../requirements/XTEA_LOWCODE_RECEPTION_REQUIREMENTS_2026-11.md)
+- 入力: [X-TEAのローコード機構に関する知識目録](../research/XTEA_LOWCODE_KNOWLEDGE_INVENTORY_2026-11.md)、[X-TEA知見の受容アーキテクチャ](../design/XTEA_LOWCODE_RECEPTION_ARCHITECTURE_2026-11.md)、[X-TEA知見の受容要件](../../requirements/XTEA_LOWCODE_RECEPTION_REQUIREMENTS_2026-11.md)
 - 関連: [#1127](https://github.com/hat47x/tei-platform/issues/1127)、[#1129](https://github.com/hat47x/tei-platform/issues/1129)、[#1130](https://github.com/hat47x/tei-platform/issues/1130)、[#1802](https://github.com/hat47x/tei-platform/issues/1802)、[#1803](https://github.com/hat47x/tei-platform/issues/1803)、[#2016](https://github.com/hat47x/tei-platform/issues/2016)、[#1973](https://github.com/hat47x/tei-platform/issues/1973)
 
 ## 1. 目的
@@ -35,16 +35,16 @@ X-TEAの4アプリケーション（固定したcommit）
 - X-TEAのソースは非公開の複製にあり、公開文書へパス・名称・集計を出しません。根拠は公開upstreamのcommitとファイル位置で示します。
 - 参照モデル・手引書の本文は転載しません。利用条件の確認は[#941](https://github.com/hat47x/tei-platform/issues/941)の担当です。
 - ソースの静的読解を、旧Runtimeの実行観測と呼ばない。実測は[#940](https://github.com/hat47x/tei-platform/issues/940)に譲ります。
-- 意味の受理、要求の採用、権限、ライセンスは、人の判断を待ちます（[ADR-0035](adr/0035-autonomy-levels-and-verification-packets.md)のA4）。
+- 意味の受理、要求の採用、権限、ライセンスは、人の判断を待ちます（[ADR-0035](../adr/0035-autonomy-levels-and-verification-packets.md)のA4）。
 - この計画の文書作業は隔離ブランチで行い、`main`を直接変更しません。実装を伴う作業は、対応Issueの条件に従います。
 
 ## 3. 現在地
 
 | 成果物 | 状態 | 何を決めたか | 何を決めていないか |
 | --- | --- | --- | --- |
-| [知識目録](research/XTEA_LOWCODE_KNOWLEDGE_INVENTORY_2026-11.md) | 105項目 | 機構・効果・破綻・根拠の一覧 | 全分岐、実行時の挙動、参照モデルでの使われ方 |
-| [受容アーキテクチャ](design/XTEA_LOWCODE_RECEPTION_ARCHITECTURE_2026-11.md) | 設計案 | 受容先の層、D1〜D8とD1.1・D1.2・D2.1・D3.1・D6.1の選択肢と推奨、現行実装との差、適合試験案 | D1〜D8の採用、パッケージの採否、フックのDSL |
-| [受容要件](../requirements/XTEA_LOWCODE_RECEPTION_REQUIREMENTS_2026-11.md) | 候補 | 既存RQの具体化（AC-1〜AC-11）、新規候補（RQ-C1〜C3） | 採用の可否、要求本文への反映 |
+| [知識目録](../research/XTEA_LOWCODE_KNOWLEDGE_INVENTORY_2026-11.md) | 105項目 | 機構・効果・破綻・根拠の一覧 | 全分岐、実行時の挙動、参照モデルでの使われ方 |
+| [受容アーキテクチャ](../design/XTEA_LOWCODE_RECEPTION_ARCHITECTURE_2026-11.md) | 設計案 | 受容先の層、D1〜D8とD1.1・D1.2・D2.1・D3.1・D6.1の選択肢と推奨、現行実装との差、適合試験案 | D1〜D8の採用、パッケージの採否、フックのDSL |
+| [受容要件](../../requirements/XTEA_LOWCODE_RECEPTION_REQUIREMENTS_2026-11.md) | 候補 | 既存RQの具体化（AC-1〜AC-11）、新規候補（RQ-C1〜C3） | 採用の可否、要求本文への反映 |
 | 本計画 | 計画案 | 作業パッケージと順序、ゲート、停止条件 | 実施の割当、日程、実装ブランチ |
 | [PoC PR](https://github.com/hat47x/tei-platform/pull/2521) | 実装案（Draft） | `interaction`、表示解決、画面HTML・印刷、Package、Semantic fingerprint、統合試験 | 意味の受理、mainへの統合、Commandの実行境界、集計・改ページ |
 
@@ -108,7 +108,7 @@ X-TEAの4アプリケーション（固定したcommit）
 ### WP4 対話フックの契約PoC
 
 - **目的**: 行レベルの検証・導出・参照入力の補助を、宣言と規則Pluginで表せるか確かめる。
-- **内容**: フックの位相（読取前後、変更前後、削除前後）、範囲（行、レコード、項目）、読み取り、使用能力、生成物、失敗の種類を宣言する。規則Pluginを一つ用意し、未宣言能力の拒否、決定性、失敗の区別を試験する。画面と帳票で同じ結果になることを確認する。`Hook`型は現行コードに無く、`plugin.Capability`は提供元の能力を表す契約であるため、フックの契約にはそのまま使えない。宣言をApplicationの対話契約、実装契約をPluginの別契約に置く案（[受容アーキテクチャのD2.1](design/XTEA_LOWCODE_RECEPTION_ARCHITECTURE_2026-11.md)のC）を第一候補として比較する。
+- **内容**: フックの位相（読取前後、変更前後、削除前後）、範囲（行、レコード、項目）、読み取り、使用能力、生成物、失敗の種類を宣言する。規則Pluginを一つ用意し、未宣言能力の拒否、決定性、失敗の区別を試験する。画面と帳票で同じ結果になることを確認する。`Hook`型は現行コードに無く、`plugin.Capability`は提供元の能力を表す契約であるため、フックの契約にはそのまま使えない。宣言をApplicationの対話契約、実装契約をPluginの別契約に置く案（[受容アーキテクチャのD2.1](../design/XTEA_LOWCODE_RECEPTION_ARCHITECTURE_2026-11.md)のC）を第一候補として比較する。
 - **成果物**: フック契約の案、規則Pluginの参照実装、負例、決定性の記録。
 - **受入**: AC-2、AC-5に対応する確認が取れる。正本に任意コード・SQL・確定がない。
 - **依存**: WP3。
@@ -141,7 +141,7 @@ X-TEAの4アプリケーション（固定したcommit）
 ### WP7 パッケージ化の判断
 
 - **目的**: WP3〜WP6で反復した組合せだけを、Patternパッケージとして切り出す。
-- **内容**: 二つ以上の案件または組合せで同じ構造が繰り返されたかを確認する。繰り返しが確認できた場合だけ、パッケージの契約（構成、必須の対話契約、投影、適合試験、取り外し）を定義する。契約項目と合成規則は[受容アーキテクチャのD1.1](design/XTEA_LOWCODE_RECEPTION_ARCHITECTURE_2026-11.md)を出発点にする。確認できない場合は、5 Kindの組合せのままにする。
+- **内容**: 二つ以上の案件または組合せで同じ構造が繰り返されたかを確認する。繰り返しが確認できた場合だけ、パッケージの契約（構成、必須の対話契約、投影、適合試験、取り外し）を定義する。契約項目と合成規則は[受容アーキテクチャのD1.1](../design/XTEA_LOWCODE_RECEPTION_ARCHITECTURE_2026-11.md)を出発点にする。確認できない場合は、5 Kindの組合せのままにする。
 - **成果物**: パッケージ化の判断記録、または見送りの記録。
 - **受入**: AC-1に対応する確認が取れる。パッケージの追加がCoreの要素種別を要求しない。
 - **依存**: WP3、WP6。
@@ -151,7 +151,7 @@ X-TEAの4アプリケーション（固定したcommit）
 ### WP8 標準業務意味の研究
 
 - **目的**: 暦・会計期間・税・通貨・採番のうち、どれを製品の意味として扱うかを決める材料を作る。
-- **内容**: [受容アーキテクチャのD6.1](design/XTEA_LOWCODE_RECEPTION_ARCHITECTURE_2026-11.md)の推奨に従い、暦と会計期間を意味として試し、営業日・休日・年度・月度・締め・期間の状態を、適用期間と評価時点を持つ宣言として表せるか調べる。税・通貨・採番は、PluginのCapabilityとDataの契約として試す。二つ以上の反復、生成器・帳票からの構造参照、実行先間の一致、業務上の可視性のいずれかを満たした場合だけ、意味へ昇格する。法制度・業種差の調査は、必要最小限に限る。
+- **内容**: [受容アーキテクチャのD6.1](../design/XTEA_LOWCODE_RECEPTION_ARCHITECTURE_2026-11.md)の推奨に従い、暦と会計期間を意味として試し、営業日・休日・年度・月度・締め・期間の状態を、適用期間と評価時点を持つ宣言として表せるか調べる。税・通貨・採番は、PluginのCapabilityとDataの契約として試す。二つ以上の反復、生成器・帳票からの構造参照、実行先間の一致、業務上の可視性のいずれかを満たした場合だけ、意味へ昇格する。法制度・業種差の調査は、必要最小限に限る。
 - **成果物**: 研究記録、意味の候補、提供元の候補、負例、昇格条件の判定記録。
 - **受入**: 適用期間の境界試験ができる。案件固有の規則をCoreの変更なしに差し替えられる。昇格の条件を満たした場合だけ、Coreの意味を追加している。
 - **依存**: WP2のD6の判断。
@@ -287,13 +287,13 @@ WP10 統合と引継ぎ
 
 ## 10. 関連
 
-- [X-TEAのローコード機構に関する知識目録](research/XTEA_LOWCODE_KNOWLEDGE_INVENTORY_2026-11.md)
-- [X-TEA知見の受容アーキテクチャ](design/XTEA_LOWCODE_RECEPTION_ARCHITECTURE_2026-11.md)
-- [X-TEA知見の受容要件](../requirements/XTEA_LOWCODE_RECEPTION_REQUIREMENTS_2026-11.md)
-- [機能移植対応表](design/AUTHORING_TOOL_FEATURE_TRANSFER_MAP_2026-10.md)
-- [生成AIネイティブなローコード開発基盤の製品戦略](design/GENERATIVE_LOWCODE_PRODUCT_STRATEGY_2026-10.md)
-- [開発計画](README.md)
-- [TEI製品要求](../requirements/TEI_PRODUCT_REQUIREMENTS.md)
+- [X-TEAのローコード機構に関する知識目録](../research/XTEA_LOWCODE_KNOWLEDGE_INVENTORY_2026-11.md)
+- [X-TEA知見の受容アーキテクチャ](../design/XTEA_LOWCODE_RECEPTION_ARCHITECTURE_2026-11.md)
+- [X-TEA知見の受容要件](../../requirements/XTEA_LOWCODE_RECEPTION_REQUIREMENTS_2026-11.md)
+- [機能移植対応表](../design/AUTHORING_TOOL_FEATURE_TRANSFER_MAP_2026-10.md)
+- [生成AIネイティブなローコード開発基盤の製品戦略](../design/GENERATIVE_LOWCODE_PRODUCT_STRATEGY_2026-10.md)
+- [開発計画](../README.md)
+- [TEI製品要求](../../requirements/TEI_PRODUCT_REQUIREMENTS.md)
 
 ## 11. 引継ぎの要点
 

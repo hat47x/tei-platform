@@ -3,7 +3,7 @@
 - 状態: **要求候補**。製品要求の正本は[TEI製品要求](TEI_PRODUCT_REQUIREMENTS.md)です。この文書は、X-TEAから回収した知見を受け止めるために、既存要求の受入条件を具体化し、新しい要求の候補を整理するものです。ここに書いた候補は、採用された要求ではありません。
 - 日付: 2026-11-01
 - 入力: [X-TEAのローコード機構に関する知識目録](../plan/research/XTEA_LOWCODE_KNOWLEDGE_INVENTORY_2026-11.md)、[X-TEA知見の受容アーキテクチャ](../plan/design/XTEA_LOWCODE_RECEPTION_ARCHITECTURE_2026-11.md)
-- 計画: [X-TEA知見の移行計画](../plan/XTEA_LOWCODE_TRANSFER_PLAN_2026-11.md)
+- 計画: [X-TEA知見の移行計画](../plan/workstreams/XTEA_LOWCODE_TRANSFER_PLAN_2026-11.md)
 
 ## 1. この文書の役割
 
@@ -122,7 +122,7 @@ RQ-C1とRQ-C2は、既存要求が「何を守るか」を定めているのに�
 1. この文書の候補を、[受容アーキテクチャ](../plan/design/XTEA_LOWCODE_RECEPTION_ARCHITECTURE_2026-11.md)の設計判断と照合する。
 2. `RQ-C1`〜`RQ-C3`の採否と、既存要求へ追加する受入条件（AC-1〜AC-11）の範囲を、人が決める。
 3. 採用する場合は、`TEI_PRODUCT_REQUIREMENTS.md`の該当箇所を変更し、この文書は根拠の記録として残す。要求本文をこの文書へ複製しない。
-4. 受入条件は、[移行計画](../plan/XTEA_LOWCODE_TRANSFER_PLAN_2026-11.md)の作業パッケージと検証へ結び付ける。
+4. 受入条件は、[移行計画](../plan/workstreams/XTEA_LOWCODE_TRANSFER_PLAN_2026-11.md)の作業パッケージと検証へ結び付ける。
 
 ## 6. 関連
 
@@ -130,6 +130,6 @@ RQ-C1とRQ-C2は、既存要求が「何を守るか」を定めているのに�
 - [要求の読み方](README.md)
 - [X-TEAのローコード機構に関する知識目録](../plan/research/XTEA_LOWCODE_KNOWLEDGE_INVENTORY_2026-11.md)
 - [X-TEA知見の受容アーキテクチャ](../plan/design/XTEA_LOWCODE_RECEPTION_ARCHITECTURE_2026-11.md)
-- [X-TEA知見の移行計画](../plan/XTEA_LOWCODE_TRANSFER_PLAN_2026-11.md)
+- [X-TEA知見の移行計画](../plan/workstreams/XTEA_LOWCODE_TRANSFER_PLAN_2026-11.md)
 - [ADR-0035 自律性の段階](../plan/adr/0035-autonomy-levels-and-verification-packets.md)
 
