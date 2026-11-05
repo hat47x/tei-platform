@@ -337,5 +337,21 @@ VS-RMT-01へ追加する場合は#1180既存Scenario runnerと#2514の独立Expe
 ### 12.4 新HEADへ引き継がない証拠と更新状態
 
 - §11を書いたHEAD `43462eecbd015e72004a93c91617849eb5fe9947`の[Repository Health #42107676122](https://github.com/hat47x/tei-platform/actions/runs/42107676122)は**completed/success**。証明対象は当該Docs/SQLite FixtureのRepo Healthだけであり、実Read P0-R1/R2ではない。
-- #2895 `8d3dc2fc`のRepository Health #42109027966は**確認時in_progress**。#2891 `2f677921`のHealth #42107910706は**completed/failure**。#2860のRole/Source反例はDraft内の限定Go、今回のSourceを実ビルドしていない。これらの他HEADの合否を新しいRMT Product Readの実証へ合算しない。
+- **後着CI訂正（2026-11-06）**：#2895 HEAD 8d3dc2fcの[Health #42109027966](https://github.com/hat47x/tei-platform/actions/runs/42109027966)はcompleted/success（独立有限Oracleの限定テストを含む）。#2891旧HEAD 2f677921のHealth失敗に対し、修正HEAD 16b8d554の[Health #42110507652](https://github.com/hat47x/tei-platform/actions/runs/42110507652)はcompleted/success（JSON Fixtureの重複object member拒否の限定実装）。#2860 HEAD f5ec1e8aの[Health #42109350029](https://github.com/hat47x/tei-platform/actions/runs/42109350029)はcompleted/failureで、実ログの原因はreference/dsl-language-plugin/self_description_workspace_boundary_test.goのgofmt drift。go vet・go test ./...・Workspace ValidateはPASS。Role重複をProductで拒否できた証明ではない。これらの他HEAD・別契約の結果をRMT Product Read/業務Owner受理へ加算しない。
 - 本§12は既存一計画Markdownのみの変更。独立Source/Role問題は現mainの実Code-static観測と別Draftの特性試験を引用しているが、**VS-RMT-01 D1〜D4の実Code path観測、実Function Read、Owner Write、正式Windows Driver、業務Owner受理は新たにNOT RUN／UNQUALIFIED**。新Plugin/Role Resolver/Query Engine/Runner/Host/Oracle Authorityの導入、main統合、G1/G2 Gate変更は行わない。
+
+### 12.5 最初の実行票への圧縮：P0-R1を先に成立させる
+
+追加の設計正本ではなく、§11のD1〜D4と§12の三条件を**一つの実検収・一つの欠落辺報告**へ縮める。独立Expectedは#2514/#1180、結合証拠は#1163、Gateは#1119を既存Ownerとする。初回は**単一の受理候補Function／一意のDB Alias／一Provider／Readのみ**とし、DB移行・二Provider・Job/SHO/G4完成を先行依存にしない。
+
+| 着手順 | 完成させる最小実物と負例 | Stop／次の担当 |
+| --- | --- | --- |
+| **1. 実Go入口の確定** | 実Workspace Load byte／Source Index／Function→Context→Query Binding→Provider Readerの実呼出し列と、実SQL/Args・実Read Scopeをコードの**正確な関数名・HEAD**で記録。契約をValidateできることと実Readerを呼べることを区別する | 経路が未接続ならproduct-read-not-connectedを不足の一辺として記録し、#2586/#2506/#2622へ。Fakeや直接SQL ReadをProduct成功にしない |
+| **2. 固定Scenarioの実Read** | Tenant AのOrder1001/Header1＋二明細、別Tenantの同番号と別Orderを独立Expectedに固定。**別Tenant混入**と**部分PageまたはJOIN fanoutのEntity数誤認**の2反例を最低限走らせる。実Rows/PK/Relation occurrence/grain/NULL/snapshot/完全性を確認 | 必須Source/Roleの競合、部分取得、対象SQL/Providerの不一致、非表示Predicateの未検査なら限定Readも未資格。#2586/#2514/#1163へ |
+| **3. RequiredテストとOracle** | 実Case ID・Go exact HEAD・必須TestのDiscovered/Attempted/PASS・負例の実Rejected、独立Expectedの作成根拠を保存。#2895のKey重複有限Oracleと#2891のJSON重複member拒否は**別の局所検査**として再利用し、Business MeaningはOwner判定 | Go test全体緑でも必須Case SKIP/未実行なら未検収。Candidateと同じEvaluatorからExpectedを再計算しない。#2514/#1180/#2835 |
+| **4. 同Sourceから保存前拒否へ** | 上記Readerと同じOwner Subject/Relation Role/対象集合L、未保存Patch（数量0）、同Rule版を二Function入口へ渡す。必要Guardの全件充足、Validation対象＝Request/Provider実Target、Provider Effect 0/新Receipt 0/別Read不変を確認 | 二入口／Actual Providerに接続できないなら実装Gap。実PG CAS/Unknown/Replayの別既存成功を本Caseに合算しない。#1129/#2598/#1174 |
+| **条件付き：DB移行・複数実行先** | 実対象に複数Snapshot/DB Alias/旧新Contractがあるとき**だけ**、DB Instanceと観測世代・Provider・Contractが一意に束縛されたか検査。CompatibilityとMigration Historyの判定は実Read・Current Grantの証拠ではない | main release CheckApplicationは同DB State/ProvidedContractの入力でmap後勝ち、History CompareHistoryはAppliedUnknownを成功扱いし得る。#2897（Draft #2900で修正候補）/#2892/#2555へ。単一DBのP0-R1には無関係なHard dependencyとしない |
+
+**証拠の現況**：#2783 HEAD c3410291の[Repository Health #42110579065](https://github.com/hat47x/tei-platform/actions/runs/42110579065)はcompleted/success。#2895/#2891の修正後CIもそれぞれcompleted/success、#2860はgofmt driftによる全Health失敗。これは各々のSource/テストに限定され、**P0-R1のProduct Go Reader実行・P0-R2保存前拒否・正式Legacy Windows Driver・Owner完了は未実施**。mainの確認時点はaf969b88bb89d8262501086b67c2ba6add16e210。PR #2783は古いbaseから分岐しているため、merge前にはmainとの差分再確認と**更新後HEADのCI**が必要。
+
+**引渡しと停止線**：#2586へ実コード経路と不足1辺、#2514へ独立Expected、#1163へ実Source/Context/Provider/Readerの一試行Packet、#1119へClaim ceilingを返す。欠落証拠は未資格のまま、旧Driver未観測は忠実移植Pだけ保留しTEI適合Aの局所検証を止めない。新Host/Query Engine/RunPlan/Registry/共通受入Schemaは追加しない。
