@@ -2563,3 +2563,35 @@ EKI側#112/#266/#67/#115へ契約不足を返し、TEI #1130がJob意味と判�
 **補助の出口**：TEI #2856のCombinePreconditions合成は渡したCheckを実行するが、§47のRequired集合の充足は保証しない。EKI SuitabilityのNOT_JUSTIFIEDをLocal実行済みにしない。TAI [#434 main統合](https://github.com/hat47x/tai-pleroma/pull/434)の2文書に異種artifactを送る8件の限定試験も、今回のTEI一改訂正式Artifact/Consumer受領や外部Harness実Loaderの証拠ではない。
 
 **この§48の変更水準**：実装PR・PG試験記録・mainコード・EKI現ADRの照合によるdocs-onlyの検収更新。ここで新規にP0/P1の実PG/Web/Host/EKI/Harness試験、Owner業務意味受理、G1/G2正式監査、性能/費用比較は **NOT RUN**。既存Source/RunPlan/Effectcommit/Admission/Consumer/Oracleの各Ownerを維持し、第二Runner・Registry・Hostを導入しない。
+
+<!-- 20261105-db-dialect-role-migration-claim-ceiling -->
+## 48. DB方言・SQL Asset選択と自己記述Role版移行を、同一Functionの証拠閉包で検証する（2026-11-05、設計・未採用）
+
+### 48.1 追加の横断判断：標準化するのは意味と検収、SQL実装ではない
+
+[Data Provider #2622](https://github.com/hat47x/tei-platform/issues/2622)にRDB-01〜08を追加。DomaのDB別SQLファイル（共通とPostgreSQL用の命名区別）およびtwo-way SQL、Spring JDBCのBinding/Error Translationという先行方式から、**TEIは薄いRealization Selectionと実Provider証拠だけを取り込む候補**とした。新しい共通DB Engineや2waySQL必須構文にはしない。
+
+[#2860 §7](https://github.com/hat47x/tei-platform/pull/2860)はRole/Operatorの旧/新版A/B、Format Reader、Meaning比較、Owner受理とCutoverを分離する。同じLogical FunctionのDSL/Roleが新しいInterpreterでも読めたことと、Providerが異なるDBで実SQLを実行して元の業務意味・NULL/Unit/Scope/Current Grantを維持したことは**別資格**である。
+
+**一つのSubject/Functionについて追跡する最小結合**：Accepted Meaning Revision／Role・Operator exact Pin／Function Data Context／実Data Source alias・DB kind・Provider能力／Native SQL asset選択＋原byte／実生成・実行されたSQLとBound Parameters／実Reader Scope/Snapshot／Query Result Grain／（書込みのみ）current Grant/Target/Tx/Receipt／独立ExpectedとConsumer受領。
+
+### 48.2 DXR-01〜06の同一Revision対照票
+
+| ID | 比較する圧力 | 正しいClaim ceiling／既存Owner |
+| --- | --- | --- |
+| **DXR-01 方言選択** | 同じTable Bindingでも二つのSource Alias、同一DB kind／別Dialect、明示Native Assetあり | Table名やCallerからDB名を推定しない。実対象Data SourceのResolved Alias/kind/capabilityと選択Asset digestを帰属。#2622 RDB-01/02 |
+| **DXR-02 Common fallback** | `find-postgres.sql`が無いので共通`find.sql`を選択。ProviderでNULL/ORDER/Paginationの意味差 | 検証済みConformance範囲外ではunsupported。名前のfallback成功を意味互換性PASSへ昇格させない。#2622 RDB-02/03 |
+| **DXR-03 2way SQL** | 開発時の直接実行SQLと、実行時にテンプレートからBound SQLを作った実SQL | SQL Source、Parameter/Identifier制約、実Output/Scopeを分け、SQLツールで開けたことをProvider実行・権限の証拠としない。#2622 RDB-05/#1174 |
+| **DXR-04 Role移行** | Source A→B、Role/Operator同形だが丸め・NULL/Grain・失敗動作変更、またはB→A復帰 | Structure互換とMeaning互換／Owner受理／現在利用資格を分ける。#2860 SDX-19/22、#2620/#2514 |
+| **DXR-05 Source欠落・実消費違い** | Workspace root未読込／Native Asset D1と実Build入力D2／実SQL経路不明 | `validate ok`、hash再一致、Provider内部成功のどれも入力閉包の成立ではない。#2822/#2823/#2595/#2600 |
+| **DXR-06 書込/非同期** | Readは同値でもDB別PATCH/Replace/CASとafter-commit Observerの範囲が異なる | Query Result PASSからCurrent Grant/Commit/Receipt/実Effect観測を推論しない。RunPlanのObserver存在のみでもBusinessVerifiedにしない。#1174/#1130/#2616 ACU-02 |
+
+### 48.3 既存P0の足を引っ張らない、最短の切り出し
+
+1. **P0 read-only：先行する利用価値の証拠を維持**。§47の公開TEI利用者定義1 Subjectについて、実Source Loaded→H2/H3 Skill Tool呼出しと独立Expectedを先に成立させる。DB VariantとRole A/B全互換を初回のHard dependencyにしない。
+2. **P0-DB：既存Resolverを静的／合成で反証**。同一の論理Query Intentに二Data Source Alias、共通SQL/方言SQL、明示Bindingの3素材を置き、Asset選択根拠と実Source byteを照合。適合する既存契約がなければunsupportedと示し、先にDialect Registry/APIを作らない。
+3. **P1-DB：実2DBの同一Meaning比較**。まずread-only同じ独立ExpectedでPostgreSQLと第二RDB（候補SQLite）を比較。NULL/空集合、業務粒度、Rowset/Field Completeness、Version/Query Plan、取得Scope/Current Providerを異なる列で観測。Native SQLの選択が成功しても業務意味の同値を推測しない。
+4. **P1-Role：既存A/B Interpreter受理試験**。#2860のSDX-16/17/19/21を独立Expectedで実Readerに接続する。実Role/Operatorが標準Referenceに未実装なら`NOT RUN: role-reader-unavailable`と表示。A/B Preview成功だけでProvider実用/Artifact Cutover資格を上げない。
+5. **P2 書込とConsumerへ**：必要とされた時だけ#2598のAction Target、#1174の実DB Commit/Receipt、#2516の実受領へ接続。実RDB間TX/認証差やEKI/Jobの実行方式から業務Meaningを変更しない。
+
+**配置とOwner**：SQL/Provider Capability/Realization=#2622/#951/#1121、Role Cutover=#2620/#2860、Source/Build実消費=#2595、同一Revision/部分取得・否定依存=#2586/#2582、独立Expected=#2514/#1180、Effect=#1174、Consumer=#2516。新DB Registry/SQL Parser/Authority/Host/Second Scenario Runnerなし。DXR-01〜06の実Go/実SQL/二DB同一Attempt、正式Role移行、Provider Write/Owner受理は**NOT RUN**。本節は設計・受入票であり、本番仕様の採択ではない。
