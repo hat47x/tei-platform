@@ -597,3 +597,37 @@ Database Contractの別ケースでは、現行Referenceの隔離コピーで `s
 E0：既存#2860のactual Workspace/Source Index／Go Parserを同一Sourceで維持し、RoleとTypeRefの位置をread-onlyで観測。E1：元AuthoringのNo-op維持と、可逆／非可逆の差を同じ独立Expectedで比較。E2：**既存の安全なSource Patch機構が確認できた対象のみ**Preview→適用→独立再Readを一往復させる。不在なら具体的Gap/unsupportedを残し、新Editor/Role Resolver/自動Canonizerを実装しない。E3：Source改版後のMeaning/SHO/Studio/Runtime Consumerの資格を#2497/#2516/#2600へ引き渡す。
 
 **証拠上限**：本節は設計・受入票追補のみ。AP-01〜06、正式Markdown Role Parser、Studio/SHO編集、Product Source Patch、Owner Meaning Acceptance、実DB/Host Action、全セルフビルドは**NOT RUN / NOT PROVEN**。#1119のP0/Gateと#2831のBuild責務を変更しない。
+
+
+<!-- tei-role-candidate-collision-loss-20261106 -->
+## 13. 2026-11-06 Role記述の衝突と候補化による情報落ち（実Go Parser特性＋計画）
+
+### 13.1 新しく確認した具体的なGap
+
+`internal/syntax/parser.go` の `parseSemanticData` では、AttributeのOptionを順番に読み、`role`に遭遇するたびローカル変数 `role` を更新し、最終的に `semantic.Attribute.Role string` へ格納する。従って同一Attributeに `role accounting_amount role audit_amount` を書いたとき、現Parserの**Candidate**は最後の `audit_amount` だけを持ち、先行宣言数／Source位置／衝突診断は `Attribute.Role` に保持されない。
+
+これは特定の現行Go ParserとCandidateの性質であり、正式Role解釈が成立した証拠でも、「最後に書いたRoleを正とする」という採用済み意味規則でもない。将来的に多Roleをサポートする場合も、複数Use-site Roleの明示的なBindingと競合判定が必要であり、Source上の重複を黙って単一Roleへ正規化しない。
+
+反対に `description "role privileged_amount"` は字面に `role` があっても通常の文字列であり、Semantic Roleを発生させない。Markdown引用・SHO説明・AI入力にも同じ非昇格原則を適用する。ただし本GoテストはMarkdown Parserの実証ではない。
+
+### 13.2 実Go限定の対照
+
+`reference/dsl-language-plugin/self_description_workspace_boundary_test.go` に `TestSelfDescriptionRoleLiteralAndDuplicateAreNotAcceptedMeaning` を追加。
+
+1. 引用・説明文字列中の `role privileged_amount` を読み、`Attribute.Description` と `Attribute.Role=""` を独立Expectedで照合。
+2. `role audit_amount` 単独と `role accounting_amount role audit_amount` の**異なるSource bytes**を固定し、Source fingerprintが異なることを観測する。
+3. 現Parserが重複を受け付けた場合、双方のCandidateが同じID/TypeRef/Roleへ投影され、重複宣言の存在をCandidateだけでは復元できないことを観測する。将来Parserが重複を拒否した場合も、この負例テストはその安全な方向を妨げない。
+4. 観測したGo Parserの局所性質を、正式Source-Aware DiagnosticやOwner受理へ拡張して主張しない。
+
+### 13.3 Editor/意味解釈での停止条件
+
+| 状態 | Read/Inspect | Meaning/編集資格 |
+| --- | --- | --- |
+| 単一の明示Roleと確定したSource occurrence | 既存GoのSemantic Candidateとして観測可 | Required Shape/Interpreterが未接続なら未受理。Source Writer資格も別 |
+| 説明・引用中のRole風文字列 | 説明として表示可 | 自動Role適用／Provider/Host操作禁止 |
+| 重複Role記述が原Sourceに存在 | 適切なSource位置付き警告/診断が必要（現Go単独未実証） | `Attribute.Role`だけで「唯一のRole」を確定しない。重複の解決とPreview前の診断までread-only |
+| 同じRole Candidateだが原Source bytesが異なる | 原文・Source fingerprint・revision差を提示 | No-op/書戻し/Review/Build再利用をCandidateの同値から自動推定しない |
+
+**Ownerへの引渡し**：#988は既存Language/Operator/Syntaxの衝突診断・Role適用契約、#2620はEverything is Dataと自己解釈の合格条件、#2621/#2497/#1124はAuthoringの可逆性・編集Preview、#2514は独立Expected/負例、#2600はSource差とMeaning/Build資格の選択的失効を扱う。第二Role Resolver、別AST正本、Markdown-to-Core強制変換は作らない。
+
+**Evidence/停止線**：本節は現Go Source静的照合と追加された限定Go Testに基づく。重複Roleの正式診断、Role Required Shape/契約版、実Interpreter/Owner Meaning Acceptance、Studio/SHOの編集保存、Go Target/DB/Hostは未実証。このテストのCIは**追加後のexact HEAD**で別途確認する。現Parserの上書き挙動を正規仕様・合格とは認定しない。
