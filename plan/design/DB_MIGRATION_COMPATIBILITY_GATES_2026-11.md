@@ -256,3 +256,49 @@ G0〜G5の判定は、既存`releaseplan database-gate`、Scenario/Oracle、Sour
 
 **資格の上限**：本節は独立Expectedと判断の候補。旧#2143/#2147の3 PostgreSQL参照、#2564実PG局所CAS、#2516の人工FixtureをMG-24〜28の実Provider PASSに合算しない。新しい実DB/本番Client/SHO Reader試験・正式Owner受理は**NOT RUN**。
 
+
+
+## 14. 既存実装のP0特性試験と残存する偽PASSの経路（2026-11-06、Source照合・追加テスト・まだGate未合格）
+
+**実装済みの既存構造を再利用し、移行製品Gateとして何が不足しているかを静的コード・狭い特性テストで確定する。** 新しいCompatibility Evaluator、Provider/Host/Migration Engineは追加しない。
+
+### 14.1 現行コードで証明できる範囲
+
+| 既存実装 | 確認した性質 | G0〜G5に残る判定不能 |
+| --- | --- | --- |
+| `internal/application/release/model.go` | `Definition`がDatabase RequirementをRelease版内に固定、`AsApplication()`で既存Compatibilityへ投影 | Active Client/Batch/Direct SQLの**完全な母集団**を列挙できたか、実Clientがその版で稼働したか |
+| `internal/database/release/compatibility.go` | `CheckApplication`はContract有無、Major family一致、宣言済み`DataReadiness`を判断。Major 4≠5 | `DatabaseRequirement.Access`のRead/Write別**実能力・実効果を検査していない**。実Schema Read、RLS、History、Current Grant、Source freshnessも不明 |
+| `internal/database/release/model.go` | DB Release由来とexternal-observed由来を`StateSnapshot.Source`で区別 | `StateFromObserved`の`ObservedAt`が古い／欠ける場合の鮮度判断とDataReadyの独立裏付け。宣言を実データ観測とみなさない |
+| `internal/database/migration/history.go` | `HistorySnapshot`と`CompareHistory`で`applied/pending/failed/diverged/orphan-applied`を出力 | 取得が失敗/部分のHistoryを完全な空集合と区別する必要がある。**現在の`AppliedUnknown`がchecksum一致等で`RepoApplied`へ分類され得る**。現行`CompareHistory`はHistoryのCapturedAt/取得完全性を検証しない |
+| `internal/database/migration/postgres_apply.go` | 適用直前にActual Schemaを観測し、planned SQLとfresh renderingを照合 | SQL実行後の別接続Schema/Data、migration history、Client Read/Write、Owner/Cutover/Receiptを確認しない |
+
+**重要なソース静的負例**：現行`CompareHistory`の分岐は、`AppliedFailed`を特別扱いし、checksum違いを`diverged`とする一方、`AppliedUnknown`を`applied`から明示的に排除していない。実Historyの結果不明なのに`RepoApplied`が出ればG1/G3/Contractの偽PASSにつながり得る。この境界は正式な`RepositoryState`の挙動／不明時の診断方法についてOwner判断を要する。**本PRでは製品型/比較関数の仕様を無断で変更しない**。
+
+別の負例は、Historyを取得できなかった際に空の`HistorySnapshot`を構築すると、予定されている全Migrationが`RepoPending`に見えること。正しい「取得成功・適用件数ゼロ」と「観測失敗」を区別できる取得資格が必要。単一`CompareHistory`の出力をHistory全体の完全性証拠にしない。
+
+### 14.2 今回追加した実Go特性テスト（構造のみ）
+
+`internal/database/release/migration_gate_characterization_test.go`に以下の2件を追加した。`go test ./internal/database/release`のexact-head CI完了が確認されるまでは**テスト実行の成功未判定**。
+
+- `TestMG21OldAndNewApplicationReleasesDoNotSilentlyCrossMajor`：同じ業務Applicationに`v1/major4`と`v2/major5`のRelease要求を固定し、DB提供major4/major5の両状態で`Compatible/Blocked`の4通りを独立期待で比較する。**1契約IDのmajor切替では旧新が自動的に共存するわけではない**ことを示す。
+- `TestMG21CompatibilityDoesNotDistinguishReadFromWriteEffect`：`AccessRead`と`AccessWrite`を指定した場合に、現行`CheckApplication`の構造判定が双方`Compatible`を返すことを特徴付ける。これは**実Read/Writeが成功した証拠ではなく、互換性判定器がAccess別Effectを証明していないという制約の証拠**。
+
+旧新を本当に同時提供する実現（別Contract ID、互換View、Writer Adapter、段階的変換等）は案ごとに対応するSchema/Role/Provider実能力と独立Expectedを要求する。Major互換の偽装、単一DB Snapshotに複数Majorを重複登録して暗黙の最後勝ちを利用する方式は禁止候補。実装必要性を#2555/#2622のOwnerで比較する。
+
+### 14.3 Gateへの引渡しと追加の停止条件（Case IDを増殖させない）
+
+- **MG-21**は上記構造特性まで部分的に実証可能。実AppV0/V1とDBの同一期間共存、Read vs Writeの実効果、現在のGrant、旧Versionの実利用者母集団は未実証のまま保持する。
+- **MG-22**は`CheckApplication`だけで検証不能。Result Slice（未取得／部分／ページ／全件）とtenant・時点別の必要集合は#2506/1706、実Provider ReaderとScenario Expectedは#2622/#2514に引き継ぎ、観測できないときはG3 `unknown`。
+- **MG-20**は`CompareHistory`で`unknown→applied`になり得ることをソース上の検証停止条件として記録。まず既存#2555/#2622の責務と調整し、`AppliedUnknown`・空checksum・空/部分History Snapshot・diverged/orphan/failedの負例をfocused Go Testへ分解する。対策候補（エラー停止か`RepoUnknown`の明示）は製品型・呼び出し側影響を比較してOwnerが決める。**実装済み修正とは扱わない**。
+- **G5 Contract**では、`CheckApplication`が個々のAppでCompatibleでも、**把握していない旧App/Batches/Direct SQLの母集団が残る限りunknown**。現在の提供契約とRelease Requirementsだけでは未稼働Clientが無いことを証明できない。古いReleaseを消す前に全Active/潜伏Consumerの退役証拠が必要。
+- **G4 Cutover**では、上流のstatic compatibility PASSを、現在Owner/Grant・旧Writer Fence・実Update/Receipt・別Readへ格上げしない。`DataReadiness=ready`は移行完了の宣言ではなく、独立に裏付けられる対象範囲・時点を持つ必要がある。
+
+### 14.4 最短の次の実証
+
+1. 追加した`MG-21`構造テストのexact-head CIを確認し、failなら既存契約/Goモデルに沿って修正、passでも限定的結果として記録。
+2. `MG-20`の現在の偽PASS境界に、独立Expected`unknown never qualified as applied`のfocused負例を用意する。修正/正式API追加は別の小DraftとOwner判断に委ねる。
+3. `MG-22`の部分Scope/0件/未取得を`Result Slice`で分離し、旧新Applicationの同じ要求集合と同じSource/DB Snapshotで比較する。SQL/Provider実行のないfixtureではG3をPASSにしない。
+4. #2555の旧新Client母集団と#1174の書込みEffect/Current Grantを接続し、Owner承認のG4/G5資格はその後の実DB/実Consumer観測で判定。
+
+**採用保留**：Migration Historyの新enum/外部Adapter契約、同一Contract IDの複数Major同時提供、実Client Registryの制度化、Owner承認自動化。必要な具体的な失敗ケースで追加面を決める。
+
