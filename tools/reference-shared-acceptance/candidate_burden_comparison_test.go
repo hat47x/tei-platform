@@ -180,7 +180,7 @@ func TestReferenceCandidateViewBurdenComparison(t *testing.T) {
 		t.Logf("contract-minor: contract=%d gate=%d appRelease=%d dbRelease=%d", got.contract, got.gate, got.appRelease, got.dbRelease)
 	})
 
-	t.Run("coordinated-major-update-reports-only-latest-database-release", func(t *testing.T) {
+	t.Run("coordinated-major-update-reports-only-latest-release-per-major-line", func(t *testing.T) {
 		before, after := scratchWorkspace(t), scratchWorkspace(t)
 		replaceOnce(after, "databases/sales-core/contracts/order.tei", "contract sales_core.order v4.2", "contract sales_core.order v5.0")
 		replaceOnce(after, "applications/order-entry/application.tei", "contract sales_core.order ^4", "contract sales_core.order ^5")

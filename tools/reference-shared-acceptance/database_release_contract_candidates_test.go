@@ -118,6 +118,40 @@ func TestReferenceDatabaseReleaseContractCandidates(t *testing.T) {
 		t.Log("current v5.0: validate ok; only the latest release 4.2.0 is reported read-only as behind")
 	})
 
+	t.Run("parallel-major-lines-keep-latest-per-line", func(t *testing.T) {
+		before, after := scratchWorkspace(t), scratchWorkspace(t)
+		replaceOnce(after, "databases/sales-core/contracts/order.tei", "contract sales_core.order v4.2", "contract sales_core.order v5.0")
+		replaceOnce(after, "applications/order-entry/application.tei", "contract sales_core.order ^4", "contract sales_core.order ^5")
+		writeFile(t, filepath.Join(after, "releases", "databases", "sales-core", "4.3.0.tei"), `database-release sales_core 4.3.0 {
+    schema-fingerprint "reference-sales-4.3"
+    provides contract sales_core.order v4.3
+    data-readiness ready
+}
+`)
+		writeFile(t, filepath.Join(after, "releases", "databases", "sales-core", "5.0.0.tei"), `database-release sales_core 5.0.0 {
+    schema-fingerprint "reference-sales-5.0"
+    provides contract sales_core.order v5.0
+    data-readiness ready
+}
+`)
+		run(tei, true, "validate", "-workspace", after)
+		got := compareReport(before, after)
+		if len(got.Candidates) != 1 {
+			t.Fatalf("4.x系統の最新4.3.0だけを期待: %+v", got.Candidates)
+		}
+		found := byKey(got)
+		c, ok := found["after/4.3.0"]
+		if !ok || c.ProvidedVersion != "4.3" || c.CurrentVersion != "5.0" || c.Contract != "sales_core.order" {
+			t.Fatalf("4.3.0のbehindが正しくありません: %+v", got.Candidates)
+		}
+		for _, version := range []string{"4.1.0", "4.2.0", "5.0.0"} {
+			if _, ok := found["after/"+version]; ok {
+				t.Fatalf("履歴または一致の%sを報告しています: %+v", version, got.Candidates)
+			}
+		}
+		t.Log("parallel 4.x/5.x lines: only the latest 4.3.0 in the stale line is reported; 5.0.0 matches the current definition")
+	})
+
 	t.Run("forward-update-keeps-existing-warning-only", func(t *testing.T) {
 		before, after := scratchWorkspace(t), scratchWorkspace(t)
 		replaceOnce(after, "databases/sales-core/contracts/order.tei", "contract sales_core.order v4.2", "contract sales_core.order v3.0")
