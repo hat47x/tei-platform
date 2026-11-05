@@ -264,3 +264,52 @@ Plugin公開基盤の議論で用いるDeclared（宣言）/Resolved（選択・
 **限定検証**: GitHub blob `30f1b0133693c421cc2826028790ed90baf96344`をV8内で実行（Graph `normalizeGraph`はtest double）し、表示外ID、G2失敗、ABA、別Scope、非同期戻り値等10 assertionがPASS。**PR保存済みNode試験一式、実DOM、Graph/Workbench/4入口E2E、Source readback、Accepted/Effect、M50はNOT RUN**。この限定検証を本番GraphやSourceの保証へ昇格しない。既存Draft PR #2457の旧CI successful checksも**新headの資格として流用しない**。
 
 将来のPR3で実証すべき同一性の式は、`PublishedBinding.viewIds ⊆ normalizedGraph.nodes[*].id`、`PublishedBinding.version = acceptedDisplaySnapshot.version`、`Source現在性・権限・Inspect eligibilityは別Gate`。一図面の境界で成立させてから、複合図表（複数Graph/List/Field）のsurface別snapshot/epochと図表間対応（#2352）を評価する。
+
+
+## 15. Script-first三要素Methodの縦断契約とSelf-build Fit/Gap（2026-11-06）
+
+**位置づけ**: 2026-11-06 main `36bda76271db4db72ddd41a8566d281f02764b8a`、[#1124](https://github.com/hat47x/tei-platform/issues/1124)の2026-11-04 Script-first / Everything is Data宣言と11-05追補、統合済み[#2397](https://github.com/hat47x/tei-platform/pull/2397)/[#2457](https://github.com/hat47x/tei-platform/pull/2457)/[#2583](https://github.com/hat47x/tei-platform/pull/2583)、[#2352](https://github.com/hat47x/tei-platform/pull/2352)、[Plugin self-build契約](PLUGIN_SELF_BUILD_PRODUCTION_CONTRACT_2026-10.md)、[DSL Language/Operator候補](DSL_OPERATOR_PLUGIN_COMPOSITION_DESIGN.md)を静的照合。従来の図面編集優先という説明は履歴とし、**Script/DSL/Markdown等のauthoritative Source → generic Property/Table/Tree → 三要素Diagram Projection** を初期経路にする。現行Studio UI E2E、方法論固有Plugin、セルフビルド実行はこの節によって成立しない。
+
+### 15.1 Method Profileは三要素の新しい正本ではなく、Role付きの解釈束
+
+Data / Function / Businessは既存の標準データを異なる**意味Role**で見る方法であり、全モデルへ独立した「TEA Entity/Function/Process」テーブルを必須にしない。Method Profileが明示的に束ねるのは (a) 受理済みSemantic Interfaceと正確なRule/Extension version、(b) 必要なRole/Relation/制約、(c) read-only Projection・Notation・診断、(d) Sourceに逆到達できると証明した編集Intentの範囲、(e) unresolved/Disclosureの解釈である。Generic Source inspectionが先に成立し、TEAの表記Providerなしでも未知Roleをread-onlyに示せることを優先する。
+
+| 横断役割 | TEA Methodでしてよいこと | してはならないこと |
+| --- | --- | --- |
+| Data/ER | Key/FD/RelationのSource宣言と物理Mappingを別レーンで閲覧し、Rule不足を診断 | Sourceにない論理業務IDをPK/FKから補完し、外部DB観測を受理済み意味とする |
+| Function | FunctionとData I/O候補を結び、Operation/Effectの独立Evidenceへnavigate | Function-wide CRUDや生成されたUIから特定Business Actionの実Effectを断定 |
+| Business/DFD | Manual/External Step・Actor・Trigger・Handoffを、宣言と候補として描く | ManualをFunction実行、RoleをAuthorization Principal、図上順序を確定Runtime順序とする |
+| Cross-view | qualified key、relation role、source/provenance、representation coverageを照合 | 表示ID、legacy ID、Source Locator、ハッシュ表記の一致だけでSubjectと現在Authorityを確定 |
+
+Methodの**構造上の役割**と**業務意味規則**は別契約とする。異なるMethod ProfileのProjectionを同時に開いても、同じSemantic SetのAccepted meaningを表示Plugin登録順で変えない。公開Plugin名や`tei.std.*`の所属はContract/Provider/Artifact/Instance/受理証拠の代わりにならない。汎用の型付き関係・多項role・被覆・図間対応は[#2352](https://github.com/hat47x/tei-platform/pull/2352)の既存評価へ委譲する。
+
+### 15.2 TEA-V0：同一合成Sourceによる最小の五ケース（受入仕様／NOT RUN）
+
+合成受注モデルを一つだけ使う。ヘッダ/明細Dataと論理Relation、Functionが参照するData、受注確認のManual Step＋Function参照を**別Source role**で持ち、Data・Function・Business・Source一覧が同じqualified subjectへ到達できるようにする。Sourceの意味内容、Source位置、UI選択版、Disclosure、Artifact/Providerを別々に固定・変異させる。元のX-TEA Referenceの本文・旧IDを使用しない。
+
+| Case | 固定した前提と変異 | 最小期待結果 | 担当／未実証 |
+| --- | --- | --- | --- |
+| **T01 Source移動（meaning同一）** | 同じSource byte・論理意味を別Pathへ移す。World/Meaning fingerprint同じ、Source IndexとTrace locator変更 | 既存[#2626](https://github.com/hat47x/tei-platform/pull/2626)の局所証拠を期待値にする。Data/Function/Businessのmeaning投影は再利用候補だが、**旧Source jump/span・引用Occurrenceはstale**。再読取後のみ新位置へnavigate。移動がpath-sensitiveなBuild入力ならbuild/closureは独立再評価 | #1124 / #950 / #2604。三要素UI未実証 |
+| **T02 閲覧資格だけ失効** | Source byteとMeaning版は同じ、現行Grant/Policy/Role pinが失効 | 旧DOM/ARIA/一覧/診断/Tool JSONと新規後着応答の開示資格を別々に失効。低権限側から非公開Data/Function/Manual Stepの有無・件数を推測させない。別Scopeの許可済み表示は無関係なら維持 | #1124 / #2516。実Disclosure E2E未実証 |
+| **T03 Graph非可逆編集** | Composite RelationKeyを一本の線として表示し、図上で線を消去・付替え | 原Sourceに複数Field/Key/Relation/Function参照が存在するなら逆写像を**一意と推定しない**。read-only表示＋Source navigateまたは明示的な複合Change Proposalまで。Source writes=0。可逆なField scalar editだけ別経路でtyped Preview→既存Shared Acceptanceへ | #1126 / #1124 / #267。複数Source atomic commit未証明 |
+| **T04 DFDとETL/ELTの重なり** | 同じDataに対し人手Business Step、バッチTransform、File Relay/Delivery候補が併存 | それらを標準Operation/Artifact/Deliveryの**異なるRole・型付き関係**として表示。業務Process矢印からbatch実行順、file到達、replay/idempotency、外部Effectを推定しない。隠れた外部処理はopaque/unverified | #1125 / #1130 / #2391／パイプライン設計。連携実Provider未実証 |
+| **T05 Method・Notationと実行の独立** | 同じAccepted SourceでTEA NotationまたはLayout Providerのみ差替え。別ケースでSemantic Rule/Provider/Targetを変更 | Style/LayoutのみならMeaning/Accepted fingerprint不変。Semantic Ruleは明示pinと適切な受理なしに変えない。Provider/Target変更は利用資格/Artifact/Effectを独立再評価。未解決ならDiagramの`ready`なし | #951 / #943 / #1124。Plugin Conformanceと実Consumer未実証 |
+
+**検証方法**: 先に既存の`modelref`、ER cross-view、Business DFD、Xead read-only、Source Index、qualified selection、Shared Acceptanceの各Referenceで入力を再利用できるかを棚卸しする。次に一つの`Source reader→typed model→TEA Method Projection→generic Consumer`で`Input/Rule/Source Revision/Scope/Effective Policy/Expected/Actual`を同じCase IDへ帰属させる。試験PASSは個々の層で記録し、別PRの局所PASSの足し算でTEA-V0一巡を成立させない。S01 Source Acceptance、S02 realization readiness、Modeler選択、実Command/Effect、Owner受理は独立。
+
+**認知負荷の反証**: 三視点で同一項目を探し、RelationKey変更の影響を説明する2タスクをGeneric Source一覧のみ・TEA複合図面で比較する。探索手数、誤Scope/誤Source jump、未知情報の説明漏れ、変更波及、必要な再読取数を測る。図が増えても情報の正本や探索量が増えるならMethod特化UIを縮減する。閾値・人手評価は未設定・未実施。
+
+### 15.3 Self-build Fit/Gapを、TEA Methodの成果物で検査する（既存Self-build Ownerへの提案）
+
+**Fit**: 現在の[Plugin self-build Reference](../../reference/plugin-self-build/README.md)は、Descriptor Source / Implementation Source / Build Plan / Artifact / Lock / Runtime invocationの分離、SB-1/2/3の異なる証拠資格を持つ。TEA Methodにも`Method Definition`（Semantic Interface/Rules/Projection/Notation参照の宣言）と`Method implementation`（Reader・Projection・Notation Provider）が区別できる見込みがある。既存のDSL Operator/Compositionを使い、Method専用Builderや第二Plugin Lockを先に作らない。
+
+**優先Gap**: (G-SB1) Model/Method Sourceがauthoritativeであること、同じSource/Rule pinから同じ**意味投影**を再現できること、(G-SB2) derived Projection/Notation packageの実Build Plan・artifact closure・binaryとSourceからのtrace、(G-SB3) 生成したMethodを別Consumerが実load/inspectし、未知Roleではread-only・Scope不明では拒否すること、(G-SB4) Method自身のbuilder stage1/2収束や配布Providerの実行は、**既存Self-build SB-3と別証拠**として残すこと。特にT01のSource移動はmeaning no-opでもpath-sensitive builderならBuild Plan no-opでない。
+
+**進行順**: Generic read-only TEA Projection＋T01/T03のSource-boundary負例を最初の高優先Gapとし、その後T02の開示/Consumer証拠、T04/T05の他領域比較を行う。Self-buildをTEA-V0の前提にせず、SB-1 package→SB-2 implementation→SB-3 builderのOwner既存受入へ順次接続する。「TEAでself-buildできる」ことを「TEI全体がself-hosted」「元Method意味が正しい」「実ProviderのEffectが成立」とは呼ばない。
+
+### 15.4 限界・所有と採用前の停止条件
+
+- **既存実装**: #2397/#2457/#2583/#2352はmain統合済み（2026-11-03）。[#2747](https://github.com/hat47x/tei-platform/pull/2747)はStudio Command参照を統合。#2626の実CLI Source移動は限定Evidenceであり、TEA画面のSource位置追従は未実装・未検証。過去節のDraft/CI記載は当時の履歴であり、**現在のPR状態は本節を優先**する。
+- **継続中**: #1124 M0〜M4の同一実Consumer接続、#1125 Business意味/Role責務、#1126 Data/ER、#951 Provider/Method適合、#267 Shared Acceptance。[#2833](https://github.com/hat47x/tei-platform/pull/2833)は合成4レーンPresenterのDraftであり、実Policy/Owner/Effect受理ではない。
+- **停止**: Methodの追加で既存Sourceが第二正本になる、表示Lineから実外部Effectが発生したことにする、意味のRuleがPluginの更新/ロード順で変わる、Scope/Disclosureが未解決なのに存在を漏らす、Script以外の図形を常に可逆編集と扱う、TEA package一致をself-hostingや業務Acceptanceへ昇格する場合。
+- **検証状態**: この節は2026-11-06のGitHub現行main・既存Issue・設計・Reference説明の静的照合に基づく**設計/テスト仕様**である。TEA-V0の実装、Go/Node focused test、WebView/GUI、Private X-TEA原本、MethodのBuild/Load、現実のETL・File Relay、Self-buildは**NOT RUN**。採用・実装・Owner受理と区別する。
