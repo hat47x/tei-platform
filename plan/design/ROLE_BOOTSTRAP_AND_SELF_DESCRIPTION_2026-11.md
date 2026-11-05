@@ -677,3 +677,46 @@ E0：既存#2860のactual Workspace/Source Index／Go Parserを同一Sourceで�
 **E3 Product UI/Consumer**（#1124/#2516/#958/#2600）：旧Revision成功レスポンス、既存表示、同一内容でPolicy失効、原文保存のみ、Source changedだがDecision ledger記録失敗、を**別状態**として示す。Source Acceptが成功してもDB/Host EffectやOwnerの最終意味判断を証明しない。
 
 **証拠上限と進行判断**：本§14は現mainの静的Fit/GapとテストSource追加を記録したもの。テストのexact HEAD CI、Raw Draft Product Writer、Role option Writer、実Markdown/SHO、実WebView、外部Writerとの原子競合、Owner Meaning Acceptanceは別に確認する。新Parser/Source Writer/Second Acceptance/Host/横断GateをこのDraftに実装しない。#1119のP0と#2831セルフビルドは変更しない。
+
+
+<!-- tei-role-self-description-source-option-anchor-collision-20261106 -->
+## 15. 2026-11-06 SyntaxでのRole重複停止と読取り専用Option Anchor（横断コード接合、Draft／CI別確認）
+
+### 15.1 既存Core/Source Indexを変えずに実現できる最初の縦断
+
+[Draft PR #2898](https://github.com/hat47x/tei-platform/pull/2898)は、#988の現main Parserで見つかった「同一属性に`role A role B`を書くと最後の値で上書きされる」欠落を、**二度目のrole keywordでSource位置付きSyntax Error**として拒否する小さな実装にした。これに加え既存`syntax.ParseSemanticFileAnchored`に`semantic-attribute-role`という**Role値のtokenだけ**を指すSource-side Anchorを追加した（前者は文法拒否、後者はSource navigationであり受理権限ではない）。属性名`semantic-attribute`、型参照`semantic-attribute-type`との区別は§14の既存Go Characterizationと整合する。
+
+2026-11-06現在の実変更範囲は`internal/syntax/parser.go`、`semantic_anchor.go`、既存＋新規Syntaxテスト、Workspaceの重複Role診断接続テスト。SourceIndexの`sourceindex.RoleDefinition`は「そのSource Referenceが定義位置である」という種類で、`semantic.Attribute.Role`や`syntax`の`semantic-attribute-role`とは**別の概念**。`syntax.SemanticAnchored.Anchors`からRole tokenが得られても、その位置が自動的に`workspace.BuildSourceIndexFromLoad`の正規定義Reference、Writerの対象、Ownerの権限へ昇格するわけではない。既存`semantic.Attribute`の型、Generic Source Index、Source Writer、Role Interpreter、Plugin Contractを増殖させない。
+
+### 15.2 異なるレーンから取り込む原則と、取り込まない実装
+
+- **#2891 Scenario JSONの重複キー、#2900 DB Releaseの重複候補**：どちらも「入力を最後の値で上書きして成功と見せない」というFail-closedの反例。だが、JSON Object member／DB状態履歴／Attribute Optionは粒度・順序・多重性契約が違う。共通の万能重複Validatorは設けず、**重複の許否は各宣言の契約が決める**。Roleでは1属性につき同Option複数指定を拒否する。属性が違えばRoleが同じでも独立に記述可能。将来の複数Role use-siteは別の明示構文とOwner受理が必要。
+- **#2497/高度組織モデリング**：Roleの宣言個数、Roleと主体／Procedureの結びつき、Source occurrence、Role解釈後の依存を分離。Graph/テーブルの同形表示、ID一致、同じ値でも多重性・適用時点・Source参照資格を消してはならない。書戻しが多対一ならread-onlyまたは明示Action。
+- **#2823 Required Root/Source閉包**：現在Readerがたまたま解析した`role`が一意であることは**Workspace内のすべてのrequired Sourceが読み込まれた証明でない**。取込漏れ、外部Import、同Subject別Source、Plugin/Selection違いは別の不合格条件。
+- **#2514/#2621/SHO**：説明用文書の`role`文字列、テストのExpected、実Role宣言をContext・引用位置で区分する。Parserが成功してもMarkdown/SHOの表を実FunctionやOracleとして自動採用しない。元Sourceの原byteと糖衣を保存する。
+
+### 15.3 Requirementから観測までの四集合（新Core型ではなく受入票の列）
+
+| 集合 | 記録する内容 | 禁止する推論 |
+| --- | --- | --- |
+| **Required**（外部受入要求） | Owner受理済みRole必要形・各Consumer/Claimに要求されるSource/Dependency、実Build/Plugin資格 | 候補Role自身が`required=[]`を宣言したから空でよいとはしない |
+| **Declared**（Source上の申告） | 定義とRole Optionの原位置/byte/個数、欠落・重複、契約版 | 一個にParseされたからSourceに一個しか無いとはしない |
+| **Resolved/Consumed**（実読取・適用） | Load時byte/Manifest/Parser/Plugin選択と利用されたDependency、見落としたroot、解釈失敗 | Source上で宣言されたことからReaderが取得した・解釈できたとしない |
+| **Observed/Disclosed**（Consumerと出力） | 元Source/モデル版・実Output/Diagnostic・現在Policy/Scope・可視性・実Attempt | 表示成功や診断不存在をSource全体の成功、秘密情報の不在、Host/Provider実Effectとしない |
+
+四集合は一致すればよい単純なHashではない。「必要なものが本当に閉包として読まれたか」をClaim相対に比較するための列である。Source byte、モデルRevision、Artifact Revision、Role/Operator Pin、Review/Consumer Disclosureの失効をそれぞれ扱い、同一digestへのA→B→Aで旧Review/Grantが自動復活したとは判定しない。
+
+### 15.4 次に実証する受入ケースとOwner（既存Fixtureへ合流）
+
+| ケース | 最小入力と独立Expected | 現状／担当 |
+| --- | --- | --- |
+| RO-01 | 同Attribute `role first role second`。**第二keyword**のbyte位置にParser Error、Source→Worldは不合格 | #2898でSyntax/WorkspaceテストSource追加、CI未確認／#988 |
+| RO-02 | 同じRole値の二重指定、コメント越し、quoted description越し。上書き許容はしない | #2898 Syntax負例、CI未確認／#988 |
+| RO-03 | UTF-8日本語、BOM/CRLF、quoted説明`role`、Roleなし属性が混在。Role**値**だけの実byte span、無関係textで架空Anchorなし | #2898 Anchored Syntax負例/正例、CI未確認／#988 |
+| RO-04 | 有効SourceをLoad→独立Readする。Role use-site token位置とArtifact/Manifest現在性、Scope、Required Root閉包を比較 | SourceIndex / #2860の局所証拠のみ。**同一Workspace全root完備はNOT PROVEN**／#2823 |
+| RO-05 | Roleの型・Required ShapeとImplementation Selection、Role用途・同形Markdown表を比較。Role不明または競合で正式Meaning拒否 | **NOT RUN**／#2620/#988/#2514 |
+| RO-06 | Source A→B→A／Role Selection変更／外部Editor競合。古いEditor PreviewとReviewを再使用しない | **NOT RUN**／#2505/#2621/#1124 |
+| RO-07 | ロスのある表・Graph ProjectionからRole値を変更。対象Occurrenceが一意でなければ書戻し拒否 | **NOT RUN**／#2497/#2621/#1124 |
+| RO-08 | 正常Syntax診断がConsumerに届いても権限変更でDisclose不可、または旧成功Response後着。公開面がCurrent資格で判定される | **NOT RUN**／#1124/#2516/#958 |
+
+**順序**：RO-01〜03のexact HEAD Syntax/Workspace focused + repository-health-checkをまず確認。その合格だけでRO-04〜08を合算しない。次に#2823の独立Required Rootとの比較→正式Role Required Shape→#2621/#2497への局所Source Patch提案→Consumer/Hostの実験へ進む。新Role Writer/Parser分岐/万能Registry/第二Oracle/追加Cross-cut Gate/TEI専用Hostは不要。mainはReviewerの検収まで変更しない。
