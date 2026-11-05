@@ -656,7 +656,7 @@ Ownerは#1180（Scenario）、#2813/#988（DSL Candidate）、#2514（Oracle）�
 | 比較単位 | 事前固定するもの | 実行後に要求するもの／禁止する誤昇格 |
 | --- | --- | --- |
 | **A. Scenario Inventory** | 6 Step ID、必須Case/Obligation、Source/Scenario/Fixture/Plugin Pin、Expected Nature | 各Stepの実Discovered/Attempted/Outcome/Receipt。6件が実行済みでも業務全体の分母にしない |
-| **B. AI New Candidate** | #2828固定Anchorと[#2890](https://github.com/hat47x/tei-platform/pull/2890)のJSON-only 2 Step（`ai-line-number-unique`/`ai-line-number-duplicate`）、Fixture blob `bc65e0d7`/`7e9a04e5`、[#2895](https://github.com/hat47x/tei-platform/pull/2895)の独立有限集合Property/負例を**異なる証拠Role**として固定 | **L0**：Keys `[1,2]→[1,1]` の静的対照を実確認。**L1隔離試験**：#2895 HEAD `8d3dc2fc`のGoテスト（Candidate Expectedを使わない集合判定と、Expected/入力の反転を同じ判定器で拒否）が、再構成Fixture/Go1.23.2で2 Subtest PASS。**統合試験待ち**：[Repo Health #42109027966](https://github.com/hat47x/tei-platform/actions/runs/42109027966)は照会時pending。#2890自身のActionsは0件。既存Scenario Runnerによる新2 Stepの`generated-pinned` Receipt、Rule Mutant検出、G2業務Meaning、実Provider/Hostは未資格。[#2891](https://github.com/hat47x/tei-platform/pull/2891) Fixture重複JSON拒否は別Draft・stack外 |
+| **B. AI New Candidate** | #2828固定Anchor＋[#2890](https://github.com/hat47x/tei-platform/pull/2890)のJSON-only新2 Step/Fixture＋[#2895](https://github.com/hat47x/tei-platform/pull/2895)の別Goテストで固定した集合一意性・Expected/Input反転Negative Control（異なる証拠Role） | **exact-head統合Go PASS**：#2895 HEAD `8d3dc2fc` [Health #42109027966](https://github.com/hat47x/tei-platform/actions/runs/42109027966) はGo 1.26.10/Linux、全Go Test・gofmt・vet・Workspaceがcompleted/success。既存`TestAIAddedScenarioCandidateFiles`はCandidate Glob→Scenario生成→Step毎`generated-pinned` Receiptをassertする構成で、#2895は固定2件のKey一意性と2種の負例を独立にassert。**個別のRaw ReceiptはCI成果物として保存されていない**ため外部Reader Evidenceは未成立。#2890単体のActions0件、Product Rule Mutant kill未実証、業務G2/全Coverage/実DB/Owner未受理。[#2891](https://github.com/hat47x/tei-platform/pull/2891)は別Draft・未積層 |
 | **C. Required Check** | Accepted Contract・Workspace/Capability・対象Host Grantなど、**候補やSupplied Checksとは独立のRequired出典**をOperationごとに固定。適用範囲外のCheckは加えない | `Required / Supplied / Evaluated / Enforced-at-Effect`の対応を同一Source/Operation/Attemptで比較。未指定が1件でも残れば`precondition complete`を拒否。#2882の合成Guard PASSを実Commitフェンスへ昇格しない（#2616/#2884/#2860） |
 | **D. Effect and Restart** | Step順・OperationID・Attempt/Generation、未知Commit・Provider Receipt/別Read、同Key/新Key Expected、Selection/Context Epoch | 全Plan`blocked`は先行StepのEffectゼロを意味しない。Restartでstage消失・新Key ABA再適用を安全とせずReceipt照会優先。非同期の旧Context結果を現在画面へ誤適用しない（#2870/#1174/#2616 §20） |
 | **E. Cross-layer Qualification** | Source・Oracle・Consumerの同一Attempt資格、Owner Meaning状態、対象TargetのScope | L1/L2/L3/L4/L5の単純合算を拒否。#1163/#1119のGate Ownerが同一改訂の必要証拠を判定する |
@@ -669,8 +669,17 @@ Ownerは#1180（Scenario）、#2813/#988（DSL Candidate）、#2514（Oracle）�
 
 **本Planへの導入はG0の入力明確性だけ。** 現mainの`scenariotest.Parse`は`RejectDuplicateJSONMembers`を実装済みだが、`ParseValidationFixture`／`ParseBrowseFixture`／`ParseObservationFixture`は単一`json.Decoder`によりobject memberの重複を拒否していなかった。重複メンバーが後勝ちの場合、候補JSONとFixture、Actual/Expectedの比較の前提となる入力が曖昧になる。
 
-- [#2891](https://github.com/hat47x/tei-platform/pull/2891)：mainから独立のDraft。既存Scannerを3 Fixture入口に再利用、重複Member負例7件＋非重複正常3件のGoテストを追加。**Source差分を確認、対象HEADの実Go/CIは別Runで判定**。新Parser/Runner/業務Ruleなし。
+- [#2891](https://github.com/hat47x/tei-platform/pull/2891)：mainから独立のDraft。既存Scannerを3 Fixture入口に再利用、重複Member負例7件＋非重複正常3件のGoテストを追加。HEAD `2f677921` [Health #42107910706](https://github.com/hat47x/tei-platform/actions/runs/42107910706) の**全Go Test・vet・WorkspaceはPASS**、ただし新`fixture_duplicate_members_test.go`の**gofmt driftで総合Healthはfailure**。書式修正後の別HEAD CI成功まで当該G0を正式採用しない。新Parser/Runner/業務Ruleなし。
 - [#2890](https://github.com/hat47x/tei-platform/pull/2890)：既存#2828に積んだJSON-only AI候補。正常`[1,2]`／重複`[1,1]`の行番号配列について、リポジトリから実Readした2 Fixtureに対し独立な集合重複の簡易計算を行い、期待の`satisfied/not-satisfied`と整合することを確認した。これは**合成入力の算術的sanity check**であり、TEI CLIの実Step Receipt／業務Owner独立Oracle／L2 Conformance資格ではない。現PR headのActions Runが取得できない限り`NOT RUN`。
 - **区別する負例**：Relation`keys`の`[1,1]`（正当な重複データとしてValidationが拒否する対象）と、JSON objectの同名`keys`member 2回（Parserが拒否する入力不正）は別。どちらかの拒否成功でも他方や実Target Coverageを自動PASSとしない。
 
 **次の最小検収**：①#2891 exact-head Go Test/Repository HealthでFixture解釈の一意性を確認、②#2890の積み重ね型ブランチを合成したcheckoutで既存`TestAIAddedScenarioCandidateFiles`を実行し、新Stepが実際に`discovered/attempted`かをログ/Receiptで確認、③事前Expectedを変えず`line_number_unique`の誤判定Mutantを判別して初めて#2514 G2へ渡す。#2891と#2890は別HEADなので受入証拠を合算しない。
+
+
+### 18.4 実DB事前入場とEffect証拠を分離する（main #2894）
+
+main統合済み[PR #2894](https://github.com/hat47x/tei-platform/pull/2894)の`tei dbcheck`を、**実PostgreSQL検証に入れるかどうかのEnvironment Witness**として#2622/#1163へ渡す。HEAD `556d8e6a`の[Health #42108388836](https://github.com/hat47x/tei-platform/actions/runs/42108388836)は**completed/success**。実mainの`cmd/tei/dbcheck.go`はDSN欠落時には接続を試みずCLI exit2、DSN指定時は`pgx.Connect`・`SELECT version()`・同Session一時表CREATE/DROPを試行する。現mainのGoテストはDSN欠落・flag/env優先・表示整形を検査。**このCI成功が実PostgreSQL DSNを使った接続確認の実走を意味するわけではない**。
+
+入場判定は`DSN absent→NOT ATTEMPTED`、`dbcheck reached＋temp DDL PASS→specified DB connection/capability observed`、`Required PG Case actually PASS＋実Receipt/独立Read→限定L3 Provider claim`を分ける。実DB Probe自身も一時DDLという作用を持つが、本業務TableのRead/Write・RLS・Snapshot・Commit・Current Grantの証拠ではない。DB接続先の生DSNは公開しない。#2835の**SKIP緑禁止**は実PG Case入場に引き続き適用し、dbcheck成功をRequired PG Caseの代理PASSにしない。
+
+**この追補はdocs-only**。#2895のGo CI成功と#2891の書式CI失敗を正しく区別し、新しいProvider/実PG接続・Source/Owner受理・外部Reader/Prod Hostの実測は本作業ではNOT RUN。#2895は積層Draftのためmainへ単独mergeせず、#2828→#2890の依存順と#2514の独立Oracle受理境界を守る。
