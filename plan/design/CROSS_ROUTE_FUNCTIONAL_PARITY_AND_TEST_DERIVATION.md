@@ -698,3 +698,15 @@ main統合済み[PR #2894](https://github.com/hat47x/tei-platform/pull/2894)の`
 
 
 **横断の負例出典（Test SSOTの追加ではない）**：[#2892](https://github.com/hat47x/tei-platform/issues/2892) のMigration History `AppliedUnknown`が`RepoApplied`に誤分類され得る問題／取得欠落を真の空Historyへ置換してしまう問題と、[#2887](https://github.com/hat47x/tei-platform/pull/2887)の同DatabaseID・Contract後勝ち、#2891のJSON同名Member後勝ちは、入力種別は異なるが「曖昧・未取得・重複を黙って成功にする」という**資格違反**を共有する。それぞれ#2892（HIST-01/03の独立Expected、NOT RUN）、#2887/#2897（DB移行Gate、実業務未検証）、#2891（test-only Fixture Parser）へOwnerを維持する。#2811は必要ObligationとUnknown表示の受渡しだけを担当し、新共通Validator/History Engineを実装しない。
+
+### 18.6 同一改訂検収用Draft #2901と次のMutant Gate（2026-11-06）
+
+**新規統合Draft**：[#2901](https://github.com/hat47x/tei-platform/pull/2901)は、既存#2895の有限Oracle/AI Scenario Stack成功HEADに、#2891の実CI成功HEADの**Fixture Parser 3ファイル＋7負/3正のGoテスト1ファイルだけ**を重ねた隔離検証。#2895とのDiffは4ファイル（Goの新Runner、Canonical Rule、Scenario JSON、既存Expectedは不変）。これは#2891/#2895のOwner PRの代用・新しいプロダクト正本ではなく、**同一実HEADの結合CIが成立するかを調べる一時的なDraft**であり、mainへ単独mergeしない。
+
+- **既存確定**：#2891 HEAD `16b8d554` の[Health #42110507652](https://github.com/hat47x/tei-platform/actions/runs/42110507652)、セルフビルド、依存検査は完了success。独立#2895 HEAD `8d3dc2fc`の[Health #42109027966](https://github.com/hat47x/tei-platform/actions/runs/42109027966)も完了success。別HEADの2成功は同一Claimへ足さない。
+- **現統合Attempt**：#2901 HEAD `a6eb80cffe16a57f4cb2461ff2946065955a4e50`の[Health #42111973682](https://github.com/hat47x/tei-platform/actions/runs/42111973682)が作成時queued。**CIの終了/Go結果はこの追補時点で未確認**。未実行・未発見・SKIPのRequired Caseを合格にしない。
+- **出口の検証対象**：G0は3種類のFixture入力object member重複拒否（7負・3正）、G1は新2 Stepの`verify→generate→check→generated-pinned run`と限定Receipt Nature、G2候補はCandidateとは別のKey集合Property・Expected/Input反転拒否。同じcheckoutのGo実結果を要求。**実Rule本体Mutant killは未実施**、正式G2業務意味とG4 Coverageへ昇格しない。
+
+**P0後の選定**：次は#2514の小さな公開・合成の実Product Rule Mutant（特定Validation Ruleの比較・一意性判定の意図的誤実装）を**事前Expected固定**の状態で試す。Mutant killなら対象Contract/Case/Environment/Roleの限定判別力、見逃したら必要Observation/Rule Selectの不足を記録する。Candidate Expected・Required Obligationの分母をAgentが自己修正して「PASS」にしない。#2892 Migration Historyのunknown偽成功、#2884 Required Guardの欠落と現在Grantは別Owner/別Evidenceで扱い、同じ仕組みへ無理に統一しない。
+
+**証拠台帳参照**：[基本設計§8.6](./TEI_TEST_BASIC_DESIGN_AND_EVIDENCE_LEDGER_2026-11.md)。今回の計画更新はdocs-only。#2901のコード・CI実行とは別の改訂として保存し、当該Docs HEADのCIも独立確認。
