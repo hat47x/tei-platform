@@ -341,3 +341,16 @@ Else absence remains unknown; no universal closed-world assumption.
 **次の最小証拠**: (a)同一qualified要素の複数View occurrence、(b)role付き関係のGraph/Table間の完全往復（描画・意味変更なし）、(c)queryを制限して初めて成立する「不在」の正負例、(d)Layoutのみ変更でSource不変、(e)旧Snapshotまたは曖昧scopeではInspect/Locate呼出し0。まずこの五つのread-only検査を確認し、標準構造不足の観測なしにCoreやStudioフックを追加しない。
 
 **検証状態**: 本追補は既存Issue/PRとコード公開契約に対する静的設計照合である。Reference本体の追加、実GUI、実Provider/Runtime、独立Observation、認知負荷実測、実Production Artifact検査は **NOT RUN / NOT PROVEN**。
+
+## 12. 2026-11-06：P1限定不在判定Reference（合成・採用前）
+
+**既存§9〜11の実装候補をコード化した最小実験**：[reference/tei-topology-coverage](../../reference/tei-topology-coverage/README.md)。基準main `36bda76271db4db72ddd41a8566d281f02764b8a`。本節は基準設計を置換せず、新たなCore型・正本Graph・Source Reader・実行Host/Authorityを採用しない。
+
+- 一つの合成Source/Projection snapshotから、scope付きSubjectをGraphとTableへ投影。同じkind/IDでも別scopeなら別keyとし、view IDは画面内のOccurrence識別子のまま維持する。
+- 多項関係（Operation、Artifact、Evidence）を「関係ノード＋role付きEdge」と「role付き関係表」で同時に表す。端点欠落・role脱落・Relationの描画欠落は不在判定ではなく`unknown`とする。
+- `boundedAbsence`は**合成fixtureが宣言した閉包内の不在だけ**`absent-in-declared-snapshot`と返す。scope未閉鎖、Plugin/Composition/Reader未確認、版混在、省略・opaque領域、Disclosure未資格では`unknown`。表示上に要素が存在しても、非開示なら公開Claimを出さない。
+- レイアウトだけの変更でSource/表/閉包判定が変わらないことを確認する。対照ケースには重複qualified subjectと欠落端点を含む。
+
+**実行証拠と非主張**：Node v22.16.0で`node --test reference/tei-topology-coverage/coverage.test.mjs`をローカル実行し、**11/11 PASS**（合成fixture、2026-11-06）。ただし本Evaluatorは`subjectsComplete=true`等の**申告値の真正性を証明しない**。実TEI `modelref`/CLI/Source Index、実Reader/Policy/Provider closure、旧DOMと4入口、非公開二世界の非干渉、実Target/Effect、認知負荷の改善は**NOT RUN／未証明**。#1124 M0/M1より先にこのReferenceの製品導入を要求しない。
+
+**次の反証可能な接続**：#1124の実CLI→同一Consumerで同じqualified SubjectとSource/Model revisionを取得し、(a)元Source/関係roleの閉包が実Readerで確認できる範囲、(b)不完全で`unknown`となる範囲、(c)Graph・Table・関連表間の局所変更が意味Sourceを変えないこと、を別の証拠として測る。実験が必要な新Core primitiveを示さなければ既存Standard Structureで継続する。
