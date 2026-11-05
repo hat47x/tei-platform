@@ -866,3 +866,64 @@ SQLを正本とする既存Queryから候補Operatorを生成する場合、元Q
 | DM-10 | 最適化前後で値同一・Read Scope異なる | 出力値だけで最適化適合としない | #2628/#2516 |
 
 **導入順**：M0＝現行Data Model/SQL/Function MappingのOwnerと正本を固定。M1＝同一Sourceに対するTEI Query/Native SQL/独立Expectedを比較。M2＝実ProviderでQuery count・Row count・p50/p95・Read Witnessを採取。M3＝生成コード/外部Hostで境界検証と省略条件を検査。M4＝Owner意味受理と実業務Effectを別票で判断。新しい汎用SQL Runtime、TEI独自Host、第二Data Model正本は設けない。
+
+<!-- tei-data-form-crosslane-realization-observation-20261106 -->
+## 22. データ様式の横断受入：構造・実現方式・観測・Claimを分離（2026-11-06）
+
+**位置づけ**：既存#2497の構造保存/Projection/編集逆写像を、Everything is Data（#2619）、Function Data Context（#2506）、Query（#2387）、Data Operations/Provider（#2622）、Consumer（#2516）、横断実証（#2586）へ結ぶ設計追補。新Core TypeKind、新Cursor Schema、第二のQuery/Cache/Host/Registry/Authority、独立GateやTest SSOTは作らない。業務意味・権限・実装のOwnerを移管しない。
+
+### 22.1 同じデータという言葉が指す、異なる6つの同一性
+
+| 観点 | 固定/比較すべき内容 | 同一であっても証明しないもの | Owner |
+| --- | --- | --- | --- |
+| Meaning/Definition | Subject、構造Role、Relation occurrence/向き/多重度、Value Domain、単位、時点 | 値・Operation JSONが同じだけで業務意味も同じ | #2495/#1126/#2619 |
+| Authoring/Source | 原文Occurrence、byte/Revision、引用位置、非対象trivia | World fingerprintや再描画が同じだけで原文が保全済み | #2621/#2497/#2600 |
+| Resolution/Realization | Function/Purpose、DB Instance/Provider/Route、明示Binding、候補の有無/版、選択SQL/Operator | Query ID・共通SQL byteだけで選択も同じ | #2611/#2622/#2387 |
+| Actual observation | 実Principal/Scope、Params/Sort、Read Cohort、Page/Rowset/Field coverage、complete/partial | Cursorあり/短いPage/静的解析PASSだけで全件Read済み | #2506/#2627/#2586 |
+| Transformation/Claim | 問い・対象粒度、演算法則、保存性、非出力依存、必要な集合閉包 | 結果値・行数一致やcache hitで全Claimの有効性 | #2497/#1063/#2593/#2582 |
+| Disclosure/Effect | 現在のConsumer/Grant、実受信、更新Target、Commit/Receipt/独立Read | 内部根拠や旧Grant、Preview/HTTP successで現在開示・更新完了 | #2516/#1174/#2604 |
+
+これは既存Evidence/Source Index/Query Contract/Function Contextを結ぶ**観測の問い**であり、新しい統一データレコードの宣言ではない。結果の存在、全体不存在、Top-N、正確な合計、編集対象、引用・外部開示は必要条件が異なる。局所的な正のWitnessがある場合でも、完全なCOUNT/NOT EXISTSや業務完了へ無断昇格させない。
+
+### 22.2 SQL Realization変更とPage継続の境界
+
+既存[#2387 QX-26](https://github.com/hat47x/tei-platform/issues/2387#issuecomment-6577013855)は同じSQLでPage間のDB更新によりSnapshotが混合する反例。[#2586 HJ-SV-01〜05](https://github.com/hat47x/tei-platform/issues/2586#issuecomment-6658613966)は、**不変DBでもQuery ID一定のまま選択SQLが変わるとPageを混合できる**別反例である。両者を新Fixture SSOTへ重複登録せず、#2586の同一Function横断で接続する。
+
+独立Python/SQLiteの既存11/11 PASS（SHA-256 a68f663d325fe45711bd3841f8eb297d0afd55766d777fa3f595e32b69092198、Repository未保存、CIなし）の例：公開ID 1〜5について共通SQLの全結果は [1,2,3,4,5]、open専用SQLは [2,4,5]。2件ずつのOFFSET Page取得で旧Page1 [1,2] と新SQL Page2 [5] を連結すると [1,2,5] となり、どちらの完全結果とも異なる。最終Pageが短いというだけで complete とする実装は偽陽性になり得る。SQLiteによる実SQL実行と、自作の選択/Continuation判定関数は別の限定証拠。TEI selector/実PG/SQLGlot Worker/Host/外部ConsumerのPASSではない。
+
+再利用判断は以下を別に扱う。
+1. **選択判断**：Query/Purpose、実DB/Provider、選択規則・明示Binding・候補集合・「専用候補不在」の負依存。専用ファイル後着なら再評価。共通SQLを明示固定していれば無条件の専用化はしない。固定済み専用SQL消失時は無音共通Fallback禁止。
+2. **選択後解析**：実選択SQL/テンプレート分岐のSource byteとSchema、Dialect、Analyzer/Operator/Plugin版、実消費依存閉包。以前の共通SQLの解析Cacheを別SQLへ転用しない。
+3. **実Read/Continuation**：実選択Realization、Params/Scope/Principal/Sort、Provider Cohort/issued token保証、各PageのRowset/Field coverageと要求集合の終端。Query ID同一・短い最終Pageは complete の証拠にならない。
+4. **Claim/公開**：Predicate/Bag/Row membership/順位/不存在/集計の成立条件と、現在のConsumer Grant/Disclosure。非公開DB Alias/SQL Path/候補の有無・hidden件数をPublicのErrorやAI/Tool JSONへ漏らさない。
+
+**P0停止条件**：Page1とPage2で選択Realizationが違えば旧Continuationを黙って使わず安全に停止・再開始候補を提示する。候補集合のみ変わり選択SQLが不変なら、選択を再検証し同一Cohort/Scope/Grantなどを実証できた範囲に限り継続を検討する。将来のRealization跨ぎ継続はCursor状態の対応を含む明示された同値契約と実証がない限り許可しない。
+
+### 22.3 他データ様式への反証可能な展開
+
+| 様式 | 同じ形や値でも異なる意味になる反例 | 保存・完了を問う対象 | Owner/現資格 |
+| --- | --- | --- | --- |
+| Table/Relation | SQL切替・JOIN fanout・部分Pageで全体0件と誤認 | 行のID/粒度/Bag/Scope/同一Cohort/完全性 | #2387/#2506/#2622。SQL切替のみ独立SQLite限定PASS |
+| Graph/Tree | 同labelの別Node統合、多重有向辺の喪失、Tree投影で循環/向き欠落 | Node/Edge identity、source/target、方向、多重度/辺属性、探索閉包 | #2495/#1126/#2497。実Graph Provider未検証 |
+| Time-series/Event | Event timeと受信時間の混同、late arrival/訂正/撤回で旧Windowが失効 | Window境界、順序、最終化保証、retract/replace、時点 | #2582/#2593。実Stream Provider未検証 |
+| N次元/科学データ | Shape一致・軸/CRS/単位違いを同値と誤認 | named axis、coordinate、unit/CRS、precision、missing mask | #2495/#2498/#2501。外部Target Conformance未検証 |
+| Document/Markdown/DOT | 構造同値でも空白/コメント/layout/引用Occurenceを喪失 | 原文byte/span/Revision、非対象byte、逆写像可能性 | #2497/#2621/SHO。実Writer/Reader未検証 |
+| Measure | Stockの時間SUM、平均の単純平均、異単位SUM、JOIN行増幅 | Measure×集計軸×時点×演算、独立Expected、Grain | #2593/#1705/#2514。汎用Measure Engineは不要 |
+
+Graph/時系列/N次元への適用は**設計仮説**であり、SQLite11件を各Provider/構造の実証へ転用しない。構造facet自体に現在の実ReadやDisclosure資格を埋め込む必要はない。
+
+### 22.4 既存Critical Pathと同一Function横断の最小計画
+
+新しい縦断表や製品Gateを追加せず[#1119の4最小Slice](https://github.com/hat47x/tei-platform/issues/1119#issuecomment-6655761834)と#2586 HJ-02/03/04・HJ-SV-01〜05へ次の順で接続する。
+
+| 順 | 必要な成果 | 成立しないなら停止する事項 | Owner |
+| --- | --- | --- | --- |
+| A（既存局所実証） | 独立SQLite11件と既存QX-26の差、手書きExpectedを保持 | 合成判定器を実TEI Providerとして扱わない | #2586/#2514 |
+| B（次のP0） | 実TEI Query ID→DB/Provider Binding→実選択SQL→実解析が消費したSQL/Schemaを一Attemptで固定 | 実Selector/Worker未提供なら NOT RUN: producer-unavailable | #2611/#2622/#2387 |
+| C（次のP0） | 同一Function ContextでPage1/2の実Read Cohort、Rowset/Field、terminationを観測 | 実Readなしなら NOT RUN: physical-read-unavailable、Cohort保証なしの全体COUNT/NOT EXISTSはunknown | #2506/#2627/#2586 |
+| D（P1） | Public/内部Consumerに実送出した許可情報、Grant失効/後着Responseを検証 | 値一致で現在開示資格や非干渉を認めない | #2516/#1124/SHO |
+| E（P1並行） | Graph、時系列、文書のうち異質な二構造の保存性を独立反例で比較 | 新型追加や見栄えのよいGraph表示を意味保存の完了としない | #2495/#2497/#2498 |
+
+実証は1 Providerの2 SQLから始め、第二DB、Studio/SHOの全実装、Writer/Effect、セルフビルドはP0のHard dependencyにしない。Source/Query/Rule/Grant変更時は影響するClaimだけ再資格化する。Source A→B→Aでも中間履歴や現在権限が保たれたとは推定しない。性能・追加Adapter/コード・誤ったcomplete/false-qualification件数は#2018へ、独立Expectedは#1131/#1180/#2514の既存正本へ委譲する。
+
+**2026-11-06の資格**：文書追補。既存独立SQLite11件の再実行成功とGitHub記録の照合はあるが、TEI実Selector/Worker、二SQL実Provider Page、RLS、SHO/AI実送信、Owner意味受理はNOT RUN。PR #2496はDraft維持・main未統合。新Public Schema、Host、Cursor/Query/Cache Engine、採用済みADRは増やさない。
