@@ -492,6 +492,23 @@ Implementation/配布の責務：#1251（凝集Bundle/テストと未使用非�
 **評価の出口**は、具体的棄却理由、失敗時の回復、採用候補のConsumer・Target適合範囲、必要なOwner判断を既存Issueへ返せること。製品適用・意味受理・Production資格とは別。今回のEX-H1〜6、実Go/DB/外部Process/Windows/Studio統合、性能値、Owner受理はNOT RUN／未採用。
 
 
+<!-- tei-actual-pg-command-extension-reuse-20261106 -->
+### 15.5 実PostgreSQL Commandの既存Evidenceを再利用する「最初の実Provider」縦断計画
+
+前節までのEX-03/04/06・EX-H5の**実証上の出発点**として、現mainの `internal/security/effectcommit/commandadapter/executor.go`（確認Blob `47c2996c961cfb9b0f07a3e6e4223da787a7d204`）を確認した。`CommitUncertainError` を `COMMAND_COMMIT_UNCERTAIN` のUnknownへ変換し、同Attemptの再送を拒否する実装がある。 `internal/security/effectcommit/postgres/command_lifecycle_integration_test.go`（確認Blob `5368cb3501b7d8da62a8ef27c6727ede3943dc44`）では、固定Grantを用いた実PGの成功CAS、古いExpectedVersionの拒否、Commit応答喪失によるUnknown、同じCommand/Operation IDの再実行拒否、higher Generation takeoverでReceiptを再観測して二重更新しない事例がコード化されている。#1174は[merged #2853](https://github.com/hat47x/tei-platform/pull/2853)でのUnknown伝播修正と過去の実PG CI成功を記録し、[merged #2854](https://github.com/hat47x/tei-platform/pull/2854)ではABA後に**別Idempotency Keyなら再適用され得る**ことを確認した。これらは**既存の限定試験・記録**であり、今回実行した試験ではない。
+
+| 段階 | 既存Evidenceを使う部分 | 未証明・採用停止線／主担当 |
+| --- | --- | --- |
+| V0 純粋/Read-only比較 | 同じFunction/意味と固定Source/Scopeの標準Operator/明示Data Operations vs 独立Plugin候補（#988/#2622） | 独立Expected・NULL/short-circuit/partial・実Read Scopeが不明なら結果値だけで互換としない（#1180/#2514） |
+| V1 Provider選択→実呼出 | #951/#1016のexact Contract/Provider/Publisher/Conformance/Selectionを参照 | **実Plugin Selectionが現main Command AdapterのProvider/Target/ExpectedVersionへ同一版で接続された証拠は未取得**。名目上のSelected/Linkedで現在Grantを付与しない |
+| V2 Target収録・ロード | #1251 PB/PBN/PB-10、#943/#1089/#1167/#1370で実消費閉包・Artifact・ロードbyteを固定 | 未選択Bundleの非干渉と選択済みnested moduleの依存欠落を別検証。root Go test成功から全Target資格を推論しない |
+| V3 実Effect・Receipt | 上記PG Command CAS/Unknown/Receipt、#1174のoperation identityとcurrent Host Grant | **選択Provider・現Principal/Scope/Grant・実Target・Effect Receiptを同一Attemptで束縛する実縦断は未実証**。拒否時Effect=0、別Key ABA、失効・期間・After-commitと独立Readを要する |
+| V4 外部Process選択時のみ | 同一のread-only Contract/ExpectedをGo静的Targetと別Processで比較（#2390/#1223） | 起動実物/Transport/kill/timeout/現在Grant/隔離/費用を実測。strict single-binaryと矛盾なら外部Process案を棄却。Process再起動で永続DB効果は戻らない |
+
+**RunPlanとの重要な差**： `internal/execution/runplan.go` の `EffectPreconditions` はObserverの**存在確認**であり、ここで `ObserveEffect` を呼んで実Effectを確認するわけではない。先行StepがEffectを持った後の後続Step blockedも、全Run effect=0ではない（#1130/#1174）。Providerの原子性自己申告、Command success、RunLog completed、Consumerの成功表示は業務Owner受理へ自動昇格させない。
+
+**実証順と非主張**：P0はV0/V1のread-only Source/Contract/Selection照合、P1はV2の実Go Build入力、P2でV3の既存PG試験に欠けるPlugin選択・現Grant・同Attemptの負例を接続、P3は必要なTargetだけV4へ進む。DB方言SQL切替は#2622/#2862へ戻し、固定SQL Asset欠落で共通SQLへ黙示fallbackしない。新Plugin ABI/Transaction Engine/Receipt Store/Hostは作らない。**新しいEX/Go/PG/Process/OSテスト、統合E2E、正式Owner受理はNOT RUN**。
+
 <!-- tei-authoring-plugin-trust-boundary-20261106 -->
 ## 16. 開発用Pluginの作用と生成アプリケーションへの間接影響（2026-11-06、設計・NOT RUN）
 
