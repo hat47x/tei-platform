@@ -469,3 +469,54 @@ Database Contractの別ケースでは、現行Referenceの隔離コピーで `s
 **次段P0b**：同じ`sales.order`を保持し、正式に選択されたLanguage/Role/OperatorとRole Required Shape（実契約として存在するもののみ）を同一Source revision・必要閉包へ接続。未実装なら `unsupported/gap` を場所付きで提示する。#2639の別BranchにあるEG-08/09と異なる実Product Loader経路を提供するが、**両PRの局所PASSを一つのRole自己解釈E2Eに合算しない**。Ownerは #2620/#988、独立Oracleは #2514、Missing Sourceは #2823、Consumerは #2516。
 
 **実行状況**：GitHubへGoテストSourceを追加・再取得したことだけ確認。GitHub Actions等の**exact HEADテストが完了するまではPASS/FAIL未判定**。このテストの成功でも本番Go Single Binary、実DB/Host、正式Role自己解釈/Owner受理を証明しない。
+
+
+<!-- role-self-description-independent-obligation-basis-20261106 -->
+## 10. 2026-11-06 自己記述の非自己証明契約：義務の出所・実読込・実Interpreterを分ける（限定実証＋未実証）
+
+### 10.1 これまで不足していたもの
+
+§8の `Required(C) / Observed(C) / Undischarged(C)` は、`Required(C)` **自身を誰が決めたのか**を区別しなければ循環する。AIが作ったRole Descriptor、未受理なPlugin Manifest、テスト対象DSLが「検査項目0件」と申告しただけで、検査が不要と認定してはならない。反対に、受理済み契約が本当に当該Claimへ適用されない場合は、無関係な検査を強制しない。
+
+本節は既存Evidence／Qualification／Contractの**read-only照合規則**であり、新Core型、Global Proof Registry、Runtime Policy Engine、第二Resolverを追加しない。必要義務は次の発生源と効力を別列で保存する。
+
+| 領域 | Requiredの出所（自己申告に任せない） | Observedの取得・Claim上限 |
+| --- | --- | --- |
+| Workspace/Source | 実LoadされたManifestと、対象Domainの既存Source Readerの許可・要求root、明示Source/Import依存 | `workspace.Load`、`ManifestIdentity`、`BuildSourceIndexFromLoad`、parsed/managed/unparsedの差。未知root／suffix未読込は#2823、Import未束縛はstrict Source Indexで停止。manifestの列挙が完全性保証になるわけではない |
+| Language/Role/Operator | **選択・受理された**既存Contract／適用use-siteとその推移eager依存。未受理なRole DescriptorはCandidateに留める | `ParseSelected` のexact Selection比較、実ParserのCandidate・診断・Source位置。Referenceのfingerprint文字列が実Plugin bytesの検証を代行しない |
+| Semantic/Context | Ownerによって適用範囲が定められた意味契約、independent Oracle、型・NULL・Relation・Query Predicate/Grain/Scopeの既存要求 | `Attribute.Role`／`TypeRef`等の実Parsed Dataを観測できても、業務意味や網羅的意味同値を自動証明しない。#2514/#2586 |
+| Realization/Build | 必要Target／Application selection／actual compile & link inputs、ArtifactSet必要member、実Consumer契約 | Catalog/Bundle/Lock/Build/Artifact/Readerの各実証を#1251/#1089/#2831/#2516で照合。未選択と実Link除外は別 |
+| Effect/Current Authority | 外部Hostの現在GrantとProvider Operation/Effect Preconditions、Business Operation/Receipt/独立Readの契約 | Source/Meaningが受理済みでも実行Grantを新規生成しない。#1129/#1130/#1174/#1163 |
+
+**定式化（新APIではない）**：対象Claim `C=(Subject, RoleUseSite, Operation, Consumer, Scope, Revision/Epoch)` に対して、独立に根拠を持つ必要条件 `R(C)` を定め、観測 `O(C)` と結びつける。 `R(C)` が未確定なら `unknown`。確定した必要条件が欠落・失効・不整合ならその条件を `unmet` とする。観測された条件が局所的にすべて満たされても、別Ownerの受理・Build・Runtime Grantへ自動昇格しない。`R(C)=[]` は「当該Ownerの有効な要求集合が空である」**積極的な根拠**がある時だけ認める。Candidate自身が空集合を出しただけでは不可。
+
+### 10.2 実Go Referenceの接続改善と厳密な限界
+
+`reference/dsl-language-plugin/self_description_workspace_boundary_test.go` の既存 `sales.order` 試験へ、別途 `os.ReadFile` した `semantic/sales/order.tei` の `sourceindex.Fingerprint(raw)` と、`workspace.BuildSourceIndexFromLoad` 由来の同一PathのArtifact fingerprintとの**明示一致検査**を追加した。対象Artifactが欠けた場合も失敗にする。これは後続 `ParseSelected` に渡した**そのraw byte**が、先行LoadのSource Indexに記録された対象file byteと一致するという**当該観測時点の有界Witness**である。
+
+この一致が示さないこと：Workspace全体のatomic snapshot、Manifestの全rootをparseしたこと、Import closure、選択されたLanguage/Role/Operatorの真の実装bytes、Ownerの意味受理、Host Grant、実DB Effect。Source Indexは原Workspace manifestをArtifactに含まないため、`ManifestIdentity`を別照合し続ける。Loadに存在しないrootや読込対象外suffixを診断しない事例は#2823に委譲し、Roleテストだけで解消したとしない。
+
+さらに、Reference `selection.go` の `Selection` は非空のContract/Implementation fingerprint**文字列が一致するか**を検証するが、実Parser実装バイナリをハッシュするAPIではない。`test-only-semantic-parser` を正式なPlugin Integrity Proofに変換しない。
+
+### 10.3 次の受入反証 OBL-01〜07（固定するが新Runnerは作らない）
+
+| ID | 反証入力 | Independent Expected・停止先 |
+| --- | --- | --- |
+| **OBL-01 自己空集合** | Candidate Role DescriptorがRequired Shape/依存を`[]`と自己申告 | 受理済み契約で要求集合が確定しない限りqualifiedにせず`unknown`。#2620/#988 |
+| **OBL-02 Source未列挙** | Manifestに存在しないroot／誤綴り、またはmanaged fileがDomain未解析でも`validate ok` | 対象ClaimへのSource coverage未成立。#2823/#1163。空集合自体をPASSとしない |
+| **OBL-03 実装文字列詐称** | `Selection`の同一見かけのID/版/fingerprint文字列で実Parser bytesを交換 | Referenceのexact-match PASSを実Impl真正性へ繰り上げず、実依存byte/LockのOwnerで不一致判定。#988/#2600 |
+| **OBL-04 独立Readずれ** | Load/Source Index後にfile内容を書き換え、別途ReadしParserへ渡す | `sourceindex.Fingerprint`差を検出し、同一Source Claimを失効。今回の追加は一致検査のみ。改変Fixture・multi-file atomicityは未実行 |
+| **OBL-05 依存の自己削除** | Role更新で必須なeager依存をDescriptorから消し、旧Roleと同じ出力を得る | 未受理Descriptorを義務正本としない。旧契約・新契約の適用／失効を別判定し、出力同一で義務を減らさない。#2620/#2600 |
+| **OBL-06 自己Oracle** | Interpreter/GeneratorとExpected作成が同じ誤った演算を共有 | 独立Oracleが無ければ`independently-tested`不成立。既知Mutantを#2514/#1180へ引渡し |
+| **OBL-07 当時の成功** | 過去のAccepted Meaning／Build Artifactは有効だが、現在のPrincipal Grantが失効 | 過去のMeaning/Artifact証拠は保持、現在の実行・開示は拒否。#2516/#1163/#1174 |
+
+これらは§6 SDX-09〜15、§7 SDX-16〜23、Issue #2620 RBX-01〜07の**追加のテスト正本ではなく、合否判定を誤らないためのProtocol**。実際の独立Expected、Case登録、Test executionは既存#2514/#1180/#1163へ。特に、`R(C)`を評価する独立Rootが製品に存在しない場合は`unsupported/gap`と報告し、そのためだけに汎用Meta Interpreterを作らない。
+
+### 10.4 最短実施順とExit Gate
+
+1. **E0（本PR #2860の限度）**： `sales.order.total` のGo Testのfresh-read fingerprint突合を実行し、exact HEADのFocused test・Repo Healthの結果を保存。Source位置、Manifest SHA、Source Index Artifact fingerprint、Parser candidate Type/Roleを同じテスト範囲に固定。
+2. **E1（#2620/#988/#2823）**： accepted Role Required Shape/Selectionとその要求義務の**独立した出所**が実既存APIにあるかを棚卸し。無い場合、欠けた契約、受渡し位置、診断を一つだけ明示。後付けtest-only Role定義を製品正本としない。
+3. **E2（#2514/#2586/#1163）**：同一Source/Subject/Revisionと独立Expected/既知Mutantを突合し、Source・Meaning・Consumer毎のClaim ceilingを別に記録。Provider/Host資格を先回りして認定しない。
+4. **E3（#1130/#1251/#2831）**：Userの実Application/Targetに選択されたものと実compiler/link消費、Receipt/別ReadをOwner別に確認。全体セルフビルドは#2831の既存Build graphへ。
+
+**実施済み（この§10編集時点）**：Roleの論理義務のOwner境界を設計し、GoテストSourceへ対象file byte照合コードをコミット。**未実施／未確証**：OBL-01〜07の完全試験、実Role Provider自己解釈、実Plugin byte真正性、全Manifest root coverage、Host/DB/Consumer E2E、Owner Meaning Acceptance。該当コミットのCIの結果は別に確認し、前HEAD `201cafab` のCI成功を新HEADへ流用しない。
