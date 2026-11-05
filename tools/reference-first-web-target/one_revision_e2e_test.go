@@ -650,14 +650,18 @@ func TestOneRevisionOrderEntryE2EPacket(t *testing.T) {
 		has[d] = true
 	}
 	if healthRaw != nil {
-		// With a matching health receipt nothing declarative is missing. The
-		// audit still asks for human review and never grants a Product Gate.
-		if len(report.Diagnostics) != 0 || report.Status != "REVIEW_REQUIRED" {
-			t.Errorf("expected REVIEW_REQUIRED with no diagnostics: status=%s %v", report.Status, report.Diagnostics)
+		// With a matching health receipt the audit never grants a Product Gate.
+		// This run uses the direct store, which emits no effectcommit.Evidence, so
+		// the packet has no physical.guarantee. Since the audit diagnoses the
+		// Provider's atomicity declaration, the only remaining diagnostic is
+		// E2_PROVIDER_GUARANTEE_NOT_ATOMIC (it used to be REVIEW_REQUIRED with none).
+		if len(report.Diagnostics) != 1 || !has["E2_PROVIDER_GUARANTEE_NOT_ATOMIC"] || report.Status != "INCOMPLETE" {
+			t.Errorf("expected only E2_PROVIDER_GUARANTEE_NOT_ATOMIC: status=%s %v", report.Status, report.Diagnostics)
 		}
-	} else if len(report.Diagnostics) != 1 || !has["TRUSTED_FULL_HEALTH_NOT_RECORDED"] || report.Status != "INCOMPLETE" {
-		// Only the trusted full health of an exact checkout remains.
-		t.Errorf("expected only TRUSTED_FULL_HEALTH_NOT_RECORDED to remain: status=%s %v", report.Status, report.Diagnostics)
+	} else if len(report.Diagnostics) != 2 || !has["TRUSTED_FULL_HEALTH_NOT_RECORDED"] || !has["E2_PROVIDER_GUARANTEE_NOT_ATOMIC"] || report.Status != "INCOMPLETE" {
+		// Only the trusted full health of an exact checkout and the missing
+		// Provider guarantee (no Evidence on the direct-store path) remain.
+		t.Errorf("expected only TRUSTED_FULL_HEALTH_NOT_RECORDED and E2_PROVIDER_GUARANTEE_NOT_ATOMIC: status=%s %v", report.Status, report.Diagnostics)
 	}
 	for _, filled := range []string{"S02_REAL_DATASOURCE_SCHEMA_READINESS_MISSING", "S02_NEGATIVE_CONTROL_MISSING",
 		"ACCEPTED_R0_R1_LINEAGE_MISSING", "WEB_NOT_BOUND_TO_ACCEPTED_R1_RULE_SELECTION",

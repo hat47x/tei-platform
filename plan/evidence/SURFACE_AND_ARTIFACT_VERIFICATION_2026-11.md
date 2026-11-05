@@ -101,6 +101,10 @@ go run ./cmd/tei validate -workspace reference/standard-crud/workspace
 | 実行ループ | `go test ./internal/execution -run RunPlan` | 通る（順次実行・途中停止・完了の記録・再開） |
 | 無人の停止 | `go test ./internal/execution -run 'Unattended|Attended'` | 通る（確かめる手段が無ければ `blocked`） |
 | 期間との接続 | `go test ./internal/execution -run PeriodPreconditions` | 通る（閉 → blocked、開 → 実行、期間なし → 素通り） |
+| 効果の前提との接続 | `go test ./internal/execution -run EffectPreconditions` | 通る（観測不能 → blocked、観測可能 → 実行） |
+| 停止条件の合成 | `go test ./internal/execution -run CombinePreconditions` | 通る（期間が開でも効果が観測不能なら止まる） |
+| 出力の投影 | `go test ./internal/execution -run ProjectOutputs` | 通る（件数・部分失敗・手段なし・出力なし） |
+| 成果物への反映 | `go test ./internal/artifact -run RunPlans` | 通る（`run-plan` 行、省略項目は出さない） |
 
 **確かめていないこと**
 - 実データベースでの計画の実行
