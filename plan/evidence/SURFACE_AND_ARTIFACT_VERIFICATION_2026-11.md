@@ -111,3 +111,14 @@ go run ./cmd/tei validate -workspace reference/standard-crud/workspace
 - 出力（`output`）の生成
 - 効果の前提を停止条件へ接続すること
 - 無人実行の承認（誰が無人を許したか）の記録
+## 9. 三つの宣言を通した実行計画の確認（2026-11-06 追記）
+
+作業領域のテキストから、期間・効果の前提を持つ実行計画が**無人で止まる／進む**ことを通しで確かめました（`internal/execution/runplan_workspace_test.go`）。
+
+| 確認 | 結果 |
+| --- | --- |
+| 期間が閉じた作業領域で `unattended` の計画 | `blocked`（step は一度も呼ばれない）。実行記録も `blocked` |
+| 期間が開いた作業領域 | 実行して `completed` |
+| 確定後効果を観測できない作業領域（期間は開） | `blocked`。理由に規則の識別子 `s.order.stock` を含む |
+
+この三つは、期間の宣言（#2144）・効果の規則（#1129）・実行計画（#1130）が**同じ操作面の上で噛み合う**ことを示します。合成は `CombinePreconditions` で行い、どれか一つでも満たされなければ実行しません。
