@@ -2696,3 +2696,55 @@ EKI側#112/#266/#67/#115へ契約不足を返し、TEI #1130がJob意味と判�
 P1が未成立でもP2の別Function実PG実験は独立継続できるが、**組織モデルとしてのE2→E4の接続が完了したとは判定しない**。同じCase・同じSource/Role/Provider/Owner受理版・Host現在資格の一Attempt証拠が揃ったときに初めて縦断を評価。#1119の本来のP0-a/P0-b優先は維持する。
 
 **この追補の検証水準**：既存実Go/実PostgreSQLの別PR証拠を確認して設計・受入計画へ反映したもの。今回新しい組織DB、Query、実Host、AI自動テストやCLI/Web統合を実行したわけではない。Org E2/E4本番資格・Owner正式受理は**未完了**。
+
+## 51. 適正規模のPlugin Bundleと未使用要素の非干渉：Sourceから実Go Binaryまで（2026-11-05、組織Profileの実E1から一般的Build/Providerへ引継ぎ）
+
+### 51.1 新たな抽象層を追加せずに「大プラグイン主義」を受け止める
+
+Organization Profileは、凝集したStandard Data/Relation、Hierarchy、Policy、Capacity、Query/DB Provider、Target Generator、UI/SHOなどのモジュールを**適切なボリュームの配布セット**として扱う。ただし`bundle`の大きさと、内包各部品の凝集度／結合度／実利用を別に評価する。基本Interfaceを関連実装と同じPluginに同梱してもよいが、外部Provider/Targetから利用可能なContractと更新範囲を維持することが条件。
+
+**実コードの重要な事実**：main `internal/plugin/model.go`に`Definition/Bundle/ResolvedSet/Capability`、`internal/plugin/resolve.go`に`Catalog.ResolveEnvironment`が既存。`Bundle`をEnvironment選択すると、その`Plugins`に列挙された全Requirementが解決対象になる。**選択済み/Resolved＝Functionが実使用した＝Binaryへリンクされた＝Host実行可能**ではない。Bundle選択だけに従ってProvider/GeneratorをすべてBuildへ反映するなら、未使用の機能が成果物へ影響しない原則を満たせない恐れがある。ただし現行`ResolveEnvironment`が全員を選ぶことと、実Builderが全員を最終出力へ含めることは**別検証**。この境界を越えて現在の実装が不適合と断定しない。
+
+### 51.2 11月5日の実E1限定検証
+
+[組織 Native PR #2681](https://github.com/hat47x/tei-platform/pull/2681)へ、未宣言Plugin rootとModule Sourceの非干渉を検証する`TestOrgHeadlessUndeclaredPluginRootDoesNotChangeSemanticOrOperations`を追加。元WorkspaceのManifest `sources: semantic, applications, databases`を維持し、`plugins/unused-org-profile/plugin.tei`に**あえて構文不正ファイル**を追加して実Go Loader／Source Index／OperationSurfaceを再実行した。
+
+HEAD `dd2925ae525732668d98bf11f39a6cea705b37cd`に対する[GitHub Actions #42030632683](https://github.com/hat47x/tei-platform/actions/runs/42030632683)は**completed/success**（Go1.26.10/Linux、focused `TestOrgHeadless`8件と実`tei validate`・`operations`・`artifacts`＋独立Reader、exact HEAD/clean）。**ManagedFilesに未宣言Rootなし、WorldFingerprint／ModelRevision／Operation集合は元と一致**。Reader `findings=0, complete=False`に変化なく、実Artifact完全性・全Target・Go Binary非含有は未実証。
+
+**仮定しないこと**：Catalog登録済み／Environment非選択PluginのModelRevision不変、Environment選択済みBundle内の未使用Module非収録、Go LinkerのDead-code eliminationが個々のPluginを確実に除去すること、Target依存がないPluginの変更がBuild Input/Artifact bytesへ完全に影響しないこと、Pluginの提供Capabilitiesを実Principalが使えること。今回証明したのは**Manifest外Sourceが読まれない**という一段階だけ。
+
+### 51.3 既存Ownerでつながる選択・Build・実行の受入票
+
+| 契約 | 原則と測定対象 | Owner |
+| --- | --- | --- |
+| Source Inventory/Parser | Required/Discovered/Loaded/Indexed、Source raw/locator/manifest/Import、必要Root未探索とoptional root欠落を区別 | #2822/#2823/#2860、#2600 |
+| Plugin/Bundle Resolution | Catalog、Environment選択、Bundle展開、requires閉包、Lock/Contract/API版、曖昧提供とCycleの拒否 | #951/#2619 |
+| Function/Capability Usage | Organization Case/Policy/Capacity/SHO/SQLRealization/Providerなど**使用されたCapability**と責務/Dependency | #2506/#2622/#2386/#2862 |
+| Target Build Intent/Inputs | 使用集合→Generator/Module/Go Source/Toolchain/Build Unit、必要時のみ複数Buildへ対応 | #1130/#1167/#2600 |
+| Artifact/Consumer | Artifact set/member/digest/complete、同じ入力で再現、実Consumerが受領したbyte/不足member | #2604/#1163/#2582 |
+| Exposed/Authorized/Effect | CLI/Web/JobのEntry露出、Current Principal/Grant、Provider Row/Field/Read、実Command/Receipt | #2598/#1174/#2564/#2516 |
+
+ここで**利用者が選ぶ**のは業務Function・Data・表示/実行目的であり、標準参照でGo Module名やSQL Dialectを毎回選ばせない。Studioは必要なCapability/Providerの不足を業務語で説明できる。内部のDB Alias/秘密Data/DSN/未許可Pluginを同じ説明へ露出しない。
+
+### 51.4 受入用の一連の変更と最小判定
+
+一つの組織`.tei`を正本に、**Org list/read only**と**Org policy + PostgreSQL-specific Query/Report + optional SHO generator**の二つのTarget/Function Build Intentを比較する。前者を先に実行し、未使用モジュールを追加・改版しても**そのTargetのUsed closure／実Build Input／Artifact member**が影響を受けないか、同一Toolchain・Build Flags/GOOS/GOARCH/ロック・Source版で対照する。結果のBinary digest/size、build latency、必要なEntry/Resource、修正時の再Build対象を比較し、出力が同じという期待をテスト前に固定する。初期の単一Binaryと運用上必要な二Buildは#1130に委譲し、業務意味/Function IDは変更しない。
+
+| Trial | 変形 | 期待する差分とNG |
+| --- | --- | --- |
+| BP-01（実E1） | Manifest外に不正Plugin Sourceを追加 | **PASS：Parsed/Indexed/World/Operation不変**。Binary非含有は測定外 |
+| BP-02（未実施） | Catalogに未選択Pluginを追加／版更新 | 未利用Targetの必要閉包は不変。Global Source Indexが変化したことだけでTarget再Build必須にしない |
+| BP-03（未実施） | 選択Bundleの未使用Generatorだけを改版 | `ResolveEnvironment`の選択範囲とTarget Used closureを別票にし、Go Build actual inputs/Artifactへ混入したら理由を分類 |
+| BP-04（未実施） | 実際にOrg Policy FunctionでGeneratorを使い始める | 該当Targetだけ必要Closure/Artifactが変わる。Case Semantic ID/Owner Meaningは別 |
+| BP-05（未実施） | 選択DBをPostgreSQLに固定したまま別DB Query Assetを編集 | #2862のQuery IDと選択SQL/Providerの具体版を固定し、Provider actual Read/Schema/NULL/粒度が等しいかは別試験 |
+| BP-06（未実施） | 選択済み必須Providerの版/Capabilityが不適合 | silent fallback/無根拠の未使用判定を拒否、Build/実Readの必要条件を診断 |
+| BP-07（未実施） | 組織Write CommandをBinaryに収録、Entryは非公開/Current Grantなし | `compiled-in`≠`exposed`≠`authorized`。実Host/Provider拒否を観測 |
+| BP-08（未実施） | Source/Plugin/RoleのA→B→A、候補依存の追加・削除 | 現在のbyte一致から中間受理撤回や実Build/Grant資格の一貫性を推測しない |
+
+**判断基準**：BP-02/03の「未使用」とは**ビルド対象Function/Targetで実消費されない**意味。選択Bundle全体の整合性検査を省略することではない。Compiler Linkerの副作用、Go `init`・自動登録・空import、Generatorの横断Source走査、Asset埋込みなど、使用が見えにくい経路も実Build Inputの差分から点検する。機械的な巨大Plugin分割や、無関係な抽象Plugin追加は適合条件にしない。
+
+### 51.5 次に実際に走らせる最小順序
+
+**P0** は今回のNative E1 BP-01（合格済み）と、現実のBundle Selection/Lock/Source Rootを固定した**read-only解決比較**。**P1** は対象TargetだけのGo Binary実Build＋Artifactと必要Moduleの差分（BP-02/03）、**P2** は必要Capability選択と実DB Read/Policy/Host/Effect（BP-04〜07）、**P3** はBuild latency/size/startup/移行コスト実測と、AI-first独立ExpectedによるMissing/Over-Inclusion検出。P1未実証の段階で「未使用プラグインはビルド結果に影響しない実装が完成」と宣言しない。
+
+**状態**：BP-01の実Go PASSのみ。実Target Build閉包・Binary生成差分・使わないがBundle選択済みのModule除去・二DB/Provider・Host Authority・Studio/SHO/AI/Owner正式受理、BP-02〜08は未実施。#1119既存P0実DB/Owner-writeを優先。新Plugin Manager/Registry、独立Bundle Engine、組織専用Host/ACL、第二Build/Query Solverを設けず、契約差分だけ既存Ownerに渡す。
