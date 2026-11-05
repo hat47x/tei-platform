@@ -350,3 +350,27 @@ G1〜G5で各観測は取得時点が異なる。要求するのは**同一瞬�
 
 **状態**：MG-29のGoテストは追加したが、実DB Migration/旧新Client/Fence/CDC/外部History・正式Owner受理は**NOT RUN**。現挙動を示すテストの成功は、望ましい安全性の成立ではない。#2892の修正は未完了であり、本書で修正済みとしない。
 
+
+## 17. 互換性検査の二重last-wins防止と修正順（2026-11-06）
+
+**新たに確認したコード上の事実**：`CheckApplication` は（a）`[]StateSnapshot`→`map[DatabaseID]StateSnapshot`と（b）`StateSnapshot.Provides`→`map[ContractID]ProvidedContract`という**2箇所で重複値を後勝ち**にする。つまり同じDB IDの旧新Snapshotだけでなく、一つのDB状態の中で同じContract IDに異なるMajorが2つあれば、入力順だけで `Compatible/Blocked` が反転し得る。`MG-29`はこの**二重の曖昧性**を検収対象にする。
+
+- **修正Owner／Issue**：[**#2897**](https://github.com/hat47x/tei-platform/issues/2897) はRelease互換検査の同一DB・同一Provided Contract重複をfail-closedにする。既存 `CheckApplication` の構造判定の責務を維持し、Source/Provider/Instance/時点・現在Grantの自動推測を追加しない。
+- **区別する別Issue**：[**#2892**](https://github.com/hat47x/tei-platform/issues/2892) は `migration.CompareHistory` の `AppliedUnknown`→偽`RepoApplied`／履歴取得不能→偽`Pending` 問題を受け持つ。二つを混ぜて新しいHistory/Gate SSOTを作らない。
+- **一時的な上限**：`MG-29a/b`のGo特性テストは現行の順序依存という**望ましくない現状**を固定している。これらがGo CIで成功しても、安全修正は未完成。修正用の小PRが同じGitツリーへ入る際、特性テストのExpectedを望ましい`Unknown/入力拒否`へ**必ず更新**し、後勝ち期待のまま残さない。`MG-29c`の古い`ObservedAt`での構造 `Compatible` も、**現在Gate資格が得られた**との主張にはしない。
+- **Provider差の扱い**：一つのDBが2 Majorを同時に提供する仕様は現行 `map[ContractID]` では表現されず、値をまとめて一つのMajorにしてはならない。併存が必要なら、Provider/Release Ownerが新しい明示的契約を別途設計・受理するまでは`Unknown/不正入力`とする。旧新Applicationが別Contract Majorを必要とする場合、現在のStateSnapshotを単純に繋いで両方成立とは推測しない。
+
+### 17.1 修正優先順位と独立Expected
+
+| 順序 | 最小実装／確認 | 採用に必要な証拠 |
+| --- | --- | --- |
+| P0-1 | `#2897`：DB Snapshot重複／ProvidedContract重複を検出して非黙示・順序不変の`Unknown`またはエラーにする | MG-29a/bの順序を入替えても安全な同一結果。既存の単一DB State/複数別DBの正常動作は退行しない |
+| P0-2 | `#2892`：History unknown/partialと真正の成功/空を分離 | HIST-01/03（偽`RepoApplied/Pending`拒否）、HIST-04の既存分類維持。実Provider Adapterは別証拠 |
+| P0-3 | `MG-21/22/29`：現在のDB Snapshot/Read Scopeと必要Obligationを紐付ける | 同一Query/Stateの構造互換成功、実Reader/Writerが未観測ならG3/G4に`unknown`を維持 |
+| P1 | `#2555/#1174`：MG-24 Safe Pauseと実Provider Effectの対象集合を結ぶ | old Writer Fence、CDC、new Grant、Commit/Receipt/別Readを**同一Logical Operation**・必要な観測区間で確認。非観測は中止・保留 |
+| P2 | `#1126/#2555`：MG-27の履歴Retentionと旧形式退役/物理削除のOwner判断 | 実過去時点Reader/記録/Code Map再現、外部Consumer契約の保存。旧WriterゼロだけではContract通過不可 |
+
+**採用留保**：重複入力をエラーにするか `Unknown`にするか、重複した全く同一Snapshotの重複排除を許すか、複数Major同時提供の新正式構文、現在のSource/GrantのAPI表現。いずれも#2897と必要なOwner審査で定める。データが**複数観測できたこと自体**は現在の正本を選ぶ根拠ではない。
+
+**現状**：MG-29a/b/cのうち二つの順序依存と古い観測日時のGapをGoで特徴付け（同一DB、同一Contract、観測日時の計3テスト関数）。修正後の拒否判定、History Adapter、実DB、旧Client、Cutover、Owner受理は未実行・未受理。`#2897`の課題登録は実施済み。
+
