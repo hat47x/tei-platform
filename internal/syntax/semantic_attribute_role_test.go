@@ -94,7 +94,6 @@ func TestParseSemanticAttributeRoleAllowsDistinctAttributesAndQuotedText(t *test
 	}
 }
 
-
 // Role's source-side value anchor allows navigation, not editing or acceptance.
 // Check the exact authored bytes; quoted role-like text and multibyte content
 // must not alter this anchor or become an additional Role declaration.
