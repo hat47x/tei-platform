@@ -669,7 +669,7 @@ Ownerは#1180（Scenario）、#2813/#988（DSL Candidate）、#2514（Oracle）�
 
 **本Planへの導入はG0の入力明確性だけ。** 現mainの`scenariotest.Parse`は`RejectDuplicateJSONMembers`を実装済みだが、`ParseValidationFixture`／`ParseBrowseFixture`／`ParseObservationFixture`は単一`json.Decoder`によりobject memberの重複を拒否していなかった。重複メンバーが後勝ちの場合、候補JSONとFixture、Actual/Expectedの比較の前提となる入力が曖昧になる。
 
-- [#2891](https://github.com/hat47x/tei-platform/pull/2891)：mainから独立のDraft。既存Scannerを3 Fixture入口に再利用、重複Member負例7件＋非重複正常3件のGoテストを追加。HEAD `2f677921` [Health #42107910706](https://github.com/hat47x/tei-platform/actions/runs/42107910706) の**全Go Test・vet・WorkspaceはPASS**、ただし新`fixture_duplicate_members_test.go`の**gofmt driftで総合Healthはfailure**。書式修正後の別HEAD CI成功まで当該G0を正式採用しない。新Parser/Runner/業務Ruleなし。
+- [#2891](https://github.com/hat47x/tei-platform/pull/2891)：mainから独立したG0 Draft。旧HEAD `2f677921`の[Health #42107910706](https://github.com/hat47x/tei-platform/actions/runs/42107910706)はGo全体/vet/Workspace PASSだがgofmt driftで総合failure。**新HEAD `16b8d554`で書式のみ修正**し、[Health #42110507652](https://github.com/hat47x/tei-platform/actions/runs/42110507652)は照会時in_progress。旧結果と新HEADの資格を分け、完了後のCIでG0修正候補を評価する。Scanner再利用＋重複Member7／正常3件、製品Runner/業務Rule変更なし。
 - [#2890](https://github.com/hat47x/tei-platform/pull/2890)：既存#2828に積んだJSON-only AI候補。正常`[1,2]`／重複`[1,1]`の行番号配列について、リポジトリから実Readした2 Fixtureに対し独立な集合重複の簡易計算を行い、期待の`satisfied/not-satisfied`と整合することを確認した。これは**合成入力の算術的sanity check**であり、TEI CLIの実Step Receipt／業務Owner独立Oracle／L2 Conformance資格ではない。現PR headのActions Runが取得できない限り`NOT RUN`。
 - **区別する負例**：Relation`keys`の`[1,1]`（正当な重複データとしてValidationが拒否する対象）と、JSON objectの同名`keys`member 2回（Parserが拒否する入力不正）は別。どちらかの拒否成功でも他方や実Target Coverageを自動PASSとしない。
 
@@ -695,3 +695,6 @@ main統合済み[PR #2894](https://github.com/hat47x/tei-platform/pull/2894)の`
 **既存計画の優先検収差分**：P0a #2891 exact-head総合CI PASS＋必須10 Case非SKIP確認 → P0b #2895で追加2 Stepが既存Go CLI test経由で実走した証拠の再取得 → P0c 一体HEADに必要な最小4ファイルを適用し、G0と限定G1/G2候補を同一Checkoutで試す（新Runner/新Schemaなし）→ P1 #2514独立既知Product Rule Mutantの実kill。最終Owner Meaning、Provider/Host・一改訂Web→PG→独立Consumer資格は引き続き#1163/#1119が所有する。
 
 **今回の計画追補はdocs-only**。実Goの修正は#2891、実新Case/Oracleは別PRであり、本Planに製品コードを複写しない。#2895 Stackは検証用Draft・単独main merge禁止。
+
+
+**横断の負例出典（Test SSOTの追加ではない）**：[#2892](https://github.com/hat47x/tei-platform/issues/2892) のMigration History `AppliedUnknown`が`RepoApplied`に誤分類され得る問題／取得欠落を真の空Historyへ置換してしまう問題と、[#2887](https://github.com/hat47x/tei-platform/pull/2887)の同DatabaseID・Contract後勝ち、#2891のJSON同名Member後勝ちは、入力種別は異なるが「曖昧・未取得・重複を黙って成功にする」という**資格違反**を共有する。それぞれ#2892（HIST-01/03の独立Expected、NOT RUN）、#2887/#2897（DB移行Gate、実業務未検証）、#2891（test-only Fixture Parser）へOwnerを維持する。#2811は必要ObligationとUnknown表示の受渡しだけを担当し、新共通Validator/History Engineを実装しない。
