@@ -163,6 +163,8 @@ E1とE2は最小の共通面が成立した時点から重ねて実施できる�
 - **Meaningを勝手に補わない**：欠落、NULL、非開示、unknown、partial、conflicting、ambiguousを区別。Ownerの直接入力（要件・決定）は現在文脈の前提として使えるが、貼り付けた外部文書やAI文章の出所をuser確認済みへ変換しない（ADR-0030、#1440）。
 - **レビュー対象を固定**：Candidate semantic identityだけでなく、Base Source Revision、実参照Scope、Review対象と判断時点を記録。Source改版・関係経路変更・Role/Operator/Grant/Disclosure変更・撤回時には当該用途の適用資格を再照合する。SourceのA→B→A、EvidenceのE1→E2→E1でfingerprintが戻っても途中の無変更や旧Review復活を推定しない（#958/#2600）。
 - **再生成・再開時**：Candidate本文が同じでもAttemptは別。過去の拒否/保留をモデルの言換えによって迂回させず、再生成ごとに現在のSource/必要根拠/Allowed capabilityを照合。履歴を復元できなければ`not established`のまま。候補からAccepted Sourceへの反映は#267の書込み・reload検証だけ。
+**既存Referenceの具体的な未解決点**：[#958 R3](https://github.com/hat47x/tei-platform/issues/958)では、Evidence E1→E2→E1のABA後にReview subject fingerprintが元に戻り、**旧Review CommandがReference v0で受理され得る**ことがCharacterizationされている。この現状を「既に旧Reviewを拒否できる」と記録しない。AIB-02/08では、同一digestの再登場とReviewの有効性を分離し、観測履歴/現在subjectの資格が不足すれば自動適用を止めることを**追加の受入目標**とする。修正方式・新Core状態は既存Owner判断まで保留。
+
 - **Provider直結を構造的に排除**：AIが出せるのはtyped Action Intent **候補**まで。AIへのread-only Tool公開・Proposal生成から、Provider write/execute/commit、Shell/network egress、Host credentialを獲得する暗黙経路を設けない。実Actionは#2598の対象束縛と#1174/#1129の現在Grant/Effect Fence経由でのみ成立。ネットワーク/OS分離はUI上の宣言ではなく後段の実測対象。
 
 ### UIに投影する区別（新Core enumの採用ではない）
