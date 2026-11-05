@@ -631,3 +631,47 @@ D0〜D5は**検収票の論理列**であり、すべてのActionが6段の新Ru
 4. **P3: Consumer** — #2516/#2604が現在Audienceの実Result/Receipt/Body受信を確認。RunPlan/Jobの完了、Webのcompleted表示、帳票行の存在はそれ自体でBusinessVerifiedにしない。
 
 **停止線**：#2864はDraftのUI局所修正であるため、mainへ入ったと書かない。#2853/#2854/#2870の実PG限定結果は実証済みとして維持しつつ、正式Host current Grant、一つのActionから実PGまでの同一Attempt、実Process kill・ネットワーク分断、OwnerによるBusiness Operation同一性の受理、二Consumerの現在開示は**NOT RUN**。新Host/Universal Idempotency Engine/二重Job Runner/独自Identity Registryは設けない。
+
+<!-- 20261106-runplan-actual-workspace-to-temporal-consumer-join -->
+## 20. 11/6他Lane実装の合流：実WorkspaceのRunPlan前提・Script復旧・Studio後着を一つのAttemptで資格化する
+
+### 20.1 main到達点と、現に欠けている接合
+
+| 対象 | 実際に確認できる限定到達点 | Actionの同一試行へ持ち越してはいけない推論 |
+| --- | --- | --- |
+| [main #2882](https://github.com/hat47x/tei-platform/pull/2882) `internal/execution/runplan_workspace_test.go` | 実`workspace.Load`→操作面導出→**明示して渡した**Period/Effect Preconditions→`RunPlan`。closedでstep未実行/blocked、openでresolved、after-commit observer欠落でblockedの3経路。exact-head Health/セルフビルド/依存確認成功 | `CombinePreconditions`が**業務に必須な全Guardを自動導出した**とは限らない。Periodはテスト内Mapのopen/closed。StepFuncは合成の`resolved`で実Provider Effect/Receiptではない |
+| [Draft #2884](https://github.com/hat47x/tei-platform/pull/2884) Script失敗/回復 | Dispatch前・送出可能性あり・Unknown/Partial・Receipt照会・Restart・現開示の失敗境界を設計し、既存#1130/#1174/#1180へ受渡し | DraftのSH-01〜12は新実行試験ではない。新Recovery Coordinator/Job Registryを導入した証拠でもない |
+| [main #2747](https://github.com/hat47x/tei-platform/pull/2747) Studio Command | 実`PlanCommand`／`ExecuteCommand(WithPeriods)`とReference executorの入口が存在。参照モードで`committed=true`が返ることがある | 参照`committed=true`は**実DBの物理Commitでない**。`Ready=true`も現在Grant/Period/Target・業務受理の確証ではない |
+| [#1824 DS-X11/12](https://github.com/hat47x/tei-platform/issues/1824) Desktop受入 | `runCommand`が開始時Workspaceを参照する一方、後着Promiseを`displayCommand`で表示する際の現在Workspace/Requestとの再照合不足を、実Code静的点検から受入候補化 | 実GUIでの後着事故再現済みとは主張しない。CLIのSource消費`validate.ok=true`は用途上の必須Sourceが読まれた証明ではない |
+| [main #2853/#2854/#2870](https://github.com/hat47x/tei-platform/issues/2564) 実PG | Product Command→実PGの同Key lookup/replay、異Key ABAの再適用、restartでin-memory Unknown消失を**それぞれ局所確認** | 同一Source/Action Offer/RunPlan/StudioからそのPG Operationへ実到達した、G1/G2正式資格を満たしたとは言えない |
+
+### 20.2 「同じ情報に見える」と「同じActionの結果」の非同値
+
+過去のAction表示と結果には**二つの独立したJoin**が必要。新しい中央Key schema/Proof Registryを作る提案ではなく、各既存Consumer/Host/Providerが保持する識別子の突合条件を定める。
+
+- **Execution join**：選択Sourceと実消費Occurrence/Revision、Meaning Role/Operator、Function/Action Purpose、Subject/Scope、実`Inputs`と選択`Payload`、Plan Required Guard集合と実Evaluated集合、Request/Attempt/Generation、実Provider Target/OperationID/Key、Effect/Receipt/independent read。解決できない辺は`unknown/not-connected`。画面上同じ名称・Source WorldFP・値や`completed`の一致では結ばない。
+- **Presentation join**：結果を受信したConsumerの**現Workspace、Source Revision、選択Subject/Action、表示/Request epoch、開示Grant**を、結果が発行された時点のContextと比較。旧Workspaceへ返す応答は歴史的AttemptのOutcomeとして扱えても、新画面の`Action currently completed`/Validation/DOM/ARIAには投影しない。過去のReceiptの歴史を「未実行」に書き換えず、現在見せてよい内容だけを別審査。
+- **Required Guard coverage**：main #2882が示すのは`provided Preconditions`の実効性。必要なPeriod/Effect/Target/Authorization条件を`required`として全列挙し、`evaluated`との差集合が空と確認する責務は#1130/#1174/#2622の実行Owner。非nil関数・成功したpreflight・openという入力値は不足集合の証明でない。
+- **Observed Result ceiling**：同一Provider Receiptでも、別Replica/後続Writer/一部だけのRead、after-commit通知未配送、Consumerの権限失効ならBusinessVerifiedにはならない。独立Expectedは#1180/#2514、資格の集約は既存#1163の`Required / Observed / Undischarged / Claim ceiling`を用いる。
+
+### 20.3 既存受入IDを使う最小反例（新Scenario正本なし）
+
+| 合流する既存Case | 故障注入／変更 | 固定Expectedと停止線 |
+| --- | --- | --- |
+| **ACU-01＋SH-05** | 同じ実Workspaceに必須Period+after-commit Effectがあるのに、Effectのチェックだけを`CombinePreconditions`へ渡す | 既存関数の返値が成功でも**required guard missing**を検出。別実装によるGuard網羅性修正はOwner判定。main #2882の3正例を全Guard保証へ昇格しない |
+| **DS-X11＋RIT-03** | Workspace Aの参照Command実行をdeferred、Bを開いた後でAの`committed=true`/通信失敗が後着 | B画面にAの成功・失敗・対象・見せられない情報を混入させない。過去Attemptに属する参照結果は保持可だが外部DB確定を主張しない。RIT-03の実PG ACK lossは別試験 |
+| **DS-X11＋RIT-06** | A→B→Aへ戻し同じ表示値・Source byte、別`selection/request epoch`、Role/Grant/Period変更 | 同名・同値復帰で古いAction Offer/Request/Resultの「現在資格」を回復させない。元Receiptの監査履歴は破棄しない。現在Audienceへの非開示を#2516で確認 |
+| **SH-07/08＋RIT-04/05** | RunPlan A効果後B blocked、Commit ACK loss、Lifecycle restart／同Key lookupと異Key ABA | Plan全体BlockedとA Effect 0は非同値。Lookup不成立なら新Key盲再送を拒否。同Key再演と異Keyの再適用を一回性へ自動昇格しない |
+
+### 20.4 実証順と変更責務
+
+**P0**：#2882の実Workspace3経路を`observed`、必須Guard閉包・Provider Effectを`undischarged`として#1163に紐づけ、#1824 DS-X11の実Codeと同一`Run/Request/Workspace epoch`のJoin候補をread-onlyで点検する（UIへの新仕様を先に要求しない）。
+
+**P1**：既存#1180の独立Expectedを用いて、`required guard omission`と`late response after workspace/selection switch`の二負例を各Ownerの最小Go/Nodeテストへ分割する。#2884 SHのコピーや第二Script Runnerの生成はしない。
+
+**P2**：#1174/#2564の既存実PG Commandへ当該一Request/Functionを実接続した場合だけ、Provider Commit/Unknown→元OperationID lookup→別Connection readを観測する。P0/P1の独立PASSを実PG E2Eと足さない。
+
+**P3**：#1824の実Browser/WebView、#2516のConsumer/Disclosureに同じResult/Receiptを渡し、後着・現在権限・Observed Bodyの実読取を試す。実WebView/Windows UIや正式Owner受理をP0の前提条件にしない。
+
+**今回の状態**：#2882はmain統合された限定Go実証、#2884は設計Draft、Studio後着は現行コードの静的指摘。ここに記すJoin・追加負例・実GUI/PG同一Attempt検証は**NOT RUN**。この統合で既存#1119 G1/G2/G4のGateを増やさず、採用済みScript/Source/Host Authority/Consumer正本を変更しない。
+
