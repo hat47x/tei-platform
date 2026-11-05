@@ -2508,7 +2508,7 @@ E2開始の**先決条件**：#2822/#2823のWorkspace宣言数・必須Source対
 
 [実TEI組織PR #2681](https://github.com/hat47x/tei-platform/pull/2681)の`org-headless-workspace/tei.workspace.yaml`は`semantic`・`applications`・`databases`のみをSource rootとする。今回追加の`TestOrgHeadlessUndeclaredPluginRootDoesNotChangeSemanticOrOperations`は、同Workspaceを複写し、**manifestに列挙されない`plugins/unused-org-profile/plugin.tei`へ意図的に構文不正の内容**を置いて、実Workspace Loader／SourceIndex／OperationSurfaceを確認する。
 
-fixed HEAD `dd2925ae525732668d98bf11f39a6cea705b37cd`の[Native Actions #42030632683](https://github.com/hat47x/tei-platform/actions/runs/42030632683)は**completed/success**。Go 1.26.10/Linux、`go test ./internal/operations -run '^TestOrgHeadless' -count=1`（合計8件）、実`tei validate/operations/artifacts`と別Reader、exact HEAD/clean成功。**追加RootはManagedFilesに存在せず、WorldFingerprint／ModelRevision／Operation集合が全て同一**。Artifact Readerは`findings=0, complete=False`で、配布可能Artifactの完全性を示さない。
+fixed HEAD `e0cfebf14d40db81bdef77d6c3e4898ed75d999f`の[Native Actions #42031418190](https://github.com/hat47x/tei-platform/actions/runs/42031418190)は**completed/success**。Go 1.26.10/Linux、`go test ./internal/operations -run '^TestOrgHeadless' -count=1`（合計8件）、実`tei validate/operations/artifacts`と別Reader、exact HEAD/clean成功。**追加RootはManagedFilesに存在せず、WorldFingerprint／ModelRevision／Operation集合が全て同一**。Artifact Readerは`findings=0, complete=False`で、配布可能Artifactの完全性を示さない。
 
 **重要な証拠上限**：これは`manifestで未選択のSource root`というE1の証拠のみ。`Plugin rootに登録済みだがEnvironmentで未選択`、`Bundleに選択済みだがCapability未利用`、`Go buildが実際に未利用コードを含めなかった`、`最終binaryのdigest/size/startupが無変化`、`現在Host Grantがないので実Invokeできない`は**別契約・未検証**。見かけのGlobal ModelRevisionが変わった場合も、Function/Target依存閉包が変わったとは限らない。反対に、無関係に見えても参照先が追加/削除され依存解決が変化すれば再確認が必要。
 
