@@ -122,3 +122,10 @@ go run ./cmd/tei validate -workspace reference/standard-crud/workspace
 | 確定後効果を観測できない作業領域（期間は開） | `blocked`。理由に規則の識別子 `s.order.stock` を含む |
 
 この三つは、期間の宣言（#2144）・効果の規則（#1129）・実行計画（#1130）が**同じ操作面の上で噛み合う**ことを示します。合成は `CombinePreconditions` で行い、どれか一つでも満たされなければ実行しません。
+## 10. 実データベースの確認手順（2026-11-06 追記）
+
+実データベースでの確認は**まだ行っていません**。手順と、確かめること・確かめないことを固定しました（[実データベースでの確認手順](REAL_DATABASE_VERIFICATION_PROCEDURE_2026-11.md)）。
+
+- 入口は `tei dbcheck`（DSN 未設定なら終了コード 2 で、何も実行しない）。
+- 試験は `tools/reference-expected-state-concurrency`。
+- 確かめるのは一つの行と `READ COMMITTED` の範囲。分離水準の変更・実際の実行経路・性能は**確かめない**と明記。
