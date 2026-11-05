@@ -16,7 +16,7 @@
 - `plan/V1_REFERENCE_APPLICATION_PLAN.md`
 - `plan/MILESTONES.md`
 - `plan/research/TECH_RESEARCH_INTEGRATION_2026-10.md` ：直近の調査結果を製品価値や既存の課題に結び付ける統合計画
-- `plan/REFERENCE_MODEL_TRANSFER_GATE_2026-10.md` ：成熟した外部の参照モデルをプラグイン中心で移し替え、TEIの表現力や暗黙の前提を横断的に検証する計画
+- [#941 Reference Model Transfer](https://github.com/hat47x/tei-platform/issues/941)：参照モデルの再利用・公開条件を確認する既存Issue（旧計画ファイルは公開ツリーから削除済み）
 
 ## 現在の主線
 
@@ -69,7 +69,7 @@ Gate C — PAS-04 Evidence — Ready
 
 `#387`での最終確認と、同じ実行で取得した子処理の成果物の独立監査を踏まえた`Ready`の判定記録は、`GATE_B_READINESS_AUDIT.md`を正本とします。
 
-PostgreSQL以外の実際のデータベースによる検証根拠も重要です。最初の参照事例では、Oracleに関する#214・#371・#376が該当します。ただし、判定段階Bの第四の必須検証経路には含めません。未完了の範囲は`unresolved`として引き継ぎます。
+PostgreSQL以外の実際のデータベースによる検証根拠も重要です。最初の参照事例では、Oracleに関する#214・#371・#376が該当します。ただし、判定段階Bの第四の必須検証経路には含めません。未完了の範囲は`unresolved`として引き継いでいました。2026-11-04に、観測すべき旧Oracle資産がないことをOwnerが確認し、#214・#371・#376はいずれも`not planned`でcloseされました。
 
 ### 引継ぎの基準：判定段階BからCへ
 
@@ -178,7 +178,7 @@ AI向けの知識・検索索引・埋め込み表現・処理履歴などは派
 
 実際に観測していない物理的な構成要素・列・SQL・データ型は、推測して補いません。
 
-成熟した外部の参照モデルを移し替える作業は、`ISSUE-000078`と`REFERENCE_MODEL_TRANSFER_GATE_2026-10.md`で扱います。必要な業務・設計上の概念は、原則として意味の拡張やプラグインで表し、X-TEA固有のスキーマを中核へ直接追加しません。外部モデルの本体を公開の試験データへ複製せず、元資料の照合値・参照位置・対応付け・失われた意味・未解決事項・準拠確認の根拠から追跡できるようにします。
+成熟した外部の参照モデルを移し替える作業は、`ISSUE-000078`と[#941](https://github.com/hat47x/tei-platform/issues/941)で扱います（旧`REFERENCE_MODEL_TRANSFER_GATE_2026-10.md`は公開ツリーから削除済み）。必要な業務・設計上の概念は、原則として意味の拡張やプラグインで表し、X-TEA固有のスキーマを中核へ直接追加しません。外部モデルの本体を公開の試験データへ複製せず、元資料の照合値・参照位置・対応付け・失われた意味・未解決事項・準拠確認の根拠から追跡できるようにします。
 
 ## 作業領域D：データベースと提供実装の変更管理
 
@@ -414,7 +414,7 @@ external LLM
 
 ## 業務設計の実用性を基準にした範囲の再評価（2026-10-08、評価待ち）
 
-[製品要求の整理#982](https://github.com/hat47x/tei-platform/issues/982)では、データ・機能と操作・業務手順の相互検証、早い段階で実行できる設計、人が理解できる表示を重視し、RQ-001〜033と検討中のRQ-034について第1版で着手する範囲を見直しています。**ここでは製品要求の削除や既存の優先順位の変更を確定しません。**
+[製品要求の整理#982](https://github.com/hat47x/tei-platform/issues/982)（2026-11-04にclose、結論は[#1119](https://github.com/hat47x/tei-platform/issues/1119)へ統合）では、データ・機能と操作・業務手順の相互検証、早い段階で実行できる設計、人が理解できる表示を重視し、RQ-001〜033と検討中のRQ-034について第1版で着手する範囲を見直しています。**ここでは製品要求の削除や既存の優先順位の変更を確定しません。**
 
 検討の入口は既存のISSUE-000075とします。実証Aでは、2026年10月5日に合成データを使った開発環境で実行記録を取得しました。候補Bでは2026年10月8日に管理主体が業務規則の変更を受理しましたが、ウェブ画面を含む一連の処理・すべての明細への規則適用・三つの視点からの意味の整合性確認は未完了です。実証Bの詳細と未完了範囲はISSUE-000075を参照します。
 
@@ -518,6 +518,19 @@ go build -o /tmp/tei-eid-verify ./cmd/tei
 **最短の次工程**：既存#2586 HJ-SV-01〜05（同一Query IDでもPage間SQL Realization変更で混合するSQLite合成11/11）を固定Expectedとして、(1) #2611/#2622/#2387の実TEI Realization選択→解析実Input、(2) #2506/#2627/#2586の同一Function・実Provider Page1/2＋Cohort＋完了証拠、(3) #2516の実Consumer現在Grant/非干渉へ順番に接続する。初回は一Provider/二SQL、read-only。二DB全面互換、全Graph/Stream対応、Writer、Self-build、Studio/SHO全機能を初回Hard dependencyにしない。
 
 **停止条件**：Query ID/SQL bytes/短い最終Page/Cache hit/可視0件を、選択・実Read・全体不存在・公開資格の共通PASSにしない。固定済み専用Asset欠落時の無音Fallback、異RealizationのCursor自動連結、実Readなしでのcomplete、非公開候補差の外部露出は禁止。依存変更はClaim相対で局所再資格化する。Graph/時系列/文書/Measureの適用例は設計候補で実Provider/外部Target未実施。実TEI Selector・RLS・Owner正式受理はNOT RUN。既存#1119 A/B/C/D Gate・Owner判断を変更せず、#2018には誤成功率/手順/性能/重複実装を比較対象として返す。
+
+<!-- tei-masterplan-data-form-temporal-relations-20261106 -->
+### 2026-11-06 時間付きRelation・構造Projectionの意味保存をP1並行で検証する
+
+[構造保存設計§23](design/STRUCTURE_PRESERVING_TRANSFORMATIONS_AND_PROJECTIONS_2026-11.md)に、組織Relationの valid time / known time と Relation occurrence、Graph→Tree/List変換のLoss、局所存在と全体不存在・Count、更新対象一意性を追加。独立Python合成14/14 PASS（ローカルSource SHA-256 `f2e67255a87507b197092d6f5caed90f88e017eeeb39824aa60381a3a1f2b8ae`）。コードはRepository未保存、GitHub CI・実TEI Provider/Host/SHO/Owner受理はNOT RUN。
+
+**既存#2497/#2586へ統合し、既存P0を遅らせない**：
+- P1-TR-A：#2389/#1126の実TEI CaseRecord→OrgUnit（#2681）を起点に、Function Contextへ同じ有効日・異なる認識時点のRelation path/Field/Scope/Grainを明示。実Provider未接続なら `NOT RUN: physical-read-unavailable`。SQL自動推測/隠れたRelation全Fetchは禁止。
+- P1-TR-B：#2506/#2586のread側同一Attemptで実ProviderのRelationship occurrence/Distinct Person/Count、部分・完全、Read Cohort、非出力依存を取得し、局所Witnessと全件Claimを分離する。
+- P1-TR-C：#2497/#1124のGraph/Tree/Table read-only投影で、失われたRelation occurrence/valid-knownを検出。非可逆表示からの暗黙Writeを禁止し、更新対象の明示束縛と現在Authority/Receiptは#2598/#1174へ委譲。
+- P1-TR-D：#2582/#2516/SHOは無変更局所Readの歴史的根拠と、訂正後の所属Count/Policy/Document引用・開示の現在資格を別に再評価。低権限Audienceへの秘密Fieldや非公開関係の露出を試験する。
+
+Claim/Source/Temporal cut/Relation occurrence/Scope/Rowset+Field coverage/実Consumed Input/独立Expected/Consumer現在資格を既存#1131/#1180/#2514/#2586の票へ加え、別のTest/Claim正本や新Gateを増やさない。**元のP0（Query Realization→Page1/2 Read Cohort一Provider）は引き続き最優先**。Graph・時系列・外部Target全対応、全組織Policy、Studio/SHO完成をHard dependencyにしない。費用と効果は#2018へ返す。
 
 ## 現在の優先順
 
