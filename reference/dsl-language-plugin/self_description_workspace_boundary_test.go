@@ -301,7 +301,6 @@ func TestSelfDescriptionRoleLiteralAndDuplicateAreNotAcceptedMeaning(t *testing.
 	t.Log("current syntax candidate loses duplicate Role occurrence; Role uniqueness remains unqualified")
 }
 
-
 // Source navigation is not a proof that an option token is writable. The
 // real syntax anchor API identifies the attribute symbol and type token;
 // Role option editing requires its own uniquely resolved source span and
