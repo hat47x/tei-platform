@@ -251,22 +251,22 @@ Writerが最終ファイル名へ直接書くことを既定安全とみなさ�
 
 ## 11. 2026-11-05 追加調査：保証の合成可能性・Snapshot Commit・外部Effect境界（設計／NOT RUN）
 
-本節は新Core型・実行エンジン・許可権限の導入ではなく、**Consumer要求を満たしたと証明するのに何が不足するか**を既存の型付き関係/Conformanceへ対応付ける調査・受入候補。基準は現行main \`36bda76271db4db72ddd41a8566d281f02764b8a\`。既存[#1130](https://github.com/hat47x/tei-platform/issues/1130)、[#2542](https://github.com/hat47x/tei-platform/issues/2542)、[#2604](https://github.com/hat47x/tei-platform/issues/2604)、[#2831](https://github.com/hat47x/tei-platform/issues/2831)、[#1180](https://github.com/hat47x/tei-platform/issues/1180)の実装・受入を置換しない。
+本節は新Core型・実行エンジン・許可権限の導入ではなく、**Consumer要求を満たしたと証明するのに何が不足するか**を既存の型付き関係/Conformanceへ対応付ける調査・受入候補。基準は現行main `36bda76271db4db72ddd41a8566d281f02764b8a`。既存[#1130](https://github.com/hat47x/tei-platform/issues/1130)、[#2542](https://github.com/hat47x/tei-platform/issues/2542)、[#2604](https://github.com/hat47x/tei-platform/issues/2604)、[#2831](https://github.com/hat47x/tei-platform/issues/2831)、[#1180](https://github.com/hat47x/tei-platform/issues/1180)の実装・受入を置換しない。
 
 ### 11.1 合成できる保証と合成できない保証
 
-計画時の \`required claim\`、Providerの \`declared capability\`、条件付き \`qualified evidence\`、実行後の \`observed outcome\` を別にする。**保証は強さ一軸ではなく、対象をもつ制約の集合**として扱う。次はテスト/説明のための表であり、正式ABI/新Schemaではない。
+計画時の `required claim`、Providerの `declared capability`、条件付き `qualified evidence`、実行後の `observed outcome` を別にする。**保証は強さ一軸ではなく、対象をもつ制約の集合**として扱う。次はテスト/説明のための表であり、正式ABI/新Schemaではない。
 
 | 保証要素 | 適用範囲／必要な根拠 | 合成前に満たすべき条件 | 合成禁止の典型 |
 | --- | --- | --- | --- |
 | Byte integrity | 元のbyte領域、転送前後の変換、Digest scheme、取得した実byte | 同じbyte列または説明済み変換境界で検証したこと | ETag＝SHA-256、圧縮前と暗号化後のbyte digestを同じものとして比較 |
 | Visibility | Publisherの一回の世代/Member集合、Consumerが読んだversion | generation固定、全Member読取/検証、失効前の保持期間 | 単一Object atomic writeから複数Objectの一式可視性を推定 |
 | Ordering | file-id/partition/key/route、各hop内の対象イベントと時点 | すべてのhopが同一の順序対象を保ち、変換・再配送で順序keyを失わないこと | 1 hopの追越禁止⇒全世界の業務イベント順序 |
-| Gap-free completeness | 期待するManifest/件数/連番/期間、水位、全入力の実取得 | Independent expected setまたは受信完了境界を示すSourceの証拠 | \`ordered\`、0件観測、spoolのACKだけから欠落ゼロを推論 |
+| Gap-free completeness | 期待するManifest/件数/連番/期間、水位、全入力の実取得 | Independent expected setまたは受信完了境界を示すSourceの証拠 | `ordered`、0件観測、spoolのACKだけから欠落ゼロを推論 |
 | Idempotent effect | Business OperationID・Scope・Period・保存Owner・実Commit/Receipt | 同一要求IDとstable intent/fenceを用いた再照会・再処理契約がProvider側で成立 | 同一byte/同名Jobを新しいOperationIDで再実行して一回性を主張 |
 | Current authority | 送出・読取・Import・Commitごと、主体/対象/有効版/時点 | 各境界の実Host/ProviderでGrant・対象版を確認 | Build時のCapability、MFT ACK、EKI Task resultで更新権限を推論 |
 
-**停止規則:** 同じ必要保証に対して、証拠が \`unverified\`、対象違い、版不一致なら計画/実行/受理の該当Claimを \`unqualified\` とする。\`unsupported\` と \`unknown/partial\` と \`not-applicable\` は異なる。あるProviderの欠落を自動的な強度低下や別経路への暗黙Fallbackで隠さない。全体のClaimは対応する全辺のWitnessを必要とする（「各辺が成功」の単純ANDだけでは、異なる主語・世代・粒度を誤結合する）。
+**停止規則:** 同じ必要保証に対して、証拠が `unverified`、対象違い、版不一致なら計画/実行/受理の該当Claimを `unqualified` とする。`unsupported` と `unknown/partial` と `not-applicable` は異なる。あるProviderの欠落を自動的な強度低下や別経路への暗黙Fallbackで隠さない。全体のClaimは対応する全辺のWitnessを必要とする（「各辺が成功」の単純ANDだけでは、異なる主語・世代・粒度を誤結合する）。
 
 ### 11.2 Iceberg型Snapshot Commitからの知見：公開ポインタと保持期間
 
@@ -274,49 +274,49 @@ Apache Icebergの仕様は、既存ファイルをその場で更新せず、Sna
 
 一式公開の説明可能な最小経路（物理方式はOwner選択待ち）:
 
-1. \`R2\`のすべてのMember byteを、\`R1\`から識別できる不変の配置先へ作り、実byte DigestとMember一覧を準備する。
-2. \`R2 Manifest\`の全Memberを、同じGeneration/Scope・期待するData Snapshot/Periodと照合し、**実Readerが参照する形のMember集合**が欠けていないことを確認する。
-3. 公開ポインタを旧版\`R1\`から\`R2\`へ切り替えるとき、Writer側の基準版をCAS等で検査し、競合時に一方を無言で上書きしない。公開時の原子性は実ProviderのOperation単位に限定する。
+1. `R2`のすべてのMember byteを、`R1`から識別できる不変の配置先へ作り、実byte DigestとMember一覧を準備する。
+2. `R2 Manifest`の全Memberを、同じGeneration/Scope・期待するData Snapshot/Periodと照合し、**実Readerが参照する形のMember集合**が欠けていないことを確認する。
+3. 公開ポインタを旧版`R1`から`R2`へ切り替えるとき、Writer側の基準版をCAS等で検査し、競合時に一方を無言で上書きしない。公開時の原子性は実ProviderのOperation単位に限定する。
 4. Consumerは選択したManifest generationをpinし、列挙したMemberの実byteと期待Digest・versionを読取検証する。ディレクトリ全列挙や通知順を一式Memberの正本にしない。
-5. Readerが\`R1\`をpinした後に\`R2\`が公開されても、\`R1\`のMemberを必要な保持期間は読めるか、失効/削除が発生したら \`stale/unknown\`として失敗にする。**古い世代のGarbage Collection／retentionは、一式公開とは独立の保証条件**。成功したManifest切替だけからReader継続可能性を断定しない。
+5. Readerが`R1`をpinした後に`R2`が公開されても、`R1`のMemberを必要な保持期間は読めるか、失効/削除が発生したら `stale/unknown`として失敗にする。**古い世代のGarbage Collection／retentionは、一式公開とは独立の保証条件**。成功したManifest切替だけからReader継続可能性を断定しない。
 6. Consumerが全Memberを再読取した証拠と、データ行・業務イベント・Provider Commitの正しさを別に評価する。
 
-特に\`R1\`のReaderがMember取得途中に、\`R2\`公開を契機とするGCで\`R1\`の残りのMemberを消された場合を、#2604 AP-06の受入・失効条件へ引き渡す。\`complete manifest\`があっても、\`generation-retention\`が不明なら「消費可能」のClaimは未実証。
+特に`R1`のReaderがMember取得途中に、`R2`公開を契機とするGCで`R1`の残りのMemberを消された場合を、#2604 AP-06の受入・失効条件へ引き渡す。`complete manifest`があっても、`generation-retention`が不明なら「消費可能」のClaimは未実証。
 
 ### 11.3 Kafka Exactly-onceの境界：Offsetと外部更新を一つの効果と呼ばない
 
-Apache Kafkaは、Kafka Topic間ではtransactional producerとconsumer offsetを同じtransactionに含める方法を説明する。一方、**Kafka外部SinkへのExactly-onceは外部Sinkとの調整が必要**と明記する。TEIではMFT・Jobを含む全体へ\`exactlyOnce=true\`を拡張しない。
+Apache Kafkaは、Kafka Topic間ではtransactional producerとconsumer offsetを同じtransactionに含める方法を説明する。一方、**Kafka外部SinkへのExactly-onceは外部Sinkとの調整が必要**と明記する。TEIではMFT・Jobを含む全体へ`exactlyOnce=true`を拡張しない。
 
-- \`TransferAttempt\`は何回あってもよく、\`ImportUnit\`の二重適用排除・\`BusinessEffect\`の二重確定排除は別の責務とする。
+- `TransferAttempt`は何回あってもよく、`ImportUnit`の二重適用排除・`BusinessEffect`の二重確定排除は別の責務とする。
 - 不明応答の後、**同一OperationID/同一Intentで実Providerが保存したReceiptを照会し、Commitの有無と要求同一性を確かめる**経路は、無条件再送とは区別する。実PGの限定証拠である[merged PR #2853](https://github.com/hat47x/tei-platform/pull/2853)は同一OperationIDによる取引再照会・takeover後の版不変を示す。ただし永続Receiptの保持、別Provider、本番Grant、外部MFT連鎖の一回性へ自動一般化しない。
-- 同じ\`RunPlan\`名/業務期に対し新OperationIDを発行して再確定する行為は別のEffect要求。\`RunKey\`、\`AttemptID\`、\`FenceEpoch\`、\`OperationID\`、\`ImportUnit\`、\`TransferAttempt\`を別参照として保持し、どれがIdempotencyの正本なのかOwnerが指定する。
+- 同じ`RunPlan`名/業務期に対し新OperationIDを発行して再確定する行為は別のEffect要求。`RunKey`、`AttemptID`、`FenceEpoch`、`OperationID`、`ImportUnit`、`TransferAttempt`を別参照として保持し、どれがIdempotencyの正本なのかOwnerが指定する。
 - 実DBと外部SFTP/MFT/S3を単一Txにできない場合、双方の結果を一度の「成功」に丸めず、Outbox/Inbox/冪等Consumer/独立Read等から選択した明示的な契約と不明時Recoveryを検証する。特定メッセージブローカーや中央Outbox実装をCoreへ要求しない。
 
 ### 11.4 最新mainのRunPlanとETL/MFT研究の境界
 
-[RunPlan設計・進捗](RUN_PLAN_AND_UNATTENDED_EXECUTION_DESIGN_2026-11.md)では \`run-plan\` 宣言、\`internal/runlog\` のRunKey/Attempt/Fence、\`execution.RunPlan\`、ステップ再開、\`CombinePreconditions\`、\`ProjectOutputs\`/帳票整形、Function定義書への投影が2026-11-05時点で記録されている。これは**製品Sourceに実装のある局所経路**であるが、全対象での実DB永続化・実MFT輸送・全件的なWorker外部実行/配布資格ではない。
+[RunPlan設計・進捗](RUN_PLAN_AND_UNATTENDED_EXECUTION_DESIGN_2026-11.md)では `run-plan` 宣言、`internal/runlog` のRunKey/Attempt/Fence、`execution.RunPlan`、ステップ再開、`CombinePreconditions`、`ProjectOutputs`/帳票整形、Function定義書への投影が2026-11-05時点で記録されている。これは**製品Sourceに実装のある局所経路**であるが、全対象での実DB永続化・実MFT輸送・全件的なWorker外部実行/配布資格ではない。
 
-- \`ProjectOutputs\`の行数は**実Datasetの一式内容・独立Consumerが読んだバイト・配送受理の証明ではない**。0件とReader失敗を区別する現在実装を維持し、追加のDelivery成功を自動生成しない。
-- \`CombinePreconditions\`の成功は、渡されたチェックが通ったことの証拠であり、**Provider/Hostの現在Grantや外部送出と受領の現在性を全件調べた証明ではない**。不要なStepにPrincipalを強制せず、外部Effectを行う入口だけ実Authorityを検査する。
+- `ProjectOutputs`の行数は**実Datasetの一式内容・独立Consumerが読んだバイト・配送受理の証明ではない**。0件とReader失敗を区別する現在実装を維持し、追加のDelivery成功を自動生成しない。
+- `CombinePreconditions`の成功は、渡されたチェックが通ったことの証拠であり、**Provider/Hostの現在Grantや外部送出と受領の現在性を全件調べた証明ではない**。不要なStepにPrincipalを強制せず、外部Effectを行う入口だけ実Authorityを検査する。
 - [Self-build #2831](https://github.com/hat47x/tei-platform/issues/2831)の宣言したBuild Graph対実行工程の完全性を、**ETL/Transfer生成先の実依存Closure**の調査へ再利用できる。Build-onlyの完全性はRuntime/Egress/外部Partnerの実動・不在の証拠ではない。新Build Graph正本を作らない。
-- [#2823](https://github.com/hat47x/tei-platform/issues/2823)のWorkspace Manifest/Source closure未検査は、パイプラインのSourceが\`missing/unknown\`でもvalidate greenと誤認する可能性を示す。Source closureは一式公開の前段の独立Gateであり、ManifestのMember照合だけでは元Sourceの選択完全性を証明できない。
-- GUI/StudioのDataflow・Transfer図は標準構造のread-only Projectionとして後段に扱い、解決済みScope/Source/Provider/Build/Attemptの境界が分からない場合は\`opaque/unknown\`と表示する。図表の完全性を実送出/秘密の不存在証明にしない（Topology設計、#1124/#2516）。
+- [#2823](https://github.com/hat47x/tei-platform/issues/2823)のWorkspace Manifest/Source closure未検査は、パイプラインのSourceが`missing/unknown`でもvalidate greenと誤認する可能性を示す。Source closureは一式公開の前段の独立Gateであり、ManifestのMember照合だけでは元Sourceの選択完全性を証明できない。
+- GUI/StudioのDataflow・Transfer図は標準構造のread-only Projectionとして後段に扱い、解決済みScope/Source/Provider/Build/Attemptの境界が分からない場合は`opaque/unknown`と表示する。図表の完全性を実送出/秘密の不存在証明にしない（Topology設計、#1124/#2516）。
 
 ## 12. 最初の具体化：一つの世代、二つのConsumer、実ByteとReceiptを別収集（全件未実行）
 
-**既存Scenario/Pressure再利用**：新しい正式\`DM-15\`・新Scenario・別のOracleを作らず、DM-04/07/08/09/11 と #2604 AP-01/02/06、#2542の既存ImportUnit、#1130 RunPlan、#1180保存Scenarioへ必要な追加観測項目だけ渡す。
+**既存Scenario/Pressure再利用**：新しい正式`DM-15`・新Scenario・別のOracleを作らず、DM-04/07/08/09/11 と #2604 AP-01/02/06、#2542の既存ImportUnit、#1130 RunPlan、#1180保存Scenarioへ必要な追加観測項目だけ渡す。
 
 | 既存ケース | 実装Ownerで取得するべき一試行の証拠 | 負例と停止 |
 | --- | --- | --- |
-| DM-04 + AP-06 | 旧\`R1\` pointer/read pin、\`R2\` publish、\`R1\` Member実Byte再読込、GC時の結果 | 新Manifest公開後の旧Member削除でReaderが失敗した場合、「受領済み」と表示しない |
+| DM-04 + AP-06 | 旧`R1` pointer/read pin、`R2` publish、`R1` Member実Byte再読込、GC時の結果 | 新Manifest公開後の旧Member削除でReaderが失敗した場合、「受領済み」と表示しない |
 | DM-07/09 + #2542 | 実配送Attemptを2回、同一/別ImportUnit key、業務Event ID・受理時点の個別Receipt | 同一byte別Business Eventを一つへ畳まない。ファイルPathだけでDedupしない |
-| DM-08 + #2604 | \`R2\`全Memberのbyte・Consumer1とConsumer2の独立Read、Import validationと業務受理Receipt | 一方が\`R1\`で他方が\`R2\`、あるいは業務型/Period違いを正常な一式配信としない |
+| DM-08 + #2604 | `R2`全Memberのbyte・Consumer1とConsumer2の独立Read、Import validationと業務受理Receipt | 一方が`R1`で他方が`R2`、あるいは業務型/Period違いを正常な一式配信としない |
 | DM-11 + #2853 | 同じOperationID/IntentのCommit unknown、Receipt再照会と外部配送の別Attempt | 同一IDでの安全照会と、新OperationIDによる再Effectを混同しない |
 | DM-02 + #1130 | RunKey/処理基準日/Rule版、RunPlanの行数投影、実成果物と実Sink Readの時点 | 出力行数が期待値と一致しても、別世代/別期の実配送をQualifiedとしない |
 
-**優先順の候補**: P0=既存#2604 AP-06の\`Reader pinned generation + retention\`を比較票に追加し、#1130の実RunPlan出力と分離。P1=一つの本当の別Process Consumerで全Memberのbyteを読めることを確認。P2=#2542の取込みReferenceを再利用して重複配送・受理を接続。P3=任意の別Transport（SFTP/S3/MFT等）の条件付き能力で、どの保証が失われるか比較。**いずれもこのDraftで実試験したという記録ではない。**
+**優先順の候補**: P0=既存#2604 AP-06の`Reader pinned generation + retention`を比較票に追加し、#1130の実RunPlan出力と分離。P1=一つの本当の別Process Consumerで全Memberのbyteを読めることを確認。P2=#2542の取込みReferenceを再利用して重複配送・受理を接続。P3=任意の別Transport（SFTP/S3/MFT等）の条件付き能力で、どの保証が失われるか比較。**いずれもこのDraftで実試験したという記録ではない。**
 
-**受入/撤回条件**: \`Proof requirement\`の概念整理によって、実Consumerが失った版/Member/順序/業務効果を1件でも追加検出でき、従来より少ない独立の定義・検証重複で説明できるか測定する。既存#2604/#2542/#1130の検査と同じClaimにしかならないなら、新しい専用Role・schemaは導入しない。採用する場合も正式な必要条件とOwner判断・Conformanceは既存契約側で決める。
+**受入/撤回条件**: `Proof requirement`の概念整理によって、実Consumerが失った版/Member/順序/業務効果を1件でも追加検出でき、従来より少ない独立の定義・検証重複で説明できるか測定する。既存#2604/#2542/#1130の検査と同じClaimにしかならないなら、新しい専用Role・schemaは導入しない。採用する場合も正式な必要条件とOwner判断・Conformanceは既存契約側で決める。
 
 ### 追加一次資料（製品・仕様の版に依存する事実）
 
