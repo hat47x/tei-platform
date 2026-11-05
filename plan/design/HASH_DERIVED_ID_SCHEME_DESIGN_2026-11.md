@@ -205,5 +205,6 @@ Referenceの成功を製品機能の完成に昇格させず、次のように**
 - 成功出力は`status=derived-only`または`snapshot-preflight-only`、`authority=none`、`storageWrite=false`を固定し、呼出元申告のsubject、生成文字列、frameを決めるScheme、入力byte数と独立SHA-256値を提示する。入力Digestは、この実行が読んだbyte列の説明に過ぎない。
 - Source fileの存在/改変防止/正本Revision、Target割当の現在性・完全性、呼出元subjectがTEI正本のqualified refであること、Authority/Owner受理、原子的DB書込やRollbackを**一切保証しない**。
 - 受入候補の成功条件は、実Goコマンドとして同じFixtureを2度実行したときの出力一致、局所Source/Targetファイル不変、同名別Subject・旧Profile/別Scheme・不正Scheme JSON・巨大Inputを拒否する負例、`go test ./...`でのPackage実行の証拠。CLIの試験合格をW4の全Consumer接続済みとみなさない。
+- caller-pinned preflightでは`-expected-source-sha256`と`-expected-target-sha256`を必須にし、現在読み取った2ファイルのbyte Digestと比較する。最後にScheme/Source/Targetをもう一度読み、**観測可能な変更だけ**を検出する。ピンの正当な発行者、Accepted SourceのRevision、Target割当の全量・現在性、symlink競合・ABA、最終照合直後の更新を保証しない。成功時も`callerPinsMatched=true`、`authority=none`、`storageWrite=false`を併記し、`fresh=true`や`accepted=true`を与えない。
 - この段階で`AcceptPhysicalId`は実装しない。次に実Providerを選択するなら既存#2094の派生命名検証と共存し、独立した保存・認可・snapshotのfreshness/epochを実ConsumerのOwnerが検証する。
 
