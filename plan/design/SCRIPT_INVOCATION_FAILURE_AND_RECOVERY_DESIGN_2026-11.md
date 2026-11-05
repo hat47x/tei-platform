@@ -3,13 +3,13 @@
 - **状態：評価待ち（未採用）／文書のみ。** 本文のS0〜S8、F分類、SH fixtureは**説明用の判定票**であり、正式状態enum・公開ABI・中央Runnerの新設ではない。
 - **目的**：同一の意味Function/ScriptをUI、CLI、cron、Web、既存Hostから呼ぶ際、Source選択から実消費版、意味診断、実行許可、副作用、独立観測までを誤成功なく接続する。常駐TEI Hostは前提としない（[ADR-0043](../adr/0043-target-native-artifacts-without-tei-host.md)）。
 - **既存責務**：[Everything is Data #2619](https://github.com/hat47x/tei-platform/issues/2619)／[Source・DSL #988/#2595](https://github.com/hat47x/tei-platform/issues/2595)／[Data Operations #2622](https://github.com/hat47x/tei-platform/issues/2622)／[Data Rule #1129](https://github.com/hat47x/tei-platform/issues/1129)／[Script製品 #2502](https://github.com/hat47x/tei-platform/issues/2502)／[無人Run #1130](https://github.com/hat47x/tei-platform/issues/1130)／[Effect Fence #1174](https://github.com/hat47x/tei-platform/issues/1174)／[Scenario #1180](https://github.com/hat47x/tei-platform/issues/1180)／[Artifact #943](https://github.com/hat47x/tei-platform/issues/943)。副作用段階・再試行の**詳細正本候補**は[業務副作用の設計](BUSINESS_EFFECT_LIFECYCLE_DESIGN_2026-10.md)、無人Run/Stepは[RunPlan設計](RUN_PLAN_AND_UNATTENDED_EXECUTION_DESIGN_2026-11.md)、Correlationは[実行相関](EXECUTION_CORRELATION_DESIGN_2026-10.md)。本書は**跨る受渡しの欠落と停止条件だけ**を扱い、内容を複製しない。
-- **既知の部分実装と限界**（2026-11-05時点の照合）：mainの\`internal/execution/runplan.go\`はunattendedでpreconditionsがnilなら当該Stepを止め、\`EffectPreconditions\`はobserverの**存在だけ**を確認し、実際の\`ObserveEffect\`を呼ばない。途中でblockされても先行StepのEffectは残り得る。mainに統合済み[#2853](https://github.com/hat47x/tei-platform/pull/2853)は\`CommitUncertainError\`をCommandの\`unknown\`へ伝播し、PG限定Fixtureでsame-attempt再送拒否とReceipt Lookupを示す。[#2854](https://github.com/hat47x/tei-platform/pull/2854)では**別Idempotency KeyによるABA後の再適用**が観測された。これは全Providerの回復保証でも実Source→実Script→Host/DBの一気通貫受入でもない。
+- **既知の部分実装と限界**（2026-11-05時点の照合）：mainの`internal/execution/runplan.go`はunattendedでpreconditionsがnilなら当該Stepを止め、`EffectPreconditions`はobserverの**存在だけ**を確認し、実際の`ObserveEffect`を呼ばない。途中でblockされても先行StepのEffectは残り得る。mainに統合済み[#2853](https://github.com/hat47x/tei-platform/pull/2853)は`CommitUncertainError`をCommandの`unknown`へ伝播し、PG限定Fixtureでsame-attempt再送拒否とReceipt Lookupを示す。[#2854](https://github.com/hat47x/tei-platform/pull/2854)では**別Idempotency KeyによるABA後の再適用**が観測された。これは全Providerの回復保証でも実Source→実Script→Host/DBの一気通貫受入でもない。
 
 ## 1. 二つの独立した判断：起動資格と効果の確定
 
 通常のScript構文に実行状態機械の言語要素を強制しない。業務の状態（注文・請求・組織の状態）はData/Function/RuleとOwnerの意味定義を正本とし、ここで扱うのは**起動工程と効果確認の診断**である。IFで十分な業務ロジックに専用StateMachine Pluginを強要しない。
 
-\`\`\`text
+```text
 S0 Sourceを選択
   → S1 Source/Referenceと実消費対象の版を固定
   → S2 Parse/Link（型・Operator/Plugin・依存・Native資産）
@@ -20,7 +20,7 @@ S0 Sourceを選択
   → S6 実Host/Providerの呼出・Effect Fence
   → S7 Receipt・各Effectの確定/不明を照会
   → S8 独立Read/業務の期待値・必要対象集合を検証
-\`\`\`
+```
 
 S0〜S5でエラーが起きたとき、Provider未呼出しが**検証できる**場合には起動の再試行ではなく編集・参照修復・再Previewを行う。一方、A0以降の接続断/timeout/killでは、**実際にEffectへ到達していないことを独立に証明できない限りunknownを残す**。Preview/表示されたボタン有効/認可UIの成功は、Provider開始・Commitを意味しない。
 
@@ -49,7 +49,7 @@ A0は独立した新しい中央Admission Serviceではなく、既存Host/Comma
 | --- | --- | --- |
 | Previewに「実行可能」／ボタン有効 | その時点の診断や表示適用条件 | Dispatch承認、現在Grant、DB効果 |
 | CLI exit=0／HTTP 200／EKI Task completed | 対象Process/Transportの終了・受付 | 必須入力配送、DB Commit、独立Expected |
-| RunPlan Step \`resolved\`／RunLog \`Completed\` | 当該Step/Runの記録上の終了 | Providerの実Effect、after-commit配送、業務全体の完全性 |
+| RunPlan Step `resolved`／RunLog `Completed` | 当該Step/Runの記録上の終了 | Providerの実Effect、after-commit配送、業務全体の完全性 |
 | Providerのexact Operation ReceiptにCommitted | 当該Providerが保証する範囲のEffect確定 | 別Provider、通知、必要全対象の業務検証 |
 | Replicaが古い値、または取得0件 | 観測したSource/Snapshot/Scopeでの読取結果 | Primaryで未Commit、母集団全件、対象不存在 |
 | S8でExpected・必要全対象・鮮度が確認済み | **明示した業務完了述語の範囲**でBusinessVerified | 未検証の別Scope/別期間/外部Effect |
@@ -71,8 +71,8 @@ A0は独立した新しい中央Admission Serviceではなく、既存Host/Comma
 | F09 Step A確定後B失敗／複数Provider一部確定 | **Stepごと**のCommitted/Unknown/Unstarted・Effect IDs | 未実行部分の資格付き再開、必要なら明示補償 | Run全体failed→effect 0と表示／全件再実行 |
 | F10 Commit ACK-loss | 同一OperationID、元Request hash、Fence/attempt、commit不明 | 同じ操作IDでReceipt照会・Provider固有の引継ぎ | Unknownをfailed/未実行と変換、無条件replay |
 | F11 Commit済み、Outbox/通知失敗 | 確定Receipt、通知Event ID、配送attempt | 通知だけの資格付き再配送／Recipient重複排除 | DBを再Commit、通知の未配送を業務DB rollback扱い |
-| F12 crash・再起動・Journal欠落・旧Artifact | durable記録の範囲、実load版、最後のStepとEffect、Owner/Fence | 先に現所有資格取得→既Effect照会→必要部分だけ再開 | record \`completed\`だけでskip／旧実行を最新版へ自動付替 |
-| F13 Observer存在するが該当Effectを未観測 | observer契約、対象effect/Scope/時点、未読範囲 | 実Observerで対象Effectを照会し独立照合 | \`observer != nil\`だけで「観測済み」 |
+| F12 crash・再起動・Journal欠落・旧Artifact | durable記録の範囲、実load版、最後のStepとEffect、Owner/Fence | 先に現所有資格取得→既Effect照会→必要部分だけ再開 | record `completed`だけでskip／旧実行を最新版へ自動付替 |
+| F13 Observer存在するが該当Effectを未観測 | observer契約、対象effect/Scope/時点、未読範囲 | 実Observerで対象Effectを照会し独立照合 | `observer != nil`だけで「観測済み」 |
 | F14 S8 独立Readで旧Replica・0件・部分取得 | 対象・snapshot/watermark・完全性、Expected/Actual | 期間とReplica lagを条件に再Read、結果矛盾は調査 | 空集合＝無効更新、読取一件＝全件完成と推論 |
 
 ここで「処理をやり直す」と「**同じ業務操作の結果を調べ直す**」は異なる。結果unknown時は**再送よりLookup優先**。Receiptの保存/保持期限を越えたら安全な回復を断言しない。Compensationは新たな意味を持つ業務操作であり、RollbackやRetryと同義でなく、補償元Operationと対象Effectが確定しているか確認してから実施する。
@@ -81,11 +81,11 @@ A0は独立した新しい中央Admission Serviceではなく、既存Host/Comma
 
 1. 現在の実行主体が、対象Run/Operationを**所有・照会してよいか**Host/Providerで確認。必要なら既存Lease/Fenceで所有を引き継ぐ。Journal上のOwner文字列は権限でない。
 2. 旧Source/Meaning/Rule/Artifact/Provider/Context・Request hashを読取り、現在版との互換を判定。旧版を再ロードできない場合やAdapter差が未確認なら停止する。
-3. **効果の無い準備Step**は必要な範囲で再評価できる。Effectに到達した可能性があるStepは、既存Receipt/対象状態/Outboxを照会。Journalに\`resolved\`があってもEffectの確定証拠がなければskip資格はunknown。
+3. **効果の無い準備Step**は必要な範囲で再評価できる。Effectに到達した可能性があるStepは、既存Receipt/対象状態/Outboxを照会。Journalに`resolved`があってもEffectの確定証拠がなければskip資格はunknown。
 4. 確定済みStepは二重Effectを起こさず保持。未送出が確証されたStepだけ、現在Grant/対象/CASの資格でDispatch可。EffectがunknownのStepは同OperationのLookupを優先し、任意に新Keyを発行しない。
 5. 部分確定・外部Effect未配送・補償待ちは別々に残す。業務完了のClaimは、Owner定義の必要対象集合・独立Expected・Source/Snapshot鮮度の確認後に限る。
 
-**Durable証拠がない場合**：「自動再開可能」ではなく\`manual-reconciliation / unsupported\`相当の診断を返す。永久的な中央Job Registryを新設するのではなく、選択Host/Providerが実際に保持できる記録と責務に合わせて実装する。
+**Durable証拠がない場合**：「自動再開可能」ではなく`manual-reconciliation / unsupported`相当の診断を返す。永久的な中央Job Registryを新設するのではなく、選択Host/Providerが実際に保持できる記録と責務に合わせて実装する。
 
 ## 4. 意味、Script、Data Rule、Job、Buildの境界
 
@@ -94,7 +94,7 @@ A0は独立した新しい中央Admission Serviceではなく、既存Host/Comma
 - **Data Operations/Provider (#2622)**：明示Relation/Field/Scope Mapping、native SQL/Dialectの選択、実Read/Write、Target/CAS/partial/unknown。RDB、OData、他APIで「batch＝atomic」「全置換＝PATCH」と仮定せず、能力不足なら止める。
 - **Invocation/Interaction (#2502/#2507)**：ボタン、CLI、cron、Web、EKI要求などの入口から同じFunctionを選ぶ。対話必須Scriptを無人経路で実行するには事前入力または明示Suspend/Resume契約が必要。TxをUIの返答待ちで保持しない。
 - **Build/Deployment（[Draft #2788](https://github.com/hat47x/tei-platform/pull/2788)）**：Go単一Binaryを既定とし、必要時だけFunction→Build Unitを明示。含有Function≠外部Entry公開≠現在Grant。crash時に旧Runの実Artifactを新Binaryへ暗黙移行しない。
-- **実HostとEKI (#1130)**：認証/資源・サービス主体・排他・実送出は選択Host、EKIではTask/Lease/Workerの担当。EKI P0の\`Task completed\`はTEI Commit/BusinessVerifiedでない。引数・必要Effect・Result body・Executor版のTransport適合を確認できなければDelegateしない。
+- **実HostとEKI (#1130)**：認証/資源・サービス主体・排他・実送出は選択Host、EKIではTask/Lease/Workerの担当。EKI P0の`Task completed`はTEI Commit/BusinessVerifiedでない。引数・必要Effect・Result body・Executor版のTransport適合を確認できなければDelegateしない。
 
 ## 5. Fixture統合：第二のScenario正本を作らない
 
@@ -108,7 +108,7 @@ A0は独立した新しい中央Admission Serviceではなく、既存Host/Comma
 | SH-04 | Preview後に対象ID/expectedVersion/Grant/Script版を変更 | 古いPreviewと承認は無効、拒否時の実Effect=0をProviderで検証。#2499/#1174 |
 | SH-05 | 必須Preconditionの**一部だけを渡す** | 組合せ関数のnon-nil＝必須検査網羅ではない。欠けたPeriod/Scopeを検出。#1130 ACU-01 |
 | SH-06 | observerオブジェクトは存在するが対象Effectの結果は未取得 | preflightを実観測済みへ昇格させない。#1130/#1174 ACU-02 |
-| SH-07 | Step AをCommit後、Step Bでblock | AのEffectを保持、Run全体\`no effect\`と判定しない。#1130 ACU-04/#1129 |
+| SH-07 | Step AをCommit後、Step Bでblock | AのEffectを保持、Run全体`no effect`と判定しない。#1130 ACU-04/#1129 |
 | SH-08 | Commit ACK-loss／同Attempt再送／引継ぎLookup | Command unknown、無条件再送拒否、同Operation Receiptと別Connection readを照合。既存PG #2853の限定ケース再利用、#1174 |
 | SH-09 | 同一論理操作のまま新Key発行／ABA | 新Keyで再適用し得る負例を維持。#2854/#1174 |
 | SH-10 | DB Commit後の外部通知が失敗、Process kill→再起動 | DB Receiptは保持、Outbox/通知だけを回復、旧Artifact版と残余Effectを照合。#1129/#1130/#2146 |
