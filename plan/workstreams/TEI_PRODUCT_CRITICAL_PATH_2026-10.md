@@ -1188,3 +1188,45 @@ G0/G1/G2は**全面的な直列開発を要求しない**。DB fixtureとProvide
 **着手判断**：PR1の再実装・旧bundle mismatchの再起票・ADRの再採番は不要。最初の新しい実装PRは**PR2の4入口Consumer統合とInspect spy**に限定し、PR3のGraph snapshot接続を次に扱う。PR2/PR3に共通するSource現在性と開示資格の情報が不足する場合は、無根拠に`resolved/ready`へ昇格せず`unresolved/not-verified`に留める。全Target Headless E3は並列進行、E4は後段であり、Studio自体の成立要件にしない。
 
 **証拠資格**：この節はGitHubのPR/Issue、mainコードとADR索引の**静的照合**。新しい4入口UI、実DOM、Accept+旧応答の結合、実Provider/DB、Production物理除去、ユーザー試験、Owner意味受理を本節で実行・達成した主張ではない。
+
+
+## 36. 2026-11-05 Studio M0〜M4 / Headless E0〜E4 / EV-R0 現行証拠による優先順位更新
+
+<!-- tei-studio-m0-m4-e0-e4-evr0-roadmap-20261105 -->
+
+**時点**：main [`45a4bb0308359a026c1700c112d7b6671e3a908b`](https://github.com/hat47x/tei-platform/commit/45a4bb0308359a026c1700c112d7b6671e3a908b)（2026-11-05 01:46:01Z）を固定。§33/§35は各時点の履歴として保持し、この節のみ現況を優先して読む。既存#1119 G0〜G4、S01/S02、Ownerによる意味・Authority受理、#1180 Scenario SSOTを変更しない。[#1124現行本文](https://github.com/hat47x/tei-platform/issues/1124)の冒頭は11/04に**Script-first / Everything is Dataへ統合済み**。Graph/ER編集を一律必須とはせず、authoritative Script/DSL・Markdown・表からgeneric Property/Table/Tree/Graph/式へ投影し、Source span+Revisionへ可逆なもののみPreview/既存Acceptanceを通す。unknown Role・多対一/非可逆Graphはread-only/拒否+Source navigate。専用Studio Editor正本や第二Policy Engineを作らない。
+
+### A. 既存の確定した成果と、完了と扱わないもの
+
+| Evidence / 完了した機構 | 限定成立事項 | 達成していないProduct条件 |
+| --- | --- | --- |
+| [merged #2583](https://github.com/hat47x/tei-platform/pull/2583) + [merged #2457](https://github.com/hat47x/tei-platform/pull/2457) | `presentation.ts`のglobal ambiguity保持・`inspectEligibility`、`main.ts`の共通Inspect入口guard。別途`qualified-selection.mjs`の`publishGraph`・scope/ref snapshot拒否。 | 現行`main.ts`にqualified-selection import/実Graph接続はなく、4入口実イベントのInspect 0/1 spy、R10→R11+G2失敗後の旧DOMクリック0-Inspectは未実証。 |
+| [merged #2747](https://github.com/hat47x/tei-platform/pull/2747) | Studio`PlanCommand/ExecuteCommand`・UI/Wails bridge・ReferenceExecutor。 | `Mode=reference`の`Committed=true`は外部DB Commit・Receipt・実Authorityでない。 |
+| [merged #2626](https://github.com/hat47x/tei-platform/pull/2626) | 実Go CLIによるSource移動でWorldFP不変/SourceIndexFP・Trace locator変更、人/AI二素材の限定生成・再読取。 | 同一Studio Consumerの実CLI byte受理、現在Policy、Source引用/DOM再資格化、独立SHO/AI受領は未実証。 |
+| [merged #2853](https://github.com/hat47x/tei-platform/pull/2853) + [merged #2854](https://github.com/hat47x/tei-platform/pull/2854) | #2853の実PG14.24 opt-in Product Invoker→Lifecycle→Adapter→Runner→PG一Attemptでcommitted/独立read、conflict、commit応答不確実→unknown/再送拒否、同一OperationIDのreceipt照会。#2854は別ReferenceのA→B→A＋新key再適用とreceipt二件の実PG反例。 | Studio操作→そのPGへの結線、実断線/プロセス再起動、durable Owner fencing、本番Grant、CASのABA防止は未証明。#2854は防止実装でない。 |
+| [merged #2857](https://github.com/hat47x/tei-platform/pull/2857) | 暫定Web→実PG一改訂E2Eの実走と監査が記録済み。 | 監査は`INCOMPLETE / UNQUALIFIED`。暫定D8〜D11をG1/G2正式資格へ昇格しない。 |
+| [merged #2848](https://github.com/hat47x/tei-platform/pull/2848) / [#2849](https://github.com/hat47x/tei-platform/pull/2849) / [#2856](https://github.com/hat47x/tei-platform/pull/2856) | run-plan出力別read-only RowReader/Error、Action `emptyPolicy`宣言、期間+Effect前提合成。 | 表示0件≠Provider完全空≠業務完了。実Provider全件Read・Completion Claim・Schedulerは別。 |
+
+### B. #1124 M0〜M4 — 最小Consumer受入順（別Gateではない）
+
+| 順序 | 既存受入と次の最小実証 | 状態／停止条件 |
+| --- | --- | --- |
+| **M0 実Source** | 同一checkoutの実`tei model catalog/inspect/trace`から実行物・Workspace・Subject/Scope・Source revision・WorldFP/SourceIndexFP・実読取byteを採取し、**同一read-only Consumer**へ入力。取得していない診断はunobserved。 | CLI・Source移動の限定証拠は再利用可能。製品Consumer縦断は**NOT RUN**。 |
+| **M1 4入口 PR2→Graph PR3** | Graph/List/initial/commandの**実イベント**を、既配線の共通`inspect()` guardへ通す。異scope同kind/ID・絞込後1候補でもambiguousならunqualified Inspect 0、合法一意なら1回、候補/独立Validationを保持。次に`publishGraph`を同一render snapshotへ実接続し、R11観測後の旧G1 DOM/ARIA/Graphクリック・G2拒否更新でInspect 0／locator確定0。 | 既存ソース上の4ルート・guard配置を「4入口実イベントPASS」と呼ばない。Source変更未観測期間の即時撤回も主張しない。**PR2/PR3本体未実証**。 |
+| **M2 Source/Decision・失効** | R10後着の新規表示拒否と、既表示情報の失効を別assert。SourceとDecision ledgerを独立readbackし、`accepted+sourceChanged=true+DECISION_RECORD_FAILED`なら自動再Accept 0。Source不変でもPolicy/Grant/Role Pin失効は独立判定。 | #2853の実PG Attemptは別Producerの証拠。Studio Source watcher・Accept UI・Policy現在性・Readiness実接続は**NOT RUN**。 |
+| **M3 Claim・開示・Evidence Presenter** | 同一用途のeffective Query/read-set/Scope/Policy、Manifest Entry→実Path→byte/digest→Reader generationをOwnerの既存資格で再照合。Decision Review/witness/現在性、Command/Effect/Delivery、Owner意味、Source locatorを独立列にする。公開可能なsliceだけを4レーンへ渡し、二世界DOM/ARIA/diagnostics/AI payload非干渉を確認。 | [Draft #2833](https://github.com/hat47x/tei-platform/pull/2833) head `eee5ac743fad5868edc0534db128ba1ffa31b712`：`projectEvidenceView` EV-R0-01〜08 **Node 8/8はPR報告の公開合成試験のみ**。mainへ未統合、現在main比ahead 3/behind 94。実Policy/Authority判定器・real CLI/ledger・実Web/Desktop/SHO/AI受信・旧DOM消去は**NOT RUN**。 |
+| **M4 Script-first往復** | authoritative Script/Markdown→generic Projection→Source span/Revisionでtyped change候補→Preview/Impact→既存#267 Acceptance→Source byte再parse/reproject。No-op Save byte不変、源表記保持、unknown Role/plain-data fallback、可逆Graphまたは非可逆Graph拒否を確認。 | #2747 ReferenceExecutor・Draft #2617/#2631の局所合成を製品Editor/正式Source writer/外部Effectへ昇格しない。実Studio/Acceptance一往復は**NOT RUN**。 |
+
+### C. #2391 E0〜E4 — 全Target軸は並走し、E4をStudioの先行条件にしない
+
+| 段階 | 接続先・優先作業 | 現在の証拠資格 |
+| --- | --- | --- |
+| **E0** | 外部要件PressureとRole/Binding/Scope・Targetの網羅を時点付きで固定。 | [Draft #2492](https://github.com/hat47x/tei-platform/pull/2492)は未統合計画。要件集合の全網羅・Owner採用は未証明。 |
+| **E1** | 既存型付きOperation・Plugin/Role閉包・Authority/Effect/Receiptを再利用し、第二Host/Engineを置かない。 | Reference基盤は存在するが、実主体/Host/Providerの全組合せは未実証。 |
+| **E2** | AI向けCUI・標準Pluginを並行。明示Role pin、Capability候補、選択Binding、Grant/Target・CLI versionを現行に再資格化。 | CLI/操作導出の局所実装・試験あり。外部Harnessと同一実Targetの意味・実行資格は別。 |
+| **E3** | [#1180](https://github.com/hat47x/tei-platform/issues/1180)保存ScenarioをテストSSOTとし、Scenario→Operation/Driver→Provider→Receipt→独立Readを同じAttemptで結ぶ。 | #2853実PG/ #2857暫定Web実PGは**限定実績**であり、同じ保存Scenarioから全Stepを生成・独立Observationした#1180製品E3 PASSではない。Draft #2830の`Verified=true`もstatic/evidence scope限定。 |
+| **E4 opt-in** | 実UIのLocate→Act→Observe→独立業務Read、Test/Production二Build。Test専用Instrument・MCP制御面をProduction実配布bytes/dependency/entrypoint/起動実物から**物理除去**、通常UI/a11yは維持。#2515 OS/Network別証拠。 | 実GUI/OS/Network二世界、Production除去・Artifact identityは**NOT RUN**。[#2391のA-13注記](https://github.com/hat47x/tei-platform/issues/2391#issuecomment-6619117946)の通り、テスト用制御MCPと[#2093](https://github.com/hat47x/tei-platform/issues/2093)業務Target MCPを区別（注記提案であり採用/除去実証ではない）。 |
+
+**次の直接作業と並列可能範囲**：Studio実装は **M0実CLI→同一Consumer入力とPR2の4入口イベントSpyを最小縦切り**にし、PR3を次のGraph/旧DOM分離PRとする。M2 Source/Policy失効は実Producer観測に応じて限定assertし、M3のEV-R0はDraft #2833側で独立に開示済み合成表示を成熟させる。M4の可逆Source編集は#267/#2621の契約へ接続。#1180 E3はOwner別に並列、E4は後続opt-inでありHost/Wails/Theiaを必須化しない。PR2/PR3/E3/E4の既存担当branchを触らず、#2775は**roadmap文書のみ**を保つ。
+
+**確認/未実行の区別**：この節は固定main/Issue/PR/既存実装の**静的照合**と、担当PRに記録された限定試験報告の再分類。新しいGo/Node/Browser/WebView2/PG/Scenario実行、実Disclosure、Repo full health、Owner意味受理は**この節ではNOT RUN**。PR #2775は過去のbaseから分岐したDraftのままで、現行main比較は更新前 ahead 1/behind 131（Roadmap以外のmain変更を併合・mergeしていない）。統合前に新headのCI・競合・Reviewを再検証する。
