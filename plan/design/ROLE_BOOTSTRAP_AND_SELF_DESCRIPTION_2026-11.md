@@ -520,3 +520,35 @@ Database Contractの別ケースでは、現行Referenceの隔離コピーで `s
 4. **E3（#1130/#1251/#2831）**：Userの実Application/Targetに選択されたものと実compiler/link消費、Receipt/別ReadをOwner別に確認。全体セルフビルドは#2831の既存Build graphへ。
 
 **実施済み（この§10編集時点）**：Roleの論理義務のOwner境界を設計し、GoテストSourceへ対象file byte照合コードをコミット。**未実施／未確証**：OBL-01〜07の完全試験、実Role Provider自己解釈、実Plugin byte真正性、全Manifest root coverage、Host/DB/Consumer E2E、Owner Meaning Acceptance。該当コミットのCIの結果は別に確認し、前HEAD `201cafab` のCI成功を新HEADへ流用しない。
+
+
+<!-- self-description-source-cohort-regression-20261106 -->
+## 11. 2026-11-06 同一Source読込の検査契約と段階的な利用資格
+
+§10の「Requiredの独立した出所」に加えて、RequiredとObservedが**同じ実Source・版・試行**に属することを確認する。Source path・Semantic ID・Role文字列の一致だけで同一Revisionとはしない。この節は既存#1163の一改訂Packetと#2514独立Oracleへ渡す照合条件であり、新Core型/Registry/Runnerを作らない。
+
+### 最小の接合表
+
+| 境界 | 実際に照合するもの | 未証明のまま残すもの |
+| --- | --- | --- |
+| Source | `workspace.Load`、ManifestIdentity、Load時Parsed bytes、Source Index Artifact fingerprint/範囲、後続独立Readのbyte fingerprint | 全root/Importの読込と複数fileの原子的Snapshot |
+| Interpreter | 固定Language/Role/Operator Selection、実Input、Source位置、Required Shapeの独立出所 | test-only指紋文字列と実Parser binary真正性の同一視 |
+| Meaning | Semantic Subject/Attribute/Relation/型、NULL・Scope・grain、独立Expected・負例 | Candidate自己整合とOwner意味受理の同一視 |
+| Consumer / Effect | 実Build入力・Reader受領、現在のHost Grant、Operation/Receipt/独立Read | 過去のGreen CI、RunPlan終了から実Commitや業務完了への昇格 |
+
+### Go負例の追加（本Draft）
+
+`TestSelfDescriptionRejectsStaleDirectReadAsLoadTimeSource`を追加した。Temporary Workspaceの`semantic/probe.tei`をLoadし、strict Source Indexを生成した**後**、同じ相対Path・同じSemantic IDを保持して`std.text`を`std.money`に書き換える。独立再Readのfingerprintが初回Indexと異なり、古い`Result`から再生成したIndexは旧byteを保持し、後から解析したCandidateのTypeRefだけが変わることを確認する。実時刻競争を使わない順次的な負例である。
+
+このテストで主張できるのは、**当該LoadのSource Indexと後読込Sourceが同版かを検出可能**という局所性質である。製品Runtimeが自動で差を拒否する保証、全Workspace閉包、Owner受理、実Plugin真正性、Provider/Host資格を示さない。
+
+### 他チャットとの責務接続と停止線
+
+- #2823：Manifestの未知rootや対象外suffixが黙って無視される問題はWorkspace側で解決。Role Testが正常でも全Required Coverageとは呼ばない。
+- #988/#2620：Role/OperatorのRequired Shapeが正式な受理済みContractに到達できなければ、Gapを確定する。test-only `Selection`に実装真正性を付与しない。
+- #1251/#2885：通常の純粋演算やOwner規則はPlugin化を前提にしない。選択Contract、配布Bundle、実コンパイル/リンク入力、実行資格を分離する。
+- #2586/#2622/#2862：Semantic QueryとDB別SQL、実Provider Read・NULL/Scope/完全性を別資格で扱う。
+- #2514/#1180/#1163：独立OracleとMutant、必要条件の適用範囲と実Consumer/Attemptを同一版で結ぶ。局所PASSを加算して新しい横断合格を主張しない。
+- #1130/#1174：read-only Role適用からEffect・Dispatch・Current Grantを生成しない。Commitが不明ならReceipt/独立Readの境界へ渡す。
+
+**実証順**：E0 今回の同file読込一致・時間差不一致のGoテスト→E1 Role Required Shapeの実API調査とGap→E2 独立Expected・Consumerへの一改訂接続→E3 実Provider/Target/Host。GoコードとDocsの保存は完了としても、新HEADでのCIを確認するまでテストPASSとは記載しない。正式Role自己解釈、Owner意味受理、実E2E、セルフビルドは未実証。
