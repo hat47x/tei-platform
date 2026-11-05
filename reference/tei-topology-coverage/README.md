@@ -18,6 +18,6 @@
 node --test reference/tei-topology-coverage/coverage.test.mjs
 ```
 
-Node.js 22以上の組込みtest runnerだけを用います。実験ケースは、同kind/ID異scope、複数View、三項関係role保持、閉じた集合内の条件付き不在、欠落role、Graph/Table欠落、opaque/省略/未固定Reader/開示不明、Source版混在、レイアウトだけの差分、欠落端点、非開示下の現在情報です。
+Node.js 22以上の組込みtest runnerだけを用います。実験ケースは、同kind/ID異scope、複数View、三項関係role保持、閉じた集合内の条件付き不在、欠落role、Graph/Table欠落、opaque/省略/未固定Reader/開示不明、Source版・Graph/Table公開版の混在、レイアウトだけの差分、欠落端点、非開示下の現在情報です。
 
 **未実証**：実Go ModelRef/Source Index・TEI CLI出力との結線、Providerによる実閉包証明、実Graph Renderer/Workbench、複数Window/旧DOM、実SHO/AI、外部Effect、認知負荷削減。#1124 M0/M1を代替するテストではなく、#2352 P1の後続評価用合成試験です。実験を製品化する前に、既存型からの変換のlosslessnessと現在のReader/Policy資格を独立検証します。
