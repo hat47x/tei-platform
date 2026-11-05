@@ -207,7 +207,7 @@ E0/E1/E2の証拠は他のE3〜E6の実行許可ではない。各段の**同一
 
 ### 10.1 VS-RMT-01 の初回実行対象と独立Expected
 
-初回は公開合成データの受注Header一行、明細二行、別Tenantに同じ業務番号の非対象一行、他注文一行を用意する。**Business KeyとPhysical PK、Tenant/Period/Relation Role**は独立Expectedの識別子に置き、Queryの実返却Row IDから逆算して「正しい対象集合」を構築しない。モデル由来Function/Ruleは原典候補であり、旧Driver実動が無ければParit​​y（原典互換）は`unobserved`。次の表の値は設計用の合成例であり、実業務の採用済み金額・税・状態規則としない。
+初回は公開合成データの受注Header一行、明細二行、別Tenantに同じ業務番号の非対象一行、他注文一行を用意する。**Business KeyとPhysical PK、Tenant/Period/Relation Role**は独立Expectedの識別子に置き、Queryの実返却Row IDから逆算して「正しい対象集合」を構築しない。モデル由来Function/Ruleは原典候補であり、旧Driver実動が無ければParity（原典互換）は`unobserved`。次の表の値は設計用の合成例であり、実業務の採用済み金額・税・状態規則としない。
 
 | Case / 段階 | 独立Expected（先に固定する） | 必須の実Witness／否定対照 | この段で合格としないこと |
 | --- | --- | --- | --- |
