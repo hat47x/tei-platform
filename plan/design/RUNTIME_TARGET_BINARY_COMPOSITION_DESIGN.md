@@ -660,3 +660,28 @@ D0〜D2の第一回比較では、#1861の固定23ベクトルとContract、実�
 **実証順の補正**：D0は固定23ケースを自己完結の関数として実行可能な範囲だけ「入力充足の主張」を行い、Workspace連携のSource完全性は別のClaimに留保。D1/D2へ進む前には選択済みSource/Contract/Build Inputの閉包を実際に確認し、未知なら方式優劣やCache再利用を結論しない。Sourceの宣言・解決・実消費と現在Grant/Owner受理を分離する既存§15/§17の原則を適用する。
 
 **状態**：#2822/#2823の過去の実CLI反例を受入条件として参照した設計追補。今回のCLI/Workspace/Go/Process/23ケース再実行、正式診断採用、Owner受理はNOT RUN。第二Source Index・Validator・Resolver・Oracleは増設しない。
+
+<!-- tei-compare-oracle-decision-ceiling-20261106 -->
+### 18.5 Oracleの判別力と比較の公正性：23件PASSを方式採用に読み替えない
+
+[#1861](https://github.com/hat47x/tei-platform/issues/1861)の23ベクトルは、見積もりPreviewの**未受理の有限な業務候補**。実際のSource/Oracle byte、Contract/対象Consumer、Revisionを固定し、D0/D1/D2のInput/Meaning/結果分類が同一であることを確認する。Sourceが正しくロードされていても、ExpectedがCandidateと同じEvaluator・Rule・AI解釈から生成されていれば**共有起源の誤り**を検出できない。独立Oracleの出所・受理資格・判別能力は#2514、Scenarioの正本と実Target派生は#1180へ戻す。
+
+| 観測項目 | 必須の反証と判定上限 |
+| --- | --- |
+| Meaning/Shape | 数量・通貨・小計、NULL/欠損、順序・多重度、金額精度、業務拒否と実行失敗/unknownを、実際のAdapter前後で独立照合。表面のJSON型・結果文字列が同じでも契約同等とはしない |
+| Oracle independence | 独立Expectedの由来とProducer/Observerの独立性を示す。意図的な通貨無視・小計変更・業務拒否→技術失敗の誤変換等のMutantを、**既存の同じOracleが検出するか**計測。検出漏れと未実施を隠さない |
+| Actual implementation | D1は実選択Provider/Go binary/Link/Loaderまで、D2はquote-lines自身のAdapter/子Process/Host Guard/実Artifactまでを観測する。他ContractのProcess BridgeのPASSはD2の23件PASSに流用しない |
+| Same-environment cost | D0対D1の差を評価するときは同じGo Target・Host・OS・Toolchain・Source revision・負荷でclean/incremental build、起動・定常Latencyとサイズ/依存を反復測定。Go対Nodeの実行時間差をPlugin化の効果と見なさない |
+| Negative controls | #1251の未使用実装混入/必要依存欠落、#2600の誤skip/過剰失効、#2822/#2823の必須Source未ロードと、D2のHost拒否・異byte起動物・timeoutを別Failureとして分類 |
+| Claim ceiling | 23件の結果一致はread-only Previewの限定一致。Owner Meaning受理、OS隔離、実DB更新/Receipt、全Target/本番互換性は別。該当しないWrite義務はnot-applicable、未実施はNOT RUN |
+
+### 18.6 採否の出口と再審査条件（新しい判定票正本は作らない）
+
+- **D0で十分**：対象の要求・実Consumer・独立Expectedが満たされ、独立版管理/交換、別製品への公開、別Process隔離・無停止更新を必要とする実例がない。これは「D0がD1/D2より高速・優秀」との比較証明ではなく、**追加Pluginを作る必要がないという用途限定の選択**。D1/D2未実証をD0優位のPASSとして数えない。
+- **D1を候補として維持**：複数の独立Consumerや契約付きProvider差替えが具体化し、通常Library/静的Ruleでは満たせない制約がある。単一Go Binaryの選択済み実依存・必要能力・Bundle非干渉と、追加の保守負担を実測して採否を判断。
+- **D2を候補として維持／棄却**：異言語Host・隔離・独立更新が必要な場合のみ評価。厳密Single-binaryに合わなければ棄却。Process境界だけではOS sandboxやAuthorityを証明せず、実Host拒否・障害波及・再接続/unknownを観測。
+- **保留・差戻し**：Required Source/実消費不明、Oracle共有起源・Mutant検出漏れ、意味・Contract差、実Target未実行、current Host Grant不明などは、**該当するClaim**をunknown/not-runに留めて担当Issueへ返す。採用を急ぐために別Providerを黙示選択しない。
+
+再審査は、Requirement/Owner受理範囲、新Consumer、実選択/Source closure、Artifact/Target、Providerの現在資格、独立Oracleの判別能力、測定した費用が**実際に変化したとき**に限定する。無関係なCatalog/Bundle更新だけで全Targetを過剰失効させず、A→B→Aや同version異byteでも自動的な古い受理の復活は認めない（§17、#2600）。
+
+**実行責務**：#1016（用途別選定）、#2514（Oracle/Mutant）、#1180（Scenario）、#1861（23件）、#951/#1145/#2390（実Provider/Transport/Host）、#1251/#2600（実Buildと費用）。本節に別のExpected・Runner・新ABI・中央Decision Engineを置かない。23件横断D1/D2実行、Mutant実測、性能測定、Owner正式採用は現時点でNOT RUN/NOT ACCEPTED。
