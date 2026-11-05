@@ -18,10 +18,10 @@ import (
 // verified plugin/implementation digests or accepted meaning.
 func selfDescriptionTestSelection() Selection {
 	return Selection{
-		LanguageID: "fixture.tei.semantic",
-		ContractVersion: "1",
-		ContractFingerprint: "test-only-semantic-contract",
-		ImplementationID: "fixture.tei.semantic.parser",
+		LanguageID:                "fixture.tei.semantic",
+		ContractVersion:           "1",
+		ContractFingerprint:       "test-only-semantic-contract",
+		ImplementationID:          "fixture.tei.semantic.parser",
 		ImplementationFingerprint: "test-only-semantic-parser",
 	}
 }
