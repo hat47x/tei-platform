@@ -295,6 +295,12 @@ reload / Conformance
 
 図表間リンクは、同一qualified要素の複数表示、別要素間の意味的な関係、表示用のナビゲーションを区別します。複合図表の関連グラフ・対応表も第二の意味正本としません。これらは採用済みの新Core SchemaやStudio編集APIを要求するものではありません。
 
+### 三要素MethodのScript-first圧力試験（2026-11-06、評価待ち）
+
+[三要素MethodのTEA-V0 / Self-build Fit/Gap](design/THREE_ELEMENT_METHOD_DIAGRAM_CONTRACT_2026-10.md#15-script-first三要素methodの縦断契約とself-build-fitgap2026-11-06)を、作業領域Gの**最小縦断実証の追加候補**として位置づける。Data/Function/Businessは同じauthoritative Script/標準データのRole別Projectionであり、専用図形を第二正本としない。既存#1124 M0〜M4と#1125/#1126/#951/#267がOwnerであり、新しい横断Gate・Resolver・Acceptanceは作らない。
+
+最優先の不足は、①Source byteと意味が同一でもSource移動により旧定義ジャンプが失効すること、②可逆でないER/DFD線編集をSourceへ誤適用しないことを、**同一の実Consumerにおける正負の試験**で証明する点にある。その後にGrant/Policy変化の開示資格、バッチ/ファイル連携と業務図の役割区別、Method Pluginの実Build/Loadを扱う。Plugin self-buildのSB-1/2/3は既存Ownerの独立資格であり、TEAの初期read-only利用のブロッカーにはしない。現行の全体優先順・Gate B/C判定は変更せず、具体的な着手・採否は担当Issueの判断へ返す。
+
 ## 作業領域H：AIによる開発支援
 
 ### 目的
