@@ -272,7 +272,7 @@ G0〜G5の判定は、既存`releaseplan database-gate`、Scenario/Oracle、Sour
 | `internal/database/migration/history.go` | `HistorySnapshot`と`CompareHistory`で`applied/pending/failed/diverged/orphan-applied`を出力 | 取得が失敗/部分のHistoryを完全な空集合と区別する必要がある。**現在の`AppliedUnknown`がchecksum一致等で`RepoApplied`へ分類され得る**。現行`CompareHistory`はHistoryのCapturedAt/取得完全性を検証しない |
 | `internal/database/migration/postgres_apply.go` | 適用直前にActual Schemaを観測し、planned SQLとfresh renderingを照合 | SQL実行後の別接続Schema/Data、migration history、Client Read/Write、Owner/Cutover/Receiptを確認しない |
 
-**重要なソース静的負例**：現行`CompareHistory`の分岐は、`AppliedFailed`を特別扱いし、checksum違いを`diverged`とする一方、`AppliedUnknown`を`applied`から明示的に排除していない。実Historyの結果不明なのに`RepoApplied`が出ればG1/G3/Contractの偽PASSにつながり得る。この境界は正式な`RepositoryState`の挙動／不明時の診断方法についてOwner判断を要する。**本PRでは製品型/比較関数の仕様を無断で変更しない**。
+**重要なソース静的負例**：現行`CompareHistory`の分岐は、`AppliedFailed`を特別扱いし、checksum違いを`diverged`とする一方、`AppliedUnknown`を`applied`から明示的に排除していない。実Historyの結果不明なのに`RepoApplied`が出ればG1/G3/Contractの偽PASSにつながり得る。この境界は正式な`RepositoryState`の挙動／不明時の診断方法についてOwner判断を要する。この偽PASSは[#2892](https://github.com/hat47x/tei-platform/issues/2892)に独立した再現負例・修正方針として切り出した。**本PRでは製品型/比較関数の仕様を無断で変更しない**。
 
 別の負例は、Historyを取得できなかった際に空の`HistorySnapshot`を構築すると、予定されている全Migrationが`RepoPending`に見えること。正しい「取得成功・適用件数ゼロ」と「観測失敗」を区別できる取得資格が必要。単一`CompareHistory`の出力をHistory全体の完全性証拠にしない。
 
