@@ -1,6 +1,6 @@
 # TEI DB移行互換性ゲート：横断統合と最小受入（2026-11-06）
 
-- **状態：検討案。** 本書によって正式Gate、公開API/DSL、Owner判断を採用しない。今回は文書変更のみでGo/SQL/実DB/本番旧Client/異種DBを実行しない。
+- **状態：検討案。** 本書によって正式Gate、公開API/DSL、Owner判断を採用しない。本書の追補は設計・受入条件である。Draft PR全体には既存Release契約の構造的なGo特性テスト（MG-21）も含むが、実SQL/実DB Migration、実旧新Client共存、異種DB・本番環境、Owner受理は未実施。
 - **関係**：[意味変更と既存データの移行設計](SEMANTIC_CHANGE_DATA_EVOLUTION_DESIGN_2026-10.md)、[#2555](https://github.com/hat47x/tei-platform/issues/2555)（旧システム並走）、[#2147](https://github.com/hat47x/tei-platform/issues/2147)（段階移行参照成果）、[#2545](https://github.com/hat47x/tei-platform/issues/2545)（観測窓などの残余）、[#1126](https://github.com/hat47x/tei-platform/issues/1126)（業務キー/PK/履歴）、[#2622](https://github.com/hat47x/tei-platform/issues/2622)（Provider/Data Operations）、[#2611](https://github.com/hat47x/tei-platform/issues/2611)（同Semanticの異DB Alias）、[#1174](https://github.com/hat47x/tei-platform/issues/1174)/[#2564](https://github.com/hat47x/tei-platform/issues/2564)（Effect/Commit Unknown）、[#2514](https://github.com/hat47x/tei-platform/issues/2514)/[#1163](https://github.com/hat47x/tei-platform/issues/1163)（独立Expected/同一Attempt）、[#2600](https://github.com/hat47x/tei-platform/issues/2600)（Evidence再利用）、[#2862](https://github.com/hat47x/tei-platform/pull/2862)（DB別Native SQL選択）。
 
 ## 1. 実装されている境界と未成立のClaim
