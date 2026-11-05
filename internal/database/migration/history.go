@@ -165,6 +165,10 @@ func CompareHistory(database core.CanonicalID, defs []Definition, history Histor
 			e.State = RepoPending
 		case a.State == AppliedFailed:
 			e.State = RepoFailed
+		case a.State != AppliedSucceeded:
+			// An observed-but-uncertain or unrecognized tool outcome cannot
+			// qualify a repository migration as successfully applied.
+			return HistoryComparison{}, fmt.Errorf("migration %s has unqualified applied state %q", id, a.State)
 		case a.Checksum != "" && e.RepositoryChecksum != a.Checksum:
 			e.State = RepoDiverged
 		default:
