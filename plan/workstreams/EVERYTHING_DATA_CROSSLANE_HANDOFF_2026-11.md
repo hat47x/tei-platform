@@ -2709,7 +2709,7 @@ Organization Profileは、凝集したStandard Data/Relation、Hierarchy、Polic
 
 [組織 Native PR #2681](https://github.com/hat47x/tei-platform/pull/2681)へ、未宣言Plugin rootとModule Sourceの非干渉を検証する`TestOrgHeadlessUndeclaredPluginRootDoesNotChangeSemanticOrOperations`を追加。元WorkspaceのManifest `sources: semantic, applications, databases`を維持し、`plugins/unused-org-profile/plugin.tei`に**あえて構文不正ファイル**を追加して実Go Loader／Source Index／OperationSurfaceを再実行した。
 
-HEAD `dd2925ae525732668d98bf11f39a6cea705b37cd`に対する[GitHub Actions #42030632683](https://github.com/hat47x/tei-platform/actions/runs/42030632683)は**completed/success**（Go1.26.10/Linux、focused `TestOrgHeadless`8件と実`tei validate`・`operations`・`artifacts`＋独立Reader、exact HEAD/clean）。**ManagedFilesに未宣言Rootなし、WorldFingerprint／ModelRevision／Operation集合は元と一致**。Reader `findings=0, complete=False`に変化なく、実Artifact完全性・全Target・Go Binary非含有は未実証。
+HEAD `e0cfebf14d40db81bdef77d6c3e4898ed75d999f`に対する[GitHub Actions #42031418190](https://github.com/hat47x/tei-platform/actions/runs/42031418190)は**completed/success**（Go1.26.10/Linux、focused `TestOrgHeadless`8件と実`tei validate`・`operations`・`artifacts`＋独立Reader、exact HEAD/clean）。**ManagedFilesに未宣言Rootなし、WorldFingerprint／ModelRevision／Operation集合は元と一致**。Reader `findings=0, complete=False`に変化なく、実Artifact完全性・全Target・Go Binary非含有は未実証。
 
 **仮定しないこと**：Catalog登録済み／Environment非選択PluginのModelRevision不変、Environment選択済みBundle内の未使用Module非収録、Go LinkerのDead-code eliminationが個々のPluginを確実に除去すること、Target依存がないPluginの変更がBuild Input/Artifact bytesへ完全に影響しないこと、Pluginの提供Capabilitiesを実Principalが使えること。今回証明したのは**Manifest外Sourceが読まれない**という一段階だけ。
 
