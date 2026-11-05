@@ -248,7 +248,7 @@ G0〜G5の判定は、既存`releaseplan database-gate`、Scenario/Oracle、Sour
 
 ### 14.4 実証の優先順と採用を保留する判断
 
-**P0**：MG-24を既存#2555のOwner/Writer観測・#2147のCheckpoint/CDC・#1174の現Grantの**合成read-only**検収票で表現可能か確かめる。`12のGate Evidence Packetで `old-fenced=true / cdc-caught-up=true / new-grant=unknown` に対してG4を `unknown`、新旧とも新規Write資格なしとする。新状態型やRunnerを追加しない。
+**P0の順序**：まず§13のMG-21/22で旧新RequiredContractsと部分Readerをread-onlyに確認し、続いてMG-24を既存#2555のOwner/Writer観測・#2147のCheckpoint/CDC・#1174の現Grantの**合成read-only**検収票で表現可能か確かめる。`12のGate Evidence Packetで `old-fenced=true / cdc-caught-up=true / new-grant=unknown` に対してG4を `unknown`、新旧とも新規Write資格なしとする。新状態型やRunnerを追加しない。
 
 **P1**：MG-25/26は実Providerと外部Effect Consumerで旧世代拒否・別Read/Receipt/補償の状態を実測するまで未成立とする。**P2**：MG-27で過去時点Reader・Retention、MG-28で必要Claimのみ再資格化。各FixtureのExpectedは実Migrator/生成SQLの出力ではなく、固定業務Key・時点・操作履歴から独立に作る。
 
