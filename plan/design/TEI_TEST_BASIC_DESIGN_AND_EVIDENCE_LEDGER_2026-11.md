@@ -43,7 +43,7 @@
 - **Evidence qualification**：qualified / limited / unqualified / stale / unresolved。特定Claimと比較時点を引数として判定する。これらは説明上の例であり製品enum未採用。
 - **Meaning acceptance**：Owner accepted / pending / rejected / withdrawn（対象Scope・Source版付き）。Execution PASSからこの列を自動更新しない。
 
-**必要集合を固定したうえで不足を測る。** ＠requiredCaseIDs - observedPassedCaseIDs＠が非空、Requiredチェックが未提出・未発見・SKIP、Loader未読込、unknownな対象母集団がある場合、該当Claimはunqualified/unknown。ケース数だけの分子・分母や全Go Test PASSを全業務Coverageに使わない。#2835の「DSN未設定でもGo試験自体は緑だが必要PG試験はSKIP」を既存負例として再利用する。
+**必要集合を固定したうえで不足を測る。** `requiredCaseIDs - observedPassedCaseIDs`が非空、Requiredチェックが未提出・未発見・SKIP、Loader未読込、unknownな対象母集団がある場合、該当Claimはunqualified/unknown。ケース数だけの分子・分母や全Go Test PASSを全業務Coverageに使わない。#2835の「DSN未設定でもGo試験自体は緑だが必要PG試験はSKIP」を既存負例として再利用する。
 
 ## 4. 同一CaseをL1から段階強化する圧力試験
 
@@ -51,7 +51,7 @@
 
 | 段階と同一Caseの利用 | 固定Expectedと追加する実観測 | Negative control／受入・停止条件 |
 | --- | --- | --- |
-| **F0 definition** | ＠order_line.quantity=2, unitPrice=300 → amount=600＠を合成の独立Expectedとして固定（税/丸め/時点・粒度が別条件なら保留）。quantity=0、NULL、missing、partialは各自独立のExpectationとする | Source locator・Role・Meaning未受理のRuleを数値例だけで正本化しない |
+| **F0 definition** | `order_line.quantity=2, unitPrice=300 → amount=600`を合成の独立Expectedとして固定（税/丸め/時点・粒度が別条件なら保留）。quantity=0、NULL、missing、partialは各自独立のExpectationとする | Source locator・Role・Meaning未受理のRuleを数値例だけで正本化しない |
 | **F1 Unit fixture** | 実TEI純粋Operator/Validationを固定Fixtureで呼び、原値・型・結果/拒否を取得。テストGo/Case revisionを固定 | ResultをWantへコピーする同一起源Oracle、decimal→float、NULL/missing混同、required Case SKIP |
 | **F2 Conformance** | Go/別実装または2 Provider候補に同じ意味Profile/Expectedを照合。Read Scope・grain・NULL/ORDER・precision、unsupported capabilitiesを明示 | 同じ表示600でもJOIN fanout/partial/粒度・Scopeが異なれば業務同値を主張しない。未知Dialect/SQL fallbackは未資格（#2622/#2862） |
 | **F3 実DB/Provider** | 実DBへ限定Seed→実Read Query/Result set→必要Field/Rowを別Witnessで比較。更新Caseはpre-image/Version/Current Grant→実Command/Tx→Receipt/別接続post-imageを追記 | 読込み不足でFixtureの値を補ってPASSしない。ACK lost→UNKNOWNを再送成功/未作用へ変換しない。新Idempotency keyでABA再適用され得る既知反例を含める |
@@ -64,7 +64,7 @@ XL-03（値変更Hook）では同じ業務Subjectに対し別Case revision/IDで
 
 [#2616のACU-01〜08](https://github.com/hat47x/tei-platform/pull/2616)の指摘を、F3/F4のCaseに次の二つだけ先行採用する（既存Ownerの実試験IDへ参照、Case正本の二重登録なし）。
 
-- **P-REQ：全必須条件を実チェックしていない**。試行前に必要Checks集合を固定。実行へ渡されたChecksが全てPASSでも、Required中に未指定/未読込/対象違いがあるなら＠preflight complete＠としない。必要なField・Period・Capability・Grant/Effect等の具体的な集合はOperationごとに固定し、一律に全条件を要求しない。
+- **P-REQ：全必須条件を実チェックしていない**。試行前に必要Checks集合を固定。実行へ渡されたChecksが全てPASSでも、Required中に未指定/未読込/対象違いがあるなら`preflight complete`としない。必要なField・Period・Capability・Grant/Effect等の具体的な集合はOperationごとに固定し、一律に全条件を要求しない。
 - **P-PARTIAL：RunPlanはblockedだが先行Stepが作用済み**。StepごとのProvider call/effect/receipt/未知状態を観測し、RunPlan全体のblockedを「一切作用なし」としない。停止直後の無条件再試行を禁止し、Operation ID/Receipt lookup/独立Readで分離。#1130（RunPlan）と#1174（Effect fence）が実行責務。
 
 ## 5. 証拠の有効期限：時間・依存・現在資格を分ける
@@ -111,8 +111,47 @@ XL-03（値変更Hook）では同じ業務Subjectに対し別Case revision/IDで
 | **横断：#2600/#2595/#2604/#2516** | 実消費Input、Source/Meaning/Artifact再利用の失効、一式公開と実受領を個別資格とする | 改版・partial・ABA・未許可Read/開示に対する選択的再資格化 |
 
 **2026-11-06時点で確認可能な限定成果**：
-- #2828 test-only DriverのHEAD `77baf709⟧ は [Repository Health #41850080590](https://github.com/hat47x/tei-platform/actions/runs/41850080590) completed/success。#2811既存docs HEAD `3251906b⟧ は [Health #41850309534](https://github.com/hat47x/tei-platform/actions/runs/41850309534) completed/success。両PRはDraftであり本基本設計の追加前HEAD。
+- #2828 test-only DriverのHEAD `77baf709` は [Repository Health #41850080590](https://github.com/hat47x/tei-platform/actions/runs/41850080590) completed/success。#2811既存docs HEAD `3251906b` は [Health #41850309534](https://github.com/hat47x/tei-platform/actions/runs/41850309534) completed/success。両PRはDraftであり本基本設計の追加前HEAD。
 - [#2853](https://github.com/hat47x/tei-platform/pull/2853)実PG Command/CAS/Receipt、[#2854](https://github.com/hat47x/tei-platform/pull/2854)ABA別Key適用、[#2857](https://github.com/hat47x/tei-platform/pull/2857)暫定一改訂Web/PG（監査 INCOMPLETE）、[#2859](https://github.com/hat47x/tei-platform/pull/2859)Runner起動前Schema Gate等は**異なる版・個別実走**。同一受理Sourceと現Grantを束縛した一体Web→PG→Consumer合格を主張しない（#1163）。
 - 本設計のF0〜F5、P-REQ/P-PARTIAL、台帳Qualification Viewの実装/試行、正式Schema、第二DB/SHO/Windows、Owner受理は**この変更ではNOT RUN／NOT ACCEPTED**。
 
 **採否**：#2514がOracleの根拠、#1180がScenario、#2622がProvider適合、#1129がData Hook、#1174がEffect、#1163が同一改訂Packet、#1119が横断Gateを引き続き所有する。証拠台帳はその間のread-only比較表であり、一本の万能PASSや新テスト基盤を作る根拠にしない。
+
+## 8. 実証結果を記入した証拠台帳：テストPASSと要求適格を分ける（2026-11-06）
+
+**この章は実際のCI・Go・PostgreSQL試験結果を既存のCase/Claim/Evidence比較票へ転記した例であり、新しいLedger Storeや新実行結果ではない。** GitHub上で観測済みの結果と、未観測の部分を明記する。別HEAD/Environmentの行を足して同一Attemptにしない。
+
+### 8.1 初期Ledger：5件の実例
+
+| 仮ID・既存Case | 固定Environment・証拠 | Test Outcomeと観測事実 | Claim資格／まだ証明しないこと |
+| --- | --- | --- | --- |
+| **EL-01** [#2828 Driver JSON Candidate](https://github.com/hat47x/tei-platform/pull/2828) | HEAD `77baf7092ff530fb8dee2e53ef4752a8ee01f953`／[Health #41850080590](https://github.com/hat47x/tei-platform/actions/runs/41850080590) completed/success | test-only Go/JSON追加、2固定Validation Anchor、期待値改変・旧Plan拒否を含む限定Fixtureの実Go Test成功 | L1の該当Referenceに限り支持。新しい未知Caseを生成AIが自律発見した証明、独立業務Oracle、Owner受理、実DB/Host資格ではない |
+| **EL-02** [#2830 Scenario 6 Step](https://github.com/hat47x/tei-platform/pull/2830) | HEAD `019da011c7d0e1d4ade384c5495c3f91bb12982e`、Go1.26.10/Linux、[Health #41851323500](https://github.com/hat47x/tei-platform/actions/runs/41851323500) completed/success | 6 Step IDの欠落/重複、生成argvの各Step実行、`static-verification`/`generated-pinned`と`evidenceNature`を限定Goテストで照合 | L1のScenario Inventory・Evidence Nature限定適格。`Verified=true`は実Auth/Command/DB/Web E2Eと同じ意味ではない。6 Stepを全業務Coverageの分母にしない |
+| **EL-03** [#2870 RCAS-02](https://github.com/hat47x/tei-platform/pull/2870) | HEAD `58d4a0047`、WSL2使い捨てPostgreSQL 14.24、PR記録のGoテスト/実DBログ | **テストPASSは欠陥特性の再現成功**。新Lifecycleでin-memory `unknown`が消失、再Dispatch可能。同じ冪等Keyでは実PGが`IDEMPOTENT_REPLAY`・Applied=0・Receipt1件 | Durable lifecycle/実プロセス再起動安全性は**未成立**。同Keyの限定再送が二重適用を防いだことだけ支持。新Key ABA、Network/実crash、現在Grantは別 |
+| **EL-04** [#2882 Workspace/RunPlan](https://github.com/hat47x/tei-platform/pull/2882) | main統合済みのGo試験。期間閉/開、Effect Observer欠落をWorkspace Sourceから入力。**本票では当該merge HEADの実CI Receipt未確認** | 期間閉ではblocked/Step未呼出、期間開ではcompleted、Effect前提欠如ではblockedを検査するテストを追加 | Source実装の存在は確認できるが、**今回の確認だけでexact-head CIの実PASSは主張しない**。`CombinePreconditions`に渡された検査の成功≠必要検査全件の提出、一般RunPlan blocked≠過去Stepの作用0 |
+| **EL-05** [#1163 一改訂Product Gate](https://github.com/hat47x/tei-platform/issues/1163) | #2853実PG Command/Receipt、#2857暫定Web/PG、#2859起動前Schema Gateは**別HEAD/別Attempt** | それぞれの限定的な実PG/実Web/Schemaの成功が存在。#2857の横断監査はINCOMPLETE | **Product Gate=UNQUALIFIED**。同一Accepted Revision・現Grant・実Web→実PG Commit→独立Consumer受領という一経路の統合Receiptを合成できない。Owner受理なし |
+
+**証拠の読み方**：EL-03は`test=PASS`でも`durable-state safety=UNQUALIFIED`。EL-04は`test code present`だが今回の実Run証拠は`unobserved`。EL-05は個別のPASSが複数でも`one-revision integration=UNQUALIFIED`。この三種を区別できない台帳やCIレポートを受入済みとしない。
+
+### 8.2 三つの結果を混ぜない最小Claim判定
+
+- **Test outcome**：実際にそのExact HEAD/Case/Environmentで何を実行し、PASS/FAIL/SKIP/NOT RUNとなったか。Required Case/Checkの欠落と単純なGo process exit=0を分ける（#2835）。
+- **Characterized behavior**：テストが検出した動作は正しい仕様への適合か、それとも**意図どおり再現できた不適合**か。Known Mutant/negative controlの存在をExpectedの出典と共に記録する（#2514）。
+- **Requirement verdict**：Owner受理済みMeaning/Obligation、Scope、Snapshot、現Grant、Provider/Target/Reader資格に照らして現在何を主張できるか。Execution PASSをOwner Acceptance・Current Execution Authorityへ昇格させない（#1119/#1163）。
+
+**重要な対照**：#2882の「期間閉じたWorkspaceでは最初のStepを呼ばずblocked」は、*実行前に拒否されたそのCase*のEffectゼロを支持し得る。一方、#2616/#1130の「途中Stepが実行された後のblocked」は全PlanのEffectゼロを支持しない。Evidence台帳では`phase`と`step-level effect witness`を必ず別列にする。
+
+### 8.3 P0で実際に埋める最小受入票
+
+| Case群 | 事前固定のIndependent Expected／Required集合 | 実観測で受理するもの、欠けたら止めるもの |
+| --- | --- | --- |
+| **E-01 Scenario inventory** | #2830保存済6 Stepと各ID・Expected Evidence Nature | 実Glob/Parse/生成argv/対象StepごとのReceiptを対応。欠落/SKIP/未実行を検出。6 Step外の未知Obligationを100%へ丸めない |
+| **E-02 AI追加ケース** | #2828 2固定Anchorとは別に、生成Agentが追加する新Case ID・Fixture・事前独立Oracle（#2514） | 追加前後のCase集合と実Attemptを比較。候補Expectedと同一起源のWantだけで独立Oracle資格を付与しない |
+| **E-03 必須Preconditions** | Operationに必要なPeriod/Effect/Grant/Observer/Schemaの**適用条件付き必要集合**を実行前に固定 | `CombinePreconditions`の入力に必要Checkがすべてあることを照合。渡された分が全PASSでも必要Checkが抜けていたらCoverage不適格。全Operationへ無関係Checkを一律要求しない |
+| **E-04 再起動と副作用** | RCAS-02同Key再送、#2854新Key ABA、#1174 Commit Unknown/Receipt Lookupを独立Expectedとして事前指定 | Attempt/Operation identity、Step実Effect、PG Receipt、別接続Readを結ぶ。Blocked/Unknownの無条件再試行を認めない。実Process crash/Networkは未実行なら明示 |
+| **E-05 SQL/Provider選択** | #2622/#2862の同Query ID・異Realization/SQL選択、Read Scope・NULL・Grain・mapping資格 | Query IDや表示Rows一致は実SQL/Providerの同値を証明しない。固定SQL不在時の無音fallbackを拒否。第二DB実測は別 |
+| **E-06 一改訂E2E** | #1163のAccepted Source Revision・実Binary・Current Grant・実PG・Receipt・独立Read/Consumer実受領 | #2853/#2857/#2859の別Attemptを合算しない。必要Edgeの欠落を個別unknownとして保持し、#1119 G1/G2へ誤昇格しない |
+
+**次の最小出口条件**：E-01とE-02の実Case ID/Required集合/Actual Runを一枚で照合し、E-03またはE-04の既知負例で「テスト自体PASS、製品Requirement不適合」を少なくとも一件説明できること。E-05/E-06の実Provider/Hostは本P0のHard Blockerにせず、既存Ownerが個別Evidenceを取得した後に段階強化する。
+
+**更新は設計・証拠のread-only整理のみ。** E-01〜E-06の新たな実行、AI自律生成、独立Mutant試験、実Process再起動、二DB・完全Host/Provider E2E、正式Owner受理は本変更でNOT RUN。新Ledger DB、Runner、Acceptance Engine、Ownerの正本を追加しない。
