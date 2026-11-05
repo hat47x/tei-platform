@@ -3035,7 +3035,7 @@ Owner保留は(1)Service Subscriberに対応する論理Tenantをどこまで推
 | 順番 | 成果とStop条件 | 既存Owner |
 | --- | --- | --- |
 | P0-A Scope Meaning | Case/Org/Business Roleと、Tenant-private/Shared/Consumer適用先を**Sourceを明示して**束縛。現NativeにはTenant FieldsやCase Persistenceが無い事実を保持 | #2386/#1126/#2510 |
-| P0-B Provider Route | 同一Semantic Dataの異DB Alias/Mapping重複を診断し、実Targetが一意になる場合だけScope付きReaderに渡す。Operation ID重複・辞書順選択で異Scopeを消さない | #2611/#2622/#2611/#2586 |
+| P0-B Provider Route | 同一Semantic Dataの異DB Alias/Mapping重複を診断し、実Targetが一意になる場合だけScope付きReaderに渡す。Operation ID重複・辞書順選択で異Scopeを消さない | #2611/#2622/#2586 |
 | P0-C Product Read | 既存E2a C1→D1のFunction Context→実Provider ReadでTenant A/Bの**同一Business Key負例**を追加、Current Scope・Row+Field/Non-output deps・Consumerを独立Expectedで評価 | #2586/#2506/#1656/#2514 |
 | P1 Effect/Cache | Tenant切替・Grant失効/別Provider再資格・同Key Restart/Commit unknown・Cache/Export/Consumer Disclosureを現行境界で確認 | #1174/#2564/#2582/#2516/#1163 |
 | P2 Migration/Delivery | 旧新Tenant/DB/Plugin/Target世代、共有・非共有Resourceの移設、Backfill/Scope/Retention・Auditの独立受入 | #2555/#2020（closed履歴）/#951/#1130 |
