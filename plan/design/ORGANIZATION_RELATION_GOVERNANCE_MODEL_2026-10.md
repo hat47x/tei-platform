@@ -2875,3 +2875,89 @@ Case C1が組織改編をまたぐとき、**過去の判断（Historical Decisi
 **他チャットとの境界**：#2779のWhat-ifは実Case Effectでない。#2586 E2a/E2bを新たな独立製品Readerへ置き換えず、#2510の既存Pressure Corpusへ試験変異を渡す。#1125はBusiness Procedure/Decision、#1126はRelation/Cardinality/Key、#1174はHost/実Effect、#1163は同一Attempt Evidence、#2514は独立Expected。組織データは通常のTEI Dataであり、一律の専用ACL/IdP/Host/Workflowは追加しない。
 
 **現時点の資格**：本節はdocs-onlyの提案。ORG-SM-01〜12の製品/合成試行を新たに実行したものではない。#2596 merged合成Node Reference、#2681 Native E1、#2779 What-if Draft、#2889 toy Runner、別FunctionのPG CASはそれぞれ限定的な過去の証拠。実Org Case E2/E4、実Host Grant/Provider/組織改編の公表/Owner業務意味受理はNOT RUN。#1119の現行Gate優先・mainは変更しない。
+
+## 70. 組織モデリングとマルチテナントの一体設計：共有する意味と独立する分離保証（2026-11-06、採用前）
+
+### 70.1 検討結論：一体設計。ただしTenantをOrgの下位型へ固定しない
+
+本節は「Tenantを組織モデリングに包含できるのではないか。直交する固有概念は分離し、共通関心を分断しない」との検討依頼に対する採用前の設計案である。**共通のData/Relation/Rule/Function/Business・Modeler/SHO/Queryの意味基盤上でOrganization ProfileとTenant/Delivery Isolation Profileを合成する**。TenantをOrgUnit、LegalEntity、Customer、Account、Workspace、Deploymentと同一視せず、業務利用主体と実隔離対象/運用境界との明示Relation/Bindingを設ける。業務Tenant Accountは通常のBusiness Dataとして表現できるが、**Tenant Isolationの現在の強制保証は組織関係だけからは成立しない**。
+
+- 採用済み[ADR-0036](../adr/0036-delivery-forms-as-plugin-composition.md)：提供形態はPluginの選択・構成、SaaS分離は共通Delivery能力。Pluginの選択だけで本番の実隔離が証明されたとはしない。
+- 採用済み[ADR-0043](../adr/0043-target-native-artifacts-without-tei-host.md)：TEI独自Hostを必須とせず、対象環境のHost/DB/Storage/Providerが実保証を強制。
+- 採用済み[ADR-0044](../adr/0044-authentication-not-a-core-concern.md)と[ADR-0019](../adr/0019-authentication-capability-boundary.md)：認証方式はCoreに固定せず、Application AuthN/AuthZ、Plugin/Runtime Permission、現在Host Grantを区別。
+- [組織Issue #2386](https://github.com/hat47x/tei-platform/issues/2386)と11/1のOwner訂正：通常組織Dataは通常のDataとして読み・結合・表現でき、組織管理という理由だけで特別ACL/OS隔離を義務づけない。一方、Tenant-scopedと明示されたResourceの越境、個別の保護指定、外部開示、実Effectは別の実行資格を要する。
+- [提供形態Issue #2020](https://github.com/hat47x/tei-platform/issues/2020)はclosedだが、その完了項目・Referenceの**実証範囲**と、未実施の本番SaaS/DB/API/全Resource分離を混同しない。
+
+**新しい固定Core Tenant Entity/Schema、組織専用ACL/Identity Provider、第二Authorization Engine、万能Host/Runtimeを作らない**。本節は既存ADRを変更する新ADRの採用ではない。正式な変更判断が必要となった場合はOwnerに新ADR案として提示する。
+
+### 70.2 三案比較：包含、完全分離、共通意味＋直交保証
+
+| 案 | 利点 | 反例と判断 |
+| --- | --- | --- |
+| A. TenantはOrgUnit/LegalEntityの一種 | 一法人＝一Tenantの小規模案件は自然 | 一企業がdev/prod・地域別に複数Tenantを使う、一Tenantが複数法人を収容、個人利用者Tenant、組織間共同作業、同じDeploymentに多数TenantなどでIdentity・Grant・Storage分離を誤るため一般化には不採用 |
+| B. TenantとOrgは完全独立した意味正本/UI/Relation | Delivery/Storage/Host責務を分割しやすい | Person/Org/Case/Customer/Resourceの相互関係が二重正本となり、編集・意味追跡・組織改編・提供先変更が断絶するため不採用 |
+| **C. 共通意味基盤に二つのProfileを合成** | OrgのBusiness Fact/Responsibilityと、Tenant/DeliveryのIsolation/Policy/Provider実現を明示Bindingして一体観察・差分・説明できる | 採用候補。Binding・必要証拠の網羅・実Provider強制と現在Grant・配備世代の資格をテストで検証 |
+
+これは「同一の概念」でも「無関係な二製品」でもなく、**同一の意味空間を共有する直交的なFacet/Contract**の組合せである。直交性は全てのRelationが無関係という意味ではなく、Identityと失効要因・実施責務が相互から自動導出されないことを意味する。
+
+### 70.3 共通の関係とTenant固有の責務
+
+| 意味の軸 | 標準Data/Relationで共有するもの | Tenant/Deliveryに固有の適合・実強制 |
+| --- | --- | --- |
+| 利用主体・同一性 | Person、LegalEntity、OrgUnit、Customer、Service Subscriber、Business Role、Membership、Case | SubscriberとTenant分離境界は1:1に固定しない。外部verified issuer+subject、Tenant内Accountは別識別子 |
+| 時間・組織改編 | validAt/knownAt、Org後継、Case未決事項、過去Decision/Receipt | Tenantのcreate/suspend/migrate/offboard・Data residency/Retention/BackupはDelivery側。Org改編でTenantやGrantを自動移行しない |
+| データ所有・利用対象 | Dataset/Data Owner、Function、Business Procedure、Source of Record、共有Reference | Tenant-privateか明示Sharedか、保護指定Field/Resource/Consumer、Tenant別Data Route/Scopeを明示。組織Dataに一律Tenant ACLを追加しない |
+| 認証・許可 | 業務上のActor/Approval Candidate、Principal Link、Delegation、Role、Grantの必要Contract | 信頼できるHost/AuthorizationがCurrent Principal/Tenant/Grantを確認。Client指定Tenant、Org所属、Manager線やGraphをGrantへ自動変換しない |
+| Provider/配備 | Workspace、Target、Artifact、Query/Function Context、DB Alias、Environment、Operation/Receipt | 共有行分離・別Schema/DB・専用配備、Key/Cache/Search/Queue/Log/Export/AI送出の境界と実観測。Tenant≠Workspace≠Deployment |
+
+考えられるtyped Relationは、Service SubscriberがどのTenantを利用するか、どのOrgがそれを管理するか、Datasetを誰が所有するか、どのDeploymentにTenantを配置するか、どのAccountが検証済みPrincipalに対応するか、という**明示された関係**である。これは概念例であり固定DSL構文ではない。**組織図やTenantの図上で線をつないでも実Grantや実Reader Scopeは付与されない**。必要なProvider/Host側のBindingを明示して適用する。
+
+### 70.4 分離の不変条件と通常Dataの自由な参照を両立させる
+
+1. **Resource相対の境界**：Tenant-scoped Resourceとして宣言されたData/Action/Export/Secret/Receipt等は、実行時に許可のあるTenant/Scope以外からは既定拒否。明示的な共有Dataや共同作業は別の資格付きAccess/Disclosureとして扱う。通常のOrgUnit/Membership/Org図を一律非公開扱いしない。
+2. **権限の供給元**：Client送信tenantIdや業務Personの所属ではなく、verified Principal/SessionとHost/Provider側で選択・確認した現在のTenant/Scope/Grantを使用。テナントの切替や部門の改編で旧Grant/Query結果を再利用しない。
+3. **実行順序**：認可済みTenant Scope・個別Resource Scopeを、Client Filter/Sort/Limit/Count/Aggregate/Export等の前に実Providerで強制。全Queryを共通SQL文字列改変で書き換えるのではなく、選択したProvider/Realizationで実現できる範囲を検証し、できない操作はunsupported/拒否。
+4. **非出力依存と推論**：NULL ASによるField値マスクでも、隠れたORDER/COUNT/存在・タイミングやキャッシュから情報を推論し得る。安全なReadと、Consumerへ許されるDisclosureを別Claimとする。
+5. **物理配置独立**：Logical TenantのIdentity/Customer/Org/Caseの業務意味と、現DB・Deployment/Region/Keys/Artifact世代を混同しない。1 Tenant複数Deployment、複数Tenant同じGo単一Binary/DB、地域移動などは用途に応じ選択。
+6. **部分失敗**：越境拒否と0件/Not Found、Provider unreachable、partial、Consent revoked、Commit unknownを区別。拒否される側の存在を過剰に開示しない。エラー/診断は信頼できる開示契約で提供する。
+
+ADR-0036のPluginは必要Isolation能力と適合契約を提供するが、**Plugin自身の自己申告で実アクセス経路の分離保証を確定しない**。対象Host/DB/Storageでの実強制と独立Read/拒否観測が必要（#1118/#1174/#1163）。
+
+### 70.5 実装の証拠：実ファイルReferenceと実PostgreSQLは別の保証
+
+- [merged #2052](https://github.com/hat47x/tei-platform/pull/2052) の File Tenant Isolation Reference はos.OpenRootによるTenant rootのRead/Write、別Tenant/絶対Path/Parent Traversal/Symlink拒否とDenialを持つ。現mainの tools/reference-tenant-isolation/plugin.json は **DB行認可・外部API隔離・Process/Network sandboxを保証しない**と明記。Delivery Profileからの実選択・本番SaaS/組織対応までは未証明。
+- #1656/#1769の[Scoped PostgreSQL E2E](../../reference/web-api-contract/POSTGRES_SCOPED_E2E.md)では、Tenant/Customer別の明示SQLと使い捨て実PostgreSQLの限定試験の履歴がある（#1656の2026-10-14記録：PR #1801、PG16.15でTenant/Customer双方の限定PASS）。**権限材料は固定合成Grant**で、実IdP/現在Business Authorization/失効との原子的強制、RLS/全API/実運用は未証明。E11/E12には非公開orderedAtが結果順序/Topへ影響する既知の漏洩反例がある。
+- [open #2681](https://github.com/hat47x/tei-platform/pull/2681) のOrg Native E1は実Data/Relationの定義をLoad/Parseする範囲。CaseRecord/OrgUnitのProvider実データ・Function Data Context・実Reader・Tenant組織複合Authorityの証拠にはならない。
+- [Issue #2020](https://github.com/hat47x/tei-platform/issues/2020)のclosed/チェック済みと、全製品Route/本番Tenant分離の完了は別Claim。閉鎖Issueの履歴や実Referenceは保存し、残余の製品適合は既存#1656/#1769/#2586/#1174等へ引渡す。
+
+外部比較：[Azure Multitenant tenancy models](https://learn.microsoft.com/en-us/azure/architecture/guide/multitenant/considerations/tenancy-models)はCustomer/Tenant/Deploymentを分離し、[AWS SaaS Architecture Fundamentals](https://docs.aws.amazon.com/pdfs/whitepapers/latest/saas-architecture-fundamentals/saas-architecture-fundamentals.pdf)はAuthN/AuthZ成立だけではTenant Isolationとならないと説明する。TEIへの取り込みは**この外部事実を参照した設計仮説**であり、実製品保証の証拠ではない。
+
+### 70.6 共通Sourceで反証するORG-TN-01〜12（すべて追加試行NOT RUN）
+
+試験の既存土台：#2510組織Corpus/#2596合成Source、#2681 Native E1、#2020 File Tenant Reference、#1656/#1769 Tenant/Customer PG Scoped Query、#2586 Case Read E2a。Expectedは実Provider出力から自動生成しない。以下は各既存Fixtureに一つずつ追加する**変異と独立Expected候補**であり、統合試験実行済みではない。
+
+| 試験 | 変異 | 期待する拒否/保存 |
+| --- | --- | --- |
+| ORG-TN-01 | 同じLegalEntityがdev/prod二Tenantを利用 | Org同一でもTenant Data/Current Grantは別。自動越境不可 |
+| ORG-TN-02 | 一Tenantに複数LegalEntity/OrgUnit | Org軸は自由にQuery可能、Tenant共通だから業務Grant一律開放とはならない |
+| ORG-TN-03 | P2がA/B法人に兼務、別Tenant Account | Person同一はPrincipal/Account/Grant同一を意味しない。BのEffectは現Grantなければ拒否 |
+| ORG-TN-04 | D1→D2組織改編、Tenant/Deployment変更なし | Org後継からTenant移動・Grant発行・Case移管を自動実施しない |
+| ORG-TN-05 | Tenant DB/Deployment移動、Org意味は同じ | Provider/Keys/Artifacts/Read cohort/Consumer/Receiptを再資格化、Business Meaningは無断変更しない |
+| ORG-TN-06 | ClientがB Tenantを自称、verified Host ScopeはA | BのPrivate Resourceへ実Read/Write前に拒否。ClientはAuthorityではない |
+| ORG-TN-07 | 共有SQL表でTenant A/Bの高順位IDを混在 | AのFilter/Sort/Top/CountにBのデータを混入させない。Scope first |
+| ORG-TN-08 | 出力Fieldはマスク、非公開ORDERだけ変化 | Raw Fieldマスク成功とConsumer Disclosure合格を分離。順序からの推論は未解決 |
+| ORG-TN-09 | 同じDataにFile/DB/API/Cache/Search/Export/AI経路 | File Reference PASSは別Routeの隔離保証を満たさない。Required Route別に実観測 |
+| ORG-TN-10 | 明示Shared DatasetとTenant Private Caseが共存 | Sharedを無条件拒否せず、Private越境はdefault deny。共有用途・Scopeを別契約 |
+| ORG-TN-11 | 明示Cross-tenant協業と委任の期限切れ | 組織候補・相手側Host・現在Grant・開示・Effectを分離。失効後の旧結果を再利用しない |
+| ORG-TN-12 | Local Studio/単一Workspace・Tenant Plugin未選択 | 認証/常駐SaaS/Tenant列なしでも通常Org Modeler・Readが成立する。未選択Isolationは保証しない |
+
+### 70.7 反映先と判断保留
+
+- **意味一体化**：#2386/#1126はTenant/Org/LegalEntity/Person/Customer/Workspace/Deploymentの同一性と非自動導出、#2510はORG-TN-01〜05/10/12のCorpus判別。新Org専用Host/ACL、固定Tenant Core、別の共通Graphを作らない。
+- **分離実現**：#2020/ADR-0036のPlugin能力、#1043/#1118の信頼済みHost/Invocation Context、#1656/#1769の実Provider Scoped Read、#1174実Effectを使いORG-TN-06〜09/11をRoute相対に検証。新しい万能Isolation EngineをCoreへ追加しない。
+- **最初のProduct E2 Readを維持**：§68/#2586のC1→D1実Provider Readから着手し、Trusted Tenant Scope/Field/Row/Completeness/Consumer/独立Expectedを追加のCross-scope負例で検査。Org E1＋File Reference＋別PG成功を合算してE2E合格としない。
+- **Delivery/Build**：#951/#1130/#1251で選択Plugin/Used/Target/Artifact、#2555でDB移行、#1163で同一AttemptのEvidence/Receipt資格を既存契約に渡す。#1119のCritical Pathの順序は変えない。
+
+Owner保留は(1)Service Subscriberに対応する論理Tenantをどこまで推奨Profileに含むか、(2)最小Isolation capabilityと必須対象Resourceの範囲、(3)共有/例外・共同利用と管理者権限の適用契約、(4)closed #2020の残余をどの現役Issueが引き取るか。**この文書だけでADRの新採用やOwner意味受理を宣言しない**。正式ADR更新が必要になれば新ADRを提案する。
+
+**状態**：docs-only設計。ORG-TN-01〜12の新Go/実Provider/GUI/Host/DB統合テスト、実SaaS全Route Isolation、現Ownerの業務受理はNOT RUN。現行File Reference/PG限定試験の成功と安全上の未実証範囲を分離。main・既存ADR・実Codeは変更しない。
