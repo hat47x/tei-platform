@@ -1032,3 +1032,43 @@ mainの internal/execution/runplan.go は、unattended RunでPrecondition callba
 #2018へは必須Source/Field/Relationの未観測・誤ったcomplete数、宣言不足を検知した負例数、静的解析/実Read/Consumerで追加したAdapter数、再資格化の過不足とp50/p95を返す。Candidate由来ExpectedでCandidate自身を検証している場合は独立Oracle PASSに数えない。新Role Resolver/Requirement Engine/Host/Proof Store/DSL用Core TypeKindは採用しない。
 
 **資格（2026-11-06）**：本節は既存main実Goの静的ソース確認＋他Draftの限定Go Characterizationを照合した計画反映。実TEI Function→DB/Consumer、Source-aware正式Role衝突診断、Role Meaning Owner受理、RunPlan実DB Effect、RC-01〜06の統合受入はNOT RUN。PR #2496はDraft維持、main未統合。
+
+<!-- tei-data-form-collision-and-p0r1-20261106 -->
+### 24.5 重複・衝突の判断は「データ様式 × 同一性キー × Use-site」の契約で決める（2026-11-06追補）
+
+#2495/#2497で検討する多重Facetと構造保存を、直近の実Go/Scenario/DB移行負例へ接続する。単一の「重複値禁止」規則をCoreに導入せず、**どの構成子の、何がIdentityで、何を一意と要求しているか、重複が操作へどう影響するか**を明示する。
+
+| 入力構造 | 重複の意味 | 失われ得る事実・今回の実例 | 安全側の契約とOwner |
+| --- | --- | --- | --- |
+| Sequence/SQL Bag | 値が同じ別Occurrenceは合法。PositionまたはFact/Row identityを区別 | JOIN増幅、同額の異FactをDISTINCTで消す | 値の重複排除を自動同一化しない。#1706/#2387/#2593、Corpus PC-100/111/169/173 |
+| Graphの多重有向辺/組織Relation | 同じsource/target/labelでも別Relation occurrenceは合法 | 人物2件不変でもMembership occurrence 2→3。Graph→Treeで消える | 辺ID、方向、適用時点、Multiplicityを対象Claimへ渡す。§23/#1126/#2506 |
+| JSON Object member | 同一Objectに同じmember nameの複数出現は、少なくともScenario/Oracle入口では曖昧性として拒否する | 一般のdecoderで後値が前値を隠しExpectedが入力順依存。実Issue #2891はScenario系3 Fixture入口に既存RejectDuplicateJSONMembersを追加する修正レーン | Object memberの重複拒否は**Array [1,1]の合法な値重複を禁止しない**。#2891/#1180/#2514 |
+| 同一AttributeのDSL Role記述 | 受理前のSyntax上の重複。複数Roleの意味が必要ならUse-siteを含む明示Bindingの設計が別に必要 | 現main Parserは同じAttributeでRoleを繰り返すと最後の文字列へ上書きし、前のSource occurrenceがSemantic Candidateから見えない（Draft #2860） | Candidateが単一Roleでも一意に受理したと推定しない。Source-aware Diagnostic、未解決なら編集/受理保留。#988/#2620/#2621 |
+| DB Release StateSnapshot/Provides | 一つの評価対象DB ID／Contract IDに、互いに矛盾する複数版があるのは観測入力の衝突 | 現main internal/database/release/compatibility.go は両者をMapへ無検査代入し、後値が先値を隠す。#2887 MG-29の現状特性テストと専任修正 #2897 | 不確かな入力は勝手に最新/後勝ちを選ばずUnknown/入力拒否へ。修正と現挙動テストのExpected変更を同一統合単位にする。#2897/#2555 |
+| 外部Read/History | 同一識別子の重複と、履歴のunknown/未取得は別問題 | #2892 CompareHistoryのunknown誤RepoApplied、Reader未取得を空集合へ潰す | 実Readの完了/History Snapshotの資格を要求し、空/不存在/未観測を区別。#2892/#2627/#2586 |
+
+**反例の一般化限界**：同一の文字列が2回出るだけで違反となるわけではない。一方、Mapへ縮約した後の値が同じでも、重複していたSource occurrence、入力順、Query hidden deps、Snapshot provenanceを復元できない。これは二つの必要条件である：
+- *Representation obligation*: Source/Raw Inputの複数出現を、対象構造の意味契約が許す限り区別し、禁止する場合は消失前に診断する。
+- *Consumption obligation*: 正規化された構造が合法でも、Consumer/Query/Rule/Actionが使うKey、Use-site、Relation Grain、Scope、現在資格が十分か独立に検査する。
+
+特に**「重複を拒否する」と「一意の対象が存在する」は別**。JSON Scenarioの同一オブジェクト重複拒否やRelease同一DB衝突拒否が成立しても、必要なObject member/DB Client母集団/Relation Scopeが全部読み込まれたとは限らない（#2823の未知Source、#2892の履歴未取得等）。新しいMultiplicity Enumや万能Duplicate Validatorではなく、既存Parser/Scenario/DB Release/ProviderのOwnerへそれぞれ差分を戻す。
+
+現状資格：Releaseコードの二つのMap代入とParserのRole overwriteは現main Source静的照合。#2891は修正PRの限定試験であり、この節では新しいCIや正式Schema適合を測定していない。#2897は安全修正の計画段階。Graph/Arrow/Protobuf/外部Hostを横断した実ConformanceはNOT RUN。
+
+### 24.6 P0-R1の優先順位を明確化：実Read成立後に二SQL切替とContinuationを検証
+
+前節までの「P0＝一Provider二SQL」の書き方は、実際のFunction→Providerが未接続の状態で二Realization切替の製品実証を先行できるように読める。これは他チャットの参照モデル移植[#2783 §11〜12](https://github.com/hat47x/tei-platform/pull/2783)と、#2586の最初の同一Attempt要件を照合して次の**順序へ補正**する。§22 HJ-SV-01〜05を撤回するのではなく、実施条件を分ける。
+
+| 優先 | 一つの実行Attemptで固定する対象 | 必須観測と未充足時の結果 | Owner |
+| --- | --- | --- | --- |
+| **P0-R0/準備** | 公開合成の1 Tenant・1 Order・2 Line＋他Tenant同番号、独立Expected、固定checkout/Source/Contract、実Target/Provider Alias | `tei dbcheck`が利用可能でも、接続＋TEMP TABLE作成/削除は業務Readではない。実Function Reader/Providerが未実装なら入口GapとNOT RUNを記録。#1131/#2514/#2894 |
+| **P0-R1/最初の製品実Read** | **1 Function・1 Query・1 Provider・1 Read Cohort**、明示Relation path/Required Field/Grain/Tenant Scope、同じSource Revision | Required→Declared→実Loaded→SQL/Provider実Consumed→実Rowset/Field coverage→Resultの独立照合。SQL本文/Role/Ruleが不明ならunknown。Queryを選べた/表が見えた/0件だっただけでRead完了としない。#2506/#2622/#2586/#2783 |
+| **P0-R1v/選択差分** | R1と同一Contractでcommon/専用という二つの明示かつ契約適合Realization、同じFixture/Scope | 実選択Source・解析Input・Read Witness、SQL変更/候補追加の負依存を確認。commonの自動fallbackは採用しない。Query ID一致では同一結果/Meaningを認定しない。#2611/#2622/#2387/#2862 |
+| **P0-R1p/継続差分** | R1vの選択結果と実Provider Page1/2を束縛、必要なら途中で候補/RealizationやSnapshotを変更 | 同一Cohort/Scope/Sort/Params/Relation/Realizationが不変と実証できない場合は旧Continuationを停止。短いPage/visible0をcompleteにしない。#2387 QX-26/#2586 HJ-SV |
+| **P1/用途・書込み別資格** | R1成果をGraph/Table/SHOなどへProjection、または別のOwner Write試行へ | current Grant/実Consumer Receiptと歴史的Meaningを分離。Save前拒否やCommit/Effect/独立再読取はwrite側別Attempt。#2516/#2497/#1129/#1174 |
+
+P0-R1の初回負例は[#2783](https://github.com/hat47x/tei-platform/pull/2783)の N-R1a/b/cを再利用し、(a)他Tenant同業務番号を誤包含しない、(b)2 LineのJOIN fanoutや重複を業務件数へ取り違えない、(c)1 Pageだけ・Field missing/NULL/SQL候補改版を正常な完全取得にしない。Source Load後のbyte改訂、Roleの重複上書き、Raw JSONの重複Object memberは**必要なSource/Requiredを誤確定させる入口の負例**として同じ独立Expectedへ引き渡す。ただし全ケースをR1のHard blockerに増やさず、確認した要件不足を明示した局所unknown/unsupportedとして記録する。
+
+P0-R1で要求する単一Evidence Packetは既存#1163/#2586を使用し、Source/Required/Declared/Resolved/Parsed/Actual Consumed、Semantic/Target/Query/Function Context、SQL/Snapshot/Rowset/Field/Result Grain、独立Expected/negative controls、未充足条件/Claim ceiling、Consumer現在資格を**同一Attemptの観測**として束縛。別RunのGo Parser/SQLite/RunPlan/DBCheckの成功を寄せ集めてE2E PASSにしない。独立Expectedそのものの逆転とFixtureの誤りは#2514、実Provider以降の資格は#2586、Owner/HostとEffectは#1174が担当する。
+
+**順序を変更するが、#1119既存G0〜G4、#2586同一Function実証の正本、#1131/#1180 Scenario正本は変えない**。SQL→Providerが実際に存在しない場合は `NOT RUN: producer-or-physical-read-unavailable` とし、実行環境の設定でできる`tei dbcheck`の成功を代わりに使わない。既存独立合成SQLite11件＋時間付きRelation14件は2026-11-06にローカル再実行25/25 PASS（Source SHA-256は§22/§23）。これはR1/R1v/R1pの実製品資格ではない。追加の新Go/実PG/Consumer/Owner試験はNOT RUN。
