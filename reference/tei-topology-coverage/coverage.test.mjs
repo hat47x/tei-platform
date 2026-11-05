@@ -66,6 +66,7 @@ test('layout only is not a semantic/Source change',()=>{
   assert.deepEqual(boundedAbsence(w,missing,closure(f.snapshot)),boundedAbsence(v,missing,closure(f.snapshot)));
   assert.deepEqual(w.table,v.table);
 });
+
 test('a visible record is not a public claim when disclosure is unqualified',()=>{
   const f=fixture(),v=project(f);
   assert.deepEqual(boundedAbsence(v,{kind:'subject',scope:'one',type:'operation',id:'shared'},
