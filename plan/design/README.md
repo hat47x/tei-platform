@@ -268,3 +268,4 @@ S1 realistic intent / candidate frontier
 - [TEI構成議論の整理と次の設計判断（2026-10-24）](TEI_CONFIGURATION_DISCUSSION_SYNTHESIS_2026-10-24.md)：独自Host非必須、TEI内での業務シミュレーション、DSL・プラグインの交差的利用、同じ版からのコード・設計書出力を既存Issueへ対応付ける検討メモ。採用・実装完了の宣言ではありません。
 - [定義形式の版と変換の境界（2026-11）](FORMAT_VERSION_CONVERSION_2026-11.md)：`.tei`と作業領域manifestの形式版、中心表現経由の変換、プラグインが実行する変換境界、三状態属性の文法提案と残作業（#1920）。
 - [実行先の現状調査](HOST_TARGET_SURVEY_2026-11.md)（Web・デスクトップ・サービス・Wasmの現在地。モバイル・組み込みは未着手）
+- [権限の現状調査](PERMISSION_ENFORCEMENT_SURVEY_2026-11.md)（宣言の検証はあるが、実行時の強制は無い）
