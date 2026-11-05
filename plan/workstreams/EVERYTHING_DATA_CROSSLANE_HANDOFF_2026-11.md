@@ -1130,15 +1130,15 @@ CheckSetは**原則read-only**。RepairのSQL/CommandはFindingの副作用と�
 | 報告する対象 | 必要な独立証拠 | やってはいけない正常化 |
 | --- | --- | --- |
 | **Applicable Rule/Scope** | Owner受理済みRule版、適用期間、対象母集団、Relation path、Row/Fieldの完全性、Data Context | 未受理Rule・物理Column全件を業務上の検証義務に自動算入 |
-| **実行と品質の別Outcome** | Scheduler/EKIのTask/Attempt/Lease/実Artifact、実Read/QueryとSnapshot、独立Expected、Data Quality Claim | Worker/EKI \`COMPLETED\`を全件正常、Go/SQL一致だけを独立Oracleとする |
+| **実行と品質の別Outcome** | Scheduler/EKIのTask/Attempt/Lease/実Artifact、実Read/QueryとSnapshot、独立Expected、Data Quality Claim | Worker/EKI `COMPLETED`を全件正常、Go/SQL一致だけを独立Oracleとする |
 | **Verified Coverage** | 検査済みRule×母集団×時間範囲×Reader/Provider×Read Cohortと、未検査箇所の閉包 | 走査件数・出力0件・シャード数をそのまま「100%完了」に変換 |
 | **Coverage Debt** | 予定された対象に対する未実施、stale、partial、権限不足、unsupported、timeout、期限超過、CDC gap | 検査失敗・知らない領域を違反0件に混ぜる。分母が不明なら比率もunknown |
 | **Finding Disposition** | 実違反/原因調査中/誤検知/Owner承認例外/修正確認済み、対象IDと版/期限、再発・現在性 | 承認例外をRuleから削除する、例外期限切れをPASSとして扱う、AI案をRepairの許可とする |
 | **運用費用・遅延** | 検査待ち、開始→実Read→結果検証→Consumer到達、scan CPU/IO/bytes、Replica replay lag、Provider費用 | Job終了のみで期限内品質確認とする。Primary/Replicaの負荷とデータ転送料を無視 |
 
-**複数の時点を保持**：業務有効時点（validAt）、記録/訂正時点（knownAt/recordedAt）、Provider Snapshot/Replay watermark、実Check時点、期限（§36 \`latestAcceptableAt\`はJobの一般契約。品質義務が求める「確認済みData時点」は別）。組織所属の10月1日発効を11月3日に遡及訂正すると、10月15日as-ofの評価結果は新しい記録知識で変わるが、過去のジョブReceiptは改ざんしない。「昨日検査済みだった」を後から捏造しない。期間がない普通の受注行に汎用bitemporal保存を強制しない（#2386/#1129/#2622、§34）。
+**複数の時点を保持**：業務有効時点（validAt）、記録/訂正時点（knownAt/recordedAt）、Provider Snapshot/Replay watermark、実Check時点、期限（§36 `latestAcceptableAt`はJobの一般契約。品質義務が求める「確認済みData時点」は別）。組織所属の10月1日発効を11月3日に遡及訂正すると、10月15日as-ofの評価結果は新しい記録知識で変わるが、過去のジョブReceiptは改ざんしない。「昨日検査済みだった」を後から捏造しない。期間がない普通の受注行に汎用bitemporal保存を強制しない（#2386/#1129/#2622、§34）。
 
-**Quality Claimは発見された違反、指定Scope内での違反未観測、検査未了、現在適用資格を別票にする**。特にRLSやProvider側の非開示によりA部門だけ読めたとき、A部門の\`pass-in-scope\`は全社のPASSを意味しない。複数Shardの結果も、互いの範囲が重複/欠落なく、必要なRead Snapshot一貫性が示せる場合だけ結合する。Snapshot確定のないOFFSETページ分割では、更新/移動による欠落を見逃し得る。Clientへ開示した列の少なさは実Providerの取得範囲の狭さを証明しない。Declared Read・Actual Acquisition・Disclosed Outputを分離する（#2622/#2516）。
+**Quality Claimは発見された違反、指定Scope内での違反未観測、検査未了、現在適用資格を別票にする**。特にRLSやProvider側の非開示によりA部門だけ読めたとき、A部門の`pass-in-scope`は全社のPASSを意味しない。複数Shardの結果も、互いの範囲が重複/欠落なく、必要なRead Snapshot一貫性が示せる場合だけ結合する。Snapshot確定のないOFFSETページ分割では、更新/移動による欠落を見逃し得る。Clientへ開示した列の少なさは実Providerの取得範囲の狭さを証明しない。Declared Read・Actual Acquisition・Disclosed Outputを分離する（#2622/#2516）。
 
 **Owner承認例外は違反消去でなくDisposition**：承認対象Rule/Subject・有効期間・承認者/理由・期限を記録。期限切れ/Rule改版/対象の変化では再評価。異常が過去Snapshotでは実在してもPrimaryでは既に修正済みなら、現在Readで是正必要性を判断し、過去のFindingは履歴として残す。修正は既存Host/Providerの型付きIntentと現在Authority/Commit/独立Readへ渡し、CheckSetがReplicaから直接更新しない。
 
@@ -1152,12 +1152,12 @@ CheckSetは**原則read-only**。RepairのSQL/CommandはFindingの副作用と�
 | **DQA-02** | Membershipが10/1に遡及有効、11/3に訂正。10/15 as-ofを旧/新記録知識で評価 | valid/recorded/snapshot時点を別にする。旧Run Receiptは修正しない |
 | **DQA-03** | 違反AをOwnerが期限付き許容、期限後もデータは未修正 | Findingの違反は残る。例外Disposition失効・再確認。Quality PASSへの変換なし |
 | **DQA-04** | 読取Shard1=S0/Shard2=S1の間に行移動、各Shardは異常0 | 統合Snapshot/対象閉包がない限り全件PASS不可。再取得/unknown |
-| **DQA-05** | 夜間CheckがRun完了したが検査Readerが部分取得・期限超過。EKI結果Accepted | 実行受理／品質Claim／完了期限を別判定し、\`overdue/incomplete\` |
+| **DQA-05** | 夜間CheckがRun完了したが検査Readerが部分取得・期限超過。EKI結果Accepted | 実行受理／品質Claim／完了期限を別判定し、`overdue/incomplete` |
 | **DQA-06** | Rule変更、CDC gap、旧違反をPrimaryで修正済み、Retryで古いResultが遅着 | 今回版のCoverage再資格・修正前の現在Read・Attempt ID照合。旧PASSで上書きしない |
 
 **受入・適用順**：最初は受注の合計整合と組織Membershipの期間整合の**二つの異質なRule**に限定し、(1)OwnerがOnline必須/Deferred・検出期限を選ぶ、(2)固定Source/Meaning/OracleからGoオンライン/SQL等Check候補を派生する、(3)実ReaderのScope/Snapshotを記録する、(4)DQAの異常/unknown/期限超過/承認例外をread-onlyなレポートへ出す、(5)外部Scheduler/任意EKIへの委譲時に仕事の受理と品質Claimの違いを実測する。#2514の独立Expected/Mutation、#565のPerformance Quality Envelope、#1163の一改訂Evidenceを再利用する。**独立Oracle/実Provider/Lean/Replica/EKIのE2Eはこの追補でNOT RUN。** 検査の費用対効果は、検出漏れ・時間内検出・是正までの手間・人が個別に保守するルール数・CPU/IO/転送・Replica負荷を同時に測る。
 
-**外部出力候補**：OpenLineageのJob/Run/Dataset／Input \`dataQualityMetrics\`/\`dataQualityAssertions\` をConsumer向けread-only Projectionで比較可能（https://openlineage.io/docs/spec/object-model/）。ただし\`Run COMPLETE\`≠\`Quality PASS\`、外部形式の採用/Connector実装は未決。PostgreSQL Hot Standbyのread-only scanはreplay遅延、長時間Query競合/取消があり、適合範囲と負荷は実環境で検証する（https://www.postgresql.org/docs/18/hot-standby.html）。
+**外部出力候補**：OpenLineageのJob/Run/Dataset／Input `dataQualityMetrics`/`dataQualityAssertions` をConsumer向けread-only Projectionで比較可能（https://openlineage.io/docs/spec/object-model/）。ただし`Run COMPLETE`≠`Quality PASS`、外部形式の採用/Connector実装は未決。PostgreSQL Hot Standbyのread-only scanはreplay遅延、長時間Query競合/取消があり、適合範囲と負荷は実環境で検証する（https://www.postgresql.org/docs/18/hot-standby.html）。
 
 **責務**：#2622がRule/Provider Read、#2514がOracle/Claim、#1130が非画面Batch、#2386/#1129が業務時点・状態、#2582/#2600が増分閉包、#1174がRepair/Commit、#2544がLean Law、§35〜36/EKI #19/#57が実行資源・期限/Recovery。旧§27 Q0〜Q4と既存Owner/Gateは維持。新Core Kind・Quality Registry・中央例外テーブル・自動Repair/Policy Engine・TEI Host・正式ADR/DSLを決定しない。
 
