@@ -672,3 +672,44 @@ Everything is Dataの共通Carrierは、Data・Function・Business・Rule・Test
 **次の引渡し物は、新Fixture集合や新Gateではなく既存#2586/#1180/#2514の同一ケースに付けるread-only対応表**とする：各Edgeごとに`Required → Declared/Discovered → Selected/Resolved → Built/Loaded/Invoked → Observed/Consumed/Disclosed`のうち必要な段階、Source/Artifact/Attempt/Consumer identity、独立Expected、実際の欠落、現在利用資格、Owner判断を示す。隣接する既存Receipt間を証拠なしに同一Attemptと宣言しない。AIが生成したRequired/Expected候補を自己採点のOracleにしない。
 
 **証拠の現状（この§19.6〜19.8追補時点）**：#2681のexact-HEAD限定Go/CLIはManifest外Source root非干渉の局所証拠、#2882はWorkspace合成Step、Draft #2889はRunPlanの不十分なGuard/Observer/partialの局所特性試験、#2853/#2854/#2870は実PGの局所Commit/ABA/Replay証拠。いずれも本計画が新たに一改訂・実Provider/Browser/Consumerを結んだ試験ではない。新コード、実CLI/DB/SHO/EKI統合試験、正式Owner受理、G1/G2/G4合格は**NOT RUN／UNQUALIFIED**。既存Gate/Schema/Host/Authority/Readerの責務や採用済み判断を変更しない。
+
+### 19.9 配備世代の共存とSystem互換性：Composition完成と稼働整合を分離（2026-11-06）
+
+**追加で明確になった問題**：単一のAccepted FunctionとApplication CompositionからBuildを生成できても、CLI/Web/Job/SHO等が同一Generationを同時利用するとは限らない。DBのExpand/Backfill/Validate/Cutover/Contractと、アプリケーションArtifact・Provider・Consumerの世代更新は**別の時間軸・別のAuthority**を持つ。静的Go単一Binaryでは新旧の置換/再起動を通常形態とし、選択された常駐Process/Wasm/サービスでのみreadiness・drain・無停止更新を#1223のTarget固有契約として検証する。新しいTEI Generation Router/Deployment Coordinatorは設けない。
+
+以下は採用済みProduction Schemaではなく、既存#1016 Composition、#1130 Function→Build/Entry、#943 Artifact/Lock、#951 Provider Contract、#2555旧新正本、#1223 Target世代、#2604 Publication、#2516 Consumerの**read-only対照表**。System Releaseを一個の新たな正本Objectへ収納しない。
+
+| 分離した整合対象 | 一つの実Consumer/Attemptで固定するもの | 同じSource/Buildに見えても別評価になること |
+| --- | --- | --- |
+| **Definition Compatibility** | Source/Accepted Meaning Revision、Function Contractと必要Role/Rule・Data Context、Consumerが必要とするContract版 | Sourceの文字列/型一致≠業務意味/Null/Scope/Historyの一致。業務Key/物理PKも別（#1125/#1126/#2886） |
+| **Realization Compatibility** | Target/ABI、選択Plugin/Provider Pin、実Build input/toolchain/Artifact digest、実Entry/Reader/Writer能力 | 同じFunction名で旧Binaryが古いQuery/Pluginを使う。新Artifactの生成≠配備/ロード（#1130/#1167/#2600） |
+| **Operational Compatibility** | 実Consumer/Processがロードした世代、現在のGrant/Disclosure、Provider Route/Schema/水位、処理中のOperation/Receipt | 旧Web、CLI新、Job旧、DB新が共存する。稼働Clientの自己申告Version≠実Request/Effect対象（#1223/#1174/#2555） |
+| **Publication Compatibility** | Generation/Manifest全必要member、読取時pin、実Consumer受領byte/Schema、現在Audience | R1 ManifestとR2 member混在、SHO歴史引用をR2現行引用へ無断付替え（#2604/#2516） |
+
+**共存の不変条件（候補）**：旧新入口が同時に存在する期間は、各入口の実Function Contractと必要Data/Provider能力がその時点の実物理Targetに適合し、Ownerが要求した結果・Scope・拒否条件が保存される範囲だけ`compatible`と説明する。互換性は方向を持つ（旧Reader→新Schema、新Reader→旧Schema、旧Writer→新Schema、新Writer→旧Schemaは別）。検査対象のClient/Provider/必要Contractが列挙できなければunknown。Readyという一語で全系の適合・新旧排出・無停止を主張しない。
+
+### 19.10 一本の変更を「何が維持されたか」で判定する
+
+**最小の対照変更**は、order_entryの既存一Functionに対する必要Field/Rule改版R0→R1と、実Provider/Entrypointを一部だけ新世代へ切り替える例。これは#1180の既存Scenario/Independent Expectedへ**追加条件を差し込む提案**であって、新しい受入Case SSOTではない。製品内にない具体的な「導入済みConfig API」は仮定しない。
+
+| 順序と実際の変更 | 既存Ownerに渡す独立Expected/観測 | Claim上限 |
+| --- | --- | --- |
+| **A. 意味のみR1に更新、実WebはR0 Binary** | Source/Meaning R1と実Webのロード済みR0・必要Contractを比較。R0の歴史的合格を保存し、R1 Functionの現在動作は未実証にする | R1 C-Build/C-Readを旧Webの成功でPASSしない |
+| **B. 新CLIをR1でBuild、WebはR0／Jobも旧版** | 同じSemantic IDでも実Binary digest/argvと入口ごとに利用できるFunction/Ruleが違う。Target必要集合と実API/Reader結果を別測定 | CLI成功≠Web/JobのR1互換性。Function正本は一つのまま |
+| **C. DB Expand済みだが旧Writer稼働、部分Backfill** | 旧新Client RequiredContractsと実Schema、対象Key/履歴、水位/partialを照合。新CLIで0件でも全体不存在としない | Expand/Schema一致≠Cutover/Contract完了（#2555/Draft #2887） |
+| **D. 同じOperationのACKが失われたままEntrypointを更新** | 旧OperationID/Request hash/Provider/Target/Receipt保管期間と新入口を結ぶ。実再送資格が不明なら同ID照会・保留。別Key/新Generationで盲再投入しない | Process再起動/新Artifact≠旧Effectなし（#1174/#2564） |
+| **E. Artifact公開でR1 Manifest＋R0ファイルが混在** | 実Readerが必要member全byteを読んだ世代を記録。旧歴史文書は旧版として保持、現在用途へ再受理しない | Publisher ACK≠Consumer受領（#2604/SHO） |
+| **F. Cutover後にRollbackし、表示値Aへ戻る** | Provider/Writer authority、Client実利用、Source/DB valid+recorded time、Receipt/Observerの履歴を再照合 | A→B→Aという値一致から以前の配備・実行資格を復活させない |
+
+**部分的な適合の扱い**：互換性はSystem全体のbooleanでなく、`(Function, Entry, Consumer, Target, Required Contract, time/scope)`に相対的な判断。無関係のread-only CLIを、旧Writerの存在だけで一律不適合にしない。ただし同じ書込系統/共有Schema/外部結果を必要とするClaimでは、未確認依存を`no impact`にしない。Provider上の古いReceiptが存在することと、今そのReceiptを開示・再利用・操作再実行してよいことを区別する。
+
+### 19.11 検証・変更計画の成熟度を示す最小の引渡し
+
+#2586のread-only一往復がSystem CompositionのP0。これが成立した後、#1130/#1167の実Build/Entry、#1223のTarget別Generation、#2555/DB移行のClient共存、#2604/SHOのPublicationを**同一のシナリオ意味に沿う別Attempt**として対照する。順序は全て直列に固定せず、独立した異質Domain・可搬性Pressureは並列実施可。G1/G2のHard dependencyは増やさない。
+
+1. **受入票の行単位**：`Claim × Function/Entry × Consumer × Source/Artifact Revision × Environment/Time × Attempt`。既存Objectと各ReceiptのIDを参照し、System横断の新Registry/Universal Run IDは作らない。
+2. **必要条件の独立性**：Owner/Accepted Contract/Provider実要求/Consumer用途からRequiredを決め、候補AI・Role・Pluginの自己申告で不要化しない。独立ExpectedとKnown Mutantの出所は#2514、Case正本は#1180、現実の一改訂Evidenceは#1163。
+3. **実運用の未確認**：Providerが保証するReceipt retentionより長く経過したOperation、digest-only保存で原byteがないケース、署名なし記録の改変は#2845/#2564の`not-retained/unverifiable/unknown`を保ち、値一致やProcess exitから再実行可能を導かない。秘密情報・存在件数・Policyは#2515/#2516の用途別開示を守る。
+4. **採否の実測**：旧新Consumerの適合・拒否/Unknownの誤判定、変更後の再Build/再Read数、必要Contract未検査件数、実装済みFunctionの漏れ、Core固有分岐とAdapter追加量、導入/巻戻し手順、改訂間の手修正工数を#2018に引き渡す。無停止性は選択された常駐Targetの実負荷・readiness/drain/SLOを#1223が独立実証する。
+
+**責務と現状**：#1016はSystem構成の選択、#1130はFunction/Build/Entry、#1223は選択Targetの世代適合、#2555はDB正本・旧Client共存、#1174は実Effect/Receipt、#2604は公開・一式Reader、#2516は用途別現在開示、#1119は既存のGate。最新Sourceで実Runを接続したわけではないため、R0/R1の多Entry実配備、異種DB Cutover、実無停止/ロールバック、複数実Consumer、Owner受理は**今回NOT RUN/UNQUALIFIED**。先行の局所CI/PGは版・Attempt別証拠のまま保つ。Production API、常駐Host、共通認証・Deployment Coordinator、第二正本は追加しない。
