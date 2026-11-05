@@ -638,3 +638,29 @@ Ownerは#1180（Scenario）、#2813/#988（DSL Candidate）、#2514（Oracle）�
 **今後の小さな実証**：既存#2813/#2828のJSON追加試験で、必須Caseが実際に発見・実行されたか、独立Expectedが既知Mutantを検出できるかを先に測る。必要なRead/Effect/Host証拠は既存Ownerで実測し、台帳は**その読取View**で比較。Required checks不足（#2616 ACU）や途中Block後先行Effectあり（#1130）の負例を共有し、無言の全PASSや無副作用Claimを拒否する。
 
 **状態**：基本設計文書・本接続はdocs-only。基本設計の台帳プログラム実装、XL-02/03の全層実走、新AI生成/Mutation実験、実第二DB・一体Web→PG→Consumer、Owner意味受理はNOT RUN。既存#2811／#2828の旧exact-head CI成功を新HEADへ転用せず、変更後のCIは別Runで確認する。
+
+## 18. 実証済みEvidenceの記入例とAI-first最小検収（2026-11-06）
+
+**参照・状態**：[テスト基本設計と証拠台帳§8](./TEI_TEST_BASIC_DESIGN_AND_EVIDENCE_LEDGER_2026-11.md)に、異なるSource/Run/Environmentで得られた実験を**ケース×Claim×Attempt**に分けて記入した。#2811はAI-firstのCase作成・実走への入口のみを担当し、Oracle/Provider/Host/Owner Gateの別正本を作らない。本接続はdocs-only、新しいGo/Provider/E2E/AI自律生成実験はNOT RUN。
+
+### 18.1 実証した範囲の更新
+
+- [#2828](https://github.com/hat47x/tei-platform/pull/2828) のHEAD `77baf709` [Repository Health #41850080590](https://github.com/hat47x/tei-platform/actions/runs/41850080590) は**completed/success**。旧§15の「Go/CI未確認」は作成時履歴であり、現時点では限定Case intakeのGo回帰成功と区別する。AIの未知Case自律発見・独立Oracle・Business Coverageは未確認。
+- [#2830](https://github.com/hat47x/tei-platform/pull/2830) のHEAD `019da011` [Repository Health #41851323500](https://github.com/hat47x/tei-platform/actions/runs/41851323500) は**completed/success**。保存済6 Stepの全IDと生成argv、各Stepの実行モード・`evidenceNature`の限定同値を検査する。既存`Verified=true`の意味を実Provider/Command/Web資格に拡大しない。
+- [#2870](https://github.com/hat47x/tei-platform/pull/2870) は、in-memory `unknown`が再起動相当の新Lifecycleに残らないという**欠陥特性をテストで確認**。実PostgreSQLの同Key `IDEMPOTENT_REPLAY`は二重適用を抑えた限定証拠であり、durable Stage実装や新Key ABA防止が達成されたわけではない。
+- [main統合済 #2882](https://github.com/hat47x/tei-platform/pull/2882) はWorkspace SourceからPeriod/Effect/RunPlanを通す新テストを追加。期間が閉じたCaseで最初のStep未呼出という局所Expectedと、一般的なRunPlan途中停止で先行Effectが残り得る負例（#1130/#2616）を混同しない。**本追補では当該merge後HEADの実CIログ未照合**。
+- [#1163](https://github.com/hat47x/tei-platform/issues/1163) の実Web・実PG・Schema Gateは別々のHEAD/Attempt。監査が`INCOMPLETE/productGate UNQUALIFIED`である限り、個別CI成功を一改訂Product GateのPASSへ合算しない。
+
+### 18.2 AI-first P0で受理すべき最小の比較票
+
+| 比較単位 | 事前固定するもの | 実行後に要求するもの／禁止する誤昇格 |
+| --- | --- | --- |
+| **A. Scenario Inventory** | 6 Step ID、必須Case/Obligation、Source/Scenario/Fixture/Plugin Pin、Expected Nature | 各Stepの実Discovered/Attempted/Outcome/Receipt。6件が実行済みでも業務全体の分母にしない |
+| **B. AI New Candidate** | 既存Anchor保護、新規ID・対象Scope、独立Expected/Known Mutantの根拠、編集可範囲 | AIが本当にJSONファイルだけを追加し、局所Case/Stepを増やし、独立Mutantを判別したことを別々に測る。Case数のみでは採用しない |
+| **C. Required Check** | Operationごとの必要Check集合（Period/Effect/Grant/Observer/Schemaのうち適用されるもの） | 渡したCheckのPASSと必要Checkの網羅を別判定。未指定が残る場合はprecondition completeを拒否（#2616） |
+| **D. Effect and Restart** | Stepの実行順・OperationID・未知Commit・Provider Receipt/別Connection Read、同Key/新Keyの再実行Expected | 全Plan`blocked`は先行StepのEffectゼロを意味しない。Restartでstageが失われても「安全」と言わない（#2870/#1174） |
+| **E. Cross-layer Qualification** | Source・Oracle・Consumerの同一Attempt資格、Owner Meaning状態、対象TargetのScope | L1/L2/L3/L4/L5の単純合算を拒否。#1163/#1119のGate Ownerが同一改訂の必要証拠を判定する |
+
+**Exit**：A/Bで新規Caseが実発見・実走し、独立Expectedで既知Mutantを判別した有限の正負対を確認できること。C/Dで、テストPASSでも製品要件未充足となる既知負例を正しく報告できること。Eは既存Ownerの実Provider/Host証拠が揃う段階で昇格し、AI P0の開始条件にはしない。test-only Scenario候補・Ledger Viewから製品実行許可を得たとみなさない。
+
+**未完了**：本章の新P0実行・自律生成試行、独立Mutation評価、Ledger実装、現Grantを含む一体Web→PG→Consumer、正式Owner受理。過去の成功した別HEAD CIを本HEADのCI結果へ転記しない。
