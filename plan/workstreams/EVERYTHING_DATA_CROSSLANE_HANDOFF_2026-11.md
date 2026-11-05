@@ -1892,7 +1892,7 @@ Ownerの設計方針：Data ModelはSQL解釈から構造生成するのでな�
 
 **証拠範囲**：本節へのリンクとReference合成26件の成功のみ。TEI→EKI実Job一試行、実Go/PG/Result Consumer、Recovery Permit/Resource/価格・SLA、正式Owner受理は**NOT RUN**。#1119 P0-a/P0-b、§31・§35・§37のOwnerを変更しない。
 
-### 36.5 実EKI P0 APIを確認してからTEI Jobを配置候補へ進める（2026-11-03、実Schema Source-static）
+### 36.6 実EKI P0 APIを確認してからTEI Jobを配置候補へ進める（2026-11-03、実Schema Source-static）
 
 TEI [Draft #2787](https://github.com/hat47x/tei-platform/pull/2787)は、[EKI external OpenAPI](https://github.com/hat47x/eki-fabric/blob/main/spec/external/openapi.json)の実Source Git blob `388f2e3ad32ba663b4777fcfb4304b0cf6f48f3f`から選んだSchema/Pathを**検証用Fixtureとして固定**し、WP-01〜19で**TEI Jobの必須意味をEKI v1 TaskRequestへ黙って欠落させないか**を検査する。API Source＝実Task/Worker/Result成功ではない。
 
@@ -1908,6 +1908,13 @@ TEI [Draft #2787](https://github.com/hat47x/tei-platform/pull/2787)は、[EKI ex
 **比較列**：`not-representable`（v1が必須意味を表せない）／`wire-shape-only`（静的JSON表現は可能）／`unresolved`（Worker伝達・Pin・期限意味・実入力/出力・Grant/Effect不明）／`runtime=NOT_RUN`（現行Source/Schemaテストのみ）。これらはEKIの正式Response enumでも新TEI Core型でもなく、**既存T0〜T4に挿入するT0.5 wire-ABI preflightの受入票**である。
 
 実接続はTEI #1130のFunction→Job Producer、EKI #112/#266のExecutor/Parameter、#320/#494の実Artifact body、#67のProvider Group、TEI #1174の実Commitへ段階的に委譲する。実行先が未適合な場合、Go単体/既存Host実行を残し、EKI経由を強制しない。#2787の限定CIがPASSしても、Worker/Provider/Host/SHO/Owner E2Eは未証明。新Task API/Job Engine/Host/Authorityを先行採用しない。
+
+### 36.7 EKI Suitabilityの実装・ADRの現在値（2026-11-05）
+
+[EKI PR #714](https://github.com/hat47x/eki-fabric/pull/714) はmain統合済み。ADR-0029 §2は実装と同じ **FABRIC_JUSTIFIED／FABRIC_NOT_JUSTIFIED／NEEDS_MEASUREMENTの3値**へ変更された（ADR自体の状態は依然「提案中」）。Schedulerへ進むのはJUSTIFIEDだけ。NOT_JUSTIFIEDは正常な非分散判断であり、**EKI Coreがローカル実行を始める意味ではない**。NEEDS_MEASUREMENTは事実不足や利点が最小差以下の状態。旧NOT_SUPPORTEDはSuitabilityの第四値ではなく、Admission／Security・Data・Resource feasibilityで除外する。
+
+旧FABRIC_ELIGIBLE・LOCAL_OR_EXISTING_EXECUTIONという名称を、今後のTEI Job→EKI契約/独立Expectedに採用しない。実dispatchは固定見積りによる暫定経路を含み、DecisionReceiptの稼働保存・表示、Caller Claim provenance、実測に基づく非分散選択はまだ十分に実証されていない。§36.2のhard filterはSuitability列挙値と別のAuthority/feasibilityとし、FabricEntryも配置・Leaseの認可ではない。EKI #58/#698がOwner。LR-01〜12/TEI実Job→EKI期限内実行はNOT RUN。
+
 
 ## 37. 組織由来Record Policyの広域適用と個別除外：一般Data/RelationによるPolicy候補から実Provider/Host Enforcementへ（2026-11-03、採用前）
 
@@ -2532,3 +2539,27 @@ EKI側#112/#266/#67/#115へ契約不足を返し、TEI #1130がJob意味と判�
 4. **AIテスト採用**：OQ-01/03/05を#2811/#2514の独立ExpectedとKnown Mutant候補へ渡し、#2828/#2830の既存Scenario/Runnerを利用。新たな第二Scenario正本を作らない。
 
 **今回のEvidence**：#2850 main統合とrunplan.goの静的コード確認、Draft #2860のSDX設計、#2830の固定CI、既存TAI SK-02合成CIまで。**OQ-01〜06の同一Attempt実試験、独立Mutant検出、実Harness/Skill Load、実Provider/Commit/Observer受領、正式Role自己解釈・全体セルフビルド、Owner受理はNOT RUN**。Draft #2667への計画追補のみ。#1119の既存P0/G0〜G4を変更しない。
+
+## 48. 実PostgreSQLとEKI Suitabilityの現行証拠を横断の受入票に更新（2026-11-05）
+
+### 48.1 局所実行を完了済みへ更新しつつ、正式資格を留保
+
+| 証拠 | 実証済みの局所内容 | 未受理・未実証の範囲 |
+| --- | --- | --- |
+| [TEI #2853 main統合](https://github.com/hat47x/tei-platform/pull/2853) | 製品Command Invoker/Lifecycleから実PostgreSQL CAS、正常Commit/競合、模擬Commit応答喪失のEffectUnknown・再送禁止・同OperationID Receipt照会をopt-in実DB試験で確認 | 実ネットワーク切断、プロセス再起動、本番Grant・業務Owner受理 |
+| [TEI #2854 main統合](https://github.com/hat47x/tei-platform/pull/2854) | 実PostgreSQLでA→B→A後に同idempotency keyのreplayは再適用せず、新keyでの再適用は **APPLIED** となるRCAS-01反例を確認 | Value CASだけでは論理Operation一度限りの保証なし。version/永続Operation identity/分散fenceの対策選定はOwner待ち |
+| [TEI #2857 main統合](https://github.com/hat47x/tei-platform/pull/2857) | 暫定D8〜D11を通した一改訂Web/実PostgreSQL E2E、独立status read、鍵失効・物理Schema異常・業務拒否の負例を実記録 | [監査結果](https://github.com/hat47x/tei-platform/blob/main/plan/evidence/TEI_PROVISIONAL_CHAIN_E2E_20261103.md)は **INCOMPLETE / productGate=UNQUALIFIED**。provisional Acceptance/GrantはG1/G2正式証拠にならず、Trusted full health receiptも未収録 |
+| [TEI #2859 main統合](https://github.com/hat47x/tei-platform/pull/2859) | #2857で見つかったRunner型storeの起動時S02物理Schema抜けを、共通schemaCheckで修正。standard/provisionalの実PG単位回帰とrequired CIテスト名を追加 | 実Webプロセス全体でHTTP公開が停止するかのE2Eは未試験。テスト用schemaCheck=nilのfakeはこの検査の対象外 |
+| [EKI #714 main統合](https://github.com/hat47x/eki-fabric/pull/714) | ADR-0029 §2の3値を稼働実装に整合（§36.7） | ADR採用状態は提案中、dispatch Receipt実保存/表示と実測比較は別証拠 |
+
+これらは異なるTarget/Runner/Revision/実行環境の証拠。main統合・テストPASS・同一文字列のReceiptを足して一つの正式Business E2E／現在Grant／Consumer受領に昇格しない。#2853の応答喪失はProvider wrapperによる模擬であり、実物理断線の耐障害性ではない。#2854のABAは**検出された弱点**であって防止策の受入ではない。
+
+### 48.2 既存Ownerへ渡す次の二つの実反証
+
+**P0 Web-Startup-Recheck（#1163/#1119/#2859）**：#2857で使用した一改訂・実PG・暫定D8〜D11の同種の使い捨てFixtureを、#2859統合後のmainで再構成。S02に必要なIndexだけ欠けたとき、Web実プロセスの**起動拒否とHTTP未公開**を独立Expectedへ固定する。Schema復旧後だけ起動し、同じAttemptで独立Read・provisional証拠・監査INCOMPLETE/UNQUALIFIEDを記録。新たな正式Owner/Host Grantがない限りG1/G2を合格させない。#2859の単位試験を実Webプロセス試験へ転記しない。
+
+**P1 CAS-ABA-Unknown（#2564/#1174/#2845）**：#2854の同Key replay／新Key＋ABAを、#2853の製品Invoker・同OperationID Receipt lookupへ段階接続。永続Operation identity/版/Owner generation/Commitのどの条件で新Key再適用が拒否されるべきか、業務Ownerの独立Expectedと実PGの結果を区別する。Commit不明で別OperationIDを盲目的に発行しない。実restart/ネットワーク切断/本番Owner fencingはNOT RUN。
+
+**補助の出口**：TEI #2856のCombinePreconditions合成は渡したCheckを実行するが、§47のRequired集合の充足は保証しない。EKI SuitabilityのNOT_JUSTIFIEDをLocal実行済みにしない。TAI [#434 main統合](https://github.com/hat47x/tai-pleroma/pull/434)の2文書に異種artifactを送る8件の限定試験も、今回のTEI一改訂正式Artifact/Consumer受領や外部Harness実Loaderの証拠ではない。
+
+**この§48の変更水準**：実装PR・PG試験記録・mainコード・EKI現ADRの照合によるdocs-onlyの検収更新。ここで新規にP0/P1の実PG/Web/Host/EKI/Harness試験、Owner業務意味受理、G1/G2正式監査、性能/費用比較は **NOT RUN**。既存Source/RunPlan/Effectcommit/Admission/Consumer/Oracleの各Ownerを維持し、第二Runner・Registry・Hostを導入しない。
