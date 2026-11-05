@@ -2737,3 +2737,62 @@ ORG-SUは**受入候補**。ORG-RI-01〜04（#2386補正）、OC-CL-01〜10、#2
 並行するP0-Mの**意味判別**はORG-SU-01/02/05/06/09（直接/実体化Relationと責任・履歴の保存）で、#1126/#2386/#2510/#2497へ引き渡す。E2読取が成立してからP1へ進み、ORG-SU-03/04/07/08のRule/Provider/What-if再資格を#2506/#2582/#1131で検証。最後にORG-SU-10を既存#1129/#1174/#2564の実Host/Effectへつなぐ。新Org専用Workflow/ACL/Identity Provider/Time Engine/SQL Resolverは作らない。
 
 **記録資格**：この第67節はdocs-only設計。ORG-SU-01〜10は未実行。現在の限定証拠＝#2681 Native実Parser/Loader E1、#2596合成、#2889 toy Runner、別FunctionのPG CASのみ。組織Caseの実Provider E2、Host/DB Effect、現在Grant、進行中CaseのOwner業務受理、実GUI/SHO/AIはNOT RUN。#1119既存G1/G2/G4優先順不変。
+
+## 68. 実Provider Readへの接続を最初の製品受入とする：Source・Context・Claim・独立Expected（2026-11-06、採用前）
+
+本節は§63〜67の組織意味・責任引継ぎ・Required Obligationの設計を置き換えず、**最初の実行可能な製品E2 Read**の検収を明確にする。横断元は[#2586](https://github.com/hat47x/tei-platform/issues/2586)、[#2506](https://github.com/hat47x/tei-platform/issues/2506)、[#2514](https://github.com/hat47x/tei-platform/issues/2514)、[#1180](https://github.com/hat47x/tei-platform/issues/1180)、[#2622](https://github.com/hat47x/tei-platform/issues/2622)、[#2611](https://github.com/hat47x/tei-platform/issues/2611)、[#2499](https://github.com/hat47x/tei-platform/issues/2499)、[#1174](https://github.com/hat47x/tei-platform/issues/1174)。**新しいCore組織型、専用ACL、第二Query/Host/Authorization/Obligation Engineを作らない。**
+
+### 68.1 実Source照合で判明した機能境界
+
+- merged [#2596](https://github.com/hat47x/tei-platform/pull/2596) の `reference/org-semantic-views/source-fixture.json`・`scenario-fixture.json` は合成値・履歴のExpectedを持ち、固定HEADでNode synthetic 166チェックのCI成功記録がある。ただしTEIの実Query/Provider/Owner意味受理ではない。
+- open [#2681](https://github.com/hat47x/tei-platform/pull/2681) の `reference/org-headless-workspace/semantic/organization/model.tei` はPerson、OrgUnit、Membership、Position、Occupancy、CaseRecordを実Loaderへ渡せる。`CaseRecord.handlingUnit` は`case_record.handling_unit_id -> org_unit.org_unit_id`という**直接単一値Relation**であり、独立Edge occurrence IDを持たない。一方`Membership`は`membership_id`を持つ**実体化Relation Data**。
+- 同Native Workspaceの `applications/org-view/application.tei` は`org_read`を`org_store`にreadで束縛する。`databases/org-store/persistence/membership.tei`はMembershipのみのPersistence Mappingを持つ。**CaseRecord/OrgUnitの実データ・Persistence Mapping・Function Data Context・実Provider Row Readは未確認**。既存`OperationSurface`の`list/read`はread-only派生物であり、実Reader/Grantの証人ではない。
+- `Membership.validFrom/knownFrom`は現時点のNative `.tei` では通常のAttributeである。合成Fixtureの`validTo/knownTo`と二時点選択がNative製品で再現されるとは推定しない。実データの時点評価はE2aの後のE2bに分離する。
+- 現`internal/realization/contract_query_sql.go`の`ValidateContract`は宣言済みSQL実現とQuery signatureの対応確認であり、SQL実行・ProviderのRowset・実データSnapshotを証明する機能ではない。通常のOrg ReadにNative SQL作成を必須条件としない。
+
+### 68.2 E2a：独立した一件の構造Readを最初に検収
+
+試験のためにProvider側へ**公開の合成行** `Case C1(caseId=C1, handlingUnitId=D1, rowVersion=7)`、対照`C2(...D2)`、`OrgUnit D1/D2`を設定する。この行群は実`.tei`のSource/意味正本を置換しない。**事前に手で固定したExpected**は`C1 → D1`の一件だけ。`C2/D2`はC1選択Contextに混ぜない。C1のCase ID・handlingUnit Role・旧値D1・必要なrow versionを同じ観測単位で保持する。
+
+| 検収位置 | 必要な実消費・観測 | 不足時の判定 |
+| --- | --- | --- |
+| E2a-1 Source/Meaning | 実Managed `.tei` byte・Source Index/ModelRevision・Loaded Relation Key・対象Role | 未読込・重複・曖昧Roleなら`unresolved` |
+| E2a-2 Context | Functionが**明示**した`CaseRecord(caseId=C1) → handlingUnit`、Field/Scope、Relation path、結果grain | Relation存在のみではFetch資格なし |
+| E2a-3 Provider | 実DB alias/instance/provider・選択Realization・実Query/args・実Row/Field Read trace | Mapping/Provider不在なら`product-read-not-connected` |
+| E2a-4 Result | C1の行ID・D1の対象ID・Read cohort・Field coverage・complete/partial/unknown | 取得1行だけでは全件Completeや不存在を推定しない |
+| E2a-5 Consumer | Table/Graphで同Case・同Role・同Scopeを保持し、現在の開示資格に応じて送出 | renderer成功だけでは実Read・開示許可の証拠なし |
+
+実証の入口は既存`workspace.Load`→明示Function Data Context/Query Binding→実Provider Read。途中に接続APIがなければ**その具体的な未接続コード位置で停止**し、手書きSQL・試験専用JSON helper・生成されたOperation一覧の成功をE2a製品PASSに代用しない。最初から実Host Writeやbitemporal判定を依存条件にしない。
+
+### 68.3 E2b：実体化Relationと時点・非出力依存の比較
+
+既存`org-synthetic-r7`の手固定Expectedを再利用する。`validAt=2027-06-15, knownAt=2027-07-01`ならD1のMembership occurrenceは`A1/A2`、D2は`A3/A4`で、Personは3人、D1のAllocationは100+60=160 basis points（1.6 FTE）。同validAtで`knownAt=2027-07-03`なら、遡及訂正によりD1は`A1`のみ（1.0 FTE）。この値は**合成Expected**であり、現Nativeの時点Read成立を示さない。`O1/O2`というPosition OccupancyもMemberOf/Business Grantへ自動変換しない。
+
+WHEREで参照する非表示Allocation、ORDER依存、EXISTS/NOT EXISTSの関連Project集合、別Replica/Primaryの`knownAt`、部分PageのCohort、Query SQL候補の選択版は、**表示する3列が同じでもClaimの成立に影響する**。A2のAllocationを変えても単純Member listには無影響の可能性がある一方、Filter/Sort/Capacity Claimは別々に再資格化する。R1のPage1とR2のPage2を混合して`complete`としない。欠落した関係を不存在と推定しない。
+
+### 68.4 根拠完結性をObligationの母集団から構成する
+
+§66のClosureを一つの`true`へ畳まず、**Claimの必要条件集合を別の受理済み契約から導出し、そのClaimについて実際の証拠と突合する**。Read-only Claimに不要なWrite/Grant/Commit項目を一律Requiredにしない。各必要項目は`required / not-applicable(根拠あり) / unresolved`、実測は`pass / fail / unknown / not-run`を区別する。Callerが供給したPrecondition集合は**検査済み項目**であって、必要母集団の正本ではない。
+
+- **E2 Read Claim**：Source/Role・明示Context・実Provider Read/Row/Field/Scope・Result completeness・Consumer Disclosureを照合。Read Valueが正しいだけでは用途別全称/不存在/現在開示資格を満たさない。
+- **E3 Business Decision Claim**：利用者に見える所属・役職のほか、Rule Footprint、意思決定の適用時点、自己承認/職務分掌、Owner受理済みRule版を確認。`eligible / ineligible / unresolved`はBusiness Meaningの評価であり、Host `permitted`ではない。
+- **E4 Effect Claim**：Owner受理済みAction/対象Case＋Role＋expected version、Current Principal/Host Grant/Period/Provider保証、Operation IDの継続性を**作用境界**で検査。実Dispatch/Commit/Unknown/Receipt/独立post-imageを**事後証拠**として別評価。§65/#2889のtoy Runnerが渡されたCheckをPASSしても、未提供の必須Grantが充足したことにはならない。
+- **Oracle独立性**：同じAI/Rule/Provider helperからActualとExpectedを両方生成して見かけ上PASSにしない。事前に人手で固定したExpectedと既知Mutantで判別力を評価する（#2514）。同じSource/ScenarioでもReadとEffectは別のClaim ceilingを持つ（#1163）。
+
+### 68.5 組織改編・DB移行・Plugin構成の相互非同値を維持
+
+- 直接Relationを実体化Membershipへ移す際は、元Case ID/Relation Role/旧値と新Occurrence集合の対応を明示。業務Key・Relation ID・物理PK・Graph表示Edge IDは同一視しない。履歴/遡及訂正とDBのExpand/Backfill/Validate/Cutover/Contractは二つの独立したCutover（§66.3）。旧Readerと新Readerの**同じ値**だけでNULL、Scope、Cohort、業務意味まで互換とは言えない。
+- Organization ProfileはIdentity/Membership/Hierarchy/Temporal/Providerを用途ごとに合成し、通常の小規模組織にBitemporalや特別ACL/IdPを強制しない。Catalog Available、Environment Selected、Function Used、Build Included、Current Authorized、Effectを別々に評価（§64/#951/#1251）。
+- AI Fittingは自然言語による構成Candidateと引用位置、Source/Role/Plugin Pin、Preview/負例、Owner受理まで。AIが組織上のManagerやRoleから実Grantを発行したことにはしない。内部はGoの単一バイナリを基本としつつ、日常のDSLへGo固有の宣言文法を露出させない（#988/#2619）。
+
+### 68.6 実装順・停止条件・Owner
+
+| 順序 | 最初の成果物 | 判定と担当 |
+| --- | --- | --- |
+| P0-A | 実`.tei` Source/Relation/Persistenceの既存Code path map、C1の独立Expected、必須Row/Field/Scope票 | #2681/#2506/#2586。現在Case Mappingがないなら明示Gap。新Core追加なし |
+| P0-B | 単一CaseのProduct Function→Provider実Read＋対照C2混入拒否＋別Readerの実Row/Field | #2586/#2622/#2628/#2514。Source/実Provider未観測なら未合格 |
+| P0-C | synthetic MembershipのA1/A2/A3/A4・遡及訂正・Query非出力依存をNativeへ段階接合 | #2386/#2510/#2582。Temporal/Provider不足はunsupportedと明示 |
+| P1 | Admission CoverageとHost Effect Fenceを同じC1/Operation ID/Attemptで検収 | #1180/#1174/#1129/#1163。異CaseのPG CAS成功を転用しない |
+| P2 | Organization Profile/Plugin Bundle・DB移行旧新Read・SHO/Studio投影の用途別Conformance | #951/#1251/#2555/#1124/#2516。未選択依存や不可逆Graph編集を成功扱いしない |
+
+**今回の証拠と採否**：公開GitHubの現行Source、merged合成Reference、open Native E1、各既存Issue/PRの静的照合に基づく**文書計画のみ**。本節で新TEI Product E2/E4、Provider実Read、SQL、Owner受理、外部Consumer実受領、Plugin Buildの実測は**NOT RUN / NOT ACCEPTED**。正式なSource/ABI/Runtime/DSL変更や#1119の既存Gate更新を要求しない。
