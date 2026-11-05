@@ -140,3 +140,34 @@ func TestSelectedSemanticViewDoesNotResolveInvalidDeclarations(t *testing.T) {
 		t.Fatalf("invalid selected alias definition: %+v", report)
 	}
 }
+
+// Cross-domain fixture: the same *nominal* TypeRef contract is usable by
+ // a file/ETL value edge and by a build artifact metadata edge. These are
+ // synthetic ports, not actual file delivery or a TEI self-build run.
+func TestSelectedSemanticPreludeIsReusableAcrossPipelineRoles(t *testing.T) {
+	cases := []struct {
+		name, fromName, toName string
+		fromRef, toRef        core.CanonicalID
+		want                  composition.ProposalVerdict
+	}{
+		{"file-bytes", "binary", "binary", "std.binary", "std.binary", composition.ProposalCandidate},
+		{"etl-text", "text", "text", "std.text", "std.text", composition.ProposalCandidate},
+		{"build-metadata", "json", "json", "std.json", "std.json", composition.ProposalCandidate},
+		{"implicit-decode", "binary", "text", "std.binary", "std.text", composition.ProposalConflict},
+		{"unmigrated-namespace", "binary", "binary", "tei.std.binary", "tei.std.binary", composition.ProposalUnknown},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			registry, plan, view := selectedViewFixture(t)
+			plan.Slots[0].Outputs[0].Type = Type{Name: tc.fromName, Unit: "none", SemanticRef: tc.fromRef}
+			plan.Slots[1].Inputs[0].Type = Type{Name: tc.toName, Unit: "none", SemanticRef: tc.toRef}
+			report := InspectWithSelectedSemanticView(registry, plan, view)
+			if report.Verdict != tc.want {
+				t.Fatalf("%s: expected %s; got %+v", tc.name, tc.want, report)
+			}
+			if tc.want != composition.ProposalCandidate && len(report.Order) != 0 {
+				t.Fatalf("%s: rejected/unresolved mapping emitted an execution order: %+v", tc.name, report)
+			}
+		})
+	}
+}
