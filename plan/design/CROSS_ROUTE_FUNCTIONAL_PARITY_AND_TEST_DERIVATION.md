@@ -664,3 +664,13 @@ Ownerは#1180（Scenario）、#2813/#988（DSL Candidate）、#2514（Oracle）�
 **Exit**：A/Bで新規Caseが実発見・実走し、独立Expectedで既知Mutantを判別した有限の正負対を確認できること。C/Dで、テストPASSでも製品要件未充足となる既知負例を正しく報告できること。Eは既存Ownerの実Provider/Host証拠が揃う段階で昇格し、AI P0の開始条件にはしない。test-only Scenario候補・Ledger Viewから製品実行許可を得たとみなさない。
 
 **未完了**：本章の新P0実行・自律生成試行、独立Mutation評価、Ledger実装、現Grantを含む一体Web→PG→Consumer、正式Owner受理。過去の成功した別HEAD CIを本HEADのCI結果へ転記しない。
+
+### 18.3 Fixture memberの一意性をG0で検査する（Draft #2891）
+
+**本Planへの導入はG0の入力明確性だけ。** 現mainの`scenariotest.Parse`は`RejectDuplicateJSONMembers`を実装済みだが、`ParseValidationFixture`／`ParseBrowseFixture`／`ParseObservationFixture`は単一`json.Decoder`によりobject memberの重複を拒否していなかった。重複メンバーが後勝ちの場合、候補JSONとFixture、Actual/Expectedの比較の前提となる入力が曖昧になる。
+
+- [#2891](https://github.com/hat47x/tei-platform/pull/2891)：mainから独立のDraft。既存Scannerを3 Fixture入口に再利用、重複Member負例7件＋非重複正常3件のGoテストを追加。**Source差分を確認、対象HEADの実Go/CIは別Runで判定**。新Parser/Runner/業務Ruleなし。
+- [#2890](https://github.com/hat47x/tei-platform/pull/2890)：既存#2828に積んだJSON-only AI候補。正常`[1,2]`／重複`[1,1]`の行番号配列について、リポジトリから実Readした2 Fixtureに対し独立な集合重複の簡易計算を行い、期待の`satisfied/not-satisfied`と整合することを確認した。これは**合成入力の算術的sanity check**であり、TEI CLIの実Step Receipt／業務Owner独立Oracle／L2 Conformance資格ではない。現PR headのActions Runが取得できない限り`NOT RUN`。
+- **区別する負例**：Relation`keys`の`[1,1]`（正当な重複データとしてValidationが拒否する対象）と、JSON objectの同名`keys`member 2回（Parserが拒否する入力不正）は別。どちらかの拒否成功でも他方や実Target Coverageを自動PASSとしない。
+
+**次の最小検収**：①#2891 exact-head Go Test/Repository HealthでFixture解釈の一意性を確認、②#2890の積み重ね型ブランチを合成したcheckoutで既存`TestAIAddedScenarioCandidateFiles`を実行し、新Stepが実際に`discovered/attempted`かをログ/Receiptで確認、③事前Expectedを変えず`line_number_unique`の誤判定Mutantを判別して初めて#2514 G2へ渡す。#2891と#2890は別HEADなので受入証拠を合算しない。
