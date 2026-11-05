@@ -713,3 +713,25 @@ Everything is Dataの共通Carrierは、Data・Function・Business・Rule・Test
 4. **採否の実測**：旧新Consumerの適合・拒否/Unknownの誤判定、変更後の再Build/再Read数、必要Contract未検査件数、実装済みFunctionの漏れ、Core固有分岐とAdapter追加量、導入/巻戻し手順、改訂間の手修正工数を#2018に引き渡す。無停止性は選択された常駐Targetの実負荷・readiness/drain/SLOを#1223が独立実証する。
 
 **責務と現状**：#1016はSystem構成の選択、#1130はFunction/Build/Entry、#1223は選択Targetの世代適合、#2555はDB正本・旧Client共存、#1174は実Effect/Receipt、#2604は公開・一式Reader、#2516は用途別現在開示、#1119は既存のGate。最新Sourceで実Runを接続したわけではないため、R0/R1の多Entry実配備、異種DB Cutover、実無停止/ロールバック、複数実Consumer、Owner受理は**今回NOT RUN/UNQUALIFIED**。先行の局所CI/PGは版・Attempt別証拠のまま保つ。Production API、常駐Host、共通認証・Deployment Coordinator、第二正本は追加しない。
+
+### 19.12 現行Go Sourceの直接観測による実行経路の境界確定（2026-11-06）
+
+**背景**：§19.1〜11で列挙した構成原則のうち、最初に本当に接続されている部分をSourceで限定した。ここでの確認はGitHub既定branch上の次の**各ファイルの実byte/Blob SHAを直接取得した静的観測**であり、同一Git commit/実Processの統合実証ではない。コード断片から「当該経路で実Providerを使った」とは推定しない。Mainの後続変更があれば着手時に再取得する。
+
+| 実Source（固定したfile blob SHA） | 確認できたConsumer／実行境界 | 上位資格として未成立のClaim |
+| --- | --- | --- |
+| `internal/operations/surface.go` / `ad414e82a19fb7572f02a2ea7c1e8bcd12434bbe` | `SurfaceWorkspace(root, filter)` は `workspace.Load`→`BuildSourceIndex`→`DeriveOperationSurface`、WorldFingerprintとModelRevisionを設定。実際の関数はread-only、acceptanceを記録しないと明記。 | Function/Operation Surfaceが出ること≠Provider実Read、Host Grant、実行入口、Business Meaning acceptance |
+| `cmd/tei/cli_operations_artifacts.go` / `ec0ae27c29ab80d8b5366af2fa65e3cf6e699310` | `runOperationsCommand` は`operations.SurfaceWorkspace`をJSONに投影。別の`runArtifactsCommand`はArtifact Setからファイルを書き、`writeArtifactFiles`はmemberを順次`os.WriteFile`、最後に`manifest.json`を保存。 | `operations`の行数≠DB rowset。producer`artifacts -out`成功≠同一GenerationのReader受領（#2604が所有） |
+| `cmd/tei/scenario.go` / `a6525579fc083060b400c970990a64d57fd0a6d3` | `runScenarioCommand`は実`workspace.Load`と`driver.NewResolver`を使用。`run`はScenario/World/Plugin Lock/Fixture pinを照合後、Browseで`executeScenarioBrowse`を呼び、EvidenceNatureを`synthetic-browse-query-executed`と記録する。World pinは`json.Marshal(loaded.World)`のSHA-256、Plugin Lock pinはファイルbyte SHA-256。 | 合成Query実行≠実PostgreSQL/OData Provider read。ScenarioのWorld SHAとSurfaceのWorldFingerprintが一致すると仮定しない。独立Expected・実Reader scope/complete/実選択Providerは別 |
+| `internal/execution/runplan.go` / `d1cf387982a3d3cf14c9ebb4c290e98f1e0454ec` | `RunPlan`は呼出側の`PreconditionFunc`を評価し、`StepFunc`の`resolved`をJournalの`Completed`へ進める。`CombinePreconditions`は渡された非nil checkだけ結合し、必須checkが全列挙されたことは検証しない。 | `Completed`≠required Guard被覆、Provider Effect、Business完了。#2889の未供給Guard/Observer/部分Stepの不十分な特性試験と一致 |
+| `internal/plugin/build.go` / `12e4ed3a2c51546b51f22857d167e57029f5431d` | `BuildPlan`は`Plugin Identity`と`PluginDefinitionFingerprint`を必須にし、`LockedBuild`はPlugin固有BuildとArtifactを束縛。コメントでAcceptance/Runtime Authorityを与えずBuild実行もしないと明記。 | このAPIの直接利用から非Plugin `cmd/tei` や任意ApplicationのBuild Closureを証明できない。fake Pluginで代用せず#1097/#2831へ |
+
+**この静的監査から直接導ける最初の断線箇所**：現行`tei operations`はread-only意味投影、`tei scenario run`で確認したBrowse実行はsynthetic fixture経路であり、両者の成功だけでは**Function→選択Provider→実DB Reader→Result Slice→独立Consumer**の同一Attemptは成立しない。まず既存#2586 HJ Ownerで、この二つの入口が何をどこまで実観測しているかを対応付け、未接続の実Provider Read path/Scope/complete/Actual bodyを示す。新しいCLIコマンド、万能Runtime、Query Adapterの採用をこの観測だけで決定しない。現Repoの別の実Providerコードが使えるならそれを既存Function/Driverへ接続し、見つからない場合は具体的な必要Port/Adapter差分を報告する。
+
+**次の最小作業指示（#2586への引渡し）**：
+1. `order_entry`の同一Function/Scenario Caseと受理済みIndependent Expectedを一つ固定。実Source rootsの`required/declared/discovered/loaded/parsed/actually consumed`を#2823の負例込みで採取する。CLI操作の`operations`結果と`scenario run`の`EvidenceNature`・Scenario/World/Lock/Fixture pinは**それぞれ別の証拠欄**へ記録。
+2. 実Provider/Reader候補を既存#2485/#2622/#2586のSourceから特定し、同一Operationで`selected Provider+Realization`→`issued Query/params`→`actual rowset, field state, grain, scope, asOf, completeness`→`Consumer body`を結ぶ。これらを取得できない段階ではC-Readをunknownに留め、`synthetic-browse-query-executed`をreal DB executionへ読み替えない。
+3. 独立Expectedに0件/未取得/部分集合/NULL、同一Query IDのSQL別選択、未選択Plugin・欠落必須Sourceを**既存Scenarioの負例**として差し込む。実Interpreter/SQL/Readerの違いをExpectedと比較し、最初の情報喪失Edgeを一つだけ特定する。新テストRunner/第二Oracleは作らない。
+4. C-Buildは実Goコンパイル入力/Target/entrypoint/Artifactの別実証（#1130/#1167/#2831）。C-Effectは#1174、C-Publishは#2604。C-Readで不足したEvidenceをそのまま上位Claimの「合格」に使わない。問題を発見しても即座にProduction新Schemaを追加せず、既存API／既存Provider実現の再利用を先に測る。
+
+**Source由来の既存実証との区別**：#2882のWorkspace合成RunPlan、#2889の専用Go負例、#2853/#2854/#2870のPG限定Receipt/ABA、#2681の組織E1は本静的監査の実行結果ではない。各自の固定Head/Attemptでのみ価値を持つ。本§のSource監査は対象5ファイルの実内容確認のみ。実Go Test/CLI subprocess、Provider read、C-Read一改訂、全Self-build、Owner Meaning受理は**NOT RUN**。main統合・Product Gateの状態を変更しない。
