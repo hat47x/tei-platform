@@ -603,11 +603,11 @@ P3：実外部Host/DB・長寿命Targetの更新、現在Grant/Lease、partial E
 **採用判断**：Bundle版と契約版の分離・局所再資格化が、変更波及、false reuse/false invalidation、Test漏れ、ビルド時間を実際に改善した範囲だけを製品設計候補とする。新API/Registry/Cache/Runtimeの実装とOwnerの業務意味受理は本追補では未決。U-01〜09を含む今回の実Go/DB/Host試験・性能測定は NOT RUN。
 
 <!-- tei-extension-first-comparable-probe-20261106 -->
-## 17. 初回の同一要求A/B比較：Plugin不要案を含む実Consumer試験（2026-11-06、実施計画／NOT RUN）
+## 18. 初回の同一要求A/B比較：Plugin不要案を含む実Consumer試験（2026-11-06、実施計画／NOT RUN）
 
 §14〜16を再度一般論として増やさず、**方式の採否を変え得る最初の実証**を固定する。元の業務意味・Oracle・Scenarioの正本は増設しない。[#1861](https://github.com/hat47x/tei-platform/issues/1861)の `reference.order.quote-lines/v1` 読取り専用見積もりプレビューを第一候補とする。正常8件・業務拒否15件の**既存23ベクトル**（#1819/#1840のGo Native・Node JS基線、#1848のWIT型投影Reference）を参照する。固定23件は**未受理の業務候補**であり、全業務意味がAccepted済みだとは主張しない。
 
-### 17.1 比較対象を混ぜない
+### 18.1 比較対象を混ぜない
 
 | 用途 | 比較経路（同じ23件と独立Expectedを再利用） | 現時点で可能な主張と不足 |
 | --- | --- | --- |
@@ -618,7 +618,7 @@ P3：実外部Host/DB・長寿命Targetの更新、現在Grant/Lease、partial E
 
 D0→D1/D2を自動的な「成熟段階」としない。**D0が要求を満たし、独立更新・障害隔離・外部Consumer等の追加必要性がないなら、D0選定で正常終了**してよい。D2を他ProcessテストのPASSで埋めない。#2090のProject Hookや#997のUI Kitは本試験とは異なるContractであり、同じ23 Expectedを機械的に転用しない。
 
-### 17.2 実行前に固定する比較条件
+### 18.2 実行前に固定する比較条件
 
 | 項目 | 事前に保持すべき値（新Schemaを採用しない） | 合格を装わないための対照 |
 | --- | --- | --- |
@@ -632,10 +632,31 @@ D0→D1/D2を自動的な「成熟段階」としない。**D0が要求を満た
 
 **試験レベル**：Unit/Fixture（23件の結果と独立Oracle）→ Conformance（Contract/Provider/Transportの相互作用・不適合負例）→ actual Build/Process/Host（本当にBuild・ロード・起動されたか）→ 実Provider/DB/Effect（この読み取り専用ケースでは該当しない項目をnot-applicableにする）→ Owner Meaning acceptance（別審査）。「テストはPASSしたが実物をロードしていない」を明示する。#1180のScenario SSOT、#2514のOracle、#1163の同一改訂Evidenceの資格を再利用する。
 
-### 17.3 最小コスト指標と判断Owner
+### 18.3 最小コスト指標と判断Owner
 
 実行前に**必要な比較項目と測定環境を固定**し、D0/D1/D2で追加した手書きAdapter・接続設定、Source変更箇所、Coreへの逆依存、実Build入力とBinary/Artifactサイズ、clean build・incremental build時間、起動/定常呼出Latency、プロセス数、更新/復旧手順、negative controlの判別数を同一条件で測定する。数値閾値や性能優劣はOwnerのTarget/SLOが未指定なら確定しない。契約形だけを同じにした結果、NULL・業務拒否・単位・失敗・Unknownの区別が落ちる場合は不適合とする。
 
 **停止/選択条件**：既存の純粋計算で十分なら非Plugin案を残す。複数Consumer・独立実装版・Target固有対応が具体的に必要になったときだけProviderを比較する。実隔離・個別更新が必要ならD2の候補評価に進むが、厳密な単一Go Binary要件と矛盾するときはD2を棄却する。実DB書込みやCommit不明はこの23件に紛れ込ませず、別途#1174/#1130の既存Write Scenario・実独立Readへ段階的に進む。
 
 **責務と実証状態**：#1016は案件要求と方式選定、#1861/#2390は外部Consumer・WIT必要性、#951/#1145はContract/Transport、#1251/#1167/#2600は未選択混入・必須依存・性能、#2514/#1180/#1163は独立Expected/改訂Evidence、#1174は実Effect。今回のD0再試験、D1/D2のquote-lines具体実装、23件横断比較、定量測定、Owner正式採用は**NOT RUN/NOT ACCEPTED**。新ABI、全Plugin共通Process Runtime、第二Resolver/Oracle/Hostは増設しない。
+
+<!-- tei-input-closure-selection-negative-controls-20261106 -->
+### 18.4 方式比較より前に「必要Sourceが読まれたこと」を確定する（#2822/#2823）
+
+**他レーンの具体的反例**：[#2822](https://github.com/hat47x/tei-platform/issues/2822)では利用者宣言0件のWorkspaceが `validate -json` で `ok:true` を返し、標準型のCatalog件数が非0でも利用者の入力が存在した証拠にはならない。[#2823](https://github.com/hat47x/tei-platform/issues/2823)では、未知/存在しないmanifest `sources`、別拡張子の管理ファイル、`.TEI`／`Application.tei`等の読み飛ばしが発生しても、ある構成では成功診断になる。これは**既存の別版CLI再現記録**であり、このDraftのHEADで再現済みとはしない。この状況でD0/D1/D2を比較すると、Required Inputが欠けているのに「同じSourceでPASS」「未使用Plugin非干渉」「Build skip可」と誤判定する。
+
+D0〜D2の第一回比較では、#1861の固定23ベクトルとContract、実際に読むProvider/Generator/AdapterのSourceを**試験開始前に固定**する。次の集合の包含/差を同じSource Revisionに対して報告し、不明を空集合として補完しない。新しいManifestやValidatorは作らず、既存Workspace Source Reader/Index・Plugin Lock・実Builderの観測値を用いる。
+
+| 観測すべき集合 | 独立に確認すること | 不足時の判定・既存Owner |
+| --- | --- | --- |
+| Required（期待される必須入力） | 23期待値とSource/Contract/Generator・必要Plugin/Importを、利用側要求と独立Expectedから定義 | RequiredそのものをResolverが観測したSourceから逆生成しない。#1180/#2514/#1016 |
+| Declared / Discovered | manifestに記載されたSource rootとWorkspace上の候補、同名異byte・命名規則/拡張子を区別 | Unknown root、存在しないroot、管理対象だが未Parser対象のファイルは診断/保留。#2823/#2743 |
+| Resolved / Parsed | 実Provider/Language Parserが解決したSource位置・Revision・byte、Parse診断とSkipped理由 | `validate.ok`/Catalog件数だけでRequired全件がParsedとはしない。#2822/#2823/#988 |
+| Actually consumed | 実Go Build/Generator/Operator/SQL Assetが参照したbyte・import/init/embed、否定依存・選択根拠 | Parser済みだけでも実Build Inputにはならない。未観測ならCache skip/非干渉/Artifact equivalenceはunknown。#2600/#1251/#1089 |
+| Consumer result | 実Target/Host/Read scopeで使ったSource/Artifact、Independent Expectedと必要な拒否負例 | D0の計算結果PASSからD1/D2の実Build/Transport/Grantへ昇格しない。#951/#2390/#1163 |
+
+**最小の停止試験**（独立Expectedは既存#2822/#2823と#2514へ委譲）：(a) 必須Rootを一文字変える、(b) Root名は正しいが必要ファイルを`.tei.bak`等へ変更、(c) empty Workspaceに標準型だけある、(d) 選択済みProvider Sourceが未取得、(e) 未選択Providerのみ増減する。期待は、(a)〜(d)を「必須Source完備／現在の実行資格」とせず診断またはunknownへ、(e)は実Selection・消費と否定依存が不変なときだけArtifact非干渉候補とすること。実際のCLI診断仕様（警告/エラー）は#2823、空Workspaceの契約は#2822が決め、ここで新StatusやCLI schemaを先取りしない。
+
+**実証順の補正**：D0は固定23ケースを自己完結の関数として実行可能な範囲だけ「入力充足の主張」を行い、Workspace連携のSource完全性は別のClaimに留保。D1/D2へ進む前には選択済みSource/Contract/Build Inputの閉包を実際に確認し、未知なら方式優劣やCache再利用を結論しない。Sourceの宣言・解決・実消費と現在Grant/Owner受理を分離する既存§15/§17の原則を適用する。
+
+**状態**：#2822/#2823の過去の実CLI反例を受入条件として参照した設計追補。今回のCLI/Workspace/Go/Process/23ケース再実行、正式診断採用、Owner受理はNOT RUN。第二Source Index・Validator・Resolver・Oracleは増設しない。
