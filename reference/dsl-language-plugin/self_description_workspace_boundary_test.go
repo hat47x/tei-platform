@@ -263,7 +263,6 @@ func TestSelfDescriptionRejectsStaleDirectReadAsLoadTimeSource(t *testing.T) {
 	// does not assert that the product itself refuses a caller's later read.
 }
 
-
 // This is a characterization of the current Go *syntax candidate*, not a
 // Product Role-resolution or acceptance test. A string inside description
 // never becomes a Role, while duplicate role clauses currently lose their
@@ -283,15 +282,21 @@ func TestSelfDescriptionRoleLiteralAndDuplicateAreNotAcceptedMeaning(t *testing.
 		t.Fatal("distinct role declaration sources unexpectedly share a byte fingerprint")
 	}
 	single := parseSelfDescriptionCandidate(t, oneRole)
-	duplicate := parseSelfDescriptionCandidate(t, twoRoles)
+	duplicate, err := syntax.NewParser(twoRoles).ParseSemanticFile()
+	if err != nil {
+		// A future parser may correctly reject a duplicate at the syntax
+		// boundary; that is also a safe outcome for this negative control.
+		return
+	}
 	singleAttr := selfDescriptionAttribute(t, single, "probe.item", "probe.item.value")
 	duplicateAttr := selfDescriptionAttribute(t, duplicate, "probe.item", "probe.item.value")
-	if singleAttr.Role != "audit_amount" || duplicateAttr.Role != singleAttr.Role {
+	if singleAttr.Role != "audit_amount" || duplicateAttr.Role != singleAttr.Role ||
+		duplicateAttr.ID != singleAttr.ID || duplicateAttr.TypeRef != singleAttr.TypeRef {
 		t.Fatalf("unexpected current Role candidate projection: single=%+v duplicate=%+v", singleAttr, duplicateAttr)
 	}
-	// The parsed output contains no occurrence count or diagnostic here.
-	// The two distinct source revisions project to identical role/type
-	// fields. This is a deliberately unqualified characterization: a future
-	// parser/semantic validator SHOULD reject or diagnose the duplicate.
-	// Never treat this test's PASS as duplicate-role acceptance.
+	// The current parser gives no duplicate-Role diagnostic: distinct
+	// source revisions project to the same role/type fields. A future
+	// semantic validator may still reject the duplicate; this test does
+	// NOT count as proof of acceptance or of a complete rejection path.
+	t.Log("current syntax candidate loses duplicate Role occurrence; Role uniqueness remains unqualified")
 }
