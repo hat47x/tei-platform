@@ -258,11 +258,11 @@ G0〜G5の判定は、既存`releaseplan database-gate`、Scenario/Oracle、Sour
 
 
 
-## 14. 既存実装のP0特性試験と残存する偽PASSの経路（2026-11-06、Source照合・追加テスト・まだGate未合格）
+## 15. 既存実装のP0特性試験と残存する偽PASSの経路（2026-11-06、Source照合・追加テスト・まだGate未合格）
 
 **実装済みの既存構造を再利用し、移行製品Gateとして何が不足しているかを静的コード・狭い特性テストで確定する。** 新しいCompatibility Evaluator、Provider/Host/Migration Engineは追加しない。
 
-### 14.1 現行コードで証明できる範囲
+### 15.1 現行コードで証明できる範囲
 
 | 既存実装 | 確認した性質 | G0〜G5に残る判定不能 |
 | --- | --- | --- |
@@ -276,7 +276,7 @@ G0〜G5の判定は、既存`releaseplan database-gate`、Scenario/Oracle、Sour
 
 別の負例は、Historyを取得できなかった際に空の`HistorySnapshot`を構築すると、予定されている全Migrationが`RepoPending`に見えること。正しい「取得成功・適用件数ゼロ」と「観測失敗」を区別できる取得資格が必要。単一`CompareHistory`の出力をHistory全体の完全性証拠にしない。
 
-### 14.2 今回追加した実Go特性テスト（構造のみ）
+### 15.2 今回追加した実Go特性テスト（構造のみ）
 
 `internal/database/release/migration_gate_characterization_test.go`に以下の2件を追加した。`go test ./internal/database/release`のexact-head CI完了が確認されるまでは**テスト実行の成功未判定**。
 
@@ -285,7 +285,7 @@ G0〜G5の判定は、既存`releaseplan database-gate`、Scenario/Oracle、Sour
 
 旧新を本当に同時提供する実現（別Contract ID、互換View、Writer Adapter、段階的変換等）は案ごとに対応するSchema/Role/Provider実能力と独立Expectedを要求する。Major互換の偽装、単一DB Snapshotに複数Majorを重複登録して暗黙の最後勝ちを利用する方式は禁止候補。実装必要性を#2555/#2622のOwnerで比較する。
 
-### 14.3 Gateへの引渡しと追加の停止条件（Case IDを増殖させない）
+### 15.3 Gateへの引渡しと追加の停止条件（Case IDを増殖させない）
 
 - **MG-21**は上記構造特性まで部分的に実証可能。実AppV0/V1とDBの同一期間共存、Read vs Writeの実効果、現在のGrant、旧Versionの実利用者母集団は未実証のまま保持する。
 - **MG-22**は`CheckApplication`だけで検証不能。Result Slice（未取得／部分／ページ／全件）とtenant・時点別の必要集合は#2506/1706、実Provider ReaderとScenario Expectedは#2622/#2514に引き継ぎ、観測できないときはG3 `unknown`。
@@ -293,7 +293,7 @@ G0〜G5の判定は、既存`releaseplan database-gate`、Scenario/Oracle、Sour
 - **G5 Contract**では、`CheckApplication`が個々のAppでCompatibleでも、**把握していない旧App/Batches/Direct SQLの母集団が残る限りunknown**。現在の提供契約とRelease Requirementsだけでは未稼働Clientが無いことを証明できない。古いReleaseを消す前に全Active/潜伏Consumerの退役証拠が必要。
 - **G4 Cutover**では、上流のstatic compatibility PASSを、現在Owner/Grant・旧Writer Fence・実Update/Receipt・別Readへ格上げしない。`DataReadiness=ready`は移行完了の宣言ではなく、独立に裏付けられる対象範囲・時点を持つ必要がある。
 
-### 14.4 最短の次の実証
+### 15.4 最短の次の実証
 
 1. 追加した`MG-21`構造テストのexact-head CIを確認し、failなら既存契約/Goモデルに沿って修正、passでも限定的結果として記録。
 2. `MG-20`の現在の偽PASS境界に、独立Expected`unknown never qualified as applied`のfocused負例を用意する。修正/正式API追加は別の小DraftとOwner判断に委ねる。
