@@ -2748,3 +2748,32 @@ HEAD `e0cfebf14d40db81bdef77d6c3e4898ed75d999f`に対する[GitHub Actions #4203
 **P0** は今回のNative E1 BP-01（合格済み）と、現実のBundle Selection/Lock/Source Rootを固定した**read-only解決比較**。**P1** は対象TargetだけのGo Binary実Build＋Artifactと必要Moduleの差分（BP-02/03）、**P2** は必要Capability選択と実DB Read/Policy/Host/Effect（BP-04〜07）、**P3** はBuild latency/size/startup/移行コスト実測と、AI-first独立ExpectedによるMissing/Over-Inclusion検出。P1未実証の段階で「未使用プラグインはビルド結果に影響しない実装が完成」と宣言しない。
 
 **状態**：BP-01の実Go PASSのみ。実Target Build閉包・Binary生成差分・使わないがBundle選択済みのModule除去・二DB/Provider・Host Authority・Studio/SHO/AI/Owner正式受理、BP-02〜08は未実施。#1119既存P0実DB/Owner-writeを優先。新Plugin Manager/Registry、独立Bundle Engine、組織専用Host/ACL、第二Build/Query Solverを設けず、契約差分だけ既存Ownerに渡す。
+
+<!-- 20261105-result-restart-bundle-boundary-refresh -->
+## 52. 実行計画・成果物・再起動・Bundle境界の新しいmain実証を横断Gateへ接続（2026-11-05）
+
+### 52.1 局所成功と正式な業務資格の差を、最新の実装で更新する
+
+| mainへ統合された変更 | 実際に得られた限定的な証拠 | 継続する不足・既存Owner |
+| --- | --- | --- |
+| [#2866](https://github.com/hat47x/tei-platform/pull/2866) | function-definition/v1の機能定義書へRunPlan宣言を決定的に出力、省略を補完しない | 文書の宣言≠実行/Provider effect。#1130/#2604 |
+| [#2871](https://github.com/hat47x/tei-platform/pull/2871) | RenderOutputsによりread-only ProjectOutputsの結果を帳票本文へ整形。0件・Reader error・Output宣言なしを別表示 | 件数表示≠対象母集団の完全性/実Reader適合/Consumer実受領。#1130/#2516 |
+| [#2870](https://github.com/hat47x/tei-platform/pull/2870) | Go Lifecycleのunknown stageは再起動相当の新インスタンスに引継がれず再Dispatch可能。実PostgreSQLは同一idempotency keyだけ重複適用を止めてReceiptでReplayを返す | 別key+ABA、永続Owner/generation、実通信断と全体exactly onceは未保証。#2564/#1174/#2146 |
+| [#2869](https://github.com/hat47x/tei-platform/pull/2869) | Critical Path監査がProvider atomic-with-commitの宣言欠落や仮宣言を診断 | 宣言/Reasonは自己申告であり実Atomicity/正式G2は未証明。実PG暫定ChainはINCOMPLETE/UNQUALIFIED。#1119/#1163 |
+| [#2865](https://github.com/hat47x/tei-platform/pull/2865)、[#2868](https://github.com/hat47x/tei-platform/pull/2868) | 参照Storeの候補KeyはUTC日時、時刻、Unicode NFCを正規化 | DBのCollation/Timezone/Precision、Business Keyの意味受理やCurrent Ownerは別 |
+| [#2872](https://github.com/hat47x/tei-platform/pull/2872)〜[#2874](https://github.com/hat47x/tei-platform/pull/2874) | internal/commandの新x/text依存でStudioの独立Go moduleのreadonly buildが一時失敗し、module/sum追補で修復 | rootのGo CIだけで全Build Targetへの依存Closureを保証しない。#1251/#2831 |
+| [#2875](https://github.com/hat47x/tei-platform/pull/2875) | Application/Database releaseの現在Contract版参照を共有し、一意に導出できるreason等の冗長な候補Viewを縮小 | 欠落した説明Fieldを新しい成功根拠としない。Compatibility Evidence/Owner受理は別。#2619/#951 |
+
+これらは**異なるPR/実行環境/Version/Readerの証拠**であり、同一Attemptの製品一往復完成には足し算できない。一方、実済みの成果までNOT RUNと報告しない。正例と負例・回帰の境界を列ごとに明記する。
+
+### 52.2 次の統合試験を増やさず既存三本へ集約
+
+1. **Source/Skillの最初の価値Gateを優先**：§45.3〜45.4の公開TEIユーザー定義1 Subjectの実Loaded Source/CLIと、Tool-only H2／Skill H3の四独立Sessionをまず成立させる。Role自己解釈やDB移植を新たな前提にはしない。
+2. **Build/Bundleの非干渉は別P1**：§51の既存BP-01実Go（Manifest外不正Plugin SourceがWorld/Operationsへ非干渉）を初期値として、[#1251](https://github.com/hat47x/tei-platform/issues/1251)のPB-01〜10でSelected/Build-consumed/Artifact/Runtimeを分離する。未選択PluginがArtifactを変えないことと、選択済みStudio nested moduleの新依存を漏らさないことは両方を必要とする。Go root健全性を全Target Build証拠へ昇格させない。
+3. **実行・業務Effectは既存Ownerの一つの書込みPathへ**：[#1130](https://github.com/hat47x/tei-platform/issues/1130)のRPL-01〜05、#2853/2854/2870の製品Commandと実PGの局所証拠、#2869のAudit不足を同一Function/OperationIDに結ぶ。最初はRead-only Output本文と実Consumer、次に同Key/新Key/ABA/再起動/Effect Unknown/Receiptを独立Expectedで比較。Observerの存在、RunPlan completed、文書行・Audit Guarantee自己申告だけでBusinessVerifiedとしない。
+
+### 52.3 新たな停止線
+
+一回の実行で**データの意味、実Read/Write、Plugin/Provider実装、Sourceの版、Current Grant、Recovery段階、実Consumer受領**が連結していない場合は、その欄をunknown/NOT RUNのまま残す。「未使用Pluginは実ビルドに影響しない」「異なるDBでEquivalent」「Lifecycleは再起動しても一度限り」「帳票の0件が対象不存在」「監査のatomic宣言で本番資格」が、現実の局所CIから自動成立したと主張しない。
+
+**Owner**：Plugin bundle/依存=#1251/#1097/#2831、User Skill=#2605/TAI #168、RunPlan/帳票=#1130、DB/SQL=#2622/#2862、Provider Effect=#1174/#2564、Audited Gate=#1119/#1163、Consumer=#2516、Independent Oracle=#2514。新規Core Enum/Host/Registry/Scenario Engine/Universal Policy Engineは導入しない。**この節自体はDocs-only。BP-02〜08/PB-01〜10のGo Binary実Build差分、4実Harness、実業務RunPlan一往復、Role正式受理、二DB同一Function、Owner Grantの統合試験はNOT RUN**。
