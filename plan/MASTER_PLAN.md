@@ -532,6 +532,15 @@ go build -o /tmp/tei-eid-verify ./cmd/tei
 
 Claim/Source/Temporal cut/Relation occurrence/Scope/Rowset+Field coverage/実Consumed Input/独立Expected/Consumer現在資格を既存#1131/#1180/#2514/#2586の票へ加え、別のTest/Claim正本や新Gateを増やさない。**元のP0（Query Realization→Page1/2 Read Cohort一Provider）は引き続き最優先**。Graph・時系列・外部Target全対応、全組織Policy、Studio/SHO完成をHard dependencyにしない。費用と効果は#2018へ返す。
 
+<!-- tei-masterplan-independent-required-closure-20261106 -->
+### 2026-11-06 データ様式：DeclaredだけでなくIndependent RequiredとActual Consumedを照合
+
+[構造保存設計§24](design/STRUCTURE_PRESERVING_TRANSFORMATIONS_AND_PROJECTIONS_2026-11.md)に、実Goコードの静的照合と#2860/#2862/#2889の限定Go Characterizationを統合。**Source/意味の自己申告が完全でも、受入済みFunction/Claimの必要条件まで網羅したとは限らない**。既存Evidence/Scenarioへ Required（独立の業務/用途/出典）／Declared（Semantic/Mapping/Role/Guard）／Resolved+Consumed（実読込Source/SQL/Provider）／Observed+Disclosed（実Read/Receipt/Consumer）の照合列を付す。新Registry/Validator/Host/Role Resolver/独立Oracle正本は作らない。
+
+実コード確認の限界：ContractQuerySQLRealization.ValidateContract（main）は宣言済みInput/Result Mappingの構造検査でありSQL本文・Predicate/実DB/業務Requirementの完全性ではない。Go Parserの単一Role Candidateは原SourceのRole occurrenceの二重記述を失い得る（Draft #2860）。RunPlanのcallback許可は全Required Guardの網羅保証ではなく、EffectObserverの存在も実ObserveEffectを意味しない（Draft #2889 toy Step 3/3）。**既存の実Go/CI PASSをTEI製品E2E/Owner受理へ合算しない**。
+
+最短計画：P0は[#2586](https://github.com/hat47x/tei-platform/issues/2586)の一Provider二SQLのQuery→Function Context→実Page/Cohort/Disclosure read-onlyを維持し、宣言0や必須Field未読込・SQL Predicate改版を独立Expectedで照合（#2514/#1131/#1180）。P1並行で#2620→#2497/#2621のSource Role重複/引用Literal、No-op/局所Patch/Read-only Previewの可逆性を検証。write側は#1129/#1174のCurrent Grant→Effect/Unknown→Receipt/独立Readerを**別Attempt**に維持。対象Claimに不要なHost Commitを要求せず、Required未定義の空PASSは拒む。#2018へ診断率・誤complete・過剰失効・Adapter数・速度を受け渡す。追加RC-01〜06は受入案、統合実行はNOT RUN。
+
 ## 現在の優先順
 
 1. （完了、2026-09-19）判定段階Bの最終的な実環境での検証根拠を、同じ版（R = `e5231839`）についてそろえた
