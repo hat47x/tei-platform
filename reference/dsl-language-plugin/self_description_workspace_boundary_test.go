@@ -205,7 +205,7 @@ func TestSelfDescriptionRejectsStaleDirectReadAsLoadTimeSource(t *testing.T) {
 		t.Fatal(err)
 	}
 	const path = "semantic/probe.tei"
-	original := "namespace probe\ndata Item {\n  attribute value type std.text\n}\n"
+	original := "namespace probe\ndata item {\n  attribute value type std.text\n}\n"
 	sourcePath := filepath.Join(root, filepath.FromSlash(path))
 	if err := os.WriteFile(sourcePath, []byte(original), 0600); err != nil {
 		t.Fatal(err)
@@ -254,7 +254,7 @@ func TestSelfDescriptionRejectsStaleDirectReadAsLoadTimeSource(t *testing.T) {
 		t.Fatalf("original Load-time Artifact changed after filesystem mutation: %s != %s", got, originalFingerprint)
 	}
 	parsed := parseSelfDescriptionCandidate(t, string(laterRead))
-	attr := selfDescriptionAttribute(t, parsed, "probe.Item", "probe.Item.value")
+	attr := selfDescriptionAttribute(t, parsed, "probe.item", "probe.item.value")
 	if string(attr.TypeRef) != "std.money" {
 		t.Fatalf("later parser did not see the changed TypeRef: %+v", attr)
 	}
