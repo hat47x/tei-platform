@@ -353,4 +353,6 @@ Else absence remains unknown; no universal closed-world assumption.
 
 **実行証拠と非主張**：Node v22.16.0で`node --test reference/tei-topology-coverage/coverage.test.mjs`をローカル実行し、**12/12 PASS**（合成fixture、2026-11-06）。ただし本Evaluatorは`subjectsComplete=true`等の**申告値の真正性を証明しない**。実TEI `modelref`/CLI/Source Index、実Reader/Policy/Provider closure、旧DOMと4入口、非公開二世界の非干渉、実Target/Effect、認知負荷の改善は**NOT RUN／未証明**。#1124 M0/M1より先にこのReferenceの製品導入を要求しない。
 
+**セルフビルドと非画面パイプラインへの適用境界**：[TEI全体セルフビルド #2831](https://github.com/hat47x/tei-platform/issues/2831)のSB-P0.1は**宣言した工程と実際に消費・起動・生成した工程/bytesの照合**がOwnerであり、本Referenceの「宣言Graph→表示Graph/Tableの損失検査」だけでは代用できない。実Run側の独立Read/Traceがない場合、図に無い実行工程・動的ロード・pre/post hookの不在を推測しない。非画面ETL/ELT・バッチ・ファイル中継も、Source上のstage記述／実Producer・Transfer・Consumer／再送・ACK/Receipt／外部Effectを別レーンに保持し、未観測はopaque/unknownとする（[非画面実証 #1130](https://github.com/hat47x/tei-platform/issues/1130)、[Scenario SSOT #1180](https://github.com/hat47x/tei-platform/issues/1180)）。#2831の実Build witnessと#1124のConsumerは別のOwner／別資格であり、この試験はその両者を結合したと主張しない。
+
 **次の反証可能な接続**：#1124の実CLI→同一Consumerで同じqualified SubjectとSource/Model revisionを取得し、(a)元Source/関係roleの閉包が実Readerで確認できる範囲、(b)不完全で`unknown`となる範囲、(c)Graph・Table・関連表間の局所変更が意味Sourceを変えないこと、を別の証拠として測る。実験が必要な新Core primitiveを示さなければ既存Standard Structureで継続する。
