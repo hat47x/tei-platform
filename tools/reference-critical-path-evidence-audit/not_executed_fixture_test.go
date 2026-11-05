@@ -38,6 +38,7 @@ func TestNotExecutedE2FixtureListsEveryMissingHandoff(t *testing.T) {
 		"E1_WEB_WORKSPACE_R1_AND_TARGET_LAUNCH_PROVENANCE_MISSING",
 		"E2_COMMAND_AND_INDEPENDENT_READ_NOT_CORRELATED",
 		"E2_HOST_AUTHORITY_PROVENANCE_REQUIRED",
+		"E2_PROVIDER_GUARANTEE_NOT_ATOMIC",
 		"N11_UNOBSERVED_CONTROL_MISSING",
 		"REVISION_QUALIFICATION_STALE_OR_MISSING",
 		"S02_NEGATIVE_CONTROL_MISSING",
@@ -97,6 +98,9 @@ func TestNotExecutedE2FixtureCarriesNoEvidenceValues(t *testing.T) {
 		if strings.TrimSpace(value) != "" {
 			t.Errorf("%s holds %q: a not-executed packet must leave unexecuted fields empty", name, value)
 		}
+	}
+	if p.Physical.Guarantee != nil {
+		t.Errorf("physical.guarantee holds %+v: a not-executed packet declares nothing", *p.Physical.Guarantee)
 	}
 	if p.Qualification.FullHealth != "NOT_RUN" || p.Qualification.CleanBefore || p.Qualification.CleanAfter ||
 		p.Physical.SchemaCompatibility != "unresolved" || p.Contract.EvidenceClass != "source-only" {
