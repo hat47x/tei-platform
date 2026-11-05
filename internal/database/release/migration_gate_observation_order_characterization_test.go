@@ -92,3 +92,41 @@ func TestMG29ObservedAtDoesNotQualifyCurrentGateEvidence(t *testing.T) {
 		})
 	}
 }
+
+
+// MG-29b characterizes a second unsafe last-wins path inside one DB state:
+// Provides is indexed by Contract ID without duplicate detection.
+// This test documents the current behavior to be replaced by fail-closed
+// validation; it is NOT a test proving safe migration-gate semantics.
+func TestMG29DuplicateProvidedContractVersionsAreOrderDependent(t *testing.T) {
+	dbID := core.MustCanonicalID("sales_core")
+	contractID := core.MustCanonicalID("sales_core.order")
+	app := application.Application{
+		ID: core.MustCanonicalID("order_entry"),
+		Databases: []application.DatabaseRequirement{{
+			Alias: core.LocalName("sales"), TargetDatabase: dbID,
+			Access: database.AccessRead,
+			RequiredContracts: []database.ContractRequirement{{
+				ContractID: contractID, CompatibleMajor: 5,
+			}},
+		}},
+	}
+	older := dbrelease.ProvidedContract{ID: contractID, Version: database.ContractVersion{Major: 4}}
+	newer := dbrelease.ProvidedContract{ID: contractID, Version: database.ContractVersion{Major: 5}}
+	base := dbrelease.StateSnapshot{
+		Database: dbID, Source: dbrelease.StateFromObserved,
+		DataReadiness: dbrelease.DataReady,
+	}
+
+	first := base
+	first.Provides = []dbrelease.ProvidedContract{older, newer}
+	second := base
+	second.Provides = []dbrelease.ProvidedContract{newer, older}
+
+	compatible := dbrelease.CheckApplication(app, []dbrelease.StateSnapshot{first})
+	blocked := dbrelease.CheckApplication(app, []dbrelease.StateSnapshot{second})
+	if compatible.Overall != dbrelease.Compatible || blocked.Overall != dbrelease.Blocked {
+		t.Fatalf("expected to characterize unsafe last-provided-contract-wins: old-new=%s new-old=%s",
+			compatible.Overall, blocked.Overall)
+	}
+}
