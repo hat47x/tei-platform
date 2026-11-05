@@ -432,3 +432,39 @@ G1〜G5で各観測は取得時点が異なる。要求するのは**同一瞬�
 履歴の偽RepoApplied問題は独立の[#2892](https://github.com/hat47x/tei-platform/issues/2892)に残し、DB Releaseの構造的Compatibleが Migration History/実DB Data/Client compatibility/現在のOwner Grant/Effect/Consumerの合格を意味しない境界は変えない。**本件の実DB Migration、異種DB、旧新実Client、Cutover/Contract実操作とOwner受理はNOT RUN**。
 
 
+
+## 19. 局所修正PRの合流ゲートと偽PASS再発防止（2026-11-06、#2900/#2892/#2887の最新分担）
+
+### 19.1 実装進捗を分離する
+
+- [Draft #2900](https://github.com/hat47x/tei-platform/pull/2900) は[#2897](https://github.com/hat47x/tei-platform/issues/2897)の**重複Database State・重複ProvidedContractのlast-wins**を、既存`CheckApplication`の`Unknown`へfail-closedさせる局所Go修正および4つの受入テストを追加した。修正は同PR内の実装で、**main採用・統合した実DB互換・Owner受理には未到達**。
+- [Draft #2887](https://github.com/hat47x/tei-platform/pull/2887) は業務/Client/Provider/Cutoverを含むG0〜G5の計画と、MG-21/29の**現行挙動を把握する特性テスト**を所有する。`migration_gate_observation_order_characterization_test.go`のMG-29a/bは意図的に**危険な後勝ち**を期待している。#2900の安全修正と両立しないため、修正採用と同じ統合段階で**安全な独立Expectedへ置換**し、現行の危険挙動のテストを恒久仕様にしない。
+- [#2892](https://github.com/hat47x/tei-platform/issues/2892) は`CompareHistory`の`AppliedUnknown`→偽`RepoApplied`、History取得失敗/部分→偽`RepoPending`の修正Owner。**現時点で修正を検証したとは主張しない**。DB Releaseの構造判定修正がMigration Historyの資格を自動修正することはない。
+
+### 19.2 推奨する合流・修正順（正式なmerge実行はOwner判断）
+
+| 手順 | 必要な変更／確認 | 避けるべき誤り |
+| --- | --- | --- |
+| **A. #2900単独** | MG-29a/bの安全Expected、重複を拒否する`Unknown`診断、正常な単一Stateと他DB結果の非退行を同一PR exact-headで確認 | #2900の局所CI成功を#2887のG0〜G5や現在DB/Client互換の合格に数えない |
+| **B. #2887への統合差分** | #2900の修正が取り込まれる統合版で、MG-29の現状固定テストを順序不変な`Unknown`期待へ更新。MG-29c（古いObservedAtでも構造Compatible）は**現在Gate資格の否定制御**として維持し、必要ならテスト名・説明を正す | merge後に古い後勝ちExpectがテスト失敗するのを修正コードの退行と誤判定しない／逆に古いExpectのため安全修正を取り消さない |
+| **C. #2892の局所修正** | HIST-01/03の独立Expectedを先に固め、Unknown/partial/取得不能を`RepoApplied/Pending`へ昇格しない。failed/diverged/orphanと真正empty historyの回帰を確認 | 新History Registry/外部History修復/DB実作用の実装を混入させない |
+| **D. 統合head** | #2900相当の局所修正・#2892安全履歴・#2887側の期待修正が同一Git treeで存在する場合、**そのexact-head**のGo/Workspace/Repo健全性を別に検証。申告済み旧/新Release要件・必要集合の充足を独立照合 | 互いに異なるPRのgreen CIを足し、合成された新headのPASSだと主張しない |
+| **E. 製品Gate** | 実ProviderでのSchema/CDC/Writer/Commit・Receipt/別Read、旧新Clientの同一Scenario、SHO/外部Consumer、Owner受理の各obligationを証明 | A〜Dの成功を現行Host Grant/正本移管/Contract物理破棄の許可に変換しない |
+
+**合流の選択肢**：本書では原則として#2900の修正を先にレビューし、#2887の特性テストを次の統合headで修正することを推奨。ただしOwnerが単一統合PRを選ぶ場合も、**安全修正と旧期待値の更新を同一統合単位**として扱う。#2887の`MG-29`を削除して論点を隠すのではなく、危険入力を安全に拒否する再現可能なテストへ転換する。
+
+### 19.3 横断的な「入力曖昧性／必要証拠欠落」を取り違えない
+
+ほかのレーンでも、DSL Role定義の重複、JSON duplicate key、Studioで古い要求の後着応答、RunPlanの必要Host Grant未供給など、**「一つを勝手に選んだ」「与えられた分だけで全部と見なした」**ことが偽PASSにつながる反例が存在する。ただし一つの汎用レジストリ・万能Validatorを追加しない。
+
+- **重複の拒否（uniqueness）**：#2897の`StateSnapshot/Provides`だけで解決。正しいDB Instance/Source/Observation世代は#2611/#2622で**明示的に選択**する。配列順や最大`ObservedAt`はAuthorityではない。
+- **既知状態の不確実性（status）**：#2892のHistory`AppliedUnknown`は「観測値が不明」。明確な不一致`diverged`、観測成功の`pending`、適用成功`applied`と混同しない。
+- **観測集合の未完結（closure）**：必要Writer/Batch/Read Scope/Sourceを事前に確定し、`required≠supplied`または`required≠qualified`ならG2〜G5の該当Gate`unknown`。`CheckApplication`の`Checks=[]/Compatible`から「旧Client不存在」を導かない。
+- **時間と効果の失効（freshness/effect）**：同じ入力版・DB Row値に戻るABAであっても、Owner/Grant/Fence/CDC/External Effectが以前の資格へ自動復活するわけではない。停止したGateの前にCommit済みの効果は残り得る。
+
+### 19.4 実装成果を何と呼ぶか
+
+**局所特性テストPASS**＝現行または修正後の判定器の特定条件を検査したこと。**統合版Conformance PASS**＝同じhead上の必要な構造・負例を検査したこと。**実DB/Client観測PASS**＝指定Provider/対象/時点の実作用を独立に観測したこと。**Owner-accepted migration**＝実意味、データ履歴、正本移管、物理破棄の必要判断が揃ったこと。段階を混ぜない。#2900の成果によって#2892やMG-24〜28、外部Consumerまで完成したとは判断しない。
+
+**本節は設計/合流計画のみ。今回#2900の修正コード、#2892本体、実DB/Owner状態は変更しない。**
+
