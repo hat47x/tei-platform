@@ -801,3 +801,42 @@ mainの `internal/plugin/resolve.go`（照合byteは別Evidence）で `Catalog.R
 ### 19.4 採否と証拠の状態
 
 まず#1251 PB-09の同機能A/B/Cで導入設定数・Source変更量・必要Target/Build依存・実Binary/Artifact・検証範囲を比較し、その次に#2889の既存Guard不足の負例を対応するPlugin経路に当てる。比較は独立Expectedを先に固定し、費用/Latencyの数値を捏造しない。Pluginの粒度・公開Contract・Runtime方式は正式採用していない。**今回の§19はDocs-only、Go/DB/Hostの新実行、Bundle比較実測、Owner意味受理はNOT RUN**。
+
+
+<!-- tei-dsh-third-party-plugin-supplychain-20261106 -->
+## 20. DSH型Pluginエコシステムに学ぶ：外部供給・選択・利用責任の分離（2026-11-06、設計・未採用）
+
+### 20.1 DSHから取り込むこと／取り込まないこと
+
+DeepSeek Harness公式[Architecture](https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/architecture.md)と[Cordis Primer](https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/cordis-primer.md)（2026-11-06参照）により、Service key、typed event、inject依存、ProfileとBundle・構成overlay、解除可能な登録を確認。**採るべき本質**は「第三者が能力を提供し、Consumerが必要な契約を選択し、実ライフサイクルを観測できる拡張面」であり、TEIであらゆるデータ/業務RuleをRuntime Pluginへ置換することではない。DSHのordered overlayによる行置換をTEIのBusiness Meaning/Provider/Grantの暗黙勝者選択へ流用しない。DSHの動的Plugin Tree、HMR、常駐LoaderをGo単一Binary/外部Java/.NET/Wasm Targetへ義務づけない。
+
+### 20.2 外部Contributorを受け入れるための最小公開情報（新Manifest Schemaではない）
+
+| 主体 | 提供・確認するもの | それだけで成立しないもの |
+| --- | --- | --- |
+| Contract提案者・保守者 | Contract ID/意味版、型・NULL・Failure・Effect/Scope、Source根拠、独立正負Conformance Case、互換/破壊的変更条件 | 特定案件のOwner意味受理 |
+| Provider/Generator供給者 | Implementation exact digest、出所・供給主体、対象Target、Build input/Toolchainと外部依存、Resource要求、失効・撤回方法 | Contract適合、実行Grant、Runtime安全性 |
+| Bundle配布者 | 高凝集な実装の選択可能集合、内包Module/契約・実装版とPin、ライセンス・既知の制限 | 全Moduleの自動選択・全Targetへの組込み |
+| Project/外部Consumer | Required Contract、明示選択済みImplementation/Lock、実Build/Loaded Artifact、独立Expectedと採用範囲 | 最新Catalog候補の暗黙採用・永続的な現在資格 |
+| 実Host/Provider | 実Principal/Scope/Resource/Grant、Invocation、Effect/Receipt/独立Read | Bundle署名・CI PASSだけで業務完了したという主張 |
+
+**識別と資格を分ける**：Publisher identity/署名は出所、digestはbyte同一性、独立Conformanceは固定版での挙動、Host Authorityは現在許された作用、Owner Acceptanceは案件の業務意味。これらを「検証済みPlugin」という単一真偽値にしない。Community Repository/検索Catalog/配布Bundleの存在は選択済みTargetの利用・現在Grantを意味しない（#951/#1016/#1251/#2600）。新Marketplaceや中央Publisher Registryを先行導入しない。
+
+### 20.3 自己記述Bootstrap・Dependency・更新時の停止線
+
+[#2620](https://github.com/hat47x/tei-platform/issues/2620)の有限Bootstrapと自己記述Role/Operatorを使用し、外部Descriptorは**意味解釈前でも通常DataとしてInspect可能**にする。Required Shape、eager/deferred依存、Role/Operator ID+版、Source occurrence、実装digest、既存Pin/Lockを照合し、eager循環・未Pin推移依存・同名異byte・複数候補の曖昧性を診断する。合法なdeferred Graph参照を誤ってeager Plugin循環と扱わない。Descriptorが正しくParseできても、意味認定・公開契約互換・Host Resource Grantが成立するわけではない。
+
+DSH型の解除可能な登録（Tool/Listener/Service）はLifecycle設計の参考になるが、Unloadによって永続DB Write、既送信通知、配布済みArtifactまで戻るわけではない。Candidate/選択変更・Listener/Resource cleanup・Build/配布・Business Effect/Receiptを別列で確認する（#1223/#1174）。
+
+### 20.4 最小反証とOwner配置
+
+| 否定対照 | 既存受入へ渡す判定 | Owner |
+| --- | --- | --- |
+| 同Plugin ID/versionだがDescriptorまたは実装byteが異なる | 実Pin/Lockに不一致があれば再資格化。単なるVersion文字列を信用しない | #951/#2600 |
+| 未選択Bundleが同名Contractを追加 | 固定Selection/Buildへの非干渉を検査。Default競合を無音解決しない | #1016/#1251 |
+| 配布者署名が正しくても意味・Effect不適合 | 署名だけでProvider Conformance/Owner受理/現在Grantを発行しない | #951/#2514 |
+| DescriptorはInspectできるが推移eager依存が欠落 | Data閲覧を維持しMeaning qualifiedは保留。deferred参照は別扱い | #2620/#988 |
+| Plugin unloadは成功、先行StepのDB効果が確定 | 登録解除と業務Effect rollbackを混同せずReceipt/独立Readで照合 | #1223/#1174 |
+| 外部ConsumerでのProvider実Loadに失敗 | TEI Studio/CLIでの発見・Skill説明を外部可搬性のPASSへ転用しない | #2390/#2513 |
+
+P0は公開可能なContract/Descriptor/Artifact/独立Expectedを既存資料からread-onlyでFit/Gap棚卸し。P1は同名異byte・候補競合・未Pin依存の既存負例と照合。P2は#2390のC0契約だけの公開とC1外部Consumer、#1251の実Go Build、必要時のみ#1223/#1174のLifecycle/実Effectへ進む。**本節は配布規約・第三者登録制度・Plugin ABI/Marketplace/中央Registryを採用するものではない。新Go/Host/DB試験とOwner受理はNOT RUN。**
