@@ -145,3 +145,22 @@ Webアプリケーションでは、UI構成キットだけでなく、HTTP要�
 **既存Issueへの受渡し**：このProfile側は要求→候補→選択の境界（#1016）。Service Contract/現在Authorityは#951、Plugin Package/Bundleは#1251、DSLは#988、Data Providerは#2622、実生成・Buildは#1121/#259/#943、更新費用は#2600/#2018、Effectは#1174。UI Kitの`extends/provide/replace/decorate`を汎用Compositionの優先順位へコピーしない。
 
 検証は上記§14の既存 EX-01〜08／#1251 PB/PBN／#1016 PCF に対応する最小Fixtureを**共有**し、第二の期待値正本を作らない。今回の追補は設計文書のみ。実Go/DB/外部Hostの新E2E、正式Plugin粒度・ABI/Schema、Owner受理はNOT RUN／未採用。
+
+<!-- tei-project-extension-qualification-handoff-20261106-v2 -->
+### 案件Profileの選定結果を「実行資格」と混同しない（2026-11-06追補）
+
+[Runtime/Target Binary Composition §15](RUNTIME_TARGET_BINARY_COMPOSITION_DESIGN.md) の証拠受渡しを、案件の構成表示へ**参照**する。Projectの入力として新しいReceipt/Lock Schemaを設けず、既存Source/Composition/Build/Hostが所有する参照を結ぶread-only投影とする。
+
+| 案件画面・CUIで説明すべき状態 | 表示できる根拠 | 次へ進めない場合 |
+| --- | --- | --- |
+| 要求を満たす方法 | Configure/標準Rule・Operator/Plugin/Target候補と、必要な追加契約 | Plugin化の実需がないなら既存機能を優先 |
+| 構成の選択 | Required Contract・Provider/Generator・Targetの明示Selectionと選択根拠 | 曖昧Provider・欠落Capability・禁止fallbackなら候補保留 |
+| 生成物への収録 | 実消費Source/依存の閉包、Target別artifact/member・actual loaded bytes | 未使用物混入と必要module依存欠落を**別の失敗**として診断 |
+| 実行の資格 | 実Caller/Scope/Host Grantと対象・Source/Model/Operation版 | Build収録だけでは実行可能と表示しない |
+| 実業務の結果 | Request/Attempt、Commit/Unknown、Receipt/独立Read | ACK・Exit0・画面上の成功だけでは業務完了としない |
+
+**案件Ownerへ追加で尋ねるのは結果を変える質問だけ**。単一バイナリが厳密な配布制約なのか、別Processが必要な実障害・更新周期の理由は何か、途中確定の許容とOwnerの回復責務は何か、のうちSource/要件から確定していない事項を選ぶ。細かなDB方言・Go module・Plugin packaging方式を通常利用者の必須入力としない。
+
+**移行時の判定**：選定済みProviderが変わったときは同名FunctionでもTarget Capability、独立Expected、実Read/Write/Receiptを再評価。未選択BundleのCatalog版だけが変わっても、実Selection・実消費・Artifactが不変なら無関係Functionを過剰staleにしない。ただしSource/SQL Asset A→B→A、Provider Default順位、Go init/選択module go.sumの変化を「同じ名だから不変」と扱わない。
+
+**担当への返却**：Project選択は#1016、Contract/Grantは#951/#1174、依存不足・過剰混入は#1251 PB-10/#1167/#2600、UIは#997、DB/SQLは#2622、Targetは#259。判断に必要な不足条件を表示して保留し、第二Resolver・万能Plugin Runtime・独自Host・新Gateを追加しない。新しい実Consumerの横断試験・Owner受理はNOT RUN。
