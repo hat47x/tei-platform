@@ -590,7 +590,7 @@ environment.production:
 - 現行 `internal/stdlib/semantic.go` は `std` の12 primitive（`binary`、`boolean`、`code`、`date`、`datetime`、`decimal`、`identifier`、`integer`、`json`、`money`、`text`、`time`）を `internal/semantic` の外から供給する。既存 `semantic.Type` のKindはprimitive/alias、`Attribute.TypeRef` は既存CanonicalID。新たなshape/union/collectionをSemantic Kindに追加する実装根拠にはしない。
 - 統合済み[#1916](https://github.com/hat47x/tei-platform/pull/1916)は、異なる意味Aliasの暗黙同一視を拒否する局所Reference。Draft [#2584](https://github.com/hat47x/tei-platform/pull/2584)は選択されたSemantic定義の**構造**だけを確認する候補。正本の発行者、Accepted Semantic Set、Contract項目の真正性を確定しない。
 - [#1570](https://github.com/hat47x/tei-platform/issues/1570)の既存Semantic配布/Composition Preflightは、明示選択、内容Digest、検証済み構造と発行者Trustの一部を別々に調べる。これを新規の型解決器に置き換えない。[#951](https://github.com/hat47x/tei-platform/issues/951)のContract発行Authority/Provider Conformanceと[#267](https://github.com/hat47x/tei-platform/issues/267)の意味受理も独立。
-- [Draft #2298](https://github.com/hat47x/tei-platform/pull/2298)の `tei.*` 予約ルート、型の複数Instance、Graphの保証境界は**提案・未統合**。既存 `std.*` TypeRefや `std.message` を暗黙に `tei.std.*` へ変更しない。この文書を理由に他者Draftを編集・統合しない。
+- [#2298](https://github.com/hat47x/tei-platform/pull/2298)の `tei.*` 予約ルート、型の複数Instance、Graphの保証境界は**提案**（#2298は2026-11-03 UTCにmerge済み。統合された設計文書の状態は提案中）。既存 `std.*` TypeRefや `std.message` を暗黙に `tei.std.*` へ変更しない。この文書を理由に他者Draftを編集・統合しない。
 - [#1705](https://github.com/hat47x/tei-platform/issues/1705)の型付き算術Referenceは、数量・単位・通貨・精度・丸め・未取得を既存TypeRefと明示注釈で検証する。単位やCurrencyを全域の新Registryにせず、`std.money`だけから通貨が決まると推定しない。
 - TEI独自Host、Wails、Theia等の共通実行基盤は前提としない。契約の検査と、Target固有の実行強制・Ownerの業務受理・Sourceの鮮度を分離する。
 
@@ -601,7 +601,7 @@ environment.production:
 | Semantic identity | TypeRef、Alias連鎖、受理されたSemantic Set | `semantic.Type`、Shared Acceptance、#1570 | 同じprimitiveが同じ業務型を意味すること |
 | Value shape | field、nullable、one/optional/list/set、schema | #1223のItem Mapping、#951のContract Shape | 同じ型IDなら配列/NULL/列順まで同じであること |
 | Representation | CSV/JSON/SQL Row/PDF/HTML等の実表現と変換 | #988演算/明示Adapter、#943 Build Artifact | JSON互換ならCSVへの情報保存も保証されること |
-| Instance/Scope | 同一Component Typeから生成された複数InstanceとBinding | #1016、#1121、Draft #2298 | Typeの一致が同じProvider・Credential・Dataを選ぶこと |
+| Instance/Scope | 同一Component Typeから生成された複数InstanceとBinding | #1016、#1121、#2298（2026-11-03 UTCにmerge済み、提案中） | Typeの一致が同じProvider・Credential・Dataを選ぶこと |
 | Origin/Acceptance | Publisher/Contract Authority、Source Revision、Accepted意味 | #951、#1570、#267 | Digest一致や署名が業務上の受理を意味すること |
 | Effect/Invocation | read/write/network、Principalが必要か、現在権限とGeneration | #1118、#1174、ADR-0032、Targetの実行境界 | 読み取り値の適合がwrite権限を与えること |
 
@@ -624,7 +624,7 @@ environment.production:
 
 ### 17.4 型付きパイプラインの可視性と限界
 
-Source/Authoring Graph → Resolved/Lowered Graph → Targetの実行・観測という関連を同じ図に示しても、**それぞれ異なる証拠**として保持する。Draft #2298 §15の限定保証（`PlanClosed`、`EffectConfined`、`GraphTraceConformant`）を再定義せず、I/O Mapping側では次の対応に限定する。
+Source/Authoring Graph → Resolved/Lowered Graph → Targetの実行・観測という関連を同じ図に示しても、**それぞれ異なる証拠**として保持する。#2298（2026-11-03 UTCにmerge済み）§15の限定保証（`PlanClosed`、`EffectConfined`、`GraphTraceConformant`）を再定義せず、I/O Mapping側では次の対応に限定する。
 
 - すべてのMapping Edgeはproducer slot/field、consumer slot/field、Contract identity/shape、TypeRef、Source/Accepted revisionの参照を**表示可能**にする。Name一致でEdgeを生成しない。
 - Generator/変換は入力と出力に加え、宣言されたOperator/Provider、Stage、Loss（保持/明示変換/非可逆/未証明）、Error/Unknownを可視化する。隠れた変換、暗黙の欠損値補完、欠落Edgeの黙認をしない。
