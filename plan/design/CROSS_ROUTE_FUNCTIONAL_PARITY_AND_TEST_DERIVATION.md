@@ -648,7 +648,7 @@ Ownerは#1180（Scenario）、#2813/#988（DSL Candidate）、#2514（Oracle）�
 - [#2828](https://github.com/hat47x/tei-platform/pull/2828) のHEAD `77baf709` [Repository Health #41850080590](https://github.com/hat47x/tei-platform/actions/runs/41850080590) は**completed/success**。旧§15の「Go/CI未確認」は作成時履歴であり、現時点では限定Case intakeのGo回帰成功と区別する。AIの未知Case自律発見・独立Oracle・Business Coverageは未確認。
 - [#2830](https://github.com/hat47x/tei-platform/pull/2830) のHEAD `019da011` [Repository Health #41851323500](https://github.com/hat47x/tei-platform/actions/runs/41851323500) は**completed/success**。保存済6 Stepの全IDと生成argv、各Stepの実行モード・`evidenceNature`の限定同値を検査する。既存`Verified=true`の意味を実Provider/Command/Web資格に拡大しない。
 - [#2870](https://github.com/hat47x/tei-platform/pull/2870) は、in-memory `unknown`が再起動相当の新Lifecycleに残らないという**欠陥特性をテストで確認**。実PostgreSQLの同Key `IDEMPOTENT_REPLAY`は二重適用を抑えた限定証拠であり、durable Stage実装や新Key ABA防止が達成されたわけではない。
-- [main統合済 #2882](https://github.com/hat47x/tei-platform/pull/2882) はWorkspace SourceからPeriod/Effect/RunPlanを通す新テストを追加。期間が閉じたCaseで最初のStep未呼出という局所Expectedと、一般的なRunPlan途中停止で先行Effectが残り得る負例（#1130/#2616）を混同しない。**本追補では当該merge後HEADの実CIログ未照合**。
+- [main統合済 #2882](https://github.com/hat47x/tei-platform/pull/2882) はWorkspace Source→Period/Effect/RunPlanのGo試験を追加。PR HEAD `ee2b3796`の[Repository Health #42097287333](https://github.com/hat47x/tei-platform/actions/runs/42097287333)でGo全体テスト・vet・gofmt等**completed/success**を実ログ確認。これは期間closedで最初のStep未呼出、openで合成Step resolved、Effect Observer未登録でblockedという**局所合成**の証拠。必要Guard集合の自動網羅、実Provider Effect、一般RunPlan途中停止の先行Effectゼロを証明しない。
 - [#1163](https://github.com/hat47x/tei-platform/issues/1163) の実Web・実PG・Schema Gateは別々のHEAD/Attempt。監査が`INCOMPLETE/productGate UNQUALIFIED`である限り、個別CI成功を一改訂Product GateのPASSへ合算しない。
 
 ### 18.2 AI-first P0で受理すべき最小の比較票
@@ -657,8 +657,8 @@ Ownerは#1180（Scenario）、#2813/#988（DSL Candidate）、#2514（Oracle）�
 | --- | --- | --- |
 | **A. Scenario Inventory** | 6 Step ID、必須Case/Obligation、Source/Scenario/Fixture/Plugin Pin、Expected Nature | 各Stepの実Discovered/Attempted/Outcome/Receipt。6件が実行済みでも業務全体の分母にしない |
 | **B. AI New Candidate** | 既存Anchor保護、[#2890](https://github.com/hat47x/tei-platform/pull/2890)の追加Scenario/Fixture（Quantity/Line Number固定・Relation Keys `[1,2]→[1,1]`）、新規2 Step ID・対象Scope、独立Expected/Known Mutantの出典 | **JSONのみ追加は実証可能な変更として作成済み**。実Glob発見/各Step実走/Actualと事前Expectedの差は新HEADの実CI/CLIで別検証。候補Oracleは未認定、独立Mutant未実行。Case数のみでは採用しない |
-| **C. Required Check** | Operationごとの必要Check集合（Period/Effect/Grant/Observer/Schemaのうち適用されるもの） | 渡したCheckのPASSと必要Checkの網羅を別判定。未指定が残る場合はprecondition completeを拒否（#2616） |
-| **D. Effect and Restart** | Stepの実行順・OperationID・未知Commit・Provider Receipt/別Connection Read、同Key/新Keyの再実行Expected | 全Plan`blocked`は先行StepのEffectゼロを意味しない。Restartでstageが失われても「安全」と言わない（#2870/#1174） |
+| **C. Required Check** | Accepted Contract・Workspace/Capability・対象Host Grantなど、**候補やSupplied Checksとは独立のRequired出典**をOperationごとに固定。適用範囲外のCheckは加えない | `Required / Supplied / Evaluated / Enforced-at-Effect`の対応を同一Source/Operation/Attemptで比較。未指定が1件でも残れば`precondition complete`を拒否。#2882の合成Guard PASSを実Commitフェンスへ昇格しない（#2616/#2884/#2860） |
+| **D. Effect and Restart** | Step順・OperationID・Attempt/Generation、未知Commit・Provider Receipt/別Read、同Key/新Key Expected、Selection/Context Epoch | 全Plan`blocked`は先行StepのEffectゼロを意味しない。Restartでstage消失・新Key ABA再適用を安全とせずReceipt照会優先。非同期の旧Context結果を現在画面へ誤適用しない（#2870/#1174/#2616 §20） |
 | **E. Cross-layer Qualification** | Source・Oracle・Consumerの同一Attempt資格、Owner Meaning状態、対象TargetのScope | L1/L2/L3/L4/L5の単純合算を拒否。#1163/#1119のGate Ownerが同一改訂の必要証拠を判定する |
 
 **Exit**：A/Bで新規Caseが実発見・実走し、独立Expectedで既知Mutantを判別した有限の正負対を確認できること。C/Dで、テストPASSでも製品要件未充足となる既知負例を正しく報告できること。Eは既存Ownerの実Provider/Host証拠が揃う段階で昇格し、AI P0の開始条件にはしない。test-only Scenario候補・Ledger Viewから製品実行許可を得たとみなさない。
