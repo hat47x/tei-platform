@@ -140,9 +140,23 @@ go run ./tools/reference-expected-state-update/cmd/tei-expected-state-update \
 
 実DB経路（`PGStore.Apply`）の`Result`も同じ`RecordRun`で記録できる。`TestPGRunIsRecordedAndReproducedWithoutRawValues`が、実PostgreSQLで適用→競合→再送を実行し、記録の再現と生値非保存を確認する（`TEI_EXPECTED_STATE_PG_DSN`設定時のみ）。
 
-### 未決
+### 署名（任意）
 
-- 実際の保存先（ローカルファイル以外）、保持期間の運用値、監査アクセス権、記録の暗号学的署名は未決。
+`SignRecord` / `VerifySignedRecord` が、記録をEd25519署名のenvelopeで包む。署名は`keyId`とrecordのcanonical JSONを対象にし、keyIdの付け替え・entry改変（digest再計算を含む）・別鍵での検証を拒否する。参照実装は鍵を持たず、鍵は呼出側（Host）が供給する。署名なしの既存recordが既定のままである。
+
+### 本番方針（仮承認・実物ベースで見直し）
+
+2026-11-06のOwner仮承認として、次を暫定の運用方針とする。**本番保証ではなく、実物の監査要件・法令・テナント分離を確認して見直す**（#2845）。
+
+| 項目 | 仮方針 | 実装状況 |
+| --- | --- | --- |
+| 保存先 | 共有オブジェクトストレージ（S3互換）。参照はローカル1実行1ファイルのまま | 未実装 |
+| 保持期間 | 最新1000件かつ90日。削除は運用承認を要する | `RetainRuns`は件数のみ |
+| 監査アクセス | 読取を監査ログへ記録し、テナント・案件単位で分離 | 未実装 |
+| 署名 | Ed25519、`keyId`付き、Host供給鍵。ローテーションはkeyIdで識別 | `SignRecord`/`VerifySignedRecord` |
+| 再現性 | record・署名・元Evidenceが揃う対象に限り条件付きで再計算 | `VerifyRecord`（合成・実DB） |
+
+`digest validated` ≠ `record authentic` ≠ `input replayable` ≠ `effect committed` ≠ `disclosable` の区別は維持する。署名は「record+signatureの同時改変」を鍵の管理下で検出する手段であり、鍵が漏えいした場合や、元Evidenceが失われた場合の再現性を保証しない。
 
 ## 実行時段階（unknown / takeover）
 
@@ -176,6 +190,7 @@ go test ./tools/reference-expected-state-update/... -count=1
 - 期待値が空文字であることと、期待値を渡していないことを区別する
 - `digest`比較が生の値を要求へ載せず、比較入力を照合値の長さに抑える
 - 同じ入力から同じ状態・結果・観測・digestを得て、入力を変更しない
+- 署名した記録は検証を通り、entry改変（digest再計算を含む）・別鍵・keyId付け替え・欠落署名を拒否する
 
 ## 範囲と非主張
 
@@ -187,4 +202,4 @@ go test ./tools/reference-expected-state-update/... -count=1
 - **ABA（RCAS-01）**: 値一致CASだけでは同じ論理Commandを一つの効果に束縛できない。別idempotency keyでの再適用を反例として`pg_aba_test.go`に固定した。対象の版属性・operation identity・Owner受理済み再試行Policyの選択は未決
 - **再起動（RCAS-02）**: `RuntimeStage`はin-memoryであり、別プロセス・別workerはunknownの記録を持たない。`pg_restart_test.go`は、再起動後の再Dispatchが拒否されないことと、同じidempotency keyの再送だけがProviderの記録で二重適用を防ぐことを固定する。durable owner/generationの実装は未着手
 - **応答喪失（RCAS-03）**: TCP proxyでcommit後のCommandCompleteを呼出側へ渡さず、サーバは確定済み・呼出側は不明になる実接続断を`pg_ack_loss_test.go`で固定する。process死亡・再起動を伴う障害は未実施
-- 観測の永続保存・保持期間・監査は未決
+- 観測の保存先・保持期間・監査アクセスは仮方針（上記）で、共有ストレージ・監査ログ・保持運用は未実装。署名は参照実装に追加したが、鍵の保管・ローテーション・失効の運用は未実装
