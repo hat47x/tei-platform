@@ -710,7 +710,7 @@ D0〜D2の第一回比較では、#1861の固定23ベクトルとContract、実�
 
 <!-- tei-bundle-granularity-and-required-guard-20261106 -->
 <!-- tei-quote-comparison-actual-baseline-evidence-20261106 -->
-### 18.7 既存コード・CIから判明した比較の出発点と残り一つの決定的差分（証拠更新／新試験NOT RUN）
+### 18.8 既存コード・CIから判明した比較の出発点と残り一つの決定的差分（証拠更新／新試験NOT RUN）
 
 §18.1のD0〜D3について、**2026-11-06時点で閲覧できるmainのReferenceと過去CI**を照合し、計画上の「すべて未実行」という旧表現を補正する。GitHubのSourceと過去CIを確認したことであり、本PR HEAD上でテストを実行したことではない。
 
@@ -722,6 +722,48 @@ D0〜D2の第一回比較では、#1861の固定23ベクトルとContract、実�
 | [未受理23候補](../../reference/candidates/order-quote/semantic-vectors-v0.json) | 同一Contractの固定Expectedとして複数Referenceに再利用。業務拒否・入力解析拒否・Runtime起動失敗は別義務 | 独立OracleのMutant検出率、業務Owner正式受理、別意味版の互換性 |
 
 **P0で実施すべきこと**は、新しいPlugin Engineではなく、(1)実23ケースのSource/Oracle revision・ケースごとの拒否段階・既存Test/CIのHEADを一枚の既存#2514/#1180 Evidence参照で照合、(2)現行main exact-headの既存Go Process/異言語/候補Componentのうち実行可能なものを再資格化、(3)D0の純計算とD1の静的Providerを**同じGo Target/同じ計算意味・独立Oracle**で検証する最小差分を#1251/#951の現行契約上で特定する、の順。現行Go見積もりSourceは `plugins/reference-order-quote/main.go` の独立Process `package main` であり、単にそのpackageをimportして静的Provider検証済みとは言わない。再利用を可能にする抽出・Adapterが本当に必要かを測定し、業務Rule/Expectedの第二正本を作らない。
+
+<!-- tei-quote-preflight-skip-nonexecution-gate-20261106 -->
+
+**次回実証で先に固定する最小の実行判定**：既存 `reference/quote-cross-language/README.md` にある `go test -count=1 -run '^TestIndependentGoAndJavaScriptQuoteSemanticParityD3の過去CI成功は「WIT実Component実行が未実証」という旧課題を当該固定版・限定Host範囲では更新するが、現在HEADや正式Runtime Authorityの資格にはしない。まだD0/D1/D2の同条件費用・追加保守負担が測れていない以上、D1/D2/D3をv1標準Plugin ABI/方式として固定しない。次に効果が大きい未解決は**同じGo RuntimeでのD0 vs D1の実物差、そして実Consumerが独立Providerを必要とする要求の証拠**である。
+
+**状態**：過去の既存Source/CIの限定証拠を訂正して参照したdocs-only更新。P0の現HEADテスト再実行・新D0/D1・Mutant検出実測・性能測定・業務Owner受理は今回NOT RUN。
+
+## 19. 高凝集Bundleの適正規模と実行前提の完全性（2026-11-06、設計・未採用）
+
+### 19.1 Bundleのサイズはファイル数ではなく、実変更の結合度で判断する
+
+§18の同一要求D0（Plugin不要）/D1（静的Provider）/D2（Process）比較は維持する。Bundle分割を採否する際は、#1251 PB-09に次の**実測可能な反証**を付加する。細分化と統合のどちらも既定の正解にはしない。
+
+| 観測軸 | 高凝集Bundle案が成立する条件 | 過剰な統合・分割の兆候 |
+| --- | --- | --- |
+| 利用者の操作 | 関連機能の導入と更新を一括で説明できる | 互いに無関係な機能の選択・設定まで強制する／分割しすぎで依存設定が増える |
+| 変更の波及 | 共通契約・UI/DSL/Generator等の関連変更を局所検証できる | 未使用実装の改版で無関係TargetのBuildが変わる |
+| Versioning | Bundle版と内部Contract/Implementation版を追跡できる | 一つの実装パッチで全契約を意味的に再受理させる |
+| 依存・ビルド | 実Selected/Build-consumed/LinkedがTargetごとに明示できる | 共通packageのinit・blank import・embedや全件登録で未使用実装まで混入する |
+| 権限・作用 | 同梱したread-only解析とSource書換／DB Writeの作用を別々に制御できる | Bundle全体の承認・署名だけで個々のResource/Effectを自動許可する |
+| 保守費用 | 同じ固定Expectedで変更箇所・試験/配布・復旧の負担を比較できる | 分割/統合に測定可能な利益がないのに新ABIやResolverを増設する |
+
+比較するのは同じ機能・同じ業務Source/独立Expectedを実現する、(A)通常Library/標準Data Operations、(B)細分化Plugin群、(C)高凝集Bundleの少数の対照。B/Cとも論理Contractと実選択・実消費の区別は共通。独立配布や別Targetへの展開要求が存在しない純粋演算やOwner RuleはAで完了してよい。サイズを一律のmodule数・LOC閾値で固定しない（#1251/#2018）。
+
+### 19.2 既存Goコードから確定した上限：ResolvedSetはFunction-usedの証拠ではない
+
+mainの `internal/plugin/resolve.go`（照合byteは別Evidence）で `Catalog.ResolveEnvironment` は選択Bundleの `Plugins` 要求をキューに展開し、依存を解決して `ResolvedSet` を作る。`internal/plugin/model.go` の `Bundle{ID,Version,Plugins}` と旧 `CapabilityKind` は現状の実装形状であり、将来の一般Plugin ABIを決定する契約ではない（#951/#1223）。**Bundle内の全Requirementが解決できたことは、特定Functionに必要、Go Binaryへリンク済み、現在Grant取得済みのいずれの証明でもない**。実利用とBuild closureの追跡は#1251/#1089/#1167/#2600へ委譲する。
+
+### 19.3 Capabilityを選択できることとRequired Guardを満たすことを分ける
+
+他レーン[Draft #2889](https://github.com/hat47x/tei-platform/pull/2889)は、Go `internal/execution.RunPlan` への**toy Step/Journalを使った限定的な実Go特性テスト**。専用CIでは3件PASSが報告されているが、実DB/Host認可/Owner受理ではない。特徴付けの内容は、Callerが期間チェックだけを渡してGrantチェックを提供しないとtoy Stepが `completed` になり得る、Observerの存在は実Effect観測ではない、先行Step後のblockは全Effect=0の証明ではない、という境界である。
+
+ここからPlugin連携の受渡し票には、当該操作の**Required Guards（選択済みContract/Meaning/Targetから必要と判断した検査）／Supplied Guards（Callerが渡したもの）／Evaluated Guards（実際の現在版・対象に対し評価したもの）／Effect・Consumerの独立Evidence**を別欄に設けることを提案する。必要集合の導出自体が不明なら `unknown` として実行資格を主張しない。`preconditions != nil`・Pluginの `read-only` 宣言・Provider署名・RunPlanの `completed` だけでGuard completenessを証明しない。全Operationへ同じGuardを強制せず、純粋計算には該当しない効果検査をnot-applicableとする。
+
+**最小負例の割付**：#1130/#1129/#1174の既存RunPlan・Effect Fenceで「必要Grant未供給」「Observer存在のみ」「途中block後の先行結果」を区別。#951は選択Contract/Provider・Capability要求の束縛、#1251はBundleが増えても権限が増幅しないこと、#2514は独立Expectedの品質を担当する。第二RunPlan/Guard Registry/TEI共通Hostを作らない。実Provider Grant・Commit/Receipt・外部HostとWindows Studioは別の実受入を必要とする。
+
+### 19.4 採否と証拠の状態
+
+まず#1251 PB-09の同機能A/B/Cで導入設定数・Source変更量・必要Target/Build依存・実Binary/Artifact・検証範囲を比較し、その次に#2889の既存Guard不足の負例を対応するPlugin経路に当てる。比較は独立Expectedを先に固定し、費用/Latencyの数値を捏造しない。Pluginの粒度・公開Contract・Runtime方式は正式採用していない。**今回の§19はDocs-only、Go/DB/Hostの新実行、Bundle比較実測、Owner意味受理はNOT RUN**。
+ ./tools/reference-capability-transport` を、対象Source/Toolchain/OS/Node版・実Provider/Oracle byteを固定した独立Attemptで再実行する。上記TestはWindows環境、またはNodeが未インストールのとき `t.Skip` する。したがって**Goコマンドのexit 0だけを23件実行PASSとしない**。Go `Test` が本当に実行されたか（PASS/SKIP）、実Go BinaryとNode Processの双方が起動し、23件が想定された意味/拒否層まで到達したか、既存TraceとArtifact digestを区別して記録する。これは同じテストの新HEAD再資格であり、新しいTest/Runnerを増やさない。
+
+**Static D0/D1の証拠上限**：上記Testは両者とも既存 `process-stdio-v1` Carrierを使う**独立子Process比較**。Go ProviderがGo製であることを、同一Go Targetのin-process D0・静的D1の実測と数えない。D0/D1には同一計算ロジックの呼出し入口・選択依存・実Targetを実際に用意した後、同じ23 Oracleで比較する。その費用が追加価値を超える場合は、追加機構よりPlugin不要案を選択候補として保持する。
 
 **採否の補正**：D2の存在証拠だけでD2採用としない。D3の過去CI成功は「WIT実Component実行が未実証」という旧課題を当該固定版・限定Host範囲では更新するが、現在HEADや正式Runtime Authorityの資格にはしない。まだD0/D1/D2の同条件費用・追加保守負担が測れていない以上、D1/D2/D3をv1標準Plugin ABI/方式として固定しない。次に効果が大きい未解決は**同じGo RuntimeでのD0 vs D1の実物差、そして実Consumerが独立Providerを必要とする要求の証拠**である。
 
