@@ -147,8 +147,8 @@ func TestSelectedSemanticViewDoesNotResolveInvalidDeclarations(t *testing.T) {
 func TestSelectedSemanticPreludeIsReusableAcrossPipelineRoles(t *testing.T) {
 	cases := []struct {
 		name, fromName, toName string
-		fromRef, toRef        core.CanonicalID
-		want                  composition.ProposalVerdict
+		fromRef, toRef         core.CanonicalID
+		want                   composition.ProposalVerdict
 	}{
 		{"file-bytes", "binary", "binary", "std.binary", "std.binary", composition.ProposalCandidate},
 		{"etl-text", "text", "text", "std.text", "std.text", composition.ProposalCandidate},
