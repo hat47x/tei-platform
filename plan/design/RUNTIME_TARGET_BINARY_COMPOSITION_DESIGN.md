@@ -613,10 +613,10 @@ P3：実外部Host/DB・長寿命Targetの更新、現在Grant/Lease、partial E
 | --- | --- | --- |
 | **D0：Pluginなし** | 既存の純粋なGo Native/Node JS計算・ローカル関数として使用。Provider解決/動的Loader/Process transportを要求しない | 既存Issueに限定基線がある。今回のexact revisionで再実行/受理した訳ではない |
 | **D1：静的Provider** | 同じ意味契約を明示選択した実装としてGo単一Binaryへ含める案。必要なら薄いAdapterに留める | Plugin化による独立更新・再利用の追加価値、実Build closure/物理除外/起動時間は未実証 |
-| **D2：独立Process Provider** | 同じContract/Expectedを既存Process BridgeのHost Guard/Artifact pinへ接続する案。実起動子Processと実Transport/unknownを観測 | 既存Process Bridgeは**別のReferenceの試験**。quote-lines 23件を同一Process経路へ通した証拠はまだない。Adapter未存在ならNOT RUN/unsupported |
-| **D3：Wasm Component / 外部Host** | #1861のWIT/Component比較案。D1/D2とは別のTarget選択候補 | WIT型投影は実Component Guest/複数Host動作の証明ではない。初回D0〜D2の前提にはしない |
+| **D2：独立Process Provider** | 同じ見積もりContract/Expectedを既存stdio transport/Runtimeへ接続。Go／JavaScriptの独立実装、Host Guard、実起動子Processと実Transportを区別して観測 | **既存の同Contract 23件Process比較は存在**（`tools/reference-capability-transport/quote_go_js_vectors_test.go`）。一方、同じ23件を現在のRuntime Registry/正式Provider Conformance/Host Grantへ直列に通した証拠、D0/D1との同一Target比較は未確定。#1145の旧Carrierは共通ABIではない |
+| **D3：Wasm Component / 外部Host** | #1861のWIT/Component比較。D1/D2とは別のTarget・Artifact/Host実現候補 | **実Componentの限定CI証拠あり**：2026-10-15の[CI #38746502755](https://github.com/hat47x/tei-platform/actions/runs/38746502755)でNode、実Chromium（Jco変換成果物）、Wasmtime（元Component直接呼出し）が固定23件に対する正常8・Ingress拒否7・Guest拒否8を検証。ただし3 Hostが全23件をGuest呼出したわけではなく、実Host Authority/意味受理/製品採用や現PR exact-headを証明しない |
 
-D0→D1/D2を自動的な「成熟段階」としない。**D0が要求を満たし、独立更新・障害隔離・外部Consumer等の追加必要性がないなら、D0選定で正常終了**してよい。D2を他ProcessテストのPASSで埋めない。#2090のProject Hookや#997のUI Kitは本試験とは異なるContractであり、同じ23 Expectedを機械的に転用しない。
+D0→D1/D2を自動的な「成熟段階」としない。**D0が要求を満たし、独立更新・障害隔離・外部Consumer等の追加必要性がないなら、D0選定で正常終了**してよい。D2の既存同Contract Processの限定実績を保持しつつ、別ContractのProcess Bridge PASSや別Attemptの実行を、D0/D1/D2の一貫した最新比較に合算しない。#2090のProject Hookや#997のUI Kitは本試験とは異なるContractであり、同じ23 Expectedを機械的に転用しない。
 
 ### 18.2 実行前に固定する比較条件
 
@@ -638,7 +638,7 @@ D0→D1/D2を自動的な「成熟段階」としない。**D0が要求を満た
 
 **停止/選択条件**：既存の純粋計算で十分なら非Plugin案を残す。複数Consumer・独立実装版・Target固有対応が具体的に必要になったときだけProviderを比較する。実隔離・個別更新が必要ならD2の候補評価に進むが、厳密な単一Go Binary要件と矛盾するときはD2を棄却する。実DB書込みやCommit不明はこの23件に紛れ込ませず、別途#1174/#1130の既存Write Scenario・実独立Readへ段階的に進む。
 
-**責務と実証状態**：#1016は案件要求と方式選定、#1861/#2390は外部Consumer・WIT必要性、#951/#1145はContract/Transport、#1251/#1167/#2600は未選択混入・必須依存・性能、#2514/#1180/#1163は独立Expected/改訂Evidence、#1174は実Effect。今回のD0再試験、D1/D2のquote-lines具体実装、23件横断比較、定量測定、Owner正式採用は**NOT RUN/NOT ACCEPTED**。新ABI、全Plugin共通Process Runtime、第二Resolver/Oracle/Hostは増設しない。
+**責務と実証状態**：#1016は案件要求と方式選定、#1861/#2390は外部Consumer・WIT必要性、#951/#1145はContract/Transport、#1251/#1167/#2600は未選択混入・必須依存・性能、#2514/#1180/#1163は独立Expected/改訂Evidence、#1174は実Effect。今回のD0再試験、D1の同一Go Target静的Provider構築、D0/D1/D2を揃えた23件横断比較、今回のexact-head再実行と定量測定、Owner正式採用は**NOT RUN/NOT ACCEPTED**。D2単独の既存実Process実装・限定23件実績は上記のとおり保持する。新ABI、全Plugin共通Process Runtime、第二Resolver/Oracle/Hostは増設しない。
 
 <!-- tei-input-closure-selection-negative-controls-20261106 -->
 ### 18.4 方式比較より前に「必要Sourceが読まれたこと」を確定する（#2822/#2823）
@@ -670,7 +670,7 @@ D0〜D2の第一回比較では、#1861の固定23ベクトルとContract、実�
 | --- | --- |
 | Meaning/Shape | 数量・通貨・小計、NULL/欠損、順序・多重度、金額精度、業務拒否と実行失敗/unknownを、実際のAdapter前後で独立照合。表面のJSON型・結果文字列が同じでも契約同等とはしない |
 | Oracle independence | 独立Expectedの由来とProducer/Observerの独立性を示す。意図的な通貨無視・小計変更・業務拒否→技術失敗の誤変換等のMutantを、**既存の同じOracleが検出するか**計測。検出漏れと未実施を隠さない |
-| Actual implementation | D1は実選択Provider/Go binary/Link/Loaderまで、D2はquote-lines自身のAdapter/子Process/Host Guard/実Artifactまでを観測する。他ContractのProcess BridgeのPASSはD2の23件PASSに流用しない |
+| Actual implementation | D1は実選択Provider/Go binary/Link/Loaderまで、D2は既存Go/JSの23件Process比較を出発点に、同一Attemptの実Runtime Registry/Conformance/Host Guard/実ArtifactとD0/D1比較の不足を追加観測する。他ContractのProcess BridgeのPASSは同Contractの新しい上位資格に流用しない |
 | Same-environment cost | D0対D1の差を評価するときは同じGo Target・Host・OS・Toolchain・Source revision・負荷でclean/incremental build、起動・定常Latencyとサイズ/依存を反復測定。Go対Nodeの実行時間差をPlugin化の効果と見なさない |
 | Negative controls | #1251の未使用実装混入/必要依存欠落、#2600の誤skip/過剰失効、#2822/#2823の必須Source未ロードと、D2のHost拒否・異byte起動物・timeoutを別Failureとして分類 |
 | Claim ceiling | 23件の結果一致はread-only Previewの限定一致。Owner Meaning受理、OS隔離、実DB更新/Receipt、全Target/本番互換性は別。該当しないWrite義務はnot-applicable、未実施はNOT RUN |
@@ -709,6 +709,24 @@ D0〜D2の第一回比較では、#1861の固定23ベクトルとContract、実�
 **状態**：他レーンの設計・Issueの成熟した負例を方式選定の受入上限へ参照接続したdocs-only追補。実23件、実Read trace、二DB、OS隔離、dynamic dependencyの実装・性能、Owner受理はこの追補では**NOT RUN／未採用**。
 
 <!-- tei-bundle-granularity-and-required-guard-20261106 -->
+<!-- tei-quote-comparison-actual-baseline-evidence-20261106 -->
+### 18.7 既存コード・CIから判明した比較の出発点と残り一つの決定的差分（証拠更新／新試験NOT RUN）
+
+§18.1のD0〜D3について、**2026-11-06時点で閲覧できるmainのReferenceと過去CI**を照合し、計画上の「すべて未実行」という旧表現を補正する。GitHubのSourceと過去CIを確認したことであり、本PR HEAD上でテストを実行したことではない。
+
+| 既存の実物・根拠 | 実際に確認できる範囲 | まだ断定できないもの |
+| --- | --- | --- |
+| [quote Go Process](../../plugins/reference-order-quote/README.md)、[Process比較テスト](../../tools/reference-capability-transport/quote_go_js_vectors_test.go)、[cross-language](../../reference/quote-cross-language/README.md) | 同じ未受理23ケースでGo/JavaScriptの独立したProcess Providerを既存stdio Carrierで比較するテストが存在。Goは隔離されたGo moduleからBuild。入力重複キー・大整数・欠損・業務拒否とProcess失敗を分離する負例もある | 最新PR exact-headの再実行、Go静的D1との一対一費用比較、全23件の正式Provider/Host Grant適合 |
+| [Runtime実Process試験](../../tools/reference-capability-transport/runtime_authorized_quote_process_test.go)・[候補形→Runtime直列試験](../../tools/reference-plugin-capability-contract/order_quote_runtime_chain_test.go) | 特定の見積もり要求について、合成Shape/Provider証拠、実Runtime Registry、テスト用Digest検証、子Process、結果確認を結ぶ限定試験が存在 | 合成Publisher/Conformanceを正式Authorityとみなせない。実Sandbox/Lease、同一23件を通した本番GrantやOS実隔離 |
+| [Component候補](../../reference/quote-component-candidate/README.md)・[専用CI #38746502755](https://github.com/hat47x/tei-platform/actions/runs/38746502755) | 2026-10-15、固定HEAD `7a3b65d228937d2df56b11afe0ed1fbc4b5936ea` で成功。Node/実ChromiumのJco変換成果物、Wasmtimeの元Component直接呼出し。正常8件／Ingress拒否7件／Guest拒否8件（Guest呼出しは各Host16件） | 同じ生ComponentをBrowserが直接実行したわけではない。未受理業務意味・Production Authority・全言語/全Target・このPRの現在HEADのPASS |
+| [未受理23候補](../../reference/candidates/order-quote/semantic-vectors-v0.json) | 同一Contractの固定Expectedとして複数Referenceに再利用。業務拒否・入力解析拒否・Runtime起動失敗は別義務 | 独立OracleのMutant検出率、業務Owner正式受理、別意味版の互換性 |
+
+**P0で実施すべきこと**は、新しいPlugin Engineではなく、(1)実23ケースのSource/Oracle revision・ケースごとの拒否段階・既存Test/CIのHEADを一枚の既存#2514/#1180 Evidence参照で照合、(2)現行main exact-headの既存Go Process/異言語/候補Componentのうち実行可能なものを再資格化、(3)D0の純計算とD1の静的Providerを**同じGo Target/同じ計算意味・独立Oracle**で検証する最小差分を#1251/#951の現行契約上で特定する、の順。現行Go見積もりSourceは `plugins/reference-order-quote/main.go` の独立Process `package main` であり、単にそのpackageをimportして静的Provider検証済みとは言わない。再利用を可能にする抽出・Adapterが本当に必要かを測定し、業務Rule/Expectedの第二正本を作らない。
+
+**採否の補正**：D2の存在証拠だけでD2採用としない。D3の過去CI成功は「WIT実Component実行が未実証」という旧課題を当該固定版・限定Host範囲では更新するが、現在HEADや正式Runtime Authorityの資格にはしない。まだD0/D1/D2の同条件費用・追加保守負担が測れていない以上、D1/D2/D3をv1標準Plugin ABI/方式として固定しない。次に効果が大きい未解決は**同じGo RuntimeでのD0 vs D1の実物差、そして実Consumerが独立Providerを必要とする要求の証拠**である。
+
+**状態**：過去の既存Source/CIの限定証拠を訂正して参照したdocs-only更新。P0の現HEADテスト再実行・新D0/D1・Mutant検出実測・性能測定・業務Owner受理は今回NOT RUN。
+
 ## 19. 高凝集Bundleの適正規模と実行前提の完全性（2026-11-06、設計・未採用）
 
 ### 19.1 Bundleのサイズはファイル数ではなく、実変更の結合度で判断する
