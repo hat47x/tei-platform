@@ -927,3 +927,59 @@ Graph/時系列/N次元への適用は**設計仮説**であり、SQLite11件を
 実証は1 Providerの2 SQLから始め、第二DB、Studio/SHOの全実装、Writer/Effect、セルフビルドはP0のHard dependencyにしない。Source/Query/Rule/Grant変更時は影響するClaimだけ再資格化する。Source A→B→Aでも中間履歴や現在権限が保たれたとは推定しない。性能・追加Adapter/コード・誤ったcomplete/false-qualification件数は#2018へ、独立Expectedは#1131/#1180/#2514の既存正本へ委譲する。
 
 **2026-11-06の資格**：文書追補。既存独立SQLite11件の再実行成功とGitHub記録の照合はあるが、TEI実Selector/Worker、二SQL実Provider Page、RLS、SHO/AI実送信、Owner意味受理はNOT RUN。PR #2496はDraft維持・main未統合。新Public Schema、Host、Cursor/Query/Cache Engine、採用済みADRは増やさない。
+
+<!-- tei-data-form-bitemporal-relation-claim-composition-20261106 -->
+## 23. 時間付きRelationの構造変換：値一致・履歴・更新対象を分離する（2026-11-06）
+
+**今回の追加対象**：§15（一般の非可逆写像）、§16（条件付きClaim Bridge）、§22（六つの同一性）を繰り返さず、**一つの構造から得た複数のProjectionが同じ値になっても、valid/known時点・Relation occurrence・Claim必要条件を保存しているとは限らない**ことを、組織E1→E2の未接続境界に結ぶ。#2497が構造保存/編集の共通条件、#2389/#1126が組織/Relation意味、#2506が実Function Context/Result Slice、#2586が同一Attemptのread側、#2582が失効、#2516が開示を担う。二重のTemporal Modelや新Core TypeKind、新証拠Registryを作らない。
+
+### 23.1 同じ業務有効日でも、知識時点が異なれば集合が異なる
+
+公開人工Fixture（外部の実業務データではない）を次のように固定する。対象有効日を2026-02-05とし、観測される組織Relationを当初の知識時点2026-02-05と、訂正後の知識時点2026-03-01で比較する。
+
+| Relationship occurrence | Person→Unit | Valid time | Known time | 備考 |
+| --- | --- | --- | --- | --- |
+| r1 (旧版) | P1→U1 | 2026-01-01以降 | 2026-01-02〜02-10 | 当初の認識 |
+| r1 (訂正版) | P1→U1 | 2026-01-01〜02-01 | 2026-02-10以降 | 同一occurrenceの有効期間訂正 |
+| r2 | P1→U2 | 2026-02-01以降 | 2026-02-10以降 | 遡及追加 |
+| r3 | P2→U1 | 2026-01-01以降 | 2026-01-03以降 | 無変更 |
+| r4 | P1→U3 | 2026-02-01以降 | 2026-02-10以降 | 遡及追加 |
+
+有効日2026-02-05で **knowledge cut 02-05** のRelation集合は r1,r3、**knowledge cut 03-01** は r2,r3,r4。Distinct Personは双方P1,P2だが、Relation occurrenceは2→3となる。「人物が二人いる」というClaimの値と「P1の所属」「組織別Count」「編集対象occurrence」は異なる。U1/U2は共に画面名Salesという人工条件も含むのでlabel一致からUnit Identityは復元できない。
+
+この例では *valid time（その関係が業務上いつ有効だったか）*、*known time（その解釈をいつ把握していたか）*、*Provider/Read Cohort（実際にどの入力を読んだか）*、*Consumerの現在Grant/送出時点* を混同しない。最後の二つは当Fixtureで実観測しておらず、上流二時点の値だけで作り出さない。別Providerをjoinする際に同じタイムスタンプ文字列があっても統一Snapshot/Authorityは未確立。
+
+### 23.2 変換が保存する情報は、後段で新たに生み出せない
+
+- **Relation Graph→Tree**：循環・多重辺・source/target・relation occurrence/valid-knownを失うTree表示を許す場合、Tree→JSONがそのTreeの値を完全保存しても、元GraphのRelation occurrenceを復元する資格は回復しない。
+- **Relation Graph→Distinct Person List**：人物P1/P2のIdentityとPerson Countは保存し得るが、同じPersonからU2/U3へ向かう2本の関係と、どちらの関係が訂正されたかは失う。Person一覧のcache再利用をMembership Count/所属別集計/Business Scope/書戻しに転用しない。
+- **失った性質を未申告から推測しない**：各段の「保存していると宣言した性質」は一般の証明でなく、既存#2497の構造写像契約に対する有限な義務候補。後段の判定は、Claimが要求するIdentity/Occurrence/Time/Scope/Grainの各前提と独立Expectedを要する。
+- **編集への逆写像**：Person ID P1が一意でも、所属更新というPurposeならr2/r4から更新対象を一意に決定できない。これに対し「Person名の編集」ならPerson IDが対象候補として十分な場合はある。いずれも実Current Grant/Expected Version/Host実行資格は別証拠。曖昧なGraph/Tree値から自動Submitせず、read-onlyまたは明示的な対象選択へ戻す（#2497/#2621/#2598）。
+- **Sourceの書式忠実度**：このGraph-to-Treeで生じる構造損失とMarkdown/DOTの空白/comment/layoutやSource occurrence喪失は別。元Sourceへ自動再描画・無条件上書きせず、既存#2621の局所Patch契約を再利用する。
+
+### 23.3 Claim相対の必要入力を、単なる「観測済み」の集合で代替しない
+
+対象集合L、検査できたR、対象cutを固定できるとき、Rに属する存在証人は局所の存在を支持し得る。一方、部分取得で見つからないことは完全な不存在を支持せず、正確な件数にはClaim必要範囲のRowset/Field completenessと同一Read Cohortが必要である。全件completeという**人工フラグ**を立てたテストはProviderが実際に完了保証を発行した証拠ではない。
+
+更新・訂正・追加で同じDistinct値が維持される場合、Person Listの結果を再利用可能な候補としつつ、Relationに依存するCount/Policy/Graph/SHO引用は必要範囲で再資格化。無変更r3の過去観測は履歴として保存できても、現在Grant/現在Provider readが既に成立したとするわけではない。A→B→Aのbyte一致・画面表示一致は時系列の連続性/Owner受理の復活を証明しない。
+
+### 23.4 局所の独立合成Fixtureと未成立の境界
+
+2026-11-06の独立Python標準ライブラリFixture：14/14 PASS、py_compile PASS。ローカルSource SHA-256 = f2e67255a87507b197092d6f5caed90f88e017eeeb39824aa60381a3a1f2b8ae。**Repository未保存・GitHub CI未実行**。固定された期待値を手書きしており、TEI Parser/Query/Provider/実RLSを実行したテストではない。
+
+| 試験 | 局所で反証した誤り | 既存実証の次の受渡し |
+| --- | --- | --- |
+| 01〜04 | 同じvalid日/Personの数でもknown cut/Relation出現数は違う。表示名はIdentityでない | #2389/#1126/#2506 |
+| 05〜08 | Tree/JSONが表示を保存してもGraph occurrenceの復元不可。未宣言のRead Cohortはunknown | #2497/#2621/#2514 |
+| 09〜12 | 部分取得の局所存在と全体不存在/正確件数は非対称。異Cohortはcomplete Claimを保留 | #1063/#2506/#2586 |
+| 13〜14 | 同一Personの複数Relation更新対象は曖昧。無変更部分の歴史的根拠は保持し得る | #2598/#2582/#2516 |
+
+**次の正式な検証順**：
+1. 既存#2681の実TEI CaseRecord→OrgUnitとMembershipのDefinition/occurrence/Sourceを読取り、実Function ContextのRelation path/Field/valid-known cutを明示。現段階ではモデル上の該当データ/Provider Bindが未接続なら `NOT RUN: physical-read-unavailable` とする。
+2. #2586のread側一Attemptで、まず一Providerの同じ対象/Scopeに対し、二つのknown cutでRelation occurrence/Distinct Person/Count/partialと完全0件/非出力依存を実観測。実Owner受理済みの業務履歴と人工Fixtureを混同しない。#2622は実Read/Providerの保証範囲を記録。
+3. #2497/#1124は、同一実ResultからGraph/Tree/Tableのread-only Projectionを作り、保存された情報/喪失箇所と編集対象一意性を比較。非可逆なら一般的なWrite APIの暗黙呼出しは禁止する。
+4. #2516/SHOは現在Consumer Disclosure、Source引用Occurrence、実受領/現行版を確認。#2598/#1174の実Write/Commit/Receiptを**read-only試験の合格へ混ぜない**。
+
+**既存P0（SQL Realization→Page Cohort一Provider）をブロックしない**。この時間付きRelation→Projection試験は#2497の構造保存P1並行圧力であり、データ表現の型追加、二DB、全組織Policy、SHO/Studio完成、ランタイム統一、分散Txを先決しない。比較指標は誤ったClaim昇格、必要時だけの再資格化、Source/意味の二重保持、実Provider照会数・p50/p95、必要Adapter数。#2018へ移し、独立Expectedは#1131/#1180/#2514の既存Ownerへ委譲する。
+
+**状態**：本節は設計・局所合成Fixtureの接続であって、実TEI Runtime、実組織Provider、bitemporal Query/Host、OS/AI送信、業務Owner受理の実証ではない。PR #2496はDraftを維持し、mainへ統合しない。
