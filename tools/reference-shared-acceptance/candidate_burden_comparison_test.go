@@ -180,7 +180,7 @@ func TestReferenceCandidateViewBurdenComparison(t *testing.T) {
 		t.Logf("contract-minor: contract=%d gate=%d appRelease=%d dbRelease=%d", got.contract, got.gate, got.appRelease, got.dbRelease)
 	})
 
-	t.Run("coordinated-major-update-reports-exactly-two-database-releases", func(t *testing.T) {
+	t.Run("coordinated-major-update-reports-only-latest-database-release", func(t *testing.T) {
 		before, after := scratchWorkspace(t), scratchWorkspace(t)
 		replaceOnce(after, "databases/sales-core/contracts/order.tei", "contract sales_core.order v4.2", "contract sales_core.order v5.0")
 		replaceOnce(after, "applications/order-entry/application.tei", "contract sales_core.order ^4", "contract sales_core.order ^5")
@@ -191,10 +191,10 @@ func TestReferenceCandidateViewBurdenComparison(t *testing.T) {
 		if exit != 0 {
 			t.Fatalf("比較の終了コード=%d", exit)
 		}
-		if got.dbRelease != baseline.dbRelease+2 || got.appRelease != baseline.appRelease+1 || got.gate != baseline.gate {
+		if got.dbRelease != baseline.dbRelease+1 || got.appRelease != baseline.appRelease+1 || got.gate != baseline.gate {
 			t.Fatalf("期待した増分と違います: got=%+v baseline=%+v", got, baseline)
 		}
-		if want := []string{"4.1.0", "4.2.0"}; !equal(versions(r, "after"), want) || len(versions(r, "before")) != 0 {
+		if want := []string{"4.2.0"}; !equal(versions(r, "after"), want) || len(versions(r, "before")) != 0 {
 			t.Fatalf("behindの版が正しくありません: %+v", r.DBReleases)
 		}
 		found := false
@@ -258,10 +258,10 @@ func TestReferenceCandidateViewBurdenComparison(t *testing.T) {
 		if exit != 1 || errorCount(r) == 0 {
 			t.Fatalf("明示モードでも終了1とエラー診断を維持する必要があります: exit=%d\n%s", exit, out)
 		}
-		if got.dbRelease != baseline.dbRelease+2 || got.appRelease != baseline.appRelease+1 {
+		if got.dbRelease != baseline.dbRelease+1 || got.appRelease != baseline.appRelease+1 {
 			t.Fatalf("明示モードの候補増分が違います: got=%+v baseline=%+v", got, baseline)
 		}
-		if want := []string{"4.1.0", "4.2.0"}; !equal(versions(r, "after"), want) {
+		if want := []string{"4.2.0"}; !equal(versions(r, "after"), want) {
 			t.Fatalf("明示モードのbehind版が正しくありません: %+v", r.DBReleases)
 		}
 		t.Logf("invalid-major(explicit): contract=%d gate=%d appRelease=%d dbRelease=%d", got.contract, got.gate, got.appRelease, got.dbRelease)

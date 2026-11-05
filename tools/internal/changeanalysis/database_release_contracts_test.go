@@ -8,57 +8,76 @@ import (
 	"tei/internal/ir"
 )
 
-func TestDatabaseReleaseContractCandidatesOnlyMajorBehind(t *testing.T) {
+func TestDatabaseReleaseContractCandidatesOnlyLatestPerDatabase(t *testing.T) {
 	world := ir.World{
 		Databases: []database.Database{
 			{ID: "sales", Contracts: []database.Contract{
 				{ID: "sales.order", Version: database.ContractVersion{Major: 5, Minor: 0}},
-				{ID: "sales.line", Version: database.ContractVersion{Major: 2, Minor: 1}},
+			}},
+			{ID: "inventory", Contracts: []database.Contract{
+				{ID: "inventory.line", Version: database.ContractVersion{Major: 3, Minor: 1}},
+			}},
+			{ID: "newdb", Contracts: []database.Contract{
+				{ID: "newdb.item", Version: database.ContractVersion{Major: 3, Minor: 0}},
 			}},
 		},
 		DatabaseReleases: []dbrelease.Definition{
 			{Database: "sales", Version: "4.1.0", Provides: []dbrelease.ProvidedContract{
 				{ID: "sales.order", Version: database.ContractVersion{Major: 4, Minor: 1}},
 			}},
-			{Database: "sales", Version: "4.2.0", Provides: []dbrelease.ProvidedContract{
-				{ID: "sales.order", Version: database.ContractVersion{Major: 4, Minor: 2}},
+			{Database: "sales", Version: "4.9.0", Provides: []dbrelease.ProvidedContract{
+				{ID: "sales.order", Version: database.ContractVersion{Major: 4, Minor: 9}},
 			}},
-			{Database: "sales", Version: "5.0.0", Provides: []dbrelease.ProvidedContract{
-				{ID: "sales.order", Version: database.ContractVersion{Major: 5, Minor: 0}},
+			{Database: "sales", Version: "4.10.0", Provides: []dbrelease.ProvidedContract{
+				{ID: "sales.order", Version: database.ContractVersion{Major: 4, Minor: 10}},
 			}},
-			{Database: "sales", Version: "6.0.0", Provides: []dbrelease.ProvidedContract{
-				{ID: "sales.order", Version: database.ContractVersion{Major: 6, Minor: 0}},
+			{Database: "sales", Version: "not-a-version", Provides: []dbrelease.ProvidedContract{
+				{ID: "sales.order", Version: database.ContractVersion{Major: 4, Minor: 0}},
 			}},
-			{Database: "sales", Version: "4.0.0", Provides: []dbrelease.ProvidedContract{
+			{Database: "inventory", Version: "2.0.0", Provides: []dbrelease.ProvidedContract{
+				{ID: "inventory.line", Version: database.ContractVersion{Major: 2, Minor: 0}},
+			}},
+			{Database: "newdb", Version: "4.0.0", Provides: []dbrelease.ProvidedContract{
+				{ID: "newdb.item", Version: database.ContractVersion{Major: 4, Minor: 0}},
+			}},
+			{Database: "newdb", Version: "3.0.0", Provides: []dbrelease.ProvidedContract{
+				{ID: "newdb.item", Version: database.ContractVersion{Major: 3, Minor: 0}},
+			}},
+			{Database: "sales", Version: "3.0.0", Provides: []dbrelease.ProvidedContract{
 				{ID: "sales.legacy", Version: database.ContractVersion{Major: 1, Minor: 0}},
-			}},
-			{Database: "sales", Version: "4.3.0", Provides: []dbrelease.ProvidedContract{
-				{ID: "sales.line", Version: database.ContractVersion{Major: 2, Minor: 0}},
 			}},
 		},
 	}
 	got := DatabaseReleaseContractCandidates(world, "after")
 	if len(got) != 2 {
-		t.Fatalf("major が古い2件だけを期待: %+v", got)
+		t.Fatalf("最新Releaseのbehind 2件だけを期待: %+v", got)
 	}
-	if got[0].Version != "4.1.0" || got[0].ProvidedVersion != "4.1" || got[0].CurrentVersion != "5.0" {
-		t.Fatalf("4.1.0 の behind が正しくありません: %+v", got[0])
+	// Database順: inventory, sales。
+	if got[0].Database != "inventory" || got[0].Version != "2.0.0" || got[0].ProvidedVersion != "2.0" || got[0].CurrentVersion != "3.1" {
+		t.Fatalf("inventoryの最新behindが正しくありません: %+v", got[0])
 	}
-	if got[1].Version != "4.2.0" || got[1].ProvidedVersion != "4.2" {
-		t.Fatalf("4.2.0 の behind が正しくありません: %+v", got[1])
+	if got[1].Database != "sales" || got[1].Version != "4.10.0" || got[1].ProvidedVersion != "4.10" || got[1].CurrentVersion != "5.0" {
+		t.Fatalf("salesの最新behindが正しくありません: %+v", got[1])
 	}
 	for _, c := range got {
-		if c.Snapshot != "after" || c.Database != "sales" || c.Contract != "sales.order" {
+		if c.Snapshot != "after" || c.Contract == "" {
 			t.Fatalf("identity が保持されていません: %+v", c)
 		}
 	}
-	// 同一worldでもsnapshotを分けて走査する。minorだけ古いv2.0、一致、先行、
-	// 現在定義のないContractは、いずれも候補にしない。
+	// 4.9.0は履歴なので繰り返さない。newdbの最新4.0.0は先行方向なので、
+	// 現在定義にないContractも含めて候補にしない。不正versionは選択しない。
+	for _, c := range got {
+		if c.Database == "sales" && c.Version != "4.10.0" {
+			t.Fatalf("履歴Releaseまたは不正versionが候補になっています: %+v", c)
+		}
+		if c.Database == "newdb" {
+			t.Fatalf("先行方向が候補になっています: %+v", c)
+		}
+	}
 	if before := DatabaseReleaseContractCandidates(world, "before"); len(before) != 2 || before[0].Snapshot != "before" {
 		t.Fatalf("snapshot 走査が独立していません: %+v", before)
 	}
-	empty := DatabaseReleaseContractCandidates(ir.World{}, "after")
-	if len(empty) != 0 {
+	if empty := DatabaseReleaseContractCandidates(ir.World{}, "after"); len(empty) != 0 {
 		t.Fatalf("空worldで候補が出ています: %+v", empty)
 	}
 }
