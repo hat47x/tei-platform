@@ -552,3 +552,48 @@ Database Contractの別ケースでは、現行Referenceの隔離コピーで `s
 - #1130/#1174：read-only Role適用からEffect・Dispatch・Current Grantを生成しない。Commitが不明ならReceipt/独立Readの境界へ渡す。
 
 **実証順**：E0 今回の同file読込一致・時間差不一致のGoテスト→E1 Role Required Shapeの実API調査とGap→E2 独立Expected・Consumerへの一改訂接続→E3 実Provider/Target/Host。GoコードとDocsの保存は完了としても、新HEADでのCIを確認するまでテストPASSとは記載しない。正式Role自己解釈、Owner意味受理、実E2E、セルフビルドは未実証。
+
+
+<!-- role-self-description-authoring-roundtrip-safety-20261106 -->
+## 12. 2026-11-06 横断統合：自己記述RoleのAuthoring投影と安全な編集逆写像（設計・NOT RUN）
+
+### 12.1 解釈可能と編集可能を分離する
+
+§9〜11のSource／Role／Interpreterの同一改訂照合は、読取の適格性を高めるが、**Role as DataをStudio/SHO/Markdown表で表示できることは、元のDSL Sourceへ安全に書き戻せることを意味しない**。#2621（Authoring）、#2497（構造保存写像と編集逆写像）、#1124（Studio/Modeler）、#1803（SHO）、#2505（外部参照）への本Issue固有の接点を整理する。
+
+日常DSLの可読性を最優先し、Go ASTを理由にGo固有構文を露出させない。Markdown/表/式/Graphviz/Chainなどユーザーが選択した糖衣表現は、元の原文として保持する。標準データCarrierやtyped Semantic Candidateは**Sourceの第二正本ではない**。構文からMeaningを再構成できても、意味から原Authoringのコメント・並び・記法を一意に再生成できるとは限らない。引用の表やコードフェンスは、形状が一致しても明示Use-site RoleなしにFunction/Rule/Test/Expectedへ昇格させない。
+
+### 12.2 Read → Preview → Patch → Independent Re-read
+
+この節のS/R/Vは概念上の比較票であり新API/新Core Schemaではない。SはAuthoring bytes・occurrence・Source Revision・Workspace/Manifest identity、RはRole Use-site・accepted contract・exact interpreter selection、VはPurpose相対のread-only投影。
+
+1. **Read**：実LoadしたSourceのfingerprint、Role/Operatorの選択、Source span/locator、typed candidateと投影の情報損失（Identity、順序、重複、NULL、grain、隠れた依存、コメント、非可視列）を記録。既存semantic.Attribute.Role文字列の保存と正式Role Interpretationは分離。
+2. **Preview**：View上の編集は**変更案**でありSourceの変更やOwner意味受理ではない。Stable occurrence、編集対象の一意なSource対応、適用可能な逆写像、保持すべき非対象情報、当該Editorの現在の変更資格がすべて判明する場合だけ局所Patch候補を作る。Role Descriptorが自身にeditable=trueを書いてもCurrent Grantにはならない。
+3. **Apply**：Preview時に見たSource bytes/Revision、Manifest、必要なRole/Transformer版と実際の保存直前の状態を比較。drift、relocation、ABA、Role競合、権限失効、不完全な参照の場合、旧Previewから自動保存せず再解決/差分へ。EditorのSource変更資格とProvider/Host Action権限は別。
+4. **Independent Re-read**：保存後の**実Source bytes**を既存Loader/Parser/Role/Source Indexで再読込し、対象属性と未変更領域を独立Expectedへ照合。Save OK、再Parse OK、Owner Accepted、Runtime Effectを別のClaimとして扱う。実Provider書込みはこの試行には含めない。
+
+**条件付き編集法則（#2497へ委譲）**
+
+- No-op preservation：変更がなければSourceへ書かず、元のSource bytes、糖衣表現、コメント、引用を維持。Canonical pretty-printerで暗黙書換えしない。
+- Scoped PutGet：編集対象と対象Scopeの逆写像が明示されている場合のみ保存し、再読込したViewが変更予定部分に一致することを確認。同じSourceを使う他のRole/Comment/Ruleを黙って変えない。
+- Loss-aware stop：集約、Graph→Tree、複数Source合成、同名ノード/多重Edge、partial read、hidden dependency、非可逆な型変換で元対象が一意に定まらない場合はread-only。必要なら既存#2500の型付きAction Intent候補へ委譲し、直接Entity/DB/Historyへ書き戻さない。
+- Change-aware requalification：Authoring見た目・Source occurrence・Role binding・typed meaning・Oracle/Expected・Realization・現在の開示/編集資格を別に比較し、意味が不変でも引用/Editor資格を必要に応じ更新。不要な全体Build失効も無条件に行わない（#2600）。
+
+### 12.3 既存Subjectを共用する判別条件（AP-01〜06：全件NOT RUN）
+
+以下は第二Fixture正本／第二Runnerの追加ではなく、#2621/#2497と既存#1180/#2514の受入へ渡す**同一Caseの比較軸**である。まずPR #2860の公開Workspace sales.order／sales.order.total、同じSource Revisionを固定する。Markdown・Graph側は現状**候補表現**で、Product Parserの正式機能とはみなさない。
+
+| ID | 対照条件 | 独立Expected／停止条件・担当 |
+| --- | --- | --- |
+| **AP-01 Roleが曖昧な表** | 同じ列を持つ説明表・Function表・Test Expected表 | 表ShapeだけでRoleを決めない。Explicit Use-siteが無ければambiguous/read-only。#2620/#2621/#2514 |
+| **AP-02 原文保持** | Markdown装飾/行順/コメント・Graphvizレイアウトの非意味差分、No-op | No-opでは原byte不変。変更が必要な場合も糖衣を勝手にCanonical化しない。Source locator更新とMeaning変更は別。#2621/#2497/#2505 |
+| **AP-03 型とRoleの部分編集** | sales.order.totalのRole注記だけ変更、別ケースでTypeRef変更 | 同ID/同Attributeの型・Role変化を別診断。Source spanが一意でなければApply不可。Re-readで局所変更と他領域保持を検証。#988/#1124 |
+| **AP-04 一Sourceの複数Role** | モデル説明／Scenario／Oracleを同じCarrierから投影して一Roleだけ編集 | Shared Sourceの他Claimへの影響を列挙。未受理Expectedを書換えない。衝突が残ればPreview止まり。#2620/#2621/#2514/#2600 |
+| **AP-05 Lossy view** | 3層→2層サマリー、Graph→Tree、JOIN/aggregate、partial Query | Entity/Relation/EdgeのIdentity・重複・順序・完全性が戻らなければ直接Save不可。明示Action Intentのみ候補。#2497/#2500/#2506/#2622 |
+| **AP-06 Preview後Source drift** | 別EditorでTypeRef更新、外部Reference版差、A→B→A、編集Grant撤回 | 旧Preview/旧RevisionでPatchしない。再解決・再Preview・Owner Review/Current Grantを独立判定。#2505/#958/#1124/#2516 |
+
+### 12.4 最短の実証・Exit
+
+E0：既存#2860のactual Workspace/Source Index／Go Parserを同一Sourceで維持し、RoleとTypeRefの位置をread-onlyで観測。E1：元AuthoringのNo-op維持と、可逆／非可逆の差を同じ独立Expectedで比較。E2：**既存の安全なSource Patch機構が確認できた対象のみ**Preview→適用→独立再Readを一往復させる。不在なら具体的Gap/unsupportedを残し、新Editor/Role Resolver/自動Canonizerを実装しない。E3：Source改版後のMeaning/SHO/Studio/Runtime Consumerの資格を#2497/#2516/#2600へ引き渡す。
+
+**証拠上限**：本節は設計・受入票追補のみ。AP-01〜06、正式Markdown Role Parser、Studio/SHO編集、Product Source Patch、Owner Meaning Acceptance、実DB/Host Action、全セルフビルドは**NOT RUN / NOT PROVEN**。#1119のP0/Gateと#2831のBuild責務を変更しない。
