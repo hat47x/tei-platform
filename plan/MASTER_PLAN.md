@@ -510,6 +510,15 @@ go build -o /tmp/tei-eid-verify ./cmd/tei
 
 **資格**：mainに操作面・生成CLIが存在することは確認したが、C0〜C5の固定checkout一連試験・同一Snapshotの証明・Consumer actual read・Owner意味受理は**NOT RUN**。PR #2638/#2639等の限定Reference CIと[#2642](https://github.com/hat47x/tei-platform/pull/2642)の統合成功を、C0〜C5の合格へ繰り上げない。
 
+<!-- tei-masterplan-data-form-observation-integrity-20261106 -->
+### 2026-11-06 データ様式：構造保存と実Read/継続の整合を同じ検収経路へ
+
+構造分類・Projectionの一般契約は[#2497の設計§22](design/STRUCTURE_PRESERVING_TRANSFORMATIONS_AND_PROJECTIONS_2026-11.md)へ集約する。#2495のFacet、#2497の保存・損失、#2619のEverything is Data、#2506のFunction Context、#2387/#2622のQuery/実Provider、#2516のDisclosureを別Ownerのまま接続し、新Core Schema/第二Query Engine/Host/Cursor Registry/受入Gateを設けない。
+
+**最短の次工程**：既存#2586 HJ-SV-01〜05（同一Query IDでもPage間SQL Realization変更で混合するSQLite合成11/11）を固定Expectedとして、(1) #2611/#2622/#2387の実TEI Realization選択→解析実Input、(2) #2506/#2627/#2586の同一Function・実Provider Page1/2＋Cohort＋完了証拠、(3) #2516の実Consumer現在Grant/非干渉へ順番に接続する。初回は一Provider/二SQL、read-only。二DB全面互換、全Graph/Stream対応、Writer、Self-build、Studio/SHO全機能を初回Hard dependencyにしない。
+
+**停止条件**：Query ID/SQL bytes/短い最終Page/Cache hit/可視0件を、選択・実Read・全体不存在・公開資格の共通PASSにしない。固定済み専用Asset欠落時の無音Fallback、異RealizationのCursor自動連結、実Readなしでのcomplete、非公開候補差の外部露出は禁止。依存変更はClaim相対で局所再資格化する。Graph/時系列/文書/Measureの適用例は設計候補で実Provider/外部Target未実施。実TEI Selector・RLS・Owner正式受理はNOT RUN。既存#1119 A/B/C/D Gate・Owner判断を変更せず、#2018には誤成功率/手順/性能/重複実装を比較対象として返す。
+
 ## 現在の優先順
 
 1. （完了、2026-09-19）判定段階Bの最終的な実環境での検証根拠を、同じ版（R = `e5231839`）についてそろえた
