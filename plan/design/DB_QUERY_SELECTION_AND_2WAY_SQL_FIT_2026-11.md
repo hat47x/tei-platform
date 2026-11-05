@@ -153,3 +153,63 @@ World/Model revision・Artifact revision・実消費Source byte・Provider/Drive
 - **採用門**：既存Provider/Query Contract/Source Indexで再利用可能な箇所と、どうしても追加が必要な小さなAdapterを明示。2way構文を標準化する前に、実際のユーザー定義量・可読性・型/位置診断・実DB適合・元Sourceの往復編集を比較する。
 - **明示的な非目標**：2way SQL完全互換、DB間Native SQL万能翻訳、全SQL optimizer、SQL本文由来の業務Relation自動受理、providerを勝手に後付けするRuntime、無認可のDB移行/書込み、別のScenario Engine。
 
+## 7. DB共通SQLの位置づけと同一Claimの検証（2026-11-05：既存設計との矛盾解消）
+
+> **設計上の決着**：「方言ごとのSQLが無ければ停止」という既存のDatabase Contract Query基準は維持する。共通SQLは「どのDBにも実行してよいワイルドカード」ではなく、対象Providerそれぞれに対し**明示的に実現として選択・検証できる一つのSource asset**とする。Doma型ファイル名の探索は任意のauthoring補助であり、`QueryContract` の解決・実行時fallback仕様を暗黙に変更しない。正式な選択政策のAPI/DSL採用は継続保留。
+
+### 7.1 既存計画・先行Issueの照合結果
+
+- [Database Contract Query v1](DATABASE_CONTRACT_QUERY_V1_DESIGN.md) の確立済み4層（Query signature → Provider SQL Realization → Environment Executor Binding → Runtime）は改めない。`ContractQuerySQLRealization.Identity` は target＋providerであり、共通SQLを置くだけで別ProviderのRealizationは増えない。
+- [Database Dialect Plugin Design](DATABASE_DIALECT_PLUGIN_DESIGN_2026-10.md) は「実現がなければ停止」「SQLiteを加えた差で共通契約を判断」「方言を小さい面に分ける」という提案を保持している。今回、共通SQLの**ファイル探索規約**とこの停止規則を区別する。
+- #2622 RDB-01〜08／LUX-01〜07はProvider・ローコード体験の受入Owner、#2611 PM-01〜06は同Semantic DataのDB Alias選択Owner、#2387はSQL解析・Lineageの説明Owner、#2667 DXR-01〜06は実Role／実SQL Worker／実Providerの**同一Attempt**照合Owner。本書はそれらの検証を重複実装しない。
+- 実PostgreSQLの製品Command/CAS/ACK-loss、ABA再適用の反例、Web/DB暫定経路、Schema Gateは#2853/#2854/#2857/#2859の**限定的な既存実証**を再利用する。一方、2way SQL Source selection、二種類のDBで同じQueryと独立Expectedを確認するE2E、現在Grant付き同一Attemptの完全性はこの計画の実績ではない。
+
+### 7.2 段階別の採否（新形式の公開契約は導入しない）
+
+| 状況 | 推奨する取り扱い | 留保 |
+| --- | --- | --- |
+| Provider専用Realizationが明示され、Query Contractに適合する | 対象Binding/Build Lockへ固定 | これだけでは実DB接続/Current Grantを証明しない |
+| `customer_search.sql` だけが存在する | SQL本文からProviderを推測せず、**明示された対象ProviderのRealization**として利用可能か検証する | 存在しただけではfallback可としない |
+| Provider用Realizationが欠けている | 既存Contract Queryでは従来どおり**unsupported/unresolvedで停止** | opt-inの共通Asset利用方式はP0実証結果で正式採否を決める |
+| Dialect用と共通用を同時に検出 | 候補を列挙し、明示Bindingと選択規則で一意化 | 固定済みの選択を、探索結果だけで上書きしない |
+| 選択済みDialect SQLがstale/消滅 | 代替候補・互換性を診断するのみ。自動実行へ切替不可 | 再Lock・必要な再受理後の使用は別判定 |
+| 対象が二つ以上のAliasにまたがる | SQL以前に#2611の文脈付き対象解決を要求 | 方言名一致は対象行集合/書込み先の一致ではない |
+
+UIでは通常「受注一覧」だけを表示し、追加のSQL選択設定を要求しない。ただしNative SQLを必要とする高度なQueryの場合は「指定の接続先に対応するSQLが見つかりません。共通SQLの適合確認が必要です」と業務Function単位で説明し、許可された利用者だけに候補ファイル・SQL本文・DB別Mappingを表示する。
+
+### 7.3 同一Attemptに接続する最小Test Packet
+
+以下は既存の#1131/#1180 Scenarioと#2514独立Oracleを利用する**試験入力・比較列の候補**で、新たなRuntime Schemaではない。
+
+```text
+Query semantic ID / accepted Role・Operator version
+  -> Function Data Context, required read set / purpose・scope
+  -> selected application DB alias, instance, provider
+  -> SQL realization (provider, source reference, candidate/negative closure)
+  -> actual source byte・SQL body・parameter mapping + toolchain
+  -> execution target/reader, actual read footprint + observed result
+  -> disclosed output, current grant/effect + independent expected
+```
+
+各段階で `required / declared / resolved / loaded / consumed / observed / qualified` を区別する。上流のSQL解釈だけ成功して実SQL Workerが動いていない場合は、SQL実行のClaimをunknownにする。実際の実行DB/SQLを読めないなら、選択Lockから推測して「実行済み」と断定しない。SQLを0件返したケースでも述語、対象Rowset、Relation occurrence、DB route、RLS/Read scope、取得版の否定依存は残る（#2582/#2586/#2600）。
+
+| Case | 独立Expected／拒否すべき誤成功 | 担当 |
+| --- | --- | --- |
+| **DBX-10 共通Source再利用** | 単一common SQLをPostgreSQLとSQLiteの両Realizationに明示Bindingし、同じQuery Contract/結果Expectedを照合。**一つでも未検証なら共有SQLで同値と断定しない** | #2622 / #2387 |
+| **DBX-11 0行の否定依存** | 未取得/権限による0件と完全読取りの0件を区別し、WHEREや元集合/Schema/Provider Scopeの変更に応じて旧Evidenceを正しく失効 | #2582 / #2586 / #2600 |
+| **DBX-12 同じRows・違う実Read** | Native SQL分岐A/Bの表示Rowsは同じでも、RLS・JOIN・hidden predicate等で実取得Footprintが異なる。出力値一致だけでEquivalent/非干渉を主張しない | #2622 / #2515 / #2514 |
+| **DBX-13 形式/Role/Targetの移行** | 同じQuery/SQL sourceでもRole/Operator意味版、SQL Realizer版、DB Target、Grantが別世代。再構築/Preview成功を旧Accepted Meaningや現在実行資格へ昇格しない | #2620 / #1121 / #1174 / #2667 |
+| **DBX-14 Driver/Capabilityの追加** | 新Provider追加で業務Function/Query IDを変更せずに済むが、現`DatabaseProvider.Known()`等の固定列挙とMigration renderer固定分岐による**具体的な追加変更箇所**を計測。既存Provider/Composition Ownerの責務に渡す | #951 / #1223 / #2622 |
+
+独立Expectedは、移行元DBの実行結果やAIが生成したSQLから逆算しない。型一致、行数・合計一致、SQL branch coverageだけで業務的な同値性は成立しない。NULL/空文字/Decimal/日付/照合、重複/粒度/順序、取得範囲/時点、制約・更新対象、Commit/unknownまで、**そのFunctionに必要な意味だけ**を限定して評価する。
+
+### 7.4 実装・検証の最短順と保留判断
+
+1. **DBR/SQLVとDBX-01〜04を既存Go構造で再現**：`environment.ApplicationDatabaseBinding`、`DatabaseInstance`、`QueryContract`、`ContractQuerySQLRealization`、既存Source Index/Loaderの実入口を固定する。Doma互換構文・新Provider Registryを先に実装しない。
+2. **DBX-10/11を小さな独立Fixtureへ**：明示共通Sourceと0件の否定依存を対象に、同じSQL file/path/Query IDでも必要な再資格化範囲が変わることを検査。最初はread-only・Source/Bindingを対象にし、実DBの完全Readをシミュレーションで証明したことにしない。
+3. **DBX-12を既存実SQL Worker/実Provider経路へ引渡し**：#2387のread-only Query Explain、#2667の実Go→SQL Worker、#2622のProvider実Read/Consumer投影を一改訂・一試行で照合。実Workerが無い場合は`NOT RUN`で止める。
+4. **P1の2DB比較**：PostgreSQLの既存実行経路は重複実装せず、第二DBの差分に限定。SQLiteのdriver採用・テスト用build tag/依存配布は[DIALECT設計](DATABASE_DIALECT_PLUGIN_DESIGN_2026-10.md)の未決と整合させ、Go単一バイナリの余分な依存を標準搭載しない。
+5. **採用の門**：「SQLファイル命名規約の導入によって利用者の定義量を何行減らし、何件の安全な移行・診断を増やしたか」を測る。効果が不足すれば案件内のconventionとして保持。共通SQLのruntime自動fallback、2waySQL新DSL、万能Dialect翻訳、新Registry/Hostは保留する。
+
+**保留する判断**：ファイル名規約の標準化、Query Contractのcommon asset opt-in宣言形、Provider/Driver versionの正式入力Schema、SQLiteを第二の製品Providerとして配布する構成、SQLテンプレート構文の採否。このいずれも本書の追加で正式受理・実装済みにはならない。
+
