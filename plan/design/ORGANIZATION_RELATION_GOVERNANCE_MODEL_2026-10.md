@@ -2493,3 +2493,51 @@ E2開始の**先決条件**：#2822/#2823のWorkspace宣言数・必須Source対
 **実証順序**：E1の実Sourceと同じRevisionを固定→#2506/#2622/#2586がE2 Function→Provider Readで行/Field/Scopeを記録→#2862のDB/Query Bindingが必要なときだけ宣言されたRealization選択を検証→#2516/#2582でConsumer現在資格→#2598/#1174/実`internal/command`/`effectcommit/postgres`へE4を接合。前段の必要Source/Owner Meaning/実DB Endpoint/Host Grantがない場合は`NOT RUN`／`not accepted`／`unverified`で止め、合成Nodeや別PG Testを新しい組織E2E PASSとしない。
 
 **最優先Gate**は#1119の実PostgreSQL/Owner-write。新たなTEI独自Host、組織専用Permission Registry/Policy Engine、第二DB Selector/Query Planner、全面自動SQL変換を必要条件にしない。
+
+## 64. 組織Profileの凝集Bundleと未利用モジュールの非干渉：Source選択・Capability・Build含有・実行資格を分ける（2026-11-05、#951/#1130/#2600横断）
+
+### 64.1 大きな配布単位と内部凝集モジュールは矛盾しない
+
+**提案するOrganization Profile**は、一つの業務意味正本（Person、OrgUnit、Membership、Position、Occupancy、CaseRecord、Relation、時点）に対して、通常参照／組織階層参照／Record Policy／Capacity・FTE／Transition What-if／各DB Provider・SQL実現／SHO・Studio表示／Target Generatorの**凝集度の高い部品**を束ねて提供する。利用者は必要な標準セットをまとめて導入でき、内部は契約・版・実利用で独立更新できるようにする。「大きくまとめる」ことはすべての内部部品を密結合・常時実行・常時リンクすることを意味しない。
+
+純粋抽象だけの特別なPluginを必須とせず、基本インターフェース群を関連実装と一緒に配布することも許容する。ただし契約は別のProvider/Generatorから利用でき、CycleやSource/Authorityの隠れた依存を生まないこと。一般組織DataとRecord Policyを混同しない。Org Dataが存在するだけでHierarchy Grant、Case Read、DB driver、What-if、SHO Rendererを自動有効化しない。
+
+**既存実装から観測可能な境界**：現main `internal/plugin/model.go`の`Definition`／`Bundle`／`ResolvedSet`／`Capability`、`internal/plugin/resolve.go`の`Catalog.ResolveEnvironment`を再利用。現`ResolveEnvironment`は選択された**Bundleの全Plugin Requirementをキューへ展開**し依存を解決する。これは`Selected/Resolved`であって**Functionが実際に利用した**とか**Go最終Binaryへ含めた**という証明ではない。全Bundle解決結果を無条件にBuild/実行能力へ昇格すると、使わないProviderまで閉包へ混入し得る。Bundle自体は配布・整合単位、必要な実Build/Artifact閉包はTarget/Functionごとの使用集合から別に選ぶ、という段階を明示する。
+
+### 64.2 未選択Pluginは実Loaderに入らない——確認済みの最小事実
+
+[実TEI組織PR #2681](https://github.com/hat47x/tei-platform/pull/2681)の`org-headless-workspace/tei.workspace.yaml`は`semantic`・`applications`・`databases`のみをSource rootとする。今回追加の`TestOrgHeadlessUndeclaredPluginRootDoesNotChangeSemanticOrOperations`は、同Workspaceを複写し、**manifestに列挙されない`plugins/unused-org-profile/plugin.tei`へ意図的に構文不正の内容**を置いて、実Workspace Loader／SourceIndex／OperationSurfaceを確認する。
+
+fixed HEAD `dd2925ae525732668d98bf11f39a6cea705b37cd`の[Native Actions #42030632683](https://github.com/hat47x/tei-platform/actions/runs/42030632683)は**completed/success**。Go 1.26.10/Linux、`go test ./internal/operations -run '^TestOrgHeadless' -count=1`（合計8件）、実`tei validate/operations/artifacts`と別Reader、exact HEAD/clean成功。**追加RootはManagedFilesに存在せず、WorldFingerprint／ModelRevision／Operation集合が全て同一**。Artifact Readerは`findings=0, complete=False`で、配布可能Artifactの完全性を示さない。
+
+**重要な証拠上限**：これは`manifestで未選択のSource root`というE1の証拠のみ。`Plugin rootに登録済みだがEnvironmentで未選択`、`Bundleに選択済みだがCapability未利用`、`Go buildが実際に未利用コードを含めなかった`、`最終binaryのdigest/size/startupが無変化`、`現在Host Grantがないので実Invokeできない`は**別契約・未検証**。見かけのGlobal ModelRevisionが変わった場合も、Function/Target依存閉包が変わったとは限らない。反対に、無関係に見えても参照先が追加/削除され依存解決が変化すれば再確認が必要。
+
+### 64.3 選択／使用／配布／実行の受入列を固定する
+
+| レベル | 既存Ownersと利用する機構 | 独立に確かめること |
+| --- | --- | --- |
+| Available／Discovered | Workspace Manifest／Source Inventory／Plugin Catalog | Source rootの選択、列挙範囲、raw byte、plugin.teiの読込状態。未読込の定義を「存在しない」と言わない |
+| Selected／Resolved | Environment Plugin/Bundle選択、Version Lock、`ResolveEnvironment` | Bundle展開とRequiresの解決・曖昧／不適合／Cycle診断。複数候補から勝手に選ばない |
+| Used／Required | Function→Data/Relation/Query/Policy/Operator/Plugin Capabilityの明示必要集合 | Case Viewだけ、Record Policyあり、Capacityあり等のFunction/Target別依存。未使用Capabilityで業務意味を汚染しない |
+| Build included | 既存Builder／Target Generator／Go link／Build Input Evidence | **そのBuild/Target**に本当に必要な実装・Source/Generatorが入力に含まれたか。選択されただけでは「含有」の根拠にしない |
+| Exposed／Invokable | CLI/HTTP/Job Entry・既存DispatcherとHost/Provider | Bundle含有でもEntryを公開するとは限らない。現在Principal/Grant・Operation/Targetを検査 |
+| Actual Effect／Disclosure | Provider Read/Host Invoke・Receipt・Current Consumer/SHO/AI | 実Read/Export/Update・Row/Field/Scope/Effectの受領観測。構造関係・Capability存在から権限生成しない |
+
+**ビルド単位と業務単位を分ける**。Org`case_view`、Org Report、Transfer Jobは同じ業務モデルに属してよいが、実配布は通常一つのGo単一バイナリを基本とし、運用上必要なJob/CLI/Web別Buildだけを#1130/#1167で明示する。Buildが分割されてもCase Relation、Policy Source/Owner Meaning、Function/Operation IDを勝手に別意味へ分けない。
+
+### 64.4 追加する受入試行（適用前の期待値、実装はまだ未実施）
+
+| ケース | 変更と固定する比較 | 正例／負例の受入 |
+| --- | --- | --- |
+| ORG-PB-01 | Manifest未選択Plugin rootへ構文不正Sourceを追加 | **実Go E1 PASS**：Loader/ModelRevision/World/Operation不変。ただしGo binary未計測 |
+| ORG-PB-02 | Catalogに登録済みだがEnvironment未選択のOrg RendererまたはProviderの版を変更 | Catalog InventoryとFunction/Build入力を分ける。Target Buildに無関係かは実Resolved/Build closureで確認。Global Source revision不変とは要求しない |
+| ORG-PB-03 | 選択Bundleに未使用Module/Capabilityだけを追加・更新 | `ResolveEnvironment`が全Requirementを選ぶ現動作を実確認し、**Used closure/Build inputs**への影響を独立検査。実必要Module以外がGo Binary/Artifactへ混入したら方針違反候補 |
+| ORG-PB-04 | Record Policy/Capacity Moduleを初めてFunctionが参照 | 同じCase Data/Relation IDを維持、必要Module/契約/Plugin版・Build Artifact・Consumer Impactだけ変更。Policyの追加で現在Grantは生まれない |
+| ORG-PB-05 | PostgreSQL用Realization選択中に別DB Provider/SQL assetを更新 | 同一Function/Query IDでも、選ばれなかった候補がUsed/実Providerに混入しないことを確認。DB Alias/専用SQL選択の結果は#2862と同じExpected |
+| ORG-PB-06 | 選択された必須Generator/Providerが欠落・曖昧・互換不明 | silent fallback不可、Build/Read/Generationを停止し必要能力・Source・版を診断 |
+| ORG-PB-07 | BinaryにRead/Transfer Entryが含まれるが現在Grantなし | Selected／Included／Exposed／Authorizedを区別し、実Host/Dispatcherで拒否。合成Policy PASSで実権限を代用しない |
+| ORG-PB-08 | Source A→B→A、Plugin/Role/Build Input改版、生成結果が同byte | 現在内容同一と変更履歴／Owner撤回／Generator版／実Consumer受領を混同しない。必要Artifactだけ再生成し実Receiptを比較 |
+
+**完了条件の優先**：P0はPB-01の実Go固定Headと現`ResolveEnvironment`の選択意味を明示。P1はPB-02/03/05の**実Go Build比較**で同一Toolchain/Flags/GOOS/GOARCH/Source/Lockを固定し、影響を受けないTargetのビルド入力、実Artifact member/digest/size、必要なInvocationを対照で確認。ビルド結果のbyte同一が得られない環境では差分理由を限定観測として記録し、容量や速度の改善を推測しない。P2はPB-04/06/07のProvider/Host/Target側の実証。#1119の実DB/Owner-write Gateの優先を変えない。
+
+**本節の状態**：PB-01のみ実E1 Go 成功。PB-02〜08、選択後の実Module liveness、実Build binary 比較、実DB/Host、Studio/SHO/AI、Owner業務意味受理は**NOT RUN/未受理**。既存Plugin/Bundle/Builder/Provider/Permission契約の組合せで判断し、新しいPlugin Registry、Graph Compiler、組織専用Host/ACL、第二Query Engineを作らない。
