@@ -131,6 +131,8 @@ XL-03（値変更Hook）では同じ業務Subjectに対し別Case revision/IDで
 | **EL-04** [#2882 Workspace/RunPlan](https://github.com/hat47x/tei-platform/pull/2882) | main統合済みのGo試験。期間閉/開、Effect Observer欠落をWorkspace Sourceから入力。**本票では当該merge HEADの実CI Receipt未確認** | 期間閉ではblocked/Step未呼出、期間開ではcompleted、Effect前提欠如ではblockedを検査するテストを追加 | Source実装の存在は確認できるが、**今回の確認だけでexact-head CIの実PASSは主張しない**。`CombinePreconditions`に渡された検査の成功≠必要検査全件の提出、一般RunPlan blocked≠過去Stepの作用0 |
 | **EL-05** [#1163 一改訂Product Gate](https://github.com/hat47x/tei-platform/issues/1163) | #2853実PG Command/Receipt、#2857暫定Web/PG、#2859起動前Schema Gateは**別HEAD/別Attempt** | それぞれの限定的な実PG/実Web/Schemaの成功が存在。#2857の横断監査はINCOMPLETE | **Product Gate=UNQUALIFIED**。同一Accepted Revision・現Grant・実Web→実PG Commit→独立Consumer受領という一経路の統合Receiptを合成できない。Owner受理なし |
 
+| **EL-06** [#2890 AIによる別RuleへのScenario追加](https://github.com/hat47x/tei-platform/pull/2890) | #2828 HEAD `77baf709`から分岐。Candidate HEAD `8e508413fe92cfc95a6176e34f8af8b35fb576ae`、新規Scenario＋Fixture JSONの2ファイルのみ | AIがJSON候補 `ai-candidate-line-number-uniqueness` の2 Stepを追加。既存正常FixtureのRelation keys `[1,2]` と新しい`[1,1]`の**一つの入力差分**で `line_number_unique: satisfied→not-satisfied` を予測した。Go/既存6 Step/Anchorは変更なし | **Candidate authored／実Go run結果未確認**。独立Oracleは#2514で未検証。G2/全業務Coverage/Owner意味受理・実Providerは未成立。既存#2828 CI成功を新HEADのPASSには流用しない |
+
 **証拠の読み方**：EL-03は`test=PASS`でも`durable-state safety=UNQUALIFIED`。EL-04は`test code present`だが今回の実Run証拠は`unobserved`。EL-05は個別のPASSが複数でも`one-revision integration=UNQUALIFIED`。この三種を区別できない台帳やCIレポートを受入済みとしない。
 
 ### 8.2 三つの結果を混ぜない最小Claim判定
@@ -146,7 +148,7 @@ XL-03（値変更Hook）では同じ業務Subjectに対し別Case revision/IDで
 | Case群 | 事前固定のIndependent Expected／Required集合 | 実観測で受理するもの、欠けたら止めるもの |
 | --- | --- | --- |
 | **E-01 Scenario inventory** | #2830保存済6 Stepと各ID・Expected Evidence Nature | 実Glob/Parse/生成argv/対象StepごとのReceiptを対応。欠落/SKIP/未実行を検出。6 Step外の未知Obligationを100%へ丸めない |
-| **E-02 AI追加ケース** | #2828 2固定Anchorとは別に、生成Agentが追加する新Case ID・Fixture・事前独立Oracle（#2514） | 追加前後のCase集合と実Attemptを比較。候補Expectedと同一起源のWantだけで独立Oracle資格を付与しない |
+| **E-02 AI追加ケース** | #2828 2固定Anchorとは別に、[#2890](https://github.com/hat47x/tei-platform/pull/2890)の2追加Step（`ai-line-number-unique`/`ai-line-number-duplicate`）と一条件差分、独立Expected/Mutantの出典（#2514） | 追加前後のCase集合と実Attemptを比較。JSON-onlyのAuthoredは確認済みだが、executable/observed/independent-oracle-qualifiedは別。期待をActualに合わせて自動修正せず、Candidateと同一起源のWantだけでOracle資格を付与しない |
 | **E-03 必須Preconditions** | Operationに必要なPeriod/Effect/Grant/Observer/Schemaの**適用条件付き必要集合**を実行前に固定 | `CombinePreconditions`の入力に必要Checkがすべてあることを照合。渡された分が全PASSでも必要Checkが抜けていたらCoverage不適格。全Operationへ無関係Checkを一律要求しない |
 | **E-04 再起動と副作用** | RCAS-02同Key再送、#2854新Key ABA、#1174 Commit Unknown/Receipt Lookupを独立Expectedとして事前指定 | Attempt/Operation identity、Step実Effect、PG Receipt、別接続Readを結ぶ。Blocked/Unknownの無条件再試行を認めない。実Process crash/Networkは未実行なら明示 |
 | **E-05 SQL/Provider選択** | #2622/#2862の同Query ID・異Realization/SQL選択、Read Scope・NULL・Grain・mapping資格 | Query IDや表示Rows一致は実SQL/Providerの同値を証明しない。固定SQL不在時の無音fallbackを拒否。第二DB実測は別 |
