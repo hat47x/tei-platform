@@ -218,6 +218,19 @@ func Parse(raw []byte) (Grant, error) {
 // error, not a binding one. now (nil means time.Now) is used for the Grant
 // period; the trust file's own key window uses the policy's clock.
 func Verify(g Grant, q Query, policy hoststore.TrustPolicy, now func() time.Time) (Verified, error) {
+	return verify(g, q, policy, nil, now)
+}
+
+// VerifyScoped is Verify plus the per-key trust scope of trust: a key that
+// carries capabilities or resourcePatterns cannot sign a Grant outside them
+// (PROVISIONAL_GRANT_OUT_OF_TRUST_SCOPE). A key without scope behaves as in
+// Verify. The scope is judged after the signature and key state, so a forgery
+// still reports a signature error.
+func VerifyScoped(g Grant, q Query, trust Trust, now func() time.Time) (Verified, error) {
+	return verify(g, q, trust.Policy, &trust, now)
+}
+
+func verify(g Grant, q Query, policy hoststore.TrustPolicy, trust *Trust, now func() time.Time) (Verified, error) {
 	nb, na, err := g.window()
 	if err != nil {
 		return Verified{}, err
@@ -232,6 +245,11 @@ func Verify(g Grant, q Query, policy hoststore.TrustPolicy, now func() time.Time
 	}
 	if err := policy.VerifyDetached(g.Issuer, g.KeyID, g.ApplicationID, payload, signature); err != nil {
 		return Verified{}, err
+	}
+	if trust != nil {
+		if scope, ok := trust.ScopeFor(g.Issuer, g.KeyID); ok && !scope.Allows(g.Capability, g.Resource) {
+			return Verified{}, errors.New(errOutOfTrustScope)
+		}
 	}
 	if now == nil {
 		now = time.Now
