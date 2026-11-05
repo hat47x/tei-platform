@@ -85,3 +85,64 @@ Operation/Attempt、Plan fingerprint、snapshot/CDC offset、Source/Provider版�
 #2555は旧新並走・Cutoverと残余、#1126/#2611はKey/Mapping、#2622/#2862はDB能力/SQL、#1174/#2564はEffect、#2514/#1163は独立Expected、#2600はEvidence鮮度、#1119は既存製品Gateとの整合を所有する。#2545はclosedの参照結果であり、新実装完了や正式採用ではない。**移行専用新Plugin・CDC Engine・Tx Coordinator・Owner受理エンジン・Gate SSOTは増やさない**。
 
 **明示的に未決**：本番CDC方式、旧Writer帰属と観測窓の下限、正本移管と旧Writer Fenceの実原子性、業務Key変換の解決基準、Retention、異種DB間の回復保証、正式DSL/API表現。採否にはOwner判断・必要なADRと実Provider試験を要する。
+
+
+## 8. 横断深化：Backfillの集合一貫性・変更記録とGateの鮮度（2026-11-06、未採用／未実行）
+
+**今回の差分**：他レーンの#2506（Result Slice/Completeness）、#1640（Filter/Sort/Page順序）、#2582（更新依存）、#2387（Native SQL/Lineage）、#2862（DB別SQL選択）、#2600（負依存/再資格化）から、移行中に「各SQLの成功」が「全対象集合の移送成功」にはならない反例を移す。ここでは新しいMigration Engine、Query Renderer、Cohort型、Gate State Machineを作らない。
+
+### 8.1 Backfill対象を同じRead Cohortとして固定する
+
+Read Cohortは**検収票上の呼称**で、既存のSource/Context/Query/Provider/Checkpointを横断して参照する。必須のWitness候補は次の通り。
+
+| 証拠 | 必要な対象・失敗時 |
+| --- | --- |
+| Semantic Data/Relationと複合Business Key、必要対象集合・粒度 | JOINで6行になっても実Entityが6件とは限らない。集計/ページ/0件/未取得を分ける |
+| Function Context、Application DB Alias、Provider/Instance、read-purposeと権限 | 同名tableや同じQuery IDからTarget DBを推定しない。異なるAlias/Scopeを黙って結合しない |
+| 選択済みRealization、Native SQL Source digest、Role/Operator/Schema版 | Query IDが同じでもページ途中の共通SQL→専用SQL切替は同一Query集合として認定できない |
+| Predicate/Sortの全順序、Keyset・Offset/ページ位置、Read Scope/RLS | 読取中の挿入/削除と同値順位でskip/duplicateを生じる。LIMIT完了は全件完了ではない |
+| Snapshot境界、CDC開始/到達Position、DB読取一貫性、Source epoch | 別Snapshot/欠落したCDCを一つの完全集合として扱わない |
+| ChunkのBusiness Keys/Target Keys、Checkpoint/Receipt、独立Readerと集合完全性 | 処理済み記録や移行RunnerのSUCCESSだけでTargetのEffectを断定しない |
+
+ページ途中にSQL/Provider/Schema/権限/順序が変化したらG2・G3を`block/unknown`へ戻す。安全な再Snapshot/再照合と既処理Operation lookupを行うまで無条件再開しない。0件は「指定Scope・観測時点で可視の条件一致0件」という**限定されたClaim**であり、未取得やRLS外を「不存在」としない。
+
+### 8.2 CDCは削除・取消・履歴訂正も対象
+
+- Snapshot以降の`insert/update/delete`、取消・状態遷移・履歴追加を区別する。Targetの現存行Countが合ってもDelete/Tombstone、過去のHistory、未処理Outboxが欠落していればValidateは不合格。
+- Business Keyの合併/分割・改番とPhysical PKの再採番を分ける。Code mapは変換方向・有効時点・記録時点・多重度・Ownerを明示し、曖昧な期間や1対多は`held`を維持する。
+- 旧WriterのDeploymentゼロ、観測窓内の旧形式Writeゼロ、対象Writer母集団の退役確認は**異なる証拠**。月次Batch、Queue遅延、直接SQL、旧接続pool、DDL/CDC capture gapはG4/G5の停止条件にする。
+
+### 8.3 Gateの失効行列：再評価は必要な範囲に限定する
+
+| 変化 | 最低限の再判定 | 自動的には失効しないもの／注意 |
+| --- | --- | --- |
+| SQL Sourceが移動、本文不変・適合した再解決 | Locator/選択Lock、G2/G3の実消費Input証拠 | Business Keyの意味版。現Grantは常に別 |
+| SQLの候補が追加／実選択が変更、またはFilter/Scope/Read Schema変更 | G2のCohort、G3の全件性、必要に応じてG4のRead資格 | Query ID同じというだけでは旧実Read結果を再利用不可 |
+| 旧Writerが再出現、長周期Batchが未観測 | G4のDrain、G5のContract条件 | G1の過去Schema Observationは履歴として保全 |
+| CDC Position欠落、Source A→B→A、Provider/Role/Code Map変更 | 影響するG2/G3/G4の変換・読取と現在資格 | byte一致はOwner受理・現在Grantの自動復活ではない |
+| G4後のAck/Commit Unknown、逆同期Receipt欠落 | G4のOperation/Owner/Receipt・独立Read、G5の停止 | ログ成功もRollback完了も推測不可 |
+
+移行処理の進捗、独立Observation、Owner受理、Current Grant、現在のGate資格と失効理由をそれぞれ記録する。`pass/block/unknown`は**提案する診断票の表示値**であり、新Core enumの採用ではない。古いGate PASSを失効させることと実DB処理をRollbackすることを同一視しない。
+
+## 9. 追加反証Fixture MG-13〜19（独立Expected・未実施）
+
+既存MG-01〜12と同じ受注合成Data、Source Snapshot/旧新DB Alias/Code mapを利用する。ExpectedをSQL・移行処理の出力から逆算しない。
+
+| Case | 操作・負例 | 期待される検収判定と既存Owner |
+| --- | --- | --- |
+| **MG-13** | Backfill 1ページ目は共通SQL、2ページ目でProvider専用SQLへ実選択変更。Query ID/件数は同じ | 同一Cohortで完了扱い不可、G2/G3停止。#2862/#2506 |
+| **MG-14** | Offset分割中に先頭付近へ旧Writerが挿入/削除。Sort値が同値 | missing/duplicateを検出しSnapshot/keyset・対象範囲を再確認。#1640/#2506 |
+| **MG-15** | Snapshot後のDelete/Cancel/History UpdateをCDCから欠落させ、最終Count/合計は同じ | Validate FAIL、Tombstone/History/CDCで不一致。#2555/#1129 |
+| **MG-16** | 旧Code A→新B1/B2が有効期間/記録時点で異なり、改番と訂正が交差 | 勝手に一意変換せず保留、業務Owner判断を要求。#1126/#2555 |
+| **MG-17** | 旧Client配備0・直近Write0だが月次Batch/手動SQLの全母集団を未観測 | G5 BLOCK/UNKNOWN。Window・Origin・Ownerの証拠が必要。#2555 |
+| **MG-18** | Plan/SQL/SchemaがA→B→Aになり旧G3 PASSとGrantを再利用 | 現在のG4/G5は再資格化が必要。無関係Artifactだけは選択的再利用。#2600/#1163 |
+| **MG-19** | Cutover後、旧DB逆同期のAck欠落と新DBの同Logical Command A→B→A・新Key再送 | Operation ID/Receipt/Owner Fence/別ReadのないRollback・再送を拒否。#1174/#2564/#2555 |
+
+**最初の実装圧力**はMG-13/14/15/17を、既存`tools/reference-order-migration-dual-db`のPlan/Checkpoint/CDC観測と、#2506のResult Slice、#2862の選択SQL、#2514のScenario/Expectedで`read-only`に再現できるか確認すること。SQL選択器・第二CDC/Transactionエンジンを先に設計せず、欠けたSource/Scope/Complete Witnessを具体的に列挙する。実Provider・旧実Client・実DBでのMG-13〜19、正式Owner受理は`NOT RUN`。
+
+## 10. 利用者に見える状態と最短の接合
+
+通常のローコード画面は「受注データ：移行準備中／照合待ち／切替可能／旧形式削除は承認待ち」のような業務単位の状態を表示。必要な権限を持つ運用者/開発者だけが、選択SQL、CDC位置、旧Writer、Key Mapping、未解決と再検証理由へ進める。RLS外の件数、内部SQL Sourceや接続秘密を診断から漏らさない（#2516）。
+
+**次の最小垂直スライス**：同一Query/複合業務KeyのChunk Read→選択Source/Provider/Scope・Snapshotの固定→Checkpoint→独立Target Read→CDC catch-up判定。最初はread-onlyの合成反例で偽PASSを防ぎ、実Provider/実旧Client/同一Attemptへの接合は既存#2555/#2622/#1174/#1163 Ownerが各々立証する。全体の製品Gateや意味承認をこの局所PASSへ格上げしない。
+
