@@ -2565,9 +2565,9 @@ EKI側#112/#266/#67/#115へ契約不足を返し、TEI #1130がJob意味と判�
 **この§48の変更水準**：実装PR・PG試験記録・mainコード・EKI現ADRの照合によるdocs-onlyの検収更新。ここで新規にP0/P1の実PG/Web/Host/EKI/Harness試験、Owner業務意味受理、G1/G2正式監査、性能/費用比較は **NOT RUN**。既存Source/RunPlan/Effectcommit/Admission/Consumer/Oracleの各Ownerを維持し、第二Runner・Registry・Hostを導入しない。
 
 <!-- 20261105-db-dialect-role-migration-claim-ceiling -->
-## 48. DB方言・SQL Asset選択と自己記述Role版移行を、同一Functionの証拠閉包で検証する（2026-11-05、設計・未採用）
+## 49. DB方言・SQL Asset選択と自己記述Role版移行を、同一Functionの証拠閉包で検証する（2026-11-05、設計・未採用）
 
-### 48.1 追加の横断判断：標準化するのは意味と検収、SQL実装ではない
+### 49.1 追加の横断判断：標準化するのは意味と検収、SQL実装ではない
 
 [Data Provider #2622](https://github.com/hat47x/tei-platform/issues/2622)にRDB-01〜08を追加。DomaのDB別SQLファイル（共通とPostgreSQL用の命名区別）およびtwo-way SQL、Spring JDBCのBinding/Error Translationという先行方式から、**TEIは薄いRealization Selectionと実Provider証拠だけを取り込む候補**とした。新しい共通DB Engineや2waySQL必須構文にはしない。
 
@@ -2575,7 +2575,7 @@ EKI側#112/#266/#67/#115へ契約不足を返し、TEI #1130がJob意味と判�
 
 **一つのSubject/Functionについて追跡する最小結合**：Accepted Meaning Revision／Role・Operator exact Pin／Function Data Context／実Data Source alias・DB kind・Provider能力／Native SQL asset選択＋原byte／実生成・実行されたSQLとBound Parameters／実Reader Scope/Snapshot／Query Result Grain／（書込みのみ）current Grant/Target/Tx/Receipt／独立ExpectedとConsumer受領。
 
-### 48.2 DXR-01〜06の同一Revision対照票
+### 49.2 DXR-01〜06の同一Revision対照票
 
 | ID | 比較する圧力 | 正しいClaim ceiling／既存Owner |
 | --- | --- | --- |
@@ -2586,7 +2586,7 @@ EKI側#112/#266/#67/#115へ契約不足を返し、TEI #1130がJob意味と判�
 | **DXR-05 Source欠落・実消費違い** | Workspace root未読込／Native Asset D1と実Build入力D2／実SQL経路不明 | `validate ok`、hash再一致、Provider内部成功のどれも入力閉包の成立ではない。#2822/#2823/#2595/#2600 |
 | **DXR-06 書込/非同期** | Readは同値でもDB別PATCH/Replace/CASとafter-commit Observerの範囲が異なる | Query Result PASSからCurrent Grant/Commit/Receipt/実Effect観測を推論しない。RunPlanのObserver存在のみでもBusinessVerifiedにしない。#1174/#1130/#2616 ACU-02 |
 
-### 48.3 既存P0の足を引っ張らない、最短の切り出し
+### 49.3 既存P0の足を引っ張らない、最短の切り出し
 
 1. **P0 read-only：先行する利用価値の証拠を維持**。§47の公開TEI利用者定義1 Subjectについて、実Source Loaded→H2/H3 Skill Tool呼出しと独立Expectedを先に成立させる。DB VariantとRole A/B全互換を初回のHard dependencyにしない。
 2. **P0-DB：既存Resolverを静的／合成で反証**。同一の論理Query Intentに二Data Source Alias、共通SQL/方言SQL、明示Bindingの3素材を置き、Asset選択根拠と実Source byteを照合。適合する既存契約がなければunsupportedと示し、先にDialect Registry/APIを作らない。
