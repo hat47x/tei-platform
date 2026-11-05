@@ -209,3 +209,50 @@ G0〜G5の判定は、既存`releaseplan database-gate`、Scenario/Oracle、Sour
 
 **採用を保留**：正式なMigration Evidence Schema、新しい二者間同期Tx API、外部Migration Historyの正規化型、DB別共通互換性ポリシー、業務Ownerの切替承認を自動化する仕組み。本書は現行コードに存在する契約を**証明可能な範囲で再利用する設計候補**に限る。
 
+## 14. Cutoverの安全停止・不可逆効果・保存義務の最小ゲート（2026-11-06）
+
+> **追加の決定候補**：Cutoverを一つの成功/失敗ではなく、旧Writer停止後も**書込みを保留して実状態を独立照会できる**検収手順として扱う。中間状態名は検収票の説明用で、新しいReleasePlan Phase、Migration Coordinator、固定Core enumではない。既存#2555 MIG-H01〜07、#1174、#2516・SHOの責務に従う。
+
+### 14.1 Safe pauseの条件
+
+| 旧Writer側 | CDC・未完Operation | 新Writer側 | Gateの期待 |
+| --- | --- | --- | --- |
+| 停止/Fenceが未確認 | 任意 | 任意 | 新Writer有効化による成功判定は禁止。旧Owner・実Effectを照会しG4保留 |
+| 停止/Fenceを実確認 | gap、遅延、unknown | 新側未開始 | 書込み保留を候補にする。必要ReadのScope/鮮度/Grantも不明ならRead停止 |
+| 停止/Fenceを実確認 | 収束を独立確認 | 新Grantまたは実Provider資格が不明 | 旧Writerを勝手に再開せず、新Writerも起動しない。G4 unknown |
+| 停止/Fenceを実確認 | 収束を独立確認 | 同じOwner世代・現Grant・実Commit/Receipt/別Readを確認 | G4の必要Claimを検収する候補。Consumer・業務Owner承認は別 |
+| 旧Queue/Offline Writerの再流入、Fence期限切れ | 過去の収束証拠あり | 新側稼働中 | split-brain疑い。両側の実Effect・Owner世代の再照会とG4再資格化が必要 |
+
+「書込み保留」は停止しても業務が許容する期間と連絡方法について**業務/運用Ownerの判断**が必要。Read-onlyに縮退したことを自動的な安全性の証拠にしない。旧Writerを再有効化する前には新側の未知Commit、逆同期、権限、Consumerへの公表済みEffectを評価する。旧DBと新DB間でこの順序が原子的とは主張しない（#2146/#2555/#1174）。
+
+### 14.2 Rollbackの上限はDBのRowset差分とは異なる
+
+新DBから外部API・通知・在庫引当・請求、Outbox公開、SHO固定文書・他Consumerへ展開された結果は、旧新DBの行数・金額が一致しても自動的には取り消されない。
+
+- **DB recovery**：旧新Owner/Fence、Business Key/物理PK/履歴、Reverse Outbox・CDC、Operation ID/Receiptと別Readを照合。
+- **External effect recovery**：業務取消/補償・配送済み/unknown・外部受取Receiptと現在Grantを確認。Rollback SQL＝外部Effect取消とはしない（#1129/#1174）。
+- **Consumer qualification**：旧時点の引用・納品物は歴史的根拠として保持し、現在の正本を説明する利用ではSource/Read Cohort/Grantを再確認（#2516／SHO #4/#6）。
+- **Retention**：過去時点再現、監査、訂正履歴、保存期間・開示許可のOwner判断が必要。旧Readerが退役したことから旧物理値の破棄可能性は導かない。
+
+したがってContractは①**論理的な旧形式退役**と②**物理的な旧列・表・Code Map削除**を独立した判断とし、①の成立を②への自動許可にしない。保管先は旧DBでなくてもよいが、独立Readerで過去の業務Claimを再構成でき、保存/閲覧資格を維持できる必要がある。
+
+### 14.3 最小反証MG-24〜28（新しいテストの実行なし）
+
+| Case | 故障注入 | 独立Expected／担当 |
+| --- | --- | --- |
+| **MG-24 Safe Pause** | 旧Writer Fence成功・CDC収束、しかし新Writer Grantが未確認 | 旧再開・新書込みを両方禁止。許されたReadだけを限定し、G4 unknown。#2555/#1174 |
+| **MG-25 Offline Writer再流入** | Cutover後に古いクライアントのQueueが送信、Fence世代/接続Poolは旧版 | Provider側で効果ゼロを別接続観測できるまでG4再資格化。アプリ停止ログだけは不足。#2555/#2146/#1174 |
+| **MG-26 外部Effect後の切戻し** | 新DB Commitと外部通知済み、逆同期でDB行は一致 | DB切戻し成功≠業務効果の巻戻し。外部Receipt/補償/Consumerの確認まで未完。#1129/#1174/#2516 |
+| **MG-27 過去時点Readerと破棄** | 旧Writerゼロでも過去受注・固定SHO引用が旧Schema/変換表を必要とする | 物理削除の停止、または同等の履歴再構成/Retention資格を別Readerで確認。#1126/#2555/SHO #6 |
+| **MG-28 PASS後のContract変更** | G3合格後に旧Application RequiredContractsかDB Provider版/Read Policyを変更 | 影響のあるG3/G4/G5のみ再検証。旧World FP/CI成功を現在資格へ復活させない。#2600/#1163/#2622 |
+
+### 14.4 実証の優先順と採用を保留する判断
+
+**P0**：MG-24を既存#2555のOwner/Writer観測・#2147のCheckpoint/CDC・#1174の現Grantの**合成read-only**検収票で表現可能か確かめる。`12のGate Evidence Packetで `old-fenced=true / cdc-caught-up=true / new-grant=unknown` に対してG4を `unknown`、新旧とも新規Write資格なしとする。新状態型やRunnerを追加しない。
+
+**P1**：MG-25/26は実Providerと外部Effect Consumerで旧世代拒否・別Read/Receipt/補償の状態を実測するまで未成立とする。**P2**：MG-27で過去時点Reader・Retention、MG-28で必要Claimのみ再資格化。各FixtureのExpectedは実Migrator/生成SQLの出力ではなく、固定業務Key・時点・操作履歴から独立に作る。
+
+**Ownerへの判断事項**：①旧Writer Fence後の許容停止時間、②保留中に許せるReadの時点/対象範囲、③切戻し完了をDB行だけか外部効果も含めるか、④旧コード表・過去履歴の保存期間・閲覧権限、⑤旧Writer/Offline Queueの捕捉不能時にどこまで停止を継続するか。これらは既存Issue Ownerに残し、正式Gate/ADR・製品API化は別の受理後に判断する。
+
+**資格の上限**：本節は独立Expectedと判断の候補。旧#2143/#2147の3 PostgreSQL参照、#2564実PG局所CAS、#2516の人工FixtureをMG-24〜28の実Provider PASSに合算しない。新しい実DB/本番Client/SHO Reader試験・正式Owner受理は**NOT RUN**。
+
