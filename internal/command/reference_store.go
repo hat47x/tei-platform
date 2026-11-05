@@ -641,6 +641,14 @@ func normalizeValue(typeRef core.CanonicalID, value string, types map[core.Canon
 		if date, err := time.Parse("2006-01-02", value); err == nil {
 			return date.Format("2006-01-02")
 		}
+	case "std.datetime":
+		if timestamp, err := time.Parse(time.RFC3339, value); err == nil {
+			return timestamp.UTC().Format(time.RFC3339Nano)
+		}
+	case "std.time":
+		if clock, err := time.Parse("15:04:05", value); err == nil {
+			return clock.Format("15:04:05")
+		}
 	}
 	return value
 }
