@@ -65,6 +65,39 @@ func TestScopeAllowsInsideAndRejectsOutside(t *testing.T) {
 	}
 }
 
+func TestExactPatternIsCaseSensitiveAndWildcardNeedsOneChar(t *testing.T) {
+	k := newKeys(t)
+	exact := scopedTrust(t, k, nil, []string{"invoice/7"})
+	if err := verifyWith(t, k, exact, cap1, "invoice/7"); err != nil {
+		t.Fatal(err)
+	}
+	if err := verifyWith(t, k, exact, cap1, "Invoice/7"); err == nil || err.Error() != outOfScope {
+		t.Fatalf("exact pattern folded case: %v", err)
+	}
+	wild := scopedTrust(t, k, nil, []string{"order/*"})
+	if err := verifyWith(t, k, wild, cap1, "order/x"); err != nil {
+		t.Fatalf("one char after prefix: %v", err)
+	}
+	if err := verifyWith(t, k, wild, cap1, "order/"); err == nil || err.Error() != outOfScope {
+		t.Fatalf("boundary order/: %v", err)
+	}
+	if err := verifyWith(t, k, wild, cap1, "Order/x"); err == nil {
+		t.Fatal("wildcard prefix folded case")
+	}
+}
+
+func TestMissingScopeRecordFailsClosed(t *testing.T) {
+	k := newKeys(t)
+	// A Trust assembled without ParseTrust has no scope record for the key.
+	bare := Trust{Policy: policyOf(t, entry(k, "dev-issuer", "k1", nil))}
+	if _, err := VerifyScoped(signed(t, k, nil), baseQuery(), bare, at(0)); err == nil || err.Error() != outOfScope {
+		t.Fatalf("missing scope record accepted: %v", err)
+	}
+	if _, err := VerifyScoped(signed(t, k, nil), baseQuery(), Trust{Policy: bare.Policy, scopes: map[string]Scope{}}, at(0)); err == nil || err.Error() != outOfScope {
+		t.Fatalf("empty scope map accepted: %v", err)
+	}
+}
+
 func TestScopeExactPatternBoundaries(t *testing.T) {
 	k := newKeys(t)
 	tr := scopedTrust(t, k, nil, []string{"order/1"})

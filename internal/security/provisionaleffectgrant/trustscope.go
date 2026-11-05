@@ -35,6 +35,11 @@ import (
 //     containing such a segment never matches a wildcard pattern (it can only
 //     match an exact pattern).
 //
+// Matching is on the Resource string exactly as signed: no normalisation,
+// decoding or case folding. A Host that builds the Resource from external input
+// (a URL, a path) must normalise it BEFORE it asks for a Grant; that is the
+// Host's responsibility, not this package's.
+//
 // The scope is NOT read by hoststore: the extra members are removed here before
 // the shared strict hoststore parser sees the document, so the Source
 // Acceptance trust file keeps refusing them as unknown members.

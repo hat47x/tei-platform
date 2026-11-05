@@ -247,7 +247,9 @@ func verify(g Grant, q Query, policy hoststore.TrustPolicy, trust *Trust, now fu
 		return Verified{}, err
 	}
 	if trust != nil {
-		if scope, ok := trust.ScopeFor(g.Issuer, g.KeyID); ok && !scope.Allows(g.Capability, g.Resource) {
+		// Fail closed: a key with no scope record at all (a Trust not built by
+		// ParseTrust) is refused, never treated as unrestricted.
+		if scope, ok := trust.ScopeFor(g.Issuer, g.KeyID); !ok || !scope.Allows(g.Capability, g.Resource) {
 			return Verified{}, errors.New(errOutOfTrustScope)
 		}
 	}
