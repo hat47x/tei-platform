@@ -84,3 +84,72 @@
 - [uroboroSQL 2WaySQL](https://future-architect.github.io/uroborosql-doc/background/)、[トップページ（Coverage/REPL）](https://future-architect.github.io/uroborosql-doc/)
 
 **関連**：[#2667](https://github.com/hat47x/tei-platform/issues/2667)（既存横断実証）、[#1121](https://github.com/hat47x/tei-platform/issues/1121)（Lowering）、[#988](https://github.com/hat47x/tei-platform/issues/988)（DSL/Operator）、[#1131](https://github.com/hat47x/tei-platform/issues/1131)・[#1180](https://github.com/hat47x/tei-platform/issues/1180)（テスト正本）。本書はこれらに対する追補の案内であり、独立した最終仕様ではない。
+
+
+## 6. 横断整合レビュー（2026-11-05：DSL自己記述・外部参照・実行資格・Source鮮度）
+
+> 状態：別レーンの設計・Issueと照合して成熟した**設計上の制約**。以下の型名・証拠欄は実装案／受入票の列であり、現行公開API/DSLとして確定していない。SQL選択の実装・実DB試験はNOT RUN。決定のOwnerは既存各Issueに残す。
+
+### 6.1 SQL解決の段階と「DB名」の実体
+
+1. **Semantic Data / Query Contract**：業務上の対象・必要な入力/結果・Cardinality・Read Scope。ここにはDB製品名やSQLパスを持ち込まない。
+2. **Function Data Context / Application Binding**：利用するDataSource/用途（Read/Write）/Scope/時点を解決。Candidateが0/多なら未解決を保持し、table名やalias辞書順から推測しない（#2611）。
+3. **Provider・Dialect realization selection**：選択済み接続の**宣言済み**Provider IDで候補を探索する。候補のsource pathにある `-postgres` は選択のヒントに限り、Canonical QueryのDialect/Meaningを確定しない。Runtimeに接続できる場合は実DB製品/版を観測し、宣言との食い違いを別診断とする。
+4. **Source resolution / lock**：採用したnative SQL本文と参照位置・byte fingerprint・選択理由・Mapping版を固定する。候補の探索範囲と存在/不在も固定し、後からのファイル追加・削除で結果が変わる負の依存を記録する。
+5. **Target realization / execution**：Go単一Binaryなら組込み対象のProviderとSQL候補を構成・Build時に固定する。動的切替が必要なTargetでも「配布済み・契約検証済みの候補」からのみ選び、任意の実行環境SQLファイルを信頼して差し替えない。外部Java/.NET Hostでも既存Host認可と副作用境界に従う。
+6. **Observed Read / Result / Effect**：実行の成功と受理済みQueryへの結果mapping、要求されたデータ集合の完全性、SQL/RLS等で実際に読んだ範囲、Consumerへ開示した範囲、実DB Commitは別の主張（#2622・#2506・#2598）。SQLを選択できたことを権限付与とみなさない。
+
+read-onlyの「対象DBを確認する」画面は原則 `Semantic Data → 利用Context → DB Alias → Provider` を示す。Provider情報の解決不能や実DB接続前は「未確認」と表示し、Instanceの秘密の識別情報・DSN・実Source pathを閲覧資格なしに開示しない（#2812/#2515）。
+
+### 6.2 フォールバックを自動成功にしない（規約の範囲を限定）
+
+- **初回選択**：共通SQLのみが宣言され、選択対象DBで適合が確認済みなら共通SQLを利用できる。DB専用候補がある場合は対応する実現を明示的に選択し、SQLと結果mappingの契約を検証する。
+- **明示Binding／固定済み選択の変更**：専用SQLが削除・unavailable/staleになったら、共通SQLの有無にかかわらず、選択済みRealizationを**勝手に切り替えない**。代替候補を提示し、再解決・適合評価・必要な受理を経て新しいLockを作る。
+- **曖昧な場合**：複数Alias・同一Providerの複数SQL候補・異なるDBバージョン/feature条件で一意に選べないなら、登録順・名前順・「最初に存在した」ルールは禁止。#951/#1223の既存Compositionへ不足条件を返す。
+- **Provider相当語**：`postgres`のような製品IDと、Driver名/DBバージョン/Database Compatibility Modeは別。ファイル名にすべてを埋め込まず、必要なら明示Realization表で条件を表現する。最初から汎用predicate DSLやvariant registryを追加しない。
+- **可搬性表示**：標準Data OperationsからSQLを再生成できる場合と、Native SQLを個別移植・検証する場合を区別。契約型が同じでも、NULL/空文字/DECIMAL・照合・集計・Pageの意味まで同じとは限らない。
+
+### 6.3 Native SQL Sourceの失効と説明の精度
+
+Source freshnessは以下を別判定する。
+
+| 変更 | 再評価すべきもの | 維持できる可能性のあるもの |
+| --- | --- | --- |
+| SQL file move/rename・本文同一 | locator・参照解決・Source Index・Consumer link | Canonical Query ID／Sourceの意味候補 |
+| DB専用SQLの追加・削除 | candidate set／negative dependency／selection lock／Build artifact | Query Contract自体 |
+| SQL本文・directive分岐変更 | Parser/Query解析/Mapping/分岐Expected/Artifact | 別SQL・別Consumerの無関係な結果 |
+| DB schema/RLS/Provider版変更、SQL byte不変 | 実Query意味の適合・Observed Read・Execution资格 | 歴史的なSource byte Evidence |
+| Source A→B→A、offline・権限喪失 | 参照の現在資格・履歴・Owner受理・実行可能性 | 以前の履歴としてのObservation |
+
+World/Model revision・Artifact revision・実消費Source byte・Provider/Driver info・Scenario/Oracle result・現在のGrantは別束縛。過去のArtifactやSQL digestが一致してもProvider資格、Owner受理、現在のExecution Permissionは自動復活しない。新しいSource Registryやキャッシュを作らず、既存Source Reference/Resolver、#2600・#2595・#2812の境界を利用する。
+
+### 6.4 2way SQLの記法評価は「意味」と「編集可能性」を別にする
+
+- 日常のFunction DSLではData Operationsを優先。Native SQLはAdvanced表示で明示的に選択する。SQL本文で扱う `/*param*/sample` は**試験用リテラル**、実引数のdefault/Expected/業務意味ではない。
+- SQLの動的IF/WHERE/SET/INなどを「文字列置換」で自動編集・合成しない。構文解析/分岐後の構造・Source span・Bind parameterとallowlist identifierを区別し、解析不能ならread-only／unsupported。式テンプレートの実行で副作用や任意コードを許さない。
+- **条件が外れると読み取る範囲が拡大**する（WHEREが消える等）場合は、SQL構文が有効でもFunction Data Contextの要求Scope/権限/件数上限との整合が必要。実Providerの物理ReadとConsumerへのOutputを別に検証。条件欠落を便利な全件探索へ自動降格させない。
+- 2way SQLの表・ツリー・テキスト間の往復編集は、#988/#2497/#2621の「元Sourceの糖衣構文保持、可逆なら適用、非可逆ならread-only/diff+受理」を継承。新しいテストDSL/Operator正本を増やさず、#1131/#1180の既存Scenarioで分岐・Source・Expectedを表す。
+- Studioの通常利用者にはData/条件/保存操作を見せる。Advanced画面では「選択先DB・選択SQLの理由・現在のSource/Result Mapping・診断」を見せる。実権限のない利用者には秘密のDB構成・SQL全文・実行パラメータを露出しない。
+
+### 6.5 最小追加反例（独立Expected・未実行）
+
+| Case | 操作 | 判定すべき失敗 |
+| --- | --- | --- |
+| DBX-01 | Read用DB aliasとWrite用aliasが異なる同Semantic Dataを取得しQuery選択 | table名だけでProvider/実行先を一意化、read-only経路でwrite資格を得る |
+| DBX-02 | postgres専用SQLを削除して共通SQLだけ残す（Lock固定済み） | 無承認フォールバックを正常な継続実行とする |
+| DBX-03 | 共通SQLだけでBuildした後に専用SQLを追加、SQL本文も契約も不変 | 旧選択/Artifactを誤再利用する、必要以上に無関係なArtifactを再生成する |
+| DBX-04 | 実DB Provider/VersionとBinding宣言が不一致 | ファイル名のDB IDを実DB観測/実行資格として信用する |
+| DBX-05 | SQL本文がA→B→A、Schema/RLSが別改訂、古いProvider Conformanceが残る | 同byteを理由に過去のOwner受理/Grant/Evidenceを無条件復活 |
+| DBX-06 | optional filterがないためSQLは成立するが全件Readへ拡大 | 利用者の要求Read Scopeと実Provider Readの乖離を無視 |
+| DBX-07 | 2way SQLのサンプル値、`NULL`、空IN、WHERE/SET句、Result列の重複・欠落 | runtimeの実引数汚染、不正SQL、結果mappingの推測成功 |
+| DBX-08 | Source Source-pathを含むSQL選択ログを権限の異なるConsumerへ出力 | 内部Sourceパス/秘密のDB構成を「説明機能」として漏洩 |
+| DBX-09 | Native SQL読取成功後、DB更新ActionのCommit観測不能・通信断 | SELECT成功を業務更新確定とする／無確認のRetry |
+
+各Caseは独立Expected・入力Scope・Source/Mapping版・Execution Stage・診断を固定し、**選択完了、SQL解析成功、構文的実行可能、実DB読取、結果整合、現在の権限、業務Effect**を別列に記録する。SQL branch coverageの数値のみでは業務意味の受理にならない。
+
+### 6.6 実装順の再評価と停止線
+
+- **次の一手**：DBX-01/02/03/04の閉じたfixture（Source候補とDB Bindingだけ）を既存CLI/Goテストの入力にして、どこまで**追加公開APIなし**で記述できるか測定する。既存#2611の別Owner branchは編集せず、完成物と衝突をレビューして引渡す。
+- **採用門**：既存Provider/Query Contract/Source Indexで再利用可能な箇所と、どうしても追加が必要な小さなAdapterを明示。2way構文を標準化する前に、実際のユーザー定義量・可読性・型/位置診断・実DB適合・元Sourceの往復編集を比較する。
+- **明示的な非目標**：2way SQL完全互換、DB間Native SQL万能翻訳、全SQL optimizer、SQL本文由来の業務Relation自動受理、providerを勝手に後付けするRuntime、無認可のDB移行/書込み、別のScenario Engine。
+
