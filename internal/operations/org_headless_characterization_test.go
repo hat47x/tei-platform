@@ -298,3 +298,58 @@ func TestOrgHeadlessSemanticRelationChangeIsInvisibleToCurrentOperations(t *test
 		t.Fatal("a changed semantic Relation must not create an authorization Grant")
 	}
 }
+// An unselected plugin root must not be treated as a managed Source merely
+// because its directory exists under a Workspace. This is a Source selection
+// test using the actual Loader and SourceIndex, NOT a claim about whether Go
+// compiled binary linkers can prune unreferenced plugin implementations.
+//
+// The intentionally invalid plugin.tei below would fail a parser if the
+// unlisted plugin root were accidentally scanned as executable/semantic input.
+func TestOrgHeadlessUndeclaredPluginRootDoesNotChangeSemanticOrOperations(t *testing.T) {
+	root := filepath.Join("..", "..", "reference", "org-headless-workspace")
+	before, err := SurfaceWorkspace(root, "org_view")
+	if err != nil {
+		t.Fatalf("load baseline organization Workspace: %v", err)
+	}
+
+	copyRoot := t.TempDir()
+	if err := os.CopyFS(copyRoot, os.DirFS(root)); err != nil {
+		t.Fatalf("copy existing .tei Workspace: %v", err)
+	}
+	pluginDir := filepath.Join(copyRoot, "plugins", "unused-org-profile")
+	if err := os.MkdirAll(pluginDir, 0o755); err != nil {
+		t.Fatalf("create unselected plugin root: %v", err)
+	}
+	pluginPath := filepath.Join(pluginDir, "plugin.tei")
+	if err := os.WriteFile(pluginPath, []byte("this intentionally invalid plugin source must remain unselected\n"), 0o644); err != nil {
+		t.Fatalf("write unselected plugin source: %v", err)
+	}
+	loaded, err := workspace.Load(copyRoot)
+	if err != nil {
+		t.Fatalf("unselected plugin source must not enter parsed Workspace: %v", err)
+	}
+	for _, managed := range loaded.ManagedFiles {
+		if strings.HasPrefix(filepath.ToSlash(managed.Path), "plugins/") {
+			t.Fatalf("unlisted plugin root was mistakenly included in managed Source: %+v", managed)
+		}
+	}
+	after, err := SurfaceWorkspace(copyRoot, "org_view")
+	if err != nil {
+		t.Fatalf("derive real operation surface with unselected Plugin on disk: %v", err)
+	}
+	if before.WorldFingerprint != after.WorldFingerprint {
+		t.Fatalf("unselected Plugin changed normalized World: before=%s after=%s",
+			before.WorldFingerprint, after.WorldFingerprint)
+	}
+	if before.ModelRevision != after.ModelRevision {
+		t.Fatalf("unselected Plugin changed indexed Source ModelRevision: before=%s after=%s",
+			before.ModelRevision, after.ModelRevision)
+	}
+	if !reflect.DeepEqual(before.Operations, after.Operations) {
+		t.Fatalf("unselected Plugin changed read-only Operation set: before=%+v after=%+v",
+			before.Operations, after.Operations)
+	}
+	if after.Effect != "read-only" {
+		t.Fatalf("unselected Plugin must not grant authority: %+v", after)
+	}
+}
