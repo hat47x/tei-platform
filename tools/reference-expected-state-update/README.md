@@ -186,4 +186,5 @@ go test ./tools/reference-expected-state-update/... -count=1
 - 実DB経路は `internal/command` の `Lifecycle` と `effectcommit` Provider へ接続し、`commandadapter` 経由のend-to-endを実PostgreSQLで確認した（#2852・#2853）。ただし`RuntimeStage`/`Lifecycle`はin-memoryであり、再起動後の排他・durable owner fencingは保証しない
 - **ABA（RCAS-01）**: 値一致CASだけでは同じ論理Commandを一つの効果に束縛できない。別idempotency keyでの再適用を反例として`pg_aba_test.go`に固定した。対象の版属性・operation identity・Owner受理済み再試行Policyの選択は未決
 - **再起動（RCAS-02）**: `RuntimeStage`はin-memoryであり、別プロセス・別workerはunknownの記録を持たない。`pg_restart_test.go`は、再起動後の再Dispatchが拒否されないことと、同じidempotency keyの再送だけがProviderの記録で二重適用を防ぐことを固定する。durable owner/generationの実装は未着手
+- **応答喪失（RCAS-03）**: TCP proxyでcommit後のCommandCompleteを呼出側へ渡さず、サーバは確定済み・呼出側は不明になる実接続断を`pg_ack_loss_test.go`で固定する。process死亡・再起動を伴う障害は未実施
 - 観測の永続保存・保持期間・監査は未決
