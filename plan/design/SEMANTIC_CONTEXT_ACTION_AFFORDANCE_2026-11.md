@@ -556,3 +556,33 @@ D0〜D5は**検収票の論理列**であり、すべてのActionが6段の新Ru
 3. **P2: 本番側の原子的実行・結果確認**：#1174/#1129にcurrent Principal/Grant/Period/Target/CAS→Commit/Receipt/Observerの同一作用境界、#2146に外部排他、#2516に実Consumer受領、#1130に部分完了/回復、任意EKIにはTask/Lease/Result bodyを担当させる。Direct Go/外部Host/EKIの選択でBusiness Meaningを変えない。
 
 **停止線**：`RunPlan`は現時点ではSource/Role実消費、認可Grant、Observer効果完了、実DBの分散排他を自動で証明しない。既存の`blocked`／`completed`を正式`BusinessVerified`へ昇格しない。ここでは新RunPlan/Policy Engine/Host/Registry/正式DSLを設計しない。ACU-01〜08の独立Oracleを伴う同一実Target横断E2E、実DB/エッジ、Owner受理は**NOT RUN**。
+
+<!-- 20261105-action-meaning-role-db-actual-provider-bridge -->
+## 18. 11/5実証差分：Role/SQL選択の変化と、製品Invokerの実DB CASをAction Offerに結び直す
+
+### 18.1 同一Intentでも「今、同じ意味・同じ実対象」かは別
+
+[#2860](https://github.com/hat47x/tei-platform/pull/2860)で提案されたRole/Operator/FormatのA→B移行は、同じStructureや原文ハッシュが復活しても、丸め・NULL/欠損・粒度・Owner Acceptanceの現在性を復活させない。[Data Provider #2622](https://github.com/hat47x/tei-platform/issues/2622)のDB Dialect／Native SQL Asset選択も同様に、同じLogical Operation IDとQuery Resultの見た目から、同一SQL/同一DB Source/同一Write Scopeを導かない。
+
+このため§13〜17のAction Offer/Invocationへ**二つの現在資格**を接続する： (i) Meaning Interpreter/Role/Operatorのexact版・Source実消費・現在Accepted Meaning、(ii) 対象Dataの実Data Source alias/DB kind・Resolved SQL/実ProviderとTarget Scope。特に、設計時に提示したSQL方言と、実書込みが到達するDBの方言/Serviceが異なる場合、Assetを選び直しただけで旧Action Offer/Grantを再利用しない。
+
+### 18.2 実PGの進展は「結果を実際に確認した経路」と「Action候補からの縦断」を分ける
+
+| 現mainに統合された局所証拠 | 正しい評価 | #2616から見た残り |
+| --- | --- | --- |
+| [#2853 実Command Invoker→PostgreSQL CAS](https://github.com/hat47x/tei-platform/pull/2853) | 製品Commandを含む実PGのCAS・模擬Commit応答喪失/Lookupの限定実証 | #2616 Operation Offer→同Command/Input/Payload/実Target/当前Grantの**同一Attempt**ではない |
+| [#2854 実PG ABA反例](https://github.com/hat47x/tei-platform/pull/2854) | 同一Idempotency keyはreplayされても**新KeyでABA後APPLIED**となり得る弱点の検出 | Business Meaningが「同じ一回だけ」を要求するなら別の永続Operation identity/版・Owner Policyが要る |
+| [#2857 暫定一改訂Web/実PG E2E](https://github.com/hat47x/tei-platform/pull/2857) | 暫定D8〜D11・独立readは実接続済み | 監査はINCOMPLETE／productGate UNQUALIFIED。暫定Acceptance/Grantを正式G1/G2へ昇格不可 |
+| [#2859 起動時Schema Gate](https://github.com/hat47x/tei-platform/pull/2859) | Runner型でも物理Schema前提を検査する限定修正 | 実Web ProcessのHTTP公開停止E2E・User Action/DB Migration互換性は別 |
+| [#2856 RunPlan前提合成](https://github.com/hat47x/tei-platform/pull/2856) | 渡されたPreconditionの合成は製品コードで可能 | 必須Guard集合の完全性、Observer実観測、Blocked以前のEffect=0は未証明（§17） |
+
+したがって**「実PostgreSQLで一連の検証が全く無い」とは書かない**一方、旧#2616の合成Target mismatchと上の実PG成功を組み合わせ、正しい業務Actionとしての独立BusinessVerifiedへ昇格させない。
+
+### 18.3 次に一つだけ接続するAction試行（SQ-01〜04）
+
+- **SQ-01 意味版固定**：公開`sales.order`に対しSource/Role/Operatorを同一版固定し、Ownerが必要とするAction Purpose/Scope/Rule・hidden dependencyが実解析/消費されたことをRead-onlyで照合。Role A/Bの正式採用は#2620/#2860へ。
+- **SQ-02 実対象選択**：同じFunctionの論理Table→実Data Source alias→Provider/DB kind→実SQL Asset/Bound input→Request Targetの対応を照合。CoreでSQL Dialectを管理せず、対象が曖昧ならunknown/unsupported。Native SQL・2waySQLの本体は#2622へ。
+- **SQ-03 Providerでの効果**：SQ-01/02を通過した同一Requestを既存#2853の実PG Product Command/Lifecycleへ*接続できる場合にだけ*、現在のGrant/ExpectedVersion/Target・実Effect・Receipt Lookup・独立Readの一致を独立Expectedで測る。まだ接続不能な段階は`not-connected`と報告し、別の既存CIを転用しない。
+- **SQ-04 Consumerと再資格**：Offer後のRole/Asset/Grant/DB Schema移行、A→B→A、Period closing、またはACK lossに対し、Offer表示・再提示・実Dispatch・過去Result/引用の資格を別々に再計算。Userに`blocked`だけを示して既確定効果を消去しない。
+
+**最優先はSQ-01 read-only同一Source/Meaningから始める**。既存#1180のScenarioと#2514独立Expectedを使い、実2DB比較／役割自己移行／本番Current Grant／外部Harness／EKI JobをP0の前提条件にしない。上記は新契約/二重Runnerの導入提案ではなく既存Ownerへの受入引渡し。SQ-01〜04を同一Attemptで走らせた試験、Role Cutover/実Dialect SQL selection、Owner Accepted Meaningは**NOT RUN**。
