@@ -827,3 +827,35 @@ DSH型の解除可能な登録（Tool/Listener/Service）はLifecycle設計の�
 | 外部ConsumerでのProvider実Loadに失敗 | TEI Studio/CLIでの発見・Skill説明を外部可搬性のPASSへ転用しない | #2390/#2513 |
 
 P0は公開可能なContract/Descriptor/Artifact/独立Expectedを既存資料からread-onlyでFit/Gap棚卸し。P1は同名異byte・候補競合・未Pin依存の既存負例と照合。P2は#2390のC0契約だけの公開とC1外部Consumer、#1251の実Go Build、必要時のみ#1223/#1174のLifecycle/実Effectへ進む。**本節は配布規約・第三者登録制度・Plugin ABI/Marketplace/中央Registryを採用するものではない。新Go/Host/DB試験とOwner受理はNOT RUN。**
+
+
+<!-- tei-plugin-contract-first-release-vertical-slice-20261106 -->
+## 21. 第三者Pluginの最小公開・互換性検収：Contractだけから後付けProviderへ（2026-11-06、計画／未採用）
+
+### 21.1 一つのContractが通過する受入手順
+
+§20は第三者の供給・受入責務を定義した。本節は**初回の実証に必要な順序と、公開してはいけない誤資格**を定める。既存[#1975](https://github.com/hat47x/tei-platform/issues/1975)の「ProviderなしのSQLite向け狭い契約→案件内候補実装→独立Conformance→隔離した実SQLite読取」を最小縦断とする。最初から全DB／全Target／共通Marketplaceの実装を要求しない。
+
+| 検証段階 | 入力・結果の限定Claim | 不適合・保留条件（原Sourceを保持する） |
+| --- | --- | --- |
+| K0 Contract only | Contract ID/意味版・Read/NULL/Failure/unknown/Scope、必要Target・独立Expectedを公開。実Provider 0件でもinspect/参照できる | Provider不足を契約不存在・業務0件・解析成功と扱わない。実行要求はunresolved/unsupportedで停止 |
+| K1 Candidate provision | 人またはAIが生成するProviderを通常の案件Source候補として作成。base Source Revision、変更対象、利用Scopeを明示 | AI自己評価・Publisher署名・Source位置の一致から採用やSource Patch実行を許可しない |
+| K2 Resolution/Binding | 既存#951/#1016のProvider選択でContract/Implementation・依存・Targetと版を固定 | 同名/同版異byte、二つの同順位Candidate、欠落した明示SQL/Role依存を後勝ち・ロード順・最新候補で黙って決めない |
+| K3 Independent conformance | Provider作者と独立したExpected、NULL/文字列・型・失敗・不正SQL等の正負Fixtureを適用 | Candidate実装とExpectedを同じAIが生成した自己PASS、未知やSkipをPASS件数へ算入しない |
+| K4 Actual Provider read | 実SQLite版・exact Artifact・実QueryとRead scope・失敗/0行/部分結果・独立Readerを記録 | 合成ProviderだけのPASS、返却Rows一致のみから実読取範囲/権限を推論しない |
+| K5 Release/Consumption eligibility | C0契約資産とC1実装・必要memberを別に配布・保全。対象Consumerが実Load/Invokeした証拠にのみ限定した資格を付与 | Builder成功・Artifactの存在・署名から実外部Host適合やOwner受理/Grantへ昇格させない |
+
+**独立する別Consumer試験**：[#2390](https://github.com/hat47x/tei-platform/issues/2390)は既存の読取り専用見積もり計算 reference.order.quote-lines/v1 と23独立Vectorによる外部Consumerの実利用を優先している。SQLite 方言Contractとは**異なる業務意味/Oracle**なので、同じScenarioとして混合せず、K0〜K5の共通の証拠列だけを流用する。見積もり計算のProcess/Componentの過去CIは実Source/Head/Host単位で参照し、新K試行のPASSへ転記しない。
+
+### 21.2 互換性・撤回・説明の取り扱い
+
+- **意味の変更**：入力型、NULL、桁・単位、失敗/unknown、Effect/Read Scopeに変更があれば、Semantic Contract互換性を検討する。同じ文字列Versionや同じメソッド名でも無条件互換とはしない。互換不明なConsumerは選択を保留し、勝手な代替Providerを利用しない（#951）。
+- **実装の更新**：Contract意味が同じでもImplementation実byte・Build provenance・対象SQLite版・Toolchain/Targetが変われば、Conformance/Evidenceを対象版に結び直す。ただし未選択Pluginの変更によって無関係Buildを失効させない（#1251/#2600）。
+- **配布終了／失効**：Catalogから消えたことと、過去に配布したArtifact/Receiptの履歴破棄を混同しない。新規選択可否・既存稼働物の現在Grant・旧Sourceの説明資格はそれぞれ独立に判定する。確定したDB EffectのRollbackをPlugin削除で自動達成したとは報告しない。
+- **新しいStatus enumの先行採用禁止**：K0〜K5は検証順序の参照名であって新しい公開API/Schemaや一枚の「Pluginが安全」という証明ではない。各段階の不足・unknown・not-run・not-applicableを既存Evidenceへ記録する。
+
+### 21.3 既存横断反例の追加割当
+
+[Draft #2898](https://github.com/hat47x/tei-platform/pull/2898)の重複Role拒否と[Draft #2891](https://github.com/hat47x/tei-platform/pull/2891)のFixture JSON重複member拒否は、**Source fidelity**上の別々の局所修正である。これを全Pluginの新Parserへ移植するのではなく、公開Descriptor/Contract/選択表についても「曖昧性が失われる前に拒否する」という既存#988/#2620/#951/Oracleの負例へ対応付ける。具体的には同じContract IDを複数提供、同じDependency IDの別Revision、Role/Operator Pin欠落、二重指定による後勝ち、不正なValidator入力の黙示補完を拒否・保留する。元Sourceは閲覧・修正可能に保持し、意図した正式な複数Role構文まで禁止するとは決めない。
+
+**実施順序**：P0は#1975の契約だけを既存Data/Sourceでinspectし、Providerゼロの拒否を観測。P1で人/AIの候補と独立Oracle・意図的なmutantを固定し、K2/K3で既存Resolver/Conformanceを照合。P2は隔離した実SQLiteで実Readの対象/完全性/結果を別Evidence化。P3で#2390の別契約・独立Consumerへ展開し、配布方式・Adapter量・Core変更量・修復回数・検証/更新費用を測る。#1975/#2390/#951/#2514/#2620に責務を戻し、第二Registry/Resolver/Plugin Host/AI特権実行/共通Fixture正本は作らない。**K0〜K5の新実行・実SQLite/外部Consumer・公開Contract採用・Owner受理はいずれもNOT RUN**。
