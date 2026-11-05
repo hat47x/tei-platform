@@ -685,3 +685,38 @@ D0〜D2の第一回比較では、#1861の固定23ベクトルとContract、実�
 再審査は、Requirement/Owner受理範囲、新Consumer、実選択/Source closure、Artifact/Target、Providerの現在資格、独立Oracleの判別能力、測定した費用が**実際に変化したとき**に限定する。無関係なCatalog/Bundle更新だけで全Targetを過剰失効させず、A→B→Aや同version異byteでも自動的な古い受理の復活は認めない（§17、#2600）。
 
 **実行責務**：#1016（用途別選定）、#2514（Oracle/Mutant）、#1180（Scenario）、#1861（23件）、#951/#1145/#2390（実Provider/Transport/Host）、#1251/#2600（実Buildと費用）。本節に別のExpected・Runner・新ABI・中央Decision Engineを置かない。23件横断D1/D2実行、Mutant実測、性能測定、Owner正式採用は現時点でNOT RUN/NOT ACCEPTED。
+
+
+<!-- tei-bundle-granularity-and-required-guard-20261106 -->
+## 19. 高凝集Bundleの適正規模と実行前提の完全性（2026-11-06、設計・未採用）
+
+### 19.1 Bundleのサイズはファイル数ではなく、実変更の結合度で判断する
+
+§18の同一要求D0（Plugin不要）/D1（静的Provider）/D2（Process）比較は維持する。Bundle分割を採否する際は、#1251 PB-09に次の**実測可能な反証**を付加する。細分化と統合のどちらも既定の正解にはしない。
+
+| 観測軸 | 高凝集Bundle案が成立する条件 | 過剰な統合・分割の兆候 |
+| --- | --- | --- |
+| 利用者の操作 | 関連機能の導入と更新を一括で説明できる | 互いに無関係な機能の選択・設定まで強制する／分割しすぎで依存設定が増える |
+| 変更の波及 | 共通契約・UI/DSL/Generator等の関連変更を局所検証できる | 未使用実装の改版で無関係TargetのBuildが変わる |
+| Versioning | Bundle版と内部Contract/Implementation版を追跡できる | 一つの実装パッチで全契約を意味的に再受理させる |
+| 依存・ビルド | 実Selected/Build-consumed/LinkedがTargetごとに明示できる | 共通packageのinit・blank import・embedや全件登録で未使用実装まで混入する |
+| 権限・作用 | 同梱したread-only解析とSource書換／DB Writeの作用を別々に制御できる | Bundle全体の承認・署名だけで個々のResource/Effectを自動許可する |
+| 保守費用 | 同じ固定Expectedで変更箇所・試験/配布・復旧の負担を比較できる | 分割/統合に測定可能な利益がないのに新ABIやResolverを増設する |
+
+比較するのは同じ機能・同じ業務Source/独立Expectedを実現する、(A)通常Library/標準Data Operations、(B)細分化Plugin群、(C)高凝集Bundleの少数の対照。B/Cとも論理Contractと実選択・実消費の区別は共通。独立配布や別Targetへの展開要求が存在しない純粋演算やOwner RuleはAで完了してよい。サイズを一律のmodule数・LOC閾値で固定しない（#1251/#2018）。
+
+### 19.2 既存Goコードから確定した上限：ResolvedSetはFunction-usedの証拠ではない
+
+mainの `internal/plugin/resolve.go`（照合byteは別Evidence）で `Catalog.ResolveEnvironment` は選択Bundleの `Plugins` 要求をキューに展開し、依存を解決して `ResolvedSet` を作る。`internal/plugin/model.go` の `Bundle{ID,Version,Plugins}` と旧 `CapabilityKind` は現状の実装形状であり、将来の一般Plugin ABIを決定する契約ではない（#951/#1223）。**Bundle内の全Requirementが解決できたことは、特定Functionに必要、Go Binaryへリンク済み、現在Grant取得済みのいずれの証明でもない**。実利用とBuild closureの追跡は#1251/#1089/#1167/#2600へ委譲する。
+
+### 19.3 Capabilityを選択できることとRequired Guardを満たすことを分ける
+
+他レーン[Draft #2889](https://github.com/hat47x/tei-platform/pull/2889)は、Go `internal/execution.RunPlan` への**toy Step/Journalを使った限定的な実Go特性テスト**。専用CIでは3件PASSが報告されているが、実DB/Host認可/Owner受理ではない。特徴付けの内容は、Callerが期間チェックだけを渡してGrantチェックを提供しないとtoy Stepが `completed` になり得る、Observerの存在は実Effect観測ではない、先行Step後のblockは全Effect=0の証明ではない、という境界である。
+
+ここからPlugin連携の受渡し票には、当該操作の**Required Guards（選択済みContract/Meaning/Targetから必要と判断した検査）／Supplied Guards（Callerが渡したもの）／Evaluated Guards（実際の現在版・対象に対し評価したもの）／Effect・Consumerの独立Evidence**を別欄に設けることを提案する。必要集合の導出自体が不明なら `unknown` として実行資格を主張しない。`preconditions != nil`・Pluginの `read-only` 宣言・Provider署名・RunPlanの `completed` だけでGuard completenessを証明しない。全Operationへ同じGuardを強制せず、純粋計算には該当しない効果検査をnot-applicableとする。
+
+**最小負例の割付**：#1130/#1129/#1174の既存RunPlan・Effect Fenceで「必要Grant未供給」「Observer存在のみ」「途中block後の先行結果」を区別。#951は選択Contract/Provider・Capability要求の束縛、#1251はBundleが増えても権限が増幅しないこと、#2514は独立Expectedの品質を担当する。第二RunPlan/Guard Registry/TEI共通Hostを作らない。実Provider Grant・Commit/Receipt・外部HostとWindows Studioは別の実受入を必要とする。
+
+### 19.4 採否と証拠の状態
+
+まず#1251 PB-09の同機能A/B/Cで導入設定数・Source変更量・必要Target/Build依存・実Binary/Artifact・検証範囲を比較し、その次に#2889の既存Guard不足の負例を対応するPlugin経路に当てる。比較は独立Expectedを先に固定し、費用/Latencyの数値を捏造しない。Pluginの粒度・公開Contract・Runtime方式は正式採用していない。**今回の§19はDocs-only、Go/DB/Hostの新実行、Bundle比較実測、Owner意味受理はNOT RUN**。
