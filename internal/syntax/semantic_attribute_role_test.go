@@ -26,29 +26,28 @@ data Order {
 	}
 }
 
-
 // The authored Source must not silently erase an earlier Role option when
 // projecting to semantic.Attribute.Role. A duplicate belongs to syntax
 // diagnostics, before any Role contract or Owner meaning acceptance.
 func TestParseSemanticAttributeRoleRejectDuplicateOption(t *testing.T) {
 	cases := []struct {
-		name string
+		name   string
 		source string
 	}{
 		{
-			name: "distinct role values",
+			name:   "distinct role values",
 			source: "namespace sales\ndata Order {\n  attribute orderId type std.identifier role business-key role audit-amount\n}\n",
 		},
 		{
-			name: "same role value repeated",
+			name:   "same role value repeated",
 			source: "namespace sales\ndata Order {\n  attribute orderId type std.identifier role business-key role business-key\n}\n",
 		},
 		{
-			name: "comment and newline between options",
+			name:   "comment and newline between options",
 			source: "namespace sales\ndata Order {\n  attribute orderId type std.identifier role business-key\n  # source comment\n  role audit-amount\n}\n",
 		},
 		{
-			name: "quoted role text is not an option",
+			name:   "quoted role text is not an option",
 			source: "namespace sales\ndata Order {\n  attribute orderId type std.identifier role business-key description \"role is documented here\" role audit-amount\n}\n",
 		},
 	}
