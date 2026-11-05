@@ -135,6 +135,8 @@ XL-03（値変更Hook）では同じ業務Subjectに対し別Case revision/IDで
 <!-- EL-06-static-witness-20261106 -->
 **EL-06の二段階判定**：今回のread-only静的照合はScenarioの`expectValidations`を計算の入力にせず、Fixtureキー配列の集合上の重複という性質だけで正負を比較した。これは`[1,2]`と`[1,1]`の有限対照の**入力判別性**であり、TEI側Canonical Ruleの実装正しさ・業務上の「同一明細番号」のScope・Owner受理・現TargetへのBindingは未確認。次回の実Go受入では`TestAIAddedScenarioCandidateFiles`を追加Scenario込みのexact HEADで走らせ、両Step IDと`generated-pinned` Receiptを検出し、さらにRuleを意図的に誤らせた既知Mutantに独立Expectedを適用する。**候補が期待値を自分で変更してPASSする場合はG2不成立**。#2890はstacked PRであり、この時点のHEADからのActions Workflow Runは照会上0件。基底#2828のgreenを新Candidateの成功に流用しない。
 
+| **EL-07** [#2891 JSON Fixture重複キー拒否](https://github.com/hat47x/tei-platform/pull/2891) | main HEAD `8aa18ca1`を起点とする独立Draft、head `2f6779214ef73fe719e35a391668dd216d069ac5`。既存Scenario/Planの重複キー拒否と、Validation/Browse/Observation Fixtureの単純`json.Decoder`をソース比較 | 3 Fixture Parserが既存`RejectDuplicateJSONMembers`をDecode前に再利用する変更とGo負例7件／正常3件を追加。修正前は同じキーの後勝ちを拒否しないソース上の差。**実テスト／CI結果は未確認** | **G0候補の入力解釈曖昧性を閉じる修正提案**。新CI PASS・独立Expected/G2、AIケース#2890の実行、Source閉包、Provider/Ownerは別資格。形式上正しいJSONでも意味は未受理 |
+
 **証拠の読み方**：EL-03は`test=PASS`でも`durable-state safety=UNQUALIFIED`。EL-04は`test code present`だが今回の実Run証拠は`unobserved`。EL-05は個別のPASSが複数でも`one-revision integration=UNQUALIFIED`。この三種を区別できない台帳やCIレポートを受入済みとしない。
 
 ### 8.2 三つの結果を混ぜない最小Claim判定
@@ -161,3 +163,18 @@ XL-03（値変更Hook）では同じ業務Subjectに対し別Case revision/IDで
 **次の最小出口条件**：E-01とE-02の実Case ID/Required集合/Actual Runを一枚で照合し、E-03またはE-04の既知負例で「テスト自体PASS、製品Requirement不適合」を少なくとも一件説明できること。E-05/E-06の実Provider/Hostは本P0のHard Blockerにせず、既存Ownerが個別Evidenceを取得した後に段階強化する。
 
 **更新は設計・証拠のread-only整理のみ。** E-01〜E-06の新たな実行、AI自律生成、独立Mutant試験、実Process再起動、二DB・完全Host/Provider E2E、正式Owner受理は本変更でNOT RUN。新Ledger DB、Runner、Acceptance Engine、Ownerの正本を追加しない。
+
+### 8.4 Fixture重複キーとOracle自己追認を区別する
+
+[Draft #2891](https://github.com/hat47x/tei-platform/pull/2891)では、`ParseValidationFixture`／`ParseBrowseFixture`／`ParseObservationFixture`がJSON duplicate memberをDecode前に拒否していなかった**実ソース上の不整合**を、既存`RejectDuplicateJSONMembers`の再利用で解消する候補実装を作った。ソースの静的確認と変更ファイル数（4）は確認済み。Go/CI実走の結果は別。
+
+| 対照 | 事前独立に固定する負例・期待 | 実行資格・止めるClaim |
+| --- | --- | --- |
+| **FIX-01** Validation | 同じ`numbers.sales.order_line.quantity`を2.5と0で重複宣言／根`numbers`重複／Relation`keys`重複を**すべて明示拒否** | Go testの実Errorと`duplicate JSON member`確認まではCandidate。後勝ちで意図しないActual→Expected成立を許さない |
+| **FIX-02** Browse | `query`を二重宣言、Row中の`kind`を二重宣言しても明示拒否 | Query/Provider bindingと実Readが正しいことは別。Fixtureの構文受理はProvider Conformance資格ではない |
+| **FIX-03** Observation | `readIdentity`二重宣言、`observed.data`二重宣言を明示拒否 | 合成Observationのみ。Provider Commit/独立Readや本番Effectを証明しない |
+| **FIX-04** 正常対照 | Validation/Browse/Observation各1件の**重複キー無し**JSONを受理 | 過剰拒否がないことの有限テスト。一般JSONスキーマ完全性・Owner Meaningは別 |
+
+**#2890との関係**：新AI候補のLine Number重複は**Relationの`keys`配列値`[1,1]`**であり、JSONオブジェクトの**同名member重複とは別の対象**。FIX-01〜04がPASSしても#2890のValidation Ruleの正しさ・独立Oracle判別力・実Go Scenario receiptは認定しない。逆に#2890のCandidate実Go PASSでもFIX-01の後勝ち問題がなくなった証拠にはしない。
+
+**受入順**：#2891の固定HEAD `go test ./internal/scenariotest`／`go test ./cmd/tei`／正規CIを確認してG0入力曖昧性を閉じる。#2890のJSON-only追加は別PR/別HEADで既存Goテストの候補発見と実Step Receiptを確認する。両者を一つのAttemptに混合しない。#2514のG2は独立OracleとKnown Mutantが実際に誤りを検出して初めて判定する。**本追補はdocs-only・新テスト実行なし**。
