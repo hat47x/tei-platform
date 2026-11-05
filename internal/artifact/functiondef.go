@@ -22,7 +22,7 @@ const (
 )
 
 const functionDefinitionRulePolicy = `function-definition/v1
-lines: application, capability (<id>), input, outcome, output, effect, validation, period, effect-rule, pattern
+lines: application, capability (<id>), input, outcome, output, effect, validation, period, effect-rule, run-plan, pattern
 order: capabilities by id, inputs and outcomes in the authored order, patterns by id
 unresolved: capability without input, capability without output or outcomes, capability without effect`
 
@@ -34,6 +34,7 @@ type FunctionDefinitionInput struct {
 	Validations   map[core.CanonicalID]semantic.Validation
 	Periods       map[core.CanonicalID]semantic.Period
 	EffectRules   []semantic.EffectRule
+	RunPlans      []semantic.RunPlan
 }
 
 // RenderFunctionDefinition renders the functions an application declares. It
@@ -133,6 +134,28 @@ func renderFunctionDefinition(input FunctionDefinitionInput) (string, []Unresolv
 		b.WriteString("\n")
 	}
 
+	plans := append([]semantic.RunPlan(nil), input.RunPlans...)
+	sort.Slice(plans, func(i, j int) bool { return plans[i].ID < plans[j].ID })
+	for _, plan := range plans {
+		fmt.Fprintf(&b, "run-plan %s operations %s", plan.ID, joinIDs(plan.Operations))
+		if len(plan.Key) > 0 {
+			fmt.Fprintf(&b, " key %s", joinIDs(plan.Key))
+		}
+		if plan.Concurrency != "" {
+			fmt.Fprintf(&b, " concurrency %s", plan.Concurrency)
+		}
+		if plan.Resume != "" {
+			fmt.Fprintf(&b, " resume %s", plan.Resume)
+		}
+		if len(plan.Outputs) > 0 {
+			fmt.Fprintf(&b, " output %s", joinIDs(plan.Outputs))
+		}
+		if plan.Autonomy != "" {
+			fmt.Fprintf(&b, " autonomy %s", plan.Autonomy)
+		}
+		b.WriteString("\n")
+	}
+
 	patterns := append([]application.Pattern(nil), input.Application.Patterns...)
 	sort.Slice(patterns, func(i, j int) bool { return patterns[i].ID < patterns[j].ID })
 	for _, pattern := range patterns {
@@ -157,4 +180,13 @@ func sortedValidations(used []core.CanonicalID, definitions map[core.CanonicalID
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].ID < out[j].ID })
 	return out
+}
+
+// joinIDs renders canonical identifiers as a comma separated list.
+func joinIDs(ids []core.CanonicalID) string {
+	parts := make([]string, 0, len(ids))
+	for _, id := range ids {
+		parts = append(parts, string(id))
+	}
+	return strings.Join(parts, ",")
 }
