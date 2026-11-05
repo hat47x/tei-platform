@@ -625,3 +625,16 @@ Ownerは#1180（Scenario）、#2813/#988（DSL Candidate）、#2514（Oracle）�
 **採用範囲**：既存の#2514は独立Oracle/Mutation、#1180はScenario/TargetとObligation、#2835は既存Effect-fence CIの実行漏れ検査、#2681/#2600はSource/Meaning/Artifact再資格化、#2811は各Producer/Consumerの**試験採用条件の受渡し**のみ。生成AIにCase追加と修復の自由は残し、Expected/Required分母/実Grant・非公開holdoutの無条件書換えを許可しない。
 
 **本§16はdocs-only。** 今回新たなAgent未知Case生成、P0-Cの注入、Oracle/Mutant、Web/GUI/Provider、全Source closureの実行はNOT RUN。#2828の書式修正コミットは別PRであり、この設計PRにGoコードを含めない。
+
+## 17. テスト基本設計・証拠台帳への接続（2026-11-06）
+
+**独立した基本設計参照**：[TEI_TEST_BASIC_DESIGN_AND_EVIDENCE_LEDGER_2026-11.md](./TEI_TEST_BASIC_DESIGN_AND_EVIDENCE_LEDGER_2026-11.md)（本Draftで追加・docs-only）。本章は§8〜16のAI-first Case作成・Required/Discovered/Loaded/Executed/Qualifiedの仕組みを、Unit/Fixture・Conformance・実Provider/DB・実Host/UI・Owner受理へ**誤資格昇格させずに**接続する引継ぎであり、第二Scenario正本・新Evidence Store/Runner・新Gates/Authorityを導入しない。
+
+**層別の最低受入契約**：
+- L1は指定Fixture/実装の局所結果。L2は独立Expected/Mutant/Profile/Scopeの限定適合。L3は実Provider/DB/Read・Commit・Receipt/独立Read。L4は同一Binary/実Target/Host/Consumer受領。L5は業務Ownerの意味・Scope・版受理（自動試験の上位PASSではない）。
+- 同一Caseを引き継いでも、AttemptとClaimは別票：固定Source/Model Revision/実消費Input、独立Oracleの来歴、Environment、観測対象、negative control、失効条件、現在資格を混ぜない。特にSource同値≠現Grant、表示値同値≠Read Scope/粒度・意味同値、CI PASS≠必須Case実走、RunPlan blocked≠先行Effectゼロ。
+- 基線は#1129 XL-02（合成quantity=2, price=300→amount=600）とXL-03（0→1、1→1、rollbackなど）を分け、#2514 independent Expected/観測十分性、#2622 DO/DB Conformance、#1174 Commit Unknown/Receipt、#1163同一一改訂Packet、#1119正式Gateに接続。#2853/#2854/#2857/#2859の個別実PG/Host成功は同一Attemptの製品Gate PASSへ合算しない。
+
+**今後の小さな実証**：既存#2813/#2828のJSON追加試験で、必須Caseが実際に発見・実行されたか、独立Expectedが既知Mutantを検出できるかを先に測る。必要なRead/Effect/Host証拠は既存Ownerで実測し、台帳は**その読取View**で比較。Required checks不足（#2616 ACU）や途中Block後先行Effectあり（#1130）の負例を共有し、無言の全PASSや無副作用Claimを拒否する。
+
+**状態**：基本設計文書・本接続はdocs-only。基本設計の台帳プログラム実装、XL-02/03の全層実走、新AI生成/Mutation実験、実第二DB・一体Web→PG→Consumer、Owner意味受理はNOT RUN。既存#2811／#2828の旧exact-head CI成功を新HEADへ転用せず、変更後のCIは別Runで確認する。
