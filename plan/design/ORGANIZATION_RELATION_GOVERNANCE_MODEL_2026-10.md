@@ -2797,3 +2797,81 @@ WHEREで参照する非表示Allocation、ORDER依存、EXISTS/NOT EXISTSの関�
 | P2 | Organization Profile/Plugin Bundle・DB移行旧新Read・SHO/Studio投影の用途別Conformance | #951/#1251/#2555/#1124/#2516。未選択依存や不可逆Graph編集を成功扱いしない |
 
 **今回の証拠と採否**：公開GitHubの現行Source、merged合成Reference、open Native E1、各既存Issue/PRの静的照合に基づく**文書計画のみ**。本節で新TEI Product E2/E4、Provider実Read、SQL、Owner受理、外部Consumer実受領、Plugin Buildの実測は**NOT RUN / NOT ACCEPTED**。正式なSource/ABI/Runtime/DSL変更や#1119の既存Gate更新を要求しない。
+
+## 69. 組織分割・統合時の業務責任：後継組織、未決案件、実行資格の非自動継承（2026-11-06、採用前）
+
+### 69.1 第68節の実Read優先を維持したまま検討対象を拡張する
+
+本節は§67の責任継承と§68の実Source→Context→Provider Readを踏まえ、**1対1の異動だけでなく、1対多の分割・多対1の統合・組織廃止・同一識別子の再利用**を区別する。組織図の後継線は、次の四つを自動的に確定しない。
+
+1. **Identity continuity**：旧OrgUnitと新OrgUnitが同じEntityであるか。名称・業務・構成員・事業所の一致からOrgUnit IDの継続を推論しない。
+2. **Successor correspondence**：後継関係とその軸・有効期間・Source。D1→D2,D3の後継候補や、D1,D2→D4の統合があっても、対応関係はそのままCase担当の移管を意味しない。
+3. **Business responsibility disposition**：進行中Case、未決の質問・期限・手作業・外部手配、承認待ち、既存の決定履歴を、それぞれ継続・引継ぎ・保留・終了・再審査等の受理済みBusiness Procedureで扱う。これらの分類は検収用の説明であり、共通Runtime enumを新設しない。
+4. **Current authority and effect**：実行者の現在Principal/Host Grant、Target、row version・Operation identity、ProviderのCommit/Receipt。業務上の引継ぎが受理されてもHost権限は自動発行しない。
+
+特に[PR #2681](https://github.com/hat47x/tei-platform/pull/2681)の実Native Sourceでは`CaseRecord.handlingUnit`は単一値の**直接Relation**であり、ひとつのCaseへD2とD3を同時に「担当」として保存できる表現ではない。必要なら(a)一つの現担当と複数の協議先を**別Role**にする、(b)担当自体を多重・属性付きRelationに**明示的に実体化する**、(c)正式担当を未決のまま保留する等を**業務Owner受理を条件に**選択する。表示Graphの二本線を理由に既存RelationのCardinalityを暗黙変更しない。
+
+### 69.2 分割・統合の引継ぎはCase集合の完全性と案件別処遇で検収する
+
+`D1→D2,D3`に対して、引継ぎ対象Case集合を`Cases(D1, tenant T1, asOf, knownAt, providerScope)`として**限定された範囲・取得時点・対象種別とともに**宣言する。すべてのCaseを引き継いだというClaimを立てるなら、この入力集合の完全性をProvider Readで観測する必要がある。部分Page、非開示、複数AliasのCohort混合なら`unqualified/unknown`であり、「対象0件」「残件なし」を確定してはならない。
+
+組織改編への**案件別Disposition**は既存Business Data/Relation/Procedure/Ruleの組合せで表現する。新しいCase移行専用Ledger/Registry/Org Workflow Engineは本節の前提にしない。
+
+| 入力条件と引継ぎ候補 | 必要なExpected | 主張しないこと |
+| --- | --- | --- |
+| C1（D1担当）をD2へ移管し、D1→D2,D3の後継も記述 | C1の担当先候補D2、必要Owner受理、直接RelationのCase ID＋Role＋旧値/期待行版を保持 | D3にも同じC1担当を自動作成、D2のGrantを生成 |
+| C2（D1担当）の新担当が未決 | C2を明示的な保留/未割当てとして残し、未決理由・現在の対応責任・期限を追跡 | C2が消えた、対応済み、対象なし |
+| 一つのCaseを複数組織が共同処理 | 協議/作業/承認等のRole・Relation粒度・個別責務、必要なら実体化したOccurrenceをOwnerが明示 | 単一handlingUnitへ二つの値を暗黙保存、同じBusiness Effectを二重起動 |
+| 旧D1とD2がD4へ統合 | 各旧Case IDと既存判断・未決事項を保存し、対象Caseごとに引受範囲を確定 | 部門集合の重複消去でCaseや履歴が一つに畳まれる |
+| 旧部門D1廃止・後継なし | 過去D1を指すCase/Decision/Receiptを履歴として保持、現行処遇は未決で停止 | 過去Relation/判断/監査を削除してよい |
+| 同じID/名称D1で別組織を再発足 | Source/Identity/Revision/valid/known境界とOwnerの同一性受理を確認 | ID文字列・表示名一致を同じ組織の継続と扱う |
+
+**検収における保存則の使い分け**：全Case対象集合が独立に完全取得され、期間内の新規・終了・移管・取消が契約で区別される場合に限り、入力とDispositionの対応・二重処理の有無を照合する。組織別Case件数やFTEの単純総和を**無条件の不変量としない**。案件の新規発生・取消、重複所属、複数Role、兼務、工数配賦の変更で値は合法に変わり得る。FTEの合計保存は受理済みの配賦Rule・Measure grain・完全性がある用途だけのClaim（#2593/#2510）。
+
+### 69.3 どの事実を固定し、どの時点で再評価するか
+
+Case C1が組織改編をまたぐとき、**過去の判断（Historical Decision）と現在の処置（Current Disposition）を別の記録**として扱う。
+
+- `validAt`：業務規則/組織関係がいつ有効か。
+- `knownAt`：判断時にどのSource・改訂を知り得たか。遡及訂正で過去の当時既知情報を上書きしない。
+- 公開組織RevisionとBusiness Procedure/Rule Revision：後継対応と申請中Caseへの新ルール適用を区別。
+- 実Provider Read cohort・Scope/Completeness：対象集合の候補を取得した条件。旧Replicaと新Primaryの結果が見た目同数でも同値を推論しない。
+- `decisionAt`と現在のPrincipal/Grant epoch：業務候補の決定と実行時の権限判定を区別。
+- `operation identity`・実`commitAt`・Receipt/independent post-image：作用の証拠。What-if/Preview/候補選択・RunPlan supplied checkのPASSを実Commitへ昇格しない。
+
+現Native `.tei`のCaseRecordは`caseId`と`handlingUnitId`のみで、`rowVersion`は未定義（§68.1）。C1の`rowVersion=7→8`は**試験Provider入力の仮定**である。CaseのCASを行うには**実Provider row/version binding、Owner受理済み更新対象、現在Grant、同一Operation identityと独立Post-image**を確定する必要があり、旧Caseの合成版番号だけでE4へ進めない。履歴・公開Revision・Source A→B→A・物理Value A→B→Aは別々の失効原因である。
+
+### 69.4 独立Expectedと停止条件（ORG-SM-01〜12、すべてNOT RUN）
+
+固定入力は既存#2596の合成Source・[#2779](https://github.com/hat47x/tei-platform/issues/2779)の分割What-if・#2681のNativeモデル・§68 E2aのCase C1/C2を**再利用する候補**。D3/D4・組織後継関係・C2の未決処遇はこの表の**追加変異**であり、正式TEI実データ/業務制度ではない。期待値は実装結果から計算せず事前固定し、[独立Oracle #2514](https://github.com/hat47x/tei-platform/issues/2514)で判別力を確認する。
+
+| 試験 | 一つの変化 | 独立Expected／拒否境界 |
+| --- | --- | --- |
+| ORG-SM-01 | D1→D2,D3の後継関係だけ追加 | 組織後継Factは説明可。Case/Grant移管ゼロは実Effectsの非観測でなく、Action非実行の範囲を明示 |
+| ORG-SM-02 | C1をD2へ引継ぎ候補化 | 直接Relationの対象はC1＋handlingUnit Role＋旧値D1。D3への自動同時割当てなし |
+| ORG-SM-03 | C2の後継担当が不明 | 未決Caseの存在を保持、責任/期限/解決条件を説明。不明をCompleted/Not-foundにしない |
+| ORG-SM-04 | D1,D2→D4へ統合、同一Personに複数Membership | Case IDs/履歴を維持し、Person distinctとMembership occurrence・Case countを区別 |
+| ORG-SM-05 | 廃止D1の過去判断とReceiptを照会 | Historical Decision/旧Org ID/Rule/valid-knownを保存。現在の部署名で著者を上書きしない |
+| ORG-SM-06 | D1を同名・同IDで再利用、意味/Source/期間が変化 | Identity continuity未受理なら同一Orgと推定せず、履歴と当時の判断資格を再評価 |
+| ORG-SM-07 | 旧Case集合をpartial Pageだけ読込 | 「すべて移管済み」「残件なし」「全件二重なし」を`unknown`。既知のC1 Readは限定して表示可 |
+| ORG-SM-08 | Replica/PrimaryでAs-of/Known-atが異なる | 同じ件数/同じSnapshotラベルでも同一Cohortとしない。Scope/Actual Row witnessで確認 |
+| ORG-SM-09 | 直接handlingUnitを多重Relationへ変更 | 新Occurrence ID・旧値Mapping・多重度・編集可能方向をOwner受理前に確定しない |
+| ORG-SM-10 | 分割後のCase移管ActionでGrantが失効／二段階の一部がCommit | Actual EffectとUnknown/PartialをReceiptで別確認。現在Grant失効は以降のActionを停止 |
+| ORG-SM-11 | What-ifではD2が全Caseを担当、Owner未受理 | Previewから正式Published Org/Responsibility/Grantを生成しない |
+| ORG-SM-12 | AIが後継組織表と担当先を推測、未決項目の根拠が欠落 | Candidate/引用範囲/不足問を表示。Current GrantやOwner意味を推定せず、未受理Caseは保留 |
+
+「正常入力における移管先の一意性」は実体化Relation/複数役割の選択を妨げる**普遍的な公理ではない**。このScenarioで直接`handlingUnit one`を採用する場合のContractである。複数Orgの共同処理を必要とするなら、別Roleか実体化Relationを明示的に設計し直す。
+
+### 69.5 最小実装順序とOwner分担
+
+| 段階 | まず実証すること | 未実証なら止めること | 既存担当 |
+| --- | --- | --- | --- |
+| P0-E2a | 一つのC1→D1実Provider Read、対照C2、caseId/Role/Field/Scope/Read completeness、現在Consumer | 実Case/Org Persistence・Function Context接続が不在なら`product-read-not-connected` | #2586/#2506/#2622/#2628 |
+| P0-M | 独立合成でD1→D2,D3とD1,D2→D4の意味、直接/実体化Relation、未決/歴史的判断、Case disposition | 部門後継だけでCase集合やGrantを導出しない | #2386/#2510/#2514/#1126 |
+| P1-E2b | 既存Membership時点/Source/Query依存/部分集合のProduct化、分割前後のCase入力集合completeの証拠 | KnownAt/Scope/Historyが不明なら対象全件の引継ぎ完成を主張しない | #2586/#2582/#2628/#2593 |
+| P1-Effect | Ownerが受理したCase別処遇、Current Host Grant、C1物理Version Binding、Operation identity→実Commit/unknown/Receipt/独立再Read | 合成Version7や別Function PG CASからOrg Case Effect成功を導出しない | #1125/#1129/#1174/#2564/#1163 |
+| P2 | Org改編公表・DB旧新Cutover・Plugin Build/Consumer改訂での再資格 | 外部Provider全体の単一Txや全Case一括原子性を未実証のまま保証しない | #2555/#951/#1130/#2516/#1119 |
+
+**他チャットとの境界**：#2779のWhat-ifは実Case Effectでない。#2586 E2a/E2bを新たな独立製品Readerへ置き換えず、#2510の既存Pressure Corpusへ試験変異を渡す。#1125はBusiness Procedure/Decision、#1126はRelation/Cardinality/Key、#1174はHost/実Effect、#1163は同一Attempt Evidence、#2514は独立Expected。組織データは通常のTEI Dataであり、一律の専用ACL/IdP/Host/Workflowは追加しない。
+
+**現時点の資格**：本節はdocs-onlyの提案。ORG-SM-01〜12の製品/合成試行を新たに実行したものではない。#2596 merged合成Node Reference、#2681 Native E1、#2779 What-if Draft、#2889 toy Runner、別FunctionのPG CASはそれぞれ限定的な過去の証拠。実Org Case E2/E4、実Host Grant/Provider/組織改編の公表/Owner業務意味受理はNOT RUN。#1119の現行Gate優先・mainは変更しない。
