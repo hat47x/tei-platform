@@ -2854,3 +2854,35 @@ HEAD `e0cfebf14d40db81bdef77d6c3e4898ed75d999f`に対する[GitHub Actions #4203
 **着手順**：A0-H2一Session（read-only）とB0 Guard分母の実Go再検証を並行→B1製品PG同一Attempt／CのStudio A/B後着負例→必要なTarget/Provider/DB/SHO/EKIを後続へ。Dの全TEI Self-Buildは独立P0を維持。#1180のScenario、#2514の独立Expected、#1163のEvidenceを参照し、テスト件数・別HEAD局所PASSを一つのBusiness Qualificationへ加算しない。
 
 **今回の実証上限**：本節は既存実Run/Issue/Draftの状態を再照合して優先順と停止条件を**文書に追記しただけ**。新規H2/H3実Session、Org/受注の同一PG+RunPlan実E2E、Studio実DOM/ARIA、G4実Build、新Owner意味受理はNOT RUN。既存G0〜G4、既存OwnerとDraft状態は変えない。
+
+
+<!-- tei-20261106-ambiguous-input-no-silent-qualification -->
+## 55. 曖昧な入力の「後勝ち」とUnknownの「成功扱い」を各境界で止める（2026-11-06）
+
+前節§54は必要な観測が**提供されない**問題を扱った。本節は、観測・定義は存在していても**重複やUnknownが黙って別の状態へ置換され、見かけの成功になる**問題を扱う。対応は既存Ownerが各入口で行い、新しい全域Unique/Policy/Proof Engineや単一Runtime Enumを作らない。重複が許されるデータ（多重辺、配列、履歴、同一Roleの別Occurrence）まで機械的に禁止しない。**同一Keyで一意であると主張する対象・Scope・時点・適用条件があるか**を最初に固定する。
+
+### 55.1 実コードで特定された上書き／偽資格の危険
+
+| 対象と事実の強さ | 曖昧さが失われる箇所 | 必要な検証・Owner |
+| --- | --- | --- |
+| **Migration History**：現mainの internal/database/migration/history.go を静的確認 | CompareHistoryではHistoryにAppliedUnknownが存在しても、失敗・checksum不一致以外の分岐がRepoAppliedへ到達し得る。History取得不可を空Entriesへ変換すればRepoPendingにも誤誘導 | [#2892](https://github.com/hat47x/tei-platform/issues/2892) HIST-01〜05を既存Goテスト＋観測完全性へ接続。新RepoUnknown enumかfail-closed errorかはConsumer影響を調べOwner判断。修正前はG1〜G5に適用成功として供給禁止 |
+| **DB Release/StateSnapshot**：[Draft #2887 §15〜16](https://github.com/hat47x/tei-platform/pull/2887)の実コード確認 | 同一Database IDのSnapshotをmapへ取り込むと後の要素が勝ち、旧/新Releaseの配列順がCompatible/Blockedを変え得る。ObservedAt欠落/古さも構造互換では検証不能 | 既存MG-21/29のGo特性化と、実Instance/Provider/Read Cohortの明示選択。二重Snapshot・取得時点unknownをGate PASSにしない（#2555/#2611/#2622） |
+| **Semantic Attribute Role**：[Issue #2620](https://github.com/hat47x/tei-platform/issues/2620)／Draft #2860の実Parser Characterization | 一つのAttributeに role accounting_amount role audit_amount があると、現Parserの単一Role値では前のRole occurrenceが見えなくなる。description内の文字列はRoleではない | Raw Source・Occurrence診断・Meaning Candidate・Owner受理を分離。衝突方針前にSource一意性/Role受理/編集逆写像を保証しない（#988/#2621/#2497） |
+| **AI/Scenario Fixture JSON**：[Draft #2891](https://github.com/hat47x/tei-platform/pull/2891) | Scenario本体は重複Memberを検査するが、一部Fixtureのencoding/json.Decoderは後値で重複Keyが消え得た。CandidateとExpectedを同じ後勝ちデータで評価すると偽一致の恐れ | 既存RejectDuplicateJSONMembersを既存3 Parserへ再利用する変更をレビュー。固定HEAD 2f677921 の[Health #42107910706](https://github.com/hat47x/tei-platform/actions/runs/42107910706)は**gofmt driftでFAIL**。新HEAD CIまで機能を正式採用済みと記さない。配列の同値重複はJSON Keyの重複と区別 |
+| **Studioの旧非同期結果**：[Issue #1824](https://github.com/hat47x/tei-platform/issues/1824)の静的Consumer照合 | Workspace AのRequest後、選択・入力/PeriodをBへ変更したのに、旧A ResponseがBのDOM/Command状態へ後着する可能性 | ResponseのRequest/Workspace/Selection epochと表示対象を実DOM/ARIAで突合。旧成功・旧失敗ともBへ採用不可。ただし実GUI再現はNOT RUN |
+
+**横断上の別の欠落**：Role/Fixture/DB Snapshotの重複拒否が局所合格でも、Query→Function→実Provider ReadのResult Slice、Row/Field/Scope/Read Cohortや、RunPlanのRequired Guards、Receipt/Independent Readの必要集合は保証しない。[#2586](https://github.com/hat47x/tei-platform/issues/2586) HJ-01〜08と[#1180](https://github.com/hat47x/tei-platform/issues/1180)のObligationへ引き渡す。結果0件、Page間でSQL/Provider/Read Scopeが変更、JOIN/ORDERの非出力依存欠落は、現在の不存在・全件取得の証拠にならない。
+
+### 55.2 最小の独立対照と修正の順序
+
+| 対照 | 固定するInput/Expected | 未修正時に禁止する資格 |
+| --- | --- | --- |
+| **QF-01 Migration Unknown** | 同じMigration ID/定義Fingerprint。History AppliedSucceededとAppliedUnknown、history unavailable/partialと正当な空Historyを別Fixtureにする | UnknownをRepoApplied/RepoPendingの確定根拠にしない。StateSnapshot Compatibleを履歴の代用にしない |
+| **QF-02 DB Snapshot order** | 旧Major4/新Major5、同一DB IDの二Snapshotを順序反転して比較。外部History/ObservedAt不在も追加 | 配列順で現行実DB・Read/Write Authority・Cutoverを選べたと主張しない |
+| **QF-03 Duplicate Role / JSON Key** | 同一Source上の別Role occurrenceと説明文内literal、JSONの同名Key二値と正当な配列重複。Parser/Reviewerの独立Expectedを固定 | Last-wins Roleを単一Accepted Meaning、Fixtureの後勝ちを独立Oracleと呼ばない |
+| **QF-04 Read Cohort change** | Query ID固定でSQL Source/Provider/Scope/ORDER/Page境界のみ変更。取得対象/Read Cohort/Result completenessの独立Expected | Page1+Page2を無条件に同一世代の全件、0件を不存在と認定しない |
+| **QF-05 Async selection/Grant** | A request→B selection→A success/error後着。Reference committed=trueと実PG Receipt無しを区別 | Bの表示・操作可・業務Commit完了を旧応答から組み立てない |
+
+**Priorityの補正**：P0として (a) #2892の偽Appliedに対するHIST-01/03負例・最小修正のOwner判断、(b) #2891のgofmt修正後exact-head focused CI、(c) #2586の一件のread-only Query→Context→Claim/Result Slice実受渡しを既存担当で進める。ただし**P0-Aの外部Harness初回H2 Tool呼出しのHard dependencyにはしない**。旧/新DB Cutover/Contractを実施する場合に限り、History/StateSnapshotの確認を**そのGate固有の必須条件**へ昇格し、Ownerの正式許容を求める。書込み実行は#1174/#1163の同一Attempt・効果観測なしに一般許可しない。
+
+**証拠の区分**：#2620のRoleテスト、#2887 MG-21/29、#2891 Duplicate JSON修正、#2895 AI独立有限OracleはいずれもDraft・用途別の局所証拠。新たなQF-01〜05の統合Test、実DB Migration/二DB Query、Studio実GUI、実Harness四Session、Owner Meaning Acceptanceは本§55でNOT RUN。各Ownerの既存Caseを再利用し、QFは**引継ぎ上の対照名であって第二Scenario/Oracle正本ではない**。
