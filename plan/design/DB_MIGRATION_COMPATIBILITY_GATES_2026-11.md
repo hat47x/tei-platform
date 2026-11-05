@@ -302,3 +302,51 @@ G0〜G5の判定は、既存`releaseplan database-gate`、Scenario/Oracle、Sour
 
 **採用保留**：Migration Historyの新enum/外部Adapter契約、同一Contract IDの複数Major同時提供、実Client Registryの制度化、Owner承認自動化。必要な具体的な失敗ケースで追加面を決める。
 
+
+## 16. Gate観測の一意性・必要検査の完全性（2026-11-06）
+
+> 状態：現行コードの静的確認および小さなGo**特性テスト**で判別する、採用前の修正対象。公開Schema/Runtime契約・Migration Gate・Owner承認を新設しない。構造特性テストは**望ましい修正後のPASSを保証するものではない**。
+
+### 16.1 同じDB IDのStateSnapshotは、入力順で上書きされる
+
+現行 `internal/database/release/compatibility.go` の `CheckApplication` は、入力 `[]StateSnapshot` を `map[DatabaseID]StateSnapshot` に取り込み、同じ `Database` が複数含まれると**後の項目で上書き**する。`ObservedAt` や `Source` を用いて現在の観測世代・実Database Instance・SnapshotのAuthorityを決めていない。
+
+このため、旧DB状態（契約Major=4）と新DB状態（Major=5）を同じDatabase IDで受け渡した場合、旧→新の順と新→旧の順で `Compatible/Blocked` が変わり得る。入力の順番は「どの観測が現在の正本か」の根拠にならない。さらに `StateFromObserved` の `ObservedAt` が空欄/古い値でも、提供契約と `DataReadiness=ready` が一致すれば**構造的には `Compatible` と判定**され得る。
+
+**提案する停止基準**：
+1. 入力に同じDatabase IDの複数Snapshotがあり、どのEnvironment Binding/Instance・世代・Source・観測区間を選ぶか明示されていない場合、Gateは `unknown`。暗黙のlast-wins/最も新しそうな時刻を採用しない。明示選択と観測資格の検査責務は#2622/#2611の既存Binding/Providerへ返す。
+2. 履歴管理DBと `external-observed` DBは、移行履歴の取得完全性と独立Sourceを別に検査。`StateSnapshot` の `Provides/DataReadiness` を、#2892の `CompareHistory` unknown/applied未修正問題の代替証拠にしない。
+3. `CheckApplication Compatible` の意味は**宣言されたMajorとReadinessに関する局所的な構造適合**。現行Provider read/write、全Read Cohort、CDC/Checkpoint、Owner/Grant/Fence、旧新Client実行を保証しない。
+
+#### MG-29（現状の不安全な挙動を特徴付けるGo試験、実DBなし）
+
+`internal/database/release/migration_gate_observation_order_characterization_test.go` の2テストで、(a)同じDB IDの旧新Snapshotを入れ替えるだけで互換判定が反転する、(b) `external-observed` の観測日時が欠ける/古くても構造適合結果が同じ、という**現在のギャップ**を再現する。
+
+**望ましい受入**：明示した1つのDB/世代/Sourceに解決できる場合だけ構造互換をGate Evidence Packetへ渡し、競合・Scope不足・古い観測は `unknown` として次の段階へ進めない。現状を固定する特性テストと、将来の適合修正に対するExpectedは**別の証拠**。修正後は古いlast-winsのExpectedを残さず、拒否・診断Expectedへ変更する。Release機能そのものの改修には#2622とRelease Ownerの承認を要する。
+
+### 16.2 必要検査の完全性と実際の実施を分ける
+
+他レーンのRunPlan/Guard実証（#2882/ #1174）は、**必要なGuardがすべて供給されたこと**と、渡されたGuardが成功したことが別である点を示す。この考え方をMigration `database-gate` の検収票へ再利用する。
+
+| 観測欄 | 独立させる理由 |
+| --- | --- |
+| `required obligations` | 対象Client/Writer・Read Scope・CDC/History・Provider/Current Grant・Retentionのうち、そのGateに必要な全対象集合。Owner/契約から導き、実行された観測の件数から逆算しない |
+| `supplied evidence` | 取得できたSchema、旧新Client、History/CDC、現在Grant・Receipt・Consumerの証拠。供給されていない検査は `pass` ではない |
+| `evaluated/observed` | 検査器の起動/Goテスト成功と、実Provider・Clientが観測されたことを区別。合成Runnerの返した `resolved` は実Effectではない |
+| `independent qualification` | Expectedとの比較、実対象・Scope/時点、取得の完全性、Source/Provider版、Owner判断、現在のHost Grantを別資格化 |
+| `undischarged / remedy` | 必須対象の欠落、結果不明、失効、止まった箇所と、再Snapshot/旧Writer Fence/Effect Lookup/Owner受理などの再開条件 |
+
+**ゲート進行の最低条件案**：`required` の全要素について、適切な独立Expected・現在のScope/Source/Providerに基づく適格な `observed` を得るか、Ownerが非適用を明示承認していること。`supplied⊂required` や `evaluated=pass` だけでは進行不可。部分実行が失敗/停止した場合も、**それ以前に完了したChunk/DB Commit/外部Effectは残り得る**ため、Gateの `block` を「全操作no-effect」へ翻訳しない（#1174/#1129）。
+
+G1〜G5で各観測は取得時点が異なる。要求するのは**同一瞬間**ではなく、各Claimの必要な鮮度・Source/Plan/Provider/Read Cohortの整合。個々のEffectだけは同一Operation ID/Attemptに基づき、実Commit/Receipt/独立Readを相関させる（#1163）。
+
+### 16.3 実施順とIssueへの引継ぎ
+
+- **先行**：現MG-21の旧新Release互換Goテストと、今回のMG-29で `CheckApplication` の構造的限界を可視化。MG-20外部履歴は[#2892](https://github.com/hat47x/tei-platform/issues/2892)で修正責務を持つため、本計画で第二History Engineを作らない。
+- **P0 read-only**：同じDB IDで異なるStateSnapshot、観測年月が欠ける状態、旧新Provider/DB Aliasが競合する状態を使い、MG-21/22/29の **required/supplied/evaluated/observed/qualified** 表を作る。見かけの `Compatible` がGate PASSにならないことを確認。
+- **P1 Provider**：#2622/#2611が正しい実Target Instance/Read/Write資格と明示Snapshot選択/重複診断を決める。局所的な契約検査の成功を実DBの現在資格へ拡大しない。
+- **P2 Cutover**：#2555/#1174のMG-24 Safe Pauseに必要な**旧Writer Fence/CDC/新Grant/Unknown Lookupの全必須集合**を列挙し、供給不足は書込み保留（両側への無条件再送禁止）。#1163/#2514が独立Expectedと同一Attempt証拠の確認。
+- **P3 Contract**：旧Writer/Batch/SHO・外部Consumer/History/Retentionの全要件をOwnerと再確認。値が一致しても必要Reader/保存義務が残る限り物理削除不可。
+
+**状態**：MG-29のGoテストは追加したが、実DB Migration/旧新Client/Fence/CDC/外部History・正式Owner受理は**NOT RUN**。現挙動を示すテストの成功は、望ましい安全性の成立ではない。#2892の修正は未完了であり、本書で修正済みとしない。
+
