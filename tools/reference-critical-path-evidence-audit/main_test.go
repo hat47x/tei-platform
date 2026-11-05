@@ -21,7 +21,7 @@ func fixture() Packet {
 		Qualification: Qualification{Head: h, Main: m, FullHealth: "PASS", CleanBefore: true, CleanAfter: true, Receipt: "local/health.log"},
 		Acceptance:    Acceptance{R0: "sha256:" + strings.Repeat("0", 64), R1: "sha256:" + strings.Repeat("1", 64), CandidateFingerprint: "sha256:" + strings.Repeat("2", 64), ReviewFingerprint: "sha256:" + strings.Repeat("3", 64), ReviewCandidateFingerprint: "sha256:" + strings.Repeat("2", 64), DecisionReceipt: "local/accept.json", ReloadReceipt: "local/reload.json", Delta: []string{"add-application-validation-use", "add-validation"}},
 		Web:           Web{AcceptedRevision: "sha256:" + strings.Repeat("1", 64), Application: "order_entry", Target: "web", SelectedValidation: "sales.order_line.unit_price_positive", NegativeValidation: "sales.order_line.unit_price_positive", NegativeEvidenceMode: "running-server", ProviderKind: "actual-db", RunMode: "running-server", WorkspaceRevisionReceipt: "local/r1-web-workspace.json", TargetLaunchReceipt: "local/target-launch.json", PositiveReceipt: "local/positive.json", NegativeReceipt: "local/negative.json", UnobservedControlReceipt: "local/n11.json"},
-		Physical:      Physical{AcceptedRevision: "sha256:" + strings.Repeat("1", 64), Datasource: "db-orders", SchemaCompatibility: "compatible", SchemaEvidence: "local/schema.json", HostAuthorityEvidence: "local/host.json", HostAuthorityProvenance: "real-pg", CommandReceipt: "local/write.json", IndependentReadReceipt: "local/read.json", RecordID: "o-1", SchemaFailureControl: "local/s02.json", HostFailureControl: "local/s05.json"},
+		Physical:      Physical{AcceptedRevision: "sha256:" + strings.Repeat("1", 64), Datasource: "db-orders", SchemaCompatibility: "compatible", SchemaEvidence: "local/schema.json", HostAuthorityEvidence: "local/host.json", HostAuthorityProvenance: "real-pg", Guarantee: &Guarantee{Level: "atomic-with-commit", Reason: "declared by the Provider"}, CommandReceipt: "local/write.json", IndependentReadReceipt: "local/read.json", RecordID: "o-1", SchemaFailureControl: "local/s02.json", HostFailureControl: "local/s05.json"},
 	}
 }
 func has(r Report, s string) bool {
@@ -672,5 +672,94 @@ func TestProvisionalAcceptanceIsNeverFormalEvidence(t *testing.T) {
 	var out bytes.Buffer
 	if err := run([]string{"-packet", path, "-head", h, "-main", m}, &out); err == nil || !strings.Contains(out.String(), "PROVISIONAL_ACCEPTANCE_NOT_FORMAL_EVIDENCE") {
 		t.Fatalf("err=%v out=%s", err, out.String())
+	}
+}
+
+func TestE2ProviderGuaranteeMustBeAtomicWithCommit(t *testing.T) {
+	const want = "E2_PROVIDER_GUARANTEE_NOT_ATOMIC"
+	zeroWidth := string(rune(0x200b))
+	for name, g := range map[string]*Guarantee{
+		"omitted":         nil,
+		"undeclared":      {Level: "undeclared"},
+		"not-atomic":      {Level: "not-atomic", Reason: "x"},
+		"empty":           {},
+		"unknown":         {Level: "exactly-once"},
+		"case":            {Level: "Atomic-With-Commit"},
+		"underscore":      {Level: "atomic_with_commit"},
+		"trailing space":  {Level: "atomic-with-commit "},
+		"zero width":      {Level: "atomic-with-" + zeroWidth + "commit"},
+		"provisional lvl": {Level: "provisional-atomic"},
+	} {
+		p := fixture()
+		p.Physical.Guarantee = g
+		r := Audit(p, h, m)
+		if !has(r, want) || r.Status != "INCOMPLETE" || r.ProductGate != "UNQUALIFIED" {
+			t.Fatalf("%s: %+v", name, r)
+		}
+	}
+	// E0/E1 packets without the field are unchanged.
+	for _, claim := range []string{"E0", "E1"} {
+		p := fixture()
+		p.Claim = claim
+		p.Web.ProviderKind = "synthetic"
+		p.Physical = Physical{}
+		if r := Audit(p, h, m); has(r, want) || has(r, "PROVISIONAL_GUARANTEE_NOT_G2_EVIDENCE") {
+			t.Fatalf("%s: %+v", claim, r)
+		}
+	}
+}
+
+func TestProvisionalGuaranteeIsNeverG2Evidence(t *testing.T) {
+	const want = "PROVISIONAL_GUARANTEE_NOT_G2_EVIDENCE"
+	zeroWidth, bidi, nl := string(rune(0x200b)), string(rune(0x202e)), string(rune(10))
+	reasons := []string{"provisional D10: unverified", "Provisional", " PROVISIONAL	", "provisional_d10", "PROVISIONAL-D10",
+		"prov" + zeroWidth + "isional D10", "provisional" + bidi, "x " + nl + "Provisional" + nl, "declared (provisional)"}
+	for _, claim := range []string{"E0", "E1", "E2"} {
+		for _, reason := range reasons {
+			p := fixture()
+			p.Claim = claim
+			p.Physical.Guarantee = &Guarantee{Level: "atomic-with-commit", Reason: reason}
+			r := Audit(p, h, m)
+			if !has(r, want) || r.Status != "INCOMPLETE" || r.ProductGate != "UNQUALIFIED" {
+				t.Fatalf("%s reason %q: %+v", claim, reason, r)
+			}
+			// A well-formed atomic level is not reported as merely non-atomic.
+			if has(r, "E2_PROVIDER_GUARANTEE_NOT_ATOMIC") {
+				t.Fatalf("%s reason %q: level is atomic: %+v", claim, reason, r)
+			}
+		}
+	}
+	// provisional in the level is diagnosed as both.
+	p := fixture()
+	p.Physical.Guarantee = &Guarantee{Level: "Provisional_Atomic"}
+	if r := Audit(p, h, m); !has(r, want) || !has(r, "E2_PROVIDER_GUARANTEE_NOT_ATOMIC") {
+		t.Fatalf("%+v", r)
+	}
+	// An ordinary reason passes; the strict CLI accepts the field.
+	p = fixture()
+	raw, _ := json.Marshal(func() Packet {
+		p.Physical.Guarantee = &Guarantee{Level: "atomic-with-commit", Reason: "provisional D10"}
+		return p
+	}())
+	path := filepath.Join(t.TempDir(), "p.json")
+	if err := os.WriteFile(path, raw, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	var out bytes.Buffer
+	if err := run([]string{"-packet", path, "-head", h, "-main", m}, &out); err == nil || !strings.Contains(out.String(), want) {
+		t.Fatalf("err=%v out=%s", err, out.String())
+	}
+	if r := Audit(fixture(), h, m); r.Status != "REVIEW_REQUIRED" {
+		t.Fatalf("%+v", r)
+	}
+	// Duplicate keys and unknown members are still refused.
+	for _, doc := range []string{`{"physical":{"guarantee":{"level":"a","level":"b"}}}`, `{"physical":{"guarantee":{"levl":"a"}}}`} {
+		path := filepath.Join(t.TempDir(), "q.json")
+		if err := os.WriteFile(path, []byte(doc), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		if err := run([]string{"-packet", path, "-head", h, "-main", m}, &bytes.Buffer{}); err == nil {
+			t.Fatalf("accepted %s", doc)
+		}
 	}
 }

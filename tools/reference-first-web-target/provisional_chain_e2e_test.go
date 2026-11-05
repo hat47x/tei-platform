@@ -662,7 +662,9 @@ func TestProvisionalChainOneRevisionE2EPacket(t *testing.T) {
 			"schemaCompatibility": "compatible", "schemaEvidence": locator["schema"],
 			"hostAuthorityEvidence":   grantRefFromEvidence(locator["evidence"]),
 			"hostAuthorityProvenance": string(ev.Provenance),
-			"commandReceipt":          locator["command"], "independentReadReceipt": locator["read"], "recordId": "public.orders:order_id=1001",
+			// Read from the Evidence the Web process's Runner produced, not a constant.
+			"guarantee":      map[string]any{"level": string(ev.Guarantee), "reason": ev.GuaranteeReason},
+			"commandReceipt": locator["command"], "independentReadReceipt": locator["read"], "recordId": "public.orders:order_id=1001",
 			"schemaFailureControl": locator["s02"], "hostFailureControl": locator["s05"],
 		},
 	}
@@ -710,7 +712,12 @@ func TestProvisionalChainOneRevisionE2EPacket(t *testing.T) {
 	for _, d := range report.Diagnostics {
 		has[d] = true
 	}
-	for _, want := range []string{"PROVISIONAL_GRANT_NOT_G2_EVIDENCE", "PROVISIONAL_ACCEPTANCE_NOT_FORMAL_EVIDENCE"} {
+	// The Provider's provisional D10 declaration is diagnosed too; its level is
+	// atomic-with-commit, so it is not reported as non-atomic.
+	if has["E2_PROVIDER_GUARANTEE_NOT_ATOMIC"] {
+		t.Errorf("the Runner Evidence declared atomic-with-commit: %v", report.Diagnostics)
+	}
+	for _, want := range []string{"PROVISIONAL_GRANT_NOT_G2_EVIDENCE", "PROVISIONAL_ACCEPTANCE_NOT_FORMAL_EVIDENCE", "PROVISIONAL_GUARANTEE_NOT_G2_EVIDENCE"} {
 		if !has[want] {
 			t.Errorf("expected diagnostic %s is missing: %v", want, report.Diagnostics)
 		}
