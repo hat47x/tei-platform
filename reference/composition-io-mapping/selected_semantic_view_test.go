@@ -53,6 +53,15 @@ func TestSelectedSemanticViewRejectsUnknownAndMixedRefs(t *testing.T) {
 		t.Fatalf("unselected type must not become a candidate: %+v", report)
 	}
 
+	// A nominal mismatch involving an unselected type is not evidence of
+	// a genuine incompatibility. Resolve the selected identities first.
+	plan.Slots[0].Outputs[0].Type.SemanticRef = "sales.not_declared"
+	plan.Slots[1].Inputs[0].Type.SemanticRef = "customer.customer_id"
+	if report := InspectWithSelectedSemanticView(registry, plan, view); report.Verdict != composition.ProposalUnknown ||
+		!has(report, "selected-semantic-type-unknown") || report.Order != nil {
+		t.Fatalf("unknown type identity must dominate nominal incompatibility: %+v", report)
+	}
+
 	plan.Slots[0].Outputs[0].Type.SemanticRef = ""
 	plan.Slots[1].Inputs[0].Type.SemanticRef = ""
 	if raw := Inspect(registry, plan); raw.Verdict != composition.ProposalCandidate {
