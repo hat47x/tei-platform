@@ -983,3 +983,52 @@ Graph/時系列/N次元への適用は**設計仮説**であり、SQLite11件を
 **既存P0（SQL Realization→Page Cohort一Provider）をブロックしない**。この時間付きRelation→Projection試験は#2497の構造保存P1並行圧力であり、データ表現の型追加、二DB、全組織Policy、SHO/Studio完成、ランタイム統一、分散Txを先決しない。比較指標は誤ったClaim昇格、必要時だけの再資格化、Source/意味の二重保持、実Provider照会数・p50/p95、必要Adapter数。#2018へ移し、独立Expectedは#1131/#1180/#2514の既存Ownerへ委譲する。
 
 **状態**：本節は設計・局所合成Fixtureの接続であって、実TEI Runtime、実組織Provider、bitemporal Query/Host、OS/AI送信、業務Owner受理の実証ではない。PR #2496はDraftを維持し、mainへ統合しない。
+
+<!-- tei-data-form-independent-requirement-closure-20261106 -->
+## 24. 宣言の自己整合性と独立した必要条件の閉包を分離する（2026-11-06）
+
+### 24.1 今回、実Go Sourceと他レーンのGo Characterizationから確認できた差分
+
+#2619/#2620のEverything is Data／自己記述、#2860の実Parser負例、#2862の実Query Contract構造検査、#2889のRunPlan toy Step試験を照合すると、**宣言された条件への適合検査だけでは、その宣言が必要条件を網羅したことを保証しない**。本節は既存§22（6同一性）・§23（時点とRelation）に「要求元の独立性」を加えるもので、新たな全域SolverやRoot Requirement Engineを提案しない。
+
+GitHub mainの実ソース internal/realization/contract_query_sql.go にある ContractQuerySQLRealization.ValidateContract は、Query Signatureに宣言されたInputsとInput Parameter Mapping、結果列Mapping、Provider、Target、Sourceの空非空と重複を確認する。SQL本文の実行、SQLで実参照されるパラメーター、Predicate/Sort/Scope、物理Read/業務Expectedの充足はこの関数の範囲外。Draft #2862のGo Characterization（3ケース）は、同一Query+SQL本文の複数Providerへの明示Mapping・欠損Mapping拒否、SQL Source変更後のRealization Identity維持を確認するだけで、実SQL Selector/実DB比較ではない。
+
+mainの internal/execution/runplan.go は、unattended RunでPrecondition callbackが無ければ停止するが、callbackが空理由を返した場合、**そのcallbackがHost Grantや業務上必要な全Preconditionを覆ったこと**までは検証しない。同じコードの EffectPreconditions はafter-commit Observerの存在を確認するが、その時点でObserverを呼び実Effectを観測してはいない。Draft #2889の実Go Runner＋toy Steps（fixed-head CI 3/3 PASS）はこのギャップと、後段blockedでも先行Stepの記録が残ることを限定実証。実組織DB/Host/業務Effectではない。
+
+さらにDraft #2860の実Go Parser Characterizationは、同一Attributeの Source に Role を二回書いた場合、現Parser Candidate が後のRole文字列のみを保持して先のRole occurrenceを失い得ると確認した。引用文字列中のRole風表現はRoleとして扱われない。原Source byte/occurrenceと Semantic Candidate が同じ情報を持つとは限らず、同一候補Roleから「Role宣言が一意だった」「Ownerに受理された」「可逆に編集できる」とは結論できない。正式なSource-aware衝突診断の実装とRole意味受理は別。
+
+**まとめ**：データ様式の適合は、宣言済み項目を内部で突き合わせるだけでなく、当該Claimの独立したRequired集合、Source上の消え得るoccurrence、実消費入力、実Targetの観測へ、必要な範囲で照合する。宣言を正本とすることは「その宣言自身が正しいという証明を自ら発行する」ことではない。
+
+### 24.2 既存Evidence票へ加える4種類の照合（永続Schemaではない）
+
+| 種類 | 対象・供給元 | 誤った成立の例 | 必要な応答 |
+| --- | --- | --- | --- |
+| Required（外部から固定） | 当該Function/Claimの受理済みMeaning、独立Scenario/Expected、必須Source/Role/Read Scope、Consumer用途。#1126/#1131/#1180/#2514 | 定義のrequiredが空なので全条件PASS | 必須条件が独立に確定しないときは unknown/unqualified。無関係Claimには不要なHost Effectを要求しない |
+| Declared（モデル/実装の申告） | SourceにあるRole/Relation/Query Input、Provider Binding、Function Mapping、RunPlanが構成したGuards | 同じRoleが重複していてもCandidateのRole文字列が一意だから安全 | Source occurrence/Role衝突、必要Field/Relation/Ruleの申告漏れを独立Expectedと照合 |
+| Resolved and Consumed（実際の経路） | Loadで実消費したSource/Plugin/SQL/Schema/Policy、Query分岐、Function Mapping/Provider Route | Query ContractのValidate成功だけでSQL Predicateと実消費が正しい | Source Index・実解析Request/入力閉包・実選択Realizationに帰属。未読込Sourceや無音fallbackを未充足として明示 |
+| Observed/Disclosed（結果の資格） | 実ProviderのRowset+Field/Read Cohort/Scope、Host Grant、Effect Receipt/独立Read、実Consumer受領 | toy RunPlan completed/0 rows/短いPageを業務完了・完全不存在へ昇格 | Claimごとに完了根拠を要求。歴史的観測と現在の開示・実行資格を分ける |
+
+全4種類を全ケースで物理的に実行させるのではなく、**Claimに必要な部分だけを束縛**する。たとえば純粋な型付き構造変換はDB物理ReadもHost Commitも不要。一方、全件不存在のClaimはScope+Rowset Closureが必須で、業務更新の完了Claimには実Effectと独立Observerが必要。
+
+### 24.3 一つのSubjectから発生する判別可能な反例
+
+| Case | 入力と固定する独立要求 | 現行実装が実際に保証する範囲 | 未充足なら停止するClaim | Owner |
+| --- | --- | --- | --- | --- |
+| RC-01: 宣言にない必要Field | Accepted Functionは非表示のcredit_limitを要求、明示Query Contractはidだけ | Query ContractのDeclared Mapping検査が通っても外部Requiredは満たされない | 与信Validation/Action資格のみunknown。id表示は条件付き維持可 | #2506/#2624/#2514 |
+| RC-02: Source上のRole二重記述 | Sourceに同AttributeのRoleを二回記述、片方は別の意味 | Parser Candidateの単一Role文字列は衝突/occurrence完全性を証明しない | Meaning受理、同一Source Patch、Role依存Buildの資格を保留 | #988/#2620/#2621/#2497 |
+| RC-03: Query RealizationのSource改版 | 同Target/Provider/MappingでSQL Predicateだけ変わる | ValidateContract/Identity同一はSource byte/結果同値の証明ではない | 影響するFilter/Count/Page/Closure Claimを再資格化 | #2862/#2387/#2600/#2586 |
+| RC-04: RunPlanのGuard申告不足 | 独立要求にCurrent Host Grantあり、callbackがPeriodだけ確認 | Runner completedはHost Grant/業務Effectが満たされた証拠でない | Write/Business完了のみ未資格。read-onlyな構造情報まで全失効しない | #1129/#1174/#2514 |
+| RC-05: Observer存在と実効果 | EffectObserverが存在するがObserveEffect/独立post-image未読取 | Observerが渡された、toy Stepがresolved、Journalがcompletedは実DB Receiptでない | Effect完了Claimをnot-establishedに維持 | #2889/#2564/#1174 |
+| RC-06: Resource/Selection負依存 | Source/Provider/SQL候補の追加、未読込必須SourceやA→B→A | 既選択Inputのbyte一致/Cache HitだけではFull Required Closureを示さない | 関係するRealization/現行Consumer Claimのみ再資格化 | #2823/#2600/#2622/#2516 |
+
+これらは**既存の独立Oracle・Scenarioへ渡す受入対照**であり、RC-01〜06を本節独立で実装・実行したという意味ではない。#2860/#2889/#2862各Goテストを同じTEI一往復成功として足さない。重複していたらCase IDではなく対応する既存Issueの負例に付随する列として運用する。
+
+### 24.4 次の最小一Attemptへの組込みと改善指標
+
+最初の実製品接続は既存#2586と#1119のP0 read側を維持し、Subject/Claimと独立Expectedを固定→実TEI Source Load/Role/Query→実選択Realization/解析Input→Function ContextのD/V/Q/A必要項目→Provider Read/Result Slice→現在Consumer資格の順で照合する。**必要条件の宣言が0でも、他のSource/業務Expectedで必須項目が確認できるなら空PASSにしない**。全Requiredが独立に不要と確定している純粋な操作であればemptyの合法性を許す。独立要求とActualの対応が未観測なら、それを明示的な欠落として残す。
+
+次に編集レーンは#2860の実Source→Parserの単一Role/二重Role/引用Literalを#2497/#2621のNo-op/Source span一意性/Preview read-onlyへ引き渡す。現Source Writer/Role Interpreter/Studio機能の有無を確認せず、Parser Testを編集可能の証拠としない。RunPlan/Effectは別のwrite側の一Attemptで現在Grant→Commit/Unknown→Receipt/独立Readに接続する。P0のSQL/Page実ReadへWriteやSource自己構築をHard dependencyとして持ち込まない。
+
+#2018へは必須Source/Field/Relationの未観測・誤ったcomplete数、宣言不足を検知した負例数、静的解析/実Read/Consumerで追加したAdapter数、再資格化の過不足とp50/p95を返す。Candidate由来ExpectedでCandidate自身を検証している場合は独立Oracle PASSに数えない。新Role Resolver/Requirement Engine/Host/Proof Store/DSL用Core TypeKindは採用しない。
+
+**資格（2026-11-06）**：本節は既存main実Goの静的ソース確認＋他Draftの限定Go Characterizationを照合した計画反映。実TEI Function→DB/Consumer、Source-aware正式Role衝突診断、Role Meaning Owner受理、RunPlan実DB Effect、RC-01〜06の統合受入はNOT RUN。PR #2496はDraft維持、main未統合。
