@@ -2595,3 +2595,23 @@ EKI側#112/#266/#67/#115へ契約不足を返し、TEI #1130がJob意味と判�
 5. **P2 書込とConsumerへ**：必要とされた時だけ#2598のAction Target、#1174の実DB Commit/Receipt、#2516の実受領へ接続。実RDB間TX/認証差やEKI/Jobの実行方式から業務Meaningを変更しない。
 
 **配置とOwner**：SQL/Provider Capability/Realization=#2622/#951/#1121、Role Cutover=#2620/#2860、Source/Build実消費=#2595、同一Revision/部分取得・否定依存=#2586/#2582、独立Expected=#2514/#1180、Effect=#1174、Consumer=#2516。新DB Registry/SQL Parser/Authority/Host/Second Scenario Runnerなし。DXR-01〜06の実Go/実SQL/二DB同一Attempt、正式Role移行、Provider Write/Owner受理は**NOT RUN**。本節は設計・受入票であり、本番仕様の採択ではない。
+
+
+### 49.4 SQL選択Lockの負の依存とRole実装版を同一試行で検収（2026-11-05、#2862／#2860追補）
+
+[DB Query Draft #2862 §6](https://github.com/hat47x/tei-platform/pull/2862)のDBX-01〜09と、[自己記述Draft #2860 §8.5](https://github.com/hat47x/tei-platform/pull/2860)の実Go Fit/Gapを照合。両方の設計に重複する新しいResolverは不要であり、**最初のSQL選択**と**固定済み選択の失効・再選択**を別の行為として観測することが成熟した差分である。
+
+| 変形 | 既存機構で追う必要なWitness | 未観測時の停止・担当 |
+| --- | --- | --- |
+| **DBX-01／S0 複数Alias** | Function Data Context→Persistence Mapping→DB Alias/Instance→Provider/Version、Read/Write/Scopeの実用途 | 同一Data/Table名から対象を一意化しない。#2611 PM-02/03、#2622 |
+| **DBX-02／S1 初回選択** | 明示Binding／Provider専用／共通SQLのCandidate Set、専用候補の不存在、採用Source byteとQuery Contract | 共通SQLの存在だけでProvider適合・実読込・現在Grantとは言えない。#2622 RDB-02 |
+| **DBX-02／S2 固定済み専用SQLの消失** | 旧Lock/Asset fingerprint、stale/missing原因、新候補集合・独立Expected | **自動的な共通SQL fallbackを禁止**。明示再選択・検証・必要な再受理までunqualified。#2600/#2862 |
+| **DBX-03／S3 専用SQLの後着追加** | 『不存在』を条件とした負の依存、候補順位、実Build Input/Artifact Revision | 同じ共通SQL byteでも選択資格は失効しうる。無関係Artifactの全面再生成は要求しない。#2595/#2600 |
+| **DBX-04/05／S4 DB版・Schema/RLS・Role A→B→A** | 実Provider版/Capability、Role/Operator実装Pin、Source occurrence/Review epoch、実SQL bytesとRead Scope | Source/World hash再一致でMeaning・旧Grant・Consumer資格を自動復活させない。#2860 SDX-19/22、#2829 |
+| **DBX-06/07／S5 動的条件・2way** | 実Bound SQLとBind型/許容識別子、Required WHERE条件、実Read集合、元Source span | WHERE消滅による全件化、NULL/missing混同、例示literalのRuntime流入を拒否。#2506/#988/#2514 |
+
+**一つの実証Packetの入口**：実TEI Workspaceから公開の利用者定義Logical Query/Subjectを一つ選び、(a) Source declared/discovered/loaded/actual consumed、(b) Role/Operatorが現行Productで本当に型付き解釈された範囲、(c) Data Contextに対する選択DB Alias、(d) SQL Asset選択理由・負の依存・実SQL、(e) 事前固定の独立Expectedと欠落時の診断、(f) 実行時Read/Consumer（実行されなければNOT RUN）を**同一Subject/Revision**で比較する。Role解釈を接続できない場合は`unsupported: product-role-bridge`として局所的なSource/Query選択PoCのみ認定する。新公開状態enumの提案ではない。
+
+**実施順**：(1) #2862が既存DB/Query/Realization/Source IndexでDBX-01〜04をclosed fixtureで反証、(2) #2860が同一Subjectの実Source/Role/Interpreter資格を別受入、(3) #2514のExpected/known-mutantと#1180既存Scenarioに両者を接続、(4) 必要時だけPostgreSQL＋SQLiteのread-only Queryを実行しProvider差を確認する。#2853〜59の実PG試験は本件のSQL Asset選択・二DB互換試験を通したことにはならない。#1119の本来のG0〜G4やTAI実Harness最小比較を、新DBPoCの完了まで一律停止しない。
+
+**状態**：#2862は設計と受入候補、#2860は実Goソース静的Fit/Gap、#2667本追補はdocs-only。DBX-01〜09、SQL選択/2way Go実装、Role実Interpretation、実二DB、独立Oracleの新実行、Owner意味受理は**NOT RUN**。新Dialect Registry／Query Engine／Role Resolver／Test Runner／Hostなし。
