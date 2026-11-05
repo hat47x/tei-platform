@@ -129,6 +129,7 @@ Webアプリケーションでは、UI構成キットだけでなく、HTTP要�
 | 保存前に業務規則を追加 | Project OwnerのAccepted Business Rule/Procedure | 別Owner/Targetに独立配布する共通能力が実例で成立した場合のみ |
 | DB接続先・実SQL方言を変更 | 意味上のFunction/Relationを保ち、Environment/Provider/SQL Assetを明示Binding | 実Data Provider能力・実方言・Scope・認可/効果が既存実装で満たせない |
 | 画面の独自部品を追加 | #997のKit公開点・Project UI Layer | 型付きRenderer/Target Host Bridgeに必要な実Consumer契約がある |
+| 生成された業務コードへ案件の処理を追加 | #2090で宣言されたExtension Point/Project-owned Source、またはAccepted Rule/Function | 別Consumer向けに独立配布・独立更新する実装契約が必要な場合 |
 | Go/Desktop・外部Targetへ展開 | 既存Target Generator/Build Compositionを参照 | 固有Toolchain・ABI・Host/Target能力・Artifactの独立実現が必要 |
 | 別Processで外部製品を呼ぶ | 既存のService/Transport Contractと外部Hostの能力を確認 | 独立更新・障害分離・異言語実行が不可欠で、Single-binary等の制約と整合する |
 
@@ -164,3 +165,12 @@ Webアプリケーションでは、UI構成キットだけでなく、HTTP要�
 **移行時の判定**：選定済みProviderが変わったときは同名FunctionでもTarget Capability、独立Expected、実Read/Write/Receiptを再評価。未選択BundleのCatalog版だけが変わっても、実Selection・実消費・Artifactが不変なら無関係Functionを過剰staleにしない。ただしSource/SQL Asset A→B→A、Provider Default順位、Go init/選択module go.sumの変化を「同じ名だから不変」と扱わない。
 
 **担当への返却**：Project選択は#1016、Contract/Grantは#951/#1174、依存不足・過剰混入は#1251 PB-10/#1167/#2600、UIは#997、DB/SQLは#2622、Targetは#259。判断に必要な不足条件を表示して保留し、第二Resolver・万能Plugin Runtime・独自Host・新Gateを追加しない。新しい実Consumerの横断試験・Owner受理はNOT RUN。
+
+<!-- tei-project-generated-extension-reconciliation-20261106 -->
+### 案件の生成拡張点を汎用Pluginと同一視しない（#2888重複統合）
+
+[Runtime/Target Binary Composition §14.7](RUNTIME_TARGET_BINARY_COMPOSITION_DESIGN.md) に#2888の固有差分を集約。案件が追加した保存前検査・業務規則は、まずProjectのAccepted Source/Rule/Functionとして扱う。生成物へ案件処理を接合する必要がある場合も、#2090の宣言済みHookに案件Sourceを置く方法と、独立Version/Conformanceを持つPluginを配布する方法を**別に比較**する。Hook名/型が同じでも、生成器更新で呼出順・粒度・Owner Meaningが変われば同等とは判定しない。
+
+**案件の更新追従**は旧Generator/Kit＋Project-owned delta＋新Generator/Kitの三者比較で診断する。再生成で案件Sourceを失う・生成コードへ直接書き込む・未公開Slot/Hookへ依存する場合は保留。UIの通常表示/Action affordanceの成功を、実Host GrantやCommit資格へ昇格しない。#2090の限定Closed/チェック済み項目は全Targetの実証済みではなく、ここでは再試験を増殖させず既存Caseへ参照接続する。
+
+**差戻し線**：独立配布のConsumer・更新責任が無いなら、新Plugin宣言/Loaderを必須化しない。業務意味の変更が必要ならOwner受理へ戻す。生成拡張点の互換性不足なら契約を修正し、案件Sourceを保護したまま生成物を再検証する。PR #2888のEXD-07は同設計§14.7と#2090へ吸収し、第二Fixture正本を設けない。docs-only／NOT RUN。
