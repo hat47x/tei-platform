@@ -656,7 +656,7 @@ Ownerは#1180（Scenario）、#2813/#988（DSL Candidate）、#2514（Oracle）�
 | 比較単位 | 事前固定するもの | 実行後に要求するもの／禁止する誤昇格 |
 | --- | --- | --- |
 | **A. Scenario Inventory** | 6 Step ID、必須Case/Obligation、Source/Scenario/Fixture/Plugin Pin、Expected Nature | 各Stepの実Discovered/Attempted/Outcome/Receipt。6件が実行済みでも業務全体の分母にしない |
-| **B. AI New Candidate** | 既存Anchor保護、新規ID・対象Scope、独立Expected/Known Mutantの根拠、編集可範囲 | AIが本当にJSONファイルだけを追加し、局所Case/Stepを増やし、独立Mutantを判別したことを別々に測る。Case数のみでは採用しない |
+| **B. AI New Candidate** | 既存Anchor保護、[#2890](https://github.com/hat47x/tei-platform/pull/2890)の追加Scenario/Fixture（Quantity/Line Number固定・Relation Keys `[1,2]→[1,1]`）、新規2 Step ID・対象Scope、独立Expected/Known Mutantの出典 | **JSONのみ追加は実証可能な変更として作成済み**。実Glob発見/各Step実走/Actualと事前Expectedの差は新HEADの実CI/CLIで別検証。候補Oracleは未認定、独立Mutant未実行。Case数のみでは採用しない |
 | **C. Required Check** | Operationごとの必要Check集合（Period/Effect/Grant/Observer/Schemaのうち適用されるもの） | 渡したCheckのPASSと必要Checkの網羅を別判定。未指定が残る場合はprecondition completeを拒否（#2616） |
 | **D. Effect and Restart** | Stepの実行順・OperationID・未知Commit・Provider Receipt/別Connection Read、同Key/新Keyの再実行Expected | 全Plan`blocked`は先行StepのEffectゼロを意味しない。Restartでstageが失われても「安全」と言わない（#2870/#1174） |
 | **E. Cross-layer Qualification** | Source・Oracle・Consumerの同一Attempt資格、Owner Meaning状態、対象TargetのScope | L1/L2/L3/L4/L5の単純合算を拒否。#1163/#1119のGate Ownerが同一改訂の必要証拠を判定する |
