@@ -262,3 +262,36 @@ func TestSelfDescriptionRejectsStaleDirectReadAsLoadTimeSource(t *testing.T) {
 	// would be falsely presented as a single Source revision. This fixture
 	// does not assert that the product itself refuses a caller's later read.
 }
+
+
+// This is a characterization of the current Go *syntax candidate*, not a
+// Product Role-resolution or acceptance test. A string inside description
+// never becomes a Role, while duplicate role clauses currently lose their
+// first occurrence at the parser-candidate boundary. Source-aware validation
+// must not infer uniqueness from the resulting single string.
+func TestSelfDescriptionRoleLiteralAndDuplicateAreNotAcceptedMeaning(t *testing.T) {
+	quoted := "namespace probe\ndata item {\n  attribute value type std.money description \"role privileged_amount\"\n}\n"
+	ns := parseSelfDescriptionCandidate(t, quoted)
+	attr := selfDescriptionAttribute(t, ns, "probe.item", "probe.item.value")
+	if attr.Role != "" || attr.Description != "role privileged_amount" {
+		t.Fatalf("description text was incorrectly promoted to a Role: %+v", attr)
+	}
+
+	oneRole := "namespace probe\ndata item {\n  attribute value type std.money role audit_amount\n}\n"
+	twoRoles := "namespace probe\ndata item {\n  attribute value type std.money role accounting_amount role audit_amount\n}\n"
+	if sourceindex.Fingerprint([]byte(oneRole)) == sourceindex.Fingerprint([]byte(twoRoles)) {
+		t.Fatal("distinct role declaration sources unexpectedly share a byte fingerprint")
+	}
+	single := parseSelfDescriptionCandidate(t, oneRole)
+	duplicate := parseSelfDescriptionCandidate(t, twoRoles)
+	singleAttr := selfDescriptionAttribute(t, single, "probe.item", "probe.item.value")
+	duplicateAttr := selfDescriptionAttribute(t, duplicate, "probe.item", "probe.item.value")
+	if singleAttr.Role != "audit_amount" || duplicateAttr.Role != singleAttr.Role {
+		t.Fatalf("unexpected current Role candidate projection: single=%+v duplicate=%+v", singleAttr, duplicateAttr)
+	}
+	// The parsed output contains no occurrence count or diagnostic here.
+	// The two distinct source revisions project to identical role/type
+	// fields. This is a deliberately unqualified characterization: a future
+	// parser/semantic validator SHOULD reject or diagnose the duplicate.
+	// Never treat this test's PASS as duplicate-role acceptance.
+}
