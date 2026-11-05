@@ -441,3 +441,31 @@ Database Contractの別ケースでは、現行Referenceの隔離コピーで `s
 **変換互換の注意**：`formatVersion` header省略→Manifest継承という既存の明示的な意味を、旧設計メモの「版が無い=必ず拒否」へ後退させない。逆にManifest itselfが未読込/不正/未知の版なら、ヘッダ省略だけで無条件に採用しない。未知属性の黙った脱落、版番号だけのアップグレード、A→B→Aからの旧Review復活は別の負例として維持する。
 
 **証拠範囲**：main Source-staticの構造・コメントによるFit/Gap確認のみ。実WorkspaceでのRole意味解釈、全形式移行、Owner受理、実Content/Implementation fingerprint真正性、実Provider/Consumer/Hostは**NOT RUN / NOT PROVEN**。
+
+
+<!-- role-self-description-real-go-source-index-test-20261105 -->
+## 9. 2026-11-05 実Go Product Loader→Source Index→Language Reference最初の接続（テスト追加・CI結果は別）
+
+[Draft PR #2860](https://github.com/hat47x/tei-platform/pull/2860)に、`reference/dsl-language-plugin/self_description_workspace_boundary_test.go` を追加。**既存Go実装のみを使用**し、Role Resolverや新しい意味Canon/Parser/CLIは作らない。§8のP0a/P0bを一歩進めた実コードテストであり、Role自己解釈のP0b完成ではない。
+
+### 9.1 実コードで固定したもの
+
+- 公開`reference/workspace`を既存`workspace.Load`で読む。`ManifestIdentity().SHA256`が存在し、`Sources["semantic-data:sales.order"]` が `semantic/sales/order.tei` を指すことを**独立Expected**で検査。
+- `workspace.BuildSourceIndexFromLoad`で、**同一Load時に保持されたbyte snapshot**から `sourceindex.Subject{Kind: "semantic-data", ID: "sales.order"}` の参照を確認。これは単一Workspace全体のatomic snapshot、ImportsのFull Input Closure、外部Consumerの開示・実Readを証明しない。
+- 同じ公開FixtureのSemantic原文を**別途再Readしたテスト入力**として `syntax.NewParser(...).ParseSemanticFile()` を既存 `ParseSelected` に接続。test-onlyの固定Language ID/Contract/Implementation文字列は**実Parser byteの真正なFingerprint/Accepted Lockではない**。実LoadしたNamespace/Attributeの ID/型と照合するが、別途Readしたbyte列をLoaderのprivate snapshotと同一と**無条件には主張しない**。
+- `sales.order.total` の独立基準 `TypeRef=std.money` と元の `Role=""` を検査。Source中の`role accounting_amount`追加でAttribute.Role文字列が現れることを試す。ただしRole Required Shape/解釈実装/Owner受理/Effect/Host権限は解決しない。
+- 同じAttribute IDを保ったまま`std.money`→`std.text`の変更を解析し、ID一致が型の一致を意味しないことを検査。丸め・NULL・金額の業務意味が等価/非等価であるかは別Oracle/正式Operator Contractが必要。
+- テスト用Semantic `formatVersion 2`を実Go Parserでは受け取り、`formatVersion: 1`のManifestと組み合わせた**実`workspace.Load`**で版の不一致を拒否する負例を追加。header省略（FormatVersion=0）のManifest v1継承は実存契約として維持。v2 WorkspaceではSemantic Header必須という既存実Loader条件と矛盾させない。
+
+### 9.2 合格Claimと次のGap
+
+| 既存実コード経路 | 今回テストが検証する主張 | 今回は未証明 |
+| --- | --- | --- |
+| Workspace Loader + strict Source Index | `sales.order` の実Loadと同一Load時Source locator | Required rootの全Coverage、Imports・Providerの完全Closure、Atomic snapshot |
+| Real Semantic Parser via test-only exact Selection | `sales.order.total`のID/TypeRef/Roleと限定的なSource変更差 | 正式Language Plugin Selection/ImplementationFingerprint真正性、Role定義の自己解釈・Owner Acceptance |
+| Parser-v2 candidate vs Manifest-v1 Loader | ReadabilityとWorkspace形式版の適格性は別 | 任意のv1→v2完全Migration、将来版・全互換性、実Cutover |
+| 独立Sourceのtype-mutant | ID同一≠TypeRef同一を検査 | 全意味同値、属性依存の完全取得、丸め/NULL/粒度/Query Predicateの法則 |
+
+**次段P0b**：同じ`sales.order`を保持し、正式に選択されたLanguage/Role/OperatorとRole Required Shape（実契約として存在するもののみ）を同一Source revision・必要閉包へ接続。未実装なら `unsupported/gap` を場所付きで提示する。#2639の別BranchにあるEG-08/09と異なる実Product Loader経路を提供するが、**両PRの局所PASSを一つのRole自己解釈E2Eに合算しない**。Ownerは #2620/#988、独立Oracleは #2514、Missing Sourceは #2823、Consumerは #2516。
+
+**実行状況**：GitHubへGoテストSourceを追加・再取得したことだけ確認。GitHub Actions等の**exact HEADテストが完了するまではPASS/FAIL未判定**。このテストの成功でも本番Go Single Binary、実DB/Host、正式Role自己解釈/Owner受理を証明しない。
