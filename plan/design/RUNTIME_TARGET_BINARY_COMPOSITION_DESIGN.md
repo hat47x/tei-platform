@@ -348,3 +348,74 @@ Providerの準備時に決める構成パラメータ、要求ごとの入力、
 Contract/Conformanceは[#951](https://github.com/hat47x/tei-platform/issues/951)、Composition/Generationは[#1223](https://github.com/hat47x/tei-platform/issues/1223)、Artifact/Buildは[#943](https://github.com/hat47x/tei-platform/issues/943)、Runtime/Target/Trustの差は[#259](https://github.com/hat47x/tei-platform/issues/259)に戻す。Providerの申告、契約の意味上の受理、Artifact検証、現在のHost権限を相互に代用しない。
 
 標準Adapter、CLR/JVM直接ホスティング、Wasm Component/WIT、製品用の項目対応付けの記述構文、相互作用ごとの型付き契約は**未決**である。これらを新しい固定種別、第二のLock、独立Resolver、公開仕様として先取りしない。
+
+<!-- tei-extension-selection-three-gates-20261106 -->
+## 14. 拡張方式の三段階選定：Plugin化の必要性・契約・物理実現（2026-11-06、設計／NOT RUN）
+
+2026-11-05の[拡張方式選定表](https://github.com/hat47x/tei-platform/issues/951)と、大プラグイン主義への反証・高凝集Bundle/未使用機能の非干渉（#1251/#1016/#2600）、Data Operationsと多Provider（#2622）、DSL/Operator（#988）、外部Consumer（#2390）、実Effect（#1174）を**既存の§13の方式比較に接続する追補**。これは採用前の意思決定補助であり、正式Plugin ABI/Schema、第二Resolver、独自Host、新Gateを追加しない。現行の採用済み境界はADR-0043（対象Hostを再利用）、ADR-0044（認証の実現をCoreに強制しない）、ADR-0032（契約中心の目標）へ戻す。
+
+### 14.1 正しい順序：まずPlugin化を反証する
+
+1. **Plugin境界の要否**：実Consumerごとの独立契約・選択/版・配布更新・権限・障害隔離の必要性を調べる。純粋な関数、固定の業務Rule、描画設定は、標準ライブラリ・明示Data Operations/Rule・設定のままで十分な場合がある。Pluginであること自体を価値や拡張可能性の証拠にしない。
+2. **何の契約を追加するか**：Language/Parser-Lowering、Operator Semantic、Service/Capability Provider、Target Generator、外部Service/Transport-Lifecycleのどれか。外部Processは**責務の種類ではなく物理接続方式**でもある。同一Providerが静的Goと独立Processの両方で実現されることを許容する。
+3. **物理実現を選択**：静的合成、動的ロード、外部Process（必要なら既存Host libraryやWasmをそのTargetの実現として比較）。単一Go binaryを第一候補とし、Target/Hostに動的更新・独立障害境界などの実要件がある場合だけ追加機構を検討する。生成時に動的Pluginを使っても、生成アプリの実行時にそのLoaderを含める必要はない。
+
+### 14.2 拡張対象×最小契約×不適合条件（設計判断の表）
+
+| 対象・例 | Pluginでなくても成立する候補 | 独立契約が必要になる条件 | 主要失敗影響・棄却基準 | 既存担当 |
+| --- | --- | --- | --- | --- |
+| 構文/DSL（pipe、Markdown/表記糖衣、別言語） | 表層糖衣→同じCanonical/Operatorへの静的Lowering | 文法Producer/Parser/Lowererを独立選択・版固定し、元Source/Source span/診断・編集往復が必要 | Parserの登録順で意味が変化、Source原構文/位置喪失、同名Roleから意味推測、Semantic Acceptanceすり替え | #988/#2619 |
+| Operator（filter/aggregate・数量計算等） | 純粋Go関数/標準Library、Data Operationsの合成 | 名前・意味・型/粒度・NULL/精度/順序・Effectを版付きで多数Consumerが再利用し、Provider差し替えが必要 | 型・戻り値だけ一致してNULL、bag、多重度、単位、丸め、欠損、read scopeが異なる。独立Expected不在 | #988/#2622 |
+| Data/Service Provider（DB、OData等） | 単一Target向けの明示Adapter、設定済み既存Driver | 実装/DB方言/Capability（Read・PATCH・Replace・batch・CAS・Receipt）と現在のHost Authorityの選択が分離 | 曖昧な対象、無認可、partial 0件→不存在、batch=原子性の推測、部分Commit/ACK-lossの復旧不能 | #2622/#951/#1174 |
+| Target Generator（Go/Wails、Java/.NET/Wasm） | 既存Generator内の明示設定、変換関数 | Target固有Artifact/Builder/Toolchain・生成器更新・実現Capability・必要依存を独立に選択 | CanonicalにTarget APIが逆流、未選択コード/秘密混入、実Targetが必要能力を欠く、生成物・実ロードByte不一致 | #1121/#259/#943 |
+| 外部Process/Service連携 | 同一Process内の関数またはProvider、既存Host library | 異言語/異更新周期/隔離/既存外部製品が独立配置を要求し、Transportとlifecycleを明示 | Single-binary厳格要件違反、起動/停止時の権限漏れ、結果不明を失敗扱い、途中確定の無条件再送 | #1145/#2390/#1223/#1174 |
+| Owner固有業務Rule | Data/Function/Businessの受理済Rule、明示Data Operations | 同じRuleを異Owner/Targetで独立配布すべき**具体的Consumer**がある時だけ再検討 | RuleをPlugin設定へ移し、業務意味の第二正本/Providerの自己申告へOwner受理を委譲する | #1129/#2622/#267 |
+
+Pluginの**論理境界と高凝集Bundleの配布境界は1:1ではない**。共通Interfaceと複数Implementationを一Bundleへ同梱できるが、同梱≠Selected≠Buildで実消費≠Linked≠Exposed≠Current Grant≠Invoked≠Effect。Root packageの強制import/init登録や全実装のリンクによって未使用コードが成果物へ混入した場合、「未使用Plugin非干渉」は未達と扱う（#1251 PBN/PB、#1167、#2600）。
+
+### 14.3 物理方式の選択：同じ契約を条件付きでLoweringする
+
+| 比較軸 | 静的合成（既定候補） | 動的ロード（必要時のみ） | 外部Process（必要時のみ） |
+| --- | --- | --- | --- |
+| Single-binary | Go単一成果物/不要依存除外に有利。生成時Pluginは同梱不要 | 別ロード実装・Engineの存在を要求する場合、厳密な単一配布実行物に非適合 | 別実行物が必要なら厳密な単一バイナリと非適合。単一インストーラか否かは別要件 |
+| Provenance | exact Source closure + selected Contract/Provider/Generator/Toolchain/flags → actual Binary/member | 上記に加え、ロード物/推移依存/ロード時点とunload結果 | 上記に加え、実起動Executable/子Process依存/Protocol+起動Context |
+| Compatibility | Build時に一部検出可能だが意味/Owner/Host資格は別 | Loader/ABI/Engine/旧新世代共存の検証を追加 | Wire semantics、Client/Server混在版、timeout/再接続・二重送信を検証 |
+| Capability/Trust | static linkしても実行Grantにはならない | Plugin自己申告/署名・ロード成功はHost許可ではない | 別Processも自動sandboxではない。OS/Host実隔離・現在Grantを確認 |
+| Partial effect | 同一Process内でも永続化後の失敗があり得る | 旧世代in-flightと切替前後の作用/解放が問題 | ACK-loss・外部不可逆作用・部分Commitとread-after-write資格が問題 |
+| Update frequency | 再Build/配布が必要。実時間で評価 | 無停止が必要なら世代併走/Request pin/Drain/cleanup/rollbackの実測が必要 | プロセス単位の独立更新可能。ただし旧版Request・外部状態・Effectを区別 |
+| Test isolation | 独立テストプロセス・Buildで隔離。in-process panicやglobal stateも注入 | ローダー版競合・漏れ・解放失敗/再ロードを注入 | kill/timeout/partition/応答偽造/再起動と二重効果を注入 |
+
+**棄却/保留**：Sourceの実消費・契約fingerprint・意味の受理範囲・選択Provider・必要Target Capabilityが未特定なら候補確定を止める。副作用ある拡張で先行Step確定、後続Step blocked、Commit応答喪失を区別できないならProduction採用を止める。動的ロードが「更新しやすそう」という理由だけなら採らない。実単一Binary要件下で外部実行物が必要なら別方式を検討し、要件を暗黙に緩和しない。
+
+### 14.4 Ownerへの質問と方式選定の停止線
+
+| 確認事項 | 判定に必要な証拠・質問 | 資格不足なら |
+| --- | --- | --- |
+| 機能価値と境界 | 「既存標準関数/Rule/設定で実現不能な点」「別Consumer・別Ownerが存在するか」 | Plugin化を先取りせず標準機能案へ戻す |
+| 意味とSource | 「何が業務意味の正本か」「元構文・Source span・Model/World・Rule版・実消費byteは何か」 | read-only説明まで。意味自動受理禁止 |
+| 呼出と権限 | 「どの主体・Resource/Scopeで実行」「Capabilityを誰が実効強制」「Included/Exposed/Grantedは別か」 | protected Invocationを拒否/保留 |
+| 副作用と回復 | 「何が原子的か」「一部確定、ACK喪失、重複要求時の独立Receipt/Readは誰の責務か」 | 業務Writeの本番採用を停止 |
+| Target/配布 | 「厳密な単一バイナリか、複数Artifactの単一製品でよいか」「対象OS/Hostは何か」 | 要件と矛盾する方式を棄却 |
+| 更新・障害隔離 | 「更新頻度、許容停止、ロールバック、信頼できない実装の隔離が本当に必要か」 | 過剰なLoader/Processを採用しない |
+| 試験・費用 | 「独立Expected、fault injection、対象exact Source/Build、保守/配布費用の比較が可能か」 | 設計候補に留め、優劣/Production資格を宣言しない |
+
+### 14.5 最小の反証Fixture（既存Oracle/Ownerへ割付）
+
+新しい正本Scenarioを作らず、11/5選定表の EX-01〜08 を下記の既存ケースへ**対応付ける**。番号は計画上の参照であり新規Go試験のPASSではない。
+
+| 参照 | 第一の対照と追加の負例 | Owner／独立証拠 |
+| --- | --- | --- |
+| EX-01/02 Language+Operator | 同じSourceでParser pinを変える、同型OperatorのNULL/精度/Role差。原Source/診断とSemantic acceptanceを分離 | #988/#2639。Source byte・実Parser/Operator版・独立Expected |
+| EX-03/04 Provider+Partial effect | Read-only ProviderでWrite要求を拒否。A Commit後B blocked、receipt欠落でRun全体effect=0としない | #2622/#1130/#1174。実Provider target・Transaction/Receipt・独立Read |
+| EX-05/07 Generator+Single binary | 未選択Generator/Provider追加→実Go依存閉包不変。Process必須を厳密Single-binaryへ要求→不適合 | #1251 PB/PBN、#1167/#2600/#943。Go import/init/link/member＋Build provenance |
+| EX-06/08 Process+Isolation | 選択済み実子Processをkill、ACK-loss、Runtime版混線、unload/cleanup失敗 | #1223/#2390/#1174。実起動物・失敗分類・再送規則とReceipt |
+
+**最初の小さな実証**は (A) 純粋Operator: 標準ライブラリ vs 契約Provider、(B) DB Provider: 静的組込み vs 既存外部接続、(C) Target Generator: 未使用実装追加 vs 実生成対象、の三例に限定する。同一独立Expectedを先に固定し、契約・Source実消費・Build実物・権限・Effectをそれぞれ別列に記録する。外部Processについては既存実Process Referenceを再利用し、実DB/Persistent Effectの成功を合成Receiverから推論しない。
+
+**製品資格に関する非主張**：一部ReferenceにGo/Node PASS、main統合、Issue closeが存在しても、ここで挙げたEX-01〜08の最新main上の横断実行、実Wails/Windows、実DB、独立Provider/Host/Receipt、無停止更新、業務Owner受理を示すものではない。評価結果に必要なら「候補／不適合／未実証」を表示し、新しい固定status enumへ先行昇格しない。
+
+### 14.6 前回比較との差分・既存計画への引渡し
+
+[従来の動的更新方式比較](CORDIS_CONTINUOUS_PLUGIN_UPDATE_EVALUATION_2026-10.md)はEffect scope、Reactive Coeffect、世代切替・無停止運用を中心に比較した。**本節は方式の優劣ではなく、拡張を要求する主体の制約から候補を棄却する手順**を追加したものである。業務Ruleや純粋演算をPlugin万能化しない入口、Bundle非干渉、実消費・契約・Runtime Grantの分離、partial effect/unknownでの停止、Ownerへの質問を追加する。
+
+Implementation/配布の責務：#1251（凝集Bundle/テストと未使用非干渉）、#1016（Projectの構成選択）、#951（Contract/Provider/Conformance）、#988（Language/Operator）、#2622（Data Provider/Operations）、#1121/#259（Target）、#943/#2600（Artifactと増分判定）、#1223/#2390/#1145（動的・外部ProcessのTarget条件）、#1174/#1130（Effect/Receipt）、#2514/#1180（独立Expected）、#2018（コスト）。Issueの受入・ABI/DSL Schema・正式方式は各Ownerの実Consumerと実測後に判定し、第二Resolver/Policy Engine/Hostは設けない。
