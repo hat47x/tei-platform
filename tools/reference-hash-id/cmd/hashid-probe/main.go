@@ -51,19 +51,19 @@ type targetProbeWire struct {
 
 // report never claims target allocation or semantic Source Acceptance.
 type report struct {
-	Status              string `json:"status"`
-	Authority           string `json:"authority"`
-	StorageWrite        bool   `json:"storageWrite"`
-	Subject             string `json:"subject"`
-	SchemeJSON          string `json:"schemeJSON"`
-	SourceByteCount     int    `json:"sourceByteCount"`
-	SourceSHA256        string `json:"sourceSHA256"`
-	HashIDText          string `json:"hashIdText"`
-	DigestHex           string `json:"digestHex"`
-	TargetNamespace     string `json:"targetNamespace,omitempty"`
-	NormalizedTargetKey string `json:"normalizedTargetKey,omitempty"`
+	Status               string `json:"status"`
+	Authority            string `json:"authority"`
+	StorageWrite         bool   `json:"storageWrite"`
+	Subject              string `json:"subject"`
+	SchemeJSON           string `json:"schemeJSON"`
+	SourceByteCount      int    `json:"sourceByteCount"`
+	SourceSHA256         string `json:"sourceSHA256"`
+	HashIDText           string `json:"hashIdText"`
+	DigestHex            string `json:"digestHex"`
+	TargetNamespace      string `json:"targetNamespace,omitempty"`
+	NormalizedTargetKey  string `json:"normalizedTargetKey,omitempty"`
 	TargetSnapshotSHA256 string `json:"targetSnapshotSHA256,omitempty"`
-	CallerPinsMatched   bool   `json:"callerPinsMatched,omitempty"`
+	CallerPinsMatched    bool   `json:"callerPinsMatched,omitempty"`
 }
 
 func main() {
