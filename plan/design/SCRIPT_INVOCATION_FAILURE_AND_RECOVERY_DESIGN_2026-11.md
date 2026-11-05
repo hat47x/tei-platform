@@ -212,3 +212,60 @@ UI/CLI/Jobの実行要求は、表示/選択の更新世代（**Selection/Contex
 - **P3（現実の再起動・外部Consumer）**：OS kill→restart、実Outbox/Provider、UI遅延応答・Grant失効、旧Artifact・2 Build・EKI委任を順次接続。別Host/Providerで証明不能な部分はunsupportedとし、新中央Host/Registry/Queueを自動採用しない。
 
 **現時点の新しいSH系一気通貫試験／実UI Epoch／実Service Grant+Period+DB同一Commit／実二Process再起動／二Provider／Owner意味受理はNOT RUN。** 既存#2882局所Goの成立と、#2853実PGの限定Commit Unknownの成果だけを各Source版付きの既存Evidenceとして再利用する。
+
+## 8. 永続回復の反例と一改訂受入の最短経路（2026-11-06、再照合）
+
+### 8.1 既存の実証を追加し、過大な「回復できる」を禁止する
+
+**2026-11-06再照合の新しい事実**：
+- [main統合 #2870](https://github.com/hat47x/tei-platform/pull/2870)のRCAS-02は、旧`Lifecycle`に`unknown`があっても、新しい`Lifecycle`（再起動相当）では記録が無く`MayReplay=true`になることをGoテストで固定した。同じIdempotency Keyの実PG再送が`IDEMPOTENT_REPLAY`（適用0・Receipt 1件）となるのは**Provider側の永続記録**による限定的な保護。実OSプロセスの死・実ネットワーク遮断・二Worker/Hostの所有保証をテストしたわけではない。
+- [main統合 #2854](https://github.com/hat47x/tei-platform/pull/2854)は、第三者により値が元へ戻ったABA後に**別KeyでAPPLIED・Receipt 2件**となる反例を実PGで固定。同じ値になったこと／新しいAttempt ID／同じ業務目的を自称することは、再実行安全性の証拠にならない。
+- [Draft #2889](https://github.com/hat47x/tei-platform/pull/2889)では実Go `internal/execution.RunPlan` にToy Step/Journalを接続し、**Host Grant Guardを渡さなくてもcompleted、Observer存在だけで未観測、途中block前のStepが残る**というOC-RP-01〜03を固定。専用exact-HEAD [Actions #42100472921](https://github.com/hat47x/tei-platform/actions/runs/42100472921)はGo 3/3 PASS。一方、同headのRepository Healthはgofmt driftでFAILと[Draft #2783の再照合](https://github.com/hat47x/tei-platform/pull/2783)に記録されている。**専用試験PASS ≠ repository全体PASS ≠ Host Grant強制済み**。
+- [Issue #2823](https://github.com/hat47x/tei-platform/issues/2823)では、宣言Source rootが存在せず／想定ファイルがローダの対象外でも、限定条件で`validate ok`になり得る実CLI反例が記録されている。`ok`だけで「必要なScript/Ruleをすべて解析した」と判定せず、`required / declared / discovered / loaded / parsed / actually consumed`を別確認する。
+- [#2845](https://github.com/hat47x/tei-platform/issues/2845)は実運用のReceipt/観測記録の保存先・保持期間・検証・閲覧資格を未決のまま所有する。**digest-only記録は入力の復元ではなく、保存されていない記録の不在は未実行の証拠でない**。
+
+### 8.2 再起動のcut point別に、誰の記録が復旧を許すかを固定
+
+この対照表は状態機械の拡張ではなく、S5〜S8と既存#1130/#1174/#2564の間に配置する**回復許可表**である。
+
+| cut point | 実際の未確定要素 | まず参照する証拠・Authority | 自動で行ってはいけないこと |
+| --- | --- | --- | --- |
+| C0：Previewまで、実送出なしが実証済み | Previewの現在性・Source/Grant/Target | 実入力版、現在のHost/Provider条件、実送出の不在根拠 | 旧Preview/旧Grantを復帰する |
+| C1：HostがDispatch開始、Provider到達は不明 | 任意のWrite/外部送出の有無 | 固定Operation ID/Request digest、Provider側Lookup、実呼出記録 | エラー文字列・プロセス終了からNo Effect推定 |
+| C2：DB Commitした可能性、ACK不達 | 確定/失敗の帰属 | **Providerの永続Operation Receiptと同じKey**、対象・Request digest、別ConnectionのRead | in-memory `Lifecycle`が空だから別Keyで再投入 |
+| C3：A確定、Bの実行/Commitが不明 | 部分効果・残余Stepと依存 | AのReceipt、Bの同Operation Lookup、Run/Step Journal、実Owner/Fence | Run全体を最初から再実行／Journalの`completed`を業務完了に昇格 |
+| C4：Commit確定、Outbox/通知は不明 | 確定後外部Effectの配送・重複 | DB Receipt、通知Event ID、対象Observer/Outbox、受領側の重複排除 | DBを再更新／Observerの存在だけで配送済み |
+| C5：Receipt期限超過、記録欠落/破損、旧Artifact不在 | 効果の帰属・Replayability・Current Qualification | #2845の保存/照会資格、Provider/独立Readerの現観測、必要ならOwnerの手動判断 | 欠落を未実行とみなす／値一致・digest一致で自動再送 |
+
+**Operation ID、Idempotency Key、Request Hash、Run Key、Attempt、Fence generationの同一性は推定変換しない**。どのIDをどのContract/Providerへ渡すか、当該Providerが同Key・同Payload・同Targetをどの保持期間まで判定できるかを実際に観測する。異なるIDの文字列が偶然一致しても、異なるScopeやProviderのReceiptへ結合しない。歴史的Receiptと、現在それを読む権限・業務再実行を許可する権限も区別する。
+
+### 8.3 必要条件を候補側の自己申告に依存させない
+
+前節の`Required Guards`には**独立の基準**が必要。Action候補/AI生成Script/実行計画が自分で`required=[]`と宣言すれば全検査完了となる、という循環した合格判定を禁止する。[Draft #2783 §9/10](https://github.com/hat47x/tei-platform/pull/2783)の移植受入と、[#1180](https://github.com/hat47x/tei-platform/issues/1180)のDriver Scenario/独立Expectedを再利用する。
+
+| 必要条件の起点 | 何を独立に特定するか | 未確認時の判定 |
+| --- | --- | --- |
+| Accepted Function/Rule、Owner/Scenario | 意味ID、業務入力/対象、必要Data Relation、適用Rule/順序/期間/必要Effect | `required=[]`や未読込Ruleを成功にしない |
+| Source manifestと実Loader/Builder | required Source closure、実選択・解析・消費したbyte、Native SQL/Operator/Pluginの版 | 「validate ok」や選択Sourceのhashだけでは欠損なしと主張しない |
+| Host/Provider Contract | 現在Principal/Grant/Subject、Resource/Version、tx/cas/idempotency、Receipt保管・照会の限界 | Grant未渡し／実Provider非対応ならblocked/unsupported |
+| 独立Oracle/Consumer | 正常・拒否・Unknown・partialのExpected、観測が必要な対象集合/Snapshot・開示範囲 | 0件/Reader failure/非公開を業務上の不存在にしない |
+
+各Stepで`Independent Required → Discovered/Supplied → Actually Evaluated → Enforced at Effect → Observed`を辿り、`Undischarged`を残す。必要なSourceやGuard自体を列挙できないときは**unknown**とし、件数0を検査不要の根拠にしない。純粋計算に不要なDB Commit前提を強制しないが、実Providerを呼ぶ場合はその能力/効果分類を確認する。
+
+### 8.4 次の実験はread-only一件から始め、Writeを同じ資料へ接続する
+
+新しい汎用Fixture/Scenarioの正本・承認機構・Script Runtimeを作らない。既存[移植計画 #2783](https://github.com/hat47x/tei-platform/pull/2783)の`RMT-RD1/RD2/WR1/WR2/WR3`、#1130のACU/RPL、#1180のScenarioを使い、**一つのBusiness Functionに対してClaimとAttemptの列を埋める**。
+
+| 順序 | 一回の最小実証 | 合格できる上限／未達を残す欄 |
+| --- | --- | --- |
+| V0：Source/Meaning | 一つの実Workspace→実Parser/Role/Rule/Function Data Context、Source必須集合と実Parsed集合を独立照合 | Read-onlyの解析・選択資格。未読込Rule/未受理Meaningはunqualified |
+| V1：実Read/Output | 上記Functionの一つのQueryを選択Providerへ実Readし、対象/Scope/Grain/NULL/完全性・実結果Bodyを独立Expectedと比較 | Read Resultの範囲だけ。UI/DB更新・新しいReceiptは不要 |
+| V2：実Write拒否 | 同じOwner Ruleの保存前拒否を、実Providerへの送出前／実Commit前の正しい境界で検証 | 拒否の段階とEffect=0の保証範囲。実Rollback/外部Effectを推定しない |
+| V3：実Write/Recovery | 受理済み対象・Grant・同じOperation ID/Request hashを既存PG CAS/Receipt経路へ接続し、ACK-loss後の同Key Lookup、別Key ABA負例と独立Readを比較 | 当該実PG/同一Attemptの効果資格。実Process Kill/二Worker、本番Retentionは未達 |
+| V4：外部Entry/Consumer | その後、実CLI/Web/desktop/Jobで本当に呼んだArtifactとFunction、Current Disclosure、Output Bodyと業務完了述語を追跡 | 入口別・実Consumer別のE2E資格。EKI/多BuildはP0必須でない |
+
+**Evidence票の行粒度は`Case × Claim × Attempt × Environment × Source/Artifact revision`**とする。実旧Driver、実TEI、EKI Worker、別Consumerは同じScenario/Independent Expectedを比較しても**別Attempt**。各行に`observed/not-run/unsupported/unknown`、実行したCIのHEAD・Run・独立Expected、Owner Acceptance、現在Disclosureの可否を別記する。既存G1/G2の[統合責務 #1163](https://github.com/hat47x/tei-platform/issues/1163)/[#1119](https://github.com/hat47x/tei-platform/issues/1119)へ渡し、**局所Go 3/3・実PG限定PASS・暫定Web E2Eを合算した全体PASS**は作らない。
+
+**次の実装者向けの最短作業**：既存#2882 Workspace fixtureを基線とし、(a) Source/Rule/Period/Grantが独立Requiredに揃っているかの読取票、(b) #2889 OC-RP-01〜03のexacting characterizationと現在未成立のGuard enforced/Effect witnessの差、(c) #2870/2854の実PG Restart/ABAの保証範囲、を**同一ScenarioのClaim別列**に配置する。read-only実Provider/Consumerが接続できない段階で次の書込E2Eを「Script完成」と呼ばない。
+
+**受入の停止線**：この節は既存証拠・設計の照合のみであり、新しいScript本体E2E／実Provider Read→Rule→Write一試行／OS kill／二Worker／DB+RunPlan同一Attempt／Owner正式受理は**NOT RUN**。#2870で再起動を模した新インスタンスが`MayReplay=true`となる性質は**未解決の弱点**として記録し、同Key PG replay成功を一般的な復旧済みと扱わない。#2889は**Draft**、専用Go合格とRepository Health失敗を独立のEvidenceとする。
