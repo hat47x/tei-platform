@@ -37,6 +37,19 @@ func independentLineNumberUnique(keys []string) bool {
 	return true
 }
 
+// oracleMatchesLineNumberCase evaluates a frozen, independent finite expectation.
+// Candidate values are compared to this expectation, not used to derive it.
+func oracleMatchesLineNumberCase(keys []string, wantUnique bool, candidateState string) bool {
+	if independentLineNumberUnique(keys) != wantUnique {
+		return false
+	}
+	wantState := "not-satisfied"
+	if wantUnique {
+		wantState = "satisfied"
+	}
+	return candidateState == wantState
+}
+
 // TestAILineNumberIndependentOracle checks only a public, finite relation-key
 // property. It does not claim that the business meaning or actual Provider is
 // independently accepted. The existing Scenario CLI test runs the real steps.
@@ -116,8 +129,11 @@ func TestAILineNumberIndependentOracle(t *testing.T) {
 				wrongState = "not-satisfied"
 				wrongKeys = []string{"1", "1"}
 			}
-			if wrongState == wantState || independentLineNumberUnique(wrongKeys) == tc.wantUnique {
-				t.Fatal("negative control was not detected")
+			if oracleMatchesLineNumberCase(fixture.RelationKeys[0].Keys, tc.wantUnique, wrongState) {
+				t.Fatal("flipped Candidate expectation mutant was accepted")
+			}
+			if oracleMatchesLineNumberCase(wrongKeys, tc.wantUnique, wantState) {
+				t.Fatal("changed relation-keys input mutant was accepted")
 			}
 		})
 	}
