@@ -297,3 +297,45 @@ VS-RMT-01へ追加する場合は#1180既存Scenario runnerと#2514の独立Expe
 - 同Sourceが移動してbyte同一、ReferenceがA→B→A、Provider別SQLが切替、Manifestと実Build Inputが乖離、Owner Meaning撤回、後続DB UpdateでO/Bが失効したときは、**必要なClaimだけ再検収**。historical Receiptは消さず、同じDigestだけでcurrent Grant/観測資格を復活させない。
 
 **実施状況**：この追補はSource-staticなFit/Gapと実装受入票である。P0-R1/R2は**提案のみ・NOT RUN**、実Product Data Context Read、実データ書込み、Windows Driver、正式Owner判定、二Target資格は未実証。設計方針は従来どおり、一Provider・一Function Read先行、同Rule二入口、実PGの局所既存Runnerを最大限再利用し、強制SQL記述・新Host/Resolver/Runner・中央Proof Registryは導入しない。
+
+## 12. 11/6追補：Readの入口資格をSource・Role・Reader・独立Expectedで閉じる
+
+§11のP0-R1/R2で「Product APIが存在するか」を先に調べる判断を維持し、他レーンの新しい実Goの**反証**を、追加のシステム共通仕様ではなく**同じRead一往復の停止条件**として組み込む。照合したmainは`af969b88bb89d8262501086b67c2ba6add16e210`（従来§11の基準`8aa18ca...`より3 commit進展）。本章では新規ケース群を別正本化せず、既存RMT-RD1/RD2/WR1、#2586 HJ/QX、#2514 Oracle、#1163 Packetを参照する。
+
+### 12.1 一回のRead資格を三つの独立条件に分ける
+
+| 必要条件（独立の根拠） | 当該Function実行で残す最小Witness | NGの反例・Claim ceiling |
+| --- | --- | --- |
+| **Input Integrity**：Owner/Source LedgerのData・Relation・Rule・Actionの必要出典と実受理範囲 | Manifest/Import、exact loaded Snapshot bytes、Source Index/Parsed source spans、Role/Type/Ruleの当該Occurrence、Functionが実ConsumedしたModel/Query/Rule、実Build/Entrypointに結び付いたInput Closure | Requiredに無いSourceを「読んだ」とする、Parse後の別byte Fileを同版と称する、Roleの重複宣言が一つに潰れて曖昧性を失う → Source/Meaning資格保留 |
+| **Read Fidelity**：Function Context定義と別に固定したBusiness Key/物理PK/Relation Role/Result Grain/対象集合/Predicate/Scope | Provider Alias・Target/Selected Realization＋実SQL bytes/Bind Args、Result Slice（行ID、取得状態、時点、欠損/NULL、完全性、Pagination/Read cohort）、Readerが実受領したRows | 非表示WHERE/ORDER依存、JOIN fanout、partial/hiddenで0件、未観測Read/Read失敗、別Tenant同番号、Query選択変更 → 「正しい全件Read」不認定 |
+| **Independent Discrimination**：候補Go/Rule自身から作らない固定Expected、少なくとも一つのKnown Mutant・反証対象の根拠 | Sourceと区別したExpected/Owner status、実Go実行HEAD/Test ID/Case、Required caseがDiscovered/Attempted/PASS（SKIPではない）、mutant rejected、現在Grant/開示に応じたConsumer Witness | 生成AIがCandidate Expectedをそのまま再計算、Fixtureの重複JSON memberが暗黙上書き、別HEADのGreen流用 → 独立Oracle/実Consumer Claim保留 |
+
+**三条件の論理関係**：Sourceのbyte一致だけではProvider Read成功を示さず、実ReadのRows一致だけでは必要な非出力Predicate/Scopeが読まれたと示さず、独立Expectedの局所PASSだけでは正式Business Meaningを受理しない。三条件が各Claimの必要範囲で揃って初めて**限定RMT-RD1 Read witness**を認める。正式Owner業務互換、二入口Owner-write、現在Grant/Commit、Consumer配布は別資格。
+
+### 12.2 他レーンの新しい実証をRead一試行へ最小転写する
+
+- **Load時と後Readの時間差／旧Source Indexの扱い**：[Draft #2860](https://github.com/hat47x/tei-platform/pull/2860)の実Go Referenceは、`workspace.Load`時のSnapshotと、その後に同じPathのbyteを書き換えた直接Readが不一致になるcharacterizationを追加した。旧IndexがLoad時bytesを保持することは限定的に確認するが、**全Workspaceのatomic snapshot／消費時の自動TOCTOU拒否**は示さない。RMT-RD1では「ロード時と実Runtime消費時のbyte」または明示Lock世代を照合し、後Readの同Pathだけで旧結果を復活させない（#950/#2823/#2595）。
+- **Role重複による情報落ち**：現main `internal/syntax/parser.go`の`parseSemanticData`は`case "role"`ごとに`role = roleTok.Text`としており、重複宣言の最後の値がCandidateに残る。[Draft #2860](https://github.com/hat47x/tei-platform/pull/2860)のGo限定反証は「Role一意性を証明済み」という意味ではない。Reference Data/Function Relation Roleは業務対象粒度とAuthorityを変え得るため、重複/競合Sourceがあるときは**Role未受理・Writer/Action対象未確定**に留める。診断実装は#988/#2620、Source編集は#2621へ委譲。
+- **実Query/Contextの負依存**：[Draft #2896](https://github.com/hat47x/tei-platform/pull/2896)のSystem CompositionはData Read/Command/Job/Publication/Manual Handoffを異なる成立条件として整理し、#2586 HJを初回実Readに指定する。[Draft #2885](https://github.com/hat47x/tei-platform/pull/2885)はSource閉包とRuntime Read閉包を分け、Not Exists/LEFT JOIN/hidden SQL/partial/Read Cohortを別資格とした。RMTではこれらを**RD2の単一Provider負例**にだけ借り、Plugin方式比較・全Domain Component・二DB実行をP0の必須条件へ追加しない。
+- **ExpectedとFixture入口の自己追認**：[Draft #2895](https://github.com/hat47x/tei-platform/pull/2895)は`[1,2]`／`[1,1]`を独立の有限集合性で判定し、Expectedだけ反転／Fixtureだけ反転したnegative controlを追加。これはOwner業務意味の採用ではない。[Draft #2891](https://github.com/hat47x/tei-platform/pull/2891)はFixture JSONの重複**object member**の暗黙上書きを拒否する変更。一方、#2890の`[1,1]`はJSON配列の合法な重複**値**であり、業務Ruleに対する正当な負例。混同しない。#2514/#1180の既存Oracle/Scenarioへ接続し、本PR内で第二Go Harnessを追加しない。
+- **DB接続準備と実Readの非同値**：現mainに[merged #2894](https://github.com/hat47x/tei-platform/pull/2894)の`tei dbcheck`がある。実コードは`pgx.Connect`、`SELECT version()`、**`CREATE TEMPORARY TABLE`／`DROP TABLE`**を実行する。よって`dbcheck PASS`は接続・基本操作の環境Readyを示すに限り、業務Query/Readや完全なread-only実行を証明しない。書込み不能な本番接続で無条件に起動しない。DSN未指定exit 2を実Readの合格/不合格に換算しない（#2622/#2586）。
+- **Windowsの「緑」と旧Driverの実動**：現mainの[merged #2893](https://github.com/hat47x/tei-platform/pull/2893)はUnix signal依存テストをWindowsでskipする。Windows全Test exit 0でも対象Caseが未実行の可能性がある。#940 X-TEA Driverのactual GUI/JDBC/Tx/独立Readが完成した証拠ではない。必要Windows Test IDsと`PASS/SKIP/NOT RUN`を#1163/Owner票で別管理する。
+
+### 12.3 P0実装担当が最初に提出する差分と停止条件
+
+**対象は同じScenario VS-RMT-01の**P0-R1（読み取り）**であり、RMT-RD2を境界負例、P0-R2を後段へ配置する。新しいAPIを発明する前に、次の4資料を現在のGo実行・正本へ結び付ける。
+
+| 最初のDeliverable | 実行後の受入基準 | 未達なら次に渡すOwner |
+| --- | --- | --- |
+| **D1: exact Source/Role Bind** | 同じModel/Function/Relation Role/RuleへのRequired出典、Loader actual bytes、Parser Source span、Role重複なし/衝突未解決の分類、実Consumer（Function/Build）までのReachabilityを比較。Byte同一だけでMeaning Acceptedにしない | #950/#1031/#2823、Role#988/#2620、実Build#2595 |
+| **D2: actual Function Read** | 実際に呼んだ製品API／Provider／SQLと`Query target/Business Key/Physical PK/Relation Role`の一対一又はOwner宣言対応、固定2子行と負対照を実行。Row grain/pagination/cohort、NULL/未取得/非開示を報告 | #2586/#2506、Data Operations#2622、Mapping#2611 |
+| **D3: Oracle/CI witness** | Candidateから独立したExpectedとmutant（別Tenant/重複Role/Partial/SQL候補変更）、Required Test IDの実Discovered/Attempted/Resultとexact HEAD、実Environment/Providerを保存 | #2514/#1180/#1163、Skipped CI#2835 |
+| **D4: Write handoff（まだ実行しない）** | D1〜D3が成立した実Data Context/対象L/未保存Patchと同一Rule版を、二入口の保存前拒否P0-R2へ渡し、検証O1と実Payload/Grant/Owner Targetの同一性を証明することを依頼 | #1129/#2598/#1174、正式Business#1125/#267 |
+
+**No-go**：RMT-RD1のProduct Reader接続が存在しないなら`product-read-not-connected`という計画上のGapとして止め、Go直接DBアクセスや自作FakeをProduct PASSとしない。Source/Role/SQL/Bound Targetがambiguous・partial・staleなら、ProductのData Read/Owner Write Claimを保留。旧X-TEA DriverをWindowsで操作できない場合はP（忠実移植）だけ`legacy-unobserved`を維持し、TEIのA（適合）の局所試験を止めるHard dependencyにはしない。
+
+### 12.4 新HEADへ引き継がない証拠と更新状態
+
+- §11を書いたHEAD `43462eecbd015e72004a93c91617849eb5fe9947`の[Repository Health #42107676122](https://github.com/hat47x/tei-platform/actions/runs/42107676122)は**completed/success**。証明対象は当該Docs/SQLite FixtureのRepo Healthだけであり、実Read P0-R1/R2ではない。
+- #2895 `8d3dc2fc`のRepository Health #42109027966は**確認時in_progress**。#2891 `2f677921`のHealth #42107910706は**completed/failure**。#2860のRole/Source反例はDraft内の限定Go、今回のSourceを実ビルドしていない。これらの他HEADの合否を新しいRMT Product Readの実証へ合算しない。
+- 本§12は既存一計画Markdownのみの変更。独立Source/Role問題は現mainの実Code-static観測と別Draftの特性試験を引用しているが、**VS-RMT-01 D1〜D4の実Code path観測、実Function Read、Owner Write、正式Windows Driver、業務Owner受理は新たにNOT RUN／UNQUALIFIED**。新Plugin/Role Resolver/Query Engine/Runner/Host/Oracle Authorityの導入、main統合、G1/G2 Gate変更は行わない。
