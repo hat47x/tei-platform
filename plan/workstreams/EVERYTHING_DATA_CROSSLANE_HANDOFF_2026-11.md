@@ -2821,3 +2821,36 @@ HEAD `e0cfebf14d40db81bdef77d6c3e4898ed75d999f`に対する[GitHub Actions #4203
 同じ`CaseRecord` C1と`handlingUnit`に対し、(1) 実Workspace/Function ContextがSource/Meaning/Roleを固定、(2) 実ProviderがCase/Org RelationをReadしてRow/Field/Scope/Read Cohortを独立期待値で確認、(3) Owner受理済み移管IntentとHost Current Grant/Expected Versionを確認、(4) 既存RunPlanに**必須Precondition Coverage**が提供されたことを固定、(5) 既存Command/ProviderでCommit、unknown/partial/ABA/restartの反例を記録し、(6) Effect Receiptと別経路Readで結果を照合する。**最初は(1)〜(2)のE2 Readだけに限定し、実入口が無いときは`NOT RUN: provider-read-unavailable`。**ここへPluginの追加や第二Query/RunPlan/Hostを持ち込まない。
 
 **境界**：#2889のGo3/3はRunnerの負例のみ。`RunPlan`の前提網羅を自動化したことやDB/Hostの安全性を保証しない。既存#1119 P0-a/P0-bと#2586 E2 Readを優先し、実PostgreSQL更新済み別業務Functionの成功をOrg Caseの実移管としては記入しない。今回の§53は**実コード・固定CIに基づく計画への引継ぎ**で、実Case DB・Host・Studio/SHO/AI・業務Owner正式受理はNOT RUN。
+
+
+<!-- tei-20261106-evidence-discharge-no-second-engine -->
+## 54. 未充足の検証事項を最短の実利用へ渡す：Harness実Tool・RunPlan Guard・Studio現在性（2026-11-06）
+
+この節は§52.4／§53を置換せず、**次の担当が実行できる小さな出口**だけを固定する。既存[#1180](https://github.com/hat47x/tei-platform/issues/1180)がObligationの必要集合、[#2514](https://github.com/hat47x/tei-platform/issues/2514)が独立Expected、[#1163](https://github.com/hat47x/tei-platform/issues/1163)が同一Source/Attemptの証拠連結を所有する。TEI／TAIの第二Evidence DB、第二Host、全用途Guard Registryは作らない。
+
+### 54.1 実在した成果と「まだ利用したといえない」境界
+
+| 縦切り | 今回固定できる限定Evidence | 今なお未充足のObligation |
+| --- | --- | --- |
+| **A：実Product CLI→外部Harness** | [TAI #168](https://github.com/hat47x/tai-pleroma/issues/168)／[Draft #270](https://github.com/hat47x/tai-pleroma/pull/270) の実CLI/公開Workspace \`semantic-data:sales.order\` で、Source Indexと別途Source byte照合の限定S1が成立。Runbook §18〜21は台帳のargv/cwd改変拒否、参加者Task固定・独立Holdout、R=割付とD=実提供、ITTとPPを別記する設計へ進展した | **外部HarnessがToolを実発行し、そのTaskのargv/cwd/exit/stdoutを受領したH2一Session**、H3のSkill root/reference実読込み、四独立Sessionの実回答・費用。台帳の整合性だけではHarness経由使用を証明しない |
+| **B：RunPlan→Effect** | [main #2882](https://github.com/hat47x/tei-platform/pull/2882)は同一合成WorkspaceからPeriod/Effect前提を実RunPlanに接続。[Draft #2889](https://github.com/hat47x/tei-platform/pull/2889)の実Go/toy Step負例OC-RP-01〜03は[専用CI #42100472921](https://github.com/hat47x/tei-platform/actions/runs/42100472921) 3件成功 | Ownerが要求する**Required Guardsの全提供・実評価・Commit時の強制**。Observer存在≠対象Effectの観測、RunPlan completed≠全Runの効果確定。実PG current Grant/Period/Target/Receiptの同一AttemptはNOT RUN |
+| **BのRepo統合資格** | #2889固定HEAD \`e671aa41a8b7fd40de8602595e98ebf624043371\` の専用CIは成功したが、[Repository Health #42100472849](https://github.com/hat47x/tei-platform/actions/runs/42100472849) は \`internal/execution/org_case_runplan_boundary_test.go\` の**gofmt drift**でFAIL。原因と修正後の確認対象は[Owner PRコメント](https://github.com/hat47x/tei-platform/pull/2889#issuecomment-6669192926)へ報告済み | gofmt後の**新しいexact HEAD**で専用CIと全体Healthを別々に取得する。旧HEADの局所成功を新HEAD/製品G1・G2成功として転記しない |
+| **C：Studio現在性** | [#1824](https://github.com/hat47x/tei-platform/issues/1824)で \`runCommand\` の開始時Workspace取得と後着 \`displayCommand\` の現在Workspace/入力/世代再照合が未接続と静的確認。Reference \`mode=reference, committed=true\` は外部DB Commitではない | Workspace Aを実行中にBへ切替えた後のA成功/失敗がBのDOM/ARIA・Command状態へ混入しない**実Consumer試験**。Source/Grant失効通知が無い場合に即時現在性まで仮定しない |
+| **D：実Build/構成** | [#1016](https://github.com/hat47x/tei-platform/issues/1016)でComposition Profile/Bundle/選択/実依存と現在Authorityを分離。[#2831](https://github.com/hat47x/tei-platform/issues/2831)では実Graph/Build/非Plugin binary/stageのP0並行試験を定義 | 実Build consumed closureとTarget binaryの独立照合、G4。Aのread-only H2やBの初回PG E2EのHard dependencyにはしない |
+
+### 54.2 最初の二つの「実行」を独立に完了させる
+
+**A0-H2初回Session**：TAI Runbook §20の固定Participant TaskとReviewer-only Expectedを分離し、同じ公開TEI binary/Workspaceを使う。一回目はTool-onlyで、Harness session ID→実Tool request→実CLI argv/cwd・実Executable byte→exit/stdout byte digest→実Tool response→回答の対応を**外部Harness自身が生成した観測**で固定。TAI CIが直接実CLIを呼んだS1、試験用JSONの\`tool_invocation_observed=true\`、LLM自己申告は代用不可。最初のH2実Toolが未成立ならH3へ進まず\`insufficient-evidence/unsupported\`を保持。H2成立後、H3では実Skill rootと必要Referenceのロード観測を追加し、別Sessionで\`H2→H3→H3→H2\`を比較。**R=割付／D=実提供、ITT=失敗込み全割付／PP=実提供成立の条件付き比較、回答正答と費用は独立採点**。4 Sessionを統計的な一般優越へ外挿しない。Owner=TAI #168、TEI #2605/#2018。
+
+**B0 Required Guardの未充足検出→B1実Effect**：既存order-submit／Case read-only Fixtureで、対象Purpose/Scope/Source Pinごとの\`Owner-required / Supplied / Evaluated / Enforced-at-Effect\`を派生比較する。PeriodだけSuppliedのときにGrantが必須なら、局所Step completedのままでも**業務実行資格は未充足**とする。Observer存在しか分からないEffectは\`unobserved\`、先行Stepがresolved後に次がblockedなら\`partial/unknown\`。B1ではmain統合済み#2853の製品Invoker→実PG CAS/Receipt、#2870同Key再起動Replay、#2854別Key ABA反例を**同一Source/OperationID/実Target/Current Grantと独立Postimage**へ結ぶ。要求される強制点が実Provider/Hostへ届かないなら書込みの資格化を停止。Owner=#1130/#1174/#1163。旧X-TEA意味対応は#1969/#940で未受理のまま。
+
+### 54.3 横断失効と停止規則（新しい共通Storeを作らない）
+
+- **Source／Model**：manifest等への宣言だけで実Parser/Role消費を証明しない。required/declaration/discovery/parsed/actual consumedをClaimに応じて比較。#2822/#2823のunparsed Source、Load後Source変更、A→B→Aは現在資格の再評価。
+- **Tool／Plugin／Build**：Profile選択・Skill配置・Bundle同梱と、実Tool呼出し・実Skill読込み・実Binary link/loaded bytesは別。実消費SourceやToolchain不明では再利用の合格を作らない（#1251/#2600）。
+- **非同期UI／Consumer**：返答のSource Revisionが同じでも、Selection/Inputs/Operation/Grant/Disclosureの現在性がずれれば古い応答をB画面へ採用しない。DOM/ARIA/外部送信を実観測するまでは未実証（#1824/#2516）。
+- **副作用／Recovery**：送出前拒否の実Effect=0と、送出後Commit不明を区別。同Key lookupを優先し、別Key盲再送・Observer nonnil・Auditのprovisional GuaranteeをBusinessVerifiedへ昇格させない（#1174/#2884）。
+
+**着手順**：A0-H2一Session（read-only）とB0 Guard分母の実Go再検証を並行→B1製品PG同一Attempt／CのStudio A/B後着負例→必要なTarget/Provider/DB/SHO/EKIを後続へ。Dの全TEI Self-Buildは独立P0を維持。#1180のScenario、#2514の独立Expected、#1163のEvidenceを参照し、テスト件数・別HEAD局所PASSを一つのBusiness Qualificationへ加算しない。
+
+**今回の実証上限**：本節は既存実Run/Issue/Draftの状態を再照合して優先順と停止条件を**文書に追記しただけ**。新規H2/H3実Session、Org/受注の同一PG+RunPlan実E2E、Studio実DOM/ARIA、G4実Build、新Owner意味受理はNOT RUN。既存G0〜G4、既存OwnerとDraft状態は変えない。
