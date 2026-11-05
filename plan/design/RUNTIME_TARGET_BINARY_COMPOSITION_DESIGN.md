@@ -601,3 +601,41 @@ P2：#988/#2514で標準pure Operatorと代替実装、#2622/#2862でProvider別
 P3：実外部Host/DB・長寿命Targetの更新、現在Grant/Lease、partial Effect/Receiptの回復は#1223/#2390/#1174の資格でのみ評価。最初のGo単一Binary要件へこれらの動的機構を逆流させない。
 
 **採用判断**：Bundle版と契約版の分離・局所再資格化が、変更波及、false reuse/false invalidation、Test漏れ、ビルド時間を実際に改善した範囲だけを製品設計候補とする。新API/Registry/Cache/Runtimeの実装とOwnerの業務意味受理は本追補では未決。U-01〜09を含む今回の実Go/DB/Host試験・性能測定は NOT RUN。
+
+<!-- tei-extension-first-comparable-probe-20261106 -->
+## 17. 初回の同一要求A/B比較：Plugin不要案を含む実Consumer試験（2026-11-06、実施計画／NOT RUN）
+
+§14〜16を再度一般論として増やさず、**方式の採否を変え得る最初の実証**を固定する。元の業務意味・Oracle・Scenarioの正本は増設しない。[#1861](https://github.com/hat47x/tei-platform/issues/1861)の `reference.order.quote-lines/v1` 読取り専用見積もりプレビューを第一候補とする。正常8件・業務拒否15件の**既存23ベクトル**（#1819/#1840のGo Native・Node JS基線、#1848のWIT型投影Reference）を参照する。固定23件は**未受理の業務候補**であり、全業務意味がAccepted済みだとは主張しない。
+
+### 17.1 比較対象を混ぜない
+
+| 用途 | 比較経路（同じ23件と独立Expectedを再利用） | 現時点で可能な主張と不足 |
+| --- | --- | --- |
+| **D0：Pluginなし** | 既存の純粋なGo Native/Node JS計算・ローカル関数として使用。Provider解決/動的Loader/Process transportを要求しない | 既存Issueに限定基線がある。今回のexact revisionで再実行/受理した訳ではない |
+| **D1：静的Provider** | 同じ意味契約を明示選択した実装としてGo単一Binaryへ含める案。必要なら薄いAdapterに留める | Plugin化による独立更新・再利用の追加価値、実Build closure/物理除外/起動時間は未実証 |
+| **D2：独立Process Provider** | 同じContract/Expectedを既存Process BridgeのHost Guard/Artifact pinへ接続する案。実起動子Processと実Transport/unknownを観測 | 既存Process Bridgeは**別のReferenceの試験**。quote-lines 23件を同一Process経路へ通した証拠はまだない。Adapter未存在ならNOT RUN/unsupported |
+| **D3：Wasm Component / 外部Host** | #1861のWIT/Component比較案。D1/D2とは別のTarget選択候補 | WIT型投影は実Component Guest/複数Host動作の証明ではない。初回D0〜D2の前提にはしない |
+
+D0→D1/D2を自動的な「成熟段階」としない。**D0が要求を満たし、独立更新・障害隔離・外部Consumer等の追加必要性がないなら、D0選定で正常終了**してよい。D2を他ProcessテストのPASSで埋めない。#2090のProject Hookや#997のUI Kitは本試験とは異なるContractであり、同じ23 Expectedを機械的に転用しない。
+
+### 17.2 実行前に固定する比較条件
+
+| 項目 | 事前に保持すべき値（新Schemaを採用しない） | 合格を装わないための対照 |
+| --- | --- | --- |
+| Source/Revision | 既存23件のSource/Oracle実byte・reference revision、Contract/Provider版、生成器/Go toolchain/Build flags | 旧PRのPASSを新HEADへコピーしない。Source A→B→Aと同名異byteを別Attempt |
+| Independent Expected | 同じ23件の数量・通貨・小計または業務拒否、NULL/欠損/数値Lexeme/順序等、既存独立期待の適用範囲 | ProviderからExpectedを生成しない。輸送型一致だけではBusiness Meaning一致としない |
+| Environment | OS/CPU・Go/Node版・Target・依存Module・実プロセス/外部Host、分離されたBuild/Run Root | root Go Test成功をnested module/外部Consumer成功に転用しない |
+| Capability/Effect | 読取り専用、DB/Network/Secret/ファイル変更不要という初回要件。実Hostで許可したResource | Plugin自己申告のread-onlyをOS保護とみなさない。権限不足時の実起動拒否を対照 |
+| Artifact/Consumer | D0/D1の実リンク済Binaryと必要member・実ロードByte、D2の実Process executableと依存閉包 | manifest/Bundle同梱と実ロード・実行を混同しない。未選択Plugin追加で非干渉検証 |
+| Failure/Isolation | Process kill/timeout・旧新版競合・Host guard拒否・結果不明・unload/cleanup、影響する子/親Process | Transport成功を業務適合に、Process隔離を無条件のOS sandboxに読み替えない |
+| Evidence有効範囲 | Attempt/Head/Source closure/Toolchain/Consumer/Environment/Observed resultと、失効要因 | Artifact不変でも現Grant/Publisher適格・業務Owner受理を自動復活させない |
+
+**試験レベル**：Unit/Fixture（23件の結果と独立Oracle）→ Conformance（Contract/Provider/Transportの相互作用・不適合負例）→ actual Build/Process/Host（本当にBuild・ロード・起動されたか）→ 実Provider/DB/Effect（この読み取り専用ケースでは該当しない項目をnot-applicableにする）→ Owner Meaning acceptance（別審査）。「テストはPASSしたが実物をロードしていない」を明示する。#1180のScenario SSOT、#2514のOracle、#1163の同一改訂Evidenceの資格を再利用する。
+
+### 17.3 最小コスト指標と判断Owner
+
+実行前に**必要な比較項目と測定環境を固定**し、D0/D1/D2で追加した手書きAdapter・接続設定、Source変更箇所、Coreへの逆依存、実Build入力とBinary/Artifactサイズ、clean build・incremental build時間、起動/定常呼出Latency、プロセス数、更新/復旧手順、negative controlの判別数を同一条件で測定する。数値閾値や性能優劣はOwnerのTarget/SLOが未指定なら確定しない。契約形だけを同じにした結果、NULL・業務拒否・単位・失敗・Unknownの区別が落ちる場合は不適合とする。
+
+**停止/選択条件**：既存の純粋計算で十分なら非Plugin案を残す。複数Consumer・独立実装版・Target固有対応が具体的に必要になったときだけProviderを比較する。実隔離・個別更新が必要ならD2の候補評価に進むが、厳密な単一Go Binary要件と矛盾するときはD2を棄却する。実DB書込みやCommit不明はこの23件に紛れ込ませず、別途#1174/#1130の既存Write Scenario・実独立Readへ段階的に進む。
+
+**責務と実証状態**：#1016は案件要求と方式選定、#1861/#2390は外部Consumer・WIT必要性、#951/#1145はContract/Transport、#1251/#1167/#2600は未選択混入・必須依存・性能、#2514/#1180/#1163は独立Expected/改訂Evidence、#1174は実Effect。今回のD0再試験、D1/D2のquote-lines具体実装、23件横断比較、定量測定、Owner正式採用は**NOT RUN/NOT ACCEPTED**。新ABI、全Plugin共通Process Runtime、第二Resolver/Oracle/Hostは増設しない。
