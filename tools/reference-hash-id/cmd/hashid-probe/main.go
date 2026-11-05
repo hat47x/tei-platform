@@ -62,6 +62,8 @@ type report struct {
 	DigestHex           string `json:"digestHex"`
 	TargetNamespace     string `json:"targetNamespace,omitempty"`
 	NormalizedTargetKey string `json:"normalizedTargetKey,omitempty"`
+	TargetSnapshotSHA256 string `json:"targetSnapshotSHA256,omitempty"`
+	CallerPinsMatched   bool   `json:"callerPinsMatched,omitempty"`
 }
 
 func main() {
@@ -75,6 +77,8 @@ func run(args []string, stdout, stderr io.Writer) int {
 	inputPath := flags.String("input", "", "path to raw canonical input bytes")
 	subject := flags.String("subject", "", "caller-supplied qualified subject identity")
 	targetPath := flags.String("target-probe", "", "optional local target snapshot JSON; never an authoritative store")
+	expectedSource := flags.String("expected-source-sha256", "", "caller-pinned SHA-256 of raw source bytes")
+	expectedTarget := flags.String("expected-target-sha256", "", "caller-pinned SHA-256 of target snapshot bytes; required for target preflight")
 	if err := flags.Parse(args); err != nil {
 		return 2
 	}
@@ -83,14 +87,19 @@ func run(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, "scheme, input and nonblank qualified subject are required; no positional arguments")
 		return 2
 	}
-	if err := execute(*schemePath, *inputPath, *subject, *targetPath, stdout); err != nil {
+	if (*targetPath != "" && (*expectedSource == "" || *expectedTarget == "")) ||
+		(*targetPath == "" && *expectedTarget != "") {
+		fmt.Fprintln(stderr, "target preflight requires both source and target SHA-256 pins")
+		return 2
+	}
+	if err := execute(*schemePath, *inputPath, *subject, *targetPath, *expectedSource, *expectedTarget, stdout); err != nil {
 		fmt.Fprintln(stderr, "reference preview rejected:", err)
 		return 1
 	}
 	return 0
 }
 
-func execute(schemePath, inputPath, subject, targetPath string, stdout io.Writer) error {
+func execute(schemePath, inputPath, subject, targetPath, expectedSource, expectedTarget string, stdout io.Writer) error {
 	schemeBytes, err := readBounded(schemePath, 4096)
 	if err != nil {
 		return fmt.Errorf("scheme: %w", err)
@@ -102,6 +111,9 @@ func execute(schemePath, inputPath, subject, targetPath string, stdout io.Writer
 	input, err := readBounded(inputPath, maxInputBytes)
 	if err != nil {
 		return fmt.Errorf("input: %w", err)
+	}
+	if err := checkCallerPin(expectedSource, input); err != nil {
+		return fmt.Errorf("source pin: %w", err)
 	}
 	result, err := hashid.Derive(s, input)
 	if err != nil {
@@ -123,6 +135,9 @@ func execute(schemePath, inputPath, subject, targetPath string, stdout io.Writer
 		targetBytes, err := readBounded(targetPath, maxTargetBytes)
 		if err != nil {
 			return fmt.Errorf("target probe: %w", err)
+		}
+		if err := checkCallerPin(expectedTarget, targetBytes); err != nil {
+			return fmt.Errorf("target pin: %w", err)
 		}
 		var probe targetProbeWire
 		if err := json.Unmarshal(targetBytes, &probe); err != nil {
@@ -170,11 +185,27 @@ func execute(schemePath, inputPath, subject, targetPath string, stdout io.Writer
 		if err != nil {
 			return fmt.Errorf("target preflight: %w", err)
 		}
-		out.Status = "snapshot-preflight-only"
+		out.Status = "caller-pinned-snapshot-preflight-only"
 		out.TargetNamespace = profile.Namespace
 		out.NormalizedTargetKey = key
+		targetHash := sha256.Sum256(targetBytes)
+		out.TargetSnapshotSHA256 = hex.EncodeToString(targetHash[:])
+		out.CallerPinsMatched = true
+		// Detect ordinary replacement between snapshot read and reporting.
+		// This is NOT an atomic read transaction or a defense against ABA.
+		if err := checkUnchangedFile(targetPath, maxTargetBytes, targetBytes); err != nil {
+			return fmt.Errorf("target snapshot changed during preview: %w", err)
+		}
 	}
-	// No stdout is written before every local validation succeeds.
+	// Reject observed local changes before emitting any report. A read-time
+	// file comparison still cannot establish workspace/Source authority, nor
+	// prevent symlink retargeting, ABA or a change immediately after return.
+	if err := checkUnchangedFile(schemePath, 4096, schemeBytes); err != nil {
+		return fmt.Errorf("scheme changed during preview: %w", err)
+	}
+	if err := checkUnchangedFile(inputPath, maxInputBytes, input); err != nil {
+		return fmt.Errorf("source changed during preview: %w", err)
+	}
 	return json.NewEncoder(stdout).Encode(out)
 }
 
@@ -192,4 +223,33 @@ func readBounded(path string, max int64) ([]byte, error) {
 		return nil, fmt.Errorf("file exceeds %d bytes", max)
 	}
 	return data, nil
+}
+
+func checkCallerPin(expected string, content []byte) error {
+	if expected == "" {
+		return nil // permitted only in derive-only mode
+	}
+	if len(expected) != 64 || strings.ToLower(expected) != expected {
+		return errors.New("expected lowercase SHA-256 hex (64 characters)")
+	}
+	decoded, err := hex.DecodeString(expected)
+	if err != nil || len(decoded) != sha256.Size {
+		return errors.New("malformed SHA-256 pin")
+	}
+	actual := sha256.Sum256(content)
+	if !bytes.Equal(decoded, actual[:]) {
+		return errors.New("caller pin does not match current file bytes")
+	}
+	return nil
+}
+
+func checkUnchangedFile(path string, limit int64, first []byte) error {
+	next, err := readBounded(path, limit)
+	if err != nil {
+		return err
+	}
+	if !bytes.Equal(next, first) {
+		return errors.New("input file bytes differ from first read")
+	}
+	return nil
 }
