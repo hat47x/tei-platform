@@ -59,3 +59,14 @@ func TestNormalizeValueDateTime(t *testing.T) {
 		t.Fatal("times were not normalized")
 	}
 }
+
+func TestNormalizeValueUnicodeIdentifier(t *testing.T) {
+	types := map[core.CanonicalID]semantic.Type{
+		"std.identifier": {ID: "std.identifier", Kind: semantic.TypePrimitive},
+	}
+	composed := "caf\u00e9"
+	decomposed := "cafe\u0301"
+	if normalizeValue("std.identifier", composed, types) != normalizeValue("std.identifier", decomposed, types) {
+		t.Fatal("equivalent identifiers were not normalized")
+	}
+}
