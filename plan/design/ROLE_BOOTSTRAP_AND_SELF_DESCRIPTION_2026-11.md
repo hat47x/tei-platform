@@ -359,3 +359,64 @@ Database Contractの別ケースでは、現行Referenceの隔離コピーで `s
 - **引継ぎ**：#2620はSDX-16〜23と自己更新時の必要閉包、#1920は既存形式版変換のOwner（Closedを新実装の証拠にしない）、#2505は版間対応、#958はレビューとwithdraw、#1124/#2621はSource編集、#2514はOracle、#2600は選択的再資格化、#2831はセルフビルドの実証。**第二のRegistry/Resolver/Host/Migration Engineを作らない。**
 
 **実行・Evidence状態**：本§7は設計追補のみ。SDX-16〜23を実TEI CLI/実Provider/Studio/SHO/Build/Ownerで実行していない。既存PR #2638の有限合成Reference PASSや#2639のGo Reference CI成功は、新版Role自己移行・意味同値・現行実行資格の合格証明ではない。PlanのGitHub保存はOwnerによる正式意味受理ではない。
+
+
+<!-- role-self-description-test-packet-20261105 -->
+## 8. 2026-11-05 自己記述の最初の「実接続」試験票：AI生成拡張とClaim上限（計画／未実行）
+
+**今回の優先順位変更**：§6のSDX-09〜15と§7のSDX-16〜23は必要な反例を十分含む。さらに類似テストIDだけを増やさず、**一つの実TEI Workspace/Semantic Subject/Source revisionから既存Go Product/Referenceに到達する実観測**を先に得る。AIがCaseを増やす自由は維持しつつ、Acceptedテスト正本や独立ExpectedをCandidate生成で書換えない（[#1180](https://github.com/hat47x/tei-platform/issues/1180)、[#2514](https://github.com/hat47x/tei-platform/issues/2514)、[#2813](https://github.com/hat47x/tei-platform/issues/2813)）。第二Scenario Runner/JSON DSL/Role Resolver/Permission Engineは作らない。
+
+### 8.1 論理的不変条件：Required / Observed / Undischarged / Claim ceiling
+
+これは**既存OwnerのEvidenceを読み取るための受入票**であって、新しいCore Schema・全域Proof Engine・常時実行されるContract Evaluatorではない。
+
+- **Required(C)**：Claim C（例：このSourceはこのRoleで型付き意味として検証された）を主張するために必要な項目。対象Source root/実内容・選択Language/Role/OperatorのPin＋推移eager依存・Required Shape・属性/Relation/Rule/NULL/grain・期待の独立性・用途/Consumerを列挙する。**要求集合の定義自体**が未確定なら、空集合とみなさず `unknown-requirements` とする。
+- **Observed(C)**：同じSubject、Revision、Scope、Tool/Interpreter exact identity、実実行/実読込に束縛できたWitnessのみ。Manifestで「指定」した、管理一覧で「列挙」した、Roleが「純粋」と自己申告した、GitHub CIの別HEADでPASSした、という事実を実観測へ代入しない。
+- **Undischarged(C)**：RequiredのうちObservedに**十分に**対応していない項目。missing / partial / unavailable / stale / permission-denied / unsupported / not-run を区別する。必要なWitnessはあるが対象・時点・解釈版が違う場合も未充足。非公開の内訳はConsumerへそのまま出さない。
+- **Claim ceiling**：満たした証拠で主張できる最上位の範囲。例：`data-inspectable` → `syntax-candidate` → `role-shape-candidate` → `typed-candidate` → `independently-tested` → `owner-accepted` → `consumer-qualified`。これらは**説明用の段階**であって新しいグローバル状態enumではない。上下の段階は別Ownerの証拠を要するため、自動昇格しない。実Effect/Commitはさらに独立観測。
+
+**要件上の空集合と未検査は異なる**。`Required=[]` は「該当するClaimで義務がないと独立に確定できた」場合だけ許す。必要Sourceを0件しか読んでいない、Worker/Pluginが無かった、部分取得で0件となった等を完全性の証明にしない（#2823、#2586）。逆に、不要と証明された契約まで全世界で再検証しない。
+
+### 8.2 実コードを再利用する最短経路
+
+| 実入口・証拠 | 現在確認できる実機能 | 未成立の自己記述Claim |
+| --- | --- | --- |
+| `reference/dsl-language-plugin/selection.go` の `ParseSelected` | 明示Language ID/契約版・contract/implementation fingerprintの**すでに固定された**選択 | SourceのRole解釈、正式Accepted Lock/Owner受理、実Parser byte真正性までのE2E |
+| 同 `ParsePipelineSyntax` → `LowerPinnedPipeline` / `ResolveOperator` | Source byte span付きPipeline syntax、固定Operatorの型連鎖とpure-only Effect拒否 | where predicate/引数、NULL/grain、Role Required Shape、一般的な演算法則の同値 |
+| `plan/fixtures/role-bootstrap/check_bootstrap.js`（PR #2638 main統合） | pinned Role候補・eager/deferred循環・同版実装差の**合成24件** | 製品Role Resolver・実Extension Lock・実Workspaceでの自己解釈 |
+| 実 `tei validate -json -workspace <workspace>` および `tei workspace-files` | Workspace操作と別々の管理一覧／検査結果を取得する入口 | `ok`=必要Source全件が実Parsed/Consumedとの保証。#2823の未読込負例を先に検査 |
+| 既存Scenario `verify/generate/run/check`、AI JSON候補 (#1180/#2813) | Scenario/DSL候補を増やす既存足場。公開版・実Consumerは別 | 追加件数=独立Oracle/Mutation判別/Accepted Scenarioとしての資格、ではない |
+
+**同一Subjectへ収束**：既存`reference/workspace`の`sales.order`／`sales.order.amount`を初期候補にするが、実Runtimeで読込まれたことをまず確認する。#2639 EG-08/09のtest-only JSONと、実Semantic Namespaceの対象・Attribute Type/Source spanを実Workspaceへ結ぶ。Role Definitionが標準データとして表現されていても、現Goの実Interpreterと受理経路に接合できない場合は `unsupported/gap` を残す。**合成RBケースと別SubjectのEGケースを加算して自己記述完了と報告しない**。
+
+### 8.3 AIが増やせるテストデータと、AIに書換えさせない期待値
+
+既存のScenario/Fixture正本の下に**候補Case**を追加する。特定JSON形式を新しい製品標準にはしない。Caseの論理的な最小列は次の通り。
+
+| 項目 | 例／要求 |
+| --- | --- |
+| `case_id` / `candidate_revision` | 重複ID、旧Case混入、新旧世代混在を拒否。個々のCaseと採用されたSuiteの版を分離 |
+| `source_ref` / `subject` / `role_use_site` | 実Source root/occurrence、固定Semantic ID、明示Role/Operator Selection。引用や説明表を実定義へ暗黙昇格しない |
+| `change` / `required_obligations` | 変更した属性・形式版・実装/依存・元Sourceと対象の必要閉包。対象外変化を失効と自動判定しない |
+| `expected` / `oracle_provenance` | 検証対象と独立に作成したExpected/既知Mutant、判別Scope、未定義事項。生成AIによる候補Expectedは未受理 |
+| `actual_binding` / `observed` | exact executable/argv、Source bytes/Workspace、Provider/Interpreter fingerprints、actual consumed/read、診断・失敗・結果 |
+| `undischarged` / `claim_scope` / `acceptance` | 不足義務、主張できる範囲、Owner Meaning Acceptance、現在利用/開示資格を別記録 |
+
+**初期の独立対照（別Origin）**：
+- A：`amount` の型は`decimal`、Role/OperatorのPinも同じだが、説明/テスト/引用のSource位置だけを変更。Source locator/文書の資格は更新、必要な型付きMeaningを無条件に全面失効しない（SDX-10/18）。
+- B：同じData ID/出力型/Result表示でも`amount`のTypeRef、丸めhalf-even→half-up、`WHERE amount > 0`→`WHERE amount >= 0`のいずれかを変更。丸めの独立Expectedを含め、0境界・1.005・NULL等の既知Mutantを判別し、内容/出力型一致だけで同値にしない（EG-09/SDX-11/19）。`std.where`の実Go ReferenceはPredicate意味を十分表現しないため、ここは現状のgapとして記録。
+- C：必要Rootが未読込、Required Shapeが無い、Root/Eager依存のPinが古い、SourceがA→B→A、またはOwner Reviewがwithdrawされた。元の値・版文字列・hashに戻っても旧受理/Source連続性/現在利用を自動復活させない（SDX-09/14/22）。
+- D：同じ受理済み計算についてDB別Native SQL実現やGo/Java等Targetを差し替える。**意味上のQuery/Function Identity**と**Provider Dialect・実Artifact/Host資格**を独立比較し、同じ結果型やSQL名だけでProvider間意味同値を主張しない。DBプラグイン・2waySQL固有機構の実装は各Ownerの既存Realizationを利用する（#2619/#2622/#1121）。初回自己記述P0の必須条件にはしない。
+
+**独立採点**：Caseを何件生成したか、実際に適用・実行したか、既知Mutantを何件検出したか、要求したObligationの分母の何割がEvidenceで満たされたか、Unknown/False PASS/不要な全面失効を別計測。生成Candidateの自己整合PASSは正式受理件数へ含めない。Case/Fixture/Expectedの同じ公開世代が実Consumerへ届いたことも#1180/#2604/#2516の別Ownerで確認する。
+
+### 8.4 このPRでの最短着手・終了条件
+
+1. **P0a 現行実入口Inventory**：main exact SHAとPR #2639のHEAD/状態を再取得し、#2638の合成JSと実Go Language/Operator Referenceを**別対象・別結果**で実行記録。実Product CLIが読み込んだSource集合と `workspace-files` / requiredを比較し、#2823の未読込/空成功を明示。
+2. **P0b 一つの実Semantic Subject**：`sales.order`を実Workspace/Namespaceの同一revisionで固定し、Role Descriptorを通常データとしてread-only inspect → 明示Selection/Role binding/Required Shape → 型付きMeaning候補まで既存機構でどこまで到達できるか観測。**Role Contractやeager依存が実TEIに無ければ具体的gap**として止める。
+3. **P0c 独立ExpectedとAI Case対照**：#2514/#1180の既存受理済み/独立Caseを保持し、AIが新しい変更負例を追加する。構造同値・意味同値・Source版・現在資格を別採点。Parser/Operator合成PASSをOwner受理へ昇格しない。
+4. **P1 残余接続**：Productの実Query/Context、Studio/SHOのread-only Projection、#2831 Build graph、Target差／Provider差へOwner別に受け渡す。Go単一バイナリが標準実行で、Role動的解釈を各Requestの必須hot pathにしない。実行時変化のあるGrant/DB/Effectは#1174の現行Fenceで再照合。
+
+**完了と言える最小Claim**：一つの実TEI Subjectについて、実Source・selected Language/Role/Operator・必要なSource閉包・typed Candidate・独立Expected/負例の対応が**同一revision・同一用途**で確認された範囲だけ。Role実装が存在しない場合は正確な`gap`までを成果とし、Product自己記述の完成とは呼ばない。AI Case自動採用、実Target/DB/Host、Owner意味受理や全体セルフビルドは別資格。
+
+**状態**：この§8の追補だけでは新しいCase/Go/JS/CLI/Provider/E2Eは**NOT RUN**。#2813や#2639の他HEADのCI合格、#2638の24 synthetic PASSをこのP0a〜P0cの実結果へ流用しない。本件の設計は新しい正式DSL構文／Meta Schema／Accepted Meaningを採用するものではない。
