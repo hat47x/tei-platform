@@ -327,3 +327,19 @@ Apache Kafkaは、Kafka Topic間ではtransactional producerとconsumer offset�
 
 **境界**: 本追補はGitHub Source/Issue/PRと外部公開仕様の静的比較のみ。新しいGo/Node/実PostgreSQL/実SFTP/S3/HULFT/EKI/独立Consumer/本番認証/Owner受理の試験・CIを**実行していない**。既存PRの歴史的実試験はそのexact-head/Provider/Scopeの資格だけを継承し、最新mainと本Draftの同一Attempt E2EはNOT RUN。
 
+
+## 13. 2026-11-05 セルフビルド・Plugin Bundle設計との接合：配送Adapterの選択とBuild非干渉
+
+[#1251](https://github.com/hat47x/tei-platform/issues/1251)では「配布・発見できる」「Compositionで選択」「実Buildが入力として消費」「成果物へ収録」「実Targetが起動・使用」を**別の資格**として扱う。[Draft #2877](https://github.com/hat47x/tei-platform/pull/2877)／[#2831](https://github.com/hat47x/tei-platform/issues/2831)のセルフビルドP0は、宣言したGraphと実工程、全module（nested Go module含む）のSource/Toolchain closure、実Artifact、Stage収束を照合する計画であり、TEI全体のG4資格が成立済みという意味ではない。ETL/MFTにもこれを重複実装せず横断利用する。
+
+| 比較する二Target | 成立させたい観測と停止線 |
+| --- | --- |
+| 同一Data Transform、MFT Adapter **未選択** | MFT Bundle追加・改訂だけなら、選択済みBatch/SQLの実Build closure/生成Source/Artifact members/linked binaryに**影響しない**ことを観測。Registry/Catalog候補一覧やRepo HEADの変化は許容。Go init/blank import/global registrationで混入すれば未使用非干渉は不成立 |
+| 同一Data Transform、SFTP等の配送Adapter **選択** | 対象Adapterの実Package/Transitive module、Generator、Target capabilityと契約版を実Buildへ束縛。選択Adapterを更新したら必要Output/Build資格を再評価し、業務Meaningや他TargetのArtifactを無条件に無効化しない |
+| 選択したAdapterにnested moduleの入力が欠ける | ルート`go test ./...`のPASSから対象ClosureのCompleteを主張しない。nested go.mod/go.sum、実Compiler/Worker実消費入力まで列挙し、未知ならBuild資格を保留 |
+| Buildは成功、実配送先では現在Grant/通信経路/保存Policy未確認 | Artifact-included≠Runtime-invoked≠配送・業務受理。#2542と#951/#1174の現時点資格へ戻し、暗黙Fallback・実行試行済み扱いを禁止 |
+
+**既存Pressureへの割付のみ**：DM-12の「同じFlowを複数実行先へ」のうち、(a)未選択MFT Plugin追加、(b)選択SFTP Adapterの依存変更、(c)nested moduleの欠落、(d)実Binaryは同じでRuntime Grantだけ失効、を比較列として使う。新しい独立Core型・Build Graph・SB/PB Fixtureの第二正本や「一Plugin＝一Binary」を導入しない。
+
+**実証状態**：本PRではこの差分のGo/TS/CLI実Build、nested module全件走査、MFT Adapter選択、実SFTP/GitHub CI、配布後Runtime資格は**NOT RUN**。#1251/#2877の採否・同日CIと、実Targetでの適合証拠を別途要する。
+
