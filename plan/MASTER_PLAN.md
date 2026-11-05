@@ -193,6 +193,8 @@ PostgreSQLは詳細な検証に用いる提供実装として利用します。
 
 Oracleの実環境での検証が未完了であることだけを理由に、固定版での判定段階BのReadyを取り消しません。
 
+**検討中の横断追補（DBアクセス・Query/2way SQL）**：対象DataSourceの既存Binding解決、DB別Native SQLの選択規約、SQL編集時の診断と分岐検証、異種DBでの意味同値性を、[DBアクセス・Query選択・2way SQLの最小適合計画](design/DB_QUERY_SELECTION_AND_2WAY_SQL_FIT_2026-11.md)で小さな実証へ分解する。#2611・#2622・#2387・#2667に既存の責務を残し、新しいCore API・正式DSL構文・実DB対応の採用・完了を意味しない。
+
 ## 作業領域E：設計の実行と検証
 
 ### 目的
