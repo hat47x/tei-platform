@@ -687,6 +687,27 @@ D0〜D2の第一回比較では、#1861の固定23ベクトルとContract、実�
 **実行責務**：#1016（用途別選定）、#2514（Oracle/Mutant）、#1180（Scenario）、#1861（23件）、#951/#1145/#2390（実Provider/Transport/Host）、#1251/#2600（実Buildと費用）。本節に別のExpected・Runner・新ABI・中央Decision Engineを置かない。23件横断D1/D2実行、Mutant実測、性能測定、Owner正式採用は現時点でNOT RUN/NOT ACCEPTED。
 
 
+<!-- tei-plugin-dynamic-read-dependency-closure-20261106 -->
+### 18.7 Source閉包と実行時Read閉包を分離する：0件・非出力・否定依存
+
+§18.4のRequired/Parsed/Actually-consumedは**ファイル・契約・Build入力の閉包**であり、実行時Query/Providerの対象集合が完全であったことを証明しない。他レーン#2600 IB-16（非出力・否定依存）、#2506（Data Context/Result Slice）、#2582（再取得・retract）、#2387（Queryの演算）、#2516（開示）、#1708（Read cohort/snapshot）へ接続する。**新しいRead-Dependency EngineやClosure Schemaは設けない**。各Claimに必要な既存Source/Query/Reader/Providerの観測内容を既存Evidence欄へ参照するだけとする。
+
+まず初回の[#1861](https://github.com/hat47x/tei-platform/issues/1861) `reference.order.quote-lines/v1` 23件は、固定引数を用いる**外部DB/Network/Secret/Fileを必要としない純粋計算**として比較する。D0は「その計算に外部Readは不要」の契約が適用できるが、D1は実選択Provider/Builderの不要依存・実I/O有無を別検査する必要がある。D2は**計算対象の業務データReadは不要でも、Processの起動・Transportは実I/O**である。D0/D1/D2の23件PASSだけで、独立Processの情報流・OS隔離、別DB Queryの完全性を主張しない。読取り専用（writeなし）と、I/Oなし（pure）は非同値。
+
+| 比較対象・Claim | 必要となるRead／否定依存の観測 | 証拠不足時の停止・別Owner |
+| --- | --- | --- |
+| 固定23件の純粋計算 | 入力Vectorの実byte、Semantic Operator/Unit/NULL・Decimal、選択実装と参照先なしの契約、必要なRuntime/Resource | 自称pure・Read-only manifestだけで実OS非アクセスを証明しない。読取のないData Rule比較はこの範囲に限る（#1861/#951/#2515） |
+| 複数Relationを用いるData Provider／Function | 対象Relation occurrence／join・predicate／非出力条件、Provider/DB Alias、Read scope・対象identity・Version、結果Slice（未取得／0／部分／完全）、取得時点・cohort/snapshot | 行値一致、同名Semantic Data、同じQuery IDでReader同一を推測しない。必要な粒度/対象が未観測ならunknown（#2506/#2611/#2387） |
+| `NOT EXISTS`／anti-joinで正常0件を導くClaim | 対象母集団、anti-join右辺とpredicate、filter/RLS・権限・ページング・Limit、対象epoch、結果Rowset/Field完全性と否定結果が有効な時点 | 空Rowsを「依存なし」「対象不存在」「Build Cache再利用可」としない。Providerがpartial/hidden/offlineなら否定Claimは保留（#2600 IB-16/#2582） |
+| 見かけのResult不変のまま更新 | 依存したRelation/Predicateへの行追加・削除、Filter/Role/Schema更新、対象Scope/Source A→B→A、Read cohortの変化 | LEFT JOIN/NOT EXISTS/Top-Nなどは追加で既存結果をretract/replaceし得る。再評価が必要なClaimのみ失効し、無関係なTarget/Bundleを一律失効しない（#2582/#2600） |
+| 実OS/Hostで「外部データ取得は不要」 | Plugin宣言のCapabilityと実行物のFile/Network/Process/DB到達・拒否ログ、D2ならTransportと業務Readを分離 | read-onlyの自己申告はOS強制ではない。秘密・隠れたRow・内部Source/件数を低権限Consumerへ表示しない（#2017/#2515/#2516） |
+
+**独立Expectedと反例の接続**：新しい23件の業務Fixtureを追加せず、純粋計算のD0/D1/D2は§18.5の既存Oracleを使う。実Data Providerへ進む場合だけ、既存#2600 IB-16／#2506／#2582／#2387の「同じ表示値・異Read scope」「0件だがpartial/hidden」「後から一致行が追加」「SQL/Provider route変更」を独立Expectedとして参照。どのClaimがどのSource/Read/Targetに依存するかを**出典・版・実行時点ごとに**記録し、実Read footprint未観測なら「完全」「非干渉」「現在不存在」と結論しない。
+
+**導入順の制限**：P0は23件のpure/transport/I/O区分をread-onlyで確認、P1は§18.4のWorkspace/Build入力閉包を実Targetで確認。P2で実Query・Relationに依存するConsumerを選んだ場合に限り非出力依存・0件・retractを既存Provider/独立Oracleで検証。P3のWrite/Commit・Receiptは§15.5と#1174が別に検証する。本節によって初回pure `quote-lines` に実DBを導入したり、全Providerに同一Snapshotを仮定したりしない。
+
+**状態**：他レーンの設計・Issueの成熟した負例を方式選定の受入上限へ参照接続したdocs-only追補。実23件、実Read trace、二DB、OS隔離、dynamic dependencyの実装・性能、Owner受理はこの追補では**NOT RUN／未採用**。
+
 <!-- tei-bundle-granularity-and-required-guard-20261106 -->
 ## 19. 高凝集Bundleの適正規模と実行前提の完全性（2026-11-06、設計・未採用）
 
