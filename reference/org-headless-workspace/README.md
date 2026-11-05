@@ -40,3 +40,15 @@ The independent expected relationships in the table are asserted by `TestOrgHead
 **Same Operation caveat:** A Function using the CaseRecord handling-unit relationship can depend on its declared cardinality even though the read-only Membership Operation Surface does not mention CaseRecord. Caching or skipping work solely because operation IDs or output JSON match is unsound for such a Consumer.
 
 The test runner's fixed-head status and product limitations must be checked separately. These checks do not establish real Provider execution, currently authorized policy enforcement, atomic multi-file Source capture or Owner's meaning acceptance.
+
+## Unselected plugin Source is not an included build component
+
+The real Go regression `TestOrgHeadlessUndeclaredPluginRootDoesNotChangeSemanticOrOperations` copies this Workspace, creates `plugins/unused-org-profile/plugin.tei` containing intentionally invalid authoring, and executes the **actual Loader/Source Index/OperationSurface** without adding `plugins` to the manifest's declared Source roots. Its independent expected result is:
+
+- The unselected `plugins/` file is absent from `Loaded.ManagedFiles`; the Loader does **not** parse it or promote it to available capabilities.
+- `WorldFingerprint`, `ModelRevision`, and the read-only Operation set are unchanged.
+- The deliberately invalid source does not cause a Parser error, because it was not requested.
+
+This **does not prove** that a valid plugin present in a *declared* Source root but not selected by the Environment is absent from the global Source Index; that a selected Bundle's unused module is excluded from the Build; that a Go compiled binary has removed unused code; or that any compiled-in action is exposed, currently granted or actually executed. `plugin.Catalog.ResolveEnvironment` currently expands **every plugin requirement of a selected Bundle**; Function/Target use, Build inclusion and runtime permission must be separately measured.
+
+For those still-unverified cases, see [Organization design Draft #2389 §64](https://github.com/hat47x/tei-platform/pull/2389) and [Everything is Data Draft #2667 §51](https://github.com/hat47x/tei-platform/pull/2667). The Org E1 CI's `artifacts/manifest` reader reports `findings=0 complete=False` and cannot be taken as proof of distributed Artifact completeness.
