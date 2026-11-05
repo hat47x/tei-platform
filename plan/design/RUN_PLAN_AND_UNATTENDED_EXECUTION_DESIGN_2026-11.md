@@ -304,3 +304,19 @@ run-plan sales.monthly_close operations sales.close key sales.period.month concu
 - 並びは計画の識別子順。
 - 省略された項目は行に出さない（宣言に無いものを補わない）。
 - 生成規則 `function-definition/v1` の行種別に `run-plan` を追加。
+### 帳票・確認一覧としての整形（2026-11-05 追記）
+
+投影の結果を**帳票の本文**として出す関数を追加しました（`execution.RenderOutputs`）。
+
+```
+## 出力: sales.monthly_close
+
+| 出力 | 行数 | 備考 |
+| --- | ---: | --- |
+| sales.close_statement | 12 | |
+| sales.check_list | 0 | |
+```
+
+- 行数は投影が読んだ件数。**読み取りの失敗は「-」と理由**で表に出す（0 件と区別する）。
+- 出力の宣言が無い計画には「出力の宣言はありません」と書く（空の表を出さない）。
+- 帳票は**実行の投影**であり、データそのものについては何も主張しない。
