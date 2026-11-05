@@ -24,7 +24,8 @@ const (
 // Unit must be explicit, including "none" for dimensionless fields.
 // SemanticRef is the exact canonical identity of an already selected semantic
 // type definition. This reference does not resolve or authenticate definitions;
-// the caller must obtain it from the Host's validated semantic set. In particular,
+// the caller must pin it to an explicitly selected semantic view. This
+// reference cannot establish who accepted that view. In particular,
 // aliases with the same underlying representation remain distinct.
 type Type struct {
 	Name, Unit, IdentityDomain string
