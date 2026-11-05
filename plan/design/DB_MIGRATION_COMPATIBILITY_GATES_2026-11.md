@@ -468,3 +468,22 @@ G1〜G5で各観測は取得時点が異なる。要求するのは**同一瞬�
 
 **本節は設計/合流計画のみ。今回#2900の修正コード、#2892本体、実DB/Owner状態は変更しない。**
 
+
+### 19.5 #2892の局所的なHistory fail-closed Draftと観測元の残余（2026-11-06）
+
+[**Draft PR #2902**](https://github.com/hat47x/tei-platform/pull/2902)は[#2892](https://github.com/hat47x/tei-platform/issues/2892)の**HIST-01 P0**を既存`CompareHistory`内で限定修正。履歴Entryの`AppliedUnknown`／不正な`AppliedState`を、Definitionとchecksumが一致していても**比較エラーでfail-closed**にし、Repositoryに存在しないunknown Entryも`RepoOrphanApplied`として安全と呼ばない。既存`RepositoryState`のenumやHistory Engineを増やさない。HIST-01、unknown orphan、空/不正status、真正empty history、既知success/failedのGoテスト5関数を追加した。
+
+**残す区分・次の試験**：
+
+| 対象 | #2902で成立する可能性がある局所契約 | 成立しない現在のMigration Gate資格 |
+| --- | --- | --- |
+| HIST-01 applied unknown | 観測Entryの不明な適用状態を`RepoApplied`へ昇格させない | 実DBのSchema/Effect/現在Grantや対象Clientの互換性 |
+| unknown orphan／無効state | Repository内外を問わず、状態不明・未対応を`orphan-applied`等の成功にしない | Provider/外部Toolの実用歴史の取込能力・別接続の独立Read |
+| HIST-03 真正empty vs 取得失敗 | **完全取得された**空のHistoryは従来どおり`RepoPending`。比較器の入力だけでは取得失敗/permission-denied/partialを識別**できない** | History Reader/Adapterでsource、取得資格、Completeness、CapturedAt/時点を別に証明。失敗を空Entriesに変換しない |
+| HIST-02 checksum欠落 | 既存動作を変更しない（適用記録の報告と同一Definition byte証明は別Claim） | checksum欠落を黙って「契約一致・現在適用資格」へ格上げしない。Provider/Ownerが許容条件を定義 |
+| HIST-04 failed/diverged/orphan の既存分類 | 現行比較の退行防止。History Adapter/Tool本体は更新しない | 既存のPostgreSQL参照結果やMigrationログをG3/G4/G5の実証へ自動加算しない |
+
+**レビュー・合流順**：#2902のexact-head局所Goテストを先に確認し、#2900のDuplicate State/Provided Contract修正とは別責務で受け入れを判断。移行計画の#2887は安全修正両PRと**同じ統合Git tree**でMG-29特性テストの旧last-wins Expectedを安全な`Unknown`へ変更し、HIST-01とMG-20の資格上限を再照合する。異なるbranchのgreen CIを足して一つの新しいE2Eの成功としない。
+
+**状態**：#2902はGoコード＋合成Unit TestのDraftであり、Provider実History reader/失敗注入・実DB Migration・本番旧Client/SHO Consumer・Owner受理はNOT RUN。History sourceの完全性と鮮度を検証する公的契約は未決。`CompareHistory`の返却エラー方針の既存利用先への影響もレビュー対象。
+
