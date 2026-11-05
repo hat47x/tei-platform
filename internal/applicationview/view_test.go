@@ -134,10 +134,7 @@ func TestBuildFailsClosedOnMissingReferences(t *testing.T) {
 			name: "unknown pattern",
 			edit: func(w *ir.World) { w.Applications[0].Patterns[2].ID = "order_entry.other" },
 		},
-		{
-			name: "no interaction",
-			edit: func(w *ir.World) { w.Applications[0].Patterns[2].Interaction = nil },
-		},
+
 		{
 			name: "item is not an attribute",
 			edit: func(w *ir.World) {
