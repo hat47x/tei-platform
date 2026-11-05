@@ -16,12 +16,78 @@
 - `plan/V1_REFERENCE_APPLICATION_PLAN.md`
 - `plan/MILESTONES.md`
 - `plan/research/TECH_RESEARCH_INTEGRATION_2026-10.md` ：直近の調査結果を製品価値や既存の課題に結び付ける統合計画
+- [DeepSeek Harnessに学ぶ構成・AI-first連携・横断検証（研究案）](research/DEEPSEEK_HARNESS_TEI_CROSS_PRODUCT_ADOPTION_2026-11-01.md) ：外側のAgent HarnessとTEIのService Contract/Plugin/Host Authorityの境界を比較。正式要件・実実行の受理は既存担当へ
+- [DSHのGoal・Schedule・通信境界と大規模AI並列開発（研究案）](research/DSH_SCALE_GOAL_SCHEDULE_EGRESS_RESEARCH_2026-11-01.md) ：軽量Profileの自律性、独立Workstream、既定Request拡張によるSession履歴送信、検証責務を明示。実証担当は[#2509](https://github.com/hat47x/tei-platform/issues/2509)／[TAI #234](https://github.com/hat47x/tai-pleroma/issues/234)。
+- [DSH実験的Agent Teamsの並列開発・専門家連携・用途別Context（研究案）](research/DSH_AGENT_TEAMS_CONTEXT_EXPERT_HANDOFF_2026-11-02.md) ：Team Task DAG/CAS/共有Checkout・非強制writeScope、SEIの専門家照会、#2515実効隔離・#2516用途別Projectionを統合したT-01〜T-12反証案。既存Ownerと受理を維持する。
+- [外部Harnessの結果継承と選択的再資格化（2026-11-02研究案）](research/HARNESS_EVIDENCE_CONTINUITY_AND_SELECTIVE_REQUALIFICATION_2026-11-02.md) ：DSH Headless NDJSONの投影/截断/Session再開と実Git/TEI/Oracle/Provider証拠の差を識別。#2514 Oracle、#2582 Reactive、#2595実Source、SEI #767の用途別根拠十分性に接続し、Claim単位で局所再評価する。
 - `plan/REFERENCE_MODEL_TRANSFER_GATE_2026-10.md` ：成熟した外部の参照モデルをプラグイン中心で移し替え、TEIの表現力や暗黙の前提を横断的に検証する計画
 - `plan/design/ARTIFACT_SET_SCOPE_AND_CONSUMER_READ_EVIDENCE_2026-11.md` ：導出成果物の対象集合・内部整合・公開世代・実Consumer読取を分けて検証する**提案中**の計画（#2482／#2604。製品Gateや受理条件の変更ではない）
 
+## 基本開発方針（2026-11-01、Owner方針）
+
+**外部要件による十分な机上評価 → 基盤構造の実装 → CUIと標準プラグインの並行開発・一気通貫検証 → 人間向けGUIの構築**を、新規機能開発の基本順序とします。これは過去のGate A/B/Cの判定を変更するものでも、独立した新しいGateを設けるものでもありません。実装済み・検証済みの範囲は[現行の実装状況](../docs/status.md)、個別の進行・受入は各Issueと既存Gateで確認します。
+
+机上評価の観点、複合要件の反例、CUI・標準Pluginの一気通貫検証の具体案は[外部要件による基盤評価とAI-firstヘッドレス検証](design/AI_FIRST_REQUIREMENT_PRESSURE_AND_HEADLESS_VERIFICATION_2026-11.md)に整理します（設計候補・未実行）。
+
+基本データ構造の机上評価は、通常のプログラミング言語の型階層より上位にある**構造形式・数学的構造・数量／単位・トポロジー**の概念空間から検討します。具体的な構造には複数の親や適合契約を認めつつ、分類する問い・関係の意味・構成と実現方式を区別します。候補と未決点は[基本データ概念空間の横断設計](design/FOUNDATIONAL_DATA_CONCEPT_SPACE_2026-11.md)で管理します。これはCoreの新型や多重継承実装を確定するものではありません。
+
+特に、同じ値集合が**異なる演算の束縛によって同種の数学的構造を複数持つ**場合（例：自然数の加法・乗法モノイド）、Facet名や多重親の列挙だけで演算・公理・適合を決定しません。数学的Theoryの要件、具体的OperatorへのBinding、成立するLaw、解釈Scope、根拠の種類を区別し、[多重Facetの整合と公理の検証 #2544](https://github.com/hat47x/tei-platform/issues/2544)に具体的反例を管理します。広域の構造探索は[#2501 Corpus](https://github.com/hat47x/tei-platform/issues/2501)、構造保存・編集逆写像は[#2497](https://github.com/hat47x/tei-platform/issues/2497)、分類そのものは[#2495](https://github.com/hat47x/tei-platform/issues/2495)を利用します。現段階はいずれも未採用の検証計画です。
+
+**構造のMECE性・複数Projectionの整合**については、固定のData Type列挙より、名目ID／構成子／Facet／演算束縛／制約／解釈文脈／出典を区別し、各判断の適用範囲と具体的反例を残します。比較のための正規形が計算できても、それを業務意味の同一性・Owner受理へ昇格させません。異なる構造が同じ意味を投影する場合（例：[TEIの多値Record投影 #2576](https://github.com/hat47x/tei-platform/pull/2576)と[SUIの所属表現](https://github.com/hat47x/tai-pleroma/pull/253)）は、**どのRelation/Sourceを正本とするか、列挙順・重複・完全性・Version・更新Intentをどう保存するか**を別に判断します。既存[#2495](https://github.com/hat47x/tei-platform/issues/2495)/[#2544](https://github.com/hat47x/tei-platform/issues/2544)/[#2497](https://github.com/hat47x/tei-platform/issues/2497)と[Draft PR #2496](https://github.com/hat47x/tei-platform/pull/2496)が比較・反例の担当です。実Targetで意味が保存されたことや両表現の意味上の等価性は未実証です。
+
+**Projectionの値忠実度と対象範囲**も、基本データ構造の机上評価からCUI/標準Plugin・実Target検証へ引き渡す項目です。Fieldの値型、必須/任意と未設定・明示NULL・空、単一/多値、重複・順序・完全集合性、数値精度・単位、Source/Consumer、編集時の変更Intentを区別し、特定の用途で許容する情報損失を明示します。既に実装された[Record Projectionの多値・数値・optional・boolean（#2576/#2578/#2580/#2581）](https://github.com/hat47x/tei-platform/pull/2578)を[#2585](https://github.com/hat47x/tei-platform/issues/2585)の局所Conformanceで検証し、[#2497](https://github.com/hat47x/tei-platform/issues/2497)の構造保存条件と[#2498](https://github.com/hat47x/tei-platform/issues/2498)の実Consumer適合へ接続します。SUIの読み取り専用artifactと既存SUI元データのような**部分Projection／複数Source合成**では、フィールドごとの正本・未投影項目・時点・版を説明できるかを確認します。厳密な金額計算の型契約は#1705、業務DBのmissing/nullは#2056の成果を再利用し、GUIやProviderの正式な意味適合は別途実証します。現在の追加項目は受入設計であり、実装・実証完了を宣言するものではありません。
+
+**時間変化するProjectionの意味保存**は、静的なValue/Presence適合の次の検証対象です。同じQuery/Functionから生成するCUI・Studio・SHOの複数Consumerについて、Source意味版、Query/Result SliceのScope/Completeness、Snapshot/read-set、Event/Processing/Observation Time、Selection epoch、実Consumer読込版を分け、Claimの支持・暫定・撤回・置換・失効を説明できるかを確認します。先頭ページの0件を全体不存在へ昇格させないこと、JOINの重複・LEFT JOIN仮NULL・TOP-Nの変更で旧結論を適切に撤回すること、古い非同期応答を新しいContextへ混ぜないことを反例とします。[#2497の§12](https://github.com/hat47x/tei-platform/blob/docs/data-structure-meta-facets-20261101/plan/design/STRUCTURE_PRESERVING_TRANSFORMATIONS_AND_PROJECTIONS_2026-11.md)と[#2501のPC-97〜108](https://github.com/hat47x/tei-platform/blob/docs/data-structure-meta-facets-20261101/plan/design/DATA_STRUCTURE_PRESSURE_CORPUS_2026-11.md)に整理し、単一FunctionのHeadless実証は[#2586](https://github.com/hat47x/tei-platform/issues/2586)、Data Contextは#2506、Freshnessは#1708、版間対応は#2505、異質Consumerは#2498/#2516の既存Ownerに帰属させます。追加12件は反証候補であり、実試験PASSや業務意味受理ではありません。
+
+**Measureの再集計適合とClaimの開示適合**を、値忠実度・時間変化するProjectionに続く検証軸として追加します。同じDecimal型・同じ表示値でも、平均・比率・重複排除人数・時点残高・分位数は集計軸と必要な中間状態が異なります。[#2593](https://github.com/hat47x/tei-platform/issues/2593)のMeasure再集計を[#2497の§13](https://github.com/hat47x/tei-platform/blob/docs/data-structure-meta-facets-20261101/plan/design/STRUCTURE_PRESERVING_TRANSFORMATIONS_AND_PROJECTIONS_2026-11.md)に接続し、[#2501のPC-109〜120](https://github.com/hat47x/tei-platform/issues/2501)を独立反例として整理します。また、内部で正しく導出したClaim・根拠へのアクセス資格・外部Consumerへの開示資格・開示後の根拠充足・実際のConsumer読込を別々に検証します。Construction Context/AI CUI/SHOは[#2516](https://github.com/hat47x/tei-platform/issues/2516)、外部開示は#1178、SHO原本は#1803、実Consumerは#2498の既存Ownerに帰属させ、第二のMeasure/Authority/証拠Registryを作らず、受入・実送信・実Targetの観測を独立管理します。今回の反例は机上計画であり、実装/Owner受理は未実施です。
+
+**Consumer間Claim比較・文書Occurrence・開示非干渉性**を、構造保存とConstruction Contextの追加検証軸として位置づけます。同じ表示値でも対象・演算・Grain・Scope・Snapshot・Source版が異なれば比較不能であり、異値でも部分取得と全件確定のように両方正当な場合があります。比較可能な同一Claimの不一致だけを独立Oracleへ返します。また、同じTEI意味要素がSHO文書に複数出現するとき、Semantic IDと文書内Occurrence ID、局所編集・再生成・レビュー現在性を区別します。内部で読める根拠が外部Consumerへ開示できるとは限らず、非公開情報の有無が比較結果・拒否理由・Traceから漏れないかを既存開示Ownerで検証します。[#2497の§14](https://github.com/hat47x/tei-platform/blob/docs/data-structure-meta-facets-20261101/plan/design/STRUCTURE_PRESERVING_TRANSFORMATIONS_AND_PROJECTIONS_2026-11.md)と[#2501のPC-133〜144](https://github.com/hat47x/tei-platform/blob/docs/data-structure-meta-facets-20261101/plan/design/DATA_STRUCTURE_PRESSURE_CORPUS_2026-11.md)へ整理し、実Consumer横断は#2516 W8、SHO文書はSHO #4/#6、数値忠実度は#2585、情報開示は#1178へ帰属させます。追加反例は設計段階で、実SHO/OS/AI/GUI試験やOwner受理は未実施です。
+
+**Functionの依存閉包・物理Read・開示・Effect対象束縛**は別々の受入義務として扱います。表示用Data Mappingだけでは非表示Validation/Rule入力を閉じられず、同じ公開JSONでも実ProviderのOverfetch有無は判定できません。Rowset completeとField observed、宣言したallと実際の取得完了、表示対象と実Request/Effect対象、公開回答と秘密Action候補の開示可否を区別します。[#2497の§17](https://github.com/hat47x/tei-platform/blob/docs/data-structure-meta-facets-20261101/plan/design/STRUCTURE_PRESERVING_TRANSFORMATIONS_AND_PROJECTIONS_2026-11.md)へDC-01〜08を整理し、既存Corpus PC-157〜168と重複起票しません。Rule/Mappingは#2624、Provider実Readは#2628/#2622、Contextは#2506、View→実Requestは#2598、外部開示は#2516、Authoringは#2621のOwnerを維持します。隔離合成試験のPASSを実Provider/Host/OS/AIのE2Eや業務意味受理へ昇格させません。
+
+**SQL→Data Operatorの意味保存と複数Function編集の合成不変条件**を、別々の実証義務として追加します。SQLのJOIN/EXISTS、NOT IN/NOT EXISTS、LEFT JOIN、NULL三値論理、Bag多重度、DISTINCT、Filter/Sort/LIMIT順序、平均の再構成は、構文や表示値が一致しても一般に意味同等とは限りません。SQL正本とTarget条件を保持し、候補Data Operatorを独立Oracle・実Providerで検証します。また、複数Functionの個別保存成功は並行実行後の業務不変条件を保証しません。Editing Session、Read Predicate、実Transaction境界、Commit不明、Effect Lookup、独立read-backを区別します。[#2497 §18](https://github.com/hat47x/tei-platform/blob/docs/data-structure-meta-facets-20261101/plan/design/STRUCTURE_PRESERVING_TRANSFORMATIONS_AND_PROJECTIONS_2026-11.md)と[#2501 PC-169〜180](https://github.com/hat47x/tei-platform/blob/docs/data-structure-meta-facets-20261101/plan/design/DATA_STRUCTURE_PRESSURE_CORPUS_2026-11.md)へ反例を配置し、SQLは#2387/#2622、独立期待は#2514、編集は#2597、実Effectは#1174の既存Ownerへ戻します。隔離SQLite試験のPASSは実TEI/PG/Host/Owner受理を示しません。第二Query Runtime・共通Transaction Coordinator・TEI独自Hostは導入しません。
+
+**空結果の否定依存・選択的再資格化・Product Skillの実利用資格**を分離して検証します。0件のQueryにもWHERE/NOT EXISTS/Relation/Scopeの依存があり、0→1→0の同値観測から途中の変更なしを推定できません。変更影響と現在のConsumer利用資格を別扱いとし、依存証拠のあるClaimのみ選択的再評価を候補とします。さらにSemantic Role、Operation、CLI、Product Skill読込、実Tool呼出し、外部Consumerへの開示、Host Effectを段階別に観測し、Skill説明やCLI存在を実行許可・完了へ昇格させません。[#2497 §19](https://github.com/hat47x/tei-platform/blob/docs/data-structure-meta-facets-20261101/plan/design/STRUCTURE_PRESERVING_TRANSFORMATIONS_AND_PROJECTIONS_2026-11.md)、[#2501 PC-181〜192](https://github.com/hat47x/tei-platform/blob/docs/data-structure-meta-facets-20261101/plan/design/DATA_STRUCTURE_PRESSURE_CORPUS_2026-11.md)へ反例を追加。Change/Queryは#2582/#2387、Consumer資格は#2516、再利用は#2018、Product Skillは#2605/#2619とTAI #271、実Effectは#1174のOwnerを維持します。実Provider/Harness/SHO/Host統合試験は未実施で、新しいNegative Cache/Reactive Engine/独自Hostは設けません。
+
+**Artifact Envelopeの同一性・物理公開一式・実Consumer読取は三つの別資格**として受入を計画します。既存`Artifact.Digest`はContent raw hashではなくKind/InputRevision/Rule/Generator/Content/UnresolvedのEnvelope fingerprintであり、現行`tei artifacts -out`の個別保存byteとManifestだけではEnvelope検証入力を完全復元できません。Content同一でRule/Generator/Unresolvedが変化する負例、Manifest取得中の世代切替、ExpectedMemberの欠落、SHO/Skillの旧版実消費を[#2497 §20](https://github.com/hat47x/tei-platform/blob/docs/data-structure-meta-facets-20261101/plan/design/STRUCTURE_PRESERVING_TRANSFORMATIONS_AND_PROJECTIONS_2026-11.md)のAE-01〜08へ整理しました。Artifact整合は#2482/#2630、公開一式は#2604、SHO/Consumer読取は#2516、Skill消費は#2605へ帰属します。#2633 main統合済みCharacterizationと#2659/#2607 Draftを区別し、別HEADのCI成功を現HEADの証拠にしません。実外部Consumer・障害注入・Owner受理は未実施で、第二Artifact正本や独自Hostは追加しません。
+
+**Data Model正本とQuery二経路、生成アクセス性能の受入**：Table/Field/Key/Relationは直接宣言するData Modelを正本とし、SQL解析由来は候補に留めます。QueryはTEI QueryとNative SQLを第一級の別Authoring経路とし、AI変換は元SQLを保持した意味比較候補です。通常の取得はFunction Data ContextにTarget/Relation path/Field/Predicate/Scopeを明示し、複雑集計・方言固有処理ではNative SQLを維持します。生成アクセスのN+1、JOIN fanout、Read Scope、Query count、p50/p95を実Providerで測定し、静的に証明できる契約の重複ランタイム検証は前提・失効条件付きで省略候補とします。ただし実行時Grant、外部Input、Provider部分取得、Transaction/Effectの境界検証は省略しません。[#2497 §21](https://github.com/hat47x/tei-platform/blob/docs/data-structure-meta-facets-20261101/plan/design/STRUCTURE_PRESERVING_TRANSFORMATIONS_AND_PROJECTIONS_2026-11.md)のDM-01〜10は設計票でNOT RUN。既存#1126/#1129/#2387/#2622/#2624/#2628/#2018/#1174へ帰属し、第二Data Model正本・新SQL Runtime・TEI独自Hostを設けません。
+
+### 外部要件を先に受け止める（要求・構造の机上評価）
+
+CUIやGUIの実装に入る前に、**データ構造、意味上の識別・型・値域・関係・制約、操作・状態・副作用、プラグインの契約・合成・ライフサイクル、Target/Hostとの境界**など、後戻りの費用が大きい基本構造を十分に検討します。
+
+成熟した参照設計が示す豊かなデータ・機能・業務モデルと、一般的な業務製品・サービス・オープンソース実装等の多様な外部要件を、単なる機能名称の一覧ではなく、具体的な利用シナリオ・制約・組合せ・失敗条件として収集します。一製品の実装方式をそのままTEIの中核に固定せず、外部要件をTEIの共通概念、拡張可能な意味モデル、標準／固有プラグイン、外部実装のどこで受け止めるかを比較します。
+
+対象となる外部要件集合について、**全件の対応先と残余を追跡可能にする**机上適合表を用意します。最低限、要件と出典、期待する振る舞い、TEIでの表現・実現経路、複合条件、失われる意味、未解決点、反例・検証方法、判断状態を対応付けます。「全要件を受け止められる」という判断は、選定・確認した集合と証拠範囲に限ります。資料の欠落や未知の製品仕様まで完全性を推測しません。
+
+基本構造に関わる重要な未解決事項は、契約の固定や汎用化の判断より先に検討します。拡張で表現できること、実行できること、互換性を実証できたことは別々に記録します。既存の[参照モデル移植時の不足分類](design/REFERENCE_PORT_IMPLEMENTABILITY_GAP_TRIAGE_2026-10.md)、[技術検証用サンプル](design/TECH_VALIDATION_SAMPLES_2026-10.md)、[設計原則](../product/principles/TEI_PRODUCT_PRINCIPLES.md)を再利用し、要件や判定の第二正本を作りません。外部資料の権利・公開範囲も既存の規則を維持します。
+
+### 基盤を先行実装する
+
+机上評価で得た構造上の判断を踏まえ、Canonicalな意味、Source/ID/Trace、型・関係・制約、プラグインの発見・契約・合成・Binding、検証・生成・実行との接続など、**各種製品機能が共有する最小限の基盤**を優先します。個別製品の機能に合わせた中核要素の追加や、X-TEA固有の技術構造への固定は避けます。
+
+机上評価は設計上の適合可能性の確認です。実装の成立、複合要件、性能、実Provider・実Hostでの振る舞いは、後続の実験で独立に確かめます。基盤全体の完成を待つのでなく、標準プラグインとCUIに接続できる最小の縦切りから実装を進めます。
+
+### 生成AI向けCUIと標準プラグインを並行開発する
+
+生成AIが通常のコーディングと同等以下の探索・判断負担で実装できることを、操作系の強い要件とします。**CLIを基本の開発入口**とし、通常のファイル／DSL／SQL直接参照・編集、Git、必要に応じたDB直接参照・独立検証を第一級の経路として維持します。生成AIが機能・定義位置・実装方法・必要な検証を自力で発見できる、版付きの機械可読な診断・操作契約を整備します。開発者向けMCPは必須とせず、利用者向けMCPやComputer Useは目的に応じたAdapterとして評価します。
+
+基盤の最小接続部が成立した段階から、**CUIと標準プラグインを並行して開発**します。プラグインの契約だけを先に完成扱いにせず、CLIから定義・選択・合成・実行・観測まで接続し、標準機能の実用性と基盤の抽象化の妥当性を相互に検証します。標準プラグインが中核の特権的な別経路にならないことも確かめます。
+
+### ヘッドレス一気通貫を基準にする
+
+各縦切りでは、**要件／Source → モデルの作成・変更 → Validation → Plugin/Binding解決 → 生成または意味シミュレーション → 実行 → 独立した結果観測**を、CUIで追える形にします。正例だけでなく、不適合、権限拒否、未対応、競合、部分成功、結果不明などの負例を対象に含めます。
+
+同じrevision・fixture・Contract・生成物・実行条件を追跡し、机上の表現可能性、合成試験のPASS、実DB効果、実Hostでの成立、Ownerの意味受理を混同しません。既存のScenario、Driver、Source Index、Evidence、Gateを再利用します。生成AIが試作・修正・検証を自律反復できるようにしながら、正式な意味受理、権限付与、本番配備などの判断は[AGENTS.md](../AGENTS.md)の責任境界に従います。
+
+### 人間向けGUIはヘッドレスの実証後に構築する
+
+Web／Desktopの編集画面や利用者向けGUIは、対応する機能的な振る舞いがCUIで再現・検証できる基盤を基準として追加します。GUIは同じ型付きOperation・意味・検証経路を利用し、表示・入力・対話・アクセシビリティ等の**GUI固有の差分**を独立して確認します。GUIで初めて現れる要件は、必要に応じて基盤へ還元して検証します。過去に実施したGUIの参照試験や並行する調査は保持しますが、新たな基盤機能の完了条件としてGUI実装を先行させません。
+
 ## 現在の主線
 
-第1版の参照アプリケーション`order_entry`を中心に、現在は次の順で進めます。
+第1版の参照アプリケーション`order_entry`に基づく判定段階と既存の検証レーンは次のとおりです。**新規開発の基本順序は上記のAI-first・要件先行方針**に従います。
 
 ```text
 Product Value / Requirements
@@ -312,6 +378,18 @@ AIによる提案には、意味の正本を変更する権限はありません
 
 AIの自律的な作業と実行権限を区別します。AIがツールを直接呼び出せることを、能力や利用許可の仕組みの代わりにはしません。
 
+### AI Proposalの入力・検証・受理・Host境界（2026-11-06横断追補）
+
+[ADR-0022](adr/0022-ai-proposal-canonical-acceptance-boundary.md)と[#267](https://github.com/hat47x/tei-platform/issues/267)の**Shared Acceptance**を唯一の正式なSource変更経路として維持し、AI専用の書込み・受理・Provider直結経路を追加しません。[ADR-0030](adr/0030-context-scoped-epistemic-knowledge.md)／#958の由来・確認履歴・用途相対資格を、生成AI向け入力にも適用します。具体的な最小横断仕様・UI状態・AIB-01〜12の負例は[AI-first設計§5.4](design/AI_FIRST_REQUIREMENT_PRESSURE_AND_HEADLESS_VERIFICATION_2026-11.md)へ一本化します。
+
+- **Inputの現在性と外部送信**：Source ID/実消費byte/Revision/fingerprint/span、Semantic/Operator Lock、依存閉包、purpose/Principal、Allowed *proposal/read* capability、開示範囲を別々に固定します。宣言Input＝実Load/Parse済みではなく、内部read-only＝外部LLMへの送出許可でもありません。Source本文・Tool結果に埋め込まれた命令はAuthorityではありません。
+- **Candidateと検証**：Candidate/Attempt/base revision、Typed Diff、根拠Source span/意味対象、前提/未解決を保持。構文/型/参照と、引用の意味妥当性、Source鮮度/完全性、Rule衝突を別判定します。欠落・部分取得・曖昧・矛盾は保留し、再生成・A→B→Aでも旧Reviewを自動継承しません。
+- **受理とEffect**：人によるReview/Owner意味受理→Source反映→reload/Conformance→型付きAction Intent候補→外部Hostの現在Grant/Target確認→実Provider Effect/Receipt/独立readを段階別に検収します。受理済み意味は現在の実行許可を保証せず、Commit応答不明では無確認再試行を行いません。
+- **Owner分担・優先順**：#988＝構文/Operator、#2619＝意味Role、#2622＝Data Operations、#267＝Shared Acceptance、#958＝認識状態、#2515/#2516＝Disclosure、#1180/#2514＝Scenario/独立Oracle、#2598/#1174＝実Target/Effect。P0固定CandidateのHeadless負例→P1独立Oracle/既知Mutant→P2実Consumer/外部送信・二世界非干渉→P3実Host/Receipt→P4実AI生成品質の順とし、低レベル試験のPASSを製品統合へ合算しません。
+
+**状態**：設計と計画の接続のみ。AIB-01〜12、実AI入力/生成精度、OS・外部LLM送信、実Provider/Host、Studio/SHO、Owner正式受理の新しい横断E2Eは**NOT RUN**。新Schema・Core enum・Acceptance Engine・Policy Engine・TEI独自Hostの採用決定ではありません。
+
+
 ## 作業領域I：周辺技術との連携と本番運用の境界
 
 ### 目的
@@ -434,7 +512,7 @@ external LLM
 1. （完了、2026-09-19）判定段階Bの最終的な実環境での検証根拠を、同じ版（R = `e5231839`）についてそろえた
 2. （完了、2026-09-19）引継ぎの基準`B`と対象版`R`を固定した
 3. （完了、2026-09-19）最初のWeb向け実行先をビルド版`T1`（T = `0ba87a4e`）として実装し、判定段階Cの検証根拠を得て`Ready`と判定した
-4. 判定段階Cの`Ready`後に並行する作業（現在地。各課題の状態は、その課題の`状態`欄を正本とする）
+4. 判定段階Cの`Ready`後に継続する既存の検証レーン（現在地。新規実装は上記の外部要件机上評価→基盤→CUI・標準プラグイン並行→ヘッドレス一気通貫→GUIの順序を優先する。各課題の状態は、その課題の`状態`欄を正本とする）
    - `ISSUE-000046`：編集環境での最小限の記述・変更・受理の流れ
    - `ISSUE-000047`：既存知識を優先する意味情報の探索。厳密・決定的な方法を基本とし、必要に応じて軽量な認知機構からモデルへ段階的に進む
    - `ISSUE-000027`：AIによる提案と受理。手段によらず最小限の意味変更を共通の受理境界で扱う
