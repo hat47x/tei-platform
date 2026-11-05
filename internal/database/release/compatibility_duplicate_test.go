@@ -67,11 +67,11 @@ func TestMG29RejectsDuplicateDatabaseSnapshotsRegardlessOfOrder(t *testing.T) {
 func TestMG29RejectsDuplicateProvidedContractsRegardlessOfOrder(t *testing.T) {
 	app := mg29Application(5)
 	oldContract := release.ProvidedContract{
-		ID: core.MustCanonicalID("sales_core.order"),
+		ID:      core.MustCanonicalID("sales_core.order"),
 		Version: database.ContractVersion{Major: 4},
 	}
 	newContract := release.ProvidedContract{
-		ID: core.MustCanonicalID("sales_core.order"),
+		ID:      core.MustCanonicalID("sales_core.order"),
 		Version: database.ContractVersion{Major: 5},
 	}
 	for _, tc := range []struct {
@@ -109,11 +109,11 @@ func TestMG29DuplicateDatabaseDoesNotCorruptOtherDatabaseCheck(t *testing.T) {
 		}},
 	})
 	master := release.StateSnapshot{
-		Database: core.MustCanonicalID("master_data"),
-		Source: release.StateFromRelease,
+		Database:      core.MustCanonicalID("master_data"),
+		Source:        release.StateFromRelease,
 		DataReadiness: release.DataReady,
 		Provides: []release.ProvidedContract{{
-			ID: core.MustCanonicalID("master_data.customer"),
+			ID:      core.MustCanonicalID("master_data.customer"),
 			Version: database.ContractVersion{Major: 2},
 		}},
 	}
