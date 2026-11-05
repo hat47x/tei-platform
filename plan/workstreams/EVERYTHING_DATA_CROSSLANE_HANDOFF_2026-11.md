@@ -2793,3 +2793,31 @@ HEAD `e0cfebf14d40db81bdef77d6c3e4898ed75d999f`に対する[GitHub Actions #4203
 **導入最小単位**：既存Scenarioの必要なObligationごとに、Required／Expected独立出典／Observed＋Head＋Attempt／negative control／pass・fail・unknown・not-run・not-applicable／Claim ceilingを**既存Reportへの派生参照**で埋める。CallerがPeriod Guardを省略したのに残りのPreconditionが成功した場合は、「実行成功」でも**要求GuardのCoverageが未充足**。同様にFile Bodyが受信されてもBusiness Acceptanceは未証明、Graphに辺が無くても実Builderの未宣言step不存在は未証明と扱う。
 
 **Gate変更なし**：優先するのは公開Product Skillの実4Sessionと、#1119 G1/G2の最短一業務Loop、#2831 G4実Self-Buildを独立P0で並走する従来順。DB2系統・Studio UI・ETL本番配送をG1/G2のHard dependencyへ昇格しない。**この追補はDocs-onlyで、新しいScenario/Provider実Go E2E・ETL二Consumer/Target Build・正式Owner受理はNOT RUN**。
+
+## 53. 組織Caseの無人Action：必須前提の網羅、途中効果、実Receiptを分離（2026-11-06、#2882/#2889を#1130/#1174へ最小接続）
+
+### 53.1 部品の実証と縦断の不足
+
+- [統合済み #2882](https://github.com/hat47x/tei-platform/pull/2882)は実`.tei`のPeriod/EffectRule→Operation Surface→RunPlanでclosed/open/unobservable effectの3条件を実Goで検証した。前提の**内容に対する判定**が可能になったが、**必要な全条件の網羅性**は自動保証しない。
+- [独立Draft #2889](https://github.com/hat47x/tei-platform/pull/2889)は`internal/execution`で組織Caseを想定する3つの**toy Step/Journal負例**を追加した。固定HEAD `e671aa41a8b7fd40de8602595e98ebf624043371`の[Actions #42100472921](https://github.com/hat47x/tei-platform/actions/runs/42100472921)は**completed/success**（Go 1.26.10/Linux、OC-RP 3/3 PASS、exact HEAD/clean）。**実DB・CaseRecord`.tei`接続・現行Host Grant・実Receiptは未実証**。
+- [統合済み #2869](https://github.com/hat47x/tei-platform/pull/2869)のProvider atomicity`Guarantee`監査は、宣言未提出/仮宣言を`INCOMPLETE`として検出するが、`atomic-with-commit`はProviderの**自己申告**。本物のTransaction/Effectを証明しない。
+- [統合済み #2870](https://github.com/hat47x/tei-platform/pull/2870)はin-memory Command Lifecycleのunknown段階が再起動で失われること、別PostgreSQL Testで**同じidempotency keyの再適用だけ**がReceiptにより抑制されることを確認した。新Key/ABA/旧Grant/Owner再試行規則を自動承認する証拠ではない。
+
+組織側の[実E1 #2681](https://github.com/hat47x/tei-platform/pull/2681)は`CaseRecord→OrgUnit`の構造上のRelationを扱うが、**そのCaseを読み取った／実行Hostが移管を許した／RunPlanが実DBへ更新した**わけではない。これらは違うHEAD・Source・Function・実環境の成果であり、合算した「組織E4」を記録しない。
+
+### 53.2 必須条件の宣言・実施・結果を三列で照合する
+
+**前提条件の「全部」を定義する権限はBusiness/Operation Ownerと現在のHost契約が持つ。**`CombinePreconditions`は渡された関数を合成するだけであり、Ownerが必要としたチェックが欠けていても検出しない。新Core Precondition Enumや全域Registryを追加せず、同一Operation/Requestに対する**Owner-accepted required set／supplied check set／observed verification**の三列を既存受入票で比較する。
+
+| 実証Slice | Owner-accepted required set（採用前の例） | 実行・観測の停止条件 |
+| --- | --- | --- |
+| **E2 Case Read** | Case/Relation Occurrence、Source/Role/Meaning、明示Data Context、Row/Field/Cohort、組織Scope/現在Read Grant | 未受理のOrg Relation/partial Result/Provider施行点未確認ならRead不合格（#2586/#2622/#2628） |
+| **E4 Case Transfer Admission** | C1 Target/expected version、Org Policy・valid/known、現在Principal/Host Update Grant、Period Rule、EffectRule、必要Observer、Provider atomicity資格 | 一つのcheck成功でも分母不明・Current Grant/Version欠落なら`unverified`/実行拒否（#2386/#2598/#1130） |
+| **E4 Runtime/Recovery** | Operation ID、RunKey/Attempt/owner-gen、Idempotency Key、Commit/Unknown、Durable Provider Receipt、独立Post-image、部分Effect/補償条件 | RunPlan completed≠Commit、Observer present≠observed、blocked≠Effect 0、再起動後in-memory state≠durable fence（#2564/#1174） |
+| **Consumer and AI** | 対象Scope・現在Read/Disclosure資格、Source引用・Policy/Grant版、AI Candidate受理・Host Action選択を分離 | AI提案→Provider実行の直結、非許可Recordの件数/Export漏れ、旧Response再採用は拒否（#988/#2619/#2516/#2582） |
+
+### 53.3 次に進める一固定Attempt（新プロジェクトではない）
+
+同じ`CaseRecord` C1と`handlingUnit`に対し、(1) 実Workspace/Function ContextがSource/Meaning/Roleを固定、(2) 実ProviderがCase/Org RelationをReadしてRow/Field/Scope/Read Cohortを独立期待値で確認、(3) Owner受理済み移管IntentとHost Current Grant/Expected Versionを確認、(4) 既存RunPlanに**必須Precondition Coverage**が提供されたことを固定、(5) 既存Command/ProviderでCommit、unknown/partial/ABA/restartの反例を記録し、(6) Effect Receiptと別経路Readで結果を照合する。**最初は(1)〜(2)のE2 Readだけに限定し、実入口が無いときは`NOT RUN: provider-read-unavailable`。**ここへPluginの追加や第二Query/RunPlan/Hostを持ち込まない。
+
+**境界**：#2889のGo3/3はRunnerの負例のみ。`RunPlan`の前提網羅を自動化したことやDB/Hostの安全性を保証しない。既存#1119 P0-a/P0-bと#2586 E2 Readを優先し、実PostgreSQL更新済み別業務Functionの成功をOrg Caseの実移管としては記入しない。今回の§53は**実コード・固定CIに基づく計画への引継ぎ**で、実Case DB・Host・Studio/SHO/AI・業務Owner正式受理はNOT RUN。
