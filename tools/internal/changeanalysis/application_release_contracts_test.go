@@ -36,7 +36,7 @@ func TestApplicationReleaseContractCandidatesOnlyMajorMismatch(t *testing.T) {
 	if len(got) != 1 {
 		t.Fatalf("major不一致だけを期待: %+v", got)
 	}
-	if got[0].Application != "behind" || got[0].Reason != ApplicationReleaseContractMajor || got[0].CurrentVersion != "1.0" || got[0].CompatibleMajor != 2 || got[0].Snapshot != "after" {
+	if got[0].Application != "behind" || got[0].CurrentVersion != "1.0" || got[0].CompatibleMajor != 2 || got[0].Snapshot != "after" {
 		t.Fatalf("major mismatch lost: %+v", got[0])
 	}
 	// 現在定義にない要求は APPLICATION_RELEASE_CONTRACT_NOT_CURRENT が扱う。

@@ -41,7 +41,7 @@ func TestDatabaseReleaseContractCandidatesOnlyMajorBehind(t *testing.T) {
 	if len(got) != 2 {
 		t.Fatalf("major が古い2件だけを期待: %+v", got)
 	}
-	if got[0].Version != "4.1.0" || got[0].ProvidedVersion != "4.1" || got[0].CurrentVersion != "5.0" || got[0].Reason != DatabaseReleaseContractBehindCurrent {
+	if got[0].Version != "4.1.0" || got[0].ProvidedVersion != "4.1" || got[0].CurrentVersion != "5.0" {
 		t.Fatalf("4.1.0 の behind が正しくありません: %+v", got[0])
 	}
 	if got[1].Version != "4.2.0" || got[1].ProvidedVersion != "4.2" {

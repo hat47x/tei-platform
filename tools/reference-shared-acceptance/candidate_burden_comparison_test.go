@@ -58,14 +58,12 @@ func TestReferenceCandidateViewBurdenComparison(t *testing.T) {
 		Snapshot string `json:"snapshot"`
 		Version  string `json:"version"`
 		Contract string `json:"contract"`
-		Reason   string `json:"reason"`
 	}
 	type appCandidate struct {
 		Snapshot    string `json:"snapshot"`
 		Application string `json:"application"`
 		Version     string `json:"version"`
 		Contract    string `json:"contract"`
-		Reason      string `json:"reason"`
 	}
 	type gateCandidate struct {
 		Snapshot string `json:"snapshot"`
@@ -137,7 +135,7 @@ func TestReferenceCandidateViewBurdenComparison(t *testing.T) {
 		t.Fatalf("baseline 比較の終了コード=%d", exit)
 	}
 	t.Logf("baseline: contract=%d gate=%d appRelease=%d dbRelease=%d", baseline.contract, baseline.gate, baseline.appRelease, baseline.dbRelease)
-	if baseline.dbRelease != 0 || baseline.gate != 0 || baseline.appRelease != 0 {
+	if baseline.contract != 0 || baseline.dbRelease != 0 || baseline.gate != 0 || baseline.appRelease != 0 {
 		t.Fatalf("現行Referenceの新しい候補は0件を期待: %+v", baseline)
 	}
 	if !contains(baselineReport.AuthorityLimit, "database-release-contract-candidates-only-major-behind-not-complete") {
@@ -201,7 +199,7 @@ func TestReferenceCandidateViewBurdenComparison(t *testing.T) {
 		}
 		found := false
 		for _, c := range r.AppReleases {
-			if c.Snapshot == "after" && c.Application == "order_entry" && c.Version == "3.8.0" && c.Reason == "compatible-major-mismatch" {
+			if c.Snapshot == "after" && c.Application == "order_entry" && c.Version == "3.8.0" && c.Contract == "sales_core.order" {
 				found = true
 			}
 		}

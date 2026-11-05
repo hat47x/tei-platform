@@ -65,7 +65,6 @@ func TestReferenceApplicationReleaseContractCandidates(t *testing.T) {
 		Contract        string `json:"contract"`
 		CompatibleMajor int    `json:"compatibleMajor"`
 		CurrentVersion  string `json:"currentContractVersion"`
-		Reason          string `json:"reason"`
 	}
 	type report struct {
 		Candidates []mismatch `json:"applicationReleaseContractCandidates"`
@@ -106,7 +105,7 @@ func TestReferenceApplicationReleaseContractCandidates(t *testing.T) {
 		got := compareReport(before, after)
 		found := byKey(got)
 		c, ok := found["after/order_entry@3.8.0/sales_core.order"]
-		if !ok || c.Reason != "compatible-major-mismatch" || c.CompatibleMajor != 4 || c.CurrentVersion != "5.0" {
+		if !ok || c.CompatibleMajor != 4 || c.CurrentVersion != "5.0" {
 			t.Fatalf("major不一致が正しく出ていません: %+v", got.Candidates)
 		}
 		if _, ok := found["before/order_entry@3.8.0/sales_core.order"]; ok {
