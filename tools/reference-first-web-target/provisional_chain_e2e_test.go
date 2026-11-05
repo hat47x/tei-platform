@@ -714,6 +714,9 @@ func TestProvisionalChainOneRevisionE2EPacket(t *testing.T) {
 	}
 	// The Provider's provisional D10 declaration is diagnosed too; its level is
 	// atomic-with-commit, so it is not reported as non-atomic.
+	if has["E2_ACCEPTANCE_KIND_REQUIRED"] {
+		t.Errorf("the packet names the Acceptance kind read from the Store: %v", report.Diagnostics)
+	}
 	if has["E2_PROVIDER_GUARANTEE_NOT_ATOMIC"] {
 		t.Errorf("the Runner Evidence declared atomic-with-commit: %v", report.Diagnostics)
 	}

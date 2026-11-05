@@ -181,7 +181,13 @@ func Audit(p Packet, expectedHead, expectedMain string) Report {
 	// Provenance so formatting or an alias cannot hide it. A packet that omits
 	// the field is unchanged (legacy shape). Any other label, including a
 	// self-declared "formal", is unrecognized: the Store refuses "formal" too and
-	// no path issues a formal Acceptance yet.
+	// no path issues a formal Acceptance yet. An E2 claim must NAME the kind
+	// (like the Provenance and the Guarantee): omitting it, or leaving only
+	// blank/zero-width characters, would otherwise dodge the provisional
+	// diagnosis. E0/E1 keep the legacy shape. The kind stays a self-declaration.
+	if p.Claim == "E2" && normalizedProvenance(p.Acceptance.AcceptanceKind) == "" {
+		add("E2_ACCEPTANCE_KIND_REQUIRED")
+	}
 	switch kind := normalizedProvenance(p.Acceptance.AcceptanceKind); {
 	case p.Acceptance.AcceptanceKind == "":
 	case kind == "provisional" || kind == "unspecified":
