@@ -108,3 +108,56 @@ E0/E1/E2の証拠は他のE3〜E6の実行許可ではない。各段の**同一
 **具体的な負例**：同じSource/Ruleで別AttemptのKを借りる、同じOperationIDを別Tenantで使う、旧Driverの表示成功とTEIの実DB Commitを同一試行と呼ぶ、EKIのResult Bodyが次のAttemptから届く、A→B→AのSource byte一致で観測期間の連続性を宣言する。これらは同じScenarioに属していても、因果接合できない限りProduct PASSにしない。
 
 受入票の物理構造は既存#1163/#2514の成果に委ね、本節で新たな共通Evidence Schema/APIを採用しない。
+
+## 8. 11/5次課題：移植ゲートの現況を実Source／CI／実DB／Windows／Owner別に再資格化
+
+照合基点：2026-11-06 JST取得のmain `8aa18ca150f8689e9875d2e0319fb20e704086f5`。**本節は前節の古い「実PG未実行」の一般文言を、個別試験が存在する現況へ更新するための追補**であり、§1〜7のP/A/E・PA反例や既存#1119 G0〜G4のGateを変更しない。mainの新しい証拠と、本Draftの将来採用を別扱いする。
+
+### 8.1 証拠資格（実装 ≠ PR ≠ CI ≠ 実DB ≠ 旧Windows ≠ 意味受理）
+
+| 該当 Claim | mainの実装または既存成果 | 試験・CIで独立確認できたこと | 未了・昇格禁止 |
+| --- | --- | --- | --- |
+| **Data／Source→Function／Business** | #950 Source Adapter、#1031 CrossView、#1126意味モデルの候補、`reference/workspace/applications/order-entry/realizations/submit-order.tei`（`realize sales.order.submit with custom go`） | 固定Sourceのread-only構造・公開集計の局所証拠 | 原典Script/Hookの実発火、XEAD↔XEAF Role対応・正式Meaning・Functionへの同一受理帰属は未検収。Sourceのpresence/typed path/Business目的の混同は禁止 |
+| **Source declared→actually consumed** | main既存Workspace loader/CLI、#2822「宣言0件でもvalidate ok」・#2823「source一覧≠実読込」・#2824 Discovery契約差の実現状 | 実Source読込のないvalidate結果が成功し得るという再現票 | `validate ok`、std catalog 13件、Workspace-files列挙、WorldFPだけで「業務Ruleが評価入力へ入った」と判定禁止。必須Sourceの実Index/Parse/Rule bind/実Consumptionを同版で確認 |
+| **Online保存前・Rule／EmptyPolicy** | #1129/ #2622、[merged #2849](https://github.com/hat47x/tei-platform/pull/2849)でAction宣言`emptyPolicy`をParser/Semanticへ実装 | #2857暫定E2Eのunit_price 0：実Rule拒否・Runner未到達・Effect 0を試験観測。#2849の構文/意味試験 | `emptyPolicy`の宣言が`CompletionClaim(TargetSet L, EmptyPolicy, Predicate P)`へ実評価接続済みとは言えない。未保存Patch、全子集合、非表示Guard、同Txの最終postimage、二Function共通Ruleは別要検証 |
+| **Command／実PG／Receipt** | [merged #2853](https://github.com/hat47x/tei-platform/pull/2853)の製品Invoker→`commandadapter`→`effectcommit.Runner`→実PG、[merged #2859](https://github.com/hat47x/tei-platform/pull/2859)のRunner Store startup schema check | [#2853 実PG CI](https://github.com/hat47x/tei-platform/actions/runs/41858621216)と[#2859 Runner実PG CI](https://github.com/hat47x/tei-platform/actions/runs/41929846644)はexact head `completed/success`。CAS conflict、模擬ACK loss→Unknown、同OperationID再照会、S02 startup gate等の限定試験名をログで確認 | 本番Grant/Period/Target・真正業務Rule・実Web起動経路のS02 startup拒否・全Owner効果/補償・ネットワーク／プロセス故障は別。Adapterは`committed/replayed`を空Resultへ写すため、外向きResult成功だけで新規Writeを認定しない |
+| **一改訂Web→別読取** | [merged #2857](https://github.com/hat47x/tei-platform/pull/2857)のprovisional D8〜D11・実PG Web E2E | 実Web child・Order1001更新と別OSプロセスread・Receipt 1、S05拒否／N11 commit後Observation障害を試験観測。[Repository Health #41928122125](https://github.com/hat47x/tei-platform/actions/runs/41928122125) PASS | 出力監査`INCOMPLETE / productGate=UNQUALIFIED`。provisional Grant/Acceptanceは正式Owner/Host受理ではない。最新mainの全機構をこの過去の同一E2Eで再実行した証拠ではない |
+| **再起動／別Key／ABA** | [merged #2870](https://github.com/hat47x/tei-platform/pull/2870)と[merged #2854](https://github.com/hat47x/tei-platform/pull/2854) | 実PG限定：再起動後のmemory Lifecycle unknownが消える。同keyはProvider Receiptで二重適用を回避。別key＋A→B→Aで再適用・Receipt 2件を再現 | 永続Owner/Fence、同Business Operationの別key重複防止、正式自動retryは未受理・未実装。unknownから任意新keyでre-submit禁止 |
+| **旧Windows X-TEA** | #940 XD-01〜04、XF310-D01 H1〜H5a/H5bの固定受入票。JAR/sourceはディスク上の指紋記録あり | Windows Computer Useの2026-11-03再試行では初期化`-32602`でapp list前に停止 | 実ロードJAR／GUI／SQL／Tx／別接続DB／Windows実Driver観測は**NOT RUN**。Linux/Go実PGの合格を旧Driver互換証拠へ転用禁止 |
+| **業務完了／公開** | #1125 Business Procedure、#267 Owner Decision、#2514 Oracle、#2516 Consumer、#1163 Packet。#2671や本#2783は**未統合** | 合成Rule／SQLiteの局所対照とPR単独Healthはある | 同じ受入Scenarioで原典実動→TEI実際の書込み→Owner完了→実Reader受領の全辺は未検収。G1/G2をPASSへ変更しない |
+
+### 8.2 既存`order_entry.submit_order`を使う次の一個の実行Slice
+
+**Scenario VS-RMT-01**（ケース番号は本計画の引用名であり、新テスト基盤ではない）。**同じScenarioに属するLegacy Attempt、TEI Attempt、Consumer Readを独立識別**する（§7）。合成業務Fixtureで開始し、原典固有のSourceは公開しない。最初の実TEI結合では**一Provider、一Tx、一つのOrder、明細二行、同一Data Ruleを参照する二入口**を対象とする。入口は標準Functionとheadless API Functionを想定するが、両入口が既存実装で同じRule ID／Revisionを実消費できると確認できない場合はその不足を記録して停める。無理に二重IF実装しない。
+
+1. **Source/Interpretation**：#950/#1031の元Source bytes＋locator（private）→実Workspace manifestの必須Source list→`Parsed/Resolved`→本番候補のFunction Data Context/Ruleが実消費したSource Index/Meaning Revision。実読込の観測が無ければ、合成TEIケースでも`Source binding unqualified`。
+2. **Independent Expected／Owner**：固定したScenario／Business Key（Tenantを含む複合Keyなら型と全member）／物理PKとの対応／Action Purpose／明細全集合L、空集合Policy、許容status移行、業務拒否／無作用／最終Owner postimageを、Candidate実装の計算結果と独立に記す。原典旧Driver未実行なら**P=unobserved**、TEIのAだけ検証可能。
+3. **Before-write／Context**：保存済みHeader/Linesに未保存Patchを適用した**提出予定後状態**を同じ対象Scopeで評価。数量/単価正値・必須全明細・隠れたHold/Status/Relation Role・欠落/NULL/未開示・部分Pageを識別する。全称成立には完全なL、ただし所属確定済み違反一件による反証は可能。Rule Previewや`validate ok`は実Command前資格ではない。
+4. **Owner Action→Request**：2入口のFunctionは同一受理済みRuleを参照する。選択Order1001/Purpose=submit、Headerと全子集合、入力Payload、Grant Resource/Period、Provider Target、ExpectedVersion、OperationID、Byte-identical Requestを束縛。**反例：Validation O1・Payload O2、別Tenant同OrderNo、未保存Line変更後Header CAS同一**。合法な派生書込みはOwnerが宣言したRelation/Roleを使い、単純ID一致規則を強制しない（#2598）。
+5. **実Effect/Receipt**：#2853の製品Invoker/Runner + #2859 schema precheckを既存#2857 Web入口と同じ**実バイナリ、Source R1、Provider/DB、Principal、Attempt**で再実行。最初に正常→拒否→Conflict→実行時S05/S02→Commit uncertainの順。Owner側書込みが二つあれば、両方が同じTx内の参加者か、分離Txの明示部分成功かを確認。**同Tx内で後続更新が先のValidation結果を破る場合**の最終Invariantを独立検査し、最終postimageをOwner判断から省かない。
+6. **Recovery/独立Read**：Receipt K、status/version、関連Owner行、他Order非更新を**別接続**で実測。N11ではKが確定していても独立Observer障害ならV/Oは未確定であり、業務完了Bに昇格させない。模擬ACK-loss→`unknown`は同じOperationID・同じ不変RequestでLookupを試し、Read/Lookup障害なら`not-recorded`に倒さない。実Network cut／Process kill／ABA別keyは独立負例として未実証を残す。
+7. **Business Procedure／Consumer**：#1125のManual/External Step、Role≠Authority Role、Completion`(L, E, P)`を確認。Owner受理、観測対象Lのcomplete read／negative dependency、Current Grant、実Consumerが受領したbytesとManifest/Artifact Revisionを別判断。Client/SHOに`completed`と表示してもK/O/Bの証明ではない。
+
+### 8.3 失敗時の最小独立Expectedと停止・回復
+
+| Case（既存E0〜E6欄に記録） | 期待する技術結果／独立観測 | 停止／自動回復を許さない条件 |
+| --- | --- | --- |
+| **R0 明示Source欠落／実読込なし** | `validate ok`でも必要業務Rule不在を発見。実Consumed Inputs=不足、E0はunknown | Sourceを補う前にProduct Qualification/Effectへ進まない。#2822/23にLoader診断を委譲 |
+| **R1 preflight拒否** | 未保存Patch反映後の量化Rule違反／Current Grant/Target不一致ならProvider Write=0、Receipt新規0、別Read不変 | Validation false、missing/unknown、denied、technical failureを単一Resultにしない |
+| **R2 in-Tx後続変化／rollback** | Validation PASS後のconsequenceで最終Invariant破れ。必要なら同Tx rollback→別接続で双方Effect 0・Receipt 0 | rollback API呼出し・errorだけでDB未作用を断定不可。rollback結果不明は観測資格保留 |
+| **R3 Commit ACK消失** | Providerで実CommitしてもCommandはunknown。実K/別Connection Readで実効果と一Receiptを確認、同OperationID Lookupでreplayed | 自動新OperationIDのSubmit・別Key retry禁止。Receipt/Read unavailable時はunknown保持 |
+| **R4 read-only replay/Lookup終了失敗** | 旧Receiptを読んだ後のTx終了障害ではResult/Lookup失敗と効果再適用の有無を別記録（merged #2680 memory reference） | Lookup errorを`not-recorded`やEffect=0へ変換しない |
+| **R5 ABA／Process restart** | 同key replayはProvider Receipt 1、別key ABAは再作用し得ることを対照。memory Stageの消失を明示 | 永続Owner/Grantと一度限りの業務同一性の正式方針が未決なら自動resume禁止 |
+| **R6 Observer/業務Step欠落** | SQL count>0の対象不一致、RLS/Replica旧Read、Manual Step未完了、Consumer旧ArtifactのいずれかでB/D=unqualified | Kの存在だけで完了済み・配送済みを宣言しない |
+
+**終了分類**：安全な拒否（Effect=0を独立確認）、技術的未作用（Txが確実にrollbackされ独立Readで確認）、Commit済み観測、Commit結果不明（再照会可能／照会不能）、部分Effect、旧Runtime未観測、Owner意味未受理を分ける。これは既存#1119/#1163の証拠欄に記す**判断語**であり、製品に新enum/第二Gateは追加しない。
+
+### 8.4 横断受渡し／Workが必要なWindows実作業
+
+- **#950/#1031/#1126/#2822/#2823**：宣言／実読込／Source→Data/Function/Business CrossView、Business Keyと物理PK・Role粒度。S0は公開Source Factとprivate provenanceだけ。
+- **#1129/#2506/#2586/#2622**：共通Data Rule、二つのFunction Context、未保存Patch/全明細L/非出力依存、Online必須とDeferred Qualityの分離、in-Tx final postimage。DB別SQL選択は別OwnerのDraft #2862で、初回一Providerをブロックしない。
+- **#2598/#1174/#2564/#2146**：Purpose/対象と実Payload・Grant・CAS/Tx/Receipt・unknown/replay/ABA・永続Ownerを既存Runnerへ接合。新Host/Proof Store/Transaction Coordinatorは追加しない。
+- **#1125/#267/#2514/#2516/#1163**：Business Procedure/Manual/Handoff、Owner意味とEmptyPolicy、Expected独立性、実Reader、同一改訂Packet。初回のP0でSHO/EKI、多DB、全Function Pattern、G4 Selfbuildを先行Hard dependencyにしない。
+- **#940 + Windows Work担当**：Computer Use正常初期化→app list／画面読取→実ロードCodeSource・JAR/Java/JDBC/DB版の固定→read-onlyの旧Data/Function/Script/Hook段階観測→隔離された使い捨てDBで正常/拒否/例外/rollback→別ConnectionのH5a（外側Commit後、Session終了前）とH5b（別試行Session終了後）の読取。既存XF310-D01の#940五段階受入票を再利用し、成功ログ・画面表示・正常Session終了を未作用/Commitの代用にしない。2026-11-03までComputer UseがMCP `-32602`でapp list到達前停止、**Windows旧Driver実動はNOT RUN**。GUI制御障害時に破壊的コマンドで迂回せず停止する。
+
+**実装と判断の現在地**：#2853/#2859/#2857の実PG/CIは局所PASSED、#2849 EmptyPolicyは構文・意味に導入済み、#2870/#2854は再試行危険の**実際の反例**。#2783/#2671/#2776などは別HEADのDraft/Openであり、この§8追加をmain統合済みと呼ばない。VS-RMT-01の実同一業務・正式Owner意味・旧Driver比較・Web/Provider/Consumer全接合は**NOT RUN／UNQUALIFIED**。今回は計画改訂のみでGo/PG/Windows/Owner検証を新たに実施していない。
