@@ -1,6 +1,6 @@
 # プラグイン間の依存と入出力の対応付け（方式設計候補）
 
-- **状態**：評価待ち（2026-10-12）。方式設計の候補であり、記述構文、本番の解決器、製品要求を採用したものではない。参照実装と試験はまだない。
+- **状態**：評価待ち（2026-10-12）。方式設計の候補であり、記述構文、本番の解決器、製品要求を採用したものではない。E2の局所参照実装と試験は既に存在するが、正式なContract項目定義への接続と、Accepted意味・実Provider・実Targetを通す縦断検証は未完了。
 - **管理課題**：[#1223](https://github.com/hat47x/tei-platform/issues/1223)。[ADR-0032](../adr/0032-composition-kernel-replacement.md)の移行段階M2「契約中心の依存解決」に入出力の観点を補う。
 - **関連課題**：[#951](https://github.com/hat47x/tei-platform/issues/951)（契約の識別と適合）、[#1016](https://github.com/hat47x/tei-platform/issues/1016)（案件構成）、[#1118](https://github.com/hat47x/tei-platform/issues/1118)（呼出しの実行文脈）、[#988](https://github.com/hat47x/tei-platform/issues/988)（演算子の意味契約）、[#1103](https://github.com/hat47x/tei-platform/issues/1103)（構築専用の依存）、[#1121](https://github.com/hat47x/tei-platform/issues/1121)（段階的な具体化）、[#997](https://github.com/hat47x/tei-platform/issues/997)（UI構成キット）、[#1145](https://github.com/hat47x/tei-platform/issues/1145)（意味契約と通信規約の分離）、[PR #1233](https://github.com/hat47x/tei-platform/pull/1233)（AI向けの最小プラグイン規約）。
 - **役割**：プラグイン間の依存を、起動や実行の前後関係だけでなく、受け渡すデータ項目、パラメータ、値の出どころ、対応付けと変換、多重度、版の変化まで含めて整理する。あわせて、対応付けの情報を検査・追跡・試験・最適化にどう活用するかを示す。
@@ -646,3 +646,20 @@ Source/Authoring Graph → Resolved/Lowered Graph → Targetの実行・観測�
 | ST-09 | 意味を変えずにArtifact/Targetだけ変更 | Build/Conformance再検証と業務意味の再受理を混同しない |
 
 **採用判断・撤回条件**：二Consumerで専門用語を剥がした共通I/O契約が実際に再利用でき、変換の損失・Unknownを人とAIが同じ根拠で確認できた場合だけ標準候補を採用する。既存のSemantic Type/Shape/Contractで十分なら新しいTypeKind/Registryは撤回する。既存#1103/#1121/Graph traceで可視性が足りるなら専用Pipeline Runtime/新Lockを設けない。正式な標準型への昇格、Namespace移行、MeaningのAcceptanceは別途Owner判断を要する。
+
+### 17.6 二つの独立Consumerでの実証を一つの受入票に接続する（2026-11-06、設計候補）
+
+**焦点**：既存の標準データ構造を使った非画面PipelineとTEIセルフビルドを、同じ*型付き辺の検査原理*で扱えるかを測る。これは新しい共通Pipeline Runtimeや固定 `std.dataset` / `tei.std.artifact` の採用ではない。既存Ownerは [#2620](https://github.com/hat47x/tei-platform/issues/2620)（標準構造・Role）、[#2827](https://github.com/hat47x/tei-platform/pull/2827)（ETL/ELT・MFT、Draft）、[#2831](https://github.com/hat47x/tei-platform/issues/2831)（Self-build P0）、[#1223](https://github.com/hat47x/tei-platform/issues/1223)（Composition I/O）を維持する。
+
+| 二つのConsumer | 共通に表示・照合する辺 | それぞれ独立に必要な証拠 | 混同すると生じる誤認 |
+| --- | --- | --- | --- |
+| File/ETL：Source→Transform→Sink | 入出力Field/Shape、Semantic TypeRef、Multiplicity、NULL/Unknown、Producer、Operator/明示Adapter、Source Revision | 原バイト列・encoding/record boundary、Snapshot/Checkpoint、受取側の実byte確認、重複/partialと業務更正の扱い（#2542） | `std.binary`の一致を配送完了・Exactly-once・lossless変換へ昇格 |
+| Self-build：Seed/Source→Builder→Artifact | 同じ型付きPort/Source依存、Build-only/Runtime Edge、Producer、Target、Artifact Role、変換の入力/出力 | 実消費Source closure、toolchain/engine、実command、exact output bytes/digest、stage1/2比較、未宣言工程の検出（#2831） | Artifact digestの一致をBuild Graph完全性・Seed Trust・実行権限へ昇格 |
+
+**受入票に保持する最小列（新たなCanonical Schemaではない）**：Consumer/Target、型付きSource・SinkのContract/Field、TypeRef＋その定義を選んだSemantic Set、Cardinality/Null/Unknown、Value/Build/Effect Edge種別、選択Provider/Operator・版、Input/Outputの内容同一性、Source Closureの確認範囲、Independent Expected/Observed、現在のAuthority Owner、未確認事項。TypeRefと構造の検査を担う [#2584](https://github.com/hat47x/tei-platform/pull/2584) は**合成候補のみ**。実際のE2EやProject Acceptanceを報告しない。
+
+**横断する不成立条件**：Reference Workspaceの `validate=ok` だけでは未知Source root・未読込ファイルの不存在を証明しない（[#2823](https://github.com/hat47x/tei-platform/issues/2823)）。同じIDの文字列でも異なるAccepted意味版やScopeは同一視しない。Hash由来IDの文字種・長さの試作（[#2814](https://github.com/hat47x/tei-platform/issues/2814)）は、Semantic ID・Artifact digest・Checkpoint/Operation IDを自動的に兼用させる根拠ではない。`tei.std.*` の管理名前空間はRQ-008で採用済みだが、実装に残る `std.*` 型IDの暗黙移行は禁止する。
+
+**反証順序**：まず既存E2aで `std.binary` / `std.text` / `std.json` と異種TypeRefを合成比較する（File relayとBuild metadataを模したfixtureであり実Consumerではない）。次に #2831 の **P0-SB-A**（宣言Graph対実消費）を先行し、並行して #2827/#2542 の既存File/Message試験結果を一つの受入票へ対応付ける。差分が「型の不足」なのか「Role/Scope/Effect/Source Closureの不足」なのかを独立診断できた場合だけ標準構造の追加を #2620へ返す。二つの用途で同じMeaningと保証を再利用できなければ新標準TypeKind化を撤回する。
+
+**証拠状態**：2026-11-06時点のGitHub静的照合に基づく設計提案。共通テストハーネス／実ETL配送／TEI全体セルフビルド／本番のAcceptance・Authorityは、この追補だけでは**NOT RUN / NOT PROVEN**。既存CIや部分ReferenceのPASSを縦断PASSへ加算しない。
