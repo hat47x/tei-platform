@@ -1976,6 +1976,7 @@ func (p *Parser) parseSemanticData(namespace core.CanonicalID) (semantic.Data, e
 			required := false
 			immutable := false
 			role := ""
+			roleDeclared := false
 			var declaredValue *string
 		attributeOptions:
 			for {
@@ -2013,12 +2014,16 @@ func (p *Parser) parseSemanticData(namespace core.CanonicalID) (semantic.Data, e
 					_, _ = p.next()
 					immutable = true
 				case "role":
+					if roleDeclared {
+						return d, p.errAt(nt, "duplicate role option for attribute "+aSym.Text)
+					}
 					_, _ = p.next()
 					roleTok, err := p.expect(TokenIdent)
 					if err != nil {
 						return d, err
 					}
 					role = roleTok.Text
+					roleDeclared = true
 				default:
 					break attributeOptions
 				}
