@@ -631,3 +631,49 @@ E0：既存#2860のactual Workspace/Source Index／Go Parserを同一Sourceで�
 **Ownerへの引渡し**：#988は既存Language/Operator/Syntaxの衝突診断・Role適用契約、#2620はEverything is Dataと自己解釈の合格条件、#2621/#2497/#1124はAuthoringの可逆性・編集Preview、#2514は独立Expected/負例、#2600はSource差とMeaning/Build資格の選択的失効を扱う。第二Role Resolver、別AST正本、Markdown-to-Core強制変換は作らない。
 
 **Evidence/停止線**：本節は現Go Source静的照合と追加された限定Go Testに基づく。重複Roleの正式診断、Role Required Shape/契約版、実Interpreter/Owner Meaning Acceptance、Studio/SHOの編集保存、Go Target/DB/Hostは未実証。このテストのCIは**追加後のexact HEAD**で別途確認する。現Parserの上書き挙動を正規仕様・合格とは認定しない。
+
+
+<!-- role-self-description-draft-promotion-separation-20261106 -->
+## 14. 2026-11-06 実Source編集のFit/Gap：下書き保存と受理済みモデルへの昇格を二経路に分ける
+
+### 14.1 他レーンの実コードが示す既存能力と不足
+
+§12は編集逆写像の一般的な条件だった。本節では現mainの実コードを静的照合して、**新Writerを作る前に既存の実入口を活用し、Roleに固有の欠落を小さくする**。最初の用途は公開Workspaceのsales.order.total。SourceのRole文字列とSource IndexのRoleDefinitionを混同しない。
+
+| 実入口（実main） | 既に出来ること | この自己記述Claimに不足すること |
+| --- | --- | --- |
+| internal/syntax/semantic_anchor.go の ParseSemanticFileAnchored / semanticDataAnchors | semantic-attribute（属性**識別子**token）とsemantic-attribute-type（**型参照**token）の独立Source anchor。byte offsetを持つ | Role optionそのものの一意なtoken spanと重複Role診断。型や属性名のanchorをRoleのPatch位置に転用しない。既存Parserは重複Roleを最後の文字列へ上書きする（§13） |
+| internal/workspace/source_index.go の BuildSourceIndexFromLoad | Load時byteによるSource Artifact digest、意味Subject→定義identifier range。strict indexはfilesystemへfallbackしない | 定義anchor≠属性option writable range。Index/Source locatorはOwner editing authorityでない。multi-file atomicity、imports closureは別Owner |
+| tools/reference-shared-acceptance の set-attribute-type・Preview/Review/Accept | 既存型参照**だけ**の局所置換、baseModelRevision、overlay→reload→validation→semantic diff→review fingerprint→accept→source再読取、Scratch Source受理の既存例 | 一般的Role option編集op（set-role）／Role Required Shape／完全な実Human Acceptanceはない。原文全体のMarkdown CST/Writerではない |
+| reference/studio-authoring/bridge.mjs と editor.mjs | ERのadd-relation、表のadd-validation等をCandidateへ変換、表示フォームはread-only proposal。旧expectedModelRevisionはreject | Role option局所編集は当該Candidateメニュー外。Editorが元ファイルを書き込むと誤表示しない |
+| reference/tei-studio-editor/editor.ts と codemirror.ts | byte/UTF-16位置変換とSourceのread-only表示、CodeMirrorのreadOnly | 直接本文入力・保存は公開していない。WebView上で表示できることはProduct Authoring Writerの実証でない |
+| Source Acceptance lock とDecision ledger | 協調するAcceptance同士のLock、受理結果のDecision記録／再照合 | 外部Editor/他processがLockを無視すれば排他できない。さらにAcceptの**Source更新後**にDecision recordの書込み失敗が起きた場合、Sourceを戻さず警告とエラーを返す設計である。「CLI失敗=Source不変」とみなさない |
+
+上表はSource静的確認であり、ここで実WorkspaceのRole option edit／実Studio保存／外部Editor競合を試験済みとしない。既存型編集は**比較基準**であり、Role定義への自動汎用化を要求しない。
+
+### 14.2 二つの保存操作を混同しない
+
+**A. Authoring Draft Save（原文保存）**：編集者が原文を一時保存・再開する。Syntax Error、未定義Role、Plugin不在、途中のMarkdownを**原文のまま保持してよい**。説明用MarkdownやSHO下書きの保存にまでAccepted Meaningを要求しない。ただし保存する先の現在のWriter権限／実byte／競合・Source位置は確認し、他人の版を上書きしない。Draft保存成功は**正式Workspace SourceへPromoteされたことを意味しない**。不正なDraftからModel/Runtime/ConsumerへAccepted表示を作らない。Draft保存領域や実File I/Oの設計は#1124/#1803/#2621へ委譲し、この文書では新しい共通DraftStoreを規定しない。
+
+**B. Semantic/Canonical Promote（意味を持つSource変更の受理）**：最新の受理済みSource R0と編集Intent、対象Subject/use-site、Source occurrence、**変更対象Role optionの正確なtoken span**、Role/Operator pin、独立Owner-required obligationsとCurrent Write資格を照合。既存Shared AcceptanceのCandidate→Preview→Review→明示Acceptが受け付ける**既存operationだけ**を通し、再読取後のtyped meaningと意図外byte変化を検証。未対応のRole option編集ではCandidate/read-only Diff止まりとし、型編集Operationに偽装して通さない。Plugin未選択・Role競合・未知Require Shapeなら新しいAccepted Meaningへ昇格しない。
+
+両経路の**共通条件**はNo-opでSource書込みしない、Raw Sourceの糖衣・コメント・BOM/CRLF等を勝手に再整形しない、他Source・Owner資格を捏造しないこと。Raw Draftを直せる自由度とCanonical Promoteの厳しさは矛盾しない。形式的には Draft Saved ≠ Parsed Candidate ≠ Preview Acceptable ≠ Actual Source Changed ≠ Accepted Meaning ≠ Consumer Current ≠ Provider Effect。
+
+### 14.3 非同期UI・外部Writer・記録失敗の扱い
+
+- **UI後着Fence**（#1124/Desktopと接続）：編集/保存/Review/診断のResponseは、Source Revision、選択Subject＋Occurrence、Role/Interpreter版、Consumer Scope/可視性、Editor Session/request generationが一致する**現在の表示用途**にのみ適用。旧R0の成功通知・エラー・ボタン状態をR1の画面へ復活させない。既存表示の失効と新規描画拒否は別assert。Policy失効をConsumerが観測できない期間の即時撤回は保証しない。
+- **競合**：accept lockは**協調的**。別Editorが直接Fileを上書きする場合を想定し、構造化Patchは実Source byte/ModelRevisionを直前に再検査し、保存後も別Readで照合する。全OS・全Processでのatomic CAS保証とみなさない。Source A→B→Aなら旧Review/Editor資格が復活したと推論しない。
+- **Commitの表示**：実Shared AcceptanceではSourceの変更後にDecision ledgerの記録失敗が起き得る。終了コードだけで「保存失敗・変更なし」と報告せず、actual Source R1／Decision path有無／Warning／Review Binding／再読取を別表示し、安易な二重Acceptや勝手なrollbackを禁止。これはDB ProviderのCommit/Receiptと**異なるSource Authoringの局所事件**。
+- **Editorの診断**：Syntax ErrorのあるDraftは復旧可能な原文として保存してよいが、そのまま実行・正式定義への受理を許すわけではない。未知Pluginやunresolved RoleはDraftの可視性とMeaning適格性を別表示。秘匿内容をDiagnostic/AI payloadへ漏らさない（#2516）。
+
+### 14.4 判別に必要な最小実証
+
+**E0 実Go Source anchor Characterization**：Draft #2860の TestSelfDescriptionAttributeAnchorsDoNotSubstituteForRoleOptionSpan に、実 ParseSemanticFileAnchored の属性名anchor=total／型anchor=std.money とRole値accounting_amountの**別位置**を比較する試験を追加。旧AnchorをRole Patch位置へ流用できないことを限定的に確認する（commit 6feb4b10）。将来専用Role anchorが追加された場合に拒否するものではない。Current Source Indexとreal Interpreter/Writerの編集閉包は別。
+
+**E1 既存 Writerの再利用可否**（#1124/#1935/#2621）：Scratchに限り、set-attribute-typeの既存トークン編集・旧版拒否・再読取をbaselineとして同じRole利用位置の不足表に照合。No-opとRaw Draft Saveを別計測。Role writerが未実装ならRead-only / unsupportedのまま。
+
+**E2 差分と停止線**（#988/#2514/#2497）：同一Role二重宣言／quoted role／同名別occurrence／Unicode＋CRLF／Source再配置／Role pin変更／独立Expected未成立を反証。Parser Candidateの単一Role文字列をSourceの唯一宣言と認めず、Source上で診断できない場合は意味の昇格を停止。
+
+**E3 Product UI/Consumer**（#1124/#2516/#958/#2600）：旧Revision成功レスポンス、既存表示、同一内容でPolicy失効、原文保存のみ、Source changedだがDecision ledger記録失敗、を**別状態**として示す。Source Acceptが成功してもDB/Host EffectやOwnerの最終意味判断を証明しない。
+
+**証拠上限と進行判断**：本§14は現mainの静的Fit/GapとテストSource追加を記録したもの。テストのexact HEAD CI、Raw Draft Product Writer、Role option Writer、実Markdown/SHO、実WebView、外部Writerとの原子競合、Owner Meaning Acceptanceは別に確認する。新Parser/Source Writer/Second Acceptance/Host/横断GateをこのDraftに実装しない。#1119のP0と#2831セルフビルドは変更しない。
