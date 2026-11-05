@@ -231,3 +231,27 @@ Query semantic ID / accepted Role・Operator version
 
 **今回の照合結果はSource-staticであり、テストを新たに実行していない。** 既存GoテストがSourceに存在することは、このPRのexact-head CI成功ではない。
 
+## 9. 同一Query ID・選択SQL変更時の再利用を3層で判定（2026-11-05：実装境界へ接近）
+
+既存のQuery/Realizationの実Goコードを再利用する**限定的な特性テスト**として、`internal/realization/contract_query_cross_provider_characterization_test.go`をこのDraftに追加した。
+
+- **CQX-01／明示共有**：同一`QueryContract`に対してPostgreSQL/SQLiteの別`ContractQuerySQLRealization`が同じSQL本文を保持し、入力/結果の明示mappingをそれぞれ検証できること。Sourceが同じでもProvider別Identityが違うことを観測する。ただし実SQLがその二DBで実行可能・意味同値とは主張しない。
+- **CQX-02／検証独立**：一方のProviderでmappingが成功しても、他方のmapping欠落を成功として扱わない。
+- **CQX-03／Source改訂**：同じTarget/ProviderでSQL文字列を改変してもRealization Identityは変わらない。**この既存コードの事実**から、Source版・依存・解析/Evidenceの再評価は別資格が必要だと分かる。Realization Identityや`ValidateContract`成功だけでSQL本文の業務意味は認定できない。
+
+この3件はあくまでも**契約の構造的特性テスト**。ファイル名規約・Provider別選択・実際のSource Loader・Result列観測・現在の実行権限・実DBへのRead/Commitを実証するテストではない。
+
+### SQL選択変更時の判定表（内部インターフェース新設なし）
+
+同一Query ID `customer_search`、同一業務契約で、従来は明示共有Source `customer_search.sql`、変更後は`customer_search-postgres.sql`が**明示的に解決・選択された**状況を考える。接尾辞だけで無断選択しないという§7の前提を維持。
+
+| 判断対象 | 変更前後の期待 | 具体的な停止条件 |
+| --- | --- | --- |
+| **SQL解析キャッシュ** | Source byte、Schema/Provider前提、Parser/Role・Operator版、実消費Input closureが一致する当該SQL片に限り候補として再利用。選択SQLが異なるなら旧SQLの解析結果を新SQLの解析成功へ流用しない | 新SQLのbodyが未読込、暗黙JOIN列やhidden predicate等の依存が未確認 |
+| **現在の説明資格** | Query/Functionの業務IDは継続可能。ただし表示するSQL由来のPredicate・Lineage・0件の意味・Read Scope、DB Target/時点とConsumerの開示権限を再評価 | 古いSQLの結果・Sourceを「現在の根拠」と表示、選択候補のPath/SQL全文を無権限者へ開示 |
+| **実Read資格** | 既存の現在Grant、実Connection/DB種別/Provider能力、Bound SQLと実引数、RLS・Snapshot・必要Read集合を当該Attemptで検証する | 選択Lock一致だけで実SQLを発行したと主張、0件可視を全対象不存在と断定、readの成功をwrite/Commit資格に昇格 |
+
+SQL A/Bが同じQuery IDとRow countを持っていても、0件から「全対象に不存在」を結論しない。たとえば読み取り可能な範囲がTenant T1だけで0件でも、T2は未知。逆に完全性が確認されたT1については**「T1の可視集合内で条件に合致する行は0件」**という限定Claimを許す。説明にはその限定Scope、時点、条件、Provider Routeが必要で、SQL解析の静的Lineageだけから物理完全性を主張しない。
+
+**次の優先試験**：CQX-01〜03のGo CI結果を確定 → #2611 PM-02の対象Bindingを実Go Workspaceから受渡し → #2387のSQL実Parser/DerivedIRと#2600のSource負依存を**選択前後の同一Fixture**に接続 → #2622の実Providerで読取を独立観測。異種DB実行、実Owner Meaning/Grant、実Consumerとの一体PASSは現時点では未成立。標準DSL/新Selection Registry/Hostを作らない。
+
