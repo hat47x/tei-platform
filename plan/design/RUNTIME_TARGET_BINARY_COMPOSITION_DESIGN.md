@@ -419,3 +419,53 @@ Pluginの**論理境界と高凝集Bundleの配布境界は1:1ではない**。�
 [従来の動的更新方式比較](CORDIS_CONTINUOUS_PLUGIN_UPDATE_EVALUATION_2026-10.md)はEffect scope、Reactive Coeffect、世代切替・無停止運用を中心に比較した。**本節は方式の優劣ではなく、拡張を要求する主体の制約から候補を棄却する手順**を追加したものである。業務Ruleや純粋演算をPlugin万能化しない入口、Bundle非干渉、実消費・契約・Runtime Grantの分離、partial effect/unknownでの停止、Ownerへの質問を追加する。
 
 Implementation/配布の責務：#1251（凝集Bundle/テストと未使用非干渉）、#1016（Projectの構成選択）、#951（Contract/Provider/Conformance）、#988（Language/Operator）、#2622（Data Provider/Operations）、#1121/#259（Target）、#943/#2600（Artifactと増分判定）、#1223/#2390/#1145（動的・外部ProcessのTarget条件）、#1174/#1130（Effect/Receipt）、#2514/#1180（独立Expected）、#2018（コスト）。Issueの受入・ABI/DSL Schema・正式方式は各Ownerの実Consumerと実測後に判定し、第二Resolver/Policy Engine/Hostは設けない。
+
+<!-- tei-extension-evidence-handoff-20261106-v2 -->
+## 15. 選定後の証拠受渡しと差戻し（2026-11-06、設計／NOT RUN）
+
+§14の選定は「方式候補を選ぶ」まで。本節は**選定した実現方式が実Consumer・Targetでも成立するか**を、既存Ownerの証拠へ接続する。新たなDecision Receipt Schema、第二Resolver、第二Build/テスト正本、採用Gateは作らない。#1251のPB/PBN、#2600のIB、#951のConformance、#1180/#2514のOracle、#1174のEffect/Receiptを再利用。
+
+### 15.1 最小の証拠受渡し票
+
+| 段階 | 固定するもの | それだけでは証明しないもの | Owner |
+| --- | --- | --- | --- |
+| 要求/Plugin不要反証 | 既存関数・Rule・Data Operations・設定では満たせない具体的要求、代替案、実Consumer | Plugin化の費用優位・別配備の必要性 | #1016/#2018 |
+| Contract | Language/Operator/Service/Generatorの意味・型・Effect/Scope・版、Contract発行者、選択Provider | 現在の実行Grant・実Artifactへの物理収録 | #988/#951/#2622 |
+| Source/Meaning | 実Source byte/span/外部Import、Parser/Operator版、候補とOwner Accepted Meaning | Parser成功やSource一致による意味の自動受理 | #2619/#267 |
+| Build Closure | 実消費byte、選択Generator/Provider、Go import/init/embed、nested module、Toolchain/flags、Target | manifestだけによる依存完全性やlink後の物理除外 | #1251/#1089/#1167/#2600 |
+| Artifact/Reader | 生成Source、artifact member/実起動byte digest、Runtime/Target環境、実ロード物 | 一致するVersionからのCurrent Grant | #943/#1370/#259 |
+| Invocation/Effect | Caller、Current Grant、Request/Attempt、実Provider Target、Outcome/Unknown、Receipt・独立Read | Exit0/ACK/RunPlan completedによる業務完了 | #951/#1174/#1130 |
+| Consumer | CLI/Headless、Web/Studio、生成Desktop、外部Hostごとの実要求・独立Expected | 単一Consumer PASSによる全Target資格 | #1180/#2514/#259/#2390 |
+
+採用済みの論理選択、実Build可能性、実ロード、現在認可、実Effect観測は**別資格**。実消費入力が不明なら「依存なし」「未使用」「Cache再利用可能」と断定しない。参照だけの列はNOT RUN、適合不能はunsupported、根拠不足はunknownとして既存の診断機構で表示する（固定enum採用ではない）。
+
+### 15.2 非対称な二つの依存失敗（#1251 PB-10を再利用）
+
+**過剰混入**：未選択Bundle/Provider/Generator追加で、明示的Selectionが不変なのに Go init、auto-register、embed、import、generator入力、実Binary・起動動作が変わるなら、未使用非干渉は不成立。候補Catalog版変化とEffective Selection/Build Input変化を区別する（#1251 PB-01/02/07、#2600）。
+
+**必要依存の欠落**：#1251に記録されたmain統合#2868のCore依存追加後、別Go moduleのStudio実Binary buildではgo.sum不足が露呈し、#2872/#2873/#2874の修正がmainへ統合された。root Go test/healthの成功をnested moduleの実Build成功と見なしてはならない。選択済みTargetのgo.mod/go.sum、GOWORK=off、-mod=readonly、必要なら実Link/起動を個別に確認する（PB-10）。この既知障害と修正を新しいEX試験のPASSには転用しない。
+
+さらに、Source/SQL AssetのA→B→A、同名同versionの異Byte、Provider Default選択の変化、Query ID同一で方言SQLのBindingが変わる場合は、Semantic/Parser Cache、説明の現在資格、実Read/実Targetを別々に再審査する。候補Catalog変更だけによる過剰失効も、選択実装の変化を無視した誤再利用も拒否する（#2622/#2600）。
+
+### 15.3 Failure containmentと実方式の差戻し
+
+| 観測された失敗 | 差戻し・拒否の対象 | 保持するEvidence |
+| --- | --- | --- |
+| 既存関数/Rule/設定で要求を満たせる | Plugin化案を撤回し標準機能へ戻す。意味・Expectedは維持 | 原要求、比較した代替案 |
+| Contract/Publisher/Conformance不一致 | Providerの暗黙fallback禁止、選択を保留 | Source/Contract pin、要求/提供Scope、不一致理由 |
+| Build closureの過剰混入または不足 | Target/Module固有のBuild Planを修正。稼働中の検証済みArtifactを破棄しない | 実消費byte、import/init/link、Toolchain、artifact digest |
+| Load/Host Capability・Grant不一致 | 呼出しを拒否。自動的に別Host/Processへ迂回しない | 実ロードbyte、Principal/Scope、対象、拒否理由 |
+| 部分Commit／ACK喪失 | 既存実業務EffectはBundle/Processのrollbackでは元に戻らない。自動再Submit禁止 | Request/Attempt ID、先行Effect、Result unknown、Receipt、独立Read |
+| CLIでPASS、Studio/WailsでFAIL | Consumer/Target固有Adapterだけを調査し、共通Meaningを一律不適合と断定しない | OS、Host、Build/Loaded Artifact、実入力・独立Expected |
+
+### 15.4 EX試験の補助観点（新しいFixture正本ではない）
+
+- **EX-H1/2**：未選択Plugin混入（PB-01/02/07）と、選択済みnested module依存欠落（PB-10）を同一TargetのA/B比較票で判別。
+- **EX-H3**：Version不変のSource差、A→B→A、SQL/Provider Binding差で、変更対象だけを再資格化。未取得依存は空集合扱いしない。
+- **EX-H4**：同じJSON/同じ表示結果でもNULL・欠損・partial・数量単位・多重度・業務Purposeの差は、Operator/Provider適合を未証明とする。
+- **EX-H5**：A Step確定後B blocked、ACK lost/二重送信、UI再起動の負例では、Run全体effect=0/失敗完了を主張せずProvider Receipt/独立Readを待つ。
+- **EX-H6**：同一read-only ContractでGo単一Binaryと外部Process/外部Hostを比較。外部ConsumerがStudio/TEI Runtimeを暗黙に必要とする場合、外部利用適合を拒否。
+
+**実証順**：P0 read-only選択/実依存照合 → P1 純粋Operator/選択済みGo buildと未選択Bundle影響 → P2 DB Provider能力・部分Read/Write（実DBは別Evidence） → P3 外部Process/異Consumer/Loadと失敗注入。独立Expectedは#1180/#2514に固定し、対象版と実消費byte、実Artifact、Host/Grant、Effect観測は別列とする。新たな万能Fixture/Execution Engineは作らない。
+
+**評価の出口**は、具体的棄却理由、失敗時の回復、採用候補のConsumer・Target適合範囲、必要なOwner判断を既存Issueへ返せること。製品適用・意味受理・Production資格とは別。今回のEX-H1〜6、実Go/DB/外部Process/Windows/Studio統合、性能値、Owner受理はNOT RUN／未採用。
