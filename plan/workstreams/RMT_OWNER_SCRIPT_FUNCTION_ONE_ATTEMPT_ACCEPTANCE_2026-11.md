@@ -161,3 +161,42 @@ E0/E1/E2の証拠は他のE3〜E6の実行許可ではない。各段の**同一
 - **#940 + Windows Work担当**：Computer Use正常初期化→app list／画面読取→実ロードCodeSource・JAR/Java/JDBC/DB版の固定→read-onlyの旧Data/Function/Script/Hook段階観測→隔離された使い捨てDBで正常/拒否/例外/rollback→別ConnectionのH5a（外側Commit後、Session終了前）とH5b（別試行Session終了後）の読取。既存XF310-D01の#940五段階受入票を再利用し、成功ログ・画面表示・正常Session終了を未作用/Commitの代用にしない。2026-11-03までComputer UseがMCP `-32602`でapp list到達前停止、**Windows旧Driver実動はNOT RUN**。GUI制御障害時に破壊的コマンドで迂回せず停止する。
 
 **実装と判断の現在地**：#2853/#2859/#2857の実PG/CIは局所PASSED、#2849 EmptyPolicyは構文・意味に導入済み、#2870/#2854は再試行危険の**実際の反例**。#2783/#2671/#2776などは別HEADのDraft/Openであり、この§8追加をmain統合済みと呼ばない。VS-RMT-01の実同一業務・正式Owner意味・旧Driver比較・Web/Provider/Consumer全接合は**NOT RUN／UNQUALIFIED**。今回は計画改訂のみでGo/PG/Windows/Owner検証を新たに実施していない。
+
+## 9. 11/6横断深化：Requiredの独立性／Guard被覆／Source実消費の「証明すべき辺」を固定する
+
+本章は§8のVS-RMT-01を**合格票として閉じるための必要条件**を定める。新たな受理Schema、Proof Engine、Test Runnerや共通Hostは作らない。近接する[Script起動設計Draft #2884](https://github.com/hat47x/tei-platform/pull/2884)（Required/Supplied/Evaluated/Enforced-at-Effect）、[自己記述Draft #2860](https://github.com/hat47x/tei-platform/pull/2860)（候補自身のRequired自己申告は不可）、[テスト設計Draft #2811](https://github.com/hat47x/tei-platform/pull/2811)（Required Case／SKIP／Oracle独立性）、[DB別Query Draft #2862](https://github.com/hat47x/tei-platform/pull/2862)（DB実対象とSQL Realization選択）のうち、**参照モデル移植が判定する部分だけ**を受け取る。
+
+### 9.1 Successを計算する前にRequiredを確定する
+
+**必要検証項目（Required）を、検証される候補の宣言からだけ作ってはならない。** 例えばScript/AI生成Candidateが`required=[]`、RunPlanの`CombinePreconditions`にPeriod checkを渡さない、Source manifestにRule fileを登録しない、Operator自身が`pure=true`と宣言する、Query候補が自分の依存Predicateを報告しない、といった場合にも、`provided checks all PASS`が業務検証PASSを意味しない。
+
+必要項目を確定する出典は、Scenarioの独立Expected、Owner受理済みAction/Rule/Phase、Hostの認可条件、実Workspace/Providerの制約、既存のConsumer用途契約とする。**Owner未受理の項目は「未確定のRequired候補」であり、空集合へ勝手に落とさない**。各Caseについて既存#1163の票に次の列を付ける（新Schemaでなく比較票の欄）。
+
+| 必須Claim／必要項目の独立出典 | Supplied / Evaluatedとして観測する実物 | Effect時にEnforcedであるための追加証拠 | Missing時のClaim ceiling |
+| --- | --- | --- | --- |
+| **S: 業務Source閉包**：#950/#1031の必須Data/Function/Action/Hook、Accepted Meaning/Source revision、必要Query/Ruleの外部Ref | Manifest, actual loaded parsed bytes/Source Index, Rule/Function Context実消費read。#2822/23の未読込対照 | 実Web/CLI/Generatorの**実入力とReadに使ったbyte**・対応Source/Meaning revision（#2595）。単純`validate ok`や`manifest.Source` digestだけでは不可 | S unqualified → RMT ParityもA全体も未資格 |
+| **G: 保存前・効果前の必須Guard集合**：Owner ActionのRequired predicates、全TargetSet L/EmptyPolicy/Phase、Grant/Period/Schema/ExpectedVersion/Observer要求 | 実Preconditionの列挙、Supplied/Evaluated status、使用したbefore/after row、子集合scope/epoch | Provider effectを出す直前に必要なGuardが**現在値で強制**されていること。UI Preview/過去Preflightに合格しても同一Tx時点の強制ではない | G未被覆 → safety/Owner Write資格なし。前Step Effectがあれば`no-effect`とも言えない |
+| **T: Business Subject→実Target**：受理済みAction Purpose/Role/Relationと、Business Keyと物理PKの対応 | Function selection、未保存Patch、Request bytes/hash、Payload、OperationID、Providerの実Scope/SQL args | 実書込Target/CAS条件がValidationで検査した対象とOwner許容の派生対象に対応。O1選択→O2 Payload、同名別Tenant、Line membership変化を負例 | T不足 → Receiptがあっても「正しい対象のEffect」未確定 |
+| **K/O: 実Commitと観測**：#1174 Effectの原子性/結果区分、#2671のU/K/V/O/B/D区別 | Commit・Rollback・ACK-loss各Invocation、実Receipt、独立Connection readと時点/Scope/Provider position | Receiptの同一OperationIDと実postimage、必要Owner行・子集合全件、Readerの因果資格。SQL Observerの非対象COUNTやReplica旧Readは不可 | Kのみ成立してもOwner Bはundischarged、O障害でEffect=0としない |
+| **B/D: 業務完了・開示**：#1125/#267のmanual/handoff、Owner `(L,E,P)`、#2516実Consumer | 実Step/Manual決定、独立Expected、Consumerが受け取った実bytes/digest/開示Grant | 必須Step・対象集合/空集合証拠・実Effect・結果受領を時点とAudienceに対して判定。旧Artifactと現在Grantを別 | 技術Commit PASSでもBusiness Completion/DisclosureはUNQUALIFIED |
+
+判定は各Claimごとに**Required ／ Supplied ／ Evaluated ／ Enforced ／ Observed ／ Undischarged ／ allowed conclusion**を出し、欠けた項目を隠す単一`success`を禁止する。異なるPR／HEAD／ProviderのPASSを一つの実Attemptへ足し合わせない。必要最小のClaimだけ閉じ、他領域を不必要なHard dependencyへ加えない。
+
+### 9.2 現行mainの新しい実装と、未検証の「Required全件」問題
+
+- [merged #2882](https://github.com/hat47x/tei-platform/pull/2882)の`internal/execution/runplan_workspace_test.go`には、WorkspaceからPeriod/Effectを取得して**明示的に渡した**`PeriodPreconditions`＋`EffectPreconditions`で`RunPlan`が実Step 0のBlock／正常Completeへ分かれる**合成Go試験**がある。これは**渡されたGuardの効果**を確認したもので、業務上必要なGuardをすべて列挙した証拠、Provider Commit直前の認可・対象強制、全RunPlanの無副作用保証ではない。
+- [merged #2819](https://github.com/hat47x/tei-platform/pull/2819)は`manifest.Source=D1`と実`go build input=D2`の不一致が現行Generator Selectで拒否されない反例。Business Sourceが実Parserへ渡ったとしても**実Binaryへ取り込まれたSource閉包を自動保証しない**。初回は実Product Web/Goバイナリの固定HashとSource Input Closureの照合を優先し、Selector修正は#2595へ委譲。
+- [merged #2835](https://github.com/hat47x/tei-platform/pull/2835)は実PG試験の`go test exit=0`で必須Caseが`SKIP`され得る反例と、それを拒否するCIの限定対処。VS-RMT-01の実PGスライスは、**実際に走った必須Test ID／subtest・実DSN Provider・PASS/SKIP/FAIL・負例の判別力**を記録し、単なる`go test green`へ帰属させない。#2514独立Expectedと同由来の自動Oracleは別。
+
+### 9.3 最小4段実証を既存Ownerへ引き渡す（新Frameworkなし）
+
+| 順番／既存Owner | 一つの固定Scenarioで行う実対照（すべて本章では**NOT RUN**） | 次段へ渡せる限定資格 |
+| --- | --- | --- |
+| **U0：Source/Rule Binding** #950/#2822/#2823/#2595/#2586 | Sourceを必要集合から1件取り除いても`validate ok`が出る負例。次に宣言・実Loaded byte・Index・Rule Context consumed・実Build binary Inputの同一Snapshotまたは明示版Lockを対照。Source移動・内容同一・A→B→Aは別に記録 | 正しいSource/Ruleが実入力に含まれる証拠。**旧Runtime Parityと業務意味受理は別** |
+| **U1：Required Guard Coverage** #1129/#2622/#1130/#1180 | 同一Rule・同一L/未保存Patchで、一つの必須Period/Grant/Target/Effect Observer checkを**意図的にPreconditionsへ渡さない**。Supplierが返したPASSだけでは検収不可。全Guardを渡した拒否ケースで実Step=0/Provider未到達を確認し、途中Blockでは先行Step Effectを保持 | 実Preflightで必要Guardの被覆を説明できること。Commit前現在資格はU2で別確認 |
+| **U2：同一Web/PG Effect+Recovery** #1174/#2564/#1163 | main統合済み#2853/#2857/#2859の実部品を**同じSource R1・実Binary・PG Connection/Grant/Attempt**で走らせる。Validation O1→Payload O2拒否、Rule成立→後続Owner書込み最終不変破れ→rollback、ACK-loss→同じOperationID Lookup、Observer失敗でもReceipt保持、同Key replayと別Key ABAを独立実行 | Providerの限定K/別Read O/unknown区別。正式Owner B/旧Driver Parityは未合格 |
+| **U3：原典とOwner/Consumer** #940/#950/#1125/#267/#2514/#2516 | Windows Workでは旧Driverの実Load/JDBC・Source→Hook→SQL/Commit/独立Readを取得、同一ScenarioのTEIとは**別Attempt**で独立Expected比較。OwnerがBusiness Procedure／EmptyPolicy／許容差分と失効時再受理を判断し、実Consumer bytesを確認 | Pの旧互換、AのTEI適合、Bの業務完了、Dの開示を**別資格**で判定 |
+
+**停止条件**：U0 Source closureなし、U1必要Guard未列挙／未強制、U2不変Request/Target/Grant未固定または実PG required Case SKIP、U3旧Driver未観測／Owner受理なしのいずれでも、そのClaimを`unqualified`として保持する。別レーン（SHO、EKI、二DB、G4 self-build）の全機能完成はU0〜U2の先行条件にしない。
+
+**この追補の状態**：上記は他Issue/PRの実装・CI・設計を照合した検収計画であり、**本PRで新しいGo/PG/Windows/AI Test実行は行っていない**。#2882の合成実Go経路、#2819の不一致反例、#2835の実PG skip検査はそれぞれ局所的証拠。Ownerによる独立Requiredの正式受理、VS-RMT-01 U0〜U3の同一Scenario連結、旧X-TEA移植完了、G1/G2合格は**NOT RUN／NOT ACCEPTED**。
