@@ -367,6 +367,7 @@ Contract/Conformanceは[#951](https://github.com/hat47x/tei-platform/issues/951)
 | 構文/DSL（pipe、Markdown/表記糖衣、別言語） | 表層糖衣→同じCanonical/Operatorへの静的Lowering | 文法Producer/Parser/Lowererを独立選択・版固定し、元Source/Source span/診断・編集往復が必要 | Parserの登録順で意味が変化、Source原構文/位置喪失、同名Roleから意味推測、Semantic Acceptanceすり替え | #988/#2619 |
 | Operator（filter/aggregate・数量計算等） | 純粋Go関数/標準Library、Data Operationsの合成 | 名前・意味・型/粒度・NULL/精度/順序・Effectを版付きで多数Consumerが再利用し、Provider差し替えが必要 | 型・戻り値だけ一致してNULL、bag、多重度、単位、丸め、欠損、read scopeが異なる。独立Expected不在 | #988/#2622 |
 | Data/Service Provider（DB、OData等） | 単一Target向けの明示Adapter、設定済み既存Driver | 実装/DB方言/Capability（Read・PATCH・Replace・batch・CAS・Receipt）と現在のHost Authorityの選択が分離 | 曖昧な対象、無認可、partial 0件→不存在、batch=原子性の推測、部分Commit/ACK-lossの復旧不能 | #2622/#951/#1174 |
+| 生成コード／UIの案件拡張点（Hook・公開Slot） | 生成物と分離した案件Source、#2090宣言済Hook、#997 Kit Layer | 複数案件/Consumerへ独立実装を配布し、Hook/Slot契約や更新責任を別にする必要が実証された場合 | 再生成で案件差分消失、基底Hookの引数・呼出順変更を無検出、未公開DOM/生成ファイル直接編集、UI側からHost認可を迂回 | #2090/#997/#2785 |
 | Target Generator（Go/Wails、Java/.NET/Wasm） | 既存Generator内の明示設定、変換関数 | Target固有Artifact/Builder/Toolchain・生成器更新・実現Capability・必要依存を独立に選択 | CanonicalにTarget APIが逆流、未選択コード/秘密混入、実Targetが必要能力を欠く、生成物・実ロードByte不一致 | #1121/#259/#943 |
 | 外部Process/Service連携 | 同一Process内の関数またはProvider、既存Host library | 異言語/異更新周期/隔離/既存外部製品が独立配置を要求し、Transportとlifecycleを明示 | Single-binary厳格要件違反、起動/停止時の権限漏れ、結果不明を失敗扱い、途中確定の無条件再送 | #1145/#2390/#1223/#1174 |
 | Owner固有業務Rule | Data/Function/Businessの受理済Rule、明示Data Operations | 同じRuleを異Owner/Targetで独立配布すべき**具体的Consumer**がある時だけ再検討 | RuleをPlugin設定へ移し、業務意味の第二正本/Providerの自己申告へOwner受理を委譲する | #1129/#2622/#267 |
@@ -421,6 +422,26 @@ Pluginの**論理境界と高凝集Bundleの配布境界は1:1ではない**。�
 Implementation/配布の責務：#1251（凝集Bundle/テストと未使用非干渉）、#1016（Projectの構成選択）、#951（Contract/Provider/Conformance）、#988（Language/Operator）、#2622（Data Provider/Operations）、#1121/#259（Target）、#943/#2600（Artifactと増分判定）、#1223/#2390/#1145（動的・外部ProcessのTarget条件）、#1174/#1130（Effect/Receipt）、#2514/#1180（独立Expected）、#2018（コスト）。Issueの受入・ABI/DSL Schema・正式方式は各Ownerの実Consumerと実測後に判定し、第二Resolver/Policy Engine/Hostは設けない。
 
 <!-- tei-extension-evidence-handoff-20261106-v2 -->
+
+<!-- tei-extension-pr2888-specialized-delta-20261106 -->
+### 14.7 PR #2888に固有だった「再生成拡張点」とPlugin非必須化の受入
+
+[Draft PR #2888](https://github.com/hat47x/tei-platform/pull/2888)の三軸比較で具体化された **案件が所有するSourceと生成基底の変更検知** を、#2090（限定Closed）、#997（UI Kit）、#2785（Kit更新三者比較）へ戻す。拡張できること、独立論理Pluginであること、実行時にロードすることは非同値。例えば案件独自の保存前検査はProject Accepted Ruleのままでよく、生成されたTargetコードの入口を差し替える必要があれば**公開Hookへ案件Sourceを静的接続**すればよい。独立更新・配布を求める具体的Consumerが存在するまでは、Plugin packagingへ強制しない。
+
+| 変更 | 保持する正本と対応 | 失敗・停止条件（既存Fixtureへ追加する対照） |
+| --- | --- | --- |
+| 生成基底v1→v2でHookの引数、型、呼出順が変化 | #2090にある宣言済Extension Point/Versionと案件Sourceを、元の生成物から分離 | 再生成が成功しても案件拡張が無効化・誤発火すればconflict/unsupported。Hook名/型が一致するだけで業務意味同一としない |
+| 生成コードに直接追記した案件コードを再生成 | 案件が編集したSourceと生成器のOwned領域を分離。#2090の直接編集検出/反復再生成の限定既存検証を再利用 | 無断上書き、未検出の消失、生成器の黙示的な案件コード取込みは棄却。案件SourceのOwner/Acceptanceは別に確認 |
+| Root UI Kit + Project Overlay + 新Root Kit | #997/#2785のprovide/replace/decorateとSlot公開点を使用 | UIのDOM/Focus/IME・Action表示・実Grantの変化を区別。複数Overlayの無音勝者、契約外DOMへの依存を適合としない |
+| 同じ意味ActionをWeb/Go Desktop/外部Hostへ生成 | #1121/#259 TargetのAdapterと#943実Artifactを分離 | 生成側HookのPASSを実Web/Wails/Host、現在Grant、実Provider Effect/ReceiptのPASSへ転用しない |
+| in-process拡張から外部Processへ変更 | 既存Service/Transport contract、Target固有Host、Runtime Scope/実起動物 | Process crashの影響局所化を比較するが、外部DB確定EffectやOS Resourceまで隔離できたと推測しない（#1223/#2390/#1174） |
+
+**受入の出口**：同一Source/独立Expectedの下で、非Plugin手段（Project Rule/静的Source/Extension Point）、独立Plugin化、静的実装と外部Processの候補を比較し、(a) 新たな実Consumer、(b) 独立更新責任、(c) 現場で成立するFailure isolation、(d) Source/Build/Artifact影響の減少、のいずれに**測定可能な差**があるかを記録する。差がない場合は追加Kernel/ABI/Loaderを採用しない。
+
+**EXDとの重複整理**：#2888のEXD-01（非Plugin反証）・02（構文意味）・03/04（非干渉・Selection drift）・05/06（Provider/partial Effect）・08/09（Target/Process）は既存§14 EX-01〜08、§15 EX-H1〜6、#1251 PB/PBNに対応付ける。固有のEXD-07（再生成拡張点）は#2090の既存Caseと本節の表に接続し、独立した第二Oracle・正式な新試験IDを作らない。#2090 Closedは限定Referenceの範囲だけであり、実生成Target・別言語・Wailsでの新規E2E、Owner業務受理が済んだという証拠にはならない。
+
+**採用前の停止線**：Projectに必要なHook契約やOwner Accepted Ruleが未確定なまま、Plugin選定・Target生成・実実行を「互換」と判定しない。本節の追補はdocs-only、差分統合の実コード試験はNOT RUN。
+
 ## 15. 選定後の証拠受渡しと差戻し（2026-11-06、設計／NOT RUN）
 
 §14の選定は「方式候補を選ぶ」まで。本節は**選定した実現方式が実Consumer・Targetでも成立するか**を、既存Ownerの証拠へ接続する。新たなDecision Receipt Schema、第二Resolver、第二Build/テスト正本、採用Gateは作らない。#1251のPB/PBN、#2600のIB、#951のConformance、#1180/#2514のOracle、#1174のEffect/Receiptを再利用。
