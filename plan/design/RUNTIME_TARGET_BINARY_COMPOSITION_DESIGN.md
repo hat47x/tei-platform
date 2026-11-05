@@ -536,3 +536,51 @@ Implementation/配布の責務：#1251（凝集Bundle/テストと未使用非�
 - P3：静的Library/Rule/設定で実需要を満たせばPluginを新設せず、独立更新・隔離・外部Host可搬性が必要なときだけ§14の物理方式選定に戻す。
 
 **状態**：本追補は既存PRにおけるdocs-onlyの受入・停止線。実OS隔離・AI→Provider遮断・Go差分Build・Windows/DB/外部Process実走・Owner正式受理は新規NOT RUN/NOT ACCEPTED。第二Host/Registry/Resolver/Policy Engine/Plugin ABI/Oracleを追加しない。
+
+
+<!-- tei-plugin-update-impact-qualification-20261106 -->
+## 17. 高凝集Bundleの更新・失効を局所判定する（2026-11-06、設計・未採用）
+
+§14のPlugin要否と物理方式、§15の実Build/Consumer資格、§16の開発時作用とは別に、**配布Bundleの更新を一律にBuild/Owner受理へ伝播させない更新ゲート**を定める。これは新しい更新マネージャー・Registry・Lock Schema・汎用Cacheの設計ではない。#2600のIB/Source closure、#1251のPB/PBN、#951/#1016の選択、#943/#1370のArtifact、#1174の現行Effect資格を同じ選択されたTargetに対して照合する手順である。
+
+### 17.1 変更されたものと、実際に利用されたものを分ける
+
+**別々に追跡する版・同一性**：
+(1) 配布Bundle/候補Catalog、(2) 公開Service/Operator/Language Contractとその意味・Effect、(3) Provider/Generator等の実装artifact・digest、(4) Source/参照位置・Import閉包、(5) Application Profileの選択とResolved Lock、(6) 実Builder/Toolchain・Target・全Artifact member、(7) 独立Expected・Conformance/Owner Accepted Meaning、(8) 実Loader/Consumerと現在のProvider/Host Authority。これらをBundleの一つのversionへ縮約しない。
+
+**選択の否定依存**：Plugin候補が増えた際、固定SelectionのままならBuild非干渉があり得る。一方、default順位・同Contract候補競合・対象Capability不在時の解決結果が変わるなら「未使用だから無影響」とは判定できない。Providerの登録順で暗黙選択を変えない。選択が不明なら未知/保留とし、既存#951/#1016に解決を委ねる。
+
+### 17.2 更新イベント別の差分受入行列
+
+| 更新・事件 | Artifactの初期判断 | Evidence・現在資格の判断／停止条件 | 既存Owner |
+| --- | --- | --- | --- |
+| U-01 未選択Bundleの文書・補助実装更新 | 選択済み実消費入力が同じなら対象Targetは再Build不要候補 | Catalog/Repository改訂は記録。否定依存（default・競合）を確認し未使用の物理混入なし | #1251/#2600 |
+| U-02 同じBundleに新Provider/Generatorを追加 | 全同梱コードを自動Buildしない。選択・import/init/embedが不変ならArtifact非干渉候補 | 既定候補が変われば再解決。起動時登録副作用があれば未使用判定を撤回 | #1016/#951/#1167 |
+| U-03 選択された純粋Operatorの実装を変更（Contract同一） | 実消費が変われば計算／対象Buildを再評価 | NULL・未取得・short-circuit・Decimal等の独立Conformance。Owner受理を自動変更しない | #988/#2514/#2600 |
+| U-04 利用Generator更新、生成Source/Artifact bytesは偶然同一 | 入力実装・Build Attemptと出力を別記録。内容再利用の可否を局所評価 | 旧Generator適合Evidenceは新Generatorの資格ではない。独立Expected/Toolchain/Target適合を再評価 | #1121/#2016/#2514 |
+| U-05 Contractの型・Effect・Scope・Failure semantics変更 | 同じProvider名やbinary byteでも互換とは決めない | 旧Consumerの受理Baselineと新Contractの関係を確認。旧Grantや意味受理を無音移行しない | #951/#1121/#1174 |
+| U-06 SQL Asset/Import/Source A→B→A、または同名同版で異byte | 実消費Source・選択Realization・Derived Queryを再資格化。旧Source hashだけで履歴失効を取り消さない | Source位置と解釈、実DB Read Scope/Disclosure、現在Grant/Owner判断を独立確認 | #2622/#2600/#2516 |
+| U-07 選択Runtime Provider更新・欠落・撤回 | Go静的Targetなら対象Build/再配布、外部Hostなら実ロードbytesを確認。未選択実装へ黙示fallbackしない | 旧Receipt/Artifact履歴は保全、現在のInvocation許可は別判定。再ビルドだけではGrant復活しない | #951/#1223/#1370/#1174 |
+| U-08 Owner業務Rule/発効時点が変更（Plugin同一） | Pluginを更新しなくてもAffected Function/出力が変わり得る | Rule/meaning revision・valid/known時点・入力snapshotと実行時Grant/Receiptを区別し、Owner再受理を求める | #1129/#1174/#2600 |
+| U-09 選択済みTargetのGo nested module/依存が増減 | root test成功でTarget成功としない。選択moduleのsum・readonly build・artifact memberの充足を個別検証 | 依存欠落と未使用Plugin混入は別の否定対照。既存修正PRのPASSを新変更へ転用しない | #1251 PB-10/#2831/#1167 |
+
+※表中のU-01〜09は**今回の照合行ラベル**であり、第二のFixture正本や新しいStatus enumではない。内容同一の再利用、解析・生成の省略、Conformance Evidenceの再利用、実行許可は個別のClaim。実消費Source closureが不足・不明なら「無依存」や「再利用可」を確定しない。
+
+### 17.3 更新失敗・配備時の回復を方式別に扱う
+
+- **標準Go静的Binary**：Runtime Providerを変更するなら、当該Target用の生成・Build/検証済み配布物で更新する。未選択Pluginの交換を動的に反映するための常駐TEI Host/Loaderを追加しない。既存配布物の歴史的な同一性は保つが、古い配布物の現在使用許可は別判断。
+- **独立Process/動的Targetを選択した場合のみ**：実ロードByte、世代pin、Client/Server Contract、旧要求のin-flight、Resource/Lease/Fence・readiness・cutover/drainを対象Host/Runtimeで確認する。reload 成功だけで無停止更新・実業務Effect移行を宣言しない（#1223/#2390）。
+- **失敗後の復元**：Providerの更新取消や旧Artifactへの切戻しは、すでにCommitしたDB/外部Effectを取り消さない。ACK-loss/partial/unknown時はOperation ID、RequestHash、Receiptと独立Readを先に確認し、無条件再Submitを禁止する（#1174/#1129）。
+- **資格の撤回**：過去にConformanceを通過したこと、ArtifactのDigestが同じこと、SourceがAへ戻ったことは、現在のTrust/Permission/Owner受理を自動復活させない。
+
+### 17.4 最小実証順
+
+P0：既存#1251 PB-01/02/07と#2600 IBの同じ選択済みGo Targetを固定し、Catalog/Bundled/Selected/Actually-consumed/Includedを分ける。独立Expectedと実Input closure、Builder/Toolchain/flags、全Artifact member、Readerを固定する。
+
+P1：**U-01/02（過剰失効）対U-03/04/09（誤再利用・依存欠落）**を同じ比較票で検証。変更が未選択なら不要な再計算を防ぎ、実消費が変わったときの失効とTarget build失敗を検出する。対象ファイル・全moduleの実Go検証は#1251/#2831、測定は#2600/#2018へ委譲。
+
+P2：#988/#2514で標準pure Operatorと代替実装、#2622/#2862でProvider別SQL/Read Scopeを独立Oracleと照合。値だけの一致を意味互換・現在権限へ昇格しない。
+
+P3：実外部Host/DB・長寿命Targetの更新、現在Grant/Lease、partial Effect/Receiptの回復は#1223/#2390/#1174の資格でのみ評価。最初のGo単一Binary要件へこれらの動的機構を逆流させない。
+
+**採用判断**：Bundle版と契約版の分離・局所再資格化が、変更波及、false reuse/false invalidation、Test漏れ、ビルド時間を実際に改善した範囲だけを製品設計候補とする。新API/Registry/Cache/Runtimeの実装とOwnerの業務意味受理は本追補では未決。U-01〜09を含む今回の実Go/DB/Host試験・性能測定は NOT RUN。
