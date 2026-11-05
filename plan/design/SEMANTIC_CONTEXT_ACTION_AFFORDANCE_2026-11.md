@@ -586,3 +586,48 @@ D0〜D5は**検収票の論理列**であり、すべてのActionが6段の新Ru
 - **SQ-04 Consumerと再資格**：Offer後のRole/Asset/Grant/DB Schema移行、A→B→A、Period closing、またはACK lossに対し、Offer表示・再提示・実Dispatch・過去Result/引用の資格を別々に再計算。Userに`blocked`だけを示して既確定効果を消去しない。
 
 **最優先はSQ-01 read-only同一Source/Meaningから始める**。既存#1180のScenarioと#2514独立Expectedを使い、実2DB比較／役割自己移行／本番Current Grant／外部Harness／EKI JobをP0の前提条件にしない。上記は新契約/二重Runnerの導入提案ではなく既存Ownerへの受入引渡し。SQ-01〜04を同一Attemptで走らせた試験、Role Cutover/実Dialect SQL selection、Owner Accepted Meaningは**NOT RUN**。
+
+<!-- 20261106-crossentry-retry-identity-vs-ui-local-guard -->
+## 19. 11/6横断合流：UIでの二重送信抑止と、業務操作の再実行防止を異なる資格として扱う
+
+### 19.1 実在する三経路の境界
+
+[Draft PR #2864](https://github.com/hat47x/tei-platform/pull/2864)は、React Starterの同一mount内の連続Submitを、再描画前の`useRef`で一回の`invoke`へ制限する。変更は**DraftのUI局所修正**であり、mainの標準挙動、異なるブラウザ/Worker、Page Reload、CLI/Batchの複数入口、Transport ACK loss後の実Effectについては保証しない。現Starterは`catch`で`input_or_transport_error`を表示するため、**入力誤りと不明Commit**を同じ画面表示へ押し込む可能性がある。これは新しい実障害を確認した主張ではなく、公開コード上の結果契約の境界である。
+
+[main統合 #2853](https://github.com/hat47x/tei-platform/pull/2853)のCommand Adapterは`CommitUncertainError`を`COMMAND_COMMIT_UNCERTAIN`（Lifecycleのunknown）へ伝播し、実PostgreSQLで同一Operation IDのReceipt Lookupと同Key replayを限定確認済み。ただし`commandadapter.Executor`は外部から渡される`OperationID`・`Payload`・`ExpectedVersion`・`Grant`を使用し、明示`Payload`があれば`request.Inputs`の自動符号化より優先する。**UIの表示対象/入力と、Providerへ送られた作用対象・意味・Scopeが同一であることはAdapter単体では証明されない**（§15 MC-B01）。
+
+[main統合 #2870](https://github.com/hat47x/tei-platform/pull/2870)の`TestLifecycleRestartLosesUnknownStage`は、Process再起動相当の新しいin-memory Lifecycleが既存unknownを忘れ、同じCommandのDispatchを受け付けることを確認。一方、同PRの実PG Referenceは**同じIdempotency Key**ならreplay・Applied 0・Receipt 1の境界を確認。[main統合 #2854](https://github.com/hat47x/tei-platform/pull/2854)は逆に、値A→B→A後に**異なるKey**で再度EffectがAPPLIEDになり得ると確認した。両者を総合しても「論理業務操作は一度だけ」の一般保証にはならない。
+
+### 19.2 必要なIdentityと現在資格を明示的に分離
+
+| Identity / Evidence | 意味 | 実装/所有と越えてはいけない線 |
+| --- | --- | --- |
+| **Business intent** | Ownerが受理した`cancel order`等の目的と許される対象・scope・effect | #2507/#2598。Actionの`Kind=update`・Payload hash一致では一意性や意味を決定できない |
+| **Request / Channel instance** | React画面・CLI・Job・Worker等の送信事象、入力と選択対象 | #1000/#997/#1130。UIのbusy/refは一つのComponent生存期間のロックであり、永続Operation identityではない |
+| **Command / Attempt / Generation** | 実行要求のID、Owner/Generation、unknown/timeout/再送との対応 | #2564/#1174。in-memory Lifecycle記録は再起動で失われる。別Channelから同論理操作を再送したかは別根拠 |
+| **Provider operation / receipt** | 物理Transactionが記録したIdempotency Key、Scope、Payload、Effect/Commit/Replay | #1174/#1129。Keyの再利用は当該Providerでの限定的な冪等性。異Key＋ABAや同Key異Payloadは独立拒否/監査の対象 |
+| **Current authority and consumer** | 現在Grant/Period・Provider Target・Role/SQL Asset、結果Snapshot/開示 | #2499/#2144/#2622/#2516。Receipt存在が現在の再Dispatch許可やAudienceへの情報開示権限を与えない |
+
+`Business intent`が同じに見えても**別の正当な二業務操作**である場合を、一律「同対象だから重複」と判定しない。一方「同じ操作の再送」は別Keyでも区別できるOwner受理済みの論理Operation identity/Expectationが必要になり得る。ここでは新しいCore必須Key Schemaやグローバル分散Lockを先に導入せず、**既存のCommand/Provider receiptを用いて足りない結合項を検証で示す**。
+
+### 19.3 一つのScenarioを各入口で再利用する最小受入（RIT-01〜06）
+
+同じ公開業務Caseの`Function+Target+Purpose`、固定Source Revision/Role/Provider、独立Expectedを#1180のScenarioへ定義し、実入力、OfferとRequest対象、OperationID、Idempotency Key、Receipt、独立readの列だけを既存Evidenceに対応付ける。以下は**計画**であり、異なる既存CIを一試行のPASSとして合算しない。
+
+| Case | 変化させる一つの軸 | 独立Expectedと残る資格 |
+| --- | --- | --- |
+| **RIT-01 Same component** | 同じReact Formでrender前にSubmit2回 | #2864のDraft局所実装では`invoke=1`。UIでの抑止を`Provider applied=1`の本番保証へ昇格しない |
+| **RIT-02 Cross channel** | 同じBusiness intentをWebとCLI/Jobがほぼ同時に送る | 両Requestが到達する可能性を前提に、同じ論理Operationか独立操作かOwner基準で判定。未固定なら`unknown`、Recipientは勝手にdedupeしない |
+| **RIT-03 ACK loss** | Provider Commit後にレスポンスだけ失われ、UIはTransport Error | 画面`input_or_transport_error`からEffect=0を推論しない。元OperationID/Keyで資格付きLookupと独立read。Keyを変えた自動再送をしない |
+| **RIT-04 Restart** | unknown状態でWorker/Host再起動、同Key・同Payloadで再開 | in-memory Lifecycleの再Dispatchは起こり得るが、実PG同Key replayはEffect再適用0/Receipt保持（既存限定実証）。実Crash/Network切断E2Eは別 |
+| **RIT-05 ABA/New key** | A→B→A後に同じ論理操作を別Idempotency Keyで要求 | 現行PG Referenceでは再適用可能な負例。業務一回性の防止が実装されたと主張しない。Owner承認の永続identity/版・Reconciliationが要る |
+| **RIT-06 Stale evidence and visibility** | Submit後にPeriod/Grant/Role/SQL Asset・Audienceが変更、またはObserver/帳票の一部が未受領 | 古いOfferを再実行許可へ昇格しない。過去のReceipt/Effectを「なかった」とも書き換えない。現在開示と結果Verifiedを別判定 |
+
+### 19.4 最小実装順序・引渡し
+
+1. **P0: UI局所境界を固定** — #2864のDraftテスト、現Starterの`input_or_transport_error`と既存Command Unknown契約を比較し、RIT-01/03の**現在の挙動と理想Expectedの差**を表に記録。表示の文言改善と永続冪等化を同じPRへ混ぜない。
+2. **P1: Read-only correlation** — #2598のOffer/Request Target・Source/Role/SQL Asset・Grantと、#2564のCommand ID/Provider Key/Receiptを、既存#1180 Scenarioから一回のRequestとして結ぶ。Joinできない箇所は`not-connected`と明示し、実DBへのWriteをP0に要求しない。
+3. **P2: 書込み／不明Commit** — #1174/#2564が実PGの同Key receipt、異Key ABA、再起動、同Key異Payload、Commit Unknownと現在Grant/Targetを一つのCaseで独立Readまで照合。異入口の比較は#1000/#1130が担当し、UIリトライは未知状態のreconciliation資格が整ってから段階受入。
+4. **P3: Consumer** — #2516/#2604が現在Audienceの実Result/Receipt/Body受信を確認。RunPlan/Jobの完了、Webのcompleted表示、帳票行の存在はそれ自体でBusinessVerifiedにしない。
+
+**停止線**：#2864はDraftのUI局所修正であるため、mainへ入ったと書かない。#2853/#2854/#2870の実PG限定結果は実証済みとして維持しつつ、正式Host current Grant、一つのActionから実PGまでの同一Attempt、実Process kill・ネットワーク分断、OwnerによるBusiness Operation同一性の受理、二Consumerの現在開示は**NOT RUN**。新Host/Universal Idempotency Engine/二重Job Runner/独自Identity Registryは設けない。
