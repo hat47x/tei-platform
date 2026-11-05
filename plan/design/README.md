@@ -269,3 +269,4 @@ S1 realistic intent / candidate frontier
 - [定義形式の版と変換の境界（2026-11）](FORMAT_VERSION_CONVERSION_2026-11.md)：`.tei`と作業領域manifestの形式版、中心表現経由の変換、プラグインが実行する変換境界、三状態属性の文法提案と残作業（#1920）。
 - [実行先の現状調査](HOST_TARGET_SURVEY_2026-11.md)（Web・デスクトップ・サービス・Wasmの現在地。モバイル・組み込みは未着手）
 - [権限の現状調査](PERMISSION_ENFORCEMENT_SURVEY_2026-11.md)（宣言の検証はあるが、実行時の強制は無い）
+- [アクセス経路の棚卸し](ACCESS_PATH_INVENTORY_2026-11.md)（実行の中核が直接触るファイル操作は1件。実際のアクセスはアダプタ側）
