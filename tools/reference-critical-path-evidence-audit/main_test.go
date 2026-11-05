@@ -117,6 +117,26 @@ func TestE2MustDeclareAKnownHostAuthorityProvenance(t *testing.T) {
 	}
 }
 
+// Documents a known limit: a look-alike label that uses a different script
+// (here Cyrillic o) is NOT folded to provisional-grant. E2 refuses it as an
+// unknown label; E0/E1 do not read Physical evidence, so nothing is reported.
+// The audit is not a defence against a packet author who disguises the label.
+func TestHomoglyphProvisionalLabelIsOnlyCaughtByTheE2AllowList(t *testing.T) {
+	label := "pr" + string(rune(0x043e)) + "visional-grant"
+	for claim, wantRequired := range map[string]bool{"E2": true, "E1": false, "E0": false} {
+		p := fixture()
+		p.Claim = claim
+		p.Physical.HostAuthorityProvenance = label
+		r := Audit(p, h, m)
+		if has(r, "PROVISIONAL_GRANT_NOT_G2_EVIDENCE") {
+			t.Fatalf("%s: a different-script look-alike must not be folded: %+v", claim, r)
+		}
+		if has(r, "E2_HOST_AUTHORITY_PROVENANCE_REQUIRED") != wantRequired {
+			t.Fatalf("%s: E2_HOST_AUTHORITY_PROVENANCE_REQUIRED=%v expected, got %+v", claim, wantRequired, r)
+		}
+	}
+}
+
 func TestReviewCandidateBindingMustMatchAcceptedCandidate(t *testing.T) {
 	p := fixture()
 	p.Claim = "E1"
@@ -612,5 +632,45 @@ func TestStrictJSONUnicodeFoldedAliasRejected(t *testing.T) {
 	}
 	if err := rejectDuplicateJSONKeys([]byte(`{"Key":1,"key":2}`)); err == nil {
 		t.Fatal("Unicode folded key shadowing was accepted")
+	}
+}
+
+func TestProvisionalAcceptanceIsNeverFormalEvidence(t *testing.T) {
+	zeroWidth, bidi, nl := string(rune(0x200b)), string(rune(0x202e)), string(rune(10))
+	for _, label := range []string{"provisional", "Provisional", " PROVISIONAL" + "	", "prov" + zeroWidth + "isional", "provisional" + bidi, "unspecified", "Unspecified" + nl, "UNSPECIFIED"} {
+		for _, claim := range []string{"E0", "E1", "E2"} {
+			p := fixture()
+			p.Claim = claim
+			p.Acceptance.AcceptanceKind = label
+			r := Audit(p, h, m)
+			if !has(r, "PROVISIONAL_ACCEPTANCE_NOT_FORMAL_EVIDENCE") || r.Status != "INCOMPLETE" || r.ProductGate != "UNQUALIFIED" {
+				t.Fatalf("%s %q: %+v", claim, label, r)
+			}
+		}
+	}
+	for _, label := range []string{"formal", "Formal", "formal ", "provisional2", "x"} {
+		p := fixture()
+		p.Acceptance.AcceptanceKind = label
+		if r := Audit(p, h, m); !has(r, "ACCEPTANCE_KIND_UNRECOGNIZED") || r.Status != "INCOMPLETE" {
+			t.Fatalf("%q: %+v", label, r)
+		}
+	}
+	// Omitted (legacy packet) leaves the complete fixture reviewable.
+	for _, label := range []string{""} {
+		p := fixture()
+		p.Acceptance.AcceptanceKind = label
+		if r := Audit(p, h, m); r.Status != "REVIEW_REQUIRED" || r.ProductGate != "UNQUALIFIED" {
+			t.Fatalf("%q: %+v", label, r)
+		}
+	}
+	// The strict packet decoder accepts the field and the CLI still fails.
+	raw, _ := json.Marshal(func() Packet { p := fixture(); p.Acceptance.AcceptanceKind = "provisional"; return p }())
+	path := filepath.Join(t.TempDir(), "p.json")
+	if err := os.WriteFile(path, raw, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	var out bytes.Buffer
+	if err := run([]string{"-packet", path, "-head", h, "-main", m}, &out); err == nil || !strings.Contains(out.String(), "PROVISIONAL_ACCEPTANCE_NOT_FORMAL_EVIDENCE") {
+		t.Fatalf("err=%v out=%s", err, out.String())
 	}
 }

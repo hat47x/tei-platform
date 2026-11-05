@@ -325,6 +325,15 @@ func TestCanonicalSubmitIntentMayInvokeSelectedReadOnlyQuoteCoeffect(t *testing.
 			}
 		}
 	}
+	// Different invocation values reuse the same Host-selected contract and
+	// provider, but must still pass the current authorization and Host guard.
+	changedBody := `{"currency":"JPY","lines":[{"sku":"BOOK-02","quantity":2,"unitPriceMinor":900}]}`
+	current = corporate
+	beforeCalls, beforeGuards := launcher.calls, guardCalls
+	changedReply := send(host, changedBody)
+	if changedReply.Code != http.StatusOK || launcher.calls != beforeCalls+1 || guardCalls <= beforeGuards || !strings.Contains(changedReply.Body.String(), `"subtotalMinor":1800`) {
+		t.Fatalf("changed values must reuse selected plan but recheck current authority: HTTP=%d calls=%d guards=%d body=%s", changedReply.Code, launcher.calls-beforeCalls, guardCalls-beforeGuards, changedReply.Body.String())
+	}
 	denied := func(label string, handler http.Handler, body string, want int) {
 		t.Helper()
 		before := launcher.calls
@@ -337,6 +346,7 @@ func TestCanonicalSubmitIntentMayInvokeSelectedReadOnlyQuoteCoeffect(t *testing.
 	denied("bare capability cannot escape parent Action", selected, requestBody, http.StatusForbidden)
 	current = viewer
 	denied("viewer denied by canonical business rules", host, requestBody, http.StatusForbidden)
+	denied("viewer denied for changed values too", host, changedBody, http.StatusForbidden)
 	current = corporate
 	sessionOK = false
 	denied("session invalid", host, requestBody, http.StatusUnauthorized)
@@ -366,4 +376,5 @@ func TestCanonicalSubmitIntentMayInvokeSelectedReadOnlyQuoteCoeffect(t *testing.
 	if guardCalls < 2 {
 		t.Fatal("selected quote did not use the existing current Host guard")
 	}
+	t.Log("real quote process: changed business values reuse Host-selected provider and contract but recheck current Host authority; viewer denied for both inputs before process")
 }

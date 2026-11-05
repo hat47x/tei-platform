@@ -70,7 +70,7 @@ func TestShippedCLIServesASignedAcceptedSourceButDispatchesNoCommand(t *testing.
 	if out, err := runTool(t, admin, "keygen", "-private-key", key, "-issuer", "x", "-key-id", "x", "-application", "x"); err == nil {
 		t.Fatalf("keygen overwrote an existing key: %s", out)
 	}
-	if out, err := runTool(t, admin, "sign", "-workspace", r1, "-application", "order_entry", "-decision-ref", "d1",
+	if out, err := runTool(t, admin, "sign", "-provisional", "-workspace", r1, "-application", "order_entry", "-decision-ref", "d1",
 		"-authority-revision", "test-only-issuer-rev-1", "-issuer", "test-issuer", "-key-id", "k1", "-private-key", key, "-out", decision); err != nil {
 		t.Fatalf("sign: %v %s", err, out)
 	}
@@ -131,6 +131,10 @@ func TestShippedCLIServesASignedAcceptedSourceButDispatchesNoCommand(t *testing.
 				t.Fatalf("shipped CLI did not serve the signed R1: %s", mustRead(t, logfile.Name()))
 			}
 		}
+		if logs := mustRead(t, logfile.Name()); !strings.Contains(string(logs), "SOURCE_ACCEPTANCE_PROVISIONAL") || !strings.Contains(string(logs), "not a formal human Acceptance") {
+			t.Fatalf("no provisional warning on stderr: %s", logs)
+		}
+		assertKindHeader(t, client, base, "provisional")
 		response, err := (&http.Client{Timeout: 5 * time.Second}).Post(base+"/scenario/submit", "application/json", strings.NewReader(submitBody))
 		if err != nil {
 			t.Fatal(err)
@@ -154,7 +158,7 @@ func TestShippedCLIServesASignedAcceptedSourceButDispatchesNoCommand(t *testing.
 			t.Fatalf("revoked Source still served: %d", after.StatusCode)
 		}
 		// Re-accept for the following subtests with a new Decision.
-		if out, err := runTool(t, admin, "sign", "-workspace", r1, "-application", "order_entry", "-decision-ref", "d2",
+		if out, err := runTool(t, admin, "sign", "-provisional", "-workspace", r1, "-application", "order_entry", "-decision-ref", "d2",
 			"-authority-revision", "test-only-issuer-rev-2", "-issuer", "test-issuer", "-key-id", "k1", "-private-key", key, "-out", decision); err != nil {
 			t.Fatalf("sign d2: %v %s", err, out)
 		}
