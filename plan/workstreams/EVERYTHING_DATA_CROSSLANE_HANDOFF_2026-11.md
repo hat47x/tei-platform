@@ -2645,3 +2645,54 @@ EKI側#112/#266/#67/#115へ契約不足を返し、TEI #1130がJob意味と判�
 - **失効・開示**：Source/Role/Operator/Provider/SQL Asset/Grant変更、候補追加・削除、A→B→Aで旧Previewの再資格化を行う。内部のDB Alias/DSN/SQL全文/権限外候補件数や不足Predicateは一般利用者へ無条件に出さない。Studio/Consumer Ownerの既存Scope/Disclosureを尊重する。
 
 **次の試験順**：LUX-01/04/07は既存#2586のHeadlessと#1124のGeneric Inspectで通常操作の必須DB固有入力数（目標0）・対象不明時の業務言葉での診断・開示を測る。LUX-02/03/05は#2862 DBXの既存Fixtureと同じIndependent ExpectedでPostgreSQL＋第二DBを比較。LUX-06は#2600の再資格化で扱う。AIによる可読性評価は比較補助であって、実ユーザー操作・業務Owner受理や同一Attempt実DB効果のPASSに換算しない。**LUX-01〜07、実UI、二DB移行のE2E/ユーザー受入はNOT RUN**。新Registry、Query Engine、専用UI Pluginは追加しない。
+
+## 50. 組織CaseのE2 ReadからE4 Commandまで：SQL/DBの選択と再実行安全性を別資格にする（2026-11-05、#2386/#2586/#2862/#2853/#2854 の横断引継ぎ）
+
+### 50.1 進展した現物・未接続区間を精密に分ける
+
+[Org #2681](https://github.com/hat47x/tei-platform/pull/2681)の実`.tei` Loader/OperationSurface（固定Go CI 7件成功）は**E1**。CaseRecord`handlingUnit`の多重度をone→manyと変えると**Worldは変わりOperation ID集合は同じ**という負例がある。
+
+別Ownerでは[PR #2852](https://github.com/hat47x/tei-platform/pull/2852)の実製品Command Lifecycle（unknown/takeover）と[PR #2853](https://github.com/hat47x/tei-platform/pull/2853)の製品Invoker→実PostgreSQL CASがmainへmerge済み。[PR #2854](https://github.com/hat47x/tei-platform/pull/2854)はValue ABAで新Idempotency Key再試行による二重適用可能性を**実PGで反証**。ただし**Orgの一つのCase/Read/Host Grant/Commit試行を実施したものではない**。
+
+[Draft #2862](https://github.com/hat47x/tei-platform/pull/2862)のDB別Query/2waySQL選択、[Draft #2860](https://github.com/hat47x/tei-platform/pull/2860)の実WorkspaceベースRole自己記述、#2822/#2823のWorkspace必要Source不在診断を、組織E2への**前提と独立証拠**として照合する。Role Descriptorが読めた、Alias名が読めた、`tei validate.ok`、Source/Operation hash一致、SQL解析が通った、Providerが存在する、の各事実はそれぞれ**別段階の資格**。SQL資産の存在から業務Meaning・実Read Grant・Host Commitを導出しない。
+
+### 50.2 一つの業務Functionに必要な最小実行パケット（新Schemaではない）
+
+| 既存担当 | 最初の実取得Caseの最小入力・確認する事実 | 未充足ならどうするか |
+| --- | --- | --- |
+| #2822/#2823/#2860 | 実に必要な`semantic/organization/model.tei`、Case Data/Relation、実ParseされたRole/Source Selector、Pin/Owner候補 | `std`だけの空WorldやManifest列挙を合格にしない。未取得／未選択を診断 |
+| #1126/#2386 | Case/Org/Relation occurrence IDとCardinality、組織軸・valid/known・Policy意味のOwner受理 | 候補構造は保持するが`not accepted` |
+| #2506/#2622/#2611 | Functionが必要なRelation path/Row+Field/Scope、宣言済Alias→Environment Instance→Provider/Route、対象の選択 | Binding不明・複数競合→`unverified`、暗黙最初のProviderへfallback不可 |
+| #2862/#2387 | Native SQLが必要な場合だけQuery Contract/SQL Source/Dialect/Schema/条件分岐と選択の固定根拠 | 専用SQL不在・未知Dialect/Versionで未承認Fallback不可。標準ReadはRelation-first |
+| #2628/#2586 | 実Providerが送信・観測したQuery/HTTP/Relation path、Rowset/Field/Cohort、選択Tenant/Policy施行点と実Result | 実アクセス未知なら`NOT RUN: physical-read-unavailable`。部分0件≠不存在 |
+| #2582/#2516/#2631 | 消費時点のPolicy/Grant/Selection/Source、実表示・件数・Export・AI/SHO用途別資格 | Read OKからCount/Export/外部開示の許可を推論しない |
+| #2598/#1174/#2564 | Current Host Grant、Operation/Target/expected version、実Invoker Lifecycle、PG CAS/unknown/takeover/Receiptと独立Post-image | Effect unknown≠失敗確定、同Attempt自動再送禁止、Source/値ABAでGrant/Receiptを復活させない |
+
+これは既存の`Function Context`、`Query`、`Provider`、`Command`、`Receipt`の実証票であり、共通万能Context Object、新SQL Selector/Policy Engineや中央Evidence Registryを新設しない。外部Sourceのraw byte/DSN/Private FieldをConsumerの用途資格なく露出しない。
+
+### 50.3 本当に一回で測るべき試験をReadとWriteに二分する
+
+**P1／最初のRead-only E2**（唯一の今回の優先実装候補）：実`.tei`のCase`handlingUnit`に対し、同一FunctionでScope内C1とScope外C2をReadし、Cardinality one→manyを**Relation occurrence数／Case数／Query count**へどう反映するか、独立Expectedで比較。Provider選択の実DB Aliasと現在Scopeを固定し、必要Row/FieldとQuery非出力依存を実Trace/Resultに突き合わせる。利用者の日常DSLにSQL選択を強制しない。実Producerが無ければ`NOT RUN`で止め、E1/VP/VEのGo/Node別Runから合成E2 PASSを作らない。
+
+**P2／同じCaseのWrite E4（P1成立後）**：C1の担当部門D1→D2、予期版7→8を独立Expected（架空テスト条件）として用意し、Current Principal/Host Grant/Typed Intentと対象Relationを再検証したうえで、既存Command Invokerと実PG Providerを再利用。commit応答喪失→unknown/再送禁止/承認済みtakeover→独立Read/Receiptを記録。続けて値ABA（D1→D2→D1）と新Idempotency Keyの負例を**同じOrg Case**で観測した場合にのみ「Org E4」を評価する。CaseRecordに実Persistence/Provider/Hostが未接続なら、既存PG`sales.order`成功をその代用にしない。
+
+| 固定Trial | 反証対象 | 判別に必要な独立Expected |
+| --- | --- | --- |
+| ORG-XR-01 | 実`.tei`が見つからず、std Catalogだけでvalidate成功 | 必須Case Data/Relationが実Parseされたかを識別。検証対象が0件なら未Covered |
+| ORG-XR-02 | データの所属先が1→複数、Operationは同じ | Case ID distinct、Org Relation occurrences、Scope/Count/Join grainの違いを返す |
+| ORG-XR-03 | 複数DB Alias、専用SQL消失、共通SQL残存 | 固定DB Instance/Provider/Asset、承認済みFallbackの有無、実Readを確認 |
+| ORG-XR-04 | 完全0件 vs partial0件、Query`NOT EXISTS` | Rowset/Field/Scope/Source completeなら偽と判定、未知ならunverified |
+| ORG-XR-05 | 旧Source/Policy/Grantで開始したReadが遅れて到着 | 現在のRead/Display/Count/Export資格がないものは採用しない |
+| ORG-XW-06 | Read OKから旧ContextでCase移管Update | Current Host Grant/Target/Versionが違えば送信しない |
+| ORG-XW-07 | commit応答不明／同Attempt再送／takeover | unknownから同世代再送せず、別owner/genとOperation identity/Receiptを検証 |
+| ORG-XW-08 | Case値のA→B→A、別Idempotency Keyによる再適用 | Value一致だけでは履歴・Idempotency成立を保証しない。独立Read/Receipt/row versionが必要 |
+
+**段階の誤算を避ける**：`one→many`が実Parserで受理されたことは、現在のCase schemaがそれを業務意味として受理したという証拠ではない。Role/Owner Meaningも、SQLRealizationと実Providerの同値性も独立。PostgreSQL CASの参考試験は実DBを走った事実を保持するが、Org Case向けのテストは**まだ走っていない**。
+
+### 50.4 計画の進め方
+
+最初に#2586が**P1-ORG-READの実入口と不足情報**を列挙し、#2622/#2628がRelation pathの物理Read ProducerとTraceを確定する。#2862は必要な特殊SQLだけをOwner固定した選択へ適合させ、標準Relation/Function MappingをSQLへ置換しない。#2822/#2823/#2860は必要Source/Role/Languageの実読込・解釈と空Workspaceの誤合格を診断する。#2811/#2514は上の独立ExpectedとKnown Mutantを既存Scenarioで使うが、テストケース数/AI一致を製品保証の指標にしない。
+
+P1が未成立でもP2の別Function実PG実験は独立継続できるが、**組織モデルとしてのE2→E4の接続が完了したとは判定しない**。同じCase・同じSource/Role/Provider/Owner受理版・Host現在資格の一Attempt証拠が揃ったときに初めて縦断を評価。#1119の本来のP0-a/P0-b優先は維持する。
+
+**この追補の検証水準**：既存実Go/実PostgreSQLの別PR証拠を確認して設計・受入計画へ反映したもの。今回新しい組織DB、Query、実Host、AI自動テストやCLI/Web統合を実行したわけではない。Org E2/E4本番資格・Owner正式受理は**未完了**。
