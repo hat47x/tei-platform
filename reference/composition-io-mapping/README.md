@@ -46,6 +46,8 @@
 
 型の候補判定は、ADR-0043/0044の対象環境における受理・許可とは独立する。TEI独自の共通Hostや認証Coreを要求しない。
 
+なお、選択ビューに含まれないSourceが存在し得る場合、既存`validation.Validate`の成功を全Sourceの読込み完了へ拡大してはいけない（[Workspace Sourceの未診断問題 #2823](https://github.com/hat47x/tei-platform/issues/2823)）。呼出元はSource closureを別途確定・検証する必要がある。合成試験の`std.binary`/`std.text`/`std.json`は項目の型参照だけを試し、実ファイル転送、JSON Schema、Build Graphの完全性、実行中の副作用、意味の受理は扱わない。
+
 同じTypeRefと名目型がそろっていても、別の意味集合で型定義自体が同時に変わった場合、ここではFingerprint差を判定できない。この場合の直接互換や実行許可は**未証明**である。合成・ローカルReferenceの成功を、本番の意味受理や実Provider呼出しの証拠へ転用しない。
 
 
