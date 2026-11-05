@@ -429,6 +429,105 @@ external LLM
 
 汎用的なプラグインの依存解決・構築器の自己構築・AIによる業務実行・複数の実行先など、長期的な能力を否定するものではありません。ただし、それらの完成を最小限の業務実証の前提にする場合は、**どの具体的な不足を解消するか**を明らかにしたうえで採否を判断します。現在の判定段階・各作業の適格性確認・保護された統合条件は変更しません。
 
+## 2026-11-02 Everything is Data横断の証拠接合（提案・既存Gate内）
+
+[#2619](https://github.com/hat47x/tei-platform/issues/2619)のEverything is Data方針は、業務以外の構造・定義体も含めた製品スコープの拡張候補として扱う。実装上は、既存の[#1119](https://github.com/hat47x/tei-platform/issues/1119)のG0〜G4、Source/Owner意味受理、Provider/Hostと独立実測を利用し、**新しい判定段階・第2のCanonical・TEI独自Hostを追加しない**。
+
+最初の**同一試行**で接ぐ対象を次の順に確認する（段階名は検証手順、Gate追加ではない）。
+
+| 接合順 | 明示して比較すること | 採用前の根拠／未確認 |
+| --- | --- | --- |
+| 1. Authoring→標準データ候補 | Markdown表・簡潔な式/DSL・Function形のSyntax差、Source位置、Role/Operator IDと版、候補≠意味受理 | [#2625](https://github.com/hat47x/tei-platform/pull/2625)隔離Python 23件、実TEI Language Plugin未実行 |
+| 2. Context/Rule依存 | Display FootprintとRule Dependency Footprintを分離。利用Relation/Field/Grain/Scopeを明示し、要求した全件性と実取得の全件性を区別 | [#2624](https://github.com/hat47x/tei-platform/pull/2624)隔離Python 20件＋別18件、実TEI Rule/Context未接続 |
+| 3. 複数Provider実現 | 同じSemantic Subjectの異Mapping/DB Alias、Replica/Primary、Snapshot/Cohortの実証責任を区別 | [#2627](https://github.com/hat47x/tei-platform/pull/2627)隔離Go 29件、実`DeriveOperationSurface`・実DB未実行 |
+| 4. Action/実Result | View→Typed Intent→現在Rule/Grant→Request/Effect/Receipt→独立Read。先行Previewを実Effectに昇格させない | #2500/#2597/#2598/#1174、全経路接合未実施 |
+| 5. Consumer展開 | 同じAccepted MeaningからStudio/AI CUI/SHO/外部Target。実読取・開示・Manifest一式公開を別観測 | #2497/#2516/#2604/#2630、実Consumer横断未実行 |
+
+特に、**同じ表示から同じRule/Action結果を推定しない**。画面にOrder.amount=600のみ表示し、非表示の信用上限が700/500の二世界では、画面が同じでもRuleの結論が異なり得る。Ruleへの依存を理由にClient/LLMへの秘密Field取得を自動許可することもない。RDB/API、Primary/Replicaの同じID/数値Revisionが実共有Cohort・同じ更新対象を保証するわけでもない。根拠は[メタ概念設計§25](design/DATA_STRUCTURE_META_FACETS_AND_TOPOLOGY_2026-11.md)のIF-01〜10を参照する。
+
+作業の分担は、Syntax/Meaning Role #988/#2620/#2621、Function/Rule #2506/#1129/#1729、Data Operations/Provider #2622/#2611、縦断 #2586、Effect #1174、Owner意味受理 #267 とする。**AIトークン供給増によって独立Pressureと非同期実証を拡充できても、別々の隔離ReferenceのPASSを製品の統合PASSへ合算しない**。現段階での正式Schema/DSL文法・新Executor/Policy/Host・外部Targetの採用やGate/優先順位の変更はない。
+
+### 2026-11-02 観測閉包・実取得・開示・横断Claimの選択的再資格化
+
+[メタ概念設計§26〜27](design/DATA_STRUCTURE_META_FACETS_AND_TOPOLOGY_2026-11.md)、[Pressure Corpus PC-157〜168](design/DATA_STRUCTURE_PRESSURE_CORPUS_2026-11.md)を、#2619のEverything is Data、#2616のContext起点Action Offer、#2516のConsumer Claim、#2582の増分観測、#2630の成果物一式の実読取と接続する。**同一Source/Activityと版を固定する実証単位の拡大**であり、既存[#1119](https://github.com/hat47x/tei-platform/issues/1119)のGate、Owner受理・merge資格を変更しない。
+
+まず三つの異なる範囲を一枚の**受渡し比較票**で追跡する。(a) Function Display/Rule/Actionが論理的に必要とするRead Footprint、(b) Query/Providerが実際に取得したField・Row・RelationとCache/Logを含む観測可能なAccess Witness、(c) 各Consumerへ実際に送出・公開した値・Action/Tool名・診断・件数。必要な入力集合の和は物理Read最小性も外部への開示許可も示さない。さらにRowset完全性、FieldごとのValue/Observed NULL/Absent、Cohort/時点を別資格とする。
+
+| 既存Ownerへの受渡し | 初回の反証・実測 | 明示する限界 |
+| --- | --- | --- |
+| #2506/#1129/#1729 | Display同じ、非公開Rule依存だけ違う二世界。Ruleの入力不足・部分取得・失効を分ける | [Draft #2624](https://github.com/hat47x/tei-platform/pull/2624)の20＋18隔離Python PASSは実TEI Rule/DBではない |
+| #2622/#2611/#2387 | 同じ公開JSONでも秘密Fieldの過剰取得を含むProvider Access。異Alias・同Snapshot文字列の反例 | [Draft #2628](https://github.com/hat47x/tei-platform/pull/2628)の12隔離Python PASS、[Draft #2627](https://github.com/hat47x/tei-platform/pull/2627)の32隔離Go PASSは実OS/DBのアクセス抑制・共有Cohortを保証しない |
+| #2507/#2516/#1178 | 公開Subjectが同じ二世界で秘密ActionやTool候補の存在だけ変える。低開示Consumerの候補・診断・結果を検査 | [Draft #2613](https://github.com/hat47x/tei-platform/pull/2613)の42隔離Python PASSは実Policy・Host Grantの検査ではない |
+| #2582/#2600/#2516 | Rule、Provider Slice、開示Grant、Source Meaning、Artifact等の変更で**失効するClaimだけ**を再確認。未知の依存を無影響へ格上げしない | 新しい全体Claim Ledgerや資格化Engineを先行追加しない。実更新・再取得・再送出の因果証拠は別 |
+| #2630/#2604/#2515 | 同じMeaning/ManifestでもConsumerが必要なArtifact一式を実読取できたか、どの公開Audience・外部Harnessへ送出したかを確認 | Manifest自己整合は期待Member充足・同時公開・実受信・機密出力不在を証明しない |
+| #2619/#2620/#1124 | 未知Role／Pluginの標準データを保持し、read-onlyの説明・Source参照を維持。編集資格・Actionと区別 | [Draft #2631](https://github.com/hat47x/tei-platform/pull/2631)の16限定JS assertionsは実Studio/Owner受理ではない |
+
+**横断Claimの選択的再資格化**は、TEI Query/Rule→SEI判断→TAI/外部HarnessのSkill/Tool→SHO文書利用→EKI配送などの「各部分のPASS」を足すこととは異なる。元のSubject/Activity、Source/Meaning/Rule/Provider/Skill/Consumer/Authority/Artifactの版と、必要な前提、現時点の用途・開示条件を、同じ実施活動へ明示的に結び付けて比較する。Skillの宣言・配布・Tool到達・実行資格・実結果は別。履歴として正しい過去のReceiptを、現在の公開許可へ自動変換しない。
+
+最初の反証を**同じOrder/信用上限の受理済みRule候補**で作り、(1)データ1件の訂正、(2)Rule版変更、(3)Provider Alias/実Snapshot変更、(4)Consumerの開示Grant失効、(5)SHO用Artifactの部分公開、(6)未知Role追加に対して、それぞれどのClaim/表示/操作候補だけ再評価・保留すべきか説明する。既存#2586が実TEI縦断、#2582が依存影響、#2516がConsumer別の資格、#2600がBuild再利用、#1119が統合Gateを所有する。
+
+**段階**：R0=read-only依存・版照合／R1=既存合成Referenceへ固定負例追加／R2=実TEI Function/Rule/Providerの一試行／R3=実Consumer・現行Policy/Tool/Host・Receipt／R4=フル再評価と選択的再評価の一致、誤維持、不要失効、再評価量を計測。Owner意味受理・実Provider・実Studio/SHO・外部Harness・本番Effectと全実行経路の証明は、各担当の観測が揃うまで**NOT RUN**。この追加計画はGateの合格・正式仕様採用・main反映を意味しない。
+
+
+### 2026-11-02 非出力Query依存からIncremental・Disclosure・Current Grantまで接合
+
+[メタ概念設計§28](design/DATA_STRUCTURE_META_FACETS_AND_TOPOLOGY_2026-11.md)で、同じ出力値を生成するExpressionでも、行の**成立/不在・JOIN多重度・選択順位/Limit・Ruleの評価条件**が変化するとResult Slice/Claimが変わり得ることを明示した。これを従来の#2582 Reactive Data Context、#2600 Incremental Build、#2387 Query Explain、#2514独立Oracleと接続する。SQLの`SELECT id WHERE secret_score > 50 ORDER BY secret_rank LIMIT 1`では、`id`の値Lineageが同一でも秘密Predicateや非表示順位が出力する行を変え得る。
+
+| 接合順 | 既存Ownerと実際に必要な観測 | 不十分な根拠／判定保留 |
+| --- | --- | --- |
+| Q0 静的Query依存 | #2387／[Go Characterization #2634](https://github.com/hat47x/tei-platform/pull/2634)・[#2635](https://github.com/hat47x/tei-platform/pull/2635)：Output Value Inputs、WHERE/EXISTS、ORDER/LIMIT、Join/Bag、Source/Operator版とCoverageを別列 | OutputField ID/Value lineage一致だけ、`Lowering=full`の入力値だけでは説明の完全性を証明しない。重複Draftは同じOracleとして加算しない |
+| Q1 実Analyzer連結 | #2387/#2622：**実SQLGlot Worker→Go DerivedIR**と、SQL Source bytes/Schema/Parameter/Query bindingを照合 | 手製`analyzer.Result`でのGo test PASSは実WorkerのColumnRefs網羅を保証しない |
+| Q2 実Query/Context | #2506/#2624/#2611：実Provider Request/Read Witness、RowsetとField完全性、Snapshot issuer・Cohort・非表示Rule入力を固定 | 見えている値・列の一致からDBの不要Readや全件性、RLSの同Scopeを主張しない |
+| Q3 送出・権限 | #2516/#1178/#1769と[限定D2修正 #2637](https://github.com/hat47x/tei-platform/pull/2637)：preflight/post-loadの実Read Grant、返却後のConsumer向け開示、現在Policyと非公開条件/Tool | 二地点検査は失効/復活ABAや返却後のEgressまで一括保証しない |
+| Q4 再実行/Oracle/性能 | [F0/F1/S1/S2計画 #2636](https://github.com/hat47x/tei-platform/pull/2636)のBaseline/Changed Full/Selective/Negative対照、#2514の独立Expected、#2582/#2600の失効選択と待ち時間 | FullとSelectiveの偶然のByte一致や同一Generator由来のWantでは、一般的な安全skipや意味受理を保証しない |
+
+**順序と資格**：先に#2387が二つのQX-27 Go Characterizationを同一Ownerの負例へ整理し、まだ型付きRow-membership edgeやPredicate/Order completenessの製品契約を採用しない。次にQ1〜Q3で**解析に必要な非出力Fieldを保持することと、それを外部へ開示できること**を分ける。#2637の現在Grant二地点再確認は既存D2拒否を維持した限定修正候補として扱い、実DB/Host/OSの継続的強制は別資格。Q4ではF1とS1の**結果同値・選択的再計算の正しさ・再利用Evidence・速度改善を別々に検査**する。
+
+最初に追加する負例はLQ-01〜12（§28）。再実行の対象Source/Rule/Query/Provider/Skill/Artifact変更はそれぞれOwnerへ帰属させ、同じ業務Activity/版・Context・Consumerでの実観測が揃うまでは統合PASSを宣言しない。**新しいQuery Engine、グローバル依存Graph、独自Host、別のSemantic SSOT、Gateは追加しない**。Q1〜Q4の実一気通貫／外部Consumer／Owner意味受理は**NOT RUN**。
+
+### 2026-11-02 実mainのCLIを起点とするSource→Operation→Artifact→Reader証拠の最小縦断
+
+従来のEverything is Data横断計画（本節前半／[Draft #2629](https://github.com/hat47x/tei-platform/pull/2629)）は、Syntax→Role→Context→Provider→Consumerの理想的な受渡し条件を示す。一方、**2026-11-02に[#2587](https://github.com/hat47x/tei-platform/pull/2587)がmainへ統合**され、`cmd/tei`に`operations`、`artifacts`（`-out`あり）が実在するため、まず**存在する製品CLIだけを使った限定的な縦切り**から観測を開始できる。実装状況はmainの[`docs/status.md`](../docs/status.md)、操作の限定実証は[`plan/evidence/SURFACE_AND_ARTIFACT_VERIFICATION_2026-11.md`](evidence/SURFACE_AND_ARTIFACT_VERIFICATION_2026-11.md)を参照する。
+
+**固定する初期対象**：main上の`reference/standard-crud/workspace`、Application `ledger`（`applications/ledger/application.tei`に宣言）、既存の合成データと`missing-semantics`／`missing-input`／`conflict`の負例。まずGit SHAと実buildされた`tei version -json`のBinary情報、Workspaceの実Bytes・`sourceIndexFingerprint`・`worldFingerprint`・`modelRevision`の各生成元を固定する。***名称やRevisionを同じ文字列に寄せて比較しない***。具体的な値を取れていない場合は空欄・未確立とし、後から値を創作しない。
+
+実装上、`cmd/tei/main.go`の`operations`・`artifacts`経路はコマンド共通の`loadWorld`を通った後に、それぞれ`SurfaceWorkspace`・`RenderWorkspace`を呼ぶ。**同一コマンド内においてさえ実装が何回どのBytesを読むか／そのSourceが同じかは別途追跡が必要**。複数CLIを順に呼ぶだけで「同じLoad Snapshotから全出力が生成された」とは主張しない。
+
+最小の実コマンド候補（**下記をこのPRで実行したという意味ではない**。実行時は同じ固定checkout・Builder/Go版・実Workspaceを証拠票へ記録する）：
+
+```sh
+go build -o /tmp/tei-eid-verify ./cmd/tei
+/tmp/tei-eid-verify version -json
+/tmp/tei-eid-verify validate -workspace reference/standard-crud/workspace -json
+/tmp/tei-eid-verify operations -workspace reference/standard-crud/workspace -application ledger
+/tmp/tei-eid-verify artifacts -workspace reference/standard-crud/workspace -application ledger
+# -out は別試行：作業用の新しい空ディレクトリを明示し、出力前後のファイル名・digestを記録
+```
+
+| 試行段階 | 具体的に観測するもの | 成立しない主張／追加Owner |
+| --- | --- | --- |
+| C0 CLI/Source read | 実Binary・args・exit/Warning・対象Workspace bytes/Source Index・World版、Loadの回数と時点 | `version -json`は真正な署名・Owner受理でない。実ロード一致は#1163/#2605へ |
+| C1 Operation Surface | `ledger`の導出`list/read/create/update`候補・Gaps、Data/Mapping/Target/Grant未解決を明示 | `operations`のJSON表示だけで実Provider Read/Write／SQL/Rule意味受理はしない（#1127/#2611/#2598） |
+| C2 ArtifactSet | 表・機能・操作面・Manifest・Findings、Expected Memberと実Set、Generator/Templateの版、独立CheckSet | `Manifest.Complete`・同InputRevisionがConsumer期待集合／実ファイル読取済みを保証しない（#2482/#2630） |
+| C3 ファイル公開/読取 | `-out`へ実出力、同一世代の各Path/bytes/digestとManifest、過去の残留ファイル、障害注入、独立Readerが実際に読んだMember | 現`writeArtifactFiles`の順次`os.WriteFile`は一式のAtomic Publish保証でない。#2604/#2630/#2633へ |
+| C4 Source署名/受理 | [#2642](https://github.com/hat47x/tei-platform/pull/2642)統合後の`reference-host-acceptance sign`は`BuildSourceIndexFromLoad`で**Load時に捕捉したBytes**のみを用い、import宣言Workspaceを`WORKSPACE_IMPORTS_NOT_BOUND`で拒否 | これは`sign`内のSourceの限定保証。**別Invocationの`operations/artifacts`が同じSnapshot／Owner受理／実Target認可**とは限らない（#267/#1163） |
+| C5 Meaning/Role/Client | [#2639](https://github.com/hat47x/tei-platform/pull/2639)既存Go Language Plugin Referenceと[#2638](https://github.com/hat47x/tei-platform/pull/2638)のRole bootstrap（いずれもDraft）からSource/候補/Pin/Meaningを照合し、Studio/SHO/外部Consumerで実Read | Go Referenceや合成RoleのPASSは正式TEI DSL、実Studio/SHO、Owner受理、現在の開示/Host EffectのPASSでない（#2619/#2620/#2516） |
+
+**今回特に検証する負例**：①`operations`実行後、`artifacts`実行前にSourceが変更された場合、同じアプリ名でも出力世代が混在し得るか。②あるCLI内で`loadWorld`と`SurfaceWorkspace/RenderWorkspace`の間に管理対象Sourceが変わった場合、出力がどの捕捉版に属すると説明できるか。③`-out`で前の世代のファイルが残り、現Manifestは自己整合でもConsumerが残留を誤読するか。④Role依存PluginのEager Pinだけ改版してもSource bytes同じ場合、現在Meaning候補/Consumerの資格が変わるか。⑤実Read Grant/Consumer Disclosureだけ失効し、生成物は同じ場合、現在利用可能と誤表示しないか。**この5件は未実行の試験候補**。実データ・秘密・本番署名鍵は用いず、合成Workspaceと一時領域に限定する。C4において署名済みと扱う場合もOwner本人の判定を模擬Fixtureへ置換しない。
+
+**優先度・重複解消**：#2629が横断Handoffパケット、#2587が現在のmain実装、#2605が実CLI Product Skill、#2639/#2638がLanguage/Role、#2604/#2630がArtifact公開・Consumer実読取、#1163/#267がSource・受理、#2514が独立Oracle、#2586が実TEI一気通貫を所有する。本計画は**既存CLIによる実在部分をP0として実測し、欠けるSource Snapshot/実Read/Role/Current Authority/Effectを各Ownerへ返すための計測手順**であり、新Host/統合Runner/中央Registryを増設する提案ではない。
+
+**資格**：mainに操作面・生成CLIが存在することは確認したが、C0〜C5の固定checkout一連試験・同一Snapshotの証明・Consumer actual read・Owner意味受理は**NOT RUN**。PR #2638/#2639等の限定Reference CIと[#2642](https://github.com/hat47x/tei-platform/pull/2642)の統合成功を、C0〜C5の合格へ繰り上げない。
+
+<!-- tei-masterplan-data-form-observation-integrity-20261106 -->
+### 2026-11-06 データ様式：構造保存と実Read/継続の整合を同じ検収経路へ
+
+構造分類・Projectionの一般契約は[#2497の設計§22](design/STRUCTURE_PRESERVING_TRANSFORMATIONS_AND_PROJECTIONS_2026-11.md)へ集約する。#2495のFacet、#2497の保存・損失、#2619のEverything is Data、#2506のFunction Context、#2387/#2622のQuery/実Provider、#2516のDisclosureを別Ownerのまま接続し、新Core Schema/第二Query Engine/Host/Cursor Registry/受入Gateを設けない。
+
+**最短の次工程**：既存#2586 HJ-SV-01〜05（同一Query IDでもPage間SQL Realization変更で混合するSQLite合成11/11）を固定Expectedとして、(1) #2611/#2622/#2387の実TEI Realization選択→解析実Input、(2) #2506/#2627/#2586の同一Function・実Provider Page1/2＋Cohort＋完了証拠、(3) #2516の実Consumer現在Grant/非干渉へ順番に接続する。初回は一Provider/二SQL、read-only。二DB全面互換、全Graph/Stream対応、Writer、Self-build、Studio/SHO全機能を初回Hard dependencyにしない。
+
+**停止条件**：Query ID/SQL bytes/短い最終Page/Cache hit/可視0件を、選択・実Read・全体不存在・公開資格の共通PASSにしない。固定済み専用Asset欠落時の無音Fallback、異RealizationのCursor自動連結、実Readなしでのcomplete、非公開候補差の外部露出は禁止。依存変更はClaim相対で局所再資格化する。Graph/時系列/文書/Measureの適用例は設計候補で実Provider/外部Target未実施。実TEI Selector・RLS・Owner正式受理はNOT RUN。既存#1119 A/B/C/D Gate・Owner判断を変更せず、#2018には誤成功率/手順/性能/重複実装を比較対象として返す。
+
 ## 現在の優先順
 
 1. （完了、2026-09-19）判定段階Bの最終的な実環境での検証根拠を、同じ版（R = `e5231839`）についてそろえた
