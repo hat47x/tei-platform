@@ -58,6 +58,8 @@
 | **Cutover** | Reader/Writer route、Host/Grant、旧新同時稼働、Query/SQL Realizationの固定、現在Target/rollback window | 固定済みDB専用SQL不在から共通SQLへ無音fallback禁止。Commit不明は同ID照会が先 |
 | **Contract** | 旧Client停止・排出、負の依存/DDL削除、History/外部Consumer再読込、戻し不能域 | 旧Clientまたは読取Consumerが残る／過去Historyを失う場合、破壊的削除を保留 |
 
+**MIG-COMPAT-01（既存議論の最小Fixture名、NOT RUN）**：同一業務Key `(tenant=T1, orderNo=O1)` に対して、旧Clientと新ClientがExpand以降共存する間に更新・再読取を交互実行する。Backfillを中断→同Checkpointで再開→二重実行しても、物理PK変換・Relation・履歴・金額/NULLの意味が独立Expectedと一致するかを検査する。Cutover直後のCommit応答喪失では**同じOperationIDのLookup**と別Invocation Readを優先し、旧Clientの書込資格消失・SQL Realizationの固定失効・戻し窓終了を別々に記録する。旧/新のどちらかが一件の書込みに成功したことを5段階完了へ昇格させない。過去のMG-01〜10案はこのケースの検査項目候補にとどめ、新しい製品Gate/テスト正本をこの文書で作らない。
+
 実DBでの実行／切戻しは**本計画ではNOT RUN**。再実行はSource/Schema/Mapping/Checkpoint同一性を証明できる場合だけ。逆Migrationが安全でない場合は停止し、Owner承認のForward-fix候補を提示。DDL適用と業務移行完了は別。既存[#2862 DB別Query](https://github.com/hat47x/tei-platform/pull/2862)、[#2622 Data Operations](https://github.com/hat47x/tei-platform/issues/2622)、[#1126 Data/Mapping](https://github.com/hat47x/tei-platform/issues/1126)、[#1174 Effect](https://github.com/hat47x/tei-platform/issues/1174)へ分担する。
 
 ## 5. 組織RelationとPlugin Bundleの独立反例
