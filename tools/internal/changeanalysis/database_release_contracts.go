@@ -21,10 +21,7 @@ type DatabaseReleaseContractCandidate struct {
 	Contract        core.CanonicalID `json:"contract"`
 	ProvidedVersion string           `json:"providedContractVersion"`
 	CurrentVersion  string           `json:"currentContractVersion"`
-	Reason          string           `json:"reason"`
 }
-
-const DatabaseReleaseContractBehindCurrent = "behind-current-definition"
 
 // DatabaseReleaseContractCandidates lists provided Contracts whose major is
 // lower than the current definition's major. Releases that provide a newer
@@ -32,24 +29,18 @@ const DatabaseReleaseContractBehindCurrent = "behind-current-definition"
 // and Contracts with no current definition are covered by
 // DATABASE_RELEASE_CONTRACT_NOT_CURRENT, so both are excluded here.
 func DatabaseReleaseContractCandidates(w ir.World, snapshot string) []DatabaseReleaseContractCandidate {
-	contracts := map[core.CanonicalID]databaseContractVersion{}
-	for _, db := range w.Databases {
-		for _, c := range db.Contracts {
-			contracts[c.ID] = databaseContractVersion{major: c.Version.Major, minor: c.Version.Minor}
-		}
-	}
+	contracts := currentContractVersions(w)
 	var out []DatabaseReleaseContractCandidate
 	for _, r := range w.DatabaseReleases {
 		for _, p := range r.Provides {
 			c, ok := contracts[p.ID]
-			if !ok || p.Version.Major >= c.major {
+			if !ok || p.Version.Major >= c.Major {
 				continue
 			}
 			out = append(out, DatabaseReleaseContractCandidate{
 				Snapshot: snapshot, Database: r.Database, Version: r.Version,
 				Contract: p.ID, ProvidedVersion: fmt.Sprintf("%d.%d", p.Version.Major, p.Version.Minor),
-				CurrentVersion: fmt.Sprintf("%d.%d", c.major, c.minor),
-				Reason:         DatabaseReleaseContractBehindCurrent,
+				CurrentVersion: fmt.Sprintf("%d.%d", c.Major, c.Minor),
 			})
 		}
 	}

@@ -62,7 +62,6 @@ func TestReferenceDatabaseReleaseContractCandidates(t *testing.T) {
 		Contract        string `json:"contract"`
 		ProvidedVersion string `json:"providedContractVersion"`
 		CurrentVersion  string `json:"currentContractVersion"`
-		Reason          string `json:"reason"`
 	}
 	type report struct {
 		Candidates []candidate `json:"databaseReleaseContractCandidates"`
@@ -107,7 +106,7 @@ func TestReferenceDatabaseReleaseContractCandidates(t *testing.T) {
 		found := byKey(got)
 		for version, provided := range map[string]string{"4.1.0": "4.1", "4.2.0": "4.2"} {
 			c, ok := found["after/"+version]
-			if !ok || c.Reason != "behind-current-definition" || c.ProvidedVersion != provided || c.CurrentVersion != "5.0" || c.Contract != "sales_core.order" || c.Database != "sales_core" {
+			if !ok || c.ProvidedVersion != provided || c.CurrentVersion != "5.0" || c.Contract != "sales_core.order" || c.Database != "sales_core" {
 				t.Fatalf("%sのbehindが正しくありません: %+v", version, got.Candidates)
 			}
 		}
