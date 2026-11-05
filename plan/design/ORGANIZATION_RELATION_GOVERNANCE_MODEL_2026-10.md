@@ -2437,3 +2437,59 @@ Ownerは#2582（再資格化とDependency）、#2506（Context/Selection）、#2
 #2586の次の一固定E2試行では、実`CaseRecord.handlingUnit`の変化をFunction Contextの必要Relation pathとGranularity/Query`EXISTS/COUNT`/Provider Routeの実取得に結ぶ。CaseRecordのPersistence/実Provider Requestの入口が未接続なら、合成VP/VEを実RLSの代替とせず`NOT RUN: enforcement-unavailable`として#2622/#2628のOwnerへ戻す。
 
 **非採用**：第二組織Schema・新Source Event DB・第二Query/Cache/Policy/Host Engine、Owner判断を伴わない自動Hierarchy変換、全Consumer一斉失効。実E2 Provider・実Host・Studio/SHO/AI開示、業務Owner受理は未実施。#1119 P0-a/P0-bの実DB/Owner-writeのGateを維持する。
+
+## 63. 組織モデルから実Provider・Commandへ：DB選択と二つのABAを別々に検収する（2026-11-05、#2860/#2862/#2853/#2854/#2822横断、採用前）
+
+### 63.1 11月5日の新しい実装証拠／未接続部分
+
+- **E1 組織モデル実装**：[PR #2681](https://github.com/hat47x/tei-platform/pull/2681)の実`.tei` Data/Relation（Membership/Occupancy/CaseRecord→OrgUnit）とread-only Membership Operation。fixed HEAD `a36ca136957284a9af1dadc3fe3b40940d2f3269`の[Native Go Actions #41849999230](https://github.com/hat47x/tei-platform/actions/runs/41849999230)は成功。Source Move／ABA／Case Relation `one→many`で、`WorldFingerprint`・`ModelRevision`・Operation IDの一致条件が異なると実証。ただしCaseRecordのPersistence/Provider Read・SQL Query・Function Data Contextを通したE2試験は無い。
+- **実PostgreSQLの実行境界（別Function）**：main統合済み[PR #2852](https://github.com/hat47x/tei-platform/pull/2852)は`internal/command`のLifecycle（dispatched/observed/unknown）、[PR #2853](https://github.com/hat47x/tei-platform/pull/2853)は製品Invoker＋Lifecycle＋実PostgreSQL CAS、応答喪失→unknown→同Attempt再送拒否→takeover→独立Readをopt-in DBで実証。これらは**sales/order系の別Source/別世界**であり、組織PolicyやCase引継ぎを実証したわけではない。
+- **ABAの実DB負例（別Run）**：main統合済み[PR #2854](https://github.com/hat47x/tei-platform/pull/2854)は値A→B→A復帰のあと、新Idempotency Keyによる更新が再適用され得ることを実PostgreSQLで確認した。これは§62で実Go Source A→B→Aを行った場合の`ModelRevision(A)=ModelRevision(C)`と**似た失効問題**だが、前者はDB行・Command、後者はSource byte。Receipt・Owner・防止方法を同一視しない。
+- **DB別Native SQL選択（計画）**：[Draft #2862](https://github.com/hat47x/tei-platform/pull/2862)は既存`environment.DatabaseInstance`／`ApplicationDatabaseBinding`、`QueryContract`／`ContractQuerySQLRealization`、`query.EmbeddedSQL`と2way SQLの適合を検討。選択したDB Provider、専用SQL、共通SQL、行方不明・Unsupportedの優先/拒否はまだ**契約・実Provider・二DB比較が未受理**。Doma等の知見は候補でありSQLからTEI Data/Relationを逆生成しない。
+- **自己記述RoleとSource入場（計画＋限定Go）**：[Draft #2860](https://github.com/hat47x/tei-platform/pull/2860)は既存Workspace/Go Semantic Parserへ限定接続したが、Roleの独立意味受理・完全なSource closure・Type/Operator/Provider資格は未証明。#2822/#2823の「空Workspaceでもvalidate成功／std Catalogだけで非0」の負例を組織受入へ適用する。
+
+**決定**：再利用するのは既存のData/Relation、Data Operations、Query Contract/Provider、Command Lifecycle/Effect Receipt。これらを**同じ組織Function一Attemptでつないだという主張はまだ行わない**。一個の成功したGo/DB Testを別PRへ横流ししない。
+
+### 63.2 普段の業務ReadはRelation-first、特殊QueryだけDB別選択
+
+**業務表現の原則**：CaseRecordが`handlingUnit`という**宣言済みRelation**を使い、Function Data Contextが`case_id`、`handling_unit_id`、必要なPerson/Org情報、軸・起点・時点・Field/Rowsetの要求を明示する。標準Data Operationsで取得できるならSQLはユーザーに要求しない。Studioは業務名で候補/不足を知らせる。下位のDB AliasやSQLファイル名は日常DSLの必須記述ではない。
+
+**Native SQLが必要な場合だけ**、同じQuery Contractに対して固定した`Data/DB Alias → Environment DatabaseInstance → Provider →（明示選択済みSQL Realization）→ Query実行`の経路を利用する候補。Provider名をテーブル名から推測しない。通常SQLがない/専用SQLが失効した/対象DBが違うときに、結果の似た別SQLや共通SQLへ**黙ってfallbackしない**。Fallbackを認めるか、どのVersion/Schema/Capabilityで認めるかは#2862のOwnerの選択条件に従う。SQL原文は独立Sourceであり、SQL dialect解析/二Way編集可と実行/Owner受理は別。
+
+| E2試行 | 同じSource/Contextで差し替えるもの | 必須観測／停止 |
+| --- | --- | --- |
+| ORG-PQ-01 標準取得 | Case`handlingUnit` Relationだけを選択 | 通常業務DSL/Functionが明示Path/Fieldを要求し、実Providerの物理Readを観測できる。SQL全文を利用者に要求しない。未実装なら`NOT RUN: relation-read-producer-unavailable` |
+| ORG-PQ-02 選択されたDB | 同一Data、明示AliasをPostgreSQLまたは第二DBにBinding | 実Resolved Instance/Provider/Route/Read Cohortと選択版が一致。未Bindingならstop。Provider名やDSNを勝手に漏洩しない |
+| ORG-PQ-03 SQL版／fallback | 指定専用SQLを削除、共通SQLを残す | Owner許可の明示Fallbackがなければ実行/公開を止める。SQLソースRaw変更・代替候補追加・Dialect/Schema改版も再資格化 |
+| ORG-PQ-04 粒度／完全性 | Case→複数Org、Hierarchy複数Path、部分Row/Field | 同一Case件数、Relation occurrence件数、Person distinct、Policy Scope Countを別々に算定。0件partial/NOT EXISTSは不明であり不存在ではない |
+| ORG-PQ-05 内部Read/外部開示 | Tenant/Policy Join補助列、未選択private Field、SHO/AI Consumer | Declared Footprint／合法なPredicate補助Read／実Observed Read／Result Projection／External Disclosureを分ける。JSON結果同値でもOverfetchは別 |
+| ORG-PQ-06 旧Response | Source移動・Hierarchy版変更・Grant取消後に旧Query結果到着 | Source/Meaning/Query/Provider/Read Cohort/Selection/Current Host Grantの用途別資格がなければ表示・Count・Export・Actionを再有効化しない |
+
+E2開始の**先決条件**：#2822/#2823のWorkspace宣言数・必須Source対象・実Parser消費の照合を行い、`std`のみの有効な空Workspaceを「Case Data検査済み」としない。§62の`WorldFingerprint`やOperationが同じだけではQuery SQL/Provider/Policyの選択資格を再利用しない。
+
+### 63.3 組織改編の二つのABAは、異なるIdentityを持つ
+
+**構造のABA**：組織の`D1→L2`承継や`CaseRecord→OrgUnit`のRule/SourceがA→B→Aへ戻っても、現在の組織Query/権限/出典/Consumerの資格がそのまま復活するわけではない。ここでのモデルを識別するものはSource identity、Meaning/Role/Policy版、valid/known、選択Root/Axis、Ownerの受理と現在のHost Grant。値とWorld hashが同じでも中間に受理撤回や権限失効が起きた可能性がある。
+
+**業務行のABA**：Case C1の担当Org D1→D2→D1のように物理行の値が同じに戻っても、別の承認／再試行／受領の履歴を消せない。比較対象は業務対象のOccurrence/Key、expected row version、Operation identity、Host current Grant、Command Lifecycle/Idempotency Key、実Commit・独立Read／Receipt。**Value-only CASと新Idempotency Keyでは別の更新として再適用され得る**という実PG反例#2854が参考になる。組織改編案の`What-if`が一致しても現行Write Grantや既存Case引継ぎを生成しない。
+
+これらは二つの同じレコード識別子を要求するわけでも、TEI内に新しい共通ABA Engineを要するわけでもない。必要なSource/Meaning/Receiptの**現在資格と実観測時点**を既存Ownerが用途相対に束縛する。
+
+### 63.4 E4への一Attempt受入：Case移管の再送・独立検査
+
+次段の最小更新Scenario（**提案、実行していない**）はC1 `handlingUnit=D1, rowVersion=7`、旧操作対象C1・旧Relation occurrence・Source/Policy/Grant版を明示。Ownerが移管を受理し、現在Hostが`transfer-case` Operationと対象C1/expected-stateを許可した場合だけ、実Commandへ渡す。正常なら`D2, rowVersion=8`と独立Post-image/Receiptを比較する。拒否・未知は混同しない。
+
+| Trial | 入力変化 | 受入Expected |
+| --- | --- | --- |
+| ORG-CA-01 | D1→D2の正当なCase移管 | **Owner/現在Host/実Provider**を全て通過し独立Post-image＋Command Receiptが一致した場合のみ`effect-observed` |
+| ORG-CA-02 | 見かけのCase IDは同じでSelected Relation occurrenceが変わる | 古いContextのWrite Targetに無断Bindしない。グラフの同じLabelやPerson IDを利用して移管先を推測しない |
+| ORG-CA-03 | commit応答不明→元owner/genで自動再送 | `unknown`・再送拒否。takeoverが許される場合も新owner/gen、同Operation identity/Receiptの照合と独立観測を必要とする |
+| ORG-CA-04 | D1→D2→D1の値ABA、古いexpected値で再送 | 値一致から「以前のまま」としない。現在版/CASとOperation ledgerまたはOwner承認済み再試行規則を確認。二重作用の有無を独立Read |
+| ORG-CA-05 | Policy/Role/SQL Assetだけ変更、Case値・表示は同じ | 旧Read/Offer/Grant/Previewを現在の実行資格に昇格しない |
+| ORG-CA-06 | What-if改編で新OrgのCapacityとCase責任が変化 | 旧OrgのCapacity・Case担当・承認/委任を新Orgへ自動承継しない。OwnerのMeaning/移管判断を別に求める |
+
+`ORG-CA-01`の値とVersionは**この受入試験用の独立Expected候補**であり、現在の業務契約、実DB fixture、Owner受理値ではない。Referenceの数値や本番ポリシーへ勝手に反映しない。
+
+**実証順序**：E1の実Sourceと同じRevisionを固定→#2506/#2622/#2586がE2 Function→Provider Readで行/Field/Scopeを記録→#2862のDB/Query Bindingが必要なときだけ宣言されたRealization選択を検証→#2516/#2582でConsumer現在資格→#2598/#1174/実`internal/command`/`effectcommit/postgres`へE4を接合。前段の必要Source/Owner Meaning/実DB Endpoint/Host Grantがない場合は`NOT RUN`／`not accepted`／`unverified`で止め、合成Nodeや別PG Testを新しい組織E2E PASSとしない。
+
+**最優先Gate**は#1119の実PostgreSQL/Owner-write。新たなTEI独自Host、組織専用Permission Registry/Policy Engine、第二DB Selector/Query Planner、全面自動SQL変換を必要条件にしない。
