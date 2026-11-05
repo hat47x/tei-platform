@@ -623,3 +623,52 @@ Everything is Dataの共通Carrierは、Data・Function・Business・Rule・Test
 **最初の合格条件**は、同じFunction/Source Revision/実Binary/ReaderでC-ReadのRequiredが充足し、NULL/partial/0件/旧入力の少なくとも既存negativeを正しく保留または拒否できること。C-Build、C-Effect、C-Publish、C-Portabilityは独立判定し、C-Readの合格から自動で許可しない。Core特殊分岐数、Adapter/手修正量、未使用実装の混入、誤ったPASS/過剰拒否、独立Mutant検出力、Tool/CI/Token/人手を#2018の比較へ渡す。
 
 **今回の変更が示すのは設計引渡しのみ**。新実Go/PG/異質Domain/GUIの横断試験、Owner Meaning Acceptance、G1/G2/G4の正式判定はNOT RUN/UNQUALIFIEDのまま。#1016 Profile／#2586 HJ／#1119 GateのOwnerと境界を変更せず、production Schema・APIを追加する判断は実装Gapと独立試験の後に委ねる。
+
+### 19.6 接続種別ごとの成立条件と構成上の閉包（2026-11-06 横断再照合）
+
+**一つのSystem Definitionが存在することから、Runtime接続が存在するとは推論しない。** 接続を一種類の万能Operationへ変換せず、既存のDefinition/Mapping/Selection/Build/Invocation/Receipt/Readerを利用して次の差分をClaim相対に観測する。
+
+- **Required**：受理済みMeaning/Ownerの業務要件、Contract、Scenario、実Consumerの要求から独立に必要と判断したSource・Role・Guard・Result集合。候補Role/AI/RunPlanによる自己申告の空集合は免除根拠にならない。
+- **Declared / Discovered**：Manifest/Source上に記述され、既存Loader・Resolverが候補として発見した範囲。Source root不存在や未宣言のModuleは、単なる `validate ok` で読み込まれたことにしない（#2823）。
+- **Selected / Resolved**：Application Profile、Operator/Role Pin、Data Source Alias、Query Realizationが実際に選択された範囲。同梱・Catalog掲載・Source同名だけでは選択済みでない（#1016/#951/#2620）。
+- **Built / Loaded / Invoked**：実compiler/linkの入力と物理Artifact、そのRuntimeで実ロード・呼出した実対象。特に起動時選択と静的なGo import除外を区別する（#1167/#2831）。
+- **Observed / Consumed / Disclosed**：実Provider Read/Effect/Receipt、Artifact memberまたはTask resultのConsumer受領、Consumer/用途ごとの現在開示。生成成功や `completed` 表示から実消費・業務完了を導かない（#1174/#2604/#2516）。
+
+上記は**単一の必須Pipelineではなく、用途別の必要条件の照合面**。read-onlyにWrite Commitを、手作業にProcess Runnerを、静的成果物にDB Txを一律要求しない。未知のRequiredがある場合は`unknown`、必要能力が実Providerで非対応なら`unsupported`、実行直前の認可拒否は`blocked/denied`相当として元の各担当契約を保持する。隠された証拠は`withheld`として適切に投影し、存在否定や値0に置換しない。新しい統一Status enum/APIは採用しない。
+
+| 接続の種別（分類候補） | 最低限の独立した成立条件 | 成立しない場合の典型的な誤認 | 専有Owner |
+| --- | --- | --- | --- |
+| **Data Read** | Accepted FunctionのContext Mapping／実Source+Role、実Query/Provider/Read cohort、Row/Field completeness、粒度・時点・現在開示、独立Expected | Read 0件を全件不存在、同Rowを同Provider、部分取得を全件とする | #2586/#2506/#2622/#2516 |
+| **Command / Write** | 意味上のAction・対象集合/版、Required/Supplied/Evaluated/Effect時Enforced Guard、Current Grant、Operation/Attempt/Receiptと対象別独立Read | Guard未供給でもStep完成、Commit不明をNo Effect、Replayを新規Writeとする | #2500/#2598/#1130/#1174 |
+| **Event / Job** | Trigger/契機とRunPlan/Job入場、Step/Attempt/Taskの実結果、各外部Effect/再開資格、必要な業務完了条件 | EKI Task accepted・RunLog completedをDB Commit/Business Acceptedへ昇格 | #1125/#1130/#1174、任意EKI |
+| **Publication** | 実生成/公開Generation、Manifest必要member、実Readerが消費した全byte、Disclosureと引用版 | stdout/ファイル存在/Manifest Completeだけで受領済みとする | #2604/#2516、SHO Consumer |
+| **Manual Handoff** | Business Actor/Role、発生契機、渡した情報/対象、受領・判断の事実、必要なOwner完了 | DFDのManual stepからAction/Workflow/Current Grantを自動生成 | #1125、業務Owner |
+
+**横断判断**：ある接続の実現を見つけても、そこで保持される`System/Function ID`、物理`Build/Entry`、`Operation/Attempt`、`Business Event`、`Consumer Receipt`は別のidentity。対象・Scope・有効時点・観測時点・Provider/Authorityを欠いた自動的な等号を作らない。
+
+### 19.7 配置・Provider・業務意味を変更したときの選択的再資格化
+
+「影響なし」は対象Claimに対する実消費と否定依存から説明できる場合だけ維持する。全Domain・全Buildを一律stale化するのではなく、#2600（Build）、#2582（Runtime Context）、#2516（Consumer）、#1174（Current Effect）が**各自の依存**を判定し、#1163の同一Attempt Packetで不足を明示する。
+
+| 一軸の変更 | 必須の再確認／維持できる証拠 | 典型的な停止条件・引渡し |
+| --- | --- | --- |
+| Catalogへ未使用Providerを追加／未宣言Source rootを追加 | #1016でactual selection、#2681でManifest境界を確認。選択・Build/Runtime非干渉を各々独立に判定 | #2681の実CLIでの未宣言root除外は、選択済みBundleの未使用CapabilityやBinary link除外の証拠ではない |
+| Selected Role/Operatorの同version内容変更、eager依存の変更 | 実Contract/Implementation digest Pin、必要Source/Meaning・Build依存の再解決 | 文字列version一致・Roleの`pure`宣言では旧受理や未検査義務を保存しない（#2620/#2600） |
+| FunctionのEntrypoint／Build配置、Builder/toolchainを変更 | Source/Meaningが不変なら歴史的受理は保持可能。ただし実compiler input、Artifact、入口/Consumer受領を再資格化 | Runtime flagで未使用実装を除外したと主張しない。Stage収束≠全Self-Build（#1130/#1167/#2831） |
+| Provider/SQL Route・Schema/旧新Reader/Writerを変更 | 実ReaderのScope・水位・SQL/NULL/粒度、Writer Current Grant/Commit fence、旧新Client Required Contract | Cutover後の同じ結果0件・Migration successログは現行Read/Writer適合を証明しない（#2555/Draft #2887） |
+| 組織Membership/OccupancyのRelation/時点を変更 | Relation occurrence・validAt/knownAt/decisionAt、Function Context Read/Ruleを再確認。Host Grantは別途現在照合 | 所属/役職＝認可ではない。#2681のWorkspace E1局所PASS≠実組織Provider/Case移管効果（#1126/#2389） |
+| Source/ContextがA→B→A、Preview旧epochの遅延到着 | Source/Context epoch、実Query cohort、Current Grant/Operation対象を再確認。歴史的Receiptは保持 | byte/値/Rowsetが元に戻っても旧Action権限を自動復活させない（#2582/Draft #2884） |
+| RunPlan Guardの未供給・先行Step後の停止 | Required集合をCandidate以外から導出し、供給・実評価・Effect時強制・各Stepの既効果を別観測 | #2889 OC-RP-01〜03の実Go負例：`completed`/Observer存在ではGrant確認・実Effect・全Step無作用を証明しない |
+| Publish途中失敗・旧member残留・SHO引用版変更 | 公開Generationのmember集合と実Consumer read bytes、歴史的引用と現在用途Disclosureを別に扱う | 新Manifest+旧file混在／受領確認欠落なら公開資格保留（#2604） |
+
+### 19.8 既存Scenarioを増殖させず「接続Edge」を実試行に落とす
+
+1. **最初のread-only試行**：#2586のorder_entry HJ一Functionを主試行にする。#1016から選択済みProfile/Provider、#2620から実Role/Source、#1130からFunction→Build/Entrypoint、#2586からContext→Query→実Reader→独立Expectedを同じ版・実Invocationに照合。必要Field/Ruleが実ロードされない場合は欠落位置を`unknown`として残し、単なる`validate ok`から完全解析を主張しない。
+2. **Business/組織の異質Pressure**：#2681のMembership/Occupancy E1は同一仮定の対象別**別試行**として、時点付きRelation/複合Key/Roleと実行Authorityの分離を調べる。#1125のmanual/handoffはWorkflow実行ではなくBusiness Definition/Owner完了の別Claimとする。order_entryの実Reader PASSを組織E2/E3/E4へ加算しない。
+3. **RunPlanの否定対照**：merged #2882の期間・Effect前提の合成Workspace実証に、Draft #2889のOC-RP-01（未供給Grant）、02（Observer非呼出）、03（部分Step効果）を既存#1130/#1180のCaseへ参照接続。これは**現状の不十分な動作を特性化**したものであり、安全に拒否できる実装済みとの主張ではない。実PG/Host/Owner資格は#1174/#1163に委ねる。
+4. **配備・復旧・非画面Consumer**：#1167でGo単一Binaryの実リンク閉包を検証し、#1130 Jobと#2604 PublicationでEntry/Generationの異なるConsumerを比較。書込みは既存#1174の同OperationID・同PayloadのReceipt Lookup、別Key ABA、実独立Readで個別資格を確認する。旧Client共存や移行Cutoverは#2555で別Attempt。
+5. **新Domainの合格条件**：静的サイト/書籍でSource→Role→Data/Graph→Artifact→実Readerを構成し、業務Tx/Store/Authorityの無理な共通化を要求しない。Core固有分岐数、追加Adapter、重複定義、誤ったQualified判定、実変更費用を#2018へ測定引渡し。VR/Robot/Streamは時点・partial・遅着のPressureを先に行い、リアルタイム性能の達成は別途実測が必要。
+
+**次の引渡し物は、新Fixture集合や新Gateではなく既存#2586/#1180/#2514の同一ケースに付けるread-only対応表**とする：各Edgeごとに`Required → Declared/Discovered → Selected/Resolved → Built/Loaded/Invoked → Observed/Consumed/Disclosed`のうち必要な段階、Source/Artifact/Attempt/Consumer identity、独立Expected、実際の欠落、現在利用資格、Owner判断を示す。隣接する既存Receipt間を証拠なしに同一Attemptと宣言しない。AIが生成したRequired/Expected候補を自己採点のOracleにしない。
+
+**証拠の現状（この§19.6〜19.8追補時点）**：#2681のexact-HEAD限定Go/CLIはManifest外Source root非干渉の局所証拠、#2882はWorkspace合成Step、Draft #2889はRunPlanの不十分なGuard/Observer/partialの局所特性試験、#2853/#2854/#2870は実PGの局所Commit/ABA/Replay証拠。いずれも本計画が新たに一改訂・実Provider/Browser/Consumerを結んだ試験ではない。新コード、実CLI/DB/SHO/EKI統合試験、正式Owner受理、G1/G2/G4合格は**NOT RUN／UNQUALIFIED**。既存Gate/Schema/Host/Authority/Readerの責務や採用済み判断を変更しない。
