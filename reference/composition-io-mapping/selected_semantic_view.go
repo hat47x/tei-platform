@@ -56,10 +56,10 @@ func InspectWithSelectedSemanticView(
 		return unknown("selected-semantic-view-invalid", "", "")
 	}
 
+	// Inspect may already report an unrelated mapping conflict. Resolve each
+	// selected TypeRef regardless: an unresolvable semantic declaration must
+	// not be reported as a proven incompatibility between genuine types.
 	report := Inspect(registry, plan)
-	if report.Verdict != composition.ProposalCandidate {
-		return report
-	}
 
 	// A temporary local index over the validated caller-selected view is not
 	// a second registry or resolver. No namespaces are auto-imported.
