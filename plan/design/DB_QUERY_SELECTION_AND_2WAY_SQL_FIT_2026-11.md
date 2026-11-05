@@ -118,7 +118,7 @@ Source freshnessは以下を別判定する。
 | SQL file move/rename・本文同一 | locator・参照解決・Source Index・Consumer link | Canonical Query ID／Sourceの意味候補 |
 | DB専用SQLの追加・削除 | candidate set／negative dependency／selection lock／Build artifact | Query Contract自体 |
 | SQL本文・directive分岐変更 | Parser/Query解析/Mapping/分岐Expected/Artifact | 別SQL・別Consumerの無関係な結果 |
-| DB schema/RLS/Provider版変更、SQL byte不変 | 実Query意味の適合・Observed Read・Execution资格 | 歴史的なSource byte Evidence |
+| DB schema/RLS/Provider版変更、SQL byte不変 | 実Query意味の適合・Observed Read・Execution資格 | 歴史的なSource byte Evidence |
 | Source A→B→A、offline・権限喪失 | 参照の現在資格・履歴・Owner受理・実行可能性 | 以前の履歴としてのObservation |
 
 World/Model revision・Artifact revision・実消費Source byte・Provider/Driver info・Scenario/Oracle result・現在のGrantは別束縛。過去のArtifactやSQL digestが一致してもProvider資格、Owner受理、現在のExecution Permissionは自動復活しない。新しいSource Registryやキャッシュを作らず、既存Source Reference/Resolver、#2600・#2595・#2812の境界を利用する。
@@ -142,7 +142,7 @@ World/Model revision・Artifact revision・実消費Source byte・Provider/Drive
 | DBX-05 | SQL本文がA→B→A、Schema/RLSが別改訂、古いProvider Conformanceが残る | 同byteを理由に過去のOwner受理/Grant/Evidenceを無条件復活 |
 | DBX-06 | optional filterがないためSQLは成立するが全件Readへ拡大 | 利用者の要求Read Scopeと実Provider Readの乖離を無視 |
 | DBX-07 | 2way SQLのサンプル値、`NULL`、空IN、WHERE/SET句、Result列の重複・欠落 | runtimeの実引数汚染、不正SQL、結果mappingの推測成功 |
-| DBX-08 | Source Source-pathを含むSQL選択ログを権限の異なるConsumerへ出力 | 内部Sourceパス/秘密のDB構成を「説明機能」として漏洩 |
+| DBX-08 | Source-pathを含むSQL選択ログを権限の異なるConsumerへ出力 | 内部Sourceパス/秘密のDB構成を「説明機能」として漏洩 |
 | DBX-09 | Native SQL読取成功後、DB更新ActionのCommit観測不能・通信断 | SELECT成功を業務更新確定とする／無確認のRetry |
 
 各Caseは独立Expected・入力Scope・Source/Mapping版・Execution Stage・診断を固定し、**選択完了、SQL解析成功、構文的実行可能、実DB読取、結果整合、現在の権限、業務Effect**を別列に記録する。SQL branch coverageの数値のみでは業務意味の受理にならない。
