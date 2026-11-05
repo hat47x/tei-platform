@@ -2961,3 +2961,85 @@ ADR-0036のPluginは必要Isolation能力と適合契約を提供するが、**P
 Owner保留は(1)Service Subscriberに対応する論理Tenantをどこまで推奨Profileに含むか、(2)最小Isolation capabilityと必須対象Resourceの範囲、(3)共有/例外・共同利用と管理者権限の適用契約、(4)closed #2020の残余をどの現役Issueが引き取るか。**この文書だけでADRの新採用やOwner意味受理を宣言しない**。正式ADR更新が必要になれば新ADRを提案する。
 
 **状態**：docs-only設計。ORG-TN-01〜12の新Go/実Provider/GUI/Host/DB統合テスト、実SaaS全Route Isolation、現Ownerの業務受理はNOT RUN。現行File Reference/PG限定試験の成功と安全上の未実証範囲を分離。main・既存ADR・実Codeは変更しない。
+
+## 71. 組織とTenantを接続する実効Scope Binding：共通Data・多重所属・Provider選択・失効の同一試行検収（2026-11-06、採用前）
+
+### 71.1 第70節からの次の設計問題：共通意味と分離機構の「あいだ」を証明する
+
+第70節の統合方針を採ったとしても、Organization/LegalEntity/Caseの業務Relationを読めたことと、**そのReader/Actionが正しいTenantのResourceを実際に選択・強制したこと**との間には未接続の一辺が残る。
+
+実コード上の事実：
+- [Scoped PostgreSQL Reference](https://github.com/hat47x/tei-platform/blob/main/reference/web-api-contract/scoped_postgres_reference.go) の SQLTenantScopeRequest は PrincipalID、RowScopeID、PolicyRevision、QueryID を保持する。SQLTenantScopeGrant はこれに TenantID を追加し、SQLTenantScopeAuthority.ResolveSQLTenantScope から得る。コメントは、Authorityの真正性・失効を当該Reference自体では検証できないと明示する。
+- 実SQL Realizationの形は明示・限定され、クライアント入力 Tenant/SQL を許可元にしない。ただし、**そのGrantが実Ownerの現在認可から発行されたか、許可されたOrg/Case/Rowへ束縛されたか、最終Consumer Disclosureが適格か**は既存別領域の証拠を要する。
+- [Native組織Source PR #2681](https://github.com/hat47x/tei-platform/pull/2681) には CaseRecord の caseId/handlingUnitId、MembershipのmembershipId/personId/orgUnitIdがある。Tenant境界やCase Persistence、Function→Provider Readはそこから自動的には成立しない（§68）。
+- [Issue #2611](https://github.com/hat47x/tei-platform/issues/2611) は、同一Semantic Dataが異なるDB Alias/Mappingに解決され得る場合、Operation IDだけでは物理Routeを一意に保証できない反例を所有している。Org/Tenantの正しい対応だけでProviderが正しいとは限らない。
+
+提案は、**Business Target、Tenant Eligibility、実Provider Route、Consumer Disclosureを、既存Function Data Context・Invocation/Authorization・Provider Mapping・Evidenceの境界を保ったまま、同一Attemptで一致検証する**こと。新しく共通Tenant Engine、中央Binding Registry、全Domainの固定Tenant Field、第二Authorization/Hostを作るのではない。
+
+### 71.2 最小の意味契約：三つのscopeと四つの識別を混ぜない
+
+| 軸 | 例 | 判断責務と禁止する混同 |
+| --- | --- | --- |
+| Business target scope | Case C1、handlingUnit Role、Org D1、所属A2、対象業務・valid/known | Org/Person/Caseの業務意味とDefinition/Instance。組織の階層・所属はTenant Authorityでない |
+| Isolation scope | Verified Tenant A、Tenant-private Resource、例外的Shared Dataset | 実Host/Authorization/Providerが現在対象・対象Tenant・許可操作を確認。Clientのtenant=Aだけでは資格なし |
+| Query/consumer scope | Functionの明示Row/Field/Relation path、Read Cohort、用途、Consumer Disclosure | 読めたSlice・部分Page・非出力WHERE/ORDER/NOT EXISTS/集計と外部送出範囲を別々に検査 |
+| Identity of meaning | Semantic Data/Relation/Function ID、Ownerが受理した意味Revision | 同名Caseや同一Logical Queryから物理データ同一性を導出しない |
+| Identity of row/occurrence | Tenant内Business Key、必要なPhysical PK、Membership occurrence、Case直接Relationの所有Case+Role | Tenant AのC1とTenant BのC1はBusiness Key文字列が同じでも別対象になり得る。全Caseに新UUIDを必須にしない |
+| Identity of binding | Verified Principal/Tenant Scope、Authority/Policy epoch、DataSource Alias/Mapping/Provider/Target | Operation IDやAlias名だけ、またはTenant文字列だけを実Targetの十分な同一性とみなさない |
+| Identity of attempt/effect | Operation/Idempotency keyの有効scope、実Target Version、Attempt、Receipt、独立post-image | 異Tenantで同じIdempotency key文字列を使っても処理結果を混同しない。逆に同一Effectのrestartで新Keyを発行しない |
+
+**複合Keyの物理実装は決め打ちしない**。同一テナント内部でCase IDが十分に一意なら、永続化側でTenant列を毎行に重複保持する必要はない。一方、共有物理TableでTenant A/BのC1を保持するときは、Scope Bindingが実Row/PK/Index/SQL predicateと対応していることをProviderが示す必要がある。OrgUnit IDをTenant Keyへ暗黙昇格しない。
+
+### 71.3 同一Attemptで束縛しなければならない最小連鎖
+
+この連鎖は新しいUniversal Request Envelopeの実装要求ではなく、**受理・実測の照合欄**である。各要素は既存Contract/Provider/Receiptで表せる範囲を優先する。
+
+| 段階 | 固定・観測するもの | 未確認なら拒否/留保する主張 |
+| --- | --- | --- |
+| B0 Source/Meaning | Source/World/Model revision、Business Case C1、Role handlingUnit、Functionに必要なData/Relation、Tenant/Orgの明示対応Source | クライアント/AIの「同じ部署だから同じTenant」を採用しない |
+| B1 Trusted Invocation | 実Principal/Issuer/Session、選択TenantのAuthority、Action/Resource/Scope/Policy epoch、required Tenant-boundary capability | Clientのtenant指定やBusiness Membershipを実Grantにしない。認証済みだけでは許可済みではない |
+| B2 Function Scope | 明示ContextのCase/Relation path/Row+Field grain、Query依存（非出力含む）、Read purposeとConsumer | Relationを暗黙全件Fetchしない、Query説明だけで実Read成功としない |
+| B3 Physical Route | 実DB Alias/Mapping/Provider instance/Realization/SQL/argsまたはFile root、Tenant Scope述語・PK/Row、選択Generation | 同じOperation IDで別Aliasを順序依存の勝者にしない、未宣言Provider fallbackなし |
+| B4 Actual Read/Publication | Provider実Row+Field、Cohort、完整性 complete/partial/unknown、結果の非出力依存、Consumerへの最終Disclosure | SQL上のscope強制やField maskだけで外部開示全体の合格を宣言しない |
+| B5 Action/Evidence（Write時のみ） | Current Grant再評価、Caseの実物理Version、Operation/Idempotency Scope、Commit/unknown、Receipt/独立post-image | 別Function/別TenantのPG CASを同一Org CaseのEffect証拠へ流用しない |
+
+**二重失効の具体化**：(i) Organizational Meaning/Relation/valid-knownの変更はB0/B2の再確認を要する、(ii) Tenant選択/Authority/Provider Route/Deploymentの変更はB1/B3/B4の再確認を要する、(iii) Consumerの開示用途・権限変更はB4、(iv) Effect時の権限・対象版変更はB5。これらは独立して起こり、片方のFingerprint一致は他方の再利用許可にならない。期限切れ・解除済みの旧Contextから後着ReadやCommit Resultを現在画面・Actionに復活させない（#2582/#1174）。
+
+### 71.4 境界切替とCross-tenant Shared Dataは別Operationとして扱う
+
+**Tenant switch**：同一PersonがA/B二つのTenantへ合法に所属しても、Bへ切り替えるときはBの現在Scopeと具体Resource/Action/Principal Linkを再確認する。選択中Tenantが変わった時点で、AのQuery結果・Cache key・Pagination token・Preview/Intent・Grant/Operation Targetを**Bで再利用しない**。Cache keyやRead Cohortの最小要件は既存#2582/#2506/#2516に明示し、UIが「現在選択している」値だけで実Authorityを示さない。Aの結果をBへコピー・エクスポートする場合は、単純ReadやTenant switchでなく**明示されたData-sharing/Export Action**として別資格を要求する。
+
+**Shared Data**：全Reference DataをTenant Privateと仮定しない。共有カタログ、公開組織図、共通製品辞書等は、Data Owner/Source/Consumer purposeと対象Resourceの公開・共有契約で明示できる。Shared Registryを新設せず、同じData/Relation/Disclosureの受理済み意味から対象を追跡する。ただし共有Masterを読めることは、関連する他TenantのPrivate CaseやMembership詳細へのJoin/Expand/集計・存在確認を許可しない。Shared Datasetの元データがPrivateの場合、公開結果とその計算依存・推論漏洩の資格を別途要求する。
+
+**Tenant relocation / merge**：業務上のTenant/Service Subscriber IDを変更せず、Storage/Region/DB/Plugin Versionを移してもよいが、旧Grant・Provider Route・Read cohort・Cache/Queue・Evidence retention/Receiptを無音で引き継いではならない。Tenant A/Bの統合や分離は組織再編D1→D2とは別の移行である。必要なBusiness Party/Resource/Account/Recordの対応をOwnerが受理し、DB/Storage/Cache/Export/Backup等の効果・保留を独立に観測する。業務Key衝突は「同一Case」として自動統合せず、Collision/Unresolvedとして保持する（#2611/#2555）。
+
+### 71.5 次の最小縦断試験 TN-BD-01〜08：同一Case Keyと誤ったRouteを区別する
+
+組織側のC1/D1/D2/A2/A3と、Web API側のTenant A/B固定Grant/Scoped SQLおよびFile Referenceを再利用する。新しいCorpus正本を増やさず、Tenant BにもCase ID文字列C1が存在する**合成変異**を独立Expectedへ追加する。Native Org Caseの実Tenantフィールドを発明したり実Provider行が存在すると主張しない。
+
+| 試験 | 差分・意図するMutant | 独立Expectedと証拠Ceiling |
+| --- | --- | --- |
+| TN-BD-01 | AのC1(D1)とBのC1(D2)を同じBusiness Key文字列で用意 | Aの資格ではA-C1のみ、Bの資格ではB-C1のみ。文字列C1一致から誤統合しない。実Reader Scopeがなければunknown |
+| TN-BD-02 | Bに業務上Membershipを持つP2だがBのCurrent Grantなし | 組織Profile上の所属・承認候補は説明可、B Private Read/Effectは拒否。許可不在と0件は区別 |
+| TN-BD-03 | A/BのTenant切替後、Aで作ったPreview/Query tokenをBで使う | stale scope/selection/Consumer資格として再検証・拒否。UI変更だけではBのGrantにならない |
+| TN-BD-04 | 同一Semantic DataにA用AliasとB用Alias、宣言順を反転 | 選択されたTenant/Mapping/DB/Provider Routeが明示またはunresolved。最初のAliasのsilent-winを認めない（#2611） |
+| TN-BD-05 | 共有カタログ1件に、B Private CaseがRelationで接続 | Aは公開カタログのみ閲覧可能。Bの関連Case/非出力EXISTS/Count/OrderからPrivate存在や内容が漏れないことを別Claim |
+| TN-BD-06 | A/Bの同じIdempotency Key文字列、片方でCommit unknown | Tenant/Resource/Operationの実Scopeを混同せず、同じAttemptは同Keyで照会。別TenantのReceiptやpost-imageを転用しない |
+| TN-BD-07 | Tenant AのDBをReplicaからPrimary/別Regionへ切替、Org Data不変 | 意味Revision一致でもDB Alias/Provider/Cohort/Policy epoch/Retentionを再資格化。旧Resultを混ぜない |
+| TN-BD-08 | TenantなしローカルStudioと、Tenant分離を選んだSaaSを同じ意味から生成 | 前者に認証/固定Tenant列/常駐Hostの導入を要求しない。後者はPlugin selectedと**実強制**を別に検証 |
+
+**最初の判別試験はTN-BD-01と04の組合せを一件のRead-only縦断で検証すること**。A/BのCase IDを等しくし、Provider Aliasの順序を反転しても、Authoritative Tenant Scope/Selected Routeに一致した一行しか取得・開示しない（別TenantへのFetch自体を防ぐことが必要か、返す前のfilterで足りるかもProvider保証別に判別）。実Product Function入口がないなら#2586のproduct-read-not-connectedを保持して、直接SQLの局所PASSを製品のE2合格としない。
+
+### 71.6 実装への引渡し：新しいエンジンでなく既存の三つの接合部を直す
+
+| 順番 | 成果とStop条件 | 既存Owner |
+| --- | --- | --- |
+| P0-A Scope Meaning | Case/Org/Business Roleと、Tenant-private/Shared/Consumer適用先を**Sourceを明示して**束縛。現NativeにはTenant FieldsやCase Persistenceが無い事実を保持 | #2386/#1126/#2510 |
+| P0-B Provider Route | 同一Semantic Dataの異DB Alias/Mapping重複を診断し、実Targetが一意になる場合だけScope付きReaderに渡す。Operation ID重複・辞書順選択で異Scopeを消さない | #2611/#2622/#2611/#2586 |
+| P0-C Product Read | 既存E2a C1→D1のFunction Context→実Provider ReadでTenant A/Bの**同一Business Key負例**を追加、Current Scope・Row+Field/Non-output deps・Consumerを独立Expectedで評価 | #2586/#2506/#1656/#2514 |
+| P1 Effect/Cache | Tenant切替・Grant失効/別Provider再資格・同Key Restart/Commit unknown・Cache/Export/Consumer Disclosureを現行境界で確認 | #1174/#2564/#2582/#2516/#1163 |
+| P2 Migration/Delivery | 旧新Tenant/DB/Plugin/Target世代、共有・非共有Resourceの移設、Backfill/Scope/Retention・Auditの独立受入 | #2555/#2020（closed履歴）/#951/#1130 |
+
+#1119の既存Critical Pathを変更しない。OR-TN-01〜12と§70を置換せず、**TN-BDは同一Attempt Bindingの判別試験**として組織Meaning圧力を実Provider/Authority側の試験に接続する。必要証拠集合は#1180、独立Oracleは#2514、固定実行Evidenceは#1163を用いる。Caller自身が与えたCheckのPASSを必要証拠の網羅性としない。
+
+**状態**：本節は実Code/ADR/Issueの静的照合に基づく設計と実証計画。TN-BD-01〜08はNOT RUN。組織Caseの現在Tenant Authority/実Provider実Read/現在Host Grant/各外部RouteのIsolation、Ownerによる正式意味受理、Product E2E合格を主張しない。採用済みADR-0036/0043/0044とmainは変更しない。
