@@ -137,7 +137,9 @@ XL-03（値変更Hook）では同じ業務Subjectに対し別Case revision/IDで
 
 | **EL-07** [#2891 JSON Fixture重複キー拒否](https://github.com/hat47x/tei-platform/pull/2891) | main `8aa18ca1`基底の独立Draft HEAD `2f6779214ef73fe719e35a391668dd216d069ac5`。3 Fixture Parserの既存`RejectDuplicateJSONMembers`再利用と重複7件／正常3件のGo test-only差分。実[Health #42107910706](https://github.com/hat47x/tei-platform/actions/runs/42107910706) job logを確認 | **Go全体の`go test`・`go vet`・Workspace validationはPASS**。一方、`internal/scenariotest/fixture_duplicate_members_test.go`の`gofmt drift`を検出し、**Repository Healthはcompleted/failure**。実新Goケースが含まれる総合Goテストが成功しても、健全性CIの書式条件は不合格 | **G0の修正候補・Go機能試験の限定成功**。正式CI/PR受入は未成立。Ownerが当該Go testを`gofmt`し同一新HEADで再試行する必要あり。#2890の配列値重複とは別問題で、#2895の独立数学的Oracle/業務G2/Source閉包・実Providerを代替しない |
 
-| **EL-08** [#2895 有限独立OracleのGo実装とCI Witness](https://github.com/hat47x/tei-platform/pull/2895) | #2828→#2890のstack上に**新Goテスト1ファイルのみ**。初期HEAD `19f4f8ea`、最新HEAD `8d3dc2fc5058ff3945d0981d2979138d4fc461be`。`main`向けDraftは**CI観測専用（単独merge禁止）**。test file blobは最新Remote Readで確認 | CandidateのExpectedを出発点にせず、正負キー配列の一意性と固定Case/Fixture/Rule/Expectedを別Goテストで照合。Expected-only反転とInput Key-only反転を**同じ判定関数へ投入して拒否**。再構成した同型JSON Fixtureを使う**隔離Go1.23.2 `TestAILineNumberIndependentOracle`正負2 Subtest・vetはPASS**。これは実リポジトリのGo/Scenario実走ではない | **test-only finite Oracle implemented / isolated PASS**。GitHub最新HEADの[Repository Health #42109027966](https://github.com/hat47x/tei-platform/actions/runs/42109027966)は照会時pending。旧HEADのWeb/Studio/依存成功を最新HEADのGo/健康へ転用しない。G2業務意味・全必要Case Coverage・実Provider/Host/Ownerは未資格。[#2891](https://github.com/hat47x/tei-platform/pull/2891)のFixture JSON重複キー拒否は別Draftで当該stackへ未統合 |
+| **EL-08** [#2895 有限独立Oracleと積層CI](https://github.com/hat47x/tei-platform/pull/2895) | #2828→#2890→#2895。最新HEAD `8d3dc2fc5058ff3945d0981d2979138d4fc461be`、[Repository Health #42109027966](https://github.com/hat47x/tei-platform/actions/runs/42109027966) **completed/success**（Go 1.26.10/Linux amd64、`tei/cmd/tei`含む全Go Test / `gofmt` / `go vet` / `tei validate` PASS）。Web・Studio・依存も同HEADでCI成功。#2895から#2890への差分はGo test-only 1ファイル | Goテストは2 Step ID/Fixture/keyに**候補Expectedとは別の有限集合Property**を固定し、Expected-only反転・Input key-only反転を同じ判定関数で拒否。既存`TestAIAddedScenarioCandidateFiles`は2 Candidate JSONをglobで検出し、`verify/generate/check/generated-pinned run`の各Step Receiptを検査する構成。CI全体Go PASSを確認したが、標準CIログに個別Step/Receipt JSONは独立保存されていない | **L1局所Scenario+固定Oracleテストの実行成功**へ更新。ただし`Test...`の実行結果とSourceコードの内部Assertionを根拠とする限定資格。実Product Ruleを誤変異させたMutant kill、G2業務Expectedの独立受理、全Obligation母集団、実PG/Host/Ownerは未証明。#2895は`main`向けの**検証用stacked Draft／単独merge禁止** |
+
+| **EL-09** [main統合 #2894 `tei dbcheck`](https://github.com/hat47x/tei-platform/pull/2894) | head `556d8e6a723daabed399c35e987fb1e934cc1e3c`、[Repository Health #42108388836](https://github.com/hat47x/tei-platform/actions/runs/42108388836) **completed/success**。現main `cmd/tei/dbcheck.go`/`dbcheck_test.go`を確認 | DSN欠落なら実接続せず`errDSNMissing`/CLI exit 2を区別。指定DSNでは`pgx.Connect`→`SELECT version()`→同Sessionで一時表CREATE/DROPを試行する実装。Go testはDSN欠落・flag優先・サーバー版表示整形を検査 | **L3のEnvironment/Capability事前入場**に限る。接続先DSN未提供の状態は`NOT_ATTEMPTED`でありDBテストPASSではない。実DBに接続できる場合もtemp DDL権限は業務TableのRead/Write、RLS、Snapshot・Schema適合、Commit/Receipt・Owner/Host資格を証明しない。CI成功のみではこのHEADで実DSNを使ったPostgreSQL接続が成功したとは主張しない |
 
 **証拠の読み方**：EL-03は`test=PASS`でも`durable-state safety=UNQUALIFIED`。EL-04は`test code present`だが今回の実Run証拠は`unobserved`。EL-05は個別のPASSが複数でも`one-revision integration=UNQUALIFIED`。この三種を区別できない台帳やCIレポートを受入済みとしない。
 
@@ -180,3 +182,16 @@ XL-03（値変更Hook）では同じ業務Subjectに対し別Case revision/IDで
 **#2890との関係**：新AI候補のLine Number重複は**Relationの`keys`配列値`[1,1]`**であり、JSONオブジェクトの**同名member重複とは別の対象**。FIX-01〜04がPASSしても#2890のValidation Ruleの正しさ・独立Oracle判別力・実Go Scenario receiptは認定しない。逆に#2890のCandidate実Go PASSでもFIX-01の後勝ち問題がなくなった証拠にはしない。
 
 **受入順**：#2891の固定HEAD `go test ./internal/scenariotest`／`go test ./cmd/tei`／正規CIを確認してG0入力曖昧性を閉じる。#2890のJSON-only追加は別PR/別HEADで既存Goテストの候補発見と実Step Receiptを確認する。両者を一つのAttemptに混合しない。#2514のG2は独立OracleとKnown Mutantが実際に誤りを検出して初めて判定する。**本追補はdocs-only・新テスト実行なし**。
+
+
+### 8.4 L3の環境入場を実Provider実測から切り分ける
+
+main統合の[`tei dbcheck`](https://github.com/hat47x/tei-platform/pull/2894)は実PostgreSQL試験を開始できるかを確認する**準備段階の操作**。これを新しいUnit/L3判定階層にせず、前述のL3 Caseに付属するEnvironment Capability Witnessとして記録する。
+
+| 状態 | 取得できるEvidence | 拒否する誤昇格 |
+| --- | --- | --- |
+| **DSN欠落** | CLI exit 2、未接続／未試行という事実 | `go test`終了0や`dbcheck`未実施を実PG PASSへ転記しない |
+| **接続・一時DDL成功** | 指定alias/Principal/Server版・実接続・Session一時表の作成/破棄（実行時のreceiptを確保できた場合） | 業務テーブルのRLS・Schema・更新権限・CAS・Commitや長期のDB可用性を主張しない |
+| **実PG Case成功** | 固定Source/SQL/Realization・Snapshot、実Read/Write、Receipt、独立Read、Required CaseのPASS一覧 | 本番Owner/Host/別DB資格を主張しない。環境probeとは別Attempt・別Claimとして記録 |
+
+`dbcheck`が行う一時表CREATE/DROPはread-onlyではなく、対象Session内の**テスト準備の実DB作用**である。DSNの生値・資格情報を公開Ledgerへ転載しない。成功の期限は実Connection時点とPrivilege/Schema/Grant改版に依存するため、以前のprobe PASSを再実行許可として使わない。**今回の文書反映では`dbcheck`の実DB接続はNOT RUN**。#2622/#1174と#1163がProvider/Effect/一改訂Product Gateの実証を引き続き所有する。
