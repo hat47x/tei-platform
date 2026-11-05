@@ -78,3 +78,9 @@ test('invalid query and duplicate table occurrence do not manufacture negative c
   v.table.subjects.push({...v.table.subjects[0],viewId:'another-row'});
   assert.equal(boundedAbsence(v,missing,closure(f.snapshot)).reason,'subject_coverage_loss');
 });
+
+test('selection refuses mismatched Graph/Table publication even with matching Source',()=>{
+  const f=fixture(),v=project(f);
+  v.table.revision='stale-table';
+  assert.deepEqual(selectView(v,v.graph.nodes[0].viewId,f.snapshot),{status:'stale'});
+});
