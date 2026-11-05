@@ -46,3 +46,16 @@ func TestReferenceDataExecutorNormalizesCandidateKey(t *testing.T) {
 		t.Fatal("normalized duplicate candidate key was accepted")
 	}
 }
+
+func TestNormalizeValueDateTime(t *testing.T) {
+	types := map[core.CanonicalID]semantic.Type{
+		"std.datetime": {ID: "std.datetime", Kind: semantic.TypePrimitive},
+		"std.time":     {ID: "std.time", Kind: semantic.TypePrimitive},
+	}
+	if normalizeValue("std.datetime", "2026-01-01T00:00:00Z", types) != normalizeValue("std.datetime", "2026-01-01T09:00:00+09:00", types) {
+		t.Fatal("equivalent datetimes were not normalized")
+	}
+	if normalizeValue("std.time", "09:00:00", types) != normalizeValue("std.time", "09:00:00", types) {
+		t.Fatal("times were not normalized")
+	}
+}
