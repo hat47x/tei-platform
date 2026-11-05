@@ -14,7 +14,7 @@ func historyUnknownFixture(t *testing.T) (core.CanonicalID, migration.Definition
 	def := migration.Definition{
 		ID: "001", Database: db,
 		Recovery: migration.RecoveryForwardFix,
-		Steps: []migration.Step{{Kind: migration.StepVerify, Description: "independent expected"}},
+		Steps:    []migration.Step{{Kind: migration.StepVerify, Description: "independent expected"}},
 	}
 	checksum, err := migration.Fingerprint(def)
 	if err != nil {
