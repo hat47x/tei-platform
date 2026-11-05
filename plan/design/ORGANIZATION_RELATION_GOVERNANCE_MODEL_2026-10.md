@@ -2595,3 +2595,77 @@ fixed HEAD `e0cfebf14d40db81bdef77d6c3e4898ed75d999f`の[Native Actions #4203141
 [Draft #2889](https://github.com/hat47x/tei-platform/pull/2889)の実Go Runner test固定HEAD `e671aa41a8b7fd40de8602595e98ebf624043371`に対する[Actions #42100472921](https://github.com/hat47x/tei-platform/actions/runs/42100472921)は**completed/success**。Go **1.26.10 linux/amd64**、`go test ./internal/execution -run '^TestOrgCaseRunPlan' -count=1 -v`で**OC-RP-01/02/03の3件すべてPASS**、実Source checkout HEADとclean-afterが成功した。ローカルTest Envを使った**Product `RunPlan`／toy Step/Journal**のCharacterizationであり、実Org Case Source/Provider/Host/DB/AI/SHO／正式Owner Meaningを通した証拠ではない。§65.1／§65.3の「CIは別確認」はPR作成時点の記録であり、現HEADの判定は本節を優先する。
 
 **責務補正**：テストで`completed`が返ること自体を「不正なアクセスの本番実証」とは呼ばない。RunPlanは与えられたStep/Preconditionに忠実な汎用Runnerである。**不足Checkを補う責務は、Operationの必要条件を決めるOwner/Caller・Host/Providerにある**。必要条件の宣言と実装が接続されない間は、Org Caseの無人移管は`not admitted`。別Functionの実PG成功、Audit Guarantee自己申告、Observer非nilは不足条件を埋めない。
+
+## 66. 組織Caseを横断System Compositionの受入へ接続する：必要条件Closure・時間・Role・Plugin・DB移行（2026-11-06、採用前）
+
+本節は[組織意味Issue #2386の§66追補](https://github.com/hat47x/tei-platform/issues/2386#issuecomment-6669314574)を、[Data/Function/Business意味整合 Draft #2886](https://github.com/hat47x/tei-platform/pull/2886)、[System Composition Draft #2896](https://github.com/hat47x/tei-platform/pull/2896)、[DB移行 Draft #2887](https://github.com/hat47x/tei-platform/pull/2887)、[Plugin方式 Draft #2885](https://github.com/hat47x/tei-platform/pull/2885)、[Role自己記述 Draft #2860](https://github.com/hat47x/tei-platform/pull/2860)の横断受入へ引き渡す**設計・計画**である。§63〜65のE1、E2、RunPlanの証拠を置換しない。新Semantic正本・認可エンジン・Host・Requirement Registry・Migration Engine・Runner・Plugin Registryを設けない。
+
+### 66.1 共通Dataに記述できることと、意味・権限が同じことは異なる
+
+組織Relationを標準Dataに置く方針を維持しつつ、以下を分離する。
+
+| 区別 | 具体例と保存すべき意味 | 禁止する短絡 |
+| --- | --- | --- |
+| EntityとRelation occurrence | Person P1、OrgUnit D1、Membership A2、Position M1、Occupancy O1、CaseRecord C1のhandlingUnit relation | 表示Node名、同名Person、Query Join行を永続Entity/Relation IDとみなす |
+| Factとnorm | 本務、兼務、職位在任、Case責任、移管Rule、委任・代理 | 所属・在任を承認Grant/業務Actionへ自動変換 |
+| Timeとpublication | validAt、knownAt、decisionAt、公開組織Revision、Case row version | 遡及訂正、組織発効、DB切替、作用時刻を一つに潰す |
+| Data/Function/Business | handlingUnitの構造、Function Required Read、Ownerが受理したCase移管手続 | Relationから暗黙取得・全件取得・自動CRUDを導出 |
+| ActorとAuthority | 業務上の担当者、外部認証Pluginの主体参照、現在Host Grant | Semantic Role/Business Roleを実行権限の正本にする |
+| ProjectionとEdit | Table/Graph/Tree/SHOの組織表示、Selection、typed Intent | 派生値・集計・Treeの単一親Preferenceを更新対象へ昇格 |
+
+**11/1 Owner訂正を維持**：組織管理Dataというだけで専用ACL/RLSを一律追加しない。通常DataとしてRead/Join/Query/SHO等へ使い、個別保護指定Field、外部開示、Tenant間境界、実副作用について既存Authorityを適用する。これらを同じ機構とみなさない。
+
+### 66.2 Required Obligationsと与えられたCheckを別に確定する
+
+同じCaseの受入主張を **C-Read / C-Effect / C-Publish / C-Build / C-Portability** に分ける。これは#2896のClaim相対評価を組織例へ対応づけた**文書上の分類**であり、正式Runtime enum、新しい製品Gate、第二のSchemaではない。
+
+1. **Required**：受理済みBusiness Procedure・Function・Data/Relation・Effect契約と、Host/Providerの実要求から必要条件の母集団を確定。CandidateやCaller自身のsupplied checksを必要条件の分母にしない。
+2. **Declared/Discovered/Loaded/Resolved**：Source root・Import・Role・Function Mapping・Provider/Bundleが本当に対象Workspace/Revisionで読まれ、対象Functionに選択されたかを分ける。未読込Source、曖昧Role、未選択Pluginを成功扱いしない。
+3. **Evaluated/Enforced**：Actionの業務適用、valid/known時点、Read scope/完全性、現在Principal/Host Grant、Target/row version、Effect Fenceが必要な作用境界で有効か。Previewと本番Commit時点は別資格。
+4. **Invoked/Observed/Consumed**：実Provider Row/Field Read（非出力Query依存を含む）、実Dispatch/Commit/unknown、Receipt、独立Post-image、Consumer開示をそれぞれ観測する。Observerの設定やProcess完了は実Effect観測ではない。
+5. **Qualified**：Source/World/Meaning、Plugin/Role/Generator、Provider/Cohort、Host Grant epoch、Operation/Target/Attempt、Consumer/Artifactの変化をClaim別に照合。A→B→Aで履歴・撤回・旧開示は消えない。
+
+| Claim | 最初の限定実証 | 不合格・未確認の例 | 既存Owner |
+| --- | --- | --- | --- |
+| C-Read | C1→D1/D2の明示Function Contextから、実Provider Row/Field/Scope/Query dependencyとConsumerの同一Attemptへ | partialをcomplete扱い、NOT EXISTSの非出力依存欠落、Cohort混在 | #2506/#2586/#2628/#2516 |
+| C-Effect | 同一Case/Relation occurrence、Current Host Grant、row version、Operation identityによるD1→D2移管・Receipt・独立Read | Grant検査未提供、Commit unknownから新key盲再送、先行Step部分効果を無かったことにする | #1125/#1129/#1174/#2564 |
+| C-Publish | 組織公開Revision、valid/known、Axis/Root、Audience/Consumerの現在資格を固定した表示・SHO/AI出力 | 旧Preview/後着応答の復活、隠し件数・Export、派生線の直接編集 | #2497/#2516/#2582/#1124 |
+| C-Build | Profile選択、Function Used Capability、実Build Input、Target Binaryの比較 | 選択済み未使用Bundleの暗黙リンク、未選択Plugin干渉、旧Artifact誤利用 | #951/#1130/#1167/#1251/#2600 |
+| C-Portability | 同一Business Function/Expectedで旧新DB・別ProviderのRead/Result同値を独立照合 | 方言Assetの黙示fallback、NULL/Scope/Time/Grain差、History unknownをApplied扱い | #2622/#2611/#2555/#2892/#2897 |
+
+**AdmissionとOutcomeは別**：必要条件が未定義・欠落・未評価なら、supplied checksが全PASSでも当該Effectはnot-admitted。Outcomeは実行後のReceipt/独立Readで別途確定する。[Draft #2889](https://github.com/hat47x/tei-platform/pull/2889)のOC-RP-01〜03は実Go RunPlanに対するtoy Step/Journalの限定反証であり、実組織CaseのHost Enforcementを証明しない。
+
+### 66.3 組織改編とDB移行は二つの独立したCutover
+
+組織改編は**業務上の発効・組織公表Revision**、DB移行は**旧新Schema/Provider/ClientのRead/Write切替**を持つ。2027-04-01のD1→D2発効と旧DB→新DB移行が重なる仮想Fixtureでも、両Cutoverを同一イベントにしない。
+
+- **Expand/Backfill/Validate**：Person/Employment/Membership/Case RelationのBusiness ID、Relation occurrence、validAt/knownAt、NULL/欠落・保護指定、履歴/遡及訂正を保持。旧新Readerの値同一だけでScope・完全性・多経路集計の同値を主張しない。
+- **Cutover**：旧新Client共存、旧新Writer作用競合、業務validAtとknownAt、公開Org revisionと物理DB routeを別観測。Migration History取得失敗/partial/unknownを真正の空履歴・成功へ昇格しない（#2892）。同一DB ID/Contract IDの入力重複による後勝ち判定を許さない設計の修正責務は#2897。
+- **Contract**：旧Schemaを縮退しても過去CaseのD1参照・合法な履歴読取・Receipt・既存Workflow引継ぎを失わない。組織図からD1が消えることと過去の業務根拠を削除可能であることは別。Old Reader停止・Owner/Consumer互換・独立Readと現在Grantを確認する。
+
+Meaning同一はDB実現同一ではなく、Schema互換はMeaning受理や実Effect資格を意味しない。ReleasePlan/#2555と#2887の五段階へ反例だけを引き渡し、本節で別Migration Engineを作らない。
+
+### 66.4 Role/AI/Plugin境界の追加反例
+
+AI-assisted Fittingは自然言語からRole/Assignment/Rule/Procedureの**引用位置つきCandidate**を作り、Owner受理前・Source矛盾時はPreviewにとどめる。Role自己記述、Business Role、Host Current Grantを一つの権限にしない。
+
+- [Draft #2860](https://github.com/hat47x/tei-platform/pull/2860)のGo Characterizationでは、現ParserでAttribute role重複がCandidateの最後の値へ畳まれる可能性が示されている。Candidate値が単一でも元Sourceの宣言一意性が証明されたわけではない。Source byte/span・重複診断・Role Revision・編集対象Anchorを確認する。
+- Source再読込後のAttribute/Role変更、同名異Scope、未解決Ref、Source A→B→Aを、旧Previewや受理済みMeaning/Host Grantへ無音昇格しない。Studio/SHOのEditはPosition OccupancyとMembershipなどの**元のRelation occurrence**を明示的に束縛し、派生線や単一親Treeから実Targetを推測しない。
+- Organization Profileをまとまった配布Bundleとして提供しても、Catalog Available、Environment Selected/Resolved、Function Used、Build Included、Entry Exposed、Current Authorized、Actual Effectを分ける（§64、#2885/#2896）。通常利用者へGo固有構文・DB方言/SQL Asset/メタOntology注釈を日常必須入力として課さない。
+
+### 66.5 既存Fixtureを用いる最小実装順序と証拠上限
+
+§39〜46の合成Person/Membership/Position、[実TEI組織E1 #2681](https://github.com/hat47x/tei-platform/pull/2681)のCaseRecord→OrgUnit、および§63.4の独立Expected（C1 handlingUnit=D1,rowVersion=7 → D2,rowVersion=8）を再利用。**OC-CL-01〜10は#2386 §66の受入票を唯一の参照**とし、本節に新たな競合Scenario正本を作らない。
+
+| 優先 | 実行する最小縦断試行 | 停止条件 | 引渡し |
+| --- | --- | --- | --- |
+| P0-0 | 実Source Root/Role・Relation occurrence・Required Obligationを列挙し、Candidate/Acceptedを区別 | 未読込Source、Role重複、意味未受理ならWriteなし | #1126/#2620/#2621/#1180 |
+| P0-1 | C1の**read-only E2**：実Function Context→Provider Row/Field/Scope→Result Slice→Consumer | Read/Scope/Cohort unknown・partialはcompleteではない | #2506/#2586/#2628/#2516 |
+| P0-2 | Required対Supplied/EnforcedのClosureをOC-CL-01〜06で反証。現Host Grant未提供、越境、時点変更、Hidden Query依存 | toy Runner PASSは実Grantの代用不可 | #1180/#2514/#1129/#1174 |
+| P1 | C1移管の単一Attempt・Commit/unknown/restart/Receipt/独立post-imageをOC-CL-07〜10で検証 | same-key/idempotencyと新key再作用を分け、Provider自己申告Guaranteeだけで合格にしない | #1174/#2564/#1163 |
+| P1並行 | §64のPB-02〜08：Catalog/Environment選択・Function使用・実Go Build依存と未選択の非干渉 | Artifact/Input/Invocation未観測でBuild効率・リンク除外を主張しない | #951/#1251/#1130/#2600 |
+| P2 | 業務組織発効×DB移行の旧新Reader/Writer、履歴とRelease Gateを検証 | History unknown、重複State、部分Backfill、未承認Cutover | #2555/#2622/#2887 |
+
+同じC1を使っても、Source/Meaning、Relation occurrence、Function Required/Provider Actual、Role/Plugin version、Host Current Grant、Operation ID/row version/Attempt、Target/Consumer、実Timeを必要範囲で束縛しない限り「同一AttemptのProduct E2E」とは呼ばない（#1163/#1180/#2514）。必要観測が不明ならunknown/not observed、not-applicableは担当Ownerが明示した場合のみ。
+
+**実証状態**：本節はdocs-only追補。ここに列挙した組織CaseのE2→E4一Attempt、実二DB移行、実Host/Studio/SHO/AI、業務Owner受理は**NOT RUN**。#2681実Go E1、#2596合成Node、#2889 toy Runner、#2853/#2854別Caseの実PG結果は互いに別の限定Evidenceであり、本件の完了を証明しない。#1119のG1/G2/G4と既存Critical Path優先順位を変更しない。
