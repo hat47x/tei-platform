@@ -374,3 +374,50 @@ G1〜G5で各観測は取得時点が異なる。要求するのは**同一瞬�
 
 **現状**：MG-29a/b/cのうち二つの順序依存と古い観測日時のGapをGoで特徴付け（同一DB、同一Contract、観測日時の計3テスト関数）。修正後の拒否判定、History Adapter、実DB、旧Client、Cutover、Owner受理は未実行・未受理。`#2897`の課題登録は実施済み。
 
+
+
+## 18. 移行Gateの採否を決める最小の証拠閉包と修正合流順（2026-11-06、跨るIssueの受入条件／未採用）
+
+これまでのMG-01〜29は故障注入の**候補集合**であり、この先はCaseを増やすことより**何を必要証拠と認め、どの既存Issueが修正したら次の段階へ進めるか**を厳密化する。
+
+### 18.1 検収の出発点は「列挙された観測」ではなく「必要な対象全集合」
+
+移行の対象としてOwnerが宣言・受理した`Client Release / Batch / Direct SQL / Function / Database Alias / Operation`の集合を基準に、対象ごとの`Required Contract / Business Key / Temporal Scope / Current Grant / Result Completeness / CDC・Checkpoint / Effect Receipt / Retention`を**必要Obligation**として導出する。実行器のログや取得できた観測結果からRequiredの母集団を逆算しない。
+
+`CheckApplication`が空の`app.Databases`に対して`Overall=Compatible`かつ`Checks=[]`を返すことは、当該Applicationに申告された契約の**空集合への構造的照合**が完了しただけである。「影響を受ける旧Clientや外部Writerが存在しない」という**母集団の完結性**を証明しない。業務上本当にDB利用者がいない場合は、Ownerが閉じた対象母集団・必要な非適用条件を示せば合法な空集合を扱える。**未知の集合と正当に空である集合を区別**する。
+
+| Proof item | 最低限の判定 | 別の証明として残るもの |
+| --- | --- | --- |
+| Required closure | 対象Client/Writer/Contract/Scopeと対象範囲が、事前固定版として全件列挙できたか | Source/Schema/DB観測の実行結果 |
+| Input/selection uniqueness | 同一DB State/Contractの重複拒否、DB Alias→Instance・Provider・Role/SQL Sourceの明示解決 | 現在のProvider Grant/実DB Read |
+| Observation completeness | Requiredごとに独立Reader/History/CDC/Client実利用/Receiptの観測が供給され、欠けていないか | 観測した値がExpectedへ一致するか |
+| Meaning and freshness | Independent Expected・業務Key/履歴時点・Source/Plan/Provider版・Scope/水位が適合するか | Ownerが業務意味・移管・Retain/Destroyを受理したか |
+| Effect qualification | 実際のLogical Operation・Target/Owner・Receipt/別Readが矛盾しないか | 旧Writer全件停止、外部API/通知などの別EffectとConsumer受領 |
+
+**Gate進行の候補述語**：`required closure known ∧ requiredごとのqualified evidence complete ∧ independent expected consistent ∧ freshness/selection valid ∧ relevant Owner decision accepted ∧ current Host authority qualified`。どれかが未知なら`unknown`、明確な競合/不適合は`block`、すべて揃ったときに初めて`pass候補`。`CheckApplication=Compatible`、Migration History=applied、DB Schema一致は**個別obligationの局所的な根拠**であり、Gateの結論にはならない。実操作の実行許可はこの検収票とは別のHost enforcementを必須とする。
+
+### 18.2 最小の統合Expected（既存MGを再利用）
+
+| 既存Case | 入力の変化 | 最低限のExpected | Owner |
+| --- | --- | --- | --- |
+| **MG-29a/b** | DBまたは提供Contractの重複を順序交換 | 双方とも`Unknown/入力拒否`で順序不変。別の正常なDBについて不要な偽失敗を起こさない | #2897 |
+| **MG-20 / HIST-01/03** | `AppliedUnknown`／履歴取得失敗・部分のままchecksum/Schemaが一致 | 履歴成功に昇格しない。空履歴の「正常取得0件」と取得失敗を分離 | #2892 |
+| **MG-21** | 旧/新Appが異なるMajorを要求し、同時にWriterも必要 | 構造互換の一致・不一致は判定可能。ただし実Read/Write・旧Client継続は別の`unknown` | #2555/#2622 |
+| **MG-22** | Tenant Aだけのpartial Read／Tenant B未観測で実Row Count=0 | 必要集合のclosure不足でG3通過不可。0件を全件不存在と推測しない | #2506/#2514 |
+| **MG-24 / MIG-H02** | 旧WriterのFence確認後、新Grantが未供給／旧Batchが再流入 | Safe PauseでG4 unknown、両側への無条件新Write禁止。実Provider/Owner再照会 | #2555/#1174 |
+| **MG-27** | 旧Writerゼロだが過去時点のReader・Retention要件が残る | 論理形式の退役は候補、旧物理データの破棄はG5 block/unknown | #1126/#2555 |
+
+注：`unknown`は技術的に不可能であることを意味しない。証拠が未供給・未観測・失効・対象不明であれば`unknown`、確定した不適合／Ownerによる拒否等は`block`。旧Client互換チェックだけが`pass`でも他Requiredが不明ならGate全体は未通過。既存テストで**危険なlast-winsをそのままExpectedにした特性試験**は修正前の障害再現であり、安全仕様の受入試験ではない。
+
+### 18.3 変更を衝突させない最短実装・合流順
+
+1. **#2897のRelease局所修正**：既存`CheckApplication`の同一DB Snapshot／同一ProvidedContract重複をfail-closedにし、現行`migration_gate_observation_order_characterization_test.go`にある危険なlast-winsのExpectedを**修正と同じ統合単位で安全Expectedへ置換**。入力順、別DBの独立結果、Major切替、空/欠落の正常ケースに対する回帰を重点にする。観測のSource/時間/Grant選択を比較器に勝手に追加しない。
+2. **#2892のHistory局所修正**：`AppliedUnknown`・適用記録のchecksum欠落・取得失敗/部分と正常空履歴を独立Expectedで比較。`RepoUnknown`を新設するかfail-closed ErrorかはOwner決定。Provider History Adapterの取得資格が未確認なら履歴の`RepoApplied`だけでGateを進めない。
+3. **#2555＋#2506のRead closure**：MG-21/22のRequired集合に旧Reader/Writer/Batchと移行対象の業務キー・時点・Snapshot/CDCを束縛。各Readerの返値が正しくても対象集合を網羅しなければG3 unknown。宣言済みClientの集合を全稼働者集合とみなさない。
+4. **#1174＋#1163のEffect closure**：MG-24の旧Writer Fence/CDC、新Grant、同一Operation ID・Commit/Receipt/別Readと外部Effectを別Claimsで照合。安全停止時の`block/unknown`は、**すでに起きたDB Commit/通知/外部Effectを取消したことではない**。
+5. **#1119と各Ownerの最終Gate判断**：個別Unit/Fixture→Provider実DB→旧新Client/Batch→Consumer/SHO→Owner Meaning/Authorityの証拠を区別して採用判定。既存PostgreSQL参照合格を新しい異種DB/本番受理へ流用しない。
+
+**PR/変更境界**：Draft #2887は計画と現実の不安全な挙動の**特性化**を所有する。安全修正は#2897と#2892の別責務としてレビューし、両者の安全修正が合流した際に既存characterization testのExpectedを同時更新する。#2887に新Gate Engine/Owner受理機構を導入しない。GoのCI成功は、該当テストが**どの期待（不安全な現挙動か、安全仕様か）**を確かめたのかまで明記する。
+
+**検証状態**：本節の統合Proof/実Reader/実DB/実Client/外部EffectテストはNOT RUN。既存Go特性テストの存在は安全仕様の実装/受理を意味しない。
+
