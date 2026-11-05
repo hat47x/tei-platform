@@ -2615,3 +2615,15 @@ EKI側#112/#266/#67/#115へ契約不足を返し、TEI #1130がJob意味と判�
 **実施順**：(1) #2862が既存DB/Query/Realization/Source IndexでDBX-01〜04をclosed fixtureで反証、(2) #2860が同一Subjectの実Source/Role/Interpreter資格を別受入、(3) #2514のExpected/known-mutantと#1180既存Scenarioに両者を接続、(4) 必要時だけPostgreSQL＋SQLiteのread-only Queryを実行しProvider差を確認する。#2853〜59の実PG試験は本件のSQL Asset選択・二DB互換試験を通したことにはならない。#1119の本来のG0〜G4やTAI実Harness最小比較を、新DBPoCの完了まで一律停止しない。
 
 **状態**：#2862は設計と受入候補、#2860は実Goソース静的Fit/Gap、#2667本追補はdocs-only。DBX-01〜09、SQL選択/2way Go実装、Role実Interpretation、実二DB、独立Oracleの新実行、Owner意味受理は**NOT RUN**。新Dialect Registry／Query Engine／Role Resolver／Test Runner／Hostなし。
+
+<!-- 20261105-lowcode-db-portability-acceptance-lux -->
+### 49.5 DB可搬性は日常の操作を変えない――低コード利用者の受入（#2622 LUX-01〜07）
+
+[Data Operations #2622](https://github.com/hat47x/tei-platform/issues/2622)にLUX-01〜07を追加。[DB Query Draft #2862](https://github.com/hat47x/tei-platform/pull/2862)のDBXは技術的なCandidate/Selection/Lock、[#2611](https://github.com/hat47x/tei-platform/issues/2611)のPMは実対象曖昧性、[#1124](https://github.com/hat47x/tei-platform/issues/1124)はStudioの投影。**同じテスト対象を複製せず、LUXは最終利用者の認知負荷と不適合説明の検収条件だけを担当する**。
+
+- **普段の利用**：Data/Relation/Function/取得・保存を主語とし、DB kind・Dialect・SQL Variant・Go型の選択を標準操作の必須入力にしない。特殊なNative SQL・2waySQLは権限付きAdvanced機能へ隔離。業務意味の正本はSQL名でもStudio UIでもない。
+- **DBの切替え・移行**：同一Business Function・独立Expectedを固定し、内部適合を`Native／Equivalent／Unsupported／Unknown`という**検収票の比較区分**で評価する（新Core enumの提案ではない）。日常利用者へは「利用できる」「同等結果を確認できた」「この接続先では操作に非対応」「実行可否を確認できない」を業務Function単位で説明し、SQLファイル選択を要求しない。
+- **同等性の上限**：Query結果が同じでもNULL/decimal/Collation/Grain/Read Scope/partialが未確認ならEquivalentではない。保存操作ではさらに実Write Target/expected version/CAS/Commit Unknown/Receipt/現Grantを独立に確認。共通SQLが存在することや旧Lock一致から現在実行資格を推測しない。
+- **失効・開示**：Source/Role/Operator/Provider/SQL Asset/Grant変更、候補追加・削除、A→B→Aで旧Previewの再資格化を行う。内部のDB Alias/DSN/SQL全文/権限外候補件数や不足Predicateは一般利用者へ無条件に出さない。Studio/Consumer Ownerの既存Scope/Disclosureを尊重する。
+
+**次の試験順**：LUX-01/04/07は既存#2586のHeadlessと#1124のGeneric Inspectで通常操作の必須DB固有入力数（目標0）・対象不明時の業務言葉での診断・開示を測る。LUX-02/03/05は#2862 DBXの既存Fixtureと同じIndependent ExpectedでPostgreSQL＋第二DBを比較。LUX-06は#2600の再資格化で扱う。AIによる可読性評価は比較補助であって、実ユーザー操作・業務Owner受理や同一Attempt実DB効果のPASSに換算しない。**LUX-01〜07、実UI、二DB移行のE2E/ユーザー受入はNOT RUN**。新Registry、Query Engine、専用UI Pluginは追加しない。
