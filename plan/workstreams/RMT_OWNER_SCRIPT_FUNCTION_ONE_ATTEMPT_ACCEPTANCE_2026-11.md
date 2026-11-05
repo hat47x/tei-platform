@@ -253,3 +253,47 @@ VS-RMT-01へ追加する場合は#1180既存Scenario runnerと#2514の独立Expe
 - **横断のEvidenceとCI**：#1163 Packetを一つのScenarioにまとめ、#1119でG1/G2を判定。#2835の必要PGテストSKIP検出を再利用し、CI実行HEAD、Test IDs、実Provider/DB、Scope、Environment、Required/Observed、Negative Control、期限を記録。#2889はfocused CIのみPASSで全Health FAIL、#2890はGo/CI未確認、#2783直前HEAD`b9d6306b7feb3aed43a9d0df9205df272017b15e`の[Health #42101164557](https://github.com/hat47x/tei-platform/actions/runs/42101164557)は**completed/success**（ただし文書とPython fixtureだけ）。**これらのCIの合算で新しいVS-RMT-01を実行したとは主張しない**。
 
 **本章の資格と差分**：文書のみの追加。RD1〜WR3の実TEI Data Context/SQL/Provider統合、同一Business Write、旧Windows Driver実行、Owner受理、現在Host正式Grant、実Consumer受領は**NOT RUN／UNQUALIFIED**。既存IssueのOwnerとPRの判断を変更せず、#2783はDraft維持、mainには取り込まない。
+
+## 11. 11/6検収実装引渡し：現在のProduct APIから何が実行可能かを先に判別する
+
+§10のRD1〜WR3は今後のAcceptance Caseであって、**現Productにそのまま動く一つのデータ取得APIがあるという宣言ではない**。GitHub main `8aa18ca150f8689e9875d2e0319fb20e704086f5`で既存Go Sourceを再照合し、実装のある入口／契約の検証までの入口／未接続を以下に固定した。実装担当は先にこのFit/Gapを実際のGo試験で確認し、存在しないインターフェイスを計画から勝手に生成しない。
+
+### 11.1 実装上の証拠境界（static inspection）
+
+| 現在の確認済み入口 | 実際に確認できること | RD1/WR1へ移る前の不足 |
+| --- | --- | --- |
+| `internal/workspace/loader.go`の`Load`、`SourceContributions`、`sourceSnapshot`、`ManifestIdentity()` | Workspace管理SourceとLoad時Snapshot・manifest identityを分けて保持する機構がある | Declared/Discovered/Loadedと**選択Function/Ruleが実消費したSource**、Generatorへ渡ったBuild inputsは別のwitness。#2822/#2823/#2819の欠落負例を解消したとは言えない |
+| `reference/workspace/applications/order-entry/realizations/submit-order.tei` | ファイル内容は`realize sales.order.submit with custom go` **一行** | これはRealization選択宣言で、実Query/実SQL読取・保存前Data Rule実行・Owner Effectの証明ではない。利用可能な実Function Read入口を#2586/#2506で確定する |
+| `internal/realization/contract_query_sql.go` `ContractQuerySQLRealization.ValidateContract` | Target+ProviderとQuery Signature、input parameter、result columnsの**構造的整合**を検査する | Query選択、実DB alias、実行SQL bytes/args、結果行・粒度/完全性、現在Scope/Grantは別。Source名・Query IDだけでDB/SQLを決めない（#2622/#2611） |
+| `internal/security/effectcommit/commandadapter/executor.go` | `Executor.Payload`を明示した場合は`request.Inputs`からの組立てより優先し、GrantのResourceを実Runner Scopeへ渡す | `Function selection O1`対`Payload O2`をAdapterが自動的に拒否するとは言えない。Owner Actionが認めるTarget対応の証拠・負例を#2598/#1129で要求 |
+| `internal/execution/observe.go` `SQLEffectObserver` | SQLが返すcountが正ならObservedをtrueにし得る | countが**このOperation/Tenant/Target**に帰属するかは実Query/Argsと独立Expectedが必要。単純`COUNT>0`でRecipient/Business Completion合格禁止 |
+| `internal/security/effectcommit/postgres/command_lifecycle_integration_test.go` | 実PG Providerを伴う製品Command CAS／Conflict／simulated ACK-loss／同OperationID Takeoverの既存限定結合Fixture | 生のResource文字列のCAS例であり、二Functionの実Data Context・完全な子集合/Rule・Owner意味・正式Current GrantとWebの同一改訂を示さない |
+
+**結論**：RMT-RD1の最小作業は「新SQL/Context DSLを設計する」ではなく、**すでに存在するFunction→Query→Context→実Provider Readの実入口を特定し、同じTenant/対象/Ruleを実Consumed Source/SQL/Rowsで実測する**こと。実Productにその接合APIが無ければ、`Function Context→Query Provider execution not connected`と**明示的なGap**を記録し、#2586/#2622のOwnerへ限定差分を渡す。Fake/Go直接SQL Readerの局所成功を製品RD1合格にしない。
+
+### 11.2 最初に実装担当へ渡す「試験二件」と否定対照
+
+以下は*新規採用ではない*既存#1180 Scenario／#2514 independent Expected／#1163 Packetへの引渡し票。試験名は**提案名**であり、Repoに実装済みの`Test...`と誤認しない。
+
+| 順序／試験候補 | 独立Expectedと成功の上限 | 必須negative control / 判別できなければ未合格 |
+| --- | --- | --- |
+| **P0-R1 `TestRMTFunctionReadUsesBoundDataContext`（提案）** | 合成Tenant A/Order1001、Header1＋子2、Tenant Bの同Order番号1と別Order1002を除外。Source byte／Semantic ID／Rule・Function Context／DB Alias／選択Realization／実SQL+bind args／実Read Row ID、grain、Snapshot/Scopeを一連の**実Product Read**で取得 | **N-R1a**：別Tenantの同番号を誤取得。**N-R1b**：JOINで2×3を6 Entityと誤認、または1頁だけで全件成立を主張。**N-R1c**：同Query IDでSQL/Provider/Schemaが変わったのに古いReadを資格化。どれかの実witnessが欠ければ`context/read-incomplete`として保留 |
+| **P0-R2 `TestRMTPreWriteRefusalUsesSameBoundTarget`（提案）** | R1で実Readした対象に未保存Patch（子数量を0）を適用し、Owner受理済みRuleのRequiredを固定。**二つのFunction入口**で同一Rule/Versionが実評価されること、実Request/Targetが同じScopeに属すること、Provider call=0／Receipt new=0／別ConnectionのDB前後不変を確認 | **N-R2a**：Callerが必須Period/Grant/Line全件Guardを供給せず、残存CheckだけPASS。**N-R2b**：Validation対象O1、明示Payload O2。**N-R2c**：失敗RunPlanの前段がすでにEffectしたのに`no-effect`と呼ぶ。現Runnerに必要Guard/Target束縛機能がなければ実Gapとして#1129/#2598/#1174へ |
+  
+**最小実行順**：既存Source/Context fixtureを選び固定→独立Expectedを実Candidateから別に作成→P0-R1をHeadlessに実行→Negative controls N-R1a/bを注入→P0-R2を同じSource/Subject/Providerへ接続。**最初から本番PG書込みを要求せず、書込みは使い捨てDBでopt-inかつ非共有環境**。P0-R2の`Provider call=0`はmockだけではなく、可能な範囲で実DBのBefore/AfterとReceipt件数を別witnessにする。実Readと実Writeの両方を一回で走らせるのはR1/R2の足場がつながった後だけ。
+
+### 11.3 担当者が固定して提出する具体的な成果物
+
+1. **Code path map**：実に呼んだ`workspace.Load → Query/Context Binding → Provider Read`（存在する実関数名で記載）、Go source/branch HEAD、実Test ID。途中が仮Adapter／SQL直叩きならその境界を明記し、製品API完成を主張しない。
+2. **Fixture＋独立Expected**：一つの公開隔離Scenario、Owner/Case受入版とWant／実Input／negative controls／Mutant検出可否／Tenant+Subject+Operationの識別。生成AIがExpectedをCandidateから追認しない。
+3. **Actual Environment／Result**：Go Toolchain、OS、Provider type/version、実DB接続先の秘密以外の識別、SQL/Query Realizationのdigest、`Required tests discovered/attempted/PASS/SKIP/FAIL`、実Rows/Effect/K/O。DBのDSNをログ／Issueに出さない。
+4. **差分判定**：`read-complete/read-partial/unavailable`、`guard-covered/guard-missing`、`correct-target/unbound`、`committed/unknown/not-recorded-only-after-qualified-lookup`、`owner-accepted/unqualified`を**Claim別の説明欄**で表現（新製品enumは追加しない）。
+5. **最終引渡し**：#2586/#2506→#1129/#2598→#1174/#1163→#1119、Legacyは#940 Work、Owner Bは#1125/#267。正式Business、Windows、SHO/Consumerの合格票を実Product Read/PG局所結果に付け足さない。
+
+### 11.4 CIの確実性と改訂時の再利用判断
+
+- 本Draft #2783の**一つ前の確定HEAD** `b9d6306b7feb3aed43a9d0df9205df272017b15e`は[Repository Health #42101164557](https://github.com/hat47x/tei-platform/actions/runs/42101164557) `completed/success`（Docs＋自作SQLite Fixtureの範囲）。§10 HEAD `102b51349da7fba56b23d0f2bcf0aa248679553b`の[Health #42106904868](https://github.com/hat47x/tei-platform/actions/runs/42106904868)は本節確認時点**in_progress**。この§11の新HEADも独立に確認し、過去のgreenを転用しない。
+- [Draft #2889](https://github.com/hat47x/tei-platform/pull/2889)の専用Go/RunPlan [#42100472921](https://github.com/hat47x/tei-platform/actions/runs/42100472921) `success`と同HEADのRepository Health [#42100472849](https://github.com/hat47x/tei-platform/actions/runs/42100472849) `failure`（gofmt drift）は**両方記録**。局所Go特性がPASSしても整形/全体CI合格ではない。
+- 同Sourceが移動してbyte同一、ReferenceがA→B→A、Provider別SQLが切替、Manifestと実Build Inputが乖離、Owner Meaning撤回、後続DB UpdateでO/Bが失効したときは、**必要なClaimだけ再検収**。historical Receiptは消さず、同じDigestだけでcurrent Grant/観測資格を復活させない。
+
+**実施状況**：この追補はSource-staticなFit/Gapと実装受入票である。P0-R1/R2は**提案のみ・NOT RUN**、実Product Data Context Read、実データ書込み、Windows Driver、正式Owner判定、二Target資格は未実証。設計方針は従来どおり、一Provider・一Function Read先行、同Rule二入口、実PGの局所既存Runnerを最大限再利用し、強制SQL記述・新Host/Resolver/Runner・中央Proof Registryは導入しない。
