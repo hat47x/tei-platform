@@ -490,3 +490,49 @@ Implementation/配布の責務：#1251（凝集Bundle/テストと未使用非�
 **実証順**：P0 read-only選択/実依存照合 → P1 純粋Operator/選択済みGo buildと未選択Bundle影響 → P2 DB Provider能力・部分Read/Write（実DBは別Evidence） → P3 外部Process/異Consumer/Loadと失敗注入。独立Expectedは#1180/#2514に固定し、対象版と実消費byte、実Artifact、Host/Grant、Effect観測は別列とする。新たな万能Fixture/Execution Engineは作らない。
 
 **評価の出口**は、具体的棄却理由、失敗時の回復、採用候補のConsumer・Target適合範囲、必要なOwner判断を既存Issueへ返せること。製品適用・意味受理・Production資格とは別。今回のEX-H1〜6、実Go/DB/外部Process/Windows/Studio統合、性能値、Owner受理はNOT RUN／未採用。
+
+
+<!-- tei-authoring-plugin-trust-boundary-20261106 -->
+## 16. 開発用Pluginの作用と生成アプリケーションへの間接影響（2026-11-06、設計・NOT RUN）
+
+### 16.1 「Runtime非同梱」と「無作用」は別
+
+§14の方式選定・§15の実Build/Consumer資格と直交し、**開発時に実際に作用する対象**を区別する。開発用Pluginは生成Binaryに含まれなくても、Source/Meaning候補、生成器入力、Generated Source、Build Artifact、外部通信、秘密情報に作用し得る。非同梱を理由に「無権限で実行可」「成果物・実行性能に影響しない」と推論しない。一方、標準の純粋演算にはDB Commit/Receipt機構を強制しない。
+
+| 能力の例 | 実際に確認すべき境界 | それだけでは主張できないこと |
+| --- | --- | --- |
+| Parser/Linter/Source Inspect | 許可された実Source/Import byteとRead scope、診断・位置。stale/unavailable/partialの区別 | Read-only宣言からOS上の自由なファイル/Network利用を認めること、正常Parseから意味受理 |
+| AI/DSL変換・Source Patch候補 | base revision、対象ID/span、根拠、差分・不確実性。外部Tool文面は未信頼入力 | 引用位置や型整合から業務意味の支持、AI回答からCommand実行許可 |
+| Formatter/Generator/Build Tool | 実入力閉包、GeneratorとToolchainのexact版、Generated Source・Artifact差分。外部Processの実起動Resource | Generatorが実行Binaryに非同梱だから生成結果不変、Exit 0から意味適合 |
+| Studio Script・Data/外部Provider呼出 | 実Principal・Resource・Effect・Target・現在Grant、実呼出とReceipt/独立Read | Plugin署名・自己申告Capability・開発者権限から本番DB書込み許可 |
+| Runtime Provider | Selected/Build-consumed/Linked/Loaded/Invokedを別記録 | Bundle同梱から実利用・現在実行資格 |
+
+同じ高凝集Bundleへこれらを同梱しても、**Bundle一括導入から個々のResource/Effect権限を自動発行しない**。基本Interfaceと実装の同梱は許容するが、実装版・契約版・実消費byte・作用面の資格は個別に追跡。Studioローカルno-authもWorkspace/OS制約を解除しない（ADR-0044、#951/#2017）。
+
+### 16.2 Source候補から実Effectまでの停止線
+
+1. **外部SourceとTool結果**：Reference/SQL Asset/AI応答/Plugin Manifestは出典・固定版と取得状態を残す。Source内の命令注入を実Commandへ昇格させない。Source移動、A→B→A、offline/stale、read-time TOCTOUを再評価（#2743/#988/#2600）。
+2. **Candidate/Preview**：Parser/AI/Language Pluginの結果は候補。型・引用span・実Read footprint・独立Expectedを検査し、未確定は保留する。CandidateからProviderへ直接作用する経路は認めない（#988/#2514/#2745）。
+3. **Patch適用と意味受理**：base revision、対象ID、適用する実差分と実保存byteを照合。候補作成後のSource改版ならstaleとして再比較。Preview、Validate、Patch applied、Owner Accepted Meaningを分ける（#2497/#2621）。
+4. **生成とBuild**：選択Generator/Toolchain・実消費Source/Import・Go nested module/全Artifact memberと結果を結ぶ。未使用実装の混入と選択済み依存の欠落の両方を検査する（#1251 PB/PBN/PB-10、#1089/#1167）。
+5. **実呼出/永続作用**：Target側Host/Providerの現在Grantで実効制限。Process ACK喪失、部分Commitはunknown/Operation ID/Receipt/独立Readを保持し、Plugin revertや再Installで業務Effectが元に戻るとは主張しない（#1129/#1174/#1223/#2390）。
+
+### 16.3 既存Fixtureへ返す差分負例（新Runner/新Test IDを作らない）
+
+| 対照 | 独立に観測するもの | 既存Owner |
+| --- | --- | --- |
+| Read-onlyを宣言した開発Pluginが許可外ファイル書換・外部送信を試みる | 実OS/Hostの拒否と実ファイル/通信結果。Manifest/署名のPASSで代用しない | #2017/#951 |
+| AIが正しいSource spanと不当な実行指示を同時に返す | Candidateとして保留、意味的支持と実Command非実行を別観測 | #988/#2514/#2745 |
+| Patch候補後にSourceが改版・移動、A→B→A | base revisionと実byteの不一致検出。旧Patch/受理の自動復活を禁止 | #2743/#2497/#2600 |
+| 未利用Generator更新と、実利用Generatorの同名異byte更新 | 前者のArtifact非干渉と後者の実Build再資格を区別 | #1251/#1089/#2600 |
+| 同じ表示RowsでもRead scope/NULL/partial/意味版が違う | 結果値の一致からMeaning/Grant/Read完全性を推論しない | #988/#2622/#2515 |
+| 外部ProcessがACKを返さず先行StepはCommitした可能性 | Operation ID、unknown、独立Receipt/Read。無条件再送と自動Effect rollback禁止 | #1129/#1174/#2390 |
+
+### 16.4 実証の順序と責務
+
+- P0：既存Plugin/AI Tool/Generator/Studio Scriptの宣言Capabilitiesと、実際のfile/network/process/DB作用・強制主体・未証明領域をread-onlyで棚卸し。万能Plugin権限レベルや新enumは導入しない。
+- P1：#988/#2514/#2745の既存Source・独立Expectedで候補とPatch適用/Owner受理が自動連鎖しないことを検証。MockだけでOS非作用PASSとは主張しない。
+- P2：#2017のOS資源・情報流と#1251 PB-01/02/07/10のGo実Build/実依存検査を接続。Windows Studio、外部Host、実DBはそれぞれ別資格。
+- P3：静的Library/Rule/設定で実需要を満たせばPluginを新設せず、独立更新・隔離・外部Host可搬性が必要なときだけ§14の物理方式選定に戻す。
+
+**状態**：本追補は既存PRにおけるdocs-onlyの受入・停止線。実OS隔離・AI→Provider遮断・Go差分Build・Windows/DB/外部Process実走・Owner正式受理は新規NOT RUN/NOT ACCEPTED。第二Host/Registry/Resolver/Policy Engine/Plugin ABI/Oracleを追加しない。
