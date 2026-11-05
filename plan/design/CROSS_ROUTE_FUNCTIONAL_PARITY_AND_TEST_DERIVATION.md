@@ -683,3 +683,15 @@ main統合済み[PR #2894](https://github.com/hat47x/tei-platform/pull/2894)の`
 入場判定は`DSN absent→NOT ATTEMPTED`、`dbcheck reached＋temp DDL PASS→specified DB connection/capability observed`、`Required PG Case actually PASS＋実Receipt/独立Read→限定L3 Provider claim`を分ける。実DB Probe自身も一時DDLという作用を持つが、本業務TableのRead/Write・RLS・Snapshot・Commit・Current Grantの証拠ではない。DB接続先の生DSNは公開しない。#2835の**SKIP緑禁止**は実PG Case入場に引き続き適用し、dbcheck成功をRequired PG Caseの代理PASSにしない。
 
 **この追補はdocs-only**。#2895のGo CI成功と#2891の書式CI失敗を正しく区別し、新しいProvider/実PG接続・Source/Owner受理・外部Reader/Prod Hostの実測は本作業ではNOT RUN。#2895は積層Draftのためmainへ単独mergeせず、#2828→#2890の依存順と#2514の独立Oracle受理境界を守る。
+
+### 18.5 有限AI候補の実CIとG0修正の未結合を確認する（2026-11-06）
+
+[証拠台帳§8.5](./TEI_TEST_BASIC_DESIGN_AND_EVIDENCE_LEDGER_2026-11.md)の現在判定を本計画へ引き継ぐ。**#2895の積層HEAD `8d3dc2fc5058ff3945d0981d2979138d4fc461be`**は、[#2828](https://github.com/hat47x/tei-platform/pull/2828)→[#2890](https://github.com/hat47x/tei-platform/pull/2890)→[#2895](https://github.com/hat47x/tei-platform/pull/2895)を同一Go checkoutへ含む。実[Health #42109027966](https://github.com/hat47x/tei-platform/actions/runs/42109027966)は**completed/success**。job logで`go test -count=1 -timeout 60m ./...`（`tei/cmd/tei`含む）、gofmt、vet、Workspace validateのPASSを確認した。比較Diffから、#2890→#2895の追加は**独立有限OracleのGo test-only 1ファイル**と確認できる。#2890単独HEADのActionsは0件であり、その単独CI成功と誤表示しない。
+
+**証明範囲**：#2895の単一Go Testでは、固定2 Step・入力Fixture・有限集合の行番号重複Property、Expectedだけ反転/入力Keysだけ反転の対照を検査。既存#2828 Go Testは候補Glob・既存Scenario `verify/generate/check/generated-pinned run`・Stepごとの限定`evidenceNature`を検証する。**同HEADのGo全体PASSはこの局所Scenario検収を支持する**が、個別Stepの外部Receipt JSONをCIから独立保存した証拠・業務Ownerが受理したMeaning・実Rule本体Mutant kill・実Provider/Target/全Coverageの証拠にはならない。
+
+**G0独立ギャップ**：[#2891](https://github.com/hat47x/tei-platform/pull/2891)のFixture JSON Object重複Member拒否は#2895 Stackに含まれない。#2891の旧HEAD `2f677921`は全Go test/vet/Workspace PASSながらgofmt driftで[Health #42107910706](https://github.com/hat47x/tei-platform/actions/runs/42107910706)失敗。今次`16b8d554`にて**整形のみ**修正、[新Health #42110507652](https://github.com/hat47x/tei-platform/actions/runs/42110507652)を別判定中。G0の修正成功とG1/G2候補の別HEAD成功を**同一受入Attemptへ足さない**。
+
+**既存計画の優先検収差分**：P0a #2891 exact-head総合CI PASS＋必須10 Case非SKIP確認 → P0b #2895で追加2 Stepが既存Go CLI test経由で実走した証拠の再取得 → P0c 一体HEADに必要な最小4ファイルを適用し、G0と限定G1/G2候補を同一Checkoutで試す（新Runner/新Schemaなし）→ P1 #2514独立既知Product Rule Mutantの実kill。最終Owner Meaning、Provider/Host・一改訂Web→PG→独立Consumer資格は引き続き#1163/#1119が所有する。
+
+**今回の計画追補はdocs-only**。実Goの修正は#2891、実新Case/Oracleは別PRであり、本Planに製品コードを複写しない。#2895 Stackは検証用Draft・単独main merge禁止。
