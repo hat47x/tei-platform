@@ -378,6 +378,18 @@ AIによる提案には、意味の正本を変更する権限はありません
 
 AIの自律的な作業と実行権限を区別します。AIがツールを直接呼び出せることを、能力や利用許可の仕組みの代わりにはしません。
 
+### AI Proposalの入力・検証・受理・Host境界（2026-11-06横断追補）
+
+[ADR-0022](adr/0022-ai-proposal-canonical-acceptance-boundary.md)と[#267](https://github.com/hat47x/tei-platform/issues/267)の**Shared Acceptance**を唯一の正式なSource変更経路として維持し、AI専用の書込み・受理・Provider直結経路を追加しません。[ADR-0030](adr/0030-context-scoped-epistemic-knowledge.md)／#958の由来・確認履歴・用途相対資格を、生成AI向け入力にも適用します。具体的な最小横断仕様・UI状態・AIB-01〜12の負例は[AI-first設計§5.4](design/AI_FIRST_REQUIREMENT_PRESSURE_AND_HEADLESS_VERIFICATION_2026-11.md)へ一本化します。
+
+- **Inputの現在性と外部送信**：Source ID/実消費byte/Revision/fingerprint/span、Semantic/Operator Lock、依存閉包、purpose/Principal、Allowed *proposal/read* capability、開示範囲を別々に固定します。宣言Input＝実Load/Parse済みではなく、内部read-only＝外部LLMへの送出許可でもありません。Source本文・Tool結果に埋め込まれた命令はAuthorityではありません。
+- **Candidateと検証**：Candidate/Attempt/base revision、Typed Diff、根拠Source span/意味対象、前提/未解決を保持。構文/型/参照と、引用の意味妥当性、Source鮮度/完全性、Rule衝突を別判定します。欠落・部分取得・曖昧・矛盾は保留し、再生成・A→B→Aでも旧Reviewを自動継承しません。
+- **受理とEffect**：人によるReview/Owner意味受理→Source反映→reload/Conformance→型付きAction Intent候補→外部Hostの現在Grant/Target確認→実Provider Effect/Receipt/独立readを段階別に検収します。受理済み意味は現在の実行許可を保証せず、Commit応答不明では無確認再試行を行いません。
+- **Owner分担・優先順**：#988＝構文/Operator、#2619＝意味Role、#2622＝Data Operations、#267＝Shared Acceptance、#958＝認識状態、#2515/#2516＝Disclosure、#1180/#2514＝Scenario/独立Oracle、#2598/#1174＝実Target/Effect。P0固定CandidateのHeadless負例→P1独立Oracle/既知Mutant→P2実Consumer/外部送信・二世界非干渉→P3実Host/Receipt→P4実AI生成品質の順とし、低レベル試験のPASSを製品統合へ合算しません。
+
+**状態**：設計と計画の接続のみ。AIB-01〜12、実AI入力/生成精度、OS・外部LLM送信、実Provider/Host、Studio/SHO、Owner正式受理の新しい横断E2Eは**NOT RUN**。新Schema・Core enum・Acceptance Engine・Policy Engine・TEI独自Hostの採用決定ではありません。
+
+
 ## 作業領域I：周辺技術との連携と本番運用の境界
 
 ### 目的
