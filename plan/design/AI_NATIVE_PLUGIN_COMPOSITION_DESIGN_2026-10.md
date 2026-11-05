@@ -381,3 +381,84 @@ E11では、構成案の選択と直接・間接の依存先の宣言世代を�
 ただし、鮮度を確認した直後にもRegistryは変更され得る。したがって、これはあくまで設計時の観測であり、**実行時のHostによる選択の再検証、権限、Lease、Fencingを代替しない**。証拠の発行者の信頼性や現在性も別の判断として残す。
 
 E11の試験ソースはPRへ追加済みだが、実Compositionと#951を含む結合試験および信頼できる全Repository Healthは未実施である。変更の目的と否定試験は[照合Reference E11](../../reference/composition-evidence-handoff/README.md)へ記録する。
+
+
+## 21. DSH比較から導く構成・実使用・証拠の非干渉契約（2026-11-06、設計・未採用）
+
+**管理・適用**：[横断研究 #2899](https://github.com/hat47x/tei-platform/issues/2899)。本節はDeepSeek Harness（DSH）の構成方式を参照して、既存E5〜E11の構成案・証拠照合を**実際の消費・Target・現在資格**へ受け渡すための反証を定義する。#1016のProfile、#951のResolver、#943/#1089のBuild、#1121のLowering、#1174のHost Effect、#2044のStudio、#2589の公開Registryを再実装しない。旧Referenceを本番合格へ昇格しない。
+
+### 21.1 外部実装から確認した事実と、採用しない類推
+
+- [DSH Architecture](https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/architecture.md)：Cordisサービス・イベント・可逆登録効果、順序付きBundle→Profile→home→CLI patch。行単位のpatchは同じidの**全体置換**であり、部分フィールドの意味保存を自動保証しない。sdk-minimalは共通baseを必須としない。
+- [DSH Plugin Manager](https://github.com/deepseek-ai/deepseek-harness/blob/master/packages/boot/plugin-manager/README.md)：管理操作の対象は現在Profileで、構成変更は当該Profileのセッション全体へ影響する。HMR有無で適用時点が変わる。Host側Pluginのin-process実行はWorkspace隔離と同義ではない。
+- [DSH lifecycle](https://deepseek-harness.github.io/deepseek-harness/en/develop/framework/)：required service消失で依存PluginをUnloadし、復帰後に再ロード可能。これは「DB CommitをUndo」「未完了Effectを安全に再送」「複数Targetで無停止」には当たらない。
+- TEIで保持する判断：[ADR-0032](../adr/0032-composition-kernel-replacement.md)の契約中心合成と[ADR-0043](../adr/0043-target-native-artifacts-without-tei-host.md)のTarget-native実現。Cordis ABI、Loader、Fiber/HMRの逐語移植、TEI専用共通Hostの導入は採用しない。
+
+### 21.2 何の変化かを分ける：五つの根拠グラフ（新しい正本ではない）
+
+同じPlugin集合を材料にしても、次のグラフは異なる対象を表す。既存Source/Lock/Build/Receiptから読み取る**診断用Projection**であり、五つの独立したRegistryや固定Core列挙は設けない。
+
+| 観測面 | 頂点・辺の最小意味 | 正本・担当 | その面だけでは分からないこと |
+| --- | --- | --- | --- |
+| S: Source／Meaning | Source occurrence、Role、Accepted Meaning、依存・Revision | #2619/#2620/#267 | 実Provider選択・権限 |
+| C: Composition | 要求Service Contract、Provider候補・exact wiring、Scope、Profile Overlay | #1016/#951 | 実Buildへの物理混入、実行許可 |
+| B: Build／Artifact | 実際に消費したSource/Generator/Toolchain/Flags、Artifact member、Digest | #943/#1089/#1097/#1167/#2600 | 現行Hostが何をLoad/Invokeしたか |
+| R: Runtime／Authority | 実際のReader/Instance、Invocation Context、現在Grant/Lease、Resource | #1118/#1174/#1370 | 業務意味の受理、Commit結果の確定 |
+| E: Effect／Consumer | Operation identity、試行、Receipt、独立Read、開示されたConsumer結果 | #1129/#1174/#2516 | 任意の外部副作用の完全な発見 |
+
+**横断不変条件**：Sの意味が同一でもC/B/R/Eの保証を流用しない。Cが変わってもSを自動受理し直さない。BのDigest一致はIssuer/現在Grant/実起動物同一性の保証ではない。Eの過去ReceiptとRの現在資格を分ける。「見つかった」「検証対象に入った」「結果が返った」を「現在実行可能」「業務効果が確定した」にしない。
+
+### 21.3 Plugin更新の影響判定は三種類の集合を混ぜない
+
+「未使用」を単にProfileの非選択と定義しない。
+
+- **Resolved Selection**：#951が正確に選択したContract/Provider集合。登録順・最高Versionだけ・暗黙fallbackによる選択は拒否する。
+- **Actual Consumption Closure**：Compiler、Generator、Go import/init/embed、直接・推移的依存で**実際に消費された**入力の集合。Plugin Lockで未選択でもここに含まれれば無関係とは言えない。
+- **Qualified Evidence Scope**：どのSource/Contract/Provider/Artifact/Target/Grant/Consumerと、どの時点のClaimを検証したか。過去にPASSしたClaimを新しい対象へ自動転記しない。
+
+対象変更の影響を unchanged / requires-requalification / conflict / unknown の説明用四分類として表し、未知の依存は「変化なし」でなくunknown/fail-closedへ戻す。これは内部の固定enum採用ではない。
+
+| 変更 | S（意味） | C（選択） | B（実Build） | R/E（現行実行と効果） |
+| --- | --- | --- | --- | --- |
+| 未選択・実非消費のProvider追加 | 不変候補 | 選択Lock不変候補 | 同条件のArtifact不変候補 | 無関係なGrant/Effectを失効させない候補 |
+| 未選択でもimport/init/embedが実消費 | 不変候補 | 選択だけなら不変 | **再評価必須** | 実際のReader/副作用の検証を要求 |
+| 選択ProviderのImplementation/Contract変更 | 自動受理なし | exact再解決 | Closure/Artifact再評価 | 旧資格で新実装を実行しない |
+| Source内のRole/Operator意味変更 | Owner再受理が必要になり得る | 依存箇所のみ再評価 | 関係Buildのみ再評価 | 旧Effectは歴史的事実として保持 |
+| Publisher失効・Index停止 | Accepted意味を自動変更しない | 新規選択に信頼・鮮度問題 | Digest一致だけでは足りない | 現行利用許可はHost/ConsumerのPolicyに従う |
+| Host Grant失効／DB Commit応答喪失 | 意味とは独立 | 宣言上の選択は不変 | Artifact自体は変わらない可能性 | 新規Effect拒否／Outcome unknown、operation IDで照会し自動再送を止める |
+
+### 21.4 配置・更新Protocolと、Scopeをまたぐ変更
+
+設計時の候補→予想Diff→正確なContract解決→Build必要集合→Artifact検証→Target実Reader→Host現行Grant→Effect Observationの順に、各Ownerの結果を紐付ける。ただし純粋関数の静的Buildでは動的Load/Watcherを要件化せず、通常のGo単一Binaryは再ビルドと再起動が必要なことを示す。
+
+動的・長寿命Targetに限り、事前検査、旧世代を維持した新Provider準備、readiness、Atomic cutover、in-flight drain、登録解放を評価する。**新ProviderのReady ≠旧状態移行の成功≠可用性SLO達成**。部分的外部Effect、ACK loss、失効したGrantに対しては自動再起動や自動再送を許可しない条件を、#1223/#1174/#1129へ渡す。
+
+Profileの層差分では、同じidでも変更対象のexpected revision/fingerprint、変更のOperation（add/replace/disable/remove）、適用Scope、影響するContract/Provider、Build closure、現在のConsumerを表示する。旧revisionを前提とする変更は黙ってwhole replacementしない。Tenant/Project/Sessionの作用域を分け、あるProfileの有効化を別Host/全Tenantへ自動伝播させない（#1016/#2044）。
+
+### 21.5 第三者PluginとCommunityに必要な検証境界
+
+**Discoverability → Publisher/Namespace Authority → Artifact provenance → Conformance → Consumer/Host admission** は別々の判定。第三者Indexが付けた verified / safe、Star、ダウンロード数、署名の存在だけから安全性を断言しない。#2589の分散Registryは**発見索引**であり第二Resolver/Authorityではない。公開名・Contract定義権・実ArtifactのPublisher・検証Issuerを区別する。
+
+Community向け初期配布物の候補は (1) Contractと正負Fixture（Provider無しでも使用可能）、(2) 高凝集Bundle＋対象別Build Recipe、(3) 独立Conformance Procedure、(4) Consumer Integration例、(5) 安全な公開・失効・保守引継ぎ手順。すべてを「公式Plugin」として一律認証するのではなく、公開主体・保守主体・実行環境・検証範囲を示す。Plugin数を成熟度とせず、Conformant/maintained/portable/composable/reproducibleを観測できる範囲で別指標とする。
+
+### 21.6 横断の最小反証・受入票（DSH-11〜18：独立Expected、現状NOT RUN）
+
+| ID | Fixture / 変化 | 独立に期待する観測 | 既存Owner |
+| --- | --- | --- | --- |
+| DSH-11 | Profile Aの設定行を上位Patchで一部だけ指定 | 旧フィールド欠落と同ID衝突をDiffで示し、expected revision不一致なら拒否 | #1016 |
+| DSH-12 | Bundleに未選択Provider追加、Go import/initを有無で対照 | Selectionだけで不変とせず、actual Build inputs・Linked bytesを比較 | #1251/#1167/#2600 |
+| DSH-13 | 同Shape同Version、異なるNULL/decimal/failure/Effectの二Provider | Structural適合でSemantic同等を宣言しない | #951/#2620 |
+| DSH-14 | Runtimeが依存Providerを失い復帰するが先のCommitは成功 | Plugin再ロードと歴史的DB Effectを分離し、自動再送なし | #1223/#1129/#1174 |
+| DSH-15 | Index上Verified、Publisher権限失効・実Artifact置換 | Index主張だけで採用せずDigest/Authority/現在Trustを個別照合 | #2589/#1104/#1370 |
+| DSH-16 | Plugin無効化/削除、未対応Sourceに未知の属性 | raw bytes維持、編集は可能、意味受理/実行許可を勝手に維持しない | #2044/#2553 |
+| DSH-17 | TEI外のJava/.NET/Process Consumerへ同契約を渡す | TEI Studio/常駐Host非依存、同じ独立Oracleを実際に実行 | #2390/#1145 |
+| DSH-18 | DSH SDK minimal/headlessからTEI CLIをread-onlyで呼ぶ | 実Tool/送出/Process結果とTEI Meaning/Effectの証拠を別列にする | #2509/#2515 |
+
+**受入票の最小列**：Case、対象Source+Revision、Contract+Provider exact、Profile+Scope、実Build input/Artifact、現在Reader/Grant/Lease、Scenario/Expected、実観測と独立Oracle、未確認、Owner/再資格化条件。欠損はunknown／NOT RUNとし、0件確認済みやPASSに置換しない。詳細なSchemaや独立試験Frameworkの新設は先取りしない。
+
+### 21.7 既存計画への返却と撤回条件
+
+- #2899 はDSHのSource/Revision対応、比較表、反例の作成・調整のみ。新しい実ResolverやHostでの実装を所有しない。
+- #951/#1016/#1251/#1223/#2589/#2620/#2044/#2390/#2509が各検証を所有。#1119のCritical PathのGateはそのまま。#2017のA0〜A4には作業票/検証Evidenceを渡すが、人間のOwner意味・権限・配備判断は置換しない。
+- 実Consumerとactual source/Artifact/Targetを観測して、既存Contractと診断Projectionだけで要件を満たせる場合、新しいRegistry、CoreのPlugin型、Composition正本、Agent Runtimeは**追加しない**。
+- **現在の状態**：本節は複数チャットの方針・既存ADR/IssueおよびDSH公式公開資料を照合した設計候補。DSH実コード/TEI実Host/Go Link/DB/外部Consumerの新たな実行試験、Ownerによる正式採用はここでは**NOT RUN／未採用**。
