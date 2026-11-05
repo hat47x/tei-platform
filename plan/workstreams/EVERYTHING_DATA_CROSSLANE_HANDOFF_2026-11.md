@@ -2777,3 +2777,19 @@ HEAD `e0cfebf14d40db81bdef77d6c3e4898ed75d999f`に対する[GitHub Actions #4203
 一回の実行で**データの意味、実Read/Write、Plugin/Provider実装、Sourceの版、Current Grant、Recovery段階、実Consumer受領**が連結していない場合は、その欄をunknown/NOT RUNのまま残す。「未使用Pluginは実ビルドに影響しない」「異なるDBでEquivalent」「Lifecycleは再起動しても一度限り」「帳票の0件が対象不存在」「監査のatomic宣言で本番資格」が、現実の局所CIから自動成立したと主張しない。
 
 **Owner**：Plugin bundle/依存=#1251/#1097/#2831、User Skill=#2605/TAI #168、RunPlan/帳票=#1130、DB/SQL=#2622/#2862、Provider Effect=#1174/#2564、Audited Gate=#1119/#1163、Consumer=#2516、Independent Oracle=#2514。新規Core Enum/Host/Registry/Scenario Engine/Universal Policy Engineは導入しない。**この節自体はDocs-only。BP-02〜08/PB-01〜10のGo Binary実Build差分、4実Harness、実業務RunPlan一往復、Role正式受理、二DB同一Function、Owner Grantの統合試験はNOT RUN**。
+
+<!-- 20261106-verification-obligation-crosslane-join -->
+### 52.4 検証事項→実証証拠→主張資格を共通の受入票へ接続（2026-11-06）
+
+**今回の変更点**：§52.2の三本の実証経路を作り替えるのではなく、**実行したテストの数と、必要な検証が満たされた量は別**という原則を検収へ固定。[Scenario SSOT #1180](https://github.com/hat47x/tei-platform/issues/1180)にSource/Scope、必須Guard集合、実Provider Effect、Replay、Consumer受領、Role/Buildの6項目のObligation対照票を追加。[独立Oracle #2514](https://github.com/hat47x/tei-platform/issues/2514)には同じ誤った実装からCandidateとExpectedを生成する自己追認・Mutant判別の条件を追加。[一改訂証拠 #1163](https://github.com/hat47x/tei-platform/issues/1163)は**同一Source Revision・Artifact・Target・OperationID・Attempt・Consumerの実際の連結**を所有する。第二Schema/Proof Engine/Scenario Runnerを設けない。
+
+| 現行main・別Draftの証拠 | 認められる限定Claim | 残すべきObligation |
+| --- | --- | --- |
+| [merged #2882](https://github.com/hat47x/tei-platform/pull/2882)実Workspaceの期間closed/open・Observer無し（3 CI success） | Parser/Operation Surface/RunPlanを合成Stepへ接続し、blocked/completedを検査済み | 必須Guardの網羅、Current Grant/Periodの実Commit Fence、実DB効果0 |
+| [merged #2853/#2870](https://github.com/hat47x/tei-platform/pull/2870)の別試行PG CAS・Receipt・再起動時同Key replayと[#2854](https://github.com/hat47x/tei-platform/pull/2854) ABA負例 | 実PG局所Read/Writeと同Key Replayの条件・新Key再適用の危険 | #2882の対象Function/Guardと実PG/Consumerを同一Attemptで照合する条件 |
+| [merged #2866/#2871](https://github.com/hat47x/tei-platform/pull/2871)の機能定義書・帳票本文 | Artifact表現とread-only投影の局所正例 | 実データ完全性、Manifest同一Generation、別Consumer実BodyとDisclosure |
+| [Draft #2877](https://github.com/hat47x/tei-platform/pull/2877) G4 Fit/Gap、[Draft #2827](https://github.com/hat47x/tei-platform/pull/2827) ETL/MFT | Self-Build/二Consumerは設計候補。#2827のMarkdown/index旧Health失敗は修正コミットを作成 | 実Builder closure・Stage0/1/2と、実転送/Delivery/Importそれぞれの独立実測 |
+
+**導入最小単位**：既存Scenarioの必要なObligationごとに、Required／Expected独立出典／Observed＋Head＋Attempt／negative control／pass・fail・unknown・not-run・not-applicable／Claim ceilingを**既存Reportへの派生参照**で埋める。CallerがPeriod Guardを省略したのに残りのPreconditionが成功した場合は、「実行成功」でも**要求GuardのCoverageが未充足**。同様にFile Bodyが受信されてもBusiness Acceptanceは未証明、Graphに辺が無くても実Builderの未宣言step不存在は未証明と扱う。
+
+**Gate変更なし**：優先するのは公開Product Skillの実4Sessionと、#1119 G1/G2の最短一業務Loop、#2831 G4実Self-Buildを独立P0で並走する従来順。DB2系統・Studio UI・ETL本番配送をG1/G2のHard dependencyへ昇格しない。**この追補はDocs-onlyで、新しいScenario/Provider実Go E2E・ETL二Consumer/Target Build・正式Owner受理はNOT RUN**。
