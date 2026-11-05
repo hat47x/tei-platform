@@ -24,18 +24,15 @@ type ApplicationReleaseContractMismatch struct {
 	Reason          string           `json:"reason"`
 }
 
-const (
-	ApplicationReleaseContractNotCurrent = "not-in-current-definition"
-	ApplicationReleaseContractMajor      = "compatible-major-mismatch"
-)
+const ApplicationReleaseContractMajor = "compatible-major-mismatch"
 
 // ApplicationReleaseContractCandidates lists Application Release Contract
-// requirements whose Contract has no current definition or whose compatible
-// major differs from the current definition's major. Application Release
-// requirements are otherwise checked only for existence and ownership by
-// validation, so this read-only view makes the major direction visible.
-// Dynamic consumers, runtime deployment state and provider behavior are not
-// evaluated.
+// requirements whose compatible major differs from the current definition's
+// major. Requirements with no current definition are already reported by
+// APPLICATION_RELEASE_CONTRACT_NOT_CURRENT, so they are not repeated here; this
+// keeps the candidate view limited to the direction validation does not
+// diagnose. Dynamic consumers, runtime deployment state and provider behavior
+// are not evaluated.
 func ApplicationReleaseContractCandidates(w ir.World, snapshot string) []ApplicationReleaseContractMismatch {
 	contracts := map[core.CanonicalID]databaseContractVersion{}
 	for _, db := range w.Databases {
@@ -53,15 +50,11 @@ func ApplicationReleaseContractCandidates(w ir.World, snapshot string) []Applica
 					CompatibleMajor: req.CompatibleMajor,
 				}
 				c, ok := contracts[req.ContractID]
-				switch {
-				case !ok:
-					item.Reason = ApplicationReleaseContractNotCurrent
-				case c.major != req.CompatibleMajor:
-					item.Reason = ApplicationReleaseContractMajor
-					item.CurrentVersion = fmt.Sprintf("%d.%d", c.major, c.minor)
-				default:
+				if !ok || c.major == req.CompatibleMajor {
 					continue
 				}
+				item.Reason = ApplicationReleaseContractMajor
+				item.CurrentVersion = fmt.Sprintf("%d.%d", c.major, c.minor)
 				out = append(out, item)
 			}
 		}

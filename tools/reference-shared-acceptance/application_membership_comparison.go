@@ -59,7 +59,7 @@ func runApplicationMembershipComparison(args []string, stdout, stderr io.Writer)
 	report := applicationMembershipComparison{
 		Schema: "tei.reference.application-membership-comparison/v0", ComparisonOnly: true,
 		BeforeDiagnostics: validation.Validate(before.World), AfterDiagnostics: validation.Validate(after.World),
-		AuthorityLimits: []string{"not-an-acceptance-preview-or-decision", "contract-candidates-only-eight-explicit-declaration-kinds-not-complete", "gate-candidates-only-unreferenced-and-unsatisfiable-not-complete", "application-release-contract-candidates-only-major-and-existence-not-complete", "database-release-contract-candidates-only-major-behind-not-complete", "contract-compatibility-releases-dynamic-and-runtime-effects-unverified", "source-order-and-target-effects-not-evaluated", "dependency-coverage-not-verified", "workspace-snapshots-not-pinned-or-atomic"},
+		AuthorityLimits: []string{"not-an-acceptance-preview-or-decision", "contract-candidates-only-eight-explicit-declaration-kinds-not-complete", "gate-candidates-only-unreferenced-and-unsatisfiable-not-complete", "application-release-contract-candidates-only-major-not-complete", "database-release-contract-candidates-only-major-behind-not-complete", "contract-compatibility-releases-dynamic-and-runtime-effects-unverified", "source-order-and-target-effects-not-evaluated", "dependency-coverage-not-verified", "workspace-snapshots-not-pinned-or-atomic"},
 	}
 	exit := 0
 	report.WorkspaceValidationPassed = !validation.HasErrors(report.BeforeDiagnostics) && !validation.HasErrors(report.AfterDiagnostics)

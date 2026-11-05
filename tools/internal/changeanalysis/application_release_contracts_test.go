@@ -9,7 +9,7 @@ import (
 	"tei/internal/ir"
 )
 
-func TestApplicationReleaseContractCandidatesOnlyMismatches(t *testing.T) {
+func TestApplicationReleaseContractCandidatesOnlyMajorMismatch(t *testing.T) {
 	world := ir.World{
 		Databases: []database.Database{
 			{ID: "sales", Contracts: []database.Contract{
@@ -33,21 +33,22 @@ func TestApplicationReleaseContractCandidatesOnlyMismatches(t *testing.T) {
 		},
 	}
 	got := ApplicationReleaseContractCandidates(world, "after")
-	if len(got) != 2 {
-		t.Fatalf("unexpected candidates: %+v", got)
+	if len(got) != 1 {
+		t.Fatalf("major不一致だけを期待: %+v", got)
 	}
-	if got[0].Application != "behind" || got[0].Reason != ApplicationReleaseContractMajor || got[0].CurrentVersion != "1.0" || got[0].CompatibleMajor != 2 {
+	if got[0].Application != "behind" || got[0].Reason != ApplicationReleaseContractMajor || got[0].CurrentVersion != "1.0" || got[0].CompatibleMajor != 2 || got[0].Snapshot != "after" {
 		t.Fatalf("major mismatch lost: %+v", got[0])
 	}
-	if got[1].Application != "missing" || got[1].Reason != ApplicationReleaseContractNotCurrent || got[1].CurrentVersion != "" {
-		t.Fatalf("missing contract lost: %+v", got[1])
-	}
+	// 現在定義にない要求は APPLICATION_RELEASE_CONTRACT_NOT_CURRENT が扱う。
 	for _, c := range got {
-		if c.Snapshot != "after" {
-			t.Fatalf("snapshot not carried: %+v", c)
+		if c.Application == "missing" {
+			t.Fatalf("existing missing-contract warning is duplicated: %+v", c)
 		}
 	}
-	if before := ApplicationReleaseContractCandidates(world, "before"); len(before) != 2 || before[0].Snapshot != "before" {
+	if before := ApplicationReleaseContractCandidates(world, "before"); len(before) != 1 || before[0].Snapshot != "before" {
 		t.Fatalf("snapshot scan is not independent: %+v", before)
+	}
+	if empty := ApplicationReleaseContractCandidates(ir.World{}, "after"); len(empty) != 0 {
+		t.Fatalf("empty world produced candidates: %+v", empty)
 	}
 }
