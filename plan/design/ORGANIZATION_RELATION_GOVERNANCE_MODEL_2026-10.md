@@ -2606,7 +2606,7 @@ fixed HEAD `e0cfebf14d40db81bdef77d6c3e4898ed75d999f`の[Native Actions #4203141
 
 | 区別 | 具体例と保存すべき意味 | 禁止する短絡 |
 | --- | --- | --- |
-| EntityとRelation occurrence | Person P1、OrgUnit D1、Membership A2、Position M1、Occupancy O1、CaseRecord C1のhandlingUnit relation | 表示Node名、同名Person、Query Join行を永続Entity/Relation IDとみなす |
+| Entity・Relation定義・Relation実出現 | Person P1、OrgUnit D1、独立ID付きMembership A2／Occupancy O1と、CaseRecord C1上の単一値handlingUnitId | CaseRecordの直接Relationへ独立edge IDを創作する、表示Node名やJOIN行を永続IDとする |
 | Factとnorm | 本務、兼務、職位在任、Case責任、移管Rule、委任・代理 | 所属・在任を承認Grant/業務Actionへ自動変換 |
 | Timeとpublication | validAt、knownAt、decisionAt、公開組織Revision、Case row version | 遡及訂正、組織発効、DB切替、作用時刻を一つに潰す |
 | Data/Function/Business | handlingUnitの構造、Function Required Read、Ownerが受理したCase移管手続 | Relationから暗黙取得・全件取得・自動CRUDを導出 |
@@ -2628,7 +2628,7 @@ fixed HEAD `e0cfebf14d40db81bdef77d6c3e4898ed75d999f`の[Native Actions #4203141
 | Claim | 最初の限定実証 | 不合格・未確認の例 | 既存Owner |
 | --- | --- | --- | --- |
 | C-Read | C1→D1/D2の明示Function Contextから、実Provider Row/Field/Scope/Query dependencyとConsumerの同一Attemptへ | partialをcomplete扱い、NOT EXISTSの非出力依存欠落、Cohort混在 | #2506/#2586/#2628/#2516 |
-| C-Effect | 同一Case/Relation occurrence、Current Host Grant、row version、Operation identityによるD1→D2移管・Receipt・独立Read | Grant検査未提供、Commit unknownから新key盲再送、先行Step部分効果を無かったことにする | #1125/#1129/#1174/#2564 |
+| C-Effect | C1行＋handlingUnit Role＋旧値D1＋expected row version、Current Host Grant、Operation identityによるD1→D2移管・Receipt・独立Read | Grant検査未提供、Commit unknownから新key盲再送、先行Step部分効果を無かったことにする | #1125/#1129/#1174/#2564 |
 | C-Publish | 組織公開Revision、valid/known、Axis/Root、Audience/Consumerの現在資格を固定した表示・SHO/AI出力 | 旧Preview/後着応答の復活、隠し件数・Export、派生線の直接編集 | #2497/#2516/#2582/#1124 |
 | C-Build | Profile選択、Function Used Capability、実Build Input、Target Binaryの比較 | 選択済み未使用Bundleの暗黙リンク、未選択Plugin干渉、旧Artifact誤利用 | #951/#1130/#1167/#1251/#2600 |
 | C-Portability | 同一Business Function/Expectedで旧新DB・別ProviderのRead/Result同値を独立照合 | 方言Assetの黙示fallback、NULL/Scope/Time/Grain差、History unknownをApplied扱い | #2622/#2611/#2555/#2892/#2897 |
@@ -2639,7 +2639,7 @@ fixed HEAD `e0cfebf14d40db81bdef77d6c3e4898ed75d999f`の[Native Actions #4203141
 
 組織改編は**業務上の発効・組織公表Revision**、DB移行は**旧新Schema/Provider/ClientのRead/Write切替**を持つ。2027-04-01のD1→D2発効と旧DB→新DB移行が重なる仮想Fixtureでも、両Cutoverを同一イベントにしない。
 
-- **Expand/Backfill/Validate**：Person/Employment/Membership/Case RelationのBusiness ID、Relation occurrence、validAt/knownAt、NULL/欠落・保護指定、履歴/遡及訂正を保持。旧新Readerの値同一だけでScope・完全性・多経路集計の同値を主張しない。
+- **Expand/Backfill/Validate**：Person/Employment/実体化MembershipのBusiness ID・Occurrence、Case直接Relationの所有行・Role・値・版、validAt/knownAt、NULL/欠落・保護指定、履歴/遡及訂正を保持。旧新Readerの値同一だけでScope・完全性・多経路集計の同値を主張しない。
 - **Cutover**：旧新Client共存、旧新Writer作用競合、業務validAtとknownAt、公開Org revisionと物理DB routeを別観測。Migration History取得失敗/partial/unknownを真正の空履歴・成功へ昇格しない（#2892）。同一DB ID/Contract IDの入力重複による後勝ち判定を許さない設計の修正責務は#2897。
 - **Contract**：旧Schemaを縮退しても過去CaseのD1参照・合法な履歴読取・Receipt・既存Workflow引継ぎを失わない。組織図からD1が消えることと過去の業務根拠を削除可能であることは別。Old Reader停止・Owner/Consumer互換・独立Readと現在Grantを確認する。
 
@@ -2650,7 +2650,7 @@ Meaning同一はDB実現同一ではなく、Schema互換はMeaning受理や実E
 AI-assisted Fittingは自然言語からRole/Assignment/Rule/Procedureの**引用位置つきCandidate**を作り、Owner受理前・Source矛盾時はPreviewにとどめる。Role自己記述、Business Role、Host Current Grantを一つの権限にしない。
 
 - [Draft #2860](https://github.com/hat47x/tei-platform/pull/2860)のGo Characterizationでは、現ParserでAttribute role重複がCandidateの最後の値へ畳まれる可能性が示されている。Candidate値が単一でも元Sourceの宣言一意性が証明されたわけではない。Source byte/span・重複診断・Role Revision・編集対象Anchorを確認する。
-- Source再読込後のAttribute/Role変更、同名異Scope、未解決Ref、Source A→B→Aを、旧Previewや受理済みMeaning/Host Grantへ無音昇格しない。Studio/SHOのEditはPosition OccupancyとMembershipなどの**元のRelation occurrence**を明示的に束縛し、派生線や単一親Treeから実Targetを推測しない。
+- Source再読込後のAttribute/Role変更、同名異Scope、未解決Ref、Source A→B→Aを、旧Previewや受理済みMeaning/Host Grantへ無音昇格しない。Studio/SHOのEditは、実体化されたPosition Occupancy/Membershipなら**元のRelation occurrence**を、Case直接Relationなら**所有Case＋Role＋期待版**を束縛し、派生線や単一親Treeから実Targetを推測しない。
 - Organization Profileをまとまった配布Bundleとして提供しても、Catalog Available、Environment Selected/Resolved、Function Used、Build Included、Entry Exposed、Current Authorized、Actual Effectを分ける（§64、#2885/#2896）。通常利用者へGo固有構文・DB方言/SQL Asset/メタOntology注釈を日常必須入力として課さない。
 
 ### 66.5 既存Fixtureを用いる最小実装順序と証拠上限
@@ -2659,13 +2659,81 @@ AI-assisted Fittingは自然言語からRole/Assignment/Rule/Procedureの**引�
 
 | 優先 | 実行する最小縦断試行 | 停止条件 | 引渡し |
 | --- | --- | --- | --- |
-| P0-0 | 実Source Root/Role・Relation occurrence・Required Obligationを列挙し、Candidate/Acceptedを区別 | 未読込Source、Role重複、意味未受理ならWriteなし | #1126/#2620/#2621/#1180 |
+| P0-0 | 実Source Root/Role・実体化Relation occurrence又は直接Relationの所有行/Role・Required Obligationを列挙し、Candidate/Acceptedを区別 | 未読込Source、Role重複、意味未受理ならWriteなし | #1126/#2620/#2621/#1180 |
 | P0-1 | C1の**read-only E2**：実Function Context→Provider Row/Field/Scope→Result Slice→Consumer | Read/Scope/Cohort unknown・partialはcompleteではない | #2506/#2586/#2628/#2516 |
 | P0-2 | Required対Supplied/EnforcedのClosureをOC-CL-01〜06で反証。現Host Grant未提供、越境、時点変更、Hidden Query依存 | toy Runner PASSは実Grantの代用不可 | #1180/#2514/#1129/#1174 |
 | P1 | C1移管の単一Attempt・Commit/unknown/restart/Receipt/独立post-imageをOC-CL-07〜10で検証 | same-key/idempotencyと新key再作用を分け、Provider自己申告Guaranteeだけで合格にしない | #1174/#2564/#1163 |
 | P1並行 | §64のPB-02〜08：Catalog/Environment選択・Function使用・実Go Build依存と未選択の非干渉 | Artifact/Input/Invocation未観測でBuild効率・リンク除外を主張しない | #951/#1251/#1130/#2600 |
 | P2 | 業務組織発効×DB移行の旧新Reader/Writer、履歴とRelease Gateを検証 | History unknown、重複State、部分Backfill、未承認Cutover | #2555/#2622/#2887 |
 
-同じC1を使っても、Source/Meaning、Relation occurrence、Function Required/Provider Actual、Role/Plugin version、Host Current Grant、Operation ID/row version/Attempt、Target/Consumer、実Timeを必要範囲で束縛しない限り「同一AttemptのProduct E2E」とは呼ばない（#1163/#1180/#2514）。必要観測が不明ならunknown/not observed、not-applicableは担当Ownerが明示した場合のみ。
+同じC1を使っても、Source/Meaning、直接Relationなら所有Case/Role/値/版・実体化RelationならOccurrence ID、Function Required/Provider Actual、Role/Plugin version、Host Current Grant、Operation ID/row version/Attempt、Target/Consumer、実Timeを必要範囲で束縛しない限り「同一AttemptのProduct E2E」とは呼ばない（#1163/#1180/#2514）。必要観測が不明ならunknown/not observed、not-applicableは担当Ownerが明示した場合のみ。
 
 **実証状態**：本節はdocs-only追補。ここに列挙した組織CaseのE2→E4一Attempt、実二DB移行、実Host/Studio/SHO/AI、業務Owner受理は**NOT RUN**。#2681実Go E1、#2596合成Node、#2889 toy Runner、#2853/#2854別Caseの実PG結果は互いに別の限定Evidenceであり、本件の完了を証明しない。#1119のG1/G2/G4と既存Critical Path優先順位を変更しない。
+
+## 67. 組織再編時の未決事項・判断・責任引継ぎ：直接Relationと実体化Relation、歴史的判断と現在資格（2026-11-06、採用前）
+
+### 67.1 第66節のSource実物照合による補正
+
+[組織Issueの関係識別補正](https://github.com/hat47x/tei-platform/issues/2386#issuecomment-6669823771)と[#2586 E2a/E2b](https://github.com/hat47x/tei-platform/issues/2586#issuecomment-6669805095)に従う。現実の[Native E1 #2681](https://github.com/hat47x/tei-platform/pull/2681)は**組織関係の構造を実Parser/Loaderで処理した証拠**であり、C1などの行を実DBへ保存・取得した証拠ではない。CaseRecord.handlingUnitはCaseRecord.handlingUnitIdからOrgUnit.orgUnitIdへの**直接単一値Relation**。独立した関係Occurrence IDは現Sourceにない。MembershipはmembershipIdを持つ**実体化した関係Data**であり、A2/A3の区別が必要。データモデルの表現差を表面的なGraph edgeの区別へ消してはならない。
+
+| Relation形態 | 意味のある更新対象束縛 | 実行時に創作しないもの |
+| --- | --- | --- |
+| CaseRecordの直接Relation | Case C1の識別子、handlingUnit Role、旧handlingUnitId=D1、expected Case rowVersion=7、更新先D2、必要なOwner/Host条件 | 独立したedge occurrence ID、独立RelationのDELETE、Graph描画辺IDからの自動Write |
+| Membership等の実体化Relation | Membership A3の永続ID、Person P2、OrgUnit D2、Allocation・valid/known・関係版、対応Source/Key | P2を削除してunassignの代わりにする、同じPersonの二本のRelationを畳む |
+| 直接→実体化へ移行 | 旧Case ID＋Relation Role＋値と、新Occurrence集合の対応・業務有効期間・Authoritative Source/Owner受理 | 不可逆1:N変換を一般に双方向編集可能とみなす、表示edge IDを業務Keyへ昇格 |
+
+第66節の「Relation occurrence」という表記は、**実体化RelationにIDが存在する場合に限る**。直接Relationに要求するのは所有Entity/Relation Role/現在値/期待行版である。過去の第65節・#2386 §66の記述もこの優先順位で解釈し、独立edge IDを新設することをE2/E4の必須条件にしない。新しいRelation Core種別は不要。
+
+### 67.2 組織変更で移るもの／移らないものを明示する
+
+組織改編時に、部門の後継対応、在任者、所属、未決案件、判断済み履歴、代理権限が一斉に継承されるわけではない。**Org successor relationは候補となる構造Factであり、業務責任と実行Grantの移管ではない**。同じCaseについて次を別々に保持・説明する。
+
+- **open question / unresolved obligation**：まだ判断されていないこと、必要な調査・回答・期限、現在責任主体、引継ぎの受理状況。担当組織の変更後も消さない。
+- **historical decision**：誰が、どのRule/組織Revision/有効時点と既知情報を用いて何を判断したか。後継者や組織改編で過去の判断主体を上書きしない。
+- **prospective responsibility**：変更後の未決事項を誰が引き受けるべきか。Rule/ProcedureとOwnerの判断が必要であり、D1→D2の図上の後継関係から自動確定しない。
+- **current executability**：実操作者、現在のHost Grant、対象Case/rowVersion、委任・職務分掌・時点を実作用境界で確認。業務上の担当候補と分離。
+- **retrospective assessment**：後日遡及訂正を知った時点で過去判断を再評価した結果。Historical Decision/当時の実Receiptを改変せず、必要なら別の是正Procedureへつなぐ。
+
+監査のため、validAt（業務有効）、knownAt（当時利用可能な記録）、decisionAt（業務判断）、authorizationAt（現在権限検査）、commitAt（実効果確定）を**観測できた範囲だけ**残す。全Domainに一律五種類の新しい時刻Fieldを要求しない。特にauthorizationAt/commitAtを計画上の日時から推測せず、Host/Providerの実観測でのみ資格付けする。
+
+### 67.3 進行中Caseの承認Rule切替はOwnerが選択する
+
+D1の部門長P1からD2の部門長P3へ2027-07-01に変わる合成例。Case C1は2027-06-28に申請され、7月1日時点では未承認。Caseの担当は直接Relation handlingUnitId=D1, expected rowVersion=7。組織発効/Case移管/承認Rule再適用/実Grant失効/Provider DB Cutoverは別イベントである。
+
+進行中案件の扱いは、いずれかを自動既定にせず、業務OwnerがProcedure/適用範囲とともに選択・受理する。
+
+| 案件ごとの方針候補 | 判定の意味 | 必須の独立確認 |
+| --- | --- | --- |
+| 申請時Rule固定 | 申請時のBusiness Rule Revisionで候補を決定する | 当時の適用範囲/Rule版が確定しても**現在のHost Grantがなければ実行しない** |
+| 判断時Ruleで再解決 | 実行時の有効組織Relation/Policyから候補を選定し直す | validAtとknownAtを指定し、Source/Provider Cohort、現在Grant/SoDを確認 |
+| 明示的な引継ぎ | 未決Caseを旧担当から新担当へBusiness Procedureで移す | 引受対象・未決事項・履歴・前後責任・期限・承認/Receiptを追跡 |
+| 保留・例外処理 | 時点・Rule・責任者・対応先が曖昧である | 現Caseの合法なRead/提示は可能な範囲だけ行い、承認Effectと不可逆編集を停止 |
+
+これは新しいWorkflow State Machineの固定enumではない。Definition/Instance、As-Is/To-Be、Business ProcedureとRuntime Effectの分離は[#1440](https://github.com/hat47x/tei-platform/issues/1440)/#1125/#1129を使用する。人事交代は原則として今後の責任主体を移すが、過去の意思決定の著者を書き換えない。委任・代理を認める場合も、委任先と委任元、期限・理由・実Grantを独立表示する。
+
+### 67.4 独立Expected：責任継承と歴史的判断の判別試験
+
+既存§39〜46/#2596のSynthetic Source/Scenarioと#2681のE1構造を再利用。C1/P1/P3/D1/D2は**今回の試験用の仮説**であり、Native .tei上の実行済み行やOwner受理済み制度ではない。新しい中央Fixture正本を作らず、#2510/#2514のPressure Corpusに検査票を渡す。
+
+| Case | 入力差分 | 独立Expected／禁止すべき誤成功 |
+| --- | --- | --- |
+| ORG-SU-01 | Case C1は単一値handlingUnit、Membership A2/A3は独立Data | C1対象はCase行＋Role＋値＋版。A2/A3は別Occurrence。Graph上の辺IDを永続Relation IDにしない |
+| ORG-SU-02 | D1→D2後継Org Relationのみ追加、C1は未決 | 未決案件・責任・Grantの自動移管なし。後継Factだけを説明 |
+| ORG-SU-03 | C1の申請時Rule固定、P1のGrantが失効 | P1を歴史的候補として示せても現在承認Effectは不可。P3へ無条件に承認権限を継承しない |
+| ORG-SU-04 | 判断時Rule切替、P3が複数法人に兼務 | 候補の多重経路・Person同一性・Scopeを区別し、別Tenant Host Grantを推測しない |
+| ORG-SU-05 | validAt同一でknownAtに遡及訂正、過去判断D0あり | Historical Decision D0と新Retrospective Assessmentを別記。以前のReceiptを改変しない |
+| ORG-SU-06 | P1からP3へ未決Caseの引継ぎ、回答不能の質問Qあり | Qの未決/Owner/期限/根拠を維持。引継ぎ「処理済み」≠Qへの回答やリスク解消 |
+| ORG-SU-07 | 接続先Replicaは旧組織、Primaryは新組織、結果画面の件数が同じ | Alias/valid/known/Scope/Cohortが不一致なら適格性の同値としない |
+| ORG-SU-08 | What-ifでD2へ全Caseを配置、RuleとGrantは未採用 | What-if previewはBusiness Action/権限/実DB変更を生成しない。Ownerが受理するまでは将来案 |
+| ORG-SU-09 | 直接Relationを履歴付き多重Occurrenceへ移行 | 旧1値→新集合の対応、粒度/NULL/Historyを確認。多対一投影からの逆編集は未確定として拒否 |
+| ORG-SU-10 | 途中Stepの引継ぎ成功、承認通知後着、次Step失敗 | 既存部分Effect/Receiptと未決Qを保持。late responseを現行Authority/表示資格へ復活させない |
+
+ORG-SUは**受入候補**。ORG-RI-01〜04（#2386補正）、OC-CL-01〜10、#2586 E2a/E2b、§65のOC-RP-01〜03を置換せず、同じ既存Case/Source/Read/Effectを使い回す。Query非出力依存、Provider Alias/Revision、Source/Value ABAも既存試験の追加変異として扱い、重複する新Coreテストランナーは起こさない。
+
+### 67.5 実行順・Ownerと停止線
+
+**次の最初の実作業は、#2586 E2aの実Product Readerを成立させること**。現状のNative E1はCaseRecord Persistence/Function Context/Provider実Readと未接続。最初はC1→D1 1件、C2/D2が混入しないread-only独立Expectedを実Loaded .tei→Function Mapping→Provider Route/Args→Row/Field/Scope/Completeness→Consumerで照合。接続APIがなければ具体的な未接続箇所を報告して停止し、合成JSON/直接SQLの成功を製品E2合格としない。
+
+並行するP0-Mの**意味判別**はORG-SU-01/02/05/06/09（直接/実体化Relationと責任・履歴の保存）で、#1126/#2386/#2510/#2497へ引き渡す。E2読取が成立してからP1へ進み、ORG-SU-03/04/07/08のRule/Provider/What-if再資格を#2506/#2582/#1131で検証。最後にORG-SU-10を既存#1129/#1174/#2564の実Host/Effectへつなぐ。新Org専用Workflow/ACL/Identity Provider/Time Engine/SQL Resolverは作らない。
+
+**記録資格**：この第67節はdocs-only設計。ORG-SU-01〜10は未実行。現在の限定証拠＝#2681 Native実Parser/Loader E1、#2596合成、#2889 toy Runner、別FunctionのPG CASのみ。組織Caseの実Provider E2、Host/DB Effect、現在Grant、進行中CaseのOwner業務受理、実GUI/SHO/AIはNOT RUN。#1119既存G1/G2/G4優先順不変。
