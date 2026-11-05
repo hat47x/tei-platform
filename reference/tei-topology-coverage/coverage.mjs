@@ -1,5 +1,5 @@
 /** Read-only bounded-view experiment, not a TEI Schema, Source proof or Authority. */
-const exact = s => typeof s === 'string' && s.length > 0 && s.trim() === s;
+const exact = s => typeof s === 'string' && s.length > 0 && s.trim() === s && !/[\r\n\t]/.test(s);
 const need = (s, name) => { if (!exact(s)) throw Error(`invalid_${name}`); return s; };
 const tuple = o => JSON.stringify([need(o?.scope,'scope'),need(o?.kind,'kind'),need(o?.id,'id')]);
 const revision = s => JSON.stringify([need(s?.workspace,'workspace'),need(s?.modelRevision,'modelRevision'),need(s?.sourceIndexFingerprint,'sourceIndexFingerprint'),need(s?.projectionRevision,'projectionRevision')]);
@@ -37,7 +37,9 @@ export function project(input) {
 
 // View occurrences are local UI identifiers, never qualified Source or Action authority.
 export function selectView(view, viewId, observedSnapshot) {
-  if (view.revision !== revision(observedSnapshot)) return {status:'stale'};
+  if (view.revision !== revision(observedSnapshot) ||
+      view.graph.revision !== view.revision || view.table.revision !== view.revision)
+    return {status:'stale'};
   const occurrences = [...view.graph.nodes,...view.table.subjects].filter(x=>x.viewId === viewId && x.key);
   if (occurrences.length !== 1) return {status:'unresolved'};
   return {status:'candidate',qualifiedKey:JSON.parse(occurrences[0].key)};
