@@ -29,7 +29,7 @@
 
 項目の`Type.SemanticRef`に、既存の`core.CanonicalID`で表すSemantic TypeRefを明示できる。両項目にRefが存在する場合はまず完全一致を要求し、同じ`std.identifier`を基礎とする`sales.order_id`と`customer.customer_id`を同一視しない。一方だけがRefを持つ場合、または同じRefに矛盾する名目的な表現が付いている場合は`unknown`として保留する。Refを持たない従来の合成Fixtureの比較結果は維持する。
 
-**この検査は既存の`Compare`/`Inspect`に型IDの保守的な照合を足したもので、Semantic Typeの解決器ではない。** Refの宣言元・発行権限・版・fingerprint・意味の受理は検査しない。呼出元が既存のHostから正規の受理済み意味を取得したことも証明しない。したがって同じRefで`candidate`になっても、本番接続や実行の許可を意味しない。実WorkspaceのAliasを照合する試験は、参照定義の実在のみを確認する。
+**この検査は既存の`Compare`/`Inspect`に型IDの保守的な照合を足したもので、Semantic Typeの解決器ではない。** Refの宣言元・発行権限・版・fingerprint・意味の受理は検査しない。呼出元が実際に選択・受理されたSemantic Setから型参照を得たことも証明しない。したがって同じRefで`candidate`になっても、本番接続や実行の許可を意味しない。実WorkspaceのAliasを照合する試験は、参照定義の実在のみを確認する。
 
 
 
@@ -42,6 +42,9 @@
 - **競合**：選択ビューで検証可能でも、接続元と接続先の異なる意味Aliasなど既存`Inspect`が拒否する場合。型比較の正本や既存`Inspect`の動作は変更しない。
 
 これは**呼出元が選択した意味ビューの構造的な適合性**を調べる実験であり、ビューの発行者真正性、Namespace Authority、版・Fingerprint・Accepted Semantic Setへの固定、正式Contract項目定義の真正性、Hostの現在権限を検証しない。受理済みというフラグをPluginから受け取らず、将来の正式接続では既存#1570・#951の選択・Trust・Contract機構から認証済みの情報を渡す必要がある。
+
+
+型の候補判定は、ADR-0043/0044の対象環境における受理・許可とは独立する。TEI独自の共通Hostや認証Coreを要求しない。
 
 同じTypeRefと名目型がそろっていても、別の意味集合で型定義自体が同時に変わった場合、ここではFingerprint差を判定できない。この場合の直接互換や実行許可は**未証明**である。合成・ローカルReferenceの成功を、本番の意味受理や実Provider呼出しの証拠へ転用しない。
 
