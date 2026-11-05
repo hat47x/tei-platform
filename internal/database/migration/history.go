@@ -126,6 +126,11 @@ func CompareHistory(database core.CanonicalID, defs []Definition, history Histor
 		if strings.TrimSpace(e.ID) == "" {
 			return HistoryComparison{}, fmt.Errorf("history entry has empty migration id")
 		}
+		if e.State != AppliedSucceeded && e.State != AppliedFailed {
+			// Reject unknown and unrecognized outcomes even for migrations
+			// absent from this repository; orphan does not imply success.
+			return HistoryComparison{}, fmt.Errorf("migration %s has unqualified applied state %q", e.ID, e.State)
+		}
 		if _, dup := applied[e.ID]; dup {
 			return HistoryComparison{}, fmt.Errorf("history contains migration %s more than once", e.ID)
 		}
@@ -165,10 +170,6 @@ func CompareHistory(database core.CanonicalID, defs []Definition, history Histor
 			e.State = RepoPending
 		case a.State == AppliedFailed:
 			e.State = RepoFailed
-		case a.State != AppliedSucceeded:
-			// An observed-but-uncertain or unrecognized tool outcome cannot
-			// qualify a repository migration as successfully applied.
-			return HistoryComparison{}, fmt.Errorf("migration %s has unqualified applied state %q", id, a.State)
 		case a.Checksum != "" && e.RepositoryChecksum != a.Checksum:
 			e.State = RepoDiverged
 		default:
