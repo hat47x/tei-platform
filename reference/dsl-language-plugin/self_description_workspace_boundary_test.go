@@ -191,7 +191,6 @@ func TestSelfDescriptionSemanticFormatIsNotJustParserSuccess(t *testing.T) {
 	}
 }
 
-
 // This test makes the "separate read" caveat observable. The existing
 // Workspace Load and Source Index remain bound to their original bytes even
 // when a subsequent unrelated read sees newer content at the same path.
