@@ -420,3 +420,24 @@ Database Contractの別ケースでは、現行Referenceの隔離コピーで `s
 **完了と言える最小Claim**：一つの実TEI Subjectについて、実Source・selected Language/Role/Operator・必要なSource閉包・typed Candidate・独立Expected/負例の対応が**同一revision・同一用途**で確認された範囲だけ。Role実装が存在しない場合は正確な`gap`までを成果とし、Product自己記述の完成とは呼ばない。AI Case自動採用、実Target/DB/Host、Owner意味受理や全体セルフビルドは別資格。
 
 **状態**：この§8の追補だけでは新しいCase/Go/JS/CLI/Provider/E2Eは**NOT RUN**。#2813や#2639の他HEADのCI合格、#2638の24 synthetic PASSをこのP0a〜P0cの実結果へ流用しない。本件の設計は新しい正式DSL構文／Meta Schema／Accepted Meaningを採用するものではない。
+
+
+<!-- self-description-real-go-fit-20261105 -->
+### 8.5 実Goの具体的な既存構造とのFit/Gap（2026-11-05 Source-static）
+
+前節の「抽象的なRole Descriptorを全く持たない」等の一般化を避けるため、**mainの実コードを読んで確認できる限定能力**を基準にする。取得した実コードは `internal/semantic/model.go`、`internal/workspace/loader.go`、`reference/dsl-language-plugin/{selection,pipeline_syntax,pinned_lowering,operator}.go`、`cmd/tei/main.go`。本表は静的読み取りであり実Go/CLI/Targetを動かした証拠ではない。
+
+| 実コード／構造 | 正しく再利用すべき既存能力 | 自己記述に残る不足・反例 |
+| --- | --- | --- |
+| `semantic.Namespace.FormatVersion` | 0（Semanticファイルにheaderなし）の場合は**Workspace Manifestの形式版を継承**。明示header時はManifest版と整合する契約。旧#1920の「各readerが勝手に無版defaultを仮定しない」と両立させる | Semantic header不在だけを一律invalidにはしない。Manifestの存在・実Load・版整合を同一Attemptで確認。形式版≠Role意味契約版 |
+| `semantic.Attribute.Role string` | 個別属性にRole値を保持可能。既存Data/Attribute/Relationの構造を再利用 | 文字列Roleがあることと、汎用Role DefinitionのRequired Shape、実Interpreter Binding、eager依存の解決、複数Role競合、Owner受理は**別**。第二Role Resolverを勝手に要求しない |
+| `semantic.Attribute.Value *string` | 宣言属性の **Absent / Empty / Value** を形式上区別（nil / pointer to empty / pointer to nonempty） | SQLのNULL、未取得、非開示、Runtime Unknownとは別。3状態の既存フィールドを4〜5状態へ無条件拡張せず、各意味Ownerの適用条件で比較 |
+| `workspace.Result.sourceSnapshot`・`semanticSourceFiles`・`sourceManagedExtra` | 同一Load内の実Parsed Sourceと、管理されるが未ParsedなSourceをprivateに区別するための構成がある | `workspace-files`列挙やprivate snapshot内容だけでFull Input Closure・外部Consumer開示を主張しない。必須root/未Parsed/実Build消費の違いは#2823/#2812/#2595へ委譲 |
+| `workspace.Result.ManifestIdentity()` | 実LoadしたManifestのPath・SHA256を読取る既存入口 | Manifestは既存Source Indexに混入しない。Manifest bytes/要求root/actual parse/Provider closureの充足を別立てで確認し、Source Index不変で必要入力も不変と推定しない |
+| `cmd/tei/main.go` | `scenario`、`validate`、`workspace-files`、`source-index`、`plugin-lock`、`inspect`等の既存CLI入口 | これらの存在は`tei role-interpret`等の架空コマンドを要求する根拠ではない。既存CLI/Go APIから読取可能な範囲を先に観測 |
+
+**修正した受入の焦点**：最初のP0bでは「Roleとして利用可能な属性値が既存Semanticに存在するか」だけではなく、(a) どのAuthoring Sourceと版で読まれ、(b) どの既存Syntax/Role/Operator実装と固定Pinにより、(c) どのRequired Shape・Attribute Type/Ruleを経て、(d) どのtyped Candidateとして得られたのか、という実接合を確認する。Roleが文字列だけで、Required Shapeや適用実装への橋渡しが無いなら、その**正確な位置のgap**をProduct採用のOwnerへ戻す。
+
+**変換互換の注意**：`formatVersion` header省略→Manifest継承という既存の明示的な意味を、旧設計メモの「版が無い=必ず拒否」へ後退させない。逆にManifest itselfが未読込/不正/未知の版なら、ヘッダ省略だけで無条件に採用しない。未知属性の黙った脱落、版番号だけのアップグレード、A→B→Aからの旧Review復活は別の負例として維持する。
+
+**証拠範囲**：main Source-staticの構造・コメントによるFit/Gap確認のみ。実WorkspaceでのRole意味解釈、全形式移行、Owner受理、実Content/Implementation fingerprint真正性、実Provider/Consumer/Hostは**NOT RUN / NOT PROVEN**。
