@@ -539,7 +539,12 @@ Claim/Source/Temporal cut/Relation occurrence/Scope/Rowset+Field coverage/実Con
 
 実コード確認の限界：ContractQuerySQLRealization.ValidateContract（main）は宣言済みInput/Result Mappingの構造検査でありSQL本文・Predicate/実DB/業務Requirementの完全性ではない。Go Parserの単一Role Candidateは原SourceのRole occurrenceの二重記述を失い得る（Draft #2860）。RunPlanのcallback許可は全Required Guardの網羅保証ではなく、EffectObserverの存在も実ObserveEffectを意味しない（Draft #2889 toy Step 3/3）。**既存の実Go/CI PASSをTEI製品E2E/Owner受理へ合算しない**。
 
-最短計画：P0は[#2586](https://github.com/hat47x/tei-platform/issues/2586)の一Provider二SQLのQuery→Function Context→実Page/Cohort/Disclosure read-onlyを維持し、宣言0や必須Field未読込・SQL Predicate改版を独立Expectedで照合（#2514/#1131/#1180）。P1並行で#2620→#2497/#2621のSource Role重複/引用Literal、No-op/局所Patch/Read-only Previewの可逆性を検証。write側は#1129/#1174のCurrent Grant→Effect/Unknown→Receipt/独立Readerを**別Attempt**に維持。対象Claimに不要なHost Commitを要求せず、Required未定義の空PASSは拒む。#2018へ診断率・誤complete・過剰失効・Adapter数・速度を受け渡す。追加RC-01〜06は受入案、統合実行はNOT RUN。
+最短計画（2026-11-06優先順位補正）：P0の最初は[#2586](https://github.com/hat47x/tei-platform/issues/2586)で**一Function・一Query・一Providerの実Read**を成立させ、その後同一Contractの二SQL選択とPage/Cohort/Disclosureへ進む。各段で宣言0や必須Field未読込・SQL Predicate改版を独立Expectedで照合（#2514/#1131/#1180）。P1並行で#2620→#2497/#2621のSource Role重複/引用Literal、No-op/局所Patch/Read-only Previewの可逆性を検証。write側は#1129/#1174のCurrent Grant→Effect/Unknown→Receipt/独立Readerを**別Attempt**に維持。対象Claimに不要なHost Commitを要求せず、Required未定義の空PASSは拒む。#2018へ診断率・誤complete・過剰失効・Adapter数・速度を受け渡す。追加RC-01〜06は受入案、統合実行はNOT RUN。
+
+<!-- tei-masterplan-collision-p0r1-priority-20261106 -->
+**追加補正（2026-11-06）**：既存§24.5〜24.6へ、構造ごとに異なる合法な重複とIdentity衝突、ならびに実Read-firstの段階的順序を接合した。SQL Bag/Graph多重辺・Array repeatedの合法なOccurrenceと、重複JSON Object member、DSL同AttributeのRole後勝ち、DB Releaseの重複StateSnapshot/ProvidedContractの後勝ちは同じ「重複」ではない。元Source/入力のMultiplicityと、Use-siteごとのKey/一意性を保存/診断し、Map/Parserへ縮約した後で失われた出現をCandidateから推定復元しない（#2891/#2860/#2897/#2497）。移行History unknownは別の#2892が担う。
+
+**P0実証の順序**：P0-R0（#2783の公開合成Tenant/Order/2 Lines＋他Tenant同番号・独立Expected・Source/Providerの固定）→ **P0-R1**（一Function一Query一Provider、実Source/Query/Context→Physical Read/Rowset+Field/Cohort）→ **P0-R1v**（同Contractの二つの明示かつ契約適合するSQL Realization、候補/解析/選択依存）→ **P0-R1p**（Page継続の同一Realization/Cohortと拒否）→ P1（実Consumer/Graph/SHO開示、別Write Attempt）。前回「一Provider二SQL」をP0の先頭と読める記述はこの順に補正した。#2894のmain統合済み`tei dbcheck`は接続と一時表作成/削除のpreflightで、P0-R1の業務Data Readとしない。R1実Read APIが未接続なら `NOT RUN: physical-read-unavailable` として入口Gapを明示。#2783 #2586 #2622 #2387 #2514 #1163へ既存検収票のまま引き渡し、新Core/Host/Runner/Gate/Scenario SSOTを作らない。追加の製品実Read/SQL選択/実Consumer・Owner受理はNOT RUN。
 
 ## 現在の優先順
 
