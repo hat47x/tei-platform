@@ -174,3 +174,22 @@ Webアプリケーションでは、UI構成キットだけでなく、HTTP要�
 **案件の更新追従**は旧Generator/Kit＋Project-owned delta＋新Generator/Kitの三者比較で診断する。再生成で案件Sourceを失う・生成コードへ直接書き込む・未公開Slot/Hookへ依存する場合は保留。UIの通常表示/Action affordanceの成功を、実Host GrantやCommit資格へ昇格しない。#2090の限定Closed/チェック済み項目は全Targetの実証済みではなく、ここでは再試験を増殖させず既存Caseへ参照接続する。
 
 **差戻し線**：独立配布のConsumer・更新責任が無いなら、新Plugin宣言/Loaderを必須化しない。業務意味の変更が必要ならOwner受理へ戻す。生成拡張点の互換性不足なら契約を修正し、案件Sourceを保護したまま生成物を再検証する。PR #2888のEXD-07は同設計§14.7と#2090へ吸収し、第二Fixture正本を設けない。docs-only／NOT RUN。
+
+
+<!-- tei-project-plugin-update-impact-projection-20261106 -->
+### 案件画面におけるPlugin/Bundle更新影響のread-only投影（2026-11-06、設計・未採用）
+
+[Runtime/Target Binary Composition §17](RUNTIME_TARGET_BINARY_COMPOSITION_DESIGN.md)に更新イベント別の影響判定を集約する。Project Compositionは**実利用状況と判断に必要な不足条件を表示**するだけとし、別のUpdate Resolver/Registry/Acceptance/Grantを持たない。
+
+| 案件側の見え方 | 提示する根拠 | 禁止する誤案内 |
+| --- | --- | --- |
+| 候補Bundleが更新されたが当該Application未選択 | Catalog/Selection/実消費入力の差分、必要な場合だけ候補再解決 | 全Functionを「更新必須」とする |
+| 現在使用する生成器・Providerに変更がある | Selected Contract/Implementationの実Byte、必要Target/Artifact・試験不足 | 同名同version/同じ表示結果で「互換済み」とする |
+| Contract/Scope/Effectが改訂された | 既存Accepted Meaning・Conformanceと現行Grantの差異 | Plugin導入やCI PASSで業務Ownerの再受理を省略 |
+| Providerが利用不能・撤回された | 選択済み対象、現在のConformance/Grant、影響するAction/Function | 最初の候補へ無断fallback、旧Artifactの存在を実行許可扱い |
+| Update後もArtifact内容が同じ | 実Build/Inputと各member、独立Test・Current Eligibilityの差分 | Artifact byte一致でEvidence/Grantも同一とする |
+| Source/Query/Ruleが別版となった | Source occurrenceと依存、Rule時点、Read ScopeとConsumer開示 | A→B→Aで旧Source受理や旧実DB Read資格を自動復活 |
+
+通常利用者には「対象Function」「何が変わるか」「保留の理由と必要な確認」を優先し、Bundle内部のmodule/ToolchainやDB Dialect詳細は必要な権限を持つ開発者向け表示に留める。比較の正本は既存#951/#1016/#1251/#2600/#1174の結果を参照し、古いPreviewや過去Evidenceを現在の実行許可に昇格させない。
+
+**検収**：#1016 PCF-06と#1251 PB/PBNを流用し、無関係Plugin更新は過剰staleにしない一方、選択済み実装・SQL Binding・Source/Rule・Current Grantが変化する場合は不足診断を返せること。実Studio/CUI実装・実Build・権限・Owner受理はNOT RUN。
