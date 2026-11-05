@@ -9,8 +9,8 @@
 
 | 区分 | 確認した範囲 | 使ってよい主張／禁止する昇格 |
 | --- | --- | --- |
-| **A：過去会話のユーザー発言** | 2026-03-08：三要素の業務モデルは業務間の単純な実行順序でなく、業務とデータソースのDFD・起動契機・疎結合を重視。2026-08-23：生成IDは用途次第で有益だが物理PKを業務識別と混同しない。2026-10-24：独自TEI Hostを必須としない | TEIへの設計要求として扱う。外部方法論の著作者による正式仕様・文面と断定しない |
-| **B：リポジトリ上の確認済み記録** | #1125/#1126/#1129/#2619、[EmptyPolicy統合PR #2849](https://github.com/hat47x/tei-platform/pull/2849)、[実PG限定Command PR #2853](https://github.com/hat47x/tei-platform/pull/2853)、[ABA負例PR #2854](https://github.com/hat47x/tei-platform/pull/2854)、[組織E1候補 #2681](https://github.com/hat47x/tei-platform/pull/2681) | 各固定版の実装・限定試験・計画の状態を区別する。PR mergeや合成PASSを旧業務意味・現在のOwner受入へ転記しない |
+| **A：過去会話のユーザー発言を検索で直接確認** | 2026-03-08：三要素の業務モデルは業務間の単純な実行順序でなく、業務とデータソースのDFD・起動契機・疎結合を重視 | TEIへの設計要求として扱う。外部方法論の著作者による正式仕様・文面と断定しない |
+| **B：既存会話要約とリポジトリの確認済み記録** | 2026-08-23の生成ID・PK方針、および2026-10-24のHost方針は既存の会話要約を参照（原文の逐語再読は今回未実施）。#1125/#1126/#1129/#2619、[EmptyPolicy統合PR #2849](https://github.com/hat47x/tei-platform/pull/2849)、[実PG限定Command PR #2853](https://github.com/hat47x/tei-platform/pull/2853)、[ABA負例PR #2854](https://github.com/hat47x/tei-platform/pull/2854)、[組織E1候補 #2681](https://github.com/hat47x/tei-platform/pull/2681) | 各固定版の実装・限定試験・計画の状態を区別する。PR mergeや合成PASSを旧業務意味・現在のOwner受入へ転記しない |
 | **C：今回の整合性推論** | 下記の分離原則、横断受入順、各Ownerへの引渡し | 監査上の補正候補。正式なDefinition/Instance共通型、Requirement Probe製品機構、Capability付与、原設計者の主張として採用しない |
 
 **出典限界**：過去会話の検索でユーザーの明示的な説明を確認したが、凍結履歴の全本文や外部原著者の一次資料を逐語確認したものではない。「Requirement Probe」「Definition/Instance」はTEI研究での候補語彙として扱い、外部方法論の原著者が同一用語で公刊したと主張しない。非公開X-TEA/XEAD原本を転記しない（#941）。
