@@ -300,3 +300,63 @@ func TestSelfDescriptionRoleLiteralAndDuplicateAreNotAcceptedMeaning(t *testing.
 	// NOT count as proof of acceptance or of a complete rejection path.
 	t.Log("current syntax candidate loses duplicate Role occurrence; Role uniqueness remains unqualified")
 }
+
+
+// Source navigation is not a proof that an option token is writable. The
+// real syntax anchor API identifies the attribute symbol and type token;
+// Role option editing requires its own uniquely resolved source span and
+// Shared Acceptance path, neither of which is supplied by these anchors.
+func TestSelfDescriptionAttributeAnchorsDoNotSubstituteForRoleOptionSpan(t *testing.T) {
+	const text = "namespace sales\ndata order {\n  attribute total type std.money role accounting_amount\n}\n"
+	anchored, err := syntax.ParseSemanticFileAnchored(text)
+	if err != nil {
+		t.Fatalf("parse real syntax anchors: %v", err)
+	}
+	attr := selfDescriptionAttribute(t, anchored.Value, "sales.order", "sales.order.total")
+	if attr.Role != "accounting_amount" || string(attr.TypeRef) != "std.money" {
+		t.Fatalf("semantic candidate lost Role or TypeRef: %+v", attr)
+	}
+	roles := 0
+	seen := map[string]bool{}
+	roleStart := strings.Index(text, "role accounting_amount")
+	if roleStart < 0 {
+		t.Fatal("fixed source lacks the role clause")
+	}
+	for _, anchor := range anchored.Anchors {
+		if anchor.ID != "sales.order.total" {
+			continue
+		}
+		start, end := anchor.Anchor.Start.Offset, anchor.Anchor.End.Offset
+		if start < 0 || end < start || end > len(text) {
+			t.Fatalf("invalid anchored source range for %s: [%d,%d)", anchor.Kind, start, end)
+		}
+		fragment := text[start:end]
+		switch anchor.Kind {
+		case "semantic-attribute":
+			if fragment != "total" || end > roleStart {
+				t.Fatalf("attribute symbol anchor cannot stand in for Role clause: %q", fragment)
+			}
+			seen[anchor.Kind] = true
+		case "semantic-attribute-type":
+			if fragment != "std.money" || end > roleStart {
+				t.Fatalf("type reference anchor cannot stand in for Role clause: %q", fragment)
+			}
+			seen[anchor.Kind] = true
+		case "semantic-attribute-role":
+			// Do not make a future explicit Role anchor a regression; it
+			// would still require a safe writer, version and acceptance.
+			roles++
+			if fragment != "accounting_amount" {
+				t.Fatalf("new Role anchor must refer to the actual option value: %q", fragment)
+			}
+		}
+	}
+	if !seen["semantic-attribute"] || !seen["semantic-attribute-type"] {
+		t.Fatalf("existing symbol and type source anchors are missing: %+v", seen)
+	}
+	if roles == 0 {
+		t.Log("currently no explicit Role value anchor: only a read-only Role candidate, not a Role patch position")
+	}
+	// No Source write, Scope/Authority check, Role Required Shape or Owner
+	// meaning acceptance is performed by this source-navigation test.
+}
