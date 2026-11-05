@@ -684,7 +684,7 @@ D0〜D2の第一回比較では、#1861の固定23ベクトルとContract、実�
 
 再審査は、Requirement/Owner受理範囲、新Consumer、実選択/Source closure、Artifact/Target、Providerの現在資格、独立Oracleの判別能力、測定した費用が**実際に変化したとき**に限定する。無関係なCatalog/Bundle更新だけで全Targetを過剰失効させず、A→B→Aや同version異byteでも自動的な古い受理の復活は認めない（§17、#2600）。
 
-**実行責務**：#1016（用途別選定）、#2514（Oracle/Mutant）、#1180（Scenario）、#1861（23件）、#951/#1145/#2390（実Provider/Transport/Host）、#1251/#2600（実Buildと費用）。本節に別のExpected・Runner・新ABI・中央Decision Engineを置かない。23件横断D1/D2実行、Mutant実測、性能測定、Owner正式採用は現時点でNOT RUN/NOT ACCEPTED。
+**実行責務**：#1016（用途別選定）、#2514（Oracle/Mutant）、#1180（Scenario）、#1861（23件）、#951/#1145/#2390（実Provider/Transport/Host）、#1251/#2600（実Buildと費用）。本節に別のExpected・Runner・新ABI・中央Decision Engineを置かない。D0/D1/D2を揃えた同一改訂・同一条件の23件横断比較、Mutant実測、性能測定、Owner正式採用は現時点でNOT RUN/NOT ACCEPTED（D2単独の既存Process比較は§18.7）。
 
 
 <!-- tei-plugin-dynamic-read-dependency-closure-20261106 -->
@@ -718,7 +718,7 @@ D0〜D2の第一回比較では、#1861の固定23ベクトルとContract、実�
 | --- | --- | --- |
 | [quote Go Process](../../plugins/reference-order-quote/README.md)、[Process比較テスト](../../tools/reference-capability-transport/quote_go_js_vectors_test.go)、[cross-language](../../reference/quote-cross-language/README.md) | 同じ未受理23ケースでGo/JavaScriptの独立したProcess Providerを既存stdio Carrierで比較するテストが存在。Goは隔離されたGo moduleからBuild。入力重複キー・大整数・欠損・業務拒否とProcess失敗を分離する負例もある | 最新PR exact-headの再実行、Go静的D1との一対一費用比較、全23件の正式Provider/Host Grant適合 |
 | [Runtime実Process試験](../../tools/reference-capability-transport/runtime_authorized_quote_process_test.go)・[候補形→Runtime直列試験](../../tools/reference-plugin-capability-contract/order_quote_runtime_chain_test.go) | 特定の見積もり要求について、合成Shape/Provider証拠、実Runtime Registry、テスト用Digest検証、子Process、結果確認を結ぶ限定試験が存在 | 合成Publisher/Conformanceを正式Authorityとみなせない。実Sandbox/Lease、同一23件を通した本番GrantやOS実隔離 |
-| [Component候補](../../reference/quote-component-candidate/README.md)・[専用CI #38746502755](https://github.com/hat47x/tei-platform/actions/runs/38746502755) | 2026-10-15、固定HEAD `7a3b65d228937d2df56b11afe0ed1fbc4b5936ea` で成功。Node/実ChromiumのJco変換成果物、Wasmtimeの元Component直接呼出し。正常8件／Ingress拒否7件／Guest拒否8件（Guest呼出しは各Host16件） | 同じ生ComponentをBrowserが直接実行したわけではない。未受理業務意味・Production Authority・全言語/全Target・このPRの現在HEADのPASS |
+| [Component候補](../../reference/quote-component-candidate/README.md)・[専用CI #38746502755](https://github.com/hat47x/tei-platform/actions/runs/38746502755) | 2026-10-15、固定HEAD `7a3b65d228937d2df56b11afe0ed1fbc4b5936ea` で成功。後続の[PR #1878](https://github.com/hat47x/tei-platform/pull/1878)も[専用CI #38746880110](https://github.com/hat47x/tei-platform/actions/runs/38746880110)で同様の限定実証に成功し、merge commit `787a05e5ad5573db28fd4a617404dd4124bea279` でmain統合済み。Node/実ChromiumのJco変換成果物、Wasmtimeの元Component直接呼出し。正常8件／Ingress拒否7件／Guest拒否8件（Guest呼出しは各Host16件） | 同じ生ComponentをBrowserが直接実行したわけではない。未受理業務意味・Production Authority・全言語/全Target・このPRの現在HEADのPASS |
 | [未受理23候補](../../reference/candidates/order-quote/semantic-vectors-v0.json) | 同一Contractの固定Expectedとして複数Referenceに再利用。業務拒否・入力解析拒否・Runtime起動失敗は別義務 | 独立OracleのMutant検出率、業務Owner正式受理、別意味版の互換性 |
 
 **P0で実施すべきこと**は、新しいPlugin Engineではなく、(1)実23ケースのSource/Oracle revision・ケースごとの拒否段階・既存Test/CIのHEADを一枚の既存#2514/#1180 Evidence参照で照合、(2)現行main exact-headの既存Go Process/異言語/候補Componentのうち実行可能なものを再資格化、(3)D0の純計算とD1の静的Providerを**同じGo Target/同じ計算意味・独立Oracle**で検証する最小差分を#1251/#951の現行契約上で特定する、の順。現行Go見積もりSourceは `plugins/reference-order-quote/main.go` の独立Process `package main` であり、単にそのpackageをimportして静的Provider検証済みとは言わない。再利用を可能にする抽出・Adapterが本当に必要かを測定し、業務Rule/Expectedの第二正本を作らない。
