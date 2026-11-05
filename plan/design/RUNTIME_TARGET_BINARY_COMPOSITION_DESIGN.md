@@ -754,6 +754,13 @@ go test -count=1 -run '^TestIndependentGoAndJavaScriptQuoteSemanticParity$' ./to
 | **S5 費用と代替** | 同一CPU/OS/Toolchain/revision/環境でclean/incremental build・Artifact bytes・同一Processのwarmup/反復呼出時間、追加Adapter・設定・更新箇所を測定。外部Process版D2の起動・IPC費用は**別列**で扱う。 | 無測定の性能優位・単一Runによるp95・Go/Node差によるPlugin overhead主張をしない |
 | **S6 採否とConsumer** | 実際の第二Consumer/交換・更新要求があるか、選択/維持費用が削減されたかを#1016/#1251に返す。必要性が無ければD0を選ぶ。 | 仮想Consumerのみで静的Plugin方式の標準化を決めない |
 
+<!-- tei-quote-d0-build-copy-compatibility-gate-20261106 -->
+
+**現main実装を壊さない最初の実装切り分け（コード照合、NOT RUN）**：`plugins/reference-order-quote/main.go` は `package main` で、`calculate(raw []byte) (quoteResult, error)`（約202行）に純粋なJSON decode・業務条件・合計計算が集約され、`serve()`（約226行）以降はCarrier/Dispatch/Process用の境界になっている。一方、既存 `tools/reference-capability-transport/quote_go_js_vectors_test.go` は `plugins/reference-order-quote/` の各 `.go`（READMEを除く）を一時Go moduleへ**ファイル単位でコピー**し、offline・`GOWORK=off`・`GOPROXY=off` で独立Buildする。したがって `calculate` を新しいRepo内共通packageへ移しただけでは、この既存D2の完全なoffline-buildとSource閉包が維持されるとは限らない。
+
+- **先に行うD0の小さな検証**：現 `package main` 内の`calculate`をプロセス起動・stdio/Transportなしで直接呼び、既存`reference/candidates/order-quote/semantic-vectors-v0.json`のraw Requestをそのまま使用。正常8件は既存Expectedの通貨/件数/小計、拒否15件は `error` を確認し、入力解析拒否／業務拒否の厳密な区分は既存Oracle・Process応答層の証拠と別記する。JSONを事前に一般`map`へ変換して重複キーや数値lexemeを失わない。**これはD0のみであり、D1 PASSと記録しない**。
+- **D1の導入条件**：既存 `internal/plugin.Catalog.ResolveEnvironment` が返す `ResolvedSet.Capability` は解決済み候補であり、特定のquote実装が静的Go成果物に**実リンク・呼出**されたことを証明しない。既存 `RuntimeBuiltin` 記述だけをD1の実実装とみなさない。D0と同一 `calculate` を必要な静的Provider/Service入口経由で呼ぶ実Consumerを用意できるかFit/Gapを記録。新共通packageへ抽出が必要なら、**D2のoffline module stagingと既存23件Process回帰を同時に保つ変更**を同一PR・同一HEADで確認する。事前抽出や第二計算実装は行わない。
+- **新HEADの実行判定**：D0 direct単体Go test／既存D2 process test／将来D1 actual static buildとInvocationを別のGateにする。`go test` exit 0でもWindowsまたはNode不存在時のD2 `t.Skip`は実行PASSではない。新しいテストでbuild-timeの静的関数をfunction pointer経由で呼ぶだけなら「Adapter dispatchの合成確認」であり、Plugin選択・Link・Builderを含む製品D1として報告しない。比較対象の同一Target/Toolchain、23件のSource byte、Binary digest、未選択Plugin混入・依存欠落を#1251/#2600で確認する。
 **最小の実行出口**：同一Revision/Expected/OS/TargetでD0とD1のactual Go Build/Invocation、23件のExpected別Outcome、少なくとも一つの意味負例と一つの選択/依存負例、選択された/実消費されたSourceとBinary、費用を結んだ**既存Evidenceへの参照**。D1の静的呼出しが成立しなければその不適合と必要差分を成果とし、動的Loader/Processへ自動迂回しない。試験結果のOwnerは#2514（Oracle）、#951（Contract/Conformance）、#1251/#2600（Build/Bundle/費用）、#1016（実要求/採否）、#1180（Scenario SSOT）。本節は新実装の合否ではなく作業の最小仕様。**今回のS0〜S6の新試験・計測・正式受理はNOT RUN。**
 
 ## 19. 高凝集Bundleの適正規模と実行前提の完全性（2026-11-06、設計・未採用）
