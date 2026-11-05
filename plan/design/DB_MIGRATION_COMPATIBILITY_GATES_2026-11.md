@@ -421,3 +421,14 @@ G1〜G5で各観測は取得時点が異なる。要求するのは**同一瞬�
 
 **検証状態**：本節の統合Proof/実Reader/実DB/実Client/外部EffectテストはNOT RUN。既存Go特性テストの存在は安全仕様の実装/受理を意味しない。
 
+### 18.4 #2897の局所修正Draftを検収順へ接続（2026-11-06）
+
+[Draft **#2900**](https://github.com/hat47x/tei-platform/pull/2900)を、[#2897](https://github.com/hat47x/tei-platform/issues/2897)の**最小コード修正**として別branchから作成。現 `CheckApplication` の同一DB StateSnapshotと、同一StateのProvidedContractの2つのlast-winsを、重複時に `Unknown` と理由を返すfail-closed判定へ変更する。従来の `CompatibilityState` の公開値は増やさず、上流のInstance/ObservedAt/Sourceや現Grantの暗黙選択は行わない。
+
+#2900には安全なExpectedを持つ4つのGoテスト関数を追加：逆順/同一値の重複DB、逆順/同一値の重複Contract、別DB正常結果への非干渉、単一DB正常/異Major/状態欠落/未readyの退行防止。**このPRが存在することを修正完了や現mainの採用済み仕様とみなさない**。exact-head CIを確認し、Owner/Review判断後に統合可否を決定する。
+
+**合流停止線**：計画Draft #2887の `migration_gate_observation_order_characterization_test.go` は、旧実装のlast-winsという危険な挙動をExpectedにしている。安全修正#2900が先に統合された場合、#2887をmergeする前に**その3関数の期待値をUnknown/順序不変に更新**し、更新後のexact head Goテスト・基準Source/Planに沿った回帰を再実施する。#2900の局所PASSと#2887の歴史的特性PASSを一つの安全性合格へ加算しない。
+
+履歴の偽RepoApplied問題は独立の[#2892](https://github.com/hat47x/tei-platform/issues/2892)に残し、DB Releaseの構造的Compatibleが Migration History/実DB Data/Client compatibility/現在のOwner Grant/Effect/Consumerの合格を意味しない境界は変えない。**本件の実DB Migration、異種DB、旧新実Client、Cutover/Contract実操作とOwner受理はNOT RUN**。
+
+
