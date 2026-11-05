@@ -190,3 +190,76 @@ func TestSelfDescriptionSemanticFormatIsNotJustParserSuccess(t *testing.T) {
 		t.Fatalf("expected explicit manifest/semantic format-version conflict, got %v", err)
 	}
 }
+
+
+// This test makes the "separate read" caveat observable. The existing
+// Workspace Load and Source Index remain bound to their original bytes even
+// when a subsequent unrelated read sees newer content at the same path.
+func TestSelfDescriptionRejectsStaleDirectReadAsLoadTimeSource(t *testing.T) {
+	root := t.TempDir()
+	sourceDir := filepath.Join(root, "semantic")
+	if err := os.MkdirAll(sourceDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	manifest := "workspace: self_description_drift\nformatVersion: 1\nsources:\n  - semantic\n"
+	if err := os.WriteFile(filepath.Join(root, "tei.workspace.yaml"), []byte(manifest), 0600); err != nil {
+		t.Fatal(err)
+	}
+	const path = "semantic/probe.tei"
+	original := "namespace probe\ndata Item {\n  attribute value type std.text\n}\n"
+	sourcePath := filepath.Join(root, filepath.FromSlash(path))
+	if err := os.WriteFile(sourcePath, []byte(original), 0600); err != nil {
+		t.Fatal(err)
+	}
+	loaded, err := workspace.Load(root)
+	if err != nil {
+		t.Fatalf("load original source: %v", err)
+	}
+	indexBefore, err := workspace.BuildSourceIndexFromLoad(root, loaded)
+	if err != nil {
+		t.Fatalf("index original Load-time source: %v", err)
+	}
+	findFingerprint := func(index sourceindex.Index) string {
+		t.Helper()
+		for _, artifact := range index.Artifacts {
+			if artifact.Path == path {
+				return artifact.Fingerprint
+			}
+		}
+		t.Fatalf("index has no Artifact for %s", path)
+		return ""
+	}
+	originalFingerprint := findFingerprint(indexBefore)
+	if want := sourceindex.Fingerprint([]byte(original)); originalFingerprint != want {
+		t.Fatalf("Load-time Artifact fingerprint %s; expected %s", originalFingerprint, want)
+	}
+
+	// Preserve the same file locator and semantic identity; change only an
+	// attribute type after Load, as in a racing editor or external rewrite.
+	changed := strings.Replace(original, "std.text", "std.money", 1)
+	if err := os.WriteFile(sourcePath, []byte(changed), 0600); err != nil {
+		t.Fatal(err)
+	}
+	laterRead, err := os.ReadFile(sourcePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := sourceindex.Fingerprint(laterRead); got == originalFingerprint {
+		t.Fatal("mutated source incorrectly matched Load-time bytes")
+	}
+	indexFromOriginalLoad, err := workspace.BuildSourceIndexFromLoad(root, loaded)
+	if err != nil {
+		t.Fatalf("index original Load after source mutation: %v", err)
+	}
+	if got := findFingerprint(indexFromOriginalLoad); got != originalFingerprint {
+		t.Fatalf("original Load-time Artifact changed after filesystem mutation: %s != %s", got, originalFingerprint)
+	}
+	parsed := parseSelfDescriptionCandidate(t, string(laterRead))
+	attr := selfDescriptionAttribute(t, parsed, "probe.Item", "probe.Item.value")
+	if string(attr.TypeRef) != "std.money" {
+		t.Fatalf("later parser did not see the changed TypeRef: %+v", attr)
+	}
+	// Without an explicit byte-identity check, the two valid parsed sources
+	// would be falsely presented as a single Source revision. This fixture
+	// does not assert that the product itself refuses a caller's later read.
+}
