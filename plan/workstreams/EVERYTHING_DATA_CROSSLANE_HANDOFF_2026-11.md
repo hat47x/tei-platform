@@ -2886,3 +2886,34 @@ HEAD `e0cfebf14d40db81bdef77d6c3e4898ed75d999f`に対する[GitHub Actions #4203
 **Priorityの補正**：P0として (a) #2892の偽Appliedに対するHIST-01/03負例・最小修正のOwner判断、(b) #2891のgofmt修正後exact-head focused CI、(c) #2586の一件のread-only Query→Context→Claim/Result Slice実受渡しを既存担当で進める。ただし**P0-Aの外部Harness初回H2 Tool呼出しのHard dependencyにはしない**。旧/新DB Cutover/Contractを実施する場合に限り、History/StateSnapshotの確認を**そのGate固有の必須条件**へ昇格し、Ownerの正式許容を求める。書込み実行は#1174/#1163の同一Attempt・効果観測なしに一般許可しない。
 
 **証拠の区分**：#2620のRoleテスト、#2887 MG-21/29、#2891 Duplicate JSON修正、#2895 AI独立有限OracleはいずれもDraft・用途別の局所証拠。新たなQF-01〜05の統合Test、実DB Migration/二DB Query、Studio実GUI、実Harness四Session、Owner Meaning Acceptanceは本§55でNOT RUN。各Ownerの既存Caseを再利用し、QFは**引継ぎ上の対照名であって第二Scenario/Oracle正本ではない**。
+
+
+<!-- tei-20261106-section55-resolution-compat-reconciliation -->
+### 55.3 安全な修正候補と旧特性試験の期待値を、同じ統合単位で整合させる
+
+本節§55のリスク記録後に、**別Draftへ実コードの修正候補**が進んだ。現main修正済みと誤認せず、Ownerごとに次の「旧特性を観測した資料→修正後の独立Expected→exact-head CI」を一組として扱う。
+
+| 問題と新たな候補 | 旧特性・新修正の境界 | 最短の統合受入 |
+| --- | --- | --- |
+| **MG-29 State/Contract後勝ち**：[Draft #2900](https://github.com/hat47x/tei-platform/pull/2900) | #2900はduplicate Database Stateと同一State内のduplicate ProvidedContractを、既存CompatibilityのUnknown＋理由に変更するGo差分を提示。独立DBの正常判定は維持。**[Draft #2887](https://github.com/hat47x/tei-platform/pull/2887)の TestMG29DuplicateDatabaseObservationsAreOrderDependent／TestMG29DuplicateProvidedContractVersionsAreOrderDependent は旧last-winsに対してCompatible/Blockedを期待**しており、安全修正後は不一致になる | #2887の旧挙動再現は歴史的Observationとして保持。実統合では同テストを「順序反転でもUnknown/拒否」に書き換え、#2900の独立4テストと共に**一つの実Checkoutのfocused＋全体CI**で確認。No silent fallback。#2897がOwner |
+| **重複Semantic Role**：[Draft #2898](https://github.com/hat47x/tei-platform/pull/2898) | parseSemanticDataで二つ目のrole optionを位置付きParseErrorにするコード候補。不同値・同値・コメント越し・quoted descriptionとの負例を追加。[Draft #2860](https://github.com/hat47x/tei-platform/pull/2860)の TestSelfDescriptionRoleLiteralAndDuplicateAreNotAcceptedMeaning は「将来ParserがSyntaxで重複を拒否してもよい」という分岐を既に含む | #2898のfocused Syntax/Anchored解析、#2860の現HEADと組合せた回帰、実Source byte/Role Candidate/Accepted Meaningの区分を同じ改訂で再確認。Parserが拒否できても**Role optionの編集用Span・書戻し・Owner意味受理は未実装**。#988/#2620がOwner |
+| **Fixture JSON duplicate member**：[Draft #2891](https://github.com/hat47x/tei-platform/pull/2891) | 旧HEAD 2f677921のGoテスト自体は限定PASSでもgofmtで全体Health FAIL。新HEAD 16b8d554は書式修正済みの候補 | 新HEADのRepository Health完了と当該10 caseの実行/非SKIPを確認する。JSON objectの同名Key重複を拒否しても、Relation keys配列の重複という別意味上の負例や独立Oracleは残す（#2890/#2895） |
+| **Migration History Unknownの偽Applied**：[Issue #2892](https://github.com/hat47x/tei-platform/issues/2892) | 現main CompareHistoryの AppliedUnknown がchecksum一致時にRepoAppliedへ落ちるコード経路は確認済み。ここは#2900のDB Release互換修正とは別 | HIST-01/03の独立Expectedを固定→既存Consumer適合を比較→RepoUnknownかfail-closed errorかOwner判断→focused Go/実History Adapterへ。**#2900のUnknown修正がこの不具合まで直したとは記さない** |
+
+各PRのSource、想定Expected、実行された試験、主張資格を**そのPRのexact HEAD**で再照合する。Draft別HEADのPASSを横断の製品G1/G2/G4合格へ集計しない。旧Characteristic testは修正後の安全な受入条件の正本として存置しないが、原因分析用の履歴は残す。自動mergeや他担当Draftの共有ファイル改変をこの計画で指示しない。
+
+### 55.4 旧新Consumer・配備世代の共存を、方向付きの互換性として検収する
+
+[並行Draft #2896 §19.9〜19.11](https://github.com/hat47x/tei-platform/pull/2896)の独自成果は、**同じFunctionの複数Entryが同じ配備Generationであるとは限らない**こと、互換性は対象Consumer/方向/時点に相対的であること。この詳細表は#2896と既存Ownerの責務に残し、本§55では**既存の一Attempt受入へ渡す条件だけ**を固定する。#2896と本Draft #2667は同一workstreamファイルを編集しているため、丸ごと二重採用しない（[衝突調整](https://github.com/hat47x/tei-platform/pull/2896#issuecomment-6669657786)）。
+
+**最小の対照例**：order_entryのFunction/意味R0→R1改訂後、WebはR0 Binaryを実ロードしたまま、CLIだけR1、DBはExpand済みでも旧Writerが継続、SHO等の成果物ConsumerはR0 Manifestを保持している状態を考える。これは採用済みProduction Deployment方式ではなく、#1180既存Scenarioと#2514独立Expectedに用いる変更圧力。
+
+- **Definition**：R0の歴史的Meaning受理は記録として残せるが、新CLIのR1結果を旧WebのR1動作の証拠にはしない。NULL/粒度/Role/Rule/業務Key・有効時点はConsumerのRequiredに応じて再確認。
+- **Realization/Loaded**：同Function名でも、実Source/Provider Pin・実Build input・物理Binary digest・入口が違えば同一実装と扱わない。単体Go Binaryの通常更新に新常駐Generation Routerを要請しない（#1130/#1167/#2600/#1223）。
+- **Operational/Effect**：互換性の方向は旧Reader→新Schema、新Reader→旧Schema、旧Writer→新Schema、新Writer→旧Schemaで独立。旧Writerのin-flight OperationでCommit ACKが消えたまま入口を置換しても新Key再送を許可しない。元OperationID/Receipt/実PostimageとCurrent Grantは#1174/#2555が検証。
+- **Publication/Consumer**：R1 ManifestとR0 memberの混在、R0固定引用とR1現在説明は別。実Consumerが必要memberの同一世代byteを取得し、現在開示資格を満たす範囲だけ公表可能（#2604/#2516）。
+- **Plugin Lifecycle**：[DSH比較Issue #2899](https://github.com/hat47x/tei-platform/issues/2899)のregistration/disposeの成功はRuntime資源の寿命であり、旧世代が残したDB Commitのrollbackではない。Readiness/drain/無停止は選択済み常駐Process/Wasm Targetのみ#1223で必要時に実測。Third-party Index/Publisherの主張はCurrent Host権限にならない（#2390/#2589）。
+
+受入単位は新Release Objectではなく既存の **Claim × Function/Entry × Consumer × Source/Artifact Revision × Environment/Time × Attempt** に対する証拠参照。実装済みCompat check一つ、Snapshot 0件、Version同名、Source byteの再一致、Runner completedでは、旧新Clientの現在の全体適合・Cutover・業務Effect・公開一式性を保証しない。新Schema/共通Deployment Coordinator/Host/Resolver/Policy/新Test SSOTは不要。
+
+**次の実測順**：#2586のread-only一Functionを最初に通す。旧新互換は#2555/#2887の必要Client集合、#2604の二Generation Reader、#1174のEffect/Unknownを**別Attemptで対照**し、相互関連を#1163へ渡す。#2831全体セルフビルド・外部Harness H2初回は既存P0のまま独立。R0/R1異世代実Client・実DB Cutover・実Reader公開・Owner受理は**本Docs変更でNOT RUN**。
