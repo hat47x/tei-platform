@@ -213,3 +213,21 @@ Query semantic ID / accepted Role・Operator version
 
 **保留する判断**：ファイル名規約の標準化、Query Contractのcommon asset opt-in宣言形、Provider/Driver versionの正式入力Schema、SQLiteを第二の製品Providerとして配布する構成、SQLテンプレート構文の採否。このいずれも本書の追加で正式受理・実装済みにはならない。
 
+## 8. 現行Go実装へのFit/Gap（2026-11-05：Source-static、Go試験未実行）
+
+既存mainの実コードと試験を確認し、「現時点で出来ていること」と「本計画で要求しているが未実装のこと」を分離する。
+
+| 現行Source | 存在する構造・試験 | 本計画の不足 |
+| --- | --- | --- |
+| `internal/environment/model.go` | `DatabaseInstance{ID,Definition,Provider}`、`ApplicationDatabaseBinding{Application,Alias,Instance}`、`InstanceByID`が存在 | Function/Query/Read-Write/Scopeから一意に対象DataSourceを解決したことの公開read-only経路、複数Alias診断は#2611で別実証。Provider識別子は`Known()`固定switch |
+| `internal/database/model.go` | `QueryContract`、`QueryInput{Type,Nullable}`、`ResultCardinality`で意味契約を保持 | SQLごとのRead Scope、条件分岐、実行Target/実DB版との意味同値性はこの型単体では証明しない |
+| `internal/realization/contract_query_sql.go` | `ContractQuerySQLRealization{Target,Provider,Source,Inputs,ResultColumns}`、`Identity()=target/provider`、`ValidateContract`、`MapRuntimeParameters`が存在 | 共通SQL fileのProvider別明示参照・探索・選択Lock・候補不在依存の解決器は実装されていない。`ValidateContract`はSQL本文を解析せず、結果列が実SQLから返ることを保証しない |
+| `internal/query/model.go` と `reference/workspace/applications/order-entry/queries/recent_orders.tei` | Native Queryに`Dialect`と`Source`、raw列→Semantic attribute mappingがあり、参照例は`sql postgres file "recent_orders.sql"`と**明示的**にSQL Sourceを選ぶ | `query-postgres.sql`等の自動探索を証明しておらず、2wayコメント構文の実行/静的検証も未実証 |
+| `internal/realization/contract_query_sql_test.go` | 物理/意味の分離、unknown provider、重複・欠落mapping、missing/forbidden/allowed NULLの検査が既存Go試験として記述済み | 現時点で本計画の共有Asset/2 Provider選択、Source失効、実SQL結果・Role版/Grantの一体試験はない |
+
+**実装上の最小仮説**：Native SQLファイルを共有したい場合、現在の`target+provider`別Realizationを二つ明示し、同じAuthoritative SQL Sourceへの参照（あるいは同一SQL本文）を持たせれば、*意味モデルにgeneric Providerを新たに定義せず*共有できる可能性がある。既存`ContractQuerySQLRealization.Source`はSQL本文であり、物理Source Locator/Indexは別責務なので、ファイルパスをこの型へ直接追加しない。Loader/Source Indexで実際にこの対応が成立するかを次のfocused実装圧力にする。**現行コードで共有ファイル選択が実装済みとは主張しない**。
+
+**最短の観測可能な一歩**は、既存Queryに対して①明示Sourceの移動/本文変更、②別Provider向け明示Realizationを追加、③同じQuery IDに異なるDB Aliasを持つFunction Contextを適用した3件を、まず現行`go test`と実Workspace Loadで照合すること。新規SQL Parser/方言Engine/公開APIを追加せず、必要な不足項目だけIssue Ownerへ返す。実実行は必要最小限の既存PostgreSQL経路で確認し、第二DBを代替して合格を主張しない。
+
+**今回の照合結果はSource-staticであり、テストを新たに実行していない。** 既存GoテストがSourceに存在することは、このPRのexact-head CI成功ではない。
+
