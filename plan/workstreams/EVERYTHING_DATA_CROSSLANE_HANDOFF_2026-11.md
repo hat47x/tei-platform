@@ -1840,7 +1840,7 @@ Ownerの設計方針：Data ModelはSQL解釈から構造生成するのでな�
 
 ### 36.2 確率的配置はhard条件の後、独立Oracleと共に採点する
 
-1. **Hard filter first**：Effect/retry安全性、現在のCompute Grant・Data Class・Resource Group適格子集合、持ち主のopt-out、物理容量/予約、Providerの内部Retry制御、Token/Lease/時点、EKI/クラウド二重予算上限を先に評価する。どれか未確認なら`not-supported`/`needs-measurement`として停止し、安い・成功確率が高いという予測で解除しない。
+1. **Hard filter first**：Effect/retry安全性、現在のCompute Grant・Data Class・Resource Group適格子集合、持ち主のopt-out、物理容量/予約、Providerの内部Retry制御、Token/Lease/時点、EKI/クラウド二重予算上限を先に評価する。実行可能性のhard条件に不適合ならAdmission／feasibility段階で候補を除外し、Suitabilityの判断材料が不足する場合は現行3値の`NEEDS_MEASUREMENT`とする。いずれも安い・成功確率が高いという予測で解除しない。
 2. **候補完了時間**：待機/起動＋Input転送＋実行（分布）＋Checkpoint/再取得＋Output転送＋Verification/必須後段＋失敗時のbackoff/再配置を含める。各Stageの依存DAGでは直列総和と並列のcritical pathを区別する。実行時刻・Size・キャッシュ、Groupの観測鮮度、Context/Policy改版を固定する。
 3. **予測の信頼度**：履歴はResource Group/Backend/Job Class/規模/時帯・Toolchain/Version・Data Classごとに由来と母数を保持。完了時刻の分布、打切り（timeout/中断・未観測）、失敗種別、検証不一致、相関する故障（同じ障害ドメインやクラウドリージョン）を別に扱う。欠損は失敗率ゼロへ補完しない。分位点・信頼区間と校正を比較する。外れた予測には`unknown`を返す。履歴の高成功率はAssurance/権限ではない。
 4. **最適化対象**：適格候補の間で、`P(verified by latest acceptable time)`、見込総物理消費、外部価格表に基づく期待支出、データ移動・電力・利用者妨害、最大損失/回復余力を**別軸**で比較。価格/時間/成功率を未宣言の一つの重みScoreへ黙示的に押し込まない。まず予算/期限/成功許容の業務側制約を満たす候補を絞り、その中で利用側が明示した費用優先・時間優先・Pareto等の選択方針を適用する。費用の期待値が低くても、同一Eventの連続障害により期限違反する案は別に示す。
