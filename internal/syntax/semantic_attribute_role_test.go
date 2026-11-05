@@ -93,3 +93,42 @@ func TestParseSemanticAttributeRoleAllowsDistinctAttributesAndQuotedText(t *test
 		t.Fatalf("valid semantic source anchor parsing failed: %v", err)
 	}
 }
+
+
+// Role's source-side value anchor allows navigation, not editing or acceptance.
+// Check the exact authored bytes; quoted role-like text and multibyte content
+// must not alter this anchor or become an additional Role declaration.
+func TestSemanticAttributeRoleSourceAnchorOffsetsAndQuotedLiteral(t *testing.T) {
+	src := "namespace sales\r\ndata Order {\r\n" +
+		"  attribute total type std.money description \"role 日本語の説明\" role accounting_amount\r\n}\r\n"
+	parsed, err := syntax.ParseSemanticFileAnchored(src)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(parsed.Value.Data) != 1 || len(parsed.Value.Data[0].Attributes) != 1 ||
+		parsed.Value.Data[0].Attributes[0].Role != "accounting_amount" {
+		t.Fatalf("role candidate was not preserved: %+v", parsed.Value.Data)
+	}
+	wantStart := strings.LastIndex(src, "accounting_amount")
+	if wantStart < 0 {
+		t.Fatal("source does not contain role value")
+	}
+	roleCount := 0
+	for _, item := range parsed.Anchors {
+		if item.Kind != "semantic-attribute-role" {
+			continue
+		}
+		roleCount++
+		if item.ID != "sales.order.total" ||
+			item.Anchor.Start.Offset != wantStart ||
+			item.Anchor.End.Offset != wantStart+len("accounting_amount") {
+			t.Fatalf("role value anchor has wrong source identity/range: %+v", item)
+		}
+		if src[item.Anchor.Start.Offset:item.Anchor.End.Offset] != "accounting_amount" {
+			t.Fatalf("role anchor does not identify the original value bytes: %+v", item)
+		}
+	}
+	if roleCount != 1 {
+		t.Fatalf("quoted role text was misclassified or Role value anchor missing: count=%d", roleCount)
+	}
+}
