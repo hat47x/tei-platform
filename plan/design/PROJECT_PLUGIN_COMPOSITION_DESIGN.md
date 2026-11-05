@@ -115,3 +115,33 @@ Webアプリケーションでは、UI構成キットだけでなく、HTTP要�
 - 既存機構で足りると分かった対象は新Issueへ分割しない。必要な機構だけを#1016で評価し、隣接する#997 / #998 / #951 / #943 / #988 / #993 / GitHub Issues000040の既存担当へ引き渡す。
 
 本書の評価を経て、Application Composition Profileが実際に独立したSource表現を要するかを決める。採用するならADRを別途作成し、Project-owned Source / Plugin Lock / Semantic Lock / Target realizationを第二正本化しない最小境界に限る。
+
+<!-- tei-project-extension-choice-handoff-20261106 -->
+## 2026-11-06 追補：案件の要求からPlugin要否へ進む最小判断（設計・NOT RUN）
+
+拡張方式そのものの比較正本は[Runtime/Target Binary Composition設計 §14](RUNTIME_TARGET_BINARY_COMPOSITION_DESIGN.md)に委譲する。本節は**Application Composition Profileが要求を取り込む時点**に必要な三段階選択の入口だけを定め、Plugin/Host/Contract/Buildの第二Resolverを作らない。
+
+### 既存の構成操作を先に試す
+
+| 案件からの要求 | 最初に評価する手段 | 独立したPlugin/Implementation選択を要求する条件 |
+| --- | --- | --- |
+| フィルタ・集計・導出計算を追加 | 既存Operator、純粋Library/明示Data Operations | 独立版・意味・効果を持つOperator Contractを複数Consumerが必要とする |
+| 保存前に業務規則を追加 | Project OwnerのAccepted Business Rule/Procedure | 別Owner/Targetに独立配布する共通能力が実例で成立した場合のみ |
+| DB接続先・実SQL方言を変更 | 意味上のFunction/Relationを保ち、Environment/Provider/SQL Assetを明示Binding | 実Data Provider能力・実方言・Scope・認可/効果が既存実装で満たせない |
+| 画面の独自部品を追加 | #997のKit公開点・Project UI Layer | 型付きRenderer/Target Host Bridgeに必要な実Consumer契約がある |
+| Go/Desktop・外部Targetへ展開 | 既存Target Generator/Build Compositionを参照 | 固有Toolchain・ABI・Host/Target能力・Artifactの独立実現が必要 |
+| 別Processで外部製品を呼ぶ | 既存のService/Transport Contractと外部Hostの能力を確認 | 独立更新・障害分離・異言語実行が不可欠で、Single-binary等の制約と整合する |
+
+通常利用者が選ぶのはData/Relation/Function/Action等の**業務要求と必要な結果**。DB方言、Plugin package、ローダー種別はまず既存Profile/Provider/Host側で解決し、不足・競合・未確認だけを用途に応じた診断で提示する。選択を自動化しても、業務意味の受理・現在権限・Provider実効果は自動成立しない。
+
+### Project選択と更新時の非干渉
+
+構成時の記録は、既存Source/Lock/Builderで保持できる参照を使い、最低限「必要Contract/Target」「選択済みProvider/Generator」「exact Sourceと実装Fingerprint」「Build closure/実Artifact」「実行時のHost capability」を区別する。候補Catalog/Bundleが更新されても、**選択・実消費・配布Artifactが不変なら無関係なProjectを過剰失効しない**。ただしDefault Provider選択、Go import/init、Generatorの読込入力、Native SQL Asset等が変われば、名目上未使用でも実依存として再資格化する（#1251/#2600）。
+
+**案件Ownerへの最小質問**：何を実現したいか、既存機能が不足する具体例は何か、業務意味の正本/変更権限は誰か、必要Targetと厳密単一バイナリ/独立更新の要否、Read/Writeと途中失敗で残る効果、許容停止と試験可能な独立Expected。この情報が既存Source/Projectから既知なら質問を繰り返さず、未決のみ照会する。
+
+**判定の停止線**：Providerが曖昧／Scope・Capability不整合／実Target非対応／実Source消費未特定／Sourceの意味改変を要するがOwner未受理／部分CommitやACK-lossをRecoveryできない場合、黙示の別Provider/別Process/fallbackへ切替えない。既存Core fixed kind、万能Plugin ABI、Runtime Loader、外部Hostの一般義務化を先取りしない。
+
+**既存Issueへの受渡し**：このProfile側は要求→候補→選択の境界（#1016）。Service Contract/現在Authorityは#951、Plugin Package/Bundleは#1251、DSLは#988、Data Providerは#2622、実生成・Buildは#1121/#259/#943、更新費用は#2600/#2018、Effectは#1174。UI Kitの`extends/provide/replace/decorate`を汎用Compositionの優先順位へコピーしない。
+
+検証は上記§14の既存 EX-01〜08／#1251 PB/PBN／#1016 PCF に対応する最小Fixtureを**共有**し、第二の期待値正本を作らない。今回の追補は設計文書のみ。実Go/DB/外部Hostの新E2E、正式Plugin粒度・ABI/Schema、Owner受理はNOT RUN／未採用。
