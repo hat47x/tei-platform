@@ -2541,3 +2541,51 @@ fixed HEAD `e0cfebf14d40db81bdef77d6c3e4898ed75d999f`の[Native Actions #4203141
 **完了条件の優先**：P0はPB-01の実Go固定Headと現`ResolveEnvironment`の選択意味を明示。P1はPB-02/03/05の**実Go Build比較**で同一Toolchain/Flags/GOOS/GOARCH/Source/Lockを固定し、影響を受けないTargetのビルド入力、実Artifact member/digest/size、必要なInvocationを対照で確認。ビルド結果のbyte同一が得られない環境では差分理由を限定観測として記録し、容量や速度の改善を推測しない。P2はPB-04/06/07のProvider/Host/Target側の実証。#1119の実DB/Owner-write Gateの優先を変えない。
 
 **本節の状態**：PB-01のみ実E1 Go 成功。PB-02〜08、選択後の実Module liveness、実Build binary 比較、実DB/Host、Studio/SHO/AI、Owner業務意味受理は**NOT RUN/未受理**。既存Plugin/Bundle/Builder/Provider/Permission契約の組合せで判断し、新しいPlugin Registry、Graph Compiler、組織専用Host/ACL、第二Query Engineを作らない。
+
+## 65. 組織Case移管の実行前条件は『チェックがある』ではなく『必須チェックが揃っている』（2026-11-06、#1130/#1129/#2564/#1174/#2882横断、採用前）
+
+### 65.1 新たに統合された実RunPlan証拠と、依然として保証されないもの
+
+[main統合 #2882](https://github.com/hat47x/tei-platform/pull/2882)は、実WorkspaceのSemantic Period・EffectRule・Application/Persistenceから操作面を作り、`RunPlan`に`PeriodPreconditions`と`EffectPreconditions`を合成した**実Go**テストを持つ。Closed periodでStep呼出し0、Openで`completed`、after-commit Observerが無ければ`blocked`とRule IDを診断できる。**ただし**`CombinePreconditions`は「少なくとも一つの非nil checkがあるか」を判定するだけで、未渡しの**業務Owner/Host Grant/Target/Scope/Expected State/Provider/Receipt/Disclosureチェック**が必要かどうかを推論しない。また`EffectPreconditions`はObserverの**存在**を条件とし、`ObserveEffect`による実観測を行ったと主張しない。`RunPlan completed`はStepが`resolved`を返した結果で、実DB Commit/外部Effect/独立Post-imageの証拠ではない。
+
+今回の[独立Draft #2889](https://github.com/hat47x/tei-platform/pull/2889)は現行`internal/execution`へ3つの**Org Case名を使ったtoy Step/JournalのGo負例**を追加し、これらの境界を直接Characterizeする。これらは実`.tei` CaseRecordや実PostgreSQL、実Host/Provider/OwnerとのE2Eではない。Go CIの固定HEAD結果は**別途確認**するまで未実行欄に残す。
+
+**組織固有の重要点**：`CaseRecord.handlingUnit`は本物の`.tei` RelationとしてE1で確認済み（#2681）。ただしこの**構造関係は実行Grantではない**。MembershipやOccupancyの存在からCurrent Principal、承認責任者、移管前後のCase Record ID、採用時点・関係Occurrence、更新のExpected Versionを自動決定しない。Caseの担当変更を実行してよいかは、Ownerが意味受理したBusiness Procedureと既存Host/Providerの現在資格へ委譲する。
+
+### 65.2 所有者が受理すべき必要条件集合と、実行側が観測した条件集合を分ける
+
+以下は**既存のSource／Context／Policy／RunPlan／Command／Receiptへの証拠項目**であり、新しい汎用Precondition Registryや認可エンジンを意味しない。必要条件の分母は、対象のBusiness Procedure／Function／Effect/ProviderのOwnerが受理したContractと実行先Hostの要求から決まる。
+
+| 実行前に必要な条件（例） | 実際に確かめる事実とFailure | 既存Owner |
+| --- | --- | --- |
+| Case/Relationの意味 | C1・旧`handlingUnit` Occurrence・移管先Orgのqualified ID、valid/known、Cardinality、Source/Meaning Revision、Ownerの移管受理 | #2386/#1126/#1125 |
+| Read・操作対象 | 明示Function Data Context、必要Row/Field集合、完全性、実Provider Route/Cohort、Target IDとexpected row version | #2506/#2622/#2628 |
+| Actor/Scope/権限 | 現在Principal/Delegation/Host Grant、Tenant・Org軸/Scope、Policy版と参照専用/例外、Target単位のUpdate資格 | #951/#2598/#1174 |
+| 期間・業務拒否 | Period状態・Rule・確認時点・必要な業務停止条件。closed拒否とCommit時再確認を別観測 | #2144/#1130 |
+| 非同期/外部Effect | EffectRuleのObserver設定有無と**実ObserveEffect/Source/Receiptの到達**、Provider Guarantees/原子性宣言の根拠 | #1129/#1174/#1119 |
+| Recovery・重複 | Operation identity、RunKey/Attempt/Fence epoch、Durable Provider idempotency、unknown/restart/takeover、独立post-image | #2564/#1174/#2146 |
+| Consumer/外部開示 | 現在Read/Display/SHO/AI/Batch/Export用途、Policy/Source/Selection epoch、後着応答の資格 | #2582/#2516 |
+
+**チェックが部分的に存在する**ことと、**業務上必要な全チェックが提供され、対象・版・実行時点で成功した**ことを区別する。`RequiredChecks`の特定・受理がない場合、`all supplied checks passed`でも`admissibility=unknown`とする。Provider/Hostが強制できない必須条件は、TEI側の`candidate`/Preview/合成判定では代用せず、当該実行を保留または拒否する。
+
+### 65.3 実Go Runner負例と組織Product Gateの対応
+
+| ケース | 実Go Characterizationまたは未実行E4試行 | 証拠の正しい読み方 |
+| --- | --- | --- |
+| **OC-RP-01**（Draft #2889） | `CombinePreconditions`に一つの無害checkだけ提供→toy Stepが`resolved`。`Host Grant`不在の明示checkを追加→`blocked` | 実Runnerの**チェック網羅性をCallerが所有**。無条件の`completed`を実認可としない |
+| **OC-RP-02**（Draft #2889） | after-commit Observerがnon-nilでも`RunPlan`はObserverの`ObserveEffect`を呼ばない | `observer supplied`≠`effect observed`。実RunEffect/実Provider receiptは別資格 |
+| **OC-RP-03**（Draft #2889） | 最初のtoy Step resolved→次のStepがSource/Policy staleでblocked | 全体blocked≠先行Step Effect 0。部分作用とRollback/Compensation/Recoveryを別記 |
+| ORG-E4-01（未実施） | 実Case C1の担当D1→D2更新・独立post-imageの一致 | Current Grant/expected row version/Owner受理/actual Provider readが揃ったときだけ`effect-observed` |
+| ORG-E4-02（未実施） | commit応答喪失→unknown→再起動／別owner-gen takeover／Provider ledger照会 | [main #2870](https://github.com/hat47x/tei-platform/pull/2870)のLifecycle in-memory Stage消失、別PG Referenceの同key再送保護は**別Function**。Caseの再起動安全性と同一視しない |
+| ORG-E4-03（未実施） | 同値A→B→Aと新Idempotency Key／部分Commit | [main #2854](https://github.com/hat47x/tei-platform/pull/2854)のPG反例を必要な期待値に使うが、Org Caseとしての実験は独立 |
+| ORG-E4-04（未実施） | Provider Guarantee未申告・`not-atomic`・暫定宣言 | [main #2869](https://github.com/hat47x/tei-platform/pull/2869)の監査PacketはE2を`INCOMPLETE/UNQUALIFIED`へ判定可能。ただし`atomic-with-commit`は自己申告で、実原子性を証明しない |
+
+**二層の判定**：(a) `executability`＝特定Intent/Scopeに必要な実行前条件が現在のHost/Providerに強制されているか、(b) `outcome`＝実Commit/外部Effectが独立観測・Receiptで確認されたか。`blocked`、`failed`、`unknown`、`provider rejected`、`committed but unobserved`を一つの「失敗」へ潰さない。過去の`RunPlan completed`、Operation JSON、Source/World fingerprint、AI提案採用を将来の実Effect資格へ流用しない。
+
+### 65.4 最小垂直Sliceと非採用条件
+
+**E2 Read最優先**：#2586が実`.tei` `CaseRecord→OrgUnit`のFunction必要Read/ScopeとProvider Result/Rowset・Field Witnessを接合。実Case用Data Provider/Query/Contextが接続されるまでは`NOT RUN: physical-read-unavailable`。E1→E2未成立のままE4移管を製品完了と呼ばない。
+
+**E4 変更は別Owner・限定環境**：同じCase/Relation ID、Owner移管受理、Current Principal/Grant、Expected row version、Effectrule/Provider Guarantee、Operation IDを一固定Attemptへ束縛し、実更新前条件→Commit/応答不明→Receipt／独立再Readまでをつなぐ。業務Ownerが許したrollback/compensationだけ実施する。複数Step中の片方がblockedでも先行Stepを存在しなかったと扱わない。安全な物理施行点がないRouteは停止し、UI-only Filter/Previewや別FunctionのPG成功を代替としない。
+
+**責務の最小性**：#2882の実Workspace/RunPlan、#2869のAudit、#2870のLifecycle、#2853/54の実PostgreSQL、#2681のOrg Modelを**別々の成功した部品**として再利用し、#2889のtoy Go負例で**誤った合成を検出**。新しいOrg専用Host・Policy Engine・認可Registry・Universal RunPlan Engine・第二Receipt Storeを導入しない。本節とOC-RPの成功だけで実Case Write/rollback/Provider Guarantee、Ownerの受理を主張しない。
