@@ -25,7 +25,7 @@
 
 例えば概念的には以下。構文例であり、正式TEI Language/Metadata Profileではない。
 
-~~~markdown
+````markdown
 ---
 type: Data Model
 tags: [tei]
@@ -35,12 +35,12 @@ tags: [tei]
 
 受注モデルの説明。
 
-~~~tei
+```tei
 semantic sales.order {
   // この行以下は例示用の仮構文
 }
-~~~
-~~~
+```
+````
 
 前記の入れ子フェンス表示は文書中では概念例。実装はMarkdown ParserのSource位置/byte範囲がTEI Lexer/Parserへ正しく渡せる表現を決めてから対応する。実Parserが対応しない仮DSLをfixture PASSとして扱わない。正式DSLがMarkdownと両立しない場合、内部Snippetとして保持するなど、Markdown互換で成立する記述経路を追加検証する。
 
