@@ -113,7 +113,9 @@ func runProbe(t *testing.T, args ...string) (int, string, string) {
 		sourceHash, targetHash := sha256.Sum256(source), sha256.Sum256(target)
 		args = append(args,
 			"-expected-source-sha256", hex.EncodeToString(sourceHash[:]),
-			"-expected-target-sha256", hex.EncodeToString(targetHash[:]))
+			"-expected-target-sha256", hex.EncodeToString(targetHash[:]),
+			"-expected-population", "1000000",
+			"-max-collision-probability", "1e-6")
 	}
 	var stdout, stderr bytes.Buffer
 	code := run(args, &stdout, &stderr)
@@ -170,8 +172,10 @@ func TestHeadlessTargetPreflightAndSnapshotCollision(t *testing.T) {
 	if err := json.Unmarshal([]byte(stdout), &got); err != nil {
 		t.Fatal(err)
 	}
-	if got.Status != "caller-pinned-snapshot-preflight-only" || got.Authority != "none" || got.StorageWrite ||
+	if got.Status != "caller-pinned-budget-snapshot-preflight-only" || got.Authority != "none" || got.StorageWrite ||
 		!got.CallerPinsMatched || got.TargetSnapshotSHA256 == "" ||
+		got.CollisionBudget == nil || got.CollisionBudget.ExpectedPopulation != 1000000 ||
+		got.CollisionBudget.PolicySource != "caller-declared-unverified" ||
 		got.NormalizedTargetKey != result.Text || got.TargetNamespace != "example.external-records" ||
 		got.DigestHex != "" {
 		t.Fatalf("unexpected preflight status: %+v", got)
@@ -376,8 +380,9 @@ func TestCommittedHeadlessFixture(t *testing.T) {
 	if err := json.Unmarshal([]byte(stdout), &actual); err != nil {
 		t.Fatal(err)
 	}
-	if actual.Status != "caller-pinned-snapshot-preflight-only" || actual.Authority != "none" ||
+	if actual.Status != "caller-pinned-budget-snapshot-preflight-only" || actual.Authority != "none" ||
 		!actual.CallerPinsMatched || actual.TargetSnapshotSHA256 == "" ||
+		actual.CollisionBudget == nil || actual.CollisionBudget.MaximumCollisionProbability != 1e-6 ||
 		actual.StorageWrite || actual.TargetNamespace != "example.records" ||
 		actual.SourceByteCount != len("hello TEI") ||
 		actual.HashIDText != actual.NormalizedTargetKey ||
@@ -413,6 +418,8 @@ func TestRealHeadlessCLIExecutableSmoke(t *testing.T) {
 		"-target-probe", filepath.Join(dir, "decimal24.target-probe.json"),
 		"-expected-source-sha256", "a53b0563c14046eb542a3aa0eeeb7b3d502a935477b474fbe78d81bf33fb93c4",
 		"-expected-target-sha256", "7c920c2b4aa575b1e700d62e991ef3c7d3f4b6b32960d561d95048a1c33b3b72",
+		"-expected-population", "1000000",
+		"-max-collision-probability", "1e-6",
 	}
 	cmd := exec.CommandContext(ctx, "go", args...)
 	var stdout, stderr bytes.Buffer
@@ -427,7 +434,8 @@ func TestRealHeadlessCLIExecutableSmoke(t *testing.T) {
 	if err := json.Unmarshal(stdout.Bytes(), &got); err != nil {
 		t.Fatal(err)
 	}
-	if got.Status != "caller-pinned-snapshot-preflight-only" || !got.CallerPinsMatched || got.StorageWrite || got.Authority != "none" ||
+	if got.Status != "caller-pinned-budget-snapshot-preflight-only" || !got.CallerPinsMatched || got.StorageWrite || got.Authority != "none" ||
+		got.CollisionBudget == nil || got.CollisionBudget.PolicySource != "caller-declared-unverified" ||
 		got.HashIDText == "" || got.HashIDText != got.NormalizedTargetKey {
 		t.Fatalf("unexpected actual CLI output: %+v", got)
 	}
@@ -458,7 +466,9 @@ func TestHeadlessTargetRequiresCallerPinsAndRejectsStaleBytes(t *testing.T) {
 	sourceHash, targetHash := sha256.Sum256(source), sha256.Sum256(target)
 	pinned := append(append([]string{}, args...),
 		"-expected-source-sha256", hex.EncodeToString(sourceHash[:]),
-		"-expected-target-sha256", hex.EncodeToString(targetHash[:]))
+		"-expected-target-sha256", hex.EncodeToString(targetHash[:]),
+		"-expected-population", "1000000",
+		"-max-collision-probability", "1e-6")
 	if code, stdout, stderr := runWithoutPins(pinned); code != 0 || stdout == "" || stderr != "" {
 		t.Fatalf("matching independent pins were rejected: status=%d stderr=%q", code, stderr)
 	}
@@ -488,4 +498,67 @@ func TestHeadlessTargetRequiresCallerPinsAndRejectsStaleBytes(t *testing.T) {
 		!strings.Contains(stderr, "target pin") {
 		t.Fatalf("stale target bytes not rejected: status=%d stdout=%q stderr=%q", code, stdout, stderr)
 	}
+}
+
+func TestTargetPreflightRequiresBudgetAndRejectsInadequateLength(t *testing.T) {
+	s := decimalScheme()
+	schemePath, inputPath, _ := fixture(t, s, []byte("source A"))
+	targetPath := filepath.Join(t.TempDir(), "snapshot.json")
+	target := []byte(targetSnapshot(t, targetPath, nil))
+	sourceHash := sha256.Sum256([]byte("source A"))
+	targetHash := sha256.Sum256(target)
+	pins := []string{
+		"-scheme", schemePath,
+		"-input", inputPath,
+		"-subject", "qualified:a",
+		"-target-probe", targetPath,
+		"-expected-source-sha256", hex.EncodeToString(sourceHash[:]),
+		"-expected-target-sha256", hex.EncodeToString(targetHash[:]),
+	}
+	check := func(args []string, codeWant int, message string) {
+		t.Helper()
+		var stdout, stderr bytes.Buffer
+		code := run(args, &stdout, &stderr)
+		if code != codeWant || stdout.Len() != 0 || !strings.Contains(stderr.String(), message) {
+			t.Fatalf("bad collision budget accepted: status=%d stdout=%q stderr=%q want %d %q",
+				code, stdout.String(), stderr.String(), codeWant, message)
+		}
+	}
+	check(pins, 2, "population")
+	check(append(append([]string{}, pins...), "-expected-population", "1000000000"), 2, "population")
+	for _, maximum := range []string{"1e-9", "-0.1", "NaN", "Inf", "garbage"} {
+		input := append(append([]string{}, pins...),
+			"-expected-population", "1000000000",
+			"-max-collision-probability", maximum)
+		check(input, 1, "collision budget")
+	}
+	// Reference collision risk for 24 decimal digits and one billion IDs is
+	// approximately 5e-7; the explicit 1e-6 budget is sufficient.
+	valid := append(append([]string{}, pins...),
+		"-expected-population", "1000000000",
+		"-max-collision-probability", "1e-6")
+	var stdout, stderr bytes.Buffer
+	if code := run(valid, &stdout, &stderr); code != 0 || stderr.Len() != 0 {
+		t.Fatalf("valid explicit collision budget rejected: status=%d stderr=%q", code, stderr.String())
+	}
+	var value report
+	if err := json.Unmarshal(stdout.Bytes(), &value); err != nil {
+		t.Fatal(err)
+	}
+	if value.CollisionBudget == nil || value.CollisionBudget.ExpectedPopulation != 1000000000 ||
+		value.CollisionBudget.EstimatedCollisionProbability <= 0 ||
+		value.CollisionBudget.EstimatedCollisionProbability > value.CollisionBudget.MaximumCollisionProbability ||
+		value.Authority != "none" || value.StorageWrite {
+		t.Fatalf("incorrect caller-only collision evidence: %+v", value)
+	}
+	// Same source and explicit policy, but a too-small decimal address space.
+	s.Length = 20
+	schemeBytes, err := hashid.MarshalSchemeJSON(s)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(schemePath, schemeBytes, 0600); err != nil {
+		t.Fatal(err)
+	}
+	check(valid, 1, "collision budget")
 }
