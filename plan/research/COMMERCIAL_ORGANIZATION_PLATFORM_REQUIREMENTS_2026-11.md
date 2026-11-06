@@ -154,4 +154,4 @@
 | CP-09a Owner Team vs Access Team | ReadできるTeamは必ずOwner | Access TeamのRead候補を認めてもRecord Ownerは不変。明示Share・Table権限不足は拒否 |
 | CP-10/17d Tenant/Plugin Binding | 同じOrg Role・PluginをTenant A/Bへ導入→Bへ自動権限 | 配布/構成の同一性はCurrent Host Grantでない。実Scopeが異なれば別試験 |
 
-**状態**：公式資料の読解と合成Reference設計のみ。CM-13/14の新テストCIは実行結果を固定版で確認するまで未認定。実Dataverse/TEI Product/Host Policy、Owner受理はNOT RUN。
+**状態・実測（2026-11-06）**：公開公式仕様の比較＋固定HEAD c209fa8b4e803a9a9698a42648ec087add56782a の[組織Synthetic Node CI #42196320734](https://github.com/hat47x/tei-platform/actions/runs/42196320734)で、CM-13/14新3件が個別ok、既存214＋追加3＝**217/217 PASS、0 FAIL**とログ確認。これは特定設定を合成したread-only候補判別のみ。実Dataverse/TEI Product/Host Policy/現認可/Provider実施行、Owner受理はNOT RUN。
