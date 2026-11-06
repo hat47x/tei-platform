@@ -235,6 +235,35 @@ function differenceSections(differences) {
   }];
 }
 
+// validationSections shows the diagnostics and their unanswered proposals, so a
+// reader sees that a correction exists without mistaking it for an accepted fix.
+function validationSections(value) {
+  const sections = [];
+  if (Array.isArray(value.diagnostics)) {
+    sections.push({
+      title: "診断",
+      header: ["重大度", "符号", "内容"],
+      rows: value.diagnostics.map((item) => [
+        valueOf(item.diagnostic?.severity),
+        valueOf(item.diagnostic?.code),
+        valueOf(item.diagnostic?.message),
+      ]),
+    });
+  }
+  if (Array.isArray(value.proposals)) {
+    sections.push({
+      title: "修正案（未受理）",
+      header: ["符号", "受理", "版"],
+      rows: value.proposals.map((proposal) => [
+        valueOf(proposal.code),
+        proposal.accepted ? "受理済み" : "未受理",
+        valueOf(proposal.revision),
+      ]),
+    });
+  }
+  return sections;
+}
+
 export function summarizeView(value) {
   if (!value || typeof value !== "object") {
     return [{title: "ビュー", rows: [["値", valueOf(value)]]}];
@@ -256,6 +285,7 @@ export function summarizeView(value) {
       ],
     }]).concat(differenceSections(value.differences));
   }
+  if (value.diagnostics !== undefined || value.proposals !== undefined) return validationSections(value);
   if (value.package && value.version !== undefined) return summarizePackage(value);
   if (Array.isArray(value.items)) return summarizeRecord(value);
   if (Array.isArray(value.columns)) return summarizeBrowse(value);
@@ -267,6 +297,7 @@ export function summarizeView(value) {
     rows: Object.entries(value).map(([key, entry]) => [key, JSON.stringify(entry)]),
   }];
 }
+
 
 
 

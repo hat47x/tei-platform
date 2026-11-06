@@ -118,3 +118,14 @@ test("command run lists the differences the declaration did not describe", () =>
   assert.equal(last.rows[0][1], "delete sales.order");
   assert.equal(last.rows[0][2], "delete sales.order_line");
 });
+
+test("validation view lists diagnostics and unanswered proposals", () => {
+  const sections = summarizeView({
+    diagnostics: [{diagnostic: {severity: "error", code: "INVALID_DATABASE_ACCESS", message: "datasource has invalid access mode"}}],
+    proposals: [{code: "INVALID_DATABASE_ACCESS", revision: "sha256:abc", accepted: false}],
+  });
+  assert.deepEqual(sections.map((section) => section.title), ["診断", "修正案（未受理）"]);
+  assert.equal(sections[0].rows[0][1], "INVALID_DATABASE_ACCESS");
+  assert.equal(sections[1].rows[0][1], "未受理");
+  assert.equal(sections[1].rows[0][2], "sha256:abc");
+});
