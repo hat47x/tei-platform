@@ -1,6 +1,6 @@
 # 実DBで実行時の判断を確かめる計画（2026-11）
 
-- 状態: **試験は実装済み。実行の経路もCIに置いた。実行結果はまだ記録していません（`NOT RUN`）。** DSN が無い環境ではスキップします。
+- 状態: **四系統（期間・効果・実行計画・権限）の六つの試験を、一時 PostgreSQL 16.15 で実行し、すべて PASS しました。** 実行の記録は第11章。DSN の無い環境ではスキップします。
 - 目的: 期間・効果・権限・実行計画の**実行時の判断**が、実際の PostgreSQL を前にしても期待どおりに働くことを確かめる。
 - 関連: [実データベースでの確認手順](REAL_DATABASE_VERIFICATION_PROCEDURE_2026-11.md)、[検証記録](SURFACE_AND_ARTIFACT_VERIFICATION_2026-11.md)
 
@@ -84,4 +84,29 @@ DSN のある環境が無いまま「実行済み」と書かないために、�
 
 **この経路が証明しないこと**: 本番 Provider、実運用の権限、性能、期間の締め・訂正の業務手順。CI の service は使い捨ての PostgreSQL であり、本番の同等性は示しません。
 
-**まだ記録していないこと**: この workflow は**まだ一度も走っていません**。実行結果の受入番号とログをこの節へ追記するのは、実際に走った後です。
+## 11. 実行の記録（2026-11-06 追記）
+
+上の経路を実際に走らせました。受入は PR #3032 の CI job `runtime-decisions-postgres` です。
+
+```
+- 実行日時: 2026-11-06T14:32:08Z（job 開始 14:31:11Z）
+- サーバー: PostgreSQL 16.15 on x86_64-pc-linux-musl（`tei dbcheck` の表示、一時表の作成: 成功）
+- 実行: go test -count=1 -v ./tools/reference-runtime-decisions
+- 結果: 4系統6試験すべて PASS、SKIP 0件（機械確認）
+- Artifact: tei-runtime-decisions-42234631521（7日）
+```
+
+| 試験 | 結果 |
+| --- | --- |
+| `TestAClosedPeriodLeavesTheRowUntouched` | PASS (0.12s) |
+| `TestAnOpenPeriodUpdatesTheRow` | PASS (0.06s) |
+| `TestAnUnobservableEffectBlocksBeforeTheWrite` | PASS (0.09s) |
+| `TestACompletedRunIsRefusedWithoutASecondWrite` | PASS (0.01s) |
+| `TestAMissingGrantBlocksBeforeTheWrite` | PASS (0.01s) |
+| `TestACoveringGrantLetsTheWriteThrough` | PASS (0.13s) |
+
+**1回目の実行は失敗しました**（job 127933291451）。`TestACompletedRunIsRefusedWithoutASecondWrite` が `the first run must succeed: results=[{Operation:sales.close Status:blocked Detail:no precondition check is configured}]` で落ちています。**試験の欠陥**であり、実装の欠陥ではありません。無人実行（`Autonomy == "unattended"`）の計画が前提条件の検査関数を渡していなかったため、実行計画の判断ではなく「検査が無い」という別の理由で止まっていました。この試験は「完了した実行を拒否する」ことを見るものなので、`noConditions()`（何も止めない）を明示して渡すよう直しました。DSN の無い環境ではスキップしていたので、**それまでの「試験が通っている」は実行の証拠ではありませんでした**。
+
+**この記録が示すこと**: 四系統の判断が、実際の PostgreSQL 16 の行の状態を変えない／変えることとして観測できた。
+**示さないこと**: 本番の Provider・実運用の権限・性能・業務手順。CI の service は使い捨てで、本番と同じ構成ではありません。実装が完成したことでもありません。
+
