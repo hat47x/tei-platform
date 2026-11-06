@@ -183,7 +183,7 @@ G3のv2公開判定に加える最小の**反証ケース**を既存Ownerへ割�
 | **E3：書込みの確定境界（#1174/#1129）** | 同一OperationIDでcommit→ACK喪失→再起動→Lookup、権限失効・CAS衝突、post-commit不正Result。DB状態とReceiptを別Connectionで観測 | `Committed`と`Unknown`を区別。Generation/HostのDrainをDB rollbackとしない。Owner未受理のDenied/Outcomeを創作しない |
 | **E4：動的／静的Target比較（#1223/#259/#2390）** | 動的形態はG3の実2 Consumer/常駐v1/v2/容量/失敗復旧/SLO、静的形態はG4の実リンクされた依存閉包・サイズ/起動/RAM・外部HostでのContract回帰 | 片方の結果を他方へ流用しない。Studio Wails Hostを第二Application Targetとして数えない |
 
-### 4.1 統合済み部品から始める最初の実証パケット（2026-11-02のmain照合／本追補ではNOT RUN）
+### 4.1 統合済み部品から始める最初の実証パケット（2026-11-02のmain照合／局所試験は2026-11-07に実行）
 
 **E0〜E2の実行入口であり、新Gate・実行APIではない。** #2587（標準Operation/Artifact/CLI）、#2275（Host Application RouteとService Carrierの合成）、#2637（D2 Field Grant再検査）はmain統合済み。これらは**異なるContract・Callerを持つ独立経路**であり、同一業務RequestのE2E実証ではない。#2629の横断計画は正式Meaning/Provider接続を代行しない。
 
@@ -207,6 +207,13 @@ go test ./internal/driver -run '^TestD2DriverRechecksAuthorityAfterCompleteSourc
 git status --porcelain=v1 --untracked-files=all
 git rev-parse HEAD
 ```
+
+**2026-11-07の実行記録**：上のコマンド群を、`origin/main`の`18cf8ae0`で一つの固定checkoutから**別プロセスで**実行しました。記録と生データは[構成Kernel移行Gateの最初の実証パケット実行記録](../evidence/COMPOSITION_FIRST_CONSUMER_RUN_2026-11-07/README.md)にあります。
+
+- A経路で`validate`・`source-index`・`operations`・`artifacts`が成功し、`operations`の`modelRevision`と`artifacts`の`inputRevision`が同じ値（`sha256:c60ed68c…b04d`）でした。操作面の5操作・4欠落は`TestSurfaceWorkspaceStandardCRDFixture`の期待と矛盾しません。
+- B（`TestCanonicalQuoteActionUsesHostOwnedGenerationServiceRoute`）とC（`TestD2DriverRechecksAuthorityAfterCompleteSourceRead`）も、Aとは別の試験としてPASSしました。
+- 依存の形でも、Aの`cmd/tei`は`internal/composition`を含まず、Bの実行単位は`internal/operations`を含みません。`internal/servicehost`は非試験のファイルからどこもimportされていないため、**Cの試験成功を実HostからのService Carrier呼出しと読み替えません**。
+- **この実行が示さないもの**：A・B・Cが同一の意味／Operation／Request identityを通ったこと。Owner受理、Host current Route、実DB Effect、実Provider、実SUI Browser、`tools/repository-health-check.sh`の全項目。`operations`と`artifacts`が読んだSource bytesの同一性も、`modelRevision`の一致だけでは示していません。**G1〜G4の合否は変わらず**、判定記録も別に必要です。
 
 **製品としての次の一辺**：Aの選択したBusiness Action／Contractと、BがHost所有の現在Route・Service Acceptanceから実Providerへ渡すContractを、実際に**同一の意味／Operation／Request identity**として結ぶ既存Callerを探索する。なければ「未接続」と記録し、A/B/Cの個別PASSを混ぜない。まず実在するread-only Contractを固定し、書込み・Receipt・実DB EffectはE3/#1174、外部Java/.NET/Wasm実LoadはE4/#2390に渡す。
 
