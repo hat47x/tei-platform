@@ -273,6 +273,50 @@ E1とE2は最小の共通面が成立した時点から重ねて実施できる�
 - **優先順位**：今はAI生成トークン数やUI画面数を増やすより、この一件で`Source selected ≠ Source consumed ≠ Candidate valid ≠ Meaning accepted ≠ Host currently authorized ≠ Effect confirmed`を証拠付きで示す。P0の停止位置を測り、現在の#3030・#267・#1180・#2514・#1163のOwnerに戻す。
 - **未受理**：この節はDocsの接続計画のみ。`*.tei.md` Reader/Parser/Editorの実装、同一Fixtureの実CLI・AI/Harness・OS/External LLM・Studio/SHO・PG/Host、M/Gの実結合、生成精度や性能、Owner受理を実証・採用したと主張しない。第二のReader/Registry/Proof Engine/Runner/Host/Oracle、固定Gateの改変はしない。
 
+## 5.7 既存形式の実Provider検証と新Authoring移行を分離し、完全性証拠で合流する（2026-11-07）
+
+### 5.7.1 前節P0の依存関係を修正する：二レーンと一つの合流条件
+
+§5.6の「`*.tei.md` Reader/Parser実対応を初回P0の前提とする」は**新形式Authoring→Shared Acceptanceを主張する場合**に限定する。旧`*.tei`で現行Loader/Function/Providerを観測する**P0-L（Legacy Runtime Read）**を、Reader未完成のため停止させない。一方で新`*.tei.md`を使った**P0-M（Markdown Source Admission）**の結果を旧`*.tei` Readerで代替しない。二レーンを分ける判断は、既存[Script起動 Draft #2884 §10](https://github.com/hat47x/tei-platform/pull/2884)のL/Mに整合する。
+
+| レーン | 最初に行う既存経路 | 認定できる最大のClaim | 認定できないClaim |
+| --- | --- | --- | --- |
+| **P0-L：Legacy** | 固定済み`*.tei` → 実Workspace Load/Language・Role Selection → 既存Function/Query/Provider read-only → 独立Reader/Expected | **実際に読んだ旧Source・実Provider Read範囲**での値／診断適合 | `*.tei.md`のMarkdown Reader/Parser、対象全件の網羅、Owner正式意味受理、新形式との同値性 |
+| **P0-M：Migration** | [#3030](https://github.com/hat47x/tei-platform/pull/3030)のTM-02/03/04/14と、[Draft #3031](https://github.com/hat47x/tei-platform/pull/3031)の未対応Source Guard → 真のMarkdown Container Reader/選択Scope/Plugin Pin → Parser/実消費の逐次照合 | `*.tei.md`を**どのSource Kind・実byte/spanで読み取ったか／未対応なら拒否したか**という限局Claim | 実Provider結果、旧Sourceとの意味同等、Candidate/Review/Host/Business受理 |
+| **P0-J：合流** | L/Mで別々のSource Revision・実消費byte・Language/Operator Pin・必要対象集合を観測し、**同じ業務Requirement/独立Expected**へ対応付ける | 同一Meaningを主張する**範囲を明示した条件付き比較** | 同値値/同一Canonical ID/単一CI成功だけで全面移行完了と宣言すること |
+
+**移行計画のOwner**：文書移行の横断検収・TMD-01〜12は[#2667](https://github.com/hat47x/tei-platform/pull/2667)へ、Authoring表層/既存TM-01〜14とM0〜M6は[#3030](https://github.com/hat47x/tei-platform/pull/3030)へ置く。#2667のTMDは#3030のTMと対応付け済みであり、本書で第三のMigration Fixture集合を設けない。#3031は未対応の新Sourceを黙って検証PASS扱いしない**暫定Guard**であって、Markdown Reader実装ではない。
+
+### 5.7.2 Source／Target／Guardの「必須集合」と「実観測」を分ける
+
+[main統合 #2926](https://github.com/hat47x/tei-platform/pull/2926)の`semantic.EvaluateCompletion`は、与えられた`TargetSet × EmptyPolicy × Predicate`に対する`holds/fails/unverified/contradiction`を判断する有限評価器として利用できる。ただし**Callerが`CoverageComplete=true`を渡したことは、ProviderからOwner対象全件を取得した証明ではない**。必要対象を列挙した根拠、実取得Row/Field/Relation、負例・空証明・未観測対象、Snapshot/Principal/RLS/Provider Scopeを別列で照合しなければ、完全性は`unverified`のまま。
+
+| 連鎖の段階 | 必要な集合・観測値 | 誤って合格させない条件 |
+| --- | --- | --- |
+| Source/Import/Plugin | `required source closure` vs `discovered` vs `managed` vs `loader-read` vs `parsed` vs `actually consumed` | Catalogやvalidateの0件成功、未選択Source/Pluginを無関係と誤認 |
+| Role/Rule/Function | Required Rule・Referenced Subject・Operator Pin vs Evaluated Rule/Context/Field | 出力Fieldだけを見て非表示Predicate/NOT EXISTSの依存を省略 |
+| Provider/Target Set | Ownerから独立に決まるRequired Target/Identity/Scope vs 実Read Row/Field/Complete Slice/Empty Evidence | 取得0件・行Subset・CallerのCoverageComplete自己申告を全件証明へ昇格 |
+| Action/RunPlan | 必須Guard vs 供給Guard vs 当該Attemptで実評価済みGuard、current Grant/Target/Period | 検証済み一部Guard、Observer存在、RunPlan completedをProvider Effect確定へ昇格 |
+| Consumer/Result | 実Artifact bytes/Generation/Selection epoch/Disclosure vs 返却Request/Receipt/独立Read | 旧Workspaceへ由来する後着Responseや過去Receiptを現在結果とする |
+
+この表は新しいProof EngineやUniversal Completion APIではない。#1180＝必要Obligation/Scenario SSOT、#2514＝独立Expected/Mutant判別力、#2595＝実Build Source、#2823/#3031＝実Loader/未対応拒否、#2586/#2628＝実Provider Read、#1125/#2926＝Completion評価、#2598/#1174＝実Target/Grant/Effect、#1163＝同一Attempt証拠の連結に帰属させる。
+
+### 5.7.3 最小の対照を既存Fixtureに重ねる（新規独立Caseを起こさない）
+
+1. **Legacy正例＋部分取得負例**：同じ旧`*.tei`のSource/Model/Queryで期待されるTargetSetをAI生成Actualと独立に固定。実Provider read-onlyが取得したSubject/Field/Scopeを記録し、真部分集合を意図的に与えても`holds`に昇格させない。Provider接続未取得ならSource-static/Referenceに留まる。
+2. **新形式の拒否→正常受付**：同じ`*.tei.md` Sourceを現行Reader未対応条件で`TEI_MD_PARSER_UNBOUND`（#3031）とし、将来Reader/Pinが成立したときに限り真にParserが実消費した範囲を観測。**拒否が正しいことと、受け付けたとき正しく意味解釈できることを正負対照**にする。
+3. **旧新合流**：旧形式／新形式それぞれのActual Source bytesとSource spanを独立に記録し、同じIndependent Expectedを使って**対象範囲・意味差分**を比較する。生成したMarkdown/変換結果自身がExpectedを記述した場合、独立検証基準として採点しない。旧Sourceと新SourceのID一致／0件／CI総Greenだけで意味移行済みとしない。
+4. **Completionの最小負例**：TargetSetが3件と独立に確定しているのに2件しかLoader/Providerから到達しない場合、`CoverageComplete`が機械的にtrueでも、**対象集合のCoverage主張は未立証**。別途与えた不正1件を検出して`fails`となる局所ケースと、全件確認した`holds`を混ぜない。空集合はOwnerが選んだ`EmptyPolicy`と独立空証明の有無で判断する。
+5. **業務/実行は後段で区分**：P0-L read-only成功とP0-M Parser適合の結合後、固定Candidate→#267 Shared Acceptance→Source Reloadを実証。Script Publish/Queue/Start Admission→current Grant→Provider Commit/Receiptは#2884/#1174へ引き渡す。**Publish承認やQueue時のGrantを実Dispatch/Commitの現在Grantとしない**。Cancel/Task Completeはno-effectの証明ではない。
+
+### 5.7.4 現行の確認できた実装・未実証範囲
+
+- **実装された限定Guard**：[#3031](https://github.com/hat47x/tei-platform/pull/3031) fixed HEAD `63953ccb5c12ead26ec1268e7c0afdba4eff66ae`。Focused GoおよびWorkspace packageの試験・vet、Actions #42217379093 は限定success。ただし**Draft／未統合、現mainの安全性として流用しない**。
+- **Completion評価器**：[#2926](https://github.com/hat47x/tei-platform/pull/2926)はmain統合済み、限定`TestEvaluateCompletion`成功。`TargetSet`/実Coverage/実Provider read/Hand-offは未接続。
+- **Bootstrap**：[#3028](https://github.com/hat47x/tei-platform/pull/3028)のBS-02/03/06は既存Go APIに正負対照を持つDraft。新Parser実受入、全BSの実証、実Plugin有効化、全実Binary同一性は別。
+- **Source/AI Oracle**：#2901 Green→#3017故意Redは一件のProduct Evaluator誤実装をAI追加Scenario自身が検出した限定結果であり、`*.tei.md`/実Provider/全Target Coverageを認定しない。#2514が以後の検出力とExpected独立性を所有。
+- **新P0-L実Provider→P0-M実Markdown Reader→P0-J旧新合流→実Candidate/Shared Acceptance→Host**の同一版統合試験、実OS/外部LLM送出、実Tenant/Policy、Owner業務意味受理は**NOT RUN／NOT ACCEPTED**。Go単一バイナリ標準、外部Hostの権限主体、第二Meaning SSOT/新Host/Registry/Proof Engineなし。
+
 ## 6. 採否と現在の限界
 
 - **Owner方針として確認済み**：外部要件の十分な机上評価を基盤実装に先行させること、CUIと標準Pluginを並行開発すること、ヘッドレス実証を基準にGUIを後続実装すること。
