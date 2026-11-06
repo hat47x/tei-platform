@@ -66,6 +66,9 @@ func checkWorkspaceSourceRoots(rootHandle *os.Root, roots []string) ([]Workspace
 				})
 				continue
 			}
+			// A symlink escape or other containment failure is not a finding:
+			// fail closed exactly as scanManagedFiles does. Reporting it as a
+			// warning would accept the escaped root.
 			return nil, fmt.Errorf("inspect workspace source root %q: %w", sourceRoot, err)
 		}
 		if !info.IsDir() {
