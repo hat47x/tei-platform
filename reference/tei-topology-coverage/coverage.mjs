@@ -111,6 +111,12 @@ export function boundedAbsence(view, query, witness) {
   let rev; try { rev=revision(witness.snapshot); } catch { return unknown('invalid_witness'); }
   if (!view.graph || !view.table) return unknown('invalid_projection');
   if (view.revision!==rev || view.graph.revision!==rev || view.table.revision!==rev) return unknown('mixed_revision');
+  // This tiny evaluator supports only identity predicates. Silently ignoring
+  // a role/participant/WHERE/window constraint would forge a negative answer.
+  // In particular, relation scope means its declaring scope, not endpoint scope.
+  const supportedKeys = new Set(['kind','scope','type','id']);
+  if (Object.keys(query).some(key => !supportedKeys.has(key)))
+    return unknown('unsupported_query_predicate');
   if (!exact(query.scope) || !['subject','relation'].includes(query.kind) || !exact(query.type) ||
       (query.id !== undefined && !exact(query.id))) return unknown('invalid_query');
   // A known row is not necessarily disclosable to this Consumer.
