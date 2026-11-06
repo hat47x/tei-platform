@@ -3322,7 +3322,7 @@ Ownerが求める「選択した業務Data群への広域適用＋Record/用途�
 - **M3**：コピー版の`SurfaceWorkspace`ではCase用`list/read`が増え合計4件になり、Case`read`のInputはCase自身の`caseId`。MembershipID・OrgUnit ID・表示行番号へすり替わらない。
 - **M4（否定）**：前後とも`Effect=read-only`、`Binding`空、`Effects`空、`AuthorityLimits`保持。**Operation candidate ≠実Function/Provider/Host認可**。当該DBに実Case行が存在することも未検証。
 
-**実証状態**：GitHubのCode Blob/差分・Branch base SHAを確認。新PR #3024のGoファイルをContainerへ同じbyte列として写し、`git hash-object`がGitHubのBlob `8d004c39ba86bf1dbc92760d68b0d96cbf10118e`に一致、`gofmt -d`は差分0行で**構文/整形レベルのみPASS**。ただし本子PRの`go test`／vet／実Native CI／実Provider／実DB／Owner受理は**NOT RUN**。親#2681固定HEADの[Native E1 CI](https://github.com/hat47x/tei-platform/actions/runs/42031418190)はsuccessだが、同HEADの[Repository Health](https://github.com/hat47x/tei-platform/actions/runs/42031418161)はgofmt-l検査でfailure。いずれも子PRの新テスト結果ではない。親#2681はmain未マージ。単にPRへコードがあるだけでM1〜M4のPASSを宣言しない。積上げPRはParent Review/統合後にfixed exact-head Go TestとRepository Healthを取得してから採用する。
+**実証状態の更新（2026-11-06）**：新PR #3024のGoファイルはGitHub Blob `8d004c39ba86bf1dbc92760d68b0d96cbf10118e`と同byteのローカル検査でgofmt差分0。加えて、当該Blobを含むexact HEAD `1d15c31657d37c8a0d26559162ff81fa6b8d70c2`の[Native Case Mapping CI #42203835508](https://github.com/hat47x/tei-platform/actions/runs/42203835508)で、固定HEAD照合・対象Go test `TestOrgCaseExplicitPersistenceEnablesReadCandidateOnly` **PASS**、従来の`TestOrgHeadless`回帰・native Workspace `tei validate`も成功（job #127845397718）。従って**M1〜M4は実Go Parser/Loader/OperationSurfaceに関する局所E1b試験としてPASS**。実Function Data Context/実Provider Rowset/実DB/Host Grant/Consumer/Owner受理は依然NOT RUN。親#2681はmain未マージ、親[Native E1 CI](https://github.com/hat47x/tei-platform/actions/runs/42031418190)は別版のPASS、同親[Repository Health](https://github.com/hat47x/tei-platform/actions/runs/42031418161)はgofmt検査でfailure。これらを子の実Product合格やRepository Health合格へ流用しない。
 
 ### 77.3 Product E2aへの接続：新Runnerでなく既存三つの境界をつなぐ
 
@@ -3339,3 +3339,37 @@ Ownerが求める「選択した業務Data群への広域適用＋Record/用途�
 **#2611の制約**：今は一つのAlias+MappingでM1〜M4を検査する。将来の同Semantic Data／別Alias／別Tenantのケースでは、`emitOperation`のfirst deterministic winnerと`mappingBasis`の限定入力を実Target同一性に使ってはならない。Alias順を反転した時に候補の解決理由・必要な区別が表面化することを#2611 PM-02/04へ渡す。Provider DB Aliasを専門家が初回から手入力するUXへ戻さず、既存Mapping/Targetの宣言と必要時のAI提案・Owner判断を保持。
 
 **維持する線**：#1119の実Product P0-a/P0-b、#2586の実Reader接続の優先順位は不変。#2681本文・main・採用済みADRは変更しない。新Core OrgEntity、第二Provider/Query Runtime、中央Tenant/Grant Registry、新Host、未受理DB/Host Actorは追加しない。独立Expectedと実際に観測した状態を分離する。
+
+## 78. E1b局所PASSからE2の一件実Readへ：Case Key、Tenant Scope、実Providerの同一性を固定する（2026-11-06、採用前）
+
+### 78.1 観測済みの「できること」と、次に作るべき一つのProof
+
+#3024の固定HEADで、実TEI Source→Persistence Mapping→Read Operation Candidateが成立することは局所PASSを得た。次の要求は新しい別モデルを作ることではなく、**Case C1のFunction Invocationから実Providerに到達したことを示す一枚のE2 Read Receipt/Observation**である。既存#2586のFunction Data Context、#2622 Data Operations/Provider、#2611 Alias実対象、#2514独立Expectedを合わせるが、互いのPASSを自動合算しない。
+
+| 証拠境界 | 既に観測済み | 次に必要な入力／独立Expected | 欠ける場合 |
+| --- | --- | --- | --- |
+| Source/World | Go実LoaderがCase Mapping追加→Read候補を導出する固定HEAD PASS (#3024) | 実Functionが**同じSource/World/Model revision**を読み、他ScopeのCaseと混同しない | 候補のSourceと実消費Source不一致 |
+| Business target/Relation | `CaseRecord.caseId`と`handlingUnitId`が別属性、関係名`handlingUnit` | C1の業務識別とD1へのRelationを、**型付きRelation path**と取得Field/Grainで固定する。Display Row IndexやMembership occurrenceはCase Keyでない | `function-context-not-connected` |
+| Function Context/Query | `OperationSurface`の`read`はDerived candidateのみ | 明示Function Context/Query ContractでC1、必要Row/Field、Source Role、取得対象と非出力Predicate、選択時点/completeを記録 | `query-context-unbound` |
+| Physical Provider | 合成`persist`宣言はTarget Table/Case PKを記述 | Application DB alias/実Provider/SQL+argsまたは他Data Source、実ReaderのRow/Field/Cohort/completeを**同一Invocation**で観測 | `provider-read-unobserved` |
+| Host/Consumer | もとのRead-only Operationは権限なしを明示 | Current Principal/Resource/Tenant Scope、Consumer用途に対して何を開示したか、部分/0件/deniedを区別 | `grant-unqualified`／`consumer-unqualified` |
+| Independent oracle | E1bの元2候補→変更後4候補を実Goで照合 | 同Case C1のExpected（Case自身の識別、D1 relation、Row+Field、0件・別Tenant・欠落負例）を**Actualとは独立**に固定 | E2 Product PASSを留保 |
+
+### 78.2 一つのCase Keyを全Tenantで普遍的な物理PKと誤認しない
+
+#3024のコピーWorkspace内に足した `primary-key organization.case_record.case_id` は、**単一Database/単一MappingでOperation導出を判別するための最小Fixture**である。この試験はTenant別レコードを持たず、Client/Host/ProviderのTenant Scopeもなく、`caseId`が全Tenantでグローバル一意であることを示さない。
+
+- **専用Tenant DB/別Schema**：その物理スコープでCase IDが一意なら、そのMappingのPKにCase IDのみを採用できる可能性がある。ただし当該DB Alias/Providerの選択根拠、現在Grant、実Readerのスコープを別証拠にする。
+- **共有TableでTenant A/Bに同じC1が存在**：別TenantのRowの同一視を禁じる。Tenant IDを全Canonical Domain Rowへ義務化する代わりに、選んだProvider/DB設計が持つ**実Row identityとTenant Scope enforcement**を独立検証。共有物理Tableでの複合PK、別partition、RLS等はTarget固有の実現方法であり、最終方式をここで確定しない。
+- **共有Master/通常Org Data**：Tenant-private Caseと公開/共通OrgやCatalogは同じ厳格度で秘匿する必要がなく、Scopeは明示的に指定する。業務Orgの親子や同PersonのMembershipからTenant Grantを推論しない。
+
+[Draft #3016](https://github.com/hat47x/tei-platform/pull/3016)はSQL Referenceに**Tenant A/Bで同一orderId文字列**を導入した別テスト案であり、この組織CaseRecordの実E2結果ではない。SQL Reference/Org Native/.tei/Providerを混ぜた擬似的な「統合成功」は禁止する。
+
+### 78.3 最小次工程と決定の境界
+
+1. **#2586/#2506**：一つのCase C1に対するRead-only Function/Query Contextを既存Data/Relationで宣言し、Source/Model/Instance IDとField+RelationのRequired Setを記録する。Ruleによる責任Manager決定や複数Employment合算を先に内蔵しない。
+2. **#2622/#2611**：実ProviderにC1のQueryを渡し、戻ったRow+Field/Scope/Cohortと対象DB Alias/Mappingを同一実行試行で対照。Aliasの辞書順先勝ちを物理Target資格にしない。
+3. **#2514/#2510**：独立Expectedに正例C1→D1、別Tenant C1→D2、存在0件／未取得／denied、Source改版を追加するが、局所Fixtureの結果を別のProduct E2として再利用しない。
+4. **#1174/#2564**：実Readを得るまではWrite/Approval/異動時のCase保存、Commit/Receiptを後続Gateとして保持。業務上の意味受理はOwnerが独立判断する。
+
+**採否**：E1bでSource→Mapping→Surfaceの実装可能性を確認済み。次のE2a/E2b/E2cは未実証。新たな汎用Org Host、HR専用Runtime/別DB Engine、全Domain共通Tenant Key/認可Coreを作らない。#1119のP0優先順位と、他担当#2681/#2586の変更責任を保持。#3024/#2389はDraft/未マージ・競合/親依存を確認してから統合する。
