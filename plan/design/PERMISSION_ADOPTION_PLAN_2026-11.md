@@ -110,3 +110,16 @@ permission sales.order.register network connect db:5432
 - 互換のための「指定パスをそのまま付与にする」経路（`writeLineage`）は削除しました。
 
 **残る限界**: 付与を作っているのは同じスクリプトであり、**付与の正当性を第三者が決めているわけではありません**。環境（`PermissionGrants`）から配る形にするのが次段です。
+## 13. 環境の付与を配る入口（2026-11-06 追記）
+
+`tei grants` を追加しました。作業領域の環境が宣言する付与を、**アダプタが読める JSON** に書き出します。
+
+```sh
+tei grants -workspace reference/workspace -grants-out grants.json
+```
+
+- 出力: `{"application":"…","grants":[{"capabilityKind":…,"capabilityId":…,"kind":…,"access":…,"scope":…}]}`
+- 並びは能力ID・種別・スコープ・アクセスで安定（実行ごとに変わらない）。
+- 宣言が無ければ空の一覧（**空を「許可」と読み替えない**）。
+
+**未着手**: この出力を `-grants` としてアダプタの呼び出しへ渡す配線。参照ツールの能力は環境に宣言されていないため、**宣言を足すか、ツール用の付与を環境に置くか**の判断が先に必要です。
