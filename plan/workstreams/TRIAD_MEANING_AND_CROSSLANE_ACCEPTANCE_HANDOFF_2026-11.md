@@ -192,3 +192,40 @@
 **次の最小実証順**：#3031で「未接続の失敗を隠さない」を維持→#3030/#988/#2621が明示Parserとbyte spanの閉包を限定PoC→#1440が一段落の現状/将来/仮説と回答履歴を候補化→#1125/#267が影響するBusiness Claimだけを受理→#2586/#2514が実Readerと独立Expectedを照合→#2598/#1174が実書込Target/Grant/Receiptを別検収。#1119の既存Gateと、#2620 Role・#2600 Build再資格化のOwnerを置換しない。
 
 **状態と限界**：#3031の固定HEAD Go/CI成功は暫定ガードのみの局所証拠で、Markdown Parse/Role Lowering/Business Accepted Meaningの成功ではない。上記X1〜X6の接続Go/CLI/DB/GUI/SHO/実業務試験、Owner正式Meaning Acceptanceは**NOT RUN／NOT ACCEPTED**。本節はdocs-only、既存規約の新enum・第二Registry/Parser/Acceptance/Host/Workflow Engine追加は求めない。
+
+<!-- tei-triad-completion-effect-nontransitivity-20261107 -->
+## 10. 11/7横断追補：業務完了の未検証とCommand作用の不明を混同しない（実装済みの差分を既存受入へ接続）
+
+**今回の追加判断**：[#1125 CDE-01〜04](https://github.com/hat47x/tei-platform/issues/1125#issuecomment-6687996326)が指摘した`観測0件≠業務対象Lが空`と、[#1174 F-Pre/Post/NoReport/SameKind](https://github.com/hat47x/tei-platform/issues/1174#issuecomment-6690399598)が指摘した`Commandの失敗報告≠Provider効果なし`を、**同一受注Actionの二つの独立した判定**として接続する。既存CompletionState／Effect状態とScenarioを再利用し、新しい総合成功State/Proof Engineを追加しない。
+
+### 10.1 先行実装と証拠の上限（mainとDraftを明示）
+
+- [main統合 #3051](https://github.com/hat47x/tei-platform/pull/3051)（merge `b30ce3708a8385dcf219aed9f53e594bc0e95d12`）の現 `internal/semantic/completion.go`（取得Blob `e42610e9159e02ba3b5c7b84c46742a846331e64`）は、`EmptyPolicyDeny && Targets=[]` でも `CoverageComplete` が無ければ `CompletionUnverified` を返す。既知の述語違反があればpartialでも `CompletionFails` は維持。固定HEADの[Repository Health #42298116044](https://github.com/hat47x/tei-platform/actions/runs/42298116044)はcompleted/success。これは**Callerが申告するCoverageの出典／Tenant／時点／Scopeを実検証した証拠ではない**。
+- [main統合 #3042](https://github.com/hat47x/tei-platform/pull/3042)（[Health #42251024310](https://github.com/hat47x/tei-platform/actions/runs/42251024310) completed/success）は、`Authorizer == nil` と宣言された期間の実状態不足を**実行前に拒否**し、**Executor実行後**の宣言外効果／Outcome／Applied不一致を `EffectUnknown` とLifecycle `unknown` へ記録。同owner/generationの盲再送を拒否する。これは実Providerで作用0やrollback成功を証明するものではない。参照用`ReferenceAuthorizer`は実主体・実Grantの検証を代替しない。
+- [main統合 #3047](https://github.com/hat47x/tei-platform/pull/3047)の `GrantAuthorizer` は宣言と発行済み許可の包含を比較する限定Reference。許可の発行/保存、CLI・Studioの実Command経路、実Providerの最終対象検証に結合済みとは扱わない。
+- [Draft #3030](https://github.com/hat47x/tei-platform/pull/3030) は`*.tei.md`のM0〜M6/TM-01〜14という移行主担当のまま。旧`*.tei`に対するCDE/Command Go成功を、新形式の実Source/Readerが消費した成功へ転用しない。
+
+### 10.2 同じ受注O1のClaimにおける「停止理由」の直交対照
+
+下表のビジネス規則・Source/Row/Grantは**合成例の検査用仮定**であり、Ownerが正式に受理した受注規則ではない。Condition判定・Dispatch・Effect・Owner完了を同じ一つの合否に縮約しない。
+
+| 既存検収Caseに対応させる状況 | 業務条件の判定 | 実行・実効果の別判定 | 誤った昇格 |
+| --- | --- | --- | --- |
+| **CDE-02**：Lを0件観測、取得完全性未確立、空集合deny | `unverified`（現main修正済み） | 未取得なのでBusiness上の成立・不成立は言えない。**未Dispatch**ならその事実を別記 | `0 observed→fails`、または空集合allowへ勝手に変更 |
+| **CDE-01**：同一Scope/RevisionでLが真に空、deny | `fails` | Condition不成立から過去のEffectの不存在は導けない | `fails→DB rollback済み` |
+| **CDE-04**：対象内の違反L1を一件観測、他はpartial | `fails`（反例に必要な対象束縛は独立検証） | 他明細／他Tenantの不存在は証明していない | Partialだから常に`unverified`にする過剰防御 |
+| **F-Pre**：条件が`holds`でもAuthorizer/period/required guard不足 | 業務条件は局所成立し得る | **実行前拒否**。実Executor非到達、変更なしの対象を必要に応じ独立Readで確認 | `Business holds→Authorized/Committed` |
+| **F-Post**：実Executorが返したApplied/Outcomeが宣言と不一致 | 完了条件は別評価 | `EffectUnknown`、Lifecycle `unknown`。同OperationIDでReceipt照会→同Target別経路Readが先 | 上位Error/unknownを`Effect=0`として別ID再送 |
+| **F-NoReport/F-SameKind**：Applied空／同Kind異Dataの追加更新 | 観測済み条件を超えるBusiness完了は未確定 | `Applied=[]`は実作用ゼロの証明ではない。追加更新は関係先の正当なcascadeか対象外作用かを別判定 | Result成功や報告件数だけでProvider効果と許可範囲が完全と扱う |
+| **ORG-TB**：同じCase IDを別Tenantが持つ／承認Resourceと実更新Rowが異なる | 正しいSubject・承認Revisionに限定して評価 | Grantの論理名、実Resource、Provider更新Targetの同一性を別照合。Case ID文字列一致は不十分 | 他Tenant Caseへの書込み・承認実施を同一と扱う |
+
+**互いに代用しない証拠**：Businessでの`CompletionFails`／`CompletionUnverified`、Commandの事前拒否／事後`EffectUnknown`、ProviderのCommit/Receipt・独立Postimage、現在Grant、手作業Handoffは**同一Attemptで並立し得る**。例えば違反明細が実在して業務条件が`fails`でも、別の既往CommandのEffectが`unknown`ならその効果を消したと解釈してはならない。逆にCompleteな空の不成立と、0件しか観測できなかった不明状態は、その後のデータ取得・是正操作の判断が違う。
+
+### 10.3 次の一回の実受入へ渡す最小単位（新Fixture・Gateなし）
+
+1. **#3030/#2823/#988**：対象に実消費されたSource/Role/Operator/Revisionを固定。新`*.tei.md`未Bindingなら実業務の検証を開始せずRaw DraftとProduct Validateの状態を分離。
+2. **#2506/#2586/#2514/#1125**：受注O1の業務上必要な集合L、実ReadのScope/Tenant/Field/Row/Cohort、独立に根拠づけられた`CoverageComplete`、Rule版とExpectedを同じSourceに結ぶ。新修正#3051のCDE-01〜04を含む現mainのGo結果は**局所Evaluator合格**であり、実Readerの完全性は未資格。
+3. **#2598/#1174/#1163**：同一O1のAuthorizer/Period/Current Grant/Resource/Payload/ExpectedVersion、Executor呼出有無、適用操作報告、Commit/unknown/Receipt/別接続Readを一Attemptで実測。#3042で事後unknownは既に表現されるが、`Applied=nil`や同Kind追加Scopeを実際に観測したTargetとして見なさない。
+4. **#2389 §82/82.5／#1125/#267**：承認したBusiness Actor/職位/委任の有効時点、Hostで許可されたResource、実ProviderのRowの同一性と、手作業/外部Handoff/Ownerによる正式意味受理を最後まで独立列に保持。既存[ORG-TB-01〜10](https://github.com/hat47x/tei-platform/pull/2389)と[#1174 Fケース](https://github.com/hat47x/tei-platform/issues/1174#issuecomment-6690399598)へ割り当て、新しい組織・Command検証正本を作らない。
+
+**結論と未実証範囲**：局所`Completion`修正と局所`EffectUnknown`対応はmainへ統合済み。一方、両者を**同一TEI Source・同一受注O1・実Providerの同一Attempt・Owner受理**で通した製品検収は未実施。PR/CIごとの限定成功を寄せ集めてG1/G2合格としない。実PGでのCommit・別Connection読取、GrantとProvider実更新Rowの比較、業務受理、GUI/Consumer現在性は**NOT RUN／NOT ACCEPTED**。追加の新Status enum、Universal Authorization/Workflow/Effect Engine、独立検証基準の第二正本は作らない。
