@@ -368,7 +368,7 @@ TEIの設計へ反映する観点：
 
 | 短報起点の反証課題 | 既存Owner／実施先 | 最小Fixture・確認する負例／独立Evidence |
 | --- | --- | --- |
-| **TR-11-SPEC：仕様に沿った検証と空虚なPASSの排除** | #2514（独立Oracle／mutation）・#2619（定義と受理）・#1180（Scenario）・#2811（テスト記述） | 同じ受理候補に、満たす例、反例、曖昧／欠損Source、旧Revision、意図的なEvaluator mutantを用意。生成コードやAIの提案とは独立したExpectedで検査。検査対象Sourceが実際に読み込まれたか、条件が空集合で偶然真になっていないか、現ArtifactをConsumerが受領したかを別々に示す。#2514にある一つの局所Mutation killを全規則の検証済みへ一般化しない |
+| **TR-11-SPEC：仕様に沿った検証と空虚なPASSの排除** | #2514（独立検証基準／mutation）・#2619（定義と受理）・#1180（Scenario）・#2811（テスト記述） | 同じ受理候補に、満たす例、反例、曖昧／欠損Source、旧Revision、意図的なEvaluator mutantを用意。生成コードやAIの提案とは独立したExpectedで検査。検査対象Sourceが実際に読み込まれたか、条件が空集合で偶然真になっていないか、現ArtifactをConsumerが受領したかを別々に示す。#2514にある一つの局所Mutation killを全規則の検証済みへ一般化しない |
 | **TR-11-ABI：意味契約／バイナリ形式／Host Authorityの三分離** | #951（論理Capability）・#1861（実Wasm Component／二Host）・#2390（外部Host Consumer）・#943（実Build） | 既存見積もり23ベクトルと独立Expectedを再利用し、同一契約に対する実成果物、byte layout、import、Host別bindingを記録。実行可能な二Hostで失敗／拒否も比較し、Contract一致でもABI誤配置、異Host import不足、現在Grant不足を検出。現時点で実Componentによる二Host実行と正式WIT採択は NOT RUN |
 | **TR-11-STATE：短い成功を実サービス全体の成功としない** | #2514／#1180（テスト対象）・#1129（Lifecycle）・#1174（実Effect）・#1824（Studio） | 再実行／通信断／重複要求／部分確定／後着UI応答／新しい独立入力を共通Attempt・Source・対象に束縛。変更後のexact artifactで再走し、Process exit、表示、参照Executor、Commit、別Readerの観測を分ける。短い合成実行のPASSから本番の完遂を推論しない |
 | **TR-11-GRAIN：データ変換の完全性と粒度の検証** | #2622（Data Operations）・#2506（明示Data Context）・#2514（独立Expected） | 同一意味のRDB実現とAPI／導出候補を、時間範囲、母集団、業務Key、重複、NULL／未取得、順序、集約Grainで照合。数値一致でも取りこぼした行がある例と、partial取得をcompleteと誤表示する例を含める。Model Relation存在だけでは取得範囲を広げない |
@@ -393,7 +393,7 @@ TEIの設計へ反映する観点：
 
 **位置付け：外部研究の実証、TEIでの設計仮説、実装済み証拠、Ownerの判断は互いに別。以下の追加Fixture／比較実験は NOT RUN。** §10.1〜10.4を繰り返すのではなく、既存Ownerの受入をより判別可能にする。
 
-- **M4Bench・対象集合**：[原文](https://arxiv.org/html/2610.37459v1)は、8タスクの制御比較でoperational specだけでも報酬が+0.162改善する一方、全体のSkill効果では行Key F1が+0.003にとどまると報告する。異なる指標・母集団の数値を直接比較しない。全チェックのstrict passはwith-skill 25/280、no-skill 13/280。**計算値の一致・対象Key集合の正確さ・実取得範囲・現在資格を別のOracleにする**。#2506/#1706/#2622/#2514へ接続。
+- **M4Bench・対象集合**：[原文](https://arxiv.org/html/2610.37459v1)は、8タスクの制御比較でoperational specだけでも報酬が+0.162改善する一方、全体のSkill効果では行Key F1が+0.003にとどまると報告する。異なる指標・母集団の数値を直接比較しない。全チェックのstrict passはwith-skill 25/280、no-skill 13/280。**計算値の一致・対象Key集合の正確さ・実取得範囲・現在資格を別の検証基準にする**。#2506/#1706/#2622/#2514へ接続。
 - **Concordat・同意の束縛**：[原文](https://arxiv.org/html/2610.37461v2)の二状態プロトコルは「yes/yep/yeah」を同意として扱い、著者自身が「yes, but not that one」も通り得ることを限界と明記。**提示されたToolの許可・ユーザーが確認した正確なOperation/Target/Version・Hostの現在Grant/Effect Fenceを分離する**。単なる「yes」や同じPlugin所属を実操作対象の許可にしない。#2598/#1174/#1824/#2389へ接続。
 - **Verification Agents・提案と実測の区別**：[原文](https://arxiv.org/html/2611.02285v1)のSpec-first、vacuity witness、mutation、semantic mergeは有用。ただしVIR／Shared Synthesis Fleetの例示的PASSや将来構成を、実製品での全面実証と読み替えない。#2514の#2901対照→#3017のrelation-unique一行Mutant killは、合成Fixture・特定Evaluatorで独立に確認できた**限定実測**である。次の反証は空集合、必要Source未読込、NULL/unknown、scope不完全に焦点を当てる。
 - **Rethinking Verification・別Reviewerの費用対効果**：[原文](https://arxiv.org/html/2610.34577v1)では独立Criticが、実験された完了ゲートより良い精度／追加費用のバランスを示した。**別AI Reviewerが賛成したことは独立Expectedではない**。#2514/#1180/#2667で既知Mutantの検出・非検出、誤報、追加トークン／時間を並記し、常設の複数Critic導入は実測後に判断する。
@@ -409,7 +409,7 @@ TEIの設計へ反映する観点：
 | --- | --- | --- |
 | **E1 集合・粒度**：親H、子D1=2件、D2=3件。JOIN 6行は各Entityの件数ではない | 集計値一致だけで対象行・関係が正しいと判断、JOIN増幅 | #2506 FC-01/#2622 DO-01/#2387。実Readerの母集団まで未検証 |
 | **E2 取得資格**：D2先頭1件のみ、完全な0件、未取得、NULL、非開示、別Snapshotを区別 | 0件と未知・部分集合を混同し、全件／不存在／業務完了を推論 | #1706/#2622/#2516。Provider取得範囲とConsumer開示は別 |
-| **E3 判別力**：同一Scenario/Source/Expectedでrelation-unique一行Mutantを注入 | 別CI失敗をMutant kill扱い、弱いOracleを正しいと推論 | #2514の#3017に限定実績。NULL/unknownと不完全scopeは別の未実施試験 |
+| **E3 判別力**：同一Scenario/Source/Expectedでrelation-unique一行Mutantを注入 | 別CI失敗をMutant kill扱い、弱い検証基準を正しいと推論 | #2514の#3017に限定実績。NULL/unknownと不完全scopeは別の未実施試験 |
 | **E4 確認・権限**：受注Aの更新を確認して実PayloadをBへ差替え、Tenant/Grant失効 | 会話上のyes・画面Offer・組織所属だけで実Commit許可 | #2598/#1174/#2389。対象と現在Grantの実束縛は未完 |
 | **E5 Commit不明**：ACK喪失後同OperationIDのReceiptと別接続Readを照合し、新Key盲再送を拒否 | timeout＝未Commit、既存Receipt＝最新Consumer成功とみなす | #1174/#2564。main #2853の実PostgreSQL限定PASSと同一Source/GUI E2Eは別 |
 | **E6 三つの版ずれ**：Source A→B→A、DB実Value A→B→A、Workspace選択A→B後の遅延A応答 | 同bytes／同値／旧Resultを現在の実行・表示資格へ復活 | #2600/#1163/#1824。各Revision/Version/epochを独立に検証 |
@@ -426,16 +426,16 @@ TEIの設計へ反映する観点：
 
 **M4Benchに対応する最小A/B/C比較**：同一の業務要求・実Source・固定Expectedを与えて、A=Task＋Schemaのみ、B=十分なoperational spec（Markdown表、Rule、粒度、NULL、対象集合、時点）、C=Bと同じ内容をSkill/Plugin配送形式で与える。別途D=必要な場合だけ既存Native SQL/Generatorを入力に加える。Dは情報量が異なるためBとCの「包装の効果」とは混同しない。
 
-**測定**：値一致率、Key集合のprecision/recall、全必須Obligationのstrict pass、既知Mutant検出、未実施/unknownを正しく保留した件数、Source/実Build/Consumer対応、レビューの追加時間/トークン、保守・変更量。ExpectedをAgentの出力SQLやCandidateと同じ生成経路で作らない。AI Reviewerの同意と独立Oracleの正しさは別。
+**測定**：値一致率、Key集合のprecision/recall、全必須Obligationのstrict pass、既知Mutant検出、未実施/unknownを正しく保留した件数、Source/実Build/Consumer対応、レビューの追加時間/トークン、保守・変更量。ExpectedをAgentの出力SQLやCandidateと同じ生成経路で作らない。AI Reviewerの同意と独立検証基準の正しさは別。
 
-**実施順・採否**：P0=E1/E2/E3のread-only・既知Mutant再利用、P1=E4/E5/E6の現在Grant・Receipt・後着、P2=E7の実Host/Plugin比較。#1063/#988がDSL・変換、#2514がOracle、#1180がScenario、#1163が同一Attempt、#1174が実Effect、#1824がUIを所有する。新Verification IR、Agent Runtime、Memory Registry、Plugin Loader、Auth Engine、Proof Storeを研究だけで採用しない。
+**実施順・採否**：P0=E1/E2/E3のread-only・既知Mutant再利用、P1=E4/E5/E6の現在Grant・Receipt・後着、P2=E7の実Host/Plugin比較。#1063/#988がDSL・変換、#2514が検証基準、#1180がScenario、#1163が同一Attempt、#1174が実Effect、#1824がUIを所有する。新Verification IR、Agent Runtime、Memory Registry、Plugin Loader、Auth Engine、Proof Storeを研究だけで採用しない。
 
-**証拠の上限**：論文に書かれた効果 ≠ TEIでの実証。Issueへの受入案 ≠ 実装。単一Mutant kill ≠ 全Domain Oracle適格。実PG Commit/Receipt部分PASS ≠ 同一業務UI/Host/Consumer成功。Draft PR #3022は文書への計画反映であり、テスト実行・Owner受理・main統合ではない。研究計画が#1119の既存Critical Pathや主担当の作業ブランチを変更しない。
+**証拠の上限**：論文に書かれた効果 ≠ TEIでの実証。Issueへの受入案 ≠ 実装。単一Mutant kill ≠ 全Domain 検証基準適格。実PG Commit/Receipt部分PASS ≠ 同一業務UI/Host/Consumer成功。Draft PR #3022は文書への計画反映であり、テスト実行・Owner受理・main統合ではない。研究計画が#1119の既存Critical Pathや主担当の作業ブランチを変更しない。
 
 
 ### 10.8 追加精読：存在・不在の証拠と検証の有効性
 
-2026年11月6日。§10.5〜10.7と現行 #2514/#1163/#2622/#2600/#2598/#1174/#1824/#2389/#1180 を再照合した。**以下は研究で直接測定した事実と、その事実からTEIへ導く設計・受入候補を区別する。新たなCore、形式検証器、Evidence Registry、Agent専用認可、TEI Hostを提案しない。** 各課題の具体的な試験実装は既存Ownerが担い、この文書が第二Scenario/Oracle正本にならないようにする。
+2026年11月6日。§10.5〜10.7と現行 #2514/#1163/#2622/#2600/#2598/#1174/#1824/#2389/#1180 を再照合した。**以下は研究で直接測定した事実と、その事実からTEIへ導く設計・受入候補を区別する。新たなCore、形式検証器、Evidence Registry、Agent専用認可、TEI Hostを提案しない。** 各課題の具体的な試験実装は既存Ownerが担い、この文書が第二Scenario/検証基準正本にならないようにする。
 
 #### 10.8.1 観測の非対称性：positive witness と closed-world absence
 
@@ -443,7 +443,7 @@ TEIの設計へ反映する観点：
 
 **TEIで追加する判定**：単一の正しいEntity観測は、要求した特定Entityが少なくとも一つ存在したという限定Claimを支持し得る。一方「対象Entityは他に存在しない」「更新対象なし」「未取得の関係なし」「影響を受ける成果物なし」は**否定・全称Claim**であり、対象母集団、現在Scope・Filter、Providerの取得完了、Snapshot／Revision、非公開の影響を考慮しない限り支持されない。権限により見えない集合については「開示可能範囲で0件」と「世界全体に存在しない」を区別。RLS/NULL/empty/page/partial/unavailable/permission-deniedの診断に、秘密の件数やフィールド内容を露出させない。
 
-既存対応：#2506 FC-01/06/11（Function Contextと集合）、#1706（集合完全性）、#2622 DO-01/07・LUX-05（多Provider）、#2387（Query/SQL静的Explain）、#2516（Disclosure）、#2514（Oracle）。SQLのFK・CHECKが静的に宣言されていても実全行整合・履歴の正当性や業務Owner受理を推論しない。
+既存対応：#2506 FC-01/06/11（Function Contextと集合）、#1706（集合完全性）、#2622 DO-01/07・LUX-05（多Provider）、#2387（Query/SQL静的Explain）、#2516（Disclosure）、#2514（検証基準）。SQLのFK・CHECKが静的に宣言されていても実全行整合・履歴の正当性や業務Owner受理を推論しない。
 
 #### 10.8.2 過去のPASSの有効性：実施済みと現在適用可能を分離
 
@@ -473,10 +473,10 @@ TEIの設計へ反映する観点：
 | RES-03 Unconsumed test | SourceのRule一覧は完全だがLoaderが一部を読まず、実行した検査だけPASS | Required Obligationの母集団、実Source/Build消費、判別力のある独立Expected。#1180/#2514/#1163 |
 | RES-04 Post-change PASS | 旧Provider向け試験がPASS後、同Query IDのDB別SQL／Generator／Grantを変更 | 旧PASSは歴史的証拠として保持、現在適用資格はunknown/再試験。#2600/#2862/#951 |
 | RES-05 Outcome-protocol collision | 受注Bの保存が正しい値で成功、しかし確認したのは受注Aまたは別Tenant | Outcome PASSでも操作の対象・承認・権限はFAIL/unknown。#2598/#1174/#2389 |
-| RES-06 Shared-origin Oracle | 実装とExpectedを同じ生成AI出力から構成し、同じ誤解に一致してPASS | Source・Oracle provenance、独立Property、既知Mutantの検出力を別観測。#2514/#1180 |
+| RES-06 Shared-origin Expected | 実装とExpectedを同じ生成AI出力から構成し、同じ誤解に一致してPASS | Source・検証基準の出典、独立Property、既知Mutantの検出力を別観測。#2514/#1180 |
 | RES-07 Late UI receipt | 実Providerの過去Receiptは正しいが、新Workspaceで古い応答を表示 | 実Effectの歴史的成功と現ConsumerのSelection epoch・Disclosureを分ける。#1824/#2598/#2516 |
 
-**必要Obligationの分母**：実行した試験件数や見つかったSource数を分母としない。Claimに必要なObligation集合を先に固定する。未取得・未読込・未評価・対象不明はunknown/not-runとして残し、理由のあるnot-applicable以外は分母から勝手に除去しない。Coverage（量）、Oracle discrimination（既知誤実装を検出できるか）、Evidence applicability（対象Revision/Attemptへの効力）を独立した列にする。必須の一項目がmissingなら全体Claimの合格を主張しない。実際の四層分類S/M/E/Aは§10.6を再利用し、別の正式スキーマは作らない。
+**必要Obligationの分母**：実行した試験件数や見つかったSource数を分母としない。Claimに必要なObligation集合を先に固定する。未取得・未読込・未評価・対象不明はunknown/not-runとして残し、理由のあるnot-applicable以外は分母から勝手に除去しない。Coverage（量）、既知誤実装の検出力（既知誤実装を検出できるか）、Evidence applicability（対象Revision/Attemptへの効力）を独立した列にする。必須の一項目がmissingなら全体Claimの合格を主張しない。実際の四層分類S/M/E/Aは§10.6を再利用し、別の正式スキーマは作らない。
 
 ### 10.10 仕様をSkillで届けたか、実際に読ませたかを分離
 
@@ -523,10 +523,10 @@ M未受理・G許可でもMeaningを採用しない。M受理済み・G拒否な
 §10.7/10.10のA/B/C1/C2について、[TEI #2018](https://github.com/hat47x/tei-platform/issues/2018) および [TAI #168](https://github.com/hat47x/tai-pleroma/issues/168) の既存H2/H3評価計画を再利用する。
 
 - **割付ベース（ITT型・記述集計）**：Skillを利用する予定だった試行が未発見・未ロード・Toolなし・実送出不可でも、分母に含めて障害と費用を測る。C1でSkillを発見可能にしただけでは利用成功としない。
-- **実提供条件ベース（PP型・限定比較）**：同一Task、Source raw SHA、Oracle、モデル、Tool権限、提出方式を固定し、H3のRoot＋Required Referencesが実ロードされ、両腕のTool呼出しが実証されたものだけを比較。C2の実消費内容・版も記録する。配送の成功率と、正しく届けた仕様の効果を混同しない。
+- **実提供条件ベース（PP型・限定比較）**：同一Task、Source raw SHA、検証基準、モデル、Tool権限、提出方式を固定し、H3のRoot＋Required Referencesが実ロードされ、両腕のTool呼出しが実証されたものだけを比較。C2の実消費内容・版も記録する。配送の成功率と、正しく届けた仕様の効果を混同しない。
 - **Claimの上限**：H2/H3は既存の固定Task 1件・4独立Sessionが計画分母。未実行であり、仮に4 Sessionが成功しても一般的な因果効果やp95は主張しない。回答品質、Key集合、strict pass、false-qualified、unknown保持、トークン／Tool／時間／人的費用を別記録。
 
-新しいBenchmark RuntimeやSkill評価正本は不要。#2018が経済性、#1180がRequired Obligation、#2514が独立Oracle、#2509がAI/CLI境界を担当する。M4Benchの測定効果量をTEI/TAIの期待改善率へ転用しない。
+新しいBenchmark RuntimeやSkill評価正本は不要。#2018が経済性、#1180がRequired Obligation、#2514が独立検証基準、#2509がAI/CLI境界を担当する。M4Benchの測定効果量をTEI/TAIの期待改善率へ転用しない。
 
 **今回の追補状態**：研究と既存main Source/Issue/Draft照合によるDocs-only反証設計。CQ-01〜06、Provider→Completion評価の実接続、H2/H3四Session、Owner正式受理はNOT RUN。既存の限定Go test・PG試験を単一の製品E2Eと合算せず、#1119のCritical Path／現在のGate／既存Host/Plugin方針を維持する。
 
@@ -592,3 +592,34 @@ M未受理・G許可でもMeaningを採用しない。M受理済み・G拒否な
 **限定業務例の接合**：[PR #3024](https://github.com/hat47x/tei-platform/pull/3024)（exact HEAD 705933667d5b081036314a9161280323e08a64bd、[局所CI #42208159977](https://github.com/hat47x/tei-platform/actions/runs/42208159977)成功）は旧 .tei を使って CaseRecord Persistence→Query SQLのSource/Revisionを確認した**E1c相当の限定実測**であり、*.tei.md Migration/Function Data Context/実SQL Provider Readを証明しない。#3030のM4/M5以後に同じ公開Case・同一独立Expectedを新Sourceへ適用し、A2の同等性とA3の実Provider資格を別に合否判定。組織E2・G1/G2を研究移行のHard Dependencyで止めない。
 
 **決定・実装・未実証の区別**：*.tei.mdへの移行方針はOwner決定済み。#3030はDesign Draft、#3031は検出拒否の実Go局所PASSを持つImplementation Draft、#3024は旧Sourceの局所Go/CI PASS。A1〜A4・新形式による実Provider/CLI/Studio/SHOの本格一巡、移行後Owner Meaning Acceptanceは未達。現行#1119 Gateは据え置き、研究PRの追記を製品Gate達成へ転用しない。
+
+
+### 10.17 検証基準の二方向判別力：正常と拒否を固定する（2026年11月7日：#3028・#3031・#3032・#3037の実証を横断照合）
+
+**研究から実装へ渡す今回の成熟差分**：検証の厳格さを「不正入力を拒否できた件数」だけで測ると、すべてを拒否する壊れた実装も合格する。逆に「正常入力で実行できる」だけでは、未選択・未取得・不正Grant・Scope不完全を見落とす。必要なのは、**同一Source／同一独立期待値から一要因だけ変えた正負対照**と、実行した入口が本当に対象製品経路に到達した証拠である。論文のVerification Agents／M4Benchの原則を、既存#1180 Scenarioと#2514独立検証基準で実証する。新検証エンジンや第二Test SSOTは作らない。
+
+| 対象／既存Owner | 正例で必要な観測 | 負例で必要な観測 | 現況・Claim ceiling |
+| --- | --- | --- | --- |
+| **DSL Bootstrap**（#988） | 同じParser Pin/Sourceと契約版が合えば、実Callback到達・候補生成が確認できる | 同じSourceでPin／Fingerprint／Manifest版を一要因変え、適切に停止・旧結果を保持 | [Draft #3028](https://github.com/hat47x/tei-platform/pull/3028)はBS-02/03/06に正負対照を追加し、HEAD aa51946a の[Repository Health #42240218716](https://github.com/hat47x/tei-platform/actions/runs/42240218716)成功。実Plugin世代切替・クラッシュ回復・新 *.tei.md Parserは未実証 |
+| **TEI Markdown**（#3030/#2823/#2621） | 実選択された新形式の元byte/Span/RoleをReader→Parser→実消費先まで保持 | 不明Parserなら明示拒否、旧 .tei と二重Subject／未読込Source／未対応Roleを成功扱いしない | [Draft #3031](https://github.com/hat47x/tei-platform/pull/3031)は後者の一部だけ局所CI成功。前者の正常受理と旧新意味同等はNOT RUN |
+| **Completion**（#267/#2514） | 全件性が独立に裏付けられたL、P成立、業務別EmptyPolicyが整合する | 部分集合、0行未取得、別Scope証拠、Handoff未確認、矛盾を混ぜて誤完了を検出 | main #2926の評価関数は既存。呼出側が供給したCoverage/EmptyJustifiedの真正性は自動検査しない。CQ-01〜06は提案のみ |
+| **Command Authorization**（#1174/#2598） | 当該主体・Action・Resourceの現在Grantで、正しいTargetだけExecutorへ到達 | 付与なし、無効なRule、同形の別Tenant/Resource、Grant失効で意図せずExecしない | [main #3037](https://github.com/hat47x/tei-platform/pull/3037)で参照Authorizerの3試験を記録。許可・拒否・判定不能を分離。ただし実Grant正本とEpochReader、本番Contextは未接続 |
+| **Runtime DB decision**（#1174/#1119） | open period＋covering Grantで実更新、読み取りで対象結果を確認 | closed period、観測不能Effect、重複Run、missing Grantで書込み前停止 | [main #3032](https://github.com/hat47x/tei-platform/pull/3032)の[実PostgreSQL Actions #42235336807](https://github.com/hat47x/tei-platform/actions/runs/42235336807)はsix named testsすべて実PASS、SKIP無し。局所Reference判定の証拠であり、署名付きGrant・実運用Provider/全業務E2Eは未達 |
+
+**二つの否定的な誤りを別に測定**：false qualification（不足証拠を合格扱い）と false rejection/false invalidation（適格な対象を不必要に拒否・失効）。テストの総合Greenと判別力は別。業務意味・Current Grant・Source実消費・実Provider・独立Consumerが必要なClaimでは、限定Go/CI成功をそのまま製品資格へ昇格しない。期待値は実装やAgentの予測から生成せず、契約と独立したFixture起点で先に固定する。
+
+### 10.18 現在資格の継承境界：Studioの後着応答とHost Effectの分離
+
+[Draft #3036](https://github.com/hat47x/tei-platform/pull/3036)は、実main.jsにおけるCommand/View/Workbenchの旧非同期応答と旧finallyが、現在Workspaceの表示・Button状態を上書きしないようにするConsumer修正。旧HEAD a8efd8ec の[専用Node CI #42240576368](https://github.com/hat47x/tei-platform/actions/runs/42240576368)は成功、しかし同HEADの[Repository Health #42240577153](https://github.com/hat47x/tei-platform/actions/runs/42240577153)は**失敗**。ログの直接確認で、Go testはPASS、失敗は新Workflow内の unpinned checkout/setup-node Actions をRepository契約が拒否したものだった。新HEAD 992feb48 の[専用Node CI #42255903173](https://github.com/hat47x/tei-platform/actions/runs/42255903173)は成功、Repository Health/実Wails関連は照合時in_progress。旧HEADの失敗と新HEADの成功・未完了を混ぜない。
+
+**Consumerの現在資格 ≠ Providerの過去のEffect**。旧Promiseの画面反映を抑止しても、Host RPC送出後に生じたDB Effectは巻き戻されない。逆に実Provider Receiptが履歴上committedでも、新Workspace/現在開示Policyに表示する資格は別判断。Selection epochはUI競合を解消するための資格であり、正式OperationID/Idempotency Keyの代用ではない。低権限Clientに内部Grantの存在／Secret Source数を漏らさず、過去AttemptのResultを現在Targetへ継承させない。#1824と#2598/#1174/#2516へ既存Scenarioを紐づけるだけとする。
+
+### 10.19 移行の唯一の検収正本と現存する計画間矛盾を明示
+
+#3030 と #2667 の二つのDraftには、**所有者を互いへ委ねる矛盾**が残っている。現時点の [#2667移行メモ §6](https://github.com/hat47x/tei-platform/blob/docs/everything-data-real-evidence-cut-20261103/plan/design/TEI_MARKDOWN_SOURCE_MIGRATION_2026-11.md) は「移行の主担当＝#3030、TM-01〜14へ一本化」と記し、一方 [#3030の冒頭](https://github.com/hat47x/tei-platform/blob/docs/tei-md-unified-source-migration-20261106/plan/design/TEI_MD_UNIFIED_AUTHORING_MIGRATION_2026-11.md) は「移行の検収正本＝#2667、TMD-01〜12」と記す。両方をそのまま正本だと扱わず、#2621のOwnerに一意の選択を委ねる。
+
+**本研究レーンの暫定解決提案**：移行の実際のM0〜M6/旧新の互換とFixture番号は専門Draft #3030のTM-01〜14を一次参照とし、#2667をEverything is Data横断上の依存・差分・Owner受渡しとする（#2667後半§6の記載に整合）。#3030冒頭との逆参照は未決衝突として残し、Owner確認・重複整理まで二種類の移行Gate/Fixtureを同時採用しない。#3022のMDTは研究上の反証一覧であって第三のMigration SSOTにならない。
+
+**用語統一**：[Issue #3039](https://github.com/hat47x/tei-platform/issues/3039) と[main統合 PR #3040](https://github.com/hat47x/tei-platform/pull/3040)に合わせ、本研究文書中のテスト判定を指す Oracle 表記を「独立検証基準」「独立期待値」「検証基準の判別力」等へ修正した。RDBMSのOracle Databaseと混同せず、既存API識別子・過去の実行ログは改名しない。
+
+**次の優先**：①#3030/#2667所有の一意化、②既存公開の旧 .tei Case/独立期待値で、#3031拒否→新Readerの正例/負例→Source/Role/Build実消費を接続、③同じTargetSet LのCompletionと実Provider/Readerの全件性を検証、④実Host Grant/Receipt/現在Consumerを同一Attemptに束縛する。研究の新Test Runnerや過剰なProof Registryは追加しない。新TEI Markdown本格Reader/Writer、完全E2E、Owner正式受理はNOT RUN。#1119のCritical Pathや既存Gateを無断変更しない。
