@@ -406,4 +406,6 @@ Else absence remains unknown; no universal closed-world assumption.
 
 **実装・証拠上限**：同一合成RelationをGraph/Tableへ無損失に投影するためのReference契約を検査する。実TEI ModelRef/Reader、未宣言関係の実不存在、Build・ETLのactual execution/transfer/Receipt、Current Policy、Owner受理は証明しない。[#2877のP0-A0/A1](https://github.com/hat47x/tei-platform/pull/2877)が扱うRequired/Declared/Selected/ActuallyConsumed/Observed/Undischargedを表示完全性に足し算して、実Pipeline完全性に昇格させない。
 
+**追加の実行証拠**：[専用Node CI #42156720965](https://github.com/hat47x/tei-platform/actions/runs/42156720965) は、変更後exact head `760597b2aaddde1bf3990ee8f57a35deb9bdb9ea`で **26/26 PASS**。対象コードGit blob `c20ceb222a690d486ce5b8f95782dba6c84d9a13`／試験Git blob `9ec51ea2518b05499405bc86e21398b91856084a`、Node 24.21.0、テスト前後のclean treeを確認した。これらは**合成のscope/type/role/Graph/Table内部整合だけ**の証拠であり、元Source・実Consumer・実Build・実Transferの保証ではない。第13.2節の18/18は当時の限定記録として残す。
+
 **次段の最小受入**：既存Go Reader/Source Indexから(1)実Relation identity、(2)Relationの宣言元scopeを取得できる契約、(3)端点のqualified key、(4)roles/typeとSource/Projection revision、(5)開示済みscopeの閉包根拠を確認する。いずれかが欠けたら、図表は候補・部分表示にとどめ`absent-in-declared-snapshot`のProducer資格を実Sourceへ移さない。既存#1124/#2620/#2831/#2542の担当境界を変更せず、新共通Relation Registry/第二Resolverを追加しない。
