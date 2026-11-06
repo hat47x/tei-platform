@@ -52,6 +52,9 @@ func TestReferenceQueryUsesNativeSQLAsAuthoritativeSource(t *testing.T) {
 	managed := false
 	for _, file := range result.ManagedFiles {
 		if file.Path == sqlPath && file.Extension == ".sql" && file.SourceRoot == "applications" {
+			if !file.ReadByLoader {
+				t.Fatalf("native SQL read by its loader is not marked: %+v", file)
+			}
 			managed = true
 			break
 		}
