@@ -381,6 +381,7 @@ WP10 統合と引継ぎ
 | Studioからの期間状態付き参照実行 | 実装 | 付録C.5 |
 | Studioの認可AllowList | 実装 | 付録C.5 |
 | Studio実行記録 | 実装 | 付録C.5 |
+| 既存認可規則との接続 | 実装（`CommandAuthorizer`） | 付録C.5 |
 | Studioのビュー要約表示 | 実装 | 付録C.5 |
 | StudioのPackageビュー | 実装 | 付録C.5 |
 | Applicationビューの期間 | 実装 | 付録C.5 |
@@ -423,6 +424,7 @@ WP10 統合と引継ぎ
 **PRの関係.** 文書は[#2519](https://github.com/hat47x/tei-platform/pull/2519)、対話契約のPoCは[#2521](https://github.com/hat47x/tei-platform/pull/2521)です。PoCは文書のD1・D3.1の最小部分を実装し、`main`には未統合です。
 
 **統合の条件.** 要求・設計の採否が決まり、PRがDraftでなくなり、CIとレビューが通ることです。Draftのままでは統合しません。
+
 
 
 
