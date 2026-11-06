@@ -979,6 +979,7 @@ PoC #2521が実装した範囲と、まだ実装していない範囲を分け�
 | StudioからのCommand計画・参照実行 | 実装済み（`PlanCommand`・`ExecuteCommand`、業務副作用なし） |
 | Studioからの期間状態付き参照実行 | 実装済み（`ExecuteCommandWithPeriods`、閉期間の拒否） |
 | Studioの認可AllowList | 実装済み（`ExecuteCommandWithPolicy`、能力単位の参照用） |
+| Studio実行記録 | 実装済み（`CommandRunValue.records`、画面に件数表示） |
 | Studioのビュー要約表示 | 実装済み（項目・コマンド・フック・未使用を表形式で表示） |
 | StudioのPackageビュー | 実装済み（メンバー・前提・版束縛） |
 | Applicationビューの期間（D6.1） | 実装済み（ID・Data・業務日付・状態） |
@@ -986,6 +987,7 @@ PoC #2521が実装した範囲と、まだ実装していない範囲を分け�
 | `reference/workspace`への宣言追加 | 未実施（受理経路が必要） |
 
 実装は、`internal/application/model.go`、`internal/syntax/application_pattern.go`、`internal/validation/application_pattern.go`、`internal/crossview/pattern_requirements.go`、`internal/applicationview`、`internal/semantic/model.go`、`internal/syntax/parser.go`、`internal/validation/validation.go`と、それぞれの試験です。
+
 
 
 

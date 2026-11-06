@@ -25,6 +25,7 @@ type CommandRunValue struct {
 	Outcome   *semantic.Outcome           `json:"outcome,omitempty"`
 	Effect    *semantic.DataEffect        `json:"effect,omitempty"`
 	Committed bool                        `json:"committed"`
+	Records   []command.OperationRecord   `json:"records,omitempty"`
 }
 
 // CommandRunResponse is the result of a reference execution.
@@ -100,6 +101,8 @@ func (h *ReadOnly) ExecuteCommandWithPolicy(workspaceID, applicationID, patternI
 		}
 		invoker.Periods = command.NewMapPeriodState(states)
 	}
+	recorder := &command.MemoryRecorder{}
+	invoker.Recorder = recorder
 	if len(allowed) > 0 {
 		authorizer := make(command.AllowListAuthorizer, 0, len(allowed))
 		for _, capability := range allowed {
@@ -122,5 +125,6 @@ func (h *ReadOnly) ExecuteCommandWithPolicy(workspaceID, applicationID, patternI
 		Outcome:   result.Outcome,
 		Effect:    result.Effect,
 		Committed: true,
+		Records:   recorder.Records,
 	}}
 }

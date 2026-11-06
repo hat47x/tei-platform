@@ -62,4 +62,7 @@ func TestExecuteCommandWithPolicyRejectsUnlistedCapability(t *testing.T) {
 	if !allowed.OK {
 		t.Fatalf("allowed run=%+v", allowed.Failure)
 	}
+	if allowed.Value == nil || len(allowed.Value.Records) != 1 {
+		t.Fatalf("records=%+v", allowed.Value)
+	}
 }
