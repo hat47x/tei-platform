@@ -105,3 +105,32 @@ P0の最初に新しいPlanner、Scheduler、ABI、Optimizer用DSLを作らな�
 - **採用済みのアーキテクチャ**：Contract中心、Host非必須、Target別Delivery、意味/実現/Authorityの分離。
 - **未実装・未実行**：本書に書いたPRO-01〜10とOPT-01〜12の横断試験、複数Target実性能比較、Runtimeの新しい機能。
 - **停止線**：Pluginを増やすこと、Bundleを小さくすること、シミュレーションで速いこと、Manifestで「verified」と主張することは製品最適化の受入証拠ではない。exact source/Target/Loaded Byte/独立Oracle/実Budgetと、人間Ownerの採用判断が必要。
+
+
+## 8. 機能を実装するまでの最小ループ：再利用・合成・生成・特殊化を比較する
+
+既存の[#1067](https://github.com/hat47x/tei-platform/issues/1067)は二つの独立Consumerでの重複が確認されるまで共有Pluginへの昇格を急がない。[#1445](https://github.com/hat47x/tei-platform/issues/1445)は開発工程Plugin、[#2620](https://github.com/hat47x/tei-platform/issues/2620)は標準構造へのRole付与、[#2077](https://github.com/hat47x/tei-platform/issues/2077)は生成器の別言語展開を担当する。この節ではこれらをつなぐ**Plugin機能の最短実現手順**だけを要件候補として明示する。
+
+1. **要求を固定**：必要なService Contractと対象Target/Scope/Effect/Failure/Resource Budgetを定義する。業務Meaningの必要な場合はAccepted Sourceへ戻り、通常の純粋バッチには業務Principal/Modelを強制しない。
+2. **既存候補を発見**：標準・案件・外部Providerと、その実装の正確な契約、実現Target、配布・Conformanceの差を比較。Registryの候補順、人気、最新版やAIの説明文だけから自動採用しない。
+3. **合成で充足するか検査**：必要な能力を既存の複数Instance/Port/Expression/Adapterで表せるなら、専用Plugin実装を作らない。新しい隠れたHookやGraph外の工程を増やさない。
+4. **不足だけを生成/実装**：再利用できない能力についてのみ生成AIや通常開発で小さなProvider/Adapterを作る。必要なHost API・入力・実装Source・Build Target・契約バージョン・生成器を固定し、出力を差分としてレビューする。生成AIや生成器の自己申告をConformanceとみなさない。
+5. **独立に適合を検証**：型・振舞い・Scope・Effect・実Target/Load Byte・Permissionを分け、代表の正例だけでなく失敗/Null/Timeout/Unknown/拒否の負例を確認。生成CodeのBuild PASSはContract適合の証拠ではない。
+6. **必要なら最適化**：上記Safety Gateを通過した候補だけに部分評価/静的化/融合/Cache等を適用。Target別Budget、利用頻度、冷温起動、運用/保守コストに照らして効果を測る。計測不十分なら元の単純実装を維持する。
+7. **導入・更新・撤回**：選択したComposition/Lock/Artifact/Authorityを既存Ownerで固定。実Producer/Consumer差分を観測し、採用後の変更・失効・取戻し方法を明確にする。必要に応じてContractだけを標準へ昇格し、Implementationの公開主体とPackageの所属を同一視しない。
+
+### 容量を増やす「継承」より、実際の能力の合成を優先する
+
+例えば、NAS/Filesystem型の保存機能とS3等のObject Store型の保存機能には、Byte Objectの読み書きという共通の能力があっても、原子的なRename、Directory、部分更新、一覧・整合性、転送結果不明時の再試行の意味が一致するとは限らない。
+
+したがって、`S3Storage extends NASStorage`のような型名の包含だけで全操作を代替可能とせず、`BlobRead`・`BlobWrite`等の共通契約に加え、`AtomicRename`など条件付き保証を必要なときだけ要求する。これは特定の継承表現を禁止するものではなく、**利用者が要求する振舞いを満たした能力だけを代替可能と判定する**ためである。必須Facetを増やす前に二Consumerで再利用の利益を検証する。
+
+| Case | 追加の最小反例 | 期待する判定 |
+| --- | --- | --- |
+| IMP-01 | 既存の二Providerを組み合わせれば実現できるが、新専用Plugin生成を提案 | 既存Compositionとの宣言量・性能・保守費を比較し、必要性なしなら生成しない |
+| IMP-02 | 既存FS利用Consumerが原子的Renameを要求するがObject Store候補はそれを提供しない | Read/Write等の共通能力のみ適合、Renameを含むContract全体への自動代替を拒否 |
+| IMP-03 | AI生成Adapterが型検査を通るがNULL/Timeout/Unknownを正常値へ変換する | Semantic/Failure Conformanceを拒否。生成器の成功を製品資格としない |
+| IMP-04 | 2 Consumerが同じ抽象を必要とせず、一方だけ固有Pluginを使う | 共通Pluginの昇格を保留し、案件側の小実装を許す |
+| IMP-05 | 最適化により起動時間は短縮するがBuild閉包が不明、別ScopeのCache結果を流用 | 速度優位でも採用不可。実Input/Scopeの検査と現在のAuthorityが必要 |
+
+**停止線**：IMP-01〜05は未実行の受入案。実AI生成・Providerの二Target接続、実導入、性能改善、業務Owner受理はNOT RUN。別の『Plugin開発Wizard』『自動Plugin生成器』『汎用Adapter Registry』をP0で新設しない。
