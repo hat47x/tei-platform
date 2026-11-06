@@ -251,6 +251,9 @@ func TestCollisionBudgetConservativeSmallSpaceAndPigeonhole(t *testing.T) {
 	if estimate, err := CollisionProbability(s, 2); err != nil || estimate != 0 {
 		t.Fatalf("expected float64 underflow in long digest fixture: %.9g %v", estimate, err)
 	}
+	if upper, err := CollisionRiskUpperBound(s, 2); err != nil || upper <= 0 {
+		t.Fatalf("collision upper bound must not report false zero: %.9g %v", upper, err)
+	}
 	if err := CheckCollisionBudget(s, 2, 0); err == nil {
 		t.Fatal("zero collision-risk budget accepted due to float64 underflow")
 	}
