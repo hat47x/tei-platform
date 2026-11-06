@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
 	"strings"
 
 	hashid "tei/tools/reference-hash-id"
@@ -49,6 +50,16 @@ type targetProbeWire struct {
 	Bindings []bindingWire     `json:"bindings"`
 }
 
+// collisionBudgetEvidence is a caller-declared birthday-risk estimate,
+// NOT a target policy acceptance, cryptographic strength certificate, or
+// authority to allocate a physical identifier.
+type collisionBudgetEvidence struct {
+	ExpectedPopulation           uint64  `json:"expectedPopulation"`
+	MaximumCollisionProbability  float64 `json:"maximumCollisionProbability"`
+	EstimatedCollisionProbability float64 `json:"estimatedCollisionProbability"`
+	PolicySource                 string  `json:"policySource"`
+}
+
 // report never claims target allocation or semantic Source Acceptance.
 type report struct {
 	Status               string `json:"status"`
@@ -64,6 +75,7 @@ type report struct {
 	NormalizedTargetKey  string `json:"normalizedTargetKey,omitempty"`
 	TargetSnapshotSHA256 string `json:"targetSnapshotSHA256,omitempty"`
 	CallerPinsMatched    bool   `json:"callerPinsMatched,omitempty"`
+	CollisionBudget      *collisionBudgetEvidence `json:"collisionBudget,omitempty"`
 }
 
 func main() {
@@ -79,6 +91,8 @@ func run(args []string, stdout, stderr io.Writer) int {
 	targetPath := flags.String("target-probe", "", "optional local target snapshot JSON; never an authoritative store")
 	expectedSource := flags.String("expected-source-sha256", "", "caller-pinned SHA-256 of raw source bytes")
 	expectedTarget := flags.String("expected-target-sha256", "", "caller-pinned SHA-256 of target snapshot bytes; required for target preflight")
+	population := flags.Uint64("expected-population", 0, "caller-declared expected ID population for target namespace; required for target preflight")
+	maxCollision := flags.String("max-collision-probability", "", "caller-declared maximum birthday collision probability; required for target preflight")
 	if err := flags.Parse(args); err != nil {
 		return 2
 	}
@@ -92,14 +106,19 @@ func run(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, "target preflight requires both source and target SHA-256 pins")
 		return 2
 	}
-	if err := execute(*schemePath, *inputPath, *subject, *targetPath, *expectedSource, *expectedTarget, stdout); err != nil {
+	if (*targetPath != "" && (*population < 2 || *maxCollision == "")) ||
+		(*targetPath == "" && (*population != 0 || *maxCollision != "")) {
+		fmt.Fprintln(stderr, "target preflight requires explicit expected population >= 2 and collision risk maximum")
+		return 2
+	}
+	if err := execute(*schemePath, *inputPath, *subject, *targetPath, *expectedSource, *expectedTarget, *population, *maxCollision, stdout); err != nil {
 		fmt.Fprintln(stderr, "reference preview rejected:", err)
 		return 1
 	}
 	return 0
 }
 
-func execute(schemePath, inputPath, subject, targetPath, expectedSource, expectedTarget string, stdout io.Writer) error {
+func execute(schemePath, inputPath, subject, targetPath, expectedSource, expectedTarget string, population uint64, maxCollision string, stdout io.Writer) error {
 	schemeBytes, err := readBounded(schemePath, 4096)
 	if err != nil {
 		return fmt.Errorf("scheme: %w", err)
@@ -107,6 +126,29 @@ func execute(schemePath, inputPath, subject, targetPath, expectedSource, expecte
 	s, err := hashid.ParseSchemeJSON(schemeBytes)
 	if err != nil {
 		return err
+	}
+	// The collision budget is checked against the full generator address
+	// space before emitting a candidate. It does not replace actual target
+	// uniqueness, collation, source identity, or an Owner-approved policy.
+	var budget *collisionBudgetEvidence
+	if targetPath != "" {
+		maximum, err := strconv.ParseFloat(maxCollision, 64)
+		if err != nil {
+			return fmt.Errorf("invalid caller collision budget: %w", err)
+		}
+		if err := hashid.CheckCollisionBudget(s, population, maximum); err != nil {
+			return fmt.Errorf("caller collision budget: %w", err)
+		}
+		estimated, err := hashid.CollisionProbability(s, population)
+		if err != nil {
+			return err
+		}
+		budget = &collisionBudgetEvidence{
+			ExpectedPopulation:           population,
+			MaximumCollisionProbability:  maximum,
+			EstimatedCollisionProbability: estimated,
+			PolicySource:                 "caller-declared-unverified",
+		}
 	}
 	input, err := readBounded(inputPath, maxInputBytes)
 	if err != nil {
@@ -130,6 +172,7 @@ func execute(schemePath, inputPath, subject, targetPath, expectedSource, expecte
 		SourceSHA256:    hex.EncodeToString(sourceHash[:]),
 		HashIDText:      result.Text,
 		DigestHex:       hex.EncodeToString(result.Digest),
+		CollisionBudget: budget,
 	}
 	if targetPath != "" {
 		targetBytes, err := readBounded(targetPath, maxTargetBytes)
@@ -185,7 +228,7 @@ func execute(schemePath, inputPath, subject, targetPath, expectedSource, expecte
 		if err != nil {
 			return fmt.Errorf("target preflight: %w", err)
 		}
-		out.Status = "caller-pinned-snapshot-preflight-only"
+		out.Status = "caller-pinned-budget-snapshot-preflight-only"
 		out.TargetNamespace = profile.Namespace
 		out.NormalizedTargetKey = key
 		targetHash := sha256.Sum256(targetBytes)
