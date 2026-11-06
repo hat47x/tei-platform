@@ -712,3 +712,35 @@ Source/Authoring Graph → Resolved/Lowered Graph → Targetの実行・観測�
 **Self-buildの新たな実測Gapとの接続**：[#2831の2026-11-06追補](https://github.com/hat47x/tei-platform/issues/2831)では、既存`ResolveSourceClosure`がrepository root外のmoduleをfail-closedで拒否する一方、rootの`go.mod`は外部module依存を宣言している。`cmd/tei`でその依存が実選択されるかは独立観測前であり、**現時点でbuildが失敗すると断定しない**。外部moduleの選択/配布byteの未証明は、TypeRef不一致でも実Builderのバグでもなく、Source ClosureのUndischarged obligationに分類する。Target別工程の実消費を確認する前に「図中にない工程は存在しない」と言わない。
 
 **評価・撤回条件**：既存Contract/Role/Source閉包の診断を関連付けるだけでST-02/03/04/09を分類できれば、専用TypeKind/Guarantee Solver/Closure Engineは不要。二Consumerで同じ欠落保証を**独立証拠**によって再現し、既存OwnerのContractでは表現不能であると確かめた場合にだけ、#951/#2620への最小型付き契約追加を提案する。この節はDocs-only、実Go/ETL/S3/CLI self-build・Target Conformance・現在Authority・Owner Meaning Acceptanceは**NOT RUN/NOT PROVEN**。
+
+
+### 17.9 閉じた値域と設計特性の「意図・証拠・適合」を分離する（2026-11-06、設計候補）
+
+他チャットで挙がったEnumのような閉じた値域・MECE区分・「強属性」を、単一の新しいSemantic TypeKindに詰め込まず、既存の[#2495](https://github.com/hat47x/tei-platform/issues/2495)（直交Facet）、[#2544](https://github.com/hat47x/tei-platform/issues/2544)（公理・演算の資格）、[#1126](https://github.com/hat47x/tei-platform/issues/1126)（候補キー・関数従属性）、[#958](https://github.com/hat47x/tei-platform/issues/958)（根拠と人間確認）、[#267](https://github.com/hat47x/tei-platform/issues/267)（受理）を利用して評価する。**「強属性」の原典における厳密な定義は未照合**なので、候補キー・決定属性と同義であると**断定せず**、資料・文脈に紐付く外部の意味分類候補に留める。
+
+#### 値域に関する独立した問い
+
+| 問い | 宣言として確認したいこと | 検証できる証拠と限界 |
+| --- | --- | --- |
+| 値域Closed | 値集合を特定版の列挙に限定するか、未知値・将来拡張を許すか | enum/oneof/CHECKの構文とTargetでの実制約。ただしアプリケーション全体のSource閉包を保証しない |
+| Mutually Exclusive | 同時に所属可能な区分か、一個のtagを選ぶ構造か | tagged union・排他CHECK・独立Oracle。複数flagや期間重複は別契約 |
+| Collectively Exhaustive | **何を全体集合とするか**（対象・Scope・時点）を明示し、どの実例もいずれかへ入るか | 分類規則と独立した対象集合。有限データで未出現値がないことは一般的な全件証明ではない |
+| Identity / Determinance | 業務キー、一意制約、関数従属性、区分による条件付き制約を分ける | SchemaのUNIQUE/FK/FD、実データの反例、Ownerの意味判断。物理PK一致を業務IDの確定としない |
+| Lifecycle / Effective time | 状態遷移・変更可能性・適用時点・無効化を区分から独立に扱う | 明示Ruleと実Targetの観測。Enumの定数集合だけで遷移可能性を推測しない |
+
+「MECE」は閉じたEnum型の同義語ではない。**mutually exclusive** と **collectively exhaustive** は、分類対象の母集合・業務時点・Null/Unknown・複合分類の条件を明記した後、それぞれ検証する。Java等でEnumが有限でも、業務上の区分が完全かどうかや将来値の取扱いは自動決定できない。
+
+#### 宣言意図と実態の差分提示（新しいTruth/Authority判定器ではない）
+
+1. **Intended**：設計者が意味の正本に明示したClosed/Exclusive/Exhaustive/Identity等の条件、対象Scope/Source revision、受理状態。未採用の提案は受理済みと呼ばない。
+2. **Observed / Inferred**：既存Parser・Constraint・Schema・Target Adapter・実データから判別できた事実、分析可能な範囲、反例・未読込Source・部分観測。列挙やSQL CHECKは**その実装面で確認できた制約**であって、業務意味を確定しない。
+3. **Conformance**：同じSubject・Scope・Target・時点について、根拠付きで一致する場合だけ「範囲内適合」、明示反例がある場合は「不一致」、必要証拠が不足する場合は「未検証」。推定だけで人間のIntentやAccepted Meaningを書換えない。
+
+次の既存ケースへの圧力とする（ここで第二の試験SSOTは作らない）。
+
+- **ST-02 / ST-08**：同じ`std.code`・Ref／同じEnum名でも、値集合が変更・拡張され、Clientが旧全件性を仮定している場合は再資格化する。`std.*`→`tei.std.*`の改名を値域互換の証拠にしない。
+- **ST-03**：CSV/JSON転送に未認識status/unknown/nullが含まれる場合、値を勝手に「その他」へ丸めず、Consumerが要求するclosednessとProvider側の実保証を別列に提示する。
+- **ST-04**：二つのInstanceが同じTypeRefでも、Scope・effective-time・参照Master・業務キーの受理範囲が違えば同じ強さの区分/FDを使えると推測しない。
+- **ST-09**：生成コード中のEnum構文があるだけで、元のBusiness classificationやSource全件性が保証されたとはしない。生成元の宣言・Target制約・実行観測を別に照合する。
+
+**検証・撤回条件**：#2495の既存Facetと#1126のFD/Key／#2544の制約・証拠の関連付けで上記が表示・診断できれば追加TypeKindは不要。二つの異質Consumerで未表現の意味が同じ形で反復し、既存契約では欠落を明示できない場合だけ追加契約をOwnerへ提案。現時点では具体的なJava/SQL/DB/Studio実接合、正規の原典定義、Target完全性、A4意味受理は**NOT RUN / NOT PROVEN**。
