@@ -204,8 +204,8 @@ Webアプリケーションでは、UI構成キットだけでなく、HTTP要�
 
 | 経路／次の最短検証 | 必ずそろえる証拠 | 別経路を前提にしない条件・資格上限 |
 | --- | --- | --- |
-| **A Plugin不要D0／Process D2**：既存見積もり23件の直接Go計算と子Process対照 | 独立Oracleのraw入力/Expected、exact HEAD/Toolchain、D0実GoとD2 Build/Invoke/SKIPを区別した結果 | 新*.tei.md Reader/動的Registry/実DB Host Grantを純計算の基線に要求しない。[Draft #3021](https://github.com/hat47x/tei-platform/pull/3021) HEAD dfc133e2の3 CI成功は限定証拠で、D1や正式Owner受理の実証ではない |
-| **B D1 静的Provider**：同一Go TargetのContract選択→実Link→Invoke | Aと同じOracle/Target、[#951](https://github.com/hat47x/tei-platform/issues/951)の明示Contract/Provider選択、実Build closure/linked member/選択実装と呼出実装の一致、未選択実装の非混入 | *.tei.md移行完了をHard依存にしない。現行Go Source/JSON Oracleで比較可能。ResolvedSet/BuildPlan、D0・D2成功はD1 PASSではない（#1251/#1167/#2600） |
+| **A Plugin不要D0／Process D2**：既存見積もり23件の直接Go計算と子Process対照 | 独立検証基準のraw入力/独立期待値、exact HEAD/Toolchain、D0実GoとD2 Build/Invoke/SKIPを区別した結果 | 新*.tei.md Reader/動的Registry/実DB Host Grantを純計算の基線に要求しない。[Draft #3021](https://github.com/hat47x/tei-platform/pull/3021) HEAD dfc133e2の3 CI成功は限定証拠で、D1や正式Owner受理の実証ではない |
+| **B D1 静的Provider**：同一Go TargetのContract選択→実Link→Invoke | Aと同じ独立検証基準/Target、[#951](https://github.com/hat47x/tei-platform/issues/951)の明示Contract/Provider選択、実Build closure/linked member/選択実装と呼出実装の一致、未選択実装の非混入 | *.tei.md移行完了をHard依存にしない。現行Go Source/JSON形式の期待値で比較可能。ResolvedSet/BuildPlan、D0・D2成功はD1 PASSではない（#1251/#1167/#2600） |
 | **C 新*.tei.md由来Plugin/Role**：Raw MarkdownからCandidateを解決 | #3030 TM-02/03/12/14（実File発見/Read、原byte＋block span、必要Source充足、旧新重複拒否）、#3028 BS-02/03/06/15（既知Seedで読めるFormat/Language＋実Parser Pin、自己循環拒否、Operatorと有効化の分離） | C未完成でもA/Bの既存Source Reference試験を止めない。ただし新形式はRaw ReadだけでSelected/Build-qualified/Activeとは表示しない（#2621/#2823/#988/#2620） |
 | **D Effectを持つ案件・多Tenant**：Host/Provider実行→Consumer完了 | 対象Action/Resource/Tenant/時点に束縛したMeaning・Current Grant、Required/Supplied/Evaluated Guard、実Read範囲・Receipt・独立Consumer Body/Disclosure（#1174/#1163/#2516、#2903 §24） | A/Bの純計算ConformanceはDのGrant/Commit資格ではない。main統合#2926 EvaluateCompletionのCoverageCompleteはCaller供給値。実Providerの母集団/epoch/Scopeで裏付くまでは業務完了を表示しない |
 
