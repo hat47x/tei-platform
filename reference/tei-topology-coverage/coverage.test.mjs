@@ -76,7 +76,7 @@ test('a visible record is not a public claim when disclosure is unqualified',()=
 test('invalid query and duplicate table occurrence do not manufacture negative certainty',()=>{
   const f=fixture(),v=project(f);
   assert.equal(boundedAbsence(v,{...missing,id:''},closure(f.snapshot)).reason,'invalid_query');
-  v.table.subjects.push({...v.table.subjects[0],viewId:'another-row'});
+  v.table.subjects.push({...v.table.subjects[0]});
   assert.equal(boundedAbsence(v,missing,closure(f.snapshot)).reason,'subject_coverage_loss');
 });
 
@@ -84,4 +84,49 @@ test('selection refuses mismatched Graph/Table publication even with matching So
   const f=fixture(),v=project(f);
   v.table.revision='stale-table';
   assert.deepEqual(selectView(v,v.graph.nodes[0].viewId,f.snapshot),{status:'stale'});
+});
+
+test('qualified row drift cannot manufacture positive or absent claims',()=>{
+  const f=fixture(),v=project(f),w=closure(f.snapshot);
+  v.table.subjects[0].scope='two'; // retained key still says scope one
+  assert.deepEqual(boundedAbsence(v,{kind:'subject',scope:'one',type:'operation',id:'shared'},w),
+    {status:'unknown',reason:'subject_identity_mismatch'});
+  assert.equal(boundedAbsence(v,{kind:'subject',scope:'one',type:'nonexistent'},w).status,'unknown');
+  assert.deepEqual(selectView(v,v.graph.nodes[0].viewId,f.snapshot),{status:'unresolved'});
+});
+
+test('graph node ID and qualified key drift never rebind a visible node',()=>{
+  const f=fixture(),v=project(f);
+  v.graph.nodes[0].key=v.table.subjects[1].key; // wrong scope, old DOM identity retained
+  assert.deepEqual(selectView(v,v.graph.nodes[0].viewId,f.snapshot),{status:'unresolved'});
+  assert.equal(boundedAbsence(v,missing,closure(f.snapshot)).status,'unknown');
+});
+
+test('graph duplicate cannot conceal a missing scoped node',()=>{
+  const f=fixture(),v=project(f);
+  v.graph.nodes[1]={...v.graph.nodes[0]};
+  assert.equal(boundedAbsence(v,missing,closure(f.snapshot)).reason,'subject_coverage_loss');
+});
+
+test('relation ID is part of exact query instead of any same-type match',()=>{
+  const f=fixture(),v=project(f),w=closure(f.snapshot);
+  assert.deepEqual(boundedAbsence(v,{kind:'relation',scope:'one',type:'produces',id:'flow'},w),
+    {status:'present-in-snapshot'});
+  assert.deepEqual(boundedAbsence(v,{kind:'relation',scope:'one',type:'produces',id:'other'},w),
+    {status:'absent-in-declared-snapshot',evidenceId:'synthetic-fixture'});
+});
+
+test('relation role and graph edge drift reject both positive and negative claims',()=>{
+  const f=fixture(),v=project(f),w=closure(f.snapshot);
+  v.table.relations[0].roles[1].role='relabelled';
+  assert.equal(boundedAbsence(v,{kind:'relation',scope:'one',type:'produces'},w).status,'unknown');
+  const g=project(f);
+  g.graph.edges[0].relationId='another-relation';
+  assert.deepEqual(boundedAbsence(g,missing,w),{status:'unknown',reason:'role_coverage_loss'});
+});
+
+test('source relocation with same model fingerprint still makes old projection stale',()=>{
+  const f=fixture(),v=project(f),moved={...f.snapshot,sourceIndexFingerprint:'S11'};
+  assert.deepEqual(selectView(v,v.table.subjects[0].viewId,moved),{status:'stale'});
+  assert.deepEqual(boundedAbsence(v,missing,closure(moved)),{status:'unknown',reason:'mixed_revision'});
 });
