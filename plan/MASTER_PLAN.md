@@ -199,6 +199,8 @@ Oracleの実環境での検証が未完了であることだけを理由に、�
 
 **2026-11-06 実証の更新（局所統合、正式採用前）**：[#3018](https://github.com/hat47x/tei-platform/pull/3018)の固定HEAD `983b9ed0`では、[#2900](https://github.com/hat47x/tei-platform/pull/2900)のDB State/ProvidedContract重複拒否、[#2902](https://github.com/hat47x/tei-platform/pull/2902)のMigration History unknown拒否、[#2887](https://github.com/hat47x/tei-platform/pull/2887)のMG-29安全Expectedへの更新を**同一Git版**に組み合わせ、GitHub Actions **6件すべて成功**した。各局所PRのCIも6/6成功。ただし各PRはDraft・main未統合であり、Go/Workspaceの統合適合は実DB Migration、旧新Client/CDC、現在Grant・Commit/Receipt、History Readerの取得完全性、Cutover/ContractのOwner受理を証明しない。次の受入は[#2892](https://github.com/hat47x/tei-platform/issues/2892)のHistory Readerで、**取得不能/部分ページだけでなく、ページ完了後にもRepository IDフィルタ・RLS/権限・別Instance/Replica遅延で未定義適用履歴が隠れないこと**を検証する。既存HIST-03cの合成反例は#2887に追加済みだが、実Readerの資格はNOT RUN。ReadのSource/Scope・完全性と現在Grantを分離し、[#2555](https://github.com/hat47x/tei-platform/issues/2555)のSafe Pause実観測へ既存Gateの責務で接続する。#3018自体は検証専用でmergeしない。
 
+**Migration Historyの定義・実SQL・実効果の区分（HIST-02）**：[#2887の計画§19.10](design/DB_MIGRATION_COMPATIBILITY_GATES_2026-11.md)では、履歴の適用申告（H0）、Canonical Definitionの同一性（H1）、Target Generator/Providerが生成・投入したSQLの同一性（H2）、Actual Schema/Data/Effectの独立観測（H3）を分離する。現行`CompareHistory`はchecksum欠落でも`RepoApplied`を返し得て、`Fingerprint`は生成`Realizations`を意図的に除外する。H1/H2の未確認をG3/G4へ自動PASSとして流さない。#2892でTool別checksumの意味と欠落を確認、#2600/#2622でGenerator版・Target SQLと実Provider証拠を照合する。**Go特性テストは比較器の判別限界のみであり、実SQL・移行完了・Owner受理はNOT RUN**。公開APIや新State Registryは決めない。
+
 ## 作業領域E：設計の実行と検証
 
 ### 目的
