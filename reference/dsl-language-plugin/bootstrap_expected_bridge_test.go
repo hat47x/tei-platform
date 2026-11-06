@@ -161,7 +161,6 @@ func TestBootstrapBS06ActualOperatorLoweringRequiresExplicitPin(t *testing.T) {
 	// accepted meaning, or active generation.
 }
 
-
 // This probe joins the already-tested K2 Language selection and K4 Operator
 // lowering for one identical Source. It is still reference-only and does not
 // bind a production Workspace Source, real parser executable bytes, Owner
