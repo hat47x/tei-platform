@@ -27,6 +27,10 @@ type referenceCommandRun struct {
 	Outcome       *semantic.Outcome           `json:"outcome,omitempty"`
 	Effect        *semantic.DataEffect        `json:"effect,omitempty"`
 	Committed     bool                        `json:"committed"`
+	// Differences keeps the applied operations the declaration does not
+	// describe, so a reader of the run output can see the gap without reading
+	// the operation log.
+	Differences []command.Difference `json:"differences,omitempty"`
 }
 
 type cliViewReport struct {
@@ -174,11 +178,8 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 				}
 				invoker.Periods = command.NewMapPeriodState(states)
 			}
-			var recorder *command.MemoryRecorder
-			if *operationLogFile != "" {
-				recorder = &command.MemoryRecorder{}
-				invoker.Recorder = recorder
-			}
+			recorder := &command.MemoryRecorder{}
+			invoker.Recorder = recorder
 			request := command.Request{
 				Application: core.CanonicalID(*applicationID),
 				Pattern:     core.CanonicalID(*patternID),
@@ -207,7 +208,7 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 				}
 				return fail("COMMAND_FAILED", err.Error(), 1)
 			}
-			if recorder != nil {
+			if *operationLogFile != "" {
 				encoded, encodeErr := json.MarshalIndent(recorder.Records, "", "  ")
 				if encodeErr != nil {
 					return fail("OPERATION_LOG_WRITE_FAILED", encodeErr.Error(), 1)
@@ -216,6 +217,10 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 					return fail("OPERATION_LOG_WRITE_FAILED", writeErr.Error(), 1)
 				}
 			}
+			var differences []command.Difference
+			if len(recorder.Records) > 0 {
+				differences = recorder.Records[len(recorder.Records)-1].Differences
+			}
 			run := referenceCommandRun{
 				SchemaVersion: applicationview.SchemaVersion,
 				Mode:          "reference",
@@ -223,6 +228,7 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 				Outcome:       result.Outcome,
 				Effect:        result.Effect,
 				Committed:     true,
+				Differences:   differences,
 			}
 			report.OK = true
 			report.Result = run
