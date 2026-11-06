@@ -1182,7 +1182,7 @@ G0/G1/G2は**全面的な直列開発を要求しない**。DB fixtureとProvide
 | Build authoring / exact plan | #1109、`tools/reference-build-authoring-intent` | 宣言Source→実TEI自身のBuild全工程・実Tool消費・結果を単一witnessにする経路 |
 | Build-only graph / transform | #1103、`tools/reference-generation-graph`（後者はread-only構造検査のみ） | 宣言されたNode/Edgeとactual実行・生成中間物・失敗/blockedを同一版で突合。構造fingerprintを実Build成功とみなさない |
 | Plugin build / exact Runtime Engine / stage | #943、`.github/workflows/tei-self-build-qualification.yml`、`tools/reference-plugin-self-build` | Reference Plugin SB-3の収束と、非Pluginを含むTEI全体の自己構築は別。CI定義があるだけでcurrent mainの実PASSを主張しない |
-| Physical artifact / subject binding | `internal/plugin/build.go` の現行 `BuildPlan.Plugin` 必須、#1080/#1097、既存ArtifactSet | 非Plugin TEI CLI/Runtime、あるいは複数Pluginを一回のBuildへ結ぶ際、**偽Plugin IDを付与しない**domain-neutral executionとsubject bindingの実Referenceが不足 |
+| Physical artifact / subject binding | `internal/plugin/build.go` のPlugin専用 `BuildPlan`に加え、既存`tools/reference-build-execution-binding`の`BuildExecutionPlan`/`ArtifactSet`/`PluginSubjectBinding`/`RuntimeEngineSubjectBinding`（read-only Reference） | **共通分離の設計自体はFit**。未達は、実TEI CLI/他Targetのactual build attempt・実消費閉包・typed subject bindingを同じ版で接続する製品縦断証拠。偽Plugin IDを作らない |
 | Source closure / Toolchain / Target | #1088/#1090/#1096/#2595/#2600と#1251 PB-10 | root Go moduleのTest成功とnested `cmd/tei-studio`の実Build成功は別。選択Targetごとの `go.mod/go.sum`・リンクされた依存・生成Assetの実消費closureが未接合 |
 | 標準データ構造・投影 | #2620/#1063/#1124 | Build/Transform/Target/ArtifactをTEI標準構造に写像し、図表から実Graphの全工程を説明する消費側の検証。専用UIを先行させない |
 
@@ -1210,4 +1210,30 @@ G0/G1/G2は**全面的な直列開発を要求しない**。DB fixtureとProvide
 各試行は `tested main SHA / actual test checkout / Source+closure / build intent+resolved plan / builder+engine+toolchain exact identity / selected Target+all module roots / actual consumed bytes / produced artifact members+digests / graph declared-vs-observed / stage receipts / negative results / clean pre-post / tests run and NOT RUN` を固定。対象revisionが違う成功記録を加算せず、read-only Referenceとproduction build、build reproducibilityとHost/Owner Acceptanceを別欄にする。
 
 **P0のExit**：一つの実TEI targetで宣言Graph↔実行Graphを閉じ、非Plugin実artifactを構築して逆追跡し、Stage比較と少なくともSB-N1/N2/N3/N4の拒否を記録すること。これが成立しても全Target/ReleaseのG4製品資格には追加の独立Gateが必要。#1127/#1163の業務Web/DB縦切り、#1124のStudio M0/M1、#1180のScenarioはセルフビルド完成を待たず並走する。
+
+<!-- tei-2831-20261106-other-chats-evidence-closure -->
+### 35.1 2026-11-06 他レーンの新成果との照合：既存ReferenceをつないでG4に到達する
+
+**差分と修正点**：2026-11-06 main `bf2e7b0ffe21747a308cd2b37328eb440535f696`の実ソース・関連Issue/PRをread-only再照合。`tools/reference-build-execution-binding`には既にdomain-neutral `BuildExecutionPlan`、`ArtifactSet`、Plugin/Runtime Engine/BuilderのSubject Binding、build-only Graph/Seed/Stageの構造検査、`actual_go_attempt_test.go`の**実Go buildを二回行う限定試験**がある。したがって「非Plugin用Build Execution型のReferenceが存在しない」というGapではない。一方、同試験は独立一時`main.go`を対象とし、`os.Environ()`を引き継ぐため、それだけでは**TEI CLI本体の完全Source closureやhermeticityを証明しない**。#1088/#1096の環境・Go build資産と同一試行で結ぶ必要がある。
+
+#### P0の順序と受入をさらに狭める
+
+| 優先・実装境界 | Fitの利用 | 次に要求する独立Evidence・負例 |
+| --- | --- | --- |
+| **SB-A0 最先行（Reference接合）** | #1109 `BuildIntent`→Plugin専用resolved Plan、#1103 build-only DAG、#1080/#1097 domain-neutral Execution Reference、#1063 phase付きOperator Graph | **一つの対象Build**について `Intent/source revision`→`resolved selection`→`execution plan`→`actual attempt`→`ArtifactSet`の因果を同じTarget・Toolchainで突合。未実装の非Plugin Intent→Execution接合は`unsupported`、別fixtureの局所PASSの合算は不可 |
+| **SB-A1 最優先（範囲付き完全性）** | #2620自己記述のRequired/Declared/Resolved-Consumed/Observed-Disclosed区分、#2600の否定依存・Source ABA、#2881の合成bounded absence | `Required / Declared / Selected / ActuallyConsumed / Observed / Undischarged`をClaim・Target・Scope・Attemptごとに区別。宣言外のpre/post実行、外部tool I/O、生成中間物、path-sensitive Go package/embed、暗黙envを一つ以上反証。**実行可能な外部Toolを完全観測していない範囲は`unknown`**であり、図に無いことから不存在を結論しない |
+| **SB-B P0（TEI実binary）** | `cmd/tei`、既存Go Builder・`tools/reference-transform-runtime-engine-build`・`tools/reference-build-execution-binding`、#1251 PB-10 | exact `cmd/tei` Source closure/toolchain/Build recipe/実ファイルdigest/Target/Artifact member/Subjectを同一Attemptで照合。root Go moduleと選択したnested moduleの`go.mod/go.sum`を別々に確認。**既存Plugin専用BuildPlanへfake Pluginを割当てない** |
+| **SB-C P0（再帰的Builder）** | #979/#973と既存SB-3、BuilderSubjectBinding/RuntimeEngineSubjectBinding、#1104 Trust境界 | Stage0 external seed→Stage1 builder→Stage2 builderが**同じSource・exact実Builder/Engine実体**を消費したことを確認。Stage1/2 digest収束・engine差替え・seed差・不収束・partial output/Lock拒否を別試行で記録。独立Oracle、Seed Trust、Current Authorityはそれぞれ別のClaim |
+| **SB-D P1（追加先）** | #1251 Bundle/未選択module、#2933 Plugin実現・最適化Draft、#2600増分・Draft #2636、#2788単一Build→複数Build Unit | `available` ≠ `selected` ≠ `compiled/linked` ≠ `invoked`、1 physical Artifact:N logical Pluginと現在のAuthorityを分離。同意味でTarget別ビルドをA/B実測、性能改善と安全・Effect保持は別判定。P0のHard blockerにしない |
+| **SB-E P1/P2（二Consumer圧力）** | #2880 Typed I/O、#2827 ETL/ELT/MFT、#1130非画面Job、#1121 Lowering | build/ETL双方を型付きNode/Edge/Artifactへ表現し得るか確認。ただしContent bytes、配送Attempt、Import、業務受理は別receipt。File ACK/Build successからCurrent Host/Owner Acceptanceへ自動昇格しない |
+
+**P0反証更新（受入ケース追加、実行はNOT RUN）**：
+- **SB-N7 / actual Go fixture限定**：`actual_go_attempt_test.go`の一時`main.go`二回build PASSを`cmd/tei`のビルドやhermeticity PASSと扱ったら失敗。Host ambient envを混入させた場合の影響・拒否条件は#1088/#1096に既存実装を再利用して調べる。
+- **SB-N8 / 同digest別Attempt**：実bytesが等しくてもBuilder/recipe/path-sensitive input/actual Attemptが変化したら同一Execution Receiptにしない。Source location変更でもartifact-affecting package pathが変わる場合は安易にdigest同値扱いしない。
+- **SB-N9 / 全工程不在の主張**：実行後GraphにNodeが無くても、Tool/Processの観測閉包が非完全なら`not observed / unknown`。閉じたTarget・Scope・Reader/Tool・期間についてのみ`absent in verified scope`を検証。
+- **SB-N10 / Plugin最適化は後段**：未選択PluginをCatalogに追加しても実消費へ混入しなければArtifactが無関係に失効しない。実`init/import/embed`・linkによる混入、Provider選択変更・Current Grant変更なら再評価。Fusion/Batch最適化は実Effect・部分失敗・Unknownの意味を保持する別試験とし#2933/#1251/#2600へ委譲。
+
+**PR統合の重複停止線**：同一計画ファイル§35を追加する[Draft #2876](https://github.com/hat47x/tei-platform/pull/2876)と[Draft #2877](https://github.com/hat47x/tei-platform/pull/2877)が競合する。**どちらか一方に内容を収束してからのみ統合**し、両方を別々にmergeしない。#2876には既存domain-neutral execution Referenceの明示があり、本節でそのFitを反映した。#2831がG4の横断追跡Owner、#1109/#1097/#1251/#2600/#2620/#2933等の実装・受入Ownerを代替しない。
+
+**資格の上限**：本節はGitHubのソース/Issue/PR静的照合と計画更新のみ。`P0-A0/A1/B/C`の実TEI CLI/Stage Go Run、fresh full checkout、CI・独立Review/Owner承認は未取得。現在のG4=`UNQUALIFIED`。業務G1/G2・Studio M0/M1・ETL実配送に新Hard dependencyを追加しない。
 
