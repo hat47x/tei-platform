@@ -28,8 +28,14 @@ type StepFunc func(ctx context.Context, operation core.CanonicalID) StepResult
 
 // RunPlan identifies the run, applies the start/resume/refuse rules, and runs the
 // operations in the declared order. The refusal is returned as a decision, not an
-// error. Resuming is not implemented yet: the progress of the steps is not
-// recorded, so resuming would silently repeat work.
+// error.
+//
+// Resuming continues after the steps the previous attempt recorded: the plan
+// writes the finished operations to the journal after each step, so a resumed
+// attempt does not repeat work that is already done. The comment here used to
+// say resuming was unimplemented; by the time the steps were journaled that was
+// false, and the tests below pin the actual behaviour (a finished step is
+// reported as resolved, not run again).
 func RunPlan(ctx context.Context, plan semantic.RunPlan, keyValues []string, journal Journal, step StepFunc, preconditions PreconditionFunc) (runlog.Decision, []StepResult, error) {
 	runKey := runlog.RunKey(string(plan.ID), keyValues)
 	last, found, err := journal.Last(runKey)

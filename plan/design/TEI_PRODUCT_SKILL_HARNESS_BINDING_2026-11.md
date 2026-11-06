@@ -45,7 +45,7 @@ CLIは`cmd/tei/cli_contract.go`の静的Command Catalogと`docs/getting-started.
 
 ## 4. 反例を事前に固定する（TS-01〜TS-15）
 
-以下のケースは[TEI #2605](https://github.com/hat47x/tei-platform/issues/2605)本文を正本とし、本計画では試験の順序と実行経路だけを定める。新しいテスト正本/Oracle/別CLIは作らない。
+以下のケースは[TEI #2605](https://github.com/hat47x/tei-platform/issues/2605)本文を正本とし、本計画では試験の順序と実行経路だけを定める。新しいテスト正本/検証基準/別CLIは作らない。
 
 ### S0 — 静的契約・資料
 - `SKILL.md`のfrontmatter `name: yi-tei-modeling`とディレクトリ名の対応、参照pathの実在、実CLIとの記述整合を静的確認。
@@ -129,7 +129,7 @@ S0cまでに発見した複合Shellの誤認に加え、**既知read-only Comman
 
 ### S2a — 実Product Skill価値の比較資格と結果資格を分離（TAI SK-02へ受渡し）
 
-[TAI Draft #270のSK-02初回ペア実験](https://github.com/hat47x/tai-pleroma/blob/docs/yi-harness-skills-20261102/evaluations/SK-02-first-real-product-skill-paired-pilot-2026-11-03.md)を、TEI Product側から実行する前の契約に接続する。**新しい評価Engineや二つめのTask OracleをTEIへ複製しない**。TEI #2605はSkill/CLI/Sourceの実挙動と提出可能なEvidenceを担当し、TAIはSession間比較適格性・Harness実ロード・コスト比較を担当する。
+[TAI Draft #270のSK-02初回ペア実験](https://github.com/hat47x/tai-pleroma/blob/docs/yi-harness-skills-20261102/evaluations/SK-02-first-real-product-skill-paired-pilot-2026-11-03.md)を、TEI Product側から実行する前の契約に接続する。**新しい評価Engineや二つめのTask 検証基準をTEIへ複製しない**。TEI #2605はSkill/CLI/Sourceの実挙動と提出可能なEvidenceを担当し、TAIはSession間比較適格性・Harness実ロード・コスト比較を担当する。
 
 **最小の区別**（新Schemaではなく既存票で管理）：
 
@@ -138,12 +138,12 @@ S0cまでに発見した複合Shellの誤認に加え、**既知read-only Comman
 | S0文書整合 | 実Skill root/参照資料のbytes/commit、`verify_skill.py`試験と対象CLI code | 静的checker successを実Tool存在の根拠に使わない |
 | S1実CLI | 1 binaryのdigest、実argv/cwd、`commands`の限定scope、Catalogで選んだ非曖昧Subject、Inspect/Trace、Validateのexit・Warning・error | 実Callを観測できない試行はTool利用済とせず、Skill試験に進む前にProduct不足を分類 |
 | S1 Source/版整合 | `result.worldFingerprint`/`result.sourceIndexFingerprint`等の**実JSON schemaでの位置**を守り、Checkout/Workspace/path/Trace外側Tokenまで照合。Source移動は別の条件 | 意味一致から引用先・開示先の現在性を自動推定しない |
-| S2 H2/H3比較条件 | 同じProduct CLI/Workspace/Task/Permission/開示対象、H2へSkill本文・Oracleが流出していないこと | 不適格なペアを`Skill効果0`と計上しない |
+| S2 H2/H3比較条件 | 同じProduct CLI/Workspace/Task/Permission/開示対象、H2へSkill本文・検証基準が流出していないこと | 不適格なペアを`Skill効果0`と計上しない |
 | S2 H3 Skill実Load | Harness側が読み込んだProduct Skillのroot/refs/scripts、実Tool呼出し、Session IDの独立Witness | `Skillを使用した`というAgent自己報告だけならloaded=unknown |
-| S2比較の正答 | Product観測から**別に構成した独立Oracle**によるSubject/Source/Warning/Unknown/架空CLI・無断write評価 | Output値の一致だけで外部受理やSkill効果を採用しない |
+| S2比較の正答 | Product観測から**別に構成した独立検証基準**によるSubject/Source/Warning/Unknown/架空CLI・無断write評価 | Output値の一致だけで外部受理やSkill効果を採用しない |
 | S2費用・安全 | Tool呼出回数、時間、Provider token/費用（未観測はunknown）、人の再確認、実External Disclosureの適格範囲 | 実送出の未観測を安全の証明としない |
 
-**最初の比較は H2→H3→H3→H2 の4独立Session**（順序交絡を減らすため）。H2はToolのみ、H3は同じTool＋実際にLoadされた`yi-tei-modeling`。両腕のPrompt/Model build/Tool/Principal/Source/実行権限/Oracle非開示条件を揃える。**forced Skill activationとauto-discoveryは別Group**。先行4Sessionで一般の効果量は決定しない。Tool/Skill/SourceのBlobが異なるなら新Groupに分ける。
+**最初の比較は H2→H3→H3→H2 の4独立Session**（順序交絡を減らすため）。H2はToolのみ、H3は同じTool＋実際にLoadされた`yi-tei-modeling`。両腕のPrompt/Model build/Tool/Principal/Source/実行権限/検証基準非開示条件を揃える。**forced Skill activationとauto-discoveryは別Group**。先行4Sessionで一般の効果量は決定しない。Tool/Skill/SourceのBlobが異なるなら新Groupに分ける。
 
 [TAI SK-02 test-only適格性チェッカー](https://github.com/hat47x/tai-pleroma/blob/docs/yi-harness-skills-20261102/evaluations/tools/check-sk02-pair-eligibility.cjs)は20件の**架空Trial票の合成自己検査**を持つが、合成`eligible-to-score`はTask正答や本番許可ではない。TEIのS1 Workflow成功は**実Harness SessionのH2/H3比較PASSへ繰り上げない**。
 

@@ -77,7 +77,8 @@ func executionCode(t *testing.T, err error) string {
 
 func TestInvokeReturnsDeclaredOutcome(t *testing.T) {
 	invoker := Invoker{
-		World: commandWorld(),
+		Authorizer: ReferenceAuthorizer{},
+		World:      commandWorld(),
 		Executor: fakeExecutor{result: Result{
 			Outcome: &semantic.Outcome{Name: "submitted", Payload: "sales.order"},
 			Effect:  &semantic.DataEffect{Kind: semantic.DataEffectUpdate, Data: "sales.order"},
@@ -93,7 +94,7 @@ func TestInvokeReturnsDeclaredOutcome(t *testing.T) {
 }
 
 func TestInvokeRejectsIncompleteInput(t *testing.T) {
-	invoker := Invoker{World: commandWorld(), Executor: fakeExecutor{}}
+	invoker := Invoker{World: commandWorld(), Authorizer: ReferenceAuthorizer{}, Executor: fakeExecutor{}}
 	invalid := request()
 	invalid.Inputs = nil
 	_, err := invoker.Invoke(context.Background(), invalid)
@@ -103,7 +104,7 @@ func TestInvokeRejectsIncompleteInput(t *testing.T) {
 }
 
 func TestInvokeRequiresExecutor(t *testing.T) {
-	invoker := Invoker{World: commandWorld()}
+	invoker := Invoker{Authorizer: ReferenceAuthorizer{}, World: commandWorld()}
 	_, err := invoker.Invoke(context.Background(), request())
 	if code := executionCode(t, err); code != "COMMAND_EXECUTOR_UNAVAILABLE" {
 		t.Fatalf("code=%s err=%v", code, err)
@@ -111,7 +112,7 @@ func TestInvokeRequiresExecutor(t *testing.T) {
 }
 
 func TestInvokeSeparatesExecutionFailure(t *testing.T) {
-	invoker := Invoker{World: commandWorld(), Executor: fakeExecutor{err: errors.New("connection lost")}}
+	invoker := Invoker{World: commandWorld(), Authorizer: ReferenceAuthorizer{}, Executor: fakeExecutor{err: errors.New("connection lost")}}
 	_, err := invoker.Invoke(context.Background(), request())
 	if code := executionCode(t, err); code != "COMMAND_EXECUTION_FAILED" {
 		t.Fatalf("code=%s err=%v", code, err)
@@ -120,8 +121,9 @@ func TestInvokeSeparatesExecutionFailure(t *testing.T) {
 
 func TestInvokeRejectsUndeclaredOutcome(t *testing.T) {
 	invoker := Invoker{
-		World:    commandWorld(),
-		Executor: fakeExecutor{result: Result{Outcome: &semantic.Outcome{Name: "unknown", Payload: "sales.order"}}},
+		Authorizer: ReferenceAuthorizer{},
+		World:      commandWorld(),
+		Executor:   fakeExecutor{result: Result{Outcome: &semantic.Outcome{Name: "unknown", Payload: "sales.order"}}},
 	}
 	_, err := invoker.Invoke(context.Background(), request())
 	if code := executionCode(t, err); code != "UNDECLARED_COMMAND_OUTCOME" {
@@ -130,7 +132,7 @@ func TestInvokeRejectsUndeclaredOutcome(t *testing.T) {
 }
 
 func TestInvokeRejectsUnknownCommand(t *testing.T) {
-	invoker := Invoker{World: commandWorld(), Executor: fakeExecutor{}}
+	invoker := Invoker{World: commandWorld(), Authorizer: ReferenceAuthorizer{}, Executor: fakeExecutor{}}
 	invalid := request()
 	invalid.Capability = "sales.missing"
 	_, err := invoker.Invoke(context.Background(), invalid)

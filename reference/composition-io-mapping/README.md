@@ -35,13 +35,13 @@
 
 ### 選択済みSemanticビューでの限定照合（E2a候補）
 
-`InspectWithSelectedSemanticView` は、呼出元から明示された `[]semantic.Namespace`（標準の `std` は除く）へ **既存の `stdlib.SemanticNamespace()` を独立に追加**し、`validation.Validate` により意味構造を検査した後、既存の `Inspect` の候補判定に型の存在・Aliasから辿る標準primitiveと名目的な項目型の整合を加える。呼出元が `std` 名前空間を注入・上書きする提案は未判定として拒否する。これは既存の外部Semantic Preflightと同じ境界であり、標準NamespaceのPublisher/Accepted Authorityが成立したという主張ではない。別のProvider Resolver、型Registry、標準primitive、契約構文は追加しない。
+`InspectWithSelectedSemanticView` は、呼出元から明示された `[]semantic.Namespace`（標準の `std` は除く）へ **既存の `stdlib.SemanticNamespace()` を独立に追加**し、`validation.Validate` により意味構造を検査した後、既存の `Inspect` の候補判定に型の存在・Aliasから辿る標準primitiveと名目的な項目型の整合を加える。呼出元が `std` 名前空間を注入・上書きする提案は未判定として拒否する。`nil` は選択ビューの欠落として拒否し、明示的な空スライス `[]semantic.Namespace{}` は標準 `std` だけを選択する非業務Pipelineとして構造検査できる。この区別は、選択済みSourceの閉包や業務意味の受理を証明しない。これは既存の外部Semantic Preflightと同じ境界であり、標準NamespaceのPublisher/Accepted Authorityが成立したという主張ではない。別のProvider Resolver、型Registry、標準primitive、契約構文は追加しない。
 
 - **候補**：正負の検証対象となる接続項目の両側にTypeRefがあり、その型が選択ビュー内に存在し、既存の型ID・多重度・単位検査と矛盾しない場合。関係しない未接続出力のTypeRefは必須にしない。
 - **保留**：選択ビューの欠落・検証エラー、未知の型、TypeRef欠落、既存標準primitiveと申告された表現名との矛盾がある場合。`Order`と`ContributionOrder`を返さず、使用可能な接続計画と誤認させない。
 - **競合**：選択ビューで検証可能でも、接続元と接続先の異なる意味Aliasなど既存`Inspect`が拒否する場合。型比較の正本や既存`Inspect`の動作は変更しない。
 
-これは**呼出元が選択した意味ビューの構造的な適合性**を調べる実験であり、ビューの発行者真正性、Namespace Authority、版・Fingerprint・Accepted Semantic Setへの固定、正式Contract項目定義の真正性、Hostの現在権限を検証しない。受理済みというフラグをPluginから受け取らず、将来の正式接続では既存#1570・#951の選択・Trust・Contract機構から認証済みの情報を渡す必要がある。
+これは**呼出元が選択した意味ビューの構造的な適合性**を調べる実験であり、ビューの発行者真正性、Namespace Authority、版・Fingerprint・Accepted Semantic Setへの固定、正式Contract項目定義の真正性、対象環境の現在の実行権限を検証しない。受理済みというフラグをPluginから受け取らず、将来の正式接続では既存#1570・#951の選択・Trust・Contract機構から認証済みの情報を渡す必要がある。
 
 
 型の候補判定は、ADR-0043/0044の対象環境における受理・許可とは独立する。TEI独自の共通Hostや認証Coreを要求しない。

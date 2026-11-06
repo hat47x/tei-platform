@@ -132,9 +132,15 @@ func Audit(p Packet, expectedHead, expectedMain string) Report {
 	if p.Schema != schema {
 		add("UNSUPPORTED_PACKET_SCHEMA")
 	}
-	if p.Contract.ProducerPath == "" || p.Contract.ConsumerPath == "" ||
-		p.Contract.PositiveTest == "" || p.Contract.NegativeTest == "" ||
-		(p.Contract.EvidenceClass != "source-only" && p.Contract.EvidenceClass != "synthetic-tested" && p.Contract.EvidenceClass != "actual-observed") {
+	missingContractFields := p.Contract.ProducerPath == "" || p.Contract.ConsumerPath == "" ||
+		p.Contract.PositiveTest == "" || p.Contract.NegativeTest == ""
+	validEvidenceClass := p.Contract.EvidenceClass == "source-only" ||
+		p.Contract.EvidenceClass == "synthetic-tested" || p.Contract.EvidenceClass == "actual-observed"
+	// E1/E2 own the execution-class requirement below: any class other than
+	// actual-observed is reported there. Reporting the same class defect here
+	// as "contract or test missing" would be a second diagnosis for one field.
+	invalidClass := !validEvidenceClass && p.Claim != "E1" && p.Claim != "E2"
+	if missingContractFields || invalidClass {
 		add("E0_CONTRACT_OR_POSITIVE_NEGATIVE_TEST_MISSING")
 	}
 	if p.Claim != "E0" && p.Claim != "E1" && p.Claim != "E2" {
@@ -189,7 +195,10 @@ func Audit(p Packet, expectedHead, expectedMain string) Report {
 		add("E2_ACCEPTANCE_KIND_REQUIRED")
 	}
 	switch kind := normalizedProvenance(p.Acceptance.AcceptanceKind); {
-	case p.Acceptance.AcceptanceKind == "":
+	case kind == "":
+		// Omitted or blank-only: the E2 "required" diagnosis above already
+		// covers it. Reporting it as unrecognized as well would be a second
+		// diagnosis for the same defect.
 	case kind == "provisional" || kind == "unspecified":
 		add("PROVISIONAL_ACCEPTANCE_NOT_FORMAL_EVIDENCE")
 	default:
@@ -275,7 +284,11 @@ func Audit(p Packet, expectedHead, expectedMain string) Report {
 	}
 	if p.Claim == "E2" {
 		a, w, ph := p.Acceptance, p.Web, p.Physical
-		if w.ProviderKind != "actual-db" {
+		// Only a declared synthetic Provider gets the synthetic-specific
+		// diagnosis. An empty or unknown kind is already reported as
+		// WEB_PROVIDER_KIND_UNRESOLVED above; labeling it "synthetic" as well
+		// would be false and a second report of the same defect.
+		if w.ProviderKind == "synthetic" {
 			add("SYNTHETIC_WEB_PROVIDER_CANNOT_CLAIM_E2")
 		}
 		if ph.AcceptedRevision != a.R1 || ph.Datasource == "" ||

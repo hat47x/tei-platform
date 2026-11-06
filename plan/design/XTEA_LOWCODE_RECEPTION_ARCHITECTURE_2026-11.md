@@ -119,7 +119,7 @@ X-TEAのスクリプトAPIは、SQL・確定・機能呼出しを同じ面に置
 | 遷移 | Pattern間の遷移宣言がない | `internal/application/model.go` | 一覧から単票、明細の起動などをD1で追加する |
 | 業務上の結末 | Capabilityの`Outcomes`と、呼出し境界のerrorを分ける | `internal/semantic/model.go` L128–133、L151–158 | D5はこれを再利用し、X-TEAの戻り値を混ぜない |
 | データ効果 | `create`と`update`のみ | `internal/semantic/model.go` L140–144 | `delete`を表せない。Business Effect Lifecycleと合わせて追加を検討する |
-| 認可 | subject・action・resourceの許可 | `internal/security/legacyauthorization/authorization.go` L29–45 | AC-11はこれを再利用できる。Pattern・Commandとの対応付けが要る |
+| 認可 | subject・action・resourceの許可 | `internal/security/legacyauthorization/authorization.go` L29–45 | `legacyauthorization/commandbinding.CommandAuthorizer`が`command.Invoker.Authorizer`へ接続済み。権限の正本・付与の管理は未接続 |
 | 項目の意味 | Attribute（ID・型・説明・表示）とValidation（`positive`、`relation-unique`のみ） | `internal/semantic/model.go` L64–70、L101–121 | 必須・更新禁止・値域は新設し、参照は`reference` Pattern、導出はData Derivationへ寄せる |
 | 表示・配置 | アプリケーション層にモデルがない | `internal/application/model.go` | D4の表示意図を新設する |
 | 帳票・出力投影 | モデルがない | `internal/application/model.go` | D7を新設する |
@@ -947,6 +947,19 @@ PoC #2521が実装した範囲と、まだ実装していない範囲を分け�
 | 削除効果の参照ポリシー検査 | 実装済み（内向きRelationに`on-delete`がない場合の警告） |
 | Commandの参照実装（契約確認用） | 実装済み（業務副作用なし、Commit/Rollbackの記録のみ） |
 | Commandからeffectcommitへのアダプタ | 実装済み（`effectcommit.Runner.Execute`へ委譲、認可・receiptを省略しない。実PostgreSQLは`TEI_EFFECT_POSTGRES_DSN`がある場合のみ試験） |
+| Command実行前の認可契約 | 実装済み（`Invoker.Authorizer`、`AllowListAuthorizer`。`Authorizer`未設定は拒否し、参照実行は`ReferenceAuthorizer`を明示する。権限の正本・付与は未実装） |
+| CLI参照実行の認可AllowList | 実装済み（`view -execute -allow-capability`、参照用） |
+| Command効果の宣言照合 | 実装済み（Executorが返すEffectが宣言と一致しない場合は拒否。Executor実行後の検出なので`EffectUnknown`としてLifecycleへ渡し、適用不明として記録する） |
+| Command実行の記録契約 | 実装済み（`Invoker.Recorder`が宣言効果・報告効果・結末を記録。実装は`MemoryRecorder`） |
+| CLI実行記録 | 実装済み（`view -execute -operation-log`、JSON） |
+| 能力の宣言許可の照合 | 実装済み（`command.GrantAuthorizer`が能力の宣言許可と発行済み許可を`permission.Covers`で照合。無宣言・部分許可・不正宣言は拒否） |
+| 診断の修正案 | 実装済み（`validation.Propose`が版付きの未受理の案を作り、`validation.Accept`が版一致と未受理を要求。`tei validate -json`は`proposals`を返す） |
+| 参照Storeの拒否符号 | 実装済み（`ReferenceFailure`が`record-missing`・`record-exists`・`value-rejected`・`rule-rejected`を持ち、`FailureOutcome`が結末名へ写す。CLIは`COMMAND_REFUSED`で返す） |
+| フックの宣言外呼出し | 実装済み（`hook.Declared`が`uses`外の能力呼出しを`HOOK_UNDECLARED_CALL`で拒否。無宣言は拒否） |
+| 画面・帳票の版 | 実装済み（全HTML・印刷テンプレートが`tei-semantic-fingerprint`を出力） |
+| 読み取り専用datasourceの事前検査 | 実装済み（Applicationの`database ... access read`宣言とDatabaseの`uses semantic`から対象Dataを引き、書込みCommandを`COMMAND_DATASOURCE_READ_ONLY`で拒否。宣言が無いDataは推測しない） |
+| CLIの失敗符号 | 実装済み（`COMMAND_EFFECT_UNKNOWN`・`COMMAND_LIFECYCLE_REFUSED`を`COMMAND_FAILED`から分離） |
+| 適用操作の照合 | 実装済み（参照StoreのExecutorが`Applied`で適用したレコードを返し、Invokerが宣言効果と照合。宣言外の種別は`UNDECLARED_COMMAND_EFFECT`、宣言効果に対応する操作が無い場合は`MISSING_COMMAND_EFFECT`、宣言と異なる対象への同種別適用は`Differences`へ未解決の差として残し、CLIの`view -execute`結果（テキスト・JSON）とStudioの`records`・`differences`・「宣言との差」に現れる。列挙しないExecutorは`AppliedUnobserved`で未確認と示す） |
 | 参照データ記憶域（MemoryStore） | 実装済み（create/update/delete、スナップショットによるRollback） |
 | 参照Storeの削除ポリシー実行 | 実装済み（restrict・cascade・preserve。`Relation.Keys`がある場合は行単位、ない場合はData単位） |
 | 参照Storeの複数段カスケード | 実装済み（キー対応の再帰削除、循環防止） |
@@ -973,6 +986,8 @@ PoC #2521が実装した範囲と、まだ実装していない範囲を分け�
 | Studio rendererのビュー表示 | 実装済み（Application・PatternのJSON表示、読取専用） |
 | StudioからのCommand計画・参照実行 | 実装済み（`PlanCommand`・`ExecuteCommand`、業務副作用なし） |
 | Studioからの期間状態付き参照実行 | 実装済み（`ExecuteCommandWithPeriods`、閉期間の拒否） |
+| Studioの認可AllowList | 実装済み（`ExecuteCommandWithPolicy`、能力単位の参照用） |
+| Studio実行記録 | 実装済み（`CommandRunValue.records`、画面に件数表示） |
 | Studioのビュー要約表示 | 実装済み（項目・コマンド・フック・未使用を表形式で表示） |
 | StudioのPackageビュー | 実装済み（メンバー・前提・版束縛） |
 | Applicationビューの期間（D6.1） | 実装済み（ID・Data・業務日付・状態） |
@@ -980,6 +995,26 @@ PoC #2521が実装した範囲と、まだ実装していない範囲を分け�
 | `reference/workspace`への宣言追加 | 未実施（受理経路が必要） |
 
 実装は、`internal/application/model.go`、`internal/syntax/application_pattern.go`、`internal/validation/application_pattern.go`、`internal/crossview/pattern_requirements.go`、`internal/applicationview`、`internal/semantic/model.go`、`internal/syntax/parser.go`、`internal/validation/validation.go`と、それぞれの試験です。
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

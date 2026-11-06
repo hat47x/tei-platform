@@ -6,6 +6,7 @@ import (
 
 	"tei/internal/application"
 	"tei/internal/ir"
+	"tei/internal/query"
 	"tei/internal/semantic"
 	"tei/internal/sourceindex"
 )
@@ -141,4 +142,28 @@ func TestCatalogNamespaceFilterPreservesGlobalIdentityAmbiguity(t *testing.T) {
 		return
 	}
 	t.Fatal("filtered Data missing")
+}
+
+func TestCatalogWorldReportsNamespaceMatch(t *testing.T) {
+	world := ir.World{
+		Semantics:    []semantic.Namespace{{ID: "sales"}},
+		Applications: []application.Application{{ID: "order_entry"}},
+		Queries:      []query.EmbeddedSQL{{ID: "sales.orders"}},
+	}
+	idx := sourceindex.Index{}
+	for name, want := range map[string]struct {
+		matched bool
+		kind    string
+	}{
+		"":             {true, "all"},
+		"sales":        {true, "namespace"},
+		"order_entry":  {false, "application"},
+		"sales.orders": {false, "query"},
+		"no.such.ns":   {false, "unknown"},
+	} {
+		got := CatalogWorld(world, idx, name, "world", "source")
+		if got.NamespaceMatched != want.matched || got.NamespaceMatchKind != want.kind {
+			t.Errorf("namespace %q: matched=%t kind=%q, want %t/%q", name, got.NamespaceMatched, got.NamespaceMatchKind, want.matched, want.kind)
+		}
+	}
 }

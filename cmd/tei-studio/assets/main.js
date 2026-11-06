@@ -23,6 +23,7 @@ const viewOutput = document.querySelector("#view-output");
 const capabilityInput = document.querySelector("#command-capability");
 const commandInputs = document.querySelector("#command-inputs");
 const commandPeriods = document.querySelector("#command-periods");
+const commandAllowed = document.querySelector("#command-allowed");
 const planCommandButton = document.querySelector("#plan-command");
 const executeCommandButton = document.querySelector("#execute-command");
 const commandState = document.querySelector("#command-state");
@@ -181,7 +182,7 @@ observeButton.addEventListener("click", async () => {
 });
 viewApplicationButton.addEventListener("click", () => runView(viewApplicationButton, "application", (id) => api.viewApplication(id, applicationInput.value.trim())));
 planCommandButton.addEventListener("click", () => runCommand("plan", (id) => api.planCommand(id, applicationInput.value.trim(), patternInput.value.trim(), capabilityInput.value.trim(), parseInputs(commandInputs.value))));
-executeCommandButton.addEventListener("click", () => runCommand("execute", (id) => api.executeCommandWithPeriods(id, applicationInput.value.trim(), patternInput.value.trim(), capabilityInput.value.trim(), parseInputs(commandInputs.value), parseInputs(commandPeriods.value))));
+executeCommandButton.addEventListener("click", () => runCommand("execute", (id) => api.executeCommandWithPolicy(id, applicationInput.value.trim(), patternInput.value.trim(), capabilityInput.value.trim(), parseInputs(commandInputs.value), parseInputs(commandPeriods.value), commandAllowed.value.split(",").map((item) => item.trim()).filter(Boolean))));
 viewPatternButton.addEventListener("click", () => runView(viewPatternButton, "pattern", (id) => api.viewPattern(id, applicationInput.value.trim(), patternInput.value.trim())));
 viewPackageButton.addEventListener("click", () => runView(viewPackageButton, "package", (id) => api.viewPackage(id, applicationInput.value.trim(), packageInput.value.trim())));
 for (const action of actions) {
@@ -217,6 +218,7 @@ if (!listed.ok) {
   planCommandButton.disabled = !selectedID();
   executeCommandButton.disabled = !selectedID();
 }
+
 
 
 

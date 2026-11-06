@@ -3,14 +3,17 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
+	"os"
 	"strings"
 
 	"tei/internal/application"
 	"tei/internal/applicationview"
 	"tei/internal/command"
+	"tei/internal/command/lifecyclesqlite"
 	"tei/internal/core"
 	"tei/internal/periodstate"
 	"tei/internal/semantic"
@@ -23,7 +26,24 @@ type referenceCommandRun struct {
 	Plan          applicationview.CommandPlan `json:"plan"`
 	Outcome       *semantic.Outcome           `json:"outcome,omitempty"`
 	Effect        *semantic.DataEffect        `json:"effect,omitempty"`
-	Committed     bool                        `json:"committed"`
+	// Committed reports that the configured UnitOfWork returned from Commit.
+	// It is not evidence that data was persisted: a reference run uses
+	// MemoryUnitOfWork, which counts the call without writing anything. Read it
+	// together with Persisted and Durability (#2998).
+	Committed bool `json:"committed"`
+	// Persisted is false for a reference run. It is a separate field so a
+	// caller cannot read Committed as "the data is now durable".
+	Persisted bool `json:"persisted"`
+	// Durability names the storage boundary: "none" for the reference executor.
+	Durability string `json:"durability"`
+	// Differences keeps the applied operations the declaration does not
+	// describe, so a reader of the run output can see the gap without reading
+	// the operation log.
+	Differences []command.Difference `json:"differences,omitempty"`
+	// AppliedUnobserved is true when the executor did not enumerate its
+	// operations, so `differences` being empty is "not observed" rather than
+	// "none found".
+	AppliedUnobserved bool `json:"appliedUnobserved,omitempty"`
 }
 
 type cliViewReport struct {
@@ -35,6 +55,21 @@ type cliViewReport struct {
 
 // runViewCommandは、Application Patternの対話契約を解決し、textまたはjsonで返す。
 // 意味の解決は applicationview に置き、ここでは引数・出力・終了コードだけを扱う。
+// commandFailure maps an execution failure to the CLI code a caller needs in
+// order to decide what to do next. A failure whose data effect may already be
+// applied must not read like a clean rejection, and a lifecycle refusal is a
+// replay decision rather than an execution error.
+func commandFailure(err error) (string, string, bool) {
+	var execution *command.ExecutionError
+	if errors.As(err, &execution) && execution.Code == "COMMAND_LIFECYCLE_REFUSED" {
+		return "COMMAND_LIFECYCLE_REFUSED", execution.Message, true
+	}
+	if command.EffectMayBeUnknown(err) {
+		return "COMMAND_EFFECT_UNKNOWN", err.Error(), true
+	}
+	return "", "", false
+}
+
 func runViewCommand(args []string, out io.Writer) (int, error) {
 	report := cliViewReport{SchemaVersion: "tei.cli.view/v0"}
 	fail := func(code, message string, exit int) (int, error) {
@@ -51,6 +86,13 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 	commandID := fs.String("command", "", "command capability to plan")
 	execute := fs.Bool("execute", false, "reference execution of the planned command")
 	periodStateFile := fs.String("period-state", "", "period state JSON for -execute")
+	operationLogFile := fs.String("operation-log", "", "write reference operation records as JSON")
+	lifecycleState := fs.String("lifecycle-state", "", "SQLite state file for restart-safe command lifecycle")
+	lifecycleCommand := fs.String("lifecycle-command", "", "stable command id recorded in the lifecycle state")
+	lifecycleOwner := fs.String("lifecycle-owner", "cli", "owner recorded in the lifecycle state")
+	lifecycleGeneration := fs.Int("lifecycle-generation", 1, "generation recorded in the lifecycle state")
+	var allowedCapabilities inputFlag
+	fs.Var(&allowedCapabilities, "allow-capability", "capability allowed by the reference authorizer; repeatable")
 	var inputPairs inputFlag
 	fs.Var(&inputPairs, "input", "command input as name=value; repeatable")
 	format := fs.String("format", "text", "text or json")
@@ -62,6 +104,11 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 		(*commandID != "" && *patternID == "") ||
 		(*execute && *commandID == "") ||
 		(*periodStateFile != "" && !*execute) ||
+		(*lifecycleState != "" && (!*execute || *lifecycleCommand == "")) ||
+		(*lifecycleState == "" && *lifecycleCommand != "") ||
+		(*lifecycleGeneration < 1) ||
+		(len(allowedCapabilities) > 0 && !*execute) ||
+		(*operationLogFile != "" && !*execute) ||
 		*root != strings.TrimSpace(*root) || *applicationID != strings.TrimSpace(*applicationID) ||
 		*patternID != strings.TrimSpace(*patternID) || *packageID != strings.TrimSpace(*packageID) ||
 		*commandID != strings.TrimSpace(*commandID) {
@@ -125,9 +172,17 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 		}
 		if *execute {
 			invoker := command.Invoker{
+				Authorizer: command.ReferenceAuthorizer{},
 				World:      loaded.World,
 				Executor:   command.ReferenceExecutor{World: loaded.World},
 				UnitOfWork: &command.MemoryUnitOfWork{},
+			}
+			if len(allowedCapabilities) > 0 {
+				authorizer := make(command.AllowListAuthorizer, 0, len(allowedCapabilities))
+				for _, capability := range allowedCapabilities {
+					authorizer = append(authorizer, core.CanonicalID(capability))
+				}
+				invoker.Authorizer = authorizer
 			}
 			if *periodStateFile != "" {
 				states, err := periodstate.File{Path: *periodStateFile}.PeriodStates(context.Background(), *applicationID)
@@ -136,22 +191,68 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 				}
 				invoker.Periods = command.NewMapPeriodState(states)
 			}
-			result, err := invoker.Invoke(context.Background(), command.Request{
+			recorder := &command.MemoryRecorder{}
+			invoker.Recorder = recorder
+			request := command.Request{
 				Application: core.CanonicalID(*applicationID),
 				Pattern:     core.CanonicalID(*patternID),
 				Capability:  core.CanonicalID(*commandID),
 				Inputs:      values,
-			})
+			}
+			var result command.Result
+			if *lifecycleState != "" {
+				store, openErr := lifecyclesqlite.Open(*lifecycleState)
+				if openErr != nil {
+					return fail("LIFECYCLE_STATE_FAILED", openErr.Error(), 1)
+				}
+				defer store.Close()
+				tracked := command.LifecycleInvoker{Invoker: invoker, Lifecycle: store}
+				result, err = tracked.Invoke(context.Background(), request, command.DispatchOptions{
+					CommandID:  *lifecycleCommand,
+					Owner:      *lifecycleOwner,
+					Generation: *lifecycleGeneration,
+				})
+			} else {
+				result, err = invoker.Invoke(context.Background(), request)
+			}
 			if err != nil {
+				// A reference refusal is a business answer, not an execution
+				// fault: name the outcome so a caller can branch on it.
+				if outcome, ok := command.FailureOutcome(err); ok {
+					return fail("COMMAND_REFUSED", outcome+": "+err.Error(), 1)
+				}
+				if code, message, ok := commandFailure(err); ok {
+					return fail(code, message, 1)
+				}
 				return fail("COMMAND_FAILED", err.Error(), 1)
 			}
+			if *operationLogFile != "" {
+				encoded, encodeErr := json.MarshalIndent(recorder.Records, "", "  ")
+				if encodeErr != nil {
+					return fail("OPERATION_LOG_WRITE_FAILED", encodeErr.Error(), 1)
+				}
+				if writeErr := os.WriteFile(*operationLogFile, append(encoded, '\n'), 0o600); writeErr != nil {
+					return fail("OPERATION_LOG_WRITE_FAILED", writeErr.Error(), 1)
+				}
+			}
+			var differences []command.Difference
+			appliedUnobserved := true
+			if len(recorder.Records) > 0 {
+				last := recorder.Records[len(recorder.Records)-1]
+				differences = last.Differences
+				appliedUnobserved = last.AppliedUnobserved
+			}
 			run := referenceCommandRun{
-				SchemaVersion: applicationview.SchemaVersion,
-				Mode:          "reference",
-				Plan:          plan,
-				Outcome:       result.Outcome,
-				Effect:        result.Effect,
-				Committed:     true,
+				SchemaVersion:     applicationview.SchemaVersion,
+				Mode:              "reference",
+				Plan:              plan,
+				Outcome:           result.Outcome,
+				Effect:            result.Effect,
+				Committed:         true,
+				Persisted:         false,
+				Durability:        "none",
+				Differences:       differences,
+				AppliedUnobserved: appliedUnobserved,
 			}
 			report.OK = true
 			report.Result = run
@@ -623,8 +724,28 @@ func writeReferenceRunText(out io.Writer, run referenceCommandRun) (int, error) 
 			return 2, err
 		}
 	}
-	if _, err := fmt.Fprintf(out, "committed: %t\n", run.Committed); err != nil {
+	if _, err := fmt.Fprintf(out, "committed: %t (reference unit of work)\n", run.Committed); err != nil {
 		return 2, err
+	}
+	if _, err := fmt.Fprintf(out, "persisted: %t (durability: %s)\n", run.Persisted, run.Durability); err != nil {
+		return 2, err
+	}
+	// An unresolved difference is shown even when the run succeeded: the
+	// declaration did not describe the whole effect, and the reader should not
+	// have to open the operation log to notice.
+	// Only a declared effect gives the check something to compare against; a
+	// command without one has no difference to look for.
+	if run.AppliedUnobserved && run.Plan.Effect != nil {
+		if _, err := fmt.Fprintln(out, "difference-check: not observed (this executor does not enumerate its operations)"); err != nil {
+			return 2, err
+		}
+	}
+	for _, difference := range run.Differences {
+		if _, err := fmt.Fprintf(out, "difference: %s (%s %s beyond %s %s)\n",
+			difference.Code, difference.Applied.Kind, difference.Applied.Data,
+			difference.Declared.Kind, difference.Declared.Data); err != nil {
+			return 2, err
+		}
 	}
 	return 0, nil
 }

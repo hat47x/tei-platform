@@ -2,6 +2,7 @@ package studiohost
 
 import (
 	"context"
+	"errors"
 
 	"tei/internal/applicationview"
 	"tei/internal/command"
@@ -20,11 +21,24 @@ type CommandPlanResponse struct {
 
 // CommandRunValue is a reference execution of a command. It has no durable effect.
 type CommandRunValue struct {
-	Plan      applicationview.CommandPlan `json:"plan"`
-	Mode      string                      `json:"mode"`
-	Outcome   *semantic.Outcome           `json:"outcome,omitempty"`
-	Effect    *semantic.DataEffect        `json:"effect,omitempty"`
-	Committed bool                        `json:"committed"`
+	Plan    applicationview.CommandPlan `json:"plan"`
+	Mode    string                      `json:"mode"`
+	Outcome *semantic.Outcome           `json:"outcome,omitempty"`
+	Effect  *semantic.DataEffect        `json:"effect,omitempty"`
+	// Committed reports that the configured UnitOfWork returned from Commit.
+	// The reference host uses MemoryUnitOfWork, which does not write data (#2998).
+	Committed bool `json:"committed"`
+	// Persisted is false for a reference execution.
+	Persisted bool `json:"persisted"`
+	// Durability names the storage boundary: "none" for the reference executor.
+	Durability string                    `json:"durability"`
+	Records    []command.OperationRecord `json:"records,omitempty"`
+	// Differences keeps the applied operations the declaration does not
+	// describe, so the view can show the gap beside the effect.
+	Differences []command.Difference `json:"differences,omitempty"`
+	// AppliedUnobserved is true when the executor did not enumerate its
+	// operations, so `differences` being empty is "not observed".
+	AppliedUnobserved bool `json:"appliedUnobserved,omitempty"`
 }
 
 // CommandRunResponse is the result of a reference execution.
@@ -68,6 +82,47 @@ func (h *ReadOnly) ExecuteCommand(workspaceID, applicationID, patternID, capabil
 // ExecuteCommandWithPeriods runs the reference executor with caller-supplied
 // period states. A closed period rejects effects listed in closedRejects.
 func (h *ReadOnly) ExecuteCommandWithPeriods(workspaceID, applicationID, patternID, capabilityID string, inputs, periods map[string]string) CommandRunResponse {
+	return h.ExecuteCommandWithPolicy(workspaceID, applicationID, patternID, capabilityID, inputs, periods, nil)
+}
+
+// ExecuteCommandWithPolicy additionally applies a reference capability
+// allow list before the executor runs.
+func (h *ReadOnly) ExecuteCommandWithPolicy(workspaceID, applicationID, patternID, capabilityID string, inputs, periods map[string]string, allowed []string) CommandRunResponse {
+	return h.executeCommand(workspaceID, applicationID, patternID, capabilityID, inputs, periods, allowed, nil)
+}
+
+// ExecuteCommandWithLifecycle runs the same reference execution under the
+// host-composed durable stage store. A repeated attempt is refused with
+// COMMAND_LIFECYCLE_REFUSED instead of executing again.
+func (h *ReadOnly) ExecuteCommandWithLifecycle(workspaceID, applicationID, patternID, capabilityID string, inputs, periods map[string]string, allowed []string, commandID, owner string, generation int) CommandRunResponse {
+	if h.CommandLifecycle == nil {
+		return CommandRunResponse{Failure: &Failure{Code: "COMMAND_LIFECYCLE_UNAVAILABLE", Stage: "command", Message: "no command lifecycle is composed for this host"}}
+	}
+	if commandID == "" || owner == "" || generation < 1 {
+		return CommandRunResponse{Failure: &Failure{Code: "INVALID_LIFECYCLE_ATTEMPT", Stage: "command", Message: "command id, owner, and a positive generation are required"}}
+	}
+	return h.executeCommand(workspaceID, applicationID, patternID, capabilityID, inputs, periods, allowed,
+		&command.DispatchOptions{CommandID: commandID, Owner: owner, Generation: generation})
+}
+
+// recordDifferences returns the differences of the last operation record, so the
+// view can show them without exposing the whole log.
+func recordDifferences(records []command.OperationRecord) []command.Difference {
+	if len(records) == 0 {
+		return nil
+	}
+	return records[len(records)-1].Differences
+}
+
+// recordAppliedUnobserved reports whether the executor said what it applied.
+func recordAppliedUnobserved(records []command.OperationRecord) bool {
+	if len(records) == 0 {
+		return true
+	}
+	return records[len(records)-1].AppliedUnobserved
+}
+
+func (h *ReadOnly) executeCommand(workspaceID, applicationID, patternID, capabilityID string, inputs, periods map[string]string, allowed []string, attempt *command.DispatchOptions) CommandRunResponse {
 	loaded, failure := h.loadWorkspace(workspaceID)
 	if failure != nil {
 		return CommandRunResponse{Failure: failure}
@@ -80,6 +135,7 @@ func (h *ReadOnly) ExecuteCommandWithPeriods(workspaceID, applicationID, pattern
 		World:      loaded.World,
 		Executor:   command.ReferenceExecutor{World: loaded.World},
 		UnitOfWork: &command.MemoryUnitOfWork{},
+		Authorizer: command.ReferenceAuthorizer{},
 	}
 	if periods != nil {
 		states := map[string]operations.PeriodState{}
@@ -94,20 +150,45 @@ func (h *ReadOnly) ExecuteCommandWithPeriods(workspaceID, applicationID, pattern
 		}
 		invoker.Periods = command.NewMapPeriodState(states)
 	}
-	result, err := invoker.Invoke(context.Background(), command.Request{
+	recorder := &command.MemoryRecorder{}
+	invoker.Recorder = recorder
+	if len(allowed) > 0 {
+		authorizer := make(command.AllowListAuthorizer, 0, len(allowed))
+		for _, capability := range allowed {
+			authorizer = append(authorizer, core.CanonicalID(capability))
+		}
+		invoker.Authorizer = authorizer
+	}
+	request := command.Request{
 		Application: core.CanonicalID(applicationID),
 		Pattern:     core.CanonicalID(patternID),
 		Capability:  core.CanonicalID(capabilityID),
 		Inputs:      inputs,
-	})
+	}
+	var result command.Result
+	if attempt != nil {
+		tracked := command.LifecycleInvoker{Invoker: invoker, Lifecycle: h.CommandLifecycle}
+		result, err = tracked.Invoke(context.Background(), request, *attempt)
+	} else {
+		result, err = invoker.Invoke(context.Background(), request)
+	}
 	if err != nil {
+		var execution *command.ExecutionError
+		if errors.As(err, &execution) && execution.Code == "COMMAND_LIFECYCLE_REFUSED" {
+			return CommandRunResponse{Failure: &Failure{Code: "COMMAND_LIFECYCLE_REFUSED", Stage: "command", Message: execution.Message}}
+		}
 		return CommandRunResponse{Failure: &Failure{Code: "COMMAND_FAILED", Stage: "command", Message: err.Error()}}
 	}
 	return CommandRunResponse{OK: true, Value: &CommandRunValue{
-		Plan:      plan,
-		Mode:      "reference",
-		Outcome:   result.Outcome,
-		Effect:    result.Effect,
-		Committed: true,
+		Plan:              plan,
+		Mode:              "reference",
+		Outcome:           result.Outcome,
+		Effect:            result.Effect,
+		Committed:         true,
+		Persisted:         false,
+		Durability:        "none",
+		Records:           recorder.Records,
+		Differences:       recordDifferences(recorder.Records),
+		AppliedUnobserved: recordAppliedUnobserved(recorder.Records),
 	}}
 }

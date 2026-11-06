@@ -18,7 +18,7 @@ TEIのSource・モデル要素・入力元・参照関係・Validationを調べ�
 
 ## 実行の流れ
 
-1. **実環境を確認**：TEIリポジトリのcheckoutとWorkspaceの所在・利用目的・利用可能な情報範囲を確認する。CLIの使用可能なread-only入口を`go run ./cmd/tei commands`で確認する。ビルド済み実行ファイルがあれば`tei version -json`などで版を照合し、Gitの改訂・Working Treeを別記する。**発見したCLIと実際の呼出しで使用した実行物（path/bytes/argv/cwd）を区別する**。必要な場合は固定したビルド成果物を使い、異なる実行物を同じ試行と見なさない。`go run`からVCS revisionが得られるとは仮定しない。
+1. **実環境を確認**：TEIリポジトリのcheckoutとWorkspaceの所在・利用目的・利用可能な情報範囲を確認する。`go.mod`の`go`行の要求版と`go version`の出力を照合し、不足なら実行を止めて環境不備として記録する（TEIの結果と区別する）。CLIの使用可能なread-only入口を`go run ./cmd/tei commands`で確認する。ビルド済み実行ファイルがあれば`tei version -json`などで版を照合し、Gitの改訂・Working Treeを別記する。**発見したCLIと実際の呼出しで使用した実行物（path/bytes/argv/cwd）を区別する**。必要な場合は固定したビルド成果物を使い、異なる実行物を同じ試行と見なさない。`go run`からVCS revisionが得られるとは仮定しない。
 2. **対象を発見**：`go run ./cmd/tei model catalog -workspace <workspace>`の`entries[].subject.kind/id`から対象候補を選び、重複・曖昧なら特定を保留する。名前や一覧順を正本IDとして推測しない。
 3. **対象を読む**：`go run ./cmd/tei inspect -workspace <workspace> -subject-kind <kind> -subject-id <id>`で指定要素を調べ、必要な場合のみ`trace`で宣言済み直接参照を追う。Source indexの候補と元ファイルの所在を分ける。
 4. **検証する**：`go run ./cmd/tei validate -workspace <workspace> -json`の終了コード、`ok`、`diagnostics`、Warning、エラーをそれぞれ確認する。exit 0や`ok=true`だけからWarningなし・業務受理済みと判断しない。

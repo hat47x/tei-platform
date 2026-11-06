@@ -72,8 +72,10 @@ func runVersionCommand(args []string, out io.Writer) (int, error) {
 	asJSON := false
 	for _, arg := range args {
 		if arg != "-json" {
-			fmt.Fprintf(out, "version accepts only -json, got %q\n", arg)
-			return 2, nil
+			// The JSON output contract puts argument failures on standard error.
+			// Returning the error (rather than writing to out) keeps a caller that
+			// passed -json from parsing a non-JSON line on standard output.
+			return 2, fmt.Errorf("version accepts only -json, got %q", arg)
 		}
 		asJSON = true
 	}

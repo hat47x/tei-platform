@@ -203,8 +203,25 @@ func TestSyntheticWebCannotClaimE2(t *testing.T) {
 	p := fixture()
 	p.Web.ProviderKind = "synthetic"
 	result := Audit(p, h, m)
-	if !has(result, "SYNTHETIC_WEB_PROVIDER_CANNOT_CLAIM_E2") || result.Status != "INCOMPLETE" {
+	want := []string{"E2_ACCEPTANCE_KIND_REQUIRED", "SYNTHETIC_WEB_PROVIDER_CANNOT_CLAIM_E2"}
+	if !reflect.DeepEqual(result.Diagnostics, want) || result.Status != "INCOMPLETE" {
 		t.Fatalf("%+v", result)
+	}
+}
+
+// An empty or unknown providerKind names no Provider at all. It is reported
+// as unresolved, and must not also be labeled "synthetic": that diagnosis is
+// false when the packet never declared a synthetic Provider. Either way the
+// packet stays INCOMPLETE.
+func TestUnresolvedWebProviderKindIsNotLabeledSynthetic(t *testing.T) {
+	for _, kind := range []string{"", "synthetic-db", "odbc", " actual-db "} {
+		p := fixture()
+		p.Web.ProviderKind = kind
+		result := Audit(p, h, m)
+		if has(result, "SYNTHETIC_WEB_PROVIDER_CANNOT_CLAIM_E2") ||
+			!has(result, "WEB_PROVIDER_KIND_UNRESOLVED") || result.Status != "INCOMPLETE" {
+			t.Fatalf("%q: %+v", kind, result)
+		}
 	}
 }
 func TestE1WithSyntheticWebIsOnlyReviewable(t *testing.T) {
@@ -487,6 +504,38 @@ func TestClaimedE1E2RejectsSourceOnlyEvidenceClass(t *testing.T) {
 	p.Contract.EvidenceClass = "source-only"
 	if r := Audit(p, h, m); r.Status != "REVIEW_REQUIRED" || r.ProductGate != "UNQUALIFIED" {
 		t.Fatalf("E0 should permit source-only, but never qualify Product Gate: %+v", r)
+	}
+}
+
+// E1/E2 require actual-observed. An empty or unknown class is the same class
+// defect as source-only for those claims: one diagnosis, not also the E0
+// "contract or test missing" report. E0 keeps the class-validity diagnosis,
+// and E1/E2 still report genuinely missing contract fields.
+func TestClaimedE1E2EmptyEvidenceClassHasOneDiagnosis(t *testing.T) {
+	for _, tier := range []string{"E1", "E2"} {
+		for _, class := range []string{"", "bogus"} {
+			p := fixture()
+			p.Claim = tier
+			p.Contract.EvidenceClass = class
+			r := Audit(p, h, m)
+			if !has(r, "E1_E2_ACTUAL_EXECUTION_CLASS_REQUIRED") ||
+				has(r, "E0_CONTRACT_OR_POSITIVE_NEGATIVE_TEST_MISSING") ||
+				r.Status != "INCOMPLETE" {
+				t.Fatalf("%s %q: %+v", tier, class, r)
+			}
+		}
+	}
+	p := fixture()
+	p.Claim = "E0"
+	p.Contract.EvidenceClass = ""
+	if r := Audit(p, h, m); !has(r, "E0_CONTRACT_OR_POSITIVE_NEGATIVE_TEST_MISSING") {
+		t.Fatalf("E0 lost the invalid-class diagnosis: %+v", r)
+	}
+	p = fixture()
+	p.Claim = "E1"
+	p.Contract.ProducerPath = ""
+	if r := Audit(p, h, m); !has(r, "E0_CONTRACT_OR_POSITIVE_NEGATIVE_TEST_MISSING") {
+		t.Fatalf("E1 lost the missing-contract-field diagnosis: %+v", r)
 	}
 }
 
@@ -797,6 +846,11 @@ func TestE2MustNameTheAcceptanceKind(t *testing.T) {
 		r := Audit(p, h, m)
 		if !has(r, want) || r.Status != "INCOMPLETE" || r.ProductGate != "UNQUALIFIED" {
 			t.Fatalf("%s: %+v", name, r)
+		}
+		// Treated exactly like an omitted field: one diagnosis, not also
+		// "unrecognized".
+		if has(r, "ACCEPTANCE_KIND_UNRECOGNIZED") {
+			t.Fatalf("%s: blank-only kind is reported as unrecognized as well: %v", name, r.Diagnostics)
 		}
 		// E0/E1 are unchanged (legacy shape).
 		for _, claim := range []string{"E0", "E1"} {

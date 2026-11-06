@@ -25,9 +25,10 @@ func TestInvokeRejectsClosedPeriod(t *testing.T) {
 	state := NewMemoryPeriodState()
 	state.SetClosed("sales.period", true)
 	invoker := Invoker{
-		World:    periodWorld([]string{"update"}),
-		Executor: fakeExecutor{result: Result{Outcome: &semantic.Outcome{Name: "submitted", Payload: "sales.order"}}},
-		Periods:  state,
+		Authorizer: ReferenceAuthorizer{},
+		World:      periodWorld([]string{"update"}),
+		Executor:   fakeExecutor{result: Result{Outcome: &semantic.Outcome{Name: "submitted", Payload: "sales.order"}}},
+		Periods:    state,
 	}
 	_, err := invoker.Invoke(context.Background(), request())
 	if code := executionCode(t, err); code != "COMMAND_PERIOD_CLOSED" {
@@ -39,9 +40,10 @@ func TestInvokeAllowsClosedPeriodWhenEffectIsNotRejected(t *testing.T) {
 	state := NewMemoryPeriodState()
 	state.SetClosed("sales.period", true)
 	invoker := Invoker{
-		World:    periodWorld([]string{"delete"}),
-		Executor: fakeExecutor{result: Result{Outcome: &semantic.Outcome{Name: "submitted", Payload: "sales.order"}}},
-		Periods:  state,
+		Authorizer: ReferenceAuthorizer{},
+		World:      periodWorld([]string{"delete"}),
+		Executor:   fakeExecutor{result: Result{Outcome: &semantic.Outcome{Name: "submitted", Payload: "sales.order"}}},
+		Periods:    state,
 	}
 	if _, err := invoker.Invoke(context.Background(), request()); err != nil {
 		t.Fatal(err)
@@ -51,9 +53,10 @@ func TestInvokeAllowsClosedPeriodWhenEffectIsNotRejected(t *testing.T) {
 func TestInvokeReportsPeriodStateFailure(t *testing.T) {
 	state := NewMemoryPeriodState()
 	invoker := Invoker{
-		World:    periodWorld([]string{"update"}),
-		Executor: fakeExecutor{},
-		Periods:  state,
+		Authorizer: ReferenceAuthorizer{},
+		World:      periodWorld([]string{"update"}),
+		Executor:   fakeExecutor{},
+		Periods:    state,
 	}
 	_, err := invoker.Invoke(context.Background(), request())
 	if code := executionCode(t, err); code != "COMMAND_PERIOD_STATE_FAILED" {

@@ -10,6 +10,7 @@ import (
 	"tei/internal/core"
 	"tei/internal/execution"
 	"tei/internal/permission"
+	"tei/internal/plugin"
 	"tei/internal/semantic"
 )
 
@@ -124,3 +125,39 @@ func TestGuardFromGrantsRecords(t *testing.T) {
 }
 
 var _ access.Journal = access.File{}
+
+func TestRequirementsFromCatalogKeepsEachCapabilitysDeclarations(t *testing.T) {
+	catalog := plugin.Catalog{Plugins: []plugin.Definition{{
+		ID:      "tei.demo",
+		Version: "1.0.0",
+		Provides: []plugin.Capability{
+			{ID: "sales.close", Permissions: []permission.Spec{{Kind: permission.KindFilesystem, Access: permission.AccessWrite, Scope: "/var/reports"}}},
+			{ID: "sales.report"},
+		},
+	}}}
+	requirements := execution.RequirementsFromCatalog(catalog)
+	if got := requirements(core.MustCanonicalID("sales.close")); len(got) != 1 || got[0].Scope != "/var/reports" {
+		t.Fatalf("the declaration must be returned: %+v", got)
+	}
+	if got := requirements(core.MustCanonicalID("sales.report")); len(got) != 0 {
+		t.Fatalf("a capability without declarations returns none: %+v", got)
+	}
+	if got := requirements(core.MustCanonicalID("sales.unknown")); len(got) != 0 {
+		t.Fatalf("an unknown capability returns none: %+v", got)
+	}
+}
+
+func TestRequirementsFromCatalogFeedPermissionPreconditions(t *testing.T) {
+	catalog := plugin.Catalog{Plugins: []plugin.Definition{{
+		ID:      "tei.demo",
+		Version: "1.0.0",
+		Provides: []plugin.Capability{{
+			ID:          "sales.close",
+			Permissions: []permission.Spec{{Kind: permission.KindNetwork, Access: permission.AccessConnect, Scope: "db:5432"}},
+		}},
+	}}}
+	preconditions := execution.PermissionPreconditions(execution.RequirementsFromCatalog(catalog), nil)
+	if reason := preconditions(core.MustCanonicalID("sales.close")); reason == "" {
+		t.Fatal("an ungranted declaration must block the capability")
+	}
+}

@@ -220,6 +220,7 @@ func TestInProcessRejectsMissingPrincipal(t *testing.T) {
 func TestInProcessMatchesTheCLIPath(t *testing.T) {
 	world := testWorld()
 	invoker := command.Invoker{
+		Authorizer: command.ReferenceAuthorizer{},
 		World:      world,
 		Executor:   command.ReferenceExecutor{World: world},
 		UnitOfWork: &command.MemoryUnitOfWork{},

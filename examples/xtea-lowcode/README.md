@@ -4,9 +4,9 @@ X-TEAのローコード知見から受容した表現を、小さな作業領域
 
 ## 構成
 
-- `semantic/sales/order.tei`: 受注と明細、`submit_order`能力、`sales.month`期間、受注の候補キー、明細への`on-delete cascade`とkey対応。
+- `semantic/sales/order.tei`: 受注・明細・支払、作成・削除・`submit_order`能力、`sales.month`期間、受注の候補キー、明細から受注への`on-delete cascade`、支払から受注への`on-delete restrict`とkey対応。
 - `semantic/customer/customer.tei`: 顧客。
-- `applications/order-entry/`: 一覧、単票、参照、見出し明細、command、hook、Package。
+- `applications/order-entry/`: 一覧、単票、参照、見出し明細、command、hook、Package、作成・削除のcommand。
 - `applications/order-entry/queries/`: 一覧の問い合わせとSQL。
 - `databases/sales-core/`: 参照先データベース。
 
@@ -62,6 +62,19 @@ go run ./cmd/tei view \
 
 - 表示・Command計画・Package投影の参照例です。
 - 実データベース、実Provider、認可、receiptは含みません。
-- `view -command -execute`は参照Executorを使うため、この例の`update`効果は記録済みデータがない状態では成功しません。
+- `view -command -execute`は参照Executorを使うため、この例の`update`効果は記録済みデータがない状態では成功しません。応答の`committed`は参照用の取引Commit呼出し、`persisted`は常に`false`、`durability`は`none`です。
 - 受容判断は仮承認であり、最終採否は別途です。
+## Studioで開く（任意）
 
+Studioのサーバービルドから、この作業領域を読み取り専用で開けます。
+
+```bash
+cd cmd/tei-studio
+CGO_ENABLED=0 go build -mod=readonly -tags server -o tei-studio-server .
+./tei-studio-server -workspace ../../examples/xtea-lowcode -port 43123
+```
+
+別ターミナルで`http://127.0.0.1:43123/`を開きます。単票ビュー、Command計画、参照実行、Packageビューを確認できます。
+
+Studioはloopback限定の読取り専用Hostであり、接続者認証・業務操作の認可・利用者間の分離を提供しません。詳細は[Studio README](../../cmd/tei-studio/README.md)を参照してください。
+server buildと`/health`の確認記録は[Studioサーバー起動確認](../../plan/evidence/XTEA_LOWCODE_EXAMPLE_STUDIO_SMOKE_2026-11.md)にあります。画面表示・Wails RPC・Desktop WebViewは未確認です。
