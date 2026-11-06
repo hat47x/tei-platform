@@ -63,3 +63,13 @@
 | `TestACompletedRunIsRefusedWithoutASecondWrite` | 1回目は実行して行が `closed` に変わる。2回目は `refuse` で **step が呼ばれず**、行も変わらない |
 
 **確かめていないこと**: 実行（DSN 未設定のため SKIP）。三つ（期間・効果・実行計画）とも、DSN のある環境で走らせれば同じ手順で確かめられます。
+## 9. 権限の試験（2026-11-06 追記）
+
+四系統目として、権限の判断も足しました。
+
+| 試験 | 期待 |
+| --- | --- |
+| `TestAMissingGrantBlocksBeforeTheWrite` | 付与なし → step が呼ばれず（calls=0）、**行は `new` のまま** |
+| `TestACoveringGrantLetsTheWriteThrough` | `read-write` の付与が `write` の要求を覆う → 実行され、**行が `closed` に変わる** |
+
+これで**期間・効果・実行計画・権限の四系統**が、同じ雛形（一時表・SKIP・実DB）で揃いました。実行は DSN のある環境で行います。
