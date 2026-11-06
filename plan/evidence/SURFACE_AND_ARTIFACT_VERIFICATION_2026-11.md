@@ -15,7 +15,7 @@
 | 参照用作業領域 | `go run ./cmd/tei validate -workspace reference/workspace` | `ok`（既存の警告のみ） |
 | 負例の作業領域 | `go run ./cmd/tei validate -workspace reference/standard-crud/workspace` | `ok` |
 | 文書の検査 | `go test ./tools/repository-plan-check -count=1` | `ok` |
-| 実DBの競合（枠組み） | `go test ./tools/reference-expected-state-concurrency -count=1` | **スキップ**（`TEI_TEST_POSTGRES_DSN` 未設定） |
+| 実DBの競合 | `TEI_TEST_POSTGRES_DSN=... go test ./tools/reference-expected-state-concurrency -count=1 -v` | `ok`（PostgreSQL 16.14、2件。初回の試験同期不足を修正） |
 
 ## 2. この記録が示すこと
 
