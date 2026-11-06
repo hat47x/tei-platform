@@ -251,7 +251,7 @@ UnitBuildInput (概念上)
 | Application上の要件 | Environmentの接続 | Runtime Plugin Lockから解決する候補 |
 | --- | --- | --- |
 | `sales` / `sales_core` / read-write | `sales_core.dev`（PostgreSQL） | `tei.database.postgres@1.0.0` |
-| `master` / `master_data` / read | `master_data.dev`（Oracle） | `tei.database.oracle@1.0.0` |
+| `master` / `master_data` / read | `master_data.dev`（検証基準 Database） | `tei.database.oracle@1.0.0` |
 
 ここで得られるのは**DB接続の構成情報だけ**である。これをそのまま二層・三層アプリケーション用のBuild Planへ変換すると、次の情報が欠落する。
 
@@ -400,7 +400,7 @@ Pluginの**論理境界と高凝集Bundleの配布境界は1:1ではない**。�
 | 更新・障害隔離 | 「更新頻度、許容停止、ロールバック、信頼できない実装の隔離が本当に必要か」 | 過剰なLoader/Processを採用しない |
 | 試験・費用 | 「独立Expected、fault injection、対象exact Source/Build、保守/配布費用の比較が可能か」 | 設計候補に留め、優劣/Production資格を宣言しない |
 
-### 14.5 最小の反証Fixture（既存Oracle/Ownerへ割付）
+### 14.5 最小の反証Fixture（既存の検証基準/Ownerへ割付）
 
 新しい正本Scenarioを作らず、11/5選定表の EX-01〜08 を下記の既存ケースへ**対応付ける**。番号は計画上の参照であり新規Go試験のPASSではない。
 
@@ -438,13 +438,13 @@ Implementation/配布の責務：#1251（凝集Bundle/テストと未使用非�
 
 **受入の出口**：同一Source/独立Expectedの下で、非Plugin手段（Project Rule/静的Source/Extension Point）、独立Plugin化、静的実装と外部Processの候補を比較し、(a) 新たな実Consumer、(b) 独立更新責任、(c) 現場で成立するFailure isolation、(d) Source/Build/Artifact影響の減少、のいずれに**測定可能な差**があるかを記録する。差がない場合は追加Kernel/ABI/Loaderを採用しない。
 
-**EXDとの重複整理**：#2888のEXD-01（非Plugin反証）・02（構文意味）・03/04（非干渉・Selection drift）・05/06（Provider/partial Effect）・08/09（Target/Process）は既存§14 EX-01〜08、§15 EX-H1〜6、#1251 PB/PBNに対応付ける。固有のEXD-07（再生成拡張点）は#2090の既存Caseと本節の表に接続し、独立した第二Oracle・正式な新試験IDを作らない。#2090 Closedは限定Referenceの範囲だけであり、実生成Target・別言語・Wailsでの新規E2E、Owner業務受理が済んだという証拠にはならない。
+**EXDとの重複整理**：#2888のEXD-01（非Plugin反証）・02（構文意味）・03/04（非干渉・Selection drift）・05/06（Provider/partial Effect）・08/09（Target/Process）は既存§14 EX-01〜08、§15 EX-H1〜6、#1251 PB/PBNに対応付ける。固有のEXD-07（再生成拡張点）は#2090の既存Caseと本節の表に接続し、独立した第二の検証基準の正本・正式な新試験IDを作らない。#2090 Closedは限定Referenceの範囲だけであり、実生成Target・別言語・Wailsでの新規E2E、Owner業務受理が済んだという証拠にはならない。
 
 **採用前の停止線**：Projectに必要なHook契約やOwner Accepted Ruleが未確定なまま、Plugin選定・Target生成・実実行を「互換」と判定しない。本節の追補はdocs-only、差分統合の実コード試験はNOT RUN。
 
 ## 15. 選定後の証拠受渡しと差戻し（2026-11-06、設計／NOT RUN）
 
-§14の選定は「方式候補を選ぶ」まで。本節は**選定した実現方式が実Consumer・Targetでも成立するか**を、既存Ownerの証拠へ接続する。新たなDecision Receipt Schema、第二Resolver、第二Build/テスト正本、採用Gateは作らない。#1251のPB/PBN、#2600のIB、#951のConformance、#1180/#2514のOracle、#1174のEffect/Receiptを再利用。
+§14の選定は「方式候補を選ぶ」まで。本節は**選定した実現方式が実Consumer・Targetでも成立するか**を、既存Ownerの証拠へ接続する。新たなDecision Receipt Schema、第二Resolver、第二Build/テスト正本、採用Gateは作らない。#1251のPB/PBN、#2600のIB、#951のConformance、#1180/#2514の検証基準、#1174のEffect/Receiptを再利用。
 
 ### 15.1 最小の証拠受渡し票
 
@@ -552,7 +552,7 @@ Implementation/配布の責務：#1251（凝集Bundle/テストと未使用非�
 - P2：#2017のOS資源・情報流と#1251 PB-01/02/07/10のGo実Build/実依存検査を接続。Windows Studio、外部Host、実DBはそれぞれ別資格。
 - P3：静的Library/Rule/設定で実需要を満たせばPluginを新設せず、独立更新・隔離・外部Host可搬性が必要なときだけ§14の物理方式選定に戻す。
 
-**状態**：本追補は既存PRにおけるdocs-onlyの受入・停止線。実OS隔離・AI→Provider遮断・Go差分Build・Windows/DB/外部Process実走・Owner正式受理は新規NOT RUN/NOT ACCEPTED。第二Host/Registry/Resolver/Policy Engine/Plugin ABI/Oracleを追加しない。
+**状態**：本追補は既存PRにおけるdocs-onlyの受入・停止線。実OS隔離・AI→Provider遮断・Go差分Build・Windows/DB/外部Process実走・Owner正式受理は新規NOT RUN/NOT ACCEPTED。第二Host/Registry/Resolver/Policy Engine/Plugin ABI/検証基準を追加しない。
 
 
 <!-- tei-plugin-update-impact-qualification-20261106 -->
@@ -596,7 +596,7 @@ P0：既存#1251 PB-01/02/07と#2600 IBの同じ選択済みGo Targetを固定�
 
 P1：**U-01/02（過剰失効）対U-03/04/09（誤再利用・依存欠落）**を同じ比較票で検証。変更が未選択なら不要な再計算を防ぎ、実消費が変わったときの失効とTarget build失敗を検出する。対象ファイル・全moduleの実Go検証は#1251/#2831、測定は#2600/#2018へ委譲。
 
-P2：#988/#2514で標準pure Operatorと代替実装、#2622/#2862でProvider別SQL/Read Scopeを独立Oracleと照合。値だけの一致を意味互換・現在権限へ昇格しない。
+P2：#988/#2514で標準pure Operatorと代替実装、#2622/#2862でProvider別SQL/Read Scopeを独立検証基準と照合。値だけの一致を意味互換・現在権限へ昇格しない。
 
 P3：実外部Host/DB・長寿命Targetの更新、現在Grant/Lease、partial Effect/Receiptの回復は#1223/#2390/#1174の資格でのみ評価。最初のGo単一Binary要件へこれらの動的機構を逆流させない。
 
@@ -605,7 +605,7 @@ P3：実外部Host/DB・長寿命Targetの更新、現在Grant/Lease、partial E
 <!-- tei-extension-first-comparable-probe-20261106 -->
 ## 18. 初回の同一要求A/B比較：Plugin不要案を含む実Consumer試験（2026-11-06、D0限定CI確認／D1比較未実施）
 
-§14〜16を再度一般論として増やさず、**方式の採否を変え得る最初の実証**を固定する。元の業務意味・Oracle・Scenarioの正本は増設しない。[#1861](https://github.com/hat47x/tei-platform/issues/1861)の `reference.order.quote-lines/v1` 読取り専用見積もりプレビューを第一候補とする。正常8件・業務拒否15件の**既存23ベクトル**（#1819/#1840のGo Native・Node JS基線、#1848のWIT型投影Reference）を参照する。固定23件は**未受理の業務候補**であり、全業務意味がAccepted済みだとは主張しない。
+§14〜16を再度一般論として増やさず、**方式の採否を変え得る最初の実証**を固定する。元の業務意味・検証基準・Scenarioの正本は増設しない。[#1861](https://github.com/hat47x/tei-platform/issues/1861)の `reference.order.quote-lines/v1` 読取り専用見積もりプレビューを第一候補とする。正常8件・業務拒否15件の**既存23ベクトル**（#1819/#1840のGo Native・Node JS基線、#1848のWIT型投影Reference）を参照する。固定23件は**未受理の業務候補**であり、全業務意味がAccepted済みだとは主張しない。
 
 ### 18.1 比較対象を混ぜない
 
@@ -622,7 +622,7 @@ D0→D1/D2を自動的な「成熟段階」としない。**D0が要求を満た
 
 | 項目 | 事前に保持すべき値（新Schemaを採用しない） | 合格を装わないための対照 |
 | --- | --- | --- |
-| Source/Revision | 既存23件のSource/Oracle実byte・reference revision、Contract/Provider版、生成器/Go toolchain/Build flags | 旧PRのPASSを新HEADへコピーしない。Source A→B→Aと同名異byteを別Attempt |
+| Source/Revision | 既存23件のSource/期待値ファイルの原byte・reference revision、Contract/Provider版、生成器/Go toolchain/Build flags | 旧PRのPASSを新HEADへコピーしない。Source A→B→Aと同名異byteを別Attempt |
 | Independent Expected | 同じ23件の数量・通貨・小計または業務拒否、NULL/欠損/数値Lexeme/順序等、既存独立期待の適用範囲 | ProviderからExpectedを生成しない。輸送型一致だけではBusiness Meaning一致としない |
 | Environment | OS/CPU・Go/Node版・Target・依存Module・実プロセス/外部Host、分離されたBuild/Run Root | root Go Test成功をnested module/外部Consumer成功に転用しない |
 | Capability/Effect | 読取り専用、DB/Network/Secret/ファイル変更不要という初回要件。実Hostで許可したResource | Plugin自己申告のread-onlyをOS保護とみなさない。権限不足時の実起動拒否を対照 |
@@ -630,7 +630,7 @@ D0→D1/D2を自動的な「成熟段階」としない。**D0が要求を満た
 | Failure/Isolation | Process kill/timeout・旧新版競合・Host guard拒否・結果不明・unload/cleanup、影響する子/親Process | Transport成功を業務適合に、Process隔離を無条件のOS sandboxに読み替えない |
 | Evidence有効範囲 | Attempt/Head/Source closure/Toolchain/Consumer/Environment/Observed resultと、失効要因 | Artifact不変でも現Grant/Publisher適格・業務Owner受理を自動復活させない |
 
-**試験レベル**：Unit/Fixture（23件の結果と独立Oracle）→ Conformance（Contract/Provider/Transportの相互作用・不適合負例）→ actual Build/Process/Host（本当にBuild・ロード・起動されたか）→ 実Provider/DB/Effect（この読み取り専用ケースでは該当しない項目をnot-applicableにする）→ Owner Meaning acceptance（別審査）。「テストはPASSしたが実物をロードしていない」を明示する。#1180のScenario SSOT、#2514のOracle、#1163の同一改訂Evidenceの資格を再利用する。
+**試験レベル**：Unit/Fixture（23件の結果と独立検証基準）→ Conformance（Contract/Provider/Transportの相互作用・不適合負例）→ actual Build/Process/Host（本当にBuild・ロード・起動されたか）→ 実Provider/DB/Effect（この読み取り専用ケースでは該当しない項目をnot-applicableにする）→ Owner Meaning acceptance（別審査）。「テストはPASSしたが実物をロードしていない」を明示する。#1180のScenario SSOT、#2514の検証基準、#1163の同一改訂Evidenceの資格を再利用する。
 
 ### 18.3 最小コスト指標と判断Owner
 
@@ -638,7 +638,7 @@ D0→D1/D2を自動的な「成熟段階」としない。**D0が要求を満た
 
 **停止/選択条件**：既存の純粋計算で十分なら非Plugin案を残す。複数Consumer・独立実装版・Target固有対応が具体的に必要になったときだけProviderを比較する。実隔離・個別更新が必要ならD2の候補評価に進むが、厳密な単一Go Binary要件と矛盾するときはD2を棄却する。実DB書込みやCommit不明はこの23件に紛れ込ませず、別途#1174/#1130の既存Write Scenario・実独立Readへ段階的に進む。
 
-**責務と実証状態**：#1016は案件要求と方式選定、#1861/#2390は外部Consumer・WIT必要性、#951/#1145はContract/Transport、#1251/#1167/#2600は未選択混入・必須依存・性能、#2514/#1180/#1163は独立Expected/改訂Evidence、#1174は実Effect。今回のD0再試験、D1の同一Go Target静的Provider構築、D0/D1/D2を揃えた23件横断比較、今回のexact-head再実行と定量測定、Owner正式採用は**NOT RUN/NOT ACCEPTED**。D2単独の既存実Process実装・限定23件実績は上記のとおり保持する。新ABI、全Plugin共通Process Runtime、第二Resolver/Oracle/Hostは増設しない。
+**責務と実証状態**：#1016は案件要求と方式選定、#1861/#2390は外部Consumer・WIT必要性、#951/#1145はContract/Transport、#1251/#1167/#2600は未選択混入・必須依存・性能、#2514/#1180/#1163は独立Expected/改訂Evidence、#1174は実Effect。今回のD0再試験、D1の同一Go Target静的Provider構築、D0/D1/D2を揃えた23件横断比較、今回のexact-head再実行と定量測定、Owner正式採用は**NOT RUN/NOT ACCEPTED**。D2単独の既存実Process実装・限定23件実績は上記のとおり保持する。新ABI、全Plugin共通Process Runtime、第二Resolver/検証基準/Hostは増設しない。
 
 <!-- tei-input-closure-selection-negative-controls-20261106 -->
 ### 18.4 方式比較より前に「必要Sourceが読まれたこと」を確定する（#2822/#2823）
@@ -659,17 +659,17 @@ D0〜D2の第一回比較では、#1861の固定23ベクトルとContract、実�
 
 **実証順の補正**：D0は固定23ケースを自己完結の関数として実行可能な範囲だけ「入力充足の主張」を行い、Workspace連携のSource完全性は別のClaimに留保。D1/D2へ進む前には選択済みSource/Contract/Build Inputの閉包を実際に確認し、未知なら方式優劣やCache再利用を結論しない。Sourceの宣言・解決・実消費と現在Grant/Owner受理を分離する既存§15/§17の原則を適用する。
 
-**状態**：#2822/#2823の過去の実CLI反例を受入条件として参照した設計追補。今回のCLI/Workspace/Go/Process/23ケース再実行、正式診断採用、Owner受理はNOT RUN。第二Source Index・Validator・Resolver・Oracleは増設しない。
+**状態**：#2822/#2823の過去の実CLI反例を受入条件として参照した設計追補。今回のCLI/Workspace/Go/Process/23ケース再実行、正式診断採用、Owner受理はNOT RUN。第二Source Index・Validator・Resolver・検証基準は増設しない。
 
 <!-- tei-compare-oracle-decision-ceiling-20261106 -->
-### 18.5 Oracleの判別力と比較の公正性：23件PASSを方式採用に読み替えない
+### 18.5 検証基準の判別力と比較の公正性：23件PASSを方式採用に読み替えない
 
-[#1861](https://github.com/hat47x/tei-platform/issues/1861)の23ベクトルは、見積もりPreviewの**未受理の有限な業務候補**。実際のSource/Oracle byte、Contract/対象Consumer、Revisionを固定し、D0/D1/D2のInput/Meaning/結果分類が同一であることを確認する。Sourceが正しくロードされていても、ExpectedがCandidateと同じEvaluator・Rule・AI解釈から生成されていれば**共有起源の誤り**を検出できない。独立Oracleの出所・受理資格・判別能力は#2514、Scenarioの正本と実Target派生は#1180へ戻す。
+[#1861](https://github.com/hat47x/tei-platform/issues/1861)の23ベクトルは、見積もりPreviewの**未受理の有限な業務候補**。実際のSource/期待値ファイルの原byte、Contract/対象Consumer、Revisionを固定し、D0/D1/D2のInput/Meaning/結果分類が同一であることを確認する。Sourceが正しくロードされていても、ExpectedがCandidateと同じEvaluator・Rule・AI解釈から生成されていれば**共有起源の誤り**を検出できない。独立検証基準の出所・受理資格・判別能力は#2514、Scenarioの正本と実Target派生は#1180へ戻す。
 
 | 観測項目 | 必須の反証と判定上限 |
 | --- | --- |
 | Meaning/Shape | 数量・通貨・小計、NULL/欠損、順序・多重度、金額精度、業務拒否と実行失敗/unknownを、実際のAdapter前後で独立照合。表面のJSON型・結果文字列が同じでも契約同等とはしない |
-| Oracle independence | 独立Expectedの由来とProducer/Observerの独立性を示す。意図的な通貨無視・小計変更・業務拒否→技術失敗の誤変換等のMutantを、**既存の同じOracleが検出するか**計測。検出漏れと未実施を隠さない |
+| 検証基準の独立性 | 独立Expectedの由来とProducer/Observerの独立性を示す。意図的な通貨無視・小計変更・業務拒否→技術失敗の誤変換等のMutantを、**既存の同じ検証基準が検出するか**計測。検出漏れと未実施を隠さない |
 | Actual implementation | D1は実選択Provider/Go binary/Link/Loaderまで、D2は既存Go/JSの23件Process比較を出発点に、同一Attemptの実Runtime Registry/Conformance/Host Guard/実ArtifactとD0/D1比較の不足を追加観測する。他ContractのProcess BridgeのPASSは同Contractの新しい上位資格に流用しない |
 | Same-environment cost | D0対D1の差を評価するときは同じGo Target・Host・OS・Toolchain・Source revision・負荷でclean/incremental build、起動・定常Latencyとサイズ/依存を反復測定。Go対Nodeの実行時間差をPlugin化の効果と見なさない |
 | Negative controls | #1251の未使用実装混入/必要依存欠落、#2600の誤skip/過剰失効、#2822/#2823の必須Source未ロードと、D2のHost拒否・異byte起動物・timeoutを別Failureとして分類 |
@@ -680,11 +680,11 @@ D0〜D2の第一回比較では、#1861の固定23ベクトルとContract、実�
 - **D0で十分**：対象の要求・実Consumer・独立Expectedが満たされ、独立版管理/交換、別製品への公開、別Process隔離・無停止更新を必要とする実例がない。これは「D0がD1/D2より高速・優秀」との比較証明ではなく、**追加Pluginを作る必要がないという用途限定の選択**。D1/D2未実証をD0優位のPASSとして数えない。
 - **D1を候補として維持**：複数の独立Consumerや契約付きProvider差替えが具体化し、通常Library/静的Ruleでは満たせない制約がある。単一Go Binaryの選択済み実依存・必要能力・Bundle非干渉と、追加の保守負担を実測して採否を判断。
 - **D2を候補として維持／棄却**：異言語Host・隔離・独立更新が必要な場合のみ評価。厳密Single-binaryに合わなければ棄却。Process境界だけではOS sandboxやAuthorityを証明せず、実Host拒否・障害波及・再接続/unknownを観測。
-- **保留・差戻し**：Required Source/実消費不明、Oracle共有起源・Mutant検出漏れ、意味・Contract差、実Target未実行、current Host Grant不明などは、**該当するClaim**をunknown/not-runに留めて担当Issueへ返す。採用を急ぐために別Providerを黙示選択しない。
+- **保留・差戻し**：Required Source/実消費不明、検証基準共有起源・Mutant検出漏れ、意味・Contract差、実Target未実行、current Host Grant不明などは、**該当するClaim**をunknown/not-runに留めて担当Issueへ返す。採用を急ぐために別Providerを黙示選択しない。
 
-再審査は、Requirement/Owner受理範囲、新Consumer、実選択/Source closure、Artifact/Target、Providerの現在資格、独立Oracleの判別能力、測定した費用が**実際に変化したとき**に限定する。無関係なCatalog/Bundle更新だけで全Targetを過剰失効させず、A→B→Aや同version異byteでも自動的な古い受理の復活は認めない（§17、#2600）。
+再審査は、Requirement/Owner受理範囲、新Consumer、実選択/Source closure、Artifact/Target、Providerの現在資格、独立検証基準の判別能力、測定した費用が**実際に変化したとき**に限定する。無関係なCatalog/Bundle更新だけで全Targetを過剰失効させず、A→B→Aや同version異byteでも自動的な古い受理の復活は認めない（§17、#2600）。
 
-**実行責務**：#1016（用途別選定）、#2514（Oracle/Mutant）、#1180（Scenario）、#1861（23件）、#951/#1145/#2390（実Provider/Transport/Host）、#1251/#2600（実Buildと費用）。本節に別のExpected・Runner・新ABI・中央Decision Engineを置かない。D0/D1/D2を揃えた同一改訂・同一条件の23件横断比較、Mutant実測、性能測定、Owner正式採用は現時点でNOT RUN/NOT ACCEPTED（D2単独の既存Process比較は§18.7）。
+**実行責務**：#1016（用途別選定）、#2514（検証基準/Mutant）、#1180（Scenario）、#1861（23件）、#951/#1145/#2390（実Provider/Transport/Host）、#1251/#2600（実Buildと費用）。本節に別のExpected・Runner・新ABI・中央Decision Engineを置かない。D0/D1/D2を揃えた同一改訂・同一条件の23件横断比較、Mutant実測、性能測定、Owner正式採用は現時点でNOT RUN/NOT ACCEPTED（D2単独の既存Process比較は§18.7）。
 
 
 <!-- tei-plugin-dynamic-read-dependency-closure-20261106 -->
@@ -702,9 +702,9 @@ D0〜D2の第一回比較では、#1861の固定23ベクトルとContract、実�
 | 見かけのResult不変のまま更新 | 依存したRelation/Predicateへの行追加・削除、Filter/Role/Schema更新、対象Scope/Source A→B→A、Read cohortの変化 | LEFT JOIN/NOT EXISTS/Top-Nなどは追加で既存結果をretract/replaceし得る。再評価が必要なClaimのみ失効し、無関係なTarget/Bundleを一律失効しない（#2582/#2600） |
 | 実OS/Hostで「外部データ取得は不要」 | Plugin宣言のCapabilityと実行物のFile/Network/Process/DB到達・拒否ログ、D2ならTransportと業務Readを分離 | read-onlyの自己申告はOS強制ではない。秘密・隠れたRow・内部Source/件数を低権限Consumerへ表示しない（#2017/#2515/#2516） |
 
-**独立Expectedと反例の接続**：新しい23件の業務Fixtureを追加せず、純粋計算のD0/D1/D2は§18.5の既存Oracleを使う。実Data Providerへ進む場合だけ、既存#2600 IB-16／#2506／#2582／#2387の「同じ表示値・異Read scope」「0件だがpartial/hidden」「後から一致行が追加」「SQL/Provider route変更」を独立Expectedとして参照。どのClaimがどのSource/Read/Targetに依存するかを**出典・版・実行時点ごとに**記録し、実Read footprint未観測なら「完全」「非干渉」「現在不存在」と結論しない。
+**独立Expectedと反例の接続**：新しい23件の業務Fixtureを追加せず、純粋計算のD0/D1/D2は§18.5の既存の検証基準を使う。実Data Providerへ進む場合だけ、既存#2600 IB-16／#2506／#2582／#2387の「同じ表示値・異Read scope」「0件だがpartial/hidden」「後から一致行が追加」「SQL/Provider route変更」を独立Expectedとして参照。どのClaimがどのSource/Read/Targetに依存するかを**出典・版・実行時点ごとに**記録し、実Read footprint未観測なら「完全」「非干渉」「現在不存在」と結論しない。
 
-**導入順の制限**：P0は23件のpure/transport/I/O区分をread-onlyで確認、P1は§18.4のWorkspace/Build入力閉包を実Targetで確認。P2で実Query・Relationに依存するConsumerを選んだ場合に限り非出力依存・0件・retractを既存Provider/独立Oracleで検証。P3のWrite/Commit・Receiptは§15.5と#1174が別に検証する。本節によって初回pure `quote-lines` に実DBを導入したり、全Providerに同一Snapshotを仮定したりしない。
+**導入順の制限**：P0は23件のpure/transport/I/O区分をread-onlyで確認、P1は§18.4のWorkspace/Build入力閉包を実Targetで確認。P2で実Query・Relationに依存するConsumerを選んだ場合に限り非出力依存・0件・retractを既存Provider/独立検証基準で検証。P3のWrite/Commit・Receiptは§15.5と#1174が別に検証する。本節によって初回pure `quote-lines` に実DBを導入したり、全Providerに同一Snapshotを仮定したりしない。
 
 **状態**：他レーンの設計・Issueの成熟した負例を方式選定の受入上限へ参照接続したdocs-only追補。実23件、実Read trace、二DB、OS隔離、dynamic dependencyの実装・性能、Owner受理はこの追補では**NOT RUN／未採用**。
 
@@ -719,13 +719,13 @@ D0〜D2の第一回比較では、#1861の固定23ベクトルとContract、実�
 | [quote Go Process](../../plugins/reference-order-quote/README.md)、[Process比較テスト](../../tools/reference-capability-transport/quote_go_js_vectors_test.go)、[cross-language](../../reference/quote-cross-language/README.md) | 同じ未受理23ケースでGo/JavaScriptの独立したProcess Providerを既存stdio Carrierで比較するテストが存在。Goは隔離されたGo moduleからBuild。入力重複キー・大整数・欠損・業務拒否とProcess失敗を分離する負例もある | 最新PR exact-headの再実行、Go静的D1との一対一費用比較、全23件の正式Provider/Host Grant適合 |
 | [Runtime実Process試験](../../tools/reference-capability-transport/runtime_authorized_quote_process_test.go)・[候補形→Runtime直列試験](../../tools/reference-plugin-capability-contract/order_quote_runtime_chain_test.go) | 特定の見積もり要求について、合成Shape/Provider証拠、実Runtime Registry、テスト用Digest検証、子Process、結果確認を結ぶ限定試験が存在 | 合成Publisher/Conformanceを正式Authorityとみなせない。実Sandbox/Lease、同一23件を通した本番GrantやOS実隔離 |
 | [Component候補](../../reference/quote-component-candidate/README.md)・[専用CI #38746502755](https://github.com/hat47x/tei-platform/actions/runs/38746502755) | 2026-10-15、固定HEAD `7a3b65d228937d2df56b11afe0ed1fbc4b5936ea` で成功。後続の[PR #1878](https://github.com/hat47x/tei-platform/pull/1878)も[専用CI #38746880110](https://github.com/hat47x/tei-platform/actions/runs/38746880110)で同様の限定実証に成功し、merge commit `787a05e5ad5573db28fd4a617404dd4124bea279` でmain統合済み。Node/実ChromiumのJco変換成果物、Wasmtimeの元Component直接呼出し。正常8件／Ingress拒否7件／Guest拒否8件（Guest呼出しは各Host16件） | 同じ生ComponentをBrowserが直接実行したわけではない。未受理業務意味・Production Authority・全言語/全Target・このPRの現在HEADのPASS |
-| [未受理23候補](../../reference/candidates/order-quote/semantic-vectors-v0.json) | 同一Contractの固定Expectedとして複数Referenceに再利用。業務拒否・入力解析拒否・Runtime起動失敗は別義務 | 独立OracleのMutant検出率、業務Owner正式受理、別意味版の互換性 |
+| [未受理23候補](../../reference/candidates/order-quote/semantic-vectors-v0.json) | 同一Contractの固定Expectedとして複数Referenceに再利用。業務拒否・入力解析拒否・Runtime起動失敗は別義務 | 独立検証基準のMutant検出率、業務Owner正式受理、別意味版の互換性 |
 
-**P0で実施すべきこと**は、新しいPlugin Engineではなく、(1)実23ケースのSource/Oracle revision・ケースごとの拒否段階・既存Test/CIのHEADを一枚の既存#2514/#1180 Evidence参照で照合、(2)現行main exact-headの既存Go Process/異言語/候補Componentのうち実行可能なものを再資格化、(3)D0の純計算とD1の静的Providerを**同じGo Target/同じ計算意味・独立Oracle**で検証する最小差分を#1251/#951の現行契約上で特定する、の順。現行Go見積もりSourceは `plugins/reference-order-quote/main.go` の独立Process `package main` であり、単にそのpackageをimportして静的Provider検証済みとは言わない。再利用を可能にする抽出・Adapterが本当に必要かを測定し、業務Rule/Expectedの第二正本を作らない。
+**P0で実施すべきこと**は、新しいPlugin Engineではなく、(1)実23ケースのSource/期待値ファイルのRevision・ケースごとの拒否段階・既存Test/CIのHEADを一枚の既存#2514/#1180 Evidence参照で照合、(2)現行main exact-headの既存Go Process/異言語/候補Componentのうち実行可能なものを再資格化、(3)D0の純計算とD1の静的Providerを**同じGo Target/同じ計算意味・独立検証基準**で検証する最小差分を#1251/#951の現行契約上で特定する、の順。現行Go見積もりSourceは `plugins/reference-order-quote/main.go` の独立Process `package main` であり、単にそのpackageをimportして静的Provider検証済みとは言わない。再利用を可能にする抽出・Adapterが本当に必要かを測定し、業務Rule/Expectedの第二正本を作らない。
 
 <!-- tei-quote-preflight-skip-nonexecution-gate-20261106 -->
 
-**次回実証で先に固定する最小の実行判定**：既存 [見積もり異言語比較](../../reference/quote-cross-language/README.md) の次の一つを、対象Source/Toolchain/OS/Node版・実Provider/Oracle byteを固定した独立Attemptで再実行する（これは既存の実Process比較であってD0/D1比較ではない）。
+**次回実証で先に固定する最小の実行判定**：既存 [見積もり異言語比較](../../reference/quote-cross-language/README.md) の次の一つを、対象Source/Toolchain/OS/Node版・実Provider/期待値ファイルの原byteを固定した独立Attemptで再実行する（これは既存の実Process比較であってD0/D1比較ではない）。
 
 ```sh
 go test -count=1 -run '^TestIndependentGoAndJavaScriptQuoteSemanticParity$' ./tools/reference-capability-transport
@@ -742,14 +742,14 @@ go test -count=1 -run '^TestIndependentGoAndJavaScriptQuoteSemanticParity$' ./to
 <!-- tei-static-d0-d1-first-executable-slice-20261106 -->
 ### 18.9 D0通常関数とD1静的Provider：一改訂・二入口の最小実証手順（D0限定CI成功／D1実装前）
 
-これ以上抽象的なPlugin比較表を増やさず、§18.1の**同じ見積もり計算をin-processで二つの経路から呼ぶ**ことを最初の未実証差分とする。業務意味・未受理Oracleの正本は既存 [23ケース](../../reference/candidates/order-quote/semantic-vectors-v0.json)。新たな意味Ruleや別Expected、公開Plugin ABI、実行用常駐TEI Hostを作らない。既存Go Process実装 `plugins/reference-order-quote/main.go` は `package main` なので、静的Targetへそのままimportできると仮定しない。
+これ以上抽象的なPlugin比較表を増やさず、§18.1の**同じ見積もり計算をin-processで二つの経路から呼ぶ**ことを最初の未実証差分とする。業務意味・未受理検証基準の正本は既存 [23ケース](../../reference/candidates/order-quote/semantic-vectors-v0.json)。新たな意味Ruleや別Expected、公開Plugin ABI、実行用常駐TEI Hostを作らない。既存Go Process実装 `plugins/reference-order-quote/main.go` は `package main` なので、静的Targetへそのままimportできると仮定しない。
 
 | 最小手順 | D0／D1の一改訂の実証方法 | 未実証なら停止するClaim |
 | --- | --- | --- |
 | **S0 入力と計算の固定** | 23ケースのraw JSON byte、独立Expected出典、拒否理由の層、計算上限/単位/NullとSource Revisionを固定。元 `calculate` の実装をread-onlyに解析し、共有可能な純粋計算部分とwire/parser/Process固定部分を分ける。 | 23件一致からOwner Accepted MeaningやProvider適合を推定しない |
 | **S1 D0 direct entry** | 同じGo Target・Toolchainの最小な直接関数入口で計算する。Domain検査や入力Lexeme検査は既存意味から欠落させない。原実装と別の業務Ruleを再実装する場合は公平性が崩れるため保留。 | 同じ関数を呼んでいない状態でLatencyを比較しない |
 | **S2 D1 static entry** | 同じ純粋計算本体を用い、薄い明示的なService/Provider選択・Adapterを通じて**同一Process／単一Go Binary**内で呼ぶ。現行Contract/Compositionで不可能なら必要な最小差分をFit/Gapとして記録し、Core共通ABIの先行追加はしない。 | 子Processへフォールバックしたものを静的D1と報告しない |
-| **S3 独立Expected** | D0とD1双方に未受理23件を同じbyteで適用。受理8、拒否15を検査し、入力拒否／業務拒否／技術失敗／未実行を別にする。#2514の誤計算・重複Key受理・業務拒否の誤写像Mutantを流用し、検出/未検出を記録。 | 両実装の一致だけでOracle独立性や業務受理を保証しない |
+| **S3 独立Expected** | D0とD1双方に未受理23件を同じbyteで適用。受理8、拒否15を検査し、入力拒否／業務拒否／技術失敗／未実行を別にする。#2514の誤計算・重複Key受理・業務拒否の誤写像Mutantを流用し、検出/未検出を記録。 | 両実装の一致だけで検証基準独立性や業務受理を保証しない |
 | **S4 実Targetの差** | D1選択の実Contract/Provider、Go import/init/embed、実Build閉包、Binary/member digestと実ロード入口を照合。未選択実装追加・必須依存欠落を#1251 PB/PBNで対照にする。 | Bundle解決・root test PASSを実Link/除外/全module buildのPASSとしない |
 | **S5 費用と代替** | 同一CPU/OS/Toolchain/revision/環境でclean/incremental build・Artifact bytes・同一Processのwarmup/反復呼出時間、追加Adapter・設定・更新箇所を測定。外部Process版D2の起動・IPC費用は**別列**で扱う。 | 無測定の性能優位・単一Runによるp95・Go/Node差によるPlugin overhead主張をしない |
 | **S6 採否とConsumer** | 実際の第二Consumer/交換・更新要求があるか、選択/維持費用が削減されたかを#1016/#1251に返す。必要性が無ければD0を選ぶ。 | 仮想Consumerのみで静的Plugin方式の標準化を決めない |
@@ -758,7 +758,7 @@ go test -count=1 -run '^TestIndependentGoAndJavaScriptQuoteSemanticParity$' ./to
 
 **現main実装を壊さない最初の実装切り分け（コード照合、NOT RUN）**：`plugins/reference-order-quote/main.go` は `package main` で、`calculate(raw []byte) (quoteResult, error)`（約202行）に純粋なJSON decode・業務条件・合計計算が集約され、`serve()`（約226行）以降はCarrier/Dispatch/Process用の境界になっている。一方、既存 `tools/reference-capability-transport/quote_go_js_vectors_test.go` は `plugins/reference-order-quote/` の各 `.go`（READMEを除く）を一時Go moduleへ**ファイル単位でコピー**し、offline・`GOWORK=off`・`GOPROXY=off` で独立Buildする。したがって `calculate` を新しいRepo内共通packageへ移しただけでは、この既存D2の完全なoffline-buildとSource閉包が維持されるとは限らない。
 
-- **先に行うD0の小さな検証**：現 `package main` 内の`calculate`をプロセス起動・stdio/Transportなしで直接呼び、既存`reference/candidates/order-quote/semantic-vectors-v0.json`のraw Requestをそのまま使用。正常8件は既存Expectedの通貨/件数/小計、拒否15件は `error` を確認し、入力解析拒否／業務拒否の厳密な区分は既存Oracle・Process応答層の証拠と別記する。JSONを事前に一般`map`へ変換して重複キーや数値lexemeを失わない。**これはD0のみであり、D1 PASSと記録しない**。
+- **先に行うD0の小さな検証**：現 `package main` 内の`calculate`をプロセス起動・stdio/Transportなしで直接呼び、既存`reference/candidates/order-quote/semantic-vectors-v0.json`のraw Requestをそのまま使用。正常8件は既存Expectedの通貨/件数/小計、拒否15件は `error` を確認し、入力解析拒否／業務拒否の厳密な区分は既存の検証基準・Process応答層の証拠と別記する。JSONを事前に一般`map`へ変換して重複キーや数値lexemeを失わない。**これはD0のみであり、D1 PASSと記録しない**。
 - **D1の導入条件**：既存 `internal/plugin.Catalog.ResolveEnvironment` が返す `ResolvedSet.Capability` は解決済み候補であり、特定のquote実装が静的Go成果物に**実リンク・呼出**されたことを証明しない。既存 `RuntimeBuiltin` 記述だけをD1の実実装とみなさない。D0と同一 `calculate` を必要な静的Provider/Service入口経由で呼ぶ実Consumerを用意できるかFit/Gapを記録。新共通packageへ抽出が必要なら、**D2のoffline module stagingと既存23件Process回帰を同時に保つ変更**を同一PR・同一HEADで確認する。事前抽出や第二計算実装は行わない。
 - **新HEADの実行判定**：D0 direct単体Go test／既存D2 process test／将来D1 actual static buildとInvocationを別のGateにする。`go test` exit 0でもWindowsまたはNode不存在時のD2 `t.Skip`は実行PASSではない。新しいテストでbuild-timeの静的関数をfunction pointer経由で呼ぶだけなら「Adapter dispatchの合成確認」であり、Plugin選択・Link・Builderを含む製品D1として報告しない。比較対象の同一Target/Toolchain、23件のSource byte、Binary digest、未選択Plugin混入・依存欠落を#1251/#2600で確認する。
 <!-- tei-d1-registry-build-metadata-vs-linked-entry-gap-20261106 -->
@@ -768,22 +768,22 @@ go test -count=1 -run '^TestIndependentGoAndJavaScriptQuoteSemanticParity$' ./to
 
 **実装時の停止線**：現在のGo見積もりは`package main`であり、安易な共通package化は既存D2のoffline stagingを破る。まずD0直接結果を固定し、明示された第二Consumerが要求する場合だけ静的入口の追加と必要な共有化を同一PRで行い、既存D2の無回帰とGo import/Linkを同じHEADで実測する。初回は新しいCore Plugin ABI/Registry/Host、全Provider共通起動サービス、UI/Tenant固有Policyを導入しない。
 
-**最小の実行出口**：同一Revision/Expected/OS/TargetでD0とD1のactual Go Build/Invocation、23件のExpected別Outcome、少なくとも一つの意味負例と一つの選択/依存負例、選択された/実消費されたSourceとBinary、費用を結んだ**既存Evidenceへの参照**。D1の静的呼出しが成立しなければその不適合と必要差分を成果とし、動的Loader/Processへ自動迂回しない。試験結果のOwnerは#2514（Oracle）、#951（Contract/Conformance）、#1251/#2600（Build/Bundle/費用）、#1016（実要求/採否）、#1180（Scenario SSOT）。本節は新実装の合否ではなく作業の最小仕様。**S1のD0は別Draft #3021の修正HEAD `dfc133e2...`でroot Go Testと既存D2 Process CIの限定PASSを得た。S2の実静的D1、S3の独立Mutant検出、S4〜S6の実比較・費用測定、正式Owner受理はNOT RUN。**
+**最小の実行出口**：同一Revision/Expected/OS/TargetでD0とD1のactual Go Build/Invocation、23件のExpected別Outcome、少なくとも一つの意味負例と一つの選択/依存負例、選択された/実消費されたSourceとBinary、費用を結んだ**既存Evidenceへの参照**。D1の静的呼出しが成立しなければその不適合と必要差分を成果とし、動的Loader/Processへ自動迂回しない。試験結果のOwnerは#2514（検証基準 Database）、#951（Contract/Conformance）、#1251/#2600（Build/Bundle/費用）、#1016（実要求/採否）、#1180（Scenario SSOT）。本節は新実装の合否ではなく作業の最小仕様。**S1のD0は別Draft #3021の修正HEAD `dfc133e2...`でroot Go Testと既存D2 Process CIの限定PASSを得た。S2の実静的D1、S3の独立Mutant検出、S4〜S6の実比較・費用測定、正式Owner受理はNOT RUN。**
 
 <!-- tei-d0-ci-actual-oracle-scope-negative-20261106 -->
-### 18.10 実CIで判明したD0/D2のOracle配布境界（2026-11-06、現物故障の反証）
+### 18.10 実CIで判明したD0/D2の期待値ファイルの配布境界（2026-11-06、現物故障の反証）
 
-新[D0直接計算Draft #3021](https://github.com/hat47x/tei-platform/pull/3021)は `plugins/reference-order-quote/candidate_vectors_test.go` から既存23ベクトルを参照する1ファイルのGo試験。**初回exact HEAD `faee399c6c23d02300d3cd8988005d0f20ab0148` の実CIは失敗**した。独立[Actions #42196353181](https://github.com/hat47x/tei-platform/actions/runs/42196353181)と[Health #42196353500](https://github.com/hat47x/tei-platform/actions/runs/42196353500)のジョブログで、root `go test ./...` 中の `tei/plugins/reference-order-quote` 単体は `ok` であった一方、既存 `TestIndependentBusinessQuoteOverExistingGenericProcessTransport` が一時Go moduleへ全 `.go` をコピーして再実行した際、**候補Oracle JSONはコピーされない**ため新D0試験の相対path読取りが `no such file or directory` で失敗したことを確認。業務計算の不一致ではなく、**Test Sourceの依存とProcess配布閉包の適用Scopeが違う**問題。Go vet/gofmt合格・脆弱性CI成功を、この失敗の解消や23件の新HEAD合格へ読み替えない。
+新[D0直接計算Draft #3021](https://github.com/hat47x/tei-platform/pull/3021)は `plugins/reference-order-quote/candidate_vectors_test.go` から既存23ベクトルを参照する1ファイルのGo試験。**初回exact HEAD `faee399c6c23d02300d3cd8988005d0f20ab0148` の実CIは失敗**した。独立[Actions #42196353181](https://github.com/hat47x/tei-platform/actions/runs/42196353181)と[Health #42196353500](https://github.com/hat47x/tei-platform/actions/runs/42196353500)のジョブログで、root `go test ./...` 中の `tei/plugins/reference-order-quote` 単体は `ok` であった一方、既存 `TestIndependentBusinessQuoteOverExistingGenericProcessTransport` が一時Go moduleへ全 `.go` をコピーして再実行した際、**候補の期待値JSONはコピーされない**ため新D0試験の相対path読取りが `no such file or directory` で失敗したことを確認。業務計算の不一致ではなく、**Test Sourceの依存とProcess配布閉包の適用Scopeが違う**問題。Go vet/gofmt合格・脆弱性CI成功を、この失敗の解消や23件の新HEAD合格へ読み替えない。
 
-**局所修正**：#3021 の新試験だけで、既存D2が生成する `go.mod` の `module example.invalid/reference-order-quote` を厳密に識別できる場合に限り、D0共有Oracle試験を `t.Skip` する。TEIルートからの直接D0試験でOracleが見つからなければ従来どおり **hard fail**。実Providerコード、D2 Staging (`.go`全件コピー/Offline Build/元の内部単体試験)、既存Oracleを改変しない。修正コミット `dfc133e2ce1877e3593f1e507cbc3c2b7a82bfc5`。**修正後exact-headのCI 3件はすべて completed/success**：[Isolated #42203769225](https://github.com/hat47x/tei-platform/actions/runs/42203769225)、[Repository Health #42203769269](https://github.com/hat47x/tei-platform/actions/runs/42203769269)、[Dependency #42203769210](https://github.com/hat47x/tei-platform/actions/runs/42203769210)。取得したJobログでPR_HEAD_SHA一致、root `tei/plugins/reference-order-quote ok`、全Root `go test -count=1 -timeout 60m ./...`・`go vet ./...`・`gofmt`、既存 `TestIndependentBusinessQuoteOverExistingGenericProcessTransport` の限定独立Processジョブが成功したことを確認した。CIの通常ログは各23 subtest名を個別表示しないため、**23件の各結果についてはtest Sourceのloop・root go.mod条件とGo package PASSに基づく範囲**とし、別の独立Oracle受理やMutation検出実測はまだ主張しない。
+**局所修正**：#3021 の新試験だけで、既存D2が生成する `go.mod` の `module example.invalid/reference-order-quote` を厳密に識別できる場合に限り、D0共有検証基準試験を `t.Skip` する。TEIルートからの直接D0試験で検証基準が見つからなければ従来どおり **hard fail**。実Providerコード、D2 Staging (`.go`全件コピー/Offline Build/元の内部単体試験)、既存の検証基準を改変しない。修正コミット `dfc133e2ce1877e3593f1e507cbc3c2b7a82bfc5`。**修正後exact-headのCI 3件はすべて completed/success**：[Isolated #42203769225](https://github.com/hat47x/tei-platform/actions/runs/42203769225)、[Repository Health #42203769269](https://github.com/hat47x/tei-platform/actions/runs/42203769269)、[Dependency #42203769210](https://github.com/hat47x/tei-platform/actions/runs/42203769210)。取得したJobログでPR_HEAD_SHA一致、root `tei/plugins/reference-order-quote ok`、全Root `go test -count=1 -timeout 60m ./...`・`go vet ./...`・`gofmt`、既存 `TestIndependentBusinessQuoteOverExistingGenericProcessTransport` の限定独立Processジョブが成功したことを確認した。CIの通常ログは各23 subtest名を個別表示しないため、**23件の各結果についてはtest Sourceのloop・root go.mod条件とGo package PASSに基づく範囲**とし、別の独立検証基準受理やMutation検出実測はまだ主張しない。
 
 | Claim | 必要な合格証拠 | 誤判定の禁止 |
 | --- | --- | --- |
 | D0 root direct | ルートSource上で共有23件（成功8・拒否15）の各subtestを実際に実行し、SKIPなしでExpectedに一致 | Standalone stagingでのD0 `t.Skip` をD0 PASSへ算入しない |
-| D2 standalone process | 固定Sourceから独立offline Go moduleの `go test`/`go vet`/`go build` が成功し、元Carrier/Host/実子Processの限定ケースが実呼出しされる | D0共有OracleがコピーされないことをD2の不完全な業務Sourceと断定しない。逆にD2試験PASSを全23 D0の証拠へ転用しない |
-| D0/D1比較 | 同一23 Oracle・同じGo Target/CPU/Toolchainで直接入口と明示静的Provider入口の実Build/実Invokeを比較 | D2のProcess又は `ResolvedSet` 合成選択をD1静的Link資格としない |
+| D2 standalone process | 固定Sourceから独立offline Go moduleの `go test`/`go vet`/`go build` が成功し、元Carrier/Host/実子Processの限定ケースが実呼出しされる | D0共有検証基準がコピーされないことをD2の不完全な業務Sourceと断定しない。逆にD2試験PASSを全23 D0の証拠へ転用しない |
+| D0/D1比較 | 同一23 検証基準・同じGo Target/CPU/Toolchainで直接入口と明示静的Provider入口の実Build/実Invokeを比較 | D2のProcess又は `ResolvedSet` 合成選択をD1静的Link資格としない |
 
-本負例は§18.4（必要Source閉包）の**Consumer/Attempt相対性**と§18.5（同じOracleの再利用）を補強する。Second Oracle/Host/Resolver、D2の全Test Source排除、Processの新Runtime実装は行わない。正式業務Owner受理、独立Mutant、D1、実OS/DB/Host資格は別。#1251（Go module/Build閉包）、#2514（Oracle実実行）、#1145（Process境界）、#2600（実消費と再資格）へ引き渡す。
+本負例は§18.4（必要Source閉包）の**Consumer/Attempt相対性**と§18.5（同じ検証基準の再利用）を補強する。Second 検証基準/Host/Resolver、D2の全Test Source排除、Processの新Runtime実装は行わない。正式業務Owner受理、独立Mutant、D1、実OS/DB/Host資格は別。#1251（Go module/Build閉包）、#2514（検証基準実実行）、#1145（Process境界）、#2600（実消費と再資格）へ引き渡す。
 
 <!-- tei-d1-d2-hard-constraints-before-benchmark-20261106 -->
 ### 18.11 D1／D2の比較前にハード要件で候補をふるい分ける（他レーン§23との責務分離・未採用）
@@ -814,7 +814,10 @@ go test -count=1 -run '^TestIndependentGoAndJavaScriptQuoteSemanticParity$' ./to
 | **Authoringの整形・Prose変更とBuild再利用** | 文書全体のraw revision、選択TEI部分の実byte/span、Role/Meaning受理、実Build/Target digestの一致/不一致を別投影。表示内容不変・同じMeaning IDだけで旧Source受理/旧Build/旧Conformanceを再資格化しない | #3030 TM-05/08/09、#2600/#1251/#2514 |
 | **新`.tei.md`をProviderが実際に消費した** | `filepath.Ext==.md`や単なるread-only Workspace Indexの成功を実Parser/Provider Consumeと混同しない。Build-time用Schema/Loaderが存在しないなら `not connected/unsupported` で停止 | #3030 M2/M3/M5、#2823、#1167 |
 
-**段階導入**：M0 inventory／M1新規Source標準化の判断は#3030へ集約。M2 Markdown span readerとM3 Loader対応が実装・独立試験される前に、既存`*.tei` Assetの一括Rename・Legacy拒否、固定Gate原典の変更、Plugin名からの暗黙推定を実施しない。M4以降、Source Location差・改訂・決定受理範囲を照合した後だけSelected Contract/Build再資格へ進む。`.tei/decisions/`・`tei.workspace.yaml`、既存23件JSON Oracle／Go直接計算・D2 Processは移行対象外。`*.tei.md`と同一ではない `.md`文章やOKFタグをPlugin Source Acceptedと扱わない。
+**段階導入**：M0 inventory／M1新規Source標準化の判断は#3030へ集約。M2 Markdown span readerとM3 Loader対応が実装・独立試験される前に、既存`*.tei` Assetの一括Rename・Legacy拒否、固定Gate原典の変更、Plugin名からの暗黙推定を実施しない。M4以降、Source Location差・改訂・決定受理範囲を照合した後だけSelected Contract/Build再資格へ進む。`.tei/decisions/`・`tei.workspace.yaml`、既存23件JSON形式の期待値／Go直接計算・D2 Processは移行対象外。`*.tei.md`と同一ではない `.md`文章やOKFタグをPlugin Source Acceptedと扱わない。
+
+<!-- tei-markdown-unsupported-explicit-ci-20261107 -->
+**Parser未接続の実失敗境界（限定試験）**：[Draft #3031](https://github.com/hat47x/tei-platform/pull/3031)のHEAD `63953ccb5c12ead26ec1268e7c0afdba4eff66ae` では、未対応`*.tei.md`のMarkdown本文をTEI構文として成功扱いしないfail-closed境界が8つの[対象CI](https://github.com/hat47x/tei-platform/actions/runs/42217379093)等で成功している。これは**不正な実行資格への昇格を拒否できた限定証拠**であり、実Markdown AST/フェンスのReader、Plugin DescriptorのParsed、Source span/Build Actual Consumptionが成立した証拠ではない。従って新形式のD1実証を完成扱いせず、既存Go Source/23候補のD0/D1比較は別に進められる。
 
 **証拠上限**：新Authoring形式の方向決定は把握済みだが、Plugin Descriptor/Reader/Loader・Markdown/TEI Lexer・Source Index/Build Select・Studio/SHOを接続する新試験は **NOT RUN**。方式選定の実証D0/D1/D2にも移行完了という資格を上乗せしない。対応実装のOwnerは#3030/#2621/#988/#2823、Bundle/Build観測は#1251/#2600、本§は方式比較の停止条件のみ（新Parser/Registry/Authority/Fixture正本なし）。
 
@@ -833,6 +836,9 @@ go test -count=1 -run '^TestIndependentGoAndJavaScriptQuoteSemanticParity$' ./to
 **一因子の負例と合格出口**：Provider A/Bは同じContract・同じ見積結果を返すが、Bを選択したTargetでAの関数を呼んでいる対照を置く。結果値だけを比較する検査は偽陽性になるため、**実選択→Build member→実呼出し入口→対象Attempt**の一致が証拠として得られる場合だけ「このTargetでBが実呼出しされた」と判断する。別条件で必要ProviderのModule欠落、未選択Bの`init`混入を#1251 PB-01/07/10へ返す。`go tool nm`等は補助であり最適化によりsymbolが見えない場合は実Call witnessで確認する；nm不存在だけでBuildに含まれないと断言しない。
 
 **Claimごとの非適用項目**：quoteは純粋なread-only計算なので、実DB Read/Commit、Host Current Grant、Receipt、Tenant Record集合は本D1測定では`not applicable`（存在しない権限を得たとの意味ではない）。別の業務PluginがDB/外部送出を行うなら、このD1のPASSを再利用せず、#2903 §24のMeaning/Scope/Grant/Read Coverage/Effect/Disclosure接合へ戻す。`semantic.EvaluateCompletion`（main統合[#2926](https://github.com/hat47x/tei-platform/pull/2926)）も呼出側が供給するCoverageを証明しないため、Quote Resultの行数や一致からBusiness TargetSetの完全性へ飛躍しない。
+
+<!-- tei-provider-source-proof-crosslane-20261107 -->
+**隣接Referenceの正負対照から得た検証要件**：[Language Bootstrap Draft #3028](https://github.com/hat47x/tei-platform/pull/3028)のBS-03は、**同一Source・同一Parser callback**に対しProviderのImplementation Fingerprintのみを不一致→一致へ変え、不一致ではCallbackを呼ばず、一致なら実呼出しまで到達する限定Go試験を追加した。exact HEAD `aa51946a8d979aa1c3e0b3648b96df1de44cf812`の[健全性CI #42240218716](https://github.com/hat47x/tei-platform/actions/runs/42240218716)と[依存検査 #42240218680](https://github.com/hat47x/tei-platform/actions/runs/42240218680)はともにsuccess。ただし対象は**Language/Parser Candidateの結合**で、D1のGo静的Link/実Target/23件の適合判定ではない。D1でも同じく「不一致を拒否する」だけでなく「一致なら選択Provider Bへ実Callできる」正例を必ず対にし、常時拒否の偽陽性を排除する（#951/#1251）。
 
 **実証状態**：#3021修正HEAD `dfc133e2`のCI 3件成功はD0／既存D2の固定証拠。上記A/Bの実static link、実Invocation別Witness、ビルド差分、費用・Mutant、外部Target/Grant/Receiptは**NOT RUN**。Source位置、完全性、Owner Accepted Meaning、正式Contract採用は別Owner。D1実装判断は#951/#1251/#1016へ返し、Plugin化不要案を残す。
 
@@ -925,7 +931,7 @@ P0は公開可能なContract/Descriptor/Artifact/独立Expectedを既存資料�
 | K4 Actual Provider read | 実SQLite版・exact Artifact・実QueryとRead scope・失敗/0行/部分結果・独立Readerを記録 | 合成ProviderだけのPASS、返却Rows一致のみから実読取範囲/権限を推論しない |
 | K5 Release/Consumption eligibility | C0契約資産とC1実装・必要memberを別に配布・保全。対象Consumerが実Load/Invokeした証拠にのみ限定した資格を付与 | Builder成功・Artifactの存在・署名から実外部Host適合やOwner受理/Grantへ昇格させない |
 
-**独立する別Consumer試験**：[#2390](https://github.com/hat47x/tei-platform/issues/2390)は既存の読取り専用見積もり計算 reference.order.quote-lines/v1 と23独立Vectorによる外部Consumerの実利用を優先している。SQLite 方言Contractとは**異なる業務意味/Oracle**なので、同じScenarioとして混合せず、K0〜K5の共通の証拠列だけを流用する。見積もり計算のProcess/Componentの過去CIは実Source/Head/Host単位で参照し、新K試行のPASSへ転記しない。
+**独立する別Consumer試験**：[#2390](https://github.com/hat47x/tei-platform/issues/2390)は既存の読取り専用見積もり計算 reference.order.quote-lines/v1 と23独立Vectorによる外部Consumerの実利用を優先している。SQLite 方言Contractとは**異なる業務意味/検証基準**なので、同じScenarioとして混合せず、K0〜K5の共通の証拠列だけを流用する。見積もり計算のProcess/Componentの過去CIは実Source/Head/Host単位で参照し、新K試行のPASSへ転記しない。
 
 ### 21.2 互換性・撤回・説明の取り扱い
 
@@ -936,9 +942,9 @@ P0は公開可能なContract/Descriptor/Artifact/独立Expectedを既存資料�
 
 ### 21.3 既存横断反例の追加割当
 
-[Draft #2898](https://github.com/hat47x/tei-platform/pull/2898)の重複Role拒否と[Draft #2891](https://github.com/hat47x/tei-platform/pull/2891)のFixture JSON重複member拒否は、**Source fidelity**上の別々の局所修正である。これを全Pluginの新Parserへ移植するのではなく、公開Descriptor/Contract/選択表についても「曖昧性が失われる前に拒否する」という既存#988/#2620/#951/Oracleの負例へ対応付ける。具体的には同じContract IDを複数提供、同じDependency IDの別Revision、Role/Operator Pin欠落、二重指定による後勝ち、不正なValidator入力の黙示補完を拒否・保留する。元Sourceは閲覧・修正可能に保持し、意図した正式な複数Role構文まで禁止するとは決めない。
+[Draft #2898](https://github.com/hat47x/tei-platform/pull/2898)の重複Role拒否と[Draft #2891](https://github.com/hat47x/tei-platform/pull/2891)のFixture JSON重複member拒否は、**Source fidelity**上の別々の局所修正である。これを全Pluginの新Parserへ移植するのではなく、公開Descriptor/Contract/選択表についても「曖昧性が失われる前に拒否する」という既存#988/#2620/#951/検証基準の負例へ対応付ける。具体的には同じContract IDを複数提供、同じDependency IDの別Revision、Role/Operator Pin欠落、二重指定による後勝ち、不正なValidator入力の黙示補完を拒否・保留する。元Sourceは閲覧・修正可能に保持し、意図した正式な複数Role構文まで禁止するとは決めない。
 
-**実施順序**：P0は#1975の契約だけを既存Data/Sourceでinspectし、Providerゼロの拒否を観測。P1で人/AIの候補と独立Oracle・意図的なmutantを固定し、K2/K3で既存Resolver/Conformanceを照合。P2は隔離した実SQLiteで実Readの対象/完全性/結果を別Evidence化。P3で#2390の別契約・独立Consumerへ展開し、配布方式・Adapter量・Core変更量・修復回数・検証/更新費用を測る。#1975/#2390/#951/#2514/#2620に責務を戻し、第二Registry/Resolver/Plugin Host/AI特権実行/共通Fixture正本は作らない。**K0〜K5の新実行・実SQLite/外部Consumer・公開Contract採用・Owner受理はいずれもNOT RUN**。
+**実施順序**：P0は#1975の契約だけを既存Data/Sourceでinspectし、Providerゼロの拒否を観測。P1で人/AIの候補と独立検証基準・意図的なmutantを固定し、K2/K3で既存Resolver/Conformanceを照合。P2は隔離した実SQLiteで実Readの対象/完全性/結果を別Evidence化。P3で#2390の別契約・独立Consumerへ展開し、配布方式・Adapter量・Core変更量・修復回数・検証/更新費用を測る。#1975/#2390/#951/#2514/#2620に責務を戻し、第二Registry/Resolver/Plugin Host/AI特権実行/共通Fixture正本は作らない。**K0〜K5の新実行・実SQLite/外部Consumer・公開Contract採用・Owner受理はいずれもNOT RUN**。
 
 
 <!-- tei-md-plugin-source-migration-20261106 -->
@@ -986,7 +992,7 @@ P0は公開可能なContract/Descriptor/Artifact/独立Expectedを既存資料�
 | M-07 未読込Required Rootと旧パス参照 | 実Read/Dependency/Build Input Closureが不足なら0件ではなくunknown/unqualified | #2823/#2600 |
 | M-08 Migration後のBuild/ConsumerとRollback | exact Source/Artifact/loaded bytesを対象Targetで確認。旧成果物保全と業務Effect取消は別 | #1251/#2390/#1174 |
 
-上記M-01〜08は比較用ラベルで、新しい第二Oracle・実験Runner・固定Product API enumではない。既存#2621 FM/AP、#2823 Source root、#988 Language pin、#2620 SDX、#2514 Independent Expected、#2600 IBを共有する。
+上記M-01〜08は比較用ラベルで、新しい第二の検証基準の正本・実験Runner・固定Product API enumではない。既存#2621 FM/AP、#2823 Source root、#988 Language pin、#2620 SDX、#2514 Independent Expected、#2600 IBを共有する。
 
 ### 22.5 段階的移行とOwnerへの受渡し
 
