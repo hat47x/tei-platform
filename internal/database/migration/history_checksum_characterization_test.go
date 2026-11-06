@@ -106,7 +106,7 @@ func TestHIST02CanonicalChecksumDoesNotCertifyDerivedRealizationBytes(t *testing
 	history := migration.HistorySnapshot{
 		Database: db,
 		Tool:     migration.ToolAtlas,
-		Entries: []migration.AppliedMigration{{
+		Entries:  []migration.AppliedMigration{{
 			Database: db,
 			ID:       first.ID,
 			State:    migration.AppliedSucceeded,
