@@ -18,7 +18,7 @@ func mg29Application(requiredMajor int) application.Application {
 			TargetDatabase: core.MustCanonicalID("sales_core"),
 			Access:         database.AccessReadWrite,
 			RequiredContracts: []database.ContractRequirement{{
-				ContractID: core.MustCanonicalID("sales_core.order"),
+				ContractID:      core.MustCanonicalID("sales_core.order"),
 				CompatibleMajor: requiredMajor,
 			}},
 		}},
@@ -104,7 +104,7 @@ func TestMG29DuplicateDatabaseDoesNotCorruptOtherDatabaseCheck(t *testing.T) {
 		TargetDatabase: core.MustCanonicalID("master_data"),
 		Access:         database.AccessRead,
 		RequiredContracts: []database.ContractRequirement{{
-			ContractID: core.MustCanonicalID("master_data.customer"),
+			ContractID:      core.MustCanonicalID("master_data.customer"),
 			CompatibleMajor: 2,
 		}},
 	})
