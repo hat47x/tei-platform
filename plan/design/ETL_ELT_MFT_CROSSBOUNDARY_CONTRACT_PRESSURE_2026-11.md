@@ -318,6 +318,43 @@ Apache Kafkaは、Kafka Topic間ではtransactional producerとconsumer offset�
 
 **受入/撤回条件**: `Proof requirement`の概念整理によって、実Consumerが失った版/Member/順序/業務効果を1件でも追加検出でき、従来より少ない独立の定義・検証重複で説明できるか測定する。既存#2604/#2542/#1130の検査と同じClaimにしかならないなら、新しい専用Role・schemaは導入しない。採用する場合も正式な必要条件とOwner判断・Conformanceは既存契約側で決める。
 
+
+### 12.1 P0引継ぎ票：閉包と実読取を同一試行で照合する
+
+この表を**既存EF-01/EF-02・AP-01/02/06・RPL-05の実装Ownerへ渡す最小の作業票**とする。ここでいう「二Consumer」は、(A)既存Artifactを読むConsumerと、(B)その実byteを独立に読み取る別プロセスまたは取込みReference。Self-build Consumer (#2831)との型付き構造比較 (#2880)とは**別の比較軸**。AとBが同じ実装を内部で共有するだけなら独立観測と主張しない。
+
+**固定する最小例**（テスト用の論理的な入力。実Fixture・CLIは既存Ownerが所有）：
+
+- 同じ業務期Dの期待Member集合は、明細 F と件数・合計 T の2件。R1=(F1,T1)、R2=(F2,T2)。R1/R2は論理世代であり、物理Object名やHashId表示文字列を正本Identityへ昇格しない。
+- Reader AはManifestの対象世代・Member一覧をpinし、列挙した全実byteを検査。Reader Bは**別の取得経路**から実byte/世代を再取得。公開前・公開中・公開後・旧版削除時点の観測を混同しない。
+- 期待する配送宛先が増える場合、Recipient SetのScope/Revisionと各宛先Receiptを別に固定。HUB蓄積ACKと宛先側のImport/独立Readを同一列に上書きしない。
+- Source/Role/Relationの所属ScopeはQualified Source由来で固定し、別Scopeの同名File/Relation、または非公開の端点から対象を推測しない（#2881の合成26件はこの境界の参考証拠であり実Source証明ではない）。
+
+| 既存Ownerへ渡す検査順 | Required / Declared / Selected / Actually consumed / Observedを分けた最低限のWitness | 独立Expectedと先へ進めない条件 |
+| --- | --- | --- |
+| **0. Source closure** (#2823、#2620、#2880) | 期待するF/Tと期間D、Source revision、declaring Scope/Relation Role、選択Provider、欠落/未読込Source一覧 | Source欠落なら「0件」「対象なし」とせずunknown。UIの限定表示から未宣言を推定しない |
+| **1. Render** (#2604 AP-01/02) | 選択済みGeneratorと実Input、出力R1/R2 Member byte/Digest、ManifestとFindingsを別欄 | ProducerのComplete/exit0を実Publisher/Receiver PASSへ昇格しない |
+| **2. Publish/Pin** (#2604 AP-06) | 物理世代R1/R2と公開Pointer/取得可能期間、Reader Aが固定したManifest Revision | R1 pinの後R2公開。R1を通読できるか、失効ならstale/unknownで停止。R1 Manifest＋R2 Memberをsuccessにしない |
+| **3. Independent Read** (#2542 EF-01) | Reader A/Bの実Byte Digest、全Member、取得時刻、対象Snapshot/Scope、読取経路 | 同一世代かつ全件読めた場合だけ**そのConsumerが読んだ物理集合**をqualified。Reader Bの未観測はnot-runでありPASSではない |
+| **4. Deliver/Import** (#2542 EF-02/03、#2145) | Hop/宛先ごとのAttempt・ACK・実受信byte、ImportUnit、Business Event、拒否/保留理由 | ACKだけでは全宛先受理・業務Event確定を証明できない。同Byte別Eventや遅延F2を自動Dedup/自動確定しない |
+| **5. Business/Effect** (#1130 RPL-02/05、#1174) | RunPlan業務期、必要Guard/Supplied Guard、実Request/Operation ID/Commit Receiptまたはunknown、別Read、Owner判定 | Reader完了やRun completedはBusiness Acceptedでない。Blockedより前のEffectは残り得る。実Current Grant/Commitは別Ownerの受入 |
+
+**固定反例の期待票**（既存Fixtureへ追加する観測の候補であり、新IDを付けない）：
+
+| 状況 | 物理Reader claim | 配送claim | 期間Dの業務claim |
+| --- | --- | --- | --- |
+| R1全MemberをAとBが実読取、F1/T1一致 | Reader A/Bの指定世代の物理集合に限りqualified | 送信Attempt未実行はnot-run | 未実行/未受理を保持 |
+| AがR1をpin後、BがR2へ切替、T1をGC | AのR1通読失敗ならstale/unknown、BのR2は独立評価 | 別 | R1/R2混合を業務上のD確定にしない |
+| 送信元がHUB蓄積ACK、宛先Xが受領、宛先Yがエラー | Xは実byte取得の有無で判定 | X/Yを別資格。全宛先Delivery Complete=false/unknown | ImportとOwner判定が無ければ未受理 |
+| F1とF3が先着しF2欠落のままWatermark通過、D+2にF2到着 | 存在するFileの読取とD全件性は別 | 遅延F2のAttempt/Receiptを別版で取得 | 先行計算は暫定/partial。Dが締め済みなら訂正/再受理をOwnerに委ねる |
+| 実ProviderがCommit後ACK喪失、同一OperationIDでReceipt照会 | Byte照合は対象ファイル限定 | MFT ACKとは別 | 対象/Intentが同じ実Receiptの範囲のみ再適用を避けられる。別ID/ABAは未保証 |
+
+**P0成果物の最小Evidence**: 既存Scenario ID/Revision + Source/Period D + Expected F/T + selected Target/Provider + Renderer実消費Input + ArtifactSet/Manifest/Member実byte + Reader A/B各結果 + missing/unknown + Test Attempt/Env。実Policyの公開承認済みSliceだけを投影し、機密Source path・Recipient情報・隠し件数をログ/UIへ漏らさない。Effect/Owner列はP0では**not-run**を記録し、空欄の成功扱いをしない。
+
+**引継ぎ順（Owner重複を避ける）**: (i) #2604/AP-06の既存Writer Characterizationと同一Reader A、(ii) #2542/EF-01で別Consumer Bの実byte検証、(iii) EF-02/03で疑似RouteのRecipient別結果、(iv) RPL-05でRunPlanのSource Revision/Period/Outputと結合、(v) 実Effectが必要な時だけ#1174を使う。#1145のInvocation wire、#2933のBatch/Streaming最適化、#2831のSelf-build full closureと性能/可搬性の証拠は各Ownerに保持する。
+
+**最初のコード変更を開始する条件**: 既存#2604のWriterに対し「Reader A/Bが何を読むか」がテストで定義でき、OwnerのFixture/Expectedが選択できること。そこに達する前に統一Completion Engine・専用Batch DSL・新Proof Registry・共通Schedulerを作らない。本PRはこの観測の**設計差分のみ**であり、P0の実2Process/Provider/CIやOwner業務受理を新たに実行したものではない。
+
 ### 追加一次資料（製品・仕様の版に依存する事実）
 
 - Apache Iceberg spec, snapshots / optimistic concurrency: https://iceberg.apache.org/spec/
