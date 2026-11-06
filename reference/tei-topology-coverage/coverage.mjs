@@ -2,6 +2,7 @@
 const exact = s => typeof s === 'string' && s.length > 0 && s.trim() === s && !/[\r\n\t]/.test(s);
 const need = (s, name) => { if (!exact(s)) throw Error(`invalid_${name}`); return s; };
 const tuple = o => JSON.stringify([need(o?.scope,'scope'),need(o?.kind,'kind'),need(o?.id,'id')]);
+const relationKey = r => JSON.stringify([need(r?.scope,'relation_scope'),need(r?.id,'relation_id')]);
 const revision = s => JSON.stringify([need(s?.workspace,'workspace'),need(s?.modelRevision,'modelRevision'),need(s?.sourceIndexFingerprint,'sourceIndexFingerprint'),need(s?.projectionRevision,'projectionRevision')]);
 
 // Always generate both views from the same immutable observation; no implied write path.
@@ -15,22 +16,22 @@ export function project(input) {
     return {key, scope:s.scope, kind:s.kind, id:s.id};
   });
   const relations = input.relations.map(r => {
-    need(r?.id,'relation_id'); need(r?.type,'relation_type');
-    if (relationIDs.has(r.id)) throw Error('duplicate_relation');
-    relationIDs.add(r.id);
+    const key=relationKey(r); need(r?.type,'relation_type');
+    if (relationIDs.has(key)) throw Error('duplicate_relation');
+    relationIDs.add(key);
     if (!Array.isArray(r.roles) || r.roles.length < 2) throw Error('invalid_roles');
     const roles = r.roles.map((x,i) => {
       need(x?.role,'role'); const key = tuple(x.subject);
       if (!seen.has(key)) throw Error('missing_endpoint');
       return {role:x.role, index:i, key};
     });
-    return {id:r.id,type:r.type,roles};
+    return {key,scope:r.scope,id:r.id,type:r.type,roles};
   });
   return {
     revision:rev,
     graph:{revision:rev,
-      nodes:[...subjects.map(s=>({viewId:`s:${s.key}`,key:s.key})),...relations.map(r=>({viewId:`r:${r.id}`,relationId:r.id}))],
-      edges:relations.flatMap(r=>r.roles.map(x=>({viewId:JSON.stringify([r.id,x.index,x.role]),from:`r:${r.id}`,to:`s:${x.key}`,relationId:r.id,role:x.role})))},
+      nodes:[...subjects.map(s=>({viewId:`s:${s.key}`,key:s.key})),...relations.map(r=>({viewId:`r:${r.key}`,relationKey:r.key}))],
+      edges:relations.flatMap(r=>r.roles.map(x=>({viewId:JSON.stringify([r.key,x.index,x.role]),from:`r:${r.key}`,to:`s:${x.key}`,relationKey:r.key,role:x.role})))},
     table:{revision:rev,subjects:subjects.map(s=>({...s,viewId:`row:${s.key}`})),relations:relations.map(r=>({...r,roles:r.roles.map(x=>({...x}))}))},
   };
 }
@@ -53,27 +54,29 @@ function projectionIntegrity(view) {
   }
   const subjectNodes = view.graph.nodes.filter(n => n.key !== undefined);
   if (subjectNodes.length !== keys.size || new Set(subjectNodes.map(n=>n.key)).size !== keys.size || subjectNodes.some(n =>
-      !keys.has(n.key) || n.viewId !== `s:${n.key}` || n.relationId !== undefined))
+      !keys.has(n.key) || n.viewId !== `s:${n.key}` || n.relationKey !== undefined))
     return 'subject_coverage_loss';
-  const relationNodes = view.graph.nodes.filter(n => n.relationId !== undefined);
+  const relationNodes = view.graph.nodes.filter(n => n.relationKey !== undefined);
   if (view.graph.nodes.length !== subjectNodes.length + relationNodes.length)
     return 'view_coverage_loss';
   if (relationNodes.length !== relations.length) return 'relation_coverage_loss';
   const ids = new Set(), expected = new Map();
   for (const r of relations) {
-    if (!exact(r?.id) || !exact(r?.type) || ids.has(r.id) ||
+    let key;
+    try { key=relationKey(r); } catch { return 'relation_identity_mismatch'; }
+    if (r.key !== key || !exact(r?.type) || ids.has(key) ||
         !Array.isArray(r.roles) || r.roles.length < 2)
       return 'relation_identity_mismatch';
-    ids.add(r.id);
-    if (!relationNodes.some(n => n.relationId === r.id &&
-        n.viewId === `r:${r.id}` && n.key === undefined))
+    ids.add(key);
+    if (!relationNodes.some(n => n.relationKey === key &&
+        n.viewId === `r:${key}` && n.key === undefined))
       return 'relation_coverage_loss';
     for (const [index,x] of r.roles.entries()) {
       if (!exact(x?.role) || x.index !== index || !keys.has(x.key))
         return 'role_coverage_loss';
-      const edgeId = JSON.stringify([r.id,index,x.role]);
+      const edgeId = JSON.stringify([r.key,index,x.role]);
       expected.set(edgeId,{
-        from:`r:${r.id}`,to:`s:${x.key}`,role:x.role,relationId:r.id
+        from:`r:${r.key}`,to:`s:${x.key}`,role:x.role,relationKey:r.key
       });
     }
   }
@@ -82,7 +85,7 @@ function projectionIntegrity(view) {
   for (const e of view.graph.edges) {
     const x = expected.get(e.viewId);
     if (!x || e.from !== x.from || e.to !== x.to ||
-        e.role !== x.role || e.relationId !== x.relationId)
+        e.role !== x.role || e.relationKey !== x.relationKey)
       return 'role_coverage_loss';
     expected.delete(e.viewId);
   }
@@ -116,9 +119,9 @@ export function boundedAbsence(view, query, witness) {
   if (mismatch) return unknown(mismatch);
   const subjects=view.table.subjects, relations=view.table.relations;
   if (query.kind==='subject' && subjects.some(s=>s.scope===query.scope && s.kind===query.type && (query.id===undefined || s.id===query.id))) return {status:'present-in-snapshot'};
-  if (query.kind==='relation' && relations.some(r=>r.type===query.type &&
-      (query.id===undefined || r.id===query.id) &&
-      r.roles.some(x=>JSON.parse(x.key)[0]===query.scope))) return {status:'present-in-snapshot'};
+  if (query.kind==='relation' && relations.some(r=>r.scope===query.scope &&
+      r.type===query.type && (query.id===undefined || r.id===query.id)))
+    return {status:'present-in-snapshot'};
   if (!Array.isArray(witness.scopes) || !witness.scopes.includes(query.scope)) return unknown('scope_unbounded');
   if (!witness.subjectsComplete || !witness.relationsComplete || !witness.rolesComplete || !witness.compositionComplete || !witness.readerPinned || !witness.disclosureQualified || witness.omitted!==0 || witness.opaque!==0 || !exact(witness.evidenceId)) return unknown('closure_unqualified');
   return {status:'absent-in-declared-snapshot',evidenceId:witness.evidenceId};
