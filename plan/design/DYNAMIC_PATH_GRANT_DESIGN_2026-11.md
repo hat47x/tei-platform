@@ -115,6 +115,21 @@ go run ./cmd/tei issue-grant \
 **この検査が示すこと**: 発行が宣言の内側にあること、宣言の外への発行が通らないこと。
 **示さないこと**: 解像が正しいこと。`-grant-resolved-root` を書くのは呼び出し側であり、その値が「環境が決めた」ことの証明にはなりません。`issuedBy` と同じ限界です（第9章）。
 
+### 「ツールを宣言に載せる」はまだ通らない（2026-11-07 追記）
+
+第8章からの**未着手**（参照ツールの能力を環境に宣言する）を試しました。**検証で止まります**。
+
+```text
+error PERMISSION_GRANT_CAPABILITY_NOT_RESOLVED
+  environment development grants permission to unresolved capability deployment-executor tei.frozen_world.lineage
+```
+
+`internal/validation/validation.go` は、環境の付与が指す能力を**プラグインカタログから解決**できることを要求します。参照ツール（`tools/...`）はプラグインではないので、`tei.frozen_world.lineage` は解決できません。
+
+**これは検証の欠陥ではなく、設計の問いです。** 参照ツールは「プラグイン」なのか、それとも別の種類の主体なのか。プラグインにすると、ツールはプラグインの宣言・成果物・検証の対象になります（それは大きな変更です）。別の主体にすると、環境の付与は「能力」ではなく「ツール」を名指しできる必要があります。
+
+**決めていません**。この経路を使うには、どちらかを決める必要があります。だから「環境の宣言からツールへ付与を渡す配線」は、**検証を通らない状態のまま**です。
+
 ### 読み手側でも同じ検査をする
 
 発行する側だけでなく、**付与を読む側**でも宣言と突き合わせます（`reference-first-web-frozen-world-generate` の `-declaration`）。
