@@ -331,10 +331,12 @@ func exceedsFiniteAddressSpace(s Scheme, population uint64) bool {
 	return capacity.Cmp(bound) < 0
 }
 
-// CollisionRiskUpperBound returns min(1, n(n-1)/(2*S)) by the union bound.
-// A birthday approximation can underestimate small finite address spaces:
-// the budget gate must use this conservative bound, not the approximation.
-// This is still conditional on independently uniform derivations.
+// CollisionRiskUpperBound conservatively represents the union bound
+// min(1, n(n-1)/(2*S)), rounding the float result upward (or to the
+// smallest positive float after underflow). A birthday approximation can
+// underestimate small finite address spaces, so the budget gate must use
+// this bound rather than the birthday point estimate. Both assume that
+// derivations are independent and uniformly distributed.
 func CollisionRiskUpperBound(s Scheme, population uint64) (float64, error) {
 	if err := s.Validate(); err != nil {
 		return 0, err
