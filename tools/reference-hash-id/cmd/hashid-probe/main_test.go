@@ -433,7 +433,6 @@ func TestRealHeadlessCLIExecutableSmoke(t *testing.T) {
 	}
 }
 
-
 func TestHeadlessTargetRequiresCallerPinsAndRejectsStaleBytes(t *testing.T) {
 	s := decimalScheme()
 	schemePath, inputPath, _ := fixture(t, s, []byte("source A"))
