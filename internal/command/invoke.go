@@ -244,11 +244,12 @@ func (i Invoker) execute(ctx context.Context, request Request, plan applicationv
 	}
 	if i.Recorder != nil {
 		record := OperationRecord{
-			Request:     request,
-			Reported:    result.Effect,
-			Outcome:     result.Outcome,
-			Applied:     result.Applied,
-			Differences: differences,
+			Request:               request,
+			Reported:              result.Effect,
+			Outcome:               result.Outcome,
+			Applied:               result.Applied,
+			Differences:           differences,
+			ReportedEffectMissing: plan.Effect != nil && result.Effect == nil,
 			// A command that declares no effect has nothing to compare, so an
 			// empty Applied list is not an unobserved difference check. Only a
 			// declared effect makes the empty list "the executor could not say".

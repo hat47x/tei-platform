@@ -252,6 +252,7 @@ export function summarizeView(value) {
         ["records", Array.isArray(value.records) ? String(value.records.length) : "0"],
         ["differences", Array.isArray(value.differences) ? String(value.differences.length) : "0"],
         ["difference-check", value.appliedUnobserved ? "not observed" : "checked"],
+        ["reported-effect", value.reportedEffectMissing ? "missing" : "reported"],
       ],
     }]).concat(differenceSections(value.differences));
   }
