@@ -10,20 +10,26 @@ const publicInput = () => ({scope: "sales", subjects: [
 const copy = x => structuredClone(x);
 
 test("T06: fixed public slice has identical three-view graph, relation table, geometry and counts", () => {
-  const w0 = publicInput();
-  const w1 = {...publicInput(), privateSubjects: [row("secret", {data: "accepted"})],
+  // Private world state stays OUTSIDE the projector's public input.
+  const w0 = {publicSlice: publicInput(), privateSubjects: []};
+  const w1 = {publicSlice: publicInput(), privateSubjects: [row("secret", {data: "accepted"})],
     privateEdges: [{id: "secret-edge", from: "secret", to: "order"}]};
-  assert.deepStrictEqual(projectPublicTeaSlice(w0), projectPublicTeaSlice(w1));
-  assert.equal(projectPublicTeaSlice(w0).coverage.allSourceCompleteness, "not-proven");
-  assert.equal(projectPublicTeaSlice(w1).views.data.length, 1);
+  assert.notDeepStrictEqual(w0, w1);
+  assert.deepStrictEqual(projectPublicTeaSlice(w0.publicSlice), projectPublicTeaSlice(w1.publicSlice));
+  assert.equal(projectPublicTeaSlice(w0.publicSlice).coverage.allSourceCompleteness, "not-proven");
+  assert.equal(projectPublicTeaSlice(w1.publicSlice).views.data.length, 1);
+  assert.throws(() => projectPublicTeaSlice({...w1.publicSlice, privateSubjects: w1.privateSubjects}),
+    /unqualified_public_slice/);
 });
 
 test("T06 negative control: using full graph size for layout would leak private existence", () => {
-  const w0 = publicInput(), w1 = {...publicInput(), privateSubjects: [row("secret", {data: "accepted"})]};
-  // Not part of the production projector: exposes why global layout is unsafe.
-  const leakyY = world => 40 + 72 * (world.subjects.length + (world.privateSubjects?.length ?? 0));
+  const w0 = {publicSlice: publicInput(), privateSubjects: []};
+  const w1 = {publicSlice: publicInput(), privateSubjects: [row("secret", {data: "accepted"})]};
+  // Negative control only: global layout can reveal undisclosed counts.
+  const leakyY = world => 40 + 72 * (world.publicSlice.subjects.length + world.privateSubjects.length);
   assert.notEqual(leakyY(w0), leakyY(w1));
-  assert.deepStrictEqual(projectPublicTeaSlice(w0).views, projectPublicTeaSlice(w1).views);
+  assert.deepStrictEqual(projectPublicTeaSlice(w0.publicSlice).views,
+    projectPublicTeaSlice(w1.publicSlice).views);
 });
 
 test("T06: an accidental relation to an unqualified endpoint fails without identifying it", () => {
@@ -61,11 +67,34 @@ test("public presentation remains invariant to order of authorized subjects and 
   assert.deepStrictEqual(projectPublicTeaSlice(a), projectPublicTeaSlice(b));
 });
 
-test("public subject cannot leak raw source paths or private fields", () => {
-  const w = publicInput();
-  w.subjects[0].sourceLocator = "/private/path/orders.tei";
-  w.subjects[0].secretValue = "secret-value";
-  const out = JSON.stringify(projectPublicTeaSlice(w));
-  assert.equal(out.includes("/private/path"), false);
-  assert.equal(out.includes("secret-value"), false);
+test("public input boundary rejects unqualified metadata instead of silently dropping it", () => {
+  const invalidInputs = [];
+  const rawPath = publicInput();
+  rawPath.subjects[0].sourceLocator = "/private/path/orders.tei";
+  invalidInputs.push(rawPath);
+  const secret = publicInput();
+  secret.subjects[0].secretValue = "secret-value";
+  invalidInputs.push(secret);
+  const privateRelation = publicInput();
+  privateRelation.relations[0].from.privateLocator = "/private/from";
+  invalidInputs.push(privateRelation);
+  const privateTopLevel = {...publicInput(), privateEdges: [{id: "secret-edge"}]};
+  invalidInputs.push(privateTopLevel);
+  for (const input of invalidInputs) {
+    assert.throws(() => projectPublicTeaSlice(input),
+      error => error.message === "unqualified_public_slice" &&
+        !error.message.includes("private") && !error.message.includes("secret"));
+  }
+});
+
+test("extra relation fields, symbols and getters are rejected at the public boundary", () => {
+  const extra = publicInput();
+  extra.relations[0].privateCount = 1;
+  assert.throws(() => projectPublicTeaSlice(extra), /unqualified_public_slice/);
+  const symbol = publicInput();
+  symbol[Symbol("private")] = 1;
+  assert.throws(() => projectPublicTeaSlice(symbol), /unqualified_public_slice/);
+  const strange = publicInput();
+  strange.subjects[0].roleStates = Object.create({data: "accepted"});
+  assert.throws(() => projectPublicTeaSlice(strange), /unqualified_public_slice/);
 });
