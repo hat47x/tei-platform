@@ -603,7 +603,7 @@ P3：実外部Host/DB・長寿命Targetの更新、現在Grant/Lease、partial E
 **採用判断**：Bundle版と契約版の分離・局所再資格化が、変更波及、false reuse/false invalidation、Test漏れ、ビルド時間を実際に改善した範囲だけを製品設計候補とする。新API/Registry/Cache/Runtimeの実装とOwnerの業務意味受理は本追補では未決。U-01〜09を含む今回の実Go/DB/Host試験・性能測定は NOT RUN。
 
 <!-- tei-extension-first-comparable-probe-20261106 -->
-## 18. 初回の同一要求A/B比較：Plugin不要案を含む実Consumer試験（2026-11-06、実施計画／NOT RUN）
+## 18. 初回の同一要求A/B比較：Plugin不要案を含む実Consumer試験（2026-11-06、D0限定CI確認／D1比較未実施）
 
 §14〜16を再度一般論として増やさず、**方式の採否を変え得る最初の実証**を固定する。元の業務意味・Oracle・Scenarioの正本は増設しない。[#1861](https://github.com/hat47x/tei-platform/issues/1861)の `reference.order.quote-lines/v1` 読取り専用見積もりプレビューを第一候補とする。正常8件・業務拒否15件の**既存23ベクトル**（#1819/#1840のGo Native・Node JS基線、#1848のWIT型投影Reference）を参照する。固定23件は**未受理の業務候補**であり、全業務意味がAccepted済みだとは主張しない。
 
@@ -710,7 +710,7 @@ D0〜D2の第一回比較では、#1861の固定23ベクトルとContract、実�
 
 <!-- tei-bundle-granularity-and-required-guard-20261106 -->
 <!-- tei-quote-comparison-actual-baseline-evidence-20261106 -->
-### 18.8 既存コード・CIから判明した比較の出発点と残り一つの決定的差分（証拠更新／新試験NOT RUN）
+### 18.8 既存コード・CIから判明した比較の出発点と残り一つの決定的差分（証拠更新／D1未実証）
 
 §18.1のD0〜D3について、**2026-11-06時点で閲覧できるmainのReferenceと過去CI**を照合し、計画上の「すべて未実行」という旧表現を補正する。GitHubのSourceと過去CIを確認したことであり、本PR HEAD上でテストを実行したことではない。
 
@@ -740,7 +740,7 @@ go test -count=1 -run '^TestIndependentGoAndJavaScriptQuoteSemanticParity$' ./to
 **状態**：ここでは実Source/既存コマンド/非実行の停止線を文書に整理した。現HEADでの実Process再実行、D0/D1比較、性能計測、正式Owner受理はNOT RUN。
 
 <!-- tei-static-d0-d1-first-executable-slice-20261106 -->
-### 18.9 D0通常関数とD1静的Provider：一改訂・二入口の最小実証手順（実装前計画）
+### 18.9 D0通常関数とD1静的Provider：一改訂・二入口の最小実証手順（D0限定CI成功／D1実装前）
 
 これ以上抽象的なPlugin比較表を増やさず、§18.1の**同じ見積もり計算をin-processで二つの経路から呼ぶ**ことを最初の未実証差分とする。業務意味・未受理Oracleの正本は既存 [23ケース](../../reference/candidates/order-quote/semantic-vectors-v0.json)。新たな意味Ruleや別Expected、公開Plugin ABI、実行用常駐TEI Hostを作らない。既存Go Process実装 `plugins/reference-order-quote/main.go` は `package main` なので、静的Targetへそのままimportできると仮定しない。
 
@@ -817,6 +817,24 @@ go test -count=1 -run '^TestIndependentGoAndJavaScriptQuoteSemanticParity$' ./to
 **段階導入**：M0 inventory／M1新規Source標準化の判断は#3030へ集約。M2 Markdown span readerとM3 Loader対応が実装・独立試験される前に、既存`*.tei` Assetの一括Rename・Legacy拒否、固定Gate原典の変更、Plugin名からの暗黙推定を実施しない。M4以降、Source Location差・改訂・決定受理範囲を照合した後だけSelected Contract/Build再資格へ進む。`.tei/decisions/`・`tei.workspace.yaml`、既存23件JSON Oracle／Go直接計算・D2 Processは移行対象外。`*.tei.md`と同一ではない `.md`文章やOKFタグをPlugin Source Acceptedと扱わない。
 
 **証拠上限**：新Authoring形式の方向決定は把握済みだが、Plugin Descriptor/Reader/Loader・Markdown/TEI Lexer・Source Index/Build Select・Studio/SHOを接続する新試験は **NOT RUN**。方式選定の実証D0/D1/D2にも移行完了という資格を上乗せしない。対応実装のOwnerは#3030/#2621/#988/#2823、Bundle/Build観測は#1251/#2600、本§は方式比較の停止条件のみ（新Parser/Registry/Authority/Fixture正本なし）。
+
+<!-- tei-d1-claim-relative-witness-join-20261107 -->
+### 18.13 D1静的Providerの最小接続票：個別PASSを同一実行の資格へ昇格させない（JOIN-05適用）
+
+他レーン[Draft #2903 §24 / JOIN-05](https://github.com/hat47x/tei-platform/pull/2903)で新たに明示された**Evidence接合の対象一致**を、初回D1静的Go実証のS2/S4へ絞って適用する。JOIN-01〜06や六Scopeを複製せず、ここでは同じquote計算を呼んだつもりでも**選択Bと実Call Aが食い違う**場合を検出する。仮のEvidence Schemaや新Registryは作らない。
+
+| 接続点（同じ実Consumer／Target） | 必ず照合する関係 | 不一致・根拠不足の場合 |
+| --- | --- | --- |
+| **S0→選択** | ReferenceのContract ID/意味・Input raw bytes/Expected、ApplicationのScope/Target、`#951`の実Selected Provider ID・固定版 | 名前が同じでも意味/Contract版/Scopeが違うなら結果一致をConformanceへ昇格しない |
+| **選択→実Build** | Selected Provider Bに対応する必要Source・Go package import/init・Target Build入力/Toolchain・実Binary digest（`#1251/#1167`）、Build Lockの参照 | B選択なのにAだけリンク、又はA/B両方収録の理由未説明ならD1未資格。宣言済みArtifact fingerprintだけでは実Linkを証明しない |
+| **実Build→Invocation** | 同一Binary/実呼出し入口と、今回のInput Digest/Contract/Provider B・結果、実Consumerが使用したTarget・実行版 | Aの計算結果がたまたまBと同一でも、BのProvider実行PASSにはしない。単なる`composition.Assessment.Eligible`をInvokeに接合しない |
+| **結果→Claim** | 23候補（8正常/15拒否）のExpected出典・拒否層、D0直接関数/D1実静的入口/D2別Processの**それぞれのAttempt** | [#3021](https://github.com/hat47x/tei-platform/pull/3021)のD0/D2 CI成功をD1と結合しない。純粋計算に不要なGrant/Effectを必須条件へ捏造しない |
+
+**一因子の負例と合格出口**：Provider A/Bは同じContract・同じ見積結果を返すが、Bを選択したTargetでAの関数を呼んでいる対照を置く。結果値だけを比較する検査は偽陽性になるため、**実選択→Build member→実呼出し入口→対象Attempt**の一致が証拠として得られる場合だけ「このTargetでBが実呼出しされた」と判断する。別条件で必要ProviderのModule欠落、未選択Bの`init`混入を#1251 PB-01/07/10へ返す。`go tool nm`等は補助であり最適化によりsymbolが見えない場合は実Call witnessで確認する；nm不存在だけでBuildに含まれないと断言しない。
+
+**Claimごとの非適用項目**：quoteは純粋なread-only計算なので、実DB Read/Commit、Host Current Grant、Receipt、Tenant Record集合は本D1測定では`not applicable`（存在しない権限を得たとの意味ではない）。別の業務PluginがDB/外部送出を行うなら、このD1のPASSを再利用せず、#2903 §24のMeaning/Scope/Grant/Read Coverage/Effect/Disclosure接合へ戻す。`semantic.EvaluateCompletion`（main統合[#2926](https://github.com/hat47x/tei-platform/pull/2926)）も呼出側が供給するCoverageを証明しないため、Quote Resultの行数や一致からBusiness TargetSetの完全性へ飛躍しない。
+
+**実証状態**：#3021修正HEAD `dfc133e2`のCI 3件成功はD0／既存D2の固定証拠。上記A/Bの実static link、実Invocation別Witness、ビルド差分、費用・Mutant、外部Target/Grant/Receiptは**NOT RUN**。Source位置、完全性、Owner Accepted Meaning、正式Contract採用は別Owner。D1実装判断は#951/#1251/#1016へ返し、Plugin化不要案を残す。
 
 ## 19. 高凝集Bundleの適正規模と実行前提の完全性（2026-11-06、設計・未採用）
 
