@@ -1,0 +1,30 @@
+{
+  "count": 1,
+  "evidence": [
+    {
+      "Operation": "execute",
+      "Scope": {
+        "Application": "order_entry",
+        "Capability": "order_entry.submit_order",
+        "Subject": "subject-order-editor",
+        "Action": "order_entry.submit_order",
+        "Resource": "order/1001"
+      },
+      "Epochs": {
+        "Source": "local-auth-store",
+        "SubjectLink": 1,
+        "Membership": 2,
+        "Policy": 3
+      },
+      "OperationID": "order-submit/1001",
+      "Status": "committed",
+      "ErrorClass": "",
+      "ReceiptVersion": 1,
+      "Provenance": "provisional-grant",
+      "Guarantee": "atomic-with-commit",
+      "GuaranteeReason": "provisional D10: trusted-owner routine path; re-verify against real deployment"
+    }
+  ],
+  "note": "Provenance/Guarantee/GuaranteeReason as produced by the Runner of the Web process",
+  "receiptRows": 1
+}

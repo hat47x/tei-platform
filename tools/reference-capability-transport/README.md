@@ -23,6 +23,8 @@ processから返るgeneric resultには同じidentityを返させます。Host�
 
 dispatchとresultは別schema IDにします。request framingをresultとして返しても受理しません。
 
+汎用dispatch／resultのJSONでは、契約やProviderを識別する外側のメタデータとProvider identityについて、重複キー・大文字小文字の別名・未宣言キーを拒否します。業務Payloadはbase64で運ぶopaque byte列のままとし、TransportがJSON構造や業務ルールを要求しません。HTTP requestの不正なメタデータはProviderを呼ぶ前に拒否します。実processの応答に異常を注入した試験では、processが起動・応答した**後**に拒否し、その結果を返しません。
+
 また、generic ProviderのPlugin ID / versionとlegacy carrierのPlugin identityはprocess起動前にHost側で照合します。Provider AをPlugin Bのcarrierで起動し、子processがAを自己申告するだけで通る経路を作りません。
 
 ## 現行process protocolで分かったこと

@@ -206,7 +206,7 @@ func loadWorkspaceImports(root string, imports []WorkspaceImport, result *Result
 		}
 		actualDigest := sourceindex.Fingerprint(encoded)
 		if imp.SemanticDigest != "" && imp.SemanticDigest != actualDigest {
-			return fmt.Errorf("import %q: semantic digest mismatch for namespace %q (expected %s, got %s)", imp.Alias, imp.Namespace, imp.SemanticDigest, actualDigest)
+			return fmt.Errorf("import %q: semantic digest mismatch for namespace %q (expected %s, got %s); review the provider changes and their impact before updating the pin", imp.Alias, imp.Namespace, imp.SemanticDigest, actualDigest)
 		}
 		owned[imp.Namespace] = true
 		result.World.Semantics = append(result.World.Semantics, *selected)

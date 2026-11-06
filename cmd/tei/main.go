@@ -1,7 +1,9 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -132,6 +134,7 @@ func main() {
 	worldPath := fs.String("world", "", "normalized M0 IR JSON")
 	workspacePath := fs.String("workspace", "", "TEI workspace directory")
 	jsonValidation := fs.Bool("json", false, "machine-readable JSON for validate -workspace")
+	pluginDiagnostic := fs.Bool("diagnostic-candidates", false, "show unvalidated plugin candidates; never authorizes execution")
 	subjectKind := fs.String("subject-kind", "", "Source Index subject kind")
 	subjectID := fs.String("subject-id", "", "Source Index subject ID")
 	traceScope := fs.String("scope", "", "scope for typed modelref trace projection")
@@ -171,6 +174,7 @@ func main() {
 	artifactCheck := fs.Bool("check", false, "artifacts: fail when the set is inconsistent")
 	periodStates := fs.String("period-states", "", "periods: period=state pairs, comma separated")
 	periodStatePath := fs.String("period-state-file", "", "periods: JSON object of period to state")
+	dbCheckDSNFlag := fs.String("dsn", "", "dbcheck: PostgreSQL DSN (defaults to TEI_TEST_POSTGRES_DSN)")
 	environmentID := fs.String("environment", "", "environment canonical ID")
 	solutionID := fs.String("solution", "", "solution release canonical ID")
 	historyPath := fs.String("history", "", "normalized migration history JSON")
@@ -189,6 +193,19 @@ func main() {
 	var statePaths pathList
 	fs.Var(&statePaths, "state", "database compatibility state JSON; repeatable")
 	parseErr := fs.Parse(os.Args[2:])
+	// dbcheck needs neither a workspace nor a world: it reports whether a
+	// database can be used, so it runs before those requirements apply.
+	if command == "dbcheck" {
+		if err := runDBCheck(context.Background(), dbCheckDSN(*dbCheckDSNFlag), os.Stdout); err != nil {
+			if errors.Is(err, errDSNMissing) {
+				fmt.Fprintln(os.Stderr, "DSNが未設定です。TEI_TEST_POSTGRES_DSN か -dsn で指定してください（実DBの確認は何も実行していません）。")
+				os.Exit(2)
+			}
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		return
+	}
 	if command == "inspect" || command == "trace" {
 		if parseErr == nil {
 			parseErr = validateSelectedReadOnlyFlags(fs, command)
@@ -395,7 +412,13 @@ func main() {
 	}
 	if isResultEnvelopeCommand(command) {
 		// requirements, plugin-lock, plugin-resolve, plugin-runtime-plan
-		code, err := resultCommandJSON(os.Stdout, command, *workspacePath, *worldPath, *environmentID, *pluginLockPath, fs.NArg())
+		environmentSpecified := false
+		fs.Visit(func(f *flag.Flag) {
+			if f.Name == "environment" {
+				environmentSpecified = true
+			}
+		})
+		code, err := resultCommandJSON(os.Stdout, command, *workspacePath, *worldPath, *environmentID, *pluginLockPath, *pluginDiagnostic, environmentSpecified, fs.NArg())
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 		}
@@ -454,7 +477,7 @@ func main() {
 		writeJSON(d)
 		return
 	}
-	if (*worldPath == "") == (*workspacePath == "") {
+	if command != "dbcheck" && (*worldPath == "") == (*workspacePath == "") {
 		fmt.Fprintln(os.Stderr, "exactly one of -workspace or -world is required")
 		os.Exit(2)
 	}
@@ -485,6 +508,16 @@ func main() {
 	switch command {
 	case "operations":
 		if err := runOperationsCommand(*workspacePath, *applicationID, *artifactOutDir); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		return
+	case "dbcheck":
+		if err := runDBCheck(context.Background(), dbCheckDSN(*dbCheckDSNFlag), os.Stdout); err != nil {
+			if errors.Is(err, errDSNMissing) {
+				fmt.Fprintln(os.Stderr, "DSNが未設定です。TEI_TEST_POSTGRES_DSN か -dsn で指定してください（実DBの確認は何も実行していません）。")
+				os.Exit(2)
+			}
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}

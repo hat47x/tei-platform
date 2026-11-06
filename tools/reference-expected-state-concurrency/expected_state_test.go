@@ -84,21 +84,26 @@ func TestExpectedStateStopsTheSecondWriter(t *testing.T) {
 	ctx := context.Background()
 
 	start := make(chan struct{})
+	readDone := make(chan struct{}, 2)
 	results := make(chan int64, 2)
 	for _, next := range []string{"confirmed", "cancelled"} {
 		go func(next string) {
 			tx, err := db.BeginTx(ctx, nil)
 			if err != nil {
 				results <- -1
+				readDone <- struct{}{}
 				return
 			}
-			// Both writers read the same state before either writes.
+			// Both writers read the same state before either writes. readDone
+			// keeps a fast writer from reading after the other has committed.
 			var current string
 			if err := tx.QueryRowContext(ctx, `SELECT status FROM orders WHERE order_id = 'O-1'`).Scan(&current); err != nil {
 				tx.Rollback()
 				results <- -1
+				readDone <- struct{}{}
 				return
 			}
+			readDone <- struct{}{}
 			<-start
 			changed, err := updateGuarded(ctx, tx, "O-1", current, next)
 			if err != nil {
@@ -118,6 +123,8 @@ func TestExpectedStateStopsTheSecondWriter(t *testing.T) {
 			results <- changed
 		}(next)
 	}
+	<-readDone
+	<-readDone
 	close(start)
 
 	first, second := <-results, <-results

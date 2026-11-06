@@ -22,6 +22,7 @@ func main() {
 	revision := flag.String("baseline-revision", "", "Handover R")
 	target := flag.String("target-revision", "", "build T")
 	lineageOut := flag.String("lineage-out", "", "optional build-only derived World/digest observation path")
+	grantsPath := flag.String("grants", "", "optional JSON grant file; when set, the observation path must be covered by it")
 	flag.Parse()
 	if flag.NArg() != 0 || *application != "order_entry" || *baseline == "" ||
 		*revision == "" || *target == "" {
@@ -79,7 +80,17 @@ func main() {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
-		if err := os.WriteFile(*lineageOut, append(output, '\n'), 0600); err != nil {
+		if *grantsPath != "" {
+			grants, err := loadGrants(*grantsPath)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, err)
+				os.Exit(1)
+			}
+			if err := writeLineageWithGrants(*lineageOut, append(output, '\n'), grants); err != nil {
+				fmt.Fprintln(os.Stderr, err)
+				os.Exit(1)
+			}
+		} else if err := writeLineage(*lineageOut, append(output, '\n')); err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}

@@ -1,6 +1,6 @@
 # CLI C1の追跡統合：検証対象と未確定事項
 
-対象はGitHubの課題 #1165 と下書きのプルリクエスト #1172（`feat/cli-c1-typed-trace-integration`）です。この文書は**検証手順**であり、合格を示す記録ではありません。
+対象はGitHubの課題 #1165 とプルリクエスト #1172（`feat/cli-c1-typed-trace-integration`）です。この文書の作成時、#1172は下書きでした。その後、#1172は2026-10-11にmainへ統合され、#1165は2026-11-02にクローズされています。この文書は**検証手順**であり、合格を示す記録ではありません。#1172統合時の手順の記録として残しており、現行の統合条件は[AGENTS.md](../../AGENTS.md)と[CONTRIBUTING.md](../../CONTRIBUTING.md)に従います（`tools/repository-health-check.sh`の全項目PASSは統合条件ではありません）。
 
 ## 検証対象
 

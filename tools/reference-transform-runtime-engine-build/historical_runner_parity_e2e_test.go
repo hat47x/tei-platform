@@ -132,8 +132,19 @@ func TestHistoricalRuntimeEngineRunnerParity(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		ext = ".exe"
 	}
-	oldCLI := filepath.Join(tmp, "old-engine-builder"+ext)
-	newCLI := filepath.Join(tmp, "new-engine-builder"+ext)
+	binDir := tmp
+	if runtime.GOOS == "windows" {
+		// Binaries executed from the repository drive are denied access to the
+		// user temp directory on this host. Build them on the system temp drive;
+		// artifacts still stay on the repository volume for filepath.Rel.
+		binDir, err = os.MkdirTemp("", "tei-historical-runner-bin-")
+		if err != nil {
+			t.Fatalf("allocate runner binary directory: %v", err)
+		}
+		t.Cleanup(func() { os.RemoveAll(binDir) })
+	}
+	oldCLI := filepath.Join(binDir, "old-engine-builder"+ext)
+	newCLI := filepath.Join(binDir, "new-engine-builder"+ext)
 	buildRunner := func(label, checkout, executable string) {
 		t.Helper()
 		cmd := exec.Command(goPath, "build", "-trimpath", "-buildvcs=false",
