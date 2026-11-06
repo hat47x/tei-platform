@@ -134,7 +134,7 @@ A0は独立した新しい中央Admission Serviceではなく、既存Host/Comma
 
 ## 7. 検査被覆・非同期応答・回復資格の接合（2026-11-06、追補）
 
-**前節との差分**：以前のS0〜S8／A0とF01〜14は、故障が起きたら何を保持するかを定めた。本節は、**停止を解除してよいと誰が何で判断するか**に限定する。新しいEngine/State enum、中央Audit Store、第二検証基準を導入しない。現mainへの到達点は[merged #2882](https://github.com/hat47x/tei-platform/pull/2882)のWorkspace→`DeriveOperationSurface`→`PeriodPreconditions`／`EffectPreconditions`→`CombinePreconditions`→`RunPlan`という**合成Stepの実Goテスト**に更新する。Period closed/open、after-commit Observerなしでblockedを局所確認済み。一方、Guardの網羅性／実ProviderによるEffect強制／Observerが当該Effectを実観測したこと／実永続Run所有は未証明。既存[#1130 RPL-01〜05](https://github.com/hat47x/tei-platform/issues/1130)の検査正本を再利用する。
+**前節との差分**：以前のS0〜S8／A0とF01〜14は、故障が起きたら何を保持するかを定めた。本節は、**停止を解除してよいと誰が何で判断するか**に限定する。新しいEngine/State enum、中央Audit Store、第二の検証基準エンジンを導入しない。現mainへの到達点は[merged #2882](https://github.com/hat47x/tei-platform/pull/2882)のWorkspace→`DeriveOperationSurface`→`PeriodPreconditions`／`EffectPreconditions`→`CombinePreconditions`→`RunPlan`という**合成Stepの実Goテスト**に更新する。Period closed/open、after-commit Observerなしでblockedを局所確認済み。一方、Guardの網羅性／実ProviderによるEffect強制／Observerが当該Effectを実観測したこと／実永続Run所有は未証明。既存[#1130 RPL-01〜05](https://github.com/hat47x/tei-platform/issues/1130)の検査正本を再利用する。
 
 ### 7.1 Required Guard CoverageとGuard Outcomeを二軸にする
 
@@ -152,6 +152,8 @@ A0は独立した新しい中央Admission Serviceではなく、既存Host/Comma
 **合格条件案**：`Required ⊆ Supplied`だけでなく、検査のSubject/Context/期日/Source revisionが一致し、各`Evaluated`の結果が確認できること。その上で副作用については、既存Providerが`Enforced-at-Effect`を保証した範囲**だけ**を実行資格として採用する。全Requiredを列挙できないなら、欠損なしと推定せず保留する。これは#2882のlocal PASSを否定するのではなく、保証範囲を正確に狭める。
 
 ### 7.2 遅延応答・画面終了・再起動とExecution Identity
+
+**更新されたUI実証範囲**：[Draft #3036](https://github.com/hat47x/tei-platform/pull/3036)はStudioのServer初期Bootstrap（`/`、`cmd/tei-studio/assets/main.js`）にSelection Scopeを接続し、旧RPC応答・旧`finally`による新操作ボタンの書戻しを抑止するNode限定試験を追加。実Wails Host＋Chromiumでの遅延応答試験もDraftに追加されたが、新HEADのCI完了は別途確認する。**既定Windows Desktopは`/workbench/`という別Consumer**であり、既存WebView2 smokeやBootstrap局所PASSをDesktopのCommand/View・Host Grant・Provider Effect/Receipt合格へ転用しない。
 
 UI/CLI/Jobの実行要求は、表示/選択の更新世代（**Selection/Context Epoch**、正式APIではない）と、業務の**Operation ID**、Transport **Request ID**、実**Attempt/Fence 世代**を混同しない。UI側の二重クリックを同期ロックで防いでも、別Window・別Process・通信ACK-loss時の二重Effectを防げたことにはならない。逆に、画面を閉じたり通信が切れたりしても、Provider側の業務Operationを自動取消したことにはならない。
 
@@ -211,7 +213,7 @@ UI/CLI/Jobの実行要求は、表示/選択の更新世代（**Selection/Contex
 - **P2（実PGの一改訂縦断）**：既存#2853/#2859/#1163のCommand Invoker→PG CAS→Receipt/別Connection readを再利用。実Schema gateの起動前停止／Commit時Grant・Target・Periodの再拘束／同Key ACK-loss／別Key ABA／結果Consumerを**同一AttemptとSource revision**で照合する。#2857の暫定E2E監査は`INCOMPLETE / productGate UNQUALIFIED`であり正式G1/G2合格としない。
 - **P3（現実の再起動・外部Consumer）**：OS kill→restart、実Outbox/Provider、UI遅延応答・Grant失効、旧Artifact・2 Build・EKI委任を順次接続。別Host/Providerで証明不能な部分はunsupportedとし、新中央Host/Registry/Queueを自動採用しない。
 
-**このScript設計の同一Revision・同一AttemptでのSH系一気通貫試験／実UI Epoch／実Service Grant+Period+DB同一Commit／再起動後の実Provider Receipt接合／二Provider／Owner意味受理はNOT RUN。** ※main #2942/#3002にはCommand Stage単体と製品CLIの二Process再起動試験が既にある。これを本Script/実PG統合成功へ昇格しない。 既存#2882局所Goの成立と、#2853実PGの限定Commit Unknownの成果だけを各Source版付きの既存Evidenceとして再利用する。
+**このScript設計の同一Revision・同一AttemptでのSH系一気通貫試験／実UI Epoch／実Service Grant+Period+DB同一Commit／再起動後の実Provider Receipt接合／二Provider／Owner意味受理はNOT RUN。** main #2942/#3002にはCommand Stage単体と製品CLIの二Process再起動試験が既にある。これを本Script/実PG統合成功へ昇格しない。既存#2882局所Go、#2853実PG Commit Unknownも、それぞれのSource/HEADで成立した限定Evidenceとして再利用する。
 
 ## 8. 永続回復の反例と一改訂受入の最短経路（2026-11-06、再照合）
 
@@ -362,7 +364,7 @@ UI/CLI/Jobの実行要求は、表示/選択の更新世代（**Selection/Contex
 | M：Authoring新形式の段階移行 | 新`*.tei.md`、Markdown container、Language Plugin、選択した構造span、実Loader/Build Input。#3030 M0〜M6の段階成果を再使用 | 新形式の発見／解析／意味候補／旧定義との比較など**成立した段階だけ** | Read/ParseのPASSはRuntime Effect、Script公開、現在Grantを保証しない |
 | J：将来の結合受入 | LとMの**同じ業務Scenario／独立Expected**、別Source Revision/Attemptを突合して移行後の実Targetを検証 | M側が実Parser/Link/Build/Providerを消費した時点で初めて新形式End-to-EndのClaimを検証可能 | 値だけ一致・Rename・旧CIを新規受理に転記しない |
 
-同名の旧`*.tei`と新`*.tei.md`が混在する場合、候補を暗黙にどちらか選択して読まない／last-winsしない。明示的なAuthoritative Source・Version・移行時点・対象範囲と、**実Reader consumed bytes**を束縛する。旧形式のread-only/Import経路をいつ削除するかは#3030のM6とOwner判断による。`.tei/decisions/`はSource拡張子ではなく固定履歴ディレクトリであり変更しない。新形式Markdown中の通常文章・引用・表が無条件にExecutable Ruleになるわけではない。
+同名の旧`*.tei`と新`*.tei.md`が混在する場合、候補を暗黙にどちらか選択して読まない／last-winsしない。暫定[Draft #3031](https://github.com/hat47x/tei-platform/pull/3031)は管理Rootに新形式が一件でもあるとWorkspace Load全体を拒否し得るため、SHOの未完成`*.tei.md`草稿を**管理外Draft領域に保持すること**と、管理対象の必須Sourceとして選択・解析することを分離する。暗黙に新形式を無視して`validate ok`へ戻すのも禁止する。明示的なAuthoritative Source・Version・移行時点・対象範囲と、**実Reader consumed bytes**を束縛する。旧形式のread-only/Import経路をいつ削除するかは#3030のM6とOwner判断による。`.tei/decisions/`はSource拡張子ではなく固定履歴ディレクトリであり変更しない。新形式Markdown中の通常文章・引用・表が無条件にExecutable Ruleになるわけではない。
 
 [Draft #2935](https://github.com/hat47x/tei-platform/pull/2935)の`readByLoader`（Load snapshot）と[Draft #3028](https://github.com/hat47x/tei-platform/pull/3028)のBootstrap K0〜K6は、それぞれ局所的な**読込証拠**、**Language/Operator資格の先行案**として参照するだけ。両PRはmain未統合。`readByLoader=true`はSource解析・必要閉包の完全性を示さず、K2/K4のCandidateはOwner受理済みMeaningでも現在の実行資格でもない。
 
