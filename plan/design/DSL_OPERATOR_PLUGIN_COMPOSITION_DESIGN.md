@@ -346,3 +346,16 @@ Pluginの論理単位と実行artifactを1:1にしない。Linked / Wasm / proce
 **検証順とOwner**：(1)既存`check_bootstrap.js`のRB-01〜24は改変せず、まず本FixtureのInput/Expectedを仕様レビュー（#988/#2620）。(2)実`workspace.Load`/Manifest/Snapshotと`ParseSelected`/pinned loweringが対応可能なBS-02/03/06を実Goでpressure。対応不能なK0 Provenance/Registration切替は`unsupported`と記録。(3)BS-08/09/13はExisting Extension/Build/Acceptanceの**実観測点**が分かるまでは試験Passを宣言しない。(4)独立Oracle #2514、Raw Authoring #2621、Required Source #2823、Build #2831、Consumer/Host #2516/#1174に各観測を渡す。**新Builder/Runner/Seed Parser/第二Lock・Registry・Owner Authorityは先行追加しない**。
 
 **証拠上限**：本§13/BSは設計と静的実コード照合のみ。BS-01〜15のTEI Go/CLI/CI、独立実Owner受理、実Pluginのpartial registration、Recovery/Crash、製品自己Bootstrap、Stage2 TEI self-build、実Host/DBは**NOT RUN / NOT PROVEN**。#1119のG0〜G4と業務P0を拡張しない。
+
+
+### 13.5 実Go APIに結合する最小Expected検査（BS-02/03/06）
+
+`reference/dsl-language-plugin/bootstrap_expected_bridge_test.go`を追加し、**設計Fixtureの3ケース**だけを現在の実Go入口に渡す。JSON Expectedは製品APIの結果から再生成せず、実テストはExpectedの`earliestStop`を先に照合する。実Contextや登録機構が存在しない場合に仮のProvider RegistryやBootstrap Hostを作って検査成功扱いしない。
+
+| Case | 実Go API | 確認対象／証拠の上限 |
+| --- | --- | --- |
+| **BS-02** | `workspace.Load` | `formatVersion: 99`で現在のWorkspace Loaderが明示拒否。Seed Manifest形式の限定防御。実選択済みLanguage Parser自体の初回起動証明ではない |
+| **BS-03** | `ParseSelected`→`Resolve` | `impl-A`のFingerprint `dA`を要求し、同ID/同Contractでも`dB`候補では`ErrProviderMissing`、Parser callback未呼出。**dA/dBはFixtureラベル**で実バイナリのhash/証明ではない |
+| **BS-06** | `ParsePipelineSyntax`→`LowerPinnedPipeline` | valid SyntaxでもOperator Pinがない場合、元Operator Token spanへの`PipelineDiagnostic`、Resolved Stepなし。Product Operator登録の有無・Owner意味受理は証明しない |
+
+テストは**既存Packageの小さなGo試験**であり、第二Seed Reader/Resolver/Runnerではない。BS-01/04/05/07〜15（実初回信頼核、自己記述循環のProduct経路、独立Required/Owner、部分登録・Crash Recovery・Cutover、Build Release）をこの3件で合格にしない。**新Goテストをコミットした事実と exact HEAD CIのPASSは別**。CI結果の有無・Go packageの実行証拠を確認してから限定受入する。
