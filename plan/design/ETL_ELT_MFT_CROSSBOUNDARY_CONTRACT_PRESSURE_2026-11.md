@@ -355,29 +355,30 @@ Apache Kafkaは、Kafka Topic間ではtransactional producerとconsumer offset�
 
 **最初のコード変更を開始する条件**: 既存#2604のWriterに対し「Reader A/Bが何を読むか」がテストで定義でき、OwnerのFixture/Expectedが選択できること。そこに達する前に統一Completion Engine・専用Batch DSL・新Proof Registry・共通Schedulerを作らない。本PRはこの観測の**設計差分のみ**であり、P0の実2Process/Provider/CIやOwner業務受理を新たに実行したものではない。
 
-### 12.2 P0前提Gap：Artifact Manifestから実ファイルへの検証可能な結線
 
-**2026-11-06 現行mainの実Source調査**：main `f275843b2bd35117f3bbb8d6090a59678d3c33ed` の
-`internal/artifact/manifest.go` blob `c45e2b2397974c7b5361ddfae8c65f45c91eb226`、
-`internal/artifact/artifact.go` blob `4a56949d683248185c2d51a22350cefd250362da`、
-`cmd/tei/cli_operations_artifacts.go` blob `ec0ae27c29ab80d8b5366af2fa65e3cf6e699310`、
-main統合済み`cmd/tei/cli_operations_artifacts_publication_test.go` blob `6519e47f5af803467f34dfa46decfff97a069e3c` を読取った。以下はこの版に限定した静的所見であり、新しい実Runtime試験の合格報告ではない。
+### 12.2 既存AP-08〜16を再利用するP0依存と最初の検証器変更（2026-11-06、NOT RUN）
 
-- `artifact.ManifestEntry` は `Kind/Rule/Version/Fingerprint/Digest/Unresolved` で、**出力Path/Member byteのDigest/Generator/完全なUnresolved内容を持たない**。Manifestが列挙した論理Artifactと物理Memberを独立Readerが一意に結び付けるには追加情報または実装依存の推測が必要。
-- `artifact.Artifact.Digest` は `tei.artifact/v0` のドメインと `Kind/InputRevision/Rule/Generator/Content/Unresolved` から求まる**Artifact全体の指紋**。保存ファイル本文のSHA-256ではない。保存本文の単なるbyte SHA-256と `ManifestEntry.Digest` を比較することは禁止。独立Readerは**全EnvelopeがあるならArtifact.Verifyによる検査**、本文しかなければ別に**physical byte digest**とEntry↔Pathの証拠を必要とする。
-- 現`writeArtifactFiles`はkindと本文一行目などで物理名を導出し、本文のみを書き、最後に `{"manifest":..., "findings":...}` を書く。出力ファイルへのLinkとMemberのbyte検証証拠はそのWrapperに含まれていない。出力直後の`manifest.Verify`が成功してもディスク上のMember内容を検証したことにならない。
-- **注意: AP-01〜03の現テスト** `publicationSet` は `WorkspaceSet.Manifest` を正規の`NewManifest`で生成せず、ゼロ値のままWriterを通している。よってR1/R2混合・古いファイル・衝突の**書込み順序の特性試験**としては有効だが、生成されたManifestと各Memberの独立検証を示す試験ではない。これらの特性試験を「有効な出版Manifestで全Member検証済み」と読み替えない。
-- [merged #2817](https://github.com/hat47x/tei-platform/pull/2817)によってAP-01〜03の局所Go試験はmainに入った。前節までの「#2817 Open」という古い記述は**調査当時の履歴**であり、現在状態は**merged**。実Publisher改修・AP-04〜・外部Readerは未成立。
+**既知ギャップのOwner確認**: Manifest EntryにPath/Raw-Content-Digest/Generator/Unresolved詳細がなく、`Artifact.Digest`は単なるファイルbyte SHAでないという不足は、[#2604 AP-08/09](https://github.com/hat47x/tei-platform/issues/2604#issuecomment-6576536977)と[#2604 AP-10/11](https://github.com/hat47x/tei-platform/issues/2604#issuecomment-6585308926)で**2026-11-02に既出**。さらにBody multiset一致でもPath↔Body入替えを見逃す反例は[#2604 AP-12〜16](https://github.com/hat47x/tei-platform/issues/2604#issuecomment-6585644900)で**2026-11-03に記録済み**。これは今回新規発見した第二仕様課題ではない。既存Issueの再起票・新Case ID付与・追加Manifest Schemaの先行採用はしない。
 
-#### #2604/AP-06へ戻す最小の受入前提（形式・配置の採用判断はOwner）
+**今回の新しい横断照合**（main `f275843b2bd35117f3bbb8d6090a59678d3c33ed` で固定して静的確認）:
 
-1. **正本の分離**: 論理`artifact.Manifest`のDigest/入力Revision/Unresolvedを変更しなくても、物理`PublicationBinding`（説明上の役割。新Core Typeではない）として `logical manifest entry identity -> selected output path / body byte digest / representation / generation` を取得できるか比較する。対象Storage/FSのPathとDigest scheme/保持期限は物理Providerの責任。省略・曖昧・別generation・衝突なら物理Readerを`unqualified`にする。
-2. **実現候補**: A) `manifest.json`の既存Wrapperの物理Member対応欄（versioned/後方互換と既存Readerを検証）、B) 全`Artifact` Envelopeを不変Content-addressed名で公開し別途Pathを固定、C) Provider独立の実Output一覧から正確なbyte Bindingを発行。**どれも未採用**。ManifestEntryへ勝手にPathをCore固定追加・短縮HashIDを実byte全体Digestの代用・Directory全件列挙で「必要Member全件」とすることは禁止。
-3. **最初の陽性**: `artifact.NewManifest`から作った有効な2 Member R1/R2について、別Process ConsumerがPublisher内部の`Artifact`オブジェクト・最初の一行/ファイル名生成関数を共有せず、Manifest Entry→物理Pathを列挙し、全Memberの**保存byte**を読みDigest検証した事実を表示する（#2542 EF-01、#2604 AP-06）。完全Artifactの再構成が不可能な配置なら`Artifact.Verify済み`とは表示しない。
-4. **負例**: R1 Manifest＋R2 Member、R1 pin後GC、欠落Member、Path衝突/旧ファイル残存、本文は同じでもRule/Generator/Unresolvedが異なる別Artifactを比較。実Byte成功だけでBusiness Period・Delivery/Receipt・Current Grantへ昇格しない。既存AP-01/02/03と同一の期待を共有し第二Fixtureは作らない。
-5. **受入停止線**: 現時点では「独立Readerが保存Manifest＋Memberの完全Artifact Digestを検証できる」は**未実証であり一般条件では不可能**。先に物理Bindingの欠落をOwnerへ提示し、最小差分を選定する。#2604がPublicationとReader資格、#2482が論理Manifest/CheckSet、#2516が開示、#2542がImport Unit/Recipient、#1174がBusiness Effectを維持。§12.1のP0順序はこの**前提成立後**に実2Consumerへ進む。
+| 実装・履歴 | 現行Fit | 次のETL二ConsumerのGap |
+| --- | --- | --- |
+| `internal/artifact/artifact.go` blob `4a56949d683248185c2d51a22350cefd250362da`／`manifest.go` blob `c45e2b2397974c7b5361ddfae8c65f45c91eb226` | ProducerのArtifact envelope／Manifestは内部指紋・Unresolvedを持ち、出力前の検査に再利用できる | 保存された実BodyとManifest Entryとの紐付け・再検証には物理Path/Byteと必要なEnvelopeの情報が別に必要（既存AP-08〜11） |
+| `cmd/tei/cli_operations_artifacts_publication_test.go` blob `6519e47f5af803467f34dfa46decfff97a069e3c`、[merged PR #2817](https://github.com/hat47x/tei-platform/pull/2817) | AP-01〜03の上書き順・旧ファイル残存・命名衝突を実Go試験で記録済み | Helper `publicationSet`は`WorkspaceSet.Manifest`のゼロ値を使用。**正規`NewManifest`＋Findings＋実Member検証の陽性Fixtureではない**。AP-01〜03の成功を有効なManifestのReader受理に転用しない |
+| `plan/fixtures/capability-handoff/verify_real_cli_revision.py` blob `918f4cafb136090f8f75a08b041489b0d1da3ffa`、[merged PR #2649](https://github.com/hat47x/tei-platform/pull/2649) | 実CLI stdout `WorkspaceSet` とfresh-directoryの`manifest.json`/Bodyを比較する既存独立Python Consumer経路がある | `verify_reader`は`Counter(expected Content bytes)==Counter(actual filename-selected bytes)`。**Pathを固定した本文交換で成功し得る**ため、実Path→Role→Bodyの対応・世代・Recipient資格は未証明 |
+| [merged PR #2630](https://github.com/hat47x/tei-platform/pull/2630) のConsumer相対Expected設計 | Consumerが必要なMember集合と実Producer出力集合を分ける計画が既存mainにある | 用途別Required Memberの独立Expectedを、実Readerが開いたPath/Byte・Scope/時点へ結び付ける実結果は別 |
 
-**実行/検証の限界**: 今回はGitHubの現行Go Source・merged PR・既存試験を静的に照合しただけで、2Consumer実読取、改修済みPublication、OS/Windows差、実MFT、Owner受理はすべてNOT RUN。既存のRepository Health成功をこの未実装の保証へ転用しない。
+**#2827から引き渡す最短の修正/検証順（#2604 Ownerの既存ケース・コードを使用）**:
+
+1. **P0-A 実Readerの検査強化**：既存`verify_real_cli_revision.py`と`tei artifacts`の実出力を継続利用。`Counter(Body)`の成功に加えて、独立のテストExpected `(qualified logical member, kind, required relative path, content byte SHA-256)`を固定し、**実Pathごとにbyte照合**。ファイル名を変えずに本文だけ交換する既存AP-12負例で拒否する。PathをWriterの同じ`artifactFileName`関数から無批判に再計算して自己証明しない。
+2. **P0-B 有効なManifestの陽性**：`artifact.NewManifest`で同一InputRevisionの2 Member/F/Tを生成し、`Findings`も別に照合。現AP-01〜03のゼロManifest特性Fixtureは不適切な前提として保持したまま**陽性受領のFixtureとしては利用しない**。Full `Artifact` envelopeがあるCLI stdoutとの同Attempt照合と、保存Memberのみでできるbyte検査を別の証拠欄に記録する（AP-10/11）。
+3. **P1 世代/Required閉包**：R1/R2一式・旧Member残存・Consumer pin/GC・Path衝突・異Scopeを、既存AP-06/08/09/12〜16と[#2630 AS-01/02](https://github.com/hat47x/tei-platform/pull/2630)のExpectedへ結合。「Body一致」「Path束縛OK」「同世代全Member受領」「用途相対Expected充足」を別表示。**この段階で初めて二Consumerの物理資格**を主張可能か判定する。
+4. **P2 Delivery/Business**：#2542 EF-01〜03へ、Recipient別Receipt・Import Unit・Period/Rule版を引き継ぐ。#1130 RunPlan・#1174 Effect/Ownerは別。公開Artifactの物理Readと業務受理は併合しない。
+
+**優先変更の所在**: AP-12の既存Python Reader強化が最小で、Core`ManifestEntry`やファイル公開方式への変更はOwnerがAP-08〜16の比較後に判断する。#2827には新Reader実装、第二Fixture/Scenario/Manifest Registryを設けず、既存#2604/#2630/#2542の受入依存を明示する。現`Artifact.Digest`（full envelope）とphysical Body byte SHA-256、さらに可変長Hash IDは異なる役割である。
+
+**資格**：ここまでの差分は既存Go/Pythonの静的読取とIssue/PR照合だけ。AP-12の新たな実行、正規Manifest＋別Readerの同Attempt E2E、MFT Recipient/実PG/Owner受理はNOT RUN。既存merged testsとRepository Healthの合格は、その限定範囲のみの実証。
 
 ### 追加一次資料（製品・仕様の版に依存する事実）
 
