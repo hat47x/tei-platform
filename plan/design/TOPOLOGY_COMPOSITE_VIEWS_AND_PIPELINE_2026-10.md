@@ -356,3 +356,41 @@ Else absence remains unknown; no universal closed-world assumption.
 **セルフビルドと非画面パイプラインへの適用境界**：[TEI全体セルフビルド #2831](https://github.com/hat47x/tei-platform/issues/2831)のSB-P0.1は**宣言した工程と実際に消費・起動・生成した工程/bytesの照合**がOwnerであり、本Referenceの「宣言Graph→表示Graph/Tableの損失検査」だけでは代用できない。実Run側の独立Read/Traceがない場合、図に無い実行工程・動的ロード・pre/post hookの不在を推測しない。非画面ETL/ELT・バッチ・ファイル中継も、Source上のstage記述／実Producer・Transfer・Consumer／再送・ACK/Receipt／外部Effectを別レーンに保持し、未観測はopaque/unknownとする（[非画面実証 #1130](https://github.com/hat47x/tei-platform/issues/1130)、[Scenario SSOT #1180](https://github.com/hat47x/tei-platform/issues/1180)）。#2831の実Build witnessと#1124のConsumerは別のOwner／別資格であり、この試験はその両者を結合したと主張しない。
 
 **次の反証可能な接続**：#1124の実CLI→同一Consumerで同じqualified SubjectとSource/Model revisionを取得し、(a)元Source/関係roleの閉包が実Readerで確認できる範囲、(b)不完全で`unknown`となる範囲、(c)Graph・Table・関連表間の局所変更が意味Sourceを変えないこと、を別の証拠として測る。実験が必要な新Core primitiveを示さなければ既存Standard Structureで継続する。
+
+## 13. 2026-11-06 横断追補：表示同一性の整合と「不存在」の主張資格
+
+**状態：合成Referenceの局所実証。新Core/Open-World API/Policy Engineの採用ではない。** 根拠は、Script-firstの三要素分析 [Draft #2878](https://github.com/hat47x/tei-platform/pull/2878)、Role自己記述・必要閉包 [Draft #2860](https://github.com/hat47x/tei-platform/pull/2860)、実工程セルフビルド [#2831](https://github.com/hat47x/tei-platform/issues/2831)／[Draft #2876](https://github.com/hat47x/tei-platform/pull/2876)、Studioの実Consumer [#1124](https://github.com/hat47x/tei-platform/issues/1124)、許可済み合成Evidence [Draft #2833](https://github.com/hat47x/tei-platform/pull/2833)。他Draftの設計・限定PASSを、本Referenceの製品資格へ合算しない。
+
+### 13.1 Claimごとに異なる三つの「閉じている」を分ける
+
+| 区分 | 限定された肯定に必要な観測 | 不足時の扱い |
+| --- | --- | --- |
+| **表示整合** | 同一SnapshotのTable行（scope/kind/id/key/view ID）、Graphノード、Relation role/端点/Edgeが**値とIDの両方**で一致。SourceIndexと投影版が変われば再結合する | stale / unresolved。誤ったView選択からInspect・Editへ昇格しない |
+| **宣言された問いへの閉包** | bounded scope、対象種別・Relation IDを含むquery、subject/relation/role/viewの完全な列挙、opaque/omittedなし、Reader/Plugin Compositionの申告 | unknown。個別図の完全性や単純な件数一致から不存在を断定しない |
+| **現物・利用資格** | そのSource/Artifact/Plugin/Target/Providerの**実際のReaderと消費byte**、現在のPolicy/Disclosure、実Run/Delivery/Receipt、Owner受理を、それぞれの必要Claimへ対応付け | **本Referenceは証明しない**。Synthetic `evidenceId`やboolの申告をAuthority・現物閉包・独立Oracleにしない |
+
+同じSubjectやMeaningVersionが不変でも、Sourceの位置移動・Role/Operator Pin差替え・Policy失効・Reader世代更新・外部工程追加は異なる依存へ作用し得る。単一のグローバルepochやモデル全体Digestだけで各Claimを一括資格化しない。また低権限Consumerへ`unknown`の内訳を返すこと自体が非公開依存の存在を漏らす可能性があるため、公開画面への変換は[#2516](https://github.com/hat47x/tei-platform/issues/2516)の既存Policyが許可したsliceを用いる（本Referenceは**Policyにより選別済みの合成入力のみ**を対象にする）。
+
+### 13.2 実装から得た具体的な負例
+
+[read-only Reference](../../reference/tei-topology-coverage/README.md)で、次を追加して確認する。View全体の版文字列だけを確認しても防げない事例を中心にした。
+
+| ケース | 反例 | 局所的な期待 |
+| --- | --- | --- |
+| TC-I01 | Table行の`scope`だけが別値、保存されたqualified keyは旧値 | 表示一致ではなく`unknown`、選択は`unresolved` |
+| TC-I02 | Graph nodeの`viewId`を残したままkeyが別scopeへ再束縛 | `unresolved`、scopeなしInspectへ接続しない |
+| TC-I03 | Graph nodeを重複表示し、別nodeの欠落を件数で隠す | 不在Claimは`unknown` |
+| TC-R01 | 同じRelation型が存在するが、queryのrelation IDは別 | 別Relationを存在証明に流用しない。閉じたfixture内に限り限定的不在 |
+| TC-R02 | Relation role文字列またはGraph Edgeのrelation IDのみ改変 | `unknown`。二項Edgeの見た目で元の多項意味を復元しない |
+| TC-F01 | Meaning/Model revision不変でSourceIndex fingerprintだけ改変 | 旧View選択は`stale`、複合表示は`unknown` |
+
+**今回の実測**：新規[専用GitHub Actions](https://github.com/hat47x/tei-platform/actions/runs/42155243921)でNode 24.21.0・**18/18 PASS**。当該runがcheckoutしたexact head `577bbe60d961c58e142502ab5835c9a7610214df`、`coverage.mjs` blob `5cc3ca120e2995650bcaba1121a2416b3be8010a`、試験blob `6ece714d49a7b6f8dfa4ff7d376dfe4eb61e7f4d`、終了時clean treeを確認。これはSource Closure/Policy/製品UI/実Target E2Eではなく**synthetic identity/coverage logic**の検証。第12節の12/12は旧時点の限定記録として残す。
+
+### 13.3 次の研究で評価する効果と撤回条件
+
+- **Studio優先**：#1124のM0実CLI→同一Consumer、M1四入口0/1 RPC、PR3旧DOM・後着・scope epochを先行。Referenceの`selectView`が返すcandidateは実Source locator/Inspect可能性を証明せず、製品UIへ直接組み込まない。
+- **Self-build/ETL優先**：#2831は宣言Buildと実消費Input/実行工程/Artifactの一致を独立Traceで確認する。#1130のETL/Batch/File Relayでは転送Producer/Consumer、再送、ACK/Receipt、外部Effectを区別。合成Viewの閉包は実処理の完全性に昇格しない。
+- **Role・Plugin共通性**：Role Typeの検証と、複数InstanceごとのBinding・Operator Pin・Role coverageは別。二つ以上の独立Consumer/domainで標準構造の不足を反証するまで、Core primitiveやStudio固定フックを追加しない。
+- **認知負荷の検証**：正答率（不存在の誤断定率）、Sourceへ辿る操作数、Graph/Table/関連表の再照合回数、局所変更の無関係波及、AIの見落とした不明点とToken/修正回数を、従来の単一図と複合図表で比較する。**測定未実施**であり優位性を前提化しない。
+
+**採用停止線**：実Source/Role/Reader closure・Policy/Consumer・Build Runnerの各Ownerが証明できる前に、`boundedAbsence`の合成ステータスを「実TEIに存在しない」「Productionで実行されない」「Ownerが受理した」へ昇格させない。#2881はP1独立実験のDraftを維持する。
