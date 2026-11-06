@@ -587,7 +587,7 @@ M未受理・G許可でもMeaningを採用しない。M受理済み・G拒否な
 1. **移行による空虚な完了**：legacy .tei で定義したTargetSet Lの一部が *.tei.md へ移ったが、Loader未消費またはRole/Query未束縛のまま。観測集合R=空／部分で旧Completion/Ruleがholdsとなる誤成功を止める。まずA0で明示拒否、A1後もL定義・Required Source閉包・実Provider Scopeを独立に検査。#2514/#2506/#2926。
 2. **二つのSource正本と誤Fallback**：旧 .tei と新 *.tei.md が同じSubjectを示す、または新Parser/Query Assetが未解決。旧Sourceへ黙ってfallbackして「新形式の受入PASS」としない。対象の現Selection・実Reader bytes・同じExpectedとの照合で意味・技術失敗を分離。#3030 TM-03/04/09、#2600。
 3. **旧成功の過剰失効／誤復活**：未選択の新 *.tei.md Draft追加だけで無関係な旧Artifactまで全面失効させない。他方、実Selection/Build inputが旧→新へ切り替わった時は同hashでもSource occurrence/Role/Operator版/実Consumerの資格を再評価。#2600／#1163。
-4. **学習済み手順の自己証明**：Source内にAIが生成したRule、Expected、Skill説明が共存しても、Required Oblicationの母集団を候補の自己申告や「新拡張子で読めた件数」から決めない。独立ExpectedとKnown Mutant、実Loader/Parser/Tool受領を区別。#1180/#2514/#2018。
+4. **学習済み手順の自己証明**：Source内にAIが生成したRule、Expected、Skill説明が共存しても、Required Obligationの母集団を候補の自己申告や「新拡張子で読めた件数」から決めない。独立ExpectedとKnown Mutant、実Loader/Parser/Tool受領を区別。#1180/#2514/#2018。
 
 **限定業務例の接合**：[PR #3024](https://github.com/hat47x/tei-platform/pull/3024)（exact HEAD 705933667d5b081036314a9161280323e08a64bd、[局所CI #42208159977](https://github.com/hat47x/tei-platform/actions/runs/42208159977)成功）は旧 .tei を使って CaseRecord Persistence→Query SQLのSource/Revisionを確認した**E1c相当の限定実測**であり、*.tei.md Migration/Function Data Context/実SQL Provider Readを証明しない。#3030のM4/M5以後に同じ公開Case・同一独立Expectedを新Sourceへ適用し、A2の同等性とA3の実Provider資格を別に合否判定。組織E2・G1/G2を研究移行のHard Dependencyで止めない。
 
