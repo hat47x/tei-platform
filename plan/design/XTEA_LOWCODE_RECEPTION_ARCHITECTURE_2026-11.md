@@ -947,9 +947,9 @@ PoC #2521が実装した範囲と、まだ実装していない範囲を分け�
 | 削除効果の参照ポリシー検査 | 実装済み（内向きRelationに`on-delete`がない場合の警告） |
 | Commandの参照実装（契約確認用） | 実装済み（業務副作用なし、Commit/Rollbackの記録のみ） |
 | Commandからeffectcommitへのアダプタ | 実装済み（`effectcommit.Runner.Execute`へ委譲、認可・receiptを省略しない。実PostgreSQLは`TEI_EFFECT_POSTGRES_DSN`がある場合のみ試験） |
-| Command実行前の認可契約 | 実装済み（`Invoker.Authorizer`、`AllowListAuthorizer`。権限の正本・付与は未実装） |
+| Command実行前の認可契約 | 実装済み（`Invoker.Authorizer`、`AllowListAuthorizer`。`Authorizer`未設定は拒否し、参照実行は`ReferenceAuthorizer`を明示する。権限の正本・付与は未実装） |
 | CLI参照実行の認可AllowList | 実装済み（`view -execute -allow-capability`、参照用） |
-| Command効果の宣言照合 | 実装済み（Executorが返すEffectが宣言と一致しない場合は拒否） |
+| Command効果の宣言照合 | 実装済み（Executorが返すEffectが宣言と一致しない場合は拒否。Executor実行後の検出なので`EffectUnknown`としてLifecycleへ渡し、適用不明として記録する） |
 | Command実行の記録契約 | 実装済み（`Invoker.Recorder`が宣言効果・報告効果・結末を記録。実装は`MemoryRecorder`） |
 | CLI実行記録 | 実装済み（`view -execute -operation-log`、JSON） |
 | 診断の修正案 | 実装済み（`validation.Propose`が版付きの未受理の案を作り、`validation.Accept`が版一致と未受理を要求。`tei validate -json`は`proposals`を返す） |
