@@ -3451,3 +3451,42 @@ Ownerが求める「選択した業務Data群への広域適用＋Record/用途�
 4. **編集・外部連携**：#1124/#2516／SHO Composer/OKFは元Markdownの可逆編集・保存後再Parse／原文の出所を検収し、TEI標準`*.tei.md`にOKF Plugin常駐や一律Front Matterを要求しない。
 
 **撤回・縮退条件**：新形式Loaderに選択Parserが成立したら、一律`TEI_MD_PARSER_UNBOUND`ガードは削除/縮退し、真のParsed Source/Role/Required Closure判定に置換する。旧Fixtureの`.tei`拡張子名から固定Meaningを推定する経路を長期仕様にしない。#1119のCritical Path、ADR、main既存成果物、他担当PRを今回変更しない。正式Meaning受理・本番Provider/Host Grant・新形式E2Eは別資格。
+## 81. 動的承認の責任・代理委任・実行資格を同一案件で判別する（2026-11-07、採用前）
+
+### 81.1 なぜ第67〜80節にさらに補助試験が要るか
+
+第67/69節は組織改編とCase責任移管、第70〜73節はTenant/Provider切替、第77〜80節はNative SourceからE2 Readまでを既に切り分けた。しかし**所属関係・職位在任・代理委任・決裁権限・Host Grant・実際の承認Effectの六つが、同じ案件・同じ行為者・同じ時点でどう分離されるか**を、独立した金額・本人申請・失効の負例で判別する余地がある。ここでは抽象的な新Authority Engineや標準決裁額を追加せず、既存Data/Relation/Rule/Business Procedure/Function/Hostの接続に渡す**試験用Policy**を一つだけ作る。
+
+W3C ORGはOrganization/Membership/Post等の構造表現を提供するが、組織統制・責任・権限の全機微を規定するものではない（https://www.w3.org/TR/vocab-org/）。RFC 8693はDelegationとImpersonationを区別する（https://www.rfc-editor.org/rfc/rfc8693.html）。いずれもTEI案件での承認規程や現在のHost許可を定める根拠にはしない。
+
+### 81.2 固定Synthetic Caseと仮Rule（Owner未受理）
+
+共通OrgケースのC1/D1/Position M1を**別試験用の説明パラメータ**に使用する（既存#2596や#3024の実Fixtureへ自動混入しない）。P1=申請者、P2=2027-06-30までM1在任、P4=2027-07-01からM1在任、P3=代理行為候補。P2→P3のDelegation G1は2027-06-25〜07-05、対象D1・承認額上限JPY 1,000,000・再委任不可と明示。案件C1はJPY 800,000／申請者P1／担当D1、C2はJPY 1,200,000／申請者P1／担当D1、C3はJPY 800,000／申請者P3／担当D1。金額は試験入力に過ぎず、TEIの標準上限規則ではない。
+
+仮の業務規程R-APP-1は「P2のM1在任に由来する決裁資格の委任」と「承認時の職位・申請者・対象案件・金額・委任範囲による再評価」を要求する。**委任元の退任後も委任が続くかは本来案件Ownerの規程選択であり、このFixtureでは『続かない』という条件を意図的に固定する。** 他業務へ一般化しない。現在Host Grantは同じBusiness Rightとは別に時点と資源を持ち、関係Sourceの人物P3と認証済みPrincipalとの対応も明示的な検証対象とする。
+
+### 81.3 独立Expected：ORG-APP-01〜09（すべて追加実行NOT RUN）
+
+| 試験 | 変異と独立期待結果 | 禁止する誤推論 |
+| --- | --- | --- |
+| APP-01 | 2027-06-30、C1、P3。R-APP-1に照らし**業務承認候補にはなる**。現在Principal/Grant/対象Row・最終Effectは別判定 | 所属線やDelegation発見だけで実承認済みとする |
+| APP-02 | 同日C2、P3。金額が委任上限を超えるため**業務候補から除外**。Host Grantがあっても覆らない | 実行API許可をBusiness Rule充足と同一視する |
+| APP-03 | 同日C3、P3。本人申請のため**自己承認を拒否**。P2からの委任自体は消さない | 有効委任なら利益相反検査を省略する |
+| APP-04 | 2027-07-01、P2→P4職位交替。G1の期間内でも**仮Ruleの権能源泉が退任で不成立**。P4の新たな業務候補は別に求める | token期限だけで委任元の業務権能が存続したとする |
+| APP-05 | 2027-06-30のAPP-01で業務適格だが、P3のCurrent Host Grantは取消済み。**Effect拒否**。業務上の資格評価履歴は保持 | Candidate/Preview、過去Grant、認証済み本人確認を現在許可にする |
+| APP-06 | C1の担当を明示的にD1→D2へ移管。旧D1のG1/Rule resultから**新D2への権限・承認候補を自動継承しない** | 部門後継線・ケース移管からGrantや職務権限を発行する |
+| APP-07 | P3がG1をP5へ再委任しようとする。G1は再委任不可のため**ビジネス上不適格**。Delegation pathは読取・説明してよい | 権限連鎖を無制限の推移閉包として計算する |
+| APP-08 | P3のPreview後にRule改訂／Grant失効／Case Row更新が発生。送出前・Commit境界では**現在の必要条件を再評価**、送出後の応答喪失は**Effect unknown**で保持 | Preview PASS→Commit PASS、タイムアウト→未実行を推定する |
+| APP-09 | P3に直接資格とG1経由の資格という複数候補経路が同時存在。**根拠経路は複数保持し、Actor/Case/Effectを二重計上しない**。経路優先はOwner未決なら未決 | SQL DISTINCTだけで規範・優先順位を自動決定する |
+
+上表の「拒否」「候補」は**手書きの独立期待結果**であってTEIのテストPASSではない。Statusは説明用分類であり新Core enumを確定しない。NULL／対象0件／未取得／非開示／別Tenant／異Cohortは第73/78節と#2514の既存区別をそのまま使い、組織Data全般に新しい閲覧制限を課さない。
+
+### 81.4 Model→Function→Actionの同一試行証拠と最小実装順
+
+1. **意味受理**（#2386/#1125/#2510）：Person、Occupancy、DelegationのRelation occurrenceとCaseの担当・申請者・金額、R-APP-1の権能源泉・時点・適用範囲を別出典として表現。いずれも通常の既存Data/Relation/Ruleを使い、受理前にRuleを実効Policyへ昇格させない。Ownerは「委任元退任時の効力」「異動後の案件」「自己承認の例外」「複数経路の優先」を案件別に判断する。
+2. **まず一件Read**（#3024→#2506/#2586/#2622/#2611）：C1→handlingUnit D1の実Function/Query/Provider Readと、Row+Field/Role/Grain、Actual Input、Source/Model/Query revision、Target mapping・Scope・Cohortを同一Attemptで観測。**現在の最優先工程はこのE2**。APP-01の承認Ruleや実Host Writeを、このRead成功の前提条件として余計に加えない。
+3. **Read後に業務候補**（#1131/#1129/#2514）：同じC1にAPP-01〜04を追加。候補の導出理由と独立Expectedを比較し、部分Collectionや未受理Ruleでの断定を止める。業務規程は仮案のまま正式適用しない。
+4. **最後に実行資格・効果**（#1043/#1174/#1163/#2564）：Authenticated Principal（実Actor）／Delegation Source／現在Grant／対象Case row version／最終Post-image不変条件を一つのEffect Attemptで照合。Commit不明時は同一operation identityでReceiptと独立Readを追跡し、非実行と推定して再送しない。Append-onlyな過去Receiptを遡及訂正で書き換えない。
+5. **外部表現の再資格**（#3030/#3031/#988/#1920）：新規Authoringの標準は *.tei.md。旧 *.tei のE1局所PASSを新形式へ移植した証拠にしない。既存の移行ORG-MD-01〜09を再使用し、本節のために新Parser、専用ACL、専用Host、第二認可/Workflow Engineを設けない。
+
+**Stop / 判定境界**：業務の明示Rule・Context/Source Role・実Provider Read・Current Host Grant・最終Effect/独立確認のどれが欠けたかを別々に報告する。候補提示や合成計算、固定HEADの局所CI、外部仕様の存在を、Ownerの業務意味受理・本番実行許可・実DB/GUI成功に繰り上げない。対象は設計・期待値の追補のみで、APP-01〜09の新たな実行、PRマージ、他担当のSource変更は行わない。
