@@ -682,6 +682,8 @@ Registryは**発見の索引**、Issuerは証拠の発行主体、Host/Ownerは�
 
 **新たな具体的なコード上の問題候補**：main `internal/command/invoke.go`（今回確認blob `9f9099b6a9565d54597f2feb87bb41ce3d0be8d9`）の `execute` で `Executor.Execute` の後に `Recorder.Record` が失敗すると、`ExecutionError{Code:"COMMAND_RECORD_FAILED", ...}` を返すが **EffectUnknownはfalse（未設定）**。main `internal/command/lifecycle.go`（確認blob `60a797be0399015a89f7af3ef1d3d8bd6a72ae29`）の `LifecycleInvoker` は `EffectMayBeUnknown(err)==false` ならRejectedへ進む。外部Executorが先に独立Tx Commitを行い、その後Recorderが失敗した場合、**実DB効果あり／上位Attempt rejected／再送が安全と誤解され得る**。PR #3042は宣言外効果等をunknownに直したが、このRecorder失敗の経路を実証・是正したとは確認できない。これは**Sourceからの反証候補**であり、実PG/故障注入PASSの主張ではない。
 
+**もう一つの記録失敗経路**：同じ `internal/command/lifecycle.go` の `lifecycleRecordError` は、`Lifecycle.Observe` が失敗したとき、または `MarkUnknown` 自身の記録が失敗したときにも `COMMAND_LIFECYCLE_RECORD_FAILED` を返すが、外側の `ExecutionError.EffectUnknown` は未設定である。内部Causeに未知効果が保持されていても、現 `EffectMayBeUnknown` は最初に見つかった外側の `ExecutionError` のフラグを読む。**成功後の段階記録失敗や、unknown記録失敗を「効果なし」と同等に扱ってはならない**。記録保存の可否と外部作用の有無は独立であり、同一実Provider/Receiptで照合する。
+
 **独立期待値を既存#1180/#2514へ返す最小対照（既存#1174のEffect/再送試験への追補）**：
 
 | 対照 | 変える因子 | 独立期待値・必要な実観測 |
@@ -690,7 +692,8 @@ Registryは**発見の索引**、Issuerは証拠の発行主体、Host/Ownerは�
 | RC-02 片側認可 | Business Subject/Action/Resourceは許可、Filesystem/NetworkのRequired Grant欠落。逆にPermissionは足りるがBusiness Resourceは別Tenant | どちらの不足でも実Executorに入らず、対象Effect 0を独立Readで確認。単一Authorizer参照用試験だけで両方の強制を証明しない |
 | RC-03 記録器故障 | 外部ExecutorがAをCommit、Recorder.Recordだけが失敗（対照はExecutorに入る前の拒否） | Aを確認できたならCommand Report errorと実Effect confirmedを併記し、Attemptはunknownとして盲再送禁止。実Commit証拠が無い場合も「A=0」としない。**現SourceのLifecycle rejected分岐を明示的に検出する回帰試験候補** |
 | RC-04 空集合 | 同じDeny EmptyPolicyでTargets=[]、Coverage=Unestablished/Completeを1因子変更 | 前者unverified・後者fails。#3051の既存Go単体試験が確認した範囲を再利用し、別Tenant実ReadのCoverageを自動証明しない |
+| RC-05 段階記録の障害 | Executor正常終了後のLifecycle.Observe失敗、またはEffectUnknownエラーに続くLifecycle.MarkUnknown失敗 | 外側の記録エラーでも既に生じたEffect/元のUnknownを消さない。Receipt照会・独立Readまで新たな再送を保留する。現在の外側EffectUnknown欠落とCauseの伝播を別に観測する |
 
-**実施優先順位**：最初にRC-03の外部Commit済み＋Recorder失敗を、既存`LifecycleInvoker`とeffectcommit実Provider（可能なら専用使い捨てPG）、同一Operation ID、Receipt lookup、独立Readで検証する。必要ならEffectUnknown伝播/再送停止を#1174/#1163のOwnerで修正し、#3042/#3053の既存不明結果契約を使う。次にRC-02で二つの認可義務が実Targetに共に適用されたことを確かめる。実装の新しい共通Host、Grant Store、Effect Coordinatorを提案しない。
+**実施優先順位**：最初にRC-03/RC-05の外部Commit済み＋RecorderまたはLifecycle段階記録失敗を、既存`LifecycleInvoker`とeffectcommit実Provider（可能なら専用使い捨てPG）、同一Operation ID、Receipt lookup、独立Readで検証する。必要ならEffectUnknown伝播/再送停止を#1174/#1163のOwnerで修正し、#3042/#3053の既存不明結果契約を使う。次にRC-02で二つの認可義務が実Targetに共に適用されたことを確かめる。実装の新しい共通Host、Grant Store、Effect Coordinatorを提案しない。
 
 **採用・根拠の区別**：#3038/#3042/#3047/#3051/#3053はmain統合済みの局所実装（それぞれのPRに限定試験記録）。Recorder失敗の不明状態と二重認可強制は今回の**追加受入候補で、Product実試験NOT RUN**。Source形式`*.tei.md`方針は変更せず、[#3031](https://github.com/hat47x/tei-platform/pull/3031)の未接続診断はDraftのまま。D0直接純粋計算には不要な実DB/Permissionを強制しない。#1119の既存判定段階も変更しない。
