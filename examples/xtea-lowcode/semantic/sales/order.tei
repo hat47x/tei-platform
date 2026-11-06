@@ -1,16 +1,21 @@
 namespace sales
 
 data Order {
+    candidate-key OrderIdentity {
+        field sales.order.order_id
+    }
     attribute orderId type std.identifier display "受注番号"
     attribute customerId type std.identifier display "顧客"
     attribute status type std.code display "状態"
     attribute orderDate type std.date display "受注日"
     relation customer to customer.customer one
-    relation lines to sales.order_line many
+    relation lines to sales.order_line many on-delete cascade
+        key sales.order.order_id -> sales.order_line.order_id
 }
 
 data OrderLine {
     attribute orderLineId type std.identifier display "行"
+    attribute orderId type std.identifier display "受注"
     attribute quantity type std.decimal display "数量" required
     attribute amount type std.money display "金額"
 }
