@@ -495,6 +495,15 @@ class StaticWorkflowContract(unittest.TestCase):
         result = command('bash', '-c', script, env=base_env, check=False)
         self.assertNotEqual(result.returncode, 0)
 
+    def test_setup_go_follows_go_mod(self):
+        """Go版の直接指定はgo.modの要求版と食い違うため禁止する(#2948)。"""
+        drift = []
+        for path in sorted((ROOT / '.github/workflows').glob('*.yml')):
+            text = path.read_text(encoding='utf-8')
+            if re.search(r'(?m)^\s*go-version:', text):
+                drift.append(path.name)
+        self.assertEqual([], drift)
+
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)
