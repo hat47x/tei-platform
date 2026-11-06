@@ -83,6 +83,27 @@ func TestEvaluateCompletionEmptySetPolicies(t *testing.T) {
 			want:       CompletionFails,
 		},
 		{
+			name:       "deny on unobserved empty is unverified",
+			capability: completionCapability(EmptyPolicyDeny),
+			kind:       EmptyPolicyUniversal,
+			evidence:   CompletionEvidence{Coverage: CoverageUnestablished},
+			want:       CompletionUnverified,
+		},
+		{
+			name:       "deny on partially observed empty is unverified",
+			capability: completionCapability(EmptyPolicyDeny),
+			kind:       EmptyPolicyUniversal,
+			evidence:   CompletionEvidence{Coverage: CoveragePartial},
+			want:       CompletionUnverified,
+		},
+		{
+			name:       "existence default deny on unobserved empty is unverified",
+			capability: completionCapability(""),
+			kind:       EmptyPolicyExistence,
+			evidence:   CompletionEvidence{Coverage: CoverageUnestablished},
+			want:       CompletionUnverified,
+		},
+		{
 			name:       "existence default deny on empty fails",
 			capability: completionCapability(""),
 			kind:       EmptyPolicyExistence,
