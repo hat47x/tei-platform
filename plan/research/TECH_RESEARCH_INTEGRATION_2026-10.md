@@ -398,3 +398,52 @@ TEIの設計へ反映する観点：
 4. **比較と縮小**：二Consumer以上の**同種の構造不足**が検証された時点で、[#2620](https://github.com/hat47x/tei-platform/issues/2620)などが標準表現の最小拡張を検討する。認知負荷やエラー率の改善が支持されない場合は、共通新Core/APIでなく既存Pluginの限定投影へ戻す。
 
 **結論の資格**：本節は研究・検証計画への反映であり、Referenceの実Source接続、結果の比較、認知負荷削減、Owner採用を実施したという主張ではない。現在の評価実験は**NOT RUN**。新しいCore schema、第二Source/Resolver、TEI専用Host、汎用Pipeline Runtime、製品共通の実行Authorityを採用しない。
+
+## 11. 2026-11-06：Relationの所属、開示の非干渉、最適化後の追跡を一つの研究手順へ接続
+
+**位置付け**：第10節の研究仮説を、別担当Draftから得られた新しい反例へ照合する**検証手順案（未採用）**。本節は#2881のReference実装、#2972の三視点公開Slice、#2516のDisclosure、#2933の最適化、#1124のStudio Consumerの実装や受入を引き取らない。確認main `3572dcedfa50c3de2903dd4d8ca4ad45ccfa1417`。
+
+### 11.1 Relationの「所属」と「参加」を分離して追跡する
+
+[合成read-only Reference Draft #2881](https://github.com/hat47x/tei-platform/pull/2881)では、Relationのscopeを参加端点Subjectのscopeで代用すると、cross-scope relationの存在や不在を誤って判定することが明らかになった。合成Relationを`declaring scope + relation ID`で識別し、Relation node／role edge／Relation tableの型・role・端点を照合する変更が加わった。[dedicated CI #42156918489](https://github.com/hat47x/tei-platform/actions/runs/42156918489)は **exact head `1dde0d8e5688ea5a36ff5abbb7056601195d678a`・completed/success**。当該PRの記録によればNode 24.21.0で**合成26/26件PASS**。実TEI Reader/ModelRefの製品Scope ABIが存在する証拠ではない。
+
+研究上の含意：単一の「線」の表示だけでは、関係の**宣言主体／所属scope／参加端点とその各scope／関係のrole／有効な版**を混同し得る。これはComplectの具体例である。基本トポロジーに専用のビルド/業務Relation型を増やす前に、既存の型付き参照・n項Relation合成と、関係表の**独立した出典**がこれらを再構成できるか確かめる。
+
+最初の**実Source接続時**は、同じrelation IDを持つ別scopeのRelation、別scopeへの端点、未取得のRelation宣言元を用意し、(a)Source Readerの実列挙、(b)Graph/Table投影、(c)独立Expectedを比較する。Relationの所属scopeが観測できなければ、端点scopeや表示位置から補完せず`unknown`とし、限定的不在を主張しない。製品Role/Relationの正式形式は[#2620](https://github.com/hat47x/tei-platform/issues/2620)/[#1120](https://github.com/hat47x/tei-platform/issues/1120)へ返す。
+
+### 11.2 公開Sliceの観測同値は「不存在証明」と別の性質
+
+[三要素公開Slice Draft #2972](https://github.com/hat47x/tei-platform/pull/2972)では、**事前に公開資格が与えられた同一Slice**からData/Function/Businessのread-only表現を導出し、非公開部分が異なっても公開結果を同一に保つ負例が提案された。PR記録上、ローカルNode 22.16.0で**合成8/8件PASS**。これは実Policyが正しいSliceを作ること、DOM/ARIA/Tool JSON・通信・時刻差などが非干渉であることを証明していない。
+
+構造の問い合わせに対する`unknown`や`withheld`は、内部Sourceに未公開のRelationがあるために分岐した場合、それ自体が非公開情報の存在を示し得る。**内部向けの被覆診断**と**公開Consumerへ出す表示・返答**を同一としない。公開範囲が同一である二世界 W0/W1 に対する、観測可能な出力の同値を独立に評価する。
+
+~~~text
+For Consumer C authorized to see the same public slice in W0 and W1:
+  publicInputs(C, W0) = publicInputs(C, W1)
+  -> compare publicOutputs(C, W0) and publicOutputs(C, W1)
+       across graph/table, coverage label, count, layout,
+       navigation, diagnostics, export/tool responses
+  [timing / transport / real Policy remain independent tests]
+~~~
+
+この式は製品上の無条件非干渉保証ではなく**反証可能な試験条件**である。公開Sliceに同じレコードがあることから全Sourceの不在を示す`absent`を発行せず、公開が許された問いの範囲でのみ回答する。公表可能なStatus・内訳・エラー内容は[#2516](https://github.com/hat47x/tei-platform/issues/2516)の現行Policy/Disclosureが決める。Sourceの真正な列挙と独立Oracleの区別は第10節に従う。
+
+### 11.3 最適化後の簡潔な図表にも、説明できる来歴を要求する
+
+[Plugin実現・最適化Draft #2933](https://github.com/hat47x/tei-platform/pull/2933)が扱うFusion、Pushdown、Batch、Cache、並列化は、**論理的な入力／出力関係と物理的な実行・観測の境界**を変え得る。論理工程A/Bを一つの物理実行へFusionしても、利用者がA/Bの存在と依存、条件、失敗・Unknown、実行されなかった工程を調べられるとは限らない。したがって最適化した実効図の「ノードが少ない」ことをComplect削減の成功としない。
+
+実証候補は、(1) 宣言構造の関係とRole、(2) 選択Provider／最適化の根拠と制約、(3) 実際のAttempt・消費Artifact・Step trace、(4)公開可能なViewへ投影できる対応を、**同一固定入力に対して別々に検査**することである。物理1回の実行から論理2工程の独立Effectや成功を推定しない。最適化で中間成果物が消えた場合も、生成・省略の理由とどこまで観測可能かを示し、実観測不在を無副作用の証明へ変えない。Target・Provider・性能・Effectの採否は#2933/#1121/#1174へ返し、新Optimizerや第二実行Graphを作らない。
+
+### 11.4 追加の比較実験と停止線
+
+| 変更を加える対象 | 同一条件で期待する観測 | 失敗と判断すべき反例 |
+| --- | --- | --- |
+| Relation宣言scopeのみ／端点scopeのみを独立に変える | 所属と参加を別々に追跡し、Relation表・Graphの対応が変化する | 端点のscopeでRelation自身の所属を推定、別scopeの同IDを合流 |
+| Private要素・Relationだけを増減し、公開Sliceは固定 | Policy済みSliceを入力とした公開Graph・表・件数・レイアウト・診断は同等 | 非公開要素数や内部Unknownの理由が公開UI/Toolへ漏れる |
+| Role/Source locatorのみを変更する | 意味・Source Index・view epoch/利用資格を各依存に従って再検査 | Meaning同一だから旧Source spanや旧公開Grantをそのまま再使用 |
+| Pluginを未選択で追加、または物理Fusionを有効化 | 選択済み構成は非干渉、Fusion時は論理構造との追跡が残る | 単なるNode縮約を意味保存/全実行完了と断定 |
+| 一式ArtifactのMember版だけを変更 | Consumer読取世代と宣言された論理関係の差を分ける | Graph/Manifestの形だけを見て全Member同一世代・配送完了とする |
+
+研究で優先するのは**偽の不存在、非公開情報漏洩、誤ったSource選択、無関係な変更波及**という可観測な失敗率である。認知負荷の測定では、公開Sliceが異なる比較を混ぜず、正答率・操作数・文脈探索量・修正回数を記録する。合成試験のPASSや単一図面の簡潔さが、より高い成功率を示すとは限らない。
+
+**結論の資格**：ここで新たに実施したのは既存Draft・Issue・専用CIの静的照合と研究計画追補のみ。本節の実Source Reader、実Policy W0/W1、複合UI/DOM、論理→物理最適化の実Run、ETL／セルフビルド、生成AIと人間の比較は **NOT RUN / NOT PROVEN**。新しいCore ABI、標準ProjectionWitness API、第二Source・Policy・Graph・Host、正式受入Gateを追加しない。
