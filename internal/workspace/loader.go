@@ -185,6 +185,12 @@ func loadWithStackHooks(root string, visiting map[string]bool, hooks loadHooks) 
 	if err != nil {
 		return Result{}, err
 	}
+	// .tei.md is the intended TEI authoring suffix, but this loader still
+	// dispatches native declarations from .tei. Fail closed until an exact
+	// language/parser binding can consume .tei.md and preserve its provenance.
+	if err := rejectUnboundTEIMarkdownSources(managedFiles); err != nil {
+		return Result{}, err
+	}
 	r := Result{
 		Sources:                     map[string]SourceLocation{},
 		PluginImplementationSources: map[string]SourceLocation{},
