@@ -288,18 +288,22 @@ func (e ReferenceDataExecutor) Execute(_ context.Context, request Request) (Resu
 	}
 	plan, _ := applicationview.BuildCommandPlan(e.World, request.Application, request.Pattern, request.Capability, request.Inputs)
 	targetAttributes := attributeValues(plan)
+	var applied []AppliedOperation
 	if capability.Effect != nil && capability.Effect.Kind == semantic.DataEffectDelete {
 		snapshot := e.Store.Snapshot()
-		if err := e.checkDeletePolicy(capability.Effect.Data, targetAttributes); err != nil {
+		cascaded, err := e.checkDeletePolicy(capability.Effect.Data, targetAttributes)
+		if err != nil {
 			e.Store.Restore(snapshot)
 			return Result{}, err
 		}
+		applied = append(applied, cascaded...)
 	}
 	key := recordKeyFields(request.Inputs, e.KeyFields)
 	if err := e.Store.ApplyRecord(capability.Effect, key, request.Inputs, targetAttributes); err != nil {
 		return Result{}, err
 	}
-	result := Result{Effect: capability.Effect}
+	applied = append(applied, AppliedOperation{Kind: capability.Effect.Kind, Data: capability.Effect.Data, Key: key})
+	result := Result{Effect: capability.Effect, Applied: applied}
 	if len(capability.Outcomes) > 0 {
 		outcome := capability.Outcomes[0]
 		result.Outcome = &outcome
@@ -546,11 +550,15 @@ func (e ReferenceDataExecutor) checkRequiredInputs(request Request) error {
 	return nil
 }
 
-func (e ReferenceDataExecutor) checkDeletePolicy(target core.CanonicalID, targetAttributes map[core.CanonicalID]string) error {
-	return e.cascadeDelete(target, targetAttributes, map[string]bool{})
+func (e ReferenceDataExecutor) checkDeletePolicy(target core.CanonicalID, targetAttributes map[core.CanonicalID]string) ([]AppliedOperation, error) {
+	var applied []AppliedOperation
+	if err := e.cascadeDelete(target, targetAttributes, map[string]bool{}, &applied); err != nil {
+		return nil, err
+	}
+	return applied, nil
 }
 
-func (e ReferenceDataExecutor) cascadeDelete(target core.CanonicalID, targetAttributes map[core.CanonicalID]string, visited map[string]bool) error {
+func (e ReferenceDataExecutor) cascadeDelete(target core.CanonicalID, targetAttributes map[core.CanonicalID]string, visited map[string]bool, applied *[]AppliedOperation) error {
 	for _, namespace := range e.World.Semantics {
 		for _, data := range namespace.Data {
 			for _, relation := range data.Relations {
@@ -579,7 +587,8 @@ func (e ReferenceDataExecutor) cascadeDelete(target core.CanonicalID, targetAttr
 							}
 							visited[visitKey] = true
 							e.Store.DeleteKey(data.ID, record.Key)
-							if err := e.cascadeDelete(data.ID, record.Attributes, visited); err != nil {
+							*applied = append(*applied, AppliedOperation{Kind: semantic.DataEffectDelete, Data: data.ID, Key: record.Key})
+							if err := e.cascadeDelete(data.ID, record.Attributes, visited, applied); err != nil {
 								return err
 							}
 						case "preserve":
@@ -601,7 +610,8 @@ func (e ReferenceDataExecutor) cascadeDelete(target core.CanonicalID, targetAttr
 						}
 						visited[visitKey] = true
 						e.Store.DeleteKey(data.ID, record.Key)
-						if err := e.cascadeDelete(data.ID, record.Attributes, visited); err != nil {
+						*applied = append(*applied, AppliedOperation{Kind: semantic.DataEffectDelete, Data: data.ID, Key: record.Key})
+						if err := e.cascadeDelete(data.ID, record.Attributes, visited, applied); err != nil {
 							return err
 						}
 					}

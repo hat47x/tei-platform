@@ -24,6 +24,10 @@ type Request struct {
 type Result struct {
 	Outcome *semantic.Outcome    `json:"outcome,omitempty"`
 	Effect  *semantic.DataEffect `json:"effect,omitempty"`
+	// Applied lists the data operations the executor actually applied. An
+	// executor that cannot enumerate them leaves it nil, and the record then
+	// holds only the declared and reported effects.
+	Applied []AppliedOperation `json:"applied,omitempty"`
 }
 
 // Executorは、宣言されたCommandを実際に実行する側の契約である。
@@ -176,6 +180,9 @@ func (i Invoker) execute(ctx context.Context, request Request, plan applicationv
 			}
 		}
 	}
+	if err := checkAppliedOperations(plan, result); err != nil {
+		return Result{}, err
+	}
 	if result.Outcome != nil {
 		declared := false
 		for _, outcome := range plan.Outcomes {
@@ -192,7 +199,7 @@ func (i Invoker) execute(ctx context.Context, request Request, plan applicationv
 		}
 	}
 	if i.Recorder != nil {
-		record := OperationRecord{Request: request, Reported: result.Effect, Outcome: result.Outcome}
+		record := OperationRecord{Request: request, Reported: result.Effect, Outcome: result.Outcome, Applied: result.Applied}
 		if plan.Effect != nil {
 			record.Declared = &semantic.DataEffect{Kind: semantic.DataEffectKind(plan.Effect.Kind), Data: plan.Effect.Data}
 		}
