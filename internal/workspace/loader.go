@@ -45,7 +45,11 @@ type Result struct {
 	PluginImplementationSources map[string]SourceLocation
 	Sources                     map[string]SourceLocation
 	ManagedFiles                []ManagedFile
-	SourceContributions         []SourceContribution
+	// SourceRootFindings are manifest source-root problems found before any
+	// domain loader read the root. They are source-direct findings: an unknown
+	// or missing root has no Canonical Subject.
+	SourceRootFindings  []WorkspaceSourceRootFinding
+	SourceContributions []SourceContribution
 
 	// Private, transient read provenance. Not part of Canonical World or a
 	// serialized Source Index; only Load may populate this snapshot.
@@ -180,15 +184,28 @@ func loadWithStackHooks(root string, visiting map[string]bool, hooks loadHooks) 
 		return Result{}, err
 	}
 	// Inventory and verify the physical boundary before any domain loader can
-	// read a Source file or parse a symlink to an outside target.
+	// read a Source file or parse a symlink to an outside target. Containment
+	// failures keep their existing fail-closed error and are never reclassified
+	// as a finding.
 	managedFiles, err := scanManagedFiles(sourceRoot, roots)
 	if err != nil {
 		return Result{}, err
 	}
+	// Classify declared roots after the physical boundary is verified, so a
+	// misspelling is reported as itself rather than as a downstream cascade and
+	// an escaping symlink keeps the original containment error. Managed but
+	// not interpreted files are named separately from root findings. Neither
+	// becomes a semantic Diagnostic: there is no Subject.
+	sourceRootFindings, err := checkWorkspaceSourceRoots(sourceRoot, roots)
+	if err != nil {
+		return Result{}, err
+	}
+	sourceRootFindings = append(sourceRootFindings, CheckWorkspaceManagedFileNames(managedFiles)...)
 	r := Result{
 		Sources:                     map[string]SourceLocation{},
 		PluginImplementationSources: map[string]SourceLocation{},
 		ManagedFiles:                managedFiles,
+		SourceRootFindings:          sourceRootFindings,
 		sourceSnapshotRoot:          rootReal,
 		sourceSnapshot:              make(map[string][]byte),
 		sourceReadRoot:              sourceRoot,

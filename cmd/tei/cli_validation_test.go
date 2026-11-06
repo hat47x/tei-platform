@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -351,6 +352,9 @@ func TestValidateWorkspaceWarningOnlyContract(t *testing.T) {
 // ok=true is not mistaken for "model declarations were loaded" (#2822).
 func TestValidateJSONReportsZeroDeclarationsForAnEmptyWorkspace(t *testing.T) {
 	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, "semantic"), 0o755); err != nil {
+		t.Fatal(err)
+	}
 	writeWorkspaceFile(t, root, "tei.workspace.yaml", "workspace: empty_counts\nformatVersion: 1\nsources:\n  - semantic\n")
 	var out bytes.Buffer
 	code, err := validateWorkspaceJSON(&out, root)
