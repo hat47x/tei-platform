@@ -573,10 +573,11 @@ G1〜G5で各観測は取得時点が異なる。要求するのは**同一瞬�
 
 **直接確認した現コードの二つの境界**：`migration.CompareHistory` は`AppliedSucceeded`でも`AppliedMigration.Checksum=""`なら不一致検出をせず`RepoApplied`に分類する。また`migration.Fingerprint`は正規化した`Definition`から`Realizations`（生成されたTarget SQL文群）を**意図的に除外**してハッシュ化する。前者は「checksumなしの適用申告」、後者は「同一Definitionで生成SQLが異なり得る」問題であり、**checksum有無だけでは両方を一度に解決できない**。
 
-`internal/database/migration/history_checksum_characterization_test.go`に**現在の限界を固定するGoテスト2関数**を追加した。
+`internal/database/migration/history_checksum_characterization_test.go`に**現在の限界を固定するGoテスト3関数**を追加した。
 
 - `TestHIST02MissingAppliedChecksumCannotDetectDefinitionDrift`：固定した同一IDの`original/changed`（Step内容相違）に対し、履歴の`AppliedSucceeded`・checksum欠落で両方`RepoApplied`となる。独立にold checksumを与えた場合だけ、変更後の定義は`RepoDiverged`になる。
 - `TestHIST02CanonicalChecksumDoesNotCertifyDerivedRealizationBytes`：同じCanonical Definitionの下で生成`Realizations`（SQLの列型）が変わっても`Fingerprint`が一致し、そのCanonical checksumをHistoryに与えれば両方`RepoApplied`になる。**実Toolがこのchecksumを供給すること、どちらかのSQLを実行したことを示す試験ではない**。
+- `TestHIST02DifferentDigestBasesLookLikeDefinitionDivergence`：**同一Canonical Definition**に対し、Repository側はCanonical JSON、仮のTool側は同じ定義から導出したSQL本文をSHA-256にかけると、ハッシュの対象バイトが違うため`CompareHistory`は`RepoDiverged`となる。これは**外部Toolの実アルゴリズムを再現したテストではなく**、比較対象の契約を確定せずに異なるハッシュを突き合わせた際の誤った「定義変更」推認を固定する合成負例。GateのH1は`unknown`を保持する。
 
 #### 19.10.1 Evidenceの4つの主張を区別する
 
@@ -593,10 +594,10 @@ G1〜G5で各観測は取得時点が異なる。要求するのは**同一瞬�
 
 - **HIST-02a：適用記録にchecksumがない**。`RepoApplied`は現行比較器の**局所分類**として維持しても、Gateへ提出する`H1 Definition identity`は`unknown`。代替証拠を使う場合、同じSource/Definition版・Target・実Reader時点へ独立に結び付く原本Migrationファイル/外部Toolの来歴などを明示し、Owner受理まで無音昇格しない。
 - **HIST-02b：Canonical checksumはあるが生成SQLが違う**。`Fingerprint`の`Realizations`除外は意図的な契約として維持。Target SQLの固定版・生成器版/Provider能力・実投入記録がない限り`H2 Realized SQL identity`は`unknown`。`H1=pass`を`H2=pass`としない。
-- **HIST-02c：Tool checksumとCanonical checksumの定義が異なる**。同じ文字列形式や同じハッシュ値に見えても対象や正規化/改行・補間・生成器が違う可能性がある。アルゴリズムの対応が証明できないProviderは`H1=unknown`で止め、`RepoDiverged`も単なる別算法比較から断定しない。
+- **HIST-02c：Tool checksumとCanonical checksumの定義が異なる**。同じ`sha256:`形式でも、Toolの対象がSQL文列、TEIが正規化Definition JSONなら、**定義に差がない合成例でも`RepoDiverged`と出る**。元の対象バイト列・正規化・改行/補間・実行したTool/Generator版・Source revisionの契約が確認できなければ、**不一致を業務上の定義変更や適用失敗と断定せず`H1=unknown`に止める**。同じ算法名・文字列形式だけでは資格にならない。
 - **HIST-02d：Historyと実DBの時点が不整合**。履歴の取得元とActual Schema/データの観測区間やReplica水位が整合しなければ、H0〜H2の一部が成功しても`H3=unknown`。SourceのABAでも古いReceiptの資格は復活しない。
 
-**検証の独立Expected**：同一Migration IDに対し、Definitionの旧新・Checksum欠落/一致・Realizations差・Provider/Target/Owner Scope違いを明示した**事前固定表**を作り、H0/H1/H2/H3をそれぞれ`pass / blocked / unknown / not-run`で記録。各段で`Required/Observed/Undischarged`を別々に示す。今回のGo特性テストは二つの比較器の判別限界を再現したのみ。実SQL投入、Tool checksum algorithm照合、実DB Query/Schema/旧新Client、Owner受理は**NOT RUN**。
+**検証の独立Expected**：同一Migration IDに対し、Definitionの旧新・Checksum欠落/一致・Realizations差・Provider/Target/Owner Scope違いを明示した**事前固定表**を作り、H0/H1/H2/H3をそれぞれ`pass / blocked / unknown / not-run`で記録。各段で`Required/Observed/Undischarged`を別々に示す。今回のGo特性テストはchecksum欠落・生成SQL差・ハッシュ対象不一致という**3件の判別限界**を再現したのみ。実SQL投入、Tool checksum algorithm照合、実DB Query/Schema/旧新Client、Owner受理は**NOT RUN**。
 
 **次の最小順序**：#2892がHistory Reader/Toolの実際の取得元・checksum意味/有無を1 Providerで記録 → #2622/#2611がTarget・Scope・資格の一意性を照合 → #2555のG2/G3で、H0〜H3のうち何を必須とするかOwnerが用途別に明示。checksumのないProviderを一律排除する製品政策や新しいProof Storeは、現時点では採用しない。
 
