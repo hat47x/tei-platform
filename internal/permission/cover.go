@@ -37,7 +37,9 @@ func scopeCovers(granted, required string) bool {
 	if granted == required {
 		return true
 	}
-	for _, separator := range []string{"/", ".", ":"} {
+	// Both separators are accepted so a scope declared with one style still
+	// covers paths resolved with the other.
+	for _, separator := range []string{"/", "\\", ".", ":"} {
 		if strings.HasPrefix(required, granted+separator) {
 			return true
 		}
