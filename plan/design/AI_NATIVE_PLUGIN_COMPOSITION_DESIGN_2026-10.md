@@ -644,3 +644,27 @@ Registryは**発見の索引**、Issuerは証拠の発行主体、Host/Ownerは�
 **必須の表示と安全な回復**：診断に「意図B／実読取Aまたは未読／選択済Provider／実Binary/Reader／現在Host Grant／開示先」のうち証拠のある範囲を示す。権限のないConsumerにはA/B秘密の存在やSource pathを漏らさない（#2516）。Source保存・Plugin無効化は元ファイルを破壊しない（#2044）。Aを黙って採用したり外部AIへBの未読Sourceを送ったりしない。旧Artifact/Receipt/Decisionの履歴は保持し、Source移行と実Effect取消を混同しない。
 
 **責務と進捗**：Source Reader/Index・移行の正本は#3030/#2621/#2823/#988、Contract/Compositionは#951/#1016、実Buildは#1251/#2600、Scope/Effectは#1174、Disclosureは#2516、Expectedは#2514/#1180へ返す。唯一の横断追加は「**意図したSource Bと実消費Aの不一致を、Plugin選択や現在許可へ繋がる前に止める**」こと。D0/D2の既存Quote 23ベクトル・固定Gateの旧Sourceを改変しない。移行実E2E、Loader対応、Bを選択した実Go/外部Host・Tenant実権限、Owner受理はすべて**NOT RUN／未採用**。
+
+### 24.5 実装済みの入口検査を、権限・効果の横断資格に昇格させない（2026-11-07、実Source照合・横断試験案）
+
+**更新理由**：§24.4の「意図Source B／実Loaded Aの取り違え」は、別レーンで現物の負例・対策が進んだ。またCommand/Grant/Applied Operationにも、**入口での局所判定と実際の効果確定を混同し得る継ぎ目**が確認された。以下は既存#3031/#3034/#3035/#3033のコード・PR記録から得られるClaimの上限だけを整理する。別のAuthorization/Grant Store、Permission Interpreter、Plugin Host、Effect Coordinatorを作らない。
+
+| 関係する実Source/試験 | 既に成立・具体化したこと（検収版を限定） | 次のClaimへ自動で渡せないこと |
+| --- | --- | --- |
+| [Draft #3031](https://github.com/hat47x/tei-platform/pull/3031) Workspace TEI Markdown admission | Source root内の \`*.tei.md\` を \`TEI_MD_PARSER_UNBOUND\` で拒否し、通常 \`.md\`・旧 \`.tei\` の非干渉を検査。固定HEAD \`63953ccb...\` の[局所CI #42217379093](https://github.com/hat47x/tei-platform/actions/runs/42217379093)が成功。外部TAIの[旧CLI実行 #42239797449](https://github.com/hat47x/tai-pleroma/actions/runs/42239797449)では、同bytesの拡張子変更だけでSubject 1→0かつValidate OKとなる**旧版のsilent skip**を再現 | Draft Guardの存在＝main Loaderが改修済み、あるいはMarkdown Parser/Role/Providerが新形式を実消費、とは言えない。旧版の不安全結果とDraftの局所安全診断を**別HEAD**で説明する。実Parsed/Build/Runtimeは未実証 |
+| [merged #3034](https://github.com/hat47x/tei-platform/pull/3034) \`legacyauthorization.CommandAuthorizer\` | \`Subject\` はHostが設定、\`Action\`/ \`Resource\` mappingは任意callback。callback未指定ならActionはCapability ID、ResourceはApplication ID。既存\`security.authorize\`へ委譲し、明示規則拒否を\`ErrNoGrant\`、評価失敗を別errorとして伝える。Patternの表示＝権限ではない | Commandの「Application単位で許可」を、実Executorが書くOrder O1/別Tenant O2の**レコード単位・時点付きGrant**へ勝手に拡張できない。mappingの意味・対象一致・Grant epoch・実Provider fenceは既存#1174の別資格 |
+| [merged #3035](https://github.com/hat47x/tei-platform/pull/3035) \`access.Ground\` | Grant発行が、環境の宣言Capability・Access包含・宣言Scopeを実Run Pathへ解像した範囲に収まるかを検査。13件の局所Groundと8件のCLI試験、実Workspace 3経路の拒否／許可結果をPRに記録。無関係Capabilityへの発行・宣言外Pathを拒否 | \`issuedBy\` / \`resolvedBy\` は**自己記述文字列で署名でない**。実発行者・Resolver真正性、現行Host Permission、他Tenant Grant、Runtime Effectは未証明。宣言を渡さない発行は現実装で警告付きで許され、Ground成功／空Grantから操作許可を生成してはならない |
+| [merged #3033](https://github.com/hat47x/tei-platform/pull/3033) \`command.Result.Applied\` / Invoker事後照合 | 報告済みApplied Operationの宣言外種別・宣言効果欠落を検査してOperation Recordに反映。ReferenceDataExecutorは実レコード操作を列挙 | 検査はExecutor.Execute後なので、Providerがすでに外部Commitしてから事後エラーでもEffectは残り得る。Appliedが空のExecutorでは**報告不在≠実Effect 0**。正しいCommand Outcome/Journal/宣言効果照合は同一Tx Commit/Receipt・独立Readを証明しない |
+
+**横断の核心**：ここには(1) Source Admission、(2) Permission Declaration/Issuance Grounding、(3) CommandのSubject/Action/Resource認可、(4) Provider Effect/Receipt、という**用途もAuthorityも異なる検査**がある。発行されたFilesystem PermissionがGroundedであることからBusiness Command Grantを作らない。Commandが許可されたことからFilesystem/Networkの能力を与えない。Sourceが適格にLoadedされてからだけCapability/Operationを結び、未対応Sourceを「Pluginなし」や「対象0件」へ置換しない。
+
+**既存Scenario/Oracleへ返す最小の一因子対照（新Case正本なし）**：
+
+- **入力採用**：旧LoaderでA=\`model.tei\`はSubjectあり、新B=\`model.tei.md\`のみだとSubjectなし・\`validate.ok=true\`（旧実CIの限定観測）。Draft #3031では新Bが\`TEI_MD_PARSER_UNBOUND\`になり、誤った成功を防ぐが新BのParser成功ではない。今後の実Loader対応時には同ExpectedでBの実Reader/Parser/Source occurrenceまで検証。
+- **Grantの根拠**：宣言が\`migration.atlas\`のみ／発行要求が\`tei.frozen_world.lineage\`、または宣言外RootならGround拒否。対照として同じ宣言内の正規Capability・Rootなら局所成功。ただし\`issuedBy\`等が偽称可能な条件や、宣言を省略した発行を**現在のHost認可成功**へ流用しない。
+- **Command主体・対象**：同じ認証済みSubjectのまま、Application単位Resource許可を実Order O1（またはTenant Bの同Key O1）へ誤用した場合、実Resource/Action mappingの受理範囲を確認できるまでレコード単位許可はunqualified。明示Rule拒否／Rule評価失敗も同じdeniedへ潰さない。認可後の失効は#1174の既存SCOPE-3へ戻す。
+- **事後効果照合**：実Provider AでCommit→Applied/Outcome検査でError、あるいはCommit後Applied=nil。上位のCommand失敗や空の報告をEffect 0とせず、Receipt＋独立ReaderでAの確定・不明を区別する。別通知BのUnknown/再送は既存SCOPE-4/JOIN-06へ戻す。
+
+**検収・優先順**：#3031は\`*.tei.md\`未接続のfail-closed、#3030/#2667/#2621/#988は新Reader/実Source、#951/#1016/#1251は選択ProviderとActual Build、#3035と既存accessは発行の範囲、#3034/#1174はCommand/Host Current Grant、#3033/#1174はApplied/Effect/Receipt、#2516は開示、#1180/#2514は既存独立Expected。新しいPlugin Lifecycleや一律Guardを追加しない。D0純粋関数にはDB Commit義務を課さない。
+
+**状態**：merged #3033/#3034/#3035の局所実装と、Draft #3031の固定HEAD局所CI、旧CLIのsilent skip実観測を**同一E2E成功としない**。この横断接合のProduct実Go/DB/IdP/OS/複数Tenant、承認済みMeaning・正式Owner採用はNOT RUN。#1119 Gateは不変。上記の禁止推論と不足Witnessが既存Referenceで説明可能なら新Core/ACL/Registry/Transaction Engineへの拡張を撤回する。
