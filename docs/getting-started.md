@@ -6,7 +6,7 @@
 
 TEIは現在、設計上の境界をGoのコードで検証している段階です。この文書では完成した画面製品の操作ではなく、参照実装を使った動作確認を説明します。
 
-主要な手順を試すには、Goの開発環境が必要です。必要なGoの版は、リポジトリ直下の`go.mod`にある`go`行が示す版以上です。この文書は版の数値を複製しません。`go.mod`の更新のたびに文書が古くなるためです。
+主要な手順を試すには、Goの開発環境が必要です。必要なGoの版は、リポジトリ直下の`go.mod`にある`go`行が示す版以上です。この文書は版の数値を複製しません。`go.mod`の更新のたびに文書が古くなるためです。2026-11-07時点の`go.mod`は`go 1.26.10`を要求します。数値は必ず`go.mod`で確認してください。
 
 ```bash
 grep '^go ' go.mod
@@ -15,7 +15,13 @@ go version
 
 2つの出力を見比べ、`go version`の版が`go.mod`の要求以上であることを確認してください。
 
-版が足りない場合、`GOTOOLCHAIN=local`を設定した環境では、`go run ./cmd/tei version`が`go: go.mod requires go >= ...`で失敗します。TEIのCIの多くは`GOTOOLCHAIN: local`で動かし、版は`go-version-file: go.mod`から取ります。`GOTOOLCHAIN`が`auto`（既定）の環境では、Goがネットワークから必要な版を取得することがあります。ダウンロードを許可しない環境では、`go.mod`の要求以上のGoを事前に用意してください。この失敗はTEIの検証結果ではなく、実行環境の不足です。
+版が足りない場合、`GOTOOLCHAIN=local`を設定した環境では、`go run ./cmd/tei version`が`go: go.mod requires go >= ...`で失敗します。TEIのCIの多くは`GOTOOLCHAIN: local`で動かし、版は`go-version-file: go.mod`から取ります（`.github/workflows/*.yml`に`go-version:`の直指定を残さないことを`tools/repository-architecture-check`の試験が検査します）。`GOTOOLCHAIN`が`auto`（既定）の環境では、Goがネットワークから必要な版を取得することがあります。ダウンロードを許可しない環境では、`go.mod`の要求以上のGoを事前に用意してください。この失敗はTEIの検証結果ではなく、実行環境の不足です。
+
+### Node.jsを使う試験の前提
+
+リポジトリ全体のGo試験は、`go test ./...`の一部として、どのworkflowからも参照されていなかったNode.js試験5ファイルを実行します（`tools/repository-node-tests/`）。Node.jsが無い環境ではskipし、GitHub Actionsでは必須です。手元でNode.js試験を再現する場合はNode.jsを用意してください。
+
+個別の参照ツールは、それぞれの`package.json`の`engines`が要求版を示します。2026-11-07時点では、`reference/tei-studio-independent-consumer`が`>=22.16.0`、`reference/tei-studio-workbench`が`>=24`です。workflowには`22`・`22.16.0`・`24`・`24.21.0`が混在しており、単一の版へ統一していません。使うツールの`package.json`を確認し、版が合わない場合はそのツールの試験を実行しないでください。この混在を解消するかは未決です（[#2953](https://github.com/hat47x/tei-platform/issues/2953)）。
 
 ## 最初の小さな作業領域から始める
 
