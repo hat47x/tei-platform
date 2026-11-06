@@ -1,6 +1,6 @@
 # 実DBで実行時の判断を確かめる計画（2026-11）
 
-- 状態: **計画**。実行はまだしていません（`NOT RUN`）。
+- 状態: **試験は実装済み。実行はまだしていません（`NOT RUN`）。** DSN が無い環境ではスキップします。
 - 目的: 期間・効果・権限・実行計画の**実行時の判断**が、実際の PostgreSQL を前にしても期待どおりに働くことを確かめる。
 - 関連: [実データベースでの確認手順](REAL_DATABASE_VERIFICATION_PROCEDURE_2026-11.md)、[検証記録](SURFACE_AND_ARTIFACT_VERIFICATION_2026-11.md)
 
@@ -44,3 +44,12 @@
 
 - 実行時の判断が実DBで正しいこと（まだ実行していない）。
 - 実装が完成していること。
+## 7. 実装状況（2026-11-06 追記）
+
+`tools/reference-runtime-decisions/decisions_test.go` に試験を置きました。
+
+- `TEI_TEST_POSTGRES_DSN` が無ければ**スキップ**。あれば一時表（`tei_decisions_probe`）を作って実行します。
+- `TestAClosedPeriodLeavesTheRowUntouched`: 期間が閉 → step が `blocked`、**行は `new` のまま**。
+- `TestAnOpenPeriodUpdatesTheRow`: 期間が開 → step が `resolved`、**行は `closed` に変わる**。
+
+**確かめていないこと**: 実際の実行（この環境には DSN がありません）。したがって「実DBで期待どおりだった」とはまだ言えません。
