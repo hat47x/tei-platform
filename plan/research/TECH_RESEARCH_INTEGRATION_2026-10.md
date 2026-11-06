@@ -573,7 +573,7 @@ M未受理・G許可でもMeaningを採用しない。M受理済み・G拒否な
 
 **実証済みの進展とClaim ceiling**：[PR #3031](https://github.com/hat47x/tei-platform/pull/3031)（Draft、exact HEAD 63953ccb5c12ead26ec1268e7c0afdba4eff66ae）は、現Loaderで未対応の *.tei.md がmanaged sourceに現れる場合に「黙って読まずvalidate成功」とする代わりに TEI_MD_PARSER_UNBOUND で停止する暫定処理を実装。直接確認した[専用CI #42217379093](https://github.com/hat47x/tei-platform/actions/runs/42217379093)は completed/success。該当HEADに対するRepository Health・Workspace/Studio・Wails smoke・self-build・vulnerability等のWorkflowも completed/success。**これは特定HEADでのfail-closedガードと既存回帰の証拠であって、新 *.tei.md のParser適合／正式Source読込／Meaning受理の証拠ではない**。PRはmain未統合。
 
-**移行計画の正本**：[Draft #3030](https://github.com/hat47x/tei-platform/pull/3030) の M0〜M6／TM-01〜14 を引き継ぐ。研究Draft #3022のMDT-01〜08は「研究から導いた判別観点」として残し、別の移行正本・第二Fixture実装を作らない。すでに段階設計と具体的な負例が#3030/#3031/#2621/#2823にあるため、追加すべきなのは**どの実行結果から何を言ってよいか**の資格境界である。
+**移行計画の暫定参照先（#2667との所有矛盾は§10.19）**：[Draft #3030](https://github.com/hat47x/tei-platform/pull/3030) の M0〜M6／TM-01〜14 を引き継ぐ。研究Draft #3022のMDT-01〜08は「研究から導いた判別観点」として残し、別の移行正本・第二Fixture実装を作らない。すでに段階設計と具体的な負例が#3030/#3031/#2621/#2823にあるため、追加すべきなのは**どの実行結果から何を言ってよいか**の資格境界である。
 
 | 段階 | 最低限の観測 | 現状と不足する資格 |
 | --- | --- | --- |
@@ -620,6 +620,6 @@ M未受理・G許可でもMeaningを採用しない。M受理済み・G拒否な
 
 **本研究レーンの暫定解決提案**：移行の実際のM0〜M6/旧新の互換とFixture番号は専門Draft #3030のTM-01〜14を一次参照とし、#2667をEverything is Data横断上の依存・差分・Owner受渡しとする（#2667後半§6の記載に整合）。#3030冒頭との逆参照は未決衝突として残し、Owner確認・重複整理まで二種類の移行Gate/Fixtureを同時採用しない。#3022のMDTは研究上の反証一覧であって第三のMigration SSOTにならない。
 
-**用語統一**：[Issue #3039](https://github.com/hat47x/tei-platform/issues/3039) と[main統合 PR #3040](https://github.com/hat47x/tei-platform/pull/3040)に合わせ、本研究文書中のテスト判定を指す Oracle 表記を「独立検証基準」「独立期待値」「検証基準の判別力」等へ修正した。RDBMSのOracle Databaseと混同せず、既存API識別子・過去の実行ログは改名しない。
+**用語統一**：[Issue #3039](https://github.com/hat47x/tei-platform/issues/3039) と[main統合 PR #3040](https://github.com/hat47x/tei-platform/pull/3040)に合わせ、本研究文書中のテスト判定に関する旧表記を「独立検証基準」「独立期待値」「検証基準の判別力」等へ修正した。RDBMSのOracle Databaseと混同せず、既存API識別子・過去の実行ログは改名しない。
 
 **次の優先**：①#3030/#2667所有の一意化、②既存公開の旧 .tei Case/独立期待値で、#3031拒否→新Readerの正例/負例→Source/Role/Build実消費を接続、③同じTargetSet LのCompletionと実Provider/Readerの全件性を検証、④実Host Grant/Receipt/現在Consumerを同一Attemptに束縛する。研究の新Test Runnerや過剰なProof Registryは追加しない。新TEI Markdown本格Reader/Writer、完全E2E、Owner正式受理はNOT RUN。#1119のCritical Pathや既存Gateを無断変更しない。
