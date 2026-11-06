@@ -284,3 +284,25 @@ main統合の[`tei dbcheck`](https://github.com/hat47x/tei-platform/pull/2894)�
 **Source変更時の再資格**：Source内容・`uses validation`選択・Relationの意味/粒度・Operator版・Owner受理が変われば**現行Expectedの適用可能性を再確認**する。Path移動（将来`.tei`から`.tei.md`への移行を含む）は、byte同一なら自動的にMeaning同一とせず、実Source Reference再解決とModel/World、実Compiler/Plugin入力、Acceptance根拠を別々に照合する。失効した過去のGreen/Red Evidenceを削除・上書きせず、`historical valid at HEAD / current unqualified pending recheck`を併記。Source改版は#2595、再資格化は#2600、Read/母集団は#2586/#1163が所有し、#2514の独立Oracle担当Chatと実装・投稿が競合しないよう、本書は**受け渡すべき証拠・Claim上限のみ**を記述する。
 
 **進捗の区分**：#2901 Greenと#3017 M1 Killは実CI確定。末尾脱落Mutation、NULL/unknown、Provider部分取得、`.tei.md`移行後の実Resolved Sourceは**いずれもNOT RUN**。本節の追補はdocs-only。故意に不正なMutantのmain統合は厳禁。
+
+### 8.9 Completionの自己申告Coverageと実Read母集団を別Oracleで照合する（2026-11-07）
+
+**新しい実Source照合**：現mainの`internal/semantic/completion.go`（blob `512a835ca445d81dd043f8af78ca29df4e7adb3b`、#2926で導入済み）では`EvaluateCompletion`が`CompletionEvidence.Targets`、`Coverage`、`EmptyJustified`、`Conflicting`等を受け取る。`CoverageComplete`は**呼び出し側が供給する主張**で、関数自身がOwnerのTargetSet、Providerの実Read、Snapshot、Access/Disclosureを求めて証明するわけではない。対象が非空で全`Holds=true`かつ`CoverageComplete`であれば`CompletionHolds`を返す実装。これは**契約上の明示的な信頼境界**であり、この観察だけで製品バグ／業務意味受理済みとは判定しない。
+
+**二世界の識別不能反例（評価予測、TEI新試験はNOT RUN）**：同一呼出しデータ`Targets=[{L1,true}], Coverage=complete`について、世界AではOwnerの対象集合`L={L1}`、世界Bでは`L={L1,L2}`かつL2が未取得・不成立であっても、Completion APIへ渡す引数が同じなら`holds`となる。この判定の真偽を分ける証拠は`Coverage`文字列ではなく、**Owner集合の版とReaderが観測した対象Identity・範囲・時点・終端**にある。従って「実装が申告データに従い評価した」という局所PASSを「Ownerの完了を確認した」に昇格しない。
+
+| ケースID | 外部から固定する独立条件 | 現行関数の局所挙動／必要な上位判定 | 証拠資格 |
+| --- | --- | --- | --- |
+| **CC-01 complete true** | Owner L={L1,L2}、同一Scope/SnapshotからL1,L2を実読取、P(L1)=P(L2)=true | `Targets=[L1:true,L2:true], CoverageComplete`なら`holds`。真の全件性は別Reader/Provider証拠と一致して初めて完了Claimに適用 | Source静的／テスト計画。新E2E NOT RUN |
+| **CC-02 partial positive** | Owner L={L1,L2}、実読取はL1:trueのみ、L2は未取得 | `CoveragePartial`なら`unverified`。誤って`CoverageComplete`を渡すと`holds`になり得るため、**flagだけのPASSを検収しない** | Sourceの分岐を確認。誤申告防止のProvider試験はNOT RUN |
+| **CC-03 partial counterexample** | Owner L={L1,L2}、実読取L1:falseのみ、L2未取得 | 現行`EvaluateCompletion`はCoverageに先立って違反を検出し`fails`。対象Scope内の確実な反例があるときだけ局所否定を主張できる。不存在/全員成功の推論とは非対称 | Sourceの分岐を確認。実Providerのscope証明はNOT RUN |
+| **CC-04 empty/unknown/disclosed** | 真の空・未取得・非開示・ページ不足を区別し、Ownerの空集合Policyを明示 | `Targets=[]`だけでOwner集合が空と決めない。`EmptyPolicyAllow`／`RequiresEvidence`／`Deny`の分岐を、実Readの空根拠・Policy・Disclosureと独立照合 | 既存Unit Testで部分分岐は実装済み。外部空証明はNOT RUN |
+| **CC-05 Source/Manifest drift** | 移行前後の`*.tei`／`*.tei.md`、`tei.workspace.yaml`、実Loaded Rule選択、Plugin/Generator/Toolchainを個別固定 | Canonical Rule ID・World digestが同一でも、Manifest/参照先/実Loaderの変更を「未変更」と扱わない。未読込・二重選択・Source入替を`unqualified`にする | 移行実Reader/CLI TestはNOT RUN |
+
+**同じSourceでも複数レイヤの負例を混ぜない**：[#3017](https://github.com/hat47x/tei-platform/pull/3017)の1 Mutant killは、合成`[1,1]`が**Evaluatorへ渡された後**に重複を誤判定する欠陥を検出したもの。提案中の末尾脱落MutantはこのEvaluator内部の未走査を次に試すもの。上表CC-02は**取得前／Callerの集合完全性誤申告**であり、既存`scenarioValidationSource.RelationKeys([]string,error)`でも`EvaluateCompletion`でも、単独では真のOwner集合を復元できない。各々の`Case×Claim×Attempt×Environment`と、知っている実Source及び未観測欄を別行に保つ。
+
+**再資格の最小束縛**：`OwnerTargetSetID+revision+scope/asOf, actualProvider+readAttempt+observedRowIDs+pageEnd/snapshot, completenessBasis+currentDisclosure, canonicalRuleID+selection+sourceOccurrence, loadedWorld+ManifestIdentity+actualCompiler/Plugin/Artifact, independentExpectedProvenance, consumerClaim`。本リストは**既存Evidence/Receiptへの参照列**であり新しい公開Schemaではない。現main `internal/workspace/loader.go`（blob `ddae9bf724b685b1109b015c169da72ea740ada5`）では`Result.ManifestIdentity()`がManifest path/SHAを返すが、**ManifestはSource Indexの正本に含まれない**という実装コメントがあり、World同一だけでManifestの同一性を立証できない。Workspace Importsが実Indexに束縛できなければ`ErrImportsNotBound`でfail-closedにする既存入口があるため、Imported Sourceを黙って`complete`へ昇格しない。
+
+**移行との接続**：[#3030](https://github.com/hat47x/tei-platform/pull/3030)の方向決定により新規TEI Authoringは`*.tei.md`標準、旧`*.tei`は原則段階廃止。しかし新Loader／Parser対応・Source span再解決・Owner Meaning再受理は未実行であり、拡張子Renameだけで上記CC-05をPASSにしない。旧新Sourceが共存した期間は、同じMeaning IDが二箇所にあれば**どちらの実使用・受理・選択か**を証拠で決め、後勝ち選択を推論しない。#2621/#3030は形式移行、#2595/#2600はSource/再資格、#2586/#1163はProvider集合、#2514は独立Oracle、#1180はScenarioを所有。
+
+**今回の完了／未完了**：#2811の前HEAD `61ed5e7bf0185ec850584f8d3f4e3f4eb29b8659`に対する[Health #42216506479](https://github.com/hat47x/tei-platform/actions/runs/42216506479)は**completed/success**。本節は現行Sourceと他レーン計画の直接照合、および独立Expected/試験順の文書化のみ。CC-01〜05の新たな実Provider/Source移行試験、末尾脱落Mutant、Owner Meaning再受理は**NOT RUN**。#2514や#3030の担当Issue・コードは編集せず、当初の成功・失敗証拠は履歴保持する。
