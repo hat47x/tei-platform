@@ -451,10 +451,10 @@ Community向け初期配布物の候補は (1) Contractと正負Fixture（Provid
 | DSH-14 | Runtimeが依存Providerを失い復帰するが先のCommitは成功 | Plugin再ロードと歴史的DB Effectを分離し、自動再送なし | #1223/#1129/#1174 |
 | DSH-15 | Index上Verified、Publisher権限失効・実Artifact置換 | Index主張だけで採用せずDigest/Authority/現在Trustを個別照合 | #2589/#1104/#1370 |
 | DSH-16 | Plugin無効化/削除、未対応Sourceに未知の属性 | raw bytes維持、編集は可能、意味受理/実行許可を勝手に維持しない | #2044/#2553 |
-| DSH-17 | TEI外のJava/.NET/Process Consumerへ同契約を渡す | TEI Studio/常駐Host非依存、同じ独立Oracleを実際に実行 | #2390/#1145 |
+| DSH-17 | TEI外のJava/.NET/Process Consumerへ同契約を渡す | TEI Studio/常駐Host非依存、同じ独立検証基準に基づく試験を実際に実行 | #2390/#1145 |
 | DSH-18 | DSH SDK minimal/headlessからTEI CLIをread-onlyで呼ぶ | 実Tool/送出/Process結果とTEI Meaning/Effectの証拠を別列にする | #2509/#2515 |
 
-**受入票の最小列**：Case、対象Source+Revision、Contract+Provider exact、Profile+Scope、実Build input/Artifact、現在Reader/Grant/Lease、Scenario/Expected、実観測と独立Oracle、未確認、Owner/再資格化条件。欠損はunknown／NOT RUNとし、0件確認済みやPASSに置換しない。詳細なSchemaや独立試験Frameworkの新設は先取りしない。
+**受入票の最小列**：Case、対象Source+Revision、Contract+Provider exact、Profile+Scope、実Build input/Artifact、現在Reader/Grant/Lease、Scenario/Expected、実観測と独立検証基準、未確認、Owner/再資格化条件。欠損はunknown／NOT RUNとし、0件確認済みやPASSに置換しない。詳細なSchemaや独立試験Frameworkの新設は先取りしない。
 
 ### 21.7 既存計画への返却と撤回条件
 
@@ -583,13 +583,13 @@ Registryは**発見の索引**、Issuerは証拠の発行主体、Host/Ownerは�
 
 検証の独立列：`(Source/Meaning Revision, Application/Profile+Tenant binding, Contract+Provider+Artifact, Org validAt+knownAt/actor mapping, Host issuer+subject/current Grant epoch+Resource, Operation/Attempt/Effect-stage ID, required/evaluated guards+Provider fence point, effect result/receipt, independently scoped read/time/completeness, Consumer disclosure, Actual/Expected/NOT RUN)`。ここでの列は概念であり、新Manifest・全Host共通Schemaを採用しない。
 
-- **Meaning/Org**：#2386/#267。**Wiring/Scope**：#1016/#951/#1118。**Build/Way selection**：Draft #2885/#1251/#1121/#2390。**Grant/Effect/Recovery**：#1174/#1129/#2564。**Disclosure**：#2516/#1178。**Test Oracle**：#1180/#2514。**Product Gate**：#1119既存G1/G2/G4。
+- **Meaning/Org**：#2386/#267。**Wiring/Scope**：#1016/#951/#1118。**Build/Way selection**：Draft #2885/#1251/#1121/#2390。**Grant/Effect/Recovery**：#1174/#1129/#2564。**Disclosure**：#2516/#1178。**独立検証基準**：#1180/#2514。**Product Gate**：#1119既存G1/G2/G4。
 - 既存[#3016](https://github.com/hat47x/tei-platform/pull/3016)を「同Key異Tenantの実PG read」局所回帰として使い、SCOPE-3のGrant撤回・SCOPE-4のDB+外部通知部分Effectや正式IdPまで成功したとは言わない。#2885の[D0/D1/D2](https://github.com/hat47x/tei-platform/pull/2885)は既存23 Vectorと独立実行証拠へ戻し、Scope横断負例を純粋D0の必須テストにしない。
 - **状態**：本文は既存Source/PR/Issueの照合に基づく**方式の停止条件・独立Expected案**。このSCOPE-1〜4を一連の実Host/IdP/実DBで実行していない。Static-vs-Dynamic-vs-Processの実コスト・権限強制・失敗時のProduct E2E、Owner意味受理・正式方式採用は**NOT RUN／未採用**。本節とそのDraftを本番保証としない。
 
 ## 24. Scope相対のEvidence接合：完全被覆・現在Grant・実消費を横断する最小条件（2026-11-06、設計／Product実証はNOT RUN）
 
-**差分の位置**：§21のSource/Composition/Build/Runtime/Effect、§22の六Scope、§23のSCOPE-1〜4を再掲しない。必要なのは**独立に成立したEvidenceを、そのClaimへ接合できるかの条件**である。mainへ統合された[#2926](https://github.com/hat47x/tei-platform/pull/2926)のCompletion評価、[Draft #3026](https://github.com/hat47x/tei-platform/pull/3026) §9.5のM/G直交と結合対象不一致、[#3016](https://github.com/hat47x/tei-platform/pull/3016)の同Key二Tenant、[#2885](https://github.com/hat47x/tei-platform/pull/2885)のD0/D1/D2差を既存Ownerで使う。追加のCompletion Evaluator、Policy/Grant Engine、証拠台帳、Oracleを設けない。
+**差分の位置**：§21のSource/Composition/Build/Runtime/Effect、§22の六Scope、§23のSCOPE-1〜4を再掲しない。必要なのは**独立に成立したEvidenceを、そのClaimへ接合できるかの条件**である。mainへ統合された[#2926](https://github.com/hat47x/tei-platform/pull/2926)のCompletion評価、[Draft #3026](https://github.com/hat47x/tei-platform/pull/3026) §9.5のM/G直交と結合対象不一致、[#3016](https://github.com/hat47x/tei-platform/pull/3016)の同Key二Tenant、[#2885](https://github.com/hat47x/tei-platform/pull/2885)のD0/D1/D2差を既存Ownerで使う。追加のCompletion Evaluator、Policy/Grant Engine、証拠台帳、独立検証基準の第二正本を設けない。
 
 ### 24.1 Claim別の証拠適用条件（新しい共通Schemaではない）
 
@@ -623,7 +623,7 @@ Registryは**発見の索引**、Issuerは証拠の発行主体、Host/Ownerは�
 - **限定CI成功**：[Draft #3021](https://github.com/hat47x/tei-platform/pull/3021)の修正HEAD dfc133e2ce1877e3593f1e507cbc3c2b7a82bfc5 で、[Isolated](https://github.com/hat47x/tei-platform/actions/runs/42203769225)・[Repository Health](https://github.com/hat47x/tei-platform/actions/runs/42203769269)・[Dependency](https://github.com/hat47x/tei-platform/actions/runs/42203769210)がSuccessと実PRに記録。D0直接関数／D2既存Processの限定CIであってD1・Host/Ownerの資格ではない。
 - **実PostgreSQLの未確認**：[Draft #3016](https://github.com/hat47x/tei-platform/pull/3016)はA/B同じOrderID=9、異なるCustomerIDの実PG opt-inテストコードを追加したが、新試験実PG/SKIPなしPASSはPR上未確認。正式IdP/Grant、Org Case、外部Disclosureは別。
 - **実証の最短順**：#3016の実PG Scope Readをexact-headで実行（SKIPなし）→#2586/#2622の正しいFunction/Provider ReadとOwner母集団のCoverageを#2926の入力へ接続→#1174の実Host Grant/Effect/Receipt/独立Readerを**同一Operation・Target・時点**で照合。D1は#2885/#1251で別に試験。SourceのUNBOUND_DATASOURCE等を0件や「プロバイダー選択済み」とみなさない。
-- **Owner**：Meaning #267/#1125、Composition #1016/#951、Scope/Data #2386/#2586/#2622、Effect #1174/#1129、Disclosure #2516、Scenario/Oracle #1180/#2514、方式 #2885/#1251。Product gate #1119を増設・変更しない。
+- **Owner**：Meaning #267/#1125、Composition #1016/#951、Scope/Data #2386/#2586/#2622、Effect #1174/#1129、Disclosure #2516、Scenario/独立検証基準 #1180/#2514、方式 #2885/#1251。Product gate #1119を増設・変更しない。
 
 **結果と撤回条件**：本節は既存結果から導いたEvidence接合の受入候補であり、JOIN-01〜06、Product実Host/PG/Consumer/Owner受理はNOT RUN。既存のEvidence参照でScope相対の必要Witnessを説明できる限り、新しいRegistry/Proof Store/Status Enum/Hostや共通Completion Engineを導入しない。旧Receiptや一つのCI PASSを別Claimへ無断継承しない。
 
@@ -658,7 +658,7 @@ Registryは**発見の索引**、Issuerは証拠の発行主体、Host/Ownerは�
 
 **横断の核心**：ここには(1) Source Admission、(2) Permission Declaration/Issuance Grounding、(3) CommandのSubject/Action/Resource認可、(4) Provider Effect/Receipt、という**用途もAuthorityも異なる検査**がある。発行されたFilesystem PermissionがGroundedであることからBusiness Command Grantを作らない。Commandが許可されたことからFilesystem/Networkの能力を与えない。Sourceが適格にLoadedされてからだけCapability/Operationを結び、未対応Sourceを「Pluginなし」や「対象0件」へ置換しない。
 
-**既存Scenario/Oracleへ返す最小の一因子対照（新Case正本なし）**：
+**既存Scenario/独立検証基準へ返す最小の一因子対照（新Case正本なし）**：
 
 - **入力採用**：旧LoaderでA=`model.tei`はSubjectあり、新B=`model.tei.md`のみだとSubjectなし・`validate.ok=true`（旧実CIの限定観測）。Draft #3031では新Bが`TEI_MD_PARSER_UNBOUND`になり、誤った成功を防ぐが新BのParser成功ではない。今後の実Loader対応時には同ExpectedでBの実Reader/Parser/Source occurrenceまで検証。
 - **Grantの根拠**：宣言が`migration.atlas`のみ／発行要求が`tei.frozen_world.lineage`、または宣言外RootならGround拒否。対照として同じ宣言内の正規Capability・Rootなら局所成功。ただし`issuedBy`等が偽称可能な条件や、宣言を省略した発行を**現在のHost認可成功**へ流用しない。
@@ -668,3 +668,29 @@ Registryは**発見の索引**、Issuerは証拠の発行主体、Host/Ownerは�
 **検収・優先順**：#3031は`*.tei.md`未接続のfail-closed、#3030/#2667/#2621/#988は新Reader/実Source、#951/#1016/#1251は選択ProviderとActual Build、#3035と既存accessは発行の範囲、#3034/#1174はCommand/Host Current Grant、#3033/#1174はApplied/Effect/Receipt、#2516は開示、#1180/#2514は既存独立Expected。新しいPlugin Lifecycleや一律Guardを追加しない。D0純粋関数にはDB Commit義務を課さない。
 
 **状態**：merged #3033/#3034/#3035の局所実装と、Draft #3031の固定HEAD局所CI、旧CLIのsilent skip実観測を**同一E2E成功としない**。この横断接合のProduct実Go/DB/IdP/OS/複数Tenant、承認済みMeaning・正式Owner採用はNOT RUN。#1119 Gateは不変。上記の禁止推論と不足Witnessが既存Referenceで説明可能なら新Core/ACL/Registry/Transaction Engineへの拡張を撤回する。
+
+### 24.6 既存Command実行の認可合成と記録失敗：実コード上の未充足箇所（2026-11-07、静的実コード照合／反証はNOT RUN）
+
+**主眼**：§24.5に追加されてから、[merged #3042](https://github.com/hat47x/tei-platform/pull/3042)（認可未設定拒否と実行後の不明効果）、[merged #3047](https://github.com/hat47x/tei-platform/pull/3047)（宣言許可と発行Grantの照合）、[merged #3038](https://github.com/hat47x/tei-platform/pull/3038)（Reader側の宣言照合）、[merged #3051](https://github.com/hat47x/tei-platform/pull/3051)（未被覆の空集合は未検証）、[merged #3053](https://github.com/hat47x/tei-platform/pull/3053)（CLIの不明効果エラー符号）が進んだ。採用済みの実装が検査できる条件を増やしたが、**別々の検査を一つの実Operationで実行した証明ではない**。
+
+| 実コード・既存実装 | 確認済みの限定条件 | 未成立の接合と停止条件 |
+| --- | --- | --- |
+| mainの internal/command/invoke.go／[merged #3042](https://github.com/hat47x/tei-platform/pull/3042) | AuthorizerがnilならCOMMAND_AUTHORIZER_UNAVAILABLE、宣言された期間のProviderがnilならCOMMAND_PERIOD_STATE_UNAVAILABLE。Executor実行後の宣言外Effect/Outcome/AppliedはEffectUnknown=true | ReferenceAuthorizerは明示の全件Allowであり本番権限ではない。単にAuthorizer!=nilでも正しいSubject/Resource/Grantを検査したとは言えない |
+| mainの internal/command/grant_authorizer.go／[merged #3047](https://github.com/hat47x/tei-platform/pull/3047) | callerが渡したCapabilityごとのDeclared permissionとGrantsを比較し、未宣言/一部不足を拒否。main InvokerにはAuthorizerフィールドが一つある | 既存[merged #3034](https://github.com/hat47x/tei-platform/pull/3034)のBusiness CommandAuthorizer（Subject/Action/Resource）と、Permission GrantAuthorizer（Filesystem/Network等）の**両検査を満たしたか**は別資格。どちらか片方を設定しただけで双方充足としない。自己申告のDeclaredが「空」と正しいRequired Obligationは異なる |
+| mainの tools/reference-first-web-frozen-world-generate／[merged #3038](https://github.com/hat47x/tei-platform/pull/3038) | 書く側が-grantsと-declarationを与えた場合はaccess.Groundで宣言照合。実験上、未宣言Capabilityを拒否 | -declarationは任意であり、宣言内の動的具体PathにはReader側Resolution連携が未接続。宣言との照合成功をissuer/resolverの真正性、全Host Grant、OS sandboxへ昇格しない |
+| mainの internal/semantic/completion.go／[merged #3051](https://github.com/hat47x/tei-platform/pull/3051) | Deny EmptyPolicyでTargetsが空でもCoverageUnestablishedならunverified。完全な空集合ならfails、部分集合の既知反例ならfailsを維持 | 関数に渡すCoverageCompleteのSource/Query/Tenant/時点の真正性は引き続きCaller側の責務。見えた0件をOwnerの空集合へ変換しない |
+
+**新たな具体的なコード上の問題候補**：main `internal/command/invoke.go`（今回確認blob `9f9099b6a9565d54597f2feb87bb41ce3d0be8d9`）の `execute` で `Executor.Execute` の後に `Recorder.Record` が失敗すると、`ExecutionError{Code:"COMMAND_RECORD_FAILED", ...}` を返すが **EffectUnknownはfalse（未設定）**。main `internal/command/lifecycle.go`（確認blob `60a797be0399015a89f7af3ef1d3d8bd6a72ae29`）の `LifecycleInvoker` は `EffectMayBeUnknown(err)==false` ならRejectedへ進む。外部Executorが先に独立Tx Commitを行い、その後Recorderが失敗した場合、**実DB効果あり／上位Attempt rejected／再送が安全と誤解され得る**。PR #3042は宣言外効果等をunknownに直したが、このRecorder失敗の経路を実証・是正したとは確認できない。これは**Sourceからの反証候補**であり、実PG/故障注入PASSの主張ではない。
+
+**独立期待値を既存#1180/#2514へ返す最小対照（既存#1174のEffect/再送試験への追補）**：
+
+| 対照 | 変える因子 | 独立期待値・必要な実観測 |
+| --- | --- | --- |
+| RC-01 正常基線 | 受理済みContract/Target、正しいBusiness Authorizer＋Permission Required/Issuedが成立、Recorder成功 | 実Authorization対象とProvider Target/実Effect/Receipt・独立Readの同一Operation接続。全ての実装が接続されなければNOT RUN |
+| RC-02 片側認可 | Business Subject/Action/Resourceは許可、Filesystem/NetworkのRequired Grant欠落。逆にPermissionは足りるがBusiness Resourceは別Tenant | どちらの不足でも実Executorに入らず、対象Effect 0を独立Readで確認。単一Authorizer参照用試験だけで両方の強制を証明しない |
+| RC-03 記録器故障 | 外部ExecutorがAをCommit、Recorder.Recordだけが失敗（対照はExecutorに入る前の拒否） | Aを確認できたならCommand Report errorと実Effect confirmedを併記し、Attemptはunknownとして盲再送禁止。実Commit証拠が無い場合も「A=0」としない。**現SourceのLifecycle rejected分岐を明示的に検出する回帰試験候補** |
+| RC-04 空集合 | 同じDeny EmptyPolicyでTargets=[]、Coverage=Unestablished/Completeを1因子変更 | 前者unverified・後者fails。#3051の既存Go単体試験が確認した範囲を再利用し、別Tenant実ReadのCoverageを自動証明しない |
+
+**実施優先順位**：最初にRC-03の外部Commit済み＋Recorder失敗を、既存`LifecycleInvoker`とeffectcommit実Provider（可能なら専用使い捨てPG）、同一Operation ID、Receipt lookup、独立Readで検証する。必要ならEffectUnknown伝播/再送停止を#1174/#1163のOwnerで修正し、#3042/#3053の既存不明結果契約を使う。次にRC-02で二つの認可義務が実Targetに共に適用されたことを確かめる。実装の新しい共通Host、Grant Store、Effect Coordinatorを提案しない。
+
+**採用・根拠の区別**：#3038/#3042/#3047/#3051/#3053はmain統合済みの局所実装（それぞれのPRに限定試験記録）。Recorder失敗の不明状態と二重認可強制は今回の**追加受入候補で、Product実試験NOT RUN**。Source形式`*.tei.md`方針は変更せず、[#3031](https://github.com/hat47x/tei-platform/pull/3031)の未接続診断はDraftのまま。D0直接純粋計算には不要な実DB/Permissionを強制しない。#1119の既存判定段階も変更しない。
