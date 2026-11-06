@@ -3,8 +3,6 @@ package changeanalysis
 import (
 	"fmt"
 	"sort"
-	"strconv"
-	"strings"
 
 	"tei/internal/core"
 	dbrelease "tei/internal/database/release"
@@ -90,34 +88,4 @@ func latestDatabaseReleaseLines(w ir.World) []dbrelease.Definition {
 		out = append(out, r)
 	}
 	return out
-}
-
-func compareReleaseVersion(a, b string) int {
-	av, _ := parseReleaseVersion(a)
-	bv, _ := parseReleaseVersion(b)
-	for i := 0; i < 3; i++ {
-		if av[i] < bv[i] {
-			return -1
-		}
-		if av[i] > bv[i] {
-			return 1
-		}
-	}
-	return 0
-}
-
-func parseReleaseVersion(v string) ([3]int, bool) {
-	var out [3]int
-	parts := strings.Split(v, ".")
-	if len(parts) != 3 {
-		return out, false
-	}
-	for i, part := range parts {
-		n, err := strconv.Atoi(part)
-		if err != nil || n < 0 {
-			return out, false
-		}
-		out[i] = n
-	}
-	return out, true
 }
