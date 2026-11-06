@@ -17,7 +17,12 @@ const onlyFields = (value, allowed) => {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
   const proto = Object.getPrototypeOf(value);
   return (proto === Object.prototype || proto === null) &&
-    Reflect.ownKeys(value).every(key => typeof key === "string" && allowed.includes(key));
+    Reflect.ownKeys(value).every(key => {
+      if (typeof key !== "string" || !allowed.includes(key)) return false;
+      // Avoid executing input getters as part of projection or validation.
+      const desc = Object.getOwnPropertyDescriptor(value, key);
+      return !!desc && Object.hasOwn(desc, "value");
+    });
 };
 
 export function projectPublicTeaSlice(slice) {
