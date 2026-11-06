@@ -3548,4 +3548,16 @@ main統合済みPR #2852/#2853はCommand Lifecycle／実PostgreSQL CASの限定E
 
 **最小実装判断**：TB-02とTB-03を、組織CaseのE2 Read完成後に最初のOwner-write資格比較へ渡す。TB-07〜10は実Effect/時点訂正の後続Gate。実Providerが既に十分なTarget限定を行っていると判明した場合はその証拠を受けて本追補を縮退する。逆に証拠不在は未検証とし、「実装が危険」「全経路で脆弱」と断言しない。
 
+
+### 82.5 11月7日mainの事後検証との適合（#1174既存ケースを再利用）
+
+最新mainの`internal/command/invoke.go`／`internal/command/applied_check.go`をread-only再確認した。main統合 #3033/#3034/#3042 では、`Applied`報告・事後Effect差分、事前Authorizer、事後検証失敗を`EffectUnknown`へ伝搬する経路が進んでいる。既存[ #1174の2026-11-07確認コメント](https://github.com/hat47x/tei-platform/issues/1174#issuecomment-6690399598)がF-Pre/F-Post/F-NoReport/F-StaleGrant/F-SameKindを所有しているので、**組織独自の同等Fixtureは増やさない**。
+
+- `checkAppliedOperations`は`Applied`が空なら比較を行わない。`commandadapter.Executor`の`StatusCommitted/StatusReplayed`からのCommand結果も`Result{}`であり、**Reported Applied 0件とPhysical Effect 0件は同義ではない**。C1承認でTB-01/TB-09を評価するときは実ProviderのRow/Effect/Receiptを同一Operationで観測する。
+- 宣言Effectと同じKind・別Dataの追加Appliedは、`DifferenceAdditionalScope`として**未解決差分を返す**。合法なCascadeと無関係Case/別Tenantへの作用の区別には、受理済みRelation path・対象集合・現在Grant・実Effectが必要。未解決Differenceを「拒否された」または「正当と認められた」と勝手に解釈しない。
+- main #3042では事後検証の失敗をLifecycleの`unknown`へ接続しており、旧「事後Rejectとして再送可能」という反例の**現在の期待結果を更新**する。ただし`unknown`は未作用／Rollback成功の証拠ではなく、Receipt/独立Readが未接続ならC1承認完了も未証明。
+- #3034の事前`CommandAuthorizer`はProductの改善であるが、ApplicationをResource既定値とする経路から**特定C1/Tenant/実Rowへの権限適用**、現在GrantとCommit時点の同一フェンス、実際の複数行Effectは別資格。#1174と#2598の担当が所有する既存契約へTarget解決の観測欄のみ引き渡す。
+
+**再利用の優先**：#1174 F-Pre/Post/NoReport/SameKind、#2564同一OperationID・実PG、#2854 ABAという既存検証を、組織C1/D1のRealized Targetという新しい識別軸で比較する。原則として新Harness／第二認可Engine／新Outcome enumは作らず、実C1 E2 Readが成立するまでは本節のE4試験を完成扱いしない。新Case試験と業務Owner受理はNOT RUN。
+
 **今回の資格**：mainのGo Source-static観測と既存PRの限定実証、合成期待の追記だけ。ORG-TB-01〜10の新試験、実Org Provider/DB/GUI/Host、業務Owner意味受理、*.tei.mdへの製品移行、Draft解除・PR mergeは未実施。
