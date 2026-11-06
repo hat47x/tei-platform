@@ -9,7 +9,7 @@
 - 旧SB-1 Sourceと固定済み決定論的transform Runtime Engineは、非正規の生JSONを黙示的に正規化しない。
 - 明示された `tei.plugin-definition-json/v2` は、Source FingerprintとBuildPlan Fingerprintに一致する場合に限ってHost外側で入力を正規化する（`internal/plugin/inputprofile`）。
 - 生成ManifestはGoのSB-1正規出力（**末尾LFを含むバイト列**）と照合し、重複キー・余計なフィールド・順序や空白の変化を拒否する。
-- 実Process Engine二回のパリティ試験は `tools/reference-plugin-self-build/inputprofile_v2_process_e2e_test.go` にある。Go Oracle一致とProcess Engineの実実行の観測は、Hostの認可を証明しない。
+- 実Process Engine二回のパリティ試験は `tools/reference-plugin-self-build/inputprofile_v2_process_e2e_test.go` にある。Go参照検証基準一致とProcess Engineの実実行の観測は、Hostの認可を証明しない。
 - `internal/plugin/transform/plugin_inputprofile_distinct_ingress_evidence_test.go` では、**異なる二つの原入力が同一の正規入力・SB-1出力になっても、原入力digestを混同しない**ことを回帰固定する。
 
 ## 2. 移行の責務境界
