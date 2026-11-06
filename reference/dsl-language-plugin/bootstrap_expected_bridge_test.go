@@ -34,7 +34,7 @@ func bootstrapExpectedStops(t *testing.T) map[string]string {
 	if err := json.Unmarshal(raw, &fixture); err != nil {
 		t.Fatal(err)
 	}
-	if fixture.Status != "DESIGN_ONLY_NOT_EXECUTED" {
+	if fixture.Status != "INDEPENDENT_EXPECTED_NOT_OWNER_ACCEPTED" {
 		t.Fatalf("expected design-only fixture status, got %q", fixture.Status)
 	}
 	result := make(map[string]string, len(fixture.Cases))
