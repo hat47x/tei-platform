@@ -344,6 +344,7 @@ WP10 統合と引継ぎ
 | Commandの参照実装 | 実装 | 付録C.5 |
 | Commandからeffectcommitへのアダプタ | 実装 | 付録C.5 |
 | Command実行前の認可契約 | 実装 | 付録C.5 |
+| Command効果の宣言照合 | 実装 | 付録C.5 |
 | 参照データ記憶域（MemoryStore） | 実装 | 付録C.5 |
 | 参照Storeの削除ポリシー実行 | 実装 | 付録C.5 |
 | 参照Storeのキー対応削除 | 実装 | 付録C.5 |
@@ -416,6 +417,7 @@ WP10 統合と引継ぎ
 **PRの関係.** 文書は[#2519](https://github.com/hat47x/tei-platform/pull/2519)、対話契約のPoCは[#2521](https://github.com/hat47x/tei-platform/pull/2521)です。PoCは文書のD1・D3.1の最小部分を実装し、`main`には未統合です。
 
 **統合の条件.** 要求・設計の採否が決まり、PRがDraftでなくなり、CIとレビューが通ることです。Draftのままでは統合しません。
+
 
 
 

@@ -19,7 +19,7 @@
 | AC-5 | 一部 | `Outcome`・`ExecutionError`・期間拒否 | Command実行境界・期間の試験 | 不存在・多重一致・不明を含む全結末の網羅 |
 | AC-6 | 一部 | 値域・必須・候補キー・削除ポリシー | 参照Storeの単体・例の試験 | 読取専用データソースの宣言・実行前・実行時の三段 |
 | AC-7 | 一部 | `-format html`・`print`、印刷テンプレート | HTML・printの単体試験 | 画面と帳票の版照合、manifestの版 |
-| AC-8 | 未実装 | — | — | 宣言したCRUDと実行時の操作の差の保持 |
+| AC-8 | 一部 | Executorが返すEffectと宣言の照合 | 効果の不一致試験 | 実行時に発行されたCRUD操作の記録と差の保持 |
 | AC-9 | 未実装 | — | — | 診断と受理済み意味の版の結合、修正案の非自動受理 |
 | AC-10 | 一部 | `effectcommit`のreceipt、Commandアダプタ | アダプタの単体試験、実PostgreSQLはDSN設定時のみ | Command再実行での「不明」状態と自動再実行の禁止 |
 | AC-11 | 一部 | `effectcommit.Runner`の認可境界、`command.Invoker.Authorizer` | 認可付きPostgreSQL試験（DSN設定時のみ）、Authorizerの許可・拒否試験 | 権限の宣言・付与、メニュー非依存の拒否 |
@@ -38,4 +38,5 @@
 - AC-8・AC-9・AC-11の要求としての採否。
 - AC-2・AC-5の実行時強制の範囲。
 - 実Provider接続を先に行うか、残りの受入条件を先に具体化するか。
+
 
