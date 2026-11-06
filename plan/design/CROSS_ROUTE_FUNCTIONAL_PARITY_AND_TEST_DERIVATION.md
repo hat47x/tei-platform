@@ -755,7 +755,7 @@ main統合済み[PR #2894](https://github.com/hat47x/tei-platform/pull/2894)の`
 
 **今回の成熟差分は「Owner母集団の完全性」についての**現在の実装境界**を確定し、既存のG0/G1/G2を実Target Claimに無断拡張しない検収順を具体化したことにある。[#3022](https://github.com/hat47x/tei-platform/pull/3022)は`EvaluateCompletion`の静的分岐、Coverage自己申告の問題を§10.11〜10.15で調査済み。本計画は別のCompletion設計・検証器を発明せず、**AI-first ScenarioのEvidenceからCompletion Claimへ昇格するための独立入場条件**だけを所有する。
 
-**現mainの直接ソース確認**：`internal/semantic/completion.go` blob `512a835ca445d81dd043f8af78ca29df4e7adb3b` は`CoverageComplete/Partial/Unestablished`を**Callerの申告として受ける**。非空の観測集合が全`Holds=true`で`CoverageComplete`の場合、実Provider/Owner集合をAPI内部で照合しなくても`CompletionHolds`を返す。同じ`Targets=[L1:true],CoverageComplete`の呼出しでOwner集合が世界A`{L1}`と世界B`{L1,L2}`でもAPI結果は同じになり得る。これは**Caller入力が真なら局所的に正しい関数**と、**Callerの集合申告が実世界と一致したという証拠**の差であり、現コードから直ちに製品欠陥確定とはしない。
+**検討時mainの直接ソース確認**：`internal/semantic/completion.go` 旧blob `512a835ca445d81dd043f8af78ca29df4e7adb3b`（#3051統合後の現main Blobは`e42610e9159e02ba3b5c7b84c46742a846331e64`） は`CoverageComplete/Partial/Unestablished`を**Callerの申告として受ける**。非空の観測集合が全`Holds=true`で`CoverageComplete`の場合、実Provider/Owner集合をAPI内部で照合しなくても`CompletionHolds`を返す。同じ`Targets=[L1:true],CoverageComplete`の呼出しでOwner集合が世界A`{L1}`と世界B`{L1,L2}`でもAPI結果は同じになり得る。これは**Caller入力が真なら局所的に正しい関数**と、**Callerの集合申告が実世界と一致したという証拠**の差であり、現コードから直ちに製品欠陥確定とはしない。
 
 | 検収順 | 既存担当／固定する材料 | 独立Negativeと受理線 |
 | --- | --- | --- |
