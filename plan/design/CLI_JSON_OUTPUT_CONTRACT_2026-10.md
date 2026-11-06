@@ -12,7 +12,7 @@
 
 ## 2. 対象範囲
 
-`tei commands`が広告する13コマンド（`cmd/tei/cli_contract.go`）のうち、読取り専用でJSONを出すものを扱う。書込み系（deployment-*など）と、`commands`自身の引数扱いは、失敗時の形式の一部としてだけ触れる。`scenario`や`model`のサブコマンド以外の広告外コマンドは扱わない。
+`tei commands`が広告するコマンド（`cmd/tei/cli_contract.go`。件数は本文に書かず、§4の表との一致を`cmd/tei/cli_contract_schema_test.go`が検査する）のうち、読取り専用でJSONを出すものを扱う。書込み系（deployment-*など）と、`commands`自身の引数扱いは、失敗時の形式の一部としてだけ触れる。`scenario`や`model`のサブコマンド以外の広告外コマンドは扱わない。
 
 ## 3. 現在の結論（先に要約）
 
@@ -30,6 +30,7 @@
 | `commands` | `tei.cli.discovery/v0` | JSON | 引数不正は標準エラー | いいえ（投影型） |
 | `model catalog` | `tei.cli.model/v0` | JSON | JSON（`INVALID_ARGUMENT`、`WORKSPACE_LOAD_FAILED`） | いいえ（投影型。内側に`tei.operations.model-catalog`の版を持つ） |
 | `inspect` | `tei.cli.inspect/v0` | JSON | JSON（`INVALID_ARGUMENT`、`SUBJECT_NOT_FOUND`、`INSPECTION_FAILED`、`WORKSPACE_LOAD_FAILED`、`SOURCE_INDEX_FAILED`） | いいえ（投影型） |
+| `view` | `tei.cli.view/v0` | `-format json`のときJSON。既定はテキスト | 本表では未調査（#2824で一覧に追加したのみ） | いいえ（投影型） |
 | `trace` | `tei.cli.trace/v0` | JSON | JSON（`inspect`と同じ形） | いいえ（投影型） |
 | `validate -workspace -json` | `tei.cli.validate/v0` | JSON | JSON（`INVALID_ARGUMENT`、`WORKSPACE_LOAD_FAILED`、`SOURCE_INDEX_FAILED`、`WORKSPACE_VALIDATION_FAILED`） | いいえ（投影型） |
 | `workspace-files` | `tei.cli.workspace-files/v0` | `result`に`workspace.ManagedFile`の配列 | JSON（`INVALID_ARGUMENT`、`WORKSPACE_LOAD_FAILED`） | いいえ（投影型。#2354第一陣で包んだ） |
@@ -46,6 +47,8 @@
 | `plugin-lock` | `tei.cli.plugin-lock/v0` | `result`に`plugin.Lock`（lock形式自体は`formatVersion: 2`を持つ） | JSON（`INVALID_ARGUMENT`、`WORKSPACE_LOAD_FAILED`、`PLUGIN_LOCK_FAILED`） | いいえ（投影型。#2354第一陣） |
 | `plugin-resolve` | `tei.cli.plugin-resolve/v0` | `result`に`plugin.ResolvedSet` | JSON（`INVALID_ARGUMENT`、`WORKSPACE_LOAD_FAILED`、`UNKNOWN_ENVIRONMENT`、`INVALID_PLUGIN_LOCK`、`PLUGIN_RESOLVE_FAILED`） | いいえ（投影型。#2354第一陣） |
 | `plugin-runtime-plan` | `tei.cli.plugin-runtime-plan/v0` | `result`に`pluginruntime.EnvironmentPlan` | JSON（`INVALID_ARGUMENT`、`WORKSPACE_LOAD_FAILED`、`UNKNOWN_ENVIRONMENT`、`INVALID_PLUGIN_LOCK`、`PLUGIN_RUNTIME_PLAN_FAILED`。構築失敗は終了コード1） | いいえ（投影型。#2354第一陣） |
+
+`tei commands`の各entryは、JSONを出すコマンドについて`outputSchemaVersion`（上表の`schemaVersion`列と同じ値）を持つ。`world`だけは`outputSchemaVersion`を持たず、`outsideContract: true`を持つ（#2824）。`tei.cli.discovery/v0`への欄の追加は§5の「互換な変更」にあたるため、discoveryの版は上げない。`mode`で出力の形が変わる`source-index`と`knowledge-context`は、コマンド単位の版を1つ広告し、形の区別は応答の`mode`欄で行う。`output`欄の文言（`text; json when -json`など）は従来のままで、失敗時の形式の違いはdiscoveryに載せず、本表を参照する。
 
 観測の補足:
 
@@ -97,5 +100,5 @@ D案を選んでも、失敗時JSONをstderrでなくstdoutへ出す現在のC1�
 
 - `world`は2026-11-02のOwner判断で外部契約の対象外とし、生の`ir.World`出力を維持する。エンベロープ化する場合は、`tools/reference-critical-path-evidence-audit/live-r1-smoke.mjs`の生バイト証跡照合（`derivedWorldSha256`）を先に再設計する。`plugin-lock`はlock形式の`formatVersion: 2`を正本として扱い、`tei.cli.plugin-lock/v0`の`result`内に保持する。
 - schemaVersionを足す場合の、v0のまま足すか、新契約としてv1を新設するか。既存の出力を包む場合は読み手への告知が必要で、告知の要否と時期を含めてIssueで決める。
-- 一覧の表と実装の一致を機械検査にするかどうか。`tei commands`の`output`欄と実装の対応は試験で保たれているが、schemaVersionの有無の一覧はこの文書の手動の記録であり、#2354の完了条件には入っていない。
+- 一覧の表と実装の一致は、#2824で試験にした。表にコマンドの行があること、広告された`outputSchemaVersion`が文書に記載されていること、封筒で包むコマンドの版が実装と一致することを検査する。失敗時の形式や`mode`の中身までは検査しない。
 - 実測は参照作業領域と失敗例の一組だけである。大規模な作業領域での出力の形（配列の空のときの`null`/`[]`の違いなど）は確認していない。
