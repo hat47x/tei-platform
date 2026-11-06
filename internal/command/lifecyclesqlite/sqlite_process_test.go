@@ -1,4 +1,4 @@
-package command
+package lifecyclesqlite
 
 import (
 	"bytes"
@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"tei/internal/command"
 )
 
 // TestSQLiteLifecycleHelperProcess is the child side of the multi-process test.
@@ -18,7 +20,7 @@ func TestSQLiteLifecycleHelperProcess(t *testing.T) {
 	if os.Getenv("TEI_SQLITE_HELPER") != "1" {
 		t.Skip("helper process only")
 	}
-	store, err := OpenSQLiteLifecycle(os.Getenv("TEI_SQLITE_DB"))
+	store, err := Open(os.Getenv("TEI_SQLITE_DB"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -94,7 +96,7 @@ func raceProcesses(t *testing.T, database string, racers []map[string]string) ra
 	return result
 }
 
-func TestSQLiteLifecycleTwoProcessesCannotBothDispatch(t *testing.T) {
+func TestTwoProcessesCannotBothDispatch(t *testing.T) {
 	database := filepath.Join(t.TempDir(), "lifecycle.db")
 	result := raceProcesses(t, database, []map[string]string{
 		{"TEI_SQLITE_OP": "dispatch", "TEI_SQLITE_COMMAND": "cmd-race", "TEI_SQLITE_OWNER": "owner-a", "TEI_SQLITE_GENERATION": "1"},
@@ -106,20 +108,20 @@ func TestSQLiteLifecycleTwoProcessesCannotBothDispatch(t *testing.T) {
 	if !strings.Contains(strings.Join(result.output, "\n"), "REFUSED") {
 		t.Fatalf("the losing process did not report a refusal:\n%s", strings.Join(result.output, "\n"))
 	}
-	store, err := OpenSQLiteLifecycle(database)
+	store, err := Open(database)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer store.Close()
 	attempt, ok := store.Attempt("cmd-race")
-	if !ok || attempt.Stage != StageDispatched || attempt.Owner != "owner-a" || attempt.Generation != 1 {
+	if !ok || attempt.Stage != command.StageDispatched || attempt.Owner != "owner-a" || attempt.Generation != 1 {
 		t.Fatalf("final attempt=%+v ok=%v", attempt, ok)
 	}
 }
 
-func TestSQLiteLifecycleTwoProcessesCannotBothTakeOver(t *testing.T) {
+func TestTwoProcessesCannotBothTakeOver(t *testing.T) {
 	database := filepath.Join(t.TempDir(), "lifecycle.db")
-	store, err := OpenSQLiteLifecycle(database)
+	store, err := Open(database)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -140,17 +142,16 @@ func TestSQLiteLifecycleTwoProcessesCannotBothTakeOver(t *testing.T) {
 	if result.ok != 1 {
 		t.Fatalf("successful takeovers=%d, want exactly 1:\n%s", result.ok, strings.Join(result.output, "\n"))
 	}
-	store, err = OpenSQLiteLifecycle(database)
+	store, err = Open(database)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer store.Close()
 	attempt, ok := store.Attempt("cmd-race")
-	if !ok || attempt.Stage != StageDispatched || attempt.TakeoverFrom != 1 ||
+	if !ok || attempt.Stage != command.StageDispatched || attempt.TakeoverFrom != 1 ||
 		(attempt.Owner != "owner-b" && attempt.Owner != "owner-c") || attempt.Generation != 2 {
 		t.Fatalf("final attempt=%+v ok=%v", attempt, ok)
 	}
-	// The losing generation cannot take over again without another unknown.
 	if _, err := store.Takeover("cmd-race", "owner-d", 2); err == nil {
 		t.Fatal("a second takeover at the same generation was accepted")
 	}

@@ -50,6 +50,18 @@ func NewLifecycle() *Lifecycle {
 	return &Lifecycle{attempts: map[string]Attempt{}}
 }
 
+// LifecycleFromAttemptsは、永続化されたAttemptからin-memoryの段階を組み立てる。
+// durable storeが同じ規則を使うための入口であり、規則を複製しない。
+func LifecycleFromAttempts(attempts []Attempt) *Lifecycle {
+	lifecycle := NewLifecycle()
+	for _, attempt := range attempts {
+		if attempt.CommandID != "" {
+			lifecycle.attempts[attempt.CommandID] = attempt
+		}
+	}
+	return lifecycle
+}
+
 // Attemptは、Commandの最新Attemptを返す。
 func (l *Lifecycle) Attempt(commandID string) (Attempt, bool) {
 	attempt, ok := l.attempts[commandID]

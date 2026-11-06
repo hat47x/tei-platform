@@ -1,14 +1,16 @@
-package command
+package lifecyclesqlite
 
 import (
 	"path/filepath"
 	"sync"
 	"testing"
+
+	"tei/internal/command"
 )
 
-func TestSQLiteLifecyclePersistsStagesAcrossReopen(t *testing.T) {
+func TestStorePersistsStagesAcrossReopen(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "lifecycle.db")
-	first, err := OpenSQLiteLifecycle(path)
+	first, err := Open(path)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -22,13 +24,13 @@ func TestSQLiteLifecyclePersistsStagesAcrossReopen(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	second, err := OpenSQLiteLifecycle(path)
+	second, err := Open(path)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer second.Close()
 	attempt, ok := second.Attempt("cmd-1")
-	if !ok || attempt.Stage != StageUnknown || attempt.Reason != "response lost" {
+	if !ok || attempt.Stage != command.StageUnknown || attempt.Reason != "response lost" {
 		t.Fatalf("reopened attempt=%+v ok=%v", attempt, ok)
 	}
 	if second.MayReplay("cmd-1") {
@@ -40,7 +42,7 @@ func TestSQLiteLifecyclePersistsStagesAcrossReopen(t *testing.T) {
 	if _, err := second.Takeover("cmd-1", "owner-b", 2); err != nil {
 		t.Fatal(err)
 	}
-	if err := second.Observe("cmd-1", "owner-b", 2, OutcomeCommitted); err != nil {
+	if err := second.Observe("cmd-1", "owner-b", 2, command.OutcomeCommitted); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := second.Dispatch("cmd-1", "owner-c", 3); err == nil {
@@ -48,8 +50,8 @@ func TestSQLiteLifecyclePersistsStagesAcrossReopen(t *testing.T) {
 	}
 }
 
-func TestSQLiteLifecycleSerializesConcurrentDispatches(t *testing.T) {
-	store, err := OpenSQLiteLifecycle(filepath.Join(t.TempDir(), "lifecycle.db"))
+func TestStoreSerializesConcurrentDispatches(t *testing.T) {
+	store, err := Open(filepath.Join(t.TempDir(), "lifecycle.db"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -73,7 +75,7 @@ func TestSQLiteLifecycleSerializesConcurrentDispatches(t *testing.T) {
 	if succeeded != 1 {
 		t.Fatalf("dispatches succeeded=%d, want exactly 1", succeeded)
 	}
-	if attempt, _ := store.Attempt("cmd-1"); attempt.Stage != StageDispatched {
+	if attempt, _ := store.Attempt("cmd-1"); attempt.Stage != command.StageDispatched {
 		t.Fatalf("final attempt=%+v", attempt)
 	}
 }
