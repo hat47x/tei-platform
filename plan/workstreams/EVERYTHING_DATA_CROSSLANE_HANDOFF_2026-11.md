@@ -173,6 +173,8 @@ H0/H1と異質領域の要件探索は並行可能。H2/H4の実Effect資格は�
 
 **判定票の最低列と停止条件**：`actual parsed Source occurrence／meaning role+accepted revision／operation applicability（manual時not-applicable）／required obligations（候補の自己申告以外）／provided+evaluated guards／selected Plugin+Provider+Target／current Grant+Tenant+resource／dispatch結果／Receipt+独立read／独立Expected／Claim ceiling`。未知は`unresolved`、非適用は理由付き`not-applicable`、実権限拒否は既存契約の`denied/blocked`、送出後不明は`unknown`として**概念上区別**する（製品共通enumではない）。実施順は、#1180/#2514へ比較Expectedを紐付ける→#2586の実Read接合で意味/Scopeと実Consumerを確認→#1174の限定PG Effect試行で実Grant/Commit/Receiptを確認。手作業に必須DB実行、read-onlyに書込Guardを一律課さない。
 
+**既存mainの具体的接合先**：[#2926](https://github.com/hat47x/tei-platform/pull/2926)は`semantic.EvaluateCompletion`の`(TargetSet L, EmptyPolicy, Predicate P)`限定評価をmainへ統合済み、[#2671](https://github.com/hat47x/tei-platform/pull/2671)はCommit後ReadとOwner完了Claimの差を記録した。ただし#267は仮承認で、実Runtime/Consumerが対象全集合L・独立Coverage・Pを供給したことや、現Host Grant／Provider Effectを証明したわけではない。上表のM=受理済みは**独立に固定するFixture条件**であり、これらの現行実装から本番の正式受理を推測しない。新Completion Evaluatorは追加せず、#1125/#267を既存Ownerとして再利用する。
+
 **根拠と資格**：#2619の既存反例、#2389の組織計画、#1125 Procedure、#1174の実PostgreSQL限定実証、#2889のRunner特性試験、Draft #2896のSystem Composition計画を基にした**計画上の補正候補**。この2×2／三領域／DSL比較を同一Product Headで新規実行した証拠はない。**実Tenant/Host/Provider/GUI・Owner正式意味受理、#1119 Gate判定はNOT RUN／NOT ACCEPTED**。新しい基盤の実装・既存ADRの採用は提案しない。
 
 
