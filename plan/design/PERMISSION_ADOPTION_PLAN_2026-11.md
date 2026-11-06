@@ -67,3 +67,17 @@ decision, results, err := execution.RunPlan(ctx, plan, key, journal, step, execu
 ```
 
 これで**実行計画の停止条件**に権限を載せるのに必要な部品が揃いました（カタログ → 宣言 → 停止条件）。
+## 9. 追記（2026-11-06）: 成果物への反映
+
+機能定義書に権限の行を出すようにしました（`internal/artifact/functiondef.go`）。
+
+```
+permission sales.order.register filesystem write /var/reports
+permission sales.order.register network connect db:5432
+```
+
+- 能力の識別子順、その中では `Chars`（種別・アクセス・スコープ）順。
+- 宣言の無い能力は行を出さない。
+- 生成規則 `function-definition/v1` の行種別に `permission` を追加。
+
+**未着手**: 作業領域の読み込みからこの入力を渡す配線（いまは試験でのみ入力している）。標準操作の能力は権限を宣言しないため、行が出るのは外部に触る能力だけです。
