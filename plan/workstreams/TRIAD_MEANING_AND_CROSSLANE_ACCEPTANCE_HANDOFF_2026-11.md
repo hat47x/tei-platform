@@ -82,3 +82,43 @@
 **次の最小作業順**：①read-onlyで三要素/Key/Role/時点の意味ずれ反例を固定→②既存BP-05/S1および組織E1の局所実経路を再利用→③#1119のB(Command/DB)で一Operationの実Provider/Receipt/独立Read→④旧新Client・DB移行段階の実観測とOwner受理→⑤Windows GUI/SHOなどのConsumer。全面的な直列依存にはしない。
 
 **停止線**：出典確認・静的解析・synthetic Go/SQLite・実PostgreSQL・Windows GUI・Owner意味受理を分ける。Requirement Probe/Definition-Instanceの外部原典帰属、旧Driver互換、実組織DB、移行5段階の実適用、Plugin未使用Moduleの実Binary非干渉、二Provider同一業務Function、Owner受理は**この文書では未証明**。Docs-onlyであり、新Rule/Host/Registry/Gate/DB Migrationの実装変更はない。
+
+<!-- tei-triad-derived-approval-cut-20261106 -->
+## 7. 11/6横断追補：派生値を業務の確定事実へ昇格させる「時点」を明示する（計画・未受理）
+
+本節は §2 の Data/Function/Business 境界を、**見積試算→承認→受注確定→取消**という用途別の値の意味へ適用する最小差分。業務段階と Owner 完了の既存詳細は [#1125の11/6受渡し](https://github.com/hat47x/tei-platform/issues/1125#issuecomment-6681840353)、DFD階層の境界は [同Issueの別追補](https://github.com/hat47x/tei-platform/issues/1125#issuecomment-6681764711)に譲り、第二の業務Scenario正本を作らない。
+
+### 7.1 値の4つの用途を保存方式に直結させない
+
+| 値の用途 | 言えること | 自動的に言えないこと | 既存Owner |
+| --- | --- | --- | --- |
+| 計算／Preview | 特定Source・Rule/Operator版・入力集合・時点で計算した値 | 保存済み、提示済み、承認済み、全明細対象の確定値 | #2622/#2506/#2514 |
+| Provider Cache／Materialization | あるProvider・Snapshot・再計算契約に従い保持された値 | Ownerが承認した業務事実、永続化が正しい、最新である | #2622/#2600 |
+| 業務承認・確定に引用した値 | Owner受理済みの業務目的に対して、特定対象・版の値を判断根拠に使用した記録（正式Meaning/実Decisionの適用は別） | 全変更で自動的に再承認、DBの特定列へ必ず保存、Host Grantを取得済み | #1125/#267/#1126 |
+| 実DB Write/外部Effectの観測 | 当該OperationID・対象・時点・Providerで効果が生じたという限定的な事実 | 見積の承認・手作業完了・Owner業務完了・現在開示可能 | #1129/#1174/#2516 |
+
+この4行は **派生値の新しいenum／4つの保存戦略ではない**。同じ数量×単価の計算結果でも、用途・対象・値の採用時点・Rule版・業務責任が異なれば意味同値ではない。承認された値は、採用された業務Meaningによって参照先Revisionを固定している場合、価格表の改版後も「過去に承認した内容」として履歴に残る。一方、その承認値を確定Requestへ再利用できるかは**変更種類・有効期限・再承認規則**のOwner判断であり、自動推測しない。保存方式（導出、キャッシュ、実列、外部証拠参照）は別の設計選択。
+
+### 7.2 独立Expectedを持つ最小の判別対照（既存#1125/#2500 RT/#2514へ割付）
+
+以下は正式な見積業務Ruleではなく、同形の値でも意味を分けられるかを試す**仮定上の対照**。入力・ExpectedをGenerator/Provider結果から生成しない。
+
+| 対照 | 入力／観測 | 必要なExpected・保留条件 |
+| --- | --- | --- |
+| Previewのみ | 明細1件：数量2、単価300、表示金額600 | 数学的な純粋演算として600。正式な見積発行・承認・DB保存・Business完了は未確立 |
+| 承認後の価格改版 | r1で600を判断材料として承認、価格表変更後に再計算すると700 | 過去の承認対象r1と現在の再計算結果を分離。確定時に600/700/再承認必須のいずれかはOwner未決として停止・質問候補 |
+| 値は同一だが根拠変更 | 価格/数量/Ruleまたは対象がA→B→A、表示金額は再び600 | 同じ数値／Digestを、依存未変更・旧受理自動復活・現在有効な確定資格としない。変更窓と用途相対の再資格化 |
+| 見積明細の部分取得 | 先頭ページだけで金額600、未取得明細あり | その行の局所Previewは可能でも全明細見積額・不存在の証明はunverified。隠れた行やRLS内容を露出しない |
+| 取消後 | 元確定Commit/Receiptと、後続のCancel Request/Receiptが共に存在 | 現在の派生状態「未確定」や金額0から過去の承認／Commit履歴を消去しない。返金・通知・手作業補償は別の必要Effect |
+| 別受注で同じ値 | O1とO2のPreview金額が両方600 | O1の承認／Handoff実施証拠をO2へ流用しない。Business Definition一致と個別Instance完了は別 |
+
+### 7.3 手順と意思決定を接続する停止条件
+
+- **業務間DFD**はデータ授受と起動契機の記述。分岐・例外・人の確認は**各業務内部Procedure**へ置き、Workflowの実行順序／Host Grantへ自動変換しない（#1125）。Dataflowの描画配置は実行・意味の正本にしない。
+- **Question/Requirement Probe**は「承認r1後に価格が変更された場合どう扱うか」を既存Reviewへ提示する用途で十分。Source/Rule変更で判断への影響を検出しても、過去の回答を自動撤回・新Meaningを自動採用せず、履歴を保持し再質問の濫発を防ぐ（#2619/#267）。
+- **実行接続**は Function Data Context → typed Intent → 実Request/Target/version/current Grant → Receipt → 因果的に有効な独立Read の既存境界（#2586/#2598/#1174）。Preview成功、Decision記録、DB CAS成功、Manual Handoff完了を相互に代用しない。
+- **参照実装の現況**：main統合 [#2926](https://github.com/hat47x/tei-platform/pull/2926) は L・EmptyPolicy・P の局所評価、main統合 [#2671](https://github.com/hat47x/tei-platform/pull/2671) は U/K/V/O/B/D の証拠区分。いずれも「承認値の事業上の確定規則」や実Providerが完全なL/Coverage/空証明を供給した実証ではない。#2619暫定PGチェーンにも productGate=UNQUALIFIED の診断が残る。
+
+**作業順**：①Ownerに「見積の正式発行・承認対象Revision・再見積条件・確定時の採用値・取消の効力」を問う未決項目の棚卸し（判断代行なし）→②既存#1125／#2500 RT／#2514の独立Expectedへ上の対照を割付け、重複Fixtureを作らない→③#2586の実Read入口で必要な入力閉包を確認→④#2598/#1174の同一対象Request・実Readへ接続→⑤#267のMeaning/Consumer正式判断。純粋PreviewだけのConsumerには書込Grant・永続Receiptを要求しない。
+
+**証拠限界**：本節は設計文書のみ。新たなSource/Grammar/Schema/Meaning Engine/Host/DB/GUI/Workflow/テストを追加しない。本対照のGo/PG/E2E、旧X-TEA実動、Ownerの見積・承認意味受理は **NOT RUN／NOT ACCEPTED**。外部原著者の仕様と主張せず、過去ユーザー発言・旧Chat解釈・TEI提案の区分は §1 を適用する。
