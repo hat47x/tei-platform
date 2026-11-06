@@ -27,9 +27,15 @@ Invoke-WebRequest -Uri "http://127.0.0.1:43123/health" -UseBasicParsing
 - `/health`は`200`で、本文は`{"status":"ok"}`。
 - 起動したプロセスは確認後に停止した。
 
+## 画面資産
+
+- `GET /`は`200`で、タイトルは`TEI Studio — read-only PoC A`。
+- 配信HTMLに`view-pattern`・`view-package`・`command-periods`・`execute-command`の入力・ボタンが含まれることを確認した。
+- `/workbench/`は別の作業画面で、これらのX-TEAビュー・Command入力を持たない。
+
 ## 未確認
 
-- Workbenchの画面表示・操作。
+- ブラウザー上での画面操作・表示結果。
 - Wails RPC（`ListWorkspaces`、`ViewPattern`など）の実HTTP経路。
 - Desktop WebView。
 - 接続者認証、業務操作の認可、利用者間の分離。
