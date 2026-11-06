@@ -142,8 +142,8 @@ func TestSelectedSemanticViewDoesNotResolveInvalidDeclarations(t *testing.T) {
 }
 
 // Cross-domain fixture: the same *nominal* TypeRef contract is usable by
- // a file/ETL value edge and by a build artifact metadata edge. These are
- // synthetic ports, not actual file delivery or a TEI self-build run.
+// a file/ETL value edge and by a build artifact metadata edge. These are
+// synthetic ports, not actual file delivery or a TEI self-build run.
 func TestSelectedSemanticPreludeIsReusableAcrossPipelineRoles(t *testing.T) {
 	cases := []struct {
 		name, fromName, toName string
@@ -169,5 +169,20 @@ func TestSelectedSemanticPreludeIsReusableAcrossPipelineRoles(t *testing.T) {
 				t.Fatalf("%s: rejected/unresolved mapping emitted an execution order: %+v", tc.name, report)
 			}
 		})
+	}
+}
+
+func TestExplicitStdOnlySelectionDoesNotRequireBusinessSemanticNamespace(t *testing.T) {
+	registry, plan := fixture(t)
+	plan.Slots[0].Outputs[0].Type = Type{Name: "binary", Unit: "none", SemanticRef: "std.binary"}
+	plan.Slots[1].Inputs[0].Type = Type{Name: "binary", Unit: "none", SemanticRef: "std.binary"}
+	selection := []semantic.Namespace{}
+	report := InspectWithSelectedSemanticView(registry, plan, selection)
+	if report.Verdict != composition.ProposalCandidate || len(report.Order) != 2 {
+		t.Fatalf("explicit std-only selection should be structurally inspectable: %+v", report)
+	}
+	missing := InspectWithSelectedSemanticView(registry, plan, nil)
+	if missing.Verdict != composition.ProposalUnknown || !has(missing, "selected-semantic-view-missing") || len(missing.Order) != 0 {
+		t.Fatalf("absent selection must not silently become std-only: %+v", missing)
 	}
 }
