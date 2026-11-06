@@ -622,3 +622,46 @@ G1〜G5で各観測は取得時点が異なる。要求するのは**同一瞬�
 
 **実施順と責務**：①#2892が1 Reader/ToolのRead Scope・Checksum Basis・取得時点を固定、②#2611/#2622が実Target・Alias・Providerの同一性を確認、③#2600がGenerator/Artifactから実SQL投入への根拠を対応付け、④#1163/#1119がH0〜H3・`CheckApplication`・独立Schema Readの**同一Source/Attempt結合**を判定、⑤#2555/#1174が旧新Client/CDC/Fence/Effect/Receipt/Owner受理を追加。**この横断表の作成は実Reader、実DB、同一Attemptを実行した証拠ではない**。新Gate Engine、正本Registry、分散Transaction Managerは追加しない。
 
+<!-- tei-db-migration-apply-admission-20261107 -->
+## 20. Migration Apply Admission：同じSQL・同じTarget・同じ移行前提は別の主張（2026-11-07、設計差分／未受理）
+
+### 20.1 既存実装の境界（Source-static）
+* `internal/database/migration/model.go` の `Definition` は `Database`、`BasedOnActualFingerprint`、`Steps`（schema/data/verify）、`Realizations`を保持し、`plan.go` は計画時Actual fingerprintを定義へ写す。これらが記録されていても、適用時の資格検査が全件実行されたとは限らない。
+* `internal/database/migration/postgres_apply.go` の `ApplyPostgresWithFreshObservation` はSchema StepsからDiffを復元し、提供されたfresh PostgreSQL Observationで再Renderし、計画済み文列と`slices.Equal`比較した後にExecutor callbackを**一回**呼ぶ。しかしこの関数には`BasedOnActualFingerprint`との比較、実Connection/Instance・Tenant・Aliasの一致、Schema+Data+Verify全Stepの実行確認、Provider Tx/Lockによる観測から作用までの原子的保護はない。これは関数**単体**の責務境界であり、製品全体の経路が必ず無検査だという主張ではない。実Callerの検査所在を先に特定する。
+* `postgres.SchemaObservation.AssessDestructiveReadiness` はDropTableがなければ、`AssessConstraintDataReadiness` は既存表への制約追加がなければ、対象DB文字列を比較する経路まで到達しない。普通のAddColumn等に対し、`ApplyPostgresWithFreshObservation` の任意callbackだけで実Target一致まで保証することはできない。
+* `PostgresStatementExecutor` は`func(context.Context, []string) error`。**callback一回呼出し≠SQL文列が単一Tx・全成功・全失敗・再試行安全**。成功応答も別接続Actual Schema／Data・History・Consumer受領を含まない。
+
+### 20.2 提案する三つの検収面（新Core Gate・Migration Engineではない）
+
+| 面 | 必要な確認 | 資格の上限／既存Owner |
+| --- | --- | --- |
+| **P: Plan Provenance** | Source/World Revision・受理Meaning、Logical Database・Migration Definition/Parents、計画時Actual fingerprintと対象Scope、Generator/Provider/Realization版、実SQL Assetの選択 | 正しい計画候補であることまで。#1126/#2611/#2622/#2600、既存§19.10 H1/H2 |
+| **A: Apply Admission** | 実Connection/Instance・Alias・Tenant/Scopeの固定、必要な現Actual Schema・Data・依存条件の再観測、current Host/Provider権限、計画との整合、実行中のLock/Tx/Fence能力 | 作用前の許可候補まで。実行中の変化を防げない場合はその保証を`unsupported/unknown`。#2622/#1174/#2555、既存G1/G4/G5 |
+| **E: Effect & Verification** | 実際の文列・Statement単位結果・Tx境界・partial/unknown、History H0〜H2、別接続Actual Schema/Data再読取 H3、Client/CDC/外部Effect/Owner判断 | Schema SQL成功を全Migration完了に昇格しない。#2892/#2555/#1163/#2514、既存G1〜G5 |
+
+**重要な選択**：`BasedOnActualFingerprint`の変化を**検出すること**と、無関係なDDL変更を含めて全件を恒久的に拒否することは別。初期P0では未評価の差分はfail-closedとし、再Plan／明示的な限定再受理を認める場合だけ、変更された依存集合が移行の安全性・意味・結果に影響しないことを**独立Expected**で検証する。Fingerprint値の一致だけで旧Reader/Source/Grantの現在資格は復活しない。
+
+**Observation→Executorの保証**：観測callbackと実行callbackを別に渡す現APIのままでは、fresh観測の後に別Sessionが変更できる。PostgreSQL 16の`ALTER TABLE`は操作別にLock levelが異なり、`CREATE INDEX CONCURRENTLY`は通常のTx block内に置けない（公式資料： https://www.postgresql.org/docs/16/sql-altertable.html 、https://www.postgresql.org/docs/16/sql-createindex.html ）。したがって「全Migrationを一つのTxにすればよい」と一般化せず、**実行する各Statementのatomicity可否・Lock/Barrier・失敗後の実状態・Recovery Strategy**をProvider側で検証する。保証できないPhaseをatomicとして宣言しない。
+
+### 20.3 既存MA-01〜04と最小追加反例（独立Expected、未実行）
+
+| Case | 同じSourceで固定する圧力 | 独立Expected／実施場所 |
+| --- | --- | --- |
+| **MA-01 Base drift** | `BasedOnActualFingerprint=A`で`ADD COLUMN`計画後、別DDLでActual Bへ変化。ただし再RenderのSQL文列は同一 | **SQL文列一致だけで現在のApply資格を与えない**。A/B差分・依存を説明し、再Planまたは明示再受理まで実行停止。上位Caller/Provider admission |
+| **MA-02 Wrong target** | Definitionは`sales_core`だがObservation/Executor callbackが別Instanceを使用。DropTable/Constraint Additionのない通常のAddColumn | 実Instance・Alias・Tenant/Provider・権限を明示し、異Targetなら`executeCalls=0`。単なる同名Logical DB IDでは不十分。#2611/#2622 |
+| **MA-03 Phase incomplete** | DefinitionにSchema/Data/Verifyを宣言、Schema Statementsだけ成功 | `schema-SQL-submitted`と`Data/Verify not-run`を別記。migration-completedは不可。G1〜G3 |
+| **MA-04 TOCTOU** | Fresh Observation後、別SessionでSchema/データ変更を挿入してからExecutorへ進む | Lock/Tx/Version fenceの下で実対象を安定化できることを実証、または`unknown/unsupported`。独立再読取を付す。#1174/DB Provider |
+| **MA-05 Partial executor** | 2文のExecutorが1文目適用後に失敗、またはCommit ACK消失。Executor callback呼出しは1回 | `error`を「全DDL no-effect」と推定しない。Tx保証が観測できなければ`partial/unknown`、現Schema/History再取得後に明示Recovery。新key盲再送禁止。#1174/#2892 |
+| **MA-06 Authoring revision** | 旧`*.tei`計画を新標準`*.tei.md`に表現、SQL本文は既存`*.sql`のまま。表層・Reader・Parserが未受理 | ファイル名/SQL byte一致だけでMigration Definition/Meaning/Realization資格を再利用しない。旧経路の実PG試験を移行待ちにせず、新Reader/Parser・Source span・実消費Artifactで別検証。#2621/#3030/#3031/#2600 |
+
+**MA-01/02の最初のテストは二段構成**：①現`ApplyPostgresWithFreshObservation`へ誤Target/変更済みActualの合成Observationを渡した際の**現実装の出力を特徴付ける**（安全な成功を意味しない）。②既存CallerのPlan Base・実Target資格を通して、同じ入力を**実Executorへ送らず拒否**できることを、Sourceと独立のExpectedで判定。②の実経路が未特定なら、新APIを決めず`unresolved`のまま停止する。①だけのGo PASSを②の資格としない。
+
+### 20.4 実装・合流順（既存の修正Ownerを維持）
+
+1. **P0 Source/Caller inventory**：`ApplyPostgresWithFreshObservation`の実呼出元・`BasedOnActualFingerprint`消費・実Target/Session・Tx・DDL対象を調べ、既存安全保証がどこにあるかを記録。①のMA-01/02特性試験と②の不足を分離。#2887に第二Provider/Runnerは増設しない。
+2. **P1 正確な修正順**：#2902のHistory unknown修正、#2900の重複Release状態修正を、#2887の**旧挙動を固定するMG-29特性試験のExpected変更**と同じ統合Treeで調整。検証専用#3018はmergeしない。HIST-03 Reader完全性は別。
+3. **P2 絞った実PostgreSQL Gate**：資格を持つ既存Test DB/DSNで、MA-01/02の停止、MA-04の実並行障害、MA-05のTx/非Tx別失敗、別Connection Actual Schema・Data readを測る。実DB接続・変更対象の同一性・Lock・権限・History取得範囲を記録し、DBcheckのTEMP DDL成功や別PRのPG CAS成功から推論しない。
+4. **P3 Cutover/Consumer**：既存#2555の旧新Writer/CDC/書込み正本、#1174の現Grant/Commit/Receipt、#1163の一改訂Packetで必要なObligationを照合。G0〜G5を変更せず、Owner受理と実Target効果を別に評価する。
+5. **P4 Authoringの並走**：旧`*.tei`の取得・PG実証を妨げず、選択された新`*.tei.md` Sourceの実Reader/Meaning/Buildを#3030側で再資格化。移行が未実装の段階で新形式を旧ParserのPASSとみなさない。
+
+**状態**：本節は現main・既存Draft・PostgreSQL公式資料の静的照合に基づく設計提案。MA-01〜06の新Go/実PostgreSQL並行DDL/異種DB/Writer/Owner受理は**NOT RUN／NOT ACCEPTED**。Issue #2892/#2897/#2555/#1174/#2622 の担当者を置換せず、既存Plan/Release/Migration/HistoryのSourceを唯一の実装境界として再利用する。
