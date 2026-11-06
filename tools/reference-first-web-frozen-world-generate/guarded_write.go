@@ -46,15 +46,7 @@ func loadGrants(path, declarationPath string) ([]permission.Spec, error) {
 			return nil, fmt.Errorf("grants %s: %w", path, err)
 		}
 	}
-	grants := make([]permission.Spec, 0, len(document.Grants))
-	for _, entry := range document.Grants {
-		grants = append(grants, permission.Spec{
-			Kind:   permission.Kind(entry.Kind),
-			Access: permission.Access(entry.Access),
-			Scope:  entry.Scope,
-		})
-	}
-	return grants, nil
+	return document.Specs(), nil
 }
 
 // writeLineageWithGrants writes the observation using the supplied grants. The
