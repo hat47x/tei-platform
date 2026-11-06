@@ -193,3 +193,30 @@ Webアプリケーションでは、UI構成キットだけでなく、HTTP要�
 通常利用者には「対象Function」「何が変わるか」「保留の理由と必要な確認」を優先し、Bundle内部のmodule/ToolchainやDB Dialect詳細は必要な権限を持つ開発者向け表示に留める。比較の正本は既存#951/#1016/#1251/#2600/#1174の結果を参照し、古いPreviewや過去Evidenceを現在の実行許可に昇格させない。
 
 **検収**：#1016 PCF-06と#1251 PB/PBNを流用し、無関係Plugin更新は過剰staleにしない一方、選択済み実装・SQL Binding・Source/Rule・Current Grantが変化する場合は不足診断を返せること。実Studio/CUI実装・実Build・権限・Owner受理はNOT RUN。
+
+
+<!-- tei-composition-independent-gates-source-bootstrap-d1-scope-20261107 -->
+## 2026-11-07 横断受入：Plugin不要・静的Provider・*.tei.md Bootstrap・業務Effectの独立ゲート（設計／NOT RUN）
+
+本節は**案件から見た最短の実証順と、相互に前提としない条件**のみを扱う。方式選定は[Runtime/Target §14〜22](RUNTIME_TARGET_BINARY_COMPOSITION_DESIGN.md)、新Authoring移行は[Draft #3030](https://github.com/hat47x/tei-platform/pull/3030)、初回Language/Operator Bootstrapは[Draft #3028 §13](https://github.com/hat47x/tei-platform/pull/3028)、Scope相対のEvidence接合は[Draft #2903 §24](https://github.com/hat47x/tei-platform/pull/2903)を正本とし、第二Selection/Lock/Proof Store/Registry/Hostを作らない。
+
+### 四つの経路の前提と停止条件
+
+| 経路／次の最短検証 | 必ずそろえる証拠 | 別経路を前提にしない条件・資格上限 |
+| --- | --- | --- |
+| **A Plugin不要D0／Process D2**：既存見積もり23件の直接Go計算と子Process対照 | 独立Oracleのraw入力/Expected、exact HEAD/Toolchain、D0実GoとD2 Build/Invoke/SKIPを区別した結果 | 新*.tei.md Reader/動的Registry/実DB Host Grantを純計算の基線に要求しない。[Draft #3021](https://github.com/hat47x/tei-platform/pull/3021) HEAD dfc133e2の3 CI成功は限定証拠で、D1や正式Owner受理の実証ではない |
+| **B D1 静的Provider**：同一Go TargetのContract選択→実Link→Invoke | Aと同じOracle/Target、[#951](https://github.com/hat47x/tei-platform/issues/951)の明示Contract/Provider選択、実Build closure/linked member/選択実装と呼出実装の一致、未選択実装の非混入 | *.tei.md移行完了をHard依存にしない。現行Go Source/JSON Oracleで比較可能。ResolvedSet/BuildPlan、D0・D2成功はD1 PASSではない（#1251/#1167/#2600） |
+| **C 新*.tei.md由来Plugin/Role**：Raw MarkdownからCandidateを解決 | #3030 TM-02/03/12/14（実File発見/Read、原byte＋block span、必要Source充足、旧新重複拒否）、#3028 BS-02/03/06/15（既知Seedで読めるFormat/Language＋実Parser Pin、自己循環拒否、Operatorと有効化の分離） | C未完成でもA/Bの既存Source Reference試験を止めない。ただし新形式はRaw ReadだけでSelected/Build-qualified/Activeとは表示しない（#2621/#2823/#988/#2620） |
+| **D Effectを持つ案件・多Tenant**：Host/Provider実行→Consumer完了 | 対象Action/Resource/Tenant/時点に束縛したMeaning・Current Grant、Required/Supplied/Evaluated Guard、実Read範囲・Receipt・独立Consumer Body/Disclosure（#1174/#1163/#2516、#2903 §24） | A/Bの純計算ConformanceはDのGrant/Commit資格ではない。main統合#2926 EvaluateCompletionのCoverageCompleteはCaller供給値。実Providerの母集団/epoch/Scopeで裏付くまでは業務完了を表示しない |
+
+### Projectの最小負例と診断
+
+- **Source存在≠実Loader消費**：managed inventoryやvalidate成功だけで利用可能とせず、必要Plugin Descriptorの実Read/ParserとRequired Sourceの被覆を確認（#2823/#3030 TM-14）。
+- **初回Seed自己循環**：*.tei.mdやfrontmatterに未知Languageの名前があるだけでそのLanguageを初起動しない。Seedで確定不能ならRaw Draft保持・Interpretation/Activation保留（#3028 BS-15）。
+- **同名旧新Source／Provider競合**：旧.teiと新.tei.mdの同Subject、同Contractへの複数実装、同版異byteを後勝ち/最新候補で無音選択しない。否定依存と実探索範囲が不明なら存在しないと断定しない（#951/#1016/#3030 TM-03）。
+- **D0/D2→D1の資格誤転用**：同じ23件Expectedで合格してもD1実Linked Providerの呼出証拠がなければ未実施。D2 offline moduleで意図的にSKIPされたD0をrootの23件PASSへ加算しない（#3021/#2514）。
+- **Effect/Scopeの証拠不一致**：Tenant A/B、無権限と業務0行、Partialと完全Read、Preview時GrantとCommit時Grant、旧Receiptと現Attemptを同じ完了としない（#2903 JOIN-01〜06）。
+
+**優先順位**：まずAの固定HEAD・限定CIを保存し、**BのD1実静的Link＋Invokeを次の最小実装作業**として既存#951/#1251へ渡す。Cは別レーンでPlugin Descriptor1件のRaw Reader→Seed/Parser Pin→Parse＋Span検証。Dは既存Host/DBで同一Attemptの資格がそろったときだけ実E2Eを評価。無関係なGateを相互のHard dependencyへしない。Go単一Binary既定、外部Hostの現在認可、通常.mdの非自動実行、Owner意味受理の独立性は維持。
+
+**状態**：既存Issue/PR/Go Codeの観測を案件計画の依存順に整理したdocs-onlyの追補。新しいD1実Go Link/Invoke、*.tei.md Loader、Multi-Tenant/DB同一Attempt E2E、Owner正式受理の試験はNOT RUN。新Runner/Schema/ADR/Authorityを導入しない。
