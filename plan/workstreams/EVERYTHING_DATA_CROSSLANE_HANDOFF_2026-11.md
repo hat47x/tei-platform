@@ -192,6 +192,25 @@ H0/H1と異質領域の要件探索は並行可能。H2/H4の実Effect資格は�
 
 **状態**：上記の関数・既存Go testは静的Source/実テスト記述を直接確認。*今回*の4対照を用いる新Go/実Provider/実Tenant/CLI・実Reader・Owner受理は**NOT RUN**。既存コードのBUG確定、新API/共通Validity Tokenの採用、既存#267の意味変更は行わない。
 
+#### 証拠の入場資格：`*.tei.md`実消費とGrant発行主体の真正性（2026-11-06追加）
+
+**今回の新たな接合点**：これまでのM（業務意味受理）×G（現在Grant）対照には、Mの根拠Sourceが実Loader/Parserで消費されたかと、Gを発行した主体が本当に信頼できるかという**異なる入場条件**がある。同じTarget/Scope/版を指す説明上の`true`同士でも、入場条件が欠ければ実DispatchやOwner完了をQualifiedとしない。新しい第三・第四のBoolean／全域Proof Engineの導入ではなく、既存Source/Loader・Authority・Effect witnessの**何が未観測か**を示す。
+
+**直接確認した現在地**：
+- [merged #3032](https://github.com/hat47x/tei-platform/pull/3032)により`internal/access/grants.go`（Blob `24db243bace5fe38671588fe1c04f72bd15ee7a9`）に`issuedBy`と`AcceptIssuedBy`が入り、名前なし／Capability自身による自己発行を拒否する。既存[grants_test.go](https://github.com/hat47x/tei-platform/blob/main/internal/access/grants_test.go)は第三者名の付与が**この発行者検査を通るだけ**で実Grantを作らないと明示する。`issuedBy`は署名でも検証済みIssuer Identityでもない。付与ファイル`0600`は一般利用者からの書換えを制限するが、同じプロセス・書込み可能主体の偽装不能やHost採否は保証しない。`IssueFile`の記録も署名・実Hostの受理ではない。
+- [Draft #3030](https://github.com/hat47x/tei-platform/pull/3030)でAuthoring形式は**原則`*.tei.md`へ統一**する方針に進んだ。一方、main `internal/workspace/loader.go`（Blob `ddae9bf724b685b1109b015c169da72ea740ada5`）は現時点で旧`*.tei`等の選択に依存する。[Draft #3031](https://github.com/hat47x/tei-platform/pull/3031)は新形式の黙った未読込への診断を提案するが、実Sourceとして新形式をParsing/Meaning/Build消費した資格はまだ示さない。従来`*.tei`の歴史的Meaning受理を自動削除しない一方、新`*.tei.md`を置いただけで現在のMeaning/実入力の同一性も保証しない。
+
+| 一箇所だけ変える対照（既存#1180/#2514 Expectedへ付帯） | 許される局所結果と、上位Claimの停止線 |
+| --- | --- |
+| **Source移行対照**：同じ業務内容の旧`order_entry.tei`のみ／新`order_entry.tei.md`のみ／両方に異内容で同Subjectを置く | 新形式が実Loaded/Parsed/Consumedされていなければ現在Meaningの資格は**unresolved**。旧版を黙って採用して`validate ok`でも新形式を検証済みにしない。両者が衝突した場合は無根拠なlast-winsを不可とする（#2621/#2823/#3030） |
+| **Issuer記述対照**：同一Grant内容で`issuedBy`を空／Capability自身／第三者名へ一因子だけ変える | 現`EncodeDocument/AcceptIssuedBy`の空・自己発行拒否と、第三者**文字列のみの検査通過**を区別。第三者名があっても署名・発行権限・Host採用・実Current Grantは**未確定**。`ParseDocument`と`ParseGrants`の用途を混ぜない（#3032/#1174） |
+| **Authority結合対照**：`issuedBy`とPermission Scopeは同じで、承認されたIssuer／実Principal・Tenant・Operation・Resourceの束縛が有る／無い | 署名やHostの受理契約がない環境では、Issuer文字列が別人を名乗っても現関数のローカル検査を通り得る。そこで**Product Grant qualified**とは言えない。Caller要求を「承認済み」と自動投影せず、未確認要素とDisclosureを区別する（#1174/#1163） |
+| **効果境界対照**：同じM、同じ名前付きGrantで実ProviderへのDispatch前／Effect時Grant失効／Commit応答喪失 | Preflight/自己発行拒否の単体PASSを**Commit時のGrant Fence**やDB無作用へ代用しない。実Effect時に拒否できる保証が必要ならProvider/Hostの実境界を検査し、できなければunknown/unqualified。ACK喪失時は同OperationIDのReceipt Lookupを優先し、新Key盲再送をしない（#1174） |
+
+**優先する検収の最小差分**：①既存[Issue #2823](https://github.com/hat47x/tei-platform/issues/2823)と[Draft #3031](https://github.com/hat47x/tei-platform/pull/3031)にReader/Parser/Consumedの観測を委譲、②[#3032](https://github.com/hat47x/tei-platform/pull/3032)の既存Issuer局所試験をそのまま用い、Issuer文字列だけでは真正性を証明しないことをOwner検収票に残す、③一つの`order_entry` Functionで**実Consumed Source・Owner Meaning revision・Hostが受け入れた発行権限の根拠・現在Target/Grant・実Provider/Consumer**を[#1163](https://github.com/hat47x/tei-platform/issues/1163)の一Attemptに紐付ける。Source形式移行を扱うためだけに書込みGrantやProduction Commitをread-onlyへ一律要求しない。
+
+**採否・実測の上限**：#3032の**mergedであること**と、PR内の既存Windows Go試験報告／PostgreSQL CI経路の追加は確認したが、**この横断対照の実Go/PG試験ではない**。当該PR記録では新しい実PostgreSQL workflowの完了結果は未提示。#3030/#3031はDraft、`*.tei.md`の実Parser対応・移行・同一Meaning再受理、Issuerの署名/独立Host承認、現Grantと実DB Effect/Owner正式受理は**NOT RUN／NOT ACCEPTED**。既存#2621/#2823/#1174のOwnerと#1119 Gateを維持し、新権限Issuer Registry/共通Host/新Writerを設けない。
+
 #### 三領域で破綻しやすい残余
 
 | 比較 | 単一因子だけ変える反例 | 独立Expectedと既存Owner |
