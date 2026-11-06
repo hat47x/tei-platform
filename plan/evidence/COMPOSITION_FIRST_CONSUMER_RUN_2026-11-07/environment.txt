@@ -1,0 +1,8 @@
+HEAD=18cf8ae0f5cef085a441444364353bcadd72e9aa
+go version go1.27.0 windows/amd64
+OS=Windows 10.0.26100 (windows/amd64)
+shell=Windows PowerShell (the pwsh tool)
+clirunner=cmd /c redirection so the JSON is raw UTF-8 with LF and no BOM
+pre_status=clean (git status --porcelain=v1 --untracked-files=all returned 0 lines before any output file was written)
+workspace=reference/standard-crud/workspace
+application=ledger

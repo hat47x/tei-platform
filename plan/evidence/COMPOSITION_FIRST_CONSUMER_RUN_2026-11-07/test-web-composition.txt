@@ -1,0 +1,4 @@
+=== RUN   TestCanonicalQuoteActionUsesHostOwnedGenerationServiceRoute
+--- PASS: TestCanonicalQuoteActionUsesHostOwnedGenerationServiceRoute (0.97s)
+PASS
+ok  	tei/reference/web-composition/go-host	5.870s
