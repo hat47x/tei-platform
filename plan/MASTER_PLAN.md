@@ -492,11 +492,33 @@ external LLM
 
 このため組織E2aの不足は2段で表示する：（1）**E1b/Candidate**：CaseRecord Mapping→実Loader/OperationSurfaceの候補と読み取り入力Identityを限定検証（#3024）；（2）**E2a/Actual Read**：明示Function Data Context→選択DB Alias/Instance→Provider/Query/Args→実Case C1/D1のRow+Field/Scope/Cohort→独立Expected/Consumer（#2586/#2506/#2622）。途中の`Binding=""`・`Effects=[]`・`read-only`は実Read/Host Grantを示さない。Owner/HostのE4 WriteやRowVersion Bindingはさらに別である。
 
-**横断の選択基準**：RMT受注例は既に`recent_orders.tei`にSQL Sourceがあるがデータソース未束縛、組織CaseはE1b Mapping/Read候補を試験中。両者は最初の欠落Edgeが違う。#2586の同一Attempt票へ、どの段階でSource/Mapping/Providerの実Consumedが途切れたかを**最初の1辺だけ**報告する。いずれも成功したときにだけ後段二SQL選択/継続を製品試験へ進める。追加のOwner専用Plugin、第二Reader、独自Function/Host、全Relation一律IDは導入しない。
+**横断の選択基準**：RMT受注例は既に`recent_orders.tei`にSQL Sourceがあるがデータソース未束縛。組織Caseは#3024の**E1b Mapping/Read候補＋E1c Query/SQL Source受容まで局所実証済み**で、なおFunction→Query Binding/実Provider Readは未接続。両者は最初の欠落Edgeが違う。#2586の同一Attempt票へ、どの段階でSource/Mapping/Providerの実Consumedが途切れたかを**最初の1辺だけ**報告する。いずれも実Read成功後にだけ二SQL選択/継続を製品試験へ進める。追加のOwner専用Plugin、第二Reader、独自Function/Host、全Relation一律IDは導入しない。
 
 **R1引継ぎへ加える最小の反例**：#3024が一時Workspaceへ追加した`persist org_store.case_record`は、`case_id`を単一Primary Keyとする**単一Mappingの局所特性化**である。導出されたRead Input `organization.case_record.case_id` は、そのMappingでの検索候補を示すにとどまり、同じ文字列`C1`が別Tenant/DB Instanceに存在する場合のグローバル一意性・可視性・業務所有権を証明しない。最初のC1→D1実Readに対して、**選択Alias/Instance/Provider＋Tenant/Scope＋Case ID＋Relation Role＋実Row Identity**の対応を同一Attemptで保存し、別Tenant C1→D2を混入させない。必要なTenant Scope/物理Keyは業務モデルとProviderごとに決め、全DomainへTenant列や独立Edge IDを一律強制しない。#2389 §71/#2586/#2611/#1656の既存負例・Ownerへ引き渡し、第二Fixture正本を作らない。
 
 **証拠の版**：本PR #3023 旧HEAD `43775e2daf1341243aad639ab504cef3266698e8` の[Repository Health #42203726377](https://github.com/hat47x/tei-platform/actions/runs/42203726377)は **completed/success**。#3024のPASSは別HEAD（`cc10afc61f`）・別Scopeの局所Go検証であり、同一Product Readの合格へ加算しない。本追補は計画Markdownのみ。**追補後の新HEADのCIは別途確認**。実DB/Provider/Consumer E2E、実Host Grant、Owner意味受理は今回NOT RUN。
+
+<!-- tei-data-form-e1c-and-tei-md-migration-20261106 -->
+### 2026-11-06 E1c実Query読込と `*.tei.md` 統一方針の引継ぎ（決定と実装資格を分離）
+
+**新しい局所実証**：[積上げDraft #3024](https://github.com/hat47x/tei-platform/pull/3024) のexact HEAD `705933667d5b081036314a9161280323e08a64bd`、[Actions #42208159977](https://github.com/hat47x/tei-platform/actions/runs/42208159977)は**completed/success**。実Native `workspace.Load`を用いて、コピー先へ追加した`persist org_store.case_record`のE1bに加え、`query org_view.case_read`（input `case_id`、datasource `org_read`、Case ID/handlingUnit IDのResult Mapping）・別`case_read.sql`のSourceContributionをE1cとして読み込んだ。SQL WHERE句の本文だけを改訂した場合、同Query ID/Result MappingのままWorld FingerprintとModel Revisionが変化する局所回帰を含む。旧試験では入力名`caseId`が文法に不適合だったため`case_id`へ修正して成功。**今回証明されたのは宣言とSource版変化のLoader経路であり、Function Context→Query Binding、SQL実Provider選択・実行、Rows/Fields/Scope/Cohort/Consumerは一度も製品として検証されていない**。#2586のE2aは次の一辺を保持する。
+
+**Owner決定（Authoringの将来形式）**：`*.tei`の新規採用を原則停止し、TEI文書を**`*.tei.md`へ統一する方向**とする。`*.tei.md`は単なる汎用`.md`との区別をファイル名で維持し、Markdown編集・表・図・説明とTEIの構造化データを共存させる入口とする。これはユーザーの形式選択であって、現行Language Plugin/Parser、`formatVersion`、既存Workspaceの実装・正式Owner Meaningや実行Grantが移行済みという意味ではない。従来[#2621](https://github.com/hat47x/tei-platform/issues/2621)の「.teiを厳密Sourceとして残す／.tei.mdを標準化しない」**未採用比較案**より、この方針を優先し、既存の説明を新しい決定と混同しない。OKF frontmatter/tagsは文書の意図を示す追加情報であり、`tags:[tei]`やファイル名から意味受理・Host権限を自動発生させない。
+
+**現行mainの具体的移行Gap**：`internal/workspace/loader.go`は`semantic`を`strings.HasSuffix(name, ".tei")`、`applications/.../queries`・`persistence`などを`*.tei`、`application.tei`/`database.tei`/`plugin.tei`等を**固定名**で列挙し、発見した原文を`syntax.NewParser`へ直接渡す。`scanManagedFiles`の`filepath.Ext("model.tei.md")`は`.md`となる。よって**現状の`*.tei.md`はNative意味Sourceとして発見・解釈できると主張しない**。Migrationで`*.tei`の一斉rename、旧ParserへのMarkdown本文直接投入、`.tei.md`を汎用mdとして無言skip、または旧新両方を同じSemantic IDで二重採用することを禁止する。
+
+**段階的実装案（#2621 Authoring/#988 Grammar/#2506 Loaded Source担当で採否判断）**：
+
+| 段階 | 最小成立条件・反例 | やらないこと |
+| --- | --- | --- |
+| **F0: 形式・意味境界の固定** | `*.tei.md`のMarkdown原文、TEI構造部分の明示的な抽出/解釈、型付き表・図・Query Source、OKF metadataの任意性を規定。曖昧なMarkdown節と未受理Ruleは保留。埋込DSLか構造表現かの具体的Grammarは#988で選定 | Markdownの任意文章や`tags:[tei]`を自動実行可能コードにしない |
+| **F1: Loader二経路の限定比較** | 同一の手書き独立Expectedに対し旧`.tei`と新`.tei.md`のSemantic ID/Relation/Query/Persistence/Result Mappingを検証。両ファイル同時存在・同名異内容・未解析Sectionは曖昧性診断。明示Selectionのある旧Sourceは移行中のみ互換読取 | `.md`という最終拡張子だけでDSLと判定、二重正本、旧Readerの即時削除 |
+| **F2: Source・SQLの版・位置の保全** | 原Markdown byte/改行/BOM、抽出範囲→元byte位置、SQL相対参照とQuery/SQL個別SourceContribution、World/Model RevisionのSQL-only変更を旧E1cの結果と比較。解析不能・失効/ABA時は旧Candidateを再使用しない | 正規化で原文や未解釈領域を消す、元への根拠なし逆Patch |
+| **F3: Cutoverの判定** | `tei validate`/Source Index/OperationSurfaceと既存Query・SQLの正負例を同一固定HEADで検査し、Consumer/SHO/Studioの読取、生成Artifactの参照位置、保存再開・独立Readerを必要な範囲で検証。新規Authoringは`.tei.md`、旧`.tei`は限定互換窓を経て段階廃止 | 局所Parser PASSを製品Provider Read・Owner Meaning・実Write PASSへ昇格 |
+
+**順序の衝突回避**：F0/F1はRead-first P0-R1を全面停止する条件にしない。実製品Readerが未接続の間は既存`.tei`でSource/Query/実Readの不足一辺を確認してよく、その証拠にSource形式の旧版と適用範囲を明記する。新形式移行後にF2/F3の差分を資格化し直す。正本は#2621/#988、Source/構造保存は#2497、実Readは#2586、独立Expectedは#2514に維持。新全域Parser/Host/Registry/第二Query Engineを増やさない。
+
+**本節の証拠上限**：GitHubの`internal/workspace/loader.go`、E1c Go/CI、既存#2621記録とユーザー形式判断の照合。新`*.tei.md` Parser/Loader、移行後E1c、実Provider/DB、SHO/Consumer、Owner意味受理は**NOT RUN／未実装**。
 
 ## 先に固定しないもの
 
