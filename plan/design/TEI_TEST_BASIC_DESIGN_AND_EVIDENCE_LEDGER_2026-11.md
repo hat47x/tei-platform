@@ -321,6 +321,12 @@ main統合の[`tei dbcheck`](https://github.com/hat47x/tei-platform/pull/2894)�
 
 **独立期待値の境界**：CEC-01の`unverified`は[#1125 CDE-02](https://github.com/hat47x/tei-platform/issues/1125)の独立期待値に基づく**main統合済みの局所Go契約**で、旧mainの`fails`を修正した。#3051の修正・既存正例は当該Source版でGo/CI PASSだが、業務Meaning Ownerの正式受理や現在の実Provider集合の正しさを自動認定しない。#2514は判別力・独立性、#1180は必要Scenario、#2586/#1163はReader実証・同一Attemptを所有する。CEC-02もboolの値を証明そのものと見なさず、取得母集団を外から確定する。**同一Caller引数で、実世界が全件観測済みか欠落か異なる二世界**の識別には、この関数外の証拠が不可欠である。
 
+**横断実証の追補（2026-11-07）**
+
+- [#2514 CDE-Q01〜04](https://github.com/hat47x/tei-platform/issues/2514#issuecomment-6696895001) の独立期待値を参照し、Claim `Q=A/O1/R1`へ別Tenant B/O1の0件・違反、同Tenant旧Snapshot R0の0件を流用しても **Qのholds/failsには資格なし**とする。対象内の確実な違反はpartialでも限定的な否定根拠になり得る。新ケース実Go/実Providerは **NOT RUN**、Expectedの第二正本は作らない。
+- [TAI固定旧TEI CLI負例 #42297500012](https://github.com/hat47x/tai-pleroma/actions/runs/42297500012)はcompleted/success。未対応の同一路径 `*.tei.md` bytes変更でSource Index FPは変化し、World FPと旧Catalogは不変。renameのみならSubject 1→0でも`validate.ok=true`。**Index認識とParser/Meaning実消費は別証拠**。`required/managed/indexed/parsed/selected/execution-consumed`を同一Source/Occurrence/Roleで照合し、移行は[#3030](https://github.com/hat47x/tei-platform/pull/3030)の検収へ引渡す。旧固定CLI版の負例であり新Parser合格ではない。
+- [#2514のOKF Attested Computation境界](https://github.com/hat47x/tei-platform/issues/2514)：決定的なAttesterでも独立Expected・実Reader Scope・Source実消費・Owner Meaning・Host Grantを自動証明しない。`verified`は実Consumer再読取の代わりにならず、今回のOKF実E2Eは **NOT RUN**。
+
 **局所受入の残余**：#3051は「未取得の空を`fails`にしない」修正であり、Callerが誤って`CoverageComplete`を立てる反例（§8.9 CC-02）と、`EmptyJustified=true`に対応する実Readerの独立空証明（CEC-02）は依然未資格。今後は**対象main HEADごとの必須Go Case非SKIP・Healthと外部Reader Witnessを別判定**する。過去の固定HEAD成功は履歴に残すが、後続mainとの結合PASSへ加算しない。
 
 **修正の可能性と反証**：完成条件の型や`EmptyPolicy`を一律に変えず、①Policyの業務上の受理出典、②Owner TargetSet ID/版／Parent/Tenant／Relation Grain、③Reader Scope/asOf／Snapshot／ページ終端／RLS/Disclosure、④実Caller入力、⑤現在のHost Grant／Reader権限、を固定して関数内部の判定と独立に比較する。特に`empty`、`missing`、`partial`、`permission-denied`、`not-disclosed`のいずれも`Targets=[]`単体へ畳まない。実データの`NULL`値を未知・文字列の代用にしない。実TargetSetが決定不能なら`unqualified`を残し、見かけの`holds/fails`で正当化しない。
