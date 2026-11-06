@@ -68,6 +68,11 @@ test("command run includes the plan and the reference execution", () => {
   assert.equal(rows[2][1], "false");
   assert.equal(rows[3][0], "durability");
   assert.equal(rows[3][1], "none");
+  assert.equal(rows[4][0], "outcome");
+  assert.equal(rows[6][0], "records");
+  assert.equal(rows[6][1], "0");
+  assert.equal(rows[7][0], "differences");
+  assert.equal(rows[7][1], "0");
 });
 
 test("package view is summarized into members and requirements", () => {
@@ -84,4 +89,5 @@ test("package view is summarized into members and requirements", () => {
   assert.equal(sections[1].rows[1][1], "order_entry.order_record");
   assert.equal(sections[2].rows[0][1], "sales.order");
 });
+
 

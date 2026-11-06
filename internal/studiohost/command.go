@@ -33,6 +33,9 @@ type CommandRunValue struct {
 	// Durability names the storage boundary: "none" for the reference executor.
 	Durability string                    `json:"durability"`
 	Records    []command.OperationRecord `json:"records,omitempty"`
+	// Differences keeps the applied operations the declaration does not
+	// describe, so the view can show the gap beside the effect.
+	Differences []command.Difference `json:"differences,omitempty"`
 }
 
 // CommandRunResponse is the result of a reference execution.
@@ -99,6 +102,15 @@ func (h *ReadOnly) ExecuteCommandWithLifecycle(workspaceID, applicationID, patte
 		&command.DispatchOptions{CommandID: commandID, Owner: owner, Generation: generation})
 }
 
+// recordDifferences returns the differences of the last operation record, so the
+// view can show them without exposing the whole log.
+func recordDifferences(records []command.OperationRecord) []command.Difference {
+	if len(records) == 0 {
+		return nil
+	}
+	return records[len(records)-1].Differences
+}
+
 func (h *ReadOnly) executeCommand(workspaceID, applicationID, patternID, capabilityID string, inputs, periods map[string]string, allowed []string, attempt *command.DispatchOptions) CommandRunResponse {
 	loaded, failure := h.loadWorkspace(workspaceID)
 	if failure != nil {
@@ -157,13 +169,14 @@ func (h *ReadOnly) executeCommand(workspaceID, applicationID, patternID, capabil
 		return CommandRunResponse{Failure: &Failure{Code: "COMMAND_FAILED", Stage: "command", Message: err.Error()}}
 	}
 	return CommandRunResponse{OK: true, Value: &CommandRunValue{
-		Plan:       plan,
-		Mode:       "reference",
-		Outcome:    result.Outcome,
-		Effect:     result.Effect,
-		Committed:  true,
-		Persisted:  false,
-		Durability: "none",
-		Records:    recorder.Records,
+		Plan:        plan,
+		Mode:        "reference",
+		Outcome:     result.Outcome,
+		Effect:      result.Effect,
+		Committed:   true,
+		Persisted:   false,
+		Durability:  "none",
+		Records:     recorder.Records,
+		Differences: recordDifferences(recorder.Records),
 	}}
 }
