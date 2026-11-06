@@ -398,7 +398,7 @@ authorization tokenやPrincipalをsemantic request shapeへ埋め込むと、cur
 
 | 対象 | 定義・経路 | 成立する範囲／成立しない範囲 |
 | --- | --- | --- |
-| Database Contract Query | `reference/workspace/databases/master-data/contracts/customer.tei`: `master_data.customer v2.4/find_by_id`、input `customer.customer_id`、result `customer.customer zero-or-one` | #179の正常0件・正常1件・実行失敗の区別を比較基準にする。実Oracle readの証拠ではない（#214）。 |
+| Database Contract Query | `reference/workspace/databases/master-data/contracts/customer.tei`: `master_data.customer v2.4/find_by_id`、input `customer.customer_id`、result `customer.customer zero-or-one` | #179の正常0件・正常1件・実行失敗の区別を比較基準にする。実検証基準 readの証拠ではない（#214）。 |
 | Customer Service Carrier試験 | `internal/driver/reference_two_application_service_carrier_test.go:82-119` の `sharedCustomerServiceExecutor` → `InvokeSelectedServiceCarrier` | `test-only.customer-query-service` の合成Route/Acceptance/Verifier/Processを使用。正式な上記Database Contractと同一Contract identityまたは意味Acceptedではない。 |
 | Generic Contract Query Invocation Reference | `tools/reference-plugin-capability-contract/contract_query_invocation.go` と `shapes/contract-query-result-v0.json` | `driver.ContractQueryExecutor` の結果をJSONに符号化し構造的Shapeを照合するReference。Customer試験Adapterとは別経路であり、相互のPASSを一件のE2E証拠に合算しない。 |
 
@@ -449,11 +449,11 @@ Aは**異なる入力状態を同一の正常1行へ潰す**損失、Bは**同�
 - **既存の確定基準**：#179の`zero-or-one`、0件とExecution Errorの非同一性。これを新しいService契約の未受理なJSON表現で上書きしない。
 - **Ownerへ残す問い**：`customer.customer_id`と`int64`の値域・ID0の許容、顧客結果の必須属性/null、Serviceでの0件表現、Instance/Scope/Consistency/Completenessに必要な保証、Query→Serviceの意味的Conformanceと公開/受理。Publisher/Provider/現在Authorityは各Ownerが別確認する。
 - **L1/L2**：旧Authorityが正本。限定的な合成Service疎通やGeneric Shape成功は正式意味適合の証拠ではない。二つのReferenceに別々の成功があっても同一Attempt/Contract/Provider/ResultのE2Eと合算しない。
-- **G1/G2**：#951のContract・Provider Conformance・Publisher/Issuer Trust・Shape Authority・Host current Scope/Permission/Resource/Artifact/Generation・Result/Failure意味が揃うまでは移さない。旧Kindの0（宣言/Validation/Lock）・A（Executor選択）・B（実行Carrier/Runtime）を独立に撤去判定。#214 actual Oracleの0/1/error、実効read-only、外部Source/DB事実は別証拠。
+- **G1/G2**：#951のContract・Provider Conformance・Publisher/Issuer Trust・Shape Authority・Host current Scope/Permission/Resource/Artifact/Generation・Result/Failure意味が揃うまでは移さない。旧Kindの0（宣言/Validation/Lock）・A（Executor選択）・B（実行Carrier/Runtime）を独立に撤去判定。#214 actual 検証基準の0/1/error、実効read-only、外部Source/DB事実は別証拠。
 - **Target**：TEI独自共通Hostを新設しない。TEIは意味/契約/生成/適合と来歴を担当し、外部Java/.NET/Wasm/Nativeの各Hostが実効権限・寿命・副作用境界を担う。#2390の外部Consumerと#2513のJava型付きLibrary実Loadは、#2077の生成器fixture選抜とは別の合格条件。
 - **SHO/説明**：#1803とSHO系の設計成果物では「意味仕様」「対象版/Source/結果Claim」「技術的適合」「Owner受理」「実DB/外部Hostの観測」「未確認」を明示的に区別する。図・JSON・digest一致を業務意味/実行資格へ昇格させない。
 
-責務参照：#951（Service Contract/Provider/Authority）、#179（Database Query意味）、#2056（入力missing/NULL）、#1121（Lowering/Target）、#2077（別言語生成比較）、#2390/#2513（外部Consumer）、#214（Oracle actual read）、#1803（設計成果物）、#1127/#2497/#2500（取得範囲/表示・編集）、#1174（書込み確定）。
+責務参照：#951（Service Contract/Provider/Authority）、#179（Database Query意味）、#2056（入力missing/NULL）、#1121（Lowering/Target）、#2077（別言語生成比較）、#2390/#2513（外部Consumer）、#214（検証基準 actual read）、#1803（設計成果物）、#1127/#2497/#2500（取得範囲/表示・編集）、#1174（書込み確定）。
 
 **未実施・未採用**：今回の追補はmainの静的照合と既存Issue/PRの議論に基づく設計更新。新たなGo/Java/.NET/DB/Host試験、正式Service公表、実Provider受理、Owner業務受理、G1移行、旧Kind削除、製品schema/API変更は行っていない。
 
@@ -573,7 +573,7 @@ Customer Queryへ転用する際には次を混同しない。
 | CQ-T5 **Selective retention** | 無関係なCustomer C99のみ追加。QueryはC42、十分な依存範囲が判明 | 局所的に利用できる候補と過剰失効を比較。未探索依存を無影響確定にはしない／#2582 | 局所証拠の資格、製品NOT RUN |
 | CQ-T6 **Safe disclosure** | 低権限ConsumerにC42の実在や変更を示してはならない | 内部の未確定・不許可・理由を区別しても外部の件数/診断/Latency等を無条件に変えない／#2516・#1124 | 実Policy/二世界テストNOT RUN |
 
-**再評価の順序と既存資産**：最初のCQ-R2/R4で**一回のRequest/Result変換**の意味喪失を固定。その後、CQ-T1/T3だけを一つのFunction Context/Consumerに適用し、負例の再現を独立Oracle/既存#1131/#1180 Scenarioへ接続。T2/T4/T5/T6は局所キャッシュ・Provider観測・Disclosureを検証する別Ownerの圧力条件。#2582で報告済みの独立Python3 DC-01〜12 **12/12 PASS**は著者の合成Worldであり、本Customer Query/実Source通知/Provider/Hostの実観測には転用しない。
+**再評価の順序と既存資産**：最初のCQ-R2/R4で**一回のRequest/Result変換**の意味喪失を固定。その後、CQ-T1/T3だけを一つのFunction Context/Consumerに適用し、負例の再現を独立検証基準/既存#1131/#1180 Scenarioへ接続。T2/T4/T5/T6は局所キャッシュ・Provider観測・Disclosureを検証する別Ownerの圧力条件。#2582で報告済みの独立Python3 DC-01〜12 **12/12 PASS**は著者の合成Worldであり、本Customer Query/実Source通知/Provider/Hostの実観測には転用しない。
 
 **表現上の制約：** このT1〜T6や比較表は新Core型・汎用Token/Negative Cache・Subscription/Watch Broker、Release-wide`stale` flag、Provider共通Snapshot API、第二Authority/Resolver/Gateの追加案ではない。履歴・現在・表示・Actionは用途別のClaimとして扱い、既存#951/#1124/#1641/#2582/#2516/#1174の責務を保持する。正式Ownerの意味受理、実Customer Query/実Provider実行、Host現在権限、実UI/SHO Reader、長期Cache・通知欠落検証は**未実施・未受理**。
 
