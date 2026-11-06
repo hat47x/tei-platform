@@ -248,3 +248,13 @@ main統合の[`tei dbcheck`](https://github.com/hat47x/tei-platform/pull/2894)�
 **証拠台帳の最低列**：`baselineHead / mutantHead / exact source diff / selected Canonical Rule+Revision / fixed Scenario+Fixture SHA / independent Expected provenance / test name+actual execution / observed outcome+diagnostic / mutant classification / surviving or missing obligations / expiry`。AgentによるExpected書換え、別HEAD混在、失敗したCIを正常なHealth PASSと言い換えることを禁止。
 
 **現時点の資格**：本追補時点では#3017の[Repository Health #42181290981](https://github.com/hat47x/tei-platform/actions/runs/42181290981)が**in_progress**であり、意図的な不合格が当該AI Caseに到達したかは**未確認**。既存#2901のGreenを#3017へ転用せず、M1/M2/M3/M4を実ログで区分するまで`Product Rule mutant kill = NOT VERIFIED`。Mutationはテスト専用ブランチの実コード変更であり、原Canonical SourceのOwner受理や本番Runtime変更ではない。
+
+#### M1 実結果：AI追加ScenarioがProduct Evaluator Mutantを検出（2026-11-06）
+
+- **baseline**：[Draft #2901](https://github.com/hat47x/tei-platform/pull/2901) HEAD `a6eb80cffe16a57f4cb2461ff2946065955a4e50`、[Health #42111973682](https://github.com/hat47x/tei-platform/actions/runs/42111973682) **completed/success**。
+- **mutant**：[絶対merge禁止Draft #3017](https://github.com/hat47x/tei-platform/pull/3017) HEAD `0f795a012dc16200ee85e5f6b3f0b921add7bdc4`、[Health #42181290981](https://github.com/hat47x/tei-platform/actions/runs/42181290981) **completed/failure**。`validationeval/evaluator.go`の重複キーの場合`ResultNotSatisfied`を`ResultSatisfied`へ誤変更した**一行のみ**が差分。Scenario JSON、正常/重複Fixture、AIケースGo、有限独立OracleテストのBlob SHAがbaselineと等しいことを確認。
+- **実失敗の帰属**：job `127771281587`の実ログ577〜579行で`TestAIAddedScenarioCandidateFiles/ai-candidate-line-number-uniqueness`がFAILし、Step `ai-line-number-duplicate`の`Canonical Validation sales.order.lines.line_number_unique result=satisfied, expected=not-satisfied`を出力。ほかのEvaluator回帰もFailしたが、**AI追加Scenario自身が対象Mutantに到達し誤りを検出した**ことを区別して確認した。
+- **失敗の種類**：同一jobは`gofmt`・`go vet` PASS、`go test ./...` FAIL。M3（インフラ・構文・書式だけの偽Red）ではなく、**M1 product evaluator mutant killed by added AI Scenario** と限定分類。通常の総合Healthを成功と表現しない。
+- **資格の上限**：公開合成`relation-unique`で`[1,1]`を正しく`not-satisfied`と期待した**1 mutant/1 target rule/2 fixed cases**の限定判別力。正式業務Owner Meaning、Source閉包/Rule改版、他Rule・欠損/NULL・複数粒度、実Provider/Host/現在Grant、採用Suite全Obligationは未証明。#3017は意図的な不良コードを含むので本番・mainへ絶対統合しない。
+
+**次の出口**：#2514で独立業務Ruleの出典・版と追加Mutation対象（NULL、未取得、Relation scopeの誤り）を固定し、実CaseのRequired集合・Consumer実Receiptを#1180/#1163に渡す。今回の有限M1を全G2/正式Owner判断に昇格しない。新Runner/Oracle DB・Acceptance Authorityは導入しない。
