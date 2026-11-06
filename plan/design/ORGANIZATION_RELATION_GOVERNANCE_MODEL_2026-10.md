@@ -3240,7 +3240,7 @@ Org D1→D2の責任継承、Tenant A→Bの切替、Provider DB/Region移設は
 | CM-09 | ContainsはData read候補となり得てもProcess実行を許可しない。ServiceNowの正式Policy/実テナントではない |
 | CM-11 | What-ifが元Sourceを変更せず、Layers超過WarningでもPreview可。承認/実Effectはnot-observed |
 
-**実行資格の区別**：同じ9論点の**ローカルNode v22.16.0合成試行は9/9 PASS**。ただしPR #3019へ保存した整理後のファイルはローカル実行ファイルと**byte同一と検証できていない**ため、GitHub PR固定HEADの合格は未認定。今後、exact-headのNode test＋既存Reference回帰を必要とする。Nodeローカル成功はSynthetic Meaning Probeの資格までであり、Workday/SAP/Oracle/Dynamics/ServiceNow/Orgvueの実ソフト、TEI Parser/Function/Host/E2/E4、安全なTenant Isolationを検証したわけではない。
+**固定HEADでの実行証拠（2026-11-06追加）**：新Draft PR #3019のexact HEAD `5666491b74c36bf77f0683e603c35c5014e0476e`で、[組織Synthetic Reference Node CI #42185647106](https://github.com/hat47x/tei-platform/actions/runs/42185647106) の `synthetic-node` job #127785209239が**SUCCESS**。実ログはHEAD/TARGET_SHA一致を検査し、`verify-handoff.mjs`から新9件をimportして実行。既存Baseline205件+追加9件の**計214/214 PASS、0 FAIL**（`node --test`によるReference範囲）。作業用ローカルNode v22.16.0でも同9論点9/9 PASSだったが、こちらより**GitHubの固定HEADを正本の試験証拠**とする。なお既存Workflowの217等の他集合や実Go/実Provider試験と混同しない。**このCIはSynthetic Meaning Probeであり、実TEI Parser/Function/Host/E2/E4、実Workday/SAP/Oracle/Dynamics/ServiceNow/Orgvue、現行Tenant Isolation/Owner正式受理を検証しない**。PRはDraft・main未マージである。
 
 ### 75.4 実装優先・Owner・撤回線
 
