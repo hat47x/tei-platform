@@ -27,6 +27,8 @@ Node.js 22以上の組込みtest runnerだけを用います。
 
 **実行証拠（限定）**：GitHub Actions [synthetic topology P1 #42155243921](https://github.com/hat47x/tei-platform/actions/runs/42155243921) は、exact head `577bbe60d961c58e142502ab5835c9a7610214df`、Node 24.21.0で **18/18 PASS**。試験した `coverage.mjs` のGit blob `5cc3ca120e2995650bcaba1121a2416b3be8010a`、`coverage.test.mjs` のblob `6ece714d49a7b6f8dfa4ff7d376dfe4eb61e7f4d` と試験後clean treeをActions記録で確認しました。通常のRepository Health / 脆弱性確認と、**このReferenceのfocused試験が実際に走ったこと**は別証拠として記録します。
 
+**追加の実証（Relation scopeとtype）**： [dedicated CI #42156720965](https://github.com/hat47x/tei-platform/actions/runs/42156720965) は、exact head `760597b2aaddde1bf3990ee8f57a35deb9bdb9ea`、Node 24.21.0で **26/26 PASS**。対象コードGit blob `c20ceb222a690d486ce5b8f95782dba6c84d9a13`、試験blob `9ec51ea2518b05499405bc86e21398b91856084a`。旧18/18は過去版。今回も合成関係の帰属・表示整合を確認しただけで、実Readerによる完全性を証明しません。
+
 **Claim上限**：`present-in-snapshot`も`absent-in-declared-snapshot`も現在のTEI Source、Provider、実ビルド、実転送、実Authorityを意味しません。ReferenceにはSource/Plugin実ReaderやPolicy評価器は含まれません。現物入力と現在の公開資格を独立確認せずにConsumerへ流用しないでください。非公開・保留・不明の違いが低権限UIに現れてよいかは既存#2516へ委ねます。
 
 **未実証**：実Go ModelRef/Source Index・TEI CLI出力との結線、Providerによる実閉包証明、実Graph Renderer/Workbench、複数Window/旧DOM、実SHO/AI、外部Effect、認知負荷削減。#1124 M0/M1を代替するテストではなく、#2352 P1の後続評価用合成試験です。実験を製品化する前に、既存型からの変換のlosslessnessと現在のReader/Policy資格を独立検証します。
