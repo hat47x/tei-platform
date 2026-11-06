@@ -113,6 +113,7 @@
 | [`PERIOD_STATE_SEMANTICS_DESIGN_2026-11.md`](PERIOD_STATE_SEMANTICS_DESIGN_2026-11.md) | 業務日付・会計期間の状態・締めの一貫点・確定した行の不変性・赤黒の訂正・遅延到着の方針（[#2144](https://github.com/hat47x/tei-platform/issues/2144)、提案中・中核変更のためA4判断） |
 | [`DERIVED_DESIGN_ARTIFACTS_DESIGN_2026-11.md`](DERIVED_DESIGN_ARTIFACTS_DESIGN_2026-11.md) | 受理済みの意味から表定義書・機能定義書・対応一覧・DDLを決定的に導出し、差分と未解決を読む契約（[#1803](https://github.com/hat47x/tei-platform/issues/1803)、提案中） |
 | [`XTEA_LOWCODE_RECEPTION_ARCHITECTURE_2026-11.md`](XTEA_LOWCODE_RECEPTION_ARCHITECTURE_2026-11.md) | X-TEAから回収したローコードの知見を、Core・Pattern・生成器・Plugin・Studio・要件のどこで受け止めるかの設計案（未採用）。パッケージ・対話フック・項目の役割・結果型・標準業務意味の判断候補を含む |
+| [`DATA_OPERATIONS_KEY_SPACE_AND_MULTIPLICITY_LOSS_2026-11.md`](DATA_OPERATIONS_KEY_SPACE_AND_MULTIPLICITY_LOSS_2026-11.md) | MS-09：多様なData Structure間のKey空間・多重度・逆更新の喪失を明示する |
 
 ## 関連する参照事例と評価
 
