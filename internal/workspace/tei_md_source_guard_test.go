@@ -41,9 +41,7 @@ data OrgUnit {
 
 func TestWorkspaceTEIMarkdownUnboundIsExplicitlyRejected(t *testing.T) {
 	cases := []struct {
-		name   string
-		root   string
-		file   string
+		name, root, file string
 	}{
 		{"semantic", "semantic", "semantic/organization/model.tei.md"},
 		{"query", "applications", "applications/org-view/queries/case_read.tei.md"},
