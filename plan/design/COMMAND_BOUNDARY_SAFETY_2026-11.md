@@ -101,4 +101,18 @@ CLIのテキスト出力は `committed: true (reference unit of work)` と `pers
 - `ReferenceAuthorizer`が本番で使えること。
 - 宣言外の効果が実際にDBへ適用されたか、巻き戻されたかを区別できること。
 - 実Provider・実DBで同じ結果を観測したこと。
-- #2996・#2997が完了したこと。Issueの完了条件のうち、文書・出力契約・実DB確認は別途残る。
+- #2996・#2997・#2998が完了したこと。Issueの完了条件のうち、実DB確認と外部読み手の互換性確認は別途残る。
+
+## 8. 実Provider経路での `committed` の候補（未採用）
+
+参照実行の意味は §6 で固定した。実Providerを接続したときの `committed` をどう扱うかは、まだ決めていない。候補を整理する。
+
+| 案 | `committed` の意味 | `persisted` の意味 | 利点 | 欠点 |
+| --- | --- | --- | --- | --- |
+| P1: 取引のCommit成功 | ProviderのCommitが成功した | 独立した読取りで確認できた | 現在の欄名と一致 | 「Commitした」と「読めた」を混同しやすい。P1だけでは保存の証拠にならない |
+| P2: 独立読取りでの確認 | 独立した読取りで対象状態を確認できた | `committed` と同じ | 観測に基づく | 既存の読み手の意味が変わる。`v1` が必要 |
+| P3: 取引境界の結末 | ProviderのCommitが成功した | 独立した読取りで確認できた。未実施は`null` | `null`で「まだ確認していない」を表せる | JSONの`bool`から`*bool`への型変更は互換でない |
+
+この文書はどれも採用しない。実Providerの試験（`TEI_EFFECT_POSTGRES_DSN`）でCommit成功と独立読取りを同じ実行で観測できるようになった時点で、候補ごとの結果を記録してから決める。
+
+`committed` をP2へ変える場合は `tei.cli.view` の版を上げる。P1のまま `persisted` を独立読取りの意味に強めるなら、`persisted` が「確認済み」であることを示す別欄（例: `persistenceObserved`）が要る。
