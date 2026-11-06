@@ -247,7 +247,8 @@ flowchart TD
     G["HashDigest or HashIdText + Scheme"]
     H["TargetProfile + physical Namespace"]
     I["Allocation snapshot + Caller SHA-256 pin"]
-    J["Preflight / collision budget / diagnostics"]
+    J["Target preflight / candidate+snapshot collision"]
+    P["CollisionBudget(policy, population)（Referenceには存在・CLI未接続）"]
     K["Read-only projection: authority=none, storageWrite=false"]
     L["Target Owner: current policy + unique Tx + permission（未実装）"]
     M["Independent target readback / effect observation（未実装）"]
@@ -261,9 +262,14 @@ flowchart TD
     H --> J
     I --> J
     J --> K
+    G -.-> P
+    H -.-> P
+    P -.-> K
     K -.-> L
     L -.-> M
 ```
+
+**注意**: 上図の`P`は衝突確率・予算判定のReference関数が存在するだけで、現在の`hashid-probe` CLIは**呼び出していない**。ExpectedPopulation/許容上限のConsumer Policyが未入力であるため、W2の安全予算Gate合格とはしない。
 
 **注意**: 上図の`C`/`I`へのPinはCallerが供給したbyte一致の検査に限り、Source Reader／割当Snapshotの真正な取得を保証しない。`K→L`は自動昇格を示す矢印ではなく、独立したOwner受入Gateが必要であることを表す。APIが`L`を持たない限り、実保存は存在しない。
 
