@@ -588,7 +588,7 @@ environment.production:
 ### 17.1 実装事実と他レーンの制約
 
 - 現行 `internal/stdlib/semantic.go` は `std` の12 primitive（`binary`、`boolean`、`code`、`date`、`datetime`、`decimal`、`identifier`、`integer`、`json`、`money`、`text`、`time`）を `internal/semantic` の外から供給する。既存 `semantic.Type` のKindはprimitive/alias、`Attribute.TypeRef` は既存CanonicalID。新たなshape/union/collectionをSemantic Kindに追加する実装根拠にはしない。
-- 統合済み[#1916](https://github.com/hat47x/tei-platform/pull/1916)は、異なる意味Aliasの暗黙同一視を拒否する局所Reference。Draft [#2584](https://github.com/hat47x/tei-platform/pull/2584)は選択されたSemantic定義の**構造**だけを確認する候補。正本の発行者、Accepted Semantic Set、Contract項目の真正性を確定しない。
+- 統合済み[#1916](https://github.com/hat47x/tei-platform/pull/1916)は、異なる意味Aliasの暗黙同一視を拒否する局所Reference。統合済み[#2584](https://github.com/hat47x/tei-platform/pull/2584)（main統合commit `4f4652a1e4e9a58d55294d42eca28d3c4bc215de`）は、選択されたSemantic定義の**構造**だけを確認するReference。正本の発行者、Accepted Semantic Set、Contract項目の真正性を確定しない。
 - [#1570](https://github.com/hat47x/tei-platform/issues/1570)の既存Semantic配布/Composition Preflightは、明示選択、内容Digest、検証済み構造と発行者Trustの一部を別々に調べる。これを新規の型解決器に置き換えない。[#951](https://github.com/hat47x/tei-platform/issues/951)のContract発行Authority/Provider Conformanceと[#267](https://github.com/hat47x/tei-platform/issues/267)の意味受理も独立。
 - [#2298](https://github.com/hat47x/tei-platform/pull/2298)の `tei.*` 予約ルート、型の複数Instance、Graphの保証境界は**提案**（#2298は2026-11-03 UTCにmerge済み。統合された設計文書の状態は提案中）。既存 `std.*` TypeRefや `std.message` を暗黙に `tei.std.*` へ変更しない。この文書を理由に他者Draftを編集・統合しない。
 - [#1705](https://github.com/hat47x/tei-platform/issues/1705)の型付き算術Referenceは、数量・単位・通貨・精度・丸め・未取得を既存TypeRefと明示注釈で検証する。単位やCurrencyを全域の新Registryにせず、`std.money`だけから通貨が決まると推定しない。
@@ -656,7 +656,7 @@ Source/Authoring Graph → Resolved/Lowered Graph → Targetの実行・観測�
 | File/ETL：Source→Transform→Sink | 入出力Field/Shape、Semantic TypeRef、Multiplicity、NULL/Unknown、Producer、Operator/明示Adapter、Source Revision | 原バイト列・encoding/record boundary、Snapshot/Checkpoint、受取側の実byte確認、重複/partialと業務更正の扱い（#2542） | `std.binary`の一致を配送完了・Exactly-once・lossless変換へ昇格 |
 | Self-build：Seed/Source→Builder→Artifact | 同じ型付きPort/Source依存、Build-only/Runtime Edge、Producer、Target、Artifact Role、変換の入力/出力 | 実消費Source closure、toolchain/engine、実command、exact output bytes/digest、stage1/2比較、未宣言工程の検出（#2831） | Artifact digestの一致をBuild Graph完全性・Seed Trust・実行権限へ昇格 |
 
-**受入票に保持する最小列（新たなCanonical Schemaではない）**：Consumer/Target、型付きSource・SinkのContract/Field、TypeRef＋その定義を選んだSemantic Set、Cardinality/Null/Unknown、Value/Build/Effect Edge種別、選択Provider/Operator・版、Input/Outputの内容同一性、Source Closureの確認範囲、Independent Expected/Observed、現在のAuthority Owner、未確認事項。TypeRefと構造の検査を担う [#2584](https://github.com/hat47x/tei-platform/pull/2584) は**合成候補のみ**。実際のE2EやProject Acceptanceを報告しない。
+**受入票に保持する最小列（新たなCanonical Schemaではない）**：Consumer/Target、型付きSource・SinkのContract/Field、TypeRef＋その定義を選んだSemantic Set、Cardinality/Null/Unknown、Value/Build/Effect Edge種別、選択Provider/Operator・版、Input/Outputの内容同一性、Source Closureの確認範囲、Independent Expected/Observed、現在のAuthority Owner、未確認事項。TypeRefと構造の検査を担う統合済み[#2584](https://github.com/hat47x/tei-platform/pull/2584)の**返す判定は合成された設計時候補のみ**。実際のE2EやProject Acceptanceを報告しない。
 
 **横断する不成立条件**：Reference Workspaceの `validate=ok` だけでは未知Source root・未読込ファイルの不存在を証明しない（[#2823](https://github.com/hat47x/tei-platform/issues/2823)）。同じIDの文字列でも異なるAccepted意味版やScopeは同一視しない。Hash由来IDの文字種・長さの試作（[#2814](https://github.com/hat47x/tei-platform/issues/2814)）は、Semantic ID・Artifact digest・Checkpoint/Operation IDを自動的に兼用させる根拠ではない。`tei.std.*` の管理名前空間はRQ-008で採用済みだが、実装に残る `std.*` 型IDの暗黙移行は禁止する。
 
