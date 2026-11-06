@@ -6,11 +6,16 @@
 
 TEIは現在、設計上の境界をGoのコードで検証している段階です。この文書では完成した画面製品の操作ではなく、参照実装を使った動作確認を説明します。
 
-主要な手順を試すには、Goの開発環境が必要です。
+主要な手順を試すには、Goの開発環境が必要です。必要なGoの版は、リポジトリ直下の`go.mod`にある`go`行が示す版以上です。この文書は版の数値を複製しません。`go.mod`の更新のたびに文書が古くなるためです。
 
 ```bash
+grep '^go ' go.mod
 go version
 ```
+
+2つの出力を見比べ、`go version`の版が`go.mod`の要求以上であることを確認してください。
+
+版が足りない場合、`GOTOOLCHAIN=local`を設定した環境では、`go run ./cmd/tei version`が`go: go.mod requires go >= ...`で失敗します。TEIのCIの多くは`GOTOOLCHAIN: local`で動かし、版は`go-version-file: go.mod`から取ります。`GOTOOLCHAIN`が`auto`（既定）の環境では、Goがネットワークから必要な版を取得することがあります。ダウンロードを許可しない環境では、`go.mod`の要求以上のGoを事前に用意してください。この失敗はTEIの検証結果ではなく、実行環境の不足です。
 
 ## 最初の小さな作業領域から始める
 
@@ -49,7 +54,7 @@ go run ./cmd/tei validate \
 
 意味要素の重複診断では、`-json`が同じ識別子を持つローカルの宣言位置を候補として複数返すことがあります。各候補の`subject`はその宣言の種類と識別子です。候補の順序はファイルと位置による表示順であり、どの宣言を採用・拒否すべきかは示しません。標準定義（prelude）との重複では、ローカルの候補に加えて`unresolvedSourceOrigins`へ`standard`を返し、標準定義側の位置を実在しないpathで埋めません。importがある場合でも、ローカル宣言同士の重複候補は省略しません。importとローカル宣言が同じ名前空間を共有する場合は読込み時に拒否されるため、重複診断には到達しません。位置を取得できない宣言が残る場合は`unknown`を返します。テキスト形式では一つの候補だけを代表位置として表示しません。
 
-版を固定する値は、checkoutの改行（CRLF/LF）の受け取り方にも依存します。`sourceIndexFingerprint`と`modelRevision`（`model catalog`が返す、管理対象Sourceの版。Shared Acceptanceが照合する`baseModelRevision`と同じ値）は、Sourceの生バイトをsha256で識別するため、行末だけが違うcheckoutでも別の版になります。`worldFingerprint`は正規化したモデルの内容を識別しますが、元定義に書かれた本文をそのまま載せる欄（移行のDDLや問い合わせのSQLなど）があると、その本文の改行も反映されます。2026-10-31にmainで実測した結果では、`reference/workspace`（`databases/sales-core/migrations/20260826_001/migration.tei`と`persistence/order.tei`がSQL本文を持つ）ではCRLFのcheckoutで`worldFingerprint`も変わり、その種の欄を持たない`examples/first-workspace`では`worldFingerprint`は変わらず`sourceIndexFingerprint`と`modelRevision`だけが変わりました。別の環境で作った版固定の値を照合するときは、比較する側のcheckoutの改行をそろえてください。リポジトリ内のWorkspaceの木（`reference/workspace`、`examples/`配下、`reference/product-contracts`ほか、`tei.workspace.yaml`のある8木）は`.gitattributes`で`-text`に固定してあり、新しいcheckoutでは改行が書き換わらない。`core.autocrlf`が有効な環境で作った古いcheckoutで該当pathが`modified`に見えるときは、差分を確認し、必要な変更を保存したうえで、意図したファイルだけを復元してください。`git restore`は未保存の変更を破棄します。版識別を改行正規化後のバイトで計算する契約へ変えるかどうかは引き続き未決であり、[#2399](https://github.com/hat47x/tei-platform/issues/2399)で扱います。
+版を固定する値は、checkoutの改行（CRLF/LF）の受け取り方にも依存します。`sourceIndexFingerprint`と`modelRevision`（`model catalog`が返す、管理対象Sourceの版。Shared Acceptanceが照合する`baseModelRevision`と同じ値）は、Sourceの生バイトをsha256で識別するため、行末だけが違うcheckoutでも別の版になります。`worldFingerprint`は正規化したモデルの内容を識別しますが、元定義に書かれた本文をそのまま載せる欄（移行のDDLや問い合わせのSQLなど）があると、その本文の改行も反映されます。2026-10-31にmainで実測した結果では、`reference/workspace`（`databases/sales-core/migrations/20260826_001/migration.tei`と`persistence/order.tei`がSQL本文を持つ）ではCRLFのcheckoutで`worldFingerprint`も変わり、その種の欄を持たない`examples/first-workspace`では`worldFingerprint`は変わらず`sourceIndexFingerprint`と`modelRevision`だけが変わりました。別の環境で作った版固定の値を照合するときは、比較する側のcheckoutの改行をそろえてください。リポジトリ内のWorkspaceの木（`reference/workspace`、`examples/`配下、`reference/product-contracts`ほか、`tei.workspace.yaml`のある8木）は`.gitattributes`で`-text`に固定してあり、新しいcheckoutでは改行が書き換わらない。`core.autocrlf`が有効な環境で作った古いcheckoutで該当pathが`modified`に見えるときは、差分を確認し、必要な変更を保存したうえで、意図したファイルだけを復元してください。`git restore`は未保存の変更を破棄します。[#2399](https://github.com/hat47x/tei-platform/issues/2399)（2026-10-31クローズ）では、生バイトでの版識別を維持し、改行正規化後のバイトで計算する契約への変更を見送る仮決定をしました。この変更は、Shared Acceptanceの版を張り替える時点で改めて判断します。
 
 終了コードは`0`が検証成功（警告を含む）、`1`が検証不成立、`2`が入力・読込みなどの実行失敗です。`-json`で返す結果を利用するときも終了コードを確認してください。`commands`はすべてのコマンドや拡張機能を列挙する完全な登録簿ではありません。詳細とウェブやデスクトップへの接続方針は[コマンドライン優先のインターフェース設計](../plan/design/CLI_FIRST_INTERFACE_DESIGN.md)を参照してください。
 
@@ -170,7 +175,10 @@ SQLファイルを移動し、参照先だけを更新した場合でも、正�
 
 ```bash
 go run ./cmd/tei plugin-lock \
-  -workspace reference/workspace > /tmp/tei-plugin-lock.json
+  -workspace reference/workspace -environment production > /tmp/tei-plugin-lock-result.json
+
+python3 -c 'import json,sys; r=json.load(sys.stdin); assert r["ok"]; json.dump(r["result"],sys.stdout)' \
+  < /tmp/tei-plugin-lock-result.json > /tmp/tei-plugin-lock.json
 
 go run ./cmd/tei plugin-runtime-plan \
   -workspace reference/workspace \
@@ -179,6 +187,8 @@ go run ./cmd/tei plugin-runtime-plan \
 ```
 
 この結果から、環境が利用するプラグインとその版、提供される機能、必要な権限、資源の対応付け、隔離に関する要求を確認できます。
+
+`plugin-lock`は結果をJSON envelopeで返すため、`-plugin-lock`へ渡すファイルには上のように`result`を保存します。`-environment production`を指定したLockはproductionだけを対象とし、別の環境には使えません。この指定を省略した従来の操作は全環境のLockを作ります。どちらの場合もWorkspace全体の検証は省略されず、Lockの作成・選択は実行権限や成果物バイト列の検証ではありません。
 
 リポジトリに保存した参照用プラグインの実装固定情報についても、作業領域から再生成して一致することを自動検査で確認しています。
 

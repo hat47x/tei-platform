@@ -191,3 +191,48 @@ func TestSigningPayloadIsOrderIndependent(t *testing.T) {
 		t.Fatal("member order changed the signed bytes")
 	}
 }
+
+func TestIssuerAndKeyIDCannotBeSwappedBetweenTrustedIssuers(t *testing.T) {
+	alice := newIssuer(t, "issuer-a", "k1")
+	bob := newIssuer(t, "issuer-b", "k2")
+	policy := trustOf(t, []string{"order_entry"}, alice, bob)
+	verifier := policy.Verifier()
+	good := signed(t, alice, "d1", "application order_entry {}\n")
+	if err := verifier(context.Background(), good); err != nil {
+		t.Fatal(err)
+	}
+	// Alice's signature presented as Bob's issuer: Bob's key does not verify it.
+	asBob := good
+	asBob.Issuer = bob.issuer
+	var ev signatureEvidence
+	_ = json.Unmarshal(good.Evidence, &ev)
+	ev.KeyID = bob.keyID
+	asBob.Evidence, _ = json.Marshal(ev)
+	if err := verifier(context.Background(), asBob); err == nil || err.Error() != "HOST_STORE_SIGNATURE_INVALID" {
+		t.Fatalf("issuer swap: %v", err)
+	}
+	// Issuer changed but key id left: no such (issuer, keyId) pair is trusted.
+	wrongPair := good
+	wrongPair.Issuer = bob.issuer
+	if err := verifier(context.Background(), wrongPair); err == nil || err.Error() != "HOST_STORE_ISSUER_NOT_TRUSTED" {
+		t.Fatalf("issuer without its key id: %v", err)
+	}
+	// The same pairing rules hold for the detached form.
+	payload, _ := SigningPayload(good)
+	sig, _ := base64.StdEncoding.DecodeString(ev.Signature)
+	for name, c := range map[string][2]string{
+		"alice key under bob": {bob.issuer, bob.keyID},
+		"alice with bob key":  {alice.issuer, bob.keyID},
+		"bob with alice key":  {bob.issuer, alice.keyID},
+	} {
+		if err := policy.VerifyDetached(c[0], c[1], "order_entry", payload, sig); err == nil {
+			t.Fatalf("%s accepted", name)
+		}
+	}
+	if err := policy.VerifyDetached(alice.issuer, alice.keyID, "order_entry", payload, sig); err != nil {
+		t.Fatal(err)
+	}
+	if err := policy.VerifyDetached(alice.issuer, alice.keyID, "repair_intake", payload, sig); err == nil {
+		t.Fatal("untrusted application accepted")
+	}
+}

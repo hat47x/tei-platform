@@ -31,13 +31,24 @@ type Diagnostic struct {
 	Subject  *subject.Subject `json:"subject,omitempty"`
 }
 
+var attributeRoles = map[string]bool{
+	"key": true, "business-key": true, "due-date": true, "period": true,
+	"quantity": true, "amount": true, "status": true, "timestamp": true,
+	"name": true, "code": true, "note": true, "description": true,
+}
+
 func Validate(w ir.World) []Diagnostic {
 	out := validateApplicationPatterns(w)
+	out = append(out, validateApplicationPackages(w)...)
 	out = append(out, validateQueryResultMappings(w)...)
+	out = append(out, validateQueryInputs(w)...)
 	out = append(out, validateSemanticBusinessValidations(w)...)
 	out = append(out, validateSemanticBusinessRules(w)...)
 	out = append(out, validateCapabilityOutcomes(w)...)
 	out = append(out, validateCapabilityDataEffects(w)...)
+	out = append(out, validateSemanticPeriods(w)...)
+	out = append(out, validateSemanticEffectRules(w)...)
+	out = append(out, validateSemanticRunPlans(w)...)
 	out = append(out, validateBusinessValidationReferences(w)...)
 
 	pluginCatalog := plugin.Catalog{Plugins: w.Plugins, Bundles: w.Bundles}
@@ -193,6 +204,17 @@ func Validate(w ir.World) []Diagnostic {
 			if !typ.Kind.Valid() {
 				out = append(out, errd("INVALID_SEMANTIC_TYPE_KIND", "type %s has invalid kind %q", typ.ID, typ.Kind))
 			}
+			seenValues := map[string]bool{}
+			for _, value := range typ.Values {
+				if value == "" {
+					out = append(out, errFor(subject.Subject{Kind: "semantic-type", ID: string(typ.ID)}, "SEMANTIC_TYPE_VALUE_EMPTY", "type %s has an empty value", typ.ID))
+					continue
+				}
+				if seenValues[value] {
+					out = append(out, errFor(subject.Subject{Kind: "semantic-type", ID: string(typ.ID)}, "SEMANTIC_TYPE_VALUE_DUPLICATE", "type %s declares value %q more than once", typ.ID, value))
+				}
+				seenValues[value] = true
+			}
 			addSemanticElement(typ.ID, "type")
 			semanticTypes[typ.ID] = typ
 			semanticTypeDefs = append(semanticTypeDefs, typ)
@@ -273,10 +295,18 @@ func Validate(w ir.World) []Diagnostic {
 		if _, ok := semanticTypes[a.TypeRef]; !ok {
 			out = append(out, errFor(subject.Subject{Kind: "semantic-attribute", ID: string(a.ID)}, "UNKNOWN_SEMANTIC_ATTRIBUTE_TYPE", "attribute %s refers to unknown semantic type %s", a.ID, a.TypeRef))
 		}
+		if a.Role != "" && !attributeRoles[a.Role] {
+			out = append(out, errFor(subject.Subject{Kind: "semantic-attribute", ID: string(a.ID)}, "SEMANTIC_ATTRIBUTE_ROLE_UNSUPPORTED", "attribute %s uses unsupported role %s", a.ID, a.Role))
+		}
 	}
 	for _, r := range semanticRelations {
 		if _, ok := semanticData[r.Target]; !ok {
 			out = append(out, errFor(subject.Subject{Kind: "semantic-relation", ID: string(r.ID)}, "UNKNOWN_SEMANTIC_RELATION_TARGET", "relation %s targets unknown semantic data %s", r.ID, r.Target))
+		}
+		switch r.OnDelete {
+		case "", "restrict", "cascade", "preserve":
+		default:
+			out = append(out, errFor(subject.Subject{Kind: "semantic-relation", ID: string(r.ID)}, "SEMANTIC_RELATION_ON_DELETE_UNSUPPORTED", "relation %s uses unsupported on-delete %s", r.ID, r.OnDelete))
 		}
 	}
 	semanticValueTypeExists := func(id core.CanonicalID) bool {

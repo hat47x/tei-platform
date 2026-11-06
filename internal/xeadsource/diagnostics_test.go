@@ -320,3 +320,128 @@ func TestDiagnoseRelationalSourceFactsReportsDuplicateRelationshipIdentity(t *te
 		t.Fatalf("duplicate relationship identity was not diagnosed: %#v", got)
 	}
 }
+
+// familyExpansionSource is synthetic and contains no private model identifiers.
+// Different DataTypeIDs exercise unique- and multiple-candidate situations;
+// neither is an explicit legacy Field correspondence.
+func familyExpansionSource(relationType, targetKeyType, targetSort, extraDataType string, reversed bool) []byte {
+	table1, key1, table2, key2 := "PARENT", "KP", "CHILD", "KC"
+	if reversed {
+		table1, key1, table2, key2 = table2, key2, table1, key1
+	}
+	return []byte(`<System>
+		<Table ID="PARENT"><TableField ID="PA" DataTypeID="DT1"/>
+			<TableKey ID="KP" Type="PK"><TableKeyField FieldID="PA"/></TableKey>
+		</Table>
+		<Table ID="CHILD"><TableField ID="CA" DataTypeID="DT1"/>
+			<TableField ID="CB" DataTypeID="` + extraDataType + `"/>
+			<TableKey ID="KC" Type="` + targetKeyType + `">
+				<TableKeyField FieldID="CA" SortKey="10"/>
+				<TableKeyField FieldID="CB" SortKey="` + targetSort + `"/>
+			</TableKey>
+		</Table>
+		<Relationship ID="R1" Type="` + relationType + `" Table1ID="` + table1 + `"
+			TableKey1ID="` + key1 + `" Table2ID="` + table2 + `" TableKey2ID="` + key2 + `"/>
+	</System>`)
+}
+
+func TestDiagnoseRelationalSourceFactsKeepsFamilyExpansionUnresolvedWithoutArityError(t *testing.T) {
+	for _, targetKeyType := range []string{"PK", "SK"} {
+		for _, extraDataType := range []string{"DT2", "DT1"} {
+			t.Run(targetKeyType+"-"+extraDataType, func(t *testing.T) {
+				source := familyExpansionSource("FAMILY", targetKeyType, "20", extraDataType, false)
+				inspection, err := Inspect(FormatXead, source, nil)
+				if err != nil {
+					t.Fatal(err)
+				}
+				got := inspection.RelationalDiagnostics
+				if len(got) != 1 ||
+					got[0].Code != "relationship-family-correspondence-unresolved" ||
+					got[0].Nature != RelationalDiagnosticNature ||
+					got[0].RelationshipID != "R1" ||
+					got[0].LeftCount != 1 || got[0].RightCount != 2 {
+					t.Fatalf("FAMILY was mistaken for equal-arity relation or accepted from guessed Fields: %#v", got)
+				}
+				if inspection.RelationalResolutionStatus != RelationalFactResolutionUnresolved {
+					t.Fatalf("unaccepted FAMILY mapping became resolved: %#v", inspection)
+				}
+				found := false
+				for _, resolution := range inspection.RelationalFactResolutions {
+					if resolution.Kind == "relationship-key" {
+						found = true
+						if resolution.Status != RelationalFactResolutionUnresolved ||
+							len(resolution.DiagnosticCodes) != 1 ||
+							resolution.DiagnosticCodes[0] != "relationship-family-correspondence-unresolved" {
+							t.Fatalf("relationship resolution was promoted: %#v", resolution)
+						}
+					}
+				}
+				if !found {
+					t.Fatal("missing relationship resolution")
+				}
+			})
+		}
+	}
+}
+
+func TestDiagnoseRelationalSourceFactsChecksOrderDespiteFamilyExpansion(t *testing.T) {
+	for _, sortKey := range []string{"10", ""} {
+		t.Run("sort-"+sortKey, func(t *testing.T) {
+			source := familyExpansionSource("FAMILY", "PK", sortKey, "DT2", false)
+			inspection, err := Inspect(FormatXead, source, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			foundFamily, foundOrder := false, false
+			for _, diagnostic := range inspection.RelationalDiagnostics {
+				switch diagnostic.Code {
+				case "relationship-family-correspondence-unresolved":
+					foundFamily = diagnostic.LeftCount == 1 && diagnostic.RightCount == 2
+				case "relationship-key-order-unresolved":
+					foundOrder = diagnostic.Side == "table2" && diagnostic.KeyLegacyID == "KC"
+				}
+			}
+			if !foundFamily || !foundOrder || len(inspection.RelationalDiagnostics) != 2 {
+				t.Fatalf("FAMILY expansion concealed independent target SortKey problem: %#v", inspection.RelationalDiagnostics)
+			}
+		})
+	}
+}
+
+func TestDiagnoseRelationalSourceFactsDoesNotWidenFamilyException(t *testing.T) {
+	for _, relationType := range []string{"REFFER", "SUBTYPE", "", "OTHER"} {
+		t.Run("relation-"+relationType, func(t *testing.T) {
+			source := familyExpansionSource(relationType, "PK", "20", "DT2", false)
+			got, err := Inspect(FormatXead, source, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(got.RelationalDiagnostics) != 1 ||
+				got.RelationalDiagnostics[0].Code != "relationship-key-arity-mismatch" {
+				t.Fatalf("non-FAMILY asymmetric keys were silently accepted: %#v", got.RelationalDiagnostics)
+			}
+		})
+	}
+	for _, targetKeyType := range []string{"FK", ""} {
+		t.Run("target-key-"+targetKeyType, func(t *testing.T) {
+			source := familyExpansionSource("FAMILY", targetKeyType, "20", "DT2", false)
+			got, err := Inspect(FormatXead, source, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(got.RelationalDiagnostics) != 1 ||
+				got.RelationalDiagnostics[0].Code != "relationship-key-arity-mismatch" {
+				t.Fatalf("unsupported target Key Type became a family expansion: %#v", got.RelationalDiagnostics)
+			}
+		})
+	}
+	source := familyExpansionSource("FAMILY", "PK", "20", "DT2", true)
+	got, err := Inspect(FormatXead, source, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got.RelationalDiagnostics) != 1 ||
+		got.RelationalDiagnostics[0].Code != "relationship-key-arity-mismatch" {
+		t.Fatalf("reverse FAMILY key lengths were silently accepted: %#v", got.RelationalDiagnostics)
+	}
+}

@@ -12,6 +12,7 @@ import (
 func TestPluginImplementationLoaderRejectsMissingPluginDefinition(t *testing.T) {
 	root := t.TempDir()
 	writePluginImplementationWorkspaceFile(t, root, "tei.workspace.yaml", `workspace: implementation_test
+formatVersion: 1
 sources:
   - plugin-implementations
 `)
@@ -31,6 +32,7 @@ sources:
 func TestPluginImplementationLoaderRejectsCapabilityMismatch(t *testing.T) {
 	root := t.TempDir()
 	writePluginImplementationWorkspaceFile(t, root, "tei.workspace.yaml", `workspace: implementation_test
+formatVersion: 1
 sources:
   - plugins
   - plugin-implementations
@@ -69,6 +71,7 @@ func writePluginImplementationWorkspaceFile(t *testing.T, root, rel, content str
 func TestPluginImplementationLoaderRejectsPredeclaredArtifact(t *testing.T) {
 	root := t.TempDir()
 	writePluginImplementationWorkspaceFile(t, root, "tei.workspace.yaml", `workspace: implementation_test
+formatVersion: 1
 sources:
   - plugins
   - plugin-implementations
@@ -99,6 +102,7 @@ sources:
 func TestPluginImplementationLoaderRejectsAmbiguousGenericRoot(t *testing.T) {
 	root := t.TempDir()
 	writePluginImplementationWorkspaceFile(t, root, "tei.workspace.yaml", `workspace: implementation_test
+formatVersion: 1
 sources:
   - implementations
 `)

@@ -12,6 +12,7 @@ import (
 func TestApplicationPatternSourceIndexUsesCanonicalIdentifierRangeAndSurvivesFileRename(t *testing.T) {
 	root := t.TempDir()
 	writePatternWorkspaceFile(t, root, "tei.workspace.yaml", `workspace: pattern_source_index_test
+formatVersion: 1
 sources:
   - applications
 `)

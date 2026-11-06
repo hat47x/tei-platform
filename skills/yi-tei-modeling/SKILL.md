@@ -1,0 +1,42 @@
+---
+name: yi-tei-modeling
+description: >-
+  TEIの既存Workspace・モデル・Relation・Sourceを、実在するread-only CLIで
+  発見、検証、参照追跡するときに使う。対象版と診断、未解決を保持する。
+  TEIでの書込み・モデル受理・生成物の実配布を暗黙に行わない。
+---
+
+# TEIモデリング調査（Product Skill試作）
+
+> **2026-11-02 試作／NOT RUN**：このSkillはTEI Product側が所有するread-only作業手順の候補。外部ハーネスへのインストール、TEI CLIの実行、MCP/Providerの接続、TEI製品としての正式採用は未実施。利用時は実環境を確認する。
+
+## いつ使うか
+
+TEIのSource・モデル要素・入力元・参照関係・Validationを調べ、結果を再現可能な根拠とともに説明したいときに用いる。TEIの単独利用にTAIは必要ない。複数製品をまたぐ活動の進行はTAI横断Skillが担当する。
+
+**このSkillはTEI Kernel Plugin、TEIで開発したLibrary、外部Harness Plugin、MCP Serverそのものではない。** TEIで生成したLibraryを外部Java/.NET/Wasm等が利用する際に、このSkill/TEI CLIを配布依存にしない。
+
+## 実行の流れ
+
+1. **実環境を確認**：TEIリポジトリのcheckoutとWorkspaceの所在・利用目的・利用可能な情報範囲を確認する。`go.mod`の`go`行の要求版と`go version`の出力を照合し、不足なら実行を止めて環境不備として記録する（TEIの結果と区別する）。CLIの使用可能なread-only入口を`go run ./cmd/tei commands`で確認する。ビルド済み実行ファイルがあれば`tei version -json`などで版を照合し、Gitの改訂・Working Treeを別記する。**発見したCLIと実際の呼出しで使用した実行物（path/bytes/argv/cwd）を区別する**。必要な場合は固定したビルド成果物を使い、異なる実行物を同じ試行と見なさない。`go run`からVCS revisionが得られるとは仮定しない。
+2. **対象を発見**：`go run ./cmd/tei model catalog -workspace <workspace>`の`entries[].subject.kind/id`から対象候補を選び、重複・曖昧なら特定を保留する。名前や一覧順を正本IDとして推測しない。
+3. **対象を読む**：`go run ./cmd/tei inspect -workspace <workspace> -subject-kind <kind> -subject-id <id>`で指定要素を調べ、必要な場合のみ`trace`で宣言済み直接参照を追う。Source indexの候補と元ファイルの所在を分ける。
+4. **検証する**：`go run ./cmd/tei validate -workspace <workspace> -json`の終了コード、`ok`、`diagnostics`、Warning、エラーをそれぞれ確認する。exit 0や`ok=true`だけからWarningなし・業務受理済みと判断しない。
+5. **版と結果範囲を照合**：結果ごとの`worldFingerprint`と`sourceIndexFingerprint`、必要なSubject/Trace固有の照合値を確認する。複数コマンド実行中のWorkspace変更、異なるScope、未取得/部分的な参照、古い結果を混ぜて一回の全件検証と呼ばない。`trace`のページ継続では**外側**`result.snapshotFingerprint`を`-expected-fingerprint`に渡し、`result.trace.snapshotFingerprint`と区別する。`trace`の`-scope`は読取りの文脈名であり、業務権限を与える値ではない。
+6. **用途に必要な結果を返す**：対象ID・Source位置・コマンドと版・診断結果・確認できた範囲・未解決点を明示する。外部LLMや別Productへ結果を送るときは、Source保持側が許可する用途と開示範囲を守る。通常の組織Dataの利用を一律に制限する趣旨ではなく、秘密・保護対象がある条件で実Host/OS権限と開示資格を確認する。
+7. **続きの作業へ引き渡す**：モデル変更、受理、コード生成、外部Host配布、DB更新が必要なら、現在の実装・関連Issue・既存Ownerの操作契約を改めて確認し、未実装は`unavailable/unsupported/not-run`として報告する。架空のCLI/MCP名を生成して成功としない。実作用の権限・業務Outcomeは当該Host/Providerが確認する。
+
+詳しいコマンド例・Sourceとfingerprintの境界は[read-onlyモデル調査の資料](references/read-only-model-investigation.md)を読む。必要なときだけ参照し、Skill本文と同じ説明を常時読み込ませない。
+
+## 作業結果に含める内容
+
+対象Workspace/Source改訂・使用したCLI/Go/環境の識別、対象`subject.kind/id`、実行したread-onlyコマンド、各終了状態、Fingerprintと不一致、確認できた意味・Sourceと残るUnknown、Warning/Validation finding、未実行の操作、次に必要なOwner/Provider/Host検証を必要十分な範囲で示す。**「モデル検証済み」「実行できた」「正本へ受理済み」「業務Effect確認済み」は異なるClaim**として記す。
+
+## 関連
+
+- [このSkillの設計と試験計画](../../plan/design/TEI_PRODUCT_SKILL_HARNESS_BINDING_2026-11.md)
+- [TEI CLI利用案内](../../docs/getting-started.md)
+- [TEI Product Skill課題](https://github.com/hat47x/tei-platform/issues/2605)
+- [YIシリーズ横断Skill設計（TAI Draft）](https://github.com/hat47x/tai-pleroma/pull/270)
+
+**現在の評価状態**：試作Skillの保存と静的参照確認に限る。Product側CLIの現物実行・二Harnessでのロード・TAI横断SkillとのH2/H3比較・正式Releaseはいずれも未実施。

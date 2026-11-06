@@ -12,6 +12,8 @@ import (
 	"path/filepath"
 	"reflect"
 	"runtime"
+	"sort"
+	"strings"
 	"testing"
 )
 
@@ -116,6 +118,56 @@ func TestHistoricalProcessPluginRunnerEvidenceParity(t *testing.T) {
 	if output := git("-C", historicalTree, "status", "--porcelain=v1", "--untracked-files=all"); len(output) != 0 {
 		t.Fatalf("historical checkout unclean: %s", output)
 	}
+
+	// The historical runner pins a manifest parser that does not know
+	// formatVersion. Rather than keeping the live Workspaces on the old format
+	// forever, the comparison runs both runners against a frozen commit whose
+	// two manifests are restored from testdata (#1920 Owner decision).
+	frozenTree := filepath.Join(temp, "frozen-worktree")
+	addFrozen := exec.Command("git", "-C", repo, "worktree", "add", "--detach", frozenTree, "HEAD")
+	if out, err := addFrozen.CombinedOutput(); err != nil {
+		t.Fatalf("create frozen checkout: %v: %s", err, out)
+	}
+	t.Cleanup(func() {
+		cmd := exec.Command("git", "-C", repo, "worktree", "remove", "--force", frozenTree)
+		if output, err := cmd.CombinedOutput(); err != nil {
+			t.Errorf("remove frozen checkout: %v: %s", err, output)
+		}
+	})
+	frozenManifests := map[string]string{
+		filepath.Join("reference", "workspace", "tei.workspace.yaml"):                      "tools/reference-plugin-self-build/testdata/frozen-workspace/package.tei.workspace.yaml",
+		filepath.Join("reference", "plugin-self-build", "workspace", "tei.workspace.yaml"): "tools/reference-plugin-self-build/testdata/frozen-workspace/reference.tei.workspace.yaml",
+	}
+	for target, source := range frozenManifests {
+		raw, err := os.ReadFile(filepath.Join(repo, filepath.FromSlash(source)))
+		if err != nil {
+			t.Fatalf("read frozen manifest %s: %v", source, err)
+		}
+		if err := os.WriteFile(filepath.Join(frozenTree, target), raw, 0o644); err != nil {
+			t.Fatalf("write frozen manifest %s: %v", target, err)
+		}
+	}
+	commit := exec.Command("git", "-C", frozenTree,
+		"-c", "user.name=tei-frozen-workspace",
+		"-c", "user.email=tei-frozen-workspace@example.invalid",
+		"commit", "-am", "freeze pre-formatVersion workspace manifests for runner parity")
+	if out, err := commit.CombinedOutput(); err != nil {
+		t.Fatalf("commit frozen checkout: %v: %s", err, out)
+	}
+	frozenRevision := string(git("-C", frozenTree, "rev-parse", "HEAD"))
+	// The frozen tree must differ from the live revision only by the two
+	// manifests that the pinned parser cannot read in the new format.
+	liveRevision := string(git("rev-parse", "HEAD"))
+	changedPaths := strings.Fields(string(git("-C", repo, "diff", "--name-only", liveRevision, frozenRevision)))
+	sort.Strings(changedPaths)
+	wantChanged := []string{
+		"reference/plugin-self-build/workspace/tei.workspace.yaml",
+		"reference/workspace/tei.workspace.yaml",
+	}
+	if !reflect.DeepEqual(changedPaths, wantChanged) {
+		t.Fatalf("frozen comparison changed unexpected paths: got %v want %v", changedPaths, wantChanged)
+	}
+
 	// Build two distinct, real plugin self-build runner executables.
 	ext := ""
 	if runtime.GOOS == "windows" {
@@ -136,11 +188,15 @@ func TestHistoricalProcessPluginRunnerEvidenceParity(t *testing.T) {
 	compile("historical", historicalTree, oldCLI)
 	compile("current", repo, newCLI)
 
-	run := func(label, executable string) evidence {
+	run := func(label, executable, checkout string) evidence {
 		t.Helper()
-		cmd := exec.Command(executable, "-repo", repo, "-go", goPath)
-		cmd.Dir = repo
-		cmd.Env = append(os.Environ(), "GOENV=off", "GOWORK=off", "GOFLAGS=", "GOTOOLCHAIN=local", "GOPROXY=off")
+		cmd := exec.Command(executable, "-repo", checkout, "-go", goPath)
+		cmd.Dir = checkout
+		// The frozen comparison tree intentionally predates formatVersion, so
+		// the current runner needs the explicit frozen-artifact opt-in. The
+		// historical runner ignores the variable.
+		cmd.Env = append(os.Environ(), "GOENV=off", "GOWORK=off", "GOFLAGS=", "GOTOOLCHAIN=local", "GOPROXY=off",
+			"TEI_WORKSPACE_ALLOW_UNSPECIFIED_FORMAT=1")
 		var stdout, stderr bytes.Buffer
 		cmd.Stdout, cmd.Stderr = &stdout, &stderr
 		if err := cmd.Run(); err != nil {
@@ -168,40 +224,61 @@ func TestHistoricalProcessPluginRunnerEvidenceParity(t *testing.T) {
 			ev.LockedBuild.ArtifactDigest != ev.FirstArtifactDigest {
 			t.Fatalf("%s did not accept a fully converged self-build: %+v", label, ev)
 		}
-		rev := string(git("rev-parse", "HEAD"))
+		rev := string(git("-C", checkout, "rev-parse", "HEAD"))
 		if ev.RepositoryRevision != rev {
 			t.Fatalf("%s built different source revision: got %s want %s", label, ev.RepositoryRevision, rev)
 		}
 		return ev
 	}
-	oldEvidence := run("historical", oldCLI)
-	newEvidence := run("current", newCLI)
+	oldEvidence := run("historical", oldCLI, frozenTree)
+	newEvidence := run("current", newCLI, frozenTree)
+	if oldEvidence.RepositoryRevision != frozenRevision || newEvidence.RepositoryRevision != frozenRevision {
+		t.Fatalf("runners did not build the frozen comparison revision %s: old=%s new=%s",
+			frozenRevision, oldEvidence.RepositoryRevision, newEvidence.RepositoryRevision)
+	}
 
-	// Go compiler's actual selected files, compiler closure identity, all
-	// nested Plugin BuildPlan/Lock and transform convergence must be equal.
-	if oldEvidence.ProcessSourceClosureDigest != newEvidence.ProcessSourceClosureDigest ||
+	// The comparison covers the actual build inputs and outputs. Repository
+	// identity fields are excluded by the frozen-commit design (#1920), so a
+	// manifest migration does not need to keep the live Workspaces frozen.
+	if oldEvidence.GoVersion != newEvidence.GoVersion ||
+		oldEvidence.ProcessSourceClosureDigest != newEvidence.ProcessSourceClosureDigest ||
 		!reflect.DeepEqual(oldEvidence.ProcessSourceClosure, newEvidence.ProcessSourceClosure) ||
 		oldEvidence.GoBinaryDigest != newEvidence.GoBinaryDigest ||
-		oldEvidence.GoToolchainDigest != newEvidence.GoToolchainDigest {
-		t.Fatal("historical/current runners used different actual Go build inputs")
-	}
-	oldJSON, err := json.Marshal(oldEvidence)
-	if err != nil {
-		t.Fatal(err)
-	}
-	newJSON, err := json.Marshal(newEvidence)
-	if err != nil {
-		t.Fatal(err)
-	}
-	oldSum := sha256.Sum256(oldJSON)
-	newSum := sha256.Sum256(newJSON)
-	if !bytes.Equal(oldJSON, newJSON) {
+		oldEvidence.GoToolchainDigest != newEvidence.GoToolchainDigest ||
+		oldEvidence.PackageBuilderFirstDigest != newEvidence.PackageBuilderFirstDigest ||
+		oldEvidence.PackageBuilderSecondDigest != newEvidence.PackageBuilderSecondDigest ||
+		oldEvidence.PackageBuildPlanFingerprint != newEvidence.PackageBuildPlanFingerprint ||
+		oldEvidence.PackageFirstArtifactDigest != newEvidence.PackageFirstArtifactDigest ||
+		oldEvidence.PackageSecondArtifactDigest != newEvidence.PackageSecondArtifactDigest ||
+		oldEvidence.PackageLockFingerprint != newEvidence.PackageLockFingerprint ||
+		oldEvidence.NativeSourceFingerprint != newEvidence.NativeSourceFingerprint ||
+		oldEvidence.NativeDefinitionFingerprint != newEvidence.NativeDefinitionFingerprint ||
+		oldEvidence.NativeBuilderFirstDigest != newEvidence.NativeBuilderFirstDigest ||
+		oldEvidence.NativeBuilderSecondDigest != newEvidence.NativeBuilderSecondDigest ||
+		oldEvidence.NativeBuildPlanFingerprint != newEvidence.NativeBuildPlanFingerprint ||
+		oldEvidence.NativeFirstArtifactDigest != newEvidence.NativeFirstArtifactDigest ||
+		oldEvidence.NativeSecondArtifactDigest != newEvidence.NativeSecondArtifactDigest ||
+		oldEvidence.NativeLockFingerprint != newEvidence.NativeLockFingerprint ||
+		oldEvidence.FirstArtifactDigest != newEvidence.FirstArtifactDigest ||
+		oldEvidence.SecondArtifactDigest != newEvidence.SecondArtifactDigest ||
+		oldEvidence.LockedBuild.ArtifactDigest != newEvidence.LockedBuild.ArtifactDigest {
+		oldJSON, err := json.Marshal(oldEvidence)
+		if err != nil {
+			t.Fatal(err)
+		}
+		newJSON, err := json.Marshal(newEvidence)
+		if err != nil {
+			t.Fatal(err)
+		}
+		oldSum := sha256.Sum256(oldJSON)
+		newSum := sha256.Sum256(newJSON)
 		t.Fatalf("historical/current Plugin self-build Evidence drift: old=sha256:%s new=sha256:%s\nold=%s\nnew=%s",
 			hex.EncodeToString(oldSum[:]), hex.EncodeToString(newSum[:]), oldJSON, newJSON)
 	}
 	if status := git("status", "--porcelain=v1", "--untracked-files=all"); len(status) != 0 {
 		t.Fatalf("comparison modified current source checkout: %s", status)
 	}
-	t.Logf("historical/current self-build Evidence equal: selectedSource=%s processPlugin=%s fullEvidenceSHA256=%s",
-		newEvidence.ProcessSourceClosureDigest, newEvidence.FirstArtifactDigest, hex.EncodeToString(newSum[:]))
+	newSum := sha256.Sum256([]byte(newEvidence.ProcessSourceClosureDigest + newEvidence.FirstArtifactDigest + newEvidence.NativeFirstArtifactDigest))
+	t.Logf("historical/current self-build build evidence equal on frozen revision %s: selectedSource=%s processPlugin=%s combinedSHA256=%s",
+		frozenRevision, newEvidence.ProcessSourceClosureDigest, newEvidence.FirstArtifactDigest, hex.EncodeToString(newSum[:]))
 }

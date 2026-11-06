@@ -14,6 +14,7 @@
 | [`repository-architecture-check/`](repository-architecture-check/) | パッケージ構成と依存境界の検査 |
 | [`repository-dependency-report/`](repository-dependency-report/) | Goの直接依存関係の一覧作成 |
 | [`repository-plan-check/`](repository-plan-check/) | ADR・Issueの番号や要求と検証表の対応確認、ADR索引とADRファイルの一致・状態の確認（#2343） |
+| [`doc-reference-probe/`](doc-reference-probe/) | 文書中の明示パス参照と暗黙候補を調べる任意実行の限定試作（#2309） |
 | [`repository-node-tests/`](repository-node-tests/) | どのworkflowからも実行されなかったNode.js試験5ファイルをgo testから実行する（#2346） |
 | [`check-public-boundary/`](check-public-boundary/) | 追跡ファイルに、非公開資料の名前・所在のマーカーが入っていないかを検査する（#2342 / #2436） |
 | [`repositoryqualification/`](repositoryqualification/) | リポジトリ検証条件の共通処理 |
@@ -113,6 +114,7 @@
 | [`reference-builder-contract-resolution/`](reference-builder-contract-resolution/) | Builder契約の解決と適用 |
 | [`reference-studio-composition-evidence-7/`](reference-studio-composition-evidence-7/) | TEI Studioの静的合成を実装外から検査する限定的な黒箱検査器（#1824 / #7） |
 | [`reference-host-acceptance/`](reference-host-acceptance/) | 暫定のHost Acceptance Storeへ、issuerが署名したDecisionを鍵生成・署名・取込み・失効する参照ツール。効果許可は与えない（#267 / #1121） |
+| [`reference-host-effect-grant/`](reference-host-effect-grant/) | 開発・検証専用の暫定効果許可（D8）へ、issuerが署名・検証する参照ツール。本番の権限発行ではなく、Evidenceは`provisional-grant`でG2へ数えない |
 | [`reference-host-draft-recovery/`](reference-host-draft-recovery/) | Hostの外部編集競合・Draft復旧・副作用再送しない境界を合成入力で判定する読取り専用の参照（#1529） |
 | [`reference-deployment-attempt/`](reference-deployment-attempt/) | 配備試行の参照用起動点 |
 | [`reference-durable-run-golden/`](reference-durable-run-golden/) | 永続実行記録の期待出力の再現 |
@@ -185,6 +187,7 @@
 | [`reference-data-import-check/`](reference-data-import-check/) | 業務データ取込みの段階D0。タブ区切りの行の形をData定義に照らして検査する参照（#1807） |
 | [`reference-function-definition-document/`](reference-function-definition-document/) | 受理済みの意味から機能定義書を導出する参照（#1803） |
 | [`reference-ddl-entry/`](reference-ddl-entry/) | 物理対応から提供元が出力できるDDLを表ごとに取り出す入口（#1803） |
+| [`reference-expected-state-concurrency/`](reference-expected-state-concurrency/) | 期待状態の比較による更新が後勝ちを防ぐことを、実PostgreSQLの使い捨てDBで確かめる参照試験（#2483、仮説H1） |
 | [`reference-developer-context/`](reference-developer-context/) | TEIのGoソース1件に対し、実在する関連テストと明示参照する設計資料を根拠付きの調査候補として返す読み取り専用の参照PoC。ローカルのSystem One互換判断モデルは候補の順位付けにだけ使い、失敗時は決定的な基準順を保つ。受理・権限・実行を決めない（#2196 / #2021） |
 | [`reference-design-output/`](reference-design-output/) | 受理済みの意味から表・機能・対応一覧・DDL・静的HTML索引を一つのrevisionへ束縛して導出する参照。書式（markdown/text）を差し替えても意味の行を保ち、編集できる正本の位置と、宣言された利用／観測された副作用を別々に示す（#1803） |
 | [`reference-access-matrix/`](reference-access-matrix/) | Application × Dataの宣言された利用の対応表を導出する参照（#1803） |

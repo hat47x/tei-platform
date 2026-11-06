@@ -1,4 +1,5 @@
 workspace: board_consumer
+formatVersion: 1
 sources:
   - semantic
 imports:

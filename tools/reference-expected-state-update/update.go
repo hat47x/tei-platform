@@ -158,6 +158,31 @@ func compareMode(req UpdateRequest) (string, error) {
 	}
 }
 
+// validateRequest performs the request-shape checks shared by the synthetic
+// and PostgreSQL paths. It returns the comparison mode, the business result
+// when the request is malformed, and whether the request may proceed.
+func validateRequest(req UpdateRequest) (string, Result, bool) {
+	result := Result{Schema: Schema, Key: req.Key}
+	if strings.TrimSpace(req.Key) == "" || strings.TrimSpace(req.IdempotencyKey) == "" {
+		result.Outcome, result.Reason = OutcomeInvalid, ReasonRequestInvalid
+		return "", result, false
+	}
+	mode, err := compareMode(req)
+	if err != nil {
+		result.Outcome, result.Reason = OutcomeInvalid, ReasonRequestInvalid
+		return "", result, false
+	}
+	if mode == CompareValue && !req.ExpectedPresent {
+		result.Outcome, result.Reason = OutcomeInvalid, ReasonRequestInvalid
+		return "", result, false
+	}
+	if mode == CompareDigest && strings.TrimSpace(req.ExpectedDigest) == "" {
+		result.Outcome, result.Reason = OutcomeInvalid, ReasonRequestInvalid
+		return "", result, false
+	}
+	return mode, result, true
+}
+
 // Apply evaluates one request against the state and returns the resulting
 // state. The input state is never mutated. A conflict is a business rejection
 // (ExecutionError=false), not an execution failure.
@@ -166,25 +191,11 @@ func Apply(state State, req UpdateRequest) (State, Result) {
 		return state, Result{Schema: Schema, Key: req.Key, Outcome: OutcomeInvalid, Reason: err.Error()}
 	}
 	out := copyState(state)
+	mode, invalid, ok := validateRequest(req)
+	if !ok {
+		return out, invalid
+	}
 	result := Result{Schema: Schema, Key: req.Key}
-
-	if strings.TrimSpace(req.Key) == "" || strings.TrimSpace(req.IdempotencyKey) == "" {
-		result.Outcome, result.Reason = OutcomeInvalid, ReasonRequestInvalid
-		return out, result
-	}
-	mode, err := compareMode(req)
-	if err != nil {
-		result.Outcome, result.Reason = OutcomeInvalid, ReasonRequestInvalid
-		return out, result
-	}
-	if mode == CompareValue && !req.ExpectedPresent {
-		result.Outcome, result.Reason = OutcomeInvalid, ReasonRequestInvalid
-		return out, result
-	}
-	if mode == CompareDigest && strings.TrimSpace(req.ExpectedDigest) == "" {
-		result.Outcome, result.Reason = OutcomeInvalid, ReasonRequestInvalid
-		return out, result
-	}
 
 	// A retry of the same request is not applied again. Reusing the key for a
 	// different update is rejected rather than silently applied.

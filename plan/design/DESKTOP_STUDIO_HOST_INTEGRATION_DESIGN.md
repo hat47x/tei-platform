@@ -141,6 +141,8 @@ Desktopでローカル実行できることは、外部DB、ネットワーク�
 
 オフラインだからといって、期限切れのRemote Authorizationをローカルの権限で置き換えない。同期不能なら未解決として扱い、過去の成功を再生して共有先の状態を作らない。
 
+Localモードでは認証を要求しないのを原則とする（[ADR-0044](../adr/0044-authentication-not-a-core-concern.md)）。ローカルWorkspaceへの参照・検証・提案・受理にログインやcredentialを要求せず、認証が必要なのはConnected / Hybridで接続先の提供主体（Plugin、既存IdP、Remote Provider）が契約として解決する範囲である。認証機構をStudio HostやCLIの必須依存にしない。
+
 ## 6. Wails v3の採否判定（現時点では候補）
 
 第一候補をGo + Wails v3とするが、HostでなくGoの共通Application Serviceが意味操作を所有する。Wails v3の依存は外側のHostへ閉じ込め、Browser共通UIの変更と区別する。

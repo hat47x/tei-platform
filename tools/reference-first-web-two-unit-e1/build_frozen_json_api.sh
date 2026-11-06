@@ -34,11 +34,19 @@ export GOOS=linux GOARCH=amd64 GOAMD64=v1 CGO_ENABLED=0
 
 # Materialize the same normalized World from the existing Source loader, on
 # the builder side only. It is a diagnostic data artifact, not a new Source.
+# The observation is written only where the supplied grants allow it. The
+# grant names the exact scratch path this step writes, so the generator cannot
+# write anywhere else even if its arguments change.
+cat > "$scratch/frozen-world-grants.json" <<EOF
+{"grants":[{"kind":"filesystem","access":"write","scope":"$scratch/generated-world-observation.json"}]}
+EOF
+
 go run ./tools/reference-first-web-frozen-world-generate \
   -workspace reference/workspace -application order_entry \
   -baseline-id "$2" -baseline-revision "$3" \
   -target-revision "$source_sha" \
   -lineage-out "$scratch/generated-world-observation.json" \
+  -grants "$scratch/frozen-world-grants.json" \
   > "$scratch/derived/api/frozen-world.json"
 digest="$(sha256sum "$scratch/derived/api/frozen-world.json" | cut -d' ' -f1)"
 test "${#digest}" -eq 64

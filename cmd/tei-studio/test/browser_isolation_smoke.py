@@ -188,7 +188,7 @@ def create_workspace_fixture(scratch: Path, variant: str) -> Path:
     semantic = root / "semantic"
     semantic.mkdir(parents=True)
     (root / "tei.workspace.yaml").write_text(
-        f"workspace: browser_isolation_{variant}\nsources:\n  - semantic\n",
+        f"workspace: browser_isolation_{variant}\nformatVersion: 1\nsources:\n  - semantic\n",
         encoding="utf-8",
     )
     (semantic / f"{variant}-record.tei").write_text(

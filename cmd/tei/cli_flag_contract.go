@@ -33,6 +33,7 @@ func selectedReadOnlyFlagError(out io.Writer, command string, err error) (int, e
 // parses its own arguments instead of the shared FlagSet.
 var selectedReadOnlyFlagAllowlist = map[string][]string{
 	"inspect": {"workspace", "subject-kind", "subject-id"},
+	"view":    {"workspace", "application", "pattern", "package", "format", "command", "input", "execute", "period-state", "allow-capability", "operation-log", "lifecycle-state", "lifecycle-command", "lifecycle-owner", "lifecycle-generation"},
 	"trace": {
 		"workspace", "scope", "subject-kind", "subject-id",
 		"direction", "mode", "offset", "limit", "expected-fingerprint",
@@ -59,8 +60,8 @@ var selectedReadOnlyFlagAllowlist = map[string][]string{
 	"validate":            {"workspace", "world", "json"},
 	"world":               {"workspace", "world"},
 	"requirements":        {"workspace", "world"},
-	"plugin-lock":         {"workspace", "world"},
-	"plugin-resolve":      {"workspace", "world", "environment", "plugin-lock"},
+	"plugin-lock":         {"workspace", "world", "environment"},
+	"plugin-resolve":      {"workspace", "world", "environment", "plugin-lock", "diagnostic-candidates"},
 	"plugin-runtime-plan": {"workspace", "world", "environment", "plugin-lock"},
 }
 

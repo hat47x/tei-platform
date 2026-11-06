@@ -48,7 +48,7 @@ func TestPinnedSourceRootDoesNotFollowWorkspaceDirectoryReplacement(t *testing.T
 func TestLoadRejectsManifestSymlinkLeavingWorkspace(t *testing.T) {
 	root := t.TempDir()
 	manifest := filepath.Join(t.TempDir(), "manifest.yaml")
-	if err := os.WriteFile(manifest, []byte("workspace:\n  sources:\n    - semantic\n"), 0600); err != nil {
+	if err := os.WriteFile(manifest, []byte("workspace:\nformatVersion: 1\n  sources:\n    - semantic\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.Symlink(manifest, filepath.Join(root, "tei.workspace.yaml")); err != nil {
@@ -61,7 +61,7 @@ func TestLoadRejectsManifestSymlinkLeavingWorkspace(t *testing.T) {
 
 func TestLoadAcceptsInternalManifestLinkAndReleasesRootHandle(t *testing.T) {
 	root := t.TempDir()
-	if err := os.WriteFile(filepath.Join(root, "inside.yaml"), []byte("workspace:\n  sources:\n    - semantic\n"), 0600); err != nil {
+	if err := os.WriteFile(filepath.Join(root, "inside.yaml"), []byte("workspace:\nformatVersion: 1\n  sources:\n    - semantic\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.Symlink("inside.yaml", filepath.Join(root, "tei.workspace.yaml")); err != nil {

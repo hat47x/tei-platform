@@ -342,7 +342,7 @@ func TestOneRevisionOrderEntryE2EPacket(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	index1, err := workspace.BuildSourceIndex(r1, loaded)
+	index1, err := workspace.BuildSourceIndexFromLoad(r1, loaded)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -382,6 +382,16 @@ func TestOneRevisionOrderEntryE2EPacket(t *testing.T) {
 	if err := store.Ingest(context.Background(), signed); err != nil {
 		t.Fatal(err)
 	}
+	// D9 follow-up: the audit requires E2 to name the Acceptance kind. The kind is
+	// READ BACK from the Store, never asserted as a constant. This Decision was
+	// signed without a kind (pre-D9 shape), so the Host reports it as unspecified
+	// (the empty kind is normalized exactly as the Host does), which the audit
+	// diagnoses as not formal evidence.
+	currentAccepted, err := store.ReadCurrentAcceptedSource(context.Background(), "order_entry")
+	if err != nil {
+		t.Fatal(err)
+	}
+	acceptanceKind := normalizedAcceptanceKind(currentAccepted.AcceptanceKind)
 	run.env = []string{e2eChildStore + "=" + storeDir, e2eChildTrust + "=" + trustPath}
 
 	// 3. The disposable PostgreSQL fixture, built from the accepted R1
@@ -593,6 +603,8 @@ func TestOneRevisionOrderEntryE2EPacket(t *testing.T) {
 			"reviewFingerprint": receipts.ReviewFingerprint, "reviewCandidateFingerprint": receipts.ReviewCandidateFingerprint,
 			"decisionReceipt": locator["decision"], "reloadReceipt": locator["reload"],
 			"delta": []string{"add-validation", "add-application-validation-use"},
+			// A claim read from the Host Store; the audit does not verify it.
+			"acceptanceKind": acceptanceKind,
 		},
 		"web": map[string]any{
 			"acceptedRevision": receipts.R1, "application": "order_entry", "target": "web",
@@ -605,8 +617,9 @@ func TestOneRevisionOrderEntryE2EPacket(t *testing.T) {
 			"acceptedRevision": receipts.R1, "datasource": "disposable PostgreSQL 16 (public.orders built from the R1 declaration)",
 			"schemaCompatibility": "compatible", "schemaEvidence": locator["schema"],
 			// D6: the effect Grant is synthetic. This value is a label, not authority.
-			"hostAuthorityEvidence": "synthetic-effect-grant:test-only",
-			"commandReceipt":        locator["command"], "independentReadReceipt": locator["read"], "recordId": "public.orders:order_id=1001",
+			"hostAuthorityEvidence":   "synthetic-effect-grant:test-only",
+			"hostAuthorityProvenance": "synthetic",
+			"commandReceipt":          locator["command"], "independentReadReceipt": locator["read"], "recordId": "public.orders:order_id=1001",
 			"schemaFailureControl": locator["s02"], "hostFailureControl": locator["s05"],
 		},
 	}
@@ -649,14 +662,21 @@ func TestOneRevisionOrderEntryE2EPacket(t *testing.T) {
 		has[d] = true
 	}
 	if healthRaw != nil {
-		// With a matching health receipt nothing declarative is missing. The
-		// audit still asks for human review and never grants a Product Gate.
-		if len(report.Diagnostics) != 0 || report.Status != "REVIEW_REQUIRED" {
-			t.Errorf("expected REVIEW_REQUIRED with no diagnostics: status=%s %v", report.Status, report.Diagnostics)
+		// With a matching health receipt the audit never grants a Product Gate.
+		// This run uses the direct store, which emits no effectcommit.Evidence, so
+		// the packet has no physical.guarantee. Since the audit diagnoses the
+		// Provider's atomicity declaration, E2_PROVIDER_GUARANTEE_NOT_ATOMIC remains.
+		// The Acceptance was signed without a kind, so the Store reports it as
+		// unspecified: PROVISIONAL_ACCEPTANCE_NOT_FORMAL_EVIDENCE. No path issues
+		// a formal Acceptance, so this E2 packet can never be REVIEW_REQUIRED.
+		if len(report.Diagnostics) != 2 || !has["E2_PROVIDER_GUARANTEE_NOT_ATOMIC"] || !has["PROVISIONAL_ACCEPTANCE_NOT_FORMAL_EVIDENCE"] || report.Status != "INCOMPLETE" {
+			t.Errorf("expected only E2_PROVIDER_GUARANTEE_NOT_ATOMIC and PROVISIONAL_ACCEPTANCE_NOT_FORMAL_EVIDENCE: status=%s %v", report.Status, report.Diagnostics)
 		}
-	} else if len(report.Diagnostics) != 1 || !has["TRUSTED_FULL_HEALTH_NOT_RECORDED"] || report.Status != "INCOMPLETE" {
-		// Only the trusted full health of an exact checkout remains.
-		t.Errorf("expected only TRUSTED_FULL_HEALTH_NOT_RECORDED to remain: status=%s %v", report.Status, report.Diagnostics)
+	} else if len(report.Diagnostics) != 3 || !has["TRUSTED_FULL_HEALTH_NOT_RECORDED"] || !has["E2_PROVIDER_GUARANTEE_NOT_ATOMIC"] || !has["PROVISIONAL_ACCEPTANCE_NOT_FORMAL_EVIDENCE"] || report.Status != "INCOMPLETE" {
+		// Only the trusted full health of an exact checkout, the missing Provider
+		// guarantee (no Evidence on the direct-store path) and the unspecified
+		// Acceptance kind remain.
+		t.Errorf("expected only TRUSTED_FULL_HEALTH_NOT_RECORDED, E2_PROVIDER_GUARANTEE_NOT_ATOMIC and PROVISIONAL_ACCEPTANCE_NOT_FORMAL_EVIDENCE: status=%s %v", report.Status, report.Diagnostics)
 	}
 	for _, filled := range []string{"S02_REAL_DATASOURCE_SCHEMA_READINESS_MISSING", "S02_NEGATIVE_CONTROL_MISSING",
 		"ACCEPTED_R0_R1_LINEAGE_MISSING", "WEB_NOT_BOUND_TO_ACCEPTED_R1_RULE_SELECTION",

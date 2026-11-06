@@ -1,0 +1,108 @@
+name: Construction Context synthetic reference
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'plan/fixtures/construction-context/**'
+      - '.github/workflows/construction-context-reference.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  synthetic-construction-context:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      EXPECTED_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - name: Checkout the exact candidate revision
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+          ref: ${{ env.EXPECTED_HEAD }}
+
+      - name: Verify source revision and initial worktree
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
+          test -z "$(git status --porcelain=v1 --untracked-files=all)"
+          echo "candidate-head=$(git rev-parse HEAD)"
+          echo "python-fixture-blob=$(git rev-parse HEAD:plan/fixtures/construction-context/verify_synthetic.py)"
+
+      - name: Execute synthetic cases against the exact candidate
+        shell: bash
+        env:
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: |
+          set -euo pipefail
+          python3 --version
+          python3 -B plan/fixtures/construction-context/verify_synthetic.py
+          python3 -B plan/fixtures/construction-context/test_consumer_views.py
+          python3 -B plan/fixtures/construction-context/test_selective_requalification.py
+          python3 -B -c 'import ast, pathlib; ast.parse(pathlib.Path("plan/fixtures/construction-context/verify_synthetic.py").read_text(encoding="utf-8"))'
+
+      - name: Verify read-only result and unchanged source
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
+          test -z "$(git status --porcelain=v1 --untracked-files=all)"
+
+  observed-tei-cli-read:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      EXPECTED_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+      GOENV: off
+      GOWORK: off
+      GOFLAGS: ''
+      GOTOOLCHAIN: local
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+          ref: ${{ env.EXPECTED_HEAD }}
+
+      - name: Set up Go from the checked sources
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: go.mod
+          check-latest: false
+          cache: false
+
+      - name: Build actual TEI executable outside the checkout
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
+          go build -o "$RUNNER_TEMP/tei" ./cmd/tei
+          "$RUNNER_TEMP/tei" version -json
+          test -z "$(git status --porcelain=v1 --untracked-files=all)"
+          echo "real-cli-candidate-head=$EXPECTED_HEAD"
+          echo "real-cli-checker-blob=$(git rev-parse HEAD:plan/fixtures/construction-context/verify_real_cli.py)"
+
+      - name: Verify read-only CLI discovery, catalog, inspect, trace and validation
+        shell: bash
+        env:
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: |
+          set -euo pipefail
+          python3 -B plan/fixtures/construction-context/verify_real_cli.py \
+            --binary "$RUNNER_TEMP/tei" \
+            --workspace reference/workspace \
+            --expected-head "$EXPECTED_HEAD" \
+            --output-dir "$RUNNER_TEMP"
+          test -z "$(git status --porcelain=v1 --untracked-files=all)"
+          # RC-01 changes only a temporary workspace copy.
+          python3 -B plan/fixtures/construction-context/verify_real_source_relink.py \
+            --binary "$RUNNER_TEMP/tei" \
+            --workspace reference/workspace \
+            --expected-head "$EXPECTED_HEAD"
+          test -z "$(git status --porcelain=v1 --untracked-files=all)"

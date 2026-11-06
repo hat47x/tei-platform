@@ -86,7 +86,7 @@ func TestImportedMeaningImpactRejectsMissingOrContradictoryOrigin(t *testing.T) 
 	}
 	t.Run("missing-selected-provider", func(t *testing.T) {
 		writeFixture(t, filepath.Join(consumer, "tei.workspace.yaml"),
-			"workspace: consumer\nsources:\n  - semantic\n")
+			"workspace: consumer\nformatVersion: 1\nsources:\n  - semantic\n")
 		without, err := workspace.Load(consumer)
 		if err != nil {
 			t.Fatal(err)

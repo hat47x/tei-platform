@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"path"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"tei/internal/semantic"
@@ -34,8 +35,9 @@ type ResolvedImport struct {
 }
 
 type workspaceManifest struct {
-	Sources []string
-	Imports []WorkspaceImport
+	FormatVersion int
+	Sources       []string
+	Imports       []WorkspaceImport
 }
 
 // parseWorkspaceManifestYAML accepts the existing small workspace YAML subset
@@ -51,6 +53,21 @@ func parseWorkspaceManifestYAML(src string) (workspaceManifest, error) {
 			continue
 		}
 		if strings.HasPrefix(line, "workspace:") {
+			continue
+		}
+		if strings.HasPrefix(line, "formatVersion:") {
+			if section != "" {
+				return workspaceManifest{}, fmt.Errorf("line %d: formatVersion must appear before sources and imports", n+1)
+			}
+			if out.FormatVersion != 0 {
+				return workspaceManifest{}, fmt.Errorf("line %d: duplicate formatVersion", n+1)
+			}
+			value := strings.TrimSpace(strings.TrimPrefix(line, "formatVersion:"))
+			version, err := strconv.Atoi(value)
+			if err != nil || version < 1 {
+				return workspaceManifest{}, fmt.Errorf("line %d: formatVersion must be a positive integer", n+1)
+			}
+			out.FormatVersion = version
 			continue
 		}
 		switch line {
@@ -189,7 +206,7 @@ func loadWorkspaceImports(root string, imports []WorkspaceImport, result *Result
 		}
 		actualDigest := sourceindex.Fingerprint(encoded)
 		if imp.SemanticDigest != "" && imp.SemanticDigest != actualDigest {
-			return fmt.Errorf("import %q: semantic digest mismatch for namespace %q (expected %s, got %s)", imp.Alias, imp.Namespace, imp.SemanticDigest, actualDigest)
+			return fmt.Errorf("import %q: semantic digest mismatch for namespace %q (expected %s, got %s); review the provider changes and their impact before updating the pin", imp.Alias, imp.Namespace, imp.SemanticDigest, actualDigest)
 		}
 		owned[imp.Namespace] = true
 		result.World.Semantics = append(result.World.Semantics, *selected)

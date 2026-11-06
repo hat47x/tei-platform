@@ -577,3 +577,72 @@ environment.production:
 - 宣言を増やした結果、単純な提供元を一つ追加するだけで多量の手書きの記述が必要になる。
 - 意味の対応付けと技術的な調整の境界が、二つの利用側で一貫して引けない。
 - 静的な結合で、対応付けの具体化が成果物の大きさや起動時間を目立って悪化させる。
+
+
+---
+
+## 17. 標準意味型とPlugin I/Oの再利用境界（2026-11-02、横断設計候補）
+
+**状態：未採用の設計追補。** #1223の既存I/O対応設計を正本の配置先として使い、標準型の別Registry/Resolver、確定DSL、新しいKernel TypeKindを作らない。基準mainは `3784a4432a28502ca04057325689e409d14d9140`。本節の追加は人間によるSemantic Acceptance、製品Contractの採用、Runtimeの受入を意味しない。
+
+### 17.1 実装事実と他レーンの制約
+
+- 現行 `internal/stdlib/semantic.go` は `std` の12 primitive（`binary`、`boolean`、`code`、`date`、`datetime`、`decimal`、`identifier`、`integer`、`json`、`money`、`text`、`time`）を `internal/semantic` の外から供給する。既存 `semantic.Type` のKindはprimitive/alias、`Attribute.TypeRef` は既存CanonicalID。新たなshape/union/collectionをSemantic Kindに追加する実装根拠にはしない。
+- 統合済み[#1916](https://github.com/hat47x/tei-platform/pull/1916)は、異なる意味Aliasの暗黙同一視を拒否する局所Reference。Draft [#2584](https://github.com/hat47x/tei-platform/pull/2584)は選択されたSemantic定義の**構造**だけを確認する候補。正本の発行者、Accepted Semantic Set、Contract項目の真正性を確定しない。
+- [#1570](https://github.com/hat47x/tei-platform/issues/1570)の既存Semantic配布/Composition Preflightは、明示選択、内容Digest、検証済み構造と発行者Trustの一部を別々に調べる。これを新規の型解決器に置き換えない。[#951](https://github.com/hat47x/tei-platform/issues/951)のContract発行Authority/Provider Conformanceと[#267](https://github.com/hat47x/tei-platform/issues/267)の意味受理も独立。
+- [#2298](https://github.com/hat47x/tei-platform/pull/2298)の `tei.*` 予約ルート、型の複数Instance、Graphの保証境界は**提案**（#2298は2026-11-03 UTCにmerge済み。統合された設計文書の状態は提案中）。既存 `std.*` TypeRefや `std.message` を暗黙に `tei.std.*` へ変更しない。この文書を理由に他者Draftを編集・統合しない。
+- [#1705](https://github.com/hat47x/tei-platform/issues/1705)の型付き算術Referenceは、数量・単位・通貨・精度・丸め・未取得を既存TypeRefと明示注釈で検証する。単位やCurrencyを全域の新Registryにせず、`std.money`だけから通貨が決まると推定しない。
+- TEI独自Host、Wails、Theia等の共通実行基盤は前提としない。契約の検査と、Target固有の実行強制・Ownerの業務受理・Sourceの鮮度を分離する。
+
+### 17.2 「型」に詰め込まず、直交する契約を接続する
+
+| 面 | 判定対象 | 再利用する既存の責務 | 型IDから推測してはいけないこと |
+| --- | --- | --- | --- |
+| Semantic identity | TypeRef、Alias連鎖、受理されたSemantic Set | `semantic.Type`、Shared Acceptance、#1570 | 同じprimitiveが同じ業務型を意味すること |
+| Value shape | field、nullable、one/optional/list/set、schema | #1223のItem Mapping、#951のContract Shape | 同じ型IDなら配列/NULL/列順まで同じであること |
+| Representation | CSV/JSON/SQL Row/PDF/HTML等の実表現と変換 | #988演算/明示Adapter、#943 Build Artifact | JSON互換ならCSVへの情報保存も保証されること |
+| Instance/Scope | 同一Component Typeから生成された複数InstanceとBinding | #1016、#1121、#2298（2026-11-03 UTCにmerge済み、提案中） | Typeの一致が同じProvider・Credential・Dataを選ぶこと |
+| Origin/Acceptance | Publisher/Contract Authority、Source Revision、Accepted意味 | #951、#1570、#267 | Digest一致や署名が業務上の受理を意味すること |
+| Effect/Invocation | read/write/network、Principalが必要か、現在権限とGeneration | #1118、#1174、ADR-0032、Targetの実行境界 | 読み取り値の適合がwrite権限を与えること |
+
+上表は**新しい六層の固定APIではない**。既存Ownerが持つ判定を、同じ図やInspectorへ根拠付きで関連付けるための整理である。Generic `record/list/map`をすぐprimitiveへ追加する代わりに、まず既存の項目型・多重度とSchema参照で二Consumerの不足を観察する。
+
+### 17.3 標準化候補を「値型」と「契約」に区別する
+
+| 候補 | 位置付け・優先 | 少なくとも保持・検証すべき意味 | 先に使う実Consumer |
+| --- | --- | --- | --- |
+| 現行12 primitiveとDomain Alias | 現行Referenceを優先して検証 | Aliasのnominal identity、null/欠損、数値精度、通貨/単位注釈を混同しない | 業務入力、算術、I/O Mapping |
+| Record/RowとCollection | **shape候補**。TypeKind新設は保留 | field identity、cardinality、nullable、重複/順序の意味 | SQLの行とCSVの列対応 |
+| Table/Dataset | **標準契約候補**。即時 `std.table` 採用は保留 | column/row identity、列型、NULL、key、row orderの有無、Schema revision | SQLite/SQL取得→CSV出力 |
+| Document | **標準契約候補**。型と生成工程を分ける | 論理DocumentとPDF/HTMLの表現差、link/media、欠落/非可逆変換 | HTML/PDF生成・検証 |
+| Artifact/Build output | **成果物参照契約候補**。Domain値型とは分ける | content digest、produced-by、Target、Build provenance、取得・採用状態 | Java/.NET/Wasmビルド→配布 |
+| Typed Graph/Model | **構造/関係契約候補**。意味GraphとUI Graphを分ける | qualified Node/Edge identity、scope、source revision、projection loss | Studio Graphとモデル解析 |
+| ResourceState/ChangeSet | **能力・Effect契約候補**。状態型だけで操作を許さない | read/observe vs mutate、owner、snapshot/read-set、commit/uncertain、rollback境界 | DB/Cloud操作と監査 |
+| Event/Outcome | **結果/制御契約候補**。Message payloadと混ぜない | completed vs rejected vs failed vs unknown、ordering/retry/idempotence | Workflowの結果連携 |
+
+名称は**評価用分類**であり、型名・Package名・Namespaceの予約ではない。専門型は `tei.std.*` の名前を借りて一般型を装わず、最低二つの独立Consumerで同じ入出力・欠損・失敗・意味を実測できた部分だけを標準候補に昇格する。標準型が増えてもCoreの分野固有分岐は増やさない。
+
+### 17.4 型付きパイプラインの可視性と限界
+
+Source/Authoring Graph → Resolved/Lowered Graph → Targetの実行・観測という関連を同じ図に示しても、**それぞれ異なる証拠**として保持する。#2298（2026-11-03 UTCにmerge済み）§15の限定保証（`PlanClosed`、`EffectConfined`、`GraphTraceConformant`）を再定義せず、I/O Mapping側では次の対応に限定する。
+
+- すべてのMapping Edgeはproducer slot/field、consumer slot/field、Contract identity/shape、TypeRef、Source/Accepted revisionの参照を**表示可能**にする。Name一致でEdgeを生成しない。
+- Generator/変換は入力と出力に加え、宣言されたOperator/Provider、Stage、Loss（保持/明示変換/非可逆/未証明）、Error/Unknownを可視化する。隠れた変換、暗黙の欠損値補完、欠落Edgeの黙認をしない。
+- Opaque Providerの内部を全展開できない場合はOpaque Nodeと許可Effectの境界を表示する。「図に存在しないから内部副作用も絶対ない」とは主張しない。強制できないEffectと未観測経路はUnresolvedである。
+- Build-only dependencyとRuntime dependency、BusinessのRelation graphとService coeffect graphは別種類のEdgeとする。型の同一性から依存/実行順を推測しない。
+
+### 17.5 次の最小実証・反証条件（すべて計画、NOT RUN）
+
+| Case | 最小シナリオ | 成功/拒否として観測する内容 |
+| --- | --- | --- |
+| ST-01 | 同一 `OrderId` の接続と別Alias `CustomerId` の接続 | 同一候補、異Alias拒否、既存#1916と#2584の範囲だけを主張 |
+| ST-02 | 同じTypeRefだが選択Semantic定義が改訂 | 同じRef文字列をAccepted互換性の証拠にしない。#267の受理境界へ返す |
+| ST-03 | SQL結果→CSV、NULL・decimal精度・複合key・row order | 明示Mappingなしにlosslessと呼ばない。失う意味を列挙 |
+| ST-04 | 同型の二Instanceを異なるStorageにBinding | 型適合をもってInstance/権限/Sourceが同一とはしない |
+| ST-05 | Document→PDF/HTMLの二表現 | Sourceの意味とTarget固有loss/Artifactを別に追跡 |
+| ST-06 | Pluginが未宣言Network Effectを使う | Graph closureと実行時のEffect封じ込めを別判定。非強制Targetは未証明 |
+| ST-07 | 通貨JPY/個とUSD/個の演算、NULLと取得不能 | #1705/#1637へ委譲し、暗黙換算/ゼロ補完を拒否 |
+| ST-08 | `std.*` と提案中 `tei.std.*` の同名契約 | Namespace文字列置換を行わず、提案/既存/受理とPublisher Authorityを別記 |
+| ST-09 | 意味を変えずにArtifact/Targetだけ変更 | Build/Conformance再検証と業務意味の再受理を混同しない |
+
+**採用判断・撤回条件**：二Consumerで専門用語を剥がした共通I/O契約が実際に再利用でき、変換の損失・Unknownを人とAIが同じ根拠で確認できた場合だけ標準候補を採用する。既存のSemantic Type/Shape/Contractで十分なら新しいTypeKind/Registryは撤回する。既存#1103/#1121/Graph traceで可視性が足りるなら専用Pipeline Runtime/新Lockを設けない。正式な標準型への昇格、Namespace移行、MeaningのAcceptanceは別途Owner判断を要する。
