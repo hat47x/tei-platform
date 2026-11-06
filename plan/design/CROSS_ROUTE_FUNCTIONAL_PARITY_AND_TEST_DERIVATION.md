@@ -769,3 +769,19 @@ main統合済み[PR #2894](https://github.com/hat47x/tei-platform/pull/2894)の`
 **再資格の最短規則**：Owner対象L・Predicateの意味/粒度、DataSource/Reader/snapshot/Grant、Workspace Manifest/Source参照/Plugin/Toolchain、独立Expectedの受理範囲が変わるたび、*影響するClaimだけ*を`historical-pass / current-unqualified`へ移し、必要なReaderとCaseを再実行する。単なるRaw Source Path移動は別途実Resolveを確かめるが、意味・Runtime権限を自動否定／自動再受理しない。Source A→B→Aで旧Receiptを新時点の実Read資格として復活させない。
 
 **責務と未実証**：#2811は観測束縛と検収順、#2514は独立Expected/Mutant、#1180はScenario、#2586/#1163は実Reader/同一Attempt、#2595/#2600は実Sourceと失効、#2621/#3030はAuthoring移行を担当する。#2514・#3030の主担当PRや製品Codeへ重複投稿・変更しない。現行Sourceの静的比較と過去CIの再取得以外、新Completion Caseの実Goテスト、実Provider全件性、末尾Mutant、`*.tei.md` Reader移行、Owner受理は**NOT RUN**。[台帳§8.9](./TEI_TEST_BASIC_DESIGN_AND_EVIDENCE_LEDGER_2026-11.md)に独立条件・境界の詳細を記録。
+
+### 18.10 空集合Policyの未取得断定を抑える入場条件と実読込Sourceの版（2026-11-07）
+
+**§18.9の補正**：現main `internal/semantic/completion.go`（blob `512a835ca445d81dd043f8af78ca29df4e7adb3b`）では、`CompletionEvidence.Targets=[]`でも`CoverageUnestablished`のとき、`EmptyPolicyDeny`なら`fails`、`EmptyPolicyRequiresEvidence`かつ`EmptyJustified=true`なら`holds`を返す。いずれもCallerの申告であり、実Providerの全件Read/Ownerが要求した集合を関数内では独立立証しない。前者の`fails`を**実際に0件と確認した業務不成立**と読み替えるのは危険であり、後者の`holds`もboolだけで正当化しない。[`completion_test.go`](https://github.com/hat47x/tei-platform/blob/main/internal/semantic/completion_test.go)の既存単体テストはCoverage既知の空Policyを中心に検査しており、これらの「空だと申告されたが完全集合かは未取得」対照の実行証拠ではない。
+
+**追加受入票**（[台帳§8.10](./TEI_TEST_BASIC_DESIGN_AND_EVIDENCE_LEDGER_2026-11.md) CEC-01〜05）。計画の順序は検証対象を一つずつ増やし、担当Ownerを跨ぐ証拠を統合せずに引き渡す。
+
+1. **C0（Source/Case固定）**：`Owner TargetSet ID/revision/scope/asOf`、独立期待値の出典、`EmptyPolicy`、対象Row IDs、同版のReader Snapshot/ページ終端・RLS/Disclosure、実Caller引数を固定。正しいSource/期待の意味受理がない段階で正式Conformance PASSとは呼ばない。
+2. **C1（局所入力の対照）**：空集合禁止でも`Targets=[]+CoverageUnestablished`ならコード上は`fails`。提案期待`unverified`との差を明示した設計試験とし、業務Owner受理前にバグ確定をしない。`requires-evidence+EmptyJustified=true`はCoverage未確立でもコード上`holds`。別Scope/旧Snapshotのboolは独立空証明として利用不可。
+3. **C2（実Reader witness）**：#2586/#1163が同一Attempt/ScopeのOwner集合・行Identity・全ページ終端・Snapshot/時点・current Disclosureを実確認。true empty、missing、partial、not-disclosed、permission-deniedを別状態にし、`[]`を万能な完了Witnessにしない。確実な反例L1:falseは限定`fails`を支持し得るが、部分集合L1:trueから全員成立は導けない。
+4. **C3（Authoring source admission）**：`*.tei.md`への形式統一はOwner決定。未対応形式を黙って読み飛ばさず`TEI_MD_PARSER_UNBOUND`で拒否する[#3031](https://github.com/hat47x/tei-platform/pull/3031)の固定HEAD `63953ccb5c12ead26ec1268e7c0afdba4eff66ae`は[専用CI #42217379093](https://github.com/hat47x/tei-platform/actions/runs/42217379093)と[Health #42217378867](https://github.com/hat47x/tei-platform/actions/runs/42217378867)が成功（**Draft限定**）。Markdown Parser実行・受理Meaning・Source移行同等性は別。移行全体のOwnerは[#2667](https://github.com/hat47x/tei-platform/pull/2667)、Authoring固有は[#3030](https://github.com/hat47x/tei-platform/pull/3030)。
+5. **C4（Claim再資格）**：World/Rule IDが同じでも実Consumed Source、Manifest path/SHA、Scope、Operator/Plugin/Toolchain、実Provider/Grant、独立期待値の版が変われば、影響するClaimの適用資格を再評価。Source A→B→A、旧新二重ファイル、未ロード定義、異Tenant取得を反例とし、過去Go/CI PASSの履歴を保持して現在適格だけを`unknown/unqualified`へ戻す。
+
+**検収終了条件**：C1のGo分岐の実観測、C2のRead完全性、C3の実Source解決、C4のOwner受理を**同一Attemptで観測できたものだけ**限定受理。#2514は独立検証基準、#1180はScenario SSOT、#2586/#1163はRowset/Provider、#2595/#2600はSource失効、#2667/#3030はAuthoring移行の担当。新判定Engineや第二Case正本を作らない。#3039/#3040の用語規約に従い、新しい記述は「独立期待値・独立検証基準」を使用し、現存コード名・機械的IDは保持する。
+
+**状態**：現mainのCompletion Sourceおよび#3031 CI照合は**確認済み**。CEC-01〜05の新Go/実Reader/Source移行/Owner意味受理、末尾脱落Mutantは**NOT RUN**。この§18.10はdocs-only、#2514/#3030の担当Issue・実装コードに変更なし。
