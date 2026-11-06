@@ -501,3 +501,27 @@ G1〜G5で各観測は取得時点が異なる。要求するのは**同一瞬�
 
 **残余**：HIST-03のHistory Adapterからの取得失敗→偽空入力、HIST-02 checksum欠落のProvider別許容、旧新Client・月次Batch・CDC/Sourceの網羅、MG-24の安全停止と現Grant/Effect/Receipt、過去時点History/SHO参照、物理削除Owner受理。新Gate Engine/Registry/Hostは作らない。
 
+
+### 19.7 History Readerの閉包確認：真正な空履歴と取得失敗を区別する（#2892、未採用の最小Fixture）
+
+**現行コードで確認できる限界**：`HistorySnapshot` は `Database / Tool / CapturedAt / Entries` を持つが、取得の成功/失敗、Pagination完結、許されたScope、Readerの実接続先、SourceのRevision/Watermarkを保証するフィールドはない。`CompareHistory` は `Entries=[]` を「履歴なし」として `RepoPending` に分類するため、**Readerが失敗・権限不足・途中応答を空Snapshotへ潰すことを禁止**する。#2902の `AppliedUnknown`拒否は、既に取得した各Entryの適用状態を限定的に検査するもので、Readerの完全性は別のClaimである。
+
+**検収対象**：History Readerが既存のConnection/Providerを利用してHistorySnapshotを作る境界。独立ExpectedはリポジトリMigration定義 `m001` と、取得元の**実行結果および要求された読取範囲**から作る。比較関数の出力をExpectedにしない。外部Migration ToolのHistory TableをTEIが修復・上書きする機能は実装しない。
+
+| 既存HIST-03を分割した最小負例 | Readerの事実 | 比較器へ渡してよいもの／期待 |
+| --- | --- | --- |
+| **HIST-03a 真正な空履歴** | DB/Tool/Scope確定、Reader成功、Pagination完結、CapturedAtが要求窓内、実行Grantも適切 | `Entries=[]` を渡し `RepoPending` を評価可能。ただし未適用の業務的意味までは確定しない |
+| **HIST-03b 接続切れ・拒否** | Network error／PermissionDenied／Reader例外 | 空の `HistorySnapshot` を合成しない。取得は `unknown`、比較実行は保留 |
+| **HIST-03c 部分ページ** | 1/2ページだけ取得、Cursor失効、Readerが上限で打切り | 欠落Entriesを「不存在」とみなさない。必要範囲の完全性が証明できるまで `unknown` |
+| **HIST-03d 別Target・古い観測** | 履歴IDは同一だが実DB Instance/Provider・Source時点が異なる、CapturedAt期限切れ | 履歴内容一致でも現在Targetに対する `RepoApplied`資格を付与しない。既存Binding・現行Grantを確認 |
+| **HIST-03e ABAと欠落** | Source/Historyが A→B→A と表面値に戻る、または履歴の特定IDの検索自体を実施できない | 旧Receipt/Old Observationの再利用資格を別再評価。取得済み分だけを全集合としない |
+
+**最小受入票（既存Evidenceへ記録、正本型新設ではない）**：`target database instance + provider + tool + source/reader revision + observed interval + capturedAt + query/filter + expected scope/entry set + pagination completion + current grant + error/partial/permission-denied + independent read/checksum`。Sourceに資格がない場合、`CompareHistory` を実行できてもG1〜G5の必要なHistory Claimは `unknown` に留める。正しい空履歴、適用済み、不明、拒否、部分の区別を消さない。
+
+**導入順**：
+1. #2892のReader/Adapter所有者が、実際にHistorySnapshotを供給する既存経路を列挙し、取得失敗/部分取得時に空のEntriesへ変換していないかを確認（Readerがまだ存在しないProviderは未実装として明示）。
+2. 実接続を伴わないReaderのsynthetic fail/partial対照でHIST-03a/b/cを確認。その後に必要なら対象Providerの**実History接続・別Reader**でHIST-03d/eを検証する。
+3. #2902の局所 `AppliedState` fail-closedと今回のReader完結性を**同じSource/Provider/Attempt**で照合してからG3/G4のRequired Historyへ供給。Provider未検証、未接続、権限不足なら合格にしない。
+
+**採用・実証の上限**：上記は#2892の受入条件案であり、HistorySnapshotの新しいフィールドや全Provider共通Adapterを採用したものではない。実Readerの完全性・異種DB・Cutover・Owner承認のE2E試験はNOT RUN。#3018の6/6 successをHIST-03の実証へ昇格しない。
+
