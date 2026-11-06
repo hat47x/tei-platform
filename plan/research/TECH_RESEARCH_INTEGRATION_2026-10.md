@@ -387,3 +387,47 @@ TEIの設計へ反映する観点：
 ### 10.4 Wailsの版更新（旧記述の時点性を保持）
 
 [Wails v3.1.0公式リリース](https://wails.io/blog/wails-v3-1-released/)は**2026-11-01**公開。前節9.3の「10月時点でもBeta」は当時の記述であり、11月6日時点の現状を表さない。#1824では3.1.0の正確な版を固定した比較候補とし、CGO不要経路は実験的機能として別に評価する。Windows／macOS／Linux、native依存、Web/Desktop接続、ビルドと再現性、現行Studioとの差分を実測する前に標準更新やアプリ生成Targetの採択を宣言しない。
+
+
+### 10.5 他チャットと最新Issueを踏まえた精読差分（11月6日・追補）
+
+**位置付け：外部研究の実証、TEIでの設計仮説、実装済み証拠、Ownerの判断は互いに別。以下の追加Fixture／比較実験は NOT RUN。** §10.1〜10.4を繰り返すのではなく、既存Ownerの受入をより判別可能にする。
+
+- **M4Bench・対象集合**：[原文](https://arxiv.org/html/2610.37459v1)は、8タスクの制御比較でoperational specだけでも報酬が+0.162改善する一方、全体のSkill効果では行Key F1が+0.003にとどまると報告する。異なる指標・母集団の数値を直接比較しない。全チェックのstrict passはwith-skill 25/280、no-skill 13/280。**計算値の一致・対象Key集合の正確さ・実取得範囲・現在資格を別のOracleにする**。#2506/#1706/#2622/#2514へ接続。
+- **Concordat・同意の束縛**：[原文](https://arxiv.org/html/2610.37461v2)の二状態プロトコルは「yes/yep/yeah」を同意として扱い、著者自身が「yes, but not that one」も通り得ることを限界と明記。**提示されたToolの許可・ユーザーが確認した正確なOperation/Target/Version・Hostの現在Grant/Effect Fenceを分離する**。単なる「yes」や同じPlugin所属を実操作対象の許可にしない。#2598/#1174/#1824/#2389へ接続。
+- **Verification Agents・提案と実測の区別**：[原文](https://arxiv.org/html/2611.02285v1)のSpec-first、vacuity witness、mutation、semantic mergeは有用。ただしVIR／Shared Synthesis Fleetの例示的PASSや将来構成を、実製品での全面実証と読み替えない。#2514の#2901対照→#3017のrelation-unique一行Mutant killは、合成Fixture・特定Evaluatorで独立に確認できた**限定実測**である。次の反証は空集合、必要Source未読込、NULL/unknown、scope不完全に焦点を当てる。
+- **Rethinking Verification・別Reviewerの費用対効果**：[原文](https://arxiv.org/html/2610.34577v1)では独立Criticが、実験された完了ゲートより良い精度／追加費用のバランスを示した。**別AI Reviewerが賛成したことは独立Expectedではない**。#2514/#1180/#2667で既知Mutantの検出・非検出、誤報、追加トークン／時間を並記し、常設の複数Critic導入は実測後に判断する。
+- **ServerBench・状態依存と実経路**：[原文](https://arxiv.org/html/2611.06841v1)はsession依存と並列branchを保持するstateful replayを使う。TEIは#1163の**同一Attempt**でSource、実Build、Guard、Request、Provider、Receipt、独立Read、Consumerを必要範囲で結合する。別PRの限定PASSを足し合わせて一つの成功した業務実行としない。LLM serving固有の性能指標は流用しない。
+- **Task Advancement Memory・再利用時点**：[原文](https://arxiv.org/abs/2610.37482)の局所検証済み作業進捗は#1824/#2600においてSource Revision、選択epoch、Provider、Grantと再照合してから使用。過去のGUI操作／Agent記憶を現在の承認・実効果に昇格しない。
+- **Wasm ABI・不要なPlugin化を避ける**：[原文](https://arxiv.org/abs/2611.00891)のABI/shimの実証は限定されたOS/Runtimeに対するもの。#1861のWIT候補をTEI契約の正本とせず、#2390の外部Consumerと#1251のBuild実消費を対照する。[Draft #3021](https://github.com/hat47x/tei-platform/pull/3021)の「Pluginなし直接Go計算の23ベクトル」はD0対照候補であり、実Plugin、二Host、現在Grantの証拠ではない。D0で要求を満たせるならPluginを追加しないことも正常な結論。
+
+### 10.6 共通Business Caseの反証表：単一縦切り、独立Expected、Claimの上限
+
+先行Consumerは order_entry の受注参照→確認→保存Intent→単一Providerの効果観測とする。#1125のBusiness ProcedureとWorkflow Instance、#2389のMembership/Occupancy／業務責任とHost Grantを**データ関係だけから推論しない**。read-onlyでSource→Function Data Context→実Read→Consumerを資格化してから書込みへ進む。全試験を一度に作るのではなく既存FixtureとEvidenceを再利用する。
+
+| 対照（固定する独立Expectedの候補） | 検出する誤成功 | Owner／まだ証明していないこと |
+| --- | --- | --- |
+| **E1 集合・粒度**：親H、子D1=2件、D2=3件。JOIN 6行は各Entityの件数ではない | 集計値一致だけで対象行・関係が正しいと判断、JOIN増幅 | #2506 FC-01/#2622 DO-01/#2387。実Readerの母集団まで未検証 |
+| **E2 取得資格**：D2先頭1件のみ、完全な0件、未取得、NULL、非開示、別Snapshotを区別 | 0件と未知・部分集合を混同し、全件／不存在／業務完了を推論 | #1706/#2622/#2516。Provider取得範囲とConsumer開示は別 |
+| **E3 判別力**：同一Scenario/Source/Expectedでrelation-unique一行Mutantを注入 | 別CI失敗をMutant kill扱い、弱いOracleを正しいと推論 | #2514の#3017に限定実績。NULL/unknownと不完全scopeは別の未実施試験 |
+| **E4 確認・権限**：受注Aの更新を確認して実PayloadをBへ差替え、Tenant/Grant失効 | 会話上のyes・画面Offer・組織所属だけで実Commit許可 | #2598/#1174/#2389。対象と現在Grantの実束縛は未完 |
+| **E5 Commit不明**：ACK喪失後同OperationIDのReceiptと別接続Readを照合し、新Key盲再送を拒否 | timeout＝未Commit、既存Receipt＝最新Consumer成功とみなす | #1174/#2564。main #2853の実PostgreSQL限定PASSと同一Source/GUI E2Eは別 |
+| **E6 三つの版ずれ**：Source A→B→A、DB実Value A→B→A、Workspace選択A→B後の遅延A応答 | 同bytes／同値／旧Resultを現在の実行・表示資格へ復活 | #2600/#1163/#1824。各Revision/Version/epochを独立に検証 |
+| **E7 Plugin粒度**：直接Go／Plugin／Wasm候補を同じ23見積もりベクトルで比較 | 未選択Pluginの混入・欠けたnested module・型だけ合致 | #3021/#1251 PB-01/07/10/#1861。二Host ABI・実Buildは未資格 |
+
+この表は新しいScenario/Conformance正本ではなく、既存#1180/#2514/#1163へ**どのRequired Evidenceが揃ったか**を記録する比較用資料。照合を次の4つの観測に分ける。
+
+1. **S 静的事実**：DDL/SQL等で宣言されたPK・FK・CHECK、Parser/Selector/Bindingの構造。PK列の宣言順は表示SortKeyではない。FK宣言は実データ整合や業務Relation受理を証明しない。
+2. **M 意味候補**：Constraint、関係、状態遷移、Business ProcedureとActor、受理すべき意味。AIや構造一致はOwner意味受理の代わりではない。
+3. **E 実行観測**：実際のSource読込、Build入力、Provider Read、Commit/Receipt、別Reader、現在Consumer。main #2853の実PG部分検証、#2747のReferenceExecutor等は個別実測であり、同一Attemptの製品完了とは限らない。
+4. **A Owner判断**：意味・対象・業務完了・採用の明示判断。S/M/Eのどの部分からも自動昇格させない。
+
+### 10.7 研究知見からの比較実験と採否の条件
+
+**M4Benchに対応する最小A/B/C比較**：同一の業務要求・実Source・固定Expectedを与えて、A=Task＋Schemaのみ、B=十分なoperational spec（Markdown表、Rule、粒度、NULL、対象集合、時点）、C=Bと同じ内容をSkill/Plugin配送形式で与える。別途D=必要な場合だけ既存Native SQL/Generatorを入力に加える。Dは情報量が異なるためBとCの「包装の効果」とは混同しない。
+
+**測定**：値一致率、Key集合のprecision/recall、全必須Obligationのstrict pass、既知Mutant検出、未実施/unknownを正しく保留した件数、Source/実Build/Consumer対応、レビューの追加時間/トークン、保守・変更量。ExpectedをAgentの出力SQLやCandidateと同じ生成経路で作らない。AI Reviewerの同意と独立Oracleの正しさは別。
+
+**実施順・採否**：P0=E1/E2/E3のread-only・既知Mutant再利用、P1=E4/E5/E6の現在Grant・Receipt・後着、P2=E7の実Host/Plugin比較。#1063/#988がDSL・変換、#2514がOracle、#1180がScenario、#1163が同一Attempt、#1174が実Effect、#1824がUIを所有する。新Verification IR、Agent Runtime、Memory Registry、Plugin Loader、Auth Engine、Proof Storeを研究だけで採用しない。
+
+**証拠の上限**：論文に書かれた効果 ≠ TEIでの実証。Issueへの受入案 ≠ 実装。単一Mutant kill ≠ 全Domain Oracle適格。実PG Commit/Receipt部分PASS ≠ 同一業務UI/Host/Consumer成功。Draft PR #3022は文書への計画反映であり、テスト実行・Owner受理・main統合ではない。研究計画が#1119の既存Critical Pathや主担当の作業ブランチを変更しない。
