@@ -68,6 +68,12 @@ func (h *ReadOnly) ExecuteCommand(workspaceID, applicationID, patternID, capabil
 // ExecuteCommandWithPeriods runs the reference executor with caller-supplied
 // period states. A closed period rejects effects listed in closedRejects.
 func (h *ReadOnly) ExecuteCommandWithPeriods(workspaceID, applicationID, patternID, capabilityID string, inputs, periods map[string]string) CommandRunResponse {
+	return h.ExecuteCommandWithPolicy(workspaceID, applicationID, patternID, capabilityID, inputs, periods, nil)
+}
+
+// ExecuteCommandWithPolicy additionally applies a reference capability
+// allow list before the executor runs.
+func (h *ReadOnly) ExecuteCommandWithPolicy(workspaceID, applicationID, patternID, capabilityID string, inputs, periods map[string]string, allowed []string) CommandRunResponse {
 	loaded, failure := h.loadWorkspace(workspaceID)
 	if failure != nil {
 		return CommandRunResponse{Failure: failure}
@@ -93,6 +99,13 @@ func (h *ReadOnly) ExecuteCommandWithPeriods(workspaceID, applicationID, pattern
 			}
 		}
 		invoker.Periods = command.NewMapPeriodState(states)
+	}
+	if len(allowed) > 0 {
+		authorizer := make(command.AllowListAuthorizer, 0, len(allowed))
+		for _, capability := range allowed {
+			authorizer = append(authorizer, core.CanonicalID(capability))
+		}
+		invoker.Authorizer = authorizer
 	}
 	result, err := invoker.Invoke(context.Background(), command.Request{
 		Application: core.CanonicalID(applicationID),
