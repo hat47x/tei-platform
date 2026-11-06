@@ -31,6 +31,7 @@
 | `model catalog` | `tei.cli.model/v0` | JSON（`declarationCounts`を含む） | JSON（`INVALID_ARGUMENT`、`WORKSPACE_LOAD_FAILED`、`SOURCE_INDEX_FAILED`、`NAMESPACE_NOT_FOUND`） | いいえ（投影型。内側に`tei.operations.model-catalog`の版を持つ） |
 | `inspect` | `tei.cli.inspect/v0` | JSON | JSON（`INVALID_ARGUMENT`、`SUBJECT_NOT_FOUND`、`INSPECTION_FAILED`、`WORKSPACE_LOAD_FAILED`、`SOURCE_INDEX_FAILED`） | いいえ（投影型） |
 | `trace` | `tei.cli.trace/v0` | JSON | JSON（`inspect`と同じ形） | いいえ（投影型） |
+| `view` | `tei.cli.view/v0` | JSON（`-format json`。内側の`result`に`tei.applicationview/v0`を持つ） | JSON（終了コード2: `INVALID_ARGUMENT`・`WORKSPACE_LOAD_FAILED`・`PERIOD_STATE_LOAD_FAILED`。終了コード1: `VIEW_FAILED`・`VIEW_UNSUPPORTED`・`COMMAND_REFUSED`・`COMMAND_FAILED`・`COMMAND_LIFECYCLE_REFUSED`・`COMMAND_EFFECT_UNKNOWN`・`OPERATION_LOG_WRITE_FAILED`・`LIFECYCLE_STATE_FAILED`） | いいえ（投影型） |
 | `validate -workspace -json` | `tei.cli.validate/v0` | JSON（`declarationCounts`・`sourceRootFindings`を含む） | JSON（`INVALID_ARGUMENT`、`WORKSPACE_LOAD_FAILED`、`SOURCE_INDEX_FAILED`、`WORKSPACE_VALIDATION_FAILED`） | いいえ（投影型） |
 | `workspace-files` | `tei.cli.workspace-files/v0` | `result`に`managedFiles`（各要素は`readByLoader`付き）と`sourceRootFindings` | JSON（`INVALID_ARGUMENT`、`WORKSPACE_LOAD_FAILED`） | いいえ（投影型。#2354第一陣で包んだ） |
 | `source-index` | `tei.cli.source-index/v0` | 対象なし: `result`に入力元索引そのもの（`mode=index`）。対象あり: `result`に`operations.SubjectSources`（`mode=subject`） | JSON（`INVALID_ARGUMENT`、`WORKSPACE_LOAD_FAILED`、`SOURCE_INDEX_FAILED`） | いいえ（投影型。`mode`で2形。#2354第一陣） |
