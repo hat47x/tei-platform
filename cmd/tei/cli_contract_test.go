@@ -1,7 +1,9 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
+	"path/filepath"
 	"testing"
 )
 
@@ -62,5 +64,104 @@ func TestDiscoveryAdvertisesTheCommandsOwnSchemaVersion(t *testing.T) {
 		if cmd.Name != "model catalog" && cmd.SchemaVersion != "tei.cli."+cmd.Name+"/v0" {
 			t.Errorf("%s schemaVersion=%q", cmd.Name, cmd.SchemaVersion)
 		}
+	}
+}
+
+// discoveryRecord returns the advertised record for a command name.
+func discoveryRecord(name string) (cliCommandRecord, bool) {
+	for _, record := range commandCatalog().Commands {
+		if record.Name == name {
+			return record, true
+		}
+	}
+	return cliCommandRecord{}, false
+}
+
+// assertAdvertisedVersion compares one actual response envelope with the
+// discovery record. A constant-to-constant test alone would pass while the
+// response drifted; this compares the value the command actually wrote.
+func assertAdvertisedVersion(t *testing.T, name, responseSchema string) {
+	t.Helper()
+	record, ok := discoveryRecord(name)
+	if !ok {
+		t.Fatalf("%s is not advertised by tei commands", name)
+	}
+	if record.SchemaVersion == "" || responseSchema != record.SchemaVersion {
+		t.Fatalf("%s advertised %q, response has %q", name, record.SchemaVersion, responseSchema)
+	}
+}
+
+// TestDiscoverySchemaVersionsMatchActualResponses runs each enveloped command
+// and compares the response's schemaVersion with what `tei commands`
+// advertises (#2824). Commands that need extra input are exercised with a
+// reference Workspace.
+func TestDiscoverySchemaVersionsMatchActualResponses(t *testing.T) {
+	root := filepath.Join("..", "..", "reference", "workspace")
+	decode := func(t *testing.T, out *bytes.Buffer) string {
+		t.Helper()
+		var envelope struct {
+			SchemaVersion string `json:"schemaVersion"`
+		}
+		if err := json.Unmarshal(out.Bytes(), &envelope); err != nil {
+			t.Fatalf("not JSON: %v: %s", err, out.String())
+		}
+		return envelope.SchemaVersion
+	}
+	t.Run("version", func(t *testing.T) {
+		var out bytes.Buffer
+		if code, err := runVersionCommand([]string{"-json"}, &out); err != nil || code != 0 {
+			t.Fatalf("code=%d err=%v body=%s", code, err, out.String())
+		}
+		assertAdvertisedVersion(t, "version", decode(t, &out))
+	})
+	t.Run("model catalog", func(t *testing.T) {
+		var out bytes.Buffer
+		if code, err := runModelCommand([]string{"catalog", "-workspace", root}, &out); err != nil || code != 0 {
+			t.Fatalf("code=%d err=%v body=%s", code, err, out.String())
+		}
+		assertAdvertisedVersion(t, "model catalog", decode(t, &out))
+	})
+	t.Run("workspace-files", func(t *testing.T) {
+		var out bytes.Buffer
+		if code, err := workspaceFilesJSON(&out, root, "", 0); err != nil || code != 0 {
+			t.Fatalf("code=%d err=%v body=%s", code, err, out.String())
+		}
+		assertAdvertisedVersion(t, "workspace-files", decode(t, &out))
+	})
+	t.Run("inspect", func(t *testing.T) {
+		var out bytes.Buffer
+		if code, err := inspectWorkspaceJSON(&out, root, "", "semantic-data", "sales.order", 0); err != nil || code != 0 {
+			t.Fatalf("code=%d err=%v body=%s", code, err, out.String())
+		}
+		assertAdvertisedVersion(t, "inspect", decode(t, &out))
+	})
+	t.Run("view", func(t *testing.T) {
+		var out bytes.Buffer
+		if code, err := runViewCommand([]string{"-workspace", root, "-application", "order_entry", "-format", "json"}, &out); err != nil || code != 0 {
+			t.Fatalf("code=%d err=%v body=%s", code, err, out.String())
+		}
+		assertAdvertisedVersion(t, "view", decode(t, &out))
+	})
+	t.Run("validate", func(t *testing.T) {
+		var out bytes.Buffer
+		if code, err := validateWorkspaceJSON(&out, root); err != nil || code != 0 {
+			t.Fatalf("code=%d err=%v body=%s", code, err, out.String())
+		}
+		assertAdvertisedVersion(t, "validate", decode(t, &out))
+	})
+}
+
+// TestDiscoverySchemaVersionMismatchIsDetected is the negative control: the
+// comparison must fail when a command advertises a version it does not return.
+func TestDiscoverySchemaVersionMismatchIsDetected(t *testing.T) {
+	record, ok := discoveryRecord("inspect")
+	if !ok {
+		t.Fatal("inspect is not advertised")
+	}
+	if record.SchemaVersion == "tei.cli.inspect/v1" {
+		t.Fatal("fixture version must differ from the advertised one")
+	}
+	if record.SchemaVersion != "tei.cli.inspect/v0" {
+		t.Fatalf("inspect schemaVersion=%q", record.SchemaVersion)
 	}
 }
