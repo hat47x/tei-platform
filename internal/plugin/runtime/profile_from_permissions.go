@@ -42,53 +42,36 @@ func ProfileFromPermissions(perms []permission.Spec) (SandboxProfile, []string) 
 }
 
 // ProfileExceedsDeclarations reports the ways a profile allows more than the
-// declared permissions permit: a policy that does not deny by default, a network
-// destination or secret handle that no declaration names, or a mount whose scope
-// is not declared. An empty result means the profile stays within the
-// declarations.
+// declared permissions permit. Only the network allowlist is compared: it names
+// destinations in the same terms as a declaration. Secret handles and mounts are
+// physical references produced by resource resolution (a handle such as
+// "vault://v1" against a declared scope such as "database-credential"), so
+// comparing them with a scope would report a difference that is not one.
 func ProfileExceedsDeclarations(profile SandboxProfile, perms []permission.Spec) []string {
-	derived, _ := ProfileFromPermissions(perms)
+	violations := ProfilePolicyViolations(profile)
 	allowed := map[string]bool{}
-	for _, scope := range derived.NetworkAllowlist {
-		allowed["network\x00"+scope] = true
-	}
-	secrets := map[string]bool{}
-	for _, scope := range derived.SecretHandles {
-		secrets["secret\x00"+scope] = true
-	}
-	files := map[string]bool{}
 	for _, perm := range perms {
-		if perm.Kind == permission.KindFilesystem {
-			files[perm.Scope] = true
+		if perm.Kind == permission.KindNetwork && perm.Access == permission.AccessConnect {
+			allowed[perm.Scope] = true
 		}
 	}
+	for _, scope := range profile.NetworkAllowlist {
+		if !allowed[scope] {
+			violations = append(violations, "the network allowlist names "+scope+", which no declaration permits")
+		}
+	}
+	return violations
+}
 
+// ProfilePolicyViolations reports the policy itself: both defaults must deny.
+// It is used when nothing is declared, so there is no allowlist to compare.
+func ProfilePolicyViolations(profile SandboxProfile) []string {
 	var violations []string
 	if !profile.DenyNetworkByDefault {
 		violations = append(violations, "the network policy does not deny by default")
 	}
 	if !profile.DenyFilesystemByDefault {
 		violations = append(violations, "the filesystem policy does not deny by default")
-	}
-	for _, scope := range profile.NetworkAllowlist {
-		if !allowed["network\x00"+scope] {
-			violations = append(violations, "the network allowlist names "+scope+", which no declaration permits")
-		}
-	}
-	for _, handle := range profile.SecretHandles {
-		if !secrets["secret\x00"+handle] {
-			violations = append(violations, "the secret handle "+handle+" is not declared")
-		}
-	}
-	for _, mount := range profile.Mounts {
-		if !files[mount.Scope] {
-			violations = append(violations, "the mount "+mount.Scope+" is not declared")
-		}
-	}
-	for _, injection := range profile.SecretInjections {
-		if !secrets["secret\x00"+injection.Scope] {
-			violations = append(violations, "the secret injection "+injection.Scope+" is not declared")
-		}
 	}
 	return violations
 }

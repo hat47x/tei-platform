@@ -39,13 +39,17 @@ func TestProfileWithoutDenyByDefaultIsReported(t *testing.T) {
 	}
 }
 
-func TestProfileWithAnUndeclaredMountIsReported(t *testing.T) {
+func TestProfileDoesNotCompareMountsOrSecretHandles(t *testing.T) {
+	// A mount scope and a secret handle are produced by resource resolution, so
+	// they are not the declared scope. Comparing them would report differences
+	// that are not differences; the check stays on the network allowlist.
 	profile := pruntime.SandboxProfile{
 		DenyNetworkByDefault:    true,
 		DenyFilesystemByDefault: true,
-		Mounts:                  []pruntime.SandboxMount{{Scope: "/var/secrets"}},
+		Mounts:                  []pruntime.SandboxMount{{Scope: "migration-workdir"}},
+		SecretHandles:           []string{"vault://v1"},
 	}
-	if violations := pruntime.ProfileExceedsDeclarations(profile, nil); len(violations) != 1 || !strings.Contains(violations[0], "/var/secrets") {
-		t.Fatalf("the undeclared mount must be reported: %+v", violations)
+	if violations := pruntime.ProfileExceedsDeclarations(profile, nil); len(violations) != 0 {
+		t.Fatalf("mounts and secret handles are not compared: %+v", violations)
 	}
 }
