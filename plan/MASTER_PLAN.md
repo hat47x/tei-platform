@@ -481,6 +481,20 @@ external LLM
 
 **判定方法**：対象Claimが必要とする`Required（独立検証基準/業務意味）→ Declared → Resolved/Actually Consumed → Observed（Rowset/Field/Scope/Cohort）→ Current Consumer Qualification`を既存#1163/#2514/#1180の一試行証拠で対応付ける。Declaredが空でもRequiredが不明ならempty PASSとしない。部分/未取得/NULL/非開示/完全な0件、Entity Count/Relation occurrence Count/Join増幅、過去のEvidence/現在Grantはそれぞれ分ける。Product Readerの呼出し辺が見つからなければ`product-read-not-connected`、Case Providerが未接続なら`physical-read-unavailable`と**具体的に不足する辺を記録**し、合成テストの成功で補わない。
 
+<!-- tei-data-form-evidence-absence-outcome-separation-20261107 -->
+**未観測・不在・0件・失敗を混ぜない横断負例（既存#2586/#2514の判定票へ付加）**：
+
+| 実際の観測 | 独立検証基準で許される結論 | 禁止推論／実装の所在 |
+| --- | --- | --- |
+| `*.tei.md`がManagedFilesに存在するだけ／#3031 Guardが`TEI_MD_PARSER_UNBOUND` | `not-loaded/unsupported`、必要Sourceの未充足。Raw Draftは保存対象になり得る | `validate ok`、Catalog空、`proposals=[]`からMeaning 0件・正常終了を推定しない（#3031 Draft、#2823） |
+| `model catalog -namespace no.such.ns` | `NAMESPACE_NOT_FOUND`で`ok:false`、終了コード1。既存の宣言済み空Namespaceとは区別 | main統合[#3052](https://github.com/hat47x/tei-platform/pull/3052)の限定CLI変更。全Readerの必須Source完結や`v0`互換の最終判断までは示さない |
+| 必要対象を一件も取得していない／一部のみ観測 | 集合の空・全件完了とも限らず`unverified` | [Draft #3051](https://github.com/hat47x/tei-platform/pull/3051) exact HEAD `581e699b62b126c86388c88c7c357674394ad252` の[限定Go/Health CI](https://github.com/hat47x/tei-platform/actions/runs/42256518693)はsuccess。未マージであり、Callerの`CoverageComplete`自己申告を独立に裏付けていない |
+| 対象内で`Holds:false`を一件観測 | 被覆が部分でも当該条件の`fails`証人になり得る | これを「全Targetの取得完了」や他Claimの普遍否定へ拡張しない（#3051の同一Go試験） |
+| 実Rowsetが0行で返る | Selection/Scope/Cohort/同一Snapshot／Page終了条件が完全と実証された場合に限り対象の空を候補化 | 実Providerを呼べない`UNBOUND_DATASOURCE`、別Tenant/Replica・途中Page・JOIN増幅から完全な不存在を結論しない（#2586/#2611） |
+| 参照Commandが`committed:true`を返す | 参照UnitOfWorkのCommit呼出しは完了し得る | main統合[#3054](https://github.com/hat47x/tei-platform/pull/3054)は`persisted:false`/`durability:none`を別表示。実DB永続化・独立再Readではない。main統合[#3053](https://github.com/hat47x/tei-platform/pull/3053)の`COMMAND_EFFECT_UNKNOWN`と再送拒否、[#3060](https://github.com/hat47x/tei-platform/pull/3060)の未解決`Differences`は**ReadのE2a合格とは別の効果境界** |
+
+**受入の最小順**：#2586では①Requiredの実Target/Field/Scopeと独立期待値を先に固定、②宣言したPattern/Query/DB Aliasと実選択・実Provider消費の辺を対照、③行・列・集合・Page/Cohortの完全性を観測、④対象Claimだけを`holds/fails/unverified`へ判定する。Command/Receipt/Current Grantは同一Read成功から自動で継承せず、既存#1174/#2516へ分離する。上表は新Public Status Enum・新Test Runner・新Hostを提案せず、既存CLI/Completion/Source/Effectの機能差を同じ独立Expectedで比較する**計画**。実Function→Provider Product R1と`*.tei.md` Reader E2Eは今回**NOT RUN**。
+
 **Owner／状態**：実ReadとFunction Contextは#2586/#2506、Provider/DB Aliasと明示SQLは#2622/#2611、構造の保存/Source編集は#2497/#2621、組織の意味とCaseは#2389/#1126、独立Expectedは#1131/#1180/#2514、Writer/Host Effect/Receiptは#1129/#1174。追加された本節は設計引渡しであり、実TEI Read/DB/Consumer/Owner意味受理の実験は**NOT RUN**。#2496は古いDraftであり、この節を同Draft全体のmainへの自動採用とみなさない。
 
 <!-- tei-data-form-e1b-candidate-vs-e2-physical-read-20261106 -->
@@ -492,7 +506,7 @@ external LLM
 
 このため組織E2aの不足は2段で表示する：（1）**E1b/Candidate**：CaseRecord Mapping→実Loader/OperationSurfaceの候補と読み取り入力Identityを限定検証（#3024）；（2）**E2a/Actual Read**：明示Function Data Context→選択DB Alias/Instance→Provider/Query/Args→実Case C1/D1のRow+Field/Scope/Cohort→独立Expected/Consumer（#2586/#2506/#2622）。途中の`Binding=""`・`Effects=[]`・`read-only`は実Read/Host Grantを示さない。Owner/HostのE4 WriteやRowVersion Bindingはさらに別である。
 
-**横断の選択基準**：RMT受注例は既に`recent_orders.tei`にSQL Sourceがあるがデータソース未束縛。組織Caseは#3024の**E1b Mapping/Read候補＋E1c Query/SQL Source受容まで局所実証済み**で、なおFunction→Query Binding/実Provider Readは未接続。両者は最初の欠落Edgeが違う。#2586の同一Attempt票へ、どの段階でSource/Mapping/Providerの実Consumedが途切れたかを**最初の1辺だけ**報告する。いずれも実Read成功後にだけ二SQL選択/継続を製品試験へ進める。追加のOwner専用Plugin、第二Reader、独自Function/Host、全Relation一律IDは導入しない。
+**横断の選択基準（既存Sourceの宣言辺を除外しない）**：受注RMTの合成受容例Eは、実Sourceの`pattern order_entry.recent_orders browse`→`query order_entry.recent_orders`、`application order_entry`の`database sales {target sales_core}`、Queryの`datasource sales`と`recent_orders.sql`が**宣言済み**（[#2783 §14](https://github.com/hat47x/tei-platform/pull/2783)、[#2586引継ぎ](https://github.com/hat47x/tei-platform/issues/2586#issuecomment-6690394573)）。「Pattern→QueryやAlias→論理DBが一切未接続」とは書かない。一方、`UNBOUND_DATASOURCE`は**実RuntimeでのProvider Instanceへの束縛・実Query呼出しが未証明**であることと整合する。最初の実行時不足辺は (1) ContextのQuery選択／実Consumed、(2) Alias→物理Instance/Provider、(3)選択SQL・引数、(4)実Rowset/Scope/Consumerの順で照合する。Org Caseは#3024のE1b Mapping/候補とE1c Query/SQL Source受容までは局所Go実証済み、Function→Query選択・実Providerは未接続。両者の**最初の不足辺は同じと仮定しない**。#2586の既存一Attemptへ最初の欠落Edgeのみを渡し、二SQL選択／Page継続は製品実Read成立後に検証する。第二Reader/Host/Query EngineやRelation一律IDは加えない。
 
 **R1引継ぎへ加える最小の反例**：#3024が一時Workspaceへ追加した`persist org_store.case_record`は、`case_id`を単一Primary Keyとする**単一Mappingの局所特性化**である。導出されたRead Input `organization.case_record.case_id` は、そのMappingでの検索候補を示すにとどまり、同じ文字列`C1`が別Tenant/DB Instanceに存在する場合のグローバル一意性・可視性・業務所有権を証明しない。最初のC1→D1実Readに対して、**選択Alias/Instance/Provider＋Tenant/Scope＋Case ID＋Relation Role＋実Row Identity**の対応を同一Attemptで保存し、別Tenant C1→D2を混入させない。必要なTenant Scope/物理Keyは業務モデルとProviderごとに決め、全DomainへTenant列や独立Edge IDを一律強制しない。#2389 §71/#2586/#2611/#1656の既存負例・Ownerへ引き渡し、第二Fixture正本を作らない。
 
@@ -507,7 +521,7 @@ external LLM
 
 **現行mainの具体的移行Gap**：`internal/workspace/loader.go`は`semantic`を`strings.HasSuffix(name, ".tei")`、`applications/.../queries`・`persistence`などを`*.tei`、`application.tei`/`database.tei`/`plugin.tei`等を**固定名**で列挙し、発見した原文を`syntax.NewParser`へ直接渡す。`scanManagedFiles`の`filepath.Ext("model.tei.md")`は`.md`となる。よって**現状の`*.tei.md`はNative意味Sourceとして発見・解釈できると主張しない**。Migrationで`*.tei`の一斉rename、旧ParserへのMarkdown本文直接投入、`.tei.md`を汎用mdとして無言skip、または旧新両方を同じSemantic IDで二重採用することを禁止する。
 
-**移行計画の所有衝突と解消案（採用前）**：移行専用[Draft #3030](https://github.com/hat47x/tei-platform/pull/3030)の`TEI_MD_UNIFIED_AUTHORING_MIGRATION_2026-11.md`はM0〜M6/TM-01〜14を記載するが、その2026-11-07追補では横断[Draft #2667](https://github.com/hat47x/tei-platform/pull/2667)のM0〜M5/TMD-01〜12を主とする。一方、**#2667自身の最新§6/冒頭は逆に#3030を主担当とし、TMDを履歴・対応表へ格下げ**している。これは直接確認できる相互参照の不整合であり、両方を独立の正式移行Gateにしてはならない。既存#2621の判断の下、**#3030のTMを単一の実装/受入候補、#2667のTMDを対応付け済みの横断履歴、#3031を暫定Loader停止ガード**とする整理を優先提案し、#3030側の逆向き記載の訂正・担当合意までは「確定済み正本」と表示しない。ここに移行試験IDやGrammarを追加せず、構造保存#2497と実Function Read#2586は用途相対の接続だけを検査する。
+**移行計画の担当整合（最新文書で解消）**：移行専用[Draft #3030](https://github.com/hat47x/tei-platform/pull/3030) の`TEI_MD_UNIFIED_AUTHORING_MIGRATION_2026-11.md`最新冒頭は **M0〜M6/TM-01〜14を移行の主たる実装・受入候補**とし、[横断Draft #2667](https://github.com/hat47x/tei-platform/pull/2667) の`TEI_MARKDOWN_SOURCE_MIGRATION_2026-11.md`も **M0〜M5/TMD-01〜12を先行研究・履歴・対応表**として#3030へ委譲した。以前の「双方が相手を正本と呼ぶ」矛盾は**両ブランチの現行本文上で解消**。ただし両PRはDraft・main未統合であり、個別TM/AUの正式な実装・Owner業務意味受理は別である。#3031の暫定Loader停止ガード、#2823の実Loaded Coverage、#988のGrammar/Pin、#2497の構造保存、#2586の実Function Readは引き続き各担当に帰属させる。
 
 <!-- tei-crosslane-migration-owner-conflict-and-terminology-20261107 -->
 **実装された暫定停止線（別Draftの限定CI）**：[PR #3031](https://github.com/hat47x/tei-platform/pull/3031) は、選択されたWorkspace Source rootsを走査した`ManagedFiles`に `*.tei.md` があると、未選択Parserのまま意味が空になる誤成功を防ぎ`TEI_MD_PARSER_UNBOUND`＋Source pathで拒否する暫定Guardを追加。exact HEAD `63953ccb5c12ead26ec1268e7c0afdba4eff66ae` の[専用CI #42217379093](https://github.com/hat47x/tei-platform/actions/runs/42217379093) は**completed/success**（Focused 4件/7 Domain圧力、Workspace package試験、vetの限定結果）。これは**未マージDraft上でのFail-closed**であり、現行mainの`*.tei.md`解析・Parser選択・Meaning/Build資格が成立したことではない。Source roots外の文書はこのGuardが観測しない。Manifestの誤Root/optional未探索の完全性は引き続き#2823の別Claim。
