@@ -275,6 +275,7 @@ export function summarizeView(value) {
         ["mode", valueOf(value.mode)],
         ["committed", value.committed ? "true (unit of work)" : "false"],
         ["persisted", value.persisted ? "true" : "false"],
+        ["persistence", valueOf(value.persistence)],
         ["durability", valueOf(value.durability)],
         ["outcome", value.outcome ? `${value.outcome.name} -> ${value.outcome.payload}` : ""],
         ["effect", value.effect ? `${value.effect.kind} ${value.effect.data}` : ""],

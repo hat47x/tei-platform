@@ -28,6 +28,10 @@ type Result struct {
 	// executor that cannot enumerate them leaves it nil, and the record then
 	// holds only the declared and reported effects.
 	Applied []AppliedOperation `json:"applied,omitempty"`
+	// Persistence reports whether an independent observer saw the declared
+	// effect after Commit. The Invoker sets it after a successful execution;
+	// an Executor must leave it empty.
+	Persistence PersistenceState `json:"persistence,omitempty"`
 }
 
 // Executorは、宣言されたCommandを実際に実行する側の契約である。
@@ -96,6 +100,15 @@ type Invoker struct {
 	Periods    PeriodState
 	Authorizer Authorizer
 	Recorder   Recorder
+	// PersistenceObserver, when set, performs an independent read after a
+	// successful Commit. A nil observer leaves persistence as not-observed;
+	// it never means "not persisted".
+	PersistenceObserver PersistenceObserver
+	// DurableStore is the composition's claim that this boundary has a durable
+	// store behind it. The Invoker does not verify it. false makes persistence
+	// not-applicable (a reference run), so "not observed" is not printed when
+	// there is nothing that could have stored the effect.
+	DurableStore bool
 }
 
 // Invokeは、Commandを実行する。入力の不備、Executorの不在、実行の失敗、
@@ -140,7 +153,12 @@ func (i Invoker) Invoke(ctx context.Context, request Request) (Result, error) {
 		return Result{}, err
 	}
 	if i.UnitOfWork == nil {
-		return i.execute(ctx, request, plan)
+		result, err := i.execute(ctx, request, plan)
+		if err != nil {
+			return result, err
+		}
+		result.Persistence = i.observePersistence(ctx, request, declaredEffect(plan))
+		return result, nil
 	}
 	transaction, err := i.UnitOfWork.Begin(ctx)
 	if err != nil {
@@ -167,7 +185,17 @@ func (i Invoker) Invoke(ctx context.Context, request Request) (Result, error) {
 			EffectUnknown: true,
 		}
 	}
+	result.Persistence = i.observePersistence(ctx, request, declaredEffect(plan))
 	return result, nil
+}
+
+// declaredEffect projects the plan's declared effect for the persistence
+// observer. It returns nil when the capability declares no effect.
+func declaredEffect(plan applicationview.CommandPlan) *semantic.DataEffect {
+	if plan.Effect == nil {
+		return nil
+	}
+	return &semantic.DataEffect{Kind: semantic.DataEffectKind(plan.Effect.Kind), Data: plan.Effect.Data}
 }
 
 func (i Invoker) checkPeriod(ctx context.Context, plan applicationview.CommandPlan) error {
