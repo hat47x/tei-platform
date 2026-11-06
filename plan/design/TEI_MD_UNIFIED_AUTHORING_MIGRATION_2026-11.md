@@ -5,8 +5,8 @@
 
 ## 本文書と既存計画の所有境界（2026-11-07 横断レビュー）
 
-- **全体の移行順序と旧新互換の検収正本**：先行する [Draft #2667](https://github.com/hat47x/tei-platform/pull/2667) の `plan/design/TEI_MARKDOWN_SOURCE_MIGRATION_2026-11.md`（M0〜M5、TMD-01〜12）。本書の M0〜M6／TM-01〜14 は異なる独立Gateではなく、最初の分析時に作った対応観点である。採否・実行順は #2667 の既存統合計画に一本化し、内容が異なる場合は #2621 Owner に未決差として提示する。
-- **本書の固有責務**：ユーザーが実際に触れる `*.tei.md` の *Markdown適合性とTEI認識範囲*、旧DSLからのSource span対応、SHO/Obsidianでの原文保全、AIによる部分定式化。これらを全体計画の TMD 試験と**同じ固定Fixture／独立Expected**で検証する。新しい共通Parser、Source Registry、Acceptance、別のSemantic SSOTは追加しない。
+- **移行実装・検収の主担当**：本書（[Draft #3030](https://github.com/hat47x/tei-platform/pull/3030)）の M0〜M6／TM-01〜14。既存 [Draft #2667](https://github.com/hat47x/tei-platform/pull/2667) は横断研究の履歴・Ownerへの受渡し（M0〜M5、TMD-01〜12）を残す参照資料であり、**独立した第二の移行仕様や試験Gateにはしない**。#2667の現在の冒頭にも#3030を主担当とする旨が明記されている。以前の相互参照の循環は本節の責務分離で解消する。内容差は #2621 の担当判断まで未決として示す。
+- **Authoring設計の実証対象**：利用者が実際に触れる `*.tei.md` の Markdown適合性とTEI認識範囲、旧DSLからのSource span対応、SHO/Obsidianでの原文保全、AIによる部分定式化。本書のTM/AU条件は #2667のTMD/他Ownerの既存試験との**対応表を持ち、同じ固定Fixture／独立Expected**で検証する。検収IDの正本は本書側に集約し、第二のParser、Source Registry、Acceptance、Semantic SSOTは作らない。
 - **意思決定の確度**：拡張子の方針はユーザー決定。Markdown内のDSL構文、Role宣言、移行方法、互換期限、Source Writer、製品E2Eは未決・未実行。プロジェクトの `.tei/decisions/` は既存Decisionの保存先であり廃止対象ではない。
 
 ## 1. 決定の範囲と目的
@@ -126,7 +126,7 @@ SHO/SUIで作成したMarkdownの任意範囲を選択し、AIなしの手動表
 
 SHO Editorだけで書き始め、SUIによる発想の展開を必要に応じて経由し、`*.tei.md`に切り出しても、SUIのTree/Island/空間関係の原版をMarkdown見出しへ一対一に押し込まない。文章化された仮説はMeaning受理と異なる。外部Vault/OKFに保存できることもTEI実行資格の根拠ではない。
 
-### 8.5 追加の独立Expected（#2667のTMDケースに従属・全件NOT RUN）
+### 8.5 Authoring側の独立Expected（#2667のTMD履歴ケースと対応付け・全件NOT RUN）
 
 | ID | 同一固定Fixtureに追加するMutant | 独立Expected／検出する誤実装 | 所有 |
 | --- | --- | --- | --- |
@@ -139,7 +139,7 @@ SHO Editorだけで書き始め、SUIによる発想の展開を必要に応じ�
 | **AU-07** | Markdownはlint PASS、Role Provider未ロード、`validate ok`、Buildが古い`*.tei`を消費 | Raw/Grammar/Loaded/Meaning/Build actual consumedを別列。必要なSourceの未読込をPASSにしない | #2823/#1163 |
 | **AU-08** | `foo.tei.md`がOKFでConcept ID `foo.tei`を得て旧`foo.tei`と文字一致 | OKF Concept ID/旧Source Path/TEI Meaning IDを別。自動relocation/Owner受理0 | SHO #18/#2505 |
 
-**実施順**：#2667 TMD-01〜04/07の固定1 Subjectの読込実測を最優先→その同じSourceでAU-01〜05/07を最小Authoring PoC→AU-06はSUI/SHO Producer/Writerの資格が成立した後→AU-08はOKF Pluginを選択した場合のみ。Expectedは既存#2514の独立Oracleで保持し、変換実装/AI自身がExpectedを生成して合格させない。既存G0〜G4や他Issueの新Gateにしない。
+**実施順**：本書TM-01〜04/13/14（#2667のTMD-01〜04/07と対応）の固定1 Subjectの読込実測を最優先→同じSourceでAU-01〜05/07を最小Authoring PoC→AU-06はSUI/SHO Producer/Writerの資格が成立した後→AU-08はOKF Pluginを選択した場合のみ。Expectedは既存#2514の独立Oracleで保持し、変換実装/AI自身がExpectedを生成して合格させない。既存G0〜G4や他Issueに新Gateを増やさない。
 
 <!-- tei-md-mixed-acceptance-freshness-20261106 -->
 ## 9. 同一 `*.tei.md` 内の部分受理とClaim単位の鮮度を移行受入へ結ぶ（2026-11-06、設計／NOT RUN）
@@ -172,3 +172,39 @@ SHO Editorだけで書き始め、SUIによる発想の展開を必要に応じ�
 5. **誤再利用と過剰失効を両方向で採点**し、実Target/Studio/SHO/外部HostのPASSは、その経路で実入力・実出力が観測されるまで保留（#2514/#2600/#1174）。実Go Reader／Markdown Writer／Owner撤回E2Eは**NOT RUN**。
 
 **実装の優先順**は現行Loaderの`*.tei.md`実読込・Span mappingを先に確認し、それができたSourceで局所Claimの適用判定へ進む。新規Plugin/Host、全文書Acceptance状態、第二Resolver、常駐Reactive Engine、意味正本Registryは追加しない。
+
+
+## 10. 現在の fail-closed 防御を、実Readerへ置換する条件（2026-11-07 横断更新）
+
+### 10.1 既存実装と確認された証拠の上限
+
+[Draft #3031](https://github.com/hat47x/tei-platform/pull/3031) は `internal/workspace/loader.go` が管理対象として列挙した `*.tei.md` を、現在のTEI Parserへ束縛できない状態で **`TEI_MD_PARSER_UNBOUND`** と明示して拒否する防御。対象には semantic/query/persistence/plugin/bundle/release が含まれ、大文字の末尾 `.MD` も拒否する。旧 `*.tei` と通常 `README.md` は引き続きLoaderで扱い、宣言されていないSource Root外の `*.tei.md` はWorkspaceへ入らない。
+
+**実CI証拠**：#3031 exact PR HEAD `63953ccb5c12ead26ec1268e7c0afdba4eff66ae` の [parser-boundary probe](https://github.com/hat47x/tei-platform/actions/runs/42217379093) と [Repository Health](https://github.com/hat47x/tei-platform/actions/runs/42217378867) は completed/success（同HEADで他の関連Workflowもsuccess）。旧HEADのgofmt失敗と区別。この証拠が示すのは**明示拒否・旧形式/通常Markdownの限定回帰**まで。Draftでありmain未統合。実 `*.tei.md` Markdown AST、Role解釈、Parser選択、Source span、Build/Host/Consumer、Owner Meaning Acceptanceは**未実装・未実証**。
+
+### 10.2 fail-closed のまま書き続けられる体験を確保する
+
+現Guardは **宣言済みSource Root内の管理対象 `*.tei.md` が1件でもあればWorkspace Load全体を停止**する。これによりモデルが消えても `validate ok` と見える誤成功を防げる一方、SHOで執筆途中の `order.tei.md` をSource Rootへ保存しただけでも旧 `*.tei` を使った既存CLI作業を妨げ得る。これはGuardの**意図された一時的な厳格動作**であり、一般的なTEI Markdown執筆が使えるという保証ではない。
+
+暫定運用では、(A) **SHOの単独Writer／TEI Source Root外の草稿領域**は現Loaderに依存せず自由に保存・再開可能、(B) Source Rootに置いた `*.tei.md` は未対応として明示拒否、(C) 既存の旧形式Sourceを使うテスト・業務PoCを影響を受けない別Workspace/Checkoutで継続、と区別する。未対応ファイルを `*.md` に自動改名する、Guardを削除する、Root全体の警告だけにする、選択されないものとして無音無視することはしない。
+
+本来の完成形では、**選択されたTEI Sourceと、普通のMarkdown／一時Draft／非管理文書を明示的なSelection/Root/Content Kind/版で区別**する。選択済みSourceのParser欠落は依然 fail-closed、宣言されないDraftはBuild Required Sourceの欠落を隠さない、解釈できた一部のOccurrenceだけから必要全集合の充足を推測しない。File kindを拡張子だけに頼らず、現Manifest/Source Root/Language Pinと実Reader Witnessで検査する。これは将来契約の候補であり現Guardの動作ではない。
+
+### 10.3 正負の対照と実Loaderへの置換順（本書TM/AUケースに組み込む）
+
+| 観点 | 入力と独立Expected | 現在の状態 |
+| --- | --- | --- |
+| **拒否の負例** | 新形式だけが宣言Rootに存在し、Parserが未束縛 → `TEI_MD_PARSER_UNBOUND`、成功/0件扱い不可 | #3031 の限定 Go/CI 対照が成立（Draft） |
+| **旧形式の正例** | 旧 `model.tei`＋普通の `README.md` → 従来Semanticが実読込、例外なし | #3031 限定 Go/CI 対照が成立（Draft） |
+| **Root境界の正例** | 宣言外の草稿 `drafts/order.tei.md` があっても、宣言Rootの旧Sourceを読む | #3031 限定 Go/CI 対照が成立（Draft） |
+| **作業中の競合** | Source Root内の新形式草稿で現在はLoadを停止。将来はRaw Draft保存と必須Source検証を明示分離 | 現状拒否のみ確認／UIと選択契約はNOT RUN |
+| **新形式の正例** | 選択した `order.tei.md` → 実Parser実消費・Span/Role/Source Index・独立Meaning→Build Input／Expectedの一連を観測 | **未実装／NOT RUN** |
+| **旧新衝突** | 同一Subjectの旧新Source → 曖昧/競合診断、勝手な優先選択や旧Decision復権なし | 現状は新形式未束縛による拒否のみ。意味ID重複解決ではない |
+
+**次の最小作業**は新しいFixtureを無制限に作ることではなく、既存のTM-02/03/04/14・AU-01/02/07に同じ1 Source/独立Expectedを束縛し、(1) Readerの実バインド、(2) 元Markdown byte→TEI部分のByte Span、(3) **実Loaded Occurrenceと未選択Draft**、(4)旧新の同一Subject競合、(5)実Builderが消費した入力と非出力依存を別観測すること。最初からSHO GUI、全Provider、全Plugin移植、実DB完了を必要条件にしない。#3031の正常/拒否試験は Guard Owner が保全し、#3030が新規Reader/Parser移行の主担当、#2823がRead Coverage、#988がGrammar/Pin、#2514が独立Expectedを所有する。
+
+### 10.4 同一DocumentでもClaim/Decisionと実実行は別（§9との接続）
+
+§9の受理済み`total`と未受理`discount`という一文書例を、**Source Root内でGuardに拒否される段階**と**Readerが実対応して部分Occurrenceを観測する将来段階**に分ける。Guardで拒否した場合は、過去のlegacy解析結果やSource Indexのキャッシュを「新形式を読めた」ことの代用品にしない。将来、一部の`total`だけ構文上読めても、必要なRole/Operator/Function依存とOwner Decisionの現在適用を別照合し、`discount`の未取得・保留・壊れたFenceを0件または承認済みへ縮約しない。実行・Buildが必要なClaimはそのClaimのRequired closureが満たされるまで保留する。
+
+この区別により、**過剰な一括失効（執筆不能）**と、**不完全Readerの誤成功（業務・意味誤認）**を同時に避ける。製品実装・移行完了・Owner受理の主張ではない。
