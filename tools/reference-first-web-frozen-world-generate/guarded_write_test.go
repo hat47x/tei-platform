@@ -60,5 +60,44 @@ func loadGrantsFrom(t *testing.T, content string) ([]permission.Spec, error) {
 	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	return loadGrants(path)
+	return loadGrants(path, "")
+}
+
+// loadGrantsAgainstDeclaration writes both files and reads the grants through the
+// tool's loader with the declaration attached.
+func loadGrantsAgainstDeclaration(t *testing.T, content, declaration string) ([]permission.Spec, error) {
+	t.Helper()
+	dir := t.TempDir()
+	path := filepath.Join(dir, "grants.json")
+	declarationPath := filepath.Join(dir, "declaration.json")
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(declarationPath, []byte(declaration), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	return loadGrants(path, declarationPath)
+}
+
+func TestLoadGrantsRefusesAGrantTheDeclarationDoesNotAllow(t *testing.T) {
+	// The environment declared migration-workdir for migration.atlas. It says
+	// nothing about the lineage exporter, so a grant for the exporter is not
+	// grounded even though it parses.
+	const declaration = `{"grants":[{"issuedBy":"environment:development","capabilityId":"migration.atlas","kind":"filesystem","access":"read-write","scope":"migration-workdir"}]}`
+	const grants = `{"grants":[{"issuedBy":"script:build-frozen-api","capabilityId":"tei.frozen_world.lineage","kind":"filesystem","access":"write","scope":"/tmp/observed.json"}]}`
+	if _, err := loadGrantsAgainstDeclaration(t, grants, declaration); err == nil {
+		t.Fatal("a grant outside the declaration must be refused")
+	}
+}
+
+func TestLoadGrantsAcceptsAGrantTheDeclarationAllows(t *testing.T) {
+	const declaration = `{"grants":[{"issuedBy":"environment:development","capabilityId":"tei.frozen_world.lineage","kind":"filesystem","access":"read-write","scope":"/tmp/observed.json"}]}`
+	const grants = `{"grants":[{"issuedBy":"script:build-frozen-api","capabilityId":"tei.frozen_world.lineage","kind":"filesystem","access":"write","scope":"/tmp/observed.json"}]}`
+	loaded, err := loadGrantsAgainstDeclaration(t, grants, declaration)
+	if err != nil {
+		t.Fatalf("a grant inside the declaration must be accepted: %v", err)
+	}
+	if len(loaded) != 1 || loaded[0].Scope != "/tmp/observed.json" {
+		t.Fatalf("unexpected grants: %+v", loaded)
+	}
 }
