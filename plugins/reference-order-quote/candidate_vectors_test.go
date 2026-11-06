@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"os"
+	"strings"
 	"testing"
 )
 
@@ -11,6 +12,15 @@ import (
 // Share the unaccepted candidate vectors with the existing Go/JS process test
 // rather than creating a second business oracle.
 func TestQuoteDirectCalculationMatchesSharedCandidateVectors(t *testing.T) {
+	// The existing process-reference test copies every .go source file into a
+	// standalone offline module and runs "go test ./..." before building it.
+	// That isolated copy deliberately has no TEI workspace / shared corpus.
+	// Skip only in that exact test-only module; in the TEI source tree a
+	// missing shared corpus remains a hard failure (never a silent PASS).
+	if mod, err := os.ReadFile("go.mod"); err == nil &&
+		strings.HasPrefix(string(mod), "module example.invalid/reference-order-quote\\n") {
+		t.Skip("D0 shared corpus is not staged in the standalone process-provider module")
+	}
 	raw, err := os.ReadFile("../../reference/candidates/order-quote/semantic-vectors-v0.json")
 	if err != nil {
 		t.Fatal(err)
