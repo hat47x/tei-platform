@@ -1,6 +1,6 @@
 # 実DBで実行時の判断を確かめる計画（2026-11）
 
-- 状態: **四系統（期間・効果・実行計画・権限）の六つの試験を、一時 PostgreSQL 16.15 で実行し、すべて PASS しました。** 実行の記録は第11章。DSN の無い環境ではスキップします。
+- 状態: **四系統（期間・効果・実行計画・権限）の六つの試験を、一時 PostgreSQL 16.15 で実行し、すべて PASS しました。PR と `main` の両方の版で観測しています。** 実行の記録は第11・12章。DSN の無い環境ではスキップします。
 - 目的: 期間・効果・権限・実行計画の**実行時の判断**が、実際の PostgreSQL を前にしても期待どおりに働くことを確かめる。
 - 関連: [実データベースでの確認手順](REAL_DATABASE_VERIFICATION_PROCEDURE_2026-11.md)、[検証記録](SURFACE_AND_ARTIFACT_VERIFICATION_2026-11.md)
 
@@ -110,4 +110,29 @@ DSN のある環境が無いまま「実行済み」と書かないために、�
 
 **この記録が示すこと**: 四系統の判断が、実際の PostgreSQL 16 の行の状態を変えない／変えることとして観測できた。
 **示さないこと**: 本番の Provider・実運用の権限・性能・業務手順。CI の service は使い捨てで、本番と同じ構成ではありません。実装が完成したことでもありません。
+
+## 12. `main` の版での観測（2026-11-07 追記）
+
+第11章の記録は PR の merge commit（`838fe1132…`）に対するものでした。PR の結果は **`main` の記録ではありません**。`push`（`main`）でも同じ観測が走るようにしたので、その第1回を記録します。
+
+```
+- 実行日時: 2026-11-06T21:12:54Z（job 開始 21:11:51Z）
+- 版: main の merge commit a512dd491a92b3ed0dc775596380262968bfac3c
+- サーバー: PostgreSQL 16.15 on x86_64-pc-linux-musl（tei dbcheck の表示、一時表の作成: 成功）
+- 結果: 6試験すべて PASS、SKIP 0件（機械確認）
+```
+
+| 試験 | 前回（PR） | 今回（main） |
+| --- | --- | --- |
+| `TestAClosedPeriodLeavesTheRowUntouched` | PASS (0.12s) | PASS (0.01s) |
+| `TestAnOpenPeriodUpdatesTheRow` | PASS (0.06s) | PASS (0.01s) |
+| `TestAnUnobservableEffectBlocksBeforeTheWrite` | PASS (0.09s) | PASS (0.01s) |
+| `TestACompletedRunIsRefusedWithoutASecondWrite` | PASS (0.01s) | PASS (0.01s) |
+| `TestAMissingGrantBlocksBeforeTheWrite` | PASS (0.01s) | PASS (0.01s) |
+| `TestACoveringGrantLetsTheWriteThrough` | PASS (0.13s) | PASS (0.01s) |
+
+実行時間が短くなったのは、Go のビルドキャッシュが温まっていたためです。**同じ試験・同じ機械確認**であり、結果の意味は変わりません。
+
+**この追記が示すこと**: `main` の版でも同じ六つの判断が観測できる。
+**示さないこと**: 第11章と同じ（本番 Provider・実運用の権限・性能・業務手順）。また `main` の以後の版で走り続けることを保証するものではありません（path の条件が変われば走らなくなります）。
 
