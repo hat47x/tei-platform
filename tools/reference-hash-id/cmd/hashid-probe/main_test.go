@@ -176,6 +176,8 @@ func TestHeadlessTargetPreflightAndSnapshotCollision(t *testing.T) {
 		!got.CallerPinsMatched || got.TargetSnapshotSHA256 == "" ||
 		got.CollisionBudget == nil || got.CollisionBudget.ExpectedPopulation != 1000000 ||
 		got.CollisionBudget.PolicySource != "caller-declared-unverified" ||
+		got.CollisionBudget.EstimatedCollisionProbability > got.CollisionBudget.CollisionRiskUpperBound ||
+		got.CollisionBudget.CollisionRiskUpperBound > got.CollisionBudget.MaximumCollisionProbability ||
 		got.NormalizedTargetKey != result.Text || got.TargetNamespace != "example.external-records" ||
 		got.DigestHex != "" {
 		t.Fatalf("unexpected preflight status: %+v", got)
@@ -526,7 +528,7 @@ func TestTargetPreflightRequiresBudgetAndRejectsInadequateLength(t *testing.T) {
 	}
 	check(pins, 2, "population")
 	check(append(append([]string{}, pins...), "-expected-population", "1000000000"), 2, "population")
-	for _, maximum := range []string{"1e-9", "-0.1", "NaN", "Inf", "garbage"} {
+	for _, maximum := range []string{"1e-9", "0", "-0", "-0.1", "NaN", "Inf", "garbage"} {
 		input := append(append([]string{}, pins...),
 			"-expected-population", "1000000000",
 			"-max-collision-probability", maximum)
@@ -547,7 +549,8 @@ func TestTargetPreflightRequiresBudgetAndRejectsInadequateLength(t *testing.T) {
 	}
 	if value.CollisionBudget == nil || value.CollisionBudget.ExpectedPopulation != 1000000000 ||
 		value.CollisionBudget.EstimatedCollisionProbability <= 0 ||
-		value.CollisionBudget.EstimatedCollisionProbability > value.CollisionBudget.MaximumCollisionProbability ||
+		value.CollisionBudget.EstimatedCollisionProbability > value.CollisionBudget.CollisionRiskUpperBound ||
+		value.CollisionBudget.CollisionRiskUpperBound > value.CollisionBudget.MaximumCollisionProbability ||
 		value.Authority != "none" || value.StorageWrite {
 		t.Fatalf("incorrect caller-only collision evidence: %+v", value)
 	}
@@ -561,4 +564,56 @@ func TestTargetPreflightRequiresBudgetAndRejectsInadequateLength(t *testing.T) {
 		t.Fatal(err)
 	}
 	check(valid, 1, "collision budget")
+}
+
+func TestCallerPinCannotProveSourceABAOrAcceptedRevision(t *testing.T) {
+	// A -> B -> A is a concrete negative: identical final bytes and pins
+	// cannot prove that Source revision/Acceptance epoch was unchanged.
+	s := decimalScheme()
+	schemePath, inputPath, _ := fixture(t, s, []byte("A"))
+	targetPath := filepath.Join(t.TempDir(), "snapshot.json")
+	target := []byte(targetSnapshot(t, targetPath, nil))
+	sourceHash := sha256.Sum256([]byte("A"))
+	targetHash := sha256.Sum256(target)
+	args := []string{
+		"-scheme", schemePath, "-input", inputPath, "-subject", "qualified:claimed",
+		"-target-probe", targetPath,
+		"-expected-source-sha256", hex.EncodeToString(sourceHash[:]),
+		"-expected-target-sha256", hex.EncodeToString(targetHash[:]),
+		"-expected-population", "1000000",
+		"-max-collision-probability", "1e-6",
+	}
+	var first, second, diagnostics bytes.Buffer
+	if code := run(args, &first, &diagnostics); code != 0 {
+		t.Fatalf("initial preview rejected: %d %s", code, diagnostics.String())
+	}
+	if err := os.WriteFile(inputPath, []byte("B"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	var staleOut, staleErr bytes.Buffer
+	if code := run(args, &staleOut, &staleErr); code != 1 || staleOut.Len() != 0 {
+		t.Fatalf("B must fail the A byte pin: code=%d out=%q", code, staleOut.String())
+	}
+	if err := os.WriteFile(inputPath, []byte("A"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	diagnostics.Reset()
+	if code := run(args, &second, &diagnostics); code != 0 || first.String() != second.String() {
+		t.Fatalf("ABA byte identity must be repeatable without inventing a revision: %d %s", code, diagnostics.String())
+	}
+	var result map[string]any
+	if err := json.Unmarshal(second.Bytes(), &result); err != nil {
+		t.Fatal(err)
+	}
+	if result["authority"] != "none" || result["storageWrite"] != false ||
+		result["status"] != "caller-pinned-budget-snapshot-preflight-only" {
+		t.Fatalf("ABA was misrepresented as accepted authority: %#v", result)
+	}
+	for _, forbidden := range []string{
+		"sourceAccepted", "sourceRevision", "sourceFresh", "targetAccepted", "effectCommitted",
+	} {
+		if _, exists := result[forbidden]; exists {
+			t.Fatalf("the local byte probe must not claim %s after ABA", forbidden)
+		}
+	}
 }
