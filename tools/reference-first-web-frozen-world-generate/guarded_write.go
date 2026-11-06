@@ -17,24 +17,6 @@ import (
 // step.
 const lineageCapability = core.CanonicalID("tei.frozen-world.lineage")
 
-// writeLineage writes the lineage observation through the guarded filesystem.
-func writeLineage(path string, data []byte) error {
-	absolute, err := filepath.Abs(path)
-	if err != nil {
-		return fmt.Errorf("resolve %s: %w", path, err)
-	}
-	files := access.FileSystem{
-		Root:       filepath.Dir(absolute),
-		Capability: lineageCapability,
-		Guard: access.Guard{Granted: []permission.Spec{{
-			Kind:   permission.KindFilesystem,
-			Access: permission.AccessWrite,
-			Scope:  absolute,
-		}}},
-	}
-	return files.WriteFile(filepath.Base(absolute), data, 0o600)
-}
-
 // grantFile is the shape of an external grant file. When a caller supplies one,
 // the tool writes only where those grants allow; without one it falls back to the
 // exact path the caller asked for.

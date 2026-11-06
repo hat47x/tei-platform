@@ -90,8 +90,8 @@ func main() {
 				fmt.Fprintln(os.Stderr, err)
 				os.Exit(1)
 			}
-		} else if err := writeLineage(*lineageOut, append(output, '\n')); err != nil {
-			fmt.Fprintln(os.Stderr, err)
+		} else {
+			fmt.Fprintln(os.Stderr, "観測を書くには -grants で付与を渡してください（付与の無い書出しは行いません）")
 			os.Exit(1)
 		}
 	}
