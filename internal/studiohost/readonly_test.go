@@ -163,3 +163,38 @@ func TestLoadFailureIsDistinguishedFromValidationDiagnostics(t *testing.T) {
 		t.Fatalf("unexpected failure: %+v", got)
 	}
 }
+
+// TestReadOnlyPinsTheResolvedRootNotTheConfiguredAlias checks that a Host
+// configured through one path cannot be retargeted by replacing that path.
+// The existing root-replacement test renames the resolved root itself; this
+// one changes only the configured alias, as the Studio fixed-Host negative
+// attempts (#3061).
+func TestReadOnlyPinsTheResolvedRootNotTheConfiguredAlias(t *testing.T) {
+	parent := t.TempDir()
+	allowed := filepath.Join(parent, "allowed")
+	outside := filepath.Join(parent, "outside")
+	alias := filepath.Join(parent, "configured-alias")
+	for _, dir := range []string{allowed, outside} {
+		if err := os.Mkdir(dir, 0o700); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.Symlink(allowed, alias); err != nil {
+		t.Skipf("creating symlinks is unavailable on this host: %v", err)
+	}
+	h, err := NewReadOnly([]string{alias})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(alias); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(outside, alias); err != nil {
+		t.Fatal(err)
+	}
+	// The allowlist pinned the resolved root at startup. Replacing the alias
+	// must not change which directory workspace-1 names.
+	if got := h.CatalogWorkspace("workspace-1", ""); !got.OK {
+		t.Fatalf("pinned root became unavailable after alias replacement: %+v", got.Failure)
+	}
+}
