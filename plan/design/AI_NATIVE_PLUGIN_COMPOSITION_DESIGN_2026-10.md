@@ -626,3 +626,21 @@ Registryは**発見の索引**、Issuerは証拠の発行主体、Host/Ownerは�
 - **Owner**：Meaning #267/#1125、Composition #1016/#951、Scope/Data #2386/#2586/#2622、Effect #1174/#1129、Disclosure #2516、Scenario/Oracle #1180/#2514、方式 #2885/#1251。Product gate #1119を増設・変更しない。
 
 **結果と撤回条件**：本節は既存結果から導いたEvidence接合の受入候補であり、JOIN-01〜06、Product実Host/PG/Consumer/Owner受理はNOT RUN。既存のEvidence参照でScope相対の必要Witnessを説明できる限り、新しいRegistry/Proof Store/Status Enum/Hostや共通Completion Engineを導入しない。旧Receiptや一つのCI PASSを別Claimへ無断継承しない。
+
+### 24.4 Source移行のShadowingをPlugin資格と誤認しない（2026-11-06、横断追補）
+
+**他レーンで確認した変更**：[Draft #3030](https://github.com/hat47x/tei-platform/pull/3030)はTEI Authoringの標準を `*.tei.md` へ移し、旧 `*.tei` を段階廃止する明示方針（移行計画M0〜M6、TM-01〜14）。[Draft #2885 §18.12](https://github.com/hat47x/tei-platform/pull/2885)には、現行 `internal/workspace/loader.go` が `plugin.tei` 等の固定名/`*.tei` glob と `filepath.Ext` に依存すること、およびPlugin/BuildでのRequired→Discovered→Loaded→Parsed→Build-consumedの検証要求が既にある。**Parser/Loader対応・旧Source移行は未実装・未検証**であり、本§では新しいMarkdown構文・Parserや重複TM試験を作らない。
+
+**新しい横断上の不一致例（TM-03/12/14＋JOIN-05への追加対照、独立Expectedを再利用）**：Application Profileは新 `plugin.tei.md` のContract/Provider revision **B** を明示している。しかしWorkspaceには同じSubjectの旧 `plugin.tei` revision **A** も残り、実LoaderがAだけを読んでいる。別案として旧Aを削除すると現Loaderは新Bを読まない。いずれもディレクトリにファイルがある、Catalogが非空、旧AのBuild/CIが成功、という表示からBの利用資格を導いてはならない。
+
+| 独立した観測 | Expectedと棄却・保留条件 |
+| --- | --- |
+| **Authoring intent と実Source入力** | 要求BのSource Location/Revisionと、Workspace実Loaderの読み取ったpath/raw byte/span/Root/Parser区分を突合。Bが未読なら `unsupported/unavailable`（文脈別）で停止。AのみをBの代わりに成功として処理しない |
+| **旧Aと新Bの両方が同じSubject** | 同内容でも同一編集正本と推定せず、TM-03に従い競合を明示。新規UI/AIの後勝ち・ローダ順・明示されない旧A fallbackを認めない |
+| **解析からContract/Provider選択** | Bの明示TEI領域を実Parser/Roleで解釈し、Meaning/Contract/Implementation Pinが既存#951/#1016で適合して初めて選択。通常 `.md`・frontmatter tag・Git上の存在はOwnerの意味受理でもPluginの実選択でもない |
+| **Build・Runtime・Effect** | Bが実Build-consumed/Target-linked/actual Loaded/Invokedである証拠を別に要求。AのCI/Artifact/Receiptは歴史的事実として保存するが、Bの現在Grant、Tenant間共有、今回のEffect・開示許可に昇格しない |
+| **正しいBの読み込みが確認できた場合** | 原byteやSource Locationの変更だけで全Contract/Owner Meaningを無条件に再受理させない。変更影響の範囲を#2600に委譲し、影響があり未確認のClaimだけ再資格化する |
+
+**必須の表示と安全な回復**：診断に「意図B／実読取Aまたは未読／選択済Provider／実Binary/Reader／現在Host Grant／開示先」のうち証拠のある範囲を示す。権限のないConsumerにはA/B秘密の存在やSource pathを漏らさない（#2516）。Source保存・Plugin無効化は元ファイルを破壊しない（#2044）。Aを黙って採用したり外部AIへBの未読Sourceを送ったりしない。旧Artifact/Receipt/Decisionの履歴は保持し、Source移行と実Effect取消を混同しない。
+
+**責務と進捗**：Source Reader/Index・移行の正本は#3030/#2621/#2823/#988、Contract/Compositionは#951/#1016、実Buildは#1251/#2600、Scope/Effectは#1174、Disclosureは#2516、Expectedは#2514/#1180へ返す。唯一の横断追加は「**意図したSource Bと実消費Aの不一致を、Plugin選択や現在許可へ繋がる前に止める**」こと。D0/D2の既存Quote 23ベクトル・固定Gateの旧Sourceを改変しない。移行実E2E、Loader対応、Bを選択した実Go/外部Host・Tenant実権限、Owner受理はすべて**NOT RUN／未採用**。
