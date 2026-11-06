@@ -61,3 +61,68 @@ func TestIssueRefusesAnIssuanceWithoutABasis(t *testing.T) {
 		t.Fatal("an issuance without a basis must be refused")
 	}
 }
+
+func TestIssueResolvedRecordsTheResolutions(t *testing.T) {
+	log := access.IssueFile{Path: filepath.Join(t.TempDir(), "issued.jsonl")}
+	spec := permission.Spec{Kind: permission.KindFilesystem, Access: permission.AccessWrite, Scope: "/tmp/run/observed.json"}
+	resolutions := []access.Resolution{{ResolvedBy: "environment:development", Declared: "migration-workdir", Root: "/tmp/run"}}
+	if _, err := access.IssueResolved(log, access.IssueRequest{
+		RunKey:      "run-1",
+		Issuer:      "script:build-frozen-api",
+		Capability:  core.MustCanonicalID("tei.frozen_world.lineage"),
+		Permission:  spec,
+		Basis:       "the run writes inside the declared workdir",
+		Resolutions: resolutions,
+	}); err != nil {
+		t.Fatalf("issue: %v", err)
+	}
+	records, err := log.Issues()
+	if err != nil || len(records) != 1 {
+		t.Fatalf("the issuance must be recorded: %+v err=%v", records, err)
+	}
+	if len(records[0].Resolutions) != 1 || records[0].Resolutions[0].Declared != "migration-workdir" {
+		t.Fatalf("the record must keep how the declaration was mapped: %+v", records[0].Resolutions)
+	}
+}
+
+func TestIssueResolvedRefusesAResolutionTheCapabilityMade(t *testing.T) {
+	log := access.IssueFile{Path: filepath.Join(t.TempDir(), "issued.jsonl")}
+	capability := core.MustCanonicalID("tei.frozen_world.lineage")
+	spec := permission.Spec{Kind: permission.KindFilesystem, Access: permission.AccessWrite, Scope: "/tmp/run/observed.json"}
+	_, err := access.IssueResolved(log, access.IssueRequest{
+		RunKey:      "run-1",
+		Issuer:      "script:build-frozen-api",
+		Capability:  capability,
+		Permission:  spec,
+		Basis:       "the capability mapped its own declaration",
+		Resolutions: []access.Resolution{{ResolvedBy: string(capability), Declared: "migration-workdir", Root: "/tmp/run"}},
+	})
+	if err == nil {
+		t.Fatal("a capability must not map its own declaration")
+	}
+	if records, _ := log.Issues(); len(records) != 0 {
+		t.Fatalf("a refused issuance must not be recorded: %+v", records)
+	}
+}
+
+func TestIssueResolvedRefusesAnIncompleteResolution(t *testing.T) {
+	log := access.IssueFile{Path: filepath.Join(t.TempDir(), "issued.jsonl")}
+	spec := permission.Spec{Kind: permission.KindFilesystem, Access: permission.AccessWrite, Scope: "/tmp/run/observed.json"}
+	for name, resolution := range map[string]access.Resolution{
+		"no root":     {ResolvedBy: "environment:development", Declared: "migration-workdir"},
+		"no declared": {ResolvedBy: "environment:development", Root: "/tmp/run"},
+		"no resolver": {Declared: "migration-workdir", Root: "/tmp/run"},
+	} {
+		_, err := access.IssueResolved(log, access.IssueRequest{
+			RunKey:      "run-1",
+			Issuer:      "script:build-frozen-api",
+			Capability:  core.MustCanonicalID("tei.frozen_world.lineage"),
+			Permission:  spec,
+			Basis:       "incomplete",
+			Resolutions: []access.Resolution{resolution},
+		})
+		if err == nil {
+			t.Fatalf("%s must be refused", name)
+		}
+	}
+}
