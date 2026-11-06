@@ -107,7 +107,11 @@ export function selectView(view, viewId, observedSnapshot) {
 // Verifies *fixture-declared* closure, never the authenticity of its witness.
 export function boundedAbsence(view, query, witness) {
   const unknown = reason => ({status:'unknown',reason});
-  if (!view || !query || !witness) return unknown('missing_input');
+  if (!query || !witness) return unknown('missing_input');
+  // For an undisclosed fixture, even revision/shape diagnostics can disclose
+  // information about the private view. This is not a real Policy check.
+  if (witness.disclosureQualified !== true) return unknown('disclosure_unqualified');
+  if (!view) return unknown('missing_input');
   let rev; try { rev=revision(witness.snapshot); } catch { return unknown('invalid_witness'); }
   if (!view.graph || !view.table) return unknown('invalid_projection');
   if (view.revision!==rev || view.graph.revision!==rev || view.table.revision!==rev) return unknown('mixed_revision');
@@ -119,8 +123,6 @@ export function boundedAbsence(view, query, witness) {
     return unknown('unsupported_query_predicate');
   if (!exact(query.scope) || !['subject','relation'].includes(query.kind) || !exact(query.type) ||
       (query.id !== undefined && !exact(query.id))) return unknown('invalid_query');
-  // A known row is not necessarily disclosable to this Consumer.
-  if (witness.disclosureQualified !== true) return unknown('disclosure_unqualified');
   const mismatch = projectionIntegrity(view);
   if (mismatch) return unknown(mismatch);
   const subjects=view.table.subjects, relations=view.table.relations;
