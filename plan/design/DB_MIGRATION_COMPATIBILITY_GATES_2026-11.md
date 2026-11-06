@@ -543,3 +543,28 @@ G1〜G5で各観測は取得時点が異なる。要求するのは**同一瞬�
 
 **状態**：試験のGo Sourceを追加し、新CIの結果は別確認。実DB、History Reader/Adapter、旧新Client、CDC/Owner Grant/Receipt/独立Read/Contract受理は**NOT RUN**。
 
+
+### 19.9 History Readerの二段階閉包：ページ完了≠対象全集合（2026-11-06）
+
+**新しい独立反例（既存HIST-03cの深化）**：History Sourceに適用済み`m001`（Repositoryにも定義あり）と`m999`（Repositoryには定義なし、orphan）が実在する。Readerが `WHERE id IN (repo IDs)` で`m001`だけを返し、**全ページ完了**と報告した場合、`CompareHistory`は`m001=RepoApplied`のみを返し、未定義の`m999`が隠れる。**全ページ取得と対象集合の完全性は別であり、ページ完了だけをG2/G3の履歴Gate合格にしてはならない**。
+
+`internal/database/migration/history_origin_characterization_test.go`に `TestHIST03cFilteredHistoryHidesOrphanDespiteCompletePages` を追加し、(a)固定Source真値`{m001,m999}`に対して両ID取得なら`RepoOrphanApplied`を検出、(b)同じSourceから`{m001}`しか供給しない場合は`RepoApplied`のみと分類される、という**現行比較器の情報限界**を特徴付ける。独立Gate Expectedは(b)を`unknown / unqualified-history`とする。Readerでフィルタをかけた場合でも「全ページ完了」の真偽は範囲内に限られ、Scope変更・RLS/Permissionによる非開示・Replica遅延・未定義のHistory IDがないことを推認できない。
+
+| 既存HIST-03との照合 | 固定した読取条件・World真値 | 技術上の`CompareHistory`結果 | **G2/G3の独立Expected** |
+| --- | --- | --- | --- |
+| **03a 真正な空** | 権限を確認したFull History Scope、対象DBを固定、必要な全頁・一致Watermark、空であることを別観測 | `RepoPending`候補 | 技術上の未適用を判定可能。ただし業務移行完了ではない |
+| **03c-1 全取得** | Source `{m001,m999}`、History Scopeを絞らず全頁・権限／可視性を確認 | `m001=RepoApplied; m999=RepoOrphanApplied` | 未定義適用履歴があるためCutover停止・Origin/Owner照会 |
+| **03c-2 限定フィルタ** | 同じSource、`WHERE id IN (m001)`、結果`{m001}`、フィルタ内では全頁完了 | `m001=RepoApplied`のみ | **unknown**。Orphan不存在の証拠にはならない |
+| **03c-3 隠れた行** | Full queryでもDBのRLS/権限・未開示Scopeで`m999`非表示 | `m001=RepoApplied`のみになり得る | **unknown/permission-limited**。サーバー成功と全可視性は別 |
+| **03d/e stale／ABA** | 同じ論理DB ID/History ID・見かけの値へ復帰、別Instance/古いWatermark | `RepoApplied`になり得る | 現在のOwner/Source/Read Scope・Writer/CDCの資格が必要 |
+
+**最小Reader受入契約（新しい共通Core型を要求しない）**：
+1. **Target identity**：実Connection/Instance/Provider、Tenant/Organization Scope、read replicaかprimaryか、対応するSource/World・Read epoch。`CanonicalID`だけでは実Targetが一意にならない（#2611/#2622）。
+2. **Transport closure**：Read成功/失敗、Cursor/全ページ、サーバー読み取り一貫性、Watermark/Replica lag、関係するSource版・時点。失敗・部分は空履歴に変換しない。
+3. **Semantic scope closure**：適用済み・失敗・unknown・Repository定義にないOrphanを検出できる**History全範囲**と可視性。Repository内のIDで先にフィルタしてから「すべて取得」と判定しない。権限で見えない可能性がある場合は正当な存在否定に使わない。
+4. **Qualification and disclosure**：現在のHost Grant、必要Source/Provider版、独立Expectedとの照合をGateごとの`Required / Supplied / Observed / Qualified / Undischarged`に記録。低権限ConsumerへDB接続情報・不可視行の個数・SQL全文を漏らさない。履歴の内容比較が成功しても実Schema/業務Key/Old Writer/外部Effectの成功とはしない。
+
+**実行順**：#2892で既存Reader/Adapterの有無・投入されたSource/Scope・フィルタ・失敗の伝搬を特定 → `03c-1/2/3`のSynthetic同一Source対照を先行 → Provider付き別Reader（必要なら実PG）で`03a/b/d/e`の取得資格を確かめる。既存[#2555](https://github.com/hat47x/tei-platform/issues/2555)に記載された`tei dbcheck`は、DSNを指定した場合**TEMPORARY TABLEのCREATE/DROPを行う接続能力試験**であり、Read-only History Readerでも完全取得試験でもない。`dbcheck`の成功をHIST-03/Cutoverの資格へ昇格させない。秘密DSNを証跡に記録しない。
+
+**資格の上限**：このGoテストは`CompareHistory`の構造的限界の特徴付けであり、適切なReaderの存在・保護・全件取得を立証しない。#3018の旧HEADの6/6成功は**この新ケースを含まない**。Reader/Provider負例の実実行、実DB History接続、業務Owner受理はNOT RUN。新History Registry/Engine/独立Gateを追加しない。
+
