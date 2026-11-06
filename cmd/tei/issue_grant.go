@@ -73,12 +73,10 @@ func runIssueGrantCommand(options issueGrantOptions) error {
 	if err != nil {
 		return err
 	}
-	declared, err := declaredGrants(options.DeclarationPath)
-	if err != nil {
-		return err
-	}
 	if options.DeclarationPath != "" {
-		if err := access.Ground(document, declared, resolutions, capability); err != nil {
+		// One check for both sides: the issuer (here) and the reader (an adapter)
+		// call access.GroundFile, so the two cannot drift apart.
+		if err := access.GroundFile(document, options.DeclarationPath, resolutions, capability); err != nil {
 			return err
 		}
 	} else {
@@ -100,24 +98,6 @@ func runIssueGrantCommand(options issueGrantOptions) error {
 		return err
 	}
 	return access.WriteDocument(options.OutPath, document)
-}
-
-// declaredGrants reads the declaration file, if one was named. The environment
-// declares the place by a logical name and records who declared it, so the file
-// comes from `tei grants` rather than from the capability that wants to use it.
-func declaredGrants(path string) (access.Document, error) {
-	if path == "" {
-		return access.Document{}, nil
-	}
-	raw, err := os.ReadFile(path)
-	if err != nil {
-		return access.Document{}, fmt.Errorf("read declaration %s: %w", path, err)
-	}
-	document, err := access.ParseDocument(raw)
-	if err != nil {
-		return access.Document{}, fmt.Errorf("declaration %s: %w", path, err)
-	}
-	return document, nil
 }
 
 // groundingResolutions builds the mapping from the declared scope name to the
