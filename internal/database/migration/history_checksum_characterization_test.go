@@ -72,3 +72,54 @@ func TestHIST02MissingAppliedChecksumCannotDetectDefinitionDrift(t *testing.T) {
 	// definition equivalence = UNKNOWN, despite RepoApplied classification.
 	// Actual Schema/History Reader qualification and Owner meaning are separate.
 }
+
+// HIST-02 follow-up: Fingerprint deliberately excludes generated Realizations.
+// A matching canonical-definition fingerprint is not an independent receipt
+// of which Target SQL statements were generated or executed.
+func TestHIST02CanonicalChecksumDoesNotCertifyDerivedRealizationBytes(t *testing.T) {
+	db := core.MustCanonicalID("sales_core")
+	first := migration.Definition{
+		ID:       "m001",
+		Database: db,
+		Recovery: migration.RecoveryForwardFix,
+		Steps:    []migration.Step{{Kind: migration.StepVerify, Description: "stable canonical definition"}},
+		Realizations: []migration.Realization{{
+			Statements: []string{"ALTER TABLE orders ADD COLUMN audited INTEGER"},
+		}},
+	}
+	second := first
+	second.Realizations = []migration.Realization{{
+		Statements: []string{"ALTER TABLE orders ADD COLUMN audited TEXT"},
+	}}
+	firstDigest, err := migration.Fingerprint(first)
+	if err != nil {
+		t.Fatal(err)
+	}
+	secondDigest, err := migration.Fingerprint(second)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if firstDigest != secondDigest {
+		t.Fatalf("fixture expects unchanged canonical checksum, got %q and %q", firstDigest, secondDigest)
+	}
+
+	history := migration.HistorySnapshot{
+		Database: db,
+		Tool:     migration.ToolAtlas,
+		Entries: []migration.AppliedMigration{{
+			Database: db,
+			ID:       first.ID,
+			State:    migration.AppliedSucceeded,
+			Checksum: firstDigest,
+			Tool:     migration.ToolAtlas,
+		}},
+	}
+	for _, def := range []migration.Definition{first, second} {
+		got, err := migration.CompareHistory(db, []migration.Definition{def}, history)
+		if err != nil || len(got.Entries) != 1 || got.Entries[0].State != migration.RepoApplied {
+			t.Fatalf("canonical checksum does not identify realized statements: %#v err=%v", got, err)
+		}
+	}
+	// The source fixtures contain different generated SQL. Whether either
+	// realization was actually executed is UNKNOWN, not implied by RepoApplied.
+}
