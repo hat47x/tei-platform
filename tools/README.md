@@ -131,6 +131,7 @@
 | [`reference-runtime-capability-identity/`](reference-runtime-capability-identity/) | 実行時Capabilityの識別方法の確認 |
 | [`reference-runtime-decisions/`](reference-runtime-decisions/) | 期間・効果・権限・実行計画の**実行時の判断**を、一時PostgreSQLを相手に観測する試験（#2483）。期間が閉じている／効果を観測できない／付与が無い／実行が完了済みのとき、判断が`blocked`・`refuse`になり**行が変わらない**ことを確かめる。DSNが無ければスキップし、CIはスキップをPASSに数えない |
 | [`reference-runtime-snapshot/`](reference-runtime-snapshot/) | 生成時と実行時の投影境界の確認 |
+| [`reference-access-survey/`](reference-access-survey/) | `internal/access`を通さずに外部へ触る箇所を**構文木で**数える計器。ファイル・ネットワーク・環境変数の別と、呼び出しの多いディレクトリを出す。数え直せること自体が目的で、**強制の証拠ではない**（`guarded`は「その層を経由する」以上の意味を持たない） |
 | [`reference-plugin-bundle/`](reference-plugin-bundle/) | 二つの独立プラグインを一つの成果物へ結合し、論理識別子と物理成果物を同一視しないことを確かめる参照試験（#1251） |
 | [`reference-plugin-wasi-smoke/`](reference-plugin-wasi-smoke/) | 独立プラグインを同一ソースからLinux/amd64とWASIへ構築し、両方の実行結果を比較する試験（#1251） |
 
