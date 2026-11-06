@@ -56,13 +56,21 @@ jobs:
           node --version
           test -s tools/reference-studio-host-boundary/server_asset_boundary_probe.mjs
 
-      - name: Build fixed ordinary Server and fixed generated Server
+      - name: Adapt disposable module metadata, then build fixed servers
         shell: bash
         run: |
           set -euo pipefail
+          # The Host source is fixed at HOST_SHA. Only the module metadata is
+          # adapted: the fixed Host's go.mod predates the current root module's
+          # go directive and golang.org/x/text requirement, so -mod=readonly
+          # cannot resolve it (#2985). This snapshot is disposable and is not
+          # the tracked cmd/tei-studio source.
           cd cmd/tei-studio
           test -s go.sum
-          CGO_ENABLED=0 go build -mod=readonly -tags server -o "$RUNNER_TEMP/studio-ordinary-server" .
+          GOFLAGS=-mod=mod CGO_ENABLED=0 go build -tags server -o "$RUNNER_TEMP/studio-ordinary-server" .
+          git diff -- go.mod go.sum > "$RUNNER_TEMP/module-metadata.diff" || true
+          echo "module metadata adapted for the fixed Host snapshot:"
+          cat "$RUNNER_TEMP/module-metadata.diff"
           cd ../..
           go run ./tools/reference-studio-static-composition \
             -fixture tools/reference-studio-static-composition/fixture.json \
