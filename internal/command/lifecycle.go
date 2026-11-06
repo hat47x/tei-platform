@@ -174,10 +174,21 @@ func (l *Lifecycle) MayReplay(commandID string) bool {
 	return existing.Stage != StageUnknown && existing.Stage != StageObserved
 }
 
+// StageLifecycleは、Command試行の段階を保持する境界である。in-memoryの
+// Lifecycleと、再起動をまたぐdurable storeの両方が実装する。
+type StageLifecycle interface {
+	Attempt(commandID string) (Attempt, bool)
+	Dispatch(commandID, owner string, generation int) (Attempt, error)
+	Takeover(commandID, owner string, generation int) (Attempt, error)
+	Observe(commandID, owner string, generation int, outcome string) error
+	MarkUnknown(commandID, owner string, generation int, reason string) error
+	MayReplay(commandID string) bool
+}
+
 // LifecycleInvokerは、Invokerの実行をLifecycleの段階へ接続する（#1129）。
 type LifecycleInvoker struct {
 	Invoker   Invoker
-	Lifecycle *Lifecycle
+	Lifecycle StageLifecycle
 }
 
 // DispatchOptionsは、1回の試行を識別する。
