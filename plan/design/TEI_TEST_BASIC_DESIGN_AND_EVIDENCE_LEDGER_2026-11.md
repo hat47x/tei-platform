@@ -287,7 +287,7 @@ main統合の[`tei dbcheck`](https://github.com/hat47x/tei-platform/pull/2894)�
 
 ### 8.9 Completionの自己申告Coverageと実Read母集団を別検証基準で照合する（2026-11-07）
 
-**新しい実Source照合**：現mainの`internal/semantic/completion.go`（blob `512a835ca445d81dd043f8af78ca29df4e7adb3b`、#2926で導入済み）では`EvaluateCompletion`が`CompletionEvidence.Targets`、`Coverage`、`EmptyJustified`、`Conflicting`等を受け取る。`CoverageComplete`は**呼び出し側が供給する主張**で、関数自身がOwnerのTargetSet、Providerの実Read、Snapshot、Access/Disclosureを求めて証明するわけではない。対象が非空で全`Holds=true`かつ`CoverageComplete`であれば`CompletionHolds`を返す実装。これは**契約上の明示的な信頼境界**であり、この観察だけで製品バグ／業務意味受理済みとは判定しない。
+**検討時の実Source照合**：旧mainの`internal/semantic/completion.go`（旧blob `512a835ca445d81dd043f8af78ca29df4e7adb3b`、#2926で導入済み。#3051統合後の現main Blobは`e42610e9159e02ba3b5c7b84c46742a846331e64`）では`EvaluateCompletion`が`CompletionEvidence.Targets`、`Coverage`、`EmptyJustified`、`Conflicting`等を受け取る。`CoverageComplete`は**呼び出し側が供給する主張**で、関数自身がOwnerのTargetSet、Providerの実Read、Snapshot、Access/Disclosureを求めて証明するわけではない。対象が非空で全`Holds=true`かつ`CoverageComplete`であれば`CompletionHolds`を返す実装。これは**契約上の明示的な信頼境界**であり、この観察だけで製品バグ／業務意味受理済みとは判定しない。
 
 **二世界の識別不能反例（評価予測、TEI新試験はNOT RUN）**：同一呼出しデータ`Targets=[{L1,true}], Coverage=complete`について、世界AではOwnerの対象集合`L={L1}`、世界Bでは`L={L1,L2}`かつL2が未取得・不成立であっても、Completion APIへ渡す引数が同じなら`holds`となる。この判定の真偽を分ける証拠は`Coverage`文字列ではなく、**Owner集合の版とReaderが観測した対象Identity・範囲・時点・終端**にある。従って「実装が申告データに従い評価した」という局所PASSを「Ownerの完了を確認した」に昇格しない。
 
