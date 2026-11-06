@@ -8,7 +8,7 @@ const evidence={scope:'one',kind:'evidence',id:'validation'};
 const fixture=()=>({
   snapshot:{workspace:'W',modelRevision:'R10',sourceIndexFingerprint:'S10',projectionRevision:'P10'},
   subjects:[one,two,output,evidence],
-  relations:[{id:'flow',type:'produces',roles:[{role:'producer',subject:one},{role:'output',subject:output},{role:'evidence',subject:evidence}]}],
+  relations:[{scope:'one',id:'flow',type:'produces',roles:[{role:'producer',subject:one},{role:'output',subject:output},{role:'evidence',subject:evidence}]}],
 });
 const closure=snapshot=>({snapshot,scopes:['one','two'],subjectsComplete:true,relationsComplete:true,rolesComplete:true,compositionComplete:true,readerPinned:true,disclosureQualified:true,omitted:0,opaque:0,evidenceId:'synthetic-fixture'});
 const missing={kind:'relation',scope:'one',type:'unseen'};
@@ -121,7 +121,7 @@ test('relation role and graph edge drift reject both positive and negative claim
   v.table.relations[0].roles[1].role='relabelled';
   assert.equal(boundedAbsence(v,{kind:'relation',scope:'one',type:'produces'},w).status,'unknown');
   const g=project(f);
-  g.graph.edges[0].relationId='another-relation';
+  g.graph.edges[0].relationKey='["two","flow"]';
   assert.deepEqual(boundedAbsence(g,missing,w),{status:'unknown',reason:'role_coverage_loss'});
 });
 
@@ -129,4 +129,57 @@ test('source relocation with same model fingerprint still makes old projection s
   const f=fixture(),v=project(f),moved={...f.snapshot,sourceIndexFingerprint:'S11'};
   assert.deepEqual(selectView(v,v.table.subjects[0].viewId,moved),{status:'stale'});
   assert.deepEqual(boundedAbsence(v,missing,closure(moved)),{status:'unknown',reason:'mixed_revision'});
+});
+
+test('relation ownership is independent of participant scope',()=>{
+  const f=fixture();f.relations[0].roles[0].subject=two;
+  const v=project(f),w=closure(f.snapshot);
+  assert.deepEqual(boundedAbsence(v,{kind:'relation',scope:'one',type:'produces',id:'flow'},w),
+    {status:'present-in-snapshot'});
+  assert.deepEqual(boundedAbsence(v,{kind:'relation',scope:'two',type:'produces',id:'flow'},w),
+    {status:'absent-in-declared-snapshot',evidenceId:'synthetic-fixture'});
+});
+
+test('same relation ID in distinct scopes remains two qualified relations',()=>{
+  const f=fixture();
+  f.relations.push({scope:'two',id:'flow',type:'produces',roles:[
+    {role:'producer',subject:two},{role:'output',subject:output}
+  ]});
+  const v=project(f),w=closure(f.snapshot);
+  assert.notEqual(v.table.relations[0].key,v.table.relations[1].key);
+  assert.equal(new Set(v.graph.nodes.map(n=>n.viewId)).size,v.graph.nodes.length);
+  assert.equal(new Set(v.graph.edges.map(e=>e.viewId)).size,v.graph.edges.length);
+  assert.deepEqual(boundedAbsence(v,{kind:'relation',scope:'two',type:'produces',id:'flow'},w),
+    {status:'present-in-snapshot'});
+  assert.deepEqual(boundedAbsence(v,{kind:'relation',scope:'two',type:'produces',id:'missing'},w),
+    {status:'absent-in-declared-snapshot',evidenceId:'synthetic-fixture'});
+});
+
+test('relation scope omission and duplicate qualified relation are rejected',()=>{
+  const f=fixture();delete f.relations[0].scope;
+  assert.throws(()=>project(f),/invalid_relation_scope/);
+  const g=fixture();g.relations.push({...g.relations[0]});
+  assert.throws(()=>project(g),/duplicate_relation/);
+});
+
+test('post-projection relation ownership drift fails closed',()=>{
+  const f=fixture(),v=project(f);
+  v.table.relations[0].scope='two';
+  assert.deepEqual(boundedAbsence(v,missing,closure(f.snapshot)),
+    {status:'unknown',reason:'relation_identity_mismatch'});
+  assert.deepEqual(selectView(v,v.graph.nodes[0].viewId,f.snapshot),{status:'unresolved'});
+});
+
+test('relation graph node cannot be rebound to same id at a different scope',()=>{
+  const f=fixture(),v=project(f);
+  v.graph.nodes.find(n=>n.relationKey).relationKey='["two","flow"]';
+  assert.equal(boundedAbsence(v,missing,closure(f.snapshot)).reason,'relation_coverage_loss');
+});
+
+test('relation query cannot infer presence from an endpoint in another scope',()=>{
+  const f=fixture(),v=project(f),w=closure(f.snapshot);
+  assert.deepEqual(boundedAbsence(v,{kind:'relation',scope:'two',type:'produces'},w),
+    {status:'absent-in-declared-snapshot',evidenceId:'synthetic-fixture'});
+  assert.equal(boundedAbsence(v,{kind:'subject',scope:'two',type:'operation',id:'shared'},w).status,
+    'present-in-snapshot');
 });
