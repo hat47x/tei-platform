@@ -462,3 +462,75 @@ Community向け初期配布物の候補は (1) Contractと正負Fixture（Provid
 - #951/#1016/#1251/#1223/#2589/#2620/#2044/#2390/#2509が各検証を所有。#1119のCritical PathのGateはそのまま。#2017のA0〜A4には作業票/検証Evidenceを渡すが、人間のOwner意味・権限・配備判断は置換しない。
 - 実Consumerとactual source/Artifact/Targetを観測して、既存Contractと診断Projectionだけで要件を満たせる場合、新しいRegistry、CoreのPlugin型、Composition正本、Agent Runtimeは**追加しない**。
 - **現在の状態**：本節は複数チャットの方針・既存ADR/IssueおよびDSH公式公開資料を照合した設計候補。DSH実コード/TEI実Host/Go Link/DB/外部Consumerの新たな実行試験、Ownerによる正式採用はここでは**NOT RUN／未採用**。
+
+## 22. DSHと組織・Tenant・Communityの交差：配備ScopeとTrustの再資格化（2026-11-06、設計候補）
+
+**対象・参照**：DSH横断研究[#2899](https://github.com/hat47x/tei-platform/issues/2899)、本書§21、[ADR-0032](../adr/0032-composition-kernel-replacement.md)／[ADR-0043](../adr/0043-target-native-artifacts-without-tei-host.md)、[#1016](https://github.com/hat47x/tei-platform/issues/1016) Application Composition、[#2386](https://github.com/hat47x/tei-platform/issues/2386) 組織関係、[#2589](https://github.com/hat47x/tei-platform/issues/2589) Plugin公開、[#2390](https://github.com/hat47x/tei-platform/issues/2390) 外部Consumer。拡張方式を決める三段階の正本は[Draft #2885](https://github.com/hat47x/tei-platform/pull/2885)と既存Runtime/Target設計であり、本節は**方式選定後の適用範囲・実証資格**のみ扱う。閉じた重複Draft #2888の判断を第二正本として復活させない。
+
+### 22.1 DSHから確認した事実と類推の限界
+
+- DSH [Architecture](https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/architecture.md)では、PluginがService/Typed Event/Reversible Registrationを提供し、ProfileにBundle・Patchを積む。Session durable event、Agent live event、Capability extension eventが異なる。Scoped tool registryは提示するTool Schemaを限定し、guarded execution pipelineが実際の実行を扱う。
+- これは**何が構成され／モデルへ提示され／呼ばれ／記録されるか**が異なることを示す。ただしSession event記録はTEIのDB Effect独立確認ではなく、Tool schema公開が実Host Grantを発行するわけでもない。
+- Profileの定義域と、Tenant・Project・Workspace・Application・Process・Session・Operationの作用域は同一ではない。特にプロジェクトに選んだProviderから、当該Tenantの実データ閲覧権を導出してはならない。
+- [#2386](https://github.com/hat47x/tei-platform/issues/2386)で扱うLegal Entity／OrgUnit／Membership／Business Role／Delegationと、配備上のTenant／Workspace／Host principal／resource grantを区別する。組織意味の変化と現在のHost認可の更新は別資格。
+
+### 22.2 Scopeは単一の親子階層でなく、異なる所有者を持つ直交軸
+
+| Scopeの観点 | 主な意味・担当 | 禁止する暗黙の伝播 |
+| --- | --- | --- |
+| Distribution / Publisher | 名前・Contract定義権、Package/Release、署名・検証（#2589/#951） | Publisherの信頼 → Runtime権限 |
+| Authoring / Model | Project Source、Role、Accepted Meaning、改訂（#2619/#267） | Owner意味受理 → 実Tenantデータ権 |
+| Composition / Application | 選択されたPlugin、Profile、環境要求と制約（#1016） | 一つのProfile選択 → 全Tenant/全Processへの自動適用 |
+| Domain / Organization | Legal Entity、OrgUnit、Membership、Case/責任関係、validAt（#2386） | 組織所属 → Tenant認可、組織再編 → 既存実Grant即時更新 |
+| Runtime / Invocation | Verified issuer+subject、Tenant/resource、Current Grant/Lease、実Reader（#1118/#1174） | Clientが述べたTenant → 信頼された実効Tenant |
+| Evidence / Disclosure | Context/Consumer許可、実取得範囲、部分性、観測鮮度（#2516/#1178） | read-only diagnostic → 秘密情報の全開示 |
+
+一つのProfileが共通標準Pluginを選ぶ場合も、実行単位・Tenant・Principal・ResourceのBindingはHost側の現在Authorityへ戻す。すべての組織モデルにテナント境界を埋め込まない。「Local Studio no-auth」は「無制限Resource権限」でも「SaaS側no-auth fallback許可」でもない。
+
+**変化の因果**：PluginのImplementation改訂はBuild/Conformance資格を再評価するが、OrgのAccepted Meaningを自動変更しない。Org関係の改訂は関係するBusiness Rule/Query/ContextやAction候補を再評価するが、別TenantのPluginを自動有効化しない。Host Grantの失効は現行の作用を拒否しても、旧Receipt/歴史的業務関係を削除しない。過剰失効と過少失効の両方を負例にする。
+
+### 22.3 「組み立てた・見せた・実行した」を別に証明する
+
+| 段階 | 表示・判断できること | 次段に要求する独立確認 |
+| --- | --- | --- |
+| Discoverable | Plugin/Contractが検索・Indexに見つかる | Publisher/Contract AuthorityとRelease |
+| Selected/Configured | ProfileでProviderを固定・構成した | #951 ResolverとTargetの実制約 |
+| Built/Included | 実消費入力とArtifactが対象に含まれる | exact bytes/Load・Conformance |
+| Advertised/Exposed | UI・Agent・SDKが操作候補を表示した | Consumerの実Targetと現在Permission |
+| Invoked | 実ProviderへRequestを到達させた | Effect有無・結果/失敗/不明 |
+| Effect Confirmed | 独立Read等により対象効果を確定した | 監査・Consumer開示の適合 |
+
+同じ見た目の「有効」状態へ統合しない。AI/外部HarnessのGoal/MCP/Tool/Skill公開はHost Authorityでない（#2509/#2515）。Pluginが構成上存在しても、物理Buildに未収録、Runtimeで未ロード、現在Grant失効、送出経路未観測なら別のunknown/拒否を表示する。Toolの表示が読取り専用でも、Hostに残るOS/Network権限やログ送出が安全とは断定しない。
+
+### 22.4 Community公開：Discoveryの先にある採用・退出
+
+第三者Pluginが使いやすいことと、安全かつ継続可能に採用できることを別に扱う。DSH [CONTRIBUTING](https://github.com/deepseek-ai/deepseek-harness/blob/master/CONTRIBUTING.md)の独立Plugin参加と、[SAFETY](https://github.com/deepseek-ai/deepseek-harness/blob/master/SAFETY.md)の開発者プレビュー警告をともに参照する。
+
+TEIでは既存#2589の分散公開・第三者Conformanceに、**採用後の変化と退出**という圧力を追加する。対象は初回Publisher権限／署名／Digestだけでなく、廃止・yank（既存利用の扱いを別にする）、所有権移転、侵害後の発行者失効、offline時の最新Trust不明、脆弱性告知、互換性を保つ代替Providerへの移行。Releaseの既知Digestが一致しても、現在Trusted/許可済みとは断言しない。
+
+公開の最小導線は **Contract-only + 独立Fixture → Provider Implementation + Build recipe → 第三者の範囲付きConformance → Target別Consumer利用例** の四つを区別する。Providerがない段階でも他者がContractを実装可能であり、TEI専用Host/Studioを必須としない（#1975/#2390）。同一Packageに契約と実装を同梱してよく、分割パッケージを義務化しない（#1251）。
+
+Registryは**発見の索引**、Issuerは証拠の発行主体、Host/Ownerは採用・実行判断の主体。第三者Indexに「認証済み」と書いても本人確認／意味／安全性／Runtime資格を自動付与しない。必要なメタデータをもう一つの手書きSSOTとして保存しない。
+
+### 22.5 Scope／Communityの反証を既存Ownerへ追加する（DSH-19〜26、NOT RUN）
+
+| ケース | 入力変化／故障注入 | 独立Expected | 担当 |
+| --- | --- | --- | --- |
+| DSH-19 | 同一BundleをTenant A/Bで採用しAのみ実Grant | AとBのPlugin選択が同じでもBの実Effect拒否。Orgの兼務からB権限を生成しない | #1016/#2386/#1174 |
+| DSH-20 | Profile内でPluginを有効化、別Project/Processが旧版維持 | 必要なScopeにのみ構成変更。旧Reader/Artifactへ暗黙伝播しない | #1016/#1223/#2044 |
+| DSH-21 | Agent Tool schemaに「read only」を表示、実OS/Network送出が過剰 | 表示と実権限・送出経路を分け、未観測なら安全と宣言しない | #2509/#2515/#1178 |
+| DSH-22 | Org異動で承認候補が変わり、Host Grantは旧版 | Candidate/Role/現Grantの資格を別票。実副作用前に現在Grantと対象を再照合 | #2386/#1174 |
+| DSH-23 | ReleaseのPublisher失効、同Digestがキャッシュ中 | 過去のbyte一致を現在Trustへ昇格しない。offlineではunknown条件を記録 | #2589/#1104 |
+| DSH-24 | 第三者Index停止、旧Pluginの保守終了・代替候補複数 | Source/既存Contractと未対応データは保持、無根拠に別Providerを自動選択しない | #2589/#951/#2044 |
+| DSH-25 | Contract-onlyをTEI非依存Consumerが入手し別言語実装 | PublisherのContract定義と実装Conformanceを分け、外部Hostで独立Expectedを満たす | #1975/#2390 |
+| DSH-26 | 永続Session Eventと一時イベント/ログの矛盾、実DB Commit unknown | 観測の寿命・Scope・Effectを別にし、イベント完了だけでDB確定としない | #1223/#1129/#1174 |
+
+各Caseは Source/Revision、Profile Scope、Contract+Provider+Artifact、具体的Host/Principal/Tenant/Resource、Expected、実Observation、未観測/失効の列を持つ**既存のEvidence台帳への要求**。Schema名、新Core enum、新試験基盤、必須の中央Registryを新設しない。実験は公開・合成Fixtureから始め、秘密や未公開Sourceを外部Harnessへ渡さない。
+
+### 22.6 Agent並列作業と計画への受渡し
+
+#2899（外部研究と対応表）→ #2017の既存A0〜A4作業票（対象、変更権限、独立Expected、未実施）→ 各Owner #1016/#951/#2386/#2589/#2390/#2509/#1174で実試験 → #1119の既存横断Gateへ結果参照、という方向とする。DSH研究を進めるためにTEI側にDSH専用Agent Loop/Orchestratorを作らない。
+
+**撤回条件**：Scope/Trustの違いが既存Contract＋Profile＋Runtime Invocation＋Evidenceの読み取りProjectionで表現できれば、新しいScope Hierarchy/Policy Engine/Registry/Grant storeを追加しない。新規Plugin/Target用Core機能が不可欠と主張する場合は、二つ以上の異質Consumerと既存仕組みでの反証を提出する。
+
+**状態**：資料・既存Issue・別PRの設計照合に基づく追加受入候補。DSHの全ソース監査、実Multi-Tenant Host/IdP、Plugin配布失効・Go Link/実DB・Agent OS送出の新しい実測、Ownerの正式意味受理は**NOT RUN／未採用**。本節を含むPRのDraftとmain未統合を維持する。
