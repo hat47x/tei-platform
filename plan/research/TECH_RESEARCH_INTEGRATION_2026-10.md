@@ -431,3 +431,63 @@ TEIの設計へ反映する観点：
 **実施順・採否**：P0=E1/E2/E3のread-only・既知Mutant再利用、P1=E4/E5/E6の現在Grant・Receipt・後着、P2=E7の実Host/Plugin比較。#1063/#988がDSL・変換、#2514がOracle、#1180がScenario、#1163が同一Attempt、#1174が実Effect、#1824がUIを所有する。新Verification IR、Agent Runtime、Memory Registry、Plugin Loader、Auth Engine、Proof Storeを研究だけで採用しない。
 
 **証拠の上限**：論文に書かれた効果 ≠ TEIでの実証。Issueへの受入案 ≠ 実装。単一Mutant kill ≠ 全Domain Oracle適格。実PG Commit/Receipt部分PASS ≠ 同一業務UI/Host/Consumer成功。Draft PR #3022は文書への計画反映であり、テスト実行・Owner受理・main統合ではない。研究計画が#1119の既存Critical Pathや主担当の作業ブランチを変更しない。
+
+
+### 10.8 追加精読：存在・不在の証拠と検証の有効性
+
+2026年11月6日。§10.5〜10.7と現行 #2514/#1163/#2622/#2600/#2598/#1174/#1824/#2389/#1180 を再照合した。**以下は研究で直接測定した事実と、その事実からTEIへ導く設計・受入候補を区別する。新たなCore、形式検証器、Evidence Registry、Agent専用認可、TEI Hostを提案しない。** 各課題の具体的な試験実装は既存Ownerが担い、この文書が第二Scenario/Oracle正本にならないようにする。
+
+#### 10.8.1 観測の非対称性：positive witness と closed-world absence
+
+[M4Bench arXiv:2610.37459v1](https://arxiv.org/html/2610.37459v1) は、operational specificationが同論文の8タスク比較でvalue-column agreementを改善しても、28タスク全体のkey F1差が+0.003にとどまり、strict passはwith-skill 25/280、no-skill 13/280だったと報告する。これらの評価条件・指標・対象タスクは一致しないため、数値を直接比較・TEI性能へ転用しない。著者らも採択部分集合には目的選定の偏りがあると明記している。
+
+**TEIで追加する判定**：単一の正しいEntity観測は、要求した特定Entityが少なくとも一つ存在したという限定Claimを支持し得る。一方「対象Entityは他に存在しない」「更新対象なし」「未取得の関係なし」「影響を受ける成果物なし」は**否定・全称Claim**であり、対象母集団、現在Scope・Filter、Providerの取得完了、Snapshot／Revision、非公開の影響を考慮しない限り支持されない。権限により見えない集合については「開示可能範囲で0件」と「世界全体に存在しない」を区別。RLS/NULL/empty/page/partial/unavailable/permission-deniedの診断に、秘密の件数やフィールド内容を露出させない。
+
+既存対応：#2506 FC-01/06/11（Function Contextと集合）、#1706（集合完全性）、#2622 DO-01/07・LUX-05（多Provider）、#2387（Query/SQL静的Explain）、#2516（Disclosure）、#2514（Oracle）。SQLのFK・CHECKが静的に宣言されていても実全行整合・履歴の正当性や業務Owner受理を推論しない。
+
+#### 10.8.2 過去のPASSの有効性：実施済みと現在適用可能を分離
+
+[ServerBench arXiv:2611.06841v1 §10.3](https://arxiv.org/html/2611.06841v1) は、検証済み内容が後続の関連変更後にも適用可能か、submitted treeで検証したか、過去にしか実施していないか、必要なcoverageが無いかを区別する。これはそのベンチマークの観測手法であり、TEIの安全性を既に証明するものではない。
+
+**TEIで追加する判定**：PASSを単なる時刻付きBooleanにしない。既存Evidence上で Source/Role/Query/Operator/Generator/Toolchain/Build closure/Host/Provider/Runtime configuration/Consumer のうち **ClaimのRequired Dependencies**を特定し、検証された実際の入力と、現在の選択・実消費を比較する。
+- 一致するが今の実行Authority／Disclosureが違う：Artifactの再利用はあり得ても現在の実行資格・出力開示は再評価。
+- 同一bytesへSourceがA→B→Aと戻った：現Revisionと受理判断、途中の失効・依存変更を別評価。
+- 未使用Pluginの追加：実Selectionと物理Build closureが不変なら無関係なArtifactまで一律失効させない。
+- 参照されたSource／SQL assetが実際は未取得・未読込：キャッシュHIT、旧Receipt、validate PASSだけで現在の検証済みへ昇格させない。
+- 観測済みConsumerの旧画面応答：過去Attemptの実Effectは保存しても、現Workspace/Selection epochの画面表示資格は別判断。
+
+既存対応：#2600（再利用/否定依存/失効）、#1163（同一Source/Target/Attempt Evidence）、#1180（必要Obligation）、#1824（後着UI）、#1251（実Bundle閉包）。新たなProof StoreやValidatorを設けない。
+
+#### 10.8.3 正しい結果でも不正な手順は見逃される
+
+[Concordat arXiv:2610.37461v2 §5.3](https://arxiv.org/html/2610.37461v2) は、会話上の単純な yes 判定と違反検出が同一定義を共有しており、ゼロ違反もその定義に依存すること、yes but not that one でも通ってしまうことを限界として明記している。したがって「型付きTool集合を適用すればユーザー同意を保証する」という一般化は避ける。
+
+**TEIで追加する判定**：Outcome correctness、Business Procedure/Workflowの順序・責任、明示Confirmationの対象Version、Current Host Grant、Provider Effectの正当性を独立に判定。二法人兼務者が一方のTenantで承認後に別Tenantへ切替、代理権失効後に旧Confirmを再使用、対象Aの確認からPayload対象Bへ差替え、古いUI Promiseが新Workspaceに届く反例を既存#1125/#2389/#2598/#1174/#1824へ割り当てる。単なる会話履歴・Agent-visible Tools・Membership・成功したDB応答を、正当な業務承認の代用にしない。新たな共通Workflow Engineや認可Engineの導入は要らない。
+
+### 10.9 Existing Scenarioを流用する追加の独立反証（提案／NOT RUN）
+
+| ID／Expectedの固定 | PASSと誤認させる条件 | Required Evidence／担当 |
+| --- | --- | --- |
+| RES-01 Positive witness | Parent Hの子を1行実取得し「Hの全子が1行」と報告 | その1行のSource/identityは正でもcompleteとは不明。#2506/#1706 |
+| RES-02 False absence | 取得先頭ページ0件・RLS範囲0件・API partialを「全件0」「変更不要」とする | 取得母集団、Filter、Scope、完了、時点の証拠が欠ければunknown。秘匿件数を返さない。#2622/#2516 |
+| RES-03 Unconsumed test | SourceのRule一覧は完全だがLoaderが一部を読まず、実行した検査だけPASS | Required Obligationの母集団、実Source/Build消費、判別力のある独立Expected。#1180/#2514/#1163 |
+| RES-04 Post-change PASS | 旧Provider向け試験がPASS後、同Query IDのDB別SQL／Generator／Grantを変更 | 旧PASSは歴史的証拠として保持、現在適用資格はunknown/再試験。#2600/#2862/#951 |
+| RES-05 Outcome-protocol collision | 受注Bの保存が正しい値で成功、しかし確認したのは受注Aまたは別Tenant | Outcome PASSでも操作の対象・承認・権限はFAIL/unknown。#2598/#1174/#2389 |
+| RES-06 Shared-origin Oracle | 実装とExpectedを同じ生成AI出力から構成し、同じ誤解に一致してPASS | Source・Oracle provenance、独立Property、既知Mutantの検出力を別観測。#2514/#1180 |
+| RES-07 Late UI receipt | 実Providerの過去Receiptは正しいが、新Workspaceで古い応答を表示 | 実Effectの歴史的成功と現ConsumerのSelection epoch・Disclosureを分ける。#1824/#2598/#2516 |
+
+**必要Obligationの分母**：実行した試験件数や見つかったSource数を分母としない。Claimに必要なObligation集合を先に固定する。未取得・未読込・未評価・対象不明はunknown/not-runとして残し、理由のあるnot-applicable以外は分母から勝手に除去しない。Coverage（量）、Oracle discrimination（既知誤実装を検出できるか）、Evidence applicability（対象Revision/Attemptへの効力）を独立した列にする。必須の一項目がmissingなら全体Claimの合格を主張しない。実際の四層分類S/M/E/Aは§10.6を再利用し、別の正式スキーマは作らない。
+
+### 10.10 仕様をSkillで届けたか、実際に読ませたかを分離
+
+§10.7のA/B/C/D比較の追加統制。M4Bench [Table 1、§5](https://arxiv.org/html/2610.37459v1) はtask instruction+schema、complete operational spec、targeted skill、decoy skill、raw reference SQLを別条件として比較する。これをTEIに転用する際、以下は異なる条件とみなす。
+
+1. **A**：Task＋Schemaのみ。固定Expectedと評価用Sourceは他条件と同じ。
+2. **B**：同じTask＋Schemaに完全な業務操作仕様（Rule、grain、time window、NULL、母集団）を**直接表示**。
+3. **C1**：Bと同じ内容をSkill/Plugin経路で**発見可能にしただけ**。実Read未確認の試行をBとの同条件比較に含めない。
+4. **C2**：Skill経路で実際に選択・取得・読込した内容とVersion/bytes/長さを確認できた試行。Bとの比較時は同じ仕様内容であることを固定し、配送差、発見可否、消費量、トークン費用と成果を別指標で報告。
+5. **対照**：別タスクのDecoy/無関係Skill、またはSource/Toolchain条件が異なるRaw SQLは、仕様内容の効果と包装の効果の推定に混ぜない。
+
+**不採用条件**：包んだSkillを増やしただけで実Read/正しいSource消費・Key集合・strict passが改善せず、コストと第二正本が増えるなら、構造的に明瞭なMarkdown/表・直接仕様供給を優先。逆に必要な仕様の発見と実消費が改善したなら、既存#1063/#988/#2509/#2514/#1180のAuthoring/CLI/Conformance内で適用を検討。論文の測定値をTEIの期待改善率や固定KPIにはしない。
+
+**今回の変更状態**：文献再読・現行Issue照合によるドキュメントDraft更新のみ。RES-01〜07、A/B/C1/C2の比較、新たな同一Attempt製品E2E、二Host/二Provider実測、Ownerの採用・意味受理は NOT RUN。#3017の限定Mutant kill、#2853の実PG限定観測、#2747の参照実行を合算して製品資格にしない。PR #3022はreview用Draftを維持し、main統合／Gate合格を主張しない。
