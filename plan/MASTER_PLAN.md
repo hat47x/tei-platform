@@ -515,7 +515,7 @@ go build -o /tmp/tei-eid-verify ./cmd/tei
 
 構造分類・Projectionの一般契約は[#2497の設計§22](design/STRUCTURE_PRESERVING_TRANSFORMATIONS_AND_PROJECTIONS_2026-11.md)へ集約する。#2495のFacet、#2497の保存・損失、#2619のEverything is Data、#2506のFunction Context、#2387/#2622のQuery/実Provider、#2516のDisclosureを別Ownerのまま接続し、新Core Schema/第二Query Engine/Host/Cursor Registry/受入Gateを設けない。
 
-**最短の次工程**：既存#2586 HJ-SV-01〜05（同一Query IDでもPage間SQL Realization変更で混合するSQLite合成11/11）を固定Expectedとして、(1) #2611/#2622/#2387の実TEI Realization選択→解析実Input、(2) #2506/#2627/#2586の同一Function・実Provider Page1/2＋Cohort＋完了証拠、(3) #2516の実Consumer現在Grant/非干渉へ順番に接続する。初回は一Provider/二SQL、read-only。二DB全面互換、全Graph/Stream対応、Writer、Self-build、Studio/SHO全機能を初回Hard dependencyにしない。
+**最短の次工程（後続§24.6の優先順位補正を適用）**：既存#2586の一Function・一Query・一Provider実Readを最初に成立させ、実Source/Context→実Provider Rowset/Field/Scope/Read Cohortを独立Expectedで照合する。その後、既存HJ-SV-01〜05（同一Query IDでもPage間SQL Realization変更で混合するSQLite合成11/11）を使い、(1) #2611/#2622/#2387の二Realization実選択→解析Input、(2) #2506/#2627/#2586の実Provider Page1/2＋Cohort＋完了証拠、(3) #2516の実Consumer現在Grant/非干渉へ順番に接続する。最初の製品Readは一Provider/一Query、二SQLは次段、いずれもread-only。二DB全面互換、全Graph/Stream対応、Writer、Self-build、Studio/SHO全機能を初回Hard dependencyにしない。
 
 **停止条件**：Query ID/SQL bytes/短い最終Page/Cache hit/可視0件を、選択・実Read・全体不存在・公開資格の共通PASSにしない。固定済み専用Asset欠落時の無音Fallback、異RealizationのCursor自動連結、実Readなしでのcomplete、非公開候補差の外部露出は禁止。依存変更はClaim相対で局所再資格化する。Graph/時系列/文書/Measureの適用例は設計候補で実Provider/外部Target未実施。実TEI Selector・RLS・Owner正式受理はNOT RUN。既存#1119 A/B/C/D Gate・Owner判断を変更せず、#2018には誤成功率/手順/性能/重複実装を比較対象として返す。
 
@@ -525,9 +525,9 @@ go build -o /tmp/tei-eid-verify ./cmd/tei
 [構造保存設計§23](design/STRUCTURE_PRESERVING_TRANSFORMATIONS_AND_PROJECTIONS_2026-11.md)に、組織Relationの valid time / known time と Relation occurrence、Graph→Tree/List変換のLoss、局所存在と全体不存在・Count、更新対象一意性を追加。独立Python合成14/14 PASS（ローカルSource SHA-256 `f2e67255a87507b197092d6f5caed90f88e017eeeb39824aa60381a3a1f2b8ae`）。コードはRepository未保存、GitHub CI・実TEI Provider/Host/SHO/Owner受理はNOT RUN。
 
 **既存#2497/#2586へ統合し、既存P0を遅らせない**：
-- P1-TR-A：#2389/#1126の実TEI CaseRecord→OrgUnit（#2681）を起点に、Function Contextへ同じ有効日・異なる認識時点のRelation path/Field/Scope/Grainを明示。実Provider未接続なら `NOT RUN: physical-read-unavailable`。SQL自動推測/隠れたRelation全Fetchは禁止。
-- P1-TR-B：#2506/#2586のread側同一Attemptで実ProviderのRelationship occurrence/Distinct Person/Count、部分・完全、Read Cohort、非出力依存を取得し、局所Witnessと全件Claimを分離する。
-- P1-TR-C：#2497/#1124のGraph/Tree/Table read-only投影で、失われたRelation occurrence/valid-knownを検出。非可逆表示からの暗黙Writeを禁止し、更新対象の明示束縛と現在Authority/Receiptは#2598/#1174へ委譲。
+- P1-TR-A（直接RelationのE2a）：#2681のNative CaseRecord→OrgUnit `handlingUnit`は**Caseが所有する単一値Relation**。最初はCase ID＋Relation Role＋現在値＋必要Field/Scope/GrainでFunctionの実Readを試し、未定義の独立Edge ID/`rowVersion`や二時点Queryを必須にしない。CaseRecord Persistence/実Provider未接続なら `NOT RUN: physical-read-unavailable`。SQL自動推測/隠れたRelation全Fetchは禁止。
+- P1-TR-B（実体化RelationのE2b）：#2681 Membershipの独立`membershipId`と`validFrom`/`knownFrom`を使い、別のSubject/独立Expectedで関係出現と時間差・Distinct Person/Countを検証。現Nativeでは時間属性を宣言しているだけで、時点演算・履歴・Provider pushdownを実証していない。#2506/#2586のread側で部分/完全・Cohort・非出力依存を分ける。
+- P1-TR-C：#2497/#1124のGraph/Tree/Table read-only投影で、**Membership等の実体化Relation ID**と**CaseRecordの所有行＋Role＋現在値**を別々に追跡し、失われた情報を表示する。非可逆表示からの暗黙Writeを禁止する。`rowVersion=7→8`は現CaseRecord DSLの属性でなく合成Providerの試験仮定であり、実Version Binding・現在Authority/Receiptは#2598/#1174へ委譲。
 - P1-TR-D：#2582/#2516/SHOは無変更局所Readの歴史的根拠と、訂正後の所属Count/Policy/Document引用・開示の現在資格を別に再評価。低権限Audienceへの秘密Fieldや非公開関係の露出を試験する。
 
 Claim/Source/Temporal cut/Relation occurrence/Scope/Rowset+Field coverage/実Consumed Input/独立Expected/Consumer現在資格を既存#1131/#1180/#2514/#2586の票へ加え、別のTest/Claim正本や新Gateを増やさない。**元のP0（Query Realization→Page1/2 Read Cohort一Provider）は引き続き最優先**。Graph・時系列・外部Target全対応、全組織Policy、Studio/SHO完成をHard dependencyにしない。費用と効果は#2018へ返す。
@@ -544,7 +544,10 @@ Claim/Source/Temporal cut/Relation occurrence/Scope/Rowset+Field coverage/実Con
 <!-- tei-masterplan-collision-p0r1-priority-20261106 -->
 **追加補正（2026-11-06）**：既存§24.5〜24.6へ、構造ごとに異なる合法な重複とIdentity衝突、ならびに実Read-firstの段階的順序を接合した。SQL Bag/Graph多重辺・Array repeatedの合法なOccurrenceと、重複JSON Object member、DSL同AttributeのRole後勝ち、DB Releaseの重複StateSnapshot/ProvidedContractの後勝ちは同じ「重複」ではない。元Source/入力のMultiplicityと、Use-siteごとのKey/一意性を保存/診断し、Map/Parserへ縮約した後で失われた出現をCandidateから推定復元しない（#2891/#2860/#2897/#2497）。移行History unknownは別の#2892が担う。
 
-**P0実証の順序**：P0-R0（#2783の公開合成Tenant/Order/2 Lines＋他Tenant同番号・独立Expected・Source/Providerの固定）→ **P0-R1**（一Function一Query一Provider、実Source/Query/Context→Physical Read/Rowset+Field/Cohort）→ **P0-R1v**（同Contractの二つの明示かつ契約適合するSQL Realization、候補/解析/選択依存）→ **P0-R1p**（Page継続の同一Realization/Cohortと拒否）→ P1（実Consumer/Graph/SHO開示、別Write Attempt）。前回「一Provider二SQL」をP0の先頭と読める記述はこの順に補正した。#2894のmain統合済み`tei dbcheck`は接続と一時表作成/削除のpreflightで、P0-R1の業務Data Readとしない。R1実Read APIが未接続なら `NOT RUN: physical-read-unavailable` として入口Gapを明示。#2783 #2586 #2622 #2387 #2514 #1163へ既存検収票のまま引き渡し、新Core/Host/Runner/Gate/Scenario SSOTを作らない。追加の製品実Read/SQL選択/実Consumer・Owner受理はNOT RUN。
+**P0実証の順序**：主線は#2783のOrder/Lineを使うRMT P0-R1、並行するOrg E2aは#2681のCaseRecord/OrgUnitを使う**別Subject・別Expected・別Attempt**。それぞれの実Readは共通#2586の接合Ownerで検証し、OrderのTenant/二LinesとOrgのCase/Relationを一つの成功Runに合算しない。P0-R0（#2783の公開合成Tenant/Order/2 Lines＋他Tenant同番号・独立Expected・Source/Providerの固定）→ **P0-R1**（一Function一Query一Provider、実Source/Query/Context→Physical Read/Rowset+Field/Cohort）→ **P0-R1v**（同Contractの二つの明示かつ契約適合するSQL Realization、候補/解析/選択依存）→ **P0-R1p**（Page継続の同一Realization/Cohortと拒否）→ P1（実Consumer/Graph/SHO開示、別Write Attempt）。前回「一Provider二SQL」をP0の先頭と読める記述はこの順に補正した。#2894のmain統合済み`tei dbcheck`は接続と一時表作成/削除のpreflightで、P0-R1の業務Data Readとしない。R1実Read APIが未接続なら `NOT RUN: physical-read-unavailable` として入口Gapを明示。#2783 #2586 #2622 #2387 #2514 #1163へ既存検収票のまま引き渡し、新Core/Host/Runner/Gate/Scenario SSOTを作らない。追加の製品実Read/SQL選択/実Consumer・Owner受理はNOT RUN。
+
+<!-- tei-masterplan-org-relation-identity-correction-20261106 -->
+**データ様式の意味保存に関する実Source補正（2026-11-06）**：[構造保存設計§23.5](design/STRUCTURE_PRESERVING_TRANSFORMATIONS_AND_PROJECTIONS_2026-11.md)へ、実体化Relation（Membership＝独立ID/validFrom/knownFrom）と直接Relation（CaseRecord.handlingUnit＝Case ID＋Relation Role＋値）を区別する条件を保存。#2681のCaseRecordには現時点で`rowVersion`がなく、Membership用PersistenceはあってもCaseRecord/OrgUnitのPersistence/実Provider Readは未確認。合成Caseの`rowVersion=7→8`をSource上の属性や実CAS証拠に昇格させない。時間付きRelationの人工Python14件は実体化Relationの圧力として維持し、CaseRecordのE2a実Read/Org bitemporal E2Eの合格には転用しない。新Edge ID/Temporal Core/Hostを作らない。
 
 ## 現在の優先順
 
