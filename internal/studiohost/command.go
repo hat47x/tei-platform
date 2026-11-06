@@ -2,6 +2,7 @@ package studiohost
 
 import (
 	"context"
+	"errors"
 
 	"tei/internal/applicationview"
 	"tei/internal/command"
@@ -74,6 +75,24 @@ func (h *ReadOnly) ExecuteCommandWithPeriods(workspaceID, applicationID, pattern
 // ExecuteCommandWithPolicy additionally applies a reference capability
 // allow list before the executor runs.
 func (h *ReadOnly) ExecuteCommandWithPolicy(workspaceID, applicationID, patternID, capabilityID string, inputs, periods map[string]string, allowed []string) CommandRunResponse {
+	return h.executeCommand(workspaceID, applicationID, patternID, capabilityID, inputs, periods, allowed, nil)
+}
+
+// ExecuteCommandWithLifecycle runs the same reference execution under the
+// host-composed durable stage store. A repeated attempt is refused with
+// COMMAND_LIFECYCLE_REFUSED instead of executing again.
+func (h *ReadOnly) ExecuteCommandWithLifecycle(workspaceID, applicationID, patternID, capabilityID string, inputs, periods map[string]string, allowed []string, commandID, owner string, generation int) CommandRunResponse {
+	if h.CommandLifecycle == nil {
+		return CommandRunResponse{Failure: &Failure{Code: "COMMAND_LIFECYCLE_UNAVAILABLE", Stage: "command", Message: "no command lifecycle is composed for this host"}}
+	}
+	if commandID == "" || owner == "" || generation < 1 {
+		return CommandRunResponse{Failure: &Failure{Code: "INVALID_LIFECYCLE_ATTEMPT", Stage: "command", Message: "command id, owner, and a positive generation are required"}}
+	}
+	return h.executeCommand(workspaceID, applicationID, patternID, capabilityID, inputs, periods, allowed,
+		&command.DispatchOptions{CommandID: commandID, Owner: owner, Generation: generation})
+}
+
+func (h *ReadOnly) executeCommand(workspaceID, applicationID, patternID, capabilityID string, inputs, periods map[string]string, allowed []string, attempt *command.DispatchOptions) CommandRunResponse {
 	loaded, failure := h.loadWorkspace(workspaceID)
 	if failure != nil {
 		return CommandRunResponse{Failure: failure}
@@ -107,13 +126,24 @@ func (h *ReadOnly) ExecuteCommandWithPolicy(workspaceID, applicationID, patternI
 		}
 		invoker.Authorizer = authorizer
 	}
-	result, err := invoker.Invoke(context.Background(), command.Request{
+	request := command.Request{
 		Application: core.CanonicalID(applicationID),
 		Pattern:     core.CanonicalID(patternID),
 		Capability:  core.CanonicalID(capabilityID),
 		Inputs:      inputs,
-	})
+	}
+	var result command.Result
+	if attempt != nil {
+		tracked := command.LifecycleInvoker{Invoker: invoker, Lifecycle: h.CommandLifecycle}
+		result, err = tracked.Invoke(context.Background(), request, *attempt)
+	} else {
+		result, err = invoker.Invoke(context.Background(), request)
+	}
 	if err != nil {
+		var execution *command.ExecutionError
+		if errors.As(err, &execution) && execution.Code == "COMMAND_LIFECYCLE_REFUSED" {
+			return CommandRunResponse{Failure: &Failure{Code: "COMMAND_LIFECYCLE_REFUSED", Stage: "command", Message: execution.Message}}
+		}
 		return CommandRunResponse{Failure: &Failure{Code: "COMMAND_FAILED", Stage: "command", Message: err.Error()}}
 	}
 	return CommandRunResponse{OK: true, Value: &CommandRunValue{
