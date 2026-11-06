@@ -330,6 +330,8 @@ Pluginの最適化候補（静的結合・不要実装除外・部分評価・�
 
 正当性のConformance、実Artifact/Target適格性、性能改善を**独立したGate**で検証できる必要があります。性能BudgetはTargetと代表Workloadに合わせて事前設定し、baselineと候補のexact Source/Contract/Provider/Toolchain、負荷、試行回数、cache状態、実行環境を区別して測定します。p50/p95等の応答分布、起動・Memory・転送/Network・CPU/費用と、正しく省略した再計算、誤再利用、無用な失効を必要に応じて比較し、測定・改善が確認されない抽象化や最適化は撤回・縮小できなければなりません。具体的な実現/受入の候補は[Plugin実現・最適化要件](../plan/design/PLUGIN_REALIZATION_AND_OPTIMIZATION_REQUIREMENTS_2026-11.md)に整理します。
 
+複数のPlugin呼出しをまとめる最適化では、Transport上の一括送信、DataのChunk/Streaming、複数業務操作のBatchを区別する必要があります。通信回数の削減を、操作の原子性、全件完了、正しい順序、取消済み効果の撤回と同一視せず、元のRequest/Result相関、各Scope/Grant、部分失敗・Unknown、Backpressure/Buffer上限、実ProviderのCommit境界を維持できなければなりません。これらを満たせないTargetではBatch化を強制せず、単発呼出しを維持できることとします。実測ではThroughputに加え、待機・tail latency・Peak Memory・取消・部分失敗時の費用を区別します。
+
 ## RQ-025 業務上の行為・手順をApplication Functionから独立して設計できること
 
 TEIは、業務をApplication内部の実行手順だけへ還元せず、何のための仕事か、何を契機に行われるか、誰／どの主体が担当するか、どこが手作業・外部作業か、どのApplication Functionをどう利用するかを設計・説明できなければなりません。
