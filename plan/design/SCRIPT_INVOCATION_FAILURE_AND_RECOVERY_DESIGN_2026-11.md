@@ -153,7 +153,7 @@ A0は独立した新しい中央Admission Serviceではなく、既存Host/Comma
 
 ### 7.2 遅延応答・画面終了・再起動とExecution Identity
 
-**更新されたUI実証範囲**：[Draft #3036](https://github.com/hat47x/tei-platform/pull/3036)はStudioのServer初期Bootstrap（`/`、`cmd/tei-studio/assets/main.js`）にSelection Scopeを接続し、旧RPC応答・旧`finally`による新操作ボタンの書戻しを抑止するNode限定試験を追加。実Wails Host＋Chromiumでの遅延応答試験もDraftに追加されたが、新HEADのCI完了は別途確認する。**既定Windows Desktopは`/workbench/`という別Consumer**であり、既存WebView2 smokeやBootstrap局所PASSをDesktopのCommand/View・Host Grant・Provider Effect/Receipt合格へ転用しない。
+**更新されたUI実証範囲**：旧[Draft #3036](https://github.com/hat47x/tei-platform/pull/3036)はmainとの乖離・競合のため**未統合のままClose**され、現mainから再作成した[後継Draft #3117](https://github.com/hat47x/tei-platform/pull/3117)のみがD0 Bootstrapの進行候補。新HEAD `b75df7a54a27a540e51c57778fd173213752491f`では[専用Node #42309517633](https://github.com/hat47x/tei-platform/actions/runs/42309517633)と[実Wails Server＋Chromium #42309517587](https://github.com/hat47x/tei-platform/actions/runs/42309517587)が局所成功（旧RPC応答・旧`finally`抑止）。Repo Healthの完了結果は本照合では未確認。**既定Windows Desktopは`/workbench/`という別Consumer**であり、Server Bootstrap `/` のPASSをDesktop Command/View・Host Grant・Provider Effect/Receiptへ転用しない。旧版の成功ログを新HEADの証拠に使わない。
 
 UI/CLI/Jobの実行要求は、表示/選択の更新世代（**Selection/Context Epoch**、正式APIではない）と、業務の**Operation ID**、Transport **Request ID**、実**Attempt/Fence 世代**を混同しない。UI側の二重クリックを同期ロックで防いでも、別Window・別Process・通信ACK-loss時の二重Effectを防げたことにはならない。逆に、画面を閉じたり通信が切れたりしても、Provider側の業務Operationを自動取消したことにはならない。
 
@@ -413,6 +413,8 @@ UI/CLI/Jobの実行要求は、表示/選択の更新世代（**Selection/Contex
 
 - **TEI Markdown未接続**：[Draft #3031](https://github.com/hat47x/tei-platform/pull/3031) HEAD `63953ccb5c12ead26ec1268e7c0afdba4eff66ae`は、Domain Loaderの前でManaged File中の`*.tei.md`を`TEI_MD_PARSER_UNBOUND`＋Source pathにより拒否する**暫定fail-closed**を実Go試験で確認。専用[CI #42217379093](https://github.com/hat47x/tei-platform/actions/runs/42217379093) success、4 focused testとWorkspace package test/vetの限定証拠。**Draft/main未統合**、Markdown AST/Source span/TEI Grammar/実Parseは未実装。旧`*.tei`と通常`.md`の処理は維持するが、従来Loaderの`validate ok`を新Sourceの成功に転用しない。
 - **Command認可の入口**：[main統合 #3034](https://github.com/hat47x/tei-platform/pull/3034)は`internal/security/legacyauthorization/command_authorizer.go`の`CommandAuthorizer`を`command.Invoker.Authorizer`へ接続。既存`security.authorize`ルールがallowならExecutor到達、**規則上denyなら`ErrNoGrant`＋`COMMAND_UNAUTHORIZED`かつExecutor非呼出**、規則評価不能ならdenyと混同せずerror、と実Goテストが区別。**権限付与SSOT/Host Credential/current Grantの供給とCommit直前強制は未接続**。
+- **宣言効果・報告・実適用の観測を分離**：[main統合 #3068](https://github.com/hat47x/tei-platform/pull/3068)は`AppliedUnobserved`、[main #3104](https://github.com/hat47x/tei-platform/pull/3104)は効果非宣言時の「比較対象なし」を未観測と誤表示しない補正、[main #3112](https://github.com/hat47x/tei-platform/pull/3112)は`ReportedEffectMissing`を追加。現`internal/command/invoke.go`で`ReportedEffectMissing = (plan.Effect != nil && result.Effect == nil)`、`AppliedUnobserved = (plan.Effect != nil && len(result.Applied) == 0)`を確認。後者のfalseは**比較対象なし**と**適用を観測した**の双方を含み得る。どちらもProviderのCommit/Receipt・業務意味の確認ではない。
+- **意図的な非拒否**：#3112は`effectcommit` ExecutorがCommit Receiptを返しても`result.Effect`を返さない局面を考慮し、報告欠落だけを`MISSING_COMMAND_EFFECT`や`EffectUnknown`へ一律変換しない。この設計を「報告欠落でもEffect成立」と読み替えない。Provider固有のReceipt/実DB独立Read/Expectedとの照合、未報告を拒否すべきExecutor契約の採用は#2996/#2998/#1174の残件。
 - **実DBチェーンのEvidence訂正**：[main統合 #3025](https://github.com/hat47x/tei-platform/pull/3025)の固定HEAD `f887ab979b104b2593561bde3f9e11e8fc7083c7`／[Health #42195019838](https://github.com/hat47x/tei-platform/actions/runs/42195019838)で暫定PG一改訂Packetの`TRUSTED_FULL_HEALTH_NOT_RECORDED`は解消。しかし監査Resultは**`INCOMPLETE / productGate=UNQUALIFIED`**。残る`PROVISIONAL_ACCEPTANCE_NOT_FORMAL_EVIDENCE`、`PROVISIONAL_GRANT_NOT_G2_EVIDENCE`、`PROVISIONAL_GUARANTEE_NOT_G2_EVIDENCE`の3診断は正式受理・現在認可・外部Provider保証の不足を示す。局所Go`#3034`認可成功と暫定PG Chain Health成功を**異なるHEAD/Attemptのまま合算しない**。
 - **移行Ownerの整理**：[Draft #3030](https://github.com/hat47x/tei-platform/pull/3030)の実文書`plan/design/TEI_MD_UNIFIED_AUTHORING_MIGRATION_2026-11.md`冒頭では、移行検収の主担当を`M0〜M6/TM-01〜14`へ一本化し、[Draft #2667](https://github.com/hat47x/tei-platform/pull/2667)の`M0〜M5/TMD-01〜12`を**履歴・参照**と規定（#2667当該文書の冒頭も同じ）。両方のCase IDを別々の受入Gateへ増設しない。#2621のOwner判断・具体的な新Grammar受理はなお別。§10の二経路L/M/Jは、正式移行計画の重複ではなく**Script固有の実行資格比較**に限定する。
 
@@ -427,12 +429,17 @@ UI/CLI/Jobの実行要求は、表示/選択の更新世代（**Selection/Contex
 | PatternにCommandあり、既存Ruleが当該主体・操作・資源でdeny | #3034では`COMMAND_UNAUTHORIZED`、Executor呼出0の正負対照 | このCommandの拒否を「Runtimeの全Effectが0」とは言わない。前Step/外部Providerの先行効果を別記 |
 | Rule Store失敗・主体やAction/Resource不明 | #3034は評価不能errorを`ErrNoGrant`と区別（主体/Action/Resource欠落もerror） | **拒否の確定**と**認可が評価できない**を違う投影にする。再試行は実要求・現在資格を再確認し、未送出証明範囲を保つ |
 | Ruleがallow | #3034局所TestではToy Executorへ到達 | 実Providerの現在Grant、対象行/時点/Period/CAS/Receipt、業務Meaning/Script受理まで合格とはしない |
+| 宣言Effectあり／Executorが`Effect`を未報告 | main #3112で`ReportedEffectMissing=true`を記録（**自動拒否はしない**） | Reportの欠落とCommit失敗を同一視しない。Provider Receipt/別接続Readで実効果を独立確認するまで業務効果はunverified |
+| 宣言Effectあり／`Applied`の列挙なし | main #3068/#3104で`AppliedUnobserved=true`。効果非宣言ならfalse | 操作の列挙欠落を「差なし」としない。falseも効果非宣言の場合は照合完了でない |
+| 実Commit Receipt成功だが宣言対象／対象集合の実Read未成立 | 既存#2853/#3025のPG側Receiptは当該Provider効果だけの証人 | 宣言Effect・適用Row・業務Completionへの照合を別列で`unverified`にする |
 | 実Commit後ACK-loss | #2853実PGでは同Operation ID+同Key Receipt lookupの限定成功 | RunPlan/Script/Host全工程と同じAttemptの証明でない。新Idempotency Key/ABAを許可しない |
 | Read完全性・手作業Handoff未証明 | #2926`EvaluateCompletion`は完全性や空集合証拠を呼出側に要求 | Process exit/Command commitに加え、独立TargetSet・Coverage・Predicate・Handoffを確認するまで`holds`としない |
 
 **現在の`CommandAuthorizer`の具体的な拘束不足**：`Subject`はHostが渡す文字列で、認証済み本人との一致は呼出側の責務。`Action`を省略するとCapability ID、`Resource`を省略すると**Application ID**が使われる。受注`ORD-1`等の**行・業務Target固有の許可**が必要なのにResourceをApplicationに丸めた場合、Ruleのallowから対象行の許可を導けない。対象行のID/Scopeへ写像する明示`Resource` mapper、Hostの実Principal、評価時点とCommit直前Fenceが必要。これらは#2499/#1174へ委ね、#3034の既存Adapterを二重実装しない。`Auth evaluation failed`を`no grant`へ丸めると監査と運用の意味が変わるため、UI/CLI/AI投影でも区別する（内部Rule/存在件数/秘密情報は開示しない）。
 
 ### 11.3 同じ固定業務Caseで必要な“次の一試行”を定義する
+
+**外部ハーネス接続の確認範囲**：[PR #3113](https://github.com/hat47x/tei-platform/pull/3113)は2026-11-07に、固定Windows/Go実行物からDSH経由で`commands`/`version`/`model catalog`/`inspect`/`source-index`/`validate`を実行した**read-only実測Evidence**を提出（56 tool call／うち実TEI CLI起動32、`validate ok`・警告3件、9試行中8試行の停止理由も記録）。しかしこれは`Function→Query→実Provider Reader`ではなく、外部Harness側の独立Expected採点・Skill H3・書込みも未実施。Sandbox `read-only`でWorkspace外の可読パスへのアクセスが可能だったため、**read-only=参加者Source読取範囲の隔離**と推論しない。#2509/TAI #168へ実行環境・公開するSource/ログ送出・隔離の受入を引渡す。本PRに第二HarnessやSession保存正本を作らない。
 
 **候補Scenarioは2段階**：最初のread-only P0-Rでは[#2586](https://github.com/hat47x/tei-platform/issues/2586)の既存Function/Query Contextから**実際に解決・実消費できる一つのQuery/Provider Reader**を選び、Source/Scope/Result Bodyを独立Expectedで検査する。実Reader/Bindingが未接続なら`UNBOUND_DATASOURCE`／`product-read-not-connected`を止まる理由として残し、合成MemoryStoreを実DB資格へ昇格しない。その後の書込みP0-Wでは、#3034既存Referenceの`order_entry.submit_order`／Capability `sales.submit_order`、`order=ORD-1`、Rule Resource `sales.order`をベースにする。業務Ownerによる意味受理や本番Resource mappingが済んでいると仮定しない。既存[#1180](https://github.com/hat47x/tei-platform/issues/1180)のScenario／[#2514](https://github.com/hat47x/tei-platform/issues/2514)の独立Expectedへ対応付け、別のScript用Test SSOTを作らない。
 
@@ -452,4 +459,23 @@ UI/CLI/Jobの実行要求は、表示/選択の更新世代（**Selection/Contex
 3. **許可を持つ本当のWriteだけ実PGへ**：#3034の`CommandAuthorizer`（Subject/Resource明示）・#2882のRequired Guard・#3002のopt-in Durable Stageを、既存#2853実PG Command/Receipt/別Connection Readに**同じCommand ID/Operation ID/Attemptの明示対応**で接続できるか検証する。Stage保存の成功やRef Executorの`Applied`をProvider Receiptにしない。Provider Commit時の再照会・事前/事後のGrant失効、Crash/ACK-lossは別試験。新しいRuntime Host/Policy Engine/Receipt DBは作らない。
 4. **受入パケットのClaim ceiling**：一回の試行に`Required Obligation / Actually Read Source / Subject+Resource mapping / Evaluated Grant / Actual Dispatch / Effect Receipt / Independent Read / Completion / Actual Consumer body`を並べ、欠落を`not-run/unknown/unsupported`で明示。既存#1163のG1/G2判定を変更しない。
 
-**残余と資格**：#3031はDraft限定Goテスト、#3034はmain実認可Adapterの単体/局所試験、#3025は実PG暫定Chain Healthの記録。**Script Source→Auth→RunPlan→PG→Independent Read→Completion→Consumerの一改訂同一Attempt**、正式Host Grant、Provider側のCommit直前権限再検証、新`*.tei.md`の実Parser/Read、実OS再起動、Owner正式意味受理は**NOT RUN / UNQUALIFIED**。本節は次の一回の実験境界を確定する**設計追補のみ**。
+**残余と資格**：#3031はDraft限定Goテスト、#3034はmain実認可Adapterの局所試験、#3112はmainの効果報告欠落記録、#3113は外部DSHのread-only CLI実測、#3025は実PG暫定Chain Health。**Script Source→Auth→RunPlan→PG→Independent Read→Completion→Consumerの一改訂同一Attempt**、正式Host Grant、Provider Commit時の最新認可、新`*.tei.md`の実Parser/Read、**当該Scriptと実Providerを跨ぐOS再起動**、Owner正式意味受理は**NOT RUN / UNQUALIFIED**。main #2942/#3002のCommand単体・CLI段階storeのOS再起動試験は既に存在するが、その証拠をScript/Provider一改訂の合格へ移さない。
+### 11.4 最小実装・検証チケット：結果の「未観測」を合格へ変えない
+
+**一つ目の検証作業はP0-Rの「欠落した一辺」**に固定する。現main `examples/xtea-lowcode`の`UNBOUND_DATASOURCE`と、#2586のQuery/Function Data Contextを起点として、`Function/Query Source→明示DataSource alias/instance→実選択Provider→実際のSQL/params（存在時）→実Reader Rowset/Scope/時点→Consumer Body`のうち**最初に未接続の一辺をSource/既存コードで特定**する。製品Readerに接続できない場合は`product-read-not-connected`として止め、MemoryStore、DSH`validate ok`、外部Harnessの成功数を代替E2成功にしない。
+
+**同一Source/Fixtureを固定する正負対照**（新Scenario IDではなく既存#1180/#2586/#2514のCaseに対応付ける）：
+
+| 1因子だけ変更する条件 | 独立Expectedの判別力 | 実装Owner／合格上限 |
+| --- | --- | --- |
+| P0-R：存在するProvider bindingと実Reader、正しいTarget Scope | Source・Query・選択Alias・Provider実体・実行SQL/params・Result byte・Snapshot・Consumer Bodyが一改訂で追跡可能 | #2586/#2622。**現時点未接続／NOT RUN** |
+| P0-R：同一QueryでProvider未束縛 | 実Provider Readが呼ばれない。未取得を空集合・0行・完了と表示しない | #2586/#2823。合成Sourceの`validate ok`だけはfail |
+| P0-R：DataSource A/Bの選択を変更 | 実際に使われたProviderとSQL/paramsが選択に一致し、未選択Aが呼ばれていないことを追う | #951/#2622。Provider Selection証拠なしならunverified |
+| P0-R：rowset 0、部分ページ、NULL、非開示を差替え | 完全な0行と未取得/partial/非開示は異なる。必要なOutput Grain/TargetSet/CoverageによりClaimが変化 | #2586/#2516/#2926の既存契約を利用 |
+| P0-W：同一Command/同一TargetでEffect reportだけ欠落 | `ReportedEffectMissing`を観測するがCommit/業務効果の否定に直結させない。Receipt/独立Read別 | #3112/#2996。効果報告とProvider Receiptを別Claim |
+| P0-W：適用操作の列挙だけ欠落 | `AppliedUnobserved`を保持し、列挙0件を「差なし」としない。効果非宣言なら比較対象なし | #3068/#3104/#2998。実Provider行単位確認は未実施 |
+| P0-W：Commit応答喪失、同ID再試行、異Key/ABA | unknown時に新Key盲再送しない。同OperationID/Provider Receipt＋別Connection Readで限定確定 | #1174/#2564。実同一Attempt Script連結はNOT RUN |
+
+**既存Evidence Packetへの入力列**：`Case / Claim / Source+Actual Binary digest / required-discovered-loaded-parsed-consumed / selected Query+Provider+parameter digest / subject+resource+current grant / Attempt+Operation ID / declared Effect / reported Effect present / Applied operations observed / Receipt+independent read / TargetSet+Coverage+Completion / Consumer disclosure / Result+unknown reason`。これは新たな公開Schemaではなく#1163の**一試行受渡し表**。機微パラメータのbyte・DSN/secret、権限外Row/内部Ruleを外部Harnessへ渡さない。digestのみなら元byteの再現性/Record真正性を主張できない（#2845）。
+
+**Exit条件**：最初はread-only Queryの`実Source＋実Provider Selection＋実Reader結果＋独立Expected`を一つのAttemptに結ぶことだけを受け入れる。次に書込み側の`実Auth/Guard＋Durable Stage＋Provider Receipt＋独立Read`を同じOperationへ束縛する。外部DSHのSkill比較/実Sandbox隔離は#2509/TAI #168、`*.tei.md`移行は#3030、履歴の改変防止とDisclosureは#2845/#2516へ渡す。**以上は実証計画であり、新テストやOwner受理はこのPRで実行していない。**
