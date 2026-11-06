@@ -203,8 +203,25 @@ func TestSyntheticWebCannotClaimE2(t *testing.T) {
 	p := fixture()
 	p.Web.ProviderKind = "synthetic"
 	result := Audit(p, h, m)
-	if !has(result, "SYNTHETIC_WEB_PROVIDER_CANNOT_CLAIM_E2") || result.Status != "INCOMPLETE" {
+	want := []string{"E2_ACCEPTANCE_KIND_REQUIRED", "SYNTHETIC_WEB_PROVIDER_CANNOT_CLAIM_E2"}
+	if !reflect.DeepEqual(result.Diagnostics, want) || result.Status != "INCOMPLETE" {
 		t.Fatalf("%+v", result)
+	}
+}
+
+// An empty or unknown providerKind names no Provider at all. It is reported
+// as unresolved, and must not also be labeled "synthetic": that diagnosis is
+// false when the packet never declared a synthetic Provider. Either way the
+// packet stays INCOMPLETE.
+func TestUnresolvedWebProviderKindIsNotLabeledSynthetic(t *testing.T) {
+	for _, kind := range []string{"", "synthetic-db", "odbc", " actual-db "} {
+		p := fixture()
+		p.Web.ProviderKind = kind
+		result := Audit(p, h, m)
+		if has(result, "SYNTHETIC_WEB_PROVIDER_CANNOT_CLAIM_E2") ||
+			!has(result, "WEB_PROVIDER_KIND_UNRESOLVED") || result.Status != "INCOMPLETE" {
+			t.Fatalf("%q: %+v", kind, result)
+		}
 	}
 }
 func TestE1WithSyntheticWebIsOnlyReviewable(t *testing.T) {
