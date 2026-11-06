@@ -1237,3 +1237,61 @@ G0/G1/G2は**全面的な直列開発を要求しない**。DB fixtureとProvide
 
 **資格の上限**：本節はGitHubのソース/Issue/PR静的照合と計画更新のみ。`P0-A0/A1/B/C`の実TEI CLI/Stage Go Run、fresh full checkout、CI・独立Review/Owner承認は未取得。現在のG4=`UNQUALIFIED`。業務G1/G2・Studio M0/M1・ETL実配送に新Hard dependencyを追加しない。
 
+
+<!-- tei-2831-20261106-module-closure-recursive-selfbuild -->
+### 35.2 2026-11-06 最優先Gapの実ソース追跡：外部Go Module閉包と本当の再帰的セルフビルド
+
+**確認main**：`2d0b09b13b16c7f2d7183dbc995d3c62208c79ef`。以下はGo実装・Issue [#1090](https://github.com/hat47x/tei-platform/issues/1090)/[#1096](https://github.com/hat47x/tei-platform/issues/1096)/[#1088](https://github.com/hat47x/tei-platform/issues/1088)/[#1104](https://github.com/hat47x/tei-platform/issues/1104)に基づく**新しい静的Fit/Gapおよび受入候補**。対象mainでの実Go/Node Build、外部依存解決、CI、Stageの実行は今回**NOT RUN**。G4も`UNQUALIFIED`。
+
+#### Factual Fitと阻害条件
+
+- **Fit / 固定環境**：`tools/internal/gobuilder/build.go`には`BuildPackage`（`go build -trimpath -buildvcs=false -mod=readonly`）、`environment.go`には`GOPROXY=off`/`GOSUMDB=off`/`GOWORK=off`、Host環境deny-by-default、試行ごとに分離した`GOMODCACHE`がある。別エンジンを追加しない。
+- **Fit / 実入力列挙**：`source_closure.go`の`ResolveSourceClosure`は`go list -deps -json -mod=readonly`を使い、Go/C/assembly/embed等の選択ファイル・`go.mod`を列挙、Git-tracked外・symlink・repository外moduleを拒否する。既存仕様[#1090](https://github.com/hat47x/tei-platform/issues/1090)の安全な停止線であり、単なる不具合として削除しない。
+- **Gap / 外部依存**：root `go.mod`には`github.com/jackc/pgx/v5`、`modernc.org/sqlite`、`golang.org/x/text`等がある。特定Targetの`go list`で外部moduleが**実選択**されれば、現在の`ResolveSourceClosure`は`moduleDir != root`で明示拒否する。さらに隔離`GOMODCACHE`と`GOPROXY=off`のまま外部moduleを事前供給しなければ、Build/Resolve自体が停止し得る。どのmoduleが`cmd/tei`で選択されるか、どの入口が最初に停止するかは**実試験前には未確定**。
+- **Gap / 一時実Go試験との違い**：`reference-build-execution-binding/actual_go_attempt_test.go`は、`GO111MODULE=off`の一時的な単一`main.go`をビルドし、`os.Environ()`から環境を派生する。これをTEI本体・外部依存付きBuildのHermetic証拠へ昇格させない。対照として`gobuilder.BuildPackage/ResolveSourceClosure/HashToolchain`を使う。
+
+#### 優先順位をP0-SB-0として前倒し（A0/Bの**preflight**、最初の業務P0の新Hard blockerではない）
+
+| チェック | 再利用する入口 | 必要な観測と停止線 |
+| --- | --- | --- |
+| **SB-0a / 最初** | `cmd/tei`、`go list -deps -json`、`gobuilder.ResolveSourceClosure` | fixed `main SHA`・GOOS/GOARCH・toolchain・module roots・選択Source・`go.mod/go.sum`・実runner環境を確認し、`supported / external-unresolved / missing-module / unknown`を分ける。外部moduleの存在を、他Targetの`go.mod`宣言から推定しない |
+| **SB-0b / 外部が選択された場合だけ** | #1088/#1090/#1096のdeny-by-default環境・#1104のTrust分離 | exact module version・物理入力bytes/検証済みcontent identity・`go.sum`と実選択sourceの一致・外部供給元と隔離cacheへのpreloadを**明示的に**記録してoffline再解決できる方式を検討。暗黙ネットワーク解決・Hostの共有cache・手書き`complete=true`は禁止。`go.sum`存在だけで実消費bytes/署名Trustを証明したとしない |
+| **SB-0c / 再結線** | `gobuilder.BuildPackage` + `ResolveSourceClosure` + exact `HashToolchain` + `BuildExecutionPlan/ArtifactSet/Subject Binding` | 一つの`cmd/tei`実Attemptについて実Tool/入力/成果物digestとTyped Graphが対応。不明なmoduleやTool入力があれば`G4=UNQUALIFIED`と保持。前処理・生成器の実入力は別edgeで明示 |
+
+**最小負例**：X1 build成功だがclosureは外部module拒否→**artifact produced**と**qualified closure**を別列にし、G4不可。X2 事前供給無し・GOPROXY=off→失敗を成功へ丸めない。X3 cache内source差替え・module replace・sum/実bytes不一致→受理せず。X4 rootのみ合格／nested module欠落→Target別Fail（#1251）。X5 docs-only変更→無関係artifactを過剰失効させず、`go:embed`やpath-sensitive import変更は失効。これは**テスト候補であって実行済みではない**。
+
+#### さらに分ける二種類のセルフビルドClaim
+
+1. **TEI-defined Build**：TEIの標準構造・BuildIntent/Resolved Graphに基づき、既存Go adapterが実TEI CLI artifactを出力し、閉包と出力がexactに一致。これはP0-SB-Bの最低限のExit。
+2. **TEI-driven Recursive Build**：stage0に外部seed（Go toolchain等）を明示した上で、**stage1で生成したTEI Builder/Engineの実ファイルがstage2のBuild処理に実際に使用された**ことを、Process/Builder executable digest・Execution Attempt・Input/Output edgeで検証。同じバイナリをGoコマンドで二回構築しただけではこのClaimに届かない。stage1/2のbit一致は再現性の観測であり、Seed/Issuer Trust・Owner/Runtime Authorityではない（#973/#979/#1104）。
+
+**G4のread-only実証図（提案、図外の未知入力はunknown）**：
+
+```text
+accepted BuildIntent / Source revision
+           |
+           v
+ resolved typed BuildGraph -----> Required / Declared / Selected
+           |                                   |
+           v                                   v
+ exact Go toolchain + offline module closure + actual consumed bytes
+           |
+           v
+ stage0 external seed --[exact Builder input]--> stage1 TEI build artifact
+                                                    |
+                                 [actual executed stage1 binary digest]
+                                                    |
+                                                    v
+                                                stage2 artifact
+                                                    |
+                                                    v
+                              ArtifactSet + actual attempts + comparison
+                                                    |
+                                                    v
+                         Build Evidence (G4 Candidate, not Authority)
+```
+
+**他チャットとの接合**：[#2620](https://github.com/hat47x/tei-platform/issues/2620)はRequired/Declared/Resolved-Consumed/Observed-Disclosedを別Claimへ分離し、[Draft #2966](https://github.com/hat47x/tei-platform/pull/2966)はtyped queryに相対的なStructural/Mapping/Coverage/Currentの有界な図表完全性を提案。いずれもBuild Processの未観測I/Oを「存在しない」とする証拠ではない。[Draft #2827](https://github.com/hat47x/tei-platform/pull/2827)/[#2880](https://github.com/hat47x/tei-platform/pull/2880)のETL/MFTは同じ型付きグラフを別Consumerへ当てる圧力試験であり、配送ACK・Import・Business EffectはBuild artifactの保証と混ぜない。
+
+**独立検証の責務**：実Go Preflight/外部module閉包=#1090/#1096/#2831、subject binding=#1080/#1097、Stage/Trust=#973/#979/#1104、図表投影=#2620/#2966、過剰・誤再利用=#2600、Target別nested module=#1251。新Core Schema、万能Builder、外部Dependency Store、Host、第二Runnerを先行採用しない。#2876と#2877の§35重複も統合前に一方へ収束する。
+
