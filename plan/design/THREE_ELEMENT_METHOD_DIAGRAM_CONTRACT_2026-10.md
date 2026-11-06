@@ -313,3 +313,52 @@ Methodの**構造上の役割**と**業務意味規則**は別契約とする。
 - **継続中**: #1124 M0〜M4の同一実Consumer接続、#1125 Business意味/Role責務、#1126 Data/ER、#951 Provider/Method適合、#267 Shared Acceptance。[#2833](https://github.com/hat47x/tei-platform/pull/2833)は合成4レーンPresenterのDraftであり、実Policy/Owner/Effect受理ではない。
 - **停止**: Methodの追加で既存Sourceが第二正本になる、表示Lineから実外部Effectが発生したことにする、意味のRuleがPluginの更新/ロード順で変わる、Scope/Disclosureが未解決なのに存在を漏らす、Script以外の図形を常に可逆編集と扱う、TEA package一致をself-hostingや業務Acceptanceへ昇格する場合。
 - **検証状態**: この節は2026-11-06のGitHub現行main・既存Issue・設計・Reference説明の静的照合に基づく**設計/テスト仕様**である。TEA-V0の実装、Go/Node focused test、WebView/GUI、Private X-TEA原本、MethodのBuild/Load、現実のETL・File Relay、Self-buildは**NOT RUN**。採用・実装・Owner受理と区別する。
+
+
+## 16. 三視点の開示閉包とRole解釈の局所資格（2026-11-06追補）
+
+**照合根拠**: 2026-11-06 main `bf2e7b0ffe21747a308cd2b37328eb440535f696`、[#2620 Everything is Data](https://github.com/hat47x/tei-platform/issues/2620)のSDX-01〜15（Role bootstrap／必要依存閉包の候補）、[#2516](https://github.com/hat47x/tei-platform/issues/2516)の用途相対Construction Context・二世界Disclosure、[#1124](https://github.com/hat47x/tei-platform/issues/1124)のH0〜H4・M0〜M4、[#2604](https://github.com/hat47x/tei-platform/issues/2604)のArtifact Set実Reader境界、[ETLとSelf-build二ConsumerのDraft #2880](https://github.com/hat47x/tei-platform/pull/2880)を照合。各汎用OwnerのSchema／Policy／RuntimeをこのMethod設計に複製しない。
+
+### 16.1 Data / Function / Businessの複合Projectionは「開示済みSlice」だけを表す
+
+同じModelに属する図や表を合成すると、個別Nodeを隠しても、Relation線・端点数・配置・折り畳み・図間リンク・Coverage・診断・ARIA・Export・AI向けJSONから非公開要素の存在が漏れ得る。**三要素Methodが独自のPolicy Engineを持つのではなく、既存OwnerからConsumer用途・現在のGrant/Policy/as-ofに適合した公開可能Sliceと未公開部分への照合禁止条件を受け取る。** 未資格の全Source Graphに先にレイアウトを施し、後でラベルだけ隠す方式は非干渉の証拠にならない。
+
+```text
+actual Source / exact selected Role+Rule / qualified relations
+           ├─ private interpretation + provenance (Owner side)
+           └─ current Disclosure decision (existing Policy owner)
+                 ↓ authorized, bounded claim slice
+           TEA Data + Function + Business projection / relation table
+                 ↓ public render + DOM/ARIA/count/diagnostic/export
+```
+
+**受入不変条件（候補）**: 同じ許可済み公開Inputと現在Policy・Consumer条件を固定した二世界 `W0=private item なし`、`W1=private item を追加` で、公開図面のNode/Edge一覧・ラベル・順序・座標・図間対応・分岐・件数・Coverage用の説明・Diagnostic・検索候補・ARIA・Tool/JSON payloadが、非公開差分だけを理由として変化しないこと。ただし、公開してよい独立情報まで一律に削る要件ではない。Private集合が空でも、Consumerに全Sourceの閉包を証明できなければ、未開示全体について `absent` を主張しない。存在を示唆する`withheld=1`や隠れた端点のGhost IDも無断公開しない。
+
+完全性判定は**公開された有限のQuery/Scope/Relation kind**にのみ相対化し、`complete-for-public-scope`と`complete-for-all-source`を混同しない。private情報を含む完全性の証拠は内部に保持しても、外部Consumerへ現在の開示権限なく伝搬しない。Source・Role/Rule・Grantが変わったときは公開済みDOM/ARIA/Exportと遅延応答を**別々に失効**させる（既存#1124/#2516へ接続）。既存の許可済み別Scopeは必要依存が交差しない限り失効しない。
+
+### 16.2 Roleの自己解釈は「表現成功」「意味解釈成功」「利用可能」を分離する
+
+TEA Methodは同じ標準値・Relationに複数Roleを適用できるが、**carrierが同じこと**、**Roleラベルの名前が一致すること**、**図面Glyphが描けたこと**を、Accepted meaningや現在の利用資格へ短絡しない。
+
+| 層 | Methodが確認すること | 未成立時 |
+| --- | --- | --- |
+| Plain Source | 実Readerが受け取ったbytes、Source span、Scope、Source Index、未読込Required Sourceの有無 | Generic read-only Sourceへ退避、Missingを空集合と呼ばない |
+| Selected Interpretation | Role/Operator/Language/必要Semantic Extensionのexact Pinと推移eager依存、Required Shape、Relation端点とrole、Conflict/循環 | 当該Roleのsemantic projectionを`unresolved`、別Roleの利用資格を無条件に停止しない |
+| Accepted Meaning | qualified subjectと意味差分、受理範囲/Decisionを既存Semantic ownerから確認 | proposal/derived/observedと区別し、Acceptedに昇格しない |
+| Current Consumer Use | Projection版、出典位置、現在Disclosure・Reader世代・表示epoch・用途に必要な閉包を確認 | 当該公開/Source jump/Inspectを拒否し、旧Source位置へ自動ジャンプしない |
+| Actual Effect / Delivery | 対象Operation/Attempt/Provider/Target/独立Readや受領byteを他OwnerのEvidenceで接続 | 図の矢印・CommandのCommitted・ManifestだけではEffect/Deliveryを主張しない |
+
+Role解釈成功後も、現在のTarget ProviderやBusiness Actorの権限は得られない。Role/Operatorの**同名・同版でも実選択した依存bytesだけ**変化したら再資格化し、無関係Providerが追加されても有効なexact selectionは暗黙に切替えない（#2620 SDX-07）。同じSource byteとMeaning fingerprintでもSource位置だけ移動したらSource navigationの資格は失効する（本書T01）。Role不明時のSource読取の存続と、Role意味のunknownを同時に保持する。
+
+### 16.3 TEA-V0の追加反例：複合Viewでの非干渉とRole Pin（**NOT RUN**）
+
+| Case | 操作・相互比較 | 判定（実証前） | Owner |
+| --- | --- | --- | --- |
+| **T06 三視点二世界** | Public注文Data/Function/Businessは固定。W1にだけPrivate DataとそれへのPrivate Relationを追加して再投影 | Public Node/Edge、Graph geometry、cross-view table、ARIA/件数/診断/Tool JSONにPrivate差分がなく、全Source不在の断定なし。Disclosureの実施主体・観測Readerを固定できなければ`NOT_PROVEN` | #1124 + #2516 |
+| **T07 複数Roleの選択** | 同じSource carrierにData Roleはaccepted、Business Roleはmissing/ambiguous、別Scopeに同名Function | Data generic inspectは可、Business意味は`unknown`、別Scopeを先勝ちInspectしない。Role providerを暗黙fallbackしない | #2620 + #1124 + #1125 |
+| **T08 同名Pinの実依存変更** | Source/Role ID・表示名・意味Subject IDを固定し、選択したOperatorの実bytesまたはeager依存を差替え。対照は未選択Providerだけ追加 | 前者では当該Interpretation/Projectionの再資格が必要。後者で既選択meaningを勝手に変更しない。Artifact/ProviderのConformance・当前Authorityは別 | #2620 + #951 + #2600 |
+| **T09 公開成果物の版混合** | 三視点Markdown/JSON/DiagramをR1で生成後、R2で一部だけ更新し、実ConsumerがR1 ManifestとR2 memberを読む | digest/Manifest生成成功を同一世代の実読取と呼ばない。版不一致を拒否。既存#2604の出版/受領Evidenceを再利用 | #2604 + #1124 |
+
+最初の独立Referenceに必要なのは**T06の二世界比較＋T07のunknown Role**である。両者を同じ公開合成注文fixtureのread-only入力で比べ、次に既存[#2586](https://github.com/hat47x/tei-platform/issues/2586)のM0 CLI→M1同一Workbench Consumerの受入へ渡す。T08は#2620のRole bootstrap、T09は#2604の公開/Read証拠を再利用し、TEA専用Resolver/Publisherの新設はしない。CLI→Workbenchの4入口/Graph stale、実Provider/Host Grant、実SHO/外部AI受領、Owner Meaning Acceptanceまでは、この文書の追記では一切成立しない。
+
+**次の計測対象**: (a) Public世界を二つの秘密構成に変えても出力が等しいか、(b)未選択Roleのエラーが無関係なData読取を止めないか、(c)独立Source movementが旧定義jumpだけを失効させるか、(d)事後に実Source・Provider・Decisionを追加した場合のみClaimsを段階的に強められるか。前節の認知負荷比較は、この安全性を満たしたread-only Methodの比較で行う。仕様・標準Role型・Plugin ABI・評価値の採用は未決。
