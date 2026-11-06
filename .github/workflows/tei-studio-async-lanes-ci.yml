@@ -1,0 +1,29 @@
+name: TEI Studio async response lanes
+
+on:
+  push:
+    paths:
+      - 'cmd/tei-studio/assets/main.js'
+      - 'cmd/tei-studio/assets/preview-scope.mjs'
+      - 'cmd/tei-studio/test/main-async-scope.test.mjs'
+      - '.github/workflows/tei-studio-async-lanes-ci.yml'
+  pull_request:
+    paths:
+      - 'cmd/tei-studio/assets/main.js'
+      - 'cmd/tei-studio/assets/preview-scope.mjs'
+      - 'cmd/tei-studio/test/main-async-scope.test.mjs'
+      - '.github/workflows/tei-studio-async-lanes-ci.yml'
+  workflow_dispatch:
+
+jobs:
+  async-lanes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+      - name: Test real Studio bootstrap with deferred Host responses
+        run: |
+          node --test cmd/tei-studio/test/preview-scope.test.mjs cmd/tei-studio/test/main-async-scope.test.mjs
