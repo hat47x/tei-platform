@@ -18,7 +18,7 @@ func TestQuoteDirectCalculationMatchesSharedCandidateVectors(t *testing.T) {
 	// Skip only in that exact test-only module; in the TEI source tree a
 	// missing shared corpus remains a hard failure (never a silent PASS).
 	if mod, err := os.ReadFile("go.mod"); err == nil &&
-		strings.HasPrefix(string(mod), "module example.invalid/reference-order-quote\\n") {
+		strings.HasPrefix(string(mod), "module example.invalid/reference-order-quote\n") {
 		t.Skip("D0 shared corpus is not staged in the standalone process-provider module")
 	}
 	raw, err := os.ReadFile("../../reference/candidates/order-quote/semantic-vectors-v0.json")
