@@ -57,6 +57,7 @@ type collisionBudgetEvidence struct {
 	ExpectedPopulation            uint64  `json:"expectedPopulation"`
 	MaximumCollisionProbability   float64 `json:"maximumCollisionProbability"`
 	EstimatedCollisionProbability float64 `json:"estimatedCollisionProbability"`
+	CollisionRiskUpperBound       float64 `json:"collisionRiskUpperBound"`
 	PolicySource                  string  `json:"policySource"`
 }
 
@@ -143,10 +144,15 @@ func execute(schemePath, inputPath, subject, targetPath, expectedSource, expecte
 		if err != nil {
 			return err
 		}
+		upper, err := hashid.CollisionRiskUpperBound(s, population)
+		if err != nil {
+			return err
+		}
 		budget = &collisionBudgetEvidence{
 			ExpectedPopulation:            population,
 			MaximumCollisionProbability:   maximum,
 			EstimatedCollisionProbability: estimated,
+			CollisionRiskUpperBound:       upper,
 			PolicySource:                  "caller-declared-unverified",
 		}
 	}
