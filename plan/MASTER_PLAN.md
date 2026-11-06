@@ -400,6 +400,16 @@ AIの自律的な作業と実行権限を区別します。AIがツールを直�
 
 **状態と停止条件**：命名統一はOwnerの決定。既存`*.tei`の一括変換・Parser実対応、同一Source/Revisionでの実CLI/Writer/Consumer、OS/LLM送出、Tenant別実Provider、Host Grant/Receipt、Owner意味受理、AMF-01〜07は**NOT RUN／NOT ACCEPTED**。対応不能は明示して旧Sourceの正本性を保持し、新しい独自Host/Resolver/Registry/Parser/受理Engineを前提としない。
 
+### AI-first初回縦断の最小Done：Source実消費→候補→受理（2026-11-07）
+
+過去のAIB-01〜12／AMF-01〜07を増殖させるより、[AI-first設計§5.6](design/AI_FIRST_REQUIREMENT_PRESSURE_AND_HEADLESS_VERIFICATION_2026-11.md)を**最初に実行する一つの検収手順**として優先します。旧`*.tei`から新`*.tei.md`への移行は[#3030](https://github.com/hat47x/tei-platform/pull/3030)（docs-only Draft）のM0〜M6がOwner。現mainの`*.tei`固定Loader・`filepath.Ext`・Markdown非対応のTEI Parserという実際の障害を解消するまでは、新Source形式の実運用やAI定式化E2Eを合格としません。
+
+**第一Slice**：注文一件の`*.tei.md` raw Sourceを固定し、実Manifest/Language Plugin/Source Indexが選択した断片の`actual bytes・Revision・span・Required Input`を観測。次にLLM非依存の固定Typed Candidate・誤引用・部分/未知の独立Expectedを#1180/#2514で検査し、#267のHuman/Owner Shared Acceptanceを通った場合に限り実Source更新→reload/Conformanceを検証。AI生成品質や外部LLM送信はこの初回Doneの前提にしない。Owner意味受理が未取得なら機械的な解析/検証合格までで停止する。既存TM-02/05・AMF-03/04・AIB-01/03/10を**一Fixtureへ再利用**し、新Parser/Runner/第二意味正本を設けない。
+
+**Done以降を独立に判定**：#2515/#2516で外部AIへ実送出した内容とOS/Tool/CIの各Sink、#2598/#1174で現Principal/Target/Required-Supplied-Evaluated Guards、実Provider Effect/Receipt/独立Read、#1824で後着Resultの現Selection Epochを評価する。業務Meaning受理とHost current Grantは独立した二軸であり、その両方が成立してもCommit/業務完了の証拠にはならない。既存#2901 Green／#3017 Red（AI追加Scenarioの**一件の実Product Mutant kill**）、#2853の限定PostgreSQL unknown伝播は、いずれも当該対象・HEADのEvidenceであって本Sliceの実行PASSには数えない。
+
+**現状**：本追補は設計・基本計画の更新のみ。新`*.tei.md` Loader/Parser、固定Candidateの実Shared Acceptance、AI/OS送信、実Host・Providerとの同一Attempt、Owner正式受理は**NOT RUN／NOT ACCEPTED**。P0の実行後に初めて対象Revision・Consumer・不足Guardと証拠を明記して次の作業へ進む。
+
 ## 作業領域I：周辺技術との連携と本番運用の境界
 
 ### 目的
