@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -17,25 +16,19 @@ import (
 // step.
 const lineageCapability = core.CanonicalID("tei.frozen-world.lineage")
 
-// grantFile is the shape of an external grant file. When a caller supplies one,
-// the tool writes only where those grants allow; without one it falls back to the
-// exact path the caller asked for.
-type grantFile struct {
-	Grants []permission.Spec `json:"grants"`
-}
-
-// loadGrants reads the grant file. A missing or unreadable file is an error: a
-// grant that cannot be read is not a grant.
+// loadGrants reads the grants file through the shared parser, so the tool and
+// `tei grants` keep one format. A missing or unreadable file is an error: a grant
+// that cannot be read is not a grant.
 func loadGrants(path string) ([]permission.Spec, error) {
 	raw, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("read grants %s: %w", path, err)
 	}
-	var file grantFile
-	if err := json.Unmarshal(raw, &file); err != nil {
-		return nil, fmt.Errorf("parse grants %s: %w", path, err)
+	grants, err := access.ParseGrants(raw)
+	if err != nil {
+		return nil, fmt.Errorf("grants %s: %w", path, err)
 	}
-	return file.Grants, nil
+	return grants, nil
 }
 
 // writeLineageWithGrants writes the observation using the supplied grants. The
