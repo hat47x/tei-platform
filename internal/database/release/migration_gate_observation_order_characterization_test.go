@@ -9,12 +9,9 @@ import (
 	dbrelease "tei/internal/database/release"
 )
 
-// MG-29 documents a CURRENT GAP, not an acceptable migration-gate behavior.
-// CheckApplication indexes snapshots by Database ID and silently retains the
-// final duplicate. Merely reordering old/new observations can reverse the
-// compatibility result. A future owner-approved fix should make this result
-// unambiguous rather than pinning this ordering behavior.
-func TestMG29DuplicateDatabaseObservationsAreOrderDependent(t *testing.T) {
+// MG-29a safety regression: duplicate states for one DB must be rejected
+// independent of observation order; an observed timestamp is not authority.
+func TestMG29DuplicateDatabaseObservationsAreRejectedRegardlessOfOrder(t *testing.T) {
 	dbID := core.MustCanonicalID("sales_core")
 	contractID := core.MustCanonicalID("sales_core.order")
 	app := application.Application{
@@ -50,8 +47,10 @@ func TestMG29DuplicateDatabaseObservationsAreOrderDependent(t *testing.T) {
 	// Same observations; only slice order differs.
 	compatible := dbrelease.CheckApplication(app, []dbrelease.StateSnapshot{oldObserved, newObserved})
 	blocked := dbrelease.CheckApplication(app, []dbrelease.StateSnapshot{newObserved, oldObserved})
-	if compatible.Overall != dbrelease.Compatible || blocked.Overall != dbrelease.Blocked {
-		t.Fatalf("expected to characterize unsafe last-observation-wins behavior: old-new=%s new-old=%s", compatible.Overall, blocked.Overall)
+	if compatible.Overall != dbrelease.Unknown || blocked.Overall != dbrelease.Unknown ||
+		len(compatible.Checks) != 1 || len(blocked.Checks) != 1 ||
+		compatible.Checks[0].State != dbrelease.Unknown || blocked.Checks[0].State != dbrelease.Unknown {
+		t.Fatalf("duplicate database states must be rejected regardless of order: old-new=%#v new-old=%#v", compatible, blocked)
 	}
 }
 
@@ -93,11 +92,9 @@ func TestMG29ObservedAtDoesNotQualifyCurrentGateEvidence(t *testing.T) {
 	}
 }
 
-// MG-29b characterizes a second unsafe last-wins path inside one DB state:
-// Provides is indexed by Contract ID without duplicate detection.
-// This test documents the current behavior to be replaced by fail-closed
-// validation; it is NOT a test proving safe migration-gate semantics.
-func TestMG29DuplicateProvidedContractVersionsAreOrderDependent(t *testing.T) {
+// MG-29b safety regression: duplicate contract declarations for one DB
+// must be rejected rather than choosing the final declaration by input order.
+func TestMG29DuplicateProvidedContractVersionsAreRejectedRegardlessOfOrder(t *testing.T) {
 	dbID := core.MustCanonicalID("sales_core")
 	contractID := core.MustCanonicalID("sales_core.order")
 	app := application.Application{
@@ -124,8 +121,10 @@ func TestMG29DuplicateProvidedContractVersionsAreOrderDependent(t *testing.T) {
 
 	compatible := dbrelease.CheckApplication(app, []dbrelease.StateSnapshot{first})
 	blocked := dbrelease.CheckApplication(app, []dbrelease.StateSnapshot{second})
-	if compatible.Overall != dbrelease.Compatible || blocked.Overall != dbrelease.Blocked {
-		t.Fatalf("expected to characterize unsafe last-provided-contract-wins: old-new=%s new-old=%s",
-			compatible.Overall, blocked.Overall)
+	if compatible.Overall != dbrelease.Unknown || blocked.Overall != dbrelease.Unknown ||
+		len(compatible.Checks) != 1 || len(blocked.Checks) != 1 ||
+		compatible.Checks[0].State != dbrelease.Unknown || blocked.Checks[0].State != dbrelease.Unknown {
+		t.Fatalf("duplicate provided contracts must be rejected regardless of order: old-new=%#v new-old=%#v",
+			compatible, blocked)
 	}
 }
