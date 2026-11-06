@@ -198,7 +198,7 @@ H0/H1と異質領域の要件探索は並行可能。H2/H4の実Effect資格は�
 
 **直接確認した現在地**：
 - [merged #3032](https://github.com/hat47x/tei-platform/pull/3032)により`internal/access/grants.go`（Blob `24db243bace5fe38671588fe1c04f72bd15ee7a9`）に`issuedBy`と`AcceptIssuedBy`が入り、名前なし／Capability自身による自己発行を拒否する。既存[grants_test.go](https://github.com/hat47x/tei-platform/blob/main/internal/access/grants_test.go)は第三者名の付与が**この発行者検査を通るだけ**で実Grantを作らないと明示する。`issuedBy`は署名でも検証済みIssuer Identityでもない。付与ファイル`0600`は一般利用者からの書換えを制限するが、同じプロセス・書込み可能主体の偽装不能やHost採否は保証しない。`IssueFile`の記録も署名・実Hostの受理ではない。
-- [Draft #3030](https://github.com/hat47x/tei-platform/pull/3030)でAuthoring形式は**原則`*.tei.md`へ統一**する方針に進んだ。一方、main `internal/workspace/loader.go`（Blob `ddae9bf724b685b1109b015c169da72ea740ada5`）は現時点で旧`*.tei`等の選択に依存する。[Draft #3031](https://github.com/hat47x/tei-platform/pull/3031)は新形式の黙った未読込への診断を提案するが、実Sourceとして新形式をParsing/Meaning/Build消費した資格はまだ示さない。従来`*.tei`の歴史的Meaning受理を自動削除しない一方、新`*.tei.md`を置いただけで現在のMeaning/実入力の同一性も保証しない。
+- [Draft #3030](https://github.com/hat47x/tei-platform/pull/3030)でAuthoring形式は**原則`*.tei.md`へ統一**する方針に進んだ。一方、main `internal/workspace/loader.go`（現main Blob `d2b480edfaec21feb89e34e658805ea1ed0f7339`、#3078の`readByLoader`追加を含む）は現時点で旧`*.tei`等の選択に依存する。[Draft #3031](https://github.com/hat47x/tei-platform/pull/3031)は新形式の黙った未読込への診断を提案するが、実Sourceとして新形式をParsing/Meaning/Build消費した資格はまだ示さない。従来`*.tei`の歴史的Meaning受理を自動削除しない一方、新`*.tei.md`を置いただけで現在のMeaning/実入力の同一性も保証しない。
 
 | 一箇所だけ変える対照（既存#1180/#2514 Expectedへ付帯） | 許される局所結果と、上位Claimの停止線 |
 | --- | --- |
@@ -236,6 +236,23 @@ H0/H1と異質領域の要件探索は並行可能。H2/H4の実Effect資格は�
 **優先順位と採否**：P0は(a)認可片側だけのすり抜け候補と、(b)`additional-scope`差分の**保存/Consumer表示と業務許容の非同値**を、既存テストに**同じSource/固定Expected**で接続すること。局所Go試験・Reference報告・Schema Version広告を本番Host/実Provider/Owner Meaningの資格へ格上げしない。#2514（独立検証基準/Mutant）、#1180（Scenario SSOT）、#1174（Host/Effect）、#1163（同一Attempt/独立Read）、#1129（Cascade/業務Rule）、#2586（実Provider Data）へ実作業を委譲。新Authorizer Aggregator、全Target共通Grant Engine、第二Effect Registryを**この文書で先行採用しない**。
 
 **証拠状態**：mainの実Codeとmerged #3033/#3034/#3035/#3038/#3047/#3054/#3055/#3057/#3064を直接照合。現行のReferenceテストは実際に`Differences`を保持するが、上の二系統Authorizerの同一Request結合、無関係U1の実DB変更、外部ConsumerでのPersisted資格、正式Owner受理を**今回実試験していない（NOT RUN／NOT ACCEPTED）**。#3051は空集合Deny/Unknown挙動を変更する未統合Draftであり本節で採用しない。
+
+#### 副作用の到達範囲とAttestationの適用範囲を閉じずに合格させない（2026-11-07）
+
+**最新mainで成立した局所改善と、なお残る横断条件**：[#3070](https://github.com/hat47x/tei-platform/pull/3070)でCommandの`checkDatasourceAccess`は`Application.Databases`・`database.uses semantic`を参照し、宣言された**主たる`plan.Effect.Data`**がRead-only datasourceに属するときExecutor前に`COMMAND_DATASOURCE_READ_ONLY`を返す（main `internal/command/datasource_access.go`、取得Blob `a332c4ba7df2a354ab502c68f5e57c28dd1314c9`）。[#3055](https://github.com/hat47x/tei-platform/pull/3055)の`additional-scope`はExecutor後の別Data報告を差分として残す。**主対象の事前チェックがPASSすることと、実作用が到達する全Data／Provider／Tenantの制約充足は別**。両方の局所機構を採用しつつ、一方のPASSで他方を証明しない。
+
+| 固定Source／一因子の負例 | 現行Sourceから言えること | 独立期待結果・必要な次の証拠 |
+| --- | --- | --- |
+| **関連先Read-only**：公開合成O1の宣言`delete sales.order`はRW、Cascadeの候補に`ledger.entry`（別namespace、RO）を含む。関連先をRW/ROだけ入れ替える | 事前`checkDatasourceAccess`は宣言主対象`sales.order`のみを見る。実行後`Applied`に`ledger.entry`が報告されても`additional-scope`に留まり、RO強制の証明にはならない | Cascadeの越namespace適用がモデル上**非対応ならその時点でunsupported**、対応するなら明示Relation/Owner Effect Policy・選択Datasource・Effect直前のProvider fenceを確認し、RO先に副作用がないことを**独立Read**で検証。単に差を記録して成功表示するだけでは不十分 |
+| **同namespace二つのDatasource宣言**：`database A uses sales (read-write)`と`database B uses sales (read)`をAppで両方参照し、宣言の順序だけ反転 | 現`checkDatasourceAccess`は最初にnamespaceが一致したDatasourceで`return nil`またはRead-only拒否するため、**選択Alias未確定のまま記述順で可否が変わり得る** | 実際に使うDatasource alias/Mappingと、重複の有効性／優先則をOwner契約で決める。未確定のときは順序による許可を実権限PASSに昇格しない。新しい一律禁止のDB選択規則をここで採用しない |
+| **主対象のDatasource Mappingなし**：Effectは`sales.order`、Appにそれを覆うDB宣言が存在しない | 現検査は推測して拒否せず`nil`を返す。これは**検査対象外／未解決**であって、実Providerへの書込み権限付与ではない | 実Provider選択・Mapping・必要Host GrantとTarget Read/Write fenceの観測を要求する。参照Commandの成功やRO違反なしの診断を実Target資格としない |
+| **OKF Attested ComputationからBusiness Completionを導く誤接合**：同じ計算結果と有効Receiptだが、Inputがpartial Read／別Tenant／旧Operator版。あるいはOwnerが意味受理を撤回 | 決定的Attesterが検査できるのはPinされた定義・実入力・実行結果等、**そのAttestationが対象とする限定Claim**。実行・再読取・署名・Owner／Host資格は追加の証拠 | [#2514](https://github.com/hat47x/tei-platform/issues/2514)の既存独立検証基準と[#2614](https://github.com/hat47x/tei-platform/issues/2614)の限定Product Skill候補を利用する。Attestation=`verified`から`CoverageComplete`／Owner Meaning Acceptance／現在Grant／Provider Effectを推論しない。候補のVerifierを新Core/Hostへ移植しない |
+
+**ほかの実装進展との整合**：[#3051](https://github.com/hat47x/tei-platform/pull/3051)は**main統合済み**で、`EmptyPolicyDeny`＋`Targets=[]`＋`CoverageUnestablished`を`fails`でなく`unverified`へ修正済み（`semantic/completion.go` Blob `e42610e9159e02ba3b5c7b84c46742a846331e64`）。適格な`P=false`反例をpartialで`fails`とする既存規則は保持。[#3078](https://github.com/hat47x/tei-platform/pull/3078)/[#3081](https://github.com/hat47x/tei-platform/pull/3081)では`workspace-files.readByLoader`と空宣言warningが実装されたが、`readByLoader=true`や`validate.ok=true`は`*.tei.md`の構文解釈・Meaning受理・実Build消費を保証しない。証拠列の改善を旧失敗のままと書かず、未達のClaimだけを残す。
+
+**作業引渡し（新Scenario正本を作らない）**：最小の新Mutant候補は「同一Sourceで重複Datasourceの宣言順だけを反転」し、選択Aliasと判定が変わるかを固定すること。次に「主対象RW／関連対象RO」のEffect閉包について、対象Relationshipと実Provider対応の有無を確認し、存在する場合のみ隔離DBで安全な拒否・実効果0・Receiptの別証拠を取る。元の`#3070`既存4件は**主対象の宣言による局所拒否**であって、上記二反例のGo/実DB成功ではない。実Owner=#1129（Relation／Cascade）、#1174（Effect/Host）、#2586（実Provider Binding）、#1180/#2514（Scenario・独立期待値）、#2621/#2823（Source）。OKF側のAttester真正性と独立Expectedは#2614/#2514/TAI #514へ委譲。特殊なWorkflow/Attester/DB Router/Policy Engineをこの計画で採用しない。
+
+**状態**：本節はmainの実Sourceと統合済みPRから導いた**反証可能な設計／試験要求**。同namespace重複宣言・関連先ROの新Go試験、実DB強制、OKF Attesterの実Tool/Receipt、正式Owner Meaning Acceptanceは**NOT RUN／NOT ACCEPTED**。受理済み業務MeaningがRO先のCascadeを許容しているとは推測しない。
 
 #### 三領域で破綻しやすい残余
 
