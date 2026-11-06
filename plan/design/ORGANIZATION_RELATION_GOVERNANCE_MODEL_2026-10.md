@@ -3322,7 +3322,7 @@ Ownerが求める「選択した業務Data群への広域適用＋Record/用途�
 - **M3**：コピー版の`SurfaceWorkspace`ではCase用`list/read`が増え合計4件になり、Case`read`のInputはCase自身の`caseId`。MembershipID・OrgUnit ID・表示行番号へすり替わらない。
 - **M4（否定）**：前後とも`Effect=read-only`、`Binding`空、`Effects`空、`AuthorityLimits`保持。**Operation candidate ≠実Function/Provider/Host認可**。当該DBに実Case行が存在することも未検証。
 
-**実証状態**：GitHubのCode Blob/差分・Branch base SHAは確認。テストの`go test`／gofmt／実Native CI／実Provider／実DB／Owner受理は**NOT RUN**。Parent #2681はmain未マージ。単にPRへコードがあるだけでM1〜M4のPASSを宣言しない。積上げPRはParent Review/統合後にfixed exact-head Go TestとRepository Healthを取得してから採用する。
+**実証状態**：GitHubのCode Blob/差分・Branch base SHAを確認。新PR #3024のGoファイルをContainerへ同じbyte列として写し、`git hash-object`がGitHubのBlob `8d004c39ba86bf1dbc92760d68b0d96cbf10118e`に一致、`gofmt -d`は差分0行で**構文/整形レベルのみPASS**。ただし本子PRの`go test`／vet／実Native CI／実Provider／実DB／Owner受理は**NOT RUN**。親#2681固定HEADの[Native E1 CI](https://github.com/hat47x/tei-platform/actions/runs/42031418190)はsuccessだが、同HEADの[Repository Health](https://github.com/hat47x/tei-platform/actions/runs/42031418161)はgofmt-l検査でfailure。いずれも子PRの新テスト結果ではない。親#2681はmain未マージ。単にPRへコードがあるだけでM1〜M4のPASSを宣言しない。積上げPRはParent Review/統合後にfixed exact-head Go TestとRepository Healthを取得してから採用する。
 
 ### 77.3 Product E2aへの接続：新Runnerでなく既存三つの境界をつなぐ
 
