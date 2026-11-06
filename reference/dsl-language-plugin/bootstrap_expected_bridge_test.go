@@ -74,8 +74,17 @@ func TestBootstrapBS02ActualWorkspaceLoaderRejectsUnsupportedManifest(t *testing
 	if err == nil || !strings.Contains(err.Error(), "unsupported workspace formatVersion 99") {
 		t.Fatalf("BS-02 trusted manifest reader accepted unsupported version: %v", err)
 	}
-	// This is a Load-level rejection. It proves neither a production
-	// Language Plugin registry nor a particular downstream parser invocation.
+	// The same raw Source with an explicitly supported manifest version
+	// must still Load. Otherwise an always-rejecting loader would pass BS-02.
+	supported := []byte("workspace: bs02\nformatVersion: 1\nsources:\n  - semantic\n")
+	if err := os.WriteFile(filepath.Join(root, "tei.workspace.yaml"), supported, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := workspace.Load(root); err != nil {
+		t.Fatalf("BS-02 positive control rejected supported manifest and Source: %v", err)
+	}
+	// This is a Load-level test. It proves neither a production Language
+	// Plugin registry nor a particular downstream parser invocation.
 }
 
 func TestBootstrapBS03ActualLanguageSelectionRejectsChangedImplementationPin(t *testing.T) {
@@ -99,6 +108,19 @@ func TestBootstrapBS03ActualLanguageSelectionRejectsChangedImplementationPin(t *
 	}}, "data source")
 	if !errors.Is(err, ErrProviderMissing) || parsed {
 		t.Fatalf("BS-03 parser bypassed the exact implementation pin: parsed=%v, err=%v", parsed, err)
+	}
+	// Keep the Source and the callback identical, but offer the exact
+	// selection. An always-rejecting resolver must fail this positive control.
+	parsed = false
+	value, err := ParseSelected(pin, []Provider[string]{{
+		Selection: pin,
+		Parse: func(src string) (string, error) {
+			parsed = true
+			return "candidate:" + src, nil
+		},
+	}}, "data source")
+	if err != nil || !parsed || value != "candidate:data source" {
+		t.Fatalf("BS-03 positive control did not select exact parser: parsed=%v, value=%q, err=%v", parsed, value, err)
 	}
 	// The fingerprint tokens above are fixture labels. This reference does
 	// not hash or attest the actual implementation executable bytes.
@@ -128,6 +150,15 @@ func TestBootstrapBS06ActualOperatorLoweringRequiresExplicitPin(t *testing.T) {
 		source[diagnostic.Span.Start:diagnostic.Span.End] != "sum" {
 		t.Fatalf("BS-06 wrong source-bound operator diagnostic: %+v", diagnostic)
 	}
-	// The resulting error is a bounded reference rejection, not proof of
-	// product Operator registration, accepted meaning, or active generation.
+	// Use the same parsed Source with the explicit, matching pin. An
+	// always-failing lowering implementation must fail this positive control.
+	steps, err = LowerPinnedPipeline(syntax, []OperatorContract{contract}, []OperatorContract{contract})
+	if err != nil || len(steps) != 1 {
+		t.Fatalf("BS-06 positive control rejected exact pinned operator: steps=%+v, err=%v", steps, err)
+	}
+	if steps[0].Contract != contract || steps[0].Span != syntax.Operators[0].Span {
+		t.Fatalf("BS-06 positive control lost original contract or Source span: %+v", steps[0])
+	}
+	// The resulting candidate is not proof of product Operator registration,
+	// accepted meaning, or active generation.
 }
