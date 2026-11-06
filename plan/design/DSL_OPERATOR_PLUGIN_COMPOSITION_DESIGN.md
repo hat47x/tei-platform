@@ -384,3 +384,19 @@ Pluginの論理単位と実行artifactを1:1にしない。Linked / Wasm / proce
 - K0→K2の独立Expectedは既存BS-02（Seed形式拒否）／BS-15（新Grammar自己起動不可）へ接続し、Source inventory/Load被覆は#2823、Raw Draft/Markdown Source Fidelityは#2621/#2497、形式移行とRuntime Regressionは#3030/#1920、SHO/OKFとの橋渡しは各担当に委譲する。
 
 **資格**：これは#3030の現時点の**Authoring方針と設計Draft**を#988 Bootstrapへ反映したもの。新`*.tei.md` Loader/Parser／既存Sourceの一括移行／同一Meaning/GUI保存／Owner Meaning Acceptanceは未実証。既存の`BS-01〜15` Fixture件数とGo focused testの実入力は変更しない。
+
+
+<!-- tei-bs-test-discriminating-positive-controls-20261106 -->
+### 13.8 BS-02/03/06の「常時拒否」Mutant対照（局所Go試験を補強）
+
+BS-02/03/06に単独の拒否条件を置いただけでは、実装が**すべての入力を拒否する**誤実装でもテストに合格する。#2514の独立Oracle方針を踏まえ、同じ実Source/同じReference関数に、**一因子だけ修復した正常対照**を追加した（Go `bootstrap_expected_bridge_test.go`）。独立Expected JSONのBS番号・停止条件は変更しない。
+
+| Case | 不正側（独立Expectedに対応） | 正常側の一因子差分 | 排除できる限定Mutant | まだ証明しないこと |
+| --- | --- | --- | --- | --- |
+| BS-02 | `formatVersion: 99`→Workspace Load拒否 | 同じ`semantic/data.tei`でManifest版だけ`1`へ変更→Load成功 | Loaderが常に拒否する／既知版も拒否する | 本番Language Plugin bootstrap、`*.tei.md`の読込、Source全root |
+| BS-03 | Locked Parser `dA`に対して実候補`dB`→拒否・Parser未呼出 | 同じSource・同じParser callbackで`dA`と一致→候補を返しcallback実行 | Language Selectionが常に拒否する | fingerprint文字列が実Plugin bytesと一致・Owner承認 |
+| BS-06 | `rows/order |> sum`にOperator Pinなし→Source位置付き拒否 | 同一SyntaxとContract catalogでPinだけを補う→1 Stepと同じSource Span | Operator Loweringが常に拒否する／Spanを失う | Operator登録の原子性・実行結果・正式意味受理 |
+
+「上記Mutantを検出し得る」と「Mutation Runnerで故意にMutantを生成し検出した」は**異なる**。現時点で作成したのは正負対照の実Go試験Sourceであり、Mutation Runnerの実行や業務RuleのKill率測定はしていない。この3件だけでBS-01/04/05/07〜15や#1119 Gate、独立Owner意思の検証へ拡張しない。
+
+**検証票**：各Caseに`negative_input`／`negative_expected`／`positive_delta`／`positive_expected`／`exact_head_ci`／`claim_ceiling`を**報告欄**として持てばよい。新しい正式Fixture Schemaは導入しない。候補ExpectedはGoの出力から逆算せず、先に固定したJSONと既存`workspace.Load`／`Resolve`／`LowerPinnedPipeline`契約を対照する。
