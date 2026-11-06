@@ -1,0 +1,107 @@
+# Plugin機能の実現・安全な最適化に必要な契約（2026-11-06、設計/要件候補）
+
+- **状態**：製品要求RQ-008/RQ-024/RQ-032を具体化する提案。製品用Optimizer、ABI、実Runtime、Plugin Manifestの新schemaを採用済みとしない。
+- **固定調査基準**：tei-platform main `3b57a3a05a32be44f2cfead38f015a66cdc15f70`。本稿はGitHub上のIssue/ADR/要求を静的照合して作成した。Go/Node/実Target計測/独立Consumer受入は未実行。
+- **採用済み境界**：[ADR-0032](../adr/0032-composition-kernel-replacement.md) Contract/Provider/Scope/Generation、[ADR-0043](../adr/0043-target-native-artifacts-without-tei-host.md) 独自Host非必須、[ADR-0036](../adr/0036-delivery-forms-as-plugin-composition.md) Deliveryの合成、[ADR-0044](../adr/0044-authentication-not-a-core-concern.md) Identity/認証非Core。
+- **既存Owner**：[#951](https://github.com/hat47x/tei-platform/issues/951) 契約/Resolver/Conformance、[#1016](https://github.com/hat47x/tei-platform/issues/1016) Profile/Instance選択、[#1121](https://github.com/hat47x/tei-platform/issues/1121) Target Lowering、[#1223](https://github.com/hat47x/tei-platform/issues/1223) 必要TargetのGeneration/Lifecycle、[#1251](https://github.com/hat47x/tei-platform/issues/1251) Cohesive Bundleと未使用実装除外、[#1097](https://github.com/hat47x/tei-platform/issues/1097) 複数論理Plugin→一物理Artifact、[#2600](https://github.com/hat47x/tei-platform/issues/2600) 増分再利用と性能、[#2390](https://github.com/hat47x/tei-platform/issues/2390) 外部Hostの軽量Consumer、[#2504](https://github.com/hat47x/tei-platform/issues/2504) 実Script/Plugin Resource隔離、[#2899](https://github.com/hat47x/tei-platform/issues/2899) Everything-is-Plugin比較研究。
+- **対象外**：全Target共通の常駐TEI Host、全Pluginを一Process/一Wasmにする必須規則、新しい中央Cost-based Resolver/Runtime Scheduler/Plugin Store、ContractのMeaning正本・Owner受理・Runtime Authorityの第二実装。
+
+## 1. 問題を「実現」と「最適化」に分割する
+
+同じService Contractでも、静的Goへのリンク、Java/.NETの組込みLibrary、Wasm Component、独立Process、外部API、ビルド時生成コードなど異なる**実現**がある。Plugin Package/Bundleの境界、Component Type、Logical Instance、Provider実装、Builder、物理Artifact、Deployment、Invocation/Effectは一対一である必要はない。
+
+一方、**最適化**は既に選択・適格性が明確な構成に対して、Target条件を守りながら計算/起動/配布/配置/Resourceの費用を変えることである。安価だからProviderを無断採用すること、性能のために業務MeaningやCurrent Grantを緩めることは最適化ではない。
+
+最低限、評価対象を以下の5層に分ける。
+
+| 層 | 入力・参照 | 成立させること | 結果だけでは証明できないこと |
+| --- | --- | --- | --- |
+| Contract requirement | 契約版、型/Null、Result/Failure、Effect、Scope、必要Context | Consumerの要求が明示される | 候補Providerの適合、実行許可 |
+| Implementation/Selection | Candidate Provider/Artifact/Target能力と既存Resolver | 一意・明示的に選択、Unknownの保持 | 実Targetの可用性、性能優位 |
+| Realization/Build | 選択済みInstance、Builder/Toolchain、依存閉包、実Artifact member | Targetが実ロードできる形へLowering | 元のMeaningを保持した実行、利用時権限 |
+| Runtime/Operation | 必要ならTarget Host、Context、Resource、実Entry、Current Grant | 実在する操作・作用の強制 | 成功応答からの業務効果・原子性 |
+| Optimization evidence | Baseline/候補、独立Expected、計測環境/負荷/実Byte | 契約を守り、計測対象で費用が改善したか判定 | 未計測Targetや未来負荷での普遍的性能 |
+
+### 実現の選択順は「適合性→実体→費用」
+
+対象Consumer/Targetが必要とする保証を満たす候補を選び、その中で構成・Artifact・実行境界を確定し、はじめて費用を比較する。単一の`bestProvider`や負荷時の自動Provider差替えを汎用正本にしない。候補が一意でない場合は#951/#1016の既存選択Policyへ返し、Cost順位が暗黙の契約Resolverにならないようにする。
+
+## 2. 要求候補（正式API名ではない）
+
+| ID | 要求 | 最低限の観測・拒否 |
+| --- | --- | --- |
+| PRO-01 | 同一Contractに対する複数の物理実現と、Target/Host能力の条件付き選択 | static linked / independent processを同じContractで比較。unsupportedなTargetで黙ってfallbackしない |
+| PRO-02 | Package/Bundle・論理Instance・物理Build Artifactの独立 | Cohesive Bundleを認め、未選択Providerを実Binaryへ暗黙収録しない。共有ArtifactでAuthorityを共用しない |
+| PRO-03 | 型・振舞い・Effect・Scope・失敗/Unknown・整合性を保つ最適化 | 同じ入出力型でもNull、順序、精度、時点、エラー、副作用が異なる変換を拒否 |
+| PRO-04 | 静的化・部分評価・Fusion/Pushdownなどの候補は前提条件を明示 | Pure・変更不変・exact pinの証拠がない式やProvider処理を事前計算/移動しない |
+| PRO-05 | キャッシュ・増分再利用は依存閉包が証明できる範囲のみ | 未解決依存、Schema/Meaning/Role/Toolchain/Scope変更をfalse hitしない。旧Data/Grantの現在性を再利用しない |
+| PRO-06 | 並列化・Batch・Retry・再順序化は効果境界に従う | 書込みの一度限り、順序、競合、Idempotency/Receipt不明なら等価変換と称さない |
+| PRO-07 | Instance/Lifecycle/ResourceはTargetに応じた最小構成 | 静的CLI/IoTへWatcher/Routerを強制しない。長寿命TargetのDrain/Generationを無条件省略しない |
+| PRO-08 | 性能条件はTarget/Workload/計測環境/施策ごとに固定 | 正しさPASSと性能改善PASSを別記録。数値目標はOwnerが事前設定する |
+| PRO-09 | 最適化後もContract→Provider→Build/Artifact→実Invocationへ逆追跡 | 1 Artifactに複数Contractが収録されてもMember/Entry/権限を個別に追う |
+| PRO-10 | 開発者・AIによるPlugin追加/最適化は差分と反例で比較可能 | 実装の追加を効果としない。独立二Consumer/二Realizationで採否し、効果不足なら縮小・撤回 |
+
+各要件は本設計の**差分候補**。既存RQ-008/RQ-024/RQ-032、ADR-0032/0043が先に定める禁止事項を置換しない。
+
+## 3. 性能改善で契約を壊しやすい変換
+
+| 変換候補 | 使える可能性がある条件 | 不適合/不明として止める例 |
+| --- | --- | --- |
+| 未使用実装の除外 / static linking | 正確なSelected/Build-consumed closure、実Link結果 | Go blank import/initやglobal registrationにより実際には利用される実装 |
+| Build時部分評価 | Input/Operator/Role/contract fingerprintが固定、Pure、時点非依存 | 現在時刻/Secret/Runtime Tenant/外部Provider応答をCompile時に凍結 |
+| Query pushdown | NULL、Collation、型変換、Limit/Order、Snapshot/ACL、FailureがConsumer要求を満たす | 取得範囲・順序・認可がSourceへ移動した結果変わる |
+| Transform fusion / streaming | Boundary、入力順、backpressure、flush、部分失敗の帰属が保持される | MFTの取込み/公開Receiptを中間Transform成功で代用 |
+| Memoization / Artifact cache | 完全な依存閉包、Target/Scope/Source/Rule/Builder/Artifact pin | Unknown Dependency、旧Source、共有Cache経由のTenant越境 |
+| Retry/Parallel map | Pure/Idempotent、処理順の非依存、許可された上限と中断時の結果 | DB書込みや外部配送で未知Outcomeを無条件再送、順序依存の処理を並列化 |
+| Shared Process/Artifact co-location | Build/Load版の一致、各Instanceの隔離・Resource Budget | Artifact同梱を理由にPlugin Aの現在GrantをBへ広げる |
+| Dynamic hot-swap | 対象が長寿命、Generation pin、drain/切替/旧State処理を実測 | 単一静的Go Binaryへ常駐Routerを追加、再起動だけで無停止と主張 |
+
+**原則**：ある変換の静的な適用可能性は、未知の外部Effectが無いことの証明ではない。Opaque Providerについて自動Pushdown/Fusion/再順序化を許すには、そのProviderのConformance、実Host/OS境界、必要ならTarget固有の独立Oracleを要求する。一般に完全な振舞い同値は自動証明できないため、`proven / conditional / not-qualified`等の説明用区分で範囲を記録し、新しいCore列挙を追加しない。
+
+## 4. 計測と採否
+
+**同じMeaningを実現する二つのConsumer**（例：PrincipalなしのCSV変換、Qualified User Lookupを利用するWeb/外部Host）と、実際に選択した二つの物理方式を最小比較対象とする。要件の違いで両方を同じ方式にする必要はない。さらに1件の副作用付き負例（Document更新または配送Attempt）で危険な最適化を拒否する。
+
+計測票は、(a)固定Contract/Source/Binding/Target、(b)Toolchain/ABI/Builder、(c)独立Expected/Failure/Effect、(d)実Link/Load Byteと権限、(e)入力規模・並列度・cache状態・warmup・測定回数、(f)冷/温起動・初期転送量・memory・CPU・Resolver/Load overhead・p50/p95・総費用、(g)最適化の前後差分、(h)Unknown/NOT RUNと撤回判断、を区別する。
+
+**判定の順序**：
+1. **Safety/semantic gate**：同じ契約で対象Bounded Oracleに対する正負/Effect試験を満たし、現在Authorityが強制される。未証明なら性能比較で勝っても採用しない。
+2. **Physical gate**：実際のSource closure、Build、ArtifactSet member、Loaded Byte、Targetの配置を固定。ManifestやDiscoverabilityだけで実物混入/除外を主張しない。
+3. **Performance gate**：Owner指定のBudget（startup、memory、transfer、latency等）をTarget別に設定。baseline・candidateを同条件で反復し差分と分散を報告。閾値未定なら優劣を「測定値」として報告し、自動採用しない。
+4. **Adoption/rollback gate**：負荷やTargetに依存する改善である旨を残し、静的Targetでは再Build/再配布、長寿命Targetでは必要なGeneration切替で導入。永続Effectのrollbackを機能交換と同一視しない。
+
+## 5. 反証可能な最小試験（いずれも提案・未実行）
+
+| Case | 初期状態・変更 | 期待 |
+| --- | --- | --- |
+| OPT-01 | 未選択ProviderをCohesive Bundleへ追加 | Discovery候補は増えてもSelected Build closureと実Byte/初期副作用は不変（条件付き） |
+| OPT-02 | 同Contractをstatic GoとProcessの二方式で構築 | Consumer意味が一致し、Target別コストを別計測 |
+| OPT-03 | Pure式をBuild時に畳み込み | 同Input/Role/Operator pinで結果一致。時刻・外部依存は事前評価不可 |
+| OPT-04 | PushdownでNULL/Collation/Sortが異なるProviderへ移動 | Targetの意味要求を満たさない場合不適合 |
+| OPT-05 | 一つのArtifactにProvider A/Bを収録 | A/Bの論理ID/Lock/Grantが独立。B未許可でAのみ利用 |
+| OPT-06 | Invocation時のTenant/Scopeが変わるCache hit | Cross-scope共有を拒否、必要な現在Read/Grantを省略しない |
+| OPT-07 | Opaque書込みProviderでRetry/並列化提案 | Idempotency/Receipt/順序保証が未証明なら拒否 |
+| OPT-08 | 長寿命Targetだけv1→v2を切替 | 旧in-flight pin/drainとCurrent Authorityを維持。静的TargetへRouterを同梱しない |
+| OPT-09 | Candidateのp95は改善するが失敗/Effectが変化 | 性能優位でSafety gateを上書きしない |
+| OPT-10 | Sourceを同Byte移動・未選択Role変更・実Builder入力変更 | 意味再計算省略とTrace/Artifact再資格化を別計測 |
+| OPT-11 | 実測p50のみ改善、p95や最大MemoryがTarget Budget超過 | 採用Policyを満たさなければ不適合 |
+| OPT-12 | 外部Hostから最小Libraryを利用 | TEI Studio/CLI/Registry常駐不要。必要Import/権限/実Loaded Byteを確認 |
+
+## 6. 優先順・作業の分配
+
+| 順位 | 小さな成果 | Owner / 再利用 |
+| --- | --- | --- |
+| P0-A | 既存Contract＋一つのProviderをstatic/link版とProcess/外部Host版で表現し、Targetごとの必要条件と不足を比較 | #951 #1121 #2390 #1145 |
+| P0-B | 未選択Pluginの物理除外、Selected closure、同Bundle/別Artifact/共有Artifactの境界を実測 | #1251 #1097 #1167 #1089 |
+| P0-C | Unsafe optimizationの3負例（Pushdown NULL、Cache Scope、effectful retry）を現行Fixtureで拒否 | #951 #2504 #2600 #1174 |
+| P1 | 安全なFusion/部分評価/増分再利用を一つずつ実用Consumerへ適用。各TargetのBudgetと実測差を採取 | #2600 #1063 #1130 #2018 |
+| P2 | 長寿命TargetのRuntime更新、異種Provider pushdown、分散実行で制約付き最適化を比較 | #1223 #2622 #2827 #2390 |
+
+P0の最初に新しいPlanner、Scheduler、ABI、Optimizer用DSLを作らない。#2899のDSH比較研究は参考にするが、DSH Runtime/Plugin ManagerをTEIへ逐語移植しない。実装者/生成AIの負担削減を主たる採用価値として測り、構造の抽象度が増えても変更量や障害発見能力が改善しなければ採用しない。
+
+## 7. 未決と責任の所在
+
+- **未決**：正式な実現候補のManifest/Wire形式、Resource/Cost model、適用可能な演算子の純粋性証明、Target別Policyの決定主体、最適化施策の自動選択範囲。既存Contract Shape/Lockで不足が確認されたら最小追加とする。
+- **採用済みのアーキテクチャ**：Contract中心、Host非必須、Target別Delivery、意味/実現/Authorityの分離。
+- **未実装・未実行**：本書に書いたPRO-01〜10とOPT-01〜12の横断試験、複数Target実性能比較、Runtimeの新しい機能。
+- **停止線**：Pluginを増やすこと、Bundleを小さくすること、シミュレーションで速いこと、Manifestで「verified」と主張することは製品最適化の受入証拠ではない。exact source/Target/Loaded Byte/独立Oracle/実Budgetと、人間Ownerの採用判断が必要。
