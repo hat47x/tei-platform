@@ -3104,7 +3104,7 @@ Owner保留は(1)Service Subscriberに対応する論理Tenantをどこまで推
 
 **証拠と採用状況**：本節は§69〜71、ADR、現実の`scoped_postgres_reference.go`、実PG Command Reference、及び既存Issueの**Source-static照合に基づく設計追補**。ORG-XC-01〜07、新Org Case実Provider Read/Commit、Old→Newの実DB/Receipt移行、Tenant間実Transfer、Owner業務意味受理は**NOT RUN／NOT ACCEPTED**。§70〜71の既存8+12試験は実行済みに変更しない。#1119のCritical Pathとmainは維持する。
 
-## 72. Tenant Scope相対の不存在と共有Dataの開示：否定依存・実Row・送出の同一試行検収（2026-11-06、採用前）
+## 73. Tenant Scope相対の不存在と共有Dataの開示：否定依存・実Row・送出の同一試行検収（2026-11-06、採用前）
 
 ### 72.1 現物の差分と横断参照
 
