@@ -170,6 +170,7 @@ func TestOrgHeadlessSourceByteEditPreservesWorldButChangesModelRevision(t *testi
 		t.Fatalf("same World fingerprint and operation set cannot create action authority: %+v", after)
 	}
 }
+
 // The workspace's logical meaning and operation IDs survive a path move of one
 // fully parsed .tei source. SourceIndex ModelRevision still records the changed
 // source path. This is a local Workspace test, not an external Import or atomic
@@ -298,6 +299,7 @@ func TestOrgHeadlessSemanticRelationChangeIsInvisibleToCurrentOperations(t *test
 		t.Fatal("a changed semantic Relation must not create an authorization Grant")
 	}
 }
+
 // An unselected plugin root must not be treated as a managed Source merely
 // because its directory exists under a Workspace. This is a Source selection
 // test using the actual Loader and SourceIndex, NOT a claim about whether Go

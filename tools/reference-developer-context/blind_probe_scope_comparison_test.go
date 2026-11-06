@@ -146,8 +146,8 @@ func TestBlindProbeSameReportCompetingScopesOneReadBound(t *testing.T) {
 func TestBlindProbeAdditionalReadResolvesMissAtHigherCost(t *testing.T) {
 	target := "internal/validation/validation.go"
 	worlds := []struct {
-		root          string
-		needSecond    bool
+		root       string
+		needSecond bool
 	}{
 		{blindScopeWorld(t, target, "docs"), false},
 		{blindScopeWorld(t, target, "plan/adr"), true},

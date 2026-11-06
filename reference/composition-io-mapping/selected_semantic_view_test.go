@@ -142,8 +142,8 @@ func TestSelectedSemanticViewDoesNotResolveInvalidDeclarations(t *testing.T) {
 }
 
 // Cross-domain fixture: the same *nominal* TypeRef contract is usable by
- // a file/ETL value edge and by a build artifact metadata edge. These are
- // synthetic ports, not actual file delivery or a TEI self-build run.
+// a file/ETL value edge and by a build artifact metadata edge. These are
+// synthetic ports, not actual file delivery or a TEI self-build run.
 func TestSelectedSemanticPreludeIsReusableAcrossPipelineRoles(t *testing.T) {
 	cases := []struct {
 		name, fromName, toName string
