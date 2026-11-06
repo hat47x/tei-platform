@@ -36,3 +36,7 @@ Node.js 22以上の組込みtest runnerだけを用います。
 **Claim上限**：`present-in-snapshot`も`absent-in-declared-snapshot`も現在のTEI Source、Provider、実ビルド、実転送、実Authorityを意味しません。ReferenceにはSource/Plugin実ReaderやPolicy評価器は含まれません。現物入力と現在の公開資格を独立確認せずにConsumerへ流用しないでください。非公開・保留・不明の違いが低権限UIに現れてよいかは既存#2516へ委ねます。
 
 **未実証**：実Go ModelRef/Source Index・TEI CLI出力との結線、Providerによる実閉包証明、実Graph Renderer/Workbench、複数Window/旧DOM、実SHO/AI、外部Effect、認知負荷削減。#1124 M0/M1を代替するテストではなく、#2352 P1の後続評価用合成試験です。実験を製品化する前に、既存型からの変換のlosslessnessと現在のReader/Policy資格を独立検証します。
+
+**未開示時の結果均一化（合成限定）**：開示資格のないFixtureでは、View/Readerの版やGraphの形を検査する前に`unknown:disclosure_unqualified`を返し、低権限Fixture間で「版の古さ」「要素欠落」などの診断差が結果に現れないようにしています。これは内部関数のsynthetic W0/W1等値試験であり、DOM/ARIA・件数・Network・Tool JSONの非干渉や実Policy判定を実証しません。
+
+**専用CIの追加結果（31ケース）**：[Actions #42160035359](https://github.com/hat47x/tei-platform/actions/runs/42160035359) はNode 24.21.0で **31/31 PASS**、失敗0。実装blob `82ad9c0ef8e5943ee55c1611e212a06e525819ac`、テストblob `be80612ee541b0d1f2abb67e076c4000bb015f1f`。Go側の現物ReaderとそのQuery意味へは未接続です。
