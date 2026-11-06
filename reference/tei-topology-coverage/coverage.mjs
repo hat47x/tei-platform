@@ -52,7 +52,7 @@ function projectionIntegrity(view) {
     keys.add(s.key);
   }
   const subjectNodes = view.graph.nodes.filter(n => n.key !== undefined);
-  if (subjectNodes.length !== keys.size || subjectNodes.some(n =>
+  if (subjectNodes.length !== keys.size || new Set(subjectNodes.map(n=>n.key)).size !== keys.size || subjectNodes.some(n =>
       !keys.has(n.key) || n.viewId !== `s:${n.key}` || n.relationId !== undefined))
     return 'subject_coverage_loss';
   const relationNodes = view.graph.nodes.filter(n => n.relationId !== undefined);
@@ -78,7 +78,7 @@ function projectionIntegrity(view) {
     }
   }
   if (view.graph.edges.length !== expected.size)
-    return 'relation_coverage_loss';
+    return 'role_coverage_loss';
   for (const e of view.graph.edges) {
     const x = expected.get(e.viewId);
     if (!x || e.from !== x.from || e.to !== x.to ||
