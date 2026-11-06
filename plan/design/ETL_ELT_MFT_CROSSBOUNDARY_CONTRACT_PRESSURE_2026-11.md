@@ -343,3 +343,45 @@ Apache Kafkaは、Kafka Topic間ではtransactional producerとconsumer offset�
 
 **実証状態**：本PRではこの差分のGo/TS/CLI実Build、nested module全件走査、MFT Adapter選択、実SFTP/GitHub CI、配布後Runtime資格は**NOT RUN**。#1251/#2877の採否・同日CIと、実Targetでの適合証拠を別途要する。
 
+## 14. 2026-11-06 Batchの四つの粒度と、配送保証の最小充足判定
+
+**状態**: 既存[#2542 EF-01〜05](https://github.com/hat47x/tei-platform/issues/2542)と[#1130 RPL](https://github.com/hat47x/tei-platform/issues/1130)の受入票に接続する研究上の精緻化。新Core型・新Scenario・Runner・MFT Engine・正本追加ではない。起点mainは2026-11-06取得の bf2e7b0ffe21747a308cd2b37328eb440535f696。mainは更新され得るためmerge時には再確認する。
+
+### 14.1 「Batch」を一つの意味にしない
+
+| 次元（仮称） | 典型的な単位 | 独立に扱う境界 | 暗黙に昇格してはいけない保証 |
+| --- | --- | --- | --- |
+| **Transport batch** | network chunk、ファイル、AS2 message、転送箱、spool item | transfer attempt、hop ACK、再送、暗号化/圧縮後byte、同報宛先 | packet/file送達＝業務単位atomic commit；chunk再開＝Import冪等 |
+| **Data processing batch** | 行集合、partition、window、Watermark、Snapshot／処理基準日 | schema/NULL/Bag/Sequence、Source completeness、処理粒度、導出Output | 変換結果の一致＝受信側の完全性・即時公開 |
+| **Business atomic batch** | 同一Ownerが受理するOperation/Unit of Work、業務期間・明細集合 | effect/Commit、partial/unknown、Idempotency Key、独立Receipt | 一つのファイル/Job/SQL Batch＝不可分な業務トランザクション |
+| **Execution grouping** | RunPlan、Task/Worker、並列数、Lease、Build Unit | 資源配置・取消し・進捗・Checkpoint、起動/再起動主体 | Task completed／step blocked＝業務Effect有無の証明 |
+
+この四次元は共通の型付きOperation・Port・Relationに載せ得るが、各次元のOwnerと実証する保証は異なる。特にファイル転送の処理単位の結合・分割を、Business Operationの結合・分割へ自動反映しない。各Adapterの最小/最大Chunkサイズのような性能設定を受理済み業務Semanticの変更とみなすかは、実際に意味結果や受入条件を変える場合だけに限定する。
+
+### 14.2 条件付き保証の充足判定（実行前の適合と実行後の事実を別判定）
+
+**要求Claimの比較キー候補**: 対象（qualified subject）、業務期/Source revision、対象Dataset/Artifact generation、宛先・ordering key/Scope、保証の種類（順序/欠落なし/一式可視性/冪等Effect等）、適用時間/鮮度、必要なAuthority。
+
+**Provider側Witness候補**: 対象Operation、実Provider・能力版・Target、保証できる対象Key/Scope、条件と例外、選択済みRouteの全Hop、基準Artifact/Rule版、実行時のAttempt/Receiptまたは未観測理由。**Providerの仕様宣言は実際に送信・読取・Commitした観測とは別証拠**とする。
+
+充足判定の説明規則（製品APIではない）:
+1. **意味の対応**: 要求するSubject/Period/Dataset/Operationと選択したProvider/PortのMappingが一意で、転送・変換中にIDと保証対象が失われていないこと。曖昧/欠損ならunknownまたはunsupportedとして止める。
+2. **ルートの被覆**: 必要な保証を全Hopが同じ粒度で提供し、Queue/Spool/変換/中継による弱化と例外が明示されること。単一Hopが順序ありでも、全路線順序ありとは主張しない。
+3. **全件性・物理公開の分離**: 期待するMember/Range/Watermarkと、Publisher/Consumerが実読取した全Byte、対象世代の保持期間、実取込みの結果を別比較。空集合/timeout/通知欠落を「存在しない」と断定しない。
+4. **実行前と事後**: Static conformanceが満たせても、実配送・実Reader・Commit・現在Grantは未観測のまま。到着後に検査できるReceiptは元のRequest/Generation/Scopeと結合し、現在資格へ自動昇格しない。
+5. **結果の分類**: Requirementsを満たす証拠がある対象限定Claimだけqualified、満たせないことが分かるときunsupported、資料/受信/時点不足ならunverified/unknown、もともと必要でない要素だけnot-applicable。単なる成功フラグのANDとしない。事後Unknown Effectを自動Retryしない。
+
+### 14.3 Backpressure・取消し・部分失敗のOwnerと反証
+
+| 反例（既存ケースへの追加観測） | 最低限の判定／停止線 | 再利用するOwner |
+| --- | --- | --- |
+| **Transport Batchだけ四分割**：100行のCSVを4 chunkで配送、3 chunk送信済みの時点で切断 | 転送進捗をImport complete/Business atomicとみなさず、受信側完成版公開前に読まない。再開点はByte/TransportとBusiness両方のIDを参照 | #2542 EF-01/03、#2604 AP-01/06 |
+| **Spoolが満杯**：先行ファイル保留、後続が別Hopへ届く、期限超過 | Capacity/Retention/Deadline/BackpressureはHopごとの能力。drop/skip/非通知送出からgap-freeを導かず、必要な全件保証が満たせなければ該当Claimをreject/unknown | #2542 EF-02、#2827 DM-05/06 |
+| **取り消し要求の競合**：配送指示取消し時に受信側は既にACK済み、Importerは未実行 | Cancel requested、実際の送信中止、受信側の永続Receipt、業務Effectの取消しを別結果にする。取消し成功から相手先の未取込・既存Commit撤回を推論しない | #2542 EF-03、#1174 |
+| **部分成功の一括更新**：100行のうち60行Commit後に残り40行がblocked | Run全体をno effectへ丸めない。既存Effect/Receiptで対象Keyごとに60/40を照合し、全体の業務原子性が必須ならProvider能力不足として事前に拒否する | #1130 RPL-02、#1174 |
+| **必要Guard未供給**：Period/Effect Observerの実引数は一部のみ、別HostのGrantは失効 | [merged #2882](https://github.com/hat47x/tei-platform/pull/2882)は実Workspace局所的な前提合成テストでありGuard completenessやEffect実観測は未証明。未供給/古い/別Scopeはqualified不可 | #1130 RPL-01、#1174、#1145 |
+| **実行単位だけ変更**：純粋なTransformを1 Process→4 Worker、外部SFTP Adapterは未選択 | Data Meaning/Independent Expectedを固定し、選択Plugin依存Closure/結果の非干渉と実行回数・Costは別測定。業務副作用Jobに同じ最適化を無断適用しない | #1251、#2831、Draft #2877、#2018 |
+
+**優先順位（元のDM/EF/RunPlanテストを追加しない）**: P0はread-onlyな1入力・2 Memberの生成→公開→別Readerの同一版/全Byte比較（#2604/EF-01）。並行して、必要Guard集合と実際にSupplyされた集合の差分だけを評価する静的負例（#2882の受入拡張先）。P1はFileSpec/ImportUnit（#2145既存Reference）と重複通知/取消し/Spool容量を合成。P2で初めて現在Grant・Commit/Receipt/独立Readを要する書込みRouteへ進む。どの段階もProviderの実送出、外部Host/EKI ResourceやBusiness Owner受理を他のCIから継承しない。
+
+**標準化の採否**: 新しいBatchKind/Guarantee証明型/Capability Resolverを固定する前に、既存TypeRef/Shape/Role/Relation/Provenanceで、上記少なくとも二Consumerの必要な差を保持できるか検証。特に[#2880](https://github.com/hat47x/tei-platform/pull/2880)の標準型二Consumer、[#1145](https://github.com/hat47x/tei-platform/issues/1145)のInvocation Request/Context/Transport分離を再利用する。Operator/Plugin合成のほうが例外と変更波及を少なく説明できるなら新しい専用DSLやCore Primitiveは導入しない。実Go/ETL/MFT/Transfer/2Process/DB/EKI試験とOwnerの意味受理は本追補では **NOT RUN**。
