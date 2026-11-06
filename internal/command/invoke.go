@@ -32,6 +32,12 @@ type Executor interface {
 	Execute(ctx context.Context, request Request) (Result, error)
 }
 
+// Authorizerは、Commandの実行前に呼出しの可否を決める契約である。
+// 認可の正本や権限の付与は提供せず、L4の実装へ委ねる。
+type Authorizer interface {
+	Authorize(ctx context.Context, request Request) error
+}
+
 // ExecutionErrorは、業務上の結末ではなく、呼出しの前提・実行環境・契約の不備を表す。
 type ExecutionError struct {
 	Code    string
@@ -68,6 +74,7 @@ type Invoker struct {
 	Executor   Executor
 	UnitOfWork UnitOfWork
 	Periods    PeriodState
+	Authorizer Authorizer
 }
 
 // Invokeは、Commandを実行する。入力の不備、Executorの不在、実行の失敗、
@@ -88,6 +95,11 @@ func (i Invoker) Invoke(ctx context.Context, request Request) (Result, error) {
 	}
 	if err := i.checkPeriod(ctx, plan); err != nil {
 		return Result{}, err
+	}
+	if i.Authorizer != nil {
+		if err := i.Authorizer.Authorize(ctx, request); err != nil {
+			return Result{}, &ExecutionError{Code: "COMMAND_UNAUTHORIZED", Message: err.Error(), Cause: err}
+		}
 	}
 	if i.Executor == nil {
 		return Result{}, &ExecutionError{Code: "COMMAND_EXECUTOR_UNAVAILABLE", Message: "no executor is configured for this command boundary"}
