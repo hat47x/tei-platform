@@ -73,16 +73,33 @@ func ParseDocument(data []byte) (Document, error) {
 		return Document{}, fmt.Errorf("parse grants: %w", err)
 	}
 	for index, entry := range document.Grants {
-		spec := permission.Spec{
-			Kind:   permission.Kind(entry.Kind),
-			Access: permission.Access(entry.Access),
-			Scope:  entry.Scope,
-		}
-		if err := spec.Validate(); err != nil {
+		if err := entry.Spec().Validate(); err != nil {
 			return Document{}, fmt.Errorf("grant %d (%s %s %s): %w", index+1, entry.Kind, entry.Access, entry.Scope, err)
 		}
 	}
 	return document, nil
+}
+
+// Spec is the permission an entry grants. Converting an entry to a permission
+// happens in several places (the reader, the grounding check, the CLI); a
+// conversion repeated by hand drifts when the entry gains a field, so it lives
+// here once.
+func (e Entry) Spec() permission.Spec {
+	return permission.Spec{
+		Kind:   permission.Kind(e.Kind),
+		Access: permission.Access(e.Access),
+		Scope:  e.Scope,
+	}
+}
+
+// Specs are the permissions this document grants, in the order the entries are
+// written.
+func (d Document) Specs() []permission.Spec {
+	specs := make([]permission.Spec, 0, len(d.Grants))
+	for _, entry := range d.Grants {
+		specs = append(specs, entry.Spec())
+	}
+	return specs
 }
 
 // ParseGrants reads the grants file as permissions. It keeps the historical
@@ -93,15 +110,7 @@ func ParseGrants(data []byte) ([]permission.Spec, error) {
 	if err != nil {
 		return nil, err
 	}
-	grants := make([]permission.Spec, 0, len(document.Grants))
-	for _, entry := range document.Grants {
-		grants = append(grants, permission.Spec{
-			Kind:   permission.Kind(entry.Kind),
-			Access: permission.Access(entry.Access),
-			Scope:  entry.Scope,
-		})
-	}
-	return grants, nil
+	return document.Specs(), nil
 }
 
 // AcceptIssuedBy reports whether the document may be used by capabilityID: every

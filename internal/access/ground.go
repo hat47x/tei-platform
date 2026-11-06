@@ -84,7 +84,7 @@ func checkResolutions(declared Document, resolutions []Resolution, capabilityID 
 // scope. A declaration for another capability grounds nothing: the environment
 // said what that capability may touch, not what this one may.
 func groundsIn(declared Document, resolutions []Resolution, entry Entry) bool {
-	required := permission.Spec{Kind: permission.Kind(entry.Kind), Access: permission.Access(entry.Access), Scope: entry.Scope}
+	required := entry.Spec()
 	for _, candidate := range declared.Grants {
 		if candidate.CapabilityID != entry.CapabilityID {
 			continue
