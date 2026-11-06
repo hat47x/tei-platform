@@ -347,6 +347,40 @@ E1とE2は最小の共通面が成立した時点から重ねて実施できる�
 
 **証拠水準／次の実行**：#3041のGo試験・#3042のWindows Goテスト・#3060のReference記録はそれぞれ別HEAD/別Claimの既存限定証拠。本節は**採用済みAPIの意味と受入上限を照合する文書追補**のみ。新`*.tei.md`実Reader、実Candidateからの正式Source書込み、同一Source/Owner/Host/Provider/Consumer E2E、実外部LLM、OS隔離・Producer同一性はNOT RUN。第二Accepted Source正本・Authorization Registry・AI Host・万能Completion Engineを新設しない。
 
+## 5.9 生成AIの三つの経路とOKF Attested Computationの限定接続（2026-11-07）
+
+### 既存Product SkillのS1実証を新しい境界へ反映
+
+[#2605](https://github.com/hat47x/tei-platform/issues/2605)で、TEIのビルド済Go CLIをTAIの別リポジトリCIから実起動し、固定TEI HEAD `50ebf8014340fd1906f6b35cfa30173e0ee2fc6c`・公開`reference/workspace`・`semantic-data:sales.order`についてCatalog/Inspect/Validateの実結果、Source Index path・指紋と原Source byte SHAの一致を限定確認した（[TAI CI #42101157330](https://github.com/hat47x/tai-pleroma/actions/runs/42101157330)、合成S1-W01〜08も別評価）。これは**外部リポジトリからの実Product CLI read-only利用**であり、外部AI HarnessによるTool選択・Tool Request→argv、Skill本体/参照文書実ロード、Owner意味受理、全Source閉包、実OS/Provider/Hostを証明しない。従来の「CLIも全てNOT RUN」という旧Statusをこれからの計画に引き継がない。
+
+### AIが返す三種類のものを同じ`Accepted`に畳まない
+
+| AI経路 | AIに許す範囲と正式な判断主体 | 検証できる実績の範囲と停止線 |
+| --- | --- | --- |
+| **A: 自由な意味・設計のProposal** | Source/Role/Rule/Query/Authoringの**候補Diff**と引用を生成。#267のHuman/Owner Shared Acceptanceが業務Meaningの正式受理を所有 | `validation.Propose/Accept`の局所フラグやAI文章は正式Source変更ではない。Source/引用・Revision・決定主体・保存後再Readが不足なら未受理 |
+| **B: 正規定義済みComputationのParameter Bind** | 事前に選定・適格性確認した計算定義の**宣言された型付き引数だけ**を埋める。AIがSQL/Script/Computationを自由に書き直した場合はこの経路を利用できずAとして再提案・受理が必要 | 正規定義のSource/byte・Runtime/Pin、実Bind、Executor実実行/Job/Receipt、非LLM Attester実検査、結果の独立再Readを**別Witness**とする。Attester PASSは定義の業務Meaning・対象集合全件・現在Grantの証明ではない |
+| **C: Provider・外部ActionのEffectful Intent** | 型付きOperation Intent候補まで。正式なRequest/Target/現在Grant/Period/Effect Fenceは#2598/#1174・外部Hostが所有 | OKFのAttestationやSkill手順の存在でProvider write/commit権限を付与しない。拒否/Unknown/partial effect、再送・Receipt/補償はHost側で独立検証 |
+
+OKF v0.2 [一次仕様 §10](https://github.com/GoogleCloudPlatform/open-knowledge-format/blob/main/SPEC.md)の`type: Attested Computation`は、`runtime`、`parameters`、本文または参照先の`computation`、`executor`と`executor.receipt`、`attester`という契約を記述する**知識Concept**であり、実TEI Provider/Hostを自動構築しない。OKF v0.2は実行/Attesterのwire format、ABI、Sandbox、Attestation Cacheを規定していない。新TEI CLIコマンド、共通Receipt Format、第二Attester Store、全Plugin常駐を本節で採用しない。
+
+### 定義の現在性・実行の忠実性・結果の正しさを独立に評価
+
+1. **文書由来と利用資格**：OKFの`sources[].id/resource`とClaim footnote、`generated.by/at`、`verified[].by/at`、`status/stale_after`は発見・引用・書き手／検証者の来歴に利用する。Actorの`human:`文字列、`verified`、`status: stable`はTEIの正式Owner Acceptanceや現在のHost Grantではない。期限内でもSource/Operatorが変われば現在資格を再評価し、期限切れは無条件の過去Receipt否定にしない。未認識type/任意key・broken linkでOKF Bundle全部を拒否しない一方、個別の実行資格は未確立とできる。
+2. **計算の同一性**：AIが自由に作ったSQL文字列ではなく、認められたComputationの**正確な実byte／Binding Semantics／Plugin・Operator Pin**を基準として、Executorが実際に受け取った文/Artifact/typed parametersと照合する。単純なSQL文字列類似・表示Result値の一致・モデルによる「実行した」の説明では代用しない。動的`executor.resource`を未信頼文書から無条件に起動せず、外部送信と実Runは別Host/Disclosure判断を通す。
+3. **AttesterとReceiptの証拠**：実Provider/Executor由来のJob ID・実行内容・Result/Receipt location、Attester自身の実Byte/Version/実呼出し、Job IDを使った独立Result再Readを別に固定。AIが生成したReceiptの文字列、自己申告`attested=true`、同じAIが作ったExpectedによる自己評価は合格しない。存在しない`attester`/未知Runtime/未観測Jobは`unsupported/unknown/NOT RUN`。
+4. **業務意味とScope**：実際に規定の計算を忠実に行ったことと、**その計算定義が業務上正しいか、NULL/部分集合/時間条件/RLS/粒度/対象集合を満たすか**は別。#2514の独立期待値と#2622/#2586のProvider Readを用い、値一致でも実Readの完全性が不明なら不足として残す。正しい計算結果の開示範囲と、内部Receiptの可視性も#2515/#2516で別に制限する。
+5. **UIと再開時**：`Candidate proposed`／`Definition verified (as-of)`／`Current Source/Host qualified`／`Execution observed`／`Attestation verdict`／`Business Meaning accepted`／`Effect confirmed`は別表示。古い定義の検証履歴や旧Attestationは履歴として残すが、新しいRequest/現在Principal・Tenantの資格へ自動継承しない。
+
+### 実験順序を増殖させない
+
+**P0（今実施すべきこと）**：[TAI #168](https://github.com/hat47x/tai-pleroma/issues/168)の固定Participant Task・実CLI/Tool Profile/Skill bytesを維持し、**外部AI Harnessからの最初のH2 Tool-only実Tool呼出し1 Session**でTool request→実argv/cwd/exit/CLI stdout fingerprintを同Sessionに束縛。その後H2/H3を2 Sessionずつ計4回実施し、H3ではSkill rootとReferencesの**実ロード**、H2ではSkill非露出を証拠化。割付条件（R）と実提供条件（D）を分け、未ロード・誤答・Tool未観測・Warning喪失を都合よく除外しない。4件の比較から普遍的な因果効果を主張しない。実Product S1の限定成功はP0の代替ではない。
+
+**P1（後続・初回H2/H3のHard dependencyにしない）**：[TAI #514](https://github.com/hat47x/tai-pleroma/issues/514)の既存AC-01〜12を参照して、**公開1 Concept・read-only計算1件**の`discover→load→typed bind→executor receipt→deterministic attest→independent read→Consumer`を既存TEI Evidenceへ対応付ける。正常/不正SQL/捏造Job ID/改変Result/旧Receipt/型不正/部分集合/未信頼executorの正負対照を用い、追加Case SSOTを作らない。Builder/Diagram生成やDB更新・削除など副作用へ同じAttestation契約を一般化するかはこの最小PoC後に判断。
+
+**責務**：TEI Product Skill実装/実CLI＝[開いている#2605](https://github.com/hat47x/tei-platform/issues/2605)、外部Harness H2/H3＝TAI #168、OKF横断契約/AC＝TAI #514、独立期待値＝#2514、実入力・消費Evidence＝#1163、Meaning Owner＝#267、Host Effect＝#1174、Disclosure＝#2515/#2516。TEI #2614は**closed/duplicate**なので再開・二重実装しない。OKF Conceptのread-only閲覧と正式`*.tei.md` Lexer/Parser合格は別で、未対応Sourceは#3030/#3031の条件で止める。
+
+**今回の証拠上限**：既存S1実Product CLI/Indexed Source成功は固定公開Source・HEADに限る。本節は追加の設計・計画統合のみで、実H2/H3外部AI Harness、OKF Executor/Attester、Job/Receipt独立再Read、実Source移行・Owner Meaning Acceptance、現在実Host/ProviderのE2Eは**NOT RUN／NOT ACCEPTED**。
+
 ## 6. 採否と現在の限界
 
 - **Owner方針として確認済み**：外部要件の十分な机上評価を基盤実装に先行させること、CUIと標準Pluginを並行開発すること、ヘッドレス実証を基準にGUIを後続実装すること。
