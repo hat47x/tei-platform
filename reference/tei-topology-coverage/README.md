@@ -29,6 +29,10 @@ Node.js 22以上の組込みtest runnerだけを用います。
 
 **追加の実証（Relation scopeとtype）**： [dedicated CI #42156720965](https://github.com/hat47x/tei-platform/actions/runs/42156720965) は、exact head `760597b2aaddde1bf3990ee8f57a35deb9bdb9ea`、Node 24.21.0で **26/26 PASS**。対象コードGit blob `c20ceb222a690d486ce5b8f95782dba6c84d9a13`、試験blob `9ec51ea2518b05499405bc86e21398b91856084a`。旧18/18は過去版。今回も合成関係の帰属・表示整合を確認しただけで、実Readerによる完全性を証明しません。
 
+**Query条件の範囲（2026-11-06追補）**：本合成Evaluatorが解析するのは`kind/scope/type/id`だけです。Relationの`scope`はRelation自身の**宣言scope**であり、端点scope・Role・依存の推移・ETLのWindow・BuildのTarget/Selected Inputを意味しません。入力に`participantScope`／`role`／`where`／`window`／`subjectKey`など未対応の条件がある場合は、**存在・不存在どちらのClaimも出さず`unknown:unsupported_query_predicate`**で拒否します。未対応条件を黙って落とすと、指定範囲で存在しないという偽の結論につながるためです。正式Query DSLや実Readerの受入規則ではありません。
+
+**回帰試験（新規）**：対応範囲外のRole/Participant/WHERE/Window条件による偽の不存在と、対応外条件を無視した偽の存在を別々に検査します。[専用GitHub Actions #42159700190](https://github.com/hat47x/tei-platform/actions/runs/42159700190)（code head `4352ef7ff1a253acb9334bfec7f974dfdb66e0d3`）のNode 24.21.0 focused testは**29/29 PASS**。Implementation blob `37682bdaeb7df5dd2ba62344fea6140dd5546aec`、test blob `f2ff56da9b15a15d4e0eeb90863e63af342bd62b`。これ以降の文書更新headに対するCIは別に記録します。
+
 **Claim上限**：`present-in-snapshot`も`absent-in-declared-snapshot`も現在のTEI Source、Provider、実ビルド、実転送、実Authorityを意味しません。ReferenceにはSource/Plugin実ReaderやPolicy評価器は含まれません。現物入力と現在の公開資格を独立確認せずにConsumerへ流用しないでください。非公開・保留・不明の違いが低権限UIに現れてよいかは既存#2516へ委ねます。
 
 **未実証**：実Go ModelRef/Source Index・TEI CLI出力との結線、Providerによる実閉包証明、実Graph Renderer/Workbench、複数Window/旧DOM、実SHO/AI、外部Effect、認知負荷削減。#1124 M0/M1を代替するテストではなく、#2352 P1の後続評価用合成試験です。実験を製品化する前に、既存型からの変換のlosslessnessと現在のReader/Policy資格を独立検証します。
