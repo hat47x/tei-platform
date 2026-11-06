@@ -951,6 +951,7 @@ PoC #2521が実装した範囲と、まだ実装していない範囲を分け�
 | CLI参照実行の認可AllowList | 実装済み（`view -execute -allow-capability`、参照用） |
 | Command効果の宣言照合 | 実装済み（Executorが返すEffectが宣言と一致しない場合は拒否） |
 | Command実行の記録契約 | 実装済み（`Invoker.Recorder`が宣言効果・報告効果・結末を記録。実装は`MemoryRecorder`） |
+| CLI実行記録 | 実装済み（`view -execute -operation-log`、JSON） |
 | 参照データ記憶域（MemoryStore） | 実装済み（create/update/delete、スナップショットによるRollback） |
 | 参照Storeの削除ポリシー実行 | 実装済み（restrict・cascade・preserve。`Relation.Keys`がある場合は行単位、ない場合はData単位） |
 | 参照Storeの複数段カスケード | 実装済み（キー対応の再帰削除、循環防止） |
@@ -985,6 +986,7 @@ PoC #2521が実装した範囲と、まだ実装していない範囲を分け�
 | `reference/workspace`への宣言追加 | 未実施（受理経路が必要） |
 
 実装は、`internal/application/model.go`、`internal/syntax/application_pattern.go`、`internal/validation/application_pattern.go`、`internal/crossview/pattern_requirements.go`、`internal/applicationview`、`internal/semantic/model.go`、`internal/syntax/parser.go`、`internal/validation/validation.go`と、それぞれの試験です。
+
 
 
 

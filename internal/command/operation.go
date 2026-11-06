@@ -10,10 +10,10 @@ import (
 // OperationRecord is what the boundary observed for one Command execution:
 // the declared effect from the capability and the effect the executor reported.
 type OperationRecord struct {
-	Request  Request
-	Declared *semantic.DataEffect
-	Reported *semantic.DataEffect
-	Outcome  *semantic.Outcome
+	Request  Request              `json:"request"`
+	Declared *semantic.DataEffect `json:"declared,omitempty"`
+	Reported *semantic.DataEffect `json:"reported,omitempty"`
+	Outcome  *semantic.Outcome    `json:"outcome,omitempty"`
 }
 
 // Recorder observes successful Command executions. It is optional; a recorder
