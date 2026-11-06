@@ -996,7 +996,7 @@ P0は公開可能なContract/Descriptor/Artifact/独立Expectedを既存資料�
 
 ### 22.5 段階的移行とOwnerへの受渡し
 
-P0 **read-only棚卸し**：既存Workspace Manifest、domain loader別の全*.tei選別点・生成書き出し・Test Fixture・外部Consumer参照・文書リンクを列挙し、現行負例を固定。原ファイル名・byte・Semantic ID・Source index/Build closureを結ぶ。TEI新Source形式規約の正本は#2621、実Loader対象と未読込診断は#2823、Language/Roleは#988/#2620。
+P0 **read-only棚卸し**：既存Workspace Manifest、domain loader別の全*.tei選別点・生成書き出し・Test Fixture・外部Consumer参照・文書リンクを列挙し、現行負例を固定。原ファイル名・byte・Semantic ID・Source index/Build closureを結ぶ。移行全体のOwner計画は[Draft #2667](https://github.com/hat47x/tei-platform/pull/2667)、Markdown Authoringの表層比較は[Draft #3030](https://github.com/hat47x/tei-platform/pull/3030)/#2621、実Loader未読込診断は#2823/[Draft #3031](https://github.com/hat47x/tei-platform/pull/3031)、Language/Roleは#988/#2620。別個の移行Gateをこの文書で設けない。
 
 P1 **最小Parser経路の検証**：1つの公開Semantic定義とPlugin Descriptorの二つを、旧.teiと新.tei.mdで比較。プレーンMarkdownのRaw保全、明示構造ブロックの解析・byte span、旧/新独立Expected、必要Source完全性を検証。旧Grammarを無条件で捨てず、明示した互換期間中だけread-onlyまたは限定実行経路を残す。単純renameだけで適合したとしない。
 
@@ -1004,4 +1004,6 @@ P2 **Workspace/Build/外部Target再資格**：現行#1251 PB・#2600 IBで実Re
 
 P3 **段階廃止**：既存*.teiへの新規追加を停止する運用、旧ファイルの参照・Legacy Reader撤去のGateを、P1/P2で成立したConsumerごとに判断。移行前の一斉rename/削除や、旧Fallbackで新Required Sourceの欠落を黙殺することは禁止。Ownerの形式方針は決定済みだが、文法/移行・互換期間/Plugin ABI/本番資格は実証・判断待ち。
 
-**状態**：2026-11-06の新Source命名方針を設計へ反映する追補。既存mainの*.tei読取挙動のread-only静的照合のみ。*.tei.mdのProduct Parser/Writer/CLI/Go Target・外部Consumer E2E・OS/DB・Owner業務意味受理は NOT RUN / NOT PROVEN。新Source Reader/Registry/Host/Policy Engine/第二Acceptanceを作らない。
+**更新された実装Evidence（2026-11-07）**：[Draft #3031](https://github.com/hat47x/tei-platform/pull/3031)の固定HEAD `63953ccb`では、未対応の*.tei.mdを黙って未読込扱いせずParser未Binding診断で停止する限定Workspace Go試験がCI成功。これは**新形式を安全に拒否できる候補**の実証であり、正式Markdown Reader・Parsed/Qualified/Build-consumed・旧新意味互換の実証ではない。PRはDraft・未merge。移行の受入条件は#2667/#3030へ委譲する。
+
+**状態**：2026-11-06の新Source命名方針を設計へ反映する追補。現mainの旧*.tei読取の静的照合と、別Draft #3031の限定拒否試験のみ確認。*.tei.mdのProduct Parser/Writer/Go Target・外部Consumer E2E・OS/DB・Owner業務意味受理は NOT RUN / NOT PROVEN。新Source Reader/Registry/Host/Policy Engine/第二Acceptanceを作らない。
