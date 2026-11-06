@@ -21,12 +21,18 @@ type CommandPlanResponse struct {
 
 // CommandRunValue is a reference execution of a command. It has no durable effect.
 type CommandRunValue struct {
-	Plan      applicationview.CommandPlan `json:"plan"`
-	Mode      string                      `json:"mode"`
-	Outcome   *semantic.Outcome           `json:"outcome,omitempty"`
-	Effect    *semantic.DataEffect        `json:"effect,omitempty"`
-	Committed bool                        `json:"committed"`
-	Records   []command.OperationRecord   `json:"records,omitempty"`
+	Plan    applicationview.CommandPlan `json:"plan"`
+	Mode    string                      `json:"mode"`
+	Outcome *semantic.Outcome           `json:"outcome,omitempty"`
+	Effect  *semantic.DataEffect        `json:"effect,omitempty"`
+	// Committed reports that the configured UnitOfWork returned from Commit.
+	// The reference host uses MemoryUnitOfWork, which does not write data (#2998).
+	Committed bool `json:"committed"`
+	// Persisted is false for a reference execution.
+	Persisted bool `json:"persisted"`
+	// Durability names the storage boundary: "none" for the reference executor.
+	Durability string                    `json:"durability"`
+	Records    []command.OperationRecord `json:"records,omitempty"`
 }
 
 // CommandRunResponse is the result of a reference execution.
@@ -151,11 +157,13 @@ func (h *ReadOnly) executeCommand(workspaceID, applicationID, patternID, capabil
 		return CommandRunResponse{Failure: &Failure{Code: "COMMAND_FAILED", Stage: "command", Message: err.Error()}}
 	}
 	return CommandRunResponse{OK: true, Value: &CommandRunValue{
-		Plan:      plan,
-		Mode:      "reference",
-		Outcome:   result.Outcome,
-		Effect:    result.Effect,
-		Committed: true,
-		Records:   recorder.Records,
+		Plan:       plan,
+		Mode:       "reference",
+		Outcome:    result.Outcome,
+		Effect:     result.Effect,
+		Committed:  true,
+		Persisted:  false,
+		Durability: "none",
+		Records:    recorder.Records,
 	}}
 }
