@@ -426,3 +426,13 @@ Apache Kafkaは、Kafka Topic間ではtransactional producerとconsumer offset�
 測定指標は、(i)既存テストで見逃していた欠落/遅延/世代混合のFalse Qualified数、(ii)新しい意味正本・Role・Provider専用コードの増分、(iii)人間/AIが必要な欠落情報と影響範囲を特定する手数、(iv)Streaming/Batch化前後の可視性・Latency/Memory/Cost（#2933）を区別する。**汎用Completion Engineや新Watermark型は、二つの独立Consumerに共通して必要な表現不足が実証されるまで導入しない**。
 
 **状態／証拠上限**: BeamとHULFT等の仕様の比較、および現行TEI Issue/PRの静的照合のみ。本節の新しいGo/Streaming/SQL/実File Reader/実MFT/CI/E2E・業務Owner受理はNOT RUN。外部製品の仕様上のWatermarkや順序制御を、そのままTEI Providerの実保証として採用しない。
+
+### 15.4 HULFT-HUB同報でのACKの主語と再配送範囲
+
+HULFT-HUB Ver.3公式マニュアル第20版（2025-12-01）は、蓄積を使う同報配信で、**HUBへの蓄積正常終了により配信元が転送完了を受ける**一方、HUB→個々の集信先の転送がエラーになり得ると説明する。また、蓄積しない同報の再配信は原則すべての宛先へファイル先頭から実施し、異常宛先のみ/Checkpointからの再配信はできない。蓄積を併用する場合は異常宛先だけを送出可能な条件がある（https://www.hulft.com/help/ja-jp/HUB-V3/COM-HUB/Content/HUB_HUB/Pt_HUBOpe/Multicast_Pt.htm）。蓄積条件・継続条件・配信側へ返す結果の設定によっても、蓄積完了・集信先への送出異常・配信側への転送結果は分岐する（https://www.hulft.com/help/ja-jp/HUB-V3/COM-HUB/Content/HUB_HUB/Fun_HUB/Ope_SET_Acc_Proc.htm）。
+
+- **ACK subject**: 配信元→HUB蓄積完了、HUB→各宛先送出完了、受信先のファイル可視、Importer確認、業務Owner受理を区別する。HUB ACKを「すべてのRecipientに届いた」という集合Claimに昇格しない。
+- **Fan-out Recipient Set**: 宛先集合とその版、各宛先Attempt/成功・失敗・保留、再送時に実際に再配送した宛先集合を別に保持。同報の全宛先Retryが正常受信先へ重複送信しても、ImportUnit/Business Effectの冪等性は相手側で別に検証する。
+- **Recovery policy**: 全宛先の再送、異常宛先のみの送出、蓄積解放後の送出が利用可能かはProvider/運用設定依存。TEI共通型の固定操作を先行させず、選択Route/各実環境の能力とRequest/Receiptを照合する。
+
+**既存受入への配分**: #2542 EF-02（順序と欠落）・EF-03（ACK喪失と重複）、#2827 DM-06/07/08（Spool/再送/受理）、#1130 RPL-02（部分成功）へ宛先ごとのObservation列を追加する提案。新Fanout Engine/Retry Coordinator/第二Recipient Registryは作らない。実HULFT-HUB同報/実Partner試験とOwner受理はNOT RUN。
