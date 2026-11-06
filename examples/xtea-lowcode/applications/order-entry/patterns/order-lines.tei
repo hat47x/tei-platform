@@ -1,0 +1,4 @@
+pattern order_entry.order_lines header-detail {
+    relation sales.order.lines
+    page-break 3 repeat-header
+}

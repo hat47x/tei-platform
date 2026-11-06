@@ -1,0 +1,23 @@
+namespace sales
+
+data Order {
+    attribute orderId type std.identifier display "受注番号"
+    attribute customerId type std.identifier display "顧客"
+    attribute status type std.code display "状態"
+    relation customer to customer.customer one
+    relation lines to sales.order_line many
+}
+
+data OrderLine {
+    attribute orderLineId type std.identifier display "行"
+    attribute quantity type std.decimal display "数量" required
+    attribute amount type std.money display "金額"
+}
+
+capability submit_order {
+    input order sales.order
+    outcome submitted sales.order
+    effect update sales.order
+}
+
+
