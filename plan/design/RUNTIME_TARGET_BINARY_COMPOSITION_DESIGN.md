@@ -1004,6 +1004,9 @@ P2 **Workspace/Build/外部Target再資格**：現行#1251 PB・#2600 IBで実Re
 
 P3 **段階廃止**：既存*.teiへの新規追加を停止する運用、旧ファイルの参照・Legacy Reader撤去のGateを、P1/P2で成立したConsumerごとに判断。移行前の一斉rename/削除や、旧Fallbackで新Required Sourceの欠落を黙殺することは禁止。Ownerの形式方針は決定済みだが、文法/移行・互換期間/Plugin ABI/本番資格は実証・判断待ち。
 
+<!-- tei-plugin-source-root-diagnostic-qualification-20261107 -->
+**Source Root検査のmain前進と資格の上限**：[merged #3073](https://github.com/hat47x/tei-platform/pull/3073)は未知・存在しないManifest source rootと、現Loaderが読まず取り残す近似名のfileを診断する。空Sourceを見落とした成功と、明示された空Workspaceを区別しやすくなる。[merged #3069](https://github.com/hat47x/tei-platform/pull/3069)は標準定義を除いたdeclarationCountsを返すが、0件自体では実Required Source閉包・Import/Plugin/Provider完全性を証明しない。未知RootをWarningのまま許容する方針の是非や、workspace-filesのreadByLoader表示は依然Owner判断。これらのmain統合済み診断と、[Draft #3031](https://github.com/hat47x/tei-platform/pull/3031)の*.tei.md未Binding専用Guardを混同しない。未選択Pluginへの誤導入・必要Pluginの黙示欠落を防ぐ受入には、Source/Loader実読取とCatalog/Resolved選択・Target Build/Consumerの実依存を一版で照合する必要がある（#2823/#951/#1251）。
+
 **更新された実装Evidence（2026-11-07）**：[Draft #3031](https://github.com/hat47x/tei-platform/pull/3031)の固定HEAD `63953ccb`では、未対応の*.tei.mdを黙って未読込扱いせずParser未Binding診断で停止する限定Workspace Go試験がCI成功。これは**新形式を安全に拒否できる候補**の実証であり、正式Markdown Reader・Parsed/Qualified/Build-consumed・旧新意味互換の実証ではない。PRはDraft・未merge。移行の受入条件は#2667/#3030へ委譲する。
 
 **状態**：2026-11-06の新Source命名方針を設計へ反映する追補。現mainの旧*.tei読取の静的照合と、別Draft #3031の限定拒否試験のみ確認。*.tei.mdのProduct Parser/Writer/Go Target・外部Consumer E2E・OS/DB・Owner業務意味受理は NOT RUN / NOT PROVEN。新Source Reader/Registry/Host/Policy Engine/第二Acceptanceを作らない。
