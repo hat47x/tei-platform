@@ -3624,3 +3624,52 @@ AC-01〜06は#2510の組織Pressure Corpus、#2514の独立検証基準、#1180�
 **名称方針**：main統合#3039/#3040の`docs/naming.md`に沿って、検証理論上の`Oracle`は新しい説明文で用いず、**独立期待値／独立検証基準／適合判定**を使う。Oracle Databaseの製品名と既存コード識別子・歴史的記録は変更しない。
 
 **今回の資格**：main`completion.go`・`validation/proposal.go`・Product SkillのSource read-only照合、外部OKF仕様参照、および組織の受入票設計。AC-01〜06/組織E2・正式TEI/OKF Product連携・外部AI/実Provider/Host/Owner受理は**NOT RUN**。#1119のP0工程、旧新Sourceの二レーン、新Hostなしの基本方針を維持。採用済みADR/他担当PRやmainのSource変更は行わない。
+
+## 84. 統合済みNative組織E1を製品E2の最短一件へ接続する：Query選択・実消費・再資格化（2026-11-07、採用前）
+
+### 84.1 変わった前提：親#2681はmain統合済み、子#3024は積上げDraftのまま
+
+2026-11-07の現行GitHubメタデータとmain実ファイルを再取得し、次を**更新前提として確定**した。
+
+- [#2681](https://github.com/hat47x/tei-platform/pull/2681) は**closed/merged**。mainの`reference/org-headless-workspace/semantic/organization/model.tei`にPerson/OrgUnit/Membership/Position/Occupancy/CaseRecordの実TEI記述、`internal/operations/org_headless_characterization_test.go`にParser/Loader→read-only OperationSurfaceの局所Characterizationが存在する。**「E1が未merge」は過去の記録であり現在の状態ではない**。ただしCaseRecordの実PersistenceとProduct Readはmain参照Workspaceに未定義。
+- [#3024](https://github.com/hat47x/tei-platform/pull/3024) は**open/Draft、未merge**。現在のPR baseは旧#2681のhead `e0cfebf14d40db81bdef77d6c3e4898ed75d999f`、child headは`705933667d5b081036314a9161280323e08a64bd`。当該Childの局所E1b/E1c fixed-head CI成功（[Actions #42208159977](https://github.com/hat47x/tei-platform/actions/runs/42208159977)）は有効な履歴だが、**main統合後の同一HEAD・Repository Health/製品E2のPASSではない**。mainにはまだ`internal/operations/org_case_mapping_bridge_test.go`が存在しないことをファイル取得で確認。
+- [#3085](https://github.com/hat47x/tei-platform/pull/3085) main統合のWorkspace読込観測により、`internal/workspace/loader.go`の`ManagedFile.ReadByLoader`を確認できる。Managed Inventory→`readByLoader`は区別できるが、`readByLoader=true`は**意味解析の受理／実FunctionのQuery選択／実SQL投入／実Provider Row/Scopeの保証ではない**。三段の実消費証拠は#2823/#2586の既存責務。
+
+**実際の次の最小作業は、旧E1の再設計ではなく** (a) #3024の現main再基線化と限定CIの再実行、(b) その同じSource/Worldを参照する実Function→Query選択を具体的なProduct経路で一回実証、(c) 同じ試行の実Provider Read/Consumerへ順に伸ばすこと。#3024担当Branchの競合する編集や無断mergeはしない。
+
+### 84.2 最小の一往復を既存Sourceに固定する
+
+**変えない入力**：組織Source`organization.case_record`（Case PK=`organization.case_record.case_id`、Relation Role=`handlingUnit`）、read-only Application`org_view`、DB要求Alias`org_read`→logical DB`org_store`、#3024のコピー作業領域で追加した`persist org_store.case_record`（`public.org_case_records`）と`query org_view.case_read`。`input case_id organization.case_record_id`、SQL Source`case_read.sql`は以下の二列を返す（実Patchで文字列確認済み）。
+
+```sql
+select case_id, handling_unit_id
+from public.org_case_records
+where case_id = :case_id
+```
+
+これを**正式な生成SQLや全Tenant共通Queryの採用**とはしない。現QueryにはTenant predicateがなく、`case_id`単一PKは隔離した単一配備での説明用。物理DBの特定、Scope、行の同一性、B法人/別Tenantとの安全な分離は後続のProvider実証で決める。
+
+**最初の肯定対照**：隔離した一つの実DB/Provider試験に独立Seed（C1→D1）を置き、(1) 実Function/Contextの選択Case=C1・Query IDと入力`case_id=C1`、(2) 実行時のDB/Provider Instance、選択SQL byte/実statement+args、(3) Row/Fieldとして`case_id=C1,handling_unit_id=D1`を読み、(4) Consumerの実Outputと元の独立Expectedを同じ試行で比較する。**ResultColumnの属性Mapping成功は、Role`CaseRecord.handlingUnit`の実Traversal成立を自動的には証明しない**。Roleの必要な参照先を実際に取得/検証できた場合だけRole Claimを追加する。
+
+最初の負例は、(#3024 E1cで既に固定した)SQL-only WHERE変更による版失効、および、CaseID不在の0行とProvider未接続/未取得を分ける二つに限定する。Tenant A/B同ID・Alias二候補・Replica遅延は、単一配備の肯定対照が成立してから§79 ORG-E2-03/04と#2611既存PM反例を**そのまま再利用**する。Fixture/試験IDを追加発行しない。
+
+### 84.3 必要な受渡し欄を「存在した／実読込した／実消費した」で明示
+
+| 段階 | 既存実装から引く値／担当 | その段階が保証しないこと |
+| --- | --- | --- |
+| **Source declared** | `tei.workspace.yaml`の管理root、`ManagedFiles`、Query/SQLの原byte path+digest、World/Model Revision（#3024/#2823） | 実Parserが読んだ／Functionが選んだこと |
+| **Loader read / semantic candidate** | `ReadByLoader`、Query/typed ResultColumns・SourceContributions、同じSourceのLoad結果（#3024/#3085） | 受理済みBusiness Meaning／Providerへ投入したSQL/params |
+| **Function selected** | 具体Function Data Context/実Invoker・選択epoch、`org_view.case_read`を選んだ**実呼出し**と`case_id=C1`（#2506/#2586） | Aliasが実Provider Instanceを指したこと |
+| **Execution consumed** | Provider選択、実statement+bind値、SQL実行先、実Row/Field/Scope/Cohort/Read Epoch・結果範囲（#2622/#2611/#1163） | 全Tenantの不存在／事後Host Write許可 |
+| **Consumer observed** | 一つのRead Resultを受領した実Consumer Body/表示のC1→D1・同Attempt独立Expected（#2514/#2516） | Business Completion・Owner承認・実Write Effect |
+
+表の列は**既存Evidence/観測の接続指示**であり新Product JSON Schemaではない。Observedがない段階を仮の値や隣のPRのPASSで埋めない。`readByLoader`と`Consumption`の差、`null`とMissing、emptyとPartial、Source Revisionと実DB Snapshotの差を維持する。#3051の`CoverageComplete`は実Readが1行成功しただけで成立しない。取得済みC1の存在Claimは局所証拠になり得ても、「D1未処理Caseは0件」や「引継ぎ全件完了」は§83のRequired Set/否定依存を満たすまで`unverified`。
+
+### 84.4 先行条件・主担当・完成時の受入
+
+1. **E1親統合後の再資格化（#3024担当）**：#2681がmain済みという基線で子PRをリベース/マージ対象変更し、Case追加後4候補・Native Query/SQL Source/typed columns/Source-only WHERE変更時の失効を既存fixed-head testで再確認。合格は**E1b/E1cのみ**。元ReferenceのMembershipだけ2候補の正例を残す。新`*.tei.md`に未移行の間は旧`*.tei`限定の実証と明記。
+2. **Product初接続（#2506/#2586主担当）**：実CLI/Headlessで存在を確認したFunction/Reader入口を使い、選択したQuery ID・実bind・Provider Instance・実RowとConsumerまでを一回に接続。現時点でコード上にない`tei org read`などのCLI名を計画上の実在コマンドにしない。Function→Query未接続ならまずそこだけを実際の不足として止め、仮の合成結果で隠さない。
+3. **実Provider対象の限定受入（#2622/#2611/#2514）**：単一配備に独立C1/D1 Seedを持つ一件の実Readを検収。実Provider/SQL/Row/Field/Consumer・Scope・Expectedが同じAttemptに揃ったときだけ`one-case product read qualified`相当の限定Claimを可能とする。これは正式Tenant境界全般・Business Rule/Host Effect資格を付与しない。
+4. **後続Pressure（#2386/#2510/#1174）**：上記のRead成立後に§79/81/82の別Tenant同C1、Case移管/委任、Current Host Grant、Effect Fence/Receipt/独立再Readへ進む。OKFのAttested Computationは§83の**計算実証の候補**であり、上記一件実Readの必須実装依存にしない。新形式Authoringの移行は#3030/#3031の別工程。
+
+**停止線・状態**：#2681 main統合とmain Source実在、#3024旧HEAD E1b/E1c固定CI、#3085の`ReadByLoader`実Sourceを確認した。子PRの現main再基線化、実Product Function/Provider/SQL/Row/Consumer E2、Tenant/Owner権限、正式業務意味受理、実`*.tei.md` Parser/再資格化は**NOT RUN**。新Runner/Query Engine/Host/Org専用認可/完了判定器・Fixture正本は作らない。
