@@ -390,6 +390,16 @@ AIの自律的な作業と実行権限を区別します。AIがツールを直�
 **状態**：設計と計画の接続のみ。AIB-01〜12、実AI入力/生成精度、OS・外部LLM送信、実Provider/Host、Studio/SHO、Owner正式受理の新しい横断E2Eは**NOT RUN**。新Schema・Core enum・Acceptance Engine・Policy Engine・TEI独自Hostの採用決定ではありません。
 
 
+### `*.tei.md`統一後のAI-first Authoringと受理資格（2026-11-06追加決定）
+
+**Ownerの現行方針**：TEI向けAuthoringを`*.tei.md`へ統一し、`*.tei`の新規使用を原則停止、既存資産は段階移行する。従来の「Markdownで検討し、別`.tei`へ切出し」「`.tei.md`は標準にしない」という#2621の旧比較案は現行方針ではない。ただし**拡張子の決定とParser/Build/Studio/SHOの実対応は別資格**であり、`*.tei.md`という名称、OKFタグ、AI候補をOwner Meaning/実Runtime Grantへ昇格しない。
+
+**最小Authoring Slice**は、`*.tei.md`のSource発見→raw byte・論理Source ID・Revision固定→Seed/Manifest/Language Plugin実Selection/Pin→Section/Row/Source spanごとのRoleとRead-only解釈→根拠付きAI Candidate/独立Expected→#267 Shared Acceptance→Source保存と再Load→実Build/Consumer読取の照合とする。通常の`*.md`は説明/SHO/OKF用途として保持し、旧`*.tei`の移行は原内容の構文差・引用/Link再対応・Source SSOTを照合してから行う。単純renameや同ファイル内の一部受理をファイル全体の意味受理としない。Markdown中の指示文/コードフェンスや外部OKF metadataはAIへの命令・権限として扱わない。
+
+**既存Owner/受入**：#2621はAuthoringと配置Lint、#988/#3028はLanguage/Bootstrap、#2620はRole、#267はShared Acceptance、#2514は独立Expected、#2515/#2516は用途別外部送出、#2386と#1174はTenant/Host Grant、#2598は実Request対象。新規差分は[AI-first設計§5.5のAMF-01〜07](design/AI_FIRST_REQUIREMENT_PRESSURE_AND_HEADLESS_VERIFICATION_2026-11.md)に限定する。AIB-01〜12・#2621既設FM-01〜08・#988 BS-01〜15とCaseを二重実装しない。
+
+**状態と停止条件**：命名統一はOwnerの決定。既存`*.tei`の一括変換・Parser実対応、同一Source/Revisionでの実CLI/Writer/Consumer、OS/LLM送出、Tenant別実Provider、Host Grant/Receipt、Owner意味受理、AMF-01〜07は**NOT RUN／NOT ACCEPTED**。対応不能は明示して旧Sourceの正本性を保持し、新しい独自Host/Resolver/Registry/Parser/受理Engineを前提としない。
+
 ## 作業領域I：周辺技術との連携と本番運用の境界
 
 ### 目的
