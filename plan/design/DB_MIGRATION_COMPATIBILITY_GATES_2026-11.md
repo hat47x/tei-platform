@@ -536,7 +536,7 @@ G1〜G5で各観測は取得時点が異なる。要求するのは**同一瞬�
 
 1. 外部Migration Tool／Source Readerは既存の`HistorySnapshot`へ正規化する前に、**実Connection Target + DB Instance/Provider + Tool Source + Query Scope/Filters + 取得完結性 + CapturedAt/Revision + Grant**を個別観測する。欠けた場合は`HistorySnapshot{Entries:nil}`を「空履歴の成功」として供給しない。
 2. 内容比較`CompareHistory`を呼ぶ資格があることと、結果の`RepoApplied`が現在Gateへ使えることを分離し、後者は独立のActual Schema／Provider Effect／必要ならReader再観測を要する。`Database` の単純な文字列一致、履歴のchecksum、`CapturedAt`の新しさだけでAuthority/現在性を推測しない。
-3. HIST-03dの将来の安全実装は、（a）上流Reader/Bindingに**完全な検証責務**を置く方式、（b）比較直前のスコープ限定Validatorで不足を明示拒否する方式、の最小二案を比較する。どちらでも**新しい正本Registry・History Engine・Migration Coordinatorは導入せず**、既存の#2892/#2622/#2611に所有権を戻す。
+3. **第一候補は上流Reader/既存Bindingでの資格確認**とする。実Connection/Providerの観測を持たない`CompareHistory`へ`CapturedAt`の必須化やTool文字列照合だけを追加しても、真の取得元・ページ完結性や現在Grantは証明できないため。比較器は引き続き**取得済みEntryとRepo定義の内容比較**を責務とし、必要なら不整合な入力値の診断だけ局所追加する。Reader/Bindingで確定した観測資格をGateへ渡せない場合は、比較直前の**スコープ限定の受入チェック**を次点として評価する。ただしどちらも新しい正本Registry・History Engine・Migration Coordinatorを導入せず、#2892/#2622/#2611の既存責務でOwner判断・必要な実Provider実証を行う。
 4. 合格の実証では、正常取得／拒否／部分取得／別Instance・異なるProvider／古い観測を同一`m001`の独立Expectedで比較し、`required/supplied/observed/qualified`を個別に示す。実接続のないProviderでは「未実装・未実施」と記録する。
 
 **合流時の注意**：本節のGoテストは**現行比較器の限界のcharacterization**であり、安全なReader admissionの実装完了を示すものではない。将来`CompareHistory`自体に厳格なprovenance検査を入れる場合は、旧`RepoApplied` Expectedを拒否/不明のExpectedに**同じ統合HEADで改める**。#3018の固定HEAD`983b9ed`は今回の追加テストを**含まない**ため、過去の6/6合格をこの新テストへ流用しない。
