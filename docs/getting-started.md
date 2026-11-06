@@ -66,6 +66,8 @@ go run ./cmd/tei validate \
 
 `validate -json`の応答には`sourceRootFindings`が入ります。`tei.workspace.yaml`の`sources`に存在しないrootがあれば`severity:"error"`（`ok:false`、終了コード1）、Loaderが解釈しない未知のrootなら`severity:"warning"`です。`workspace-files`に載るがLoaderが読まない近似名のファイル（`.tei.bak`・`Application.tei`など）も`file`付きのwarningとして返します。これらはCanonical Subjectを持たないため`diagnostics`ではなく別の欄です。
 
+Workspaceがモデル要素を1つも宣言していない場合、`validate`は`WORKSPACE_DECLARES_NO_MODEL_ELEMENTS`（warning）を返します。`ok:true`のまま終了コード0ですが、`diagnostics`にこのwarningがあるため「宣言が読み込まれて検証を通った」と読み違えないでください。標準意味型（`std`）は宣言として数えません。
+
 `validate -json`の応答には`declarationCounts`が入ります。これはWorkspace自身が宣言した要素の件数で、プロセス内の標準意味型（`std`）を含みません。`ok:true`でも`declarationCounts.total`が`0`なら、そのWorkspaceはモデル要素を何も宣言していません。`model catalog`の応答にも同じ`declarationCounts`があります。標準定義だけの13件の`entries`は、利用者の宣言を意味しません。
 
 終了コードは`0`が検証成功（警告を含む）、`1`が検証不成立、`2`が入力・読込みなどの実行失敗です。`-json`で返す結果を利用するときも終了コードを確認してください。`commands`はすべてのコマンドや拡張機能を列挙する完全な登録簿ではありません。詳細とウェブやデスクトップへの接続方針は[コマンドライン優先のインターフェース設計](../plan/design/CLI_FIRST_INTERFACE_DESIGN.md)を参照してください。
