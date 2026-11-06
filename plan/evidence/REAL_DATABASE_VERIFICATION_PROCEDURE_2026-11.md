@@ -60,3 +60,17 @@ TEI_TEST_POSTGRES_DSN='postgres://…' go test ./tools/reference-expected-state-
 - 結果: PASS / FAIL（試験ごと）
 - 気づいたこと: （競合の起き方、時間、ログなど）
 ```
+
+## 7. 実行記録（2026-11-06）
+
+- 実行環境: WSL2 Ubuntu、Docker 28.3.3、`postgres:16` イメージ。使い捨てコンテナと空のデータベースを使い、終了後に削除した。DSNとパスワードは記録していない。
+- サーバー: PostgreSQL 16.14（Debian 16.14-1.pgdg13+1、x86_64-pc-linux-gnu）。
+- `tei dbcheck`: 接続成功、一時表の作成成功。
+- `go test ./tools/reference-expected-state-concurrency -count=1 -v`:
+  - 初回: `TestExpectedStateStopsTheSecondWriter` が FAIL。結果は `1 and 1` で、二人の書き手が両方1行を更新した。
+  - 原因: 試験が二人の読み手の完了を待たずに `start` を閉じていた。速い書き手が先に commit した後に、遅い書き手が新しい状態を読んで更新できた。製品のCASではなく、試験の同期不足である。
+  - 修正: 各読み手が読み終えたことを `readDone` で通知し、二人とも読み終えてから `start` を閉じる。再実行は2件とも PASS（0.344s）。
+- `go test ./tools/reference-ddl-entry -count=1`: PASS（17.801s）。新規DDLの収束、既存表への制約追加、主キーの置換・削除、制約名の変更、パーティション表、生成名、`reference/workspace` の `sales_core` 収束を含む。
+- `go test ./tools/reference-query-input-nullability -count=1`: PASS（0.799s）。欠落・明示NULL・空文字・値の区別、SQL前の拒否を含む。
+- `go test ./tools/reference-first-web-target -run '^TestOneRevisionOrderEntryE2EPacket$' -count=1 -v`: PASS（25.09s）。実PostgreSQLへのWebプロセスからの書込みと、別OSプロセスからの独立Readを通した。既存auditは `status=INCOMPLETE`、`productGate=UNQUALIFIED` で、`E2_PROVIDER_GUARANTEE_NOT_ATOMIC`、`PROVISIONAL_ACCEPTANCE_NOT_FORMAL_EVIDENCE`、`TRUSTED_FULL_HEALTH_NOT_RECORDED` を診断した。Grantとissuerは合成で、実外部Provider・正式なAuthorityではない。
+- 未実行: 実外部Provider、Host Grant/Authorityの実運用、本番データ量、実Release状態でのgate、独立Consumer。これらは[#2619の作業票](https://github.com/hat47x/tei-platform/issues/2619#issuecomment-6673122238)の環境条件が揃うまで NOT RUN とする。
