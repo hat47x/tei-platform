@@ -34,7 +34,10 @@ func InspectWithSelectedSemanticView(
 			Diagnostics: []Diagnostic{{Code: code, Slot: slot, Field: field}},
 		}
 	}
-	if len(selected) == 0 {
+	// nil means the caller supplied no selection evidence; an explicit
+	// empty slice is a valid std-only selection for data-only pipelines.
+	// Neither case proves a Project-accepted semantic closure.
+	if selected == nil {
 		return unknown("selected-semantic-view-missing", "", "")
 	}
 
