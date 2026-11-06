@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -11,6 +12,7 @@ import (
 	"tei/internal/application"
 	"tei/internal/applicationview"
 	"tei/internal/command"
+	"tei/internal/command/lifecyclesqlite"
 	"tei/internal/core"
 	"tei/internal/periodstate"
 	"tei/internal/semantic"
@@ -51,6 +53,10 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 	commandID := fs.String("command", "", "command capability to plan")
 	execute := fs.Bool("execute", false, "reference execution of the planned command")
 	periodStateFile := fs.String("period-state", "", "period state JSON for -execute")
+	lifecycleState := fs.String("lifecycle-state", "", "SQLite state file for restart-safe command lifecycle")
+	lifecycleCommand := fs.String("lifecycle-command", "", "stable command id recorded in the lifecycle state")
+	lifecycleOwner := fs.String("lifecycle-owner", "cli", "owner recorded in the lifecycle state")
+	lifecycleGeneration := fs.Int("lifecycle-generation", 1, "generation recorded in the lifecycle state")
 	var allowedCapabilities inputFlag
 	fs.Var(&allowedCapabilities, "allow-capability", "capability allowed by the reference authorizer; repeatable")
 	var inputPairs inputFlag
@@ -64,6 +70,9 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 		(*commandID != "" && *patternID == "") ||
 		(*execute && *commandID == "") ||
 		(*periodStateFile != "" && !*execute) ||
+		(*lifecycleState != "" && (!*execute || *lifecycleCommand == "")) ||
+		(*lifecycleState == "" && *lifecycleCommand != "") ||
+		(*lifecycleGeneration < 1) ||
 		(len(allowedCapabilities) > 0 && !*execute) ||
 		*root != strings.TrimSpace(*root) || *applicationID != strings.TrimSpace(*applicationID) ||
 		*patternID != strings.TrimSpace(*patternID) || *packageID != strings.TrimSpace(*packageID) ||
@@ -146,13 +155,33 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 				}
 				invoker.Periods = command.NewMapPeriodState(states)
 			}
-			result, err := invoker.Invoke(context.Background(), command.Request{
+			request := command.Request{
 				Application: core.CanonicalID(*applicationID),
 				Pattern:     core.CanonicalID(*patternID),
 				Capability:  core.CanonicalID(*commandID),
 				Inputs:      values,
-			})
+			}
+			var result command.Result
+			if *lifecycleState != "" {
+				store, openErr := lifecyclesqlite.Open(*lifecycleState)
+				if openErr != nil {
+					return fail("LIFECYCLE_STATE_FAILED", openErr.Error(), 1)
+				}
+				defer store.Close()
+				tracked := command.LifecycleInvoker{Invoker: invoker, Lifecycle: store}
+				result, err = tracked.Invoke(context.Background(), request, command.DispatchOptions{
+					CommandID:  *lifecycleCommand,
+					Owner:      *lifecycleOwner,
+					Generation: *lifecycleGeneration,
+				})
+			} else {
+				result, err = invoker.Invoke(context.Background(), request)
+			}
 			if err != nil {
+				var execution *command.ExecutionError
+				if errors.As(err, &execution) && execution.Code == "COMMAND_LIFECYCLE_REFUSED" {
+					return fail("COMMAND_LIFECYCLE_REFUSED", execution.Message, 1)
+				}
 				return fail("COMMAND_FAILED", err.Error(), 1)
 			}
 			run := referenceCommandRun{
