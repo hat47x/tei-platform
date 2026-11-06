@@ -447,3 +447,37 @@ Else absence remains unknown; no universal closed-world assumption.
 **低権限向けの停止線**：合成Referenceでも、開示資格の無いfixtureはGraphの世代・要素数・relation欠落・unsupported条件の差を公開結果に反映しない。内部関数の同一返答だけではDOM/ARIA/Count/Tool JSON/実Providerの二世界非干渉ではない（#2516）。合成の開示フラグ自体は偽造可能で、実Policy受理を代替しない。
 
 **確認・未確認**：上記はGo Sourceの静的読取と合成Node試験であり、実Go Reader→合成Graph/Tableの変換、実多項Relation／Source Anchorの往復、実CLI/Studio 4入口、実Policy/Disclosure、実Build/ETL・認知負荷の検証は**NOT RUN**。次は#1124のM0実CLIが取得した同一Source/Subject候補を、独立Reader/Expectedと比較する最小一例から始める。
+
+## 14. 2026-11-06 実CLI direct-edge観測と多項Relation再構成の停止線
+
+**研究成果の段階変更**：§13.6のGo Source静的Fit/Gapを受け、既存`cmd/tei trace`→read-only Node Consumerの小さな実Workspace縦切りを、[PR #2881](https://github.com/hat47x/tei-platform/pull/2881)の合成Referenceと独立に追加。CLIは既存の`operations.TraceWorkspace`と`modelref.TraceDirect`、SourceBridgeを使用する。本実験のために新しいReader、Relation Runtime、正本Graph、共通Host、Policy Engineを実装しない。
+
+### 14.1 同じ「関係」を扱っても識別資格が異なる
+
+| 表現または事実 | 既存実装で確認可能なもの | **導出してはならないもの** |
+| --- | --- | --- |
+| **Actual Workspace CLI Trace** | `tei.cli.trace/v0`のread-only成功、`tei.operations.trace/v0`、scope付きSubjectとdirect Edgeの`From/To/Relation`、World/SourceIndex/Trace fingerprint、resolved/unresolved、SourceNavigation | すべてのRelation instanceの`declaringScope + relationID`、多項roleと端点の完全列挙、Source closure、編集・実行資格 |
+| **Reference direct-edge observation** | 実CLI出力を既存JSON schema・scope／方向・row cardinalityで検査し、**direct-edge候補**のみ返す。traceのページ不足、誤版、解決不能を`unknown`へ退避 | 型名`Relation`を独立した業務Relation IDとして再解釈すること、直接Edge 0件から不存在を推論すること、Claim `qualified`への昇格 |
+| **Synthetic composite view** | Fixtureが明示したRelation ID／宣言scope／role配列をGraph/Tableへ損失なく投影し、fixture内の`unknown`と限定的不在を区別 | 実CLI direct Edgeを仮想的な多項Relationへ「復元できた」こと、fixtureの`subjectsComplete=true`を実Source Readerの独立証明とすること |
+| **Actual Source Closure / Disclosure** | 既存Source Index、Load、Traceの個別限定証拠と別Ownerの実Policy/Reader/Oracleの候補 | 実Sourceの全Root、Plugin未選択、外部File/Build/ETL、Current Grantが完全だという無条件の主張 |
+
+この区別はEverything is Dataの**Role型／Instance／意味解釈／Source／実現・観測**の分離と一致するが、**合成の新Core型を採用したという意味ではない**。また #2831 Self-BuildのL1/L2/L3や#2542 ETL/MFTのArtifact／Transfer Attempt／ACK／Effectは、直接Graphがあることと異なるClaimであり、横断図表の被覆合格へ加算しない。
+
+### 14.2 固定Workspaceの実証と再現手順
+
+`reference/workspace`の`semantic-relation:sales.order.customer`について、既存CLIのfull/direct traceを取得し、別のNode Consumer `reference/tei-topology-coverage/verify-cli-trace.mjs`が独立Expectedとして以下を要求する。
+
+- incoming：scope `reference-observation`の`application-pattern:order_entry.customer_reference` → `semantic-relation:sales.order.customer`。
+- outgoing：同じscopeの`semantic-relation:sales.order.customer` → `semantic-data:customer.customer`。
+- SourceNavigationは`located-navigation-only`まで。結果の`relationEntityIdentity`は`not-provided`、`multiRoleClosure`/`sourceAndPluginClosure`は`unproven`、`absentClaim`は`unknown`、`authority`は`read-only-candidate`から昇格しない。
+
+専用[GitHub Actions #42205912384](https://github.com/hat47x/tei-platform/actions/runs/42205912384)はexact source head `6b99fed018dc9cc9c44bd0cee2031aecb1939a7b`で、**Go 1.26.10実CLI→Node観測 PASS**、Node 24.21.0のSynthetic Graph/Table **31/31**とTrace境界の合成負例 **7/7 PASS**、試験前後clean treeを確認。実CLIの既存Go試験を再実装したのではなく、**別言語のConsumerに届く輸送・表示前の意味の損失／過剰昇格**を最小限検証した。Go CLIから受け取ったPrivate Source path等の生JSONをPublic Consumerへ配布しない。
+
+### 14.3 次段階の受入と優先順位
+
+1. **P0・別Owner**：[#1124](https://github.com/hat47x/tei-platform/issues/1124)のM0実CLI→同一Workbench Consumer、M1のGraph/List/Initial/Command 0/1 Inspect、M2のSource/Grant別失効は先行。今回のNode直結成功を実Workbench/DOMやOwner認可の成功へ転用しない。
+2. **P0並行・別Owner**：[#2831](https://github.com/hat47x/tei-platform/issues/2831)のGo module実閉包、実Build入力・Processとstage1駆動のre-entry、[#2542](https://github.com/hat47x/tei-platform/issues/2542)のMFT実Delivery／ImportのReceiptは別証拠として保持する。
+3. **P1・本研究**：実Source Readerに**独立のRelation宣言ID・宣言scope・roleと端点**が存在する対象を特定する。実Go Index/SourceSpanの再読取で独立Expectedを作り、その要素だけGraph/Tableへ無損失に投影できるか確認する。無いものは`unknown/partial`。二つの異なるConsumerで不足が明確化するまで新Core構造を足さない。
+4. **研究・別Owner**：[Draft #2966](https://github.com/hat47x/tei-platform/pull/2966)が人／AIの偽の不存在、到達操作数、Complect/変更波及を比較し、表示の理解負荷低減を仮説のまま測定する。今回の実CLI 2本のPASSからその優位性を推測しない。
+
+**公開境界**：この実Sourceからの読取は実PolicyのDisclosureを判定しない。外部Consumer/AI/Studioへ実データを公開する場合は[#2516](https://github.com/hat47x/tei-platform/issues/2516)が資格化したpublic sliceを先に要求し、非公開Sourceの個数、Path、診断、roleを別経路から漏らさない。独立Policy/Source/Owner Oracleが欠けるClaimは、候補または`unknown`のままとする。
