@@ -4,8 +4,10 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 
+	"tei/internal/query"
 	"tei/internal/workspace"
 )
 
@@ -110,5 +112,94 @@ func TestOrgCaseExplicitPersistenceEnablesReadCandidateOnly(t *testing.T) {
 	}
 	if len(after.Operations) != 4 || len(seen) != 4 {
 		t.Fatalf("mapping one CaseRecord must add exactly list/read, not extra permissions: %+v", after.Operations)
+	}
+	// E1c pressure: an authored Query and native SQL file are *separate* source
+	// contributions. They can be parsed and traced without a bound datasource,
+	// a Function Data Context, a real Provider call or an authorized consumer.
+	queryDir := filepath.Join(copyRoot, "applications", "org-view", "queries")
+	if err := os.MkdirAll(queryDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	querySource := `query org_view.case_read {
+    input caseId organization.case_record_id
+    datasource org_read
+    sql postgres file "case_read.sql"
+    result {
+        column case_id -> organization.case_record.case_id
+        column handling_unit_id -> organization.case_record.handling_unit_id
+    }
+}
+`
+	sqlSource := "select case_id, handling_unit_id from public.org_case_records where case_id = :caseId\n"
+	queryFile := filepath.Join(queryDir, "case_read.tei")
+	sqlFile := filepath.Join(queryDir, "case_read.sql")
+	if err := os.WriteFile(queryFile, []byte(querySource), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(sqlFile, []byte(sqlSource), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	withQuery, err := workspace.Load(copyRoot)
+	if err != nil {
+		t.Fatalf("native Loader did not accept authored CaseRecord Query: %v", err)
+	}
+	if len(withQuery.World.Queries) != 1 {
+		t.Fatalf("expected exactly one authored Case query: %+v", withQuery.World.Queries)
+	}
+	query := withQuery.World.Queries[0]
+	if query.ID != "org_view.case_read" || query.Application != "org_view" ||
+		query.Datasource != "org_read" || query.Source != strings.TrimSpace(sqlSource) ||
+		len(query.Inputs) != 1 || query.Inputs[0].Name != "caseId" ||
+		query.Inputs[0].Type != "organization.case_record_id" {
+		t.Fatalf("Case Query Source/Inputs/Datasource were not faithfully loaded: %+v", query)
+	}
+	if !reflect.DeepEqual(query.ResultColumns, []query.ResultColumnMapping{
+		{Column: "case_id", Attribute: "organization.case_record.case_id"},
+		{Column: "handling_unit_id", Attribute: "organization.case_record.handling_unit_id"},
+	}) {
+		t.Fatalf("Case Query result columns are not typed Semantic references: %+v", query.ResultColumns)
+	}
+	if loc, ok := withQuery.Sources["query:org_view.case_read"]; !ok ||
+		filepath.ToSlash(loc.File) != "applications/org-view/queries/case_read.tei" {
+		t.Fatalf("authored Query source location missing: %+v", withQuery.Sources)
+	}
+	var sqlContributed bool
+	for _, contribution := range withQuery.SourceContributions {
+		if contribution.Subject.Kind == "query" &&
+			contribution.Subject.ID == "org_view.case_read" &&
+			filepath.ToSlash(contribution.File) == "applications/org-view/queries/case_read.sql" {
+			sqlContributed = true
+		}
+	}
+	if !sqlContributed {
+		t.Fatal("native SQL file is not traced as a separate Query source contribution")
+	}
+
+	// The Query may be described, but it does not automatically create an
+	// executable Function or grant Provider/Host authority.
+	surfaceWithQuery, err := SurfaceWorkspace(copyRoot, "org_view")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if surfaceWithQuery.ModelRevision == after.ModelRevision ||
+		!reflect.DeepEqual(surfaceWithQuery.Operations, after.Operations) ||
+		!reflect.DeepEqual(surfaceWithQuery.AuthorityLimits, after.AuthorityLimits) {
+		t.Fatalf("Query must affect revision without promoting read candidates to execution: before=%+v query=%+v", after, surfaceWithQuery)
+	}
+
+	// A native SQL predicate change must invalidate the Source/Model revision
+	// even though the Semantic Query ID, datasource alias and mapping stay put.
+	if err := os.WriteFile(sqlFile, []byte(strings.Replace(sqlSource,
+		"where case_id = :caseId", "where case_id = :caseId and handling_unit_id is not null", 1)), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	sqlChanged, err := SurfaceWorkspace(copyRoot, "org_view")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if sqlChanged.ModelRevision == surfaceWithQuery.ModelRevision ||
+		sqlChanged.WorldFingerprint == surfaceWithQuery.WorldFingerprint {
+		t.Fatalf("native SQL source change must invalidate the read-only world's revision: before=%s after=%s",
+			surfaceWithQuery.ModelRevision, sqlChanged.ModelRevision)
 	}
 }
