@@ -529,3 +529,41 @@ M未受理・G許可でもMeaningを採用しない。M受理済み・G拒否な
 新しいBenchmark RuntimeやSkill評価正本は不要。#2018が経済性、#1180がRequired Obligation、#2514が独立Oracle、#2509がAI/CLI境界を担当する。M4Benchの測定効果量をTEI/TAIの期待改善率へ転用しない。
 
 **今回の追補状態**：研究と既存main Source/Issue/Draft照合によるDocs-only反証設計。CQ-01〜06、Provider→Completion評価の実接続、H2/H3四Session、Owner正式受理はNOT RUN。既存の限定Go test・PG試験を単一の製品E2Eと合算せず、#1119のCritical Path／現在のGate／既存Host/Plugin方針を維持する。
+
+
+### 10.14 11月6日Owner方針：TEI Authoringを *.tei.md へ統一する
+
+**優先関係**：11月6日のOwnerの明示判断は、従来の .tei を原則廃止してTEI対象文書を *.tei.md に寄せるというもの。現行[#2621](https://github.com/hat47x/tei-platform/issues/2621)末尾の「.tei.mdを標準化しない／.md＋OKFと独立 .tei を比較する」は**その前に記録された設計候補**であり、以後の移行先を拘束しない。一方、この判断だけから現CLIのParser/Loader/Generator/Studio/SHOが新拡張子に対応済みとも、既存Sourceを機械的に安全移行できるとも推測しない。関連する旧Issueや [.tei向けEmptyPolicy文書](https://github.com/hat47x/tei-platform/blob/main/plan/research/EMPTY_SET_COMPLETION_SEMANTICS_2026-11.md) の記録は当時の実装事実として残し、移行完了時に正しく更新する。
+
+**分ける三つの契約**：
+1. **物理Authoring意図**：末尾が *.tei.md なら「TEIで扱うことを意図したMarkdown」と機械判別しやすい。通常 *.md は一般の文章として残す。拡張子は編集対象の発見・選択の手掛かりであり、正式なRole、Language Plugin、Accepted Meaning、実行Grantの資格ではない。
+2. **文書内容と解釈**：元のMarkdown本文・表・引用・図・コードフェンス・YAML frontmatterを基本的に保持し、選ばれたRole/Profile/Source rangeを実Parserが読んだかを独立に確認。OKF v0.2のConcept Fileは末尾 .md と必須typeを持ち、tagsは任意。*.tei.md はファイル名上の意図表示とOKFの任意メタデータを併用可能だが、*.tei.mdであるだけで「OKF検証済み」と呼ばない。独自TEIフィールド・Role構文は#2621/#2620/#988で検証するまで未固定。
+3. **Meaning/Build/Effect資格**：宣言されたSource→Resolver/Language Plugin→Loader実読込→Parse/Role occurrence→Required依存照合→Owner受理→選択Build/実Consumer→現在Host Grant/Provider Effectは別。*.tei.mdへのRenameやタグ追加で一段も自動昇格させない。未読込Sourceを「Roleが存在しない」や「Ruleが0件なのでPASS」とみなさない（#2822/#2823/#2514/#1163）。
+
+**移行の負例と独立Expected**（全て提案／NOT RUN）：
+
+| ID | 入力／反例 | Expectedと担当 |
+| --- | --- | --- |
+| **MDT-01** | ordinary.md に prose・引用中のtei/Role語・Markdown表 | 明示SelectionなしにTEI実行対象へ昇格しない。通常編集の原文bytes保持。#2621/#1124 |
+| **MDT-02** | schema.tei.md に明示Role/Frontmatter、別のREADME.mdと複数Code Fence | 指定されたoccurrenceだけ解釈、未選択範囲は未消費。frontmatterのtype/tagsだけでMeaning受理や実行許可を付けない。#2621/#988/#2620 |
+| **MDT-03** | 旧 .tei が独自文法でMarkdown互換ではない | 単純RenameしてParsing成功と主張しない。必要なら明示的変換・Preview・変換損失表を提示し、原Source保持・相対参照再解決・独立ExpectedでMeaningを照合。#2621/#1920/#988 |
+| **MDT-04** | パス拡張子が変わるがbyteが同じ、またはSource A→B→A | File locator/Source occurrence/依存版/Build選択・受理範囲を再確認。byte一致だけで旧Acceptance/Artifact/Executionを再資格化しない。#2600/#1163 |
+| **MDT-05** | 非対応Plugin、未知Role、0件のTEI Source、文書中のRequired Rootが未読込 | 宣言Inventory・Loader Read・Parsed/Anchored・Required fulfilledを別記録し、空集合やUnknownを正常完了としない。#2822/#2823/#2620/#2514 |
+| **MDT-06** | Editorのno-op、局所表セル編集、CRLF/BOM/UTF-8、外部競合 | 既存Source Fidelityを流用し、通常保存の非対象bytes保持、変更Preview、再読取/再Parse、競合保留を確認。全Markdown自動整形なし。#2621/#1124/#2497 |
+| **MDT-07** | 独立Expected表と実装コードを同じ文書へ併記 | テストと生成物の配置が同じでもExpectedを実装由来で再生成せず、Source版・実消費・Mutant判別力を分ける。#1180/#2514 |
+| **MDT-08** | .tei.md文書をSHOへ取り込み、同名異内容や移動後に再開 | Source Identity/Revision/actual realpathを保持し、別Sourceへ自動再結合・再受理しない。既存SHO/MMI C-01/T2を再利用。#2621とSHO担当 |
+
+**作業順**：P0は#2621の移行先・拒否条件を明記し、現mainのSource発見・Loader・Parser・ConsumerのFit/Gapをread-onlyで測る。P1で旧 .tei と新 *.tei.md の同一公開Fixtureを選び、形式変換の必要性・再読取・Source差分・独立Expectedを確認。P2でCLI/Studio/SHO/生成Targetの実Reader資格、既存Build/Source選択への影響、旧Sourceの移行期限や互換性をOwnerが判断。新拡張子決定は採用、移行の全機械的実装・旧 .tei の具体的な廃止期限・Frontmatter標準Schemaは未採用と区別する。
+
+### 10.15 証拠の自己申告を評価器の証明と取り違えない：Completion／Role／Skillの共通停止線
+
+既存mainのCompletion評価（#2926）はCoverageCompleteやEmptyJustifiedを**呼出側入力として受け取る**。#2620/#2823のRole観測もLoaderが読んだこととRequired Rootの充足は別。#2018のSkill比較でも「選択可能」「Root読込」「必要Refs実読込」「Tool呼出し」の証拠は異なる。三つを束ねる最小不変条件は、**どのClaimにも必要な対象集合とRequired Obligationを評価対象そのものの自己申告だけから確定させない**こと。
+
+| Claim | 自己申告や局所結果だけでは不足する点 | 独立に確認すべき境界／Owner |
+| --- | --- | --- |
+| 全対象のCompletion | Targets全件・CoverageComplete・EmptyJustifiedの値 | OwnerのLと実Read集合Rの同一Scope/時点/Principal、非開示対象、否定依存。#267/#2506/#1163 |
+| Role/Sourceの完全性 | 読み込んだファイル内のRole一覧、Required=[]、validate成功 | 外部Required Rootと実Loader/Parser/Version・失効、閉包全体。#2822/#2823/#2620/#988 |
+| Skillの有用性 | Manifest/Tool一覧・Skillに同じ仕様が保存済み | 同一Taskと独立Expectedを固定し、実Load/実Tool/Consumerが受け取ったbytes・不達率と品質を分離。#2018/#2509 |
+| 本番Effectの完了 | Preview、承認文、Reference executorのcommitted、過去Receipt | 実Target/現在Grant/Provider Commit/Operation identity/別Reader/現在Consumer。#2598/#1174/#1824 |
+
+**Claim別に必要なEvidenceを決める**ための共通点検票であり、新しい横断Proof Engine／Registry／Test Runnerは作らない。OwnerのSource/Meaning受理とHostの現在Grantは常に独立。追加MDT-01〜08／各境界の同一Attempt実証はNOT RUN。今回のResearch Draftは計画だけで、既存の実PG局所PASS・局所Mutation kill・Parser局所CIを製品E2Eへ合算しない。
