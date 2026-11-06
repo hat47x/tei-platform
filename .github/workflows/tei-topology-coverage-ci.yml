@@ -119,7 +119,15 @@ jobs:
             -subject-kind semantic-relation \
             -subject-id sales.order.customer \
             -direction both -mode full > "$RUNNER_TEMP/tei_topology_trace.json"
-          node reference/tei-topology-coverage/verify-cli-trace.mjs "$RUNNER_TEMP/tei_topology_trace.json"
+          go run ./cmd/tei trace \
+            -workspace reference/workspace \
+            -scope alternate-observation \
+            -subject-kind semantic-relation \
+            -subject-id sales.order.customer \
+            -direction both -mode full > "$RUNNER_TEMP/tei_topology_trace_alternate.json"
+          node reference/tei-topology-coverage/verify-cli-trace.mjs \
+            "$RUNNER_TEMP/tei_topology_trace.json" \
+            "$RUNNER_TEMP/tei_topology_trace_alternate.json"
 
       - name: Verify exact tested checkout is still clean
         if: always()
