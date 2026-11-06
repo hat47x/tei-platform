@@ -229,3 +229,53 @@
 4. **#2389 §82/82.5／#1125/#267**：承認したBusiness Actor/職位/委任の有効時点、Hostで許可されたResource、実ProviderのRowの同一性と、手作業/外部Handoff/Ownerによる正式意味受理を最後まで独立列に保持。既存[ORG-TB-01〜10](https://github.com/hat47x/tei-platform/pull/2389)と[#1174 Fケース](https://github.com/hat47x/tei-platform/issues/1174#issuecomment-6690399598)へ割り当て、新しい組織・Command検証正本を作らない。
 
 **結論と未実証範囲**：局所`Completion`修正と局所`EffectUnknown`対応はmainへ統合済み。一方、両者を**同一TEI Source・同一受注O1・実Providerの同一Attempt・Owner受理**で通した製品検収は未実施。PR/CIごとの限定成功を寄せ集めてG1/G2合格としない。実PGでのCommit・別Connection読取、GrantとProvider実更新Rowの比較、業務受理、GUI/Consumer現在性は**NOT RUN／NOT ACCEPTED**。追加の新Status enum、Universal Authorization/Workflow/Effect Engine、独立検証基準の第二正本は作らない。
+
+<!-- tei-triad-business-projection-claim-evidence-20261107 -->
+## 11. 11/7横断追補：「読んだ・計算した・実行した・保存した・業務上成立した」を同じConsumer上で区別する（既存契約の接合のみ）
+
+### 11.1 追加するのは新たな状態機械ではなく、一つの業務結果の説明責務
+
+§7〜10では受注のPreview、Owner受理済みMeaning、Completion、Commandの認可、Provider Effect/Receiptを別々に整理した。その後のmain実装には、**外部Client/Studio/AI Harnessが受け取る結果そのものが、旧い慣習的な「成功」の意味を保証しない**という新しい具体例が増えた。基盤が報告している各事実をBusiness Procedureの状態やUI表示へ翻訳するとき、**入力元の実消費と結果の証拠上限を失わないこと**を本計画固有の接続点とする。CLI JSONの形式/互換の正本は[横断#2667 §59](https://github.com/hat47x/tei-platform/pull/2667)／[#2824](https://github.com/hat47x/tei-platform/issues/2824)へ、Commandの正式結果契約は[#1174](https://github.com/hat47x/tei-platform/issues/1174)へ委譲する。
+
+| 受注O1の利用者に説明する区分 | 現行Source/CLIで実際に観測したい値 | 当該値だけでは言えないこと |
+| --- | --- | --- |
+| **業務の定義が存在する** | Requested Source/Root、World内のSubject、Source identity、Parser/Role/Meaning Decision | `*.tei.md`の存在・管理列挙・`validate ok`・空Model Catalogで正式定義がある／ない |
+| **定義を読んで検査した** | `readByLoader`、実Parsed Occurrence/依存/対象数、必要Sourceの実消費、独立期待値の適用 | `readByLoader=true`だけで当該Function、Rule、Business Meaningを検査・実Builderが消費した |
+| **計算・業務条件を評価した** | 数量/単価/税等の入力版、Function Context/TargetSet/Coverage、`EvaluateCompletion`の理由 | Preview600や`CompletionHolds`だけで見積を発行・承認・保存・業務完了 |
+| **実行を許し、呼び出した** | 現在の主体/Resource/Grant、Required/Supplied/Enforced Guard、Executor到達、Attempt/Operation ID | Pattern/メニュー宣言、古いGrant、Command応答成功から実作用が存在した |
+| **作業単位をCommitした** | `committed`・実際のUnitOfWork種類 | `committed=true`から永続保存済み・DB Tx確定 |
+| **作用と保存を確認した** | `persisted`/`durability`、`Applied`/`differences`/`EffectUnknown`、実Provider Tx/Receipt/別Reader Postimage | `persisted=false`をDB保存と扱う、差分なし/報告空を実作用0・対象完全集合とみなす |
+| **業務上成立し公開できる** | 引継ぎ・手作業の確認、Owner受理した業務Meaning/期間・対象、Consumer現在権限・開示資格 | Resultの`ok`・Commit/ReceiptやDB Postimageだけで業務承認/完了/公開可 |
+
+### 11.2 最新mainの限定成果を同じ業務Scenarioに束縛する
+
+- [merged #3052](https://github.com/hat47x/tei-platform/pull/3052) は`model catalog -namespace`の未知/非namespace IDを`NAMESPACE_NOT_FOUND`（終了1）として分ける。存在するが構成要素が0件のnamespaceは正常空に留まる。したがってAI/Harnessによる文字列指定間違いをBusiness定義「存在しない」の証明へ転用しない。応答互換は#2824の別判定。
+- [merged #3078](https://github.com/hat47x/tei-platform/pull/3078) は`workspace-files`の管理対象に`readByLoader`、Root診断を追加し、旧`result`配列から新Objectへ変更した。これは**Byte読取りまで**の証拠で、Role/Meaning/Build消費とは違う。[merged #3092](https://github.com/hat47x/tei-platform/pull/3092)／[merged #3095](https://github.com/hat47x/tei-platform/pull/3095) のschemaVersion広告対実応答の検査がPASSしても、`v0`のまま形を変えた旧Consumerとの構造互換は自動成立しない。旧新Clientの4方向比較は#2667 §59／#2824で所有。
+- [merged #3054](https://github.com/hat47x/tei-platform/pull/3054) により参照Commandの`committed=true`は`MemoryUnitOfWork.Commit`呼出し成功を指す一方、`persisted=false`／`durability=none`である。CLI/Studioの結果を「受注を保存しました」と翻訳しない。実Provider時の`persisted`資格や本番のTransaction→独立Read対応は未採用。
+- [merged #3055](https://github.com/hat47x/tei-platform/pull/3055)／[merged #3057](https://github.com/hat47x/tei-platform/pull/3057) は、同Kind別対象への適用を`Difference`としてOperation記録・CLI/Studio結果に表示する。差分を記録しながらCommandが成功し得ることは**業務上の追加対象が正式に許可・説明されたという意味ではない**。合法なCascadeと無関係C9への更新を同じKindで自動同等に扱わない。報告`Applied=[]`の完全性とProviderの実際の作用範囲は[#1174](https://github.com/hat47x/tei-platform/issues/1174#issuecomment-6690399598)へ。
+- [merged #3042](https://github.com/hat47x/tei-platform/pull/3042)／[merged #3053](https://github.com/hat47x/tei-platform/pull/3053) は実行後の不一致や効果不明を`EffectUnknown`／`COMMAND_EFFECT_UNKNOWN`で区別する。**不明は永続化済みでも未作用でもない**。Operation IDと実Provider Receipt/再読取による回復判断を必要とし、別keyでの盲再送を許さない。
+
+### 11.3 受注O1／無関係対象C9の最小の正負対照（追加Fixture IDなし）
+
+**前提**：次は公開合成Scenarioの独立Expected候補であり、受注承認・Cascadeの業務規則として正式にOwnerが受理したものではない。旧`*.tei`の同一Revision／同一Subject／同一独立期待値を基準に、将来新`*.tei.md`を実Readerへ移した後は形式ごとに実消費を証明して比較する。
+
+| 対照 | 期待される停止・表示／許される結論 |
+| --- | --- |
+| 正しい`sales`を選択、Subject/Rule/必要入力が実消費 | 文書・Reader・Meaningの各資格を示して局所Previewを許す。ただし承認・実Effectはまだ不明 |
+| `salex`と誤記、結果0件／Unknown Root／Managed未読 | 未知指定・未消費・既知の真の空を区別し、AIが`0=契約上対象なし`を勝手に選ばない |
+| `committed=true,persisted=false,durability=none` | 「参照用作業単位のCommit成功、永続保存は未確認ではなく**この参照実行は保存していない**」と表示。業務確定済みとは表示しない |
+| 宣言したO1の更新に付随し、承認済みRelation/Ruleに従う明細のみ追加更新 | 差分の存在/対象を表示。許容範囲と実Providerの更新対象が一致すると確認できるまでは業務的な追加作用の受理を保留 |
+| O1の更新と無関係C9への同Kind更新、または`Applied`空 | `differences`／未観測として表示し、単純成功に畳まない。C9を作用させたなら実Receipt/再読取を別に記録。既存の事後報告だけでCommit取消しを推論しない |
+| Responseが`COMMAND_EFFECT_UNKNOWN`／再送拒否 | 旧Operation/Attemptを固定したReceipt Lookup・独立Postimageと必要な権限を確認。別key再送・自動承認・自動Rollbackをしない |
+| 同じ`tei.cli.workspace-files/v0`で旧配列Readerが新Objectを受信 | 当該Consumerは構造不適合として明示診断。schemaVersion文字列の一致や正常終了を業務証拠の取り込み成功にしない（実互換テストは#2824） |
+
+**業務利用者に見せる最小区分**：説明上は少なくとも「定義/入力を確認した」「試算・条件判定」「実行済みかは未確認」「保存先への作用確認」「業務承認・完了」の区別を保つ。これらは上表の**表示・検証の観点**であって新しい公開Status enumや一つの総合ゲートではない。Studio、CLI、Harness、SHOの出力形が違っても、同じ根拠を各Consumerの現在資格に基づいて説明する。業務意味・実行主体・実効果・開示権限が欠ける場合に、もっともらしい肯定文へ変換しない。
+
+### 11.4 既存Ownerへ割り付ける次の実証
+
+1. **#3030/#988/#2823/#2586**：同一Sourceに対するRequested/Managed/`readByLoader`/Parsed/Build/Function実消費の差を、旧Sourceの実Go Readから採る。新`*.tei.md`はReader未対応の間は別途fail-closedのまま。形式切替と業務Readを同一の「成功」にしない。
+2. **#2824/#1163**：受注O1の実Consumer側（CLI/Studio/AI Harness）で`schemaVersion`と実JSON形/必須Fieldを読み分け、旧新Readerの構造互換を独立Expectedで確認。Producerが`ok:true`を出しただけのProvider/evidence Claimを禁止。
+3. **#2500/#2598/#1174/#2514**：O1更新・関係明細・無関係C9を固定し、Intentに対するApplied差分のSource/Rule/Target資格と、`committed`/`persisted`/実Receipt/独立Readを同じAttemptで対照する。事前拒否と事後Unknownを分け、真のProvider Row/Operationの同一性を確認。
+4. **#1125/#267／#2389**：Business Procedureの手作業・承認対象Revision、組織上のActor/委任と現Grant、業務的なCascade許可Scopeを判断する。仮規則で合成PASSしても、人間の正式な意味受理・本番Grant/Business完了の資格へ昇格させない。
+
+**証拠上限**：各main PRの限定Go/CLI試験は既存の結果であり、本節の同一O1/C9／同一Revision/Provider/Consumerでの統合試験ではない。新Reader・旧新Clientの実互換・DB実作用と別Connection Read・本番Grant・Owner正式Business受理・新しいStudio/SHO/Harness E2Eは**NOT RUN／NOT ACCEPTED**。新たなSource/Oracle/RunPlan Registry、第二JSON Parser、万能Audit Engine、Host、業務状態表を作らない。
