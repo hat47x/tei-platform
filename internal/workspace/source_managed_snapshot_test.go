@@ -74,6 +74,35 @@ func TestLoadCapturesForwardCompatibleManagedAsset(t *testing.T) {
 	}
 }
 
+func TestManagedFilesReportActualLoaderConsumption(t *testing.T) {
+	root, _ := snapshotFixture(t)
+	writeManagedSnapshotFixture(t, root, "semantic/ignored.TEI", "not parsed\n")
+	writeManagedSnapshotFixture(t, root, "semantic/ignored.tei.bak", "not parsed\n")
+	loaded, err := Load(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := map[string]bool{
+		"semantic/model.tei":       true,
+		"semantic/ignored.TEI":     false,
+		"semantic/ignored.tei.bak": false,
+		"docs/asset.md":            false,
+	}
+	for _, file := range loaded.ManagedFiles {
+		parsed, ok := want[file.Path]
+		if !ok {
+			t.Fatalf("unexpected managed file: %+v", file)
+		}
+		if file.ParsedByLoader != parsed {
+			t.Errorf("%s parsedByLoader=%v, want %v", file.Path, file.ParsedByLoader, parsed)
+		}
+		delete(want, file.Path)
+	}
+	if len(want) != 0 {
+		t.Fatalf("missing managed files: %v", want)
+	}
+}
+
 // The capture is a Load-time authoring record, not the current filesystem.
 // Modifying the asset after Load must not change the bound artifact, while a
 // new Load observes the new bytes.

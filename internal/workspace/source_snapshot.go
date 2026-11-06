@@ -81,7 +81,8 @@ func captureManagedExtra(result *Result) error {
 		return fmt.Errorf("managed source capture requires a Load snapshot")
 	}
 	result.sourceManagedExtra = make(map[string][]byte)
-	for _, managed := range result.ManagedFiles {
+	for i := range result.ManagedFiles {
+		managed := &result.ManagedFiles[i]
 		path, err := sourceindex.NormalizeWorkspacePath(managed.Path)
 		if err != nil {
 			return fmt.Errorf("managed source %q: %w", managed.Path, err)
@@ -99,6 +100,7 @@ func captureManagedExtra(result *Result) error {
 			if !bytes.Equal(parsed, content) {
 				return fmt.Errorf("source %q changed while loading Workspace", path)
 			}
+			managed.ParsedByLoader = true
 			continue
 		}
 		result.sourceManagedExtra[path] = content
