@@ -41,14 +41,19 @@ type Qualification struct {
 }
 
 type Acceptance struct {
-	R0                         string   `json:"r0"`
-	R1                         string   `json:"r1"`
-	CandidateFingerprint       string   `json:"candidateFingerprint"`
-	ReviewFingerprint          string   `json:"reviewFingerprint"`
-	ReviewCandidateFingerprint string   `json:"reviewCandidateFingerprint"` // ReviewProjection.candidateFingerprint; identity link, not proof
-	DecisionReceipt            string   `json:"decisionReceipt"`
-	ReloadReceipt              string   `json:"reloadReceipt"`
-	Delta                      []string `json:"delta"`
+	R0                         string `json:"r0"`
+	R1                         string `json:"r1"`
+	CandidateFingerprint       string `json:"candidateFingerprint"`
+	ReviewFingerprint          string `json:"reviewFingerprint"`
+	ReviewCandidateFingerprint string `json:"reviewCandidateFingerprint"` // ReviewProjection.candidateFingerprint; identity link, not proof
+	// AcceptanceKind is the optional kind of the Host Acceptance behind
+	// DecisionReceipt (D9). "provisional" and "unspecified" (a Decision signed
+	// before the marker existed) are never formal human Acceptance, and
+	// always leave the packet INCOMPLETE. Self-declared, like the Provenance.
+	AcceptanceKind  string   `json:"acceptanceKind,omitempty"`
+	DecisionReceipt string   `json:"decisionReceipt"`
+	ReloadReceipt   string   `json:"reloadReceipt"`
+	Delta           []string `json:"delta"`
 }
 
 type Web struct {
@@ -67,6 +72,12 @@ type Web struct {
 	UnobservedControlReceipt string `json:"unobservedControlReceipt"` // N11
 }
 
+// Guarantee mirrors effectcommit.Evidence Guarantee (Level) and GuaranteeReason.
+type Guarantee struct {
+	Level  string `json:"level"`
+	Reason string `json:"reason"`
+}
+
 type Physical struct {
 	AcceptedRevision      string `json:"acceptedRevision"`
 	Datasource            string `json:"datasource"`
@@ -77,11 +88,17 @@ type Physical struct {
 	// Grant behind HostAuthorityEvidence. "provisional-grant" (D8, development
 	// only) is never G2 evidence and always leaves the packet INCOMPLETE.
 	HostAuthorityProvenance string `json:"hostAuthorityProvenance,omitempty"`
-	CommandReceipt          string `json:"commandReceipt"`
-	IndependentReadReceipt  string `json:"independentReadReceipt"`
-	RecordID                string `json:"recordId"`
-	SchemaFailureControl    string `json:"schemaFailureControl"` // S02
-	HostFailureControl      string `json:"hostFailureControl"`   // S05
+	// Guarantee is the optional atomicity declaration of the Provider that wrote
+	// the effect (effectcommit.Evidence Guarantee / GuaranteeReason), copied from
+	// the Evidence a Runner produced. It is a claim, not proof: the tool does not
+	// verify it. E2 requires it to be "atomic-with-commit"; a declaration whose
+	// level or reason says "provisional" (D10) is never G2 evidence.
+	Guarantee              *Guarantee `json:"guarantee,omitempty"`
+	CommandReceipt         string     `json:"commandReceipt"`
+	IndependentReadReceipt string     `json:"independentReadReceipt"`
+	RecordID               string     `json:"recordId"`
+	SchemaFailureControl   string     `json:"schemaFailureControl"` // S02
+	HostFailureControl     string     `json:"hostFailureControl"`   // S05
 }
 
 type Packet struct {
@@ -137,7 +154,10 @@ func Audit(p Packet, expectedHead, expectedMain string) Report {
 	// Any claim: a packet that rests on a provisional effect Grant is not
 	// qualifying evidence, whatever else it contains. The label is normalized
 	// (format/space characters removed, case and "_" folded) so that formatting
-	// or an alias cannot hide it.
+	// or an alias cannot hide it. Limit: a look-alike in another script (a
+	// homoglyph such as Cyrillic o) is not folded. Only the E2 allow-list below
+	// refuses it (as an unknown label); an E0/E1 packet carries no Physical
+	// evidence, so such a label is not detected there.
 	if normalizedProvenance(p.Physical.HostAuthorityProvenance) == "provisional-grant" {
 		add("PROVISIONAL_GRANT_NOT_G2_EVIDENCE")
 	} else if p.Claim == "E2" && !allowedHostAuthorityProvenance[p.Physical.HostAuthorityProvenance] {
@@ -146,6 +166,34 @@ func Audit(p Packet, expectedHead, expectedMain string) Report {
 		// look-alike must not pass as an ordinary Grant. The label stays a
 		// self-declaration of the packet's author.
 		add("E2_HOST_AUTHORITY_PROVENANCE_REQUIRED")
+	}
+	// Any claim: a Provider atomicity declaration that is provisional (D10) is not
+	// G2 evidence. Level and reason are normalized like the Provenance so case,
+	// space, "_" and zero-width characters cannot hide the word. Limit: as with
+	// the Provenance, a look-alike in another script is not folded.
+	if g := p.Physical.Guarantee; g != nil &&
+		(strings.Contains(normalizedProvenance(g.Level), "provisional") ||
+			strings.Contains(normalizedProvenance(g.Reason), "provisional")) {
+		add("PROVISIONAL_GUARANTEE_NOT_G2_EVIDENCE")
+	}
+	// Any claim (D9): an Acceptance recorded as provisional, or whose kind is
+	// unspecified, is not a formal human Acceptance. Normalized like the
+	// Provenance so formatting or an alias cannot hide it. A packet that omits
+	// the field is unchanged (legacy shape). Any other label, including a
+	// self-declared "formal", is unrecognized: the Store refuses "formal" too and
+	// no path issues a formal Acceptance yet. An E2 claim must NAME the kind
+	// (like the Provenance and the Guarantee): omitting it, or leaving only
+	// blank/zero-width characters, would otherwise dodge the provisional
+	// diagnosis. E0/E1 keep the legacy shape. The kind stays a self-declaration.
+	if p.Claim == "E2" && normalizedProvenance(p.Acceptance.AcceptanceKind) == "" {
+		add("E2_ACCEPTANCE_KIND_REQUIRED")
+	}
+	switch kind := normalizedProvenance(p.Acceptance.AcceptanceKind); {
+	case p.Acceptance.AcceptanceKind == "":
+	case kind == "provisional" || kind == "unspecified":
+		add("PROVISIONAL_ACCEPTANCE_NOT_FORMAL_EVIDENCE")
+	default:
+		add("ACCEPTANCE_KIND_UNRECOGNIZED")
 	}
 	if p.Claim == "E1" || p.Claim == "E2" {
 		if p.Contract.EvidenceClass != "actual-observed" {
@@ -241,6 +289,13 @@ func Audit(p Packet, expectedHead, expectedMain string) Report {
 			strings.TrimSpace(ph.IndependentReadReceipt) == "" ||
 			ph.CommandReceipt == ph.IndependentReadReceipt || ph.RecordID == "" {
 			add("E2_COMMAND_AND_INDEPENDENT_READ_NOT_CORRELATED")
+		}
+		// The Provider must DECLARE atomic-with-commit (exact label). A missing
+		// declaration (e.g. a path that emits no Evidence), "undeclared",
+		// "not-atomic" or an unknown value is incomplete. Declaring it only
+		// makes the claim visible; the audit does not verify it.
+		if ph.Guarantee == nil || ph.Guarantee.Level != "atomic-with-commit" {
+			add("E2_PROVIDER_GUARANTEE_NOT_ATOMIC")
 		}
 		if ph.SchemaFailureControl == "" {
 			add("S02_NEGATIVE_CONTROL_MISSING")

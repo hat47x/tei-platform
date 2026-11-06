@@ -629,7 +629,7 @@ old Accepted/Binding/Generation
 | Target Enforcement Boundary | 許可したResource/Effect以外を実行できないかという環境側の制約 | 業務上の正しさ、任意native codeの無害性 |
 | Execution/Observation Evidence | 実際に確認できた工程・成果・効果と、不明な区間 | 観測していない実行パスの不在の証明 |
 
-**完全な計画を持つこと**、**未宣言操作を技術的に拒否できること**、**実際にすべての操作が成功したこと**は別の保証である。Signed Manifest、Providerの`implements`自己申告、Build Hash、Source Lockだけでは、許可済み外部プロセスの隠れたネットワーク通信の不在は証明できない。Runtime権限の強制主体はTargetに応じて異なり、TEI専用共通Hostを必須としない（Open Draft [#2226](https://github.com/hat47x/tei-platform/pull/2226)）。
+**完全な計画を持つこと**、**未宣言操作を技術的に拒否できること**、**実際にすべての操作が成功したこと**は別の保証である。Signed Manifest、Providerの`implements`自己申告、Build Hash、Source Lockだけでは、許可済み外部プロセスの隠れたネットワーク通信の不在は証明できない。Runtime権限の強制主体はTargetに応じて異なり、TEI専用共通Hostを必須としない（[#2226](https://github.com/hat47x/tei-platform/pull/2226)。2026-11-02 UTCにmerge済み。方針は[ADR-0043](../adr/0043-target-native-artifacts-without-tei-host.md)）。
 
 ### 15.2 宣言、導出、実行の対応を検査する
 

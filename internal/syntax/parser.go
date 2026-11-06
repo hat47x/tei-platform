@@ -2218,8 +2218,22 @@ func (p *Parser) parseSemanticCapability(namespace core.CanonicalID) (semantic.C
 				return c, p.errAt(payloadTok, err.Error())
 			}
 			c.Outcomes = append(c.Outcomes, semantic.Outcome{Name: name, Payload: payload})
+		case "emptyPolicy":
+			if c.EmptyPolicy != "" {
+				return c, p.errAt(t, "capability emptyPolicy is declared more than once")
+			}
+			_, _ = p.next()
+			valueTok, err := p.expect(TokenIdent)
+			if err != nil {
+				return c, err
+			}
+			policy := semantic.EmptyPolicy(valueTok.Text)
+			if !policy.Valid() {
+				return c, p.errAt(valueTok, fmt.Sprintf("unsupported emptyPolicy %q (allowed: allow, requires-evidence, deny)", valueTok.Text))
+			}
+			c.EmptyPolicy = policy
 		default:
-			return c, p.errAt(t, "expected input, output, outcome, or effect")
+			return c, p.errAt(t, "expected input, output, outcome, effect, or emptyPolicy")
 		}
 	}
 	return c, nil

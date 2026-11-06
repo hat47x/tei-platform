@@ -44,6 +44,10 @@
 
 回帰試験 `TestCombinedWebTargetSourceGateLiveProcesses` は、実Shared Acceptance CLIのscratch R1から合成Readerを作り、別OSプロセスで同じWeb起動コードを動かします。R1のHTTP 200・4 Validation・Command・合成Observation、旧R0、意味同一の空行R2、Reader欠落・失効・読取障害の起動拒否を検査します。これは**試験実行ファイルへの合成Reader注入**であり、配布CLIへの真正なHost Readerの接続、人的受理、実DB保存、dispatch時のHost Grant、起動後の失効、跨ファイルの原子的読込みは未実証です。G1/G2は未合格を維持します。
 
+### 暫定の受理印（D9）
+
+`-host-acceptance-store`が返す受理は、所有者の仮承認D9により`provisional`（印のない従来のDecisionは`unspecified`）です。正式な人的Acceptanceではなく、G合格・本番配備の根拠にしません。起動時に標準エラーへ`SOURCE_ACCEPTANCE_PROVISIONAL`（または`..._UNSPECIFIED`）の警告を出し、全HTTP応答に`X-TEI-Source-Acceptance-Kind`ヘッダを付けます。実行中に受理の種別が変わると、開始時の受理と一致しないため応答を止めます。詳細と見直し条件は[`reference-host-acceptance`](../reference-host-acceptance/README.md)を参照してください。
+
 ## 受理済みSourceと実行時Host Grantは別のAuthority（#1119）
 
 通常の複合WebのHost起動経路では、Source Readerに加えて、独立した`HostEffectGrantReader`を注入できます。`Source Acceptance`が正常でも、`order_entry.submit_order`のCommandはHostの現在のEffect Grantが無い限り実行しません。HTTP入口のSource再照合に加え、実行直前のCommand Adapterが現在Sourceを再照合し、**authenticated subject / Action / Source Decision・Authority Revision / Model Revision**を一組としたHost Grantを要求します。受理失効、別Subject/Action/Revision、Grant失効、Reader欠落、Context取消は`HOST_EFFECT_GRANT_UNAVAILABLE`で状態更新前に拒否します。Host内部エラーの本文は公開しません。

@@ -57,6 +57,7 @@ go run ./tools/reference-shared-acceptance propose-qualified-reference-pattern -
 go run ./tools/reference-shared-acceptance revision -workspace DIR
 go run ./tools/reference-shared-acceptance preview  -workspace DIR -candidate FILE [-out FILE]
 go run ./tools/reference-shared-acceptance review   -workspace DIR -candidate FILE [-format text|json|html] [-out FILE]
+go run ./tools/reference-shared-acceptance compare-application-membership -before DIR -after DIR [-include-unvalidated-candidates]
 go run ./tools/reference-shared-acceptance accept   -workspace DIR -candidate FILE -expected-review-fingerprint SHA256 [-derived-out FILE] [-out FILE]
 go run ./tools/reference-shared-acceptance reject   -workspace DIR -candidate FILE [-reason TEXT] [-out FILE] [-allow-reference-baseline]
 go run ./tools/reference-shared-acceptance decisions -workspace DIR [-out FILE]
@@ -67,6 +68,22 @@ go run ./tools/reference-shared-acceptance decisions -workspace DIR [-out FILE]
 - `revision`: workspaceの現在のmodel revision（管理対象source全fileの相対pathと内容fingerprintから導出）を出力します。candidateの`baseModelRevision`にはこれを使います。
 - `preview`: sourceを一切書き換えずに、各stageの結果・Semantic Diff・impact・unresolvedを出力します。受理可能でなければ終了コード1です。
 - `review`: `preview`と同じread-only評価を使い、承認時に確認する内容をA1〜A8の順で表示します。既定は人が読むtextで、`-format json`を指定すると同じ内容を機械可読で出力し、`-format html`を指定すると同じ内容を1枚のHTMLで出力します。HTMLは外部のscript・stylesheet・font・imageを使わず、JavaScriptなしで読めます。権限差分とnative codeの残存箇所は現時点で専用評価がないため、推測で「変更なし」とせず`未評価`と表示します。
+- `compare-application-membership`: 二つのWorkspaceを読み、Semanticのsubject差分、Applicationの厳密な差分と、意味名前空間の利用順を区別しない限定候補を別々に標準出力へ表示します。候補が空でもSemanticや他の層に差分がないことを意味しません。どちらかに検証エラーがあれば既定では診断を返して終了1とし、候補を出しません。`-include-unvalidated-candidates`を明示した場合は、元の診断と`workspaceValidationPassed: false`を保持し、差分計算が可能なら未検証候補も表示しますが、終了1のままです。読込み自体に失敗した場合は続行できず、差分計算が失敗した場合も候補を返しません。`-out`は受け付けず、SourceやDecisionを変更しません。**受理用PreviewやDecisionではなく**、受理・互換性・影響なしの判定には使えません。Semantic・Application以外の層、Sourceの並び、Targetへの影響、依存の網羅性、二つのWorkspaceが固定された同時点のsnapshotであることは確認しません。Validationの宣言順と重複は保持します。
+
+この比較はSemantic差分がある場合、既存の限定的な影響候補と未解決事項も表示します。型変更では、直接の型別名・Attribute・Database Contract Query入力をexact IDで探し、変更・削除前の参照も区別して示します。推移依存、未走査の参照、保存データや移行への影響は未確認で、候補が空でも影響がないとは判断できません。
+
+`changedCollections` はWorld直下のcollectionを粗く比較した名前の一覧です。Database等の変更をSemantic・Applicationの差分が空の場合にも見落としにくくしますが、詳細な差分・依存関係・互換性の分析ではありません。検証エラーで既定の比較が停止した場合や比較に失敗した場合、この一覧から変更なしと判断できません。
+
+`contractCandidates` は変更されたDatabase Contractについて、前後それぞれのApplicationのContract要求、Application ReleaseのContract要求、reference PatternのContract Query呼び出し、Database Releaseの提供Contract、Solution ReleaseのContract gate、header-detail Binding、Executor Binding、SQL realizationの明示参照を候補として表示します。DatabaseとContractの完全一致で拾い、Queryを持つ候補にはQuery名を添えます。Contract単位の比較なので、変更箇所以外のQueryも同じContractに属せば保守的に表示します。その他の参照、動的依存、実行結果、互換性は未確認であり、候補が空でも影響なしの証明ではありません。Release記録と現在定義のmajor不一致（例：現行がv5.0でRelease記録が4.xを提供）は `validate` では診断されず、候補にだけ現れます。Solution Releaseのgateは、Application Releaseの前提としてだけ `validate` のrelease compilationで照合され、現在定義との互換majorは照合されません。どのApplication Releaseからも使われないgateは、存在しないContractを指していても `validate` が成功します。無効なWorkspaceでは既定で候補を出さず、明示的な未検証モードでも終了1と診断を維持します。
+
+`unreferencedUnsatisfiableGateCandidates` は、Solution Releaseの `database-gate` のうち、どのApplication Releaseからも前提として使われず（Database・Contract・互換majorが一致する要求がない）、かつ現在のContract定義にもDatabase Releaseにも互換majorを満たす提供がないものを、前後snapshot別に列挙します。どちらか一方だけに当てはまるgateは出しません。参照されるgateはrelease compilationで検査され、満たせるgateには提供元があるためです。これは読み取り専用の観測であり、gateの正否、実行時のDeployment状態、動的な利用者、Providerの動作を示しません。候補が空でも問題なしの証明ではありません。無効なWorkspaceでは既定で候補を出さず、明示的な未検証モードでも終了1と診断を維持します。
+
+`applicationReleaseContractCandidates` は、Application Releaseが宣言したContract要求のうち、互換majorが現在定義のmajorと異なるものだけを前後snapshot別に列挙します。minorの差は含めません。現在定義に存在しない要求は既存の `APPLICATION_RELEASE_CONTRACT_NOT_CURRENT` が扱うため、候補では繰り返しません。現行Referenceでは候補は空です。現在のApplication要求が満たされていれば `validate` は成功するため、履歴Release側の `^4` と現在のv5.0のような向きの不一致を読み取り専用で可視化します。契約の存在・所有者だけを検査する既存診断を置き換えず、受理にも接続しません。動的な利用者、実行時のDeployment状態、Providerの動作は未確認であり、候補が空でも履歴Releaseの安全性を示しません。無効なWorkspaceでは既定で候補を出さず、明示的な未検証モードでも終了1と診断を維持します。
+
+`databaseReleaseContractCandidates` は、各Databaseの各major系統で最新のReleaseが提供するContractのうち、majorが現在定義より古いものを前後snapshot別に列挙します。同一系統の履歴Releaseをすべて繰り返すと同じ古い状態を重複して報告するため、系統ごとの最新Releaseだけを観測します。複数major系統の並行保守を隠しません。Databaseが異なれば同じmajorでも別系統として扱います。同じDatabase・同じmajorで明示的な系統識別子がない場合、候補はmajor単位で最新1件に集約され、低いversionの系統は報告されません（過小報告）。系統識別子は追加せず、別Databaseを系統の境界とする未対応境界として受理します。この制約は `authorityLimits` の `database-release-candidates-latest-per-major-line-no-explicit-line-identity` で示します。既存の `DATABASE_RELEASE_CONTRACT_AHEAD_OF_CURRENT_DEFINITION` が扱う先行方向の逆で、現在定義に存在しないContractは既存の `DATABASE_RELEASE_CONTRACT_NOT_CURRENT` が扱うため除外します。minorだけが古い提供は含めません。現在v4.2のReferenceでは候補は空で、Contractをv5.0へ上げると最新の4.2.0だけが `providedContractVersion` と `currentContractVersion: 5.0` 付きで変更後に出ます。Contractをv3.0へ下げると4.1.0と4.2.0は既存の先行警告だけになり、候補は空です。履歴Releaseの正否、実行時のDeployment状態、データ移行、Providerの動作は未確認であり、空の候補は問題なしの証明ではありません。受理条件は変更しません。
+
+独立したWorkspace複製による負担比較では、無関係なContractのminor更新と対象Contractのminor更新で新しい3ビュー（gate・appRelease・dbRelease）はbaselineのまま、協調したmajor更新でdbReleaseが2件・appReleaseが1件だけ増え、未使用gateの追加でgateが1件だけ増えました。要求を更新しないmajor変更は既定で終了1・候補0件、`-include-unvalidated-candidates` でも終了1とエラー診断を維持します。対象は合成Referenceの5シナリオに限られ、実変更履歴や実利用者の負担を示しません。
+
 - `accept`: CLIからauthoritative sourceを更新する場合は、先に`review`で得た`reviewFingerprint`を`-expected-review-fingerprint`へ必ず渡します。同じ検査とReview Projectionを最初から作り直し、fingerprintが一致して受入検査も通った場合だけsourceを更新します。更新後はtoolを介さない共有loaderで再読込し、Previewが示した差分どおりか・Validationが通るか・派生物を決定論的に再生成できるかを確認します。一つでも満たさなければ元のsourceへ戻します。`-derived-out`にaccepted sourceから再生成したCanonical World JSONを書き出せます。
 - `reject`: authoritative sourceを変更せず、退けたcandidateをcontent-addressed Decisionとして`.tei/decisions/`へ記録します。staleなcandidateも退けられ、基準revisionとcurrent revisionの食い違いをDecisionへ残します。Decision ledgerはmanaged sourceではないためmodel revisionを変えません。Gate B / Gate Cのreference baselineへ記録する場合だけ`-allow-reference-baseline`が必要です。
 - `decisions`: accepted / rejected Decisionの記録を、現在のworkspaceと照合して出力します。workspace全体のrevision、Decisionが書いたsourceの有無・現在性、判断時に使ったEvidenceの現在性を別々に確認します。
