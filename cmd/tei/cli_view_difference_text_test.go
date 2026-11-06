@@ -14,10 +14,11 @@ import (
 // output can see an unresolved difference without opening the operation log.
 func TestWriteReferenceRunTextShowsDifferences(t *testing.T) {
 	run := referenceCommandRun{
-		Mode:      "reference",
-		Plan:      applicationview.CommandPlan{Capability: "sales.delete_order", Label: "delete_order"},
-		Effect:    &semantic.DataEffect{Kind: semantic.DataEffectDelete, Data: "sales.order"},
-		Committed: true,
+		Mode:              "reference",
+		Plan:              applicationview.CommandPlan{Capability: "sales.delete_order", Label: "delete_order"},
+		Effect:            &semantic.DataEffect{Kind: semantic.DataEffectDelete, Data: "sales.order"},
+		Committed:         true,
+		AppliedUnobserved: true,
 		Differences: []command.Difference{{
 			Code:     command.DifferenceAdditionalScope,
 			Declared: semantic.DataEffect{Kind: semantic.DataEffectDelete, Data: "sales.order"},
@@ -30,6 +31,9 @@ func TestWriteReferenceRunTextShowsDifferences(t *testing.T) {
 	}
 	if !strings.Contains(out.String(), "difference: additional-scope (delete sales.order_line beyond delete sales.order)") {
 		t.Fatalf("output=%s", out.String())
+	}
+	if strings.Contains(out.String(), "difference-check") {
+		t.Fatalf("observed run printed a not-observed line: %s", out.String())
 	}
 }
 
@@ -46,6 +50,26 @@ func TestWriteReferenceRunTextOmitsDifferencesWhenNone(t *testing.T) {
 		t.Fatalf("code=%d err=%v", code, err)
 	}
 	if strings.Contains(out.String(), "difference:") {
+		t.Fatalf("output=%s", out.String())
+	}
+}
+
+// TestWriteReferenceRunTextMarksUnobservedCheck checks that a run whose
+// executor did not enumerate its operations says so, so an empty difference list
+// is not read as "no difference was found".
+func TestWriteReferenceRunTextMarksUnobservedCheck(t *testing.T) {
+	var out bytes.Buffer
+	run := referenceCommandRun{
+		Mode:              "reference",
+		Plan:              applicationview.CommandPlan{Capability: "sales.submit_order", Label: "submit_order", Effect: &applicationview.CommandEffect{Kind: "update", Data: "sales.order"}},
+		Effect:            &semantic.DataEffect{Kind: semantic.DataEffectUpdate, Data: "sales.order"},
+		Committed:         true,
+		AppliedUnobserved: true,
+	}
+	if code, err := writeReferenceRunText(&out, run); err != nil || code != 0 {
+		t.Fatalf("code=%d err=%v", code, err)
+	}
+	if !strings.Contains(out.String(), "difference-check: not observed") {
 		t.Fatalf("output=%s", out.String())
 	}
 }

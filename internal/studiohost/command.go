@@ -36,6 +36,9 @@ type CommandRunValue struct {
 	// Differences keeps the applied operations the declaration does not
 	// describe, so the view can show the gap beside the effect.
 	Differences []command.Difference `json:"differences,omitempty"`
+	// AppliedUnobserved is true when the executor did not enumerate its
+	// operations, so `differences` being empty is "not observed".
+	AppliedUnobserved bool `json:"appliedUnobserved,omitempty"`
 }
 
 // CommandRunResponse is the result of a reference execution.
@@ -111,6 +114,14 @@ func recordDifferences(records []command.OperationRecord) []command.Difference {
 	return records[len(records)-1].Differences
 }
 
+// recordAppliedUnobserved reports whether the executor said what it applied.
+func recordAppliedUnobserved(records []command.OperationRecord) bool {
+	if len(records) == 0 {
+		return true
+	}
+	return records[len(records)-1].AppliedUnobserved
+}
+
 func (h *ReadOnly) executeCommand(workspaceID, applicationID, patternID, capabilityID string, inputs, periods map[string]string, allowed []string, attempt *command.DispatchOptions) CommandRunResponse {
 	loaded, failure := h.loadWorkspace(workspaceID)
 	if failure != nil {
@@ -169,14 +180,15 @@ func (h *ReadOnly) executeCommand(workspaceID, applicationID, patternID, capabil
 		return CommandRunResponse{Failure: &Failure{Code: "COMMAND_FAILED", Stage: "command", Message: err.Error()}}
 	}
 	return CommandRunResponse{OK: true, Value: &CommandRunValue{
-		Plan:        plan,
-		Mode:        "reference",
-		Outcome:     result.Outcome,
-		Effect:      result.Effect,
-		Committed:   true,
-		Persisted:   false,
-		Durability:  "none",
-		Records:     recorder.Records,
-		Differences: recordDifferences(recorder.Records),
+		Plan:              plan,
+		Mode:              "reference",
+		Outcome:           result.Outcome,
+		Effect:            result.Effect,
+		Committed:         true,
+		Persisted:         false,
+		Durability:        "none",
+		Records:           recorder.Records,
+		Differences:       recordDifferences(recorder.Records),
+		AppliedUnobserved: recordAppliedUnobserved(recorder.Records),
 	}}
 }
