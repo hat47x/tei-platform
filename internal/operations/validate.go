@@ -19,6 +19,10 @@ type WorkspaceValidation struct {
 	Diagnostics            []workspace.ProjectedDiagnostic
 	WorldFingerprint       string
 	SourceIndexFingerprint string
+	// Declarations counts the Workspace-authored declarations. An empty
+	// Workspace has Total 0 even though the standard semantic prelude is
+	// loaded into World.Semantics (#2822).
+	Declarations DeclarationCounts
 }
 
 func (r WorkspaceValidation) HasErrors() bool {
@@ -85,5 +89,6 @@ func ValidateWorkspace(root string) (WorkspaceValidation, error) {
 		Diagnostics:            workspace.ProjectDiagnosticsWithLoadedDuplicates(validation.Validate(loaded.World), index, loaded),
 		WorldFingerprint:       worldFP,
 		SourceIndexFingerprint: sourceFP,
+		Declarations:           CountDeclarations(loaded.World),
 	}, nil
 }
