@@ -230,9 +230,10 @@ Webアプリケーションでは、UI構成キットだけでなく、HTTP要�
 | 実装と固定資格 | Projectに表示してよい限定事実 | 表示してはならない昇格 |
 | --- | --- | --- |
 | **新Markdown Source Admission**：[Draft #3031](https://github.com/hat47x/tei-platform/pull/3031) HEAD 63953ccbの局所CIは、対象外扱いで*.tei.mdを黙って通す代わりに未Bindingを診断するGuardのfocused/Workspace試験が成功 | 「TEI向けMarkdown Sourceを検出したが、Parser未Bindingのため解釈・構成には使えない」。旧*.tei処理の互換と区別 | Rawファイル発見、validateの一部成功、Guard PASS→Markdown Parser/Meaning/Plugin選択の実資格 |
+| **WorkspaceのRoot診断**：main統合[#3073](https://github.com/hat47x/tei-platform/pull/3073)は未知/不存在のsources root、既存Loaderが読まない近似名ファイルへ診断を追加 | 実Loaderの既知範囲でroot存在・綴り・対象外に気付ける。sourceRootFindingsとvalidateの診断理由を示せる | root findings 0件・declarationCounts>0・validate ok→全Required Source/Import/Provider Readの完全性、*.tei.md実解釈の成功 |
 | **Grantの発行・宣言境界**：mainへmerge済み[#3032](https://github.com/hat47x/tei-platform/pull/3032)のissuedBy、[#3035](https://github.com/hat47x/tei-platform/pull/3035)のaccess.Ground（Capabilityの宣言、論理Scope→実Path解像、ResolvedByの記録） | 「宣言されたCapability・Resource・Access範囲との整合を検査した」。主張したissuerと解像根拠、実Scopeを提示 | 発行者名/ResolvedByが文字列で一致→発行・解像の真正性、Host/IdPの現在権限、Tenant全Scopeの許可 |
-| **Consumer側の発行照合**：[PR #3038](https://github.com/hat47x/tei-platform/pull/3038) はまだopenで、参照Export Toolが -grants と -declaration を共に受けた場合にaccess.Groundを確認する任意経路を追加 | Consumer側検査を有効にした実Invocationだけ「宣言照合を要求した」と表示する候補 | Provider/Consumerすべてがこの検査を実施する、任意フラグなしも有効なGrant、本番書込みが正当に許可された |
-| **Command実行時のAuthorizationとApplied**：main merge済み[#3034](https://github.com/hat47x/tei-platform/pull/3034)の既存規則Adapterと[#3033](https://github.com/hat47x/tei-platform/pull/3033)のAppliedOperation | この参照Command入口でCaller提供Authorizerが何を許したか、Appliedを列挙するExecutorでは何を実適用として報告したか | Menu/Patternの表示→実行許可、Appliedの空欄→副作用なし、Reference Record操作の記録→実DB Commit/Provider Receipt |
+| **Consumer側の発行照合**：main統合[#3038](https://github.com/hat47x/tei-platform/pull/3038)の任意 -grants/-declaration、[#3075](https://github.com/hat47x/tei-platform/pull/3075)の共通GroundFile。[#3047](https://github.com/hat47x/tei-platform/pull/3047)は宣言権限と発行権限の局所照合 | 実Invocationが照合を明示したとき、その範囲の宣言整合を確認済みと表示できる。参照GrantAuthorizerがCommandテストをPASSした事実も区別 | 任意照合が全Consumerで強制済み、GrantAuthorizerがCLI/Studio/本番Hostへ配線済み、issuer/ResolvedByが真正、本番Effectが認可済み |
+| **Command実行時の認可・Effect**：main統合[#3034](https://github.com/hat47x/tei-platform/pull/3034)の旧規則Adapter（[#3064](https://github.com/hat47x/tei-platform/pull/3064)で依存方向を整理）、[#3042](https://github.com/hat47x/tei-platform/pull/3042)の必須認可/期間検査、[#3055](https://github.com/hat47x/tei-platform/pull/3055)/[#3068](https://github.com/hat47x/tei-platform/pull/3068)のDifferences・Applied未観測、[#3054](https://github.com/hat47x/tei-platform/pull/3054)のpersisted/durability | 参照Commandが受けたRequired Guard、宣言効果と列挙済みAppliedとの差、観測の有無、Unit-of-work完了/永続性を独立提示できる | Menu表示＝実行許可、Applied空＝差分0/副作用0、committed:true＝DB永続保存、unknown効果＝安全再送、参照Test＝実Provider/Receipt |
 | **テスト判定基準の命名**：main merge済み[#3039](https://github.com/hat47x/tei-platform/pull/3039)/[#3040](https://github.com/hat47x/tei-platform/pull/3040) | 人間向け文書では「独立期待値／独立検証基準／テスト判定基準」を使う。DB製品は「Oracle Database」と表す | 既存コード識別子、履歴のGit SHA/パス、Fixtureの機械的な全面改名。過去の試験結果を新しいHeadのPASSに加算 |
 
 **停止線を一つに見せない**。実際の必要関係は次のとおり。
@@ -242,4 +243,21 @@ Webアプリケーションでは、UI構成キットだけでなく、HTTP要�
 - **Effectを持つPlugin**：現在の対象Action/Tenant/Resource/Scopeで、発行主体の真正性（未実証なら未資格）、宣言と実解像、Consumer側の実検査有無、実Host/Provider現在強制、Applied/Receipt/独立Readerを別照合する。PreflightでGrantがあってもCommit時の撤回発効点が分からなければunknownを維持。#3032/#3035/#3034の限定Go実装から、未検証の本番発行者署名・完全な権限チェーンを推論しない（#951/#1174/#2516）。
 - **Reader不完全・適用操作不明**：Providerが未取得・部分的・非開示なら0件を「不存在」と解釈しない。Appliedを返さないExecutorの空値は「未報告」であり、「副作用ゼロ」ではない。同一AttemptのCoverageとEffectを別の実観測で検証する。
 
-**優先・Owner**：D1静的Link/Invoke（#1251/#951）を最小の次実装とし、Source Readerの正式移行（#2667/#3030/#2823/#988）と、権限の実効・発行真正性/Receipt（#1174と既存Access Owner）は別レーンで進める。#3038未merge、#3031未mergeの新機能をmainへ存在すると記述しない。上記テスト結果は各PRの報告された範囲を参照したもので、今回新たなGo/OS/DB E2E、実Grant署名、Owner意味受理を実施していない。第二Registry/Host/Status API/検証基準正本は設けない。
+**優先・Owner**：D1静的Link/Invoke（#1251/#951）を最小の次実装とし、Source Readerの正式移行（#2667/#3030/#2823/#988）と、Grantの真正性・Host/Receipt（#1174と既存Access Owner）は別レーンで進める。#3038/#3075/#3047/#3042/#3054/#3055/#3068/#3073はmainへ統合済み。ただし#3031の未Binding GuardはDraft未統合であり、新Markdown Parserがmainで稼働したとの主張はしない。今回の新Go/OS/DB E2E、署名付き実Grant、Owner意味受理はNOT RUN。第二Registry/Host/Status API/検証基準正本は設けない。
+
+
+<!-- tei-composition-claim-interpretation-after-reference-command-20261107 -->
+### 実装が進んだ後も資格を強め過ぎないための一試行の対照（既存Independent Expectedの投影）
+
+参照Commandで順に、(a)宣言されたCapability/Grantの照合、(b)実行時Guard、(c)宣言した効果、(d)報告されたApplied・差分、(e)CLI/Studioのcommitted/persisted/durability、(f)Operation/Receiptと独立Readを表示する場合、**全欄が埋まっていても同じTarget/Tenant/Source/Attemptを参照すること**が必要。個別PASSの寄せ集めを一つの『実行済み』にしない。
+
+| 既存の限定対照 | Project側の判定 | 未証明のこと |
+| --- | --- | --- |
+| Source rootが未知／未読込だがResultは空 | Source coverage未確立として保留。既知空Workspace（宣言0件）と区別 | 対象業務にDataが存在しないという確定 |
+| CallerがGrant/宣言を供給しCommand側で照合PASS | Scope適合の局所検査として表示。真のissuer/Host現在強制は不明 | Grant真正性、承認済みConsumer、別Tenant許可 |
+| Declared effectあり、Appliedを列挙しないExecutorが成功 | AppliedUnobservedとして表示。差分がないのではなく比較不能 | 副作用ゼロ、書込み範囲正確、実DB効果 |
+| 参照Unit-of-workでcommitted:true・persisted:false、durability:none | Unit-of-work完了の限定表記、保存は未確認 | 永続DB Commit、外部Receiverの受領 |
+| Effect不明・同Owner/Generationでの再Submit要求 | COMMAND_EFFECT_UNKNOWN と再送拒否を区別し、既存Receipt/独立Readによる回復へ | 未適用と断定、別Keyで安全再送、無条件Rollback |
+| Commandでread-only datasource宣言へWrite要求 | [#3070](https://github.com/hat47x/tei-platform/pull/3070)の宣言上の事前拒否を表示 | DB/Provider側での実強制、宣言外Dataの可否 |
+
+これらは#1174/#2514/#2823/#2586の既存独立期待値・実観測Ownerに渡す追加対照であり、新しいOperation State、UI Schema、Proof Storeを定義しない。Appliedの差分がある状態で参照処理が成功しても、差分が解消済みとは表示しない。純粋quoteのD1 Link/Invoke測定には、DBの存続・Grant/Receipt/Appliedを無関係な必須条件として追加しない。**追加Product横断試験はNOT RUN**。
