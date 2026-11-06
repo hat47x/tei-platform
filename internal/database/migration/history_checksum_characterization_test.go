@@ -1,6 +1,8 @@
 package migration_test
 
 import (
+	"crypto/sha256"
+	"fmt"
 	"testing"
 
 	"tei/internal/core"
@@ -122,4 +124,48 @@ func TestHIST02CanonicalChecksumDoesNotCertifyDerivedRealizationBytes(t *testing
 	}
 	// The source fixtures contain different generated SQL. Whether either
 	// realization was actually executed is UNKNOWN, not implied by RepoApplied.
+}
+
+// HIST-02c: the repository and tool may hash different byte sequences.
+// The tool digest in this fixture hashes the realized SQL bytes, while
+// Fingerprint hashes the canonical Definition and excludes Realizations.
+// This is a synthetic algorithm mismatch; no external tool was observed.
+func TestHIST02DifferentDigestBasesLookLikeDefinitionDivergence(t *testing.T) {
+	db := core.MustCanonicalID("sales_core")
+	sql := "ALTER TABLE orders ADD COLUMN audited INTEGER;"
+	def := migration.Definition{
+		ID:           "m001",
+		Database:     db,
+		Recovery:     migration.RecoveryForwardFix,
+		Steps:        []migration.Step{{Kind: migration.StepVerify, Description: "stable canonical definition"}},
+		Realizations: []migration.Realization{{Statements: []string{sql}}},
+	}
+	canonicalDigest, err := migration.Fingerprint(def)
+	if err != nil {
+		t.Fatal(err)
+	}
+	toolDigest := fmt.Sprintf("sha256:%x", sha256.Sum256([]byte(sql)))
+	if toolDigest == canonicalDigest {
+		t.Fatal("invalid fixture: distinct digest bases unexpectedly match")
+	}
+
+	history := migration.HistorySnapshot{
+		Database: db,
+		Tool:     migration.ToolAtlas,
+		Entries:  []migration.AppliedMigration{{
+			Database: db,
+			ID:       def.ID,
+			State:    migration.AppliedSucceeded,
+			Checksum: toolDigest,
+			Tool:     migration.ToolAtlas,
+		}},
+	}
+	got, err := migration.CompareHistory(db, []migration.Definition{def}, history)
+	if err != nil || len(got.Entries) != 1 || got.Entries[0].State != migration.RepoDiverged {
+		t.Fatalf("expected raw checksum comparison to say diverged: %#v err=%v", got, err)
+	}
+	// Source Definition is identical on both sides of this comparison.
+	// A mismatch of algorithm / byte basis does not prove definition drift.
+	// The independent Gate Expected for H1 is UNKNOWN until digest-basis
+	// equivalence is established. H2/H3 also remain unqualified.
 }
