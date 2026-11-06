@@ -16,7 +16,8 @@
 
 ## 3. 現在の結論（先に要約）
 
-- `world`を除く、`tei commands`が広告する読取り専用JSONコマンドは`tei.cli.<command>/v0`を持ち、成功時は`ok: true`と`result`、失敗時は`ok: false`と`error.code`を標準出力のJSON 1件で返す。終了コードの意味（0/1/2）は従来どおり。
+- `world`を除く、`tei commands`が広告する読取り専用JSONコマンドは`tei.cli.<command>/v0`を持ち、失敗時は`ok: false`と`error.code`を標準出力のJSON 1件で返す。終了コードの意味（0/1/2）は従来どおり。
+- **`ok`/`result`を持つ成功時の形は、`version -json`には当てはまらない。** `version -json`は`ok`を持たず、build識別（`goVersion`等）を`schemaVersion`と同じ階層に並べて返す。`tei commands`のdiscoveryは`version`を`jsonContract: "enveloped"`と広告しているため、呼び手は成功時に`ok`があると仮定できない。この食い違いは未決（#2824）で、本節は実装の現状を記す。
 - `world`は例外で、`tei.cli.*`のエンベロープを持たない。`tools/reference-critical-path-evidence-audit/live-r1-smoke.mjs`が`tei world`の生標準出力SHA-256を受理済みDecisionの`derivedWorldSha256`と照合するため、インデントやエンベロープの追加は証跡照合と両立しない。`world`は内部・証跡用途であり、外部の安定JSON契約の対象外とする（2026-11-02 Owner判断）。
 - 実測では、製品CLI（`cmd/tei`）が外部のGo moduleに依存しないのと同様に、**広告された読取りコマンドのうち`tei.cli.*/v0`を持たない出力は、内部構造体の変更がそのまま外部向け変更になる**。`world`はこの例外として扱い、その他のコマンドは投影型で版固定する。
 
