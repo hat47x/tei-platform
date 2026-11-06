@@ -117,3 +117,78 @@ func TestContractCandidatesBeforeAfterExactIdentityAndRemoval(t *testing.T) {
 		t.Fatalf("same-contract other Query must remain a conservative candidate with its own identity: %+v", candidates)
 	}
 }
+
+// 現在のApplication定義とApplication Releaseは別の宣言である。同じContract
+// 要求を両方が持つことはあるが、Releaseだけが履歴として残る場合や、現在定義
+// だけが次のReleaseより先に変わる場合がある。片方へ統合すると参照を見落とす
+// ため、候補は2種類を独立に保持する。
+func TestContractCandidatesApplicationDefinitionAndReleaseAreIndependent(t *testing.T) {
+	requirement := []application.DatabaseRequirement{{
+		Alias: "db", TargetDatabase: "sales",
+		RequiredContracts: []database.ContractRequirement{{ContractID: "sales.order", CompatibleMajor: 2}},
+	}}
+	definition := func(w *ir.World) {
+		w.Applications = []application.Application{{ID: "app", Databases: requirement}}
+	}
+	release := func(w *ir.World) {
+		w.ApplicationReleases = []apprelease.Definition{{Application: "app", Version: "1.2.3", Databases: requirement}}
+	}
+	both := func(w *ir.World) {
+		definition(w)
+		release(w)
+	}
+	world := func(major int, mutate func(*ir.World)) ir.World {
+		w := ir.World{Databases: []database.Database{{ID: "sales", Contracts: []database.Contract{
+			{ID: "sales.order", Version: database.ContractVersion{Major: major}},
+		}}}}
+		mutate(&w)
+		return w
+	}
+	consumers := func(t *testing.T, mutate func(*ir.World)) ([]ContractConsumerCandidate, map[string]int) {
+		t.Helper()
+		candidates, err := ContractCandidates(world(1, mutate), world(2, mutate))
+		if err != nil || len(candidates) != 1 || candidates[0].Change != "changed" {
+			t.Fatalf("changed contract candidate: %+v, %v", candidates, err)
+		}
+		counts := map[string]int{}
+		for _, c := range candidates[0].Consumers {
+			counts[c.Snapshot+"/"+c.Kind]++
+		}
+		return candidates[0].Consumers, counts
+	}
+
+	// 現在定義だけが要求する。
+	got, counts := consumers(t, definition)
+	if counts["before/application-contract-requirement"] != 1 || counts["after/application-contract-requirement"] != 1 {
+		t.Fatalf("current definition declaration dropped: %+v", got)
+	}
+	if counts["before/application-release-contract-requirement"] != 0 || counts["after/application-release-contract-requirement"] != 0 {
+		t.Fatalf("missing Release was invented as a declaration: %+v", got)
+	}
+
+	// Releaseだけが要求する。
+	got, counts = consumers(t, release)
+	if counts["before/application-release-contract-requirement"] != 1 || counts["after/application-release-contract-requirement"] != 1 {
+		t.Fatalf("Release declaration dropped: %+v", got)
+	}
+	if counts["before/application-contract-requirement"] != 0 || counts["after/application-contract-requirement"] != 0 {
+		t.Fatalf("missing current definition was invented as a declaration: %+v", got)
+	}
+
+	// 両方が同じ要求を宣言しても、別の宣言として両方残す。
+	got, counts = consumers(t, both)
+	if len(got) != 4 {
+		t.Fatalf("two kinds x two snapshots expected: %+v", got)
+	}
+	want := map[string]string{
+		"before/application-contract-requirement":         "app/db",
+		"after/application-contract-requirement":          "app/db",
+		"before/application-release-contract-requirement": "app@1.2.3/db",
+		"after/application-release-contract-requirement":  "app@1.2.3/db",
+	}
+	for _, c := range got {
+		if key := c.Snapshot + "/" + c.Kind; want[key] != c.ID {
+			t.Fatalf("declaration identity or kind conflated: %+v", c)
+		}
+	}
+}
