@@ -1,7 +1,7 @@
 # 複合図表の限定不在判定：read-only合成Reference
 
 - **状態**：評価用Reference。新Core型・正式なProjectionWitness/Source Reader・製品API・権限契約ではありません。
-- **設計根拠**：[トポロジー・複合図表・開発パイプライン設計 §9〜11](../../plan/design/TOPOLOGY_COMPOSITE_VIEWS_AND_PIPELINE_2026-10.md)。
+- **設計根拠**：[トポロジー・複合図表・開発パイプライン設計 §9〜13](../../plan/design/TOPOLOGY_COMPOSITE_VIEWS_AND_PIPELINE_2026-10.md)。
 - **既存責務**：#1120 ModelRef、#1124 Studio Consumer、#2620 標準データ＋Role、#943 Build、#951 Provider、#2516 Disclosure、#267 Source Acceptance。第二Resolver、Host、Source正本は設けません。
 
 ## 実験の問い
@@ -18,6 +18,11 @@
 node --test reference/tei-topology-coverage/coverage.test.mjs
 ```
 
-Node.js 22以上の組込みtest runnerだけを用います。実験ケースは、同kind/ID異scope、複数View、三項関係role保持、閉じた集合内の条件付き不在、欠落role、Graph/Table欠落、opaque/省略/未固定Reader/開示不明、Source版・Graph/Table公開版の混在、レイアウトだけの差分、欠落端点、非開示下の現在情報です。
+Node.js 22以上の組込みtest runnerだけを用います。実験ケースは、同kind/ID異scope、複数View、三項関係role保持、閉じた集合内の条件付き不在、欠落role、Graph/Table欠落、opaque/省略/未固定Reader/開示不明、Source版・Graph/Table公開版の混在、レイアウトだけの差分、欠落端点、非開示下の現在情報、Table行のscopeとqualified keyの不一致、Graph旧view IDの別scope誤結合、Relation ID指定の取り違えです。Graph/Tableの各Occurrenceが整合していない場合は、欠落の証拠を作るだけでなく、存在するという合成Claimや選択候補も拒否します。
+
+
+**実行証拠（限定）**：GitHub Actions [synthetic topology P1 #42155243921](https://github.com/hat47x/tei-platform/actions/runs/42155243921) は、exact head `577bbe60d961c58e142502ab5835c9a7610214df`、Node 24.21.0で **18/18 PASS**。試験した `coverage.mjs` のGit blob `5cc3ca120e2995650bcaba1121a2416b3be8010a`、`coverage.test.mjs` のblob `6ece714d49a7b6f8dfa4ff7d376dfe4eb61e7f4d` と試験後clean treeをActions記録で確認しました。通常のRepository Health / 脆弱性確認と、**このReferenceのfocused試験が実際に走ったこと**は別証拠として記録します。
+
+**Claim上限**：`present-in-snapshot`も`absent-in-declared-snapshot`も現在のTEI Source、Provider、実ビルド、実転送、実Authorityを意味しません。ReferenceにはSource/Plugin実ReaderやPolicy評価器は含まれません。現物入力と現在の公開資格を独立確認せずにConsumerへ流用しないでください。非公開・保留・不明の違いが低権限UIに現れてよいかは既存#2516へ委ねます。
 
 **未実証**：実Go ModelRef/Source Index・TEI CLI出力との結線、Providerによる実閉包証明、実Graph Renderer/Workbench、複数Window/旧DOM、実SHO/AI、外部Effect、認知負荷削減。#1124 M0/M1を代替するテストではなく、#2352 P1の後続評価用合成試験です。実験を製品化する前に、既存型からの変換のlosslessnessと現在のReader/Policy資格を独立検証します。
