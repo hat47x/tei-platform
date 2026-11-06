@@ -25,7 +25,7 @@ func TestXTEAExampleWorkspace(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(view.Items) != 2 || len(view.Unused) != 1 || len(view.Hooks) != 1 || len(view.Commands) != 1 {
+	if len(view.Items) != 2 || len(view.Unused) != 2 || len(view.Hooks) != 1 || len(view.Commands) != 1 {
 		t.Fatalf("unexpected record view: %+v", view)
 	}
 
@@ -33,7 +33,7 @@ func TestXTEAExampleWorkspace(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !plan.Ready || len(plan.Inputs) != 1 {
+	if !plan.Ready || len(plan.Inputs) != 1 || plan.Period == nil {
 		t.Fatalf("unexpected command plan: %+v", plan)
 	}
 

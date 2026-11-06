@@ -4,7 +4,7 @@ X-TEAのローコード知見から受容した表現を、小さな作業領域
 
 ## 構成
 
-- `semantic/sales/order.tei`: 受注と明細、`submit_order`能力。
+- `semantic/sales/order.tei`: 受注と明細、`submit_order`能力、`sales.month`期間。
 - `semantic/customer/customer.tei`: 顧客。
 - `applications/order-entry/`: 一覧、単票、参照、見出し明細、command、hook、Package。
 - `applications/order-entry/queries/`: 一覧の問い合わせとSQL。
@@ -38,9 +38,30 @@ go run ./cmd/tei view \
 
 `validate`は`UNBOUND_DATASOURCE`を警告として返します。この例は環境へのデータベース束縛を持たないためです。
 
+### 期間の閉塞
+
+`sales.month`は`update`を閉期間で拒否します。
+
+```bash
+printf '{"sales.month":"closed"}' > /tmp/xtea-periods.json
+
+go run ./cmd/tei view \
+  -workspace examples/xtea-lowcode \
+  -application order_entry \
+  -pattern order_entry.order_record \
+  -command sales.submit_order \
+  -input order=ORD-1 \
+  -execute \
+  -period-state /tmp/xtea-periods.json \
+  -format text
+```
+
+`COMMAND_PERIOD_CLOSED`で拒否されます。
+
 ## 範囲
 
 - 表示・Command計画・Package投影の参照例です。
 - 実データベース、実Provider、認可、receiptは含みません。
 - `view -command -execute`は参照Executorを使うため、この例の`update`効果は記録済みデータがない状態では成功しません。
 - 受容判断は仮承認であり、最終採否は別途です。
+
