@@ -46,7 +46,7 @@ func TestCommandAdapterCommitsThroughPostgres(t *testing.T) {
 			OperationID:     fixture.req.OperationID,
 			ExpectedVersion: fixture.req.ExpectedVersion,
 			Payload:         fixture.req.Payload,
-			Effect:          &semantic.DataEffect{Kind: semantic.DataEffectUpdate, Data: "orders"},
+			Effect:          &semantic.DataEffect{Kind: semantic.DataEffectUpdate, Data: "orders.order"},
 		},
 	}
 	if _, err := invoker.Invoke(context.Background(), command.Request{
