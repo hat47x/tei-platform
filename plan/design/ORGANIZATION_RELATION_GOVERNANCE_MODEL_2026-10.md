@@ -3103,3 +3103,61 @@ Owner保留は(1)Service Subscriberに対応する論理Tenantをどこまで推
 組織Profile/Delivery Pluginを一体のData意味として構成する方針（§70）を維持し、Isolation/Provider/Targetの**実強制**をPlugin宣言やGraph表示と混同しない。Go単一バイナリを基本とする場合にも、常駐Tenant Router/専用Migration Serviceを標準Coreへ加えず、対象HostとProviderの実能力に合わせる（ADR-0036/0043/0044）。E2初回実Readより組織向けUniversal Cutoverを優先しない。
 
 **証拠と採用状況**：本節は§69〜71、ADR、現実の`scoped_postgres_reference.go`、実PG Command Reference、及び既存Issueの**Source-static照合に基づく設計追補**。ORG-XC-01〜07、新Org Case実Provider Read/Commit、Old→Newの実DB/Receipt移行、Tenant間実Transfer、Owner業務意味受理は**NOT RUN／NOT ACCEPTED**。§70〜71の既存8+12試験は実行済みに変更しない。#1119のCritical Pathとmainは維持する。
+
+## 72. Tenant Scope相対の不存在と共有Dataの開示：否定依存・実Row・送出の同一試行検収（2026-11-06、採用前）
+
+### 72.1 現物の差分と横断参照
+
+[PostgreSQL Scoped Query Fixture](../../reference/web-api-contract/fixtures/postgres_scoped_orders.sql)は物理PKを (tenant_id, order_id) とし、同じorder_idが別Tenantの別Rowとして存在できる。ところが既存の固定行はTenant A:3,9 / Tenant B:1,100であり、同一order_idの別Tenant行を返却値まで照合する試験がなかった。
+
+この不足に対し、[Draft PR #3016](https://github.com/hat47x/tei-platform/pull/3016)を現mainから独立して作成。既存の実PostgreSQL opt-in TestScopedTenantPostgresAgainstIsolatedDatabaseにTenant Bの(order_id=9,customer_id=29)を後段だけ追加し、元のAの(9,12)と対照する **48行のtest-only変更**。TrustedReadContext→AuthorizeBrowseRead→ScopedPostgresOrdersReference/SQLTenantScopeAuthority→実SQL→Consumer結果を同じ業務キーで区別する。元のFixture/Provider/Productionコードには変更なし。
+
+**この追加GoテストはGitHub保存までで、gofmt/Go test・実PG・CIの結果は未確認**。本テストはDSNなしではSKIPされる。PASSや本番のTenant隔離保証と呼ばない。これまでの限定実DB成功や合成Referenceの成功を、新しい同キー試験の実行成功に遡及適用しない。
+
+既存Ownerの参照：[#1706](https://github.com/hat47x/tei-platform/issues/1706)は0件/NULL/未取得/失敗、[#1708](https://github.com/hat47x/tei-platform/issues/1708)は複数ReaderのSnapshot整合性、[#2582](https://github.com/hat47x/tei-platform/issues/2582)はNOT EXISTS/LEFT JOIN/Top-Nの否定依存・非単調な再評価、[#1178](https://github.com/hat47x/tei-platform/issues/1178)はローカルReadと外部CLI/LLMへの出所開示の違いを所有する。
+
+### 72.2 「不存在」はTenant・Query Scope・取得時点に相対する
+
+| 観測 | 認められるClaim | 禁止する推論 |
+| --- | --- | --- |
+| 検証済みTenant A・必要Row/Field/Predicate、同じCohortのcomplete Readerで0件 | **AのそのScope/時点について0件** | 全Tenantで不存在、過去も不存在、B Privateの不存在 |
+| Aのpartial Page/一部Relation未取得/Scope不明 | unknown / incomplete | A内もNOT EXISTS=true、全件移行済み、完了 |
+| B Privateへのアクセス拒否 | 内部証拠ではdenied。Consumerへの拒否表現は別のDisclosure契約 | Bにデータがある/ないという存在情報を無権限先へ公開 |
+| Provider障害、stale Policy、異Snapshotの混合、Tenant切替後の旧Read | unqualified：必要なら再認可・再読取 | 0件・NULL・Effect 0件・保存成功へ置換 |
+
+空結果にも**否定依存**が残る。NOT EXISTS、LEFT JOIN未一致、COUNT=0、未割当てCaseなし、全件引継ぎ済み等は「どの世界のどの集合を完全に調べたか」を必要とする。必要な証拠は既存Claim/Function Data Context/Query契約から導く：Source/Relation path/Predicate、現在認可済みTenant/Row/Field Scope、Provider/DB Alias/実SQL、valid/known/Policy revision、Page/Cohort/complete、非出力依存とConsumer用途。完全性は常に**そのResource・Scope・Queryに相対する**。一般の「全システムで0件」へ昇格させない。
+
+**権限拒否と検索0件は内部では区別し、外部Consumerへの開示は別に制限する**。同じエラーメッセージを強制するという意味ではない。外部応答・ログ・Trace・件数・結果順序・エラー時間から無権限対象の存在が推測されないかは、対象DestinationのPolicy/Consumerで別検証する（#1178/#1693）。通常の組織Dataを特別な秘匿対象に一律昇格しない。
+
+### 72.3 Shared Data・Join・導出による漏洩を見落とさない
+
+明示Shared Reference Dataset、公開組織情報、共通カタログは、同じ意味モデルで通常のDataとして扱える。ただしShared Catalogを読めることは、Relationで結ばれた他Tenant Private CaseのEXISTS/COUNT、ORDER/TOP、Join Fanout、Raw metadataやSource pathを開示する資格ではない。
+
+現[Scoped PG E11/E12](../../reference/web-api-contract/POSTGRES_SCOPED_E2E.md)は、公開選択Columnの値を変えず非公開orderedAtだけを変えても、結果順序・Topが変わる**限定した推論漏洩の実例**。出力Field MaskやIsolation SQLの局所合格を全Disclosure Claimへ昇格させない。外部AIへの投影/SHO/CLI Trace/Exportを含め、Read資格とEgress資格を別列にする。
+
+Org D1→D2の責任継承、Tenant A→Bの切替、Provider DB/Region移設は別々の失効要因。古いTenant AのRead/否定結果やPreviewが後着しても、Tenant Bの現在結果・Effect Targetへ混入させない。ただし同時に開いている独立Function Instanceを無差別に失効させない（#2582）。
+
+### 72.4 独立Expectedの最小8反例（ORG-NA-01〜08、追加実行NOT RUN）
+
+| Case | 変異 | 事前に固定するExpected |
+| --- | --- | --- |
+| ORG-NA-01 | A/B双方にorder_id=9、customer_idは12/29 | Aは(9,12)、Bは(9,29)。Draft #3016の実PGで確認が必要 |
+| ORG-NA-02 | AはC1なし、BにはC1あり、A側はcomplete | 「Aの認可済みScopeで0件」のみ可。全体不存在は不可 |
+| ORG-NA-03 | AのPage1にはC1なし、後続Page不明 | A内もNOT EXISTS/全件処置済みはunknown |
+| ORG-NA-04 | AがB Private C1を指定し、Host拒否 | 内部deniedを0件扱いしない。外部へのB存在/件数/出所開示不可 |
+| ORG-NA-05 | Shared Catalogは同一、B Privateだけ追加 | A外部ConsumerのEXISTS/ORDER/COUNT等からBの変化を漏らさない |
+| ORG-NA-06 | 同じA Scopeに対するReplica/PrimaryのknownAt不一致 | 異Cohortの空結果をcompleteな否定証拠として合成しない |
+| ORG-NA-07 | Tenant AからBへ切替後、Aの遅延Read/Preview到着 | BのFunction/Intentを上書きしない。独立A Instanceは保持し得る |
+| ORG-NA-08 | ローカルRead許可、外部LLM/別Destination送出未許可 | Reader成功と実Egress許可は別。Raw/Source/Traceの無制限送出は不可 |
+
+### 72.5 実装への引渡しと中断条件
+
+1. **#1656/#1769・Draft #3016**：新規Go testのコンパイル・gofmt/vet、使い捨てPostgreSQLでSKIPなしのexact-head実行とA/Bを独立Expectedで確認。変更したテストの結果を得るまでは未合格。Scope/Customer projectionの実Fixture資格も点検する。
+2. **#2586/#2506/#2611**：実Native組織C1→Function Data Context→Provider Row/Field/Scope/Cohort→Consumer E2aを優先。別Web SQLでの局所成功はOrg Product Readの成功ではない。接続できなければ具体的な最初の未接続Edgeを明記。
+3. **#2582/#1706/#1708/#2514**：ORG-NA-02/03/06を既存独立Oracle/Query依存・Snapshot契約で検証。新Reactive/Negative Cache/Universe Engineなし。
+4. **#1178/#1693/#1656**：ORG-NA-04/05/08の特定Destination/ConsumerへのRead/拒否/送出を区別して検証。新Disclosure Engineを作らない。
+5. **#1174/#1163**：ORG-NA-07の後着・現在Grant・実Action/Commit Unknown/Receiptは同一Attemptと物理効果を別証拠で確認。
+
+**撤回線**：この条件に固有の障害を実Reader/独立Expectedで検出できない場合、共通Core Contractの追加提案を止め、局所Provider/Consumer試験に縮退する。#1119 Critical Pathは変更なし。
+
+**証拠資格**：本節はdocs-only。PR #3016はテストコード登録済み・未実行／Draft。ORG-NA-01〜08の新Go/実PG/Host/GUI/Egress E2E、組織Caseの実Product Read、Ownerの正式意味受理はNOT RUN。mainと採用済みADRは変更しない。
