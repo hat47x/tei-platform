@@ -145,7 +145,18 @@ func workspaceFilesJSON(out io.Writer, workspacePath, worldPath string, extraArg
 	if err != nil {
 		return resultLoadFailure(out, "workspace-files", err)
 	}
-	return emitResult(out, resultEnvelope("workspace-files", "", r.ManagedFiles), 0)
+	type managedFileView struct {
+		workspace.ManagedFile
+		ReadByLoader bool `json:"readByLoader"`
+	}
+	var files []managedFileView
+	if r.ManagedFiles != nil {
+		files = make([]managedFileView, 0, len(r.ManagedFiles))
+	}
+	for _, file := range r.ManagedFiles {
+		files = append(files, managedFileView{ManagedFile: file, ReadByLoader: file.ReadByLoader})
+	}
+	return emitResult(out, resultEnvelope("workspace-files", "", files), 0)
 }
 
 // sourceIndexJSON wraps the Source Index inspection. The whole-index form and

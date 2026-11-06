@@ -30,6 +30,9 @@ type ManagedFile struct {
 	Path       string `json:"path"`
 	SourceRoot string `json:"sourceRoot"`
 	Extension  string `json:"extension,omitempty"`
+	// ReadByLoader reports whether a domain loader consumed this file during
+	// this Load. It does not assert semantic validity or build consumption.
+	ReadByLoader bool `json:"-"`
 }
 
 type SourceContribution struct {
