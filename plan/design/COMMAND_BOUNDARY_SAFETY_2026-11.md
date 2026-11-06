@@ -95,7 +95,37 @@ CLIのテキスト出力は `committed: true (reference unit of work)` と `pers
 - 実Provider接続時に `committed` を「取引のCommit成功」と「独立した読取りで確認できたこと」のどちらへ対応させるか。本追記では参照実行の意味だけを固定し、実Providerの意味は未決のまま。
 - `schemaVersion` を `v1` へ上げる必要があるか。欄の追加だけなので `v0` のままと判断したが、外部読み手の互換性確認は別途必要。
 
-## 7. この文書が主張しないこと
+## 7. 効果を宣言しないCommandの `appliedUnobserved`（#3068 追補）
+
+### 見つかった誤読
+
+`OperationRecord.AppliedUnobserved` は「Executorが適用操作を列挙しなかった」ことを示す。しかし `Applied` が空になる理由は二つある。
+
+1. Executorが列挙できない（**未観測**）。
+2. 能力が効果を宣言していないので、比較する対象が無い（**比較対象なし**）。
+
+どちらも `len(result.Applied) == 0` になるため、単純な実装では2を「未観測」と表示していた。効果を宣言しないCommandでは `difference-check: not observed` が常に出る。
+
+### 決めたこと
+
+`AppliedUnobserved` は **能力が効果を宣言している場合だけ** true にする。
+
+- `plan.Effect != nil && len(result.Applied) == 0` → `appliedUnobserved:true`
+- `plan.Effect == nil` → `appliedUnobserved:false`
+
+CLIとStudioは、記録が無い場合の既定値を「効果が宣言されていればtrue、されていなければfalse」にした。効果なしのCommandでは `difference-check: not observed` を出さない。
+
+### この分離が防ぐこと
+
+- 「比較する対象が無い」を「Executorが答えられなかった」と読み違えない。
+- 効果なしのCommandに、存在しない差の確認を要求しない。
+
+### まだ決めていないこと
+
+- 効果を宣言したが `Applied` が空のままのExecutorを、構成時に拒否するか（#2996の未決）。
+- `AppliedUnobserved` を `Differences` の有無と独立に扱うか、`differenceCheck` のような三状態（`checked`・`not-observed`・`not-applicable`）へ改めるか。
+
+## 8. この文書が主張しないこと
 
 - 本物の認可・主体・権限・メニュー制御が実装されたこと。
 - `ReferenceAuthorizer`が本番で使えること。

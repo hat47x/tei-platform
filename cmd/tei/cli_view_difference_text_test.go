@@ -73,3 +73,21 @@ func TestWriteReferenceRunTextMarksUnobservedCheck(t *testing.T) {
 		t.Fatalf("output=%s", out.String())
 	}
 }
+
+// TestWriteReferenceRunTextDoesNotMarkEffectlessRunUnobserved checks that a
+// command without a declared effect does not print "not observed": there is no
+// difference to compare, so the absence is not an unobserved check.
+func TestWriteReferenceRunTextDoesNotMarkEffectlessRunUnobserved(t *testing.T) {
+	var out bytes.Buffer
+	run := referenceCommandRun{
+		Mode:      "reference",
+		Plan:      applicationview.CommandPlan{Capability: "sales.notify", Label: "notify"},
+		Committed: true,
+	}
+	if code, err := writeReferenceRunText(&out, run); err != nil || code != 0 {
+		t.Fatalf("code=%d err=%v", code, err)
+	}
+	if strings.Contains(out.String(), "difference-check") {
+		t.Fatalf("effectless run printed a difference-check line: %s", out.String())
+	}
+}

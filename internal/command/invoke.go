@@ -244,12 +244,15 @@ func (i Invoker) execute(ctx context.Context, request Request, plan applicationv
 	}
 	if i.Recorder != nil {
 		record := OperationRecord{
-			Request:           request,
-			Reported:          result.Effect,
-			Outcome:           result.Outcome,
-			Applied:           result.Applied,
-			Differences:       differences,
-			AppliedUnobserved: len(result.Applied) == 0,
+			Request:     request,
+			Reported:    result.Effect,
+			Outcome:     result.Outcome,
+			Applied:     result.Applied,
+			Differences: differences,
+			// A command that declares no effect has nothing to compare, so an
+			// empty Applied list is not an unobserved difference check. Only a
+			// declared effect makes the empty list "the executor could not say".
+			AppliedUnobserved: plan.Effect != nil && len(result.Applied) == 0,
 		}
 		if plan.Effect != nil {
 			record.Declared = &semantic.DataEffect{Kind: semantic.DataEffectKind(plan.Effect.Kind), Data: plan.Effect.Data}

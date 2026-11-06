@@ -140,3 +140,15 @@ func TestInvokeRejectsUnknownCommand(t *testing.T) {
 		t.Fatalf("code=%s err=%v", code, err)
 	}
 }
+
+// effectlessCommandWorld declares a capability with no DataEffect so a test
+// can separate "nothing to compare" from "the executor could not say".
+func effectlessCommandWorld() ir.World {
+	world := commandWorld()
+	world.Semantics[0].Capabilities[0].Effect = nil
+	return world
+}
+
+func requestForEffectlessWorld() Request {
+	return request()
+}
