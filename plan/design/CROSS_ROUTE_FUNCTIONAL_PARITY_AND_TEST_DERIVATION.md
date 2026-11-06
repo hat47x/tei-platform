@@ -710,3 +710,16 @@ main統合済み[PR #2894](https://github.com/hat47x/tei-platform/pull/2894)の`
 **P0後の選定**：次は#2514の小さな公開・合成の実Product Rule Mutant（特定Validation Ruleの比較・一意性判定の意図的誤実装）を**事前Expected固定**の状態で試す。Mutant killなら対象Contract/Case/Environment/Roleの限定判別力、見逃したら必要Observation/Rule Selectの不足を記録する。Candidate Expected・Required Obligationの分母をAgentが自己修正して「PASS」にしない。#2892 Migration Historyのunknown偽成功、#2884 Required Guardの欠落と現在Grantは別Owner/別Evidenceで扱い、同じ仕組みへ無理に統一しない。
 
 **証拠台帳参照**：[基本設計§8.6](./TEI_TEST_BASIC_DESIGN_AND_EVIDENCE_LEDGER_2026-11.md)。今回の計画更新はdocs-only。#2901のコード・CI実行とは別の改訂として保存し、当該Docs HEADのCIも独立確認。
+
+### 18.7 実Product Rule Mutantを使う判別力検収（2026-11-06）
+
+**P0 統合Greenは確定**：[#2901](https://github.com/hat47x/tei-platform/pull/2901) head `a6eb80cffe16a57f4cb2461ff2946065955a4e50`の[Health #42111973682](https://github.com/hat47x/tei-platform/actions/runs/42111973682)・セルフビルド・Studio・Web E1-A・依存チェックが同HEADで**completed/success**。これによりG0（FixtureのJSON Object重複拒否7負/3正）、G1（AI追加2 Stepを既存Scenario CLI Goテストから検査）、G2前段（正負Key集合・Expected-only/Input-only反転の有限独立対照）を**一つのGo checkoutの限定回帰**として確認。Raw Step Receipt・Business Owner受理・Provider/Host一改訂E2Eはここには含まない。#2901は検証用Stack Draft、単独merge禁止。
+
+**新しく試すP1の本質**：[#3017](https://github.com/hat47x/tei-platform/pull/3017) は、#2901成功HEADを固定し、実Product Evaluator `internal/semantic/validationeval/evaluator.go`の`relation-unique`重複時 `not-satisfied`を誤って`satisfied`に返す**一行Mutant**だけを作成。Scenario/Fixture/Goテスト/独立Expectedは変えず、**期待するのはCI Red**。故意に不正な製品コードを含むため絶対mainへ統合しない。#2514が判別力の責務Owner。
+
+- **M1 kill 成立条件**：#2901 exact HEAD Green ＋ #3017 exact HEADの差分一行 ＋ #3017の実CIジョブログで`TestAIAddedScenarioCandidateFiles/ai-candidate-line-number-uniqueness`の実行・`result=satisfied, expected=not-satisfied`のような対象Rule誤実装に起因するFailを確認。単に別のEvaluator回帰のみFailなら「既存テストに殺された」であって**AI追加Caseの検出力は未確認**。
+- **M2/M3 fail分類**：Go Build、gofmt、Test漏れ/全SKIP、環境失敗、他TestだけのFailは`inconclusive`として分ける。CIの赤をそのままG2合格にしない。
+- **M4 survivor**：対象Caseの実走と固定Expectedが揃っても緑ならRule Mutantがsurvive。Scenario選択・actual Loaded Source/Rule・実Observationが不足している可能性を記録し、AIがExpectedをGotに合わせて更新しない。
+- **出口**：M1なら**当該合成Rule/対象Case/固定Revision限定のMutant kill**だけ認定。業務OwnerによるMeaning受理や全Required Coverage、他Rule/NULL/部分Read、実Provider/Hostを証明しない。#1163/#1119 Product Gateは別途維持。
+
+**証拠参照**：[基本設計台帳§8.7](./TEI_TEST_BASIC_DESIGN_AND_EVIDENCE_LEDGER_2026-11.md)。#3017の[Health #42181290981](https://github.com/hat47x/tei-platform/actions/runs/42181290981)は本計画追加時点で**in_progress**。該当Go Testの実FAILログ確認前は「Mutant kill NOT VERIFIED」。本章はdocs-onlyであり、実コードは隔離Draftに保持。新Runner、Policy Engine、Oracle DB、第二Case正本は作らない。
