@@ -233,6 +233,46 @@ E1とE2は最小の共通面が成立した時点から重ねて実施できる�
 
 **証拠水準**：拡張子統一はOwnerの新方針。Migration可否、既存Parserの受容、OKF・SHO連携、AI/OS/Consumer実送信、Tenant別認可、Owner受理、実Provider/Host E2E、AMF-01〜07は**NOT RUN／NOT ACCEPTED**。[#988](https://github.com/hat47x/tei-platform/issues/988)のBS-01〜15、[#2621](https://github.com/hat47x/tei-platform/issues/2621)のFM-01〜08、前節AIB-01〜12は既存Ownerの別Caseとして維持し、今回の命名決定をその過去の試験PASSへ遡及適用しない。
 
+## 5.6 AI-first受入を「一つのSource、一つのAttempt、独立Expected」に縮約する（2026-11-07）
+
+### 先行成果の接続と、証拠の上限
+
+前節のAIB-01〜12とAMF-01〜07を無制限に増やす前に、既存の[#3030](https://github.com/hat47x/tei-platform/pull/3030)（`*.tei.md`へのM0〜M6、TM-01〜14）、[#3028](https://github.com/hat47x/tei-platform/pull/3028)（Seed/Parser/Operator、BS-01〜15）、[#267](https://github.com/hat47x/tei-platform/issues/267)（Shared Acceptance）、[#1180](https://github.com/hat47x/tei-platform/issues/1180)（Scenario）、[#2514](https://github.com/hat47x/tei-platform/issues/2514)（独立Oracle）の**同一Source縦切り**を先行させる。
+
+現状の独立Evidenceを一つの製品横断PASSへ合算しない。
+- [#3030](https://github.com/hat47x/tei-platform/pull/3030)は**docs-only Draft**で、現mainのLoaderが`*.tei`固定名・globに依存し、`filepath.Ext("x.tei.md")`は`.md`、TEI Lexer/ParserはMarkdown全文を受け付けないことを確認した。**新`*.tei.md`の実Parser/Writer/CLI成功は未実証**。固定Gate資産と`.tei/decisions/`は一括変更対象外。
+- [#2901](https://github.com/hat47x/tei-platform/pull/2901)の固定Greenと、[意図的Mutant #3017](https://github.com/hat47x/tei-platform/pull/3017)の固定Redでは、公開合成`relation-unique`の**一件のEvaluator誤実装をAI追加Scenario自身が検出**した。これは当該Product Rule Mutantに限る判別力であり、新Markdown Reader・実Provider Read・業務Owner Oracle・本番適格性を示さない。**Mutant branchをmergeしない**。
+- [#2853](https://github.com/hat47x/tei-platform/pull/2853)等の既存実PostgreSQL試験は`CommitUncertainError`のCommand unknown伝播と同OperationIDのReceipt Lookupを限定実証。実Provider/外部Hostの全Grant/Guard/Effect/After-commitの保証ではない。同じSubjectの別Key再送や前段Stepの部分効果も除外できない。
+
+### 一枚の受渡し票：証拠の有無と、主張できる範囲
+
+以下は新しいCore Schema、Audit Registry、Run APIではなく、既存[#1163](https://github.com/hat47x/tei-platform/issues/1163)／[#1119](https://github.com/hat47x/tei-platform/issues/1119)のEvidence Packetに対して必要な**読取り専用の照合列**。
+
+| 証拠列 | 実際に照合する対象 | 不足時の停止線 |
+| --- | --- | --- |
+| **S: Source** | `*.tei.md` raw byte、Source ID/Revision、Manifest/Root選択、Markdown断片元span、Language/Operator exact Pin、実Read/Parsed Input、依存閉包 | filename/タグ/Discovery/validate okだけではSource利用資格なし |
+| **C: Candidate** | AIまたは固定CandidateのAttempt、Typed Diff、引用品と根拠の一致、未確認前提、引用・Review対象のScope、Audience別Disclosure | 引用不成立・部分文脈・外部送信資格不明なら保留／非開示 |
+| **V: Validation/Oracle** | 同一Source版の決定論的Validation、独立Expectedの作成由来、既知Mutantの検出／非検出 | Parser/CI合格でも業務意味未受理、Oracle自己追認なら不適格 |
+| **M: Meaning** | #267 Shared AcceptanceのHuman/Owner Decision、対象・有効範囲・判断時点、Source書込みと実Reload | Candidate acceptedに見えてもSourceに未反映ならMeaning未確定 |
+| **G: Current Grant/Binding** | 現在Principal/Tenant、必要Guard集合と供給/評価済み集合、Request/Target/Version/Operation ID | Owner受理とTool存在から実行資格を推定しない |
+| **E: Effect/Consumer** | Provider実行とCommit/Unknown、Receipt/independent read、Consumerが現在のWorkspace/selection epochで実際に読んだbytesと開示可否 | 旧Receiptや後着Responseで現在のOperation/表示を成功扱いしない |
+
+**二つの独立軸**：`M (業務Meaning accepted?)`と`G (当該Attemptの現在Grant/Target/Guard valid?)`はどちらも独立。M=Yes/G=Noは「定義は受理済み、実行拒否」、M=No/G=Yesは「権限があっても業務意味を未受理」、M=No/G=Noは双方不足、M=Yes/G=Yesでも**実Effect Eの成立は別観測**。Read-onlyのCandidateレビューはGが未検査でも成立し得るが、書込みは別。MはHuman判断であり機械PASSから自動導出しない。
+
+### 次の実際のP0：一つのRead-only Source→Candidate→Review Slice
+
+1. **前提の正確な判定**：現mainは新形式MarkdownのLoader/Parser非対応なので、まず#3030 M0/M2/M3の最小実装が必要である。Readerがないうちは`*.tei.md`のraw Draftを確認できても`Parsed TEI Source=verified`としない。先にファイル名だけ切り替えたSynthetic PASSは目標ではない。
+2. **最小の固定Fixture**：注文一件の説明・型付きTEI断片・検証用表・不明な承認条件を一つの`*.tei.md`に置く。既存TM-02/05、AMF-03/04、AIB-01/03/10を**同一Fixtureと独立Expected**へ参照し、別の12件のCaseを新設しない。Markdownの未選択部分の保持、Source span/byte、`required` Input集合、Ref/Role/Version不一致、引用妥当性を別列で確認する。
+3. **LLM抜きの接合**：人手で作った固定Typed Candidateを#267へ渡し、`not established`、`rejected`、Owner受理の3条件を対照する。Owner Decisionが得られない場合は「Authoring/Validationの限定成功」で止まり、意味受理済みとしない。受理済み変更は実Source再読込後に同じ意味が得られることを確認する。
+4. **Oracleの誤成功検出**：#2901/#3017の同一Case・同一Expected・一行Mutantという**既存の有限実績**を、独立OracleとMutantの実験設計参照にする。ただし元の`*.tei`または旧Scenarioで成立したGreen/Redを、新`*.tei.md` Readerに継承しない。新Sourceの実消費版を使う場合は改めて実測する。
+5. **後段の二独立レーン**：P1 Consumer Disclosure/実送信を#2515/#2516、P2 実Host Grant/RunPlan/Provider Receiptを#2598/#1174へ渡す。前者の公開安全はSource/AIプロンプト以外のTool/ログ/Session/CI出口を含み、未観測はunknown。後者の`blocked`はRunPlan全体のno-effectではなく、このStepの事前停止となり得る。UIの旧選択Epochへ後着した応答も現表示の成功に使わない（#1824）。
+
+### 受入判定・計画変更の限界
+
+- **最初の統合Doneの最小条件**：`*.tei.md`実Loader/Parserで選択した断片が読まれ、固定Candidateの出典を照合し、独立Expectedを持つValidationで正常・誤引用・部分/未知を正しく分け、#267のAccepted Source更新を実行した場合のみReloadと一致を確認する。これらのうち実行していない列は**NOT RUN**、Owner Decisionが得られなければ**NOT ACCEPTED**。Read-only検証の成立をHost実行資格へ昇格しない。
+- **優先順位**：今はAI生成トークン数やUI画面数を増やすより、この一件で`Source selected ≠ Source consumed ≠ Candidate valid ≠ Meaning accepted ≠ Host currently authorized ≠ Effect confirmed`を証拠付きで示す。P0の停止位置を測り、現在の#3030・#267・#1180・#2514・#1163のOwnerに戻す。
+- **未受理**：この節はDocsの接続計画のみ。`*.tei.md` Reader/Parser/Editorの実装、同一Fixtureの実CLI・AI/Harness・OS/External LLM・Studio/SHO・PG/Host、M/Gの実結合、生成精度や性能、Owner受理を実証・採用したと主張しない。第二のReader/Registry/Proof Engine/Runner/Host/Oracle、固定Gateの改変はしない。
+
 ## 6. 採否と現在の限界
 
 - **Owner方針として確認済み**：外部要件の十分な机上評価を基盤実装に先行させること、CUIと標準Pluginを並行開発すること、ヘッドレス実証を基準にGUIを後続実装すること。
