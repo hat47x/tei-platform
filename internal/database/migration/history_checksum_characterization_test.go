@@ -44,7 +44,7 @@ func TestHIST02MissingAppliedChecksumCannotDetectDefinitionDrift(t *testing.T) {
 	snapshot := migration.HistorySnapshot{
 		Database: db,
 		Tool:     migration.ToolAtlas,
-		Entries: []migration.AppliedMigration{record},
+		Entries:  []migration.AppliedMigration{record},
 	}
 
 	// No provider checksum: both authored versions are currently called applied.
