@@ -131,3 +131,27 @@
 | P2-External | 各社公式API/Extractの具体範囲、History Coverage/Retention/Field Authorityを一つのCaseへ限定し、actual Export/Import/Resultと再読取 | #1807/#2555/#1163 |
 
 **資格**：本文は公式公開資料の読解＋既存TEI Repo/Issueの静的照合。新実験・各社テナントへの接続・課金SKUの検証・製品相互運用・Owner意味受理は行っていない。実Provider/実Host/実外部システム・TEI E2/E4を合格としない。設計の表現可能性はConformance証拠ではない。既存ADR-0036/0043/0044/0019と#1119を変更しない。
+
+## 6. Dataverse階層認可の追加例外：到達可能性とPrivilege/Record Accessの二段階（2026-11-06）
+
+一次根拠：
+- [How access to a record is determined](https://learn.microsoft.com/en-us/power-platform/admin/how-record-access-determined) は**対象Table/ActionのPrivilege Check**と、Owner／Role／Shared／Hierarchyによる**Record Access Check**を別に実施。いずれか一つの上位階層Pathだけで全操作のGrantを導かない。
+- [Hierarchy security to control access](https://learn.microsoft.com/en-us/power-platform/admin/hierarchy-security) はManager階層とPosition階層を選べ、前者は本人・報告先のBusiness Unit制約、後者はCross-BUを許す構成がある。Position階層の**直接上位者はRead/Write/Append/AppendToの階層候補**になり得る一方、**間接上位者はRead-only**。適用深さ、対象Table、既存Security Roleが条件であり、Hierarchy機能は既定無効。
+- [Dataverse Teams](https://learn.microsoft.com/en-us/power-platform/admin/manage-teams) は、RecordとSecurity Roleを所有するOwner Teamと、Recordは所有せず明示共有されたRecordにアクセスするAccess Teamの区別を示す。
+- [Modernized business units security](https://learn.microsoft.com/en-us/power-platform/admin/modernized-business-units-security) ではUserの所属BU、RecordのOwning BU、付与されたBU Security Roleを独立させる。
+
+**TEIへの補正**：既存CP-09/17の「所有とGrantは別」をさらに、①採用Roleでの関係到達、②対象Table/Actionの現在Privilege、③Record Owner/Share/Access Teamなど実Record Permission、④実Target/Provider Enforcement、⑤Consumer Disclosureへ分解する。Read-onlyの根拠は単純なGraph距離の普遍則ではなく、選択されたVendor Profile/Policyと対象Actionに相対する。Optionalな組織Linked Policyを**広域適用→用途/Record例外**で構成する場合も、除外はそのPolicyのnot-applicableであって他Policy/HostのGrantを発行しない（組織計画§58）。
+
+[Draft PR #3019](https://github.com/hat47x/tei-platform/pull/3019)のCM-13/14は、Manager vs Position Scope、direct vs indirect Position access、Table Privilege不足、Owner Team vs Access Teamのread-only合成対照を追加。**本試験の合成「candidate」や「not-admitted」はDataverseの実認可結果ではない。** 実TEI Host/Provider・Microsoft環境・本番ACL/Role/Sharedの検証にはならず、Owner選定のDomain PolicyをCoreへ追加する根拠にもならない。
+
+### 6.1 適用対象と反証
+
+| 追加検討 | 誤った実装 | 受入の最小反証 |
+| --- | --- | --- |
+| CP-17a Table Privilege vs Record Scope | Hierarchy上位なら対象TableのWriteも可能 | Table Write無しならこの経路からWrite候補へ昇格しない |
+| CP-17b Manager vs Position | 同じGraph Ancestorなら同じScope | Manager BU境界を満たさなくてもPosition Profileでは同距離のRead候補があり得る |
+| CP-17c Direct/Indirect path | 二階層上なら直接上位と同じWrite | 間接Position上位の階層由来Write候補は拒否し、Read候補のみ。別のRecord Share権限は独立 |
+| CP-09a Owner Team vs Access Team | ReadできるTeamは必ずOwner | Access TeamのRead候補を認めてもRecord Ownerは不変。明示Share・Table権限不足は拒否 |
+| CP-10/17d Tenant/Plugin Binding | 同じOrg Role・PluginをTenant A/Bへ導入→Bへ自動権限 | 配布/構成の同一性はCurrent Host Grantでない。実Scopeが異なれば別試験 |
+
+**状態**：公式資料の読解と合成Reference設計のみ。CM-13/14の新テストCIは実行結果を固定版で確認するまで未認定。実Dataverse/TEI Product/Host Policy、Owner受理はNOT RUN。
