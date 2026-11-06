@@ -954,6 +954,7 @@ PoC #2521が実装した範囲と、まだ実装していない範囲を分け�
 | CLI実行記録 | 実装済み（`view -execute -operation-log`、JSON） |
 | 能力の宣言許可の照合 | 実装済み（`command.GrantAuthorizer`が能力の宣言許可と発行済み許可を`permission.Covers`で照合。無宣言・部分許可・不正宣言は拒否） |
 | 診断の修正案 | 実装済み（`validation.Propose`が版付きの未受理の案を作り、`validation.Accept`が版一致と未受理を要求。`tei validate -json`は`proposals`を返す） |
+| CLIの失敗符号 | 実装済み（`COMMAND_EFFECT_UNKNOWN`・`COMMAND_LIFECYCLE_REFUSED`を`COMMAND_FAILED`から分離） |
 | 適用操作の照合 | 実装済み（参照StoreのExecutorが`Applied`で適用したレコードを返し、Invokerが宣言効果と照合。宣言外の種別は`UNDECLARED_COMMAND_EFFECT`、宣言効果に対応する操作が無い場合は`MISSING_COMMAND_EFFECT`） |
 | 参照データ記憶域（MemoryStore） | 実装済み（create/update/delete、スナップショットによるRollback） |
 | 参照Storeの削除ポリシー実行 | 実装済み（restrict・cascade・preserve。`Relation.Keys`がある場合は行単位、ない場合はData単位） |
@@ -990,6 +991,7 @@ PoC #2521が実装した範囲と、まだ実装していない範囲を分け�
 | `reference/workspace`への宣言追加 | 未実施（受理経路が必要） |
 
 実装は、`internal/application/model.go`、`internal/syntax/application_pattern.go`、`internal/validation/application_pattern.go`、`internal/crossview/pattern_requirements.go`、`internal/applicationview`、`internal/semantic/model.go`、`internal/syntax/parser.go`、`internal/validation/validation.go`と、それぞれの試験です。
+
 
 
 
