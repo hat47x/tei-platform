@@ -19,6 +19,10 @@ type OperationRecord struct {
 	// reader can compare the declaration with what actually happened. It is
 	// empty for executors that cannot enumerate their operations.
 	Applied []AppliedOperation `json:"applied,omitempty"`
+	// Differences keeps the applied operations the declaration does not
+	// describe, so a reader sees that the declaration and the execution did
+	// not fully agree. They are evidence, not a rejection.
+	Differences []Difference `json:"differences,omitempty"`
 }
 
 // Recorder observes successful Command executions. It is optional; a recorder
