@@ -394,3 +394,16 @@ Else absence remains unknown; no universal closed-world assumption.
 - **認知負荷の検証**：正答率（不存在の誤断定率）、Sourceへ辿る操作数、Graph/Table/関連表の再照合回数、局所変更の無関係波及、AIの見落とした不明点とToken/修正回数を、従来の単一図と複合図表で比較する。**測定未実施**であり優位性を前提化しない。
 
 **採用停止線**：実Source/Role/Reader closure・Policy/Consumer・Build Runnerの各Ownerが証明できる前に、`boundedAbsence`の合成ステータスを「実TEIに存在しない」「Productionで実行されない」「Ownerが受理した」へ昇格させない。#2881はP1独立実験のDraftを維持する。
+
+### 13.4 Relation自身のscopeと端点scopeの独立性（2026-11-06追補）
+
+他チャットの[Role自己記述 #2620](https://github.com/hat47x/tei-platform/issues/2620)／[Draft #2860](https://github.com/hat47x/tei-platform/pull/2860)、[TEI全体セルフビルド #2831](https://github.com/hat47x/tei-platform/issues/2831)、[ファイル・メッセージ連携 #2542](https://github.com/hat47x/tei-platform/issues/2542)の横断レビューから、**Relationの識別scopeと、Relationが結ぶ各Subjectのscopeを同一視しない**という反例を独立させた。これは既存ModelRef/Relation Schemaの採用変更ではなく、Read-only Projectionが保持しなければならない情報に対する圧力試験である。
+
+- 例：scope `batch-A`で宣言したTransfer Relation `flow`が、scope `file-bridge`のArtifactとscope `erp`のConsumerへ結ばれても、Relationの宣言元が端点のどちらかへ自動的に移ることはない。セルフビルドでもBuild Operation・Target Artifact・Toolchainの所属は一致するとは限らない。
+- 試験FixtureのRelationは、**明示された`scope + relation ID`** を自身のqualified keyとする。別scopeの同じrelation IDは区別し、役割・端点は別のscope付きSubject keyへ参照する。GraphのRelation node/各role EdgeとTableのRelation recordは**key、type、role、端点**を同一Snapshotで照合する。
+- `query.scope`のRelationの不存在を問うときは、端点のscopeを検索範囲の代用にしない。Relation自身の宣言scopeが未取得・未解決なら、実Consumerは`unknown`のままにし、対象集合を勝手に閉じない。これは内部Referenceで明示scopeを**要求する**理由であって、既存TEI SourceのRelationがすべてそう表現されているという主張ではない。
+- Reference上の負例は、(1)他scopeの端点を持つRelationでも宣言scopeのみで存在判定、(2)別scopeの同ID Relationの併存、(3)宣言scope欠落・同scope重複の拒否、(4)Table宣言scopeまたはGraph relation keyの後編集、(5)端点scopeからの誤った存在推定、(6)GraphとTableのRelation type齟齬。Roleの重複宣言を後値で上書きする[別Parser問題 #2898](https://github.com/hat47x/tei-platform/pull/2898)の正式修正/受理とは別問題である。
+
+**実装・証拠上限**：同一合成RelationをGraph/Tableへ無損失に投影するためのReference契約を検査する。実TEI ModelRef/Reader、未宣言関係の実不存在、Build・ETLのactual execution/transfer/Receipt、Current Policy、Owner受理は証明しない。[#2877のP0-A0/A1](https://github.com/hat47x/tei-platform/pull/2877)が扱うRequired/Declared/Selected/ActuallyConsumed/Observed/Undischargedを表示完全性に足し算して、実Pipeline完全性に昇格させない。
+
+**次段の最小受入**：既存Go Reader/Source Indexから(1)実Relation identity、(2)Relationの宣言元scopeを取得できる契約、(3)端点のqualified key、(4)roles/typeとSource/Projection revision、(5)開示済みscopeの閉包根拠を確認する。いずれかが欠けたら、図表は候補・部分表示にとどめ`absent-in-declared-snapshot`のProducer資格を実Sourceへ移さない。既存#1124/#2620/#2831/#2542の担当境界を変更せず、新共通Relation Registry/第二Resolverを追加しない。
