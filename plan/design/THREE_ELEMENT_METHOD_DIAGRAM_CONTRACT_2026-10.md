@@ -393,3 +393,14 @@ Node.js 22.16.0で`node --test /tmp/tei-tea-ref/public-slice.test.mjs`を実行�
 - **P0並行（#2620/#951）**: 公開RoleのSelection/Interpretation依存Pin・Source Readerの実bytesを固定し、Business側unknownをData read-onlyへ波及させない。ただし同一Required Closureの欠損なら、その局所Claimだけを失効する。新Resolverは作らない。
 - **次段（#1124/#267）**: Source移動の旧Jump失効（T01）とComposite Relationの非可逆編集拒否（T03）を同じSource/Consumerへ結び、意味編集はtyped Proposal→既存Acceptanceへ限定する。
 - **他Owner**: ETL/MFTの四粒度・実2-member受領は[Draft #2827](https://github.com/hat47x/tei-platform/pull/2827)、標準I/Oの二Consumerは[Draft #2880](https://github.com/hat47x/tei-platform/pull/2880)、Plugin最適化のContract/Effect同等性は[Draft #2933](https://github.com/hat47x/tei-platform/pull/2933)。三要素Method内に第二のPipeline/Build/Delivery保証を置かない。
+
+
+### 17.4 事前公開Sliceの境界を厳格化し、元SourceのRole構文を別資格にする（2026-11-06）
+
+[Draft #2972](https://github.com/hat47x/tei-platform/pull/2972)の初版T06は、`privateSubjects/privateEdges`の追加キーを入力に入れたまま黙って捨てていた。**これは「実際のPrivate WorldからPolicyが正しいPublic Sliceを作れる」ことの実証ではない。** 最新Referenceは、二世界の`private` stateをProjectorの**入力外**に置き、公開Sliceが外部で正規に選ばれたという前提を明示。同時に最小Fixtureのトップレベル/Subject/RoleStates/Relation/Endpointの**未宣言field・symbol・不適切prototype・getter**を定型`unqualified_public_slice`で拒否する。Projectorにsecret raw pathを渡して「出力にないから安全」とみなさず、入力資格外として停止する。Roleに`accepted`と書いてあっても、それ自体はOwnerのAccepted Meaningではない。
+
+**新しい独立実測**: Node 22.16.0で、GitHub最新Module blob `9b46cf13f3683607a384ea629eebba99a59ce872`、test blob `bc02920d11005ca53c6b928802e022bfead07f72`に一致するローカルファイルを用い、`node --test public-slice.test.mjs`で**9/9 PASS**。T06は二世界の公開入力同値とPrivate stateの入力混入拒否、T07はRole/Scope独立、追加負例はraw Source metadata・getterを評価せず拒否すること。前節の初版8/8はその時点の履歴であり、現在の検証対象はこの9件。**実Policyにおける二世界の非干渉、実Source→公開Sliceの生成、Web/Studio、実ProviderはなおNOT RUN**。旧HEADのCI成功は新HEADの資格ではない。
+
+さらに[#2620](https://github.com/hat47x/tei-platform/issues/2620)では、同一Attributeの重複Role宣言が既存Parserで後値上書きとなり得る反例を固定。修正候補[Draft #2898](https://github.com/hat47x/tei-platform/pull/2898)は重複宣言のSource位置付き拒否とread-only Role値anchorを扱うが、未統合。**解析済みの`roleStates` Mapから、元Scriptで上書きされたRoleの二重指定は復元不能**。最小受入を、①実Source Readerが実際に読んだSourceと未読込Required Set（[#2823](https://github.com/hat47x/tei-platform/issues/2823)）→②ParserのRole重複・Source span診断（#2898）→③選択Role/Operator・推移Pin・必要閉包（[#2860](https://github.com/hat47x/tei-platform/pull/2860)）→④Policy Ownerによる公開Slice生成→⑤TEA投影→⑥同一WorkbenchのConsumer実受領、と分割する。個々のGo/Node Test PASSを結合縦断と呼ばず、第二Parser/Role Resolver/Policy/Source Writerをここで追加しない。
+
+**残る反証の最小二件**: (A)同じPublic Sliceなのに元Source内の秘密でProducerが公開Node座標・件数を変えてしまう（Policy→Projection間の実結合負例）、(B)同じAttributeに二重RoleがあるのにParserが片方を落とし、TEAが意味確定済みと誤表示（Source→Role Pin負例）。両方ともTEAだけの純粋Projection単体では検出不能であり、Ownerの実Reader/Parser/Policyを介した試験が必要。
