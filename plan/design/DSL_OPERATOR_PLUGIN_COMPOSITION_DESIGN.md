@@ -244,7 +244,7 @@ Referenceを増やす前に、次の最小fixtureを仕様化する。合格と�
 | B01 | Language / Operator version変更 | semantic change candidate / stale検出 | pin無しで自動更新 |
 | B02 | Parser artifact再build | Source/Build/Artifact trace確認 | Build成功をAcceptanceと誤認 |
 
-L03の「同じ」は、Languageごとの実装・表示・Source位置が一致するという意味ではなく、比較対象のCanonical meaningが同じという意味である。V01〜V03は既存Ruleの契約をオラクルとする。E02は各Providerで実行できた事実だけではなく、共通fixtureに対する結果・失敗条件を照合する。
+L03の「同じ」は、Languageごとの実装・表示・Source位置が一致するという意味ではなく、比較対象のCanonical meaningが同じという意味である。V01〜V03では既存Ruleの意味契約をテスト判定基準の出典候補とし、実Evaluatorの結果をそのまま独立期待値にはしない。E02は各Providerで実行できた事実だけではなく、共通fixtureに対する結果・失敗条件を照合する。
 
 ## 10. 段階的な実施計画
 
@@ -343,7 +343,7 @@ Pluginの論理単位と実行artifactを1:1にしない。Linked / Wasm / proce
 - BS-12/13：外部受理済みでも、Confirmed CutoverとACK-loss unknownは別。前者もBuild/Host資格を発行しない。
 - BS-14/15：A→B→AのReview旧権限非復権、Seedで読めない新文法による自己移行拒否。
 
-**検証順とOwner**：(1)既存`check_bootstrap.js`のRB-01〜24は改変せず、まず本FixtureのInput/Expectedを仕様レビュー（#988/#2620）。(2)実`workspace.Load`/Manifest/Snapshotと`ParseSelected`/pinned loweringが対応可能なBS-02/03/06を実Goでpressure。対応不能なK0 Provenance/Registration切替は`unsupported`と記録。(3)BS-08/09/13はExisting Extension/Build/Acceptanceの**実観測点**が分かるまでは試験Passを宣言しない。(4)独立Oracle #2514、Raw Authoring #2621、Required Source #2823、Build #2831、Consumer/Host #2516/#1174に各観測を渡す。**新Builder/Runner/Seed Parser/第二Lock・Registry・Owner Authorityは先行追加しない**。
+**検証順とOwner**：(1)既存`check_bootstrap.js`のRB-01〜24は改変せず、まず本FixtureのInput/Expectedを仕様レビュー（#988/#2620）。(2)実`workspace.Load`/Manifest/Snapshotと`ParseSelected`/pinned loweringが対応可能なBS-02/03/06を実Goでpressure。対応不能なK0 Provenance/Registration切替は`unsupported`と記録。(3)BS-08/09/13はExisting Extension/Build/Acceptanceの**実観測点**が分かるまでは試験Passを宣言しない。(4)独立検証基準 #2514、Raw Authoring #2621、Required Source #2823、Build #2831、Consumer/Host #2516/#1174に各観測を渡す。**新Builder/Runner/Seed Parser/第二Lock・Registry・Owner Authorityは先行追加しない**。
 
 **証拠上限**：本§13/BSは設計と静的実コード照合のみ。BS-01〜15のTEI Go/CLI/CI、独立実Owner受理、実Pluginのpartial registration、Recovery/Crash、製品自己Bootstrap、Stage2 TEI self-build、実Host/DBは**NOT RUN / NOT PROVEN**。#1119のG0〜G4と業務P0を拡張しない。
 
@@ -389,7 +389,7 @@ Pluginの論理単位と実行artifactを1:1にしない。Linked / Wasm / proce
 <!-- tei-bs-test-discriminating-positive-controls-20261106 -->
 ### 13.8 BS-02/03/06の「常時拒否」Mutant対照（局所Go試験を補強）
 
-BS-02/03/06に単独の拒否条件を置いただけでは、実装が**すべての入力を拒否する**誤実装でもテストに合格する。#2514の独立Oracle方針を踏まえ、同じ実Source/同じReference関数に、**一因子だけ修復した正常対照**を追加した（Go `bootstrap_expected_bridge_test.go`）。独立Expected JSONのBS番号・停止条件は変更しない。
+BS-02/03/06に単独の拒否条件を置いただけでは、実装が**すべての入力を拒否する**誤実装でもテストに合格する。#2514の独立期待値方針を踏まえ、同じ実Source/同じReference関数に、**一因子だけ修復した正常対照**を追加した（Go `bootstrap_expected_bridge_test.go`）。独立Expected JSONのBS番号・停止条件は変更しない。
 
 | Case | 不正側（独立Expectedに対応） | 正常側の一因子差分 | 排除できる限定Mutant | まだ証明しないこと |
 | --- | --- | --- | --- | --- |
@@ -422,3 +422,20 @@ BS-02/03/06に単独の拒否条件を置いただけでは、実装が**すべ�
 **Fixture自身と実行証拠の区別**：当初独立Expected JSONの上位`status: DESIGN_ONLY_NOT_EXECUTED`は、BS-02/03/06を実Goテストへ接続後には全体を「未実行」と読めて不適切だったため、`INDEPENDENT_EXPECTED_NOT_OWNER_ACCEPTED`へ改訂した。JSONは**期待値の出所とOwner未受理**を示すもので、実行済みCase/CIの状態は更新HEADのActions/Go Testから別途記録する。15のCaseと`earliestStop`は維持し、残る12ケース、Owner意思、実Provider/登録回復はProduct未実証のまま。
 
 **次の限定実証順**：#3028の同一Source Go選択試験をexact HEADで検査→#3031のProduct fail-closed Readerと**マージ前の同一HEADで**K1入場拒否を再観測→#3030移行Ownerが正式Markdown Parserを選択・Pinできた場合だけK1→K4一貫実Source/Source spanを比較→既存#1251/#2831/Extension Lock/HostへArtifact/実Processを引渡す。別Draftの個別CI PASSを足して単一K0→K6 E2Eと呼ばない。新Seed/Registry/Runtime Backend/Owner判断プロセスを追加しない。
+
+
+<!-- tei-dsl-bootstrap-required-source-scope-naming-20261107 -->
+### 13.10 必須TEI Sourceと非管理Draftを混同しないK1受入、独立期待値の用語
+
+[移行Owner Draft #3030](https://github.com/hat47x/tei-platform/pull/3030)の2026-11-07追補では、現[Guard Draft #3031](https://github.com/hat47x/tei-platform/pull/3031)が**管理Root内で`*.tei.md`を一つでも見つけるとLoad全体を停止し得る**点を、正式Parser導入時の受入へ引き渡している。Guardは現状の誤った成功を防ぐ暫定処置で、任意Markdown草稿を意味Sourceへ自動分類する製品仕様ではない。
+
+K1に要求する区別は**(a)宣言された必須TEI Source、(b)管理対象として発見されたがParser未束縛の候補、(c)非管理Raw Draft、(d)普通のMarkdown**。必須なら未読込・未解析を`0件の成功`にせず、候補として存在するだけならOwnerの用途・必要集合が確定するまでRead-only/unknown、非管理Draftや通常Markdownを自動実行・意味受理せず不要な妨害も避ける。
+
+K1の新規Schema/Registryを増設する前に、#3030のTM/AU・#2823の必要Root・#2621のRaw Draft受理境界に以下の**一因子反例**を付す：
+- 同じ`model.tei.md`を明示した必須Source Root内へ置く場合、未束縛なら`TEI_MD_PARSER_UNBOUND`。Root外のSHO下書きへ置く場合、Semantic Worldへ入れず、必須Closureの対象へ勝手に昇格させない。
+- `README.md`の説明文に`tei`が含まれてもLanguage選択の根拠にしない。正式な`*.tei.md`は拡張子だけで採用せず、Manifest/Source KindとPin済Parserが決まるまでMeaningへ進めない。
+- 新`model.tei.md`がSource Indexに存在しても、実Parserで消費されCanonical/Build入力に接続されたと推定しない。元`model.tei`と併存し同じStable IDを申告したときは黙った新旧優先順位を使わず、#3030の独立期待値で衝突を判別する。
+
+**既存Evidenceの上限**：#3031 exact HEAD `63953ccb`の専用CI/Repo Healthは暫定拒否の実Go資格。#3028のBS-02/03/06・同SourceGo試験は旧Native Source/合成Pipelineの限定資格。両者の同HEAD・同Source実結合、正式Markdown Grammar/Source位置/Meaning/Owner受理、実BinaryのBuild/Host/Receiptは未実証。受入基準は各既存Ownerへ移譲し、#1119横断Gateを自動拡張しない。
+
+**用語**：[main `docs/naming.md`](../../docs/naming.md)（merged #3039/#3040）の区別に従い、判定規則は**テスト判定基準**、対象実装から独立した期待結果は**独立期待値**、根拠と適用範囲を含むものは**独立検証基準**と記載する。新Fixtureの説明フィールドは`expectedBasis`へ改名した（JSON構造は設計専用、Product ABIではない）。DB製品のOracle Database、既存API/ID/履歴を無断改名しない。
