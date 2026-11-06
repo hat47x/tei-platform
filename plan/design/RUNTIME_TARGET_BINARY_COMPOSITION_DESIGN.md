@@ -840,6 +840,18 @@ go test -count=1 -run '^TestIndependentGoAndJavaScriptQuoteSemanticParity$' ./to
 <!-- tei-provider-source-proof-crosslane-20261107 -->
 **隣接Referenceの正負対照から得た検証要件**：[Language Bootstrap Draft #3028](https://github.com/hat47x/tei-platform/pull/3028)のBS-03は、**同一Source・同一Parser callback**に対しProviderのImplementation Fingerprintのみを不一致→一致へ変え、不一致ではCallbackを呼ばず、一致なら実呼出しまで到達する限定Go試験を追加した。exact HEAD `aa51946a8d979aa1c3e0b3648b96df1de44cf812`の[健全性CI #42240218716](https://github.com/hat47x/tei-platform/actions/runs/42240218716)と[依存検査 #42240218680](https://github.com/hat47x/tei-platform/actions/runs/42240218680)はともにsuccess。ただし対象は**Language/Parser Candidateの結合**で、D1のGo静的Link/実Target/23件の適合判定ではない。D1でも同じく「不一致を拒否する」だけでなく「一致なら選択Provider Bへ実Callできる」正例を必ず対にし、常時拒否の偽陽性を排除する（#951/#1251）。
 
+<!-- tei-d1-two-offline-staging-seams-20261107 -->
+**D1で共通計算部を抽出する前の、実Sourceに基づく互換性関門（未実装）**：`plugins/reference-order-quote/main.go` の現`package main`には、quote入力・結果の型（88〜103行）、厳密JSONのメンバー検証（`strictQuoteFields`、127〜166行）、`decodeQuoteRequest`（168〜200行）、`calculate`（202〜224行）が同居する。一方、carrierの`fingerprint`/`serve`/`main`等は別責務。**金額計算関数だけを抽出してJSON厳密拒否を別実装にする案は、現23件の重複Key/大小文字差の判定が変わる可能性があり採用しない**。ここはコード位置に基づく分離候補であって、Go package変更済みではない。
+
+同じGo Providerの自己完結Buildには**異なる独立Stagingが2経路**ある。① `tools/reference-capability-transport/order_quote_process_test.go` は直下`.go`を一時 `module example.invalid/reference-order-quote`へコピーし、offline `go test`→build→実Processを検査。② `tools/reference-capability-transport/quote_go_js_vectors_test.go` は同じ`.go`を `module example.invalid/quote-go-js-comparison`へコピーし、`GOWORK=off`/`GOPROXY=off`でGo build後、Node実Processと23件を比較する。後者はWindows/Node不在で明示SKIPし得る。**前者だけを直して後者のImport閉包を壊す、または後者のSKIP緑をGo/JS同等実証へ昇格することを禁止**。
+
+| 実装候補と扱い | 使える根拠・変更範囲 | 停止条件／受入 |
+| --- | --- | --- |
+| **E0 現`package main`の直接呼出し維持** | #3021のD0直接Go計算とD2 Process基線を保全。別Static Consumerがないならここで完了可 | `package main`の関数を別packageからそのままimport可能とはみなさない。D1実Target資格ではない |
+| **E1 単一のインポート可能な計算packageへ限定抽出（最初のD1実Consumerが必要な場合の候補）** | Quote型・厳密JSON検証・Decode・Calculateを一組のSourceとして再利用し、Process側は薄いAdapterのまま。別の業務Rule正本は作らず、D0/D1で同じ23期待値を再使用 | Go Process用の**二つの一時moduleとも**ローカルに必要package/sourceを閉包し、外部Repo/Network/Workspaceへ隠れ依存しない。D0テストのroot用期待値欠落はFAILのまま、Process stagingの必要SKIPをD0 PASSに数えない。既存Go/JS/D2両CIが同一変更HEADで実PASSするまでExtraction成立と記録しない |
+| **E2 Sourceコピー/生成の合成Static Consumer** | `main.go`からソースを再利用する一時Targetだけなら現状を動かせる可能性 | それがProject/`#951`の実Selected Provider→実Build→実Consumer Callに接続されない限り、Test Harnessの限定Proofであって**製品D1実装ではない** |
+
+**最短の実装順**：(1) #1016の実ConsumerがD1を必要とする理由と厳格単一Go Binary制約を固定 → (2) E0/E1/E2のSource/Build移動コストを小さく比較し、E1が必要ならProvider根幹とProcess carrierの境界をSourceごと明示 → (3) 両Staging・root D0・23件の同一Expected・`go list -deps`/実Go Target Build/Invokeを同じHEADで検証 → (4) B選択・B実呼出しの正例とB選択・A実呼出しの負例、未選択Plugin混入・依存欠落を別判定。新共通ABI/第二Rule/新Hostを導入せず、**Consumer要求が無ければE0で停止できる**。採否・試験PASSは未確認のまま#1251/#951/#2390へ引き渡す。
 **実証状態**：#3021修正HEAD `dfc133e2`のCI 3件成功はD0／既存D2の固定証拠。上記A/Bの実static link、実Invocation別Witness、ビルド差分、費用・Mutant、外部Target/Grant/Receiptは**NOT RUN**。Source位置、完全性、Owner Accepted Meaning、正式Contract採用は別Owner。D1実装判断は#951/#1251/#1016へ返し、Plugin化不要案を残す。
 
 ## 19. 高凝集Bundleの適正規模と実行前提の完全性（2026-11-06、設計・未採用）
