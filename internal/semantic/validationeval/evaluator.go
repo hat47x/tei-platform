@@ -58,7 +58,7 @@ func Evaluate(rule semantic.Validation, source Source) (Result, error) {
 		seen := make(map[string]struct{}, len(keys))
 		for _, key := range keys {
 			if _, exists := seen[key]; exists {
-				return ResultNotSatisfied, nil
+				return ResultSatisfied, nil
 			}
 			seen[key] = struct{}{}
 		}
