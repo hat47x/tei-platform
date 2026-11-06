@@ -60,3 +60,24 @@
 **限界（重要）**: これは**宣言の比較**であり、プロセスの隔離ではありません。能力が別の経路でアクセスを得た場合、この判定では止められません。実際の隔離は未着手です。
 
 **未着手**: 実際のアクセス経路の列挙と、それぞれが強制点を通ることの確認、拒否・許可の記録。
+## 9. 訂正（2026-11-06）: サンドボックスは既にあった
+
+第3章で「プロセスの分離・サンドボックスは無い」と書きましたが、**誤りでした**。`internal/plugin/runtime/host_sandbox.go` に、プラグインを実行するホストのサンドボックスがあります。
+
+| 実在するもの | 内容 |
+| --- | --- |
+| `HostSandboxLauncher.Invoke` | 実行前にポリシーを適用し、適用できない場合は**実行しない**（`deny-by-default` のネットワーク／ファイルシステムで、適用手段が無ければエラー） |
+| `SandboxProfile` | `DenyNetworkByDefault`・`DenyFilesystemByDefault`・`NetworkAllowlist`・`Mounts`・`SecretHandles`・`SecretInjections` |
+| `SandboxSpec.Permissions` | 要求された `permission.Spec` を**運んでいる** |
+
+**正確な不足は「サンドボックスが無い」ではなく「宣言とサンドボックスが繋がっていない」です。**
+
+- サンドボックスの許可リスト（`NetworkAllowlist`・`Mounts`・`SecretHandles`）は `SandboxProfile` が決めます。
+- `SandboxSpec.Permissions` は運ばれますが、**プロファイルがその宣言から導かれたことを確かめる検査はありません**（`spec.Permissions` を読む実装が見当たりません）。
+- したがって、宣言より広い許可リストを持つプロファイルでも、そのまま実行できます。
+
+## 10. 次に確かめること（第9章の訂正を踏まえて）
+
+1. `SandboxProfile` が `permission.Spec` から**導出**されるようにする（ネットワーク許可リスト＝`connect` のスコープ、秘密のハンドル＝`secret:read` のスコープ、`deny-by-default` は宣言の有無から決める）。
+2. 導出したプロファイルと、渡された `SandboxSpec.Permissions` の**一致**を実行時に確かめる。
+3. 導出できない項目（マウントなど）は、**導出しないと記録**する。
