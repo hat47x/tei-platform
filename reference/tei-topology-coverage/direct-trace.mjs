@@ -48,6 +48,7 @@ export function observeDirectTrace(envelope) {
   return {
     status:'direct-edge-candidates',
     selected,
+    scopeOrigin:'caller-supplied-projection-scope',
     edges,
     snapshotFingerprint:r.snapshotFingerprint,
     graphFingerprint:trace.snapshotFingerprint,
