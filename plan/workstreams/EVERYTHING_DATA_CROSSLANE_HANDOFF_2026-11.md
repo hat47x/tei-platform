@@ -175,6 +175,23 @@ H0/H1と異質領域の要件探索は並行可能。H2/H4の実Effect資格は�
 
 **非ブールの留意点**：未受理は明示Rejectと同義ではなく、Host Grant不在は現在の拒否とProvider照会不能を区別する。開示範囲外の情報を診断に表示しない。上のM/G=trueはすべて**この比較に必要な証拠が揃った場合に限る説明上の略記**であり、実Runtimeの共通Boolean/Authority APIを提案しない。
 
+#### 評価器の判定前に観測の帰属を確かめる：部分反例と空集合証明の非対称性
+
+**追加で確認した実コード上の境界**：[main `internal/semantic/completion.go`](https://github.com/hat47x/tei-platform/blob/main/internal/semantic/completion.go)（取得Blob `512a835ca445d81dd043f8af78ca29df4e7adb3b`）の`EvaluateCompletion`は、呼出側から`Targets[]/Coverage/EmptyJustified/HandoffConfirmed/Conflicting`を受け取り、対象のSource/業務Identity/Rule revision/Tenant/Read snapshotを自力で解決しない。既存[Go test](https://github.com/hat47x/tei-platform/blob/main/internal/semantic/completion_test.go)（Blob `8e9c49c55d8b524edbb3750b2a6ed39ff988b7c6`）では**partialでも適格な違反行を一つ観測すれば`fails`、すべて真でもpartialなら`unverified`**という非対称性を固定している。これは全称条件についての有用な局所推論だが、**違反行の帰属を呼出側が偽った／誤った場合まで安全だという証拠ではない**。#3022の限定静的レビューと#2886 §7の派生値用途区分を再利用し、新Completion Engineを作らない。
+
+| 対照：評価器へ投入する前の帰属（Domain違い・独立Expected） | 許される推論と停止条件 |
+| --- | --- |
+| 受注O1の**同じMeaning Revision／TargetSet L／Scope／Read cohort**に属する明細L2が`P=false`、L1は未取得 | そのL2が真に適格な反例なら、全件取得を待たず該当する**全称Claimがfails**と判断可能。未取得L1の値や、実Commit/取消・Owner業務完了は確定しない |
+| 表示・行ID・`P=false`は同じだが、L2は**別Tenant O2／古いRule版／Preview旧epoch**の観測 | 有効な反例を*現在O1のP*へ流用しない。対象/Scope/Rule/Observation identityが結び付くまで、現行Claimは`unverified`または適切な矛盾診断。関数にそのまま渡して返る`fails`は**呼出側入力の評価結果**であり、現行業務不成立の証拠ではない |
+| 対象O1の取得済みL1は`P=true`、未取得L2の有無も不明。あるいは`L=[]`だが一頁目のみの0件 | 局所的な満足は認めても全称Claimの`holds`は不可。Provider/Field/PopulationのCoverageが確定しなければ保留。実`EmptyPolicy`／`EmptyJustified`値を推測で埋めない |
+| O1の対象全集合に対する**独立の空証明**が存在するが、観測元は旧Snapshot、別Tenant、または限定ACLで母集団が変わっている | 証明の原Scope/Provider/Snapshot/取得完全性が現在のTargetSet Lと同一の対象を扱うか再確認。`EmptyJustified=true`という呼出引数の存在だけでは証明の出典と新鮮性を保証しない。空集合時の`deny/allow/requires-evidence`の意味は#267 Ownerの採否に従う |
+| O1の見積金額600をRule r1でPreviewし承認引用。後に価格改訂で現在Preview700、または別O2でも600。GはO1確定に有効 | 観測値・承認Decision・実Requestが同じ対象でも**承認時に引用した値とRule/Source Revision**が異なれば、現在の確定に採用できるかはOwner Rule次第。過去の600承認を抹消せず、700や別O2の600へ自動移転しない。G=trueから引用値の有効性を推論しない（Draft #2886 §7） |
+| 手作業Handoffの対象集合が空、または`HandoffConfirmed`の証拠が別Business Instanceから来る | 単体Evaluatorの空集合分岐による`holds/fails`と、該当Instanceの**人間への授受・確認が業務上必要か**を分離。空時の引継ぎ義務はOwner判断であり、`RunPlan completed`や他Instanceの確認から手作業完了を自動生成しない（#1125/#267） |
+
+**最小の実証単位（既存Scenario/Oracleへ付帯）**：公開合成`order_entry`の同一Rule/Source/Expectedで、①適格な部分集合中の`P=false`、②**P/値を変えず**対象のTenant・Business InstanceまたはRead epochのみを変更した非適格`P=false`、③適格な部分集合中の`P=true`、④同じ0件でもRead completeness/独立空証明だけ異なる対照を扱う。呼出側に帰属チェックが未実装なら、(a) **現Evaluator単体の戻り値**、(b) **実呼出しが不適格入力を渡さなかった証拠**、(c) **現在のClaimへ出してよい判定**を別票にする。実データのSource/Target/Query/Consumer紐付けは#2586/#2506、意味・業務完了は#1125/#267、Independent ExpectedとMutation判別力は#1180/#2514、現在のEffect/Hostは#1174/#1163へ戻す。評価器の単体PASSや一時的な`fails`を、現時点のBusiness Completion/不完了・安全な拒否・Host/Provider Effectの証明へ昇格しない。
+
+**状態**：上記の関数・既存Go testは静的Source/実テスト記述を直接確認。*今回*の4対照を用いる新Go/実Provider/実Tenant/CLI・実Reader・Owner受理は**NOT RUN**。既存コードのBUG確定、新API/共通Validity Tokenの採用、既存#267の意味変更は行わない。
+
 #### 三領域で破綻しやすい残余
 
 | 比較 | 単一因子だけ変える反例 | 独立Expectedと既存Owner |
