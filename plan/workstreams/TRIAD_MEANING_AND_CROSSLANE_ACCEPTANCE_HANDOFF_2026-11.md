@@ -126,7 +126,7 @@
 <!-- tei-triad-teimd-source-subject-bridge-20261106 -->
 ## 8. 11/6横断追補：*.tei.md統一時も三視点のSubject/Meaning/実行資格を保存する（方針はOwner決定、実移行未実施）
 
-**方針変更の取り込み**：同日後続のAuthoring議論で TEI向けSourceの標準を `*.tei.md` とし、従来 `*.tei` の新規作成を原則停止・段階廃止する方向が明示された。旧「.mdは草稿、.teiが最終意味」という二層ファイル構成を**必要条件としない**。ファイル規約・Parser/Loader/既存Fixtureの移行正本は [#2621の11/6引渡し](https://github.com/hat47x/tei-platform/issues/2621#issuecomment-6684602482)、#988/#2571/#2823へ委ね、本書ではData/Function/Business・Requirement Probe・Derived Valueに対する**影響だけ**を保持する。
+**方針変更の取り込み**：同日後続のAuthoring議論で TEI向けSourceの標準を `*.tei.md` とし、従来 `*.tei` の新規作成を原則停止・段階廃止する方向が明示された。旧「.mdは草稿、.teiが最終意味」という二層ファイル構成を**必要条件としない**。**移行工程と独立Expectedの唯一の計画正本**は [Draft #3030のM0〜M6/TM-01〜14](https://github.com/hat47x/tei-platform/pull/3030) とし、[Draft #2667のTMD-01〜12](https://github.com/hat47x/tei-platform/pull/2667) は横断履歴と対応表に限定する（両Draft本文に逆方向の参照が残るため[整合コメント](https://github.com/hat47x/tei-platform/pull/3030#issuecomment-6690311236)を送付済み）。Authoringの意図・原文保持は#2621、Language Parserは#988、実Loader消費は#2823、形式変換は#1920のOwnerが持つ。本書ではData/Function/Business・Requirement Probe・Derived Valueに対する**影響だけ**を保持する。
 
 | 三視点／用途 | `*.tei.md` で保持するもの | 自動昇格してはいけないもの |
 | --- | --- | --- |
@@ -150,7 +150,9 @@
 <!-- tei-triad-claim-relative-promotion-20261106 -->
 ## 9. 11/6横断追補：混在するMarkdownの一部をBusiness Meaningへ昇格する際の「主張相対」の閉包（設計・NOT RUN）
 
-**追加の理由と非重複**：[#3030 Authoring移行計画](https://github.com/hat47x/tei-platform/pull/3030) はM0〜M6とTM-01〜14を既に所有し、[#3031 暫定ガード](https://github.com/hat47x/tei-platform/pull/3031) は未BindingのTEI Markdown Sourceを黙って無視しないことを限定実証した。形式の移行試験は両者へ譲る。[#1440 POC-4/5](https://github.com/hat47x/tei-platform/issues/1440) はAs-Is/To-Be/仮説と業務有効期間を区別済み、[#1125の受注・承認縦切り](https://github.com/hat47x/tei-platform/issues/1125#issuecomment-6681840353) はBusiness完了の個別対象・承認Revisionを区別済み。本節の固有差分は、**1つのTEI Markdown文書中に混在する複数の主張に、同一の「文書が読めた／文書が承認された」資格を一括付与しない**こと。
+**追加の理由と非重複**：[#3030移行計画§9](https://github.com/hat47x/tei-platform/blob/docs/tei-md-unified-source-migration-20261106/plan/design/TEI_MD_UNIFIED_AUTHORING_MIGRATION_2026-11.md) は、同一Markdown内の受理済み`total`／未受理`discount`・部分Parse・Claim単位の鮮度を既に扱う。またM0〜M6とTM-01〜14の移行工程/独立Expectedを所有する。[#2667横断移行メモ§6](https://github.com/hat47x/tei-platform/blob/docs/everything-data-real-evidence-cut-20261103/plan/design/TEI_MARKDOWN_SOURCE_MIGRATION_2026-11.md) は歴史・対応表に限定し、TMDを第二受入正本にしない。[#3031暫定ガード](https://github.com/hat47x/tei-platform/pull/3031) の限定Go/CIは未BindingのTEI Markdown Sourceの黙殺を拒否しただけで、新Parser接続ではない。形式移行と一般的な部分Meaning受理はこれらへ譲る。[#1440 POC-4/5](https://github.com/hat47x/tei-platform/issues/1440) はAs-Is/To-Be/仮説と業務有効期間を区別済み、[#1125の受注・承認縦切り](https://github.com/hat47x/tei-platform/issues/1125#issuecomment-6681840353) はBusiness完了の個別対象・承認Revisionを区別済み。本節の固有差分は、**1つのTEI Markdown文書中に混在する複数の主張に、同一の「文書が読めた／文書が承認された」資格を一括付与しない**こと。
+
+**本節のBusiness固有の評価単位**：一つのAuthoringファイル内で **As-Is／To-Be／Preview／個別O1** の各Claimについて、(i) Ownerの規範的Meaningとして受理する必要があるか、(ii) どのビジネス時点・Subject・金額/承認Revisionを固定すべきか、(iii) 実Function/Providerの現在観測・Grantを必要とするかを別々に決める。**文書全体でRole/ParserがPASSしたか**はこの表の代用にならない。独立Expectedは本節X1〜X6を既存#1440/#1125/#2514のCaseへ対応付ける比較列にとどめ、新番号の主受入票を増やさない。
 
 ### 9.1 一つの原文にある四種類の主張を別々に扱う
 
