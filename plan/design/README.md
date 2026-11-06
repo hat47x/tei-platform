@@ -270,3 +270,4 @@ S1 realistic intent / candidate frontier
 - [実行先の現状調査](HOST_TARGET_SURVEY_2026-11.md)（Web・デスクトップ・サービス・Wasmの現在地。モバイル・組み込みは未着手）
 - [権限の現状調査](PERMISSION_ENFORCEMENT_SURVEY_2026-11.md)（宣言の検証はあるが、実行時の強制は無い）
 - [アクセス経路の棚卸し](ACCESS_PATH_INVENTORY_2026-11.md)（実行の中核が直接触るファイル操作は1件。実際のアクセスはアダプタ側）
+- [権限の強制の適用計画](PERMISSION_ADOPTION_PLAN_2026-11.md)（要求＝能力、付与＝環境。実行時に再確認して記録する）
