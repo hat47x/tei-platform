@@ -798,6 +798,11 @@ func TestE2MustNameTheAcceptanceKind(t *testing.T) {
 		if !has(r, want) || r.Status != "INCOMPLETE" || r.ProductGate != "UNQUALIFIED" {
 			t.Fatalf("%s: %+v", name, r)
 		}
+		// Treated exactly like an omitted field: one diagnosis, not also
+		// "unrecognized".
+		if has(r, "ACCEPTANCE_KIND_UNRECOGNIZED") {
+			t.Fatalf("%s: blank-only kind is reported as unrecognized as well: %v", name, r.Diagnostics)
+		}
 		// E0/E1 are unchanged (legacy shape).
 		for _, claim := range []string{"E0", "E1"} {
 			p.Claim = claim
