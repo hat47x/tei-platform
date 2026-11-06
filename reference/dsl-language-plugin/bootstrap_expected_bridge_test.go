@@ -99,12 +99,13 @@ func TestBootstrapBS03ActualLanguageSelectionRejectsChangedImplementationPin(t *
 	offered := pin
 	offered.ImplementationFingerprint = "dB"
 	parsed := false
+	parse := func(src string) (string, error) {
+		parsed = true
+		return "candidate:" + src, nil
+	}
 	_, err := ParseSelected(pin, []Provider[string]{{
 		Selection: offered,
-		Parse: func(string) (string, error) {
-			parsed = true
-			return "candidate", nil
-		},
+		Parse:     parse,
 	}}, "data source")
 	if !errors.Is(err, ErrProviderMissing) || parsed {
 		t.Fatalf("BS-03 parser bypassed the exact implementation pin: parsed=%v, err=%v", parsed, err)
@@ -114,10 +115,7 @@ func TestBootstrapBS03ActualLanguageSelectionRejectsChangedImplementationPin(t *
 	parsed = false
 	value, err := ParseSelected(pin, []Provider[string]{{
 		Selection: pin,
-		Parse: func(src string) (string, error) {
-			parsed = true
-			return "candidate:" + src, nil
-		},
+		Parse:     parse,
 	}}, "data source")
 	if err != nil || !parsed || value != "candidate:data source" {
 		t.Fatalf("BS-03 positive control did not select exact parser: parsed=%v, value=%q, err=%v", parsed, value, err)
