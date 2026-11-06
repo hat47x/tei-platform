@@ -493,11 +493,11 @@ G1〜G5で各観測は取得時点が異なる。要求するのは**同一瞬�
 
 | 資格 | #3018で確認する対象 | **対象外・禁止する昇格** |
 | --- | --- | --- |
-| **Source composition** | #2887 \`321bbfea\` を基点に、#2900 \`dcb21e9\`（2ファイル）と#2902 \`adfdd2d\`（2ファイル）を組み合わせ、MG-29a/bの期待値を安全仕様へ更新 | 異なるPRのCI成功の合算、後から変更された各枝を同一版と偽ること |
+| **Source composition** | #2887 `321bbfea` を基点に、#2900 `dcb21e9`（2ファイル）と#2902 `adfdd2d`（2ファイル）を組み合わせ、MG-29a/bの期待値を安全仕様へ更新 | 異なるPRのCI成功の合算、後から変更された各枝を同一版と偽ること |
 | **Go・Workspace conformance** | この**exact head**のGo test/vet/gofmt/参照Workspace。重複DB/Contract、unknown History、旧新Releaseの既存Expectedが同時に成立すること | 合成Go fixtureのsuccessを実Provider・実Client/CDC・業務意味Acceptedへ昇格しない |
 | **Runtime・Owner** | 未観測/未実施の項目をRequired/Undischargedに残し、実DB独立Read/Writer Fence/Receipt/Retention等の停止条件を明記 | Sourceの構造互換・RepoAppliedの一部成功をCutover/Contract完了へ変換しない |
 
-**合流選択**：#3018は製品PRではなく**統合適合診断専用**。#2900/#2902の個別レビュー・必要な修正と#2887の期待値改訂が受理された後、Ownerがmainへの正式な統合経路と順序を決める。#3018を先にmergeしたり、他ブランチをforce/rebaseしたりしない。最新CIは**そのexact head結果が確認されるまで未確定**であり、本節をもって正式Gate/Owner/実DB資格を主張しない。
+**合流選択**：#3018は製品PRではなく**統合適合診断専用**。#2900/#2902の個別レビュー・必要な修正と#2887の期待値改訂が受理された後、Ownerがmainへの正式な統合経路と順序を決める。#3018を先にmergeしたり、他ブランチをforce/rebaseしたりしない。**2026-11-06検証結果**：#3018の固定HEAD `983b9ed0f212fe6c6c227a2d71587ccdd84dfe09`は GitHub Actions 6件すべて **completed/success**（TEI PR・main健全性確認、セルフビルド、Studio参照編集、Desktop WebView smoke、Wails Host、依存脆弱性確認）。#2900の `dcb21e9`、#2902の `adfdd2d` も各exact HEADで6/6 success。ただしこれは同一Git treeの**Go/Workspace/CI適合**であり、実DB/旧新Client/CDC/外部履歴取得/Owner受理の資格ではない。#3018は依然Draft・統合禁止。#2887は修正前last-winsを期待するMG-29特徴付けを保持しており、#2900を取り込む正式な統合単位で安全Expectedに更新する。
 
 **残余**：HIST-03のHistory Adapterからの取得失敗→偽空入力、HIST-02 checksum欠落のProvider別許容、旧新Client・月次Batch・CDC/Sourceの網羅、MG-24の安全停止と現Grant/Effect/Receipt、過去時点History/SHO参照、物理削除Owner受理。新Gate Engine/Registry/Hostは作らない。
 
