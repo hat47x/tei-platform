@@ -683,3 +683,24 @@ G1〜G5で各観測は取得時点が異なる。要求するのは**同一瞬�
 **実装判断順**：①Migrationを実行する**実Caller**がHistory Reader/Writer・Outcome Recorder・CLIをどの順に呼ぶか特定。現状呼ばない機構を組み込んだことにしない。②Executorの`error`が「作用なし」「作用不明」「作用の一部確認」を表現できるか、既存Provider/Recovery経路の振る舞いを独立Fixtureで特徴付ける。③単体FakeでMA-07b〜dの分類を検証しても、実PostgreSQL Commit→記録失敗→別Connection Read→同一IDでの安全回復をE2Eで確認するまで完了扱いしない。**新Tx Coordinator・履歴Registry・Recorder正本を提案しない**。
 
 **CI・合流に関する同一HEADの診断（2026-11-07）**：前段の計画更新commit `acfce089b6ec64797123291867813d93eac799f1` の [repository-health run #42297752845](https://github.com/hat47x/tei-platform/actions/runs/42297752845) は**failure**。job logから `internal/database/migration/history_checksum_characterization_test.go` の`gofmt drift`を特定。同じjobで `go vet ./...`、`go test -count=1 -timeout 60m ./...`、`tei validate -workspace reference/workspace` はPASS。他5件のWorkflowはcompleted/success。新規§20のDocs追補はGoの書式不一致を修正しないため、**PR #2887はHealth未合格**。該当Goファイルの書式だけを既存Draft Ownerが修正し、修正後の**新しいexact HEAD**でCIを再実行・再確認する。旧headのテストPASSを新headの合格として継承しない。
+
+<!-- tei-db-migration-cli-closure-20261107 -->
+### 20.6 Caller調査の確定範囲：CLIの計画・比較と実Provider Applyの分離（2026-11-07、main静的照合）
+
+前節の「適用Callerを特定する」を一段進め、**少なくとも現行CLIのDB操作群は実Applyを接続していない**ことをSourceで確認した。これは全リポジトリに適用Callerが存在しないことの網羅的証明ではない。
+
+| 確認済み入口／Source | 実際に入力・呼出しているもの | **ここでは成立しないClaim** |
+| --- | --- | --- |
+| `cmd/tei/main.go` `plan-migration`（約632–673行） | `-actual`で渡した**JSONファイル**を`SchemaSnapshot`へDecodeし、desiredを生成、`schemadiff.Compare`後、`migration.Plan(id, dbid, actual.Fingerprint, diff, provider)`を呼ぶ | CLIが現DBへ接続してScope/Instanceを再観測、`BasedOnActualFingerprint`を実Current DBへ照合、またはApplyしたという証拠にはならない。ここでのPlanは**入力JSONに基づく候補** |
+| `cmd/tei/main.go` `database-reconcile`（約693–729行） | `-actual`と`-history`の**JSONファイル**をDecodeし、`migration.CompareHistory`と`reconcile.Build`で比較結果を返す | このCLI経路は実History Readerの取得成功/Completeness/接続先真正性、現在DBのApply事実を実測しない。局所比較に留まる |
+| `internal/database/migration/history_provider.go` `ReadHistory` | `HistoryReader`のエラー・Top-level Logical DB/Toolを照合し、欠けた**個別EntryのDatabase/ToolをSnapshotの値で補完**する | Entry属性の補完は**観測された実Connection/DB Instance/Toolの出典証明ではない**。既存HIST-03dのReader資格、Scope/ページ完結性/権限は別 |
+| `cmd/tei/dbcheck.go` | DSNでPGへ接続し、`SELECT version()`と同一SessionのTemporary Tableの作成・削除を試す | Targetに接続し簡易DDLが可能だという限定証拠。Migration DDL、History、別Connection Read、Owner Cutoverを試していない |
+| `internal/database/migration/postgres_apply.go` | 任意の`observe`/`execute` Callbackを受け、再Renderが一致すれば1回Executorへ渡す | 実CLI、Host Grant、単一実Connection、履歴記録・独立readと**自動接続されているわけではない** |
+
+**第一の独立反例（既存MA-01/02に統合）**：同じ`sales_core`の固定`actual.json`から`plan-migration`が成功した後、実DBのSchema/Instanceが変わる。CLIのPlan成功は正常な**offline plan claim**。そのJSONを直接`Apply Eligible`へ昇格するのは誤り。適用Callerが未確定なら`A: Apply Admission`は`not-run/unknown`、実Executorの呼出証拠なし。実DB readはSource/connection/Scope/epochを固定して別試験で評価する。
+
+**第二の独立反例（既存HIST-03d/XH-01に統合）**：ReaderがTop-level `HistorySnapshot.Database=sales_core`を返す一方、EntryのDatabase/Toolは空。正規化後にEntryの文字列が一致しても、実DB Instance/Reader Sourceが同じだとは結論しない。`database-reconcile`のFile Inputでは、そもそもReaderの成功・取得完結性を示すものではない。実History Readerの誤接続/部分RLS/欠落を独立に検証する。
+
+**次の境界決定（#2622/#2611/#2555既存Owner）**：`plan-migration`を実行入口に拡張するのではなく、①正式Migrationを実行するHost/Providerの責任者・接続先/Grant、②現Plan/History/Actualを同一Attemptへ結合する方法、③破壊的/非Tx/部分適用の停止/復旧保証を先に確認する。製品の`apply-migration`コマンドや新Migration Host/Storeは、この調査だけで新設しない。#1163の既存Evidence Packetへ`input-kind=file/live`・`input-scope/target/reader`・`actual-execution-attempt`を**診断項目**として渡し、新しいCore Schemaの採用は求めない。
+
+**CI修正の事実と上限**：旧§20.5に記録した`acfce089`/ `8166c655`のHealth失敗（原因：`history_checksum_characterization_test.go`の`gofmt`）に対し、同じDraft branchで**空白1か所のみ**を整列するcommit `05304eab133627dca22bec4730343023c4749526`を作成、Sourceを再取得して変更位置を確認した。過去HeadのGo test/vet/validate PASSは現Headへ自動継承しない。新Headのexact-head CI完了を別途確認するまでHealthの成功を主張しない。新しい実Go/PGテスト、正式Caller接続、Owner受理はNOT RUN。
