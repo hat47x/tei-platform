@@ -506,7 +506,7 @@ G1〜G5で各観測は取得時点が異なる。要求するのは**同一瞬�
 
 **現行コードで確認できる限界**：`HistorySnapshot` は `Database / Tool / CapturedAt / Entries` を持つが、取得の成功/失敗、Pagination完結、許されたScope、Readerの実接続先、SourceのRevision/Watermarkを保証するフィールドはない。`CompareHistory` は `Entries=[]` を「履歴なし」として `RepoPending` に分類するため、**Readerが失敗・権限不足・途中応答を空Snapshotへ潰すことを禁止**する。#2902の `AppliedUnknown`拒否は、既に取得した各Entryの適用状態を限定的に検査するもので、Readerの完全性は別のClaimである。
 
-**検収対象**：History Readerが既存のConnection/Providerを利用してHistorySnapshotを作る境界。独立ExpectedはリポジトリMigration定義 `m001` と、取得元の**実行結果および要求された読取範囲**から作る。比較関数の出力をExpectedにしない。外部Migration ToolのHistory TableをTEIが修復・上書きする機能は実装しない。
+**検収対象**：History Readerが既存のConnection/Providerを利用してHistorySnapshotを作る境界。独立Expectedは、比較処理より前に固定したリポジトリMigration定義 `m001`、Readerの合成fixture、要求Scope、取得成功/失敗・ページ数の**事前に定めた正解表**から作る。Reader/比較関数の出力をExpectedへ逆算しない。実Providerの確認では別Readerまたは別の証拠経路で事実を照合する。外部Migration ToolのHistory TableをTEIが修復・上書きする機能は実装しない。
 
 | 既存HIST-03を分割した最小負例 | Readerの事実 | 比較器へ渡してよいもの／期待 |
 | --- | --- | --- |
