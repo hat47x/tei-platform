@@ -308,15 +308,17 @@ flowchart TD
 
 ### 9.5 想定規模を明示するCollision Budget（2026-11-06、Reference実装・製品Policy未採用）
 
-桁数と文字集合の可変性は、Targetへ名前を配る母集団の規模とセットで評価する。見かけの表示幅だけから安全性を推定しない。従来からGo Referenceにある`CheckCollisionBudget`をread-only `hashid-probe`の**Target事前検査にのみ**結線した。追加したCLI入力は`-expected-population`と`-max-collision-probability`で、両方必須、予算違反／不正値／未指定はfail-closed。Targetを使用しない`derived-only`では予算を実行しておらず、出力に予算検査済みと書かない。
+桁数と文字集合の可変性は、Targetへ名前を配る母集団の規模とセットで評価する。見かけの表示幅だけから安全性を推定しない。従来からGo Referenceにある`CheckCollisionBudget`をread-only `hashid-probe`の**Target事前検査にのみ**結線した。追加したCLI入力は`-expected-population`と`-max-collision-probability`で、両方必須、予算違反／不正値／未指定／**ゼロリスク宣言**／**母集団が有限ID空間を超える場合**はfail-closed。Targetを使用しない`derived-only`では予算を実行しておらず、出力に予算検査済みと書かない。
 
-- `CollisionBudget`という**別ノード**に、Scheme、Callerが申告したExpectedPopulation（2以上）、MaximumCollisionProbability（0〜1）を入力し、推定確率が最大値を超えれば後段のCandidate/Target診断へ流さない。成功時は`collisionBudget:{expectedPopulation,maximumCollisionProbability,estimatedCollisionProbability,policySource:"caller-declared-unverified"}`をJSONで返す。
-- 確率は一様・独立な出力を仮定するbirthday近似 `p≈1−exp(−n(n−1)/(2A^L))`（exact mode）、または`2^outputBits`（encoded digest）である。実Targetの照合規則による同値化、禁止文字／予約名／既存占有／攻撃者の選択入力／暗号学的第二原像強度まで含めて安全性を保証するものではない。Target ProfileがAlphabetを狭めたり正規化で衝突させたりする場合は**同Referenceの推定値から実空間の安全証明を導かない**。
+- `CollisionBudget`という**別ノード**に、Scheme、Callerが申告したExpectedPopulation（2以上）、MaximumCollisionProbability（2件以上では0を拒否）を入力し、**保守的な衝突リスク上界**が最大値を超えれば後段のCandidate/Target診断へ流さない。成功時は`collisionBudget:{expectedPopulation,maximumCollisionProbability,estimatedCollisionProbability,collisionRiskUpperBound,policySource:"caller-declared-unverified"}`をJSONで返す。
+- 表示する推定確率は一様・独立な出力を仮定するbirthday近似 `p≈1−exp(−n(n−1)/(2A^L))`（exact mode）、または`2^outputBits`（encoded digest）である。実Targetの照合規則による同値化、禁止文字／予約名／既存占有／攻撃者の選択入力／暗号学的第二原像強度まで含めて安全性を保証するものではない。Target ProfileがAlphabetを狭めたり正規化で衝突させたりする場合は**同Referenceの推定値から実空間の安全証明を導かない**。
 - 合成反証として**数字24桁・10億件**では`p≈5×10^-7`となりCaller予算`10^-6`を満たすが、**数字20桁・10億件**では`p≈0.005`となり拒否する。これは学習用の比較であり、TEIや利用Targetの標準人口・許容確率を採用したわけではない。極端な過少申告`n=2`でもCLIはCallerの値を検査するだけで、権限ある業務Populationとはみなさない。
+- **推定とConformance判定は別**：表示用の`CollisionProbability`はbirthday近似、`CheckCollisionBudget`の合否は`CollisionRiskUpperBound=min(1,n(n−1)/(2S))`（ペア衝突事象の合併上界、`S=A^L`または`2^bits`）で決める。2文字種×1桁・2件では近似約`0.393`と上界`0.5`が異なるため、上限`0.4`を**拒否**する。PopulationがID空間総数を超える場合、大整数で鳩の巣原理を検出し、上限`1`でも拒否する。
+- **浮動小数点境界**：4,096bit等では確率表示がfloat64のアンダーフローで`0`になり得る。2件以上で`maximum=0`は拒否し、表示された`estimatedCollisionProbability=0`も`risk-free`を意味しない。ペア合併上界も「独立・一様な導出」というモデル上の上界であり、敵対的SourceやTargetの正規化・実装挙動には自動適用しない。
 - Target Profileが現実にどのNamesを同一視し、何件を配るかは各Target Provider/Ownerの資格。長期運用での容量変化・再試行・同時確保に対し、原子的Unique制約・衝突の診断/再受理・独立readbackは引き続き**W3の別Gate**に属する。数値Policyの署名・承認は#951の権限系へ自動接続しない。
 - Schemaへの昇格時には`CollisionBudgetPolicy`を独立した型付きRecordにする候補だが、現時点でのCLI argvはReference用の非権威的Projectionである。生成パイプラインの図からBudget検査を省略したConsumerは、そのTargetで予算検査が行われたと主張できない。
 
-**追加受入**：不正な最大確率（NaN/Inf/負数/不正文字列）、Policy片側欠落、人口下限違反は結果なしで拒否。正常な数字24桁と、予算超過の20桁は同じSource／Caller Snapshot上で独立試験。これはReferenceのコード合格条件であって本番Targetの受理ではない。
+**追加受入**：不正な最大確率（NaN/Inf/負数/ゼロ/不正文字列）、Policy片側欠落、人口下限違反、有限ID空間超過は結果なしで拒否。正常な数字24桁と、予算超過の20桁は同じSource／Caller Snapshot上で独立試験。これはReferenceのコード合格条件であって本番Targetの受理ではない。
 
 
 ### 9.6 図表の被覆・セルフビルド・ETLとの追加反証（設計接合のみ）
@@ -333,3 +335,19 @@ flowchart TD
 **Hash IDの最小Scope付きProjection契約候補**：任意のViewで表示する`HashIdText`は`(scope, qualifiedSubject, schemeWire, sourceReadEvidence, targetProfileVersion, targetSnapshotEvidence, collisionBudgetEvidence)`の各構成要素に遡れる必要がある。ただし`sourceReadEvidence`などの実Source保証がない場合は、欠落欄を空文字で補完せず`unknown`として扱う。Canonical SubjectをHashIdTextから逆算しない。現在の`hashid-probe`はCaller宣言のsubject/raw bytes/pinのみで、Qualified Sourceの実Reader証跡や閉じたTarget割当集合を持たないため、この完全なProjection契約は**未実装**。
 
 この記述は#2881/#2966/#2831/#2827の実装を本PRへ複製したものではない。Hash IDのTarget適用を有効化するOwner Gateとは別であり、追加の管理レジストリ・Host・独自Source Readerは必要としない。
+
+
+### 9.7 特性評価：Intent／Observed／Conformance／Unknownの分離（2026-11-06）
+
+TEIの型付き特性識別の横断議論に照らし、Hash IDのConstraintを単一のbooleanに潰さない。既存のSource／Provider／OwnerのEvidenceを第二正本へ複製せず、どこまで機械判定できるかを明示する。
+
+| 層 | 入力／証拠 | 局所的に判断できること | 判断できないこと |
+| --- | --- | --- | --- |
+| **Intent** | Caller宣言のScheme、TargetProfile、ExpectedPopulation、RiskCeiling | 形式・文字集合・桁数・予算値を表現する | 宣言がOwner承認済みであるか、Targetの実人口に合うか |
+| **Observed-local** | CLIが読み取ったSource／Snapshot bytes、SHA-256、Derive結果、局所再読取 | Caller Pinと観測byteの一致、固定したSnapshotにおける既存割当の矛盾 | Accepted Revision、実Readerと同一Attempt、A→B→A、割当の完全性 |
+| **Conformance-conditional** | SchemeとTargetProfile、局所Snapshot、`CollisionRiskUpperBound` | 一様独立性とCaller宣言という**条件下**での静的制約・予算適合 | 実DB collation／原子的な一意確保、敵対的入力、Owner意味判断 |
+| **Unknown/unproven** | 正式Source Reader、Target Authority、独立readbackの証拠なし | `unknown`を維持し、`accepted`や`committed`へ昇格しない | Source鮮度や実登録成功を推測しない |
+
+**Source ABA負例**：初回A→途中B→復元Aのあと、CallerがAのSHA-256を渡せば最終byte照合は再び一致する。このReferenceで再現した場合も`authority=none`と`storageWrite=false`のままであり、元のSource Revisionを継続的に占有したとは判断しない。#1124/#1017/#2595の同一Attempt Source証拠がConsumerで得られるまで、`CallerPinsMatched=true`は`SourceAccepted`を含意しない。
+
+Schemeの静的制約をTEIの「強属性」等に特別昇格する案は、既存の特性識別レーン（#2496等）の定義・Owner決定に委ねる。未確定概念を新Core構文や第二Acceptanceへ取り込まない。
