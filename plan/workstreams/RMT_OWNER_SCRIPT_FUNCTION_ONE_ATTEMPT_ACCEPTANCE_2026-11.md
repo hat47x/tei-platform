@@ -498,3 +498,49 @@ HR-01はHeaderの`order_id/customer_id`取得、HR-02は`status=open/closed`・m
 #3039／[merged #3040](https://github.com/hat47x/tei-platform/pull/3040)の用語方針に合わせ、テスト判定の呼称は「独立検証基準」「独立期待結果」「業務判定基準」に寄せる。DB製品名や外部コード識別子は変更しない。
 
 **実証状態**：前計画HEAD`d2c992fbeeb3bb4cc978454ea3eadfea823d0e4a`の[Repository Health #42256444830](https://github.com/hat47x/tei-platform/actions/runs/42256444830)はcompleted/success。**本節を追加した後のHEADのCIは別に資格化する**。この追補は既存計画Markdownのみの変更で、新Go/実Function SQL Read/同業務実PG K/O/Windows実Driver/Owner意味受理はNOT RUN、G1/G2はUNQUALIFIED、Draftのままmain未統合。
+
+## 16. 11/7実行境界の具体化：BrowseViewの定義解決と実Rowset、効果報告の二つの未観測
+
+本章は`14–15のP0-R1（既存X-TEA合成受容例Eの`order_entry.recent_orders` Header Read）を、**確認した製品Go call path**で具体化する。Function/Business忠実移植R、実Provider K、Owner BをEの成功に合算しない。第二Query Engine、Runner、検証基準、独自Hostを導入しない。
+
+### 16.1 Code-staticで確定した停止辺：BrowseのQuery選択は実装済み、CLIの実DB Readではない
+
+現main [`internal/applicationview/browse.go`](https://github.com/hat47x/tei-platform/blob/main/internal/applicationview/browse.go)の`BuildBrowse(world, applicationID, patternID)`は、Application→Browse Pattern→`pattern.Query`に一致する`world.Queries[i].ID`を選び、Application一致とResultColumnsのSemantic属性、Filter/Sort/PageSizeを検証して**表示用`BrowseView`**を返す。従来の「Pattern→Queryの宣言しかなく実Go選択がない」という一般化は正しくない。**定義の選択・表示投影は現物としてある**。
+
+一方、[`cmd/tei/cli_view.go`](https://github.com/hat47x/tei-platform/blob/main/cmd/tei/cli_view.go)の`runViewCommand`は、`PatternBrowse`の場合`BuildBrowse`を呼び、`report.Result=view`へ投影を入れる。この実枝にSQL実行・実Provider Rowset取得はない。現`BrowseView.Query`や結果列は**定義情報**であって実取得行ではない。したがって、この特定入口の次の欠落辺は**選択済Query→Runtime Execution Binding→物理DataSource/選択SQL+実args→実Provider Reader→Rows/Scope**。全Productの別経路まで不存在と断言せず、#2586が既存実Reader Callerの有無を実APIで判断する。
+
+### 16.2 HR-01/02へ足す独立検証基準（新Fixture正本は作らない）
+
+| 検査の焦点 | 同一Attemptの期待と負例 | 禁止する昇格 |
+| --- | --- | --- |
+| **HR-01／正対照** | 現行Workspace→`BuildBrowse.Query`と選択SQLの原byte→実Aliasと物理DB Instance→`status`引数→実ProviderのSQL実行→`order_id/customer_id`のRowset・Consumer Bodyを**一試行**で独立Expectedと照合する | `BrowseView`成功や`readByLoader:true`をProduct実ReadのPASSにしない |
+| **HR-02／同ID・異入力** | 同じQuery IDでもSQL WHERE／Schema列／Dialectを一因子ずつ変え、Request/Source fingerprint・Revision・Worker実体・実消費SQLを別に固定。古い結果を新Requestへ結び直さない | [merged #2657](https://github.com/hat47x/tei-platform/pull/2657) QX-14のGoサブプロセス**模擬Worker**は同IDだけでは入力帰属を証明しない局所反例。実SQLGlot／実PGの適合ではない |
+| **HR-02／非出力依存** | 出力Header2列が同じでもWHERE/ORDER、Rule、秘匿列の実SQL ReadをContext用途別に観測する | [merged #2665](https://github.com/hat47x/tei-platform/pull/2665)の実SQLite 14/14 PASSは`SQLITE_READ`**コンパイル時の列参照**。実Row/Storage/PG RLS/Host開示の証明ではない |
+| **HR-03〜05／ページと明細** | 20件のBrowse View、Header0件・Page1の成功から`sales.order_line`対象集合Lの完全取得/空集合正当化を推論しない。別Data ContextのRow identity/Scope/cohort/Read epochを要求 | 完了判定[merged #3051](https://github.com/hat47x/tei-platform/pull/3051)の空Deny未取得→`unverified`は修正済みだが、CallerのCoverage/Empty申告をそのまま信頼しない |
+
+Source A→B→Aでは同byteでもObservation時点・選択Revisionが別となる。初回HR-01/02の実製品SQL Reader試験は本章では**NOT RUN**。`BuildBrowse`のGo選択済みという証拠と、本番Providerの実Readを分離する。
+
+### 16.3 Commandの「効果宣言あり／報告なし」と「Applied未列挙」は直交する
+
+[merged #3112](https://github.com/hat47x/tei-platform/pull/3112)により、[`internal/command/invoke.go`](https://github.com/hat47x/tei-platform/blob/main/internal/command/invoke.go)と`operation.go`は`plan.Effect!=nil && result.Effect==nil`なら`ReportedEffectMissing=true`を記録。これは**Executorが宣言効果を報告しなかった**印で、`AppliedUnobserved`（効果を宣言したが操作を列挙しなかった）とは別。後者は[merged #3104](https://github.com/hat47x/tei-platform/pull/3104)で`plan.Effect!=nil`の場合だけ立てるよう修正済み。`Differences/additional-scope`は[merged #3055](https://github.com/hat47x/tei-platform/pull/3055)の独立の差記録。
+
+| 当該Commandで観測できたこと | 正しく示す状態 | 主張できないこと |
+| --- | --- | --- |
+| 効果宣言あり、`Result.Effect=nil`、`Applied=[]` | `reportedEffectMissing=true`と`appliedUnobserved=true` | 効果0、結果成功＝新規Commit |
+| 効果宣言あり、報告Effectあり、`Applied=[]` | 効果を**自己報告**したが、個別操作は未列挙 | 実DBへ宣言効果が確かに適用されたこと |
+| 効果宣言なし、`Applied=[]` | 比較対象なし。`appliedUnobserved=false` | 外部効果0を独立観測したこと |
+| 同Kind別Dataに追加適用し`Differences`あり | 未解決の追加Scopeを記録 | 合法Cascade、Grant/Relation/Owner意味の確定 |
+
+重要：実`effectcommit/commandadapter.Executor`は`Committed/Replayed`を空`command.Result{}`へ変換している。報告欠落を**一律EffectUnknown拒否にする案は現行正常経路を壊す**ため採用しない（#3112）。実ProviderでCommit/Replay識別、Operation ID/Request Hash、Receipt K、別接続Postimage O、Current Grant/Targetを別証拠とし、未報告を勝手に「無作用」にしない。`ReferenceAuthorizer`、MemoryStore、Studioの`committed:true,persisted:false,durability:none`は本番保存Receiptではない。
+
+### 16.4 並行レーン成果の適用上限
+
+- [merged #3108](https://github.com/hat47x/tei-platform/pull/3108)は`hook.CommandCaller`によるHook→Commandの局所委譲契約を提供する。ただし`hook.Runner`の**実配線未実装**、参照認可使用、実DB未接続。RMTの二Function実入口が成立したとしない（#1125/#1129）。
+- [PR #3113](https://github.com/hat47x/tei-platform/pull/3113)はDSH外部Harnessから固定TEI実行物をread-onlyで32回起動し、CLI `commands/version/model catalog/inspect/source-index/validate`を実観測した独立Attempt。これはCLI到達証拠で**Product Query ReadやEffect/Owner受理ではない**。実行範囲外の読み取り可能パスへアクセスできた点は参加者隔離の未達であり、Harness試験の適格性はそのOwnerで管理する。
+- [merged #3115](https://github.com/hat47x/tei-platform/pull/3115)はX-TEA Modelerの設計書/DDL/行列等の**派生出力受容設計**。Source版・生成規則・未解決を残す提案であり、旧Driverの原業務実動、TEIの意味Parity、実Provider Readの新証明ではない。原典R/SHOの別受入へ渡す。
+
+### 16.5 次の一手と証拠の状態
+
+最初は**既存HR-01/02のみ**：#2586/#2622が`runViewCommand→BuildBrowse`を固定し、既存Product Readerへ至るCallerがあれば実SQL/Rows/Scopeと同じRunで検証、無ければこの入口に限った`browse-query-execution-unbound`を既存`product-read-not-connected`の内訳として返す（新Status enumは作らない）。#2514/#1180は同ID異SQL・非表示Columnの独立Expected、#1163はSource/Request/Provider/Consumer実行とSKIP/NOT RUNの一改訂Packetを所有。P0-R1が実証できてから#1174の事前拒否／Executor後Unknown／二つの未報告欄／K/O/Grantを同一業務Attemptで照合し、旧Driver/Windows/Owner意味受理はさらに別。
+
+**資格**：現行mainの製品Go Sourceの静的追跡、[merged #3112 exact-head Repository Health #42308140870](https://github.com/hat47x/tei-platform/actions/runs/42308140870) completed/success、[前計画HEAD 1fe1e455のHealth #42301279950](https://github.com/hat47x/tei-platform/actions/runs/42301279950) completed/successを**それぞれの範囲**で参照。今回の新HR実Reader・実PG業務K/O・Windows Driver・Owner判断はNOT RUN／UNQUALIFIED。本計画Markdown以外は変更せず、G1/G2未受理、Draft/main未merge。新HEAD Healthは結果を確認するまで未確定。
