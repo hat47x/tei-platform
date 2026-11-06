@@ -10,6 +10,7 @@ import (
 
 	"tei/internal/artifact"
 	"tei/internal/operations"
+	"tei/internal/periodstate"
 )
 
 // runOperationsCommand prints the derived operation surface. Gaps are part of
@@ -133,7 +134,7 @@ func runPeriodsCommand(workspacePath, applicationID, statesFlag, stateFile strin
 		return err
 	}
 	if stateFile != "" {
-		fileStates, err := periodStateFile{path: stateFile}.PeriodStates(context.Background(), applicationID)
+		fileStates, err := periodstate.File{Path: stateFile}.PeriodStates(context.Background(), applicationID)
 		if err != nil {
 			return err
 		}

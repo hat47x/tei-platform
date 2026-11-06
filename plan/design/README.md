@@ -1,4 +1,4 @@
-# 機能設計文書
+﻿# 機能設計文書
 
 ここには、複数のIssueにまたがる機能について、意味モデル、記述方法、検証、実行時の境界をまとめた設計文書を置きます。採用前の案も、対象となるIssueと文書の状態を冒頭に明記して管理します。
 
@@ -25,6 +25,7 @@
 
 | 文書 | 対象 |
 | --- | --- |
+| [`COMMAND_BOUNDARY_SAFETY_2026-11.md`](COMMAND_BOUNDARY_SAFETY_2026-11.md) | Command境界の未設定認可・期間状態の拒否、宣言外効果をunknownとして記録する判断と、参照実行の明示的認可（[#2996](https://github.com/hat47x/tei-platform/issues/2996)、[#2997](https://github.com/hat47x/tei-platform/issues/2997)、参照実装） |
 | [`EVERYTHING_DATA_MARKDOWN_SOURCE_FIDELITY_2026-11.md`](EVERYTHING_DATA_MARKDOWN_SOURCE_FIDELITY_2026-11.md) | Markdownの元シンタックスシュガーと書式・Source occurrenceを保存で保持する契約、局所Patch・競合・往復受入 |
 | [`TEI_PRODUCT_SKILL_HARNESS_BINDING_2026-11.md`](TEI_PRODUCT_SKILL_HARNESS_BINDING_2026-11.md) | TEI read-only Product Skillを既存CLIへ正確に結び、外部Harness/Consumerの受理・許可・開示・実実行と分ける設計候補（[#2605](https://github.com/hat47x/tei-platform/issues/2605)、未採用） |
 | [`TEI_MEANING_TO_CAPABILITY_SKILL_WITNESS_2026-11.md`](TEI_MEANING_TO_CAPABILITY_SKILL_WITNESS_2026-11.md) | Everything is Dataの意味Role→標準Operation→限定CLI発見→Product Skill/Harness→実Host/SHO受渡しの資格差とSource-static・合成検証（#2619/#2605/#2614、未採用） |
@@ -51,7 +52,6 @@
 | [`CAPABILITY_INVOCATION_CONTEXT_DESIGN.md`](CAPABILITY_INVOCATION_CONTEXT_DESIGN.md) | 機能に渡す意味上の要求と、ホストが注入する実行時の文脈を分ける、評価待ちの設計（[GitHub #1118](https://github.com/hat47x/tei-platform/issues/1118)） |
 | [`PLUGIN_DEPENDENCY_IO_MAPPING_DESIGN_2026-10.md`](PLUGIN_DEPENDENCY_IO_MAPPING_DESIGN_2026-10.md) | プラグイン間の依存を、受け渡す項目・パラメータ・値の出どころ・対応付けと変換・多重度・版の変化まで含めて整理する方式設計候補（[GitHub #1223](https://github.com/hat47x/tei-platform/issues/1223)、評価待ち） |
 | [`PLUGIN_NAMESPACE_AND_OPTIONAL_COMPOSITION_2026-10.md`](PLUGIN_NAMESPACE_AND_OPTIONAL_COMPOSITION_2026-10.md) | `tei.std` / `tei.experimental` / `tei.contrib` の管理名前空間と、Principal・DB・TransactionをCoreへ強制しない案件選択型Compositionの設計候補（提案中） |
-| [`PLUGIN_REGISTRY_PUBLICATION_VERIFICATION_DESIGN_2026-11.md`](PLUGIN_REGISTRY_PUBLICATION_VERIFICATION_DESIGN_2026-11.md) | Plugin公開名予約・分散Release配布・検証証明の独立資格とConsumerごとの採用境界（[#2589](https://github.com/hat47x/tei-platform/issues/2589)、設計候補） |
 | [`SUI_REFERENCE_ADOPTION_DESIGN_2026-09.md`](SUI_REFERENCE_ADOPTION_DESIGN_2026-09.md) | SUIの既存実装を生かしながらTEIへ移行するための設計基準 |
 | [`CROSS_VIEW_CHANGE_QUALIFICATION_REFERENCE_DRAFT.md`](CROSS_VIEW_CHANGE_QUALIFICATION_REFERENCE_DRAFT.md) | Issue #1143で検討中の、複数の視点にまたがる変更の適格性確認案。参照用の契約としては未採用 |
 | [`STUDIO_CONSUMER_FRESHNESS_BOUNDARY_2026-10.md`](STUDIO_CONSUMER_FRESHNESS_BOUNDARY_2026-10.md) | #1124の非Host Studio Consumerが非同期応答・Graph描画選択・Source/Accepted/readinessの鮮度を別々に検査する未採用の設計補足 |
@@ -113,8 +113,33 @@
 | [`RUN_PLAN_AND_UNATTENDED_EXECUTION_DESIGN_2026-11.md`](RUN_PLAN_AND_UNATTENDED_EXECUTION_DESIGN_2026-11.md) | 実行計画の宣言、業務キーによる実行の同定、再開・二重起動の拒否、帳票の決定性、無人の実行条件（[#1130](https://github.com/hat47x/tei-platform/issues/1130)、提案中） |
 | [`PERIOD_STATE_SEMANTICS_DESIGN_2026-11.md`](PERIOD_STATE_SEMANTICS_DESIGN_2026-11.md) | 業務日付・会計期間の状態・締めの一貫点・確定した行の不変性・赤黒の訂正・遅延到着の方針（[#2144](https://github.com/hat47x/tei-platform/issues/2144)、提案中・中核変更のためA4判断） |
 | [`DERIVED_DESIGN_ARTIFACTS_DESIGN_2026-11.md`](DERIVED_DESIGN_ARTIFACTS_DESIGN_2026-11.md) | 受理済みの意味から表定義書・機能定義書・対応一覧・DDLを決定的に導出し、差分と未解決を読む契約（[#1803](https://github.com/hat47x/tei-platform/issues/1803)、提案中） |
+| [`XTEA_DERIVED_OUTPUT_RECEPTION_2026-11.md`](XTEA_DERIVED_OUTPUT_RECEPTION_2026-11.md) | X-TEAの設計書・DDL・行列・差分・一覧の往復を、TEIの導出成果物の契約（版・規則・未解決・非昇格）へ受け止める設計案（未採用） |
+| [`XTEA_AUTHORING_SURFACE_RECEPTION_2026-11.md`](XTEA_AUTHORING_SURFACE_RECEPTION_2026-11.md) | X-TEAのModeler・Editor・Driverを読み、TEI Studioの作者環境と標準業務の基本機能へ受け止める形を整理した設計案（未採用）。配置検査の面分割、検索・置換の版境界、編集履歴のまとまり、雛形生成の未受理扱い、標準業務の宣言化を含む |
 | [`XTEA_LOWCODE_RECEPTION_ARCHITECTURE_2026-11.md`](XTEA_LOWCODE_RECEPTION_ARCHITECTURE_2026-11.md) | X-TEAから回収したローコードの知見を、Core・Pattern・生成器・Plugin・Studio・要件のどこで受け止めるかの設計案（未採用）。パッケージ・対話フック・項目の役割・結果型・標準業務意味の判断候補を含む |
 | [`DATA_OPERATIONS_KEY_SPACE_AND_MULTIPLICITY_LOSS_2026-11.md`](DATA_OPERATIONS_KEY_SPACE_AND_MULTIPLICITY_LOSS_2026-11.md) | MS-09：多様なData Structure間のKey空間・多重度・逆更新の喪失を明示する |
+| [`EVERYTHING_DATA_GO_LANGUAGE_REFERENCE_BRIDGE_2026-11.md`](EVERYTHING_DATA_GO_LANGUAGE_REFERENCE_BRIDGE_2026-11.md) | Everything is Dataの複数表層を既存Go Language Plugin Referenceに接続する限定試験設計（#2619/#2620/#988、Draft #2639。新Core/正式意味受理・実Product/Hostは未実証） |
+| [`QUERY_QX31_DYNAMIC_PATH_AND_NEGATIVE_DEPENDENCY_2026-11.md`](QUERY_QX31_DYNAMIC_PATH_AND_NEGATIVE_DEPENDENCY_2026-11.md) | QX-31：SQLのRelation path再束縛、相関NOT EXISTSの0件・否定依存、Read Cohortと現在Claimの分離をSQLiteで反証する補助設計（[#2387](https://github.com/hat47x/tei-platform/issues/2387)、#2582、未採用） |
+| [`QUERY_STRUCTURAL_MODEL_AND_FIXTURE_WORKBENCH_2026-10.md`](QUERY_STRUCTURAL_MODEL_AND_FIXTURE_WORKBENCH_2026-10.md) | Query構造Explainのread-only投影と、QX-01〜32のSQL/共通Data Operator/Function Context/Provider・Target同義性、証拠・開示・完全性の境界を分ける継続検証計画（[#2387](https://github.com/hat47x/tei-platform/issues/2387)、Draft #2388、未採用） |
+| [`QUERY_QX33_ANALYZER_INVOCATION_BINDING_AND_VERTICAL_HANDOFF_2026-11.md`](QUERY_QX33_ANALYZER_INVOCATION_BINDING_AND_VERTICAL_HANDOFF_2026-11.md) | QX-33：SQL Analyzerの実呼出し・入力byte帰属とQuery→Context縦断の受渡し（2026-11-03） |
+| [`QUERY_QX33_V0_V1_WORKER_READINESS_AND_ACCEPTANCE_2026-11.md`](QUERY_QX33_V0_V1_WORKER_READINESS_AND_ACCEPTANCE_2026-11.md) | QX-33 V0/V1：実SQL解析Producerの所在・入力帰属・Go DerivedIR縦断受入票 |
+| [`CROSSLANE_REAL_CLI_OPERATION_ARTIFACT_2026-11.md`](CROSSLANE_REAL_CLI_OPERATION_ARTIFACT_2026-11.md) | Everything is Data：実TEI CLIでのOperation→Artifact受渡しを同一版で検証する |
+| [`FUNCTION_MAPPING_SQLITE_READ_WITNESS_2026-11.md`](FUNCTION_MAPPING_SQLITE_READ_WITNESS_2026-11.md) | Function Data MappingとProvider側Read Witnessの接合検証（2026-11） |
+| [`QUERY_QX14_INPUT_ORIGIN_EVIDENCE_2026-11.md`](QUERY_QX14_INPUT_ORIGIN_EVIDENCE_2026-11.md) | QX-14追補：SQL解析の「入力帰属」と演算・Data Contextへ渡せる証拠 |
+| [`GENERIC_STUDIO_OPEN_WORLD_PROJECTION_CONFORMANCE_2026-11.md`](GENERIC_STUDIO_OPEN_WORLD_PROJECTION_CONFORMANCE_2026-11.md) | TEI Studio標準UIの開放的拡張性：標準データ構造／意味Plugin／汎用Projectionの適合計画（2026-11-02） |
+| [`EXPLICIT_DATA_FOOTPRINT_VS_PROVIDER_READ_WITNESS_2026-11.md`](EXPLICIT_DATA_FOOTPRINT_VS_PROVIDER_READ_WITNESS_2026-11.md) | Function Read FootprintとProvider実アクセスの差を観測する（2026-11-02） |
+| [`EVERYTHING_DATA_SYNTAX_NORMAL_FORM_EQUIVALENCE_2026-11.md`](EVERYTHING_DATA_SYNTAX_NORMAL_FORM_EQUIVALENCE_2026-11.md) | Everything is Data：表層構文からプレーンな標準データへ収束する条件の限定Reference（2026-11-02） |
+| [`EVERYTHING_DATA_INTERPRETATION_AND_SOURCE_BINDING_2026-11.md`](EVERYTHING_DATA_INTERPRETATION_AND_SOURCE_BINDING_2026-11.md) | Everything is Data：引用データ・意味Role適用・参照束縛・Source編集の境界（2026-11-02） |
+| [`SCRIPT_FIRST_GENERIC_STUDIO_PROJECTION_REFERENCE_2026-11.md`](SCRIPT_FIRST_GENERIC_STUDIO_PROJECTION_REFERENCE_2026-11.md) | Script-first + 標準データ構造からの汎用Studio投影：Headless受入案（2026-11-02） |
+| [`SEMANTIC_CONTEXT_ACTION_AFFORDANCE_2026-11.md`](SEMANTIC_CONTEXT_ACTION_AFFORDANCE_2026-11.md) | Semantic Contextに基づく汎用Action発見・UI Affordance・実Request接合（2026-11-02） |
+| [`SOURCE_REVISION_CORRESPONDENCE_AND_CONSUMER_IMPACT_2026-11.md`](SOURCE_REVISION_CORRESPONDENCE_AND_CONSUMER_IMPACT_2026-11.md) | Source改版追跡とConsumer別の再適用・再生成（設計候補） |
+| [`FUNCTION_PATTERN_ASSUME_GUARANTEE_COMPOSITION_2026-11.md`](FUNCTION_PATTERN_ASSUME_GUARANTEE_COMPOSITION_2026-11.md) | Function Patternの前提・保証と合成可能性：異質Domainの反例検証（2026-11） |
+| [`COMPOSITE_FUNCTION_VERSIONED_EVOLUTION_2026-11.md`](COMPOSITE_FUNCTION_VERSIONED_EVOLUTION_2026-11.md) | Composite Function の改版・状態移行・実行世代の交差検証（2026-11） |
+| [`FUNCTION_CONTEXT_EDIT_SESSION_SAVE_BOUNDARY_2026-11.md`](FUNCTION_CONTEXT_EDIT_SESSION_SAVE_BOUNDARY_2026-11.md) | 複数Data Contextの編集セッションと保存境界：機能合成の横断設計（2026-11） |
+| [`MEASURE_GRAIN_AGGREGATION_CONFORMANCE_2026-11.md`](MEASURE_GRAIN_AGGREGATION_CONFORMANCE_2026-11.md) | 測定値の集計軸・粒度・時間・再集計適合：Function Data Contextの横断圧力試験 |
+| [`PLUGIN_REGISTRY_PUBLICATION_VERIFICATION_DESIGN_2026-11.md`](PLUGIN_REGISTRY_PUBLICATION_VERIFICATION_DESIGN_2026-11.md) | 分散型Plugin公開・登録・検証プロトコル（設計候補、2026-11-02） |
+| [`FUNCTION_DATA_CONTEXT_PATTERN_PRESSURE_2026-11.md`](FUNCTION_DATA_CONTEXT_PATTERN_PRESSURE_2026-11.md) | Function Data Contextと機能パターンの横断設計・圧力試験（2026-11） |
+| [`JAVA_LIBRARY_PORTABLE_CONSUMER_AND_STORE_GATES_2026-10.md`](JAVA_LIBRARY_PORTABLE_CONSUMER_AND_STORE_GATES_2026-10.md) | Java Libraryの外部Consumer・Artifact Store受入計画（2026-10-30） |
+| [`ORGANIZATION_RELATION_GOVERNANCE_MODEL_2026-10.md`](ORGANIZATION_RELATION_GOVERNANCE_MODEL_2026-10.md) | 組織関係・時点・統制の標準意味モデル：横断設計と最小検証計画 |
 
 ## 関連する参照事例と評価
 
@@ -274,3 +299,5 @@ S1 realistic intent / candidate frontier
 - [アクセス経路の棚卸し](ACCESS_PATH_INVENTORY_2026-11.md)（実行の中核が直接触るファイル操作は1件。実際のアクセスはアダプタ側）
 - [権限の強制の適用計画](PERMISSION_ADOPTION_PLAN_2026-11.md)（要求＝能力、付与＝環境。実行時に再確認して記録する）
 - [動的な出力パスと宣言スコープ](DYNAMIC_PATH_GRANT_DESIGN_2026-11.md)（環境の付与は静的、実行時のパスは動的。両者の不一致と選択肢）
+
+

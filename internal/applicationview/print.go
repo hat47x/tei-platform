@@ -9,6 +9,7 @@ var printTemplate = template.Must(template.New("print-view").Parse(`<!doctype ht
 <html lang="ja">
 <head>
 <meta charset="utf-8">
+{{if .SemanticFingerprint}}<meta name="tei-semantic-fingerprint" content="{{.SemanticFingerprint}}">{{end}}
 <title>{{.Pattern}}</title>
 <style>
 @page{size:A4;margin:15mm}
@@ -34,6 +35,7 @@ var headerDetailPrintTemplate = template.Must(template.New("header-detail-print"
 <html lang="ja">
 <head>
 <meta charset="utf-8">
+{{if .SemanticFingerprint}}<meta name="tei-semantic-fingerprint" content="{{.SemanticFingerprint}}">{{end}}
 <title>{{.Pattern}}</title>
 <style>
 @page{size:A4;margin:15mm}

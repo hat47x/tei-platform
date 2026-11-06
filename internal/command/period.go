@@ -6,12 +6,34 @@ import (
 	"sync"
 
 	"tei/internal/core"
+	"tei/internal/operations"
 )
 
 // PeriodStateは、期間が閉じているかを問い合わせる契約である。
 // 状態の保存はProviderに置く。
 type PeriodState interface {
 	Closed(ctx context.Context, periodID core.CanonicalID) (bool, error)
+}
+
+// MapPeriodStateは、期間IDと状態の対応から閉塞を判定する。
+type MapPeriodState map[core.CanonicalID]operations.PeriodState
+
+// NewMapPeriodStateは、期間状態の対応を写す。
+func NewMapPeriodState(states map[string]operations.PeriodState) MapPeriodState {
+	mapped := MapPeriodState{}
+	for id, state := range states {
+		mapped[core.CanonicalID(id)] = state
+	}
+	return mapped
+}
+
+// Closedは、期間が閉じているかを返す。未指定の期間は閉じていない扱いにする。
+func (m MapPeriodState) Closed(_ context.Context, periodID core.CanonicalID) (bool, error) {
+	state, ok := m[periodID]
+	if !ok {
+		return false, nil
+	}
+	return state == operations.PeriodClosed, nil
 }
 
 // MemoryPeriodStateは、期間の閉塞状態だけを保持する参照実装である。

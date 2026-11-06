@@ -547,3 +547,32 @@ func hasPrecondition(operation Operation, want string) bool {
 	}
 	return false
 }
+func TestDeriveOperationSurfaceCarriesTheEffectRules(t *testing.T) {
+	world := surfaceTestWorld(database.AccessReadWrite, true)
+	world.Semantics[0].Capabilities = []semantic.Capability{{
+		ID:     "sales.order.register",
+		Inputs: []semantic.Parameter{{Name: "order", Type: "sales.order"}},
+		Effect: &semantic.DataEffect{Kind: "create", Data: "sales.order"},
+	}}
+	world.Semantics[0].EffectRules = []semantic.EffectRule{{
+		ID:            "sales.order.stock",
+		OnCapability:  "sales.order.register",
+		Stage:         "after-commit",
+		EffectKind:    "update",
+		EffectData:    "sales.order",
+		ViaCapability: "sales.order.register",
+	}}
+
+	surface := DeriveOperationSurface(world, "")
+	create, ok := findOperation(surface, "order_entry.create.sales.order")
+	if !ok {
+		t.Fatalf("create operation missing: %+v", surface.Operations)
+	}
+	if len(create.EffectRules) != 1 || create.EffectRules[0] != "sales.order.stock" {
+		t.Fatalf("the bound operation must carry the effect rules: %+v", create)
+	}
+	list, _ := findOperation(surface, "order_entry.list.sales.order")
+	if len(list.EffectRules) != 0 {
+		t.Fatalf("an operation without the binding must not carry the rules: %+v", list.EffectRules)
+	}
+}

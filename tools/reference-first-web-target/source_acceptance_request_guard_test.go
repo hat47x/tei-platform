@@ -152,3 +152,25 @@ func TestCurrentAcceptedSourceHTTPRequestGuardMissingReaderAndCancellation(t *te
 		t.Fatal("Host termination during accepted Source read reached Command")
 	}
 }
+
+func TestRequestGuardLabelsTheAcceptanceKindAndRefusesAKindChange(t *testing.T) {
+	member, _ := sourceindex.NewArtifact("applications/order-entry/application.tei", []byte("application order_entry {}\n"))
+	index := sourceindex.Index{Artifacts: []sourceindex.Artifact{member}}
+	record := sourceacceptance.Record{ApplicationID: "order_entry", DecisionRef: "t://d", AuthorityRevision: "r1",
+		ModelRevision: sourceindex.ModelRevision(index), Artifacts: index.Artifacts, AcceptanceKind: sourceacceptance.AcceptanceKindProvisional}
+	reader := &requestSourceReader{record: record}
+	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusNoContent) })
+	handler := guardCurrentAcceptedSource(context.Background(), next, reader, "order_entry", index, record)
+	get := func() *httptest.ResponseRecorder {
+		w := httptest.NewRecorder()
+		handler.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/healthz", nil))
+		return w
+	}
+	if w := get(); w.Code != http.StatusNoContent || w.Header().Get("X-TEI-Source-Acceptance-Kind") != "provisional" {
+		t.Fatalf("code=%d header=%q", w.Code, w.Header().Get("X-TEI-Source-Acceptance-Kind"))
+	}
+	reader.record.AcceptanceKind = "" // downgraded to unspecified after startup
+	if w := get(); w.Code != http.StatusServiceUnavailable {
+		t.Fatalf("a changed kind kept serving: %d", w.Code)
+	}
+}

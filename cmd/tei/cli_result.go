@@ -145,7 +145,18 @@ func workspaceFilesJSON(out io.Writer, workspacePath, worldPath string, extraArg
 	if err != nil {
 		return resultLoadFailure(out, "workspace-files", err)
 	}
-	return emitResult(out, resultEnvelope("workspace-files", "", r.ManagedFiles), 0)
+	return emitResult(out, resultEnvelope("workspace-files", "", workspaceFilesValue{
+		ManagedFiles:       r.ManagedFiles,
+		SourceRootFindings: r.SourceRootFindings,
+	}), 0)
+}
+
+// workspaceFilesValue is the workspace-files projection. ReadByLoader on each
+// ManagedFile separates managed-but-not-interpreted files from files a domain
+// loader read (#2823). SourceRootFindings names unknown or missing roots.
+type workspaceFilesValue struct {
+	ManagedFiles       []workspace.ManagedFile                `json:"managedFiles"`
+	SourceRootFindings []workspace.WorkspaceSourceRootFinding `json:"sourceRootFindings,omitempty"`
 }
 
 // sourceIndexJSON wraps the Source Index inspection. The whole-index form and
@@ -178,7 +189,7 @@ func sourceIndexJSON(out io.Writer, workspacePath, worldPath, subjectKind, subje
 // with stderr text; every failure here is one envelope instead, with the same
 // exit codes (2 for argument/load/resolve failures, 1 for semantic validation
 // and plugin runtime plan build failures).
-func resultCommandJSON(out io.Writer, command, workspacePath, worldPath, environmentID, pluginLockPath string, extraArgs int) (int, error) {
+func resultCommandJSON(out io.Writer, command, workspacePath, worldPath, environmentID, pluginLockPath string, diagnostic, environmentSpecified bool, extraArgs int) (int, error) {
 	if (workspacePath == "") == (worldPath == "") {
 		return resultInvalidArgument(out, command, command+" requires exactly one of -workspace or -world")
 	}
@@ -190,6 +201,47 @@ func resultCommandJSON(out io.Writer, command, workspacePath, worldPath, environ
 		return resultLoadFailure(out, command, err)
 	}
 	ds := validation.Validate(w)
+	if diagnostic && command == "plugin-resolve" {
+		report := cliResultEnvelope{SchemaVersion: resultSchemaVersion(command), Mode: "unvalidated-candidates", Error: &cliFailure{Code: "UNVALIDATED_CANDIDATES", Message: "diagnostic only; not validated or authorized for execution"}}
+		detail := struct {
+			WorkspaceValidated bool                    `json:"workspaceValidated"`
+			Diagnostics        []validation.Diagnostic `json:"diagnostics"`
+			Candidates         *plugin.ResolvedSet     `json:"candidates,omitempty"`
+			SelectionError     *cliFailure             `json:"selectionError,omitempty"`
+		}{Diagnostics: ds}
+		fail := func(code, message string) {
+			detail.SelectionError = &cliFailure{Code: code, Message: message}
+		}
+		id, idErr := core.ParseCanonicalID(environmentID)
+		if environmentID == "" {
+			fail(resultCodeInvalidArgument, "plugin-resolve requires -environment")
+		} else if idErr != nil {
+			fail(resultCodeInvalidArgument, idErr.Error())
+		} else if env, ok := findEnvironment(w, id); !ok {
+			fail(resultCodeUnknownEnvironment, "unknown environment "+environmentID)
+		} else {
+			catalog := plugin.Catalog{Plugins: w.Plugins, Bundles: w.Bundles}
+			var resolved plugin.ResolvedSet
+			var resolveErr error
+			if pluginLockPath != "" {
+				var lock plugin.Lock
+				if decodeErr := decodeJSONFile(pluginLockPath, &lock); decodeErr != nil {
+					fail(resultCodeInvalidPluginLock, decodeErr.Error())
+				} else {
+					resolved, resolveErr = catalog.ResolveEnvironmentWithLock(env, lock)
+				}
+			} else {
+				resolved, resolveErr = catalog.ResolveEnvironment(env)
+			}
+			if resolveErr != nil {
+				fail(resultCodePluginResolveFailed, resolveErr.Error())
+			} else if detail.SelectionError == nil {
+				detail.Candidates = &resolved
+			}
+		}
+		report.Result = detail
+		return emitResult(out, report, 1)
+	}
 	if validation.HasErrors(ds) {
 		return resultValidationFailure(out, command, ds)
 	}
@@ -197,11 +249,25 @@ func resultCommandJSON(out io.Writer, command, workspacePath, worldPath, environ
 	case "requirements":
 		return emitResult(out, resultEnvelope(command, "", dependency.Derive(w)), 0)
 	case "plugin-lock":
-		lock, err := plugin.BuildLock(plugin.Catalog{Plugins: w.Plugins, Bundles: w.Bundles}, w.Environments)
+		environments := w.Environments
+		mode := ""
+		if environmentSpecified {
+			id, err := core.ParseCanonicalID(environmentID)
+			if err != nil {
+				return resultInvalidArgument(out, command, "invalid -environment: "+err.Error())
+			}
+			env, ok := findEnvironment(w, id)
+			if !ok {
+				return emitResult(out, resultFailure(command, resultCodeUnknownEnvironment, fmt.Errorf("unknown environment %s", environmentID)), 2)
+			}
+			environments = append(environments[:0:0], env)
+			mode = "environment"
+		}
+		lock, err := plugin.BuildLock(plugin.Catalog{Plugins: w.Plugins, Bundles: w.Bundles}, environments)
 		if err != nil {
 			return emitResult(out, resultFailure(command, resultCodePluginLockFailed, err), 2)
 		}
-		return emitResult(out, resultEnvelope(command, "", lock), 0)
+		return emitResult(out, resultEnvelope(command, mode, lock), 0)
 	case "plugin-resolve", "plugin-runtime-plan":
 		if environmentID == "" || (command == "plugin-runtime-plan" && pluginLockPath == "") {
 			return resultInvalidArgument(out, command, command+" requires -environment"+flagPart(command))

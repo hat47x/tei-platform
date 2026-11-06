@@ -1,0 +1,124 @@
+name: TEI 実行時の判断の実PostgreSQL証拠
+
+# 期間・効果・権限・実行計画の実行時判断を、一時PostgreSQLを相手に観測する。
+# 本番Provider・実運用の権限・性能は証明しない。
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, reopened, synchronize]
+    paths: &runtime-decision-paths
+      - '.github/workflows/tei-runtime-decisions-postgres-ci.yml'
+      - 'tools/reference-runtime-decisions/**'
+      - 'internal/execution/**'
+      - 'internal/operations/**'
+      - 'internal/runlog/**'
+      - 'internal/effectlog/**'
+      - 'cmd/tei/dbcheck.go'
+      - 'plan/evidence/REAL_DATABASE_RUNTIME_DECISION_PLAN_2026-11.md'
+  # main に載った版でも同じ観測を行う。PR の時点で通っていても、
+  # main の merge commit が別のものであれば、記録は main を指さない。
+  push:
+    branches: [main]
+    paths: *runtime-decision-paths
+
+permissions:
+  contents: read
+
+concurrency:
+  # push では SHA ごとに分ける。PR は同じ PR の新しい push で古い実行を打ち切る。
+  group: tei-runtime-decisions-postgres-${{ github.event_name }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  runtime-decisions-postgres:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: tei_decisions
+          POSTGRES_PASSWORD: local_fixture_only
+          POSTGRES_DB: tei_decisions
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U tei_decisions -d tei_decisions"
+          --health-interval 3s
+          --health-timeout 3s
+          --health-retries 20
+    env:
+      GOENV: off
+      GOWORK: off
+      GOFLAGS: ''
+      GOTOOLCHAIN: local
+      TEI_TEST_POSTGRES_DSN: postgres://tei_decisions:local_fixture_only@127.0.0.1:5432/tei_decisions?sslmode=disable
+    steps:
+      - name: PRのmerge commitを完全取得
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: 実行前のheadとcleanを照合
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test -z "$(git ls-files -v | awk '/^[a-zS]/ {print}')"
+          test -z "$(git status --porcelain=v1 --untracked-files=all --ignored=matching)"
+      - name: Go版を確定
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: go.mod
+          check-latest: false
+          cache: false
+      - name: 接続と一時表作成の権限を確認
+        shell: bash
+        run: |
+          set -euo pipefail
+          # DSNが無ければ終了コード2で止まる。「実行していない」を成功に数えない。
+          go run ./cmd/tei dbcheck
+      - name: 実行時の判断を一時PostgreSQLで観測
+        shell: bash
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/tei-runtime-decisions-${GITHUB_RUN_ID}"
+          mkdir -p "$out"
+          go vet ./tools/reference-runtime-decisions
+          go test -count=1 -v ./tools/reference-runtime-decisions | tee "$out/go-test.log"
+          python3 - "$out/go-test.log" <<'PY'
+          import pathlib, sys
+
+          log = pathlib.Path(sys.argv[1]).read_text(encoding="utf-8")
+          required = [
+              "TestAClosedPeriodLeavesTheRowUntouched",
+              "TestAnOpenPeriodUpdatesTheRow",
+              "TestAnUnobservableEffectBlocksBeforeTheWrite",
+              "TestACompletedRunIsRefusedWithoutASecondWrite",
+              "TestAMissingGrantBlocksBeforeTheWrite",
+              "TestACoveringGrantLetsTheWriteThrough",
+          ]
+          missing = [name for name in required if "--- PASS: " + name not in log]
+          if missing:
+              raise SystemExit("these tests did not pass against the real database: " + ", ".join(missing))
+          # SKIPをPASSとして数えない。DSNの配線が外れたらここで止まる。
+          skipped = [name for name in required if "--- SKIP: " + name in log]
+          if skipped:
+              raise SystemExit("these tests were skipped, so nothing was verified: " + ", ".join(skipped))
+          print("real PostgreSQL: " + str(len(required)) + " runtime decisions observed")
+          PY
+      - name: 試験ログを短期間保全
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: tei-runtime-decisions-postgres-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/tei-runtime-decisions-${{ github.run_id }}/go-test.log
+          retention-days: 7
+          if-no-files-found: error
+      - name: 実行後のheadとcleanを再検証
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test -z "$(git ls-files -v | awk '/^[a-zS]/ {print}')"
+          test -z "$(git status --porcelain=v1 --untracked-files=all --ignored=matching)"

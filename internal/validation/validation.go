@@ -38,7 +38,8 @@ var attributeRoles = map[string]bool{
 }
 
 func Validate(w ir.World) []Diagnostic {
-	out := validateApplicationPatterns(w)
+	out := validateWorkspaceIsNotEmpty(w)
+	out = append(out, validateApplicationPatterns(w)...)
 	out = append(out, validateApplicationPackages(w)...)
 	out = append(out, validateQueryResultMappings(w)...)
 	out = append(out, validateQueryInputs(w)...)
@@ -47,6 +48,8 @@ func Validate(w ir.World) []Diagnostic {
 	out = append(out, validateCapabilityOutcomes(w)...)
 	out = append(out, validateCapabilityDataEffects(w)...)
 	out = append(out, validateSemanticPeriods(w)...)
+	out = append(out, validateSemanticEffectRules(w)...)
+	out = append(out, validateSemanticRunPlans(w)...)
 	out = append(out, validateBusinessValidationReferences(w)...)
 
 	pluginCatalog := plugin.Catalog{Plugins: w.Plugins, Bundles: w.Bundles}
@@ -1150,6 +1153,25 @@ func HasErrors(ds []Diagnostic) bool {
 		}
 	}
 	return false
+}
+
+// validateWorkspaceIsNotEmpty warns when the Workspace declared no model
+// elements at all. The standard `std` namespace is a prelude, not a
+// declaration, so it is excluded (#2822). The finding is a warning: an empty
+// Workspace is not an error, but ok=true alone must not be read as "model
+// declarations were loaded and checked".
+func validateWorkspaceIsNotEmpty(w ir.World) []Diagnostic {
+	for _, ns := range w.Semantics {
+		if string(ns.ID) != "std" {
+			return nil
+		}
+	}
+	if len(w.Applications) > 0 || len(w.Databases) > 0 || len(w.Environments) > 0 ||
+		len(w.Queries) > 0 || len(w.Plugins) > 0 || len(w.Bundles) > 0 ||
+		len(w.Persistence) > 0 {
+		return nil
+	}
+	return []Diagnostic{warnd("WORKSPACE_DECLARES_NO_MODEL_ELEMENTS", "Workspace declares no model elements; only the standard semantic prelude is loaded")}
 }
 
 func errd(code, format string, args ...any) Diagnostic {

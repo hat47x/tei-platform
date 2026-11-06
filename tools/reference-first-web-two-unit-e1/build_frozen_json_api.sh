@@ -34,14 +34,48 @@ export GOOS=linux GOARCH=amd64 GOAMD64=v1 CGO_ENABLED=0
 
 # Materialize the same normalized World from the existing Source loader, on
 # the builder side only. It is a diagnostic data artifact, not a new Source.
+# The observation is written only where the supplied grants allow it. The grant is
+# issued for this run and recorded, so the decision can be read back; the
+# generator cannot write anywhere else even if its arguments change. The issuer
+# is named as this build script: the grant is not declared by an environment, and
+# the generator refuses a grant it issued itself.
+go run ./cmd/tei issue-grant \
+  -grant-capability tei.frozen_world.lineage \
+  -grant-scope "$scratch/generated-world-observation.json" \
+  -grant-issuer "script:reference-first-web-two-unit-e1" \
+  -grant-reason "build_frozen_json_api observation" \
+  -grant-run-key "$2@$3" \
+  -grant-out "$scratch/frozen-world-grants.json" \
+  -issue-log "$scratch/frozen-world-issued.jsonl"
+
 go run ./tools/reference-first-web-frozen-world-generate \
   -workspace reference/workspace -application order_entry \
   -baseline-id "$2" -baseline-revision "$3" \
   -target-revision "$source_sha" \
   -lineage-out "$scratch/generated-world-observation.json" \
+  -grants "$scratch/frozen-world-grants.json" \
+  -access-log "$scratch/frozen-world-access.jsonl" \
   > "$scratch/derived/api/frozen-world.json"
 digest="$(sha256sum "$scratch/derived/api/frozen-world.json" | cut -d' ' -f1)"
 test "${#digest}" -eq 64
+
+# The decision to write the observation must have been recorded, and it must be
+# the allowed one. Without this check the log is optional evidence nobody reads;
+# with it, a build that silently stopped enforcing would still produce a digest
+# and would look the same.
+test -s "$scratch/frozen-world-access.jsonl"
+python3 - "$scratch/frozen-world-access.jsonl" <<'PY'
+import json, pathlib, sys
+
+lines = [line for line in pathlib.Path(sys.argv[1]).read_text(encoding="utf-8").splitlines() if line.strip()]
+if len(lines) != 1:
+    raise SystemExit("expected exactly one access decision, found %d" % len(lines))
+record = json.loads(lines[0])
+if record.get("allowed") is not True:
+    raise SystemExit("the observation write was not allowed: %s" % lines[0])
+if record.get("capability") != "tei.frozen_world.lineage":
+    raise SystemExit("the access decision names another capability: %s" % lines[0])
+PY
 
 # Reuse Shared Acceptance's read-only Decision Index for its original
 # Source Index revision and content-addressed record validation. No new

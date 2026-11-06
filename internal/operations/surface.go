@@ -77,7 +77,9 @@ type Operation struct {
 	Binding string `json:"binding,omitempty"`
 	// Period names the period that governs the data of this operation. When
 	// the period is closed, PeriodRejects lists the operations it rejects.
-	Period        string   `json:"period,omitempty"`
+	Period string `json:"period,omitempty"`
+	// EffectRules lists the effect rules that run around the bound capability.
+	EffectRules   []string `json:"effectRules,omitempty"`
 	PeriodRejects []string `json:"periodRejects,omitempty"`
 	Autonomy      string   `json:"autonomy"`
 	Basis         string   `json:"basis"`
@@ -185,6 +187,8 @@ type surfaceIndex struct {
 	binding map[string]string
 	// periods maps a data to the period that governs it.
 	periods map[core.CanonicalID]semantic.Period
+	// effectRules maps a capability to the effect rules that run around it.
+	effectRules map[core.CanonicalID][]string
 }
 
 func newSurfaceIndex(world ir.World) surfaceIndex {
@@ -194,6 +198,7 @@ func newSurfaceIndex(world ir.World) surfaceIndex {
 		updateIntent: map[core.CanonicalID]bool{},
 		binding:      map[string]string{},
 		periods:      map[core.CanonicalID]semantic.Period{},
+		effectRules:  map[core.CanonicalID][]string{},
 	}
 	for _, namespace := range world.Semantics {
 		for _, validation := range namespace.Validations {
@@ -205,6 +210,9 @@ func newSurfaceIndex(world ir.World) surfaceIndex {
 			if _, exists := index.periods[period.Data]; !exists {
 				index.periods[period.Data] = period
 			}
+		}
+		for _, rule := range namespace.EffectRules {
+			index.effectRules[rule.OnCapability] = append(index.effectRules[rule.OnCapability], string(rule.ID))
 		}
 		for _, capability := range namespace.Capabilities {
 			if capability.Effect == nil {
@@ -366,6 +374,9 @@ func deriveApplicationOperations(
 		}
 	}
 	for i := range ops {
+		if rules := index.effectRules[core.CanonicalID(ops[i].Binding)]; len(rules) > 0 {
+			ops[i].EffectRules = append([]string(nil), rules...)
+		}
 		if ops[i].Period == "" {
 			periodID, rejects := periodFields(index, core.CanonicalID(ops[i].Target))
 			if periodID == "" {

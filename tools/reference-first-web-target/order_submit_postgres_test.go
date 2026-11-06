@@ -246,7 +246,7 @@ func TestPostgresOrderSubmitDeniedBeforeEffectLeavesRowUntouched(t *testing.T) {
 	t.Run("host effect grant unavailable", func(t *testing.T) {
 		store := &countingSubmitStore{orderSubmitStore: inner}
 		runner := newOrderSubmitRunner(t, store)
-		runner.hostEffect = func(context.Context, string) error { return errors.New("revoked") }
+		runner.hostEffect = func(context.Context, string, string) error { return errors.New("revoked") }
 		result, err := runner.RunCommand(context.Background(), orderSubmitInput)
 		if err == nil || !strings.Contains(err.Error(), "HOST_EFFECT_GRANT_UNAVAILABLE") {
 			t.Fatalf("err=%v result=%+v", err, result)

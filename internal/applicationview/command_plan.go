@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"time"
 
+	"tei/internal/application"
 	"tei/internal/core"
 	"tei/internal/ir"
 	"tei/internal/semantic"
@@ -56,6 +57,13 @@ type CommandPlanIssue struct {
 // BuildCommandPlanは、Patternの対話契約にあるCommandへ、呼出し側の値を割り当てる。
 // 不足と値の形の不備はMissing・Invalidに残し、Ready=falseにする。
 func BuildCommandPlan(world ir.World, applicationID, patternID, capabilityID core.CanonicalID, values map[string]string) (CommandPlan, error) {
+	kind, err := PatternKind(world, applicationID, patternID)
+	if err != nil {
+		return CommandPlan{}, err
+	}
+	if kind == application.PatternCommand {
+		return buildCommandPatternPlan(world, applicationID, patternID, capabilityID, values)
+	}
 	view, err := Build(world, applicationID, patternID)
 	if err != nil {
 		return CommandPlan{}, err
@@ -125,6 +133,76 @@ func BuildCommandPlan(world ir.World, applicationID, patternID, capabilityID cor
 	sort.Strings(plan.Missing)
 	plan.Ready = len(plan.Missing) == 0 && len(plan.Invalid) == 0
 	return plan, nil
+}
+
+func buildCommandPatternPlan(world ir.World, applicationID, patternID, capabilityID core.CanonicalID, values map[string]string) (CommandPlan, error) {
+	var capability *semantic.Capability
+	for i := range world.Semantics {
+		for j := range world.Semantics[i].Capabilities {
+			if world.Semantics[i].Capabilities[j].ID == capabilityID {
+				capability = &world.Semantics[i].Capabilities[j]
+				break
+			}
+		}
+		if capability != nil {
+			break
+		}
+	}
+	if capability == nil {
+		return CommandPlan{}, fmt.Errorf("capability %sがありません", capabilityID)
+	}
+	types := map[core.CanonicalID]semantic.Type{}
+	for _, namespace := range world.Semantics {
+		for _, typ := range namespace.Types {
+			types[typ.ID] = typ
+		}
+	}
+	plan := CommandPlan{
+		SchemaVersion: SchemaVersion,
+		Application:   applicationID,
+		Pattern:       patternID,
+		Capability:    capability.ID,
+		Label:         capability.Symbol,
+	}
+	for _, input := range capability.Inputs {
+		name := string(input.Name)
+		value, provided := values[name]
+		plan.Inputs = append(plan.Inputs, CommandPlanInput{Name: name, Type: input.Type, Value: value, Provided: provided})
+		if !provided {
+			plan.Missing = append(plan.Missing, name)
+			continue
+		}
+		if err := checkCommandValue(input.Type, value, types); err != nil {
+			plan.Invalid = append(plan.Invalid, CommandPlanIssue{Input: name, Message: err.Error()})
+		}
+	}
+	for _, outcome := range capability.Outcomes {
+		plan.Outcomes = append(plan.Outcomes, CommandOutcome{Name: string(outcome.Name), Payload: outcome.Payload})
+	}
+	if capability.Effect != nil {
+		plan.Effect = &CommandEffect{Kind: string(capability.Effect.Kind), Data: capability.Effect.Data}
+		plan.Period = periodForEffect(world, capability.Effect.Data)
+	}
+	sort.Strings(plan.Missing)
+	plan.Ready = len(plan.Missing) == 0 && len(plan.Invalid) == 0
+	return plan, nil
+}
+
+func periodForEffect(world ir.World, data core.CanonicalID) *CommandPeriodRef {
+	for _, namespace := range world.Semantics {
+		for _, period := range namespace.Periods {
+			if period.Data == data {
+				return &CommandPeriodRef{
+					ID:            period.ID,
+					Data:          period.Data,
+					BusinessDate:  period.BusinessDate,
+					States:        period.States,
+					ClosedRejects: period.ClosedRejects,
+				}
+			}
+		}
+	}
+	return nil
 }
 
 func checkCommandValue(typeRef core.CanonicalID, value string, types map[core.CanonicalID]semantic.Type) error {

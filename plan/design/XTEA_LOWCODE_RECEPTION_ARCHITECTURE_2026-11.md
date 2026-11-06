@@ -4,7 +4,7 @@
 - 日付: 2026-11-01
 - 入力: [X-TEAのローコード機構に関する知識目録](../research/XTEA_LOWCODE_KNOWLEDGE_INVENTORY_2026-11.md)
 - 要件候補: [X-TEA知見の受容要件](../../requirements/XTEA_LOWCODE_RECEPTION_REQUIREMENTS_2026-11.md)
-- 計画: [X-TEA知見の移行計画](../XTEA_LOWCODE_TRANSFER_PLAN_2026-11.md)
+- 計画: [X-TEA知見の移行計画](../workstreams/XTEA_LOWCODE_TRANSFER_PLAN_2026-11.md)
 - 関連: [機能移植対応表](AUTHORING_TOOL_FEATURE_TRANSFER_MAP_2026-10.md)、[生成AIネイティブなローコード開発基盤の製品戦略](GENERATIVE_LOWCODE_PRODUCT_STRATEGY_2026-10.md)、[Application Pattern v1](APPLICATION_PATTERN_V1_DESIGN.md)、[生成器の契約境界](GENERATOR_CONTRACT_BOUNDARIES_DESIGN_2026-10.md)、[Business Effect Lifecycle](BUSINESS_EFFECT_LIFECYCLE_DESIGN_2026-10.md)、ADR-0032、ADR-0033、ADR-0034、[#1127](https://github.com/hat47x/tei-platform/issues/1127)、[#1129](https://github.com/hat47x/tei-platform/issues/1129)、[#1130](https://github.com/hat47x/tei-platform/issues/1130)、[#2016](https://github.com/hat47x/tei-platform/issues/2016)
 
 ## 1. この文書が解く問題
@@ -119,7 +119,7 @@ X-TEAのスクリプトAPIは、SQL・確定・機能呼出しを同じ面に置
 | 遷移 | Pattern間の遷移宣言がない | `internal/application/model.go` | 一覧から単票、明細の起動などをD1で追加する |
 | 業務上の結末 | Capabilityの`Outcomes`と、呼出し境界のerrorを分ける | `internal/semantic/model.go` L128–133、L151–158 | D5はこれを再利用し、X-TEAの戻り値を混ぜない |
 | データ効果 | `create`と`update`のみ | `internal/semantic/model.go` L140–144 | `delete`を表せない。Business Effect Lifecycleと合わせて追加を検討する |
-| 認可 | subject・action・resourceの許可 | `internal/security/legacyauthorization/authorization.go` L29–45 | AC-11はこれを再利用できる。Pattern・Commandとの対応付けが要る |
+| 認可 | subject・action・resourceの許可 | `internal/security/legacyauthorization/authorization.go` L29–45 | `legacyauthorization/commandbinding.CommandAuthorizer`が`command.Invoker.Authorizer`へ接続済み。権限の正本・付与の管理は未接続 |
 | 項目の意味 | Attribute（ID・型・説明・表示）とValidation（`positive`、`relation-unique`のみ） | `internal/semantic/model.go` L64–70、L101–121 | 必須・更新禁止・値域は新設し、参照は`reference` Pattern、導出はData Derivationへ寄せる |
 | 表示・配置 | アプリケーション層にモデルがない | `internal/application/model.go` | D4の表示意図を新設する |
 | 帳票・出力投影 | モデルがない | `internal/application/model.go` | D7を新設する |
@@ -500,12 +500,12 @@ X-TEAの戻り値とTEIの分類の対応（案）は、次のとおりです。
 
 **撤回条件.** 結果型が増えすぎて、呼出し側の分岐が実装負担になる場合は、結果の分類を業務結果と実行結果の二層に整理します（[Business Effect Lifecycle](BUSINESS_EFFECT_LIFECYCLE_DESIGN_2026-10.md)との整合）。
 
-**PoCでの実装.** `interaction`の`command`でCapabilityを参照し、対話ビューが入力・結末・効果を解決します。入力は`input <name> <attribute>`で対話の項目へ結びつけます。起動前の入力計画は`view -command`で確認でき、値の形（整数・数値・日付など）も検査します（[#2521](https://github.com/hat47x/tei-platform/pull/2521)）。実行境界は`internal/command`の`Executor`契約として実装し、入力検証・実行失敗・宣言外の結末を`ExecutionError`として分けます。取引は`UnitOfWork`と`Transaction`の契約として境界を実装し、成功時はCommit、実行失敗・宣言外の結末・Commit失敗時はRollbackします。実Providerの接続は未実装です。実Providerは既存の`internal/security/effectcommit`（PostgreSQL参照実装）へ接続し、Commandの`UnitOfWork`は`effectcommit.Runner`へ委譲して、認可・OperationID・receiptを省略しません。PoCの`ReferenceDataExecutor`は契約確認用で、実Providerではありません。契約の配線は`ReferenceExecutor`と`MemoryUnitOfWork`、データ効果は`ReferenceDataExecutor`と`MemoryStore`・`StoreUnitOfWork`で確認でき、`view -command -execute`でCLIから参照実行できます（業務副作用はありません）。起動計画には、効果が及ぶDataを統制する期間と閉期間の拒否を表示します。`PeriodState`が閉を示し、効果の種類が`closedRejects`に含まれる場合は`COMMAND_PERIOD_CLOSED`で拒否します。
+**PoCでの実装.** `interaction`の`command`でCapabilityを参照し、対話ビューが入力・結末・効果を解決します。入力は`input <name> <attribute>`で対話の項目へ結びつけます。起動前の入力計画は`view -command`で確認でき、値の形（整数・数値・日付など）も検査します（[#2521](https://github.com/hat47x/tei-platform/pull/2521)）。実行境界は`internal/command`の`Executor`契約として実装し、入力検証・実行失敗・宣言外の結末を`ExecutionError`として分けます。取引は`UnitOfWork`と`Transaction`の契約として境界を実装し、成功時はCommit、実行失敗・宣言外の結末・Commit失敗時はRollbackします。実Providerの接続は未実装です。実Providerは既存の`internal/security/effectcommit`（PostgreSQL参照実装）へ接続します。`internal/security/effectcommit/commandadapter`が`command.Executor`として`effectcommit.Runner.Execute`へ委譲し、認可・OperationID・receiptを省略しません。PoCの`ReferenceDataExecutor`は契約確認用で、実Providerではありません。契約の配線は`ReferenceExecutor`と`MemoryUnitOfWork`、データ効果は`ReferenceDataExecutor`と`MemoryStore`・`StoreUnitOfWork`で確認でき、`view -command -execute`でCLIから参照実行できます（業務副作用はありません）。起動計画には、効果が及ぶDataを統制する期間と閉期間の拒否を表示します。`PeriodState`が閉を示し、効果の種類が`closedRejects`に含まれる場合は`COMMAND_PERIOD_CLOSED`で拒否します。
 
 **未解決.**
 
 - 削除の効果の意味。`DataEffect`は`delete`を宣言できるようになったが、参照の制限・連鎖・保留の扱いをどう表すかは未決で、Business Effect Lifecycleと合わせて決める。
-- 削除時の参照の扱い（制限・連鎖・保留）を、Relationの意味として宣言するか、規則Pluginに置くか。PoCでは`on-delete restrict|cascade|preserve`として宣言だけを実装した。X-TEAの削除前検査は外向きの参照だけを確認していた（知識目録D-11）。
+- 削除時の参照の扱い（制限・連鎖・保留）を、Relationの意味として宣言するか、規則Pluginに置くか。PoCでは`on-delete restrict|cascade|preserve`として宣言し、参照Storeがrestrict（拒否）・cascade（内向きレコードの削除）・preserve（残す）を実行する。`Relation.Keys`がある場合は属性値の一致する行だけを対象にし、ない場合はData単位の粗い判定になる。実Providerの参照制約ではない。X-TEAの削除前検査は外向きの参照だけを確認していた（知識目録D-11）。
 - 見出しと明細を一つの操作で更新するときの、効果のまとまり（同一取引とするか、補償で表すか）。
 - 画面を閉じる・取消す操作と、Commandの取消・補償の対応。
 - 複数画面・外部効果をまたぐ取引の表現。
@@ -658,7 +658,7 @@ X-TEAの実装では、税額は税率表の開始日と税区分で選び、正
 6. 標準業務意味（暦・会計期間）の範囲を決める
 ```
 
-各段階の完了条件は、[移行計画](../XTEA_LOWCODE_TRANSFER_PLAN_2026-11.md)に置きます。
+各段階の完了条件は、[移行計画](../workstreams/XTEA_LOWCODE_TRANSFER_PLAN_2026-11.md)に置きます。
 
 ## 8. 「受け止めた」と言える証拠
 
@@ -692,7 +692,7 @@ X-TEAの実装では、税額は税率表の開始日と税区分で選び、正
 
 - [X-TEAのローコード機構に関する知識目録](../research/XTEA_LOWCODE_KNOWLEDGE_INVENTORY_2026-11.md)
 - [X-TEA知見の受容要件](../../requirements/XTEA_LOWCODE_RECEPTION_REQUIREMENTS_2026-11.md)
-- [X-TEA知見の移行計画](../XTEA_LOWCODE_TRANSFER_PLAN_2026-11.md)
+- [X-TEA知見の移行計画](../workstreams/XTEA_LOWCODE_TRANSFER_PLAN_2026-11.md)
 - [機能移植対応表](AUTHORING_TOOL_FEATURE_TRANSFER_MAP_2026-10.md)
 - [Application Pattern v1](APPLICATION_PATTERN_V1_DESIGN.md)
 - [生成器の契約境界](GENERATOR_CONTRACT_BOUNDARIES_DESIGN_2026-10.md)
@@ -946,10 +946,35 @@ PoC #2521が実装した範囲と、まだ実装していない範囲を分け�
 | 参照削除の振る舞い（`on-delete`） | 実装済み（`restrict`・`cascade`・`preserve`の宣言、実行は未実装） |
 | 削除効果の参照ポリシー検査 | 実装済み（内向きRelationに`on-delete`がない場合の警告） |
 | Commandの参照実装（契約確認用） | 実装済み（業務副作用なし、Commit/Rollbackの記録のみ） |
+| Commandからeffectcommitへのアダプタ | 実装済み（`effectcommit.Runner.Execute`へ委譲、認可・receiptを省略しない。実PostgreSQLは`TEI_EFFECT_POSTGRES_DSN`がある場合のみ試験） |
+| Command実行前の認可契約 | 実装済み（`Invoker.Authorizer`、`AllowListAuthorizer`。`Authorizer`未設定は拒否し、参照実行は`ReferenceAuthorizer`を明示する。権限の正本・付与は未実装） |
+| CLI参照実行の認可AllowList | 実装済み（`view -execute -allow-capability`、参照用） |
+| Command効果の宣言照合 | 実装済み（Executorが返すEffectが宣言と一致しない場合は拒否。Executor実行後の検出なので`EffectUnknown`としてLifecycleへ渡し、適用不明として記録する） |
+| Command実行の記録契約 | 実装済み（`Invoker.Recorder`が宣言効果・報告効果・結末を記録。実装は`MemoryRecorder`） |
+| CLI実行記録 | 実装済み（`view -execute -operation-log`、JSON） |
+| 能力の宣言許可の照合 | 実装済み（`command.GrantAuthorizer`が能力の宣言許可と発行済み許可を`permission.Covers`で照合。無宣言・部分許可・不正宣言は拒否） |
+| 診断の修正案 | 実装済み（`validation.Propose`が版付きの未受理の案を作り、`validation.Accept`が版一致と未受理を要求。`tei validate -json`とStudioの`ValidateWorkspace`は`proposals`を返す） |
+| 参照Storeの拒否符号 | 実装済み（`ReferenceFailure`が`record-missing`・`record-exists`・`value-rejected`・`rule-rejected`を持ち、`FailureOutcome`が結末名へ写す。CLIは`COMMAND_REFUSED`で返す） |
+| フックの宣言外呼出し | 実装済み（`hook.Declared`が`uses`外の能力呼出しを`HOOK_UNDECLARED_CALL`で拒否。無宣言は拒否。`hook.CommandCaller`が宣言済みの呼出しをCommand境界へ委譲し、認可・取引・効果照合・記録を継承する） |
+| 画面・帳票の版 | 実装済み（全HTML・印刷テンプレートが`tei-semantic-fingerprint`を出力） |
+| 読み取り専用datasourceの事前検査 | 実装済み（Applicationの`database ... access read`宣言とDatabaseの`uses semantic`から対象Dataを引き、書込みCommandを`COMMAND_DATASOURCE_READ_ONLY`で拒否。宣言が無いDataは推測しない） |
+| CLIの失敗符号 | 実装済み（`COMMAND_EFFECT_UNKNOWN`・`COMMAND_LIFECYCLE_REFUSED`を`COMMAND_FAILED`から分離） |
+| 適用操作の照合 | 実装済み（参照StoreのExecutorが`Applied`で適用したレコードを返し、Invokerが宣言効果と照合。宣言外の種別は`UNDECLARED_COMMAND_EFFECT`、宣言効果に対応する操作が無い場合は`MISSING_COMMAND_EFFECT`、宣言と異なる対象への同種別適用は`Differences`へ未解決の差として残し、CLIの`view -execute`結果（テキスト・JSON）とStudioの`records`・`differences`・「宣言との差」に現れる。列挙しないExecutorは`AppliedUnobserved`で未確認と示す） |
 | 参照データ記憶域（MemoryStore） | 実装済み（create/update/delete、スナップショットによるRollback） |
+| 参照Storeの削除ポリシー実行 | 実装済み（restrict・cascade・preserve。`Relation.Keys`がある場合は行単位、ない場合はData単位） |
+| 参照Storeの複数段カスケード | 実装済み（キー対応の再帰削除、循環防止） |
+| 参照Storeの削除ロールバック | 実装済み（深いrestrict失敗時にスナップショットへ復元） |
+| 参照Storeの必須属性検査 | 実装済み（create時、record commandのbinding経由。command Patternは判定不能としてスキップ） |
+| 参照Storeの値域検査 | 実装済み（create/update時、Typeの`values`と別名解決） |
+| 参照Storeの重複create拒否 | 実装済み（同じキーのcreateを拒否） |
+| 参照Storeのキー指定と更新禁止検査 | 実装済み（`KeyFields`、update時の`immutable`） |
+| 参照Storeの複合キーと決定的な順序 | 実装済み（複数`KeyFields`、レコードのキー順） |
+| 参照Storeの候補キー一意性 | 実装済み（create/update時、`CandidateKey`の属性一致） |
+| 候補キーの型正規化比較 | 実装済み（integer・decimal・boolean・date・datetime・time、identifier・text・nameのUnicode NFC） |
 | Commandの参照実行（CLI） | 実装済み（`view -command -execute`、業務副作用なし） |
 | Command計画の期間表示（D6.1） | 実装済み（効果Dataを統制する期間・状態・閉期間の拒否） |
 | 期間の閉塞によるCommand拒否 | 実装済み（`PeriodState`契約と参照実装） |
+| CLI参照実行の期間状態 | 実装済み（`view -execute -period-state`） |
 | フックの宣言（位相・読み書き・失敗時） | 実装済み（`hook`、実装Pluginは未接続） |
 | フックの実行境界（Implementation契約・reject/warn） | 実装済み（`internal/hook`、実Pluginは未接続） |
 | 未使用属性の表示（D8・G-7） | 実装済み（recordビューの`unused`） |
@@ -959,11 +984,61 @@ PoC #2521が実装した範囲と、まだ実装していない範囲を分け�
 | Applicationのビュー（Pattern・Package・意味の版） | 実装済み（`view -application`） |
 | StudioホストのビューAPI | 実装済み（`ViewPattern`・`ViewApplication`、読み取り専用） |
 | Studio rendererのビュー表示 | 実装済み（Application・PatternのJSON表示、読取専用） |
+| StudioからのCommand計画・参照実行 | 実装済み（`PlanCommand`・`ExecuteCommand`、業務副作用なし） |
+| Studioからの期間状態付き参照実行 | 実装済み（`ExecuteCommandWithPeriods`、閉期間の拒否） |
+| Studioの認可AllowList | 実装済み（`ExecuteCommandWithPolicy`、能力単位の参照用） |
+| Studio実行記録 | 実装済み（`CommandRunValue.records`、画面に件数表示） |
+| Studioのビュー要約表示 | 実装済み（項目・コマンド・フック・未使用を表形式で表示） |
+| StudioのPackageビュー | 実装済み（メンバー・前提・版束縛） |
 | Applicationビューの期間（D6.1） | 実装済み（ID・Data・業務日付・状態） |
 | Commandの実行境界、改ページ、フックのDSL | 未実装 |
 | `reference/workspace`への宣言追加 | 未実施（受理経路が必要） |
 
 実装は、`internal/application/model.go`、`internal/syntax/application_pattern.go`、`internal/validation/application_pattern.go`、`internal/crossview/pattern_requirements.go`、`internal/applicationview`、`internal/semantic/model.go`、`internal/syntax/parser.go`、`internal/validation/validation.go`と、それぞれの試験です。
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

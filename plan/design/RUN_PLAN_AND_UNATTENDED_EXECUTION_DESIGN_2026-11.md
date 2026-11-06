@@ -170,3 +170,153 @@ W1・W2 が前提。W4 は W2 と並行できる。W6 は #2146 の実装を待�
 2. `output` を `run-plan` に持たせるか、#1803（設計成果物の導出）と同じ「導出成果物」の契約へ寄せるか。後者のほうが規則が一つで済む。
 3. 失敗の閾値（どこで止めるか）を意味の層に持たせるか、運用の設定に任せるか。本稿は運用に任せる案である。
 4. #2146 の所有記録の永続化を待たずに、メモリ上の所有で W1〜W5 を進めてよいか。
+## 実装状況（2026-11-03 追記）
+
+P1（宣言・検証）を実装しました。期間の状態（#2144）・効果の規則（#1129）と同じ型です。
+
+**宣言**
+
+```
+run-plan monthly_close {
+    operation sales.close
+    key sales.period.month
+    concurrency singleton
+    resume checkpoint
+    output sales.period
+    autonomy unattended
+}
+```
+
+- `operation` は複数回書ける（宣言順に実行）。`key` も複数回書ける（複数の入力で実行を同定する）。
+- `concurrency`・`resume`・`autonomy` は省略できる（省略時は操作面の既定 `attended`、同時実行は `singleton`、再開は `none`）。
+- 識別子は名前空間に属する（`monthly_close` は `sales.monthly_close` として解決）。
+
+**検証**（`internal/validation/runplan.go`）
+
+| 診断 | 意味 |
+| --- | --- |
+| `RUN_PLAN_NO_OPERATIONS` | 操作を一つも宣言していない |
+| `RUN_PLAN_UNKNOWN_OPERATION` | 実在しない能力を指している |
+| `RUN_PLAN_NO_KEY` | 実行を同定する入力が無い（黙って新規実行にしないための前提） |
+| `RUN_PLAN_UNKNOWN_KEY` | 実在しない属性を指している |
+| `RUN_PLAN_UNKNOWN_CONCURRENCY` | `singleton`・`per-key` 以外 |
+| `RUN_PLAN_UNKNOWN_RESUME` | `checkpoint`・`none` 以外 |
+| `RUN_PLAN_UNKNOWN_AUTONOMY` | `attended`・`unattended` 以外 |
+| `RUN_PLAN_CHECKPOINT_WITHOUT_OUTPUT` | チェックポイントから再開するのに出力が無い（進捗を報告できない） |
+
+**未着手**: 実行の同定（`runKey`・`attemptId`・`fenceEpoch`）の実装、項目ごとの結果、無人の実行の拒否試験、出力の生成（P2以降）。
+### P2 実行の同定と拒否規則（2026-11-03 追記）
+
+実行の同定と、開始・再開・拒否の判定を実装しました（`internal/runlog`）。
+
+```go
+runKey    = RunKey(計画ID, キーの値)   // 区切りは unit separator（値にカンマが入っても偽造できない）
+attempt   = 前回 + 1
+fenceEpoch = 前回 + 1（再開のたびに増える）
+```
+
+| 前回 | `resume` | 判定 |
+| --- | --- | --- |
+| 無し | 任意 | `start`（attempt 1・fence 1） |
+| 未完了 | `checkpoint` | `resume`（attempt/fence を +1） |
+| 未完了 | `none` | **`refuse`** |
+| 完了 | 任意 | **`refuse`**（業務キーを変えるか、明示の再実行の操作を作る） |
+
+- `Owns` は現在の attempt と fenceEpoch が一致するときだけ真。古い担当は書けない。
+- 記録は JSON Lines。壊れた行はエラーとして報告し、その行より前は返す。
+- 実行の記録は受理済みの意味ではないので意味モデルには置かない。
+
+**未着手**: 実際の実行ループへの接続、項目ごとの結果、無人実行の拒否試験、`autonomy unattended` の検証（操作面の自律区分との突き合わせ）。
+### 実行ループ（2026-11-04 追記）
+
+`execution.RunPlan` で、同定 → 判定 → 操作の順次実行 → 記録までをつなぎました。
+
+- 判定が `refuse` のときは**何も実行せず**、判定を返す（エラーではない）。
+- 実行する場合は `running` を記録してから操作を順に実行し、全部通れば `completed`、途中で止まれば `failed` を記録する。
+- 操作の失敗は `StepResult` として返し、エラーにしない（どの項目で止まったかを残すため）。
+- **`resume` はまだ実装していない**。項目ごとの進捗を記録していないため、再開すると黙って作業を繰り返すことになる。そのため再開の判定になった場合は**エラーで止める**（できていないことを、できたように見せない）。
+
+**未着手**: 項目ごとの進捗の記録と再開、出力の生成、無人実行の拒否試験、期間・効果のガードを各操作の手前に置くこと。
+### 項目ごとの進捗と再開（2026-11-04 追記）
+
+`runlog.Record` に `steps`（この実行で終わった操作）を持たせ、**再開を実際に成立**させました。
+
+- 操作が終わるたびに `running` と `steps` を追記する（途中で止まっても、どこまで終わったかが残る）。
+- 再開の判定では、記録済みの `steps` を**飛ばして**残りから実行する。終わった操作は `StepResult{Detail: "already finished in an earlier attempt"}` として結果に残す（実行はしない）。
+- 再試行のたびに `attempt` と `fenceEpoch` が増える。古い世代は `Owns` で書けない。
+
+**未着手**: 出力の生成、無人実行の拒否試験、各操作の手前の期間・効果ガード、失敗した操作の再試行方針。
+### 無人の実行の停止（2026-11-04 追記）
+
+`autonomy unattended` の計画は、**前提が満たされているかを確かめられない限り実行しません**。
+
+- `RunPlan` に `PreconditionFunc`（操作ごとに、満たされない理由を返す。空なら満たされている）を渡す。
+- 無人で `PreconditionFunc` が nil の場合、理由は「確かめる手段が無い」として**止める**。人がいない状況では、確かめられないことを「たぶん大丈夫」に読み替えない。
+- 止まった場合は `StepResult{Status: "blocked"}` と `runlog.Blocked` を記録する。**失敗（failed）とは別**で、何も実行していないことを表す。
+- `attended` の計画は従来どおり（人がいるので、操作側の拒否に委ねる）。
+
+**未着手**: 期間・効果の前提を実際に `PreconditionFunc` へ接続すること、無人実行の承認（誰が無人を許したか）の記録。
+### 期間の前提との接続（2026-11-04 追記）
+
+`execution.PeriodPreconditions(surface, states)` を追加し、操作面の期間の拒否をそのまま `PreconditionFunc` として渡せるようにしました。
+
+- 期間が閉じていて能力が拒否される場合、その `Detail` が理由になる → 無人実行は**その操作の手前で止まる**。
+- 期間が開いている、または期間を持たない能力は理由を返さない → 実行する。
+- 期間の状態の出所は、期間と同じく呼び出し側（運用の記録・`periodstate.File`）が渡す。
+
+これで「期間の宣言 → 操作面 → 束縛 → 無人実行の停止」が一本につながりました。
+### 出力の生成（2026-11-04 追記）
+
+`output` を**読み取り専用の投影**として扱う最小の実装を追加しました（`internal/execution/outputs.go` の `ProjectOutputs`）。
+
+- `RowReader` は件数を読むだけ。**書き込む口を持たない**（出力は投影であり、データを変えない）。
+- 出力ごとに結果（`Rows`）を返す。読取りの失敗はその出力の `Err` に残し、**他の出力の読取りを止めない**（一つ読めないことが他を隠さない）。
+- `RowReader` が nil の場合は「読取りの手段が無い」と記録する（黙って 0 件にしない）。
+- 検証にも `RUN_PLAN_UNKNOWN_OUTPUT` を追加（出力は実在するデータを指すこと）。
+
+**未着手**: 帳票・確認一覧としての整形、`artifacts` の成果物との接続、実データでの読取り。
+### 効果の前提との接続（2026-11-04 追記）
+
+`execution.EffectPreconditions(rules, observer)` を追加し、確定後・補償の効果を持つ操作を無人実行の停止条件に載せました。
+
+- 対象能力に `after-commit`・`compensation` の規則があり、**観測の手段（`EffectObserver`）が無い**場合、無人実行は**その操作の手前で止まる**（理由に規則の識別子を含める）。
+- 観測の手段がある場合、および取引内の効果だけの場合は止めない。
+- 効果を持たない能力は止めない。
+
+**判断**: 確定後の効果は能力の結末では証人にならないため、観測できないまま無人で走らせると「成功したかどうか誰も知らない効果」が残ります。止める方が安全です。
+### 停止条件の合成（2026-11-05 追記）
+
+`execution.CombinePreconditions(checks...)` で、期間と効果の前提を一つにまとめました。
+
+- 検査は独立で、**最初に満たされなかった理由**を返す（期間が開いていても、効果を観測できなければ止まる）。
+- すべての検査が nil のときは合成結果も nil。無人実行は「確かめる手段が無い」として止まる。
+- 一つでも検査があれば、それを全部通ったときだけ実行する。
+
+これで無人実行の前提は、**期間の状態・確定後効果の観測性**の両方を満たすことが条件になりました。
+### 成果物への反映（2026-11-05 追記）
+
+機能定義書に `run-plan` の行を出すようにしました（`internal/artifact/functiondef.go`）。
+
+```
+run-plan sales.monthly_close operations sales.close key sales.period.month concurrency singleton resume checkpoint output sales.period autonomy unattended
+```
+
+- 並びは計画の識別子順。
+- 省略された項目は行に出さない（宣言に無いものを補わない）。
+- 生成規則 `function-definition/v1` の行種別に `run-plan` を追加。
+### 帳票・確認一覧としての整形（2026-11-05 追記）
+
+投影の結果を**帳票の本文**として出す関数を追加しました（`execution.RenderOutputs`）。
+
+```
+## 出力: sales.monthly_close
+
+| 出力 | 行数 | 備考 |
+| --- | ---: | --- |
+| sales.close_statement | 12 | |
+| sales.check_list | 0 | |
+```
+
+- 行数は投影が読んだ件数。**読み取りの失敗は「-」と理由**で表に出す（0 件と区別する）。
+- 出力の宣言が無い計画には「出力の宣言はありません」と書く（空の表を出さない）。
+- 帳票は**実行の投影**であり、データそのものについては何も主張しない。

@@ -16,6 +16,8 @@ type Namespace struct {
 	Capabilities  []Capability `json:"capabilities,omitempty"`
 	Validations   []Validation `json:"validations,omitempty"`
 	Periods       []Period     `json:"periods,omitempty"`
+	EffectRules   []EffectRule `json:"effectRules,omitempty"`
+	RunPlans      []RunPlan    `json:"runPlans,omitempty"`
 }
 
 // Period binds one data to a business date and to the states a closing period
@@ -189,4 +191,33 @@ type Capability struct {
 	Output   core.CanonicalID `json:"output,omitempty"`
 	Outcomes []Outcome        `json:"outcomes,omitempty"`
 	Effect   *DataEffect      `json:"effect,omitempty"`
+	// EmptyPolicy is the Owner-declared handling of an empty target set for
+	// this business action. Empty means "not declared; use the business-type
+	// default" (see EffectiveEmptyPolicy).
+	EmptyPolicy EmptyPolicy `json:"emptyPolicy,omitempty"`
+}
+
+// EffectRule declares a side effect that runs around a capability, and where it
+// runs. It does not change what the capability returns.
+type EffectRule struct {
+	ID            core.CanonicalID `json:"id"`
+	OnCapability  core.CanonicalID `json:"onCapability"`
+	Stage         string           `json:"stage"`
+	EffectKind    DataEffectKind   `json:"effectKind"`
+	EffectData    core.CanonicalID `json:"effectData"`
+	ViaCapability core.CanonicalID `json:"viaCapability,omitempty"`
+	OnFailure     string           `json:"onFailure,omitempty"`
+}
+
+// RunPlan declares an ordered execution inside one application: which
+// capabilities run, what identifies a run, and whether it may run unattended.
+// The calendar, the scheduler, and credentials are deliberately absent.
+type RunPlan struct {
+	ID          core.CanonicalID   `json:"id"`
+	Operations  []core.CanonicalID `json:"operations"`
+	Key         []core.CanonicalID `json:"key,omitempty"`
+	Concurrency string             `json:"concurrency,omitempty"`
+	Resume      string             `json:"resume,omitempty"`
+	Outputs     []core.CanonicalID `json:"outputs,omitempty"`
+	Autonomy    string             `json:"autonomy,omitempty"`
 }

@@ -18,7 +18,17 @@ func validateWorkspace(out io.Writer, root string) (int, error) {
 		printSourceDiagnostic(out, *result.Direct)
 		return 1, nil
 	}
+	hasSourceRootError := false
+	for _, finding := range result.SourceRootFindings {
+		fmt.Fprintf(out, "%s\tWORKSPACE_SOURCE_ROOT\t%s\n", finding.Severity, finding.Message)
+		if finding.Severity == "error" {
+			hasSourceRootError = true
+		}
+	}
 	if printProjectedDiagnostics(out, result.Diagnostics) {
+		return 1, nil
+	}
+	if hasSourceRootError {
 		return 1, nil
 	}
 	fmt.Fprintln(out, "ok")

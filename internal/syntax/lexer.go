@@ -2,6 +2,7 @@ package syntax
 
 import (
 	"fmt"
+	"strings"
 	"unicode"
 )
 
@@ -37,7 +38,17 @@ type Lexer struct {
 	column int
 }
 
-func NewLexer(src string) *Lexer { return &Lexer{src: src, line: 1, column: 1} }
+// NewLexer ignores one leading UTF-8 BOM as a prefix that is not part of the
+// source text. Byte offsets stay anchored to src so callers can still slice or
+// splice by Position.Offset; only the first visible character starts at
+// column 1. A BOM anywhere else remains an invalid character.
+func NewLexer(src string) *Lexer {
+	l := &Lexer{src: src, line: 1, column: 1}
+	if strings.HasPrefix(src, "\ufeff") {
+		l.off = len("\ufeff")
+	}
+	return l
+}
 
 func (l *Lexer) Source() string { return l.src }
 func (l *Lexer) Offset() int    { return l.off }

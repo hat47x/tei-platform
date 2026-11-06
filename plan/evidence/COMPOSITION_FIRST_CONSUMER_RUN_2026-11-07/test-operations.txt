@@ -1,0 +1,4 @@
+=== RUN   TestSurfaceWorkspaceStandardCRDFixture
+--- PASS: TestSurfaceWorkspaceStandardCRDFixture (0.05s)
+PASS
+ok  	tei/internal/operations	4.869s

@@ -1,0 +1,33 @@
+{
+  "description": "Hand-authored instance of Go query.RelationalIR JSON wire shape. NOT an analyzer/worker output.",
+  "samples": {
+    "aggregate_before_join": {
+      "root": "join_groups",
+      "nodes": [
+        {"id": "src_l", "kind": "source", "scopeId": "scope:root", "source": "line", "sourceKind": "table", "alias": "l", "resolution": "name-only"},
+        {"id": "src_d", "kind": "source", "scopeId": "scope:root", "source": "delivery", "sourceKind": "table", "alias": "d", "resolution": "name-only"},
+        {"id": "agg_l", "kind": "aggregate", "scopeId": "scope:root", "inputs": ["src_l"], "expressions": ["GROUP BY l.order_id", "SUM(l.amount)"]},
+        {"id": "agg_d", "kind": "aggregate", "scopeId": "scope:root", "inputs": ["src_d"], "expressions": ["GROUP BY d.order_id", "COUNT(*)"]},
+        {"id": "join_groups", "kind": "join", "scopeId": "scope:root", "inputs": ["agg_l", "agg_d"], "joinKind": "inner", "expressions": ["agg_l.order_id=agg_d.order_id"]}
+      ]
+    },
+    "join_before_aggregate": {
+      "root": "agg_after",
+      "nodes": [
+        {"id": "src_l", "kind": "source", "scopeId": "scope:root", "source": "line", "sourceKind": "table", "alias": "l", "resolution": "name-only"},
+        {"id": "src_d", "kind": "source", "scopeId": "scope:root", "source": "delivery", "sourceKind": "table", "alias": "d", "resolution": "name-only"},
+        {"id": "join_rows", "kind": "join", "scopeId": "scope:root", "inputs": ["src_l", "src_d"], "joinKind": "inner", "expressions": ["l.order_id=d.order_id"]},
+        {"id": "agg_after", "kind": "aggregate", "scopeId": "scope:root", "inputs": ["join_rows"], "expressions": ["GROUP BY l.order_id", "SUM(l.amount)"]}
+      ]
+    },
+    "left_join_filter": {
+      "root": "anti_filter",
+      "nodes": [
+        {"id": "src_h", "kind": "source", "scopeId": "scope:root", "source": "header", "sourceKind": "table", "alias": "h", "resolution": "name-only"},
+        {"id": "src_d", "kind": "source", "scopeId": "scope:root", "source": "delivery", "sourceKind": "table", "alias": "d", "resolution": "name-only"},
+        {"id": "outer_join", "kind": "join", "scopeId": "scope:root", "inputs": ["src_h", "src_d"], "joinKind": "left", "expressions": ["h.id=d.order_id"]},
+        {"id": "anti_filter", "kind": "filter", "scopeId": "scope:root", "inputs": ["outer_join"], "expressions": ["d.id IS NULL"]}
+      ]
+    }
+  }
+}

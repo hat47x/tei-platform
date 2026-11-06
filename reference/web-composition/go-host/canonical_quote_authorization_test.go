@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 
 	"tei/internal/driver"
@@ -25,6 +26,10 @@ import (
 // in a temporary copy; the existing authorizer still evaluates its own
 // explicit fixture rule, never a hand-written second permission evaluator.
 func quoteCandidateAuthorizationDependencies(t *testing.T) (driver.Resolver, driver.BindingAdapterResolver) {
+	return quoteCandidateAuthorizationDependenciesWithTax(t, false)
+}
+
+func quoteCandidateAuthorizationDependenciesWithTax(t *testing.T, addTax bool) (driver.Resolver, driver.BindingAdapterResolver) {
 	t.Helper()
 	_, filename, _, ok := runtime.Caller(0)
 	if !ok {
@@ -62,6 +67,13 @@ func quoteCandidateAuthorizationDependencies(t *testing.T) (driver.Resolver, dri
 		data, err := os.ReadFile(filepath.Join(candidate, filepath.FromSlash(relative)))
 		if err != nil {
 			t.Fatal(err)
+		}
+		if addTax && relative == "semantic/sales/quote.tei" {
+			anchor := "    attribute subtotalMinor type std.integer\n"
+			if strings.Count(string(data), anchor) != 1 {
+				t.Fatal("missing unique result attribute")
+			}
+			data = []byte(strings.Replace(string(data), anchor, anchor+"    attribute taxMinor type std.integer\n", 1))
 		}
 		path := filepath.Join(target, filepath.FromSlash(relative))
 		if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
@@ -119,6 +131,35 @@ func quoteCandidateAuthorizationDependencies(t *testing.T) (driver.Resolver, dri
 			return adapter, nil
 		},
 	)
+}
+
+func TestQuoteAuthorizationDoesNotEstablishChangedResultShape(t *testing.T) {
+	for _, addTax := range []bool{false, true} {
+		resolver, adapters := quoteCandidateAuthorizationDependenciesWithTax(t, addTax)
+		editor := Principal{ProviderID: "corporate", Issuer: "https://issuer.example.invalid/tenant1", Subject: "corporate-editor", PrincipalID: "employee-1"}
+		viewer := Principal{ProviderID: "corporate", Issuer: editor.Issuer, Subject: "corporate-viewer", PrincipalID: "employee-2"}
+		links := map[ExternalSubject]SubjectLink{
+			{ProviderID: editor.ProviderID, Issuer: editor.Issuer, Subject: editor.Subject}: {PrincipalID: editor.PrincipalID, SubjectID: "subject-order-editor"},
+			{ProviderID: viewer.ProviderID, Issuer: viewer.Issuer, Subject: viewer.Subject}: {PrincipalID: viewer.PrincipalID, SubjectID: "subject-order-viewer"},
+		}
+		authorize, err := NewCanonicalActionAuthorizer(resolver, "order_entry", "order_entry.preview_order_quote", func(_ context.Context, key ExternalSubject) (SubjectLink, bool, error) {
+			link, ok := links[key]
+			return link, ok, nil
+		}, adapters)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if ok, err := authorize(context.Background(), editor, "order_entry.preview_order_quote"); err != nil || !ok {
+			t.Fatalf("addTax=%t editor: allowed=%v err=%v", addTax, ok, err)
+		}
+		if ok, err := authorize(context.Background(), viewer, "order_entry.preview_order_quote"); err != nil || ok {
+			t.Fatalf("addTax=%t viewer: allowed=%v err=%v", addTax, ok, err)
+		}
+		if ok, _ := authorize(context.Background(), editor, "order_entry.submit_order"); ok {
+			t.Fatalf("addTax=%t quote authorization reused for submit", addTax)
+		}
+	}
+	t.Log("original and isolated tax attribute: unchanged candidate rule allows editor and denies viewer; this authorizer does not validate Shape or Provider")
 }
 
 // The independent quote is a read-only semantic Capability, not a second

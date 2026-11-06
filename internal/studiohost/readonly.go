@@ -8,8 +8,10 @@ import (
 	"os"
 	"path/filepath"
 
+	"tei/internal/command"
 	"tei/internal/operations"
 	"tei/internal/sourceindex"
+	"tei/internal/validation"
 )
 
 type WorkspaceRef struct {
@@ -30,9 +32,13 @@ type ListResponse struct {
 	Value []WorkspaceRef `json:"value"`
 }
 type ValidationResponse struct {
-	OK      bool                            `json:"ok"`
-	Value   *operations.WorkspaceValidation `json:"value,omitempty"`
-	Failure *Failure                        `json:"failure,omitempty"`
+	OK    bool                            `json:"ok"`
+	Value *operations.WorkspaceValidation `json:"value,omitempty"`
+	// Proposals are candidate corrections, one per diagnostic. They carry the
+	// world fingerprint the diagnostic was read from and are never accepted
+	// automatically: accepting one is a separate decision.
+	Proposals []validation.Proposal `json:"proposals,omitempty"`
+	Failure   *Failure              `json:"failure,omitempty"`
 }
 type CatalogResponse struct {
 	OK      bool                     `json:"ok"`
@@ -70,6 +76,12 @@ type ReadOnly struct {
 	refs         []WorkspaceRef
 	services     ServiceFactory
 	xeadObserver XeadObservationObserver
+
+	// CommandLifecycle is composed by the host. When set, the
+	// ExecuteCommandWithLifecycle path records dispatch/observe/unknown stages
+	// in this store; the other ExecuteCommand methods keep their in-memory
+	// behaviour.
+	CommandLifecycle command.StageLifecycle
 }
 
 func NewReadOnly(paths []string) (*ReadOnly, error) {
@@ -173,7 +185,22 @@ func (h *ReadOnly) ValidateWorkspace(id string) ValidationResponse {
 	if err != nil {
 		return ValidationResponse{Failure: operationFailure(err)}
 	}
-	return ValidationResponse{OK: true, Value: &value}
+	// Pair the diagnostics with version-bound proposals so the author surface
+	// shows the same unanswered corrections the CLI reports.
+	var proposals []validation.Proposal
+	if value.WorldFingerprint != "" {
+		diagnostics := make([]validation.Diagnostic, 0, len(value.Diagnostics))
+		for _, projected := range value.Diagnostics {
+			diagnostics = append(diagnostics, projected.Diagnostic)
+		}
+		if value.Direct != nil {
+			diagnostics = append(diagnostics, validation.Diagnostic{
+				Code: value.Direct.Code, Severity: value.Direct.Severity, Message: value.Direct.Message,
+			})
+		}
+		proposals = validation.Propose(diagnostics, value.WorldFingerprint)
+	}
+	return ValidationResponse{OK: true, Value: &value, Proposals: proposals}
 }
 
 func (h *ReadOnly) CatalogWorkspace(id, namespace string) CatalogResponse {

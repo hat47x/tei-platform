@@ -32,7 +32,7 @@ WITの`quote-preview`は`quote-request`を受け、`result<quote-result, quote-r
 
 ## 今回の試験と明示的な未達
 
-`quote_boundary_test.go`は固定23件の候補業務Oracleを読み、正常8件のデータを**事前に検証済みという条件**でWITの数値型へ損失なく投影し、数量×単価が独立期待値と一致するか確認する。拒否15件はOracle状態の保持のみ確認する。重複キー・ケース違いと2^53超のJSON数値を**標準Decoderへ通すと元の情報が失われ得ること**を反例とし、入力検査を省略できないことをテストにする。
+`quote_boundary_test.go`は固定23件の候補業務判定基準を読み、正常8件のデータを**事前に検証済みという条件**でWITの数値型へ損失なく投影し、数量×単価が独立期待値と一致するか確認する。拒否15件は検証基準の状態の保持のみ確認する。重複キー・ケース違いと2^53超のJSON数値を**標準Decoderへ通すと元の情報が失われ得ること**を反例とし、入力検査を省略できないことをテストにする。
 
 WIT構造については静的な境界チェックを行い、`wasm-tools`が利用できる場合だけ公式Parserで`wasm-tools component wit quote.wit`を実行する。利用不可なら**文法検証は未実施**とログに残す。
 
@@ -78,7 +78,7 @@ Guestの純計算に`import`を宣言しないことは、製品としての起�
 
 - [専用GitHub Actions #38746502755](https://github.com/hat47x/tei-platform/actions/runs/38746502755) は**成功**。実行したPR先端（README追記前）は`7a3b65d228937d2df56b11afe0ed1fbc4b5936ea`。Wasmtime 49.0.3、Jco 1.37.0、Node.js 22.23.3、実Google Chrome 154.0.8037.97。
 - 当該実験でのComponent SHA-256：`fd3d5d1a8d0b9752f5b60734e49aaf726e55df8e950efc70de9809b319871419`（このCIビルドの証跡であり、再ビルドのdigest一致を保証しない）。
-- 各Host（Node、Chromium、Wasmtime）で**正常8件、入力検証段階拒否7件、Guest内部の業務拒否8件**が固定の未受理候補Oracleに一致。したがってComponentの実呼出しは各Hostで16件。入力段階拒否7件はGuestを呼んでいない。
+- 各Host（Node、Chromium、Wasmtime）で**正常8件、入力検証段階拒否7件、Guest内部の業務拒否8件**が固定の未受理候補判定基準に一致。したがってComponentの実呼出しは各Hostで16件。入力段階拒否7件はGuestを呼んでいない。
 - `jco transpile`後のCore Wasm **約11.4MiB**、生成JavaScript **約94.1KiB**は今回の検証でも観測。これは性能評価や最適化済み製品のサイズではなく、候補の配布費用の具体例。
 
 Wasmtimeによる直接Component呼出しとJco変換成果物の二Host呼出しが成立したことは、**この特定の未受理見積もりContract候補と有限のベクトル集合に限る**。別の言語で実装したComponent、WebView固有Host、実サーバーRuntime Engine、署名の有効性、現在の実行権限、成果物読み込み原子性、生成世代の保持、ユーザーの正式受理を証明しない。
