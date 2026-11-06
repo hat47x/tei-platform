@@ -208,3 +208,53 @@ func TestPopulationCollisionBudget(t *testing.T) {
 		t.Fatal("invalid budget not rejected")
 	}
 }
+
+func TestCollisionBudgetConservativeSmallSpaceAndPigeonhole(t *testing.T) {
+	s := fixtureScheme()
+	s.Algorithm, s.Mode = AlgorithmSHAKE256, ModeExactCharacters
+	s.OutputBits, s.Encoding, s.Alphabet, s.Length = 0, "", "01", 1
+
+	estimate, err := CollisionProbability(s, 2)
+	if err != nil || estimate >= 0.5 {
+		t.Fatalf("birthday approximation must not be confused with exact risk: %.9g, %v", estimate, err)
+	}
+	upper, err := CollisionRiskUpperBound(s, 2)
+	if err != nil || upper < 0.5 || upper > 0.500000000000001 {
+		t.Fatalf("union bound for two draws from two values must be 0.5: %.9g, %v", upper, err)
+	}
+	if err := CheckCollisionBudget(s, 2, 0.4); err == nil {
+		t.Fatal("budget between optimistic approximation and union bound was accepted")
+	}
+	if err := CheckCollisionBudget(s, 2, 0.51); err != nil {
+		t.Fatalf("valid small-space upper-bound policy rejected: %v", err)
+	}
+	if probability, err := CollisionProbability(s, 3); err != nil || probability != 1 {
+		t.Fatalf("population exceeding address space must mean certain collision: %.9g, %v", probability, err)
+	}
+	if err := CheckCollisionBudget(s, 3, 1); err == nil {
+		t.Fatal("more subjects than finite IDs cannot be accepted even at ceiling 1")
+	}
+
+	// The same certainty must be detected for 8-bit digest mode.
+	s.Mode, s.Alphabet, s.Length = ModeEncodedDigest, "", 0
+	s.Encoding, s.OutputBits = EncodingHex, 8
+	if err := CheckCollisionBudget(s, 257, 1); err == nil {
+		t.Fatal("257 allocations in an 8-bit space cannot pass")
+	}
+	if err := CheckCollisionBudget(s, 2, 0.1); err != nil {
+		t.Fatalf("sufficient bound for 8-bit case rejected: %v", err)
+	}
+
+	// A 4096-bit address space has positive risk for n=2, even when
+	// float64 represents the tiny approximation as zero.
+	s.OutputBits = 4096
+	if estimate, err := CollisionProbability(s, 2); err != nil || estimate != 0 {
+		t.Fatalf("expected float64 underflow in long digest fixture: %.9g %v", estimate, err)
+	}
+	if err := CheckCollisionBudget(s, 2, 0); err == nil {
+		t.Fatal("zero collision-risk budget accepted due to float64 underflow")
+	}
+	if err := CheckCollisionBudget(s, 2, 1e-12); err != nil {
+		t.Fatalf("positive tolerance for large address space rejected: %v", err)
+	}
+}
