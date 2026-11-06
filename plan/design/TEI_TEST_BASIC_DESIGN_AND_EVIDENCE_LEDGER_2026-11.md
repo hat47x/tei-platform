@@ -228,3 +228,23 @@ main統合の[`tei dbcheck`](https://github.com/hat47x/tei-platform/pull/2894)�
 **現在資格**：#2901 HEAD `a6eb80cffe16a57f4cb2461ff2946065955a4e50`で4ファイル差分をGitHub再取得・比較済み。main向け**検証用Draft／単独マージ不可**。今回の最初の照会では[Repository Health #42111973682](https://github.com/hat47x/tei-platform/actions/runs/42111973682)等がqueued。**この段階では統合Go PASSとは呼ばない**。#2891/2895の既存別HEAD CI成功は、本統合HEADの代替には使えない。
 
 **次の停止線**：#2901 exact-headのGo全体・gofmt/vet/Workspace・必須Test ID確認→#2514での実Product Rule Mutant 1件の独立殺傷評価→必要になった場合にのみ#1180採用Suite/Reader、#1163一改訂Product Gateへ進む。Script/DB MigrationのRequired/Partial/Unknownについては#2884/#2892の既存OwnerがSourceと実Observationを固定して判定し、Fixture G0成功をそこへ一般化しない。**本書はread-only台帳/計画であり、テスト実行は別PR CIによる**。
+
+### 8.7 実Product Evaluator Mutantの独立判別（#3017）
+
+**結合Greenを確定**：[#2901](https://github.com/hat47x/tei-platform/pull/2901) の統合実装HEAD `a6eb80cffe16a57f4cb2461ff2946065955a4e50`で[Repository Health #42111973682](https://github.com/hat47x/tei-platform/actions/runs/42111973682)、セルフビルド・Web E1-A・Studio・依存検査が全て**completed/success**。#2828／#2890／#2895のAI Case・有限独立Key Oracleと#2891のFixture重複member G0が**同一Go Checkoutで回帰成功**したことを示す。実Readerの個別Raw Receipt、意味受理、実Provider/Host業務E2E、全業務Coverageは別主張。
+
+#### G2候補の次の実証：Green基線と本物のProduct Rule誤実装を対照する
+
+**隔離Draft [#3017](https://github.com/hat47x/tei-platform/pull/3017)** は#2901成功HEADから分岐し、`internal/semantic/validationeval/evaluator.go`の`semantic.ValidationRelationUnique`で重複キーを見つけたときの結果を**`not-satisfied → satisfied`へ意図的に一行誤変更**する。#2901との差分は製品Evaluatorの1ファイルのみ。Scenario/Fixture/独立Expected/テスト本体は変更しない。**このMutantは絶対mainへマージしない。**
+
+| 対照 | 固定するもの | 実際に観測すべき事実／分類 |
+| --- | --- | --- |
+| **M0 正常Green** | #2901 exact HEAD、`ai-line-number-unique`の`[1,2]`/satisfied、`ai-line-number-duplicate`の`[1,1]`/not-satisfied、#2895独立有限Expected | 正規Health成功、必要なGoケースが実行された事実。これは**基線の履歴**であり現在のProduct G2証明ではない |
+| **M1 誤実装Red** | #3017 exact HEAD、Evaluator重複時だけ`ResultSatisfied`へ変える。その他のInput/Expected/Plugin/Case/Go testは不変 | `TestAIAddedScenarioCandidateFiles/ai-candidate-line-number-uniqueness`等の**対象Caseに到達した**fail と `result=satisfied, expected=not-satisfied`を実Job logで確認した場合、同一業務局所CaseによるProduct Evaluator mutant kill を限定認定 |
+| **M2 他TestのみRed** | M1と同じ誤実装 | 既存Evaluator別テストだけがFailし、AI追加Caseが走らない/到達しなければ**AI CaseのMutation感度はunknown**。総合CI赤をAI品質に誤転記しない |
+| **M3 起動・環境のみRed** | M1と同じ誤実装 | gofmt/Build/依存/Runner/環境エラーだけなら**mutant killではなくinconclusive**。ExpectedをMutantのGotへ修正しない |
+| **M4 Survived** | M1と同じ誤実装 | 完全な必要Caseの実走なのに全PASSなら**対象Mutantの見逃し**。Target/Rule/Loaded Source/Read Scopeの欠落を#2514へ返す |
+
+**証拠台帳の最低列**：`baselineHead / mutantHead / exact source diff / selected Canonical Rule+Revision / fixed Scenario+Fixture SHA / independent Expected provenance / test name+actual execution / observed outcome+diagnostic / mutant classification / surviving or missing obligations / expiry`。AgentによるExpected書換え、別HEAD混在、失敗したCIを正常なHealth PASSと言い換えることを禁止。
+
+**現時点の資格**：本追補時点では#3017の[Repository Health #42181290981](https://github.com/hat47x/tei-platform/actions/runs/42181290981)が**in_progress**であり、意図的な不合格が当該AI Caseに到達したかは**未確認**。既存#2901のGreenを#3017へ転用せず、M1/M2/M3/M4を実ログで区分するまで`Product Rule mutant kill = NOT VERIFIED`。Mutationはテスト専用ブランチの実コード変更であり、原Canonical SourceのOwner受理や本番Runtime変更ではない。
