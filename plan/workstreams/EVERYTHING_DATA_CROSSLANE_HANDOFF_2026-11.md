@@ -2930,7 +2930,7 @@ HEAD `e0cfebf14d40db81bdef77d6c3e4898ed75d999f`に対する[GitHub Actions #4203
 
 ## 57. 2026-11-06の限定実証の更新：実AI Mutant検出・Health Receipt・実行先の責務
 
-- **AI/Oracle（限定Product Mutant kill）**：[統合Draft #2901](https://github.com/hat47x/tei-platform/pull/2901)のexact HEAD `a6eb80cf` は[Health #42111973682](https://github.com/hat47x/tei-platform/actions/runs/42111973682) SUCCESS。[破壊的Draft #3017](https://github.com/hat47x/tei-platform/pull/3017)はProduct EvaluatorのRelation-Unique重複判定一行だけを誤反転し、[Health #42181290981](https://github.com/hat47x/tei-platform/actions/runs/42181290981) FAIL。実CIログで**AI追加Scenarioの対象Step自体が固定Expectedの不一致を検出**した（限定1 Mutant kill）。Draft #3017は**意図的な欠陥入りで絶対にmainへMergeしない**。NULL/欠損/部分集合・全Oracle／Owner受理には外挿しない（#2514）。
+- **AIと独立検証基準（限定Product Mutant検出）**：[統合Draft #2901](https://github.com/hat47x/tei-platform/pull/2901)のexact HEAD `a6eb80cf` は[Health #42111973682](https://github.com/hat47x/tei-platform/actions/runs/42111973682) SUCCESS。[破壊的Draft #3017](https://github.com/hat47x/tei-platform/pull/3017)はProduct EvaluatorのRelation-Unique重複判定一行だけを誤反転し、[Health #42181290981](https://github.com/hat47x/tei-platform/actions/runs/42181290981) FAIL。実CIログで**AI追加Scenarioの対象Step自体が固定Expectedの不一致を検出**した（限定1 Mutant kill）。Draft #3017は**意図的な欠陥入りで絶対にmainへMergeしない**。NULL/欠損/部分集合・すべての独立検証基準／Owner受理には外挿しない（#2514）。
 - **暫定一改訂E2EのHealth証拠**：[main統合済み #3025](https://github.com/hat47x/tei-platform/pull/3025)が、#3020で配線したfullHealth receiptを実PostgreSQL 16.14の一改訂E2Eで読み、`TRUSTED_FULL_HEALTH_NOT_RECORDED`の**一診断だけを解消**した。監査は依然 **status=INCOMPLETE / productGate=UNQUALIFIED**、Provisional Acceptance/Grant/Guaranteeの3診断が残る。Healthあり≠正式G1/G2／実外部Provider保証。#1163/#2619の既存台帳を使用する。
 - **実分散とTAIの境界**：[EKI main統合 #773](https://github.com/hat47x/eki-fabric/pull/773)はLease台帳への実登録（失敗時はWorkerへ配らない）を追加したが、期限切れAttemptのResult reconciliationや外部Effect再実行許可は残る。TAI [Draft #489](https://github.com/hat47x/tai-pleroma/pull/489)は固定TEI CLI/Binaryの合成資格と**実Harness H2→H3→H3→H2未実施**を分離。TEI Source改名により既存Binaryが必要Sourceを消費しなくなれば、Skill能力に関係なく比較自体を無資格とする。EKIのLeaseやTAIのSkillがTEI Meaning/Host Grantを代行しない。
 
@@ -2988,3 +2988,32 @@ HEAD `e0cfebf14d40db81bdef77d6c3e4898ed75d999f`に対する[GitHub Actions #4203
 **検証用語の最新方針**：[main統合 #3039](https://github.com/hat47x/tei-platform/pull/3039)の命名に従い、本文の*test oracle*を『独立検証基準』『独立期待値』『テスト判定基準』として記述し、データベース製品だけ`Oracle Database`と呼ぶ。既存のコード識別子や履歴リンクは機械的に改名しない。旧本文内の残存表記の全面修正は本追補で未実施（#3039担当の整合監査）。
 
 **状態**：実証したのは各PRのGo/限定実DB/CI及びコード静的境界。本追補自体はdocs-onlyで、Issuer真正性、実Grantの発効時点/撤回競合、実Providerでの不一致後Commit/Receipt/独立Read、EKI外部作用ありTaskの回復縦断、TAI外部Harness H2/H3、`*.tei.md`の実Reader、業務Ownerの正式受理は**NOT RUN/NOT ACCEPTED**。既存#1119/#1163/#1174/#745/#3030を再利用し、第二のVerifier/Host/Registryを導入しない。
+
+## 59. Source読込の観測とCLI JSON契約の互換性を同じConsumer視点で再資格化（2026-11-07）
+
+### 59.1 現行mainで確定した観測の粒度
+
+| mainに取り込まれた変更 | 実測・正当に主張できること | なお言えないこと |
+| --- | --- | --- |
+| [#3073](https://github.com/hat47x/tei-platform/pull/3073)／[#3078](https://github.com/hat47x/tei-platform/pull/3078) | `workspace-files.result.managedFiles[].readByLoader`はLoad中にdomain Loaderの`readSourceForLoad`で取得したSourceにだけ立つ。`sourceRootFindings`は未存在・未知rootや近似名ファイルの診断。PRの参照Workspace実測は**54管理中53件read、README.md 1件未読** | Inventoryに載る≠Required Sourceへ選択された、`readByLoader:true`≠Parser受理、Role occurrence・意味受理・Build/Consumer消費済み |
+| [#3069](https://github.com/hat47x/tei-platform/pull/3069)／[#3081](https://github.com/hat47x/tei-platform/pull/3081) | `validate -json`と`model catalog`に`declarationCounts`（`std`前置定義を除外）。0要素なら`WORKSPACE_DECLARES_NO_MODEL_ELEMENTS` warning | 空Workspaceでも**`ok:true`・終了コード0は保持**。0件は『何も宣言していない』という観測であり、想定Subjectが存在しないことや移行成功の保証ではない |
+| [Draft #3031](https://github.com/hat47x/tei-platform/pull/3031) | `*.tei.md`の未束縛を`TEI_MD_PARSER_UNBOUND`で止める限定Go/CIがsuccess（別HEADのDraft） | 現mainの正式Markdown Parserや意味的採用ではない。Raw Draftは非管理Rootで編集可能だが、選択済Sourceのロード資格とは別 |
+| [#3087](https://github.com/hat47x/tei-platform/pull/3087) | PostgreSQL実行時判断のWorkflowに`main` pushの起動条件・SHA別保存方針を追加 | **特定main SHAで実PostgreSQL試験が完了した証拠**はWorkflow変更だけからは得られない。PR用CI PASSをmain SHAへ流用しない |
+
+**独立した実CLI負例（旧TEI Binary）**：[TAI Draft #270の実行 #42256480002](https://github.com/hat47x/tai-pleroma/actions/runs/42256480002)では同一Workspaceに`order.tei.md`を追加すると**World Fingerprintは同じ、Source Index Fingerprintは変化**、実`semantic-data:sales.order`は1件のままで、新ファイルの内容は未Parseだった。後続の[同一Path原byteのみ変更の実行 #42297500012](https://github.com/hat47x/tai-pleroma/actions/runs/42297500012)も、Source Index変化／World不変／Subject 1件を観測（両runの該当Jobはcompleted/success）。旧`order.tei`を`order.tei.md`へ**単独改名**した別対照ではSubjectが1→0件でも`validate.ok=true`。旧版の負例は改変せず、現在の新Reader/Guardは別Versionで再検収する（#3030 TM-02/03/04/14）。Fingerprint差だけから意味反映済み、World一致だけから無影響・再利用可を推論しない。
+
+### 59.2 `workspace-files`の同じ`v0`名で応答の型が変わった問題を、Consumer互換の受入へ
+
+[#3078の実差分](https://github.com/hat47x/tei-platform/pull/3078)は`tei.cli.workspace-files/v0`の**`result`を配列からオブジェクト**（`managedFiles`／`sourceRootFindings`）に変更。[CLI JSON出力契約](https://github.com/hat47x/tei-platform/blob/main/plan/design/CLI_JSON_OUTPUT_CONTRACT_2026-10.md)も新形を記載した。一方、[Draft #3092](https://github.com/hat47x/tei-platform/pull/3092)の`TestDiscoverySchemaVersionsMatchActualResponses`は**広告したschemaVersion文字列**が実応答に一致するかを調べるが、`result`が旧配列か新オブジェクトかの差は同じ`v0`なら検出できない。既存外部Consumerの互換性は別の要求であり、現状は未合格とする。
+
+**既存#2824の最小固定対照（追加のJSONエンジンは不要）**：旧Consumer（`result`を配列として読む）×旧固定Binaryは正例、旧Consumer×新Binaryは**成功扱いせず明示incompatible／診断**、新Consumer×新Binaryは`managedFiles`を読める正例、新Consumer×旧BinaryはLegacy互換を要求するか事前の版交渉で拒否するかをOwnerが選ぶ。共通Independent ExpectedにはSubject数とreadByLoader数、`declarationCounts`、`sourceRootFindings`、actual required parsedを別列で固定する。`schemaVersion`一致だけ／empty array default／`ok:true`だけの合格を防ぐ。**選択肢は互換な旧v0応答の維持、または新v1と既存Consumer移行**（いずれも未決）；宣言なしに新v0構造を安全と認定しない。CLI v0の版はSemVer一般論から機械決定せず、TEIの契約Ownerが実Consumerの実態と合わせて受理する。
+
+### 59.3 現在の最短実行順と他Laneへの接続
+
+1. **P0-L（既存LegacyのRead）**：#2822/#2823の`required root/subject`→managed→`readByLoader`→実Parser subject/occurrence→独立期待値の充足を、同じSource/Revisionで固定。Rootが未知・未存在なら`sourceRootFindings`、0件なら`declarationCounts.total=0`を表示し、**`ok:true`を十分条件にしない**。既存#2586実Function/Provider read-onlyの進捗を新Markdown Reader未完成で止めない。
+2. **P0-M（新形式の実Source）**：#3030 M0〜M6/TM-01〜14を唯一の移行検収IDとして使い、#3031の拒否から、正式Markdown ReaderのSource byte/span・Role/Operator Pin・actual Builder inputまで段階再検収。P0-LとP0-MのSource path/Revisionを混ぜず、同じ業務要求に対する同一独立期待値への合流はP0-Jでだけ判定。横断側TMDは履歴の対応表。
+3. **P0-CLI（契約互換）**：#2824の既存CLI出力契約で`workspace-files`旧新両Consumerを実デコード。`tei commands` discoveryの文字列と**応答構造の互換性**を別項目とする。#3092の現状テストは前者に限る。互換判断までAI/TAI等の外部Consumerが新v0を自動で理解するとは記載しない。
+4. **G4-SB-0b（オフライン閉包）**：[PR #3091](https://github.com/hat47x/tei-platform/pull/3091)の`cmd/tei`実`go list`隔離Preflightは、外部Module3件が`GOPROXY=off`で未供給という限定実測。**Source自体の失敗やG4 Buildの実証ではない**。検証済み外部Module byte/`go.sum`/Toolchainの事前供給を#2831へ渡す。旧TEI CLIを使ったP0-L／H2-H3の検証へ新しいHard Dependencyを作らない。
+
+**証拠資格**：Sourceコード・既存PR/CI・TAI固定Binary試験の照合に基づくDocs-only追補。`workspace-files`旧新Consumerの実互換試験、`*.tei.md`新Parser、SB-0b供給/実G4、main push実PG結果、実H2/H3四Session、Ownerによる意味受理は本変更では**NOT RUN**。#2824/#3030/#2831/#2514/#1163の所有境界を維持し、第二Source Registry/JSON Contract Runner/Hostは作らない。
+
