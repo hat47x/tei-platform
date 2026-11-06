@@ -141,6 +141,9 @@ func TestReferenceCandidateViewBurdenComparison(t *testing.T) {
 	if !contains(baselineReport.AuthorityLimit, "database-release-contract-candidates-only-major-behind-not-complete") {
 		t.Fatalf("databaseRelease候補のauthorityLimitsがありません: %v", baselineReport.AuthorityLimit)
 	}
+	if !contains(baselineReport.AuthorityLimit, "database-release-candidates-latest-per-major-line-no-explicit-line-identity") {
+		t.Fatalf("同一major内の系統識別子がない境界がauthorityLimitsにありません: %v", baselineReport.AuthorityLimit)
+	}
 
 	t.Run("unrelated-contract-minor-changes-no-new-candidate", func(t *testing.T) {
 		before, after := scratchWorkspace(t), scratchWorkspace(t)
