@@ -4,7 +4,7 @@ X-TEAのローコード知見から受容した表現を、小さな作業領域
 
 ## 構成
 
-- `semantic/sales/order.tei`: 受注と明細、作成・削除・`submit_order`能力、`sales.month`期間、受注の候補キー、明細から受注への`on-delete cascade`とkey対応。
+- `semantic/sales/order.tei`: 受注・明細・支払、作成・削除・`submit_order`能力、`sales.month`期間、受注の候補キー、明細から受注への`on-delete cascade`、支払から受注への`on-delete restrict`とkey対応。
 - `semantic/customer/customer.tei`: 顧客。
 - `applications/order-entry/`: 一覧、単票、参照、見出し明細、command、hook、Package、作成・削除のcommand。
 - `applications/order-entry/queries/`: 一覧の問い合わせとSQL。
