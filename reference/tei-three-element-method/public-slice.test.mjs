@@ -97,4 +97,10 @@ test("extra relation fields, symbols and getters are rejected at the public boun
   const strange = publicInput();
   strange.subjects[0].roleStates = Object.create({data: "accepted"});
   assert.throws(() => projectPublicTeaSlice(strange), /unqualified_public_slice/);
+  const accessor = publicInput();
+  let getterCalls = 0;
+  Object.defineProperty(accessor.subjects[0], "id", {enumerable: true,
+    get() { getterCalls++; return "order"; }});
+  assert.throws(() => projectPublicTeaSlice(accessor), /unqualified_public_slice/);
+  assert.equal(getterCalls, 0);
 });
