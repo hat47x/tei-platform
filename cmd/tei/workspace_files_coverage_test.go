@@ -104,3 +104,23 @@ func TestWorkspaceFilesLoaderConsumptionAtProcessBoundary(t *testing.T) {
 		t.Fatalf("missing files: %v", want)
 	}
 }
+
+func TestWorkspaceFilesPreservesEmptyInventoryJSON(t *testing.T) {
+	root := t.TempDir()
+	manifest := "workspace: empty\nformatVersion: 1\nsources:\n  - semantic\n"
+	if err := os.WriteFile(filepath.Join(root, "tei.workspace.yaml"), []byte(manifest), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	var out bytes.Buffer
+	code, err := workspaceFilesJSON(&out, root, "", 0)
+	if err != nil || code != 0 {
+		t.Fatalf("workspace-files: code=%d err=%v output=%s", code, err, &out)
+	}
+	var result map[string]json.RawMessage
+	if err := json.Unmarshal(out.Bytes(), &result); err != nil {
+		t.Fatal(err)
+	}
+	if string(result["result"]) != "null" {
+		t.Fatalf("empty inventory changed: %s", &out)
+	}
+}
