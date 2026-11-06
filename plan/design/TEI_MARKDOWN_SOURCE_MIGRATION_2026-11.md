@@ -28,7 +28,7 @@
 | **M2 Dual-readの限定導入** | #2823/#1920：既存legacy Readerを互換経路として保ち、新 `*.tei.md` のReaderを明示Profile/Source Kindに束縛。必須root／旧新衝突を診断 | **旧新同意味IDの二重定義を辞書順で選ばない**。Reader unavailable/unsupported/partialを`validate ok`で隠さない。自動Fallbackがあれば選択理由・既定とPinを明記 |
 | **M3 移行・再資格化** | #2505/#2600/#2595/#2514：1 Workspace・1 Semantic Subjectの旧 Source→新 SourceでRaw File、Semantic World/Meaning、Model Revision、Artifact Revision、Source location/Concept/Review/Grantを対照 | 同内容でもSource path/index/引用は変わる。World/Meaningの同値は実検証対象で、A→B→AやOwner撤回で旧Acceptance/Artifact/Grantを自動復活させない |
 | **M4 Authoring Cutover** | #2621/#1124/SHO #19：新規保存は`*.tei.md`、旧`*.tei`は可視のlegacy/read-onlyまたは明示移行操作。異なるOwner／Consumerの履歴参照を保全 | Raw Draft保存（未知Role・構文不正でも可能）と正式Meaning Promote/実行可を分離。旧Client／新Client／旧Source／新Sourceの方向付き互換を確認 |
-| **M5 Legacy retire** | #1920/#2823/#1119：必要な実Reader/Builder/Target/Doc/CLI/Skill参照を移行し、互換readerを段階的に削除する適切な版境界を決定 | **残存必須Sourceが0**・Required/Observed/Undischarged／独立Oracle／実Consumer確認が揃った範囲のみ廃止。旧文書とhistoryは検索・監査可能に残す |
+| **M5 Legacy retire** | #1920/#2823/#1119：必要な実Reader/Builder/Target/Doc/CLI/Skill参照を移行し、互換readerを段階的に削除する適切な版境界を決定 | **残存必須Sourceが0**・Required/Observed/Undischarged／独立検証基準／実Consumer確認が揃った範囲のみ廃止。旧文書とhistoryは検索・監査可能に残す |
 
 ## 4. 固定してから実装する独立Expected（計画／NOT RUN）
 
