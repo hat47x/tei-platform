@@ -198,3 +198,44 @@ test('table relation type drift without matching graph cannot assert presence',(
   assert.deepEqual(boundedAbsence(v,{kind:'relation',scope:'one',type:'consumes'},w),
     {status:'unknown',reason:'relation_coverage_loss'});
 });
+
+test('unsupported predicates cannot forge a negative relation answer',()=>{
+  const f=fixture(),v=project(f),w=closure(f.snapshot);
+  // The declared relation belongs to scope one, but points to scope two.
+  // A query about incident participants is NOT equivalent to relation ownership.
+  for(const extra of [
+    {participantScope:'two'},
+    {role:'producer'},
+    {where:{participantScope:'two'}},
+    {window:{end:'2026-11-06'}},
+    {predicate:'missing-record'},
+  ]){
+    const answer=boundedAbsence(v,{kind:'relation',scope:'two',type:'produces',...extra},w);
+    assert.deepEqual(answer,{status:'unknown',reason:'unsupported_query_predicate'});
+  }
+});
+
+test('unsupported predicates also block apparently positive relation and subject queries',()=>{
+  const f=fixture(),v=project(f),w=closure(f.snapshot);
+  assert.deepEqual(boundedAbsence(v,{
+    kind:'relation',scope:'one',type:'produces',role:'receiver'
+  },w),{status:'unknown',reason:'unsupported_query_predicate'});
+  assert.deepEqual(boundedAbsence(v,{
+    kind:'subject',scope:'one',type:'operation',id:'shared',where:{enabled:false}
+  },w),{status:'unknown',reason:'unsupported_query_predicate'});
+  // The same queries without extension keep their bounded fixture semantics.
+  assert.equal(boundedAbsence(v,{kind:'relation',scope:'two',type:'produces'},w).status,
+    'absent-in-declared-snapshot');
+  assert.equal(boundedAbsence(v,{kind:'relation',scope:'one',type:'produces'},w).status,
+    'present-in-snapshot');
+});
+
+test('nested predicate and empty selector do not silently degrade to a broad scan',()=>{
+  const f=fixture(),v=project(f),w=closure(f.snapshot);
+  assert.equal(boundedAbsence(v,{
+    kind:'relation',scope:'one',type:'produces',id:'flow',subjectKey:['two','operation','shared']
+  },w).reason,'unsupported_query_predicate');
+  assert.equal(boundedAbsence(v,{
+    kind:'relation',scope:'one',type:'produces',id:''
+  },w).reason,'invalid_query');
+});
