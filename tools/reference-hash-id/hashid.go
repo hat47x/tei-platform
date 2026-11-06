@@ -296,25 +296,81 @@ func CollisionProbability(s Scheme, population uint64) (float64, error) {
 	if population < 2 {
 		return 0, nil
 	}
+	if exceedsFiniteAddressSpace(s, population) {
+		return 1, nil // pigeonhole certainty, not merely a birthday estimate
+	}
+	return -math.Expm1(-math.Exp(collisionLogLambda(s, population))), nil
+}
+
+// collisionLogLambda returns the logarithm of the birthday pair-collision
+// union bound n(n-1)/(2*S). The assumed address space is 2^bits or A^length.
+// It models independent uniform outputs, not adversarial inputs or real
+// target collation, reservation, existing occupancy, or Owner acceptance.
+func collisionLogLambda(s Scheme, population uint64) float64 {
 	logSpace := float64(s.OutputBits) * math.Ln2
 	if s.Mode == ModeExactCharacters {
 		logSpace = float64(s.Length) * math.Log(float64(len(s.Alphabet)))
 	}
-	logLambda := math.Log(float64(population)) +
+	return math.Log(float64(population)) +
 		math.Log(float64(population-1)) - math.Ln2 - logSpace
-	return -math.Expm1(-math.Exp(logLambda)), nil
+}
+
+// exceedsFiniteAddressSpace detects pigeonhole certainty exactly, without
+// floating-point rounding and without constructing arbitrarily large powers.
+func exceedsFiniteAddressSpace(s Scheme, population uint64) bool {
+	bound := new(big.Int).SetUint64(population)
+	capacity := big.NewInt(1)
+	if s.Mode == ModeEncodedDigest {
+		capacity.Lsh(capacity, uint(s.OutputBits))
+	} else {
+		radix := big.NewInt(int64(len(s.Alphabet)))
+		for i := 0; i < s.Length && capacity.Cmp(bound) < 0; i++ {
+			capacity.Mul(capacity, radix)
+		}
+	}
+	return capacity.Cmp(bound) < 0
+}
+
+// CollisionRiskUpperBound returns min(1, n(n-1)/(2*S)) by the union bound.
+// A birthday approximation can underestimate small finite address spaces:
+// the budget gate must use this conservative bound, not the approximation.
+// This is still conditional on independently uniform derivations.
+func CollisionRiskUpperBound(s Scheme, population uint64) (float64, error) {
+	if err := s.Validate(); err != nil {
+		return 0, err
+	}
+	if population < 2 {
+		return 0, nil
+	}
+	if exceedsFiniteAddressSpace(s, population) {
+		return 1, nil
+	}
+	logLambda := collisionLogLambda(s, population)
+	if logLambda >= 0 {
+		return 1, nil
+	}
+	return math.Exp(logLambda), nil
 }
 
 func CheckCollisionBudget(s Scheme, population uint64, maximum float64) error {
-	if math.IsNaN(maximum) || maximum < 0 || maximum > 1 {
-		return errors.New("collision budget must be within [0,1]")
+	if math.IsNaN(maximum) || math.IsInf(maximum, 0) || maximum < 0 || maximum > 1 {
+		return errors.New("collision budget must be a finite probability within [0,1]")
 	}
-	p, err := CollisionProbability(s, population)
+	upper, err := CollisionRiskUpperBound(s, population)
 	if err != nil {
 		return err
 	}
-	if p > maximum {
-		return fmt.Errorf("estimated collision risk %.6g exceeds budget %.6g", p, maximum)
+	if population >= 2 && maximum == 0 {
+		// A deterministic finite hash cannot certify zero collision risk.
+		// In particular, for long IDs, floating-point underflow must not
+		// transform a strictly positive risk into a passing zero value.
+		return errors.New("zero collision risk budget is impossible for a population of two or more")
+	}
+	if population >= 2 && exceedsFiniteAddressSpace(s, population) {
+		return errors.New("population exceeds finite hash ID address space; collision is certain")
+	}
+	if upper > maximum {
+		return fmt.Errorf("collision risk upper bound %.6g exceeds budget %.6g", upper, maximum)
 	}
 	return nil
 }
