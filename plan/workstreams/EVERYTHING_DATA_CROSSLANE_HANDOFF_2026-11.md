@@ -2942,6 +2942,10 @@ HEAD `e0cfebf14d40db81bdef77d6c3e4898ed75d999f`に対する[GitHub Actions #4203
 
 [Draft #3031](https://github.com/hat47x/tei-platform/pull/3031)（exact HEAD `63953ccb5c12ead26ec1268e7c0afdba4eff66ae`）では、managed Source-rootを走査した後、既存Native Loader前に `*.tei.md` が存在すると `TEI_MD_PARSER_UNBOUND`でfail-closeする暫定コードを追加。[専用Guard CI #42217379093](https://github.com/hat47x/tei-platform/actions/runs/42217379093)と[Repository Health #42217378867](https://github.com/hat47x/tei-platform/actions/runs/42217378867)はexact-headで **completed/success**。本文のMarkdown Parser/Role/Meaningを実装したわけではない。main統合は未確認、Draftの限定的な成功に留める。
 
+**Legacyの実バイナリ反証は別の証拠**：[TAI Draft #270の実TEI CLI/Binary検証 #42239797449](https://github.com/hat47x/tai-pleroma/actions/runs/42239797449)は、同じ公開`sales.order` Source bytesを`order.tei`から`order.tei.md`へ単純改名すると、旧Loaderの実Parsed Subjectが **1→0件**になったのに `validate.ok=true` が返ることを記録（`EXPECTED_NEGATIVE_BEHAVIOR_REPRODUCED`）。これは従来の空成功を**実Binaryで再現**したもの。#3031のGuardのsuccessは**別HEADでの安全な拒否**であり、両者を一つのE2Eへ加算しない。
+
+**移行の順序を固定**：[#3030への既存Owner引継ぎ](https://github.com/hat47x/tei-platform/pull/3030#issuecomment-6688075247)に従い、M1の`*.tei.md`既定作成は**Raw Draft/未選択の執筆**と**Workspaceで実Load/Buildされる正式Source**に分ける。正式Sourceの既定化はM2 Markdown Reader・M3 Loader/Pinの実接続後にだけ行う。Guardが選択Rootを止める状況を「書式対応済み」へ言い換えない。
+
 次の**TM-02/03/04/12/14**（#3030/#2823/#988）ではGuardで拒否できる基線を保持し、選択された新Readerの Source actual read/parsed span、Required Root全件、同Meaning ID旧新衝突、Role/Operator Pin・Builder/Consumer実消費へ移行する。同一Subjectを選んだ別Checkoutの旧/新結果を独立Expectedと比較し、単にGuardを消しただけの `validate ok` は偽成功として拒否する。旧Source固定Gateや`.tei/decisions/`は自動改変しない。
 
 ### 58.2 Host/Command境界の新しいmain実装を過剰資格化しない
@@ -2952,6 +2956,8 @@ HEAD `e0cfebf14d40db81bdef77d6c3e4898ed75d999f`に対する[GitHub Actions #4203
 | [#3033 main統合](https://github.com/hat47x/tei-platform/pull/3033) | ReferenceDataExecutorがAppliedOperation（kind/data/key）を報告し、Command Invokerが宣言したEffectと照合、記録/CLI・Studioへ限定表示。Go CI [Health #42235921102](https://github.com/hat47x/tei-platform/actions/runs/42235921102)はsuccess | **Appliedを報告しないExecutorの経路が残る**。Optional Reportから実DB全操作、SQL文、外部副作用、一括効果完全性を推論しない |
 | [#3034 main統合](https://github.com/hat47x/tei-platform/pull/3034) | 既存subject/action/resourceの認可規則を、明示的に設定する`command.Invoker.Authorizer`へ接続。拒否と規則評価不能を区別し、無許可時にExecutorへ到達しない限定試験。実PG workflow [#42238564104](https://github.com/hat47x/tei-platform/actions/runs/42238564104)はsuccess | Callerが正しく現在のAuthorizer/主体/Targetを注入した証拠・正式Grant正本・実Operator全経路での強制・本番資格は別 |
 | [#3035 Open PR](https://github.com/hat47x/tei-platform/pull/3035) | `access.Ground`で実行Scopeを環境の論理宣言へ紐づける実装候補。宣言外path・他Capability・自己解決・過大なAccessの拒否テストをPRが報告 | **未統合**。`-grant-declaration`無しの発行は拒否せずwarningのまま。`ResolvedBy/issuedBy`は自己申告で署名無し。最新HEAD全体CIは別途確認 |
+
+**実効果の検査順に残る欠陥候補**：[#1174の既存評価コメント](https://github.com/hat47x/tei-platform/issues/1174#issuecomment-6688069663)は、`checkAppliedOperations`が実Executor呼出しの**後**に走るため、事後拒否でも独立Tx Commit済みの効果を取り消せないこと、Applied=nilでは実Effect=0が言えないこと、同じKindなら未宣言Dataの追加Appliedを許す分岐（F-SameKind）をSource-staticで特定。これは実PG不正作用の再現結果ではない。受理済みEffect/Relation/Targetの必要範囲と実ProviderのCommit前Fenceは#1174/#1129/#2598へ維持し、#3033の局所テスト成功を既存Issueの受入完了へしない。
 
 **安全上の境界**：①Declared capability／Environmentの必要Grantが実在、②それを現在のHostが権威的に発行・解決、③対象Providerが実行直前に検査、④実Applied/Commit/Unknownを独立Read/Receiptで検証、の各段階が揃わなければ、形式検査やInvokerテストだけで `authorized-and-effect-verified` のClaimを出さない。事前の業務意味のOwner Acceptedと、Hostの実行時付与は独立（#1174/#2616/#1130）。
 
