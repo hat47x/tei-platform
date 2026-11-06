@@ -568,3 +568,35 @@ G1〜G5で各観測は取得時点が異なる。要求するのは**同一瞬�
 
 **資格の上限**：このGoテストは`CompareHistory`の構造的限界の特徴付けであり、適切なReaderの存在・保護・全件取得を立証しない。#3018の旧HEADの6/6成功は**この新ケースを含まない**。Reader/Provider負例の実実行、実DB History接続、業務Owner受理はNOT RUN。新History Registry/Engine/独立Gateを追加しない。
 
+
+### 19.10 Migration checksumの証明領域：適用申告・定義同一性・生成SQL・実効果（HIST-02／他チャットのSource-Artifact-Effect分離、2026-11-06）
+
+**直接確認した現コードの二つの境界**：`migration.CompareHistory` は`AppliedSucceeded`でも`AppliedMigration.Checksum=""`なら不一致検出をせず`RepoApplied`に分類する。また`migration.Fingerprint`は正規化した`Definition`から`Realizations`（生成されたTarget SQL文群）を**意図的に除外**してハッシュ化する。前者は「checksumなしの適用申告」、後者は「同一Definitionで生成SQLが異なり得る」問題であり、**checksum有無だけでは両方を一度に解決できない**。
+
+`internal/database/migration/history_checksum_characterization_test.go`に**現在の限界を固定するGoテスト2関数**を追加した。
+
+- `TestHIST02MissingAppliedChecksumCannotDetectDefinitionDrift`：固定した同一IDの`original/changed`（Step内容相違）に対し、履歴の`AppliedSucceeded`・checksum欠落で両方`RepoApplied`となる。独立にold checksumを与えた場合だけ、変更後の定義は`RepoDiverged`になる。
+- `TestHIST02CanonicalChecksumDoesNotCertifyDerivedRealizationBytes`：同じCanonical Definitionの下で生成`Realizations`（SQLの列型）が変わっても`Fingerprint`が一致し、そのCanonical checksumをHistoryに与えれば両方`RepoApplied`になる。**実Toolがこのchecksumを供給すること、どちらかのSQLを実行したことを示す試験ではない**。
+
+#### 19.10.1 Evidenceの4つの主張を区別する
+
+| Claim | 確認する内容 | 合格にできない推論 |
+| --- | --- | --- |
+| **H0 Applied report** | 対象DB・Tool・Reader/Instance・Scope・取得完結性が資格化されたHistory Entryは`AppliedSucceeded`と報告 | Providerが書き込んだ申告だけで定義バイト同一・実Schema一致・現在のHost Grantが確定するとはしない |
+| **H1 Canonical Definition identity** | Repositoryの版に固定した`Definition` byte列と、対応する履歴上の検証可能な定義ダイジェストの**同じ算法/同じ対象**を独立照合 | Provider checksumとTEI`Fingerprint`の文字列を、ハッシュの対象/アルゴリズム確認なしに比較しない。checksum空を一致としない |
+| **H2 Realized SQL identity** | Dialect、Target Generator/Plugin版、実際に投入したSQL（Provider/Toolが記録したときのみそのbyte digest）、適用順/Tx境界を相関 | `Fingerprint`一致や`RepoApplied`を、`Realizations`や実際に実行されたSQLバイトの一致に昇格しない。生成SQLの変更だけを業務意味変更と自動判定もしない |
+| **H3 Actual Schema/Data/Effect** | 実Target/時点を固定したActual Schemaと必要なデータ/キー/履歴/別Connection Read・Effect/Receiptを**独立に観測** | SQL実行成功やHistoryログだけで業務データ全件・CDC・旧新Client・外部Consumer・Owner受理は確定しない |
+
+**現在の具体的な責務配置**：H0取得完全性とTargetは#2892/#2611/#2622、H1は既存`CompareHistory`とTool別Checksumの意味の検証、H2は既存Generator/Provider/Build Evidence（#2600等）、H3は#2555/#1174/#2514/#1163の実観測とOwner判断。新しいHistory Registry、全Provider共通SQL Receipt、Gate EngineやCore enumはこの検討だけでは導入しない。
+
+#### 19.10.2 未決定と最小受入
+
+- **HIST-02a：適用記録にchecksumがない**。`RepoApplied`は現行比較器の**局所分類**として維持しても、Gateへ提出する`H1 Definition identity`は`unknown`。代替証拠を使う場合、同じSource/Definition版・Target・実Reader時点へ独立に結び付く原本Migrationファイル/外部Toolの来歴などを明示し、Owner受理まで無音昇格しない。
+- **HIST-02b：Canonical checksumはあるが生成SQLが違う**。`Fingerprint`の`Realizations`除外は意図的な契約として維持。Target SQLの固定版・生成器版/Provider能力・実投入記録がない限り`H2 Realized SQL identity`は`unknown`。`H1=pass`を`H2=pass`としない。
+- **HIST-02c：Tool checksumとCanonical checksumの定義が異なる**。同じ文字列形式や同じハッシュ値に見えても対象や正規化/改行・補間・生成器が違う可能性がある。アルゴリズムの対応が証明できないProviderは`H1=unknown`で止め、`RepoDiverged`も単なる別算法比較から断定しない。
+- **HIST-02d：Historyと実DBの時点が不整合**。履歴の取得元とActual Schema/データの観測区間やReplica水位が整合しなければ、H0〜H2の一部が成功しても`H3=unknown`。SourceのABAでも古いReceiptの資格は復活しない。
+
+**検証の独立Expected**：同一Migration IDに対し、Definitionの旧新・Checksum欠落/一致・Realizations差・Provider/Target/Owner Scope違いを明示した**事前固定表**を作り、H0/H1/H2/H3をそれぞれ`pass / blocked / unknown / not-run`で記録。各段で`Required/Observed/Undischarged`を別々に示す。今回のGo特性テストは二つの比較器の判別限界を再現したのみ。実SQL投入、Tool checksum algorithm照合、実DB Query/Schema/旧新Client、Owner受理は**NOT RUN**。
+
+**次の最小順序**：#2892がHistory Reader/Toolの実際の取得元・checksum意味/有無を1 Providerで記録 → #2622/#2611がTarget・Scope・資格の一意性を照合 → #2555のG2/G3で、H0〜H3のうち何を必須とするかOwnerが用途別に明示。checksumのないProviderを一律排除する製品政策や新しいProof Storeは、現時点では採用しない。
+
