@@ -174,8 +174,19 @@ func TestReadOnlyPinsTheResolvedRootNotTheConfiguredAlias(t *testing.T) {
 	allowed := filepath.Join(parent, "allowed")
 	outside := filepath.Join(parent, "outside")
 	alias := filepath.Join(parent, "configured-alias")
-	for _, dir := range []string{allowed, outside} {
-		if err := os.Mkdir(dir, 0o700); err != nil {
+	for _, fixture := range []struct{ dir, namespace string }{{allowed, "allowed"}, {outside, "secret"}} {
+		if err := os.Mkdir(fixture.dir, 0o700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Mkdir(filepath.Join(fixture.dir, "semantic"), 0o700); err != nil {
+			t.Fatal(err)
+		}
+		manifest := "workspace: root_identity_fixture\nformatVersion: 1\nsources:\n  - semantic\n"
+		if err := os.WriteFile(filepath.Join(fixture.dir, "tei.workspace.yaml"), []byte(manifest), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		source := "namespace " + fixture.namespace + "\n\ntype Marker from std.text\n"
+		if err := os.WriteFile(filepath.Join(fixture.dir, "semantic", "marker.tei"), []byte(source), 0o600); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -194,7 +205,13 @@ func TestReadOnlyPinsTheResolvedRootNotTheConfiguredAlias(t *testing.T) {
 	}
 	// The allowlist pinned the resolved root at startup. Replacing the alias
 	// must not change which directory workspace-1 names.
-	if got := h.CatalogWorkspace("workspace-1", ""); !got.OK {
+	got := h.CatalogWorkspace("workspace-1", "")
+	if !got.OK || got.Value == nil {
 		t.Fatalf("pinned root became unavailable after alias replacement: %+v", got.Failure)
+	}
+	for _, entry := range got.Value.Entries {
+		if entry.Subject.Kind == "semantic" && entry.Subject.ID == "secret" {
+			t.Fatal("allowlisted Workspace ID followed the replaced alias into the outside Workspace")
+		}
 	}
 }
