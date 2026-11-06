@@ -496,5 +496,34 @@ class StaticWorkflowContract(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
 
 
+    # Jobs that deliberately allocate no hosted runner (`if: ${{ false }}`).
+    TIMEOUT_EXEMPT = {
+        'knowledge-portability-reference-evidence.yml': {'verify'},
+    }
+
+    def test_every_workflow_pins_actions_and_bounds_jobs(self):
+        root = Path(__file__).resolve().parent.parent / '.github' / 'workflows'
+        failures = []
+        for path in sorted(root.glob('*.yml')):
+            text = path.read_text(encoding='utf-8')
+            for ref in re.findall(r'(?m)^\s*(?:-\s+)?uses:\s*(\S+)', text):
+                if ref.startswith('./'):
+                    continue
+                if not re.fullmatch(r'[^@\s]+@[0-9a-f]{40}', ref):
+                    failures.append('%s: action is not pinned to a commit SHA: %s' % (path.name, ref))
+            jobs = text.split('\njobs:\n', 1)
+            if len(jobs) != 2:
+                failures.append('%s: no jobs block' % path.name)
+                continue
+            for name, body in re.findall(r'(?ms)^  ([A-Za-z0-9_-]+):\n(.*?)(?=^  [A-Za-z0-9_-]+:\n|\Z)', jobs[1]):
+                if re.search(r'(?m)^    uses:', body):
+                    continue  # reusable workflow call; the callee bounds itself
+                if name in self.TIMEOUT_EXEMPT.get(path.name, ()):
+                    continue
+                if not re.search(r'(?m)^    timeout-minutes:\s*\d+\s*$', body):
+                    failures.append('%s: job %s has no timeout-minutes' % (path.name, name))
+        self.assertEqual([], failures)
+
+
 if __name__ == '__main__':
     unittest.main(verbosity=2)

@@ -175,6 +175,7 @@ func main() {
 	periodStates := fs.String("period-states", "", "periods: period=state pairs, comma separated")
 	periodStatePath := fs.String("period-state-file", "", "periods: JSON object of period to state")
 	dbCheckDSNFlag := fs.String("dsn", "", "dbcheck: PostgreSQL DSN (defaults to TEI_TEST_POSTGRES_DSN)")
+	grantsOut := fs.String("grants-out", "", "grants: write the grants document here instead of stdout")
 	environmentID := fs.String("environment", "", "environment canonical ID")
 	solutionID := fs.String("solution", "", "solution release canonical ID")
 	historyPath := fs.String("history", "", "normalized migration history JSON")
@@ -508,6 +509,12 @@ func main() {
 	switch command {
 	case "operations":
 		if err := runOperationsCommand(*workspacePath, *applicationID, *artifactOutDir); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		return
+	case "grants":
+		if err := runGrantsCommand(*workspacePath, *applicationID, *grantsOut); err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
