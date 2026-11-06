@@ -176,6 +176,14 @@ func main() {
 	periodStatePath := fs.String("period-state-file", "", "periods: JSON object of period to state")
 	dbCheckDSNFlag := fs.String("dsn", "", "dbcheck: PostgreSQL DSN (defaults to TEI_TEST_POSTGRES_DSN)")
 	grantsOut := fs.String("grants-out", "", "grants: write the grants document here instead of stdout")
+	grantCapability := fs.String("grant-capability", "", "issue-grant: the capability the grant is issued to")
+	grantKind := fs.String("grant-kind", "filesystem", "issue-grant: permission kind")
+	grantAccess := fs.String("grant-access", "write", "issue-grant: permission access")
+	grantScope := fs.String("grant-scope", "", "issue-grant: the scope the grant covers")
+	grantReason := fs.String("grant-reason", "", "issue-grant: why the grant is issued")
+	grantRunKey := fs.String("grant-run-key", "", "issue-grant: the run the grant belongs to")
+	grantOut := fs.String("grant-out", "", "issue-grant: write the grants file here")
+	issueLog := fs.String("issue-log", "", "issue-grant: append the issuance record here")
 	environmentID := fs.String("environment", "", "environment canonical ID")
 	solutionID := fs.String("solution", "", "solution release canonical ID")
 	historyPath := fs.String("history", "", "normalized migration history JSON")
@@ -202,6 +210,23 @@ func main() {
 				fmt.Fprintln(os.Stderr, "DSNが未設定です。TEI_TEST_POSTGRES_DSN か -dsn で指定してください（実DBの確認は何も実行していません）。")
 				os.Exit(2)
 			}
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		return
+	}
+	if command == "issue-grant" {
+		options := issueGrantOptions{
+			Capability: *grantCapability,
+			Kind:       *grantKind,
+			Access:     *grantAccess,
+			Scope:      *grantScope,
+			Reason:     *grantReason,
+			RunKey:     *grantRunKey,
+			OutPath:    *grantOut,
+			LogPath:    *issueLog,
+		}
+		if err := runIssueGrantCommand(options); err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}

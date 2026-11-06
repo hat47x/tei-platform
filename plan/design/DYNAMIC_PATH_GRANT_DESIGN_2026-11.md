@@ -53,3 +53,22 @@ issued, err := access.Issue(log, runKey, capabilityID, spec, "operator requested
 ## 7. ついでに直したこと
 
 移行済みツールの能力IDが `tei.frozen-world.lineage` と、**正規の識別子（小文字と下線のみ）に反して**いました。`tei.frozen_world.lineage` に修正しています。識別子の検証を通していなかったため見逃していたものです。
+## 8. 発行の CLI と配線（2026-11-06 追記）
+
+`tei issue-grant` を追加し、スクリプトの付与作成をこのコマンドに置き換えました。
+
+```sh
+go run ./cmd/tei issue-grant \
+  -grant-capability tei.frozen_world.lineage \
+  -grant-scope "$scratch/generated-world-observation.json" \
+  -grant-reason "build_frozen_json_api observation" \
+  -grant-run-key "$2@$3" \
+  -grant-out "$scratch/frozen-world-grants.json" \
+  -issue-log "$scratch/frozen-world-issued.jsonl"
+```
+
+- 発行は**記録が先**。記録できなければ発行も書出しもしない。
+- 出力する grants ファイルはアダプタが読む形式（`access.ParseGrants`）と同じであることを試験で固定。
+- 発行の記録には `runKey`・能力・付与・根拠が残る。
+
+**残る限界**: 発行しているのは**同じスクリプト**であり、第三者の承認ではありません。発行の主体（ホスト・運用・別の権威）を決めるのは次の段です。
