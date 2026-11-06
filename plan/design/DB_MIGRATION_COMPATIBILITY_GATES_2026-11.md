@@ -665,3 +665,21 @@ G1〜G5で各観測は取得時点が異なる。要求するのは**同一瞬�
 5. **P4 Authoringの並走**：旧`*.tei`の取得・PG実証を妨げず、選択された新`*.tei.md` Sourceの実Reader/Meaning/Buildを#3030側で再資格化。移行が未実装の段階で新形式を旧ParserのPASSとみなさない。
 
 **状態**：本節は現main・既存Draft・PostgreSQL公式資料の静的照合に基づく設計提案。MA-01〜06の新Go/実PostgreSQL並行DDL/異種DB/Writer/Owner受理は**NOT RUN／NOT ACCEPTED**。Issue #2892/#2897/#2555/#1174/#2622 の担当者を置換せず、既存Plan/Release/Migration/HistoryのSourceを唯一の実装境界として再利用する。
+
+<!-- tei-db-migration-reporting-failure-20261107 -->
+### 20.5 実Effectと記録・通知の失敗：Command #1174のRC-03/RC-05を移行に移す条件（2026-11-07、静的検証・未採用）
+
+**新たに確認した他レーンの反例**：[Issue #1174の11/7追記](https://github.com/hat47x/tei-platform/issues/1174#issuecomment-6696983123) は、`internal/command/invoke.go` の `Executor.Execute`成功後に `Recorder.Record` が失敗すると、`COMMAND_RECORD_FAILED` が `EffectUnknown=false` のまま返り得ること、`internal/command/lifecycle.go` の `Observe`・`MarkUnknown`自体の失敗がUnknown資格を外側へ確実に保持しない経路を示した。実mainのコードとの静的照合であり、実Providerによる故障注入成功の主張ではない。#3042で宣言外EffectがUnknownになったこと、#3053でUnknown表示が分離されたことは**この記録失敗経路を解消した証拠ではない**。
+
+**DB Migrationへの転用可能な原則**：`migration.ApplyPostgresWithFreshObservation`の`PostgresStatementExecutor`は単なる`error`を返すCallbackであり、Commandの`Invoker/Recorder/Lifecycle`を実際に通るとは現時点で確認できていない。したがって「MigrationのRecorderに実Bugあり」とは主張しない。**適用Callbackの後で任意のHistory Writer・検収票Recorder・CLI/API返却・外部通知が失敗した場合を想定し、移行EffectとControl-plane Reportを別々に観測**する。実書込み成功と報告失敗をClean Rejectedへ変換しない。
+
+| 新しい負例／対照 | 独立Expected（事前固定） | Claimの上限／担当 |
+| --- | --- | --- |
+| **MA-07a 健全な移行報告** | 同一Migration ID/Plan・Actual Target/Attemptで、Execute/History記録/別接続Schema・Data再読取が対応。Schema Step完了とG1〜G5を別主張にする | 実際に観測したStepの資格のみ。#1163/#2892 |
+| **MA-07b 適用後History記録失敗** | 既に変更されたActual Schemaに対し、History記録だけNetwork/Permission error。Entry未取得・RepoPendingでもEffect 0とは推定しない。再読取まで`effect unknown`、観測で作用が判明すれば`effect observed; report missing`として修復計画へ | Record失敗時に`apply not-run`へ戻さず、同じMigration/AttemptでLookup。#1174/#2892 |
+| **MA-07c 成功後CLI/検収票通知失敗** | 実EffectとHistoryは残るが、Callerの受領やEvidence保存が失敗。正常終了と誤って扱わず、保存済みSchema/History・Operation identityを取得し直す。新しいMigration IDで盲再実行しない | Consumerの受領とDB Effectは別。#1163/#2555 |
+| **MA-07d Unknownの二次記録失敗** | 一次Executor/Commitの成否不明に続いてUnknownを記録する処理も失敗。二番目の障害により元のUnknownを消さず、再送可否は保留 | Unknownの伝播契約は既存#1174を先行検収。DB Migrationは実経路確認後に適用 |
+
+**実装判断順**：①Migrationを実行する**実Caller**がHistory Reader/Writer・Outcome Recorder・CLIをどの順に呼ぶか特定。現状呼ばない機構を組み込んだことにしない。②Executorの`error`が「作用なし」「作用不明」「作用の一部確認」を表現できるか、既存Provider/Recovery経路の振る舞いを独立Fixtureで特徴付ける。③単体FakeでMA-07b〜dの分類を検証しても、実PostgreSQL Commit→記録失敗→別Connection Read→同一IDでの安全回復をE2Eで確認するまで完了扱いしない。**新Tx Coordinator・履歴Registry・Recorder正本を提案しない**。
+
+**CI・合流に関する同一HEADの診断（2026-11-07）**：前段の計画更新commit `acfce089b6ec64797123291867813d93eac799f1` の [repository-health run #42297752845](https://github.com/hat47x/tei-platform/actions/runs/42297752845) は**failure**。job logから `internal/database/migration/history_checksum_characterization_test.go` の`gofmt drift`を特定。同じjobで `go vet ./...`、`go test -count=1 -timeout 60m ./...`、`tei validate -workspace reference/workspace` はPASS。他5件のWorkflowはcompleted/success。新規§20のDocs追補はGoの書式不一致を修正しないため、**PR #2887はHealth未合格**。該当Goファイルの書式だけを既存Draft Ownerが修正し、修正後の**新しいexact HEAD**でCIを再実行・再確認する。旧headのテストPASSを新headの合格として継承しない。
