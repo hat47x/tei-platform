@@ -355,3 +355,43 @@ VS-RMT-01へ追加する場合は#1180既存Scenario runnerと#2514の独立Expe
 **証拠の現況**：#2783 HEAD c3410291の[Repository Health #42110579065](https://github.com/hat47x/tei-platform/actions/runs/42110579065)はcompleted/success。#2895/#2891の修正後CIもそれぞれcompleted/success、#2860はgofmt driftによる全Health失敗。これは各々のSource/テストに限定され、**P0-R1のProduct Go Reader実行・P0-R2保存前拒否・正式Legacy Windows Driver・Owner完了は未実施**。mainの確認時点はaf969b88bb89d8262501086b67c2ba6add16e210。PR #2783は古いbaseから分岐しているため、merge前にはmainとの差分再確認と**更新後HEADのCI**が必要。
 
 **引渡しと停止線**：#2586へ実コード経路と不足1辺、#2514へ独立Expected、#1163へ実Source/Context/Provider/Readerの一試行Packet、#1119へClaim ceilingを返す。欠落証拠は未資格のまま、旧Driver未観測は忠実移植Pだけ保留しTEI適合Aの局所検証を止めない。新Host/Query Engine/RunPlan/Registry/共通受入Schemaは追加しない。
+
+## 13. 11/6実装進展による再配分：X-TEA受容例と本来のRMTを混同せず、実Readの未接続を検収する
+
+基準main：`14238478528e9d0a7a283e1141edb0203467964d`。本章は§12.5のP0-R1→P0-R2の順序を**変更しない**。11/6にmainへ統合された参照Workspace、Command認可・実行段階、実PG試験を再照合し、「既にある前段を再実装しない」と「まだない一つの接続」を分ける。新Scenario SSOT／Host／Rule Engine／Query Engine／Proof Registryは設けない。
+
+### 13.1 新しい実物の位置付け：受容例（E）／原典移植（P）／実製品（A/K）は別
+
+| 実物と現在の実証 | RMTで再利用できる範囲 | これだけでは受理できないClaim |
+| --- | --- | --- |
+| **main [#2940](https://github.com/hat47x/tei-platform/pull/2940)ほかの`examples/xtea-lowcode`**：`semantic/sales/order.tei`（Order/OrderLine/Payment）、`order_entry.recent_orders`（`datasource sales`、`sql postgres file "recent_orders.sql"`）、CLI/Studio Record・Command Plan、MemoryStore create/delete・cascade/restrict、閉期間拒否。AC-1〜11/RQ-C1〜3の[仮受入票](https://github.com/hat47x/tei-platform/blob/main/plan/evidence/XTEA_LOWCODE_ACCEPTANCE_TRACE_2026-11.md) | 既存Go Loader/Parser/Context/Commandの**合成・MemoryStore基線**としてRead入口候補を絞る。実Query Sourceと宣言DataSourceの対応箇所を実コードで調べる。「候補のテスト足場」として参照 | `UNBOUND_DATASOURCE`警告があり実DB Binding／Query実行なし。`xtea_example_test.go`の実行は`applicationview.Build`、`BuildCommandPlan`、`ReferenceDataExecutor`+`NewMemoryStore`。**旧Driver実動でも実PostgreSQL Function Readでもない**。EのOrder/LineデータをRMT-2の原典Source/Owner同一性に無断転用しない。例にはRMTのTenant負例や二入口共有Ruleの受入済み契約も未確認 |
+| **main [#2942](https://github.com/hat47x/tei-platform/pull/2942)・[#3008](https://github.com/hat47x/tei-platform/pull/3008)**：DurableLifecycleとStudio Host合成のstage保存。新Hostインスタンスでも同attemptを拒否する限定Go試験あり | Unknown/Observed段階とOwner/Generationを再起動を跨いで扱う既存Lifecycle契約をWR3で参照。新Lifecycleを実装し直さない | Wails Desktopでの実store合成、PG Effect Receiptとの**同一Attempt連結**、複数Hostでの原子性、原典Legacy Driverの再起動挙動は未証明。Studio既定Command経路はReferenceExecutor/MemoryUnitOfWorkで実外部DBを変更しない |
+| **main [#2978](https://github.com/hat47x/tei-platform/pull/2978)・[#2987](https://github.com/hat47x/tei-platform/pull/2987)・[#3001](https://github.com/hat47x/tei-platform/pull/3001)・[#3004](https://github.com/hat47x/tei-platform/pull/3004)**：任意`Authorizer`、CLI/Studioの参照AllowList、報告Effectと宣言Effectの照合・Operation Record | WR1/WR2の**事前拒否の位置**とActivity traceの既存実入口を再利用。選択したCapability/Period/Source/Requestを記録する | `Authorizer`未設定またはCLI/Studio AllowList空の従来経路は**未認可を意味しない**。AllowListは能力単位のReference検査で、Current Host Principal+Resource/Target Grant/Provider Commit fenceを代替しない。Operation Recordは実DB Receipt/Owner完了ではない |
+| **main [#2907](https://github.com/hat47x/tei-platform/pull/2907)・[#2910](https://github.com/hat47x/tei-platform/pull/2910)**：異Payload・同OperationID拒否の実PG adapter、Socket-level COMMIT応答喪失の限定実PG test。main [#2977](https://github.com/hat47x/tei-platform/pull/2977)の暫定D8–D11実PG E2E監査 | WR3の実故障注入/Receipt照合は**既存Testを先に使う**。模擬ACK-loss以外のSocket断証拠も得られたため「実接続断の証拠なし」という古い一般記述は撤回。ただし同一業務RMT Caseとして再確認する | #2910は実TCP Socket断であり実OS process死・別Key ABA完全防止・二Host分散fenceではない。#2977のAuditは`INCOMPLETE/productGate UNQUALIFIED`、provisional Grant・意味受理・保証は正式資格でない |
+| **main [#3005](https://github.com/hat47x/tei-platform/pull/3005)・[#3012](https://github.com/hat47x/tei-platform/pull/3012)**：Period/Effect/RunPlan/Permissionの実PG向けFixture 4系列、記録先行のGrant Issue契約 | U1 GuardのRequired/Supplied実証のテスト基線、付与の出典と実使用を別票化する材料 | #3005のテストは`TEI_TEST_POSTGRES_DSN`が無ければSKIPで、[実DB判断計画](https://github.com/hat47x/tei-platform/blob/main/plan/evidence/REAL_DATABASE_RUNTIME_DECISION_PLAN_2026-11.md)も実行NOT RUN。#3012のIssuerは発行主体の第三者承認でなく、Grantの発行記録があるだけでは当該Functionの現在のProvider Grantを証明しない |
+
+### 13.2 Product Function Readに関する実装Gapを狭める
+
+**初回P0-R1は追加コードではなく先に既存コードの呼び出し線を証拠化する。** `examples/xtea-lowcode/applications/order-entry/queries/recent_orders.tei`には`datasource sales`と`postgres` SQLファイルの明示宣言があるが、例の環境には実データソースのBindingがない。ここは「SQL定義不足」ではなく、**選択Context→Alias/DB Instance→Read Provider→SQL実行→Result Slice**という経路が同一Productで成立するかの実測Gapとする。#2586/#2506/#2622/#2611の既存契約を順に使用し、ない接合点だけ最小変更にする。
+
+対象は二つの**異なる**比較対象として記録する：
+- **E（参考用合成）**：現在の`examples/xtea-lowcode`。Loader/Query宣言/MemoryStoreとCLI/Studioの局所試験を再利用する。実DBを接続していないまま「SQLを実行した」と報告しない。例のSourceとOwner/Legacy移植に必要なOriginal Sourceは同一物ではない。
+- **R（原典に基づくVS-RMT-01）**：#950/#940のprivate原典Source/Function/Rule/Owner Mappingを固定し、Tenant A/Order1001＋明細2行など既存§10の独立Expectedでテストする。Eの成功でRの業務意味受理・原典Parity（P）を自動受理しない。LegacyとTEIは別Attempt。
+
+**RMT-RD1出力の最小列**：`actual Product call path`、`Source bytes/Role occurrence/Function/Query Context`、`Alias/Instance/Provider/selected SQL bytes+Args`、`Row identity/Business Key/Physical PK/Relation grain/Scope/Completeness/Read epoch`、`Independent Expected/negative control`。Product APIが未接続なら、Provider契約の静的検証やGo直接SQL Readerを「完成」とせず`product-read-not-connected`を保持。作業開始時は**一Provider・一Tenant/Orderのread-only固定Case**に留める。
+
+### 13.3 P0-R2後段の拒否・権限・Receiptは二重実装しない
+
+P0-R1に成功しても自動的にWrite Allowは発行しない。同じRuleで二つのFunction入口を比較する際、`Required Guards`（Period/Owner Target/Rule/Current Grant/ExpectedVersion/Observer等）は独立の業務/Host契約から確定し、`Supplied/Evaluated`と`Effect直前Enforced`を分離する。
+
+特に**AllowListに設定がないReference実行**、Grant発行記録だけ、Studioでの`committed`表示、`OperationRecord`、Durable Stage保存は**実ProviderのEffect/Receipt Kの代用にならない**。WR1の拒否をProvider effect 0／new Receipt 0／別DB接続不変で検収し、WR2/3では既存`commandadapter.Executor→effectcommit.Runner`経路と同一OperationID、Current Grant、実postimage、Lookupを要求する。Source/Target/Payload不一致やACK失落後の新Key盲再送は拒否。実Source/Consumer/Ownerにより確認されない限りG1/G2の正式判定はUNQUALIFIED。
+
+### 13.4 実装引渡しの最小差分と失効条件
+
+| 優先 | 担当と次の実物 | 判定が止まる条件 |
+| --- | --- | --- |
+| **P0-A** | #2586/#2506/#2622：既存X-TEA受容例で`Query宣言→実選択/Binding`のコードパスを特定し、**実Reader呼出しの欠けた一辺**と必要Adapter数を報告。RMT Sourceとは別のE Probeであることを明記 | Alias未束縛、SQL静的検証のみ、Read Scope未確定、Query同一IDでも違うSQL/Provider、Line粒度/0件/partial不明 |
+| **P0-B** | #1129/#2598/#1174：RMTのR Scenarioに同じData Ruleの二入口、未保存Patch、対象O1→Payload O2負例、完全なGuard被覆を結び、実PG Effectと別Readで検収 | Reference AllowList／MemoryStore／Durable Stage／Operation Logだけの合格。S02/S05/Current Grant/Provider Targetと実Commitが同一Attemptに無い |
+| **P1** | #1163/#2514/#1119：E（受容例）とR（原典移植）を別Attemptで保持したEvidence Packet、実CI Test IDs（SKIPの区別）、原典#940、Business Owner B・Consumer Dを別資格で集約 | 異HEAD・別FixtureのPASSを加算、Provisional Grant/Atomic guaranteeを正式受理へ昇格、Source A→B→A/Role/SQL/Grant改版で再資格化を省略 |
+
+**変更履歴の読み方**：この§13は2026-11-06 main実コードとmerged PRの再分類であり、P0-R1の実Product SQL Read・RMT Owner write・Legacy Windows Driverの新実行結果ではない。Draft #2783自体の前HEAD `6d9af6dec77b7460cc5b9293f491392af455557f`は[Health #42112265037](https://github.com/hat47x/tei-platform/actions/runs/42112265037) `completed/success`（Docs/Fixture）。本追補のCIは新HEADで別確認する。mainの進捗と大きな分岐差があるため、**このDraftを無検証でmerge/rebaseしない**。Owner判断が必要な原典互換・受理範囲・旧Runtimeは留保を維持。
