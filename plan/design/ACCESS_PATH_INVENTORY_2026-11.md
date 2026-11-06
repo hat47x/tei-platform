@@ -83,7 +83,7 @@ decision, err := guard.Check("sales.close", requirements)
 第1章の件数は、一度きりの手作業（正規表現）でした。書いた数字は、コードが変わった瞬間に根拠ではなくなります。**同じ手順で何度でも数え直せる**計器を置きました（`tools/reference-access-survey`）。
 
 ```sh
-go run ./tools/reference-access-survey -out survey.json
+go run ./tools/reference-access-survey -summary
 ```
 
 - 数えるのは**構文木**（`go/parser`）で見つけた呼び出しだけです。コメントや文字列の中の `os.WriteFile` は呼び出しではないので数えません。
@@ -93,8 +93,8 @@ go run ./tools/reference-access-survey -out survey.json
 ### 2026-11-07 時点の実測
 
 ```text
-scanned 1056 / withAccess 273 / guarded 1 / calls 859
-filesystem 762・environment 82・network 15
+scanned 1061 / withAccess 275 / guarded 1 / calls 862
+environment 83 / filesystem 764 / network 15
 ```
 
 第1章の「ファイル626・ネットワーク15・環境変数31」とは一致しません。**数え方が違う**ためです。

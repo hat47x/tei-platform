@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -170,6 +171,41 @@ func call(client *http.Client, request *http.Request) {
 	}
 	if len(file.Calls) != 0 {
 		t.Fatalf("the survey must not claim to see this call, or the number reads as complete: %+v", file.Calls)
+	}
+}
+
+// TestSummaryShowsTheNumbersADocumentQuotes checks that the summary carries the
+// totals and the busiest directories, so a document can quote it without asking
+// a reader to open the full JSON.
+func TestSummaryShowsTheNumbersADocumentQuotes(t *testing.T) {
+	report := Report{
+		Totals: Totals{
+			FilesScanned: 3, FilesWithAccess: 2, FilesGuarded: 0, DirectCalls: 5,
+			ByCategory: map[string]int{"filesystem": 4, "network": 1},
+		},
+		ByDirectory: []DirectoryUse{
+			{Directory: "tools/busiest", Files: 2, Calls: 5},
+			{Directory: "tools/quiet", Files: 1, Calls: 0},
+		},
+	}
+	text := summary(report)
+	for _, want := range []string{"scanned 3", "calls 5", "filesystem 4", "network 1", "tools/busiest"} {
+		if !strings.Contains(text, want) {
+			t.Fatalf("the summary must contain %q:\n%s", want, text)
+		}
+	}
+}
+
+// TestSummaryIsBounded checks that the summary stays short even when the survey
+// finds many directories. An unbounded summary is the full JSON again.
+func TestSummaryIsBounded(t *testing.T) {
+	report := Report{Totals: Totals{ByCategory: map[string]int{}}}
+	for index := 0; index < 40; index++ {
+		report.ByDirectory = append(report.ByDirectory, DirectoryUse{Directory: "tools/d" + strconv.Itoa(index), Calls: 40 - index})
+	}
+	lines := strings.Count(strings.TrimRight(summary(report), "\n"), "\n") + 1
+	if lines > 12 {
+		t.Fatalf("the summary must stay readable, or it is not a summary: %d lines", lines)
 	}
 }
 
