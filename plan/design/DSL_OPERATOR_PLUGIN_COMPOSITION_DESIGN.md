@@ -400,3 +400,25 @@ BS-02/03/06に単独の拒否条件を置いただけでは、実装が**すべ�
 「上記Mutantを検出し得る」と「Mutation Runnerで故意にMutantを生成し検出した」は**異なる**。現時点で作成したのは正負対照の実Go試験Sourceであり、Mutation Runnerの実行や業務RuleのKill率測定はしていない。この3件だけでBS-01/04/05/07〜15や#1119 Gate、独立Owner意思の検証へ拡張しない。
 
 **検証票**：各Caseに`negative_input`／`negative_expected`／`positive_delta`／`positive_expected`／`exact_head_ci`／`claim_ceiling`を**報告欄**として持てばよい。新しい正式Fixture Schemaは導入しない。候補ExpectedはGoの出力から逆算せず、先に固定したJSONと既存`workspace.Load`／`Resolve`／`LowerPinnedPipeline`契約を対照する。
+
+
+<!-- tei-dsl-bootstrap-selected-source-and-cross-stage-20261106 -->
+### 13.9 同一SourceのK2→K4閉包、候補解決と受理済みLock、`*.tei.md`入場拒否の統合順
+
+2026-11-06に進んだ別レーンの[Draft #3031](https://github.com/hat47x/tei-platform/pull/3031)は、宣言済みSource rootの管理対象内で`*.tei.md`が発見され、**現Native Loaderに対応Markdown Parserが束縛されていない**場合、原文を旧`*.tei` Parserに流さず、`TEI_MD_PARSER_UNBOUND`と該当Source位置で明示停止する。対象はSemantic/Query/Persistence/Plugin/Bundle/Releaseの限定Root、通常`.md`や宣言Root外の`.tei.md`は勝手に入場させない。HEAD `63953ccb`の専用CI/Repository Healthはsuccess（**Draft、main未統合**）。これはK1「候補が存在するが解釈できない」を表示できる最初の実Product停止であり、K2 Language Pinの実選択、Markdown AST、Canonical、Owner受理が成立した証拠ではない。
+
+**同一Sourceと二つのPinを一つのGo Reference実行で照合**：本PRの`TestBootstrapSameSourcePinnedLanguageThenOperator`は`rows/order |> std.sum`を固定し、`ParseSelected`で選択したParserの`ParsePipelineSyntax`候補を、同じSource token spanのまま`LowerPinnedPipeline`へ渡す。既存JSONの**BS-03（Language実装Pin不一致）**と**BS-06（Operator契約Pin不一致）**の独立Expectedを先に読み、同Source・同Parser実装で、1) 両方一致→1 Step候補、2) Language実装不一致→Parserを呼ばず拒否、3) Operator Pin不一致→Parserは成功するがtyped loweringで拒否、4) Catalog上の同Pin契約の出力型変更→拒否、を分離する。新Go Core/Parserは導入しない。**Product Workspace ReaderとこのSynthetic Pipelineは同じSource/同一Attemptではない**ため、K1→K2の正式Product結合証拠には昇格しない。
+
+**Language/Plugin候補解決と「固定済み実装」は別**。実`internal/plugin/resolve.go: Catalog.ResolveEnvironment`は要求されたCompatibleMajorにおいて候補Catalogから最高互換版を選ぶ。これは**初回候補生成**として有用だが、K0 Seed/Accepted Meaningの実装資格にはそのまま使えない。一方`internal/plugin/lock.go: Catalog.ResolveEnvironmentWithLock`は既存LockのPlugin Definition Fingerprint／Artifact Digest／対応版に固定して別途照合する。だがこれも**catalogに書いたDigestと実ロードされたProcess Image/Bytesが一致する証明ではない**。#1251/#2831/#1163の既存Build/Actual Process観測を同一Attemptに結び、未検証・旧Receipt/旧LockをCurrent資格にしない。
+
+| 反例／同一入力の一軸変更 | 独立Expected（既存Fixture/Owner） | 現在の到達範囲 |
+| --- | --- | --- |
+| 同じ`*.tei.md`候補がmanaged root内→外へ移る、通常`.md`と入替 | K1で「管理候補/非候補」を区別。**Root内でParser未束縛なら明示拒否**、外は新規取込しない（#2823/#3031） | #3031の実Goは当該HEADのみ。#3028とは別CI |
+| 同一SourceでLanguage Pin正常→不一致 | 不一致ではParse callback未呼出（BS-03） | #3028 Go Referenceの同一Source対照（Product Reader未結合） |
+| 同一SourceでOperator Pin正常→不一致、Contract OutputTypeだけ変更 | Parseは成立してもK4のError/Source Spanは別（BS-06） | #3028の限定同一Source Go Reference |
+| 未受理候補Catalogへ互換Plugin新版追加／受理済みLockは不変 | 候補解決の結果は変わり得るが**現実行資格の暗黙更新は禁止**（#988/#951） | 既存`lock_test.go`の版固定試験を再利用。新Registry/Version Resolver不要 |
+| Provider/Build ArtifactがCatalogの文字列Digestと異なる、または実Builder/Processが別 | Lock文字列一致だけでK0 Trusted・K6 Build/Host合格にしない（#1251/#2831/#1163） | 実ロードbytes/Process+Artifact同一Attemptは**未証明** |
+
+**Fixture自身と実行証拠の区別**：当初独立Expected JSONの上位`status: DESIGN_ONLY_NOT_EXECUTED`は、BS-02/03/06を実Goテストへ接続後には全体を「未実行」と読めて不適切だったため、`INDEPENDENT_EXPECTED_NOT_OWNER_ACCEPTED`へ改訂した。JSONは**期待値の出所とOwner未受理**を示すもので、実行済みCase/CIの状態は更新HEADのActions/Go Testから別途記録する。15のCaseと`earliestStop`は維持し、残る12ケース、Owner意思、実Provider/登録回復はProduct未実証のまま。
+
+**次の限定実証順**：#3028の同一Source Go選択試験をexact HEADで検査→#3031のProduct fail-closed Readerと**マージ前の同一HEADで**K1入場拒否を再観測→#3030移行Ownerが正式Markdown Parserを選択・Pinできた場合だけK1→K4一貫実Source/Source spanを比較→既存#1251/#2831/Extension Lock/HostへArtifact/実Processを引渡す。別Draftの個別CI PASSを足して単一K0→K6 E2Eと呼ばない。新Seed/Registry/Runtime Backend/Owner判断プロセスを追加しない。
