@@ -750,3 +750,22 @@ main統合済み[PR #2894](https://github.com/hat47x/tei-platform/pull/2894)の`
 **担当分離**：#2514＝独立Expected/Mutationの意味・判別力、#1180＝Scenario SSOT/必要Case、#2595/#2600＝実Source/失効、#2586/#1163＝実Read/Owner母集団/一改訂Packet、#2811＝AI-firstの検収順と証拠リンク。#2514の担当Chatへ重複して投稿・Mutant実装を行わない。第二Runner／Oracle Store／全領域共通Meaning正本も作らない。
 
 **今回の達成状態**：比較条件と再資格条件を計画文書に反映したのみ。末尾脱落Mutant、NULL/unknown Fixture、実Provider全件性確認、移行後の`.tei.md` Source実解決は**NOT RUN／NOT ACCEPTED**。
+
+### 18.9 新実装のCompletion契約とAI Oracleを接続する最小一往復（2026-11-07）
+
+**今回の成熟差分は「Owner母集団の完全性」についての**現在の実装境界**を確定し、既存のG0/G1/G2を実Target Claimに無断拡張しない検収順を具体化したことにある。[#3022](https://github.com/hat47x/tei-platform/pull/3022)は`EvaluateCompletion`の静的分岐、Coverage自己申告の問題を§10.11〜10.15で調査済み。本計画は別のCompletion設計・検証器を発明せず、**AI-first ScenarioのEvidenceからCompletion Claimへ昇格するための独立入場条件**だけを所有する。
+
+**現mainの直接ソース確認**：`internal/semantic/completion.go` blob `512a835ca445d81dd043f8af78ca29df4e7adb3b` は`CoverageComplete/Partial/Unestablished`を**Callerの申告として受ける**。非空の観測集合が全`Holds=true`で`CoverageComplete`の場合、実Provider/Owner集合をAPI内部で照合しなくても`CompletionHolds`を返す。同じ`Targets=[L1:true],CoverageComplete`の呼出しでOwner集合が世界A`{L1}`と世界B`{L1,L2}`でもAPI結果は同じになり得る。これは**Caller入力が真なら局所的に正しい関数**と、**Callerの集合申告が実世界と一致したという証拠**の差であり、現コードから直ちに製品欠陥確定とはしない。
+
+| 検収順 | 既存担当／固定する材料 | 独立Negativeと受理線 |
+| --- | --- | --- |
+| **P0-A Evaluator局所感度** | #2514 Oracleと#1180 Scenario。#2901 Green／#3017 Product Rule一行MutantのAI Case直接killは**実証済み**。次の末尾Key走査脱落は**未実行** | `[1,2]`正常・`[1,1]`重複、Source/Fixture/Expected Blob固定。MutationによりAI追加Stepが対象Ruleで失敗した時だけ局所Kill |
+| **P0-B Coverage-claim偽陽性** | #2586/#1163がOwner対象Lと実Provider RowIDを同Scope/asOf/Revisionで用意。既存`EvaluateCompletion`を読み、CC-01〜03をテスト候補として渡す | Owner L={L1,L2}なのにReaderはL1:trueのみ。`CoveragePartial`なら`unverified`、Callerが同入力を`CoverageComplete`と偽申告すればAPIが`holds`でも**実業務Claimを拒否**。実Read/終端/Current Grantなしに`complete`を受理しない |
+| **P0-C 反例の非対称性** | #2514が独立Expected。ReaderがL1:falseを確実に同Scopeで観測（L2未取得）したCase | `fails`は確実な違反観測を根拠に限定的に言える場合がある。一方同一partialで`holds`／「存在しない」／「影響なし」は言えない。Null/unknown/非開示は別State |
+| **P1 Source/Authoring切替** | #3030/#2621で`*.tei.md`移行、#2595でSource actual input、#2600でEvidence再資格。Workspace `ManifestIdentity()`とSource Indexを別照合 | 旧`*.tei`のまま実Loaderが読む／新`*.tei.md`は未解析／Manifest変更でSelection変化／同ID二箇所を後勝ち、などを区別。ファイル改名、同じWorld digest、CI Greenだけで現行意味受理にしない |
+
+**最小の一往復Receipt**：Scenario ID/Step ID、受理意味の対象とScope版、Callerが渡したTargetIDsとCoverage自己申告、外部Readerが独立に見たTargetIDs・Snapshot/ページ終端・RLS/Disclosure、実Consumed Source occurrence＋Manifest path/SHA、実World/Plugin/Toolchain/Artifact、Actual/Expected/ConsumerのClaimと限界。**既存Scenario・Provider Receipt・Source Index・Build Evidenceを引用する比較票**に限り、新たなCase SSOT/Runner/Oracle DB/Host/証拠Ledgerの実装を開始しない。
+
+**再資格の最短規則**：Owner対象L・Predicateの意味/粒度、DataSource/Reader/snapshot/Grant、Workspace Manifest/Source参照/Plugin/Toolchain、独立Expectedの受理範囲が変わるたび、*影響するClaimだけ*を`historical-pass / current-unqualified`へ移し、必要なReaderとCaseを再実行する。単なるRaw Source Path移動は別途実Resolveを確かめるが、意味・Runtime権限を自動否定／自動再受理しない。Source A→B→Aで旧Receiptを新時点の実Read資格として復活させない。
+
+**責務と未実証**：#2811は観測束縛と検収順、#2514は独立Expected/Mutant、#1180はScenario、#2586/#1163は実Reader/同一Attempt、#2595/#2600は実Sourceと失効、#2621/#3030はAuthoring移行を担当する。#2514・#3030の主担当PRや製品Codeへ重複投稿・変更しない。現行Sourceの静的比較と過去CIの再取得以外、新Completion Caseの実Goテスト、実Provider全件性、末尾Mutant、`*.tei.md` Reader移行、Owner受理は**NOT RUN**。[台帳§8.9](./TEI_TEST_BASIC_DESIGN_AND_EVIDENCE_LEDGER_2026-11.md)に独立条件・境界の詳細を記録。
