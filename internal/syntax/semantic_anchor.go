@@ -454,7 +454,7 @@ func semanticAttributeOptionAnchors(lx *Lexer, id core.CanonicalID) ([]SubjectAn
 			return nil, err
 		}
 		if next.Kind != TokenIdent {
-			return anchors
+			return anchors, nil
 		}
 		switch next.Text {
 		case "description", "display", "value":
@@ -472,7 +472,7 @@ func semanticAttributeOptionAnchors(lx *Lexer, id core.CanonicalID) ([]SubjectAn
 			}
 			anchors = append(anchors, SubjectAnchor{Kind: "semantic-attribute-role", ID: string(id), Anchor: tokenAnchor(roleTok)})
 		default:
-			return anchors
+			return anchors, nil
 		}
 	}
 }
