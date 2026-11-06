@@ -53,7 +53,14 @@ go run ./cmd/tei trace \
   -subject-kind semantic-relation \
   -subject-id sales.order.customer \
   -direction both -mode full > /tmp/tei-topology-trace.json
-node reference/tei-topology-coverage/verify-cli-trace.mjs /tmp/tei-topology-trace.json
+go run ./cmd/tei trace \
+  -workspace reference/workspace \
+  -scope alternate-observation \
+  -subject-kind semantic-relation \
+  -subject-id sales.order.customer \
+  -direction both -mode full > /tmp/tei-topology-trace-alternate.json
+node reference/tei-topology-coverage/verify-cli-trace.mjs \
+  /tmp/tei-topology-trace.json /tmp/tei-topology-trace-alternate.json
 ```
 
 この固定例では、実CLIの**incoming** `order_entry.customer_reference → sales.order.customer`、**outgoing** `sales.order.customer → customer.customer`を独立のNode Consumerで照合します。Source navigationの`located`は読取り位置の情報に過ぎず、編集権限・Owner意味受理にはならない。Traceの`Edge.Relation`は**直接Edgeの種別文字列**であり、`declaringScope + relationID`や任意の多項Roleの正本ではないため、`observeDirectTrace`は`relationEntityIdentity:not-provided`、`multiRoleClosure:unproven`、`sourceAndPluginClosure:unproven`、`absentClaim:unknown`を保持します。**このアダプターの結果は`boundedAbsence`へ渡しません。**
@@ -61,5 +68,10 @@ node reference/tei-topology-coverage/verify-cli-trace.mjs /tmp/tei-topology-trac
 対象Graph/Traceがfull一ページ・scope一致・候補read-onlyでない場合、`unknown`で止めます。0行でも「Relationshipが存在しない」にはしません。`ProjectionUnresolved`、Source位置不明、SourceIndex未閉包、非公開Policy、過去のGrantはそれぞれ独立の資格です。実CLIの生JSONにはSourceパスやEvidenceを含む可能性があるため、**許可済みpublic sliceを持たない外部Consumerへそのまま出力しない**。本アダプターはCurrent Policyを検証しません。
 
 **実施済み証拠**：[専用Actions #42205912384](https://github.com/hat47x/tei-platform/actions/runs/42205912384)。exact head `6b99fed018dc9cc9c44bd0cee2031aecb1939a7b`、Go 1.26.10、Node 24.21.0で、合成Graph/Table **31/31 PASS**、CLIアダプターの合成負例 **7/7 PASS**、実`reference/workspace`を通したGo `tei trace`→Node Consumer **PASS**。Source改変なしのclean treeをworkflowが検査。これが証明するのは、固定Workspaceの直接参照2本を実CLI JSONから同一Consumerが読んだことまでです。多項Relation完全性・全Source/Plugin閉包・実Disclosure/Policy・実WebView2/Studio・ETL/Build実行・認知改善・Owner受理は **NOT PROVEN**。
+
+
+**追加の実CLI負例：Caller ScopeはSource宣言ではない**：`derivedbridge.FromIndex(d, scope)`は呼出し側指定のscopeをDerived Index Projectionへ付与します。`reference-observation`と`alternate-observation`の2回の`tei trace`で、**Source／World fingerprintおよびscope以外のDirect Edgeが同一、qualified keyとselector-bound snapshot fingerprintが異なる**ことを別言語Consumerで照合しました。したがって`observeDirectTrace`は`scopeOrigin:caller-supplied-projection-scope`と明記し、CLIで見えるscopeを元Sourceのdeclaring scope、Principal権限、正本Relation scopeへ昇格しません。
+
+**exact-head CI**：[Actions #42206842519](https://github.com/hat47x/tei-platform/actions/runs/42206842519)、コードhead `8bf4347fa587a66bbc500a8a2fd5927d150437d2`、Go 1.26.10実CLI **2実行**→Node独立比較PASS、Node 24.21.0のGraph/Table 31件＋CLI境界7件PASS、失敗0。実Sourceの全scopeや未読込Root、Policy、実Studio UIは **NOT PROVEN**。
 
 **後続のFit/Gap**：実`tei trace`は直接宣言Edgeを取得できる一方、合成Referenceの任意の多項Relationに必要な独立の宣言scope・relation ID・role列は一般には復元できない。今あるGoの`TraceWorkspace`と`SourceBridge`を再利用し、実Sourceに必要な意味・roleが存在するケースを別Ownerで特定した後にだけ、追加のMapping／標準構造を検討する。#1124 M0/M1と#2831 G4の受入を代替しない。
