@@ -67,3 +67,21 @@ func TestExecuteCommandWithPolicyRejectsUnlistedCapability(t *testing.T) {
 		t.Fatalf("records=%+v", allowed.Value)
 	}
 }
+
+// TestExecuteCommandRecordsDeclaredEffectWithoutReport checks that a
+// reference execution whose declared effect is not reported by the executor is
+// recorded as such, not silently treated as applied (#2996).
+func TestExecuteCommandRecordsDeclaredEffectWithoutReport(t *testing.T) {
+	host, err := NewReadOnly([]string{referenceWorkspace(t)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	run := host.ExecuteCommand("workspace-1", "order_entry", "order_entry.submit_order", "sales.order.submit", map[string]string{"order": "ORD-1"})
+	if !run.OK || run.Value == nil {
+		t.Fatalf("run=%+v", run)
+	}
+	// The reference executor does report the effect, so the marker stays false.
+	if run.Value.ReportedEffectMissing {
+		t.Fatalf("reported effect was marked missing: %+v", run.Value)
+	}
+}

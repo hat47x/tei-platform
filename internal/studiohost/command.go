@@ -39,6 +39,9 @@ type CommandRunValue struct {
 	// AppliedUnobserved is true when the executor did not enumerate its
 	// operations, so `differences` being empty is "not observed".
 	AppliedUnobserved bool `json:"appliedUnobserved,omitempty"`
+	// ReportedEffectMissing is true when the capability declared an effect but
+	// the executor reported none. It is recorded, not rejected (#2996).
+	ReportedEffectMissing bool `json:"reportedEffectMissing,omitempty"`
 }
 
 // CommandRunResponse is the result of a reference execution.
@@ -117,6 +120,13 @@ func recordDifferences(records []command.OperationRecord) []command.Difference {
 // recordAppliedUnobserved reports whether the executor said what it applied.
 // A command that declares no effect has nothing to compare, so the absence of
 // records is not an unobserved difference check.
+func recordReportedEffectMissing(records []command.OperationRecord) bool {
+	if len(records) == 0 {
+		return false
+	}
+	return records[len(records)-1].ReportedEffectMissing
+}
+
 func recordAppliedUnobserved(records []command.OperationRecord, effectDeclared bool) bool {
 	if !effectDeclared {
 		return false
@@ -185,15 +195,16 @@ func (h *ReadOnly) executeCommand(workspaceID, applicationID, patternID, capabil
 		return CommandRunResponse{Failure: &Failure{Code: "COMMAND_FAILED", Stage: "command", Message: err.Error()}}
 	}
 	return CommandRunResponse{OK: true, Value: &CommandRunValue{
-		Plan:              plan,
-		Mode:              "reference",
-		Outcome:           result.Outcome,
-		Effect:            result.Effect,
-		Committed:         true,
-		Persisted:         false,
-		Durability:        "none",
-		Records:           recorder.Records,
-		Differences:       recordDifferences(recorder.Records),
-		AppliedUnobserved: recordAppliedUnobserved(recorder.Records, plan.Effect != nil),
+		Plan:                  plan,
+		Mode:                  "reference",
+		Outcome:               result.Outcome,
+		Effect:                result.Effect,
+		Committed:             true,
+		Persisted:             false,
+		Durability:            "none",
+		Records:               recorder.Records,
+		Differences:           recordDifferences(recorder.Records),
+		AppliedUnobserved:     recordAppliedUnobserved(recorder.Records, plan.Effect != nil),
+		ReportedEffectMissing: recordReportedEffectMissing(recorder.Records),
 	}}
 }

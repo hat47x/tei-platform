@@ -44,6 +44,10 @@ type referenceCommandRun struct {
 	// operations, so `differences` being empty is "not observed" rather than
 	// "none found".
 	AppliedUnobserved bool `json:"appliedUnobserved,omitempty"`
+	// ReportedEffectMissing is true when the capability declared an effect but
+	// the executor reported none. The run is not rejected, but a reader must not
+	// treat the absence as proof the declared effect was applied.
+	ReportedEffectMissing bool `json:"reportedEffectMissing,omitempty"`
 }
 
 type cliViewReport struct {
@@ -236,6 +240,7 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 				}
 			}
 			var differences []command.Difference
+			var reportedEffectMissing bool
 			// Only a declared effect gives the check something to compare. For
 			// a command without one, an empty record list is "nothing to check",
 			// not "the executor could not say".
@@ -244,18 +249,20 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 				last := recorder.Records[len(recorder.Records)-1]
 				differences = last.Differences
 				appliedUnobserved = last.AppliedUnobserved
+				reportedEffectMissing = last.ReportedEffectMissing
 			}
 			run := referenceCommandRun{
-				SchemaVersion:     applicationview.SchemaVersion,
-				Mode:              "reference",
-				Plan:              plan,
-				Outcome:           result.Outcome,
-				Effect:            result.Effect,
-				Committed:         true,
-				Persisted:         false,
-				Durability:        "none",
-				Differences:       differences,
-				AppliedUnobserved: appliedUnobserved,
+				SchemaVersion:         applicationview.SchemaVersion,
+				Mode:                  "reference",
+				Plan:                  plan,
+				Outcome:               result.Outcome,
+				Effect:                result.Effect,
+				Committed:             true,
+				Persisted:             false,
+				Durability:            "none",
+				Differences:           differences,
+				AppliedUnobserved:     appliedUnobserved,
+				ReportedEffectMissing: reportedEffectMissing,
 			}
 			report.OK = true
 			report.Result = run
@@ -738,6 +745,11 @@ func writeReferenceRunText(out io.Writer, run referenceCommandRun) (int, error) 
 	// have to open the operation log to notice.
 	// Only a declared effect gives the check something to compare against; a
 	// command without one has no difference to look for.
+	if run.ReportedEffectMissing {
+		if _, err := fmt.Fprintln(out, "reported-effect: missing (the capability declares an effect but the executor reported none)"); err != nil {
+			return 2, err
+		}
+	}
 	if run.AppliedUnobserved && run.Plan.Effect != nil {
 		if _, err := fmt.Fprintln(out, "difference-check: not observed (this executor does not enumerate its operations)"); err != nil {
 			return 2, err

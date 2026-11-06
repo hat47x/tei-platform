@@ -125,7 +125,33 @@ CLIとStudioは、記録が無い場合の既定値を「効果が宣言され�
 - 効果を宣言したが `Applied` が空のままのExecutorを、構成時に拒否するか（#2996の未決）。
 - `AppliedUnobserved` を `Differences` の有無と独立に扱うか、`differenceCheck` のような三状態（`checked`・`not-observed`・`not-applicable`）へ改めるか。
 
-## 8. この文書が主張しないこと
+## 8. 宣言効果を報告しないExecutorの記録（#2996 追補）
+
+### 見つかった差
+
+能力が効果を宣言しているのに、Executorが `Effect` を返さない場合がある。`effectcommit` アダプタはCommit receiptだけを返し、効果の種類・対象を返さない。この場合、境界は次のどちらかを知らない。
+
+- Executorが宣言効果を適用したが、報告しなかった。
+- Executorが何も適用しなかった。
+
+### 決めたこと（記録のみ）
+
+`OperationRecord.ReportedEffectMissing` を追加し、`plan.Effect != nil && result.Effect == nil` のとき true にした。CLIの `referenceCommandRun` とStudioの `CommandRunValue` にも同じ欄を追加し、CLIテキストとStudio画面に `reported-effect: missing` を表示する。
+
+**拒否はしていない。** 宣言効果の報告漏れを `MISSING_COMMAND_EFFECT`（EffectUnknown）として拒否すると、`effectcommit` アダプタのCommit成功がすべてunknownになり、実Providerの正常経路が壊れる。実Providerの意味（Commit成功と効果報告の一致）は、Providerの契約として別に決める必要がある。
+
+### この記録が防ぐこと
+
+- 「効果が報告されていない」を「宣言効果が適用された」と読み違えない。
+- `AppliedUnobserved`（操作の列挙漏れ）と `ReportedEffectMissing`（効果の報告漏れ）を別の欄として扱える。
+
+### まだ決めていないこと
+
+- `effectcommit` アダプタがCommit receiptから宣言効果を返すようにするか（呼出し側が期待する `Effect` を渡すか）。
+- 宣言効果の報告漏れを、どのExecutorで拒否するか。参照Executorは宣言効果をそのまま返すため対象外。
+- `effectcommit` のCommit成功を、独立した読取りで宣言効果と照合するか（#2998の `persisted` の意味）。
+
+## 9. この文書が主張しないこと
 
 - 本物の認可・主体・権限・メニュー制御が実装されたこと。
 - `ReferenceAuthorizer`が本番で使えること。

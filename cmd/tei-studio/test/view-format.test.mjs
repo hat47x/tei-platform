@@ -68,6 +68,8 @@ test("command run includes the plan and the reference execution", () => {
   assert.equal(rows[2][1], "false");
   assert.equal(rows[3][0], "durability");
   assert.equal(rows[3][1], "none");
+  assert.equal(rows[9][0], "reported-effect");
+  assert.equal(rows[9][1], "reported");
   assert.equal(rows[4][0], "outcome");
   assert.equal(rows[6][0], "records");
   assert.equal(rows[6][1], "0");
