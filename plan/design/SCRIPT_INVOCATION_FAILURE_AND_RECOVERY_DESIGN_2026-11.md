@@ -337,3 +337,58 @@ UI/CLI/Jobの実行要求は、表示/選択の更新世代（**Selection/Contex
 **既存Ownerとの分担**：`*.tei.md`のファイル/Authoring/配置判断＝#2621、Parser/Language Bootstrap＝#988/#3028、Loader/必要Source＝#2823/#2935、Role/Meaning＝#2620/#2619、独立Oracle＝#2514/#1180、Script起動と権限段階＝#2502/#2499、RunPlan/部分効果＝#1130、Effect/Receipt＝#1174/#2564、Completion述語＝#1125/#2926、統合Evidence＝#1163。新しいSource Registry・Script Host・Runner・Completion Engine・第二Oracleを導入しない。
 
 **現状**：`*.tei.md`移行はOwner方針として採用対象だが、現Loader/全Fixture/Studio/CLIの新形式対応および新PackageのParser/Source位置保持はこの追補では**NOT RUN／NOT PROVEN**。#2935/#3028/#2898はDraft、#2926はmainへ統合済みの限定Evaluator。実TargetSet/Coverageの独立Provider証拠、同一Function/実PG/実Consumerの一改訂Product E2E、Ownerの新規意味受理、Windows実行も**NOT RUN**。
+
+## 10. 二経路移行・Script公開/Queue・実行権限の再資格化（2026-11-07）
+
+### 10.1 形式移行を既存実行E2EのHard Dependencyにしない
+
+最新のAuthoring Owner方針は[Issue #2621](https://github.com/hat47x/tei-platform/issues/2621)の2026-11-06追補、および[Draft #3030](https://github.com/hat47x/tei-platform/pull/3030)の**M0〜M6**を参照する。新規TEI Authoring Sourceは原則`*.tei.md`、旧`*.tei`は段階廃止。`plan/design/TEI_MD_UNIFIED_AUTHORING_MIGRATION_2026-11.md`が移行の責務を所有する。前節§9「V0でまず`*.tei.md`と旧`*.tei`を比較」は、**新形式Parser未成立なら既存legacy実行経路全体を止める**という意味ではない。本節の二経路で補正する。
+
+| 並行Lane | 実際のInput・実行先 | 正当に主張できる範囲 | 横断してはいけない結論 |
+| --- | --- | --- | --- |
+| L：現行legacy機構の縦切り | **実際に現行Loaderが読み、Parse/Linkした`*.tei`**を固定。既存RunPlan/Function→実Provider Read/Expected、後段Command/PG/Receipt | そのSource/Parser/実Artifact/実Providerに限る局所実行・障害回復の資格 | 旧形式のPASSは新`*.tei.md`のParser・Source位置・意味受理を保証しない |
+| M：Authoring新形式の段階移行 | 新`*.tei.md`、Markdown container、Language Plugin、選択した構造span、実Loader/Build Input。#3030 M0〜M6の段階成果を再使用 | 新形式の発見／解析／意味候補／旧定義との比較など**成立した段階だけ** | Read/ParseのPASSはRuntime Effect、Script公開、現在Grantを保証しない |
+| J：将来の結合受入 | LとMの**同じ業務Scenario／独立Expected**、別Source Revision/Attemptを突合して移行後の実Targetを検証 | M側が実Parser/Link/Build/Providerを消費した時点で初めて新形式End-to-EndのClaimを検証可能 | 値だけ一致・Rename・旧CIを新規受理に転記しない |
+
+同名の旧`*.tei`と新`*.tei.md`が混在する場合、候補を暗黙にどちらか選択して読まない／last-winsしない。明示的なAuthoritative Source・Version・移行時点・対象範囲と、**実Reader consumed bytes**を束縛する。旧形式のread-only/Import経路をいつ削除するかは#3030のM6とOwner判断による。`.tei/decisions/`はSource拡張子ではなく固定履歴ディレクトリであり変更しない。新形式Markdown中の通常文章・引用・表が無条件にExecutable Ruleになるわけではない。
+
+[Draft #2935](https://github.com/hat47x/tei-platform/pull/2935)の`readByLoader`（Load snapshot）と[Draft #3028](https://github.com/hat47x/tei-platform/pull/3028)のBootstrap K0〜K6は、それぞれ局所的な**読込証拠**、**Language/Operator資格の先行案**として参照するだけ。両PRはmain未統合。`readByLoader=true`はSource解析・必要閉包の完全性を示さず、K2/K4のCandidateはOwner受理済みMeaningでも現在の実行資格でもない。
+
+### 10.2 Scriptの作成・公開・予約・起動を同一承認にしない
+
+[#2502](https://github.com/hat47x/tei-platform/issues/2502)が所有するTrusted Developer Script／Delegated User Macro／組織公開のProduct Contractを、S0〜S8の**入口境界**へ接続する。高権限Scriptを一律に禁止しない。一方、Macroへ公開された能力を越えるraw SQL／管理操作を暗黙に与えず、PublisherがScriptを公開した事実をデータ変更のGrantと混同しない。新Macro EngineやTEI独自Hostを設けず、既存Host/Provider/Pluginの実契約で判定する。
+
+| 段階 | 確認する不変条件 | その段階だけでは与えられない資格 |
+| --- | --- | --- |
+| Author/Save | Source raw bytes、作者・候補Meaning/Function、Draft/Attachmentの実保存版。未受理・Parse失敗でもRaw Draft保持は可能 | 公開・起動・書込みGrant |
+| Review/Publish | 公開対象のScript Artifact/Contract、必要Capability/Effectと受理範囲、Publisher/対象Organization／Tenant・Audience、依存版 | その時点のInvoker/Runtime Principalの実Grant、他Tenant利用資格 |
+| Bind/Queue | 起動契機、実Invoker、対象・Context、Script公開版、Application/Target、**業務Operation Identity/Request Hashの予約時の記録** | Queue時のGrantだけで将来の実DispatchやCommitを許可しない |
+| Start/Admission | **実ロードScript/Artifact**と公開対象版・必要能力の照合、現在のHost Principal/Grant/Target/Context、Required Guardの被覆、Effect計画、Attempt/Fence | プレビュー承認・Queue受付・Task起動成功からDB Commitを推定しない |
+| Provider Effect/Recover | Provider固有のCurrent Grant/CAS/Transaction/Idempotency/Receipt、部分効果・unknown・Lookup権限 | 実CommitとAfter-commit配送、業務完了・外部開示の同一視 |
+| Observe/Present | 独立ReadのTargetSet/Coverage/Expected、Completion判定、**現在のDisclosure Grantと用途** | 過去の公開/保存/Runの成功が現在の開示権限を発行することはない |
+
+**Identityの最小参照集合**（新公開封筒Schemaではない）：`Script Definition/Source revision`、`Published Artifact/Contract revision`、`Invocation binding/Target`、`Business Operation ID`、`Request digest`、`Run/Step/Attempt/Fence`、`runtime Principal/Grant判定の非機密参照`、`Provider Effect/Receipt`。これらは一つに潰さず、実際の既存Contract/Hostの所有者へ参照として渡す。Raw token/DSN、秘密値/非公開Row一覧を結果や監査・AI表示へ複写しない。Invocation Contextは#1118、公開/委任のGrantは#2499、実Commit Fenceは#1174、組織/Tenantの時間意味は#2386、Receipt保存は#2845の責務。
+
+**起動取り消し/タイムアウト**：予約を取り消しても既にDispatchされたEffectが巻き戻るとは限らない。`cancelled`はQueue/Processの実行予定取消の証拠として扱い、Providerへ到達した可能性がある場合は同じOperation IDのLookup・部分効果保全を先行する。二法人兼務の同一人物、同Script別Tenant、公開後のGrant撤回を、本人ID一致や同Artifact bytesを理由に権限流用しない。対象/Operationを跨いで同じIdempotency Keyを無条件に共有しない。
+
+### 10.3 既存SM/SH受入へ足すべき差分と、着手順
+
+[#2502 SM-1〜6](https://github.com/hat47x/tei-platform/issues/2502)および本書SH-04/07〜12、[#1180](https://github.com/hat47x/tei-platform/issues/1180) Driver Scenario/独立Expectedを再利用し、Case ID・第二Fixture正本を作らない。旧Driver/TEI／Targetごとに別Attemptを記録する。
+
+| Fixture接続 | 独立に比較する二状態 | 期待結果・Claim ceiling |
+| --- | --- | --- |
+| SM-1 vs SM-2 | 同一Script/型付きContract、Trusted DeveloperとDelegated Macro、raw SQL可否・対象Order A/B | Adminに許されたraw pathは標準Data Rule/Receipt保証を**自動主張しない**。Macroの非許可能力はHostで拒否し、当該対象Effect=0を実証するまでは未資格 |
+| SM-3：二法人／同Plugin別Tenant | Script publish済み、AだけにGrantあり。Bで起動／他Tenantの歴史を照会 | Publish≠Grant、同Artifact≠共有Authority。拒否時は非公開Source/対象の存在を出さない |
+| SM-4：改版済みの同名Macro | `M@digest1`で公開後、`M@digest2`が新Capabilityを要求／旧予約が残る | 旧承認を新版へ移さず、旧予約も現実のArtifact/Contract/Grant確認なしに新Versionへ付替えない |
+| SM-5＋SH-04：Queue時許可・開始直前撤回 | Queue登録と起動、及びCommit前にGrant/Target/Period変化 | AdmissionとEffect前強制を別確認。拒否時はProviderで到達/Effect=0の証拠を取る |
+| SM-5＋SH-08/09：Run cancel/Restart/ACK-loss | 旧Operationはunknown、Processが新Attemptを作る。同Key/新KeyとABAを比較 | `Process cancelled/exit`からEffect=0を推論しない。同Operation Receipt照会優先、新Key盲再送禁止 |
+| SM-6＋#3030 M0〜M6 | Lの旧`.tei`、Mの新`.tei.md`、CLI→Web/Studioの実Consumer | 新形式の実Loader/Parser/Artifact/Body受領と別Attemptの独立Expectedを確認するまで新形式E2Eはnot-run |
+
+**段階計画への更新**：
+- **P0-A（既存機構を止めずに試験）**：現行`*.tei` Workspaceで**一つのread-only Function/Query→実Provider Read→独立Expected/Body**を固定し、現行Host/ProviderとRuntimeが実際に消費したInputを記録。#1163/#2586の既存統合票を利用。
+- **P0-B（移行専門レーン）**：#3030 M0→M2で`*.tei.md` Source列挙、Markdown→実TEI span、Parser選択、Raw Draft保存を別途実証。M2が未達なら新形式のScript起動を`unsupported/unknown`とし、P0-Aのlegacy局所成果は保全。
+- **P1（Script Surface）**：#2502 SM-1/SM-2から同一Function/契約を異なるPrincipal/Capabilityで呼ぶread-only/拒否試験を優先。SM-3/4の公開・改版・Queueを段階的に追加。
+- **P2（実Commit/回復）**：選択HostのCurrent Grant/Target/Periodを、既存#1174/#2564の実PG CAS/Unknown/Receipt・RunPlanへ同一Attemptで束縛。先行Stepの効果/After-commit通知、Process restartを分離。
+- **P3（Target別Consumers）**：CLI/Web/Studio/Jobの各実Entry・配備Artifact/権限/独立Bodyを照合し、新形式移行と公開Macroの消費者互換を検証。EKI/複数Build/Marketplaceは最初のread-only E2Eの必須条件にしない。
+
+**現在の証拠**：#3030は**Draft docs-only**、#2935は**Draft限定Loader read観測**、#3028は**Draft部分Go bridge**、#2926のCompletion Evaluatorは**main統合済み・Runtime未接続**。本書の二経路L/Mの実比較、#2502 SM-1〜6の実Product/Host/Provider試験、実OS/Network ACK loss、全Script形式移行、Ownerの業務意味受理は**NOT RUN／NOT QUALIFIED**。#1119 G1/G2やOwner承認をこの計画から自動成立させない。
