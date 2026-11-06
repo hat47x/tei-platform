@@ -27,6 +27,8 @@
 - [X-TEA例のStudioサーバー起動確認](XTEA_LOWCODE_EXAMPLE_STUDIO_SMOKE_2026-11.md)（`examples/xtea-lowcode`のserver buildと`/health`。画面・Wails RPC・Desktop WebViewは未確認）
 - [既存認可規則とCommand境界の接続確認](XTEA_LOWCODE_COMMAND_AUTHORIZATION_2026-11.md)（参照実装の試験記録。権限の正本・付与の管理は未接続）
 - [診断の修正案と受理境界の確認](XTEA_LOWCODE_DIAGNOSTIC_PROPOSAL_2026-11.md)（参照実装の試験記録。作成者向けの受理操作は未実装）
+- [能力の宣言許可と発行許可の照合確認](XTEA_LOWCODE_GRANT_AUTHORIZATION_2026-11.md)（参照実装の試験記録。許可の管理と実行経路への接続は未実装）
 - [X-TEA受容要件の実装対応](XTEA_LOWCODE_ACCEPTANCE_TRACE_2026-11.md)（`AC-1`〜`AC-11`・`RQ-C1`〜`RQ-C3`の参照実装と未確認事項。受容判断は仮承認）
 - [実DBで実行時の判断を確かめる計画](REAL_DATABASE_RUNTIME_DECISION_PLAN_2026-11.md)（期間・権限・効果の判断を実DBで見る案。**NOT RUN**）
+
 

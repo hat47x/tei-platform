@@ -111,7 +111,8 @@ func request() command.Request {
 
 func TestExecutorCommitsThroughEffectCommit(t *testing.T) {
 	invoker := command.Invoker{
-		World: adapterWorld(),
+		Authorizer: command.ReferenceAuthorizer{},
+		World:      adapterWorld(),
 		Executor: Executor{
 			Runner:      effectcommit.Runner{Provider: fakeProvider{allowed: true}},
 			Grant:       grant(),
@@ -125,7 +126,8 @@ func TestExecutorCommitsThroughEffectCommit(t *testing.T) {
 
 func TestExecutorReportsBusinessDenial(t *testing.T) {
 	invoker := command.Invoker{
-		World: adapterWorld(),
+		Authorizer: command.ReferenceAuthorizer{},
+		World:      adapterWorld(),
 		Executor: Executor{
 			Runner:      effectcommit.Runner{Provider: fakeProvider{allowed: false}},
 			Grant:       grant(),
@@ -148,7 +150,8 @@ func TestExecutorPreservesCommitUncertainty(t *testing.T) {
 	invoker := command.LifecycleInvoker{
 		Lifecycle: lifecycle,
 		Invoker: command.Invoker{
-			World: adapterWorld(),
+			Authorizer: command.ReferenceAuthorizer{},
+			World:      adapterWorld(),
 			Executor: Executor{
 				Runner:      effectcommit.Runner{Provider: fakeProvider{allowed: true, commitErr: errors.New("connection reset after send")}},
 				Grant:       grant(),
@@ -181,7 +184,8 @@ func TestExecutorPreservesCommitUncertainty(t *testing.T) {
 
 func TestExecutorReportsResourceConflict(t *testing.T) {
 	invoker := command.Invoker{
-		World: adapterWorld(),
+		Authorizer: command.ReferenceAuthorizer{},
+		World:      adapterWorld(),
 		Executor: Executor{
 			Runner:      effectcommit.Runner{Provider: fakeProvider{allowed: true, conflict: true}},
 			Grant:       grant(),

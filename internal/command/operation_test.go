@@ -18,6 +18,7 @@ func TestInvokerRecordsDeclaredAndReportedEffect(t *testing.T) {
 	world := commandWorld()
 	recorder := &MemoryRecorder{}
 	invoker := Invoker{
+		Authorizer: ReferenceAuthorizer{},
 		World:      world,
 		Executor:   ReferenceExecutor{World: world},
 		UnitOfWork: &MemoryUnitOfWork{},
@@ -39,6 +40,7 @@ func TestInvokerRecordsDeclaredAndReportedEffect(t *testing.T) {
 func TestInvokerReportsRecorderFailure(t *testing.T) {
 	world := commandWorld()
 	invoker := Invoker{
+		Authorizer: ReferenceAuthorizer{},
 		World:      world,
 		Executor:   ReferenceExecutor{World: world},
 		UnitOfWork: &MemoryUnitOfWork{},

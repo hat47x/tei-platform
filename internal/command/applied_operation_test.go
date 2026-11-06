@@ -65,7 +65,8 @@ func TestReferenceDataExecutorCascadeNamesEachRecord(t *testing.T) {
 func TestInvokerRejectsAppliedOperationOutsideDeclaredKind(t *testing.T) {
 	unitOfWork := &MemoryUnitOfWork{}
 	invoker := Invoker{
-		World: commandWorld(),
+		Authorizer: ReferenceAuthorizer{},
+		World:      commandWorld(),
 		Executor: fakeExecutor{result: Result{
 			Effect:  &semantic.DataEffect{Kind: semantic.DataEffectUpdate, Data: "sales.order"},
 			Applied: []AppliedOperation{{Kind: semantic.DataEffectDelete, Data: "sales.order"}},
@@ -85,6 +86,7 @@ func TestInvokerRejectsAppliedOperationOutsideDeclaredKind(t *testing.T) {
 // no matching applied operation is a difference, not a silent success.
 func TestInvokerReportsMissingAppliedOperation(t *testing.T) {
 	invoker := Invoker{
+		Authorizer: ReferenceAuthorizer{},
 		World:      commandWorld(),
 		Executor:   fakeExecutor{result: Result{Applied: []AppliedOperation{{Kind: semantic.DataEffectUpdate, Data: "sales.order_line"}}}},
 		UnitOfWork: &MemoryUnitOfWork{},
@@ -100,6 +102,7 @@ func TestInvokerReportsMissingAppliedOperation(t *testing.T) {
 func TestInvokerRecordsAppliedOperations(t *testing.T) {
 	recorder := &MemoryRecorder{}
 	invoker := Invoker{
+		Authorizer: ReferenceAuthorizer{},
 		World:      commandWorld(),
 		Executor:   ReferenceDataExecutor{World: commandWorld(), Store: seededStore(t)},
 		UnitOfWork: &MemoryUnitOfWork{},

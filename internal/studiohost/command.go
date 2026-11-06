@@ -106,6 +106,7 @@ func (h *ReadOnly) executeCommand(workspaceID, applicationID, patternID, capabil
 		World:      loaded.World,
 		Executor:   command.ReferenceExecutor{World: loaded.World},
 		UnitOfWork: &command.MemoryUnitOfWork{},
+		Authorizer: command.ReferenceAuthorizer{},
 	}
 	if periods != nil {
 		states := map[string]operations.PeriodState{}
