@@ -3043,3 +3043,63 @@ Owner保留は(1)Service Subscriberに対応する論理Tenantをどこまで推
 #1119の既存Critical Pathを変更しない。OR-TN-01〜12と§70を置換せず、**TN-BDは同一Attempt Bindingの判別試験**として組織Meaning圧力を実Provider/Authority側の試験に接続する。必要証拠集合は#1180、独立Oracleは#2514、固定実行Evidenceは#1163を用いる。Caller自身が与えたCheckのPASSを必要証拠の網羅性としない。
 
 **状態**：本節は実Code/ADR/Issueの静的照合に基づく設計と実証計画。TN-BD-01〜08はNOT RUN。組織Caseの現在Tenant Authority/実Provider実Read/現在Host Grant/各外部RouteのIsolation、Ownerによる正式意味受理、Product E2E合格を主張しない。採用済みADR-0036/0043/0044とmainは変更しない。
+
+## 72. 組織改編とTenant配備切替の交差：同一Caseの再束縛・Effect unknown・過去時点Read（2026-11-06、採用前）
+
+### 72.1 なぜ§69〜71の次にこの境界を検証するか
+
+第69節の**組織後継と案件別Disposition**、第70節の**共通意味＋独立Tenant Isolation**、第71節の**B0〜B5同一Attempt Scope Binding**を前提とする。これらを採用しても、組織変更とTenantの実Provider/配備変更が同じ時期に進行すると、**一つのBusiness Case/Operation IDの意味は同じに見えても、実Read対象・Commit先・Receipt所在・現在Grant・Consumer開示世代が変化する**。本節は新しい一般Migration Engineや共通Txを提案せず、交差した変更における再資格化と停止条件を既存契約へ追加する。
+
+特に以下の三つは**別の変更軸**であり、相互に暗黙導出しない。
+
+| 変更軸 | 例 | 所有する事実と必要な再資格化 |
+| --- | --- | --- |
+| **O：Organization/Business** | D1がD2/D3に分割され、C1の担当をD2へ変更する | validAt/knownAt、Org Identity・Case disposition/Rule・Owner受理。後継組織線だけでCase移管やGrantを作らない（§69） |
+| **P：Provider/Deployment** | Tenant Aの実DBをOld→Newへ移設、Read Replica→Primaryへ切替 | DB Alias/instance/physical row・Query realization・Read Cohort/Completeness・Reader/Writer fence・old/new Receipt照合。Tenantの業務IDを変えたことにはしない（#2611/#2555） |
+| **T：Tenant/Ownership/Disclosure** | C1のデータ管理をTenant AからBへ移す、又はA→Bへ明示共有する | Business owner・提供主体・実Authority・Data export/import/retention・Consumer/Recipient・Current Grantを別途受理。単なるDB移設と同一視しない（§70〜71/#2020） |
+
+**限定的な同値の意味**：OとPをどちらの順序で処理しても最終表示`C1→D2`が同じになることはあり得る。しかし、これだけでRead Scope、実Provider row identity、未確定Operation、Receiverの現在資格、Receipt/監査、外部送信を含む**運用上の可換性**は証明できない。『両順序とも許容』は具体的Case/Provider Contract・独立Expectedに照らした判定とし、万能な可換性定理や共通二相Commitを仮定しない。
+
+### 72.2 固定する境界：過去の業務時点と現在の物理Routeを結び付け過ぎない
+
+基礎Fixtureは既存§68/71の`Tenant A:C1(handlingUnit=D1)`／対照`Tenant B:C1(handlingUnit=D2)`、#2596の合成Membership/valid-known、#2681の実Native CaseRecord定義、#1656の固定Scoped PG、#2853/#2854の**別Case実PostgreSQL Command Reference**をそれぞれの資格で再利用する。以下は一つの**試験用変異**であり、実TEIに格納済みの業務行ではない。
+
+- `2027-07-01`にBusiness上のD1後継候補D2/D3が発効。ただしC1の担当D1→D2はOwnerによる**別Disposition受理**が必要。
+- `2027-07-02`にTenant AのDB配備をOld ProviderからNew Providerへ移す。これはTenant Aのままの**物理Route切替**であり、Tenant Bへ所有権を移してはいない。
+- `2027-07-03`にD1の過去Membership訂正が記録される。`validAt=2027-06-15`かつ`knownAt=2027-07-01`の照会と、同`validAt`で`knownAt=2027-07-03`の照会は履歴の独立Expectedが異なる。ただし**両方とも現在適格なNew Providerから取得できる実現はあり得る**。`validAt`が古いという理由でOld DB Aliasを選ばない。旧新DBのHistory coverageが不明なら`unresolved`。
+- `C1(rowVersion=7)`はProvider試験の仮定であり、現Native CaseRecord `.tei`には`rowVersion`属性もCase Persistence Mappingも存在しない。物理Version、Meaning/Source/Route epoch、OperationIDと同一視せず、実Provider Bindingの検収を先に求める。
+
+### 72.3 ReadとEffectを混ぜずに検査する
+
+**Read-only基準**：C1をTenant Aの現在資格で読み、明示Function Contextの`handlingUnit`、実Provider Alias/DB instance/Query/args、Row+Field/Scope、Cohort、Consumerが受領した公開Fieldと独立Expectedを同一試行で照合。旧ProviderのPage 1と新ProviderのPage 2、または同じSnapshotラベルで異なるknownAtを結合して、`complete`を推測しない。Read-onlyの判定にWriteのReceiptやGrantを一律必須にしない。
+
+**Effect基準**：C1の担当変更D1→D2を既存型付きActionとしてOwnerが受理した場合に限り、実対象Case/Role/旧値/実Provider row version、Target Tenant、現在Grant、Period/Effect Rule、OperationID/Idempotency Scope、選択されたWriter route/generationを作用境界で検査する。Old Writer側でCommit ACKを失った後にNew Writerへ切り替わった場合、**新しいOperation Keyを発行して無条件に再Dispatchしない**。Old側Receipt Lookup・Migration時のOperation identity/Receipt引継ぎ保証・独立Readで同一効果が認定できないなら`unknown`を保留し、再実行資格を自動発行しない（#1174/#2564）。
+
+**Tenant移管**：同じTenant A内のDB移設はP軸である。他Tenant BへC1をExport/Transferする場合はT軸の**明示されたBusiness/Authority/Disclosure操作**であり、送信側と受領側の資格、重複Case IDの対応、必要なData/Receipt/Retentionの範囲を別々に検証する。相手側のOrg Membershipや受信成功メッセージでOwner/Grant/業務引継ぎを自動受理しない。複数Providerを一原子Txにまとめられない場合の部分効果・補償/引継ぎは既存#1129/#1130の契約に委ねる。
+
+### 72.4 Cross-axis pressure：ORG-XC-01〜07（独立Expected案・すべてNOT RUN）
+
+| Case | 一つの故障注入・対照 | 期待結果／拒否する誤成功 |
+| --- | --- | --- |
+| **XC-01** | 組織D1→D2のみを受理し、Provider routeはOldのまま | C1の業務Dispositionだけの変更。Tenant/DB切替やGrant発行を導かない |
+| **XC-02** | Provider Old→Newのみ移設、Org/Caseの業務意味は不変 | Meaning改訂なしでもDB Alias/Row version/Cohort/Consumer資格は再確認。Business Caseを別IDとして増殖させない |
+| **XC-03** | C1のPre-readはOld、実行直前にWriterがNewへ切替 | 旧Pre-read/Grant/row-versionをNewの実作用に無条件流用しない。同一Targetの再解決・Provider保証が不明ならnot-admitted |
+| **XC-04** | OldでCommit後にACK喪失、Newへ切替後に同Operationを処理しようとする | Old Receipt/Operation identityの引継ぎを実証できないなら`unknown`。新Key再Dispatchによる二重効果を成功としない。別CaseのPG replay PASSは証明にならない |
+| **XC-05** | 旧Business validAtを照会し、ProviderはNewが現在適格 | validAtとProvider route generationを混同しない。New側History coverage不明なら結果をunqualified。旧DB自動fallback不可 |
+| **XC-06** | Tenant AからBへC1共有/移管、両側に文字列C1がある | 明示Owner/Authority/Recipient/Source-Target identity mappingと開示を確認。DB切替や同名OrgだけでB private recordを上書きしない |
+| **XC-07** | O→PとP→Oで最終画面C1→D2は同じだが、一方はOldの未処理Operationが残る | 表示最終値同一から可換/完了を主張しない。実Operation/Receipt/partial/Consumer evidenceを比較し、未知の効果があれば両順序同値は`unresolved` |
+
+**独立性**：Expectedは当該実Provider/生成AI/RunPlanのActualを使って自己生成しない。古い操作が二重実行されるMutation、wrong-route読取、missing Receipt、hidden Private rowを既知のnegative controlとして検証する。期間・Scope・対象集合が不完全なら存在証人に限る局所Claimは維持可能だが、全移設完了／旧Writer完全停止／二重効果ゼロの**普遍的Claim**は保留する（#2514/#1180/#2516）。
+
+### 72.5 実装順：既存Ownerに差分だけを渡す
+
+| 優先 | 最小の次アクションと停止条件 | 正本・Owner |
+| --- | --- | --- |
+| **P0-A** | §68のE2a実Product Call Pathをまず取得。Case/Orgの現Native Persistence・Context不足はProduct Read Gapとして保持。XC-01/02/05の独立ExpectedとReader必要集合を固定 | #2586/#2506/#2622/#2514 |
+| **P0-B** | §71のTN-BD-01/04を同じ合成C1/Tenant A/Bへ接続し、Provider Alias/ScopeとCase identityの不一致をread-onlyで判別。現Trusted Authorityがない場合はそれを明記 | #2611/#1656/#2510/#1043 |
+| **P1** | C1の単一Writer切替とin-flight/unknownを実Providerで観測し、Receipt引継ぎの可否を検査。各Providerの保証外なら二重作用回避を**未証明**として停止 | #2555/#1174/#2564/#1163 |
+| **P2** | Tenantを跨ぐExport/ShareとOwner/Recipient開示、組織再編の未決Caseを並行条件で確認。異配備世代・SHO/Agent Consumerは実受領した範囲のみ認定 | #2020(closed履歴)/#2499/#2516/#1130/#2604 |
+
+組織Profile/Delivery Pluginを一体のData意味として構成する方針（§70）を維持し、Isolation/Provider/Targetの**実強制**をPlugin宣言やGraph表示と混同しない。Go単一バイナリを基本とする場合にも、常駐Tenant Router/専用Migration Serviceを標準Coreへ加えず、対象HostとProviderの実能力に合わせる（ADR-0036/0043/0044）。E2初回実Readより組織向けUniversal Cutoverを優先しない。
+
+**証拠と採用状況**：本節は§69〜71、ADR、現実の`scoped_postgres_reference.go`、実PG Command Reference、及び既存Issueの**Source-static照合に基づく設計追補**。ORG-XC-01〜07、新Org Case実Provider Read/Commit、Old→Newの実DB/Receipt移行、Tenant間実Transfer、Owner業務意味受理は**NOT RUN／NOT ACCEPTED**。§70〜71の既存8+12試験は実行済みに変更しない。#1119のCritical Pathとmainは維持する。
