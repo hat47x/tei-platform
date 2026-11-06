@@ -109,7 +109,7 @@ P0-AにはWebサイト、GitHub App、Registry常駐を要求しない。実GitH
 
 ### 9.1 最新の他レーンの成立範囲
 
-2026-11-06確認のmain `2d0b09b13b16c7f2d7183dbc995d3c62208c79ef` を静的照合の基準とする。名前空間・Instance分離の[PR #2298](https://github.com/hat47x/tei-platform/pull/2298)、独自Host非必須の[ADR-0043](../adr/0043-hostless-target-realization.md)（実際のファイル名・受入状態は関連ADR/Issueで再確認）は**目標方針と実装資格を区別**する。
+2026-11-06確認のmain `2d0b09b13b16c7f2d7183dbc995d3c62208c79ef` を静的照合の基準とする。名前空間・Instance分離の[PR #2298](https://github.com/hat47x/tei-platform/pull/2298)、独自Host非必須の[ADR-0043](../adr/0043-target-native-artifacts-without-tei-host.md)（実際のファイル名・受入状態は関連ADR/Issueで再確認）は**目標方針と実装資格を区別**する。
 
 以下の論点はRegistryで再実装しない。
 
