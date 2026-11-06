@@ -35,7 +35,7 @@
         "build": "not-qualified",
         "automaticRetry": "no"
       },
-      "oracle": "The first parser cannot establish the authenticity of its own trusted root"
+      "expectedBasis": "The first parser cannot establish the authenticity of its own trusted root"
     },
     {
       "id": "BS-02",
@@ -53,7 +53,7 @@
         "build": "not-qualified",
         "automaticRetry": "no"
       },
-      "oracle": "main Workspace loader supports manifest format versions 1/2; unknown future versions are not silently downgraded"
+      "expectedBasis": "main Workspace loader supports manifest format versions 1/2; unknown future versions are not silently downgraded"
     },
     {
       "id": "BS-03",
@@ -81,7 +81,7 @@
         "build": "not-qualified",
         "automaticRetry": "no"
       },
-      "oracle": "An exact implementation pin requires content identity, not just ID and semver"
+      "expectedBasis": "An exact implementation pin requires content identity, not just ID and semver"
     },
     {
       "id": "BS-04",
@@ -108,7 +108,7 @@
         "build": "not-qualified",
         "automaticRetry": "no"
       },
-      "oracle": "A completion prerequisite cycle has no first resolvable interpreter, regardless of declaration order"
+      "expectedBasis": "A completion prerequisite cycle has no first resolvable interpreter, regardless of declaration order"
     },
     {
       "id": "BS-05",
@@ -127,7 +127,7 @@
         "build": "not-qualified",
         "automaticRetry": "no"
       },
-      "oracle": "A deferred type reference has no pre-parse evaluation prerequisite; it still conveys no Owner acceptance"
+      "expectedBasis": "A deferred type reference has no pre-parse evaluation prerequisite; it still conveys no Owner acceptance"
     },
     {
       "id": "BS-06",
@@ -147,7 +147,7 @@
         "build": "not-qualified",
         "automaticRetry": "no"
       },
-      "oracle": "Syntactic success cannot substitute an unpinned Operator contract or silently use v1"
+      "expectedBasis": "Syntactic success cannot substitute an unpinned Operator contract or silently use v1"
     },
     {
       "id": "BS-07",
@@ -170,7 +170,7 @@
         "build": "not-qualified",
         "automaticRetry": "no"
       },
-      "oracle": "An independent acceptance obligation may not be discharged by the candidate's own empty declaration"
+      "expectedBasis": "An independent acceptance obligation may not be discharged by the candidate's own empty declaration"
     },
     {
       "id": "BS-08",
@@ -192,7 +192,7 @@
         "build": "not-qualified",
         "automaticRetry": "no"
       },
-      "oracle": "Candidate generation visibility is all-or-none; without staging isolation the old generation is not proven intact"
+      "expectedBasis": "Candidate generation visibility is all-or-none; without staging isolation the old generation is not proven intact"
     },
     {
       "id": "BS-09",
@@ -210,7 +210,7 @@
         "build": "not-qualified",
         "automaticRetry": "no"
       },
-      "oracle": "Restart must not publish a staged subset or infer activation from files merely existing"
+      "expectedBasis": "Restart must not publish a staged subset or infer activation from files merely existing"
     },
     {
       "id": "BS-10",
@@ -229,7 +229,7 @@
         "build": "qualified-release-prohibited",
         "automaticRetry": "no"
       },
-      "oracle": "A parser, conformance fixture, or AI candidate cannot authorize an Accepted Meaning transition"
+      "expectedBasis": "A parser, conformance fixture, or AI candidate cannot authorize an Accepted Meaning transition"
     },
     {
       "id": "BS-11",
@@ -248,7 +248,7 @@
         "build": "quarantined-unqualified",
         "automaticRetry": "no"
       },
-      "oracle": "A candidate build may exist for tests but is neither a release nor proof of accepted Meaning or Host authority"
+      "expectedBasis": "A candidate build may exist for tests but is neither a release nor proof of accepted Meaning or Host authority"
     },
     {
       "id": "BS-12",
@@ -269,7 +269,7 @@
         "build": "release-candidate-needs-separate-build-evidence",
         "automaticRetry": "not-applicable"
       },
-      "oracle": "Accepted Meaning, durable generation cutover and actual Build receipts are different independently verified events"
+      "expectedBasis": "Accepted Meaning, durable generation cutover and actual Build receipts are different independently verified events"
     },
     {
       "id": "BS-13",
@@ -288,7 +288,7 @@
         "build": "not-qualified-for-new-generation",
         "automaticRetry": "no"
       },
-      "oracle": "A lost response cannot distinguish no-write from applied-write and cannot justify replay or rollback"
+      "expectedBasis": "A lost response cannot distinguish no-write from applied-write and cannot justify replay or rollback"
     },
     {
       "id": "BS-14",
@@ -310,7 +310,7 @@
         "build": "requires-current-evidence",
         "automaticRetry": "no"
       },
-      "oracle": "Byte equality alone is not Owner reacceptance, interpreter epoch identity or current authority"
+      "expectedBasis": "Byte equality alone is not Owner reacceptance, interpreter epoch identity or current authority"
     },
     {
       "id": "BS-15",
@@ -329,7 +329,7 @@
         "build": "not-qualified",
         "automaticRetry": "no"
       },
-      "oracle": "An incompatible grammar update requires an independently trusted migration/seed path; self-description cannot bootstrap its own recognition"
+      "expectedBasis": "An incompatible grammar update requires an independently trusted migration/seed path; self-description cannot bootstrap its own recognition"
     }
   ]
 }
