@@ -13,7 +13,7 @@
 | 要件 | 状態 | 主な実装 | 検証 | 残る未確認 |
 | --- | --- | --- | --- | --- |
 | AC-1 | 実装済み（参照） | Application Packageの検証・ビュー | Packageビュー、`TestXTEAExampleWorkspace` | 取り外し後の受理済み意味の保持を実DBで確認 |
-| AC-2 | 一部 | フック宣言の検証、`internal/hook`の実行契約、`hook.Declared`（宣言した能力以外の呼出しを拒否。[確認記録](XTEA_LOWCODE_HOOK_DECLARED_CALLS_2026-11.md)） | フック宣言・実装契約の単体試験、宣言外呼出しの拒否試験 | 宣言外呼出しの拒否をCommand境界へ接続すること |
+| AC-2 | 一部 | フック宣言の検証、`internal/hook`の実行契約、`hook.Declared`（宣言した能力以外の呼出しを拒否）、`hook.CommandCaller`（フックの呼出しをCommand境界へ委譲。[確認記録](XTEA_LOWCODE_HOOK_DECLARED_CALLS_2026-11.md)） | フック宣言・実装契約の単体試験、宣言外呼出しの拒否試験、Command境界への委譲試験 | フック実行（`hook.Runner`）からの実際の配線 |
 | AC-3 | 一部 | `role`・`required`・`immutable`・`values`、表示ラベル | 検証・ビュー・参照Executorの試験 | 幅・行数・整列・部品の表示指定 |
 | AC-4 | 一部 | `layout`の順序投影 | layoutの検証・ビュー | 座標を含む配置とプロファイル比較 |
 | AC-5 | 一部 | `Outcome`・`ExecutionError`・期間拒否、`ReferenceFailure`の符号（`record-missing`・`record-exists`・`value-rejected`・`rule-rejected`）と`FailureOutcome`、CLIの`COMMAND_REFUSED` | Command実行境界・期間の試験、参照Storeの拒否符号の試験、拒否と実行障害の区別の試験 | 多結果・多重一致の表現、実Providerでの結末 |
@@ -58,6 +58,7 @@ persisted: false (durability: none)
 ```
 
 これは参照用AllowListによる能力単位の拒否です。利用者・資源・メニュー表示・権限の付与は確認していません。
+
 
 
 
