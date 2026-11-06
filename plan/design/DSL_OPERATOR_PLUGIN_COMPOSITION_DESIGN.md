@@ -288,3 +288,61 @@ Pluginの論理単位と実行artifactを1:1にしない。Linked / Wasm / proce
 採用を提案するのは「小さな意味上のOperatorを合成できる」「DSL自体をLanguage Pluginとして供給できる」「Operatorを構文ではなく意味契約で解決する」という方向性までである。
 
 最終構文、Operator一覧、言語固有AST/IRのschema、Language bootstrap lockの物理形式、SQL推論器の選定、標準namespaceへの昇格時期は、Referenceが揃うまで固定しない。ここに示したDSLは構文例であり、現行のTEI Parserで有効とは限らない。設計候補を実装済み機能やProduction Evidenceとして扱わない。
+
+
+<!-- dsl-bootstrap-seed-order-recovery-20261106 -->
+## 13. 2026-11-06 横断補足：初回Seedから部分登録回復までのBootstrap受入順（#988）
+
+**位置付け：設計・独立Expected Fixture。正式Runtime/API採用でも実TEI Bootstrap E2E試験でもない。** 本書§4.1の「manifest→Language選択→parse→Operator解決→Canonical候補→Shared Acceptance→Target」を、[#2620の既存Role Bootstrap RB-01〜24](ROLE_BOOTSTRAP_AND_SELF_DESCRIPTION_2026-11.md)、[Go Language Reference #2639](https://github.com/hat47x/tei-platform/pull/2639)、[Source/Role接続 #2860](https://github.com/hat47x/tei-platform/pull/2860)と照合する。RB-05/06 eager/deferred、RB-20〜24推移Pin自体はすでにあるため、ここでは**初回解釈器の出所、Parser/Operatorの段階差、部分的な登録・起動回復、Build資格**だけを追加する。
+
+### 13.1 「登録」と「有効化」を分けるDAG（全工程を同じParserで読む単純な直列手順ではない）
+
+| 段階 | 入力の信頼条件／許された処理 | この段階から**まだ**言えないこと |
+| --- | --- | --- |
+| **K0 既存信頼核** | 固定された実Loader/Manifest Reader・受理済み形式版・Seed側のLock検証規則・小さな基本データ表現。**誰がSeedの実Binary/契約を信頼したかは外部受入前提として明記**。旧Seedに自身の信頼性を自己宣言させない | K0自身の正しさやOwner意思が証明されたこと、任意の新Languageを読めること |
+| **K1 Source/Manifest観測** | K0がSource Root/Kind/Import/FormatVersionと取得した原bytesを固定。現`workspace.Result.ManifestIdentity`とLoad時snapshotは部分的に存在し、必要Source全件取得・Import束縛を別に検査（#2823）。未知Formatや未読rootは停止 | parsed/semantic complete、現Workspace以外も網羅したこと |
+| **K2 言語選択と隔離したParser候補** | seedで読めるdescriptor/Lockから**正確なLanguage Contract＋実Implementation＋推移依存**を選択し、その版に合うParserだけを候補として使う。#2639の`ParseSelected`は選択済みPinに従う限定Go Reference。新Parserが自分の選択定義を初めて読む循環は不可 | Providerの存在＝信頼、読み込み順による自動採用、Parser成功＝Accepted Meaning |
+| **K3 Parse→Canonical候補** | 選択言語でSyntax/Source spanを構成し、Canonical/typed candidateへlower。現Semantic Parserと標準IRの実到達を個別確認。Syntax v2をK0 v1だけで処理できなければ`unsupported/unresolved` | CandidateがAccepted Set/業務意味/実行資格であること |
+| **K4 Operator契約を固定して解決** | Parseされたuse-siteに対し、別に**受理されたOperator Contract ID/版/実Implementation Pin**と引数型・効果・依存閉包を照合。`LowerPinnedPipeline`は外部から与えられたPinを使う限定Reference。候補Operatorを発見・登録する作業は隔離し、既存active選択を上書きしない | `operator: pure`自己宣言＝副作用なし、登録された＝合法実行、Plugin自動fallback |
+| **K5 意味受理境界** | K0〜K4のSource/Parser/Contract資格、独立Required Shape、独立Expected、必要ならOwnerの**外部の明示決定**を同一対象・版・Scopeで照合。提案段階のConformanceと正式Meaning Acceptanceは別 | 記述自身の`required=[]`やUnit PASSがOwner受理となること |
+| **K6 Build/Target/Active Consumer** | Accepted Source/Meaning・実Build Input・Builder/Toolchain・ArtifactSet・Consumerの現在資格を各既存Ownerへ束縛する。受理前の隔離**候補Build**は検証として可能だが、release／active generationとは別 | Build成功＝Seed信頼、意味受理、Provider Effect、現Host Grant。TEI自己ビルドStage1→Stage2実再入は#2831の別Claim |
+
+**順序上の注意**：Parser実装を選ぶにはその前に**Seedで読める記述形式**が要る。通常のDSLのParserが決まった後でなければそのDSLのOperator use-siteは解析できない。一方、Operator契約の候補は先に**Seed由来の既知Lock**として収集・Pin可能である必要がある。「候補収集」「一時Staging」「新Activeへの切替」を一つの`register`で処理すると、途中失敗から半登録・曖昧な意味選択が発生する。二相に見える構想は**要求する安全性**であり、現製品にatomic registry swap/transactionが存在するという主張ではない。
+
+### 13.2 初回信頼核・自己記述循環の棄却条件
+
+- **Seed Trustの明示**：K0の実装由来・形式仕様・Trust anchor・起動時に選んだ実Artifact/版と、後段Candidateが説明する「信頼されるべきParser」を分離。実検証・所有者の責任境界が不明なら`unqualified`。Checksum一致だけで信頼された作者・意味Owner・権限を証明しない。K0の変更/新Grammar導入には**以前の信頼経路で検証できる移行方法か別途認証済みSeed**が要り、新DSLが自己更新を自己承認しない。
+- **循環は位相で判定**：K0 Reader→選択Descriptor→Language Parser→同Parserを初めて解釈するにはそのParserが必要、という**初回解釈の前提閉路**は拒否。既存RB-05のeager循環をBootstrapの段階に置く。反対に`Node.children: Ref<Node>`等の遅延関係はRB-06のとおり許容候補であり、意味評価・Traversalに入るまで自動展開しない。
+- **版不一致は別の差異**：Manifest FormatVersion（#1920）、Language syntax Contract/実Parser、Operator Contract/実Implementationと推移依存、Source revision/occurrence、Accepted Meaning Review、Build Toolchain/Artifact/現在Hostの資格を分離。同一Language ID/semverでも実byte違いは不合格。同一Source A→B→Aでも旧Review/Grantは自動復活させない。未知・新しい版を黙って旧Parserへfallbackしない。
+- **物理Plugin方式とは独立**：Static/linked、動的、外部Processのいずれでも「どの実Implementationを選ぶか」「未承認コードがロード時に実副作用を起こさないか」は別。Seed自身に任意Pluginコードを無検証実行させない（方式選定Owner #951/#1251/[Draft #2885](https://github.com/hat47x/tei-platform/pull/2885)）。正式配布方式・Go単一Binaryとの適合は未決。
+
+### 13.3 部分登録・障害後の回復：状態を一つに潰さない
+
+| 故障時点 | 独立に必要なExpected／復旧動作（設計） |
+| --- | --- |
+| **A：Manifest/Lock/Parserの事前検査で失敗** | 未受理Candidate／新OperatorをActiveへ露出しない。既存`g1`を保全できた事実を現Snapshotで確認する。上流に未知Sourceがあれば以前の成功と現在資格を混同しない |
+| **B：新候補`g2`のOperator Aはstaged、Bの登録に失敗** | **部分集合Aだけを有効にしない**。隔離済みなら`g1`維持・`g2`破棄または全Pin再検証。隔離していない既存実装なら「`g1`は無傷」と仮定せず`partial/unknown`で停止し実状態を再読取 |
+| **C：Owner受理済みだがGeneration切替前に停止** | Ownerの意味判断は履歴として保持。切替が未完了なら`g2`有効化やBuild配布を主張しない。再起動後にCurrent Source/Lock/受理ScopeとTargetを再照合 |
+| **D：切替試行後のACK/記録応答を喪失** | **切替済みか不明**を保持し、実永続状態・公開Generation・Review/Receiptを独立再読取。盲目的に同じ登録を再送／自動Rollbackしない（Source受理ツールの`Source changed, Decision ledger failed`とも区別） |
+| **E：旧Source/旧Operatorへ戻す（ABA）** | 内容同一でも旧受理のCurrent資格は復活させない。新たなRevision/Review/Pin・必要Consumerを再判定 |
+
+全ケースで、Kernel/実Process・Staged登録・Active Selection/Lock・Canonical Candidate・Accepted Meaning・Build Artifact・Consumer/Host Grantを別々に記録する。実装が「候補をどこへ置くか」「切替原子性」「再起動時に何を読むか」をまだ持たないなら**合格ではなくGap**とし、第二のRegistry/Host/Recovery Engineを作らない。
+
+### 13.4 独立Expected付きFixtureと最初の結合試験
+
+**新しい設計専用の入力・期待対照**：
+[`plan/fixtures/role-bootstrap/bootstrap_order_recovery_expected_20261106.json`](../fixtures/role-bootstrap/bootstrap_order_recovery_expected_20261106.json)（**BS-01〜15**、`DESIGN_ONLY_NOT_EXECUTED`）。
+`expected`はCandidateが返した値でなく、**起動Trust、版固定、eager依存、独立Required、意味受理、障害復旧**の先行契約から決める。値`g1/g2`、各状態名、模擬digestはFixtureの仮名でありProduct API/実Owner決定/暗号学的な真正性ではない。
+
+**特に判別すべき対照**：
+- BS-02：Manifest未知版→Seedで停止、Parserを呼ばない。BS-03：同versionでも異Implementation bytes→Pin mismatch。
+- BS-04：初回Parserのeager自己循環→停止、BS-05：通常の`Ref<Node>`→Bootstrap上は停止しない（ただしMeaning未受理）。
+- BS-06/07：Syntax可でもOperator未Pin・Required Root欠落→Candidateのみ。
+- BS-08/09：半登録・再起動→新Generationを公開しない（隔離が証明されないと旧Generationの完全性もunknown）。
+- BS-10/11：Parse/Conformance/候補Build PASSでもOwner意思が無い→Accepted/Releaseにしない。
+- BS-12/13：外部受理済みでも、Confirmed CutoverとACK-loss unknownは別。前者もBuild/Host資格を発行しない。
+- BS-14/15：A→B→AのReview旧権限非復権、Seedで読めない新文法による自己移行拒否。
+
+**検証順とOwner**：(1)既存`check_bootstrap.js`のRB-01〜24は改変せず、まず本FixtureのInput/Expectedを仕様レビュー（#988/#2620）。(2)実`workspace.Load`/Manifest/Snapshotと`ParseSelected`/pinned loweringが対応可能なBS-02/03/06を実Goでpressure。対応不能なK0 Provenance/Registration切替は`unsupported`と記録。(3)BS-08/09/13はExisting Extension/Build/Acceptanceの**実観測点**が分かるまでは試験Passを宣言しない。(4)独立Oracle #2514、Raw Authoring #2621、Required Source #2823、Build #2831、Consumer/Host #2516/#1174に各観測を渡す。**新Builder/Runner/Seed Parser/第二Lock・Registry・Owner Authorityは先行追加しない**。
+
+**証拠上限**：本§13/BSは設計と静的実コード照合のみ。BS-01〜15のTEI Go/CLI/CI、独立実Owner受理、実Pluginのpartial registration、Recovery/Crash、製品自己Bootstrap、Stage2 TEI self-build、実Host/DBは**NOT RUN / NOT PROVEN**。#1119のG0〜G4と業務P0を拡張しない。
