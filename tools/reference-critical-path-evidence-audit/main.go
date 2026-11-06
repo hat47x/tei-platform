@@ -278,7 +278,11 @@ func Audit(p Packet, expectedHead, expectedMain string) Report {
 	}
 	if p.Claim == "E2" {
 		a, w, ph := p.Acceptance, p.Web, p.Physical
-		if w.ProviderKind != "actual-db" {
+		// Only a declared synthetic Provider gets the synthetic-specific
+		// diagnosis. An empty or unknown kind is already reported as
+		// WEB_PROVIDER_KIND_UNRESOLVED above; labeling it "synthetic" as well
+		// would be false and a second report of the same defect.
+		if w.ProviderKind == "synthetic" {
 			add("SYNTHETIC_WEB_PROVIDER_CANNOT_CLAIM_E2")
 		}
 		if ph.AcceptedRevision != a.R1 || ph.Datasource == "" ||
