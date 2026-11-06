@@ -208,6 +208,16 @@ func loadWorkspaceImports(root string, imports []WorkspaceImport, result *Result
 		if imp.SemanticDigest != "" && imp.SemanticDigest != actualDigest {
 			return fmt.Errorf("import %q: semantic digest mismatch for namespace %q (expected %s, got %s); review the provider changes and their impact before updating the pin", imp.Alias, imp.Namespace, imp.SemanticDigest, actualDigest)
 		}
+		// Capture only the selected Namespace's parsed Source bytes from this
+		// provider Load. Source re-location may re-Load a later provider state.
+		capture, err := captureImportedParsedLoad(imp, actualDigest, provider)
+		if err != nil {
+			return fmt.Errorf("import %q: %w", imp.Alias, err)
+		}
+		if result.importedParsedLoads == nil {
+			result.importedParsedLoads = make(map[string]*importedParsedLoad)
+		}
+		result.importedParsedLoads[imp.Alias] = &capture
 		owned[imp.Namespace] = true
 		result.World.Semantics = append(result.World.Semantics, *selected)
 		result.Imports = append(result.Imports, ResolvedImport{
