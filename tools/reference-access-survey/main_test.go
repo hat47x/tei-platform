@@ -151,6 +151,28 @@ func TestSurveySkipsTestFilesUnlessAsked(t *testing.T) {
 	}
 }
 
+// TestSurveyDoesNotCountAnOutboundRequestThroughAClientValue pins a known gap
+// rather than hiding it: an outbound request made as `client.Do(req)` goes
+// through a value, so the call is not `http.Get` or `net.Dial` and the survey
+// does not see it. Counting every method named Do would be worse (it is a common
+// method name), so the gap stays and the number must not be read as complete.
+func TestSurveyDoesNotCountAnOutboundRequestThroughAClientValue(t *testing.T) {
+	file, err := inspect("client.go", []byte(`package example
+
+import "net/http"
+
+func call(client *http.Client, request *http.Request) {
+	_, _ = client.Do(request)
+}
+`))
+	if err != nil {
+		t.Fatalf("inspect: %v", err)
+	}
+	if len(file.Calls) != 0 {
+		t.Fatalf("the survey must not claim to see this call, or the number reads as complete: %+v", file.Calls)
+	}
+}
+
 func TestRenderIsStable(t *testing.T) {
 	report, err := survey([]string{t.TempDir()}, false)
 	if err != nil {
