@@ -11,6 +11,7 @@ import (
 	"tei/internal/command"
 	"tei/internal/security/effectcommit"
 	"tei/internal/security/legacyauthorization"
+	"tei/internal/semantic"
 )
 
 // Executor implements command.Executor by delegating to effectcommit.Runner.
@@ -22,6 +23,11 @@ type Executor struct {
 	OperationID     string
 	ExpectedVersion uint64
 	Payload         []byte
+	// Effect is the capability's declared effect, supplied by the caller that
+	// resolved the Command plan. The effectcommit Runner returns only a receipt,
+	// so without this the adapter cannot report which effect it committed.
+	// A nil Effect keeps the adapter's previous receipt-only behaviour.
+	Effect *semantic.DataEffect
 }
 
 // Execute calls the authorized effect-commit boundary and maps its status to a
@@ -61,7 +67,11 @@ func (e Executor) Execute(ctx context.Context, request command.Request) (command
 	}
 	switch result.Status {
 	case effectcommit.StatusCommitted, effectcommit.StatusReplayed:
-		return command.Result{}, nil
+		// Report the declared effect only when the caller supplied it. A
+		// Replayed receipt proves the same operation id and request hash were
+		// recorded before; it does not prove the resource's current value, so do
+		// not upgrade this to an independent read.
+		return command.Result{Effect: e.Effect}, nil
 	case effectcommit.StatusDenied:
 		return command.Result{}, effectcommit.ErrBusinessDenied
 	case effectcommit.StatusConflict:
